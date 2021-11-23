@@ -66,7 +66,7 @@ impl Lexer {
         Ok(r)
     }
 
-    fn integer(&mut self) -> Token {
+    fn integer(&mut self) -> i32 {
         while let Some(c) = self.peek() {
             if !c.is_numeric() {
                 break;
@@ -76,7 +76,7 @@ impl Lexer {
         let num = self.query[self.start..self.current]
             .iter()
             .collect::<String>();
-        Token::Integer(num.parse::<i32>().unwrap())
+        num.parse::<i32>().unwrap()
     }
 
     pub fn next(&mut self) -> anyhow::Result<Option<Token>> {
@@ -115,7 +115,7 @@ impl Lexer {
                     return Ok(Some(Token::Identifier(self.identifier())));
                 }
                 n if n.is_numeric() => {
-                    return Ok(Some(self.integer()));
+                    return Ok(Some(Token::Integer(self.integer())));
                 }
                 '[' => {
                     return Ok(Some(Token::ListBegin));
