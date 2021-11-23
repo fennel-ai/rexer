@@ -2,37 +2,42 @@ pub struct Lexer {
     query: Vec<char>,
     current: usize,
     start: usize,
-    tokens: Vec<Token>,
 }
 
 impl Lexer {
     pub fn new(query: String) -> Self {
         Lexer {
-            // TODO: don't remove whitespace here. e.g. "12abc" is no a valid string.
-            query: query.chars().filter(|c| !c.is_whitespace()).collect(),
+            query: query.chars().collect(),
             current: 0,
             start: 0,
-            tokens: vec![],
         }
     }
 
-    fn peek(&self) -> Option<char> {
-        if self.current >= self.query.len() {
-            None
-        } else {
-            Some(self.query[self.current])
-        }
+    fn peek(&self) -> Option<&char> {
+        self.query.get(self.current)
     }
 
-    pub fn tokenize(&mut self) {
-        loop {
-            let token = self.next();
-            if let Token::Eof = token {
-                break;
-            } else {
-                self.tokens.push(token);
+    fn advance(&mut self) -> Option<&char> {
+        let r = self.query.get(self.current);
+        self.current += 1;
+        r
+    }
+
+    fn done(&self) -> bool {
+        self.current >= self.query.len()
+    }
+
+    pub fn tokenize(mut self) -> anyhow::Result<Vec<Token>> {
+        let mut tokens = vec![];
+        while !self.done() {
+            self.start = self.current;
+            // TODO: consume error but continue lexing.
+            if let Some(token) = self.next()? {
+                tokens.push(token);
             }
         }
+        tokens.push(Token::Eof);
+        return Ok(tokens);
     }
 
     fn identifier(&mut self) -> String {
@@ -43,6 +48,22 @@ impl Lexer {
             self.advance();
         }
         self.query[self.start..self.current].iter().collect()
+    }
+
+    fn string(&mut self) -> anyhow::Result<String> {
+        while let Some(c) = self.peek() {
+            if *c == '"' {
+                break;
+            }
+            self.advance();
+        }
+        if self.done() {
+            anyhow::bail!("string without trailing \"");
+        }
+        // advance over the closing '"'.
+        self.advance();
+        let r = self.query[self.start..self.current - 1].iter().collect();
+        Ok(r)
     }
 
     fn integer(&mut self) -> Token {
@@ -58,42 +79,61 @@ impl Lexer {
         Token::Integer(num.parse::<i32>().unwrap())
     }
 
-    pub fn next(&mut self) -> Token {
+    pub fn next(&mut self) -> anyhow::Result<Option<Token>> {
         if let Some(c) = self.advance() {
-            let token = match c {
-                '(' => Token::LeftParen,
-                ')' => Token::RightParen,
-                ',' => Token::Comma,
-                '|' => Token::Pipe,
-                '+' => Token::Plus,
-                ';' => Token::Semicolon,
-                '=' => Token::Equal,
+            match c {
+                '(' => {
+                    return Ok(Some(Token::LeftParen));
+                }
+                ')' => {
+                    return Ok(Some(Token::RightParen));
+                }
+                ',' => {
+                    return Ok(Some(Token::Comma));
+                }
+                '|' => {
+                    return Ok(Some(Token::Pipe));
+                }
+                '+' => {
+                    return Ok(Some(Token::Plus));
+                }
+                ';' => {
+                    return Ok(Some(Token::Semicolon));
+                }
+                '=' => {
+                    return Ok(Some(Token::Equal));
+                }
                 '$' => {
                     self.start += 1;
-                    Token::Variable(self.identifier())
+                    return Ok(Some(Token::Variable(self.identifier())));
                 }
-                c if c.is_alphabetic() => Token::Identifier(self.identifier()),
-                n if n.is_numeric() => self.integer(),
-                '[' => Token::ListBegin,
-                ']' => Token::ListEnd,
+                '"' => {
+                    self.start += 1;
+                    return Ok(Some(Token::String(self.string()?)));
+                }
+                c if c.is_alphabetic() => {
+                    return Ok(Some(Token::Identifier(self.identifier())));
+                }
+                n if n.is_numeric() => {
+                    return Ok(Some(self.integer()));
+                }
+                '[' => {
+                    return Ok(Some(Token::ListBegin));
+                }
+                ']' => {
+                    return Ok(Some(Token::ListEnd));
+                }
+                ' ' => return Ok(None),
+                '\t' => return Ok(None),
+                '\r' => return Ok(None),
+                // TODO: Increment a line number for better debugging.
+                '\n' => return Ok(None),
                 _ => {
-                    panic!("unexpected branch");
+                    anyhow::bail!("unexpected character: {:?}", *c);
                 }
-            };
-            self.start = self.current;
-            token
+            }
         } else {
-            Token::Eof
-        }
-    }
-
-    fn advance(&mut self) -> Option<char> {
-        if self.current >= self.query.len() {
-            None
-        } else {
-            let r = self.query[self.current];
-            self.current += 1;
-            Some(r)
+            return Ok(None);
         }
     }
 }
@@ -113,7 +153,8 @@ pub enum Token {
     Identifier(String),
     Variable(String),
     // Literals.
-    //STRING,
+    String(String),
+    // TODO: add Double(f64)
     Integer(i32),
     // Lists
     ListBegin,
@@ -128,12 +169,16 @@ mod tests {
 
     #[test]
     fn lex_paren() {
-        let mut lexer = Lexer::new(format!("x = 5;  y = [3, $x, 4] | incr(by=$x)"));
-        lexer.tokenize();
+        let lexer = Lexer::new(format!("x = 5;  z = \"foo\"; y = [3, $x, 4] | incr(by=$x)"));
+        let actual = lexer.tokenize().unwrap();
         let expected = vec![
             Token::Identifier("x".to_string()),
             Token::Equal,
             Token::Integer(5),
+            Token::Semicolon,
+            Token::Identifier("z".to_string()),
+            Token::Equal,
+            Token::String("foo".to_string()),
             Token::Semicolon,
             Token::Identifier("y".to_string()),
             Token::Equal,
@@ -151,7 +196,8 @@ mod tests {
             Token::Equal,
             Token::Variable("x".to_string()),
             Token::RightParen,
+            Token::Eof,
         ];
-        assert_eq!(expected, lexer.tokens);
+        assert_eq!(expected, actual);
     }
 }
