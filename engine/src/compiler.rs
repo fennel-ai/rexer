@@ -1,7 +1,7 @@
 ///
 /// StarQL Grammar:
-/// expression := assignment | non-assignment
-/// assignemnt := identifier '=' non-assignment
+/// expression := (assignment | non-assignment) ';'
+/// assignment := identifier '=' non-assignment
 /// non-assignment := number | variable | list
 /// variable := '$'identifier
 /// op_call := '|' identifier '(' repeated(identifier'='non-assignment)')'
@@ -71,9 +71,9 @@ pub fn compile(tokens: Vec<Token>) -> Tape {
     let mut t = Tape::new();
     for token in tokens.into_iter() {
         match token {
-            Token::Integer(n) => {
+            Token::Number(n) => {
                 let idx = t.constants.len();
-                t.constants.push(Value::Int(n));
+                t.constants.push(Value::Double(n));
                 t.emit(Code::Op(OpCode::LoadConstant));
                 // TODO: write varint instead of fixed-size.
                 t.write_usize(idx);
@@ -144,7 +144,7 @@ impl Parser {
     pub fn next(&mut self) -> Option<Result<Expr>> {
         if let Some(t) = self.advance() {
             let r = match t {
-                Token::Integer(n) => Some(Ok(Expr::Integer(n))),
+                Token::Number(n) => Some(Ok(Expr::Number(n))),
                 Token::Identifier(id) => Some(self.assignment(id)),
                 _ => {
                     unimplemented!("foo");
@@ -157,7 +157,7 @@ impl Parser {
 }
 
 enum Expr {
-    Integer(i32),
+    Number(f64),
     Variable(String),
     List(Vec<Expr>),
     Assignment(String, Box<Expr>),

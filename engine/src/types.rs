@@ -1,6 +1,5 @@
 #[derive(Clone)]
 pub enum Value {
-    Int(i32),
     Double(f64),
     String(String),
     List(&'static [Value]),
