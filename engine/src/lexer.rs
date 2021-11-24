@@ -120,6 +120,16 @@ impl Lexer {
                 '+' => {
                     return Ok(Some(Token::Plus));
                 }
+                '-' => {
+                    return Ok(Some(Token::Minus));
+                }
+                '*' => {
+                    return Ok(Some(Token::Star));
+                }
+                '/' => {
+                    // TODO(abhay): Handle comments.
+                    return Ok(Some(Token::Slash));
+                }
                 ';' => {
                     return Ok(Some(Token::Semicolon));
                 }
@@ -169,6 +179,9 @@ pub enum Token {
     Pipe,
     // Characters
     Plus,
+    Minus,
+    Star,
+    Slash,
     Semicolon,
     // For assignment
     Equal,
@@ -191,6 +204,9 @@ impl Token {
             Token::Comma => ",".to_string(),
             Token::Pipe => "|".to_string(),
             Token::Plus => "+".to_string(),
+            Token::Minus => "-".to_string(),
+            Token::Star => "*".to_string(),
+            Token::Slash => "/".to_string(),
             Token::Semicolon => ";".to_string(),
             Token::Equal => "=".to_string(),
             Token::Identifier(ref id) => id.clone(),

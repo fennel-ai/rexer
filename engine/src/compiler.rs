@@ -1,11 +1,19 @@
-///
 /// StarQL Grammar:
-/// expression := (assignment | non-assignment) ';'
-/// assignment := identifier '=' non-assignment
-/// non-assignment := number | variable | list
-/// variable := '$'identifier
-/// op_call := '|' identifier '(' repeated(identifier'='non-assignment)')'
-/// list := '['repeated(non-assignment)']' optional(repeated(op_call))
+///
+/// TODO: add tuples and lists. Also, add bool support.
+/// expression := term
+/// term := factor (("+" | "-") factor)*
+/// factor := unary (("*" | "/") unary)*
+/// unary := primary | "-" unary
+/// literal := NUMBER | STRING
+/// primary := literal | "(" expression ")"
+///
+/// To add:
+/// * Tuples
+/// * Lists
+/// * Booleans, conditionals and control flow
+/// * assignment and variables
+/// * operator calls
 ///
 use super::lexer::Token;
 use super::types::*;
