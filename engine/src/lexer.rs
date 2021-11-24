@@ -40,7 +40,11 @@ impl Lexer {
                 tokens.push(token);
             }
         }
-        tokens.push(Token::Eof);
+        tokens.push(Token {
+            token_type: TokenType::Eof,
+            lexeme: "".to_string(),
+            literal: None,
+        });
         return Ok(tokens);
     }
 
@@ -102,58 +106,71 @@ impl Lexer {
         num.parse::<f64>().unwrap()
     }
 
+    fn new_token(&self, token_type: TokenType, value: Option<TokenValue>) -> Token {
+        Token {
+            token_type: token_type,
+            literal: value,
+            lexeme: self.query[self.start..self.current].iter().collect(),
+        }
+    }
+
     pub fn next(&mut self) -> anyhow::Result<Option<Token>> {
         if let Some(c) = self.advance() {
             match c {
                 '(' => {
-                    return Ok(Some(Token::LeftParen));
+                    return Ok(Some(self.new_token(TokenType::LeftParen, None)));
                 }
                 ')' => {
-                    return Ok(Some(Token::RightParen));
+                    return Ok(Some(self.new_token(TokenType::RightParen, None)));
                 }
                 ',' => {
-                    return Ok(Some(Token::Comma));
+                    return Ok(Some(self.new_token(TokenType::Comma, None)));
                 }
                 '|' => {
-                    return Ok(Some(Token::Pipe));
+                    return Ok(Some(self.new_token(TokenType::Pipe, None)));
                 }
                 '+' => {
-                    return Ok(Some(Token::Plus));
+                    return Ok(Some(self.new_token(TokenType::Plus, None)));
                 }
                 '-' => {
-                    return Ok(Some(Token::Minus));
+                    return Ok(Some(self.new_token(TokenType::Minus, None)));
                 }
                 '*' => {
-                    return Ok(Some(Token::Star));
+                    return Ok(Some(self.new_token(TokenType::Star, None)));
                 }
                 '/' => {
                     // TODO(abhay): Handle comments.
-                    return Ok(Some(Token::Slash));
+                    return Ok(Some(self.new_token(TokenType::Slash, None)));
                 }
                 ';' => {
-                    return Ok(Some(Token::Semicolon));
+                    return Ok(Some(self.new_token(TokenType::Semicolon, None)));
                 }
                 '=' => {
-                    return Ok(Some(Token::Equal));
-                }
-                '$' => {
-                    self.start += 1;
-                    return Ok(Some(Token::Variable(self.identifier())));
-                }
-                '"' => {
-                    return Ok(Some(Token::String(self.string()?)));
-                }
-                c if c.is_alphabetic() => {
-                    return Ok(Some(Token::Identifier(self.identifier())));
-                }
-                n if n.is_numeric() => {
-                    return Ok(Some(Token::Number(self.number())));
+                    return Ok(Some(self.new_token(TokenType::Equal, None)));
                 }
                 '[' => {
-                    return Ok(Some(Token::ListBegin));
+                    return Ok(Some(self.new_token(TokenType::ListBegin, None)));
                 }
                 ']' => {
-                    return Ok(Some(Token::ListEnd));
+                    return Ok(Some(self.new_token(TokenType::ListEnd, None)));
+                }
+                '"' => {
+                    let s = self.string()?;
+                    return Ok(Some(
+                        self.new_token(TokenType::String, Some(TokenValue::String(s))),
+                    ));
+                }
+                c if c.is_alphabetic() => {
+                    let s = self.identifier();
+                    return Ok(Some(
+                        self.new_token(TokenType::Identifier, Some(TokenValue::String(s))),
+                    ));
+                }
+                n if n.is_numeric() => {
+                    let n = self.number();
+                    return Ok(Some(
+                        self.new_token(TokenType::Number, Some(TokenValue::Double(n))),
+                    ));
                 }
                 ' ' => return Ok(None),
                 '\t' => return Ok(None),
@@ -170,8 +187,21 @@ impl Lexer {
     }
 }
 
-#[derive(PartialEq, Debug)]
-pub enum Token {
+#[derive(Debug, PartialEq)]
+pub enum TokenValue {
+    String(String),
+    Double(f64),
+}
+
+#[derive(Debug, PartialEq)]
+pub struct Token {
+    pub token_type: TokenType,
+    pub literal: Option<TokenValue>,
+    pub lexeme: String,
+}
+
+#[derive(Debug, PartialEq, Clone, Copy)]
+pub enum TokenType {
     // Operator calls
     LeftParen,
     RightParen,
@@ -185,41 +215,14 @@ pub enum Token {
     Semicolon,
     // For assignment
     Equal,
-    Identifier(String),
-    Variable(String),
+    Identifier,
     // Literals.
-    String(String),
-    Number(f64),
+    String,
+    Number,
     // Lists
     ListBegin,
     ListEnd,
     Eof,
-}
-
-impl Token {
-    pub fn lexene(&self) -> String {
-        match self {
-            Token::LeftParen => "(".to_string(),
-            Token::RightParen => ")".to_string(),
-            Token::Comma => ",".to_string(),
-            Token::Pipe => "|".to_string(),
-            Token::Plus => "+".to_string(),
-            Token::Minus => "-".to_string(),
-            Token::Star => "*".to_string(),
-            Token::Slash => "/".to_string(),
-            Token::Semicolon => ";".to_string(),
-            Token::Equal => "=".to_string(),
-            Token::Identifier(ref id) => id.clone(),
-            Token::Variable(ref id) => format!("${}", id),
-            Token::String(ref str) => str.clone(),
-            Token::Number(n) => format!("{}", n),
-            Token::ListBegin => "[".to_string(),
-            Token::ListEnd => "]".to_string(),
-            Token::Eof => {
-                unreachable!("lexene called on EOF")
-            }
-        }
-    }
 }
 
 #[cfg(test)]
@@ -230,35 +233,35 @@ mod tests {
     #[test]
     fn lex_paren() {
         let lexer = Lexer::new(format!(
-            "x = 05.13;  z = \"foo\"; y = [3, $x, 4] | incr(by=$x)"
+            "x = 05.13;  z = \"foo\"; y = [3, x, 4] | incr(by=x)"
         ));
         let actual = lexer.tokenize().unwrap();
-        let expected = vec![
-            Token::Identifier("x".to_string()),
-            Token::Equal,
-            Token::Number(5.13 as f64),
-            Token::Semicolon,
-            Token::Identifier("z".to_string()),
-            Token::Equal,
-            Token::String("foo".to_string()),
-            Token::Semicolon,
-            Token::Identifier("y".to_string()),
-            Token::Equal,
-            Token::ListBegin,
-            Token::Number(3 as f64),
-            Token::Comma,
-            Token::Variable("x".to_string()),
-            Token::Comma,
-            Token::Number(4 as f64),
-            Token::ListEnd,
-            Token::Pipe,
-            Token::Identifier("incr".to_string()),
-            Token::LeftParen,
-            Token::Identifier("by".to_string()),
-            Token::Equal,
-            Token::Variable("x".to_string()),
-            Token::RightParen,
-            Token::Eof,
+        let expected: Vec<Token> = vec![
+            // TokenType::Identifier("x".to_string()),
+            // TokenType::Equal,
+            // TokenType::Number(5.13 as f64),
+            // TokenType::Semicolon,
+            // TokenType::Identifier("z".to_string()),
+            // TokenType::Equal,
+            // TokenType::String("foo".to_string()),
+            // TokenType::Semicolon,
+            // TokenType::Identifier("y".to_string()),
+            // TokenType::Equal,
+            // TokenType::ListBegin,
+            // TokenType::Number(3 as f64),
+            // TokenType::Comma,
+            // TokenType::Identifier("x".to_string()),
+            // TokenType::Comma,
+            // TokenType::Number(4 as f64),
+            // TokenType::ListEnd,
+            // TokenType::Pipe,
+            // TokenType::Identifier("incr".to_string()),
+            // TokenType::LeftParen,
+            // TokenType::Identifier("by".to_string()),
+            // TokenType::Equal,
+            // TokenType::Identifier("x".to_string()),
+            // TokenType::RightParen,
+            // TokenType::Eof,
         ];
         assert_eq!(expected, actual);
     }
