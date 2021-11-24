@@ -183,6 +183,29 @@ pub enum Token {
     Eof,
 }
 
+impl Token {
+    pub fn lexene(&self) -> String {
+        match self {
+            Token::LeftParen => "(".to_string(),
+            Token::RightParen => ")".to_string(),
+            Token::Comma => ",".to_string(),
+            Token::Pipe => "|".to_string(),
+            Token::Plus => "+".to_string(),
+            Token::Semicolon => ";".to_string(),
+            Token::Equal => "=".to_string(),
+            Token::Identifier(ref id) => id.clone(),
+            Token::Variable(ref id) => format!("${}", id),
+            Token::String(ref str) => str.clone(),
+            Token::Number(n) => format!("{}", n),
+            Token::ListBegin => "[".to_string(),
+            Token::ListEnd => "]".to_string(),
+            Token::Eof => {
+                unreachable!("lexene called on EOF")
+            }
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::Lexer;
