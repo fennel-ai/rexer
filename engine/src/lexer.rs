@@ -123,6 +123,18 @@ impl Lexer {
                 ')' => {
                     return Ok(Some(self.new_token(TokenType::RightParen, None)));
                 }
+                '[' => {
+                    return Ok(Some(self.new_token(TokenType::ListBegin, None)));
+                }
+                ']' => {
+                    return Ok(Some(self.new_token(TokenType::ListEnd, None)));
+                }
+                '{' => {
+                    return Ok(Some(self.new_token(TokenType::RecordBegin, None)));
+                }
+                '}' => {
+                    return Ok(Some(self.new_token(TokenType::RecordEnd, None)));
+                }
                 ',' => {
                     return Ok(Some(self.new_token(TokenType::Comma, None)));
                 }
@@ -146,13 +158,32 @@ impl Lexer {
                     return Ok(Some(self.new_token(TokenType::Semicolon, None)));
                 }
                 '=' => {
-                    return Ok(Some(self.new_token(TokenType::Equal, None)));
+                    if let Some('=') = self.peek() {
+                        return Ok(Some(self.new_token(TokenType::EqualEqual, None)));
+                    } else {
+                        return Ok(Some(self.new_token(TokenType::Equal, None)));
+                    }
                 }
-                '[' => {
-                    return Ok(Some(self.new_token(TokenType::ListBegin, None)));
+                '>' => {
+                    if let Some('=') = self.peek() {
+                        return Ok(Some(self.new_token(TokenType::GreaterEqual, None)));
+                    } else {
+                        return Ok(Some(self.new_token(TokenType::Greater, None)));
+                    }
                 }
-                ']' => {
-                    return Ok(Some(self.new_token(TokenType::ListEnd, None)));
+                '<' => {
+                    if let Some('=') = self.peek() {
+                        return Ok(Some(self.new_token(TokenType::LesserEqual, None)));
+                    } else {
+                        return Ok(Some(self.new_token(TokenType::Lesser, None)));
+                    }
+                }
+                '!' => {
+                    if let Some('=') = self.peek() {
+                        return Ok(Some(self.new_token(TokenType::BangEqual, None)));
+                    } else {
+                        return Ok(Some(self.new_token(TokenType::Bang, None)));
+                    }
                 }
                 '"' => {
                     let s = self.string()?;
@@ -162,8 +193,15 @@ impl Lexer {
                 }
                 c if c.is_alphabetic() => {
                     let s = self.identifier();
+                    let token_type = match s.as_ref() {
+                        "true" => TokenType::True,
+                        "false" => TokenType::False,
+                        "or" => TokenType::Or,
+                        "and" => TokenType::And,
+                        _ => TokenType::Identifier,
+                    };
                     return Ok(Some(
-                        self.new_token(TokenType::Identifier, Some(TokenValue::String(s))),
+                        self.new_token(token_type, Some(TokenValue::String(s))),
                     ));
                 }
                 n if n.is_numeric() => {
@@ -202,26 +240,41 @@ pub struct Token {
 
 #[derive(Debug, PartialEq, Clone, Copy)]
 pub enum TokenType {
-    // Operator calls
+    // Characters
     LeftParen,
     RightParen,
+    ListBegin,
+    ListEnd,
+    RecordBegin,
+    RecordEnd,
     Comma,
     Pipe,
-    // Characters
     Plus,
     Minus,
     Star,
     Slash,
     Semicolon,
-    // For assignment
     Equal,
+    Greater,
+    Lesser,
+    Bang,
+
+    // Double character binary operations
+    GreaterEqual,
+    LesserEqual,
+    EqualEqual,
+    BangEqual,
+
+    // Keywords
+    True,
+    False,
+    Or,
+    And,
+
+    // All rest
     Identifier,
-    // Literals.
     String,
     Number,
-    // Lists
-    ListBegin,
-    ListEnd,
     Eof,
 }
 
