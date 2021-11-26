@@ -8,7 +8,8 @@
 /// term := factor (("+" | "-") factor)*
 /// factor := unary (("*" | "/") unary)*
 /// unary := primary | "-" unary
-/// primary := NUMBER | STRING | "true" | "false" | "(" expression ")"
+/// primary := NUMBER | STRING | "true" | "false" | "(" expression ")" | list
+/// list := "[" (expression ",")* expression? "]"
 ///
 /// To add:
 /// * Records
@@ -17,13 +18,12 @@
 /// * assignment and variables
 /// * operator calls
 /// Plan:
-///     add logic_or, logic_and, equality, comparison
-///     change expression to be logic_or
 ///     add bool, string, number in expr enum
 /// TODOs:
 ///     replace anyhow::Result with our own ParseError error class?
 ///
-use crate::lexer::{Token, TokenType};
+use crate::lexer::{Token, TokenType, TokenValue};
+use std::collections::HashMap;
 
 pub struct Parser {
     tokens: Vec<Token>,
@@ -31,7 +31,8 @@ pub struct Parser {
 }
 
 impl Parser {
-    pub fn new(tokens: Vec<Token>) -> Self {
+    pub fn new(mut tokens: Vec<Token>) -> Self {
+        tokens.reverse();
         Parser {
             tokens: tokens,
             previous: None,
@@ -39,7 +40,7 @@ impl Parser {
     }
 
     fn peek(&self) -> Option<&Token> {
-        self.tokens.get(0)
+        self.tokens.last()
     }
 
     fn previous(&mut self) -> Option<Token> {
@@ -57,7 +58,7 @@ impl Parser {
 
     fn advance(&mut self) {
         if !self.done() {
-            self.previous = Some(self.tokens.remove(0));
+            self.previous = self.tokens.pop();
         }
     }
 
@@ -142,13 +143,55 @@ impl Parser {
         self.primary()
     }
 
+    fn list(&mut self) -> anyhow::Result<Expr> {
+        let mut l = vec![];
+        while !self.check(&TokenType::ListEnd) {
+            let e = self.expression()?;
+            l.push(e);
+            if !self.matches(&vec![TokenType::Comma]) {
+                break;
+            }
+        }
+        self.consume(&TokenType::ListEnd)?;
+        Ok(Expr::List(l))
+    }
+
+    fn record(&mut self) -> anyhow::Result<Expr> {
+        let mut r = HashMap::new();
+        while !self.check(&TokenType::RecordEnd) {
+            let k = self.consume(&TokenType::Identifier)?;
+            self.consume(&TokenType::Equal)?;
+            let e = self.expression()?;
+            if let TokenValue::String(id) = k.literal.unwrap() {
+                r.insert(id, e);
+            } else {
+                // TODO: improve error.
+                anyhow::bail!("Expected string as key, found: ");
+            }
+            if !self.matches(&vec![TokenType::Comma]) {
+                break;
+            }
+        }
+        self.consume(&TokenType::RecordEnd)?;
+        Ok(Expr::Record(r))
+    }
+
     fn primary(&mut self) -> anyhow::Result<Expr> {
         if self.matches(&vec![TokenType::LeftParen]) {
             let e = self.expression();
             self.consume(&TokenType::RightParen)?;
             e
-        } else if self.matches(&vec![TokenType::Number, TokenType::String]) {
+        } else if self.matches(&vec![
+            TokenType::Number,
+            TokenType::String,
+            TokenType::True,
+            TokenType::False,
+        ]) {
             Ok(Expr::Literal(self.previous().unwrap()))
+        } else if self.matches(&vec![TokenType::ListBegin]) {
+            self.list()
+        } else if self.matches(&vec![TokenType::RecordBegin]) {
+            self.record()
         } else {
             anyhow::bail!("Unexpcted token: {:?}", self.peek())
         }
@@ -231,6 +274,8 @@ enum Expr {
     Grouping(Box<Expr>),
     Unary(UnaryExpr),
     Literal(Token),
+    List(Vec<Expr>),
+    Record(HashMap<String, Expr>),
 }
 
 impl Expr {
@@ -248,6 +293,12 @@ impl Expr {
             Expr::Literal(t) => {
                 return visitor.visit_literal(t);
             }
+            Expr::List(l) => {
+                return visitor.visit_list(l);
+            }
+            Expr::Record(r) => {
+                return visitor.visit_record(r);
+            }
         }
     }
 }
@@ -257,6 +308,8 @@ trait Visitor<T> {
     fn visit_grouping(&self, inner: &Expr) -> T;
     fn visit_unary(&self, unary: &UnaryExpr) -> T;
     fn visit_literal(&self, literal: &Token) -> T;
+    fn visit_list(&self, list: &[Expr]) -> T;
+    fn visit_record(&self, record: &HashMap<String, Expr>) -> T;
 }
 
 struct AstPrinter {}
@@ -281,16 +334,53 @@ impl Visitor<String> for AstPrinter {
     fn visit_literal(&self, token: &Token) -> String {
         return token.lexeme.clone();
     }
+
+    fn visit_list(&self, list: &[Expr]) -> String {
+        return format!(
+            "[{}]",
+            list.iter()
+                .map(|e| e.accept(self))
+                .collect::<Vec<String>>()
+                .join(", ")
+        );
+    }
+
+    fn visit_record(&self, record: &HashMap<String, Expr>) -> String {
+        let mut pairs = record
+            .iter()
+            .map(|(k, v)| format!("{}={}", k, v.accept(self)))
+            .collect::<Vec<String>>();
+        pairs.sort();
+        return format!("{{{}}}", pairs.join(", "));
+    }
 }
 
 #[cfg(test)]
 mod tests {
+    use std::time::Instant;
+
     use crate::lexer::{Token, TokenType, TokenValue};
 
     use super::AstPrinter;
     use super::BinaryExpr;
     use super::Expr;
     use super::UnaryExpr;
+
+    fn _compare_printed(exprstr: String, expected: String) {
+        let lexer = Lexer::new(exprstr);
+        let mut start = Instant::now();
+        let tokens = lexer.tokenize().unwrap();
+        let mut time = start.elapsed();
+        println!("Time to lex: {:?}", time);
+        let mut parser = Parser::new(tokens);
+        start = Instant::now();
+        let expr = parser.expression().unwrap();
+        time = start.elapsed();
+        println!("Time to parse: {:?}", time);
+        let printer = AstPrinter {};
+        let actual = expr.accept(&printer);
+        assert_eq!(actual, expected);
+    }
 
     #[test]
     fn test_ast_pretty_print() {
@@ -334,19 +424,26 @@ mod tests {
         _compare_printed(exprstr, expected);
     }
 
-    fn _compare_printed(exprstr: String, expected: String) {
-        let lexer = Lexer::new(exprstr);
-        let tokens = lexer.tokenize().unwrap();
-        let mut parser = Parser::new(tokens);
-        let expr = parser.expression().unwrap();
-        let printer = AstPrinter {};
-        let actual = expr.accept(&printer);
-        assert_eq!(actual, expected);
-    }
     #[test]
     fn with_booleans() {
-        let exprstr = "2 >= 3".to_string();
-        let expected = "(>= 2 3)".to_string();
+        let exprstr = "2 >= 3 or true and 1 == 2".to_string();
+        let expected = "(or (>= 2 3) (and true (== 1 2)))".to_string();
         _compare_printed(exprstr, expected);
+    }
+
+    #[test]
+    fn parse_list() {
+        let exprstr = "[1,2,3]".to_string();
+        let expected = "[1, 2, 3]".to_string();
+        _compare_printed(exprstr, expected)
+    }
+
+    #[test]
+    fn parse_record() {
+        let first = "{xyz=123, foo=\"bar\"}".to_string();
+        let second = "{foo=\"bar\",xyz=123}".to_string();
+        let expected = "{foo=\"bar\", xyz=123}".to_string();
+        _compare_printed(first, expected.clone());
+        _compare_printed(second, expected);
     }
 }
