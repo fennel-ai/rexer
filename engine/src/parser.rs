@@ -452,12 +452,10 @@ impl Visitor<String> for AstPrinter {
 
 #[cfg(test)]
 mod tests {
-    use std::time::Instant;
-
-    use crate::lexer::{Token, TokenType, TokenValue};
-
-    use super::Ast;
     use super::AstPrinter;
+    use super::Parser;
+    use crate::lexer::Lexer;
+    use std::time::Instant;
 
     fn _compare_printed(exprstr: String, expected: String) {
         let lexer = Lexer::new(exprstr);
@@ -474,41 +472,6 @@ mod tests {
         let actual = expr.accept(&printer);
         assert_eq!(actual, expected);
     }
-
-    #[test]
-    fn test_ast_pretty_print() {
-        let printer = AstPrinter {};
-        let expr = Ast::Binary {
-            left: Box::new(Ast::Unary(
-                Token {
-                    token_type: TokenType::Plus,
-                    lexeme: "+".to_string(),
-                    literal: None,
-                },
-                Box::new(Ast::Literal(Token {
-                    token_type: TokenType::Number,
-                    literal: Some(TokenValue::Double(123 as f64)),
-                    lexeme: "123".to_string(),
-                })),
-            )),
-            op: Token {
-                token_type: TokenType::Pipe,
-                lexeme: "|".to_string(),
-                literal: None,
-            },
-            right: Box::new(Ast::Grouping(Box::new(Ast::Literal(Token {
-                token_type: TokenType::Number,
-                lexeme: "45.67".to_string(),
-                literal: Some(TokenValue::Double(45.67)),
-            })))),
-        };
-        let actual = expr.accept(&printer);
-        let expected = "(| (+ 123) (group 45.67))";
-        assert_eq!(actual, expected)
-    }
-
-    use super::Parser;
-    use crate::lexer::Lexer;
 
     #[test]
     fn end_to_end() {
