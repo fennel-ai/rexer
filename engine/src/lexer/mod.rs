@@ -141,6 +141,9 @@ impl Lexer {
                 ',' => {
                     return Ok(Some(self.new_token(TokenType::Comma, None)));
                 }
+                '.' => {
+                    return Ok(Some(self.new_token(TokenType::Dot, None)));
+                }
                 '|' => {
                     return Ok(Some(self.new_token(TokenType::Pipe, None)));
                 }
@@ -259,6 +262,7 @@ pub enum TokenType {
     RecordBegin,
     RecordEnd,
     Comma,
+    Dot,
     Pipe,
     Plus,
     Minus,
