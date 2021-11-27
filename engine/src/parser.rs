@@ -368,21 +368,21 @@ impl fmt::Display for Ast {
 }
 
 trait Visitor<T> {
-    fn visit_binary(&self, left: &Box<Ast>, op: &Token, right: &Box<Ast>) -> T;
+    fn visit_binary(&self, left: &Ast, op: &Token, right: &Ast) -> T;
     fn visit_grouping(&self, inner: &Ast) -> T;
-    fn visit_unary(&self, op: &Token, right: &Box<Ast>) -> T;
+    fn visit_unary(&self, op: &Token, right: &Ast) -> T;
     fn visit_literal(&self, literal: &Token) -> T;
     fn visit_list(&self, list: &[Ast]) -> T;
     fn visit_record(&self, record: &HashMap<String, Ast>) -> T;
-    fn visit_opexp(&self, root: &Box<Ast>, opcalls: &Vec<OpCall>) -> T;
+    fn visit_opexp(&self, root: &Ast, opcalls: &[OpCall]) -> T;
     fn visit_statement(&self, variable: &Option<String>, body: &Ast) -> T;
-    fn visit_query(&self, statements: &Vec<Ast>) -> T;
+    fn visit_query(&self, statements: &[Ast]) -> T;
 }
 
 struct AstPrinter {}
 
 impl Visitor<String> for AstPrinter {
-    fn visit_binary(&self, left: &Box<Ast>, op: &Token, right: &Box<Ast>) -> String {
+    fn visit_binary(&self, left: &Ast, op: &Token, right: &Ast) -> String {
         return format!(
             "({} {} {})",
             op.lexeme,
@@ -393,7 +393,7 @@ impl Visitor<String> for AstPrinter {
     fn visit_grouping(&self, inner: &Ast) -> String {
         return format!("(group {})", inner.accept(self));
     }
-    fn visit_unary(&self, op: &Token, right: &Box<Ast>) -> String {
+    fn visit_unary(&self, op: &Token, right: &Ast) -> String {
         return format!("({} {})", op.lexeme, right.accept(self));
     }
 
@@ -415,7 +415,7 @@ impl Visitor<String> for AstPrinter {
                 .join(", ")
         )
     }
-    fn visit_opexp(&self, root: &Box<Ast>, opcalls: &Vec<OpCall>) -> String {
+    fn visit_opexp(&self, root: &Ast, opcalls: &[OpCall]) -> String {
         if opcalls.len() == 0 {
             root.accept(self)
         } else {
@@ -445,7 +445,7 @@ impl Visitor<String> for AstPrinter {
         };
         format!("{}{}", assignment, body.accept(self))
     }
-    fn visit_query(&self, query: &Vec<Ast>) -> String {
+    fn visit_query(&self, query: &[Ast]) -> String {
         query.iter().map(|s| s.accept(self)).join(";\n")
     }
 }
