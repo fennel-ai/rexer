@@ -180,11 +180,11 @@ impl Parser {
         while self.matches(&expected) {
             let op = self.previous().unwrap();
             let right = self.factor()?;
-            f = Ast::Binary(BinaryExpr {
-                op: op,
+            f = Ast::Binary {
                 left: Box::new(f),
+                op: op,
                 right: Box::new(right),
-            })
+            }
         }
         Ok(f)
     }
@@ -195,11 +195,11 @@ impl Parser {
         while self.matches(&expected) {
             let op = self.previous().unwrap();
             let right = self.unary()?;
-            u = Ast::Binary(BinaryExpr {
-                op: op,
+            u = Ast::Binary {
                 left: Box::new(u),
+                op: op,
                 right: Box::new(right),
-            })
+            }
         }
         Ok(u)
     }
@@ -208,12 +208,10 @@ impl Parser {
         if self.matches(&vec![TokenType::Minus]) {
             let op = self.previous().unwrap();
             let right = self.unary()?;
-            return Ok(Ast::Unary(UnaryExpr {
-                op: op,
-                right: Box::new(right),
-            }));
+            Ok(Ast::Unary(op, Box::new(right)))
+        } else {
+            self.primary()
         }
-        self.primary()
     }
 
     fn list(&mut self) -> anyhow::Result<Ast> {
@@ -276,11 +274,11 @@ impl Parser {
         while self.matches(&expected) {
             let op = self.previous().unwrap();
             let right = self.term()?;
-            f = Ast::Binary(BinaryExpr {
+            f = Ast::Binary {
                 op: op,
                 left: Box::new(f),
                 right: Box::new(right),
-            })
+            }
         }
         Ok(f)
     }
@@ -290,11 +288,11 @@ impl Parser {
         while self.matches(&expected) {
             let op = self.previous().unwrap();
             let right = self.comparison()?;
-            f = Ast::Binary(BinaryExpr {
+            f = Ast::Binary {
                 op: op,
                 left: Box::new(f),
                 right: Box::new(right),
-            })
+            }
         }
         Ok(f)
     }
@@ -303,11 +301,11 @@ impl Parser {
         while self.matches(&vec![TokenType::And]) {
             let op = self.previous().unwrap();
             let right = self.equality()?;
-            f = Ast::Binary(BinaryExpr {
+            f = Ast::Binary {
                 op: op,
                 left: Box::new(f),
                 right: Box::new(right),
-            })
+            }
         }
         Ok(f)
     }
@@ -316,25 +314,14 @@ impl Parser {
         while self.matches(&vec![TokenType::Or]) {
             let op = self.previous().unwrap();
             let right = self.logic_and()?;
-            f = Ast::Binary(BinaryExpr {
+            f = Ast::Binary {
                 op: op,
                 left: Box::new(f),
                 right: Box::new(right),
-            })
+            }
         }
         Ok(f)
     }
-}
-
-struct BinaryExpr {
-    left: Box<Ast>,
-    op: Token,
-    right: Box<Ast>,
-}
-
-struct UnaryExpr {
-    op: Token,
-    right: Box<Ast>,
 }
 
 struct OpCall {
@@ -343,9 +330,13 @@ struct OpCall {
 }
 
 enum Ast {
-    Binary(BinaryExpr),
+    Binary {
+        left: Box<Ast>,
+        op: Token,
+        right: Box<Ast>,
+    },
     Grouping(Box<Ast>),
-    Unary(UnaryExpr),
+    Unary(Token, Box<Ast>),
     Literal(Token),
     List(Vec<Ast>),
     Record(HashMap<String, Ast>),
@@ -357,9 +348,9 @@ enum Ast {
 impl Ast {
     pub fn accept<T>(&self, visitor: &dyn Visitor<T>) -> T {
         match self {
-            Ast::Binary(inner) => visitor.visit_binary(inner),
+            Ast::Binary { left, op, right } => visitor.visit_binary(left, op, right),
             Ast::Grouping(inner) => visitor.visit_grouping(inner),
-            Ast::Unary(inner) => visitor.visit_unary(inner),
+            Ast::Unary(t, b) => visitor.visit_unary(t, b),
             Ast::Literal(t) => visitor.visit_literal(t),
             Ast::List(l) => visitor.visit_list(l),
             Ast::Record(r) => visitor.visit_record(r),
@@ -377,9 +368,9 @@ impl fmt::Display for Ast {
 }
 
 trait Visitor<T> {
-    fn visit_binary(&self, binary: &BinaryExpr) -> T;
+    fn visit_binary(&self, left: &Box<Ast>, op: &Token, right: &Box<Ast>) -> T;
     fn visit_grouping(&self, inner: &Ast) -> T;
-    fn visit_unary(&self, unary: &UnaryExpr) -> T;
+    fn visit_unary(&self, op: &Token, right: &Box<Ast>) -> T;
     fn visit_literal(&self, literal: &Token) -> T;
     fn visit_list(&self, list: &[Ast]) -> T;
     fn visit_record(&self, record: &HashMap<String, Ast>) -> T;
@@ -391,20 +382,19 @@ trait Visitor<T> {
 struct AstPrinter {}
 
 impl Visitor<String> for AstPrinter {
-    fn visit_binary(&self, binary: &BinaryExpr) -> String {
-        // lisp-style formatting.
+    fn visit_binary(&self, left: &Box<Ast>, op: &Token, right: &Box<Ast>) -> String {
         return format!(
             "({} {} {})",
-            binary.op.lexeme,
-            binary.left.accept(self),
-            binary.right.accept(self)
+            op.lexeme,
+            left.accept(self),
+            right.accept(self)
         );
     }
     fn visit_grouping(&self, inner: &Ast) -> String {
         return format!("(group {})", inner.accept(self));
     }
-    fn visit_unary(&self, unary: &UnaryExpr) -> String {
-        return format!("({} {})", unary.op.lexeme, unary.right.accept(self));
+    fn visit_unary(&self, op: &Token, right: &Box<Ast>) -> String {
+        return format!("({} {})", op.lexeme, right.accept(self));
     }
 
     fn visit_literal(&self, token: &Token) -> String {
@@ -468,8 +458,6 @@ mod tests {
 
     use super::Ast;
     use super::AstPrinter;
-    use super::BinaryExpr;
-    use super::UnaryExpr;
 
     fn _compare_printed(exprstr: String, expected: String) {
         let lexer = Lexer::new(exprstr);
@@ -490,19 +478,19 @@ mod tests {
     #[test]
     fn test_ast_pretty_print() {
         let printer = AstPrinter {};
-        let expr = Ast::Binary(BinaryExpr {
-            left: Box::new(Ast::Unary(UnaryExpr {
-                op: Token {
+        let expr = Ast::Binary {
+            left: Box::new(Ast::Unary(
+                Token {
                     token_type: TokenType::Plus,
                     lexeme: "+".to_string(),
                     literal: None,
                 },
-                right: Box::new(Ast::Literal(Token {
+                Box::new(Ast::Literal(Token {
                     token_type: TokenType::Number,
                     literal: Some(TokenValue::Double(123 as f64)),
                     lexeme: "123".to_string(),
                 })),
-            })),
+            )),
             op: Token {
                 token_type: TokenType::Pipe,
                 lexeme: "|".to_string(),
@@ -513,7 +501,7 @@ mod tests {
                 lexeme: "45.67".to_string(),
                 literal: Some(TokenValue::Double(45.67)),
             })))),
-        });
+        };
         let actual = expr.accept(&printer);
         let expected = "(| (+ 123) (group 45.67))";
         assert_eq!(actual, expected)
