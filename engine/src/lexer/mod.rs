@@ -5,6 +5,7 @@ pub struct Lexer {
     query: Vec<char>,
     current: usize,
     start: usize,
+    line: usize,
 }
 
 impl Lexer {
@@ -13,6 +14,7 @@ impl Lexer {
             query: query.chars().collect(),
             current: 0,
             start: 0,
+            line: 0,
         }
     }
 
@@ -120,90 +122,62 @@ impl Lexer {
     pub fn next(&mut self) -> anyhow::Result<Option<Token>> {
         if let Some(c) = self.advance() {
             match c {
-                '(' => {
-                    return Ok(Some(self.new_token(TokenType::LeftParen, None)));
-                }
-                ')' => {
-                    return Ok(Some(self.new_token(TokenType::RightParen, None)));
-                }
-                '[' => {
-                    return Ok(Some(self.new_token(TokenType::ListBegin, None)));
-                }
-                ']' => {
-                    return Ok(Some(self.new_token(TokenType::ListEnd, None)));
-                }
-                '{' => {
-                    return Ok(Some(self.new_token(TokenType::RecordBegin, None)));
-                }
-                '}' => {
-                    return Ok(Some(self.new_token(TokenType::RecordEnd, None)));
-                }
-                ',' => {
-                    return Ok(Some(self.new_token(TokenType::Comma, None)));
-                }
-                '.' => {
-                    return Ok(Some(self.new_token(TokenType::Dot, None)));
-                }
-                '|' => {
-                    return Ok(Some(self.new_token(TokenType::Pipe, None)));
-                }
-                '+' => {
-                    return Ok(Some(self.new_token(TokenType::Plus, None)));
-                }
-                '-' => {
-                    return Ok(Some(self.new_token(TokenType::Minus, None)));
-                }
-                '*' => {
-                    return Ok(Some(self.new_token(TokenType::Star, None)));
-                }
-                '/' => {
-                    // TODO(abhay): Handle comments.
-                    return Ok(Some(self.new_token(TokenType::Slash, None)));
-                }
-                ';' => {
-                    return Ok(Some(self.new_token(TokenType::Semicolon, None)));
-                }
+                '(' => Ok(Some(self.new_token(TokenType::LeftParen, None))),
+                ')' => Ok(Some(self.new_token(TokenType::RightParen, None))),
+                '[' => Ok(Some(self.new_token(TokenType::ListBegin, None))),
+                ']' => Ok(Some(self.new_token(TokenType::ListEnd, None))),
+                '{' => Ok(Some(self.new_token(TokenType::RecordBegin, None))),
+                '}' => Ok(Some(self.new_token(TokenType::RecordEnd, None))),
+                ',' => Ok(Some(self.new_token(TokenType::Comma, None))),
+                '.' => Ok(Some(self.new_token(TokenType::Dot, None))),
+                '|' => Ok(Some(self.new_token(TokenType::Pipe, None))),
+                '+' => Ok(Some(self.new_token(TokenType::Plus, None))),
+                '-' => Ok(Some(self.new_token(TokenType::Minus, None))),
+                '*' => Ok(Some(self.new_token(TokenType::Star, None))),
+                // TODO(abhay): Handle comments.
+                '/' => Ok(Some(self.new_token(TokenType::Slash, None))),
+                ';' => Ok(Some(self.new_token(TokenType::Semicolon, None))),
                 '=' => {
                     if let Some('=') = self.peek() {
                         // consume the '='
                         self.advance().unwrap();
-                        return Ok(Some(self.new_token(TokenType::EqualEqual, None)));
+                        Ok(Some(self.new_token(TokenType::EqualEqual, None)))
                     } else {
-                        return Ok(Some(self.new_token(TokenType::Equal, None)));
+                        Ok(Some(self.new_token(TokenType::Equal, None)))
                     }
                 }
                 '>' => {
                     if let Some('=') = self.peek() {
                         // consume the '='
                         self.advance().unwrap();
-                        return Ok(Some(self.new_token(TokenType::GreaterEqual, None)));
+                        Ok(Some(self.new_token(TokenType::GreaterEqual, None)))
                     } else {
-                        return Ok(Some(self.new_token(TokenType::Greater, None)));
+                        Ok(Some(self.new_token(TokenType::Greater, None)))
                     }
                 }
                 '<' => {
                     if let Some('=') = self.peek() {
                         // consume the '='
                         self.advance().unwrap();
-                        return Ok(Some(self.new_token(TokenType::LesserEqual, None)));
+                        Ok(Some(self.new_token(TokenType::LesserEqual, None)))
                     } else {
-                        return Ok(Some(self.new_token(TokenType::Lesser, None)));
+                        Ok(Some(self.new_token(TokenType::Lesser, None)))
                     }
                 }
                 '!' => {
                     if let Some('=') = self.peek() {
                         // consume the '='
                         self.advance().unwrap();
-                        return Ok(Some(self.new_token(TokenType::BangEqual, None)));
+                        Ok(Some(self.new_token(TokenType::BangEqual, None)))
                     } else {
-                        return Ok(Some(self.new_token(TokenType::Bang, None)));
+                        Ok(Some(self.new_token(TokenType::Bang, None)))
                     }
                 }
                 '"' => {
                     let s = self.string()?;
-                    return Ok(Some(
+                    Ok(Some(
                         self.new_token(TokenType::String, Some(TokenValue::String(s))),
-                    ));
+                    ))
                 }
                 c if c.is_alphabetic() => {
                     let s = self.identifier();
@@ -214,27 +188,28 @@ impl Lexer {
                         "and" => TokenType::And,
                         _ => TokenType::Identifier,
                     };
-                    return Ok(Some(
+                    Ok(Some(
                         self.new_token(token_type, Some(TokenValue::String(s))),
-                    ));
+                    ))
                 }
                 n if n.is_numeric() => {
                     let n = self.number();
-                    return Ok(Some(
+                    Ok(Some(
                         self.new_token(TokenType::Number, Some(TokenValue::Double(n))),
-                    ));
+                    ))
                 }
-                ' ' => return Ok(None),
-                '\t' => return Ok(None),
-                '\r' => return Ok(None),
+                ' ' => Ok(None),
+                '\t' => Ok(None),
+                '\r' => Ok(None),
                 // TODO: Increment a line number for better debugging.
-                '\n' => return Ok(None),
-                _ => {
-                    anyhow::bail!("unexpected character: {:?}", *c);
+                '\n' => {
+                    self.line += 1;
+                    Ok(None)
                 }
+                _ => anyhow::bail!("unexpected character: {:?}", *c),
             }
         } else {
-            return Ok(None);
+            Ok(None)
         }
     }
 }
