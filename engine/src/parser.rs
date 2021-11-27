@@ -68,9 +68,9 @@ impl Parser {
         }
     }
 
-    fn matches(&mut self, token_types: &Vec<TokenType>) -> bool {
+    fn matches(&mut self, token_types: &[TokenType]) -> bool {
         for t in token_types {
-            if self.check(t) {
+            if self.check(*t) {
                 self.advance();
                 return true;
             }
@@ -78,19 +78,19 @@ impl Parser {
         return false;
     }
 
-    fn check(&self, token_type: &TokenType) -> bool {
+    fn check(&self, token_type: TokenType) -> bool {
         if self.done() {
             return false;
         }
         if let Some(token) = self.peek() {
-            if token.token_type == *token_type {
+            if token.token_type == token_type {
                 return true;
             };
         }
         return false;
     }
 
-    fn consume(&mut self, token_type: &TokenType) -> anyhow::Result<Token> {
+    fn consume(&mut self, token_type: TokenType) -> anyhow::Result<Token> {
         if self.check(token_type) {
             self.advance();
             return self.previous().ok_or_else(|| anyhow::anyhow!("missing"));
@@ -118,7 +118,7 @@ impl Parser {
 
     fn statement(&mut self) -> anyhow::Result<Ast> {
         let variable = if let Ok(s) = self.identifier() {
-            self.consume(&TokenType::Equal)?;
+            self.consume(TokenType::Equal)?;
             Some(s)
         } else {
             None
@@ -146,25 +146,25 @@ impl Parser {
             }
         }
         let mut args = HashMap::new();
-        self.consume(&TokenType::LeftParen)?;
+        self.consume(TokenType::LeftParen)?;
         loop {
             let k = self.identifier()?;
-            self.consume(&TokenType::Equal)?;
+            self.consume(TokenType::Equal)?;
             let e = self.expression()?;
             args.insert(k, e);
             if !self.matches(&vec![TokenType::Comma]) {
                 break;
             }
-            if self.check(&TokenType::RightParen) {
+            if self.check(TokenType::RightParen) {
                 break;
             }
         }
-        self.consume(&TokenType::RightParen)?;
+        self.consume(TokenType::RightParen)?;
         Ok(OpCall { path, args })
     }
 
     fn identifier(&mut self) -> anyhow::Result<String> {
-        match self.consume(&TokenType::Identifier)?.literal {
+        match self.consume(TokenType::Identifier)?.literal {
             Some(TokenValue::String(s)) => Ok(s),
             _ => anyhow::bail!("Expected string as key, found: "),
         }
@@ -216,36 +216,36 @@ impl Parser {
 
     fn list(&mut self) -> anyhow::Result<Ast> {
         let mut l = vec![];
-        while !self.check(&TokenType::ListEnd) {
+        while !self.check(TokenType::ListEnd) {
             let e = self.expression()?;
             l.push(e);
             if !self.matches(&vec![TokenType::Comma]) {
                 break;
             }
         }
-        self.consume(&TokenType::ListEnd)?;
+        self.consume(TokenType::ListEnd)?;
         Ok(Ast::List(l))
     }
 
     fn record(&mut self) -> anyhow::Result<Ast> {
         let mut r = HashMap::new();
-        while !self.check(&TokenType::RecordEnd) {
+        while !self.check(TokenType::RecordEnd) {
             let id = self.identifier()?;
-            self.consume(&TokenType::Equal)?;
+            self.consume(TokenType::Equal)?;
             let e = self.expression()?;
             r.insert(id, e);
             if !self.matches(&vec![TokenType::Comma]) {
                 break;
             }
         }
-        self.consume(&TokenType::RecordEnd)?;
+        self.consume(TokenType::RecordEnd)?;
         Ok(Ast::Record(r))
     }
 
     fn primary(&mut self) -> anyhow::Result<Ast> {
         if self.matches(&vec![TokenType::LeftParen]) {
             let e = self.expression();
-            self.consume(&TokenType::RightParen)?;
+            self.consume(TokenType::RightParen)?;
             e
         } else if self.matches(&vec![
             TokenType::Number,
@@ -368,21 +368,21 @@ impl fmt::Display for Ast {
 }
 
 trait Visitor<T> {
-    fn visit_binary(&self, left: &Box<Ast>, op: &Token, right: &Box<Ast>) -> T;
+    fn visit_binary(&self, left: &Ast, op: &Token, right: &Ast) -> T;
     fn visit_grouping(&self, inner: &Ast) -> T;
-    fn visit_unary(&self, op: &Token, right: &Box<Ast>) -> T;
+    fn visit_unary(&self, op: &Token, right: &Ast) -> T;
     fn visit_literal(&self, literal: &Token) -> T;
     fn visit_list(&self, list: &[Ast]) -> T;
     fn visit_record(&self, record: &HashMap<String, Ast>) -> T;
-    fn visit_opexp(&self, root: &Box<Ast>, opcalls: &Vec<OpCall>) -> T;
+    fn visit_opexp(&self, root: &Ast, opcalls: &[OpCall]) -> T;
     fn visit_statement(&self, variable: &Option<String>, body: &Ast) -> T;
-    fn visit_query(&self, statements: &Vec<Ast>) -> T;
+    fn visit_query(&self, statements: &[Ast]) -> T;
 }
 
 struct AstPrinter {}
 
 impl Visitor<String> for AstPrinter {
-    fn visit_binary(&self, left: &Box<Ast>, op: &Token, right: &Box<Ast>) -> String {
+    fn visit_binary(&self, left: &Ast, op: &Token, right: &Ast) -> String {
         return format!(
             "({} {} {})",
             op.lexeme,
@@ -393,7 +393,7 @@ impl Visitor<String> for AstPrinter {
     fn visit_grouping(&self, inner: &Ast) -> String {
         return format!("(group {})", inner.accept(self));
     }
-    fn visit_unary(&self, op: &Token, right: &Box<Ast>) -> String {
+    fn visit_unary(&self, op: &Token, right: &Ast) -> String {
         return format!("({} {})", op.lexeme, right.accept(self));
     }
 
@@ -415,7 +415,7 @@ impl Visitor<String> for AstPrinter {
                 .join(", ")
         )
     }
-    fn visit_opexp(&self, root: &Box<Ast>, opcalls: &Vec<OpCall>) -> String {
+    fn visit_opexp(&self, root: &Ast, opcalls: &[OpCall]) -> String {
         if opcalls.len() == 0 {
             root.accept(self)
         } else {
@@ -445,7 +445,7 @@ impl Visitor<String> for AstPrinter {
         };
         format!("{}{}", assignment, body.accept(self))
     }
-    fn visit_query(&self, query: &Vec<Ast>) -> String {
+    fn visit_query(&self, query: &[Ast]) -> String {
         query.iter().map(|s| s.accept(self)).join(";\n")
     }
 }
