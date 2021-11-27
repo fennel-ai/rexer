@@ -68,9 +68,9 @@ impl Parser {
         }
     }
 
-    fn matches(&mut self, token_types: &Vec<TokenType>) -> bool {
+    fn matches(&mut self, token_types: &[TokenType]) -> bool {
         for t in token_types {
-            if self.check(t) {
+            if self.check(*t) {
                 self.advance();
                 return true;
             }
@@ -78,19 +78,19 @@ impl Parser {
         return false;
     }
 
-    fn check(&self, token_type: &TokenType) -> bool {
+    fn check(&self, token_type: TokenType) -> bool {
         if self.done() {
             return false;
         }
         if let Some(token) = self.peek() {
-            if token.token_type == *token_type {
+            if token.token_type == token_type {
                 return true;
             };
         }
         return false;
     }
 
-    fn consume(&mut self, token_type: &TokenType) -> anyhow::Result<Token> {
+    fn consume(&mut self, token_type: TokenType) -> anyhow::Result<Token> {
         if self.check(token_type) {
             self.advance();
             return self.previous().ok_or(anyhow::anyhow!("missing"));
@@ -118,7 +118,7 @@ impl Parser {
 
     fn statement(&mut self) -> anyhow::Result<Ast> {
         let variable = if let Ok(s) = self.identifier() {
-            self.consume(&TokenType::Equal)?;
+            self.consume(TokenType::Equal)?;
             Some(s)
         } else {
             None
@@ -146,25 +146,25 @@ impl Parser {
             }
         }
         let mut args = HashMap::new();
-        self.consume(&TokenType::LeftParen)?;
+        self.consume(TokenType::LeftParen)?;
         loop {
             let k = self.identifier()?;
-            self.consume(&TokenType::Equal)?;
+            self.consume(TokenType::Equal)?;
             let e = self.expression()?;
             args.insert(k, e);
             if !self.matches(&vec![TokenType::Comma]) {
                 break;
             }
-            if self.check(&TokenType::RightParen) {
+            if self.check(TokenType::RightParen) {
                 break;
             }
         }
-        self.consume(&TokenType::RightParen)?;
+        self.consume(TokenType::RightParen)?;
         Ok(OpCall { path, args })
     }
 
     fn identifier(&mut self) -> anyhow::Result<String> {
-        match self.consume(&TokenType::Identifier)?.literal {
+        match self.consume(TokenType::Identifier)?.literal {
             Some(TokenValue::String(s)) => Ok(s),
             _ => anyhow::bail!("Expected string as key, found: "),
         }
@@ -216,36 +216,36 @@ impl Parser {
 
     fn list(&mut self) -> anyhow::Result<Ast> {
         let mut l = vec![];
-        while !self.check(&TokenType::ListEnd) {
+        while !self.check(TokenType::ListEnd) {
             let e = self.expression()?;
             l.push(e);
             if !self.matches(&vec![TokenType::Comma]) {
                 break;
             }
         }
-        self.consume(&TokenType::ListEnd)?;
+        self.consume(TokenType::ListEnd)?;
         Ok(Ast::List(l))
     }
 
     fn record(&mut self) -> anyhow::Result<Ast> {
         let mut r = HashMap::new();
-        while !self.check(&TokenType::RecordEnd) {
+        while !self.check(TokenType::RecordEnd) {
             let id = self.identifier()?;
-            self.consume(&TokenType::Equal)?;
+            self.consume(TokenType::Equal)?;
             let e = self.expression()?;
             r.insert(id, e);
             if !self.matches(&vec![TokenType::Comma]) {
                 break;
             }
         }
-        self.consume(&TokenType::RecordEnd)?;
+        self.consume(TokenType::RecordEnd)?;
         Ok(Ast::Record(r))
     }
 
     fn primary(&mut self) -> anyhow::Result<Ast> {
         if self.matches(&vec![TokenType::LeftParen]) {
             let e = self.expression();
-            self.consume(&TokenType::RightParen)?;
+            self.consume(TokenType::RightParen)?;
             e
         } else if self.matches(&vec![
             TokenType::Number,
