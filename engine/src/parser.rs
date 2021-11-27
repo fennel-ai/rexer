@@ -93,7 +93,7 @@ impl Parser {
     fn consume(&mut self, token_type: &TokenType) -> anyhow::Result<Token> {
         if self.check(token_type) {
             self.advance();
-            return self.previous().ok_or(anyhow::anyhow!("missing"));
+            return self.previous().ok_or_else(|| anyhow::anyhow!("missing"));
         } else {
             return Err(anyhow::anyhow!(
                 "Unexpected token: {:?}. Expected token of type: {:?}",
