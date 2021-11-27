@@ -48,22 +48,20 @@ impl Lexer {
         tokens.push(Token {
             token_type: TokenType::Eof,
             lexeme: "".to_string(),
-            literal: None,
         });
         return Ok(tokens);
     }
 
-    fn identifier(&mut self) -> String {
+    fn identifier(&mut self) {
         while let Some(c) = self.peek() {
             if !c.is_alphabetic() {
                 break;
             }
             self.advance();
         }
-        self.query[self.start..self.current].iter().collect()
     }
 
-    fn string(&mut self) -> anyhow::Result<String> {
+    fn string(&mut self) -> anyhow::Result<()> {
         while let Some(c) = self.peek() {
             if *c == '"' {
                 break;
@@ -75,10 +73,7 @@ impl Lexer {
         }
         // advance over the closing '"'.
         self.advance();
-        let r = self.query[self.start + 1..self.current - 1]
-            .iter()
-            .collect();
-        Ok(r)
+        Ok(())
     }
 
     fn parse_digits(&mut self) {
@@ -90,31 +85,28 @@ impl Lexer {
         }
     }
 
-    fn number(&mut self) -> f64 {
+    fn number(&mut self) -> anyhow::Result<()> {
         self.parse_digits();
         // Look for a decimal point
         if let Some('.') = self.peek() {
-            if let Some(c) = self.peek_next() {
+            self.advance();
+            if let Some(c) = self.peek() {
                 match c {
                     n if n.is_numeric() => {
-                        self.advance();
                         self.parse_digits();
                     }
-                    _ => {}
+                    _ => {
+                        anyhow::bail!("expected digits after '.'");
+                    }
                 }
             }
         }
-
-        let num = self.query[self.start..self.current]
-            .iter()
-            .collect::<String>();
-        num.parse::<f64>().unwrap()
+        Ok(())
     }
 
-    fn new_token(&self, token_type: TokenType, value: Option<TokenValue>) -> Token {
+    fn new_token(&self, token_type: TokenType) -> Token {
         Token {
             token_type: token_type,
-            literal: value,
             lexeme: self.query[self.start..self.current].iter().collect(),
         }
     }
@@ -122,81 +114,87 @@ impl Lexer {
     pub fn next(&mut self) -> anyhow::Result<Option<Token>> {
         if let Some(c) = self.advance() {
             match c {
-                '(' => Ok(Some(self.new_token(TokenType::LeftParen, None))),
-                ')' => Ok(Some(self.new_token(TokenType::RightParen, None))),
-                '[' => Ok(Some(self.new_token(TokenType::ListBegin, None))),
-                ']' => Ok(Some(self.new_token(TokenType::ListEnd, None))),
-                '{' => Ok(Some(self.new_token(TokenType::RecordBegin, None))),
-                '}' => Ok(Some(self.new_token(TokenType::RecordEnd, None))),
-                ',' => Ok(Some(self.new_token(TokenType::Comma, None))),
-                '.' => Ok(Some(self.new_token(TokenType::Dot, None))),
-                '|' => Ok(Some(self.new_token(TokenType::Pipe, None))),
-                '+' => Ok(Some(self.new_token(TokenType::Plus, None))),
-                '-' => Ok(Some(self.new_token(TokenType::Minus, None))),
-                '*' => Ok(Some(self.new_token(TokenType::Star, None))),
+                '(' => Ok(Some(self.new_token(TokenType::LeftParen))),
+                ')' => Ok(Some(self.new_token(TokenType::RightParen))),
+                '[' => Ok(Some(self.new_token(TokenType::ListBegin))),
+                ']' => Ok(Some(self.new_token(TokenType::ListEnd))),
+                '{' => Ok(Some(self.new_token(TokenType::RecordBegin))),
+                '}' => Ok(Some(self.new_token(TokenType::RecordEnd))),
+                ',' => Ok(Some(self.new_token(TokenType::Comma))),
+                '.' => Ok(Some(self.new_token(TokenType::Dot))),
+                '|' => Ok(Some(self.new_token(TokenType::Pipe))),
+                '+' => Ok(Some(self.new_token(TokenType::Plus))),
+                '-' => Ok(Some(self.new_token(TokenType::Minus))),
+                '*' => Ok(Some(self.new_token(TokenType::Star))),
                 // TODO(abhay): Handle comments.
-                '/' => Ok(Some(self.new_token(TokenType::Slash, None))),
-                ';' => Ok(Some(self.new_token(TokenType::Semicolon, None))),
+                '/' => Ok(Some(self.new_token(TokenType::Slash))),
+                ';' => Ok(Some(self.new_token(TokenType::Semicolon))),
                 '=' => {
                     if let Some('=') = self.peek() {
                         // consume the '='
                         self.advance().unwrap();
-                        Ok(Some(self.new_token(TokenType::EqualEqual, None)))
+                        Ok(Some(self.new_token(TokenType::EqualEqual)))
                     } else {
-                        Ok(Some(self.new_token(TokenType::Equal, None)))
+                        Ok(Some(self.new_token(TokenType::Equal)))
                     }
                 }
                 '>' => {
                     if let Some('=') = self.peek() {
                         // consume the '='
                         self.advance().unwrap();
-                        Ok(Some(self.new_token(TokenType::GreaterEqual, None)))
+                        Ok(Some(self.new_token(TokenType::GreaterEqual)))
                     } else {
-                        Ok(Some(self.new_token(TokenType::Greater, None)))
+                        Ok(Some(self.new_token(TokenType::Greater)))
                     }
                 }
                 '<' => {
                     if let Some('=') = self.peek() {
                         // consume the '='
                         self.advance().unwrap();
-                        Ok(Some(self.new_token(TokenType::LesserEqual, None)))
+                        Ok(Some(self.new_token(TokenType::LesserEqual)))
                     } else {
-                        Ok(Some(self.new_token(TokenType::Lesser, None)))
+                        Ok(Some(self.new_token(TokenType::Lesser)))
                     }
                 }
                 '!' => {
                     if let Some('=') = self.peek() {
                         // consume the '='
                         self.advance().unwrap();
-                        Ok(Some(self.new_token(TokenType::BangEqual, None)))
+                        Ok(Some(self.new_token(TokenType::BangEqual)))
                     } else {
-                        Ok(Some(self.new_token(TokenType::Bang, None)))
+                        Ok(Some(self.new_token(TokenType::Bang)))
                     }
                 }
                 '"' => {
-                    let s = self.string()?;
-                    Ok(Some(
-                        self.new_token(TokenType::String, Some(TokenValue::String(s))),
-                    ))
+                    self.string()?;
+                    Ok(Some(self.new_token(TokenType::String)))
                 }
                 c if c.is_alphabetic() => {
-                    let s = self.identifier();
-                    let token_type = match s.as_ref() {
-                        "true" => TokenType::True,
-                        "false" => TokenType::False,
-                        "or" => TokenType::Or,
-                        "and" => TokenType::And,
-                        _ => TokenType::Identifier,
-                    };
-                    Ok(Some(
-                        self.new_token(token_type, Some(TokenValue::String(s))),
-                    ))
+                    self.identifier();
+                    // TODO: clean this up.
+                    match self.query[self.start..self.current]
+                        .iter()
+                        .collect::<String>()
+                        .as_ref()
+                    {
+                        "true" | "false" => Ok(Some(self.new_token(TokenType::Bool))),
+                        "or" => Ok(Some(self.new_token(TokenType::Or))),
+                        "and" => Ok(Some(self.new_token(TokenType::And))),
+                        _ => Ok(Some(self.new_token(TokenType::Identifier))),
+                    }
                 }
                 n if n.is_numeric() => {
-                    let n = self.number();
-                    Ok(Some(
-                        self.new_token(TokenType::Number, Some(TokenValue::Double(n))),
-                    ))
+                    self.number()?;
+                    Ok(Some(self.new_token(TokenType::Number)))
+                }
+                '$' => {
+                    match self.peek() {
+                        Some(c) if c.is_alphabetic() => {
+                            self.identifier();
+                        }
+                        _ => anyhow::bail!("identifier names should start with alphabetic chars"),
+                    }
+                    Ok(Some(self.new_token(TokenType::Variable)))
                 }
                 ' ' => Ok(None),
                 '\t' => Ok(None),
@@ -214,20 +212,25 @@ impl Lexer {
     }
 }
 
-#[derive(Debug, PartialEq)]
-pub enum TokenValue {
-    String(String),
-    Double(f64),
-}
-
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Eq, Hash)]
 pub struct Token {
     pub token_type: TokenType,
-    pub literal: Option<TokenValue>,
     pub lexeme: String,
+    // TODO: add line and pos information.
 }
 
-#[derive(Debug, PartialEq, Clone, Copy)]
+impl Token {
+    // todo(abhay): return reference.
+    pub fn literal(&self) -> String {
+        match self.token_type {
+            TokenType::String => self.lexeme[1..self.lexeme.len() - 1].to_string(),
+            TokenType::Variable => self.lexeme[1..].to_string(),
+            _ => self.lexeme.clone(),
+        }
+    }
+}
+
+#[derive(Debug, PartialEq, Eq, Clone, Copy, Hash)]
 pub enum TokenType {
     // Characters
     LeftParen,
@@ -256,14 +259,14 @@ pub enum TokenType {
     BangEqual,
 
     // Keywords
-    True,
-    False,
     Or,
     And,
 
     // All rest
     Identifier,
+    Variable,
     String,
     Number,
+    Bool,
     Eof,
 }

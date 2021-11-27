@@ -1,3 +1,7 @@
+use crate::ast::{Ast, OpCall};
+use crate::lexer::{Token, TokenType};
+use std::collections::HashMap;
+
 /// StarQL Grammar:
 ///
 /// query :=  statement (";" statement) * ";"?
@@ -12,7 +16,8 @@
 /// term := factor (("+" | "-") factor)*
 /// factor := unary (("*" | "/") unary)*
 /// unary := primary | "-" unary
-/// primary := NUMBER | STRING | "true" | "false" | "(" expression ")" | list | record
+/// symbol := "$" identifier
+/// primary := NUMBER | STRING | "true" | "false" | "(" expression ")" | list | record | symbol
 /// list := "[" (expression ",")* expression? "]"
 /// record := "{" parameters "}"
 /// parameters := (identifier "=" expression ",")* (identifier "=" expression)?
@@ -25,12 +30,7 @@
 /// TODOs:
 ///     replace anyhow::Result with our own ParseError error class?
 ///
-use crate::lexer::{Token, TokenType, TokenValue};
-use std::collections::HashMap;
 
-// using this for sorted iterator
-use itertools::Itertools;
-use std::fmt;
 pub struct Parser {
     tokens: Vec<Token>,
     previous: Option<Token>,
@@ -103,6 +103,9 @@ impl Parser {
         }
     }
 
+    pub fn parse(&mut self) -> anyhow::Result<Ast> {
+        self.query()
+    }
     fn query(&mut self) -> anyhow::Result<Ast> {
         let mut statements = vec![self.statement()?];
         while self.matches(&vec![TokenType::Semicolon]) {
@@ -137,8 +140,7 @@ impl Parser {
     }
 
     fn opcall(&mut self) -> anyhow::Result<OpCall> {
-        let mut path: Vec<String> = vec![];
-
+        let mut path: Vec<Token> = vec![];
         loop {
             path.push(self.identifier()?);
             if !self.matches(&vec![TokenType::Dot]) {
@@ -163,11 +165,8 @@ impl Parser {
         Ok(OpCall { path, args })
     }
 
-    fn identifier(&mut self) -> anyhow::Result<String> {
-        match self.consume(TokenType::Identifier)?.literal {
-            Some(TokenValue::String(s)) => Ok(s),
-            _ => anyhow::bail!("Expected string as key, found: "),
-        }
+    fn identifier(&mut self) -> anyhow::Result<Token> {
+        self.consume(TokenType::Identifier)
     }
 
     fn expression(&mut self) -> anyhow::Result<Ast> {
@@ -243,17 +242,18 @@ impl Parser {
     }
 
     fn primary(&mut self) -> anyhow::Result<Ast> {
-        if self.matches(&vec![TokenType::LeftParen]) {
+        if self.matches(&vec![
+            TokenType::Number,
+            TokenType::String,
+            TokenType::Bool,
+            TokenType::Variable,
+            TokenType::Identifier,
+        ]) {
+            Ok(Ast::Atom(self.previous().unwrap()))
+        } else if self.matches(&vec![TokenType::LeftParen]) {
             let e = self.expression();
             self.consume(TokenType::RightParen)?;
             e
-        } else if self.matches(&vec![
-            TokenType::Number,
-            TokenType::String,
-            TokenType::True,
-            TokenType::False,
-        ]) {
-            Ok(Ast::Literal(self.previous().unwrap()))
         } else if self.matches(&vec![TokenType::ListBegin]) {
             self.list()
         } else if self.matches(&vec![TokenType::RecordBegin]) {
@@ -321,206 +321,5 @@ impl Parser {
             }
         }
         Ok(f)
-    }
-}
-
-struct OpCall {
-    path: Vec<String>,
-    args: HashMap<String, Ast>,
-}
-
-enum Ast {
-    Binary {
-        left: Box<Ast>,
-        op: Token,
-        right: Box<Ast>,
-    },
-    Grouping(Box<Ast>),
-    Unary(Token, Box<Ast>),
-    Literal(Token),
-    List(Vec<Ast>),
-    Record(HashMap<String, Ast>),
-    OpExp(Box<Ast>, Vec<OpCall>),
-    Statement(Option<String>, Box<Ast>),
-    Query(Vec<Ast>),
-}
-
-impl Ast {
-    pub fn accept<T>(&self, visitor: &dyn Visitor<T>) -> T {
-        match self {
-            Ast::Binary { left, op, right } => visitor.visit_binary(left, op, right),
-            Ast::Grouping(inner) => visitor.visit_grouping(inner),
-            Ast::Unary(t, b) => visitor.visit_unary(t, b),
-            Ast::Literal(t) => visitor.visit_literal(t),
-            Ast::List(l) => visitor.visit_list(l),
-            Ast::Record(r) => visitor.visit_record(r),
-            Ast::OpExp(root, opcalls) => visitor.visit_opexp(root, opcalls),
-            Ast::Statement(v, b) => visitor.visit_statement(v, b),
-            Ast::Query(q) => visitor.visit_query(q),
-        }
-    }
-}
-
-impl fmt::Display for Ast {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", self.accept(&AstPrinter {}))
-    }
-}
-
-trait Visitor<T> {
-    fn visit_binary(&self, left: &Ast, op: &Token, right: &Ast) -> T;
-    fn visit_grouping(&self, inner: &Ast) -> T;
-    fn visit_unary(&self, op: &Token, right: &Ast) -> T;
-    fn visit_literal(&self, literal: &Token) -> T;
-    fn visit_list(&self, list: &[Ast]) -> T;
-    fn visit_record(&self, record: &HashMap<String, Ast>) -> T;
-    fn visit_opexp(&self, root: &Ast, opcalls: &[OpCall]) -> T;
-    fn visit_statement(&self, variable: &Option<String>, body: &Ast) -> T;
-    fn visit_query(&self, statements: &[Ast]) -> T;
-}
-
-struct AstPrinter {}
-
-impl Visitor<String> for AstPrinter {
-    fn visit_binary(&self, left: &Ast, op: &Token, right: &Ast) -> String {
-        return format!(
-            "({} {} {})",
-            op.lexeme,
-            left.accept(self),
-            right.accept(self)
-        );
-    }
-    fn visit_grouping(&self, inner: &Ast) -> String {
-        return format!("(group {})", inner.accept(self));
-    }
-    fn visit_unary(&self, op: &Token, right: &Ast) -> String {
-        return format!("({} {})", op.lexeme, right.accept(self));
-    }
-
-    fn visit_literal(&self, token: &Token) -> String {
-        return token.lexeme.clone();
-    }
-
-    fn visit_list(&self, list: &[Ast]) -> String {
-        return format!("[{}]", list.iter().map(|e| e.accept(self)).join(", "));
-    }
-
-    fn visit_record(&self, record: &HashMap<String, Ast>) -> String {
-        format!(
-            "{{{}}}",
-            record
-                .iter()
-                .map(|(k, v)| format!("{}={}", k, v.accept(self)))
-                .sorted()
-                .join(", ")
-        )
-    }
-    fn visit_opexp(&self, root: &Ast, opcalls: &[OpCall]) -> String {
-        if opcalls.len() == 0 {
-            root.accept(self)
-        } else {
-            let opcallstr = opcalls
-                .iter()
-                .map(|opcall| {
-                    format!(
-                        "{}({})",
-                        opcall.path.join("."),
-                        opcall
-                            .args
-                            .iter()
-                            .map(|(k, v)| format!("{}={}", k, v.accept(self)))
-                            .sorted()
-                            .join(", ")
-                    )
-                })
-                .join(" | ");
-            format!("{} | {}", root.accept(self), opcallstr)
-        }
-    }
-    fn visit_statement(&self, variable: &Option<String>, body: &Ast) -> String {
-        let assignment = if let Some(s) = variable {
-            format!("{} = ", s)
-        } else {
-            "".to_string()
-        };
-        format!("{}{}", assignment, body.accept(self))
-    }
-    fn visit_query(&self, query: &[Ast]) -> String {
-        query.iter().map(|s| s.accept(self)).join(";\n")
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::AstPrinter;
-    use super::Parser;
-    use crate::lexer::Lexer;
-    use std::time::Instant;
-
-    fn _compare_printed(exprstr: String, expected: String) {
-        let lexer = Lexer::new(exprstr);
-        let mut start = Instant::now();
-        let tokens = lexer.tokenize().unwrap();
-        let mut time = start.elapsed();
-        println!("Time to lex: {:?}", time);
-        let mut parser = Parser::new(tokens);
-        start = Instant::now();
-        let expr = parser.query().unwrap();
-        time = start.elapsed();
-        println!("Time to parse: {:?}", time);
-        let printer = AstPrinter {};
-        let actual = expr.accept(&printer);
-        assert_eq!(actual, expected);
-    }
-
-    #[test]
-    fn end_to_end() {
-        let exprstr = "1 + 2 * 3".to_string();
-        let expected = "(+ 1 (* 2 3))".to_string();
-        _compare_printed(exprstr, expected);
-    }
-
-    #[test]
-    fn with_booleans() {
-        let exprstr = "2 >= 3 or true and 1 == 2".to_string();
-        let expected = "(or (>= 2 3) (and true (== 1 2)))".to_string();
-        _compare_printed(exprstr, expected);
-    }
-
-    #[test]
-    fn parse_list() {
-        let exprstr = "[1,2,3]".to_string();
-        let expected = "[1, 2, 3]".to_string();
-        _compare_printed(exprstr, expected)
-    }
-
-    #[test]
-    fn parse_record() {
-        let first = "{xyz=123, foo=\"bar\"}".to_string();
-        let second = "{foo=\"bar\",xyz=123}".to_string();
-        let expected = "{foo=\"bar\", xyz=123}".to_string();
-        _compare_printed(first, expected.clone());
-        _compare_printed(second, expected);
-    }
-
-    #[test]
-    fn parse_opexp() {
-        let expstr = "12 | a.b.c(x=123, y=\"hi\",)".to_string();
-        let expected = "12 | a.b.c(x=123, y=\"hi\")".to_string();
-        _compare_printed(expstr, expected);
-    }
-
-    #[test]
-    fn parse_statement() {
-        let expstr = "name = 12 | a.b.c(x=123, y=\"hi\",)".to_string();
-        let expected = "name = 12 | a.b.c(x=123, y=\"hi\")".to_string();
-        _compare_printed(expstr, expected);
-        _compare_printed("5".to_string(), "5".to_string());
-    }
-    #[test]
-    fn parse_program() {
-        let expstr = "name = 12 | a.b.c(x=123, y=\"hi\",); abc = 8; 5;".to_string();
-        let expected = "name = 12 | a.b.c(x=123, y=\"hi\");\nabc = 8;\n5".to_string();
-        _compare_printed(expstr, expected);
     }
 }
