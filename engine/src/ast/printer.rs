@@ -153,4 +153,14 @@ mod tests {
         let expected = "name = 12 | a.b.c(x=123, y=\"hi\");\nabc = 8;\n5".to_string();
         _compare_printed(expstr, expected);
     }
+    #[test]
+    fn parse_large_list_of_records() {
+        let numstr = (0..10000)
+            .map(|i: i32| format!("{{x={}, y={}}}", i, i))
+            .collect::<Vec<String>>()
+            .join(", ");
+        let expstr = format!("[{}]", numstr);
+        let expected = expstr.clone();
+        _compare_printed(expstr, expected);
+    }
 }
