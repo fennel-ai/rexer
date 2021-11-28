@@ -1,7 +1,10 @@
+use std::cmp::{Ord, Ordering, PartialOrd};
 use std::collections::HashMap;
+use std::ops;
 
-#[derive(Clone)]
+use itertools::any;
 
+#[derive(Clone, Debug, PartialEq)]
 pub enum Type {
     Any,
     Number,
@@ -11,12 +14,58 @@ pub enum Type {
     Record(HashMap<String, Box<Type>>),
 }
 
+#[derive(Debug)]
 pub enum Value {
     Number(f64),
     String(String),
     Bool(bool),
     List(Vec<Value>),
     Record(HashMap<String, Box<Value>>),
+}
+
+impl ops::Add for Value {
+    type Output = anyhow::Result<Value>;
+
+    fn add(self, rhs: Value) -> anyhow::Result<Value> {
+        match (self, rhs) {
+            (Value::Number(l), Value::Number(r)) => Ok(Value::Number(l + r)),
+            (Value::String(l), Value::String(r)) => Ok(Value::String(l + &r)),
+            _ => anyhow::bail!("plus operator only defined on strings and numbers"),
+        }
+    }
+}
+
+impl ops::Sub for Value {
+    type Output = anyhow::Result<Value>;
+
+    fn sub(self, rhs: Self) -> Self::Output {
+        match (self, rhs) {
+            (Value::Number(l), Value::Number(r)) => Ok(Value::Number(l - r)),
+            _ => anyhow::bail!("minus operator only defined on numbers"),
+        }
+    }
+}
+
+impl ops::Mul for Value {
+    type Output = anyhow::Result<Value>;
+
+    fn mul(self, rhs: Self) -> Self::Output {
+        match (self, rhs) {
+            (Value::Number(l), Value::Number(r)) => Ok(Value::Number(l * r)),
+            _ => anyhow::bail!("multiplication operator only defined on numbers"),
+        }
+    }
+}
+
+impl ops::Div for Value {
+    type Output = anyhow::Result<Value>;
+
+    fn div(self, rhs: Self) -> Self::Output {
+        match (self, rhs) {
+            (Value::Number(l), Value::Number(r)) => Ok(Value::Number(l / r)),
+            _ => anyhow::bail!("division operator only defined on numbers"),
+        }
+    }
 }
 
 impl Value {
@@ -42,6 +91,60 @@ impl Value {
         }
     }
 }
+
+// implementing binary operators for Value type.
+impl Value {
+    pub fn lt(&self, other: &Value) -> anyhow::Result<Value> {
+        match (self, other) {
+            (Value::Number(l), Value::Number(r)) => Ok(Value::Bool(l < r)),
+            _ => anyhow::bail!("< operator only defined on numbers"),
+        }
+    }
+    pub fn le(&self, other: &Value) -> anyhow::Result<Value> {
+        match (self, other) {
+            (Value::Number(l), Value::Number(r)) => Ok(Value::Bool(l <= r)),
+            _ => anyhow::bail!("<= operator only defined on numbers"),
+        }
+    }
+    pub fn gt(&self, other: &Value) -> anyhow::Result<Value> {
+        match (self, other) {
+            (Value::Number(l), Value::Number(r)) => Ok(Value::Bool(l > r)),
+            _ => anyhow::bail!("> operator only defined on numbers"),
+        }
+    }
+    pub fn ge(&self, other: &Value) -> anyhow::Result<Value> {
+        match (self, other) {
+            (Value::Number(l), Value::Number(r)) => Ok(Value::Bool(l >= r)),
+            _ => anyhow::bail!(">= operator only defined on numbers"),
+        }
+    }
+}
+
+impl std::cmp::PartialEq for Value {
+    fn eq(&self, other: &Self) -> bool {
+        match (self, other) {
+            (Value::Number(l), Value::Number(r)) => l == r,
+            (Value::String(l), Value::String(r)) => l == r,
+            (Value::Bool(l), Value::Bool(r)) => l == r,
+            (Value::List(l), Value::List(r)) => {
+                if l.len() != r.len() {
+                    false
+                } else {
+                    l.iter().zip(r.iter()).all(|(x, y)| x.eq(y))
+                }
+            }
+            (Value::Record(l), Value::Record(r)) => {
+                if l.len() != r.len() {
+                    false
+                } else {
+                    l.iter().all(|(k, v)| r.get(k) == Some(v))
+                }
+            }
+            _ => false,
+        }
+    }
+}
+
 pub(crate) enum OpCode {
     Return,
     Call,

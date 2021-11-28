@@ -242,17 +242,21 @@ pub enum TokenType {
     Comma,
     Dot,
     Pipe,
+    Semicolon,
+    Equal,
+
+    // Arithmetic operaotrs
     Plus,
     Minus,
     Star,
     Slash,
-    Semicolon,
-    Equal,
-    Greater,
-    Lesser,
+
+    // Unary bool op.
     Bang,
 
-    // Double character binary operations
+    // Relational operations
+    Greater,
+    Lesser,
     GreaterEqual,
     LesserEqual,
     EqualEqual,
