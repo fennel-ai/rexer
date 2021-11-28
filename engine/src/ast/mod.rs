@@ -1,8 +1,8 @@
 use crate::lexer::Token;
 use std::collections::HashMap;
 
-mod eval;
-mod printer;
+pub mod eval;
+pub mod printer;
 
 // using this for sorted iterator
 pub struct OpCall {

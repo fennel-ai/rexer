@@ -13,7 +13,7 @@ Remaining items:
 * "and" and "or" as binary operators over values.
 */
 
-struct Eval {}
+pub struct Eval {}
 
 impl Visitor<anyhow::Result<Value>> for Eval {
     fn visit_atom(&self, token: &Token) -> anyhow::Result<Value> {
