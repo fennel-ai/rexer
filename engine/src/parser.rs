@@ -31,13 +31,15 @@ use std::collections::HashMap;
 ///     replace anyhow::Result with our own ParseError error class?
 ///
 
-pub struct Parser {
-    tokens: Vec<Token>,
-    previous: Option<Token>,
+// 'a denotes the lifetime of slice (aka lifetime of parser)
+// 'b denotes the lifetime of tokens
+pub struct Parser<'a, 'b> {
+    tokens: &'a [Token<'b>],
+    previous: Option<Token<'a>>,
 }
 
-impl Parser {
-    pub fn new(mut tokens: Vec<Token>) -> Self {
+impl<'a> Parser<'a> {
+    pub fn new(mut tokens: &[Token]) -> Self {
         tokens.reverse();
         Parser {
             tokens: tokens,

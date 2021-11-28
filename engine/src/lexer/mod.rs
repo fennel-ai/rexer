@@ -1,17 +1,17 @@
 #[cfg(test)]
 mod tests;
 
-pub struct Lexer {
-    query: Vec<char>,
+pub struct Lexer<'a> {
+    query: &'a [char],
     current: usize,
     start: usize,
     line: usize,
 }
 
-impl Lexer {
-    pub fn new(query: String) -> Self {
+impl<'a> Lexer<'a> {
+    pub fn new(query: &'a [char]) -> Self {
         Lexer {
-            query: query.chars().collect(),
+            query: query,
             current: 0,
             start: 0,
             line: 0,
@@ -36,7 +36,7 @@ impl Lexer {
         self.current >= self.query.len()
     }
 
-    pub fn tokenize(mut self) -> anyhow::Result<Vec<Token>> {
+    pub fn tokenize(mut self) -> anyhow::Result<Vec<Token<'a>>> {
         let mut tokens = vec![];
         while !self.done() {
             self.start = self.current;
@@ -104,10 +104,10 @@ impl Lexer {
         Ok(())
     }
 
-    fn new_token(&self, token_type: TokenType) -> Token {
+    fn new_token(&self, token_type: TokenType) -> Token<'a> {
         Token {
             token_type: token_type,
-            lexeme: self.query[self.start..self.current].iter().collect(),
+            lexeme: &self.query[self.start..self.current],
         }
     }
 
@@ -213,13 +213,13 @@ impl Lexer {
 }
 
 #[derive(Debug, PartialEq, Eq, Hash)]
-pub struct Token {
+pub struct Token<'a> {
     pub token_type: TokenType,
-    pub lexeme: String,
+    pub lexeme: &'a [char],
     // TODO: add line and pos information.
 }
 
-impl Token {
+impl<'a> Token<'a> {
     // todo(abhay): return reference.
     pub fn literal(&self) -> String {
         match self.token_type {
