@@ -1,4 +1,5 @@
 use super::{Ast, OpCall, Visitor};
+use crate::environment::Environment;
 use crate::lexer::{Token, TokenType};
 use crate::types::Value;
 use anyhow;
@@ -13,9 +14,19 @@ Remaining items:
 * "and" and "or" as binary operators over values.
 */
 
-pub struct Eval {}
+pub struct Eval<'a> {
+    environment: Environment<'a>,
+}
 
-impl Visitor<anyhow::Result<Value>> for Eval {
+impl Eval<'_> {
+    pub fn new() -> Self {
+        return Self {
+            environment: Environment::new(),
+        };
+    }
+}
+
+impl Visitor<anyhow::Result<Value>> for Eval<'_> {
     fn visit_atom(&self, token: &Token) -> anyhow::Result<Value> {
         let literal = token.literal();
         match token.token_type {
@@ -118,8 +129,8 @@ mod tests {
         println!("Time to parse: {:?}", time);
 
         start = Instant::now();
-        let e = &Eval {};
-        let actual = ast.accept(e).unwrap();
+        let e = Eval::new();
+        let actual = ast.accept(&e).unwrap();
         time = start.elapsed();
         println!("Time to eval: {:?}", time);
         assert_eq!(actual, expected);

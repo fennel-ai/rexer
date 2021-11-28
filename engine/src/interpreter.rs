@@ -10,7 +10,7 @@ impl Interpreter {
         let tokens = lexer.tokenize()?;
         let mut parser = Parser::new(tokens);
         let ast = parser.parse()?;
-        let evaler = Eval {};
+        let evaler = Eval::new();
         ast.accept(&evaler)
     }
 }
