@@ -1,33 +1,34 @@
 #[cfg(test)]
 mod tests;
 
+use std::iter::Peekable;
+use std::str::Chars;
+
 pub struct Lexer<'a> {
-    query: &'a [char],
+    query: &'a str,
+    chars: Peekable<Chars<'a>>,
     current: usize,
     start: usize,
     line: usize,
 }
 
 impl<'a> Lexer<'a> {
-    pub fn new(query: &'a [char]) -> Self {
+    pub fn new(query: &'a str) -> Self {
         Lexer {
-            query: query,
+            query,
+            chars: query.chars().peekable(),
             current: 0,
             start: 0,
             line: 0,
         }
     }
 
-    fn peek(&self) -> Option<&char> {
-        self.query.get(self.current)
+    fn peek(&mut self) -> Option<&char> {
+        self.chars.peek()
     }
 
-    fn peek_next(&self) -> Option<&char> {
-        self.query.get(self.current + 1)
-    }
-
-    fn advance(&mut self) -> Option<&char> {
-        let r = self.query.get(self.current);
+    fn advance(&mut self) -> Option<char> {
+        let r = self.chars.next();
         self.current += 1;
         r
     }
@@ -47,7 +48,7 @@ impl<'a> Lexer<'a> {
         }
         tokens.push(Token {
             token_type: TokenType::Eof,
-            lexeme: "".to_string(),
+            lexeme: "",
         });
         return Ok(tokens);
     }
@@ -111,7 +112,7 @@ impl<'a> Lexer<'a> {
         }
     }
 
-    pub fn next(&mut self) -> anyhow::Result<Option<Token>> {
+    pub fn next(&mut self) -> anyhow::Result<Option<Token<'a>>> {
         if let Some(c) = self.advance() {
             match c {
                 '(' => Ok(Some(self.new_token(TokenType::LeftParen))),
@@ -171,12 +172,7 @@ impl<'a> Lexer<'a> {
                 }
                 c if c.is_alphabetic() => {
                     self.identifier();
-                    // TODO: clean this up.
-                    match self.query[self.start..self.current]
-                        .iter()
-                        .collect::<String>()
-                        .as_ref()
-                    {
+                    match &self.query[self.start..self.current] {
                         "true" | "false" => Ok(Some(self.new_token(TokenType::Bool))),
                         "or" => Ok(Some(self.new_token(TokenType::Or))),
                         "and" => Ok(Some(self.new_token(TokenType::And))),
@@ -204,7 +200,7 @@ impl<'a> Lexer<'a> {
                     self.line += 1;
                     Ok(None)
                 }
-                _ => anyhow::bail!("unexpected character: {:?}", *c),
+                _ => anyhow::bail!("unexpected character: {:?}", c),
             }
         } else {
             Ok(None)
@@ -215,17 +211,17 @@ impl<'a> Lexer<'a> {
 #[derive(Debug, PartialEq, Eq, Hash)]
 pub struct Token<'a> {
     pub token_type: TokenType,
-    pub lexeme: &'a [char],
+    pub lexeme: &'a str,
     // TODO: add line and pos information.
 }
 
 impl<'a> Token<'a> {
     // todo(abhay): return reference.
-    pub fn literal(&self) -> String {
+    pub fn literal(&self) -> &str {
         match self.token_type {
-            TokenType::String => self.lexeme[1..self.lexeme.len() - 1].to_string(),
-            TokenType::Variable => self.lexeme[1..].to_string(),
-            _ => self.lexeme.clone(),
+            TokenType::String => &self.lexeme[1..self.lexeme.len() - 1],
+            TokenType::Variable => &self.lexeme[1..],
+            _ => self.lexeme,
         }
     }
 }

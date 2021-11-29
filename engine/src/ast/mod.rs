@@ -5,28 +5,28 @@ pub mod eval;
 pub mod printer;
 
 // using this for sorted iterator
-pub struct OpCall {
-    pub path: Vec<Token>,
-    pub args: HashMap<Token, Ast>,
+pub struct OpCall<'a> {
+    pub path: Vec<Token<'a>>,
+    pub args: HashMap<Token<'a>, Ast<'a>>,
 }
 
-pub enum Ast {
+pub enum Ast<'a> {
     Binary {
-        left: Box<Ast>,
-        op: Token,
-        right: Box<Ast>,
+        left: Box<Ast<'a>>,
+        op: Token<'a>,
+        right: Box<Ast<'a>>,
     },
-    Grouping(Box<Ast>),
-    Unary(Token, Box<Ast>),
-    Atom(Token),
-    List(Vec<Ast>),
-    Record(HashMap<Token, Ast>),
-    OpExp(Box<Ast>, Vec<OpCall>),
-    Statement(Option<Token>, Box<Ast>),
-    Query(Vec<Ast>),
+    Grouping(Box<Ast<'a>>),
+    Unary(Token<'a>, Box<Ast<'a>>),
+    Atom(Token<'a>),
+    List(Vec<Ast<'a>>),
+    Record(HashMap<Token<'a>, Ast<'a>>),
+    OpExp(Box<Ast<'a>>, Vec<OpCall<'a>>),
+    Statement(Option<Token<'a>>, Box<Ast<'a>>),
+    Query(Vec<Ast<'a>>),
 }
 
-impl Ast {
+impl<'a> Ast<'a> {
     pub fn accept<T>(&self, visitor: &dyn Visitor<T>) -> T {
         match self {
             Ast::Binary { left, op, right } => visitor.visit_binary(left, op, right),

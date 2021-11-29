@@ -1,8 +1,5 @@
-use std::cmp::{Ord, Ordering, PartialOrd};
 use std::collections::HashMap;
 use std::ops;
-
-use itertools::any;
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum Type {
