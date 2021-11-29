@@ -1,7 +1,6 @@
 use super::{Ast, OpCall, Visitor};
 use crate::lexer::Token;
 use itertools::Itertools;
-use std::collections::HashMap;
 use std::fmt;
 struct Printer {}
 
@@ -160,6 +159,12 @@ mod tests {
     fn parse_underscores() {
         let exprstr = "ab_bc1 = 1; _bc = 5";
         let expected = "ab_bc1 = 1;\n_bc = 5".to_string();
+        _compare_printed(exprstr, expected)
+    }
+    #[test]
+    fn parse_comments() {
+        let exprstr = "// this is commment;\nx = 5; $x";
+        let expected = "x = 5;\n$x".to_string();
         _compare_printed(exprstr, expected)
     }
     #[test]

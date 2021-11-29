@@ -118,9 +118,22 @@ impl<'a> Lexer<'a> {
                 '+' => Ok(Some(self.new_token(TokenType::Plus))),
                 '-' => Ok(Some(self.new_token(TokenType::Minus))),
                 '*' => Ok(Some(self.new_token(TokenType::Star))),
-                // TODO(abhay): Handle comments.
-                '/' => Ok(Some(self.new_token(TokenType::Slash))),
                 ';' => Ok(Some(self.new_token(TokenType::Semicolon))),
+                '/' => {
+                    if let Some('/') = self.peek() {
+                        // seeing a comment, so consume until we see newline
+                        loop {
+                            self.advance();
+                            if let Some('\n') = self.peek() {
+                                break;
+                            }
+                        }
+                        // and don't return any valid token
+                        Ok(None)
+                    } else {
+                        Ok(Some(self.new_token(TokenType::Slash)))
+                    }
+                }
                 '=' => {
                     if let Some('=') = self.peek() {
                         // consume the '='
