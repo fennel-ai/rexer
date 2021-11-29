@@ -155,6 +155,13 @@ mod tests {
         let expected = "name = 12 | a.b.c(x=123, y=\"hi\");\nabc = 8;\n5".to_string();
         _compare_printed(expstr, expected);
     }
+
+    #[test]
+    fn parse_underscores() {
+        let exprstr = "ab_bc1 = 1; _bc = 5";
+        let expected = "ab_bc1 = 1;\n_bc = 5".to_string();
+        _compare_printed(exprstr, expected)
+    }
     #[test]
     fn parse_large_list_of_records() {
         let numstr = (0..10000)

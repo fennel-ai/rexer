@@ -9,7 +9,7 @@ pub struct Lexer<'a> {
     chars: Peekable<Chars<'a>>,
     current: usize,
     start: usize,
-    line: usize,
+    line: u32,
 }
 
 impl<'a> Lexer<'a> {
@@ -19,7 +19,7 @@ impl<'a> Lexer<'a> {
             chars: query.chars().peekable(),
             current: 0,
             start: 0,
-            line: 0,
+            line: 1,
         }
     }
 
@@ -28,9 +28,8 @@ impl<'a> Lexer<'a> {
     }
 
     fn advance(&mut self) -> Option<char> {
-        let r = self.chars.next();
         self.current += 1;
-        r
+        self.chars.next()
     }
 
     fn done(&self) -> bool {
@@ -46,16 +45,13 @@ impl<'a> Lexer<'a> {
                 tokens.push(token);
             }
         }
-        tokens.push(Token {
-            token_type: TokenType::Eof,
-            lexeme: "",
-        });
+        tokens.push(self.new_token(TokenType::Eof));
         return Ok(tokens);
     }
 
     fn identifier(&mut self) {
         while let Some(c) = self.peek() {
-            if !c.is_alphabetic() {
+            if *c != '_' && !c.is_alphanumeric() {
                 break;
             }
             self.advance();
@@ -63,18 +59,12 @@ impl<'a> Lexer<'a> {
     }
 
     fn string(&mut self) -> anyhow::Result<()> {
-        while let Some(c) = self.peek() {
-            if *c == '"' {
-                break;
+        while let Some(c) = self.advance() {
+            if c == '"' {
+                return Ok(());
             }
-            self.advance();
         }
-        if self.done() {
-            anyhow::bail!("string without trailing \"");
-        }
-        // advance over the closing '"'.
-        self.advance();
-        Ok(())
+        anyhow::bail!("string without trailing \"");
     }
 
     fn parse_digits(&mut self) {
@@ -109,6 +99,7 @@ impl<'a> Lexer<'a> {
         Token {
             token_type: token_type,
             lexeme: &self.query[self.start..self.current],
+            linenum: self.line,
         }
     }
 
@@ -170,7 +161,8 @@ impl<'a> Lexer<'a> {
                     self.string()?;
                     Ok(Some(self.new_token(TokenType::String)))
                 }
-                c if c.is_alphabetic() => {
+                // identifiers can also have leading '_'
+                c if c == '_' || c.is_alphabetic() => {
                     self.identifier();
                     match &self.query[self.start..self.current] {
                         "true" | "false" => Ok(Some(self.new_token(TokenType::Bool))),
@@ -212,11 +204,11 @@ impl<'a> Lexer<'a> {
 pub struct Token<'a> {
     pub token_type: TokenType,
     pub lexeme: &'a str,
+    pub linenum: u32,
     // TODO: add line and pos information.
 }
 
 impl<'a> Token<'a> {
-    // todo(abhay): return reference.
     pub fn literal(&self) -> &str {
         match self.token_type {
             TokenType::String => &self.lexeme[1..self.lexeme.len() - 1],
