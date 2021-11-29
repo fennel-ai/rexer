@@ -31,8 +31,6 @@ use std::collections::HashMap;
 ///     replace anyhow::Result with our own ParseError error class?
 ///
 
-// 'a denotes the lifetime of slice (aka lifetime of parser)
-// 'b denotes the lifetime of tokens
 pub struct Parser<'a> {
     tokens: Vec<Token<'a>>,
     previous: Option<Token<'a>>,
@@ -56,23 +54,24 @@ impl<'a> Parser<'a> {
     }
 
     fn done(&self) -> bool {
-        if let Some(t) = self.peek() {
-            if t.token_type == TokenType::Eof {
-                return true;
-            }
-        }
-        return false;
+        matches!(
+            self.peek(),
+            Some(Token {
+                token_type: TokenType::Eof,
+                ..
+            })
+        )
     }
 
     fn advance(&mut self) {
-        if !self.done() {
-            self.previous = self.tokens.pop();
-        }
+        // this doesn't check if we are done and assumes that its callers
+        // have verified that we have more tokens to pop
+        self.previous = self.tokens.pop();
     }
 
     fn matches(&mut self, token_types: &[TokenType]) -> bool {
-        for t in token_types {
-            if self.check(*t) {
+        if let Some(t) = self.peek() {
+            if token_types.contains(&t.token_type) {
                 self.advance();
                 return true;
             }
