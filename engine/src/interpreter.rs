@@ -15,36 +15,26 @@ struct Interpreter {}
 
    Error reporting is always done by interpreter
 
-   parse_statement() {}
-   eval_statement() {}
-
-   parser::parse() {
-       while True:
-            try:
-                parse_statement()
-            catch:
-                spit out errors
-                reorient itself
-                continue
-   }
-
-   parser::eval () {
-       while True:
-            try:
-                eval_statement()
-            catch:
-                spit out errors
-                abort
-   }
 */
 
 impl Interpreter {
-    fn interpret(query: &str) -> anyhow::Result<Value> {
+    fn interpret(query: &str) -> Option<Value> {
         let lexer = Lexer::new(&query);
-        let tokens = lexer.tokenize()?;
+        let lex_result = lexer.tokenize();
+        if let Err(e) = &lex_result {
+            eprintln!("{}", e);
+            return None;
+        }
+        let tokens = lex_result.unwrap();
         let mut parser = Parser::new(tokens);
-        let ast = parser.parse()?;
-        let evaler = Eval::new();
-        ast.accept(&evaler)
+        let parse_result = parser.parse();
+        if let Err(e) = &parse_result {
+            eprintln!("{}", e);
+            return None;
+        }
+        let ast = parse_result.unwrap();
+        // let evaler = Eval::new();
+        // ast.accept(&evaler)
+        Some(Value::Number(1.0))
     }
 }

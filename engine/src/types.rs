@@ -1,5 +1,22 @@
 use std::collections::HashMap;
+use std::fmt;
 use std::ops;
+
+#[derive(Debug, Clone)]
+pub struct ParseError {
+    pub line: u32,
+    pub message: String,
+}
+impl fmt::Display for ParseError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "[line {}] error: {}", self.line, self.message)
+    }
+}
+pub type ParseResult<T> = std::result::Result<T, ParseError>;
+
+#[derive(Debug, Clone)]
+struct RuntimeError;
+type RuntimeResult<T> = std::result::Result<T, RuntimeError>;
 
 #[derive(Clone, Debug, PartialEq)]
 // TODO(nikhil): convert record to use two vectors instead of hashmap

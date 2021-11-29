@@ -1,6 +1,6 @@
-#[cfg(test)]
 mod tests;
 
+use crate::types::{ParseError, ParseResult};
 use std::iter::Peekable;
 use std::str::Chars;
 
@@ -36,7 +36,7 @@ impl<'a> Lexer<'a> {
         self.current >= self.query.len()
     }
 
-    pub fn tokenize(mut self) -> anyhow::Result<Vec<Token<'a>>> {
+    pub fn tokenize(mut self) -> ParseResult<Vec<Token<'a>>> {
         let mut tokens = vec![];
         while !self.done() {
             self.start = self.current;
@@ -58,13 +58,13 @@ impl<'a> Lexer<'a> {
         }
     }
 
-    fn string(&mut self) -> anyhow::Result<()> {
+    fn string(&mut self) -> ParseResult<()> {
         while let Some(c) = self.advance() {
             if c == '"' {
                 return Ok(());
             }
         }
-        anyhow::bail!("string without trailing \"");
+        Err(self.error("missing closing \" for string"))
     }
 
     fn parse_digits(&mut self) {
@@ -76,7 +76,7 @@ impl<'a> Lexer<'a> {
         }
     }
 
-    fn number(&mut self) -> anyhow::Result<()> {
+    fn number(&mut self) -> ParseResult<()> {
         self.parse_digits();
         // Look for a decimal point
         if let Some('.') = self.peek() {
@@ -86,13 +86,18 @@ impl<'a> Lexer<'a> {
                     n if n.is_numeric() => {
                         self.parse_digits();
                     }
-                    _ => {
-                        anyhow::bail!("expected digits after '.'");
-                    }
+                    _ => return Err(self.error("expected digits after '.'")),
                 }
             }
         }
         Ok(())
+    }
+
+    fn error(&self, message: &str) -> ParseError {
+        ParseError {
+            line: self.line,
+            message: message.to_owned(),
+        }
     }
 
     fn new_token(&self, token_type: TokenType) -> Token<'a> {
@@ -103,7 +108,7 @@ impl<'a> Lexer<'a> {
         }
     }
 
-    pub fn next(&mut self) -> anyhow::Result<Option<Token<'a>>> {
+    pub fn next(&mut self) -> ParseResult<Option<Token<'a>>> {
         if let Some(c) = self.advance() {
             match c {
                 '(' => Ok(Some(self.new_token(TokenType::LeftParen))),
@@ -188,15 +193,13 @@ impl<'a> Lexer<'a> {
                     self.number()?;
                     Ok(Some(self.new_token(TokenType::Number)))
                 }
-                '$' => {
-                    match self.peek() {
-                        Some(c) if c.is_alphabetic() => {
-                            self.identifier();
-                        }
-                        _ => anyhow::bail!("identifier names should start with alphabetic chars"),
+                '$' => match self.peek() {
+                    Some(c) if *c == '_' || c.is_alphabetic() => {
+                        self.identifier();
+                        Ok(Some(self.new_token(TokenType::Variable)))
                     }
-                    Ok(Some(self.new_token(TokenType::Variable)))
-                }
+                    _ => Err(self.error("identifier name not starting with _ or alphabet")),
+                },
                 ' ' => Ok(None),
                 '\t' => Ok(None),
                 '\r' => Ok(None),
@@ -205,7 +208,7 @@ impl<'a> Lexer<'a> {
                     self.line += 1;
                     Ok(None)
                 }
-                _ => anyhow::bail!("unexpected character: {:?}", c),
+                _ => Err(self.error(&format!("unexpected character: {:?}", c))),
             }
         } else {
             Ok(None)
