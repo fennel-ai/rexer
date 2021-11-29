@@ -2,6 +2,7 @@ use std::collections::HashMap;
 use std::ops;
 
 #[derive(Clone, Debug, PartialEq)]
+// TODO(nikhil): convert record to use two vectors instead of hashmap
 pub enum Type {
     Any,
     Number,

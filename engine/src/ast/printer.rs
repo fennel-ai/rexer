@@ -35,16 +35,18 @@ impl Visitor<String> for Printer {
         return format!("[{}]", list.iter().map(|e| e.accept(self)).join(", "));
     }
 
-    fn visit_record(&self, record: &HashMap<Token, Ast>) -> String {
+    fn visit_record(&self, names: &[Token], values: &[Ast]) -> String {
         format!(
             "{{{}}}",
-            record
+            names
                 .iter()
-                .map(|(k, v)| format!("{}={}", k.lexeme, v.accept(self)))
+                .enumerate()
+                .map(|(i, n)| format!("{}={}", n.lexeme, values[i].accept(self)))
                 .sorted()
                 .join(", ")
         )
     }
+
     fn visit_opexp(&self, root: &Ast, opcalls: &[OpCall]) -> String {
         if opcalls.len() == 0 {
             root.accept(self)

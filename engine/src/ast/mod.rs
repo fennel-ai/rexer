@@ -20,7 +20,7 @@ pub enum Ast<'a> {
     Unary(Token<'a>, Box<Ast<'a>>),
     Atom(Token<'a>),
     List(Vec<Ast<'a>>),
-    Record(HashMap<Token<'a>, Ast<'a>>),
+    Record(Vec<Token<'a>>, Vec<Ast<'a>>),
     OpExp(Box<Ast<'a>>, Vec<OpCall<'a>>),
     Statement(Option<Token<'a>>, Box<Ast<'a>>),
     Query(Vec<Ast<'a>>),
@@ -34,7 +34,7 @@ impl<'a> Ast<'a> {
             Ast::Unary(t, b) => visitor.visit_unary(t, b),
             Ast::Atom(t) => visitor.visit_atom(t),
             Ast::List(l) => visitor.visit_list(l),
-            Ast::Record(r) => visitor.visit_record(r),
+            Ast::Record(names, values) => visitor.visit_record(names, values),
             Ast::OpExp(root, opcalls) => visitor.visit_opexp(root, opcalls),
             Ast::Statement(v, b) => visitor.visit_statement(v, b),
             Ast::Query(q) => visitor.visit_query(q),
@@ -48,7 +48,7 @@ pub trait Visitor<T> {
     fn visit_unary(&self, op: &Token, right: &Ast) -> T;
     fn visit_list(&self, list: &[Ast]) -> T;
     fn visit_atom(&self, t: &Token) -> T;
-    fn visit_record(&self, record: &HashMap<Token, Ast>) -> T;
+    fn visit_record(&self, names: &[Token], values: &[Ast]) -> T;
     fn visit_opexp(&self, root: &Ast, opcalls: &[OpCall]) -> T;
     fn visit_statement(&self, variable: &Option<Token>, body: &Ast) -> T;
     fn visit_query(&self, statements: &[Ast]) -> T;

@@ -236,19 +236,21 @@ impl<'a> Parser<'a> {
     }
 
     fn record(&mut self) -> anyhow::Result<Ast<'a>> {
-        let mut r = HashMap::new();
+        let mut names: Vec<Token> = vec![];
+        let mut values: Vec<Ast> = vec![];
         let comma = &[TokenType::Comma];
         while !self.check(TokenType::RecordEnd) {
             let id = self.identifier()?;
             self.consume(TokenType::Equal)?;
             let e = self.expression()?;
-            r.insert(id, e);
+            names.push(id);
+            values.push(e);
             if !self.matches(comma) {
                 break;
             }
         }
         self.consume(TokenType::RecordEnd)?;
-        Ok(Ast::Record(r))
+        Ok(Ast::Record(names, values))
     }
 
     fn primary(&mut self) -> anyhow::Result<Ast<'a>> {

@@ -86,10 +86,10 @@ impl Visitor<anyhow::Result<Value>> for Eval<'_> {
         r.ok_or_else(|| anyhow::anyhow!("query has no statements"))
     }
 
-    fn visit_record(&self, record: &HashMap<Token, Ast>) -> anyhow::Result<Value> {
-        let mut er = HashMap::with_capacity(record.len());
-        for (k, v) in record {
-            er.insert(k.literal().to_string(), Box::new(v.accept(self)?));
+    fn visit_record(&self, names: &[Token], values: &[Ast]) -> anyhow::Result<Value> {
+        let mut er = HashMap::with_capacity(names.len());
+        for (i, n) in names.iter().enumerate() {
+            er.insert(n.literal().to_string(), Box::new(values[i].accept(self)?));
         }
         Ok(Value::Record(er))
     }
