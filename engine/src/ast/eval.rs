@@ -28,7 +28,7 @@ impl Eval<'_> {
 
 impl Visitor<anyhow::Result<Value>> for Eval<'_> {
     fn visit_atom(&self, token: &Token) -> anyhow::Result<Value> {
-        let literal = token.literal();
+        let literal = token.literal().to_string();
         match token.token_type {
             TokenType::String => Ok(Value::String(literal)),
             TokenType::Number => Ok(Value::Number(literal.parse::<f64>()?)),
@@ -73,7 +73,7 @@ impl Visitor<anyhow::Result<Value>> for Eval<'_> {
         Ok(Value::List(v))
     }
 
-    fn visit_opexp(&self, root: &Ast, opcalls: &[OpCall]) -> anyhow::Result<Value> {
+    fn visit_opexp(&self, root: &Ast, _opcalls: &[OpCall]) -> anyhow::Result<Value> {
         root.accept(self)
         // TODO: implement op
     }
@@ -89,12 +89,12 @@ impl Visitor<anyhow::Result<Value>> for Eval<'_> {
     fn visit_record(&self, record: &HashMap<Token, Ast>) -> anyhow::Result<Value> {
         let mut er = HashMap::with_capacity(record.len());
         for (k, v) in record {
-            er.insert(k.literal(), Box::new(v.accept(self)?));
+            er.insert(k.literal().to_string(), Box::new(v.accept(self)?));
         }
         Ok(Value::Record(er))
     }
 
-    fn visit_statement(&self, variable: &Option<Token>, body: &Ast) -> anyhow::Result<Value> {
+    fn visit_statement(&self, _variable: &Option<Token>, body: &Ast) -> anyhow::Result<Value> {
         // TODO: assign value to variable in symbol table.
         body.accept(self)
     }
@@ -116,7 +116,7 @@ mod tests {
     use crate::types::Value;
     use std::time::Instant;
 
-    fn expect(exprstr: String, expected: Value) {
+    fn expect(exprstr: &str, expected: Value) {
         let lexer = Lexer::new(exprstr);
         let mut start = Instant::now();
         let tokens = lexer.tokenize().unwrap();
@@ -138,12 +138,12 @@ mod tests {
 
     #[test]
     fn test_add() {
-        expect("2 + 3".to_string(), Value::Number(5.0))
+        expect("2 + 3", Value::Number(5.0))
     }
 
     #[test]
     fn test_query() {
-        expect("2 + 3 == 5; ".to_string(), Value::Bool(true));
-        expect("2 + 3 == 5; false".to_string(), Value::Bool(false));
+        expect("2 + 3 == 5; ", Value::Bool(true));
+        expect("2 + 3 == 5; false", Value::Bool(false));
     }
 }

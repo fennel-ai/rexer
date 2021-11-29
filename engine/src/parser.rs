@@ -33,13 +33,13 @@ use std::collections::HashMap;
 
 // 'a denotes the lifetime of slice (aka lifetime of parser)
 // 'b denotes the lifetime of tokens
-pub struct Parser<'a, 'b> {
-    tokens: &'a [Token<'b>],
+pub struct Parser<'a> {
+    tokens: Vec<Token<'a>>,
     previous: Option<Token<'a>>,
 }
 
 impl<'a> Parser<'a> {
-    pub fn new(mut tokens: &[Token]) -> Self {
+    pub fn new(mut tokens: Vec<Token<'a>>) -> Self {
         tokens.reverse();
         Parser {
             tokens: tokens,
@@ -47,11 +47,11 @@ impl<'a> Parser<'a> {
         }
     }
 
-    fn peek(&self) -> Option<&Token> {
+    fn peek(&self) -> Option<&Token<'a>> {
         self.tokens.last()
     }
 
-    fn previous(&mut self) -> Option<Token> {
+    fn previous(&mut self) -> Option<Token<'a>> {
         self.previous.take()
     }
 
@@ -92,7 +92,7 @@ impl<'a> Parser<'a> {
         return false;
     }
 
-    fn consume(&mut self, token_type: TokenType) -> anyhow::Result<Token> {
+    fn consume(&mut self, token_type: TokenType) -> anyhow::Result<Token<'a>> {
         if self.check(token_type) {
             self.advance();
             return self.previous().ok_or_else(|| anyhow::anyhow!("missing"));
@@ -105,10 +105,11 @@ impl<'a> Parser<'a> {
         }
     }
 
-    pub fn parse(&mut self) -> anyhow::Result<Ast> {
+    pub fn parse(&mut self) -> anyhow::Result<Ast<'a>> {
         self.query()
     }
-    fn query(&mut self) -> anyhow::Result<Ast> {
+
+    fn query(&mut self) -> anyhow::Result<Ast<'a>> {
         let mut statements = vec![self.statement()?];
         while self.matches(&vec![TokenType::Semicolon]) {
             if self.done() {
@@ -121,7 +122,7 @@ impl<'a> Parser<'a> {
         Ok(Ast::Query(statements))
     }
 
-    fn statement(&mut self) -> anyhow::Result<Ast> {
+    fn statement(&mut self) -> anyhow::Result<Ast<'a>> {
         let variable = if let Ok(s) = self.identifier() {
             self.consume(TokenType::Equal)?;
             Some(s)
@@ -132,7 +133,7 @@ impl<'a> Parser<'a> {
         Ok(Ast::Statement(variable, Box::new(opexp)))
     }
 
-    fn op_expression(&mut self) -> anyhow::Result<Ast> {
+    fn op_expression(&mut self) -> anyhow::Result<Ast<'a>> {
         let e = self.expression()?;
         let mut opcalls: Vec<OpCall> = vec![];
         while self.matches(&vec![TokenType::Pipe]) {
@@ -141,7 +142,7 @@ impl<'a> Parser<'a> {
         Ok(Ast::OpExp(Box::new(e), opcalls))
     }
 
-    fn opcall(&mut self) -> anyhow::Result<OpCall> {
+    fn opcall(&mut self) -> anyhow::Result<OpCall<'a>> {
         let mut path: Vec<Token> = vec![];
         loop {
             path.push(self.identifier()?);
@@ -167,15 +168,15 @@ impl<'a> Parser<'a> {
         Ok(OpCall { path, args })
     }
 
-    fn identifier(&mut self) -> anyhow::Result<Token> {
+    fn identifier(&mut self) -> anyhow::Result<Token<'a>> {
         self.consume(TokenType::Identifier)
     }
 
-    fn expression(&mut self) -> anyhow::Result<Ast> {
+    fn expression(&mut self) -> anyhow::Result<Ast<'a>> {
         self.logic_or()
     }
 
-    fn term(&mut self) -> anyhow::Result<Ast> {
+    fn term(&mut self) -> anyhow::Result<Ast<'a>> {
         let mut f = self.factor()?;
         let expected = vec![TokenType::Plus, TokenType::Minus];
         while self.matches(&expected) {
@@ -190,7 +191,7 @@ impl<'a> Parser<'a> {
         Ok(f)
     }
 
-    fn factor(&mut self) -> anyhow::Result<Ast> {
+    fn factor(&mut self) -> anyhow::Result<Ast<'a>> {
         let mut u = self.unary()?;
         let expected = vec![TokenType::Star, TokenType::Slash];
         while self.matches(&expected) {
@@ -205,7 +206,7 @@ impl<'a> Parser<'a> {
         Ok(u)
     }
 
-    fn unary(&mut self) -> anyhow::Result<Ast> {
+    fn unary(&mut self) -> anyhow::Result<Ast<'a>> {
         if self.matches(&vec![TokenType::Minus]) {
             let op = self.previous().unwrap();
             let right = self.unary()?;
@@ -215,7 +216,7 @@ impl<'a> Parser<'a> {
         }
     }
 
-    fn list(&mut self) -> anyhow::Result<Ast> {
+    fn list(&mut self) -> anyhow::Result<Ast<'a>> {
         let mut l = vec![];
         while !self.check(TokenType::ListEnd) {
             let e = self.expression()?;
@@ -228,7 +229,7 @@ impl<'a> Parser<'a> {
         Ok(Ast::List(l))
     }
 
-    fn record(&mut self) -> anyhow::Result<Ast> {
+    fn record(&mut self) -> anyhow::Result<Ast<'a>> {
         let mut r = HashMap::new();
         while !self.check(TokenType::RecordEnd) {
             let id = self.identifier()?;
@@ -243,7 +244,7 @@ impl<'a> Parser<'a> {
         Ok(Ast::Record(r))
     }
 
-    fn primary(&mut self) -> anyhow::Result<Ast> {
+    fn primary(&mut self) -> anyhow::Result<Ast<'a>> {
         if self.matches(&vec![
             TokenType::Number,
             TokenType::String,
@@ -261,11 +262,11 @@ impl<'a> Parser<'a> {
         } else if self.matches(&vec![TokenType::RecordBegin]) {
             self.record()
         } else {
-            anyhow::bail!("Unexpcted token: {:?}", self.peek())
+            anyhow::bail!("Unexpected token: {:?}", self.peek())
         }
     }
 
-    fn comparison(&mut self) -> anyhow::Result<Ast> {
+    fn comparison(&mut self) -> anyhow::Result<Ast<'a>> {
         let mut f = self.term()?;
         let expected = vec![
             TokenType::Greater,
@@ -284,7 +285,7 @@ impl<'a> Parser<'a> {
         }
         Ok(f)
     }
-    fn equality(&mut self) -> anyhow::Result<Ast> {
+    fn equality(&mut self) -> anyhow::Result<Ast<'a>> {
         let mut f = self.comparison()?;
         let expected = vec![TokenType::EqualEqual, TokenType::BangEqual];
         while self.matches(&expected) {
@@ -298,7 +299,7 @@ impl<'a> Parser<'a> {
         }
         Ok(f)
     }
-    fn logic_and(&mut self) -> anyhow::Result<Ast> {
+    fn logic_and(&mut self) -> anyhow::Result<Ast<'a>> {
         let mut f = self.equality()?;
         while self.matches(&vec![TokenType::And]) {
             let op = self.previous().unwrap();
@@ -311,7 +312,7 @@ impl<'a> Parser<'a> {
         }
         Ok(f)
     }
-    fn logic_or(&mut self) -> anyhow::Result<Ast> {
+    fn logic_or(&mut self) -> anyhow::Result<Ast<'a>> {
         let mut f = self.logic_and()?;
         while self.matches(&vec![TokenType::Or]) {
             let op = self.previous().unwrap();

@@ -39,10 +39,10 @@ struct Interpreter {}
 */
 
 impl Interpreter {
-    fn interpret(query: String) -> anyhow::Result<Value> {
-        let lexer = Lexer::new(query);
+    fn interpret(query: &str) -> anyhow::Result<Value> {
+        let lexer = Lexer::new(&query);
         let tokens = lexer.tokenize()?;
-        let mut parser = Parser::new(&tokens);
+        let mut parser = Parser::new(tokens);
         let ast = parser.parse()?;
         let evaler = Eval::new();
         ast.accept(&evaler)

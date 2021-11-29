@@ -1,19 +1,11 @@
 use super::Lexer;
-use super::{Token, TokenType};
+use super::Token;
 
-fn new_token(token_type: TokenType, lexeme: String) -> Token {
-    Token {
-        token_type: token_type,
-        lexeme: lexeme,
-    }
-}
 #[test]
 fn lex_paren() {
-    let lexer = Lexer::new(format!(
-        "x = 05.13;  z = \"foo\"; y = [3, x, 4] | incr(by=x)"
-    ));
-    let actual = lexer.tokenize().unwrap();
-    let expected: Vec<Token> = vec![
+    let lexer = Lexer::new("x = 05.13;  z = \"foo\"; y = [3, x, 4] | incr(by=x)");
+    let _actual = lexer.tokenize().unwrap();
+    let _expected: Vec<Token> = vec![
         // TokenType::Identifier("x".to_string()),
         // TokenType::Equal,
         // TokenType::Number(5.13 as f64),
