@@ -111,14 +111,15 @@ impl<'a> Parser<'a> {
 
     fn query(&mut self) -> anyhow::Result<Ast<'a>> {
         let mut statements = vec![self.statement()?];
-        while self.matches(&vec![TokenType::Semicolon]) {
+        let semicolon = &[TokenType::Semicolon];
+        while self.matches(semicolon) {
             if self.done() {
                 break;
             }
             statements.push(self.statement()?);
         }
         // consume optional trailing semi colon
-        self.matches(&vec![TokenType::Semicolon]);
+        self.matches(semicolon);
         Ok(Ast::Query(statements))
     }
 
@@ -136,7 +137,8 @@ impl<'a> Parser<'a> {
     fn op_expression(&mut self) -> anyhow::Result<Ast<'a>> {
         let e = self.expression()?;
         let mut opcalls: Vec<OpCall> = vec![];
-        while self.matches(&vec![TokenType::Pipe]) {
+        let pipe = &[TokenType::Pipe];
+        while self.matches(pipe) {
             opcalls.push(self.opcall()?);
         }
         Ok(Ast::OpExp(Box::new(e), opcalls))
@@ -144,20 +146,22 @@ impl<'a> Parser<'a> {
 
     fn opcall(&mut self) -> anyhow::Result<OpCall<'a>> {
         let mut path: Vec<Token> = vec![];
+        let dot = &[TokenType::Dot];
         loop {
             path.push(self.identifier()?);
-            if !self.matches(&vec![TokenType::Dot]) {
+            if !self.matches(dot) {
                 break;
             }
         }
         let mut args = HashMap::new();
         self.consume(TokenType::LeftParen)?;
+        let comma = &[TokenType::Comma];
         loop {
             let k = self.identifier()?;
             self.consume(TokenType::Equal)?;
             let e = self.expression()?;
             args.insert(k, e);
-            if !self.matches(&vec![TokenType::Comma]) {
+            if !self.matches(comma) {
                 break;
             }
             if self.check(TokenType::RightParen) {
@@ -178,8 +182,8 @@ impl<'a> Parser<'a> {
 
     fn term(&mut self) -> anyhow::Result<Ast<'a>> {
         let mut f = self.factor()?;
-        let expected = vec![TokenType::Plus, TokenType::Minus];
-        while self.matches(&expected) {
+        let expected = &[TokenType::Plus, TokenType::Minus];
+        while self.matches(expected) {
             let op = self.previous().unwrap();
             let right = self.factor()?;
             f = Ast::Binary {
@@ -193,8 +197,8 @@ impl<'a> Parser<'a> {
 
     fn factor(&mut self) -> anyhow::Result<Ast<'a>> {
         let mut u = self.unary()?;
-        let expected = vec![TokenType::Star, TokenType::Slash];
-        while self.matches(&expected) {
+        let expected = &[TokenType::Star, TokenType::Slash];
+        while self.matches(expected) {
             let op = self.previous().unwrap();
             let right = self.unary()?;
             u = Ast::Binary {
@@ -207,7 +211,8 @@ impl<'a> Parser<'a> {
     }
 
     fn unary(&mut self) -> anyhow::Result<Ast<'a>> {
-        if self.matches(&vec![TokenType::Minus]) {
+        let ops = &[TokenType::Minus];
+        if self.matches(ops) {
             let op = self.previous().unwrap();
             let right = self.unary()?;
             Ok(Ast::Unary(op, Box::new(right)))
@@ -218,10 +223,11 @@ impl<'a> Parser<'a> {
 
     fn list(&mut self) -> anyhow::Result<Ast<'a>> {
         let mut l = vec![];
+        let comma = &[TokenType::Comma];
         while !self.check(TokenType::ListEnd) {
             let e = self.expression()?;
             l.push(e);
-            if !self.matches(&vec![TokenType::Comma]) {
+            if !self.matches(comma) {
                 break;
             }
         }
@@ -231,12 +237,13 @@ impl<'a> Parser<'a> {
 
     fn record(&mut self) -> anyhow::Result<Ast<'a>> {
         let mut r = HashMap::new();
+        let comma = &[TokenType::Comma];
         while !self.check(TokenType::RecordEnd) {
             let id = self.identifier()?;
             self.consume(TokenType::Equal)?;
             let e = self.expression()?;
             r.insert(id, e);
-            if !self.matches(&vec![TokenType::Comma]) {
+            if !self.matches(comma) {
                 break;
             }
         }
@@ -253,13 +260,13 @@ impl<'a> Parser<'a> {
             TokenType::Identifier,
         ]) {
             Ok(Ast::Atom(self.previous().unwrap()))
-        } else if self.matches(&vec![TokenType::LeftParen]) {
+        } else if self.matches(&[TokenType::LeftParen]) {
             let e = self.expression();
             self.consume(TokenType::RightParen)?;
             e
-        } else if self.matches(&vec![TokenType::ListBegin]) {
+        } else if self.matches(&[TokenType::ListBegin]) {
             self.list()
-        } else if self.matches(&vec![TokenType::RecordBegin]) {
+        } else if self.matches(&[TokenType::RecordBegin]) {
             self.record()
         } else {
             anyhow::bail!("Unexpected token: {:?}", self.peek())
@@ -287,8 +294,8 @@ impl<'a> Parser<'a> {
     }
     fn equality(&mut self) -> anyhow::Result<Ast<'a>> {
         let mut f = self.comparison()?;
-        let expected = vec![TokenType::EqualEqual, TokenType::BangEqual];
-        while self.matches(&expected) {
+        let expected = &[TokenType::EqualEqual, TokenType::BangEqual];
+        while self.matches(expected) {
             let op = self.previous().unwrap();
             let right = self.comparison()?;
             f = Ast::Binary {
@@ -301,7 +308,7 @@ impl<'a> Parser<'a> {
     }
     fn logic_and(&mut self) -> anyhow::Result<Ast<'a>> {
         let mut f = self.equality()?;
-        while self.matches(&vec![TokenType::And]) {
+        while self.matches(&[TokenType::And]) {
             let op = self.previous().unwrap();
             let right = self.equality()?;
             f = Ast::Binary {
@@ -314,7 +321,7 @@ impl<'a> Parser<'a> {
     }
     fn logic_or(&mut self) -> anyhow::Result<Ast<'a>> {
         let mut f = self.logic_and()?;
-        while self.matches(&vec![TokenType::Or]) {
+        while self.matches(&[TokenType::Or]) {
             let op = self.previous().unwrap();
             let right = self.logic_and()?;
             f = Ast::Binary {
