@@ -15,8 +15,8 @@ impl fmt::Display for ParseError {
 pub type ParseResult<T> = std::result::Result<T, ParseError>;
 
 #[derive(Debug, Clone)]
-struct RuntimeError;
-type RuntimeResult<T> = std::result::Result<T, RuntimeError>;
+pub struct RuntimeError;
+pub type RuntimeResult<T> = std::result::Result<T, RuntimeError>;
 
 #[derive(Clone, Debug, PartialEq)]
 // TODO(nikhil): convert record to use two vectors instead of hashmap
@@ -29,7 +29,7 @@ pub enum Type {
     Record(HashMap<String, Box<Type>>),
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum Value {
     Number(f64),
     String(String),
@@ -131,6 +131,18 @@ impl Value {
         match (self, other) {
             (Value::Number(l), Value::Number(r)) => Ok(Value::Bool(l >= r)),
             _ => anyhow::bail!(">= operator only defined on numbers"),
+        }
+    }
+    pub fn or(&self, other: &Value) -> anyhow::Result<Value> {
+        match (self, other) {
+            (Value::Bool(l), Value::Bool(r)) => Ok(Value::Bool(*l || *r)),
+            _ => anyhow::bail!("or operator only defined on bools"),
+        }
+    }
+    pub fn and(&self, other: &Value) -> anyhow::Result<Value> {
+        match (self, other) {
+            (Value::Bool(l), Value::Bool(r)) => Ok(Value::Bool(*l && *r)),
+            _ => anyhow::bail!("or operator only defined on bools"),
         }
     }
 }

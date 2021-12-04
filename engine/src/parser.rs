@@ -23,13 +23,8 @@ use std::collections::HashMap;
 /// record := "{" parameters "}"
 /// parameters := (identifier "=" expression ",")* (identifier "=" expression)?
 ///
-/// To add:
-/// * Booleans
-/// * Symbols
-/// Plan:
-///     add bool, string, number in expr enum
 /// TODOs:
-///     replace anyhow::Result with our own ParseError error class?
+///     Support property lookups e.g. "@.x"
 ///
 
 pub struct Parser<'a> {

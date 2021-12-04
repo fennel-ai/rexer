@@ -2,8 +2,9 @@
 mod ast;
 mod compiler;
 mod environment;
-mod interpreter;
+// mod interpreter;
 mod lexer;
+// mod ops;
 mod parser;
 mod types;
 mod vm;

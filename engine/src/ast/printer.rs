@@ -6,12 +6,12 @@ struct Printer {}
 
 impl fmt::Display for Ast<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", self.accept(&Printer {}))
+        write!(f, "{}", self.accept(&mut Printer {}))
     }
 }
 
-impl Visitor<String> for Printer {
-    fn visit_binary(&self, left: &Ast, op: &Token, right: &Ast) -> String {
+impl Visitor<'_, String> for Printer {
+    fn visit_binary(&mut self, left: &Ast, op: &Token, right: &Ast) -> String {
         return format!(
             "({} {} {})",
             op.lexeme,
@@ -19,22 +19,22 @@ impl Visitor<String> for Printer {
             right.accept(self)
         );
     }
-    fn visit_grouping(&self, inner: &Ast) -> String {
+    fn visit_grouping(&mut self, inner: &Ast) -> String {
         return format!("(group {})", inner.accept(self));
     }
-    fn visit_unary(&self, op: &Token, right: &Ast) -> String {
+    fn visit_unary(&mut self, op: &Token, right: &Ast) -> String {
         return format!("({} {})", op.lexeme, right.accept(self));
     }
 
-    fn visit_atom(&self, token: &Token) -> String {
+    fn visit_atom(&mut self, token: &Token) -> String {
         token.lexeme.to_string()
     }
 
-    fn visit_list(&self, list: &[Ast]) -> String {
+    fn visit_list(&mut self, list: &[Ast]) -> String {
         return format!("[{}]", list.iter().map(|e| e.accept(self)).join(", "));
     }
 
-    fn visit_record(&self, names: &[Token], values: &[Ast]) -> String {
+    fn visit_record(&mut self, names: &[Token], values: &[Ast]) -> String {
         format!(
             "{{{}}}",
             names
@@ -46,7 +46,7 @@ impl Visitor<String> for Printer {
         )
     }
 
-    fn visit_opexp(&self, root: &Ast, opcalls: &[OpCall]) -> String {
+    fn visit_opexp(&mut self, root: &Ast, opcalls: &[OpCall]) -> String {
         if opcalls.len() == 0 {
             root.accept(self)
         } else {
@@ -68,7 +68,7 @@ impl Visitor<String> for Printer {
             format!("{} | {}", root.accept(self), opcallstr)
         }
     }
-    fn visit_statement(&self, variable: &Option<Token>, body: &Ast) -> String {
+    fn visit_statement(&mut self, variable: Option<&Token>, body: &Ast) -> String {
         let assignment = if let Some(s) = variable {
             format!("{} = ", s.lexeme)
         } else {
@@ -76,7 +76,7 @@ impl Visitor<String> for Printer {
         };
         format!("{}{}", assignment, body.accept(self))
     }
-    fn visit_query(&self, query: &[Ast]) -> String {
+    fn visit_query(&mut self, query: &[Ast]) -> String {
         query.iter().map(|s| s.accept(self)).join(";\n")
     }
 }
@@ -99,8 +99,8 @@ mod tests {
         let expr = parser.parse().unwrap();
         time = start.elapsed();
         println!("Time to parse: {:?}", time);
-        let printer = Printer {};
-        let actual = expr.accept(&printer);
+        let mut printer = Printer {};
+        let actual = expr.accept(&mut printer);
         assert_eq!(actual, expected);
     }
 
@@ -165,6 +165,12 @@ mod tests {
     fn parse_comments() {
         let exprstr = "// this is commment;\nx = 5; $x";
         let expected = "x = 5;\n$x".to_string();
+        _compare_printed(exprstr, expected)
+    }
+    #[test]
+    fn parse_local_closure() {
+        let exprstr = "[0, 1, 2] | a.b(where=@)";
+        let expected = exprstr.to_string();
         _compare_printed(exprstr, expected)
     }
     #[test]

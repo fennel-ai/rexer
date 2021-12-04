@@ -200,6 +200,7 @@ impl<'a> Lexer<'a> {
                     }
                     _ => Err(self.error("identifier name not starting with _ or alphabet")),
                 },
+                '@' => Ok(Some(self.new_token(TokenType::Variable))),
                 ' ' => Ok(None),
                 '\t' => Ok(None),
                 '\r' => Ok(None),
@@ -228,7 +229,13 @@ impl<'a> Token<'a> {
     pub fn literal(&self) -> &str {
         match self.token_type {
             TokenType::String => &self.lexeme[1..self.lexeme.len() - 1],
-            TokenType::Variable => &self.lexeme[1..],
+            TokenType::Variable => {
+                if self.lexeme.starts_with("@") {
+                    "@"
+                } else {
+                    &self.lexeme[1..]
+                }
+            }
             _ => self.lexeme,
         }
     }
