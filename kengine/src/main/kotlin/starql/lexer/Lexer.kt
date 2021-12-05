@@ -7,7 +7,7 @@ class Token(
     private val start: Int,
     private val end: Int,
     val type: TokenType,
-    val line: Int
+    private val line: Int
 ) {
     override fun toString(): String {
         return query.substring(start, end)
@@ -27,8 +27,12 @@ class Lexer(private val query: String) {
 
     private fun generate(type: TokenType): Token {
         val token = Token(start = start, end = current, type = type, line = line, query = query)
-        start = current
+        update()
         return token
+    }
+
+    private fun update() {
+        start = current
     }
 
     private fun done() = current >= query.length
@@ -56,10 +60,14 @@ class Lexer(private val query: String) {
         }
     }
 
+    private fun linebreak() = line++
+
     private fun string() {
         while (!done()) {
-            if (advance()!! == '"') {
-                return
+            when (advance()!!) {
+                '"' -> return
+                '\n' -> linebreak()
+                else -> continue
             }
         }
         throw LexException("missing closing \" for string")
@@ -165,9 +173,13 @@ class Lexer(private val query: String) {
                 variable()
                 generate(TokenType.Variable)
             }
-            ' ', '\t', '\r' -> next()
+            ' ', '\t', '\r' -> {
+                update()
+                next()
+            }
             '\n' -> {
-                line += 1
+                linebreak()
+                update()
                 next()
             }
             in 'a'..'z', in 'A'..'Z', '_' -> {
