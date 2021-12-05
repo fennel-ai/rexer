@@ -53,4 +53,12 @@ class Interpreter : Visitor<Value> {
     override fun visitList(elements: ArrayList<Ast>): Value {
         return List(ArrayList(elements.map { it.accept(this) }))
     }
+
+    override fun visitDict(elements: HashMap<Token, Ast>): Value {
+        val m = HashMap<String, Value>()
+        for ((t, ast) in elements) {
+            m[t.literal()] = ast.accept(this)
+        }
+        return Dict(m)
+    }
 }

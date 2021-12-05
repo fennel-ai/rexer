@@ -84,6 +84,7 @@ sealed class Value : Comparable<Value> {
             this is Str && other is Str -> this.s == other.s
             this is Bool && other is Bool -> this.b == other.b
             this is List && other is List -> this.l == other.l
+            this is Dict && other is Dict -> this.m == other.m
             else -> throw EvalException("comparison only supported for same type values")
         }
     }
@@ -94,7 +95,12 @@ sealed class Value : Comparable<Value> {
             is Str -> "Str(${this.s})"
             is Bool -> "Bool(${this.b})"
             is List -> "List(${this.l})"
+            is Dict -> "Dict(${this.m})"
         }
+    }
+
+    override fun hashCode(): Int {
+        return javaClass.hashCode()
     }
 }
 
@@ -102,3 +108,4 @@ class Num(val n: Double) : Value()
 class Str(val s: String) : Value()
 class Bool(val b: Boolean) : Value()
 class List(val l: ArrayList<Value>) : Value()
+class Dict(val m: HashMap<String, Value>) : Value()

@@ -7,6 +7,11 @@ fun main(args: Array<String>) {
     val queries = listOf(
         "1.5 + 3 / 2 - 2",
         "[1, \"hi\", true, false, 4.0]",
+        "[1, \"hi\", true, false, 4.0, ]",
+        "[]",
+        "{}",
+        "{hi=5, bye=\"bye\"}",
+        "{hi=5, bye=\"bye\",}",
 //        bigquery(),
     )
     for (query in queries) {

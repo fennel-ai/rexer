@@ -18,8 +18,9 @@ comparison     → term ( ( ">" | ">=" | "<" | "<=" ) term )* ;
 term           → factor ( ( "-" | "+" ) factor )* ;
 factor         → unary ( ( "/" | "*" ) unary )* ;
 unary          → ( "!" | "-" ) primary | primary ;
-primary        → "true" | "false" | Number | String | list;
+primary        → "true" | "false" | Number | String | list | dict;
 list           → "[" expression ("," expression)* ","? "]"
+dict           → "{" identifier "=" expression ("," identifier "=" expression)* ","? "]"
 
  */
 
@@ -78,13 +79,15 @@ class Parser(private val query: String) {
         return when (previous!!.type) {
             TokenType.Number, TokenType.Bool, TokenType.String -> Atom(previous!!)
             TokenType.ListBegin -> list(true)
+            TokenType.RecordBegin -> dict(true)
             else -> throw ParseException("expected number/bool/string but got $current")
         }
     }
 
-    private fun expect(vararg types: TokenType) {
-        if (current.type in types) {
+    private fun expect(vararg types: TokenType): Token {
+        return if (current.type in types) {
             advance()
+            previous!!
         } else {
             throw ParseException("unexpected token: '$current'. Expected one of $types")
         }
@@ -95,15 +98,41 @@ class Parser(private val query: String) {
             expect(TokenType.ListBegin)
         }
         val elements = arrayListOf<Ast>()
-        elements.add(expression())
-        while (matches(TokenType.Comma)) {
+        while (current.type != TokenType.ListEnd) {
+            elements.add(expression())
             when (current.type) {
                 TokenType.ListEnd -> break
-                else -> elements.add(expression())
+                TokenType.Comma -> advance()
+                else -> throw ParseException("unexpected token : '$current'. expected ',' or ']'")
             }
         }
         expect(TokenType.ListEnd)
         return List(elements)
+    }
+
+    private fun dict(prefixDone: Boolean): Ast {
+        if (!prefixDone) {
+            expect(TokenType.RecordBegin)
+        }
+        val elements = HashMap<Token, Ast>()
+        while (current.type != TokenType.RecordEnd) {
+            val (identifier, exp) = parameter()
+            elements[identifier] = exp
+            when (current.type) {
+                TokenType.RecordEnd -> break
+                TokenType.Comma -> advance()
+                else -> throw ParseException("unexpected token : '$current'. expected ',' or '}'")
+            }
+        }
+        expect(TokenType.RecordEnd)
+        return Dict(elements)
+    }
+
+    private fun parameter(): Pair<Token, Ast> {
+        val p = expect(TokenType.Identifier)
+        expect(TokenType.Equal)
+        val e = expression()
+        return Pair<Token, Ast>(p, e)
     }
 
     private fun or(): Ast {

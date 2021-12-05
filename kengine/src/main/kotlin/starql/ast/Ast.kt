@@ -10,10 +10,10 @@ interface Visitor<T> {
     fun visitUnary(op: Token, right: Ast): T
     fun visitAtom(t: Token): T
     fun visitList(elements: ArrayList<Ast>): T
+    fun visitDict(elements: HashMap<Token, Ast>): T
     //    fun visitOpexp(&self, root: &Ast, opcalls: &[OpCall]) : T;
     //    fun visitStatement(&self, variable: &Option<Token>, body: &Ast): T;
     //    fun visitQuery(&self, statements: &[Ast]) : T;
-    //    fun visitRecord(&self, names: &[Token], values: &[Ast]) : T;
 }
 
 sealed class Ast {
@@ -23,7 +23,9 @@ sealed class Ast {
             is Atom -> v.visitAtom(token)
             is Grouping -> v.visitGrouping(inner)
             is Unary -> v.visitUnary(op, right)
+
             is List -> v.visitList(elements)
+            is Dict -> v.visitDict(elements)
         }
     }
 
@@ -43,18 +45,20 @@ class Atom(val token: Token) : Ast()
 class Grouping(val inner: Ast) : Ast()
 class Unary(val op: Token, val right: Ast) : Ast()
 class List(val elements: ArrayList<Ast>) : Ast()
+class Dict(val elements: HashMap<Token, Ast>) : Ast()
 
 class Printer : Visitor<String> {
     override fun visitBinary(left: Ast, op: Token, right: Ast): String {
-        return "(${left.accept(this)} $op ${right.accept(this)})"
+//        return "(${left.accept(this)} $op ${right.accept(this)})"
+        return "($left $op $right)"
     }
 
     override fun visitGrouping(inner: Ast): String {
-        return "(${inner.accept(this)})"
+        return "($inner)"
     }
 
     override fun visitUnary(op: Token, right: Ast): String {
-        return "($op ${right.accept(this)})"
+        return "($op $right)"
     }
 
     override fun visitAtom(t: Token): String {
@@ -62,6 +66,12 @@ class Printer : Visitor<String> {
     }
 
     override fun visitList(elements: ArrayList<Ast>): String {
-        return elements.joinToString(", ", prefix = "[", postfix = "]") { it.accept(this) }
+//        return elements.joinToString(", ", prefix = "[", postfix = "]") { it.accept(this) }
+        return "$elements"
+    }
+
+    override fun visitDict(elements: HashMap<Token, Ast>): String {
+        return "$elements"
+//        return elements.joinToString(", ", prefix = "{", postfix = "}")
     }
 }
