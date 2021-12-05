@@ -23,7 +23,7 @@ fun main(args: Array<String>) {
     }
     var result: Value? = null
     val elapsed = measureTimeMillis {
-        val q = "1.5 == 3 / 2 >= 2"
+        val q = "1.5 + 3 / 2 - 2"
         for (i in 0..0) {
             val parser = Parser(q)
             val ast = parser.parse()

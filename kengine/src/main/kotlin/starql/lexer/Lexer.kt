@@ -2,9 +2,21 @@ package starql.lexer
 
 import starql.LexException
 
-class Token(val query: String, val start: Int, val end: Int, val type: TokenType, val line: Int) {
+class Token(
+    private val query: String,
+    private val start: Int,
+    private val end: Int,
+    val type: TokenType,
+    val line: Int
+) {
     override fun toString(): String {
         return query.substring(start, end)
+    }
+
+    fun literal() = when (type) {
+        TokenType.String -> query.substring(start + 1, end - 1)
+        TokenType.Variable -> query.substring(start + 1, end)
+        else -> query.substring(start, end)
     }
 }
 
@@ -19,13 +31,9 @@ class Lexer(private val query: String) {
         return token
     }
 
-    private fun done(): Boolean {
-        return current >= query.length
-    }
+    private fun done() = current >= query.length
 
-    private fun peek(): Char? {
-        return if (!done()) query[current] else null
-    }
+    private fun peek() = if (!done()) query[current] else null
 
     private fun advance(): Char? {
         return if (done()) {
@@ -157,16 +165,16 @@ class Lexer(private val query: String) {
                 variable()
                 generate(TokenType.Variable)
             }
-            in listOf(' ', '\t', '\r') -> next()
+            ' ', '\t', '\r' -> next()
             '\n' -> {
                 line += 1
                 next()
             }
-            in ('a'..'z').union('A'..'Z').union(listOf('_')) -> {
+            in 'a'..'z', in 'A'..'Z', '_' -> {
                 identifier()
                 // TODO: Can we avoid copies here?
                 when (query.substring(start, current)) {
-                    in listOf("true", "false") -> generate(TokenType.Bool)
+                    "true", "false" -> generate(TokenType.Bool)
                     "or" -> generate(TokenType.Or)
                     "and" -> generate(TokenType.And)
                     else -> generate(TokenType.Identifier)
