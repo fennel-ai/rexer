@@ -1,37 +1,27 @@
 import starql.lexer.Lexer
-import starql.lexer.TokenType
 import starql.parser.Parser
 import starql.types.Value
 import kotlin.system.measureTimeMillis
 
 fun main(args: Array<String>) {
     val queries = listOf(
-        "x = 05.13;  z = \"foo\"; y = [3, x, 4] | incr(by=x,do=5>=7)",
-        bigquery()
+        "1.5 + 3 / 2 - 2",
+        "[1, \"hi\", true, false, 4.0]",
+//        bigquery(),
     )
     for (query in queries) {
+        println("Starting to process: $query")
         val lexer = Lexer(query)
+        val rep: String
+        val result: Value
         val elapsed = measureTimeMillis {
-            while (true) {
-                val token = lexer.next()
-                if (token.type == TokenType.Eof) {
-                    break
-                }
-            }
-        }
-        println("Lexed query in $elapsed ms")
-    }
-    var result: Value? = null
-    val elapsed = measureTimeMillis {
-        val q = "1.5 + 3 / 2 - 2"
-        for (i in 0..0) {
-            val parser = Parser(q)
+            val parser = Parser(query)
             val ast = parser.parse()
-            println(ast)
+            rep = ast.toString()
             result = ast.eval()
         }
+        println("[Elapsed: $elapsed ms] Query: $query, rep: $rep, result: $result")
     }
-    println("Eval query in $elapsed ms: $result")
 }
 
 fun bigquery(): String {

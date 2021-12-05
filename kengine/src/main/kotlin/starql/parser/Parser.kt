@@ -1,10 +1,8 @@
 package starql.parser
 
 import starql.ParseException
-import starql.ast.Ast
-import starql.ast.Atom
-import starql.ast.Binary
-import starql.ast.Unary
+import starql.ast.*
+import starql.ast.List
 import starql.lexer.Lexer
 import starql.lexer.Token
 import starql.lexer.TokenType
@@ -20,7 +18,8 @@ comparison     → term ( ( ">" | ">=" | "<" | "<=" ) term )* ;
 term           → factor ( ( "-" | "+" ) factor )* ;
 factor         → unary ( ( "/" | "*" ) unary )* ;
 unary          → ( "!" | "-" ) primary | primary ;
-primary        → "true" | "false" | Number | String;
+primary        → "true" | "false" | Number | String | list;
+list           → "[" expression ("," expression)* ","? "]"
 
  */
 
@@ -75,11 +74,36 @@ class Parser(private val query: String) {
     }
 
     private fun primary(): Ast {
-        if (matches(TokenType.Number, TokenType.Bool, TokenType.String)) {
-            return Atom(previous!!)
-        } else {
-            throw ParseException("expected number/bool/string")
+        advance()
+        return when (previous!!.type) {
+            TokenType.Number, TokenType.Bool, TokenType.String -> Atom(previous!!)
+            TokenType.ListBegin -> list(true)
+            else -> throw ParseException("expected number/bool/string but got $current")
         }
+    }
+
+    private fun expect(vararg types: TokenType) {
+        if (current.type in types) {
+            advance()
+        } else {
+            throw ParseException("unexpected token: '$current'. Expected one of $types")
+        }
+    }
+
+    private fun list(prefixDone: Boolean): Ast {
+        if (!prefixDone) {
+            expect(TokenType.ListBegin)
+        }
+        val elements = arrayListOf<Ast>()
+        elements.add(expression())
+        while (matches(TokenType.Comma)) {
+            when (current.type) {
+                TokenType.ListEnd -> break
+                else -> elements.add(expression())
+            }
+        }
+        expect(TokenType.ListEnd)
+        return List(elements)
     }
 
     private fun or(): Ast {

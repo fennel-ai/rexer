@@ -7,7 +7,8 @@ sealed class Value : Comparable<Value> {
         return when {
             this is Num && other is Num -> Num(this.n + other.n)
             this is Str && other is Str -> Str(this.s + other.s)
-            else -> throw EvalException("plus operator only supported for numbers and strings")
+            this is List && other is List -> List(ArrayList(this.l + other.l))
+            else -> throw EvalException("plus operator only supported for numbers, strings, and lists")
         }
     }
 
@@ -82,7 +83,17 @@ sealed class Value : Comparable<Value> {
             this is Num && other is Num -> this.n.equals(other.n)
             this is Str && other is Str -> this.s == other.s
             this is Bool && other is Bool -> this.b == other.b
+            this is List && other is List -> this.l == other.l
             else -> throw EvalException("comparison only supported for same type values")
+        }
+    }
+
+    override fun toString(): String {
+        return when (this) {
+            is Num -> "Num(${this.n})"
+            is Str -> "Str(${this.s})"
+            is Bool -> "Bool(${this.b})"
+            is List -> "List(${this.l})"
         }
     }
 }
@@ -90,3 +101,4 @@ sealed class Value : Comparable<Value> {
 class Num(val n: Double) : Value()
 class Str(val s: String) : Value()
 class Bool(val b: Boolean) : Value()
+class List(val l: ArrayList<Value>) : Value()

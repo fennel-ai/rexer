@@ -5,10 +5,8 @@ import starql.ast.Ast
 import starql.ast.Visitor
 import starql.lexer.Token
 import starql.lexer.TokenType
-import starql.types.Bool
-import starql.types.Num
-import starql.types.Str
-import starql.types.Value
+import starql.types.*
+import starql.types.List
 import java.lang.Double.parseDouble
 
 class Interpreter : Visitor<Value> {
@@ -52,4 +50,7 @@ class Interpreter : Visitor<Value> {
         }
     }
 
+    override fun visitList(elements: ArrayList<Ast>): Value {
+        return List(ArrayList(elements.map { it.accept(this) }))
+    }
 }

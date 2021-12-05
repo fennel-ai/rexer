@@ -9,10 +9,10 @@ interface Visitor<T> {
     fun visitGrouping(inner: Ast): T
     fun visitUnary(op: Token, right: Ast): T
     fun visitAtom(t: Token): T
+    fun visitList(elements: ArrayList<Ast>): T
     //    fun visitOpexp(&self, root: &Ast, opcalls: &[OpCall]) : T;
     //    fun visitStatement(&self, variable: &Option<Token>, body: &Ast): T;
     //    fun visitQuery(&self, statements: &[Ast]) : T;
-    //    fun visitList(list: Arr) : T;
     //    fun visitRecord(&self, names: &[Token], values: &[Ast]) : T;
 }
 
@@ -23,6 +23,7 @@ sealed class Ast {
             is Atom -> v.visitAtom(token)
             is Grouping -> v.visitGrouping(inner)
             is Unary -> v.visitUnary(op, right)
+            is List -> v.visitList(elements)
         }
     }
 
@@ -41,6 +42,7 @@ class Binary(val left: Ast, val op: Token, val right: Ast) : Ast()
 class Atom(val token: Token) : Ast()
 class Grouping(val inner: Ast) : Ast()
 class Unary(val op: Token, val right: Ast) : Ast()
+class List(val elements: ArrayList<Ast>) : Ast()
 
 class Printer : Visitor<String> {
     override fun visitBinary(left: Ast, op: Token, right: Ast): String {
@@ -57,5 +59,9 @@ class Printer : Visitor<String> {
 
     override fun visitAtom(t: Token): String {
         return "$t"
+    }
+
+    override fun visitList(elements: ArrayList<Ast>): String {
+        return elements.joinToString(", ", prefix = "[", postfix = "]") { it.accept(this) }
     }
 }
