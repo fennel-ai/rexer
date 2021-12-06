@@ -84,6 +84,7 @@ class Printer : Visitor<String> {
     }
 
     override fun visitVar(name: Token, lookups: ArrayList<Ast>): String {
+        println("visiting var $name, $lookups")
         return lookups.joinToString("", prefix = "$$name") {
             when (it) {
                 is Atom -> {

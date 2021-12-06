@@ -20,11 +20,18 @@ comparison     → term ( ( ">" | ">=" | "<" | "<=" ) term )*
 term           → factor ( ( "-" | "+" ) factor )*
 factor         → unary ( ( "/" | "*" ) unary )*
 unary          → ( "!" | "-" ) primary | primary
-primary        → "true" | "false" | Number | String | list | dict | "(" expression ")" | variable
+primary        → "true" | "false" | Number | String | list | dict | "(" expression ")" | variable | table
 list           → "[" expression ("," expression)* ","? "]"
 dict           → "{" identifier "=" expression ("," identifier "=" expression)* ","? "]"
 variable       → "$" identifier lookup*
 lookup         → ("." identifier) |  "[" expression "]"
+
+TODOs:
+    0. Tests
+    1. Add table
+    2. Add eager ops
+    3. Add @
+    4. Fix errors
 
  */
 

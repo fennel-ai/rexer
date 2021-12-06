@@ -9,9 +9,7 @@ class Token(
     val type: TokenType,
     private val line: Int
 ) {
-    override fun toString(): String {
-        return query.substring(start, end)
-    }
+    override fun toString() = query.substring(start, end)
 
     fun literal() = when (type) {
         TokenType.String -> query.substring(start + 1, end - 1)
@@ -228,5 +226,7 @@ enum class TokenType {
     String,
     Number,
     Bool,
-    Eof,
+    Eof;
+
+    override fun toString() = name
 }

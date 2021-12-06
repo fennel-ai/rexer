@@ -2,6 +2,7 @@ package starql.interpreter
 
 import starql.EvalException
 import starql.ast.Ast
+import starql.ast.Atom
 import starql.ast.Visitor
 import starql.lexer.Token
 import starql.lexer.TokenType
@@ -29,6 +30,8 @@ class Interpreter : Visitor<Value> {
             TokenType.LesserEqual -> Bool(l <= r)
             TokenType.EqualEqual -> Bool(l == r)
             TokenType.BangEqual -> Bool(l != r)
+            TokenType.Or -> l.or(r)
+            TokenType.And -> l.and(r)
             else -> throw EvalException("unsupported binary operation '$op'")
         }
     }
@@ -56,7 +59,7 @@ class Interpreter : Visitor<Value> {
                 }
             }
             TokenType.Bool -> Bool(t.toString() == "true")
-            TokenType.String -> Str(t.toString())
+            TokenType.String -> Str(t.literal())
             else -> throw EvalException("$t is not a valid atom")
         }
     }
@@ -77,7 +80,15 @@ class Interpreter : Visitor<Value> {
         var base: Value? = env.get(name) ?: throw EvalException("cannot access undefined variable: '$name'")
         for (ast in lookups) {
             val prev = base
-            val idx = ast.accept(this)
+
+            // calculate what this ast evals to
+            // note: if ast is an identifier, it doesn't know how to eval so we handle it directly
+            val idx: Value
+            if (ast is Atom && ast.token.type == TokenType.Identifier) {
+                idx = Str(ast.token.literal())
+            } else {
+                idx = ast.accept(this)
+            }
             base = when {
                 base is List && idx is Int64 -> base.l.getOrNull(idx.n)
                 base is Dict && idx is Str -> base.m[idx.s]
