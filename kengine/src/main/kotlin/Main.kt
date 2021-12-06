@@ -5,13 +5,19 @@ import kotlin.system.measureTimeMillis
 
 fun main(args: Array<String>) {
     val queries = listOf(
-        "1.5 + 3 / 2 - 2",
-        "[1, \"hi\", true, false, 4.0]",
-        "[1, \"hi\", true, false, 4.0, ]",
-        "[]",
-        "{}",
-        "{hi=5, bye=\"bye\"}",
-        "{hi=5, bye=\"bye\",}",
+        "1.5 + 3 / 2 - 2;",
+        "[1, \"hi\", true, false, 4.0];",
+        "[1, \"hi\", true, false, 4.0, ];",
+        "[];",
+        "{};",
+        "{hi=5, bye=\"bye\"};",
+        "{hi=5, bye=\"bye\",};",
+        "(1);",
+        "({x=[1, 2,], y=4,});",
+//        "\$x",
+//        "\$x.y",
+//        "\$x.y[3+5].z",
+        "x = 2; \$x + 3;"
 //        bigquery(),
     )
     for (query in queries) {

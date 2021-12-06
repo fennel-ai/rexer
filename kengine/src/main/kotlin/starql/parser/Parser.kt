@@ -8,35 +8,39 @@ import starql.lexer.Token
 import starql.lexer.TokenType
 
 /*
+query          → statement +
+statement      → (identifier "=")? expression ";"
 expression     → logic_or;  // just an alias
 
-logic_or       → logic_and ( "or" logic_and )* ;
-logic_and      → equality ( "and" equality )* ;
-equality       → comparison ( ( "!=" | "==" ) comparison )* ;
-comparison     → term ( ( ">" | ">=" | "<" | "<=" ) term )* ;
+logic_or       → logic_and ( "or" logic_and )*
+logic_and      → equality ( "and" equality )*
+equality       → comparison ( ( "!=" | "==" ) comparison )*
+comparison     → term ( ( ">" | ">=" | "<" | "<=" ) term )*
 
-term           → factor ( ( "-" | "+" ) factor )* ;
-factor         → unary ( ( "/" | "*" ) unary )* ;
-unary          → ( "!" | "-" ) primary | primary ;
-primary        → "true" | "false" | Number | String | list | dict;
+term           → factor ( ( "-" | "+" ) factor )*
+factor         → unary ( ( "/" | "*" ) unary )*
+unary          → ( "!" | "-" ) primary | primary
+primary        → "true" | "false" | Number | String | list | dict | "(" expression ")" | variable
 list           → "[" expression ("," expression)* ","? "]"
 dict           → "{" identifier "=" expression ("," identifier "=" expression)* ","? "]"
+variable       → "$" identifier lookup*
+lookup         → ("." identifier) |  "[" expression "]"
 
  */
 
 class Parser(private val query: String) {
     private val lexer = Lexer(query)
-    private var previous: Token? = null
-    private var current: Token = lexer.next()
+    private var current: Token? = null
+    private var next: Token = lexer.next()
 
     private fun advance(): Token {
-        previous = current
-        current = lexer.next()
-        return current
+        current = next
+        next = lexer.next()
+        return next
     }
 
     private fun matches(vararg types: TokenType): Boolean {
-        return if (current.type in types) {
+        return if (next.type in types) {
             advance()
             true
         } else {
@@ -47,7 +51,7 @@ class Parser(private val query: String) {
     private fun term(): Ast {
         var l = factor()
         while (matches(TokenType.Plus, TokenType.Minus)) {
-            val op = previous!!
+            val op = current!!
             val r = factor()
             l = Binary(l, op, r)
         }
@@ -56,7 +60,7 @@ class Parser(private val query: String) {
 
     private fun unary(): Ast {
         return if (matches(TokenType.Bang, TokenType.Minus)) {
-            val op = previous!!
+            val op = current!!
             val v = primary()
             Unary(op, v)
         } else {
@@ -67,7 +71,7 @@ class Parser(private val query: String) {
     private fun factor(): Ast {
         var l = unary()
         while (matches(TokenType.Star, TokenType.Slash)) {
-            val op = previous!!
+            val op = current!!
             val r = unary()
             l = Binary(l, op, r)
         }
@@ -76,20 +80,22 @@ class Parser(private val query: String) {
 
     private fun primary(): Ast {
         advance()
-        return when (previous!!.type) {
-            TokenType.Number, TokenType.Bool, TokenType.String -> Atom(previous!!)
+        return when (current!!.type) {
+            TokenType.Number, TokenType.Bool, TokenType.String -> Atom(current!!)
             TokenType.ListBegin -> list(true)
             TokenType.RecordBegin -> dict(true)
-            else -> throw ParseException("expected number/bool/string but got $current")
+            TokenType.LeftParen -> grouping(true)
+            TokenType.Dollar -> variable(true)
+            else -> throw ParseException("expected number/bool/string but got $next")
         }
     }
 
     private fun expect(vararg types: TokenType): Token {
-        return if (current.type in types) {
+        return if (next.type in types) {
             advance()
-            previous!!
+            current!!
         } else {
-            throw ParseException("unexpected token: '$current'. Expected one of $types")
+            throw ParseException("unexpected token: '$next'. Expected one of $types")
         }
     }
 
@@ -98,12 +104,12 @@ class Parser(private val query: String) {
             expect(TokenType.ListBegin)
         }
         val elements = arrayListOf<Ast>()
-        while (current.type != TokenType.ListEnd) {
+        while (next.type != TokenType.ListEnd) {
             elements.add(expression())
-            when (current.type) {
+            when (next.type) {
                 TokenType.ListEnd -> break
                 TokenType.Comma -> advance()
-                else -> throw ParseException("unexpected token : '$current'. expected ',' or ']'")
+                else -> throw ParseException("unexpected token : '$next'. expected ',' or ']'")
             }
         }
         expect(TokenType.ListEnd)
@@ -115,13 +121,13 @@ class Parser(private val query: String) {
             expect(TokenType.RecordBegin)
         }
         val elements = HashMap<Token, Ast>()
-        while (current.type != TokenType.RecordEnd) {
+        while (next.type != TokenType.RecordEnd) {
             val (identifier, exp) = parameter()
             elements[identifier] = exp
-            when (current.type) {
+            when (next.type) {
                 TokenType.RecordEnd -> break
                 TokenType.Comma -> advance()
-                else -> throw ParseException("unexpected token : '$current'. expected ',' or '}'")
+                else -> throw ParseException("unexpected token : '$next'. expected ',' or '}'")
             }
         }
         expect(TokenType.RecordEnd)
@@ -138,7 +144,7 @@ class Parser(private val query: String) {
     private fun or(): Ast {
         var l = and()
         while (matches(TokenType.Or)) {
-            val op = previous!!
+            val op = current!!
             val r = and()
             l = Binary(l, op, r)
         }
@@ -148,7 +154,7 @@ class Parser(private val query: String) {
     private fun and(): Ast {
         var l = equality()
         while (matches(TokenType.And)) {
-            val op = previous!!
+            val op = current!!
             val r = equality()
             l = Binary(l, op, r)
         }
@@ -158,17 +164,26 @@ class Parser(private val query: String) {
     private fun comparison(): Ast {
         var l = term()
         while (matches(TokenType.Greater, TokenType.GreaterEqual, TokenType.Lesser, TokenType.LesserEqual)) {
-            val op = previous!!
+            val op = current!!
             val r = term()
             l = Binary(l, op, r)
         }
         return l
     }
 
+    private fun grouping(prefixDone: Boolean): Ast {
+        if (!prefixDone) {
+            expect(TokenType.LeftParen)
+        }
+        val ret = expression()
+        expect(TokenType.RightParen)
+        return Grouping(ret)
+    }
+
     private fun equality(): Ast {
         var l = comparison()
         while (matches(TokenType.BangEqual, TokenType.EqualEqual)) {
-            val op = previous!!
+            val op = current!!
             val r = comparison()
             l = Binary(l, op, r)
         }
@@ -179,12 +194,56 @@ class Parser(private val query: String) {
         return or()
     }
 
+    private fun variable(prefixDone: Boolean): Ast {
+        if (!prefixDone) {
+            expect(TokenType.Dollar)
+        }
+        val v = expect(TokenType.Identifier)
+        val lookups = ArrayList<Ast>()
+        while (true) {
+            when (next.type) {
+                TokenType.Dot -> {
+                    advance()
+                    val id = expect(TokenType.Identifier)
+                    lookups.add(Atom(id))
+                }
+                TokenType.ListBegin -> {
+                    advance()
+                    val e = expression()
+                    expect(TokenType.ListEnd)
+                    lookups.add(e)
+                }
+                else -> break
+            }
+        }
+        return Var(v, lookups)
+    }
+
+    private fun statement(): Ast {
+        var name: Token? = null
+        if (next.type == TokenType.Identifier) {
+            advance()
+            name = current
+            expect(TokenType.Equal)
+        }
+        val body = expression()
+        expect(TokenType.Semicolon)
+        return Statement(name, body)
+    }
+
+    private fun query(): Ast {
+        val statements = ArrayList<Ast>(listOf(statement()))
+        while (!matches(TokenType.Eof)) {
+            statements.add(statement())
+        }
+        return Query(statements)
+    }
+
     fun parse(): Ast {
-        val r = expression()
+        val r = query()
         if (!matches(TokenType.Eof)) {
-            throw ParseException("unmatched tokens starting at $current")
+            throw ParseException("unmatched tokens starting at $next")
         }
         return r
     }
-
 }

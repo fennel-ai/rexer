@@ -10,6 +10,9 @@ import starql.types.List
 import java.lang.Double.parseDouble
 
 class Interpreter : Visitor<Value> {
+    private val env = Environment(null)
+
+
     override fun visitBinary(left: Ast, op: Token, right: Ast): Value {
         val l = left.accept(this)
         val r = right.accept(this)
@@ -60,5 +63,37 @@ class Interpreter : Visitor<Value> {
             m[t.literal()] = ast.accept(this)
         }
         return Dict(m)
+    }
+
+    override fun visitVar(name: Token, lookups: ArrayList<Ast>): Value {
+        var base: Value? = env.get(name) ?: throw EvalException("cannot access undefined variable: '$name'")
+        for (ast in lookups) {
+            val prev = base
+            val idx = ast.accept(this)
+            base = when {
+                base is List && idx is Num -> base.l.getOrNull(idx.n.toInt())
+                base is Dict && idx is Str -> base.m[idx.s]
+                else -> throw EvalException("property lookup only supported on lists/dicts")
+            }
+            if (base == null) {
+                throw EvalException("accessing undefined property $idx on $prev")
+            }
+        }
+        return base!!
+    }
+
+    override fun visitStatement(name: Token?, body: Ast): Value {
+        val res = body.accept(this)
+        if (name != null) {
+            env.define(name, res)
+        }
+        return res
+    }
+
+    override fun visitQuery(statements: ArrayList<Ast>): Value {
+        if (statements.isEmpty()) {
+            throw EvalException("query should not be empty")
+        }
+        return statements.map { it.accept(this) }.last()
     }
 }
