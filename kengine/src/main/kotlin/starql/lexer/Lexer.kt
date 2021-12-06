@@ -15,7 +15,6 @@ class Token(
 
     fun literal() = when (type) {
         TokenType.String -> query.substring(start + 1, end - 1)
-        TokenType.Variable -> query.substring(start + 1, end)
         else -> query.substring(start, end)
     }
 }
@@ -52,7 +51,7 @@ class Lexer(private val query: String) {
     private fun identifier() {
         while (true) {
             val c = peek()
-            if ((c?.isLetterOrDigit() == true) || c!! == '_') {
+            if ((c?.isLetterOrDigit() == true) || c?.equals('_') == true) {
                 advance()!!
             } else {
                 break
@@ -76,15 +75,6 @@ class Lexer(private val query: String) {
     private fun digits() {
         while (peek()?.isDigit() == true) {
             advance()
-        }
-    }
-
-    private fun variable() {
-        val c = peek()
-        if (c?.equals('_') == true || c?.isLetterOrDigit() == true) {
-            identifier()
-        } else {
-            throw LexException("'$' not followed by valid identifier name")
         }
     }
 
@@ -169,10 +159,7 @@ class Lexer(private val query: String) {
                 number()
                 generate(TokenType.Number)
             }
-            '$' -> {
-                variable()
-                generate(TokenType.Variable)
-            }
+            '$' -> generate(TokenType.Dollar)
             ' ', '\t', '\r' -> {
                 update()
                 next()
@@ -212,6 +199,7 @@ enum class TokenType {
     Pipe,
     Semicolon,
     Equal,
+    Dollar,
 
     // Arithmetic operaotrs
     // TODO: Do we need modulo operator?
@@ -237,7 +225,6 @@ enum class TokenType {
 
     // All rest
     Identifier,
-    Variable,
     String,
     Number,
     Bool,
