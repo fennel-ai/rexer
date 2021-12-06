@@ -1,8 +1,8 @@
-use super::{Operator, ParamTypeList, ParamValueList, InPipe, Signature};
+use super::{Operator, ParamTypeList, Pipe, Signature};
 use crate::types::{Type, Value};
 pub struct FirstOperator {}
 
-impl<'a> Operator for FirstOperator {
+impl<'p, 'q> Operator<'p, 'q> for FirstOperator {
     fn signature(&self) -> Signature {
         Signature {
             namespace: "std".to_string(),
@@ -14,7 +14,7 @@ impl<'a> Operator for FirstOperator {
             pure: true,
         }
     }
-    fn run(&self, input: &InPipe, output: &InPipe) -> anyhow::Result<()> {
+    fn run(&self, input: &'q mut Pipe<'p, 'q>, output: &'q mut Pipe<'p, 'q>) -> anyhow::Result<()> {
         if let Some((v, _)) = input.pull_single()? {
             output.push(v);
             Ok(())
@@ -26,7 +26,7 @@ impl<'a> Operator for FirstOperator {
 
 pub struct FilterOperator {}
 
-impl Operator for FilterOperator {
+impl<'p, 'q> Operator<'p, 'q> for FilterOperator {
     fn signature(&self) -> Signature {
         Signature {
             namespace: "std".to_string(),
@@ -39,7 +39,7 @@ impl Operator for FilterOperator {
             pure: true,
         }
     }
-    fn run(&self, input: &InPipe, output: &InPipe) -> anyhow::Result<()> {
+    fn run(&self, input: &'q mut Pipe<'p, 'q>, output: &'q mut Pipe<'p, 'q>) -> anyhow::Result<()> {
         while let Some((v, params)) = input.pull_single()? {
             if let Some(Value::Bool(true)) = params.get("where") {
                 output.push(v);

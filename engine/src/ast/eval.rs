@@ -39,17 +39,28 @@ Representation of Value:
 
 pub struct Eval<'q> {
     environment: Environment<'q>,
+    cache: Vec<Value>,
 }
 
 impl<'q> Eval<'q> {
     pub fn new(environment: Option<Environment<'q>>) -> Self {
         if let Some(env) = environment {
-            Self { environment: env }
+            Self {
+                environment: env,
+                cache: vec![],
+            }
         } else {
             Self {
                 environment: Environment::new(None),
+                cache: vec![],
+
             }
         }
+    }
+    pub fn store(&mut self, value: Value) -> &Value {
+        let idx = self.cache.len();
+        self.cache.push(value);
+        &self.cache[idx]
     }
     // pub fn local(&mut self, local: &Value, ast: &Ast<'q>) -> anyhow::Result<Value> {
     //     self.environment.define("@", local);

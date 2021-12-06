@@ -225,7 +225,7 @@ pub struct Token<'a> {
     // TODO: add line and pos information.
 }
 
-impl<'a> Token<'a> {
+impl Token<'_> {
     pub fn literal(&self) -> &str {
         match self.token_type {
             TokenType::String => &self.lexeme[1..self.lexeme.len() - 1],

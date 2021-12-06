@@ -10,6 +10,15 @@ impl fmt::Display for Ast<'_> {
     }
 }
 
+fn x(s: &'static str, t: &str) {
+    println!("{}", s);
+}
+
+fn main() {
+    let y = "foo".to_string();
+    x(&y)
+}
+
 impl Visitor<'_, String> for Printer {
     fn visit_binary(&mut self, left: &Ast, op: &Token, right: &Ast) -> String {
         return format!(

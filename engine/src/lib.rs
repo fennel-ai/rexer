@@ -4,7 +4,7 @@ mod compiler;
 mod environment;
 // mod interpreter;
 mod lexer;
-// mod ops;
+mod ops;
 mod parser;
 mod types;
 mod vm;
