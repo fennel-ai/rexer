@@ -6,8 +6,10 @@ import starql.ast.Visitor
 import starql.lexer.Token
 import starql.lexer.TokenType
 import starql.types.*
+import starql.types.Float
 import starql.types.List
 import java.lang.Double.parseDouble
+import java.lang.Integer.parseInt
 
 class Interpreter : Visitor<Value> {
     private val env = Environment(null)
@@ -46,7 +48,13 @@ class Interpreter : Visitor<Value> {
 
     override fun visitAtom(t: Token): Value {
         return when (t.type) {
-            TokenType.Number -> Num(parseDouble(t.toString()))
+            TokenType.Number -> {
+                if ('.' in t.literal()) {
+                    Float(parseDouble(t.toString()))
+                } else {
+                    Int64(parseInt(t.toString()))
+                }
+            }
             TokenType.Bool -> Bool(t.toString() == "true")
             TokenType.String -> Str(t.toString())
             else -> throw EvalException("$t is not a valid atom")
@@ -71,7 +79,7 @@ class Interpreter : Visitor<Value> {
             val prev = base
             val idx = ast.accept(this)
             base = when {
-                base is List && idx is Num -> base.l.getOrNull(idx.n.toInt())
+                base is List && idx is Int64 -> base.l.getOrNull(idx.n)
                 base is Dict && idx is Str -> base.m[idx.s]
                 else -> throw EvalException("property lookup only supported on lists/dicts")
             }
