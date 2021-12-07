@@ -6,6 +6,9 @@ import starql.ast.Atom
 import starql.ast.Visitor
 import starql.lexer.Token
 import starql.lexer.TokenType
+import starql.ops.Args
+import starql.ops.Parameters
+import starql.ops.Registry
 import starql.types.*
 import starql.types.Float
 import starql.types.List
@@ -16,8 +19,8 @@ import kotlin.collections.component1
 import kotlin.collections.component2
 import kotlin.collections.set
 
-class Interpreter : Visitor<Value> {
-    private val env = Environment(null)
+class Interpreter(private val parentEnv: Environment? = null) : Visitor<Value> {
+    private val env = Environment(parentEnv)
 
     override fun visitBinary(left: Ast, op: Token, right: Ast): Value {
         val l = left.accept(this)
@@ -80,7 +83,7 @@ class Interpreter : Visitor<Value> {
     }
 
     override fun visitVar(name: Token, lookups: ArrayList<Ast>): Value {
-        var base: Value? = env.get(name) ?: throw EvalException("cannot access undefined variable: '$name'")
+        var base: Value? = env.get(name.literal()) ?: throw EvalException("cannot access undefined variable: '$name'")
         for (ast in lookups) {
             val prev = base
 
@@ -106,7 +109,7 @@ class Interpreter : Visitor<Value> {
     override fun visitStatement(name: Token?, body: Ast): Value {
         val res = body.accept(this)
         if (name != null) {
-            env.define(name, res)
+            env.define(name.literal(), res)
         }
         return res
     }
@@ -156,6 +159,50 @@ class Interpreter : Visitor<Value> {
         }
         return statements.map { it.accept(this) }.last()
     }
+
+    override fun visitOpcall(operand: Ast, module: Token, name: Token, args: Map<Token, Ast>): Value {
+        return when (val root = operand.accept(this)) {
+            is Table -> {
+                val parameters = args.map { (k, v) -> k.literal() to v.accept(this) }.toMap()
+                dummyop(root, parameters)
+            }
+            is List -> {
+                val operator = Registry.get(module.literal(), name.literal())
+                    ?: throw EvalException("calling undefined operator '${module.literal()}.${name.literal()}'")
+                val localParams = Parameters()
+                val staticParams = Args()
+                for ((k, v) in args) {
+                    val paramName = k.literal()
+                    when (operator.paramIsLocal(paramName)) {
+                        true ->
+                            localParams[paramName] = { context: Value -> this.visitInContext("@", context, v) }
+                        false -> staticParams[paramName] = v.accept(this)
+                        null -> throw EvalException("Operator $operator received unexpected argument $paramName")
+                    }
+                }
+                val input = arrayListOf<Value>()
+                for (data in root.l) {
+                    input.add(data)
+                }
+                operator.init(input, staticParams, localParams)
+                val output = arrayListOf<Value>()
+                operator.apply(output)
+                List(output)
+            }
+            else -> throw EvalException("operators can only operate on tables/lists")
+        }
+    }
+
+    fun visitInContext(key: String, context: Value, ast: Ast): Value {
+        val interpreter = Interpreter(env)
+        interpreter.env.define(key, context)
+        return ast.accept(interpreter)
+    }
+}
+
+
+private fun dummyop(root: Table, args: Map<String, Value>): Value {
+    return Int64(1)
 }
 
 private fun dictToTable(d: Dict): Pair<Array<String>, Array<Value>> {

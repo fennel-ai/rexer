@@ -4,8 +4,6 @@ import kotlin.system.measureTimeMillis
 /*
 TODOs
     Parser
-        * Add eager ops
-        * Add @
         * Improve error throwing mechanism to give positions/tokens etc.
         * add tests about errors
     Tables
@@ -14,21 +12,36 @@ TODOs
         * If we give a 1d or 2d list but with no dicts, we should create table with int indices as colnames
         * Add lots of tests (parser + native)
         * Use arrow format for tables
+    Operator
+        * Some transparent way of registration
+        * Ideally, no type errors for their parameters - if any, exceptions are handled by us outside pull
+        * StaticParams should be readonly so that no one can destroy it
+        * People should not be able to give any arbitrary module name - ideally it is specified only once
  */
 fun main(args: Array<String>) {
     val toPrintOnly = listOf<String>(
-        "table({x=1, y=2});",
+//        "table({x=1, y=2});",
+//        "5 | std.op(hi=@.x, bye=3,);",
+//        "5 | std.op(hi=1, bye=3,) | new.new(yo=false, hi=\"yo\");"
     )
     val toEval = listOf<String>(
-        "table({x=1, y=2});",
+//        """
+//            [1, 2, 3, 4] | std.filter(where=@ > 1) | std.take(limit=2) | std.last();
+//        """,
         """
-            l = [{x=1, y=2.0, s="hi", b=true}, {x=3, b=false, y=4, s="bye"}]; 
-            table(${'$'}l);
+            x = [{a= 1, b=1}, {a=2, b=2}, {a=3, b=3}, {a=4, b=4}];
+            ${'$'}x | std.filter(where=@.a * @.b > 3) | std.take(limit=2) | std.last();
         """,
-        """
-            l = [{x=1, y=2.0, r={a=1, b=2}}, {x=3, y=4, r={b=3, a=4}}]; 
-            table(${'$'}l);
-        """,
+//        "5 | std.op(hi=1, bye=3,) | new.new(yo=false, hi=\"yo\");"
+//        "table({x=1, y=2});",
+//        """
+//            l = [{x=1, y=2.0, s="hi", b=true}, {x=3, b=false, y=4, s="bye"}];
+//            table(${'$'}l) | std.op(hi=1, bye=3);
+//        """,
+//        """
+//            l = [{x=1, y=2.0, r={a=1, b=2}}, {x=3, y=4, r={b=3, a=4}}];
+//            table(${'$'}l);
+//        """,
     )
     for (q in toPrintOnly) {
         val ast = Parser(q).parse()
@@ -36,7 +49,7 @@ fun main(args: Array<String>) {
     }
     for (q in toEval) {
         val ast = Parser(q).parse()
-        println("[$q]: ${ast.eval()}")
+        println("Query: $q:: ${ast.eval()}")
     }
     benchmark()
 }

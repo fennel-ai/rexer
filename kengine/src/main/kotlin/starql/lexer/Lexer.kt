@@ -4,7 +4,7 @@ import starql.LexException
 
 class Token(
     private val query: String,
-    private val start: Int,
+    val start: Int,
     private val end: Int,
     val type: TokenType,
     private val line: Int
@@ -104,9 +104,10 @@ class Lexer(private val query: String) {
             '-' -> generate(TokenType.Minus)
             '*' -> generate(TokenType.Star)
             ';' -> generate(TokenType.Semicolon)
+            '@' -> generate(TokenType.At)
             '/' -> {
                 if (peek()?.equals('/') == true) {
-                    while (true) {
+                    while (!done()) {
                         advance()!!
                         if (peek()?.equals('\n') == true) {
                             break
@@ -199,6 +200,7 @@ enum class TokenType {
     Semicolon,
     Equal,
     Dollar,
+    At,
 
     // Arithmetic operaotrs
     // TODO: Do we need modulo operator?

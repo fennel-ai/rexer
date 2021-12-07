@@ -15,7 +15,7 @@ interface Visitor<T> {
     fun visitStatement(name: Token?, body: Ast): T
     fun visitQuery(statements: ArrayList<Ast>): T
     fun visitTable(inner: Ast): T
-    //    fun visitOpexp(&self, root: &Ast, opcalls: &[OpCall]) : T;
+    fun visitOpcall(operand: Ast, module: Token, name: Token, args: Map<Token, Ast>): T
 }
 
 sealed class Ast {
@@ -31,6 +31,7 @@ sealed class Ast {
             is Statement -> v.visitStatement(name, body)
             is Query -> v.visitQuery(statements)
             is Table -> v.visitTable(inner)
+            is Opcall -> v.visitOpcall(operand, module, name, args)
         }
     }
 
@@ -54,7 +55,8 @@ class Dict(val elements: HashMap<Token, Ast>) : Ast()
 class Table(val inner: Ast) : Ast()
 class Statement(val name: Token?, val body: Ast) : Ast()
 class Query(val statements: ArrayList<Ast>) : Ast()
+class Opcall(val operand: Ast, val module: Token, val name: Token, val args: Map<Token, Ast>) : Ast()
 
-// "." identifier gets an atom with identifier token and [exp] gets full ast for exp
+// Structure of lookups: "." property is an atom with identifier token and [exp] gets full ast for exp
 class Var(val name: Token, val lookups: ArrayList<Ast>) : Ast()
 

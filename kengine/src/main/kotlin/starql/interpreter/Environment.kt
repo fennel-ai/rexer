@@ -1,22 +1,19 @@
 package starql.interpreter
 
 import starql.EvalException
-import starql.lexer.Token
 import starql.types.Value
 
 class Environment(private val parent: Environment?) {
     private val map = HashMap<String, Value>()
 
-    fun define(k: Token, v: Value) {
-        val ks = k.literal()
-        if (ks in map) {
+    fun define(k: String, v: Value) {
+        if (k in map) {
             throw EvalException("cannot redefine variable $k")
         }
-        map[ks] = v
+        map[k] = v
     }
 
-    fun get(k: Token): Value? {
-        val ks = k.literal()
-        return if (ks in map) map[ks] else parent?.get(k)
+    fun get(k: String): Value? {
+        return if (k in map) map[k] else parent?.get(k)
     }
 }

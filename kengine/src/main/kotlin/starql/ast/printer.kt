@@ -1,5 +1,6 @@
 package starql.ast
 
+import starql.ParseException
 import starql.lexer.Token
 import starql.lexer.TokenType
 
@@ -29,7 +30,12 @@ class Printer : Visitor<String> {
     }
 
     override fun visitVar(name: Token, lookups: ArrayList<Ast>): String {
-        return lookups.joinToString("", prefix = "$$name") {
+        val prefix = when (name.type) {
+            TokenType.Identifier -> "\$${name.literal()}"
+            TokenType.At -> "@"
+            else -> throw ParseException("unexpected token '$name'. This may be a bug in ast construction for variables")
+        }
+        return lookups.joinToString("", prefix = prefix) {
             when (it) {
                 is Atom -> {
                     when (it.token.type) {
@@ -55,5 +61,10 @@ class Printer : Visitor<String> {
 
     override fun visitQuery(statements: ArrayList<Ast>): String {
         return statements.joinToString { "$it\n" }
+    }
+
+    override fun visitOpcall(operand: Ast, module: Token, name: Token, args: Map<Token, Ast>): String {
+        val argstr = args.map { (k, v) -> "${k.literal()}=$v" }.joinToString()
+        return "$operand | $module.$name($argstr)"
     }
 }

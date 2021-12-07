@@ -10,7 +10,8 @@ import starql.lexer.TokenType
 /*
 query          → statement +
 statement      → (identifier "=")? expression ";"
-expression     → logic_or;  // just an alias
+expression     → logic_or ("|" operator)*
+operator       → identifier "." identifier "("parameter ("," parameter)* ","? ")"
 
 logic_or       → logic_and ( "or" logic_and )*
 logic_and      → equality ( "and" equality )*
@@ -23,7 +24,7 @@ unary          → ( "!" | "-" ) primary | primary
 primary        → "true" | "false" | Number | String | list | dict | "(" expression ")" | variable | table
 list           → "[" expression ("," expression)* ","? "]"
 dict           → "{" identifier "=" expression ("," identifier "=" expression)* ","? "]"
-variable       → "$" identifier lookup*
+variable       → ("$" identifier | "@") lookup*
 lookup         → ("." identifier) |  "[" expression "]"
 
  */
@@ -32,6 +33,7 @@ class Parser(private val query: String) {
     private val lexer = Lexer(query)
     private var current: Token? = null
     private var next: Token = lexer.next()
+    private val varsSoFar = HashSet<String>()
 
     private fun advance(): Token {
         current = next
@@ -86,6 +88,7 @@ class Parser(private val query: String) {
             TokenType.RecordBegin -> dict(true)
             TokenType.LeftParen -> grouping(true)
             TokenType.Dollar -> variable(true)
+            TokenType.At -> variable(true)
             TokenType.Table -> table(true)
             else -> throw ParseException("expected number/bool/string but got $next")
         }
@@ -96,7 +99,14 @@ class Parser(private val query: String) {
             advance()
             current!!
         } else {
-            throw ParseException("unexpected token: '$next'. Expected one of $types")
+            throw ParseException(
+                "unexpected token: '$next' after ${current}. Expected one of ${
+                    types.joinToString(
+                        prefix = "[",
+                        postfix = "]"
+                    )
+                }"
+            )
         }
     }
 
@@ -192,14 +202,44 @@ class Parser(private val query: String) {
     }
 
     private fun expression(): Ast {
-        return or()
+        var e = or()
+        while (matches(TokenType.Pipe)) {
+            val module = expect(TokenType.Identifier)
+            expect(TokenType.Dot)
+            val name = expect(TokenType.Identifier)
+            expect(TokenType.LeftParen)
+            val args = hashMapOf<Token, Ast>()
+            while (next.type != TokenType.RightParen) {
+                val (key, exp) = parameter()
+                args[key] = exp
+                when (next.type) {
+                    TokenType.RightParen -> break
+                    TokenType.Comma -> advance()
+                    else -> throw ParseException("unexpected token : '$next'. expected ',' or ')'")
+                }
+            }
+            expect(TokenType.RightParen)
+            e = Opcall(e, module, name, args)
+        }
+        return e
     }
 
     private fun variable(prefixDone: Boolean): Ast {
         if (!prefixDone) {
-            expect(TokenType.Dollar)
+            expect(TokenType.At, TokenType.Dollar)
         }
-        val v = expect(TokenType.Identifier)
+        val v = when (current!!.type) {
+            TokenType.Dollar -> {
+                val name = expect(TokenType.Identifier)
+                if (name.literal() !in varsSoFar) {
+                    throw ParseException("Referring to undefined variable: '${name.literal()}")
+                }
+                name
+            }
+            TokenType.At -> current!!
+            else -> throw ParseException("unexpected token $current, expected '@' or '$'")
+        }
+
         val lookups = ArrayList<Ast>()
         while (true) {
             when (next.type) {
@@ -226,9 +266,11 @@ class Parser(private val query: String) {
             advance()
             name = current
             expect(TokenType.Equal)
+            varsSoFar.add(name!!.literal())
         }
         val body = expression()
         expect(TokenType.Semicolon)
+
         return Statement(name, body)
     }
 
