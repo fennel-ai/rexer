@@ -26,13 +26,6 @@ dict           → "{" identifier "=" expression ("," identifier "=" expression)
 variable       → "$" identifier lookup*
 lookup         → ("." identifier) |  "[" expression "]"
 
-TODOs:
-    0. Tests
-    1. Add table
-    2. Add eager ops
-    3. Add @
-    4. Fix errors
-
  */
 
 class Parser(private val query: String) {
@@ -93,6 +86,7 @@ class Parser(private val query: String) {
             TokenType.RecordBegin -> dict(true)
             TokenType.LeftParen -> grouping(true)
             TokenType.Dollar -> variable(true)
+            TokenType.Table -> table(true)
             else -> throw ParseException("expected number/bool/string but got $next")
         }
     }
@@ -244,6 +238,16 @@ class Parser(private val query: String) {
             statements.add(statement())
         }
         return Query(statements)
+    }
+
+    private fun table(prefixDone: Boolean): Ast {
+        if (!prefixDone) {
+            expect(TokenType.Table)
+        }
+        expect(TokenType.LeftParen)
+        val e = expression()
+        expect(TokenType.RightParen)
+        return Table(e)
     }
 
     fun parse(): Ast {

@@ -170,8 +170,9 @@ class Lexer(private val query: String) {
             in 'a'..'z', in 'A'..'Z', '_' -> {
                 identifier()
                 // TODO: Can we avoid copies here?
-                when (query.substring(start, current)) {
+                when (query.substring(start, current).lowercase()) {
                     "true", "false" -> generate(TokenType.Bool)
+                    "table" -> generate(TokenType.Table)
                     "or" -> generate(TokenType.Or)
                     "and" -> generate(TokenType.And)
                     else -> generate(TokenType.Identifier)
@@ -220,6 +221,7 @@ enum class TokenType {
     // Keywords
     Or,
     And,
+    Table,
 
     // All rest
     Identifier,

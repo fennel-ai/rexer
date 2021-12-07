@@ -42,6 +42,10 @@ class Printer : Visitor<String> {
         }
     }
 
+    override fun visitTable(inner: Ast): String {
+        return "table($inner)"
+    }
+
     override fun visitStatement(name: Token?, body: Ast): String {
         return when (name) {
             null -> "$body;"

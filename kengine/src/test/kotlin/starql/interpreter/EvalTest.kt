@@ -1,8 +1,11 @@
-import kotlin.test.Test
-import kotlin.test.assertEquals
+package starql.interpreter
+
 import starql.parser.Parser
 import starql.types.*
+import starql.types.Float
 import starql.types.List
+import kotlin.test.Test
+import kotlin.test.assertEquals
 
 internal class EvalTest {
     @Test
@@ -50,7 +53,7 @@ internal class EvalTest {
             "(2 + 3) * 2 - 1 > 7.0;" to Bool(true),
             "(2 + 3) / 5 == 1;" to Bool(true),
             "(2 + 3) / 10 >= 0.49;" to Bool(true),
-            "(2 + 3) / 5 ==  5 -4 ;" to Bool (true),
+            "(2 + 3) / 5 ==  5 -4 ;" to Bool(true),
             // str relations
             "\"hi\" == \"hi\";" to Bool(true),
             "\"hi\" == \"hi1\";" to Bool(false),
@@ -71,6 +74,7 @@ internal class EvalTest {
             assertEquals(expected, ast.eval(), query)
         }
     }
+
     @Test
     fun testList() {
         val tests = mapOf(
@@ -92,6 +96,7 @@ internal class EvalTest {
             assertEquals(List(expected as ArrayList<Value>), ast.eval(), query)
         }
     }
+
     @Test
     fun testDict() {
         val tests = mapOf(
@@ -112,6 +117,7 @@ internal class EvalTest {
             assertEquals(Dict(expected as HashMap<String, Value>), ast.eval(), query)
         }
     }
+
     @Test
     fun testVar() {
         val tests = mapOf(

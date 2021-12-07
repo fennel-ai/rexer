@@ -1,6 +1,7 @@
+package starql.parser
+
 import kotlin.test.Test
 import kotlin.test.assertEquals
-import starql.parser.Parser
 
 internal class ParserTest {
     @Test

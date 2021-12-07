@@ -121,18 +121,26 @@ sealed class Value : Comparable<Value> {
             this is Bool && other is Bool -> this.b == other.b
             this is List && other is List -> this.l == other.l
             this is Dict && other is Dict -> this.m == other.m
+            this is Table && other is Table -> this.schema == other.schema && this.data == other.data
             else -> throw EvalException("comparison only supported for same type values")
         }
     }
 
     override fun toString(): String {
         return when (this) {
-            is Float -> "Float(${this.n})"
-            is Int64 -> "Int64(${this.n})"
-            is Str -> "Str(${this.s})"
-            is Bool -> "Bool(${this.b})"
-            is List -> "List(${this.l})"
-            is Dict -> "Dict(${this.m})"
+            is Float -> "Float($n)"
+            is Int64 -> "Int64($n)"
+            is Str -> "Str($s)"
+            is Bool -> "Bool($b)"
+            is List -> "List($l)"
+            is Dict -> "Dict($m)"
+            is Table -> {
+                val schemastr: String = schema.joinToString(prefix = "[", postfix = "]")
+                val rowstr: String = data.joinToString(separator = ";\n", prefix = "[", postfix = "]") {
+                    it.joinToString(prefix = "[", postfix = "]")
+                }
+                "Table($schemastr: $rowstr)"
+            }
         }
     }
 
@@ -146,4 +154,21 @@ class Int64(val n: Int) : Value()
 class Str(val s: String) : Value()
 class Bool(val b: Boolean) : Value()
 class List(val l: ArrayList<Value>) : Value()
-class Dict(val m: HashMap<String, Value>) : Value()
+class Table(val schema: Array<String>, val data: ArrayList<Array<Value>>) : Value()
+class Dict(val m: HashMap<String, Value>) : Value() {
+    fun flatten(): HashMap<String, Value> {
+        val ret = HashMap<String, Value>()
+        for ((k, v) in m) {
+            when (v) {
+                is Dict -> {
+                    for ((k2, v2) in v.flatten()) {
+                        val newk = "$k.$k2"
+                        ret[newk] = v2
+                    }
+                }
+                else -> ret[k] = v
+            }
+        }
+        return ret
+    }
+}

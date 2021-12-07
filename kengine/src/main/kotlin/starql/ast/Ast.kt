@@ -14,6 +14,7 @@ interface Visitor<T> {
     fun visitVar(name: Token, lookups: ArrayList<Ast>): T
     fun visitStatement(name: Token?, body: Ast): T
     fun visitQuery(statements: ArrayList<Ast>): T
+    fun visitTable(inner: Ast): T
     //    fun visitOpexp(&self, root: &Ast, opcalls: &[OpCall]) : T;
 }
 
@@ -29,6 +30,7 @@ sealed class Ast {
             is Var -> v.visitVar(name, lookups)
             is Statement -> v.visitStatement(name, body)
             is Query -> v.visitQuery(statements)
+            is Table -> v.visitTable(inner)
         }
     }
 
@@ -49,6 +51,7 @@ class Grouping(val inner: Ast) : Ast()
 class Unary(val op: Token, val right: Ast) : Ast()
 class List(val elements: ArrayList<Ast>) : Ast()
 class Dict(val elements: HashMap<Token, Ast>) : Ast()
+class Table(val inner: Ast) : Ast()
 class Statement(val name: Token?, val body: Ast) : Ast()
 class Query(val statements: ArrayList<Ast>) : Ast()
 
