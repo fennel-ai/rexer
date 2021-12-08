@@ -3,6 +3,7 @@ import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 plugins {
     kotlin("jvm") version "1.5.10"
     application
+    java
 }
 
 group = "me.abhay"
@@ -38,4 +39,13 @@ tasks.withType<KotlinCompile> {
 
 application {
     mainClass.set("ai.fennel.engine.StarqlServerKt")
+}
+
+java {
+    sourceCompatibility = JavaVersion.VERSION_16
+}
+
+task("bench", JavaExec::class) {
+    main = "MainKt"
+    classpath = sourceSets["main"].runtimeClasspath
 }
