@@ -35,6 +35,7 @@ class Parser(private val query: String) {
     private var next: Token = lexer.next()
     private val varsSoFar = HashSet<String>()
     private val errors = arrayListOf<ParseException>()
+    private var needsRecovery = false
 
     private fun advance(): Token {
         current = next
@@ -44,7 +45,10 @@ class Parser(private val query: String) {
 
     private fun error(error: ParseException) {
         errors.add(error)
+        needsRecovery = true
+    }
 
+    private fun recover() {
         // consumes some tokens until the next statement to fix the internal state of parser
         while (current!!.type !in listOf(TokenType.Eof, TokenType.Semicolon)) {
             advance()
@@ -307,6 +311,10 @@ class Parser(private val query: String) {
         val statements = ArrayList<Ast>()
         while (!matches(TokenType.Eof)) {
             try {
+                if (needsRecovery) {
+                    recover()
+                    needsRecovery = false
+                }
                 statements.add(statement())
             } catch (error: ParseException) {
                 error(error)
@@ -319,7 +327,7 @@ class Parser(private val query: String) {
             for (e in errors) {
                 println(e)
             }
-            throw errors.last()
+            throw errors.first()
         }
         return Query(statements)
     }

@@ -1,4 +1,5 @@
 import starql.parser.Parser
+import starql.types.Value
 import kotlin.system.measureTimeMillis
 
 /*
@@ -28,6 +29,7 @@ TODOs
  */
 fun main(args: Array<String>) {
     val toPrintOnly = listOf<String>(
+        "x = \"hello\"; y = 123. 2; % ",
         "table({x=1, y=2});",
         "5 | std.op(hi=@.x, bye=3,);",
 
@@ -37,10 +39,10 @@ fun main(args: Array<String>) {
 //        """
 //            [1, 2, 3, 4] | std.filter(where=@ > 1) | std.take(limit=2) | std.last();
 //        """,
-        """ 
-            x = [{a= 1, b=1}, {a=2, b=2}, {a=3 b=3}, {a=4, b=4}];
-            ${'$'}x | std.filter(where=@.a * @. > 3) | std.take(limit=2) | std.last();
-        """
+//        """
+//            x = [{a= 1, b=1}, {a=2, b=2}, {a=3 b=3}, {a=4, b=4}];
+//            ${'$'}x | std.filter(where=@.a * @. > 3) | std.take(limit=2) | std.last();
+//        """
 //        "5 | std.op(hi=1, bye=3,) | new.new(yo=false, hi=\"yo\");"
 //        "table({x=1, y=2});",
 //        """
@@ -66,22 +68,24 @@ fun main(args: Array<String>) {
 fun benchmark() {
     val n = 100
     var total: Long = 0
+    var res: Value? = null
     for (i in 1..n) {
         val query = bigquery(i)
         val elapsed = measureTimeMillis {
             val parser = Parser(query)
             val ast = parser.parse()
-            ast.eval()
+            res = ast.eval()
         }
         total += elapsed
     }
-    println("Avg time to lex + parse: ${total / n} ms ")
+    println("Final answer: $res?)")
+    println("Avg time to lex + parse + eval: ${total / n} ms ")
 }
 
 fun bigquery(offset: Int): String {
     var q = StringBuilder()
     q.append("[")
-    for (i in 0..10_000) {
+    for (i in 0..100_00) {
         q.append("{x=${i + offset}, y=-$i}, ")
     }
     q.append("];")

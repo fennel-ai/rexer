@@ -29,6 +29,7 @@ dependencies {
     implementation("ch.qos.logback:logback-classic:$logbackVersion")
 }
 
+
 tasks.test {
     useJUnitPlatform()
 }
@@ -38,7 +39,8 @@ tasks.withType<KotlinCompile> {
 }
 
 application {
-    mainClass.set("ai.fennel.engine.StarqlServerKt")
+//    mainClass.set("ai.fennel.engine.StarqlServerKt")
+    mainClass.set("MainKt")
 }
 
 java {

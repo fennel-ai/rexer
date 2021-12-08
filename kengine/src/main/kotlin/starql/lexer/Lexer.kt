@@ -1,6 +1,6 @@
 package starql.lexer
 
-import starql.LexException
+import starql.ParseException
 
 class Token(
     val query: String,
@@ -73,7 +73,7 @@ class Lexer(private val query: String) {
                 else -> continue
             }
         }
-        throw LexException("missing closing \" for string")
+        throw ParseException("Missing closing \" for string", generate(TokenType.Error), listOf("\""))
     }
 
     private fun digits() {
@@ -89,7 +89,11 @@ class Lexer(private val query: String) {
             if (peek()?.isDigit() == true) {
                 digits()
             } else {
-                throw LexException("expected digit after '.'")
+                throw ParseException(
+                    "Invalid character '${peek()}' after '.'",
+                    generate(TokenType.Error),
+                    listOf("digits")
+                )
             }
         }
     }
@@ -185,9 +189,8 @@ class Lexer(private val query: String) {
                     else -> generate(TokenType.Identifier)
                 }
             }
-            else -> {
-                throw Exception("unexpected character: $this.query[current]")
-            }
+            else -> throw ParseException("Unexpected character $c", generate(TokenType.Error), listOf())
+
         }
     }
 }
@@ -236,6 +239,7 @@ enum class TokenType {
     String,
     Number,
     Bool,
+    Error, // this is not a real token but used to capture/throw errors
     Eof;
 
     override fun toString() = name
