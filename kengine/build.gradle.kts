@@ -8,8 +8,8 @@ plugins {
 group = "me.abhay"
 version = "1.0-SNAPSHOT"
 
-val ktor_version = "1.6.6"
-val logback_version = "1.2.5"
+val ktorVersion = "1.6.6"
+val logbackVersion = "1.2.7"
 
 repositories {
     mavenCentral()
@@ -18,16 +18,14 @@ repositories {
 dependencies {
     testImplementation(kotlin("test"))
     testImplementation(kotlin("test"))
-    testImplementation "io.ktor:ktor-server-test-host:$ktor_version"
-    testImplementation "org.jetbrains.kotlin:kotlin-test"
+    testImplementation("io.ktor:ktor-server-test-host:$ktorVersion")
+    testImplementation("org.jetbrains.kotlin:kotlin-test")
 
     implementation(kotlin("stdlib"))
-
-    implementation("io.ktor:ktor-server-core:$ktor_version")
-    implementation("io.ktor:ktor-server-netty:$ktor_version")
-    implementation "io.ktor:ktor-serialization:$ktor_version"
-
-    implementation("ch.qos.logback:logback-classic:$logback_version")
+    implementation("io.ktor:ktor-server-core:$ktorVersion")
+    implementation("io.ktor:ktor-server-netty:$ktorVersion")
+    implementation("io.ktor:ktor-serialization:$ktorVersion")
+    implementation("ch.qos.logback:logback-classic:$logbackVersion")
 }
 
 tasks.test {
