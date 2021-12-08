@@ -11,6 +11,7 @@ import starql.ops.Parameters
 import starql.ops.Registry
 import starql.types.*
 import starql.types.Float
+import starql.types.Int
 import starql.types.List
 import java.lang.Double.parseDouble
 import java.lang.Integer.parseInt
@@ -61,7 +62,7 @@ class Interpreter(private val parentEnv: Environment? = null) : Visitor<Value> {
                 if ('.' in t.literal()) {
                     Float(parseDouble(t.toString()))
                 } else {
-                    Int64(parseInt(t.toString()))
+                    Int(parseInt(t.toString()))
                 }
             }
             TokenType.Bool -> Bool(t.toString() == "true")
@@ -95,7 +96,7 @@ class Interpreter(private val parentEnv: Environment? = null) : Visitor<Value> {
                 ast.accept(this)
             }
             base = when {
-                base is List && idx is Int64 -> base.l.getOrNull(idx.n)
+                base is List && idx is Int -> base.l.getOrNull(idx.n)
                 base is Dict && idx is Str -> base.m[idx.s]
                 else -> throw EvalException("property lookup only supported on lists/dicts")
             }
@@ -202,7 +203,7 @@ class Interpreter(private val parentEnv: Environment? = null) : Visitor<Value> {
 
 
 private fun dummyop(root: Table, args: Map<String, Value>): Value {
-    return Int64(1)
+    return Int(1)
 }
 
 private fun dictToTable(d: Dict): Pair<Array<String>, Array<Value>> {

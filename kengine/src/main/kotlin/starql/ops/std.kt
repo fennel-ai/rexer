@@ -2,7 +2,7 @@ package starql.ops
 
 import starql.EvalException
 import starql.types.Bool
-import starql.types.Int64
+import starql.types.Int
 import starql.types.Value
 
 class Filter : Operator() {
@@ -63,7 +63,7 @@ class Take : Operator() {
     )
 
     override fun apply(outData: ArrayList<Value>) {
-        var limit = getStaticParams()["limit"] as Int64
+        var limit = getStaticParams()["limit"] as Int
         var taken = 0
         while (!isEmpty() && taken < limit.n) {
             val (row, _) = pull_single()!!

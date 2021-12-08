@@ -3,6 +3,7 @@ package starql.interpreter
 import starql.parser.Parser
 import starql.types.*
 import starql.types.Float
+import starql.types.Int
 import starql.types.List
 import kotlin.collections.component1
 import kotlin.collections.component2
@@ -14,14 +15,14 @@ internal class EvalTest {
     fun testBasic() {
         val tests = mapOf(
             // arithmetic
-            "2 + 5;" to Int64(7),
-            "2 + 3 * 2 - 1;" to Int64(7),
-            "(2 + 3) * 2 - 1;" to Int64(9),
+            "2 + 5;" to Int(7),
+            "2 + 3 * 2 - 1;" to Int(7),
+            "(2 + 3) * 2 - 1;" to Int(9),
             "(2 + 3) / 5 ;" to Float(1.0),
             "(2 + 3) / 10 ;" to Float(0.5),
             "(2 + 3) / 5 + 5 ;" to Float(6.0),
-            "-2 + 5;" to Int64(3),
-            "-(2 + 5);" to Int64(-7),
+            "-2 + 5;" to Int(3),
+            "-(2 + 5);" to Int(-7),
 
             // bool literal and operations
             "true;" to Bool(true),
@@ -80,16 +81,16 @@ internal class EvalTest {
     @Test
     fun testList() {
         val tests = mapOf(
-            "[1];" to arrayListOf(Int64(1)),
+            "[1];" to arrayListOf(Int(1)),
             "[1.0];" to arrayListOf(Float(1.0)),
             "[1, \"hi\", true, false, 4.0];" to arrayListOf(
-                Int64(1), Str("hi"), Bool(true), Bool(false), Float(4.0)
+                Int(1), Str("hi"), Bool(true), Bool(false), Float(4.0)
             ),
             "[1, \"hi\", true, false, 4.0, ];" to arrayListOf(
-                Int64(1), Str("hi"), Bool(true), Bool(false), Float(4.0)
+                Int(1), Str("hi"), Bool(true), Bool(false), Float(4.0)
             ),
             "[1, [1, \"hi\"]];" to arrayListOf(
-                Int64(1), List(arrayListOf(Int64(1), Str("hi")))
+                Int(1), List(arrayListOf(Int(1), Str("hi")))
             ),
             "[];" to arrayListOf(),
         )
@@ -103,14 +104,14 @@ internal class EvalTest {
     fun testDict() {
         val tests = mapOf(
             "{x=5,};" to hashMapOf(
-                "x" to Int64(5),
+                "x" to Int(5),
             ),
             "{x=5,y=true, z=\"hi\", l=[1, 2], d = {yo=1}};" to hashMapOf(
-                "x" to Int64(5),
+                "x" to Int(5),
                 "y" to Bool(true),
                 "z" to Str("hi"),
-                "l" to List(arrayListOf(Int64(1), Int64(2))),
-                "d" to Dict(hashMapOf("yo" to Int64(1))),
+                "l" to List(arrayListOf(Int(1), Int(2))),
+                "d" to Dict(hashMapOf("yo" to Int(1))),
             ),
             "{};" to hashMapOf(),
         )
@@ -123,19 +124,19 @@ internal class EvalTest {
     @Test
     fun testVar() {
         val tests = mapOf(
-            "x = 5;" to Int64(5),
-            "x = 5; \$x;" to Int64(5),
+            "x = 5;" to Int(5),
+            "x = 5; \$x;" to Int(5),
             "x = 3.4; \$x;" to Float(3.4),
             "x = 3.4; y = 5 > \$x;" to Bool(true),
             "x = 3.4; y = 5 + \$x;" to Float(8.4),
             "x = \"hi\"; \$x;" to Str("hi"),
-            "x = {x=5,y=true, z=\"hi\", l=[1, 2], d = {yo=1,}}; \$x.x;" to Int64(5),
-            "x = {x=5,y=true, z=\"hi\", l=[1, 2], d = {yo=1,}}; \$x.l[1];" to Int64(2),
-            "x = {x=5,y=true, z=\"hi\", l=[1, 2], d = {yo=1,}}; \$x.d.yo;" to Int64(1),
+            "x = {x=5,y=true, z=\"hi\", l=[1, 2], d = {yo=1,}}; \$x.x;" to Int(5),
+            "x = {x=5,y=true, z=\"hi\", l=[1, 2], d = {yo=1,}}; \$x.l[1];" to Int(2),
+            "x = {x=5,y=true, z=\"hi\", l=[1, 2], d = {yo=1,}}; \$x.d.yo;" to Int(1),
 
             // multiple assignments
             "x = 3.4; y = 1 + \$x; z = \$x + \$y; \$z + 1;" to Float(8.8),
-            "s = \"hi\"; x = {hi=[1, 2],}; \$x[\$s][1];" to Int64(2),
+            "s = \"hi\"; x = {hi=[1, 2],}; \$x[\$s][1];" to Int(2),
         )
         for ((query, expected) in tests) {
             val ast = Parser(query).parse()
@@ -148,15 +149,15 @@ internal class EvalTest {
         val tests = mapOf(
             "[1, 2, 3, 4] | std.filter(where=@ > 1.5);" to List(
                 arrayListOf(
-                    Int64(2), Int64(3), Int64(4)
+                    Int(2), Int(3), Int(4)
                 )
             ),
             "[1, 2, 3, 4] | std.take(limit=3) | std.filter(where=@ > 1.5) | std.first();" to List(
-                arrayListOf(Int64(2))
+                arrayListOf(Int(2))
             ),
             "x = [{x=1, y=2}, {x=2, y=1}, {x=3, y=3}]; \$x | std.filter(where=@.x >= @.y) | std.last();" to List(
                 arrayListOf(
-                    Dict(hashMapOf("x" to Int64(3), "y" to Int64(3)))
+                    Dict(hashMapOf("x" to Int(3), "y" to Int(3)))
                 )
             ),
         )
