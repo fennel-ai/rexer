@@ -15,6 +15,7 @@ repositories {
 dependencies {
     testImplementation(kotlin("test"))
     testImplementation(kotlin("test"))
+    implementation(kotlin("stdlib"))
 }
 
 tasks.test {
@@ -26,5 +27,12 @@ tasks.withType<KotlinCompile> {
 }
 
 application {
-    mainClass.set("MainKt")
+    mainClass.set("ai.fennel.engine.StarqlServerKt")
+}
+
+// Support for ktor
+dependencies {
+    implementation("io.ktor:ktor-server-core:1.6.6")
+    implementation("io.ktor:ktor-server-netty:1.6.6")
+    implementation("ch.qos.logback:logback-classic:1.2.5")
 }
