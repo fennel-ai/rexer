@@ -4,6 +4,8 @@ import starql.parser.Parser
 import starql.types.*
 import starql.types.Float
 import starql.types.List
+import kotlin.collections.component1
+import kotlin.collections.component2
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
@@ -139,5 +141,29 @@ internal class EvalTest {
             val ast = Parser(query).parse()
             assertEquals(expected, ast.eval(), query)
         }
+    }
+
+    @Test
+    fun testStdOps() {
+        val tests = mapOf(
+            "[1, 2, 3, 4] | std.filter(where=@ > 1.5);" to List(
+                arrayListOf(
+                    Int64(2), Int64(3), Int64(4)
+                )
+            ),
+            "[1, 2, 3, 4] | std.take(limit=3) | std.filter(where=@ > 1.5) | std.first();" to List(
+                arrayListOf(Int64(2))
+            ),
+            "x = [{x=1, y=2}, {x=2, y=1}, {x=3, y=3}]; \$x | std.filter(where=@.x >= @.y) | std.last();" to List(
+                arrayListOf(
+                    Dict(hashMapOf("x" to Int64(3), "y" to Int64(3)))
+                )
+            ),
+        )
+        for ((query, expected) in tests) {
+            val ast = Parser(query).parse()
+            assertEquals(expected, ast.eval(), query)
+        }
+
     }
 }

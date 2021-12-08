@@ -29,7 +29,7 @@ class First : Operator() {
     override val params = hashMapOf<String, ParamDef>()
 
     override fun apply(outData: ArrayList<Value>) {
-        if (!isEmpty()) {
+        if (isEmpty()) {
             throw EvalException("Can not take first element from an empty list")
         }
         val (row, _) = pull_single()!!
