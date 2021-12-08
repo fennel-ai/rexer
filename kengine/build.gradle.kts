@@ -1,7 +1,8 @@
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 
 plugins {
-    kotlin("jvm") version "1.5.10"
+    kotlin("jvm") version "1.5.31"
+    kotlin("plugin.serialization") version "1.5.31"
     application
     java
 }
@@ -11,6 +12,7 @@ version = "1.0-SNAPSHOT"
 
 val ktorVersion = "1.6.6"
 val logbackVersion = "1.2.7"
+val kotlinxSerializationVersion = "1.3.1"
 
 repositories {
     mavenCentral()
@@ -27,6 +29,7 @@ dependencies {
     implementation("io.ktor:ktor-server-netty:$ktorVersion")
     implementation("io.ktor:ktor-serialization:$ktorVersion")
     implementation("ch.qos.logback:logback-classic:$logbackVersion")
+    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:$kotlinxSerializationVersion")
 }
 
 

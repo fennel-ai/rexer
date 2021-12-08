@@ -1,7 +1,9 @@
 package starql.types
 
+import kotlinx.serialization.Serializable
 import starql.EvalException
 
+@Serializable
 sealed class Value : Comparable<Value> {
     operator fun plus(other: Value): Value {
         return when {
