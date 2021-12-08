@@ -33,7 +33,7 @@ class Printer : Visitor<String> {
         val prefix = when (name.type) {
             TokenType.Identifier -> "\$${name.literal()}"
             TokenType.At -> "@"
-            else -> throw ParseException("unexpected token '$name'. This may be a bug in ast construction for variables")
+            else -> throw ParseException("unexpected token '$name'", name, listOf("identifier", "@"))
         }
         return lookups.joinToString("", prefix = prefix) {
             when (it) {

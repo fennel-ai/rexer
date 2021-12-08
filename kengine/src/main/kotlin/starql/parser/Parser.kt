@@ -34,11 +34,21 @@ class Parser(private val query: String) {
     private var current: Token? = null
     private var next: Token = lexer.next()
     private val varsSoFar = HashSet<String>()
+    private val errors = arrayListOf<ParseException>()
 
     private fun advance(): Token {
         current = next
         next = lexer.next()
         return next
+    }
+
+    private fun error(error: ParseException) {
+        errors.add(error)
+
+        // consumes some tokens until the next statement to fix the internal state of parser
+        while (current!!.type !in listOf(TokenType.Eof, TokenType.Semicolon)) {
+            advance()
+        }
     }
 
     private fun matches(vararg types: TokenType): Boolean {
@@ -47,6 +57,15 @@ class Parser(private val query: String) {
             true
         } else {
             false
+        }
+    }
+
+    private fun expect(vararg types: TokenType): Token {
+        return if (next.type in types) {
+            advance()
+            current!!
+        } else {
+            throw ParseException("unexpected token '$next'", current, types.map { it.toString() })
         }
     }
 
@@ -90,25 +109,13 @@ class Parser(private val query: String) {
             TokenType.Dollar -> variable(true)
             TokenType.At -> variable(true)
             TokenType.Table -> table(true)
-            else -> throw ParseException("expected number/bool/string but got $next")
-        }
-    }
-
-    private fun expect(vararg types: TokenType): Token {
-        return if (next.type in types) {
-            advance()
-            current!!
-        } else {
-            throw ParseException(
-                "unexpected token: '$next' after ${current}. Expected one of ${
-                    types.joinToString(
-                        prefix = "[",
-                        postfix = "]"
-                    )
-                }"
+            else -> throw ParseException(
+                "unexpected token '$current'", current,
+                listOf("digit", "[", "{", "(", "$", "@", "table")
             )
         }
     }
+
 
     private fun list(prefixDone: Boolean): Ast {
         if (!prefixDone) {
@@ -120,7 +127,7 @@ class Parser(private val query: String) {
             when (next.type) {
                 TokenType.ListEnd -> break
                 TokenType.Comma -> advance()
-                else -> throw ParseException("unexpected token : '$next'. expected ',' or ']'")
+                else -> throw ParseException("unexpected token '$next'", current, listOf(",", "]"))
             }
         }
         expect(TokenType.ListEnd)
@@ -138,7 +145,7 @@ class Parser(private val query: String) {
             when (next.type) {
                 TokenType.RecordEnd -> break
                 TokenType.Comma -> advance()
-                else -> throw ParseException("unexpected token : '$next'. expected ',' or '}'")
+                else -> throw ParseException("unexpected token '$next'", current, listOf(",", "}"))
             }
         }
         expect(TokenType.RecordEnd)
@@ -215,7 +222,7 @@ class Parser(private val query: String) {
                 when (next.type) {
                     TokenType.RightParen -> break
                     TokenType.Comma -> advance()
-                    else -> throw ParseException("unexpected token : '$next'. expected ',' or ')'")
+                    else -> throw ParseException("unexpected token '$next'", current, listOf(",", ")"))
                 }
             }
             expect(TokenType.RightParen)
@@ -232,12 +239,16 @@ class Parser(private val query: String) {
             TokenType.Dollar -> {
                 val name = expect(TokenType.Identifier)
                 if (name.literal() !in varsSoFar) {
-                    throw ParseException("Referring to undefined variable: '${name.literal()}")
+                    throw ParseException(
+                        "referring to undefined variable: '${name.literal()}'",
+                        current,
+                        listOf<String>()
+                    )
                 }
                 name
             }
             TokenType.At -> current!!
-            else -> throw ParseException("unexpected token $current, expected '@' or '$'")
+            else -> throw ParseException("unexpected token '$current'", current, listOf("@", "$"))
         }
 
         val lookups = ArrayList<Ast>()
@@ -293,10 +304,23 @@ class Parser(private val query: String) {
     }
 
     fun parse(): Ast {
-        val r = query()
-        if (!matches(TokenType.Eof)) {
-            throw ParseException("unmatched tokens starting at $next")
+        val statements = ArrayList<Ast>()
+        while (!matches(TokenType.Eof)) {
+            try {
+                statements.add(statement())
+            } catch (error: ParseException) {
+                error(error)
+            }
         }
-        return r
+        if (errors.isEmpty() && statements.isEmpty()) {
+            error(ParseException("zero valid statements in query", current, listOf()))
+        }
+        if (errors.isNotEmpty()) {
+            for (e in errors) {
+                println(e)
+            }
+            throw errors.last()
+        }
+        return Query(statements)
     }
 }

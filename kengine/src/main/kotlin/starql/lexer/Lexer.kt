@@ -3,11 +3,12 @@ package starql.lexer
 import starql.LexException
 
 class Token(
-    private val query: String,
+    val query: String,
     val start: Int,
-    private val end: Int,
+    val end: Int,
     val type: TokenType,
-    private val line: Int
+    val line: Int,
+    val col: Int
 ) {
     override fun toString() = query.substring(start, end)
 
@@ -20,10 +21,11 @@ class Token(
 class Lexer(private val query: String) {
     private var current = 0
     private var start = 0
-    private var line = 0
+    private var line = 1
+    private var col = 1
 
     private fun generate(type: TokenType): Token {
-        val token = Token(start = start, end = current, type = type, line = line, query = query)
+        val token = Token(start = start, end = current, type = type, line = line, query = query, col = col)
         update()
         return token
     }
@@ -42,6 +44,7 @@ class Lexer(private val query: String) {
         } else {
             val c = query[current]
             current += 1
+            col += 1
             c
         }
     }
@@ -57,7 +60,10 @@ class Lexer(private val query: String) {
         }
     }
 
-    private fun linebreak() = line++
+    private fun linebreak() {
+        line++
+        col = 1
+    }
 
     private fun string() {
         while (!done()) {

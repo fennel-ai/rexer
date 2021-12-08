@@ -3,6 +3,8 @@ import kotlin.system.measureTimeMillis
 
 /*
 TODOs
+    Lexer
+        * Add checks for delimiters and no unnecessary white spaces
     Parser
         * Improve error throwing mechanism to give positions/tokens etc.
         * add tests about errors
@@ -14,24 +16,31 @@ TODOs
         * Use arrow format for tables
     Operator
         * Some transparent way of registration
-        * Ideally, no type errors for their parameters - if any, exceptions are handled by us outside pull
-        * StaticParams should be readonly so that no one can destroy it
+        * Ideally, no type errors for their parameters - if any, exceptions are handled by us outside apply
+        * Params should be readonly so that no one can destroy it
         * People should not be able to give any arbitrary module name - ideally it is specified only once
+        * Figure out what to do with tables - do we need both tables/lists?
+        * What should functions like last/first return? List or value?
+        * Think about immutability of input/output streams - who can destroy what and how do we enforce it (+ tests)
+
+    Types
+        * Do we need Value to be a special class? What if it was just an interface implemented by "normal" types?
  */
 fun main(args: Array<String>) {
     val toPrintOnly = listOf<String>(
-//        "table({x=1, y=2});",
-//        "5 | std.op(hi=@.x, bye=3,);",
-//        "5 | std.op(hi=1, bye=3,) | new.new(yo=false, hi=\"yo\");"
+        "table({x=1, y=2});",
+        "5 | std.op(hi=@.x, bye=3,);",
+
+        "5 | std.op(hi=1, bye=3,) | new.new(yo=false, hi=\"yo\");"
     )
     val toEval = listOf<String>(
 //        """
 //            [1, 2, 3, 4] | std.filter(where=@ > 1) | std.take(limit=2) | std.last();
 //        """,
+        """ 
+            x = [{a= 1, b=1}, {a=2, b=2}, {a=3 b=3}, {a=4, b=4}];
+            ${'$'}x | std.filter(where=@.a * @. > 3) | std.take(limit=2) | std.last();
         """
-            x = [{a= 1, b=1}, {a=2, b=2}, {a=3, b=3}, {a=4, b=4}];
-            ${'$'}x | std.filter(where=@.a * @.b > 3) | std.take(limit=2) | std.last();
-        """,
 //        "5 | std.op(hi=1, bye=3,) | new.new(yo=false, hi=\"yo\");"
 //        "table({x=1, y=2});",
 //        """
