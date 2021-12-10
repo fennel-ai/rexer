@@ -1,46 +1,41 @@
 import unittest
-from _expr import Query, At, InvalidQueryException, Var, Table, List, Dict, Int
+from expr import at, InvalidQueryException, Var, Table, List, Dict, Int
+from visitor import Printer
 
 class Test(unittest.TestCase):
-    def test_basic(self):
-        with Query() as q:
-            a = Int(1, name='a')
-            b = Var(name='x')
-            c = a + b
-            c.setname('c')
-            d = a * Int(2)
-            d.setname('d')
-        s = q.execute(varvalues={b:Int(5)}, printonly=True)
-        expected = ['x = 5;', 'a = 1;', 'c = $a + $x;', 'd = $a * 2;']
-        self.assertEqual('\n'.join(expected), s)
+    def test_basic_noinline(self):
+        a = Int(1, name='a')
+        b = Var(name='b')
+        c = a + b
+        c.name = 'c'
+        printer = Printer()
+        expected = '\n'.join(['b = 5;', 'a = 1;', 'c = $a + $b;', '$c'])
+        self.assertEqual(expected, printer.print(c, varvalues={b: Int(5)}))
 
     def test_basic_inline(self):
-        with Query() as q:
-            a = Int(1)
-            b = Int(2)
-            c = a + b
-            c.setname('c')
-        s = q.execute(printonly=True)
-        expected = ['c = 1 + 2;']
-        self.assertEqual('\n'.join(expected), s)
+        a = Int(1)
+        b = Var(name='b')
+        c = a + b
+        printer = Printer()
+        expected = '\n'.join(['b = 5;', '1 + $b'])
+        self.assertEqual(expected, printer.print(c, varvalues={b: Int(5)}))
 
     def test_no_conditional(self):
         # verify that it's not possible to use nodes in conditionals
         with self.assertRaises(InvalidQueryException):
-            with Query() as q:
-                a = Int(1)
-                if a == 1:
-                    b = Int(2)
-                else:
-                    b = Int(3)
-            q.execute()
-
-        # but it is okay to create conditionals using normal python variables
-        with Query() as q:
             a = Int(1)
-            pya = 1
-            if pya == 1:
+            if a == 1:
                 b = Int(2)
             else:
                 b = Int(3)
-        q.execute()
+            Printer().print(b)
+
+        # but it is okay to create conditionals using normal python variables
+        a = Int(1)
+        pya = 1
+        if pya == 1:
+            b = Int(2)
+        else:
+            b = Int(3)
+        Printer().print(b)
+
