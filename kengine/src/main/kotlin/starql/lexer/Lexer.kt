@@ -189,7 +189,7 @@ class Lexer(private val query: String) {
                     else -> generate(TokenType.Identifier)
                 }
             }
-            else -> throw ParseException("Unexpected character $c", generate(TokenType.Error), listOf())
+            else -> throw ParseException("Unexpected character '$c'", generate(TokenType.Error), listOf())
 
         }
     }

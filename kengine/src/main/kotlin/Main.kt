@@ -23,7 +23,9 @@ TODOs
         * Figure out what to do with tables - do we need both tables/lists?
         * What should functions like last/first return? List or value?
         * Think about immutability of input/output streams - who can destroy what and how do we enforce it (+ tests)
-
+        * Add notion of tags
+    Client
+        * Build v0
     Types
         * Do we need Value to be a special class? What if it was just an interface implemented by "normal" types?
  */

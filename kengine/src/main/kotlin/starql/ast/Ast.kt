@@ -59,4 +59,3 @@ class Opcall(val operand: Ast, val module: Token, val name: Token, val args: Map
 
 // Structure of lookups: "." property is an atom with identifier token and [exp] gets full ast for exp
 class Var(val name: Token, val lookups: ArrayList<Ast>) : Ast()
-
