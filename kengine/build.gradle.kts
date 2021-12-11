@@ -5,14 +5,17 @@ plugins {
     kotlin("plugin.serialization") version "1.5.31"
     application
     java
+    // plugin to automate docker builds.
+    id("com.palantir.docker") version "0.31.0"
 }
 
-group = "me.abhay"
+group = "ai.fennel"
 version = "1.0-SNAPSHOT"
 
 val ktorVersion = "1.6.6"
 val logbackVersion = "1.2.7"
 val kotlinxSerializationVersion = "1.3.1"
+val arrowDatasetVersion = "6.0.1"
 
 repositories {
     mavenCentral()
@@ -30,6 +33,7 @@ dependencies {
     implementation("io.ktor:ktor-serialization:$ktorVersion")
     implementation("ch.qos.logback:logback-classic:$logbackVersion")
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:$kotlinxSerializationVersion")
+    implementation("org.apache.arrow:arrow-dataset:$arrowDatasetVersion")
 }
 
 
@@ -42,8 +46,7 @@ tasks.withType<KotlinCompile> {
 }
 
 application {
-//    mainClass.set("ai.fennel.engine.StarqlServerKt")
-    mainClass.set("MainKt")
+    mainClass.set("ai.fennel.engine.StarqlServerKt")
 }
 
 java {
@@ -53,4 +56,26 @@ java {
 task("bench", JavaExec::class) {
     main = "MainKt"
     classpath = sourceSets["main"].runtimeClasspath
+}
+
+docker {
+    name = "${project.name}"
+    setDockerfile(file("Dockerfile"))
+}
+
+tasks {
+    register<Copy>("copyEntrypoint") {
+        mustRunAfter(":dockerClean")
+        from(listOf("./build/distributions/kengine-1.0-SNAPSHOT.tar"))
+        into("build/docker")
+        dependsOn(
+            ":build"
+        )
+    }
+
+    named("docker") {
+        dependsOn(
+            ":copyEntrypoint"
+        )
+    }
 }
