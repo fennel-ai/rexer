@@ -7,12 +7,8 @@ import (
 
 func verifyOp(t *testing.T, left, right, expected Value, op string) {
 	ret, err := left.Op(op, right)
-	if expected != nil {
-		assert.NoError(t, err)
-		assert.Equal(t, expected, ret)
-	} else {
-		assert.Error(t, err)
-	}
+	assert.NoError(t, err)
+	assert.Equal(t, expected, ret)
 }
 
 func verifyError(t *testing.T, left, right Value, ops []string) {
@@ -23,18 +19,64 @@ func verifyError(t *testing.T, left, right Value, ops []string) {
 }
 
 func TestInvalid(t *testing.T) {
-	//i := Int(2)
-	//d := Double(3.0)
-	//b := Bool(false)
-	//s := String("hi")
-	//l := List([]Value{Int(1), Double(2.0), Bool(true)})
-	//di := Dict(map[string]Value{"a": Int(2), "b": Double(1.0)})
-	//n := Nil
-	//ops := []string{"+", "-", "*", "/", ">", ">=", "<", "<=", "and", "or"}
-	//
-	//// add
-	//verifyError(t, i, d, []string{"and", "or"})
-	//verifyError(t, i, b, ops)
+	i := Int(2)
+	d := Double(3.0)
+	b := Bool(false)
+	s := String("hi")
+	l := List([]Value{Int(1), Double(2.0), Bool(true)})
+	di := Dict(map[string]Value{"a": Int(2), "b": Double(1.0)})
+	n := Nil
+	ops := []string{"+", "-", "*", "/", ">", ">=", "<", "<=", "and", "or"}
+
+	// ints with others
+	verifyError(t, i, d, []string{"and", "or"})
+	verifyError(t, i, b, ops)
+	verifyError(t, i, s, ops)
+	verifyError(t, i, l, ops)
+	verifyError(t, i, di, ops)
+	verifyError(t, i, n, ops)
+
+	verifyError(t, d, i, []string{"and", "or"})
+	verifyError(t, d, b, ops)
+	verifyError(t, d, s, ops)
+	verifyError(t, d, l, ops)
+	verifyError(t, d, di, ops)
+	verifyError(t, d, n, ops)
+
+	verifyError(t, b, i, ops)
+	verifyError(t, b, b, []string{"+", "-", "*", "/", ">", ">=", "<", "<="})
+	verifyError(t, b, s, ops)
+	verifyError(t, b, l, ops)
+	verifyError(t, b, di, ops)
+	verifyError(t, b, n, ops)
+
+	verifyError(t, s, i, ops)
+	verifyError(t, s, b, ops)
+	verifyError(t, s, s, ops)
+	verifyError(t, s, l, ops)
+	verifyError(t, s, di, ops)
+	verifyError(t, s, n, ops)
+
+	verifyError(t, l, i, ops)
+	verifyError(t, l, b, ops)
+	verifyError(t, l, s, ops)
+	verifyError(t, l, l, ops)
+	verifyError(t, l, di, ops)
+	verifyError(t, l, n, ops)
+
+	verifyError(t, di, i, ops)
+	verifyError(t, di, b, ops)
+	verifyError(t, di, s, ops)
+	verifyError(t, di, l, ops)
+	verifyError(t, di, di, ops)
+	verifyError(t, di, n, ops)
+
+	verifyError(t, n, i, ops)
+	verifyError(t, n, b, ops)
+	verifyError(t, n, s, ops)
+	verifyError(t, n, l, ops)
+	verifyError(t, n, di, ops)
+	verifyError(t, n, n, ops)
 }
 
 func TestValidArithmetic(t *testing.T) {
@@ -47,185 +89,67 @@ func TestValidArithmetic(t *testing.T) {
 	verifyOp(t, base, Int(2), Double(3.0), "+")
 	verifyOp(t, base, Double(2.0), Double(3.0), "+")
 
-	verifyOp(t, base, String("hi"), nil, "+")
-	verifyOp(t, base, Bool(true), nil, "+")
-	verifyOp(t, base, Nil, nil, "+")
-	verifyOp(t, base, List([]Value{Int(2), Double(1.0)}), nil, "+")
-	verifyOp(t, base, Dict(map[string]Value{"a": Int(2), "b": Double(1.0)}), nil, "+")
-
-	// Double
-	base = Double(1.0)
-	verifyOp(t, base, Int(2), Double(3.0), "+")
-	verifyOp(t, base, Double(2.0), Double(3.0), "+")
-	verifyOp(t, base, String("hi"), nil, "+")
-	verifyOp(t, base, Bool(true), nil, "+")
-	verifyOp(t, base, Nil, nil, "+")
-	verifyOp(t, base, List([]Value{Int(2), Double(1.0)}), nil, "+")
-	verifyOp(t, base, Dict(map[string]Value{"a": Int(2), "b": Double(1.0)}), nil, "+")
-
-	// String
-	base = String("hi")
-	verifyOp(t, base, Int(2), nil, "+")
-	verifyOp(t, base, Double(2.0), nil, "+")
-	verifyOp(t, base, String("hi"), nil, "+")
-	verifyOp(t, base, Bool(true), nil, "+")
-	verifyOp(t, base, Nil, nil, "+")
-	verifyOp(t, base, List([]Value{Int(2), Double(1.0)}), nil, "+")
-	verifyOp(t, base, Dict(map[string]Value{"a": Int(2), "b": Double(1.0)}), nil, "+")
-	// Bool
-	base = Bool(true)
-	verifyOp(t, base, Int(2), nil, "+")
-	verifyOp(t, base, Double(2.0), nil, "+")
-	verifyOp(t, base, String("hi"), nil, "+")
-	verifyOp(t, base, Bool(true), nil, "+")
-	verifyOp(t, base, Nil, nil, "+")
-	verifyOp(t, base, List([]Value{Int(2), Double(1.0)}), nil, "+")
-	verifyOp(t, base, Dict(map[string]Value{"a": Int(2), "b": Double(1.0)}), nil, "+")
-
-	// List
-	base = List([]Value{Int(1), Double(2.0), Bool(true)})
-	verifyOp(t, base, Int(2), nil, "+")
-	verifyOp(t, base, Double(2.0), nil, "+")
-	verifyOp(t, base, String("hi"), nil, "+")
-	verifyOp(t, base, Bool(true), nil, "+")
-	verifyOp(t, base, Nil, nil, "+")
-	verifyOp(t, base, List([]Value{Int(2), Double(1.0)}), nil, "+")
-	verifyOp(t, base, Dict(map[string]Value{"a": Int(2), "b": Double(1.0)}), nil, "+")
-
-	// Dict
-	base = Dict(map[string]Value{"a": Int(2), "b": Double(1.0)})
-	verifyOp(t, base, Int(2), nil, "+")
-	verifyOp(t, base, Double(2.0), nil, "+")
-	verifyOp(t, base, String("hi"), nil, "+")
-	verifyOp(t, base, Bool(true), nil, "+")
-	verifyOp(t, base, Nil, nil, "+")
-	verifyOp(t, base, List([]Value{Int(2), Double(1.0)}), nil, "+")
-	verifyOp(t, base, Dict(map[string]Value{"a": Int(2), "b": Double(1.0)}), nil, "+")
-}
-
-func TestSub(t *testing.T) {
-	// Int
-	var base Value
+	// Sub
 	base = Int(1)
-	verifyOp(t, base, Int(2), Int(-1), "-")
-	verifyOp(t, base, Double(2.0), Double(-1.0), "-")
-	verifyOp(t, base, String("hi"), nil, "-")
-	verifyOp(t, base, Bool(true), nil, "-")
-	verifyOp(t, base, Nil, nil, "-")
-	verifyOp(t, base, List([]Value{Int(2), Double(1.0)}), nil, "-")
-	verifyOp(t, base, Dict(map[string]Value{"a": Int(2), "b": Double(1.0)}), nil, "-")
-
-	// Double
+	verifyOp(t, Int(1), Int(2), Int(-1), "-")
+	verifyOp(t, Int(1), Double(2.0), Double(-1.0), "-")
 	base = Double(1.0)
 	verifyOp(t, base, Int(2), Double(-1.0), "-")
 	verifyOp(t, base, Double(2.0), Double(-1.0), "-")
-	verifyOp(t, base, String("hi"), nil, "-")
-	verifyOp(t, base, Bool(true), nil, "-")
-	verifyOp(t, base, Nil, nil, "-")
-	verifyOp(t, base, List([]Value{Int(2), Double(1.0)}), nil, "-")
-	verifyOp(t, base, Dict(map[string]Value{"a": Int(2), "b": Double(1.0)}), nil, "-")
 
-	// String
-	base = String("hi")
-	verifyOp(t, base, Int(2), nil, "-")
-	verifyOp(t, base, Double(2.0), nil, "-")
-	verifyOp(t, base, String("hi"), nil, "-")
-	verifyOp(t, base, Bool(true), nil, "-")
-	verifyOp(t, base, Nil, nil, "-")
-	verifyOp(t, base, List([]Value{Int(2), Double(1.0)}), nil, "-")
-	verifyOp(t, base, Dict(map[string]Value{"a": Int(2), "b": Double(1.0)}), nil, "-")
-	// Bool
-	base = Bool(true)
-	verifyOp(t, base, Int(2), nil, "-")
-	verifyOp(t, base, Double(2.0), nil, "-")
-	verifyOp(t, base, String("hi"), nil, "-")
-	verifyOp(t, base, Bool(true), nil, "-")
-	verifyOp(t, base, Nil, nil, "-")
-	verifyOp(t, base, List([]Value{Int(2), Double(1.0)}), nil, "-")
-	verifyOp(t, base, Dict(map[string]Value{"a": Int(2), "b": Double(1.0)}), nil, "-")
-
-	// List
-	base = List([]Value{Int(1), Double(2.0), Bool(true)})
-	verifyOp(t, base, Int(2), nil, "-")
-	verifyOp(t, base, Double(2.0), nil, "-")
-	verifyOp(t, base, String("hi"), nil, "-")
-	verifyOp(t, base, Bool(true), nil, "-")
-	verifyOp(t, base, Nil, nil, "-")
-	verifyOp(t, base, List([]Value{Int(2), Double(1.0)}), nil, "-")
-	verifyOp(t, base, Dict(map[string]Value{"a": Int(2), "b": Double(1.0)}), nil, "-")
-
-	// Dict
-	base = Dict(map[string]Value{"a": Int(2), "b": Double(1.0)})
-	verifyOp(t, base, Int(2), nil, "-")
-	verifyOp(t, base, Double(2.0), nil, "-")
-	verifyOp(t, base, String("hi"), nil, "-")
-	verifyOp(t, base, Bool(true), nil, "-")
-	verifyOp(t, base, Nil, nil, "-")
-	verifyOp(t, base, List([]Value{Int(2), Double(1.0)}), nil, "-")
-	verifyOp(t, base, Dict(map[string]Value{"a": Int(2), "b": Double(1.0)}), nil, "-")
-}
-
-func TestMul(t *testing.T) {
-	// Int
-	var base Value
+	// Mul
 	base = Int(2)
 	verifyOp(t, base, Int(2), Int(4), "*")
 	verifyOp(t, base, Double(2.0), Double(4.0), "*")
-	verifyOp(t, base, String("hi"), nil, "*")
-	verifyOp(t, base, Bool(true), nil, "*")
-	verifyOp(t, base, Nil, nil, "*")
-	verifyOp(t, base, List([]Value{Int(2), Double(1.0)}), nil, "*")
-	verifyOp(t, base, Dict(map[string]Value{"a": Int(2), "b": Double(1.0)}), nil, "*")
-
-	// Double
 	base = Double(2.0)
 	verifyOp(t, base, Int(2), Double(4.0), "*")
 	verifyOp(t, base, Double(2.0), Double(4.0), "*")
-	verifyOp(t, base, String("hi"), nil, "*")
-	verifyOp(t, base, Bool(true), nil, "*")
-	verifyOp(t, base, Nil, nil, "*")
-	verifyOp(t, base, List([]Value{Int(2), Double(1.0)}), nil, "*")
-	verifyOp(t, base, Dict(map[string]Value{"a": Int(2), "b": Double(1.0)}), nil, "*")
-
-	// String
-	base = String("hi")
-	verifyOp(t, base, Int(2), nil, "*")
-	verifyOp(t, base, Double(2.0), nil, "*")
-	verifyOp(t, base, String("hi"), nil, "*")
-	verifyOp(t, base, Bool(true), nil, "*")
-	verifyOp(t, base, Nil, nil, "*")
-	verifyOp(t, base, List([]Value{Int(2), Double(1.0)}), nil, "*")
-	verifyOp(t, base, Dict(map[string]Value{"a": Int(2), "b": Double(1.0)}), nil, "*")
-	// Bool
-	base = Bool(true)
-	verifyOp(t, base, Int(2), nil, "*")
-	verifyOp(t, base, Double(2.0), nil, "*")
-	verifyOp(t, base, String("hi"), nil, "*")
-	verifyOp(t, base, Bool(true), nil, "*")
-	verifyOp(t, base, Nil, nil, "*")
-	verifyOp(t, base, List([]Value{Int(2), Double(1.0)}), nil, "*")
-	verifyOp(t, base, Dict(map[string]Value{"a": Int(2), "b": Double(1.0)}), nil, "*")
-
-	// List
-	base = List([]Value{Int(1), Double(2.0), Bool(true)})
-	verifyOp(t, base, Int(2), nil, "*")
-	verifyOp(t, base, Double(2.0), nil, "*")
-	verifyOp(t, base, String("hi"), nil, "*")
-	verifyOp(t, base, Bool(true), nil, "*")
-	verifyOp(t, base, Nil, nil, "*")
-	verifyOp(t, base, List([]Value{Int(2), Double(1.0)}), nil, "*")
-	verifyOp(t, base, Dict(map[string]Value{"a": Int(2), "b": Double(1.0)}), nil, "*")
-
-	// Dict
-	base = Dict(map[string]Value{"a": Int(2), "b": Double(1.0)})
-	verifyOp(t, base, Int(2), nil, "*")
-	verifyOp(t, base, Double(2.0), nil, "*")
-	verifyOp(t, base, String("hi"), nil, "*")
-	verifyOp(t, base, Bool(true), nil, "*")
-	verifyOp(t, base, Nil, nil, "*")
-	verifyOp(t, base, List([]Value{Int(2), Double(1.0)}), nil, "*")
-	verifyOp(t, base, Dict(map[string]Value{"a": Int(2), "b": Double(1.0)}), nil, "*")
+	// Div
+	base = Int(4)
+	verifyOp(t, base, Int(2), Double(2.0), "/")
+	verifyOp(t, base, Double(2.0), Double(2.0), "/")
+	base = Double(4.0)
+	verifyOp(t, base, Int(2), Double(2.0), "/")
+	verifyOp(t, base, Double(2.0), Double(2.0), "/")
 }
 
-func TestDiv(t *testing.T) {
+func TestValidRelation(t *testing.T) {
+	// Int
+	var base Value
+	base = Int(1)
+	verifyOp(t, base, Int(1), Bool(false), ">")
+	verifyOp(t, base, Int(1), Bool(true), ">=")
+	verifyOp(t, base, Int(1), Bool(false), "<")
+	verifyOp(t, base, Int(1), Bool(true), "<=")
+
+	verifyOp(t, base, Double(1.0), Bool(false), ">")
+	verifyOp(t, base, Double(1.0), Bool(true), ">=")
+	verifyOp(t, base, Double(1.0), Bool(false), "<")
+	verifyOp(t, base, Double(1.0), Bool(true), "<=")
+
+	base = Double(1.0)
+	verifyOp(t, base, Int(1), Bool(false), ">")
+	verifyOp(t, base, Int(1), Bool(true), ">=")
+	verifyOp(t, base, Int(1), Bool(false), "<")
+	verifyOp(t, base, Int(1), Bool(true), "<=")
+
+	verifyOp(t, base, Double(1.0), Bool(false), ">")
+	verifyOp(t, base, Double(1.0), Bool(true), ">=")
+	verifyOp(t, base, Double(1.0), Bool(false), "<")
+	verifyOp(t, base, Double(1.0), Bool(true), "<=")
+}
+
+func TestBoolean(t *testing.T) {
+	var base Value
+	base = Bool(true)
+	verifyOp(t, base, Bool(true), Bool(true), "and")
+	verifyOp(t, base, Bool(false), Bool(false), "and")
+	verifyOp(t, base, Bool(true), Bool(true), "or")
+	verifyOp(t, base, Bool(false), Bool(true), "or")
+
+	base = Bool(false)
+	verifyOp(t, base, Bool(true), Bool(false), "and")
+	verifyOp(t, base, Bool(false), Bool(false), "and")
+	verifyOp(t, base, Bool(true), Bool(true), "or")
+	verifyOp(t, base, Bool(false), Bool(false), "or")
 }

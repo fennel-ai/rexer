@@ -32,6 +32,7 @@ func route(l Value, opt string, other Value) (Value, error) {
 	return Nil, nil
 }
 
+// TODO: implement add for string and lists
 func add(left Value, right Value) (Value, error) {
 	switch left.(type) {
 	case Int:
