@@ -1,0 +1,59 @@
+syntax = "proto3";
+
+option go_package = "engine/astpb";
+
+message Ast {
+    oneof tree_type {
+        Binary binary = 1;
+    }
+}
+
+message Binary {
+    Ast left = 1;
+    Ast right = 2;
+    string op = 3;
+}
+
+message Statement {
+    string name = 1;
+    Ast body = 2;
+}
+
+message Query {
+    repeated Statement statements = 1;
+}
+
+enum AtomType {
+    INT = 0;
+    STRING = 1;
+    BOOL = 2;
+    DOUBLE = 3;
+}
+
+message Atom {
+    AtomType atom_type = 1;
+    string lexeme = 2;
+}
+
+message List {
+    repeated Ast elems = 1;
+}
+
+message Dict {
+    map<string, Ast> values = 1;
+}
+
+message OpCall {
+    Ast operand = 1;
+    string namespace = 2;
+    string name = 3;
+    Dict kwargs = 4;
+}
+
+message Var {
+    string name = 1;
+}
+
+message Table {
+    Ast inner = 1;
+}
