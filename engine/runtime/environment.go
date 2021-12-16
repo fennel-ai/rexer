@@ -7,6 +7,10 @@ type Env struct {
 	table  map[string]Value
 }
 
+func NewEnv() Env {
+	return Env{nil, make(map[string]Value)}
+}
+
 func (e *Env) Define(name string, value Value) error {
 	if _, ok := e.table[name]; ok {
 		return fmt.Errorf("re-defining symbol: '%s'", name)

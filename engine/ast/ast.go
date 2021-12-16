@@ -41,16 +41,16 @@ var _ Ast = Statement{}
 var _ Ast = Query{}
 
 type Statement struct {
-	name string
-	body Ast
+	Name string
+	Body Ast
 }
 
 func (s Statement) AcceptValue(v VisitorValue) (runtime.Value, error) {
-	return v.VisitStatement(s.name, s.body)
+	return v.VisitStatement(s.Name, s.Body)
 }
 
 func (s Statement) AcceptString(v VisitorString) string {
-	return v.VisitStatement(s.name, s.body)
+	return v.VisitStatement(s.Name, s.Body)
 }
 
 type Query struct {
@@ -76,53 +76,53 @@ const (
 
 type Atom struct {
 	Type   AtomType
-	lexeme string
+	Lexeme string
 }
 
 func (a Atom) AcceptValue(v VisitorValue) (runtime.Value, error) {
-	return v.VisitAtom(a.Type, a.lexeme)
+	return v.VisitAtom(a.Type, a.Lexeme)
 }
 
 func (a Atom) AcceptString(v VisitorString) string {
-	return v.VisitAtom(a.Type, a.lexeme)
+	return v.VisitAtom(a.Type, a.Lexeme)
 }
 
 type Binary struct {
-	left  Ast
-	op    string
-	right Ast
+	Left  Ast
+	Op    string
+	Right Ast
 }
 
 func (b Binary) AcceptString(v VisitorString) string {
-	return v.VisitBinary(b.left, b.op, b.right)
+	return v.VisitBinary(b.Left, b.Op, b.Right)
 }
 
 func (b Binary) AcceptValue(v VisitorValue) (runtime.Value, error) {
-	return v.VisitBinary(b.left, b.op, b.right)
+	return v.VisitBinary(b.Left, b.Op, b.Right)
 }
 
 type List struct {
-	values []Ast
+	Values []Ast
 }
 
 func (l List) AcceptValue(v VisitorValue) (runtime.Value, error) {
-	return v.VisitList(l.values)
+	return v.VisitList(l.Values)
 }
 
 func (l List) AcceptString(v VisitorString) string {
-	return v.VisitList(l.values)
+	return v.VisitList(l.Values)
 }
 
 type Dict struct {
-	values map[string]Ast
+	Values map[string]Ast
 }
 
 func (d Dict) AcceptValue(v VisitorValue) (runtime.Value, error) {
-	return v.VisitDict(d.values)
+	return v.VisitDict(d.Values)
 }
 
 func (d Dict) AcceptString(v VisitorString) string {
-	return v.VisitDict(d.values)
+	return v.VisitDict(d.Values)
 }
 
 type Table struct {
