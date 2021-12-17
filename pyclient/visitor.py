@@ -1,6 +1,7 @@
 from expr import Int, Double, Bool, String, Binary, Constant
 from expr import InvalidQueryException, List, Dict, Transform, Table, Var, at
 
+
 class Visitor(object):
     def visit(self, obj):
         if isinstance(obj, Int):
@@ -76,6 +77,7 @@ class Visitor(object):
     def visitBinary(self, obj):
         raise NotImplementedError()
 
+
 class Printer(Visitor):
     # TODO: if a node is a part of graph but not on path back from target, currently we won't
     # print it. Should we tackle it by printing every node reachable from every node we reach?
@@ -89,10 +91,12 @@ class Printer(Visitor):
 
         for var, value in varvalues.items():
             if not isinstance(value, Constant):
-                raise InvalidQueryException('Variable value can only be a constant but given %s for %s' % (value, var))
+                raise InvalidQueryException(
+                    'Variable value can only be a constant but given %s for %s' % (value, var))
 
         for var, value in varvalues.items():
-            self.lines.append('%s = %s;' % (var.varname(dollar=False), self.visit(value)))
+            self.lines.append('%s = %s;' %
+                              (var.varname(dollar=False), self.visit(value)))
 
         last = self.visit(obj)
         self.lines.append(last)
@@ -137,7 +141,8 @@ class Printer(Visitor):
         return self.maybe_create_var(obj, rep)
 
     def visitDict(self, obj):
-        rep = '{%s}' % ', '.join('%s=%s' % (k, self.visit(v)) for k, v in obj.kwargs.items())
+        rep = '{%s}' % ', '.join('%s=%s' % (k, self.visit(v))
+                                 for k, v in obj.kwargs.items())
         return self.maybe_create_var(obj, rep)
 
     def visitAt(self, obj):
@@ -153,8 +158,10 @@ class Printer(Visitor):
     def visitTransform(self, obj):
         opcallstrs = []
         for opcall in obj.opcalls:
-            kwargstr = ', '.join('%s=%s' % (k, self.visit(v)) for k, v in opcall.kwargs.items())
-            opcallstr = " | %s.%s(%s)" % (opcall.module, opcall.opname, kwargstr)
+            kwargstr = ', '.join('%s=%s' % (k, self.visit(v))
+                                 for k, v in opcall.kwargs.items())
+            opcallstr = " | %s.%s(%s)" % (
+                opcall.module, opcall.opname, kwargstr)
             opcallstrs.append(opcallstr)
 
         rep = '%s%s' % (self.visit(obj.table), ''.join(opcallstrs))
@@ -167,7 +174,8 @@ class Printer(Visitor):
         elif obj.op == '[]':
             rep = '%s[%s]' % (self.visit(obj.left), self.visit(obj.right))
         else:
-            rep = '%s %s %s' % (self.visit(obj.left), obj.op, self.visit(obj.right))
+            rep = '%s %s %s' % (self.visit(obj.left),
+                                obj.op, self.visit(obj.right))
         return self.maybe_create_var(obj, rep)
 
 
