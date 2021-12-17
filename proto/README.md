@@ -1,3 +1,6 @@
-To build go bindings, run:
+To build go and python bindings, run:
 
-protoc -I=. --go_out=../ ./ast.proto
+```
+cd proto
+./generate.sh
+```
