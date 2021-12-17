@@ -2,6 +2,7 @@ package runtime
 
 import (
 	"fmt"
+	"sort"
 	"strings"
 )
 
@@ -13,7 +14,6 @@ type Value interface {
 	Clone() Value
 }
 
-// TODO: Implement table. Maybe pipe too?
 var _ Value = Int(0)
 var _ Value = Double(0)
 var _ Value = Bool(true)
@@ -21,6 +21,7 @@ var _ Value = String("")
 var _ Value = List([]Value{Int(0), Bool(true)})
 var _ Value = Dict(map[string]Value{"hi": Int(0), "bye": Bool(true)})
 var _ Value = nil_{}
+var _ Value = Table{}
 
 type Int int64
 
@@ -230,7 +231,110 @@ func (d Dict) Clone() Value {
 	return Dict(clone)
 }
 
+func (d Dict) flatten() Dict {
+	ret := make(map[string]Value)
+	for k, v := range d {
+		switch v.(type) {
+		case Dict:
+			for k2, v2 := range v.(Dict).flatten() {
+				knew := fmt.Sprintf("%s.%s", k, k2)
+				ret[knew] = v2
+			}
+		default:
+			ret[k] = v
+		}
+	}
+	return ret
+}
+
+func (d Dict) schema() []string {
+	fd := d.flatten()
+	ret := make([]string, 0, len(fd))
+	for k, _ := range d {
+		ret = append(ret, k)
+	}
+	sort.Strings(ret)
+	return ret
+}
+
 type Table struct {
-	// TODO: interpret rows as Tuples
-	rows List
+	// TODO: don't store each row as Dict but rather as Value array
+	schema []string
+	rows   []Dict
+}
+
+func NewTable() Table {
+	return Table{nil, make([]Dict, 0)}
+}
+
+func (t *Table) Append(row Dict) error {
+	row = row.flatten()
+	if len(t.rows) == 0 {
+		t.schema = row.schema()
+	} else if !t.schemaMatches(row.schema()) {
+		return fmt.Errorf("can not append row to table: scheams don't match")
+	}
+	t.rows = append(t.rows, row)
+	return nil
+}
+
+func (t *Table) Pull() []Dict {
+	return t.rows
+}
+
+func (t Table) schemaMatches(schema []string) bool {
+	if len(t.schema) != len(schema) {
+		return false
+	}
+	for i, s := range t.schema {
+		if s != schema[i] {
+			return false
+		}
+	}
+	return true
+}
+
+func (t Table) isValue() {}
+
+func (t Table) Equal(v Value) bool {
+	switch v.(type) {
+	case Table:
+		other := v.(Table)
+		if len(t.rows) != len(other.rows) {
+			return false
+		}
+		for i, row := range t.rows {
+			if !row.Equal(other.rows[i]) {
+				return false
+			}
+		}
+		return true
+	default:
+		return false
+	}
+}
+
+func (t Table) Op(opt string, other Value) (Value, error) {
+	return route(t, opt, other)
+}
+
+func (t Table) String() string {
+	var sb strings.Builder
+	sb.WriteString("table")
+	sb.WriteRune('(')
+	for _, row := range t.rows {
+		sb.WriteString(row.String())
+		sb.WriteRune(',')
+	}
+	sb.WriteRune(')')
+	return sb.String()
+}
+
+func (t Table) Clone() Value {
+	ret := NewTable()
+	for _, row := range t.rows {
+		cloned := row.Clone().(Dict)
+		ret.Append(cloned)
+	}
+	return ret
 }
