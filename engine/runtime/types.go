@@ -2,7 +2,7 @@ package runtime
 
 import (
 	"fmt"
-	"sort"
+	"reflect"
 	"strings"
 )
 
@@ -247,19 +247,18 @@ func (d Dict) flatten() Dict {
 	return ret
 }
 
-func (d Dict) schema() []string {
+func (d Dict) schema() map[string]reflect.Type {
 	fd := d.flatten()
-	ret := make([]string, 0, len(fd))
-	for k, _ := range d {
-		ret = append(ret, k)
+	ret := make(map[string]reflect.Type, len(fd))
+	for k, v := range d {
+		ret[k] = reflect.TypeOf(v)
 	}
-	sort.Strings(ret)
 	return ret
 }
 
 type Table struct {
 	// TODO: don't store each row as Dict but rather as Value array
-	schema []string
+	schema map[string]reflect.Type
 	rows   []Dict
 }
 
@@ -274,7 +273,6 @@ func (t *Table) Append(row Dict) error {
 	} else if !t.schemaMatches(row.schema()) {
 		return fmt.Errorf("can not append row to table: scheams don't match")
 	}
-	// TODO: currently we only check the schema but not the types of values themselves
 	t.rows = append(t.rows, row)
 	return nil
 }
@@ -283,12 +281,12 @@ func (t *Table) Pull() []Dict {
 	return t.rows
 }
 
-func (t Table) schemaMatches(schema []string) bool {
+func (t Table) schemaMatches(schema map[string]reflect.Type) bool {
 	if len(t.schema) != len(schema) {
 		return false
 	}
-	for i, s := range t.schema {
-		if s != schema[i] {
+	for k, v := range t.schema {
+		if v != schema[k] {
 			return false
 		}
 	}

@@ -48,14 +48,21 @@ func TestTableBasic(t *testing.T) {
 	cloned := table.Clone()
 	assert.True(t, table.Equal(cloned))
 }
+
 func TestTableSchema(t *testing.T) {
 	row1, _ := NewDict(map[string]Value{
 		"a": Int(1),
 		"b": String("hi"),
 	})
+	// row 2 has different column names from row1
 	row2, _ := NewDict(map[string]Value{
 		"c": Int(5),
 		"b": String("bye"),
+	})
+	// row 3 has same col names but different type
+	row3, _ := NewDict(map[string]Value{
+		"a": Double(1),
+		"b": String("hi"),
 	})
 	table := NewTable()
 	assert.Equal(t, 0, len(table.rows))
@@ -65,6 +72,11 @@ func TestTableSchema(t *testing.T) {
 	assert.Equal(t, []Dict{row1}, table.Pull())
 
 	err = table.Append(row2)
+	assert.Error(t, err)
+	assert.Equal(t, 1, len(table.rows))
+	assert.Equal(t, []Dict{row1}, table.Pull())
+
+	err = table.Append(row3)
 	assert.Error(t, err)
 	assert.Equal(t, 1, len(table.rows))
 	assert.Equal(t, []Dict{row1}, table.Pull())
