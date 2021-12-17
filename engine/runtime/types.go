@@ -274,6 +274,7 @@ func (t *Table) Append(row Dict) error {
 	} else if !t.schemaMatches(row.schema()) {
 		return fmt.Errorf("can not append row to table: scheams don't match")
 	}
+	// TODO: currently we only check the schema but not the types of values themselves
 	t.rows = append(t.rows, row)
 	return nil
 }

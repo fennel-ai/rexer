@@ -126,30 +126,30 @@ func (d Dict) AcceptString(v VisitorString) string {
 }
 
 type Table struct {
-	inner Ast
+	Inner Ast
 }
 
 func (t Table) AcceptValue(v VisitorValue) (runtime.Value, error) {
-	return v.VisitTable(t.inner)
+	return v.VisitTable(t.Inner)
 }
 
 func (t Table) AcceptString(v VisitorString) string {
-	return v.VisitTable(t.inner)
+	return v.VisitTable(t.Inner)
 }
 
 type OpCall struct {
-	operand   Ast
-	namespace string
-	name      string
-	kwargs    Dict
+	Operand   Ast
+	Namespace string
+	Name      string
+	Kwargs    Dict
 }
 
 func (opcall OpCall) AcceptValue(v VisitorValue) (runtime.Value, error) {
-	return v.VisitOpcall(opcall.operand, opcall.namespace, opcall.name, opcall.kwargs)
+	return v.VisitOpcall(opcall.Operand, opcall.Namespace, opcall.Name, opcall.Kwargs)
 }
 
 func (opcall OpCall) AcceptString(v VisitorString) string {
-	return v.VisitOpcall(opcall.operand, opcall.namespace, opcall.name, opcall.kwargs)
+	return v.VisitOpcall(opcall.Operand, opcall.Namespace, opcall.Name, opcall.Kwargs)
 }
 
 type Var struct {

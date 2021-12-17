@@ -20,6 +20,24 @@ func testValid(t *testing.T, node ast.Ast, expected runtime.Value) {
 	assert.Equal(t, expected, ret)
 }
 
+func getTable() ast.Table {
+	astrow1 := ast.Dict{map[string]ast.Ast{
+		"a.inner": ast.Atom{ast.Int, "3"},
+		"b":       ast.Atom{ast.String, "hi"},
+	}}
+	astrow2 := ast.Dict{map[string]ast.Ast{
+		"a": ast.Dict{map[string]ast.Ast{
+			"inner": ast.Atom{ast.Int, "5"},
+		}},
+		"b": ast.Atom{ast.String, "bye"},
+	}}
+	astrow3 := ast.Dict{map[string]ast.Ast{
+		"b":       ast.Atom{ast.String, "hello"},
+		"a.inner": ast.Atom{ast.Int, "3"},
+	}}
+	return ast.Table{ast.List{[]ast.Ast{astrow1, astrow2, astrow3}}}
+}
+
 func testError(t *testing.T, node ast.Ast) {
 	i := getInterpreter()
 	_, err := node.AcceptValue(i)
@@ -128,4 +146,140 @@ func TestInterpreter_VisitStatement(t *testing.T) {
 	// same happens if no name is passed
 	s = ast.Statement{"", ast.Atom{ast.Bool, "false"}}
 	testValid(t, s, runtime.Bool(false))
+}
+
+func TestInterpreter_VisitTable(t *testing.T) {
+	astrow1 := ast.Dict{map[string]ast.Ast{
+		"a.inner": ast.Atom{ast.Int, "3"},
+		"b":       ast.Atom{ast.String, "hi"},
+	}}
+	astrow2 := ast.Dict{map[string]ast.Ast{
+		"a": ast.Dict{map[string]ast.Ast{
+			"inner": ast.Atom{ast.Int, "5"},
+		}},
+		"b": ast.Atom{ast.String, "bye"},
+	}}
+	astrow3 := ast.Dict{map[string]ast.Ast{
+		"b":       ast.Atom{ast.String, "hello"},
+		"a.inner": ast.Atom{ast.Int, "3"},
+	}}
+	row1, _ := runtime.NewDict(map[string]runtime.Value{
+		"a.inner": runtime.Int(3),
+		"b":       runtime.String("hi"),
+	})
+	row2, _ := runtime.NewDict(map[string]runtime.Value{
+		"a.inner": runtime.Int(5),
+		"b":       runtime.String("bye"),
+	})
+	row3, _ := runtime.NewDict(map[string]runtime.Value{
+		"a.inner": runtime.Int(3),
+		"b":       runtime.String("hello"),
+	})
+
+	// creating empty table works
+	testValid(t, ast.Table{ast.List{[]ast.Ast{}}}, runtime.NewTable())
+
+	// so does with one astrow
+	t1 := runtime.Table{}
+	t1.Append(row1)
+	testValid(t, ast.Table{ast.List{[]ast.Ast{astrow1}}}, t1)
+
+	// and same with multiple rows including nested rows
+	t1.Append(row2)
+	t1.Append(row3)
+	testValid(t, ast.Table{ast.List{[]ast.Ast{astrow1, astrow2, astrow3}}}, t1)
+}
+
+func TestInterpreter_VisitTableErrors(t *testing.T) {
+
+	// if there is error in processing inner, that error is propagated
+	testError(t, ast.Table{ast.List{[]ast.Ast{ast.Atom{Type: ast.Bool, Lexeme: "123"}}}})
+
+	// visiting table with non-list or non-table doesn't work
+	testError(t, ast.Table{ast.Atom{Type: ast.Int, Lexeme: "123"}})
+	testError(t, ast.Table{ast.Atom{Type: ast.String, Lexeme: "123"}})
+	testError(t, ast.Table{ast.Dict{map[string]ast.Ast{}}})
+
+	// even for lists, it only works when its items are dicts
+	testError(t, ast.Table{ast.List{[]ast.Ast{ast.Atom{Type: ast.Int, Lexeme: "123"}}}})
+	testError(t, ast.Table{ast.List{[]ast.Ast{
+		ast.Dict{map[string]ast.Ast{}},
+		ast.Atom{Type: ast.Int, Lexeme: "123"},
+	}}})
+
+	// and even then, it only works when they all have the same schema
+	testError(t, ast.Table{ast.List{[]ast.Ast{
+		ast.Dict{map[string]ast.Ast{
+			"a": ast.Atom{Type: ast.Int, Lexeme: "123"},
+			"b": ast.Atom{Type: ast.Bool, Lexeme: "true"},
+		}},
+		ast.Dict{map[string]ast.Ast{}},
+	}}})
+	testError(t, ast.Table{ast.List{[]ast.Ast{
+		ast.Dict{map[string]ast.Ast{
+			"a": ast.Atom{Type: ast.Int, Lexeme: "123"},
+			"b": ast.Atom{Type: ast.Bool, Lexeme: "true"},
+		}},
+		ast.Dict{map[string]ast.Ast{
+			"a": ast.Atom{Type: ast.Int, Lexeme: "123"},
+			"c": ast.Atom{Type: ast.Bool, Lexeme: "true"},
+		}},
+	}}})
+
+	// same for nested
+	testError(t, ast.Table{ast.List{[]ast.Ast{
+		ast.Dict{map[string]ast.Ast{
+			"a": ast.Atom{Type: ast.Int, Lexeme: "123"},
+			"b": ast.Dict{map[string]ast.Ast{"inner": ast.Atom{Type: ast.Int, Lexeme: "123"}}},
+		}},
+		ast.Dict{map[string]ast.Ast{
+			"a": ast.Atom{Type: ast.Int, Lexeme: "123"},
+			"c": ast.Atom{Type: ast.Bool, Lexeme: "true"},
+		}},
+	}}})
+}
+
+func TestInterpreter_VisitOpcall(t *testing.T) {
+	astrow1 := ast.Dict{map[string]ast.Ast{
+		"a.inner": ast.Atom{ast.Int, "3"},
+		"b":       ast.Atom{ast.String, "hi"},
+	}}
+	astrow2 := ast.Dict{map[string]ast.Ast{
+		"a": ast.Dict{map[string]ast.Ast{
+			"inner": ast.Atom{ast.Int, "5"},
+		}},
+		"b": ast.Atom{ast.String, "bye"},
+	}}
+	astrow3 := ast.Dict{map[string]ast.Ast{
+		"b":       ast.Atom{ast.String, "hello"},
+		"a.inner": ast.Atom{ast.Int, "3"},
+	}}
+	astTable := ast.Table{ast.List{[]ast.Ast{astrow1, astrow2, astrow3}}}
+	row1, _ := runtime.NewDict(map[string]runtime.Value{
+		"a.inner": runtime.Int(3),
+		"b":       runtime.String("hi"),
+	})
+	row2, _ := runtime.NewDict(map[string]runtime.Value{
+		"a.inner": runtime.Int(5),
+		"b":       runtime.String("bye"),
+	})
+	row3, _ := runtime.NewDict(map[string]runtime.Value{
+		"a.inner": runtime.Int(3),
+		"b":       runtime.String("hello"),
+	})
+	table := runtime.NewTable()
+	table.Append(row1)
+	table.Append(row2)
+	table.Append(row3)
+
+	kwargs := ast.Dict{map[string]ast.Ast{
+		"where": ast.Atom{Type: ast.Bool, Lexeme: "true"},
+	}}
+	testValid(t, ast.OpCall{astTable, "std", "filter", kwargs}, table)
+
+	// and we get nothing when filter is passed as "false"
+	kwargs = ast.Dict{map[string]ast.Ast{
+		"where": ast.Atom{Type: ast.Bool, Lexeme: "false"},
+	}}
+	testValid(t, ast.OpCall{astTable, "std", "filter", kwargs}, runtime.NewTable())
 }
