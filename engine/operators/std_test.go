@@ -3,6 +3,7 @@ package operators
 import (
 	"engine/runtime"
 	"github.com/stretchr/testify/assert"
+	"reflect"
 	"testing"
 )
 
@@ -41,16 +42,16 @@ func TestFilterOperator_Apply(t *testing.T) {
 
 	intable := getTable()
 	// not passing "where" fails Validation
-	assert.Error(t, Validate(op, runtime.Dict{}))
+	assert.Error(t, Validate(op, runtime.Dict{}, map[string]reflect.Type{}))
 
 	// passing where true works
 	kwargs := runtime.Dict{"where": runtime.Bool(true)}
-	assert.NoError(t, Validate(op, kwargs))
+	assert.NoError(t, Validate(op, kwargs, map[string]reflect.Type{}))
 	testValid(t, op, kwargs, intable, intable)
 
 	// and when we filter everything, we should get empty table
 	kwargs = runtime.Dict{"where": runtime.Bool(false)}
-	assert.NoError(t, Validate(op, kwargs))
+	assert.NoError(t, Validate(op, kwargs, map[string]reflect.Type{}))
 	testValid(t, op, kwargs, intable, runtime.NewTable())
 }
 
@@ -60,10 +61,10 @@ func TestTakeOperator_Apply(t *testing.T) {
 
 	intable := getTable()
 	// not passing "limit" fails validation
-	assert.Error(t, Validate(op, runtime.Dict{}))
+	assert.Error(t, Validate(op, runtime.Dict{}, map[string]reflect.Type{}))
 
 	// and it fails validation even when limit is passed but isn't int
-	assert.Error(t, Validate(op, runtime.Dict{"limit": runtime.Bool(true)}))
+	assert.Error(t, Validate(op, runtime.Dict{"limit": runtime.Bool(true)}, map[string]reflect.Type{}))
 
 	// passing limit 2 works
 	expected := runtime.NewTable()

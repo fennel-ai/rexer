@@ -14,10 +14,9 @@ func init() {
 
 type FilterOperator struct{}
 
-func (f FilterOperator) Signature() Signature {
-	return Signature{map[string]reflect.Type{
-		"where": reflect.TypeOf(runtime.Bool(true)),
-	}}
+func (f FilterOperator) Signature() *Signature {
+	return NewSignature().
+		Param("where", reflect.TypeOf(runtime.Bool(true)))
 }
 
 func (f FilterOperator) Apply(kwargs runtime.Dict, in runtime.Table, out *runtime.Table) error {
@@ -32,10 +31,9 @@ func (f FilterOperator) Apply(kwargs runtime.Dict, in runtime.Table, out *runtim
 
 type TakeOperator struct{}
 
-func (f TakeOperator) Signature() Signature {
-	return Signature{map[string]reflect.Type{
-		"limit": reflect.TypeOf(runtime.Int(1)),
-	}}
+func (f TakeOperator) Signature() *Signature {
+	return NewSignature().
+		Param("limit", reflect.TypeOf(runtime.Int(1)))
 }
 
 func (f TakeOperator) Apply(kwargs runtime.Dict, in runtime.Table, out *runtime.Table) error {

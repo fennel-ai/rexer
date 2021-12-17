@@ -5,6 +5,7 @@ import (
 	"engine/operators"
 	"engine/runtime"
 	"fmt"
+	"reflect"
 	"strconv"
 )
 
@@ -167,7 +168,8 @@ func (i Interpreter) VisitOpcall(operand ast.Ast, namespace, name string, kwargs
 	}
 
 	// verify typing of all kwargs
-	if err = operators.Validate(op, kwdict); err != nil {
+	// TODO: pass table's real schema, not just empty schema
+	if err = operators.Validate(op, kwdict, map[string]reflect.Type{}); err != nil {
 		return runtime.Nil, err
 	}
 	// finally, call the operator
