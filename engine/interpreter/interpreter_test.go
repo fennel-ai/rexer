@@ -20,24 +20,6 @@ func testValid(t *testing.T, node ast.Ast, expected runtime.Value) {
 	assert.Equal(t, expected, ret)
 }
 
-func getTable() ast.Table {
-	astrow1 := ast.Dict{map[string]ast.Ast{
-		"a.inner": ast.Atom{ast.Int, "3"},
-		"b":       ast.Atom{ast.String, "hi"},
-	}}
-	astrow2 := ast.Dict{map[string]ast.Ast{
-		"a": ast.Dict{map[string]ast.Ast{
-			"inner": ast.Atom{ast.Int, "5"},
-		}},
-		"b": ast.Atom{ast.String, "bye"},
-	}}
-	astrow3 := ast.Dict{map[string]ast.Ast{
-		"b":       ast.Atom{ast.String, "hello"},
-		"a.inner": ast.Atom{ast.Int, "3"},
-	}}
-	return ast.Table{ast.List{[]ast.Ast{astrow1, astrow2, astrow3}}}
-}
-
 func testError(t *testing.T, node ast.Ast) {
 	i := getInterpreter()
 	_, err := node.AcceptValue(i)
