@@ -1,10 +1,18 @@
 syntax = "proto3";
 
-option go_package = "engine/astpb";
+option go_package = "engine/ast";
 
 message Ast {
-    oneof tree_type {
-        Binary binary = 1;
+    oneof node {
+        Atom atom = 1;
+        Binary binary = 2;
+        Statement statement = 3;
+        Query query = 4;
+        List list = 5;
+        Dict dict = 6;
+        OpCall opcall = 7;
+        Var var = 8;
+        Table table = 9;
     }
 }
 

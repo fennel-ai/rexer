@@ -20,8 +20,8 @@ DESCRIPTOR = _descriptor.FileDescriptor(
   name='ast.proto',
   package='',
   syntax='proto3',
-  serialized_options=_b('Z\014engine/astpb'),
-  serialized_pb=_b('\n\tast.proto\"-\n\x03\x41st\x12\x19\n\x06\x62inary\x18\x01 \x01(\x0b\x32\x07.BinaryH\x00\x42\x0b\n\ttree_type\"=\n\x06\x42inary\x12\x12\n\x04left\x18\x01 \x01(\x0b\x32\x04.Ast\x12\x13\n\x05right\x18\x02 \x01(\x0b\x32\x04.Ast\x12\n\n\x02op\x18\x03 \x01(\t\"-\n\tStatement\x12\x0c\n\x04name\x18\x01 \x01(\t\x12\x12\n\x04\x62ody\x18\x02 \x01(\x0b\x32\x04.Ast\"\'\n\x05Query\x12\x1e\n\nstatements\x18\x01 \x03(\x0b\x32\n.Statement\"4\n\x04\x41tom\x12\x1c\n\tatom_type\x18\x01 \x01(\x0e\x32\t.AtomType\x12\x0e\n\x06lexeme\x18\x02 \x01(\t\"\x1b\n\x04List\x12\x13\n\x05\x65lems\x18\x01 \x03(\x0b\x32\x04.Ast\"^\n\x04\x44ict\x12!\n\x06values\x18\x01 \x03(\x0b\x32\x11.Dict.ValuesEntry\x1a\x33\n\x0bValuesEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\x13\n\x05value\x18\x02 \x01(\x0b\x32\x04.Ast:\x02\x38\x01\"W\n\x06OpCall\x12\x15\n\x07operand\x18\x01 \x01(\x0b\x32\x04.Ast\x12\x11\n\tnamespace\x18\x02 \x01(\t\x12\x0c\n\x04name\x18\x03 \x01(\t\x12\x15\n\x06kwargs\x18\x04 \x01(\x0b\x32\x05.Dict\"\x13\n\x03Var\x12\x0c\n\x04name\x18\x01 \x01(\t\"\x1c\n\x05Table\x12\x13\n\x05inner\x18\x01 \x01(\x0b\x32\x04.Ast*5\n\x08\x41tomType\x12\x07\n\x03INT\x10\x00\x12\n\n\x06STRING\x10\x01\x12\x08\n\x04\x42OOL\x10\x02\x12\n\n\x06\x44OUBLE\x10\x03\x42\x0eZ\x0c\x65ngine/astpbb\x06proto3')
+  serialized_options=_b('Z\nengine/ast'),
+  serialized_pb=_b('\n\tast.proto\"\xf0\x01\n\x03\x41st\x12\x15\n\x04\x61tom\x18\x01 \x01(\x0b\x32\x05.AtomH\x00\x12\x19\n\x06\x62inary\x18\x02 \x01(\x0b\x32\x07.BinaryH\x00\x12\x1f\n\tstatement\x18\x03 \x01(\x0b\x32\n.StatementH\x00\x12\x17\n\x05query\x18\x04 \x01(\x0b\x32\x06.QueryH\x00\x12\x15\n\x04list\x18\x05 \x01(\x0b\x32\x05.ListH\x00\x12\x15\n\x04\x64ict\x18\x06 \x01(\x0b\x32\x05.DictH\x00\x12\x19\n\x06opcall\x18\x07 \x01(\x0b\x32\x07.OpCallH\x00\x12\x13\n\x03var\x18\x08 \x01(\x0b\x32\x04.VarH\x00\x12\x17\n\x05table\x18\t \x01(\x0b\x32\x06.TableH\x00\x42\x06\n\x04node\"=\n\x06\x42inary\x12\x12\n\x04left\x18\x01 \x01(\x0b\x32\x04.Ast\x12\x13\n\x05right\x18\x02 \x01(\x0b\x32\x04.Ast\x12\n\n\x02op\x18\x03 \x01(\t\"-\n\tStatement\x12\x0c\n\x04name\x18\x01 \x01(\t\x12\x12\n\x04\x62ody\x18\x02 \x01(\x0b\x32\x04.Ast\"\'\n\x05Query\x12\x1e\n\nstatements\x18\x01 \x03(\x0b\x32\n.Statement\"4\n\x04\x41tom\x12\x1c\n\tatom_type\x18\x01 \x01(\x0e\x32\t.AtomType\x12\x0e\n\x06lexeme\x18\x02 \x01(\t\"\x1b\n\x04List\x12\x13\n\x05\x65lems\x18\x01 \x03(\x0b\x32\x04.Ast\"^\n\x04\x44ict\x12!\n\x06values\x18\x01 \x03(\x0b\x32\x11.Dict.ValuesEntry\x1a\x33\n\x0bValuesEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\x13\n\x05value\x18\x02 \x01(\x0b\x32\x04.Ast:\x02\x38\x01\"W\n\x06OpCall\x12\x15\n\x07operand\x18\x01 \x01(\x0b\x32\x04.Ast\x12\x11\n\tnamespace\x18\x02 \x01(\t\x12\x0c\n\x04name\x18\x03 \x01(\t\x12\x15\n\x06kwargs\x18\x04 \x01(\x0b\x32\x05.Dict\"\x13\n\x03Var\x12\x0c\n\x04name\x18\x01 \x01(\t\"\x1c\n\x05Table\x12\x13\n\x05inner\x18\x01 \x01(\x0b\x32\x04.Ast*5\n\x08\x41tomType\x12\x07\n\x03INT\x10\x00\x12\n\n\x06STRING\x10\x01\x12\x08\n\x04\x42OOL\x10\x02\x12\n\n\x06\x44OUBLE\x10\x03\x42\x0cZ\nengine/astb\x06proto3')
 )
 
 _ATOMTYPE = _descriptor.EnumDescriptor(
@@ -49,8 +49,8 @@ _ATOMTYPE = _descriptor.EnumDescriptor(
   ],
   containing_type=None,
   serialized_options=None,
-  serialized_start=530,
-  serialized_end=583,
+  serialized_start=726,
+  serialized_end=779,
 )
 _sym_db.RegisterEnumDescriptor(_ATOMTYPE)
 
@@ -70,8 +70,64 @@ _AST = _descriptor.Descriptor(
   containing_type=None,
   fields=[
     _descriptor.FieldDescriptor(
-      name='binary', full_name='Ast.binary', index=0,
+      name='atom', full_name='Ast.atom', index=0,
       number=1, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='binary', full_name='Ast.binary', index=1,
+      number=2, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='statement', full_name='Ast.statement', index=2,
+      number=3, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='query', full_name='Ast.query', index=3,
+      number=4, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='list', full_name='Ast.list', index=4,
+      number=5, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='dict', full_name='Ast.dict', index=5,
+      number=6, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='opcall', full_name='Ast.opcall', index=6,
+      number=7, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='var', full_name='Ast.var', index=7,
+      number=8, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='table', full_name='Ast.table', index=8,
+      number=9, type=11, cpp_type=10, label=1,
       has_default_value=False, default_value=None,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
@@ -88,11 +144,11 @@ _AST = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
     _descriptor.OneofDescriptor(
-      name='tree_type', full_name='Ast.tree_type',
+      name='node', full_name='Ast.node',
       index=0, containing_type=None, fields=[]),
   ],
-  serialized_start=13,
-  serialized_end=58,
+  serialized_start=14,
+  serialized_end=254,
 )
 
 
@@ -136,8 +192,8 @@ _BINARY = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=60,
-  serialized_end=121,
+  serialized_start=256,
+  serialized_end=317,
 )
 
 
@@ -174,8 +230,8 @@ _STATEMENT = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=123,
-  serialized_end=168,
+  serialized_start=319,
+  serialized_end=364,
 )
 
 
@@ -205,8 +261,8 @@ _QUERY = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=170,
-  serialized_end=209,
+  serialized_start=366,
+  serialized_end=405,
 )
 
 
@@ -243,8 +299,8 @@ _ATOM = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=211,
-  serialized_end=263,
+  serialized_start=407,
+  serialized_end=459,
 )
 
 
@@ -274,8 +330,8 @@ _LIST = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=265,
-  serialized_end=292,
+  serialized_start=461,
+  serialized_end=488,
 )
 
 
@@ -312,8 +368,8 @@ _DICT_VALUESENTRY = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=337,
-  serialized_end=388,
+  serialized_start=533,
+  serialized_end=584,
 )
 
 _DICT = _descriptor.Descriptor(
@@ -342,8 +398,8 @@ _DICT = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=294,
-  serialized_end=388,
+  serialized_start=490,
+  serialized_end=584,
 )
 
 
@@ -394,8 +450,8 @@ _OPCALL = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=390,
-  serialized_end=477,
+  serialized_start=586,
+  serialized_end=673,
 )
 
 
@@ -425,8 +481,8 @@ _VAR = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=479,
-  serialized_end=498,
+  serialized_start=675,
+  serialized_end=694,
 )
 
 
@@ -456,14 +512,46 @@ _TABLE = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=500,
-  serialized_end=528,
+  serialized_start=696,
+  serialized_end=724,
 )
 
+_AST.fields_by_name['atom'].message_type = _ATOM
 _AST.fields_by_name['binary'].message_type = _BINARY
-_AST.oneofs_by_name['tree_type'].fields.append(
+_AST.fields_by_name['statement'].message_type = _STATEMENT
+_AST.fields_by_name['query'].message_type = _QUERY
+_AST.fields_by_name['list'].message_type = _LIST
+_AST.fields_by_name['dict'].message_type = _DICT
+_AST.fields_by_name['opcall'].message_type = _OPCALL
+_AST.fields_by_name['var'].message_type = _VAR
+_AST.fields_by_name['table'].message_type = _TABLE
+_AST.oneofs_by_name['node'].fields.append(
+  _AST.fields_by_name['atom'])
+_AST.fields_by_name['atom'].containing_oneof = _AST.oneofs_by_name['node']
+_AST.oneofs_by_name['node'].fields.append(
   _AST.fields_by_name['binary'])
-_AST.fields_by_name['binary'].containing_oneof = _AST.oneofs_by_name['tree_type']
+_AST.fields_by_name['binary'].containing_oneof = _AST.oneofs_by_name['node']
+_AST.oneofs_by_name['node'].fields.append(
+  _AST.fields_by_name['statement'])
+_AST.fields_by_name['statement'].containing_oneof = _AST.oneofs_by_name['node']
+_AST.oneofs_by_name['node'].fields.append(
+  _AST.fields_by_name['query'])
+_AST.fields_by_name['query'].containing_oneof = _AST.oneofs_by_name['node']
+_AST.oneofs_by_name['node'].fields.append(
+  _AST.fields_by_name['list'])
+_AST.fields_by_name['list'].containing_oneof = _AST.oneofs_by_name['node']
+_AST.oneofs_by_name['node'].fields.append(
+  _AST.fields_by_name['dict'])
+_AST.fields_by_name['dict'].containing_oneof = _AST.oneofs_by_name['node']
+_AST.oneofs_by_name['node'].fields.append(
+  _AST.fields_by_name['opcall'])
+_AST.fields_by_name['opcall'].containing_oneof = _AST.oneofs_by_name['node']
+_AST.oneofs_by_name['node'].fields.append(
+  _AST.fields_by_name['var'])
+_AST.fields_by_name['var'].containing_oneof = _AST.oneofs_by_name['node']
+_AST.oneofs_by_name['node'].fields.append(
+  _AST.fields_by_name['table'])
+_AST.fields_by_name['table'].containing_oneof = _AST.oneofs_by_name['node']
 _BINARY.fields_by_name['left'].message_type = _AST
 _BINARY.fields_by_name['right'].message_type = _AST
 _STATEMENT.fields_by_name['body'].message_type = _AST
