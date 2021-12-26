@@ -10,7 +10,7 @@ import (
 
 func getInterpreter() Interpreter {
 	return Interpreter{
-		runtime.NewEnv(),
+		NewEnv(),
 	}
 }
 

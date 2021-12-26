@@ -10,7 +10,7 @@ import (
 )
 
 type Interpreter struct {
-	env runtime.Env
+	env Env
 }
 
 var _ ast.VisitorValue = Interpreter{}
@@ -139,6 +139,7 @@ func (i Interpreter) VisitTable(inner *ast.Ast) (runtime.Value, error) {
 }
 
 func (i Interpreter) VisitOpcall(operand *ast.Ast, namespace, name string, kwargs *ast.Dict) (runtime.Value, error) {
+	// eval operand and verify it is of the right type
 	val, err := operand.AcceptValue(i)
 	if err != nil {
 		return runtime.Nil, err
@@ -150,6 +151,7 @@ func (i Interpreter) VisitOpcall(operand *ast.Ast, namespace, name string, kwarg
 	}
 	intable := val.(runtime.Table)
 
+	// now eval kwargs and verify they are of the right type
 	kw, err := kwargs.AcceptValue(i)
 	if err != nil {
 		return runtime.Nil, err
