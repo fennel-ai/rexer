@@ -1,7 +1,7 @@
 package ast
 
 import (
-	"engine/runtime"
+	"fennel/value"
 	"fmt"
 )
 
@@ -19,19 +19,19 @@ type VisitorString interface {
 }
 
 type VisitorValue interface {
-	VisitAtom(at AtomType, lexeme string) (runtime.Value, error)
-	VisitBinary(left *Ast, op string, right *Ast) (runtime.Value, error)
-	VisitList(values []*Ast) (runtime.Value, error)
-	VisitDict(values map[string]*Ast) (runtime.Value, error)
-	VisitTable(inner *Ast) (runtime.Value, error)
-	VisitOpcall(operand *Ast, namespace, name string, kwargs *Dict) (runtime.Value, error)
-	VisitVar(name string) (runtime.Value, error)
-	VisitStatement(name string, body *Ast) (runtime.Value, error)
-	VisitQuery(statements []*Statement) (runtime.Value, error)
+	VisitAtom(at AtomType, lexeme string) (value.Value, error)
+	VisitBinary(left *Ast, op string, right *Ast) (value.Value, error)
+	VisitList(values []*Ast) (value.Value, error)
+	VisitDict(values map[string]*Ast) (value.Value, error)
+	VisitTable(inner *Ast) (value.Value, error)
+	VisitOpcall(operand *Ast, namespace, name string, kwargs *Dict) (value.Value, error)
+	VisitVar(name string) (value.Value, error)
+	VisitStatement(name string, body *Ast) (value.Value, error)
+	VisitQuery(statements []*Statement) (value.Value, error)
 }
 
 type AstNode interface {
-	AcceptValue(v VisitorValue) (runtime.Value, error)
+	AcceptValue(v VisitorValue) (value.Value, error)
 	AcceptString(v VisitorString) string
 }
 
@@ -46,7 +46,7 @@ var _ AstNode = (*Var)(nil)
 var _ AstNode = (*Statement)(nil)
 var _ AstNode = (*Query)(nil)
 
-func (a *Atom) AcceptValue(v VisitorValue) (runtime.Value, error) {
+func (a *Atom) AcceptValue(v VisitorValue) (value.Value, error) {
 	return v.VisitAtom(a.AtomType, a.Lexeme)
 }
 
@@ -54,7 +54,7 @@ func (a *Atom) AcceptString(v VisitorString) string {
 	return v.VisitAtom(a.AtomType, a.Lexeme)
 }
 
-func (b *Binary) AcceptValue(v VisitorValue) (runtime.Value, error) {
+func (b *Binary) AcceptValue(v VisitorValue) (value.Value, error) {
 	return v.VisitBinary(b.Left, b.Op, b.Right)
 }
 
@@ -62,7 +62,7 @@ func (b *Binary) AcceptString(v VisitorString) string {
 	return v.VisitBinary(b.Left, b.Op, b.Right)
 }
 
-func (d *Dict) AcceptValue(v VisitorValue) (runtime.Value, error) {
+func (d *Dict) AcceptValue(v VisitorValue) (value.Value, error) {
 	return v.VisitDict(d.Values)
 }
 
@@ -70,7 +70,7 @@ func (d *Dict) AcceptString(v VisitorString) string {
 	return v.VisitDict(d.Values)
 }
 
-func (l *List) AcceptValue(v VisitorValue) (runtime.Value, error) {
+func (l *List) AcceptValue(v VisitorValue) (value.Value, error) {
 	return v.VisitList(l.Elems)
 }
 
@@ -78,7 +78,7 @@ func (l *List) AcceptString(v VisitorString) string {
 	return v.VisitList(l.Elems)
 }
 
-func (o *OpCall) AcceptValue(v VisitorValue) (runtime.Value, error) {
+func (o *OpCall) AcceptValue(v VisitorValue) (value.Value, error) {
 	return v.VisitOpcall(o.Operand, o.Namespace, o.Name, o.Kwargs)
 }
 
@@ -86,7 +86,7 @@ func (o *OpCall) AcceptString(v VisitorString) string {
 	return v.VisitOpcall(o.Operand, o.Namespace, o.Name, o.Kwargs)
 }
 
-func (r *Var) AcceptValue(v VisitorValue) (runtime.Value, error) {
+func (r *Var) AcceptValue(v VisitorValue) (value.Value, error) {
 	return v.VisitVar(r.Name)
 }
 
@@ -94,7 +94,7 @@ func (r *Var) AcceptString(v VisitorString) string {
 	return v.VisitVar(r.Name)
 }
 
-func (t *Table) AcceptValue(v VisitorValue) (runtime.Value, error) {
+func (t *Table) AcceptValue(v VisitorValue) (value.Value, error) {
 	return v.VisitTable(t.Inner)
 }
 
@@ -102,7 +102,7 @@ func (t *Table) AcceptString(v VisitorString) string {
 	return v.VisitTable(t.Inner)
 }
 
-func (s *Statement) AcceptValue(v VisitorValue) (runtime.Value, error) {
+func (s *Statement) AcceptValue(v VisitorValue) (value.Value, error) {
 	return v.VisitStatement(s.Name, s.Body)
 }
 
@@ -110,7 +110,7 @@ func (s *Statement) AcceptString(v VisitorString) string {
 	return v.VisitStatement(s.Name, s.Body)
 }
 
-func (q *Query) AcceptValue(v VisitorValue) (runtime.Value, error) {
+func (q *Query) AcceptValue(v VisitorValue) (value.Value, error) {
 	return v.VisitQuery(q.Statements)
 }
 
@@ -118,7 +118,7 @@ func (q *Query) AcceptString(v VisitorString) string {
 	return v.VisitQuery(q.Statements)
 }
 
-func (a *Ast) AcceptValue(v VisitorValue) (runtime.Value, error) {
+func (a *Ast) AcceptValue(v VisitorValue) (value.Value, error) {
 	node := a.Node
 	switch node.(type) {
 	case *Ast_Atom:

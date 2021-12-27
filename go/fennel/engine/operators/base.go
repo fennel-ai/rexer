@@ -1,7 +1,7 @@
 package operators
 
 import (
-	"engine/runtime"
+	"fennel/value"
 	"fmt"
 	"reflect"
 )
@@ -49,11 +49,11 @@ func (s *Signature) Input(colname string, t reflect.Type) *Signature {
 }
 
 type Operator interface {
-	Apply(kwargs runtime.Dict, in runtime.Table, out *runtime.Table) error
+	Apply(kwargs value.Dict, in value.Table, out *value.Table) error
 	Signature() *Signature
 }
 
-func Validate(op Operator, kwargs runtime.Dict, schema map[string]reflect.Type) error {
+func Validate(op Operator, kwargs value.Dict, schema map[string]reflect.Type) error {
 	// first, let's validate params
 	for k, t := range op.Signature().params {
 		v, ok := kwargs[k]

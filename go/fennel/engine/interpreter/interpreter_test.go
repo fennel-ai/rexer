@@ -1,8 +1,8 @@
 package interpreter
 
 import (
-	"engine/ast"
-	"engine/runtime"
+	"fennel/engine/ast"
+	"fennel/value"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -14,7 +14,7 @@ func getInterpreter() Interpreter {
 	}
 }
 
-func testValid(t *testing.T, node ast.AstNode, expected runtime.Value) {
+func testValid(t *testing.T, node ast.AstNode, expected value.Value) {
 	i := getInterpreter()
 	ret, err := node.AcceptValue(i)
 	assert.NoError(t, err)
@@ -32,22 +32,22 @@ func makeAtom(atomtype ast.AtomType, lexeme string) *ast.Atom {
 }
 
 func TestInterpreter_VisitAtom(t *testing.T) {
-	testValid(t, makeAtom(ast.AtomType_INT, "123"), runtime.Int(123))
-	testValid(t, makeAtom(ast.AtomType_INT, "-123"), runtime.Int(-123))
+	testValid(t, makeAtom(ast.AtomType_INT, "123"), value.Int(123))
+	testValid(t, makeAtom(ast.AtomType_INT, "-123"), value.Int(-123))
 	// possible to parse double without decimal
-	testValid(t, makeAtom(ast.AtomType_DOUBLE, "123"), runtime.Double(123.0))
-	testValid(t, makeAtom(ast.AtomType_DOUBLE, "123.3"), runtime.Double(123.3))
-	testValid(t, makeAtom(ast.AtomType_DOUBLE, "-123.3"), runtime.Double(-123.3))
+	testValid(t, makeAtom(ast.AtomType_DOUBLE, "123"), value.Double(123.0))
+	testValid(t, makeAtom(ast.AtomType_DOUBLE, "123.3"), value.Double(123.3))
+	testValid(t, makeAtom(ast.AtomType_DOUBLE, "-123.3"), value.Double(-123.3))
 
-	testValid(t, makeAtom(ast.AtomType_BOOL, "true"), runtime.Bool(true))
-	testValid(t, makeAtom(ast.AtomType_BOOL, "false"), runtime.Bool(false))
+	testValid(t, makeAtom(ast.AtomType_BOOL, "true"), value.Bool(true))
+	testValid(t, makeAtom(ast.AtomType_BOOL, "false"), value.Bool(false))
 	// possible to parse bools from ints
-	testValid(t, makeAtom(ast.AtomType_BOOL, "1"), runtime.Bool(true))
-	testValid(t, makeAtom(ast.AtomType_BOOL, "0"), runtime.Bool(false))
+	testValid(t, makeAtom(ast.AtomType_BOOL, "1"), value.Bool(true))
+	testValid(t, makeAtom(ast.AtomType_BOOL, "0"), value.Bool(false))
 
-	testValid(t, makeAtom(ast.AtomType_STRING, "hi"), runtime.String("hi"))
-	testValid(t, makeAtom(ast.AtomType_STRING, "false"), runtime.String("false"))
-	testValid(t, makeAtom(ast.AtomType_STRING, "3.2"), runtime.String("3.2"))
+	testValid(t, makeAtom(ast.AtomType_STRING, "hi"), value.String("hi"))
+	testValid(t, makeAtom(ast.AtomType_STRING, "false"), value.String("false"))
+	testValid(t, makeAtom(ast.AtomType_STRING, "3.2"), value.String("3.2"))
 
 	// invalid checks
 	testError(t, makeAtom(ast.AtomType_INT, "true"))
@@ -67,7 +67,7 @@ func TestInterpreter_VisitBinary(t *testing.T) {
 		Left:  &ast.Ast{Node: &ast.Ast_Atom{Atom: makeAtom(ast.AtomType_INT, "5")}},
 		Op:    "+",
 		Right: &ast.Ast{Node: &ast.Ast_Atom{Atom: makeAtom(ast.AtomType_INT, "8")}},
-	}, runtime.Int(13))
+	}, value.Int(13))
 
 	// and errors are propagated too - both parse errors...
 	testError(t, &ast.Binary{
@@ -85,15 +85,15 @@ func TestInterpreter_VisitBinary(t *testing.T) {
 
 func TestInterpreter_VisitList(t *testing.T) {
 	// Empty list works
-	testValid(t, &ast.List{Elems: []*ast.Ast{}}, runtime.List{})
+	testValid(t, &ast.List{Elems: []*ast.Ast{}}, value.List{})
 
 	// list with just one element works
-	l, _ := runtime.NewList([]runtime.Value{runtime.Double(3.4)})
+	l, _ := value.NewList([]value.Value{value.Double(3.4)})
 	testValid(t, &ast.List{Elems: []*ast.Ast{
 		ast.MakeAst(makeAtom(ast.AtomType_DOUBLE, "3.4")),
 	}}, l)
 	// and so does a multi-element list with mixed types
-	l, _ = runtime.NewList([]runtime.Value{runtime.Double(3.4), runtime.Bool(false), runtime.String("hi")})
+	l, _ = value.NewList([]value.Value{value.Double(3.4), value.Bool(false), value.String("hi")})
 	testValid(t, &ast.List{Elems: []*ast.Ast{
 		ast.MakeAst(makeAtom(ast.AtomType_DOUBLE, "3.4")),
 		ast.MakeAst(makeAtom(ast.AtomType_BOOL, "false")),
@@ -103,17 +103,17 @@ func TestInterpreter_VisitList(t *testing.T) {
 
 func TestInterpreter_VisitDict(t *testing.T) {
 	// Empty dict works
-	testValid(t, &ast.Dict{Values: map[string]*ast.Ast{}}, runtime.Dict{})
+	testValid(t, &ast.Dict{Values: map[string]*ast.Ast{}}, value.Dict{})
 
 	// dict with just one element works
-	d, _ := runtime.NewDict(map[string]runtime.Value{"hi": runtime.Double(3.4)})
+	d, _ := value.NewDict(map[string]value.Value{"hi": value.Double(3.4)})
 	testValid(t, &ast.Dict{Values: map[string]*ast.Ast{
 		"hi": ast.MakeAst(makeAtom(ast.AtomType_DOUBLE, "3.4")),
 	}}, d)
 	// and so does a multi-element list with mixed types and nesting
-	nested, _ := runtime.NewDict(map[string]runtime.Value{
-		"hi":     runtime.Double(3.4),
-		"bye":    runtime.Bool(false),
+	nested, _ := value.NewDict(map[string]value.Value{
+		"hi":     value.Double(3.4),
+		"bye":    value.Bool(false),
 		"nested": d,
 	})
 	testValid(t, &ast.Dict{Values: map[string]*ast.Ast{
@@ -128,11 +128,11 @@ func TestInterpreter_VisitDict(t *testing.T) {
 
 func TestInterpreter_VisitStatement(t *testing.T) {
 	s := &ast.Statement{Name: "var", Body: &ast.Ast{Node: &ast.Ast_Atom{Atom: &ast.Atom{AtomType: ast.AtomType_BOOL, Lexeme: "false"}}}}
-	testValid(t, s, runtime.Bool(false))
+	testValid(t, s, value.Bool(false))
 
 	// same happens if no name is passed
 	s = &ast.Statement{Name: "", Body: &ast.Ast{Node: &ast.Ast_Atom{Atom: &ast.Atom{AtomType: ast.AtomType_BOOL, Lexeme: "false"}}}}
-	testValid(t, s, runtime.Bool(false))
+	testValid(t, s, value.Bool(false))
 }
 
 func TestInterpreter_VisitTable(t *testing.T) {
@@ -157,26 +157,26 @@ func TestInterpreter_VisitTable(t *testing.T) {
 			"a.inner": ast.MakeAst(makeAtom(ast.AtomType_INT, "3")),
 		},
 	}
-	row1, _ := runtime.NewDict(map[string]runtime.Value{
-		"a.inner": runtime.Int(3),
-		"b":       runtime.String("hi"),
+	row1, _ := value.NewDict(map[string]value.Value{
+		"a.inner": value.Int(3),
+		"b":       value.String("hi"),
 	})
-	row2, _ := runtime.NewDict(map[string]runtime.Value{
-		"a.inner": runtime.Int(5),
-		"b":       runtime.String("bye"),
+	row2, _ := value.NewDict(map[string]value.Value{
+		"a.inner": value.Int(5),
+		"b":       value.String("bye"),
 	})
-	row3, _ := runtime.NewDict(map[string]runtime.Value{
-		"a.inner": runtime.Int(3),
-		"b":       runtime.String("hello"),
+	row3, _ := value.NewDict(map[string]value.Value{
+		"a.inner": value.Int(3),
+		"b":       value.String("hello"),
 	})
 
 	// creating empty table works
 	testValid(t, &ast.Table{
 		Inner: ast.MakeAst(&ast.List{}),
-	}, runtime.NewTable())
+	}, value.NewTable())
 
 	// so does with one astrow
-	t1 := runtime.Table{}
+	t1 := value.Table{}
 	t1.Append(row1)
 	testValid(t, &ast.Table{
 		Inner: ast.MakeAst(&ast.List{
@@ -290,19 +290,19 @@ func TestInterpreter_VisitOpcall(t *testing.T) {
 			},
 		}),
 	}
-	row1, _ := runtime.NewDict(map[string]runtime.Value{
-		"a.inner": runtime.Int(3),
-		"b":       runtime.String("hi"),
+	row1, _ := value.NewDict(map[string]value.Value{
+		"a.inner": value.Int(3),
+		"b":       value.String("hi"),
 	})
-	row2, _ := runtime.NewDict(map[string]runtime.Value{
-		"a.inner": runtime.Int(5),
-		"b":       runtime.String("bye"),
+	row2, _ := value.NewDict(map[string]value.Value{
+		"a.inner": value.Int(5),
+		"b":       value.String("bye"),
 	})
-	row3, _ := runtime.NewDict(map[string]runtime.Value{
-		"a.inner": runtime.Int(3),
-		"b":       runtime.String("hello"),
+	row3, _ := value.NewDict(map[string]value.Value{
+		"a.inner": value.Int(3),
+		"b":       value.String("hello"),
 	})
-	table := runtime.NewTable()
+	table := value.NewTable()
 	table.Append(row1)
 	table.Append(row2)
 	table.Append(row3)
@@ -330,5 +330,5 @@ func TestInterpreter_VisitOpcall(t *testing.T) {
 		Namespace: "std",
 		Name:      "filter",
 		Kwargs:    kwargs,
-	}, runtime.NewTable())
+	}, value.NewTable())
 }
