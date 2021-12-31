@@ -46,8 +46,8 @@ func (p Printer) VisitVar(name string) string {
 	return fmt.Sprintf("$%s", name)
 }
 
-func (p Printer) VisitAtom(at AtomType, lexeme string) string {
-	return lexeme
+func (p Printer) VisitAtom(a *Atom) string {
+	return a.String()
 }
 
 func (p Printer) VisitStatement(name string, body *Ast) string {

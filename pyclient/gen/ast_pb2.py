@@ -4,7 +4,6 @@
 
 import sys
 _b=sys.version_info[0]<3 and (lambda x:x) or (lambda x:x.encode('latin1'))
-from google.protobuf.internal import enum_type_wrapper
 from google.protobuf import descriptor as _descriptor
 from google.protobuf import message as _message
 from google.protobuf import reflection as _reflection
@@ -21,44 +20,9 @@ DESCRIPTOR = _descriptor.FileDescriptor(
   package='',
   syntax='proto3',
   serialized_options=_b('Z\nengine/ast'),
-  serialized_pb=_b('\n\tast.proto\"\xf0\x01\n\x03\x41st\x12\x15\n\x04\x61tom\x18\x01 \x01(\x0b\x32\x05.AtomH\x00\x12\x19\n\x06\x62inary\x18\x02 \x01(\x0b\x32\x07.BinaryH\x00\x12\x1f\n\tstatement\x18\x03 \x01(\x0b\x32\n.StatementH\x00\x12\x17\n\x05query\x18\x04 \x01(\x0b\x32\x06.QueryH\x00\x12\x15\n\x04list\x18\x05 \x01(\x0b\x32\x05.ListH\x00\x12\x15\n\x04\x64ict\x18\x06 \x01(\x0b\x32\x05.DictH\x00\x12\x19\n\x06opcall\x18\x07 \x01(\x0b\x32\x07.OpCallH\x00\x12\x13\n\x03var\x18\x08 \x01(\x0b\x32\x04.VarH\x00\x12\x17\n\x05table\x18\t \x01(\x0b\x32\x06.TableH\x00\x42\x06\n\x04node\"=\n\x06\x42inary\x12\x12\n\x04left\x18\x01 \x01(\x0b\x32\x04.Ast\x12\x13\n\x05right\x18\x02 \x01(\x0b\x32\x04.Ast\x12\n\n\x02op\x18\x03 \x01(\t\"-\n\tStatement\x12\x0c\n\x04name\x18\x01 \x01(\t\x12\x12\n\x04\x62ody\x18\x02 \x01(\x0b\x32\x04.Ast\"\'\n\x05Query\x12\x1e\n\nstatements\x18\x01 \x03(\x0b\x32\n.Statement\"4\n\x04\x41tom\x12\x1c\n\tatom_type\x18\x01 \x01(\x0e\x32\t.AtomType\x12\x0e\n\x06lexeme\x18\x02 \x01(\t\"\x1b\n\x04List\x12\x13\n\x05\x65lems\x18\x01 \x03(\x0b\x32\x04.Ast\"^\n\x04\x44ict\x12!\n\x06values\x18\x01 \x03(\x0b\x32\x11.Dict.ValuesEntry\x1a\x33\n\x0bValuesEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\x13\n\x05value\x18\x02 \x01(\x0b\x32\x04.Ast:\x02\x38\x01\"W\n\x06OpCall\x12\x15\n\x07operand\x18\x01 \x01(\x0b\x32\x04.Ast\x12\x11\n\tnamespace\x18\x02 \x01(\t\x12\x0c\n\x04name\x18\x03 \x01(\t\x12\x15\n\x06kwargs\x18\x04 \x01(\x0b\x32\x05.Dict\"\x13\n\x03Var\x12\x0c\n\x04name\x18\x01 \x01(\t\"\x1c\n\x05Table\x12\x13\n\x05inner\x18\x01 \x01(\x0b\x32\x04.Ast*5\n\x08\x41tomType\x12\x07\n\x03INT\x10\x00\x12\n\n\x06STRING\x10\x01\x12\x08\n\x04\x42OOL\x10\x02\x12\n\n\x06\x44OUBLE\x10\x03\x42\x0cZ\nengine/astb\x06proto3')
+  serialized_pb=_b('\n\tast.proto\"\xf0\x01\n\x03\x41st\x12\x15\n\x04\x61tom\x18\x01 \x01(\x0b\x32\x05.AtomH\x00\x12\x19\n\x06\x62inary\x18\x02 \x01(\x0b\x32\x07.BinaryH\x00\x12\x1f\n\tstatement\x18\x03 \x01(\x0b\x32\n.StatementH\x00\x12\x17\n\x05query\x18\x04 \x01(\x0b\x32\x06.QueryH\x00\x12\x15\n\x04list\x18\x05 \x01(\x0b\x32\x05.ListH\x00\x12\x15\n\x04\x64ict\x18\x06 \x01(\x0b\x32\x05.DictH\x00\x12\x19\n\x06opcall\x18\x07 \x01(\x0b\x32\x07.OpCallH\x00\x12\x13\n\x03var\x18\x08 \x01(\x0b\x32\x04.VarH\x00\x12\x17\n\x05table\x18\t \x01(\x0b\x32\x06.TableH\x00\x42\x06\n\x04node\"=\n\x06\x42inary\x12\x12\n\x04left\x18\x01 \x01(\x0b\x32\x04.Ast\x12\x13\n\x05right\x18\x02 \x01(\x0b\x32\x04.Ast\x12\n\n\x02op\x18\x03 \x01(\t\"-\n\tStatement\x12\x0c\n\x04name\x18\x01 \x01(\t\x12\x12\n\x04\x62ody\x18\x02 \x01(\x0b\x32\x04.Ast\"\'\n\x05Query\x12\x1e\n\nstatements\x18\x01 \x03(\x0b\x32\n.Statement\"R\n\x04\x41tom\x12\r\n\x03int\x18\x01 \x01(\x05H\x00\x12\x10\n\x06string\x18\x02 \x01(\tH\x00\x12\x0e\n\x04\x62ool\x18\x03 \x01(\x08H\x00\x12\x10\n\x06\x64ouble\x18\x04 \x01(\x01H\x00\x42\x07\n\x05inner\"\x1b\n\x04List\x12\x13\n\x05\x65lems\x18\x01 \x03(\x0b\x32\x04.Ast\"^\n\x04\x44ict\x12!\n\x06values\x18\x01 \x03(\x0b\x32\x11.Dict.ValuesEntry\x1a\x33\n\x0bValuesEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\x13\n\x05value\x18\x02 \x01(\x0b\x32\x04.Ast:\x02\x38\x01\"W\n\x06OpCall\x12\x15\n\x07operand\x18\x01 \x01(\x0b\x32\x04.Ast\x12\x11\n\tnamespace\x18\x02 \x01(\t\x12\x0c\n\x04name\x18\x03 \x01(\t\x12\x15\n\x06kwargs\x18\x04 \x01(\x0b\x32\x05.Dict\"\x13\n\x03Var\x12\x0c\n\x04name\x18\x01 \x01(\t\"\x1c\n\x05Table\x12\x13\n\x05inner\x18\x01 \x01(\x0b\x32\x04.AstB\x0cZ\nengine/astb\x06proto3')
 )
 
-_ATOMTYPE = _descriptor.EnumDescriptor(
-  name='AtomType',
-  full_name='AtomType',
-  filename=None,
-  file=DESCRIPTOR,
-  values=[
-    _descriptor.EnumValueDescriptor(
-      name='INT', index=0, number=0,
-      serialized_options=None,
-      type=None),
-    _descriptor.EnumValueDescriptor(
-      name='STRING', index=1, number=1,
-      serialized_options=None,
-      type=None),
-    _descriptor.EnumValueDescriptor(
-      name='BOOL', index=2, number=2,
-      serialized_options=None,
-      type=None),
-    _descriptor.EnumValueDescriptor(
-      name='DOUBLE', index=3, number=3,
-      serialized_options=None,
-      type=None),
-  ],
-  containing_type=None,
-  serialized_options=None,
-  serialized_start=726,
-  serialized_end=779,
-)
-_sym_db.RegisterEnumDescriptor(_ATOMTYPE)
-
-AtomType = enum_type_wrapper.EnumTypeWrapper(_ATOMTYPE)
-INT = 0
-STRING = 1
-BOOL = 2
-DOUBLE = 3
 
 
 
@@ -274,16 +238,30 @@ _ATOM = _descriptor.Descriptor(
   containing_type=None,
   fields=[
     _descriptor.FieldDescriptor(
-      name='atom_type', full_name='Atom.atom_type', index=0,
-      number=1, type=14, cpp_type=8, label=1,
+      name='int', full_name='Atom.int', index=0,
+      number=1, type=5, cpp_type=1, label=1,
       has_default_value=False, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='lexeme', full_name='Atom.lexeme', index=1,
+      name='string', full_name='Atom.string', index=1,
       number=2, type=9, cpp_type=9, label=1,
       has_default_value=False, default_value=_b("").decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='bool', full_name='Atom.bool', index=2,
+      number=3, type=8, cpp_type=7, label=1,
+      has_default_value=False, default_value=False,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='double', full_name='Atom.double', index=3,
+      number=4, type=1, cpp_type=5, label=1,
+      has_default_value=False, default_value=float(0),
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
@@ -298,9 +276,12 @@ _ATOM = _descriptor.Descriptor(
   syntax='proto3',
   extension_ranges=[],
   oneofs=[
+    _descriptor.OneofDescriptor(
+      name='inner', full_name='Atom.inner',
+      index=0, containing_type=None, fields=[]),
   ],
   serialized_start=407,
-  serialized_end=459,
+  serialized_end=489,
 )
 
 
@@ -330,8 +311,8 @@ _LIST = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=461,
-  serialized_end=488,
+  serialized_start=491,
+  serialized_end=518,
 )
 
 
@@ -368,8 +349,8 @@ _DICT_VALUESENTRY = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=533,
-  serialized_end=584,
+  serialized_start=563,
+  serialized_end=614,
 )
 
 _DICT = _descriptor.Descriptor(
@@ -398,8 +379,8 @@ _DICT = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=490,
-  serialized_end=584,
+  serialized_start=520,
+  serialized_end=614,
 )
 
 
@@ -450,8 +431,8 @@ _OPCALL = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=586,
-  serialized_end=673,
+  serialized_start=616,
+  serialized_end=703,
 )
 
 
@@ -481,8 +462,8 @@ _VAR = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=675,
-  serialized_end=694,
+  serialized_start=705,
+  serialized_end=724,
 )
 
 
@@ -512,8 +493,8 @@ _TABLE = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=696,
-  serialized_end=724,
+  serialized_start=726,
+  serialized_end=754,
 )
 
 _AST.fields_by_name['atom'].message_type = _ATOM
@@ -556,7 +537,18 @@ _BINARY.fields_by_name['left'].message_type = _AST
 _BINARY.fields_by_name['right'].message_type = _AST
 _STATEMENT.fields_by_name['body'].message_type = _AST
 _QUERY.fields_by_name['statements'].message_type = _STATEMENT
-_ATOM.fields_by_name['atom_type'].enum_type = _ATOMTYPE
+_ATOM.oneofs_by_name['inner'].fields.append(
+  _ATOM.fields_by_name['int'])
+_ATOM.fields_by_name['int'].containing_oneof = _ATOM.oneofs_by_name['inner']
+_ATOM.oneofs_by_name['inner'].fields.append(
+  _ATOM.fields_by_name['string'])
+_ATOM.fields_by_name['string'].containing_oneof = _ATOM.oneofs_by_name['inner']
+_ATOM.oneofs_by_name['inner'].fields.append(
+  _ATOM.fields_by_name['bool'])
+_ATOM.fields_by_name['bool'].containing_oneof = _ATOM.oneofs_by_name['inner']
+_ATOM.oneofs_by_name['inner'].fields.append(
+  _ATOM.fields_by_name['double'])
+_ATOM.fields_by_name['double'].containing_oneof = _ATOM.oneofs_by_name['inner']
 _LIST.fields_by_name['elems'].message_type = _AST
 _DICT_VALUESENTRY.fields_by_name['value'].message_type = _AST
 _DICT_VALUESENTRY.containing_type = _DICT
@@ -574,7 +566,6 @@ DESCRIPTOR.message_types_by_name['Dict'] = _DICT
 DESCRIPTOR.message_types_by_name['OpCall'] = _OPCALL
 DESCRIPTOR.message_types_by_name['Var'] = _VAR
 DESCRIPTOR.message_types_by_name['Table'] = _TABLE
-DESCRIPTOR.enum_types_by_name['AtomType'] = _ATOMTYPE
 _sym_db.RegisterFileDescriptor(DESCRIPTOR)
 
 Ast = _reflection.GeneratedProtocolMessageType('Ast', (_message.Message,), {

@@ -7,7 +7,7 @@ import (
 
 // TODO: make this generic instead of string
 type VisitorString interface {
-	VisitAtom(at AtomType, lexeme string) string
+	VisitAtom(a *Atom) string
 	VisitBinary(left *Ast, op string, right *Ast) string
 	VisitList(values []*Ast) string
 	VisitDict(values map[string]*Ast) string
@@ -19,7 +19,7 @@ type VisitorString interface {
 }
 
 type VisitorValue interface {
-	VisitAtom(at AtomType, lexeme string) (value.Value, error)
+	VisitAtom(a *Atom) (value.Value, error)
 	VisitBinary(left *Ast, op string, right *Ast) (value.Value, error)
 	VisitList(values []*Ast) (value.Value, error)
 	VisitDict(values map[string]*Ast) (value.Value, error)
@@ -47,11 +47,11 @@ var _ AstNode = (*Statement)(nil)
 var _ AstNode = (*Query)(nil)
 
 func (a *Atom) AcceptValue(v VisitorValue) (value.Value, error) {
-	return v.VisitAtom(a.AtomType, a.Lexeme)
+	return v.VisitAtom(a)
 }
 
 func (a *Atom) AcceptString(v VisitorString) string {
-	return v.VisitAtom(a.AtomType, a.Lexeme)
+	return v.VisitAtom(a)
 }
 
 func (b *Binary) AcceptValue(v VisitorValue) (value.Value, error) {

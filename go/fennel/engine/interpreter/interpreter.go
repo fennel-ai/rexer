@@ -6,7 +6,6 @@ import (
 	"fennel/value"
 	"fmt"
 	"reflect"
-	"strconv"
 )
 
 type Interpreter struct {
@@ -44,31 +43,16 @@ func (i Interpreter) VisitQuery(statements []*ast.Statement) (value.Value, error
 	return exp, nil
 }
 
-func (i Interpreter) VisitAtom(at ast.AtomType, lexeme string) (value.Value, error) {
-	switch at {
-	case ast.AtomType_INT:
-		n, err := strconv.Atoi(lexeme)
-		if err == nil {
-			return value.Int(n), nil
-		} else {
-			return value.Nil, err
-		}
-	case ast.AtomType_DOUBLE:
-		f, err := strconv.ParseFloat(lexeme, 64)
-		if err == nil {
-			return value.Double(f), nil
-		} else {
-			return value.Nil, err
-		}
-	case ast.AtomType_BOOL:
-		f, err := strconv.ParseBool(lexeme)
-		if err == nil {
-			return value.Bool(f), nil
-		} else {
-			return value.Nil, err
-		}
-	case ast.AtomType_STRING:
-		return value.String(lexeme), nil
+func (i Interpreter) VisitAtom(a *ast.Atom) (value.Value, error) {
+	switch a.Inner.(type) {
+	case *ast.Atom_Int:
+		return value.Int(a.GetInt()), nil
+	case *ast.Atom_Double:
+		return value.Double(a.GetDouble()), nil
+	case *ast.Atom_Bool:
+		return value.Bool(a.GetBool()), nil
+	case *ast.Atom_String_:
+		return value.String(a.GetString_()), nil
 	}
 	panic("unreachable code")
 }

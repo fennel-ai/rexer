@@ -31,16 +31,13 @@ message Query {
     repeated Statement statements = 1;
 }
 
-enum AtomType {
-    INT = 0;
-    STRING = 1;
-    BOOL = 2;
-    DOUBLE = 3;
-}
-
 message Atom {
-    AtomType atom_type = 1;
-    string lexeme = 2;
+    oneof inner {
+        int32 int = 1;
+        string string = 2;
+        bool bool = 3;
+        double double = 4;
+    }
 }
 
 message List {
