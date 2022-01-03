@@ -1,7 +1,7 @@
 package lib
 
 import (
-	"fennel/actionlog"
+	actionlog "fennel/actionlog/lib"
 	"fennel/value"
 )
 
