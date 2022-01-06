@@ -7,7 +7,7 @@ const filters = {
   actionType : {
     id: 'filterActionType',
     label: 'Action Type: ',
-    options: [ 'LIKE', 'SHARE' ],
+    options: [ 'ANY', 'LIKE', 'SHARE' ],
   },
   targetId : {
     id: 'filterTargetId',
@@ -16,7 +16,7 @@ const filters = {
   targetType : {
     id: 'filterTargetType',
     label: 'Target Type: ',
-    options: [ 'VIDEO', 'IMAGE' ],
+    options: [ 'ANY', 'VIDEO', 'IMAGE' ],
   },
   actorId : {
     id: 'filterActorId',
@@ -25,7 +25,7 @@ const filters = {
   actorType : {
     id: 'filterActorType',
     label: 'Actor Type: ',
-    options: [ 'USER' ],
+    options: [ 'ANY', 'USER' ],
   },
   requestId : {
     id: 'filterRequestId',
