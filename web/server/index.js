@@ -50,25 +50,20 @@ const allLogs = [
 app.get('/api/getlogs', (req, res) => {
   console.log(req.query);
   
-  res.json({ result : allLogs.filter((action) => {
-    if('actionType' in req.query && req.query.actionType !== action.actionType)
-    {
+  res.json({ data : allLogs.filter((action) => {
+    if('actionType' in req.query && req.query.actionType !== action.actionType) {
       return false;
     }
-    if('targetId' in req.query && req.query.targetId !== action.targetId)
-    {
+    if('targetId' in req.query && req.query.targetId !== action.targetId) {
       return false;
     }
-    if('targetType' in req.query && req.query.targetType !== action.targetType)
-    {
+    if('targetType' in req.query && req.query.targetType !== action.targetType){
       return false;
     }
-    if('actorId' in req.query && req.query.actorId !== action.actorId)
-    {
+    if('actorId' in req.query && req.query.actorId !== action.actorId){
       return false;
     }
-    if('actorType' in req.query && req.query.actorType !== action.actorType)
-    {
+    if('actorType' in req.query && req.query.actorType !== action.actorType){
       return false;
     }
     
