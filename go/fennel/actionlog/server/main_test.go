@@ -7,57 +7,70 @@ import (
 	"testing"
 )
 
-func check(t *testing.T, c client.Client, request lib.ActionFetchRequest, expected []lib.Action) {
+func verifyFetch(t *testing.T, c client.Client, request lib.ActionFetchRequest, expected []lib.Action) {
 	found, err := c.Fetch(request)
 	assert.NoError(t, err)
-	assert.Equal(t, expected, found)
+	equals(t, expected, found)
+}
+
+func equals(t *testing.T, expected []lib.Action, found []lib.Action) {
+	// we don't test equality of found/expected directly
+	// action_ids aren't set properly in expected yet
+	// instead, we use Equals method on Action struct and tell it to ignore IDs
+	assert.Equal(t, len(expected), len(found))
+	for i, e := range expected {
+		assert.True(t, e.Equals(found[i], true))
+	}
 }
 
 func add(t *testing.T, c client.Client, a lib.Action) lib.Action {
-	aid, err := c.Log(a)
+	err := c.Log(a)
 	assert.NoError(t, err)
-	a.ActionID = aid
+
+	// and also make one run of "Log" on server to ensure that the message goes through
+	err = Log()
+	assert.NoError(t, err)
 	return a
 }
 
 func TestServerClientBasic(t *testing.T) {
 	t.Cleanup(dbInit)
-	// start the server
+	// create a server
 	go serve()
-	// and create a client
+	// create a client
 	c := client.NewClient("http://localhost")
 
 	// in the beginning, with no value set, we get []actions but with no error
-	check(t, c, lib.ActionFetchRequest{}, []lib.Action{})
+	verifyFetch(t, c, lib.ActionFetchRequest{}, []lib.Action{})
 
 	// now we add a couple of actions
 	action := lib.Action{ActorType: 1, ActorID: 2, ActionType: 3, TargetType: 4, TargetID: 5}
 	// logging this should fail because some fields (e.g. requestID aren't specified)
-	_, err := c.Log(action)
+	err := c.Log(action)
 	assert.Error(t, err)
-	// and no action was logged on server
-	check(t, c, lib.ActionFetchRequest{}, []lib.Action{})
+	// and no action was logged on server even after process
+	verifyFetch(t, c, lib.ActionFetchRequest{}, []lib.Action{})
 
 	// but this error disappears when we pass all values
 	action1 := add(t, c, lib.Action{
 		ActorType: 1, ActorID: 2, ActionType: 3, TargetType: 4, TargetID: 5, RequestID: 6, Timestamp: 7},
 	)
 	// and this action should show up in requests
-	check(t, c, lib.ActionFetchRequest{}, []lib.Action{action1})
+	verifyFetch(t, c, lib.ActionFetchRequest{}, []lib.Action{action1})
 
 	// add a couple of actions
 	action2 := add(t, c, lib.Action{
 		ActorType: 11, ActorID: 12, ActionType: 13, TargetType: 14, TargetID: 15, RequestID: 16, Timestamp: 17},
 	)
-	check(t, c, lib.ActionFetchRequest{}, []lib.Action{action1, action2})
+	verifyFetch(t, c, lib.ActionFetchRequest{}, []lib.Action{action1, action2})
 	action3 := add(t, c, lib.Action{
 		ActorType: 22, ActorID: 23, ActionType: 23, TargetType: 24, TargetID: 25, RequestID: 26, Timestamp: 27},
 	)
-	check(t, c, lib.ActionFetchRequest{}, []lib.Action{action1, action2, action3})
+	verifyFetch(t, c, lib.ActionFetchRequest{}, []lib.Action{action1, action2, action3})
 
-	// check with actionID
-	check(t, c, lib.ActionFetchRequest{MinActionID: action2.ActionID}, []lib.Action{action3})
-	check(t, c, lib.ActionFetchRequest{MinActionID: action1.ActionID, MaxActionID: action2.ActionID}, []lib.Action{action2})
+	// verifyFetch with actionID
+	verifyFetch(t, c, lib.ActionFetchRequest{MinActionID: action2.ActionID}, []lib.Action{action3})
+	verifyFetch(t, c, lib.ActionFetchRequest{MinActionID: action1.ActionID, MaxActionID: action2.ActionID}, []lib.Action{action2})
 }
 
 func TestEndToEnd(t *testing.T) {
@@ -104,14 +117,11 @@ func TestEndToEnd(t *testing.T) {
 
 	// now make an event
 	action1 := lib.Action{ActorType: lib.User, ActorID: uid, TargetType: lib.Video, TargetID: video_id, ActionType: lib.Like, RequestID: 1, Timestamp: ts}
-	aid, err := c.Log(action1)
+	err := c.Log(action1)
 	assert.NoError(t, err)
-	action1.ActionID = aid
 
 	// and verify it went through
-	found, err := c.Fetch(lib.ActionFetchRequest{MinActionID: 0})
-	assert.NoError(t, err)
-	assert.Equal(t, []lib.Action{action1}, found)
+	verifyFetch(t, c, lib.ActionFetchRequest{MinActionID: 0}, []lib.Action{action1})
 
 	// and all counts should still be zero
 	for _, cr := range requests {
@@ -128,12 +138,10 @@ func TestEndToEnd(t *testing.T) {
 	}
 	// now make one more event which is not of matching action type (Like vs Share)
 	action2 := lib.Action{ActorType: lib.User, ActorID: uid, TargetType: lib.Video, TargetID: video_id, ActionType: lib.Share, RequestID: 1, Timestamp: ts}
-	aid, err = c.Log(action2)
+	err = c.Log(action2)
 	assert.NoError(t, err)
-	action2.ActionID = aid
-	found, err = c.Fetch(lib.ActionFetchRequest{MinActionID: 0})
-	assert.NoError(t, err)
-	assert.Equal(t, []lib.Action{action1, action2}, found)
+	verifyFetch(t, c, lib.ActionFetchRequest{MinActionID: 0}, []lib.Action{action1, action2})
+
 	// this one doesn't change the counts because action type doesn't match
 	aggregate()
 	for _, cr := range requests {
@@ -144,12 +152,9 @@ func TestEndToEnd(t *testing.T) {
 
 	// but another valid event will make the counts go up
 	action3 := lib.Action{ActorType: lib.User, ActorID: uid, TargetType: lib.Video, TargetID: video_id, ActionType: lib.Like, RequestID: 1, Timestamp: ts}
-	aid, err = c.Log(action3)
+	err = c.Log(action3)
 	assert.NoError(t, err)
-	action3.ActionID = aid
-	found, err = c.Fetch(lib.ActionFetchRequest{MinActionID: 0})
-	assert.NoError(t, err)
-	assert.Equal(t, []lib.Action{action1, action2, action3}, found)
+	verifyFetch(t, c, lib.ActionFetchRequest{MinActionID: 0}, []lib.Action{action1, action2, action3})
 
 	aggregate()
 	for _, cr := range requests {

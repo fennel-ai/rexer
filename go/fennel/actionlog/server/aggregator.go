@@ -124,8 +124,8 @@ type CounterConfig struct {
 }
 
 func (cg CounterConfig) Validate() error {
-	// TODO: check that action_type type isn't too large (compared to the hardcoded list)
-	// TODO: check that actor_type and target_type if non-zero are valid
+	// TODO: verifyFetch that action_type type isn't too large (compared to the hardcoded list)
+	// TODO: verifyFetch that actor_type and target_type if non-zero are valid
 	// TODO: verify that at least one keygen is given
 	if cg.actionType <= 0 {
 		return fmt.Errorf("counter config not given a valid action_type type")

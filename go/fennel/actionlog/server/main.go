@@ -1,10 +1,10 @@
 package main
 
 import (
-	"bytes"
 	"encoding/json"
 	"fennel/actionlog/lib"
 	"fmt"
+	"github.com/confluentinc/confluent-kafka-go/kafka"
 	"log"
 	"net/http"
 	"sync"
@@ -13,11 +13,59 @@ import (
 
 var inited bool = false
 
+// Kafka consumer
+var kConsumer *kafka.Consumer
+
+// TODO: find a cleaner way of doing this once init
 func init() {
 	if !inited {
 		dbInit()
-		inited = false
+		initKafkaConsumer()
+		inited = true
 	}
+}
+
+func initKafkaConsumer() {
+	var err error
+	kConsumer, err = kafka.NewConsumer(&kafka.ConfigMap{
+		"bootstrap.servers": lib.KAFKA_BOOTSTRAP_SERVER,
+		"group.id":          "myGroup",
+		"auto.offset.reset": "earliest",
+	})
+
+	if err != nil {
+		panic(err)
+	}
+	kConsumer.SubscribeTopics([]string{lib.KAFKA_TOPIC}, nil)
+}
+
+// Log reads a single message from Kafka and logs it in the database
+func Log() error {
+	msg, err := kConsumer.ReadMessage(-1)
+	if err != nil {
+		return err
+	}
+	//fmt.Printf("Message on %s: %s\n", msg.TopicPartition, string(msg.Value))
+	// validate this message and if valid, write it in DB
+	var action lib.Action
+	err = json.Unmarshal(msg.Value, &action)
+	if err != nil {
+		return err
+	}
+	err = action.Validate()
+	if err != nil {
+		return err
+	}
+	// Now we know that this is a valid action and a db call will be made
+	// if timestamp isn't set explicitly, we set it to current time
+	if action.Timestamp == 0 {
+		action.Timestamp = lib.Timestamp(time.Now().Unix())
+	}
+	_, err = actionDBInsert(action)
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 func Fetch(w http.ResponseWriter, req *http.Request) {
@@ -41,45 +89,6 @@ func Fetch(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 	fmt.Fprintf(w, string(ser))
-}
-
-// Log logs the given action in the database after some validation
-// if timestamp isn't specified, current timestamp is used
-// if the action succeeds, returns action ID of the newly logged action
-// TODO: add some locking etc to ensure that if two requests try to modify
-// the same key/value, we don't run into a race condition
-func Log(w http.ResponseWriter, req *http.Request) {
-	var action lib.Action
-	// Try to decode the request body into the struct. If there is an error,
-	// respond to the client with the error message and a 400 status code.
-	buf := new(bytes.Buffer)
-	buf.ReadFrom(req.Body)
-	err := json.Unmarshal(buf.Bytes(), &action)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return
-	}
-	err = action.Validate()
-	if err != nil {
-		http.Error(w, fmt.Sprintf("can not log invalid action: %v", err), http.StatusBadRequest)
-		return
-	}
-	// Now we know that this is a valid request and a db call will be made
-	// if timestamp isn't set explicitly, we set it to current time
-	if action.Timestamp == 0 {
-		action.Timestamp = lib.Timestamp(time.Now().Unix())
-	}
-	actionID, err := actionDBInsert(action)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadGateway)
-		return
-	}
-	ser, err := json.Marshal(actionID)
-	if err != nil {
-		http.Error(w, fmt.Sprintf("server marshal error: %v", err.Error()), http.StatusBadGateway)
-		return
-	}
-	w.Write(ser)
 }
 
 func Count(w http.ResponseWriter, req *http.Request) {
@@ -109,7 +118,6 @@ func Count(w http.ResponseWriter, req *http.Request) {
 
 func serve() {
 	http.HandleFunc("/fetch", Fetch)
-	http.HandleFunc("/log", Log)
 	http.HandleFunc("/count", Count)
 	http.ListenAndServe(fmt.Sprintf(":%d", lib.PORT), nil)
 }
@@ -133,7 +141,14 @@ func main() {
 	// one goroutine will run http server
 	go serve()
 
-	// and other goroutines will run minutely crons
+	// one goroutine will constantly scan kafka and write actions
+	go func() {
+		for {
+			Log()
+		}
+	}()
+
+	// and other goroutines will run minutely crons to aggregate counters
 	for {
 		aggregate()
 		// now sleep for a minute

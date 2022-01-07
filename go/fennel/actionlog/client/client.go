@@ -9,8 +9,6 @@ import (
 	"net/http"
 )
 
-// TODO: this client needs to take two urls - one for dbserver and other for aggregator?
-// Or somehow rearchitect such that server can also talk to aggrgator db
 type Client struct {
 	url string
 }
@@ -58,33 +56,17 @@ func (c *Client) Fetch(request lib.ActionFetchRequest) ([]lib.Action, error) {
 }
 
 // Log makes the http request to server to log the given action
-func (c *Client) Log(action lib.Action) (lib.OidType, error) {
+func (c *Client) Log(action lib.Action) error {
 	err := action.Validate()
 	if err != nil {
-		return 0, fmt.Errorf("can not log invalid action: %v", err)
+		return fmt.Errorf("can not log invalid action: %v", err)
 	}
 	ser, err := json.Marshal(action)
 	if err != nil {
-		return 0, fmt.Errorf("could not marshal action: %v", err)
+		return fmt.Errorf("could not marshal action: %v", err)
 	}
-
-	reqBody := bytes.NewBuffer(ser)
-	response, err := http.Post(c.LogURL(), "application/json", reqBody)
-	if err != nil {
-		return 0, fmt.Errorf("http error: %v", err)
-	}
-	// verify server sent no error
-	defer response.Body.Close()
-	ser, err = ioutil.ReadAll(response.Body)
-	if err != nil {
-		return 0, err
-	}
-	var actionId lib.OidType
-	err = json.Unmarshal(ser, &actionId)
-	if err != nil {
-		return 0, fmt.Errorf("server unmarshall error %v", err)
-	}
-	return actionId, nil
+	send(ser)
+	return nil
 }
 
 func (c *Client) Count(request lib.GetCountRequest) (uint64, error) {
