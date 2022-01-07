@@ -54,10 +54,10 @@ const Console = () => {
   }
 
   return (
-    <>
+    <div className="consoleBody">
       <ConsoleForm onQuerySubmit={handleQuery} />
       <ConsoleResult updateData={updateData} />
-    </>
+    </div>
   );
 };
 

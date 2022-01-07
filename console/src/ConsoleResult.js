@@ -18,22 +18,27 @@ const ConsoleResult = ({ updateData }) => {
   console.log(results);
   
   return (
-    <table>
-      <thead>
-        <tr>
-          <th>Action Type</th>
-          <th>Target ID</th>
-          <th>Target Type</th>
-          <th>Actor ID</th>
-          <th>Actor Type</th>
-        </tr>
-      </thead>
-      <tbody>
-        {results.map((item) => (
-          <ActionRow data={item} key={item.logId} />
-        ))}
-      </tbody>
-    </table>
+    <div className="consoleResult">
+      <h2 className="consoleResultHeader">
+        Results
+      </h2>
+      <table>
+        <thead>
+          <tr>
+            <th>Action Type</th>
+            <th>Target ID</th>
+            <th>Target Type</th>
+            <th>Actor ID</th>
+            <th>Actor Type</th>
+          </tr>
+        </thead>
+        <tbody>
+          {results.map((item) => (
+            <ActionRow data={item} key={item.logId} />
+          ))}
+        </tbody>
+      </table>
+    </div>
   );
 };
 

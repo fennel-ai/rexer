@@ -1,21 +1,26 @@
 .container {
-  margin: 0px 100px;
+  height: 100%;
 }
 
-h1 {
+.title {
   text-align: center;
   font-size: 54px;
   font-weight: 300;
   
-  margin: 0px;
+  margin: 0px 0px 10px 0px;
 }
 
-.consoleForm {
+.consoleBody {
   display: flex;
+}
+
+.consoleForm {  
   padding: 5px;
   
+  margin: 0px 10px 0px 0px;
+  
   border-style: solid;
-  border-width: 1px 0px 0px 0px;
+  border-width: 0px 2px 0px 0px;
   
   background-color: #dddddd;
 }
@@ -24,12 +29,36 @@ h1 {
   margin: 5px;
 }
 
-label {
+.consoleFormItemLabel {
+  padding: 5px;
+  
   font-weight: 500;
+  background-color: #777777;
+  color: white;
+}
+
+.consoleFormItemInput {
+  padding: 5px;
+  
+  background-color: #bbbbbb;
+}
+
+.consoleResult {
+  width: 100%;
+  margin: 0px 10px;
+}
+
+.consoleResultHeader {
+  background-color: #aaaaaa;
+  padding: 5px;
+  font-weight: 500;
+  
+  margin: 0px;
+  border-style: solid;
+  border-width: 2px 0px 1px 0px;
 }
 
 table {
-  margin: 5px;
   width: 100%;
 }
 
