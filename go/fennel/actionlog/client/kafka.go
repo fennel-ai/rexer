@@ -2,8 +2,9 @@ package client
 
 import (
 	"fennel/actionlog/lib"
-	"github.com/confluentinc/confluent-kafka-go/kafka"
 	"log"
+
+	"github.com/confluentinc/confluent-kafka-go/kafka"
 )
 
 // TODO: move this to client object and create a client.Close() function
@@ -11,11 +12,17 @@ var producer *kafka.Producer
 
 func init() {
 	var err error
-	producer, err = kafka.NewProducer(&kafka.ConfigMap{"bootstrap.servers": lib.KAFKA_BOOTSTRAP_SERVER})
+	producer, err = kafka.NewProducer(&kafka.ConfigMap{
+		// connection configs.
+		"bootstrap.servers": lib.KAFKA_BOOTSTRAP_SERVER,
+		"security.protocol": lib.KAFKA_SECURITY_PROTOCOL,
+		"sasl.mechanisms":   lib.KAFKA_SASL_MECHANISM,
+		"sasl.username":     lib.KAFKA_USERNAME,
+		"sasl.password":     lib.KAFKA_PASSWORD,
+	})
 	if err != nil {
 		panic(err)
 	}
-
 	// Delivery report handler for produced messages
 	// This starts a go-routine that goes through all "delivery reports" for sends
 	// as they arrive and logs if any of those are failing

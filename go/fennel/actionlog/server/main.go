@@ -4,11 +4,12 @@ import (
 	"encoding/json"
 	"fennel/actionlog/lib"
 	"fmt"
-	"github.com/confluentinc/confluent-kafka-go/kafka"
 	"log"
 	"net/http"
 	"sync"
 	"time"
+
+	"github.com/confluentinc/confluent-kafka-go/kafka"
 )
 
 var inited bool = false
@@ -28,7 +29,14 @@ func init() {
 func initKafkaConsumer() {
 	var err error
 	kConsumer, err = kafka.NewConsumer(&kafka.ConfigMap{
+		// connection configs.
 		"bootstrap.servers": lib.KAFKA_BOOTSTRAP_SERVER,
+		"security.protocol": lib.KAFKA_SECURITY_PROTOCOL,
+		"sasl.mechanisms":   lib.KAFKA_SASL_MECHANISM,
+		"sasl.username":     lib.KAFKA_USERNAME,
+		"sasl.password":     lib.KAFKA_PASSWORD,
+
+		// consumer specific configs.
 		"group.id":          "myGroup",
 		"auto.offset.reset": "earliest",
 	})
