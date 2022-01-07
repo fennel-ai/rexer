@@ -1,6 +1,8 @@
 import * as React from 'react';
 import { ConsoleSelect } from './ConsoleSelect';
 import { ConsoleInput } from './ConsoleInput';
+import { ConsoleDateTime } from './ConsoleDateTime';
+
 import './style.css'
 
 const filters = {
@@ -31,6 +33,14 @@ const filters = {
     id: 'filterRequestId',
     label: 'Request ID: ',
   },
+  startTime: {
+    id: 'filterStartTime',
+    label: 'After',
+  },
+  finishTime: {
+    id: 'filterFinishTime',
+    label: 'Before',
+  },
 };
 
 const ConsoleForm = ({ onQuerySubmit }) => {  
@@ -42,8 +52,12 @@ const ConsoleForm = ({ onQuerySubmit }) => {
       <ConsoleInput data={filters.actorId} />
       <ConsoleSelect data={filters.actorType} />
       <ConsoleInput data={filters.requestId} />
+      <ConsoleDateTime data={filters.startTime} />
+      <ConsoleDateTime data={filters.finishTime} />
       
-      <button type="submit">Query</button>
+      <div className="consoleFormSubmit">
+        <button type="submit" className="consoleFormSubmitButton">Query</button>
+      </div>
     </form>
   );
 };

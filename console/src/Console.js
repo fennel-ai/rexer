@@ -10,19 +10,28 @@ const getQueryUrl = (form) => {
   let queryUrl = API_ENDPOINT;
 
   if (form.filterActionType.value !== 'ANY') {
-    queryUrl += `actionType=${form.filterActionType.value}&`
+    queryUrl += `actionType=${form.filterActionType.value}&`;
   }
   if (form.filterTargetId.value !== '') {
-    queryUrl += `targetId=${form.filterTargetId.value}&`
+    queryUrl += `targetId=${form.filterTargetId.value}&`;
   }
   if (form.filterTargetType.value !== 'ANY') {
-    queryUrl += `targetType=${form.filterTargetType.value}&`
+    queryUrl += `targetType=${form.filterTargetType.value}&`;
   }
   if (form.filterActorId.value !== '') {
-    queryUrl += `actorId=${form.filterActorId.value}&`
+    queryUrl += `actorId=${form.filterActorId.value}&`;
   }
   if (form.filterActorType.value !== 'ANY') {
-    queryUrl += `actorType=${form.filterActorType.value}&`
+    queryUrl += `actorType=${form.filterActorType.value}&`;
+  }
+  if (form.filterRequestId.value !== '') {
+    queryUrl += `requestId=${form.filterRequestId.value}&`;
+  }
+  if (form.filterStartTime.value !== '') {
+    queryUrl += `after=${form.filterStartTime.value}&`;
+  }
+  if (form.filterFinishTime.value !== '') {
+    queryUrl += `before=${form.filterFinishTime.value}&`;
   }
 
   queryUrl = queryUrl.slice(0, -1);

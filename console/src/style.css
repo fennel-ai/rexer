@@ -20,7 +20,7 @@
   margin: 0px 10px 0px 0px;
   
   border-style: solid;
-  border-width: 0px 2px 0px 0px;
+  border-width: 2px 2px 2px 0px;
   
   background-color: #dddddd;
 }
@@ -45,7 +45,7 @@
 
 .consoleResult {
   width: 100%;
-  margin: 0px 10px;
+  margin: 0px 10px 0px 0px;
 }
 
 .consoleResultHeader {
@@ -78,5 +78,18 @@ th {
 }
 
 th, td {
+  padding: 5px;
+}
+
+.consoleFormSubmit {
+  text-align: center;
+  
+  margin: 5px;
+  padding: 5px;
+}
+
+.consoleFormSubmitButton {
+  width: 100%;
+  
   padding: 5px;
 }

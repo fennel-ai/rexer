@@ -1,19 +1,15 @@
 import * as React from 'react';
 import './style.css'
 
-const ConsoleSelect = ({ data }) => (
+const ConsoleDateTime = ({ data }) => (
   <div className="consoleFormItem">
     <div className="consoleFormItemLabel">
       <label htmlFor={data.id}>{data.label}</label>
     </div>
     <div className="consoleFormItemInput">
-      <select name={data.id} id={data.id}>
-        {data.options.map((option) => (
-          <option value={option} key={option}>{option}</option>
-        ))}
-      </select>
+      <input type="datetime-local" name={data.id} id={data.id} />
     </div>
   </div>
 );
 
-export { ConsoleSelect };
+export { ConsoleDateTime };

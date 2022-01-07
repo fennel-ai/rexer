@@ -33,6 +33,8 @@ const allLogs = [
     targetType: 'IMAGE',
     actorId: '0',
     actorType: 'USER',
+    requestId: '0',
+    timestamp: Date.parse('2022-01-01'),
   },
   {
     logId: 1,
@@ -41,6 +43,8 @@ const allLogs = [
     targetType: 'VIDEO',
     actorId: '0',
     actorType: 'USER',
+    requestId: '0',
+    timestamp: Date.parse('2022-01-03'),
   },
   {
     logId: 2,
@@ -49,6 +53,8 @@ const allLogs = [
     targetType: 'IMAGE',
     actorId: '1',
     actorType: 'USER',
+    requestId: '2',
+    timestamp: Date.parse('2022-01-05'),
   },
   {
     logId: 3,
@@ -57,6 +63,8 @@ const allLogs = [
     targetType: 'VIDEO',
     actorId: '1',
     actorType: 'USER',
+    requestId: '2',
+    timestamp: Date.parse('2022-01-04'),
   },
   {
     logId: 4,
@@ -64,7 +72,9 @@ const allLogs = [
     targetId: '2',
     targetType: 'IMAGE',
     actorId: '0',
+    requestId: '0',
     actorType: 'USER',
+    timestamp: Date.parse('2022-01-02'),
   },
   {
     logId: 5,
@@ -73,6 +83,8 @@ const allLogs = [
     targetType: 'VIDEO',
     actorId: '1',
     actorType: 'USER',
+    requestId: '3',
+    timestamp: Date.parse('2022-01-07'),
   },
 
 ]
@@ -95,6 +107,15 @@ app.get('/actions', (req, res) => {
         return false;
       }
       if ('actorType' in req.query && req.query.actorType !== action.actorType) {
+        return false;
+      }
+      if ('requestId' in req.query && req.query.requestId !== action.requestId) {
+        return false;
+      }
+      if ('before' in req.query && Date.parse(req.query.before) < action.timestamp) {
+        return false;
+      }
+      if ('after' in req.query && Date.parse(req.query.after) > action.timestamp) {
         return false;
       }
 

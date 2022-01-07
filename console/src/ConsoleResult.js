@@ -30,6 +30,8 @@ const ConsoleResult = ({ updateData }) => {
             <th>Target Type</th>
             <th>Actor ID</th>
             <th>Actor Type</th>
+            <th>Request ID</th>
+            <th>Timestamp</th>
           </tr>
         </thead>
         <tbody>
@@ -42,13 +44,17 @@ const ConsoleResult = ({ updateData }) => {
   );
 };
 
-const ActionRow = ({ data }) => console.log(data) || (
+const getDate = (ms) => new Date(ms);
+
+const ActionRow = ({ data }) => console.log(data) || console.log(typeof data.timestamp) || (
   <tr>
     <td>{data.actionType}</td>
     <td>{data.targetId}</td>
     <td>{data.targetType}</td>
     <td>{data.actorId}</td>
     <td>{data.actorType}</td>
+    <td>{data.requestId}</td>
+    <td>{getDate(data.timestamp).toString()}</td>
   </tr>
 );
 
