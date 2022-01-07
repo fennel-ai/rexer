@@ -3,6 +3,8 @@ import * as React from 'react';
 import { ConsoleSelect } from './ConsoleSelect';
 import { ConsoleInput } from './ConsoleInput';
 
+import './style.css'
+
 const filters = {
   actionType : {
     id: 'filterActionType',
@@ -35,7 +37,7 @@ const filters = {
 
 const ConsoleForm = ({ onQuerySubmit }) => {  
   return (
-    <form onSubmit={onQuerySubmit}>
+    <form onSubmit={onQuerySubmit} className="consoleForm">
       <ConsoleSelect data={filters.actionType} />
       <ConsoleInput data={filters.targetId} />
       <ConsoleSelect data={filters.targetType} />

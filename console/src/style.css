@@ -1,0 +1,53 @@
+.container {
+  margin: 0px 100px;
+}
+
+h1 {
+  text-align: center;
+  font-size: 54px;
+  font-weight: 300;
+  
+  margin: 0px;
+}
+
+.consoleForm {
+  display: flex;
+  padding: 5px;
+  
+  border-style: solid;
+  border-width: 1px 0px 0px 0px;
+  
+  background-color: #dddddd;
+}
+
+.consoleFormItem {
+  margin: 5px;
+}
+
+label {
+  font-weight: 500;
+}
+
+table {
+  margin: 5px;
+  width: 100%;
+}
+
+table, th, td {
+  border-style: solid;
+  border-width: 1px;
+}
+
+tr:hover {
+  color: #ffffff;
+  background-color: #555555;
+}
+
+th {
+  color: #ffffff;
+  background-color: #997799;
+}
+
+th, td {
+  padding: 5px;
+}

@@ -1,9 +1,10 @@
 import * as React from 'react';
+import { API } from 'aws-amplify';
 
 import { ConsoleForm } from './ConsoleForm';
 import { ConsoleResult } from './ConsoleResult';
-import { API } from 'aws-amplify';
 
+import './style.css'
 
 const API_ENDPOINT = '/actions?';
 
@@ -44,7 +45,7 @@ const Console = () => {
     API
       .get('bff', queryUrl, {})
       .then(response => {
-        console.log(response)
+        console.log(response);
         updateData.current(response.data);
       })
       .catch(error => {

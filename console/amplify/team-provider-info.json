@@ -13,14 +13,14 @@
       "APIGatewayAuthURL": "https://s3.amazonaws.com/amplify-console-dev-172054-deployment/amplify-cfn-templates/api/APIGatewayAuthStack.json"
     },
     "categories": {
-      "auth": {
-        "undefined": {}
-      },
       "function": {
         "consoleBff": {
           "deploymentBucketName": "amplify-console-dev-172054-deployment",
-          "s3Key": "amplify-builds/consoleBff-5a5745626462565a3545-build.zip"
+          "s3Key": "amplify-builds/consoleBff-584a4d78703939545052-build.zip"
         }
+      },
+      "auth": {
+        "console": {}
       }
     }
   }
