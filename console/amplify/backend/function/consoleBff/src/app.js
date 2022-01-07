@@ -27,6 +27,7 @@ app.use(function (req, res, next) {
 
 const allLogs = [
   {
+    logId: 0,
     actionType: 'LIKE',
     targetId: '0',
     targetType: 'IMAGE',
@@ -34,6 +35,7 @@ const allLogs = [
     actorType: 'USER',
   },
   {
+    logId: 1,
     actionType: 'LIKE',
     targetId: '1',
     targetType: 'VIDEO',
@@ -41,6 +43,7 @@ const allLogs = [
     actorType: 'USER',
   },
   {
+    logId: 2,
     actionType: 'LIKE',
     targetId: '2',
     targetType: 'IMAGE',
@@ -48,6 +51,7 @@ const allLogs = [
     actorType: 'USER',
   },
   {
+    logId: 3,
     actionType: 'SHARE',
     targetId: '1',
     targetType: 'VIDEO',
@@ -55,6 +59,7 @@ const allLogs = [
     actorType: 'USER',
   },
   {
+    logId: 4,
     actionType: 'SHARE',
     targetId: '2',
     targetType: 'IMAGE',
@@ -62,6 +67,7 @@ const allLogs = [
     actorType: 'USER',
   },
   {
+    logId: 5,
     actionType: 'SHARE',
     targetId: '2',
     targetType: 'VIDEO',

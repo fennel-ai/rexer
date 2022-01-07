@@ -1,8 +1,6 @@
 import * as React from 'react';
-
 import { ConsoleSelect } from './ConsoleSelect';
 import { ConsoleInput } from './ConsoleInput';
-
 import './style.css'
 
 const filters = {

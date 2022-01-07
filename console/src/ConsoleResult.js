@@ -1,5 +1,4 @@
 import * as React from 'react';
-
 import './style.css'
 
 const ConsoleResult = ({ updateData }) => {
@@ -13,7 +12,7 @@ const ConsoleResult = ({ updateData }) => {
   
   React.useEffect(() => {
     updateData.current = updateResults;
-  }, []);
+  });
   
   console.log("Rerendering..");
   console.log(results);
