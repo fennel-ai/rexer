@@ -44,7 +44,18 @@ const ConsoleResult = ({ updateData }) => {
   );
 };
 
-const getDate = (ms) => new Date(ms);
+const formatDate = (ms) => {
+  let t = new Date(ms);
+  let timestamp = '';
+
+  timestamp += String(t.getHours()).padStart(2, '0');
+  timestamp += ':' + String(t.getMinutes()).padStart(2, '0');
+  timestamp += ':' + String(t.getSeconds()).padStart(2, '0');
+  timestamp += ' ' + t.toDateString().slice(4);
+  
+  
+  return timestamp;
+}
 
 const ActionRow = ({ data }) => console.log(data) || console.log(typeof data.timestamp) || (
   <tr>
@@ -54,7 +65,7 @@ const ActionRow = ({ data }) => console.log(data) || console.log(typeof data.tim
     <td>{data.actorId}</td>
     <td>{data.actorType}</td>
     <td>{data.requestId}</td>
-    <td>{getDate(data.timestamp).toString()}</td>
+    <td className="timestamp">{formatDate(data.timestamp)}</td>
   </tr>
 );
 

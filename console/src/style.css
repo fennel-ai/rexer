@@ -93,3 +93,8 @@ th, td {
   
   padding: 5px;
 }
+
+.timestamp {
+  font-family: monospace;
+  font-size: 15px;
+}
