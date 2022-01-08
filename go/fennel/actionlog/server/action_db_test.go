@@ -2,13 +2,16 @@ package main
 
 import (
 	"fennel/actionlog/lib"
+	"fennel/instance"
 	"github.com/stretchr/testify/assert"
 	"testing"
 )
 
 // TODO: write exhaustive tests
 func TestActionDBBasic(t *testing.T) {
-	t.Cleanup(dbInit)
+	err := instance.Setup([]instance.Resource{instance.DB})
+	assert.NoError(t, err)
+
 	var request lib.ActionFetchRequest
 	// initially before setting, value isn't there so we get empty response
 	found, err := actionDBGet(request)

@@ -3,6 +3,7 @@ package main
 import (
 	"fennel/actionlog/client"
 	"fennel/actionlog/lib"
+	"fennel/instance"
 	"github.com/stretchr/testify/assert"
 	"testing"
 )
@@ -33,10 +34,19 @@ func add(t *testing.T, c client.Client, a lib.Action) lib.Action {
 	return a
 }
 
-func TestServerClientBasic(t *testing.T) {
-	t.Cleanup(dbInit)
+func TestAll(t *testing.T) {
+	// doing this so that both these tests are forced to run one after another
+	// instead of in concurrent goroutines
+	_TestServerClientBasic(t)
+	_TestEndToEnd(t)
+}
+
+func _TestServerClientBasic(t *testing.T) {
+	err := instance.Setup([]instance.Resource{})
+	assert.NoError(t, err)
 	// create a server
 	go serve()
+	defer shutDownServer()
 	// create a client
 	c := client.NewClient("http://localhost")
 
@@ -46,7 +56,7 @@ func TestServerClientBasic(t *testing.T) {
 	// now we add a couple of actions
 	action := lib.Action{ActorType: 1, ActorID: 2, ActionType: 3, TargetType: 4, TargetID: 5}
 	// logging this should fail because some fields (e.g. requestID aren't specified)
-	err := c.Log(action)
+	err = c.Log(action)
 	assert.Error(t, err)
 	// and no action was logged on server even after process
 	verifyFetch(t, c, lib.ActionFetchRequest{}, []lib.Action{})
@@ -67,17 +77,15 @@ func TestServerClientBasic(t *testing.T) {
 		ActorType: 22, ActorID: 23, ActionType: 23, TargetType: 24, TargetID: 25, RequestID: 26, Timestamp: 27},
 	)
 	verifyFetch(t, c, lib.ActionFetchRequest{}, []lib.Action{action1, action2, action3})
-
-	// verifyFetch with actionID
-	verifyFetch(t, c, lib.ActionFetchRequest{MinActionID: action2.ActionID}, []lib.Action{action3})
-	verifyFetch(t, c, lib.ActionFetchRequest{MinActionID: action1.ActionID, MaxActionID: action2.ActionID}, []lib.Action{action2})
 }
 
-func TestEndToEnd(t *testing.T) {
-	t.Cleanup(dbInit)
+func _TestEndToEnd(t *testing.T) {
+	err := instance.Setup([]instance.Resource{})
+	assert.NoError(t, err)
 
 	// start the server
 	go serve()
+	defer shutDownServer()
 	// and create a client
 	c := client.NewClient("http://localhost")
 
@@ -117,8 +125,7 @@ func TestEndToEnd(t *testing.T) {
 
 	// now make an event
 	action1 := lib.Action{ActorType: lib.User, ActorID: uid, TargetType: lib.Video, TargetID: video_id, ActionType: lib.Like, RequestID: 1, Timestamp: ts}
-	err := c.Log(action1)
-	assert.NoError(t, err)
+	add(t, c, action1)
 
 	// and verify it went through
 	verifyFetch(t, c, lib.ActionFetchRequest{MinActionID: 0}, []lib.Action{action1})
@@ -138,8 +145,7 @@ func TestEndToEnd(t *testing.T) {
 	}
 	// now make one more event which is not of matching action type (Like vs Share)
 	action2 := lib.Action{ActorType: lib.User, ActorID: uid, TargetType: lib.Video, TargetID: video_id, ActionType: lib.Share, RequestID: 1, Timestamp: ts}
-	err = c.Log(action2)
-	assert.NoError(t, err)
+	add(t, c, action2)
 	verifyFetch(t, c, lib.ActionFetchRequest{MinActionID: 0}, []lib.Action{action1, action2})
 
 	// this one doesn't change the counts because action type doesn't match
@@ -152,8 +158,7 @@ func TestEndToEnd(t *testing.T) {
 
 	// but another valid event will make the counts go up
 	action3 := lib.Action{ActorType: lib.User, ActorID: uid, TargetType: lib.Video, TargetID: video_id, ActionType: lib.Like, RequestID: 1, Timestamp: ts}
-	err = c.Log(action3)
-	assert.NoError(t, err)
+	add(t, c, action3)
 	verifyFetch(t, c, lib.ActionFetchRequest{MinActionID: 0}, []lib.Action{action1, action2, action3})
 
 	aggregate()

@@ -6,10 +6,6 @@ import (
 	"fmt"
 )
 
-func init() {
-	dbInit()
-}
-
 func getCheckpoint(ct lib.CounterType) (lib.OidType, error) {
 	return counterDBGetCheckpoint(ct)
 }

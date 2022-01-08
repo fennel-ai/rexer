@@ -2,6 +2,7 @@ package main
 
 import (
 	"fennel/actionlog/lib"
+	"fennel/db"
 	"fmt"
 	_ "github.com/mattn/go-sqlite3"
 	"log"
@@ -12,7 +13,7 @@ const (
 	ACTION_LOG_TABLENAME = "actionlog"
 )
 
-func createActionTable() {
+func createActionTable() error {
 	sql := fmt.Sprintf(`CREATE TABLE %s (
     	"action_id" integer not null primary key autoincrement,
 		"actor_id" integer NOT NULL,
@@ -25,13 +26,14 @@ func createActionTable() {
 		"request_id" integer not null
 	  );`, ACTION_LOG_TABLENAME)
 
-	log.Println("Creating actionlog table...", sql)
-	statement, err := DB.Prepare(sql)
+	//log.Println("Creating actionlog table...", sql)
+	statement, err := db.DB.Prepare(sql)
 	if err != nil {
-		panic(err)
+		return err
 	}
 	statement.Exec()
-	log.Println("Action log table created")
+	log.Printf("'%s' table created\n", ACTION_LOG_TABLENAME)
+	return nil
 }
 
 // inserts the action. If successful, returns the actionID
@@ -41,7 +43,7 @@ func actionDBInsert(action lib.Action) (uint64, error) {
 		return 0, fmt.Errorf("can not insert action: %v", err)
 	}
 	//log.Printf("Inserting %v in table %s...\n", item, ACTION_LOG_TABLENAME)
-	result, err := DB.NamedExec(fmt.Sprintf(`
+	result, err := db.DB.NamedExec(fmt.Sprintf(`
 		INSERT INTO %s (
 			actor_id,
 			actor_type,
@@ -121,9 +123,9 @@ func actionDBGet(request lib.ActionFetchRequest) ([]lib.Action, error) {
 		query = fmt.Sprintf("%s WHERE %s", query, strings.Join(clauses, " AND "))
 	}
 	query = fmt.Sprintf("%s ORDER BY timestamp;", query)
-	log.Printf("Action log db get query: %s\n", query)
+	//log.Printf("Action log db get query: %s\n", query)
 	actions := make([]lib.Action, 0)
-	statement, err := DB.PrepareNamed(query)
+	statement, err := db.DB.PrepareNamed(query)
 	if err != nil {
 		return nil, err
 	}
@@ -138,7 +140,7 @@ func actionDBGet(request lib.ActionFetchRequest) ([]lib.Action, error) {
 func actionDBPrintAll() error {
 	// this is slow and will do full table scan. Just use it for debugging/dev
 	var actions []lib.Action
-	err := DB.Select(&actions, fmt.Sprintf("SELECT * FROM %s", ACTION_LOG_TABLENAME))
+	err := db.DB.Select(&actions, fmt.Sprintf("SELECT * FROM %s", ACTION_LOG_TABLENAME))
 	if err != nil {
 		return err
 	}

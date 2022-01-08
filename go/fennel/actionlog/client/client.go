@@ -65,8 +65,7 @@ func (c *Client) Log(action lib.Action) error {
 	if err != nil {
 		return fmt.Errorf("could not marshal action: %v", err)
 	}
-	send(ser)
-	return nil
+	return send(ser)
 }
 
 func (c *Client) Count(request lib.GetCountRequest) (uint64, error) {

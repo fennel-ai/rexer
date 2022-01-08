@@ -2,6 +2,7 @@ package main
 
 import (
 	"fennel/actionlog/lib"
+	"fennel/instance"
 	"github.com/stretchr/testify/assert"
 	"testing"
 )
@@ -13,7 +14,9 @@ func verify(t *testing.T, expected uint64, ct lib.CounterType, window lib.Window
 }
 
 func TestCounterStorage(t *testing.T) {
-	t.Cleanup(dbInit)
+	err := instance.Setup([]instance.Resource{instance.DB})
+	assert.NoError(t, err)
+
 	ct := lib.USER_LIKE
 	key := lib.Key{1, 2, 3}
 	deltas := map[lib.Window]lib.Timestamp{
@@ -51,7 +54,8 @@ func TestCounterStorage(t *testing.T) {
 }
 
 func TestForeverWindow(t *testing.T) {
-	t.Cleanup(dbInit)
+	err := instance.Setup([]instance.Resource{instance.DB})
+	assert.NoError(t, err)
 	ct := lib.USER_LIKE
 	key := lib.Key{1, 2, 3}
 	ts := lib.Timestamp(1)
@@ -59,7 +63,7 @@ func TestForeverWindow(t *testing.T) {
 	verify(t, 0, ct, lib.FOREVER, key, ts)
 
 	//now let's do a single increment and verify that specific window works
-	err := counterIncrement(ct, lib.FOREVER, key, ts, 3)
+	err = counterIncrement(ct, lib.FOREVER, key, ts, 3)
 	assert.NoError(t, err)
 	verify(t, 3, ct, lib.FOREVER, key, ts)
 
@@ -74,7 +78,8 @@ func TestForeverWindow(t *testing.T) {
 }
 
 func TestCheckpoint(t *testing.T) {
-	t.Cleanup(dbInit)
+	err := instance.Setup([]instance.Resource{instance.DB})
+	assert.NoError(t, err)
 	ct1 := lib.USER_LIKE
 	zero := lib.OidType(0)
 	// initially no checkpoint is setup, so we should get 0

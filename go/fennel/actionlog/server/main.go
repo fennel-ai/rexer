@@ -1,55 +1,26 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"fennel/actionlog/lib"
+	"fennel/instance"
 	"fmt"
 	"log"
 	"net/http"
 	"sync"
 	"time"
-
-	"github.com/confluentinc/confluent-kafka-go/kafka"
 )
 
-var inited bool = false
-
-// Kafka consumer
-var kConsumer *kafka.Consumer
-
-// TODO: find a cleaner way of doing this once init
 func init() {
-	if !inited {
-		dbInit()
-		initKafkaConsumer()
-		inited = true
-	}
-}
 
-func initKafkaConsumer() {
-	var err error
-	kConsumer, err = kafka.NewConsumer(&kafka.ConfigMap{
-		// connection configs.
-		"bootstrap.servers": lib.KAFKA_BOOTSTRAP_SERVER,
-		"security.protocol": lib.KAFKA_SECURITY_PROTOCOL,
-		"sasl.mechanisms":   lib.KAFKA_SASL_MECHANISM,
-		"sasl.username":     lib.KAFKA_USERNAME,
-		"sasl.password":     lib.KAFKA_PASSWORD,
-
-		// consumer specific configs.
-		"group.id":          "myGroup",
-		"auto.offset.reset": "earliest",
-	})
-
-	if err != nil {
-		panic(err)
-	}
-	kConsumer.SubscribeTopics([]string{lib.KAFKA_TOPIC}, nil)
+	instance.Register(instance.DB, createCounterTables)
+	instance.Register(instance.DB, createActionTable)
 }
 
 // Log reads a single message from Kafka and logs it in the database
 func Log() error {
-	msg, err := kConsumer.ReadMessage(-1)
+	msg, err := lib.KafkaActionConsumer().ReadMessage(-1)
 	if err != nil {
 		return err
 	}
@@ -124,10 +95,32 @@ func Count(w http.ResponseWriter, req *http.Request) {
 	fmt.Fprintf(w, string(ser))
 }
 
+var server *http.Server
+var serverWG sync.WaitGroup
+
 func serve() {
-	http.HandleFunc("/fetch", Fetch)
-	http.HandleFunc("/count", Count)
-	http.ListenAndServe(fmt.Sprintf(":%d", lib.PORT), nil)
+	server = &http.Server{Addr: fmt.Sprintf(":%d", lib.PORT)}
+	serverWG = sync.WaitGroup{}
+	serverWG.Add(1)
+	mux := http.NewServeMux()
+	mux.HandleFunc("/fetch", Fetch)
+	mux.HandleFunc("/count", Count)
+	server.Handler = mux
+	go func() {
+		defer serverWG.Done() // let main know we are done cleaning up
+
+		// always returns error. ErrServerClosed on graceful close
+		if err := server.ListenAndServe(); err != http.ErrServerClosed {
+			// unexpected error. port in use?
+			log.Fatalf("ListenAndServe(): %v", err)
+		}
+	}()
+}
+
+func shutDownServer() {
+	log.Printf("shutting down http server")
+	server.Shutdown(context.TODO())
+	serverWG.Wait()
 }
 
 func aggregate() {
@@ -162,5 +155,4 @@ func main() {
 		// now sleep for a minute
 		time.Sleep(time.Minute)
 	}
-	dbShutdown()
 }

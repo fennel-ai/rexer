@@ -3,6 +3,7 @@ package main
 import (
 	"database/sql"
 	"fennel/actionlog/lib"
+	"fennel/db"
 	"fmt"
 	_ "github.com/mattn/go-sqlite3"
 	"log"
@@ -32,7 +33,7 @@ const (
 	CHECKPOINT_TABLE = "checkpoint"
 )
 
-func createCounterTables() {
+func createCounterTables() error {
 	sql := fmt.Sprintf(`CREATE TABLE %s (
 		"counter_type" integer NOT NULL,
 		"window_type" integer NOT NULL,
@@ -42,10 +43,10 @@ func createCounterTables() {
 		PRIMARY KEY(counter_type, window_type, idx, key)
 	  );`, COUNTER_TABLE)
 
-	log.Printf("Creating table '%s'...%s", COUNTER_TABLE, sql)
-	statement, err := DB.Prepare(sql)
+	//log.Printf("Creating table '%s'...%s", COUNTER_TABLE, sql)
+	statement, err := db.DB.Prepare(sql)
 	if err != nil {
-		panic(err)
+		return err
 	}
 	statement.Exec()
 	log.Printf("'%s' table created\n", COUNTER_TABLE)
@@ -57,13 +58,14 @@ func createCounterTables() {
 		UNIQUE(counter_type)
 	  );`, CHECKPOINT_TABLE)
 
-	log.Printf("Creating table '%s'...%s", CHECKPOINT_TABLE, sql)
-	statement, err = DB.Prepare(sql)
+	//log.Printf("Creating table '%s'...%s", CHECKPOINT_TABLE, sql)
+	statement, err = db.DB.Prepare(sql)
 	if err != nil {
-		panic(err)
+		return err
 	}
 	statement.Exec()
 	log.Printf("'%s' table created\n", CHECKPOINT_TABLE)
+	return nil
 }
 
 func tsToIndex(ts lib.Timestamp, window lib.Window) (uint64, error) {
@@ -117,7 +119,7 @@ func counterGet(request lib.GetCountRequest) (uint64, error) {
 // by incrementing its count by bucket.count
 // TODO: make this batched and updaate at least all windows for a single event together
 func counterDBIncrement(bucket CounterBucket) error {
-	_, err := DB.NamedExec(fmt.Sprintf(`
+	_, err := db.DB.NamedExec(fmt.Sprintf(`
 		INSERT INTO %s 
 			( counter_type, window_type, idx, key, count)
         VALUES 
@@ -150,7 +152,7 @@ func counterDBGet(bucket CounterBucket) (uint64, error) {
 		query = fmt.Sprintf("%s AND idx = %d", query, FOREVER_BUCKET_INDEX)
 	}
 	//log.Printf("Counter storage, get query: %s\n", query)
-	statement, err := DB.PrepareNamed(query)
+	statement, err := db.DB.PrepareNamed(query)
 	if err != nil {
 		return 0, err
 	}
@@ -167,7 +169,7 @@ func counterDBGet(bucket CounterBucket) (uint64, error) {
 func counterDBPrintAll() error {
 	// this is slow and will do full table scan. Just use it for debugging/dev
 	var buckets []CounterBucket
-	err := DB.Select(&buckets, fmt.Sprintf("SELECT * FROM %s", COUNTER_TABLE))
+	err := db.DB.Select(&buckets, fmt.Sprintf("SELECT * FROM %s", COUNTER_TABLE))
 	if err != nil {
 		return err
 	}
@@ -178,7 +180,7 @@ func counterDBPrintAll() error {
 }
 
 func counterDBGetCheckpoint(ct lib.CounterType) (lib.OidType, error) {
-	row := DB.QueryRow(fmt.Sprintf(`
+	row := db.DB.QueryRow(fmt.Sprintf(`
 		SELECT checkpoint
 		FROM %s
 		WHERE counter_type = ?;
@@ -196,7 +198,7 @@ func counterDBGetCheckpoint(ct lib.CounterType) (lib.OidType, error) {
 }
 
 func counterDBSetCheckpoint(ct lib.CounterType, checkpoint lib.OidType) error {
-	_, err := DB.Exec(fmt.Sprintf(`
+	_, err := db.DB.Exec(fmt.Sprintf(`
 		INSERT INTO %s (counter_type, checkpoint)
         VALUES (?, ?)
 		ON CONFLICT(counter_type)

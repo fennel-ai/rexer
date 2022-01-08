@@ -12,14 +12,7 @@ var producer *kafka.Producer
 
 func init() {
 	var err error
-	producer, err = kafka.NewProducer(&kafka.ConfigMap{
-		// connection configs.
-		"bootstrap.servers": lib.KAFKA_BOOTSTRAP_SERVER,
-		"security.protocol": lib.KAFKA_SECURITY_PROTOCOL,
-		"sasl.mechanisms":   lib.KAFKA_SASL_MECHANISM,
-		"sasl.username":     lib.KAFKA_USERNAME,
-		"sasl.password":     lib.KAFKA_PASSWORD,
-	})
+	producer, err = kafka.NewProducer(lib.KafkaConfigMap())
 	if err != nil {
 		panic(err)
 	}
@@ -41,10 +34,11 @@ func closeKafka() {
 	producer.Close()
 }
 
-func send(message []byte) {
-	topic := lib.KAFKA_TOPIC
-	producer.Produce(&kafka.Message{
+func send(value []byte) error {
+	topic := lib.KafkaActionTopic()
+	message := kafka.Message{
 		TopicPartition: kafka.TopicPartition{Topic: &topic, Partition: kafka.PartitionAny},
-		Value:          message,
-	}, nil)
+		Value:          value,
+	}
+	return producer.Produce(&message, nil)
 }
