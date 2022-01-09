@@ -132,7 +132,18 @@ func (c *Client) LogAction(action lib.Action) error {
 	if err != nil {
 		return err
 	}
-	return send(ser)
+	reqBody := bytes.NewBuffer(ser)
+	response, err := http.Post(c.logURL(), "application/json", reqBody)
+	if err != nil {
+		return fmt.Errorf("server error: %v", err)
+	}
+	// verify server sent no error
+	defer response.Body.Close()
+	_, err = ioutil.ReadAll(response.Body)
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 func (c *Client) GetCount(request lib.GetCountRequest) (uint64, error) {

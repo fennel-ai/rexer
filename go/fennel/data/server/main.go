@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fennel/data/lib"
 	"fennel/instance"
+	"fennel/kafka"
 	"fmt"
 	"google.golang.org/protobuf/proto"
 	"io/ioutil"
@@ -21,9 +22,39 @@ func init() {
 	instance.Register(instance.DB, createProfileTable)
 }
 
+func Log(w http.ResponseWriter, req *http.Request) {
+	var pa lib.ProtoAction
+	// Try to decode the request body into the struct. If there is an error,
+	// respond to the client with the error message and a 400 status code.
+	body, err := ioutil.ReadAll(req.Body)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	err = proto.Unmarshal(body, &pa)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	action := lib.FromProtoAction(pa)
+	err = action.Validate()
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	// now we know that this is a valid request, so let's store this in kafka
+	err = kafka.LogAction(body)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	// if there is no error, we don't need to write anything back
+}
+
 // TailActions reads a single message from Kafka and logs it in the database
 func TailActions() error {
-	msg, err := lib.KafkaActionConsumer().ReadMessage(-1)
+	msg, err := kafka.ReadActionMessage()
 	if err != nil {
 		return err
 	}
@@ -119,6 +150,7 @@ func serve() {
 	mux.HandleFunc("/count", Count)
 	mux.HandleFunc("/get", get)
 	mux.HandleFunc("/set", set)
+	mux.HandleFunc("/log", Log)
 	server.Handler = mux
 	go func() {
 		defer serverWG.Done() // let main know we are done cleaning up
