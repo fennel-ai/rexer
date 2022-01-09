@@ -13,6 +13,8 @@ const subnetGroup = new memorydb.SubnetGroup("redis-subnet-group",
     }
 )
 
+// TODO: Create security group to control access to redis instance and only allow
+// traffic from EKS security group.
 const cluster = new memorydb.Cluster("redis-db",
     {
         subnetGroupName: subnetGroup.id,
