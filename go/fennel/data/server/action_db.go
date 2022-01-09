@@ -1,7 +1,7 @@
 package main
 
 import (
-	"fennel/actionlog/lib"
+	"fennel/data/lib"
 	"fennel/db"
 	"fmt"
 	_ "github.com/mattn/go-sqlite3"
@@ -10,7 +10,7 @@ import (
 )
 
 const (
-	ACTION_LOG_TABLENAME = "actionlog"
+	ACTION_LOG_TABLENAME = "data"
 )
 
 func createActionTable() error {
@@ -26,7 +26,7 @@ func createActionTable() error {
 		"request_id" integer not null
 	  );`, ACTION_LOG_TABLENAME)
 
-	//log.Println("Creating actionlog table...", sql)
+	//log.Println("Creating data table...", sql)
 	statement, err := db.DB.Prepare(sql)
 	if err != nil {
 		return err

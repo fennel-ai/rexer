@@ -3,21 +3,15 @@ package main
 import (
 	"bytes"
 	"encoding/json"
-	. "fennel/profile/lib"
+	"fennel/data/lib"
 	"fennel/value"
 	"fmt"
 	"net/http"
 	"time"
 )
 
-const PORT = 2411
-
-func init() {
-	dbInit()
-}
-
 func get(w http.ResponseWriter, req *http.Request) {
-	var item ProfileItemSer
+	var item lib.ProfileItemSer
 	// Try to decode the request body into the struct. If there is an error,
 	// respond to the client with the error message and a 400 status code.
 	err := json.NewDecoder(req.Body).Decode(&item)
@@ -41,7 +35,7 @@ func get(w http.ResponseWriter, req *http.Request) {
 // TODO: add some locking etc to ensure that if two requests try to modify
 // the same key/value, we don't run into a race condition
 func set(w http.ResponseWriter, req *http.Request) {
-	var item ProfileItemSer
+	var item lib.ProfileItemSer
 	// Try to decode the request body into the struct. If there is an error,
 	// respond to the client with the error message and a 400 status code.
 	buf := new(bytes.Buffer)
@@ -71,12 +65,4 @@ func set(w http.ResponseWriter, req *http.Request) {
 		http.Error(w, err.Error(), http.StatusBadGateway)
 		return
 	}
-}
-
-func main() {
-	http.HandleFunc("/get", get)
-	http.HandleFunc("/set", set)
-
-	http.ListenAndServe(fmt.Sprintf(":%d", PORT), nil)
-	dbShutdown()
 }

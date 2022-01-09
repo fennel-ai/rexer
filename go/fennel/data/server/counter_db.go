@@ -2,7 +2,7 @@ package main
 
 import (
 	"database/sql"
-	"fennel/actionlog/lib"
+	"fennel/data/lib"
 	"fennel/db"
 	"fmt"
 	_ "github.com/mattn/go-sqlite3"
@@ -136,7 +136,7 @@ func counterDBIncrement(bucket CounterBucket) error {
 //	bucket is identified by (bucket.counter_type, bucket.window, bucket.key)
 // and bucket index is between (bucket.index - 100, bucket.index] left exclusive, right inclusive
 // however, if window is forever, the index field doesn't matter (forever uses a single bucket)
-// the 'Count' field of input bucket is ignored
+// the 'GetCount' field of input bucket is ignored
 func counterDBGet(bucket CounterBucket) (uint64, error) {
 	query := fmt.Sprintf(`
 		SELECT SUM(count) as total

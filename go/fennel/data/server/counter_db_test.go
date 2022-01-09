@@ -1,7 +1,7 @@
 package main
 
 import (
-	"fennel/actionlog/lib"
+	"fennel/data/lib"
 	"fennel/instance"
 	"github.com/stretchr/testify/assert"
 	"testing"

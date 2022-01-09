@@ -1,8 +1,8 @@
 package main
 
 import (
-	"fennel/actionlog/client"
-	"fennel/actionlog/lib"
+	"fennel/client"
+	"fennel/data/lib"
 	"fmt"
 )
 
@@ -22,7 +22,7 @@ func run(ct lib.CounterType) error {
 	if err != nil {
 		return err
 	}
-	actions, err := client.Fetch(lib.ActionFetchRequest{MinActionID: checkpoint})
+	actions, err := client.FetchActions(lib.ActionFetchRequest{MinActionID: checkpoint})
 	if err != nil {
 		return err
 	}

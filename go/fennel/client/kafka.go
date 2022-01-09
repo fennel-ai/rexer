@@ -1,7 +1,7 @@
 package client
 
 import (
-	"fennel/actionlog/lib"
+	"fennel/data/lib"
 	"log"
 
 	"github.com/confluentinc/confluent-kafka-go/kafka"

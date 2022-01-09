@@ -1,8 +1,8 @@
 package main
 
 import (
-	"fennel/actionlog/lib"
-	"fennel/profile/client"
+	"fennel/client"
+	"fennel/data/lib"
 	"fennel/value"
 	"fmt"
 )
@@ -43,7 +43,7 @@ func prefixWithIDList(prefix lib.Key, idList value.Value) []lib.Key {
 func profile(otype lib.OType, oid lib.OidType, key string, version uint64) (*value.Value, error) {
 	// TODO: how does this code discover the port/url for profile service?
 	c := client.NewClient(":2411")
-	return c.Get(otype, uint64(oid), key, version)
+	return c.GetProfile(otype, uint64(oid), key, version)
 }
 
 type Keygen func(actorID lib.OidType, actorType lib.OType, targetID lib.OidType, targetType lib.OType) []lib.Key

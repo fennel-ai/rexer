@@ -3,7 +3,7 @@ package main
 import (
 	"context"
 	"encoding/json"
-	"fennel/actionlog/lib"
+	"fennel/data/lib"
 	"fennel/instance"
 	"fmt"
 	"log"
@@ -16,6 +16,7 @@ func init() {
 
 	instance.Register(instance.DB, createCounterTables)
 	instance.Register(instance.DB, createActionTable)
+	instance.Register(instance.DB, createProfileTable)
 }
 
 // Log reads a single message from Kafka and logs it in the database
@@ -85,13 +86,13 @@ func Count(w http.ResponseWriter, req *http.Request) {
 		http.Error(w, err.Error(), http.StatusBadGateway)
 		return
 	}
-	//log.Printf("[AGGREGATOR] Read Count: %d\n", count)
+	//log.Printf("[AGGREGATOR] Read GetCount: %d\n", count)
 	ser, err := json.Marshal(count)
 	if err != nil {
 		http.Error(w, fmt.Sprintf("could not serialize count: %v", err.Error()), http.StatusBadGateway)
 		return
 	}
-	//log.Printf("[AGGREGATOR] Count Ser: %s\n", ser)
+	//log.Printf("[AGGREGATOR] GetCount Ser: %s\n", ser)
 	fmt.Fprintf(w, string(ser))
 }
 
@@ -105,6 +106,8 @@ func serve() {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/fetch", Fetch)
 	mux.HandleFunc("/count", Count)
+	mux.HandleFunc("/get", get)
+	mux.HandleFunc("/set", set)
 	server.Handler = mux
 	go func() {
 		defer serverWG.Done() // let main know we are done cleaning up

@@ -78,7 +78,7 @@ func setupTopic() error {
 		}
 		topic = topicname
 	} else {
-		topic = "actionlog"
+		topic = "data"
 	}
 	log.Printf("Done setting up kafka\n")
 	return nil

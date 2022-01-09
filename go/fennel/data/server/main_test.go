@@ -1,15 +1,17 @@
 package main
 
 import (
-	"fennel/actionlog/client"
-	"fennel/actionlog/lib"
+	"fennel/client"
+	"fennel/data/lib"
 	"fennel/instance"
+	"fennel/value"
+	"fmt"
 	"github.com/stretchr/testify/assert"
 	"testing"
 )
 
 func verifyFetch(t *testing.T, c client.Client, request lib.ActionFetchRequest, expected []lib.Action) {
-	found, err := c.Fetch(request)
+	found, err := c.FetchActions(request)
 	assert.NoError(t, err)
 	equals(t, expected, found)
 }
@@ -25,10 +27,10 @@ func equals(t *testing.T, expected []lib.Action, found []lib.Action) {
 }
 
 func add(t *testing.T, c client.Client, a lib.Action) lib.Action {
-	err := c.Log(a)
+	err := c.LogAction(a)
 	assert.NoError(t, err)
 
-	// and also make one run of "Log" on server to ensure that the message goes through
+	// and also make one run of "LogAction" on server to ensure that the message goes through
 	err = Log()
 	assert.NoError(t, err)
 	return a
@@ -56,7 +58,7 @@ func _TestServerClientBasic(t *testing.T) {
 	// now we add a couple of actions
 	action := lib.Action{ActorType: 1, ActorID: 2, ActionType: 3, TargetType: 4, TargetID: 5}
 	// logging this should fail because some fields (e.g. requestID aren't specified)
-	err = c.Log(action)
+	err = c.LogAction(action)
 	assert.Error(t, err)
 	// and no action was logged on server even after process
 	verifyFetch(t, c, lib.ActionFetchRequest{}, []lib.Action{})
@@ -118,7 +120,7 @@ func _TestEndToEnd(t *testing.T) {
 		{lib.USER_VIDEO_LIKE, lib.FOREVER, lib.Key{uid, video_id}, ts},
 	}
 	for _, cr := range requests {
-		count, err := c.Count(cr)
+		count, err := c.GetCount(cr)
 		assert.NoError(t, err)
 		assert.Equal(t, uint64(0), count)
 	}
@@ -132,14 +134,14 @@ func _TestEndToEnd(t *testing.T) {
 
 	// and all counts should still be zero
 	for _, cr := range requests {
-		count, err := c.Count(cr)
+		count, err := c.GetCount(cr)
 		assert.NoError(t, err)
 		assert.Equal(t, uint64(0), count)
 	}
 	// but counts should go up after we aggregate
 	aggregate()
 	for _, cr := range requests {
-		count, err := c.Count(cr)
+		count, err := c.GetCount(cr)
 		assert.NoError(t, err)
 		assert.Equal(t, uint64(1), count, cr)
 	}
@@ -151,7 +153,7 @@ func _TestEndToEnd(t *testing.T) {
 	// this one doesn't change the counts because action type doesn't match
 	aggregate()
 	for _, cr := range requests {
-		count, err := c.Count(cr)
+		count, err := c.GetCount(cr)
 		assert.NoError(t, err)
 		assert.Equal(t, uint64(1), count, cr)
 	}
@@ -163,8 +165,57 @@ func _TestEndToEnd(t *testing.T) {
 
 	aggregate()
 	for _, cr := range requests {
-		count, err := c.Count(cr)
+		count, err := c.GetCount(cr)
 		assert.NoError(t, err)
 		assert.Equal(t, uint64(2), count, cr)
+	}
+}
+
+// TODO: add more tests covering more error conditions
+func TestProfile(t *testing.T) {
+	err := instance.Setup([]instance.Resource{})
+	assert.NoError(t, err)
+	// start the server
+	go serve()
+	defer shutDownServer()
+	// and create a client
+	c := client.NewClient(fmt.Sprintf("http://localhost:%d", lib.PORT))
+
+	// in the beginning, with no value set, we get nil pointer back but with no error
+	checkGetSet(t, c, true, 1, 1, 0, "age", value.Value(nil))
+
+	var expected value.Value = value.List([]value.Value{value.Int(1), value.Bool(false), value.Nil})
+	checkGetSet(t, c, false, 1, 1, 1, "age", expected)
+
+	// we can also get it without using the specific version number
+	checkGetSet(t, c, true, 1, 1, 0, "age", expected)
+
+	// set few more key/value pairs and verify it works
+	checkGetSet(t, c, false, 1, 1, 2, "age", value.Nil)
+	checkGetSet(t, c, false, 1, 3, 2, "age", value.Int(1))
+	checkGetSet(t, c, true, 1, 1, 2, "age", value.Nil)
+	checkGetSet(t, c, true, 1, 1, 0, "age", value.Nil)
+	checkGetSet(t, c, false, 10, 3131, 0, "summary", value.Int(1))
+}
+
+func checkGetSet(t *testing.T, c client.Client, get bool, otype lib.OType, oid uint64, version uint64, key string, val value.Value) {
+	if get {
+		found, err := c.GetProfile(otype, oid, key, version)
+		assert.NoError(t, err)
+		if found == nil {
+			assert.Equal(t, nil, val)
+		} else {
+			assert.Equal(t, val, *found)
+		}
+	} else {
+		err := c.SetProfile(otype, oid, key, version, val)
+		assert.NoError(t, err)
+		found, err := c.GetProfile(otype, oid, key, version)
+		assert.NoError(t, err)
+		if found == nil {
+			assert.Equal(t, nil, val)
+		} else {
+			assert.Equal(t, val, *found)
+		}
 	}
 }

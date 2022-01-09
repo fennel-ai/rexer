@@ -1,12 +1,16 @@
 package main
 
 import (
+	"fennel/instance"
 	"fennel/value"
 	"github.com/stretchr/testify/assert"
 	"testing"
 )
 
 func TestDBBasic(t *testing.T) {
+	err := instance.Setup([]instance.Resource{instance.DB})
+	assert.NoError(t, err)
+
 	val := value.Int(2)
 	expected, _ := val.MarshalJSON()
 
@@ -26,11 +30,14 @@ func TestDBBasic(t *testing.T) {
 }
 
 func TestDBVersion(t *testing.T) {
+	err := instance.Setup([]instance.Resource{instance.DB})
+	assert.NoError(t, err)
+
 	val1 := value.Int(2)
 	expected1, _ := val1.MarshalJSON()
 
 	// first setting a version of 0 isn't possible
-	err := dbSet(1, 1232, "summary", 0, expected1)
+	err = dbSet(1, 1232, "summary", 0, expected1)
 	assert.Error(t, err)
 
 	// but it works with a valid version
