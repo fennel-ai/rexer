@@ -31,7 +31,7 @@ func add(t *testing.T, c client.Client, a lib.Action) lib.Action {
 	assert.NoError(t, err)
 
 	// and also make one run of "LogAction" on server to ensure that the message goes through
-	err = Log()
+	err = TailActions()
 	assert.NoError(t, err)
 	return a
 }

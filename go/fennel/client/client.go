@@ -6,6 +6,7 @@ import (
 	"fennel/data/lib"
 	"fennel/value"
 	"fmt"
+	"google.golang.org/protobuf/proto"
 	"io/ioutil"
 	"net/http"
 )
@@ -93,9 +94,10 @@ func (c *Client) SetProfile(otype lib.OType, oid uint64, key string, version uin
 }
 
 func (c *Client) FetchActions(request lib.ActionFetchRequest) ([]lib.Action, error) {
-	ser, err := json.Marshal(request)
+	protoRequest := lib.ToProtoActionFetchRequest(request)
+	ser, err := proto.Marshal(&protoRequest)
 	if err != nil {
-		return nil, fmt.Errorf("could not marshal request: %v", err)
+		return nil, err
 	}
 
 	reqBody := bytes.NewBuffer(ser)
@@ -110,11 +112,12 @@ func (c *Client) FetchActions(request lib.ActionFetchRequest) ([]lib.Action, err
 		return nil, fmt.Errorf("server error: %v", err)
 	}
 	// now read all actions
-	var actions []lib.Action
-	err = json.Unmarshal([]byte(ser), &actions)
+	var actionList lib.ProtoActionList
+	err = proto.Unmarshal(ser, &actionList)
 	if err != nil {
 		return nil, fmt.Errorf("unmarshal error: %v", err)
 	}
+	actions := lib.FromProtoActionList(actionList)
 	return actions, nil
 }
 
@@ -124,9 +127,10 @@ func (c *Client) LogAction(action lib.Action) error {
 	if err != nil {
 		return fmt.Errorf("can not log invalid action: %v", err)
 	}
-	ser, err := json.Marshal(action)
+	pa := lib.ToProtoAction(action)
+	ser, err := proto.Marshal(&pa)
 	if err != nil {
-		return fmt.Errorf("could not marshal action: %v", err)
+		return err
 	}
 	return send(ser)
 }

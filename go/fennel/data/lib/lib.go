@@ -13,14 +13,14 @@ const (
 	PORT = 2425
 )
 
-type OType uint
+type OType uint32
 
 const (
 	User  OType = 1
 	Video       = 2
 )
 
-type ActionType uint
+type ActionType uint32
 
 const (
 	Like  ActionType = 1
@@ -28,7 +28,7 @@ const (
 	View             = 3
 )
 
-type CounterType uint
+type CounterType uint32
 
 type Key []OidType
 type Window uint8

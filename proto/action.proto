@@ -1,0 +1,34 @@
+syntax = "proto3";
+
+option go_package = "data/lib";
+
+message ProtoAction {
+  uint64 ActionID = 1 [json_name="action_id"];
+  uint64 ActorID = 2[json_name="actor_id"];
+  uint32 ActorType =3 [json_name="actor_type"];
+  uint64 TargetID = 4[json_name="target_id"];
+  uint32 TargetType = 5 [json_name="target_type"];
+  uint32 ActionType = 6[json_name="action_value"];
+  int32 ActionValue = 7[json_name="action_value"];
+  uint64 Timestamp = 8[json_name="timestamp"];
+  uint64 RequestID = 9[json_name="request_id"];
+}
+
+message ProtoActionFetchRequest {
+   uint64 MinActionID   = 1[json_name="min_action_id"];
+   uint64 MaxActionID = 2[json_name="max_action_id"];
+   uint64 ActorID = 3[json_name="actor_id"];
+   uint32 ActorType = 4[json_name="actor_type"];
+   uint64 TargetID = 5[json_name="target_id"];
+   uint32 TargetType = 6[json_name="target_type"];
+   uint32 ActionType = 7[json_name="action_type"];
+   int32 MinActionValue = 8[json_name="min_action_value"];
+   int32 MaxActionValue = 9[json_name="max_action_value"];
+   uint64 MinTimestamp = 10[json_name="min_timestamp"];
+   uint64 MaxTimestamp = 11[json_name="max_timestamp"];
+   uint64 RequestID = 12[json_name="request_id"];
+ }
+
+ message ProtoActionList {
+  repeated ProtoAction actions = 1;
+ }

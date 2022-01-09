@@ -6,6 +6,8 @@ import (
 	"fennel/data/lib"
 	"fennel/instance"
 	"fmt"
+	"google.golang.org/protobuf/proto"
+	"io/ioutil"
 	"log"
 	"net/http"
 	"sync"
@@ -19,19 +21,20 @@ func init() {
 	instance.Register(instance.DB, createProfileTable)
 }
 
-// Log reads a single message from Kafka and logs it in the database
-func Log() error {
+// TailActions reads a single message from Kafka and logs it in the database
+func TailActions() error {
 	msg, err := lib.KafkaActionConsumer().ReadMessage(-1)
 	if err != nil {
 		return err
 	}
 	//fmt.Printf("Message on %s: %s\n", msg.TopicPartition, string(msg.Value))
 	// validate this message and if valid, write it in DB
-	var action lib.Action
-	err = json.Unmarshal(msg.Value, &action)
+	var pa lib.ProtoAction
+	err = proto.Unmarshal(msg.Value, &pa)
 	if err != nil {
 		return err
 	}
+	action := lib.FromProtoAction(pa)
 	err = action.Validate()
 	if err != nil {
 		return err
@@ -49,23 +52,31 @@ func Log() error {
 }
 
 func Fetch(w http.ResponseWriter, req *http.Request) {
-	var request lib.ActionFetchRequest
+	var protoRequest lib.ProtoActionFetchRequest
 	// Try to decode the request body into the struct. If there is an error,
 	// respond to the client with the error message and a 400 status code.
-	err := json.NewDecoder(req.Body).Decode(&request)
+	body, err := ioutil.ReadAll(req.Body)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
+	err = proto.Unmarshal(body, &protoRequest)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	request := lib.FromProtoActionFetchRequest(protoRequest)
+
 	// now we know that this is a valid request, so let's make a db call
 	actions, err := actionDBGet(request)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadGateway)
 		return
 	}
-	ser, err := json.Marshal(actions)
+	actionList := lib.ToProtoActionList(actions)
+	ser, err := proto.Marshal(&actionList)
 	if err != nil {
-		http.Error(w, fmt.Sprintf("could not serialize actions: %v", err.Error()), http.StatusBadGateway)
+		http.Error(w, err.Error(), http.StatusBadGateway)
 		return
 	}
 	fmt.Fprintf(w, string(ser))
@@ -148,7 +159,7 @@ func main() {
 	// one goroutine will constantly scan kafka and write actions
 	go func() {
 		for {
-			Log()
+			TailActions()
 		}
 	}()
 
