@@ -13,11 +13,11 @@ const TABLENAME = "profile"
 func createProfileTable() error {
 	// now actually create the table
 	sql := fmt.Sprintf(`CREATE TABLE %s (
-		"otype" integer not null,
-		"oid" integer not null,
-		"key" varchar not null,
-		"version" integer not null,
-		"value" blob not null
+		otype integer not null,
+		oid integer not null,
+		zkey varchar not null,
+		version integer not null,
+		value blob not null
 	  );`, TABLENAME)
 
 	statement, err := db.DB.Prepare(sql)
@@ -36,7 +36,7 @@ func dbSet(otype lib.OType, oid uint64, key string, version uint64, value []byte
 	//log.Printf("Inserting %v in table %s...\n", item, TABLENAME)
 	_, err := db.DB.Exec(fmt.Sprintf(`
 		INSERT INTO %s 
-			(otype, oid, key, version, value) 
+			(otype, oid, zkey, version, value) 
 		VALUES
 			(?, ?, ?, ?, ?);`, TABLENAME),
 		//(:otype, :oid, :key, :version, :value);`, TABLENAME),
@@ -58,7 +58,7 @@ func dbGet(otype lib.OType, oid uint64, key string, version uint64) ([]byte, err
 		WHERE
 			otype = ? 
 			AND oid = ?
-			AND key = ?
+			AND zkey = ?
 			AND version = ?
 		LIMIT 1
 		`, TABLENAME),
@@ -71,7 +71,7 @@ func dbGet(otype lib.OType, oid uint64, key string, version uint64) ([]byte, err
 		WHERE
 			otype = ?
 			AND oid = ?
-			AND key = ?
+			AND zkey = ?
 		ORDER BY version DESC
 		LIMIT 1
 		`, TABLENAME),
