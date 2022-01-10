@@ -27,8 +27,21 @@ class Client(object):
         # if response isn't 200, raise the exception
         response.raise_for_status()
 
-    def fetch(self, ar: action.ActionFetchRequest):
-        pass
+    def fetch(self, afr: action.ActionFetchRequest):
+        if not isinstance(afr, action.ActionFetchRequest):
+            raise InvalidInput('fetch arg not an ActionFetchRequest object: %s' % str(afr))
+        ser = afr.SerializeToString()
+        response = requests.post(self._fetch_url(), data=ser)
+        # if response isn't 200, raise the exception
+        if response.status_code != requests.codes.OK:
+            response.raise_for_status()
+
+        # now try to read the response and parse it into list of actions
+        al = action.ActionList()
+        # TODo: this could raise proto.DecodeError? How to handle it?
+
+        al.ParseFromString(response.content)
+        return action.from_proto_action_list(al)
 
     def count(self, request):
         pass
@@ -38,6 +51,9 @@ class Client(object):
 
     def _log_url(self):
         return self._base_url() + '/log'
+
+    def _fetch_url(self):
+        return self._base_url() + '/fetch'
 
     def rate(self, request):
         pass
