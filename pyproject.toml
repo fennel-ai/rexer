@@ -1,15 +1,11 @@
 [tool.poetry]
-name = "pyclient"
+name = "starql"
 version = "0.1.0"
 description = ""
 authors = ["Nikhil Garg <nikhil@fennel.ai>"]
 
 [tool.poetry.dependencies]
 python = "^3.8"
-munch = "^2.5.0"
-protobuf = "^3.19.1"
-requests = "^2.27.1"
-httpretty = "^1.1.4"
 
 [tool.poetry.dev-dependencies]
 

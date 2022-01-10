@@ -1,5 +1,5 @@
 import unittest
-from expr import at, InvalidQueryException, Var, Table, List, Dict, Int
+from query.expr import InvalidQueryException, Var, Int
 from visitor import Printer
 
 class Test(unittest.TestCase):

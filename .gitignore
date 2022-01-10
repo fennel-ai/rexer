@@ -11,3 +11,7 @@ Cargo.lock
 
 # all .idea files
 **/.idea/**/*
+
+# bad python files
+# Byte-compiled / optimized / DLL files
+**/__pycache__/**/*

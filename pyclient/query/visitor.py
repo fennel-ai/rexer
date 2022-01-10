@@ -1,5 +1,5 @@
-from expr import Int, Double, Bool, String, Binary, Constant
-from expr import InvalidQueryException, List, Dict, Transform, Table, Var, at
+from query.expr import Int, Double, Bool, String, Binary, Constant
+from query.expr import InvalidQueryException, List, Dict, Transform, Table, Var, at
 
 
 class Visitor(object):

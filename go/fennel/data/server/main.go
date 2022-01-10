@@ -155,6 +155,7 @@ func serve() {
 	go func() {
 		defer serverWG.Done() // let main know we are done cleaning up
 
+		log.Printf("starting http server on %s...", server.Addr)
 		// always returns error. ErrServerClosed on graceful close
 		if err := server.ListenAndServe(); err != http.ErrServerClosed {
 			// unexpected error. port in use?
@@ -185,6 +186,7 @@ func aggregate() {
 }
 
 func main() {
+	instance.Setup([]instance.Resource{})
 	// one goroutine will run http server
 	go serve()
 
