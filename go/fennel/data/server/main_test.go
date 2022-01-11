@@ -169,6 +169,25 @@ func _TestEndToEnd(t *testing.T) {
 		assert.NoError(t, err)
 		assert.Equal(t, uint64(2), count, cr)
 	}
+
+	// and finally we can also do rate checks
+	rr := lib.GetRateRequest{
+		lib.CounterType_USER_LIKE,
+		lib.CounterType_VIDEO_LIKE,
+		lib.Key{uid},
+		lib.Key{video_id},
+		lib.Window_HOUR,
+		ts,
+		true,
+	}
+	rate, err := c.GetRate(rr)
+	assert.NoError(t, err)
+	assert.Equal(t, 0.3423719528896193, rate)
+	// and verify upper bound too
+	rr.LowerBound = false
+	rate, err = c.GetRate(rr)
+	assert.NoError(t, err)
+	assert.Equal(t, 1.0, rate)
 }
 
 // TODO: add more tests covering more error conditions
@@ -198,7 +217,8 @@ func TestProfile(t *testing.T) {
 	checkGetSet(t, c, false, 10, 3131, 0, "summary", value.Int(1))
 }
 
-func checkGetSet(t *testing.T, c client.Client, get bool, otype lib.OType, oid uint64, version uint64, key string, val value.Value) {
+func checkGetSet(t *testing.T, c client.Client, get bool, otype lib.OType, oid uint64, version uint64,
+	key string, val value.Value) {
 	if get {
 		found, err := c.GetProfile(otype, oid, key, version)
 		assert.NoError(t, err)

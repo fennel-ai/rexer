@@ -2,7 +2,6 @@ package lib
 
 import (
 	"fmt"
-	"math"
 )
 
 type OidType uint64
@@ -32,26 +31,6 @@ type Key []OidType
 
 func Windows() []Window {
 	return []Window{Window_HOUR, Window_DAY, Window_WEEK, Window_MONTH, Window_QUARTER, Window_YEAR, Window_FOREVER}
-}
-
-const Z_95 = 1.96
-
-func Wilson(num uint64, den uint64, lower bool) float64 {
-	// (p + Z_95²/2n ± Z_95√p(1 – p)/n + Z_95²/4n²) / (1 + Z_95²/n)
-	if den == 0 {
-		return 0
-	}
-
-	p := float64(num) / float64(den)
-	n := float64(den)
-	base := p + (Z_95*Z_95)/(2*n)
-	plusminus := Z_95 * math.Sqrt(p*(1-p)/n+(Z_95*Z_95)/(4*n*n))
-	normalize := 1 + (Z_95*Z_95)/n
-	if lower {
-		return (base - plusminus) / normalize
-	} else {
-		return (base + plusminus) / normalize
-	}
 }
 
 type GetCountRequest struct {
@@ -89,6 +68,57 @@ func ToProtoGetCountRequest(gcr *GetCountRequest) ProtoGetCountRequest {
 		Key:         fromKey(gcr.Key),
 		Timestamp:   uint64(gcr.Timestamp),
 	}
+}
+
+type GetRateRequest struct {
+	NumCounterType CounterType
+	DenCounterType CounterType
+	NumKey         Key
+	DenKey         Key
+	Window         Window
+	Timestamp      Timestamp
+	LowerBound     bool
+}
+
+func FromProtoGetRateRequest(pgrr *ProtoGetRateRequest) GetRateRequest {
+	return GetRateRequest{
+		pgrr.NumCounterType,
+		pgrr.DenCounterType,
+		toKey(pgrr.NumKey),
+		toKey(pgrr.DenKey),
+		pgrr.Window,
+		Timestamp(pgrr.Timestamp),
+		pgrr.LowerBound,
+	}
+}
+func ToProtoGetRateRequest(grr *GetRateRequest) ProtoGetRateRequest {
+	return ProtoGetRateRequest{
+		NumCounterType: grr.NumCounterType,
+		DenCounterType: grr.DenCounterType,
+		NumKey:         fromKey(grr.NumKey),
+		DenKey:         fromKey(grr.DenKey),
+		Window:         grr.Window,
+		Timestamp:      uint64(grr.Timestamp),
+		LowerBound:     grr.LowerBound,
+	}
+}
+func (r GetRateRequest) Validate() error {
+	if r.NumCounterType == 0 {
+		return fmt.Errorf("num counter type can not be zero")
+	}
+	if r.DenCounterType == 0 {
+		return fmt.Errorf("den counter type can not be zero")
+	}
+	if r.Window == 0 {
+		return fmt.Errorf("counter window can not be zero")
+	}
+	if len(r.NumKey) == 0 {
+		return fmt.Errorf("num counter key can not be empty")
+	}
+	if len(r.DenKey) == 0 {
+		return fmt.Errorf("den counter key can not be empty")
+	}
+	return nil
 }
 
 func toKey(k []uint64) Key {

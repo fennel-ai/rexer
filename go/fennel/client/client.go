@@ -31,6 +31,9 @@ func (c Client) fetchURL() string {
 func (c Client) countURL() string {
 	return fmt.Sprintf("%s:%d/count", c.url, lib.PORT)
 }
+func (c Client) rateURL() string {
+	return fmt.Sprintf("%s:%d/rate", c.url, lib.PORT)
+}
 
 // GetProfile if no matching value is found, a nil pointer is returned with no error
 // If a matching value is found, a valid Value pointer is returned with no error
@@ -182,16 +185,34 @@ func (c *Client) GetCount(request lib.GetCountRequest) (uint64, error) {
 // GetRate returns the normalized ratio of two counters in the same window
 // if lower is true, the lower bound is returned and if false upper bound is returned
 // TODO: ideally we should just move this logic to server instead of client?
-func (c *Client) GetRate(ct1 lib.CounterType, key1 lib.Key, ct2 lib.CounterType, key2 lib.Key,
-	window lib.Window, lower bool) (float64, error) {
-	num, err := c.GetCount(lib.GetCountRequest{CounterType: ct1, Window: window, Key: key1})
+func (c *Client) GetRate(request lib.GetRateRequest) (float64, error) {
+	err := request.Validate()
+	if err != nil {
+		return 0, fmt.Errorf("invalid request: %v", err)
+	}
+
+	// now convert to proto and marshal
+	pgrr := lib.ToProtoGetRateRequest(&request)
+	ser, err := proto.Marshal(&pgrr)
+	if err != nil {
+		return 0, fmt.Errorf("could not marshal request: %v", err)
+	}
+
+	reqBody := bytes.NewBuffer(ser)
+	response, err := http.Post(c.rateURL(), "application/json", reqBody)
+	if err != nil {
+		return 0, fmt.Errorf("http error: %v", err)
+	}
+	// verify server sent no error
+	defer response.Body.Close()
+	ser, err = ioutil.ReadAll(response.Body)
 	if err != nil {
 		return 0, err
 	}
-	den, err := c.GetCount(lib.GetCountRequest{CounterType: ct2, Window: window, Key: key2})
+	var rate float64
+	err = json.Unmarshal(ser, &rate)
 	if err != nil {
-		return 0, err
+		return 0, fmt.Errorf("server unmarshall error %v", err)
 	}
-	ratio := lib.Wilson(num, den, lower)
-	return ratio, nil
+	return rate, nil
 }

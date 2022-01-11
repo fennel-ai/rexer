@@ -37,3 +37,13 @@ message ProtoGetCountRequest {
   repeated uint64 Key = 3;
   uint64 Timestamp = 4;
 }
+
+message ProtoGetRateRequest {
+  CounterType NumCounterType = 1;
+  CounterType DenCounterType = 2;
+  repeated uint64 NumKey = 3;
+  repeated uint64 DenKey = 4;
+  Window Window = 5;
+  uint64 Timestamp = 6;
+  bool LowerBound = 7;
+}

@@ -176,6 +176,39 @@ func Count(w http.ResponseWriter, req *http.Request) {
 	fmt.Fprintf(w, string(ser))
 }
 
+func Rate(w http.ResponseWriter, req *http.Request) {
+	// Try to decode the request body into the struct. If there is an error,
+	// respond to the client with the error message and a 400 status code.
+	body, err := ioutil.ReadAll(req.Body)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	var protoRequest lib.ProtoGetRateRequest
+	err = proto.Unmarshal(body, &protoRequest)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	request := lib.FromProtoGetRateRequest(&protoRequest)
+	// now we know that this is a valid request, so let's make a db call
+	numRequest := lib.GetCountRequest{CounterType: request.NumCounterType, Window: request.Window, Key: request.NumKey, Timestamp: request.Timestamp}
+	numCount, err := counterGet(numRequest)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadGateway)
+		return
+	}
+	denRequest := lib.GetCountRequest{CounterType: request.DenCounterType, Window: request.Window, Key: request.DenKey, Timestamp: request.Timestamp}
+	denCount, err := counterGet(denRequest)
+	rate := Wilson(numCount, denCount, request.LowerBound)
+	ser, err := json.Marshal(rate)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("could not serialize rate: %v", err.Error()), http.StatusBadGateway)
+		return
+	}
+	fmt.Fprintf(w, string(ser))
+}
+
 var server *http.Server
 var serverWG sync.WaitGroup
 
@@ -189,6 +222,7 @@ func serve() {
 	mux.HandleFunc("/get", get)
 	mux.HandleFunc("/set", set)
 	mux.HandleFunc("/log", Log)
+	mux.HandleFunc("/rate", Rate)
 	server.Handler = mux
 	go func() {
 		defer serverWG.Done() // let main know we are done cleaning up
