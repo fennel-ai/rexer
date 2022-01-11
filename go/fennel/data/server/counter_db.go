@@ -70,19 +70,19 @@ func createCounterTables() error {
 
 func tsToIndex(ts lib.Timestamp, window lib.Window) (uint64, error) {
 	switch window {
-	case lib.HOUR:
+	case lib.Window_HOUR:
 		return uint64(ts / (3600 / GRANULARITY)), nil
-	case lib.DAY:
+	case lib.Window_DAY:
 		return uint64(ts / (3600 * 24 / GRANULARITY)), nil
-	case lib.WEEK:
+	case lib.Window_WEEK:
 		return uint64(ts / (3600 * 24 * 7 / GRANULARITY)), nil
-	case lib.MONTH:
+	case lib.Window_MONTH:
 		return uint64(ts / (3600 * 24 * 30 / GRANULARITY)), nil
-	case lib.QUARTER:
+	case lib.Window_QUARTER:
 		return uint64(ts / (3600 * 24 * 90 / GRANULARITY)), nil
-	case lib.YEAR:
+	case lib.Window_YEAR:
 		return uint64(ts / (3600 * 24 * 365 / GRANULARITY)), nil
-	case lib.FOREVER:
+	case lib.Window_FOREVER:
 		// for forever window, we have literally a single bucket
 		return FOREVER_BUCKET_INDEX, nil
 	default:
@@ -146,7 +146,7 @@ func counterDBGet(bucket CounterBucket) (uint64, error) {
 			AND window_type = :window_type
 			AND key = :key 
 		`, COUNTER_TABLE)
-	if bucket.Window != lib.FOREVER {
+	if bucket.Window != lib.Window_FOREVER {
 		query = fmt.Sprintf("%s AND idx > :idx - %d AND idx <= :idx;", query, GRANULARITY)
 	} else {
 		query = fmt.Sprintf("%s AND idx = %d", query, FOREVER_BUCKET_INDEX)

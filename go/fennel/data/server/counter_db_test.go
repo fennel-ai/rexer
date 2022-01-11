@@ -17,15 +17,15 @@ func TestCounterStorage(t *testing.T) {
 	err := instance.Setup([]instance.Resource{instance.DB})
 	assert.NoError(t, err)
 
-	ct := lib.USER_LIKE
+	ct := lib.CounterType_USER_LIKE
 	key := lib.Key{1, 2, 3}
 	deltas := map[lib.Window]lib.Timestamp{
-		lib.HOUR:    3600,
-		lib.DAY:     24 * 3600,
-		lib.WEEK:    7 * 24 * 3600,
-		lib.MONTH:   30 * 24 * 3600,
-		lib.QUARTER: 90 * 24 * 3600,
-		lib.YEAR:    365 * 24 * 3600,
+		lib.Window_HOUR:    3600,
+		lib.Window_DAY:     24 * 3600,
+		lib.Window_WEEK:    7 * 24 * 3600,
+		lib.Window_MONTH:   30 * 24 * 3600,
+		lib.Window_QUARTER: 90 * 24 * 3600,
+		lib.Window_YEAR:    365 * 24 * 3600,
 	}
 	for w, delta := range deltas {
 		ts := lib.Timestamp(1)
@@ -56,31 +56,31 @@ func TestCounterStorage(t *testing.T) {
 func TestForeverWindow(t *testing.T) {
 	err := instance.Setup([]instance.Resource{instance.DB})
 	assert.NoError(t, err)
-	ct := lib.USER_LIKE
+	ct := lib.CounterType_USER_LIKE
 	key := lib.Key{1, 2, 3}
 	ts := lib.Timestamp(1)
 	// initially we haven't done anything, so all gets should be 0
-	verify(t, 0, ct, lib.FOREVER, key, ts)
+	verify(t, 0, ct, lib.Window_FOREVER, key, ts)
 
 	//now let's do a single increment and verify that specific window works
-	err = counterIncrement(ct, lib.FOREVER, key, ts, 3)
+	err = counterIncrement(ct, lib.Window_FOREVER, key, ts, 3)
 	assert.NoError(t, err)
-	verify(t, 3, ct, lib.FOREVER, key, ts)
+	verify(t, 3, ct, lib.Window_FOREVER, key, ts)
 
 	// another increment some time later which should also show up
 	next := ts + 1e6
-	err = counterIncrement(ct, lib.FOREVER, key, next, 2)
+	err = counterIncrement(ct, lib.Window_FOREVER, key, next, 2)
 	assert.NoError(t, err)
-	verify(t, 5, ct, lib.FOREVER, key, next)
+	verify(t, 5, ct, lib.Window_FOREVER, key, next)
 
 	// and no matter how far we go, we always see this value
-	verify(t, 5, ct, lib.FOREVER, key, ts+3*10e9)
+	verify(t, 5, ct, lib.Window_FOREVER, key, ts+3*10e9)
 }
 
 func TestCheckpoint(t *testing.T) {
 	err := instance.Setup([]instance.Resource{instance.DB})
 	assert.NoError(t, err)
-	ct1 := lib.USER_LIKE
+	ct1 := lib.CounterType_USER_LIKE
 	zero := lib.OidType(0)
 	// initially no checkpoint is setup, so we should get 0
 	checkpoint, err := counterDBGetCheckpoint(ct1)
@@ -105,7 +105,7 @@ func TestCheckpoint(t *testing.T) {
 	assert.Equal(t, expected2, checkpoint)
 
 	// meanwhile other counter types aren't affected
-	var ct2 lib.CounterType = lib.USER_SHARE
+	var ct2 lib.CounterType = lib.CounterType_USER_SHARE
 	// initially no checkpoint is setup, so we should get 0
 	checkpoint, err = counterDBGetCheckpoint(ct2)
 	assert.NoError(t, err)

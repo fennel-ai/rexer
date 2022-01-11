@@ -50,13 +50,13 @@ type Keygen func(actorID lib.OidType, actorType lib.OType, targetID lib.OidType,
 
 func init() {
 	counterConfigs = map[lib.CounterType]CounterConfig{
-		lib.USER_LIKE:       {actorType: lib.User, actionType: lib.Like, keygen: actorID},
-		lib.USER_VIDEO_LIKE: {actorType: lib.User, actionType: lib.Like, targetType: lib.Video, keygen: actorTargetID},
-		lib.VIDEO_LIKE:      {targetType: lib.Video, actionType: lib.Like, keygen: targetID},
+		lib.CounterType_USER_LIKE:       {actorType: lib.User, actionType: lib.Like, keygen: actorID},
+		lib.CounterType_USER_VIDEO_LIKE: {actorType: lib.User, actionType: lib.Like, targetType: lib.Video, keygen: actorTargetID},
+		lib.CounterType_VIDEO_LIKE:      {targetType: lib.Video, actionType: lib.Like, keygen: targetID},
 
 		// These are commented for unit tests to work
 		// Eventually remove these from here and just add more tests with these
-		//USER_SHARE:      {actorType: lib.User, actionType: lib.Share, keygen: actorID},
+		//CounterType_USER_SHARE:      {actorType: lib.User, actionType: lib.Share, keygen: actorID},
 		//VIDEO_SHARE:     {targetType: lib.Video, actionType: lib.Share, keygen: targetID},
 		//USER_ACCOUNT_LIKE: {actorType: lib.User, targetType: lib.Video, actionType: lib.Like,
 		//	keygen: func(actorID lib.OidType, actorType lib.OType, targetID lib.OidType, targetType lib.OType) []lib.Key {

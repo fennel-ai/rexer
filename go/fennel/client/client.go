@@ -152,7 +152,10 @@ func (c *Client) GetCount(request lib.GetCountRequest) (uint64, error) {
 	if err != nil {
 		return 0, fmt.Errorf("invalid request: %v", err)
 	}
-	ser, err := json.Marshal(request)
+
+	// now convert to proto and marshal
+	pgcr := lib.ToProtoGetCountRequest(&request)
+	ser, err := proto.Marshal(&pgcr)
 	if err != nil {
 		return 0, fmt.Errorf("could not marshal request: %v", err)
 	}

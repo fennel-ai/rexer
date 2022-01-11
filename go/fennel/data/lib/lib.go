@@ -28,23 +28,10 @@ const (
 	View             = 3
 )
 
-type CounterType uint32
-
 type Key []OidType
-type Window uint8
-
-const (
-	HOUR    Window = 1
-	DAY            = 2
-	WEEK           = 3
-	MONTH          = 4
-	QUARTER        = 5
-	YEAR           = 6
-	FOREVER        = 7
-)
 
 func Windows() []Window {
-	return []Window{HOUR, DAY, WEEK, MONTH, QUARTER, YEAR, FOREVER}
+	return []Window{Window_HOUR, Window_DAY, Window_WEEK, Window_MONTH, Window_QUARTER, Window_YEAR, Window_FOREVER}
 }
 
 const Z_95 = 1.96
@@ -87,18 +74,34 @@ func (r GetCountRequest) Validate() error {
 	return nil
 }
 
-const (
-	USER_LIKE                CounterType = 1
-	USER_SHARE                           = 2
-	VIDEO_LIKE                           = 3
-	VIDEO_SHARE                          = 4
-	USER_ACCOUNT_LIKE                    = 5
-	USER_TOPIC_LIKE                      = 6
-	AGE_VIDEO_LIKE                       = 7
-	GENDER_AGE_VIDEO_LIKE                = 8
-	ZIP_ACCOUNT_LIKE                     = 9
-	AGE_ZIP_U2VCLUSTER_LIKE              = 10
-	PAGE_FOLLOWER_VIDEO_LIKE             = 11
-	USER_VIDEO_30SWATCH                  = 12
-	USER_VIDEO_LIKE                      = 13
-)
+func FromProtoGetCountRequest(pgcr *ProtoGetCountRequest) GetCountRequest {
+	return GetCountRequest{
+		pgcr.CounterType,
+		pgcr.Window,
+		toKey(pgcr.Key),
+		Timestamp(pgcr.Timestamp),
+	}
+}
+func ToProtoGetCountRequest(gcr *GetCountRequest) ProtoGetCountRequest {
+	return ProtoGetCountRequest{
+		CounterType: gcr.CounterType,
+		Window:      gcr.Window,
+		Key:         fromKey(gcr.Key),
+		Timestamp:   uint64(gcr.Timestamp),
+	}
+}
+
+func toKey(k []uint64) Key {
+	ret := make([]OidType, len(k))
+	for i, n := range k {
+		ret[i] = OidType(n)
+	}
+	return Key(ret)
+}
+func fromKey(k Key) []uint64 {
+	ret := make([]uint64, len(k))
+	for i, n := range k {
+		ret[i] = uint64(n)
+	}
+	return ret
+}

@@ -148,27 +148,31 @@ func Fetch(w http.ResponseWriter, req *http.Request) {
 }
 
 func Count(w http.ResponseWriter, req *http.Request) {
-	var request lib.GetCountRequest
 	// Try to decode the request body into the struct. If there is an error,
 	// respond to the client with the error message and a 400 status code.
-	err := json.NewDecoder(req.Body).Decode(&request)
+	body, err := ioutil.ReadAll(req.Body)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
+	var protoRequest lib.ProtoGetCountRequest
+	err = proto.Unmarshal(body, &protoRequest)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	request := lib.FromProtoGetCountRequest(&protoRequest)
 	// now we know that this is a valid request, so let's make a db call
 	count, err := counterGet(request)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadGateway)
 		return
 	}
-	//log.Printf("[AGGREGATOR] Read GetCount: %d\n", count)
 	ser, err := json.Marshal(count)
 	if err != nil {
 		http.Error(w, fmt.Sprintf("could not serialize count: %v", err.Error()), http.StatusBadGateway)
 		return
 	}
-	//log.Printf("[AGGREGATOR] GetCount Ser: %s\n", ser)
 	fmt.Fprintf(w, string(ser))
 }
 
