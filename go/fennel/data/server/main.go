@@ -3,9 +3,6 @@ package main
 import (
 	"context"
 	"encoding/json"
-	"fennel/data/lib"
-	"fennel/instance"
-	"fennel/kafka"
 	"fmt"
 	"io/ioutil"
 	"log"
@@ -13,11 +10,15 @@ import (
 	"sync"
 	"time"
 
+	"fennel/data/lib"
+	"fennel/data/server/actions"
+	"fennel/instance"
+
 	"google.golang.org/protobuf/proto"
 )
 
-var producer kafka.ActionProducer
-var consumer kafka.ActionConsumer
+var producer actions.ActionProducer
+var consumer actions.ActionConsumer
 
 func init() {
 	instance.Register(instance.DB, createCounterTables)
@@ -25,8 +26,8 @@ func init() {
 	instance.Register(instance.DB, createProfileTable)
 
 	ch := make(chan *lib.ProtoAction, 10)
-	producer = kafka.NewLocalActionProducer(ch)
-	consumer = kafka.NewLocalActionConsumer(ch)
+	producer = actions.NewLocalActionProducer(ch)
+	consumer = actions.NewLocalActionConsumer(ch)
 
 	// NOTE: This is disabled right now since kafka topic deletion does not
 	// immediately delete the topic, and subsequent CreateTopic call will fail.
