@@ -6,9 +6,10 @@ import (
 	"fennel/data/lib"
 	"fennel/value"
 	"fmt"
-	"google.golang.org/protobuf/proto"
 	"io/ioutil"
 	"net/http"
+
+	"google.golang.org/protobuf/proto"
 )
 
 type Client struct {
@@ -117,7 +118,7 @@ func (c *Client) FetchActions(request lib.ActionFetchRequest) ([]lib.Action, err
 	if err != nil {
 		return nil, fmt.Errorf("unmarshal error: %v", err)
 	}
-	actions := lib.FromProtoActionList(actionList)
+	actions := lib.FromProtoActionList(&actionList)
 	return actions, nil
 }
 

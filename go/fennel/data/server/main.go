@@ -7,19 +7,50 @@ import (
 	"fennel/instance"
 	"fennel/kafka"
 	"fmt"
-	"google.golang.org/protobuf/proto"
 	"io/ioutil"
 	"log"
 	"net/http"
 	"sync"
 	"time"
+
+	"google.golang.org/protobuf/proto"
 )
 
-func init() {
+var producer kafka.ActionProducer
+var consumer kafka.ActionConsumer
 
+func init() {
 	instance.Register(instance.DB, createCounterTables)
 	instance.Register(instance.DB, createActionTable)
 	instance.Register(instance.DB, createProfileTable)
+
+	ch := make(chan *lib.ProtoAction, 10)
+	producer = kafka.NewLocalActionProducer(ch)
+	consumer = kafka.NewLocalActionConsumer(ch)
+
+	// NOTE: This is disabled right now since kafka topic deletion does not
+	// immediately delete the topic, and subsequent CreateTopic call will fail.
+
+	// kafkaClientConfig := &kafka.ClientConfig{
+	// 	BootstrapServer: "pkc-l7pr2.ap-south-1.aws.confluent.cloud:9092",
+	// 	Username:        "DXGQTONRSCJ7YC2W",
+	// 	Password:        "s1TAmKoJ7WnbJusVMPlgvKbYszD6lE50789bM1Y6aTlJNtRjThhhPR8+LeaY6Mqi",
+	// }
+	// var topicName string
+	// var err error
+	// topicName, err = kafkaClientConfig.SetupTestTopic()
+	// if err != nil {
+	// 	panic(err)
+	// }
+	// groupName := "test-group"
+	// producer, err = kafkaClientConfig.NewActionProducer(topicName)
+	// if err != nil {
+	// 	panic(err)
+	// }
+	// consumer, err = kafkaClientConfig.NewActionConsumer(groupName, topicName)
+	// if err != nil {
+	// 	panic(err)
+	// }
 }
 
 func Log(w http.ResponseWriter, req *http.Request) {
@@ -36,7 +67,7 @@ func Log(w http.ResponseWriter, req *http.Request) {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	action := lib.FromProtoAction(pa)
+	action := lib.FromProtoAction(&pa)
 	err = action.Validate()
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
@@ -44,7 +75,7 @@ func Log(w http.ResponseWriter, req *http.Request) {
 	}
 
 	// now we know that this is a valid request, so let's store this in kafka
-	err = kafka.LogAction(body)
+	err = producer.LogAction(&pa)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
@@ -54,14 +85,16 @@ func Log(w http.ResponseWriter, req *http.Request) {
 
 // TailActions reads a single message from Kafka and logs it in the database
 func TailActions() error {
-	msg, err := kafka.ReadActionMessage()
-	if err != nil {
-		return err
-	}
-	//fmt.Printf("Message on %s: %s\n", msg.TopicPartition, string(msg.Value))
-	// validate this message and if valid, write it in DB
-	var pa lib.ProtoAction
-	err = proto.Unmarshal(msg.Value, &pa)
+	// msg, err := kafka.ReadActionMessage()
+	// //fmt.Printf("Message on %s: %s\n", msg.TopicPartition, string(msg.Value))
+	// // validate this message and if valid, write it in DB
+	// var pa lib.ProtoAction
+
+	// err = proto.Unmarshal(msg.Value, &pa)
+	// if err != nil {
+	// 	return err
+	// }
+	pa, err := consumer.ReadActionMessage()
 	if err != nil {
 		return err
 	}
@@ -96,7 +129,7 @@ func Fetch(w http.ResponseWriter, req *http.Request) {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	request := lib.FromProtoActionFetchRequest(protoRequest)
+	request := lib.FromProtoActionFetchRequest(&protoRequest)
 
 	// now we know that this is a valid request, so let's make a db call
 	actions, err := actionDBGet(request)
@@ -105,7 +138,7 @@ func Fetch(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 	actionList := lib.ToProtoActionList(actions)
-	ser, err := proto.Marshal(&actionList)
+	ser, err := proto.Marshal(actionList)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadGateway)
 		return

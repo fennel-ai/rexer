@@ -15,7 +15,7 @@ type Action struct {
 	RequestID   RequestID  `db:"request_id"`
 }
 
-func FromProtoAction(pa ProtoAction) Action {
+func FromProtoAction(pa *ProtoAction) Action {
 	return Action{
 		ActionID:    OidType(pa.GetActionID()),
 		ActorID:     OidType(pa.GetActorID()),
@@ -58,7 +58,7 @@ type ActionFetchRequest struct {
 	RequestID      RequestID  `db:"request_id"`
 }
 
-func FromProtoActionFetchRequest(pa ProtoActionFetchRequest) ActionFetchRequest {
+func FromProtoActionFetchRequest(pa *ProtoActionFetchRequest) ActionFetchRequest {
 	return ActionFetchRequest{
 
 		MinActionID:    OidType(pa.GetMinActionID()),
@@ -94,16 +94,16 @@ func ToProtoActionFetchRequest(a ActionFetchRequest) ProtoActionFetchRequest {
 	}
 }
 
-func FromProtoActionList(actionList ProtoActionList) []Action {
+func FromProtoActionList(actionList *ProtoActionList) []Action {
 	actions := make([]Action, len(actionList.Actions))
 	for i, pa := range actionList.Actions {
-		actions[i] = FromProtoAction(*pa)
+		actions[i] = FromProtoAction(pa)
 	}
 	return actions
 }
 
-func ToProtoActionList(actions []Action) ProtoActionList {
-	var ret ProtoActionList
+func ToProtoActionList(actions []Action) *ProtoActionList {
+	ret := &ProtoActionList{}
 	ret.Actions = make([]*ProtoAction, len(actions))
 	for i, action := range actions {
 		pa := ToProtoAction(action)
