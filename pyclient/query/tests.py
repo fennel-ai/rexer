@@ -1,6 +1,6 @@
 import unittest
 from query.expr import InvalidQueryException, Var, Int
-from visitor import Printer
+from query.visitor import Printer
 
 class Test(unittest.TestCase):
     def test_basic_noinline(self):

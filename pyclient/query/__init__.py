@@ -1,6 +1,6 @@
-from expr import Int, Double, Bool, String
-from expr import InvalidQueryException, List, Dict, Transform, Table, Var, Ops, at
-from visitor import  Printer
+from query.expr import Int, Double, Bool, String
+from query.expr import InvalidQueryException, List, Dict, Transform, Table, Var, Ops, at
+from query.visitor import  Printer
 
 
 if __name__ == '__main__':
