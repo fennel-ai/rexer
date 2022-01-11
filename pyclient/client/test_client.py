@@ -3,6 +3,7 @@ import httpretty
 
 import action
 import client
+import counter
 
 
 class Testclient(unittest.TestCase):
@@ -61,6 +62,62 @@ class Testclient(unittest.TestCase):
         self.assertEqual(afr.SerializeToString(), httpretty.last_request().body)
         # technically we should get a different result but our mock server doesn't know that
         self.assertEqual([a2], ret)
+
+    @httpretty.activate(verbose=True, allow_net_connect=False)
+    def test_count(self):
+        count = 7
+        response = httpretty.Response(str(count))
+        httpretty.register_uri(httpretty.POST, 'http://localhost:2425/count', responses=[response])
+
+        # invalid requests throw exception
+        c = client.Client()
+        with self.assertRaises(client.InvalidInput):
+            c.count(1)
+        with self.assertRaises(client.InvalidInput):
+            c.count('hi')
+        with self.assertRaises(client.InvalidInput):
+            c.count(counter.GetCountRequest())
+
+        # but not with valid GetCountRequest
+        req = counter.GetCountRequest()
+        req.CounterType = counter.CounterType.USER_LIKE
+        req.Window = counter.Window.HOUR
+        req.Key.append(1)
+        req.Timestamp = 123
+        ret = c.count(req)
+
+        self.assertEqual(req.SerializeToString(), httpretty.last_request().body)
+        self.assertEqual(count, ret)
+
+    @httpretty.activate(verbose=True, allow_net_connect=False)
+    def test_rate(self):
+        rate = 0.123
+        response = httpretty.Response(str(rate))
+        httpretty.register_uri(httpretty.POST, 'http://localhost:2425/rate', responses=[response])
+
+        # invalid requests throw exception
+        c = client.Client()
+        with self.assertRaises(client.InvalidInput):
+            c.count(1)
+        with self.assertRaises(client.InvalidInput):
+            c.count('hi')
+        with self.assertRaises(client.InvalidInput):
+            c.count(counter.GetCountRequest())
+        with self.assertRaises(client.InvalidInput):
+            c.count(counter.GetRateRequest())
+
+        # but not with valid GetCountRequest
+        req = counter.GetRateRequest()
+        req.NumCounterType = counter.CounterType.USER_LIKE
+        req.DenCounterType = counter.CounterType.VIDEO_LIKE
+        req.Window = counter.Window.HOUR
+        req.NumKey.append(1)
+        req.DenKey.append(2)
+        req.Timestamp = 123
+        ret = c.rate(req)
+
+        self.assertEqual(req.SerializeToString(), httpretty.last_request().body)
+        self.assertEqual(rate, ret)
 
 
 def make_action(k):
