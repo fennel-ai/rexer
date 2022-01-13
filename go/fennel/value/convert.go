@@ -26,7 +26,7 @@ func ToProtoValue(v Value) (PValue, error) {
 		pvl := &PVList{Values: list}
 		return PValue{Node: &PValue_List{List: pvl}}, nil
 	case Dict:
-		pvd, err := ToProtoDict(v.(Dict))
+		pvd, err := toProtoDict(v.(Dict))
 		if err != nil {
 			return PValue{Node: &PValue_Nil{}}, err
 		}
@@ -35,7 +35,7 @@ func ToProtoValue(v Value) (PValue, error) {
 		list := make([]*PVDict, 0)
 		table := v.(Table)
 		for _, v := range table.Pull() {
-			pv, err := ToProtoDict(v)
+			pv, err := toProtoDict(v)
 			if err != nil {
 				return PValue{Node: &PValue_Nil{}}, err
 			}
@@ -88,7 +88,7 @@ func FromProtoValue(pv *PValue) (Value, error) {
 	if pvt, ok := pv.Node.(*PValue_Table); ok {
 		ret := NewTable()
 		for _, pv := range pvt.Table.Rows {
-			d, err := FromProtoDict(pv)
+			d, err := fromProtoDict(pv)
 			if err != nil {
 				return Nil, fmt.Errorf("can not convert element of dict to value: %v", pv)
 			}
@@ -106,7 +106,7 @@ func FromProtoValue(pv *PValue) (Value, error) {
 	return Nil, fmt.Errorf("unrecognized proto value type: %v", pv.Node)
 }
 
-func FromProtoDict(pd *PVDict) (Dict, error) {
+func fromProtoDict(pd *PVDict) (Dict, error) {
 	ret := make(map[string]Value, 0)
 	for k, pv := range pd.Values {
 		v, err := FromProtoValue(pv)
@@ -118,7 +118,7 @@ func FromProtoDict(pd *PVDict) (Dict, error) {
 	return ret, nil
 }
 
-func ToProtoDict(d Dict) (PVDict, error) {
+func toProtoDict(d Dict) (PVDict, error) {
 	dict := make(map[string]*PValue, len(d))
 	for k, v := range d {
 		pv, err := ToProtoValue(v)
