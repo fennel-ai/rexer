@@ -1,67 +1,87 @@
 package main
 
 import (
-	"bytes"
-	"encoding/json"
 	"fennel/data/lib"
 	"fennel/value"
 	"fmt"
+	"google.golang.org/protobuf/proto"
+	"io/ioutil"
 	"net/http"
 	"time"
 )
 
 func get(w http.ResponseWriter, req *http.Request) {
-	var item lib.ProfileItemSer
+	var protoReq lib.ProtoProfileItem
 	// Try to decode the request body into the struct. If there is an error,
 	// respond to the client with the error message and a 400 status code.
-	err := json.NewDecoder(req.Body).Decode(&item)
+	body, err := ioutil.ReadAll(req.Body)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	if item.Oid == 0 || item.Otype == 0 || item.Key == "" {
-		http.Error(w, "all of oid, otype, key need to be specified", http.StatusBadRequest)
+	err = proto.Unmarshal(body, &protoReq)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	request, err := lib.FromProtoProfileItem(&protoReq)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("invalid request: %v", err), http.StatusBadRequest)
+		return
+	}
+	if err = request.Validate(); err != nil {
+		http.Error(w, fmt.Sprintf("invalid request: %v", err), http.StatusBadRequest)
 		return
 	}
 	// now we know that this is a valid request, so let's make a db call
-	valueSer, err := dbGet(item.Otype, item.Oid, item.Key, item.Version)
+	valueSer, err := dbGet(request.OType, request.Oid, request.Key, request.Version)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadGateway)
 		return
 	}
+	// DB stores a serialized proto value - we just return it as it is
 	fmt.Fprintf(w, string(valueSer))
 }
 
 // TODO: add some locking etc to ensure that if two requests try to modify
 // the same key/value, we don't run into a race condition
 func set(w http.ResponseWriter, req *http.Request) {
-	var item lib.ProfileItemSer
-	// Try to decode the request body into the struct. If there is an error,
-	// respond to the client with the error message and a 400 status code.
-	buf := new(bytes.Buffer)
-	buf.ReadFrom(req.Body)
-	err := json.Unmarshal(buf.Bytes(), &item)
+	var protoReq lib.ProtoProfileItem
+	body, err := ioutil.ReadAll(req.Body)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	if (item.Oid == 0) || (item.Otype == 0) || (item.Key == "") {
-		http.Error(w, "all of oid, otype, key need to be specified", http.StatusBadRequest)
+	if err = proto.Unmarshal(body, &protoReq); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	// verify that item.Value is valid and can be unmarshalled into a real value
-	_, err = value.UnmarshalJSON(item.Value)
+	request, err := lib.FromProtoProfileItem(&protoReq)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		http.Error(w, fmt.Sprintf("invalid request: %v", err), http.StatusBadRequest)
+		return
+	}
+	if err = request.Validate(); err != nil {
+		http.Error(w, fmt.Sprintf("invalid request: %v", err), http.StatusBadRequest)
+		return
+	}
+	// TODO: reuse proto request's pvalue instead of creating a new one from scratch
+	pval, err := value.ToProtoValue(request.Value)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("invalid request: %v", err), http.StatusBadGateway)
+		return
+	}
+	valSer, err := proto.Marshal(&pval)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("invalid request: %v", err), http.StatusBadGateway)
 		return
 	}
 	// Now we know that this is a valid request and a db call will be made
 	// if version isn't set explicitly, we set it to current time
-	if item.Version == 0 {
-		item.Version = uint64(time.Now().Unix())
+	if request.Version == 0 {
+		request.Version = uint64(time.Now().Unix())
 	}
-	err = dbSet(item.Otype, item.Oid, item.Key, item.Version, item.Value)
-	if err != nil {
+	if err = dbSet(request.OType, request.Oid, request.Key, request.Version, valSer); err != nil {
 		http.Error(w, err.Error(), http.StatusBadGateway)
 		return
 	}

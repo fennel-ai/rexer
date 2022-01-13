@@ -3,6 +3,16 @@ package lib
 import "fmt"
 
 // TODO: add freeform text field for metadata?
+type ActionType uint32
+type Timestamp uint64
+type RequestID uint64
+
+const (
+	Like  ActionType = 1
+	Share            = 2
+	View             = 3
+)
+
 type Action struct {
 	ActionID    OidType    `db:"action_id"`
 	ActorID     OidType    `db:"actor_id"`

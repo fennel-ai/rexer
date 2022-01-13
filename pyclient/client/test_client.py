@@ -2,11 +2,47 @@ import unittest
 import httpretty
 
 import action
+import value
 import client
 import counter
+import profile
 
 
 class Testclient(unittest.TestCase):
+    @httpretty.activate(verbose=True, allow_net_connect=False)
+    def test_get_set_profile(self):
+        c = client.Client()
+
+        # invalid requests throw exception for both set & get
+        with self.assertRaises(client.InvalidInput):
+            c.get_profile(1)
+        with self.assertRaises(client.InvalidInput):
+            c.set_profile(1)
+        with self.assertRaises(client.InvalidInput):
+            c.get_profile('hi')
+        with self.assertRaises(client.InvalidInput):
+            c.set_profile('hi')
+        with self.assertRaises(client.InvalidInput):
+            c.get_profile(profile.ProfileItem())
+        with self.assertRaises(client.InvalidInput):
+            c.set_profile(profile.ProfileItem())
+
+        # but valid requests don't throw exceptions
+        req = profile.ProfileItem()
+        req.Oid, req.OType = 1, 2
+        req.Key = 'key'
+        v = value.Int(5)
+        req.Value.CopyFrom(v)
+        httpretty.register_uri(httpretty.POST, 'http://localhost:2425/set')
+        c.set_profile(req)
+        self.assertEqual(req.SerializeToString(), httpretty.last_request().body)
+
+        expected = value.Int(5)
+        response = httpretty.Response(expected.SerializeToString())
+        httpretty.register_uri(httpretty.POST, 'http://localhost:2425/get', responses=[response])
+        ret = c.get_profile(req)
+        self.assertEqual(value.Int(5), ret)
+
     @httpretty.activate(verbose=True, allow_net_connect=False)
     def test_log(self):
         a1 = make_action(1)
@@ -31,7 +67,7 @@ class Testclient(unittest.TestCase):
             c.log(a1)
 
     @httpretty.activate(verbose=True, allow_net_connect=False)
-    def test_log_fetch(self):
+    def test_fetch(self):
         a1 = make_action(1)
         a2 = make_action(2)
         al = action.to_proto_action_list([a1, a2])

@@ -2,19 +2,68 @@ package lib
 
 import (
 	"fennel/value"
+	"fmt"
+)
+
+type OidType uint64
+type OType uint32
+
+const (
+	User  OType = 1
+	Video       = 2
 )
 
 type ProfileItem struct {
-	Otype   OType
-	Oid     uint64
+	OType   OType
+	Oid     OidType
 	Key     string
 	Version uint64
 	Value   value.Value
 }
-type ProfileItemSer struct {
-	Otype   OType
-	Oid     uint64
-	Key     string
-	Version uint64
-	Value   []byte
+
+func NewProfileItem(otype OType, oid OidType, k string, version uint64) ProfileItem {
+	return ProfileItem{
+		otype, oid, k, version, value.Nil,
+	}
+}
+
+func FromProtoProfileItem(ppr *ProtoProfileItem) (ProfileItem, error) {
+	v, err := value.FromProtoValue(ppr.Value)
+	if err != nil {
+		return ProfileItem{}, err
+	}
+	return ProfileItem{
+		OType(ppr.OType),
+		OidType(ppr.Oid),
+		ppr.Key,
+		ppr.Version,
+		v,
+	}, nil
+}
+func ToProtoProfileItem(pi *ProfileItem) (ProtoProfileItem, error) {
+	pv, err := value.ToProtoValue(pi.Value)
+	if err != nil {
+		return ProtoProfileItem{}, err
+	}
+	return ProtoProfileItem{
+		OType:   int32(pi.OType),
+		Oid:     uint64(pi.Oid),
+		Key:     pi.Key,
+		Version: pi.Version,
+		Value:   &pv,
+	}, nil
+}
+
+// Validate validates the profile item
+func (pi *ProfileItem) Validate() error {
+	if pi.Oid == 0 {
+		return fmt.Errorf("oid can not be zero")
+	}
+	if pi.OType == 0 {
+		return fmt.Errorf("otype can not be zero")
+	}
+	if len(pi.Key) == 0 {
+		return fmt.Errorf("key can not be empty")
+	}
+	return nil
 }

@@ -34,23 +34,32 @@ func (c Client) countURL() string {
 func (c Client) rateURL() string {
 	return fmt.Sprintf("%s:%d/rate", c.url, lib.PORT)
 }
+func (c Client) getProfileURL() string {
+	return fmt.Sprintf("%s:%d/get", c.url, lib.PORT)
+}
+func (c Client) setProfileURL() string {
+	return fmt.Sprintf("%s:%d/set", c.url, lib.PORT)
+}
 
 // GetProfile if no matching value is found, a nil pointer is returned with no error
 // If a matching value is found, a valid Value pointer is returned with no error
 // If an error occurs, a nil pointer is returned with a non-nil error
-func (c *Client) GetProfile(otype lib.OType, oid uint64, key string, version uint64) (*value.Value, error) {
-	postBody, err := json.Marshal(map[string]interface{}{
-		"OType":   otype,
-		"Oid":     oid,
-		"Key":     key,
-		"Version": version,
-	})
+func (c *Client) GetProfile(request *lib.ProfileItem) (*value.Value, error) {
+	// convert the profile item to proto version
+	if err := request.Validate(); err != nil {
+		return nil, fmt.Errorf("invalid request: %v", err)
+	}
+	protoReq, err := lib.ToProtoProfileItem(request)
+	if err != nil {
+		return nil, fmt.Errorf("invalid request: %v", err)
+	}
+	postBody, err := proto.Marshal(&protoReq)
 	if err != nil {
 		return nil, fmt.Errorf("marshal error on client: %v", err)
 	}
 	reqBody := bytes.NewBuffer(postBody)
 	// TODO: should these be in body (which means POST) or in headers with GET method?
-	response, err := http.Post(c.url+"/get", "application/json", reqBody)
+	response, err := http.Post(c.getProfileURL(), "application/json", reqBody)
 	if err != nil {
 		return nil, fmt.Errorf("server error: %v", err)
 	}
@@ -58,13 +67,19 @@ func (c *Client) GetProfile(otype lib.OType, oid uint64, key string, version uin
 	defer response.Body.Close()
 	body, err := ioutil.ReadAll(response.Body)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("could not read server response: %v", err)
 	}
 	if len(body) == 0 {
 		// i.e. no valid value is found, so we return nil pointer
 		return nil, nil
 	}
-	v, err := value.UnmarshalJSON(body)
+	// now try to read body as a serialized ProtoValue
+	var pv value.PValue
+	if err = proto.Unmarshal(body, &pv); err != nil {
+		return nil, fmt.Errorf("could not unmarshal server response: %v", err)
+	}
+	// now convert proto value to real value
+	v, err := value.FromProtoValue(&pv)
 	if err != nil {
 		return nil, err
 	} else {
@@ -72,27 +87,30 @@ func (c *Client) GetProfile(otype lib.OType, oid uint64, key string, version uin
 	}
 }
 
-func (c *Client) SetProfile(otype lib.OType, oid uint64, key string, version uint64, v value.Value) error {
-	vser, err := v.MarshalJSON()
-	if err != nil {
-		return fmt.Errorf("could not marshal value: %v", err)
+func (c *Client) SetProfile(req *lib.ProfileItem) error {
+	// first convert to proto
+	if err := req.Validate(); err != nil {
+		return fmt.Errorf("invalid request: %v", err)
 	}
-	item := lib.ProfileItemSer{Otype: otype, Oid: oid, Key: key, Version: version, Value: vser}
-	postBody, err := json.Marshal(item)
+	protoReq, err := lib.ToProtoProfileItem(req)
+	if err != nil {
+		return fmt.Errorf("could not convert request to proto: %v", err)
+	}
+	// serialize the request to be sent on wire
+	ser, err := proto.Marshal(&protoReq)
 	if err != nil {
 		return fmt.Errorf("marshal error on client: %v", err)
 	}
 
-	reqBody := bytes.NewBuffer(postBody)
-	response, err := http.Post(c.url+"/set", "application/json", reqBody)
+	reqBody := bytes.NewBuffer(ser)
+	response, err := http.Post(c.setProfileURL(), "application/json", reqBody)
 	if err != nil {
 		return fmt.Errorf("server error: %v", err)
 	}
 	// verify server sent no error
 	defer response.Body.Close()
-	_, err = ioutil.ReadAll(response.Body)
-	if err != nil {
-		return err
+	if _, err = ioutil.ReadAll(response.Body); err != nil {
+		return fmt.Errorf("could not read server response: %v", err)
 	}
 	return nil
 }

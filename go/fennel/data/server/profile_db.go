@@ -24,12 +24,15 @@ func createProfileTable() error {
 	if err != nil {
 		return err
 	}
-	statement.Exec()
-	log.Println("Profile table created")
+	_, err = statement.Exec()
+	if err != nil {
+		return err
+	}
+	log.Println("'profile' table created")
 	return nil
 }
 
-func dbSet(otype lib.OType, oid uint64, key string, version uint64, value []byte) error {
+func dbSet(otype lib.OType, oid lib.OidType, key string, version uint64, valueSer []byte) error {
 	if version == 0 {
 		return fmt.Errorf("version can not be zero")
 	}
@@ -39,15 +42,14 @@ func dbSet(otype lib.OType, oid uint64, key string, version uint64, value []byte
 			(otype, oid, zkey, version, value) 
 		VALUES
 			(?, ?, ?, ?, ?);`, TABLENAME),
-		//(:otype, :oid, :key, :version, :value);`, TABLENAME),
-		otype, oid, key, version, value)
+		otype, oid, key, version, valueSer)
 	if err != nil {
 		return err
 	}
 	return nil
 }
 
-func dbGet(otype lib.OType, oid uint64, key string, version uint64) ([]byte, error) {
+func dbGet(otype lib.OType, oid lib.OidType, key string, version uint64) ([]byte, error) {
 	// returns empty string if the row wasn't found
 	var value [][]byte
 	var err error
@@ -85,17 +87,4 @@ func dbGet(otype lib.OType, oid uint64, key string, version uint64) ([]byte, err
 	} else {
 		return value[0], nil
 	}
-}
-
-func dbPrintAll() error {
-	// this is slow and will do full table scan. Just use it for debugging/dev
-	var items []lib.ProfileItemSer
-	err := db.DB.Select(&items, fmt.Sprintf("SELECT * FROM %s", TABLENAME))
-	if err != nil {
-		return err
-	}
-	for _, item := range items {
-		fmt.Printf("%#v\n", item)
-	}
-	return nil
 }

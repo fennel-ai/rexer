@@ -4,27 +4,8 @@ import (
 	"fmt"
 )
 
-type OidType uint64
-type Timestamp uint64
-type RequestID uint64
-
 const (
 	PORT = 2425
-)
-
-type OType uint32
-
-const (
-	User  OType = 1
-	Video       = 2
-)
-
-type ActionType uint32
-
-const (
-	Like  ActionType = 1
-	Share            = 2
-	View             = 3
 )
 
 type Key []OidType

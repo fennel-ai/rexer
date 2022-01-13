@@ -2,6 +2,8 @@ import action
 import requests
 
 import counter
+import profile
+import value
 
 PORT = 2425
 # TODO: how does client find out the URL?
@@ -16,6 +18,32 @@ class Client(object):
     def __init__(self, url=URL, port=PORT):
         self.url = str(url)
         self.port = str(port)
+
+    def set_profile(self, item: profile.ProfileItem):
+        if not isinstance(item, profile.ProfileItem):
+            raise InvalidInput('arg of set profile should be ProfileItem but got: %s' % item)
+        errors = profile.validate(item)
+        if len(errors) > 0:
+            raise InvalidInput('invalid profile item: %s' % ', '.join(errors))
+
+        ser = item.SerializeToString()
+        response = requests.post(self._set_url(), data=ser)
+        response.raise_for_status()
+
+    def get_profile(self, item: profile.ProfileItem):
+        if not isinstance(item, profile.ProfileItem):
+            raise InvalidInput('arg of get profile should be ProfileItem but got: %s' % item)
+        errors = profile.validate(item)
+        if len(errors) > 0:
+            raise InvalidInput('invalid profile item: %s' % ', '.join(errors))
+
+        ser = item.SerializeToString()
+        response = requests.post(self._get_url(), data=ser)
+        if response.status_code != requests.codes.OK:
+            response.raise_for_status()
+        v = value.Value()
+        v.ParseFromString(response.content)
+        return v
 
     def log(self, a: action.Action):
         if not isinstance(a, action.Action):
@@ -94,11 +122,11 @@ class Client(object):
     def _fetch_url(self):
         return self._base_url() + '/fetch'
 
-    def set_profile(self, target_type, target_id, key, value, version):
-        pass
+    def _get_url(self):
+        return self._base_url() + '/get'
 
-    def get_profile(self, target_type, target_id, key, version=None):
-        pass
+    def _set_url(self):
+        return self._base_url() + '/set'
 
     def query(self, query):
         pass

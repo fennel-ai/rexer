@@ -198,7 +198,7 @@ func TestProfile(t *testing.T) {
 	go serve()
 	defer shutDownServer()
 	// and create a client
-	c := client.NewClient(fmt.Sprintf("http://localhost:%d", lib.PORT))
+	c := client.NewClient(fmt.Sprintf("http://localhost"))
 
 	// in the beginning, with no value set, we get nil pointer back but with no error
 	checkGetSet(t, c, true, 1, 1, 0, "age", value.Value(nil))
@@ -217,10 +217,11 @@ func TestProfile(t *testing.T) {
 	checkGetSet(t, c, false, 10, 3131, 0, "summary", value.Int(1))
 }
 
-func checkGetSet(t *testing.T, c client.Client, get bool, otype lib.OType, oid uint64, version uint64,
+func checkGetSet(t *testing.T, c client.Client, get bool, otype lib.OType, oid lib.OidType, version uint64,
 	key string, val value.Value) {
 	if get {
-		found, err := c.GetProfile(otype, oid, key, version)
+		req := lib.NewProfileItem(otype, oid, key, version)
+		found, err := c.GetProfile(&req)
 		assert.NoError(t, err)
 		if found == nil {
 			assert.Equal(t, nil, val)
@@ -228,9 +229,10 @@ func checkGetSet(t *testing.T, c client.Client, get bool, otype lib.OType, oid u
 			assert.Equal(t, val, *found)
 		}
 	} else {
-		err := c.SetProfile(otype, oid, key, version, val)
+		err := c.SetProfile(&lib.ProfileItem{OType: otype, Oid: oid, Key: key, Version: version, Value: val})
 		assert.NoError(t, err)
-		found, err := c.GetProfile(otype, oid, key, version)
+		request := lib.NewProfileItem(otype, oid, key, version)
+		found, err := c.GetProfile(&request)
 		assert.NoError(t, err)
 		if found == nil {
 			assert.Equal(t, nil, val)
