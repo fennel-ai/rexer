@@ -1,0 +1,12 @@
+syntax = "proto3";
+import "value.proto";
+
+option go_package = "fennel/data/lib";
+
+message ProtoProfileItem {
+  int32 OType = 1;
+  uint64 Oid = 2;
+  string Key = 3;
+  uint64 Version = 4;
+  PValue Value = 5;
+}

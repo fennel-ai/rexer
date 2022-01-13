@@ -1,70 +1,69 @@
 package value
 
 import (
-	"fennel/value/proto"
 	"fmt"
 )
 
-func ToProtoValue(v Value) (proto.PValue, error) {
+func ToProtoValue(v Value) (PValue, error) {
 	switch v.(type) {
 	case Int:
-		return proto.PValue{Node: &proto.PValue_Int{Int: int64(v.(Int))}}, nil
+		return PValue{Node: &PValue_Int{Int: int64(v.(Int))}}, nil
 	case Double:
-		return proto.PValue{Node: &proto.PValue_Double{Double: float64(v.(Double))}}, nil
+		return PValue{Node: &PValue_Double{Double: float64(v.(Double))}}, nil
 	case Bool:
-		return proto.PValue{Node: &proto.PValue_Bool{Bool: bool(v.(Bool))}}, nil
+		return PValue{Node: &PValue_Bool{Bool: bool(v.(Bool))}}, nil
 	case String:
-		return proto.PValue{Node: &proto.PValue_String_{String_: string(v.(String))}}, nil
+		return PValue{Node: &PValue_String_{String_: string(v.(String))}}, nil
 	case List:
-		list := make([]*proto.PValue, len(v.(List)))
+		list := make([]*PValue, len(v.(List)))
 		for i, v := range v.(List) {
 			pv, err := ToProtoValue(v)
 			if err != nil {
-				return proto.PValue{Node: &proto.PValue_Nil{}}, err
+				return PValue{Node: &PValue_Nil{}}, err
 			}
 			list[i] = &pv
 		}
-		pvl := &proto.PVList{Values: list}
-		return proto.PValue{Node: &proto.PValue_List{List: pvl}}, nil
+		pvl := &PVList{Values: list}
+		return PValue{Node: &PValue_List{List: pvl}}, nil
 	case Dict:
 		pvd, err := ToProtoDict(v.(Dict))
 		if err != nil {
-			return proto.PValue{Node: &proto.PValue_Nil{}}, err
+			return PValue{Node: &PValue_Nil{}}, err
 		}
-		return proto.PValue{Node: &proto.PValue_Dict{Dict: &pvd}}, nil
+		return PValue{Node: &PValue_Dict{Dict: &pvd}}, nil
 	case Table:
-		list := make([]*proto.PVDict, 0)
+		list := make([]*PVDict, 0)
 		table := v.(Table)
 		for _, v := range table.Pull() {
 			pv, err := ToProtoDict(v)
 			if err != nil {
-				return proto.PValue{Node: &proto.PValue_Nil{}}, err
+				return PValue{Node: &PValue_Nil{}}, err
 			}
 			list = append(list, &pv)
 		}
-		pvl := &proto.PVTable{Rows: list}
-		return proto.PValue{Node: &proto.PValue_Table{Table: pvl}}, nil
+		pvl := &PVTable{Rows: list}
+		return PValue{Node: &PValue_Table{Table: pvl}}, nil
 	case nil_:
-		return proto.PValue{Node: &proto.PValue_Nil{}}, nil
+		return PValue{Node: &PValue_Nil{}}, nil
 	default:
-		return proto.PValue{Node: &proto.PValue_Nil{}}, fmt.Errorf("invalid value: %v", v)
+		return PValue{Node: &PValue_Nil{}}, fmt.Errorf("invalid value: %v", v)
 	}
 }
 
-func FromProtoValue(pv *proto.PValue) (Value, error) {
-	if pvi, ok := pv.Node.(*proto.PValue_Int); ok {
+func FromProtoValue(pv *PValue) (Value, error) {
+	if pvi, ok := pv.Node.(*PValue_Int); ok {
 		return Int(pvi.Int), nil
 	}
-	if pvd, ok := pv.Node.(*proto.PValue_Double); ok {
+	if pvd, ok := pv.Node.(*PValue_Double); ok {
 		return Double(pvd.Double), nil
 	}
-	if pvs, ok := pv.Node.(*proto.PValue_String_); ok {
+	if pvs, ok := pv.Node.(*PValue_String_); ok {
 		return String(pvs.String_), nil
 	}
-	if pvb, ok := pv.Node.(*proto.PValue_Bool); ok {
+	if pvb, ok := pv.Node.(*PValue_Bool); ok {
 		return Bool(pvb.Bool), nil
 	}
-	if pvl, ok := pv.Node.(*proto.PValue_List); ok {
+	if pvl, ok := pv.Node.(*PValue_List); ok {
 		ret := make([]Value, 0)
 		for _, pv := range pvl.List.Values {
 			v, err := FromProtoValue(pv)
@@ -75,7 +74,7 @@ func FromProtoValue(pv *proto.PValue) (Value, error) {
 		}
 		return List(ret), nil
 	}
-	if pvd, ok := pv.Node.(*proto.PValue_Dict); ok {
+	if pvd, ok := pv.Node.(*PValue_Dict); ok {
 		ret := make(map[string]Value, 0)
 		for k, pv := range pvd.Dict.Values {
 			v, err := FromProtoValue(pv)
@@ -86,7 +85,7 @@ func FromProtoValue(pv *proto.PValue) (Value, error) {
 		}
 		return NewDict(ret)
 	}
-	if pvt, ok := pv.Node.(*proto.PValue_Table); ok {
+	if pvt, ok := pv.Node.(*PValue_Table); ok {
 		ret := NewTable()
 		for _, pv := range pvt.Table.Rows {
 			d, err := FromProtoDict(pv)
@@ -101,13 +100,13 @@ func FromProtoValue(pv *proto.PValue) (Value, error) {
 		return ret, nil
 	}
 
-	if _, ok := pv.Node.(*proto.PValue_Nil); ok {
+	if _, ok := pv.Node.(*PValue_Nil); ok {
 		return Nil, nil
 	}
 	return Nil, fmt.Errorf("unrecognized proto value type: %v", pv.Node)
 }
 
-func FromProtoDict(pd *proto.PVDict) (Dict, error) {
+func FromProtoDict(pd *PVDict) (Dict, error) {
 	ret := make(map[string]Value, 0)
 	for k, pv := range pd.Values {
 		v, err := FromProtoValue(pv)
@@ -119,14 +118,14 @@ func FromProtoDict(pd *proto.PVDict) (Dict, error) {
 	return ret, nil
 }
 
-func ToProtoDict(d Dict) (proto.PVDict, error) {
-	dict := make(map[string]*proto.PValue, len(d))
+func ToProtoDict(d Dict) (PVDict, error) {
+	dict := make(map[string]*PValue, len(d))
 	for k, v := range d {
 		pv, err := ToProtoValue(v)
 		if err != nil {
-			return proto.PVDict{}, err
+			return PVDict{}, err
 		}
 		dict[k] = &pv
 	}
-	return proto.PVDict{Values: dict}, nil
+	return PVDict{Values: dict}, nil
 }

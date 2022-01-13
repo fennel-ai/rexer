@@ -1,6 +1,6 @@
 syntax = "proto3";
 
-option go_package = "data/lib";
+option go_package = "fennel/data/lib";
 
 enum CounterType {
   NULL_COUNTER                         = 0;

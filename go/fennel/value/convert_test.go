@@ -1,7 +1,6 @@
 package value
 
 import (
-	"fennel/value/proto"
 	"github.com/stretchr/testify/assert"
 	"testing"
 )
@@ -37,24 +36,24 @@ func TestConvert(t *testing.T) {
 }
 
 func TestInvalidProtoValue(t *testing.T) {
-	empty := proto.PValue{}
-	pvalues := []proto.PValue{
+	empty := PValue{}
+	pvalues := []PValue{
 		// a protovalue without a valid type
 		empty,
 		{
 			// a protovalue containing a list containing a protovalue without a valid type
-			Node: &proto.PValue_List{List: &proto.PVList{Values: []*proto.PValue{&empty}}},
+			Node: &PValue_List{List: &PVList{Values: []*PValue{&empty}}},
 		},
 		{
 			// a protovalue containing a dict containing a protovalue without a valid type
-			Node: &proto.PValue_Dict{Dict: &proto.PVDict{Values: map[string]*proto.PValue{"hi": &empty}}},
+			Node: &PValue_Dict{Dict: &PVDict{Values: map[string]*PValue{"hi": &empty}}},
 		},
 	}
 
 	// a protovalue table where schema doesn't match
 	row1, _ := ToProtoDict(Dict{"hi": Int(1), "bye": Bool(true)})
 	row2, _ := ToProtoDict(Dict{"mismatch": Int(1), "bye": Bool(true)})
-	ptable := proto.PValue{Node: &proto.PValue_Table{Table: &proto.PVTable{Rows: []*proto.PVDict{&row1, &row2}}}}
+	ptable := PValue{Node: &PValue_Table{Table: &PVTable{Rows: []*PVDict{&row1, &row2}}}}
 
 	pvalues = append(pvalues, ptable)
 

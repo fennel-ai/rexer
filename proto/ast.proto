@@ -1,6 +1,6 @@
 syntax = "proto3";
 
-option go_package = "engine/ast";
+option go_package = "fennel/engine/ast";
 
 message Ast {
     oneof node {
