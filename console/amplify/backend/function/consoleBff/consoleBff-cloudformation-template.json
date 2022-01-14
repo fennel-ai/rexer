@@ -35,6 +35,10 @@
   },
   "Resources": {
     "LambdaFunction": {
+      "DependsOn": [
+        "lambdaexecutionpolicy",
+        "CustomLambdaExecutionPolicy"
+      ],
       "Type": "AWS::Lambda::Function",
       "Metadata": {
         "aws:asset:path": "./src",
