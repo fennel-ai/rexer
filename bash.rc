@@ -1,3 +1,8 @@
 FENNEL_ROOT="$( cd -- "$(dirname "$0")" >/dev/null 2>&1 ; pwd -P )"
 export FENNEL_ROOT
 export PYTHONPATH="$FENNEL_ROOT/pyclient/gen:$PYTHONPATH"
+setupDevEnv() {
+  export KUBECONFIG=$FENNEL_ROOT/cloud/pulumi/ts/eks/kubeconfig-dev.json
+}
+
+alias devenv="setupDevEnv"
