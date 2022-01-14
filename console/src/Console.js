@@ -4,41 +4,39 @@ import { ConsoleForm } from './ConsoleForm';
 import { ConsoleResult } from './ConsoleResult';
 import './style.css'
 
-const API_ENDPOINT = '/actions?';
+const API_ENDPOINT = '/actions';
 
-const getQueryUrl = (form) => {
-  let queryUrl = API_ENDPOINT;
+const getQuery = (form) => {
+  const parameters = {}
 
   if (form.filterActionType.value !== 'ANY') {
-    queryUrl += `actionType=${form.filterActionType.value}&`;
+    parameters.actionType = form.filterActionType.value;
   }
   if (form.filterTargetId.value !== '') {
-    queryUrl += `targetId=${form.filterTargetId.value}&`;
+    parameters.targetId = form.filterTargetId.value;
   }
   if (form.filterTargetType.value !== 'ANY') {
-    queryUrl += `targetType=${form.filterTargetType.value}&`;
+    parameters.targetType = form.filterTargetType.value;
   }
   if (form.filterActorId.value !== '') {
-    queryUrl += `actorId=${form.filterActorId.value}&`;
+    parameters.actorId = form.filterActorId.value;
   }
   if (form.filterActorType.value !== 'ANY') {
-    queryUrl += `actorType=${form.filterActorType.value}&`;
+    parameters.actorType = form.filterActorType.value;
   }
   if (form.filterRequestId.value !== '') {
-    queryUrl += `requestId=${form.filterRequestId.value}&`;
+    parameters.requestId = form.filterRequestId.value;
   }
   if (form.filterStartTime.value !== '') {
-    queryUrl += `after=${form.filterStartTime.value}&`;
+    parameters.after = form.filterStartTime.value;
   }
   if (form.filterFinishTime.value !== '') {
-    queryUrl += `before=${form.filterFinishTime.value}&`;
+    parameters.before = form.filterFinishTime.value;
   }
 
-  queryUrl = queryUrl.slice(0, -1);
+  console.log(parameters);
 
-  console.log(queryUrl);
-
-  return queryUrl;
+  return { 'queryStringParameters' : parameters }
 }
 
 const Console = () => {
@@ -46,11 +44,11 @@ const Console = () => {
 
   const handleQuery = (event) => {
     const form = event.target;
-
-    let queryUrl = getQueryUrl(form);
+    
+    const query = getQuery(form);
 
     API
-      .get('bff', queryUrl, {})
+      .get('bff', API_ENDPOINT, query)
       .then(response => {
         console.log(response);
         updateData.current(response.data);
