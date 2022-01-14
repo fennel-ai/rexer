@@ -233,7 +233,7 @@ func TestProfile(t *testing.T) {
 	checkGetSet(t, c, false, 10, 3131, 0, "summary", value.Int(1))
 }
 
-func checkGetSet(t *testing.T, c client.Client, get bool, otype profileLib.OType, oid profileLib.OidType, version uint64,
+func checkGetSet(t *testing.T, c client.Client, get bool, otype uint32, oid uint64, version uint64,
 	key string, val value.Value) {
 	if get {
 		req := profileLib.NewProfileItem(otype, oid, key, version)

@@ -3,7 +3,6 @@ package data
 import (
 	"fennel/db"
 	"fennel/instance"
-	"fennel/profile/lib"
 	"fennel/redis"
 	"github.com/alicebob/miniredis/v2"
 	"github.com/stretchr/testify/assert"
@@ -18,10 +17,10 @@ func (m *mockProvider) change(n []byte) {
 	m.ret = n
 }
 func (m *mockProvider) Init() error { return nil }
-func (m *mockProvider) Set(otype lib.OType, oid lib.OidType, key string, version uint64, valueSer []byte) error {
+func (m *mockProvider) Set(otype uint32, oid uint64, key string, version uint64, valueSer []byte) error {
 	return nil
 }
-func (m *mockProvider) Get(otype lib.OType, oid lib.OidType, key string, version uint64) ([]byte, error) {
+func (m *mockProvider) Get(otype uint32, oid uint64, key string, version uint64) ([]byte, error) {
 	return m.ret, nil
 }
 func (m *mockProvider) Name() string { return "mock_provider" }

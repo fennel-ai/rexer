@@ -3,7 +3,6 @@ package data
 import (
 	"context"
 	"fennel/cache"
-	"fennel/profile/lib"
 	"fmt"
 )
 
@@ -31,7 +30,7 @@ func (c CachedDB) Name() string {
 	return fmt.Sprintf("cache:%s", c.groundTruth.Name())
 }
 
-func (c CachedDB) Set(otype lib.OType, oid lib.OidType, key string, version uint64, valueSer []byte) error {
+func (c CachedDB) Set(otype uint32, oid uint64, key string, version uint64, valueSer []byte) error {
 	if err := c.groundTruth.Set(otype, oid, key, version, valueSer); err != nil {
 		return err
 	}
@@ -56,7 +55,7 @@ func (c CachedDB) Set(otype lib.OType, oid lib.OidType, key string, version uint
 	return ret
 }
 
-func (c CachedDB) Get(otype lib.OType, oid lib.OidType, key string, version uint64) ([]byte, error) {
+func (c CachedDB) Get(otype uint32, oid uint64, key string, version uint64) ([]byte, error) {
 	k := c.key(otype, oid, key, version)
 
 	v, err := c.cache.Get(context.TODO(), k)
@@ -79,7 +78,7 @@ func (c CachedDB) Get(otype lib.OType, oid lib.OidType, key string, version uint
 	return nil, fmt.Errorf("value not of type []byte or string: %v", v)
 }
 
-func (c CachedDB) key(otype lib.OType, oid lib.OidType, key string, version uint64) string {
+func (c CachedDB) key(otype uint32, oid uint64, key string, version uint64) string {
 	prefix := fmt.Sprintf("%s:%d", c.Name(), cacheVersion)
 	return fmt.Sprintf("%s:%d:%d:%s:%d", prefix, otype, oid, key, version)
 }

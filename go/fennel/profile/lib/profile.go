@@ -14,14 +14,14 @@ const (
 )
 
 type ProfileItem struct {
-	OType   OType
-	Oid     OidType
+	OType   uint32
+	Oid     uint64
 	Key     string
 	Version uint64
 	Value   value.Value
 }
 
-func NewProfileItem(otype OType, oid OidType, k string, version uint64) ProfileItem {
+func NewProfileItem(otype uint32, oid uint64, k string, version uint64) ProfileItem {
 	return ProfileItem{
 		otype, oid, k, version, value.Nil,
 	}
@@ -33,8 +33,8 @@ func FromProtoProfileItem(ppr *ProtoProfileItem) (ProfileItem, error) {
 		return ProfileItem{}, err
 	}
 	return ProfileItem{
-		OType(ppr.OType),
-		OidType(ppr.Oid),
+		ppr.OType,
+		ppr.Oid,
 		ppr.Key,
 		ppr.Version,
 		v,
@@ -46,8 +46,8 @@ func ToProtoProfileItem(pi *ProfileItem) (ProtoProfileItem, error) {
 		return ProtoProfileItem{}, err
 	}
 	return ProtoProfileItem{
-		OType:   int32(pi.OType),
-		Oid:     uint64(pi.Oid),
+		OType:   pi.OType,
+		Oid:     pi.Oid,
 		Key:     pi.Key,
 		Version: pi.Version,
 		Value:   &pv,

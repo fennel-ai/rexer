@@ -41,7 +41,7 @@ func prefixWithIDList(prefix lib.Key, idList value.Value) []lib.Key {
 	return []lib.Key{}
 }
 
-func profile(otype lib2.OType, oid lib2.OidType, key string, version uint64) (*value.Value, error) {
+func profile(otype uint32, oid uint64, key string, version uint64) (*value.Value, error) {
 	// TODO: how does this code discover the port/url for profile service?
 	c := client.NewClient("")
 	req := lib2.NewProfileItem(otype, oid, key, version)

@@ -1,7 +1,6 @@
 package data
 
 import (
-	"fennel/profile/lib"
 	"fmt"
 	"github.com/jmoiron/sqlx"
 	_ "github.com/mattn/go-sqlite3"
@@ -35,11 +34,10 @@ func (db DB) Init() error {
 	if err != nil {
 		return err
 	}
-	//log.Println("'profile' table created")
 	return nil
 }
 
-func (db DB) Set(otype lib.OType, oid lib.OidType, key string, version uint64, valueSer []byte) error {
+func (db DB) Set(otype uint32, oid uint64, key string, version uint64, valueSer []byte) error {
 	if version == 0 {
 		return fmt.Errorf("version can not be zero")
 	}
@@ -55,7 +53,7 @@ func (db DB) Set(otype lib.OType, oid lib.OidType, key string, version uint64, v
 	return nil
 }
 
-func (db DB) Get(otype lib.OType, oid lib.OidType, key string, version uint64) ([]byte, error) {
+func (db DB) Get(otype uint32, oid uint64, key string, version uint64) ([]byte, error) {
 	var value [][]byte
 
 	var err error

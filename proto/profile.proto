@@ -1,10 +1,10 @@
 syntax = "proto3";
 import "value.proto";
 
-option go_package = "fennel/data/lib";
+option go_package = "fennel/profile/lib";
 
 message ProtoProfileItem {
-  int32 OType = 1;
+  uint32 OType = 1;
   uint64 Oid = 2;
   string Key = 3;
   uint64 Version = 4;
