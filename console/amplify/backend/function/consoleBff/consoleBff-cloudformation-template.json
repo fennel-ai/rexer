@@ -15,6 +15,12 @@
     },
     "s3Key": {
       "Type": "String"
+    },
+    "subnetIds": {
+      "Type": "CommaDelimitedList"
+    },
+    "securityGroupIds": {
+      "Type": "CommaDelimitedList"
     }
   },
   "Conditions": {
@@ -81,12 +87,12 @@
         "Runtime": "nodejs14.x",
         "Layers": [],
         "VpcConfig": {
-          "SecurityGroupIds": [
-            "sg-088fc9f9b1b12bb1a"
-          ],
-          "SubnetIds": [
-            "subnet-0956759b8ff27ad4a"
-          ]
+          "SecurityGroupIds": {
+            "Ref": "securityGroupIds"
+          },
+          "SubnetIds": {
+            "Ref": "subnetIds"
+          }
         },
         "Timeout": 25
       }
