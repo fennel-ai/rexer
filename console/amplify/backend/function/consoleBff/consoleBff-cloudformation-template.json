@@ -80,6 +80,14 @@
         },
         "Runtime": "nodejs14.x",
         "Layers": [],
+        "VpcConfig": {
+          "SecurityGroupIds": [
+            "sg-088fc9f9b1b12bb1a"
+          ],
+          "SubnetIds": [
+            "subnet-0956759b8ff27ad4a"
+          ]
+        },
         "Timeout": 25
       }
     },
@@ -164,6 +172,34 @@
           ]
         }
       }
+    },
+    "CustomLambdaExecutionPolicy": {
+      "Type": "AWS::IAM::Policy",
+      "Properties": {
+        "PolicyName": "custom-lambda-execution-policy",
+        "PolicyDocument": {
+          "Version": "2012-10-17",
+          "Statement": [
+            {
+              "Action": [
+                "ec2:CreateNetworkInterface",
+                "ec2:DescribeNetworkInterfaces",
+                "ec2:DeleteNetworkInterface"
+              ],
+              "Resource": [
+                "*"
+              ],
+              "Effect": "Allow"
+            }
+          ]
+        },
+        "Roles": [
+          {
+            "Ref": "LambdaExecutionRole"
+          }
+        ]
+      },
+      "DependsOn": "LambdaExecutionRole"
     }
   },
   "Outputs": {
