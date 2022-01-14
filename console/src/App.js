@@ -1,14 +1,13 @@
 import * as React from 'react';
-import { Console } from './Console'
-import './style.css'
+import { Link } from 'react-router-dom';
+import { ActionPage } from './action/ActionPage';
 
 function App() {
-  return (
-    <div className="container">
-      <h1 className="title">Console</h1>
-      <Console />
-    </div>
-  );
+    return(
+        <>
+          <Link to="/action">Action</Link>
+        </>
+    );
 }
 
 export default App;

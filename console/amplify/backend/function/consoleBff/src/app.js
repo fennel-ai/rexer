@@ -87,13 +87,13 @@ const allLogs = [
     timestamp: Date.parse('2022-01-07'),
   },
 
-]
+];
 
 const metadata = {
   actionType: [ 'LIKE', 'SHARE' ],
   targetType: [ 'IMAGE', 'VIDEO' ],
   actorType: [ 'USER' ],
-}
+};
 
 app.get('/actions', (req, res) => {
   res.json({
