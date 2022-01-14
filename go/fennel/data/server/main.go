@@ -3,6 +3,8 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"fennel/db"
+	profileData "fennel/profile/data"
 	"fmt"
 	"io/ioutil"
 	"log"
@@ -17,13 +19,20 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
+type MainController struct {
+	profile profileData.Controller
+}
+
+func (controller MainController) Init() error {
+	return controller.profile.Init()
+}
+
 var producer actions.ActionProducer
 var consumer actions.ActionConsumer
 
 func init() {
 	instance.Register(instance.DB, createCounterTables)
 	instance.Register(instance.DB, createActionTable)
-	instance.Register(instance.DB, createProfileTable)
 
 	ch := make(chan *lib.ProtoAction, 10)
 	producer = actions.NewLocalActionProducer(ch)
@@ -212,15 +221,15 @@ func Rate(w http.ResponseWriter, req *http.Request) {
 var server *http.Server
 var serverWG sync.WaitGroup
 
-func serve() {
+func serve(controller MainController) {
 	server = &http.Server{Addr: fmt.Sprintf(":%d", lib.PORT)}
 	serverWG = sync.WaitGroup{}
 	serverWG.Add(1)
 	mux := http.NewServeMux()
 	mux.HandleFunc("/fetch", Fetch)
 	mux.HandleFunc("/count", Count)
-	mux.HandleFunc("/get", get)
-	mux.HandleFunc("/set", set)
+	mux.HandleFunc("/get", controller.get)
+	mux.HandleFunc("/set", controller.set)
 	mux.HandleFunc("/log", Log)
 	mux.HandleFunc("/rate", Rate)
 	server.Handler = mux
@@ -259,8 +268,12 @@ func aggregate() {
 
 func main() {
 	instance.Setup([]instance.Resource{})
+	controller := MainController{
+		profile: profileData.NewController(profileData.DB{TableName: "profile", DB: db.DB}),
+	}
+	controller.Init()
 	// one goroutine will run http server
-	go serve()
+	go serve(controller)
 
 	// one goroutine will constantly scan kafka and write actions
 	go func() {

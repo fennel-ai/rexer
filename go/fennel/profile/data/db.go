@@ -1,24 +1,31 @@
-package main
+package data
 
 import (
-	"fennel/data/lib"
-	"fennel/db"
+	"fennel/profile/lib"
 	"fmt"
+	"github.com/jmoiron/sqlx"
 	_ "github.com/mattn/go-sqlite3"
-	"log"
 )
 
-const TABLENAME = "profile"
+type DB struct {
+	TableName string
+	DB        *sqlx.DB
+}
 
-func createProfileTable() error {
-	// now actually create the table
+func (db DB) Name() string {
+	return db.TableName
+}
+
+var _ Provider = DB{"", nil}
+
+func (db DB) Init() error {
 	sql := fmt.Sprintf(`CREATE TABLE %s (
 		otype integer not null,
 		oid integer not null,
 		zkey varchar not null,
 		version integer not null,
 		value blob not null
-	  );`, TABLENAME)
+	  );`, db.TableName)
 
 	statement, err := db.DB.Prepare(sql)
 	if err != nil {
@@ -28,20 +35,19 @@ func createProfileTable() error {
 	if err != nil {
 		return err
 	}
-	log.Println("'profile' table created")
+	//log.Println("'profile' table created")
 	return nil
 }
 
-func dbSet(otype lib.OType, oid lib.OidType, key string, version uint64, valueSer []byte) error {
+func (db DB) Set(otype lib.OType, oid lib.OidType, key string, version uint64, valueSer []byte) error {
 	if version == 0 {
 		return fmt.Errorf("version can not be zero")
 	}
-	//log.Printf("Inserting %v in table %s...\n", item, TABLENAME)
 	_, err := db.DB.Exec(fmt.Sprintf(`
-		INSERT INTO %s 
+		INSERT INTO %s
 			(otype, oid, zkey, version, value) 
 		VALUES
-			(?, ?, ?, ?, ?);`, TABLENAME),
+			(?, ?, ?, ?, ?);`, db.TableName),
 		otype, oid, key, version, valueSer)
 	if err != nil {
 		return err
@@ -49,9 +55,9 @@ func dbSet(otype lib.OType, oid lib.OidType, key string, version uint64, valueSe
 	return nil
 }
 
-func dbGet(otype lib.OType, oid lib.OidType, key string, version uint64) ([]byte, error) {
-	// returns empty string if the row wasn't found
+func (db DB) Get(otype lib.OType, oid lib.OidType, key string, version uint64) ([]byte, error) {
 	var value [][]byte
+
 	var err error
 	if version > 0 {
 		err = db.DB.Select(&value, fmt.Sprintf(`
@@ -63,7 +69,7 @@ func dbGet(otype lib.OType, oid lib.OidType, key string, version uint64) ([]byte
 			AND zkey = ?
 			AND version = ?
 		LIMIT 1
-		`, TABLENAME),
+		`, db.TableName),
 			otype, oid, key, version)
 	} else {
 		// if version isn't given, just pick the highest version
@@ -76,7 +82,7 @@ func dbGet(otype lib.OType, oid lib.OidType, key string, version uint64) ([]byte
 			AND zkey = ?
 		ORDER BY version DESC
 		LIMIT 1
-		`, TABLENAME),
+		`, db.TableName),
 			otype, oid, key)
 	}
 	if err != nil {

@@ -3,6 +3,7 @@ package main
 import (
 	"fennel/data/lib"
 	"fennel/instance"
+	profileLib "fennel/profile/lib"
 	"github.com/stretchr/testify/assert"
 	"testing"
 )
@@ -81,14 +82,14 @@ func TestCheckpoint(t *testing.T) {
 	err := instance.Setup([]instance.Resource{instance.DB})
 	assert.NoError(t, err)
 	ct1 := lib.CounterType_USER_LIKE
-	zero := lib.OidType(0)
+	zero := profileLib.OidType(0)
 	// initially no checkpoint is setup, so we should get 0
 	checkpoint, err := counterDBGetCheckpoint(ct1)
 	assert.NoError(t, err)
 	assert.Equal(t, zero, checkpoint)
 
 	// now set a checkpoint
-	expected1 := lib.OidType(1)
+	expected1 := profileLib.OidType(1)
 	err = counterDBSetCheckpoint(ct1, expected1)
 	assert.NoError(t, err)
 	// and reading it now, we get new value
@@ -97,7 +98,7 @@ func TestCheckpoint(t *testing.T) {
 	assert.Equal(t, expected1, checkpoint)
 
 	//can reset it again
-	expected2 := lib.OidType(2)
+	expected2 := profileLib.OidType(2)
 	err = counterDBSetCheckpoint(ct1, expected2)
 	assert.NoError(t, err)
 	checkpoint, err = counterDBGetCheckpoint(ct1)
@@ -111,7 +112,7 @@ func TestCheckpoint(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, zero, checkpoint)
 
-	expected3 := lib.OidType(51)
+	expected3 := profileLib.OidType(51)
 	err = counterDBSetCheckpoint(ct2, expected3)
 	assert.NoError(t, err)
 

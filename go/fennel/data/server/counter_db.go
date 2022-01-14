@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"fennel/data/lib"
 	"fennel/db"
+	profileLib "fennel/profile/lib"
 	"fmt"
 	_ "github.com/mattn/go-sqlite3"
 	"log"
@@ -179,7 +180,7 @@ func counterDBPrintAll() error {
 	return nil
 }
 
-func counterDBGetCheckpoint(ct lib.CounterType) (lib.OidType, error) {
+func counterDBGetCheckpoint(ct lib.CounterType) (profileLib.OidType, error) {
 	row := db.DB.QueryRow(fmt.Sprintf(`
 		SELECT checkpoint
 		FROM %s
@@ -193,11 +194,11 @@ func counterDBGetCheckpoint(ct lib.CounterType) (lib.OidType, error) {
 		// this happens when no matching row was found. By default, checkpoint is zero
 		return 0, nil
 	} else {
-		return lib.OidType(checkpoint), nil
+		return profileLib.OidType(checkpoint), nil
 	}
 }
 
-func counterDBSetCheckpoint(ct lib.CounterType, checkpoint lib.OidType) error {
+func counterDBSetCheckpoint(ct lib.CounterType, checkpoint profileLib.OidType) error {
 	_, err := db.DB.Exec(fmt.Sprintf(`
 		INSERT INTO %s (counter_type, checkpoint)
         VALUES (?, ?)

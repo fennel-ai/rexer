@@ -1,6 +1,7 @@
 package lib
 
 import (
+	"fennel/profile/lib"
 	"fmt"
 )
 
@@ -8,7 +9,7 @@ const (
 	PORT = 2425
 )
 
-type Key []OidType
+type Key []lib.OidType
 
 func Windows() []Window {
 	return []Window{Window_HOUR, Window_DAY, Window_WEEK, Window_MONTH, Window_QUARTER, Window_YEAR, Window_FOREVER}
@@ -103,9 +104,9 @@ func (r GetRateRequest) Validate() error {
 }
 
 func toKey(k []uint64) Key {
-	ret := make([]OidType, len(k))
+	ret := make([]lib.OidType, len(k))
 	for i, n := range k {
-		ret[i] = OidType(n)
+		ret[i] = lib.OidType(n)
 	}
 	return Key(ret)
 }

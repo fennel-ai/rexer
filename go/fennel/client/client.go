@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fennel/data/lib"
+	profileLib "fennel/profile/lib"
 	"fennel/value"
 	"fmt"
 	"io/ioutil"
@@ -44,12 +45,12 @@ func (c Client) setProfileURL() string {
 // GetProfile if no matching value is found, a nil pointer is returned with no error
 // If a matching value is found, a valid Value pointer is returned with no error
 // If an error occurs, a nil pointer is returned with a non-nil error
-func (c *Client) GetProfile(request *lib.ProfileItem) (*value.Value, error) {
+func (c *Client) GetProfile(request *profileLib.ProfileItem) (*value.Value, error) {
 	// convert the profile item to proto version
 	if err := request.Validate(); err != nil {
 		return nil, fmt.Errorf("invalid request: %v", err)
 	}
-	protoReq, err := lib.ToProtoProfileItem(request)
+	protoReq, err := profileLib.ToProtoProfileItem(request)
 	if err != nil {
 		return nil, fmt.Errorf("invalid request: %v", err)
 	}
@@ -87,12 +88,12 @@ func (c *Client) GetProfile(request *lib.ProfileItem) (*value.Value, error) {
 	}
 }
 
-func (c *Client) SetProfile(req *lib.ProfileItem) error {
+func (c *Client) SetProfile(req *profileLib.ProfileItem) error {
 	// first convert to proto
 	if err := req.Validate(); err != nil {
 		return fmt.Errorf("invalid request: %v", err)
 	}
-	protoReq, err := lib.ToProtoProfileItem(req)
+	protoReq, err := profileLib.ToProtoProfileItem(req)
 	if err != nil {
 		return fmt.Errorf("could not convert request to proto: %v", err)
 	}

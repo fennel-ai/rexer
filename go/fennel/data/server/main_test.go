@@ -3,7 +3,10 @@ package main
 import (
 	"fennel/client"
 	"fennel/data/lib"
+	"fennel/db"
 	"fennel/instance"
+	profileData "fennel/profile/data"
+	profileLib "fennel/profile/lib"
 	"fennel/value"
 	"fmt"
 	"github.com/stretchr/testify/assert"
@@ -47,7 +50,12 @@ func _TestServerClientBasic(t *testing.T) {
 	err := instance.Setup([]instance.Resource{})
 	assert.NoError(t, err)
 	// create a server
-	go serve()
+	controller := MainController{
+		profile: profileData.NewController(profileData.DB{TableName: "profile", DB: db.DB}),
+	}
+	controller.Init()
+	// one goroutine will run http server
+	go serve(controller)
 	defer shutDownServer()
 	// create a client
 	c := client.NewClient("http://localhost")
@@ -85,15 +93,19 @@ func _TestEndToEnd(t *testing.T) {
 	err := instance.Setup([]instance.Resource{})
 	assert.NoError(t, err)
 
+	controller := MainController{
+		profile: profileData.NewController(profileData.DB{TableName: "profile", DB: db.DB}),
+	}
+	controller.Init()
 	// start the server
-	go serve()
+	go serve(controller)
 	defer shutDownServer()
 	// and create a client
 	c := client.NewClient("http://localhost")
 
 	// Initially count for keys are zero
-	uid := lib.OidType(1)
-	video_id := lib.OidType(2)
+	uid := profileLib.OidType(1)
+	video_id := profileLib.OidType(2)
 	ts := lib.Timestamp(123)
 
 	requests := []lib.GetCountRequest{
@@ -126,7 +138,7 @@ func _TestEndToEnd(t *testing.T) {
 	}
 
 	// now make an event
-	action1 := lib.Action{ActorType: lib.User, ActorID: uid, TargetType: lib.Video, TargetID: video_id, ActionType: lib.Like, RequestID: 1, Timestamp: ts}
+	action1 := lib.Action{ActorType: profileLib.User, ActorID: uid, TargetType: profileLib.Video, TargetID: video_id, ActionType: lib.Like, RequestID: 1, Timestamp: ts}
 	add(t, c, action1)
 
 	// and verify it went through
@@ -146,7 +158,7 @@ func _TestEndToEnd(t *testing.T) {
 		assert.Equal(t, uint64(1), count, cr)
 	}
 	// now make one more event which is not of matching action type (Like vs Share)
-	action2 := lib.Action{ActorType: lib.User, ActorID: uid, TargetType: lib.Video, TargetID: video_id, ActionType: lib.Share, RequestID: 1, Timestamp: ts}
+	action2 := lib.Action{ActorType: profileLib.User, ActorID: uid, TargetType: profileLib.Video, TargetID: video_id, ActionType: lib.Share, RequestID: 1, Timestamp: ts}
 	add(t, c, action2)
 	verifyFetch(t, c, lib.ActionFetchRequest{MinActionID: 0}, []lib.Action{action1, action2})
 
@@ -159,7 +171,7 @@ func _TestEndToEnd(t *testing.T) {
 	}
 
 	// but another valid event will make the counts go up
-	action3 := lib.Action{ActorType: lib.User, ActorID: uid, TargetType: lib.Video, TargetID: video_id, ActionType: lib.Like, RequestID: 1, Timestamp: ts}
+	action3 := lib.Action{ActorType: profileLib.User, ActorID: uid, TargetType: profileLib.Video, TargetID: video_id, ActionType: lib.Like, RequestID: 1, Timestamp: ts}
 	add(t, c, action3)
 	verifyFetch(t, c, lib.ActionFetchRequest{MinActionID: 0}, []lib.Action{action1, action2, action3})
 
@@ -194,8 +206,12 @@ func _TestEndToEnd(t *testing.T) {
 func TestProfile(t *testing.T) {
 	err := instance.Setup([]instance.Resource{})
 	assert.NoError(t, err)
+	controller := MainController{
+		profile: profileData.NewController(profileData.DB{TableName: "profile", DB: db.DB}),
+	}
+	controller.Init()
 	// start the server
-	go serve()
+	go serve(controller)
 	defer shutDownServer()
 	// and create a client
 	c := client.NewClient(fmt.Sprintf("http://localhost"))
@@ -217,10 +233,10 @@ func TestProfile(t *testing.T) {
 	checkGetSet(t, c, false, 10, 3131, 0, "summary", value.Int(1))
 }
 
-func checkGetSet(t *testing.T, c client.Client, get bool, otype lib.OType, oid lib.OidType, version uint64,
+func checkGetSet(t *testing.T, c client.Client, get bool, otype profileLib.OType, oid profileLib.OidType, version uint64,
 	key string, val value.Value) {
 	if get {
-		req := lib.NewProfileItem(otype, oid, key, version)
+		req := profileLib.NewProfileItem(otype, oid, key, version)
 		found, err := c.GetProfile(&req)
 		assert.NoError(t, err)
 		if found == nil {
@@ -229,9 +245,9 @@ func checkGetSet(t *testing.T, c client.Client, get bool, otype lib.OType, oid l
 			assert.Equal(t, val, *found)
 		}
 	} else {
-		err := c.SetProfile(&lib.ProfileItem{OType: otype, Oid: oid, Key: key, Version: version, Value: val})
+		err := c.SetProfile(&profileLib.ProfileItem{OType: otype, Oid: oid, Key: key, Version: version, Value: val})
 		assert.NoError(t, err)
-		request := lib.NewProfileItem(otype, oid, key, version)
+		request := profileLib.NewProfileItem(otype, oid, key, version)
 		found, err := c.GetProfile(&request)
 		assert.NoError(t, err)
 		if found == nil {

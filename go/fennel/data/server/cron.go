@@ -3,14 +3,15 @@ package main
 import (
 	"fennel/client"
 	"fennel/data/lib"
+	lib2 "fennel/profile/lib"
 	"fmt"
 )
 
-func getCheckpoint(ct lib.CounterType) (lib.OidType, error) {
+func getCheckpoint(ct lib.CounterType) (lib2.OidType, error) {
 	return counterDBGetCheckpoint(ct)
 }
 
-func setCheckpoint(ct lib.CounterType, actionID lib.OidType) error {
+func setCheckpoint(ct lib.CounterType, actionID lib2.OidType) error {
 	return counterDBSetCheckpoint(ct, actionID)
 }
 

@@ -3,22 +3,23 @@ package main
 import (
 	"fennel/client"
 	"fennel/data/lib"
+	lib2 "fennel/profile/lib"
 	"fennel/value"
 	"fmt"
 )
 
-func actorID(actorID lib.OidType, actorType lib.OType, targetID lib.OidType, targetType lib.OType) []lib.Key {
+func actorID(actorID lib2.OidType, actorType lib2.OType, targetID lib2.OidType, targetType lib2.OType) []lib.Key {
 	return []lib.Key{
 		{actorID},
 	}
 }
 
-func targetID(actorID lib.OidType, actorType lib.OType, targetID lib.OidType, targetType lib.OType) []lib.Key {
+func targetID(actorID lib2.OidType, actorType lib2.OType, targetID lib2.OidType, targetType lib2.OType) []lib.Key {
 	return []lib.Key{
 		{targetID},
 	}
 }
-func actorTargetID(actorID lib.OidType, actorType lib.OType, targetID lib.OidType, targetType lib.OType) []lib.Key {
+func actorTargetID(actorID lib2.OidType, actorType lib2.OType, targetID lib2.OidType, targetType lib2.OType) []lib.Key {
 	return []lib.Key{
 		{actorID, targetID},
 	}
@@ -31,7 +32,7 @@ func prefixWithIDList(prefix lib.Key, idList value.Value) []lib.Key {
 			if idInt, ok := id.(value.Int); ok {
 				next := make(lib.Key, len(prefix)+1)
 				copy(next, prefix)
-				next = append(next, lib.OidType(idInt))
+				next = append(next, lib2.OidType(idInt))
 				ret = append(ret, next)
 			}
 		}
@@ -40,20 +41,20 @@ func prefixWithIDList(prefix lib.Key, idList value.Value) []lib.Key {
 	return []lib.Key{}
 }
 
-func profile(otype lib.OType, oid lib.OidType, key string, version uint64) (*value.Value, error) {
+func profile(otype lib2.OType, oid lib2.OidType, key string, version uint64) (*value.Value, error) {
 	// TODO: how does this code discover the port/url for profile service?
 	c := client.NewClient("")
-	req := lib.NewProfileItem(otype, oid, key, version)
+	req := lib2.NewProfileItem(otype, oid, key, version)
 	return c.GetProfile(&req)
 }
 
-type Keygen func(actorID lib.OidType, actorType lib.OType, targetID lib.OidType, targetType lib.OType) []lib.Key
+type Keygen func(actorID lib2.OidType, actorType lib2.OType, targetID lib2.OidType, targetType lib2.OType) []lib.Key
 
 func init() {
 	counterConfigs = map[lib.CounterType]CounterConfig{
-		lib.CounterType_USER_LIKE:       {actorType: lib.User, actionType: lib.Like, keygen: actorID},
-		lib.CounterType_USER_VIDEO_LIKE: {actorType: lib.User, actionType: lib.Like, targetType: lib.Video, keygen: actorTargetID},
-		lib.CounterType_VIDEO_LIKE:      {targetType: lib.Video, actionType: lib.Like, keygen: targetID},
+		lib.CounterType_USER_LIKE:       {actorType: lib2.User, actionType: lib.Like, keygen: actorID},
+		lib.CounterType_USER_VIDEO_LIKE: {actorType: lib2.User, actionType: lib.Like, targetType: lib2.Video, keygen: actorTargetID},
+		lib.CounterType_VIDEO_LIKE:      {targetType: lib2.Video, actionType: lib.Like, keygen: targetID},
 
 		// These are commented for unit tests to work
 		// Eventually remove these from here and just add more tests with these
@@ -95,7 +96,7 @@ func init() {
 
 type Counter struct {
 	Type       lib.CounterType
-	key        []lib.OidType
+	key        []lib2.OidType
 	actionType lib.ActionType
 	window     lib.Window
 }
@@ -117,8 +118,8 @@ func Increment(counters []Counter, ts lib.Timestamp) error {
 // TODO: make it possible to optionally restrict CounterConfig to be only certain time windows
 // NOTE: each counter config must specific exactly one event type
 type CounterConfig struct {
-	actorType  lib.OType
-	targetType lib.OType
+	actorType  lib2.OType
+	targetType lib2.OType
 	actionType lib.ActionType
 	filter     func(lib.Action) bool
 	keygen     Keygen
