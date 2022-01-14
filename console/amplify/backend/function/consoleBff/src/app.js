@@ -89,9 +89,13 @@ const allLogs = [
 
 ]
 
-app.get('/actions', (req, res) => {
-  console.log(req.query);
+const metadata = {
+  actionType: [ 'LIKE', 'SHARE' ],
+  targetType: [ 'IMAGE', 'VIDEO' ],
+  actorType: [ 'USER' ],
+}
 
+app.get('/actions', (req, res) => {
   res.json({
     data: allLogs.filter((action) => {
       if ('actionType' in req.query && req.query.actionType !== action.actionType) {
@@ -122,6 +126,10 @@ app.get('/actions', (req, res) => {
       return true;
     })
   });
+});
+
+app.get('/actions/metadata', (req, res) => {
+  res.json(metadata)
 });
 
 app.listen(3001, () => {

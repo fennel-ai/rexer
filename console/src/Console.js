@@ -39,7 +39,7 @@ const getQuery = (form) => {
   return { 'queryStringParameters' : parameters }
 }
 
-const Console = () => {
+const Console = () => {  
   const updateData = React.useRef();
 
   const handleQuery = (event) => {

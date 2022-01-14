@@ -16,7 +16,7 @@
       "function": {
         "consoleBff": {
           "deploymentBucketName": "amplify-console-dev-172054-deployment",
-          "s3Key": "amplify-builds/consoleBff-4875553466683652634d-build.zip"
+          "s3Key": "amplify-builds/consoleBff-57444d4456657176766b-build.zip"
         }
       },
       "auth": {
