@@ -6,6 +6,6 @@ setupDevEnv() {
 alias devenv="setupDevEnv"
 
 # flask specific variables
-export FLASK_APP="$FENNEL_ROOT/web/app.py"
+export FLASK_APP="$FENNEL_ROOT/pyclient/app.py"
 export FLASK_ENV=development
 

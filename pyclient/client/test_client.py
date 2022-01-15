@@ -1,11 +1,8 @@
 import unittest
 import httpretty
 
-import action
-import value
+from models import action, counter, value, profile
 import client
-import counter
-import profile
 
 
 class Testclient(unittest.TestCase):

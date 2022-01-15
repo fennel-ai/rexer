@@ -1,8 +1,5 @@
 import unittest
-
-import value
-from value import *
-from gen.value_pb2 import PVList
+from models.value import *
 
 
 class TestValue(unittest.TestCase):
@@ -19,7 +16,7 @@ class TestValue(unittest.TestCase):
             List(Int(1), Double(2.3), Bool(False), List(Int(2))),
             # dicts
             Dict(),
-            Dict(x=Int(1), y=Bool(False),),
+            Dict(x=Int(1), y=Bool(False), ),
             Dict(x=Dict(x=Int(1)), z=List(Int(2))),
 
             # tables
@@ -52,6 +49,7 @@ class TestValue(unittest.TestCase):
         v2 = Value()
         v2.ParseFromString(ser)
         self.assertEqual(v, v2)
+
 
 def make_value(n):
     v = Value()

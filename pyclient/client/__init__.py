@@ -1,9 +1,5 @@
-import action
+from models import action, counter, value, profile
 import requests
-
-import counter
-import profile
-import value
 
 PORT = 2425
 # TODO: how does client find out the URL?
