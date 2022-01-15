@@ -28,12 +28,6 @@ func (controller MainController) get(w http.ResponseWriter, req *http.Request) {
 		http.Error(w, fmt.Sprintf("invalid request: %v", err), http.StatusBadRequest)
 		return
 	}
-
-	if err = request.Validate(); err != nil {
-		http.Error(w, fmt.Sprintf("invalid request: %v", err), http.StatusBadRequest)
-		return
-	}
-	// now we know that this is a valid request, so let's make a db call
 	valuePtr, err := controller.profile.Get(request)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadGateway)
