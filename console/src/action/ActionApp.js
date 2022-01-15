@@ -1,14 +1,9 @@
 import * as React from 'react';
-import { Console } from './Console'
-import './../style.css'
+import { Console } from './Console';
+import './../style.css';
 
-const ActionApp = () => {
-  return (
-    <div className="container">
-      <h1 className="title">Console</h1>
-      <Console />
-    </div>
-  );
-}
+const ActionApp = () => (
+  <Console />
+);
 
 export default ActionApp;

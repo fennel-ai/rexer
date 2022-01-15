@@ -1,24 +1,27 @@
 import * as React from 'react';
 import { ConsoleInput } from './../ConsoleInput';
-
-import './../style.css'
+import './../style.css';
 
 const filters = {
   oType : {
     id: 'filterOType',
     label: 'OType: ',
+    type: 'number',
   },
   oId : {
     id: 'filterOId',
     label: 'OID: ',
+    type: 'number',
   },
   key : {
     id: 'filterKey',
     label: 'Key: ',
+    type: 'text',
   },
   version : {
     id: 'filterVersion',
     label: 'Version: ',
+    type: 'number',
   },
 };
 

@@ -3,8 +3,7 @@ import { API } from 'aws-amplify';
 import { ConsoleSelect } from './../ConsoleSelect';
 import { ConsoleInput } from './../ConsoleInput';
 import { ConsoleDateTime } from './../ConsoleDateTime';
-
-import './../style.css'
+import './../style.css';
 
 const API_ENDPOINT = '/actions/metadata';
 
