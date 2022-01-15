@@ -2,7 +2,7 @@ import * as React from 'react';
 import { API } from 'aws-amplify';
 import { ConsoleForm } from './ConsoleForm';
 import { ConsoleResult } from './ConsoleResult';
-import './style.css'
+import './../style.css'
 
 const API_ENDPOINT = '/profiles';
 

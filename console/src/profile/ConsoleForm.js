@@ -1,9 +1,7 @@
 import * as React from 'react';
-import { API } from 'aws-amplify';
-import { ConsoleSelect } from './ConsoleSelect';
-import { ConsoleInput } from './ConsoleInput';
+import { ConsoleInput } from './../ConsoleInput';
 
-import './style.css'
+import './../style.css'
 
 const filters = {
   oType : {

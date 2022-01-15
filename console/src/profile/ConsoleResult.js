@@ -1,5 +1,5 @@
 import * as React from 'react';
-import './style.css'
+import './../style.css'
 
 const ConsoleResult = ({ updateData }) => {
   const [ results, setResults ] = React.useState([]);
@@ -40,19 +40,6 @@ const ConsoleResult = ({ updateData }) => {
     </div>
   );
 };
-
-const formatDate = (ms) => {
-  let t = new Date(ms);
-  let timestamp = '';
-
-  timestamp += String(t.getHours()).padStart(2, '0');
-  timestamp += ':' + String(t.getMinutes()).padStart(2, '0');
-  timestamp += ':' + String(t.getSeconds()).padStart(2, '0');
-  timestamp += ' ' + t.toDateString().slice(4);
-  
-  
-  return timestamp;
-}
 
 const ActionRow = ({ data }) => console.log(data) || console.log(typeof data.timestamp) || (
   <tr>

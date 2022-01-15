@@ -1,6 +1,6 @@
 import * as React from 'react';
 import { Console } from './Console'
-import './style.css'
+import './../style.css'
 
 function ProfileApp() {
   return (
