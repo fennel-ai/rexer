@@ -1,5 +1,5 @@
 import * as React from 'react';
-import { Outlet, Link } from 'react-router-dom';
+import { Outlet, NavLink } from 'react-router-dom';
 import './style.css';
 
 const App = () => {
@@ -7,8 +7,8 @@ const App = () => {
     <div className="container">
       <h1 className="title">Console</h1>
       <div className="links">
-        <Link to="/action"><span className="link">Actions</span></Link>
-        <Link to="/profile"><span className="link">Profiles</span></Link>
+        <NavLink to="/action"><span className="link">Actions</span></NavLink>
+        <NavLink to="/profile"><span className="link">Profiles</span></NavLink>
       </div>
       <Outlet />
     </div>
