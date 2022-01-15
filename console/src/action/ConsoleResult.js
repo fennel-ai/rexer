@@ -25,6 +25,7 @@ const ConsoleResult = ({ updateData }) => {
       <table>
         <thead>
           <tr>
+            <th>Action ID</th>
             <th>Action Type</th>
             <th>Target ID</th>
             <th>Target Type</th>
@@ -36,7 +37,7 @@ const ConsoleResult = ({ updateData }) => {
         </thead>
         <tbody>
           {results.map((item) => (
-            <ActionRow data={item} key={item.logId} />
+            <ActionRow data={item} key={item.actionId} />
           ))}
         </tbody>
       </table>
@@ -59,6 +60,7 @@ const formatDate = (ms) => {
 
 const ActionRow = ({ data }) => console.log(data) || console.log(typeof data.timestamp) || (
   <tr>
+    <td>{data.actionId}</td>
     <td>{data.actionType}</td>
     <td>{data.targetId}</td>
     <td>{data.targetType}</td>

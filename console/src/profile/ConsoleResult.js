@@ -25,13 +25,10 @@ const ConsoleResult = ({ updateData }) => {
       <table>
         <thead>
           <tr>
-            <th>Action Type</th>
-            <th>Target ID</th>
-            <th>Target Type</th>
-            <th>Actor ID</th>
-            <th>Actor Type</th>
-            <th>Request ID</th>
-            <th>Timestamp</th>
+            <th>OType</th>
+            <th>OID</th>
+            <th>Key</th>
+            <th>Version</th>
           </tr>
         </thead>
         <tbody>
@@ -59,13 +56,10 @@ const formatDate = (ms) => {
 
 const ActionRow = ({ data }) => console.log(data) || console.log(typeof data.timestamp) || (
   <tr>
-    <td>{data.actionType}</td>
-    <td>{data.targetId}</td>
-    <td>{data.targetType}</td>
-    <td>{data.actorId}</td>
-    <td>{data.actorType}</td>
-    <td>{data.requestId}</td>
-    <td className="timestamp">{formatDate(data.timestamp)}</td>
+    <td>{data.oType}</td>
+    <td>{data.oId}</td>
+    <td>{data.key}</td>
+    <td>{data.version}</td>
   </tr>
 );
 

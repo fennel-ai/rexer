@@ -20,7 +20,7 @@ const filters = {
   },
   version : {
     id: 'filterVersion',
-    label: 'Actor ID: ',
+    label: 'Version: ',
   },
 };
 
