@@ -14,9 +14,6 @@ const ConsoleResult = ({ updateData }) => {
     updateData.current = updateResults;
   });
   
-  console.log("Rerendering..");
-  console.log(results);
-  
   return (
     <div className="consoleResult">
       <h2 className="consoleResultHeader">

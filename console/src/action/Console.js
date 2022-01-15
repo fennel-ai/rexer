@@ -40,8 +40,21 @@ const getQuery = (form) => {
 };
 
 const Console = () => {  
+  const [ metadata, setMetadata ] = React.useState({notLoaded: true});
+  
   const updateData = React.useRef();
-
+  
+  React.useEffect(() => {
+    API
+      .get('bff', `${API_ENDPOINT}/metadata`, {})
+      .then((response) => {
+        setMetadata(response);
+      })
+      .catch((error) => {
+        console.log("Failed to load metadata: ", error);
+      });
+  }, []);
+  
   const handleQuery = (event) => {
     const form = event.target;
     
@@ -59,13 +72,17 @@ const Console = () => {
 
     event.preventDefault();
   }
-
-  return (
-    <div className="consoleBody">
-      <ConsoleForm onQuerySubmit={handleQuery} />
-      <ConsoleResult updateData={updateData} />
-    </div>
-  );
+  
+  if( (metadata.notLoaded ?? false) ) {
+    return (<div>Loading...</div>);
+  } else {
+    return (
+      <div className="consoleBody">
+        <ConsoleForm onQuerySubmit={handleQuery} metadata={metadata} />
+        <ConsoleResult updateData={updateData} metadata={metadata} />
+      </div>
+    );
+  }
 };
 
 export { Console };

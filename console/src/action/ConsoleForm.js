@@ -54,46 +54,21 @@ const filters = {
   },
 };
 
-const addMetadata = (metadata) => {
-  console.log(metadata);
-  filters.actionType.options.push(...metadata.actionTypes);
-  filters.targetType.options.push(...metadata.targetTypes);
-  filters.actorType.options.push(...metadata.actorTypes);
-};
-
-const ConsoleForm = ({ onQuerySubmit }) => {
-  const [ isReady, setIsReady ] = React.useState(false);
-  
-  React.useEffect(() => {
-    API
-      .get('bff', `${API_ENDPOINT}`, {})
-      .then(response => {
-        addMetadata(response);
-        setIsReady(true);
-      })
-      .catch((error) => {
-        console.log("Failed to load metadata: ", error);
-      });
-  }, []);
-    
+const ConsoleForm = ({ onQuerySubmit, metadata }) => {  
   return (
     <form onSubmit={onQuerySubmit} className="consoleForm">
-      { isReady ? (<>
-        <ConsoleSelect data={filters.actionType} />
-        <ConsoleInput data={filters.targetId} />
-        <ConsoleSelect data={filters.targetType} />
-        <ConsoleInput data={filters.actorId} />
-        <ConsoleSelect data={filters.actorType} />
-        <ConsoleInput data={filters.requestId} />
-        <ConsoleDateTime data={filters.startTime} />
-        <ConsoleDateTime data={filters.finishTime} />
-        
-        <div className="consoleFormSubmit">
-          <button type="submit" className="consoleFormSubmitButton">Query</button>
-        </div>
-      </>) : (
-        "Loading..."
-      )}
+      <ConsoleSelect data={filters.actionType} more={metadata.actionTypes} />
+      <ConsoleInput data={filters.targetId} />
+      <ConsoleSelect data={filters.targetType} more={metadata.targetTypes} />
+      <ConsoleInput data={filters.actorId} />
+      <ConsoleSelect data={filters.actorType} more={metadata.actorTypes} />
+      <ConsoleInput data={filters.requestId} />
+      <ConsoleDateTime data={filters.startTime} />
+      <ConsoleDateTime data={filters.finishTime} />
+      
+      <div className="consoleFormSubmit">
+        <button type="submit" className="consoleFormSubmitButton">Query</button>
+      </div>
     </form>
   );
 };

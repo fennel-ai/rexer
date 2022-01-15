@@ -90,16 +90,16 @@ const allActions = [
 
 const actionMetadata = {
   actionTypes: [ 
-    { value:0, text:'LIKE' },
-    { value:1, text:'SHARE' },
-    { value:2, text:'VIEW' },
+    { val:0, text:'LIKE' },
+    { val:1, text:'SHARE' },
+    { val:2, text:'VIEW' },
   ],
   targetTypes: [
-    { value:0, text:'IMAGE' },
-    { value:1, text:'VIDEO' },
+    { val:0, text:'IMAGE' },
+    { val:1, text:'VIDEO' },
   ],
   actorTypes: [
-    { value:0, text:'USER' },
+    { val:0, text:'USER' },
   ],
 };
 

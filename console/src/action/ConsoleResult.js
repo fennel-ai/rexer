@@ -1,10 +1,19 @@
 import * as React from 'react';
 import './../style.css';
 
-const ConsoleResult = ({ updateData }) => {
+const processData = (data, metadata) => {
+  data.map((item) => {
+    item.actionType = metadata.actionTypes[item.actionType].text;
+    item.actorType = metadata.actorTypes[item.actorType].text;
+    item.targetType = metadata.targetTypes[item.targetType].text;
+  });
+};
+
+const ConsoleResult = ({ updateData, metadata }) => {
   const [ results, setResults ] = React.useState([]);
   
   const updateResults = (data) => {
+    processData(data, metadata);
     setResults(data);
     
     console.log(data);
@@ -13,9 +22,6 @@ const ConsoleResult = ({ updateData }) => {
   React.useEffect(() => {
     updateData.current = updateResults;
   });
-  
-  console.log("Rerendering..");
-  console.log(results);
   
   return (
     <div className="consoleResult">
