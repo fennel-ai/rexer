@@ -18,7 +18,6 @@ ReactDOM.render(
         <Route path="/" element={<App />}>
           <Route path="action" element={<ActionApp />} />
           <Route path="profile" element={<ProfileApp />} />
-          <Route path="*" element={"404 Not found"}/>
         </Route>
       </Routes>
     </BrowserRouter>

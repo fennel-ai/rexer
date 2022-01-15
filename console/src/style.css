@@ -12,6 +12,9 @@
 
 .links {
   text-align: center;
+  border-width: 0px;
+  border-style: solid;
+  color: black;
   
   margin: 0px 0px 5px 0px;
 }
