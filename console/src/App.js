@@ -1,12 +1,11 @@
 import * as React from 'react';
-import { Console } from './Console'
-import './style.css'
+import { Link } from 'react-router-dom';
 
-function App() {
+const App = () => {
   return (
-    <div className="container">
-      <h1 className="title">Console</h1>
-      <Console />
+    <div>
+      <Link to="/action">Actions</Link>
+      <Link to="/profile">Profiles</Link>
     </div>
   );
 }

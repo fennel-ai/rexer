@@ -89,9 +89,9 @@ const allActions = [
 ];
 
 const actionMetadata = {
-  actionType: [ 'LIKE', 'SHARE' ],
-  targetType: [ 'IMAGE', 'VIDEO' ],
-  actorType: [ 'USER' ],
+  actionTypes: [ 'LIKE', 'SHARE' ],
+  targetTypes: [ 'IMAGE', 'VIDEO' ],
+  actorTypes: [ 'USER' ],
 };
 
 app.get('/actions', (req, res) => {

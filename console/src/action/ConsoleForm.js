@@ -48,9 +48,9 @@ const filters = {
 
 const addMetadata = (metadata) => {
   console.log(metadata);
-  filters.actionType.options.push(...metadata.actionType);
-  filters.targetType.options.push(...metadata.targetType);
-  filters.actorType.options.push(...metadata.actorType);
+  filters.actionType.options.push(...metadata.actionTypes);
+  filters.targetType.options.push(...metadata.targetTypes);
+  filters.actorType.options.push(...metadata.actorTypes);
 };
 
 const ConsoleForm = ({ onQuerySubmit }) => {
@@ -64,7 +64,7 @@ const ConsoleForm = ({ onQuerySubmit }) => {
         setIsReady(true);
       })
       .catch((error) => {
-        console.log("Failed to load metadata");
+        console.log("Failed to load metadata: ", error);
       });
   }, []);
     

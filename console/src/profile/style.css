@@ -1,0 +1,100 @@
+.container {
+  height: 100%;
+}
+
+.title {
+  text-align: center;
+  font-size: 54px;
+  font-weight: 300;
+  
+  margin: 0px 0px 10px 0px;
+}
+
+.consoleBody {
+  display: flex;
+}
+
+.consoleForm {  
+  padding: 5px;
+  
+  margin: 0px 10px 0px 0px;
+  
+  border-style: solid;
+  border-width: 2px 2px 2px 0px;
+  
+  background-color: #dddddd;
+}
+
+.consoleFormItem {
+  margin: 5px;
+}
+
+.consoleFormItemLabel {
+  padding: 5px;
+  
+  font-weight: 500;
+  background-color: #777777;
+  color: white;
+}
+
+.consoleFormItemInput {
+  padding: 5px;
+  
+  background-color: #bbbbbb;
+}
+
+.consoleResult {
+  width: 100%;
+  margin: 0px 10px 0px 0px;
+}
+
+.consoleResultHeader {
+  background-color: #aaaaaa;
+  padding: 5px;
+  font-weight: 500;
+  
+  margin: 0px;
+  border-style: solid;
+  border-width: 2px 0px 1px 0px;
+}
+
+table {
+  width: 100%;
+}
+
+table, th, td {
+  border-style: solid;
+  border-width: 1px;
+}
+
+tr:hover {
+  color: #ffffff;
+  background-color: #555555;
+}
+
+th {
+  color: #ffffff;
+  background-color: #997799;
+}
+
+th, td {
+  padding: 5px;
+}
+
+.consoleFormSubmit {
+  text-align: center;
+  
+  margin: 5px;
+  padding: 5px;
+}
+
+.consoleFormSubmitButton {
+  width: 100%;
+  
+  padding: 5px;
+}
+
+.timestamp {
+  font-family: monospace;
+  font-size: 15px;
+}

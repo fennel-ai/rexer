@@ -1,16 +1,25 @@
 import React from 'react';
 import ReactDOM from 'react-dom';
-import './index.css';
-import App from './App';
+import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import reportWebVitals from './reportWebVitals';
 import Amplify from 'aws-amplify';
 import awsconfig from './aws-exports';
+import './index.css';
+import App from './App';
+import ActionApp from './action/ActionApp';
+import ProfileApp from './profile/ProfileApp';
 
 Amplify.configure(awsconfig);
 
 ReactDOM.render(
   <React.StrictMode>
-    <App />
+    <BrowserRouter>
+      <Routes>
+        <Route path="/" element={<App />} />
+        <Route path="action" element={<ActionApp />} />
+        <Route path="profile" element={<ProfileApp />} />
+      </Routes>
+    </BrowserRouter>
   </React.StrictMode>,
   document.getElementById('root')
 );
