@@ -12,15 +12,32 @@
 
 .links {
   text-align: center;
-  border-width: 0px;
-  border-style: solid;
-  color: black;
   
-  margin: 0px 0px 5px 0px;
+  margin: 0px 0px 15px 0px;
 }
 
 .link {
-  margin: 0px 2px 0px 2px;
+  padding: 5px;
+  
+  color: black;
+  background-color: #aaaaaa;
+  
+  font-size: 24px;
+  text-decoration: none;
+}
+
+.link:hover {
+  text-decoration: underline;
+}
+
+.curLink {
+  padding: 5px;
+  
+  color: black;
+  background-color: #77aa77;
+  
+  font-size: 24px;
+  text-decoration: none;
 }
 
 .consoleBody {
