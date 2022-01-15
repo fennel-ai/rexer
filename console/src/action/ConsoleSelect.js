@@ -9,7 +9,7 @@ const ConsoleSelect = ({ data }) => (
     <div className="consoleFormItemInput">
       <select name={data.id} id={data.id}>
         {data.options.map((option) => (
-          <option value={option} key={option}>{option}</option>
+          <option value={option.val} key={option}>{option.text}</option>
         ))}
       </select>
     </div>

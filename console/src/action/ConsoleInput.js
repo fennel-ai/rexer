@@ -7,7 +7,7 @@ const ConsoleInput = ({ data }) => (
       <label htmlFor={data.id}>{data.label}</label>
     </div>
     <div className="consoleFormItemInput">
-      <input id={data.id} />
+      <input id={data.id} type={data.type} />
     </div>
   </div>
 );

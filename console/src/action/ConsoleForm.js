@@ -12,29 +12,38 @@ const filters = {
   actionType : {
     id: 'filterActionType',
     label: 'Action Type: ',
-    options: [ 'ANY' ],
+    options: [
+      { val: 'ANY', text: 'ANY' },
+    ],
   },
   targetId : {
     id: 'filterTargetId',
     label: 'Target ID: ',
+    type: 'number',
   },
   targetType : {
     id: 'filterTargetType',
     label: 'Target Type: ',
-    options: [ 'ANY' ],
+    options: [
+      { val: 'ANY', text: 'ANY' },
+    ],
   },
   actorId : {
     id: 'filterActorId',
     label: 'Actor ID: ',
+    type: 'number',
   },
   actorType : {
     id: 'filterActorType',
     label: 'Actor Type: ',
-    options: [ 'ANY' ],
+    options: [
+      { val: 'ANY', text: 'ANY' },
+    ],
   },
   requestId : {
     id: 'filterRequestId',
     label: 'Request ID: ',
+    type: 'number',
   },
   startTime: {
     id: 'filterStartTime',
