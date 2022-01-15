@@ -25,9 +25,9 @@ app.use(function (req, res, next) {
   next()
 });
 
-const allLogs = [
+const allActions = [
   {
-    logId: 0,
+    actionId: 0,
     actionType: 'LIKE',
     targetId: '0',
     targetType: 'IMAGE',
@@ -37,7 +37,7 @@ const allLogs = [
     timestamp: Date.parse('2022-01-01'),
   },
   {
-    logId: 1,
+    actionId: 1,
     actionType: 'LIKE',
     targetId: '1',
     targetType: 'VIDEO',
@@ -47,7 +47,7 @@ const allLogs = [
     timestamp: Date.parse('2022-01-03'),
   },
   {
-    logId: 2,
+    actionId: 2,
     actionType: 'LIKE',
     targetId: '2',
     targetType: 'IMAGE',
@@ -57,7 +57,7 @@ const allLogs = [
     timestamp: Date.parse('2022-01-05'),
   },
   {
-    logId: 3,
+    actionId: 3,
     actionType: 'SHARE',
     targetId: '1',
     targetType: 'VIDEO',
@@ -67,7 +67,7 @@ const allLogs = [
     timestamp: Date.parse('2022-01-04'),
   },
   {
-    logId: 4,
+    actionId: 4,
     actionType: 'SHARE',
     targetId: '2',
     targetType: 'IMAGE',
@@ -77,7 +77,7 @@ const allLogs = [
     timestamp: Date.parse('2022-01-02'),
   },
   {
-    logId: 5,
+    actionId: 5,
     actionType: 'SHARE',
     targetId: '2',
     targetType: 'VIDEO',
@@ -86,18 +86,17 @@ const allLogs = [
     requestId: '3',
     timestamp: Date.parse('2022-01-07'),
   },
+];
 
-]
-
-const metadata = {
+const actionMetadata = {
   actionType: [ 'LIKE', 'SHARE' ],
   targetType: [ 'IMAGE', 'VIDEO' ],
   actorType: [ 'USER' ],
-}
+};
 
 app.get('/actions', (req, res) => {
   res.json({
-    data: allLogs.filter((action) => {
+    data: allActions.filter((action) => {
       if ('actionType' in req.query && req.query.actionType !== action.actionType) {
         return false;
       }
@@ -129,7 +128,7 @@ app.get('/actions', (req, res) => {
 });
 
 app.get('/actions/metadata', (req, res) => {
-  res.json(metadata)
+  res.json(actionMetadata)
 });
 
 app.listen(3001, () => {
