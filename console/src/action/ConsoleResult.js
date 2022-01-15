@@ -2,7 +2,7 @@ import * as React from 'react';
 import './../style.css';
 
 const processData = (data, metadata) => {
-  data.map((item) => {
+  data.forEach((item) => {
     item.actionType = metadata.actionTypes[item.actionType].text;
     item.actorType = metadata.actorTypes[item.actorType].text;
     item.targetType = metadata.targetTypes[item.targetType].text;
@@ -64,7 +64,7 @@ const formatDate = (ms) => {
   return timestamp;
 };
 
-const ActionRow = ({ data }) => console.log(data) || console.log(typeof data.timestamp) || (
+const ActionRow = ({ data }) => (
   <tr>
     <td>{data.actionId}</td>
     <td>{data.actionType}</td>

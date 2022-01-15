@@ -48,6 +48,7 @@ const Console = () => {
     API
       .get('bff', `${API_ENDPOINT}/metadata`, {})
       .then((response) => {
+        console.log(response);
         setMetadata(response);
       })
       .catch((error) => {

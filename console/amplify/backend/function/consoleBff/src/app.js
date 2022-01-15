@@ -106,22 +106,22 @@ const actionMetadata = {
 app.get('/actions', (req, res) => {
   res.json({
     data: allActions.filter((action) => {
-      if ('actionType' in req.query && req.query.actionType !== action.actionType) {
+      if ('actionType' in req.query && Number(req.query.actionType) !== action.actionType) {
         return false;
       }
-      if ('targetId' in req.query && req.query.targetId !== action.targetId) {
+      if ('targetId' in req.query && Number(req.query.targetId) !== action.targetId) {
         return false;
       }
-      if ('targetType' in req.query && req.query.targetType !== action.targetType) {
+      if ('targetType' in req.query && Number(req.query.targetType) !== action.targetType) {
         return false;
       }
-      if ('actorId' in req.query && req.query.actorId !== action.actorId) {
+      if ('actorId' in req.query && Number(req.query.actorId) !== action.actorId) {
         return false;
       }
-      if ('actorType' in req.query && req.query.actorType !== action.actorType) {
+      if ('actorType' in req.query && Number(req.query.actorType) !== action.actorType) {
         return false;
       }
-      if ('requestId' in req.query && req.query.requestId !== action.requestId) {
+      if ('requestId' in req.query && Number(req.query.requestId) !== action.requestId) {
         return false;
       }
       if ('before' in req.query && Date.parse(req.query.before) < action.timestamp) {
@@ -132,7 +132,7 @@ app.get('/actions', (req, res) => {
       }
 
       return true;
-    })
+    }),
   });
 });
 
