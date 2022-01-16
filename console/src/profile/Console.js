@@ -7,7 +7,7 @@ import './../style.css';
 const API_ENDPOINT = '/profiles';
 
 const getQuery = (form) => {
-  const parameters = {}
+  const parameters = {};
 
   if (form.filterOType.value !== '') {
     parameters.oType = form.filterOType.value;
@@ -22,13 +22,11 @@ const getQuery = (form) => {
     parameters.version = form.filterVersion.value;
   }
 
-  console.log(parameters);
-
   return { 'queryStringParameters' : parameters }
 };
 
-const Console = () => {  
-  const updateData = React.useRef();
+const Console = () => {
+  const [ results, setResults ] = React.useState([]);
 
   const handleQuery = (event) => {
     const form = event.target;
@@ -37,13 +35,8 @@ const Console = () => {
 
     API
       .get('bff', API_ENDPOINT, query)
-      .then(response => {
-        console.log(response);
-        updateData.current(response.data);
-      })
-      .catch(error => {
-        console.log(error);
-      });
+      .then(response => setResults(response.data))
+      .catch(error => console.log(error));
 
     event.preventDefault();
   }
@@ -51,7 +44,7 @@ const Console = () => {
   return (
     <div className="consoleBody">
       <ConsoleForm onQuerySubmit={handleQuery} />
-      <ConsoleResult updateData={updateData} />
+      <ConsoleResult results={results} />
     </div>
   );
 };

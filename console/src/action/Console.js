@@ -7,7 +7,7 @@ import './../style.css';
 const API_ENDPOINT = '/actions';
 
 const getQuery = (form) => {
-  const parameters = {}
+  const parameters = {};
 
   if (form.filterActionType.value !== 'ANY') {
     parameters.actionType = form.filterActionType.value;
@@ -34,22 +34,19 @@ const getQuery = (form) => {
     parameters.before = form.filterFinishTime.value;
   }
 
-  console.log(parameters);
-
   return { 'queryStringParameters' : parameters }
 };
 
-const Console = () => {  
+const Console = () => {
+  const [ results, setResults ] = React.useState([]);
   const [ metadata, setMetadata ] = React.useState({notLoaded: true});
-  
-  const updateData = React.useRef();
   
   React.useEffect(() => {
     API
       .get('bff', `${API_ENDPOINT}/metadata`, {})
       .then(setMetadata)
       .catch((error) => {
-        console.log("Failed to load metadata: ", error);
+        console.log("Failed to load metadata.", error);
       });
   }, []);
   
@@ -60,13 +57,8 @@ const Console = () => {
 
     API
       .get('bff', API_ENDPOINT, query)
-      .then(response => {
-        console.log(response);
-        updateData.current(response.data);
-      })
-      .catch(error => {
-        console.log(error);
-      });
+      .then(response => setResults(response.data))
+      .catch(error => console.log(error));
 
     event.preventDefault();
   }
@@ -77,7 +69,7 @@ const Console = () => {
     return (
       <div className="consoleBody">
         <ConsoleForm onQuerySubmit={handleQuery} metadata={metadata} />
-        <ConsoleResult updateData={updateData} metadata={metadata} />
+        <ConsoleResult results={results} metadata={metadata} />
       </div>
     );
   }

@@ -9,19 +9,8 @@ const processData = (data, metadata) => {
   });
 };
 
-const ConsoleResult = ({ updateData, metadata }) => {
-  const [ results, setResults ] = React.useState([]);
-  
-  const updateResults = (data) => {
-    processData(data, metadata);
-    setResults(data);
-    
-    console.log(data);
-  };
-  
-  React.useEffect(() => {
-    updateData.current = updateResults;
-  });
+const ConsoleResult = ({ results, metadata }) => {
+  processData(results, metadata);
   
   return (
     <div className="consoleResult">
