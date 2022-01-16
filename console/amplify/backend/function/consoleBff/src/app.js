@@ -167,7 +167,7 @@ app.get('/actions', (req, res) => {
   });
 });
 
-app.get('/profiles', (req, res) => {
+app.get('/actions/profiles', (req, res) => {
   res.json({
     data: allProfiles.filter((profile) => {
       if ('oId' in req.query && Number(req.query.oId) !== profile.oId) {
@@ -182,6 +182,8 @@ app.get('/profiles', (req, res) => {
       if ('version' in req.query && req.query.version !== profile.version) {
         return false;
       }
+      
+      return true;
     }),
   });
 });
@@ -190,7 +192,7 @@ app.get('/actions/metadata', (req, res) => {
   res.json(actionMetadata);
 });
 
-app.get('/profile/metadata', (req, res) => {
+app.get('/profiles/metadata', (req, res) => {
   res.json(profileMetadata);
 });
 

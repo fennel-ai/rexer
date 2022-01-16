@@ -4,7 +4,7 @@ import { ConsoleForm } from './ConsoleForm';
 import { ConsoleResult } from './ConsoleResult';
 import './../style.css';
 
-const API_ENDPOINT = '/profiles';
+const API_ENDPOINT = '/actions/profiles';
 
 const getQuery = (form) => {
   const parameters = {};

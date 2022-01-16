@@ -17,7 +17,7 @@ const ConsoleResult = ({ results }) => (
       </thead>
       <tbody>
         {results.map((item) => (
-          <ActionRow data={item} key={item.logId} />
+          <ActionRow data={item} key={item.oId} />
         ))}
       </tbody>
     </table>
