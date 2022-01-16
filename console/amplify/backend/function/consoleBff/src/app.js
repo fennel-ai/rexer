@@ -134,7 +134,7 @@ const profileMetadata = {
   latestVersion: 1,
 };
 
-app.get('/actions', (req, res) => {
+app.get('/actions/actions', (req, res) => {
   res.json({
     data: allActions.filter((action) => {
       if ('actionType' in req.query && Number(req.query.actionType) !== action.actionType) {
@@ -188,11 +188,11 @@ app.get('/actions/profiles', (req, res) => {
   });
 });
 
-app.get('/actions/metadata', (req, res) => {
+app.get('/actions/actions/metadata', (req, res) => {
   res.json(actionMetadata);
 });
 
-app.get('/profiles/metadata', (req, res) => {
+app.get('/actions/profiles/metadata', (req, res) => {
   res.json(profileMetadata);
 });
 
