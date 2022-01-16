@@ -88,6 +88,33 @@ const allActions = [
   },
 ];
 
+const allProfiles = [
+  {
+    oId: 0,
+    oType: 0,
+    key = "str0",
+    version: 0,
+  },
+  {
+    oId: 1,
+    oType: 1,
+    key = "str1",
+    version: 0,
+  },
+  {
+    oId: 2,
+    oType: 0,
+    key = "str2",
+    version: 1,
+  },
+  {
+    oId: 3,
+    oType: 1,
+    key = "str3",
+    version: 1,
+  },
+];
+
 const actionMetadata = {
   actionTypes: [ 
     { val:0, text:'LIKE' },
@@ -101,6 +128,10 @@ const actionMetadata = {
   actorTypes: [
     { val:0, text:'USER' },
   ],
+};
+
+const profileMetadata = {
+  latestVersion: 1;
 };
 
 app.get('/actions', (req, res) => {
@@ -136,8 +167,31 @@ app.get('/actions', (req, res) => {
   });
 });
 
+app.get('/profiles', (req, res) => {
+  res.json({
+    data: allProfiles.filter((profile) => {
+      if ('oId' in req.query && Number(req.query.oId) !== profile.oId) {
+        return false;
+      }
+      if ('oType' in req.query && Number(req.query.oType) !== profile.oType) {
+        return false;
+      }
+      if ('key' in req.query && req.query.key !== profile.key) {
+        return false;
+      }
+      if ('version' in req.query && req.query.version !== profile.version) {
+        return false;
+      }
+    }),
+  });
+});
+
 app.get('/actions/metadata', (req, res) => {
-  res.json(actionMetadata)
+  res.json(actionMetadata);
+});
+
+app.get('profiles/metadata', (req, res) => {
+  res.json(profileMetadata);
 });
 
 app.listen(3001, () => {
