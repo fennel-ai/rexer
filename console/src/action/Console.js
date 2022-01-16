@@ -47,10 +47,7 @@ const Console = () => {
   React.useEffect(() => {
     API
       .get('bff', `${API_ENDPOINT}/metadata`, {})
-      .then((response) => {
-        console.log(response);
-        setMetadata(response);
-      })
+      .then(setMetadata)
       .catch((error) => {
         console.log("Failed to load metadata: ", error);
       });
