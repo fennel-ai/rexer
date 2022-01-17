@@ -36,14 +36,7 @@ func add(controller MainController, t *testing.T, c client.Client, a lib.Action)
 	return a
 }
 
-func TestAll(t *testing.T) {
-	// doing this so that both these tests are forced to run one after another
-	// instead of in concurrent goroutines
-	_TestServerClientBasic(t)
-	_TestEndToEnd(t)
-}
-
-func _TestServerClientBasic(t *testing.T) {
+func TestServerClientBasic(t *testing.T) {
 	controller, err := DefaultMainController()
 	assert.NoError(t, err)
 	// create a server
@@ -82,7 +75,7 @@ func _TestServerClientBasic(t *testing.T) {
 	verifyFetch(t, c, lib.ActionFetchRequest{}, []lib.Action{action1, action2, action3})
 }
 
-func _TestEndToEnd(t *testing.T) {
+func TestEndToEnd(t *testing.T) {
 	controller, err := DefaultMainController()
 	assert.NoError(t, err)
 

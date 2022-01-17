@@ -11,44 +11,14 @@ import (
 	"time"
 
 	"fennel/data/lib"
-	"fennel/data/server/actions"
 	"google.golang.org/protobuf/proto"
 )
 
-var producer actions.ActionProducer
-var consumer actions.ActionConsumer
+const (
+	ACTIONLOG_TOPICNAME = "actionlog"
+)
 
-func init() {
-	ch := make(chan *lib.ProtoAction, 10)
-	producer = actions.NewLocalActionProducer(ch)
-	consumer = actions.NewLocalActionConsumer(ch)
-
-	// NOTE: This is disabled right now since kafka topic deletion does not
-	// immediately delete the topic, and subsequent CreateTopic call will fail.
-
-	// kafkaClientConfig := &kafka.ClientConfig{
-	// 	BootstrapServer: "pkc-l7pr2.ap-south-1.aws.confluent.cloud:9092",
-	// 	Username:        "DXGQTONRSCJ7YC2W",
-	// 	Password:        "s1TAmKoJ7WnbJusVMPlgvKbYszD6lE50789bM1Y6aTlJNtRjThhhPR8+LeaY6Mqi",
-	// }
-	// var topicName string
-	// var err error
-	// topicName, err = kafkaClientConfig.SetupTestTopic()
-	// if err != nil {
-	// 	panic(err)
-	// }
-	// groupName := "test-group"
-	// producer, err = kafkaClientConfig.NewActionProducer(topicName)
-	// if err != nil {
-	// 	panic(err)
-	// }
-	// consumer, err = kafkaClientConfig.NewActionConsumer(groupName, topicName)
-	// if err != nil {
-	// 	panic(err)
-	// }
-}
-
-func Log(w http.ResponseWriter, req *http.Request) {
+func (controller MainController) Log(w http.ResponseWriter, req *http.Request) {
 	var pa lib.ProtoAction
 	// Try to decode the request body into the struct. If there is an error,
 	// respond to the client with the error message and a 400 status code.
@@ -70,9 +40,9 @@ func Log(w http.ResponseWriter, req *http.Request) {
 	}
 
 	// now we know that this is a valid request, so let's store this in kafka
-	err = producer.LogAction(&pa)
+	err = controller.producer.Log(&pa)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		http.Error(w, err.Error(), http.StatusBadGateway)
 		return
 	}
 	// if there is no error, we don't need to write anything back
@@ -80,20 +50,12 @@ func Log(w http.ResponseWriter, req *http.Request) {
 
 // TailActions reads a single message from Kafka and logs it in the database
 func (controller MainController) TailActions() error {
-	// msg, err := kafka.ReadActionMessage()
-	// //fmt.Printf("Message on %s: %s\n", msg.TopicPartition, string(msg.Value))
-	// // validate this message and if valid, write it in DBConnection
-	// var pa lib.ProtoAction
-
-	// err = proto.Unmarshal(msg.Value, &pa)
-	// if err != nil {
-	// 	return err
-	// }
-	pa, err := consumer.ReadActionMessage()
+	pa := lib.ProtoAction{}
+	err := controller.consumer.Read(&pa)
 	if err != nil {
 		return err
 	}
-	action := lib.FromProtoAction(pa)
+	action := lib.FromProtoAction(&pa)
 	err = action.Validate()
 	if err != nil {
 		return err
@@ -215,14 +177,13 @@ func serve(controller MainController) {
 	mux.HandleFunc("/count", controller.Count)
 	mux.HandleFunc("/get", controller.get)
 	mux.HandleFunc("/set", controller.set)
-	mux.HandleFunc("/log", Log)
+	mux.HandleFunc("/log", controller.Log)
 	mux.HandleFunc("/rate", controller.Rate)
 	server.Handler = mux
 	go func() {
 		defer serverWG.Done() // let main know we are done cleaning up
 
 		log.Printf("starting http server on %s...", server.Addr)
-		// always returns error. ErrServerClosed on graceful close
 		if err := server.ListenAndServe(); err != http.ErrServerClosed {
 			// unexpected error. port in use?
 			log.Fatalf("ListenAndServe(): %v", err)
@@ -263,6 +224,7 @@ func main() {
 	go func() {
 		for {
 			controller.TailActions()
+			time.Sleep(time.Millisecond * 100)
 		}
 	}()
 
