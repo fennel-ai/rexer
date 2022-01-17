@@ -131,15 +131,17 @@ const cluster = new eks.Cluster("eks-cluster", {
     },
     providerCredentialOpts: {
         profileName: "admin"
-    }
+    },
+    createOidcProvider: true
 });
 
 // Export the cluster's kubeconfig.
 export const kubeconfig = cluster.kubeconfig;
 
+export const oidcUrl = cluster.core.oidcProvider?.url
+
 // Setup linkerd service mesh.
 setupLinkerd(cluster.provider)
-
 
 // Install Ambassador
 setupAmbassadorIngress(cluster.provider)
