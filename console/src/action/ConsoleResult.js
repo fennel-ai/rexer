@@ -2,15 +2,19 @@ import * as React from 'react';
 import './../style.css';
 
 const processData = (data, metadata) => {
-  data.forEach((item) => {
-    item.actionType = metadata.actionTypes[item.actionType].text;
-    item.actorType = metadata.actorTypes[item.actorType].text;
-    item.targetType = metadata.targetTypes[item.targetType].text;
+  return data.map((item) => {
+    const res = { ...item };
+    
+    res.actionType = metadata.actionTypes[item.actionType].text;
+    res.actorType = metadata.actorTypes[item.actorType].text;
+    res.targetType = metadata.targetTypes[item.targetType].text;
+    
+    return res;
   });
 };
 
-const ConsoleResult = ({ results, metadata }) => {
-  processData(results, metadata);
+const ConsoleResult = ({ data, metadata }) => {
+  const results = processData(data, metadata);
   
   return (
     <div className="consoleResult">
@@ -22,6 +26,7 @@ const ConsoleResult = ({ results, metadata }) => {
           <tr>
             <th>Action ID</th>
             <th>Action Type</th>
+            <th>Action Value</th>
             <th>Target ID</th>
             <th>Target Type</th>
             <th>Actor ID</th>
@@ -57,6 +62,7 @@ const ActionRow = ({ data }) => (
   <tr>
     <td>{data.actionId}</td>
     <td>{data.actionType}</td>
+    <td>{data.actionValue}</td>
     <td>{data.targetId}</td>
     <td>{data.targetType}</td>
     <td>{data.actorId}</td>

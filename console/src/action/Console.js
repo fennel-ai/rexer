@@ -4,37 +4,49 @@ import { ConsoleForm } from './ConsoleForm';
 import { ConsoleResult } from './ConsoleResult';
 import './../style.css';
 
-const API_ENDPOINT = '/actions';
+const API_ENDPOINT = '/actions/actions';
 
 const getQuery = (form) => {
-  const parameters = {};
+  const params = {};
 
   if (form.filterActionType.value !== 'ANY') {
-    parameters.actionType = form.filterActionType.value;
+    params.action_type = form.filterActionType.value;
   }
   if (form.filterTargetId.value !== '') {
-    parameters.targetId = form.filterTargetId.value;
+    params.target_id = form.filterTargetId.value;
   }
   if (form.filterTargetType.value !== 'ANY') {
-    parameters.targetType = form.filterTargetType.value;
+    params.target_type = form.filterTargetType.value;
   }
   if (form.filterActorId.value !== '') {
-    parameters.actorId = form.filterActorId.value;
+    params.actor_id = form.filterActorId.value;
   }
   if (form.filterActorType.value !== 'ANY') {
-    parameters.actorType = form.filterActorType.value;
+    params.actor_type = form.filterActorType.value;
   }
   if (form.filterRequestId.value !== '') {
-    parameters.requestId = form.filterRequestId.value;
+    params.request_id = form.filterRequestId.value;
   }
   if (form.filterStartTime.value !== '') {
-    parameters.after = form.filterStartTime.value;
+    params.min_timestamp = form.filterStartTime.value;
   }
   if (form.filterFinishTime.value !== '') {
-    parameters.before = form.filterFinishTime.value;
+    params.max_timestamp = form.filterFinishTime.value;
+  }
+  if (form.filterMinActionId.value !== '') {
+    params.min_action_id = form.filterMinActionId.value;
+  }
+  if (form.filterMaxActionId.value !== '') {
+    params.max_action_id = form.filterMaxActionId.value;
+  }
+  if (form.filterMinActionValue.value !== '') {
+    params.min_action_value = form.filterMinActionValue.value;
+  }
+  if (form.filterMaxActionValue.value !== '') {
+    params.max_action_value = form.filterMaxActionValue.value;
   }
 
-  return { 'queryStringParameters' : parameters }
+  return { 'queryStringParameters' : params };
 };
 
 const Console = () => {
@@ -69,7 +81,7 @@ const Console = () => {
     return (
       <div className="consoleBody">
         <ConsoleForm onQuerySubmit={handleQuery} metadata={metadata} />
-        <ConsoleResult results={results} metadata={metadata} />
+        <ConsoleResult data={results} metadata={metadata} />
       </div>
     );
   }

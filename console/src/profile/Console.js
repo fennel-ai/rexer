@@ -7,22 +7,22 @@ import './../style.css';
 const API_ENDPOINT = '/actions/profiles';
 
 const getQuery = (form) => {
-  const parameters = {};
+  const params = {};
 
   if (form.filterOType.value !== '') {
-    parameters.oType = form.filterOType.value;
+    params.otype = form.filterOType.value;
   }
   if (form.filterOId.value !== '') {
-    parameters.oId = form.filterOId.value;
+    params.oid = form.filterOId.value;
   }
   if (form.filterKey.value !== '') {
-    parameters.key = form.filterKey.value;
+    params.key = form.filterKey.value;
   }
   if (form.filterVersion.value !== '') {
-    parameters.version = form.filterVersion.value;
+    params.version = form.filterVersion.value;
   }
 
-  return { 'queryStringParameters' : parameters }
+  return { 'queryStringParameters' : params }
 };
 
 const Console = () => {

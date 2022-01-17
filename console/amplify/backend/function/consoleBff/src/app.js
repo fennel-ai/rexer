@@ -34,6 +34,7 @@ const allActions = [
     actorId: 0,
     actorType: 0,
     requestId: 0,
+    actionValue: 0,
     timestamp: Date.parse('2022-01-01'),
   },
   {
@@ -44,6 +45,7 @@ const allActions = [
     actorId: 0,
     actorType: 0,
     requestId: 0,
+    actionValue: 1,
     timestamp: Date.parse('2022-01-03'),
   },
   {
@@ -54,6 +56,7 @@ const allActions = [
     actorId: 1,
     actorType: 0,
     requestId: 2,
+    actionValue: 4,
     timestamp: Date.parse('2022-01-05'),
   },
   {
@@ -64,6 +67,7 @@ const allActions = [
     actorId: 1,
     actorType: 0,
     requestId: 2,
+    actionValue: 9,
     timestamp: Date.parse('2022-01-04'),
   },
   {
@@ -72,8 +76,9 @@ const allActions = [
     targetId: 2,
     targetType: 0,
     actorId: 0,
-    requestId: 0,
     actorType: 0,
+    requestId: 0,
+    actionValue 16,
     timestamp: Date.parse('2022-01-02'),
   },
   {
@@ -84,6 +89,7 @@ const allActions = [
     actorId: 1,
     actorType: 0,
     requestId: 3,
+    actionValue: 25,
     timestamp: Date.parse('2022-01-07'),
   },
 ];
@@ -137,28 +143,40 @@ const profileMetadata = {
 app.get('/actions/actions', (req, res) => {
   res.json({
     data: allActions.filter((action) => {
-      if ('actionType' in req.query && Number(req.query.actionType) !== action.actionType) {
+      if ('action_type' in req.query && Number(req.query.action_type) !== action.actionType) {
         return false;
       }
-      if ('targetId' in req.query && Number(req.query.targetId) !== action.targetId) {
+      if ('target_id' in req.query && Number(req.query.target_id) !== action.targetId) {
         return false;
       }
-      if ('targetType' in req.query && Number(req.query.targetType) !== action.targetType) {
+      if ('target_type' in req.query && Number(req.query.target_type) !== action.targetType) {
         return false;
       }
-      if ('actorId' in req.query && Number(req.query.actorId) !== action.actorId) {
+      if ('actor_id' in req.query && Number(req.query.actor_id) !== action.actorId) {
         return false;
       }
-      if ('actorType' in req.query && Number(req.query.actorType) !== action.actorType) {
+      if ('actor_type' in req.query && Number(req.query.actor_type) !== action.actorType) {
         return false;
       }
-      if ('requestId' in req.query && Number(req.query.requestId) !== action.requestId) {
+      if ('request_id' in req.query && Number(req.query.request_id) !== action.requestId) {
         return false;
       }
-      if ('before' in req.query && Date.parse(req.query.before) < action.timestamp) {
+      if ('max_timestamp' in req.query && Date.parse(req.query.max_timestamp) < action.timestamp) {
         return false;
       }
-      if ('after' in req.query && Date.parse(req.query.after) > action.timestamp) {
+      if ('min_timestamp' in req.query && Date.parse(req.query.min_timestamp) > action.timestamp) {
+        return false;
+      }
+      if ('min_action_id' in req.query && req.query.min_action_id > action.actionId) {
+        return false;
+      }
+      if ('max_action_id' in req.query && req.query.max_action_id < action.actionId) {
+        return false;
+      }
+      if ('min_action_value' in req.query && req.query.min_action_value > action.actionValue) {
+        return false;
+      }
+      if ('max_action_value' in req.query && req.query.max_action_value < action.actionValue) {
         return false;
       }
 
@@ -170,10 +188,10 @@ app.get('/actions/actions', (req, res) => {
 app.get('/actions/profiles', (req, res) => {
   res.json({
     data: allProfiles.filter((profile) => {
-      if ('oId' in req.query && Number(req.query.oId) !== profile.oId) {
+      if ('oid' in req.query && Number(req.query.oid) !== profile.oId) {
         return false;
       }
-      if ('oType' in req.query && Number(req.query.oType) !== profile.oType) {
+      if ('otype' in req.query && Number(req.query.otype) !== profile.oType) {
         return false;
       }
       if ('key' in req.query && req.query.key !== profile.key) {
@@ -204,3 +222,4 @@ app.listen(3001, () => {
 // to port it to AWS Lambda we will create a wrapper around that will load the app from
 // this file
 module.exports = app
+  

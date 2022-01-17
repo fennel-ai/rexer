@@ -49,6 +49,26 @@ const filters = {
     id: 'filterFinishTime',
     label: 'Before',
   },
+  minActionId: {
+    id: 'filterMinActionId',
+    label: 'Min Action ID: ',
+    type: 'number',
+  },
+  maxActionId: {
+    id: 'filterMaxActionId',
+    label: 'Max Action ID: ',
+    type: 'number',
+  },
+  minActionValue: {
+    id: 'filterMinActionValue',
+    label: 'Min Action Value: ',
+    type: 'number',
+  },
+  maxActionValue: {
+    id: 'filterMaxActionValue',
+    label: 'Max Action Value: ',
+    type: 'number',
+  },
 };
 
 const ConsoleForm = ({ onQuerySubmit, metadata }) => {  
@@ -62,6 +82,10 @@ const ConsoleForm = ({ onQuerySubmit, metadata }) => {
       <ConsoleInput data={filters.requestId} />
       <ConsoleDateTime data={filters.startTime} />
       <ConsoleDateTime data={filters.finishTime} />
+      <ConsoleInput data={filters.minActionId} />
+      <ConsoleInput data={filters.maxActionId} />
+      <ConsoleInput data={filters.minActionValue} />
+      <ConsoleInput data={filters.maxActionValue} />
       
       <div className="consoleFormSubmit">
         <button type="submit" className="consoleFormSubmitButton">Query</button>
