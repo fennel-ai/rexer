@@ -78,7 +78,7 @@ const allActions = [
     actorId: 0,
     actorType: 0,
     requestId: 0,
-    actionValue 16,
+    actionValue: 16,
     timestamp: Date.parse('2022-01-02'),
   },
   {
