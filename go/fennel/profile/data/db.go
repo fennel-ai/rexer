@@ -16,7 +16,7 @@ func NewProfileTable(conn db.Connection) (ProfileTable, error) {
 	sql := fmt.Sprintf(`CREATE TABLE IF NOT EXISTS %s (
 		otype integer not null,
 		oid integer not null,
-		zkey varchar(120) not null,
+		zkey varchar(256) not null,
 		version integer not null,
 		value blob not null
 	  );`, name)
@@ -41,6 +41,9 @@ func (table ProfileTable) Init() error {
 func (table ProfileTable) Set(otype uint32, oid uint64, key string, version uint64, valueSer []byte) error {
 	if version == 0 {
 		return fmt.Errorf("version can not be zero")
+	}
+	if len(key) > 256 {
+		return fmt.Errorf("key too long: keys can only be upto 256 chars")
 	}
 	_, err := table.DB.Exec(fmt.Sprintf(`
 		INSERT INTO %s

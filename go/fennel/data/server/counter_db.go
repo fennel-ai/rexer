@@ -124,6 +124,9 @@ func (table CounterTable) counterGet(request lib.GetCountRequest) (uint64, error
 // by incrementing its count by bucket.count
 // TODO: make this batched and updaate at least all windows for a single event together
 func (table CounterTable) counterDBIncrement(bucket CounterBucket) error {
+	if len(bucket.Key) > 256 {
+		return fmt.Errorf("too long key: keys can only be upto 256 chars")
+	}
 	_, err := table.DB.NamedExec(fmt.Sprintf(`
 		INSERT INTO %s 
 			( counter_type, window_type, idx, zkey, count)

@@ -4,6 +4,7 @@ import (
 	"fennel/data/lib"
 	"fennel/db"
 	profileLib "fennel/profile/lib"
+	"fennel/utils"
 	"github.com/stretchr/testify/assert"
 	"testing"
 )
@@ -80,6 +81,22 @@ func TestForeverWindow(t *testing.T) {
 
 	// and no matter how far we go, we always see this value
 	verify(table, t, 5, ct, lib.Window_FOREVER, key, ts+3*10e9)
+}
+
+func TestLongKey(t *testing.T) {
+	DB, err := db.Default()
+	assert.NoError(t, err)
+	table, err := NewCounterTable(DB.(db.Connection))
+	assert.NoError(t, err)
+	// it should not be possible to set a key longer than 256 chars
+	bucket := CounterBucket{1, 2, 3, utils.RandString(257), 1}
+	err = table.counterDBIncrement(bucket)
+	assert.Error(t, err)
+
+	// but it should be fine with key of 256 chars
+	bucket = CounterBucket{1, 2, 3, utils.RandString(256), 1}
+	err = table.counterDBIncrement(bucket)
+	assert.NoError(t, err)
 }
 
 func TestCheckpoint(t *testing.T) {
