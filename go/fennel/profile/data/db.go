@@ -1,51 +1,50 @@
 package data
 
 import (
+	"fennel/db"
 	"fmt"
-	"github.com/jmoiron/sqlx"
 	_ "github.com/mattn/go-sqlite3"
 )
 
-type DB struct {
-	TableName string
-	DB        *sqlx.DB
+type ProfileTable struct {
+	db.Table
 }
 
-func (db DB) Name() string {
-	return db.TableName
-}
-
-var _ Provider = DB{"", nil}
-
-func (db DB) Init() error {
-	sql := fmt.Sprintf(`CREATE TABLE %s (
+func NewProfileTable(conn db.Connection) (ProfileTable, error) {
+	name := "profile"
+	sql := fmt.Sprintf(`CREATE TABLE IF NOT EXISTS %s (
 		otype integer not null,
 		oid integer not null,
 		zkey varchar not null,
 		version integer not null,
 		value blob not null
-	  );`, db.TableName)
+	  );`, name)
+	table, err := db.TableConfig{SQL: sql, Name: name, DB: conn}.Materialize()
+	if err != nil {
+		return ProfileTable{}, err
+	}
+	return ProfileTable{table.(db.Table)}, nil
+}
 
-	statement, err := db.DB.Prepare(sql)
-	if err != nil {
-		return err
-	}
-	_, err = statement.Exec()
-	if err != nil {
-		return err
-	}
+func (table ProfileTable) Name() string {
+	return table.Table.Name
+}
+
+var _ Provider = ProfileTable{}
+
+func (table ProfileTable) Init() error {
 	return nil
 }
 
-func (db DB) Set(otype uint32, oid uint64, key string, version uint64, valueSer []byte) error {
+func (table ProfileTable) Set(otype uint32, oid uint64, key string, version uint64, valueSer []byte) error {
 	if version == 0 {
 		return fmt.Errorf("version can not be zero")
 	}
-	_, err := db.DB.Exec(fmt.Sprintf(`
+	_, err := table.DB.Exec(fmt.Sprintf(`
 		INSERT INTO %s
 			(otype, oid, zkey, version, value) 
 		VALUES
-			(?, ?, ?, ?, ?);`, db.TableName),
+			(?, ?, ?, ?, ?);`, table.Name()),
 		otype, oid, key, version, valueSer)
 	if err != nil {
 		return err
@@ -53,12 +52,12 @@ func (db DB) Set(otype uint32, oid uint64, key string, version uint64, valueSer 
 	return nil
 }
 
-func (db DB) Get(otype uint32, oid uint64, key string, version uint64) ([]byte, error) {
+func (table ProfileTable) Get(otype uint32, oid uint64, key string, version uint64) ([]byte, error) {
 	var value [][]byte
 
 	var err error
 	if version > 0 {
-		err = db.DB.Select(&value, fmt.Sprintf(`
+		err = table.DB.Select(&value, fmt.Sprintf(`
 		SELECT value
 		FROM %s
 		WHERE
@@ -67,11 +66,11 @@ func (db DB) Get(otype uint32, oid uint64, key string, version uint64) ([]byte, 
 			AND zkey = ?
 			AND version = ?
 		LIMIT 1
-		`, db.TableName),
+		`, table.Name()),
 			otype, oid, key, version)
 	} else {
 		// if version isn't given, just pick the highest version
-		err = db.DB.Select(&value, fmt.Sprintf(`
+		err = table.DB.Select(&value, fmt.Sprintf(`
 		SELECT value
 		FROM %s
 		WHERE
@@ -80,7 +79,7 @@ func (db DB) Get(otype uint32, oid uint64, key string, version uint64) ([]byte, 
 			AND zkey = ?
 		ORDER BY version DESC
 		LIMIT 1
-		`, db.TableName),
+		`, table.Name()),
 			otype, oid, key)
 	}
 	if err != nil {

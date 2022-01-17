@@ -7,19 +7,19 @@ import (
 	"fmt"
 )
 
-func getCheckpoint(ct lib.CounterType) (lib2.OidType, error) {
-	return counterDBGetCheckpoint(ct)
+func getCheckpoint(mc MainController, ct lib.CounterType) (lib2.OidType, error) {
+	return mc.checkpointTable.counterDBGetCheckpoint(ct)
 }
 
-func setCheckpoint(ct lib.CounterType, actionID lib2.OidType) error {
-	return counterDBSetCheckpoint(ct, actionID)
+func setCheckpoint(mc MainController, ct lib.CounterType, actionID lib2.OidType) error {
+	return mc.checkpointTable.counterDBSetCheckpoint(ct, actionID)
 }
 
 // takes all recent actions since last checkpoint, computes all keys that need
 // to be incremented, increments them, and sets the checkpoint as needed
-func run(ct lib.CounterType) error {
+func (mc MainController) run(ct lib.CounterType) error {
 	client := client.NewClient("http://localhost")
-	checkpoint, err := getCheckpoint(ct)
+	checkpoint, err := getCheckpoint(mc, ct)
 	if err != nil {
 		return err
 	}
@@ -40,11 +40,25 @@ func run(ct lib.CounterType) error {
 		if len(counters) == 0 {
 			continue
 		}
-		err = Increment(counters, action.Timestamp)
+		err = Increment(mc, counters, action.Timestamp)
 		if err != nil {
 			return err
 		}
-		setCheckpoint(ct, action.ActionID)
+		setCheckpoint(mc, ct, action.ActionID)
+	}
+	return nil
+}
+
+func Increment(mc MainController, counters []Counter, ts lib.Timestamp) error {
+	// TODO: make this atomic - either all the keys should persist or none should
+	// otherwise, part of it can fail mid way creating inconsistency
+	// either that, or make the queue we run through itself a queue of individual counters
+	// instead of queue of actions
+	for _, c := range counters {
+		err := mc.counterTable.counterIncrement(c.Type, c.window, c.key, ts, 1)
+		if err != nil {
+			return err
+		}
 	}
 	return nil
 }

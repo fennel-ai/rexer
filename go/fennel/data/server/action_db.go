@@ -5,16 +5,19 @@ import (
 	"fennel/db"
 	"fmt"
 	_ "github.com/mattn/go-sqlite3"
-	"log"
 	"strings"
 )
 
 const (
-	ACTION_LOG_TABLENAME = "data"
+	ACTION_LOG_TABLENAME = "actionlog"
 )
 
-func createActionTable() error {
-	sql := fmt.Sprintf(`CREATE TABLE %s (
+type ActionTable struct {
+	db.Table
+}
+
+func NewActionTable(conn db.Connection) (ActionTable, error) {
+	sql := fmt.Sprintf(`CREATE TABLE IF NOT EXISTS %s (
     	"action_id" integer not null primary key autoincrement,
 		"actor_id" integer NOT NULL,
 		"actor_type" integer NOT NULL,
@@ -25,25 +28,21 @@ func createActionTable() error {
 		"timestamp" integer NOT NULL,
 		"request_id" integer not null
 	  );`, ACTION_LOG_TABLENAME)
-
-	//log.Println("Creating data table...", sql)
-	statement, err := db.DB.Prepare(sql)
+	conf := db.TableConfig{SQL: sql, Name: ACTION_LOG_TABLENAME, DB: conn}
+	resource, err := conf.Materialize()
 	if err != nil {
-		return err
+		return ActionTable{}, err
 	}
-	statement.Exec()
-	log.Printf("'%s' table created\n", ACTION_LOG_TABLENAME)
-	return nil
+	return ActionTable{resource.(db.Table)}, err
 }
 
 // inserts the action. If successful, returns the actionID
-func actionDBInsert(action lib.Action) (uint64, error) {
+func (at ActionTable) actionDBInsert(action lib.Action) (uint64, error) {
 	err := action.Validate()
 	if err != nil {
 		return 0, fmt.Errorf("can not insert action: %v", err)
 	}
-	//log.Printf("Inserting %v in table %s...\n", item, ACTION_LOG_TABLENAME)
-	result, err := db.DB.NamedExec(fmt.Sprintf(`
+	result, err := at.DB.NamedExec(fmt.Sprintf(`
 		INSERT INTO %s (
 			actor_id,
 			actor_type,
@@ -79,8 +78,8 @@ func actionDBInsert(action lib.Action) (uint64, error) {
 // For actionID and timestamp ranges, min is exclusive and max is inclusive
 // For actionValue range, both min/max are inclusive
 // TODO: add limit support?
-func actionDBGet(request lib.ActionFetchRequest) ([]lib.Action, error) {
-	query := fmt.Sprintf("SELECT * FROM %s", ACTION_LOG_TABLENAME)
+func (at ActionTable) actionDBGet(request lib.ActionFetchRequest) ([]lib.Action, error) {
+	query := fmt.Sprintf("SELECT * FROM %s", at.Name)
 	clauses := make([]string, 0)
 	if request.ActorType != 0 {
 		clauses = append(clauses, "actor_type = :actor_type")
@@ -125,7 +124,7 @@ func actionDBGet(request lib.ActionFetchRequest) ([]lib.Action, error) {
 	query = fmt.Sprintf("%s ORDER BY timestamp;", query)
 	//log.Printf("Action log db get query: %s\n", query)
 	actions := make([]lib.Action, 0)
-	statement, err := db.DB.PrepareNamed(query)
+	statement, err := at.DB.PrepareNamed(query)
 	if err != nil {
 		return nil, err
 	}
@@ -135,17 +134,4 @@ func actionDBGet(request lib.ActionFetchRequest) ([]lib.Action, error) {
 	} else {
 		return actions, nil
 	}
-}
-
-func actionDBPrintAll() error {
-	// this is slow and will do full table scan. Just use it for debugging/dev
-	var actions []lib.Action
-	err := db.DB.Select(&actions, fmt.Sprintf("SELECT * FROM %s", ACTION_LOG_TABLENAME))
-	if err != nil {
-		return err
-	}
-	for _, item := range actions {
-		fmt.Printf("%#v\n", item)
-	}
-	return nil
 }

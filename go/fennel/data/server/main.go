@@ -3,8 +3,6 @@ package main
 import (
 	"context"
 	"encoding/json"
-	"fennel/db"
-	profileData "fennel/profile/data"
 	"fmt"
 	"io/ioutil"
 	"log"
@@ -14,26 +12,13 @@ import (
 
 	"fennel/data/lib"
 	"fennel/data/server/actions"
-	"fennel/instance"
-
 	"google.golang.org/protobuf/proto"
 )
-
-type MainController struct {
-	profile profileData.Controller
-}
-
-func (controller MainController) Init() error {
-	return controller.profile.Init()
-}
 
 var producer actions.ActionProducer
 var consumer actions.ActionConsumer
 
 func init() {
-	instance.Register(instance.DB, createCounterTables)
-	instance.Register(instance.DB, createActionTable)
-
 	ch := make(chan *lib.ProtoAction, 10)
 	producer = actions.NewLocalActionProducer(ch)
 	consumer = actions.NewLocalActionConsumer(ch)
@@ -94,10 +79,10 @@ func Log(w http.ResponseWriter, req *http.Request) {
 }
 
 // TailActions reads a single message from Kafka and logs it in the database
-func TailActions() error {
+func (controller MainController) TailActions() error {
 	// msg, err := kafka.ReadActionMessage()
 	// //fmt.Printf("Message on %s: %s\n", msg.TopicPartition, string(msg.Value))
-	// // validate this message and if valid, write it in DB
+	// // validate this message and if valid, write it in DBConnection
 	// var pa lib.ProtoAction
 
 	// err = proto.Unmarshal(msg.Value, &pa)
@@ -118,14 +103,14 @@ func TailActions() error {
 	if action.Timestamp == 0 {
 		action.Timestamp = lib.Timestamp(time.Now().Unix())
 	}
-	_, err = actionDBInsert(action)
+	_, err = controller.actionTable.actionDBInsert(action)
 	if err != nil {
 		return err
 	}
 	return nil
 }
 
-func Fetch(w http.ResponseWriter, req *http.Request) {
+func (controller MainController) Fetch(w http.ResponseWriter, req *http.Request) {
 	var protoRequest lib.ProtoActionFetchRequest
 	// Try to decode the request body into the struct. If there is an error,
 	// respond to the client with the error message and a 400 status code.
@@ -142,7 +127,7 @@ func Fetch(w http.ResponseWriter, req *http.Request) {
 	request := lib.FromProtoActionFetchRequest(&protoRequest)
 
 	// now we know that this is a valid request, so let's make a db call
-	actions, err := actionDBGet(request)
+	actions, err := controller.actionTable.actionDBGet(request)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadGateway)
 		return
@@ -156,7 +141,7 @@ func Fetch(w http.ResponseWriter, req *http.Request) {
 	fmt.Fprintf(w, string(ser))
 }
 
-func Count(w http.ResponseWriter, req *http.Request) {
+func (controller MainController) Count(w http.ResponseWriter, req *http.Request) {
 	// Try to decode the request body into the struct. If there is an error,
 	// respond to the client with the error message and a 400 status code.
 	body, err := ioutil.ReadAll(req.Body)
@@ -172,7 +157,7 @@ func Count(w http.ResponseWriter, req *http.Request) {
 	}
 	request := lib.FromProtoGetCountRequest(&protoRequest)
 	// now we know that this is a valid request, so let's make a db call
-	count, err := counterGet(request)
+	count, err := controller.counterTable.counterGet(request)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadGateway)
 		return
@@ -185,7 +170,7 @@ func Count(w http.ResponseWriter, req *http.Request) {
 	fmt.Fprintf(w, string(ser))
 }
 
-func Rate(w http.ResponseWriter, req *http.Request) {
+func (controller MainController) Rate(w http.ResponseWriter, req *http.Request) {
 	// Try to decode the request body into the struct. If there is an error,
 	// respond to the client with the error message and a 400 status code.
 	body, err := ioutil.ReadAll(req.Body)
@@ -202,13 +187,13 @@ func Rate(w http.ResponseWriter, req *http.Request) {
 	request := lib.FromProtoGetRateRequest(&protoRequest)
 	// now we know that this is a valid request, so let's make a db call
 	numRequest := lib.GetCountRequest{CounterType: request.NumCounterType, Window: request.Window, Key: request.NumKey, Timestamp: request.Timestamp}
-	numCount, err := counterGet(numRequest)
+	numCount, err := controller.counterTable.counterGet(numRequest)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadGateway)
 		return
 	}
 	denRequest := lib.GetCountRequest{CounterType: request.DenCounterType, Window: request.Window, Key: request.DenKey, Timestamp: request.Timestamp}
-	denCount, err := counterGet(denRequest)
+	denCount, err := controller.counterTable.counterGet(denRequest)
 	rate := Wilson(numCount, denCount, request.LowerBound)
 	ser, err := json.Marshal(rate)
 	if err != nil {
@@ -226,12 +211,12 @@ func serve(controller MainController) {
 	serverWG = sync.WaitGroup{}
 	serverWG.Add(1)
 	mux := http.NewServeMux()
-	mux.HandleFunc("/fetch", Fetch)
-	mux.HandleFunc("/count", Count)
+	mux.HandleFunc("/fetch", controller.Fetch)
+	mux.HandleFunc("/count", controller.Count)
 	mux.HandleFunc("/get", controller.get)
 	mux.HandleFunc("/set", controller.set)
 	mux.HandleFunc("/log", Log)
-	mux.HandleFunc("/rate", Rate)
+	mux.HandleFunc("/rate", controller.Rate)
 	server.Handler = mux
 	go func() {
 		defer serverWG.Done() // let main know we are done cleaning up
@@ -251,13 +236,13 @@ func shutDownServer() {
 	serverWG.Wait()
 }
 
-func aggregate() {
+func aggregate(controller MainController) {
 	wg := sync.WaitGroup{}
 	wg.Add(len(counterConfigs))
 	for ct, _ := range counterConfigs {
 		go func(ct lib.CounterType) {
 			defer wg.Done()
-			err := run(ct)
+			err := controller.run(ct)
 			if err != nil {
 				log.Printf("Error found in aggregate for counter type: %v. Err: %v", ct, err)
 			}
@@ -267,24 +252,23 @@ func aggregate() {
 }
 
 func main() {
-	instance.Setup([]instance.Resource{})
-	controller := MainController{
-		profile: profileData.NewController(profileData.DB{TableName: "profile", DB: db.DB}),
+	controller, err := DefaultMainController()
+	if err != nil {
+		panic(err)
 	}
-	controller.Init()
 	// one goroutine will run http server
 	go serve(controller)
 
 	// one goroutine will constantly scan kafka and write actions
 	go func() {
 		for {
-			TailActions()
+			controller.TailActions()
 		}
 	}()
 
 	// and other goroutines will run minutely crons to aggregate counters
 	for {
-		aggregate()
+		aggregate(controller)
 		// now sleep for a minute
 		time.Sleep(time.Minute)
 	}

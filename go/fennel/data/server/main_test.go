@@ -3,9 +3,6 @@ package main
 import (
 	"fennel/client"
 	"fennel/data/lib"
-	"fennel/db"
-	"fennel/instance"
-	profileData "fennel/profile/data"
 	profileLib "fennel/profile/lib"
 	"fennel/value"
 	"fmt"
@@ -29,12 +26,12 @@ func equals(t *testing.T, expected []lib.Action, found []lib.Action) {
 	}
 }
 
-func add(t *testing.T, c client.Client, a lib.Action) lib.Action {
+func add(controller MainController, t *testing.T, c client.Client, a lib.Action) lib.Action {
 	err := c.LogAction(a)
 	assert.NoError(t, err)
 
 	// and also make one run of "LogAction" on server to ensure that the message goes through
-	err = TailActions()
+	err = controller.TailActions()
 	assert.NoError(t, err)
 	return a
 }
@@ -47,13 +44,9 @@ func TestAll(t *testing.T) {
 }
 
 func _TestServerClientBasic(t *testing.T) {
-	err := instance.Setup([]instance.Resource{})
+	controller, err := DefaultMainController()
 	assert.NoError(t, err)
 	// create a server
-	controller := MainController{
-		profile: profileData.NewController(profileData.DB{TableName: "profile", DB: db.DB}),
-	}
-	controller.Init()
 	// one goroutine will run http server
 	go serve(controller)
 	defer shutDownServer()
@@ -72,31 +65,27 @@ func _TestServerClientBasic(t *testing.T) {
 	verifyFetch(t, c, lib.ActionFetchRequest{}, []lib.Action{})
 
 	// but this error disappears when we pass all values
-	action1 := add(t, c, lib.Action{
+	action1 := add(controller, t, c, lib.Action{
 		ActorType: 1, ActorID: 2, ActionType: 3, TargetType: 4, TargetID: 5, RequestID: 6, Timestamp: 7},
 	)
 	// and this action should show up in requests
 	verifyFetch(t, c, lib.ActionFetchRequest{}, []lib.Action{action1})
 
 	// add a couple of actions
-	action2 := add(t, c, lib.Action{
+	action2 := add(controller, t, c, lib.Action{
 		ActorType: 11, ActorID: 12, ActionType: 13, TargetType: 14, TargetID: 15, RequestID: 16, Timestamp: 17},
 	)
 	verifyFetch(t, c, lib.ActionFetchRequest{}, []lib.Action{action1, action2})
-	action3 := add(t, c, lib.Action{
+	action3 := add(controller, t, c, lib.Action{
 		ActorType: 22, ActorID: 23, ActionType: 23, TargetType: 24, TargetID: 25, RequestID: 26, Timestamp: 27},
 	)
 	verifyFetch(t, c, lib.ActionFetchRequest{}, []lib.Action{action1, action2, action3})
 }
 
 func _TestEndToEnd(t *testing.T) {
-	err := instance.Setup([]instance.Resource{})
+	controller, err := DefaultMainController()
 	assert.NoError(t, err)
 
-	controller := MainController{
-		profile: profileData.NewController(profileData.DB{TableName: "profile", DB: db.DB}),
-	}
-	controller.Init()
 	// start the server
 	go serve(controller)
 	defer shutDownServer()
@@ -139,7 +128,7 @@ func _TestEndToEnd(t *testing.T) {
 
 	// now make an event
 	action1 := lib.Action{ActorType: profileLib.User, ActorID: uid, TargetType: profileLib.Video, TargetID: video_id, ActionType: lib.Like, RequestID: 1, Timestamp: ts}
-	add(t, c, action1)
+	add(controller, t, c, action1)
 
 	// and verify it went through
 	verifyFetch(t, c, lib.ActionFetchRequest{MinActionID: 0}, []lib.Action{action1})
@@ -151,7 +140,7 @@ func _TestEndToEnd(t *testing.T) {
 		assert.Equal(t, uint64(0), count)
 	}
 	// but counts should go up after we aggregate
-	aggregate()
+	aggregate(controller)
 	for _, cr := range requests {
 		count, err := c.GetCount(cr)
 		assert.NoError(t, err)
@@ -159,11 +148,11 @@ func _TestEndToEnd(t *testing.T) {
 	}
 	// now make one more event which is not of matching action type (Like vs Share)
 	action2 := lib.Action{ActorType: profileLib.User, ActorID: uid, TargetType: profileLib.Video, TargetID: video_id, ActionType: lib.Share, RequestID: 1, Timestamp: ts}
-	add(t, c, action2)
+	add(controller, t, c, action2)
 	verifyFetch(t, c, lib.ActionFetchRequest{MinActionID: 0}, []lib.Action{action1, action2})
 
 	// this one doesn't change the counts because action type doesn't match
-	aggregate()
+	aggregate(controller)
 	for _, cr := range requests {
 		count, err := c.GetCount(cr)
 		assert.NoError(t, err)
@@ -172,10 +161,10 @@ func _TestEndToEnd(t *testing.T) {
 
 	// but another valid event will make the counts go up
 	action3 := lib.Action{ActorType: profileLib.User, ActorID: uid, TargetType: profileLib.Video, TargetID: video_id, ActionType: lib.Like, RequestID: 1, Timestamp: ts}
-	add(t, c, action3)
+	add(controller, t, c, action3)
 	verifyFetch(t, c, lib.ActionFetchRequest{MinActionID: 0}, []lib.Action{action1, action2, action3})
 
-	aggregate()
+	aggregate(controller)
 	for _, cr := range requests {
 		count, err := c.GetCount(cr)
 		assert.NoError(t, err)
@@ -204,12 +193,9 @@ func _TestEndToEnd(t *testing.T) {
 
 // TODO: add more tests covering more error conditions
 func TestProfile(t *testing.T) {
-	err := instance.Setup([]instance.Resource{})
+	controller, err := DefaultMainController()
 	assert.NoError(t, err)
-	controller := MainController{
-		profile: profileData.NewController(profileData.DB{TableName: "profile", DB: db.DB}),
-	}
-	controller.Init()
+
 	// start the server
 	go serve(controller)
 	defer shutDownServer()

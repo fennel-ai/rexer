@@ -2,21 +2,22 @@ package data
 
 import (
 	"fennel/db"
-	"fennel/instance"
 	"github.com/stretchr/testify/assert"
 	"testing"
 )
 
 func TestDBBasic(t *testing.T) {
-	err := instance.Setup([]instance.Resource{instance.DB})
+	DB, err := db.Default()
 	assert.NoError(t, err)
-	p := DB{"profile", db.DB}
-	testProviderBasic(t, p)
+	table, err := NewProfileTable(DB.(db.Connection))
+	assert.NoError(t, err)
+	testProviderBasic(t, table)
 }
 
 func TestDBVersion(t *testing.T) {
-	err := instance.Setup([]instance.Resource{instance.DB})
+	DB, err := db.Default()
 	assert.NoError(t, err)
-	p := DB{"profile", db.DB}
-	testProviderVersion(t, p)
+	table, err := NewProfileTable(DB.(db.Connection))
+	assert.NoError(t, err)
+	testProviderVersion(t, table)
 }

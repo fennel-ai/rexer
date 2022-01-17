@@ -14,7 +14,7 @@ type CachedDB struct {
 	cache       cache.Cache
 }
 
-var _ Provider = CachedDB{DB{"", nil}, nil}
+var _ Provider = CachedDB{ProfileTable{}, nil}
 
 func (c CachedDB) Init() error {
 	if err := c.groundTruth.Init(); err != nil {

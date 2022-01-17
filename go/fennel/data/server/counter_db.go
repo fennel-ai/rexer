@@ -7,7 +7,6 @@ import (
 	profileLib "fennel/profile/lib"
 	"fmt"
 	_ "github.com/mattn/go-sqlite3"
-	"log"
 	"time"
 )
 
@@ -34,8 +33,16 @@ const (
 	CHECKPOINT_TABLE = "checkpoint"
 )
 
-func createCounterTables() error {
-	sql := fmt.Sprintf(`CREATE TABLE %s (
+type CounterTable struct {
+	db.Table
+}
+
+type CheckpointTable struct {
+	db.Table
+}
+
+func NewCounterTable(conn db.Connection) (CounterTable, error) {
+	sql := fmt.Sprintf(`CREATE TABLE IF NOT EXISTS %s(
 		"counter_type" integer NOT NULL,
 		"window_type" integer NOT NULL,
 		"idx" integer NOT NULL,
@@ -43,30 +50,26 @@ func createCounterTables() error {
 		"key" blob NOT NULL,
 		PRIMARY KEY(counter_type, window_type, idx, key)
 	  );`, COUNTER_TABLE)
-
-	//log.Printf("Creating table '%s'...%s", COUNTER_TABLE, sql)
-	statement, err := db.DB.Prepare(sql)
+	conf := db.TableConfig{SQL: sql, Name: COUNTER_TABLE, DB: conn}
+	resource, err := conf.Materialize()
 	if err != nil {
-		return err
+		return CounterTable{}, err
 	}
-	statement.Exec()
-	log.Printf("'%s' table created\n", COUNTER_TABLE)
+	return CounterTable{resource.(db.Table)}, err
+}
 
-	// now create checkpoint table
-	sql = fmt.Sprintf(`CREATE TABLE %s (
+func NewCheckpointTable(conn db.Connection) (CheckpointTable, error) {
+	sql := fmt.Sprintf(`CREATE TABLE IF NOT EXISTS  %s(
 		"counter_type" INTEGER NOT NULL,
 		"checkpoint" INTEGER NOT NULL DEFAULT 0,
 		UNIQUE(counter_type)
 	  );`, CHECKPOINT_TABLE)
-
-	//log.Printf("Creating table '%s'...%s", CHECKPOINT_TABLE, sql)
-	statement, err = db.DB.Prepare(sql)
+	conf := db.TableConfig{SQL: sql, Name: COUNTER_TABLE, DB: conn}
+	resource, err := conf.Materialize()
 	if err != nil {
-		return err
+		return CheckpointTable{}, err
 	}
-	statement.Exec()
-	log.Printf("'%s' table created\n", CHECKPOINT_TABLE)
-	return nil
+	return CheckpointTable{resource.(db.Table)}, err
 }
 
 func tsToIndex(ts lib.Timestamp, window lib.Window) (uint64, error) {
@@ -95,16 +98,16 @@ func keyToString(k lib.Key) string {
 	return fmt.Sprintf("%d", k)
 }
 
-func counterIncrement(ct lib.CounterType, window lib.Window, key lib.Key, ts lib.Timestamp, count uint64) error {
+func (table CounterTable) counterIncrement(ct lib.CounterType, window lib.Window, key lib.Key, ts lib.Timestamp, count uint64) error {
 	index, err := tsToIndex(ts, window)
 	if err != nil {
 		return err
 	}
 	bucket := CounterBucket{ct, window, index, keyToString(key), count}
-	return counterDBIncrement(bucket)
+	return table.counterDBIncrement(bucket)
 }
 
-func counterGet(request lib.GetCountRequest) (uint64, error) {
+func (table CounterTable) counterGet(request lib.GetCountRequest) (uint64, error) {
 	if request.Timestamp == 0 {
 		request.Timestamp = lib.Timestamp(time.Now().Unix())
 	}
@@ -113,14 +116,14 @@ func counterGet(request lib.GetCountRequest) (uint64, error) {
 		return 0, err
 	}
 	bucket := CounterBucket{request.CounterType, request.Window, index, keyToString(request.Key), 0}
-	return counterDBGet(bucket)
+	return table.counterDBGet(bucket)
 }
 
 // updates the bucket identified by (bucket.counter_type, bucket.window, bucket.index, bucket.key)
 // by incrementing its count by bucket.count
 // TODO: make this batched and updaate at least all windows for a single event together
-func counterDBIncrement(bucket CounterBucket) error {
-	_, err := db.DB.NamedExec(fmt.Sprintf(`
+func (table CounterTable) counterDBIncrement(bucket CounterBucket) error {
+	_, err := table.DB.NamedExec(fmt.Sprintf(`
 		INSERT INTO %s 
 			( counter_type, window_type, idx, key, count)
         VALUES 
@@ -138,7 +141,7 @@ func counterDBIncrement(bucket CounterBucket) error {
 // and bucket index is between (bucket.index - 100, bucket.index] left exclusive, right inclusive
 // however, if window is forever, the index field doesn't matter (forever uses a single bucket)
 // the 'GetCount' field of input bucket is ignored
-func counterDBGet(bucket CounterBucket) (uint64, error) {
+func (table CounterTable) counterDBGet(bucket CounterBucket) (uint64, error) {
 	query := fmt.Sprintf(`
 		SELECT SUM(count) as total
 		FROM %s	
@@ -153,7 +156,7 @@ func counterDBGet(bucket CounterBucket) (uint64, error) {
 		query = fmt.Sprintf("%s AND idx = %d", query, FOREVER_BUCKET_INDEX)
 	}
 	//log.Printf("Counter storage, get query: %s\n", query)
-	statement, err := db.DB.PrepareNamed(query)
+	statement, err := table.DB.PrepareNamed(query)
 	if err != nil {
 		return 0, err
 	}
@@ -167,21 +170,8 @@ func counterDBGet(bucket CounterBucket) (uint64, error) {
 	}
 }
 
-func counterDBPrintAll() error {
-	// this is slow and will do full table scan. Just use it for debugging/dev
-	var buckets []CounterBucket
-	err := db.DB.Select(&buckets, fmt.Sprintf("SELECT * FROM %s", COUNTER_TABLE))
-	if err != nil {
-		return err
-	}
-	for _, item := range buckets {
-		fmt.Printf("%#v\n", item)
-	}
-	return nil
-}
-
-func counterDBGetCheckpoint(ct lib.CounterType) (profileLib.OidType, error) {
-	row := db.DB.QueryRow(fmt.Sprintf(`
+func (table CheckpointTable) counterDBGetCheckpoint(ct lib.CounterType) (profileLib.OidType, error) {
+	row := table.DB.QueryRow(fmt.Sprintf(`
 		SELECT checkpoint
 		FROM %s
 		WHERE counter_type = ?;
@@ -198,8 +188,8 @@ func counterDBGetCheckpoint(ct lib.CounterType) (profileLib.OidType, error) {
 	}
 }
 
-func counterDBSetCheckpoint(ct lib.CounterType, checkpoint profileLib.OidType) error {
-	_, err := db.DB.Exec(fmt.Sprintf(`
+func (table CheckpointTable) counterDBSetCheckpoint(ct lib.CounterType, checkpoint profileLib.OidType) error {
+	_, err := table.DB.Exec(fmt.Sprintf(`
 		INSERT INTO %s (counter_type, checkpoint)
         VALUES (?, ?)
 		ON CONFLICT(counter_type)

@@ -101,20 +101,6 @@ type Counter struct {
 	window     lib.Window
 }
 
-func Increment(counters []Counter, ts lib.Timestamp) error {
-	// TODO: make this atomic - either all the keys should persist or none should
-	// otherwise, part of it can fail mid way creating inconsistency
-	// either that, or make the queue we run through itself a queue of individual counters
-	// instead of queue of actions
-	for _, c := range counters {
-		err := counterIncrement(c.Type, c.window, c.key, ts, 1)
-		if err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
 // TODO: make it possible to optionally restrict CounterConfig to be only certain time windows
 // NOTE: each counter config must specific exactly one event type
 type CounterConfig struct {
