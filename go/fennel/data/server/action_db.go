@@ -4,6 +4,7 @@ import (
 	"fennel/data/lib"
 	"fennel/db"
 	"fmt"
+	_ "github.com/go-sql-driver/mysql"
 	_ "github.com/mattn/go-sqlite3"
 	"strings"
 )
@@ -18,17 +19,17 @@ type ActionTable struct {
 
 func NewActionTable(conn db.Connection) (ActionTable, error) {
 	sql := fmt.Sprintf(`CREATE TABLE IF NOT EXISTS %s (
-    	"action_id" integer not null primary key autoincrement,
-		"actor_id" integer NOT NULL,
-		"actor_type" integer NOT NULL,
-		"target_id" integer NOT NULL,
-		"target_type" integer NOT NULL,
-		"action_type" integer NOT NULL,
-		"action_value" integer NOT NULL,
-		"timestamp" integer NOT NULL,
-		"request_id" integer not null
+		action_id integer not null primary key auto_increment,
+		actor_id integer NOT NULL,
+		actor_type integer NOT NULL,
+		target_id integer NOT NULL,
+		target_type integer NOT NULL,
+		action_type integer NOT NULL,
+		action_value integer NOT NULL,
+		timestamp integer NOT NULL,
+		request_id integer not null
 	  );`, ACTION_LOG_TABLENAME)
-	conf := db.TableConfig{SQL: sql, Name: ACTION_LOG_TABLENAME, DB: conn}
+	conf := db.TableConfig{SQL: sql, Name: ACTION_LOG_TABLENAME, DB: conn, DropTable: true}
 	resource, err := conf.Materialize()
 	if err != nil {
 		return ActionTable{}, err

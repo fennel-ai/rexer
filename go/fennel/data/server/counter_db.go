@@ -6,6 +6,7 @@ import (
 	"fennel/db"
 	profileLib "fennel/profile/lib"
 	"fmt"
+	_ "github.com/go-sql-driver/mysql"
 	_ "github.com/mattn/go-sqlite3"
 	"time"
 )
@@ -43,14 +44,14 @@ type CheckpointTable struct {
 
 func NewCounterTable(conn db.Connection) (CounterTable, error) {
 	sql := fmt.Sprintf(`CREATE TABLE IF NOT EXISTS %s(
-		"counter_type" integer NOT NULL,
-		"window_type" integer NOT NULL,
-		"idx" integer NOT NULL,
-		"count" integer NOT NULL DEFAULT 0,
-		"key" blob NOT NULL,
-		PRIMARY KEY(counter_type, window_type, idx, key)
+		counter_type integer NOT NULL,
+		window_type integer NOT NULL,
+		idx integer NOT NULL,
+		count integer NOT NULL DEFAULT 0,
+		zkey varchar(256) NOT NULL,
+		PRIMARY KEY(counter_type, window_type, idx, zkey)
 	  );`, COUNTER_TABLE)
-	conf := db.TableConfig{SQL: sql, Name: COUNTER_TABLE, DB: conn}
+	conf := db.TableConfig{SQL: sql, Name: COUNTER_TABLE, DB: conn, DropTable: true}
 	resource, err := conf.Materialize()
 	if err != nil {
 		return CounterTable{}, err
@@ -60,11 +61,11 @@ func NewCounterTable(conn db.Connection) (CounterTable, error) {
 
 func NewCheckpointTable(conn db.Connection) (CheckpointTable, error) {
 	sql := fmt.Sprintf(`CREATE TABLE IF NOT EXISTS  %s(
-		"counter_type" INTEGER NOT NULL,
-		"checkpoint" INTEGER NOT NULL DEFAULT 0,
-		UNIQUE(counter_type)
+		counter_type INTEGER NOT NULL,
+		checkpoint INTEGER NOT NULL DEFAULT 0,
+		PRIMARY KEY(counter_type)
 	  );`, CHECKPOINT_TABLE)
-	conf := db.TableConfig{SQL: sql, Name: COUNTER_TABLE, DB: conn}
+	conf := db.TableConfig{SQL: sql, Name: CHECKPOINT_TABLE, DB: conn, DropTable: true}
 	resource, err := conf.Materialize()
 	if err != nil {
 		return CheckpointTable{}, err
@@ -125,11 +126,11 @@ func (table CounterTable) counterGet(request lib.GetCountRequest) (uint64, error
 func (table CounterTable) counterDBIncrement(bucket CounterBucket) error {
 	_, err := table.DB.NamedExec(fmt.Sprintf(`
 		INSERT INTO %s 
-			( counter_type, window_type, idx, key, count)
+			( counter_type, window_type, idx, zkey, count)
         VALUES 
 			(:counter_type, :window_type, :idx, :key, :count)
-		ON CONFLICT(counter_type, window_type, idx, key)
-		DO UPDATE SET
+		ON DUPLICATE KEY
+		UPDATE
 			count = count + :count
 		;`, COUNTER_TABLE),
 		bucket)
@@ -148,7 +149,7 @@ func (table CounterTable) counterDBGet(bucket CounterBucket) (uint64, error) {
 		WHERE 
 			counter_type = :counter_type
 			AND window_type = :window_type
-			AND key = :key 
+			AND zkey = :key 
 		`, COUNTER_TABLE)
 	if bucket.Window != lib.Window_FOREVER {
 		query = fmt.Sprintf("%s AND idx > :idx - %d AND idx <= :idx;", query, GRANULARITY)
@@ -192,8 +193,8 @@ func (table CheckpointTable) counterDBSetCheckpoint(ct lib.CounterType, checkpoi
 	_, err := table.DB.Exec(fmt.Sprintf(`
 		INSERT INTO %s (counter_type, checkpoint)
         VALUES (?, ?)
-		ON CONFLICT(counter_type)
-		DO UPDATE SET
+		ON DUPLICATE KEY
+		UPDATE
 			checkpoint = ?
 		;`, CHECKPOINT_TABLE), ct, checkpoint, checkpoint)
 	return err

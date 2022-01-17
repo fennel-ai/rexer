@@ -4,7 +4,9 @@ import (
 	"fennel/instance"
 	"fennel/resource"
 	"fmt"
+	_ "github.com/go-sql-driver/mysql"
 	"github.com/jmoiron/sqlx"
+	_ "github.com/mattn/go-sqlite3"
 	"os"
 )
 
@@ -32,7 +34,7 @@ func (c Connection) Type() resource.Type {
 func Default() (resource.Resource, error) {
 	switch instance.Current() {
 	case instance.TEST:
-		return SQLiteConfig{"fennel.db"}.Materialize()
+		return testMySQLConfig.Materialize()
 	case instance.PROD:
 		return testMySQLConfig.Materialize()
 	default:

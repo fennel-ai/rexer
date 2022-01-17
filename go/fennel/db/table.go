@@ -1,6 +1,7 @@
 package db
 
 import (
+	"fennel/instance"
 	"fennel/resource"
 	"fmt"
 )
@@ -17,17 +18,7 @@ func (t Table) Close() error {
 }
 
 func (t Table) Teardown() error {
-	statement, err := t.DB.Prepare(fmt.Sprintf(
-		`DROP TABLE %s IF EXISTS`, t.Name,
-	))
-	if err != nil {
-		return err
-	}
-	_, err = statement.Exec()
-	if err != nil {
-		return err
-	}
-	return nil
+	return droptable(t.Name, t.DB)
 }
 
 func (t Table) Type() resource.Type {
@@ -35,12 +26,19 @@ func (t Table) Type() resource.Type {
 }
 
 type TableConfig struct {
-	SQL  string
-	Name string
-	DB   Connection
+	SQL       string
+	Name      string
+	DB        Connection
+	DropTable bool // if true, table is dropped before being recreated in TEST instance
 }
 
 func (conf TableConfig) Materialize() (resource.Resource, error) {
+	if conf.DropTable && instance.Current() == instance.TEST {
+		err := droptable(conf.Name, conf.DB)
+		if err != nil {
+			return nil, err
+		}
+	}
 	statement, err := conf.DB.Prepare(conf.SQL)
 	if err != nil {
 		return nil, err
@@ -53,3 +51,17 @@ func (conf TableConfig) Materialize() (resource.Resource, error) {
 }
 
 var _ resource.Config = TableConfig{}
+
+func droptable(name string, db Connection) error {
+	statement, err := db.Prepare(fmt.Sprintf(
+		`DROP TABLE IF EXISTS %s;`, name,
+	))
+	if err != nil {
+		return err
+	}
+	_, err = statement.Exec()
+	if err != nil {
+		return err
+	}
+	return nil
+}

@@ -3,6 +3,7 @@ package data
 import (
 	"fennel/db"
 	"fmt"
+	_ "github.com/go-sql-driver/mysql"
 	_ "github.com/mattn/go-sqlite3"
 )
 
@@ -15,11 +16,12 @@ func NewProfileTable(conn db.Connection) (ProfileTable, error) {
 	sql := fmt.Sprintf(`CREATE TABLE IF NOT EXISTS %s (
 		otype integer not null,
 		oid integer not null,
-		zkey varchar not null,
+		zkey varchar(120) not null,
 		version integer not null,
 		value blob not null
 	  );`, name)
-	table, err := db.TableConfig{SQL: sql, Name: name, DB: conn}.Materialize()
+	conf := db.TableConfig{SQL: sql, Name: name, DB: conn, DropTable: true}
+	table, err := conf.Materialize()
 	if err != nil {
 		return ProfileTable{}, err
 	}
