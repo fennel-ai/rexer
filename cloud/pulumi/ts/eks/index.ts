@@ -68,7 +68,8 @@ function setupAmbassadorIngress(cluster: k8s.Provider) {
         file: "aes-crds.yaml"
     }, { provider: cluster, dependsOn: ns })
 
-    // Configure default Module to add linkerd headers.
+    // Configure default Module to add linkerd headers as per:
+    // https://www.getambassador.io/docs/edge-stack/latest/topics/using/mappings/#linkerd-interoperability-add_linkerd_headers
     const l5dmapping = new k8s.apiextensions.CustomResource("l5d-mapping", {
         "apiVersion": "getambassador.io/v3alpha1",
         "kind": "Module",
@@ -96,6 +97,7 @@ function setupAmbassadorIngress(cluster: k8s.Provider) {
             "emissary-ingress": {
                 "createDefaultListeners": true,
                 "agent": {
+                    // Token to connect cluster to ambassador cloud.
                     "cloudConnectToken": config.requireSecret("aes-token")
                 }
             }
@@ -107,6 +109,9 @@ function setupAmbassadorIngress(cluster: k8s.Provider) {
                     if (metadata.annotations == null) {
                         metadata.annotations = {}
                     }
+                    // We use inject=enabled instead of inject=ingress as per
+                    // https://github.com/linkerd/linkerd2/issues/6650#issuecomment-898732177.
+                    // Otherwise, we see the issue reported in the above bug report.
                     metadata.annotations["linkerd.io/inject"] = "enabled"
                     metadata.annotations["config.linkerd.io/skip-inbound-ports"] = "80,443"
                 }
