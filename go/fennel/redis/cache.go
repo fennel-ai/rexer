@@ -3,13 +3,12 @@ package redis
 import (
 	"context"
 	"fennel/cache"
-	"fmt"
 	"github.com/go-redis/redis/v8"
 	"time"
 )
 
 type Cache struct {
-	client *redis.Client
+	client Client
 }
 
 func (c Cache) Nil() error {
@@ -18,7 +17,7 @@ func (c Cache) Nil() error {
 
 var _ cache.Cache = Cache{}
 
-func NewCache(client *redis.Client) Cache {
+func NewCache(client Client) Cache {
 	return Cache{client: client}
 }
 
@@ -35,9 +34,5 @@ func (c Cache) Set(ctx context.Context, k string, v interface{}, ttl time.Durati
 }
 
 func (c Cache) Init() error {
-	if c.client == nil {
-		return fmt.Errorf("client can not be nil")
-	} else {
-		return nil
-	}
+	return nil
 }

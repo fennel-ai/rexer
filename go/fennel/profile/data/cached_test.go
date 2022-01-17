@@ -3,7 +3,6 @@ package data
 import (
 	"fennel/db"
 	"fennel/redis"
-	"github.com/alicebob/miniredis/v2"
 	"github.com/stretchr/testify/assert"
 	"testing"
 )
@@ -31,23 +30,22 @@ func TestCachedDBBasic(t *testing.T) {
 	assert.NoError(t, err)
 	table, err := NewProfileTable(DB.(db.Connection))
 	assert.NoError(t, err)
-	mr, err := miniredis.Run()
-	defer mr.Close()
+
+	client, err := redis.DefaultClient()
 	assert.NoError(t, err)
-	client := redis.NewClient(mr.Addr(), nil)
-	p := CachedDB{cache: redis.NewCache(client), groundTruth: table}
+	defer client.Close()
+	p := CachedDB{cache: redis.NewCache(client.(redis.Client)), groundTruth: table}
 	testProviderBasic(t, p)
 }
 
 func TestCaching(t *testing.T) {
 	// test that we cache the value instead of always pulling from ground truth
-	mr, err := miniredis.Run()
-	defer mr.Close()
+	client, err := redis.DefaultClient()
 	assert.NoError(t, err)
-	client := redis.NewClient(mr.Addr(), nil)
+	defer client.Close()
 	origmock := []byte{1, 2, 3}
 	gt := mockProvider{origmock}
-	p := CachedDB{cache: redis.NewCache(client), groundTruth: &gt}
+	p := CachedDB{cache: redis.NewCache(client.(redis.Client)), groundTruth: &gt}
 	err = p.Init()
 	assert.NoError(t, err)
 
@@ -78,10 +76,11 @@ func TestCachedDBVersion(t *testing.T) {
 	assert.NoError(t, err)
 	table, err := NewProfileTable(DB.(db.Connection))
 	assert.NoError(t, err)
-	mr, err := miniredis.Run()
-	defer mr.Close()
+
+	client, err := redis.DefaultClient()
 	assert.NoError(t, err)
-	client := redis.NewClient(mr.Addr(), nil)
-	p := CachedDB{cache: redis.NewCache(client), groundTruth: table}
+	defer client.Close()
+
+	p := CachedDB{cache: redis.NewCache(client.(redis.Client)), groundTruth: table}
 	testProviderVersion(t, p)
 }

@@ -2,7 +2,6 @@ package redis
 
 import (
 	"context"
-	"github.com/alicebob/miniredis/v2"
 	"github.com/stretchr/testify/assert"
 	"testing"
 	"time"
@@ -12,11 +11,10 @@ import (
 // when I tried doing this earlier with byte string or a struct that impelemented
 // MarshalBinary, it failed. But I gave up soon
 func TestCache(t *testing.T) {
-	mr, err := miniredis.Run()
-	defer mr.Close()
-	assert.NoError(t, err)
-	client := NewClient(mr.Addr(), nil)
+	resource, err := DefaultClient()
+	client := resource.(Client)
 	cache := NewCache(client)
+	defer client.Close()
 
 	k := "hi"
 	exp := "bye"
@@ -31,6 +29,8 @@ func TestCache(t *testing.T) {
 	assert.Equal(t, exp, v)
 
 	// now move the time forward a bit
+	var conf MiniRedisConfig = client.conf.(MiniRedisConfig)
+	mr := conf.mr
 	mr.FastForward(4 * time.Second)
 	// we can still get it
 	v, err = cache.Get(context.Background(), k)

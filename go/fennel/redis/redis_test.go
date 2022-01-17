@@ -6,7 +6,6 @@ import (
 	"flag"
 	"testing"
 
-	"github.com/alicebob/miniredis/v2"
 	"github.com/go-redis/redis/v8"
 	"github.com/stretchr/testify/assert"
 )
@@ -14,7 +13,7 @@ import (
 var integration = flag.Bool("integration", false, "flag to indicate whether to run integration tests")
 var testRedisAddr = flag.String("addr", "clustercfg.redis-db-e5ae558.sumkzb.memorydb.ap-south-1.amazonaws.com:6379", "address of test redis cluster")
 
-func testClient(t *testing.T, rdb *redis.Client) {
+func testClient(t *testing.T, rdb Client) {
 	var ctx = context.Background()
 
 	err := rdb.Set(ctx, "key", "myvalue", 0).Err()
@@ -31,18 +30,19 @@ func testClient(t *testing.T, rdb *redis.Client) {
 }
 
 func TestRedisClientIntegration(t *testing.T) {
+	// TODO: verify this test passes
 	if !*integration {
 		t.SkipNow()
 	}
-	rdb := NewClient(*testRedisAddr, &tls.Config{})
-	testClient(t, rdb)
+	conf := ClientConfig{Addr: *testRedisAddr, TLSConfig: &tls.Config{}}
+	rdb, err := conf.Materialize()
+	assert.NoError(t, err)
+	testClient(t, rdb.(Client))
 }
 
 func TestRedisClientLocal(t *testing.T) {
-	// This server is never explicitly shutdown. Instead, we depend on the process
-	// termination after the tests are run for cleanup.
-	mr, err := miniredis.Run()
-	defer mr.Close()
+	client, err := DefaultClient()
 	assert.NoError(t, err)
-	testClient(t, NewClient(mr.Addr(), nil))
+	defer client.Close()
+	testClient(t, client.(Client))
 }
