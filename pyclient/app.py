@@ -66,7 +66,7 @@ def profile_handler():
     args = request.args
     oid = args.get('oid', None)
     otype = args.get('otype', None)
-    key = args.get('otype', None)
+    key = args.get('key', None)
     version = args.get('version', None)
     errors = _validate_profile_get(otype, oid, key, version)
     if len(errors) > 0:
