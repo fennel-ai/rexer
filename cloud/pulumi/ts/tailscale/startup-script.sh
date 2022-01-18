@@ -17,4 +17,5 @@ sudo yum -y install tailscale
 
 sudo systemctl enable --now tailscaled
 
+# TODO: Don't save the tailscale authkey in plaintext.
 sudo tailscale up --advertise-routes=172.31.0.0/16 --authkey tskey-kgCz7h7CNTRL-sFgK73QSgVehP8xURhceX
