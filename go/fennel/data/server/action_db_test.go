@@ -2,17 +2,17 @@ package main
 
 import (
 	"fennel/data/lib"
-	"fennel/db"
 	profileLib "fennel/profile/lib"
+	"fennel/test"
 	"github.com/stretchr/testify/assert"
 	"testing"
 )
 
 // TODO: write exhaustive tests
 func TestActionDBBasic(t *testing.T) {
-	DB, err := db.Default()
+	DB, err := test.DefaultDB()
 	assert.NoError(t, err)
-	table, err := NewActionTable(DB.(db.Connection))
+	table, err := NewActionTable(DB)
 	assert.NoError(t, err)
 
 	var request lib.ActionFetchRequest

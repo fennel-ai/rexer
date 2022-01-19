@@ -1,9 +1,9 @@
 package main
 
 import (
-	"fennel/db"
 	"fennel/kafka"
 	profileData "fennel/profile/data"
+	"fennel/test"
 )
 
 type MainController struct {
@@ -16,11 +16,10 @@ type MainController struct {
 }
 
 func DefaultMainController() (MainController, error) {
-	DB, err := db.Default()
+	conn, err := test.DefaultDB()
 	if err != nil {
 		return MainController{}, err
 	}
-	conn := DB.(db.Connection)
 	actionTable, err := NewActionTable(conn)
 	if err != nil {
 		return MainController{}, err

@@ -1,7 +1,7 @@
 package data
 
 import (
-	"fennel/db"
+	"fennel/test"
 	"fennel/utils"
 	"fennel/value"
 	"github.com/stretchr/testify/assert"
@@ -9,25 +9,25 @@ import (
 )
 
 func TestDBBasic(t *testing.T) {
-	DB, err := db.Default()
+	DB, err := test.DefaultDB()
 	assert.NoError(t, err)
-	table, err := NewProfileTable(DB.(db.Connection))
+	table, err := NewProfileTable(DB)
 	assert.NoError(t, err)
 	testProviderBasic(t, table)
 }
 
 func TestDBVersion(t *testing.T) {
-	DB, err := db.Default()
+	DB, err := test.DefaultDB()
 	assert.NoError(t, err)
-	table, err := NewProfileTable(DB.(db.Connection))
+	table, err := NewProfileTable(DB)
 	assert.NoError(t, err)
 	testProviderVersion(t, table)
 }
 
 func TestLongKey(t *testing.T) {
-	DB, err := db.Default()
+	DB, err := test.DefaultDB()
 	assert.NoError(t, err)
-	table, err := NewProfileTable(DB.(db.Connection))
+	table, err := NewProfileTable(DB)
 	assert.NoError(t, err)
 	err = table.Init()
 	assert.NoError(t, err)

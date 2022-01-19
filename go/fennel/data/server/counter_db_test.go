@@ -2,8 +2,8 @@ package main
 
 import (
 	"fennel/data/lib"
-	"fennel/db"
 	profileLib "fennel/profile/lib"
+	"fennel/test"
 	"fennel/utils"
 	"github.com/stretchr/testify/assert"
 	"testing"
@@ -16,9 +16,9 @@ func verify(table CounterTable, t *testing.T, expected uint64, ct lib.CounterTyp
 }
 
 func TestCounterStorage(t *testing.T) {
-	DB, err := db.Default()
+	DB, err := test.DefaultDB()
 	assert.NoError(t, err)
-	table, err := NewCounterTable(DB.(db.Connection))
+	table, err := NewCounterTable(DB)
 	assert.NoError(t, err)
 
 	ct := lib.CounterType_USER_LIKE
@@ -58,9 +58,9 @@ func TestCounterStorage(t *testing.T) {
 }
 
 func TestForeverWindow(t *testing.T) {
-	DB, err := db.Default()
+	DB, err := test.DefaultDB()
 	assert.NoError(t, err)
-	table, err := NewCounterTable(DB.(db.Connection))
+	table, err := NewCounterTable(DB)
 	assert.NoError(t, err)
 	ct := lib.CounterType_USER_LIKE
 	key := lib.Key{1, 2, 3}
@@ -84,9 +84,9 @@ func TestForeverWindow(t *testing.T) {
 }
 
 func TestLongKey(t *testing.T) {
-	DB, err := db.Default()
+	DB, err := test.DefaultDB()
 	assert.NoError(t, err)
-	table, err := NewCounterTable(DB.(db.Connection))
+	table, err := NewCounterTable(DB)
 	assert.NoError(t, err)
 	// it should not be possible to set a key longer than 256 chars
 	bucket := CounterBucket{1, 2, 3, utils.RandString(257), 1}
@@ -100,9 +100,9 @@ func TestLongKey(t *testing.T) {
 }
 
 func TestCheckpoint(t *testing.T) {
-	DB, err := db.Default()
+	DB, err := test.DefaultDB()
 	assert.NoError(t, err)
-	table, err := NewCheckpointTable(DB.(db.Connection))
+	table, err := NewCheckpointTable(DB)
 	assert.NoError(t, err)
 	ct1 := lib.CounterType_USER_LIKE
 	zero := profileLib.OidType(0)

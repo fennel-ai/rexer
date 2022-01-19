@@ -1,7 +1,6 @@
 package db
 
 import (
-	"fennel/instance"
 	"fennel/resource"
 	"fmt"
 )
@@ -33,7 +32,9 @@ type TableConfig struct {
 }
 
 func (conf TableConfig) Materialize() (resource.Resource, error) {
-	if conf.DropTable && instance.Current() == instance.TEST {
+	// TODO: fix this - table dropping should only happen in test instance
+	//if conf.DropTable && instance.Current() == instance.TEST {
+	if conf.DropTable {
 		err := droptable(conf.Name, conf.DB)
 		if err != nil {
 			return nil, err

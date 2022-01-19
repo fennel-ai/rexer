@@ -1,21 +1,22 @@
 package instance
 
 import (
+	"fennel/db"
 	"flag"
 	"fmt"
 )
 
 var instance = flag.String("instance", "test", "possible values are test(default), prod, dev")
 
-type Instance uint8
+type Type uint8
 
 const (
-	PROD Instance = 1
-	DEV           = 2
-	TEST          = 3
+	PROD Type = 1
+	DEV       = 2
+	TEST      = 3
 )
 
-func Current() Instance {
+func Current() Type {
 	switch *instance {
 	case "test":
 		return TEST
@@ -28,7 +29,7 @@ func Current() Instance {
 	}
 }
 
-func (i Instance) Name() string {
+func (i Type) Name() string {
 	switch i {
 	case PROD:
 		return "prod"
@@ -39,4 +40,8 @@ func (i Instance) Name() string {
 	default:
 		panic(fmt.Sprintf("unexpected instance: %v", i))
 	}
+}
+
+type Instance struct {
+	DB db.Connection
 }

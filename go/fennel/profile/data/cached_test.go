@@ -1,8 +1,8 @@
 package data
 
 import (
-	"fennel/db"
 	"fennel/redis"
+	"fennel/test"
 	"github.com/stretchr/testify/assert"
 	"testing"
 )
@@ -26,9 +26,10 @@ func (m *mockProvider) Name() string { return "mock_provider" }
 var _ Provider = &mockProvider{}
 
 func TestCachedDBBasic(t *testing.T) {
-	DB, err := db.Default()
+	DB, err := test.DefaultDB()
 	assert.NoError(t, err)
-	table, err := NewProfileTable(DB.(db.Connection))
+
+	table, err := NewProfileTable(DB)
 	assert.NoError(t, err)
 
 	client, err := redis.DefaultClient()
@@ -72,9 +73,9 @@ func TestCaching(t *testing.T) {
 }
 
 func TestCachedDBVersion(t *testing.T) {
-	DB, err := db.Default()
+	DB, err := test.DefaultDB()
 	assert.NoError(t, err)
-	table, err := NewProfileTable(DB.(db.Connection))
+	table, err := NewProfileTable(DB)
 	assert.NoError(t, err)
 
 	client, err := redis.DefaultClient()
