@@ -1,29 +1,19 @@
-package data
+package profile
 
 import (
-	"fennel/lib/profile"
+	"fennel/instance"
+	profilelib "fennel/lib/profile"
+	"fennel/model/profile"
 	"fennel/value"
 	"google.golang.org/protobuf/proto"
 	"time"
 )
 
-type Controller struct {
-	provider Provider
-}
-
-func NewController(p Provider) Controller {
-	return Controller{p}
-}
-
-func (pc Controller) Init() error {
-	return pc.provider.Init()
-}
-
-func (pc Controller) Get(request profile.ProfileItem) (*value.Value, error) {
+func Get(this instance.Instance, request profilelib.ProfileItem) (*value.Value, error) {
 	if err := request.Validate(); err != nil {
 		return nil, err
 	}
-	valueSer, err := pc.provider.Get(request.OType, request.Oid, request.Key, request.Version)
+	valueSer, err := profile.Get(this, request.OType, request.Oid, request.Key, request.Version)
 	if err != nil {
 		return nil, err
 	} else if valueSer == nil {
@@ -41,7 +31,7 @@ func (pc Controller) Get(request profile.ProfileItem) (*value.Value, error) {
 	return &val, nil
 }
 
-func (pc Controller) Set(request profile.ProfileItem) error {
+func Set(this instance.Instance, request profilelib.ProfileItem) error {
 	if err := request.Validate(); err != nil {
 		return err
 	}
@@ -56,7 +46,7 @@ func (pc Controller) Set(request profile.ProfileItem) error {
 	if err != nil {
 		return err
 	}
-	if err = pc.provider.Set(request.OType, request.Oid, request.Key, request.Version, valSer); err != nil {
+	if err = profile.Set(this, request.OType, request.Oid, request.Key, request.Version, valSer); err != nil {
 		return err
 	}
 	return nil

@@ -1,6 +1,7 @@
 package main
 
 import (
+	profile2 "fennel/controller/profile"
 	profilelib "fennel/lib/profile"
 	"fennel/value"
 	"fmt"
@@ -28,7 +29,7 @@ func (controller MainController) get(w http.ResponseWriter, req *http.Request) {
 		http.Error(w, fmt.Sprintf("invalid request: %v", err), http.StatusBadRequest)
 		return
 	}
-	valuePtr, err := controller.profile.Get(request)
+	valuePtr, err := profile2.Get(controller.instance, request)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadGateway)
 		return
@@ -71,7 +72,7 @@ func (controller MainController) set(w http.ResponseWriter, req *http.Request) {
 		http.Error(w, fmt.Sprintf("invalid request: %v", err), http.StatusBadRequest)
 		return
 	}
-	if err = controller.profile.Set(request); err != nil {
+	if err = profile2.Set(controller.instance, request); err != nil {
 		http.Error(w, err.Error(), http.StatusBadGateway)
 		return
 	}

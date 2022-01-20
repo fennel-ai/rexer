@@ -33,10 +33,17 @@ func init() {
 				timestamp integer NOT NULL,
 				request_id integer not null
 		  );`,
-		4: `CREATE TABLE IF NOT EXISTS checkpoint(
+		4: `CREATE TABLE IF NOT EXISTS checkpoint (
 				counter_type INTEGER NOT NULL,
 				checkpoint INTEGER NOT NULL DEFAULT 0,
 				PRIMARY KEY(counter_type)
+		  );`,
+		5: `CREATE TABLE IF NOT EXISTS profile (
+				otype integer not null,
+				oid integer not null,
+				zkey varchar(256) not null,
+				version integer not null,
+				value blob not null
 		  );`,
 	}
 	tablenames = []string{
@@ -44,6 +51,7 @@ func init() {
 		"schema_test",
 		"actionlog",
 		"checkpoint",
+		"profile",
 	}
 	if err := verifyDefs(); err != nil {
 		panic(err)
@@ -103,14 +111,12 @@ func incrementSchemaVersion(db Connection, curr uint32) error {
 
 func SyncSchema(db Connection) error {
 	curr, err := schemaVersion(db)
-	fmt.Printf("Sync schema: curr version: %d and error: %v\n", curr, err)
 	if err != nil {
 		return err
 	}
 	len_ := uint32(len(defs))
 	for i := curr + 1; i <= len_; i++ {
 		query := defs[i]
-		fmt.Printf("Sync schema: : starting loop [%d/%d], and query is: %s\n", i, len_, query)
 		if _, err = db.Exec(query); err != nil {
 			return err
 		}
@@ -119,5 +125,4 @@ func SyncSchema(db Connection) error {
 		}
 	}
 	return nil
-
 }

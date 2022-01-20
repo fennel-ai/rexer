@@ -3,12 +3,10 @@ package main
 import (
 	"fennel/instance"
 	"fennel/kafka"
-	profileData "fennel/profile/data"
 	"fennel/test"
 )
 
 type MainController struct {
-	profile      profileData.Controller
 	instance     instance.Instance
 	counterTable CounterTable
 	producer     kafka.FProducer
@@ -30,20 +28,11 @@ func DefaultMainController() (MainController, error) {
 	if err != nil {
 		return MainController{}, err
 	}
-	profileProvider, err := profileData.NewProfileTable(conn)
-	if err != nil {
-		return MainController{}, err
-	}
-	err = profileProvider.Init()
-	if err != nil {
-		return MainController{}, err
-	}
 	producer, consumer, err := kafka.DefaultProducerConsumer(ACTIONLOG_TOPICNAME)
 	if err != nil {
 		return MainController{}, err
 	}
 	return MainController{
-		profile:      profileData.NewController(profileProvider),
 		instance:     this,
 		counterTable: counterTable,
 		producer:     producer,
