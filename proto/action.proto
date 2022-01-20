@@ -1,6 +1,6 @@
 syntax = "proto3";
 
-option go_package = "fennel/data/lib";
+option go_package = "fennel/lib/action";
 
 message ProtoAction {
   uint64 ActionID = 1 [json_name = "action_id"];
