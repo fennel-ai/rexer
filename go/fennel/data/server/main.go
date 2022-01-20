@@ -43,7 +43,7 @@ func (controller MainController) Log(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 	// write the actionID back
-	fmt.Fprintf(w, string(aid))
+	fmt.Fprintf(w, fmt.Sprintf("%d", aid))
 
 }
 
