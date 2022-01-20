@@ -34,20 +34,17 @@ func (controller MainController) Log(w http.ResponseWriter, req *http.Request) {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	action := actionlib.FromProtoAction(&pa)
-	err = action.Validate()
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return
-	}
+	a := actionlib.FromProtoAction(&pa)
 
-	// now we know that this is a valid request, so let's store this in kafka
-	err = controller.instance.ActionProducer.Log(&pa)
+	// fwd to controller
+	aid, err := action.Insert(controller.instance, a)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadGateway)
 		return
 	}
-	// if there is no error, we don't need to write anything back
+	// write the actionID back
+	fmt.Fprintf(w, string(aid))
+
 }
 
 // TailActions reads a single message from Kafka and logs it in the database
