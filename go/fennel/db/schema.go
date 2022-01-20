@@ -22,10 +22,22 @@ func init() {
 				zkey INTEGER NOT NULL,
 				value INTEGER NOT NULL
 			);`,
+		3: `CREATE TABLE IF NOT EXISTS actionlog (
+				action_id integer not null primary key auto_increment,
+				actor_id integer NOT NULL,
+				actor_type integer NOT NULL,
+				target_id integer NOT NULL,
+				target_type integer NOT NULL,
+				action_type integer NOT NULL,
+				action_value integer NOT NULL,
+				timestamp integer NOT NULL,
+				request_id integer not null
+		  );`,
 	}
 	tablenames = []string{
 		"schema_version",
 		"schema_test",
+		"actionlog",
 	}
 	if err := verifyDefs(); err != nil {
 		panic(err)

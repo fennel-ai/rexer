@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fennel/instance"
 	"fennel/kafka"
 	profileData "fennel/profile/data"
 	"fennel/test"
@@ -8,19 +9,21 @@ import (
 
 type MainController struct {
 	profile         profileData.Controller
-	actionTable     ActionTable
+	instance        instance.Instance
 	counterTable    CounterTable
 	checkpointTable CheckpointTable
 	producer        kafka.FProducer
 	consumer        kafka.FConsumer
 }
 
+// TODO: this whole function needs to move to main_test
+// because it is creating default controller
 func DefaultMainController() (MainController, error) {
 	conn, err := test.DefaultDB()
 	if err != nil {
 		return MainController{}, err
 	}
-	actionTable, err := NewActionTable(conn)
+	this, err := test.DefaultInstance()
 	if err != nil {
 		return MainController{}, err
 	}
@@ -46,7 +49,7 @@ func DefaultMainController() (MainController, error) {
 	}
 	return MainController{
 		profile:         profileData.NewController(profileProvider),
-		actionTable:     actionTable,
+		instance:        this,
 		counterTable:    counterTable,
 		checkpointTable: checkpointTable,
 		producer:        producer,

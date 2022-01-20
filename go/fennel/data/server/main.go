@@ -66,7 +66,7 @@ func (controller MainController) TailActions() error {
 	if a.Timestamp == 0 {
 		a.Timestamp = action.Timestamp(time.Now().Unix())
 	}
-	_, err = controller.actionTable.actionDBInsert(a)
+	_, err = actionDBInsert(controller.instance, a)
 	if err != nil {
 		return err
 	}
@@ -90,7 +90,7 @@ func (controller MainController) Fetch(w http.ResponseWriter, req *http.Request)
 	request := action.FromProtoActionFetchRequest(&protoRequest)
 
 	// now we know that this is a valid request, so let's make a db call
-	actions, err := controller.actionTable.actionDBGet(request)
+	actions, err := actionDBGet(controller.instance, request)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadGateway)
 		return
