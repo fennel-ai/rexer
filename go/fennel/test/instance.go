@@ -3,9 +3,11 @@ package test
 import (
 	"fennel/instance"
 	"fennel/lib/action"
+	"fennel/lib/ftypes"
 	"fennel/lib/utils"
 	"fennel/redis"
 	"fmt"
+	"math/rand"
 )
 
 func DefaultInstance() (instance.Instance, error) {
@@ -23,6 +25,7 @@ func DefaultInstance() (instance.Instance, error) {
 	name := fmt.Sprintf("test_%s", utils.RandString(6))
 	kProducer, kConsumer, err := DefaultProducerConsumer(action.ACTIONLOG_KAFKA_TOPIC)
 	return instance.Instance{
+		CustID:         ftypes.CustID(rand.Uint64()),
 		DB:             db,
 		Cache:          Cache,
 		Name:           name,

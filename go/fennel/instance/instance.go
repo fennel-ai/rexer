@@ -4,6 +4,7 @@ import (
 	"fennel/db"
 	"fennel/kafka"
 	"fennel/lib/cache"
+	"fennel/lib/ftypes"
 	"fennel/redis"
 	"flag"
 	"fmt"
@@ -45,7 +46,11 @@ func (i Type) Name() string {
 	}
 }
 
+// TODO: this is assuming that once an instance is created, it only serves one customer
+// that is why we can stuff CustID in here. This assumption will break in multi-tenant
+// system, so revisit as needed
 type Instance struct {
+	CustID         ftypes.CustID
 	Type           Type
 	Name           string
 	DB             db.Connection
