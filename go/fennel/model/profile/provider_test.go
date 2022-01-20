@@ -1,8 +1,8 @@
 package profile
 
 import (
+	"fennel/lib/value"
 	"fennel/test"
-	"fennel/value"
 	"github.com/stretchr/testify/assert"
 	"testing"
 )

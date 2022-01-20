@@ -2,7 +2,7 @@ package interpreter
 
 import (
 	"fennel/engine/ast"
-	"fennel/value"
+	"fennel/lib/value"
 	"testing"
 
 	"github.com/stretchr/testify/assert"

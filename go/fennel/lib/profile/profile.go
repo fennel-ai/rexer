@@ -1,7 +1,7 @@
 package profile
 
 import (
-	"fennel/value"
+	"fennel/lib/value"
 	"fmt"
 )
 

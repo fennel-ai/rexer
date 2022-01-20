@@ -1,7 +1,7 @@
 package operators
 
 import (
-	"fennel/value"
+	"fennel/lib/value"
 	"fmt"
 	"reflect"
 )

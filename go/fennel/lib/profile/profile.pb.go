@@ -7,7 +7,7 @@
 package profile
 
 import (
-	value "fennel/value"
+	value "fennel/lib/value"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	reflect "reflect"

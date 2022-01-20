@@ -1,7 +1,7 @@
 package interpreter
 
 import (
-	"fennel/value"
+	"fennel/lib/value"
 	"fmt"
 )
 

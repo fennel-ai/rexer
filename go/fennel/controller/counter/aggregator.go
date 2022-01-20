@@ -5,7 +5,7 @@ import (
 	"fennel/lib/action"
 	"fennel/lib/counter"
 	lib2 "fennel/lib/profile"
-	"fennel/value"
+	"fennel/lib/value"
 	"fmt"
 )
 

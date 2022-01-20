@@ -1,7 +1,7 @@
 package ast
 
 import (
-	"fennel/value"
+	"fennel/lib/value"
 	"fmt"
 )
 

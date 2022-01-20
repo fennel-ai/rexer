@@ -7,7 +7,7 @@ import (
 	"fennel/lib/counter"
 	httplib "fennel/lib/http"
 	profileLib "fennel/lib/profile"
-	"fennel/value"
+	"fennel/lib/value"
 	"fmt"
 	"io/ioutil"
 	"net/http"

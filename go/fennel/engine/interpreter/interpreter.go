@@ -3,7 +3,7 @@ package interpreter
 import (
 	"fennel/engine/ast"
 	"fennel/engine/operators"
-	"fennel/value"
+	"fennel/lib/value"
 	"fmt"
 	"reflect"
 )

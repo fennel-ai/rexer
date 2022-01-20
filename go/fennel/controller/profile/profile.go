@@ -3,8 +3,8 @@ package profile
 import (
 	"fennel/instance"
 	profilelib "fennel/lib/profile"
+	"fennel/lib/value"
 	"fennel/model/profile"
-	"fennel/value"
 	"google.golang.org/protobuf/proto"
 	"time"
 )
