@@ -1,4 +1,4 @@
-package main
+package action
 
 import (
 	"fennel/instance"
@@ -8,11 +8,7 @@ import (
 )
 
 // inserts the action. If successful, returns the actionID
-func actionDBInsert(this instance.Instance, action action.Action) (uint64, error) {
-	err := action.Validate()
-	if err != nil {
-		return 0, fmt.Errorf("can not insert action: %v", err)
-	}
+func Insert(this instance.Instance, action action.Action) (uint64, error) {
 	result, err := this.DB.NamedExec(`
 		INSERT INTO actionlog (
 			actor_id,
@@ -48,7 +44,7 @@ func actionDBInsert(this instance.Instance, action action.Action) (uint64, error
 // For actionID and timestamp ranges, min is exclusive and max is inclusive
 // For actionValue range, both min/max are inclusive
 // TODO: add limit support?
-func actionDBGet(this instance.Instance, request action.ActionFetchRequest) ([]action.Action, error) {
+func Fetch(this instance.Instance, request action.ActionFetchRequest) ([]action.Action, error) {
 	query := "SELECT * FROM actionlog"
 	clauses := make([]string, 0)
 	if request.ActorType != 0 {

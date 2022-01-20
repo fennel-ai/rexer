@@ -3,7 +3,8 @@ package main
 import (
 	"context"
 	"encoding/json"
-	"fennel/lib/action"
+	"fennel/controller/action"
+	actionlib "fennel/lib/action"
 	"fmt"
 	"io/ioutil"
 	"log"
@@ -20,7 +21,7 @@ const (
 )
 
 func (controller MainController) Log(w http.ResponseWriter, req *http.Request) {
-	var pa action.ProtoAction
+	var pa actionlib.ProtoAction
 	// Try to decode the request body into the struct. If there is an error,
 	// respond to the client with the error message and a 400 status code.
 	body, err := ioutil.ReadAll(req.Body)
@@ -33,7 +34,7 @@ func (controller MainController) Log(w http.ResponseWriter, req *http.Request) {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	action := action.FromProtoAction(&pa)
+	action := actionlib.FromProtoAction(&pa)
 	err = action.Validate()
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
@@ -51,22 +52,22 @@ func (controller MainController) Log(w http.ResponseWriter, req *http.Request) {
 
 // TailActions reads a single message from Kafka and logs it in the database
 func (controller MainController) TailActions() error {
-	pa := action.ProtoAction{}
+	pa := actionlib.ProtoAction{}
 	err := controller.consumer.Read(&pa)
 	if err != nil {
 		return err
 	}
-	a := action.FromProtoAction(&pa)
+	a := actionlib.FromProtoAction(&pa)
 	err = a.Validate()
 	if err != nil {
 		return err
 	}
-	// Now we know that this is a valid action and a db call will be made
+	// Now we know that this is a valid actionlib and a db call will be made
 	// if timestamp isn't set explicitly, we set it to current time
 	if a.Timestamp == 0 {
-		a.Timestamp = action.Timestamp(time.Now().Unix())
+		a.Timestamp = actionlib.Timestamp(time.Now().Unix())
 	}
-	_, err = actionDBInsert(controller.instance, a)
+	_, err = action.Insert(controller.instance, a)
 	if err != nil {
 		return err
 	}
@@ -74,7 +75,7 @@ func (controller MainController) TailActions() error {
 }
 
 func (controller MainController) Fetch(w http.ResponseWriter, req *http.Request) {
-	var protoRequest action.ProtoActionFetchRequest
+	var protoRequest actionlib.ProtoActionFetchRequest
 	// Try to decode the request body into the struct. If there is an error,
 	// respond to the client with the error message and a 400 status code.
 	body, err := ioutil.ReadAll(req.Body)
@@ -87,15 +88,13 @@ func (controller MainController) Fetch(w http.ResponseWriter, req *http.Request)
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	request := action.FromProtoActionFetchRequest(&protoRequest)
-
-	// now we know that this is a valid request, so let's make a db call
-	actions, err := actionDBGet(controller.instance, request)
+	request := actionlib.FromProtoActionFetchRequest(&protoRequest)
+	actions, err := action.Fetch(controller.instance, request)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadGateway)
 		return
 	}
-	actionList := action.ToProtoActionList(actions)
+	actionList := actionlib.ToProtoActionList(actions)
 	ser, err := proto.Marshal(actionList)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadGateway)
