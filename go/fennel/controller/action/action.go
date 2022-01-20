@@ -3,6 +3,7 @@ package action
 import (
 	"fennel/instance"
 	actionlib "fennel/lib/action"
+	"fennel/lib/ftypes"
 	"fennel/model/action"
 	"fmt"
 	"time"
@@ -16,7 +17,7 @@ func Insert(this instance.Instance, a actionlib.Action) (uint64, error) {
 		return 0, fmt.Errorf("invalid action: %v", err)
 	}
 	if a.Timestamp == 0 {
-		a.Timestamp = actionlib.Timestamp(time.Now().Unix())
+		a.Timestamp = ftypes.Timestamp(time.Now().Unix())
 	}
 	ret, err := action.Insert(this, a)
 	if err != nil {

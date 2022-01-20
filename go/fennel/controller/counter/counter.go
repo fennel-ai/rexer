@@ -5,6 +5,7 @@ import (
 	"fennel/instance"
 	actionlib "fennel/lib/action"
 	counterlib "fennel/lib/counter"
+	"fennel/lib/ftypes"
 	"fennel/model/checkpoint"
 	"fennel/model/counter"
 	"fmt"
@@ -44,7 +45,7 @@ func Aggregate(this instance.Instance, ct counterlib.CounterType) error {
 	return nil
 }
 
-func increment(this instance.Instance, counters []Counter, ts actionlib.Timestamp) error {
+func increment(this instance.Instance, counters []Counter, ts ftypes.Timestamp) error {
 	// TODO: make this atomic - either all the keys should persist or none should
 	// otherwise, part of it can fail mid way creating inconsistency
 	// either that, or make the queue we Aggregate through itself a queue of individual counters

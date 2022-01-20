@@ -1,16 +1,14 @@
 package profile
 
 import (
+	"fennel/lib/ftypes"
 	"fennel/lib/value"
 	"fmt"
 )
 
-type OidType uint64
-type OType uint32
-
 const (
-	User  OType = 1
-	Video       = 2
+	User  ftypes.OType = 1
+	Video              = 2
 )
 
 type ProfileItem struct {

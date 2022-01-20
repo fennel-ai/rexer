@@ -1,6 +1,7 @@
 from gen.counter_pb2 import ProtoGetCountRequest as GetCountRequest
 from gen.counter_pb2 import ProtoGetRateRequest as GetRateRequest
-from gen.counter_pb2 import CounterType, Window
+from gen.counter_pb2 import CounterType
+from gen.ftypes_pb2 import Window
 
 
 def validate_count_request(r: GetCountRequest):

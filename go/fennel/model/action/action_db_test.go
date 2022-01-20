@@ -2,7 +2,8 @@ package action
 
 import (
 	"fennel/lib/action"
-	profileLib "fennel/lib/profile"
+	"fennel/lib/ftypes"
+
 	"fennel/test"
 	"github.com/stretchr/testify/assert"
 	"testing"
@@ -28,8 +29,8 @@ func TestActionDBBasic(t *testing.T) {
 	assert.NoError(t, err)
 
 	// assign these ids to actions so we can verify we get them back
-	action1.ActionID = profileLib.OidType(aid1)
-	action2.ActionID = profileLib.OidType(aid2)
+	action1.ActionID = ftypes.OidType(aid1)
+	action2.ActionID = ftypes.OidType(aid2)
 
 	// now we should have total two actions
 	found, err = Fetch(this, request)

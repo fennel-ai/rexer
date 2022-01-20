@@ -3,15 +3,15 @@ package counter
 import (
 	"database/sql"
 	"fennel/instance"
-	"fennel/lib/action"
 	"fennel/lib/counter"
+	"fennel/lib/ftypes"
 	"fmt"
 	"time"
 )
 
 type bucket struct {
 	CounterType counter.CounterType `db:"counter_type"`
-	Window      counter.Window      `db:"window_type"`
+	Window      ftypes.Window       `db:"window_type"`
 	Idx         uint64
 	Key         string
 	Count       uint64
@@ -27,21 +27,21 @@ const (
 	FOREVER_BUCKET_INDEX = 0
 )
 
-func tsToIndex(ts action.Timestamp, window counter.Window) (uint64, error) {
+func tsToIndex(ts ftypes.Timestamp, window ftypes.Window) (uint64, error) {
 	switch window {
-	case counter.Window_HOUR:
+	case ftypes.Window_HOUR:
 		return uint64(ts / (3600 / GRANULARITY)), nil
-	case counter.Window_DAY:
+	case ftypes.Window_DAY:
 		return uint64(ts / (3600 * 24 / GRANULARITY)), nil
-	case counter.Window_WEEK:
+	case ftypes.Window_WEEK:
 		return uint64(ts / (3600 * 24 * 7 / GRANULARITY)), nil
-	case counter.Window_MONTH:
+	case ftypes.Window_MONTH:
 		return uint64(ts / (3600 * 24 * 30 / GRANULARITY)), nil
-	case counter.Window_QUARTER:
+	case ftypes.Window_QUARTER:
 		return uint64(ts / (3600 * 24 * 90 / GRANULARITY)), nil
-	case counter.Window_YEAR:
+	case ftypes.Window_YEAR:
 		return uint64(ts / (3600 * 24 * 365 / GRANULARITY)), nil
-	case counter.Window_FOREVER:
+	case ftypes.Window_FOREVER:
 		// for forever window, we have literally a single bucket
 		return FOREVER_BUCKET_INDEX, nil
 	default:
@@ -49,11 +49,11 @@ func tsToIndex(ts action.Timestamp, window counter.Window) (uint64, error) {
 	}
 }
 
-func keyToString(k counter.Key) string {
+func keyToString(k ftypes.Key) string {
 	return fmt.Sprintf("%d", k)
 }
 
-func Increment(this instance.Instance, ct counter.CounterType, window counter.Window, key counter.Key, ts action.Timestamp, count uint64) error {
+func Increment(this instance.Instance, ct counter.CounterType, window ftypes.Window, key ftypes.Key, ts ftypes.Timestamp, count uint64) error {
 	index, err := tsToIndex(ts, window)
 	if err != nil {
 		return err
@@ -64,7 +64,7 @@ func Increment(this instance.Instance, ct counter.CounterType, window counter.Wi
 
 func Get(this instance.Instance, request counter.GetCountRequest) (uint64, error) {
 	if request.Timestamp == 0 {
-		request.Timestamp = action.Timestamp(time.Now().Unix())
+		request.Timestamp = ftypes.Timestamp(time.Now().Unix())
 	}
 	index, err := tsToIndex(request.Timestamp, request.Window)
 	if err != nil {
@@ -107,7 +107,7 @@ func dbGet(this instance.Instance, bucket bucket) (uint64, error) {
 			AND window_type = :window_type
 			AND zkey = :key 
 		`
-	if bucket.Window != counter.Window_FOREVER {
+	if bucket.Window != ftypes.Window_FOREVER {
 		query = fmt.Sprintf("%s AND idx > :idx - %d AND idx <= :idx;", query, GRANULARITY)
 	} else {
 		query = fmt.Sprintf("%s AND idx = %d", query, FOREVER_BUCKET_INDEX)

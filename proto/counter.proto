@@ -2,6 +2,8 @@ syntax = "proto3";
 
 option go_package = "fennel/lib/counter";
 
+import "ftypes.proto";
+
 enum CounterType {
   NULL_COUNTER = 0;
   USER_LIKE = 1;
@@ -18,18 +20,6 @@ enum CounterType {
   USER_VIDEO_30SWATCH = 12;
   USER_VIDEO_LIKE = 13;
 }
-
-enum Window {
-  NULL_WINDOW = 0;
-  HOUR = 1;
-  DAY = 2;
-  WEEK = 3;
-  MONTH = 4;
-  QUARTER = 5;
-  YEAR = 6;
-  FOREVER = 7;
-}
-
 
 message ProtoGetCountRequest {
   CounterType CounterType = 1;

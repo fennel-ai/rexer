@@ -1,22 +1,15 @@
 package counter
 
 import (
-	"fennel/lib/action"
-	"fennel/lib/profile"
+	"fennel/lib/ftypes"
 	"fmt"
 )
 
-type Key []profile.OidType
-
-func Windows() []Window {
-	return []Window{Window_HOUR, Window_DAY, Window_WEEK, Window_MONTH, Window_QUARTER, Window_YEAR, Window_FOREVER}
-}
-
 type GetCountRequest struct {
 	CounterType CounterType
-	Window      Window
-	Key         Key
-	Timestamp   action.Timestamp
+	Window      ftypes.Window
+	Key         ftypes.Key
+	Timestamp   ftypes.Timestamp
 }
 
 func (r GetCountRequest) Validate() error {
@@ -36,15 +29,15 @@ func FromProtoGetCountRequest(pgcr *ProtoGetCountRequest) GetCountRequest {
 	return GetCountRequest{
 		pgcr.CounterType,
 		pgcr.Window,
-		toKey(pgcr.Key),
-		action.Timestamp(pgcr.Timestamp),
+		ftypes.ToKey(pgcr.Key),
+		ftypes.Timestamp(pgcr.Timestamp),
 	}
 }
 func ToProtoGetCountRequest(gcr *GetCountRequest) ProtoGetCountRequest {
 	return ProtoGetCountRequest{
 		CounterType: gcr.CounterType,
 		Window:      gcr.Window,
-		Key:         fromKey(gcr.Key),
+		Key:         ftypes.FromKey(gcr.Key),
 		Timestamp:   uint64(gcr.Timestamp),
 	}
 }
@@ -52,10 +45,10 @@ func ToProtoGetCountRequest(gcr *GetCountRequest) ProtoGetCountRequest {
 type GetRateRequest struct {
 	NumCounterType CounterType
 	DenCounterType CounterType
-	NumKey         Key
-	DenKey         Key
-	Window         Window
-	Timestamp      action.Timestamp
+	NumKey         ftypes.Key
+	DenKey         ftypes.Key
+	Window         ftypes.Window
+	Timestamp      ftypes.Timestamp
 	LowerBound     bool
 }
 
@@ -63,10 +56,10 @@ func FromProtoGetRateRequest(pgrr *ProtoGetRateRequest) GetRateRequest {
 	return GetRateRequest{
 		pgrr.NumCounterType,
 		pgrr.DenCounterType,
-		toKey(pgrr.NumKey),
-		toKey(pgrr.DenKey),
+		ftypes.ToKey(pgrr.NumKey),
+		ftypes.ToKey(pgrr.DenKey),
 		pgrr.Window,
-		action.Timestamp(pgrr.Timestamp),
+		ftypes.Timestamp(pgrr.Timestamp),
 		pgrr.LowerBound,
 	}
 }
@@ -74,8 +67,8 @@ func ToProtoGetRateRequest(grr *GetRateRequest) ProtoGetRateRequest {
 	return ProtoGetRateRequest{
 		NumCounterType: grr.NumCounterType,
 		DenCounterType: grr.DenCounterType,
-		NumKey:         fromKey(grr.NumKey),
-		DenKey:         fromKey(grr.DenKey),
+		NumKey:         ftypes.FromKey(grr.NumKey),
+		DenKey:         ftypes.FromKey(grr.DenKey),
 		Window:         grr.Window,
 		Timestamp:      uint64(grr.Timestamp),
 		LowerBound:     grr.LowerBound,
@@ -98,19 +91,4 @@ func (r GetRateRequest) Validate() error {
 		return fmt.Errorf("den counter key can not be empty")
 	}
 	return nil
-}
-
-func toKey(k []uint64) Key {
-	ret := make([]profile.OidType, len(k))
-	for i, n := range k {
-		ret[i] = profile.OidType(n)
-	}
-	return Key(ret)
-}
-func fromKey(k Key) []uint64 {
-	ret := make([]uint64, len(k))
-	for i, n := range k {
-		ret[i] = uint64(n)
-	}
-	return ret
 }

@@ -1,48 +1,43 @@
 package action
 
 import (
-	"fennel/lib/profile"
+	"fennel/lib/ftypes"
 	"fmt"
 )
-
-// TODO: add freeform text field for metadata?
-type ActionType uint32
-type Timestamp uint64
-type RequestID uint64
 
 const (
 	ACTIONLOG_KAFKA_TOPIC = "actionlog"
 )
 
 const (
-	Like  ActionType = 1
-	Share            = 2
-	View             = 3
+	Like  ftypes.ActionType = 1
+	Share                   = 2
+	View                    = 3
 )
 
 type Action struct {
-	ActionID    profile.OidType `db:"action_id"`
-	ActorID     profile.OidType `db:"actor_id"`
-	ActorType   profile.OType   `db:"actor_type"`
-	TargetID    profile.OidType `db:"target_id"`
-	TargetType  profile.OType   `db:"target_type"`
-	ActionType  ActionType      `db:"action_type"`
-	ActionValue int32           `db:"action_value"`
-	Timestamp   Timestamp       `db:"timestamp"`
-	RequestID   RequestID       `db:"request_id"`
+	ActionID    ftypes.OidType    `db:"action_id"`
+	ActorID     ftypes.OidType    `db:"actor_id"`
+	ActorType   ftypes.OType      `db:"actor_type"`
+	TargetID    ftypes.OidType    `db:"target_id"`
+	TargetType  ftypes.OType      `db:"target_type"`
+	ActionType  ftypes.ActionType `db:"action_type"`
+	ActionValue int32             `db:"action_value"`
+	Timestamp   ftypes.Timestamp  `db:"timestamp"`
+	RequestID   ftypes.RequestID  `db:"request_id"`
 }
 
 func FromProtoAction(pa *ProtoAction) Action {
 	return Action{
-		ActionID:    profile.OidType(pa.GetActionID()),
-		ActorID:     profile.OidType(pa.GetActorID()),
-		ActorType:   profile.OType(pa.GetActorType()),
-		TargetID:    profile.OidType(pa.GetTargetID()),
-		TargetType:  profile.OType(pa.GetTargetType()),
-		ActionType:  ActionType(pa.GetActionType()),
+		ActionID:    ftypes.OidType(pa.GetActionID()),
+		ActorID:     ftypes.OidType(pa.GetActorID()),
+		ActorType:   ftypes.OType(pa.GetActorType()),
+		TargetID:    ftypes.OidType(pa.GetTargetID()),
+		TargetType:  ftypes.OType(pa.GetTargetType()),
+		ActionType:  ftypes.ActionType(pa.GetActionType()),
 		ActionValue: pa.GetActionValue(),
-		Timestamp:   Timestamp(pa.GetTimestamp()),
-		RequestID:   RequestID(pa.RequestID),
+		Timestamp:   ftypes.Timestamp(pa.GetTimestamp()),
+		RequestID:   ftypes.RequestID(pa.RequestID),
 	}
 }
 
@@ -61,35 +56,35 @@ func ToProtoAction(a Action) ProtoAction {
 }
 
 type ActionFetchRequest struct {
-	MinActionID    profile.OidType `db:"min_action_id"`
-	MaxActionID    profile.OidType `db:"max_action_id"`
-	ActorID        profile.OidType `db:"actor_id"`
-	ActorType      profile.OType   `db:"actor_type"`
-	TargetID       profile.OidType `db:"target_id"`
-	TargetType     profile.OType   `db:"target_type"`
-	ActionType     ActionType      `db:"action_type"`
-	MinActionValue int32           `db:"min_action_value"`
-	MaxActionValue int32           `db:"max_action_value"`
-	MinTimestamp   Timestamp       `db:"min_timestamp"`
-	MaxTimestamp   Timestamp       `db:"max_timestamp"`
-	RequestID      RequestID       `db:"request_id"`
+	MinActionID    ftypes.OidType    `db:"min_action_id"`
+	MaxActionID    ftypes.OidType    `db:"max_action_id"`
+	ActorID        ftypes.OidType    `db:"actor_id"`
+	ActorType      ftypes.OType      `db:"actor_type"`
+	TargetID       ftypes.OidType    `db:"target_id"`
+	TargetType     ftypes.OType      `db:"target_type"`
+	ActionType     ftypes.ActionType `db:"action_type"`
+	MinActionValue int32             `db:"min_action_value"`
+	MaxActionValue int32             `db:"max_action_value"`
+	MinTimestamp   ftypes.Timestamp  `db:"min_timestamp"`
+	MaxTimestamp   ftypes.Timestamp  `db:"max_timestamp"`
+	RequestID      ftypes.RequestID  `db:"request_id"`
 }
 
 func FromProtoActionFetchRequest(pa *ProtoActionFetchRequest) ActionFetchRequest {
 	return ActionFetchRequest{
 
-		MinActionID:    profile.OidType(pa.GetMinActionID()),
-		MaxActionID:    profile.OidType(pa.GetMaxActionID()),
-		ActorID:        profile.OidType(pa.GetActorID()),
-		ActorType:      profile.OType(pa.GetActorType()),
-		TargetID:       profile.OidType(pa.GetTargetID()),
-		TargetType:     profile.OType(pa.GetTargetType()),
-		ActionType:     ActionType(pa.GetActionType()),
+		MinActionID:    ftypes.OidType(pa.GetMinActionID()),
+		MaxActionID:    ftypes.OidType(pa.GetMaxActionID()),
+		ActorID:        ftypes.OidType(pa.GetActorID()),
+		ActorType:      ftypes.OType(pa.GetActorType()),
+		TargetID:       ftypes.OidType(pa.GetTargetID()),
+		TargetType:     ftypes.OType(pa.GetTargetType()),
+		ActionType:     ftypes.ActionType(pa.GetActionType()),
 		MinActionValue: pa.GetMinActionValue(),
 		MaxActionValue: pa.GetMaxActionValue(),
-		MinTimestamp:   Timestamp(pa.GetMinTimestamp()),
-		MaxTimestamp:   Timestamp(pa.GetMaxTimestamp()),
-		RequestID:      RequestID(pa.GetRequestID()),
+		MinTimestamp:   ftypes.Timestamp(pa.GetMinTimestamp()),
+		MaxTimestamp:   ftypes.Timestamp(pa.GetMaxTimestamp()),
+		RequestID:      ftypes.RequestID(pa.GetRequestID()),
 	}
 }
 

@@ -2,7 +2,7 @@ package checkpoint
 
 import (
 	"fennel/lib/counter"
-	lib2 "fennel/lib/profile"
+	"fennel/lib/ftypes"
 	"fennel/test"
 	"github.com/stretchr/testify/assert"
 	"testing"
@@ -12,14 +12,14 @@ func TestCheckpoint(t *testing.T) {
 	this, err := test.DefaultInstance()
 	assert.NoError(t, err)
 	ct1 := counter.CounterType_USER_LIKE
-	zero := lib2.OidType(0)
+	zero := ftypes.OidType(0)
 	// initially no checkpoint is setup, so we should get 0
 	checkpoint, err := GetCheckpoint(this, ct1)
 	assert.NoError(t, err)
 	assert.Equal(t, zero, checkpoint)
 
 	// now set a checkpoint
-	expected1 := lib2.OidType(1)
+	expected1 := ftypes.OidType(1)
 	err = SetCheckpoint(this, ct1, expected1)
 	assert.NoError(t, err)
 	// and reading it now, we get new value
@@ -28,7 +28,7 @@ func TestCheckpoint(t *testing.T) {
 	assert.Equal(t, expected1, checkpoint)
 
 	//can reset it again
-	expected2 := lib2.OidType(2)
+	expected2 := ftypes.OidType(2)
 	err = SetCheckpoint(this, ct1, expected2)
 	assert.NoError(t, err)
 	checkpoint, err = GetCheckpoint(this, ct1)
@@ -42,7 +42,7 @@ func TestCheckpoint(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, zero, checkpoint)
 
-	expected3 := lib2.OidType(51)
+	expected3 := ftypes.OidType(51)
 	err = SetCheckpoint(this, ct2, expected3)
 	assert.NoError(t, err)
 

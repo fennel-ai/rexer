@@ -13,14 +13,13 @@ from google.protobuf import symbol_database as _symbol_database
 _sym_db = _symbol_database.Default()
 
 
+import ftypes_pb2 as ftypes__pb2
 
 
-DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\rcounter.proto\"r\n\x14ProtoGetCountRequest\x12!\n\x0b\x43ounterType\x18\x01 \x01(\x0e\x32\x0c.CounterType\x12\x17\n\x06Window\x18\x02 \x01(\x0e\x32\x07.Window\x12\x0b\n\x03Key\x18\x03 \x03(\x04\x12\x11\n\tTimestamp\x18\x04 \x01(\x04\"\xc1\x01\n\x13ProtoGetRateRequest\x12$\n\x0eNumCounterType\x18\x01 \x01(\x0e\x32\x0c.CounterType\x12$\n\x0e\x44\x65nCounterType\x18\x02 \x01(\x0e\x32\x0c.CounterType\x12\x0e\n\x06NumKey\x18\x03 \x03(\x04\x12\x0e\n\x06\x44\x65nKey\x18\x04 \x03(\x04\x12\x17\n\x06Window\x18\x05 \x01(\x0e\x32\x07.Window\x12\x11\n\tTimestamp\x18\x06 \x01(\x04\x12\x12\n\nLowerBound\x18\x07 \x01(\x08*\xb9\x02\n\x0b\x43ounterType\x12\x10\n\x0cNULL_COUNTER\x10\x00\x12\r\n\tUSER_LIKE\x10\x01\x12\x0e\n\nUSER_SHARE\x10\x02\x12\x0e\n\nVIDEO_LIKE\x10\x03\x12\x0f\n\x0bVIDEO_SHARE\x10\x04\x12\x15\n\x11USER_ACCOUNT_LIKE\x10\x05\x12\x13\n\x0fUSER_TOPIC_LIKE\x10\x06\x12\x12\n\x0e\x41GE_VIDEO_LIKE\x10\x07\x12\x19\n\x15GENDER_AGE_VIDEO_LIKE\x10\x08\x12\x14\n\x10ZIP_ACCOUNT_LIKE\x10\t\x12\x1b\n\x17\x41GE_ZIP_U2VCLUSTER_LIKE\x10\n\x12\x1c\n\x18PAGE_FOLLOWER_VIDEO_LIKE\x10\x0b\x12\x17\n\x13USER_VIDEO_30SWATCH\x10\x0c\x12\x13\n\x0fUSER_VIDEO_LIKE\x10\r*e\n\x06Window\x12\x0f\n\x0bNULL_WINDOW\x10\x00\x12\x08\n\x04HOUR\x10\x01\x12\x07\n\x03\x44\x41Y\x10\x02\x12\x08\n\x04WEEK\x10\x03\x12\t\n\x05MONTH\x10\x04\x12\x0b\n\x07QUARTER\x10\x05\x12\x08\n\x04YEAR\x10\x06\x12\x0b\n\x07\x46OREVER\x10\x07\x42\x14Z\x12\x66\x65nnel/lib/counterb\x06proto3')
+DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\rcounter.proto\x1a\x0c\x66types.proto\"r\n\x14ProtoGetCountRequest\x12!\n\x0b\x43ounterType\x18\x01 \x01(\x0e\x32\x0c.CounterType\x12\x17\n\x06Window\x18\x02 \x01(\x0e\x32\x07.Window\x12\x0b\n\x03Key\x18\x03 \x03(\x04\x12\x11\n\tTimestamp\x18\x04 \x01(\x04\"\xc1\x01\n\x13ProtoGetRateRequest\x12$\n\x0eNumCounterType\x18\x01 \x01(\x0e\x32\x0c.CounterType\x12$\n\x0e\x44\x65nCounterType\x18\x02 \x01(\x0e\x32\x0c.CounterType\x12\x0e\n\x06NumKey\x18\x03 \x03(\x04\x12\x0e\n\x06\x44\x65nKey\x18\x04 \x03(\x04\x12\x17\n\x06Window\x18\x05 \x01(\x0e\x32\x07.Window\x12\x11\n\tTimestamp\x18\x06 \x01(\x04\x12\x12\n\nLowerBound\x18\x07 \x01(\x08*\xb9\x02\n\x0b\x43ounterType\x12\x10\n\x0cNULL_COUNTER\x10\x00\x12\r\n\tUSER_LIKE\x10\x01\x12\x0e\n\nUSER_SHARE\x10\x02\x12\x0e\n\nVIDEO_LIKE\x10\x03\x12\x0f\n\x0bVIDEO_SHARE\x10\x04\x12\x15\n\x11USER_ACCOUNT_LIKE\x10\x05\x12\x13\n\x0fUSER_TOPIC_LIKE\x10\x06\x12\x12\n\x0e\x41GE_VIDEO_LIKE\x10\x07\x12\x19\n\x15GENDER_AGE_VIDEO_LIKE\x10\x08\x12\x14\n\x10ZIP_ACCOUNT_LIKE\x10\t\x12\x1b\n\x17\x41GE_ZIP_U2VCLUSTER_LIKE\x10\n\x12\x1c\n\x18PAGE_FOLLOWER_VIDEO_LIKE\x10\x0b\x12\x17\n\x13USER_VIDEO_30SWATCH\x10\x0c\x12\x13\n\x0fUSER_VIDEO_LIKE\x10\rB\x14Z\x12\x66\x65nnel/lib/counterb\x06proto3')
 
 _COUNTERTYPE = DESCRIPTOR.enum_types_by_name['CounterType']
 CounterType = enum_type_wrapper.EnumTypeWrapper(_COUNTERTYPE)
-_WINDOW = DESCRIPTOR.enum_types_by_name['Window']
-Window = enum_type_wrapper.EnumTypeWrapper(_WINDOW)
 NULL_COUNTER = 0
 USER_LIKE = 1
 USER_SHARE = 2
@@ -35,14 +34,6 @@ AGE_ZIP_U2VCLUSTER_LIKE = 10
 PAGE_FOLLOWER_VIDEO_LIKE = 11
 USER_VIDEO_30SWATCH = 12
 USER_VIDEO_LIKE = 13
-NULL_WINDOW = 0
-HOUR = 1
-DAY = 2
-WEEK = 3
-MONTH = 4
-QUARTER = 5
-YEAR = 6
-FOREVER = 7
 
 
 _PROTOGETCOUNTREQUEST = DESCRIPTOR.message_types_by_name['ProtoGetCountRequest']
@@ -65,12 +56,10 @@ if _descriptor._USE_C_DESCRIPTORS == False:
 
   DESCRIPTOR._options = None
   DESCRIPTOR._serialized_options = b'Z\022fennel/lib/counter'
-  _COUNTERTYPE._serialized_start=330
-  _COUNTERTYPE._serialized_end=643
-  _WINDOW._serialized_start=645
-  _WINDOW._serialized_end=746
-  _PROTOGETCOUNTREQUEST._serialized_start=17
-  _PROTOGETCOUNTREQUEST._serialized_end=131
-  _PROTOGETRATEREQUEST._serialized_start=134
-  _PROTOGETRATEREQUEST._serialized_end=327
+  _COUNTERTYPE._serialized_start=344
+  _COUNTERTYPE._serialized_end=657
+  _PROTOGETCOUNTREQUEST._serialized_start=31
+  _PROTOGETCOUNTREQUEST._serialized_end=145
+  _PROTOGETRATEREQUEST._serialized_start=148
+  _PROTOGETRATEREQUEST._serialized_end=341
 # @@protoc_insertion_point(module_scope)

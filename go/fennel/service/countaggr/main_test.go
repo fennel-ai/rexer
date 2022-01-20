@@ -6,6 +6,7 @@ import (
 	"fennel/instance"
 	actionlib "fennel/lib/action"
 	counterlib "fennel/lib/counter"
+	"fennel/lib/ftypes"
 	profileLib "fennel/lib/profile"
 	"fennel/test"
 	"github.com/stretchr/testify/assert"
@@ -15,7 +16,7 @@ import (
 func add(instance instance.Instance, t *testing.T, a actionlib.Action) actionlib.Action {
 	aid, err := action.Insert(instance, a)
 	assert.NoError(t, err)
-	a.ActionID = profileLib.OidType(aid)
+	a.ActionID = ftypes.OidType(aid)
 	return a
 }
 
@@ -38,32 +39,32 @@ func TestEndToEnd(t *testing.T) {
 	//c := client.NewClient("http://localhost")
 
 	// Initially count for keys are zero
-	uid := profileLib.OidType(1)
-	video_id := profileLib.OidType(2)
-	ts := actionlib.Timestamp(123)
+	uid := ftypes.OidType(1)
+	video_id := ftypes.OidType(2)
+	ts := ftypes.Timestamp(123)
 
 	requests := []counterlib.GetCountRequest{
-		{counterlib.CounterType_USER_LIKE, counterlib.Window_HOUR, counterlib.Key{uid}, ts},
-		{counterlib.CounterType_USER_LIKE, counterlib.Window_DAY, counterlib.Key{uid}, ts},
-		{counterlib.CounterType_USER_LIKE, counterlib.Window_WEEK, counterlib.Key{uid}, ts},
-		{counterlib.CounterType_USER_LIKE, counterlib.Window_MONTH, counterlib.Key{uid}, ts},
-		{counterlib.CounterType_USER_LIKE, counterlib.Window_QUARTER, counterlib.Key{uid}, ts},
-		{counterlib.CounterType_USER_LIKE, counterlib.Window_YEAR, counterlib.Key{uid}, ts},
-		{counterlib.CounterType_USER_LIKE, counterlib.Window_FOREVER, counterlib.Key{uid}, ts},
-		{counterlib.CounterType_VIDEO_LIKE, counterlib.Window_HOUR, counterlib.Key{video_id}, ts},
-		{counterlib.CounterType_VIDEO_LIKE, counterlib.Window_DAY, counterlib.Key{video_id}, ts},
-		{counterlib.CounterType_VIDEO_LIKE, counterlib.Window_WEEK, counterlib.Key{video_id}, ts},
-		{counterlib.CounterType_VIDEO_LIKE, counterlib.Window_MONTH, counterlib.Key{video_id}, ts},
-		{counterlib.CounterType_VIDEO_LIKE, counterlib.Window_QUARTER, counterlib.Key{video_id}, ts},
-		{counterlib.CounterType_VIDEO_LIKE, counterlib.Window_YEAR, counterlib.Key{video_id}, ts},
-		{counterlib.CounterType_VIDEO_LIKE, counterlib.Window_FOREVER, counterlib.Key{video_id}, ts},
-		{counterlib.CounterType_USER_VIDEO_LIKE, counterlib.Window_HOUR, counterlib.Key{uid, video_id}, ts},
-		{counterlib.CounterType_USER_VIDEO_LIKE, counterlib.Window_DAY, counterlib.Key{uid, video_id}, ts},
-		{counterlib.CounterType_USER_VIDEO_LIKE, counterlib.Window_WEEK, counterlib.Key{uid, video_id}, ts},
-		{counterlib.CounterType_USER_VIDEO_LIKE, counterlib.Window_MONTH, counterlib.Key{uid, video_id}, ts},
-		{counterlib.CounterType_USER_VIDEO_LIKE, counterlib.Window_QUARTER, counterlib.Key{uid, video_id}, ts},
-		{counterlib.CounterType_USER_VIDEO_LIKE, counterlib.Window_YEAR, counterlib.Key{uid, video_id}, ts},
-		{counterlib.CounterType_USER_VIDEO_LIKE, counterlib.Window_FOREVER, counterlib.Key{uid, video_id}, ts},
+		{counterlib.CounterType_USER_LIKE, ftypes.Window_HOUR, ftypes.Key{uid}, ts},
+		{counterlib.CounterType_USER_LIKE, ftypes.Window_DAY, ftypes.Key{uid}, ts},
+		{counterlib.CounterType_USER_LIKE, ftypes.Window_WEEK, ftypes.Key{uid}, ts},
+		{counterlib.CounterType_USER_LIKE, ftypes.Window_MONTH, ftypes.Key{uid}, ts},
+		{counterlib.CounterType_USER_LIKE, ftypes.Window_QUARTER, ftypes.Key{uid}, ts},
+		{counterlib.CounterType_USER_LIKE, ftypes.Window_YEAR, ftypes.Key{uid}, ts},
+		{counterlib.CounterType_USER_LIKE, ftypes.Window_FOREVER, ftypes.Key{uid}, ts},
+		{counterlib.CounterType_VIDEO_LIKE, ftypes.Window_HOUR, ftypes.Key{video_id}, ts},
+		{counterlib.CounterType_VIDEO_LIKE, ftypes.Window_DAY, ftypes.Key{video_id}, ts},
+		{counterlib.CounterType_VIDEO_LIKE, ftypes.Window_WEEK, ftypes.Key{video_id}, ts},
+		{counterlib.CounterType_VIDEO_LIKE, ftypes.Window_MONTH, ftypes.Key{video_id}, ts},
+		{counterlib.CounterType_VIDEO_LIKE, ftypes.Window_QUARTER, ftypes.Key{video_id}, ts},
+		{counterlib.CounterType_VIDEO_LIKE, ftypes.Window_YEAR, ftypes.Key{video_id}, ts},
+		{counterlib.CounterType_VIDEO_LIKE, ftypes.Window_FOREVER, ftypes.Key{video_id}, ts},
+		{counterlib.CounterType_USER_VIDEO_LIKE, ftypes.Window_HOUR, ftypes.Key{uid, video_id}, ts},
+		{counterlib.CounterType_USER_VIDEO_LIKE, ftypes.Window_DAY, ftypes.Key{uid, video_id}, ts},
+		{counterlib.CounterType_USER_VIDEO_LIKE, ftypes.Window_WEEK, ftypes.Key{uid, video_id}, ts},
+		{counterlib.CounterType_USER_VIDEO_LIKE, ftypes.Window_MONTH, ftypes.Key{uid, video_id}, ts},
+		{counterlib.CounterType_USER_VIDEO_LIKE, ftypes.Window_QUARTER, ftypes.Key{uid, video_id}, ts},
+		{counterlib.CounterType_USER_VIDEO_LIKE, ftypes.Window_YEAR, ftypes.Key{uid, video_id}, ts},
+		{counterlib.CounterType_USER_VIDEO_LIKE, ftypes.Window_FOREVER, ftypes.Key{uid, video_id}, ts},
 	}
 	for _, cr := range requests {
 		count, err := counter.Count(instance, cr)
@@ -120,9 +121,9 @@ func TestEndToEnd(t *testing.T) {
 	rr := counterlib.GetRateRequest{
 		counterlib.CounterType_USER_LIKE,
 		counterlib.CounterType_VIDEO_LIKE,
-		counterlib.Key{uid},
-		counterlib.Key{video_id},
-		counterlib.Window_HOUR,
+		ftypes.Key{uid},
+		ftypes.Key{video_id},
+		ftypes.Window_HOUR,
 		ts,
 		true,
 	}

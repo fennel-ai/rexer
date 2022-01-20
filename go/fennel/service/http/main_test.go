@@ -4,6 +4,7 @@ import (
 	"fennel/client"
 	"fennel/lib/action"
 	counterlib "fennel/lib/counter"
+	"fennel/lib/ftypes"
 	profileLib "fennel/lib/profile"
 	"fennel/lib/value"
 	"fennel/model/counter"
@@ -110,16 +111,16 @@ func TestCountRateServerClient(t *testing.T) {
 	defer shutDownServer()
 	// and create a client
 	c := client.NewClient(fmt.Sprintf("http://localhost"))
-	uid := profileLib.OidType(1)
-	video_id := profileLib.OidType(2)
-	ts := action.Timestamp(123)
-	cr := counterlib.GetCountRequest{CounterType: counterlib.CounterType_USER_LIKE, Window: counterlib.Window_HOUR, Key: counterlib.Key{uid}, Timestamp: ts}
+	uid := ftypes.OidType(1)
+	video_id := ftypes.OidType(2)
+	ts := ftypes.Timestamp(123)
+	cr := counterlib.GetCountRequest{CounterType: counterlib.CounterType_USER_LIKE, Window: ftypes.Window_HOUR, Key: ftypes.Key{uid}, Timestamp: ts}
 	rr := counterlib.GetRateRequest{
 		counterlib.CounterType_USER_LIKE,
 		counterlib.CounterType_VIDEO_LIKE,
-		counterlib.Key{uid},
-		counterlib.Key{video_id},
-		counterlib.Window_HOUR,
+		ftypes.Key{uid},
+		ftypes.Key{video_id},
+		ftypes.Window_HOUR,
 		ts,
 		true,
 	}
@@ -134,7 +135,7 @@ func TestCountRateServerClient(t *testing.T) {
 
 	// increment a couple of keys via counter controller
 	counter.Increment(instance, cr.CounterType, cr.Window, cr.Key, cr.Timestamp, 35)
-	counter.Increment(instance, rr.DenCounterType, cr.Window, counterlib.Key{video_id}, cr.Timestamp, 200)
+	counter.Increment(instance, rr.DenCounterType, cr.Window, ftypes.Key{video_id}, cr.Timestamp, 200)
 	count, err = c.GetCount(cr)
 	assert.NoError(t, err)
 	assert.Equal(t, uint64(35), count)

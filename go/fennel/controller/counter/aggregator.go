@@ -4,58 +4,59 @@ import (
 	"fennel/client"
 	"fennel/lib/action"
 	"fennel/lib/counter"
-	lib2 "fennel/lib/profile"
+	"fennel/lib/ftypes"
+	profileLib "fennel/lib/profile"
 	"fennel/lib/value"
 	"fmt"
 )
 
-func actorID(actorID lib2.OidType, actorType lib2.OType, targetID lib2.OidType, targetType lib2.OType) []counter.Key {
-	return []counter.Key{
+func actorID(actorID ftypes.OidType, actorType ftypes.OType, targetID ftypes.OidType, targetType ftypes.OType) []ftypes.Key {
+	return []ftypes.Key{
 		{actorID},
 	}
 }
 
-func targetID(actorID lib2.OidType, actorType lib2.OType, targetID lib2.OidType, targetType lib2.OType) []counter.Key {
-	return []counter.Key{
+func targetID(actorID ftypes.OidType, actorType ftypes.OType, targetID ftypes.OidType, targetType ftypes.OType) []ftypes.Key {
+	return []ftypes.Key{
 		{targetID},
 	}
 }
-func actorTargetID(actorID lib2.OidType, actorType lib2.OType, targetID lib2.OidType, targetType lib2.OType) []counter.Key {
-	return []counter.Key{
+func actorTargetID(actorID ftypes.OidType, actorType ftypes.OType, targetID ftypes.OidType, targetType ftypes.OType) []ftypes.Key {
+	return []ftypes.Key{
 		{actorID, targetID},
 	}
 }
 
-func prefixWithIDList(prefix counter.Key, idList value.Value) []counter.Key {
+func prefixWithIDList(prefix ftypes.Key, idList value.Value) []ftypes.Key {
 	if ids, ok := idList.(value.List); ok {
-		ret := make([]counter.Key, 0)
+		ret := make([]ftypes.Key, 0)
 		for _, id := range ids {
 			if idInt, ok := id.(value.Int); ok {
-				next := make(counter.Key, len(prefix)+1)
+				next := make(ftypes.Key, len(prefix)+1)
 				copy(next, prefix)
-				next = append(next, lib2.OidType(idInt))
+				next = append(next, ftypes.OidType(idInt))
 				ret = append(ret, next)
 			}
 		}
 		return ret
 	}
-	return []counter.Key{}
+	return []ftypes.Key{}
 }
 
 func profile(otype uint32, oid uint64, key string, version uint64) (*value.Value, error) {
 	// TODO: how does this code discover the port/url for profile service?
 	c := client.NewClient("")
-	req := lib2.NewProfileItem(otype, oid, key, version)
+	req := profileLib.NewProfileItem(otype, oid, key, version)
 	return c.GetProfile(&req)
 }
 
-type Keygen func(actorID lib2.OidType, actorType lib2.OType, targetID lib2.OidType, targetType lib2.OType) []counter.Key
+type Keygen func(actorID ftypes.OidType, actorType ftypes.OType, targetID ftypes.OidType, targetType ftypes.OType) []ftypes.Key
 
 func init() {
 	counterConfigs = map[counter.CounterType]CounterConfig{
-		counter.CounterType_USER_LIKE:       {actorType: lib2.User, actionType: action.Like, keygen: actorID},
-		counter.CounterType_USER_VIDEO_LIKE: {actorType: lib2.User, actionType: action.Like, targetType: lib2.Video, keygen: actorTargetID},
-		counter.CounterType_VIDEO_LIKE:      {targetType: lib2.Video, actionType: action.Like, keygen: targetID},
+		counter.CounterType_USER_LIKE:       {actorType: profileLib.User, actionType: action.Like, keygen: actorID},
+		counter.CounterType_USER_VIDEO_LIKE: {actorType: profileLib.User, actionType: action.Like, targetType: profileLib.Video, keygen: actorTargetID},
+		counter.CounterType_VIDEO_LIKE:      {targetType: profileLib.Video, actionType: action.Like, keygen: targetID},
 
 		// These are commented for unit tests to work
 		// Eventually remove these from here and just add more tests with these
@@ -97,17 +98,17 @@ func init() {
 
 type Counter struct {
 	Type       counter.CounterType
-	key        []lib2.OidType
-	actionType action.ActionType
-	window     counter.Window
+	key        []ftypes.OidType
+	actionType ftypes.ActionType
+	window     ftypes.Window
 }
 
 // TODO: make it possible to optionally restrict CounterConfig to be only certain time windows
 // NOTE: each counter config must specific exactly one event type
 type CounterConfig struct {
-	actorType  lib2.OType
-	targetType lib2.OType
-	actionType action.ActionType
+	actorType  ftypes.OType
+	targetType ftypes.OType
+	actionType ftypes.ActionType
 	filter     func(action.Action) bool
 	keygen     Keygen
 }
@@ -134,7 +135,7 @@ func (cg CounterConfig) Generate(a action.Action, type_ counter.CounterType) []C
 	keys := cg.keygen(a.ActorID, a.ActorType, a.TargetID, a.TargetType)
 	ret := make([]Counter, 0)
 	for _, key := range keys {
-		for _, w := range counter.Windows() {
+		for _, w := range ftypes.Windows() {
 			ret = append(ret, Counter{Type: type_, key: key, actionType: cg.actionType, window: w})
 		}
 	}

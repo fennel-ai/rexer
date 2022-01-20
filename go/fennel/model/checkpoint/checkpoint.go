@@ -4,10 +4,10 @@ import (
 	"database/sql"
 	"fennel/instance"
 	"fennel/lib/counter"
-	lib2 "fennel/lib/profile"
+	"fennel/lib/ftypes"
 )
 
-func GetCheckpoint(this instance.Instance, ct counter.CounterType) (lib2.OidType, error) {
+func GetCheckpoint(this instance.Instance, ct counter.CounterType) (ftypes.OidType, error) {
 	row := this.DB.QueryRow(`
 		SELECT checkpoint
 		FROM checkpoint
@@ -21,11 +21,11 @@ func GetCheckpoint(this instance.Instance, ct counter.CounterType) (lib2.OidType
 		// this happens when no matching row was found. By default, checkpoint is zero
 		return 0, nil
 	} else {
-		return lib2.OidType(checkpoint), nil
+		return ftypes.OidType(checkpoint), nil
 	}
 }
 
-func SetCheckpoint(this instance.Instance, ct counter.CounterType, checkpoint lib2.OidType) error {
+func SetCheckpoint(this instance.Instance, ct counter.CounterType, checkpoint ftypes.OidType) error {
 	_, err := this.DB.Exec(`
 		INSERT INTO checkpoint (counter_type, checkpoint)
         VALUES (?, ?)
