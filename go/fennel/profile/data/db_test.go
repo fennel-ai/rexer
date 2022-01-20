@@ -1,8 +1,8 @@
 package data
 
 import (
+	"fennel/lib/utils"
 	"fennel/test"
-	"fennel/utils"
 	"fennel/value"
 	"github.com/stretchr/testify/assert"
 	"testing"

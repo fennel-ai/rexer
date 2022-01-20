@@ -2,7 +2,7 @@ package checkpoint
 
 import (
 	"fennel/data/lib"
-	lib2 "fennel/profile/lib"
+	lib2 "fennel/lib/profile"
 	"fennel/test"
 	"github.com/stretchr/testify/assert"
 	"testing"

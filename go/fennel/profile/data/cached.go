@@ -2,7 +2,7 @@ package data
 
 import (
 	"context"
-	"fennel/cache"
+	"fennel/lib/cache"
 	"fmt"
 )
 

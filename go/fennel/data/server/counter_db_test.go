@@ -3,8 +3,8 @@ package main
 import (
 	"fennel/data/lib"
 	"fennel/lib/action"
+	"fennel/lib/utils"
 	"fennel/test"
-	"fennel/utils"
 	"github.com/stretchr/testify/assert"
 	"testing"
 )

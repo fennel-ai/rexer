@@ -1,7 +1,7 @@
 package action
 
 import (
-	"fennel/profile/lib"
+	"fennel/lib/profile"
 	"fmt"
 )
 
@@ -17,24 +17,24 @@ const (
 )
 
 type Action struct {
-	ActionID    lib.OidType `db:"action_id"`
-	ActorID     lib.OidType `db:"actor_id"`
-	ActorType   lib.OType   `db:"actor_type"`
-	TargetID    lib.OidType `db:"target_id"`
-	TargetType  lib.OType   `db:"target_type"`
-	ActionType  ActionType  `db:"action_type"`
-	ActionValue int32       `db:"action_value"`
-	Timestamp   Timestamp   `db:"timestamp"`
-	RequestID   RequestID   `db:"request_id"`
+	ActionID    profile.OidType `db:"action_id"`
+	ActorID     profile.OidType `db:"actor_id"`
+	ActorType   profile.OType   `db:"actor_type"`
+	TargetID    profile.OidType `db:"target_id"`
+	TargetType  profile.OType   `db:"target_type"`
+	ActionType  ActionType      `db:"action_type"`
+	ActionValue int32           `db:"action_value"`
+	Timestamp   Timestamp       `db:"timestamp"`
+	RequestID   RequestID       `db:"request_id"`
 }
 
 func FromProtoAction(pa *ProtoAction) Action {
 	return Action{
-		ActionID:    lib.OidType(pa.GetActionID()),
-		ActorID:     lib.OidType(pa.GetActorID()),
-		ActorType:   lib.OType(pa.GetActorType()),
-		TargetID:    lib.OidType(pa.GetTargetID()),
-		TargetType:  lib.OType(pa.GetTargetType()),
+		ActionID:    profile.OidType(pa.GetActionID()),
+		ActorID:     profile.OidType(pa.GetActorID()),
+		ActorType:   profile.OType(pa.GetActorType()),
+		TargetID:    profile.OidType(pa.GetTargetID()),
+		TargetType:  profile.OType(pa.GetTargetType()),
 		ActionType:  ActionType(pa.GetActionType()),
 		ActionValue: pa.GetActionValue(),
 		Timestamp:   Timestamp(pa.GetTimestamp()),
@@ -57,29 +57,29 @@ func ToProtoAction(a Action) ProtoAction {
 }
 
 type ActionFetchRequest struct {
-	MinActionID    lib.OidType `db:"min_action_id"`
-	MaxActionID    lib.OidType `db:"max_action_id"`
-	ActorID        lib.OidType `db:"actor_id"`
-	ActorType      lib.OType   `db:"actor_type"`
-	TargetID       lib.OidType `db:"target_id"`
-	TargetType     lib.OType   `db:"target_type"`
-	ActionType     ActionType  `db:"action_type"`
-	MinActionValue int32       `db:"min_action_value"`
-	MaxActionValue int32       `db:"max_action_value"`
-	MinTimestamp   Timestamp   `db:"min_timestamp"`
-	MaxTimestamp   Timestamp   `db:"max_timestamp"`
-	RequestID      RequestID   `db:"request_id"`
+	MinActionID    profile.OidType `db:"min_action_id"`
+	MaxActionID    profile.OidType `db:"max_action_id"`
+	ActorID        profile.OidType `db:"actor_id"`
+	ActorType      profile.OType   `db:"actor_type"`
+	TargetID       profile.OidType `db:"target_id"`
+	TargetType     profile.OType   `db:"target_type"`
+	ActionType     ActionType      `db:"action_type"`
+	MinActionValue int32           `db:"min_action_value"`
+	MaxActionValue int32           `db:"max_action_value"`
+	MinTimestamp   Timestamp       `db:"min_timestamp"`
+	MaxTimestamp   Timestamp       `db:"max_timestamp"`
+	RequestID      RequestID       `db:"request_id"`
 }
 
 func FromProtoActionFetchRequest(pa *ProtoActionFetchRequest) ActionFetchRequest {
 	return ActionFetchRequest{
 
-		MinActionID:    lib.OidType(pa.GetMinActionID()),
-		MaxActionID:    lib.OidType(pa.GetMaxActionID()),
-		ActorID:        lib.OidType(pa.GetActorID()),
-		ActorType:      lib.OType(pa.GetActorType()),
-		TargetID:       lib.OidType(pa.GetTargetID()),
-		TargetType:     lib.OType(pa.GetTargetType()),
+		MinActionID:    profile.OidType(pa.GetMinActionID()),
+		MaxActionID:    profile.OidType(pa.GetMaxActionID()),
+		ActorID:        profile.OidType(pa.GetActorID()),
+		ActorType:      profile.OType(pa.GetActorType()),
+		TargetID:       profile.OidType(pa.GetTargetID()),
+		TargetType:     profile.OType(pa.GetTargetType()),
 		ActionType:     ActionType(pa.GetActionType()),
 		MinActionValue: pa.GetMinActionValue(),
 		MaxActionValue: pa.GetMaxActionValue(),

@@ -4,7 +4,7 @@ import (
 	"database/sql"
 	"fennel/data/lib"
 	"fennel/instance"
-	lib2 "fennel/profile/lib"
+	lib2 "fennel/lib/profile"
 )
 
 func GetCheckpoint(this instance.Instance, ct lib.CounterType) (lib2.OidType, error) {

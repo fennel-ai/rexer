@@ -15,7 +15,7 @@ _sym_db = _symbol_database.Default()
 import value_pb2 as value__pb2
 
 
-DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\rprofile.proto\x1a\x0bvalue.proto\"d\n\x10ProtoProfileItem\x12\r\n\x05OType\x18\x01 \x01(\r\x12\x0b\n\x03Oid\x18\x02 \x01(\x04\x12\x0b\n\x03Key\x18\x03 \x01(\t\x12\x0f\n\x07Version\x18\x04 \x01(\x04\x12\x16\n\x05Value\x18\x05 \x01(\x0b\x32\x07.PValueB\x14Z\x12\x66\x65nnel/profile/libb\x06proto3')
+DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\rprofile.proto\x1a\x0bvalue.proto\"d\n\x10ProtoProfileItem\x12\r\n\x05OType\x18\x01 \x01(\r\x12\x0b\n\x03Oid\x18\x02 \x01(\x04\x12\x0b\n\x03Key\x18\x03 \x01(\t\x12\x0f\n\x07Version\x18\x04 \x01(\x04\x12\x16\n\x05Value\x18\x05 \x01(\x0b\x32\x07.PValueB\x14Z\x12\x66\x65nnel/lib/profileb\x06proto3')
 
 
 
@@ -30,7 +30,7 @@ _sym_db.RegisterMessage(ProtoProfileItem)
 if _descriptor._USE_C_DESCRIPTORS == False:
 
   DESCRIPTOR._options = None
-  DESCRIPTOR._serialized_options = b'Z\022fennel/profile/lib'
+  DESCRIPTOR._serialized_options = b'Z\022fennel/lib/profile'
   _PROTOPROFILEITEM._serialized_start=30
   _PROTOPROFILEITEM._serialized_end=130
 # @@protoc_insertion_point(module_scope)

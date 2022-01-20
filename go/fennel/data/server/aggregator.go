@@ -4,7 +4,7 @@ import (
 	"fennel/client"
 	"fennel/data/lib"
 	"fennel/lib/action"
-	lib2 "fennel/profile/lib"
+	lib2 "fennel/lib/profile"
 	"fennel/value"
 	"fmt"
 )

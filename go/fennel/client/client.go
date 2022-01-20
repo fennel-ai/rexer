@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"fennel/data/lib"
 	"fennel/lib/action"
-	profileLib "fennel/profile/lib"
+	profileLib "fennel/lib/profile"
 	"fennel/value"
 	"fmt"
 	"io/ioutil"

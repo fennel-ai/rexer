@@ -1,7 +1,7 @@
 package main
 
 import (
-	profileLib "fennel/profile/lib"
+	profilelib "fennel/lib/profile"
 	"fennel/value"
 	"fmt"
 	"google.golang.org/protobuf/proto"
@@ -10,7 +10,7 @@ import (
 )
 
 func (controller MainController) get(w http.ResponseWriter, req *http.Request) {
-	var protoReq profileLib.ProtoProfileItem
+	var protoReq profilelib.ProtoProfileItem
 	// Try to decode the request body into the struct. If there is an error,
 	// respond to the client with the error message and a 400 status code.
 	body, err := ioutil.ReadAll(req.Body)
@@ -23,7 +23,7 @@ func (controller MainController) get(w http.ResponseWriter, req *http.Request) {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	request, err := profileLib.FromProtoProfileItem(&protoReq)
+	request, err := profilelib.FromProtoProfileItem(&protoReq)
 	if err != nil {
 		http.Error(w, fmt.Sprintf("invalid request: %v", err), http.StatusBadRequest)
 		return
@@ -56,7 +56,7 @@ func (controller MainController) get(w http.ResponseWriter, req *http.Request) {
 // TODO: add some locking etc to ensure that if two requests try to modify
 // the same key/value, we don't run into a race condition
 func (controller MainController) set(w http.ResponseWriter, req *http.Request) {
-	var protoReq profileLib.ProtoProfileItem
+	var protoReq profilelib.ProtoProfileItem
 	body, err := ioutil.ReadAll(req.Body)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
@@ -66,7 +66,7 @@ func (controller MainController) set(w http.ResponseWriter, req *http.Request) {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	request, err := profileLib.FromProtoProfileItem(&protoReq)
+	request, err := profilelib.FromProtoProfileItem(&protoReq)
 	if err != nil {
 		http.Error(w, fmt.Sprintf("invalid request: %v", err), http.StatusBadRequest)
 		return

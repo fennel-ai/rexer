@@ -4,8 +4,8 @@ import (
 	"fennel/client"
 	"fennel/data/lib"
 	"fennel/lib/action"
+	lib2 "fennel/lib/profile"
 	"fennel/model/checkpoint"
-	lib2 "fennel/profile/lib"
 	"fmt"
 )
 

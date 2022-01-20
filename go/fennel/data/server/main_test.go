@@ -4,7 +4,7 @@ import (
 	"fennel/client"
 	"fennel/data/lib"
 	"fennel/lib/action"
-	profileLib "fennel/profile/lib"
+	profileLib "fennel/lib/profile"
 	"fennel/value"
 	"fmt"
 	"github.com/stretchr/testify/assert"

@@ -2,7 +2,7 @@ package action
 
 import (
 	"fennel/lib/action"
-	profileLib "fennel/profile/lib"
+	profileLib "fennel/lib/profile"
 	"fennel/test"
 	"github.com/stretchr/testify/assert"
 	"testing"

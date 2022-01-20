@@ -1,7 +1,7 @@
 package data
 
 import (
-	"fennel/profile/lib"
+	"fennel/lib/profile"
 	"fennel/value"
 	"google.golang.org/protobuf/proto"
 	"time"
@@ -19,7 +19,7 @@ func (pc Controller) Init() error {
 	return pc.provider.Init()
 }
 
-func (pc Controller) Get(request lib.ProfileItem) (*value.Value, error) {
+func (pc Controller) Get(request profile.ProfileItem) (*value.Value, error) {
 	if err := request.Validate(); err != nil {
 		return nil, err
 	}
@@ -41,7 +41,7 @@ func (pc Controller) Get(request lib.ProfileItem) (*value.Value, error) {
 	return &val, nil
 }
 
-func (pc Controller) Set(request lib.ProfileItem) error {
+func (pc Controller) Set(request profile.ProfileItem) error {
 	if err := request.Validate(); err != nil {
 		return err
 	}
