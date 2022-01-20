@@ -52,6 +52,13 @@ func init() {
 				zkey varchar(256) NOT NULL,
 				PRIMARY KEY(counter_type, window_type, idx, zkey)
 		  );`,
+		7: `CREATE TABLE IF NOT EXISTS query_ast (
+				query_id INTEGER NOT NULL PRIMARY KEY AUTO_INCREMENT,
+				cust_id INTEGER NOT NULL,
+				timestamp INTEGER NOT NULL,
+				query_ser BLOB NOT NULL,
+				INDEX (cust_id, timestamp)
+		  );`,
 	}
 	tablenames = []string{
 		"schema_version",
@@ -60,6 +67,7 @@ func init() {
 		"checkpoint",
 		"profile",
 		"counter_bucket",
+		"query_ast",
 	}
 	if err := verifyDefs(); err != nil {
 		panic(err)
