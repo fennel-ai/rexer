@@ -17,7 +17,6 @@ func init() {
 		1: `CREATE TABLE IF NOT EXISTS schema_version (
 				version INTEGER NOT NULL
 			);`,
-
 		2: `CREATE TABLE IF NOT EXISTS schema_test (
 				zkey INTEGER NOT NULL,
 				value INTEGER NOT NULL
@@ -45,6 +44,14 @@ func init() {
 				version integer not null,
 				value blob not null
 		  );`,
+		6: `CREATE TABLE IF NOT EXISTS counter_bucket (
+				counter_type integer NOT NULL,
+				window_type integer NOT NULL,
+				idx integer NOT NULL,
+				count integer NOT NULL DEFAULT 0,
+				zkey varchar(256) NOT NULL,
+				PRIMARY KEY(counter_type, window_type, idx, zkey)
+		  );`,
 	}
 	tablenames = []string{
 		"schema_version",
@@ -52,6 +59,7 @@ func init() {
 		"actionlog",
 		"checkpoint",
 		"profile",
+		"counter_bucket",
 	}
 	if err := verifyDefs(); err != nil {
 		panic(err)
