@@ -1,5 +1,6 @@
 package ftypes
 
+type CustID uint32
 type OidType uint64
 type OType uint32
 
