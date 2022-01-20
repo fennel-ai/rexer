@@ -11,6 +11,10 @@ type Timestamp uint64
 type RequestID uint64
 
 const (
+	ACTIONLOG_KAFKA_TOPIC = "actionlog"
+)
+
+const (
 	Like  ActionType = 1
 	Share            = 2
 	View             = 3

@@ -61,7 +61,7 @@ func (conf RemoteProducerConfig) Materialize() (resource.Resource, error) {
 	configmap := conf.genConfigMap()
 	producer, err := kafka.NewProducer(configmap)
 	if err != nil {
-		return nil, fmt.Errorf("failed to initialize kafka producer for topic [%s]: %v", conf.topic, err)
+		return nil, fmt.Errorf("failed to initialize kafka producer for Topic [%s]: %v", conf.topic, err)
 	}
 	if conf.recreateTopic {
 		conf.recreate()
@@ -90,15 +90,15 @@ func (conf RemoteProducerConfig) recreate() error {
 	// First, delete any existing topics of this name
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
-	// we ignore results/errors because sometimes the topic may not exist
+	// we ignore results/errors because sometimes the Topic may not exist
 	_, _ = c.DeleteTopics(ctx, []string{conf.topic})
 
-	// now recreate the topic
+	// now recreate the Topic
 	results, err := c.CreateTopics(ctx, []kafka.TopicSpecification{
 		{Topic: conf.topic, NumPartitions: 1},
 	})
 	if err != nil {
-		return fmt.Errorf("failed to create topic [%s]: %v", conf.topic, err)
+		return fmt.Errorf("failed to create Topic [%s]: %v", conf.topic, err)
 	}
 	for _, tr := range results {
 		if tr.Error.Code() != kafka.ErrNoError {
@@ -113,57 +113,9 @@ func (conf RemoteProducerConfig) genConfigMap() *kafka.ConfigMap {
 		"bootstrap.servers": conf.BootstrapServer,
 		"sasl.username":     conf.Username,
 		"sasl.password":     conf.Password,
-		"security.protocol": securityProtocol,
-		"sasl.mechanisms":   saslMechanism,
+		"security.protocol": SecurityProtocol,
+		"sasl.mechanisms":   SaslMechanism,
 	}
 }
 
 var _ resource.Config = RemoteProducerConfig{}
-
-//=================================
-// Local producer/config (for tests)
-//=================================
-
-type localProducer struct {
-	topic string
-	ch    chan<- []byte
-}
-
-func (l localProducer) Close() error {
-	close(l.ch)
-	return nil
-}
-
-func (l localProducer) Teardown() error {
-	return nil
-}
-
-func (l localProducer) Type() resource.Type {
-	return resource.KafkaProducer
-}
-
-func (l localProducer) Log(protoMsg proto.Message) error {
-	ser, err := proto.Marshal(protoMsg)
-	if err != nil {
-		return err
-	}
-	l.ch <- ser
-	return nil
-}
-
-var _ FProducer = localProducer{}
-
-//=================================
-// Config for localProducer
-//=================================
-
-type LocalProducerConfig struct {
-	ch    chan []byte
-	topic string
-}
-
-func (conf LocalProducerConfig) Materialize() (resource.Resource, error) {
-	return localProducer{conf.topic, conf.ch}, nil
-}
-
-var _ resource.Config = LocalProducerConfig{}

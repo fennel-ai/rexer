@@ -42,7 +42,7 @@ func (controller MainController) Log(w http.ResponseWriter, req *http.Request) {
 	}
 
 	// now we know that this is a valid request, so let's store this in kafka
-	err = controller.producer.Log(&pa)
+	err = controller.instance.ActionProducer.Log(&pa)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadGateway)
 		return
@@ -53,7 +53,7 @@ func (controller MainController) Log(w http.ResponseWriter, req *http.Request) {
 // TailActions reads a single message from Kafka and logs it in the database
 func (controller MainController) TailActions() error {
 	pa := actionlib.ProtoAction{}
-	err := controller.consumer.Read(&pa)
+	err := controller.instance.ActionConsumer.Read(&pa)
 	if err != nil {
 		return err
 	}

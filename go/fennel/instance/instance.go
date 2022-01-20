@@ -2,6 +2,7 @@ package instance
 
 import (
 	"fennel/db"
+	"fennel/kafka"
 	"fennel/lib/cache"
 	"fennel/redis"
 	"flag"
@@ -45,9 +46,11 @@ func (i Type) Name() string {
 }
 
 type Instance struct {
-	Type  Type
-	Name  string
-	DB    db.Connection
-	Redis redis.Client
-	Cache cache.Cache
+	Type           Type
+	Name           string
+	DB             db.Connection
+	Redis          redis.Client
+	Cache          cache.Cache
+	ActionProducer kafka.FProducer
+	ActionConsumer kafka.FConsumer
 }
