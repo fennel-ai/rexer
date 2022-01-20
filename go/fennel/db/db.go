@@ -40,6 +40,7 @@ type SQLiteConfig struct {
 
 func (conf SQLiteConfig) Materialize() (resource.Resource, error) {
 	dbname := conf.dbname
+
 	os.Remove(dbname)
 
 	file, err := os.Create(dbname)
@@ -52,7 +53,11 @@ func (conf SQLiteConfig) Materialize() (resource.Resource, error) {
 	if err != nil {
 		return nil, err
 	}
-	return Connection{conf, DB}, nil
+	conn := Connection{config: conf, DB: DB}
+	if err = SyncSchema(conn); err != nil {
+		return nil, err
+	}
+	return conn, nil
 }
 
 var _ resource.Config = SQLiteConfig{""}
@@ -80,5 +85,17 @@ func (conf MySQLConfig) Materialize() (resource.Resource, error) {
 	if err != nil {
 		return nil, err
 	}
-	return Connection{conf, DB}, nil
+	conn := Connection{config: conf, DB: DB}
+	if err = SyncSchema(conn); err != nil {
+		return nil, err
+	}
+	return conn, nil
+}
+
+// TODO: replace this with config of a locally running MySQL process
+var TestMySQLConfig = MySQLConfig{
+	DBname:   "fennel-test",
+	Username: "ftm4ey929riz",
+	Password: "pscale_pw_YdsInnGezBNibWLaSXzjWUNHP2ljuXGJUAq8y7iRXqQ",
+	Host:     "9kzpy3s6wi0u.us-west-2.psdb.cloud",
 }

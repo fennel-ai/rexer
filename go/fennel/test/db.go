@@ -14,22 +14,22 @@ func DefaultInstance() (instance.Instance, error) {
 }
 
 func DefaultDB() (db.Connection, error) {
-	resource, err := testMySQLConfig.Materialize()
+	// TODO: start creating a separate dB (with a random name) for each test
+	// that will allow us to run go tests in parallel (which is currently disabled
+	// in testall.py)
+	resource, err := db.TestMySQLConfig.Materialize()
 	if err != nil {
 		return db.Connection{}, err
 	}
-	db := resource.(db.Connection)
-	return db, nil
-}
+	DB := resource.(db.Connection)
 
-var testMySQLConfig = db.MySQLConfig{
-	DBname:   "fennel-test",
-	Username: "ftm4ey929riz",
-	Password: "pscale_pw_YdsInnGezBNibWLaSXzjWUNHP2ljuXGJUAq8y7iRXqQ",
-	Host:     "9kzpy3s6wi0u.us-west-2.psdb.cloud",
+	// we recreate the DB for each test
+	DB, err = db.Recreate_I_KNOW_WHAT_IM_DOING(DB)
+	if err != nil {
+		return db.Connection{}, err
+	}
+	if err = db.SyncSchema(DB); err != nil {
+		return db.Connection{}, err
+	}
+	return DB, nil
 }
-
-//func DefaultDB() (db.Connection, error) {
-//	panic("not impelemented")
-//
-//}
