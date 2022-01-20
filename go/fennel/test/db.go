@@ -2,16 +2,7 @@ package test
 
 import (
 	"fennel/db"
-	"fennel/instance"
 )
-
-func DefaultInstance() (instance.Instance, error) {
-	db, err := DefaultDB()
-	if err != nil {
-		return instance.Instance{}, err
-	}
-	return instance.Instance{DB: db}, nil
-}
 
 func DefaultDB() (db.Connection, error) {
 	// TODO: start creating a separate dB (with a random name) for each test

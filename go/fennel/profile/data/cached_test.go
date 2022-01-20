@@ -32,7 +32,7 @@ func TestCachedDBBasic(t *testing.T) {
 	table, err := NewProfileTable(DB)
 	assert.NoError(t, err)
 
-	client, err := redis.DefaultClient()
+	client, err := test.DefaultRedis()
 	assert.NoError(t, err)
 	defer client.Close()
 	p := CachedDB{cache: redis.NewCache(client.(redis.Client)), groundTruth: table}
@@ -41,7 +41,7 @@ func TestCachedDBBasic(t *testing.T) {
 
 func TestCaching(t *testing.T) {
 	// test that we cache the value instead of always pulling from ground truth
-	client, err := redis.DefaultClient()
+	client, err := test.DefaultRedis()
 	assert.NoError(t, err)
 	defer client.Close()
 	origmock := []byte{1, 2, 3}
@@ -78,7 +78,7 @@ func TestCachedDBVersion(t *testing.T) {
 	table, err := NewProfileTable(DB)
 	assert.NoError(t, err)
 
-	client, err := redis.DefaultClient()
+	client, err := test.DefaultRedis()
 	assert.NoError(t, err)
 	defer client.Close()
 

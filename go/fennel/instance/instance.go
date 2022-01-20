@@ -2,6 +2,7 @@ package instance
 
 import (
 	"fennel/db"
+	"fennel/redis"
 	"flag"
 	"fmt"
 )
@@ -43,5 +44,6 @@ func (i Type) Name() string {
 }
 
 type Instance struct {
-	DB db.Connection
+	DB    db.Connection
+	Redis redis.Client
 }

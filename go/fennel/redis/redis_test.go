@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/tls"
 	"flag"
+	"github.com/alicebob/miniredis/v2"
 	"testing"
 
 	"github.com/go-redis/redis/v8"
@@ -41,7 +42,9 @@ func TestRedisClientIntegration(t *testing.T) {
 }
 
 func TestRedisClientLocal(t *testing.T) {
-	client, err := DefaultClient()
+	mr, err := miniredis.Run()
+	assert.NoError(t, err)
+	client, err := MiniRedisConfig{MiniRedis: mr}.Materialize()
 	assert.NoError(t, err)
 	defer client.Close()
 	testClient(t, client.(Client))

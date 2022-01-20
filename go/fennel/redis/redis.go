@@ -2,9 +2,7 @@ package redis
 
 import (
 	"crypto/tls"
-	"fennel/instance"
 	"fennel/resource"
-	"fmt"
 	"github.com/alicebob/miniredis/v2"
 	"github.com/go-redis/redis/v8"
 )
@@ -24,27 +22,12 @@ func (c Client) Close() error {
 		return err
 	}
 	if conf, ok := c.conf.(MiniRedisConfig); ok {
-		conf.mr.Close()
+		conf.MiniRedis.Close()
 	}
 	return nil
 }
 
 var _ resource.Resource = Client{}
-
-func DefaultClient() (resource.Resource, error) {
-	switch instance.Current() {
-	case instance.PROD:
-		return defaultConfig.Materialize()
-	case instance.TEST:
-		mr, err := miniredis.Run()
-		if err != nil {
-			return nil, err
-		}
-		return MiniRedisConfig{mr}.Materialize()
-	default:
-		return nil, fmt.Errorf("unsupported instance: %v", instance.Current())
-	}
-}
 
 //=================================
 // Redis client config
@@ -74,12 +57,12 @@ var defaultConfig = ClientConfig{
 //=================================
 
 type MiniRedisConfig struct {
-	mr *miniredis.Miniredis
+	MiniRedis *miniredis.Miniredis
 }
 
 func (conf MiniRedisConfig) Materialize() (resource.Resource, error) {
 	return Client{conf, redis.NewClient(&redis.Options{
-		Addr:      conf.mr.Addr(),
+		Addr:      conf.MiniRedis.Addr(),
 		TLSConfig: nil,
 	})}, nil
 }
