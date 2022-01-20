@@ -4,16 +4,17 @@ import (
 	"fennel/client"
 	"fennel/data/lib"
 	"fennel/lib/action"
+	"fennel/model/checkpoint"
 	lib2 "fennel/profile/lib"
 	"fmt"
 )
 
 func getCheckpoint(mc MainController, ct lib.CounterType) (lib2.OidType, error) {
-	return mc.checkpointTable.counterDBGetCheckpoint(ct)
+	return checkpoint.GetCheckpoint(mc.instance, ct)
 }
 
 func setCheckpoint(mc MainController, ct lib.CounterType, actionID lib2.OidType) error {
-	return mc.checkpointTable.counterDBSetCheckpoint(ct, actionID)
+	return checkpoint.SetCheckpoint(mc.instance, ct, actionID)
 }
 
 // takes all recent actions since last checkpoint, computes all keys that need

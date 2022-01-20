@@ -33,11 +33,17 @@ func init() {
 				timestamp integer NOT NULL,
 				request_id integer not null
 		  );`,
+		4: `CREATE TABLE IF NOT EXISTS checkpoint(
+				counter_type INTEGER NOT NULL,
+				checkpoint INTEGER NOT NULL DEFAULT 0,
+				PRIMARY KEY(counter_type)
+		  );`,
 	}
 	tablenames = []string{
 		"schema_version",
 		"schema_test",
 		"actionlog",
+		"checkpoint",
 	}
 	if err := verifyDefs(); err != nil {
 		panic(err)
@@ -61,6 +67,8 @@ func verifyDefs() error {
 //and returns a connection to that. Currently, it is implemented by dropping all the tables one by one.
 //This could lead to permanent data loss so, it should only be used in test instances - if you don't
 //know what you're doing, you should not be using it
+//TODO: instead of dropping table by table, use API to directly drop/create DB. When that is ready,
+//we won't have to maintain 'tablenames' vairable anymore.
 func Recreate_I_KNOW_WHAT_IM_DOING(db Connection) (Connection, error) {
 	for _, name := range tablenames {
 		_, err := db.Query(fmt.Sprintf("DROP TABLE IF EXISTS %s;", name))

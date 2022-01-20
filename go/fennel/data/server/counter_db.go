@@ -5,7 +5,6 @@ import (
 	"fennel/data/lib"
 	"fennel/db"
 	"fennel/lib/action"
-	profileLib "fennel/profile/lib"
 	"fmt"
 	_ "github.com/go-sql-driver/mysql"
 	_ "github.com/mattn/go-sqlite3"
@@ -31,15 +30,10 @@ const (
 )
 
 const (
-	COUNTER_TABLE    = "counter_bucket"
-	CHECKPOINT_TABLE = "checkpoint"
+	COUNTER_TABLE = "counter_bucket"
 )
 
 type CounterTable struct {
-	db.Table
-}
-
-type CheckpointTable struct {
 	db.Table
 }
 
@@ -58,20 +52,6 @@ func NewCounterTable(conn db.Connection) (CounterTable, error) {
 		return CounterTable{}, err
 	}
 	return CounterTable{resource.(db.Table)}, err
-}
-
-func NewCheckpointTable(conn db.Connection) (CheckpointTable, error) {
-	sql := fmt.Sprintf(`CREATE TABLE IF NOT EXISTS  %s(
-		counter_type INTEGER NOT NULL,
-		checkpoint INTEGER NOT NULL DEFAULT 0,
-		PRIMARY KEY(counter_type)
-	  );`, CHECKPOINT_TABLE)
-	conf := db.TableConfig{SQL: sql, Name: CHECKPOINT_TABLE, DB: conn, DropTable: true}
-	resource, err := conf.Materialize()
-	if err != nil {
-		return CheckpointTable{}, err
-	}
-	return CheckpointTable{resource.(db.Table)}, err
 }
 
 func tsToIndex(ts action.Timestamp, window lib.Window) (uint64, error) {
@@ -173,33 +153,4 @@ func (table CounterTable) counterDBGet(bucket CounterBucket) (uint64, error) {
 	} else {
 		return 0, nil
 	}
-}
-
-func (table CheckpointTable) counterDBGetCheckpoint(ct lib.CounterType) (profileLib.OidType, error) {
-	row := table.DB.QueryRow(fmt.Sprintf(`
-		SELECT checkpoint
-		FROM %s
-		WHERE counter_type = ?;
-	`, CHECKPOINT_TABLE), ct)
-	var checkpoint uint64
-	err := row.Scan(&checkpoint)
-	if err != nil && err != sql.ErrNoRows {
-		return 0, err
-	} else if err == sql.ErrNoRows {
-		// this happens when no matching row was found. By default, checkpoint is zero
-		return 0, nil
-	} else {
-		return profileLib.OidType(checkpoint), nil
-	}
-}
-
-func (table CheckpointTable) counterDBSetCheckpoint(ct lib.CounterType, checkpoint profileLib.OidType) error {
-	_, err := table.DB.Exec(fmt.Sprintf(`
-		INSERT INTO %s (counter_type, checkpoint)
-        VALUES (?, ?)
-		ON DUPLICATE KEY
-		UPDATE
-			checkpoint = ?
-		;`, CHECKPOINT_TABLE), ct, checkpoint, checkpoint)
-	return err
 }

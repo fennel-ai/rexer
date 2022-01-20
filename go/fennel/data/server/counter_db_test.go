@@ -3,7 +3,6 @@ package main
 import (
 	"fennel/data/lib"
 	"fennel/lib/action"
-	profileLib "fennel/profile/lib"
 	"fennel/test"
 	"fennel/utils"
 	"github.com/stretchr/testify/assert"
@@ -98,54 +97,4 @@ func TestLongKey(t *testing.T) {
 	bucket = CounterBucket{1, 2, 3, utils.RandString(256), 1}
 	err = table.counterDBIncrement(bucket)
 	assert.NoError(t, err)
-}
-
-func TestCheckpoint(t *testing.T) {
-	DB, err := test.DefaultDB()
-	assert.NoError(t, err)
-	table, err := NewCheckpointTable(DB)
-	assert.NoError(t, err)
-	ct1 := lib.CounterType_USER_LIKE
-	zero := profileLib.OidType(0)
-	// initially no checkpoint is setup, so we should get 0
-	checkpoint, err := table.counterDBGetCheckpoint(ct1)
-	assert.NoError(t, err)
-	assert.Equal(t, zero, checkpoint)
-
-	// now set a checkpoint
-	expected1 := profileLib.OidType(1)
-	err = table.counterDBSetCheckpoint(ct1, expected1)
-	assert.NoError(t, err)
-	// and reading it now, we get new value
-	checkpoint, err = table.counterDBGetCheckpoint(ct1)
-	assert.NoError(t, err)
-	assert.Equal(t, expected1, checkpoint)
-
-	//can reset it again
-	expected2 := profileLib.OidType(2)
-	err = table.counterDBSetCheckpoint(ct1, expected2)
-	assert.NoError(t, err)
-	checkpoint, err = table.counterDBGetCheckpoint(ct1)
-	assert.NoError(t, err)
-	assert.Equal(t, expected2, checkpoint)
-
-	// meanwhile other counter types aren't affected
-	var ct2 lib.CounterType = lib.CounterType_USER_SHARE
-	// initially no checkpoint is setup, so we should get 0
-	checkpoint, err = table.counterDBGetCheckpoint(ct2)
-	assert.NoError(t, err)
-	assert.Equal(t, zero, checkpoint)
-
-	expected3 := profileLib.OidType(51)
-	err = table.counterDBSetCheckpoint(ct2, expected3)
-	assert.NoError(t, err)
-
-	checkpoint, err = table.counterDBGetCheckpoint(ct2)
-	assert.NoError(t, err)
-	assert.Equal(t, expected3, checkpoint)
-
-	// meanwhile checkpoint for original CT isn't affected
-	checkpoint, err = table.counterDBGetCheckpoint(ct1)
-	assert.NoError(t, err)
-	assert.Equal(t, expected2, checkpoint)
 }

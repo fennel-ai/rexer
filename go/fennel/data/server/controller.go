@@ -8,12 +8,11 @@ import (
 )
 
 type MainController struct {
-	profile         profileData.Controller
-	instance        instance.Instance
-	counterTable    CounterTable
-	checkpointTable CheckpointTable
-	producer        kafka.FProducer
-	consumer        kafka.FConsumer
+	profile      profileData.Controller
+	instance     instance.Instance
+	counterTable CounterTable
+	producer     kafka.FProducer
+	consumer     kafka.FConsumer
 }
 
 // TODO: this whole function needs to move to main_test
@@ -31,10 +30,6 @@ func DefaultMainController() (MainController, error) {
 	if err != nil {
 		return MainController{}, err
 	}
-	checkpointTable, err := NewCheckpointTable(conn)
-	if err != nil {
-		return MainController{}, err
-	}
 	profileProvider, err := profileData.NewProfileTable(conn)
 	if err != nil {
 		return MainController{}, err
@@ -48,11 +43,10 @@ func DefaultMainController() (MainController, error) {
 		return MainController{}, err
 	}
 	return MainController{
-		profile:         profileData.NewController(profileProvider),
-		instance:        this,
-		counterTable:    counterTable,
-		checkpointTable: checkpointTable,
-		producer:        producer,
-		consumer:        consumer,
+		profile:      profileData.NewController(profileProvider),
+		instance:     this,
+		counterTable: counterTable,
+		producer:     producer,
+		consumer:     consumer,
 	}, nil
 }
