@@ -1,8 +1,8 @@
 package main
 
 import (
-	"fennel/data/lib"
 	"fennel/db"
+	"fennel/lib/action"
 	"fmt"
 	_ "github.com/go-sql-driver/mysql"
 	_ "github.com/mattn/go-sqlite3"
@@ -38,7 +38,7 @@ func NewActionTable(conn db.Connection) (ActionTable, error) {
 }
 
 // inserts the action. If successful, returns the actionID
-func (at ActionTable) actionDBInsert(action lib.Action) (uint64, error) {
+func (at ActionTable) actionDBInsert(action action.Action) (uint64, error) {
 	err := action.Validate()
 	if err != nil {
 		return 0, fmt.Errorf("can not insert action: %v", err)
@@ -79,7 +79,7 @@ func (at ActionTable) actionDBInsert(action lib.Action) (uint64, error) {
 // For actionID and timestamp ranges, min is exclusive and max is inclusive
 // For actionValue range, both min/max are inclusive
 // TODO: add limit support?
-func (at ActionTable) actionDBGet(request lib.ActionFetchRequest) ([]lib.Action, error) {
+func (at ActionTable) actionDBGet(request action.ActionFetchRequest) ([]action.Action, error) {
 	query := fmt.Sprintf("SELECT * FROM %s", at.Name)
 	clauses := make([]string, 0)
 	if request.ActorType != 0 {
@@ -124,7 +124,7 @@ func (at ActionTable) actionDBGet(request lib.ActionFetchRequest) ([]lib.Action,
 	}
 	query = fmt.Sprintf("%s ORDER BY timestamp;", query)
 	//log.Printf("Action log db get query: %s\n", query)
-	actions := make([]lib.Action, 0)
+	actions := make([]action.Action, 0)
 	statement, err := at.DB.PrepareNamed(query)
 	if err != nil {
 		return nil, err

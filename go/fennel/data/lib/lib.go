@@ -1,6 +1,7 @@
 package lib
 
 import (
+	"fennel/lib/action"
 	"fennel/profile/lib"
 	"fmt"
 )
@@ -19,7 +20,7 @@ type GetCountRequest struct {
 	CounterType CounterType
 	Window      Window
 	Key         Key
-	Timestamp   Timestamp
+	Timestamp   action.Timestamp
 }
 
 func (r GetCountRequest) Validate() error {
@@ -40,7 +41,7 @@ func FromProtoGetCountRequest(pgcr *ProtoGetCountRequest) GetCountRequest {
 		pgcr.CounterType,
 		pgcr.Window,
 		toKey(pgcr.Key),
-		Timestamp(pgcr.Timestamp),
+		action.Timestamp(pgcr.Timestamp),
 	}
 }
 func ToProtoGetCountRequest(gcr *GetCountRequest) ProtoGetCountRequest {
@@ -58,7 +59,7 @@ type GetRateRequest struct {
 	NumKey         Key
 	DenKey         Key
 	Window         Window
-	Timestamp      Timestamp
+	Timestamp      action.Timestamp
 	LowerBound     bool
 }
 
@@ -69,7 +70,7 @@ func FromProtoGetRateRequest(pgrr *ProtoGetRateRequest) GetRateRequest {
 		toKey(pgrr.NumKey),
 		toKey(pgrr.DenKey),
 		pgrr.Window,
-		Timestamp(pgrr.Timestamp),
+		action.Timestamp(pgrr.Timestamp),
 		pgrr.LowerBound,
 	}
 }

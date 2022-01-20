@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fennel/data/lib"
+	"fennel/lib/action"
 	profileLib "fennel/profile/lib"
 	"fennel/value"
 	"fmt"
@@ -115,29 +116,29 @@ func (c *Client) SetProfile(req *profileLib.ProfileItem) error {
 	return nil
 }
 
-func (c *Client) FetchActions(request lib.ActionFetchRequest) ([]lib.Action, error) {
-	protoRequest := lib.ToProtoActionFetchRequest(request)
+func (c *Client) FetchActions(request action.ActionFetchRequest) ([]action.Action, error) {
+	protoRequest := action.ToProtoActionFetchRequest(request)
 	response, err := post(&protoRequest, c.fetchURL())
 	if err != nil {
 		return nil, err
 	}
 	// now read all actions
-	var actionList lib.ProtoActionList
+	var actionList action.ProtoActionList
 	err = proto.Unmarshal(response, &actionList)
 	if err != nil {
 		return nil, fmt.Errorf("unmarshal error: %v", err)
 	}
-	actions := lib.FromProtoActionList(&actionList)
+	actions := action.FromProtoActionList(&actionList)
 	return actions, nil
 }
 
 // LogAction makes the http request to server to log the given action
-func (c *Client) LogAction(action lib.Action) error {
-	err := action.Validate()
+func (c *Client) LogAction(a action.Action) error {
+	err := a.Validate()
 	if err != nil {
 		return fmt.Errorf("can not log invalid action: %v", err)
 	}
-	pa := lib.ToProtoAction(action)
+	pa := action.ToProtoAction(a)
 	if _, err = post(&pa, c.logURL()); err != nil {
 		return err
 	}

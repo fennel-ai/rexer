@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"fennel/data/lib"
 	"fennel/db"
+	"fennel/lib/action"
 	profileLib "fennel/profile/lib"
 	"fmt"
 	_ "github.com/go-sql-driver/mysql"
@@ -73,7 +74,7 @@ func NewCheckpointTable(conn db.Connection) (CheckpointTable, error) {
 	return CheckpointTable{resource.(db.Table)}, err
 }
 
-func tsToIndex(ts lib.Timestamp, window lib.Window) (uint64, error) {
+func tsToIndex(ts action.Timestamp, window lib.Window) (uint64, error) {
 	switch window {
 	case lib.Window_HOUR:
 		return uint64(ts / (3600 / GRANULARITY)), nil
@@ -99,7 +100,7 @@ func keyToString(k lib.Key) string {
 	return fmt.Sprintf("%d", k)
 }
 
-func (table CounterTable) counterIncrement(ct lib.CounterType, window lib.Window, key lib.Key, ts lib.Timestamp, count uint64) error {
+func (table CounterTable) counterIncrement(ct lib.CounterType, window lib.Window, key lib.Key, ts action.Timestamp, count uint64) error {
 	index, err := tsToIndex(ts, window)
 	if err != nil {
 		return err
@@ -110,7 +111,7 @@ func (table CounterTable) counterIncrement(ct lib.CounterType, window lib.Window
 
 func (table CounterTable) counterGet(request lib.GetCountRequest) (uint64, error) {
 	if request.Timestamp == 0 {
-		request.Timestamp = lib.Timestamp(time.Now().Unix())
+		request.Timestamp = action.Timestamp(time.Now().Unix())
 	}
 	index, err := tsToIndex(request.Timestamp, request.Window)
 	if err != nil {

@@ -3,6 +3,7 @@ package main
 import (
 	"fennel/client"
 	"fennel/data/lib"
+	"fennel/lib/action"
 	profileLib "fennel/profile/lib"
 	"fennel/value"
 	"fmt"
@@ -10,13 +11,13 @@ import (
 	"testing"
 )
 
-func verifyFetch(t *testing.T, c client.Client, request lib.ActionFetchRequest, expected []lib.Action) {
+func verifyFetch(t *testing.T, c client.Client, request action.ActionFetchRequest, expected []action.Action) {
 	found, err := c.FetchActions(request)
 	assert.NoError(t, err)
 	equals(t, expected, found)
 }
 
-func equals(t *testing.T, expected []lib.Action, found []lib.Action) {
+func equals(t *testing.T, expected []action.Action, found []action.Action) {
 	// we don't test equality of found/expected directly
 	// action_ids aren't set properly in expected yet
 	// instead, we use Equals method on Action struct and tell it to ignore IDs
@@ -26,7 +27,7 @@ func equals(t *testing.T, expected []lib.Action, found []lib.Action) {
 	}
 }
 
-func add(controller MainController, t *testing.T, c client.Client, a lib.Action) lib.Action {
+func add(controller MainController, t *testing.T, c client.Client, a action.Action) action.Action {
 	err := c.LogAction(a)
 	assert.NoError(t, err)
 
@@ -47,32 +48,32 @@ func TestServerClientBasic(t *testing.T) {
 	c := client.NewClient("http://localhost")
 
 	// in the beginning, with no value set, we get []actions but with no error
-	verifyFetch(t, c, lib.ActionFetchRequest{}, []lib.Action{})
+	verifyFetch(t, c, action.ActionFetchRequest{}, []action.Action{})
 
 	// now we add a couple of actions
-	action := lib.Action{ActorType: 1, ActorID: 2, ActionType: 3, TargetType: 4, TargetID: 5}
+	a := action.Action{ActorType: 1, ActorID: 2, ActionType: 3, TargetType: 4, TargetID: 5}
 	// logging this should fail because some fields (e.g. requestID aren't specified)
-	err = c.LogAction(action)
+	err = c.LogAction(a)
 	assert.Error(t, err)
 	// and no action was logged on server even after process
-	verifyFetch(t, c, lib.ActionFetchRequest{}, []lib.Action{})
+	verifyFetch(t, c, action.ActionFetchRequest{}, []action.Action{})
 
 	// but this error disappears when we pass all values
-	action1 := add(controller, t, c, lib.Action{
+	action1 := add(controller, t, c, action.Action{
 		ActorType: 1, ActorID: 2, ActionType: 3, TargetType: 4, TargetID: 5, RequestID: 6, Timestamp: 7},
 	)
 	// and this action should show up in requests
-	verifyFetch(t, c, lib.ActionFetchRequest{}, []lib.Action{action1})
+	verifyFetch(t, c, action.ActionFetchRequest{}, []action.Action{action1})
 
 	// add a couple of actions
-	action2 := add(controller, t, c, lib.Action{
+	action2 := add(controller, t, c, action.Action{
 		ActorType: 11, ActorID: 12, ActionType: 13, TargetType: 14, TargetID: 15, RequestID: 16, Timestamp: 17},
 	)
-	verifyFetch(t, c, lib.ActionFetchRequest{}, []lib.Action{action1, action2})
-	action3 := add(controller, t, c, lib.Action{
+	verifyFetch(t, c, action.ActionFetchRequest{}, []action.Action{action1, action2})
+	action3 := add(controller, t, c, action.Action{
 		ActorType: 22, ActorID: 23, ActionType: 23, TargetType: 24, TargetID: 25, RequestID: 26, Timestamp: 27},
 	)
-	verifyFetch(t, c, lib.ActionFetchRequest{}, []lib.Action{action1, action2, action3})
+	verifyFetch(t, c, action.ActionFetchRequest{}, []action.Action{action1, action2, action3})
 }
 
 func TestEndToEnd(t *testing.T) {
@@ -88,7 +89,7 @@ func TestEndToEnd(t *testing.T) {
 	// Initially count for keys are zero
 	uid := profileLib.OidType(1)
 	video_id := profileLib.OidType(2)
-	ts := lib.Timestamp(123)
+	ts := action.Timestamp(123)
 
 	requests := []lib.GetCountRequest{
 		{lib.CounterType_USER_LIKE, lib.Window_HOUR, lib.Key{uid}, ts},
@@ -120,11 +121,11 @@ func TestEndToEnd(t *testing.T) {
 	}
 
 	// now make an event
-	action1 := lib.Action{ActorType: profileLib.User, ActorID: uid, TargetType: profileLib.Video, TargetID: video_id, ActionType: lib.Like, RequestID: 1, Timestamp: ts}
+	action1 := action.Action{ActorType: profileLib.User, ActorID: uid, TargetType: profileLib.Video, TargetID: video_id, ActionType: action.Like, RequestID: 1, Timestamp: ts}
 	add(controller, t, c, action1)
 
 	// and verify it went through
-	verifyFetch(t, c, lib.ActionFetchRequest{MinActionID: 0}, []lib.Action{action1})
+	verifyFetch(t, c, action.ActionFetchRequest{MinActionID: 0}, []action.Action{action1})
 
 	// and all counts should still be zero
 	for _, cr := range requests {
@@ -140,9 +141,9 @@ func TestEndToEnd(t *testing.T) {
 		assert.Equal(t, uint64(1), count, cr)
 	}
 	// now make one more event which is not of matching action type (Like vs Share)
-	action2 := lib.Action{ActorType: profileLib.User, ActorID: uid, TargetType: profileLib.Video, TargetID: video_id, ActionType: lib.Share, RequestID: 1, Timestamp: ts}
+	action2 := action.Action{ActorType: profileLib.User, ActorID: uid, TargetType: profileLib.Video, TargetID: video_id, ActionType: action.Share, RequestID: 1, Timestamp: ts}
 	add(controller, t, c, action2)
-	verifyFetch(t, c, lib.ActionFetchRequest{MinActionID: 0}, []lib.Action{action1, action2})
+	verifyFetch(t, c, action.ActionFetchRequest{MinActionID: 0}, []action.Action{action1, action2})
 
 	// this one doesn't change the counts because action type doesn't match
 	aggregate(controller)
@@ -153,9 +154,9 @@ func TestEndToEnd(t *testing.T) {
 	}
 
 	// but another valid event will make the counts go up
-	action3 := lib.Action{ActorType: profileLib.User, ActorID: uid, TargetType: profileLib.Video, TargetID: video_id, ActionType: lib.Like, RequestID: 1, Timestamp: ts}
+	action3 := action.Action{ActorType: profileLib.User, ActorID: uid, TargetType: profileLib.Video, TargetID: video_id, ActionType: action.Like, RequestID: 1, Timestamp: ts}
 	add(controller, t, c, action3)
-	verifyFetch(t, c, lib.ActionFetchRequest{MinActionID: 0}, []lib.Action{action1, action2, action3})
+	verifyFetch(t, c, action.ActionFetchRequest{MinActionID: 0}, []action.Action{action1, action2, action3})
 
 	aggregate(controller)
 	for _, cr := range requests {

@@ -3,6 +3,7 @@ package main
 import (
 	"fennel/client"
 	"fennel/data/lib"
+	"fennel/lib/action"
 	lib2 "fennel/profile/lib"
 	"fmt"
 )
@@ -23,7 +24,7 @@ func (mc MainController) run(ct lib.CounterType) error {
 	if err != nil {
 		return err
 	}
-	actions, err := client.FetchActions(lib.ActionFetchRequest{MinActionID: checkpoint})
+	actions, err := client.FetchActions(action.ActionFetchRequest{MinActionID: checkpoint})
 	if err != nil {
 		return err
 	}
@@ -49,7 +50,7 @@ func (mc MainController) run(ct lib.CounterType) error {
 	return nil
 }
 
-func Increment(mc MainController, counters []Counter, ts lib.Timestamp) error {
+func Increment(mc MainController, counters []Counter, ts action.Timestamp) error {
 	// TODO: make this atomic - either all the keys should persist or none should
 	// otherwise, part of it can fail mid way creating inconsistency
 	// either that, or make the queue we run through itself a queue of individual counters

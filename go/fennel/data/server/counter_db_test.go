@@ -2,6 +2,7 @@ package main
 
 import (
 	"fennel/data/lib"
+	"fennel/lib/action"
 	profileLib "fennel/profile/lib"
 	"fennel/test"
 	"fennel/utils"
@@ -9,7 +10,7 @@ import (
 	"testing"
 )
 
-func verify(table CounterTable, t *testing.T, expected uint64, ct lib.CounterType, window lib.Window, key lib.Key, ts lib.Timestamp) {
+func verify(table CounterTable, t *testing.T, expected uint64, ct lib.CounterType, window lib.Window, key lib.Key, ts action.Timestamp) {
 	count, err := table.counterGet(lib.GetCountRequest{CounterType: ct, Window: window, Key: key, Timestamp: ts})
 	assert.NoError(t, err)
 	assert.Equal(t, expected, count)
@@ -23,7 +24,7 @@ func TestCounterStorage(t *testing.T) {
 
 	ct := lib.CounterType_USER_LIKE
 	key := lib.Key{1, 2, 3}
-	deltas := map[lib.Window]lib.Timestamp{
+	deltas := map[lib.Window]action.Timestamp{
 		lib.Window_HOUR:    3600,
 		lib.Window_DAY:     24 * 3600,
 		lib.Window_WEEK:    7 * 24 * 3600,
@@ -32,7 +33,7 @@ func TestCounterStorage(t *testing.T) {
 		lib.Window_YEAR:    365 * 24 * 3600,
 	}
 	for w, delta := range deltas {
-		ts := lib.Timestamp(1)
+		ts := action.Timestamp(1)
 		// initially we haven't done anything, so all gets should be 0
 		verify(table, t, 0, ct, w, key, ts)
 
@@ -64,7 +65,7 @@ func TestForeverWindow(t *testing.T) {
 	assert.NoError(t, err)
 	ct := lib.CounterType_USER_LIKE
 	key := lib.Key{1, 2, 3}
-	ts := lib.Timestamp(1)
+	ts := action.Timestamp(1)
 	// initially we haven't done anything, so all gets should be 0
 	verify(table, t, 0, ct, lib.Window_FOREVER, key, ts)
 

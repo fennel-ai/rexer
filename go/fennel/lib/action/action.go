@@ -1,4 +1,4 @@
-package lib
+package action
 
 import (
 	"fennel/profile/lib"

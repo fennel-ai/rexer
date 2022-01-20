@@ -3,6 +3,7 @@ package main
 import (
 	"fennel/client"
 	"fennel/data/lib"
+	"fennel/lib/action"
 	lib2 "fennel/profile/lib"
 	"fennel/value"
 	"fmt"
@@ -52,9 +53,9 @@ type Keygen func(actorID lib2.OidType, actorType lib2.OType, targetID lib2.OidTy
 
 func init() {
 	counterConfigs = map[lib.CounterType]CounterConfig{
-		lib.CounterType_USER_LIKE:       {actorType: lib2.User, actionType: lib.Like, keygen: actorID},
-		lib.CounterType_USER_VIDEO_LIKE: {actorType: lib2.User, actionType: lib.Like, targetType: lib2.Video, keygen: actorTargetID},
-		lib.CounterType_VIDEO_LIKE:      {targetType: lib2.Video, actionType: lib.Like, keygen: targetID},
+		lib.CounterType_USER_LIKE:       {actorType: lib2.User, actionType: action.Like, keygen: actorID},
+		lib.CounterType_USER_VIDEO_LIKE: {actorType: lib2.User, actionType: action.Like, targetType: lib2.Video, keygen: actorTargetID},
+		lib.CounterType_VIDEO_LIKE:      {targetType: lib2.Video, actionType: action.Like, keygen: targetID},
 
 		// These are commented for unit tests to work
 		// Eventually remove these from here and just add more tests with these
@@ -97,7 +98,7 @@ func init() {
 type Counter struct {
 	Type       lib.CounterType
 	key        []lib2.OidType
-	actionType lib.ActionType
+	actionType action.ActionType
 	window     lib.Window
 }
 
@@ -106,8 +107,8 @@ type Counter struct {
 type CounterConfig struct {
 	actorType  lib2.OType
 	targetType lib2.OType
-	actionType lib.ActionType
-	filter     func(lib.Action) bool
+	actionType action.ActionType
+	filter     func(action.Action) bool
 	keygen     Keygen
 }
 
@@ -121,7 +122,7 @@ func (cg CounterConfig) Validate() error {
 	return nil
 }
 
-func (cg CounterConfig) Generate(a lib.Action, type_ lib.CounterType) []Counter {
+func (cg CounterConfig) Generate(a action.Action, type_ lib.CounterType) []Counter {
 	if cg.actionType != a.ActionType {
 		return []Counter{}
 	}

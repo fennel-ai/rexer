@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"fennel/lib/action"
 	"fmt"
 	"io/ioutil"
 	"log"
@@ -19,7 +20,7 @@ const (
 )
 
 func (controller MainController) Log(w http.ResponseWriter, req *http.Request) {
-	var pa lib.ProtoAction
+	var pa action.ProtoAction
 	// Try to decode the request body into the struct. If there is an error,
 	// respond to the client with the error message and a 400 status code.
 	body, err := ioutil.ReadAll(req.Body)
@@ -32,7 +33,7 @@ func (controller MainController) Log(w http.ResponseWriter, req *http.Request) {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	action := lib.FromProtoAction(&pa)
+	action := action.FromProtoAction(&pa)
 	err = action.Validate()
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
@@ -50,22 +51,22 @@ func (controller MainController) Log(w http.ResponseWriter, req *http.Request) {
 
 // TailActions reads a single message from Kafka and logs it in the database
 func (controller MainController) TailActions() error {
-	pa := lib.ProtoAction{}
+	pa := action.ProtoAction{}
 	err := controller.consumer.Read(&pa)
 	if err != nil {
 		return err
 	}
-	action := lib.FromProtoAction(&pa)
-	err = action.Validate()
+	a := action.FromProtoAction(&pa)
+	err = a.Validate()
 	if err != nil {
 		return err
 	}
 	// Now we know that this is a valid action and a db call will be made
 	// if timestamp isn't set explicitly, we set it to current time
-	if action.Timestamp == 0 {
-		action.Timestamp = lib.Timestamp(time.Now().Unix())
+	if a.Timestamp == 0 {
+		a.Timestamp = action.Timestamp(time.Now().Unix())
 	}
-	_, err = controller.actionTable.actionDBInsert(action)
+	_, err = controller.actionTable.actionDBInsert(a)
 	if err != nil {
 		return err
 	}
@@ -73,7 +74,7 @@ func (controller MainController) TailActions() error {
 }
 
 func (controller MainController) Fetch(w http.ResponseWriter, req *http.Request) {
-	var protoRequest lib.ProtoActionFetchRequest
+	var protoRequest action.ProtoActionFetchRequest
 	// Try to decode the request body into the struct. If there is an error,
 	// respond to the client with the error message and a 400 status code.
 	body, err := ioutil.ReadAll(req.Body)
@@ -86,7 +87,7 @@ func (controller MainController) Fetch(w http.ResponseWriter, req *http.Request)
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	request := lib.FromProtoActionFetchRequest(&protoRequest)
+	request := action.FromProtoActionFetchRequest(&protoRequest)
 
 	// now we know that this is a valid request, so let's make a db call
 	actions, err := controller.actionTable.actionDBGet(request)
@@ -94,7 +95,7 @@ func (controller MainController) Fetch(w http.ResponseWriter, req *http.Request)
 		http.Error(w, err.Error(), http.StatusBadGateway)
 		return
 	}
-	actionList := lib.ToProtoActionList(actions)
+	actionList := action.ToProtoActionList(actions)
 	ser, err := proto.Marshal(actionList)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadGateway)
