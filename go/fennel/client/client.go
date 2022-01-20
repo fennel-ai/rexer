@@ -3,8 +3,9 @@ package client
 import (
 	"bytes"
 	"encoding/json"
-	"fennel/data/lib"
 	"fennel/lib/action"
+	"fennel/lib/counter"
+	httplib "fennel/lib/http"
 	profileLib "fennel/lib/profile"
 	"fennel/value"
 	"fmt"
@@ -23,24 +24,24 @@ func NewClient(url string) Client {
 }
 
 func (c Client) logURL() string {
-	return fmt.Sprintf("%s:%d/log", c.url, lib.PORT)
+	return fmt.Sprintf("%s:%d/log", c.url, httplib.PORT)
 }
 
 func (c Client) fetchURL() string {
-	return fmt.Sprintf("%s:%d/fetch", c.url, lib.PORT)
+	return fmt.Sprintf("%s:%d/fetch", c.url, httplib.PORT)
 }
 
 func (c Client) countURL() string {
-	return fmt.Sprintf("%s:%d/count", c.url, lib.PORT)
+	return fmt.Sprintf("%s:%d/count", c.url, httplib.PORT)
 }
 func (c Client) rateURL() string {
-	return fmt.Sprintf("%s:%d/rate", c.url, lib.PORT)
+	return fmt.Sprintf("%s:%d/rate", c.url, httplib.PORT)
 }
 func (c Client) getProfileURL() string {
-	return fmt.Sprintf("%s:%d/get", c.url, lib.PORT)
+	return fmt.Sprintf("%s:%d/get", c.url, httplib.PORT)
 }
 func (c Client) setProfileURL() string {
-	return fmt.Sprintf("%s:%d/set", c.url, lib.PORT)
+	return fmt.Sprintf("%s:%d/set", c.url, httplib.PORT)
 }
 
 func post(protoMessage proto.Message, url string) ([]byte, error) {
@@ -145,13 +146,13 @@ func (c *Client) LogAction(a action.Action) error {
 	return nil
 }
 
-func (c *Client) GetCount(request lib.GetCountRequest) (uint64, error) {
+func (c *Client) GetCount(request counter.GetCountRequest) (uint64, error) {
 	err := request.Validate()
 	if err != nil {
 		return 0, fmt.Errorf("invalid request: %v", err)
 	}
 
-	protoRequest := lib.ToProtoGetCountRequest(&request)
+	protoRequest := counter.ToProtoGetCountRequest(&request)
 	response, err := post(&protoRequest, c.countURL())
 	if err != nil {
 		return 0, err
@@ -166,13 +167,13 @@ func (c *Client) GetCount(request lib.GetCountRequest) (uint64, error) {
 
 // GetRate returns the normalized ratio of two counters in the same window
 // if lower is true, the lower bound is returned and if false upper bound is returned
-func (c *Client) GetRate(request lib.GetRateRequest) (float64, error) {
+func (c *Client) GetRate(request counter.GetRateRequest) (float64, error) {
 	err := request.Validate()
 	if err != nil {
 		return 0, fmt.Errorf("invalid request: %v", err)
 	}
 	// convert to proto and send to server
-	protoRequest := lib.ToProtoGetRateRequest(&request)
+	protoRequest := counter.ToProtoGetRateRequest(&request)
 	response, err := post(&protoRequest, c.rateURL())
 	if err != nil {
 

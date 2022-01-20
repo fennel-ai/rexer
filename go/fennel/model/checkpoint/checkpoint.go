@@ -2,12 +2,12 @@ package checkpoint
 
 import (
 	"database/sql"
-	"fennel/data/lib"
 	"fennel/instance"
+	"fennel/lib/counter"
 	lib2 "fennel/lib/profile"
 )
 
-func GetCheckpoint(this instance.Instance, ct lib.CounterType) (lib2.OidType, error) {
+func GetCheckpoint(this instance.Instance, ct counter.CounterType) (lib2.OidType, error) {
 	row := this.DB.QueryRow(`
 		SELECT checkpoint
 		FROM checkpoint
@@ -25,7 +25,7 @@ func GetCheckpoint(this instance.Instance, ct lib.CounterType) (lib2.OidType, er
 	}
 }
 
-func SetCheckpoint(this instance.Instance, ct lib.CounterType, checkpoint lib2.OidType) error {
+func SetCheckpoint(this instance.Instance, ct counter.CounterType, checkpoint lib2.OidType) error {
 	_, err := this.DB.Exec(`
 		INSERT INTO checkpoint (counter_type, checkpoint)
         VALUES (?, ?)

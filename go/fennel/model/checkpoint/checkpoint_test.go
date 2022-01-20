@@ -1,7 +1,7 @@
 package checkpoint
 
 import (
-	"fennel/data/lib"
+	"fennel/lib/counter"
 	lib2 "fennel/lib/profile"
 	"fennel/test"
 	"github.com/stretchr/testify/assert"
@@ -11,7 +11,7 @@ import (
 func TestCheckpoint(t *testing.T) {
 	this, err := test.DefaultInstance()
 	assert.NoError(t, err)
-	ct1 := lib.CounterType_USER_LIKE
+	ct1 := counter.CounterType_USER_LIKE
 	zero := lib2.OidType(0)
 	// initially no checkpoint is setup, so we should get 0
 	checkpoint, err := GetCheckpoint(this, ct1)
@@ -36,7 +36,7 @@ func TestCheckpoint(t *testing.T) {
 	assert.Equal(t, expected2, checkpoint)
 
 	// meanwhile other counter types aren't affected
-	var ct2 lib.CounterType = lib.CounterType_USER_SHARE
+	var ct2 counter.CounterType = counter.CounterType_USER_SHARE
 	// initially no checkpoint is setup, so we should get 0
 	checkpoint, err = GetCheckpoint(this, ct2)
 	assert.NoError(t, err)

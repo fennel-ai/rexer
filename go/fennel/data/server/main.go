@@ -5,6 +5,8 @@ import (
 	"encoding/json"
 	"fennel/controller/action"
 	actionlib "fennel/lib/action"
+	"fennel/lib/counter"
+	httplib "fennel/lib/http"
 	"fmt"
 	"io/ioutil"
 	"log"
@@ -12,12 +14,8 @@ import (
 	"sync"
 	"time"
 
-	"fennel/data/lib"
+	//"fennel/data/lib"
 	"google.golang.org/protobuf/proto"
-)
-
-const (
-	ACTIONLOG_TOPICNAME = "actionlog"
 )
 
 func (controller MainController) Log(w http.ResponseWriter, req *http.Request) {
@@ -44,31 +42,6 @@ func (controller MainController) Log(w http.ResponseWriter, req *http.Request) {
 	}
 	// write the actionID back
 	fmt.Fprintf(w, fmt.Sprintf("%d", aid))
-
-}
-
-// TailActions reads a single message from Kafka and logs it in the database
-func (controller MainController) TailActions() error {
-	pa := actionlib.ProtoAction{}
-	err := controller.instance.ActionConsumer.Read(&pa)
-	if err != nil {
-		return err
-	}
-	a := actionlib.FromProtoAction(&pa)
-	err = a.Validate()
-	if err != nil {
-		return err
-	}
-	// Now we know that this is a valid actionlib and a db call will be made
-	// if timestamp isn't set explicitly, we set it to current time
-	if a.Timestamp == 0 {
-		a.Timestamp = actionlib.Timestamp(time.Now().Unix())
-	}
-	_, err = action.Insert(controller.instance, a)
-	if err != nil {
-		return err
-	}
-	return nil
 }
 
 func (controller MainController) Fetch(w http.ResponseWriter, req *http.Request) {
@@ -108,13 +81,13 @@ func (controller MainController) Count(w http.ResponseWriter, req *http.Request)
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	var protoRequest lib.ProtoGetCountRequest
+	var protoRequest counter.ProtoGetCountRequest
 	err = proto.Unmarshal(body, &protoRequest)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	request := lib.FromProtoGetCountRequest(&protoRequest)
+	request := counter.FromProtoGetCountRequest(&protoRequest)
 	// now we know that this is a valid request, so let's make a db call
 	count, err := controller.counterTable.counterGet(request)
 	if err != nil {
@@ -137,21 +110,21 @@ func (controller MainController) Rate(w http.ResponseWriter, req *http.Request) 
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	var protoRequest lib.ProtoGetRateRequest
+	var protoRequest counter.ProtoGetRateRequest
 	err = proto.Unmarshal(body, &protoRequest)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	request := lib.FromProtoGetRateRequest(&protoRequest)
+	request := counter.FromProtoGetRateRequest(&protoRequest)
 	// now we know that this is a valid request, so let's make a db call
-	numRequest := lib.GetCountRequest{CounterType: request.NumCounterType, Window: request.Window, Key: request.NumKey, Timestamp: request.Timestamp}
+	numRequest := counter.GetCountRequest{CounterType: request.NumCounterType, Window: request.Window, Key: request.NumKey, Timestamp: request.Timestamp}
 	numCount, err := controller.counterTable.counterGet(numRequest)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadGateway)
 		return
 	}
-	denRequest := lib.GetCountRequest{CounterType: request.DenCounterType, Window: request.Window, Key: request.DenKey, Timestamp: request.Timestamp}
+	denRequest := counter.GetCountRequest{CounterType: request.DenCounterType, Window: request.Window, Key: request.DenKey, Timestamp: request.Timestamp}
 	denCount, err := controller.counterTable.counterGet(denRequest)
 	rate := Wilson(numCount, denCount, request.LowerBound)
 	ser, err := json.Marshal(rate)
@@ -166,7 +139,7 @@ var server *http.Server
 var serverWG sync.WaitGroup
 
 func serve(controller MainController) {
-	server = &http.Server{Addr: fmt.Sprintf(":%d", lib.PORT)}
+	server = &http.Server{Addr: fmt.Sprintf(":%d", httplib.PORT)}
 	serverWG = sync.WaitGroup{}
 	serverWG.Add(1)
 	mux := http.NewServeMux()
@@ -198,7 +171,7 @@ func aggregate(controller MainController) {
 	wg := sync.WaitGroup{}
 	wg.Add(len(counterConfigs))
 	for ct, _ := range counterConfigs {
-		go func(ct lib.CounterType) {
+		go func(ct counter.CounterType) {
 			defer wg.Done()
 			err := controller.run(ct)
 			if err != nil {
@@ -216,14 +189,6 @@ func main() {
 	}
 	// one goroutine will run http server
 	go serve(controller)
-
-	// one goroutine will constantly scan kafka and write actions
-	go func() {
-		for {
-			controller.TailActions()
-			time.Sleep(time.Millisecond * 100)
-		}
-	}()
 
 	// and other goroutines will run minutely crons to aggregate counters
 	for {

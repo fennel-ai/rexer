@@ -1,13 +1,9 @@
-package lib
+package counter
 
 import (
 	"fennel/lib/action"
 	"fennel/lib/profile"
 	"fmt"
-)
-
-const (
-	PORT = 2425
 )
 
 type Key []profile.OidType

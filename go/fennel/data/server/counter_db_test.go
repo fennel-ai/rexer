@@ -1,16 +1,16 @@
 package main
 
 import (
-	"fennel/data/lib"
 	"fennel/lib/action"
+	"fennel/lib/counter"
 	"fennel/lib/utils"
 	"fennel/test"
 	"github.com/stretchr/testify/assert"
 	"testing"
 )
 
-func verify(table CounterTable, t *testing.T, expected uint64, ct lib.CounterType, window lib.Window, key lib.Key, ts action.Timestamp) {
-	count, err := table.counterGet(lib.GetCountRequest{CounterType: ct, Window: window, Key: key, Timestamp: ts})
+func verify(table CounterTable, t *testing.T, expected uint64, ct counter.CounterType, window counter.Window, key counter.Key, ts action.Timestamp) {
+	count, err := table.counterGet(counter.GetCountRequest{CounterType: ct, Window: window, Key: key, Timestamp: ts})
 	assert.NoError(t, err)
 	assert.Equal(t, expected, count)
 }
@@ -21,15 +21,15 @@ func TestCounterStorage(t *testing.T) {
 	table, err := NewCounterTable(DB)
 	assert.NoError(t, err)
 
-	ct := lib.CounterType_USER_LIKE
-	key := lib.Key{1, 2, 3}
-	deltas := map[lib.Window]action.Timestamp{
-		lib.Window_HOUR:    3600,
-		lib.Window_DAY:     24 * 3600,
-		lib.Window_WEEK:    7 * 24 * 3600,
-		lib.Window_MONTH:   30 * 24 * 3600,
-		lib.Window_QUARTER: 90 * 24 * 3600,
-		lib.Window_YEAR:    365 * 24 * 3600,
+	ct := counter.CounterType_USER_LIKE
+	key := counter.Key{1, 2, 3}
+	deltas := map[counter.Window]action.Timestamp{
+		counter.Window_HOUR:    3600,
+		counter.Window_DAY:     24 * 3600,
+		counter.Window_WEEK:    7 * 24 * 3600,
+		counter.Window_MONTH:   30 * 24 * 3600,
+		counter.Window_QUARTER: 90 * 24 * 3600,
+		counter.Window_YEAR:    365 * 24 * 3600,
 	}
 	for w, delta := range deltas {
 		ts := action.Timestamp(1)
@@ -62,25 +62,25 @@ func TestForeverWindow(t *testing.T) {
 	assert.NoError(t, err)
 	table, err := NewCounterTable(DB)
 	assert.NoError(t, err)
-	ct := lib.CounterType_USER_LIKE
-	key := lib.Key{1, 2, 3}
+	ct := counter.CounterType_USER_LIKE
+	key := counter.Key{1, 2, 3}
 	ts := action.Timestamp(1)
 	// initially we haven't done anything, so all gets should be 0
-	verify(table, t, 0, ct, lib.Window_FOREVER, key, ts)
+	verify(table, t, 0, ct, counter.Window_FOREVER, key, ts)
 
 	//now let's do a single increment and verify that specific window works
-	err = table.counterIncrement(ct, lib.Window_FOREVER, key, ts, 3)
+	err = table.counterIncrement(ct, counter.Window_FOREVER, key, ts, 3)
 	assert.NoError(t, err)
-	verify(table, t, 3, ct, lib.Window_FOREVER, key, ts)
+	verify(table, t, 3, ct, counter.Window_FOREVER, key, ts)
 
 	// another increment some time later which should also show up
 	next := ts + 1e6
-	err = table.counterIncrement(ct, lib.Window_FOREVER, key, next, 2)
+	err = table.counterIncrement(ct, counter.Window_FOREVER, key, next, 2)
 	assert.NoError(t, err)
-	verify(table, t, 5, ct, lib.Window_FOREVER, key, next)
+	verify(table, t, 5, ct, counter.Window_FOREVER, key, next)
 
 	// and no matter how far we go, we always see this value
-	verify(table, t, 5, ct, lib.Window_FOREVER, key, ts+3*10e9)
+	verify(table, t, 5, ct, counter.Window_FOREVER, key, ts+3*10e9)
 }
 
 func TestLongKey(t *testing.T) {

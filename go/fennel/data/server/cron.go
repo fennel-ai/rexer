@@ -2,24 +2,24 @@ package main
 
 import (
 	"fennel/client"
-	"fennel/data/lib"
 	"fennel/lib/action"
+	"fennel/lib/counter"
 	lib2 "fennel/lib/profile"
 	"fennel/model/checkpoint"
 	"fmt"
 )
 
-func getCheckpoint(mc MainController, ct lib.CounterType) (lib2.OidType, error) {
+func getCheckpoint(mc MainController, ct counter.CounterType) (lib2.OidType, error) {
 	return checkpoint.GetCheckpoint(mc.instance, ct)
 }
 
-func setCheckpoint(mc MainController, ct lib.CounterType, actionID lib2.OidType) error {
+func setCheckpoint(mc MainController, ct counter.CounterType, actionID lib2.OidType) error {
 	return checkpoint.SetCheckpoint(mc.instance, ct, actionID)
 }
 
 // takes all recent actions since last checkpoint, computes all keys that need
 // to be incremented, increments them, and sets the checkpoint as needed
-func (mc MainController) run(ct lib.CounterType) error {
+func (mc MainController) run(ct counter.CounterType) error {
 	client := client.NewClient("http://localhost")
 	checkpoint, err := getCheckpoint(mc, ct)
 	if err != nil {

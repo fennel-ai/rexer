@@ -2,8 +2,8 @@ package main
 
 import (
 	"fennel/client"
-	"fennel/data/lib"
 	"fennel/lib/action"
+	"fennel/lib/counter"
 	profileLib "fennel/lib/profile"
 	"fennel/value"
 	"fmt"
@@ -30,10 +30,6 @@ func equals(t *testing.T, expected []action.Action, found []action.Action) {
 func add(controller MainController, t *testing.T, c client.Client, a action.Action) action.Action {
 	err := c.LogAction(a)
 	assert.NoError(t, err)
-
-	// and also make one run of "LogAction" on server to ensure that the message goes through
-	err = controller.TailActions()
-	assert.NoError(t, err)
 	return a
 }
 
@@ -55,7 +51,7 @@ func TestServerClientBasic(t *testing.T) {
 	// logging this should fail because some fields (e.g. requestID aren't specified)
 	err = c.LogAction(a)
 	assert.Error(t, err)
-	// and no action was logged on server even after process
+	// and no action was logged on server
 	verifyFetch(t, c, action.ActionFetchRequest{}, []action.Action{})
 
 	// but this error disappears when we pass all values
@@ -91,28 +87,28 @@ func TestEndToEnd(t *testing.T) {
 	video_id := profileLib.OidType(2)
 	ts := action.Timestamp(123)
 
-	requests := []lib.GetCountRequest{
-		{lib.CounterType_USER_LIKE, lib.Window_HOUR, lib.Key{uid}, ts},
-		{lib.CounterType_USER_LIKE, lib.Window_DAY, lib.Key{uid}, ts},
-		{lib.CounterType_USER_LIKE, lib.Window_WEEK, lib.Key{uid}, ts},
-		{lib.CounterType_USER_LIKE, lib.Window_MONTH, lib.Key{uid}, ts},
-		{lib.CounterType_USER_LIKE, lib.Window_QUARTER, lib.Key{uid}, ts},
-		{lib.CounterType_USER_LIKE, lib.Window_YEAR, lib.Key{uid}, ts},
-		{lib.CounterType_USER_LIKE, lib.Window_FOREVER, lib.Key{uid}, ts},
-		{lib.CounterType_VIDEO_LIKE, lib.Window_HOUR, lib.Key{video_id}, ts},
-		{lib.CounterType_VIDEO_LIKE, lib.Window_DAY, lib.Key{video_id}, ts},
-		{lib.CounterType_VIDEO_LIKE, lib.Window_WEEK, lib.Key{video_id}, ts},
-		{lib.CounterType_VIDEO_LIKE, lib.Window_MONTH, lib.Key{video_id}, ts},
-		{lib.CounterType_VIDEO_LIKE, lib.Window_QUARTER, lib.Key{video_id}, ts},
-		{lib.CounterType_VIDEO_LIKE, lib.Window_YEAR, lib.Key{video_id}, ts},
-		{lib.CounterType_VIDEO_LIKE, lib.Window_FOREVER, lib.Key{video_id}, ts},
-		{lib.CounterType_USER_VIDEO_LIKE, lib.Window_HOUR, lib.Key{uid, video_id}, ts},
-		{lib.CounterType_USER_VIDEO_LIKE, lib.Window_DAY, lib.Key{uid, video_id}, ts},
-		{lib.CounterType_USER_VIDEO_LIKE, lib.Window_WEEK, lib.Key{uid, video_id}, ts},
-		{lib.CounterType_USER_VIDEO_LIKE, lib.Window_MONTH, lib.Key{uid, video_id}, ts},
-		{lib.CounterType_USER_VIDEO_LIKE, lib.Window_QUARTER, lib.Key{uid, video_id}, ts},
-		{lib.CounterType_USER_VIDEO_LIKE, lib.Window_YEAR, lib.Key{uid, video_id}, ts},
-		{lib.CounterType_USER_VIDEO_LIKE, lib.Window_FOREVER, lib.Key{uid, video_id}, ts},
+	requests := []counter.GetCountRequest{
+		{counter.CounterType_USER_LIKE, counter.Window_HOUR, counter.Key{uid}, ts},
+		{counter.CounterType_USER_LIKE, counter.Window_DAY, counter.Key{uid}, ts},
+		{counter.CounterType_USER_LIKE, counter.Window_WEEK, counter.Key{uid}, ts},
+		{counter.CounterType_USER_LIKE, counter.Window_MONTH, counter.Key{uid}, ts},
+		{counter.CounterType_USER_LIKE, counter.Window_QUARTER, counter.Key{uid}, ts},
+		{counter.CounterType_USER_LIKE, counter.Window_YEAR, counter.Key{uid}, ts},
+		{counter.CounterType_USER_LIKE, counter.Window_FOREVER, counter.Key{uid}, ts},
+		{counter.CounterType_VIDEO_LIKE, counter.Window_HOUR, counter.Key{video_id}, ts},
+		{counter.CounterType_VIDEO_LIKE, counter.Window_DAY, counter.Key{video_id}, ts},
+		{counter.CounterType_VIDEO_LIKE, counter.Window_WEEK, counter.Key{video_id}, ts},
+		{counter.CounterType_VIDEO_LIKE, counter.Window_MONTH, counter.Key{video_id}, ts},
+		{counter.CounterType_VIDEO_LIKE, counter.Window_QUARTER, counter.Key{video_id}, ts},
+		{counter.CounterType_VIDEO_LIKE, counter.Window_YEAR, counter.Key{video_id}, ts},
+		{counter.CounterType_VIDEO_LIKE, counter.Window_FOREVER, counter.Key{video_id}, ts},
+		{counter.CounterType_USER_VIDEO_LIKE, counter.Window_HOUR, counter.Key{uid, video_id}, ts},
+		{counter.CounterType_USER_VIDEO_LIKE, counter.Window_DAY, counter.Key{uid, video_id}, ts},
+		{counter.CounterType_USER_VIDEO_LIKE, counter.Window_WEEK, counter.Key{uid, video_id}, ts},
+		{counter.CounterType_USER_VIDEO_LIKE, counter.Window_MONTH, counter.Key{uid, video_id}, ts},
+		{counter.CounterType_USER_VIDEO_LIKE, counter.Window_QUARTER, counter.Key{uid, video_id}, ts},
+		{counter.CounterType_USER_VIDEO_LIKE, counter.Window_YEAR, counter.Key{uid, video_id}, ts},
+		{counter.CounterType_USER_VIDEO_LIKE, counter.Window_FOREVER, counter.Key{uid, video_id}, ts},
 	}
 	for _, cr := range requests {
 		count, err := c.GetCount(cr)
@@ -166,12 +162,12 @@ func TestEndToEnd(t *testing.T) {
 	}
 
 	// and finally we can also do rate checks
-	rr := lib.GetRateRequest{
-		lib.CounterType_USER_LIKE,
-		lib.CounterType_VIDEO_LIKE,
-		lib.Key{uid},
-		lib.Key{video_id},
-		lib.Window_HOUR,
+	rr := counter.GetRateRequest{
+		counter.CounterType_USER_LIKE,
+		counter.CounterType_VIDEO_LIKE,
+		counter.Key{uid},
+		counter.Key{video_id},
+		counter.Window_HOUR,
 		ts,
 		true,
 	}

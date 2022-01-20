@@ -2,9 +2,9 @@ package main
 
 import (
 	"database/sql"
-	"fennel/data/lib"
 	"fennel/db"
 	"fennel/lib/action"
+	"fennel/lib/counter"
 	"fmt"
 	_ "github.com/go-sql-driver/mysql"
 	_ "github.com/mattn/go-sqlite3"
@@ -12,8 +12,8 @@ import (
 )
 
 type CounterBucket struct {
-	CounterType lib.CounterType `db:"counter_type"`
-	Window      lib.Window      `db:"window_type"`
+	CounterType counter.CounterType `db:"counter_type"`
+	Window      counter.Window      `db:"window_type"`
 	Idx         uint64
 	Key         string
 	Count       uint64
@@ -54,21 +54,21 @@ func NewCounterTable(conn db.Connection) (CounterTable, error) {
 	return CounterTable{resource.(db.Table)}, err
 }
 
-func tsToIndex(ts action.Timestamp, window lib.Window) (uint64, error) {
+func tsToIndex(ts action.Timestamp, window counter.Window) (uint64, error) {
 	switch window {
-	case lib.Window_HOUR:
+	case counter.Window_HOUR:
 		return uint64(ts / (3600 / GRANULARITY)), nil
-	case lib.Window_DAY:
+	case counter.Window_DAY:
 		return uint64(ts / (3600 * 24 / GRANULARITY)), nil
-	case lib.Window_WEEK:
+	case counter.Window_WEEK:
 		return uint64(ts / (3600 * 24 * 7 / GRANULARITY)), nil
-	case lib.Window_MONTH:
+	case counter.Window_MONTH:
 		return uint64(ts / (3600 * 24 * 30 / GRANULARITY)), nil
-	case lib.Window_QUARTER:
+	case counter.Window_QUARTER:
 		return uint64(ts / (3600 * 24 * 90 / GRANULARITY)), nil
-	case lib.Window_YEAR:
+	case counter.Window_YEAR:
 		return uint64(ts / (3600 * 24 * 365 / GRANULARITY)), nil
-	case lib.Window_FOREVER:
+	case counter.Window_FOREVER:
 		// for forever window, we have literally a single bucket
 		return FOREVER_BUCKET_INDEX, nil
 	default:
@@ -76,11 +76,11 @@ func tsToIndex(ts action.Timestamp, window lib.Window) (uint64, error) {
 	}
 }
 
-func keyToString(k lib.Key) string {
+func keyToString(k counter.Key) string {
 	return fmt.Sprintf("%d", k)
 }
 
-func (table CounterTable) counterIncrement(ct lib.CounterType, window lib.Window, key lib.Key, ts action.Timestamp, count uint64) error {
+func (table CounterTable) counterIncrement(ct counter.CounterType, window counter.Window, key counter.Key, ts action.Timestamp, count uint64) error {
 	index, err := tsToIndex(ts, window)
 	if err != nil {
 		return err
@@ -89,7 +89,7 @@ func (table CounterTable) counterIncrement(ct lib.CounterType, window lib.Window
 	return table.counterDBIncrement(bucket)
 }
 
-func (table CounterTable) counterGet(request lib.GetCountRequest) (uint64, error) {
+func (table CounterTable) counterGet(request counter.GetCountRequest) (uint64, error) {
 	if request.Timestamp == 0 {
 		request.Timestamp = action.Timestamp(time.Now().Unix())
 	}
@@ -135,7 +135,7 @@ func (table CounterTable) counterDBGet(bucket CounterBucket) (uint64, error) {
 			AND window_type = :window_type
 			AND zkey = :key 
 		`, COUNTER_TABLE)
-	if bucket.Window != lib.Window_FOREVER {
+	if bucket.Window != counter.Window_FOREVER {
 		query = fmt.Sprintf("%s AND idx > :idx - %d AND idx <= :idx;", query, GRANULARITY)
 	} else {
 		query = fmt.Sprintf("%s AND idx = %d", query, FOREVER_BUCKET_INDEX)
