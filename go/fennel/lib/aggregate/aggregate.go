@@ -3,7 +3,13 @@ package aggregate
 import (
 	"fennel/engine/ast"
 	"fennel/lib/ftypes"
+	"strings"
 )
+
+var ValidTypes = []ftypes.AggType{
+	"counter",
+	"stream",
+}
 
 type Aggregate struct {
 	CustID    ftypes.CustID
@@ -12,6 +18,16 @@ type Aggregate struct {
 	Query     ast.Ast
 	Timestamp ftypes.Timestamp
 	Options   AggOptions
+}
+
+func IsValid(s ftypes.AggType) bool {
+	sl := ftypes.AggType(strings.ToLower(string(s)))
+	for _, m := range ValidTypes {
+		if sl == m {
+			return true
+		}
+	}
+	return false
 }
 
 func ToProtoAggregate(agg Aggregate) (ProtoAggregate, error) {
@@ -28,6 +44,7 @@ func ToProtoAggregate(agg Aggregate) (ProtoAggregate, error) {
 		Options:   &agg.Options,
 	}, nil
 }
+
 func FromProtoAggregate(pagg ProtoAggregate) (Aggregate, error) {
 	query, err := ast.FromProtoAst(*pagg.Query)
 	if err != nil {
@@ -35,8 +52,8 @@ func FromProtoAggregate(pagg ProtoAggregate) (Aggregate, error) {
 	}
 	return Aggregate{
 		CustID:    ftypes.CustID(pagg.CustId),
-		Type:      ftypes.AggType(pagg.AggType),
-		Name:      ftypes.AggName(pagg.AggName),
+		Type:      ftypes.AggType(strings.ToLower(pagg.AggType)),
+		Name:      ftypes.AggName(strings.ToLower(pagg.AggName)),
 		Query:     query,
 		Timestamp: ftypes.Timestamp(pagg.Timestamp),
 		Options:   *pagg.Options,
