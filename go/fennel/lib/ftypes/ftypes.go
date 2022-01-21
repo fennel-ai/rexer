@@ -8,6 +8,9 @@ type ActionType uint32
 type Timestamp uint64
 type RequestID uint64
 
+type AggType string
+type AggName string
+
 type Key []OidType
 
 func Windows() []Window {

@@ -59,6 +59,15 @@ func init() {
 				query_ser BLOB NOT NULL,
 				INDEX (cust_id, timestamp)
 		  );`,
+		8: `CREATE TABLE IF NOT EXISTS aggregate_config (
+				cust_id BIGINT NOT NULL,
+				aggregate_type VARCHAR(255) NOT NULL,
+				name VARCHAR(255) NOT NULL,
+				query_ser BLOB NOT NULL,
+				timestamp BIGINT NOT NULL,
+				options_ser BLOB NOT NULL,
+				PRIMARY KEY(cust_id, aggregate_type, name)
+			);`,
 	}
 	tablenames = []string{
 		"schema_version",
@@ -68,7 +77,9 @@ func init() {
 		"profile",
 		"counter_bucket",
 		"query_ast",
+		"aggregate_config",
 	}
+
 	if err := verifyDefs(); err != nil {
 		panic(err)
 	}
