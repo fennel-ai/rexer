@@ -171,6 +171,53 @@ func (x *ProtoProfileFetchRequest) GetVersion() uint64 {
 	return 0
 }
 
+type ProtoProfileList struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	Profiles []*ProtoProfileItem `protobuf:"bytes,1,rep,name=profiles,proto3" json:"profiles,omitempty"`
+}
+
+func (x *ProtoProfileList) Reset() {
+	*x = ProtoProfileList{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_profile_proto_msgTypes[2]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *ProtoProfileList) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ProtoProfileList) ProtoMessage() {}
+
+func (x *ProtoProfileList) ProtoReflect() protoreflect.Message {
+	mi := &file_profile_proto_msgTypes[2]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ProtoProfileList.ProtoReflect.Descriptor instead.
+func (*ProtoProfileList) Descriptor() ([]byte, []int) {
+	return file_profile_proto_rawDescGZIP(), []int{2}
+}
+
+func (x *ProtoProfileList) GetProfiles() []*ProtoProfileItem {
+	if x != nil {
+		return x.Profiles
+	}
+	return nil
+}
+
 var File_profile_proto protoreflect.FileDescriptor
 
 var file_profile_proto_rawDesc = []byte{
@@ -191,9 +238,13 @@ var file_profile_proto_rawDesc = []byte{
 	0x01, 0x28, 0x04, 0x52, 0x03, 0x4f, 0x69, 0x64, 0x12, 0x10, 0x0a, 0x03, 0x4b, 0x65, 0x79, 0x18,
 	0x03, 0x20, 0x01, 0x28, 0x09, 0x52, 0x03, 0x4b, 0x65, 0x79, 0x12, 0x18, 0x0a, 0x07, 0x56, 0x65,
 	0x72, 0x73, 0x69, 0x6f, 0x6e, 0x18, 0x04, 0x20, 0x01, 0x28, 0x04, 0x52, 0x07, 0x56, 0x65, 0x72,
-	0x73, 0x69, 0x6f, 0x6e, 0x42, 0x14, 0x5a, 0x12, 0x66, 0x65, 0x6e, 0x6e, 0x65, 0x6c, 0x2f, 0x6c,
-	0x69, 0x62, 0x2f, 0x70, 0x72, 0x6f, 0x66, 0x69, 0x6c, 0x65, 0x62, 0x06, 0x70, 0x72, 0x6f, 0x74,
-	0x6f, 0x33,
+	0x73, 0x69, 0x6f, 0x6e, 0x22, 0x41, 0x0a, 0x10, 0x50, 0x72, 0x6f, 0x74, 0x6f, 0x50, 0x72, 0x6f,
+	0x66, 0x69, 0x6c, 0x65, 0x4c, 0x69, 0x73, 0x74, 0x12, 0x2d, 0x0a, 0x08, 0x70, 0x72, 0x6f, 0x66,
+	0x69, 0x6c, 0x65, 0x73, 0x18, 0x01, 0x20, 0x03, 0x28, 0x0b, 0x32, 0x11, 0x2e, 0x50, 0x72, 0x6f,
+	0x74, 0x6f, 0x50, 0x72, 0x6f, 0x66, 0x69, 0x6c, 0x65, 0x49, 0x74, 0x65, 0x6d, 0x52, 0x08, 0x70,
+	0x72, 0x6f, 0x66, 0x69, 0x6c, 0x65, 0x73, 0x42, 0x14, 0x5a, 0x12, 0x66, 0x65, 0x6e, 0x6e, 0x65,
+	0x6c, 0x2f, 0x6c, 0x69, 0x62, 0x2f, 0x70, 0x72, 0x6f, 0x66, 0x69, 0x6c, 0x65, 0x62, 0x06, 0x70,
+	0x72, 0x6f, 0x74, 0x6f, 0x33,
 }
 
 var (
@@ -208,19 +259,21 @@ func file_profile_proto_rawDescGZIP() []byte {
 	return file_profile_proto_rawDescData
 }
 
-var file_profile_proto_msgTypes = make([]protoimpl.MessageInfo, 2)
+var file_profile_proto_msgTypes = make([]protoimpl.MessageInfo, 3)
 var file_profile_proto_goTypes = []interface{}{
 	(*ProtoProfileItem)(nil),         // 0: ProtoProfileItem
 	(*ProtoProfileFetchRequest)(nil), // 1: ProtoProfileFetchRequest
-	(*value.PValue)(nil),             // 2: PValue
+	(*ProtoProfileList)(nil),         // 2: ProtoProfileList
+	(*value.PValue)(nil),             // 3: PValue
 }
 var file_profile_proto_depIdxs = []int32{
-	2, // 0: ProtoProfileItem.Value:type_name -> PValue
-	1, // [1:1] is the sub-list for method output_type
-	1, // [1:1] is the sub-list for method input_type
-	1, // [1:1] is the sub-list for extension type_name
-	1, // [1:1] is the sub-list for extension extendee
-	0, // [0:1] is the sub-list for field type_name
+	3, // 0: ProtoProfileItem.Value:type_name -> PValue
+	0, // 1: ProtoProfileList.profiles:type_name -> ProtoProfileItem
+	2, // [2:2] is the sub-list for method output_type
+	2, // [2:2] is the sub-list for method input_type
+	2, // [2:2] is the sub-list for extension type_name
+	2, // [2:2] is the sub-list for extension extendee
+	0, // [0:2] is the sub-list for field type_name
 }
 
 func init() { file_profile_proto_init() }
@@ -253,6 +306,18 @@ func file_profile_proto_init() {
 				return nil
 			}
 		}
+		file_profile_proto_msgTypes[2].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*ProtoProfileList); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
 	}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
@@ -260,7 +325,7 @@ func file_profile_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: file_profile_proto_rawDesc,
 			NumEnums:      0,
-			NumMessages:   2,
+			NumMessages:   3,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

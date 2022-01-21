@@ -17,3 +17,7 @@ message ProtoProfileFetchRequest {
   string Key = 3;
   uint64 Version = 4;
 }
+
+message ProtoProfileList {
+  repeated ProtoProfileItem profiles = 1;
+}

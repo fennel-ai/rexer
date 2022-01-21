@@ -15,12 +15,13 @@ _sym_db = _symbol_database.Default()
 import value_pb2 as value__pb2
 
 
-DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\rprofile.proto\x1a\x0bvalue.proto\"d\n\x10ProtoProfileItem\x12\r\n\x05OType\x18\x01 \x01(\r\x12\x0b\n\x03Oid\x18\x02 \x01(\x04\x12\x0b\n\x03Key\x18\x03 \x01(\t\x12\x0f\n\x07Version\x18\x04 \x01(\x04\x12\x16\n\x05Value\x18\x05 \x01(\x0b\x32\x07.PValue\"T\n\x18ProtoProfileFetchRequest\x12\r\n\x05OType\x18\x01 \x01(\r\x12\x0b\n\x03Oid\x18\x02 \x01(\x04\x12\x0b\n\x03Key\x18\x03 \x01(\t\x12\x0f\n\x07Version\x18\x04 \x01(\x04\x42\x14Z\x12\x66\x65nnel/lib/profileb\x06proto3')
+DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\rprofile.proto\x1a\x0bvalue.proto\"d\n\x10ProtoProfileItem\x12\r\n\x05OType\x18\x01 \x01(\r\x12\x0b\n\x03Oid\x18\x02 \x01(\x04\x12\x0b\n\x03Key\x18\x03 \x01(\t\x12\x0f\n\x07Version\x18\x04 \x01(\x04\x12\x16\n\x05Value\x18\x05 \x01(\x0b\x32\x07.PValue\"T\n\x18ProtoProfileFetchRequest\x12\r\n\x05OType\x18\x01 \x01(\r\x12\x0b\n\x03Oid\x18\x02 \x01(\x04\x12\x0b\n\x03Key\x18\x03 \x01(\t\x12\x0f\n\x07Version\x18\x04 \x01(\x04\"7\n\x10ProtoProfileList\x12#\n\x08profiles\x18\x01 \x03(\x0b\x32\x11.ProtoProfileItemB\x14Z\x12\x66\x65nnel/lib/profileb\x06proto3')
 
 
 
 _PROTOPROFILEITEM = DESCRIPTOR.message_types_by_name['ProtoProfileItem']
 _PROTOPROFILEFETCHREQUEST = DESCRIPTOR.message_types_by_name['ProtoProfileFetchRequest']
+_PROTOPROFILELIST = DESCRIPTOR.message_types_by_name['ProtoProfileList']
 ProtoProfileItem = _reflection.GeneratedProtocolMessageType('ProtoProfileItem', (_message.Message,), {
   'DESCRIPTOR' : _PROTOPROFILEITEM,
   '__module__' : 'profile_pb2'
@@ -35,6 +36,13 @@ ProtoProfileFetchRequest = _reflection.GeneratedProtocolMessageType('ProtoProfil
   })
 _sym_db.RegisterMessage(ProtoProfileFetchRequest)
 
+ProtoProfileList = _reflection.GeneratedProtocolMessageType('ProtoProfileList', (_message.Message,), {
+  'DESCRIPTOR' : _PROTOPROFILELIST,
+  '__module__' : 'profile_pb2'
+  # @@protoc_insertion_point(class_scope:ProtoProfileList)
+  })
+_sym_db.RegisterMessage(ProtoProfileList)
+
 if _descriptor._USE_C_DESCRIPTORS == False:
 
   DESCRIPTOR._options = None
@@ -43,4 +51,6 @@ if _descriptor._USE_C_DESCRIPTORS == False:
   _PROTOPROFILEITEM._serialized_end=130
   _PROTOPROFILEFETCHREQUEST._serialized_start=132
   _PROTOPROFILEFETCHREQUEST._serialized_end=216
+  _PROTOPROFILELIST._serialized_start=218
+  _PROTOPROFILELIST._serialized_end=273
 # @@protoc_insertion_point(module_scope)
