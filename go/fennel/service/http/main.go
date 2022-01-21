@@ -2,6 +2,13 @@ package main
 
 import (
 	"context"
+	"flag"
+	"fmt"
+	"io/ioutil"
+	"log"
+	"net/http"
+	"sync"
+
 	"fennel/controller/action"
 	counter2 "fennel/controller/counter"
 	profile2 "fennel/controller/profile"
@@ -12,12 +19,8 @@ import (
 	profilelib "fennel/lib/profile"
 	"fennel/lib/value"
 	"fennel/test"
-	"fmt"
+
 	"google.golang.org/protobuf/proto"
-	"io/ioutil"
-	"log"
-	"net/http"
-	"sync"
 )
 
 type holder struct {
@@ -195,6 +198,8 @@ func shutDownServer() {
 }
 
 func main() {
+	flag.Parse()
+
 	// TODO: don't use test instance here, instead create real instance using env variables
 	instance, err := test.DefaultInstance()
 	controller := holder{instance: instance}
