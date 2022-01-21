@@ -10,3 +10,10 @@ message ProtoProfileItem {
   uint64 Version = 4;
   PValue Value = 5;
 }
+
+message ProtoProfileFetchRequest {
+  uint32 OType = 1;
+  uint64 Oid = 2;
+  string Key = 3;
+  uint64 Version = 4;
+}
