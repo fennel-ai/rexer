@@ -18,3 +18,5 @@ Cargo.lock
 
 # all db files
 **/*.db
+
+**/.DS_Store
