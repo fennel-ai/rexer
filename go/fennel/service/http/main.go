@@ -13,11 +13,12 @@ import (
 	"fennel/lib/value"
 	"fennel/test"
 	"fmt"
-	"google.golang.org/protobuf/proto"
 	"io/ioutil"
 	"log"
 	"net/http"
 	"sync"
+
+	"google.golang.org/protobuf/proto"
 )
 
 type holder struct {
@@ -177,15 +178,15 @@ func serve(controller holder) {
 	mux.HandleFunc("/log", controller.Log)
 	mux.HandleFunc("/rate", controller.Rate)
 	server.Handler = mux
-	go func() {
-		defer serverWG.Done() // let main know we are done cleaning up
 
-		log.Printf("starting http service on %s...", server.Addr)
-		if err := server.ListenAndServe(); err != http.ErrServerClosed {
-			// unexpected error. port in use?
-			log.Fatalf("ListenAndServe(): %v", err)
-		}
-	}()
+	defer serverWG.Done() // let main know we are done cleaning up
+
+	log.Printf("starting http service on %s...", server.Addr)
+	if err := server.ListenAndServe(); err != http.ErrServerClosed {
+		// unexpected error. port in use?
+		log.Fatalf("ListenAndServe(): %v", err)
+	}
+
 }
 
 func shutDownServer() {
