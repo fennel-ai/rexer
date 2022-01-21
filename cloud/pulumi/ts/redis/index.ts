@@ -33,3 +33,5 @@ const cluster = new memorydb.Cluster("redis-db",
 
 // Export the name of the cluster
 export const clusterName = cluster.id;
+
+export const clusterUrl = cluster.clusterEndpoint
