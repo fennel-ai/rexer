@@ -15,47 +15,47 @@ func init() {
 	// Also, if  you create a create table query, also add the table name to "tablenames" list
 	defs = map[uint32]string{
 		1: `CREATE TABLE IF NOT EXISTS schema_version (
-				version INTEGER NOT NULL
+				version INT NOT NULL
 			);`,
 		2: `CREATE TABLE IF NOT EXISTS schema_test (
-				zkey INTEGER NOT NULL,
-				value INTEGER NOT NULL
+				zkey INT NOT NULL,
+				value INT NOT NULL
 			);`,
 		3: `CREATE TABLE IF NOT EXISTS actionlog (
-				action_id integer not null primary key auto_increment,
-				actor_id integer NOT NULL,
-				actor_type integer NOT NULL,
-				target_id integer NOT NULL,
-				target_type integer NOT NULL,
-				action_type integer NOT NULL,
-				action_value integer NOT NULL,
-				timestamp integer NOT NULL,
-				request_id integer not null
+				action_id BIGINT not null primary key auto_increment,
+				actor_id BIGINT NOT NULL,
+				actor_type INT NOT NULL,
+				target_id BIGINT NOT NULL,
+				target_type INT NOT NULL,
+				action_type INT NOT NULL,
+				action_value BIGINT NOT NULL,
+				timestamp BIGINT NOT NULL,
+				request_id BIGINT not null
 		  );`,
 		4: `CREATE TABLE IF NOT EXISTS checkpoint (
-				counter_type INTEGER NOT NULL,
-				checkpoint INTEGER NOT NULL DEFAULT 0,
+				counter_type INT NOT NULL,
+				checkpoint BIGINT NOT NULL DEFAULT 0,
 				PRIMARY KEY(counter_type)
 		  );`,
 		5: `CREATE TABLE IF NOT EXISTS profile (
-				otype integer not null,
-				oid integer not null,
+				otype INT not null,
+				oid BIGINT not null,
 				zkey varchar(256) not null,
-				version integer not null,
+				version BIGINT not null,
 				value blob not null
 		  );`,
 		6: `CREATE TABLE IF NOT EXISTS counter_bucket (
-				counter_type integer NOT NULL,
-				window_type integer NOT NULL,
-				idx integer NOT NULL,
-				count integer NOT NULL DEFAULT 0,
+				counter_type INT NOT NULL,
+				window_type INT NOT NULL,
+				idx BIGINT NOT NULL,
+				count BIGINT NOT NULL DEFAULT 0,
 				zkey varchar(256) NOT NULL,
 				PRIMARY KEY(counter_type, window_type, idx, zkey)
 		  );`,
 		7: `CREATE TABLE IF NOT EXISTS query_ast (
-				query_id INTEGER NOT NULL PRIMARY KEY AUTO_INCREMENT,
-				cust_id INTEGER NOT NULL,
-				timestamp INTEGER NOT NULL,
+				query_id BIGINT NOT NULL PRIMARY KEY AUTO_INCREMENT,
+				cust_id BIGINT NOT NULL,
+				timestamp BIGINT NOT NULL,
 				query_ser BLOB NOT NULL,
 				INDEX (cust_id, timestamp)
 		  );`,
