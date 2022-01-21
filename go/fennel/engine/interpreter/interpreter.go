@@ -6,6 +6,7 @@ import (
 	"fennel/lib/value"
 	"fmt"
 	"reflect"
+	"strconv"
 )
 
 type Interpreter struct {
@@ -14,7 +15,7 @@ type Interpreter struct {
 
 var _ ast.VisitorValue = Interpreter{}
 
-func (i Interpreter) VisitStatement(name string, body *ast.Ast) (value.Value, error) {
+func (i Interpreter) VisitStatement(name string, body ast.Ast) (value.Value, error) {
 	val, err := body.AcceptValue(i)
 	if err != nil {
 		return value.Nil, err
@@ -28,7 +29,7 @@ func (i Interpreter) VisitStatement(name string, body *ast.Ast) (value.Value, er
 	return val, nil
 }
 
-func (i Interpreter) VisitQuery(statements []*ast.Statement) (value.Value, error) {
+func (i Interpreter) VisitQuery(statements []ast.Statement) (value.Value, error) {
 	if len(statements) == 0 {
 		return value.Nil, fmt.Errorf("query can not be empty")
 	}
@@ -43,21 +44,37 @@ func (i Interpreter) VisitQuery(statements []*ast.Statement) (value.Value, error
 	return exp, nil
 }
 
-func (i Interpreter) VisitAtom(a *ast.Atom) (value.Value, error) {
-	switch a.Inner.(type) {
-	case *ast.Atom_Int:
-		return value.Int(a.GetInt()), nil
-	case *ast.Atom_Double:
-		return value.Double(a.GetDouble()), nil
-	case *ast.Atom_Bool:
-		return value.Bool(a.GetBool()), nil
-	case *ast.Atom_String_:
-		return value.String(a.GetString_()), nil
+func (i Interpreter) VisitAtom(at ast.AtomType, lexeme string) (value.Value, error) {
+	switch at {
+	case ast.Int:
+		n, err := strconv.Atoi(lexeme)
+		if err == nil {
+			return value.Int(n), nil
+		} else {
+			return value.Nil, err
+		}
+	case ast.Double:
+		f, err := strconv.ParseFloat(lexeme, 64)
+		if err == nil {
+			return value.Double(f), nil
+		} else {
+			return value.Nil, err
+		}
+	case ast.Bool:
+		f, err := strconv.ParseBool(lexeme)
+		if err == nil {
+			return value.Bool(f), nil
+		} else {
+			return value.Nil, err
+		}
+	case ast.String:
+		return value.String(lexeme), nil
+	default:
+		return value.Nil, fmt.Errorf("invalid atom type: %v", at)
 	}
-	panic("unreachable code")
 }
 
-func (i Interpreter) VisitBinary(left *ast.Ast, op string, right *ast.Ast) (value.Value, error) {
+func (i Interpreter) VisitBinary(left ast.Ast, op string, right ast.Ast) (value.Value, error) {
 	// TODO: short-circuit for bool and/or
 	l, err := left.AcceptValue(i)
 	if err != nil {
@@ -70,7 +87,7 @@ func (i Interpreter) VisitBinary(left *ast.Ast, op string, right *ast.Ast) (valu
 	return l.Op(op, r)
 }
 
-func (i Interpreter) VisitList(values []*ast.Ast) (value.Value, error) {
+func (i Interpreter) VisitList(values []ast.Ast) (value.Value, error) {
 	ret := make([]value.Value, 0, len(values))
 	for _, v := range values {
 		val, err := v.AcceptValue(i)
@@ -82,7 +99,7 @@ func (i Interpreter) VisitList(values []*ast.Ast) (value.Value, error) {
 	return value.NewList(ret)
 }
 
-func (i Interpreter) VisitDict(values map[string]*ast.Ast) (value.Value, error) {
+func (i Interpreter) VisitDict(values map[string]ast.Ast) (value.Value, error) {
 	ret := make(map[string]value.Value, len(values))
 	for k, v := range values {
 		val, err := v.AcceptValue(i)
@@ -94,7 +111,7 @@ func (i Interpreter) VisitDict(values map[string]*ast.Ast) (value.Value, error) 
 	return value.NewDict(ret)
 }
 
-func (i Interpreter) VisitTable(inner *ast.Ast) (value.Value, error) {
+func (i Interpreter) VisitTable(inner ast.Ast) (value.Value, error) {
 	rows, err := inner.AcceptValue(i)
 	if err != nil {
 		return value.Nil, err
@@ -122,7 +139,7 @@ func (i Interpreter) VisitTable(inner *ast.Ast) (value.Value, error) {
 	}
 }
 
-func (i Interpreter) VisitOpcall(operand *ast.Ast, namespace, name string, kwargs *ast.Dict) (value.Value, error) {
+func (i Interpreter) VisitOpcall(operand ast.Ast, namespace, name string, kwargs ast.Dict) (value.Value, error) {
 	// eval operand and verify it is of the right type
 	val, err := operand.AcceptValue(i)
 	if err != nil {

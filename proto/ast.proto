@@ -1,64 +1,64 @@
 syntax = "proto3";
 
-option go_package = "fennel/engine/ast";
+option go_package = "fennel/engine/ast/proto";
 
 message Ast {
-    oneof node {
-        Atom atom = 1;
-        Binary binary = 2;
-        Statement statement = 3;
-        Query query = 4;
-        List list = 5;
-        Dict dict = 6;
-        OpCall opcall = 7;
-        Var var = 8;
-        Table table = 9;
-    }
+  oneof node {
+    Atom atom = 1;
+    Binary binary = 2;
+    Statement statement = 3;
+    Query query = 4;
+    List list = 5;
+    Dict dict = 6;
+    OpCall opcall = 7;
+    Var var = 8;
+    Table table = 9;
+  }
 }
 
 message Binary {
-    Ast left = 1;
-    Ast right = 2;
-    string op = 3;
+  Ast left = 1;
+  Ast right = 2;
+  string op = 3;
 }
 
 message Statement {
-    string name = 1;
-    Ast body = 2;
+  string name = 1;
+  Ast body = 2;
 }
 
 message Query {
-    repeated Statement statements = 1;
+  repeated Statement statements = 1;
 }
 
 message Atom {
-    oneof inner {
-        int32 int = 1;
-        string string = 2;
-        bool bool = 3;
-        double double = 4;
-    }
+  oneof inner {
+    int64 int = 1;
+    string string = 2;
+    bool bool = 3;
+    double double = 4;
+  }
 }
 
 message List {
-    repeated Ast elems = 1;
+  repeated Ast values = 1;
 }
 
 message Dict {
-    map<string, Ast> values = 1;
+  map<string, Ast> values = 1;
 }
 
 message OpCall {
-    Ast operand = 1;
-    string namespace = 2;
-    string name = 3;
-    Dict kwargs = 4;
+  Ast operand = 1;
+  string namespace = 2;
+  string name = 3;
+  Dict kwargs = 4;
 }
 
 message Var {
-    string name = 1;
+  string name = 1;
 }
 
 message Table {
-    Ast inner = 1;
+  Ast inner = 1;
 }
