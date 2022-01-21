@@ -9,5 +9,6 @@ pkgs.mkShell {
     pkgs.zlib
     pkgs.protobuf3_9
     pkgs.protoc-gen-go
+    pkgs.darwin.apple_sdk.frameworks.Security
   ];
 }
