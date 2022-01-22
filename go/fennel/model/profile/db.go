@@ -2,7 +2,10 @@ package profile
 
 import (
 	"fennel/instance"
+	"fennel/lib/profile"
 	"fmt"
+	"strings"
+
 	_ "github.com/go-sql-driver/mysql"
 	_ "github.com/mattn/go-sqlite3"
 )
@@ -81,3 +84,37 @@ func (D dbProvider) get(this instance.Instance, otype uint32, oid uint64, key st
 }
 
 var _ provider = dbProvider{}
+
+// Whatever properties of 'request' are non-zero are used to filter eligible profiles
+func GetProfiles(this instance.Instance, request profile.ProfileFetchRequest) ([]profile.ProfileItemSer, error) {
+	query := "SELECT * FROM profile"
+	clauses := make([]string, 0)
+
+	if request.OType != 0 {
+		clauses = append(clauses, "otype = :otype")
+	}
+	if request.Oid != 0 {
+		clauses = append(clauses, "oid = :oid")
+	}
+	if request.Key != "" {
+		clauses = append(clauses, "zkey = :zkey")
+	}
+	if request.Version != 0 {
+		clauses = append(clauses, "version = :version")
+	}
+
+	if len(clauses) > 0 {
+		query = fmt.Sprintf("%s WHERE %s", query, strings.Join(clauses, " AND "))
+	}
+	profiles := make([]profile.ProfileItemSer, 0)
+	statement, err := this.DB.PrepareNamed(query)
+	if err != nil {
+		return nil, err
+	}
+	err = statement.Select(&profiles, request)
+	if err != nil {
+		return nil, err
+	} else {
+		return profiles, nil
+	}
+}
