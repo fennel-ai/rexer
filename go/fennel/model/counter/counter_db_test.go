@@ -1,13 +1,15 @@
 package counter
 
 import (
+	"testing"
+
 	"fennel/instance"
 	"fennel/lib/counter"
 	"fennel/lib/ftypes"
 	"fennel/lib/utils"
 	"fennel/test"
+
 	"github.com/stretchr/testify/assert"
-	"testing"
 )
 
 func verify(this instance.Instance, t *testing.T, expected uint64, ct counter.CounterType, window ftypes.Window, key ftypes.Key, ts ftypes.Timestamp) {
@@ -36,7 +38,7 @@ func TestCounterStorage(t *testing.T) {
 		verify(this, t, 0, ct, w, key, ts)
 
 		//now let's do a single increment and verify that specific window works
-		err = Increment(this, ct, w, key, ts, 3)
+		err := Increment(this, ct, w, key, ts, 3)
 		assert.NoError(t, err)
 		verify(this, t, 3, ct, w, key, ts)
 

@@ -5,46 +5,60 @@ import (
 	"encoding/json"
 	"fennel/lib/action"
 	"fennel/lib/counter"
-	httplib "fennel/lib/http"
 	profileLib "fennel/lib/profile"
 	"fennel/lib/value"
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"net/url"
 
 	"google.golang.org/protobuf/proto"
 )
 
 type Client struct {
-	url string
+	httpclient *http.Client
+	url        *url.URL
 }
 
-func NewClient(url string) Client {
-	return Client{url}
+func NewClient(hostport string, httpclient *http.Client) (*Client, error) {
+	url, err := url.Parse(hostport)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse hostport [%s]: %v", hostport, err)
+	}
+	return &Client{
+		url:        url,
+		httpclient: httpclient,
+	}, nil
 }
 
 func (c Client) logURL() string {
-	return fmt.Sprintf("%s:%d/log", c.url, httplib.PORT)
+	c.url.Path = "/log"
+	return fmt.Sprintf(c.url.String())
 }
 
 func (c Client) fetchURL() string {
-	return fmt.Sprintf("%s:%d/fetch", c.url, httplib.PORT)
+	c.url.Path = "/fetch"
+	return fmt.Sprintf(c.url.String())
 }
 
 func (c Client) countURL() string {
-	return fmt.Sprintf("%s:%d/count", c.url, httplib.PORT)
+	c.url.Path = "/count"
+	return fmt.Sprintf(c.url.String())
 }
 func (c Client) rateURL() string {
-	return fmt.Sprintf("%s:%d/rate", c.url, httplib.PORT)
+	c.url.Path = "/rate"
+	return fmt.Sprintf(c.url.String())
 }
 func (c Client) getProfileURL() string {
-	return fmt.Sprintf("%s:%d/get", c.url, httplib.PORT)
+	c.url.Path = "/get"
+	return fmt.Sprintf(c.url.String())
 }
 func (c Client) setProfileURL() string {
-	return fmt.Sprintf("%s:%d/set", c.url, httplib.PORT)
+	c.url.Path = "/set"
+	return fmt.Sprintf(c.url.String())
 }
 
-func post(protoMessage proto.Message, url string) ([]byte, error) {
+func (c Client) post(protoMessage proto.Message, url string) ([]byte, error) {
 	// serialize the request to be sent on wire
 	ser, err := proto.Marshal(protoMessage)
 	if err != nil {
@@ -52,7 +66,7 @@ func post(protoMessage proto.Message, url string) ([]byte, error) {
 	}
 
 	reqBody := bytes.NewBuffer(ser)
-	response, err := http.Post(url, "application/json", reqBody)
+	response, err := c.httpclient.Post(url, "application/json", reqBody)
 	if err != nil {
 		return nil, fmt.Errorf("server error: %v", err)
 	}
@@ -78,7 +92,7 @@ func (c *Client) GetProfile(request *profileLib.ProfileItem) (*value.Value, erro
 		return nil, fmt.Errorf("invalid request: %v", err)
 	}
 
-	response, err := post(&protoReq, c.getProfileURL())
+	response, err := c.post(&protoReq, c.getProfileURL())
 	if err != nil {
 		return nil, err
 	}
@@ -111,7 +125,7 @@ func (c *Client) SetProfile(req *profileLib.ProfileItem) error {
 		return fmt.Errorf("could not convert request to proto: %v", err)
 	}
 	// serialize the request to be sent on wire
-	if _, err = post(&protoReq, c.setProfileURL()); err != nil {
+	if _, err = c.post(&protoReq, c.setProfileURL()); err != nil {
 		return err
 	}
 	return nil
@@ -119,7 +133,7 @@ func (c *Client) SetProfile(req *profileLib.ProfileItem) error {
 
 func (c *Client) FetchActions(request action.ActionFetchRequest) ([]action.Action, error) {
 	protoRequest := action.ToProtoActionFetchRequest(request)
-	response, err := post(&protoRequest, c.fetchURL())
+	response, err := c.post(&protoRequest, c.fetchURL())
 	if err != nil {
 		return nil, err
 	}
@@ -140,7 +154,7 @@ func (c *Client) LogAction(a action.Action) error {
 		return fmt.Errorf("can not log invalid action: %v", err)
 	}
 	pa := action.ToProtoAction(a)
-	if _, err = post(&pa, c.logURL()); err != nil {
+	if _, err = c.post(&pa, c.logURL()); err != nil {
 		return err
 	}
 	return nil
@@ -153,7 +167,7 @@ func (c *Client) GetCount(request counter.GetCountRequest) (uint64, error) {
 	}
 
 	protoRequest := counter.ToProtoGetCountRequest(&request)
-	response, err := post(&protoRequest, c.countURL())
+	response, err := c.post(&protoRequest, c.countURL())
 	if err != nil {
 		return 0, err
 	}
@@ -174,7 +188,7 @@ func (c *Client) GetRate(request counter.GetRateRequest) (float64, error) {
 	}
 	// convert to proto and send to server
 	protoRequest := counter.ToProtoGetRateRequest(&request)
-	response, err := post(&protoRequest, c.rateURL())
+	response, err := c.post(&protoRequest, c.rateURL())
 	if err != nil {
 
 		return 0, err

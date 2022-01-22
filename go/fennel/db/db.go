@@ -3,10 +3,12 @@ package db
 import (
 	"fennel/resource"
 	"fmt"
+	"log"
+	"os"
+
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/jmoiron/sqlx"
 	_ "github.com/mattn/go-sqlite3"
-	"os"
 )
 
 type Connection struct {
@@ -80,6 +82,7 @@ func (conf MySQLConfig) Materialize() (resource.Resource, error) {
 		"%s:%s@tcp(%s)/%s?tls=true",
 		conf.Username, conf.Password, conf.Host, conf.DBname,
 	)
+	log.Printf("connecting to db at %s", connectStr)
 
 	DB, err := sqlx.Open("mysql", connectStr)
 	if err != nil {

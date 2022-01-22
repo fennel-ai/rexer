@@ -9,8 +9,9 @@ import (
 	"fennel/lib/ftypes"
 	profileLib "fennel/lib/profile"
 	"fennel/test"
-	"github.com/stretchr/testify/assert"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func add(instance instance.Instance, t *testing.T, a actionlib.Action) actionlib.Action {
@@ -29,7 +30,6 @@ func verifyFetch(instance instance.Instance, t *testing.T, request actionlib.Act
 
 func TestEndToEnd(t *testing.T) {
 	instance, err := test.DefaultInstance()
-	//controller, err := DefaultMainController()
 	assert.NoError(t, err)
 
 	// start the service

@@ -1,12 +1,13 @@
 package action
 
 import (
+	"testing"
+
 	"fennel/lib/action"
 	"fennel/lib/ftypes"
-
 	"fennel/test"
+
 	"github.com/stretchr/testify/assert"
-	"testing"
 )
 
 // TODO: write exhaustive tests

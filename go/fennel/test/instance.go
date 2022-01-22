@@ -1,13 +1,14 @@
 package test
 
 import (
+	"fmt"
+	"math/rand"
+
 	"fennel/instance"
 	"fennel/lib/action"
 	"fennel/lib/ftypes"
 	"fennel/lib/utils"
 	"fennel/redis"
-	"fmt"
-	"math/rand"
 )
 
 func DefaultInstance() (instance.Instance, error) {
@@ -33,5 +34,5 @@ func DefaultInstance() (instance.Instance, error) {
 		Type:           instance.TEST,
 		ActionConsumer: kConsumer,
 		ActionProducer: kProducer,
-	}, nil
+	}, err
 }

@@ -4,8 +4,9 @@ import (
 	"fennel/lib/counter"
 	"fennel/lib/ftypes"
 	"fennel/test"
-	"github.com/stretchr/testify/assert"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func TestCheckpoint(t *testing.T) {

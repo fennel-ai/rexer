@@ -1,15 +1,17 @@
 package aggregate
 
 import (
+	"testing"
+	"time"
+
 	"fennel/engine/ast"
 	"fennel/lib/aggregate"
 	"fennel/lib/ftypes"
 	"fennel/lib/utils"
 	"fennel/test"
+
 	"github.com/stretchr/testify/assert"
 	"google.golang.org/protobuf/proto"
-	"testing"
-	"time"
 )
 
 func TestRetrieveStore(t *testing.T) {

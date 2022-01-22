@@ -1,20 +1,23 @@
 package main
 
 import (
+	"net/http"
+	"net/http/httptest"
+	"testing"
+
 	"fennel/client"
 	"fennel/lib/action"
 	counterlib "fennel/lib/counter"
 	"fennel/lib/ftypes"
-	profileLib "fennel/lib/profile"
+	profilelib "fennel/lib/profile"
 	"fennel/lib/value"
 	"fennel/model/counter"
 	"fennel/test"
-	"fmt"
+
 	"github.com/stretchr/testify/assert"
-	"testing"
 )
 
-func verifyFetch(t *testing.T, c client.Client, request action.ActionFetchRequest, expected []action.Action) {
+func verifyFetch(t *testing.T, c *client.Client, request action.ActionFetchRequest, expected []action.Action) {
 	found, err := c.FetchActions(request)
 	assert.NoError(t, err)
 	equals(t, expected, found)
@@ -30,20 +33,28 @@ func equals(t *testing.T, expected []action.Action, found []action.Action) {
 	}
 }
 
-func add(t *testing.T, c client.Client, a action.Action) action.Action {
+func add(t *testing.T, c *client.Client, a action.Action) action.Action {
 	err := c.LogAction(a)
 	assert.NoError(t, err)
 	return a
 }
 
+func startTestServer(controller holder) *httptest.Server {
+	mux := http.NewServeMux()
+	setHandlers(controller, mux)
+	server := httptest.NewServer(mux)
+	return server
+}
+
 func TestLogFetchServerClient(t *testing.T) {
+	// create a service
 	instance, err := test.DefaultInstance()
 	assert.NoError(t, err)
-	m := holder{instance: instance}
-	// create a service
-	go serve(m)
-	defer shutDownServer()
-	c := client.NewClient("http://localhost")
+	controller := holder{instance: instance}
+	server := startTestServer(controller)
+	defer server.Close()
+	c, err := client.NewClient(server.URL, server.Client())
+	assert.NoError(t, err)
 
 	// in the beginning, with no value SetProfile, we GetProfile []actions but with no error
 	verifyFetch(t, c, action.ActionFetchRequest{}, []action.Action{})
@@ -74,15 +85,14 @@ func TestLogFetchServerClient(t *testing.T) {
 
 // TODO: add more tests covering more error conditions
 func TestProfileServerClient(t *testing.T) {
+	// create a service
 	instance, err := test.DefaultInstance()
 	assert.NoError(t, err)
-	m := holder{instance: instance}
-
-	// start the service
-	go serve(m)
-	defer shutDownServer()
-	// and create a client
-	c := client.NewClient(fmt.Sprintf("http://localhost"))
+	controller := holder{instance: instance}
+	server := startTestServer(controller)
+	defer server.Close()
+	c, err := client.NewClient(server.URL, server.Client())
+	assert.NoError(t, err)
 
 	// in the beginning, with no value SetProfile, we GetProfile nil pointer back but with no error
 	checkGetSet(t, c, true, 1, 1, 0, "age", value.Value(nil))
@@ -102,15 +112,15 @@ func TestProfileServerClient(t *testing.T) {
 }
 
 func TestCountRateServerClient(t *testing.T) {
+	// create a service
 	instance, err := test.DefaultInstance()
 	assert.NoError(t, err)
-	m := holder{instance: instance}
+	controller := holder{instance: instance}
+	server := startTestServer(controller)
+	defer server.Close()
+	c, err := client.NewClient(server.URL, server.Client())
+	assert.NoError(t, err)
 
-	// start the service
-	go serve(m)
-	defer shutDownServer()
-	// and create a client
-	c := client.NewClient(fmt.Sprintf("http://localhost"))
 	uid := ftypes.OidType(1)
 	video_id := ftypes.OidType(2)
 	ts := ftypes.Timestamp(123)
@@ -150,10 +160,10 @@ func TestCountRateServerClient(t *testing.T) {
 	assert.Error(t, err)
 }
 
-func checkGetSet(t *testing.T, c client.Client, get bool, otype uint32, oid uint64, version uint64,
+func checkGetSet(t *testing.T, c *client.Client, get bool, otype uint32, oid uint64, version uint64,
 	key string, val value.Value) {
 	if get {
-		req := profileLib.NewProfileItem(otype, oid, key, version)
+		req := profilelib.NewProfileItem(otype, oid, key, version)
 		found, err := c.GetProfile(&req)
 		assert.NoError(t, err)
 		if found == nil {
@@ -162,9 +172,9 @@ func checkGetSet(t *testing.T, c client.Client, get bool, otype uint32, oid uint
 			assert.Equal(t, val, *found)
 		}
 	} else {
-		err := c.SetProfile(&profileLib.ProfileItem{OType: otype, Oid: oid, Key: key, Version: version, Value: val})
+		err := c.SetProfile(&profilelib.ProfileItem{OType: otype, Oid: oid, Key: key, Version: version, Value: val})
 		assert.NoError(t, err)
-		request := profileLib.NewProfileItem(otype, oid, key, version)
+		request := profilelib.NewProfileItem(otype, oid, key, version)
 		found, err := c.GetProfile(&request)
 		assert.NoError(t, err)
 		if found == nil {

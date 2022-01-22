@@ -1,13 +1,14 @@
 package main
 
 import (
+	"log"
+	"sync"
+	"time"
+
 	"fennel/controller/counter"
 	"fennel/instance"
 	counterlib "fennel/lib/counter"
 	"fennel/test"
-	"log"
-	"sync"
-	"time"
 )
 
 func aggregate(instance instance.Instance) {

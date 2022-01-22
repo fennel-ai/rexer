@@ -1,13 +1,11 @@
 package main
 
 import (
-	"context"
 	"flag"
 	"fmt"
 	"io/ioutil"
 	"log"
 	"net/http"
-	"sync"
 
 	"fennel/controller/action"
 	counter2 "fennel/controller/counter"
@@ -26,9 +24,6 @@ import (
 type holder struct {
 	instance instance.Instance
 }
-
-var server *http.Server
-var serverWG sync.WaitGroup
 
 func parse(req *http.Request, msg proto.Message) error {
 	defer req.Body.Close()
@@ -168,44 +163,30 @@ func (m holder) SetProfile(w http.ResponseWriter, req *http.Request) {
 	}
 }
 
-func serve(controller holder) {
-	server = &http.Server{Addr: fmt.Sprintf(":%d", httplib.PORT)}
-	serverWG = sync.WaitGroup{}
-	serverWG.Add(1)
-	mux := http.NewServeMux()
+func setHandlers(controller holder, mux *http.ServeMux) {
 	mux.HandleFunc("/fetch", controller.Fetch)
 	mux.HandleFunc("/count", controller.Count)
 	mux.HandleFunc("/get", controller.GetProfile)
 	mux.HandleFunc("/set", controller.SetProfile)
 	mux.HandleFunc("/log", controller.Log)
 	mux.HandleFunc("/rate", controller.Rate)
-	server.Handler = mux
-	go func() {
-		defer serverWG.Done() // let main know we are done cleaning up
-
-		log.Printf("starting http service on %s...", server.Addr)
-		if err := server.ListenAndServe(); err != http.ErrServerClosed {
-			// unexpected error. port in use?
-			log.Fatalf("ListenAndServe(): %v", err)
-		}
-	}()
-}
-
-func shutDownServer() {
-	log.Printf("shutting down http service")
-	server.Shutdown(context.TODO())
-	serverWG.Wait()
 }
 
 func main() {
 	flag.Parse()
 
+	// spin up http service
+	server := &http.Server{Addr: fmt.Sprintf(":%d", httplib.PORT)}
+	mux := http.NewServeMux()
 	// TODO: don't use test instance here, instead create real instance using env variables
 	instance, err := test.DefaultInstance()
-	controller := holder{instance: instance}
 	if err != nil {
-		panic(err)
+		panic(fmt.Sprintf("Failed to setup default instance: %v", err))
 	}
-	// spin up http service
-	serve(controller)
+	controller := holder{instance}
+	setHandlers(controller, mux)
+	if err := server.ListenAndServe(); err != http.ErrServerClosed {
+		// unexpected error. port in use?
+		log.Fatalf("ListenAndServe(): %v", err)
+	}
 }

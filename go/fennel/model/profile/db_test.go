@@ -1,11 +1,13 @@
 package profile
 
 import (
+	"testing"
+
 	"fennel/lib/utils"
 	"fennel/lib/value"
 	"fennel/test"
+
 	"github.com/stretchr/testify/assert"
-	"testing"
 )
 
 func TestDBBasic(t *testing.T) {

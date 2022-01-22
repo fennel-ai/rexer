@@ -1,13 +1,16 @@
 package counter
 
 import (
+	"fmt"
+	"net/http"
+
 	"fennel/client"
 	"fennel/lib/action"
 	"fennel/lib/counter"
 	"fennel/lib/ftypes"
+	httplib "fennel/lib/http"
 	profileLib "fennel/lib/profile"
 	"fennel/lib/value"
-	"fmt"
 )
 
 func actorID(actorID ftypes.OidType, actorType ftypes.OType, targetID ftypes.OidType, targetType ftypes.OType) []ftypes.Key {
@@ -45,7 +48,10 @@ func prefixWithIDList(prefix ftypes.Key, idList value.Value) []ftypes.Key {
 
 func profile(otype uint32, oid uint64, key string, version uint64) (*value.Value, error) {
 	// TODO: how does this code discover the port/url for profile service?
-	c := client.NewClient("")
+	c, err := client.NewClient(fmt.Sprintf("%s:%d", "localhost", httplib.PORT), http.DefaultClient)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create client: %v", err)
+	}
 	req := profileLib.NewProfileItem(otype, oid, key, version)
 	return c.GetProfile(&req)
 }

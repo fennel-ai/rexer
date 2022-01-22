@@ -5,8 +5,9 @@ import (
 	"fennel/lib/ftypes"
 	"fennel/lib/query"
 	"fennel/test"
-	"github.com/stretchr/testify/assert"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func verifyGet(t *testing.T, instance instance.Instance, request query.QueryRequest, expected []query.QuerySer) {
