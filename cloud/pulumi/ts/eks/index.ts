@@ -57,7 +57,7 @@ function setupLinkerd(cluster: k8s.Provider) {
     }, { dependsOn: linkerd.ready })
 }
 
-function setupAmbassadorIngress(cluster: k8s.Provider) {
+function setupAmbassadorIngress(cluster: k8s.Provider): pulumi.Output<string> {
     // Create namespace.
     const ns = new k8s.core.v1.Namespace("aes-ns", {
         metadata: {
@@ -137,6 +137,11 @@ function setupAmbassadorIngress(cluster: k8s.Provider) {
             },
         ]
     }, { provider: cluster, dependsOn: l5dmapping })
+
+    return ambassador.ready.apply((_) => {
+        const ingressResource = ambassador.getResource("v1/Service", "ambassador", "aes-edge-stack");
+        return ingressResource.status.loadBalancer.ingress[0].hostname
+    })
 }
 
 async function setupIamRoleForServiceAccount(namespace: string, serviceAccountName: string, cluster: eks.Cluster) {
@@ -256,9 +261,9 @@ export = async () => {
     const lbc = await setupLoadBalancerController(cluster)
 
     // Install Ambassador after load-balancer controller.
-    lbc.ready.apply((_) => {
-        setupAmbassadorIngress(cluster.provider)
+    const ingress = lbc.ready.apply((_) => {
+        return setupAmbassadorIngress(cluster.provider)
     })
 
-    return { kubeconfig, oidcUrl }
+    return { kubeconfig, oidcUrl, ingress }
 }
