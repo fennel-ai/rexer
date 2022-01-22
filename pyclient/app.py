@@ -50,6 +50,9 @@ def _validate_profile_get(otype, oid, key, version):
 def _to_int(s, default=0):
     return int(s) if s is not None else default
 
+def _to_str(s, default=''):
+    return str(s) if s is not None else default
+
 
 def _to_profile_item(otype, oid, key, version):
     ret = profile.ProfileItem()
@@ -159,6 +162,44 @@ def action_handler():
         strs.append(json_format.MessageToJson(a, including_default_value_fields=True))
     return '[' + ', '.join(strs) + ']'
 
+def _validate_profiles_get(otype, oid, key, version):
+    errors = []
+    if (otype is not None) and (not is_uint(otype, 32)):
+        errors.append('otype is provided but is not a valid 32-bit unsigned integer')
+    if (oid is not None) and (not is_uint(oid, 64)):
+        errors.append('oid is provided but is not a valid 64-bit unsigned integer')
+    # TODO: There may be a better way to do this.
+    if (key is not None) and (not isinstance(key, str)):
+        errors.append('key is provided but is not a valid string')
+    if (version is not None) and (not is_uint(version, 64)):
+        errors.append('version is provided but is not a valid 64-bit unsigned integer')
+    
+    return errors
+
+def _to_profile_fetch_request(otype, oid, key, version):
+    ret = profile.ProfileFetchRequest()
+    ret.OType = _to_int(otype)
+    ret.Oid = _to_int(oid)
+    ret.Key = _to_str(key)
+    ret.Version = _to_int(version)
+    return ret
+
+@app.route('/profiles/', methods=['GET'])
+def profiles_handler():
+    args = request.args
+    otype = args.get('otype', None)
+    oid = args.get('oid', None)
+    key = args.get('key', None)
+    version = args.get('version', None)
+    errors = _validate_profiles_get(otype, oid, key, version)
+    if len(errors) > 0:
+        return jsonify({'errors': errors}), 400
+    req = _to_profile_fetch_request(otype, oid, key, version)
+    profiles = c.get_profiles(req)
+    strs = []
+    for p in profiles:
+        strs.append(json_format.MessageToJson(p, including_default_value_fields=True))
+    return '[' + ', '.join(strs) + ']'
 
 if __name__ == '__main__':
     app.run(host=HOST, port=PORT)
