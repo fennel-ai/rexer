@@ -163,6 +163,32 @@ func (m holder) SetProfile(w http.ResponseWriter, req *http.Request) {
 	}
 }
 
+func (m holder) GetProfiles(w http.ResponseWriter, req *http.Request) {
+	var protoRequest profilelib.ProtoProfileFetchRequest
+	if err := parse(req, &protoRequest); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	request := profilelib.FromProtoProfileFetchRequest(&protoRequest)
+	// send to controller
+	profiles, err := profile2.GetProfiles(m.instance, request)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadGateway)
+		return
+	}
+	profileList, err := profilelib.ToProtoProfileList(profiles)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadGateway)
+		return
+	}
+	ser, err := proto.Marshal(profileList)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadGateway)
+		return
+	}
+	fmt.Fprintf(w, string(ser))
+}
+
 func setHandlers(controller holder, mux *http.ServeMux) {
 	mux.HandleFunc("/fetch", controller.Fetch)
 	mux.HandleFunc("/count", controller.Count)
@@ -170,6 +196,7 @@ func setHandlers(controller holder, mux *http.ServeMux) {
 	mux.HandleFunc("/set", controller.SetProfile)
 	mux.HandleFunc("/log", controller.Log)
 	mux.HandleFunc("/rate", controller.Rate)
+	mux.HandleFunc("/get_profiles", controller.GetProfiles)
 }
 
 func main() {

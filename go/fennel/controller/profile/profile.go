@@ -5,8 +5,9 @@ import (
 	profilelib "fennel/lib/profile"
 	"fennel/lib/value"
 	"fennel/model/profile"
-	"google.golang.org/protobuf/proto"
 	"time"
+
+	"google.golang.org/protobuf/proto"
 )
 
 func Get(this instance.Instance, request profilelib.ProfileItem) (*value.Value, error) {
@@ -50,4 +51,22 @@ func Set(this instance.Instance, request profilelib.ProfileItem) error {
 		return err
 	}
 	return nil
+}
+
+func GetProfiles(this instance.Instance, request profilelib.ProfileFetchRequest) ([]profilelib.ProfileItem, error) {
+	profilesSer, err := profile.GetProfiles(this, request)
+	if err != nil {
+		return nil, err
+	}
+
+	profiles := make([]profilelib.ProfileItem, 0)
+	for _, prs := range profilesSer {
+		pr, err := profilelib.ToProfileItem(&prs)
+		if err != nil {
+			return nil, err
+		}
+		profiles = append(profiles, *pr)
+	}
+
+	return profiles, nil
 }

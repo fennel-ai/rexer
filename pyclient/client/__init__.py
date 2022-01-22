@@ -40,6 +40,21 @@ class Client(object):
         v = value.Value()
         v.ParseFromString(response.content)
         return v
+    
+    def get_profiles(self, pfr: profile.ProfileFetchRequest):
+        if not isinstance(pfr, profile.ProfileFetchRequest):
+            raise InvalidInput('fetch arg not a ProfileFetchRequest object: %s' % str(pfr))
+        ser = pfr.SerializeToString()
+        response = requests.post(self._get_profiles_url(), data=ser)
+        if response.status_code != requests.codes.OK:
+            response.raise_for_status()
+        
+        pl = profile.ProfileList()
+        # TODO: this could raise proto.DecodeError?
+        # TODO copied from function fetch(afr) in this code
+
+        pl.ParseFromString(response.content)
+        return profile.from_proto_profile_list(pl)
 
     def log(self, a: action.Action):
         if not isinstance(a, action.Action):
@@ -123,6 +138,9 @@ class Client(object):
 
     def _set_url(self):
         return self._base_url() + '/set'
+    
+    def _get_profiles_url(self):
+        return self._base_url() + '/get_profiles'
 
     def query(self, query):
         pass
