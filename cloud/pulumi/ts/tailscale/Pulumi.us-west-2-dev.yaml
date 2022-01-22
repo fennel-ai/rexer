@@ -1,0 +1,3 @@
+config:
+  aws:region: us-west-2
+  tailscale:subnet: subnet-07aa4b44ebd42517e

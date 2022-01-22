@@ -1,3 +1,0 @@
-config:
-  aws:region: ap-south-1
-  tailscale:subnet: subnet-0ac6f13fe8fcd49ef
