@@ -1,0 +1,25 @@
+apiVersion: getambassador.io/v3alpha1
+kind: Mapping
+metadata:
+  name: control-server-mapping
+  labels:
+    svc: control-server
+spec:
+  hostname: "*"
+  prefix: /control/
+  service: control-server.fennel:2475
+
+---
+
+apiVersion: getambassador.io/v3alpha1
+kind: Host
+metadata:
+  name: control-host
+spec:
+  hostname: "*"
+  mappingSelector:
+    matchLabels:
+      svc: control-server
+  requestPolicy:
+    insecure:
+      action: Route

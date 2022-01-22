@@ -1,0 +1,25 @@
+apiVersion: getambassador.io/v3alpha1
+kind: Mapping
+metadata:
+  name: data-server-mapping
+  labels:
+    svc: go-http
+spec:
+  hostname: "*"
+  prefix: /data/
+  service: http-server.fennel:2425
+
+---
+
+apiVersion: getambassador.io/v3alpha1
+kind: Host
+metadata:
+  name: data-host
+spec:
+  hostname: "*"
+  mappingSelector:
+    matchLabels:
+      svc: go-http
+  requestPolicy:
+    insecure:
+      action: Route
