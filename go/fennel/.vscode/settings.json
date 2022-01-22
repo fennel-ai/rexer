@@ -1,6 +1,3 @@
 {
-    "go.buildTags": "dynamic",
-    "go.toolsEnvVars": {
-        "PKG_CONFIG_PATH": "/opt/homebrew/opt/openssl@3/lib/pkgconfig"
-    }
+    "go.buildTags": "dynamic"
 }
