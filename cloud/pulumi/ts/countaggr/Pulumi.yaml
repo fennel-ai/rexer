@@ -1,0 +1,3 @@
+name: countaggr
+runtime: nodejs
+description: Pulumi project to setup countaggr service
