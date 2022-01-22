@@ -265,5 +265,13 @@ export = async () => {
         return setupAmbassadorIngress(cluster.provider)
     })
 
+
+    // Setup fennel namespace.
+    const ns = new k8s.core.v1.Namespace("fennel-ns", {
+        metadata: {
+            name: "fennel"
+        }
+    })
+
     return { kubeconfig, oidcUrl, ingress }
 }
