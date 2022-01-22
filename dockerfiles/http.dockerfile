@@ -8,4 +8,4 @@ RUN go build -o server fennel/service/http
 FROM --platform=linux/amd64 golang:1.17.6-bullseye
 WORKDIR /root/
 COPY --from=builder /app/go/fennel/server ./
-CMD ["./server",  "-foo"]
+CMD ["./server"]
