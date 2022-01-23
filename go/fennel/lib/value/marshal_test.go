@@ -6,17 +6,19 @@ import (
 )
 
 func verifyMarshalUnMarshal(t *testing.T, v Value) {
-	b, err := v.MarshalJSON()
+	b, err := Marshal(v)
 	assert.NoError(t, err)
-	u, err := UnmarshalJSON(b)
+	var u Value
+	err = Unmarshal(b, &u)
 	assert.NoError(t, err)
 	assert.Equal(t, v, u)
 }
 
 func verifyUnequalMarshal(t *testing.T, v Value, unequal []Value) {
-	b, err := v.MarshalJSON()
+	b, err := Marshal(v)
 	assert.NoError(t, err)
-	u, err := UnmarshalJSON(b)
+	var u Value
+	err = Unmarshal(b, &u)
 	for _, other := range unequal {
 		assert.NotEqual(t, u, other)
 	}

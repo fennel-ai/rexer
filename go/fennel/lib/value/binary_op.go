@@ -73,6 +73,7 @@ func sub(left Value, right Value) (Value, error) {
 	}
 	return nil, fmt.Errorf("'+' only supported between numbers")
 }
+
 func div(left Value, right Value) (Value, error) {
 
 	switch left.(type) {

@@ -24,7 +24,7 @@ func TestLongKey(t *testing.T) {
 	p := dbProvider{}
 
 	val := value.Int(2)
-	expected, _ := val.MarshalJSON()
+	expected, _ := value.Marshal(val)
 
 	// can not set value on a makeKey that is greater than 256 chars
 	err = p.set(this, 1, 1232, utils.RandString(257), 1, expected)

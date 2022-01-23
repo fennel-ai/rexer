@@ -1,7 +1,6 @@
 package value
 
 import (
-	"encoding/json"
 	"fmt"
 	"reflect"
 	"strings"
@@ -13,7 +12,6 @@ type Value interface {
 	Op(opt string, other Value) (Value, error)
 	String() string
 	Clone() Value
-	json.Marshaler
 }
 
 var _ Value = Int(0)
