@@ -6,6 +6,7 @@ pkgs.mkShell {
   buildInputs = [
 
     pkgs.direnv
+    pkgs.nix-direnv
 
     # Protobuf
     pkgs.protobuf3_9
@@ -28,9 +29,15 @@ pkgs.mkShell {
 
     # Packages for deployment
     pkgs.pulumi-bin
+    pkgs.aws
+
     pkgs.docker
+
+    # Packages for working with kubernetes
     pkgs.kubernetes
     pkgs.kubernetes-helm
+
+    # Needed for linkerd setup and client.
     pkgs.linkerd
     pkgs.step-cli
 
@@ -41,10 +48,14 @@ pkgs.mkShell {
     pkgs.mysql-client
 
     # Some nice-to-have tools
-    pkgs.jq
-    pkgs.fzf
-    pkgs.fzf-zsh
-    pkgs.htop
-    pkgs.zlib
+    pkgs.jq  # A lightweight and flexible command-line JSON processor
+    pkgs.fzf # A command-line fuzzy finder written in Go
+    pkgs.fzf-zsh # wrap fzf to use in oh-my-zsh
+    pkgs.ripgrep # grep, but faster
+    pkgs.delta # A syntax-highlighting pager for git
   ];
+  shellHook =
+  ''
+    source bash.rc
+  '';
 }
