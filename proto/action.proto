@@ -12,6 +12,7 @@ message ProtoAction {
   int32 ActionValue = 7[json_name = "action_value"];
   uint64 Timestamp = 8[json_name = "timestamp"];
   uint64 RequestID = 9[json_name = "request_id"];
+  uint64 CustID = 10[json_name = "cust_id"];
 }
 
 message ProtoActionFetchRequest {
@@ -27,6 +28,7 @@ message ProtoActionFetchRequest {
   uint64 MinTimestamp = 10[json_name = "min_timestamp"];
   uint64 MaxTimestamp = 11[json_name = "max_timestamp"];
   uint64 RequestID = 12[json_name = "request_id"];
+  uint64 CustID = 13[json_name = "cust_id"];
 }
 
 message ProtoActionList {

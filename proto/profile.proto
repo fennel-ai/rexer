@@ -9,6 +9,7 @@ message ProtoProfileItem {
   string Key = 3;
   uint64 Version = 4;
   PValue Value = 5;
+  uint64 CustID = 6;
 }
 
 message ProtoProfileFetchRequest {
@@ -16,6 +17,7 @@ message ProtoProfileFetchRequest {
   uint64 Oid = 2;
   string Key = 3;
   uint64 Version = 4;
+  uint64 CustID = 5;
 }
 
 message ProtoProfileList {

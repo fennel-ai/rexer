@@ -15,7 +15,7 @@ _sym_db = _symbol_database.Default()
 import value_pb2 as value__pb2
 
 
-DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\rprofile.proto\x1a\x0bvalue.proto\"d\n\x10ProtoProfileItem\x12\r\n\x05OType\x18\x01 \x01(\r\x12\x0b\n\x03Oid\x18\x02 \x01(\x04\x12\x0b\n\x03Key\x18\x03 \x01(\t\x12\x0f\n\x07Version\x18\x04 \x01(\x04\x12\x16\n\x05Value\x18\x05 \x01(\x0b\x32\x07.PValue\"T\n\x18ProtoProfileFetchRequest\x12\r\n\x05OType\x18\x01 \x01(\r\x12\x0b\n\x03Oid\x18\x02 \x01(\x04\x12\x0b\n\x03Key\x18\x03 \x01(\t\x12\x0f\n\x07Version\x18\x04 \x01(\x04\"7\n\x10ProtoProfileList\x12#\n\x08profiles\x18\x01 \x03(\x0b\x32\x11.ProtoProfileItemB\x14Z\x12\x66\x65nnel/lib/profileb\x06proto3')
+DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\rprofile.proto\x1a\x0bvalue.proto\"t\n\x10ProtoProfileItem\x12\r\n\x05OType\x18\x01 \x01(\r\x12\x0b\n\x03Oid\x18\x02 \x01(\x04\x12\x0b\n\x03Key\x18\x03 \x01(\t\x12\x0f\n\x07Version\x18\x04 \x01(\x04\x12\x16\n\x05Value\x18\x05 \x01(\x0b\x32\x07.PValue\x12\x0e\n\x06\x43ustID\x18\x06 \x01(\x04\"d\n\x18ProtoProfileFetchRequest\x12\r\n\x05OType\x18\x01 \x01(\r\x12\x0b\n\x03Oid\x18\x02 \x01(\x04\x12\x0b\n\x03Key\x18\x03 \x01(\t\x12\x0f\n\x07Version\x18\x04 \x01(\x04\x12\x0e\n\x06\x43ustID\x18\x05 \x01(\x04\"7\n\x10ProtoProfileList\x12#\n\x08profiles\x18\x01 \x03(\x0b\x32\x11.ProtoProfileItemB\x14Z\x12\x66\x65nnel/lib/profileb\x06proto3')
 
 
 
@@ -48,9 +48,9 @@ if _descriptor._USE_C_DESCRIPTORS == False:
   DESCRIPTOR._options = None
   DESCRIPTOR._serialized_options = b'Z\022fennel/lib/profile'
   _PROTOPROFILEITEM._serialized_start=30
-  _PROTOPROFILEITEM._serialized_end=130
-  _PROTOPROFILEFETCHREQUEST._serialized_start=132
-  _PROTOPROFILEFETCHREQUEST._serialized_end=216
-  _PROTOPROFILELIST._serialized_start=218
-  _PROTOPROFILELIST._serialized_end=273
+  _PROTOPROFILEITEM._serialized_end=146
+  _PROTOPROFILEFETCHREQUEST._serialized_start=148
+  _PROTOPROFILEFETCHREQUEST._serialized_end=248
+  _PROTOPROFILELIST._serialized_start=250
+  _PROTOPROFILELIST._serialized_end=305
 # @@protoc_insertion_point(module_scope)
