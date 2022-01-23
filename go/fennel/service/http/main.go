@@ -203,15 +203,18 @@ func main() {
 	flag.Parse()
 
 	// spin up http service
-	server := &http.Server{Addr: fmt.Sprintf(":%d", httplib.PORT)}
+	server := &http.Server{Addr: fmt.Sprintf("localhost:%d", httplib.PORT)}
 	mux := http.NewServeMux()
 	// TODO: don't use test instance here, instead create real instance using env variables
 	instance, err := test.DefaultInstance()
 	if err != nil {
 		panic(fmt.Sprintf("Failed to setup default instance: %v", err))
 	}
+	log.Println("Default instance ready")
 	controller := holder{instance}
 	setHandlers(controller, mux)
+	server.Handler = mux
+	log.Printf("starting http service on %s...", server.Addr)
 	if err := server.ListenAndServe(); err != http.ErrServerClosed {
 		// unexpected error. port in use?
 		log.Fatalf("ListenAndServe(): %v", err)
