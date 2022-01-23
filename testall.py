@@ -1,13 +1,21 @@
 #!/usr/bin/env python
+import argparse
 import os
 import subprocess
-import sys
+
+
+parser = argparse.ArgumentParser(description='run all go & python tests')
+parser.add_argument('-m1', '--m1', action='store_true', help='make tests work with m1 native golang', required=False)
+args = vars(parser.parse_args())
 
 root = os.getcwd()
 godir = os.path.join(root, 'go/fennel')
 print('Running go tests...')
 print('-' * 50)
-p1 = subprocess.Popen(['go test -tags dynamic -p 1 ./...'], shell=True, cwd=godir)
+if args['m1']:
+    p1 = subprocess.Popen(['go test -tags dynamic -p 1 ./...'], shell=True, cwd=godir)
+else:
+    p1 = subprocess.Popen(['go test -p 1 ./...'], shell=True, cwd=godir)
 p1.wait()
 
 pydir = os.path.join(root, 'pyclient')
