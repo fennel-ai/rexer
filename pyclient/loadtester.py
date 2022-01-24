@@ -38,7 +38,6 @@ with open(actionLogFname) as f:
         
         a = action.Action()
         a.ParseFromString(b)
-        a.CustID = 1
         
         events.append([t, ACTION, a])
         totalActionLogs += 1

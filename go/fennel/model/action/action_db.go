@@ -11,6 +11,7 @@ import (
 func Insert(this instance.Instance, action action.Action) (uint64, error) {
 	result, err := this.DB.NamedExec(`
 		INSERT INTO actionlog (
+			cust_id,
 			actor_id,
 			actor_type,
 			target_id,
@@ -18,10 +19,10 @@ func Insert(this instance.Instance, action action.Action) (uint64, error) {
 			action_type,
 			action_value,
 			timestamp,
-			request_id,
-			cust_id
+			request_id
 	    )
         VALUES (
+			:cust_id,
 			:actor_id,
 			:actor_type,
 			:target_id,
@@ -29,8 +30,7 @@ func Insert(this instance.Instance, action action.Action) (uint64, error) {
 			:action_type,
 			:action_value,
 			:timestamp,
-			:request_id,
-			:cust_id
+			:request_id
 		);`, action)
 	if err != nil {
 		return 0, err
@@ -49,6 +49,9 @@ func Insert(this instance.Instance, action action.Action) (uint64, error) {
 func Fetch(this instance.Instance, request action.ActionFetchRequest) ([]action.Action, error) {
 	query := "SELECT * FROM actionlog"
 	clauses := make([]string, 0)
+	if request.CustID != 0 {
+		clauses = append(clauses, "cust_id = :cust_id")
+	}
 	if request.ActorType != 0 {
 		clauses = append(clauses, "actor_type = :actor_type")
 	}
@@ -84,9 +87,6 @@ func Fetch(this instance.Instance, request action.ActionFetchRequest) ([]action.
 	}
 	if request.MaxActionID != 0 {
 		clauses = append(clauses, "action_id <= :max_action_id")
-	}
-	if request.CustID != 0 {
-		clauses = append(clauses, "cust_id = :cust_id")
 	}
 
 	if len(clauses) > 0 {

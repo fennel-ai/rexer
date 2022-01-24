@@ -17,6 +17,7 @@ const (
 
 type Action struct {
 	ActionID    ftypes.OidType    `db:"action_id"`
+	CustID      ftypes.CustID     `db:"cust_id"`
 	ActorID     ftypes.OidType    `db:"actor_id"`
 	ActorType   ftypes.OType      `db:"actor_type"`
 	TargetID    ftypes.OidType    `db:"target_id"`
@@ -25,12 +26,12 @@ type Action struct {
 	ActionValue int32             `db:"action_value"`
 	Timestamp   ftypes.Timestamp  `db:"timestamp"`
 	RequestID   ftypes.RequestID  `db:"request_id"`
-	CustID      ftypes.CustID     `db:"cust_id"`
 }
 
 func FromProtoAction(pa *ProtoAction) Action {
 	return Action{
 		ActionID:    ftypes.OidType(pa.GetActionID()),
+		CustID:      ftypes.CustID(pa.CustID),
 		ActorID:     ftypes.OidType(pa.GetActorID()),
 		ActorType:   ftypes.OType(pa.GetActorType()),
 		TargetID:    ftypes.OidType(pa.GetTargetID()),
@@ -39,13 +40,13 @@ func FromProtoAction(pa *ProtoAction) Action {
 		ActionValue: pa.GetActionValue(),
 		Timestamp:   ftypes.Timestamp(pa.GetTimestamp()),
 		RequestID:   ftypes.RequestID(pa.RequestID),
-		CustID:      ftypes.CustID(pa.CustID),
 	}
 }
 
 func ToProtoAction(a Action) ProtoAction {
 	return ProtoAction{
 		ActionID:    uint64(a.ActionID),
+		CustID:      uint64(a.CustID),
 		ActorID:     uint64(a.ActorID),
 		ActorType:   uint32(a.ActorType),
 		TargetID:    uint64(a.TargetID),
@@ -54,13 +55,13 @@ func ToProtoAction(a Action) ProtoAction {
 		ActionValue: a.ActionValue,
 		Timestamp:   uint64(a.Timestamp),
 		RequestID:   uint64(a.RequestID),
-		CustID:      uint64(a.CustID),
 	}
 }
 
 type ActionFetchRequest struct {
 	MinActionID    ftypes.OidType    `db:"min_action_id"`
 	MaxActionID    ftypes.OidType    `db:"max_action_id"`
+	CustID         ftypes.CustID     `db:"cust_id"`
 	ActorID        ftypes.OidType    `db:"actor_id"`
 	ActorType      ftypes.OType      `db:"actor_type"`
 	TargetID       ftypes.OidType    `db:"target_id"`
@@ -71,7 +72,6 @@ type ActionFetchRequest struct {
 	MinTimestamp   ftypes.Timestamp  `db:"min_timestamp"`
 	MaxTimestamp   ftypes.Timestamp  `db:"max_timestamp"`
 	RequestID      ftypes.RequestID  `db:"request_id"`
-	CustID         ftypes.CustID     `db:"cust_id"`
 }
 
 func FromProtoActionFetchRequest(pa *ProtoActionFetchRequest) ActionFetchRequest {
@@ -79,6 +79,7 @@ func FromProtoActionFetchRequest(pa *ProtoActionFetchRequest) ActionFetchRequest
 
 		MinActionID:    ftypes.OidType(pa.GetMinActionID()),
 		MaxActionID:    ftypes.OidType(pa.GetMaxActionID()),
+		CustID:         ftypes.CustID(pa.GetCustID()),
 		ActorID:        ftypes.OidType(pa.GetActorID()),
 		ActorType:      ftypes.OType(pa.GetActorType()),
 		TargetID:       ftypes.OidType(pa.GetTargetID()),
@@ -89,7 +90,6 @@ func FromProtoActionFetchRequest(pa *ProtoActionFetchRequest) ActionFetchRequest
 		MinTimestamp:   ftypes.Timestamp(pa.GetMinTimestamp()),
 		MaxTimestamp:   ftypes.Timestamp(pa.GetMaxTimestamp()),
 		RequestID:      ftypes.RequestID(pa.GetRequestID()),
-		CustID:         ftypes.CustID(pa.GetCustID()),
 	}
 }
 
@@ -98,6 +98,7 @@ func ToProtoActionFetchRequest(a ActionFetchRequest) ProtoActionFetchRequest {
 
 		MinActionID:    uint64(a.MinActionID),
 		MaxActionID:    uint64(a.MaxActionID),
+		CustID:         uint64(a.CustID),
 		ActorID:        uint64(a.ActorID),
 		ActorType:      uint32(a.ActorType),
 		TargetID:       uint64(a.TargetID),
@@ -108,7 +109,6 @@ func ToProtoActionFetchRequest(a ActionFetchRequest) ProtoActionFetchRequest {
 		MinTimestamp:   uint64(a.MinTimestamp),
 		MaxTimestamp:   uint64(a.MaxTimestamp),
 		RequestID:      uint64(a.RequestID),
-		CustID:         uint64(a.CustID),
 	}
 }
 
@@ -132,6 +132,9 @@ func ToProtoActionList(actions []Action) *ProtoActionList {
 
 // Validate validates that all fields (except action ID) are appropriately specified
 func (a *Action) Validate() error {
+	if a.CustID == 0 {
+		return fmt.Errorf("customer ID can not be zero")
+	}
 	if a.ActorID == 0 {
 		return fmt.Errorf("actor ID can not be zero")
 	}
@@ -150,14 +153,14 @@ func (a *Action) Validate() error {
 	if a.RequestID == 0 {
 		return fmt.Errorf("action request ID can not be zero")
 	}
-	if a.CustID == 0 {
-		return fmt.Errorf("customer ID can not be zero")
-	}
 	return nil
 }
 
 func (a Action) Equals(other Action, ignoreID bool) bool {
 	if !ignoreID && a.ActionID != other.ActionID {
+		return false
+	}
+	if a.CustID != other.CustID {
 		return false
 	}
 	if a.ActorID != other.ActorID {
@@ -182,9 +185,6 @@ func (a Action) Equals(other Action, ignoreID bool) bool {
 		return false
 	}
 	if a.RequestID != other.RequestID {
-		return false
-	}
-	if a.CustID != other.CustID {
 		return false
 	}
 	return true

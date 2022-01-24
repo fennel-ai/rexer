@@ -4,20 +4,20 @@ import "value.proto";
 option go_package = "fennel/lib/profile";
 
 message ProtoProfileItem {
-  uint32 OType = 1;
-  uint64 Oid = 2;
-  string Key = 3;
-  uint64 Version = 4;
-  PValue Value = 5;
-  uint64 CustID = 6;
+  uint64 CustID = 1;
+  uint32 OType = 2;
+  uint64 Oid = 3;
+  string Key = 4;
+  uint64 Version = 5;
+  PValue Value = 6;
 }
 
 message ProtoProfileFetchRequest {
-  uint32 OType = 1;
-  uint64 Oid = 2;
-  string Key = 3;
-  uint64 Version = 4;
-  uint64 CustID = 5;
+  uint64 CustID = 1;
+  uint32 OType = 2;
+  uint64 Oid = 3;
+  string Key = 4;
+  uint64 Version = 5;
 }
 
 message ProtoProfileList {

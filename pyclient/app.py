@@ -82,10 +82,12 @@ def profile_handler():
     return json_format.MessageToJson(v)
 
 
-def _validate_action_get(actor_id, actor_type, target_id, target_type, action_type,
+def _validate_action_get(cust_id, actor_id, actor_type, target_id, target_type, action_type,
                          min_action_value, max_action_value, min_timestamp, max_timestamp,
-                         min_action_id, max_action_id, request_id, cust_id):
+                         min_action_id, max_action_id, request_id):
     errors = []
+    if (cust_id is not None) and (not is_uint(cust_id, 64)):
+        errors.append('cust_id is provided but is not a valid 64-bit unsigned integer')
     if (actor_id is not None) and (not is_uint(actor_id, 64)):
         errors.append('actor_id is provided but is not a valid 64-bit unsigned integer')
     if (target_id is not None) and (not is_uint(target_id, 64)):
@@ -110,16 +112,15 @@ def _validate_action_get(actor_id, actor_type, target_id, target_type, action_ty
         errors.append('min_action_value is provided but is not a valid 32-bit signed integer')
     if (max_action_value is not None) and (not is_int(max_action_value, 32)):
         errors.append('max_action_value is provided but is not a valid 32-bit signed integer')
-    if (cust_id is not None) and (not is_uint(cust_id, 64)):
-        errors.append('cust_id is provided but is not a valid 64-bit unsigned integer')
 
     return errors
 
 
-def _to_action_fetch_request(actor_id, actor_type, target_id, target_type, action_type,
+def _to_action_fetch_request(cust_id, actor_id, actor_type, target_id, target_type, action_type,
                              min_action_value, max_action_value, min_timestamp, max_timestamp,
-                             min_action_id, max_action_id, request_id, cust_id):
+                             min_action_id, max_action_id, request_id):
     ret = action.ActionFetchRequest()
+    ret.CustID = _to_int(cust_id)
     ret.ActorID = _to_int(actor_id)
     ret.ActorType = _to_int(actor_type)
     ret.TargetID = _to_int(target_id)
@@ -132,13 +133,13 @@ def _to_action_fetch_request(actor_id, actor_type, target_id, target_type, actio
     ret.MinActionID = _to_int(min_action_id)
     ret.MaxActionID = _to_int(max_action_id)
     ret.RequestID = _to_int(request_id)
-    ret.CustID = _to_int(cust_id)
     return ret
 
 
 @app.route('/actions/', methods=['GET'])
 def action_handler():
     args = request.args
+    cust_id = args.get('cust_id', None)
     actor_id = args.get('actor_id', None)
     target_id = args.get('target_id', None)
     actor_type = args.get('actor_type', None)
@@ -151,15 +152,14 @@ def action_handler():
     max_action_value = args.get('max_action_value', None)
     min_timestamp = args.get('min_timestamp', None)
     max_timestamp = args.get('max_timestamp', None)
-    cust_id = args.get('cust_id', None)
-    errors = _validate_action_get(actor_id, actor_type, target_id, target_type, action_type,
+    errors = _validate_action_get(cust_id, actor_id, actor_type, target_id, target_type, action_type,
                                   min_action_value, max_action_value, min_timestamp, max_timestamp,
-                                  min_action_id, max_action_id, request_id, cust_id)
+                                  min_action_id, max_action_id, request_id)
     if len(errors) > 0:
         return jsonify({'errors': errors}), 400
-    req = _to_action_fetch_request(actor_id, actor_type, target_id, target_type, action_type,
+    req = _to_action_fetch_request(cust_id, actor_id, actor_type, target_id, target_type, action_type,
                                    min_action_value, max_action_value, min_timestamp, max_timestamp,
-                                   min_action_id, max_action_id, request_id, cust_id)
+                                   min_action_id, max_action_id, request_id)
     actions = c.fetch(req)
     strs = []
     for a in actions:
