@@ -80,7 +80,6 @@ class Client(object):
         # now try to read the response and parse it into list of actions
         al = action.ActionList()
         # TODo: this could raise proto.DecodeError? How to handle it?
-
         al.ParseFromString(response.content)
         return action.from_proto_action_list(al)
 

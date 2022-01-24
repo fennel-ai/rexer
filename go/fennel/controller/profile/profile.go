@@ -14,7 +14,7 @@ func Get(this instance.Instance, request profilelib.ProfileItem) (*value.Value, 
 	if err := request.Validate(); err != nil {
 		return nil, err
 	}
-	valueSer, err := profile.Get(this, request.OType, request.Oid, request.Key, request.Version)
+	valueSer, err := profile.Get(this, request.CustID, request.OType, request.Oid, request.Key, request.Version)
 	if err != nil {
 		return nil, err
 	} else if valueSer == nil {
@@ -47,7 +47,7 @@ func Set(this instance.Instance, request profilelib.ProfileItem) error {
 	if err != nil {
 		return err
 	}
-	if err = profile.Set(this, request.OType, request.Oid, request.Key, request.Version, valSer); err != nil {
+	if err = profile.Set(this, request.CustID, request.OType, request.Oid, request.Key, request.Version, valSer); err != nil {
 		return err
 	}
 	return nil

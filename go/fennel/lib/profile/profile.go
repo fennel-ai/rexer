@@ -14,16 +14,17 @@ const (
 )
 
 type ProfileItem struct {
-	OType   uint32      `db:"otype"`
-	Oid     uint64      `db:"oid"`
-	Key     string      `db:"zkey"`
-	Version uint64      `db:"version"`
-	Value   value.Value `db:"value"`
+	CustID  ftypes.CustID `db:"cust_id"`
+	OType   uint32        `db:"otype"`
+	Oid     uint64        `db:"oid"`
+	Key     string        `db:"zkey"`
+	Version uint64        `db:"version"`
+	Value   value.Value   `db:"value"`
 }
 
-func NewProfileItem(otype uint32, oid uint64, k string, version uint64) ProfileItem {
+func NewProfileItem(custid uint64, otype uint32, oid uint64, k string, version uint64) ProfileItem {
 	return ProfileItem{
-		otype, oid, k, version, value.Nil,
+		ftypes.CustID(custid), otype, oid, k, version, value.Nil,
 	}
 }
 
@@ -33,6 +34,7 @@ func FromProtoProfileItem(ppr *ProtoProfileItem) (ProfileItem, error) {
 		return ProfileItem{}, err
 	}
 	return ProfileItem{
+		ftypes.CustID(ppr.CustID),
 		ppr.OType,
 		ppr.Oid,
 		ppr.Key,
@@ -46,6 +48,7 @@ func ToProtoProfileItem(pi *ProfileItem) (ProtoProfileItem, error) {
 		return ProtoProfileItem{}, err
 	}
 	return ProtoProfileItem{
+		CustID:  uint64(pi.CustID),
 		OType:   pi.OType,
 		Oid:     pi.Oid,
 		Key:     pi.Key,
@@ -55,16 +58,17 @@ func ToProtoProfileItem(pi *ProfileItem) (ProtoProfileItem, error) {
 }
 
 type ProfileItemSer struct {
-	OType   uint32 `db:"otype"`
-	Oid     uint64 `db:"oid"`
-	Key     string `db:"zkey"`
-	Version uint64 `db:"version"`
-	Value   []byte `db:"value"`
+	CustID  ftypes.CustID `db:"cust_id"`
+	OType   uint32        `db:"otype"`
+	Oid     uint64        `db:"oid"`
+	Key     string        `db:"zkey"`
+	Version uint64        `db:"version"`
+	Value   []byte        `db:"value"`
 }
 
 // Converts a ProfileItemSer to ProfileItem
 func ToProfileItem(ser *ProfileItemSer) (*ProfileItem, error) {
-	pr := NewProfileItem(ser.OType, ser.Oid, ser.Key, ser.Version)
+	pr := NewProfileItem(uint64(ser.CustID), ser.OType, ser.Oid, ser.Key, ser.Version)
 
 	var pval value.PValue
 	if err := proto.Unmarshal(ser.Value, &pval); err != nil {
@@ -81,14 +85,16 @@ func ToProfileItem(ser *ProfileItemSer) (*ProfileItem, error) {
 }
 
 type ProfileFetchRequest struct {
-	OType   uint32 `db:"otype"`
-	Oid     uint64 `db:"oid"`
-	Key     string `db:"zkey"`
-	Version uint64 `db:"version"`
+	CustID  ftypes.CustID `db:"cust_id"`
+	OType   uint32        `db:"otype"`
+	Oid     uint64        `db:"oid"`
+	Key     string        `db:"zkey"`
+	Version uint64        `db:"version"`
 }
 
 func FromProtoProfileFetchRequest(ppfr *ProtoProfileFetchRequest) ProfileFetchRequest {
 	return ProfileFetchRequest{
+		ftypes.CustID(ppfr.CustID),
 		ppfr.OType,
 		ppfr.Oid,
 		ppfr.Key,
@@ -96,9 +102,9 @@ func FromProtoProfileFetchRequest(ppfr *ProtoProfileFetchRequest) ProfileFetchRe
 	}
 }
 
-// Should this use pointer argument instead?
-func ToProtoProfileFetchRequest(pfr ProfileFetchRequest) ProtoProfileFetchRequest {
+func ToProtoProfileFetchRequest(pfr *ProfileFetchRequest) ProtoProfileFetchRequest {
 	return ProtoProfileFetchRequest{
+		CustID:  uint64(pfr.CustID),
 		OType:   pfr.OType,
 		Oid:     pfr.Oid,
 		Key:     pfr.Key,
@@ -133,6 +139,9 @@ func ToProtoProfileList(profiles []ProfileItem) (*ProtoProfileList, error) {
 
 // Validate validates the profile item
 func (pi *ProfileItem) Validate() error {
+	if pi.CustID == 0 {
+		return fmt.Errorf("custid can not be zero")
+	}
 	if pi.Oid == 0 {
 		return fmt.Errorf("oid can not be zero")
 	}

@@ -95,20 +95,20 @@ func TestProfileServerClient(t *testing.T) {
 	assert.NoError(t, err)
 
 	// in the beginning, with no value SetProfile, we GetProfile nil pointer back but with no error
-	checkGetSet(t, c, true, 1, 1, 0, "age", value.Value(nil))
+	checkGetSet(t, c, true, 1, 1, 1, 0, "age", value.Value(nil))
 
 	var expected value.Value = value.List([]value.Value{value.Int(1), value.Bool(false), value.Nil})
-	checkGetSet(t, c, false, 1, 1, 1, "age", expected)
+	checkGetSet(t, c, false, 1, 1, 1, 1, "age", expected)
 
 	// we can also GetProfile it without using the specific version number
-	checkGetSet(t, c, true, 1, 1, 0, "age", expected)
+	checkGetSet(t, c, true, 1, 1, 1, 0, "age", expected)
 
 	// SetProfile few more key/value pairs and verify it works
-	checkGetSet(t, c, false, 1, 1, 2, "age", value.Nil)
-	checkGetSet(t, c, false, 1, 3, 2, "age", value.Int(1))
-	checkGetSet(t, c, true, 1, 1, 2, "age", value.Nil)
-	checkGetSet(t, c, true, 1, 1, 0, "age", value.Nil)
-	checkGetSet(t, c, false, 10, 3131, 0, "summary", value.Int(1))
+	checkGetSet(t, c, false, 1, 1, 1, 2, "age", value.Nil)
+	checkGetSet(t, c, false, 1, 1, 3, 2, "age", value.Int(1))
+	checkGetSet(t, c, true, 1, 1, 1, 2, "age", value.Nil)
+	checkGetSet(t, c, true, 1, 1, 1, 0, "age", value.Nil)
+	checkGetSet(t, c, false, 1, 10, 3131, 0, "summary", value.Int(1))
 }
 
 func TestCountRateServerClient(t *testing.T) {
@@ -160,10 +160,10 @@ func TestCountRateServerClient(t *testing.T) {
 	assert.Error(t, err)
 }
 
-func checkGetSet(t *testing.T, c *client.Client, get bool, otype uint32, oid uint64, version uint64,
+func checkGetSet(t *testing.T, c *client.Client, get bool, custid uint64, otype uint32, oid uint64, version uint64,
 	key string, val value.Value) {
 	if get {
-		req := profilelib.NewProfileItem(otype, oid, key, version)
+		req := profilelib.NewProfileItem(custid, otype, oid, key, version)
 		found, err := c.GetProfile(&req)
 		assert.NoError(t, err)
 		if found == nil {
@@ -172,9 +172,9 @@ func checkGetSet(t *testing.T, c *client.Client, get bool, otype uint32, oid uin
 			assert.Equal(t, val, *found)
 		}
 	} else {
-		err := c.SetProfile(&profilelib.ProfileItem{OType: otype, Oid: oid, Key: key, Version: version, Value: val})
+		err := c.SetProfile(&profilelib.ProfileItem{CustID: ftypes.CustID(custid), OType: otype, Oid: oid, Key: key, Version: version, Value: val})
 		assert.NoError(t, err)
-		request := profilelib.NewProfileItem(otype, oid, key, version)
+		request := profilelib.NewProfileItem(custid, otype, oid, key, version)
 		found, err := c.GetProfile(&request)
 		assert.NoError(t, err)
 		if found == nil {

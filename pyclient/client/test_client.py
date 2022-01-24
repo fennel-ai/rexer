@@ -26,6 +26,7 @@ class Testclient(unittest.TestCase):
 
         # but valid requests don't throw exceptions
         req = profile.ProfileItem()
+        req.CustID = 1
         req.Oid, req.OType = 1, 2
         req.Key = 'key'
         v = value.Int(5)

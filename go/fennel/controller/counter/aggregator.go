@@ -46,13 +46,13 @@ func prefixWithIDList(prefix ftypes.Key, idList value.Value) []ftypes.Key {
 	return []ftypes.Key{}
 }
 
-func profile(otype uint32, oid uint64, key string, version uint64) (*value.Value, error) {
+func profile(custid uint64, otype uint32, oid uint64, key string, version uint64) (*value.Value, error) {
 	// TODO: how does this code discover the port/url for profile service?
 	c, err := client.NewClient(fmt.Sprintf("%s:%d", "localhost", httplib.PORT), http.DefaultClient)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create client: %v", err)
 	}
-	req := profileLib.NewProfileItem(otype, oid, key, version)
+	req := profileLib.NewProfileItem(custid, otype, oid, key, version)
 	return c.GetProfile(&req)
 }
 

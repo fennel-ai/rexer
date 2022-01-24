@@ -81,7 +81,7 @@ numActionLogs = 0
 numProfileGets = 0
 numProfileSets = 0
 
-while i != len(events) and i < 100:
+while i != len(events) and i < 20:
     while (t()-t0)*1e6 < events[i][0]:
         pass
     
@@ -119,6 +119,3 @@ if numProfileSets > 0:
 print("Number of action logs:", numActionLogs)
 print("Number of profile gets:", numProfileGets)
 print("Number of profile sets:", numProfileSets)
-print()
-
-print(c.fetch(action.ActionFetchRequest()))

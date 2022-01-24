@@ -27,8 +27,13 @@ def is_int(s, size=32):
         return False
 
 
-def _validate_profile_get(otype, oid, key, version):
+def _validate_profile_get(cust_id, otype, oid, key, version):
     errors = []
+    if cust_id is None:
+        errors.append('custid is not specified')
+    elif not is_uint(cust_id, 64):
+        errors.append('custid is not a valid 64-bit unsigned integer')
+
     if otype is None:
         errors.append('otype is not specified')
     elif not is_uint(otype, 32):
@@ -54,8 +59,9 @@ def _to_str(s, default=''):
     return str(s) if s is not None else default
 
 
-def _to_profile_item(otype, oid, key, version):
+def _to_profile_item(cust_id, otype, oid, key, version):
     ret = profile.ProfileItem()
+    ret.CustID = int(cust_id)
     ret.OType = int(otype)
     ret.Oid = int(oid)
     ret.Key = key if key is not None else ""
@@ -67,15 +73,16 @@ def _to_profile_item(otype, oid, key, version):
 @app.route('/profile/', methods=['GET'])
 def profile_handler():
     args = request.args
+    cust_id = args.get('cust_id', None)
     oid = args.get('oid', None)
     otype = args.get('otype', None)
     key = args.get('key', None)
     version = args.get('version', None)
-    errors = _validate_profile_get(otype, oid, key, version)
+    errors = _validate_profile_get(cust_id, otype, oid, key, version)
     if len(errors) > 0:
         app.logger.error(request, errors)
         return jsonify({'errors': errors}), 400
-    req = _to_profile_item(otype, oid, key, version)
+    req = _to_profile_item(cust_id, otype, oid, key, version)
     # TODO: client's get_profile returns a single value but
     # we need a list of all relevant profile rows here
     v = c.get_profile(req)
@@ -166,8 +173,10 @@ def action_handler():
         strs.append(json_format.MessageToJson(a, including_default_value_fields=True))
     return '[' + ', '.join(strs) + ']'
 
-def _validate_profiles_get(otype, oid, key, version):
+def _validate_profiles_get(cust_id, otype, oid, key, version):
     errors = []
+    if (cust_id is not None) and (not is_uint(cust_id, 64)):
+        errors.append('cust_id is provided but is not a valid 64-bit unsigned integer')
     if (otype is not None) and (not is_uint(otype, 32)):
         errors.append('otype is provided but is not a valid 32-bit unsigned integer')
     if (oid is not None) and (not is_uint(oid, 64)):
@@ -180,8 +189,9 @@ def _validate_profiles_get(otype, oid, key, version):
     
     return errors
 
-def _to_profile_fetch_request(otype, oid, key, version):
+def _to_profile_fetch_request(cust_id, otype, oid, key, version):
     ret = profile.ProfileFetchRequest()
+    ret.CustID = _to_int(cust_id)
     ret.OType = _to_int(otype)
     ret.Oid = _to_int(oid)
     ret.Key = _to_str(key)
@@ -191,14 +201,15 @@ def _to_profile_fetch_request(otype, oid, key, version):
 @app.route('/profiles/', methods=['GET'])
 def profiles_handler():
     args = request.args
+    cust_id = args.get('cust_id', None)
     otype = args.get('otype', None)
     oid = args.get('oid', None)
     key = args.get('key', None)
     version = args.get('version', None)
-    errors = _validate_profiles_get(otype, oid, key, version)
+    errors = _validate_profiles_get(cust_id, otype, oid, key, version)
     if len(errors) > 0:
         return jsonify({'errors': errors}), 400
-    req = _to_profile_fetch_request(otype, oid, key, version)
+    req = _to_profile_fetch_request(cust_id, otype, oid, key, version)
     profiles = c.get_profiles(req)
     strs = []
     for p in profiles:

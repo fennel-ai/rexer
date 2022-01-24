@@ -39,6 +39,7 @@ func init() {
 				PRIMARY KEY(counter_type)
 		  );`,
 		5: `CREATE TABLE IF NOT EXISTS profile (
+				cust_id BIGINT not null,
 				otype INT not null,
 				oid BIGINT not null,
 				zkey varchar(256) not null,
