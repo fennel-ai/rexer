@@ -3,7 +3,6 @@ package interpreter
 import (
 	"fennel/engine/ast"
 	"fennel/lib/value"
-	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -28,56 +27,34 @@ func testError(t *testing.T, node ast.Ast) {
 	assert.Error(t, err)
 }
 
-func makeInt(i int32) ast.Atom {
-	return ast.Atom{Type: ast.Int, Lexeme: fmt.Sprintf("%d", i)}
-}
-
-func makeDouble(d float64) ast.Atom {
-	return ast.Atom{Type: ast.Double, Lexeme: fmt.Sprintf("%f", d)}
-}
-
-func makeString(s string) ast.Atom {
-	return ast.Atom{Type: ast.String, Lexeme: s}
-}
-
-func makeBool(b bool) ast.Atom {
-	var str string
-	if b {
-		str = "true"
-	} else {
-		str = "false"
-	}
-	return ast.Atom{Type: ast.Bool, Lexeme: str}
-}
-
 func TestInterpreter_VisitAtom(t *testing.T) {
-	testValid(t, makeInt(123), value.Int(123))
-	testValid(t, makeInt(-123), value.Int(-123))
+	testValid(t, ast.MakeInt(123), value.Int(123))
+	testValid(t, ast.MakeInt(-123), value.Int(-123))
 	// possible to parse double without decimal
-	testValid(t, makeDouble(123), value.Double(123.0))
-	testValid(t, makeDouble(123.3), value.Double(123.3))
-	testValid(t, makeDouble(-123.3), value.Double(-123.3))
+	testValid(t, ast.MakeDouble(123), value.Double(123.0))
+	testValid(t, ast.MakeDouble(123.3), value.Double(123.3))
+	testValid(t, ast.MakeDouble(-123.3), value.Double(-123.3))
 
-	testValid(t, makeBool(true), value.Bool(true))
-	testValid(t, makeBool(false), value.Bool(false))
+	testValid(t, ast.MakeBool(true), value.Bool(true))
+	testValid(t, ast.MakeBool(false), value.Bool(false))
 
-	testValid(t, makeString("hi"), value.String("hi"))
-	testValid(t, makeString("false"), value.String("false"))
-	testValid(t, makeString("3.2"), value.String("3.2"))
+	testValid(t, ast.MakeString("hi"), value.String("hi"))
+	testValid(t, ast.MakeString("false"), value.String("false"))
+	testValid(t, ast.MakeString("3.2"), value.String("3.2"))
 }
 
 func TestInterpreter_VisitBinary(t *testing.T) {
 	testValid(t, ast.Binary{
-		Left:  makeInt(5),
+		Left:  ast.MakeInt(5),
 		Op:    "+",
-		Right: makeInt(8),
+		Right: ast.MakeInt(8),
 	}, value.Int(13))
 
 	// and errors are propagated through type errors.
 	testError(t, ast.Binary{
-		Left:  makeInt(5),
+		Left:  ast.MakeInt(5),
 		Op:    "*",
-		Right: makeBool(false),
+		Right: ast.MakeBool(false),
 	})
 }
 
@@ -87,10 +64,10 @@ func TestInterpreter_VisitList(t *testing.T) {
 
 	// list with just one element works
 	l, _ := value.NewList([]value.Value{value.Double(3.4)})
-	testValid(t, &ast.List{Values: []ast.Ast{makeDouble(3.4)}}, l)
+	testValid(t, &ast.List{Values: []ast.Ast{ast.MakeDouble(3.4)}}, l)
 	// and so does a multi-element list with mixed types
 	l, _ = value.NewList([]value.Value{value.Double(3.4), value.Bool(false), value.String("hi")})
-	testValid(t, &ast.List{Values: []ast.Ast{makeDouble(3.4), makeBool(false), makeString("hi")}}, l)
+	testValid(t, &ast.List{Values: []ast.Ast{ast.MakeDouble(3.4), ast.MakeBool(false), ast.MakeString("hi")}}, l)
 }
 
 func TestInterpreter_VisitDict(t *testing.T) {
@@ -99,7 +76,7 @@ func TestInterpreter_VisitDict(t *testing.T) {
 
 	// dict with just one element works
 	d, _ := value.NewDict(map[string]value.Value{"hi": value.Double(3.4)})
-	testValid(t, ast.Dict{Values: map[string]ast.Ast{"hi": makeDouble(3.4)}}, d)
+	testValid(t, ast.Dict{Values: map[string]ast.Ast{"hi": ast.MakeDouble(3.4)}}, d)
 	// and so does a multi-element list with mixed types and nesting
 	nested, _ := value.NewDict(map[string]value.Value{
 		"hi":     value.Double(3.4),
@@ -107,43 +84,43 @@ func TestInterpreter_VisitDict(t *testing.T) {
 		"nested": d,
 	})
 	testValid(t, ast.Dict{Values: map[string]ast.Ast{
-		"hi":  makeDouble(3.4),
-		"bye": makeBool(false),
+		"hi":  ast.MakeDouble(3.4),
+		"bye": ast.MakeBool(false),
 		"nested": ast.Dict{
 			Values: map[string]ast.Ast{
-				"hi": makeDouble(3.4),
+				"hi": ast.MakeDouble(3.4),
 			}}}}, nested)
 }
 
 func TestInterpreter_VisitStatement(t *testing.T) {
-	s := ast.Statement{Name: "var", Body: makeBool(false)}
+	s := ast.Statement{Name: "var", Body: ast.MakeBool(false)}
 	testValid(t, s, value.Bool(false))
 
 	// same happens if no name is passed
-	s = ast.Statement{Name: "", Body: makeBool(false)}
+	s = ast.Statement{Name: "", Body: ast.MakeBool(false)}
 	testValid(t, s, value.Bool(false))
 }
 
 func TestInterpreter_VisitTable(t *testing.T) {
 	astrow1 := ast.Dict{
 		Values: map[string]ast.Ast{
-			"a.inner": makeInt(3),
-			"b":       makeString("hi"),
+			"a.inner": ast.MakeInt(3),
+			"b":       ast.MakeString("hi"),
 		},
 	}
 	astrow2 := ast.Dict{
 		Values: map[string]ast.Ast{
 			"a": ast.Dict{
 				Values: map[string]ast.Ast{
-					"inner": makeInt(5),
+					"inner": ast.MakeInt(5),
 				}},
-			"b": makeString("bye"),
+			"b": ast.MakeString("bye"),
 		},
 	}
 	astrow3 := ast.Dict{
 		Values: map[string]ast.Ast{
-			"b":       makeString("hello"),
-			"a.inner": makeInt(3),
+			"b":       ast.MakeString("hello"),
+			"a.inner": ast.MakeInt(3),
 		},
 	}
 	row1, _ := value.NewDict(map[string]value.Value{
@@ -175,46 +152,46 @@ func TestInterpreter_VisitTable(t *testing.T) {
 func TestInterpreter_VisitTableErrors(t *testing.T) {
 
 	// visiting table with non-list or non-table doesn't work
-	testError(t, ast.Table{Inner: makeInt(123)})
-	testError(t, ast.Table{Inner: makeString("123")})
+	testError(t, ast.Table{Inner: ast.MakeInt(123)})
+	testError(t, ast.Table{Inner: ast.MakeString("123")})
 	testError(t, ast.Table{Inner: ast.Dict{Values: map[string]ast.Ast{}}})
 
 	// even for lists, it only works when its items are dicts
-	testError(t, ast.Table{Inner: ast.List{Values: []ast.Ast{makeInt(123)}}})
-	testError(t, ast.Table{Inner: ast.List{Values: []ast.Ast{ast.Dict{Values: map[string]ast.Ast{}}, makeInt(123)}}})
+	testError(t, ast.Table{Inner: ast.List{Values: []ast.Ast{ast.MakeInt(123)}}})
+	testError(t, ast.Table{Inner: ast.List{Values: []ast.Ast{ast.Dict{Values: map[string]ast.Ast{}}, ast.MakeInt(123)}}})
 
 	// and even then, it only works when they all have the same schema
 	testError(t, &ast.Table{Inner: ast.List{Values: []ast.Ast{ast.Dict{Values: map[string]ast.Ast{
-		"a": makeInt(123),
-		"b": makeBool(true),
+		"a": ast.MakeInt(123),
+		"b": ast.MakeBool(true),
 	}},
 		ast.Dict{Values: map[string]ast.Ast{}}}}},
 	)
 
 	testError(t, ast.Table{Inner: ast.List{Values: []ast.Ast{
 		ast.Dict{Values: map[string]ast.Ast{
-			"a": makeInt(123),
-			"b": makeBool(true),
+			"a": ast.MakeInt(123),
+			"b": ast.MakeBool(true),
 		}},
 		ast.Dict{Values: map[string]ast.Ast{
-			"a": makeInt(123),
-			"c": makeBool(true),
+			"a": ast.MakeInt(123),
+			"c": ast.MakeBool(true),
 		}},
 	}}})
 
 	// same for nested
 	testError(t, &ast.Table{Inner: ast.List{Values: []ast.Ast{
 		ast.Dict{Values: map[string]ast.Ast{
-			"a": makeInt(123),
+			"a": ast.MakeInt(123),
 			"b": ast.Dict{
 				Values: map[string]ast.Ast{
-					"inner": makeInt(123),
+					"inner": ast.MakeInt(123),
 				},
 			},
 		}},
 		ast.Dict{Values: map[string]ast.Ast{
-			"a": makeInt(123),
-			"c": makeBool(false),
+			"a": ast.MakeInt(123),
+			"c": ast.MakeBool(false),
 		}},
 	}}})
 }
@@ -222,23 +199,23 @@ func TestInterpreter_VisitTableErrors(t *testing.T) {
 func TestInterpreter_VisitOpcall(t *testing.T) {
 	astrow1 := ast.Dict{
 		Values: map[string]ast.Ast{
-			"a.inner": makeInt(3),
-			"b":       makeString("hi"),
+			"a.inner": ast.MakeInt(3),
+			"b":       ast.MakeString("hi"),
 		},
 	}
 	astrow2 := ast.Dict{
 		Values: map[string]ast.Ast{
 			"a": ast.Dict{
 				Values: map[string]ast.Ast{
-					"inner": makeInt(5),
+					"inner": ast.MakeInt(5),
 				}},
-			"b": makeString("bye"),
+			"b": ast.MakeString("bye"),
 		},
 	}
 	astrow3 := ast.Dict{
 		Values: map[string]ast.Ast{
-			"b":       makeString("hello"),
-			"a.inner": makeInt(3),
+			"b":       ast.MakeString("hello"),
+			"a.inner": ast.MakeInt(3),
 		},
 	}
 	astTable := &ast.Table{Inner: ast.List{Values: []ast.Ast{astrow1, astrow2, astrow3}}}
@@ -259,9 +236,10 @@ func TestInterpreter_VisitOpcall(t *testing.T) {
 	table.Append(row2)
 	table.Append(row3)
 
+	// we get all values back if where is true
 	kwargs := ast.Dict{
 		Values: map[string]ast.Ast{
-			"where": makeBool(true),
+			"where": ast.MakeBool(true),
 		},
 	}
 	testValid(t, ast.OpCall{
@@ -274,7 +252,7 @@ func TestInterpreter_VisitOpcall(t *testing.T) {
 	// and we get nothing when filter is passed as "false"
 	kwargs = ast.Dict{
 		Values: map[string]ast.Ast{
-			"where": makeBool(false),
+			"where": ast.MakeBool(false),
 		},
 	}
 	testValid(t, ast.OpCall{

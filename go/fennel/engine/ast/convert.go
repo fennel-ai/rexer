@@ -72,7 +72,7 @@ func fromProtoTable(ptable *proto.Ast_Table) (Ast, error) {
 }
 
 func fromProtoVar(pvar *proto.Ast_Var) (Ast, error) {
-	return Var{name: pvar.Var.Name}, nil
+	return Var{Name: pvar.Var.Name}, nil
 }
 
 func fromProtoOpcall(popcall *proto.Ast_Opcall) (Ast, error) {
@@ -101,7 +101,7 @@ func fromProtoQuery(pquery *proto.Ast_Query) (Ast, error) {
 		}
 		statements[i] = s.(Statement)
 	}
-	return Query{statements: statements}, nil
+	return Query{Statements: statements}, nil
 }
 
 func fromProtoStatement(pstatement *proto.Ast_Statement) (Ast, error) {
@@ -252,8 +252,8 @@ func statementToProto(s Statement) (proto.Ast, error) {
 }
 
 func queryToProto(q Query) (proto.Ast, error) {
-	ret := make([]*proto.Statement, len(q.statements))
-	for i, s := range q.statements {
+	ret := make([]*proto.Statement, len(q.Statements))
+	for i, s := range q.Statements {
 		ps, err := ToProtoAst(s)
 		if err != nil {
 			return pnull, err
@@ -294,7 +294,7 @@ func opcallToProto(opcall OpCall) (proto.Ast, error) {
 }
 
 func varToProto(v Var) (proto.Ast, error) {
-	return proto.Ast{Node: &proto.Ast_Var{Var: &proto.Var{Name: v.name}}}, nil
+	return proto.Ast{Node: &proto.Ast_Var{Var: &proto.Var{Name: v.Name}}}, nil
 }
 
 func tableToProto(table Table) (proto.Ast, error) {

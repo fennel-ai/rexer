@@ -57,15 +57,15 @@ func (s Statement) AcceptString(v VisitorString) string {
 }
 
 type Query struct {
-	statements []Statement
+	Statements []Statement
 }
 
 func (q Query) AcceptValue(v VisitorValue) (value.Value, error) {
-	return v.VisitQuery(q.statements)
+	return v.VisitQuery(q.Statements)
 }
 
 func (q Query) AcceptString(v VisitorString) string {
-	return v.VisitQuery(q.statements)
+	return v.VisitQuery(q.Statements)
 }
 
 type AtomType uint8
@@ -156,13 +156,13 @@ func (opcall OpCall) AcceptString(v VisitorString) string {
 }
 
 type Var struct {
-	name string
+	Name string
 }
 
 func (va Var) AcceptValue(v VisitorValue) (value.Value, error) {
-	return v.VisitVar(va.name)
+	return v.VisitVar(va.Name)
 }
 
 func (va Var) AcceptString(v VisitorString) string {
-	return v.VisitVar(va.name)
+	return v.VisitVar(va.Name)
 }
