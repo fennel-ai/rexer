@@ -162,6 +162,7 @@ def make_action(k):
     a.TargetType = k + 3
     a.ActionType = k + 4
     a.RequestID = k + 5
+    a.CustID = k + 6
     return a
 
 

@@ -22,6 +22,8 @@ def validate(a: Action):
         errors.append('action type can not be zero')
     if a.RequestID == 0:
         errors.append('request ID can not be zero')
+    if a.CustID == 0:
+        errors.append('customer ID can not be zero')
     return errors
 
 

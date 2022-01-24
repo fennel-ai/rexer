@@ -38,6 +38,7 @@ with open(actionLogFname) as f:
         
         a = action.Action()
         a.ParseFromString(b)
+        a.CustID = 1
         
         events.append([t, ACTION, a])
         totalActionLogs += 1
@@ -119,3 +120,6 @@ if numProfileSets > 0:
 print("Number of action logs:", numActionLogs)
 print("Number of profile gets:", numProfileGets)
 print("Number of profile sets:", numProfileSets)
+print()
+
+print(c.fetch(action.ActionFetchRequest()))

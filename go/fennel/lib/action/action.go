@@ -25,6 +25,7 @@ type Action struct {
 	ActionValue int32             `db:"action_value"`
 	Timestamp   ftypes.Timestamp  `db:"timestamp"`
 	RequestID   ftypes.RequestID  `db:"request_id"`
+	CustID      ftypes.CustID     `db:"cust_id"`
 }
 
 func FromProtoAction(pa *ProtoAction) Action {
@@ -38,6 +39,7 @@ func FromProtoAction(pa *ProtoAction) Action {
 		ActionValue: pa.GetActionValue(),
 		Timestamp:   ftypes.Timestamp(pa.GetTimestamp()),
 		RequestID:   ftypes.RequestID(pa.RequestID),
+		CustID:      ftypes.CustID(pa.CustID),
 	}
 }
 
@@ -52,6 +54,7 @@ func ToProtoAction(a Action) ProtoAction {
 		ActionValue: a.ActionValue,
 		Timestamp:   uint64(a.Timestamp),
 		RequestID:   uint64(a.RequestID),
+		CustID:      uint64(a.CustID),
 	}
 }
 
@@ -68,6 +71,7 @@ type ActionFetchRequest struct {
 	MinTimestamp   ftypes.Timestamp  `db:"min_timestamp"`
 	MaxTimestamp   ftypes.Timestamp  `db:"max_timestamp"`
 	RequestID      ftypes.RequestID  `db:"request_id"`
+	CustID         ftypes.CustID     `db:"cust_id"`
 }
 
 func FromProtoActionFetchRequest(pa *ProtoActionFetchRequest) ActionFetchRequest {
@@ -85,6 +89,7 @@ func FromProtoActionFetchRequest(pa *ProtoActionFetchRequest) ActionFetchRequest
 		MinTimestamp:   ftypes.Timestamp(pa.GetMinTimestamp()),
 		MaxTimestamp:   ftypes.Timestamp(pa.GetMaxTimestamp()),
 		RequestID:      ftypes.RequestID(pa.GetRequestID()),
+		CustID:         ftypes.CustID(pa.GetCustID()),
 	}
 }
 
@@ -103,6 +108,7 @@ func ToProtoActionFetchRequest(a ActionFetchRequest) ProtoActionFetchRequest {
 		MinTimestamp:   uint64(a.MinTimestamp),
 		MaxTimestamp:   uint64(a.MaxTimestamp),
 		RequestID:      uint64(a.RequestID),
+		CustID:         uint64(a.CustID),
 	}
 }
 
@@ -144,6 +150,9 @@ func (a *Action) Validate() error {
 	if a.RequestID == 0 {
 		return fmt.Errorf("action request ID can not be zero")
 	}
+	if a.CustID == 0 {
+		return fmt.Errorf("customer ID can not be zero")
+	}
 	return nil
 }
 
@@ -173,6 +182,9 @@ func (a Action) Equals(other Action, ignoreID bool) bool {
 		return false
 	}
 	if a.RequestID != other.RequestID {
+		return false
+	}
+	if a.CustID != other.CustID {
 		return false
 	}
 	return true

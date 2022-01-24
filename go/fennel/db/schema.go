@@ -30,7 +30,8 @@ func init() {
 				action_type INT NOT NULL,
 				action_value BIGINT NOT NULL,
 				timestamp BIGINT NOT NULL,
-				request_id BIGINT not null
+				request_id BIGINT not null,
+				cust_id BIGINT not null
 		  );`,
 		4: `CREATE TABLE IF NOT EXISTS checkpoint (
 				counter_type INT NOT NULL,

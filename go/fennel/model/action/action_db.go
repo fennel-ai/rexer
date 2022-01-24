@@ -18,7 +18,8 @@ func Insert(this instance.Instance, action action.Action) (uint64, error) {
 			action_type,
 			action_value,
 			timestamp,
-			request_id
+			request_id,
+			cust_id
 	    )
         VALUES (
 			:actor_id,
@@ -28,7 +29,8 @@ func Insert(this instance.Instance, action action.Action) (uint64, error) {
 			:action_type,
 			:action_value,
 			:timestamp,
-			:request_id
+			:request_id,
+			:cust_id
 		);`, action)
 	if err != nil {
 		return 0, err
@@ -82,6 +84,9 @@ func Fetch(this instance.Instance, request action.ActionFetchRequest) ([]action.
 	}
 	if request.MaxActionID != 0 {
 		clauses = append(clauses, "action_id <= :max_action_id")
+	}
+	if request.CustID != 0 {
+		clauses = append(clauses, "cust_id = :cust_id")
 	}
 
 	if len(clauses) > 0 {
