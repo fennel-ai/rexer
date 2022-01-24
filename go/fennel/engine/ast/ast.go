@@ -16,6 +16,8 @@ type VisitorString interface {
 	VisitVar(name string) string
 	VisitStatement(name string, body Ast) string
 	VisitQuery(statements []Statement) string
+	VisitAt() string
+	VisitLookup(on Ast, property string) string
 }
 
 type VisitorValue interface {
@@ -28,6 +30,8 @@ type VisitorValue interface {
 	VisitVar(name string) (value.Value, error)
 	VisitStatement(name string, body Ast) (value.Value, error)
 	VisitQuery(statements []Statement) (value.Value, error)
+	VisitAt() (value.Value, error)
+	VisitLookup(on Ast, property string) (value.Value, error)
 }
 
 type Ast interface {
@@ -44,6 +48,31 @@ var _ Ast = OpCall{}
 var _ Ast = Var{}
 var _ Ast = Statement{}
 var _ Ast = Query{}
+var _ Ast = At{}
+var _ Ast = Lookup{}
+
+type Lookup struct {
+	On       Ast
+	Property string
+}
+
+func (l Lookup) AcceptValue(v VisitorValue) (value.Value, error) {
+	return v.VisitLookup(l.On, l.Property)
+}
+
+func (l Lookup) AcceptString(v VisitorString) string {
+	return v.VisitLookup(l.On, l.Property)
+}
+
+type At struct{}
+
+func (a At) AcceptValue(v VisitorValue) (value.Value, error) {
+	return v.VisitAt()
+}
+
+func (a At) AcceptString(v VisitorString) string {
+	return v.VisitAt()
+}
 
 type Statement struct {
 	Name string

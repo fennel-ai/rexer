@@ -262,3 +262,47 @@ func TestInterpreter_VisitOpcall(t *testing.T) {
 		Kwargs:    kwargs,
 	}, value.NewTable())
 }
+
+func TestInterpreter_VisitAt(t *testing.T) {
+	testError(t, ast.At{})
+	values := []value.Value{
+		value.Int(5),
+		value.Bool(false),
+		value.List([]value.Value{value.Double(3.4)}),
+	}
+	// value of at is just whatever is set to be @
+	for _, v := range values {
+		i := getInterpreter()
+		err := i.env.Define("@", v)
+		assert.NoError(t, err)
+		ret, err := ast.At{}.AcceptValue(i)
+		assert.NoError(t, err)
+		assert.Equal(t, v, ret)
+	}
+}
+
+func TestInterpreter_VisitLookup(t *testing.T) {
+	// lookups on non dicts all fail
+	for _, tree := range ast.TestExamples {
+		if _, ok := tree.(ast.Dict); !ok {
+			testError(t, ast.Lookup{tree, "hi"})
+		}
+	}
+
+	// and we get error on empty dict too
+	testError(t, ast.Lookup{On: ast.Dict{Values: map[string]ast.Ast{}}, Property: "hi"})
+
+	// dict with just one element works only if property is same
+	d := ast.Dict{map[string]ast.Ast{"hi": ast.MakeDouble(3.4)}}
+	testValid(t, ast.Lookup{d, "hi"}, value.Double(3.4))
+	testError(t, ast.Lookup{d, "bye"})
+
+	// and so does a multi-element list with mixed types and nesting
+	nested := ast.Dict{map[string]ast.Ast{
+		"hi":     ast.MakeDouble(4.4),
+		"bye":    ast.MakeBool(false),
+		"nested": d,
+	}}
+	testValid(t, ast.Lookup{ast.Lookup{nested, "nested"}, "hi"}, value.Double(3.4))
+	testValid(t, ast.Lookup{nested, "hi"}, value.Double(4.4))
+}

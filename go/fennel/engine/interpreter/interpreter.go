@@ -15,6 +15,26 @@ type Interpreter struct {
 
 var _ ast.VisitorValue = Interpreter{}
 
+func (i Interpreter) VisitLookup(on ast.Ast, property string) (value.Value, error) {
+	val, err := on.AcceptValue(i)
+	if err != nil {
+		return value.Nil, err
+	}
+	asdict, ok := val.(value.Dict)
+	if !ok {
+		return value.Nil, fmt.Errorf("can only do property lookup: %s on non-dict value: '%s'", property, on)
+	}
+	ret, ok := asdict[property]
+	if !ok {
+		return value.Nil, fmt.Errorf("property: %s does not exist in the dictionary: '%s'", property, asdict)
+	}
+	return ret, nil
+}
+
+func (i Interpreter) VisitAt() (value.Value, error) {
+	return i.env.Lookup("@")
+}
+
 func (i Interpreter) VisitStatement(name string, body ast.Ast) (value.Value, error) {
 	val, err := body.AcceptValue(i)
 	if err != nil {

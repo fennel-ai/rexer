@@ -13,6 +13,8 @@ message Ast {
     OpCall opcall = 7;
     Var var = 8;
     Table table = 9;
+    At at = 10;
+    Lookup lookup = 11;
   }
 }
 
@@ -61,4 +63,11 @@ message Var {
 
 message Table {
   Ast inner = 1;
+}
+
+message At {}
+
+message Lookup {
+  Ast on = 1;
+  string property = 2;
 }

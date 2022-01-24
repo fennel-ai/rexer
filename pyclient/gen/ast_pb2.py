@@ -14,7 +14,7 @@ _sym_db = _symbol_database.Default()
 
 
 
-DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\tast.proto\"\xf0\x01\n\x03\x41st\x12\x15\n\x04\x61tom\x18\x01 \x01(\x0b\x32\x05.AtomH\x00\x12\x19\n\x06\x62inary\x18\x02 \x01(\x0b\x32\x07.BinaryH\x00\x12\x1f\n\tstatement\x18\x03 \x01(\x0b\x32\n.StatementH\x00\x12\x17\n\x05query\x18\x04 \x01(\x0b\x32\x06.QueryH\x00\x12\x15\n\x04list\x18\x05 \x01(\x0b\x32\x05.ListH\x00\x12\x15\n\x04\x64ict\x18\x06 \x01(\x0b\x32\x05.DictH\x00\x12\x19\n\x06opcall\x18\x07 \x01(\x0b\x32\x07.OpCallH\x00\x12\x13\n\x03var\x18\x08 \x01(\x0b\x32\x04.VarH\x00\x12\x17\n\x05table\x18\t \x01(\x0b\x32\x06.TableH\x00\x42\x06\n\x04node\"=\n\x06\x42inary\x12\x12\n\x04left\x18\x01 \x01(\x0b\x32\x04.Ast\x12\x13\n\x05right\x18\x02 \x01(\x0b\x32\x04.Ast\x12\n\n\x02op\x18\x03 \x01(\t\"-\n\tStatement\x12\x0c\n\x04name\x18\x01 \x01(\t\x12\x12\n\x04\x62ody\x18\x02 \x01(\x0b\x32\x04.Ast\"\'\n\x05Query\x12\x1e\n\nstatements\x18\x01 \x03(\x0b\x32\n.Statement\"R\n\x04\x41tom\x12\r\n\x03int\x18\x01 \x01(\x03H\x00\x12\x10\n\x06string\x18\x02 \x01(\tH\x00\x12\x0e\n\x04\x62ool\x18\x03 \x01(\x08H\x00\x12\x10\n\x06\x64ouble\x18\x04 \x01(\x01H\x00\x42\x07\n\x05inner\"\x1c\n\x04List\x12\x14\n\x06values\x18\x01 \x03(\x0b\x32\x04.Ast\"^\n\x04\x44ict\x12!\n\x06values\x18\x01 \x03(\x0b\x32\x11.Dict.ValuesEntry\x1a\x33\n\x0bValuesEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\x13\n\x05value\x18\x02 \x01(\x0b\x32\x04.Ast:\x02\x38\x01\"W\n\x06OpCall\x12\x15\n\x07operand\x18\x01 \x01(\x0b\x32\x04.Ast\x12\x11\n\tnamespace\x18\x02 \x01(\t\x12\x0c\n\x04name\x18\x03 \x01(\t\x12\x15\n\x06kwargs\x18\x04 \x01(\x0b\x32\x05.Dict\"\x13\n\x03Var\x12\x0c\n\x04name\x18\x01 \x01(\t\"\x1c\n\x05Table\x12\x13\n\x05inner\x18\x01 \x01(\x0b\x32\x04.AstB\x19Z\x17\x66\x65nnel/engine/ast/protob\x06proto3')
+DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\tast.proto\"\x9e\x02\n\x03\x41st\x12\x15\n\x04\x61tom\x18\x01 \x01(\x0b\x32\x05.AtomH\x00\x12\x19\n\x06\x62inary\x18\x02 \x01(\x0b\x32\x07.BinaryH\x00\x12\x1f\n\tstatement\x18\x03 \x01(\x0b\x32\n.StatementH\x00\x12\x17\n\x05query\x18\x04 \x01(\x0b\x32\x06.QueryH\x00\x12\x15\n\x04list\x18\x05 \x01(\x0b\x32\x05.ListH\x00\x12\x15\n\x04\x64ict\x18\x06 \x01(\x0b\x32\x05.DictH\x00\x12\x19\n\x06opcall\x18\x07 \x01(\x0b\x32\x07.OpCallH\x00\x12\x13\n\x03var\x18\x08 \x01(\x0b\x32\x04.VarH\x00\x12\x17\n\x05table\x18\t \x01(\x0b\x32\x06.TableH\x00\x12\x11\n\x02\x61t\x18\n \x01(\x0b\x32\x03.AtH\x00\x12\x19\n\x06lookup\x18\x0b \x01(\x0b\x32\x07.LookupH\x00\x42\x06\n\x04node\"=\n\x06\x42inary\x12\x12\n\x04left\x18\x01 \x01(\x0b\x32\x04.Ast\x12\x13\n\x05right\x18\x02 \x01(\x0b\x32\x04.Ast\x12\n\n\x02op\x18\x03 \x01(\t\"-\n\tStatement\x12\x0c\n\x04name\x18\x01 \x01(\t\x12\x12\n\x04\x62ody\x18\x02 \x01(\x0b\x32\x04.Ast\"\'\n\x05Query\x12\x1e\n\nstatements\x18\x01 \x03(\x0b\x32\n.Statement\"R\n\x04\x41tom\x12\r\n\x03int\x18\x01 \x01(\x03H\x00\x12\x10\n\x06string\x18\x02 \x01(\tH\x00\x12\x0e\n\x04\x62ool\x18\x03 \x01(\x08H\x00\x12\x10\n\x06\x64ouble\x18\x04 \x01(\x01H\x00\x42\x07\n\x05inner\"\x1c\n\x04List\x12\x14\n\x06values\x18\x01 \x03(\x0b\x32\x04.Ast\"^\n\x04\x44ict\x12!\n\x06values\x18\x01 \x03(\x0b\x32\x11.Dict.ValuesEntry\x1a\x33\n\x0bValuesEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\x13\n\x05value\x18\x02 \x01(\x0b\x32\x04.Ast:\x02\x38\x01\"W\n\x06OpCall\x12\x15\n\x07operand\x18\x01 \x01(\x0b\x32\x04.Ast\x12\x11\n\tnamespace\x18\x02 \x01(\t\x12\x0c\n\x04name\x18\x03 \x01(\t\x12\x15\n\x06kwargs\x18\x04 \x01(\x0b\x32\x05.Dict\"\x13\n\x03Var\x12\x0c\n\x04name\x18\x01 \x01(\t\"\x1c\n\x05Table\x12\x13\n\x05inner\x18\x01 \x01(\x0b\x32\x04.Ast\"\x04\n\x02\x41t\",\n\x06Lookup\x12\x10\n\x02on\x18\x01 \x01(\x0b\x32\x04.Ast\x12\x10\n\x08property\x18\x02 \x01(\tB\x19Z\x17\x66\x65nnel/engine/ast/protob\x06proto3')
 
 
 
@@ -29,6 +29,8 @@ _DICT_VALUESENTRY = _DICT.nested_types_by_name['ValuesEntry']
 _OPCALL = DESCRIPTOR.message_types_by_name['OpCall']
 _VAR = DESCRIPTOR.message_types_by_name['Var']
 _TABLE = DESCRIPTOR.message_types_by_name['Table']
+_AT = DESCRIPTOR.message_types_by_name['At']
+_LOOKUP = DESCRIPTOR.message_types_by_name['Lookup']
 Ast = _reflection.GeneratedProtocolMessageType('Ast', (_message.Message,), {
   'DESCRIPTOR' : _AST,
   '__module__' : 'ast_pb2'
@@ -107,6 +109,20 @@ Table = _reflection.GeneratedProtocolMessageType('Table', (_message.Message,), {
   })
 _sym_db.RegisterMessage(Table)
 
+At = _reflection.GeneratedProtocolMessageType('At', (_message.Message,), {
+  'DESCRIPTOR' : _AT,
+  '__module__' : 'ast_pb2'
+  # @@protoc_insertion_point(class_scope:At)
+  })
+_sym_db.RegisterMessage(At)
+
+Lookup = _reflection.GeneratedProtocolMessageType('Lookup', (_message.Message,), {
+  'DESCRIPTOR' : _LOOKUP,
+  '__module__' : 'ast_pb2'
+  # @@protoc_insertion_point(class_scope:Lookup)
+  })
+_sym_db.RegisterMessage(Lookup)
+
 if _descriptor._USE_C_DESCRIPTORS == False:
 
   DESCRIPTOR._options = None
@@ -114,25 +130,29 @@ if _descriptor._USE_C_DESCRIPTORS == False:
   _DICT_VALUESENTRY._options = None
   _DICT_VALUESENTRY._serialized_options = b'8\001'
   _AST._serialized_start=14
-  _AST._serialized_end=254
-  _BINARY._serialized_start=256
-  _BINARY._serialized_end=317
-  _STATEMENT._serialized_start=319
-  _STATEMENT._serialized_end=364
-  _QUERY._serialized_start=366
-  _QUERY._serialized_end=405
-  _ATOM._serialized_start=407
-  _ATOM._serialized_end=489
-  _LIST._serialized_start=491
-  _LIST._serialized_end=519
-  _DICT._serialized_start=521
-  _DICT._serialized_end=615
-  _DICT_VALUESENTRY._serialized_start=564
-  _DICT_VALUESENTRY._serialized_end=615
-  _OPCALL._serialized_start=617
-  _OPCALL._serialized_end=704
-  _VAR._serialized_start=706
-  _VAR._serialized_end=725
-  _TABLE._serialized_start=727
-  _TABLE._serialized_end=755
+  _AST._serialized_end=300
+  _BINARY._serialized_start=302
+  _BINARY._serialized_end=363
+  _STATEMENT._serialized_start=365
+  _STATEMENT._serialized_end=410
+  _QUERY._serialized_start=412
+  _QUERY._serialized_end=451
+  _ATOM._serialized_start=453
+  _ATOM._serialized_end=535
+  _LIST._serialized_start=537
+  _LIST._serialized_end=565
+  _DICT._serialized_start=567
+  _DICT._serialized_end=661
+  _DICT_VALUESENTRY._serialized_start=610
+  _DICT_VALUESENTRY._serialized_end=661
+  _OPCALL._serialized_start=663
+  _OPCALL._serialized_end=750
+  _VAR._serialized_start=752
+  _VAR._serialized_end=771
+  _TABLE._serialized_start=773
+  _TABLE._serialized_end=801
+  _AT._serialized_start=803
+  _AT._serialized_end=807
+  _LOOKUP._serialized_start=809
+  _LOOKUP._serialized_end=853
 # @@protoc_insertion_point(module_scope)

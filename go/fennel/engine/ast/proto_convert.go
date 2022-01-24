@@ -26,6 +26,10 @@ func ToProtoAst(ast Ast) (proto.Ast, error) {
 		return ast.(OpCall).toProto()
 	case Table:
 		return ast.(Table).toProto()
+	case Lookup:
+		return ast.(Lookup).toProto()
+	case At:
+		return ast.(At).toProto()
 	default:
 		return pnull, fmt.Errorf("invalid ast type")
 	}
@@ -51,6 +55,10 @@ func FromProtoAst(past proto.Ast) (Ast, error) {
 		return fromProtoVar(past.Node.(*proto.Ast_Var))
 	case *proto.Ast_Table:
 		return fromProtoTable(past.Node.(*proto.Ast_Table))
+	case *proto.Ast_At:
+		return fromProtoAt(past.Node.(*proto.Ast_At))
+	case *proto.Ast_Lookup:
+		return fromProtoLookup(past.Node.(*proto.Ast_Lookup))
 	default:
 		return null, fmt.Errorf("invalid proto ast: %v", past)
 	}
@@ -59,6 +67,21 @@ func FromProtoAst(past proto.Ast) (Ast, error) {
 //=====================================
 // Satisfy ast interface requirements
 //=====================================
+
+func (l Lookup) toProto() (proto.Ast, error) {
+	pon, err := ToProtoAst(l.On)
+	if err != nil {
+		return pnull, err
+	}
+	return proto.Ast{Node: &proto.Ast_Lookup{Lookup: &proto.Lookup{
+		On:       &pon,
+		Property: l.Property,
+	}}}, nil
+}
+
+func (a At) toProto() (proto.Ast, error) {
+	return proto.Ast{Node: &proto.Ast_At{At: &proto.At{}}}, nil
+}
 
 func (atom Atom) toProto() (proto.Ast, error) {
 	switch atom.Type {
@@ -191,6 +214,18 @@ func (table Table) toProto() (proto.Ast, error) {
 
 var pnull = proto.Ast{}
 var null = Atom{}
+
+func fromProtoAt(pat *proto.Ast_At) (Ast, error) {
+	return At{}, nil
+}
+
+func fromProtoLookup(plookup *proto.Ast_Lookup) (Ast, error) {
+	on, err := FromProtoAst(*plookup.Lookup.On)
+	if err != nil {
+		return null, err
+	}
+	return Lookup{On: on, Property: plookup.Lookup.Property}, nil
+}
 
 func fromProtoTable(ptable *proto.Ast_Table) (Ast, error) {
 	table, err := FromProtoAst(*ptable.Table.Inner)
