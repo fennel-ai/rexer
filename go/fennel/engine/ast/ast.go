@@ -1,6 +1,7 @@
 package ast
 
 import (
+	"fennel/engine/ast/proto"
 	"fennel/lib/value"
 )
 
@@ -32,6 +33,7 @@ type VisitorValue interface {
 type Ast interface {
 	AcceptValue(v VisitorValue) (value.Value, error)
 	AcceptString(v VisitorString) string
+	toProto() (proto.Ast, error)
 }
 
 var _ Ast = Atom{}

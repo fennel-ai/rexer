@@ -9,25 +9,25 @@ import (
 func ToProtoAst(ast Ast) (proto.Ast, error) {
 	switch ast.(type) {
 	case Atom:
-		return atomToProto(ast.(Atom))
+		return ast.(Atom).toProto()
 	case Binary:
-		return binaryToProto(ast.(Binary))
-	case List:
-		return listToProto(ast.(List))
-	case Dict:
-		return dictToProto(ast.(Dict))
-	case Statement:
-		return statementToProto(ast.(Statement))
-	case Query:
-		return queryToProto(ast.(Query))
-	case OpCall:
-		return opcallToProto(ast.(OpCall))
+		return ast.(Binary).toProto()
 	case Var:
-		return varToProto(ast.(Var))
+		return ast.(Var).toProto()
+	case List:
+		return ast.(List).toProto()
+	case Dict:
+		return ast.(Dict).toProto()
+	case Statement:
+		return ast.(Statement).toProto()
+	case Query:
+		return ast.(Query).toProto()
+	case OpCall:
+		return ast.(OpCall).toProto()
 	case Table:
-		return tableToProto(ast.(Table))
+		return ast.(Table).toProto()
 	default:
-		return pnull, fmt.Errorf("invalid ast type: %v", ast)
+		return pnull, fmt.Errorf("invalid ast type")
 	}
 }
 
@@ -56,8 +56,137 @@ func FromProtoAst(past proto.Ast) (Ast, error) {
 	}
 }
 
+//=====================================
+// Satisfy ast interface requirements
+//=====================================
+
+func (atom Atom) toProto() (proto.Ast, error) {
+	switch atom.Type {
+	case Int:
+		n, err := strconv.ParseInt(atom.Lexeme, 10, 64)
+		if err == nil {
+			return proto.Ast{Node: &proto.Ast_Atom{Atom: &proto.Atom{Inner: &proto.Atom_Int{Int: n}}}}, nil
+		} else {
+			return pnull, err
+		}
+	case Double:
+		d, err := strconv.ParseFloat(atom.Lexeme, 64)
+		if err == nil {
+			return proto.Ast{Node: &proto.Ast_Atom{Atom: &proto.Atom{Inner: &proto.Atom_Double{Double: d}}}}, nil
+		} else {
+			return pnull, err
+		}
+
+	case Bool:
+		b, err := strconv.ParseBool(atom.Lexeme)
+		if err == nil {
+			return proto.Ast{Node: &proto.Ast_Atom{Atom: &proto.Atom{Inner: &proto.Atom_Bool{Bool: b}}}}, nil
+		} else {
+			return pnull, err
+		}
+	case String:
+		return proto.Ast{Node: &proto.Ast_Atom{Atom: &proto.Atom{Inner: &proto.Atom_String_{String_: atom.Lexeme}}}}, nil
+	default:
+		return pnull, fmt.Errorf("invalid atom type: %v", atom.Type)
+	}
+
+}
+
+func (binary Binary) toProto() (proto.Ast, error) {
+	protoLeft, err := ToProtoAst(binary.Left)
+	if err != nil {
+		return pnull, err
+	}
+	protoRight, err := ToProtoAst(binary.Right)
+	if err != nil {
+		return pnull, err
+	}
+	return proto.Ast{Node: &proto.Ast_Binary{Binary: &proto.Binary{
+		Left:  &protoLeft,
+		Right: &protoRight,
+		Op:    binary.Op,
+	}}}, nil
+}
+
+func (list List) toProto() (proto.Ast, error) {
+	ret := make([]*proto.Ast, len(list.Values))
+	for i, ast := range list.Values {
+		past, err := ToProtoAst(ast)
+		if err != nil {
+			return pnull, err
+		}
+		ret[i] = &past
+	}
+	return proto.Ast{Node: &proto.Ast_List{List: &proto.List{Values: ret}}}, nil
+}
+
+func (s Statement) toProto() (proto.Ast, error) {
+	pbody, err := ToProtoAst(s.Body)
+	if err != nil {
+		return pnull, err
+	}
+	return proto.Ast{Node: &proto.Ast_Statement{Statement: &proto.Statement{
+		Name: s.Name,
+		Body: &pbody,
+	}}}, nil
+}
+
+func (q Query) toProto() (proto.Ast, error) {
+	ret := make([]*proto.Statement, len(q.Statements))
+	for i, s := range q.Statements {
+		ps, err := ToProtoAst(s)
+		if err != nil {
+			return pnull, err
+		}
+		ret[i] = ps.GetStatement()
+	}
+	return proto.Ast{Node: &proto.Ast_Query{Query: &proto.Query{Statements: ret}}}, nil
+}
+
+func (d Dict) toProto() (proto.Ast, error) {
+	ret := make(map[string]*proto.Ast, len(d.Values))
+	for k, ast := range d.Values {
+		past, err := ToProtoAst(ast)
+		if err != nil {
+			return pnull, err
+		}
+		ret[k] = &past
+	}
+	return proto.Ast{Node: &proto.Ast_Dict{Dict: &proto.Dict{Values: ret}}}, nil
+}
+
+func (opcall OpCall) toProto() (proto.Ast, error) {
+	poperand, err := ToProtoAst(opcall.Operand)
+	if err != nil {
+		return pnull, err
+	}
+
+	pdict, err := ToProtoAst(opcall.Kwargs)
+	if err != nil {
+		return pnull, err
+	}
+	return proto.Ast{Node: &proto.Ast_Opcall{Opcall: &proto.OpCall{
+		Operand:   &poperand,
+		Namespace: opcall.Namespace,
+		Name:      opcall.Name,
+		Kwargs:    pdict.GetDict(),
+	}}}, nil
+}
+
+func (v Var) toProto() (proto.Ast, error) {
+	return proto.Ast{Node: &proto.Ast_Var{Var: &proto.Var{Name: v.Name}}}, nil
+}
+
+func (table Table) toProto() (proto.Ast, error) {
+	pinner, err := ToProtoAst(table.Inner)
+	if err != nil {
+		return pnull, err
+	}
+	return proto.Ast{Node: &proto.Ast_Table{Table: &proto.Table{Inner: &pinner}}}, nil
+}
+
 //=============================
-// Private helpers below
+// More private helpers below
 //=============================
 
 var pnull = proto.Ast{}
@@ -178,129 +307,4 @@ func fromProtoBinary(pbin *proto.Ast_Binary) (Ast, error) {
 		Op:    pbin.Binary.Op,
 		Right: right,
 	}, nil
-}
-
-func atomToProto(atom Atom) (proto.Ast, error) {
-	switch atom.Type {
-	case Int:
-		n, err := strconv.ParseInt(atom.Lexeme, 10, 64)
-		if err == nil {
-			return proto.Ast{Node: &proto.Ast_Atom{Atom: &proto.Atom{Inner: &proto.Atom_Int{Int: n}}}}, nil
-		} else {
-			return pnull, err
-		}
-	case Double:
-		d, err := strconv.ParseFloat(atom.Lexeme, 64)
-		if err == nil {
-			return proto.Ast{Node: &proto.Ast_Atom{Atom: &proto.Atom{Inner: &proto.Atom_Double{Double: d}}}}, nil
-		} else {
-			return pnull, err
-		}
-
-	case Bool:
-		b, err := strconv.ParseBool(atom.Lexeme)
-		if err == nil {
-			return proto.Ast{Node: &proto.Ast_Atom{Atom: &proto.Atom{Inner: &proto.Atom_Bool{Bool: b}}}}, nil
-		} else {
-			return pnull, err
-		}
-	case String:
-		return proto.Ast{Node: &proto.Ast_Atom{Atom: &proto.Atom{Inner: &proto.Atom_String_{String_: atom.Lexeme}}}}, nil
-	default:
-		return pnull, fmt.Errorf("invalid atom type: %v", atom.Type)
-	}
-
-}
-
-func binaryToProto(binary Binary) (proto.Ast, error) {
-	protoLeft, err := ToProtoAst(binary.Left)
-	if err != nil {
-		return pnull, err
-	}
-	protoRight, err := ToProtoAst(binary.Right)
-	if err != nil {
-		return pnull, err
-	}
-	return proto.Ast{Node: &proto.Ast_Binary{Binary: &proto.Binary{
-		Left:  &protoLeft,
-		Right: &protoRight,
-		Op:    binary.Op,
-	}}}, nil
-}
-
-func listToProto(list List) (proto.Ast, error) {
-	ret := make([]*proto.Ast, len(list.Values))
-	for i, ast := range list.Values {
-		past, err := ToProtoAst(ast)
-		if err != nil {
-			return pnull, err
-		}
-		ret[i] = &past
-	}
-	return proto.Ast{Node: &proto.Ast_List{List: &proto.List{Values: ret}}}, nil
-}
-
-func statementToProto(s Statement) (proto.Ast, error) {
-	pbody, err := ToProtoAst(s.Body)
-	if err != nil {
-		return pnull, err
-	}
-	return proto.Ast{Node: &proto.Ast_Statement{Statement: &proto.Statement{
-		Name: s.Name,
-		Body: &pbody,
-	}}}, nil
-}
-
-func queryToProto(q Query) (proto.Ast, error) {
-	ret := make([]*proto.Statement, len(q.Statements))
-	for i, s := range q.Statements {
-		ps, err := ToProtoAst(s)
-		if err != nil {
-			return pnull, err
-		}
-		ret[i] = ps.GetStatement()
-	}
-	return proto.Ast{Node: &proto.Ast_Query{Query: &proto.Query{Statements: ret}}}, nil
-}
-
-func dictToProto(d Dict) (proto.Ast, error) {
-	ret := make(map[string]*proto.Ast, len(d.Values))
-	for k, ast := range d.Values {
-		past, err := ToProtoAst(ast)
-		if err != nil {
-			return pnull, err
-		}
-		ret[k] = &past
-	}
-	return proto.Ast{Node: &proto.Ast_Dict{Dict: &proto.Dict{Values: ret}}}, nil
-}
-
-func opcallToProto(opcall OpCall) (proto.Ast, error) {
-	poperand, err := ToProtoAst(opcall.Operand)
-	if err != nil {
-		return pnull, err
-	}
-
-	pdict, err := ToProtoAst(opcall.Kwargs)
-	if err != nil {
-		return pnull, err
-	}
-	return proto.Ast{Node: &proto.Ast_Opcall{Opcall: &proto.OpCall{
-		Operand:   &poperand,
-		Namespace: opcall.Namespace,
-		Name:      opcall.Name,
-		Kwargs:    pdict.GetDict(),
-	}}}, nil
-}
-
-func varToProto(v Var) (proto.Ast, error) {
-	return proto.Ast{Node: &proto.Ast_Var{Var: &proto.Var{Name: v.Name}}}, nil
-}
-
-func tableToProto(table Table) (proto.Ast, error) {
-	pinner, err := ToProtoAst(table.Inner)
-	if err != nil {
-		return pnull, err
-	}
-	return proto.Ast{Node: &proto.Ast_Table{Table: &proto.Table{Inner: &pinner}}}, nil
 }
