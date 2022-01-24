@@ -25,6 +25,7 @@ func TestEnv_Define_Lookup(t *testing.T) {
 	ret, err = env.Lookup("var")
 	assert.Equal(t, value.Bool(true), ret)
 }
+
 func TestEnv_Push_Pop(t *testing.T) {
 	env := Env{nil, make(map[string]value.Value)}
 	var val value.Value = value.Int(1)

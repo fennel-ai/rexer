@@ -18,7 +18,11 @@ func (p Printer) VisitAt() string {
 var _ VisitorString = Printer{}
 
 func (p Printer) VisitBinary(left Ast, op string, right Ast) string {
-	return fmt.Sprintf("%s %s %s", left.AcceptString(p), op, right.AcceptString(p))
+	if op == "[]" {
+		return fmt.Sprintf("%s[%s]", left.AcceptString(p), right.AcceptString(p))
+	} else {
+		return fmt.Sprintf("%s %s %s", left.AcceptString(p), op, right.AcceptString(p))
+	}
 }
 
 func (p Printer) VisitList(values []Ast) string {

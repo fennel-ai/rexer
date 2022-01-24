@@ -26,7 +26,7 @@ func TestInvalid(t *testing.T) {
 	l := List([]Value{Int(1), Double(2.0), Bool(true)})
 	di := Dict(map[string]Value{"a": Int(2), "b": Double(1.0)})
 	n := Nil
-	ops := []string{"+", "-", "*", "/", ">", ">=", "<", "<=", "and", "or"}
+	ops := []string{"+", "-", "*", "/", ">", ">=", "<", "<=", "and", "or", "[]"}
 
 	// ints with others
 	verifyError(t, i, d, []string{"and", "or"})
@@ -57,7 +57,8 @@ func TestInvalid(t *testing.T) {
 	verifyError(t, s, di, ops)
 	verifyError(t, s, n, ops)
 
-	verifyError(t, l, i, ops)
+	// can only do indexing using a list and an int
+	verifyError(t, l, i, []string{"+", "-", "*", "/", ">", ">=", "<", "<=", "and", "or"})
 	verifyError(t, l, b, ops)
 	verifyError(t, l, s, ops)
 	verifyError(t, l, l, ops)
@@ -66,7 +67,8 @@ func TestInvalid(t *testing.T) {
 
 	verifyError(t, di, i, ops)
 	verifyError(t, di, b, ops)
-	verifyError(t, di, s, ops)
+	// can only do an indexing on dictionary using a string
+	verifyError(t, di, s, []string{"+", "-", "*", "/", ">", ">=", "<", "<=", "and", "or"})
 	verifyError(t, di, l, ops)
 	verifyError(t, di, di, ops)
 	verifyError(t, di, n, ops)
@@ -152,4 +154,31 @@ func TestBoolean(t *testing.T) {
 	verifyOp(t, base, Bool(false), Bool(false), "and")
 	verifyOp(t, base, Bool(true), Bool(true), "or")
 	verifyOp(t, base, Bool(false), Bool(false), "or")
+}
+
+func TestIndexList(t *testing.T) {
+	l := List([]Value{Int(1), Double(2.0), Bool(true)})
+
+	for i, expected := range l {
+		found, err := l.Op("[]", Int(i))
+		assert.NoError(t, err)
+		assert.Equal(t, expected, found)
+	}
+	// but index error when using larger values or negative values
+	_, err := l.Op("[]", Int(3))
+	assert.Error(t, err)
+	_, err = l.Op("[]", Int(-1))
+	assert.Error(t, err)
+}
+
+func TestIndex_Dict(t *testing.T) {
+	di := Dict(map[string]Value{"a": Int(2), "b": Double(1.0)})
+	for k, expected := range di {
+		found, err := di.Op("[]", String(k))
+		assert.NoError(t, err)
+		assert.Equal(t, expected, found)
+	}
+	// but index error when using strings that don't exist
+	_, err := di.Op("[]", String("hello"))
+	assert.Error(t, err)
 }

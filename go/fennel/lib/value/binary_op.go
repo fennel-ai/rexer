@@ -28,6 +28,8 @@ func route(l Value, opt string, other Value) (Value, error) {
 		return and(l, other)
 	case "or":
 		return or(l, other)
+	case "[]":
+		return index(l, other)
 	}
 	return Nil, nil
 }
@@ -224,4 +226,31 @@ func gte(left Value, right Value) (Value, error) {
 		}
 	}
 	return nil, fmt.Errorf("'>=' only supported between numbers")
+}
+
+func index(left Value, right Value) (Value, error) {
+	if asList, ok := left.(List); ok {
+		asInt, ok := right.(Int)
+		if !ok {
+			return Nil, fmt.Errorf("can only index a list with int but got: '%s' instead", right)
+		}
+		idx := int(asInt)
+		if idx < 0 || idx >= len(asList) {
+			return Nil, fmt.Errorf("index out of bounds. Length of list: %d but index is: %d", len(asList), idx)
+		}
+		return left.(List)[idx], nil
+	}
+	if asDict, ok := left.(Dict); ok {
+		asStr, ok := right.(String)
+		if !ok {
+			return Nil, fmt.Errorf("can only index a dict with string but got: '%s' instead", right)
+		}
+		idx := string(asStr)
+		ret, ok := asDict[idx]
+		if !ok {
+			return Nil, fmt.Errorf("dict doesn't have property: %s", idx)
+		}
+		return ret, nil
+	}
+	return nil, fmt.Errorf("'index' operation supported only list or dict but got: '%T' instead", left)
 }
