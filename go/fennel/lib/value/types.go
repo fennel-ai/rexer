@@ -277,8 +277,44 @@ func (t *Table) Append(row Dict) error {
 	return nil
 }
 
+// Pop removes the last row added to the table
+func (t *Table) Pop() error {
+	length := t.Len()
+	if length < 1 {
+		return fmt.Errorf("can not pop from empty table")
+	}
+	t.rows = t.rows[:length-1]
+	return nil
+}
+
+func (t *Table) Len() int {
+	return len(t.rows)
+}
+
 func (t *Table) Pull() []Dict {
 	return t.rows
+}
+
+func (t *Table) Iter() Iter {
+	return Iter{0, t.rows}
+}
+
+type Iter struct {
+	next int
+	rows []Dict
+}
+
+func (iter *Iter) HasMore() bool {
+	return iter.next < len(iter.rows)
+}
+
+func (iter *Iter) Next() (Dict, error) {
+	curr := iter.next
+	if curr >= len(iter.rows) {
+		return Dict{}, fmt.Errorf("exhaused iter - no more items to iterate upon")
+	}
+	iter.next += 1
+	return iter.rows[curr], nil
 }
 
 func (t Table) schemaMatches(schema map[string]reflect.Type) bool {

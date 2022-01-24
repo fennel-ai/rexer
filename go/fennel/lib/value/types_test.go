@@ -34,15 +34,18 @@ func TestTableBasic(t *testing.T) {
 		"b": String("bye"),
 	})
 	table := NewTable()
+	assert.Equal(t, 0, table.Len())
 	assert.Equal(t, 0, len(table.rows))
 	err := table.Append(row1)
 	assert.NoError(t, err)
 	assert.Equal(t, 1, len(table.rows))
+	assert.Equal(t, 1, table.Len())
 	assert.Equal(t, []Dict{row1}, table.Pull())
 
 	err = table.Append(row2)
 	assert.NoError(t, err)
 	assert.Equal(t, 2, len(table.rows))
+	assert.Equal(t, 2, table.Len())
 	assert.Equal(t, []Dict{row1, row2}, table.Pull())
 
 	cloned := table.Clone()
@@ -110,4 +113,60 @@ func TestTableSchemaNested(t *testing.T) {
 
 	assert.Equal(t, 3, len(table.rows))
 	assert.Equal(t, []Dict{row1, row2.flatten(), row3}, table.Pull())
+}
+
+func TestTable_Iter(t *testing.T) {
+	row1, _ := NewDict(map[string]Value{
+		"a": Int(1),
+		"b": String("hi"),
+	})
+	row2, _ := NewDict(map[string]Value{
+		"a": Int(5),
+		"b": String("bye"),
+	})
+	row3, _ := NewDict(map[string]Value{
+		"a": Int(5),
+		"b": String("bye"),
+	})
+	row4, _ := NewDict(map[string]Value{
+		"a": Int(5),
+		"b": String("fourt"),
+	})
+	table := NewTable()
+	assert.Equal(t, 0, table.Len())
+	err := table.Append(row1)
+	assert.Equal(t, 1, table.Len())
+	assert.NoError(t, err)
+	err = table.Append(row2)
+	assert.NoError(t, err)
+	assert.Equal(t, 2, table.Len())
+	err = table.Pop()
+	assert.NoError(t, err)
+	assert.Equal(t, 1, table.Len())
+	err = table.Append(row3)
+	assert.NoError(t, err)
+	assert.Equal(t, 2, table.Len())
+
+	// now create an iter object and iterate through it
+	it := table.Iter()
+	// before we do anything, now add another row to the table - this should never show in iterator
+	err = table.Append(row4)
+	assert.NoError(t, err)
+	assert.Equal(t, 3, table.Len())
+
+	// okay now let's start asserting our iter
+	assert.True(t, it.HasMore())
+	found1, err := it.Next()
+	assert.NoError(t, err)
+	assert.Equal(t, row1, found1)
+	assert.True(t, it.HasMore())
+
+	found2, err := it.Next()
+	assert.NoError(t, err)
+	assert.Equal(t, row3, found2)
+
+	// now we can't iterate any more and if we try we get an error
+	assert.False(t, it.HasMore())
+	_, err = it.Next()
+	assert.Error(t, err)
 }
