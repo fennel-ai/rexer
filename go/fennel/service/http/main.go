@@ -71,7 +71,8 @@ func (m holder) Fetch(w http.ResponseWriter, req *http.Request) {
 		http.Error(w, err.Error(), http.StatusBadGateway)
 		return
 	}
-	fmt.Fprintf(w, string(ser))
+	//fmt.Fprintf(w, string(ser))
+	w.Write(ser)
 }
 
 func (m holder) Count(w http.ResponseWriter, req *http.Request) {
@@ -140,7 +141,8 @@ func (m holder) GetProfile(w http.ResponseWriter, req *http.Request) {
 		http.Error(w, err.Error(), http.StatusBadGateway)
 		return
 	}
-	fmt.Fprintf(w, string(valueSer))
+	//fmt.Fprintf(w, string(valueSer))
+	w.Write(valueSer)
 }
 
 // TODO: add some locking etc to ensure that if two requests try to modify
@@ -186,7 +188,8 @@ func (m holder) GetProfiles(w http.ResponseWriter, req *http.Request) {
 		http.Error(w, err.Error(), http.StatusBadGateway)
 		return
 	}
-	fmt.Fprintf(w, string(ser))
+	//fmt.Fprintf(w, string(ser))
+	w.Write(ser)
 }
 
 func setHandlers(controller holder, mux *http.ServeMux) {
@@ -203,14 +206,13 @@ func main() {
 	flag.Parse()
 
 	// spin up http service
-	server := &http.Server{Addr: fmt.Sprintf("localhost:%d", httplib.PORT)}
+	server := &http.Server{Addr: fmt.Sprintf(":%d", httplib.PORT)}
 	mux := http.NewServeMux()
 	// TODO: don't use test instance here, instead create real instance using env variables
 	instance, err := test.DefaultInstance()
 	if err != nil {
 		panic(fmt.Sprintf("Failed to setup default instance: %v", err))
 	}
-	log.Println("Default instance ready")
 	controller := holder{instance}
 	setHandlers(controller, mux)
 	server.Handler = mux
