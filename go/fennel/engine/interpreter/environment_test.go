@@ -12,7 +12,8 @@ func TestEnv_Define_Lookup(t *testing.T) {
 	ret, err := env.Lookup("var")
 	assert.Error(t, err)
 	var val value.Value = value.Int(1)
-	env.Define("var", val)
+	err = env.Define("var", val)
+	assert.NoError(t, err)
 	ret, err = env.Lookup("var")
 	assert.Equal(t, val, ret)
 	err = env.Define("var", value.Bool(true))
@@ -23,4 +24,54 @@ func TestEnv_Define_Lookup(t *testing.T) {
 	assert.NoError(t, err)
 	ret, err = env.Lookup("var")
 	assert.Equal(t, value.Bool(true), ret)
+}
+func TestEnv_Push_Pop(t *testing.T) {
+	env := Env{nil, make(map[string]value.Value)}
+	var val value.Value = value.Int(1)
+	err := env.Define("var", val)
+	assert.NoError(t, err)
+	ret, err := env.Lookup("var")
+	assert.Equal(t, val, ret)
+	err = env.Define("var", value.Bool(true))
+	assert.Error(t, err)
+
+	// can pop env without first pushing, but it gives nil env back
+	got, err := env.PopEnv()
+	assert.NoError(t, err)
+	assert.Equal(t, (*Env)(nil), got)
+
+	// but can definitely not pop from a nil environment
+	var nilenv *Env = nil
+	_, err = nilenv.PopEnv()
+	assert.Error(t, err)
+
+	// now create a new env
+	env2 := env.PushEnv()
+	// we can still look for older values
+	ret, err = env2.Lookup("var")
+	assert.NoError(t, err)
+	assert.Equal(t, val, ret)
+
+	// we can set more variables, including redefining existing variables
+	var2 := "var2"
+	val2 := value.Int(3)
+	err = env2.Define(var2, val2)
+	assert.NoError(t, err)
+	ret, err = env2.Lookup(var2)
+	assert.Equal(t, val2, ret)
+
+	err = env2.Define("var", val2)
+	assert.NoError(t, err)
+	ret, err = env2.Lookup("var")
+	assert.Equal(t, val2, ret)
+
+	// now pop env and all this goes away
+	fenv, err := env2.PopEnv()
+	assert.NoError(t, err)
+	assert.Equal(t, &env, fenv)
+	_, err = env.Lookup(var2)
+	assert.Error(t, err)
+	ret, err = env.Lookup("var")
+	assert.NoError(t, err)
+	assert.Equal(t, val, ret)
 }
