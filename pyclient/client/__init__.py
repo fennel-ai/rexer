@@ -1,4 +1,5 @@
 from models import action, counter, value, profile
+from gen.ast_pb2 import Ast
 import requests
 
 PORT = 2425
@@ -14,6 +15,20 @@ class Client(object):
     def __init__(self, url=URL, port=PORT):
         self.url = str(url)
         self.port = str(port)
+
+    def query(self, query: Ast):
+        if not isinstance(query, Ast):
+            raise InvalidInput('query is not a query Ast, did you forget to use query.query before calling this?')
+        ser = query.SerializeToString()
+        response = requests.post(self._query_url(), data=ser)
+        # if response isn't 200, raise the exception
+        if response.status_code != requests.codes.OK:
+            response.raise_for_status()
+
+        # now try to read the response and parse it into a value
+        v = value.Value()
+        v.ParseFromString(response.content)
+        return v
 
     def set_profile(self, item: profile.ProfileItem):
         if not isinstance(item, profile.ProfileItem):
@@ -40,7 +55,7 @@ class Client(object):
         v = value.Value()
         v.ParseFromString(response.content)
         return v
-    
+
     def get_profiles(self, pfr: profile.ProfileFetchRequest):
         if not isinstance(pfr, profile.ProfileFetchRequest):
             raise InvalidInput('fetch arg not a ProfileFetchRequest object: %s' % str(pfr))
@@ -48,7 +63,7 @@ class Client(object):
         response = requests.post(self._get_profiles_url(), data=ser)
         if response.status_code != requests.codes.OK:
             response.raise_for_status()
-        
+
         pl = profile.ProfileList()
         # TODO: this could raise proto.DecodeError?
         # TODO copied from function fetch(afr) in this code
@@ -137,9 +152,9 @@ class Client(object):
 
     def _set_url(self):
         return self._base_url() + '/set'
-    
+
+    def _query_url(self):
+        return self._base_url() + '/query'
+
     def _get_profiles_url(self):
         return self._base_url() + '/get_profiles'
-
-    def query(self, query):
-        pass

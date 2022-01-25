@@ -1,5 +1,5 @@
 from query.expr import Int, Double, Bool, String, Binary, Constant
-from query.expr import InvalidQueryException, List, Dict, Transform, Table, Var, at
+from query.expr import InvalidQueryException, List, Dict, Transform, Table, Var, at, Lookup
 
 
 class Visitor(object):
@@ -33,9 +33,12 @@ class Visitor(object):
 
         elif isinstance(obj, Binary):
             ret = self.visitBinary(obj)
+
+        elif isinstance(obj, Lookup):
+            ret = self.visitLookup(obj)
+
         elif obj is at:
             ret = self.visitAt(obj)
-
         else:
             raise InvalidQueryException('unrecognized node type: %s', self)
 
@@ -75,6 +78,9 @@ class Visitor(object):
         raise NotImplementedError()
 
     def visitBinary(self, obj):
+        raise NotImplementedError()
+
+    def visitLookup(self, obj):
         raise NotImplementedError()
 
 
@@ -136,10 +142,6 @@ class Printer(Visitor):
         rep = '[%s]' % ', '.join(self.visit(v) for v in obj.values)
         return self.maybe_create_var(obj, rep)
 
-    def visitList(self, obj):
-        rep = '[%s]' % ', '.join(self.visit(v) for v in obj.values)
-        return self.maybe_create_var(obj, rep)
-
     def visitDict(self, obj):
         rep = '{%s}' % ', '.join('%s=%s' % (k, self.visit(v))
                                  for k, v in obj.kwargs.items())
@@ -168,16 +170,13 @@ class Printer(Visitor):
         return self.maybe_create_var(obj, rep)
 
     def visitBinary(self, obj):
-        if obj.op == '.':
-            # for attribute lookups, right side is just a string, not a full expression
-            rep = '%s.%s' % (self.visit(obj.left), obj.right)
-        elif obj.op == '[]':
+        if obj.op == '[]':
             rep = '%s[%s]' % (self.visit(obj.left), self.visit(obj.right))
         else:
             rep = '%s %s %s' % (self.visit(obj.left),
                                 obj.op, self.visit(obj.right))
         return self.maybe_create_var(obj, rep)
 
-
-class Checker(Visitor):
-    pass
+    def visitLookup(self, obj):
+        rep = '%s.%s' % (self.visit(obj.on), obj.property)
+        return self.maybe_create_var(obj, rep)

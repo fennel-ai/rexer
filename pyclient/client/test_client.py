@@ -1,6 +1,7 @@
 import unittest
 import httpretty
 
+import query
 from models import action, counter, value, profile
 import client
 
@@ -185,6 +186,36 @@ class Testclient(unittest.TestCase):
 
         self.assertEqual(req.SerializeToString(), httpretty.last_request().body)
         self.assertEqual(rate, ret)
+
+    @httpretty.activate(verbose=True, allow_net_connect=False)
+    def test_query(self):
+        d1 = query.Dict(x=query.Int(1), y=query.Int(2))
+        d2 = query.Dict(x=query.Int(3), y=query.Int(5))
+        d3 = query.Dict(x=query.Int(1), y=query.Int(0))
+        t = query.Table(query.List(d1, d2, d3))
+        e = query.Transform(t).using(query.Ops.std.filter(where=query.at.x > query.at.y + query.Double(0.5)))
+        req = query.query(e)
+
+        v = value.Int(5)
+        response = httpretty.Response(v.SerializeToString())
+        httpretty.register_uri(httpretty.POST, 'http://localhost:2425/query', responses=[response])
+
+        # invalid requests throw exception
+        c = client.Client()
+        with self.assertRaises(client.InvalidInput):
+            c.query(1)
+        with self.assertRaises(client.InvalidInput):
+            c.query('hi')
+        with self.assertRaises(client.InvalidInput):
+            c.query(counter.GetCountRequest())
+        with self.assertRaises(client.InvalidInput):
+            c.query(e)
+
+        # but not with valid query request
+        ret = c.query(req)
+
+        self.assertEqual(req.SerializeToString(), httpretty.last_request().body)
+        self.assertEqual(v, ret)
 
 
 def make_action(k):

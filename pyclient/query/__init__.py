@@ -1,6 +1,12 @@
 from query.expr import Int, Double, Bool, String
+from query.expr import Expr as _Expr
 from query.expr import InvalidQueryException, List, Dict, Transform, Table, Var, Ops, at
-from query.visitor import  Printer
+from query.visitor import Printer
+from query.to_proto import ProtoConvertor as _ToQueryProto
+
+
+def query(e: _Expr):
+    return _ToQueryProto().query(e)
 
 
 if __name__ == '__main__':

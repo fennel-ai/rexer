@@ -3,6 +3,7 @@ from __future__ import annotations
 from munch import Munch
 import random
 
+
 # DESIGN:
 # =======
 # Every expression is a sublcass of base type called Expr. We dynamically create
@@ -36,6 +37,7 @@ import random
 class InvalidQueryException(Exception):
     pass
 
+
 class Expr(object):
     def __init__(self, name=None):
         self.name = name
@@ -48,8 +50,9 @@ class Expr(object):
 
     def __getattr__(self, k: str):
         if not isinstance(k, str):
-            raise InvalidQueryException("property lookup using '.' can only be done via constant strings but got '%s'" % type(k))
-        return Binary(self, '.', k)
+            raise InvalidQueryException(
+                "property lookup using '.' can only be done via constant strings but got '%s'" % type(k))
+        return Lookup(self, k)
 
     def __getitem__(self, item):
         if not isinstance(item, Expr):
@@ -130,7 +133,7 @@ class Expr(object):
 
 
 # Concrete Expr classes below
-#=============================
+# =============================
 # These classes have just to take care of two things:
 #   1) They are initialized with valid inputs
 #   2) Create right edges in the graph by calling 'edge' function
@@ -144,25 +147,30 @@ class Constant(Expr):
         super(Constant, self).__init__(name=name)
         self.c = c
 
+
 class Int(Constant):
     def __init__(self, n, name=None):
         assert isinstance(n, int), "Int can only be initialized by int, but given '%s'" % n
         super(Int, self).__init__(n, name=name)
+
 
 class Double(Constant):
     def __init__(self, d, name=None):
         assert isinstance(d, float), "Double can only be initialized by float, but given '%s'" % d
         super(Double, self).__init__(d, name=name)
 
+
 class Bool(Constant):
     def __init__(self, b, name=None):
         assert isinstance(b, bool), "Bool can only be initialized by bool, but given '%s'" % b
         super(Bool, self).__init__(b, name=name)
 
+
 class String(Constant):
     def __init__(self, s, name=None):
         assert isinstance(s, str), "String can only be initialized by str, but given '%s'" % s
         super(String, self).__init__(s, name=name)
+
 
 class Binary(Expr):
     def __init__(self, left, op, right):
@@ -175,6 +183,16 @@ class Binary(Expr):
         # for '.' lookups right is str but in every other case, create an edge
         if op != '.':
             right.edge(self)
+
+
+class Lookup(Expr):
+    def __init__(self, on, property):
+        assert isinstance(property, str), "Lookup property can only be string, but given '%s'" % property
+        super(Lookup, self).__init__()
+        self.on = on
+        self.property = property
+        on.edge(self)
+
 
 class List(Expr):
     def __init__(self, *values, name=None):
@@ -211,10 +229,12 @@ class Var(Expr):
     def __init__(self, name=None):
         super(Var, self).__init__(name=name)
 
+
 class _Opcall(object):
     # TODO: how will error handling happen if user called Opcall without table?
     module = None
     opname = None
+
     def __init__(self, name=None, **kwargs):
         if (self.module is None) or (self.opname is None):
             raise InvalidQueryException("operator '%s.%s' is not registered" % (self.module, self.opname))
@@ -223,13 +243,15 @@ class _Opcall(object):
         self.kwargs = {}
         for k, v in kwargs.items():
             if not isinstance(v, Expr):
-                raise InvalidQueryException("Value for operator parameter '%s' given '%s' but expected a StarQL expresion" % (k, v))
+                raise InvalidQueryException(
+                    "Value for operator parameter '%s' given '%s' but expected a StarQL expresion" % (k, v))
             self.kwargs[k] = v
+
 
 Ops = Munch()
 Ops.std = Munch({
-    'filter': type('Filter', (_Opcall, ), {'module': 'std', 'opname': 'filter'}),
-    'take': type('Take', (_Opcall, ), {'module': 'std', 'opname': 'take'}),
+    'filter': type('Filter', (_Opcall,), {'module': 'std', 'opname': 'filter'}),
+    'take': type('Take', (_Opcall,), {'module': 'std', 'opname': 'take'}),
 })
 
 
@@ -244,14 +266,17 @@ class Transform(Expr):
     def using(self, *opcalls):
         for opcall in opcalls:
             if not isinstance(opcall, _Opcall):
-                raise InvalidQueryException("'into' method of transform only takes opcalls but received '%s' instead" % opcall)
+                raise InvalidQueryException(
+                    "'into' method of transform only takes opcalls but received '%s' instead" % opcall)
             for k, v in opcall.kwargs.items():
                 v.edge(self)
 
         self.opcalls = opcalls
         return self
 
+
 class _At(Expr):
     pass
+
 
 at = _At()
