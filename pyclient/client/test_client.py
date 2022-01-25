@@ -23,23 +23,56 @@ class Testclient(unittest.TestCase):
             c.get_profile(profile.ProfileItem())
         with self.assertRaises(client.InvalidInput):
             c.set_profile(profile.ProfileItem())
+        with self.assertRaises(client.InvalidInput):
+            c.get_profiles(1)
+        with self.assertRaises(client.InvalidInput):
+            c.get_profiles('hi')
+        with self.assertRaises(client.InvalidInput):
+            c.get(profile.ProfileItem)
 
         # but valid requests don't throw exceptions
-        req = profile.ProfileItem()
-        req.CustID = 1
-        req.Oid, req.OType = 1, 2
-        req.Key = 'key'
-        v = value.Int(5)
-        req.Value.CopyFrom(v)
         httpretty.register_uri(httpretty.POST, 'http://localhost:2425/set')
-        c.set_profile(req)
-        self.assertEqual(req.SerializeToString(), httpretty.last_request().body)
+
+        p1 = profile.ProfileItem()
+        p1.CustID = 1
+        p1.Oid, p1.OType = 1, 2
+        p1.Key = 'key'
+        v = value.Int(5)
+        p1.Value.CopyFrom(v)
+        c.set_profile(p1)
+        self.assertEqual(p1.SerializeToString(), httpretty.last_request().body)
+
+        p2 = profile.ProfileItem()
+        p2.CustID = 1
+        p2.Oid, p2.OType = 2, 1
+        p2.Key = 'key2'
+        v = value.Int(7)
+        p2.Value.CopyFrom(v)
+        c.set_profile(p2)
+        self.assertEqual(p2.SerializeToString(), httpretty.last_request().body)
 
         expected = value.Int(5)
         response = httpretty.Response(expected.SerializeToString())
         httpretty.register_uri(httpretty.POST, 'http://localhost:2425/get', responses=[response])
         ret = c.get_profile(req)
         self.assertEqual(value.Int(5), ret)
+
+        pl = profile.to_proto_profile_list([p1, p2])
+        response1 = httpretty.Response(pl.SerializeToString())
+
+        pl = profile.to_proto_profile_list([p2])
+        response2 = httpretty.Response(pl.SerializeToString())
+        httpretty.register_uri(httpretty.POST, 'http://localhost:2425/get_profiles', responses=[response1, response2])
+
+        pfr = profile.ProfileFetchRequest()
+        ret = c.get_profiles(pfr)
+        self.assertEqual(pfr.SerializeToString(), httpretty.last_request().body)
+        self.assertListEqual([p1, p2], ret)
+        pfr = profile.ProfileFetchRequest()
+        pfr.OType = 1
+        ret = c.get_profiles(pfr)
+        self.assertEqual(pfr.SerializeToString(), httpretty.lasts_request().body)
+        self.assertListEqual([p2], ret)
 
     @httpretty.activate(verbose=True, allow_net_connect=False)
     def test_log(self):
@@ -166,6 +199,14 @@ def make_action(k):
     a.CustID = k + 6
     return a
 
+def make_profile(k):
+    k = k * 9
+    p = profile.ProfileItem()
+    p.CustID = 1
+    p.Oid = k+7
+    p.Otype = k%2
+    p.Key = str(k)
+    return p
 
 if __name__ == '__main__':
     unittest.main()
