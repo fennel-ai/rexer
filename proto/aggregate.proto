@@ -25,3 +25,8 @@ enum WindowType {
   LAST = 1;
   TIMESERIES = 2;
 }
+
+message AggRequest {
+  string agg_type = 1;
+  string agg_name = 2;
+}

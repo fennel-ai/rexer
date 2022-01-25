@@ -2,6 +2,7 @@ package main
 
 import (
 	"fennel/engine/ast"
+	"fennel/lib/aggregate"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -206,6 +207,59 @@ func TestQuery(t *testing.T) {
 
 }
 
+func TestStoreRetrieveAggregate(t *testing.T) {
+	// create a service + client
+	instance, err := test.DefaultInstance()
+	assert.NoError(t, err)
+	controller := holder{instance: instance}
+	server := startTestServer(controller)
+	defer server.Close()
+	c, err := client.NewClient(server.URL, server.Client())
+	assert.NoError(t, err)
+
+	// initially can not retrieve anything
+	_, err = c.RetrieveAggregate("counter", "mycounter")
+	assert.ErrorIs(t, err, aggregate.ErrNotFound)
+
+	// store a couple of aggregates
+	agg := aggregate.Aggregate{
+		Type:  "counter",
+		Name:  "mycounter",
+		Query: ast.MakeInt(1),
+		Options: aggregate.AggOptions{
+			WindowType: aggregate.WindowType_LAST,
+			Duration:   3600 * 24,
+			Retention:  3600 * 24 * 7,
+		},
+	}
+	err = c.StoreAggregate(agg)
+	assert.NoError(t, err)
+	found, err := c.RetrieveAggregate("counter", "mycounter")
+	assert.NoError(t, err)
+	assert.Equal(t, agg, found)
+	// trying to rewrite the same agg type/name throws an error even if query/options are different
+	agg2 := aggregate.Aggregate{
+		Type:  "counter",
+		Name:  "mycounter",
+		Query: ast.MakeDouble(3.4),
+		Options: aggregate.AggOptions{
+			WindowType: aggregate.WindowType_TIMESERIES,
+			Duration:   3600 * 24,
+			Retention:  3600 * 24 * 7,
+		},
+	}
+	err = c.StoreAggregate(agg2)
+	assert.Error(t, err)
+
+	// but it works if even one of type/name are different
+	agg2.Name = "another counter"
+	err = c.StoreAggregate(agg2)
+	assert.NoError(t, err)
+	found, err = c.RetrieveAggregate("counter", "another counter")
+	assert.NoError(t, err)
+	assert.Equal(t, agg2, found)
+
+}
 func checkGetSet(t *testing.T, c *client.Client, get bool, custid uint64, otype uint32, oid uint64, version uint64,
 	key string, val value.Value) profilelib.ProfileItem {
 	if get {

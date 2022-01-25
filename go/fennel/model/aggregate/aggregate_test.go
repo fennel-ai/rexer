@@ -41,7 +41,7 @@ func TestRetrieveStore(t *testing.T) {
 	// initially we can't retrieve
 	found, err := Retrieve(instance, agg.Type, agg.Name)
 	assert.Error(t, err)
-	assert.ErrorIs(t, err, ErrNotFound)
+	assert.ErrorIs(t, err, aggregate.ErrNotFound)
 
 	// store and retrieve again
 	err = Store(instance, agg.Type, agg.Name, agg.QuerySer, agg.Timestamp, agg.OptionSer)
@@ -53,11 +53,18 @@ func TestRetrieveStore(t *testing.T) {
 	// and still can't retrieve if specs are different
 	found, err = Retrieve(instance, "random agg type", agg.Name)
 	assert.Error(t, err)
-	assert.ErrorIs(t, err, ErrNotFound)
+	assert.ErrorIs(t, err, aggregate.ErrNotFound)
 
 	found, err = Retrieve(instance, agg.Type, "random agg name")
 	assert.Error(t, err)
-	assert.ErrorIs(t, err, ErrNotFound)
+	assert.ErrorIs(t, err, aggregate.ErrNotFound)
+
+	// finally, storing for same type/name doesn't work
+	query2 := ast.Atom{Type: ast.Int, Lexeme: "7"}
+	querySer2, err := ast.Marshal(query2)
+	assert.NoError(t, err)
+	err = Store(instance, agg.Type, agg.Name, querySer2, agg.Timestamp+1, agg.OptionSer)
+	assert.Error(t, err)
 }
 
 func TestLongStrings(t *testing.T) {

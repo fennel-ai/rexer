@@ -1,9 +1,12 @@
 package main
 
 import (
+	aggregate2 "fennel/controller/aggregate"
 	"fennel/engine/ast"
 	astProto "fennel/engine/ast/proto"
 	"fennel/engine/interpreter"
+	"fennel/lib/aggregate"
+	"fennel/lib/ftypes"
 	"flag"
 	"fmt"
 	"io/ioutil"
@@ -224,6 +227,53 @@ func (m holder) Query(w http.ResponseWriter, req *http.Request) {
 	w.Write(ser)
 }
 
+func (m holder) StoreAggregate(w http.ResponseWriter, req *http.Request) {
+	var protoAgg aggregate.ProtoAggregate
+	if err := parse(req, &protoAgg); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	agg, err := aggregate.FromProtoAggregate(protoAgg)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	// call controller
+	if err = aggregate2.Store(m.instance, agg); err != nil {
+		http.Error(w, err.Error(), http.StatusBadGateway)
+		return
+	}
+}
+
+func (m holder) RetrieveAggregate(w http.ResponseWriter, req *http.Request) {
+	var protoReq aggregate.AggRequest
+	if err := parse(req, &protoReq); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	// call controller
+	ret, err := aggregate2.Retrieve(m.instance, ftypes.AggType(protoReq.AggType), ftypes.AggName(protoReq.AggName))
+	if err == aggregate.ErrNotFound {
+		// we don't throw an error, just return empty response
+		return
+	} else if err != nil {
+		http.Error(w, err.Error(), http.StatusBadGateway)
+		return
+	}
+	// to send ret back, we will convert it to proto, marshal it and then write it back
+	protoRet, err := aggregate.ToProtoAggregate(ret)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadGateway)
+		return
+	}
+	ser, err := proto.Marshal(&protoRet)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadGateway)
+		return
+	}
+	w.Write(ser)
+}
+
 func setHandlers(controller holder, mux *http.ServeMux) {
 	mux.HandleFunc("/fetch", controller.Fetch)
 	mux.HandleFunc("/count", controller.Count)
@@ -233,6 +283,8 @@ func setHandlers(controller holder, mux *http.ServeMux) {
 	mux.HandleFunc("/rate", controller.Rate)
 	mux.HandleFunc("/get_profiles", controller.GetProfiles)
 	mux.HandleFunc("/query", controller.Query)
+	mux.HandleFunc("/store_aggregate", controller.StoreAggregate)
+	mux.HandleFunc("/retrieve_aggregate", controller.RetrieveAggregate)
 }
 
 func main() {

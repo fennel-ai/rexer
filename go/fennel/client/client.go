@@ -5,8 +5,9 @@ import (
 	"encoding/json"
 	"fennel/engine/ast"
 	"fennel/lib/action"
+	"fennel/lib/aggregate"
 	"fennel/lib/counter"
-	"fennel/lib/profile"
+	"fennel/lib/ftypes"
 	profileLib "fennel/lib/profile"
 	"fennel/lib/value"
 	"fmt"
@@ -42,6 +43,7 @@ func (c Client) fetchURL() string {
 	c.url.Path = "/fetch"
 	return fmt.Sprintf(c.url.String())
 }
+
 func (c Client) queryURL() string {
 	c.url.Path = "/query"
 	return fmt.Sprintf(c.url.String())
@@ -51,14 +53,17 @@ func (c Client) countURL() string {
 	c.url.Path = "/count"
 	return fmt.Sprintf(c.url.String())
 }
+
 func (c Client) rateURL() string {
 	c.url.Path = "/rate"
 	return fmt.Sprintf(c.url.String())
 }
+
 func (c Client) getProfileURL() string {
 	c.url.Path = "/get"
 	return fmt.Sprintf(c.url.String())
 }
+
 func (c Client) setProfileURL() string {
 	c.url.Path = "/set"
 	return fmt.Sprintf(c.url.String())
@@ -66,6 +71,16 @@ func (c Client) setProfileURL() string {
 
 func (c Client) getProfilesURL() string {
 	c.url.Path = "/get_profiles"
+	return fmt.Sprintf(c.url.String())
+}
+
+func (c Client) storeAggregateURL() string {
+	c.url.Path = "/store_aggregate"
+	return fmt.Sprintf(c.url.String())
+}
+
+func (c Client) retrieveAggregateURL() string {
+	c.url.Path = "/retrieve_aggregate"
 	return fmt.Sprintf(c.url.String())
 }
 
@@ -81,11 +96,14 @@ func (c Client) post(protoMessage proto.Message, url string) ([]byte, error) {
 	if err != nil {
 		return nil, fmt.Errorf("server error: %v", err)
 	}
-	// verify server sent no error
 	defer response.Body.Close()
 	body, err := ioutil.ReadAll(response.Body)
 	if err != nil {
 		return nil, fmt.Errorf("could not read server response: %v", err)
+	}
+	// handle http error given by the server
+	if response.StatusCode < 200 || response.StatusCode >= 300 {
+		return nil, fmt.Errorf("%s: %s", http.StatusText(response.StatusCode), string(body))
 	}
 	return body, nil
 }
@@ -167,19 +185,19 @@ func (c *Client) SetProfile(req *profileLib.ProfileItem) error {
 	return nil
 }
 
-func (c *Client) GetProfiles(request profile.ProfileFetchRequest) ([]profile.ProfileItem, error) {
-	protoRequest := profile.ToProtoProfileFetchRequest(&request)
+func (c *Client) GetProfiles(request profileLib.ProfileFetchRequest) ([]profileLib.ProfileItem, error) {
+	protoRequest := profileLib.ToProtoProfileFetchRequest(&request)
 	response, err := c.post(&protoRequest, c.getProfilesURL())
 	if err != nil {
 		return nil, err
 	}
 
-	var profileList profile.ProtoProfileList
+	var profileList profileLib.ProtoProfileList
 	err = proto.Unmarshal(response, &profileList)
 	if err != nil {
 		return nil, fmt.Errorf("unmarshal error: %v", err)
 	}
-	profiles, err := profile.FromProtoProfileList(&profileList)
+	profiles, err := profileLib.FromProtoProfileList(&profileList)
 	if err != nil {
 		return nil, err
 	}
@@ -254,4 +272,49 @@ func (c *Client) GetRate(request counter.GetRateRequest) (float64, error) {
 		return 0, fmt.Errorf("server unmarshall error %v", err)
 	}
 	return rate, nil
+}
+
+func (c *Client) StoreAggregate(agg aggregate.Aggregate) error {
+	if ok := aggregate.IsValid(agg.Type); !ok {
+		return fmt.Errorf("invalid aggregate type: %v", agg.Type)
+	}
+
+	protoAgg, err := aggregate.ToProtoAggregate(agg)
+	if err != nil {
+		return err
+	}
+	_, err = c.post(&protoAgg, c.storeAggregateURL())
+	return err
+}
+
+func (c *Client) RetrieveAggregate(aggtype ftypes.AggType, aggname ftypes.AggName) (aggregate.Aggregate, error) {
+	empty := aggregate.Aggregate{}
+	if ok := aggregate.IsValid(aggtype); !ok {
+		return empty, fmt.Errorf("invalid aggregate type: %v", aggtype)
+	}
+	if len(aggname) == 0 {
+		return empty, fmt.Errorf("aggregate name can not be of length zero")
+	}
+
+	// convert to proto request and send to server
+	aggreq := aggregate.AggRequest{AggType: string(aggtype), AggName: string(aggname)}
+	response, err := c.post(&aggreq, c.retrieveAggregateURL())
+	if err != nil {
+		return empty, err
+	}
+	if len(response) == 0 {
+		// i.e no aggregate was found
+		return empty, aggregate.ErrNotFound
+	}
+	// convert server response back to an aggregate instance
+	var pret aggregate.ProtoAggregate
+	if err = proto.Unmarshal(response, &pret); err != nil {
+		return empty, err
+	}
+	ret, err := aggregate.FromProtoAggregate(pret)
+	if err != nil {
+		return empty, err
+	} else {
+		return ret, nil
+	}
 }

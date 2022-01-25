@@ -8,15 +8,6 @@ import (
 	"fmt"
 )
 
-type notFound int
-
-func (_ notFound) Error() string {
-	return "aggregate not found"
-}
-
-var ErrNotFound = notFound(1)
-var _ error = ErrNotFound
-
 func Store(instance instance.Instance, aggtype ftypes.AggType, name ftypes.AggName, querySer []byte, ts ftypes.Timestamp, optionSer []byte) error {
 	if len(aggtype) > 255 {
 		return fmt.Errorf("aggregate type can not be longer than 255 chars")
@@ -38,7 +29,7 @@ func Retrieve(instance instance.Instance, aggregateType ftypes.AggType, name fty
 			  AND name = ?`, instance.CustID, aggregateType, name,
 	)
 	if err != nil && err == sql.ErrNoRows {
-		return aggregate.AggregateSer{}, ErrNotFound
+		return aggregate.AggregateSer{}, aggregate.ErrNotFound
 	} else if err != nil {
 		return aggregate.AggregateSer{}, err
 	}

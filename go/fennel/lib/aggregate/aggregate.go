@@ -68,3 +68,12 @@ type AggregateSer struct {
 	Timestamp ftypes.Timestamp `db:"timestamp"`
 	OptionSer []byte           `db:"options_ser"`
 }
+
+type notFound int
+
+func (_ notFound) Error() string {
+	return "aggregate not found"
+}
+
+var ErrNotFound = notFound(1)
+var _ error = ErrNotFound
