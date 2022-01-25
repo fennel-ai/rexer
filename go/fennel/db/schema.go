@@ -23,6 +23,7 @@ func init() {
 			);`,
 		3: `CREATE TABLE IF NOT EXISTS actionlog (
 				action_id BIGINT not null primary key auto_increment,
+				cust_id BIGINT not null,
 				actor_id BIGINT NOT NULL,
 				actor_type INT NOT NULL,
 				target_id BIGINT NOT NULL,
@@ -30,13 +31,13 @@ func init() {
 				action_type INT NOT NULL,
 				action_value BIGINT NOT NULL,
 				timestamp BIGINT NOT NULL,
-				request_id BIGINT not null,
-				cust_id BIGINT not null
+				request_id BIGINT not null
 		  );`,
 		4: `CREATE TABLE IF NOT EXISTS checkpoint (
+				cust_id BIGINT NOT NULL,
 				counter_type INT NOT NULL,
 				checkpoint BIGINT NOT NULL DEFAULT 0,
-				PRIMARY KEY(counter_type)
+				PRIMARY KEY(cust_id, counter_type)
 		  );`,
 		5: `CREATE TABLE IF NOT EXISTS profile (
 				cust_id BIGINT not null,
@@ -47,12 +48,13 @@ func init() {
 				value blob not null
 		  );`,
 		6: `CREATE TABLE IF NOT EXISTS counter_bucket (
+				cust_id BIGINT NOT NULL,
 				counter_type INT NOT NULL,
 				window_type INT NOT NULL,
 				idx BIGINT NOT NULL,
 				count BIGINT NOT NULL DEFAULT 0,
 				zkey varchar(256) NOT NULL,
-				PRIMARY KEY(counter_type, window_type, idx, zkey)
+				PRIMARY KEY(cust_id, counter_type, window_type, idx, zkey)
 		  );`,
 		7: `CREATE TABLE IF NOT EXISTS query_ast (
 				query_id BIGINT NOT NULL PRIMARY KEY AUTO_INCREMENT,

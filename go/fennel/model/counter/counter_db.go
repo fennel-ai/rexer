@@ -81,11 +81,12 @@ func dbIncrement(this instance.Instance, bucket bucket) error {
 	if len(bucket.Key) > 256 {
 		return fmt.Errorf("too long key: keys can only be upto 256 chars")
 	}
+	// TODO: do not use hardcoded cust_id
 	_, err := this.DB.NamedExec(`
 		INSERT INTO counter_bucket
-			( counter_type, window_type, idx, zkey, count)
+			(cust_id, counter_type, window_type, idx, zkey, count)
         VALUES 
-			(:counter_type, :window_type, :idx, :key, :count)
+			(1, :counter_type, :window_type, :idx, :key, :count)
 		ON DUPLICATE KEY
 		UPDATE
 			count = count + :count
@@ -99,11 +100,13 @@ func dbIncrement(this instance.Instance, bucket bucket) error {
 // however, if window is forever, the index field doesn't matter (forever uses a single bucket)
 // the 'GetCount' field of input bucket is ignored
 func dbGet(this instance.Instance, bucket bucket) (uint64, error) {
+	// TODO: do not use hardcoded cust_id
 	query := `
 		SELECT SUM(count) as total
 		FROM counter_bucket
-		WHERE 
-			counter_type = :counter_type
+		WHERE
+			cust_id = 1
+			AND counter_type = :counter_type
 			AND window_type = :window_type
 			AND zkey = :key 
 		`
