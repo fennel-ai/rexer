@@ -15,6 +15,11 @@ type Interpreter struct {
 
 var _ ast.VisitorValue = Interpreter{}
 
+func NewInterpreter() Interpreter {
+	env := NewEnv(nil)
+	return Interpreter{&env}
+}
+
 func (i Interpreter) VisitLookup(on ast.Ast, property string) (value.Value, error) {
 	val, err := on.AcceptValue(i)
 	if err != nil {

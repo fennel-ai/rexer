@@ -1,6 +1,9 @@
 package main
 
 import (
+	"fennel/engine/ast"
+	astProto "fennel/engine/ast/proto"
+	"fennel/engine/interpreter"
 	"flag"
 	"fmt"
 	"io/ioutil"
@@ -71,7 +74,6 @@ func (m holder) Fetch(w http.ResponseWriter, req *http.Request) {
 		http.Error(w, err.Error(), http.StatusBadGateway)
 		return
 	}
-	//fmt.Fprintf(w, string(ser))
 	w.Write(ser)
 }
 
@@ -141,7 +143,6 @@ func (m holder) GetProfile(w http.ResponseWriter, req *http.Request) {
 		http.Error(w, err.Error(), http.StatusBadGateway)
 		return
 	}
-	//fmt.Fprintf(w, string(valueSer))
 	w.Write(valueSer)
 }
 
@@ -192,6 +193,37 @@ func (m holder) GetProfiles(w http.ResponseWriter, req *http.Request) {
 	w.Write(ser)
 }
 
+func (m holder) Query(w http.ResponseWriter, req *http.Request) {
+	var protoAst astProto.Ast
+	if err := parse(req, &protoAst); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	tree, err := ast.FromProtoAst(protoAst)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	// execute the tree
+	i := interpreter.NewInterpreter()
+	ret, err := tree.AcceptValue(i)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadGateway)
+		return
+	}
+	pval, err := value.ToProtoValue(ret)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadGateway)
+		return
+	}
+	ser, err := proto.Marshal(&pval)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadGateway)
+		return
+	}
+	w.Write(ser)
+}
+
 func setHandlers(controller holder, mux *http.ServeMux) {
 	mux.HandleFunc("/fetch", controller.Fetch)
 	mux.HandleFunc("/count", controller.Count)
@@ -200,6 +232,7 @@ func setHandlers(controller holder, mux *http.ServeMux) {
 	mux.HandleFunc("/log", controller.Log)
 	mux.HandleFunc("/rate", controller.Rate)
 	mux.HandleFunc("/get_profiles", controller.GetProfiles)
+	mux.HandleFunc("/query", controller.Query)
 }
 
 func main() {

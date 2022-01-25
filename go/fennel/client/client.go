@@ -3,6 +3,7 @@ package client
 import (
 	"bytes"
 	"encoding/json"
+	"fennel/engine/ast"
 	"fennel/lib/action"
 	"fennel/lib/counter"
 	profileLib "fennel/lib/profile"
@@ -38,6 +39,10 @@ func (c Client) logURL() string {
 
 func (c Client) fetchURL() string {
 	c.url.Path = "/fetch"
+	return fmt.Sprintf(c.url.String())
+}
+func (c Client) queryURL() string {
+	c.url.Path = "/query"
 	return fmt.Sprintf(c.url.String())
 }
 
@@ -112,6 +117,30 @@ func (c *Client) GetProfile(request *profileLib.ProfileItem) (*value.Value, erro
 		return nil, err
 	} else {
 		return &v, nil
+	}
+}
+func (c *Client) Query(request ast.Ast) (value.Value, error) {
+	// convert the request to proto version
+	protoReq, err := ast.ToProtoAst(request)
+	if err != nil {
+		return nil, fmt.Errorf("invalid request: %v", err)
+	}
+
+	response, err := c.post(&protoReq, c.queryURL())
+	if err != nil {
+		return nil, err
+	}
+	// now try to read response as a serialized ProtoValue
+	var pv value.PValue
+	if err = proto.Unmarshal(response, &pv); err != nil {
+		return nil, fmt.Errorf("could not unmarshal server response: %v", err)
+	}
+	// now convert proto value to real value
+	v, err := value.FromProtoValue(&pv)
+	if err != nil {
+		return nil, err
+	} else {
+		return v, nil
 	}
 }
 

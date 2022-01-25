@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fennel/engine/ast"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -158,6 +159,44 @@ func TestCountRateServerClient(t *testing.T) {
 	counter.Increment(instance, cr.CounterType, cr.Window, cr.Key, cr.Timestamp, 1000)
 	_, err = c.GetRate(rr)
 	assert.Error(t, err)
+}
+
+func TestQuery(t *testing.T) {
+	// create a service
+	instance, err := test.DefaultInstance()
+	assert.NoError(t, err)
+	controller := holder{instance: instance}
+	server := startTestServer(controller)
+	defer server.Close()
+	c, err := client.NewClient(server.URL, server.Client())
+	assert.NoError(t, err)
+
+	d1 := ast.Dict{Values: map[string]ast.Ast{"x": ast.MakeInt(1), "y": ast.MakeInt(3)}}
+	d2 := ast.Dict{Values: map[string]ast.Ast{"x": ast.MakeInt(3), "y": ast.MakeInt(4)}}
+	d3 := ast.Dict{Values: map[string]ast.Ast{"x": ast.MakeInt(1), "y": ast.MakeInt(7)}}
+	table := ast.Table{Inner: ast.List{Values: []ast.Ast{d1, d2, d3}}}
+	e := ast.OpCall{
+		Operand:   table,
+		Namespace: "std",
+		Name:      "filter",
+		Kwargs: ast.Dict{map[string]ast.Ast{"where": ast.Binary{
+			Left: ast.Lookup{On: ast.At{}, Property: "x"},
+			Op:   "<",
+			Right: ast.Binary{
+				Left:  ast.Lookup{On: ast.At{}, Property: "y"},
+				Op:    "-",
+				Right: ast.MakeInt(1),
+			},
+		}},
+		},
+	}
+	found, err := c.Query(e)
+	assert.NoError(t, err)
+	expected := value.NewTable()
+	expected.Append(map[string]value.Value{"x": value.Int(1), "y": value.Int(3)})
+	expected.Append(map[string]value.Value{"x": value.Int(1), "y": value.Int(7)})
+	assert.Equal(t, expected, found)
+
 }
 
 func checkGetSet(t *testing.T, c *client.Client, get bool, custid uint64, otype uint32, oid uint64, version uint64,
