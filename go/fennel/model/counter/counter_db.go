@@ -10,6 +10,7 @@ import (
 )
 
 type bucket struct {
+	CustID      ftypes.CustID       `db:"cust_id"`
 	CounterType counter.CounterType `db:"counter_type"`
 	Window      ftypes.Window       `db:"window_type"`
 	Idx         uint64
@@ -58,7 +59,7 @@ func Increment(this instance.Instance, ct counter.CounterType, window ftypes.Win
 	if err != nil {
 		return err
 	}
-	bucket := bucket{ct, window, index, keyToString(key), count}
+	bucket := bucket{this.CustID, ct, window, index, keyToString(key), count}
 	return dbIncrement(this, bucket)
 }
 
@@ -70,7 +71,7 @@ func Get(this instance.Instance, request counter.GetCountRequest) (uint64, error
 	if err != nil {
 		return 0, err
 	}
-	bucket := bucket{request.CounterType, request.Window, index, keyToString(request.Key), 0}
+	bucket := bucket{this.CustID, request.CounterType, request.Window, index, keyToString(request.Key), 0}
 	return dbGet(this, bucket)
 }
 
@@ -81,12 +82,12 @@ func dbIncrement(this instance.Instance, bucket bucket) error {
 	if len(bucket.Key) > 256 {
 		return fmt.Errorf("too long key: keys can only be upto 256 chars")
 	}
-	// TODO: do not use hardcoded cust_id
+
 	_, err := this.DB.NamedExec(`
 		INSERT INTO counter_bucket
 			(cust_id, counter_type, window_type, idx, zkey, count)
         VALUES 
-			(1, :counter_type, :window_type, :idx, :key, :count)
+			(:cust_id, :counter_type, :window_type, :idx, :key, :count)
 		ON DUPLICATE KEY
 		UPDATE
 			count = count + :count
@@ -100,12 +101,11 @@ func dbIncrement(this instance.Instance, bucket bucket) error {
 // however, if window is forever, the index field doesn't matter (forever uses a single bucket)
 // the 'GetCount' field of input bucket is ignored
 func dbGet(this instance.Instance, bucket bucket) (uint64, error) {
-	// TODO: do not use hardcoded cust_id
 	query := `
 		SELECT SUM(count) as total
 		FROM counter_bucket
 		WHERE
-			cust_id = 1
+			cust_id = :cust_id
 			AND counter_type = :counter_type
 			AND window_type = :window_type
 			AND zkey = :key 

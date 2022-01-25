@@ -87,12 +87,12 @@ func TestLongKey(t *testing.T) {
 	this, err := test.DefaultInstance()
 	assert.NoError(t, err)
 	// it should not be possible to set a key longer than 256 chars
-	b := bucket{1, 2, 3, utils.RandString(257), 1}
+	b := bucket{this.CustID, 1, 2, 3, utils.RandString(257), 1}
 	err = dbIncrement(this, b)
 	assert.Error(t, err)
 
 	// but it should be fine with key of 256 chars
-	b = bucket{1, 2, 3, utils.RandString(256), 1}
+	b = bucket{this.CustID, 1, 2, 3, utils.RandString(256), 1}
 	err = dbIncrement(this, b)
 	assert.NoError(t, err)
 }

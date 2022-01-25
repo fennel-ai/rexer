@@ -9,14 +9,12 @@ import (
 
 func GetCheckpoint(this instance.Instance, ct counter.CounterType) (ftypes.OidType, error) {
 	// TODO: Use appropriate custid instead
-	custid := ftypes.CustID(1)
-
 	row := this.DB.QueryRow(`
 		SELECT checkpoint
 		FROM checkpoint
 		WHERE cust_id = ?
 		AND counter_type = ?;
-	`, custid, ct)
+	`, this.CustID, ct)
 	var checkpoint uint64
 	err := row.Scan(&checkpoint)
 	if err != nil && err != sql.ErrNoRows {
@@ -31,14 +29,12 @@ func GetCheckpoint(this instance.Instance, ct counter.CounterType) (ftypes.OidTy
 
 func SetCheckpoint(this instance.Instance, ct counter.CounterType, checkpoint ftypes.OidType) error {
 	// TODO: Use appropriate custid instead
-	custid := ftypes.CustID(1)
-
 	_, err := this.DB.Exec(`
 		INSERT INTO checkpoint (cust_id, counter_type, checkpoint)
         VALUES (?, ?, ?)
 		ON DUPLICATE KEY
 		UPDATE
 			checkpoint = ?
-		;`, custid, ct, checkpoint, checkpoint)
+		;`, this.CustID, ct, checkpoint, checkpoint)
 	return err
 }
