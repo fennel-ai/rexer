@@ -1,11 +1,11 @@
 package operators
 
 import (
+	"fennel/lib/utils"
 	"fennel/lib/value"
+	"github.com/stretchr/testify/assert"
 	"reflect"
 	"testing"
-
-	"github.com/stretchr/testify/assert"
 )
 
 func getTable() value.Table {
@@ -30,9 +30,13 @@ func getTable() value.Table {
 	return table
 }
 
-func testValid(t *testing.T, op Operator, kwargs value.Dict, intable value.Table, expected value.Table) {
+func testValid(t *testing.T, op Operator, staticKwargs value.Dict, intable value.Table, contextKwargTable value.Table, expected value.Table) {
 	outtable := value.NewTable()
-	err := op.Apply(kwargs, intable, &outtable)
+	zt := utils.NewZipTable()
+	for i, in := range intable.Pull() {
+		zt.Append(in, contextKwargTable.Pull()[i])
+	}
+	err := op.Apply(staticKwargs, zt.Iter(), &outtable)
 	assert.NoError(t, err)
 	assert.Equal(t, expected, outtable)
 }
@@ -43,17 +47,28 @@ func TestFilterOperator_Apply(t *testing.T) {
 
 	intable := getTable()
 	// not passing "where" fails Validation
-	assert.Error(t, Validate(op, value.Dict{}, map[string]reflect.Type{}))
+	assert.Error(t, Typecheck(op, map[string]reflect.Type{}, map[string]reflect.Type{}, map[string]reflect.Type{}))
 
 	// passing where true works
-	kwargs := value.Dict{"where": value.Bool(true)}
-	assert.NoError(t, Validate(op, kwargs, map[string]reflect.Type{}))
-	testValid(t, op, kwargs, intable, intable)
+	whereTrue := value.Dict{"where": value.Bool(true)}
+	whereFalse := value.Dict{"where": value.Bool(false)}
+	assert.NoError(t, Typecheck(op, map[string]reflect.Type{}, map[string]reflect.Type{}, whereTrue.Schema()))
+
+	contextKwargTable := value.NewTable()
+	contextKwargTable.Append(whereTrue)
+	contextKwargTable.Append(whereFalse)
+	contextKwargTable.Append(whereTrue)
+	expected := value.NewTable()
+	expected.Append(intable.Pull()[0])
+	expected.Append(intable.Pull()[2])
+	testValid(t, op, whereTrue, intable, contextKwargTable, expected)
 
 	// and when we filter everything, we should get empty table
-	kwargs = value.Dict{"where": value.Bool(false)}
-	assert.NoError(t, Validate(op, kwargs, map[string]reflect.Type{}))
-	testValid(t, op, kwargs, intable, value.NewTable())
+	contextKwargTable = value.NewTable()
+	contextKwargTable.Append(whereFalse)
+	contextKwargTable.Append(whereFalse)
+	contextKwargTable.Append(whereFalse)
+	testValid(t, op, whereTrue, intable, contextKwargTable, value.NewTable())
 }
 
 func TestTakeOperator_Apply(t *testing.T) {
@@ -62,10 +77,10 @@ func TestTakeOperator_Apply(t *testing.T) {
 
 	intable := getTable()
 	// not passing "limit" fails validation
-	assert.Error(t, Validate(op, value.Dict{}, map[string]reflect.Type{}))
+	assert.Error(t, Typecheck(op, map[string]reflect.Type{}, map[string]reflect.Type{}, map[string]reflect.Type{}))
 
 	// and it fails validation even when limit is passed but isn't int
-	assert.Error(t, Validate(op, value.Dict{"limit": value.Bool(true)}, map[string]reflect.Type{}))
+	assert.Error(t, Typecheck(op, map[string]reflect.Type{"limit": value.Types.Bool}, map[string]reflect.Type{}, map[string]reflect.Type{}))
 
 	// passing limit 2 works
 	expected := value.NewTable()
@@ -74,8 +89,12 @@ func TestTakeOperator_Apply(t *testing.T) {
 			expected.Append(row)
 		}
 	}
-	testValid(t, op, value.Dict{"limit": value.Int(2)}, intable, expected)
+	contextKwargTable := value.NewTable()
+	contextKwargTable.Append(value.Dict{})
+	contextKwargTable.Append(value.Dict{})
+	contextKwargTable.Append(value.Dict{})
+	testValid(t, op, value.Dict{"limit": value.Int(2)}, intable, contextKwargTable, expected)
 
 	// and when the limit is very large, it only returns intable as it is
-	testValid(t, op, value.Dict{"limit": value.Int(10000)}, intable, intable)
+	testValid(t, op, value.Dict{"limit": value.Int(10000)}, intable, contextKwargTable, intable)
 }

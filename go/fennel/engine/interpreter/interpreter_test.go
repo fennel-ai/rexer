@@ -9,9 +9,8 @@ import (
 )
 
 func getInterpreter() Interpreter {
-	return Interpreter{
-		NewEnv(nil),
-	}
+	env := NewEnv(nil)
+	return Interpreter{&env}
 }
 
 func testValid(t *testing.T, node ast.Ast, expected value.Value) {
@@ -261,6 +260,26 @@ func TestInterpreter_VisitOpcall(t *testing.T) {
 		Name:      "filter",
 		Kwargs:    kwargs,
 	}, value.NewTable())
+
+	// and if where is more specific, that works too
+	kwargs = ast.Dict{
+		Values: map[string]ast.Ast{
+			"where": ast.Binary{
+				Left:  ast.Lookup{ast.At{}, "a.inner"},
+				Right: ast.MakeInt(3),
+				Op:    "==",
+			},
+		},
+	}
+	expected := value.NewTable()
+	expected.Append(row1)
+	expected.Append(row3)
+	testValid(t, ast.OpCall{
+		Operand:   astTable,
+		Namespace: "std",
+		Name:      "filter",
+		Kwargs:    kwargs,
+	}, expected)
 }
 
 func TestInterpreter_VisitAt(t *testing.T) {

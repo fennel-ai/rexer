@@ -50,7 +50,7 @@ func TestInvalidProtoValue(t *testing.T) {
 		},
 	}
 
-	// a protovalue table where schema doesn't match
+	// a protovalue table where Schema doesn't match
 	row1, _ := toProtoDict(Dict{"hi": Int(1), "bye": Bool(true)})
 	row2, _ := toProtoDict(Dict{"mismatch": Int(1), "bye": Bool(true)})
 	ptable := PValue{Node: &PValue_Table{Table: &PVTable{Rows: []*PVDict{&row1, &row2}}}}

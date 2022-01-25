@@ -1,6 +1,9 @@
 package utils
 
-import "fennel/lib/value"
+import (
+	"fennel/lib/value"
+	"reflect"
+)
 
 // ZipTable represents two value tables that can be iterated in a zipped fashion
 type ZipTable struct {
@@ -25,6 +28,10 @@ func (zt ZipTable) Append(first, second value.Dict) error {
 		return err
 	}
 	return nil
+}
+
+func (zt ZipTable) Schema() (map[string]reflect.Type, map[string]reflect.Type) {
+	return zt.first.Schema(), zt.second.Schema()
 }
 
 func (zt ZipTable) Len() int {

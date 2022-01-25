@@ -3,14 +3,14 @@ package interpreter
 import (
 	"fennel/engine/ast"
 	"fennel/engine/operators"
+	"fennel/lib/utils"
 	"fennel/lib/value"
 	"fmt"
-	"reflect"
 	"strconv"
 )
 
 type Interpreter struct {
-	env Env
+	env *Env
 }
 
 var _ ast.VisitorValue = Interpreter{}
@@ -29,6 +29,16 @@ func (i Interpreter) VisitLookup(on ast.Ast, property string) (value.Value, erro
 		return value.Nil, fmt.Errorf("property: %s does not exist in the dictionary: '%s'", property, asdict)
 	}
 	return ret, nil
+}
+
+func (i Interpreter) visitInContext(tree ast.Ast, v value.Value) (value.Value, error) {
+	i.env = i.env.PushEnv()
+	defer func() { i.env, _ = i.env.PopEnv() }()
+
+	if err := i.env.Define("@", v); err != nil {
+		return value.Nil, err
+	}
+	return tree.AcceptValue(i)
 }
 
 func (i Interpreter) VisitAt() (value.Value, error) {
@@ -165,39 +175,36 @@ func (i Interpreter) VisitOpcall(operand ast.Ast, namespace, name string, kwargs
 	if err != nil {
 		return value.Nil, err
 	}
-	switch val.(type) {
-	case value.Table:
-	default:
+	inData, ok := val.(value.Table)
+	if !ok {
 		return value.Nil, fmt.Errorf("opertor '%s.%s' can not be applied: operand not a table", namespace, name)
 	}
-	intable := val.(value.Table)
-
-	// now eval kwargs and verify they are of the right type
-	kw, err := kwargs.AcceptValue(i)
-	if err != nil {
-		return value.Nil, err
-	}
-	switch kw.(type) {
-	case value.Dict:
-	default:
-		return value.Nil, fmt.Errorf("kwargs should be a dictionary but found :'%s'", kw.String())
-	}
-	kwdict := kw.(value.Dict)
 
 	// locate the operator
 	op, err := operators.Locate(namespace, name)
 	if err != nil {
 		return value.Nil, err
 	}
-
-	// verify typing of all kwargs
-	// TODO: pass table's real schema, not just empty schema
-	if err = operators.Validate(op, kwdict, map[string]reflect.Type{}); err != nil {
+	// now eval static kwargs and verify they are of the right type
+	staticKwargs, err := i.getStaticKwargs(op, kwargs)
+	if err != nil {
 		return value.Nil, err
 	}
+
+	// and same for dynamic kwargs to create InputTable
+	inputTable, err := i.getContextKwargs(op, kwargs, inData)
+	if err != nil {
+		return value.Nil, err
+	}
+	// verify typing of all kwargs
+	inputSchema, contextKwargSchema := inputTable.Schema()
+	if err = operators.Typecheck(op, staticKwargs.Schema(), inputSchema, contextKwargSchema); err != nil {
+		return value.Nil, err
+	}
+
 	// finally, call the operator
 	outtable := value.NewTable()
-	if err = op.Apply(kwdict, intable, &outtable); err != nil {
+	if err = op.Apply(staticKwargs, inputTable.Iter(), &outtable); err != nil {
 		return value.Nil, err
 	}
 	return outtable, nil
@@ -205,4 +212,48 @@ func (i Interpreter) VisitOpcall(operand ast.Ast, namespace, name string, kwargs
 
 func (i Interpreter) VisitVar(name string) (value.Value, error) {
 	return i.env.Lookup(name)
+}
+
+func (i Interpreter) getStaticKwargs(op operators.Operator, kwargs ast.Dict) (value.Dict, error) {
+	var ret value.Dict
+	sig := op.Signature()
+	for k, _ := range sig.StaticKwargs {
+		tree, ok := kwargs.Values[k]
+		if !ok {
+			return value.Dict{}, fmt.Errorf("kwarg %s not provided for operator '%s.%s'", k, sig.Module, sig.Name)
+		}
+		val, err := tree.AcceptValue(i)
+		if err != nil {
+			return value.Dict{}, fmt.Errorf("error: %s while evaluating kwarg: %s for operator '%s.%s'", err, k, sig.Module, sig.Name)
+		}
+		ret[k] = val
+	}
+	return ret, nil
+}
+
+func (i Interpreter) getContextKwargs(op operators.Operator, trees ast.Dict, table value.Table) (utils.ZipTable, error) {
+	ret := utils.NewZipTable()
+	sig := op.Signature()
+	for _, v := range table.Pull() {
+		kwargs := make(map[string]value.Value)
+		for k, _ := range sig.ContextKwargs {
+			tree, ok := trees.Values[k]
+			if !ok {
+				return utils.ZipTable{}, fmt.Errorf("kwarg %s not provided for operator '%s.%s'", k, sig.Module, sig.Name)
+			}
+			val, err := i.visitInContext(tree, v)
+			if err != nil {
+				return utils.ZipTable{}, fmt.Errorf("error: %s while evaluating kwarg: %s for operator '%s.%s'", err, k, sig.Module, sig.Name)
+			}
+			kwargs[k] = val
+		}
+		dict, err := value.NewDict(kwargs)
+		if err != nil {
+			return utils.ZipTable{}, err
+		}
+		if err = ret.Append(v, dict); err != nil {
+			return utils.ZipTable{}, err
+		}
+	}
+	return ret, nil
 }

@@ -247,7 +247,7 @@ func (d Dict) flatten() Dict {
 	return ret
 }
 
-func (d Dict) schema() map[string]reflect.Type {
+func (d Dict) Schema() map[string]reflect.Type {
 	fd := d.flatten()
 	ret := make(map[string]reflect.Type, len(fd))
 	for k, v := range d {
@@ -269,12 +269,20 @@ func NewTable() Table {
 func (t *Table) Append(row Dict) error {
 	row = row.flatten()
 	if len(t.rows) == 0 {
-		t.schema = row.schema()
-	} else if !t.schemaMatches(row.schema()) {
+		t.schema = row.Schema()
+	} else if !t.schemaMatches(row.Schema()) {
 		return fmt.Errorf("can not append row to table: scheams don't match")
 	}
 	t.rows = append(t.rows, row)
 	return nil
+}
+
+func (t *Table) Schema() map[string]reflect.Type {
+	ret := make(map[string]reflect.Type)
+	if len(t.rows) == 0 {
+		return ret
+	}
+	return t.rows[0].Schema()
 }
 
 // Pop removes the last row added to the table
