@@ -29,9 +29,11 @@ class Testclient(unittest.TestCase):
         with self.assertRaises(client.InvalidInput):
             c.get_profiles('hi')
         with self.assertRaises(client.InvalidInput):
-            c.get(profile.ProfileItem)
+            c.get_profiles(profile.ProfileItem)
 
         # but valid requests don't throw exceptions
+
+        # Test set for valid profiles
         httpretty.register_uri(httpretty.POST, 'http://localhost:2425/set')
 
         p1 = profile.ProfileItem()
@@ -52,17 +54,26 @@ class Testclient(unittest.TestCase):
         c.set_profile(p2)
         self.assertEqual(p2.SerializeToString(), httpretty.last_request().body)
 
-        expected = value.Int(5)
-        response = httpretty.Response(expected.SerializeToString())
-        httpretty.register_uri(httpretty.POST, 'http://localhost:2425/get', responses=[response])
-        ret = c.get_profile(req)
-        self.assertEqual(value.Int(5), ret)
+        # Test get for valid profiles
 
+        expected1 = value.Int(5)
+        response1 = httpretty.Response(expected1.SerializeToString())
+        expected2 = value.Int(7)
+        response2 = httpretty.Response(expected2.SerializeToString())
+
+        httpretty.register_uri(httpretty.POST, 'http://localhost:2425/get', responses=[response1, response2])
+        ret = c.get_profile(p1)
+        self.assertEqual(value.Int(5), ret)
+        ret = c.get_profile(p2)
+        self.assertEqual(value.Int(7), ret)
+
+        # Test multi-get profiles
         pl = profile.to_proto_profile_list([p1, p2])
         response1 = httpretty.Response(pl.SerializeToString())
 
         pl = profile.to_proto_profile_list([p2])
         response2 = httpretty.Response(pl.SerializeToString())
+
         httpretty.register_uri(httpretty.POST, 'http://localhost:2425/get_profiles', responses=[response1, response2])
 
         pfr = profile.ProfileFetchRequest()
@@ -72,7 +83,7 @@ class Testclient(unittest.TestCase):
         pfr = profile.ProfileFetchRequest()
         pfr.OType = 1
         ret = c.get_profiles(pfr)
-        self.assertEqual(pfr.SerializeToString(), httpretty.lasts_request().body)
+        self.assertEqual(pfr.SerializeToString(), httpretty.last_request().body)
         self.assertListEqual([p2], ret)
 
     @httpretty.activate(verbose=True, allow_net_connect=False)

@@ -73,7 +73,7 @@ func TestEndToEnd(t *testing.T) {
 	}
 
 	// now make an event
-	action1 := actionlib.Action{ActorType: profileLib.User, ActorID: uid, TargetType: profileLib.Video, TargetID: video_id, ActionType: actionlib.Like, RequestID: 1, Timestamp: ts}
+	action1 := actionlib.Action{CustID: 1, ActorType: profileLib.User, ActorID: uid, TargetType: profileLib.Video, TargetID: video_id, ActionType: actionlib.Like, RequestID: 1, Timestamp: ts}
 	action1 = add(instance, t, action1)
 
 	// and verify it went through
@@ -93,7 +93,7 @@ func TestEndToEnd(t *testing.T) {
 		assert.Equal(t, uint64(1), count, cr)
 	}
 	// now make one more event which is not of matching actionlib type (Like vs Share)
-	action2 := actionlib.Action{ActorType: profileLib.User, ActorID: uid, TargetType: profileLib.Video, TargetID: video_id, ActionType: actionlib.Share, RequestID: 1, Timestamp: ts}
+	action2 := actionlib.Action{CustID: 1, ActorType: profileLib.User, ActorID: uid, TargetType: profileLib.Video, TargetID: video_id, ActionType: actionlib.Share, RequestID: 1, Timestamp: ts}
 	action2 = add(instance, t, action2)
 	verifyFetch(instance, t, actionlib.ActionFetchRequest{MinActionID: 0}, []actionlib.Action{action1, action2})
 
@@ -106,7 +106,7 @@ func TestEndToEnd(t *testing.T) {
 	}
 
 	// but another valid event will make the counts go up
-	action3 := actionlib.Action{ActorType: profileLib.User, ActorID: uid, TargetType: profileLib.Video, TargetID: video_id, ActionType: actionlib.Like, RequestID: 1, Timestamp: ts}
+	action3 := actionlib.Action{CustID: 1, ActorType: profileLib.User, ActorID: uid, TargetType: profileLib.Video, TargetID: video_id, ActionType: actionlib.Like, RequestID: 1, Timestamp: ts}
 	action3 = add(instance, t, action3)
 	verifyFetch(instance, t, actionlib.ActionFetchRequest{MinActionID: 0}, []actionlib.Action{action1, action2, action3})
 

@@ -61,7 +61,7 @@ func TestLogFetchServerClient(t *testing.T) {
 	verifyFetch(t, c, action.ActionFetchRequest{}, []action.Action{})
 
 	// now we add a couple of actions
-	a := action.Action{ActorType: 1, ActorID: 2, ActionType: 3, TargetType: 4, TargetID: 5}
+	a := action.Action{CustID: 1, ActorType: 1, ActorID: 2, ActionType: 3, TargetType: 4, TargetID: 5}
 	// logging this should fail because some fields (e.g. requestID aren't specified)
 	err = c.LogAction(a)
 	assert.Error(t, err)
@@ -69,17 +69,17 @@ func TestLogFetchServerClient(t *testing.T) {
 	verifyFetch(t, c, action.ActionFetchRequest{}, []action.Action{})
 
 	// but this error disappears when we pass all values
-	action1 := add(t, c, action.Action{ActorType: 1, ActorID: 2, ActionType: 3, TargetType: 4, TargetID: 5, RequestID: 6, Timestamp: 7})
+	action1 := add(t, c, action.Action{CustID: 1, ActorType: 1, ActorID: 2, ActionType: 3, TargetType: 4, TargetID: 5, RequestID: 6, Timestamp: 7})
 	// and this action should show up in requests
 	verifyFetch(t, c, action.ActionFetchRequest{}, []action.Action{action1})
 
 	// add a couple of actions
 	action2 := add(t, c, action.Action{
-		ActorType: 11, ActorID: 12, ActionType: 13, TargetType: 14, TargetID: 15, RequestID: 16, Timestamp: 17},
+		CustID: 1, ActorType: 11, ActorID: 12, ActionType: 13, TargetType: 14, TargetID: 15, RequestID: 16, Timestamp: 17},
 	)
 	verifyFetch(t, c, action.ActionFetchRequest{}, []action.Action{action1, action2})
 	action3 := add(t, c, action.Action{
-		ActorType: 22, ActorID: 23, ActionType: 23, TargetType: 24, TargetID: 25, RequestID: 26, Timestamp: 27},
+		CustID: 1, ActorType: 22, ActorID: 23, ActionType: 23, TargetType: 24, TargetID: 25, RequestID: 26, Timestamp: 27},
 	)
 	verifyFetch(t, c, action.ActionFetchRequest{}, []action.Action{action1, action2, action3})
 }
