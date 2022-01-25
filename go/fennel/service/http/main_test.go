@@ -26,7 +26,7 @@ func verifyFetch(t *testing.T, c *client.Client, request action.ActionFetchReque
 
 func equals(t *testing.T, expected []action.Action, found []action.Action) {
 	// we don't test equality of found/expected directly
-	// action_ids aren't SetProfile properly in expected yet
+	// action_ids aren't set properly in expected yet
 	// instead, we use Equals method on Action struct and tell it to ignore IDs
 	assert.Equal(t, len(expected), len(found))
 	for i, e := range expected {
@@ -57,7 +57,7 @@ func TestLogFetchServerClient(t *testing.T) {
 	c, err := client.NewClient(server.URL, server.Client())
 	assert.NoError(t, err)
 
-	// in the beginning, with no value SetProfile, we GetProfile []actions but with no error
+	// in the beginning, with no value set, we get []actions but with no error
 	verifyFetch(t, c, action.ActionFetchRequest{}, []action.Action{})
 
 	// now we add a couple of actions
@@ -95,21 +95,28 @@ func TestProfileServerClient(t *testing.T) {
 	c, err := client.NewClient(server.URL, server.Client())
 	assert.NoError(t, err)
 
+	// Track profiles that were set to test multi-get
+	profileList := make([]profilelib.ProfileItem, 0)
+	pfr := profilelib.ProfileFetchRequest{}
+
 	// in the beginning, with no value SetProfile, we GetProfile nil pointer back but with no error
 	checkGetSet(t, c, true, 1, 1, 1, 0, "age", value.Value(nil))
 
 	var expected value.Value = value.List([]value.Value{value.Int(1), value.Bool(false), value.Nil})
-	checkGetSet(t, c, false, 1, 1, 1, 1, "age", expected)
+	profileList = append(profileList, checkGetSet(t, c, false, 1, 1, 1, 1, "age", expected))
+	checkGetProfiles(t, c, pfr, profileList)
 
 	// we can also GetProfile it without using the specific version number
 	checkGetSet(t, c, true, 1, 1, 1, 0, "age", expected)
 
 	// SetProfile few more key/value pairs and verify it works
-	checkGetSet(t, c, false, 1, 1, 1, 2, "age", value.Nil)
-	checkGetSet(t, c, false, 1, 1, 3, 2, "age", value.Int(1))
+	profileList = append(profileList, checkGetSet(t, c, false, 1, 1, 1, 2, "age", value.Nil))
+	checkGetProfiles(t, c, pfr, profileList)
+	profileList = append(profileList, checkGetSet(t, c, false, 1, 1, 3, 2, "age", value.Int(1)))
+	checkGetProfiles(t, c, pfr, profileList)
 	checkGetSet(t, c, true, 1, 1, 1, 2, "age", value.Nil)
 	checkGetSet(t, c, true, 1, 1, 1, 0, "age", value.Nil)
-	checkGetSet(t, c, false, 1, 10, 3131, 0, "summary", value.Int(1))
+	profileList = append(profileList, checkGetSet(t, c, false, 1, 10, 3131, 0, "summary", value.Int(1)))
 }
 
 func TestCountRateServerClient(t *testing.T) {
@@ -200,7 +207,7 @@ func TestQuery(t *testing.T) {
 }
 
 func checkGetSet(t *testing.T, c *client.Client, get bool, custid uint64, otype uint32, oid uint64, version uint64,
-	key string, val value.Value) {
+	key string, val value.Value) profilelib.ProfileItem {
 	if get {
 		req := profilelib.NewProfileItem(custid, otype, oid, key, version)
 		found, err := c.GetProfile(&req)
@@ -210,8 +217,10 @@ func checkGetSet(t *testing.T, c *client.Client, get bool, custid uint64, otype 
 		} else {
 			assert.Equal(t, val, *found)
 		}
+		return req
 	} else {
-		err := c.SetProfile(&profilelib.ProfileItem{CustID: ftypes.CustID(custid), OType: otype, Oid: oid, Key: key, Version: version, Value: val})
+		profile := profilelib.ProfileItem{CustID: ftypes.CustID(custid), OType: otype, Oid: oid, Key: key, Version: version, Value: val}
+		err := c.SetProfile(&profile)
 		assert.NoError(t, err)
 		request := profilelib.NewProfileItem(custid, otype, oid, key, version)
 		found, err := c.GetProfile(&request)
@@ -221,5 +230,16 @@ func checkGetSet(t *testing.T, c *client.Client, get bool, custid uint64, otype 
 		} else {
 			assert.Equal(t, val, *found)
 		}
+		return profile
+	}
+}
+
+func checkGetProfiles(t *testing.T, c *client.Client, request profilelib.ProfileFetchRequest, expected []profilelib.ProfileItem) {
+	found, err := c.GetProfiles(request)
+	assert.NoError(t, err)
+
+	assert.Equal(t, len(expected), len(found))
+	for i := range expected {
+		assert.Equal(t, expected[i], found[i])
 	}
 }

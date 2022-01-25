@@ -6,6 +6,7 @@ import (
 	"fennel/engine/ast"
 	"fennel/lib/action"
 	"fennel/lib/counter"
+	"fennel/lib/profile"
 	profileLib "fennel/lib/profile"
 	"fennel/lib/value"
 	"fmt"
@@ -60,6 +61,11 @@ func (c Client) getProfileURL() string {
 }
 func (c Client) setProfileURL() string {
 	c.url.Path = "/set"
+	return fmt.Sprintf(c.url.String())
+}
+
+func (c Client) getProfilesURL() string {
+	c.url.Path = "/get_profiles"
 	return fmt.Sprintf(c.url.String())
 }
 
@@ -119,6 +125,7 @@ func (c *Client) GetProfile(request *profileLib.ProfileItem) (*value.Value, erro
 		return &v, nil
 	}
 }
+
 func (c *Client) Query(request ast.Ast) (value.Value, error) {
 	// convert the request to proto version
 	protoReq, err := ast.ToProtoAst(request)
@@ -158,6 +165,25 @@ func (c *Client) SetProfile(req *profileLib.ProfileItem) error {
 		return err
 	}
 	return nil
+}
+
+func (c *Client) GetProfiles(request profile.ProfileFetchRequest) ([]profile.ProfileItem, error) {
+	protoRequest := profile.ToProtoProfileFetchRequest(&request)
+	response, err := c.post(&protoRequest, c.getProfilesURL())
+	if err != nil {
+		return nil, err
+	}
+
+	var profileList profile.ProtoProfileList
+	err = proto.Unmarshal(response, &profileList)
+	if err != nil {
+		return nil, fmt.Errorf("unmarshal error: %v", err)
+	}
+	profiles, err := profile.FromProtoProfileList(&profileList)
+	if err != nil {
+		return nil, err
+	}
+	return profiles, nil
 }
 
 func (c *Client) FetchActions(request action.ActionFetchRequest) ([]action.Action, error) {
