@@ -61,7 +61,7 @@ func GetProfiles(this instance.Instance, request profilelib.ProfileFetchRequest)
 
 	profiles := make([]profilelib.ProfileItem, 0)
 	for _, prs := range profilesSer {
-		pr, err := profilelib.ToProfileItem(&prs)
+		pr, err := prs.ToProfileItem()
 		if err != nil {
 			return nil, err
 		}

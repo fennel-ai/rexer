@@ -28,6 +28,12 @@ func NewProfileItem(custid uint64, otype uint32, oid uint64, k string, version u
 	}
 }
 
+func NewProfileItemSer(custid uint64, otype uint32, oid uint64, key string, version uint64, val []byte) ProfileItemSer {
+	return ProfileItemSer{
+		ftypes.CustID(custid), otype, oid, key, version, val,
+	}
+}
+
 func FromProtoProfileItem(ppr *ProtoProfileItem) (ProfileItem, error) {
 	v, err := value.FromProtoValue(ppr.Value)
 	if err != nil {
@@ -67,7 +73,7 @@ type ProfileItemSer struct {
 }
 
 // Converts a ProfileItemSer to ProfileItem
-func ToProfileItem(ser *ProfileItemSer) (*ProfileItem, error) {
+func (ser *ProfileItemSer) ToProfileItem() (*ProfileItem, error) {
 	pr := NewProfileItem(uint64(ser.CustID), ser.OType, ser.Oid, ser.Key, ser.Version)
 
 	var pval value.PValue
