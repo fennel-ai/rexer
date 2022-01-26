@@ -35,3 +35,17 @@ func Retrieve(instance instance.Instance, aggregateType ftypes.AggType, name fty
 	}
 	return ret, nil
 }
+
+func RetrieveAll(instance instance.Instance, aggtype ftypes.AggType) ([]aggregate.AggregateSer, error) {
+	ret := make([]aggregate.AggregateSer, 0)
+	err := instance.DB.Select(&ret, `
+			SELECT * FROM aggregate_config 
+			WHERE cust_id = ? 
+			  AND aggregate_type = ? 
+			  `, instance.CustID, aggtype,
+	)
+	if err != nil {
+		return nil, err
+	}
+	return ret, nil
+}

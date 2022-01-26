@@ -1,6 +1,7 @@
 package aggregate
 
 import (
+	"fmt"
 	"testing"
 	"time"
 
@@ -65,6 +66,29 @@ func TestRetrieveStore(t *testing.T) {
 	assert.NoError(t, err)
 	err = Store(instance, agg.Type, agg.Name, querySer2, agg.Timestamp+1, agg.OptionSer)
 	assert.Error(t, err)
+}
+
+func TestRetrieveAll(t *testing.T) {
+	instance, err := test.DefaultInstance()
+	assert.NoError(t, err)
+
+	agg := aggregate.AggregateSer{
+		CustID:    instance.CustID,
+		Type:      "counter",
+		Timestamp: 1,
+		OptionSer: []byte("some options"),
+	}
+	expected := make([]aggregate.AggregateSer, 0)
+	for i := 0; i < 5; i++ {
+		found, err := RetrieveAll(instance, agg.Type)
+		assert.NoError(t, err)
+		assert.Equal(t, expected, found)
+		agg.Name = ftypes.AggName(fmt.Sprintf("name:%d", i))
+		agg.QuerySer = []byte(fmt.Sprintf("some query: %d", i))
+		err = Store(instance, agg.Type, agg.Name, agg.QuerySer, agg.Timestamp, agg.OptionSer)
+		assert.NoError(t, err)
+		expected = append(expected, agg)
+	}
 }
 
 func TestLongStrings(t *testing.T) {
