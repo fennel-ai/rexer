@@ -29,7 +29,7 @@ pkgs.mkShell {
 
     # Packages for deployment
     pkgs.pulumi-bin
-    pkgs.aws
+    pkgs.awscli
 
     pkgs.docker
 
