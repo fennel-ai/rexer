@@ -49,7 +49,7 @@ func init() {
 				zkey varchar(256) not null,
 				version BIGINT not null,
 				value blob not null,
-				INDEX (cust_id, version)
+				PRIMARY KEY(cust_id, otype, oid, zkey, version)
 		  );`,
 		6: `CREATE TABLE IF NOT EXISTS counter_bucket (
 				cust_id BIGINT NOT NULL,
