@@ -31,7 +31,10 @@ func init() {
 				action_type INT NOT NULL,
 				action_value BIGINT NOT NULL,
 				timestamp BIGINT NOT NULL,
-				request_id BIGINT not null
+				request_id BIGINT not null,
+				INDEX (cust_id, action_id),
+				INDEX (cust_id, action_value),
+				INDEX (cust_id, timestamp)
 		  );`,
 		4: `CREATE TABLE IF NOT EXISTS checkpoint (
 				cust_id BIGINT NOT NULL,
@@ -45,7 +48,8 @@ func init() {
 				oid BIGINT not null,
 				zkey varchar(256) not null,
 				version BIGINT not null,
-				value blob not null
+				value blob not null,
+				INDEX (cust_id, version)
 		  );`,
 		6: `CREATE TABLE IF NOT EXISTS counter_bucket (
 				cust_id BIGINT NOT NULL,
@@ -54,7 +58,7 @@ func init() {
 				idx BIGINT NOT NULL,
 				count BIGINT NOT NULL DEFAULT 0,
 				zkey varchar(256) NOT NULL,
-				PRIMARY KEY(cust_id, counter_type, window_type, idx, zkey)
+				PRIMARY KEY(cust_id, counter_type, window_type, zkey, idx),
 		  );`,
 		7: `CREATE TABLE IF NOT EXISTS query_ast (
 				query_id BIGINT NOT NULL PRIMARY KEY AUTO_INCREMENT,
