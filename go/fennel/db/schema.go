@@ -58,7 +58,7 @@ func init() {
 				idx BIGINT NOT NULL,
 				count BIGINT NOT NULL DEFAULT 0,
 				zkey varchar(256) NOT NULL,
-				PRIMARY KEY(cust_id, counter_type, window_type, zkey, idx),
+				PRIMARY KEY(cust_id, counter_type, window_type, zkey, idx)
 		  );`,
 		7: `CREATE TABLE IF NOT EXISTS query_ast (
 				query_id BIGINT NOT NULL PRIMARY KEY AUTO_INCREMENT,
