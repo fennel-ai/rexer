@@ -42,14 +42,25 @@ func Retrieve(instance instance.Instance, aggtype ftypes.AggType, aggname ftypes
 	if err != nil {
 		return empty, err
 	}
-	var ret aggregate.Aggregate
-	ret.Name = aggser.Name
-	ret.Type = aggser.Type
-	if err = ast.Unmarshal(aggser.QuerySer, &ret.Query); err != nil {
-		return empty, err
+	return aggregate.FromAggregateSer(aggser)
+}
+
+// RetrieveAll returns all aggregates of given aggtype
+func RetrieveAll(instance instance.Instance, aggtype ftypes.AggType) ([]aggregate.Aggregate, error) {
+	if !aggregate.IsValid(aggtype) {
+		return nil, fmt.Errorf("invalid aggregate type: %v", aggtype)
 	}
-	if err = proto.Unmarshal(aggser.OptionSer, &ret.Options); err != nil {
-		return empty, err
+
+	retSer, err := modelAgg.RetrieveAll(instance, aggtype)
+	if err != nil {
+		return nil, err
+	}
+	ret := make([]aggregate.Aggregate, len(retSer))
+	for i, ser := range retSer {
+		ret[i], err = aggregate.FromAggregateSer(ser)
+		if err != nil {
+			return nil, err
+		}
 	}
 	return ret, nil
 }

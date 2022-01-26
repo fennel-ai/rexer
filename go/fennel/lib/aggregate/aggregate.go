@@ -3,6 +3,7 @@ package aggregate
 import (
 	"fennel/engine/ast"
 	"fennel/lib/ftypes"
+	"google.golang.org/protobuf/proto"
 	"strings"
 )
 
@@ -67,6 +68,28 @@ type AggregateSer struct {
 	QuerySer  []byte           `db:"query_ser"`
 	Timestamp ftypes.Timestamp `db:"timestamp"`
 	OptionSer []byte           `db:"options_ser"`
+}
+
+func (a Aggregate) Equals(b Aggregate) bool {
+	if a.CustID != b.CustID || a.Type != b.Type || a.Name != b.Name || a.Timestamp != b.Timestamp {
+		return false
+	}
+	return a.Query == b.Query && proto.Equal(&a.Options, &b.Options)
+}
+
+func FromAggregateSer(ser AggregateSer) (Aggregate, error) {
+	var agg Aggregate
+	agg.CustID = ser.CustID
+	agg.Timestamp = ser.Timestamp
+	agg.Name = ser.Name
+	agg.Type = ser.Type
+	if err := ast.Unmarshal(ser.QuerySer, &agg.Query); err != nil {
+		return Aggregate{}, err
+	}
+	if err := proto.Unmarshal(ser.OptionSer, &agg.Options); err != nil {
+		return Aggregate{}, err
+	}
+	return agg, nil
 }
 
 type notFound int
