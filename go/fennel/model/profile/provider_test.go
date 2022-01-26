@@ -19,20 +19,20 @@ func testProviderBasic(t *testing.T, p provider) {
 	// initially before setting, value isn't there so we get nil back
 	// and calling get on a row that doesn't exist is not an error
 	profile1 := profile.NewProfileItemSer(1, 1, 1232, "summary", 1, expected)
-	verifyGet(t, p, this, profile1, []byte(nil))
+	checkGet(t, p, this, profile1, []byte(nil))
 
 	// now set the value
-	verifySet(t, p, this, profile1, expected)
+	checkSet(t, p, this, profile1, expected)
 
 	// now get the same value back
-	verifyGet(t, p, this, profile1, expected)
+	checkGet(t, p, this, profile1, expected)
 
 	// and get it again to verify nothing changes
-	verifyGet(t, p, this, profile1, expected)
+	checkGet(t, p, this, profile1, expected)
 
 	// test getProfiles now
 	request := profile.ProfileFetchRequest{}
-	verifyMultiGet(t, this, request, []profile.ProfileItemSer{profile1})
+	checkMultiGet(t, this, request, []profile.ProfileItemSer{profile1})
 }
 
 func testProviderVersion(t *testing.T, p provider) {
@@ -43,7 +43,7 @@ func testProviderVersion(t *testing.T, p provider) {
 	request := profile.ProfileFetchRequest{}
 
 	// initially table is empty
-	verifyMultiGet(t, this, request, profiles)
+	checkMultiGet(t, this, request, profiles)
 
 	val1 := value.Int(2)
 	expected1, _ := value.Marshal(val1)
@@ -54,15 +54,15 @@ func testProviderVersion(t *testing.T, p provider) {
 
 	// but it works with a valid version
 	profiles = append(profiles, profile.NewProfileItemSer(1, 1, 1232, "summary", 1, expected1))
-	verifySet(t, p, this, profiles[0], expected1)
-	verifyMultiGet(t, this, request, profiles)
+	checkSet(t, p, this, profiles[0], expected1)
+	checkMultiGet(t, this, request, profiles)
 
 	// and can set another version on the same value
 	val2 := value.String("hello")
 	expected2, _ := value.Marshal(val2)
 	profiles = append(profiles, profile.NewProfileItemSer(1, 1, 1232, "summary", 2, expected2))
-	verifySet(t, p, this, profiles[1], expected2)
-	verifyMultiGet(t, this, request, profiles)
+	checkSet(t, p, this, profiles[1], expected2)
+	checkMultiGet(t, this, request, profiles)
 
 	// versions can also be non-continuous
 	val3 := value.Dict(map[string]value.Value{
@@ -71,13 +71,13 @@ func testProviderVersion(t *testing.T, p provider) {
 	})
 	expected3, _ := value.Marshal(val3)
 	profiles = append(profiles, profile.NewProfileItemSer(1, 1, 1232, "summary", 10, expected3))
-	verifySet(t, p, this, profiles[2], expected3)
-	verifyMultiGet(t, this, request, profiles)
+	checkSet(t, p, this, profiles[2], expected3)
+	checkMultiGet(t, this, request, profiles)
 
 	// we can get any of these versions back
-	verifyGet(t, p, this, profiles[0], expected1)
-	verifyGet(t, p, this, profiles[1], expected2)
-	verifyGet(t, p, this, profiles[2], expected3)
+	checkGet(t, p, this, profiles[0], expected1)
+	checkGet(t, p, this, profiles[1], expected2)
+	checkGet(t, p, this, profiles[2], expected3)
 
 	// if we ask for version 0, by default get the highest version
 	found, err := p.get(this, 1, 1, 1232, "summary", 0)
@@ -90,19 +90,19 @@ func testProviderVersion(t *testing.T, p provider) {
 	assert.Equal(t, []byte(nil), found)
 }
 
-func verifySet(t *testing.T, p provider, this instance.Instance, pi profile.ProfileItemSer, valueSer []byte) {
+func checkSet(t *testing.T, p provider, this instance.Instance, pi profile.ProfileItemSer, valueSer []byte) {
 	err := p.set(this, pi.CustID, pi.OType, pi.Oid, pi.Key, pi.Version, valueSer)
 	assert.NoError(t, err)
 }
 
-func verifyGet(t *testing.T, p provider, this instance.Instance, pi profile.ProfileItemSer, expected []byte) {
+func checkGet(t *testing.T, p provider, this instance.Instance, pi profile.ProfileItemSer, expected []byte) {
 	found, err := p.get(this, pi.CustID, pi.OType, pi.Oid, pi.Key, pi.Version)
 	assert.NoError(t, err)
 	assert.Equal(t, expected, found)
 }
 
-func verifyMultiGet(t *testing.T, this instance.Instance, request profile.ProfileFetchRequest, expected []profile.ProfileItemSer) {
+func checkMultiGet(t *testing.T, this instance.Instance, request profile.ProfileFetchRequest, expected []profile.ProfileItemSer) {
 	found, err := GetProfiles(this, request)
 	assert.NoError(t, err)
-	assert.Equal(t, expected, found)
+	assert.ElementsMatch(t, expected, found)
 }

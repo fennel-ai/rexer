@@ -100,7 +100,7 @@ func TestProfileServerClient(t *testing.T) {
 	profileList := make([]profilelib.ProfileItem, 0)
 	pfr := profilelib.ProfileFetchRequest{}
 
-	// in the beginning, with no value SetProfile, we GetProfile nil pointer back but with no error
+	// in the beginning, with no value set, we set nil pointer back but with no error
 	checkGetSet(t, c, true, 1, 1, 1, 0, "age", value.Value(nil))
 
 	var expected value.Value = value.List([]value.Value{value.Int(1), value.Bool(false), value.Nil})
@@ -117,7 +117,7 @@ func TestProfileServerClient(t *testing.T) {
 	checkGetProfiles(t, c, pfr, profileList)
 	checkGetSet(t, c, true, 1, 1, 1, 2, "age", value.Nil)
 	checkGetSet(t, c, true, 1, 1, 1, 0, "age", value.Nil)
-	profileList = append(profileList, checkGetSet(t, c, false, 1, 10, 3131, 0, "summary", value.Int(1)))
+	checkGetSet(t, c, false, 1, 10, 3131, 0, "summary", value.Int(1))
 }
 
 func TestCountRateServerClient(t *testing.T) {
