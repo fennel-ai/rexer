@@ -1,0 +1,16 @@
+version: 2.1
+
+jobs:
+  test:
+    # fix docker image
+    docker:
+      - image: cimg/python:3.10.2
+    steps:
+      - checkout
+      - run:
+          ./testall.py
+
+workflows:
+  empty_workflow:
+    jobs:
+      - test
