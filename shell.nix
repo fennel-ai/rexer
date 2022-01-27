@@ -21,7 +21,10 @@ pkgs.mkShell {
     pkgs.pkg-config
 
     # Packages for python development
-    pkgs.python310
+    # We install python 3.9 instead of 3.10 because of a known
+    # compatibility issue between the nix version of poetry (1.1.12)
+    # and python 3.10 (https://github.com/python-poetry/poetry/issues/4210)
+    pkgs.python39Full
     pkgs.poetry
 
     # Packages for javascript development
