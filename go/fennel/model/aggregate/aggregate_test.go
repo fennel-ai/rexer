@@ -24,15 +24,13 @@ func TestRetrieveStore(t *testing.T) {
 	assert.NoError(t, err)
 
 	options := aggregate.AggOptions{
-		WindowType: aggregate.WindowType_LAST,
-		Duration:   uint64(time.Hour * 24 * 7),
-		Retention:  0,
+		Duration: uint64(time.Hour * 24 * 7),
 	}
 	optionSer, err := proto.Marshal(&options)
 	assert.NoError(t, err)
 	agg := aggregate.AggregateSer{
 		CustID:    instance.CustID,
-		Type:      "counter",
+		Type:      "rolling_counter",
 		Name:      "test_counter",
 		QuerySer:  querySer,
 		Timestamp: 1,
@@ -74,7 +72,7 @@ func TestRetrieveAll(t *testing.T) {
 
 	agg := aggregate.AggregateSer{
 		CustID:    instance.CustID,
-		Type:      "counter",
+		Type:      "rolling_counter",
 		Timestamp: 1,
 		OptionSer: []byte("some options"),
 	}
@@ -94,15 +92,16 @@ func TestRetrieveAll(t *testing.T) {
 func TestLongStrings(t *testing.T) {
 	instance, err := test.DefaultInstance()
 	assert.NoError(t, err)
+	aggtype := ftypes.AggType("rolling_counter")
 
 	// can not insert normal sized data
-	err = Store(instance, "counter", "my_counter", []byte("query"), 1, []byte("some options"))
+	err = Store(instance, aggtype, "my_counter", []byte("query"), 1, []byte("some options"))
 	assert.NoError(t, err)
 
 	// but can not if either aggtype or name is longer than 255 chars
 	err = Store(instance, ftypes.AggType(utils.RandString(256)), "my_counter", []byte("query"), 1, []byte("some options"))
 	assert.Error(t, err)
-	err = Store(instance, "counter", ftypes.AggName(utils.RandString(256)), []byte("query"), 1, []byte("some options"))
+	err = Store(instance, aggtype, ftypes.AggName(utils.RandString(256)), []byte("query"), 1, []byte("some options"))
 	assert.Error(t, err)
 
 	// but works if it is upto 255 chars

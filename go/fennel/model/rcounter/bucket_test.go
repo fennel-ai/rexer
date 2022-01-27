@@ -40,16 +40,8 @@ func TestBucketizeTimeseries(t *testing.T) {
 	assert.Error(t, err)
 
 	found, err = BucketizeTimeseries(key, start, end, ftypes.Window_MINUTE)
-	assert.NoError(t, err)
-	assert.Len(t, found, 60*24*2)
-	for i := 0; i < 60*24*2; i++ {
-		assert.Contains(t, found, Bucket{
-			Key:    key,
-			Window: ftypes.Window_MINUTE,
-			Index:  uint64(61 + i),
-			Count:  0,
-		})
-	}
+	assert.Error(t, err)
+
 	found, err = BucketizeTimeseries(key, start, end, ftypes.Window_HOUR)
 	assert.NoError(t, err)
 	assert.Len(t, found, 47)

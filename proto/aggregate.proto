@@ -3,6 +3,7 @@ syntax = "proto3";
 option go_package = "fennel/lib/aggregate";
 
 import "ast.proto";
+import "ftypes.proto";
 
 message ProtoAggregate {
   uint64 cust_id = 1;
@@ -14,16 +15,9 @@ message ProtoAggregate {
 }
 
 message AggOptions {
-  WindowType window_type = 1;
-  uint64 duration = 2;
-  uint64 retention = 3;
-  uint64 limit = 4;
-}
-
-enum WindowType {
-  NULL = 0;
-  LAST = 1;
-  TIMESERIES = 2;
+  uint64 duration = 1;
+  Window window = 2;
+  uint64 limit = 3;
 }
 
 message AggRequest {

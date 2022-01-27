@@ -218,35 +218,35 @@ func TestStoreRetrieveAggregate(t *testing.T) {
 	assert.NoError(t, err)
 
 	// initially can not retrieve anything
-	_, err = c.RetrieveAggregate("counter", "mycounter")
+	_, err = c.RetrieveAggregate("rolling_counter", "mycounter")
 	assert.ErrorIs(t, err, aggregate.ErrNotFound)
 
 	// store a couple of aggregates
 	agg := aggregate.Aggregate{
-		Type:  "counter",
-		Name:  "mycounter",
-		Query: ast.MakeInt(1),
+		CustID: instance.CustID,
+		Type:   "rolling_counter",
+		Name:   "mycounter",
+		Query:  ast.MakeInt(1),
 		Options: aggregate.AggOptions{
-			WindowType: aggregate.WindowType_LAST,
-			Duration:   3600 * 24,
-			Retention:  3600 * 24 * 7,
+			Duration: 3600 * 24,
 		},
+		Timestamp: 123,
 	}
 	err = c.StoreAggregate(agg)
 	assert.NoError(t, err)
-	found, err := c.RetrieveAggregate("counter", "mycounter")
+	found, err := c.RetrieveAggregate("rolling_counter", "mycounter")
 	assert.NoError(t, err)
 	assert.Equal(t, agg, found)
 	// trying to rewrite the same agg type/name throws an error even if query/options are different
 	agg2 := aggregate.Aggregate{
-		Type:  "counter",
-		Name:  "mycounter",
-		Query: ast.MakeDouble(3.4),
+		CustID: instance.CustID,
+		Type:   "rolling_counter",
+		Name:   "mycounter",
+		Query:  ast.MakeDouble(3.4),
 		Options: aggregate.AggOptions{
-			WindowType: aggregate.WindowType_TIMESERIES,
-			Duration:   3600 * 24,
-			Retention:  3600 * 24 * 7,
+			Duration: 3600 * 24 * 2,
 		},
+		Timestamp: 123,
 	}
 	err = c.StoreAggregate(agg2)
 	assert.Error(t, err)
@@ -255,7 +255,7 @@ func TestStoreRetrieveAggregate(t *testing.T) {
 	agg2.Name = "another counter"
 	err = c.StoreAggregate(agg2)
 	assert.NoError(t, err)
-	found, err = c.RetrieveAggregate("counter", "another counter")
+	found, err = c.RetrieveAggregate("rolling_counter", "another counter")
 	assert.NoError(t, err)
 	assert.Equal(t, agg2, found)
 

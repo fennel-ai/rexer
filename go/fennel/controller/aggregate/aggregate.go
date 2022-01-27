@@ -13,8 +13,8 @@ import (
 )
 
 func Store(instance instance.Instance, agg aggregate.Aggregate) error {
-	if !aggregate.IsValid(agg.Type) {
-		return fmt.Errorf("invalid aggregate type: %v", agg.Type)
+	if err := agg.Validate(); err != nil {
+		return err
 	}
 
 	querySer, err := ast.Marshal(agg.Query)

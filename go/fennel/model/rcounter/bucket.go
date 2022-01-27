@@ -31,8 +31,8 @@ func BucketizeDuration(key string, start ftypes.Timestamp, end ftypes.Timestamp)
 }
 
 func BucketizeTimeseries(key string, start, end ftypes.Timestamp, window ftypes.Window) ([]Bucket, error) {
-	if window != ftypes.Window_HOUR && window != ftypes.Window_MINUTE && window != ftypes.Window_DAY {
-		return nil, fmt.Errorf("unsupported window type - only minutes, hours, days are supported")
+	if window != ftypes.Window_HOUR && window != ftypes.Window_DAY {
+		return nil, fmt.Errorf("unsupported window type - only hours & days are supported")
 	}
 	ret, _, _ := bucketizeTimeseries(key, start, end, window)
 	return ret, nil

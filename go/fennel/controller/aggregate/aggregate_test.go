@@ -20,9 +20,11 @@ func TestRetrieveAll(t *testing.T) {
 
 	agg := aggregate.Aggregate{
 		CustID:    instance.CustID,
-		Type:      "counter",
+		Type:      "rolling_counter",
 		Timestamp: 1,
-		Options:   aggregate.AggOptions{},
+		Options: aggregate.AggOptions{
+			Duration: 3600 * 24,
+		},
 	}
 	// initially retrieve all is empty
 	found, err := RetrieveAll(instance, agg.Type)

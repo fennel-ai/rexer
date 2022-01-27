@@ -3,12 +3,14 @@ package aggregate
 import (
 	"fennel/engine/ast"
 	"fennel/lib/ftypes"
+	"fmt"
 	"google.golang.org/protobuf/proto"
 	"strings"
 )
 
 var ValidTypes = []ftypes.AggType{
-	"counter",
+	"rolling_counter",
+	"timeseries_counter",
 	"stream",
 }
 
@@ -29,6 +31,38 @@ func IsValid(s ftypes.AggType) bool {
 		}
 	}
 	return false
+}
+
+func (agg Aggregate) Validate() error {
+	if !IsValid(agg.Type) {
+		return fmt.Errorf("invalid aggregate type, valid types are: %v", ValidTypes)
+	}
+	if len(agg.Name) == 0 {
+		return fmt.Errorf("aggregate name can not be of zero length")
+	}
+	options := agg.Options
+	switch strings.ToLower(string(agg.Type)) {
+	case "rolling_counter":
+		if options.Duration == 0 {
+			return fmt.Errorf("duration can not be zero for rolling counters")
+		}
+		if options.Window != 0 || options.Limit != 0 {
+			return fmt.Errorf("retention, window and limit should all be zero for rolling counters")
+		}
+	case "timeseries_counter":
+		if options.Window != ftypes.Window_HOUR && options.Window != ftypes.Window_DAY {
+			return fmt.Errorf("valid windows for time series are 'HOUR' or 'DAY' but got: '%v' instead", options.Window)
+		}
+		if options.Limit == 0 {
+			return fmt.Errorf("limit can not be zero for time series counters")
+		}
+		if options.Duration != 0 {
+			return fmt.Errorf("duration & limit are not relevant for time series and should be set to zero")
+		}
+	default:
+		return fmt.Errorf("unsupported aggregation type: %v", agg.Type)
+	}
+	return nil
 }
 
 func ToProtoAggregate(agg Aggregate) (ProtoAggregate, error) {
