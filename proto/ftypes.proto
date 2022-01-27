@@ -11,4 +11,5 @@ enum Window {
   QUARTER = 5;
   YEAR = 6;
   FOREVER = 7;
+  MINUTE = 8;
 }
