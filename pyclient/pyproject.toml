@@ -10,6 +10,7 @@ munch = "^2.5.0"
 protobuf = "^3.19.1"
 requests = "^2.27.1"
 httpretty = "^1.1.4"
+Flask = "^2.0.2"
 
 [tool.poetry.dev-dependencies]
 
