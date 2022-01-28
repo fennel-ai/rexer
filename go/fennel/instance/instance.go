@@ -4,6 +4,7 @@ import (
 	"fennel/db"
 	"fennel/kafka"
 	"fennel/lib/cache"
+	"fennel/lib/clock"
 	"fennel/lib/ftypes"
 	"fennel/redis"
 	"flag"
@@ -58,4 +59,5 @@ type Instance struct {
 	Cache          cache.Cache
 	ActionProducer kafka.FProducer
 	ActionConsumer kafka.FConsumer
+	Clock          clock.Clock
 }

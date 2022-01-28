@@ -1,6 +1,7 @@
 package test
 
 import (
+	"fennel/lib/clock"
 	"fmt"
 	"math/rand"
 
@@ -34,5 +35,6 @@ func DefaultInstance() (instance.Instance, error) {
 		Type:           instance.TEST,
 		ActionConsumer: kConsumer,
 		ActionProducer: kProducer,
+		Clock:          clock.Unix{},
 	}, err
 }
