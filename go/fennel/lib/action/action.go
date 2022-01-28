@@ -2,6 +2,7 @@ package action
 
 import (
 	"fennel/lib/ftypes"
+	"fennel/lib/value"
 	"fmt"
 )
 
@@ -188,4 +189,32 @@ func (a Action) Equals(other Action, ignoreID bool) bool {
 		return false
 	}
 	return true
+}
+
+func (a Action) ToValueDict() value.Dict {
+	return value.Dict{
+		"action_id":    value.Int(a.ActionID),
+		"actor_id":     value.Int(a.ActorID),
+		"actor_type":   value.String(a.ActorType),
+		"target_type":  value.String(a.TargetType),
+		"target_id":    value.Int(a.TargetID),
+		"action_type":  value.String(a.ActionType),
+		"action_value": value.Int(a.ActionValue),
+		"timestamp":    value.Int(a.Timestamp),
+		"request_id":   value.Int(a.RequestID),
+	}
+}
+
+// ToTable takes a list of actions and arranges that in a value.Table if possible,
+// else returns errors
+func ToTable(actions []Action) (value.Table, error) {
+	table := value.NewTable()
+	for i, _ := range actions {
+		d := actions[i].ToValueDict()
+		err := table.Append(d)
+		if err != nil {
+			return value.Table{}, err
+		}
+	}
+	return table, nil
 }
