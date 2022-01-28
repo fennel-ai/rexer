@@ -6,6 +6,6 @@ import (
 	"fennel/lib/value"
 )
 
-func streamValue(instance instance.Instance, agg aggregate.Aggregate, key string) (value.List, error) {
+func streamValue(instance instance.Instance, agg aggregate.Aggregate, key value.Value) (value.List, error) {
 	panic("not implemented error")
 }

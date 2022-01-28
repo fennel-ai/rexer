@@ -27,9 +27,7 @@ func TestRolling(t *testing.T) {
 			Duration: 3600 * 28,
 		},
 	}
-	oids := value.List{value.Int(1), value.Int(2)}
-	key, err := makeKey(oids)
-	assert.NoError(t, err)
+	key := value.List{value.Int(1), value.Int(2)}
 	assert.NoError(t, Store(instance, agg))
 	table := value.NewTable()
 	// create an event every minute for 2 days
@@ -37,7 +35,7 @@ func TestRolling(t *testing.T) {
 		ts := ftypes.Timestamp(start + i*60 + 30)
 		row := value.Dict{
 			"timestamp": value.Int(ts),
-			"key":       oids,
+			"key":       key,
 		}
 		assert.NoError(t, table.Append(row))
 	}
@@ -71,16 +69,14 @@ func TestTimeseries(t *testing.T) {
 		},
 	}
 	assert.NoError(t, Store(instance, agg))
-	oids := value.List{value.Int(1), value.Int(2)}
-	key, err := makeKey(oids)
-	assert.NoError(t, err)
+	key := value.List{value.Int(1), value.Int(2)}
 	table := value.NewTable()
 	// create an event every minute for 2 days
 	for i := 0; i < 60*24*2; i++ {
 		ts := ftypes.Timestamp(start + i*60 + 30)
 		row := value.Dict{
 			"timestamp": value.Int(ts),
-			"key":       oids,
+			"key":       key,
 		}
 		assert.NoError(t, table.Append(row))
 	}
@@ -123,13 +119,11 @@ func TestTimeseries(t *testing.T) {
 func TestCounterUpdateInvalid(t *testing.T) {
 	instance, err := test.DefaultInstance()
 	assert.NoError(t, err)
+	// no col for key or timestamp
 	assertInvalid(instance, t, value.Dict{"hi": value.Int(1)}, value.Dict{"hi": value.Int(3)})
+	// no col for key
 	assertInvalid(instance, t, value.Dict{"timestamp": value.Int(1)}, value.Dict{"timestamp": value.Int(3)})
-	assertInvalid(instance, t, value.Dict{"timestamp": value.Int(1), "key": value.Int(1)}, value.Dict{"timestamp": value.Int(3), "key": value.Int(1)})
-	assertInvalid(instance, t,
-		value.Dict{"timestamp": value.Int(1), "key": value.List{value.Bool(false)}},
-		value.Dict{"timestamp": value.Int(3), "key": value.List{value.Bool(true)}},
-	)
+	// timestamp is not int
 	assertInvalid(instance, t,
 		value.Dict{"timestamp": value.Double(1), "key": value.List{value.Int(1)}},
 		value.Dict{"timestamp": value.Double(3), "key": value.List{value.Int(3)}},

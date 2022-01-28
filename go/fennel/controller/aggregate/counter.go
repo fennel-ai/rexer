@@ -7,13 +7,12 @@ import (
 	"fennel/lib/value"
 	"fennel/model/rcounter"
 	"fmt"
-	"strings"
 )
 
-func rollingValue(instance instance.Instance, agg aggregate.Aggregate, key string) (value.Int, error) {
+func rollingValue(instance instance.Instance, agg aggregate.Aggregate, key value.Value) (value.Int, error) {
 	end := ftypes.Timestamp(instance.Clock.Now())
 	start := end - ftypes.Timestamp(agg.Options.Duration)
-	buckets := rcounter.BucketizeDuration(key, start, end)
+	buckets := rcounter.BucketizeDuration(makeKey(key), start, end)
 	counts, err := rcounter.GetMulti(instance, agg.Name, buckets)
 	if err != nil {
 		return value.Int(0), err
@@ -25,7 +24,7 @@ func rollingValue(instance instance.Instance, agg aggregate.Aggregate, key strin
 	return value.Int(total), nil
 }
 
-func timeseriesValue(instance instance.Instance, agg aggregate.Aggregate, key string) (value.List, error) {
+func timeseriesValue(instance instance.Instance, agg aggregate.Aggregate, key value.Value) (value.List, error) {
 	end := ftypes.Timestamp(instance.Clock.Now())
 	var start ftypes.Timestamp
 	switch agg.Options.Window {
@@ -39,7 +38,7 @@ func timeseriesValue(instance instance.Instance, agg aggregate.Aggregate, key st
 	if start < 0 {
 		start = 0
 	}
-	buckets, err := rcounter.BucketizeTimeseries(key, start, end, agg.Options.Window)
+	buckets, err := rcounter.BucketizeTimeseries(makeKey(key), start, end, agg.Options.Window)
 	if err != nil {
 		return value.List{}, err
 	}
@@ -63,8 +62,8 @@ func timeseriesValue(instance instance.Instance, agg aggregate.Aggregate, key st
 func counterUpdate(instance instance.Instance, aggname ftypes.AggName, table value.Table) error {
 	schema := table.Schema()
 	type_, ok := schema["key"]
-	if !ok || type_ != value.Types.List {
-		return fmt.Errorf("query does not create column called 'key' with datatype of 'list'")
+	if !ok {
+		return fmt.Errorf("query does not create column called 'key'")
 	}
 	type_, ok = schema["timestamp"]
 	if !ok || type_ != value.Types.Int {
@@ -73,28 +72,13 @@ func counterUpdate(instance instance.Instance, aggname ftypes.AggName, table val
 	buckets := make([]rcounter.Bucket, 0, table.Len())
 	for _, row := range table.Pull() {
 		ts := row["timestamp"].(value.Int)
-		key, err := makeKey(row["key"])
-		if err != nil {
-			return err
-		}
+		key := makeKey(row["key"])
 		buckets = append(buckets, rcounter.BucketizeMoment(key, ftypes.Timestamp(ts), 1)...)
 	}
 	buckets = rcounter.MergeBuckets(buckets)
 	return rcounter.IncrementMulti(instance, aggname, buckets)
 }
 
-func makeKey(oids value.Value) (string, error) {
-	aslist, ok := oids.(value.List)
-	if !ok {
-		return "", fmt.Errorf("key column does not contain list")
-	}
-	var sb strings.Builder
-	for _, v := range aslist {
-		asint, ok := v.(value.Int)
-		if !ok {
-			return "", fmt.Errorf("key column should contain list of ints, but instead found: '%v'", oids)
-		}
-		sb.WriteString(fmt.Sprintf("%d", int64(asint)))
-	}
-	return sb.String(), nil
+func makeKey(v value.Value) string {
+	return v.String()
 }

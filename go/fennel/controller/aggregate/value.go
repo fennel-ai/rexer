@@ -13,7 +13,7 @@ import (
 	"fmt"
 )
 
-func Value(instance instance.Instance, aggtype ftypes.AggType, name ftypes.AggName, key string) (value.Value, error) {
+func Value(instance instance.Instance, aggtype ftypes.AggType, name ftypes.AggName, key value.Value) (value.Value, error) {
 	agg, err := Retrieve(instance, aggtype, name)
 	if err != nil {
 		return value.Nil, err
@@ -84,7 +84,7 @@ func routeUpdate(instance instance.Instance, aggname ftypes.AggName, aggtype fty
 	}
 }
 
-func routeValue(instance instance.Instance, agg aggregate.Aggregate, key string) (value.Value, error) {
+func routeValue(instance instance.Instance, agg aggregate.Aggregate, key value.Value) (value.Value, error) {
 	switch agg.Type {
 	case "rolling_counter":
 		return rollingValue(instance, agg, key)
