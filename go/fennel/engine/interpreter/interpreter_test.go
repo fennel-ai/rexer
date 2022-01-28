@@ -293,37 +293,35 @@ func TestInterpreter_VisitOpcall2(t *testing.T) {
 	assert.NoError(t, base.Append(row3))
 	i := NewInterpreter()
 	i.SetVar("table", base)
-	query := ast.OpCall{
-		Operand: ast.OpCall{
-			Operand:   ast.Var{Name: "table"},
-			Namespace: "std",
-			Name:      "filter",
-			Kwargs: ast.Dict{Values: map[string]ast.Ast{
-				"where": ast.Binary{
-					Left:  ast.Lookup{On: ast.At{}, Property: "hi"},
-					Op:    ">=",
-					Right: ast.MakeInt(2),
-				},
-			}},
-		},
-		Namespace: "std",
-		Name:      "addColumn",
-		Kwargs: ast.Dict{Values: map[string]ast.Ast{
-			"name": ast.MakeString("key"),
-			"value": ast.List{Values: []ast.Ast{ast.Lookup{
-				On:       ast.At{},
-				Property: "bye",
-			}}},
-		}},
-	}
+	query := getOpCallQuery()
 	res, err := query.AcceptValue(i)
 	assert.NoError(t, err)
 	expected := value.NewTable()
 	assert.NoError(t, expected.Append(value.Dict{"hi": value.Int(2), "bye": value.Double(2), "key": value.List{value.Double(2)}}))
 	assert.NoError(t, expected.Append(value.Dict{"hi": value.Int(3), "bye": value.Double(3), "key": value.List{value.Double(3)}}))
 	assert.Equal(t, expected, res)
-
 }
+
+var res value.Value
+
+func benchmarkInterpreter_VisitOpcall(numRows int, b *testing.B) {
+	table := value.NewTable()
+	for i := 0; i < numRows; i++ {
+		row := value.Dict{"hi": value.Int(1), "bye": value.Double(1)}
+		table.Append(row)
+	}
+	evaler := NewInterpreter()
+	evaler.SetVar("table", table)
+	query := getOpCallQuery()
+	for i := 0; i < b.N; i++ {
+		res, _ = query.AcceptValue(evaler)
+	}
+}
+
+func BenchmarkInterpreter_VisitOpcall100(b *testing.B) { benchmarkInterpreter_VisitOpcall(100, b) }
+func BenchmarkInterpreter_VisitOpcall1K(b *testing.B)  { benchmarkInterpreter_VisitOpcall(1000, b) }
+func BenchmarkInterpreter_VisitOpcall10K(b *testing.B) { benchmarkInterpreter_VisitOpcall(10000, b) }
+
 func TestInterpreter_VisitAt(t *testing.T) {
 	testError(t, ast.At{})
 	values := []value.Value{
@@ -349,7 +347,6 @@ func TestInterpreter_VisitLookup(t *testing.T) {
 			testError(t, ast.Lookup{tree, "hi"})
 		}
 	}
-
 	// and we get error on empty dict too
 	testError(t, ast.Lookup{On: ast.Dict{Values: map[string]ast.Ast{}}, Property: "hi"})
 
@@ -383,4 +380,30 @@ func TestInterpreter_SetVar(t *testing.T) {
 	found, err = i.env.Lookup(name)
 	assert.NoError(t, err)
 	assert.Equal(t, val, found)
+}
+
+func getOpCallQuery() ast.Ast {
+	return ast.OpCall{
+		Operand: ast.OpCall{
+			Operand:   ast.Var{Name: "table"},
+			Namespace: "std",
+			Name:      "filter",
+			Kwargs: ast.Dict{Values: map[string]ast.Ast{
+				"where": ast.Binary{
+					Left:  ast.Lookup{On: ast.At{}, Property: "hi"},
+					Op:    ">=",
+					Right: ast.MakeInt(2),
+				},
+			}},
+		},
+		Namespace: "std",
+		Name:      "addColumn",
+		Kwargs: ast.Dict{Values: map[string]ast.Ast{
+			"name": ast.MakeString("key"),
+			"value": ast.List{Values: []ast.Ast{ast.Lookup{
+				On:       ast.At{},
+				Property: "bye",
+			}}},
+		}},
+	}
 }
