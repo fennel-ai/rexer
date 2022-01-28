@@ -25,18 +25,11 @@ func verifyFetch(instance instance.Instance, t *testing.T, request actionlib.Act
 	found, err := action.Fetch(instance, request)
 	assert.NoError(t, err)
 	assert.Equal(t, expected, found)
-	//equals(t, expected, found)
 }
 
 func TestEndToEnd(t *testing.T) {
 	instance, err := test.DefaultInstance()
 	assert.NoError(t, err)
-
-	// start the service
-	//go serve(controller)
-	//defer shutDownServer()
-	// and create a client
-	//c := client.NewClient("http://localhost")
 
 	// Initially count for keys are zero
 	uid := ftypes.OidType(1)
