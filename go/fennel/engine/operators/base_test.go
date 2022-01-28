@@ -20,6 +20,7 @@ func (top testOp) Signature() *Signature {
 	return NewSignature(top, "test", "op").
 		Param("p1", value.Types.Bool, true).
 		Param("p2", value.Types.Double, false).
+		Param("p3", value.Types.Any, true).
 		Input("c1", value.Types.String)
 }
 
@@ -51,7 +52,7 @@ func TestTypecheck(t *testing.T) {
 	op := testOp{}
 
 	// if we don't pass all kwargsCorrect & inputIncorrect, it doesn't work
-	kwargsCorrect := map[string]reflect.Type{"p1": value.Types.Bool}
+	kwargsCorrect := map[string]reflect.Type{"p1": value.Types.Bool, "p3": value.Types.String}
 	kwargsIncorrect := map[string]reflect.Type{
 		"p1": value.Types.Bool,
 		"p2": value.Types.Double,
@@ -69,6 +70,10 @@ func TestTypecheck(t *testing.T) {
 	assert.Error(t, Typecheck(op, kwargsIncorrect, inputCorrect, contextual))
 
 	// but it works when all are correct
+	assert.NoError(t, Typecheck(op, kwargsCorrect, inputCorrect, contextual))
+
+	// and for kwargs with type of any, really any type works
+	kwargsCorrect = map[string]reflect.Type{"p1": value.Types.Bool, "p3": value.Types.List}
 	assert.NoError(t, Typecheck(op, kwargsCorrect, inputCorrect, contextual))
 }
 

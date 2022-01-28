@@ -88,8 +88,7 @@ func Typecheck(op Operator, staticKwargs map[string]reflect.Type, inputSchema ma
 		if !ok {
 			return fmt.Errorf("operator '%s' expects kwarg '%s' but not found", op, k)
 		}
-		//vt := reflect.TypeOf(v)
-		if vt != t {
+		if t != value.Types.Any && vt != t {
 			return fmt.Errorf("type of  kwarg '%s' expected to be '%s' but found to be '%s'", k, t, vt)
 		}
 	}
@@ -102,8 +101,7 @@ func Typecheck(op Operator, staticKwargs map[string]reflect.Type, inputSchema ma
 		if !ok {
 			return fmt.Errorf("operator '%s.%s' expects kwarg '%s' but not found", sig.Module, sig.Name, k)
 		}
-		//vt := reflect.TypeOf(v)
-		if vt != t {
+		if t != value.Types.Any && vt != t {
 			return fmt.Errorf("type of kwarg '%s' expected to be '%s' but found to be '%s'", k, t, vt)
 		}
 	}
