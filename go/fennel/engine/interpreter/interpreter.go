@@ -224,7 +224,10 @@ func (i Interpreter) VisitVar(name string) (value.Value, error) {
 }
 
 func (i Interpreter) getStaticKwargs(op operators.Operator, kwargs ast.Dict) (value.Dict, error) {
-	var ret value.Dict
+	ret, err := value.NewDict(map[string]value.Value{})
+	if err != nil {
+		return ret, err
+	}
 	sig := op.Signature()
 	for k, _ := range sig.StaticKwargs {
 		tree, ok := kwargs.Values[k]

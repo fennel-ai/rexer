@@ -282,6 +282,48 @@ func TestInterpreter_VisitOpcall(t *testing.T) {
 	}, expected)
 }
 
+func TestInterpreter_VisitOpcall2(t *testing.T) {
+	// here we create nested opcall that contain both static/contextual kwargs
+	base := value.NewTable()
+	row1 := value.Dict{"hi": value.Int(1), "bye": value.Double(1)}
+	row2 := value.Dict{"hi": value.Int(2), "bye": value.Double(2)}
+	row3 := value.Dict{"hi": value.Int(3), "bye": value.Double(3)}
+	assert.NoError(t, base.Append(row1))
+	assert.NoError(t, base.Append(row2))
+	assert.NoError(t, base.Append(row3))
+	i := NewInterpreter()
+	i.SetVar("table", base)
+	query := ast.OpCall{
+		Operand: ast.OpCall{
+			Operand:   ast.Var{Name: "table"},
+			Namespace: "std",
+			Name:      "filter",
+			Kwargs: ast.Dict{Values: map[string]ast.Ast{
+				"where": ast.Binary{
+					Left:  ast.Lookup{On: ast.At{}, Property: "hi"},
+					Op:    ">=",
+					Right: ast.MakeInt(2),
+				},
+			}},
+		},
+		Namespace: "std",
+		Name:      "addColumn",
+		Kwargs: ast.Dict{Values: map[string]ast.Ast{
+			"name": ast.MakeString("key"),
+			"value": ast.List{Values: []ast.Ast{ast.Lookup{
+				On:       ast.At{},
+				Property: "bye",
+			}}},
+		}},
+	}
+	res, err := query.AcceptValue(i)
+	assert.NoError(t, err)
+	expected := value.NewTable()
+	assert.NoError(t, expected.Append(value.Dict{"hi": value.Int(2), "bye": value.Double(2), "key": value.List{value.Double(2)}}))
+	assert.NoError(t, expected.Append(value.Dict{"hi": value.Int(3), "bye": value.Double(3), "key": value.List{value.Double(3)}}))
+	assert.Equal(t, expected, res)
+
+}
 func TestInterpreter_VisitAt(t *testing.T) {
 	testError(t, ast.At{})
 	values := []value.Value{
