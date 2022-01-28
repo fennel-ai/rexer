@@ -307,7 +307,7 @@ var res value.Value
 func benchmarkInterpreter_VisitOpcall(numRows int, b *testing.B) {
 	table := value.NewTable()
 	for i := 0; i < numRows; i++ {
-		row := value.Dict{"hi": value.Int(1), "bye": value.Double(1)}
+		row := value.Dict{"hi": value.Int(i), "bye": value.Double(i)}
 		table.Append(row)
 	}
 	evaler := NewInterpreter()
