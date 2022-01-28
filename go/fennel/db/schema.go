@@ -76,6 +76,13 @@ func init() {
 				options_ser BLOB NOT NULL,
 				PRIMARY KEY(cust_id, aggregate_type, name)
 			);`,
+		9: `CREATE TABLE IF NOT EXISTS checkpoint2 (
+				cust_id BIGINT NOT NULL,
+				aggtype VARCHAR(255) NOT NULL,
+				aggname VARCHAR(255) NOT NULL,
+				checkpoint BIGINT NOT NULL DEFAULT 0,
+				PRIMARY KEY(cust_id, aggtype, aggname)
+		  );`,
 	}
 	tablenames = []string{
 		"schema_version",
@@ -86,6 +93,7 @@ func init() {
 		"counter_bucket",
 		"query_ast",
 		"aggregate_config",
+		"checkpoint2",
 	}
 
 	if err := verifyDefs(); err != nil {
