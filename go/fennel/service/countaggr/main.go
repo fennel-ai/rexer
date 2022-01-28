@@ -1,28 +1,34 @@
 package main
 
 import (
+	"fennel/controller/aggregate"
+	libaggregate "fennel/lib/aggregate"
 	"log"
 	"sync"
 	"time"
 
-	"fennel/controller/counter"
 	"fennel/instance"
-	counterlib "fennel/lib/counter"
 	"fennel/test"
 )
 
-func aggregate(instance instance.Instance) {
+func processOnce(instance instance.Instance) {
 	wg := sync.WaitGroup{}
-	types := counter.Types()
-	wg.Add(len(types))
-	for _, ct := range types {
-		go func(ct counterlib.CounterType) {
-			defer wg.Done()
-			err := counter.Aggregate(instance, ct)
-			if err != nil {
-				log.Printf("Error found in aggregate for counterlib type: %v. Err: %v", ct, err)
-			}
-		}(ct)
+	types := libaggregate.ValidTypes
+	for _, t := range types {
+		aggs, err := aggregate.RetrieveAll(instance, t)
+		if err != nil {
+			panic(err)
+		}
+		for _, agg := range aggs {
+			wg.Add(1)
+			go func(agg libaggregate.Aggregate) {
+				defer wg.Done()
+				err := aggregate.Update(instance, agg)
+				if err != nil {
+					log.Printf("Error found in aggregate for agg type: %v and name: %s. Err: %v", agg.Type, agg.Name, err)
+				}
+			}(agg)
+		}
 	}
 	wg.Wait()
 }
@@ -34,7 +40,7 @@ func main() {
 		panic(err)
 	}
 	for {
-		aggregate(instance)
+		processOnce(instance)
 		time.Sleep(time.Minute)
 	}
 }
