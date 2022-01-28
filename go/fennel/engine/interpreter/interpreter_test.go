@@ -325,3 +325,20 @@ func TestInterpreter_VisitLookup(t *testing.T) {
 	testValid(t, ast.Lookup{ast.Lookup{nested, "nested"}, "hi"}, value.Double(3.4))
 	testValid(t, ast.Lookup{nested, "hi"}, value.Double(4.4))
 }
+
+func TestInterpreter_SetVar(t *testing.T) {
+	i := NewInterpreter()
+	name := "key"
+	val := value.Int(4)
+	_, err := i.env.Lookup(name)
+	assert.Error(t, err)
+
+	assert.NoError(t, i.SetVar(name, val))
+	found, err := i.env.Lookup(name)
+	assert.NoError(t, err)
+	assert.Equal(t, val, found)
+	assert.Error(t, i.SetVar(name, val))
+	found, err = i.env.Lookup(name)
+	assert.NoError(t, err)
+	assert.Equal(t, val, found)
+}

@@ -20,6 +20,10 @@ func NewInterpreter() Interpreter {
 	return Interpreter{&env}
 }
 
+func (i Interpreter) SetVar(name string, v value.Value) error {
+	return i.env.Define(name, v)
+}
+
 func (i Interpreter) VisitLookup(on ast.Ast, property string) (value.Value, error) {
 	val, err := on.AcceptValue(i)
 	if err != nil {
