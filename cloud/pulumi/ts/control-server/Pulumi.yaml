@@ -1,0 +1,3 @@
+name: control-server
+runtime: nodejs
+description: Pulumi program to setup control-plane www
