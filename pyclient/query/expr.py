@@ -199,7 +199,7 @@ class List(Expr):
         super(List, self).__init__(name=name)
         for v in values:
             if not isinstance(v, Expr):
-                raise InvalidQueryException('List can only contain StarQL expresions but got %s instead' % v)
+                raise InvalidQueryException('List can only contain RQL expressions but got %s instead' % v)
             v.edge(self)
         self.values = values
 
@@ -210,7 +210,7 @@ class Dict(Expr):
         self.kwargs = {}
         for k, v in values.items():
             if not isinstance(v, Expr):
-                raise InvalidQueryException('Dict values can only be StarQL expressions but got %s instead' % v)
+                raise InvalidQueryException('Dict values can only be RQL expressions but got %s instead' % v)
             self.kwargs[k] = v
             v.edge(self)
 
@@ -219,7 +219,7 @@ class Table(Expr):
     def __init__(self, inner, name=None):
         super(Table, self).__init__(name=name)
         if not isinstance(inner, Expr):
-            raise InvalidQueryException('Table can only be created from StarQL expressions but got %s instead' % inner)
+            raise InvalidQueryException('Table can only be created from RQL expressions but got %s instead' % inner)
 
         self.inner = inner
         inner.edge(self)
@@ -244,7 +244,7 @@ class _Opcall(object):
         for k, v in kwargs.items():
             if not isinstance(v, Expr):
                 raise InvalidQueryException(
-                    "Value for operator parameter '%s' given '%s' but expected a StarQL expresion" % (k, v))
+                    "Value for operator parameter '%s' given '%s' but expected a RQL expression" % (k, v))
             self.kwargs[k] = v
 
 
