@@ -10,7 +10,6 @@ import (
 	"fennel/lib/ftypes"
 	"fennel/lib/value"
 	"fennel/test"
-	"fmt"
 	"testing"
 	"time"
 
@@ -35,8 +34,8 @@ func TestEndToEnd2(t *testing.T) {
 	assert.NoError(t, aggregate.Store(instance, agg2))
 	uid1 := ftypes.OidType(1312)
 	uid2 := ftypes.OidType(8312)
-	key1 := fmt.Sprintf("%d", uid1)
-	key2 := fmt.Sprintf("%d", uid2)
+	key1 := value.Int(uid1)
+	key2 := value.Int(uid2)
 
 	t0 := ftypes.Timestamp(time.Hour * 24 * 15)
 	clock.Set(int64(t0))
@@ -81,7 +80,7 @@ func TestEndToEnd2(t *testing.T) {
 	verify(t, instance, agg2, key2, value.List{value.Int(0), value.Int(0), value.Int(0), value.Int(0)})
 }
 
-func verify(t *testing.T, instance instance.Instance, agg libaggregate.Aggregate, k string, expected interface{}) {
+func verify(t *testing.T, instance instance.Instance, agg libaggregate.Aggregate, k value.Value, expected interface{}) {
 	found, err := aggregate.Value(instance, agg.Type, agg.Name, k)
 	assert.NoError(t, err)
 	assert.Equal(t, expected, found)
@@ -125,10 +124,10 @@ func getQuery() ast.Ast {
 		Name:      "addColumn",
 		Kwargs: ast.Dict{Values: map[string]ast.Ast{
 			"name": ast.MakeString("key"),
-			"value": ast.List{Values: []ast.Ast{ast.Lookup{
+			"value": ast.Lookup{
 				On:       ast.At{},
 				Property: "actor_id",
-			}}},
-		}},
+			}},
+		},
 	}
 }
