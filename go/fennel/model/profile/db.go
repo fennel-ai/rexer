@@ -19,13 +19,13 @@ import (
 
 // we create a private interface to make testing caching easier
 type provider interface {
-	set(this instance.Instance, custid ftypes.CustID, otype uint32, oid uint64, key string, version uint64, valueSer []byte) error
-	get(this instance.Instance, custid ftypes.CustID, otype uint32, oid uint64, key string, version uint64) ([]byte, error)
+	set(this instance.Instance, custid ftypes.CustID, otype ftypes.OType, oid uint64, key string, version uint64, valueSer []byte) error
+	get(this instance.Instance, custid ftypes.CustID, otype ftypes.OType, oid uint64, key string, version uint64) ([]byte, error)
 }
 
 type dbProvider struct{}
 
-func (D dbProvider) set(this instance.Instance, custid ftypes.CustID, otype uint32, oid uint64, key string, version uint64, valueSer []byte) error {
+func (D dbProvider) set(this instance.Instance, custid ftypes.CustID, otype ftypes.OType, oid uint64, key string, version uint64, valueSer []byte) error {
 	if version == 0 {
 		return fmt.Errorf("version can not be zero")
 	}
@@ -45,7 +45,7 @@ func (D dbProvider) set(this instance.Instance, custid ftypes.CustID, otype uint
 	//return set(this, otype, oid, key, version, valueSer)
 }
 
-func (D dbProvider) get(this instance.Instance, custid ftypes.CustID, otype uint32, oid uint64, key string, version uint64) ([]byte, error) {
+func (D dbProvider) get(this instance.Instance, custid ftypes.CustID, otype ftypes.OType, oid uint64, key string, version uint64) ([]byte, error) {
 	var value [][]byte
 
 	var err error
@@ -96,13 +96,13 @@ func GetProfiles(this instance.Instance, request profile.ProfileFetchRequest) ([
 	if request.CustID != 0 {
 		clauses = append(clauses, "cust_id = :otype")
 	}
-	if request.OType != 0 {
+	if len(request.OType) != 0 {
 		clauses = append(clauses, "otype = :otype")
 	}
 	if request.Oid != 0 {
 		clauses = append(clauses, "oid = :oid")
 	}
-	if request.Key != "" {
+	if len(request.Key) != 0 {
 		clauses = append(clauses, "zkey = :zkey")
 	}
 	if request.Version != 0 {

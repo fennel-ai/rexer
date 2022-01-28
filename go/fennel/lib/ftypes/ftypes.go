@@ -2,9 +2,9 @@ package ftypes
 
 type CustID uint32
 type OidType uint64
-type OType uint32
+type OType string
 
-type ActionType uint32
+type ActionType string
 type Timestamp uint64
 type RequestID uint64
 

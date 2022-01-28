@@ -52,19 +52,19 @@ func Fetch(this instance.Instance, request action.ActionFetchRequest) ([]action.
 	if request.CustID != 0 {
 		clauses = append(clauses, "cust_id = :cust_id")
 	}
-	if request.ActorType != 0 {
+	if len(request.ActorType) != 0 {
 		clauses = append(clauses, "actor_type = :actor_type")
 	}
 	if request.ActorID != 0 {
 		clauses = append(clauses, "actor_id = :actor_id")
 	}
-	if request.TargetType != 0 {
+	if len(request.TargetType) != 0 {
 		clauses = append(clauses, "target_type = :target_type")
 	}
 	if request.TargetID != 0 {
 		clauses = append(clauses, "target_id = :target_id")
 	}
-	if request.ActionType != 0 {
+	if len(request.ActionType) != 0 {
 		clauses = append(clauses, "action_type = :action_type")
 	}
 	if request.MinActionValue != 0 {

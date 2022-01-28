@@ -10,9 +10,9 @@ const (
 )
 
 const (
-	Like  ftypes.ActionType = 1
-	Share                   = 2
-	View                    = 3
+	Like  ftypes.ActionType = "Like"
+	Share ftypes.ActionType = "Share"
+	View  ftypes.ActionType = "View"
 )
 
 type Action struct {
@@ -48,10 +48,10 @@ func ToProtoAction(a Action) ProtoAction {
 		ActionID:    uint64(a.ActionID),
 		CustID:      uint64(a.CustID),
 		ActorID:     uint64(a.ActorID),
-		ActorType:   uint32(a.ActorType),
+		ActorType:   string(a.ActorType),
 		TargetID:    uint64(a.TargetID),
-		TargetType:  uint32(a.TargetType),
-		ActionType:  uint32(a.ActionType),
+		TargetType:  string(a.TargetType),
+		ActionType:  string(a.ActionType),
 		ActionValue: a.ActionValue,
 		Timestamp:   uint64(a.Timestamp),
 		RequestID:   uint64(a.RequestID),
@@ -100,10 +100,10 @@ func ToProtoActionFetchRequest(a ActionFetchRequest) ProtoActionFetchRequest {
 		MaxActionID:    uint64(a.MaxActionID),
 		CustID:         uint64(a.CustID),
 		ActorID:        uint64(a.ActorID),
-		ActorType:      uint32(a.ActorType),
+		ActorType:      string(a.ActorType),
 		TargetID:       uint64(a.TargetID),
-		TargetType:     uint32(a.TargetType),
-		ActionType:     uint32(a.ActionType),
+		TargetType:     string(a.TargetType),
+		ActionType:     string(a.ActionType),
 		MinActionValue: a.MinActionValue,
 		MaxActionValue: a.MaxActionValue,
 		MinTimestamp:   uint64(a.MinTimestamp),
@@ -138,17 +138,17 @@ func (a *Action) Validate() error {
 	if a.ActorID == 0 {
 		return fmt.Errorf("actor ID can not be zero")
 	}
-	if a.ActorType == 0 {
-		return fmt.Errorf("actor type can not be zero")
+	if len(a.ActorType) == 0 {
+		return fmt.Errorf("actor type can not be empty")
 	}
 	if a.TargetID == 0 {
 		return fmt.Errorf("target ID can not be zero")
 	}
-	if a.TargetType == 0 {
-		return fmt.Errorf("target type can not be zero")
+	if len(a.TargetType) == 0 {
+		return fmt.Errorf("target type can not be empty")
 	}
-	if a.ActionType == 0 {
-		return fmt.Errorf("action type can not be zero")
+	if len(a.ActionType) == 0 {
+		return fmt.Errorf("action type can not be empty")
 	}
 	if a.RequestID == 0 {
 		return fmt.Errorf("action request ID can not be zero")

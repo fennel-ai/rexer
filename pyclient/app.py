@@ -26,6 +26,10 @@ def is_int(s, size=32):
     except:
         return False
 
+def is_str(s):
+    if isinstance(s, str):
+        return True
+
 
 def _validate_profile_get(cust_id, otype, oid, key, version):
     errors = []
@@ -36,16 +40,25 @@ def _validate_profile_get(cust_id, otype, oid, key, version):
 
     if otype is None:
         errors.append('otype is not specified')
-    elif not is_uint(otype, 32):
-        errors.append('otype is not a valid 32-bit unsigned integer')
+    elif not is_str(otype, str):
+        errors.append('otype is not a valid string')
+    elif len(otype) == 0:
+        errors.append('otype is not a non-empty string')
+    elif len(otype) > 256:
+        errors.append('otype is longer than 256 characters')
 
     if oid is None:
         errors.append('oid is not specified')
     elif not is_uint(oid, 64):
         errors.append('oid is not a valid 64-bit unsigned integer')
 
-    if key is not None and len(key) == 0:
-        errors.append('key is provided but is not a valid non-empty string')
+    if key is not None:
+        if not is_str(key):
+            errors.append('key is provided but is not a valid string')
+        elif len(key) == 0:
+            errors.append('key is provided but is not a non-empty string')
+        elif len(key) > 256:
+            errors.append('key is provided but is longer than 256 characters')
     if version is not None and not is_uint(version, 64):
         errors.append('version is provided but is not a valid 64-bit unsigned integer')
 
@@ -62,7 +75,7 @@ def _to_str(s, default=''):
 def _to_profile_item(cust_id, otype, oid, key, version):
     ret = profile.ProfileItem()
     ret.CustID = int(cust_id)
-    ret.OType = int(otype)
+    ret.OType = str(otype)
     ret.Oid = int(oid)
     ret.Key = key if key is not None else ""
     ret.Version = _to_int(version)
@@ -109,12 +122,12 @@ def _validate_action_get(cust_id, actor_id, actor_type, target_id, target_type, 
         errors.append('max_timestamp is provided but is not a valid 64-bit unsigned integer')
     if (request_id is not None) and (not is_uint(request_id, 64)):
         errors.append('request_id is provided but is not a valid 64-bit unsigned integer')
-    if (actor_type is not None) and (not is_uint(actor_type, 32)):
-        errors.append('actor_type is provided but is not a valid 32-bit unsigned integer')
-    if (target_type is not None) and (not is_uint(target_type, 32)):
-        errors.append('target_type is provided but is not a valid 32-bit unsigned integer')
-    if (action_type is not None) and (not is_uint(action_type, 32)):
-        errors.append('action_type is provided but is not a valid 32-bit unsigned integer')
+    if (actor_type is not None) and (not is_str(actor_type)):
+        errors.append('actor_type is provided but is not a valid non-empty string')
+    if (target_type is not None) and (not is_str(target_type)):
+        errors.append('target_type is provided but is not a valid non-empty string')
+    if (action_type is not None) and (not is_str(action_type)):
+        errors.append('action_type is provided but is not a valid non-empty string')
     if (min_action_value is not None) and (not is_int(min_action_value, 32)):
         errors.append('min_action_value is provided but is not a valid 32-bit signed integer')
     if (max_action_value is not None) and (not is_int(max_action_value, 32)):
@@ -129,10 +142,10 @@ def _to_action_fetch_request(cust_id, actor_id, actor_type, target_id, target_ty
     ret = action.ActionFetchRequest()
     ret.CustID = _to_int(cust_id)
     ret.ActorID = _to_int(actor_id)
-    ret.ActorType = _to_int(actor_type)
+    ret.ActorType = _to_str(actor_type)
     ret.TargetID = _to_int(target_id)
-    ret.TargetType = _to_int(target_type)
-    ret.ActionType = _to_int(action_type)
+    ret.TargetType = _to_str(target_type)
+    ret.ActionType = _to_str(action_type)
     ret.MinActionValue = _to_int(min_action_value)
     ret.MaxActionValue = _to_int(max_action_value)
     ret.MinTimestamp = _to_int(min_timestamp)
@@ -177,12 +190,11 @@ def _validate_profiles_get(cust_id, otype, oid, key, version):
     errors = []
     if (cust_id is not None) and (not is_uint(cust_id, 64)):
         errors.append('cust_id is provided but is not a valid 64-bit unsigned integer')
-    if (otype is not None) and (not is_uint(otype, 32)):
-        errors.append('otype is provided but is not a valid 32-bit unsigned integer')
+    if (otype is not None) and (not is_str(otype)):
+        errors.append('otype is provided but is not a valid string')
     if (oid is not None) and (not is_uint(oid, 64)):
         errors.append('oid is provided but is not a valid 64-bit unsigned integer')
-    # TODO: There may be a better way to do this.
-    if (key is not None) and (not isinstance(key, str)):
+    if (key is not None) and (not is_str(key)):
         errors.append('key is provided but is not a valid string')
     if (version is not None) and (not is_uint(version, 64)):
         errors.append('version is provided but is not a valid 64-bit unsigned integer')
@@ -192,7 +204,7 @@ def _validate_profiles_get(cust_id, otype, oid, key, version):
 def _to_profile_fetch_request(cust_id, otype, oid, key, version):
     ret = profile.ProfileFetchRequest()
     ret.CustID = _to_int(cust_id)
-    ret.OType = _to_int(otype)
+    ret.OType = _to_str(otype)
     ret.Oid = _to_int(oid)
     ret.Key = _to_str(key)
     ret.Version = _to_int(version)

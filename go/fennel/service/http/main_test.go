@@ -62,7 +62,7 @@ func TestLogFetchServerClient(t *testing.T) {
 	verifyFetch(t, c, action.ActionFetchRequest{}, []action.Action{})
 
 	// now we add a couple of actions
-	a := action.Action{CustID: 1, ActorType: 1, ActorID: 2, ActionType: 3, TargetType: 4, TargetID: 5}
+	a := action.Action{CustID: 1, ActorType: "1", ActorID: 2, ActionType: "3", TargetType: "4", TargetID: 5}
 	// logging this should fail because some fields (e.g. requestID aren't specified)
 	err = c.LogAction(a)
 	assert.Error(t, err)
@@ -70,17 +70,17 @@ func TestLogFetchServerClient(t *testing.T) {
 	verifyFetch(t, c, action.ActionFetchRequest{}, []action.Action{})
 
 	// but this error disappears when we pass all values
-	action1 := add(t, c, action.Action{CustID: 1, ActorType: 1, ActorID: 2, ActionType: 3, TargetType: 4, TargetID: 5, RequestID: 6, Timestamp: 7})
+	action1 := add(t, c, action.Action{CustID: 1, ActorType: "1", ActorID: 2, ActionType: "3", TargetType: "4", TargetID: 5, RequestID: 6, Timestamp: 7})
 	// and this action should show up in requests
 	verifyFetch(t, c, action.ActionFetchRequest{}, []action.Action{action1})
 
 	// add a couple of actions
 	action2 := add(t, c, action.Action{
-		CustID: 1, ActorType: 11, ActorID: 12, ActionType: 13, TargetType: 14, TargetID: 15, RequestID: 16, Timestamp: 17},
+		CustID: 1, ActorType: "11", ActorID: 12, ActionType: "13", TargetType: "14", TargetID: 15, RequestID: 16, Timestamp: 17},
 	)
 	verifyFetch(t, c, action.ActionFetchRequest{}, []action.Action{action1, action2})
 	action3 := add(t, c, action.Action{
-		CustID: 1, ActorType: 22, ActorID: 23, ActionType: 23, TargetType: 24, TargetID: 25, RequestID: 26, Timestamp: 27},
+		CustID: 1, ActorType: "22", ActorID: 23, ActionType: "23", TargetType: "24", TargetID: 25, RequestID: 26, Timestamp: 27},
 	)
 	verifyFetch(t, c, action.ActionFetchRequest{}, []action.Action{action1, action2, action3})
 }
@@ -101,23 +101,23 @@ func TestProfileServerClient(t *testing.T) {
 	pfr := profilelib.ProfileFetchRequest{}
 
 	// in the beginning, with no value set, we set nil pointer back but with no error
-	checkGetSet(t, c, true, 1, 1, 1, 0, "age", value.Value(nil))
+	checkGetSet(t, c, true, 1, "1", 1, 0, "age", value.Value(nil))
 
 	var expected value.Value = value.List([]value.Value{value.Int(1), value.Bool(false), value.Nil})
-	profileList = append(profileList, checkGetSet(t, c, false, 1, 1, 1, 1, "age", expected))
+	profileList = append(profileList, checkGetSet(t, c, false, 1, "1", 1, 1, "age", expected))
 	checkGetProfiles(t, c, pfr, profileList)
 
 	// we can also GetProfile it without using the specific version number
-	checkGetSet(t, c, true, 1, 1, 1, 0, "age", expected)
+	checkGetSet(t, c, true, 1, "1", 1, 0, "age", expected)
 
 	// SetProfile few more key/value pairs and verify it works
-	profileList = append(profileList, checkGetSet(t, c, false, 1, 1, 1, 2, "age", value.Nil))
+	profileList = append(profileList, checkGetSet(t, c, false, 1, "1", 1, 2, "age", value.Nil))
 	checkGetProfiles(t, c, pfr, profileList)
-	profileList = append(profileList, checkGetSet(t, c, false, 1, 1, 3, 2, "age", value.Int(1)))
+	profileList = append(profileList, checkGetSet(t, c, false, 1, "1", 3, 2, "age", value.Int(1)))
 	checkGetProfiles(t, c, pfr, profileList)
-	checkGetSet(t, c, true, 1, 1, 1, 2, "age", value.Nil)
-	checkGetSet(t, c, true, 1, 1, 1, 0, "age", value.Nil)
-	checkGetSet(t, c, false, 1, 10, 3131, 0, "summary", value.Int(1))
+	checkGetSet(t, c, true, 1, "1", 1, 2, "age", value.Nil)
+	checkGetSet(t, c, true, 1, "1", 1, 0, "age", value.Nil)
+	checkGetSet(t, c, false, 1, "10", 3131, 0, "summary", value.Int(1))
 }
 
 func TestCountRateServerClient(t *testing.T) {
@@ -260,7 +260,7 @@ func TestStoreRetrieveAggregate(t *testing.T) {
 	assert.Equal(t, agg2, found)
 
 }
-func checkGetSet(t *testing.T, c *client.Client, get bool, custid uint64, otype uint32, oid uint64, version uint64,
+func checkGetSet(t *testing.T, c *client.Client, get bool, custid uint64, otype string, oid uint64, version uint64,
 	key string, val value.Value) profilelib.ProfileItem {
 	if get {
 		req := profilelib.NewProfileItem(custid, otype, oid, key, version)
@@ -273,7 +273,7 @@ func checkGetSet(t *testing.T, c *client.Client, get bool, custid uint64, otype 
 		}
 		return req
 	} else {
-		profile := profilelib.ProfileItem{CustID: ftypes.CustID(custid), OType: otype, Oid: oid, Key: key, Version: version, Value: val}
+		profile := profilelib.ProfileItem{CustID: ftypes.CustID(custid), OType: ftypes.OType(otype), Oid: oid, Key: key, Version: version, Value: val}
 		err := c.SetProfile(&profile)
 		assert.NoError(t, err)
 		request := profilelib.NewProfileItem(custid, otype, oid, key, version)

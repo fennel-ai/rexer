@@ -14,14 +14,14 @@ def validate(a: Action):
         errors.append('customer ID can not be zero')
     if a.ActorID == 0:
         errors.append('actorID can not be zero')
-    if a.ActorType == 0:
-        errors.append('actor type can not be zero')
+    if len(a.ActorType) == 0:
+        errors.append('actor type can not be empty')
     if a.TargetID == 0:
         errors.append('target ID can not be zero')
-    if a.TargetType == 0:
-        errors.append('target type can not be zero')
-    if a.ActionType == 0:
-        errors.append('action type can not be zero')
+    if len(a.TargetType) == 0:
+        errors.append('target type can not be empty')
+    if len(a.ActionType) == 0:
+        errors.append('action type can not be empty')
     if a.RequestID == 0:
         errors.append('request ID can not be zero')
     return errors

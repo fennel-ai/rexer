@@ -38,7 +38,7 @@ class Testclient(unittest.TestCase):
 
         p1 = profile.ProfileItem()
         p1.CustID = 1
-        p1.Oid, p1.OType = 1, 2
+        p1.Oid, p1.OType = 1, '2'
         p1.Key = 'key'
         v = value.Int(5)
         p1.Value.CopyFrom(v)
@@ -47,7 +47,7 @@ class Testclient(unittest.TestCase):
 
         p2 = profile.ProfileItem()
         p2.CustID = 1
-        p2.Oid, p2.OType = 2, 1
+        p2.Oid, p2.OType = 2, '1'
         p2.Key = 'key2'
         v = value.Int(7)
         p2.Value.CopyFrom(v)
@@ -81,7 +81,7 @@ class Testclient(unittest.TestCase):
         self.assertEqual(pfr.SerializeToString(), httpretty.last_request().body)
         self.assertListEqual([p1, p2], ret)
         pfr = profile.ProfileFetchRequest()
-        pfr.OType = 1
+        pfr.OType = '1'
         ret = c.get_profiles(pfr)
         self.assertEqual(pfr.SerializeToString(), httpretty.last_request().body)
         self.assertListEqual([p2], ret)
@@ -105,7 +105,7 @@ class Testclient(unittest.TestCase):
             c.log('hi')
         with self.assertRaises(client.InvalidInput):
             c.log(action.Action())
-        a1.TargetType = 0
+        a1.TargetType = ''
         with self.assertRaises(client.InvalidInput):
             c.log(a1)
 
@@ -233,10 +233,10 @@ def make_action(k):
     k = k * 10
     a = action.Action()
     a.ActorID = k
-    a.ActorType = k + 1
+    a.ActorType = str(k + 1)
     a.TargetID = k + 2
-    a.TargetType = k + 3
-    a.ActionType = k + 4
+    a.TargetType = str(k + 3)
+    a.ActionType = str(k + 4)
     a.RequestID = k + 5
     a.CustID = k + 6
     return a
@@ -246,7 +246,7 @@ def make_profile(k):
     p = profile.ProfileItem()
     p.CustID = 1
     p.Oid = k+7
-    p.Otype = k%2
+    p.Otype = str(k%2)
     p.Key = str(k)
     return p
 

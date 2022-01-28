@@ -17,10 +17,10 @@ type mockProvider struct {
 func (m *mockProvider) change(n []byte) {
 	m.ret = n
 }
-func (m *mockProvider) set(this instance.Instance, custid ftypes.CustID, otype uint32, oid uint64, key string, version uint64, valueSer []byte) error {
+func (m *mockProvider) set(this instance.Instance, custid ftypes.CustID, otype ftypes.OType, oid uint64, key string, version uint64, valueSer []byte) error {
 	return nil
 }
-func (m *mockProvider) get(this instance.Instance, custid ftypes.CustID, otype uint32, oid uint64, key string, version uint64) ([]byte, error) {
+func (m *mockProvider) get(this instance.Instance, custid ftypes.CustID, otype ftypes.OType, oid uint64, key string, version uint64) ([]byte, error) {
 	return m.ret, nil
 }
 
@@ -43,7 +43,7 @@ func TestCaching(t *testing.T) {
 	//assert.NoError(t, err)
 
 	// initially we should get the mocked origmock value back
-	found, err := p.get(this, 1, 1, 1232, "summary", 1)
+	found, err := p.get(this, 1, "1", 1232, "summary", 1)
 	assert.NoError(t, err)
 	assert.Equal(t, origmock, found)
 
@@ -52,16 +52,16 @@ func TestCaching(t *testing.T) {
 	gt.change(newmock)
 
 	// we should still get origmock back because it's in cache
-	found, err = p.get(this, 1, 1, 1232, "summary", 1)
+	found, err = p.get(this, 1, "1", 1232, "summary", 1)
 	assert.NoError(t, err)
 	assert.Equal(t, origmock, found)
 
 	// but if we set a new value, we will delete the key (remember: we don't fill cache on sets)
-	err = p.set(this, 1, 1, 1232, "summary", 1, []byte{7, 8, 9})
+	err = p.set(this, 1, "1", 1232, "summary", 1, []byte{7, 8, 9})
 	assert.NoError(t, err)
 
 	// so subsequent gets should get the new updated mock back
-	found, err = p.get(this, 1, 1, 1232, "summary", 1)
+	found, err = p.get(this, 1, "1", 1232, "summary", 1)
 	assert.Equal(t, newmock, found)
 }
 

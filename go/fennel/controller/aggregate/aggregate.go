@@ -7,8 +7,9 @@ import (
 	"fennel/lib/ftypes"
 	modelAgg "fennel/model/aggregate"
 	"fmt"
-	"google.golang.org/protobuf/proto"
 	"time"
+
+	"google.golang.org/protobuf/proto"
 )
 
 func Store(instance instance.Instance, agg aggregate.Aggregate) error {

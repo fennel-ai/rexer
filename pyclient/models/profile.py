@@ -8,10 +8,10 @@ def validate(pi: ProfileItem):
     errors = []
     if pi.CustID == 0:
         errors.append("custid can not be zero")
+    if len(pi.OType) == 0:
+        errors.append("otype can not be empty")
     if pi.Oid == 0:
         errors.append("oid can not be zero")
-    if pi.OType == 0:
-        errors.append("otype can not be zero")
     if len(pi.Key) == 0:
         errors.append("key can not be empty")
 

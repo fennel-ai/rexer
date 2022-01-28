@@ -5,7 +5,7 @@ option go_package = "fennel/lib/profile";
 
 message ProtoProfileItem {
   uint64 CustID = 1;
-  uint32 OType = 2;
+  string OType = 2;
   uint64 Oid = 3;
   string Key = 4;
   uint64 Version = 5;
@@ -14,7 +14,7 @@ message ProtoProfileItem {
 
 message ProtoProfileFetchRequest {
   uint64 CustID = 1;
-  uint32 OType = 2;
+  string OType = 2;
   uint64 Oid = 3;
   string Key = 4;
   uint64 Version = 5;

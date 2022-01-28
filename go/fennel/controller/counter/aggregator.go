@@ -9,7 +9,7 @@ import (
 	"fennel/lib/counter"
 	"fennel/lib/ftypes"
 	httplib "fennel/lib/http"
-	profileLib "fennel/lib/profile"
+	profilelib "fennel/lib/profile"
 	"fennel/lib/value"
 )
 
@@ -46,13 +46,13 @@ func prefixWithIDList(prefix ftypes.Key, idList value.Value) []ftypes.Key {
 	return []ftypes.Key{}
 }
 
-func profile(custid uint64, otype uint32, oid uint64, key string, version uint64) (*value.Value, error) {
+func profile(custid uint64, otype string, oid uint64, key string, version uint64) (*value.Value, error) {
 	// TODO: how does this code discover the port/url for profile service?
 	c, err := client.NewClient(fmt.Sprintf("%s:%d", "localhost", httplib.PORT), http.DefaultClient)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create client: %v", err)
 	}
-	req := profileLib.NewProfileItem(custid, otype, oid, key, version)
+	req := profilelib.NewProfileItem(custid, otype, oid, key, version)
 	return c.GetProfile(&req)
 }
 
@@ -60,9 +60,9 @@ type Keygen func(actorID ftypes.OidType, actorType ftypes.OType, targetID ftypes
 
 func init() {
 	counterConfigs = map[counter.CounterType]CounterConfig{
-		counter.CounterType_USER_LIKE:       {actorType: profileLib.User, actionType: action.Like, keygen: actorID},
-		counter.CounterType_USER_VIDEO_LIKE: {actorType: profileLib.User, actionType: action.Like, targetType: profileLib.Video, keygen: actorTargetID},
-		counter.CounterType_VIDEO_LIKE:      {targetType: profileLib.Video, actionType: action.Like, keygen: targetID},
+		counter.CounterType_USER_LIKE:       {actorType: profilelib.User, actionType: action.Like, keygen: actorID},
+		counter.CounterType_USER_VIDEO_LIKE: {actorType: profilelib.User, actionType: action.Like, targetType: profilelib.Video, keygen: actorTargetID},
+		counter.CounterType_VIDEO_LIKE:      {targetType: profilelib.Video, actionType: action.Like, keygen: targetID},
 
 		// These are commented for unit tests to work
 		// Eventually remove these from here and just add more tests with these
@@ -123,7 +123,7 @@ func (cg CounterConfig) Validate() error {
 	// TODO: verifyFetch that action_type type isn't too large (compared to the hardcoded list)
 	// TODO: verifyFetch that actor_type and target_type if non-zero are valid
 	// TODO: verify that at least one keygen is given
-	if cg.actionType <= 0 {
+	if len(cg.actionType) == 0 {
 		return fmt.Errorf("counter config not given a valid action_type type")
 	}
 	return nil
@@ -134,7 +134,7 @@ func (cg CounterConfig) Generate(a action.Action, type_ counter.CounterType) []C
 		return []Counter{}
 	}
 
-	if cg.actorType > 0 && cg.actorType != a.ActorType {
+	if len(cg.actorType) != 0 && cg.actorType != a.ActorType {
 		return []Counter{}
 	}
 
