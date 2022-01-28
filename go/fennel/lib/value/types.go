@@ -3,6 +3,8 @@ package value
 import (
 	"fmt"
 	"reflect"
+	"sort"
+	"strconv"
 	"strings"
 )
 
@@ -10,6 +12,9 @@ type Value interface {
 	isValue()
 	Equal(v Value) bool
 	Op(opt string, other Value) (Value, error)
+	// String is used to construct aggregation keys so don't ever change
+	// this presentation logic because that could invalidate existing keys
+	// also, each value should return a unique & non-ambiguous string
 	String() string
 	Clone() Value
 }
@@ -56,7 +61,10 @@ func (d Double) Equal(v Value) bool {
 	}
 }
 func (d Double) String() string {
-	return fmt.Sprintf("Double(%v)", float64(d))
+	// here we take the minimum number of decimal places needed to represent the float
+	// so 3.4 is represented as just that, not 3.400000
+	// this helps keep the representation unique
+	return fmt.Sprintf("Double(%s)", strconv.FormatFloat(float64(d), 'f', -1, 64))
 }
 func (d Double) Clone() Value {
 	return Double(d)
@@ -214,14 +222,13 @@ func (d Dict) Equal(v Value) bool {
 	}
 }
 func (d Dict) String() string {
-	sb := strings.Builder{}
-	sb.WriteString("{")
+	s := make([]string, 0, len(d))
 	for k, v := range d {
-		sb.WriteString(fmt.Sprintf("%s: %v, ", k, v.String()))
-
+		s = append(s, fmt.Sprintf("%s: %v", k, v.String()))
 	}
-	sb.WriteString("}")
-	return sb.String()
+	// we sort these strings so that each dictionary gets a unique representation
+	sort.Strings(s)
+	return fmt.Sprintf("{%s}", strings.Join(s, ", "))
 }
 func (d Dict) Clone() Value {
 	clone := make(map[string]Value, len(d))
@@ -363,7 +370,7 @@ func (t Table) Op(opt string, other Value) (Value, error) {
 
 func (t Table) String() string {
 	var sb strings.Builder
-	sb.WriteString("table")
+	sb.WriteString("Table")
 	sb.WriteRune('(')
 	for _, row := range t.rows {
 		sb.WriteString(row.String())
