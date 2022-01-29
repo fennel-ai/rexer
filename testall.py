@@ -9,7 +9,7 @@ root = os.getcwd()
 godir = os.path.join(root, 'go/fennel')
 print('Running go tests...')
 print('-' * 50)
-if platform.processor() == 'arm64':
+if platform.processor() in [ 'arm', 'arm64']:
     p1 = subprocess.Popen(['go test -tags dynamic -p 1 ./...'], shell=True, cwd=godir)
 else:
     p1 = subprocess.Popen(['go test -p 1 ./...'], shell=True, cwd=godir)

@@ -32,6 +32,9 @@ func (D dbProvider) set(this instance.Instance, custid ftypes.CustID, otype ftyp
 	if len(key) > 256 {
 		return fmt.Errorf("makeKey too long: keys can only be upto 256 chars")
 	}
+	if len(otype) > 256 {
+		return fmt.Errorf("otype too long: otypes can only be upto 256 chars")
+	}
 	_, err := this.DB.Exec(`
 		INSERT INTO profile 
 			(cust_id, otype, oid, zkey, version, value)

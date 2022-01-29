@@ -122,12 +122,21 @@ def _validate_action_get(cust_id, actor_id, actor_type, target_id, target_type, 
         errors.append('max_timestamp is provided but is not a valid 64-bit unsigned integer')
     if (request_id is not None) and (not is_uint(request_id, 64)):
         errors.append('request_id is provided but is not a valid 64-bit unsigned integer')
-    if (actor_type is not None) and (not is_str(actor_type)):
-        errors.append('actor_type is provided but is not a valid non-empty string')
-    if (target_type is not None) and (not is_str(target_type)):
-        errors.append('target_type is provided but is not a valid non-empty string')
-    if (action_type is not None) and (not is_str(action_type)):
-        errors.append('action_type is provided but is not a valid non-empty string')
+    if (actor_type is not None):
+        if not is_str(actor_type):
+            errors.append('actor_type is provided but is not a valid non-empty string')
+        elif len(actor_type) > 256:
+            errors.append('actor_type is provided but is longer than 256 chars')
+    if (target_type is not None):
+        if not is_str(target_type):
+            errors.append('target_type is provided but is not a valid non-empty string')
+        elif len(target_type) > 256:
+            errors.append('target_type is provided but is longer than 256 chars')
+    if (action_type is not None):
+        if not is_str(action_type):
+            errors.append('action_type is provided but is not a valid non-empty string')
+        elif len(action_type) > 256:
+            errors.append('action_type is provided but is longer than 256 chars')
     if (min_action_value is not None) and (not is_int(min_action_value, 32)):
         errors.append('min_action_value is provided but is not a valid 32-bit signed integer')
     if (max_action_value is not None) and (not is_int(max_action_value, 32)):

@@ -9,6 +9,15 @@ import (
 
 // inserts the action. If successful, returns the actionID
 func Insert(this instance.Instance, action action.Action) (uint64, error) {
+	if len(action.ActionType) > 256 {
+		return 0, fmt.Errorf("ActionType too long: action types cannot be longer than 256 chars")
+	}
+	if len(action.ActorType) > 256 {
+		return 0, fmt.Errorf("ActorType too long: actor types cannot be longer than 256 chars")
+	}
+	if len(action.TargetType) > 256 {
+		return 0, fmt.Errorf("TargetType too long: target types cannot be longer than 256 chars")
+	}
 	result, err := this.DB.NamedExec(`
 		INSERT INTO actionlog (
 			cust_id,

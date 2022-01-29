@@ -5,6 +5,7 @@ import (
 
 	"fennel/lib/action"
 	"fennel/lib/ftypes"
+	"fennel/lib/utils"
 	"fennel/test"
 
 	"github.com/stretchr/testify/assert"
@@ -70,4 +71,40 @@ func TestActionDBBasic(t *testing.T) {
 	found, err = Fetch(this, request)
 	assert.NoError(t, err)
 	assert.Equal(t, []action.Action{action2}, found)
+}
+
+func TestLongTypes(t *testing.T) {
+	this, err := test.DefaultInstance()
+	assert.NoError(t, err)
+
+	// valid action
+	action1 := action.Action{
+		CustID:      1,
+		ActorID:     111,
+		ActorType:   "11",
+		TargetType:  "12",
+		TargetID:    121,
+		ActionType:  "13",
+		ActionValue: 14,
+		Timestamp:   15,
+		RequestID:   16,
+	}
+
+	// ActionType can't be longer than 256 chars
+	action1.ActionType = ftypes.ActionType(utils.RandString(257))
+	_, err = Insert(this, action1)
+	assert.Error(t, err)
+	action1.ActionType = ftypes.ActionType(utils.RandString(256))
+
+	// ActorType can't be longer than 256 chars
+	action1.ActorType = ftypes.OType(utils.RandString(257))
+	_, err = Insert(this, action1)
+	assert.Error(t, err)
+	action1.ActorType = ftypes.OType(utils.RandString(256))
+
+	// TargetType can't be longer than 256 chars
+	action1.TargetType = ftypes.OType(utils.RandString(257))
+	_, err = Insert(this, action1)
+	assert.Error(t, err)
+	action1.TargetType = ftypes.OType(utils.RandString(256))
 }
