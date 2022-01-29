@@ -1,18 +1,17 @@
-import * as React from 'react';
-import './../style.css';
+import * as React from "react";
+import "./../style.css";
+import { styles } from "../styles";
 
 const ConsoleResult = ({ results }) => (
   <div className="consoleResult">
-    <h2 className="consoleResultHeader">
-      Results
-    </h2>
-    <table>
+    <h2 className="consoleResultHeader">Results</h2>
+    <table style={styles.table}>
       <thead>
-        <tr>
-          <th>OType</th>
-          <th>OID</th>
-          <th>Key</th>
-          <th>Version</th>
+        <tr style={styles.tableRow}>
+          <th style={styles.tableHeaderData}>OType</th>
+          <th style={styles.tableHeaderData}>OID</th>
+          <th style={styles.tableHeaderData}>Key</th>
+          <th style={styles.tableHeaderData}>Version</th>
         </tr>
       </thead>
       <tbody>
@@ -25,11 +24,11 @@ const ConsoleResult = ({ results }) => (
 );
 
 const ActionRow = ({ data }) => (
-  <tr>
-    <td>{data.oType}</td>
-    <td>{data.oId}</td>
-    <td>{data.key}</td>
-    <td>{data.version}</td>
+  <tr style={styles.tableRow}>
+    <td style={styles.tableData}>{data.oType}</td>
+    <td style={styles.tableData}>{data.oId}</td>
+    <td style={styles.tableData}>{data.key}</td>
+    <td style={styles.tableData}>{data.version}</td>
   </tr>
 );
 

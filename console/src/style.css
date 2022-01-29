@@ -6,24 +6,25 @@
   text-align: center;
   font-size: 54px;
   font-weight: 300;
-  
-  margin: 0px 0px 10px 0px;
+  vertical-align: middle;
+
+  margin: 0px 20px 0px 20px;
 }
 
 .links {
   text-align: center;
-  
+
   margin: 0px 0px 15px 0px;
 }
 
 .link {
-  padding: 5px;
-  
   color: black;
-  background-color: #aaaaaa;
-  
+
   font-size: 24px;
   text-decoration: none;
+  vertical-align: middle;
+  margin-left: 10px;
+  margin-right: 10px;
 }
 
 .link:hover {
@@ -31,28 +32,24 @@
 }
 
 .curLink {
-  padding: 5px;
-  
   color: black;
-  background-color: #77aa77;
-  
+  font-weight: 700;
+
   font-size: 24px;
   text-decoration: none;
+  vertical-align: middle;
+  margin-left: 10px;
+  margin-right: 10px;
 }
 
 .consoleBody {
   display: flex;
 }
 
-.consoleForm {  
+.consoleForm {
   padding: 5px;
-  
+
   margin: 0px 10px 0px 0px;
-  
-  border-style: solid;
-  border-width: 2px 2px 2px 0px;
-  
-  background-color: #dddddd;
 }
 
 .consoleFormItem {
@@ -61,7 +58,7 @@
 
 .consoleFormItemLabel {
   padding: 5px;
-  
+
   font-weight: 500;
   background-color: #777777;
   color: white;
@@ -69,7 +66,7 @@
 
 .consoleFormItemInput {
   padding: 5px;
-  
+
   background-color: #bbbbbb;
 }
 
@@ -79,27 +76,22 @@
 }
 
 .consoleResultHeader {
-  background-color: #aaaaaa;
   padding: 5px;
+  padding-top: 20px;
   font-weight: 500;
-  
+
   margin: 0px;
-  border-style: solid;
-  border-width: 2px 0px 1px 0px;
 }
 
 table {
   width: 100%;
 }
 
-table, th, td {
+table,
+th,
+td {
   border-style: solid;
   border-width: 1px;
-}
-
-tr:hover {
-  color: #ffffff;
-  background-color: #555555;
 }
 
 th {
@@ -107,24 +99,24 @@ th {
   background-color: #997799;
 }
 
-th, td {
+th,
+td {
   padding: 5px;
 }
 
 .consoleFormSubmit {
   text-align: center;
-  
+
   margin: 5px;
   padding: 5px;
 }
 
 .consoleFormSubmitButton {
   width: 100%;
-  
+
   padding: 5px;
 }
 
 .timestamp {
-  font-family: monospace;
   font-size: 15px;
 }
