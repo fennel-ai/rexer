@@ -1,4 +1,4 @@
-import time
+import time, sys
 from operator import itemgetter
 import client
 from models import action, counter, value, profile
@@ -9,7 +9,9 @@ ACTION = 0
 PROFILE_GET = 1
 PROFILE_SET = 2
 
-actionLogFname = 'tests/actionLogSmall'
+actionLogFname = 'tests/actionLog'
+if len(sys.argv) >= 2 and sys.argv[1] == '-s':
+    actionLogFname += 'Small'
 getProfileFname = 'tests/profileGets'
 setProfileFname = 'tests/profileSets'
 

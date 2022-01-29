@@ -7,7 +7,7 @@ from models import action, counter, value, profile
 GET = 0
 SET = 1
 
-numOTypes = 2
+oTypes = [ 'User', 'Video' ]
 numVersions = 10
 maxKeyLen = 10
 maxValue = 100
@@ -40,7 +40,7 @@ with open(getFname, 'w') as getFile, open(setFname, 'w') as setFile:
             p = profile.ProfileItem()
             p.CustID = 1
             p.Oid = len(profiles)+1
-            p.OType = random.randint(1, numOTypes)
+            p.OType = random.choice(oTypes)
             p.Key = genRandString(maxKeyLen)
             v = value.Int(random.randint(1, maxValue))
             p.Value.CopyFrom(v)

@@ -1,18 +1,22 @@
-import random
+import random, sys
 import client
 from models import action, counter, value, profile
 
 # --------- CONSTANTS -----------
 
-numActorTypes = 2
-numTargetTypes = 2
-numActionTypes = 3
+actorTypes = [ 'USER' ]
+targetTypes = [ 'IMAGE', 'VIDEO']
+actionTypes = [ 'LIKE', 'SHARE', 'VIEW' ]
 
 numActors = 500
 numTargets = 2000
-numActions = 1000
+numActions = 10000
+if len(sys.argv) >= 2:
+    numActions = int(sys.argv[1])
 
-outputFname = 'tests/actionLogSmall'
+outputFname = 'tests/actionLog'
+if len(sys.argv) >= 3 and sys.argv[2] == '-s':
+    outputFname += 'Small'
 
 # -------------------------------
 
@@ -20,7 +24,7 @@ def genActors(numActors):
     actors = []
     
     for i in range(numActors):
-        actors.append(random.randint(1, numActorTypes))
+        actors.append(random.choice(actorTypes))
     
     return actors
 
@@ -28,7 +32,7 @@ def genTargets(numTargets):
     targets = []
     
     for i in range(numTargets):
-        targets.append(random.randint(1, numTargetTypes))
+        targets.append(random.choice(targetTypes))
     
     return targets
 
@@ -48,7 +52,7 @@ with open(outputFname, 'w') as f:
         a.ActorType = actors[actor-1]
         a.TargetID = target
         a.TargetType = targets[target-1]
-        a.ActionType = random.randint(1, numActionTypes)
+        a.ActionType = random.choice(actionTypes)
         a.RequestID = i+1
         a.CustID = 1
         
