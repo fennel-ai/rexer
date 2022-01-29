@@ -122,13 +122,25 @@ const allProfiles = [
 ];
 
 const actionMetadata = {
-  actionTypes: [ 'LIKE', 'SHARE', 'VIEW' ],
-  targetTypes: [ 'IMAGE', 'VIDEO' ],
-  actorTypes: [ 'USER' ],
+  actionTypes: [ 
+    { val:'LIKE', text:'LIKE' },
+    { val:'SHARE', text:'SHARE' },
+    { val:'VIEW', text:'VIEW' },
+  ],
+  targetTypes: [
+    { val:'IMAGE', text:'IMAGE' },
+    { val:'VIDEO', text:'VIDEO' },
+  ],
+  actorTypes: [
+    { val:'USER', text:'USER' },
+  ],
 };
 
 const profileMetadata = {
-  oTypes: [ 'USER', 'VIDEO'],
+  oTypes: [
+    { val:'USER', text:'USER' },
+    { val:'VIDEO', text:'VIDEO' },
+  ],
   latestVersion: 1,
 };
 
