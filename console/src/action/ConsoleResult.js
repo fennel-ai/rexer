@@ -1,21 +1,7 @@
 import * as React from 'react';
 import './../style.css';
 
-const processData = (data, metadata) => {
-  return data.map((item) => {
-    const res = { ...item };
-    
-    res.actionType = metadata.actionTypes[item.actionType].text;
-    res.actorType = metadata.actorTypes[item.actorType].text;
-    res.targetType = metadata.targetTypes[item.targetType].text;
-    
-    return res;
-  });
-};
-
 const ConsoleResult = ({ data, metadata }) => {
-  const results = processData(data, metadata);
-  
   return (
     <div className="consoleResult">
       <h2 className="consoleResultHeader">
@@ -36,7 +22,7 @@ const ConsoleResult = ({ data, metadata }) => {
           </tr>
         </thead>
         <tbody>
-          {results.map((item) => (
+          {data.map((item) => (
             <ActionRow data={item} key={item.actionId} />
           ))}
         </tbody>

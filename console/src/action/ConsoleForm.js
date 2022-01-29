@@ -71,7 +71,7 @@ const filters = {
   },
 };
 
-const ConsoleForm = ({ onQuerySubmit, metadata }) => {  
+const ConsoleForm = ({ onQuerySubmit, metadata }) => {
   return (
     <form onSubmit={onQuerySubmit} className="consoleForm">
       <ConsoleSelect data={filters.actionType} more={metadata.actionTypes} />

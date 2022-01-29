@@ -1,12 +1,17 @@
 import * as React from 'react';
 import { ConsoleInput } from './../ConsoleInput';
+import { ConsoleSelect } from './../ConsoleSelect';
 import './../style.css';
 
 const filters = {
   oType : {
     id: 'filterOType',
     label: 'OType: ',
-    type: 'number',
+    options: [
+      {val: 'ANY', text: 'ANY'},
+      {val: 'USER', text: 'USER'},
+      {val: 'VIDEO', text: 'VIDEO'},
+    ]
   },
   oId : {
     id: 'filterOId',
@@ -28,7 +33,7 @@ const filters = {
 const ConsoleForm = ({ onQuerySubmit }) => {    
   return (
     <form onSubmit={onQuerySubmit} className="consoleForm">
-      <ConsoleInput data={filters.oType} />
+      <ConsoleSelect data={filters.oType} more={[]} />
       <ConsoleInput data={filters.oId} />
       <ConsoleInput data={filters.key} />
       <ConsoleInput data={filters.version} />

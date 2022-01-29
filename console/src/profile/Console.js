@@ -9,7 +9,7 @@ const API_ENDPOINT = '/actions/profiles';
 const getQuery = (form) => {
   const params = {};
 
-  if (form.filterOType.value !== '') {
+  if (form.filterOType.value !== 'ANY') {
     params.otype = form.filterOType.value;
   }
   if (form.filterOId.value !== '') {
