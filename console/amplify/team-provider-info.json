@@ -1,20 +1,20 @@
 {
   "westdev": {
     "awscloudformation": {
-      "AuthRoleName": "amplify-console-westdev-221541-authRole",
-      "UnauthRoleArn": "arn:aws:iam::030813887342:role/amplify-console-westdev-221541-unauthRole",
-      "AuthRoleArn": "arn:aws:iam::030813887342:role/amplify-console-westdev-221541-authRole",
+      "AuthRoleName": "amplify-console-westdev-134055-authRole",
+      "UnauthRoleArn": "arn:aws:iam::030813887342:role/amplify-console-westdev-134055-unauthRole",
+      "AuthRoleArn": "arn:aws:iam::030813887342:role/amplify-console-westdev-134055-authRole",
       "Region": "us-west-2",
-      "DeploymentBucketName": "amplify-console-westdev-221541-deployment",
-      "UnauthRoleName": "amplify-console-westdev-221541-unauthRole",
-      "StackName": "amplify-console-westdev-221541",
-      "StackId": "arn:aws:cloudformation:us-west-2:030813887342:stack/amplify-console-westdev-221541/9921d660-7622-11ec-8c94-022151b7fd67",
-      "AmplifyAppId": "dbekmusnqcceq",
-      "APIGatewayAuthURL": "https://s3.amazonaws.com/amplify-console-westdev-221541-deployment/amplify-cfn-templates/api/APIGatewayAuthStack.json"
+      "DeploymentBucketName": "amplify-console-westdev-134055-deployment",
+      "UnauthRoleName": "amplify-console-westdev-134055-unauthRole",
+      "StackName": "amplify-console-westdev-134055",
+      "StackId": "arn:aws:cloudformation:us-west-2:030813887342:stack/amplify-console-westdev-134055/25908a90-814c-11ec-9a1f-026757c08eb3",
+      "AmplifyAppId": "d28oiwl5oo960k",
+      "APIGatewayAuthURL": "https://s3.amazonaws.com/amplify-console-westdev-134055-deployment/amplify-cfn-templates/api/APIGatewayAuthStack.json"
     },
     "categories": {
       "auth": {
-        "console": {}
+        "undefined": {}
       },
       "function": {
         "consoleBff": {
@@ -25,8 +25,8 @@
             "sg-05fd7bc0ebbd4afd7",
             "sg-0742742ab251e8ab3"
           ],
-          "deploymentBucketName": "amplify-console-westdev-221541-deployment",
-          "s3Key": "amplify-builds/consoleBff-3153524463625563504c-build.zip"
+          "deploymentBucketName": "amplify-console-westdev-134055-deployment",
+          "s3Key": "amplify-builds/consoleBff-345a576a55394a394876-build.zip"
         }
       }
     }

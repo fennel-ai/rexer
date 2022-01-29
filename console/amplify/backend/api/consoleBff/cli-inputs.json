@@ -5,14 +5,8 @@
       "name": "/actions",
       "lambdaFunction": "consoleBff",
       "permissions": {
-        "setting": "protected",
+        "setting": "private",
         "auth": [
-          "create",
-          "read",
-          "update",
-          "delete"
-        ],
-        "guest": [
           "create",
           "read",
           "update",

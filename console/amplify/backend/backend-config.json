@@ -33,7 +33,7 @@
     }
   },
   "api": {
-    "bff": {
+    "consoleBff": {
       "service": "API Gateway",
       "providerPlugin": "awscloudformation",
       "dependsOn": [

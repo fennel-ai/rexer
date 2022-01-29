@@ -19,7 +19,7 @@ export type AmplifyDependentResourcesAttributes = {
         }
     },
     "api": {
-        "bff": {
+        "consoleBff": {
             "RootUrl": "string",
             "ApiName": "string",
             "ApiId": "string"
