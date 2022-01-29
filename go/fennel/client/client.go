@@ -84,6 +84,11 @@ func (c Client) retrieveAggregateURL() string {
 	return fmt.Sprintf(c.url.String())
 }
 
+func (c Client) getAggregateValueURL() string {
+	c.url.Path = "/aggregate_value"
+	return fmt.Sprintf(c.url.String())
+}
+
 func (c Client) post(protoMessage proto.Message, url string) ([]byte, error) {
 	// serialize the request to be sent on wire
 	ser, err := proto.Marshal(protoMessage)
@@ -317,4 +322,22 @@ func (c *Client) RetrieveAggregate(aggtype ftypes.AggType, aggname ftypes.AggNam
 	} else {
 		return ret, nil
 	}
+}
+
+func (c *Client) GetAggregateValue(aggtype ftypes.AggType, aggname ftypes.AggName, key value.Value) (value.Value, error) {
+	// convert to proto request and send to server
+	aggreq := aggregate.GetAggValueRequest{AggType: aggtype, AggName: aggname, Key: key}
+	preq, err := aggregate.ToProtoGetAggValueRequest(aggreq)
+	if err != nil {
+		return value.Nil, err
+	}
+
+	response, err := c.post(&preq, c.getAggregateValueURL())
+	if err != nil {
+		return value.Nil, err
+	}
+	// convert server response back to a value object and return
+	var ret value.Value
+	err = value.Unmarshal(response, &ret)
+	return ret, err
 }

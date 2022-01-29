@@ -274,6 +274,32 @@ func (m holder) RetrieveAggregate(w http.ResponseWriter, req *http.Request) {
 	w.Write(ser)
 }
 
+func (m holder) AggregateValue(w http.ResponseWriter, req *http.Request) {
+	var protoReq aggregate.ProtoGetAggValueRequest
+	if err := parse(req, &protoReq); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	getAggValue, err := aggregate.FromProtoGetAggValueRequest(&protoReq)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	// call controller
+	ret, err := aggregate2.Value(m.instance, getAggValue.AggType, getAggValue.AggName, getAggValue.Key)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadGateway)
+		return
+	}
+	// marshal ret and then write it back
+	ser, err := value.Marshal(ret)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadGateway)
+		return
+	}
+	w.Write(ser)
+}
+
 func setHandlers(controller holder, mux *http.ServeMux) {
 	mux.HandleFunc("/fetch", controller.Fetch)
 	mux.HandleFunc("/count", controller.Count)

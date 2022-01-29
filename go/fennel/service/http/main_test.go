@@ -1,10 +1,15 @@
 package main
 
 import (
+	aggregate2 "fennel/controller/aggregate"
 	"fennel/engine/ast"
 	"fennel/lib/aggregate"
+	"fennel/model/rcounter"
+	"google.golang.org/protobuf/proto"
+	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	"fennel/client"
@@ -207,6 +212,38 @@ func TestQuery(t *testing.T) {
 
 }
 
+func TestHolder_AggregateValue_Valid(t *testing.T) {
+	instance, err := test.DefaultInstance()
+	assert.NoError(t, err)
+	clock := &test.FakeClock{}
+	instance.Clock = clock
+	t0 := ftypes.Timestamp(3600 * 10)
+	clock.Set(int64(t0))
+	controller := holder{instance: instance}
+	agg := aggregate.Aggregate{
+		CustID:    instance.CustID,
+		Type:      "rolling_counter",
+		Name:      "mycounter",
+		Query:     ast.MakeInt(1),
+		Timestamp: t0,
+		Options:   aggregate.AggOptions{Duration: 6 * 3600},
+	}
+	key := value.Int(4)
+	keystr := key.String()
+	assert.Equal(t, int64(t0), instance.Clock.Now())
+	assert.NoError(t, aggregate2.Store(instance, agg))
+	// initially count is zero
+	valueSendReceive(t, controller, agg, key, value.Int(0))
+
+	// now create an increment
+	t1 := ftypes.Timestamp(t0 + 3600)
+	buckets := rcounter.BucketizeMoment(keystr, t1, 1)
+	err = rcounter.IncrementMulti(instance, agg.Name, buckets)
+	assert.NoError(t, err)
+	clock.Set(int64(t1 + 60))
+	valueSendReceive(t, controller, agg, key, value.Int(1))
+}
+
 func TestStoreRetrieveAggregate(t *testing.T) {
 	// create a service + client
 	instance, err := test.DefaultInstance()
@@ -260,6 +297,7 @@ func TestStoreRetrieveAggregate(t *testing.T) {
 	assert.Equal(t, agg2, found)
 
 }
+
 func checkGetSet(t *testing.T, c *client.Client, get bool, custid uint64, otype string, oid uint64, version uint64,
 	key string, val value.Value) profilelib.ProfileItem {
 	if get {
@@ -296,4 +334,24 @@ func checkGetProfiles(t *testing.T, c *client.Client, request profilelib.Profile
 	for i := range expected {
 		assert.Equal(t, expected[i], found[i])
 	}
+}
+
+func valueSendReceive(t *testing.T, controller holder, agg aggregate.Aggregate, key, expected value.Value) {
+	pkey, err := value.ToProtoValue(key)
+	assert.NoError(t, err)
+	pagr := aggregate.ProtoGetAggValueRequest{AggType: string(agg.Type), AggName: string(agg.Name), Key: &pkey}
+	ser, err := proto.Marshal(&pagr)
+	assert.NoError(t, err)
+	w := httptest.NewRecorder()
+	r := httptest.NewRequest("POST", "/aggregate_value", strings.NewReader(string(ser)))
+	controller.AggregateValue(w, r)
+	// parse server response back
+	response, err := ioutil.ReadAll(w.Body)
+	assert.NoError(t, err)
+	var found value.Value
+	err = value.Unmarshal(response, &found)
+	assert.NoError(t, err)
+
+	assert.NoError(t, err)
+	assert.Equal(t, expected, found)
 }

@@ -14,15 +14,17 @@ _sym_db = _symbol_database.Default()
 
 import ast_pb2 as ast__pb2
 import ftypes_pb2 as ftypes__pb2
+import value_pb2 as value__pb2
 
 
-DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x0f\x61ggregate.proto\x1a\tast.proto\x1a\x0c\x66types.proto\"\x8b\x01\n\x0eProtoAggregate\x12\x0f\n\x07\x63ust_id\x18\x01 \x01(\x04\x12\x10\n\x08\x61gg_type\x18\x02 \x01(\t\x12\x10\n\x08\x61gg_name\x18\x03 \x01(\t\x12\x13\n\x05query\x18\x04 \x01(\x0b\x32\x04.Ast\x12\x11\n\ttimestamp\x18\x05 \x01(\x04\x12\x1c\n\x07options\x18\x06 \x01(\x0b\x32\x0b.AggOptions\"F\n\nAggOptions\x12\x10\n\x08\x64uration\x18\x01 \x01(\x04\x12\x17\n\x06window\x18\x02 \x01(\x0e\x32\x07.Window\x12\r\n\x05limit\x18\x03 \x01(\x04\"0\n\nAggRequest\x12\x10\n\x08\x61gg_type\x18\x01 \x01(\t\x12\x10\n\x08\x61gg_name\x18\x02 \x01(\tB\x16Z\x14\x66\x65nnel/lib/aggregateb\x06proto3')
+DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x0f\x61ggregate.proto\x1a\tast.proto\x1a\x0c\x66types.proto\x1a\x0bvalue.proto\"\x8b\x01\n\x0eProtoAggregate\x12\x0f\n\x07\x63ust_id\x18\x01 \x01(\x04\x12\x10\n\x08\x61gg_type\x18\x02 \x01(\t\x12\x10\n\x08\x61gg_name\x18\x03 \x01(\t\x12\x13\n\x05query\x18\x04 \x01(\x0b\x32\x04.Ast\x12\x11\n\ttimestamp\x18\x05 \x01(\x04\x12\x1c\n\x07options\x18\x06 \x01(\x0b\x32\x0b.AggOptions\"F\n\nAggOptions\x12\x10\n\x08\x64uration\x18\x01 \x01(\x04\x12\x17\n\x06window\x18\x02 \x01(\x0e\x32\x07.Window\x12\r\n\x05limit\x18\x03 \x01(\x04\"0\n\nAggRequest\x12\x10\n\x08\x61gg_type\x18\x01 \x01(\t\x12\x10\n\x08\x61gg_name\x18\x02 \x01(\t\"S\n\x17ProtoGetAggValueRequest\x12\x10\n\x08\x61gg_type\x18\x01 \x01(\t\x12\x10\n\x08\x61gg_name\x18\x02 \x01(\t\x12\x14\n\x03key\x18\x03 \x01(\x0b\x32\x07.PValueB\x16Z\x14\x66\x65nnel/lib/aggregateb\x06proto3')
 
 
 
 _PROTOAGGREGATE = DESCRIPTOR.message_types_by_name['ProtoAggregate']
 _AGGOPTIONS = DESCRIPTOR.message_types_by_name['AggOptions']
 _AGGREQUEST = DESCRIPTOR.message_types_by_name['AggRequest']
+_PROTOGETAGGVALUEREQUEST = DESCRIPTOR.message_types_by_name['ProtoGetAggValueRequest']
 ProtoAggregate = _reflection.GeneratedProtocolMessageType('ProtoAggregate', (_message.Message,), {
   'DESCRIPTOR' : _PROTOAGGREGATE,
   '__module__' : 'aggregate_pb2'
@@ -44,14 +46,23 @@ AggRequest = _reflection.GeneratedProtocolMessageType('AggRequest', (_message.Me
   })
 _sym_db.RegisterMessage(AggRequest)
 
+ProtoGetAggValueRequest = _reflection.GeneratedProtocolMessageType('ProtoGetAggValueRequest', (_message.Message,), {
+  'DESCRIPTOR' : _PROTOGETAGGVALUEREQUEST,
+  '__module__' : 'aggregate_pb2'
+  # @@protoc_insertion_point(class_scope:ProtoGetAggValueRequest)
+  })
+_sym_db.RegisterMessage(ProtoGetAggValueRequest)
+
 if _descriptor._USE_C_DESCRIPTORS == False:
 
   DESCRIPTOR._options = None
   DESCRIPTOR._serialized_options = b'Z\024fennel/lib/aggregate'
-  _PROTOAGGREGATE._serialized_start=45
-  _PROTOAGGREGATE._serialized_end=184
-  _AGGOPTIONS._serialized_start=186
-  _AGGOPTIONS._serialized_end=256
-  _AGGREQUEST._serialized_start=258
-  _AGGREQUEST._serialized_end=306
+  _PROTOAGGREGATE._serialized_start=58
+  _PROTOAGGREGATE._serialized_end=197
+  _AGGOPTIONS._serialized_start=199
+  _AGGOPTIONS._serialized_end=269
+  _AGGREQUEST._serialized_start=271
+  _AGGREQUEST._serialized_end=319
+  _PROTOGETAGGVALUEREQUEST._serialized_start=321
+  _PROTOGETAGGVALUEREQUEST._serialized_end=404
 # @@protoc_insertion_point(module_scope)

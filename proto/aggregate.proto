@@ -4,6 +4,7 @@ option go_package = "fennel/lib/aggregate";
 
 import "ast.proto";
 import "ftypes.proto";
+import "value.proto";
 
 message ProtoAggregate {
   uint64 cust_id = 1;
@@ -23,4 +24,10 @@ message AggOptions {
 message AggRequest {
   string agg_type = 1;
   string agg_name = 2;
+}
+
+message ProtoGetAggValueRequest {
+  string  agg_type = 1;
+  string  agg_name = 2;
+  PValue key = 3;
 }
