@@ -7,17 +7,6 @@ export type AmplifyDependentResourcesAttributes = {
             "LambdaExecutionRole": "string"
         }
     },
-    "auth": {
-        "console": {
-            "IdentityPoolId": "string",
-            "IdentityPoolName": "string",
-            "UserPoolId": "string",
-            "UserPoolArn": "string",
-            "UserPoolName": "string",
-            "AppClientIDWeb": "string",
-            "AppClientID": "string"
-        }
-    },
     "api": {
         "consoleBff": {
             "RootUrl": "string",
