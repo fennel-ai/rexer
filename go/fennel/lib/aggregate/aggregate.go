@@ -3,6 +3,7 @@ package aggregate
 import (
 	"fennel/engine/ast"
 	"fennel/lib/ftypes"
+	"fennel/lib/value"
 	"fmt"
 	"google.golang.org/protobuf/proto"
 	"strings"
@@ -124,6 +125,36 @@ func FromAggregateSer(ser AggregateSer) (Aggregate, error) {
 		return Aggregate{}, err
 	}
 	return agg, nil
+}
+
+type GetAggValueRequest struct {
+	AggType ftypes.AggType
+	AggName ftypes.AggName
+	Key     value.Value
+}
+
+func FromProtoGetAggValueRequest(pr *ProtoGetAggValueRequest) (GetAggValueRequest, error) {
+	key, err := value.FromProtoValue(pr.GetKey())
+	if err != nil {
+		return GetAggValueRequest{}, err
+	}
+	return GetAggValueRequest{
+		AggType: ftypes.AggType(pr.GetAggType()),
+		AggName: ftypes.AggName(pr.GetAggName()),
+		Key:     key,
+	}, nil
+}
+
+func ToProtoGetAggValueRequest(gavr GetAggValueRequest) (ProtoGetAggValueRequest, error) {
+	pkey, err := value.ToProtoValue(gavr.Key)
+	if err != nil {
+		return ProtoGetAggValueRequest{}, nil
+	}
+	return ProtoGetAggValueRequest{
+		AggType: string(gavr.AggType),
+		AggName: string(gavr.AggName),
+		Key:     &pkey,
+	}, nil
 }
 
 type notFound int
