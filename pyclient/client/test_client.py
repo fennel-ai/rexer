@@ -2,7 +2,7 @@ import unittest
 import httpretty
 
 import query
-from models import action, counter, value, profile
+from models import action, counter, value, profile, aggregate
 import client
 
 
@@ -227,6 +227,42 @@ class Testclient(unittest.TestCase):
 
         self.assertEqual(req.SerializeToString(), httpretty.last_request().body)
         self.assertEqual(v, ret)
+
+    @httpretty.activate(verbose=True, allow_net_connect=False)
+    def test_aggregate_value(self):
+        # invalid requests throw exception
+        c = client.Client()
+        with self.assertRaises(client.InvalidInput):
+            c.aggregate_value(1)
+        with self.assertRaises(client.InvalidInput):
+            c.aggregate_value('hi')
+        with self.assertRaises(client.InvalidInput):
+            c.aggregate_value(counter.GetCountRequest())
+        bad_request = aggregate.GetAggValueRequest()
+        bad_request.agg_type = "sometype"
+        bad_request.agg_name = "" # this is bad because empty names aren't allowed
+        bad_request.key.CopyFrom(value.Int(1))
+        with self.assertRaises(client.InvalidInput):
+            c.aggregate_value(bad_request)
+        bad_request.agg_type = "sometype"
+        bad_request.agg_name = "somename"
+        bad_request.key.CopyFrom(value.Value()) # this time, this is an ill-formed value
+        with self.assertRaises(client.InvalidInput):
+            c.aggregate_value(bad_request)
+
+        # but not with valid query request
+        v = value.Int(5)
+        response = httpretty.Response(v.SerializeToString())
+        httpretty.register_uri(httpretty.POST, 'http://localhost:2425/aggregate_value', responses=[response])
+        request = aggregate.GetAggValueRequest()
+        request.agg_type = "sometype"
+        request.agg_name = "somename"
+        request.key.CopyFrom(value.Int(1))
+        ret = c.aggregate_value(request)
+
+        self.assertEqual(request.SerializeToString(), httpretty.last_request().body)
+        self.assertEqual(v, ret)
+
 
 
 def make_action(k):

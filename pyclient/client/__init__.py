@@ -1,4 +1,4 @@
-from models import action, counter, value, profile
+from models import action, counter, value, profile, aggregate
 from gen.ast_pb2 import Ast
 import requests
 
@@ -132,6 +132,23 @@ class Client(object):
         rate = float(response.content)
         return rate
 
+    def aggregate_value(self, request: aggregate.GetAggValueRequest):
+        if not isinstance(request, aggregate.GetAggValueRequest):
+            raise InvalidInput('arg to aggregate_value must be GetAggValueRequest but instead got: %s' % str(request))
+        errors = aggregate.validate(request)
+        if len(errors) > 0:
+            raise InvalidInput('invalid input: %s' % ', '.join(errors))
+        ser = request.SerializeToString()
+        response = requests.post(self._get_aggregate_value_url(), data=ser)
+        # if response isn't 200, raise the exception
+        if response.status_code != requests.codes.OK:
+            response.raise_for_status()
+
+        # now try to read the response and parse it into a single value
+        v = value.Value()
+        v.ParseFromString(response.content)
+        return v
+
     def _base_url(self):
         return self.url + ':' + self.port
 
@@ -158,3 +175,6 @@ class Client(object):
 
     def _get_profiles_url(self):
         return self._base_url() + '/get_profiles'
+
+    def _get_aggregate_value_url(self):
+        return self._base_url() + '/aggregate_value'
