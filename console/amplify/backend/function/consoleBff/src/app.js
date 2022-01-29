@@ -28,66 +28,66 @@ app.use(function (req, res, next) {
 const allActions = [
   {
     actionId: 0,
-    actionType: 0,
+    actionType: 'LIKE',
     targetId: 0,
-    targetType: 0,
+    targetType: 'IMAGE',
     actorId: 0,
-    actorType: 0,
+    actorType: 'USER',
     requestId: 0,
     actionValue: 0,
     timestamp: Date.parse('2022-01-01'),
   },
   {
     actionId: 1,
-    actionType: 0,
+    actionType: 'LIKE',
     targetId: 1,
-    targetType: 1,
+    targetType: 'VIDEO',
     actorId: 0,
-    actorType: 0,
+    actorType: 'USER',
     requestId: 0,
     actionValue: 1,
     timestamp: Date.parse('2022-01-03'),
   },
   {
     actionId: 2,
-    actionType: 0,
+    actionType: 'LIKE',
     targetId: 2,
-    targetType: 0,
+    targetType: 'IMAGE',
     actorId: 1,
-    actorType: 0,
+    actorType: 'USER',
     requestId: 2,
     actionValue: 4,
     timestamp: Date.parse('2022-01-05'),
   },
   {
     actionId: 3,
-    actionType: 1,
+    actionType: 'SHARE',
     targetId: 1,
-    targetType: 1,
+    targetType: 'VIDEO',
     actorId: 1,
-    actorType: 0,
+    actorType: 'USER',
     requestId: 2,
     actionValue: 9,
     timestamp: Date.parse('2022-01-04'),
   },
   {
     actionId: 4,
-    actionType: 1,
+    actionType: 'SHARE',
     targetId: 2,
-    targetType: 0,
+    targetType: 'IMAGE',
     actorId: 0,
-    actorType: 0,
+    actorType: 'USER',
     requestId: 0,
     actionValue: 16,
     timestamp: Date.parse('2022-01-02'),
   },
   {
     actionId: 5,
-    actionType: 1,
+    actionType: 'SHARE',
     targetId: 2,
-    targetType: 1,
+    targetType: 'VIDEO',
     actorId: 1,
-    actorType: 0,
+    actorType: 'USER',
     requestId: 3,
     actionValue: 25,
     timestamp: Date.parse('2022-01-07'),
@@ -97,65 +97,57 @@ const allActions = [
 const allProfiles = [
   {
     oId: 0,
-    oType: 0,
+    oType: 'USER',
     key: 'str0',
     version: 0,
   },
   {
     oId: 1,
-    oType: 1,
+    oType: 'VIDEO',
     key: 'str1',
     version: 0,
   },
   {
     oId: 2,
-    oType: 0,
+    oType: 'USER',
     key: 'str2',
     version: 1,
   },
   {
     oId: 3,
-    oType: 1,
+    oType: 'VIDEO',
     key: 'str3',
     version: 1,
   },
 ];
 
 const actionMetadata = {
-  actionTypes: [ 
-    { val:0, text:'LIKE' },
-    { val:1, text:'SHARE' },
-    { val:2, text:'VIEW' },
-  ],
-  targetTypes: [
-    { val:0, text:'IMAGE' },
-    { val:1, text:'VIDEO' },
-  ],
-  actorTypes: [
-    { val:0, text:'USER' },
-  ],
+  actionTypes: [ 'LIKE', 'SHARE', 'VIEW' ],
+  targetTypes: [ 'IMAGE', 'VIDEO' ],
+  actorTypes: [ 'USER' ],
 };
 
 const profileMetadata = {
+  oTypes: [ 'USER', 'VIDEO'],
   latestVersion: 1,
 };
 
 app.get('/actions/actions', (req, res) => {
   res.json({
     data: allActions.filter((action) => {
-      if ('action_type' in req.query && Number(req.query.action_type) !== action.actionType) {
+      if ('action_type' in req.query && req.query.action_type !== action.actionType) {
         return false;
       }
       if ('target_id' in req.query && Number(req.query.target_id) !== action.targetId) {
         return false;
       }
-      if ('target_type' in req.query && Number(req.query.target_type) !== action.targetType) {
+      if ('target_type' in req.query && req.query.target_type !== action.targetType) {
         return false;
       }
       if ('actor_id' in req.query && Number(req.query.actor_id) !== action.actorId) {
         return false;
       }
-      if ('actor_type' in req.query && Number(req.query.actor_type) !== action.actorType) {
+      if ('actor_type' in req.query && req.query.actor_type !== action.actorType) {
         return false;
       }
       if ('request_id' in req.query && Number(req.query.request_id) !== action.requestId) {
@@ -191,7 +183,7 @@ app.get('/actions/profiles', (req, res) => {
       if ('oid' in req.query && Number(req.query.oid) !== profile.oId) {
         return false;
       }
-      if ('otype' in req.query && Number(req.query.otype) !== profile.oType) {
+      if ('otype' in req.query && req.query.otype !== profile.oType) {
         return false;
       }
       if ('key' in req.query && req.query.key !== profile.key) {
