@@ -52,19 +52,19 @@ const getQuery = (form) => {
 const Console = () => {
   const [ results, setResults ] = React.useState([]);
   const [ metadata, setMetadata ] = React.useState({notLoaded: true});
-  
+
   React.useEffect(() => {
     API
-      .get('bff', `${API_ENDPOINT}/metadata`, {})
+      .get('consoleBff', `${API_ENDPOINT}/metadata`, {})
       .then(setMetadata)
       .catch((error) => {
         console.log("Failed to load metadata.", error);
       });
   }, []);
-  
+
   const handleQuery = (event) => {
     const form = event.target;
-    
+
     const query = getQuery(form);
 
     API
@@ -74,7 +74,7 @@ const Console = () => {
 
     event.preventDefault();
   }
-  
+
   if( (metadata.notLoaded ?? false) ) {
     return (<div>Loading...</div>);
   } else {

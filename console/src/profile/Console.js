@@ -30,11 +30,11 @@ const Console = () => {
 
   const handleQuery = (event) => {
     const form = event.target;
-    
+
     const query = getQuery(form);
 
     API
-      .get('bff', API_ENDPOINT, query)
+      .get('consoleBff', API_ENDPOINT, query)
       .then(response => setResults(response.data))
       .catch(error => console.log(error));
 
