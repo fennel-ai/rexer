@@ -1,10 +1,12 @@
+import functools
 from models import action, value, profile, aggregate
-from gen.ast_pb2 import Ast
 import requests
 from rql import Expr, Serializer
+from requests.adapters import HTTPAdapter
+from requests.packages.urllib3.util.retry import Retry
 
 PORT = 2425
-URL = 'http://localhost'
+URL = 'https://localhost'
 
 
 class InvalidInput(Exception):
@@ -15,6 +17,21 @@ class Client(object):
     def __init__(self, url=URL, port=PORT):
         self.url = str(url)
         self.port = str(port)
+        self.http = self._get_session()
+
+    @staticmethod
+    def _get_session():
+        retry_strategy = Retry(
+            total=3,
+            status_forcelist=[429, 500, 502, 503, 504],
+            allowed_methods=["POST"],
+        )
+        adapter = HTTPAdapter(max_retries=retry_strategy)
+        http = requests.Session()
+        http.mount("https://", adapter)
+        http.mount("http://", adapter)
+        http.request = functools.partial(http.request, timeout=3)
+        return http
 
     def query(self, query: Expr):
         """Query the query server using the given RQL expression as the input"""
@@ -22,7 +39,7 @@ class Client(object):
             raise InvalidInput("query expected to be an RQL Expr but got '%s' instead" % query)
         ast = Serializer().serialize(query)
         ser = ast.SerializeToString()
-        response = requests.post(self._url('query'), data=ser)
+        response = self.http.post(self._url('query'), data=ser)
         # if response isn't 200, raise the exception
         if response.status_code != requests.codes.OK:
             response.raise_for_status()
@@ -40,7 +57,7 @@ class Client(object):
             raise InvalidInput('invalid profile item: %s' % ', '.join(errors))
 
         ser = item.SerializeToString()
-        response = requests.post(self._url('set'), data=ser)
+        response = self.http.post(self._url('set'), data=ser)
         response.raise_for_status()
 
     def get_profile(self, item: profile.ProfileItem):
@@ -51,7 +68,7 @@ class Client(object):
             raise InvalidInput('invalid profile item: %s' % ', '.join(errors))
 
         ser = item.SerializeToString()
-        response = requests.post(self._url('get'), data=ser)
+        response = self.http.post(self._url('get'), data=ser)
         if response.status_code != requests.codes.OK:
             response.raise_for_status()
         v = value.Value()
@@ -62,7 +79,7 @@ class Client(object):
         if not isinstance(pfr, profile.ProfileFetchRequest):
             raise InvalidInput('fetch arg not a ProfileFetchRequest object: %s' % str(pfr))
         ser = pfr.SerializeToString()
-        response = requests.post(self._url('get_profiles'), data=ser)
+        response = self.http.post(self._url('get_profiles'), data=ser)
         if response.status_code != requests.codes.OK:
             response.raise_for_status()
 
@@ -78,7 +95,7 @@ class Client(object):
             raise InvalidInput('invalid action: %s' % ','.join(errors))
 
         ser = a.SerializeToString()
-        response = requests.post(self._url('log'), data=ser)
+        response = self.http.post(self._url('log'), data=ser)
         # if response isn't 200, raise the exception
         response.raise_for_status()
 
@@ -86,7 +103,7 @@ class Client(object):
         if not isinstance(afr, action.ActionFetchRequest):
             raise InvalidInput('fetch arg not an ActionFetchRequest object: %s' % str(afr))
         ser = afr.SerializeToString()
-        response = requests.post(self._url('fetch'), data=ser)
+        response = self.http.post(self._url('fetch'), data=ser)
         # if response isn't 200, raise the exception
         if response.status_code != requests.codes.OK:
             response.raise_for_status()
@@ -103,7 +120,7 @@ class Client(object):
         if len(errors) > 0:
             raise InvalidInput('invalid input: %s' % ', '.join(errors))
         ser = request.SerializeToString()
-        response = requests.post(self._url('aggregate_value'), data=ser)
+        response = self.http.post(self._url('aggregate_value'), data=ser)
         # if response isn't 200, raise the exception
         if response.status_code != requests.codes.OK:
             response.raise_for_status()
@@ -124,7 +141,7 @@ class Client(object):
         agg.query.CopyFrom(q)
         agg.options.CopyFrom(options)
         ser = agg.SerializeToString()
-        response = requests.post(self._url('store_aggregate'), data=ser)
+        response = self.http.post(self._url('store_aggregate'), data=ser)
         # if response isn't 200, raise the exception
         response.raise_for_status()
 
@@ -136,7 +153,7 @@ class Client(object):
         req.agg_type = agg_type
         req.agg_name = agg_name
         ser = req.SerializeToString()
-        response = requests.post(self._url('retrieve_aggregate'), data=ser)
+        response = self.http.post(self._url('retrieve_aggregate'), data=ser)
         # if response isn't 200, raise the exception
         if response.status_code != requests.codes.OK:
             response.raise_for_status()
