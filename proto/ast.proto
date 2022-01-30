@@ -75,6 +75,6 @@ message Lookup {
 
 message IfElse {
   Ast condition = 1;
-  Ast then = 2;
-  Ast else = 3;
+  Ast then_do = 2;
+  Ast else_do = 3;
 }

@@ -223,16 +223,16 @@ func (i Interpreter) VisitVar(name string) (value.Value, error) {
 	return i.env.Lookup(name)
 }
 
-func (i Interpreter) VisitIfelse(condition ast.Ast, thenBranch ast.Ast, elseBranch ast.Ast) (value.Value, error) {
+func (i Interpreter) VisitIfelse(condition ast.Ast, thenDo ast.Ast, elseDo ast.Ast) (value.Value, error) {
 	cond, err := condition.AcceptValue(i)
 	if err != nil {
 		return value.Nil, err
 	}
-	t, err := thenBranch.AcceptValue(i)
+	t, err := thenDo.AcceptValue(i)
 	if err != nil {
 		return value.Nil, err
 	}
-	e, err := elseBranch.AcceptValue(i)
+	e, err := elseDo.AcceptValue(i)
 	if err != nil {
 		return value.Nil, err
 	}

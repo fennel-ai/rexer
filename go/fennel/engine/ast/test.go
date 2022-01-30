@@ -84,13 +84,13 @@ func init() {
 		At{},
 		IfElse{
 			Condition: MakeBool(true),
-			Then:      MakeInt(4),
-			Else:      MakeInt(7),
+			ThenDo:    MakeInt(4),
+			ElseDo:    MakeInt(7),
 		},
 		IfElse{
 			Condition: MakeBool(false),
-			Then:      MakeInt(9),
-			Else:      MakeInt(5),
+			ThenDo:    MakeInt(9),
+			ElseDo:    MakeInt(5),
 		},
 	}
 	lookups := make([]Ast, 0)
