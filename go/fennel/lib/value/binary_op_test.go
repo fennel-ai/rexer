@@ -26,25 +26,31 @@ func TestInvalid(t *testing.T) {
 	l := List([]Value{Int(1), Double(2.0), Bool(true)})
 	di := Dict(map[string]Value{"a": Int(2), "b": Double(1.0)})
 	n := Nil
-	ops := []string{"+", "-", "*", "/", ">", ">=", "<", "<=", "and", "or", "[]"}
+	ops := []string{"+", "-", "*", "/", ">", ">=", "<", "<=", "and", "or", "[]", "%"}
 
 	// ints with others
-	verifyError(t, i, d, []string{"and", "or"})
+	verifyError(t, i, d, []string{"and", "or", "[]", "%"})
 	verifyError(t, i, b, ops)
 	verifyError(t, i, s, ops)
 	verifyError(t, i, l, ops)
 	verifyError(t, i, di, ops)
 	verifyError(t, i, n, ops)
+	// and div/modulo throws an error when denominator is zero
+	verifyError(t, i, Int(0), []string{"%", "/"})
+	verifyError(t, i, Double(0), []string{"%", "/"})
 
-	verifyError(t, d, i, []string{"and", "or"})
+	verifyError(t, d, i, []string{"and", "or", "%", "[]"})
 	verifyError(t, d, b, ops)
 	verifyError(t, d, s, ops)
 	verifyError(t, d, l, ops)
 	verifyError(t, d, di, ops)
 	verifyError(t, d, n, ops)
+	// and div throws an error when denominator is zero
+	verifyError(t, d, Int(0), []string{"/"})
+	verifyError(t, d, Double(0), []string{"/"})
 
 	verifyError(t, b, i, ops)
-	verifyError(t, b, b, []string{"+", "-", "*", "/", ">", ">=", "<", "<="})
+	verifyError(t, b, b, []string{"+", "-", "*", "/", ">", ">=", "<", "<=", "[]", "%"})
 	verifyError(t, b, s, ops)
 	verifyError(t, b, l, ops)
 	verifyError(t, b, di, ops)
@@ -58,7 +64,7 @@ func TestInvalid(t *testing.T) {
 	verifyError(t, s, n, ops)
 
 	// can only do indexing using a list and an int
-	verifyError(t, l, i, []string{"+", "-", "*", "/", ">", ">=", "<", "<=", "and", "or"})
+	verifyError(t, l, i, []string{"+", "-", "*", "/", ">", ">=", "<", "<=", "and", "or", "%"})
 	verifyError(t, l, b, ops)
 	verifyError(t, l, s, ops)
 	verifyError(t, l, l, ops)
@@ -68,7 +74,7 @@ func TestInvalid(t *testing.T) {
 	verifyError(t, di, i, ops)
 	verifyError(t, di, b, ops)
 	// can only do an indexing on dictionary using a string
-	verifyError(t, di, s, []string{"+", "-", "*", "/", ">", ">=", "<", "<=", "and", "or"})
+	verifyError(t, di, s, []string{"+", "-", "*", "/", ">", ">=", "<", "<=", "and", "or", "%"})
 	verifyError(t, di, l, ops)
 	verifyError(t, di, di, ops)
 	verifyError(t, di, n, ops)
@@ -113,6 +119,14 @@ func TestValidArithmetic(t *testing.T) {
 	base = Double(4.0)
 	verifyOp(t, base, Int(2), Double(2.0), "/")
 	verifyOp(t, base, Double(2.0), Double(2.0), "/")
+
+	// modulo
+	base = Int(4)
+	verifyOp(t, base, Int(2), Int(0), "%")
+	verifyOp(t, base, Int(3), Int(1), "%")
+	verifyOp(t, Int(-5), Int(3), Int(-2), "%")
+	verifyOp(t, Int(5), Int(-3), Int(2), "%")
+	verifyOp(t, Int(-5), Int(-3), Int(-2), "%")
 }
 
 func TestValidRelation(t *testing.T) {
