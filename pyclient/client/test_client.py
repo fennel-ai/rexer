@@ -168,6 +168,23 @@ class Testclient(unittest.TestCase):
         ast = rql.Serializer().serialize(expr)
         self.assertEqual(ast.SerializeToString(), httpretty.last_request().body)
         self.assertEqual(v, ret)
+    
+    @httpretty.activate(verbose=True, allow_net_connect=False)
+    def test_ifelse(self):
+        c = client.Client()
+
+        ifelse1 = rql.Ifelse(
+            condition = rql.Bool(False),
+            then_do = rql.Int(4),
+            else_do =  rql.Int(6),
+        )
+        v = value.Int(6)
+        response = httpretty.Response(v.SerializeToString())
+        httpretty.register_uri(httpretty.POST, 'http://localhost:2425/query', responses=[response])
+        ret = c.query(ifelse1)
+        ast = rql.Serializer().serialize(ifelse1)
+        self.assertEqual(ast.SerializeToString(), httpretty.last_request().body)
+        self.assertEqual(v, ret)
 
     @httpretty.activate(verbose=True, allow_net_connect=False)
     def test_store_aggregate(self):
