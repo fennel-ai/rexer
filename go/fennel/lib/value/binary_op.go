@@ -1,6 +1,8 @@
 package value
 
-import "fmt"
+import (
+	"fmt"
+)
 
 func route(l Value, opt string, other Value) (Value, error) {
 	switch opt {
@@ -30,8 +32,25 @@ func route(l Value, opt string, other Value) (Value, error) {
 		return or(l, other)
 	case "[]":
 		return index(l, other)
+	case "%":
+		return modulo(l, other)
 	}
 	return Nil, nil
+}
+
+func modulo(left Value, right Value) (Value, error) {
+	lint, ok := left.(Int)
+	if !ok {
+		return Nil, fmt.Errorf("'%%' only supported between ints but got: '%v'", left)
+	}
+	rint, ok := right.(Int)
+	if !ok {
+		return Nil, fmt.Errorf("'%%' only supported between ints but got: '%v'", right)
+	}
+	if rint == 0 {
+		return Nil, fmt.Errorf("division by zero while using %%")
+	}
+	return lint % rint, nil
 }
 
 // TODO: implement add for string and lists
@@ -77,6 +96,9 @@ func sub(left Value, right Value) (Value, error) {
 }
 
 func div(left Value, right Value) (Value, error) {
+	if right.Equal(Int(0)) || right.Equal(Double(0)) {
+		return Nil, fmt.Errorf("division by zero while using /")
+	}
 
 	switch left.(type) {
 	case Int:
