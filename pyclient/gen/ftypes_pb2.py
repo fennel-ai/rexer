@@ -15,19 +15,14 @@ _sym_db = _symbol_database.Default()
 
 
 
-DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x0c\x66types.proto*q\n\x06Window\x12\x0f\n\x0bNULL_WINDOW\x10\x00\x12\x08\n\x04HOUR\x10\x01\x12\x07\n\x03\x44\x41Y\x10\x02\x12\x08\n\x04WEEK\x10\x03\x12\t\n\x05MONTH\x10\x04\x12\x0b\n\x07QUARTER\x10\x05\x12\x08\n\x04YEAR\x10\x06\x12\x0b\n\x07\x46OREVER\x10\x07\x12\n\n\x06MINUTE\x10\x08\x42\x13Z\x11\x66\x65nnel/lib/ftypesb\x06proto3')
+DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x0c\x66types.proto*8\n\x06Window\x12\x0f\n\x0bNULL_WINDOW\x10\x00\x12\x08\n\x04HOUR\x10\x01\x12\x07\n\x03\x44\x41Y\x10\x02\x12\n\n\x06MINUTE\x10\x03\x42\x13Z\x11\x66\x65nnel/lib/ftypesb\x06proto3')
 
 _WINDOW = DESCRIPTOR.enum_types_by_name['Window']
 Window = enum_type_wrapper.EnumTypeWrapper(_WINDOW)
 NULL_WINDOW = 0
 HOUR = 1
 DAY = 2
-WEEK = 3
-MONTH = 4
-QUARTER = 5
-YEAR = 6
-FOREVER = 7
-MINUTE = 8
+MINUTE = 3
 
 
 if _descriptor._USE_C_DESCRIPTORS == False:
@@ -35,5 +30,5 @@ if _descriptor._USE_C_DESCRIPTORS == False:
   DESCRIPTOR._options = None
   DESCRIPTOR._serialized_options = b'Z\021fennel/lib/ftypes'
   _WINDOW._serialized_start=16
-  _WINDOW._serialized_end=129
+  _WINDOW._serialized_end=72
 # @@protoc_insertion_point(module_scope)
