@@ -4,7 +4,7 @@ import (
 	aggregate2 "fennel/controller/aggregate"
 	"fennel/engine/ast"
 	"fennel/lib/aggregate"
-	"fennel/model/rcounter"
+	"fennel/model/counter"
 	"google.golang.org/protobuf/proto"
 	"io/ioutil"
 	"net/http"
@@ -186,8 +186,8 @@ func TestHolder_AggregateValue_Valid(t *testing.T) {
 
 	// now create an increment
 	t1 := ftypes.Timestamp(t0 + 3600)
-	buckets := rcounter.BucketizeMoment(keystr, t1, 1)
-	err = rcounter.IncrementMulti(instance, agg.Name, buckets)
+	buckets := counter.BucketizeMoment(keystr, t1, 1)
+	err = counter.IncrementMulti(instance, agg.Name, buckets)
 	assert.NoError(t, err)
 	clock.Set(int64(t1 + 60))
 	valueSendReceive(t, controller, agg, key, value.Int(1))
