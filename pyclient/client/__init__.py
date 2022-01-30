@@ -3,7 +3,7 @@ from models import action, value, profile, aggregate
 import requests
 from rql import Expr, Serializer
 from requests.adapters import HTTPAdapter
-from requests.packages.urllib3.util.retry import Retry
+from urllib3.util import Retry
 
 PORT = 2425
 URL = 'https://localhost'
