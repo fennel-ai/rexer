@@ -9,7 +9,7 @@ pkgs.mkShell {
     pkgs.nix-direnv
 
     # Protobuf
-    pkgs.protobuf3_9
+    pkgs.protobuf
 
     # Packages for go development.
     pkgs.go_1_17
