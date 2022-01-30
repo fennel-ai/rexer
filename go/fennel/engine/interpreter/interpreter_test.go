@@ -407,3 +407,22 @@ func getOpCallQuery() ast.Ast {
 		}},
 	}
 }
+
+func TestInterpreter_VisitIfelse(t *testing.T) {
+	testValid(t, ast.IfElse{
+		Condition: ast.MakeBool(true),
+		Then:      ast.MakeInt(2),
+		Else:      ast.MakeInt(9),
+	}, value.Int(2))
+	testValid(t, ast.IfElse{
+		Condition: ast.MakeBool(false),
+		Then:      ast.MakeInt(1),
+		Else:      ast.MakeInt(8),
+	}, value.Int(8))
+
+	testError(t, ast.IfElse{
+		Condition: ast.MakeInt(10),
+		Then:      ast.MakeInt(11),
+		Else:      ast.MakeInt(12),
+	})
+}

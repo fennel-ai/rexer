@@ -238,8 +238,10 @@ func (i Interpreter) VisitIfelse(condition ast.Ast, thenBranch ast.Ast, elseBran
 	}
 	if cond.Equal(value.Bool(true)) {
 		return t, nil
-	} else {
+	} else if cond.Equal(value.Bool(false)) {
 		return e, nil
+	} else {
+		return value.Nil, fmt.Errorf("condition %s does not evaluate to a boolean", condition)
 	}
 }
 

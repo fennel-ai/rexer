@@ -1,8 +1,9 @@
 package ast
 
 import (
-	"github.com/stretchr/testify/assert"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func check(t *testing.T, valid []Ast, invalid []Ast) {
@@ -26,6 +27,8 @@ func TestFromProtoAst(t *testing.T) {
 		nil,
 		Table{Inner: nil},
 		List{[]Ast{MakeBool(false), nil, MakeBool(true)}},
+		IfElse{Condition: MakeBool(true), Then: nil, Else: MakeInt(5)},
+		IfElse{Condition: MakeBool(true), Then: MakeInt(4), Else: nil},
 	}
 	check(t, valid, invalid)
 }

@@ -82,6 +82,16 @@ func init() {
 			Kwargs:    Dict{Values: map[string]Ast{}},
 		},
 		At{},
+		IfElse{
+			Condition: MakeBool(true),
+			Then:      MakeInt(4),
+			Else:      MakeInt(7),
+		},
+		IfElse{
+			Condition: MakeBool(false),
+			Then:      MakeInt(9),
+			Else:      MakeInt(5),
+		},
 	}
 	lookups := make([]Ast, 0)
 	for _, t := range TestExamples {
