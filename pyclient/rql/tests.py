@@ -1,7 +1,7 @@
 import unittest
-from query.expr import *
-from query.visitor import Printer
-from query.to_proto import ProtoConvertor
+from rql.expr import *
+from rql.visitor import Printer
+from rql.to_proto import ProtoConvertor
 from gen.ast_pb2 import Ast
 
 

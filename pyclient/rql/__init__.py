@@ -1,9 +1,8 @@
-from query.expr import Int, Double, Bool, String
-from query.expr import Expr as _Expr
-from query.expr import InvalidQueryException, List, Dict, Transform, Table, Var, Ops, at
-from query.visitor import Printer
-from query.to_proto import ProtoConvertor as _ToQueryProto
-from query.to_proto import proto as Query
+from rql.expr import Int, Double, Bool, String
+from rql.expr import Expr as _Expr
+from rql.expr import InvalidQueryException, List, Dict, Transform, Table, Var, Ops, at
+from rql.visitor import Printer
+from rql.to_proto import ProtoConvertor as _ToQueryProto
 
 
 def query(e: _Expr):

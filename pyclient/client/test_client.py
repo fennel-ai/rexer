@@ -2,7 +2,7 @@ import unittest
 import httpretty
 import requests
 
-import query
+import rql
 from models import action, value, profile, aggregate
 import client
 
@@ -145,12 +145,12 @@ class Testclient(unittest.TestCase):
 
     @httpretty.activate(verbose=True, allow_net_connect=False)
     def test_query(self):
-        d1 = query.Dict(x=query.Int(1), y=query.Int(2))
-        d2 = query.Dict(x=query.Int(3), y=query.Int(5))
-        d3 = query.Dict(x=query.Int(1), y=query.Int(0))
-        t = query.Table(query.List(d1, d2, d3))
-        e = query.Transform(t).using(query.Ops.std.filter(where=query.at.x > query.at.y + query.Double(0.5)))
-        req = query.query(e)
+        d1 = rql.Dict(x=rql.Int(1), y=rql.Int(2))
+        d2 = rql.Dict(x=rql.Int(3), y=rql.Int(5))
+        d3 = rql.Dict(x=rql.Int(1), y=rql.Int(0))
+        t = rql.Table(rql.List(d1, d2, d3))
+        e = rql.Transform(t).using(rql.Ops.std.filter(where=rql.at.x > rql.at.y + rql.Double(0.5)))
+        req = rql.query(e)
 
         v = value.Int(5)
         response = httpretty.Response(v.SerializeToString())
@@ -176,17 +176,17 @@ class Testclient(unittest.TestCase):
         # invalid requests throw exception
         c = client.Client()
         with self.assertRaises(client.InvalidInput):
-            c.store_aggregate("", "", query.Int(1), aggregate.AggOptions())
+            c.store_aggregate("", "", rql.Int(1), aggregate.AggOptions())
         with self.assertRaises(client.InvalidInput):
-            c.store_aggregate("aggtype", "", query.Int(1), aggregate.AggOptions())
+            c.store_aggregate("aggtype", "", rql.Int(1), aggregate.AggOptions())
         with self.assertRaises(client.InvalidInput):
-            c.store_aggregate("aggtype", "aggname", query.Int(1), aggregate.AggOptions())
+            c.store_aggregate("aggtype", "aggname", rql.Int(1), aggregate.AggOptions())
 
         # but valid ones don't
         httpretty.register_uri(httpretty.POST, 'http://localhost:2425/store_aggregate')
         options = aggregate.AggOptions()
         options.duration = 6*3600
-        ret = c.store_aggregate("aggtype", "aggname", query.query(query.Int(1)), options)
+        ret = c.store_aggregate("aggtype", "aggname", rql.query(rql.Int(1)), options)
         self.assertIs(None, ret)
 
         # and if server gave a non-200 response, we raise an error
@@ -194,7 +194,7 @@ class Testclient(unittest.TestCase):
             return [401, response_headers, 'some error message']
         httpretty.register_uri(httpretty.POST, 'http://localhost:2425/store_aggregate', body=request_callback)
         with self.assertRaises(requests.RequestException):
-            c.store_aggregate("aggtype", "aggname", query.query(query.Int(1)), aggregate.AggOptions())
+            c.store_aggregate("aggtype", "aggname", rql.query(rql.Int(1)), aggregate.AggOptions())
 
     @httpretty.activate(verbose=True, allow_net_connect=False)
     def test_retrieve_aggregate(self):
@@ -208,7 +208,7 @@ class Testclient(unittest.TestCase):
         expected = aggregate.Aggregate()
         expected.agg_type = "some type"
         expected.agg_name = "some name"
-        expected.query.CopyFrom(query.query(query.Int(1)))
+        expected.query.CopyFrom(rql.query(rql.Int(1)))
         options = aggregate.AggOptions()
         options.duration = 6*3600
         expected.options.CopyFrom(options)

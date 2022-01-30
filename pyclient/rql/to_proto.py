@@ -1,5 +1,5 @@
 from gen import ast_pb2 as proto
-from query import visitor
+from rql import visitor
 
 
 class ProtoConvertor(visitor.Visitor):
