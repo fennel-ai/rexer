@@ -1,4 +1,4 @@
-from models import action, counter, value, profile, aggregate
+from models import action, value, profile, aggregate
 from gen.ast_pb2 import Ast
 import requests
 
@@ -98,40 +98,6 @@ class Client(object):
         al.ParseFromString(response.content)
         return action.from_proto_action_list(al)
 
-    def count(self, request):
-        if not isinstance(request, counter.GetCountRequest):
-            raise InvalidInput('arg to count must be GetCountRequest but instead got: %s' % str(request))
-        errors = counter.validate_count_request(request)
-        if len(errors) > 0:
-            raise InvalidInput('invalid input: %s' % ', '.join(errors))
-        ser = request.SerializeToString()
-        response = requests.post(self._count_url(), data=ser)
-        # if response isn't 200, raise the exception
-        if response.status_code != requests.codes.OK:
-            response.raise_for_status()
-
-        # now try to read the response and parse it into a single int
-        # TODo: this could raise parseError, do we need special handling?
-        count = int(response.content)
-        return count
-
-    def rate(self, request: counter.GetRateRequest):
-        if not isinstance(request, counter.GetRateRequest):
-            raise InvalidInput('arg to rate must be GetRateRequest but instead got: %s' % str(request))
-        errors = counter.validate_rate_request(request)
-        if len(errors) > 0:
-            raise InvalidInput('invalid input: %s' % ', '.join(errors))
-        ser = request.SerializeToString()
-        response = requests.post(self._rate_url(), data=ser)
-        # if response isn't 200, raise the exception
-        if response.status_code != requests.codes.OK:
-            response.raise_for_status()
-
-        # now try to read the response and parse it into a single int
-        # TODo: this could raise parseError, do we need special handling?
-        rate = float(response.content)
-        return rate
-
     def aggregate_value(self, request: aggregate.GetAggValueRequest):
         if not isinstance(request, aggregate.GetAggValueRequest):
             raise InvalidInput('arg to aggregate_value must be GetAggValueRequest but instead got: %s' % str(request))
@@ -186,12 +152,6 @@ class Client(object):
 
     def _log_url(self):
         return self._base_url() + '/log'
-
-    def _count_url(self):
-        return self._base_url() + '/count'
-
-    def _rate_url(self):
-        return self._base_url() + '/rate'
 
     def _fetch_url(self):
         return self._base_url() + '/fetch'

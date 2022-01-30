@@ -1,7 +1,7 @@
 import time, sys
 from operator import itemgetter
 import client
-from models import action, counter, value, profile
+from models import action, profile
 
 # --------- CONSTANTS -----------
 
