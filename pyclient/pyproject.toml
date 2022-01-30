@@ -13,6 +13,7 @@ httpretty = "^1.1.4"
 Flask = "^2.0.2"
 gunicorn = "^20.1.0"
 urllib3 = "^1.26.8"
+absl-py = "^1.0.0"
 
 [tool.poetry.dev-dependencies]
 

@@ -77,6 +77,14 @@ const appDep = image.imageName.apply(() => {
                                 protocol: "TCP",
                             },
                         ],
+                        command: [
+                            'poetry',
+                            'run',
+                            'gunicorn',
+                            'app:build_app(endpoint="http://http-server.fennel:2425")',
+                            '-b',
+                            ":2475",
+                        ]
                     }],
                 },
             },

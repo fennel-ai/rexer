@@ -1,14 +1,22 @@
+from absl import flags
 from flask import Flask, request, jsonify
 from google.protobuf import json_format
 
 import client
 from models import action, value, profile
 
-HOST = 'localhost'
-PORT = 2475
-
-c = client.Client()
 app = Flask('console')
+
+# Flags:
+endpoint_flag = flags.DEFINE_string("endpoint", "http://localhost:2425", "URL for the data-plane API end-point")
+
+def build_app(**kwargs):
+    global c
+    if endpoint_flag.name in kwargs:
+        c = client.Client(kwargs.get(endpoint_flag.name))
+    else:
+        c = client.Client(endpoint_flag.default)
+    return app
 
 
 def is_uint(s, size=32):
@@ -238,4 +246,6 @@ def profiles_handler():
     return '[' + ', '.join(strs) + ']'
 
 if __name__ == '__main__':
-    app.run(host=HOST, port=PORT)
+    global c
+    c = client.Client()
+    app.run(host="localhost", port="2475")
