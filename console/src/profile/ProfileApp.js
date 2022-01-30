@@ -1,11 +1,11 @@
 import * as React from "react";
 import { Console } from "./Console";
-import App from "../App";
+import Header from "../Header";
 import "./../style.css";
 
 const ProfileApp = () => (
   <div>
-    <App />
+    <Header />
     <Console />
   </div>
 );

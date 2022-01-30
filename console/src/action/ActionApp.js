@@ -1,11 +1,11 @@
 import * as React from "react";
 import { Console } from "./Console";
 import "./../style.css";
-import App from "../App";
+import Header from "../Header";
 
 const ActionApp = () => (
   <div>
-    <App />
+    <Header />
     <Console />
   </div>
 );
