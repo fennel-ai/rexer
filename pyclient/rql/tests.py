@@ -1,7 +1,7 @@
 import unittest
 from rql.expr import *
 from rql.visitor import Printer
-from rql.to_proto import ProtoConvertor
+from rql.serializer import Serializer
 from gen.ast_pb2 import Ast
 
 
@@ -74,7 +74,7 @@ class Test(unittest.TestCase):
         e = Transform(t).using(Ops.std.filter(where=at.x + at.y < Int(4)))
         tests.append(e)
         for t in tests:
-            q = ProtoConvertor().query(t)
+            q = Serializer().serialize(t)
             s = q.SerializeToString()
             q2 = Ast()
             q2.ParseFromString(s)
@@ -85,6 +85,16 @@ class Test(unittest.TestCase):
         printer = Printer()
         with self.assertRaises(InvalidQueryException):
             printer.print(x)
-        q = ProtoConvertor()
+        q = Serializer()
         with self.assertRaises(InvalidQueryException):
-            q.query(x)
+            q.serialize(x)
+
+    def test_var(self):
+        x = Var('args').actions
+        q = Serializer()
+        expected = Ast()
+        var = Ast()
+        var.var.name = 'args'
+        expected.lookup.on.CopyFrom(var)
+        expected.lookup.property = 'actions'
+        self.assertEqual(expected, q.visit(x))

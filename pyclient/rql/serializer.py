@@ -2,9 +2,9 @@ from gen import ast_pb2 as proto
 from rql import visitor
 
 
-class ProtoConvertor(visitor.Visitor):
+class Serializer(visitor.Visitor):
     def __init__(self):
-        super(ProtoConvertor, self).__init__()
+        super(Serializer, self).__init__()
         self.cache = {}
         self.statements = []
 
@@ -12,11 +12,11 @@ class ProtoConvertor(visitor.Visitor):
         if obj in self.cache:
             return self.cache[obj]
 
-        ret = super(ProtoConvertor, self).visit(obj)
+        ret = super(Serializer, self).visit(obj)
         self.cache[obj] = ret
         return ret
 
-    def query(self, obj):
+    def serialize(self, obj):
         last = self.visit(obj)
         ret = proto.Ast()
         ret.query.SetInParent()

@@ -279,7 +279,7 @@ class Transform(Expr):
         for opcall in opcalls:
             if not isinstance(opcall, _Opcall):
                 raise InvalidQueryException(
-                    "'into' method of transform only take operator calls but received '%s' instead" % opcall)
+                    "'into' method of serialize only take operator calls but received '%s' instead" % opcall)
             for k, v in opcall.kwargs.items():
                 v.edge(self)
 
