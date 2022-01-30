@@ -3,6 +3,7 @@ from query.expr import Expr as _Expr
 from query.expr import InvalidQueryException, List, Dict, Transform, Table, Var, Ops, at
 from query.visitor import Printer
 from query.to_proto import ProtoConvertor as _ToQueryProto
+from query.to_proto import proto as Query
 
 
 def query(e: _Expr):
