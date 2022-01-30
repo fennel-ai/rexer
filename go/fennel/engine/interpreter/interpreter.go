@@ -228,17 +228,17 @@ func (i Interpreter) VisitIfelse(condition ast.Ast, thenDo ast.Ast, elseDo ast.A
 	if err != nil {
 		return value.Nil, err
 	}
-	t, err := thenDo.AcceptValue(i)
-	if err != nil {
-		return value.Nil, err
-	}
-	e, err := elseDo.AcceptValue(i)
-	if err != nil {
-		return value.Nil, err
-	}
 	if cond.Equal(value.Bool(true)) {
+		t, err := thenDo.AcceptValue(i)
+		if err != nil {
+			return value.Nil, err
+		}
 		return t, nil
 	} else if cond.Equal(value.Bool(false)) {
+		e, err := elseDo.AcceptValue(i)
+		if err != nil {
+			return value.Nil, err
+		}
 		return e, nil
 	} else {
 		return value.Nil, fmt.Errorf("condition %s does not evaluate to a boolean", condition)
