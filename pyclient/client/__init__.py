@@ -5,18 +5,15 @@ from rql import Expr, Serializer
 from requests.adapters import HTTPAdapter
 from urllib3.util import Retry
 
-PORT = 2425
-URL = 'https://localhost'
-
-
 class InvalidInput(Exception):
     pass
 
 
 class Client(object):
-    def __init__(self, url=URL, port=PORT):
+    def __init__(self, url=None):
+        assert url
+        print("Connecting to", url)
         self.url = str(url)
-        self.port = str(port)
         self.http = self._get_session()
 
     @staticmethod
@@ -164,4 +161,4 @@ class Client(object):
         return ret
 
     def _url(self, path):
-        return self.url + ':' + self.port + '/' + path
+        return self.url + '/' + path
