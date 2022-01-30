@@ -3,6 +3,7 @@ from gen.aggregate_pb2 import ProtoAggregate as Aggregate
 from gen.aggregate_pb2 import AggRequest, AggOptions
 from models import value
 from gen.ast_pb2 import Ast
+from rql import Expr
 
 
 def validate_value_request(req: GetAggValueRequest):
@@ -23,8 +24,8 @@ def validate_type_name(agg_type, agg_name):
 
 def validate(agg_type: str, agg_name: str, query: Ast, options: AggOptions):
     errors = validate_type_name(agg_type, agg_name)
-    if not isinstance(query, Ast):
-        errors.append("aggregate query not valid - did you forget to use query.Query?")
+    if not isinstance(query, Expr):
+        errors.append("query expected to be an RQL expression but got: '%s' instead" % query)
     if not options.IsInitialized():
         errors.append("aggregate options not initialized")
     return errors

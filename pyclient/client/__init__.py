@@ -1,6 +1,7 @@
 from models import action, value, profile, aggregate
 from gen.ast_pb2 import Ast
 import requests
+from rql import Expr, Serializer
 
 PORT = 2425
 # TODO: how does client find out the URL?
@@ -16,10 +17,11 @@ class Client(object):
         self.url = str(url)
         self.port = str(port)
 
-    def query(self, query: Ast):
-        if not isinstance(query, Ast):
-            raise InvalidInput('query is not a query Ast, did you forget to use query.query before calling this?')
-        ser = query.SerializeToString()
+    def query(self, query: Expr):
+        if not isinstance(query, Expr):
+            raise InvalidInput("query expected to be an RQL Expr but got '%s' instead" % query)
+        ast = Serializer().serialize(query)
+        ser = ast.SerializeToString()
         response = requests.post(self._query_url(), data=ser)
         # if response isn't 200, raise the exception
         if response.status_code != requests.codes.OK:
@@ -115,14 +117,15 @@ class Client(object):
         v.ParseFromString(response.content)
         return v
 
-    def store_aggregate(self, agg_type: str, agg_name: str, query: Ast, options: aggregate.AggOptions):
+    def store_aggregate(self, agg_type: str, agg_name: str, query: Expr, options: aggregate.AggOptions):
         errors = aggregate.validate(agg_type, agg_name, query, options)
         if len(errors) > 0:
             raise InvalidInput('invalid input: %s' % ', '.join(errors))
         agg = aggregate.Aggregate()
         agg.agg_type = agg_type
         agg.agg_name = agg_name
-        agg.query.CopyFrom(query)
+        q = Serializer().serialize(query)
+        agg.query.CopyFrom(q)
         agg.options.CopyFrom(options)
         ser = agg.SerializeToString()
         response = requests.post(self._store_aggregate_url(), data=ser)
