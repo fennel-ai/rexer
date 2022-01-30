@@ -170,10 +170,10 @@ class Testclient(unittest.TestCase):
         self.assertEqual(v, ret)
     
     @httpretty.activate(verbose=True, allow_net_connect=False)
-    def test_ifelse(self):
+    def test_cond(self):
         c = client.Client()
 
-        ifelse1 = rql.Ifelse(
+        cond1 = rql.Cond(
             condition = rql.Bool(False),
             then_do = rql.Int(4),
             else_do =  rql.Int(6),
@@ -181,8 +181,8 @@ class Testclient(unittest.TestCase):
         v = value.Int(6)
         response = httpretty.Response(v.SerializeToString())
         httpretty.register_uri(httpretty.POST, 'http://localhost:2425/query', responses=[response])
-        ret = c.query(ifelse1)
-        ast = rql.Serializer().serialize(ifelse1)
+        ret = c.query(cond1)
+        ast = rql.Serializer().serialize(cond1)
         self.assertEqual(ast.SerializeToString(), httpretty.last_request().body)
         self.assertEqual(v, ret)
 
