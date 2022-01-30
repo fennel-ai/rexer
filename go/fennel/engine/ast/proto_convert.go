@@ -217,18 +217,18 @@ func (ifelse IfElse) toProto() (proto.Ast, error) {
 	if err != nil {
 		return pnull, err
 	}
-	protoThen, err := ToProtoAst(ifelse.Then)
+	protoThenDo, err := ToProtoAst(ifelse.ThenDo)
 	if err != nil {
 		return pnull, err
 	}
-	protoElse, err := ToProtoAst(ifelse.Else)
+	protoElseDo, err := ToProtoAst(ifelse.ElseDo)
 	if err != nil {
 		return pnull, err
 	}
 	return proto.Ast{Node: &proto.Ast_Ifelse{Ifelse: &proto.IfElse{
 		Condition: &protoCondition,
-		Then:      &protoThen,
-		Else:      &protoElse,
+		ThenDo:    &protoThenDo,
+		ElseDo:    &protoElseDo,
 	}}}, nil
 }
 
@@ -373,17 +373,17 @@ func fromProtoIfelse(pifelse *proto.Ast_Ifelse) (Ast, error) {
 	if err != nil {
 		return null, err
 	}
-	thenBranch, err := FromProtoAst(*pifelse.Ifelse.Then)
+	thenDo, err := FromProtoAst(*pifelse.Ifelse.ThenDo)
 	if err != nil {
 		return null, err
 	}
-	elseBranch, err := FromProtoAst(*pifelse.Ifelse.Else)
+	elseDo, err := FromProtoAst(*pifelse.Ifelse.ElseDo)
 	if err != nil {
 		return null, err
 	}
 	return IfElse{
 		Condition: condition,
-		Then:      thenBranch,
-		Else:      elseBranch,
+		ThenDo:    thenDo,
+		ElseDo:    elseDo,
 	}, nil
 }
