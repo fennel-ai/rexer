@@ -1,5 +1,6 @@
 import unittest
 import httpretty
+import requests
 
 import query
 from models import action, counter, value, profile, aggregate
@@ -229,6 +230,60 @@ class Testclient(unittest.TestCase):
         self.assertEqual(v, ret)
 
     @httpretty.activate(verbose=True, allow_net_connect=False)
+    def test_store_aggregate(self):
+        # invalid requests throw exception
+        c = client.Client()
+        with self.assertRaises(client.InvalidInput):
+            c.store_aggregate("", "", query.Int(1), aggregate.AggOptions())
+        with self.assertRaises(client.InvalidInput):
+            c.store_aggregate("aggtype", "", query.Int(1), aggregate.AggOptions())
+        with self.assertRaises(client.InvalidInput):
+            c.store_aggregate("aggtype", "aggname", query.Int(1), aggregate.AggOptions())
+
+        # but valid ones don't
+        httpretty.register_uri(httpretty.POST, 'http://localhost:2425/store_aggregate')
+        options = aggregate.AggOptions()
+        options.duration = 6*3600
+        ret = c.store_aggregate("aggtype", "aggname", query.query(query.Int(1)), options)
+        self.assertIs(None, ret)
+
+        # and if server gave a non-200 response, we raise an error
+        def request_callback(request, uri, response_headers):
+            return [401, response_headers, 'some error message']
+        httpretty.register_uri(httpretty.POST, 'http://localhost:2425/store_aggregate', body=request_callback)
+        with self.assertRaises(requests.RequestException):
+            c.store_aggregate("aggtype", "aggname", query.query(query.Int(1)), aggregate.AggOptions())
+
+    @httpretty.activate(verbose=True, allow_net_connect=False)
+    def test_retrieve_aggregate(self):
+        c = client.Client()
+        with self.assertRaises(client.InvalidInput):
+            c.retrieve_aggregate("", "")
+        with self.assertRaises(client.InvalidInput):
+            c.retrieve_aggregate("aggtype", "")
+
+        # but valid ones don't
+        expected = aggregate.Aggregate()
+        expected.agg_type = "some type"
+        expected.agg_name = "some name"
+        expected.query.CopyFrom(query.query(query.Int(1)))
+        options = aggregate.AggOptions()
+        options.duration = 6*3600
+        expected.options.CopyFrom(options)
+        response = httpretty.Response(expected.SerializeToString())
+        httpretty.register_uri(httpretty.POST, 'http://localhost:2425/retrieve_aggregate', responses=[response])
+        ret = c.retrieve_aggregate("some type", "some name")
+        self.assertEqual(expected, ret)
+
+        # and if server gave a non-200 response, we raise an error
+        def request_callback(request, uri, response_headers):
+            return [401, response_headers, 'some error message']
+
+        httpretty.register_uri(httpretty.POST, 'http://localhost:2425/retrieve_aggregate', body=request_callback)
+        with self.assertRaises(requests.RequestException):
+            c.retrieve_aggregate("aggtype", "aggname")
+
+    @httpretty.activate(verbose=True, allow_net_connect=False)
     def test_aggregate_value(self):
         # invalid requests throw exception
         c = client.Client()
@@ -264,7 +319,6 @@ class Testclient(unittest.TestCase):
         self.assertEqual(v, ret)
 
 
-
 def make_action(k):
     k = k * 10
     a = action.Action()
@@ -277,6 +331,7 @@ def make_action(k):
     a.CustID = k + 6
     return a
 
+
 def make_profile(k):
     k = k * 9
     p = profile.ProfileItem()
@@ -285,6 +340,7 @@ def make_profile(k):
     p.Otype = str(k%2)
     p.Key = str(k)
     return p
+
 
 if __name__ == '__main__':
     unittest.main()

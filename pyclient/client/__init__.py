@@ -135,7 +135,7 @@ class Client(object):
     def aggregate_value(self, request: aggregate.GetAggValueRequest):
         if not isinstance(request, aggregate.GetAggValueRequest):
             raise InvalidInput('arg to aggregate_value must be GetAggValueRequest but instead got: %s' % str(request))
-        errors = aggregate.validate(request)
+        errors = aggregate.validate_value_request(request)
         if len(errors) > 0:
             raise InvalidInput('invalid input: %s' % ', '.join(errors))
         ser = request.SerializeToString()
@@ -148,6 +148,38 @@ class Client(object):
         v = value.Value()
         v.ParseFromString(response.content)
         return v
+
+    def store_aggregate(self, agg_type: str, agg_name: str, query: Ast, options: aggregate.AggOptions):
+        errors = aggregate.validate(agg_type, agg_name, query, options)
+        if len(errors) > 0:
+            raise InvalidInput('invalid input: %s' % ', '.join(errors))
+        agg = aggregate.Aggregate()
+        agg.agg_type = agg_type
+        agg.agg_name = agg_name
+        agg.query.CopyFrom(query)
+        agg.options.CopyFrom(options)
+        ser = agg.SerializeToString()
+        response = requests.post(self._store_aggregate_url(), data=ser)
+        # if response isn't 200, raise the exception
+        response.raise_for_status()
+
+    def retrieve_aggregate(self, agg_type: str, agg_name: str) -> aggregate.Aggregate:
+        errors = aggregate.validate_type_name(agg_type, agg_name)
+        if len(errors) > 0:
+            raise InvalidInput('invalid input: %s' % ', '.join(errors))
+        req = aggregate.AggRequest()
+        req.agg_type = agg_type
+        req.agg_name = agg_name
+        ser = req.SerializeToString()
+        response = requests.post(self._retrieve_aggregate_url(), data=ser)
+        # if response isn't 200, raise the exception
+        if response.status_code != requests.codes.OK:
+            response.raise_for_status()
+
+        # parse aggregate from the response content
+        ret = aggregate.Aggregate()
+        ret.ParseFromString(response.content)
+        return ret
 
     def _base_url(self):
         return self.url + ':' + self.port
@@ -178,3 +210,9 @@ class Client(object):
 
     def _get_aggregate_value_url(self):
         return self._base_url() + '/aggregate_value'
+
+    def _store_aggregate_url(self):
+        return self._base_url() + '/store_aggregate'
+
+    def _retrieve_aggregate_url(self):
+        return self._base_url() + '/retrieve_aggregate'
