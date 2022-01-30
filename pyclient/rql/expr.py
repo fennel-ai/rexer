@@ -56,7 +56,7 @@ class Expr(object):
 
     def __getitem__(self, item):
         if not isinstance(item, Expr):
-            raise InvalidQueryException("'[]' operation can only take expression but got '%s'" % type(item))
+            raise InvalidQueryException("'[]' operation can only take RQL expression but got '%s'" % type(item))
         return Binary(self, '[]', item)
 
     def __nonzero__(self):
@@ -67,56 +67,61 @@ class Expr(object):
 
     def __add__(self, other: Expr) -> Expr:
         if not isinstance(other, Expr):
-            raise InvalidQueryException("'+' only allowed between two exprs but got: '%s' instead" % other)
+            raise InvalidQueryException("'+' only allowed between RQL expressions but got: '%s' instead" % other)
         return Binary(self, '+', other)
 
     def __or__(self, other: Expr) -> Expr:
         if not isinstance(other, Expr):
-            raise InvalidQueryException("'or' only allowed between two exprs but got: '%s' instead" % other)
+            raise InvalidQueryException("'or' only allowed between two RQL expressions but got: '%s' instead" % other)
         return Binary(self, 'or', other)
 
     def __eq__(self, other: Expr) -> Expr:
         if not isinstance(other, Expr):
-            raise InvalidQueryException("'==' only allowed between two exprs but got: '%s' instead" % other)
+            raise InvalidQueryException("'==' only allowed between two RQL expressions but got: '%s' instead" % other)
         return Binary(self, '==', other)
+
+    def __ne__(self, other):
+        if not isinstance(other, Expr):
+            raise InvalidQueryException("'!=' only allowed between two RQL expressions but got: '%s' instead" % other)
+        return not (self == other)
 
     def __ge__(self, other):
         if not isinstance(other, Expr):
-            raise InvalidQueryException("'>=' only allowed between two exprs but got: '%s' instead" % other)
+            raise InvalidQueryException("'>=' only allowed between two RQL expressions but got: '%s' instead" % other)
         return Binary(self, '>=', other)
 
     def __gt__(self, other):
         if not isinstance(other, Expr):
-            raise InvalidQueryException("'>' only allowed between two exprs but got: '%s' instead" % other)
+            raise InvalidQueryException("'>' only allowed between two RQL expressions but got: '%s' instead" % other)
         return Binary(self, '>', other)
 
     def __sub__(self, other):
         if not isinstance(other, Expr):
-            raise InvalidQueryException("'-' only allowed between two exprs but got: '%s' instead" % other)
+            raise InvalidQueryException("'-' only allowed between two RQL expressions but got: '%s' instead" % other)
         return Binary(self, '-', other)
 
     def __mul__(self, other):
         if not isinstance(other, Expr):
-            raise InvalidQueryException("'*' only allowed between two exprs but got: '%s' instead" % other)
+            raise InvalidQueryException("'*' only allowed between two RQL expressions but got: '%s' instead" % other)
         return Binary(self, '*', other)
 
     def __truediv__(self, other):
         if not isinstance(other, Expr):
-            raise InvalidQueryException("'/' only allowed between two exprs but got: '%s' instead" % other)
+            raise InvalidQueryException("'/' only allowed between two RQL expressions but got: '%s' instead" % other)
         return Binary(self, '/', other)
 
     def __mod__(self, other):
         if not isinstance(other, Expr):
-            raise InvalidQueryException("'%' only allowed between two exprs but got: '%s' instead" % other)
+            raise InvalidQueryException("'%' only allowed between two RQL expressions but got: '%s' instead" % other)
         return Binary(self, '%', other)
 
     def __and__(self, other):
         if not isinstance(other, Expr):
-            raise InvalidQueryException("'and' only allowed between two exprs but got: '%s' instead" % other)
+            raise InvalidQueryException("'and' only allowed between two RQL expressions but got: '%s' instead" % other)
         return Binary(self, 'and', other)
 
     def __xor__(self, other):
-        assert False, "binary operation 'xor' not supported by exprs"
+        raise InvalidQueryException("binary operation 'xor' not supported by RQL")
 
     def varname(self, dollar=True):
         name = self.nodeid if self.name is None else self.name
@@ -137,57 +142,62 @@ class Expr(object):
 # These classes have just to take care of two things:
 #   1) They are initialized with valid inputs
 #   2) Create right edges in the graph by calling 'edge' function
-# All other functionality is either abstracted in base Expr class or
 #
-# implemented as part of various visitor interface
+# All other functionality is either abstracted in base Expr class or
+# implemented as part of various visitor interfaces.
 
 
-class Constant(Expr):
+class _Constant(Expr):
     def __init__(self, c, name=None):
-        super(Constant, self).__init__(name=name)
+        super(_Constant, self).__init__(name=name)
         self.c = c
 
 
-class Int(Constant):
+class Int(_Constant):
     def __init__(self, n, name=None):
-        assert isinstance(n, int), "Int can only be initialized by int, but given '%s'" % n
+        if not isinstance(n, int):
+            raise InvalidQueryException("Int can only be initialized by int, but given '%s'" % n)
         super(Int, self).__init__(n, name=name)
 
 
-class Double(Constant):
+class Double(_Constant):
     def __init__(self, d, name=None):
-        assert isinstance(d, float), "Double can only be initialized by float, but given '%s'" % d
+        if not isinstance(d, float):
+            raise InvalidQueryException("Double can only be initialized by float, but given '%s'" % d)
         super(Double, self).__init__(d, name=name)
 
 
-class Bool(Constant):
+class Bool(_Constant):
     def __init__(self, b, name=None):
-        assert isinstance(b, bool), "Bool can only be initialized by bool, but given '%s'" % b
+        if not isinstance(b, bool):
+            raise InvalidQueryException("Bool can only be initialized by bool, but given '%s'" % b)
         super(Bool, self).__init__(b, name=name)
 
 
-class String(Constant):
+class String(_Constant):
     def __init__(self, s, name=None):
-        assert isinstance(s, str), "String can only be initialized by str, but given '%s'" % s
+        if not isinstance(s, str):
+            raise InvalidQueryException("String can only be initialized by str, but given '%s'" % s)
         super(String, self).__init__(s, name=name)
 
 
 class Binary(Expr):
     def __init__(self, left, op, right):
+        valid = ('+', '-', '*', '/', '%', 'and', 'or', '==', '>=', '>', '<', '<=', '!=')
+        if op not in valid:
+            raise InvalidQueryException("RQL binary expressions only supports %s but given '%s'" % (', '.join(valid), op))
         super(Binary, self).__init__()
         self.left = left
         self.op = op
         self.right = right
         left.edge(self)
-
-        # for '.' lookups right is str but in every other case, create an edge
-        if op != '.':
-            right.edge(self)
+        right.edge(self)
 
 
 class Lookup(Expr):
     def __init__(self, on, property):
-        assert isinstance(property, str), "Lookup property can only be string, but given '%s'" % property
+        if not isinstance(property, str):
+            raise InvalidQueryException("for '.' lookup, property can only be string, but given '%s'" % property)
         super(Lookup, self).__init__()
         self.on = on
         self.property = property
@@ -197,9 +207,9 @@ class Lookup(Expr):
 class List(Expr):
     def __init__(self, *values, name=None):
         super(List, self).__init__(name=name)
-        for v in values:
+        for i, v in enumerate(values):
             if not isinstance(v, Expr):
-                raise InvalidQueryException('List can only contain RQL expressions but got %s instead' % v)
+                raise InvalidQueryException('list can only contain RQL expressions but got %s at index %d instead' % (v, i))
             v.edge(self)
         self.values = values
 
@@ -209,8 +219,10 @@ class Dict(Expr):
         super(Dict, self).__init__(name=name)
         self.kwargs = {}
         for k, v in values.items():
+            if not isinstance(k, str):
+                raise InvalidQueryException('dict keys can only be strings but got %s instead' % k)
             if not isinstance(v, Expr):
-                raise InvalidQueryException('Dict values can only be RQL expressions but got %s instead' % v)
+                raise InvalidQueryException("dict values can only be RQL expressions but got '%s' for key: %s instead" % (v, k))
             self.kwargs[k] = v
             v.edge(self)
 
@@ -219,8 +231,7 @@ class Table(Expr):
     def __init__(self, inner, name=None):
         super(Table, self).__init__(name=name)
         if not isinstance(inner, Expr):
-            raise InvalidQueryException('Table can only be created from RQL expressions but got %s instead' % inner)
-
+            raise InvalidQueryException('table can only be created from RQL expressions but got %s instead' % inner)
         self.inner = inner
         inner.edge(self)
 
@@ -231,7 +242,6 @@ class Var(Expr):
 
 
 class _Opcall(object):
-    # TODO: how will error handling happen if user called Opcall without table?
     module = None
     opname = None
 
@@ -242,9 +252,11 @@ class _Opcall(object):
         self.name = name
         self.kwargs = {}
         for k, v in kwargs.items():
+            if not isinstance(k, str):
+                raise InvalidQueryException("operator argument keys can only be strings but received '%s' instead" % k)
             if not isinstance(v, Expr):
                 raise InvalidQueryException(
-                    "Value for operator parameter '%s' given '%s' but expected a RQL expression" % (k, v))
+                    "value for operator parameter '%s' given '%s' but expected a RQL expression" % (k, v))
             self.kwargs[k] = v
 
 
@@ -267,7 +279,7 @@ class Transform(Expr):
         for opcall in opcalls:
             if not isinstance(opcall, _Opcall):
                 raise InvalidQueryException(
-                    "'into' method of transform only takes opcalls but received '%s' instead" % opcall)
+                    "'into' method of transform only take operator calls but received '%s' instead" % opcall)
             for k, v in opcall.kwargs.items():
                 v.edge(self)
 

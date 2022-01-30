@@ -1,4 +1,4 @@
-from rql.expr import Int, Double, Bool, String, Binary, Constant
+from rql.expr import Int, Double, Bool, String, Binary, _Constant
 from rql.expr import InvalidQueryException, List, Dict, Transform, Table, Var, at, Lookup
 
 
@@ -40,7 +40,7 @@ class Visitor(object):
         elif obj is at:
             ret = self.visitAt(obj)
         else:
-            raise InvalidQueryException('unrecognized node type: %s', self)
+            raise InvalidQueryException('invalid RQL expression type: %s', self)
 
         return ret
 
@@ -96,7 +96,7 @@ class Printer(Visitor):
         varvalues = {} if varvalues is None else varvalues
 
         for var, value in varvalues.items():
-            if not isinstance(value, Constant):
+            if not isinstance(value, _Constant):
                 raise InvalidQueryException(
                     'Variable value can only be a constant but given %s for %s' % (value, var))
 
