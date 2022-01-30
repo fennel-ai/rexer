@@ -14,11 +14,9 @@ import (
 	"net/http"
 
 	"fennel/controller/action"
-	counter2 "fennel/controller/counter"
 	profile2 "fennel/controller/profile"
 	"fennel/instance"
 	actionlib "fennel/lib/action"
-	"fennel/lib/counter"
 	httplib "fennel/lib/http"
 	profilelib "fennel/lib/profile"
 	"fennel/lib/value"
@@ -78,38 +76,6 @@ func (m holder) Fetch(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 	w.Write(ser)
-}
-
-func (m holder) Count(w http.ResponseWriter, req *http.Request) {
-	var protoRequest counter.ProtoGetCountRequest
-	if err := parse(req, &protoRequest); err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return
-	}
-	request := counter.FromProtoGetCountRequest(&protoRequest)
-	// fwd to controller
-	count, err := counter2.Count(m.instance, request)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadGateway)
-		return
-	}
-	fmt.Fprintf(w, fmt.Sprintf("%d", count))
-}
-
-func (m holder) Rate(w http.ResponseWriter, req *http.Request) {
-	var protoRequest counter.ProtoGetRateRequest
-	if err := parse(req, &protoRequest); err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return
-	}
-	request := counter.FromProtoGetRateRequest(&protoRequest)
-	// hit the controller
-	rate, err := counter2.Rate(m.instance, request)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadGateway)
-		return
-	}
-	fmt.Fprintf(w, fmt.Sprintf("%.9f", rate))
 }
 
 func (m holder) GetProfile(w http.ResponseWriter, req *http.Request) {
@@ -302,11 +268,9 @@ func (m holder) AggregateValue(w http.ResponseWriter, req *http.Request) {
 
 func setHandlers(controller holder, mux *http.ServeMux) {
 	mux.HandleFunc("/fetch", controller.Fetch)
-	mux.HandleFunc("/count", controller.Count)
 	mux.HandleFunc("/get", controller.GetProfile)
 	mux.HandleFunc("/set", controller.SetProfile)
 	mux.HandleFunc("/log", controller.Log)
-	mux.HandleFunc("/rate", controller.Rate)
 	mux.HandleFunc("/get_profiles", controller.GetProfiles)
 	mux.HandleFunc("/query", controller.Query)
 	mux.HandleFunc("/store_aggregate", controller.StoreAggregate)

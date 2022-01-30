@@ -2,11 +2,9 @@ package client
 
 import (
 	"bytes"
-	"encoding/json"
 	"fennel/engine/ast"
 	"fennel/lib/action"
 	"fennel/lib/aggregate"
-	"fennel/lib/counter"
 	"fennel/lib/ftypes"
 	profileLib "fennel/lib/profile"
 	"fennel/lib/value"
@@ -46,16 +44,6 @@ func (c Client) fetchURL() string {
 
 func (c Client) queryURL() string {
 	c.url.Path = "/query"
-	return fmt.Sprintf(c.url.String())
-}
-
-func (c Client) countURL() string {
-	c.url.Path = "/count"
-	return fmt.Sprintf(c.url.String())
-}
-
-func (c Client) rateURL() string {
-	c.url.Path = "/rate"
 	return fmt.Sprintf(c.url.String())
 }
 
@@ -236,47 +224,6 @@ func (c *Client) LogAction(a action.Action) error {
 		return err
 	}
 	return nil
-}
-
-func (c *Client) GetCount(request counter.GetCountRequest) (uint64, error) {
-	err := request.Validate()
-	if err != nil {
-		return 0, fmt.Errorf("invalid request: %v", err)
-	}
-
-	protoRequest := counter.ToProtoGetCountRequest(&request)
-	response, err := c.post(&protoRequest, c.countURL())
-	if err != nil {
-		return 0, err
-	}
-	var count uint64
-	err = json.Unmarshal(response, &count)
-	if err != nil {
-		return 0, fmt.Errorf("server unmarshall error %v", err)
-	}
-	return count, nil
-}
-
-// GetRate returns the normalized ratio of two counters in the same window
-// if lower is true, the lower bound is returned and if false upper bound is returned
-func (c *Client) GetRate(request counter.GetRateRequest) (float64, error) {
-	err := request.Validate()
-	if err != nil {
-		return 0, fmt.Errorf("invalid request: %v", err)
-	}
-	// convert to proto and send to server
-	protoRequest := counter.ToProtoGetRateRequest(&request)
-	response, err := c.post(&protoRequest, c.rateURL())
-	if err != nil {
-
-		return 0, err
-	}
-	var rate float64
-	err = json.Unmarshal(response, &rate)
-	if err != nil {
-		return 0, fmt.Errorf("server unmarshall error %v", err)
-	}
-	return rate, nil
 }
 
 func (c *Client) StoreAggregate(agg aggregate.Aggregate) error {
