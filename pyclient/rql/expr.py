@@ -259,6 +259,16 @@ class _Opcall(object):
                     "value for operator parameter '%s' given '%s' but expected a RQL expression" % (k, v))
             self.kwargs[k] = v
 
+class Ifelse(Expr):
+    def __init__(self, condition, then_do, else_do):
+        super(Ifelse, self).__init__()
+        self.condition = condition
+        self.then_do = then_do
+        self.else_do = else_do
+
+        condition.edge(self)
+        then_do.edge(self)
+        else_do.edge(self)
 
 Ops = Munch()
 Ops.std = Munch({

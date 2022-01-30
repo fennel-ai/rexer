@@ -73,6 +73,10 @@ class Test(unittest.TestCase):
         tests.append(t)
         e = Transform(t).using(Ops.std.filter(where=at.x + at.y < Int(4)))
         tests.append(e)
+
+        ifelse1 = Ifelse(Bool(True), String("abc"), String("xyz"))
+        tests.append(ifelse1)
+        
         for t in tests:
             q = Serializer().serialize(t)
             s = q.SerializeToString()
