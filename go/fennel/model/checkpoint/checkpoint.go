@@ -6,10 +6,10 @@ import (
 	"fennel/lib/ftypes"
 )
 
-func GetCheckpoint2(this instance.Instance, aggtype ftypes.AggType, aggname ftypes.AggName) (ftypes.OidType, error) {
+func Get(this instance.Instance, aggtype ftypes.AggType, aggname ftypes.AggName) (ftypes.OidType, error) {
 	row := this.DB.QueryRow(`
 		SELECT checkpoint
-		FROM checkpoint2
+		FROM checkpoint
 		WHERE cust_id = ?
 		  AND aggtype = ?
 		  AND aggname = ?;
@@ -26,9 +26,9 @@ func GetCheckpoint2(this instance.Instance, aggtype ftypes.AggType, aggname ftyp
 	}
 }
 
-func SetCheckpoint2(this instance.Instance, aggtype ftypes.AggType, aggname ftypes.AggName, checkpoint ftypes.OidType) error {
+func Set(this instance.Instance, aggtype ftypes.AggType, aggname ftypes.AggName, checkpoint ftypes.OidType) error {
 	_, err := this.DB.Exec(`
-		INSERT INTO checkpoint2 (cust_id, aggtype, aggname, checkpoint)
+		INSERT INTO checkpoint (cust_id, aggtype, aggname, checkpoint)
         VALUES (?, ?, ?, ?)
 		ON DUPLICATE KEY
 		UPDATE
