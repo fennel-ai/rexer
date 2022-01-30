@@ -1,13 +1,15 @@
-package aggregate
+package counter
 
 import (
 	"fennel/engine/ast"
 	"fennel/instance"
-	"fennel/lib/aggregate"
+	libaggregate "fennel/lib/aggregate"
 	"fennel/lib/ftypes"
 	"fennel/lib/value"
+	"fennel/model/aggregate"
 	"fennel/test"
 	"github.com/stretchr/testify/assert"
+	"google.golang.org/protobuf/proto"
 	"testing"
 )
 
@@ -17,18 +19,23 @@ func TestRolling(t *testing.T) {
 	assert.NoError(t, err)
 
 	start := 24*3600*12 + 60*31
-	agg := aggregate.Aggregate{
+	agg := libaggregate.Aggregate{
 		CustID:    instance.CustID,
 		Type:      "rolling_counter",
 		Name:      "mycounter",
 		Query:     ast.MakeInt(1),
 		Timestamp: 0,
-		Options: aggregate.AggOptions{
+		Options: libaggregate.AggOptions{
 			Duration: 3600 * 28,
 		},
 	}
+	querySer, err := ast.Marshal(agg.Query)
+	assert.NoError(t, err)
+	optionSer, err := proto.Marshal(&agg.Options)
+	assert.NoError(t, err)
+
 	key := value.List{value.Int(1), value.Int(2)}
-	assert.NoError(t, Store(instance, agg))
+	assert.NoError(t, aggregate.Store(instance, agg.Type, agg.Name, querySer, agg.Timestamp, optionSer))
 	table := value.NewTable()
 	// create an event every minute for 2 days
 	for i := 0; i < 60*24*2; i++ {
@@ -39,14 +46,14 @@ func TestRolling(t *testing.T) {
 		}
 		assert.NoError(t, table.Append(row))
 	}
-	err = counterUpdate(instance, agg.Name, table)
+	err = Update(instance, agg.Name, table)
 	assert.NoError(t, err)
 
 	clock := &test.FakeClock{}
 	instance.Clock = clock
 	clock.Set(int64(start + 24*3600*2))
 	// at the end of 2 days, rolling counter should only be worth 28 hours, not full 48 hours
-	found, err := Value(instance, agg.Type, agg.Name, key)
+	found, err := RollingValue(instance, agg, key)
 	assert.NoError(t, err)
 	assert.Equal(t, value.Int(28*60), found)
 }
@@ -56,19 +63,24 @@ func TestTimeseries(t *testing.T) {
 	assert.NoError(t, err)
 
 	start := 24*3600*12 + 60
-	agg := aggregate.Aggregate{
+	agg := libaggregate.Aggregate{
 		CustID:    instance.CustID,
 		Type:      "timeseries_counter",
 		Name:      "mycounter",
 		Query:     ast.MakeInt(1),
 		Timestamp: 0,
 		// at any time, we want data from last 9 hours
-		Options: aggregate.AggOptions{
+		Options: libaggregate.AggOptions{
 			Window: ftypes.Window_HOUR,
 			Limit:  9,
 		},
 	}
-	assert.NoError(t, Store(instance, agg))
+	querySer, err := ast.Marshal(agg.Query)
+	assert.NoError(t, err)
+	optionSer, err := proto.Marshal(&agg.Options)
+	assert.NoError(t, err)
+
+	assert.NoError(t, aggregate.Store(instance, agg.Type, agg.Name, querySer, agg.Timestamp, optionSer))
 	key := value.List{value.Int(1), value.Int(2)}
 	table := value.NewTable()
 	// create an event every minute for 2 days
@@ -80,17 +92,15 @@ func TestTimeseries(t *testing.T) {
 		}
 		assert.NoError(t, table.Append(row))
 	}
-	err = counterUpdate(instance, agg.Name, table)
+	err = Update(instance, agg.Name, table)
 	assert.NoError(t, err)
 
 	clock := &test.FakeClock{}
 	instance.Clock = clock
 	clock.Set(int64(start + 24*3600*2))
 	// at the end of 2 days, we should get one data point each for 9 days
-	//found, err := timeseriesValue(instance, agg, key)
-	foundVal, err := Value(instance, agg.Type, agg.Name, key)
-	found, ok := foundVal.(value.List)
-	assert.True(t, ok)
+	//found, err := TimeseriesValue(instance, agg, key)
+	found, err := TimeseriesValue(instance, agg, key)
 	assert.NoError(t, err)
 	assert.Len(t, found, 9)
 	for i := range found {
@@ -100,9 +110,10 @@ func TestTimeseries(t *testing.T) {
 	// but if we set time to just at 6 hours from start, we will still 9 entries, but few will be zero padded
 	// and since our start time is 1 min delayed, the 4th entry will be one short of 60
 	clock.Set(int64(start + 6*3600))
-	foundVal, err = Value(instance, agg.Type, agg.Name, key)
-	found, ok = foundVal.(value.List)
-	assert.True(t, ok)
+	found, err = TimeseriesValue(instance, agg, key)
+	//foundVal, err = aggregate.Value(instance, agg.Type, agg.Name, key)
+	//found, ok = foundVal.(value.List)
+	//assert.True(t, ok)
 	assert.NoError(t, err)
 	assert.Len(t, found, 9)
 	for i := range found {
@@ -136,5 +147,5 @@ func assertInvalid(instance instance.Instance, t *testing.T, ds ...value.Dict) {
 		err := table.Append(d)
 		assert.NoError(t, err)
 	}
-	assert.Error(t, counterUpdate(instance, "some name", table))
+	assert.Error(t, Update(instance, "some name", table))
 }
