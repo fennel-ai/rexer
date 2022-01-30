@@ -79,3 +79,12 @@ class Test(unittest.TestCase):
             q2 = Ast()
             q2.ParseFromString(s)
             self.assertEqual(q, q2)
+
+    def test_naked_opcalls(self):
+        x = Ops.std.filter(where=at.x > Int(1))
+        printer = Printer()
+        with self.assertRaises(InvalidQueryException):
+            printer.print(x)
+        q = ProtoConvertor()
+        with self.assertRaises(InvalidQueryException):
+            q.query(x)
