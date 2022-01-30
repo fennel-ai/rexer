@@ -2,6 +2,7 @@ package aggregate
 
 import (
 	"fennel/controller/action"
+	"fennel/controller/counter"
 	"fennel/engine/ast"
 	"fennel/engine/interpreter"
 	"fennel/instance"
@@ -76,9 +77,9 @@ func loadInterpreter(actions []libaction.Action) (interpreter.Interpreter, error
 func routeUpdate(instance instance.Instance, aggname ftypes.AggName, aggtype ftypes.AggType, table value.Table) error {
 	switch aggtype {
 	case "rolling_counter":
-		return counterUpdate(instance, aggname, table)
+		return counter.Update(instance, aggname, table)
 	case "timeseries_counter":
-		return counterUpdate(instance, aggname, table)
+		return counter.Update(instance, aggname, table)
 	default:
 		return fmt.Errorf("invalid aggregator type")
 	}
@@ -87,9 +88,9 @@ func routeUpdate(instance instance.Instance, aggname ftypes.AggName, aggtype fty
 func routeValue(instance instance.Instance, agg aggregate.Aggregate, key value.Value) (value.Value, error) {
 	switch agg.Type {
 	case "rolling_counter":
-		return rollingValue(instance, agg, key)
+		return counter.RollingValue(instance, agg, key)
 	case "timeseries_counter":
-		return timeseriesValue(instance, agg, key)
+		return counter.TimeseriesValue(instance, agg, key)
 	case "stream":
 		return streamValue(instance, agg, key)
 	default:

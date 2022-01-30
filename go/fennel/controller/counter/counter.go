@@ -1,4 +1,4 @@
-package aggregate
+package counter
 
 import (
 	"fennel/instance"
@@ -9,7 +9,7 @@ import (
 	"fmt"
 )
 
-func rollingValue(instance instance.Instance, agg aggregate.Aggregate, key value.Value) (value.Int, error) {
+func RollingValue(instance instance.Instance, agg aggregate.Aggregate, key value.Value) (value.Int, error) {
 	end := ftypes.Timestamp(instance.Clock.Now())
 	start := end - ftypes.Timestamp(agg.Options.Duration)
 	buckets := counter.BucketizeDuration(makeKey(key), start, end)
@@ -24,7 +24,7 @@ func rollingValue(instance instance.Instance, agg aggregate.Aggregate, key value
 	return value.Int(total), nil
 }
 
-func timeseriesValue(instance instance.Instance, agg aggregate.Aggregate, key value.Value) (value.List, error) {
+func TimeseriesValue(instance instance.Instance, agg aggregate.Aggregate, key value.Value) (value.List, error) {
 	end := ftypes.Timestamp(instance.Clock.Now())
 	var start ftypes.Timestamp
 	switch agg.Options.Window {
@@ -59,7 +59,7 @@ func timeseriesValue(instance instance.Instance, agg aggregate.Aggregate, key va
 	return ret, nil
 }
 
-func counterUpdate(instance instance.Instance, aggname ftypes.AggName, table value.Table) error {
+func Update(instance instance.Instance, aggname ftypes.AggName, table value.Table) error {
 	schema := table.Schema()
 	type_, ok := schema["key"]
 	if !ok {
