@@ -3,7 +3,7 @@ import { Outlet, NavLink } from "react-router-dom";
 import "./style.css";
 import { styles } from "./styles";
 
-const App = () => {
+const Header = () => {
   return (
     <div className="container">
       <div style={styles.header} className="links">
@@ -26,4 +26,4 @@ const App = () => {
   );
 };
 
-export default App;
+export default Header;
