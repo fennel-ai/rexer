@@ -1,9 +1,13 @@
-import * as React from 'react';
-import { Console } from './Console';
-import './../style.css';
+import * as React from "react";
+import { Console } from "./Console";
+import App from "../App";
+import "./../style.css";
 
 const ProfileApp = () => (
-  <Console />
+  <div>
+    <App />
+    <Console />
+  </div>
 );
 
 export default ProfileApp;

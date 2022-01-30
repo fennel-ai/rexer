@@ -10,7 +10,7 @@ const App = () => {
         <h1 className="title">Console</h1>
         <NavLink
           className={({ isActive }) => (isActive ? "curLink" : "link")}
-          to="/action"
+          to="/"
         >
           Actions
         </NavLink>

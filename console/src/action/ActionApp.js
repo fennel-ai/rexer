@@ -1,9 +1,13 @@
-import * as React from 'react';
-import { Console } from './Console';
-import './../style.css';
+import * as React from "react";
+import { Console } from "./Console";
+import "./../style.css";
+import App from "../App";
 
 const ActionApp = () => (
-  <Console />
+  <div>
+    <App />
+    <Console />
+  </div>
 );
 
 export default ActionApp;
