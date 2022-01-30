@@ -18,13 +18,6 @@
       },
       "function": {
         "consoleBff": {
-          "subnetIds": [
-            "subnet-07aa4b44ebd42517e"
-          ],
-          "securityGroupIds": [
-            "sg-05fd7bc0ebbd4afd7",
-            "sg-0742742ab251e8ab3"
-          ],
           "deploymentBucketName": "amplify-console-westdev-134055-deployment",
           "s3Key": "amplify-builds/consoleBff-345a576a55394a394876-build.zip"
         }
