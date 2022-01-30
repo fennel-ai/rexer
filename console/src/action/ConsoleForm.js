@@ -7,14 +7,14 @@ import './../style.css';
 const filters = {
   actionType : {
     id: 'filterActionType',
-    label: 'Action Type: ',
+    label: 'Action Type Test: ',
     options: [
       { val: 'ANY', text: 'ANY' },
     ],
   },
   targetId : {
     id: 'filterTargetId',
-    label: 'Target ID: ',
+    label: 'Target ID Test: ',
     type: 'number',
   },
   targetType : {
@@ -86,7 +86,7 @@ const ConsoleForm = ({ onQuerySubmit, metadata }) => {
       <ConsoleInput data={filters.maxActionId} />
       <ConsoleInput data={filters.minActionValue} />
       <ConsoleInput data={filters.maxActionValue} />
-      
+
       <div className="consoleFormSubmit">
         <button type="submit" className="consoleFormSubmitButton">Query</button>
       </div>
