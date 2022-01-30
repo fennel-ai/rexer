@@ -14,11 +14,9 @@ import (
 
 	"fennel/client"
 	"fennel/lib/action"
-	counterlib "fennel/lib/counter"
 	"fennel/lib/ftypes"
 	profilelib "fennel/lib/profile"
 	"fennel/lib/value"
-	"fennel/model/counter"
 	"fennel/test"
 
 	"github.com/stretchr/testify/assert"
@@ -123,55 +121,6 @@ func TestProfileServerClient(t *testing.T) {
 	checkGetSet(t, c, true, 1, "1", 1, 2, "age", value.Nil)
 	checkGetSet(t, c, true, 1, "1", 1, 0, "age", value.Nil)
 	checkGetSet(t, c, false, 1, "10", 3131, 0, "summary", value.Int(1))
-}
-
-func TestCountRateServerClient(t *testing.T) {
-	// create a service
-	instance, err := test.DefaultInstance()
-	assert.NoError(t, err)
-	controller := holder{instance: instance}
-	server := startTestServer(controller)
-	defer server.Close()
-	c, err := client.NewClient(server.URL, server.Client())
-	assert.NoError(t, err)
-
-	uid := ftypes.OidType(1)
-	video_id := ftypes.OidType(2)
-	ts := ftypes.Timestamp(123)
-	cr := counterlib.GetCountRequest{CounterType: counterlib.CounterType_USER_LIKE, Window: ftypes.Window_HOUR, Key: ftypes.Key{uid}, Timestamp: ts}
-	rr := counterlib.GetRateRequest{
-		counterlib.CounterType_USER_LIKE,
-		counterlib.CounterType_VIDEO_LIKE,
-		ftypes.Key{uid},
-		ftypes.Key{video_id},
-		ftypes.Window_HOUR,
-		ts,
-		true,
-	}
-
-	// initially counts & rates are zero
-	count, err := c.GetCount(cr)
-	assert.NoError(t, err)
-	assert.Equal(t, uint64(0), count)
-	rate, err := c.GetRate(rr)
-	assert.NoError(t, err)
-	assert.Equal(t, float64(0), rate)
-
-	// increment a couple of keys via counter controller
-	counter.Increment(instance, cr.CounterType, cr.Window, cr.Key, cr.Timestamp, 35)
-	counter.Increment(instance, rr.DenCounterType, cr.Window, ftypes.Key{video_id}, cr.Timestamp, 200)
-	count, err = c.GetCount(cr)
-	assert.NoError(t, err)
-	assert.Equal(t, uint64(35), count)
-
-	rate, err = c.GetRate(rr)
-	assert.NoError(t, err)
-	assert.Equal(t, 0.128604412, rate)
-
-	// but if *somehow* numerator was bigger than denominator, getRate should give an error (because wilson isn't defined)
-	counter.Increment(instance, cr.CounterType, cr.Window, cr.Key, cr.Timestamp, 1000)
-	_, err = c.GetRate(rr)
-	assert.Error(t, err)
 }
 
 func TestQuery(t *testing.T) {
