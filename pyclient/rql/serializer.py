@@ -126,3 +126,10 @@ class Serializer(visitor.Visitor):
         ast.lookup.on.CopyFrom(self.visit(obj.on))
         ast.lookup.property = obj.property
         return self.maybe_create_var(obj, ast)
+    
+    def visitIfelse(self, obj):
+        ast = proto.Ast()
+        ast.ifelse.condition.CopyFrom(self.visit(obj.condition))
+        ast.ifelse.then_do.CopyFrom(self.visit(obj.then_do))
+        ast.ifelse.else_do.CopyFrom(self.visit(obj.then_do))
+        return self.maybe_create_var(obj, ast)

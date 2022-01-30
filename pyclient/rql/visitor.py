@@ -1,5 +1,5 @@
 from rql.expr import Int, Double, Bool, String, Binary, _Constant
-from rql.expr import InvalidQueryException, List, Dict, Transform, Table, Var, at, Lookup
+from rql.expr import InvalidQueryException, List, Dict, Transform, Table, Var, at, Lookup, Ifelse
 
 
 class Visitor(object):
@@ -36,6 +36,9 @@ class Visitor(object):
 
         elif isinstance(obj, Lookup):
             ret = self.visitLookup(obj)
+        
+        elif isinstance(obj, Ifelse):
+            ret = self.visitIfelse(obj)
 
         elif obj is at:
             ret = self.visitAt(obj)
@@ -81,6 +84,9 @@ class Visitor(object):
         raise NotImplementedError()
 
     def visitLookup(self, obj):
+        raise NotImplementedError()
+    
+    def visitIfelse(self, obj):
         raise NotImplementedError()
 
 
@@ -179,4 +185,12 @@ class Printer(Visitor):
 
     def visitLookup(self, obj):
         rep = '%s.%s' % (self.visit(obj.on), obj.property)
+        return self.maybe_create_var(obj, rep)
+
+    def visitIfelse(self, obj):
+        rep = 'if %s then %s else %s' % (
+            self.visit(obj.condition),
+            self.visit(obj.then_do),
+            self.visit(obj.else_do)
+        )
         return self.maybe_create_var(obj, rep)
