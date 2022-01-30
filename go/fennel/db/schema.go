@@ -36,11 +36,12 @@ func init() {
 				INDEX (cust_id, action_value),
 				INDEX (cust_id, timestamp)
 		  );`,
-		4: `CREATE TABLE IF NOT EXISTS checkpoint (
+		4: `CREATE TABLE IF NOT EXISTS checkpoint2 (
 				cust_id BIGINT NOT NULL,
-				counter_type INT NOT NULL,
+				aggtype VARCHAR(255) NOT NULL,
+				aggname VARCHAR(255) NOT NULL,
 				checkpoint BIGINT NOT NULL DEFAULT 0,
-				PRIMARY KEY(cust_id, counter_type)
+				PRIMARY KEY(cust_id, aggtype, aggname)
 		  );`,
 		5: `CREATE TABLE IF NOT EXISTS profile (
 				cust_id BIGINT not null,
@@ -76,19 +77,11 @@ func init() {
 				options_ser BLOB NOT NULL,
 				PRIMARY KEY(cust_id, aggregate_type, name)
 			);`,
-		9: `CREATE TABLE IF NOT EXISTS checkpoint2 (
-				cust_id BIGINT NOT NULL,
-				aggtype VARCHAR(255) NOT NULL,
-				aggname VARCHAR(255) NOT NULL,
-				checkpoint BIGINT NOT NULL DEFAULT 0,
-				PRIMARY KEY(cust_id, aggtype, aggname)
-		  );`,
 	}
 	tablenames = []string{
 		"schema_version",
 		"schema_test",
 		"actionlog",
-		"checkpoint",
 		"profile",
 		"counter_bucket",
 		"query_ast",
