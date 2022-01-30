@@ -1,6 +1,5 @@
 import random, sys
-import client
-from models import action, counter, value, profile
+from models import action
 
 # --------- CONSTANTS -----------
 

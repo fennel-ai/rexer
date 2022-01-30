@@ -3,7 +3,7 @@ import httpretty
 import requests
 
 import query
-from models import action, counter, value, profile, aggregate
+from models import action, value, profile, aggregate
 import client
 
 
@@ -144,62 +144,6 @@ class Testclient(unittest.TestCase):
         self.assertEqual([a2], ret)
 
     @httpretty.activate(verbose=True, allow_net_connect=False)
-    def test_count(self):
-        count = 7
-        response = httpretty.Response(str(count))
-        httpretty.register_uri(httpretty.POST, 'http://localhost:2425/count', responses=[response])
-
-        # invalid requests throw exception
-        c = client.Client()
-        with self.assertRaises(client.InvalidInput):
-            c.count(1)
-        with self.assertRaises(client.InvalidInput):
-            c.count('hi')
-        with self.assertRaises(client.InvalidInput):
-            c.count(counter.GetCountRequest())
-
-        # but not with valid GetCountRequest
-        req = counter.GetCountRequest()
-        req.CounterType = counter.CounterType.USER_LIKE
-        req.Window = counter.Window.HOUR
-        req.Key.append(1)
-        req.Timestamp = 123
-        ret = c.count(req)
-
-        self.assertEqual(req.SerializeToString(), httpretty.last_request().body)
-        self.assertEqual(count, ret)
-
-    @httpretty.activate(verbose=True, allow_net_connect=False)
-    def test_rate(self):
-        rate = 0.123
-        response = httpretty.Response(str(rate))
-        httpretty.register_uri(httpretty.POST, 'http://localhost:2425/rate', responses=[response])
-
-        # invalid requests throw exception
-        c = client.Client()
-        with self.assertRaises(client.InvalidInput):
-            c.count(1)
-        with self.assertRaises(client.InvalidInput):
-            c.count('hi')
-        with self.assertRaises(client.InvalidInput):
-            c.count(counter.GetCountRequest())
-        with self.assertRaises(client.InvalidInput):
-            c.count(counter.GetRateRequest())
-
-        # but not with valid GetCountRequest
-        req = counter.GetRateRequest()
-        req.NumCounterType = counter.CounterType.USER_LIKE
-        req.DenCounterType = counter.CounterType.VIDEO_LIKE
-        req.Window = counter.Window.HOUR
-        req.NumKey.append(1)
-        req.DenKey.append(2)
-        req.Timestamp = 123
-        ret = c.rate(req)
-
-        self.assertEqual(req.SerializeToString(), httpretty.last_request().body)
-        self.assertEqual(rate, ret)
-
-    @httpretty.activate(verbose=True, allow_net_connect=False)
     def test_query(self):
         d1 = query.Dict(x=query.Int(1), y=query.Int(2))
         d2 = query.Dict(x=query.Int(3), y=query.Int(5))
@@ -218,8 +162,6 @@ class Testclient(unittest.TestCase):
             c.query(1)
         with self.assertRaises(client.InvalidInput):
             c.query('hi')
-        with self.assertRaises(client.InvalidInput):
-            c.query(counter.GetCountRequest())
         with self.assertRaises(client.InvalidInput):
             c.query(e)
 
@@ -291,8 +233,6 @@ class Testclient(unittest.TestCase):
             c.aggregate_value(1)
         with self.assertRaises(client.InvalidInput):
             c.aggregate_value('hi')
-        with self.assertRaises(client.InvalidInput):
-            c.aggregate_value(counter.GetCountRequest())
         bad_request = aggregate.GetAggValueRequest()
         bad_request.agg_type = "sometype"
         bad_request.agg_name = "" # this is bad because empty names aren't allowed
