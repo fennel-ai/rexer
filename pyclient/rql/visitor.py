@@ -1,5 +1,5 @@
 from rql.expr import Int, Double, Bool, String, Binary, _Constant
-from rql.expr import InvalidQueryException, List, Dict, Transform, Table, Var, at, Lookup, Ifelse
+from rql.expr import InvalidQueryException, List, Dict, Transform, Table, Var, at, Lookup, Cond
 
 
 class Visitor(object):
@@ -37,7 +37,7 @@ class Visitor(object):
         elif isinstance(obj, Lookup):
             ret = self.visitLookup(obj)
         
-        elif isinstance(obj, Ifelse):
+        elif isinstance(obj, Cond):
             ret = self.visitIfelse(obj)
 
         elif obj is at:
