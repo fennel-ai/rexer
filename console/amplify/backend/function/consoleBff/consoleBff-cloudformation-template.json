@@ -15,12 +15,6 @@
     },
     "s3Key": {
       "Type": "String"
-    },
-    "subnetIds": {
-      "Type": "CommaDelimitedList"
-    },
-    "securityGroupIds": {
-      "Type": "CommaDelimitedList"
     }
   },
   "Conditions": {
@@ -44,6 +38,15 @@
         "aws:asset:property": "Code"
       },
       "Properties": {
+        "VpcConfig": {
+          "SecurityGroupIds": [
+            "sg-05fd7bc0ebbd4afd7",
+            "sg-0742742ab251e8ab3"
+          ],
+          "SubnetIds": [
+            "subnet-07aa4b44ebd42517e"
+          ]
+        },
         "Code": {
           "S3Bucket": {
             "Ref": "deploymentBucketName"
@@ -89,14 +92,6 @@
         },
         "Runtime": "nodejs14.x",
         "Layers": [],
-        "VpcConfig": {
-          "SecurityGroupIds": {
-            "Ref": "securityGroupIds"
-          },
-          "SubnetIds": {
-            "Ref": "subnetIds"
-          }
-        },
         "Timeout": 25
       }
     },
