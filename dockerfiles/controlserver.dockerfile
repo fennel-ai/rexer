@@ -7,4 +7,4 @@ WORKDIR /app/pyclient
 RUN poetry config virtualenvs.create false
 RUN poetry install --no-dev --no-root
 ENV PYTHONPATH=/app/pyclient/gen:/app/pyclient:${PYTHONPATH}
-CMD ["poetry", "run", "python", "app.py"]
+CMD ["poetry", "run", "gunicorn", "app:app", "-b", ":2475"]
