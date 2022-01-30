@@ -1,4 +1,4 @@
-package rcounter
+package counter
 
 import (
 	"context"

@@ -5,15 +5,15 @@ import (
 	"fennel/lib/aggregate"
 	"fennel/lib/ftypes"
 	"fennel/lib/value"
-	"fennel/model/rcounter"
+	"fennel/model/counter"
 	"fmt"
 )
 
 func rollingValue(instance instance.Instance, agg aggregate.Aggregate, key value.Value) (value.Int, error) {
 	end := ftypes.Timestamp(instance.Clock.Now())
 	start := end - ftypes.Timestamp(agg.Options.Duration)
-	buckets := rcounter.BucketizeDuration(makeKey(key), start, end)
-	counts, err := rcounter.GetMulti(instance, agg.Name, buckets)
+	buckets := counter.BucketizeDuration(makeKey(key), start, end)
+	counts, err := counter.GetMulti(instance, agg.Name, buckets)
 	if err != nil {
 		return value.Int(0), err
 	}
@@ -38,11 +38,11 @@ func timeseriesValue(instance instance.Instance, agg aggregate.Aggregate, key va
 	if start < 0 {
 		start = 0
 	}
-	buckets, err := rcounter.BucketizeTimeseries(makeKey(key), start, end, agg.Options.Window)
+	buckets, err := counter.BucketizeTimeseries(makeKey(key), start, end, agg.Options.Window)
 	if err != nil {
 		return value.List{}, err
 	}
-	counts, err := rcounter.GetMulti(instance, agg.Name, buckets)
+	counts, err := counter.GetMulti(instance, agg.Name, buckets)
 	if err != nil {
 		return value.List{}, err
 	}
@@ -69,14 +69,14 @@ func counterUpdate(instance instance.Instance, aggname ftypes.AggName, table val
 	if !ok || type_ != value.Types.Int {
 		return fmt.Errorf("query does not create column called 'timestamp' with datatype of 'int'")
 	}
-	buckets := make([]rcounter.Bucket, 0, table.Len())
+	buckets := make([]counter.Bucket, 0, table.Len())
 	for _, row := range table.Pull() {
 		ts := row["timestamp"].(value.Int)
 		key := makeKey(row["key"])
-		buckets = append(buckets, rcounter.BucketizeMoment(key, ftypes.Timestamp(ts), 1)...)
+		buckets = append(buckets, counter.BucketizeMoment(key, ftypes.Timestamp(ts), 1)...)
 	}
-	buckets = rcounter.MergeBuckets(buckets)
-	return rcounter.IncrementMulti(instance, aggname, buckets)
+	buckets = counter.MergeBuckets(buckets)
+	return counter.IncrementMulti(instance, aggname, buckets)
 }
 
 func makeKey(v value.Value) string {
