@@ -18,9 +18,9 @@ class Testclient(unittest.TestCase):
         with self.assertRaises(client.InvalidInput):
             c.set_profile(1)
         with self.assertRaises(client.InvalidInput):
-            c.get_profile('hi')
+            c.get_profile("hi")
         with self.assertRaises(client.InvalidInput):
-            c.set_profile('hi')
+            c.set_profile("hi")
         with self.assertRaises(client.InvalidInput):
             c.get_profile(profile.ProfileItem())
         with self.assertRaises(client.InvalidInput):
@@ -28,19 +28,19 @@ class Testclient(unittest.TestCase):
         with self.assertRaises(client.InvalidInput):
             c.get_profiles(1)
         with self.assertRaises(client.InvalidInput):
-            c.get_profiles('hi')
+            c.get_profiles("hi")
         with self.assertRaises(client.InvalidInput):
             c.get_profiles(profile.ProfileItem)
 
         # but valid requests don't throw exceptions
 
         # Test set for valid profiles
-        httpretty.register_uri(httpretty.POST, 'http://localhost:2425/set')
+        httpretty.register_uri(httpretty.POST, "http://localhost:2425/set")
 
         p1 = profile.ProfileItem()
         p1.CustID = 1
-        p1.Oid, p1.OType = 1, '2'
-        p1.Key = 'key'
+        p1.Oid, p1.OType = 1, "2"
+        p1.Key = "key"
         v = value.Int(5)
         p1.Value.CopyFrom(v)
         c.set_profile(p1)
@@ -48,8 +48,8 @@ class Testclient(unittest.TestCase):
 
         p2 = profile.ProfileItem()
         p2.CustID = 1
-        p2.Oid, p2.OType = 2, '1'
-        p2.Key = 'key2'
+        p2.Oid, p2.OType = 2, "1"
+        p2.Key = "key2"
         v = value.Int(7)
         p2.Value.CopyFrom(v)
         c.set_profile(p2)
@@ -62,7 +62,11 @@ class Testclient(unittest.TestCase):
         expected2 = value.Int(7)
         response2 = httpretty.Response(expected2.SerializeToString())
 
-        httpretty.register_uri(httpretty.POST, 'http://localhost:2425/get', responses=[response1, response2])
+        httpretty.register_uri(
+            httpretty.POST,
+            "http://localhost:2425/get",
+            responses=[response1, response2],
+        )
         ret = c.get_profile(p1)
         self.assertEqual(value.Int(5), ret)
         ret = c.get_profile(p2)
@@ -75,14 +79,18 @@ class Testclient(unittest.TestCase):
         pl = profile.to_proto_profile_list([p2])
         response2 = httpretty.Response(pl.SerializeToString())
 
-        httpretty.register_uri(httpretty.POST, 'http://localhost:2425/get_profiles', responses=[response1, response2])
+        httpretty.register_uri(
+            httpretty.POST,
+            "http://localhost:2425/get_profiles",
+            responses=[response1, response2],
+        )
 
         pfr = profile.ProfileFetchRequest()
         ret = c.get_profiles(pfr)
         self.assertEqual(pfr.SerializeToString(), httpretty.last_request().body)
         self.assertListEqual([p1, p2], ret)
         pfr = profile.ProfileFetchRequest()
-        pfr.OType = '1'
+        pfr.OType = "1"
         ret = c.get_profiles(pfr)
         self.assertEqual(pfr.SerializeToString(), httpretty.last_request().body)
         self.assertListEqual([p2], ret)
@@ -91,7 +99,7 @@ class Testclient(unittest.TestCase):
     def test_log(self):
         a1 = make_action(1)
         a2 = make_action(2)
-        httpretty.register_uri(httpretty.POST, 'http://localhost:2425/log')
+        httpretty.register_uri(httpretty.POST, "http://localhost:2425/log")
         c = client.Client()
 
         c.log(a1)
@@ -103,10 +111,10 @@ class Testclient(unittest.TestCase):
         with self.assertRaises(client.InvalidInput):
             c.log(1)
         with self.assertRaises(client.InvalidInput):
-            c.log('hi')
+            c.log("hi")
         with self.assertRaises(client.InvalidInput):
             c.log(action.Action())
-        a1.TargetType = ''
+        a1.TargetType = ""
         with self.assertRaises(client.InvalidInput):
             c.log(a1)
 
@@ -119,14 +127,18 @@ class Testclient(unittest.TestCase):
 
         al = action.to_proto_action_list([a2])
         response2 = httpretty.Response(al.SerializeToString())
-        httpretty.register_uri(httpretty.POST, 'http://localhost:2425/fetch', responses=[response1, response2])
+        httpretty.register_uri(
+            httpretty.POST,
+            "http://localhost:2425/fetch",
+            responses=[response1, response2],
+        )
 
         # invalid requests throw exception
         c = client.Client()
         with self.assertRaises(client.InvalidInput):
             c.fetch(1)
         with self.assertRaises(client.InvalidInput):
-            c.fetch('hi')
+            c.fetch("hi")
         with self.assertRaises(client.InvalidInput):
             c.fetch(action.Action())
 
@@ -149,18 +161,22 @@ class Testclient(unittest.TestCase):
         d2 = rql.Dict(x=rql.Int(3), y=rql.Int(5))
         d3 = rql.Dict(x=rql.Int(1), y=rql.Int(0))
         t = rql.Table(rql.List(d1, d2, d3))
-        expr = rql.Transform(t).using(rql.Ops.std.filter(where=rql.at.x > rql.at.y + rql.Double(0.5)))
+        expr = rql.Transform(t).using(
+            rql.Ops.std.filter(where=rql.at.x > rql.at.y + rql.Double(0.5))
+        )
 
         v = value.Int(5)
         response = httpretty.Response(v.SerializeToString())
-        httpretty.register_uri(httpretty.POST, 'http://localhost:2425/query', responses=[response])
+        httpretty.register_uri(
+            httpretty.POST, "http://localhost:2425/query", responses=[response]
+        )
 
         # invalid requests throw exception
         c = client.Client()
         with self.assertRaises(client.InvalidInput):
             c.query(1)
         with self.assertRaises(client.InvalidInput):
-            c.query('hi')
+            c.query("hi")
 
         # but not with valid query request
         ret = c.query(expr)
@@ -168,19 +184,21 @@ class Testclient(unittest.TestCase):
         ast = rql.Serializer().serialize(expr)
         self.assertEqual(ast.SerializeToString(), httpretty.last_request().body)
         self.assertEqual(v, ret)
-    
+
     @httpretty.activate(verbose=True, allow_net_connect=False)
     def test_cond(self):
         c = client.Client()
 
         cond1 = rql.Cond(
-            condition = rql.Bool(False),
-            then_do = rql.Int(4),
-            else_do =  rql.Int(6),
+            condition=rql.Bool(False),
+            then_do=rql.Int(4),
+            else_do=rql.Int(6),
         )
         v = value.Int(6)
         response = httpretty.Response(v.SerializeToString())
-        httpretty.register_uri(httpretty.POST, 'http://localhost:2425/query', responses=[response])
+        httpretty.register_uri(
+            httpretty.POST, "http://localhost:2425/query", responses=[response]
+        )
         ret = c.query(cond1)
         ast = rql.Serializer().serialize(cond1)
         self.assertEqual(ast.SerializeToString(), httpretty.last_request().body)
@@ -198,16 +216,21 @@ class Testclient(unittest.TestCase):
         #     c.store_aggregate("aggtype", "aggname", rql.Int(1), aggregate.AggOptions())
 
         # but valid ones don't
-        httpretty.register_uri(httpretty.POST, 'http://localhost:2425/store_aggregate')
+        httpretty.register_uri(httpretty.POST, "http://localhost:2425/store_aggregate")
         options = aggregate.AggOptions()
-        options.duration = 6*3600
+        options.duration = 6 * 3600
         ret = c.store_aggregate("aggtype", "aggname", rql.Int(1), options)
         self.assertIs(None, ret)
 
         # and if server gave a non-200 response, we raise an error
         def request_callback(request, uri, response_headers):
-            return [401, response_headers, 'some error message']
-        httpretty.register_uri(httpretty.POST, 'http://localhost:2425/store_aggregate', body=request_callback)
+            return [401, response_headers, "some error message"]
+
+        httpretty.register_uri(
+            httpretty.POST,
+            "http://localhost:2425/store_aggregate",
+            body=request_callback,
+        )
         with self.assertRaises(requests.RequestException):
             c.store_aggregate("aggtype", "aggname", rql.Int(1), aggregate.AggOptions())
 
@@ -226,18 +249,26 @@ class Testclient(unittest.TestCase):
         q = rql.Serializer().serialize(rql.Int(1))
         expected.query.CopyFrom(q)
         options = aggregate.AggOptions()
-        options.duration = 6*3600
+        options.duration = 6 * 3600
         expected.options.CopyFrom(options)
         response = httpretty.Response(expected.SerializeToString())
-        httpretty.register_uri(httpretty.POST, 'http://localhost:2425/retrieve_aggregate', responses=[response])
+        httpretty.register_uri(
+            httpretty.POST,
+            "http://localhost:2425/retrieve_aggregate",
+            responses=[response],
+        )
         ret = c.retrieve_aggregate("some type", "some name")
         self.assertEqual(expected, ret)
 
         # and if server gave a non-200 response, we raise an error
         def request_callback(request, uri, response_headers):
-            return [401, response_headers, 'some error message']
+            return [401, response_headers, "some error message"]
 
-        httpretty.register_uri(httpretty.POST, 'http://localhost:2425/retrieve_aggregate', body=request_callback)
+        httpretty.register_uri(
+            httpretty.POST,
+            "http://localhost:2425/retrieve_aggregate",
+            body=request_callback,
+        )
         with self.assertRaises(requests.RequestException):
             c.retrieve_aggregate("aggtype", "aggname")
 
@@ -248,23 +279,29 @@ class Testclient(unittest.TestCase):
         with self.assertRaises(client.InvalidInput):
             c.aggregate_value(1)
         with self.assertRaises(client.InvalidInput):
-            c.aggregate_value('hi')
+            c.aggregate_value("hi")
         bad_request = aggregate.GetAggValueRequest()
         bad_request.agg_type = "sometype"
-        bad_request.agg_name = "" # this is bad because empty names aren't allowed
+        bad_request.agg_name = ""  # this is bad because empty names aren't allowed
         bad_request.key.CopyFrom(value.Int(1))
         with self.assertRaises(client.InvalidInput):
             c.aggregate_value(bad_request)
         bad_request.agg_type = "sometype"
         bad_request.agg_name = "somename"
-        bad_request.key.CopyFrom(value.Value()) # this time, this is an ill-formed value
+        bad_request.key.CopyFrom(
+            value.Value()
+        )  # this time, this is an ill-formed value
         with self.assertRaises(client.InvalidInput):
             c.aggregate_value(bad_request)
 
         # but not with valid query request
         v = value.Int(5)
         response = httpretty.Response(v.SerializeToString())
-        httpretty.register_uri(httpretty.POST, 'http://localhost:2425/aggregate_value', responses=[response])
+        httpretty.register_uri(
+            httpretty.POST,
+            "http://localhost:2425/aggregate_value",
+            responses=[response],
+        )
         request = aggregate.GetAggValueRequest()
         request.agg_type = "sometype"
         request.agg_name = "somename"
@@ -292,11 +329,11 @@ def make_profile(k):
     k = k * 9
     p = profile.ProfileItem()
     p.CustID = 1
-    p.Oid = k+7
-    p.Otype = str(k%2)
+    p.Oid = k + 7
+    p.Otype = str(k % 2)
     p.Key = str(k)
     return p
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()

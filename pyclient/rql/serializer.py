@@ -41,7 +41,7 @@ class Serializer(visitor.Visitor):
             return ast
 
     def visitConstant(self, obj):
-        raise Exception('this should never happen')
+        raise Exception("this should never happen")
 
     def visitInt(self, obj):
         ast = proto.Ast()
@@ -126,7 +126,7 @@ class Serializer(visitor.Visitor):
         ast.lookup.on.CopyFrom(self.visit(obj.on))
         ast.lookup.property = obj.property
         return self.maybe_create_var(obj, ast)
-    
+
     def visitIfelse(self, obj):
         ast = proto.Ast()
         ast.ifelse.condition.CopyFrom(self.visit(obj.condition))

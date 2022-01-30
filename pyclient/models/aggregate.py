@@ -25,7 +25,9 @@ def validate_type_name(agg_type, agg_name):
 def validate(agg_type: str, agg_name: str, query: Ast, options: AggOptions):
     errors = validate_type_name(agg_type, agg_name)
     if not isinstance(query, Expr):
-        errors.append("query expected to be an RQL expression but got: '%s' instead" % query)
+        errors.append(
+            "query expected to be an RQL expression but got: '%s' instead" % query
+        )
     if not options.IsInitialized():
         errors.append("aggregate options not initialized")
     return errors

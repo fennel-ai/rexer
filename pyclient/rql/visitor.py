@@ -1,5 +1,15 @@
 from rql.expr import Int, Double, Bool, String, Binary, _Constant
-from rql.expr import InvalidQueryException, List, Dict, Transform, Table, Var, at, Lookup, Cond
+from rql.expr import (
+    InvalidQueryException,
+    List,
+    Dict,
+    Transform,
+    Table,
+    Var,
+    at,
+    Lookup,
+    Cond,
+)
 
 
 class Visitor(object):
@@ -36,14 +46,14 @@ class Visitor(object):
 
         elif isinstance(obj, Lookup):
             ret = self.visitLookup(obj)
-        
+
         elif isinstance(obj, Cond):
             ret = self.visitIfelse(obj)
 
         elif obj is at:
             ret = self.visitAt(obj)
         else:
-            raise InvalidQueryException('invalid RQL expression type: %s', self)
+            raise InvalidQueryException("invalid RQL expression type: %s", self)
 
         return ret
 
@@ -85,7 +95,7 @@ class Visitor(object):
 
     def visitLookup(self, obj):
         raise NotImplementedError()
-    
+
     def visitIfelse(self, obj):
         raise NotImplementedError()
 
@@ -104,15 +114,18 @@ class Printer(Visitor):
         for var, value in varvalues.items():
             if not isinstance(value, _Constant):
                 raise InvalidQueryException(
-                    'Variable value can only be a constant but given %s for %s' % (value, var))
+                    "Variable value can only be a constant but given %s for %s"
+                    % (value, var)
+                )
 
         for var, value in varvalues.items():
-            self.lines.append('%s = %s;' %
-                              (var.varname(dollar=False), self.visit(value)))
+            self.lines.append(
+                "%s = %s;" % (var.varname(dollar=False), self.visit(value))
+            )
 
         last = self.visit(obj)
         self.lines.append(last)
-        return '\n'.join(self.lines)
+        return "\n".join(self.lines)
 
     def visit(self, obj):
         if obj in self.cache:
@@ -124,7 +137,7 @@ class Printer(Visitor):
 
     def maybe_create_var(self, obj, rep):
         if obj.num_out_edges() > 1 or (obj.name is not None):
-            self.lines.append('%s = %s;' % (obj.varname(dollar=False), rep))
+            self.lines.append("%s = %s;" % (obj.varname(dollar=False), rep))
             return obj.varname(dollar=True)
         else:
             return rep
@@ -139,58 +152,58 @@ class Printer(Visitor):
 
     def visitBool(self, obj):
         if obj.c is True:
-            rep = 'true'
+            rep = "true"
         else:
-            rep = 'false'
+            rep = "false"
         return self.maybe_create_var(obj, rep)
 
     def visitList(self, obj):
-        rep = '[%s]' % ', '.join(self.visit(v) for v in obj.values)
+        rep = "[%s]" % ", ".join(self.visit(v) for v in obj.values)
         return self.maybe_create_var(obj, rep)
 
     def visitDict(self, obj):
-        rep = '{%s}' % ', '.join('%s=%s' % (k, self.visit(v))
-                                 for k, v in obj.kwargs.items())
+        rep = "{%s}" % ", ".join(
+            "%s=%s" % (k, self.visit(v)) for k, v in obj.kwargs.items()
+        )
         return self.maybe_create_var(obj, rep)
 
     def visitAt(self, obj):
-        return '@'
+        return "@"
 
     def visitVar(self, obj):
         return obj.varname(dollar=True)
 
     def visitTable(self, obj):
-        rep = 'table(%s)' % self.visit(obj.inner)
+        rep = "table(%s)" % self.visit(obj.inner)
         return self.maybe_create_var(obj, rep)
 
     def visitTransform(self, obj):
         opcallstrs = []
         for opcall in obj.opcalls:
-            kwargstr = ', '.join('%s=%s' % (k, self.visit(v))
-                                 for k, v in opcall.kwargs.items())
-            opcallstr = " | %s.%s(%s)" % (
-                opcall.module, opcall.opname, kwargstr)
+            kwargstr = ", ".join(
+                "%s=%s" % (k, self.visit(v)) for k, v in opcall.kwargs.items()
+            )
+            opcallstr = " | %s.%s(%s)" % (opcall.module, opcall.opname, kwargstr)
             opcallstrs.append(opcallstr)
 
-        rep = '%s%s' % (self.visit(obj.table), ''.join(opcallstrs))
+        rep = "%s%s" % (self.visit(obj.table), "".join(opcallstrs))
         return self.maybe_create_var(obj, rep)
 
     def visitBinary(self, obj):
-        if obj.op == '[]':
-            rep = '%s[%s]' % (self.visit(obj.left), self.visit(obj.right))
+        if obj.op == "[]":
+            rep = "%s[%s]" % (self.visit(obj.left), self.visit(obj.right))
         else:
-            rep = '%s %s %s' % (self.visit(obj.left),
-                                obj.op, self.visit(obj.right))
+            rep = "%s %s %s" % (self.visit(obj.left), obj.op, self.visit(obj.right))
         return self.maybe_create_var(obj, rep)
 
     def visitLookup(self, obj):
-        rep = '%s.%s' % (self.visit(obj.on), obj.property)
+        rep = "%s.%s" % (self.visit(obj.on), obj.property)
         return self.maybe_create_var(obj, rep)
 
     def visitIfelse(self, obj):
-        rep = 'if %s then %s else %s' % (
+        rep = "if %s then %s else %s" % (
             self.visit(obj.condition),
             self.visit(obj.then_do),
-            self.visit(obj.else_do)
+            self.visit(obj.else_do),
         )
         return self.maybe_create_var(obj, rep)

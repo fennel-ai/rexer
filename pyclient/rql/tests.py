@@ -7,29 +7,29 @@ from gen.ast_pb2 import Ast
 
 class Test(unittest.TestCase):
     def test_lookup(self):
-        a = Int(1, name='a')
+        a = Int(1, name="a")
         d = Dict(x=a)
         b = d.x
-        b.name = 'b'
+        b.name = "b"
         printer = Printer()
-        expected = '\n'.join(['a = 1;', 'b = {x=$a}.x;', '$b'])
+        expected = "\n".join(["a = 1;", "b = {x=$a}.x;", "$b"])
         self.assertEqual(expected, printer.print(b))
 
     def test_basic_noinline(self):
-        a = Int(1, name='a')
-        b = Var(name='b')
+        a = Int(1, name="a")
+        b = Var(name="b")
         c = a + b
-        c.name = 'c'
+        c.name = "c"
         printer = Printer()
-        expected = '\n'.join(['b = 5;', 'a = 1;', 'c = $a + $b;', '$c'])
+        expected = "\n".join(["b = 5;", "a = 1;", "c = $a + $b;", "$c"])
         self.assertEqual(expected, printer.print(c, varvalues={b: Int(5)}))
 
     def test_basic_inline(self):
         a = Int(1)
-        b = Var(name='b')
+        b = Var(name="b")
         c = a + b
         printer = Printer()
-        expected = '\n'.join(['b = 5;', '1 + $b'])
+        expected = "\n".join(["b = 5;", "1 + $b"])
         self.assertEqual(expected, printer.print(c, varvalues={b: Int(5)}))
 
     def test_no_conditional(self):
@@ -61,7 +61,7 @@ class Test(unittest.TestCase):
         y = Dict(hello=Int(x), bye=Bool(False))
         tests.append(y)
 
-        z = Var('inputs').uid
+        z = Var("inputs").uid
         tests.append(z)
 
         l = List(Int(5), y, z)
@@ -76,7 +76,7 @@ class Test(unittest.TestCase):
 
         cond1 = Cond(Bool(True), String("abc"), String("xyz"))
         tests.append(cond1)
-        
+
         for t in tests:
             q = Serializer().serialize(t)
             s = q.SerializeToString()
@@ -94,11 +94,11 @@ class Test(unittest.TestCase):
             q.serialize(x)
 
     def test_var(self):
-        x = Var('args').actions
+        x = Var("args").actions
         q = Serializer()
         expected = Ast()
         var = Ast()
-        var.var.name = 'args'
+        var.var.name = "args"
         expected.lookup.on.CopyFrom(var)
-        expected.lookup.property = 'actions'
+        expected.lookup.property = "actions"
         self.assertEqual(expected, q.visit(x))

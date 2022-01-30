@@ -36,7 +36,7 @@ def List(*l: List[Value]) -> Value:
     v = Value()
     for e in l:
         if not is_valid(e):
-            raise InvalidValue('%e in argument l is not valid value' % e)
+            raise InvalidValue("%e in argument l is not valid value" % e)
     v.List.values.extend(l)
     return v
 
@@ -59,12 +59,12 @@ def Table(*rows) -> Value:
     schema = None
     for row in rows:
         if not is_valid(row):
-            raise InvalidValue('row not initialized')
-        if not row.HasField('Dict'):
-            raise InvalidValue('rows should be list of Dicts')
+            raise InvalidValue("row not initialized")
+        if not row.HasField("Dict"):
+            raise InvalidValue("rows should be list of Dicts")
         its_schema = sorted(row.Dict.values.keys())
         if (schema is not None) and (schema != its_schema):
-            raise InvalidValue('table rows should all have the same schema')
+            raise InvalidValue("table rows should all have the same schema")
         schema = its_schema
         v.Table.rows.append(row.Dict)
     return v
@@ -79,6 +79,6 @@ def Nil() -> Value:
 def is_valid(v: Value) -> bool:
     if not isinstance(v, Value) or not v.IsInitialized():
         return False
-    if v.WhichOneof('node') is None:
+    if v.WhichOneof("node") is None:
         return False
     return True

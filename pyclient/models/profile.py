@@ -17,6 +17,7 @@ def validate(pi: ProfileItem):
 
     return errors
 
+
 def from_proto_profile_list(pl):
     """Takes a valid profile list and returns a list of profiles"""
     ret = []
@@ -24,14 +25,17 @@ def from_proto_profile_list(pl):
         ret.append(p)
     return ret
 
+
 def to_proto_profile_list(profiles):
     """Takes a list of profiles and returns a profilelist"""
     if not isinstance(profiles, list):
-        raise client.InvalidInput('profiles not a list but instead: %s' % str(profiles))
+        raise client.InvalidInput("profiles not a list but instead: %s" % str(profiles))
     pl = ProfileList()
     for p in profiles:
         if not isinstance(p, ProfileItem):
-            raise client.InvalidInput('members of profiles not profile but instead: %s' % str(p))
-        
+            raise client.InvalidInput(
+                "members of profiles not profile but instead: %s" % str(p)
+            )
+
         pl.profiles.append(p)
     return pl
