@@ -22,7 +22,7 @@ func Value(instance instance.Instance, aggtype ftypes.AggType, name ftypes.AggNa
 }
 
 func Update(instance instance.Instance, agg aggregate.Aggregate) error {
-	point, err := checkpoint.GetCheckpoint2(instance, agg.Type, agg.Name)
+	point, err := checkpoint.Get(instance, agg.Type, agg.Name)
 	if err != nil {
 		return err
 	}
@@ -38,7 +38,7 @@ func Update(instance instance.Instance, agg aggregate.Aggregate) error {
 		return err
 	}
 	last := actions[len(actions)-1]
-	return checkpoint.SetCheckpoint2(instance, agg.Type, agg.Name, last.ActionID)
+	return checkpoint.Set(instance, agg.Type, agg.Name, last.ActionID)
 }
 
 //============================

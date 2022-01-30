@@ -36,7 +36,7 @@ func init() {
 				INDEX (cust_id, action_value),
 				INDEX (cust_id, timestamp)
 		  );`,
-		4: `CREATE TABLE IF NOT EXISTS checkpoint2 (
+		4: `CREATE TABLE IF NOT EXISTS checkpoint (
 				cust_id BIGINT NOT NULL,
 				aggtype VARCHAR(255) NOT NULL,
 				aggname VARCHAR(255) NOT NULL,
@@ -86,7 +86,7 @@ func init() {
 		"counter_bucket",
 		"query_ast",
 		"aggregate_config",
-		"checkpoint2",
+		"checkpoint",
 	}
 
 	if err := verifyDefs(); err != nil {
