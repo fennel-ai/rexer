@@ -15,6 +15,7 @@ message Ast {
     Table table = 9;
     At at = 10;
     Lookup lookup = 11;
+    IfElse ifelse = 12;
   }
 }
 
@@ -70,4 +71,10 @@ message At {}
 message Lookup {
   Ast on = 1;
   string property = 2;
+}
+
+message IfElse {
+  Ast condition = 1;
+  Ast then = 2;
+  Ast else = 3;
 }

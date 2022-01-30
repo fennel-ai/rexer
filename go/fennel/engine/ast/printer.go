@@ -79,3 +79,11 @@ func (p Printer) VisitQuery(statements []Statement) string {
 	}
 	return sb.String()
 }
+
+func (p Printer) VisitIfelse(condition Ast, thenBranch Ast, elseBranch Ast) string {
+	return fmt.Sprintf("if %s then %s else %s",
+		condition.AcceptString(p),
+		thenBranch.AcceptString(p),
+		elseBranch.AcceptString(p),
+	)
+}

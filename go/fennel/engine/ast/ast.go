@@ -18,6 +18,7 @@ type VisitorString interface {
 	VisitQuery(statements []Statement) string
 	VisitAt() string
 	VisitLookup(on Ast, property string) string
+	VisitIfelse(condition Ast, thenBranch Ast, elseBranch Ast) string
 }
 
 type VisitorValue interface {
@@ -32,6 +33,7 @@ type VisitorValue interface {
 	VisitQuery(statements []Statement) (value.Value, error)
 	VisitAt() (value.Value, error)
 	VisitLookup(on Ast, property string) (value.Value, error)
+	VisitIfelse(condition Ast, thenBranch Ast, elseBranch Ast) (value.Value, error)
 }
 
 type Ast interface {
@@ -50,6 +52,7 @@ var _ Ast = Statement{}
 var _ Ast = Query{}
 var _ Ast = At{}
 var _ Ast = Lookup{}
+var _ Ast = IfElse{}
 
 type Lookup struct {
 	On       Ast
@@ -196,4 +199,18 @@ func (va Var) AcceptValue(v VisitorValue) (value.Value, error) {
 
 func (va Var) AcceptString(v VisitorString) string {
 	return v.VisitVar(va.Name)
+}
+
+type IfElse struct {
+	Condition Ast
+	Then      Ast
+	Else      Ast
+}
+
+func (ifelse IfElse) AcceptValue(v VisitorValue) (value.Value, error) {
+	return v.VisitIfelse(ifelse.Condition, ifelse.Then, ifelse.Else)
+}
+
+func (ifelse IfElse) AcceptString(v VisitorString) string {
+	return v.VisitIfelse(ifelse.Condition, ifelse.Then, ifelse.Else)
 }

@@ -223,6 +223,28 @@ func (i Interpreter) VisitVar(name string) (value.Value, error) {
 	return i.env.Lookup(name)
 }
 
+func (i Interpreter) VisitIfelse(condition ast.Ast, thenBranch ast.Ast, elseBranch ast.Ast) (value.Value, error) {
+	cond, err := condition.AcceptValue(i)
+	if err != nil {
+		return value.Nil, err
+	}
+	t, err := thenBranch.AcceptValue(i)
+	if err != nil {
+		return value.Nil, err
+	}
+	e, err := elseBranch.AcceptValue(i)
+	if err != nil {
+		return value.Nil, err
+	}
+	if cond.Equal(value.Bool(true)) {
+		return t, nil
+	} else if cond.Equal(value.Bool(false)) {
+		return e, nil
+	} else {
+		return value.Nil, fmt.Errorf("condition %s does not evaluate to a boolean", condition)
+	}
+}
+
 func (i Interpreter) getStaticKwargs(op operators.Operator, kwargs ast.Dict) (value.Dict, error) {
 	ret, err := value.NewDict(map[string]value.Value{})
 	if err != nil {

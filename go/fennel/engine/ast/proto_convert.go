@@ -30,6 +30,8 @@ func ToProtoAst(ast Ast) (proto.Ast, error) {
 		return ast.(Lookup).toProto()
 	case At:
 		return ast.(At).toProto()
+	case IfElse:
+		return ast.(IfElse).toProto()
 	default:
 		return pnull, fmt.Errorf("invalid ast type")
 	}
@@ -59,6 +61,8 @@ func FromProtoAst(past proto.Ast) (Ast, error) {
 		return fromProtoAt(past.Node.(*proto.Ast_At))
 	case *proto.Ast_Lookup:
 		return fromProtoLookup(past.Node.(*proto.Ast_Lookup))
+	case *proto.Ast_Ifelse:
+		return fromProtoIfelse(past.Node.(*proto.Ast_Ifelse))
 	default:
 		return null, fmt.Errorf("invalid proto ast: %v", past)
 	}
@@ -208,6 +212,26 @@ func (table Table) toProto() (proto.Ast, error) {
 	return proto.Ast{Node: &proto.Ast_Table{Table: &proto.Table{Inner: &pinner}}}, nil
 }
 
+func (ifelse IfElse) toProto() (proto.Ast, error) {
+	protoCondition, err := ToProtoAst(ifelse.Condition)
+	if err != nil {
+		return pnull, err
+	}
+	protoThen, err := ToProtoAst(ifelse.Then)
+	if err != nil {
+		return pnull, err
+	}
+	protoElse, err := ToProtoAst(ifelse.Else)
+	if err != nil {
+		return pnull, err
+	}
+	return proto.Ast{Node: &proto.Ast_Ifelse{Ifelse: &proto.IfElse{
+		Condition: &protoCondition,
+		Then:      &protoThen,
+		Else:      &protoElse,
+	}}}, nil
+}
+
 //=============================
 // More private helpers below
 //=============================
@@ -341,5 +365,25 @@ func fromProtoBinary(pbin *proto.Ast_Binary) (Ast, error) {
 		Left:  left,
 		Op:    pbin.Binary.Op,
 		Right: right,
+	}, nil
+}
+
+func fromProtoIfelse(pifelse *proto.Ast_Ifelse) (Ast, error) {
+	condition, err := FromProtoAst(*pifelse.Ifelse.Condition)
+	if err != nil {
+		return null, err
+	}
+	thenBranch, err := FromProtoAst(*pifelse.Ifelse.Then)
+	if err != nil {
+		return null, err
+	}
+	elseBranch, err := FromProtoAst(*pifelse.Ifelse.Else)
+	if err != nil {
+		return null, err
+	}
+	return IfElse{
+		Condition: condition,
+		Then:      thenBranch,
+		Else:      elseBranch,
 	}, nil
 }
