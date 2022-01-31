@@ -56,10 +56,10 @@ func (p *profileOp) Apply(_ value.Dict, in operators.InputIter, out *value.Table
 
 func (p *profileOp) Signature() *operators.Signature {
 	return operators.NewSignature(p, "std", "addProfileColumn").
-		Param("otype", value.Types.String, false).
-		Param("oid", value.Types.Int, false).
-		Param("key", value.Types.String, false).
-		Param("version", value.Types.Int, false)
+		Param("otype", value.Types.String, false, false, value.Nil).
+		Param("oid", value.Types.Int, false, false, value.Nil).
+		Param("key", value.Types.String, false, false, value.Nil).
+		Param("version", value.Types.Int, false, true, value.Int(0))
 }
 
 var _ operators.Operator = &profileOp{}

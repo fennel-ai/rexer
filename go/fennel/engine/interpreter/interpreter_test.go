@@ -507,6 +507,48 @@ func TestInterpreter_VisitOpcall3(t *testing.T) {
 	assert.Equal(t, value.Dict{"x": value.Int(1), "num": value.Int(41), "nonhi": value.String(nonhi)}, rows[0])
 }
 
+func TestInterpreter_VisitOpcall4(t *testing.T) {
+	operators.Register(testOpDefault{})
+	query := ast.OpCall{
+		Operand:   ast.Var{Name: "table"},
+		Namespace: "test",
+		Name:      "testop",
+		Kwargs:    ast.Dict{},
+	}
+	table := value.NewTable()
+	table.Append(value.Dict{})
+	i := getInterpreter()
+	i.SetQueryArgs(value.Dict{})
+	assert.NoError(t, i.SetVar("table", table))
+	out, err := query.AcceptValue(i)
+	assert.NoError(t, err)
+	outtable := out.(value.Table)
+	rows := outtable.Pull()
+	assert.Len(t, rows, 1)
+	assert.Equal(t, value.Dict{"contextual": value.Int(41), "static": value.Int(7)}, rows[0])
+}
+
+type testOpDefault struct{}
+
+func (t testOpDefault) Init(args value.Dict, bootargs map[string]interface{}) error { return nil }
+func (t testOpDefault) Apply(kwargs value.Dict, in operators.InputIter, out *value.Table) error {
+	for in.HasMore() {
+		row, context, _ := in.Next()
+		row["contextual"] = context["contextual"]
+		row["static"] = kwargs["static"]
+		out.Append(row)
+	}
+	return nil
+}
+
+func (t testOpDefault) Signature() *operators.Signature {
+	return operators.NewSignature(t, "test", "testop").
+		Param("contextual", value.Types.Int, false, true, value.Int(41)).
+		Param("static", value.Types.Int, true, true, value.Int(7))
+}
+
+var _ operators.Operator = testOpDefault{}
+
 type testOpInit struct {
 	num value.Int
 	non testNonValue

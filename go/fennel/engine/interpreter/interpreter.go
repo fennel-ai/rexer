@@ -269,16 +269,20 @@ func (i Interpreter) getStaticKwargs(op operators.Operator, kwargs ast.Dict) (va
 		return ret, err
 	}
 	sig := op.Signature()
-	for k, _ := range sig.StaticKwargs {
+	for k, p := range sig.StaticKwargs {
 		tree, ok := kwargs.Values[k]
-		if !ok {
-			return value.Dict{}, fmt.Errorf("kwarg %s not provided for operator '%s.%s'", k, sig.Module, sig.Name)
+		switch {
+		case !ok && !p.Optional:
+			return value.Dict{}, fmt.Errorf("kwarg '%s' not provided for operator '%s.%s'", k, sig.Module, sig.Name)
+		case !ok && p.Optional:
+			ret[k] = p.Default
+		case ok:
+			val, err := tree.AcceptValue(i)
+			if err != nil {
+				return value.Dict{}, fmt.Errorf("error: %s while evaluating kwarg: %s for operator '%s.%s'", err, k, sig.Module, sig.Name)
+			}
+			ret[k] = val
 		}
-		val, err := tree.AcceptValue(i)
-		if err != nil {
-			return value.Dict{}, fmt.Errorf("error: %s while evaluating kwarg: %s for operator '%s.%s'", err, k, sig.Module, sig.Name)
-		}
-		ret[k] = val
 	}
 	return ret, nil
 }
@@ -288,16 +292,20 @@ func (i Interpreter) getContextKwargs(op operators.Operator, trees ast.Dict, tab
 	sig := op.Signature()
 	for _, v := range table.Pull() {
 		kwargs := make(map[string]value.Value)
-		for k, _ := range sig.ContextKwargs {
+		for k, p := range sig.ContextKwargs {
 			tree, ok := trees.Values[k]
-			if !ok {
-				return utils.ZipTable{}, fmt.Errorf("kwarg %s not provided for operator '%s.%s'", k, sig.Module, sig.Name)
+			switch {
+			case !ok && !p.Optional:
+				return utils.ZipTable{}, fmt.Errorf("kwarg '%s' not provided for operator '%s.%s'", k, sig.Module, sig.Name)
+			case !ok && p.Optional:
+				kwargs[k] = p.Default
+			case ok:
+				val, err := i.visitInContext(tree, v)
+				if err != nil {
+					return utils.ZipTable{}, fmt.Errorf("error: %s while evaluating kwarg: %s for operator '%s.%s'", err, k, sig.Module, sig.Name)
+				}
+				kwargs[k] = val
 			}
-			val, err := i.visitInContext(tree, v)
-			if err != nil {
-				return utils.ZipTable{}, fmt.Errorf("error: %s while evaluating kwarg: %s for operator '%s.%s'", err, k, sig.Module, sig.Name)
-			}
-			kwargs[k] = val
 		}
 		dict, err := value.NewDict(kwargs)
 		if err != nil {

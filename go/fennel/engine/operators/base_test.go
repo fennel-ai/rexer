@@ -24,9 +24,9 @@ func (top testOp) Apply(kwargs value.Dict, in InputIter, out *value.Table) error
 
 func (top testOp) Signature() *Signature {
 	return NewSignature(top, "test", "op").
-		Param("p1", value.Types.Bool, true).
-		Param("p2", value.Types.Double, false).
-		Param("p3", value.Types.Any, true).
+		Param("p1", value.Types.Bool, true, false, value.Nil).
+		Param("p2", value.Types.Double, false, false, value.Double(3.0)).
+		Param("p3", value.Types.Any, true, false, value.Nil).
 		Input("c1", value.Types.String)
 }
 
@@ -53,6 +53,7 @@ var _ Operator = testOp3{}
 func (top testOp3) Init(_ value.Dict, bootargs map[string]interface{}) error {
 	return nil
 }
+
 func (top testOp3) Apply(_ value.Dict, _ InputIter, _ *value.Table) error {
 	return nil
 }
@@ -94,11 +95,11 @@ func TestRegister(t *testing.T) {
 	err := Register(testOp{})
 	assert.NoError(t, err)
 
-	// trying to register same name/module again doesn't work
+	// trying to register same Name/module again doesn't work
 	err = Register(testOp2{})
 	assert.Error(t, err)
 
-	// but if we change either of name/module, it will work
+	// but if we change either of Name/module, it will work
 	err = Register(testOp3{})
 	assert.NoError(t, err)
 }
