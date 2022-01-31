@@ -1,12 +1,12 @@
 package profile
 
 import (
+	"fennel/engine/interpreter/bootarg"
 	"fennel/engine/operators"
 	"fennel/instance"
 	"fennel/lib/ftypes"
 	"fennel/lib/profile"
 	"fennel/lib/value"
-	"fmt"
 )
 
 func init() {
@@ -18,13 +18,9 @@ type profileOp struct {
 }
 
 func (p *profileOp) Init(args value.Dict, bootargs map[string]interface{}) error {
-	got, ok := bootargs["__instance__"]
-	if !ok {
-		return fmt.Errorf("instance not provided in bootargs")
-	}
-	p.instance, ok = got.(instance.Instance)
-	if !ok {
-		return fmt.Errorf("bootargs key __instance__ contains: '%v', not an instance", got)
+	var err error
+	if p.instance, err = bootarg.GetInstance(bootargs); err != nil {
+		return err
 	}
 	return nil
 }
