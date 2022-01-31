@@ -5,12 +5,15 @@ import (
 	"fennel/lib/action"
 	"fennel/lib/ftypes"
 	"fennel/lib/value"
+	"fennel/test"
 	"github.com/stretchr/testify/assert"
 	"testing"
 )
 
 // this test verifies that given a list of actions, the query is run on it to produce the right table
 func TestTransformActions(t *testing.T) {
+	instance, err := test.DefaultInstance()
+	assert.NoError(t, err)
 	custid := ftypes.CustID(12312)
 	actions := make([]action.Action, 0)
 	uid := ftypes.OidType(41)
@@ -21,7 +24,7 @@ func TestTransformActions(t *testing.T) {
 		actions = append(actions, a1, a2)
 	}
 
-	table, err := transformActions(actions, getQuery())
+	table, err := transformActions(instance, actions, getQuery())
 	assert.NoError(t, err)
 	assert.Equal(t, 100, table.Len())
 	for i, row := range table.Pull() {

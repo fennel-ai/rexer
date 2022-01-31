@@ -31,7 +31,7 @@ func Update(instance instance.Instance, agg aggregate.Aggregate) error {
 	if err != nil {
 		return err
 	}
-	table, err := transformActions(actions, agg.Query)
+	table, err := transformActions(instance, actions, agg.Query)
 	if err != nil {
 		return err
 	}
@@ -46,8 +46,8 @@ func Update(instance instance.Instance, agg aggregate.Aggregate) error {
 // Private helpers below
 //============================
 
-func transformActions(actions []libaction.Action, query ast.Ast) (value.Table, error) {
-	interpreter, err := loadInterpreter(actions)
+func transformActions(instance instance.Instance, actions []libaction.Action, query ast.Ast) (value.Table, error) {
+	interpreter, err := loadInterpreter(instance, actions)
 	if err != nil {
 		return value.Table{}, err
 	}
@@ -62,8 +62,11 @@ func transformActions(actions []libaction.Action, query ast.Ast) (value.Table, e
 	return table, nil
 }
 
-func loadInterpreter(actions []libaction.Action) (interpreter.Interpreter, error) {
-	ret := interpreter.NewInterpreter()
+func loadInterpreter(instance instance.Instance, actions []libaction.Action) (interpreter.Interpreter, error) {
+	bootargs := map[string]interface{}{
+		"__instance__": instance,
+	}
+	ret := interpreter.NewInterpreter(bootargs)
 	table, err := libaction.ToTable(actions)
 	if err != nil {
 		return ret, err
