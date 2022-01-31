@@ -10,7 +10,7 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
-func Get(this instance.Instance, request profilelib.ProfileItem) (*value.Value, error) {
+func Get(this instance.Instance, request profilelib.ProfileItem) (value.Value, error) {
 	if err := request.Validate(); err != nil {
 		return nil, err
 	}
@@ -29,7 +29,7 @@ func Get(this instance.Instance, request profilelib.ProfileItem) (*value.Value, 
 	if err != nil {
 		return nil, err
 	}
-	return &val, nil
+	return val, nil
 }
 
 func Set(this instance.Instance, request profilelib.ProfileItem) error {

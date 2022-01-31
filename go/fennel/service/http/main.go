@@ -90,19 +90,19 @@ func (m holder) GetProfile(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 	// send to controller
-	valuePtr, err := profile2.Get(m.instance, request)
+	val, err := profile2.Get(m.instance, request)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadGateway)
 		return
 	}
-	if valuePtr == nil {
+	if val == nil {
 		// no error but no value to return either, so we just write nothing and client knows that
 		// empty response means no value
 		fmt.Fprintf(w, string(""))
 		return
 	}
 	// now convert value to proto and serialize it
-	pval, err := value.ToProtoValue(*valuePtr)
+	pval, err := value.ToProtoValue(val)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadGateway)
 		return
