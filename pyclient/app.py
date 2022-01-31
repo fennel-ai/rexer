@@ -247,5 +247,5 @@ def profiles_handler():
 
 if __name__ == '__main__':
     global c
-    c = client.Client()
+    c = client.Client(endpoint_flag.default)
     app.run(host="localhost", port="2475")
