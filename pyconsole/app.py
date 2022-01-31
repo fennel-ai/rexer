@@ -2,8 +2,8 @@ from absl import flags
 from flask import Flask, request, jsonify
 from google.protobuf import json_format
 
-import client
-from models import action, value, profile
+from rexerclient import client
+from rexerclient.models import action, value, profile
 
 app = Flask('console')
 
