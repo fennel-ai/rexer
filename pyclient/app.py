@@ -39,12 +39,8 @@ def is_str(s):
         return True
 
 
-def _validate_profile_get(cust_id, otype, oid, key, version):
+def _validate_profile_get(otype, oid, key, version):
     errors = []
-    if cust_id is None:
-        errors.append('custid is not specified')
-    elif not is_uint(cust_id, 64):
-        errors.append('custid is not a valid 64-bit unsigned integer')
 
     if otype is None:
         errors.append('otype is not specified')
@@ -80,9 +76,8 @@ def _to_str(s, default=''):
     return str(s) if s is not None else default
 
 
-def _to_profile_item(cust_id, otype, oid, key, version):
+def _to_profile_item(otype, oid, key, version):
     ret = profile.ProfileItem()
-    ret.CustID = int(cust_id)
     ret.OType = str(otype)
     ret.Oid = int(oid)
     ret.Key = key if key is not None else ""
@@ -95,28 +90,25 @@ def _to_profile_item(cust_id, otype, oid, key, version):
 def profile_handler():
     global c
     args = request.args
-    cust_id = args.get('cust_id', None)
     oid = args.get('oid', None)
     otype = args.get('otype', None)
     key = args.get('key', None)
     version = args.get('version', None)
-    errors = _validate_profile_get(cust_id, otype, oid, key, version)
+    errors = _validate_profile_get(otype, oid, key, version)
     if len(errors) > 0:
         app.logger.error(request, errors)
         return jsonify({'errors': errors}), 400
-    req = _to_profile_item(cust_id, otype, oid, key, version)
+    req = _to_profile_item(otype, oid, key, version)
     # TODO: client's get_profile returns a single value but
     # we need a list of all relevant profile rows here
     v = c.get_profile(req)
     return json_format.MessageToJson(v)
 
 
-def _validate_action_get(cust_id, actor_id, actor_type, target_id, target_type, action_type,
+def _validate_action_get(actor_id, actor_type, target_id, target_type, action_type,
                          min_action_value, max_action_value, min_timestamp, max_timestamp,
                          min_action_id, max_action_id, request_id):
     errors = []
-    if (cust_id is not None) and (not is_uint(cust_id, 64)):
-        errors.append('cust_id is provided but is not a valid 64-bit unsigned integer')
     if (actor_id is not None) and (not is_uint(actor_id, 64)):
         errors.append('actor_id is provided but is not a valid 64-bit unsigned integer')
     if (target_id is not None) and (not is_uint(target_id, 64)):
@@ -154,11 +146,10 @@ def _validate_action_get(cust_id, actor_id, actor_type, target_id, target_type, 
     return errors
 
 
-def _to_action_fetch_request(cust_id, actor_id, actor_type, target_id, target_type, action_type,
+def _to_action_fetch_request(actor_id, actor_type, target_id, target_type, action_type,
                              min_action_value, max_action_value, min_timestamp, max_timestamp,
                              min_action_id, max_action_id, request_id):
     ret = action.ActionFetchRequest()
-    ret.CustID = _to_int(cust_id)
     ret.ActorID = _to_int(actor_id)
     ret.ActorType = _to_str(actor_type)
     ret.TargetID = _to_int(target_id)
@@ -178,7 +169,6 @@ def _to_action_fetch_request(cust_id, actor_id, actor_type, target_id, target_ty
 def action_handler():
     global c
     args = request.args
-    cust_id = args.get('cust_id', None)
     actor_id = args.get('actor_id', None)
     target_id = args.get('target_id', None)
     actor_type = args.get('actor_type', None)
@@ -191,12 +181,12 @@ def action_handler():
     max_action_value = args.get('max_action_value', None)
     min_timestamp = args.get('min_timestamp', None)
     max_timestamp = args.get('max_timestamp', None)
-    errors = _validate_action_get(cust_id, actor_id, actor_type, target_id, target_type, action_type,
+    errors = _validate_action_get(actor_id, actor_type, target_id, target_type, action_type,
                                   min_action_value, max_action_value, min_timestamp, max_timestamp,
                                   min_action_id, max_action_id, request_id)
     if len(errors) > 0:
         return jsonify({'errors': errors}), 400
-    req = _to_action_fetch_request(cust_id, actor_id, actor_type, target_id, target_type, action_type,
+    req = _to_action_fetch_request(actor_id, actor_type, target_id, target_type, action_type,
                                    min_action_value, max_action_value, min_timestamp, max_timestamp,
                                    min_action_id, max_action_id, request_id)
     actions = c.fetch(req)
@@ -205,10 +195,8 @@ def action_handler():
         strs.append(json_format.MessageToJson(a, including_default_value_fields=True))
     return '[' + ', '.join(strs) + ']'
 
-def _validate_profiles_get(cust_id, otype, oid, key, version):
+def _validate_profiles_get(otype, oid, key, version):
     errors = []
-    if (cust_id is not None) and (not is_uint(cust_id, 64)):
-        errors.append('cust_id is provided but is not a valid 64-bit unsigned integer')
     if (otype is not None) and (not is_str(otype)):
         errors.append('otype is provided but is not a valid string')
     if (oid is not None) and (not is_uint(oid, 64)):
@@ -220,9 +208,8 @@ def _validate_profiles_get(cust_id, otype, oid, key, version):
     
     return errors
 
-def _to_profile_fetch_request(cust_id, otype, oid, key, version):
+def _to_profile_fetch_request(otype, oid, key, version):
     ret = profile.ProfileFetchRequest()
-    ret.CustID = _to_int(cust_id)
     ret.OType = _to_str(otype)
     ret.Oid = _to_int(oid)
     ret.Key = _to_str(key)
@@ -233,15 +220,14 @@ def _to_profile_fetch_request(cust_id, otype, oid, key, version):
 def profiles_handler():
     global c
     args = request.args
-    cust_id = args.get('cust_id', None)
     otype = args.get('otype', None)
     oid = args.get('oid', None)
     key = args.get('key', None)
     version = args.get('version', None)
-    errors = _validate_profiles_get(cust_id, otype, oid, key, version)
+    errors = _validate_profiles_get(otype, oid, key, version)
     if len(errors) > 0:
         return jsonify({'errors': errors}), 400
-    req = _to_profile_fetch_request(cust_id, otype, oid, key, version)
+    req = _to_profile_fetch_request(otype, oid, key, version)
     profiles = c.get_profiles(req)
     strs = []
     for p in profiles:
