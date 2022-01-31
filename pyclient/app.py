@@ -48,7 +48,7 @@ def _validate_profile_get(cust_id, otype, oid, key, version):
 
     if otype is None:
         errors.append('otype is not specified')
-    elif not is_str(otype, str):
+    elif not is_str(otype):
         errors.append('otype is not a valid string')
     elif len(otype) == 0:
         errors.append('otype is not a non-empty string')
