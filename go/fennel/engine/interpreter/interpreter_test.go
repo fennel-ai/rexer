@@ -425,4 +425,49 @@ func TestInterpreter_VisitIfelse(t *testing.T) {
 		ThenDo:    ast.MakeInt(11),
 		ElseDo:    ast.MakeInt(12),
 	})
+
+	testDualBranchEvaluation(t)
+}
+
+// Test that only one of the then/else branches is evaluated
+func testDualBranchEvaluation(t *testing.T) {
+	i := getInterpreter()
+
+	// Only the then branch should be evaluated
+	ifelse1 := ast.IfElse{
+		Condition: ast.MakeBool(true),
+		ThenDo:    ast.Statement{Name: "x", Body: ast.MakeInt(4)},
+		ElseDo:    ast.Statement{Name: "y", Body: ast.MakeInt(5)},
+	}
+	ret, err := ifelse1.AcceptValue(i)
+	assert.NoError(t, err)
+	assert.Equal(t, value.Int(4), ret)
+
+	x := ast.Var{Name: "x"}
+	ret, err = x.AcceptValue(i)
+	assert.NoError(t, err)
+	assert.Equal(t, value.Int(4), ret)
+
+	y := ast.Var{Name: "y"}
+	_, err = y.AcceptValue(i)
+	assert.Error(t, err)
+
+	// Only the else branch should be evaluated
+	ifelse2 := ast.IfElse{
+		Condition: ast.MakeBool(false),
+		ThenDo:    ast.Statement{Name: "a", Body: ast.MakeString("abc")},
+		ElseDo:    ast.Statement{Name: "b", Body: ast.MakeString("xyz")},
+	}
+	ret, err = ifelse2.AcceptValue(i)
+	assert.NoError(t, err)
+	assert.Equal(t, value.String("xyz"), ret)
+
+	a := ast.Var{Name: "a"}
+	_, err = a.AcceptValue(i)
+	assert.Error(t, err)
+
+	b := ast.Var{Name: "b"}
+	ret, err = b.AcceptValue(i)
+	assert.NoError(t, err)
+	assert.Equal(t, value.String("xyz"), ret)
 }
