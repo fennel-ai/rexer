@@ -279,6 +279,7 @@ Ops = Munch()
 Ops.std = Munch({
     'filter': type('Filter', (_Operator,), {'module': 'std', 'opname': 'filter'}),
     'take': type('Take', (_Operator,), {'module': 'std', 'opname': 'take'}),
+    'addProfileColumn': type('AddProfile', (_Operator,), {'module': 'std', 'opname': 'addProfileColumn'}),
 })
 
 
