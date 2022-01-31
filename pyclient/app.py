@@ -93,6 +93,7 @@ def _to_profile_item(cust_id, otype, oid, key, version):
 
 @app.route('/profile/', methods=['GET'])
 def profile_handler():
+    global c
     args = request.args
     cust_id = args.get('cust_id', None)
     oid = args.get('oid', None)
@@ -175,6 +176,7 @@ def _to_action_fetch_request(cust_id, actor_id, actor_type, target_id, target_ty
 
 @app.route('/actions/', methods=['GET'])
 def action_handler():
+    global c
     args = request.args
     cust_id = args.get('cust_id', None)
     actor_id = args.get('actor_id', None)
@@ -229,6 +231,7 @@ def _to_profile_fetch_request(cust_id, otype, oid, key, version):
 
 @app.route('/profiles/', methods=['GET'])
 def profiles_handler():
+    global c
     args = request.args
     cust_id = args.get('cust_id', None)
     otype = args.get('otype', None)
@@ -245,7 +248,6 @@ def profiles_handler():
         strs.append(json_format.MessageToJson(p, including_default_value_fields=True))
     return '[' + ', '.join(strs) + ']'
 
-if __name__ == '__main__':
-    global c
-    c = client.Client(endpoint_flag.default)
-    app.run(host="localhost", port="2475")
+
+c = client.Client(endpoint_flag.default)
+#app.run(host="localhost", port="2475")
