@@ -98,6 +98,9 @@ func TestInterpreter_VisitStatement(t *testing.T) {
 	// same happens if no name is passed
 	s = ast.Statement{Name: "", Body: ast.MakeBool(false)}
 	testValid(t, s, value.Bool(false))
+	// but if name is passed and it is a magic name, error is thrown
+	s = ast.Statement{Name: "__something__", Body: ast.MakeBool(false)}
+	testError(t, s)
 }
 
 func TestInterpreter_VisitTable(t *testing.T) {
