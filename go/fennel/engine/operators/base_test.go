@@ -8,9 +8,15 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-type testOp struct{}
+type testOp struct {
+	num value.Int
+}
 
 var _ Operator = testOp{}
+
+func (top testOp) Init(args value.Dict, bootargs map[string]interface{}) error {
+	return nil
+}
 
 func (top testOp) Apply(kwargs value.Dict, in InputIter, out *value.Table) error {
 	return nil
@@ -26,7 +32,11 @@ func (top testOp) Signature() *Signature {
 
 type testOp2 struct{}
 
-var _ Operator = testOp{}
+var _ Operator = testOp2{}
+
+func (top testOp2) Init(_ value.Dict, bootargs map[string]interface{}) error {
+	return nil
+}
 
 func (top testOp2) Apply(_ value.Dict, _ InputIter, _ *value.Table) error {
 	return nil
@@ -38,8 +48,11 @@ func (top testOp2) Signature() *Signature {
 
 type testOp3 struct{}
 
-var _ Operator = testOp{}
+var _ Operator = testOp3{}
 
+func (top testOp3) Init(_ value.Dict, bootargs map[string]interface{}) error {
+	return nil
+}
 func (top testOp3) Apply(_ value.Dict, _ InputIter, _ *value.Table) error {
 	return nil
 }

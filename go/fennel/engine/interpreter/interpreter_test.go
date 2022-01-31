@@ -2,15 +2,15 @@ package interpreter
 
 import (
 	"fennel/engine/ast"
+	"fennel/engine/operators"
 	"fennel/lib/value"
-	"testing"
-
+	"fmt"
 	"github.com/stretchr/testify/assert"
+	"testing"
 )
 
 func getInterpreter() Interpreter {
-	env := NewEnv(nil)
-	return Interpreter{&env}
+	return NewInterpreter(map[string]interface{}{})
 }
 
 func testValid(t *testing.T, node ast.Ast, expected value.Value) {
@@ -291,7 +291,7 @@ func TestInterpreter_VisitOpcall2(t *testing.T) {
 	assert.NoError(t, base.Append(row1))
 	assert.NoError(t, base.Append(row2))
 	assert.NoError(t, base.Append(row3))
-	i := NewInterpreter()
+	i := getInterpreter()
 	i.SetVar("table", base)
 	query := getOpCallQuery()
 	res, err := query.AcceptValue(i)
@@ -302,6 +302,15 @@ func TestInterpreter_VisitOpcall2(t *testing.T) {
 	assert.Equal(t, expected, res)
 }
 
+func TestInterpreter_QueryArgs(t *testing.T) {
+	i := getInterpreter()
+	// initially nothing
+	assert.Equal(t, value.Dict{}, i.QueryArgs())
+	args := value.Dict{"x": value.Int(1)}
+	assert.NoError(t, i.SetQueryArgs(args))
+	assert.Equal(t, args, i.QueryArgs())
+}
+
 var res value.Value
 
 func benchmarkInterpreter_VisitOpcall(numRows int, b *testing.B) {
@@ -310,7 +319,7 @@ func benchmarkInterpreter_VisitOpcall(numRows int, b *testing.B) {
 		row := value.Dict{"hi": value.Int(i), "bye": value.Double(i)}
 		table.Append(row)
 	}
-	evaler := NewInterpreter()
+	evaler := getInterpreter()
 	evaler.SetVar("table", table)
 	query := getOpCallQuery()
 	for i := 0; i < b.N; i++ {
@@ -366,7 +375,7 @@ func TestInterpreter_VisitLookup(t *testing.T) {
 }
 
 func TestInterpreter_SetVar(t *testing.T) {
-	i := NewInterpreter()
+	i := getInterpreter()
 	name := "key"
 	val := value.Int(4)
 	_, err := i.env.Lookup(name)
@@ -470,4 +479,65 @@ func testDualBranchEvaluation(t *testing.T) {
 	ret, err = b.AcceptValue(i)
 	assert.NoError(t, err)
 	assert.Equal(t, value.String("xyz"), ret)
+}
+
+func TestInterpreter_VisitOpcall3(t *testing.T) {
+	// first register the test operation
+	operators.Register(&testOpInit{})
+	// then create an ast that uses this op
+	query := ast.OpCall{
+		Operand:   ast.Var{Name: "table"},
+		Namespace: "test",
+		Name:      "op",
+		Kwargs:    ast.Dict{},
+	}
+	table := value.NewTable()
+	table.Append(value.Dict{"x": value.Int(1)})
+	nonhi := "hello"
+	i := NewInterpreter(map[string]interface{}{
+		"__teststruct__": testNonValue{hi: nonhi},
+	})
+	i.SetQueryArgs(value.Dict{"num": value.Int(41)})
+	assert.NoError(t, i.SetVar("table", table))
+	out, err := query.AcceptValue(i)
+	assert.NoError(t, err)
+	outtable := out.(value.Table)
+	rows := outtable.Pull()
+	assert.Len(t, rows, 1)
+	assert.Equal(t, value.Dict{"x": value.Int(1), "num": value.Int(41), "nonhi": value.String(nonhi)}, rows[0])
+}
+
+type testOpInit struct {
+	num value.Int
+	non testNonValue
+}
+type testNonValue struct {
+	hi string
+}
+
+var _ operators.Operator = &testOpInit{}
+
+func (top *testOpInit) Init(args value.Dict, bootargs map[string]interface{}) error {
+	// take one arg from args and one from bootarg to verify that init is working
+	num, ok := args["num"]
+	if !ok {
+		return fmt.Errorf("num not passed")
+	}
+	top.num = num.(value.Int)
+	top.non = bootargs["__teststruct__"].(testNonValue)
+	return nil
+}
+
+func (top *testOpInit) Apply(kwargs value.Dict, in operators.InputIter, out *value.Table) error {
+	for in.HasMore() {
+		row, _, _ := in.Next()
+		row["num"] = top.num
+		row["nonhi"] = value.String(top.non.hi)
+		out.Append(row)
+	}
+	return nil
+}
+
+func (top *testOpInit) Signature() *operators.Signature {
+	return operators.NewSignature(top, "test", "op")
 }
