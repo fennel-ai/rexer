@@ -10,14 +10,32 @@ import (
 )
 
 type Interpreter struct {
-	env *Env
+	env      *Env
+	bootargs map[string]interface{}
 }
 
 var _ ast.VisitorValue = Interpreter{}
 
-func NewInterpreter() Interpreter {
+func NewInterpreter(bootargs map[string]interface{}) Interpreter {
 	env := NewEnv(nil)
-	return Interpreter{&env}
+	ret := Interpreter{&env, bootargs}
+	return ret
+}
+
+func (i Interpreter) QueryArgs() value.Dict {
+	args, err := i.env.Lookup("__args__")
+	if err != nil {
+		return value.Dict{}
+	}
+	asdict, ok := args.(value.Dict)
+	if !ok {
+		return value.Dict{}
+	}
+	return asdict
+}
+
+func (i Interpreter) SetQueryArgs(args value.Dict) error {
+	return i.env.Define("__args__", args)
 }
 
 func (i Interpreter) SetVar(name string, v value.Value) error {
@@ -189,8 +207,8 @@ func (i Interpreter) VisitOpcall(operand ast.Ast, namespace, name string, kwargs
 		return value.Nil, fmt.Errorf("opertor '%s.%s' can not be applied: operand not a table", namespace, name)
 	}
 
-	// locate the operator
-	op, err := operators.Locate(namespace, name)
+	// find & init the operator
+	op, err := i.getOperator(namespace, name)
 	if err != nil {
 		return value.Nil, err
 	}
@@ -290,4 +308,13 @@ func (i Interpreter) getContextKwargs(op operators.Operator, trees ast.Dict, tab
 		}
 	}
 	return ret, nil
+}
+
+func (i Interpreter) getOperator(namespace, name string) (operators.Operator, error) {
+	op, err := operators.Locate(namespace, name)
+	if err != nil {
+		return op, err
+	}
+	err = op.Init(i.QueryArgs(), i.bootargs)
+	return op, err
 }

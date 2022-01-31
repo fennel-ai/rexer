@@ -16,6 +16,10 @@ func init() {
 
 type FilterOperator struct{}
 
+func (f FilterOperator) Init(_ value.Dict, _ map[string]interface{}) error {
+	return nil
+}
+
 func (f FilterOperator) Signature() *Signature {
 	return NewSignature(f, "std", "filter").
 		Param("where", value.Types.Bool, false)
@@ -36,6 +40,10 @@ func (f FilterOperator) Apply(_ value.Dict, in InputIter, out *value.Table) erro
 }
 
 type TakeOperator struct{}
+
+func (f TakeOperator) Init(_ value.Dict, _ map[string]interface{}) error {
+	return nil
+}
 
 func (f TakeOperator) Signature() *Signature {
 	return NewSignature(f, "std", "take").
@@ -59,6 +67,10 @@ func (f TakeOperator) Apply(staticKwargs value.Dict, in InputIter, out *value.Ta
 type AddColumnOperator struct{}
 
 var _ Operator = AddColumnOperator{}
+
+func (op AddColumnOperator) Init(_ value.Dict, _ map[string]interface{}) error {
+	return nil
+}
 
 func (op AddColumnOperator) Signature() *Signature {
 	return NewSignature(op, "std", "addColumn").
