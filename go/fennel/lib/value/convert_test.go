@@ -1,8 +1,9 @@
 package value
 
 import (
-	"github.com/stretchr/testify/assert"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func TestConvert(t *testing.T) {
@@ -51,8 +52,8 @@ func TestInvalidProtoValue(t *testing.T) {
 	}
 
 	// a protovalue table where Schema doesn't match
-	row1, _ := toProtoDict(Dict{"hi": Int(1), "bye": Bool(true)})
-	row2, _ := toProtoDict(Dict{"mismatch": Int(1), "bye": Bool(true)})
+	row1, _ := ToProtoDict(Dict{"hi": Int(1), "bye": Bool(true)})
+	row2, _ := ToProtoDict(Dict{"mismatch": Int(1), "bye": Bool(true)})
 	ptable := PValue{Node: &PValue_Table{Table: &PVTable{Rows: []*PVDict{&row1, &row2}}}}
 
 	pvalues = append(pvalues, ptable)

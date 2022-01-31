@@ -5,12 +5,13 @@ import (
 	"fennel/engine/ast"
 	"fennel/lib/aggregate"
 	"fennel/model/counter"
-	"google.golang.org/protobuf/proto"
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
+
+	"google.golang.org/protobuf/proto"
 
 	"fennel/client"
 	"fennel/lib/action"
@@ -152,13 +153,28 @@ func TestQuery(t *testing.T) {
 		}},
 		},
 	}
-	found, err := c.Query(e)
+	q := ast.AstWithDict{
+		Ast:  e,
+		Dict: value.Dict{},
+	}
+	found, err := c.Query(q)
 	assert.NoError(t, err)
 	expected := value.NewTable()
 	expected.Append(map[string]value.Value{"x": value.Int(1), "y": value.Int(3)})
 	expected.Append(map[string]value.Value{"x": value.Int(1), "y": value.Int(7)})
 	assert.Equal(t, expected, found)
 
+	// Test if dict values are set
+	ast1 := ast.Var{Name: "__args__"}
+	dict1 := value.Dict{"key1": value.Int(4)}
+	q1 := ast.AstWithDict{
+		Ast:  ast1,
+		Dict: dict1,
+	}
+
+	found, err = c.Query(q1)
+	assert.NoError(t, err)
+	assert.Equal(t, dict1, found)
 }
 
 func TestHolder_AggregateValue_Valid(t *testing.T) {
