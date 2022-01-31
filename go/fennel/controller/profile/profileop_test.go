@@ -18,18 +18,21 @@ func TestProfileOp(t *testing.T) {
 	otype2, oid2, key2, val2, ver2 := ftypes.OType("user"), uint64(223), "age", value.Int(7), uint64(4)
 	req1 := profilelib.ProfileItem{CustID: instance.CustID, OType: otype1, Oid: oid1, Key: key1, Version: ver1, Value: val1}
 	assert.NoError(t, Set(instance, req1))
-	req2 := profilelib.ProfileItem{CustID: instance.CustID, OType: otype2, Oid: oid2, Key: key2, Version: ver2, Value: val2}
-	assert.NoError(t, Set(instance, req2))
+	req2a := profilelib.ProfileItem{CustID: instance.CustID, OType: otype2, Oid: oid2, Key: key2, Version: ver2 - 1, Value: value.Int(1121)}
+	assert.NoError(t, Set(instance, req2a))
+	// this key has multiple versions but we should pick up the latest one if not provided explicitly
+	req2b := profilelib.ProfileItem{CustID: instance.CustID, OType: otype2, Oid: oid2, Key: key2, Version: ver2, Value: val2}
+	assert.NoError(t, Set(instance, req2b))
 
 	query := ast.OpCall{
 		Operand:   ast.Var{Name: "table"},
 		Namespace: "std",
 		Name:      "addProfileColumn",
 		Kwargs: ast.Dict{Values: map[string]ast.Ast{
-			"otype":   ast.Lookup{On: ast.At{}, Property: "otype"},
-			"oid":     ast.Lookup{On: ast.At{}, Property: "oid"},
-			"key":     ast.Lookup{On: ast.At{}, Property: "key"},
-			"version": ast.Lookup{On: ast.At{}, Property: "ver"},
+			"otype": ast.Lookup{On: ast.At{}, Property: "otype"},
+			"oid":   ast.Lookup{On: ast.At{}, Property: "oid"},
+			"key":   ast.Lookup{On: ast.At{}, Property: "key"},
+			// since version is an optional value, we don't pass it and still get the latest value back
 		}},
 	}
 	i := interpreter.NewInterpreter(map[string]interface{}{

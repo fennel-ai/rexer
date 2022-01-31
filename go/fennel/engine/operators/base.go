@@ -29,29 +29,39 @@ func Locate(namespace, name string) (Operator, error) {
 	}
 }
 
+type Param struct {
+	Name     string
+	Static   bool
+	Type     reflect.Type
+	Optional bool
+	Default  value.Value
+}
+
 // TODO: support optional parameters with default values
 type Signature struct {
 	Module        string
 	Name          string
 	inputs        map[string]reflect.Type
-	StaticKwargs  map[string]reflect.Type
-	ContextKwargs map[string]reflect.Type
+	StaticKwargs  map[string]Param
+	ContextKwargs map[string]Param
 }
 
 func NewSignature(op Operator, module, name string) *Signature {
 	return &Signature{
 		module, name,
 		make(map[string]reflect.Type, 0),
-		make(map[string]reflect.Type, 0),
-		make(map[string]reflect.Type, 0),
+		make(map[string]Param, 0),
+		make(map[string]Param, 0),
 	}
 }
 
-func (s *Signature) Param(name string, t reflect.Type, static bool) *Signature {
+func (s *Signature) Param(name string, t reflect.Type, static bool, optional bool, default_ value.Value) *Signature {
+	p := Param{name, static, t, optional, default_}
 	if static {
-		s.StaticKwargs[name] = t
+		s.StaticKwargs[name] = p
+
 	} else {
-		s.ContextKwargs[name] = t
+		s.ContextKwargs[name] = p
 	}
 	return s
 }
@@ -86,7 +96,8 @@ func Typecheck(op Operator, staticKwargs map[string]reflect.Type, inputSchema ma
 	if len(sig.StaticKwargs) != len(staticKwargs) {
 		return fmt.Errorf("incorrect number of static kwargs passed - expected: %d but got: %d", len(sig.StaticKwargs), len(staticKwargs))
 	}
-	for k, t := range sig.StaticKwargs {
+	for k, p := range sig.StaticKwargs {
+		t := p.Type
 		vt, ok := staticKwargs[k]
 		if !ok {
 			return fmt.Errorf("operator '%s' expects kwarg '%s' but not found", op, k)
@@ -99,7 +110,8 @@ func Typecheck(op Operator, staticKwargs map[string]reflect.Type, inputSchema ma
 	if len(sig.ContextKwargs) != len(contextKwargSchema) {
 		return fmt.Errorf("incorrect number of contextual kwargs passed - expected: %d but got: %d", len(sig.ContextKwargs), len(contextKwargSchema))
 	}
-	for k, t := range sig.ContextKwargs {
+	for k, p := range sig.ContextKwargs {
+		t := p.Type
 		vt, ok := contextKwargSchema[k]
 		if !ok {
 			return fmt.Errorf("operator '%s.%s' expects kwarg '%s' but not found", sig.Module, sig.Name, k)

@@ -22,7 +22,7 @@ func (f FilterOperator) Init(_ value.Dict, _ map[string]interface{}) error {
 
 func (f FilterOperator) Signature() *Signature {
 	return NewSignature(f, "std", "filter").
-		Param("where", value.Types.Bool, false)
+		Param("where", value.Types.Bool, false, false, value.Bool(false))
 }
 
 func (f FilterOperator) Apply(_ value.Dict, in InputIter, out *value.Table) error {
@@ -47,7 +47,7 @@ func (f TakeOperator) Init(_ value.Dict, _ map[string]interface{}) error {
 
 func (f TakeOperator) Signature() *Signature {
 	return NewSignature(f, "std", "take").
-		Param("limit", value.Types.Int, true)
+		Param("limit", value.Types.Int, true, false, value.Nil)
 }
 
 func (f TakeOperator) Apply(staticKwargs value.Dict, in InputIter, out *value.Table) error {
@@ -74,8 +74,8 @@ func (op AddColumnOperator) Init(_ value.Dict, _ map[string]interface{}) error {
 
 func (op AddColumnOperator) Signature() *Signature {
 	return NewSignature(op, "std", "addColumn").
-		Param("name", value.Types.String, true).
-		Param("value", value.Types.Any, false)
+		Param("name", value.Types.String, true, false, value.Nil).
+		Param("value", value.Types.Any, false, false, value.Nil)
 }
 
 func (op AddColumnOperator) Apply(staticKwargs value.Dict, in InputIter, out *value.Table) error {
