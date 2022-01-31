@@ -163,18 +163,21 @@ func (m holder) GetProfiles(w http.ResponseWriter, req *http.Request) {
 }
 
 func (m holder) Query(w http.ResponseWriter, req *http.Request) {
-	var protoAst astProto.Ast
-	if err := parse(req, &protoAst); err != nil {
+	var protoAstWithDict astProto.AstWithDict
+	if err := parse(req, &protoAstWithDict); err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	tree, err := ast.FromProtoAst(protoAst)
+	astWithDict, err := ast.FromProtoAstWithDict(&protoAstWithDict)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
+	tree := astWithDict.Ast
+	dict := astWithDict.Dict
 	// execute the tree
 	i := interpreter.NewInterpreter(bootarg.Create(m.instance))
+	i.SetQueryArgs(dict)
 	ret, err := tree.AcceptValue(i)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadGateway)

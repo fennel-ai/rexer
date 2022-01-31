@@ -137,9 +137,9 @@ func (c *Client) GetProfile(request *profileLib.ProfileItem) (*value.Value, erro
 	}
 }
 
-func (c *Client) Query(request ast.Ast) (value.Value, error) {
+func (c *Client) Query(request ast.AstWithDict) (value.Value, error) {
 	// convert the request to proto version
-	protoReq, err := ast.ToProtoAst(request)
+	protoReq, err := ast.ToProtoAstWithDict(&request)
 	if err != nil {
 		return nil, fmt.Errorf("invalid request: %v", err)
 	}
