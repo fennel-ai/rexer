@@ -44,7 +44,6 @@ class Testclient(unittest.TestCase):
         httpretty.register_uri(httpretty.POST, get_uri("/set"))
 
         p1 = profile.ProfileItem()
-        p1.CustID = 1
         p1.Oid, p1.OType = 1, '2'
         p1.Key = 'key'
         v = value.Int(5)
@@ -53,7 +52,6 @@ class Testclient(unittest.TestCase):
         self.assertEqual(p1.SerializeToString(), httpretty.last_request().body)
 
         p2 = profile.ProfileItem()
-        p2.CustID = 1
         p2.Oid, p2.OType = 2, '1'
         p2.Key = 'key2'
         v = value.Int(7)
@@ -290,14 +288,12 @@ def make_action(k):
     a.TargetType = str(k + 3)
     a.ActionType = str(k + 4)
     a.RequestID = k + 5
-    a.CustID = k + 6
     return a
 
 
 def make_profile(k):
     k = k * 9
     p = profile.ProfileItem()
-    p.CustID = 1
     p.Oid = k+7
     p.Otype = str(k%2)
     p.Key = str(k)

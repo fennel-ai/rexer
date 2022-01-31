@@ -10,8 +10,6 @@ class InvalidInput(Exception):
 
 def validate(a: Action):
     errors = []
-    if a.CustID == 0:
-        errors.append('customer ID can not be zero')
     if a.ActorID == 0:
         errors.append('actorID can not be zero')
     if len(a.ActorType) == 0:

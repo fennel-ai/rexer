@@ -6,8 +6,6 @@ from gen.profile_pb2 import ProtoProfileFetchRequest as ProfileFetchRequest
 
 def validate(pi: ProfileItem):
     errors = []
-    if pi.CustID == 0:
-        errors.append("custid can not be zero")
     if len(pi.OType) == 0:
         errors.append("otype can not be empty")
     if pi.Oid == 0:
