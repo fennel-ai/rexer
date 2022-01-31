@@ -6,11 +6,17 @@ import rql
 from models import action, value, profile, aggregate
 import client
 
+LOCAL_SERVER_URL = "http://localhost:2425"
+
+def get_uri(path):
+    assert path[0] == "/"
+    return LOCAL_SERVER_URL + path
+
 
 class Testclient(unittest.TestCase):
     @httpretty.activate(verbose=True, allow_net_connect=False)
     def test_get_set_profile(self):
-        c = client.Client()
+        c = client.Client(LOCAL_SERVER_URL)
 
         # invalid requests throw exception for both set & get
         with self.assertRaises(client.InvalidInput):
@@ -35,7 +41,7 @@ class Testclient(unittest.TestCase):
         # but valid requests don't throw exceptions
 
         # Test set for valid profiles
-        httpretty.register_uri(httpretty.POST, 'http://localhost:2425/set')
+        httpretty.register_uri(httpretty.POST, get_uri("/set"))
 
         p1 = profile.ProfileItem()
         p1.CustID = 1
@@ -62,7 +68,7 @@ class Testclient(unittest.TestCase):
         expected2 = value.Int(7)
         response2 = httpretty.Response(expected2.SerializeToString())
 
-        httpretty.register_uri(httpretty.POST, 'http://localhost:2425/get', responses=[response1, response2])
+        httpretty.register_uri(httpretty.POST, get_uri("/get"), responses=[response1, response2])
         ret = c.get_profile(p1)
         self.assertEqual(value.Int(5), ret)
         ret = c.get_profile(p2)
@@ -75,7 +81,7 @@ class Testclient(unittest.TestCase):
         pl = profile.to_proto_profile_list([p2])
         response2 = httpretty.Response(pl.SerializeToString())
 
-        httpretty.register_uri(httpretty.POST, 'http://localhost:2425/get_profiles', responses=[response1, response2])
+        httpretty.register_uri(httpretty.POST, get_uri("/get_profiles"), responses=[response1, response2])
 
         pfr = profile.ProfileFetchRequest()
         ret = c.get_profiles(pfr)
@@ -91,8 +97,8 @@ class Testclient(unittest.TestCase):
     def test_log(self):
         a1 = make_action(1)
         a2 = make_action(2)
-        httpretty.register_uri(httpretty.POST, 'http://localhost:2425/log')
-        c = client.Client()
+        httpretty.register_uri(httpretty.POST, get_uri("/log"))
+        c = client.Client(LOCAL_SERVER_URL)
 
         c.log(a1)
         self.assertEqual(a1.SerializeToString(), httpretty.last_request().body)
@@ -119,10 +125,10 @@ class Testclient(unittest.TestCase):
 
         al = action.to_proto_action_list([a2])
         response2 = httpretty.Response(al.SerializeToString())
-        httpretty.register_uri(httpretty.POST, 'http://localhost:2425/fetch', responses=[response1, response2])
+        httpretty.register_uri(httpretty.POST, get_uri("/fetch"), responses=[response1, response2])
 
         # invalid requests throw exception
-        c = client.Client()
+        c = client.Client(LOCAL_SERVER_URL)
         with self.assertRaises(client.InvalidInput):
             c.fetch(1)
         with self.assertRaises(client.InvalidInput):
@@ -153,10 +159,10 @@ class Testclient(unittest.TestCase):
 
         v = value.Int(5)
         response = httpretty.Response(v.SerializeToString())
-        httpretty.register_uri(httpretty.POST, 'http://localhost:2425/query', responses=[response])
+        httpretty.register_uri(httpretty.POST, get_uri("/query"), responses=[response])
 
         # invalid requests throw exception
-        c = client.Client()
+        c = client.Client(LOCAL_SERVER_URL)
         with self.assertRaises(client.InvalidInput):
             c.query(1)
         with self.assertRaises(client.InvalidInput):
@@ -171,7 +177,7 @@ class Testclient(unittest.TestCase):
     
     @httpretty.activate(verbose=True, allow_net_connect=False)
     def test_cond(self):
-        c = client.Client()
+        c = client.Client(LOCAL_SERVER_URL)
 
         cond1 = rql.Cond(
             condition = rql.Bool(False),
@@ -180,7 +186,7 @@ class Testclient(unittest.TestCase):
         )
         v = value.Int(6)
         response = httpretty.Response(v.SerializeToString())
-        httpretty.register_uri(httpretty.POST, 'http://localhost:2425/query', responses=[response])
+        httpretty.register_uri(httpretty.POST, get_uri("/query"), responses=[response])
         ret = c.query(cond1)
         ast = rql.Serializer().serialize(cond1)
         self.assertEqual(ast.SerializeToString(), httpretty.last_request().body)
@@ -189,7 +195,7 @@ class Testclient(unittest.TestCase):
     @httpretty.activate(verbose=True, allow_net_connect=False)
     def test_store_aggregate(self):
         # invalid requests throw exception
-        c = client.Client()
+        c = client.Client(LOCAL_SERVER_URL)
         with self.assertRaises(client.InvalidInput):
             c.store_aggregate("", "", rql.Int(1), aggregate.AggOptions())
         with self.assertRaises(client.InvalidInput):
@@ -198,7 +204,7 @@ class Testclient(unittest.TestCase):
         #     c.store_aggregate("aggtype", "aggname", rql.Int(1), aggregate.AggOptions())
 
         # but valid ones don't
-        httpretty.register_uri(httpretty.POST, 'http://localhost:2425/store_aggregate')
+        httpretty.register_uri(httpretty.POST, get_uri("/store_aggregate"))
         options = aggregate.AggOptions()
         options.duration = 6*3600
         ret = c.store_aggregate("aggtype", "aggname", rql.Int(1), options)
@@ -207,13 +213,13 @@ class Testclient(unittest.TestCase):
         # and if server gave a non-200 response, we raise an error
         def request_callback(request, uri, response_headers):
             return [401, response_headers, 'some error message']
-        httpretty.register_uri(httpretty.POST, 'http://localhost:2425/store_aggregate', body=request_callback)
+        httpretty.register_uri(httpretty.POST, get_uri("/store_aggregate"), body=request_callback)
         with self.assertRaises(requests.RequestException):
             c.store_aggregate("aggtype", "aggname", rql.Int(1), aggregate.AggOptions())
 
     @httpretty.activate(verbose=True, allow_net_connect=False)
     def test_retrieve_aggregate(self):
-        c = client.Client()
+        c = client.Client(LOCAL_SERVER_URL)
         with self.assertRaises(client.InvalidInput):
             c.retrieve_aggregate("", "")
         with self.assertRaises(client.InvalidInput):
@@ -229,7 +235,7 @@ class Testclient(unittest.TestCase):
         options.duration = 6*3600
         expected.options.CopyFrom(options)
         response = httpretty.Response(expected.SerializeToString())
-        httpretty.register_uri(httpretty.POST, 'http://localhost:2425/retrieve_aggregate', responses=[response])
+        httpretty.register_uri(httpretty.POST, get_uri("/retrieve_aggregate"), responses=[response])
         ret = c.retrieve_aggregate("some type", "some name")
         self.assertEqual(expected, ret)
 
@@ -237,14 +243,14 @@ class Testclient(unittest.TestCase):
         def request_callback(request, uri, response_headers):
             return [401, response_headers, 'some error message']
 
-        httpretty.register_uri(httpretty.POST, 'http://localhost:2425/retrieve_aggregate', body=request_callback)
+        httpretty.register_uri(httpretty.POST, get_uri("/retrieve_aggregate"), body=request_callback)
         with self.assertRaises(requests.RequestException):
             c.retrieve_aggregate("aggtype", "aggname")
 
     @httpretty.activate(verbose=True, allow_net_connect=False)
     def test_aggregate_value(self):
         # invalid requests throw exception
-        c = client.Client()
+        c = client.Client(LOCAL_SERVER_URL)
         with self.assertRaises(client.InvalidInput):
             c.aggregate_value(1)
         with self.assertRaises(client.InvalidInput):
@@ -264,7 +270,7 @@ class Testclient(unittest.TestCase):
         # but not with valid query request
         v = value.Int(5)
         response = httpretty.Response(v.SerializeToString())
-        httpretty.register_uri(httpretty.POST, 'http://localhost:2425/aggregate_value', responses=[response])
+        httpretty.register_uri(httpretty.POST, get_uri("/aggregate_value"), responses=[response])
         request = aggregate.GetAggValueRequest()
         request.agg_type = "sometype"
         request.agg_name = "somename"
