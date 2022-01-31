@@ -4,7 +4,6 @@ import * as pulumi from "@pulumi/pulumi";
 import { local } from "@pulumi/command";
 import * as aws from "@pulumi/aws";
 import * as fs from 'fs';
-import { CustomResource } from "@pulumi/pulumi";
 
 function setupLinkerd(cluster: k8s.Provider) {
     // Setup root and issuer CA as per https://linkerd.io/2.11/tasks/generate-certificates/.
@@ -63,7 +62,7 @@ function setupAmbassadorIngress(cluster: k8s.Provider): pulumi.Output<string> {
         metadata: {
             name: "ambassador"
         }
-    })
+    }, { provider: cluster })
 
     // Create CRDs.
     const aesCrds = new k8s.yaml.ConfigFile("aes-cerds", {
@@ -86,6 +85,8 @@ function setupAmbassadorIngress(cluster: k8s.Provider): pulumi.Output<string> {
     }, { provider: cluster, dependsOn: aesCrds.ready })
 
     const config = new pulumi.Config();
+
+    const { subnets, scheme } = config.requireObject("loadBalancerConfig")
 
     // Install ambassador via helm.
     const ambassador = new k8s.helm.v3.Chart("aes", {
@@ -131,8 +132,12 @@ function setupAmbassadorIngress(cluster: k8s.Provider): pulumi.Output<string> {
                     metadata.annotations["service.beta.kubernetes.io/aws-load-balancer-type"] = "external"
                     // Use NLB in instance mode since we don't currently setup the VPC CNI plugin.
                     metadata.annotations["service.beta.kubernetes.io/aws-load-balancer-nlb-target-type"] = "instance"
-                    // Deploy an internal load-balancer instead of an internet-facing one.
-                    metadata.annotations["service.beta.kubernetes.io/aws-load-balancer-scheme"] = "internal"
+                    // Specify the load balancer scheme. Should be one of ["internal", "internet-facing"].
+                    metadata.annotations["service.beta.kubernetes.io/aws-load-balancer-scheme"] = scheme || "internal"
+                    // Specify the subnets in which to deploy the load balancer.
+                    // For internet-facing load-balancers this should be a list of public subnets and
+                    // for internal load-balancers this should be j list of private subnets.
+                    metadata.annotations["service.beta.kubernetes.io/aws-load-balancer-subnets"] = subnets
                 }
             },
         ]
@@ -235,13 +240,21 @@ async function setupLoadBalancerController(cluster: eks.Cluster) {
 }
 
 export = async () => {
+    const config = new pulumi.Config();
+
     // Create an EKS cluster with the default configuration.
     const cluster = new eks.Cluster("eks-cluster", {
         nodeGroupOptions: {
+            instanceType: "t2.medium",
             desiredCapacity: 3,
             minSize: 3,
             maxSize: 3,
-            amiId: "ami-047a7967ea0436232"
+            // Make AMI a config parameter since AMI-ids are unique to region.
+            // NOTE: The AMI used should be an eks-worker AMI that can be searched
+            // on the AWS AMI catalog with one of the following prefixes:
+            // amazon-eks-node / amazon-eks-gpu-node / amazon-eks-arm64-node,
+            // depending on the type of machine provisioned.
+            amiId: config.require("ami"),
         },
         providerCredentialOpts: {
             profileName: "admin"
@@ -273,7 +286,7 @@ export = async () => {
                 "linkerd.io/inject": "enabled",
             },
         }
-    })
+    }, { provider: cluster.provider })
 
     return { kubeconfig, oidcUrl, ingress }
 }
