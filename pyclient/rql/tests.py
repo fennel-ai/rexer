@@ -71,7 +71,7 @@ class Test(unittest.TestCase):
         d2 = Dict(x=Int(3), y=Int(4))
         t = Table(List(d1, d2))
         tests.append(t)
-        e = Transform(t).using(Ops.std.filter(where=at.x + at.y < Int(4)))
+        e = t.apply(Ops.std.filter(where=at.x + at.y < Int(4)))
         tests.append(e)
 
         cond1 = Cond(Bool(True), String("abc"), String("xyz"))

@@ -48,6 +48,9 @@ class Expr(object):
     def edge(self, node):
         self.out_edges.append(node)
 
+    def apply(self, operator: _Operator):
+        return _Opcall(self, operator)
+
     def __getattr__(self, k: str):
         if not isinstance(k, str):
             raise InvalidQueryException(
@@ -241,7 +244,7 @@ class Var(Expr):
         super(Var, self).__init__(name=name)
 
 
-class _Opcall(object):
+class _Operator(object):
     module = None
     opname = None
 
@@ -259,6 +262,7 @@ class _Opcall(object):
                     "value for operator parameter '%s' given '%s' but expected a RQL expression" % (k, v))
             self.kwargs[k] = v
 
+
 class Cond(Expr):
     def __init__(self, condition, then_do, else_do):
         super(Cond, self).__init__()
@@ -270,31 +274,27 @@ class Cond(Expr):
         then_do.edge(self)
         else_do.edge(self)
 
+
 Ops = Munch()
 Ops.std = Munch({
-    'filter': type('Filter', (_Opcall,), {'module': 'std', 'opname': 'filter'}),
-    'take': type('Take', (_Opcall,), {'module': 'std', 'opname': 'take'}),
+    'filter': type('Filter', (_Operator,), {'module': 'std', 'opname': 'filter'}),
+    'take': type('Take', (_Operator,), {'module': 'std', 'opname': 'take'}),
 })
 
 
-class Transform(Expr):
-    def __init__(self, table, name=None):
-        super(Transform, self).__init__(name=name)
-        self.table = table
-        self.name = name
-        self.opcalls = []
-        table.edge(self)
+class _Opcall(Expr):
+    def __init__(self, operand: Expr, operator: _Operator, name=None):
+        if not isinstance(operand, Expr):
+            raise InvalidQueryException("Apply operand can only be an RQL expression but got: '%s' instead" % operand)
+        if not isinstance(operator, _Operator):
+            raise InvalidQueryException("Apply operator can only be an RQL Operator but got: '%s' instead" % operator)
 
-    def using(self, *opcalls):
-        for opcall in opcalls:
-            if not isinstance(opcall, _Opcall):
-                raise InvalidQueryException(
-                    "'into' method of serialize only take operator calls but received '%s' instead" % opcall)
-            for k, v in opcall.kwargs.items():
-                v.edge(self)
-
-        self.opcalls = opcalls
-        return self
+        super(_Opcall, self).__init__(name=name)
+        self.operand = operand
+        self.operator = operator
+        operand.edge(self)
+        for k, v in operator.kwargs.items():
+            v.edge(self)
 
 
 class _At(Expr):

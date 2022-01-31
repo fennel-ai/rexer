@@ -1,5 +1,5 @@
 from rql.expr import Int, Double, Bool, String, Binary, _Constant
-from rql.expr import InvalidQueryException, List, Dict, Transform, Table, Var, at, Lookup, Cond
+from rql.expr import InvalidQueryException, List, Dict, Table, Var, at, Lookup, Cond, _Opcall
 
 
 class Visitor(object):
@@ -25,8 +25,8 @@ class Visitor(object):
         elif isinstance(obj, Table):
             ret = self.visitTable(obj)
 
-        elif isinstance(obj, Transform):
-            ret = self.visitTransform(obj)
+        elif isinstance(obj, _Opcall):
+            ret = self.visitOpcall(obj)
 
         elif isinstance(obj, Var):
             ret = self.visitVar(obj)
@@ -71,7 +71,7 @@ class Visitor(object):
     def visitTable(self, obj):
         raise NotImplementedError()
 
-    def visitTransform(self, obj):
+    def visitOpcall(self, obj):
         raise NotImplementedError()
 
     def visitVar(self, obj):
@@ -163,16 +163,11 @@ class Printer(Visitor):
         rep = 'table(%s)' % self.visit(obj.inner)
         return self.maybe_create_var(obj, rep)
 
-    def visitTransform(self, obj):
-        opcallstrs = []
-        for opcall in obj.opcalls:
-            kwargstr = ', '.join('%s=%s' % (k, self.visit(v))
-                                 for k, v in opcall.kwargs.items())
-            opcallstr = " | %s.%s(%s)" % (
-                opcall.module, opcall.opname, kwargstr)
-            opcallstrs.append(opcallstr)
+    def visitOpcall(self, obj):
+        kwargstr = ', '.join('%s=%s' % (k, self.visit(v)) for k, v in obj.operator.kwargs.items())
+        opcallstr = "%s.%s(%s)" % (obj.operator.module, obj.operator.opname, kwargstr)
 
-        rep = '%s%s' % (self.visit(obj.table), ''.join(opcallstrs))
+        rep = '%s | %s' % (self.visit(obj.operand), opcallstr)
         return self.maybe_create_var(obj, rep)
 
     def visitBinary(self, obj):

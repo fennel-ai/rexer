@@ -155,7 +155,7 @@ class Testclient(unittest.TestCase):
         d2 = rql.Dict(x=rql.Int(3), y=rql.Int(5))
         d3 = rql.Dict(x=rql.Int(1), y=rql.Int(0))
         t = rql.Table(rql.List(d1, d2, d3))
-        expr = rql.Transform(t).using(rql.Ops.std.filter(where=rql.at.x > rql.at.y + rql.Double(0.5)))
+        expr = t.apply(rql.Ops.std.filter(where=rql.at.x > rql.at.y + rql.Double(0.5)))
 
         v = value.Int(5)
         response = httpretty.Response(v.SerializeToString())
