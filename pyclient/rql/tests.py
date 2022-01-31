@@ -71,8 +71,10 @@ class Test(unittest.TestCase):
         d2 = Dict(x=Int(3), y=Int(4))
         t = Table(List(d1, d2))
         tests.append(t)
-        e = t.apply(Ops.std.filter(where=at.x + at.y < Int(4)))
-        tests.append(e)
+        e1 = t.apply(Ops.std.filter(where=at.x + at.y < Int(4)))
+        tests.append(e1)
+        e2 = e1.apply(Ops.std.addProfileColumn(oid=at.oid, otype=String('user'), key=String('hello')))
+        tests.append(e2)
 
         cond1 = Cond(Bool(True), String("abc"), String("xyz"))
         tests.append(cond1)
