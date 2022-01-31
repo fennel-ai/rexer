@@ -5,6 +5,7 @@ import (
 	"fennel/engine/ast"
 	astProto "fennel/engine/ast/proto"
 	"fennel/engine/interpreter"
+	"fennel/engine/interpreter/bootarg"
 	"fennel/lib/aggregate"
 	"fennel/lib/ftypes"
 	"flag"
@@ -158,7 +159,6 @@ func (m holder) GetProfiles(w http.ResponseWriter, req *http.Request) {
 		http.Error(w, err.Error(), http.StatusBadGateway)
 		return
 	}
-	//fmt.Fprintf(w, string(ser))
 	w.Write(ser)
 }
 
@@ -174,10 +174,7 @@ func (m holder) Query(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 	// execute the tree
-	bootargs := map[string]interface{}{
-		"__instance__": m.instance,
-	}
-	i := interpreter.NewInterpreter(bootargs)
+	i := interpreter.NewInterpreter(bootarg.Create(m.instance))
 	ret, err := tree.AcceptValue(i)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadGateway)

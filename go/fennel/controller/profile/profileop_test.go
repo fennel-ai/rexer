@@ -3,6 +3,7 @@ package profile
 import (
 	"fennel/engine/ast"
 	"fennel/engine/interpreter"
+	"fennel/engine/interpreter/bootarg"
 	"fennel/lib/ftypes"
 	profilelib "fennel/lib/profile"
 	"fennel/lib/value"
@@ -35,9 +36,7 @@ func TestProfileOp(t *testing.T) {
 			// since version is an optional value, we don't pass it and still get the latest value back
 		}},
 	}
-	i := interpreter.NewInterpreter(map[string]interface{}{
-		"__instance__": instance,
-	})
+	i := interpreter.NewInterpreter(bootarg.Create(instance))
 	table := value.NewTable()
 	err = table.Append(value.Dict{"otype": value.String(otype1), "oid": value.Int(oid1), "key": value.String(key1), "ver": value.Int(ver1)})
 	assert.NoError(t, err)

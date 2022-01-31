@@ -5,6 +5,7 @@ import (
 	"fennel/controller/counter"
 	"fennel/engine/ast"
 	"fennel/engine/interpreter"
+	"fennel/engine/interpreter/bootarg"
 	"fennel/instance"
 	libaction "fennel/lib/action"
 	"fennel/lib/aggregate"
@@ -63,9 +64,7 @@ func transformActions(instance instance.Instance, actions []libaction.Action, qu
 }
 
 func loadInterpreter(instance instance.Instance, actions []libaction.Action) (interpreter.Interpreter, error) {
-	bootargs := map[string]interface{}{
-		"__instance__": instance,
-	}
+	bootargs := bootarg.Create(instance)
 	ret := interpreter.NewInterpreter(bootargs)
 	table, err := libaction.ToTable(actions)
 	if err != nil {
