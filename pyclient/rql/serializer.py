@@ -102,24 +102,17 @@ class Serializer(visitor.Visitor):
         ast.table.inner.CopyFrom(self.visit(obj.inner))
         return self.maybe_create_var(obj, ast)
 
-    def visitTransform(self, obj):
-        operand = self.visit(obj.table)
-        for opcall in obj.opcalls:
-            operand = self.visitOpcall(operand, opcall)
-
-        return self.maybe_create_var(obj, operand)
-
-    def visitOpcall(self, operand, opcall):
+    def visitOpcall(self, obj):
         ast = proto.Ast()
         ast.opcall.SetInParent()
-        ast.opcall.operand.CopyFrom(operand)
-        ast.opcall.namespace = opcall.module
-        ast.opcall.name = opcall.opname
+        ast.opcall.operand.CopyFrom(self.visit(obj.operand))
+        ast.opcall.namespace = obj.operator.module
+        ast.opcall.name = obj.operator.opname
         kwargs = proto.Dict()
-        for k, v in opcall.kwargs.items():
+        for k, v in obj.operator.kwargs.items():
             kwargs.values[k].CopyFrom(self.visit(v))
         ast.opcall.kwargs.CopyFrom(kwargs)
-        return ast
+        return self.maybe_create_var(obj, ast)
 
     def visitLookup(self, obj):
         ast = proto.Ast()
