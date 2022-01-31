@@ -174,7 +174,10 @@ func (m holder) Query(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 	// execute the tree
-	i := interpreter.NewInterpreter()
+	bootargs := map[string]interface{}{
+		"__instance__": m.instance,
+	}
+	i := interpreter.NewInterpreter(bootargs)
 	ret, err := tree.AcceptValue(i)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadGateway)
