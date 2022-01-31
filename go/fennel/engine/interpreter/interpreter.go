@@ -7,6 +7,7 @@ import (
 	"fennel/lib/value"
 	"fmt"
 	"strconv"
+	"strings"
 )
 
 type Interpreter struct {
@@ -76,6 +77,9 @@ func (i Interpreter) VisitStatement(name string, body ast.Ast) (value.Value, err
 	val, err := body.AcceptValue(i)
 	if err != nil {
 		return value.Nil, err
+	}
+	if strings.HasPrefix(name, "__") && strings.HasSuffix(name, "__") {
+		return value.Nil, fmt.Errorf("variable names starting and ending with '__' are reserved for RQL internals")
 	}
 	if name != "" {
 		err = i.env.Define(name, val)
