@@ -75,7 +75,7 @@ func checkGet(t *testing.T, this instance.Instance, request profilelib.ProfileIt
 	assert.NoError(t, err)
 	// any test necessary for found == nil?
 	if found != nil {
-		assert.Equal(t, expected, *found)
+		assert.Equal(t, expected, found)
 	}
 }
 

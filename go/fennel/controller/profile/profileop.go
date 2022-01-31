@@ -42,11 +42,9 @@ func (p *profileOp) Apply(_ value.Dict, in operators.InputIter, out *value.Table
 			Key:     string(kwargs["key"].(value.String)),
 			Version: uint64(kwargs["version"].(value.Int)),
 		}
-		valueptr, err := Get(p.instance, req)
-		if err != nil {
+		if row["profile_value"], err = Get(p.instance, req); err != nil {
 			return err
 		}
-		row["profile_value"] = *valueptr
 		if err = out.Append(row); err != nil {
 			return err
 		}
