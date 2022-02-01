@@ -278,6 +278,7 @@ func setHandlers(controller holder, mux *http.ServeMux) {
 	mux.HandleFunc("/query", controller.Query)
 	mux.HandleFunc("/store_aggregate", controller.StoreAggregate)
 	mux.HandleFunc("/retrieve_aggregate", controller.RetrieveAggregate)
+	mux.HandleFunc("/aggregate_value", controller.AggregateValue)
 }
 
 func main() {
