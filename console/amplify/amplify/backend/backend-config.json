@@ -1,13 +1,6 @@
 {
-  "function": {
-    "consoleBff": {
-      "build": true,
-      "providerPlugin": "awscloudformation",
-      "service": "Lambda"
-    }
-  },
   "auth": {
-    "console969eee88": {
+    "lukedemo9545795d": {
       "service": "Cognito",
       "providerPlugin": "awscloudformation",
       "dependsOn": [],
@@ -30,22 +23,6 @@
           "EMAIL"
         ]
       }
-    }
-  },
-  "api": {
-    "consoleBff": {
-      "service": "API Gateway",
-      "providerPlugin": "awscloudformation",
-      "dependsOn": [
-        {
-          "category": "function",
-          "resourceName": "consoleBff",
-          "attributes": [
-            "Name",
-            "Arn"
-          ]
-        }
-      ]
     }
   }
 }

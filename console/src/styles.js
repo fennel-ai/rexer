@@ -26,4 +26,18 @@ export const styles = {
     height: "100px",
     lineHeight: "100px",
   },
+  authContainer: {
+    textAlign: "center",
+    display: "flex",
+    flexDirection: "column",
+    alignItems: "center",
+  },
+  inputContainer: {
+    width: "20%",
+  },
+  signInButton: {
+    marginTop: 30,
+    marginBottom: 30,
+    fontSize: 20,
+  },
 };
