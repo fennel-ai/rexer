@@ -64,6 +64,10 @@ func TestRetrieveStore(t *testing.T) {
 	assert.NoError(t, err)
 	err = Store(instance, agg.Type, agg.Name, querySer2, agg.Timestamp+1, agg.OptionSer)
 	assert.Error(t, err)
+
+	// but if querySer and optionSer are same too, then no error
+	err = Store(instance, agg.Type, agg.Name, querySer, agg.Timestamp+1, agg.OptionSer)
+	assert.NoError(t, err)
 }
 
 func TestRetrieveAll(t *testing.T) {
