@@ -9,6 +9,7 @@ import ActionApp from "./action/ActionApp";
 import ProfileApp from "./profile/ProfileApp";
 import { SignIn } from "./SignIn";
 import { SignUp } from "./SignUp";
+import { ConfirmSignUp } from "./ConfirmSignUp";
 
 Amplify.configure(awsconfig);
 
@@ -17,6 +18,7 @@ ReactDOM.render(
     <BrowserRouter>
       <Routes>
         <Route path="/" element={<SignIn />} />
+        <Route path="/verify" element={<ConfirmSignUp />} />
         <Route path="/sign-up" element={<SignUp />} />
         <Route path="actions" element={<ActionApp />} />
         <Route path="profile" element={<ProfileApp />} />

@@ -4,15 +4,15 @@ import { NavLink, useNavigate } from "react-router-dom";
 import { styles } from "../styles";
 
 export const SignIn = () => {
-  const [username, setUsername] = useState("");
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const navigate = useNavigate();
 
   async function signIn() {
     try {
-      await Auth.signIn(username, password);
-      navigate("/");
+      await Auth.signIn(email, password);
+      navigate("/actions");
     } catch (error) {
       console.log("error signing in", error);
       setError(error.message);
@@ -21,10 +21,10 @@ export const SignIn = () => {
   return (
     <div style={styles.authContainer}>
       <h1>Sign In</h1>
-      <h2>Username</h2>
+      <h2>Email</h2>
       <input
-        value={username}
-        onChange={(e) => setUsername(e.target.value)}
+        value={email}
+        onChange={(e) => setEmail(e.target.value)}
         style={styles.inputContainer}
       />
       <h2>Password</h2>

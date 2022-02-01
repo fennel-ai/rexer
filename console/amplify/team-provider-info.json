@@ -15,12 +15,13 @@
     "categories": {
       "auth": {
         "undefined": {},
-        "console969eee88": {}
+        "console969eee88": {},
+        "consoleec898bf8": {}
       },
       "function": {
         "consoleBff": {
           "deploymentBucketName": "amplify-console-westdev-134055-deployment",
-          "s3Key": "amplify-builds/consoleBff-685a4350595a794a614b-build.zip"
+          "s3Key": "amplify-builds/consoleBff-345a576a55394a394876-build.zip"
         }
       }
     }

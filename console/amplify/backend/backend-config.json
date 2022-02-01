@@ -7,14 +7,16 @@
     }
   },
   "auth": {
-    "console969eee88": {
+    "consoleec898bf8": {
       "service": "Cognito",
       "providerPlugin": "awscloudformation",
       "dependsOn": [],
       "customAuth": false,
       "frontendAuthConfig": {
         "socialProviders": [],
-        "usernameAttributes": [],
+        "usernameAttributes": [
+          "EMAIL"
+        ],
         "signupAttributes": [
           "EMAIL"
         ],
