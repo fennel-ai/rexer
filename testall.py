@@ -21,7 +21,7 @@ print('-' * 50)
 p2 = subprocess.Popen(['poetry run python -m unittest'], shell=True, cwd=pydir)
 p2.wait()
 
-pyclient = os.path.join(root, '../rexer_pyclient_alpha/rexerclient')
+pyclient = os.path.join(root, '../rexer-pyclient-alpha/rexerclient')
 print('Running python tests in pyclient...')
 print('-' * 50)
 p3 = subprocess.Popen(['poetry run python -m unittest'], shell=True, cwd=pyclient)
