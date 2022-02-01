@@ -14,7 +14,9 @@
     },
     "categories": {
       "auth": {
-        "undefined": {}
+        "undefined": {},
+        "console969eee88": {},
+        "consoleec898bf8": {}
       },
       "function": {
         "consoleBff": {
