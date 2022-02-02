@@ -70,6 +70,80 @@ const appDep = image.imageName.apply(() => {
                         name: name,
                         image: image.imageName,
                         imagePullPolicy: "Always",
+                        env: [
+                            {
+                                name: "KAFKA_SERVER_ADDRESS",
+                                valueFrom: {
+                                    secretKeyRef: {
+                                        name: "kafka-conf",
+                                        key: "server",
+                                    }
+                                }
+                            },
+                            {
+                                name: "KAFKA_USERNAME",
+                                valueFrom: {
+                                    secretKeyRef: {
+                                        name: "kafka-conf",
+                                        key: "username",
+                                    }
+                                }
+                            },
+                            {
+                                name: "KAFKA_PASSWORD",
+                                valueFrom: {
+                                    secretKeyRef: {
+                                        name: "kafka-conf",
+                                        key: "password",
+                                    }
+                                }
+                            },
+                            {
+                                name: "REDIS_SERVER_ADDRESS",
+                                valueFrom: {
+                                    secretKeyRef: {
+                                        name: "redis-conf",
+                                        key: "addr",
+                                    }
+                                }
+                            },
+                            {
+                                name: "MYSQL_SERVER_ADDRESS",
+                                valueFrom: {
+                                    secretKeyRef: {
+                                        name: "mysql-conf",
+                                        key: "host",
+                                    }
+                                }
+                            },
+                            {
+                                name: "MYSQL_DATABASE_NAME",
+                                valueFrom: {
+                                    secretKeyRef: {
+                                        name: "mysql-conf",
+                                        key: "db",
+                                    }
+                                }
+                            },
+                            {
+                                name: "MYSQL_USERNAME",
+                                valueFrom: {
+                                    secretKeyRef: {
+                                        name: "mysql-conf",
+                                        key: "username",
+                                    }
+                                }
+                            },
+                            {
+                                name: "MYSQL_PASSWORD",
+                                valueFrom: {
+                                    secretKeyRef: {
+                                        name: "mysql-conf",
+                                        key: "password",
+                                    }
+                                }
+                            },
+                        ]
                     }],
                 },
             },
