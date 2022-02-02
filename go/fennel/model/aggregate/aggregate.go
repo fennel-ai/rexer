@@ -8,25 +8,7 @@ import (
 	"fmt"
 )
 
-func verifyByteSliceEqual(sl1 []byte, sl2 []byte) bool {
-	if len(sl1) != len(sl2) {
-		return false
-	}
-	for i := range sl1 {
-		if sl1[i] != sl2[i] {
-			return false
-		}
-	}
-	return true
-}
-
 func Store(instance instance.Instance, aggtype ftypes.AggType, name ftypes.AggName, querySer []byte, ts ftypes.Timestamp, optionSer []byte) error {
-	agg, err := Retrieve(instance, aggtype, name)
-	if err == nil {
-		if verifyByteSliceEqual(querySer, agg.QuerySer) && verifyByteSliceEqual(optionSer, agg.OptionSer) {
-			return nil
-		}
-	}
 	if len(aggtype) > 255 {
 		return fmt.Errorf("aggregate type can not be longer than 255 chars")
 	}
@@ -34,7 +16,7 @@ func Store(instance instance.Instance, aggtype ftypes.AggType, name ftypes.AggNa
 		return fmt.Errorf("aggregate name can not be longer than 255 chars")
 	}
 	sql := `INSERT INTO aggregate_config VALUES (?, ?, ?, ?, ?, ?)`
-	_, err = instance.DB.Query(sql, instance.CustID, aggtype, name, querySer, ts, optionSer)
+	_, err := instance.DB.Query(sql, instance.CustID, aggtype, name, querySer, ts, optionSer)
 	return err
 }
 

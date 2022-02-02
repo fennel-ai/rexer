@@ -6,8 +6,10 @@ import (
 	"fennel/lib/ftypes"
 	"fennel/test"
 	"fmt"
-	"github.com/stretchr/testify/assert"
 	"testing"
+	"time"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func TestRetrieveAll(t *testing.T) {
@@ -45,4 +47,36 @@ func TestRetrieveAll(t *testing.T) {
 			assert.True(t, expected[j].Equals(ag1))
 		}
 	}
+}
+
+func TestDuplicate(t *testing.T) {
+	instance, err := test.DefaultInstance()
+	assert.NoError(t, err)
+
+	agg := aggregate.Aggregate{
+		CustID:    instance.CustID,
+		Type:      "rolling_counter",
+		Name:      "test_counter",
+		Query:     ast.MakeInt(4),
+		Timestamp: 1,
+		Options:   aggregate.AggOptions{Duration: uint64(time.Hour * 24 * 7)},
+	}
+	err = Store(instance, agg)
+	assert.NoError(t, err)
+
+	// No error with duplicate store with different timestamp
+	agg.Timestamp = 2
+	err = Store(instance, agg)
+	assert.NoError(t, err)
+
+	// Error if different query
+	agg.Query = ast.MakeInt(6)
+	err = Store(instance, agg)
+	assert.Error(t, err)
+	agg.Query = ast.MakeInt(4)
+
+	// Error if different options
+	agg.Options.Duration = uint64(time.Hour * 24 * 6)
+	err = Store(instance, agg)
+	assert.Error(t, err)
 }

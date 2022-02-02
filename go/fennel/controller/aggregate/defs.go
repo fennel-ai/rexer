@@ -17,6 +17,23 @@ func Store(instance instance.Instance, agg aggregate.Aggregate) error {
 		return err
 	}
 
+	// Check if agg already exists in db
+	agg2, err := Retrieve(instance, agg.Type, agg.Name)
+	// Only error that should happen is when agg is not present
+	if err != nil && err != aggregate.ErrNotFound {
+		return err
+	} else if err == nil {
+		// if already present, check if query and options are the same
+		// if they are different, return error
+		// if they are the same, do nothing
+		// TODO: maybe not use proto.Equal here
+		if agg.Query == agg2.Query && proto.Equal(&agg.Options, &agg2.Options) {
+			return nil
+		} else {
+			return fmt.Errorf("already present but with different query/options")
+		}
+	}
+
 	querySer, err := ast.Marshal(agg.Query)
 	if err != nil {
 		return fmt.Errorf("can not marshal aggregate query: %v", err)
@@ -28,6 +45,7 @@ func Store(instance instance.Instance, agg aggregate.Aggregate) error {
 	if agg.Timestamp == 0 {
 		agg.Timestamp = ftypes.Timestamp(time.Now().Unix())
 	}
+
 	return modelAgg.Store(instance, agg.Type, agg.Name, querySer, agg.Timestamp, optionSer)
 }
 
