@@ -1,0 +1,3 @@
+name: configs
+runtime: nodejs
+description: Project to setup k8s service configs and secrets
