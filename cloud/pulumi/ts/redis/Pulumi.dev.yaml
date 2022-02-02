@@ -1,3 +1,4 @@
 config:
+  aws:profile: admin
   aws:region: us-west-2
   redis:subnetIds: '["subnet-07aa4b44ebd42517e"]'
