@@ -1,12 +1,14 @@
-# { pkgs ? import (fetchTarball "https://github.com/NixOS/nixpkgs/archive/3590f02e7d5760e52072c1a729ee2250b5560746.tar.gz") {} }:
+let
+  unstable = import (fetchTarball https://channels.nixos.org/nixpkgs-unstable/nixexprs.tar.xz) { };
+in
 { pkgs ? import <nixpkgs> {} }:
 
-
-pkgs.mkShell {
+with pkgs; mkShell {
   buildInputs = [
 
     pkgs.direnv
     pkgs.nix-direnv
+    pkgs.git
 
     # Protobuf
     pkgs.protobuf
@@ -31,7 +33,7 @@ pkgs.mkShell {
     pkgs.nodejs
 
     # Packages for deployment
-    pkgs.pulumi-bin
+    unstable.pkgs.pulumi-bin
     pkgs.awscli
 
     pkgs.docker
