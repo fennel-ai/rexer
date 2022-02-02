@@ -1,0 +1,21 @@
+config:
+  aws:region: ap-south-1
+  configs:kafka-conf:
+    password:
+      secure: AAABAOXy7h1bLjpYCFKVHF7WeWaSEoTCWnCiZoB4kPCaV8lHTwYL2OgkmT8UK8wZJDJIrAPMd+Q+HG14VBWv/npCQ5MZap7BoZV+RdBi1hGpxEvRd9PvsBQiaZMK9Tj8
+    server:
+      secure: AAABADd3Aa8Q99K5VXVjCUTMSw/YZLLt10m2qB/l55aTFF2ItwIe0+ycwx366MvZr3C1Gkux/UbHbnk3wFMpIqAY0HaqgYjNXRpXM2A=
+    username:
+      secure: AAABAMvI1Hxc1KknN4kReP3lWrpt82wy5b8jMfvJIDemI6kL2qAjHmR+R4mCA9H0
+  configs:planetscale-conf:
+    db:
+      secure: AAABABT1N8wc3TBN8nMGuFYWRuSf3fBmUj1Sw6hq60pjBi0SwNyOPjeI
+    host:
+      secure: AAABACzEX3XTQEa5NvZoubjctf2GovuCQz/f3UmCSrd4mpmDYzFMZOW3i5/dIMO0lXGG24AwLItS6c18gV2S16bU
+    password:
+      secure: AAABAJSJfYnprIweoGFi9PjCLydIDohLLgLyLI/iNBwS8O1VNr1hPb1zxuL8HmoITDERNIVTJfgNWNM7JEv12rbqcoCLdcqrMp/XIjlnRI0Vu53GlA==
+    username:
+      secure: AAABAA9Mn90FUe4Aj4zqu4OGiTjkc9//TjrhWzV3DxtOK2yBAXesyI5rRAE=
+  configs:redis-conf:
+    addr:
+      secure: AAABAN00lMzozm358vL92ZT8gVSjHTjZJlH2EBWm8itmYh/rzqlqUouun4tDI7oqhG3WhH2cRGB9CAEGCc6nvzm0PbRrZj+yZoBlJL5sDfidswSLhSamqG/Vwqo4402HLfRyyZL+r0WH
