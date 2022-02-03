@@ -1,6 +1,7 @@
 package profile
 
 import (
+	"fennel/db"
 	"fennel/lib/ftypes"
 	"fennel/lib/profile"
 	"fennel/plane"
@@ -35,27 +36,34 @@ func (D dbProvider) set(this plane.Plane, custid ftypes.CustID, otype ftypes.OTy
 	if len(otype) > 256 {
 		return fmt.Errorf("otype too long: otypes can only be upto 256 chars")
 	}
-	_, err := this.DB.Exec(`
-		INSERT INTO profile 
+	tablename, err := planeTable(this.ID)
+	if err != nil {
+		return err
+	}
+	_, err = this.DB.Exec(fmt.Sprintf(`
+		INSERT INTO %s 
 			(cust_id, otype, oid, zkey, version, value)
 		VALUES
-			(?, ?, ?, ?, ?, ?);`,
-		custid, otype, oid, key, version, valueSer)
+			(?, ?, ?, ?, ?, ?);`, tablename),
+		custid, otype, oid, key, version, valueSer,
+	)
 	if err != nil {
 		return err
 	}
 	return nil
-	//return set(this, otype, oid, key, version, valueSer)
 }
 
 func (D dbProvider) get(this plane.Plane, custid ftypes.CustID, otype ftypes.OType, oid uint64, key string, version uint64) ([]byte, error) {
+	tablename, err := planeTable(this.ID)
+	if err != nil {
+		return nil, err
+	}
 	var value [][]byte
 
-	var err error
 	if version > 0 {
-		err = this.DB.Select(&value, `
+		err = this.DB.Select(&value, fmt.Sprintf(`
 		SELECT value
-		FROM profile
+		FROM %s
 		WHERE
 			cust_id = ?
 			AND otype = ?
@@ -63,12 +71,14 @@ func (D dbProvider) get(this plane.Plane, custid ftypes.CustID, otype ftypes.OTy
 			AND zkey = ?
 			AND version = ?
 		LIMIT 1
-		`, custid, otype, oid, key, version)
+		`, tablename),
+			custid, otype, oid, key, version,
+		)
 	} else {
 		// if version isn't given, just pick the highest version
-		err = this.DB.Select(&value, `
+		err = this.DB.Select(&value, fmt.Sprintf(`
 		SELECT value
-		FROM profile
+		FROM %s
 		WHERE
 			cust_id = ?
 			AND otype = ?
@@ -76,7 +86,9 @@ func (D dbProvider) get(this plane.Plane, custid ftypes.CustID, otype ftypes.OTy
 			AND zkey = ?
 		ORDER BY version DESC
 		LIMIT 1
-		`, custid, otype, oid, key)
+		`, tablename),
+			custid, otype, oid, key,
+		)
 	}
 	if err != nil {
 		return nil, err
@@ -93,7 +105,11 @@ var _ provider = dbProvider{}
 
 // Whatever properties of 'request' are non-zero are used to filter eligible profiles
 func GetProfiles(this plane.Plane, request profile.ProfileFetchRequest) ([]profile.ProfileItemSer, error) {
-	query := "SELECT * FROM profile"
+	tablename, err := planeTable(this.ID)
+	if err != nil {
+		return nil, err
+	}
+	query := fmt.Sprintf("SELECT * FROM %s", tablename)
 	clauses := make([]string, 0)
 
 	if request.CustID != 0 {
@@ -126,4 +142,8 @@ func GetProfiles(this plane.Plane, request profile.ProfileFetchRequest) ([]profi
 	} else {
 		return profiles, nil
 	}
+}
+
+func planeTable(planeID ftypes.PlaneID) (string, error) {
+	return db.ToPlaneTablename(planeID, "profile")
 }

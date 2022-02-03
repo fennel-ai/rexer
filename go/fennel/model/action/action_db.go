@@ -1,11 +1,17 @@
 package action
 
 import (
+	"fennel/db"
 	"fennel/lib/action"
+	"fennel/lib/ftypes"
 	"fennel/plane"
 	"fmt"
 	"strings"
 )
+
+func tablename(planeID ftypes.PlaneID) (string, error) {
+	return db.ToPlaneTablename(planeID, "actionlog")
+}
 
 // inserts the action. If successful, returns the actionID
 func Insert(this plane.Plane, action action.Action) (uint64, error) {
@@ -18,8 +24,12 @@ func Insert(this plane.Plane, action action.Action) (uint64, error) {
 	if len(action.TargetType) > 256 {
 		return 0, fmt.Errorf("TargetType too long: target types cannot be longer than 256 chars")
 	}
-	result, err := this.DB.NamedExec(`
-		INSERT INTO actionlog (
+	table, err := tablename(this.ID)
+	if err != nil {
+		return 0, err
+	}
+	result, err := this.DB.NamedExec(fmt.Sprintf(`
+		INSERT INTO %s (
 			cust_id,
 			actor_id,
 			actor_type,
@@ -40,7 +50,7 @@ func Insert(this plane.Plane, action action.Action) (uint64, error) {
 			:action_value,
 			:timestamp,
 			:request_id
-		);`, action)
+		);`, table), action)
 	if err != nil {
 		return 0, err
 	}
@@ -56,7 +66,11 @@ func Insert(this plane.Plane, action action.Action) (uint64, error) {
 // For actionValue range, both min/max are inclusive
 // TODO: add limit support?
 func Fetch(this plane.Plane, request action.ActionFetchRequest) ([]action.Action, error) {
-	query := "SELECT * FROM actionlog"
+	table, err := tablename(this.ID)
+	if err != nil {
+		return nil, err
+	}
+	query := fmt.Sprintf("SELECT * FROM %s", table)
 	clauses := make([]string, 0)
 	if request.CustID != 0 {
 		clauses = append(clauses, "cust_id = :cust_id")
