@@ -1,15 +1,15 @@
 package counter
 
 import (
-	"fennel/instance"
 	"fennel/lib/aggregate"
 	"fennel/lib/ftypes"
 	"fennel/lib/value"
 	"fennel/model/counter"
+	"fennel/plane"
 	"fmt"
 )
 
-func RollingValue(instance instance.Instance, agg aggregate.Aggregate, key value.Value) (value.Int, error) {
+func RollingValue(instance plane.Plane, agg aggregate.Aggregate, key value.Value) (value.Int, error) {
 	end := ftypes.Timestamp(instance.Clock.Now())
 	start := end - ftypes.Timestamp(agg.Options.Duration)
 	buckets := counter.BucketizeDuration(makeKey(key), start, end)
@@ -24,7 +24,7 @@ func RollingValue(instance instance.Instance, agg aggregate.Aggregate, key value
 	return value.Int(total), nil
 }
 
-func TimeseriesValue(instance instance.Instance, agg aggregate.Aggregate, key value.Value) (value.List, error) {
+func TimeseriesValue(instance plane.Plane, agg aggregate.Aggregate, key value.Value) (value.List, error) {
 	end := ftypes.Timestamp(instance.Clock.Now())
 	var start ftypes.Timestamp
 	switch agg.Options.Window {
@@ -59,7 +59,7 @@ func TimeseriesValue(instance instance.Instance, agg aggregate.Aggregate, key va
 	return ret, nil
 }
 
-func Update(instance instance.Instance, aggname ftypes.AggName, table value.Table) error {
+func Update(instance plane.Plane, aggname ftypes.AggName, table value.Table) error {
 	schema := table.Schema()
 	type_, ok := schema["key"]
 	if !ok {

@@ -1,24 +1,24 @@
 package bootarg
 
 import (
-	"fennel/instance"
+	"fennel/plane"
 	"fmt"
 )
 
-func Create(instance instance.Instance) map[string]interface{} {
+func Create(instance plane.Plane) map[string]interface{} {
 	return map[string]interface{}{
 		"__instance__": instance,
 	}
 }
 
-func GetInstance(bootargs map[string]interface{}) (instance.Instance, error) {
+func GetInstance(bootargs map[string]interface{}) (plane.Plane, error) {
 	v, ok := bootargs["__instance__"]
 	if !ok {
-		return instance.Instance{}, fmt.Errorf("instance not found in bootargs")
+		return plane.Plane{}, fmt.Errorf("instance not found in bootargs")
 	}
-	ret, ok := v.(instance.Instance)
+	ret, ok := v.(plane.Plane)
 	if !ok {
-		return instance.Instance{}, fmt.Errorf("__instance__ magic property had: '%v', not an instance", v)
+		return plane.Plane{}, fmt.Errorf("__instance__ magic property had: '%v', not an instance", v)
 	}
 	return ret, nil
 }

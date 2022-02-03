@@ -2,13 +2,13 @@ package aggregate
 
 import (
 	"database/sql"
-	"fennel/instance"
 	"fennel/lib/aggregate"
 	"fennel/lib/ftypes"
+	"fennel/plane"
 	"fmt"
 )
 
-func Store(instance instance.Instance, aggtype ftypes.AggType, name ftypes.AggName, querySer []byte, ts ftypes.Timestamp, optionSer []byte) error {
+func Store(instance plane.Plane, aggtype ftypes.AggType, name ftypes.AggName, querySer []byte, ts ftypes.Timestamp, optionSer []byte) error {
 	if len(aggtype) > 255 {
 		return fmt.Errorf("aggregate type can not be longer than 255 chars")
 	}
@@ -20,7 +20,7 @@ func Store(instance instance.Instance, aggtype ftypes.AggType, name ftypes.AggNa
 	return err
 }
 
-func Retrieve(instance instance.Instance, aggregateType ftypes.AggType, name ftypes.AggName) (aggregate.AggregateSer, error) {
+func Retrieve(instance plane.Plane, aggregateType ftypes.AggType, name ftypes.AggName) (aggregate.AggregateSer, error) {
 	var ret aggregate.AggregateSer
 	err := instance.DB.Get(&ret, `
 			SELECT * FROM aggregate_config 
@@ -36,7 +36,7 @@ func Retrieve(instance instance.Instance, aggregateType ftypes.AggType, name fty
 	return ret, nil
 }
 
-func RetrieveAll(instance instance.Instance, aggtype ftypes.AggType) ([]aggregate.AggregateSer, error) {
+func RetrieveAll(instance plane.Plane, aggtype ftypes.AggType) ([]aggregate.AggregateSer, error) {
 	ret := make([]aggregate.AggregateSer, 0)
 	err := instance.DB.Select(&ret, `
 			SELECT * FROM aggregate_config 

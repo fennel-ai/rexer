@@ -1,9 +1,9 @@
 package profile
 
 import (
-	"fennel/instance"
 	"fennel/lib/ftypes"
 	"fennel/lib/profile"
+	"fennel/plane"
 	"fmt"
 	"strings"
 
@@ -11,21 +11,21 @@ import (
 	_ "github.com/mattn/go-sqlite3"
 )
 
-//func set(this instance.Instance, otype uint32, oid uint64, key string, version uint64, valueSer []byte) error {
+//func set(this instance.Plane, otype uint32, oid uint64, key string, version uint64, valueSer []byte) error {
 //}
 
-//func get(this instance.Instance, otype uint32, oid uint64, key string, version uint64) ([]byte, error) {
+//func get(this instance.Plane, otype uint32, oid uint64, key string, version uint64) ([]byte, error) {
 //}
 
 // we create a private interface to make testing caching easier
 type provider interface {
-	set(this instance.Instance, custid ftypes.CustID, otype ftypes.OType, oid uint64, key string, version uint64, valueSer []byte) error
-	get(this instance.Instance, custid ftypes.CustID, otype ftypes.OType, oid uint64, key string, version uint64) ([]byte, error)
+	set(this plane.Plane, custid ftypes.CustID, otype ftypes.OType, oid uint64, key string, version uint64, valueSer []byte) error
+	get(this plane.Plane, custid ftypes.CustID, otype ftypes.OType, oid uint64, key string, version uint64) ([]byte, error)
 }
 
 type dbProvider struct{}
 
-func (D dbProvider) set(this instance.Instance, custid ftypes.CustID, otype ftypes.OType, oid uint64, key string, version uint64, valueSer []byte) error {
+func (D dbProvider) set(this plane.Plane, custid ftypes.CustID, otype ftypes.OType, oid uint64, key string, version uint64, valueSer []byte) error {
 	if version == 0 {
 		return fmt.Errorf("version can not be zero")
 	}
@@ -48,7 +48,7 @@ func (D dbProvider) set(this instance.Instance, custid ftypes.CustID, otype ftyp
 	//return set(this, otype, oid, key, version, valueSer)
 }
 
-func (D dbProvider) get(this instance.Instance, custid ftypes.CustID, otype ftypes.OType, oid uint64, key string, version uint64) ([]byte, error) {
+func (D dbProvider) get(this plane.Plane, custid ftypes.CustID, otype ftypes.OType, oid uint64, key string, version uint64) ([]byte, error) {
 	var value [][]byte
 
 	var err error
@@ -92,7 +92,7 @@ func (D dbProvider) get(this instance.Instance, custid ftypes.CustID, otype ftyp
 var _ provider = dbProvider{}
 
 // Whatever properties of 'request' are non-zero are used to filter eligible profiles
-func GetProfiles(this instance.Instance, request profile.ProfileFetchRequest) ([]profile.ProfileItemSer, error) {
+func GetProfiles(this plane.Plane, request profile.ProfileFetchRequest) ([]profile.ProfileItemSer, error) {
 	query := "SELECT * FROM profile"
 	clauses := make([]string, 0)
 

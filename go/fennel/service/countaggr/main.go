@@ -7,11 +7,11 @@ import (
 	"sync"
 	"time"
 
-	"fennel/instance"
+	"fennel/plane"
 	"fennel/test"
 )
 
-func processOnce(instance instance.Instance) {
+func processOnce(instance plane.Plane) {
 	wg := sync.WaitGroup{}
 	types := libaggregate.ValidTypes
 	for _, t := range types {
@@ -35,7 +35,7 @@ func processOnce(instance instance.Instance) {
 
 func main() {
 	// TODO: don't use default test instance, instead create a real one using env variables etc
-	instance, err := test.DefaultInstance()
+	instance, err := test.MockPlane()
 	if err != nil {
 		panic(err)
 	}

@@ -1,23 +1,23 @@
 package query
 
 import (
-	"fennel/instance"
 	"fennel/lib/ftypes"
 	"fennel/lib/query"
+	"fennel/plane"
 	"fennel/test"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 )
 
-func verifyGet(t *testing.T, instance instance.Instance, request query.QueryRequest, expected []query.QuerySer) {
+func verifyGet(t *testing.T, instance plane.Plane, request query.QueryRequest, expected []query.QuerySer) {
 	queries, err := Get(instance, request)
 	assert.NoError(t, err)
 	assert.Equal(t, expected, queries)
 }
 
 func TestInsertGet(t *testing.T) {
-	instance, err := test.DefaultInstance()
+	instance, err := test.MockPlane()
 	assert.NoError(t, err)
 
 	// initially no queries even with no filters

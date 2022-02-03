@@ -3,10 +3,10 @@ package profile
 import (
 	"fennel/engine/interpreter/bootarg"
 	"fennel/engine/operators"
-	"fennel/instance"
 	"fennel/lib/ftypes"
 	"fennel/lib/profile"
 	"fennel/lib/value"
+	"fennel/plane"
 )
 
 func init() {
@@ -14,7 +14,7 @@ func init() {
 }
 
 type profileOp struct {
-	instance instance.Instance
+	instance plane.Plane
 }
 
 func (p *profileOp) Init(args value.Dict, bootargs map[string]interface{}) error {

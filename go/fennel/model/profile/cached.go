@@ -2,8 +2,8 @@ package profile
 
 import (
 	"context"
-	"fennel/instance"
 	"fennel/lib/ftypes"
+	"fennel/plane"
 	"fmt"
 )
 
@@ -14,11 +14,11 @@ const cacheVersion = 0
 // Public API for profile model (includes caching)
 //================================================
 
-func Set(this instance.Instance, custid ftypes.CustID, otype ftypes.OType, oid uint64, key string, version uint64, valueSer []byte) error {
+func Set(this plane.Plane, custid ftypes.CustID, otype ftypes.OType, oid uint64, key string, version uint64, valueSer []byte) error {
 	return cachedProvider{base: dbProvider{}}.set(this, custid, otype, oid, key, version, valueSer)
 }
 
-func Get(this instance.Instance, custid ftypes.CustID, otype ftypes.OType, oid uint64, key string, version uint64) ([]byte, error) {
+func Get(this plane.Plane, custid ftypes.CustID, otype ftypes.OType, oid uint64, key string, version uint64) ([]byte, error) {
 	return cachedProvider{base: dbProvider{}}.get(this, custid, otype, oid, key, version)
 }
 
@@ -30,7 +30,7 @@ type cachedProvider struct {
 	base provider
 }
 
-func (c cachedProvider) set(this instance.Instance, custid ftypes.CustID, otype ftypes.OType, oid uint64, key string, version uint64, valueSer []byte) error {
+func (c cachedProvider) set(this plane.Plane, custid ftypes.CustID, otype ftypes.OType, oid uint64, key string, version uint64, valueSer []byte) error {
 	if err := c.base.set(this, custid, otype, oid, key, version, valueSer); err != nil {
 		return err
 	}
@@ -55,7 +55,7 @@ func (c cachedProvider) set(this instance.Instance, custid ftypes.CustID, otype 
 	return ret
 }
 
-func (c cachedProvider) get(this instance.Instance, custid ftypes.CustID, otype ftypes.OType, oid uint64, key string, version uint64) ([]byte, error) {
+func (c cachedProvider) get(this plane.Plane, custid ftypes.CustID, otype ftypes.OType, oid uint64, key string, version uint64) ([]byte, error) {
 	k := makeKey(this, custid, otype, oid, key, version)
 	v, err := this.Cache.Get(context.TODO(), k)
 	if err != nil {
@@ -83,7 +83,7 @@ func cacheName() string {
 	return "cache:profile"
 }
 
-func makeKey(this instance.Instance, custid ftypes.CustID, otype ftypes.OType, oid uint64, key string, version uint64) string {
-	prefix := fmt.Sprintf("%s:%s:%d", this.Name, cacheName(), cacheVersion)
+func makeKey(this plane.Plane, custid ftypes.CustID, otype ftypes.OType, oid uint64, key string, version uint64) string {
+	prefix := fmt.Sprintf("%d:%s:%d", this.ID, cacheName(), cacheVersion)
 	return fmt.Sprintf("%s:%d:%s:%d:%s:%d", prefix, custid, otype, oid, key, version)
 }

@@ -1,16 +1,15 @@
 package profile
 
 import (
-	"fennel/instance"
 	profilelib "fennel/lib/profile"
 	"fennel/lib/value"
 	"fennel/model/profile"
-	"time"
-
+	"fennel/plane"
 	"google.golang.org/protobuf/proto"
+	"time"
 )
 
-func Get(this instance.Instance, request profilelib.ProfileItem) (value.Value, error) {
+func Get(this plane.Plane, request profilelib.ProfileItem) (value.Value, error) {
 	if request.CustID == 0 {
 		request.CustID = this.CustID
 	}
@@ -35,7 +34,7 @@ func Get(this instance.Instance, request profilelib.ProfileItem) (value.Value, e
 	return val, nil
 }
 
-func Set(this instance.Instance, request profilelib.ProfileItem) error {
+func Set(this plane.Plane, request profilelib.ProfileItem) error {
 	if request.CustID == 0 {
 		request.CustID = this.CustID
 	}
@@ -59,7 +58,7 @@ func Set(this instance.Instance, request profilelib.ProfileItem) error {
 	return nil
 }
 
-func GetProfiles(this instance.Instance, request profilelib.ProfileFetchRequest) ([]profilelib.ProfileItem, error) {
+func GetProfiles(this plane.Plane, request profilelib.ProfileFetchRequest) ([]profilelib.ProfileItem, error) {
 	profilesSer, err := profile.GetProfiles(this, request)
 	if err != nil {
 		return nil, err

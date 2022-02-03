@@ -9,7 +9,7 @@ import (
 )
 
 func TestCheckpoint2(t *testing.T) {
-	this, err := test.DefaultInstance()
+	this, err := test.MockPlane()
 	assert.NoError(t, err)
 	aggtype := ftypes.AggType("rolling_counter")
 	aggname := ftypes.AggName("mycounter")
