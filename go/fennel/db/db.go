@@ -1,6 +1,7 @@
 package db
 
 import (
+	"fennel/lib/ftypes"
 	"fennel/resource"
 	"fmt"
 	"log"
@@ -12,15 +13,16 @@ import (
 )
 
 type Connection struct {
-	config resource.Config
+	config  resource.Config
+	planeID ftypes.PlaneID
 	*sqlx.DB
 }
 
+func (c Connection) PlaneID() ftypes.PlaneID {
+	return c.planeID
+}
+
 func (c Connection) Teardown() error {
-	if config, ok := c.config.(SQLiteConfig); ok {
-		dbname := config.dbname
-		os.Remove(dbname)
-	}
 	return nil
 }
 
@@ -32,15 +34,21 @@ func (c Connection) Type() resource.Type {
 	return resource.DBConnection
 }
 
+var _ resource.Resource = Connection{}
+
 //=================================
 // SQLite config for db connection
 //=================================
 
 type SQLiteConfig struct {
-	dbname string
+	dbname  string
+	planeID ftypes.PlaneID
 }
 
 func (conf SQLiteConfig) Materialize() (resource.Resource, error) {
+	if conf.planeID == 0 {
+		return nil, fmt.Errorf("plane ID not initialized")
+	}
 	dbname := conf.dbname
 
 	os.Remove(dbname)
@@ -55,20 +63,21 @@ func (conf SQLiteConfig) Materialize() (resource.Resource, error) {
 	if err != nil {
 		return nil, err
 	}
-	conn := Connection{config: conf, DB: DB}
+	conn := Connection{config: conf, DB: DB, planeID: conf.planeID}
 	if err = SyncSchema(conn); err != nil {
 		return nil, err
 	}
 	return conn, nil
 }
 
-var _ resource.Config = SQLiteConfig{""}
+var _ resource.Config = SQLiteConfig{}
 
 //=================================
 // MySQL config for db connection
 //=================================
 
 type MySQLConfig struct {
+	PlaneID  ftypes.PlaneID
 	DBname   string
 	Username string
 	Password string
@@ -78,6 +87,9 @@ type MySQLConfig struct {
 var _ resource.Config = MySQLConfig{}
 
 func (conf MySQLConfig) Materialize() (resource.Resource, error) {
+	if conf.PlaneID == 0 {
+		return Connection{}, fmt.Errorf("plane ID not specified")
+	}
 	connectStr := fmt.Sprintf(
 		"%s:%s@tcp(%s)/%s?tls=true",
 		conf.Username, conf.Password, conf.Host, conf.DBname,
@@ -88,17 +100,9 @@ func (conf MySQLConfig) Materialize() (resource.Resource, error) {
 	if err != nil {
 		return nil, err
 	}
-	conn := Connection{config: conf, DB: DB}
+	conn := Connection{config: conf, DB: DB, planeID: conf.PlaneID}
 	if err = SyncSchema(conn); err != nil {
 		return nil, err
 	}
 	return conn, nil
-}
-
-// TODO: replace this with config of a locally running MySQL process
-var TestMySQLConfig = MySQLConfig{
-	DBname:   "fennel-test",
-	Username: "ftm4ey929riz",
-	Password: "pscale_pw_YdsInnGezBNibWLaSXzjWUNHP2ljuXGJUAq8y7iRXqQ",
-	Host:     "9kzpy3s6wi0u.us-west-2.psdb.cloud",
 }

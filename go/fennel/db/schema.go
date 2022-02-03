@@ -2,26 +2,36 @@ package db
 
 import (
 	"database/sql"
+	"fennel/lib/ftypes"
 	"fmt"
 	"strings"
 )
 
-var defs map[uint32]string
+var defs map[uint32]unnamedSQL
 var tablenames []string
+
+type unnamedSQL struct {
+	sql       string
+	tablename string
+}
 
 func init() {
 	// if you want to make any change to schema (create table, drop table, alter table etc.)
 	// add a versioned query here. Numbers should be increasing with no gaps and no repetitions
 	// Also, if  you create a create table query, also add the table name to "tablenames" list
-	defs = map[uint32]string{
-		1: `CREATE TABLE IF NOT EXISTS schema_version (
+	defs = map[uint32]unnamedSQL{
+		1: {`CREATE TABLE IF NOT EXISTS %s (
 				version INT NOT NULL
 			);`,
-		2: `CREATE TABLE IF NOT EXISTS schema_test (
+			"schema_version",
+		},
+		2: {`CREATE TABLE IF NOT EXISTS %s (
 				zkey INT NOT NULL,
 				value INT NOT NULL
 			);`,
-		3: `CREATE TABLE IF NOT EXISTS actionlog (
+			"schema_test",
+		},
+		3: {`CREATE TABLE IF NOT EXISTS %s (
 				action_id BIGINT not null primary key auto_increment,
 				cust_id BIGINT not null,
 				actor_id BIGINT NOT NULL,
@@ -35,15 +45,17 @@ func init() {
 				INDEX (cust_id, action_id),
 				INDEX (cust_id, action_value),
 				INDEX (cust_id, timestamp)
-		  );`,
-		4: `CREATE TABLE IF NOT EXISTS checkpoint (
+		 );`, "actionlog",
+		},
+		4: {`CREATE TABLE IF NOT EXISTS %s (
 				cust_id BIGINT NOT NULL,
 				aggtype VARCHAR(255) NOT NULL,
 				aggname VARCHAR(255) NOT NULL,
 				checkpoint BIGINT NOT NULL DEFAULT 0,
 				PRIMARY KEY(cust_id, aggtype, aggname)
-		  );`,
-		5: `CREATE TABLE IF NOT EXISTS profile (
+		 );`, "checkpoint",
+		},
+		5: {`CREATE TABLE IF NOT EXISTS %s (
 				cust_id BIGINT not null,
 				otype varchar(256) not null,
 				oid BIGINT not null,
@@ -51,8 +63,9 @@ func init() {
 				version BIGINT not null,
 				value blob not null,
 				PRIMARY KEY(cust_id, otype, oid, zkey, version)
-		  );`,
-		6: `CREATE TABLE IF NOT EXISTS counter_bucket (
+		 );`, "profile",
+		},
+		6: {`CREATE TABLE IF NOT EXISTS %s (
 				cust_id BIGINT NOT NULL,
 				counter_type INT NOT NULL,
 				window_type INT NOT NULL,
@@ -60,15 +73,17 @@ func init() {
 				count BIGINT NOT NULL DEFAULT 0,
 				zkey varchar(256) NOT NULL,
 				PRIMARY KEY(cust_id, counter_type, window_type, zkey, idx)
-		  );`,
-		7: `CREATE TABLE IF NOT EXISTS query_ast (
+		 );`, "counter_bucket",
+		},
+		7: {`CREATE TABLE IF NOT EXISTS %s (
 				query_id BIGINT NOT NULL PRIMARY KEY AUTO_INCREMENT,
 				cust_id BIGINT NOT NULL,
 				timestamp BIGINT NOT NULL,
 				query_ser BLOB NOT NULL,
 				INDEX (cust_id, timestamp)
-		  );`,
-		8: `CREATE TABLE IF NOT EXISTS aggregate_config (
+		 );`, "query_ast",
+		},
+		8: {`CREATE TABLE IF NOT EXISTS %s (
 				cust_id BIGINT NOT NULL,
 				aggregate_type VARCHAR(255) NOT NULL,
 				name VARCHAR(255) NOT NULL,
@@ -76,7 +91,8 @@ func init() {
 				timestamp BIGINT NOT NULL,
 				options_ser BLOB NOT NULL,
 				PRIMARY KEY(cust_id, aggregate_type, name)
-			);`,
+			);`, "aggregate_config",
+		},
 	}
 	tablenames = []string{
 		"schema_version",
@@ -94,10 +110,18 @@ func init() {
 	}
 }
 
+// ToPlaneTablename returns the name of the given table in the context of a particular plane
+func ToPlaneTablename(planeID ftypes.PlaneID, name string) (string, error) {
+	if planeID == 0 {
+		return "", fmt.Errorf("plane ID not initialized")
+	}
+	return fmt.Sprintf("plane_%d_%s", planeID, name), nil
+}
+
 func verifyDefs() error {
 	num_create_tables := 0
 	for _, query := range defs {
-		if strings.Contains(strings.ToLower(query), "create table") {
+		if strings.Contains(strings.ToLower(query.sql), "create table") {
 			num_create_tables += 1
 		}
 	}
@@ -107,24 +131,15 @@ func verifyDefs() error {
 	return nil
 }
 
-//Recreate_I_KNOW_WHAT_IM_DOING drops given database & creates another database with the same name
-//and returns a connection to that. Currently, it is implemented by dropping all the tables one by one.
-//This could lead to permanent data loss so, it should only be used in test instances - if you don't
-//know what you're doing, you should not be using it
-//TODO: instead of dropping table by table, use API to directly drop/create DB. When that is ready,
-//we won't have to maintain 'tablenames' vairable anymore.
-func Recreate_I_KNOW_WHAT_IM_DOING(db Connection) (Connection, error) {
-	for _, name := range tablenames {
-		_, err := db.Query(fmt.Sprintf("DROP TABLE IF EXISTS %s;", name))
-		if err != nil {
-			return Connection{}, err
-		}
-	}
-	return db, nil
-}
-
 func schemaVersion(db Connection) (uint32, error) {
-	row := db.QueryRow("SELECT version FROM schema_version;")
+	if db.PlaneID() == 0 {
+		return 0, fmt.Errorf("plane ID not initialized")
+	}
+	schemaTable, err := ToPlaneTablename(db.PlaneID(), "schema_version")
+	if err != nil {
+		return 0, err
+	}
+	row := db.QueryRow(fmt.Sprintf("SELECT version FROM %s", schemaTable))
 	var total sql.NullInt32
 	row.Scan(&total)
 	if total.Valid {
@@ -136,23 +151,37 @@ func schemaVersion(db Connection) (uint32, error) {
 }
 
 func incrementSchemaVersion(db Connection, curr uint32) error {
+	if db.PlaneID() == 0 {
+		return fmt.Errorf("plane ID not initialized")
+	}
 	var err error
+	schemaTable, err := ToPlaneTablename(db.PlaneID(), "schema_version")
+	if err != nil {
+		return err
+	}
 	if curr == 0 {
-		_, err = db.Query("INSERT INTO schema_version VALUES (?);", 1)
+		_, err = db.Query(fmt.Sprintf("INSERT INTO %s VALUES (?);", schemaTable), 1)
 	} else {
-		_, err = db.Query("UPDATE schema_version SET version = version + 1;")
+		_, err = db.Query(fmt.Sprintf("UPDATE %s SET version = version + 1", schemaTable))
 	}
 	return err
 }
 
 func SyncSchema(db Connection) error {
+	if db.PlaneID() == 0 {
+		return fmt.Errorf("plane ID not initialized")
+	}
 	curr, err := schemaVersion(db)
 	if err != nil {
 		return err
 	}
 	len_ := uint32(len(defs))
 	for i := curr + 1; i <= len_; i++ {
-		query := defs[i]
+		planeName, err := ToPlaneTablename(db.PlaneID(), defs[i].tablename)
+		if err != nil {
+			return err
+		}
+		query := fmt.Sprintf(defs[i].sql, planeName)
 		if _, err = db.Exec(query); err != nil {
 			return err
 		}

@@ -2,19 +2,47 @@ package db
 
 import (
 	"database/sql"
+	"fennel/lib/ftypes"
+	"fmt"
 	"github.com/stretchr/testify/assert"
+	"math/rand"
 	"testing"
+	"time"
 )
+
+// dropDB drops all tables in the given database.
+func dropDB(db Connection) error {
+	for _, name := range tablenames {
+		ptablename, err := ToPlaneTablename(db.PlaneID(), name)
+		if err != nil {
+			return err
+		}
+		_, err = db.Query(fmt.Sprintf("DROP TABLE IF EXISTS %s;", ptablename))
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
 
 func TestSyncSchema(t *testing.T) {
 	// get default DB
-	resource, err := TestMySQLConfig.Materialize()
+	rand.Seed(time.Now().UnixNano())
+	config := MySQLConfig{
+		PlaneID:  ftypes.PlaneID(rand.Uint32()),
+		DBname:   "fennel-test",
+		Username: "ftm4ey929riz",
+		Password: "pscale_pw_YdsInnGezBNibWLaSXzjWUNHP2ljuXGJUAq8y7iRXqQ",
+		Host:     "9kzpy3s6wi0u.us-west-2.psdb.cloud",
+	}
+	resource, err := config.Materialize()
 	assert.NoError(t, err)
 	db := resource.(Connection)
 
-	// if we recreate the db, its version gets reset to zero
-	db, err = Recreate_I_KNOW_WHAT_IM_DOING(db)
-	assert.NoError(t, err)
+	// version goes to zero after dropping the DB
+	assert.NoError(t, dropDB(db))
+
+	// since we just created a new DB, it's version starts at zero
 	version, err := schemaVersion(db)
 	assert.NoError(t, err)
 	assert.Equal(t, uint32(0), version)

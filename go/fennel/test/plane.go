@@ -3,6 +3,7 @@ package test
 import (
 	"fennel/lib/clock"
 	"math/rand"
+	"time"
 
 	"fennel/lib/action"
 	"fennel/lib/ftypes"
@@ -13,7 +14,9 @@ import (
 // MockPlane returns a plane to be used in tests - as many resources of the plane
 // are mocked as possible
 func MockPlane() (plane.Plane, error) {
-	db, err := DefaultDB()
+	rand.Seed(time.Now().UnixNano())
+	planeID := ftypes.PlaneID(rand.Uint32())
+	db, err := defaultDB(planeID)
 	if err != nil {
 		return plane.Plane{}, err
 	}
@@ -26,7 +29,7 @@ func MockPlane() (plane.Plane, error) {
 	Cache := redis.NewCache(redClient)
 	kProducer, kConsumer, err := DefaultProducerConsumer(action.ACTIONLOG_KAFKA_TOPIC)
 	return plane.Plane{
-		ID:             ftypes.PlaneID(rand.Uint32()),
+		ID:             planeID,
 		TierID:         ftypes.TierID(rand.Uint32()),
 		CustID:         ftypes.CustID(rand.Uint64()),
 		DB:             db,
