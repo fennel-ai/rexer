@@ -88,10 +88,10 @@ func CreateFromEnv() (plane Plane, err error) {
 		BootstrapServer: flags.KafkaServer,
 		Username:        flags.KafkaUsername,
 		Password:        flags.KafkaPassword,
-		// TODO: add topic id, group id, and offset policy.
-		GroupID:      "",
-		Topic:        "",
-		OffsetPolicy: "",
+		// TODO: configure topic id, group id, and offset policy.
+		GroupID:      "test",
+		Topic:        "actions",
+		OffsetPolicy: "earliest",
 	}
 	kafkaConsumer, err := kafkaConsumerConfig.Materialize()
 	if err != nil {
@@ -103,7 +103,7 @@ func CreateFromEnv() (plane Plane, err error) {
 		Username:        flags.KafkaUsername,
 		Password:        flags.KafkaPassword,
 		// TODO: add topic id
-		Topic:         "",
+		Topic:         "actions",
 		RecreateTopic: false,
 	}
 	kafkaProducer, err := kafkaProducerConfig.Materialize()
