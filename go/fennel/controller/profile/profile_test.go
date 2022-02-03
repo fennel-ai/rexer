@@ -33,8 +33,6 @@ func TestProfileController(t *testing.T) {
 	checkMultiGet(t, this, request, []profilelib.ProfileItem{})
 
 	// cannot set an invalid profile
-	err = Set(this, profilelib.NewProfileItem(0, "User", 1, "key", 1))
-	assert.Error(t, err)
 	err = Set(this, profilelib.NewProfileItem(1, "", 1, "key", 1))
 	assert.Error(t, err)
 	err = Set(this, profilelib.NewProfileItem(1, "User", 0, "key", 1))
