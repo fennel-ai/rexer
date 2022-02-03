@@ -56,7 +56,7 @@ func TestLogFetchServerClient(t *testing.T) {
 	// create a service
 	instance, err := test.MockPlane()
 	assert.NoError(t, err)
-	controller := holder{instance: instance}
+	controller := holder{plane: instance}
 	server := startTestServer(controller)
 	defer server.Close()
 	c, err := client.NewClient(server.URL, server.Client())
@@ -94,7 +94,7 @@ func TestProfileServerClient(t *testing.T) {
 	// create a service
 	instance, err := test.MockPlane()
 	assert.NoError(t, err)
-	controller := holder{instance: instance}
+	controller := holder{plane: instance}
 	server := startTestServer(controller)
 	defer server.Close()
 	c, err := client.NewClient(server.URL, server.Client())
@@ -128,7 +128,7 @@ func TestQuery(t *testing.T) {
 	// create a service
 	instance, err := test.MockPlane()
 	assert.NoError(t, err)
-	controller := holder{instance: instance}
+	controller := holder{plane: instance}
 	server := startTestServer(controller)
 	defer server.Close()
 	c, err := client.NewClient(server.URL, server.Client())
@@ -176,7 +176,7 @@ func TestHolder_AggregateValue_Valid(t *testing.T) {
 	instance.Clock = clock
 	t0 := ftypes.Timestamp(3600 * 10)
 	clock.Set(int64(t0))
-	controller := holder{instance: instance}
+	controller := holder{plane: instance}
 	agg := aggregate.Aggregate{
 		CustID:    instance.CustID,
 		Type:      "rolling_counter",
@@ -205,7 +205,7 @@ func TestStoreRetrieveAggregate(t *testing.T) {
 	// create a service + client
 	instance, err := test.MockPlane()
 	assert.NoError(t, err)
-	controller := holder{instance: instance}
+	controller := holder{plane: instance}
 	server := startTestServer(controller)
 	defer server.Close()
 	c, err := client.NewClient(server.URL, server.Client())
