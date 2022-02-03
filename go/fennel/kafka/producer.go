@@ -2,36 +2,38 @@ package kafka
 
 import (
 	"context"
-	"fennel/resource"
 	"fmt"
-	"github.com/confluentinc/confluent-kafka-go/kafka"
-	"google.golang.org/protobuf/proto"
 	"log"
 	"time"
+
+	"fennel/resource"
+
+	"github.com/confluentinc/confluent-kafka-go/kafka"
+	"google.golang.org/protobuf/proto"
 )
 
 //=================================
 // Kafka producer
 //=================================
 
-type remoteProducer struct {
+type RemoteProducer struct {
 	topic string
 	*kafka.Producer
 }
 
-func (k remoteProducer) Close() error {
+func (k RemoteProducer) Close() error {
 	return k.Close()
 }
 
-func (k remoteProducer) Teardown() error {
+func (k RemoteProducer) Teardown() error {
 	return nil
 }
 
-func (k remoteProducer) Type() resource.Type {
+func (k RemoteProducer) Type() resource.Type {
 	return resource.KafkaProducer
 }
 
-func (k remoteProducer) Log(protoMsg proto.Message) error {
+func (k RemoteProducer) Log(protoMsg proto.Message) error {
 	value, err := proto.Marshal(protoMsg)
 	if err != nil {
 		return fmt.Errorf("failed to serialize protoMsg to proto: %v", err)
@@ -43,15 +45,15 @@ func (k remoteProducer) Log(protoMsg proto.Message) error {
 	return k.Produce(&kafkaMsg, nil)
 }
 
-var _ FProducer = remoteProducer{}
+var _ FProducer = RemoteProducer{}
 
 //=================================
 // Config for remoteProducer
 //=================================
 
 type RemoteProducerConfig struct {
-	topic           string
-	recreateTopic   bool
+	Topic           string
+	RecreateTopic   bool
 	BootstrapServer string
 	Username        string
 	Password        string
@@ -61,9 +63,9 @@ func (conf RemoteProducerConfig) Materialize() (resource.Resource, error) {
 	configmap := conf.genConfigMap()
 	producer, err := kafka.NewProducer(configmap)
 	if err != nil {
-		return nil, fmt.Errorf("failed to initialize kafka producer for Topic [%s]: %v", conf.topic, err)
+		return nil, fmt.Errorf("failed to initialize kafka producer for Topic [%s]: %v", conf.Topic, err)
 	}
-	if conf.recreateTopic {
+	if conf.RecreateTopic {
 		conf.recreate()
 	}
 	// Delivery report handler for produced messages
@@ -76,7 +78,7 @@ func (conf RemoteProducerConfig) Materialize() (resource.Resource, error) {
 			}
 		}
 	}()
-	return remoteProducer{conf.topic, producer}, err
+	return RemoteProducer{conf.Topic, producer}, err
 }
 
 func (conf RemoteProducerConfig) recreate() error {
@@ -91,14 +93,14 @@ func (conf RemoteProducerConfig) recreate() error {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 	// we ignore results/errors because sometimes the Topic may not exist
-	_, _ = c.DeleteTopics(ctx, []string{conf.topic})
+	_, _ = c.DeleteTopics(ctx, []string{conf.Topic})
 
 	// now recreate the Topic
 	results, err := c.CreateTopics(ctx, []kafka.TopicSpecification{
-		{Topic: conf.topic, NumPartitions: 1},
+		{Topic: conf.Topic, NumPartitions: 1},
 	})
 	if err != nil {
-		return fmt.Errorf("failed to create Topic [%s]: %v", conf.topic, err)
+		return fmt.Errorf("failed to create Topic [%s]: %v", conf.Topic, err)
 	}
 	for _, tr := range results {
 		if tr.Error.Code() != kafka.ErrNoError {
