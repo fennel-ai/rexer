@@ -1,13 +1,37 @@
 package plane
 
 import (
+	"crypto/tls"
+	"fmt"
+
 	"fennel/db"
 	"fennel/kafka"
 	"fennel/lib/cache"
 	"fennel/lib/clock"
 	"fennel/lib/ftypes"
 	"fennel/redis"
+
+	"github.com/alexflint/go-arg"
 )
+
+// Flags for the aggreagator server.
+var flags struct {
+	KafkaServer   string `arg:"--kafka-server,env:KAFKA_SERVER_ADDRESS"`
+	KafkaUsername string `arg:"--kafka-user,env:KAFKA_USERNAME"`
+	KafkaPassword string `arg:"--kafka-password,env:KAFKA_PASSWORD"`
+
+	MysqlHost     string `arg:"--mysql-host,env:MYSQL_SERVER_ADDRESS"`
+	MysqlDB       string `arg:"--mysql-db,env:MYSQL_DATABASE_NAME"`
+	MysqlUsername string `arg:"--mysql-user,env:MYSQL_USERNAME"`
+	MysqlPassword string `arg:"--mysql-password,env:MYSQL_PASSWORD"`
+
+	RedisServer string `arg:"--redis-server,env:REDIS_SERVER_ADDRESS"`
+}
+
+func init() {
+	// Parse flags / environment variables.
+	arg.MustParse(&flags)
+}
 
 /*
 	Plane represents a full data plane of a particular customer. While each plane enjoys
@@ -33,4 +57,71 @@ type Plane struct {
 	ActionProducer kafka.FProducer
 	ActionConsumer kafka.FConsumer
 	Clock          clock.Clock
+}
+
+func CreateFromEnv() (plane Plane, err error) {
+
+	planeID := ftypes.PlaneID(1)
+
+	mysqlConfig := db.MySQLConfig{
+		Host:     flags.MysqlHost,
+		DBname:   flags.MysqlDB,
+		Username: flags.MysqlUsername,
+		Password: flags.MysqlPassword,
+		PlaneID:  planeID,
+	}
+	sqlConn, err := mysqlConfig.Materialize()
+	if err != nil {
+		return plane, fmt.Errorf("failed to connect with mysql: %v", err)
+	}
+
+	redisConfig := redis.ClientConfig{
+		Addr:      flags.RedisServer,
+		TLSConfig: &tls.Config{},
+	}
+	redisClient, err := redisConfig.Materialize()
+	if err != nil {
+		return plane, fmt.Errorf("failed to create redis client: %v", err)
+	}
+
+	kafkaConsumerConfig := kafka.RemoteConsumerConfig{
+		BootstrapServer: flags.KafkaServer,
+		Username:        flags.KafkaUsername,
+		Password:        flags.KafkaPassword,
+		// TODO: add topic id, group id, and offset policy.
+		GroupID:      "",
+		Topic:        "",
+		OffsetPolicy: "",
+	}
+	kafkaConsumer, err := kafkaConsumerConfig.Materialize()
+	if err != nil {
+		return plane, fmt.Errorf("failed to create kafka consumer: %v", err)
+	}
+
+	kafkaProducerConfig := kafka.RemoteProducerConfig{
+		BootstrapServer: flags.KafkaServer,
+		Username:        flags.KafkaUsername,
+		Password:        flags.KafkaPassword,
+		// TODO: add topic id
+		Topic:         "",
+		RecreateTopic: false,
+	}
+	kafkaProducer, err := kafkaProducerConfig.Materialize()
+	if err != nil {
+		return plane, fmt.Errorf("failed to crate kafka producer: %v", err)
+	}
+
+	return Plane{
+		DB:             sqlConn.(db.Connection),
+		Redis:          redisClient.(redis.Client),
+		ActionConsumer: kafkaConsumer.(kafka.RemoteConsumer),
+		ActionProducer: kafkaProducer.(kafka.RemoteProducer),
+		Clock:          clock.Unix{},
+		// TODO: Replace with actual ids.
+		CustID: ftypes.CustID(1),
+		TierID: ftypes.TierID(1),
+		ID:     ftypes.PlaneID(1),
+		// TODO: add client to ElasticCache-backed Redis instead of MemoryDB.
+		Cache: redis.NewCache(redisClient.(redis.Client)),
+	}, nil
 }

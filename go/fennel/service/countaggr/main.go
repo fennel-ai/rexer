@@ -1,14 +1,13 @@
 package main
 
 import (
-	"fennel/controller/aggregate"
-	libaggregate "fennel/lib/aggregate"
 	"log"
 	"sync"
 	"time"
 
+	"fennel/controller/aggregate"
+	libaggregate "fennel/lib/aggregate"
 	"fennel/plane"
-	"fennel/test"
 )
 
 func processOnce(instance plane.Plane) {
@@ -35,7 +34,7 @@ func processOnce(instance plane.Plane) {
 
 func main() {
 	// TODO: don't use default test instance, instead create a real one using env variables etc
-	instance, err := test.MockPlane()
+	instance, err := plane.CreateFromEnv()
 	if err != nil {
 		panic(err)
 	}
