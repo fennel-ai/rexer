@@ -2,12 +2,11 @@ package main
 
 import (
 	aggregate2 "fennel/controller/aggregate"
-	"fennel/engine/ast"
-	astProto "fennel/engine/ast/proto"
 	"fennel/engine/interpreter"
 	"fennel/engine/interpreter/bootarg"
 	"fennel/lib/aggregate"
 	"fennel/lib/ftypes"
+	"fennel/lib/query"
 	"flag"
 	"fmt"
 	"io/ioutil"
@@ -163,18 +162,16 @@ func (m holder) GetProfiles(w http.ResponseWriter, req *http.Request) {
 }
 
 func (m holder) Query(w http.ResponseWriter, req *http.Request) {
-	var protoAstWithDict astProto.AstWithDict
+	var protoAstWithDict query.ProtoAstWithDict
 	if err := parse(req, &protoAstWithDict); err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	astWithDict, err := ast.FromProtoAstWithDict(&protoAstWithDict)
+	tree, dict, err := query.FromProtoAstWithDict(&protoAstWithDict)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	tree := astWithDict.Ast
-	dict := astWithDict.Dict
 	// execute the tree
 	i := interpreter.NewInterpreter(bootarg.Create(m.instance))
 	i.SetQueryArgs(dict)

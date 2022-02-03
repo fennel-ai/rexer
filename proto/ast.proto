@@ -1,5 +1,4 @@
 syntax = "proto3";
-import "value.proto";
 
 option go_package = "fennel/engine/ast/proto";
 
@@ -78,9 +77,4 @@ message IfElse {
   Ast condition = 1;
   Ast then_do = 2;
   Ast else_do = 3;
-}
-
-message AstWithDict {
-  Ast ast = 1;
-  PVDict dict = 2;
 }

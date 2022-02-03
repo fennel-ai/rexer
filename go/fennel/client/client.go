@@ -7,6 +7,7 @@ import (
 	"fennel/lib/aggregate"
 	"fennel/lib/ftypes"
 	profileLib "fennel/lib/profile"
+	"fennel/lib/query"
 	"fennel/lib/value"
 	"fmt"
 	"io/ioutil"
@@ -137,9 +138,10 @@ func (c *Client) GetProfile(request *profileLib.ProfileItem) (*value.Value, erro
 	}
 }
 
-func (c *Client) Query(request ast.AstWithDict) (value.Value, error) {
+func (c *Client) Query(req ast.Ast, reqdict value.Dict) (value.Value, error) {
 	// convert the request to proto version
-	protoReq, err := ast.ToProtoAstWithDict(&request)
+	request := query.AstWithDict{Ast: req, Dict: reqdict}
+	protoReq, err := query.ToProtoAstWithDict(&request)
 	if err != nil {
 		return nil, fmt.Errorf("invalid request: %v", err)
 	}
