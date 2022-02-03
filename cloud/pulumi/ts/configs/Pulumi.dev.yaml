@@ -1,0 +1,22 @@
+config:
+  aws:profile: admin
+  aws:region: us-west-2
+  configs:kafka-conf:
+    password:
+      secure: AAABAIbdM4rB2+1NX+gNhK01aNAHXyzSEUyQUS8Nm3QhqbxY1rsbvaeWn5csL8jXhape2pDRlyP4VMS3blnZnbV976KQ6AxDX7SH5sn71caPBgE4xjoG6F5B5sQ5xza2
+    server:
+      secure: AAABAKJtpAGDbadKC9q4heRYTs+1wa7oGgTxqECjwi5RqfXiVYVcohnKkcWivwnjzJm6h9TsR+gXbAdKCaCJVu6VG3L4mFjgzlDc7A==
+    username:
+      secure: AAABAA7+HpYiJgQslJMJG79MG24E3yPHGKrYfukgec9GBE0gBc3U4pdPPVe5+v1A
+  configs:planetscale-conf:
+    db:
+      secure: AAABAKUNQTXn6xafU/uuhThtgozzDQgLRlaeE4CKTl5HtRxGZCQDGVHI4w==
+    host:
+      secure: AAABAKybwgv1YehxZDMVj5uE8hVcPo2Y2ZMBtYPNC/RJytS2UDE4wMy5yGJXmUdsOU8jLhpOQujGUFDjR/8Fxfg=
+    password:
+      secure: AAABAKeB67q8qIbRITPFXEHYAhipW0Bo/0gN+PhzZjEPRW+sArEb+U/nQjKiY/Da67mbzfHqnYRSMVAKMJkS59AJlNEAZrAxZpX1CnKE7m7gyey3Eg==
+    username:
+      secure: AAABAF18S+awH0xlyoyKde80Tm2tgKUgwl6QwMUqKUnDiijGQbOJxNdnfdg=
+  configs:redis-conf:
+    addr:
+      secure: AAABAI2/SEzv6GHUvfsEQG6qd7NeaeGTrBZUOcsywkUxpAzqmgEKiVWdQBRYWihHL94NuJHZsGtxAILLLocML2Bx7Btto+slcrF27Uul9EGMhX95juL07hV7Jv7Wbolu8tuwvZmpXLs=
