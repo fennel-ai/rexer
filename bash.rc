@@ -10,3 +10,6 @@ export FLASK_APP="$FENNEL_ROOT/pyclient/app.py"
 export FLASK_ENV=development
 
 git config pull.rebase true
+
+eval $(ssh-agent)
+export DOCKER_BUILDKIT=1

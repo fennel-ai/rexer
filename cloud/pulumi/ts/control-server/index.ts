@@ -40,6 +40,7 @@ const image = new docker.Image("control-server-img", {
         dockerfile: path.join(root, "dockerfiles/controlserver.dockerfile"),
         args: {
             "platform": "linux/amd64",
+            "ssh": "default",
         },
     },
     imageName: imageName,
