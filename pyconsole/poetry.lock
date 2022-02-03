@@ -186,7 +186,7 @@ urllib3 = "^1.26.8"
 type = "git"
 url = "ssh://git@github.com/fennel-ai/rexer-pyclient-alpha.git"
 reference = "main"
-resolved_reference = "3df82fa7a6a6114abd1d805c30dfcea152b8d079"
+resolved_reference = "81eba2f558aded3cc8ef7323dc54f8c37ca05072"
 
 [[package]]
 name = "six"
