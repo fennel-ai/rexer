@@ -3,6 +3,7 @@ package kafka
 import (
 	"fennel/resource"
 	"fmt"
+
 	"github.com/confluentinc/confluent-kafka-go/kafka"
 	"google.golang.org/protobuf/proto"
 )
@@ -43,9 +44,9 @@ type RemoteConsumerConfig struct {
 	BootstrapServer string
 	Username        string
 	Password        string
-	groupID         string
-	offsetPolicy    string
-	topic           string
+	GroupID         string
+	OffsetPolicy    string
+	Topic           string
 }
 
 func (conf RemoteConsumerConfig) genConfigMap() *kafka.ConfigMap {
@@ -55,8 +56,8 @@ func (conf RemoteConsumerConfig) genConfigMap() *kafka.ConfigMap {
 		"sasl.password":     conf.Password,
 		"security.protocol": SecurityProtocol,
 		"sasl.mechanisms":   SaslMechanism,
-		"group.id":          conf.groupID,
-		"auto.offset.reset": conf.offsetPolicy,
+		"group.id":          conf.GroupID,
+		"auto.offset.reset": conf.OffsetPolicy,
 	}
 }
 
@@ -66,11 +67,11 @@ func (conf RemoteConsumerConfig) Materialize() (resource.Resource, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to create kafka consumer: %v", err)
 	}
-	err = consumer.Subscribe(conf.topic, nil)
+	err = consumer.Subscribe(conf.Topic, nil)
 	if err != nil {
-		return nil, fmt.Errorf("failed to subscribe to Topic [%s]: %v", conf.topic, err)
+		return nil, fmt.Errorf("failed to subscribe to Topic [%s]: %v", conf.Topic, err)
 	}
-	return RemoteConsumer{consumer, conf.topic, conf}, nil
+	return RemoteConsumer{consumer, conf.Topic, conf}, nil
 }
 
 var _ resource.Config = RemoteConsumerConfig{}
