@@ -153,11 +153,7 @@ func TestQuery(t *testing.T) {
 		}},
 		},
 	}
-	q := ast.AstWithDict{
-		Ast:  e,
-		Dict: value.Dict{},
-	}
-	found, err := c.Query(q)
+	found, err := c.Query(e, value.Dict{})
 	assert.NoError(t, err)
 	expected := value.NewTable()
 	expected.Append(map[string]value.Value{"x": value.Int(1), "y": value.Int(3)})
@@ -167,12 +163,8 @@ func TestQuery(t *testing.T) {
 	// Test if dict values are set
 	ast1 := ast.Var{Name: "__args__"}
 	dict1 := value.Dict{"key1": value.Int(4)}
-	q1 := ast.AstWithDict{
-		Ast:  ast1,
-		Dict: dict1,
-	}
 
-	found, err = c.Query(q1)
+	found, err = c.Query(ast1, dict1)
 	assert.NoError(t, err)
 	assert.Equal(t, dict1, found)
 }

@@ -208,7 +208,7 @@ func (i Interpreter) VisitOpcall(operand ast.Ast, namespace, name string, kwargs
 	}
 	inData, ok := val.(value.Table)
 	if !ok {
-		return value.Nil, fmt.Errorf("opertor '%s.%s' can not be applied: operand not a table", namespace, name)
+		return value.Nil, fmt.Errorf("operator '%s.%s' can not be applied: operand not a table", namespace, name)
 	}
 
 	// find & init the operator
