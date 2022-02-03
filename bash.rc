@@ -18,5 +18,4 @@ git config delta.line-numbers true
 git config delta.side-by-side true
 
 
-eval $(ssh-agent)
 export DOCKER_BUILDKIT=1
