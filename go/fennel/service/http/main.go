@@ -351,9 +351,9 @@ func createPlane() (*plane.Plane, error) {
 		ActionProducer: kafkaProducer.(kafka.RemoteProducer),
 		Clock:          clock.Unix{},
 		// TODO: Replace with actual ids.
-		CustID: ftypes.CustID(0),
-		TierID: ftypes.TierID(0),
-		ID:     ftypes.PlaneID(0),
+		CustID: ftypes.CustID(1),
+		TierID: ftypes.TierID(1),
+		ID:     ftypes.PlaneID(1),
 		// TODO: add client to ElasticCache-backed Redis instead of MemoryDB.
 		Cache: redis.NewCache(redisClient.(redis.Client)),
 	}, nil
