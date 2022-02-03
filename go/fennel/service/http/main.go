@@ -15,18 +15,18 @@ import (
 
 	"fennel/controller/action"
 	profile2 "fennel/controller/profile"
-	"fennel/instance"
 	actionlib "fennel/lib/action"
 	httplib "fennel/lib/http"
 	profilelib "fennel/lib/profile"
 	"fennel/lib/value"
+	"fennel/plane"
 	"fennel/test"
 
 	"google.golang.org/protobuf/proto"
 )
 
 type holder struct {
-	instance instance.Instance
+	instance plane.Plane
 }
 
 func parse(req *http.Request, msg proto.Message) error {
@@ -285,7 +285,7 @@ func main() {
 	server := &http.Server{Addr: fmt.Sprintf(":%d", httplib.PORT)}
 	mux := http.NewServeMux()
 	// TODO: don't use test instance here, instead create real instance using env variables
-	instance, err := test.DefaultInstance()
+	instance, err := test.MockPlane()
 	if err != nil {
 		panic(fmt.Sprintf("Failed to setup default instance: %v", err))
 	}

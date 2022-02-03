@@ -2,14 +2,14 @@ package counter
 
 import (
 	"context"
-	"fennel/instance"
 	"fennel/lib/ftypes"
+	"fennel/plane"
 	"fmt"
 	"github.com/go-redis/redis/v8"
 	"strconv"
 )
 
-func redisKeys(instance instance.Instance, name ftypes.AggName, buckets []Bucket) []string {
+func redisKeys(instance plane.Plane, name ftypes.AggName, buckets []Bucket) []string {
 	ret := make([]string, len(buckets))
 	for i, b := range buckets {
 		ret[i] = fmt.Sprintf("%d:counter:%d:%s:%s:%d:%d", instance.CustID, version, name, b.Key, b.Window, b.Index)
@@ -17,7 +17,7 @@ func redisKeys(instance instance.Instance, name ftypes.AggName, buckets []Bucket
 	return ret
 }
 
-func IncrementMulti(instance instance.Instance, name ftypes.AggName, buckets []Bucket) error {
+func IncrementMulti(instance plane.Plane, name ftypes.AggName, buckets []Bucket) error {
 	rkeys := redisKeys(instance, name, buckets)
 	cur, err := GetMulti(instance, name, buckets)
 	if err != nil {
@@ -31,7 +31,7 @@ func IncrementMulti(instance instance.Instance, name ftypes.AggName, buckets []B
 	return instance.Redis.MSet(context.TODO(), vals).Err()
 }
 
-func Get(instance instance.Instance, name ftypes.AggName, bucket Bucket) (int64, error) {
+func Get(instance plane.Plane, name ftypes.AggName, bucket Bucket) (int64, error) {
 	ret, err := GetMulti(instance, name, []Bucket{bucket})
 	if err != nil {
 		return 0, err
@@ -39,7 +39,7 @@ func Get(instance instance.Instance, name ftypes.AggName, bucket Bucket) (int64,
 	return ret[0], nil
 }
 
-func GetMulti(instance instance.Instance, name ftypes.AggName, buckets []Bucket) ([]int64, error) {
+func GetMulti(instance plane.Plane, name ftypes.AggName, buckets []Bucket) ([]int64, error) {
 	rkeys := redisKeys(instance, name, buckets)
 	res, err := instance.Redis.MGet(context.TODO(), rkeys...).Result()
 	if err != nil {

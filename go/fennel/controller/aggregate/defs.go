@@ -2,17 +2,17 @@ package aggregate
 
 import (
 	"fennel/engine/ast"
-	"fennel/instance"
 	"fennel/lib/aggregate"
 	"fennel/lib/ftypes"
 	modelAgg "fennel/model/aggregate"
+	"fennel/plane"
 	"fmt"
 	"time"
 
 	"google.golang.org/protobuf/proto"
 )
 
-func Store(instance instance.Instance, agg aggregate.Aggregate) error {
+func Store(instance plane.Plane, agg aggregate.Aggregate) error {
 	if err := agg.Validate(); err != nil {
 		return err
 	}
@@ -49,7 +49,7 @@ func Store(instance instance.Instance, agg aggregate.Aggregate) error {
 	return modelAgg.Store(instance, agg.Type, agg.Name, querySer, agg.Timestamp, optionSer)
 }
 
-func Retrieve(instance instance.Instance, aggtype ftypes.AggType, aggname ftypes.AggName) (aggregate.Aggregate, error) {
+func Retrieve(instance plane.Plane, aggtype ftypes.AggType, aggname ftypes.AggName) (aggregate.Aggregate, error) {
 	empty := aggregate.Aggregate{}
 	if !aggregate.IsValid(aggtype) {
 		return empty, fmt.Errorf("invalid aggregate type: %v", aggtype)
@@ -65,7 +65,7 @@ func Retrieve(instance instance.Instance, aggtype ftypes.AggType, aggname ftypes
 }
 
 // RetrieveAll returns all aggregates of given aggtype
-func RetrieveAll(instance instance.Instance, aggtype ftypes.AggType) ([]aggregate.Aggregate, error) {
+func RetrieveAll(instance plane.Plane, aggtype ftypes.AggType) ([]aggregate.Aggregate, error) {
 	if !aggregate.IsValid(aggtype) {
 		return nil, fmt.Errorf("invalid aggregate type: %v", aggtype)
 	}

@@ -13,7 +13,7 @@ import (
 )
 
 func TestRetrieveAll(t *testing.T) {
-	instance, err := test.DefaultInstance()
+	instance, err := test.MockPlane()
 	assert.NoError(t, err)
 
 	// calling retrievall on invalid type returns an error
@@ -50,7 +50,7 @@ func TestRetrieveAll(t *testing.T) {
 }
 
 func TestDuplicate(t *testing.T) {
-	instance, err := test.DefaultInstance()
+	instance, err := test.MockPlane()
 	assert.NoError(t, err)
 
 	agg := aggregate.Aggregate{

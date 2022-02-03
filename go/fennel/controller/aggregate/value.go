@@ -6,16 +6,16 @@ import (
 	"fennel/engine/ast"
 	"fennel/engine/interpreter"
 	"fennel/engine/interpreter/bootarg"
-	"fennel/instance"
 	libaction "fennel/lib/action"
 	"fennel/lib/aggregate"
 	"fennel/lib/ftypes"
 	"fennel/lib/value"
 	"fennel/model/checkpoint"
+	"fennel/plane"
 	"fmt"
 )
 
-func Value(instance instance.Instance, aggtype ftypes.AggType, name ftypes.AggName, key value.Value) (value.Value, error) {
+func Value(instance plane.Plane, aggtype ftypes.AggType, name ftypes.AggName, key value.Value) (value.Value, error) {
 	agg, err := Retrieve(instance, aggtype, name)
 	if err != nil {
 		return value.Nil, err
@@ -23,7 +23,7 @@ func Value(instance instance.Instance, aggtype ftypes.AggType, name ftypes.AggNa
 	return routeValue(instance, agg, key)
 }
 
-func Update(instance instance.Instance, agg aggregate.Aggregate) error {
+func Update(instance plane.Plane, agg aggregate.Aggregate) error {
 	point, err := checkpoint.Get(instance, agg.Type, agg.Name)
 	if err != nil {
 		return err
@@ -47,7 +47,7 @@ func Update(instance instance.Instance, agg aggregate.Aggregate) error {
 // Private helpers below
 //============================
 
-func transformActions(instance instance.Instance, actions []libaction.Action, query ast.Ast) (value.Table, error) {
+func transformActions(instance plane.Plane, actions []libaction.Action, query ast.Ast) (value.Table, error) {
 	interpreter, err := loadInterpreter(instance, actions)
 	if err != nil {
 		return value.Table{}, err
@@ -63,7 +63,7 @@ func transformActions(instance instance.Instance, actions []libaction.Action, qu
 	return table, nil
 }
 
-func loadInterpreter(instance instance.Instance, actions []libaction.Action) (interpreter.Interpreter, error) {
+func loadInterpreter(instance plane.Plane, actions []libaction.Action) (interpreter.Interpreter, error) {
 	bootargs := bootarg.Create(instance)
 	ret := interpreter.NewInterpreter(bootargs)
 	table, err := libaction.ToTable(actions)
@@ -76,7 +76,7 @@ func loadInterpreter(instance instance.Instance, actions []libaction.Action) (in
 	return ret, nil
 }
 
-func routeUpdate(instance instance.Instance, aggname ftypes.AggName, aggtype ftypes.AggType, table value.Table) error {
+func routeUpdate(instance plane.Plane, aggname ftypes.AggName, aggtype ftypes.AggType, table value.Table) error {
 	switch aggtype {
 	case "rolling_counter":
 		return counter.Update(instance, aggname, table)
@@ -87,7 +87,7 @@ func routeUpdate(instance instance.Instance, aggname ftypes.AggName, aggtype fty
 	}
 }
 
-func routeValue(instance instance.Instance, agg aggregate.Aggregate, key value.Value) (value.Value, error) {
+func routeValue(instance plane.Plane, agg aggregate.Aggregate, key value.Value) (value.Value, error) {
 	switch agg.Type {
 	case "rolling_counter":
 		return counter.RollingValue(instance, agg, key)

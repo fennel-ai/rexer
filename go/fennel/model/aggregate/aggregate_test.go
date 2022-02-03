@@ -16,7 +16,7 @@ import (
 )
 
 func TestRetrieveStore(t *testing.T) {
-	instance, err := test.DefaultInstance()
+	instance, err := test.MockPlane()
 	assert.NoError(t, err)
 
 	query := ast.Atom{Type: ast.Int, Lexeme: "4"}
@@ -67,7 +67,7 @@ func TestRetrieveStore(t *testing.T) {
 }
 
 func TestRetrieveAll(t *testing.T) {
-	instance, err := test.DefaultInstance()
+	instance, err := test.MockPlane()
 	assert.NoError(t, err)
 
 	agg := aggregate.AggregateSer{
@@ -90,7 +90,7 @@ func TestRetrieveAll(t *testing.T) {
 }
 
 func TestLongStrings(t *testing.T) {
-	instance, err := test.DefaultInstance()
+	instance, err := test.MockPlane()
 	assert.NoError(t, err)
 	aggtype := ftypes.AggType("rolling_counter")
 

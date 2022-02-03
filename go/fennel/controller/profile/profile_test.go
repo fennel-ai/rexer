@@ -1,9 +1,9 @@
 package profile
 
 import (
-	"fennel/instance"
 	profilelib "fennel/lib/profile"
 	"fennel/lib/value"
+	"fennel/plane"
 	"fennel/test"
 	"testing"
 
@@ -12,7 +12,7 @@ import (
 
 // TODO: Add more tests
 func TestProfileController(t *testing.T) {
-	this, err := test.DefaultInstance()
+	this, err := test.MockPlane()
 	assert.NoError(t, err)
 
 	vals := []value.Int{}
@@ -63,12 +63,12 @@ func TestProfileController(t *testing.T) {
 	checkGet(t, this, profiles[2], vals[2])
 }
 
-func checkSet(t *testing.T, this instance.Instance, request profilelib.ProfileItem) {
+func checkSet(t *testing.T, this plane.Plane, request profilelib.ProfileItem) {
 	err := Set(this, request)
 	assert.NoError(t, err)
 }
 
-func checkGet(t *testing.T, this instance.Instance, request profilelib.ProfileItem, expected value.Value) {
+func checkGet(t *testing.T, this plane.Plane, request profilelib.ProfileItem, expected value.Value) {
 	found, err := Get(this, request)
 	assert.NoError(t, err)
 	// any test necessary for found == nil?
@@ -77,7 +77,7 @@ func checkGet(t *testing.T, this instance.Instance, request profilelib.ProfileIt
 	}
 }
 
-func checkMultiGet(t *testing.T, this instance.Instance, request profilelib.ProfileFetchRequest, expected []profilelib.ProfileItem) {
+func checkMultiGet(t *testing.T, this plane.Plane, request profilelib.ProfileFetchRequest, expected []profilelib.ProfileItem) {
 	found, err := GetProfiles(this, request)
 	assert.NoError(t, err)
 	assert.ElementsMatch(t, expected, found)

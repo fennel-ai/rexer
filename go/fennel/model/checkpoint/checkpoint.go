@@ -2,11 +2,11 @@ package checkpoint
 
 import (
 	"database/sql"
-	"fennel/instance"
 	"fennel/lib/ftypes"
+	"fennel/plane"
 )
 
-func Get(this instance.Instance, aggtype ftypes.AggType, aggname ftypes.AggName) (ftypes.OidType, error) {
+func Get(this plane.Plane, aggtype ftypes.AggType, aggname ftypes.AggName) (ftypes.OidType, error) {
 	row := this.DB.QueryRow(`
 		SELECT checkpoint
 		FROM checkpoint
@@ -26,7 +26,7 @@ func Get(this instance.Instance, aggtype ftypes.AggType, aggname ftypes.AggName)
 	}
 }
 
-func Set(this instance.Instance, aggtype ftypes.AggType, aggname ftypes.AggName, checkpoint ftypes.OidType) error {
+func Set(this plane.Plane, aggtype ftypes.AggType, aggname ftypes.AggName, checkpoint ftypes.OidType) error {
 	_, err := this.DB.Exec(`
 		INSERT INTO checkpoint (cust_id, aggtype, aggname, checkpoint)
         VALUES (?, ?, ?, ?)

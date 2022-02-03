@@ -1,11 +1,11 @@
 package aggregate
 
 import (
-	"fennel/instance"
 	"fennel/lib/aggregate"
 	"fennel/lib/value"
+	"fennel/plane"
 )
 
-func streamValue(instance instance.Instance, agg aggregate.Aggregate, key value.Value) (value.List, error) {
+func streamValue(instance plane.Plane, agg aggregate.Aggregate, key value.Value) (value.List, error) {
 	panic("not implemented error")
 }

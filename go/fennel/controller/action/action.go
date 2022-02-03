@@ -1,17 +1,17 @@
 package action
 
 import (
-	"fennel/instance"
 	actionlib "fennel/lib/action"
 	"fennel/lib/ftypes"
 	"fennel/model/action"
+	"fennel/plane"
 	"fmt"
 	"time"
 )
 
 // Insert takes an action and inserts it both in the DB and Kafka
 // returns the unique ID of the action that was inserted
-func Insert(this instance.Instance, a actionlib.Action) (uint64, error) {
+func Insert(this plane.Plane, a actionlib.Action) (uint64, error) {
 	if a.CustID == 0 {
 		a.CustID = this.CustID
 	}
@@ -34,6 +34,6 @@ func Insert(this instance.Instance, a actionlib.Action) (uint64, error) {
 	return ret, nil
 }
 
-func Fetch(this instance.Instance, request actionlib.ActionFetchRequest) ([]actionlib.Action, error) {
+func Fetch(this plane.Plane, request actionlib.ActionFetchRequest) ([]actionlib.Action, error) {
 	return action.Fetch(this, request)
 }

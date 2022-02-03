@@ -54,7 +54,7 @@ func startTestServer(controller holder) *httptest.Server {
 
 func TestLogFetchServerClient(t *testing.T) {
 	// create a service
-	instance, err := test.DefaultInstance()
+	instance, err := test.MockPlane()
 	assert.NoError(t, err)
 	controller := holder{instance: instance}
 	server := startTestServer(controller)
@@ -92,7 +92,7 @@ func TestLogFetchServerClient(t *testing.T) {
 // TODO: add more tests covering more error conditions
 func TestProfileServerClient(t *testing.T) {
 	// create a service
-	instance, err := test.DefaultInstance()
+	instance, err := test.MockPlane()
 	assert.NoError(t, err)
 	controller := holder{instance: instance}
 	server := startTestServer(controller)
@@ -126,7 +126,7 @@ func TestProfileServerClient(t *testing.T) {
 
 func TestQuery(t *testing.T) {
 	// create a service
-	instance, err := test.DefaultInstance()
+	instance, err := test.MockPlane()
 	assert.NoError(t, err)
 	controller := holder{instance: instance}
 	server := startTestServer(controller)
@@ -170,7 +170,7 @@ func TestQuery(t *testing.T) {
 }
 
 func TestHolder_AggregateValue_Valid(t *testing.T) {
-	instance, err := test.DefaultInstance()
+	instance, err := test.MockPlane()
 	assert.NoError(t, err)
 	clock := &test.FakeClock{}
 	instance.Clock = clock
@@ -203,7 +203,7 @@ func TestHolder_AggregateValue_Valid(t *testing.T) {
 
 func TestStoreRetrieveAggregate(t *testing.T) {
 	// create a service + client
-	instance, err := test.DefaultInstance()
+	instance, err := test.MockPlane()
 	assert.NoError(t, err)
 	controller := holder{instance: instance}
 	server := startTestServer(controller)

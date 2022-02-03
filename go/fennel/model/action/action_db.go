@@ -1,14 +1,14 @@
 package action
 
 import (
-	"fennel/instance"
 	"fennel/lib/action"
+	"fennel/plane"
 	"fmt"
 	"strings"
 )
 
 // inserts the action. If successful, returns the actionID
-func Insert(this instance.Instance, action action.Action) (uint64, error) {
+func Insert(this plane.Plane, action action.Action) (uint64, error) {
 	if len(action.ActionType) > 256 {
 		return 0, fmt.Errorf("ActionType too long: action types cannot be longer than 256 chars")
 	}
@@ -55,7 +55,7 @@ func Insert(this instance.Instance, action action.Action) (uint64, error) {
 // For actionID and timestamp ranges, min is exclusive and max is inclusive
 // For actionValue range, both min/max are inclusive
 // TODO: add limit support?
-func Fetch(this instance.Instance, request action.ActionFetchRequest) ([]action.Action, error) {
+func Fetch(this plane.Plane, request action.ActionFetchRequest) ([]action.Action, error) {
 	query := "SELECT * FROM actionlog"
 	clauses := make([]string, 0)
 	if request.CustID != 0 {
