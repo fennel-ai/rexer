@@ -8,6 +8,8 @@ import (
 	"fennel/controller/aggregate"
 	libaggregate "fennel/lib/aggregate"
 	"fennel/plane"
+
+	"github.com/alexflint/go-arg"
 )
 
 func processOnce(instance plane.Plane) {
@@ -33,13 +35,17 @@ func processOnce(instance plane.Plane) {
 }
 
 func main() {
-	// TODO: don't use default test instance, instead create a real one using env variables etc
-	instance, err := plane.CreateFromEnv()
+	var flags struct {
+		plane.PlaneArgs
+	}
+	// Parse flags / environment variables.
+	arg.MustParse(&flags)
+	plane, err := plane.CreateFromArgs(&flags.PlaneArgs)
 	if err != nil {
 		panic(err)
 	}
 	for {
-		processOnce(instance)
+		processOnce(plane)
 		time.Sleep(time.Minute)
 	}
 }
