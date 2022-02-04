@@ -1,3 +1,4 @@
 config:
   aws:region: us-west-2
+  tailscale:ami: ami-066333d9c572b0680
   tailscale:subnet: subnet-07aa4b44ebd42517e

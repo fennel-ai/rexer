@@ -27,7 +27,7 @@ try {
 // TODO: Associate with a security group that has access to EKS and other services.
 const relay = new aws.ec2.Instance("tailscale-relay",
     {
-        ami: "ami-066333d9c572b0680",
+        ami: config.require("ami"),
         instanceType: "t3.small",
         subnetId: subnet,
         associatePublicIpAddress: true,
