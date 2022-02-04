@@ -18,4 +18,4 @@ config:
       secure: AAABAA9Mn90FUe4Aj4zqu4OGiTjkc9//TjrhWzV3DxtOK2yBAXesyI5rRAE=
   configs:redis-conf:
     addr:
-      secure: AAABAN00lMzozm358vL92ZT8gVSjHTjZJlH2EBWm8itmYh/rzqlqUouun4tDI7oqhG3WhH2cRGB9CAEGCc6nvzm0PbRrZj+yZoBlJL5sDfidswSLhSamqG/Vwqo4402HLfRyyZL+r0WH
+      secure: AAABAOCLb/SN1gF+4qJkUzRw7Jbca3R2N+/y9G5LudSu4n0AeiXq2kTAn9tpiLKogB2F5W5yJ7bTvUl8IXT2FIk+Rf3YVzbCa8v8uMgnVhd0rJ7MTyVBUisAAK9czXr006iTqnW0f3o4
