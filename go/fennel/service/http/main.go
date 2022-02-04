@@ -47,7 +47,7 @@ func (m holder) Log(w http.ResponseWriter, req *http.Request) {
 
 	aid, err := action.Insert(m.plane, a)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadGateway)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 	// write the actionID back
@@ -64,13 +64,13 @@ func (m holder) Fetch(w http.ResponseWriter, req *http.Request) {
 	// send to controller
 	actions, err := action.Fetch(m.plane, request)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadGateway)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 	actionList := actionlib.ToProtoActionList(actions)
 	ser, err := proto.Marshal(actionList)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadGateway)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 	w.Write(ser)
@@ -90,7 +90,7 @@ func (m holder) GetProfile(w http.ResponseWriter, req *http.Request) {
 	// send to controller
 	val, err := profile2.Get(m.plane, request)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadGateway)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 	if val == nil {
@@ -102,12 +102,12 @@ func (m holder) GetProfile(w http.ResponseWriter, req *http.Request) {
 	// now convert value to proto and serialize it
 	pval, err := value.ToProtoValue(val)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadGateway)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 	valueSer, err := proto.Marshal(&pval)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadGateway)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 	w.Write(valueSer)
@@ -128,7 +128,7 @@ func (m holder) SetProfile(w http.ResponseWriter, req *http.Request) {
 	}
 	// send to controller
 	if err = profile2.Set(m.plane, request); err != nil {
-		http.Error(w, err.Error(), http.StatusBadGateway)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 }
@@ -143,17 +143,17 @@ func (m holder) GetProfiles(w http.ResponseWriter, req *http.Request) {
 	// send to controller
 	profiles, err := profile2.GetProfiles(m.plane, request)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadGateway)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 	profileList, err := profilelib.ToProtoProfileList(profiles)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadGateway)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 	ser, err := proto.Marshal(profileList)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadGateway)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 	w.Write(ser)
@@ -175,17 +175,17 @@ func (m holder) Query(w http.ResponseWriter, req *http.Request) {
 	i.SetQueryArgs(dict)
 	ret, err := tree.AcceptValue(i)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadGateway)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 	pval, err := value.ToProtoValue(ret)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadGateway)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 	ser, err := proto.Marshal(&pval)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadGateway)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 	w.Write(ser)
@@ -204,7 +204,7 @@ func (m holder) StoreAggregate(w http.ResponseWriter, req *http.Request) {
 	}
 	// call controller
 	if err = aggregate2.Store(m.plane, agg); err != nil {
-		http.Error(w, err.Error(), http.StatusBadGateway)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 }
@@ -221,18 +221,18 @@ func (m holder) RetrieveAggregate(w http.ResponseWriter, req *http.Request) {
 		// we don't throw an error, just return empty response
 		return
 	} else if err != nil {
-		http.Error(w, err.Error(), http.StatusBadGateway)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 	// to send ret back, we will convert it to proto, marshal it and then write it back
 	protoRet, err := aggregate.ToProtoAggregate(ret)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadGateway)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 	ser, err := proto.Marshal(&protoRet)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadGateway)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 	w.Write(ser)
@@ -252,13 +252,13 @@ func (m holder) AggregateValue(w http.ResponseWriter, req *http.Request) {
 	// call controller
 	ret, err := aggregate2.Value(m.plane, getAggValue.AggType, getAggValue.AggName, getAggValue.Key)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadGateway)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 	// marshal ret and then write it back
 	ser, err := value.Marshal(ret)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadGateway)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 	w.Write(ser)
