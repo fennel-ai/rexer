@@ -17,6 +17,13 @@ metadata:
   name: data-host
 spec:
   hostname: "*"
+  acmeProvider:
+    authority: none
+  tlsSecret:
+    name: tls-cert
+  tls:
+    min_tls_version: v1.2
+    alpn_protocols: h2
   mappingSelector:
     matchLabels:
       svc: go-http
