@@ -40,6 +40,7 @@ func (m holder) Log(w http.ResponseWriter, req *http.Request) {
 	var pa actionlib.ProtoAction
 	if err := parse(req, &pa); err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
+		log.Printf("Error: %v", err)
 		return
 	}
 	a := actionlib.FromProtoAction(&pa)
@@ -48,6 +49,7 @@ func (m holder) Log(w http.ResponseWriter, req *http.Request) {
 	aid, err := action.Insert(m.plane, a)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
+		log.Printf("Error: %v", err)
 		return
 	}
 	// write the actionID back
@@ -58,6 +60,7 @@ func (m holder) Fetch(w http.ResponseWriter, req *http.Request) {
 	var protoRequest actionlib.ProtoActionFetchRequest
 	if err := parse(req, &protoRequest); err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
+		log.Printf("Error: %v", err)
 		return
 	}
 	request := actionlib.FromProtoActionFetchRequest(&protoRequest)
@@ -65,12 +68,14 @@ func (m holder) Fetch(w http.ResponseWriter, req *http.Request) {
 	actions, err := action.Fetch(m.plane, request)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
+		log.Printf("Error: %v", err)
 		return
 	}
 	actionList := actionlib.ToProtoActionList(actions)
 	ser, err := proto.Marshal(actionList)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
+		log.Printf("Error: %v", err)
 		return
 	}
 	w.Write(ser)
@@ -80,17 +85,20 @@ func (m holder) GetProfile(w http.ResponseWriter, req *http.Request) {
 	var protoReq profilelib.ProtoProfileItem
 	if err := parse(req, &protoReq); err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
+		log.Printf("Error: %v", err)
 		return
 	}
 	request, err := profilelib.FromProtoProfileItem(&protoReq)
 	if err != nil {
 		http.Error(w, fmt.Sprintf("invalid request: %v", err), http.StatusBadRequest)
+		log.Printf("Error: %v", err)
 		return
 	}
 	// send to controller
 	val, err := profile2.Get(m.plane, request)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
+		log.Printf("Error: %v", err)
 		return
 	}
 	if val == nil {
@@ -103,11 +111,13 @@ func (m holder) GetProfile(w http.ResponseWriter, req *http.Request) {
 	pval, err := value.ToProtoValue(val)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
+		log.Printf("Error: %v", err)
 		return
 	}
 	valueSer, err := proto.Marshal(&pval)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
+		log.Printf("Error: %v", err)
 		return
 	}
 	w.Write(valueSer)
@@ -119,16 +129,19 @@ func (m holder) SetProfile(w http.ResponseWriter, req *http.Request) {
 	var protoReq profilelib.ProtoProfileItem
 	if err := parse(req, &protoReq); err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
+		log.Printf("Error: %v", err)
 		return
 	}
 	request, err := profilelib.FromProtoProfileItem(&protoReq)
 	if err != nil {
 		http.Error(w, fmt.Sprintf("invalid request: %v", err), http.StatusBadRequest)
+		log.Printf("Error: %v", err)
 		return
 	}
 	// send to controller
 	if err = profile2.Set(m.plane, request); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
+		log.Printf("Error: %v", err)
 		return
 	}
 }
@@ -137,6 +150,7 @@ func (m holder) GetProfiles(w http.ResponseWriter, req *http.Request) {
 	var protoRequest profilelib.ProtoProfileFetchRequest
 	if err := parse(req, &protoRequest); err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
+		log.Printf("Error: %v", err)
 		return
 	}
 	request := profilelib.FromProtoProfileFetchRequest(&protoRequest)
@@ -144,16 +158,19 @@ func (m holder) GetProfiles(w http.ResponseWriter, req *http.Request) {
 	profiles, err := profile2.GetProfiles(m.plane, request)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
+		log.Printf("Error: %v", err)
 		return
 	}
 	profileList, err := profilelib.ToProtoProfileList(profiles)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
+		log.Printf("Error: %v", err)
 		return
 	}
 	ser, err := proto.Marshal(profileList)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
+		log.Printf("Error: %v", err)
 		return
 	}
 	w.Write(ser)
@@ -163,11 +180,13 @@ func (m holder) Query(w http.ResponseWriter, req *http.Request) {
 	var protoAstWithDict query.ProtoAstWithDict
 	if err := parse(req, &protoAstWithDict); err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
+		log.Printf("Error: %v", err)
 		return
 	}
 	tree, dict, err := query.FromProtoAstWithDict(&protoAstWithDict)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
+		log.Printf("Error: %v", err)
 		return
 	}
 	// execute the tree
@@ -176,16 +195,19 @@ func (m holder) Query(w http.ResponseWriter, req *http.Request) {
 	ret, err := tree.AcceptValue(i)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
+		log.Printf("Error: %v", err)
 		return
 	}
 	pval, err := value.ToProtoValue(ret)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
+		log.Printf("Error: %v", err)
 		return
 	}
 	ser, err := proto.Marshal(&pval)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
+		log.Printf("Error: %v", err)
 		return
 	}
 	w.Write(ser)
@@ -195,16 +217,19 @@ func (m holder) StoreAggregate(w http.ResponseWriter, req *http.Request) {
 	var protoAgg aggregate.ProtoAggregate
 	if err := parse(req, &protoAgg); err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
+		log.Printf("Error: %v", err)
 		return
 	}
 	agg, err := aggregate.FromProtoAggregate(protoAgg)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
+		log.Printf("Error: %v", err)
 		return
 	}
 	// call controller
 	if err = aggregate2.Store(m.plane, agg); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
+		log.Printf("Error: %v", err)
 		return
 	}
 }
@@ -213,6 +238,7 @@ func (m holder) RetrieveAggregate(w http.ResponseWriter, req *http.Request) {
 	var protoReq aggregate.AggRequest
 	if err := parse(req, &protoReq); err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
+		log.Printf("Error: %v", err)
 		return
 	}
 	// call controller
@@ -222,17 +248,20 @@ func (m holder) RetrieveAggregate(w http.ResponseWriter, req *http.Request) {
 		return
 	} else if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
+		log.Printf("Error: %v", err)
 		return
 	}
 	// to send ret back, we will convert it to proto, marshal it and then write it back
 	protoRet, err := aggregate.ToProtoAggregate(ret)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
+		log.Printf("Error: %v", err)
 		return
 	}
 	ser, err := proto.Marshal(&protoRet)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
+		log.Printf("Error: %v", err)
 		return
 	}
 	w.Write(ser)
@@ -242,23 +271,27 @@ func (m holder) AggregateValue(w http.ResponseWriter, req *http.Request) {
 	var protoReq aggregate.ProtoGetAggValueRequest
 	if err := parse(req, &protoReq); err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
+		log.Printf("Error: %v", err)
 		return
 	}
 	getAggValue, err := aggregate.FromProtoGetAggValueRequest(&protoReq)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
+		log.Printf("Error: %v", err)
 		return
 	}
 	// call controller
 	ret, err := aggregate2.Value(m.plane, getAggValue.AggType, getAggValue.AggName, getAggValue.Key)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
+		log.Printf("Error: %v", err)
 		return
 	}
 	// marshal ret and then write it back
 	ser, err := value.Marshal(ret)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
+		log.Printf("Error: %v", err)
 		return
 	}
 	w.Write(ser)
