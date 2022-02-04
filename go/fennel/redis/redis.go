@@ -2,7 +2,10 @@ package redis
 
 import (
 	"crypto/tls"
+	"log"
+
 	"fennel/resource"
+
 	"github.com/alicebob/miniredis/v2"
 	"github.com/go-redis/redis/v8"
 )
@@ -39,15 +42,11 @@ type ClientConfig struct {
 var _ resource.Config = ClientConfig{}
 
 func (conf ClientConfig) Materialize() (resource.Resource, error) {
+	log.Printf("Creating a redis client for: %s", conf.Addr)
 	return Client{conf, redis.NewClient(&redis.Options{
 		Addr:      conf.Addr,
 		TLSConfig: conf.TLSConfig,
 	})}, nil
-}
-
-var defaultConfig = ClientConfig{
-	Addr:      "clustercfg.redis-db-e5ae558.sumkzb.memorydb.ap-south-1.amazonaws.com:6379",
-	TLSConfig: &tls.Config{},
 }
 
 //=================================
