@@ -30,7 +30,7 @@ var flags struct {
 
 func init() {
 	// Parse flags / environment variables.
-	arg.MustParse(&flags)
+	arg.Parse(&flags)
 }
 
 /*
