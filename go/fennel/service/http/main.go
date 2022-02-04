@@ -20,6 +20,7 @@ import (
 	"fennel/lib/value"
 	"fennel/plane"
 
+	"github.com/alexflint/go-arg"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -313,7 +314,13 @@ func main() {
 	// spin up http service
 	server := &http.Server{Addr: fmt.Sprintf(":%d", httplib.PORT)}
 	mux := http.NewServeMux()
-	plane, err := plane.CreateFromEnv()
+
+	var flags struct {
+		plane.PlaneArgs
+	}
+	// Parse flags / environment variables.
+	arg.MustParse(&flags)
+	plane, err := plane.CreateFromArgs(&flags.PlaneArgs)
 	if err != nil {
 		panic(fmt.Sprintf("Failed to setup plane connectors: %v", err))
 

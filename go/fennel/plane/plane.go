@@ -10,12 +10,10 @@ import (
 	"fennel/lib/clock"
 	"fennel/lib/ftypes"
 	"fennel/redis"
-
-	"github.com/alexflint/go-arg"
 )
 
 // Flags for the aggreagator server.
-var flags struct {
+type PlaneArgs struct {
 	KafkaServer   string `arg:"--kafka-server,env:KAFKA_SERVER_ADDRESS"`
 	KafkaUsername string `arg:"--kafka-user,env:KAFKA_USERNAME"`
 	KafkaPassword string `arg:"--kafka-password,env:KAFKA_PASSWORD"`
@@ -26,11 +24,6 @@ var flags struct {
 	MysqlPassword string `arg:"--mysql-password,env:MYSQL_PASSWORD"`
 
 	RedisServer string `arg:"--redis-server,env:REDIS_SERVER_ADDRESS"`
-}
-
-func init() {
-	// Parse flags / environment variables.
-	arg.Parse(&flags)
 }
 
 /*
@@ -59,15 +52,14 @@ type Plane struct {
 	Clock          clock.Clock
 }
 
-func CreateFromEnv() (plane Plane, err error) {
-
+func CreateFromArgs(args *PlaneArgs) (plane Plane, err error) {
 	planeID := ftypes.PlaneID(1)
 
 	mysqlConfig := db.MySQLConfig{
-		Host:     flags.MysqlHost,
-		DBname:   flags.MysqlDB,
-		Username: flags.MysqlUsername,
-		Password: flags.MysqlPassword,
+		Host:     args.MysqlHost,
+		DBname:   args.MysqlDB,
+		Username: args.MysqlUsername,
+		Password: args.MysqlPassword,
 		PlaneID:  planeID,
 	}
 	sqlConn, err := mysqlConfig.Materialize()
@@ -76,7 +68,7 @@ func CreateFromEnv() (plane Plane, err error) {
 	}
 
 	redisConfig := redis.ClientConfig{
-		Addr:      flags.RedisServer,
+		Addr:      args.RedisServer,
 		TLSConfig: &tls.Config{},
 	}
 	redisClient, err := redisConfig.Materialize()
@@ -85,9 +77,9 @@ func CreateFromEnv() (plane Plane, err error) {
 	}
 
 	kafkaConsumerConfig := kafka.RemoteConsumerConfig{
-		BootstrapServer: flags.KafkaServer,
-		Username:        flags.KafkaUsername,
-		Password:        flags.KafkaPassword,
+		BootstrapServer: args.KafkaServer,
+		Username:        args.KafkaUsername,
+		Password:        args.KafkaPassword,
 		// TODO: configure topic id, group id, and offset policy.
 		GroupID:      "test",
 		Topic:        "actions",
@@ -99,9 +91,9 @@ func CreateFromEnv() (plane Plane, err error) {
 	}
 
 	kafkaProducerConfig := kafka.RemoteProducerConfig{
-		BootstrapServer: flags.KafkaServer,
-		Username:        flags.KafkaUsername,
-		Password:        flags.KafkaPassword,
+		BootstrapServer: args.KafkaServer,
+		Username:        args.KafkaUsername,
+		Password:        args.KafkaPassword,
 		// TODO: add topic id
 		Topic:         "actions",
 		RecreateTopic: false,
