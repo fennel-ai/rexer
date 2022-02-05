@@ -4,13 +4,13 @@ import (
 	"fennel/db"
 	"fennel/lib/ftypes"
 	"fennel/lib/query"
-	"fennel/plane"
+	"fennel/tier"
 	"fmt"
 	"strings"
 )
 
-func Insert(instance plane.Plane, custid ftypes.CustID, timestamp ftypes.Timestamp, querySer string) (uint64, error) {
-	tablename, err := planeTable(instance.ID)
+func Insert(instance tier.Tier, custid ftypes.CustID, timestamp ftypes.Timestamp, querySer string) (uint64, error) {
+	tablename, err := tieredTableName(instance.ID)
 	if err != nil {
 		return 0, err
 	}
@@ -26,8 +26,8 @@ func Insert(instance plane.Plane, custid ftypes.CustID, timestamp ftypes.Timesta
 	return uint64(queryID), nil
 }
 
-func Get(instance plane.Plane, request query.QueryRequest) ([]query.QuerySer, error) {
-	tablename, err := planeTable(instance.ID)
+func Get(instance tier.Tier, request query.QueryRequest) ([]query.QuerySer, error) {
+	tablename, err := tieredTableName(instance.ID)
 	if err != nil {
 		return nil, err
 	}
@@ -61,6 +61,6 @@ func Get(instance plane.Plane, request query.QueryRequest) ([]query.QuerySer, er
 	}
 }
 
-func planeTable(id ftypes.PlaneID) (string, error) {
-	return db.ToPlaneTablename(id, "query_ast")
+func tieredTableName(id ftypes.TierID) (string, error) {
+	return db.TieredTableName(id, "query_ast")
 }

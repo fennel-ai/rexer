@@ -3,15 +3,15 @@ package profile
 import (
 	"fennel/lib/profile"
 	"fennel/lib/value"
-	"fennel/plane"
 	"fennel/test"
+	"fennel/tier"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 )
 
 func testProviderBasic(t *testing.T, p provider) {
-	this, err := test.MockPlane()
+	this, err := test.Tier()
 	assert.NoError(t, err)
 	val := value.Int(2)
 	expected, _ := value.Marshal(val)
@@ -36,7 +36,7 @@ func testProviderBasic(t *testing.T, p provider) {
 }
 
 func testProviderVersion(t *testing.T, p provider) {
-	this, err := test.MockPlane()
+	this, err := test.Tier()
 	assert.NoError(t, err)
 
 	profiles := make([]profile.ProfileItemSer, 0)
@@ -90,18 +90,18 @@ func testProviderVersion(t *testing.T, p provider) {
 	assert.Equal(t, []byte(nil), found)
 }
 
-func checkSet(t *testing.T, p provider, this plane.Plane, pi profile.ProfileItemSer, valueSer []byte) {
+func checkSet(t *testing.T, p provider, this tier.Tier, pi profile.ProfileItemSer, valueSer []byte) {
 	err := p.set(this, pi.CustID, pi.OType, pi.Oid, pi.Key, pi.Version, valueSer)
 	assert.NoError(t, err)
 }
 
-func checkGet(t *testing.T, p provider, this plane.Plane, pi profile.ProfileItemSer, expected []byte) {
+func checkGet(t *testing.T, p provider, this tier.Tier, pi profile.ProfileItemSer, expected []byte) {
 	found, err := p.get(this, pi.CustID, pi.OType, pi.Oid, pi.Key, pi.Version)
 	assert.NoError(t, err)
 	assert.Equal(t, expected, found)
 }
 
-func checkMultiGet(t *testing.T, this plane.Plane, request profile.ProfileFetchRequest, expected []profile.ProfileItemSer) {
+func checkMultiGet(t *testing.T, this tier.Tier, request profile.ProfileFetchRequest, expected []profile.ProfileItemSer) {
 	found, err := GetProfiles(this, request)
 	assert.NoError(t, err)
 	assert.ElementsMatch(t, expected, found)

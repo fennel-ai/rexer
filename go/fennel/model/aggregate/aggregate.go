@@ -5,18 +5,18 @@ import (
 	"fennel/db"
 	"fennel/lib/aggregate"
 	"fennel/lib/ftypes"
-	"fennel/plane"
+	"fennel/tier"
 	"fmt"
 )
 
-func Store(plane plane.Plane, aggtype ftypes.AggType, name ftypes.AggName, querySer []byte, ts ftypes.Timestamp, optionSer []byte) error {
+func Store(plane tier.Tier, aggtype ftypes.AggType, name ftypes.AggName, querySer []byte, ts ftypes.Timestamp, optionSer []byte) error {
 	if len(aggtype) > 255 {
 		return fmt.Errorf("aggregate type can not be longer than 255 chars")
 	}
 	if len(name) > 255 {
 		return fmt.Errorf("aggregate name can not be longer than 255 chars")
 	}
-	tablename, err := planeTable(plane.ID)
+	tablename, err := tieredTableName(plane.ID)
 	if err != nil {
 		return err
 	}
@@ -25,9 +25,9 @@ func Store(plane plane.Plane, aggtype ftypes.AggType, name ftypes.AggName, query
 	return err
 }
 
-func Retrieve(plane plane.Plane, aggregateType ftypes.AggType, name ftypes.AggName) (aggregate.AggregateSer, error) {
+func Retrieve(plane tier.Tier, aggregateType ftypes.AggType, name ftypes.AggName) (aggregate.AggregateSer, error) {
 	var ret aggregate.AggregateSer
-	tablename, err := planeTable(plane.ID)
+	tablename, err := tieredTableName(plane.ID)
 	if err != nil {
 		return ret, err
 	}
@@ -46,9 +46,9 @@ func Retrieve(plane plane.Plane, aggregateType ftypes.AggType, name ftypes.AggNa
 	return ret, nil
 }
 
-func RetrieveAll(plane plane.Plane, aggtype ftypes.AggType) ([]aggregate.AggregateSer, error) {
+func RetrieveAll(plane tier.Tier, aggtype ftypes.AggType) ([]aggregate.AggregateSer, error) {
 	ret := make([]aggregate.AggregateSer, 0)
-	tablename, err := planeTable(plane.ID)
+	tablename, err := tieredTableName(plane.ID)
 	if err != nil {
 		return ret, err
 	}
@@ -65,6 +65,6 @@ func RetrieveAll(plane plane.Plane, aggtype ftypes.AggType) ([]aggregate.Aggrega
 	return ret, nil
 }
 
-func planeTable(planeID ftypes.PlaneID) (string, error) {
-	return db.ToPlaneTablename(planeID, "aggregate_config")
+func tieredTableName(planeID ftypes.TierID) (string, error) {
+	return db.TieredTableName(planeID, "aggregate_config")
 }

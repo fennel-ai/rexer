@@ -8,7 +8,7 @@ import (
 )
 
 func TestGetIncrement(t *testing.T) {
-	instance, err := test.MockPlane()
+	instance, err := test.Tier()
 	assert.NoError(t, err)
 
 	name := ftypes.AggName("mycounter")

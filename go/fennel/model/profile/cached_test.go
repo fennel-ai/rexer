@@ -4,8 +4,8 @@ import (
 	"testing"
 
 	"fennel/lib/ftypes"
-	"fennel/plane"
 	"fennel/test"
+	"fennel/tier"
 
 	"github.com/stretchr/testify/assert"
 )
@@ -17,10 +17,10 @@ type mockProvider struct {
 func (m *mockProvider) change(n []byte) {
 	m.ret = n
 }
-func (m *mockProvider) set(this plane.Plane, custid ftypes.CustID, otype ftypes.OType, oid uint64, key string, version uint64, valueSer []byte) error {
+func (m *mockProvider) set(this tier.Tier, custid ftypes.CustID, otype ftypes.OType, oid uint64, key string, version uint64, valueSer []byte) error {
 	return nil
 }
-func (m *mockProvider) get(this plane.Plane, custid ftypes.CustID, otype ftypes.OType, oid uint64, key string, version uint64) ([]byte, error) {
+func (m *mockProvider) get(this tier.Tier, custid ftypes.CustID, otype ftypes.OType, oid uint64, key string, version uint64) ([]byte, error) {
 	return m.ret, nil
 }
 
@@ -32,7 +32,7 @@ func TestCachedDBBasic(t *testing.T) {
 
 func TestCaching(t *testing.T) {
 	// test that we cache the value instead of always pulling from ground truth
-	this, err := test.MockPlane()
+	this, err := test.Tier()
 	assert.NoError(t, err)
 
 	origmock := []byte{1, 2, 3}

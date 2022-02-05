@@ -6,7 +6,7 @@ import (
 	"fennel/lib/ftypes"
 	"fennel/lib/profile"
 	"fennel/lib/value"
-	"fennel/plane"
+	"fennel/tier"
 )
 
 func init() {
@@ -14,7 +14,7 @@ func init() {
 }
 
 type profileOp struct {
-	instance plane.Plane
+	instance tier.Tier
 }
 
 func (p *profileOp) Init(args value.Dict, bootargs map[string]interface{}) error {

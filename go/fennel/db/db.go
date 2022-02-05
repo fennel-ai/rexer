@@ -4,22 +4,20 @@ import (
 	"fennel/lib/ftypes"
 	"fennel/resource"
 	"fmt"
-	"log"
-	"os"
-
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/jmoiron/sqlx"
 	_ "github.com/mattn/go-sqlite3"
+	"os"
 )
 
 type Connection struct {
-	config  resource.Config
-	planeID ftypes.PlaneID
+	config resource.Config
+	tierID ftypes.TierID
 	*sqlx.DB
 }
 
-func (c Connection) PlaneID() ftypes.PlaneID {
-	return c.planeID
+func (c Connection) TierID() ftypes.TierID {
+	return c.tierID
 }
 
 func (c Connection) Teardown() error {
@@ -41,13 +39,13 @@ var _ resource.Resource = Connection{}
 //=================================
 
 type SQLiteConfig struct {
-	dbname  string
-	planeID ftypes.PlaneID
+	dbname string
+	TierID ftypes.TierID
 }
 
 func (conf SQLiteConfig) Materialize() (resource.Resource, error) {
-	if conf.planeID == 0 {
-		return nil, fmt.Errorf("plane ID not initialized")
+	if conf.TierID == 0 {
+		return nil, fmt.Errorf("tier ID not initialized")
 	}
 	dbname := conf.dbname
 
@@ -63,7 +61,7 @@ func (conf SQLiteConfig) Materialize() (resource.Resource, error) {
 	if err != nil {
 		return nil, err
 	}
-	conn := Connection{config: conf, DB: DB, planeID: conf.planeID}
+	conn := Connection{config: conf, DB: DB, tierID: conf.TierID}
 	if err = SyncSchema(conn); err != nil {
 		return nil, err
 	}
@@ -77,7 +75,7 @@ var _ resource.Config = SQLiteConfig{}
 //=================================
 
 type MySQLConfig struct {
-	PlaneID  ftypes.PlaneID
+	TierID   ftypes.TierID
 	DBname   string
 	Username string
 	Password string
@@ -87,21 +85,20 @@ type MySQLConfig struct {
 var _ resource.Config = MySQLConfig{}
 
 func (conf MySQLConfig) Materialize() (resource.Resource, error) {
-	if conf.PlaneID == 0 {
-		return Connection{}, fmt.Errorf("plane ID not specified")
+	if conf.TierID == 0 {
+		return Connection{}, fmt.Errorf("tier ID not specified")
 	}
 	connectStr := fmt.Sprintf(
 		"%s:%s@tcp(%s)/%s?tls=true",
 		conf.Username, conf.Password, conf.Host, conf.DBname,
 	)
-	log.Printf("connecting to db at %s", connectStr)
-
 	DB, err := sqlx.Open("mysql", connectStr)
 	if err != nil {
 		return nil, err
 	}
-	conn := Connection{config: conf, DB: DB, planeID: conf.PlaneID}
-	if err = SyncSchema(conn); err != nil {
+
+	conn := Connection{config: conf, DB: DB, tierID: conf.TierID}
+	if err := SyncSchema(conn); err != nil {
 		return nil, err
 	}
 	return conn, nil

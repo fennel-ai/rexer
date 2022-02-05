@@ -12,7 +12,7 @@ import (
 
 // this test verifies that given a list of actions, the query is run on it to produce the right table
 func TestTransformActions(t *testing.T) {
-	instance, err := test.MockPlane()
+	instance, err := test.Tier()
 	assert.NoError(t, err)
 	custid := ftypes.CustID(12312)
 	actions := make([]action.Action, 0)

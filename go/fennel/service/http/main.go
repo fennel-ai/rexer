@@ -18,14 +18,14 @@ import (
 	profilelib "fennel/lib/profile"
 	"fennel/lib/query"
 	"fennel/lib/value"
-	"fennel/plane"
+	"fennel/tier"
+	arg "github.com/alexflint/go-arg"
 
-	"github.com/alexflint/go-arg"
 	"google.golang.org/protobuf/proto"
 )
 
 type holder struct {
-	plane plane.Plane
+	plane tier.Tier
 }
 
 func parse(req *http.Request, msg proto.Message) error {
@@ -316,11 +316,11 @@ func main() {
 	mux := http.NewServeMux()
 
 	var flags struct {
-		plane.PlaneArgs
+		tier.PlaneArgs
 	}
 	// Parse flags / environment variables.
 	arg.MustParse(&flags)
-	plane, err := plane.CreateFromArgs(&flags.PlaneArgs)
+	plane, err := tier.CreateFromArgs(&flags.PlaneArgs)
 	if err != nil {
 		panic(fmt.Sprintf("Failed to setup plane connectors: %v", err))
 

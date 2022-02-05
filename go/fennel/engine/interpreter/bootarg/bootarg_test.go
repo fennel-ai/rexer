@@ -2,15 +2,15 @@ package bootarg
 
 import (
 	"fennel/db"
-	instance2 "fennel/plane"
 	"fennel/redis"
 	"fennel/test"
+	instance2 "fennel/tier"
 	"github.com/stretchr/testify/assert"
 	"testing"
 )
 
 func Test_Create_GetInstance(t *testing.T) {
-	instance := instance2.Plane{
+	instance := instance2.Tier{
 		CustID:         123,
 		DB:             db.Connection{},
 		Redis:          redis.Client{},

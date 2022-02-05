@@ -4,7 +4,7 @@ import (
 	"fennel/db"
 	"fennel/lib/ftypes"
 	"fennel/lib/profile"
-	"fennel/plane"
+	"fennel/tier"
 	"fmt"
 	"strings"
 
@@ -12,21 +12,21 @@ import (
 	_ "github.com/mattn/go-sqlite3"
 )
 
-//func set(this instance.Plane, otype uint32, oid uint64, key string, version uint64, valueSer []byte) error {
+//func set(this instance.Tier, otype uint32, oid uint64, key string, version uint64, valueSer []byte) error {
 //}
 
-//func get(this instance.Plane, otype uint32, oid uint64, key string, version uint64) ([]byte, error) {
+//func get(this instance.Tier, otype uint32, oid uint64, key string, version uint64) ([]byte, error) {
 //}
 
 // we create a private interface to make testing caching easier
 type provider interface {
-	set(this plane.Plane, custid ftypes.CustID, otype ftypes.OType, oid uint64, key string, version uint64, valueSer []byte) error
-	get(this plane.Plane, custid ftypes.CustID, otype ftypes.OType, oid uint64, key string, version uint64) ([]byte, error)
+	set(this tier.Tier, custid ftypes.CustID, otype ftypes.OType, oid uint64, key string, version uint64, valueSer []byte) error
+	get(this tier.Tier, custid ftypes.CustID, otype ftypes.OType, oid uint64, key string, version uint64) ([]byte, error)
 }
 
 type dbProvider struct{}
 
-func (D dbProvider) set(this plane.Plane, custid ftypes.CustID, otype ftypes.OType, oid uint64, key string, version uint64, valueSer []byte) error {
+func (D dbProvider) set(this tier.Tier, custid ftypes.CustID, otype ftypes.OType, oid uint64, key string, version uint64, valueSer []byte) error {
 	if version == 0 {
 		return fmt.Errorf("version can not be zero")
 	}
@@ -36,7 +36,7 @@ func (D dbProvider) set(this plane.Plane, custid ftypes.CustID, otype ftypes.OTy
 	if len(otype) > 256 {
 		return fmt.Errorf("otype too long: otypes can only be upto 256 chars")
 	}
-	tablename, err := planeTable(this.ID)
+	tablename, err := tieredTableName(this.ID)
 	if err != nil {
 		return err
 	}
@@ -53,8 +53,8 @@ func (D dbProvider) set(this plane.Plane, custid ftypes.CustID, otype ftypes.OTy
 	return nil
 }
 
-func (D dbProvider) get(this plane.Plane, custid ftypes.CustID, otype ftypes.OType, oid uint64, key string, version uint64) ([]byte, error) {
-	tablename, err := planeTable(this.ID)
+func (D dbProvider) get(this tier.Tier, custid ftypes.CustID, otype ftypes.OType, oid uint64, key string, version uint64) ([]byte, error) {
+	tablename, err := tieredTableName(this.ID)
 	if err != nil {
 		return nil, err
 	}
@@ -104,8 +104,8 @@ func (D dbProvider) get(this plane.Plane, custid ftypes.CustID, otype ftypes.OTy
 var _ provider = dbProvider{}
 
 // Whatever properties of 'request' are non-zero are used to filter eligible profiles
-func GetProfiles(this plane.Plane, request profile.ProfileFetchRequest) ([]profile.ProfileItemSer, error) {
-	tablename, err := planeTable(this.ID)
+func GetProfiles(this tier.Tier, request profile.ProfileFetchRequest) ([]profile.ProfileItemSer, error) {
+	tablename, err := tieredTableName(this.ID)
 	if err != nil {
 		return nil, err
 	}
@@ -144,6 +144,6 @@ func GetProfiles(this plane.Plane, request profile.ProfileFetchRequest) ([]profi
 	}
 }
 
-func planeTable(planeID ftypes.PlaneID) (string, error) {
-	return db.ToPlaneTablename(planeID, "profile")
+func tieredTableName(planeID ftypes.TierID) (string, error) {
+	return db.TieredTableName(planeID, "profile")
 }

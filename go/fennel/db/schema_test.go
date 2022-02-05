@@ -13,7 +13,7 @@ import (
 // dropDB drops all tables in the given database.
 func dropDB(db Connection) error {
 	for _, name := range tablenames {
-		ptablename, err := ToPlaneTablename(db.PlaneID(), name)
+		ptablename, err := TieredTableName(db.TierID(), name)
 		if err != nil {
 			return err
 		}
@@ -29,11 +29,11 @@ func TestSyncSchema(t *testing.T) {
 	// get default DB
 	rand.Seed(time.Now().UnixNano())
 	config := MySQLConfig{
-		PlaneID:  ftypes.PlaneID(rand.Uint32()),
-		DBname:   "fennel-test",
-		Username: "ftm4ey929riz",
-		Password: "pscale_pw_YdsInnGezBNibWLaSXzjWUNHP2ljuXGJUAq8y7iRXqQ",
-		Host:     "9kzpy3s6wi0u.us-west-2.psdb.cloud",
+		TierID:   ftypes.TierID(rand.Uint32()),
+		DBname:   "fennel_test",
+		Username: "admin",
+		Password: "foundationdb",
+		Host:     "database-nikhil-test.cluster-c00d7gkxaysk.us-west-2.rds.amazonaws.com",
 	}
 	resource, err := config.Materialize()
 	assert.NoError(t, err)
@@ -57,11 +57,13 @@ func TestSyncSchema(t *testing.T) {
 	assert.True(t, version >= 2)
 
 	// and we should be able to do queries against schema_test table (which is our second table for testing)
-	_, err = db.Query("insert into schema_test values (?, ?);", 1, 2)
+	name, err := TieredTableName(db.TierID(), "schema_test")
 	assert.NoError(t, err)
-	_, err = db.Query("insert into schema_test values (?, ?);", 3, 4)
+	_, err = db.Query(fmt.Sprintf("insert into %s values (?, ?);", name), 1, 2)
 	assert.NoError(t, err)
-	row := db.QueryRow("select zkey + value as total from schema_test where zkey = 3;")
+	_, err = db.Query(fmt.Sprintf("insert into %s values (?, ?);", name), 3, 4)
+	assert.NoError(t, err)
+	row := db.QueryRow(fmt.Sprintf("select zkey + value as total from %s where zkey = 3;", name))
 	var total sql.NullInt32
 
 	row.Scan(&total)

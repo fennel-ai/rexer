@@ -4,12 +4,12 @@ import (
 	"database/sql"
 	"fennel/db"
 	"fennel/lib/ftypes"
-	"fennel/plane"
+	"fennel/tier"
 	"fmt"
 )
 
-func Get(this plane.Plane, aggtype ftypes.AggType, aggname ftypes.AggName) (ftypes.OidType, error) {
-	tablename, err := planeTable(this.ID)
+func Get(this tier.Tier, aggtype ftypes.AggType, aggname ftypes.AggName) (ftypes.OidType, error) {
+	tablename, err := tieredTableName(this.ID)
 	if err != nil {
 		return 0, err
 	}
@@ -34,8 +34,8 @@ func Get(this plane.Plane, aggtype ftypes.AggType, aggname ftypes.AggName) (ftyp
 	}
 }
 
-func Set(this plane.Plane, aggtype ftypes.AggType, aggname ftypes.AggName, checkpoint ftypes.OidType) error {
-	tablename, err := planeTable(this.ID)
+func Set(this tier.Tier, aggtype ftypes.AggType, aggname ftypes.AggName, checkpoint ftypes.OidType) error {
+	tablename, err := tieredTableName(this.ID)
 	if err != nil {
 		return err
 	}
@@ -51,6 +51,6 @@ func Set(this plane.Plane, aggtype ftypes.AggType, aggname ftypes.AggName, check
 	return err
 }
 
-func planeTable(planeID ftypes.PlaneID) (string, error) {
-	return db.ToPlaneTablename(planeID, "checkpoint")
+func tieredTableName(planeID ftypes.TierID) (string, error) {
+	return db.TieredTableName(planeID, "checkpoint")
 }
