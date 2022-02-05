@@ -20,10 +20,6 @@ func (c Connection) TierID() ftypes.TierID {
 	return c.tierID
 }
 
-func (c Connection) Teardown() error {
-	return nil
-}
-
 func (c Connection) Close() error {
 	return c.Close()
 }

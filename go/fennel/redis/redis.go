@@ -12,8 +12,6 @@ type Client struct {
 	*redis.Client
 }
 
-func (c Client) Teardown() error { return nil }
-
 func (c Client) Type() resource.Type { return resource.RedisClient }
 
 func (c Client) Close() error {

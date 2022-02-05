@@ -29,10 +29,6 @@ func (k RemoteProducer) TierID() ftypes.TierID {
 	return k.tierID
 }
 
-func (k RemoteProducer) Teardown() error {
-	return nil
-}
-
 func (k RemoteProducer) Type() resource.Type {
 	return resource.KafkaProducer
 }

@@ -25,6 +25,5 @@ type Config interface {
 
 type Resource interface {
 	Close() error
-	Teardown() error
 	Type() Type
 }

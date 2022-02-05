@@ -26,10 +26,6 @@ func (k RemoteConsumer) Close() error {
 	return nil
 }
 
-func (k RemoteConsumer) Teardown() error {
-	return nil
-}
-
 func (k RemoteConsumer) Type() resource.Type {
 	return resource.KafkaConsumer
 }
