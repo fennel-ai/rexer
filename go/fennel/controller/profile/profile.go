@@ -9,14 +9,14 @@ import (
 	"time"
 )
 
-func Get(this tier.Tier, request profilelib.ProfileItem) (value.Value, error) {
+func Get(tier tier.Tier, request profilelib.ProfileItem) (value.Value, error) {
 	if request.CustID == 0 {
-		request.CustID = this.CustID
+		request.CustID = tier.CustID
 	}
 	if err := request.Validate(); err != nil {
 		return nil, err
 	}
-	valueSer, err := profile.Get(this, request.CustID, request.OType, request.Oid, request.Key, request.Version)
+	valueSer, err := profile.Get(tier, request.CustID, request.OType, request.Oid, request.Key, request.Version)
 	if err != nil {
 		return nil, err
 	} else if valueSer == nil {
@@ -34,9 +34,9 @@ func Get(this tier.Tier, request profilelib.ProfileItem) (value.Value, error) {
 	return val, nil
 }
 
-func Set(this tier.Tier, request profilelib.ProfileItem) error {
+func Set(tier tier.Tier, request profilelib.ProfileItem) error {
 	if request.CustID == 0 {
-		request.CustID = this.CustID
+		request.CustID = tier.CustID
 	}
 	if err := request.Validate(); err != nil {
 		return err
@@ -52,14 +52,14 @@ func Set(this tier.Tier, request profilelib.ProfileItem) error {
 	if err != nil {
 		return err
 	}
-	if err = profile.Set(this, request.CustID, request.OType, request.Oid, request.Key, request.Version, valSer); err != nil {
+	if err = profile.Set(tier, request.CustID, request.OType, request.Oid, request.Key, request.Version, valSer); err != nil {
 		return err
 	}
 	return nil
 }
 
-func GetProfiles(this tier.Tier, request profilelib.ProfileFetchRequest) ([]profilelib.ProfileItem, error) {
-	profilesSer, err := profile.GetProfiles(this, request)
+func GetProfiles(tier tier.Tier, request profilelib.ProfileFetchRequest) ([]profilelib.ProfileItem, error) {
+	profilesSer, err := profile.GetProfiles(tier, request)
 	if err != nil {
 		return nil, err
 	}

@@ -14,12 +14,12 @@ func init() {
 }
 
 type profileOp struct {
-	instance tier.Tier
+	tier tier.Tier
 }
 
 func (p *profileOp) Init(args value.Dict, bootargs map[string]interface{}) error {
 	var err error
-	if p.instance, err = bootarg.GetInstance(bootargs); err != nil {
+	if p.tier, err = bootarg.GetTier(bootargs); err != nil {
 		return err
 	}
 	return nil
@@ -32,13 +32,13 @@ func (p *profileOp) Apply(_ value.Dict, in operators.InputIter, out *value.Table
 			return err
 		}
 		req := profile.ProfileItem{
-			CustID:  p.instance.CustID,
+			CustID:  p.tier.CustID,
 			OType:   ftypes.OType(kwargs["otype"].(value.String)),
 			Oid:     uint64(kwargs["oid"].(value.Int)),
 			Key:     string(kwargs["key"].(value.String)),
 			Version: uint64(kwargs["version"].(value.Int)),
 		}
-		if row["profile_value"], err = Get(p.instance, req); err != nil {
+		if row["profile_value"], err = Get(p.tier, req); err != nil {
 			return err
 		}
 		if err = out.Append(row); err != nil {

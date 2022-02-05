@@ -5,20 +5,20 @@ import (
 	"fmt"
 )
 
-func Create(instance tier.Tier) map[string]interface{} {
+func Create(tier tier.Tier) map[string]interface{} {
 	return map[string]interface{}{
-		"__instance__": instance,
+		"__tier__": tier,
 	}
 }
 
-func GetInstance(bootargs map[string]interface{}) (tier.Tier, error) {
-	v, ok := bootargs["__instance__"]
+func GetTier(bootargs map[string]interface{}) (tier.Tier, error) {
+	v, ok := bootargs["__tier__"]
 	if !ok {
-		return tier.Tier{}, fmt.Errorf("instance not found in bootargs")
+		return tier.Tier{}, fmt.Errorf("tier not found in bootargs")
 	}
 	ret, ok := v.(tier.Tier)
 	if !ok {
-		return tier.Tier{}, fmt.Errorf("__instance__ magic property had: '%v', not an instance", v)
+		return tier.Tier{}, fmt.Errorf("__tier__ magic property had: '%v', not a tier", v)
 	}
 	return ret, nil
 }

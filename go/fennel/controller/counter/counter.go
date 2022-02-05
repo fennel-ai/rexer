@@ -9,11 +9,11 @@ import (
 	"fmt"
 )
 
-func RollingValue(instance tier.Tier, agg aggregate.Aggregate, key value.Value) (value.Int, error) {
-	end := ftypes.Timestamp(instance.Clock.Now())
+func RollingValue(tier tier.Tier, agg aggregate.Aggregate, key value.Value) (value.Int, error) {
+	end := ftypes.Timestamp(tier.Clock.Now())
 	start := end - ftypes.Timestamp(agg.Options.Duration)
 	buckets := counter.BucketizeDuration(makeKey(key), start, end)
-	counts, err := counter.GetMulti(instance, agg.Name, buckets)
+	counts, err := counter.GetMulti(tier, agg.Name, buckets)
 	if err != nil {
 		return value.Int(0), err
 	}
@@ -24,8 +24,8 @@ func RollingValue(instance tier.Tier, agg aggregate.Aggregate, key value.Value) 
 	return value.Int(total), nil
 }
 
-func TimeseriesValue(instance tier.Tier, agg aggregate.Aggregate, key value.Value) (value.List, error) {
-	end := ftypes.Timestamp(instance.Clock.Now())
+func TimeseriesValue(tier tier.Tier, agg aggregate.Aggregate, key value.Value) (value.List, error) {
+	end := ftypes.Timestamp(tier.Clock.Now())
 	var start ftypes.Timestamp
 	switch agg.Options.Window {
 	case ftypes.Window_HOUR:
@@ -42,7 +42,7 @@ func TimeseriesValue(instance tier.Tier, agg aggregate.Aggregate, key value.Valu
 	if err != nil {
 		return value.List{}, err
 	}
-	counts, err := counter.GetMulti(instance, agg.Name, buckets)
+	counts, err := counter.GetMulti(tier, agg.Name, buckets)
 	if err != nil {
 		return value.List{}, err
 	}
@@ -59,7 +59,7 @@ func TimeseriesValue(instance tier.Tier, agg aggregate.Aggregate, key value.Valu
 	return ret, nil
 }
 
-func Update(instance tier.Tier, aggname ftypes.AggName, table value.Table) error {
+func Update(tier tier.Tier, aggname ftypes.AggName, table value.Table) error {
 	schema := table.Schema()
 	type_, ok := schema["key"]
 	if !ok {
@@ -76,7 +76,7 @@ func Update(instance tier.Tier, aggname ftypes.AggName, table value.Table) error
 		buckets = append(buckets, counter.BucketizeMoment(key, ftypes.Timestamp(ts), 1)...)
 	}
 	buckets = counter.MergeBuckets(buckets)
-	return counter.IncrementMulti(instance, aggname, buckets)
+	return counter.IncrementMulti(tier, aggname, buckets)
 }
 
 func makeKey(v value.Value) string {

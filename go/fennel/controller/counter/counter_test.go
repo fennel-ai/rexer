@@ -126,25 +126,25 @@ func TestTimeseries(t *testing.T) {
 }
 
 func TestCounterUpdateInvalid(t *testing.T) {
-	instance, err := test.Tier()
+	tier, err := test.Tier()
 	assert.NoError(t, err)
-	defer test.Teardown(instance)
+	defer test.Teardown(tier)
 	// no col for key or timestamp
-	assertInvalid(instance, t, value.Dict{"hi": value.Int(1)}, value.Dict{"hi": value.Int(3)})
+	assertInvalid(tier, t, value.Dict{"hi": value.Int(1)}, value.Dict{"hi": value.Int(3)})
 	// no col for key
-	assertInvalid(instance, t, value.Dict{"timestamp": value.Int(1)}, value.Dict{"timestamp": value.Int(3)})
+	assertInvalid(tier, t, value.Dict{"timestamp": value.Int(1)}, value.Dict{"timestamp": value.Int(3)})
 	// timestamp is not int
-	assertInvalid(instance, t,
+	assertInvalid(tier, t,
 		value.Dict{"timestamp": value.Double(1), "key": value.List{value.Int(1)}},
 		value.Dict{"timestamp": value.Double(3), "key": value.List{value.Int(3)}},
 	)
 }
 
-func assertInvalid(instance tier.Tier, t *testing.T, ds ...value.Dict) {
+func assertInvalid(tier tier.Tier, t *testing.T, ds ...value.Dict) {
 	table := value.NewTable()
 	for _, d := range ds {
 		err := table.Append(d)
 		assert.NoError(t, err)
 	}
-	assert.Error(t, Update(instance, "some name", table))
+	assert.Error(t, Update(tier, "some name", table))
 }

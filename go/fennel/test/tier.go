@@ -11,7 +11,7 @@ import (
 	"fennel/tier"
 )
 
-// Tier returns a plane to be used in tests - this is based off a standard
+// Tier returns a tier to be used in tests - this is based off a standard
 // test plane and as many resources of the tier are mocked as possible
 func Tier() (tier.Tier, error) {
 	rand.Seed(time.Now().UnixNano())

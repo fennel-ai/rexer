@@ -8,9 +8,9 @@ import (
 )
 
 func TestGetIncrement(t *testing.T) {
-	instance, err := test.Tier()
+	tier, err := test.Tier()
 	assert.NoError(t, err)
-	defer test.Teardown(instance)
+	defer test.Teardown(tier)
 
 	name := ftypes.AggName("mycounter")
 	key := "hello"
@@ -18,26 +18,26 @@ func TestGetIncrement(t *testing.T) {
 	ts := ftypes.Timestamp(3600*24*11 + 123)
 	// initially all gets will give zero
 	buckets := BucketizeMoment(key, ts, count)
-	counts, err := GetMulti(instance, name, buckets)
+	counts, err := GetMulti(tier, name, buckets)
 	assert.NoError(t, err)
 	assert.Equal(t, []int64{0, 0, 0}, counts)
 
 	// then do a couple of increments
-	err = IncrementMulti(instance, name, buckets)
+	err = IncrementMulti(tier, name, buckets)
 	assert.NoError(t, err)
-	counts, err = GetMulti(instance, name, buckets)
+	counts, err = GetMulti(tier, name, buckets)
 	assert.NoError(t, err)
 	assert.Equal(t, []int64{count, count, count}, counts)
 
 	// and again?
-	err = IncrementMulti(instance, name, buckets)
+	err = IncrementMulti(tier, name, buckets)
 	assert.NoError(t, err)
-	counts, err = GetMulti(instance, name, buckets)
+	counts, err = GetMulti(tier, name, buckets)
 	assert.NoError(t, err)
 	assert.Equal(t, []int64{2 * count, 2 * count, 2 * count}, counts)
 	// and single get also works
 	for _, b := range buckets {
-		f, err := Get(instance, name, b)
+		f, err := Get(tier, name, b)
 		assert.NoError(t, err)
 		assert.Equal(t, 2*count, f)
 	}
@@ -45,14 +45,14 @@ func TestGetIncrement(t *testing.T) {
 	for i, _ := range buckets {
 		buckets[i].Index += 1
 	}
-	counts, err = GetMulti(instance, name, buckets)
+	counts, err = GetMulti(tier, name, buckets)
 	assert.NoError(t, err)
 	assert.Equal(t, []int64{0, 0, 0}, counts)
 
 	// finally, this composes well with bucketize duration
 	// adding 60 seconds so all minute/hour etc windows are captured
 	buckets = BucketizeDuration(key, 0, ts+65)
-	counts, err = GetMulti(instance, name, buckets)
+	counts, err = GetMulti(tier, name, buckets)
 	assert.NoError(t, err)
 	total := int64(0)
 	for _, c := range counts {

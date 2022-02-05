@@ -15,40 +15,40 @@ import (
 	"fmt"
 )
 
-func Value(instance tier.Tier, aggtype ftypes.AggType, name ftypes.AggName, key value.Value) (value.Value, error) {
-	agg, err := Retrieve(instance, aggtype, name)
+func Value(tier tier.Tier, aggtype ftypes.AggType, name ftypes.AggName, key value.Value) (value.Value, error) {
+	agg, err := Retrieve(tier, aggtype, name)
 	if err != nil {
 		return value.Nil, err
 	}
-	return routeValue(instance, agg, key)
+	return routeValue(tier, agg, key)
 }
 
-func Update(instance tier.Tier, agg aggregate.Aggregate) error {
-	point, err := checkpoint.Get(instance, agg.Type, agg.Name)
+func Update(tier tier.Tier, agg aggregate.Aggregate) error {
+	point, err := checkpoint.Get(tier, agg.Type, agg.Name)
 	if err != nil {
 		return err
 	}
-	actions, err := action.Fetch(instance, libaction.ActionFetchRequest{MinActionID: point})
+	actions, err := action.Fetch(tier, libaction.ActionFetchRequest{MinActionID: point})
 	if err != nil {
 		return err
 	}
-	table, err := transformActions(instance, actions, agg.Query)
+	table, err := transformActions(tier, actions, agg.Query)
 	if err != nil {
 		return err
 	}
-	if err = routeUpdate(instance, agg.Name, agg.Type, table); err != nil {
+	if err = routeUpdate(tier, agg.Name, agg.Type, table); err != nil {
 		return err
 	}
 	last := actions[len(actions)-1]
-	return checkpoint.Set(instance, agg.Type, agg.Name, last.ActionID)
+	return checkpoint.Set(tier, agg.Type, agg.Name, last.ActionID)
 }
 
 //============================
 // Private helpers below
 //============================
 
-func transformActions(instance tier.Tier, actions []libaction.Action, query ast.Ast) (value.Table, error) {
-	interpreter, err := loadInterpreter(instance, actions)
+func transformActions(tier tier.Tier, actions []libaction.Action, query ast.Ast) (value.Table, error) {
+	interpreter, err := loadInterpreter(tier, actions)
 	if err != nil {
 		return value.Table{}, err
 	}
@@ -63,8 +63,8 @@ func transformActions(instance tier.Tier, actions []libaction.Action, query ast.
 	return table, nil
 }
 
-func loadInterpreter(instance tier.Tier, actions []libaction.Action) (interpreter.Interpreter, error) {
-	bootargs := bootarg.Create(instance)
+func loadInterpreter(tier tier.Tier, actions []libaction.Action) (interpreter.Interpreter, error) {
+	bootargs := bootarg.Create(tier)
 	ret := interpreter.NewInterpreter(bootargs)
 	table, err := libaction.ToTable(actions)
 	if err != nil {
@@ -76,25 +76,25 @@ func loadInterpreter(instance tier.Tier, actions []libaction.Action) (interprete
 	return ret, nil
 }
 
-func routeUpdate(instance tier.Tier, aggname ftypes.AggName, aggtype ftypes.AggType, table value.Table) error {
+func routeUpdate(tier tier.Tier, aggname ftypes.AggName, aggtype ftypes.AggType, table value.Table) error {
 	switch aggtype {
 	case "rolling_counter":
-		return counter.Update(instance, aggname, table)
+		return counter.Update(tier, aggname, table)
 	case "timeseries_counter":
-		return counter.Update(instance, aggname, table)
+		return counter.Update(tier, aggname, table)
 	default:
 		return fmt.Errorf("invalid aggregator type")
 	}
 }
 
-func routeValue(instance tier.Tier, agg aggregate.Aggregate, key value.Value) (value.Value, error) {
+func routeValue(tier tier.Tier, agg aggregate.Aggregate, key value.Value) (value.Value, error) {
 	switch agg.Type {
 	case "rolling_counter":
-		return counter.RollingValue(instance, agg, key)
+		return counter.RollingValue(tier, agg, key)
 	case "timeseries_counter":
-		return counter.TimeseriesValue(instance, agg, key)
+		return counter.TimeseriesValue(tier, agg, key)
 	case "stream":
-		return streamValue(instance, agg, key)
+		return streamValue(tier, agg, key)
 	default:
 		return value.Nil, fmt.Errorf("invalid aggregate type: %v", agg.Type)
 	}

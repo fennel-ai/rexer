@@ -11,11 +11,11 @@ import (
 	arg "github.com/alexflint/go-arg"
 )
 
-func processOnce(instance tier.Tier) {
+func processOnce(tier tier.Tier) {
 	wg := sync.WaitGroup{}
 	types := libaggregate.ValidTypes
 	for _, t := range types {
-		aggs, err := aggregate.RetrieveAll(instance, t)
+		aggs, err := aggregate.RetrieveAll(tier, t)
 		if err != nil {
 			panic(err)
 		}
@@ -23,7 +23,7 @@ func processOnce(instance tier.Tier) {
 			wg.Add(1)
 			go func(agg libaggregate.Aggregate) {
 				defer wg.Done()
-				err := aggregate.Update(instance, agg)
+				err := aggregate.Update(tier, agg)
 				if err != nil {
 					log.Printf("Error found in aggregate for agg type: %v and name: %s. Err: %v", agg.Type, agg.Name, err)
 				}
@@ -35,16 +35,16 @@ func processOnce(instance tier.Tier) {
 
 func main() {
 	var flags struct {
-		tier.PlaneArgs
+		tier.TierArgs
 	}
 	// Parse flags / environment variables.
 	arg.MustParse(&flags)
-	plane, err := tier.CreateFromArgs(&flags.PlaneArgs)
+	tier, err := tier.CreateFromArgs(&flags.TierArgs)
 	if err != nil {
 		panic(err)
 	}
 	for {
-		processOnce(plane)
+		processOnce(tier)
 		time.Sleep(time.Minute)
 	}
 }

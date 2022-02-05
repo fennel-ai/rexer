@@ -260,7 +260,7 @@ func (c *Client) RetrieveAggregate(aggtype ftypes.AggType, aggname ftypes.AggNam
 		// i.e no aggregate was found
 		return empty, aggregate.ErrNotFound
 	}
-	// convert server response back to an aggregate instance
+	// convert server response back to an aggregate tier
 	var pret aggregate.ProtoAggregate
 	if err = proto.Unmarshal(response, &pret); err != nil {
 		return empty, err

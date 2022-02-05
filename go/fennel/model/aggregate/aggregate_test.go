@@ -16,9 +16,9 @@ import (
 )
 
 func TestRetrieveStore(t *testing.T) {
-	instance, err := test.Tier()
+	tier, err := test.Tier()
 	assert.NoError(t, err)
-	defer test.Teardown(instance)
+	defer test.Teardown(tier)
 
 	query := ast.Atom{Type: ast.Int, Lexeme: "4"}
 	querySer, err := ast.Marshal(query)
@@ -30,7 +30,7 @@ func TestRetrieveStore(t *testing.T) {
 	optionSer, err := proto.Marshal(&options)
 	assert.NoError(t, err)
 	agg := aggregate.AggregateSer{
-		CustID:    instance.CustID,
+		CustID:    tier.CustID,
 		Type:      "rolling_counter",
 		Name:      "test_counter",
 		QuerySer:  querySer,
@@ -39,23 +39,23 @@ func TestRetrieveStore(t *testing.T) {
 	}
 
 	// initially we can't retrieve
-	found, err := Retrieve(instance, agg.Type, agg.Name)
+	found, err := Retrieve(tier, agg.Type, agg.Name)
 	assert.Error(t, err)
 	assert.ErrorIs(t, err, aggregate.ErrNotFound)
 
 	// store and retrieve again
-	err = Store(instance, agg.Type, agg.Name, agg.QuerySer, agg.Timestamp, agg.OptionSer)
+	err = Store(tier, agg.Type, agg.Name, agg.QuerySer, agg.Timestamp, agg.OptionSer)
 	assert.NoError(t, err)
-	found, err = Retrieve(instance, agg.Type, agg.Name)
+	found, err = Retrieve(tier, agg.Type, agg.Name)
 	assert.NoError(t, err)
 	assert.Equal(t, agg, found)
 
 	// and still can't retrieve if specs are different
-	found, err = Retrieve(instance, "random agg type", agg.Name)
+	found, err = Retrieve(tier, "random agg type", agg.Name)
 	assert.Error(t, err)
 	assert.ErrorIs(t, err, aggregate.ErrNotFound)
 
-	found, err = Retrieve(instance, agg.Type, "random agg name")
+	found, err = Retrieve(tier, agg.Type, "random agg name")
 	assert.Error(t, err)
 	assert.ErrorIs(t, err, aggregate.ErrNotFound)
 
@@ -63,52 +63,52 @@ func TestRetrieveStore(t *testing.T) {
 	query2 := ast.Atom{Type: ast.Int, Lexeme: "7"}
 	querySer2, err := ast.Marshal(query2)
 	assert.NoError(t, err)
-	err = Store(instance, agg.Type, agg.Name, querySer2, agg.Timestamp+1, agg.OptionSer)
+	err = Store(tier, agg.Type, agg.Name, querySer2, agg.Timestamp+1, agg.OptionSer)
 	assert.Error(t, err)
 }
 
 func TestRetrieveAll(t *testing.T) {
-	instance, err := test.Tier()
+	tier, err := test.Tier()
 	assert.NoError(t, err)
-	defer test.Teardown(instance)
+	defer test.Teardown(tier)
 
 	agg := aggregate.AggregateSer{
-		CustID:    instance.CustID,
+		CustID:    tier.CustID,
 		Type:      "rolling_counter",
 		Timestamp: 1,
 		OptionSer: []byte("some options"),
 	}
 	expected := make([]aggregate.AggregateSer, 0)
 	for i := 0; i < 5; i++ {
-		found, err := RetrieveAll(instance, agg.Type)
+		found, err := RetrieveAll(tier, agg.Type)
 		assert.NoError(t, err)
 		assert.Equal(t, expected, found)
 		agg.Name = ftypes.AggName(fmt.Sprintf("name:%d", i))
 		agg.QuerySer = []byte(fmt.Sprintf("some query: %d", i))
-		err = Store(instance, agg.Type, agg.Name, agg.QuerySer, agg.Timestamp, agg.OptionSer)
+		err = Store(tier, agg.Type, agg.Name, agg.QuerySer, agg.Timestamp, agg.OptionSer)
 		assert.NoError(t, err)
 		expected = append(expected, agg)
 	}
 }
 
 func TestLongStrings(t *testing.T) {
-	instance, err := test.Tier()
+	tier, err := test.Tier()
 	assert.NoError(t, err)
-	defer test.Teardown(instance)
+	defer test.Teardown(tier)
 
 	aggtype := ftypes.AggType("rolling_counter")
 
 	// can not insert normal sized data
-	err = Store(instance, aggtype, "my_counter", []byte("query"), 1, []byte("some options"))
+	err = Store(tier, aggtype, "my_counter", []byte("query"), 1, []byte("some options"))
 	assert.NoError(t, err)
 
 	// but can not if either aggtype or name is longer than 255 chars
-	err = Store(instance, ftypes.AggType(utils.RandString(256)), "my_counter", []byte("query"), 1, []byte("some options"))
+	err = Store(tier, ftypes.AggType(utils.RandString(256)), "my_counter", []byte("query"), 1, []byte("some options"))
 	assert.Error(t, err)
-	err = Store(instance, aggtype, ftypes.AggName(utils.RandString(256)), []byte("query"), 1, []byte("some options"))
+	err = Store(tier, aggtype, ftypes.AggName(utils.RandString(256)), []byte("query"), 1, []byte("some options"))
 	assert.Error(t, err)
 
 	// but works if it is upto 255 chars
-	err = Store(instance, ftypes.AggType(utils.RandString(255)), ftypes.AggName(utils.RandString(255)), []byte("query"), 1, []byte("some options"))
+	err = Store(tier, ftypes.AggType(utils.RandString(255)), ftypes.AggName(utils.RandString(255)), []byte("query"), 1, []byte("some options"))
 	assert.NoError(t, err)
 }

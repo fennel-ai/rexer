@@ -12,13 +12,13 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
-func Store(instance tier.Tier, agg aggregate.Aggregate) error {
+func Store(tier tier.Tier, agg aggregate.Aggregate) error {
 	if err := agg.Validate(); err != nil {
 		return err
 	}
 
 	// Check if agg already exists in db
-	agg2, err := Retrieve(instance, agg.Type, agg.Name)
+	agg2, err := Retrieve(tier, agg.Type, agg.Name)
 	// Only error that should happen is when agg is not present
 	if err != nil && err != aggregate.ErrNotFound {
 		return err
@@ -46,10 +46,10 @@ func Store(instance tier.Tier, agg aggregate.Aggregate) error {
 		agg.Timestamp = ftypes.Timestamp(time.Now().Unix())
 	}
 
-	return modelAgg.Store(instance, agg.Type, agg.Name, querySer, agg.Timestamp, optionSer)
+	return modelAgg.Store(tier, agg.Type, agg.Name, querySer, agg.Timestamp, optionSer)
 }
 
-func Retrieve(instance tier.Tier, aggtype ftypes.AggType, aggname ftypes.AggName) (aggregate.Aggregate, error) {
+func Retrieve(tier tier.Tier, aggtype ftypes.AggType, aggname ftypes.AggName) (aggregate.Aggregate, error) {
 	empty := aggregate.Aggregate{}
 	if !aggregate.IsValid(aggtype) {
 		return empty, fmt.Errorf("invalid aggregate type: %v", aggtype)
@@ -57,7 +57,7 @@ func Retrieve(instance tier.Tier, aggtype ftypes.AggType, aggname ftypes.AggName
 	if len(aggname) == 0 {
 		return empty, fmt.Errorf("aggregate name can not be of length zero")
 	}
-	aggser, err := modelAgg.Retrieve(instance, aggtype, aggname)
+	aggser, err := modelAgg.Retrieve(tier, aggtype, aggname)
 	if err != nil {
 		return empty, err
 	}
@@ -65,12 +65,12 @@ func Retrieve(instance tier.Tier, aggtype ftypes.AggType, aggname ftypes.AggName
 }
 
 // RetrieveAll returns all aggregates of given aggtype
-func RetrieveAll(instance tier.Tier, aggtype ftypes.AggType) ([]aggregate.Aggregate, error) {
+func RetrieveAll(tier tier.Tier, aggtype ftypes.AggType) ([]aggregate.Aggregate, error) {
 	if !aggregate.IsValid(aggtype) {
 		return nil, fmt.Errorf("invalid aggregate type: %v", aggtype)
 	}
 
-	retSer, err := modelAgg.RetrieveAll(instance, aggtype)
+	retSer, err := modelAgg.RetrieveAll(tier, aggtype)
 	if err != nil {
 		return nil, err
 	}
