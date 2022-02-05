@@ -1,7 +1,6 @@
 package profile
 
 import (
-	"fennel/db"
 	"fennel/lib/ftypes"
 	"fennel/lib/profile"
 	"fennel/tier"
@@ -11,12 +10,6 @@ import (
 	_ "github.com/go-sql-driver/mysql"
 	_ "github.com/mattn/go-sqlite3"
 )
-
-//func set(this instance.Tier, otype uint32, oid uint64, key string, version uint64, valueSer []byte) error {
-//}
-
-//func get(this instance.Tier, otype uint32, oid uint64, key string, version uint64) ([]byte, error) {
-//}
 
 // we create a private interface to make testing caching easier
 type provider interface {
@@ -36,15 +29,11 @@ func (D dbProvider) set(this tier.Tier, custid ftypes.CustID, otype ftypes.OType
 	if len(otype) > 256 {
 		return fmt.Errorf("otype too long: otypes can only be upto 256 chars")
 	}
-	tablename, err := tieredTableName(this.ID)
-	if err != nil {
-		return err
-	}
-	_, err = this.DB.Exec(fmt.Sprintf(`
-		INSERT INTO %s 
+	_, err := this.DB.Exec(`
+		INSERT INTO profile 
 			(cust_id, otype, oid, zkey, version, value)
 		VALUES
-			(?, ?, ?, ?, ?, ?);`, tablename),
+			(?, ?, ?, ?, ?, ?);`,
 		custid, otype, oid, key, version, valueSer,
 	)
 	if err != nil {
@@ -54,16 +43,12 @@ func (D dbProvider) set(this tier.Tier, custid ftypes.CustID, otype ftypes.OType
 }
 
 func (D dbProvider) get(this tier.Tier, custid ftypes.CustID, otype ftypes.OType, oid uint64, key string, version uint64) ([]byte, error) {
-	tablename, err := tieredTableName(this.ID)
-	if err != nil {
-		return nil, err
-	}
 	var value [][]byte
-
+	var err error
 	if version > 0 {
-		err = this.DB.Select(&value, fmt.Sprintf(`
+		err = this.DB.Select(&value, `
 		SELECT value
-		FROM %s
+		FROM profile 
 		WHERE
 			cust_id = ?
 			AND otype = ?
@@ -71,14 +56,13 @@ func (D dbProvider) get(this tier.Tier, custid ftypes.CustID, otype ftypes.OType
 			AND zkey = ?
 			AND version = ?
 		LIMIT 1
-		`, tablename),
-			custid, otype, oid, key, version,
+		`, custid, otype, oid, key, version,
 		)
 	} else {
 		// if version isn't given, just pick the highest version
-		err = this.DB.Select(&value, fmt.Sprintf(`
+		err = this.DB.Select(&value, `
 		SELECT value
-		FROM %s
+		FROM profile 
 		WHERE
 			cust_id = ?
 			AND otype = ?
@@ -86,8 +70,7 @@ func (D dbProvider) get(this tier.Tier, custid ftypes.CustID, otype ftypes.OType
 			AND zkey = ?
 		ORDER BY version DESC
 		LIMIT 1
-		`, tablename),
-			custid, otype, oid, key,
+		`, custid, otype, oid, key,
 		)
 	}
 	if err != nil {
@@ -98,18 +81,13 @@ func (D dbProvider) get(this tier.Tier, custid ftypes.CustID, otype ftypes.OType
 	} else {
 		return value[0], nil
 	}
-	//return get(this, otype, oid, key, version)
 }
 
 var _ provider = dbProvider{}
 
 // Whatever properties of 'request' are non-zero are used to filter eligible profiles
 func GetProfiles(this tier.Tier, request profile.ProfileFetchRequest) ([]profile.ProfileItemSer, error) {
-	tablename, err := tieredTableName(this.ID)
-	if err != nil {
-		return nil, err
-	}
-	query := fmt.Sprintf("SELECT * FROM %s", tablename)
+	query := "SELECT * FROM profile"
 	clauses := make([]string, 0)
 
 	if request.CustID != 0 {
@@ -142,8 +120,4 @@ func GetProfiles(this tier.Tier, request profile.ProfileFetchRequest) ([]profile
 	} else {
 		return profiles, nil
 	}
-}
-
-func tieredTableName(planeID ftypes.TierID) (string, error) {
-	return db.TieredTableName(planeID, "profile")
 }

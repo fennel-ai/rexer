@@ -2,28 +2,21 @@ package checkpoint
 
 import (
 	"database/sql"
-	"fennel/db"
 	"fennel/lib/ftypes"
 	"fennel/tier"
-	"fmt"
 )
 
 func Get(this tier.Tier, aggtype ftypes.AggType, aggname ftypes.AggName) (ftypes.OidType, error) {
-	tablename, err := tieredTableName(this.ID)
-	if err != nil {
-		return 0, err
-	}
-	row := this.DB.QueryRow(fmt.Sprintf(`
+	row := this.DB.QueryRow(`
 		SELECT checkpoint
-		FROM %s
+		FROM checkpoint 
 		WHERE cust_id = ?
 		  AND aggtype = ?
 		  AND aggname = ?;
-	`, tablename),
-		this.CustID, aggtype, aggname,
+	`, this.CustID, aggtype, aggname,
 	)
 	var checkpoint uint64
-	err = row.Scan(&checkpoint)
+	err := row.Scan(&checkpoint)
 	if err != nil && err != sql.ErrNoRows {
 		return 0, err
 	} else if err == sql.ErrNoRows {
@@ -35,22 +28,14 @@ func Get(this tier.Tier, aggtype ftypes.AggType, aggname ftypes.AggName) (ftypes
 }
 
 func Set(this tier.Tier, aggtype ftypes.AggType, aggname ftypes.AggName, checkpoint ftypes.OidType) error {
-	tablename, err := tieredTableName(this.ID)
-	if err != nil {
-		return err
-	}
-	_, err = this.DB.Exec(fmt.Sprintf(`
-		INSERT INTO %s (cust_id, aggtype, aggname, checkpoint)
+	_, err := this.DB.Exec(`
+		INSERT INTO checkpoint (cust_id, aggtype, aggname, checkpoint)
         VALUES (?, ?, ?, ?)
 		ON DUPLICATE KEY
 		UPDATE
 			checkpoint = ?
-		;`, tablename),
+		;`,
 		this.CustID, aggtype, aggname, checkpoint, checkpoint,
 	)
 	return err
-}
-
-func tieredTableName(planeID ftypes.TierID) (string, error) {
-	return db.TieredTableName(planeID, "checkpoint")
 }

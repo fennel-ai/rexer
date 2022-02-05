@@ -1,7 +1,6 @@
 package query
 
 import (
-	"fennel/db"
 	"fennel/lib/ftypes"
 	"fennel/lib/query"
 	"fennel/tier"
@@ -10,11 +9,7 @@ import (
 )
 
 func Insert(instance tier.Tier, custid ftypes.CustID, timestamp ftypes.Timestamp, querySer string) (uint64, error) {
-	tablename, err := tieredTableName(instance.ID)
-	if err != nil {
-		return 0, err
-	}
-	sql := fmt.Sprintf("INSERT INTO %s VALUES (?, ?, ?, ?);", tablename)
+	sql := "INSERT INTO query_ast VALUES (?, ?, ?, ?);"
 	res, err := instance.DB.Exec(sql, 0, custid, timestamp, querySer)
 	if err != nil {
 		return 0, err
@@ -27,11 +22,7 @@ func Insert(instance tier.Tier, custid ftypes.CustID, timestamp ftypes.Timestamp
 }
 
 func Get(instance tier.Tier, request query.QueryRequest) ([]query.QuerySer, error) {
-	tablename, err := tieredTableName(instance.ID)
-	if err != nil {
-		return nil, err
-	}
-	sql := fmt.Sprintf("SELECT * FROM %s", tablename)
+	sql := "SELECT * FROM query_ast"
 	clauses := make([]string, 0)
 	if request.QueryId > 0 {
 		clauses = append(clauses, "query_id = :query_id")
@@ -59,8 +50,4 @@ func Get(instance tier.Tier, request query.QueryRequest) ([]query.QuerySer, erro
 	} else {
 		return queries, nil
 	}
-}
-
-func tieredTableName(id ftypes.TierID) (string, error) {
-	return db.TieredTableName(id, "query_ast")
 }

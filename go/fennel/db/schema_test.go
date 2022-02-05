@@ -70,13 +70,11 @@ func TestSyncSchema(t *testing.T) {
 	assert.True(t, version >= 2)
 
 	// and we should be able to do queries against schema_test table (which is our second table for testing)
-	name, err := TieredTableName(db.TierID(), "schema_test")
+	_, err = db.Query("insert into schema_test values (?, ?);", 1, 2)
 	assert.NoError(t, err)
-	_, err = db.Query(fmt.Sprintf("insert into %s values (?, ?);", name), 1, 2)
+	_, err = db.Query("insert into schema_test values (?, ?);", 3, 4)
 	assert.NoError(t, err)
-	_, err = db.Query(fmt.Sprintf("insert into %s values (?, ?);", name), 3, 4)
-	assert.NoError(t, err)
-	row := db.QueryRow(fmt.Sprintf("select zkey + value as total from %s where zkey = 3;", name))
+	row := db.QueryRow("select zkey + value as total from schema_test where zkey = 3;")
 	var total sql.NullInt32
 
 	row.Scan(&total)
