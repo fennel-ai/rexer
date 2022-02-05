@@ -12,8 +12,7 @@ import (
 	"fennel/redis"
 )
 
-// Flags for the aggreagator server.
-type PlaneArgs struct {
+type TierArgs struct {
 	KafkaServer   string `arg:"--kafka-server,env:KAFKA_SERVER_ADDRESS"`
 	KafkaUsername string `arg:"--kafka-user,env:KAFKA_USERNAME"`
 	KafkaPassword string `arg:"--kafka-password,env:KAFKA_PASSWORD"`
@@ -41,7 +40,7 @@ type Tier struct {
 	Clock          clock.Clock
 }
 
-func CreateFromArgs(args *PlaneArgs) (plane Tier, err error) {
+func CreateFromArgs(args *TierArgs) (tier Tier, err error) {
 	tierID := ftypes.TierID(1)
 
 	mysqlConfig := db.MySQLConfig{
@@ -53,7 +52,7 @@ func CreateFromArgs(args *PlaneArgs) (plane Tier, err error) {
 	}
 	sqlConn, err := mysqlConfig.Materialize()
 	if err != nil {
-		return plane, fmt.Errorf("failed to connect with mysql: %v", err)
+		return tier, fmt.Errorf("failed to connect with mysql: %v", err)
 	}
 
 	redisConfig := redis.ClientConfig{
@@ -62,7 +61,7 @@ func CreateFromArgs(args *PlaneArgs) (plane Tier, err error) {
 	}
 	redisClient, err := redisConfig.Materialize()
 	if err != nil {
-		return plane, fmt.Errorf("failed to create redis client: %v", err)
+		return tier, fmt.Errorf("failed to create redis client: %v", err)
 	}
 
 	kafkaConsumerConfig := kafka.RemoteConsumerConfig{
@@ -76,7 +75,7 @@ func CreateFromArgs(args *PlaneArgs) (plane Tier, err error) {
 	}
 	kafkaConsumer, err := kafkaConsumerConfig.Materialize()
 	if err != nil {
-		return plane, fmt.Errorf("failed to create kafka consumer: %v", err)
+		return tier, fmt.Errorf("failed to create kafka consumer: %v", err)
 	}
 
 	kafkaProducerConfig := kafka.RemoteProducerConfig{
@@ -89,7 +88,7 @@ func CreateFromArgs(args *PlaneArgs) (plane Tier, err error) {
 	}
 	kafkaProducer, err := kafkaProducerConfig.Materialize()
 	if err != nil {
-		return plane, fmt.Errorf("failed to crate kafka producer: %v", err)
+		return tier, fmt.Errorf("failed to crate kafka producer: %v", err)
 	}
 
 	return Tier{

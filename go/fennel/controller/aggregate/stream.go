@@ -6,6 +6,6 @@ import (
 	"fennel/tier"
 )
 
-func streamValue(instance tier.Tier, agg aggregate.Aggregate, key value.Value) (value.List, error) {
+func streamValue(tier tier.Tier, agg aggregate.Aggregate, key value.Value) (value.List, error) {
 	panic("not implemented error")
 }

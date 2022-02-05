@@ -8,7 +8,7 @@ import (
 )
 
 // inserts the action. If successful, returns the actionID
-func Insert(this tier.Tier, action action.Action) (uint64, error) {
+func Insert(tier tier.Tier, action action.Action) (uint64, error) {
 	if len(action.ActionType) > 256 {
 		return 0, fmt.Errorf("ActionType too long: action types cannot be longer than 256 chars")
 	}
@@ -18,7 +18,7 @@ func Insert(this tier.Tier, action action.Action) (uint64, error) {
 	if len(action.TargetType) > 256 {
 		return 0, fmt.Errorf("TargetType too long: target types cannot be longer than 256 chars")
 	}
-	result, err := this.DB.NamedExec(`
+	result, err := tier.DB.NamedExec(`
 		INSERT INTO actionlog (
 			cust_id, actor_id, actor_type, target_id, target_type, action_type, action_value, timestamp, request_id
 	    )
@@ -40,7 +40,7 @@ func Insert(this tier.Tier, action action.Action) (uint64, error) {
 // For actionID and timestamp ranges, min is exclusive and max is inclusive
 // For actionValue range, both min/max are inclusive
 // TODO: add limit support?
-func Fetch(this tier.Tier, request action.ActionFetchRequest) ([]action.Action, error) {
+func Fetch(tier tier.Tier, request action.ActionFetchRequest) ([]action.Action, error) {
 	query := "SELECT * FROM actionlog"
 	clauses := make([]string, 0)
 	if request.CustID != 0 {
@@ -88,7 +88,7 @@ func Fetch(this tier.Tier, request action.ActionFetchRequest) ([]action.Action, 
 	}
 	query = fmt.Sprintf("%s ORDER BY timestamp;", query)
 	actions := make([]action.Action, 0)
-	statement, err := this.DB.PrepareNamed(query)
+	statement, err := tier.DB.PrepareNamed(query)
 	if err != nil {
 		return nil, err
 	}

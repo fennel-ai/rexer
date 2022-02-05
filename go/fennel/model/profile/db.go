@@ -13,13 +13,13 @@ import (
 
 // we create a private interface to make testing caching easier
 type provider interface {
-	set(this tier.Tier, custid ftypes.CustID, otype ftypes.OType, oid uint64, key string, version uint64, valueSer []byte) error
-	get(this tier.Tier, custid ftypes.CustID, otype ftypes.OType, oid uint64, key string, version uint64) ([]byte, error)
+	set(tier tier.Tier, custid ftypes.CustID, otype ftypes.OType, oid uint64, key string, version uint64, valueSer []byte) error
+	get(tier tier.Tier, custid ftypes.CustID, otype ftypes.OType, oid uint64, key string, version uint64) ([]byte, error)
 }
 
 type dbProvider struct{}
 
-func (D dbProvider) set(this tier.Tier, custid ftypes.CustID, otype ftypes.OType, oid uint64, key string, version uint64, valueSer []byte) error {
+func (D dbProvider) set(tier tier.Tier, custid ftypes.CustID, otype ftypes.OType, oid uint64, key string, version uint64, valueSer []byte) error {
 	if version == 0 {
 		return fmt.Errorf("version can not be zero")
 	}
@@ -29,7 +29,7 @@ func (D dbProvider) set(this tier.Tier, custid ftypes.CustID, otype ftypes.OType
 	if len(otype) > 256 {
 		return fmt.Errorf("otype too long: otypes can only be upto 256 chars")
 	}
-	_, err := this.DB.Exec(`
+	_, err := tier.DB.Exec(`
 		INSERT INTO profile 
 			(cust_id, otype, oid, zkey, version, value)
 		VALUES
@@ -42,11 +42,11 @@ func (D dbProvider) set(this tier.Tier, custid ftypes.CustID, otype ftypes.OType
 	return nil
 }
 
-func (D dbProvider) get(this tier.Tier, custid ftypes.CustID, otype ftypes.OType, oid uint64, key string, version uint64) ([]byte, error) {
+func (D dbProvider) get(tier tier.Tier, custid ftypes.CustID, otype ftypes.OType, oid uint64, key string, version uint64) ([]byte, error) {
 	var value [][]byte
 	var err error
 	if version > 0 {
-		err = this.DB.Select(&value, `
+		err = tier.DB.Select(&value, `
 		SELECT value
 		FROM profile 
 		WHERE
@@ -60,7 +60,7 @@ func (D dbProvider) get(this tier.Tier, custid ftypes.CustID, otype ftypes.OType
 		)
 	} else {
 		// if version isn't given, just pick the highest version
-		err = this.DB.Select(&value, `
+		err = tier.DB.Select(&value, `
 		SELECT value
 		FROM profile 
 		WHERE
@@ -86,7 +86,7 @@ func (D dbProvider) get(this tier.Tier, custid ftypes.CustID, otype ftypes.OType
 var _ provider = dbProvider{}
 
 // Whatever properties of 'request' are non-zero are used to filter eligible profiles
-func GetProfiles(this tier.Tier, request profile.ProfileFetchRequest) ([]profile.ProfileItemSer, error) {
+func GetProfiles(tier tier.Tier, request profile.ProfileFetchRequest) ([]profile.ProfileItemSer, error) {
 	query := "SELECT * FROM profile"
 	clauses := make([]string, 0)
 
@@ -110,7 +110,7 @@ func GetProfiles(this tier.Tier, request profile.ProfileFetchRequest) ([]profile
 		query = fmt.Sprintf("%s WHERE %s", query, strings.Join(clauses, " AND "))
 	}
 	profiles := make([]profile.ProfileItemSer, 0)
-	statement, err := this.DB.PrepareNamed(query)
+	statement, err := tier.DB.PrepareNamed(query)
 	if err != nil {
 		return nil, err
 	}

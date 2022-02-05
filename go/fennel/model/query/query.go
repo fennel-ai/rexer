@@ -8,9 +8,9 @@ import (
 	"strings"
 )
 
-func Insert(instance tier.Tier, custid ftypes.CustID, timestamp ftypes.Timestamp, querySer string) (uint64, error) {
+func Insert(tier tier.Tier, custid ftypes.CustID, timestamp ftypes.Timestamp, querySer string) (uint64, error) {
 	sql := "INSERT INTO query_ast VALUES (?, ?, ?, ?);"
-	res, err := instance.DB.Exec(sql, 0, custid, timestamp, querySer)
+	res, err := tier.DB.Exec(sql, 0, custid, timestamp, querySer)
 	if err != nil {
 		return 0, err
 	}
@@ -21,7 +21,7 @@ func Insert(instance tier.Tier, custid ftypes.CustID, timestamp ftypes.Timestamp
 	return uint64(queryID), nil
 }
 
-func Get(instance tier.Tier, request query.QueryRequest) ([]query.QuerySer, error) {
+func Get(tier tier.Tier, request query.QueryRequest) ([]query.QuerySer, error) {
 	sql := "SELECT * FROM query_ast"
 	clauses := make([]string, 0)
 	if request.QueryId > 0 {
@@ -40,7 +40,7 @@ func Get(instance tier.Tier, request query.QueryRequest) ([]query.QuerySer, erro
 		sql = fmt.Sprintf("%s WHERE %s", sql, strings.Join(clauses, " AND "))
 	}
 	queries := make([]query.QuerySer, 0)
-	statement, err := instance.DB.PrepareNamed(sql)
+	statement, err := tier.DB.PrepareNamed(sql)
 	if err != nil {
 		return nil, err
 	}

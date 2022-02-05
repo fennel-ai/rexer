@@ -13,19 +13,19 @@ import (
 )
 
 func TestProfileOp(t *testing.T) {
-	instance, err := test.Tier()
+	tier, err := test.Tier()
 	assert.NoError(t, err)
-	defer test.Teardown(instance)
+	defer test.Teardown(tier)
 
 	otype1, oid1, key1, val1, ver1 := ftypes.OType("user"), uint64(123), "summary", value.Int(5), uint64(1)
 	otype2, oid2, key2, val2, ver2 := ftypes.OType("user"), uint64(223), "age", value.Int(7), uint64(4)
-	req1 := profilelib.ProfileItem{CustID: instance.CustID, OType: otype1, Oid: oid1, Key: key1, Version: ver1, Value: val1}
-	assert.NoError(t, Set(instance, req1))
-	req2a := profilelib.ProfileItem{CustID: instance.CustID, OType: otype2, Oid: oid2, Key: key2, Version: ver2 - 1, Value: value.Int(1121)}
-	assert.NoError(t, Set(instance, req2a))
+	req1 := profilelib.ProfileItem{CustID: tier.CustID, OType: otype1, Oid: oid1, Key: key1, Version: ver1, Value: val1}
+	assert.NoError(t, Set(tier, req1))
+	req2a := profilelib.ProfileItem{CustID: tier.CustID, OType: otype2, Oid: oid2, Key: key2, Version: ver2 - 1, Value: value.Int(1121)}
+	assert.NoError(t, Set(tier, req2a))
 	// this key has multiple versions but we should pick up the latest one if not provided explicitly
-	req2b := profilelib.ProfileItem{CustID: instance.CustID, OType: otype2, Oid: oid2, Key: key2, Version: ver2, Value: val2}
-	assert.NoError(t, Set(instance, req2b))
+	req2b := profilelib.ProfileItem{CustID: tier.CustID, OType: otype2, Oid: oid2, Key: key2, Version: ver2, Value: val2}
+	assert.NoError(t, Set(tier, req2b))
 
 	query := ast.OpCall{
 		Operand:   ast.Var{Name: "table"},
@@ -38,7 +38,7 @@ func TestProfileOp(t *testing.T) {
 			// since version is an optional value, we don't pass it and still get the latest value back
 		}},
 	}
-	i := interpreter.NewInterpreter(bootarg.Create(instance))
+	i := interpreter.NewInterpreter(bootarg.Create(tier))
 	table := value.NewTable()
 	err = table.Append(value.Dict{"otype": value.String(otype1), "oid": value.Int(oid1), "key": value.String(key1), "ver": value.Int(ver1)})
 	assert.NoError(t, err)

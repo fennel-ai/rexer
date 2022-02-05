@@ -25,7 +25,7 @@ import (
 )
 
 type holder struct {
-	plane tier.Tier
+	tier tier.Tier
 }
 
 func parse(req *http.Request, msg proto.Message) error {
@@ -47,7 +47,7 @@ func (m holder) Log(w http.ResponseWriter, req *http.Request) {
 	a := actionlib.FromProtoAction(&pa)
 	// fwd to controller
 
-	aid, err := action.Insert(m.plane, a)
+	aid, err := action.Insert(m.tier, a)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		log.Printf("Error: %v", err)
@@ -66,7 +66,7 @@ func (m holder) Fetch(w http.ResponseWriter, req *http.Request) {
 	}
 	request := actionlib.FromProtoActionFetchRequest(&protoRequest)
 	// send to controller
-	actions, err := action.Fetch(m.plane, request)
+	actions, err := action.Fetch(m.tier, request)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		log.Printf("Error: %v", err)
@@ -96,7 +96,7 @@ func (m holder) GetProfile(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 	// send to controller
-	val, err := profile2.Get(m.plane, request)
+	val, err := profile2.Get(m.tier, request)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		log.Printf("Error: %v", err)
@@ -140,7 +140,7 @@ func (m holder) SetProfile(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 	// send to controller
-	if err = profile2.Set(m.plane, request); err != nil {
+	if err = profile2.Set(m.tier, request); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		log.Printf("Error: %v", err)
 		return
@@ -156,7 +156,7 @@ func (m holder) GetProfiles(w http.ResponseWriter, req *http.Request) {
 	}
 	request := profilelib.FromProtoProfileFetchRequest(&protoRequest)
 	// send to controller
-	profiles, err := profile2.GetProfiles(m.plane, request)
+	profiles, err := profile2.GetProfiles(m.tier, request)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		log.Printf("Error: %v", err)
@@ -191,7 +191,7 @@ func (m holder) Query(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 	// execute the tree
-	i := interpreter.NewInterpreter(bootarg.Create(m.plane))
+	i := interpreter.NewInterpreter(bootarg.Create(m.tier))
 	i.SetQueryArgs(dict)
 	ret, err := tree.AcceptValue(i)
 	if err != nil {
@@ -228,7 +228,7 @@ func (m holder) StoreAggregate(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 	// call controller
-	if err = aggregate2.Store(m.plane, agg); err != nil {
+	if err = aggregate2.Store(m.tier, agg); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		log.Printf("Error: %v", err)
 		return
@@ -243,7 +243,7 @@ func (m holder) RetrieveAggregate(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 	// call controller
-	ret, err := aggregate2.Retrieve(m.plane, ftypes.AggType(protoReq.AggType), ftypes.AggName(protoReq.AggName))
+	ret, err := aggregate2.Retrieve(m.tier, ftypes.AggType(protoReq.AggType), ftypes.AggName(protoReq.AggName))
 	if err == aggregate.ErrNotFound {
 		// we don't throw an error, just return empty response
 		return
@@ -282,7 +282,7 @@ func (m holder) AggregateValue(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 	// call controller
-	ret, err := aggregate2.Value(m.plane, getAggValue.AggType, getAggValue.AggName, getAggValue.Key)
+	ret, err := aggregate2.Value(m.tier, getAggValue.AggType, getAggValue.AggName, getAggValue.Key)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		log.Printf("Error: %v", err)
@@ -316,16 +316,16 @@ func main() {
 	mux := http.NewServeMux()
 
 	var flags struct {
-		tier.PlaneArgs
+		tier.TierArgs
 	}
 	// Parse flags / environment variables.
 	arg.MustParse(&flags)
-	plane, err := tier.CreateFromArgs(&flags.PlaneArgs)
+	tier, err := tier.CreateFromArgs(&flags.TierArgs)
 	if err != nil {
-		panic(fmt.Sprintf("Failed to setup plane connectors: %v", err))
+		panic(fmt.Sprintf("Failed to setup tier connectors: %v", err))
 
 	}
-	controller := holder{plane}
+	controller := holder{tier}
 	setHandlers(controller, mux)
 	server.Handler = mux
 	log.Printf("starting http service on %s...", server.Addr)

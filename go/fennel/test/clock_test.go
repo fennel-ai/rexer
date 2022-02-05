@@ -6,14 +6,14 @@ import (
 )
 
 func TestUnix_Now(t *testing.T) {
-	instance, err := Tier()
+	tier, err := Tier()
 	assert.NoError(t, err)
 
 	clock := &FakeClock{}
-	instance.Clock = clock
-	assert.Equal(t, int64(0), instance.Clock.Now())
+	tier.Clock = clock
+	assert.Equal(t, int64(0), tier.Clock.Now())
 	clock.Set(123)
-	assert.Equal(t, int64(123), instance.Clock.Now())
+	assert.Equal(t, int64(123), tier.Clock.Now())
 	clock.Set(12321)
-	assert.Equal(t, int64(12321), instance.Clock.Now())
+	assert.Equal(t, int64(12321), tier.Clock.Now())
 }

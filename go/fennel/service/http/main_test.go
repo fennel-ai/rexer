@@ -54,11 +54,11 @@ func startTestServer(controller holder) *httptest.Server {
 
 func TestLogFetchServerClient(t *testing.T) {
 	// create a service
-	instance, err := test.Tier()
+	tier, err := test.Tier()
 	assert.NoError(t, err)
-	defer test.Teardown(instance)
+	defer test.Teardown(tier)
 
-	controller := holder{plane: instance}
+	controller := holder{tier: tier}
 	server := startTestServer(controller)
 	defer server.Close()
 	c, err := client.NewClient(server.URL, server.Client())
@@ -94,11 +94,11 @@ func TestLogFetchServerClient(t *testing.T) {
 // TODO: add more tests covering more error conditions
 func TestProfileServerClient(t *testing.T) {
 	// create a service
-	instance, err := test.Tier()
+	tier, err := test.Tier()
 	assert.NoError(t, err)
-	defer test.Teardown(instance)
+	defer test.Teardown(tier)
 
-	controller := holder{plane: instance}
+	controller := holder{tier: tier}
 	server := startTestServer(controller)
 	defer server.Close()
 	c, err := client.NewClient(server.URL, server.Client())
@@ -130,11 +130,11 @@ func TestProfileServerClient(t *testing.T) {
 
 func TestQuery(t *testing.T) {
 	// create a service
-	instance, err := test.Tier()
+	tier, err := test.Tier()
 	assert.NoError(t, err)
-	defer test.Teardown(instance)
+	defer test.Teardown(tier)
 
-	controller := holder{plane: instance}
+	controller := holder{tier: tier}
 	server := startTestServer(controller)
 	defer server.Close()
 	c, err := client.NewClient(server.URL, server.Client())
@@ -176,17 +176,17 @@ func TestQuery(t *testing.T) {
 }
 
 func TestHolder_AggregateValue_Valid(t *testing.T) {
-	instance, err := test.Tier()
+	tier, err := test.Tier()
 	assert.NoError(t, err)
-	defer test.Teardown(instance)
+	defer test.Teardown(tier)
 
 	clock := &test.FakeClock{}
-	instance.Clock = clock
+	tier.Clock = clock
 	t0 := ftypes.Timestamp(3600 * 10)
 	clock.Set(int64(t0))
-	controller := holder{plane: instance}
+	controller := holder{tier: tier}
 	agg := aggregate.Aggregate{
-		CustID:    instance.CustID,
+		CustID:    tier.CustID,
 		Type:      "rolling_counter",
 		Name:      "mycounter",
 		Query:     ast.MakeInt(1),
@@ -195,15 +195,15 @@ func TestHolder_AggregateValue_Valid(t *testing.T) {
 	}
 	key := value.Int(4)
 	keystr := key.String()
-	assert.Equal(t, int64(t0), instance.Clock.Now())
-	assert.NoError(t, aggregate2.Store(instance, agg))
+	assert.Equal(t, int64(t0), tier.Clock.Now())
+	assert.NoError(t, aggregate2.Store(tier, agg))
 	// initially count is zero
 	valueSendReceive(t, controller, agg, key, value.Int(0))
 
 	// now create an increment
 	t1 := ftypes.Timestamp(t0 + 3600)
 	buckets := counter.BucketizeMoment(keystr, t1, 1)
-	err = counter.IncrementMulti(instance, agg.Name, buckets)
+	err = counter.IncrementMulti(tier, agg.Name, buckets)
 	assert.NoError(t, err)
 	clock.Set(int64(t1 + 60))
 	valueSendReceive(t, controller, agg, key, value.Int(1))
@@ -211,11 +211,11 @@ func TestHolder_AggregateValue_Valid(t *testing.T) {
 
 func TestStoreRetrieveAggregate(t *testing.T) {
 	// create a service + client
-	instance, err := test.Tier()
+	tier, err := test.Tier()
 	assert.NoError(t, err)
-	defer test.Teardown(instance)
+	defer test.Teardown(tier)
 
-	controller := holder{plane: instance}
+	controller := holder{tier: tier}
 	server := startTestServer(controller)
 	defer server.Close()
 	c, err := client.NewClient(server.URL, server.Client())
@@ -227,7 +227,7 @@ func TestStoreRetrieveAggregate(t *testing.T) {
 
 	// store a couple of aggregates
 	agg := aggregate.Aggregate{
-		CustID: instance.CustID,
+		CustID: tier.CustID,
 		Type:   "rolling_counter",
 		Name:   "mycounter",
 		Query:  ast.MakeInt(1),
@@ -243,7 +243,7 @@ func TestStoreRetrieveAggregate(t *testing.T) {
 	assert.Equal(t, agg, found)
 	// trying to rewrite the same agg type/name throws an error even if query/options are different
 	agg2 := aggregate.Aggregate{
-		CustID: instance.CustID,
+		CustID: tier.CustID,
 		Type:   "rolling_counter",
 		Name:   "mycounter",
 		Query:  ast.MakeDouble(3.4),

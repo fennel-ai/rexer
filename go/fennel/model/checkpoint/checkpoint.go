@@ -6,14 +6,14 @@ import (
 	"fennel/tier"
 )
 
-func Get(this tier.Tier, aggtype ftypes.AggType, aggname ftypes.AggName) (ftypes.OidType, error) {
-	row := this.DB.QueryRow(`
+func Get(tier tier.Tier, aggtype ftypes.AggType, aggname ftypes.AggName) (ftypes.OidType, error) {
+	row := tier.DB.QueryRow(`
 		SELECT checkpoint
 		FROM checkpoint 
 		WHERE cust_id = ?
 		  AND aggtype = ?
 		  AND aggname = ?;
-	`, this.CustID, aggtype, aggname,
+	`, tier.CustID, aggtype, aggname,
 	)
 	var checkpoint uint64
 	err := row.Scan(&checkpoint)
@@ -27,15 +27,15 @@ func Get(this tier.Tier, aggtype ftypes.AggType, aggname ftypes.AggName) (ftypes
 	}
 }
 
-func Set(this tier.Tier, aggtype ftypes.AggType, aggname ftypes.AggName, checkpoint ftypes.OidType) error {
-	_, err := this.DB.Exec(`
+func Set(tier tier.Tier, aggtype ftypes.AggType, aggname ftypes.AggName, checkpoint ftypes.OidType) error {
+	_, err := tier.DB.Exec(`
 		INSERT INTO checkpoint (cust_id, aggtype, aggname, checkpoint)
         VALUES (?, ?, ?, ?)
 		ON DUPLICATE KEY
 		UPDATE
 			checkpoint = ?
 		;`,
-		this.CustID, aggtype, aggname, checkpoint, checkpoint,
+		tier.CustID, aggtype, aggname, checkpoint, checkpoint,
 	)
 	return err
 }
