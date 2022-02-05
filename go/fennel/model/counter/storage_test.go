@@ -10,6 +10,7 @@ import (
 func TestGetIncrement(t *testing.T) {
 	instance, err := test.Tier()
 	assert.NoError(t, err)
+	defer test.Teardown(instance)
 
 	name := ftypes.AggName("mycounter")
 	key := "hello"

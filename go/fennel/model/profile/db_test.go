@@ -22,6 +22,8 @@ func TestDBVersion(t *testing.T) {
 func TestLongKey(t *testing.T) {
 	this, err := test.Tier()
 	assert.NoError(t, err)
+	defer test.Teardown(this)
+
 	p := dbProvider{}
 
 	val := value.Int(2)
@@ -39,6 +41,7 @@ func TestLongKey(t *testing.T) {
 func TestLongOType(t *testing.T) {
 	this, err := test.Tier()
 	assert.NoError(t, err)
+	defer test.Teardown(this)
 	p := dbProvider{}
 
 	val := value.Int(5)

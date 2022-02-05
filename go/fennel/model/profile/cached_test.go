@@ -34,6 +34,7 @@ func TestCaching(t *testing.T) {
 	// test that we cache the value instead of always pulling from ground truth
 	this, err := test.Tier()
 	assert.NoError(t, err)
+	defer test.Teardown(this)
 
 	origmock := []byte{1, 2, 3}
 	gt := mockProvider{origmock}

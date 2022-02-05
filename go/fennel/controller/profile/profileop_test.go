@@ -15,6 +15,8 @@ import (
 func TestProfileOp(t *testing.T) {
 	instance, err := test.Tier()
 	assert.NoError(t, err)
+	defer test.Teardown(instance)
+
 	otype1, oid1, key1, val1, ver1 := ftypes.OType("user"), uint64(123), "summary", value.Int(5), uint64(1)
 	otype2, oid2, key2, val2, ver2 := ftypes.OType("user"), uint64(223), "age", value.Int(7), uint64(4)
 	req1 := profilelib.ProfileItem{CustID: instance.CustID, OType: otype1, Oid: oid1, Key: key1, Version: ver1, Value: val1}

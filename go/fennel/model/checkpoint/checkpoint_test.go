@@ -11,6 +11,8 @@ import (
 func TestCheckpoint2(t *testing.T) {
 	this, err := test.Tier()
 	assert.NoError(t, err)
+	defer test.Teardown(this)
+
 	aggtype := ftypes.AggType("rolling_counter")
 	aggname := ftypes.AggName("mycounter")
 	zero := ftypes.OidType(0)

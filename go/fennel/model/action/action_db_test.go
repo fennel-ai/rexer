@@ -15,6 +15,7 @@ import (
 func TestActionDBBasic(t *testing.T) {
 	this, err := test.Tier()
 	assert.NoError(t, err)
+	defer test.Teardown(this)
 
 	var request action.ActionFetchRequest
 	// initially before setting, value isn't there so we get empty response
@@ -76,6 +77,7 @@ func TestActionDBBasic(t *testing.T) {
 func TestLongTypes(t *testing.T) {
 	this, err := test.Tier()
 	assert.NoError(t, err)
+	defer test.Teardown(this)
 
 	// valid action
 	action1 := action.Action{
