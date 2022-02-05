@@ -16,9 +16,6 @@ const (
 )
 
 func defaultDB(tierID ftypes.TierID) (db.Connection, error) {
-	// NOTE: for each test, we are creating a new tier (i.e a new set of tables
-	// inside the same database. And we are never destroying these tables, which is fine
-	// remember to cleanup this database every few months
 	config := db.MySQLConfig{
 		TierID:   tierID,
 		DBname:   logical_test_dbname,

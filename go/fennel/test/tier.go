@@ -2,6 +2,7 @@ package test
 
 import (
 	"fennel/lib/clock"
+	"fmt"
 	"math/rand"
 	"time"
 
@@ -41,5 +42,9 @@ func Tier() (tier.Tier, error) {
 }
 
 func Teardown(tier tier.Tier) error {
-	return drop(tier.ID, logical_test_dbname, username, password, host)
+	err := drop(tier.ID, logical_test_dbname, username, password, host)
+	if err != nil {
+		panic(fmt.Sprintf("error in teardown: %v\n", err))
+	}
+	return err
 }
