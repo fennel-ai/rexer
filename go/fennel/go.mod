@@ -3,6 +3,7 @@ module fennel
 go 1.17
 
 require (
+	github.com/alexflint/go-arg v1.4.2
 	github.com/alicebob/miniredis/v2 v2.17.0
 	github.com/confluentinc/confluent-kafka-go v1.8.2
 	github.com/go-redis/redis/v8 v8.11.4
@@ -14,7 +15,6 @@ require (
 )
 
 require (
-	github.com/alexflint/go-arg v1.4.2 // indirect
 	github.com/alexflint/go-scalar v1.0.0 // indirect
 	github.com/alicebob/gopher-json v0.0.0-20200520072559-a9ecdc9d1d3a // indirect
 	github.com/cespare/xxhash/v2 v2.1.2 // indirect

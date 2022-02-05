@@ -19,7 +19,7 @@ import (
 	"fennel/lib/query"
 	"fennel/lib/value"
 	"fennel/tier"
-	arg "github.com/alexflint/go-arg"
+	"github.com/alexflint/go-arg"
 
 	"google.golang.org/protobuf/proto"
 )

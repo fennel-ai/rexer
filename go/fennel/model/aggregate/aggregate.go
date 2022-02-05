@@ -2,7 +2,6 @@ package aggregate
 
 import (
 	"database/sql"
-	"fennel/db"
 	"fennel/lib/aggregate"
 	"fennel/lib/ftypes"
 	"fennel/tier"
@@ -16,26 +15,18 @@ func Store(plane tier.Tier, aggtype ftypes.AggType, name ftypes.AggName, querySe
 	if len(name) > 255 {
 		return fmt.Errorf("aggregate name can not be longer than 255 chars")
 	}
-	tablename, err := tieredTableName(plane.ID)
-	if err != nil {
-		return err
-	}
-	sql := fmt.Sprintf(`INSERT INTO %s VALUES (?, ?, ?, ?, ?, ?)`, tablename)
-	_, err = plane.DB.Query(sql, plane.CustID, aggtype, name, querySer, ts, optionSer)
+	sql := `INSERT INTO aggregate_config VALUES (?, ?, ?, ?, ?, ?)`
+	_, err := plane.DB.Query(sql, plane.CustID, aggtype, name, querySer, ts, optionSer)
 	return err
 }
 
 func Retrieve(plane tier.Tier, aggregateType ftypes.AggType, name ftypes.AggName) (aggregate.AggregateSer, error) {
 	var ret aggregate.AggregateSer
-	tablename, err := tieredTableName(plane.ID)
-	if err != nil {
-		return ret, err
-	}
-	err = plane.DB.Get(&ret, fmt.Sprintf(`
-			SELECT * FROM %s 
+	err := plane.DB.Get(&ret, `
+			SELECT * FROM aggregate_config 
 			WHERE cust_id = ? 
 			  AND aggregate_type = ? 
-			  AND name = ?`, tablename),
+			  AND name = ?`,
 		plane.CustID, aggregateType, name,
 	)
 	if err != nil && err == sql.ErrNoRows {
@@ -48,23 +39,15 @@ func Retrieve(plane tier.Tier, aggregateType ftypes.AggType, name ftypes.AggName
 
 func RetrieveAll(plane tier.Tier, aggtype ftypes.AggType) ([]aggregate.AggregateSer, error) {
 	ret := make([]aggregate.AggregateSer, 0)
-	tablename, err := tieredTableName(plane.ID)
-	if err != nil {
-		return ret, err
-	}
-	err = plane.DB.Select(&ret, fmt.Sprintf(`
-			SELECT * FROM %s 
+	err := plane.DB.Select(&ret, `
+			SELECT * FROM aggregate_config 
 			WHERE cust_id = ? 
 			  AND aggregate_type = ? 
-			  `, tablename),
+			  `,
 		plane.CustID, aggtype,
 	)
 	if err != nil {
 		return nil, err
 	}
 	return ret, nil
-}
-
-func tieredTableName(planeID ftypes.TierID) (string, error) {
-	return db.TieredTableName(planeID, "aggregate_config")
 }

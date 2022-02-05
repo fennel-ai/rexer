@@ -2,36 +2,26 @@ package db
 
 import (
 	"database/sql"
-	"fennel/lib/ftypes"
 	"fmt"
 	"strings"
 )
 
-var defs map[uint32]unnamedSQL
+var defs map[uint32]string
 var tablenames []string
-
-type unnamedSQL struct {
-	sql       string
-	tablename string
-}
 
 func init() {
 	// if you want to make any change to schema (create table, drop table, alter table etc.)
 	// add a versioned query here. Numbers should be increasing with no gaps and no repetitions
 	// Also, if  you create a create table query, also add the table name to "tablenames" list
-	defs = map[uint32]unnamedSQL{
-		1: {`CREATE TABLE IF NOT EXISTS %s (
+	defs = map[uint32]string{
+		1: `CREATE TABLE IF NOT EXISTS schema_version (
 				version INT NOT NULL
 			);`,
-			"schema_version",
-		},
-		2: {`CREATE TABLE IF NOT EXISTS %s (
+		2: `CREATE TABLE IF NOT EXISTS schema_test (
 				zkey INT NOT NULL,
 				value INT NOT NULL
 			);`,
-			"schema_test",
-		},
-		3: {`CREATE TABLE IF NOT EXISTS %s (
+		3: `CREATE TABLE IF NOT EXISTS actionlog (
 				action_id BIGINT not null primary key auto_increment,
 				cust_id BIGINT not null,
 				actor_id BIGINT NOT NULL,
@@ -45,17 +35,15 @@ func init() {
 				INDEX (cust_id, action_id),
 				INDEX (cust_id, action_value),
 				INDEX (cust_id, timestamp)
-		 );`, "actionlog",
-		},
-		4: {`CREATE TABLE IF NOT EXISTS %s (
+		 );`,
+		4: `CREATE TABLE IF NOT EXISTS checkpoint (
 				cust_id BIGINT NOT NULL,
 				aggtype VARCHAR(255) NOT NULL,
 				aggname VARCHAR(255) NOT NULL,
 				checkpoint BIGINT NOT NULL DEFAULT 0,
 				PRIMARY KEY(cust_id, aggtype, aggname)
-		 );`, "checkpoint",
-		},
-		5: {`CREATE TABLE IF NOT EXISTS %s (
+		 );`,
+		5: `CREATE TABLE IF NOT EXISTS profile (
 				cust_id BIGINT not null,
 				otype varchar(256) not null,
 				oid BIGINT not null,
@@ -63,9 +51,8 @@ func init() {
 				version BIGINT not null,
 				value blob not null,
 				PRIMARY KEY(cust_id, otype, oid, zkey, version)
-		 );`, "profile",
-		},
-		6: {`CREATE TABLE IF NOT EXISTS %s (
+		 );`,
+		6: `CREATE TABLE IF NOT EXISTS counter_bucket (
 				cust_id BIGINT NOT NULL,
 				counter_type INT NOT NULL,
 				window_type INT NOT NULL,
@@ -73,17 +60,15 @@ func init() {
 				count BIGINT NOT NULL DEFAULT 0,
 				zkey varchar(256) NOT NULL,
 				PRIMARY KEY(cust_id, counter_type, window_type, zkey, idx)
-		 );`, "counter_bucket",
-		},
-		7: {`CREATE TABLE IF NOT EXISTS %s (
+		 );`,
+		7: `CREATE TABLE IF NOT EXISTS query_ast (
 				query_id BIGINT NOT NULL PRIMARY KEY AUTO_INCREMENT,
 				cust_id BIGINT NOT NULL,
 				timestamp BIGINT NOT NULL,
 				query_ser BLOB NOT NULL,
 				INDEX (cust_id, timestamp)
-		 );`, "query_ast",
-		},
-		8: {`CREATE TABLE IF NOT EXISTS %s (
+		 );`,
+		8: `CREATE TABLE IF NOT EXISTS aggregate_config (
 				cust_id BIGINT NOT NULL,
 				aggregate_type VARCHAR(255) NOT NULL,
 				name VARCHAR(255) NOT NULL,
@@ -91,8 +76,7 @@ func init() {
 				timestamp BIGINT NOT NULL,
 				options_ser BLOB NOT NULL,
 				PRIMARY KEY(cust_id, aggregate_type, name)
-			);`, "aggregate_config",
-		},
+			);`,
 	}
 	tablenames = []string{
 		"schema_version",
@@ -110,18 +94,10 @@ func init() {
 	}
 }
 
-// TieredTableName returns the name of the given table in the context of a particular tier
-func TieredTableName(tierID ftypes.TierID, name string) (string, error) {
-	if tierID == 0 {
-		return "", fmt.Errorf("tier ID not initialized")
-	}
-	return fmt.Sprintf("t_%d_%s", tierID, name), nil
-}
-
 func verifyDefs() error {
 	num_create_tables := 0
 	for _, query := range defs {
-		if strings.Contains(strings.ToLower(query.sql), "create table") {
+		if strings.Contains(strings.ToLower(query), "create table") {
 			num_create_tables += 1
 		}
 	}
@@ -132,14 +108,7 @@ func verifyDefs() error {
 }
 
 func schemaVersion(db Connection) (uint32, error) {
-	if db.TierID() == 0 {
-		return 0, fmt.Errorf("tier ID not initialized")
-	}
-	schemaTable, err := TieredTableName(db.TierID(), "schema_version")
-	if err != nil {
-		return 0, err
-	}
-	row := db.QueryRow(fmt.Sprintf("SELECT version FROM %s", schemaTable))
+	row := db.QueryRow("SELECT version FROM schema_version")
 	var total sql.NullInt32
 	row.Scan(&total)
 	if total.Valid {
@@ -151,38 +120,23 @@ func schemaVersion(db Connection) (uint32, error) {
 }
 
 func incrementSchemaVersion(db Connection, curr uint32) error {
-	if db.TierID() == 0 {
-		return fmt.Errorf("tier ID not initialized")
-	}
 	var err error
-	schemaTable, err := TieredTableName(db.TierID(), "schema_version")
-	if err != nil {
-		return err
-	}
 	if curr == 0 {
-		_, err = db.Query(fmt.Sprintf("INSERT INTO %s VALUES (?);", schemaTable), 1)
+		_, err = db.Query("INSERT INTO schema_version VALUES (?);", 1)
 	} else {
-		_, err = db.Query(fmt.Sprintf("UPDATE %s SET version = version + 1", schemaTable))
+		_, err = db.Query("UPDATE schema_version SET version = version + 1")
 	}
 	return err
 }
 
 func SyncSchema(db Connection) error {
-	if db.TierID() == 0 {
-		return fmt.Errorf("tier ID not initialized")
-	}
 	curr, err := schemaVersion(db)
 	if err != nil {
 		return err
 	}
 	len_ := uint32(len(defs))
 	for i := curr + 1; i <= len_; i++ {
-		tieredName, err := TieredTableName(db.TierID(), defs[i].tablename)
-		if err != nil {
-			return err
-		}
-		query := fmt.Sprintf(defs[i].sql, tieredName)
-		if _, err = db.Exec(query); err != nil {
+		if _, err = db.Exec(defs[i]); err != nil {
 			return err
 		}
 		if err = incrementSchemaVersion(db, i-1); err != nil {

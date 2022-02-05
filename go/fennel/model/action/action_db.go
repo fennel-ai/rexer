@@ -1,17 +1,11 @@
 package action
 
 import (
-	"fennel/db"
 	"fennel/lib/action"
-	"fennel/lib/ftypes"
 	"fennel/tier"
 	"fmt"
 	"strings"
 )
-
-func tieredTableName(planeID ftypes.TierID) (string, error) {
-	return db.TieredTableName(planeID, "actionlog")
-}
 
 // inserts the action. If successful, returns the actionID
 func Insert(this tier.Tier, action action.Action) (uint64, error) {
@@ -24,33 +18,14 @@ func Insert(this tier.Tier, action action.Action) (uint64, error) {
 	if len(action.TargetType) > 256 {
 		return 0, fmt.Errorf("TargetType too long: target types cannot be longer than 256 chars")
 	}
-	table, err := tieredTableName(this.ID)
-	if err != nil {
-		return 0, err
-	}
-	result, err := this.DB.NamedExec(fmt.Sprintf(`
-		INSERT INTO %s (
-			cust_id,
-			actor_id,
-			actor_type,
-			target_id,
-			target_type,
-			action_type,
-			action_value,
-			timestamp,
-			request_id
+	result, err := this.DB.NamedExec(`
+		INSERT INTO actionlog (
+			cust_id, actor_id, actor_type, target_id, target_type, action_type, action_value, timestamp, request_id
 	    )
         VALUES (
-			:cust_id,
-			:actor_id,
-			:actor_type,
-			:target_id,
-			:target_type,
-			:action_type,
-			:action_value,
-			:timestamp,
-			:request_id
-		);`, table), action)
+			:cust_id, :actor_id, :actor_type, :target_id, :target_type, :action_type, :action_value, :timestamp, :request_id
+		);`,
+		action)
 	if err != nil {
 		return 0, err
 	}
@@ -66,11 +41,7 @@ func Insert(this tier.Tier, action action.Action) (uint64, error) {
 // For actionValue range, both min/max are inclusive
 // TODO: add limit support?
 func Fetch(this tier.Tier, request action.ActionFetchRequest) ([]action.Action, error) {
-	table, err := tieredTableName(this.ID)
-	if err != nil {
-		return nil, err
-	}
-	query := fmt.Sprintf("SELECT * FROM %s", table)
+	query := "SELECT * FROM actionlog"
 	clauses := make([]string, 0)
 	if request.CustID != 0 {
 		clauses = append(clauses, "cust_id = :cust_id")
