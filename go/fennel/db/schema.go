@@ -110,12 +110,12 @@ func init() {
 	}
 }
 
-// ToPlaneTablename returns the name of the given table in the context of a particular plane
-func ToPlaneTablename(planeID ftypes.PlaneID, name string) (string, error) {
-	if planeID == 0 {
-		return "", fmt.Errorf("plane ID not initialized")
+// TieredTableName returns the name of the given table in the context of a particular tier
+func TieredTableName(tierID ftypes.TierID, name string) (string, error) {
+	if tierID == 0 {
+		return "", fmt.Errorf("tier ID not initialized")
 	}
-	return fmt.Sprintf("plane_%d_%s", planeID, name), nil
+	return fmt.Sprintf("t_%d_%s", tierID, name), nil
 }
 
 func verifyDefs() error {
@@ -132,10 +132,10 @@ func verifyDefs() error {
 }
 
 func schemaVersion(db Connection) (uint32, error) {
-	if db.PlaneID() == 0 {
-		return 0, fmt.Errorf("plane ID not initialized")
+	if db.TierID() == 0 {
+		return 0, fmt.Errorf("tier ID not initialized")
 	}
-	schemaTable, err := ToPlaneTablename(db.PlaneID(), "schema_version")
+	schemaTable, err := TieredTableName(db.TierID(), "schema_version")
 	if err != nil {
 		return 0, err
 	}
@@ -151,11 +151,11 @@ func schemaVersion(db Connection) (uint32, error) {
 }
 
 func incrementSchemaVersion(db Connection, curr uint32) error {
-	if db.PlaneID() == 0 {
-		return fmt.Errorf("plane ID not initialized")
+	if db.TierID() == 0 {
+		return fmt.Errorf("tier ID not initialized")
 	}
 	var err error
-	schemaTable, err := ToPlaneTablename(db.PlaneID(), "schema_version")
+	schemaTable, err := TieredTableName(db.TierID(), "schema_version")
 	if err != nil {
 		return err
 	}
@@ -168,8 +168,8 @@ func incrementSchemaVersion(db Connection, curr uint32) error {
 }
 
 func SyncSchema(db Connection) error {
-	if db.PlaneID() == 0 {
-		return fmt.Errorf("plane ID not initialized")
+	if db.TierID() == 0 {
+		return fmt.Errorf("tier ID not initialized")
 	}
 	curr, err := schemaVersion(db)
 	if err != nil {
@@ -177,11 +177,11 @@ func SyncSchema(db Connection) error {
 	}
 	len_ := uint32(len(defs))
 	for i := curr + 1; i <= len_; i++ {
-		planeName, err := ToPlaneTablename(db.PlaneID(), defs[i].tablename)
+		tieredName, err := TieredTableName(db.TierID(), defs[i].tablename)
 		if err != nil {
 			return err
 		}
-		query := fmt.Sprintf(defs[i].sql, planeName)
+		query := fmt.Sprintf(defs[i].sql, tieredName)
 		if _, err = db.Exec(query); err != nil {
 			return err
 		}

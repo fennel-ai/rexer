@@ -13,7 +13,7 @@ import (
 
 // TODO: write exhaustive tests
 func TestActionDBBasic(t *testing.T) {
-	this, err := test.MockPlane()
+	this, err := test.Tier()
 	assert.NoError(t, err)
 
 	var request action.ActionFetchRequest
@@ -74,7 +74,7 @@ func TestActionDBBasic(t *testing.T) {
 }
 
 func TestLongTypes(t *testing.T) {
-	this, err := test.MockPlane()
+	this, err := test.Tier()
 	assert.NoError(t, err)
 
 	// valid action

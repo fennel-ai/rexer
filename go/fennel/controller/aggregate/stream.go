@@ -3,9 +3,9 @@ package aggregate
 import (
 	"fennel/lib/aggregate"
 	"fennel/lib/value"
-	"fennel/plane"
+	"fennel/tier"
 )
 
-func streamValue(instance plane.Plane, agg aggregate.Aggregate, key value.Value) (value.List, error) {
+func streamValue(instance tier.Tier, agg aggregate.Aggregate, key value.Value) (value.List, error) {
 	panic("not implemented error")
 }

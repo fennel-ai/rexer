@@ -4,17 +4,17 @@ import (
 	"fennel/db"
 	"fennel/lib/action"
 	"fennel/lib/ftypes"
-	"fennel/plane"
+	"fennel/tier"
 	"fmt"
 	"strings"
 )
 
-func tablename(planeID ftypes.PlaneID) (string, error) {
-	return db.ToPlaneTablename(planeID, "actionlog")
+func tieredTableName(planeID ftypes.TierID) (string, error) {
+	return db.TieredTableName(planeID, "actionlog")
 }
 
 // inserts the action. If successful, returns the actionID
-func Insert(this plane.Plane, action action.Action) (uint64, error) {
+func Insert(this tier.Tier, action action.Action) (uint64, error) {
 	if len(action.ActionType) > 256 {
 		return 0, fmt.Errorf("ActionType too long: action types cannot be longer than 256 chars")
 	}
@@ -24,7 +24,7 @@ func Insert(this plane.Plane, action action.Action) (uint64, error) {
 	if len(action.TargetType) > 256 {
 		return 0, fmt.Errorf("TargetType too long: target types cannot be longer than 256 chars")
 	}
-	table, err := tablename(this.ID)
+	table, err := tieredTableName(this.ID)
 	if err != nil {
 		return 0, err
 	}
@@ -65,8 +65,8 @@ func Insert(this plane.Plane, action action.Action) (uint64, error) {
 // For actionID and timestamp ranges, min is exclusive and max is inclusive
 // For actionValue range, both min/max are inclusive
 // TODO: add limit support?
-func Fetch(this plane.Plane, request action.ActionFetchRequest) ([]action.Action, error) {
-	table, err := tablename(this.ID)
+func Fetch(this tier.Tier, request action.ActionFetchRequest) ([]action.Action, error) {
+	table, err := tieredTableName(this.ID)
 	if err != nil {
 		return nil, err
 	}

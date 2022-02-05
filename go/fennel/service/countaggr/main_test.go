@@ -8,8 +8,8 @@ import (
 	libaggregate "fennel/lib/aggregate"
 	"fennel/lib/ftypes"
 	"fennel/lib/value"
-	"fennel/plane"
 	"fennel/test"
+	"fennel/tier"
 	"testing"
 	"time"
 
@@ -17,7 +17,7 @@ import (
 )
 
 func TestEndToEnd2(t *testing.T) {
-	instance, err := test.MockPlane()
+	instance, err := test.Tier()
 	assert.NoError(t, err)
 	clock := &test.FakeClock{}
 	instance.Clock = clock
@@ -80,13 +80,13 @@ func TestEndToEnd2(t *testing.T) {
 	verify(t, instance, agg2, key2, value.List{value.Int(0), value.Int(0), value.Int(0), value.Int(0)})
 }
 
-func verify(t *testing.T, instance plane.Plane, agg libaggregate.Aggregate, k value.Value, expected interface{}) {
+func verify(t *testing.T, instance tier.Tier, agg libaggregate.Aggregate, k value.Value, expected interface{}) {
 	found, err := aggregate.Value(instance, agg.Type, agg.Name, k)
 	assert.NoError(t, err)
 	assert.Equal(t, expected, found)
 }
 
-func logAction(t *testing.T, instance plane.Plane, uid ftypes.OidType, ts ftypes.Timestamp) {
+func logAction(t *testing.T, instance tier.Tier, uid ftypes.OidType, ts ftypes.Timestamp) {
 	a1 := actionlib.Action{
 		CustID:      instance.CustID,
 		ActorID:     uid,

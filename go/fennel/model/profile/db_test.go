@@ -20,7 +20,7 @@ func TestDBVersion(t *testing.T) {
 }
 
 func TestLongKey(t *testing.T) {
-	this, err := test.MockPlane()
+	this, err := test.Tier()
 	assert.NoError(t, err)
 	p := dbProvider{}
 
@@ -37,7 +37,7 @@ func TestLongKey(t *testing.T) {
 }
 
 func TestLongOType(t *testing.T) {
-	this, err := test.MockPlane()
+	this, err := test.Tier()
 	assert.NoError(t, err)
 	p := dbProvider{}
 

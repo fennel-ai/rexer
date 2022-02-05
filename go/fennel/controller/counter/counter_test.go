@@ -6,8 +6,8 @@ import (
 	"fennel/lib/ftypes"
 	"fennel/lib/value"
 	"fennel/model/aggregate"
-	"fennel/plane"
 	"fennel/test"
+	"fennel/tier"
 	"github.com/stretchr/testify/assert"
 	"google.golang.org/protobuf/proto"
 	"testing"
@@ -15,7 +15,7 @@ import (
 
 // verifies that given a table created from a query, we do correct inserts/queries
 func TestRolling(t *testing.T) {
-	instance, err := test.MockPlane()
+	instance, err := test.Tier()
 	assert.NoError(t, err)
 
 	start := 24*3600*12 + 60*31
@@ -59,7 +59,7 @@ func TestRolling(t *testing.T) {
 }
 
 func TestTimeseries(t *testing.T) {
-	instance, err := test.MockPlane()
+	instance, err := test.Tier()
 	assert.NoError(t, err)
 
 	start := 24*3600*12 + 60
@@ -128,7 +128,7 @@ func TestTimeseries(t *testing.T) {
 }
 
 func TestCounterUpdateInvalid(t *testing.T) {
-	instance, err := test.MockPlane()
+	instance, err := test.Tier()
 	assert.NoError(t, err)
 	// no col for key or timestamp
 	assertInvalid(instance, t, value.Dict{"hi": value.Int(1)}, value.Dict{"hi": value.Int(3)})
@@ -141,7 +141,7 @@ func TestCounterUpdateInvalid(t *testing.T) {
 	)
 }
 
-func assertInvalid(instance plane.Plane, t *testing.T, ds ...value.Dict) {
+func assertInvalid(instance tier.Tier, t *testing.T, ds ...value.Dict) {
 	table := value.NewTable()
 	for _, d := range ds {
 		err := table.Append(d)

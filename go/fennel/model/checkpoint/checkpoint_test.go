@@ -9,7 +9,7 @@ import (
 )
 
 func TestCheckpoint2(t *testing.T) {
-	this, err := test.MockPlane()
+	this, err := test.Tier()
 	assert.NoError(t, err)
 	aggtype := ftypes.AggType("rolling_counter")
 	aggname := ftypes.AggName("mycounter")

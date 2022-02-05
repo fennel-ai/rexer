@@ -6,7 +6,7 @@ import (
 )
 
 func TestUnix_Now(t *testing.T) {
-	instance, err := MockPlane()
+	instance, err := Tier()
 	assert.NoError(t, err)
 
 	clock := &FakeClock{}

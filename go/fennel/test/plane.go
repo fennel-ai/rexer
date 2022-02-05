@@ -7,30 +7,29 @@ import (
 
 	"fennel/lib/action"
 	"fennel/lib/ftypes"
-	"fennel/plane"
 	"fennel/redis"
+	"fennel/tier"
 )
 
-// MockPlane returns a plane to be used in tests - as many resources of the plane
-// are mocked as possible
-func MockPlane() (plane.Plane, error) {
+// Tier returns a plane to be used in tests - this is based off a standard
+// test plane and as many resources of the tier are mocked as possible
+func Tier() (tier.Tier, error) {
 	rand.Seed(time.Now().UnixNano())
-	planeID := ftypes.PlaneID(rand.Uint32())
-	db, err := defaultDB(planeID)
+	tierID := ftypes.TierID(rand.Uint32())
+	db, err := defaultDB(tierID)
 	if err != nil {
-		return plane.Plane{}, err
+		return tier.Tier{}, err
 	}
 	resource, err := DefaultRedis()
 	if err != nil {
-		return plane.Plane{}, err
+		return tier.Tier{}, err
 	}
 	redClient := resource.(redis.Client)
 
 	Cache := redis.NewCache(redClient)
 	kProducer, kConsumer, err := DefaultProducerConsumer(action.ACTIONLOG_KAFKA_TOPIC)
-	return plane.Plane{
-		ID:             planeID,
-		TierID:         ftypes.TierID(rand.Uint32()),
+	return tier.Tier{
+		ID:             tierID,
 		CustID:         ftypes.CustID(rand.Uint64()),
 		DB:             db,
 		Cache:          Cache,

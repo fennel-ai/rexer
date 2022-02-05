@@ -7,12 +7,11 @@ import (
 
 	"fennel/controller/aggregate"
 	libaggregate "fennel/lib/aggregate"
-	"fennel/plane"
-
-	"github.com/alexflint/go-arg"
+	"fennel/tier"
+	arg "github.com/alexflint/go-arg"
 )
 
-func processOnce(instance plane.Plane) {
+func processOnce(instance tier.Tier) {
 	wg := sync.WaitGroup{}
 	types := libaggregate.ValidTypes
 	for _, t := range types {
@@ -36,11 +35,11 @@ func processOnce(instance plane.Plane) {
 
 func main() {
 	var flags struct {
-		plane.PlaneArgs
+		tier.PlaneArgs
 	}
 	// Parse flags / environment variables.
 	arg.MustParse(&flags)
-	plane, err := plane.CreateFromArgs(&flags.PlaneArgs)
+	plane, err := tier.CreateFromArgs(&flags.PlaneArgs)
 	if err != nil {
 		panic(err)
 	}

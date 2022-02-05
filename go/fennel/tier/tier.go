@@ -1,4 +1,4 @@
-package plane
+package tier
 
 import (
 	"crypto/tls"
@@ -27,22 +27,11 @@ type PlaneArgs struct {
 }
 
 /*
-	Plane represents a full data plane of a particular customer. While each plane enjoys
-	logical isolation, it may or may not get physical isolation of all the resources.
-	Tier is a collection of planes that does get full isolation - it has its own database,
-	own redis cluster, own cache cluster, own kafka cluster etc.
-	Planes of a tier share the resources of the tier and only get logical isolation (e.g. each
-	plane gets a set of tables prefixed by plane_id but all these tables will exist in the
-	database that belongs to the tier.
-
-	Note: for now, each tier has exactly one plane so the difference between them isn't very
-	meaningful. But once we have a multi-tenant environment of freemium customers, a single
-	tier will likely have multiple planes.
+	Design doc:https://coda.io/d/Fennel-Engineering-Guidelines_d1vISIa2cbh/Tier-Data-Plane-abstraction_su91h#_luTxV
 */
 
-type Plane struct {
-	ID             ftypes.PlaneID
-	TierID         ftypes.TierID
+type Tier struct {
+	ID             ftypes.TierID
 	CustID         ftypes.CustID
 	DB             db.Connection
 	Redis          redis.Client
@@ -52,15 +41,15 @@ type Plane struct {
 	Clock          clock.Clock
 }
 
-func CreateFromArgs(args *PlaneArgs) (plane Plane, err error) {
-	planeID := ftypes.PlaneID(1)
+func CreateFromArgs(args *PlaneArgs) (plane Tier, err error) {
+	tierID := ftypes.TierID(1)
 
 	mysqlConfig := db.MySQLConfig{
 		Host:     args.MysqlHost,
 		DBname:   args.MysqlDB,
 		Username: args.MysqlUsername,
 		Password: args.MysqlPassword,
-		PlaneID:  planeID,
+		TierID:   tierID,
 	}
 	sqlConn, err := mysqlConfig.Materialize()
 	if err != nil {
@@ -103,7 +92,7 @@ func CreateFromArgs(args *PlaneArgs) (plane Plane, err error) {
 		return plane, fmt.Errorf("failed to crate kafka producer: %v", err)
 	}
 
-	return Plane{
+	return Tier{
 		DB:             sqlConn.(db.Connection),
 		Redis:          redisClient.(redis.Client),
 		ActionConsumer: kafkaConsumer.(kafka.RemoteConsumer),
@@ -111,8 +100,7 @@ func CreateFromArgs(args *PlaneArgs) (plane Plane, err error) {
 		Clock:          clock.Unix{},
 		// TODO: Replace with actual ids.
 		CustID: ftypes.CustID(1),
-		TierID: ftypes.TierID(1),
-		ID:     ftypes.PlaneID(1),
+		ID:     ftypes.TierID(1),
 		// TODO: add client to ElasticCache-backed Redis instead of MemoryDB.
 		Cache: redis.NewCache(redisClient.(redis.Client)),
 	}, nil

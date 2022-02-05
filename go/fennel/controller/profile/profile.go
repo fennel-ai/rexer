@@ -4,12 +4,12 @@ import (
 	profilelib "fennel/lib/profile"
 	"fennel/lib/value"
 	"fennel/model/profile"
-	"fennel/plane"
+	"fennel/tier"
 	"google.golang.org/protobuf/proto"
 	"time"
 )
 
-func Get(this plane.Plane, request profilelib.ProfileItem) (value.Value, error) {
+func Get(this tier.Tier, request profilelib.ProfileItem) (value.Value, error) {
 	if request.CustID == 0 {
 		request.CustID = this.CustID
 	}
@@ -34,7 +34,7 @@ func Get(this plane.Plane, request profilelib.ProfileItem) (value.Value, error) 
 	return val, nil
 }
 
-func Set(this plane.Plane, request profilelib.ProfileItem) error {
+func Set(this tier.Tier, request profilelib.ProfileItem) error {
 	if request.CustID == 0 {
 		request.CustID = this.CustID
 	}
@@ -58,7 +58,7 @@ func Set(this plane.Plane, request profilelib.ProfileItem) error {
 	return nil
 }
 
-func GetProfiles(this plane.Plane, request profilelib.ProfileFetchRequest) ([]profilelib.ProfileItem, error) {
+func GetProfiles(this tier.Tier, request profilelib.ProfileFetchRequest) ([]profilelib.ProfileItem, error) {
 	profilesSer, err := profile.GetProfiles(this, request)
 	if err != nil {
 		return nil, err
