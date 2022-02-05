@@ -9,6 +9,7 @@ with pkgs; mkShell {
     pkgs.direnv
     pkgs.nix-direnv
     pkgs.git
+    pkgs.ssh-agents
 
     # Protobuf
     pkgs.protobuf
