@@ -45,10 +45,6 @@ func (l localConsumer) Close() error {
 	return nil
 }
 
-func (l localConsumer) Teardown() error {
-	return nil
-}
-
 func (l localConsumer) Type() resource.Type {
 	return resource.KafkaConsumer
 }
@@ -90,10 +86,6 @@ func (l localProducer) TierID() ftypes.TierID {
 
 func (l localProducer) Close() error {
 	close(l.ch)
-	return nil
-}
-
-func (l localProducer) Teardown() error {
 	return nil
 }
 
