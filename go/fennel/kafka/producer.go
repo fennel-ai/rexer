@@ -2,14 +2,13 @@ package kafka
 
 import (
 	"context"
-	"fmt"
-	"log"
-	"time"
-
+	"fennel/lib/ftypes"
 	"fennel/resource"
-
+	"fmt"
 	"github.com/confluentinc/confluent-kafka-go/kafka"
 	"google.golang.org/protobuf/proto"
+	"log"
+	"time"
 )
 
 //=================================
@@ -17,12 +16,17 @@ import (
 //=================================
 
 type RemoteProducer struct {
-	topic string
+	tierID ftypes.TierID
+	topic  string
 	*kafka.Producer
 }
 
 func (k RemoteProducer) Close() error {
 	return k.Close()
+}
+
+func (k RemoteProducer) TierID() ftypes.TierID {
+	return k.tierID
 }
 
 func (k RemoteProducer) Teardown() error {
@@ -54,12 +58,18 @@ var _ FProducer = RemoteProducer{}
 type RemoteProducerConfig struct {
 	Topic           string
 	RecreateTopic   bool
+	TierID          ftypes.TierID
 	BootstrapServer string
 	Username        string
 	Password        string
 }
 
 func (conf RemoteProducerConfig) Materialize() (resource.Resource, error) {
+	if conf.TierID == 0 {
+		return nil, fmt.Errorf("tier ID not initialized")
+	}
+	conf.Topic = fmt.Sprintf("t_%d_%s", conf.TierID, conf.Topic)
+
 	configmap := conf.genConfigMap()
 	producer, err := kafka.NewProducer(configmap)
 	if err != nil {
@@ -78,7 +88,7 @@ func (conf RemoteProducerConfig) Materialize() (resource.Resource, error) {
 			}
 		}
 	}()
-	return RemoteProducer{conf.Topic, producer}, err
+	return RemoteProducer{conf.TierID, conf.Topic, producer}, err
 }
 
 func (conf RemoteProducerConfig) recreate() error {

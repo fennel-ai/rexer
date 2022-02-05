@@ -27,7 +27,7 @@ func Tier() (tier.Tier, error) {
 	redClient := resource.(redis.Client)
 
 	Cache := redis.NewCache(redClient)
-	kProducer, kConsumer, err := DefaultProducerConsumer(action.ACTIONLOG_KAFKA_TOPIC)
+	kProducer, kConsumer, err := defaultProducerConsumer(tierID, action.ACTIONLOG_KAFKA_TOPIC)
 	return tier.Tier{
 		ID:             tierID,
 		CustID:         ftypes.CustID(rand.Uint64()),

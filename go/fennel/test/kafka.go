@@ -2,17 +2,19 @@ package test
 
 import (
 	"fennel/kafka"
+	"fennel/lib/ftypes"
 	"fennel/resource"
+	"fmt"
 	"google.golang.org/protobuf/proto"
 )
 
-func DefaultProducerConsumer(topic string) (kafka.FProducer, kafka.FConsumer, error) {
+func defaultProducerConsumer(tierID ftypes.TierID, topic string) (kafka.FProducer, kafka.FConsumer, error) {
 	ch := make(chan []byte, 1000)
-	producer, err := localProducerConfig{ch: ch, topic: topic}.Materialize()
+	producer, err := localProducerConfig{tierID: tierID, ch: ch, topic: topic}.Materialize()
 	if err != nil {
 		return nil, nil, err
 	}
-	consumer, err := localConsumerConfig{Channel: ch, Topic: topic}.Materialize()
+	consumer, err := localConsumerConfig{tierID: tierID, Channel: ch, Topic: topic}.Materialize()
 	if err != nil {
 		return nil, nil, err
 	}
@@ -24,8 +26,13 @@ func DefaultProducerConsumer(topic string) (kafka.FProducer, kafka.FConsumer, er
 //=================================
 
 type localConsumer struct {
+	tierID  ftypes.TierID
 	Topic   string
 	Channel <-chan []byte
+}
+
+func (l localConsumer) TierID() ftypes.TierID {
+	return l.tierID
 }
 
 func (l localConsumer) Read(message proto.Message) error {
@@ -53,12 +60,16 @@ var _ kafka.FConsumer = localConsumer{}
 //=================================
 
 type localConsumerConfig struct {
+	tierID  ftypes.TierID
 	Channel chan []byte
 	Topic   string
 }
 
 func (l localConsumerConfig) Materialize() (resource.Resource, error) {
-	return localConsumer{l.Topic, l.Channel}, nil
+	if l.tierID == 0 {
+		return nil, fmt.Errorf("tier ID not initialized")
+	}
+	return localConsumer{l.tierID, l.Topic, l.Channel}, nil
 }
 
 var _ resource.Config = localConsumerConfig{}
@@ -68,8 +79,13 @@ var _ resource.Config = localConsumerConfig{}
 //=================================
 
 type localProducer struct {
-	topic string
-	ch    chan<- []byte
+	tierID ftypes.TierID
+	topic  string
+	ch     chan<- []byte
+}
+
+func (l localProducer) TierID() ftypes.TierID {
+	return l.tierID
 }
 
 func (l localProducer) Close() error {
@@ -101,12 +117,16 @@ var _ kafka.FProducer = localProducer{}
 //=================================
 
 type localProducerConfig struct {
-	ch    chan []byte
-	topic string
+	tierID ftypes.TierID
+	ch     chan []byte
+	topic  string
 }
 
 func (conf localProducerConfig) Materialize() (resource.Resource, error) {
-	return localProducer{conf.topic, conf.ch}, nil
+	if conf.tierID == 0 {
+		return nil, fmt.Errorf("tier ID not initialized")
+	}
+	return localProducer{conf.tierID, conf.topic, conf.ch}, nil
 }
 
 var _ resource.Config = localProducerConfig{}
