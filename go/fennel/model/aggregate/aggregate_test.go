@@ -18,6 +18,7 @@ import (
 func TestRetrieveStore(t *testing.T) {
 	instance, err := test.Tier()
 	assert.NoError(t, err)
+	defer test.Teardown(instance)
 
 	query := ast.Atom{Type: ast.Int, Lexeme: "4"}
 	querySer, err := ast.Marshal(query)
@@ -69,6 +70,7 @@ func TestRetrieveStore(t *testing.T) {
 func TestRetrieveAll(t *testing.T) {
 	instance, err := test.Tier()
 	assert.NoError(t, err)
+	defer test.Teardown(instance)
 
 	agg := aggregate.AggregateSer{
 		CustID:    instance.CustID,
@@ -92,6 +94,8 @@ func TestRetrieveAll(t *testing.T) {
 func TestLongStrings(t *testing.T) {
 	instance, err := test.Tier()
 	assert.NoError(t, err)
+	defer test.Teardown(instance)
+
 	aggtype := ftypes.AggType("rolling_counter")
 
 	// can not insert normal sized data

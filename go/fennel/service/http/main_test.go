@@ -56,6 +56,8 @@ func TestLogFetchServerClient(t *testing.T) {
 	// create a service
 	instance, err := test.Tier()
 	assert.NoError(t, err)
+	defer test.Teardown(instance)
+
 	controller := holder{plane: instance}
 	server := startTestServer(controller)
 	defer server.Close()
@@ -94,6 +96,8 @@ func TestProfileServerClient(t *testing.T) {
 	// create a service
 	instance, err := test.Tier()
 	assert.NoError(t, err)
+	defer test.Teardown(instance)
+
 	controller := holder{plane: instance}
 	server := startTestServer(controller)
 	defer server.Close()
@@ -128,6 +132,8 @@ func TestQuery(t *testing.T) {
 	// create a service
 	instance, err := test.Tier()
 	assert.NoError(t, err)
+	defer test.Teardown(instance)
+
 	controller := holder{plane: instance}
 	server := startTestServer(controller)
 	defer server.Close()
@@ -172,6 +178,8 @@ func TestQuery(t *testing.T) {
 func TestHolder_AggregateValue_Valid(t *testing.T) {
 	instance, err := test.Tier()
 	assert.NoError(t, err)
+	defer test.Teardown(instance)
+
 	clock := &test.FakeClock{}
 	instance.Clock = clock
 	t0 := ftypes.Timestamp(3600 * 10)
@@ -205,6 +213,8 @@ func TestStoreRetrieveAggregate(t *testing.T) {
 	// create a service + client
 	instance, err := test.Tier()
 	assert.NoError(t, err)
+	defer test.Teardown(instance)
+
 	controller := holder{plane: instance}
 	server := startTestServer(controller)
 	defer server.Close()

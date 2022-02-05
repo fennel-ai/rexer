@@ -14,6 +14,7 @@ import (
 func TestProfileController(t *testing.T) {
 	this, err := test.Tier()
 	assert.NoError(t, err)
+	defer test.Teardown(this)
 
 	vals := []value.Int{}
 	for i := 0; i < 5; i++ {

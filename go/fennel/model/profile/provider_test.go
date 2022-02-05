@@ -13,6 +13,8 @@ import (
 func testProviderBasic(t *testing.T, p provider) {
 	this, err := test.Tier()
 	assert.NoError(t, err)
+	defer test.Teardown(this)
+
 	val := value.Int(2)
 	expected, _ := value.Marshal(val)
 
@@ -38,6 +40,7 @@ func testProviderBasic(t *testing.T, p provider) {
 func testProviderVersion(t *testing.T, p provider) {
 	this, err := test.Tier()
 	assert.NoError(t, err)
+	defer test.Teardown(this)
 
 	profiles := make([]profile.ProfileItemSer, 0)
 	request := profile.ProfileFetchRequest{}

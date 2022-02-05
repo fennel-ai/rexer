@@ -19,6 +19,8 @@ import (
 func TestEndToEnd2(t *testing.T) {
 	instance, err := test.Tier()
 	assert.NoError(t, err)
+	defer test.Teardown(instance)
+
 	clock := &test.FakeClock{}
 	instance.Clock = clock
 
