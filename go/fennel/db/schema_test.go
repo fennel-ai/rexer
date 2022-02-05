@@ -13,7 +13,7 @@ import (
 
 func drop(tierID ftypes.TierID, logicalname, username, password, host string) error {
 	dbname := Name(tierID, logicalname)
-	connstr := fmt.Sprintf("%s:%s@tcp(%s)/", username, password, host)
+	connstr := fmt.Sprintf("%s:%s@tcp(%s)/?tls=true", username, password, host)
 	db, err := sqlx.Open("mysql", connstr)
 	if err != nil {
 		return err
@@ -31,7 +31,7 @@ func recreate(tierID ftypes.TierID, logicalname, username, password, host string
 		return nil, err
 	}
 	dbname := Name(tierID, logicalname)
-	connstr := fmt.Sprintf("%s:%s@tcp(%s)/%s", username, password, host, dbname)
+	connstr := fmt.Sprintf("%s:%s@tcp(%s)/%s?tls=true", username, password, host, dbname)
 	return sqlx.Open("mysql", connstr)
 }
 
@@ -40,7 +40,7 @@ func TestSyncSchema(t *testing.T) {
 	rand.Seed(time.Now().UnixNano())
 	config := MySQLConfig{
 		TierID:   ftypes.TierID(rand.Uint32()),
-		DBname:   "fennel_test",
+		DBname:   "schema_test",
 		Username: "admin",
 		Password: "foundationdb",
 		Host:     "database-nikhil-test.cluster-c00d7gkxaysk.us-west-2.rds.amazonaws.com",
