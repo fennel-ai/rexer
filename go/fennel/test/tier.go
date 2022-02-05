@@ -39,3 +39,7 @@ func Tier() (tier.Tier, error) {
 		Clock:          clock.Unix{},
 	}, err
 }
+
+func Teardown(tier tier.Tier) error {
+	return drop(tier.ID, logical_test_dbname, username, password, host)
+}

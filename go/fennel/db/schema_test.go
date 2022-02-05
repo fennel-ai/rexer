@@ -4,25 +4,35 @@ import (
 	"database/sql"
 	"fennel/lib/ftypes"
 	"fmt"
+	"github.com/jmoiron/sqlx"
 	"github.com/stretchr/testify/assert"
 	"math/rand"
 	"testing"
 	"time"
 )
 
-// dropDB drops all tables in the given database.
-func dropDB(db Connection) error {
-	for _, name := range tablenames {
-		ptablename, err := TieredTableName(db.TierID(), name)
-		if err != nil {
-			return err
-		}
-		_, err = db.Query(fmt.Sprintf("DROP TABLE IF EXISTS %s;", ptablename))
-		if err != nil {
-			return err
-		}
+func drop(tierID ftypes.TierID, logicalname, username, password, host string) error {
+	dbname := Name(tierID, logicalname)
+	connstr := fmt.Sprintf("%s:%s@tcp(%s)/", username, password, host)
+	db, err := sqlx.Open("mysql", connstr)
+	if err != nil {
+		return err
 	}
-	return nil
+	defer db.Close()
+	_, err = db.Exec("DROP DATABASE IF EXISTS " + dbname)
+	return err
+}
+
+func recreate(tierID ftypes.TierID, logicalname, username, password, host string) (*sqlx.DB, error) {
+	if err := drop(tierID, logicalname, username, password, host); err != nil {
+		return nil, err
+	}
+	if err := Create(tierID, logicalname, username, password, host); err != nil {
+		return nil, err
+	}
+	dbname := Name(tierID, logicalname)
+	connstr := fmt.Sprintf("%s:%s@tcp(%s)/%s", username, password, host, dbname)
+	return sqlx.Open("mysql", connstr)
 }
 
 func TestSyncSchema(t *testing.T) {
@@ -37,10 +47,13 @@ func TestSyncSchema(t *testing.T) {
 	}
 	resource, err := config.Materialize()
 	assert.NoError(t, err)
+	defer drop(config.TierID, config.DBname, config.Username, config.Password, config.Host)
 	db := resource.(Connection)
 
 	// version goes to zero after dropping the DB
-	assert.NoError(t, dropDB(db))
+	conn, err := recreate(config.TierID, config.DBname, config.Username, config.Password, config.Host)
+	assert.NoError(t, err)
+	db.DB = conn
 
 	// since we just created a new DB, it's version starts at zero
 	version, err := schemaVersion(db)

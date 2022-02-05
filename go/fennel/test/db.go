@@ -3,6 +3,15 @@ package test
 import (
 	"fennel/db"
 	"fennel/lib/ftypes"
+	"fmt"
+	"github.com/jmoiron/sqlx"
+)
+
+const (
+	username            = "admin"
+	password            = "foundationdb"
+	host                = "database-nikhil-test.cluster-c00d7gkxaysk.us-west-2.rds.amazonaws.com"
+	logical_test_dbname = "testdb"
 )
 
 func defaultDB(tierID ftypes.TierID) (db.Connection, error) {
@@ -11,14 +20,10 @@ func defaultDB(tierID ftypes.TierID) (db.Connection, error) {
 	// remember to cleanup this database every few months
 	config := db.MySQLConfig{
 		TierID:   tierID,
-		DBname:   "fennel_test",
-		Username: "admin",
-		Password: "foundationdb",
-		Host:     "database-nikhil-test.cluster-c00d7gkxaysk.us-west-2.rds.amazonaws.com",
-		//DBname:   "fennel-test",
-		//Username: "ftm4ey929riz",
-		//Password: "pscale_pw_YdsInnGezBNibWLaSXzjWUNHP2ljuXGJUAq8y7iRXqQ",
-		//Host:     "9kzpy3s6wi0u.us-west-2.psdb.cloud",
+		DBname:   logical_test_dbname,
+		Username: username,
+		Password: password,
+		Host:     host,
 	}
 	resource, err := config.Materialize()
 	if err != nil {
@@ -30,4 +35,17 @@ func defaultDB(tierID ftypes.TierID) (db.Connection, error) {
 		return db.Connection{}, err
 	}
 	return DB, nil
+}
+
+func drop(tierID ftypes.TierID, logicalname, username, password, host string) error {
+	dbname := db.Name(tierID, logicalname)
+	connstr := fmt.Sprintf("%s:%s@tcp(%s)/", username, password, host)
+	db, err := sqlx.Open("mysql", connstr)
+	if err != nil {
+		return err
+	}
+	defer db.Close()
+
+	_, err = db.Exec("DROP DATABASE IF EXISTS " + dbname)
+	return err
 }
