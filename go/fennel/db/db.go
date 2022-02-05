@@ -35,7 +35,7 @@ func (c Connection) Type() resource.Type {
 var _ resource.Resource = Connection{}
 
 //=================================
-// SQLite config for db connection
+// SQLite Config for db connection
 //=================================
 
 type SQLiteConfig struct {
@@ -47,7 +47,7 @@ func (conf SQLiteConfig) Materialize() (resource.Resource, error) {
 	if conf.TierID == 0 {
 		return nil, fmt.Errorf("tier ID not initialized")
 	}
-	dbname := conf.dbname
+	dbname := Name(conf.TierID, conf.dbname)
 
 	os.Remove(dbname)
 
@@ -71,7 +71,7 @@ func (conf SQLiteConfig) Materialize() (resource.Resource, error) {
 var _ resource.Config = SQLiteConfig{}
 
 //=================================
-// MySQL config for db connection
+// MySQL Config for db connection
 //=================================
 
 type MySQLConfig struct {
@@ -88,10 +88,11 @@ func (conf MySQLConfig) Materialize() (resource.Resource, error) {
 	if conf.TierID == 0 {
 		return Connection{}, fmt.Errorf("tier ID not specified")
 	}
-	connectStr := fmt.Sprintf(
-		"%s:%s@tcp(%s)/%s?tls=true",
-		conf.Username, conf.Password, conf.Host, conf.DBname,
-	)
+	dbname := Name(conf.TierID, conf.DBname)
+	if err := Create(conf.TierID, conf.DBname, conf.Username, conf.Password, conf.Host); err != nil {
+		return nil, err
+	}
+	connectStr := fmt.Sprintf("%s:%s@tcp(%s)/%s?tls=true", conf.Username, conf.Password, conf.Host, dbname)
 	DB, err := sqlx.Open("mysql", connectStr)
 	if err != nil {
 		return nil, err
@@ -102,4 +103,21 @@ func (conf MySQLConfig) Materialize() (resource.Resource, error) {
 		return nil, err
 	}
 	return conn, nil
+}
+
+func Name(tierID ftypes.TierID, logicalname string) string {
+	return fmt.Sprintf("t_%d_%s", tierID, logicalname)
+}
+
+func Create(tierID ftypes.TierID, logicalname, username, password, host string) error {
+	dbname := Name(tierID, logicalname)
+	connstr := fmt.Sprintf("%s:%s@tcp(%s)/?tls=true", username, password, host)
+	db, err := sqlx.Open("mysql", connstr)
+	if err != nil {
+		return err
+	}
+	defer db.Close()
+
+	_, err = db.Exec("CREATE DATABASE IF NOT EXISTS " + dbname)
+	return err
 }
