@@ -3,34 +3,60 @@ import * as aws from "@pulumi/aws";
 
 const REDIS_VERSION = "6.2";
 const NODE_TYPE = "db.t4g.small";
-
-// Get subnet id from stack configuration.
-const config = new pulumi.Config();
-const subnetIds = config.requireObject<string[]>("subnetIds")
-
 // TODO: Increase replica count once we add more than one subnet to group.
 const NUM_REPLICAS = 0;
 
-const subnetGroup = new aws.memorydb.SubnetGroup("redis-subnet-group",
-    {
-        subnetIds: subnetIds,
-    }
-)
+// Get subnet id from stack configuration.
+const config = new pulumi.Config();
 
-// TODO: Create security group to control access to redis instance and only allow
-// traffic from EKS security group.
-const cluster = new aws.memorydb.Cluster("redis-db",
-    {
-        subnetGroupName: subnetGroup.id,
-        aclName: "open-access",
-        engineVersion: REDIS_VERSION,
-        nodeType: NODE_TYPE,
-        autoMinorVersionUpgrade: true,
-        tlsEnabled: true,
-        numReplicasPerShard: NUM_REPLICAS,
-    }
-)
+async function setupRedisCluster(): Promise<aws.memorydb.Cluster> {
+    // TODO: Setup in non-default VPC.
+    const vpc = await aws.ec2.getVpc({
+        default: true,
+    })
 
-// Export the name of the cluster
-export const clusterName = cluster.id;
-export const clusterUrl = cluster.clusterEndpoints
+    const subnets = await aws.ec2.getSubnetIds({
+        vpcId: vpc.id,
+    })
+
+    const subnetGroup = new aws.memorydb.SubnetGroup("redis-subnet-group",
+        {
+            // TODO: Setup only in private subnet ids.
+            subnetIds: subnets.ids,
+        }
+    )
+
+    const redisSg = new aws.ec2.SecurityGroup("redis-sg", {
+        namePrefix: "redis-sg-",
+        vpcId: vpc.id,
+    })
+
+    const cluster = new aws.memorydb.Cluster("redis-db",
+        {
+            subnetGroupName: subnetGroup.id,
+            aclName: "open-access",
+            engineVersion: REDIS_VERSION,
+            nodeType: NODE_TYPE,
+            autoMinorVersionUpgrade: true,
+            tlsEnabled: true,
+            numReplicasPerShard: NUM_REPLICAS,
+            securityGroupIds: [redisSg.id, "sg-00f377810f399193f"],
+        }
+    )
+
+
+    return cluster
+}
+
+
+export = async () => {
+
+    const cluster = await setupRedisCluster()
+
+
+    const clusterId = cluster.id;
+    const clusterEndPoints = cluster.clusterEndpoints
+    const clusterSecurityGroupIds = cluster.securityGroupIds
+
+    return { clusterId, clusterEndPoints, clusterSecurityGroupIds }
+}
