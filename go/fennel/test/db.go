@@ -8,10 +8,9 @@ import (
 )
 
 const (
-	username = "admin"
-	password = "foundationdb"
-	host     = "database-nikhil-test.cluster-c00d7gkxaysk.us-west-2.rds.amazonaws.com"
-	//host                = "database-nikhil-test-perf.cluster-c00d7gkxaysk.us-west-2.rds.amazonaws.com"
+	username            = "admin"
+	password            = "foundationdb"
+	host                = "database-nikhil-test.cluster-c00d7gkxaysk.us-west-2.rds.amazonaws.com"
 	logical_test_dbname = "testdb"
 )
 
