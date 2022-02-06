@@ -18,7 +18,7 @@ git config delta.line-numbers true
 git config delta.side-by-side true
 
 
-eval $(ssh-agents)
+eval $(ssh-agents --name $USER)
 export DOCKER_BUILDKIT=1
 
 # this is needed to avoid a librdkafka bug on macOS
