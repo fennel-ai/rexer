@@ -1,9 +1,10 @@
+import requests
 from absl import flags
 from flask import Flask, request, jsonify
 from google.protobuf import json_format
 
-from rexerclient import client
-from rexerclient.models import action, value, profile
+from rexerclient import client, value
+from rexerclient.models import action, profile
 
 app = Flask('console')
 
@@ -11,10 +12,12 @@ app = Flask('console')
 endpoint_flag = flags.DEFINE_string("endpoint", "http://localhost:2425", "URL for the data-plane API end-point")
 
 def build_app(**kwargs):
-    global c
+    global c, go_url
     if endpoint_flag.name in kwargs:
+        go_url = kwargs.get(endpoint_flag.name)
         c = client.Client(kwargs.get(endpoint_flag.name))
     else:
+        go_url = endpoint_flag.default
         c = client.Client(endpoint_flag.default)
     return app
 
@@ -25,7 +28,6 @@ def is_uint(s, size=32):
         return 0 <= n < (2 ** size)
     except:
         return False
-
 
 def is_int(s, size=32):
     try:
@@ -88,7 +90,6 @@ def _to_profile_item(otype, oid, key, version):
 
 @app.route('/profile/', methods=['GET'])
 def profile_handler():
-    global c
     args = request.args
     oid = args.get('oid', None)
     otype = args.get('otype', None)
@@ -101,7 +102,12 @@ def profile_handler():
     req = _to_profile_item(otype, oid, key, version)
     # TODO: client's get_profile returns a single value but
     # we need a list of all relevant profile rows here
-    v = c.get_profile(req)
+    ser = req.SerializeToString()
+    response = requests.post(go_url+'/get', data=ser)
+    if response.status_code != requests.codes.OK:
+        response.raise_for_status()
+    v = value.Value()
+    v.ParseFromString(response.content)
     return json_format.MessageToJson(v)
 
 
@@ -167,7 +173,6 @@ def _to_action_fetch_request(actor_id, actor_type, target_id, target_type, actio
 
 @app.route('/actions/', methods=['GET'])
 def action_handler():
-    global c
     args = request.args
     actor_id = args.get('actor_id', None)
     target_id = args.get('target_id', None)
@@ -186,10 +191,17 @@ def action_handler():
                                   min_action_id, max_action_id, request_id)
     if len(errors) > 0:
         return jsonify({'errors': errors}), 400
+    
     req = _to_action_fetch_request(actor_id, actor_type, target_id, target_type, action_type,
                                    min_action_value, max_action_value, min_timestamp, max_timestamp,
                                    min_action_id, max_action_id, request_id)
-    actions = c.fetch(req)
+    ser = req.SerializeToString()
+    response = requests.post(go_url+'/fetch', data=ser)
+    if response.status_code != requests.codes.OK:
+        response.raise_for_status()
+    al = action.ActionList()
+    al.ParseFromString(response.content)
+    actions = action.from_proto_action_list(al)
     strs = []
     for a in actions:
         strs.append(json_format.MessageToJson(a, including_default_value_fields=True))
@@ -218,7 +230,6 @@ def _to_profile_fetch_request(otype, oid, key, version):
 
 @app.route('/profiles/', methods=['GET'])
 def profiles_handler():
-    global c
     args = request.args
     otype = args.get('otype', None)
     oid = args.get('oid', None)
@@ -228,12 +239,19 @@ def profiles_handler():
     if len(errors) > 0:
         return jsonify({'errors': errors}), 400
     req = _to_profile_fetch_request(otype, oid, key, version)
-    profiles = c.get_profiles(req)
+    ser = req.SerializeToString()
+    response = requests.post(go_url+'/get_profiles', data=ser)
+    if response.status_code != requests.codes.OK:
+        response.raise_for_status()
+    pl = profile.ProfileList()
+    pl.ParseFromString(response.content)
+    profiles = profile.from_proto_profile_list(pl)
     strs = []
     for p in profiles:
         strs.append(json_format.MessageToJson(p, including_default_value_fields=True))
     return '[' + ', '.join(strs) + ']'
 
 
+go_url = endpoint_flag.default
 c = client.Client(endpoint_flag.default)
 #app.run(host="localhost", port="2475")
