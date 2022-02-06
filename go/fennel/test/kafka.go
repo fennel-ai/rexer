@@ -42,7 +42,6 @@ func createKafka(tierID ftypes.TierID, integration bool) (map[string]fkafka.FPro
 }
 
 func mockProducerConsumer(tierID ftypes.TierID, topic string) (fkafka.FProducer, fkafka.FConsumer, error) {
-	fmt.Printf("coming to mock kafka creator\n")
 	ch := make(chan []byte, 1000)
 	producer, err := localProducerConfig{tierID: tierID, ch: ch, topic: topic}.Materialize()
 	if err != nil {
@@ -56,7 +55,6 @@ func mockProducerConsumer(tierID ftypes.TierID, topic string) (fkafka.FProducer,
 }
 
 func setupKafkaTopics(tierID ftypes.TierID, topics []string) error {
-	fmt.Printf("going to setup kafka topics\n")
 	names := make([]string, len(topics))
 	for i, topic := range topics {
 		names[i] = fkafka.TieredName(tierID, topic)
@@ -93,7 +91,6 @@ func setupKafkaTopics(tierID ftypes.TierID, topics []string) error {
 }
 
 func teardownKafkaTopics(tierID ftypes.TierID, topics []string) error {
-	fmt.Printf("going to tear down kafka topics\n")
 	names := make([]string, len(topics))
 	for i, topic := range topics {
 		names[i] = fkafka.TieredName(tierID, topic)
