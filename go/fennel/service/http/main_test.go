@@ -113,16 +113,16 @@ func TestProfileServerClient(t *testing.T) {
 
 	var expected value.Value = value.List([]value.Value{value.Int(1), value.Bool(false), value.Nil})
 	profileList = append(profileList, checkGetSet(t, c, false, 1, "1", 1, 1, "age", expected))
-	checkGetProfiles(t, c, pfr, profileList)
+	checkGetProfileMulti(t, c, pfr, profileList)
 
 	// we can also GetProfile it without using the specific version number
 	checkGetSet(t, c, true, 1, "1", 1, 0, "age", expected)
 
 	// SetProfile few more key/value pairs and verify it works
 	profileList = append(profileList, checkGetSet(t, c, false, 1, "1", 1, 2, "age", value.Nil))
-	checkGetProfiles(t, c, pfr, profileList)
+	checkGetProfileMulti(t, c, pfr, profileList)
 	profileList = append(profileList, checkGetSet(t, c, false, 1, "1", 3, 2, "age", value.Int(1)))
-	checkGetProfiles(t, c, pfr, profileList)
+	checkGetProfileMulti(t, c, pfr, profileList)
 	checkGetSet(t, c, true, 1, "1", 1, 2, "age", value.Nil)
 	checkGetSet(t, c, true, 1, "1", 1, 0, "age", value.Nil)
 	checkGetSet(t, c, false, 1, "10", 3131, 0, "summary", value.Int(1))
@@ -293,8 +293,8 @@ func checkGetSet(t *testing.T, c *client.Client, get bool, custid uint64, otype 
 	}
 }
 
-func checkGetProfiles(t *testing.T, c *client.Client, request profilelib.ProfileFetchRequest, expected []profilelib.ProfileItem) {
-	found, err := c.GetProfiles(request)
+func checkGetProfileMulti(t *testing.T, c *client.Client, request profilelib.ProfileFetchRequest, expected []profilelib.ProfileItem) {
+	found, err := c.GetProfileMulti(request)
 	assert.NoError(t, err)
 
 	assert.Equal(t, len(expected), len(found))

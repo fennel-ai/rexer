@@ -58,8 +58,8 @@ func (c Client) setProfileURL() string {
 	return fmt.Sprintf(c.url.String())
 }
 
-func (c Client) getProfilesURL() string {
-	c.url.Path = "/get_profiles"
+func (c Client) getProfileMultiURL() string {
+	c.url.Path = "/get_multi"
 	return fmt.Sprintf(c.url.String())
 }
 
@@ -180,9 +180,9 @@ func (c *Client) SetProfile(req *profileLib.ProfileItem) error {
 	return nil
 }
 
-func (c *Client) GetProfiles(request profileLib.ProfileFetchRequest) ([]profileLib.ProfileItem, error) {
+func (c *Client) GetProfileMulti(request profileLib.ProfileFetchRequest) ([]profileLib.ProfileItem, error) {
 	protoRequest := profileLib.ToProtoProfileFetchRequest(&request)
-	response, err := c.post(&protoRequest, c.getProfilesURL())
+	response, err := c.post(&protoRequest, c.getProfileMultiURL())
 	if err != nil {
 		return nil, err
 	}
