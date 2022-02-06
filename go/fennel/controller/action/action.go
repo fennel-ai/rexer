@@ -6,7 +6,6 @@ import (
 	"fennel/model/action"
 	"fennel/tier"
 	"fmt"
-	"time"
 )
 
 // Insert takes an action and inserts it both in the DB and Kafka
@@ -20,12 +19,13 @@ func Insert(tier tier.Tier, a actionlib.Action) (uint64, error) {
 		return 0, fmt.Errorf("invalid action: %v", err)
 	}
 	if a.Timestamp == 0 {
-		a.Timestamp = ftypes.Timestamp(time.Now().Unix())
+		a.Timestamp = ftypes.Timestamp(tier.Clock.Now())
 	}
 	ret, err := action.Insert(tier, a)
 	if err != nil {
 		return ret, err
 	}
+	a.ActionID = ftypes.OidType(ret)
 	pa := actionlib.ToProtoAction(a)
 	producer := tier.Producers[actionlib.ACTIONLOG_KAFKA_TOPIC]
 	err = producer.Log(&pa)
