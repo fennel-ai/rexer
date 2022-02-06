@@ -27,7 +27,8 @@ func Insert(tier tier.Tier, a actionlib.Action) (uint64, error) {
 		return ret, err
 	}
 	pa := actionlib.ToProtoAction(a)
-	err = tier.ActionProducer.Log(&pa)
+	producer := tier.Producers[actionlib.ACTIONLOG_KAFKA_TOPIC]
+	err = producer.Log(&pa)
 	if err != nil {
 		return ret, err
 	}

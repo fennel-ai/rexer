@@ -1,14 +1,12 @@
 package kafka
 
 import (
-	"context"
 	"fennel/lib/ftypes"
 	"fennel/resource"
 	"fmt"
 	"github.com/confluentinc/confluent-kafka-go/kafka"
 	"google.golang.org/protobuf/proto"
 	"log"
-	"time"
 )
 
 //=================================
@@ -53,7 +51,6 @@ var _ FProducer = RemoteProducer{}
 
 type RemoteProducerConfig struct {
 	Topic           string
-	RecreateTopic   bool
 	TierID          ftypes.TierID
 	BootstrapServer string
 	Username        string
@@ -64,15 +61,12 @@ func (conf RemoteProducerConfig) Materialize() (resource.Resource, error) {
 	if conf.TierID == 0 {
 		return nil, fmt.Errorf("tier ID not initialized")
 	}
-	conf.Topic = fmt.Sprintf("t_%d_%s", conf.TierID, conf.Topic)
+	conf.Topic = TieredName(conf.TierID, conf.Topic)
 
-	configmap := conf.genConfigMap()
+	configmap := ConfigMap(conf.BootstrapServer, conf.Username, conf.Password)
 	producer, err := kafka.NewProducer(configmap)
 	if err != nil {
 		return nil, fmt.Errorf("failed to initialize kafka producer for Topic [%s]: %v", conf.Topic, err)
-	}
-	if conf.RecreateTopic {
-		conf.recreate()
 	}
 	// Delivery report handler for produced messages
 	// This starts a go-routine that goes through all "delivery reports" for sends
@@ -85,45 +79,6 @@ func (conf RemoteProducerConfig) Materialize() (resource.Resource, error) {
 		}
 	}()
 	return RemoteProducer{conf.TierID, conf.Topic, producer}, err
-}
-
-func (conf RemoteProducerConfig) recreate() error {
-	// Create admin client.
-	c, err := kafka.NewAdminClient(conf.genConfigMap())
-	if err != nil {
-		return fmt.Errorf("failed to create admin client: %v", err)
-	}
-	defer c.Close()
-
-	// First, delete any existing topics of this name
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
-	// we ignore results/errors because sometimes the Topic may not exist
-	_, _ = c.DeleteTopics(ctx, []string{conf.Topic})
-
-	// now recreate the Topic
-	results, err := c.CreateTopics(ctx, []kafka.TopicSpecification{
-		{Topic: conf.Topic, NumPartitions: 1},
-	})
-	if err != nil {
-		return fmt.Errorf("failed to create Topic [%s]: %v", conf.Topic, err)
-	}
-	for _, tr := range results {
-		if tr.Error.Code() != kafka.ErrNoError {
-			return fmt.Errorf(tr.Error.Error())
-		}
-	}
-	return nil
-}
-
-func (conf RemoteProducerConfig) genConfigMap() *kafka.ConfigMap {
-	return &kafka.ConfigMap{
-		"bootstrap.servers": conf.BootstrapServer,
-		"sasl.username":     conf.Username,
-		"sasl.password":     conf.Password,
-		"security.protocol": SecurityProtocol,
-		"sasl.mechanisms":   SaslMechanism,
-	}
 }
 
 var _ resource.Config = RemoteProducerConfig{}

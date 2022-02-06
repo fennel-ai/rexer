@@ -11,13 +11,13 @@ import (
 
 func Test_Create_GetInstance(t *testing.T) {
 	tier := tier.Tier{
-		CustID:         123,
-		DB:             db.Connection{},
-		Redis:          redis.Client{},
-		Cache:          nil,
-		ActionProducer: nil,
-		ActionConsumer: nil,
-		Clock:          &test.FakeClock{},
+		CustID:    123,
+		DB:        db.Connection{},
+		Redis:     redis.Client{},
+		Cache:     nil,
+		Producers: nil,
+		Consumers: nil,
+		Clock:     &test.FakeClock{},
 	}
 	b := Create(tier)
 	assert.Len(t, b, 1)

@@ -1,19 +1,22 @@
 package test
 
 import (
+	"fennel/kafka"
 	"fennel/lib/clock"
+	"flag"
 	"fmt"
 	"math/rand"
 	"time"
 
-	"fennel/lib/action"
 	"fennel/lib/ftypes"
 	"fennel/redis"
 	"fennel/tier"
 )
 
-// Tier returns a tier to be used in tests - this is based off a standard
-// test plane and as many resources of the tier are mocked as possible
+var integration = flag.Bool("integration", false, "flag to indicate whether to run integration tests")
+
+// Tier returns a tier to be used in tests based off a standard  test plane
+// if 'integration' flag is set, real resources are used, else resources are mocked whenever possible
 func Tier() (tier.Tier, error) {
 	rand.Seed(time.Now().UnixNano())
 	tierID := ftypes.TierID(rand.Uint32())
@@ -28,23 +31,33 @@ func Tier() (tier.Tier, error) {
 	redClient := resource.(redis.Client)
 
 	Cache := redis.NewCache(redClient)
-	kProducer, kConsumer, err := defaultProducerConsumer(tierID, action.ACTIONLOG_KAFKA_TOPIC)
+	producers, consumers, err := createKafka(tierID, *integration)
+	if err != nil {
+		return tier.Tier{}, err
+	}
 	return tier.Tier{
-		ID:             tierID,
-		CustID:         ftypes.CustID(rand.Uint64()),
-		DB:             db,
-		Cache:          Cache,
-		Redis:          redClient,
-		ActionConsumer: kConsumer,
-		ActionProducer: kProducer,
-		Clock:          clock.Unix{},
+		ID:        tierID,
+		CustID:    ftypes.CustID(rand.Uint64()),
+		DB:        db,
+		Cache:     Cache,
+		Redis:     redClient,
+		Producers: producers,
+		Consumers: consumers,
+		Clock:     clock.Unix{},
 	}, err
 }
 
 func Teardown(tier tier.Tier) error {
-	err := drop(tier.ID, logical_test_dbname, username, password, host)
-	if err != nil {
-		panic(fmt.Sprintf("error in teardown: %v\n", err))
+	if err := drop(tier.ID, logical_test_dbname, username, password, host); err != nil {
+		panic(fmt.Sprintf("error in db teardown: %v\n", err))
+		return err
 	}
-	return err
+
+	if *integration {
+		if err := teardownKafkaTopics(tier.ID, kafka.ALL_TOPICS); err != nil {
+			panic(fmt.Sprintf("unable to teardown kafka topics: %v", err))
+			return err
+		}
+	}
+	return nil
 }
