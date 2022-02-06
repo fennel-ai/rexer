@@ -5,8 +5,9 @@ import (
 	"fennel/lib/value"
 	"fennel/model/profile"
 	"fennel/tier"
-	"google.golang.org/protobuf/proto"
 	"time"
+
+	"google.golang.org/protobuf/proto"
 )
 
 func Get(tier tier.Tier, request profilelib.ProfileItem) (value.Value, error) {
@@ -58,8 +59,8 @@ func Set(tier tier.Tier, request profilelib.ProfileItem) error {
 	return nil
 }
 
-func GetProfiles(tier tier.Tier, request profilelib.ProfileFetchRequest) ([]profilelib.ProfileItem, error) {
-	profilesSer, err := profile.GetProfiles(tier, request)
+func GetProfileMulti(tier tier.Tier, request profilelib.ProfileFetchRequest) ([]profilelib.ProfileItem, error) {
+	profilesSer, err := profile.GetProfileMulti(tier, request)
 	if err != nil {
 		return nil, err
 	}

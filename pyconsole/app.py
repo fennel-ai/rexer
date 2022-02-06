@@ -207,7 +207,7 @@ def action_handler():
         strs.append(json_format.MessageToJson(a, including_default_value_fields=True))
     return '[' + ', '.join(strs) + ']'
 
-def _validate_profiles_get(otype, oid, key, version):
+def _validate_profile_get_multi(otype, oid, key, version):
     errors = []
     if (otype is not None) and (not is_str(otype)):
         errors.append('otype is provided but is not a valid string')
@@ -228,19 +228,19 @@ def _to_profile_fetch_request(otype, oid, key, version):
     ret.Version = _to_int(version)
     return ret
 
-@app.route('/profiles/', methods=['GET'])
-def profiles_handler():
+@app.route('/profile_multi/', methods=['GET'])
+def profile_multi_handler():
     args = request.args
     otype = args.get('otype', None)
     oid = args.get('oid', None)
     key = args.get('key', None)
     version = args.get('version', None)
-    errors = _validate_profiles_get(otype, oid, key, version)
+    errors = _validate_profile_get_multi(otype, oid, key, version)
     if len(errors) > 0:
         return jsonify({'errors': errors}), 400
     req = _to_profile_fetch_request(otype, oid, key, version)
     ser = req.SerializeToString()
-    response = requests.post(go_url+'/get_profiles', data=ser)
+    response = requests.post(go_url+'/get_multi', data=ser)
     if response.status_code != requests.codes.OK:
         response.raise_for_status()
     pl = profile.ProfileList()

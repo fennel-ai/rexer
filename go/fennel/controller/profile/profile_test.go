@@ -79,7 +79,7 @@ func checkGet(t *testing.T, tier tier.Tier, request profilelib.ProfileItem, expe
 }
 
 func checkMultiGet(t *testing.T, tier tier.Tier, request profilelib.ProfileFetchRequest, expected []profilelib.ProfileItem) {
-	found, err := GetProfiles(tier, request)
+	found, err := GetProfileMulti(tier, request)
 	assert.NoError(t, err)
 	assert.ElementsMatch(t, expected, found)
 }

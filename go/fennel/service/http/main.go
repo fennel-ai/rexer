@@ -19,6 +19,7 @@ import (
 	"fennel/lib/query"
 	"fennel/lib/value"
 	"fennel/tier"
+
 	"github.com/alexflint/go-arg"
 
 	"google.golang.org/protobuf/proto"
@@ -147,7 +148,7 @@ func (m holder) SetProfile(w http.ResponseWriter, req *http.Request) {
 	}
 }
 
-func (m holder) GetProfiles(w http.ResponseWriter, req *http.Request) {
+func (m holder) GetProfileMulti(w http.ResponseWriter, req *http.Request) {
 	var protoRequest profilelib.ProtoProfileFetchRequest
 	if err := parse(req, &protoRequest); err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
@@ -156,7 +157,7 @@ func (m holder) GetProfiles(w http.ResponseWriter, req *http.Request) {
 	}
 	request := profilelib.FromProtoProfileFetchRequest(&protoRequest)
 	// send to controller
-	profiles, err := profile2.GetProfiles(m.tier, request)
+	profiles, err := profile2.GetProfileMulti(m.tier, request)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		log.Printf("Error: %v", err)
@@ -303,7 +304,7 @@ func setHandlers(controller holder, mux *http.ServeMux) {
 	mux.HandleFunc("/get", controller.GetProfile)
 	mux.HandleFunc("/set", controller.SetProfile)
 	mux.HandleFunc("/log", controller.Log)
-	mux.HandleFunc("/get_profiles", controller.GetProfiles)
+	mux.HandleFunc("/get_multi", controller.GetProfileMulti)
 	mux.HandleFunc("/query", controller.Query)
 	mux.HandleFunc("/store_aggregate", controller.StoreAggregate)
 	mux.HandleFunc("/retrieve_aggregate", controller.RetrieveAggregate)
