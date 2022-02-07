@@ -26,3 +26,11 @@ const pscreds = new k8s.core.v1.Secret("planetscale-config", {
         name: "mysql-conf",
     }
 }, { deleteBeforeReplace: true })
+
+const tierid = new k8s.core.v1.ConfigMap("tier-conf", {
+    data: config.requireObject("tier-conf"),
+    metadata: {
+        namespace: "fennel",
+        name: "tier-conf",
+    }
+}, { deleteBeforeReplace: true })
