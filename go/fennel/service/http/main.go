@@ -45,7 +45,12 @@ func (m holder) Log(w http.ResponseWriter, req *http.Request) {
 		log.Printf("Error: %v", err)
 		return
 	}
-	a := actionlib.FromProtoAction(&pa)
+	a, err := actionlib.FromProtoAction(&pa)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("invalid request: %v", err), http.StatusBadRequest)
+		log.Printf("Error: %v", err)
+		return
+	}
 	// fwd to controller
 
 	aid, err := action.Insert(m.tier, a)
@@ -73,7 +78,12 @@ func (m holder) Fetch(w http.ResponseWriter, req *http.Request) {
 		log.Printf("Error: %v", err)
 		return
 	}
-	actionList := actionlib.ToProtoActionList(actions)
+	actionList, err := actionlib.ToProtoActionList(actions)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		log.Printf("Error: %v", err)
+		return
+	}
 	ser, err := proto.Marshal(actionList)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -157,7 +167,7 @@ func (m holder) GetProfileMulti(w http.ResponseWriter, req *http.Request) {
 	}
 	request := profilelib.FromProtoProfileFetchRequest(&protoRequest)
 	// send to controller
-	profiles, err := profile2.GetProfileMulti(m.tier, request)
+	profiles, err := profile2.GetMulti(m.tier, request)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		log.Printf("Error: %v", err)

@@ -59,20 +59,15 @@ func Set(tier tier.Tier, request profilelib.ProfileItem) error {
 	return nil
 }
 
-func GetProfileMulti(tier tier.Tier, request profilelib.ProfileFetchRequest) ([]profilelib.ProfileItem, error) {
-	profilesSer, err := profile.GetProfileMulti(tier, request)
+func GetMulti(tier tier.Tier, request profilelib.ProfileFetchRequest) ([]profilelib.ProfileItem, error) {
+	profilesSer, err := profile.GetMulti(tier, request)
 	if err != nil {
 		return nil, err
 	}
 
-	profiles := make([]profilelib.ProfileItem, 0)
-	for _, prs := range profilesSer {
-		pr, err := prs.ToProfileItem()
-		if err != nil {
-			return nil, err
-		}
-		profiles = append(profiles, *pr)
+	profiles, err := profilelib.FromProfileItemSerList(profilesSer)
+	if err != nil {
+		return nil, err
 	}
-
 	return profiles, nil
 }

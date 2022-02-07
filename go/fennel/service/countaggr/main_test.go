@@ -90,15 +90,15 @@ func verify(t *testing.T, tier tier.Tier, agg libaggregate.Aggregate, k value.Va
 
 func logAction(t *testing.T, tier tier.Tier, uid ftypes.OidType, ts ftypes.Timestamp) {
 	a1 := actionlib.Action{
-		CustID:      tier.CustID,
-		ActorID:     uid,
-		ActorType:   "user",
-		TargetID:    10,
-		TargetType:  "video",
-		ActionType:  "like",
-		ActionValue: 3,
-		Timestamp:   ts,
-		RequestID:   12,
+		CustID:     tier.CustID,
+		ActorID:    uid,
+		ActorType:  "user",
+		TargetID:   10,
+		TargetType: "video",
+		ActionType: "like",
+		Metadata:   value.Int(3),
+		Timestamp:  ts,
+		RequestID:  12,
 	}
 	a2 := a1
 	a2.ActionType = "share"
