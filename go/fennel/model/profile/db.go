@@ -13,13 +13,13 @@ import (
 
 // we create a private interface to make testing caching easier
 type provider interface {
-	set(tier tier.Tier, custid ftypes.CustID, otype ftypes.OType, oid uint64, key string, version uint64, valueSer []byte) error
-	get(tier tier.Tier, custid ftypes.CustID, otype ftypes.OType, oid uint64, key string, version uint64) ([]byte, error)
+	set(tier tier.Tier, otype ftypes.OType, oid uint64, key string, version uint64, valueSer []byte) error
+	get(tier tier.Tier, otype ftypes.OType, oid uint64, key string, version uint64) ([]byte, error)
 }
 
 type dbProvider struct{}
 
-func (D dbProvider) set(tier tier.Tier, custid ftypes.CustID, otype ftypes.OType, oid uint64, key string, version uint64, valueSer []byte) error {
+func (D dbProvider) set(tier tier.Tier, otype ftypes.OType, oid uint64, key string, version uint64, valueSer []byte) error {
 	if version == 0 {
 		return fmt.Errorf("version can not be zero")
 	}
@@ -31,10 +31,10 @@ func (D dbProvider) set(tier tier.Tier, custid ftypes.CustID, otype ftypes.OType
 	}
 	_, err := tier.DB.Exec(`
 		INSERT INTO profile 
-			(cust_id, otype, oid, zkey, version, value)
+			(otype, oid, zkey, version, value)
 		VALUES
-			(?, ?, ?, ?, ?, ?);`,
-		custid, otype, oid, key, version, valueSer,
+			(?, ?, ?, ?, ?);`,
+		otype, oid, key, version, valueSer,
 	)
 	if err != nil {
 		return err
@@ -42,7 +42,7 @@ func (D dbProvider) set(tier tier.Tier, custid ftypes.CustID, otype ftypes.OType
 	return nil
 }
 
-func (D dbProvider) get(tier tier.Tier, custid ftypes.CustID, otype ftypes.OType, oid uint64, key string, version uint64) ([]byte, error) {
+func (D dbProvider) get(tier tier.Tier, otype ftypes.OType, oid uint64, key string, version uint64) ([]byte, error) {
 	var value [][]byte
 	var err error
 	if version > 0 {
@@ -50,13 +50,12 @@ func (D dbProvider) get(tier tier.Tier, custid ftypes.CustID, otype ftypes.OType
 		SELECT value
 		FROM profile 
 		WHERE
-			cust_id = ?
-			AND otype = ?
+			otype = ?
 			AND oid = ?
 			AND zkey = ?
 			AND version = ?
 		LIMIT 1
-		`, custid, otype, oid, key, version,
+		`, otype, oid, key, version,
 		)
 	} else {
 		// if version isn't given, just pick the highest version
@@ -64,13 +63,12 @@ func (D dbProvider) get(tier tier.Tier, custid ftypes.CustID, otype ftypes.OType
 		SELECT value
 		FROM profile 
 		WHERE
-			cust_id = ?
-			AND otype = ?
+			otype = ?
 			AND oid = ?
 			AND zkey = ?
 		ORDER BY version DESC
 		LIMIT 1
-		`, custid, otype, oid, key,
+		`, otype, oid, key,
 		)
 	}
 	if err != nil {
@@ -90,9 +88,6 @@ func GetMulti(tier tier.Tier, request profile.ProfileFetchRequest) ([]profile.Pr
 	query := "SELECT * FROM profile"
 	clauses := make([]string, 0)
 
-	if request.CustID != 0 {
-		clauses = append(clauses, "cust_id = :otype")
-	}
 	if len(request.OType) != 0 {
 		clauses = append(clauses, "otype = :otype")
 	}

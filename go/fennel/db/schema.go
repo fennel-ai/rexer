@@ -23,7 +23,6 @@ func init() {
 			);`,
 		3: `CREATE TABLE IF NOT EXISTS actionlog (
 				action_id BIGINT not null primary key auto_increment,
-				cust_id BIGINT not null,
 				actor_id BIGINT NOT NULL,
 				actor_type varchar(256) NOT NULL,
 				target_id BIGINT NOT NULL,
@@ -32,49 +31,43 @@ func init() {
 				timestamp BIGINT NOT NULL,
 				request_id BIGINT not null,
 				metadata BLOB NOT NULL,
-				INDEX (cust_id, action_id),
-				INDEX (cust_id, timestamp)
+				INDEX (timestamp)
 		 );`,
 		4: `CREATE TABLE IF NOT EXISTS checkpoint (
-				cust_id BIGINT NOT NULL,
 				aggtype VARCHAR(255) NOT NULL,
 				aggname VARCHAR(255) NOT NULL,
 				checkpoint BIGINT NOT NULL DEFAULT 0,
-				PRIMARY KEY(cust_id, aggtype, aggname)
+				PRIMARY KEY(aggtype, aggname)
 		 );`,
 		5: `CREATE TABLE IF NOT EXISTS profile (
-				cust_id BIGINT not null,
 				otype varchar(256) not null,
 				oid BIGINT not null,
 				zkey varchar(256) not null,
 				version BIGINT not null,
 				value blob not null,
-				PRIMARY KEY(cust_id, otype, oid, zkey, version)
+				PRIMARY KEY(otype, oid, zkey, version)
 		 );`,
 		6: `CREATE TABLE IF NOT EXISTS counter_bucket (
-				cust_id BIGINT NOT NULL,
 				counter_type INT NOT NULL,
 				window_type INT NOT NULL,
 				idx BIGINT NOT NULL,
 				count BIGINT NOT NULL DEFAULT 0,
 				zkey varchar(256) NOT NULL,
-				PRIMARY KEY(cust_id, counter_type, window_type, zkey, idx)
+				PRIMARY KEY(counter_type, window_type, zkey, idx)
 		 );`,
 		7: `CREATE TABLE IF NOT EXISTS query_ast (
 				query_id BIGINT NOT NULL PRIMARY KEY AUTO_INCREMENT,
-				cust_id BIGINT NOT NULL,
 				timestamp BIGINT NOT NULL,
 				query_ser BLOB NOT NULL,
-				INDEX (cust_id, timestamp)
+				INDEX (timestamp)
 		 );`,
 		8: `CREATE TABLE IF NOT EXISTS aggregate_config (
-				cust_id BIGINT NOT NULL,
 				aggregate_type VARCHAR(255) NOT NULL,
 				name VARCHAR(255) NOT NULL,
 				query_ser BLOB NOT NULL,
 				timestamp BIGINT NOT NULL,
 				options_ser BLOB NOT NULL,
-				PRIMARY KEY(cust_id, aggregate_type, name)
+				PRIMARY KEY(aggregate_type, name)
 			);`,
 	}
 	tablenames = []string{

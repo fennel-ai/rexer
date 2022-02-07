@@ -20,10 +20,10 @@ func Insert(tier tier.Tier, action *action.ActionSer) (uint64, error) {
 	}
 	result, err := tier.DB.NamedExec(`
 		INSERT INTO actionlog (
-			cust_id, actor_id, actor_type, target_id, target_type, action_type, timestamp, request_id, metadata
+			actor_id, actor_type, target_id, target_type, action_type, timestamp, request_id, metadata
 	    )
         VALUES (
-			:cust_id, :actor_id, :actor_type, :target_id, :target_type, :action_type, :timestamp, :request_id, :metadata
+			:actor_id, :actor_type, :target_id, :target_type, :action_type, :timestamp, :request_id, :metadata
 		);`,
 		action)
 	if err != nil {
@@ -43,9 +43,6 @@ func Insert(tier tier.Tier, action *action.ActionSer) (uint64, error) {
 func Fetch(tier tier.Tier, request action.ActionFetchRequest) ([]action.ActionSer, error) {
 	query := "SELECT * FROM actionlog"
 	clauses := make([]string, 0)
-	if request.CustID != 0 {
-		clauses = append(clauses, "cust_id = :cust_id")
-	}
 	if len(request.ActorType) != 0 {
 		clauses = append(clauses, "actor_type = :actor_type")
 	}

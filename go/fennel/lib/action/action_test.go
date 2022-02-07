@@ -10,7 +10,6 @@ import (
 func TestAction_ToValueDict(t *testing.T) {
 	a := Action{
 		ActionID:   1,
-		CustID:     2,
 		ActorID:    3,
 		ActorType:  "user",
 		TargetID:   5,
@@ -35,9 +34,9 @@ func TestAction_ToValueDict(t *testing.T) {
 }
 
 func TestToTable(t *testing.T) {
-	a1 := Action{ActionID: 1, CustID: 2, ActorID: 3, ActorType: "user", TargetID: 5, TargetType: "photo", ActionType: "like", Timestamp: 9, RequestID: 10, Metadata: value.Int(8)}
-	a2 := Action{ActionID: 11, CustID: 12, ActorID: 13, ActorType: "other", TargetID: 15, TargetType: "video", ActionType: "myaction", Timestamp: 19, RequestID: 20, Metadata: value.Int(18)}
-	a3 := Action{ActionID: 21, CustID: 22, ActorID: 23, ActorType: "admin", TargetID: 25, TargetType: "arbitrary", ActionType: "share", Timestamp: 29, RequestID: 30, Metadata: value.Int(28)}
+	a1 := Action{ActionID: 1, ActorID: 3, ActorType: "user", TargetID: 5, TargetType: "photo", ActionType: "like", Timestamp: 9, RequestID: 10, Metadata: value.Int(8)}
+	a2 := Action{ActionID: 11, ActorID: 13, ActorType: "other", TargetID: 15, TargetType: "video", ActionType: "myaction", Timestamp: 19, RequestID: 20, Metadata: value.Int(18)}
+	a3 := Action{ActionID: 21, ActorID: 23, ActorType: "admin", TargetID: 25, TargetType: "arbitrary", ActionType: "share", Timestamp: 29, RequestID: 30, Metadata: value.Int(28)}
 	expected := value.NewTable()
 	assert.NoError(t, expected.Append(a1.ToValueDict()))
 	assert.NoError(t, expected.Append(a2.ToValueDict()))

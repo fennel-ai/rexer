@@ -5,14 +5,15 @@ import (
 	"fennel/lib/ftypes"
 	"fennel/tier"
 	"fmt"
-	"github.com/go-redis/redis/v8"
 	"strconv"
+
+	"github.com/go-redis/redis/v8"
 )
 
 func redisKeys(tier tier.Tier, name ftypes.AggName, buckets []Bucket) []string {
 	ret := make([]string, len(buckets))
 	for i, b := range buckets {
-		ret[i] = fmt.Sprintf("%d:counter:%d:%s:%s:%d:%d", tier.CustID, version, name, b.Key, b.Window, b.Index)
+		ret[i] = fmt.Sprintf("counter:%d:%s:%s:%d:%d", version, name, b.Key, b.Window, b.Index)
 	}
 	return ret
 }

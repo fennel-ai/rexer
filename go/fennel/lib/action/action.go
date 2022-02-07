@@ -20,7 +20,6 @@ const (
 
 type Action struct {
 	ActionID   ftypes.OidType    `db:"action_id"`
-	CustID     ftypes.CustID     `db:"cust_id"`
 	ActorID    ftypes.OidType    `db:"actor_id"`
 	ActorType  ftypes.OType      `db:"actor_type"`
 	TargetID   ftypes.OidType    `db:"target_id"`
@@ -38,7 +37,6 @@ func FromProtoAction(pa *ProtoAction) (Action, error) {
 	}
 	return Action{
 		ActionID:   ftypes.OidType(pa.GetActionID()),
-		CustID:     ftypes.CustID(pa.CustID),
 		ActorID:    ftypes.OidType(pa.GetActorID()),
 		ActorType:  ftypes.OType(pa.GetActorType()),
 		TargetID:   ftypes.OidType(pa.GetTargetID()),
@@ -57,7 +55,6 @@ func ToProtoAction(a Action) (ProtoAction, error) {
 	}
 	return ProtoAction{
 		ActionID:   uint64(a.ActionID),
-		CustID:     uint64(a.CustID),
 		ActorID:    uint64(a.ActorID),
 		ActorType:  string(a.ActorType),
 		TargetID:   uint64(a.TargetID),
@@ -71,7 +68,6 @@ func ToProtoAction(a Action) (ProtoAction, error) {
 
 type ActionSer struct {
 	ActionID   ftypes.OidType    `db:"action_id"`
-	CustID     ftypes.CustID     `db:"cust_id"`
 	ActorID    ftypes.OidType    `db:"actor_id"`
 	ActorType  ftypes.OType      `db:"actor_type"`
 	TargetID   ftypes.OidType    `db:"target_id"`
@@ -85,7 +81,6 @@ type ActionSer struct {
 func (a *Action) ToActionSer() (*ActionSer, error) {
 	ser := ActionSer{
 		ActionID:   a.ActionID,
-		CustID:     a.CustID,
 		ActorID:    a.ActorID,
 		ActorType:  a.ActorType,
 		TargetID:   a.TargetID,
@@ -111,7 +106,6 @@ func (a *Action) ToActionSer() (*ActionSer, error) {
 func (ser *ActionSer) ToAction() (*Action, error) {
 	a := Action{
 		ActionID:   ser.ActionID,
-		CustID:     ser.CustID,
 		ActorID:    ser.ActorID,
 		ActorType:  ser.ActorType,
 		TargetID:   ser.TargetID,
@@ -150,7 +144,6 @@ func FromActionSerList(al_ser []ActionSer) ([]Action, error) {
 type ActionFetchRequest struct {
 	MinActionID  ftypes.OidType    `db:"min_action_id"`
 	MaxActionID  ftypes.OidType    `db:"max_action_id"`
-	CustID       ftypes.CustID     `db:"cust_id"`
 	ActorID      ftypes.OidType    `db:"actor_id"`
 	ActorType    ftypes.OType      `db:"actor_type"`
 	TargetID     ftypes.OidType    `db:"target_id"`
@@ -166,7 +159,6 @@ func FromProtoActionFetchRequest(pa *ProtoActionFetchRequest) ActionFetchRequest
 
 		MinActionID:  ftypes.OidType(pa.GetMinActionID()),
 		MaxActionID:  ftypes.OidType(pa.GetMaxActionID()),
-		CustID:       ftypes.CustID(pa.GetCustID()),
 		ActorID:      ftypes.OidType(pa.GetActorID()),
 		ActorType:    ftypes.OType(pa.GetActorType()),
 		TargetID:     ftypes.OidType(pa.GetTargetID()),
@@ -183,7 +175,6 @@ func ToProtoActionFetchRequest(a ActionFetchRequest) ProtoActionFetchRequest {
 
 		MinActionID:  uint64(a.MinActionID),
 		MaxActionID:  uint64(a.MaxActionID),
-		CustID:       uint64(a.CustID),
 		ActorID:      uint64(a.ActorID),
 		ActorType:    string(a.ActorType),
 		TargetID:     uint64(a.TargetID),
@@ -222,9 +213,6 @@ func ToProtoActionList(actions []Action) (*ProtoActionList, error) {
 
 // Validate validates that all fields (except action ID) are appropriately specified
 func (a *Action) Validate() error {
-	if a.CustID == 0 {
-		return fmt.Errorf("customer ID can not be zero")
-	}
 	if a.ActorID == 0 {
 		return fmt.Errorf("actor ID can not be zero")
 	}
@@ -248,9 +236,6 @@ func (a *Action) Validate() error {
 
 func (a Action) Equals(other Action, ignoreID bool) bool {
 	if !ignoreID && a.ActionID != other.ActionID {
-		return false
-	}
-	if a.CustID != other.CustID {
 		return false
 	}
 	if a.ActorID != other.ActorID {

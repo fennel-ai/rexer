@@ -9,23 +9,22 @@ import (
 )
 
 type ProfileItem struct {
-	CustID  ftypes.CustID `db:"cust_id"`
-	OType   ftypes.OType  `db:"otype"`
-	Oid     uint64        `db:"oid"`
-	Key     string        `db:"zkey"`
-	Version uint64        `db:"version"`
-	Value   value.Value   `db:"value"`
+	OType   ftypes.OType `db:"otype"`
+	Oid     uint64       `db:"oid"`
+	Key     string       `db:"zkey"`
+	Version uint64       `db:"version"`
+	Value   value.Value  `db:"value"`
 }
 
-func NewProfileItem(custid uint64, otype string, oid uint64, k string, version uint64) ProfileItem {
+func NewProfileItem(otype string, oid uint64, k string, version uint64) ProfileItem {
 	return ProfileItem{
-		ftypes.CustID(custid), ftypes.OType(otype), oid, k, version, value.Nil,
+		ftypes.OType(otype), oid, k, version, value.Nil,
 	}
 }
 
-func NewProfileItemSer(custid uint64, otype string, oid uint64, key string, version uint64, val []byte) ProfileItemSer {
+func NewProfileItemSer(otype string, oid uint64, key string, version uint64, val []byte) ProfileItemSer {
 	return ProfileItemSer{
-		ftypes.CustID(custid), ftypes.OType(otype), oid, key, version, val,
+		ftypes.OType(otype), oid, key, version, val,
 	}
 }
 
@@ -35,7 +34,6 @@ func FromProtoProfileItem(ppr *ProtoProfileItem) (ProfileItem, error) {
 		return ProfileItem{}, err
 	}
 	return ProfileItem{
-		ftypes.CustID(ppr.CustID),
 		ftypes.OType(ppr.OType),
 		ppr.Oid,
 		ppr.Key,
@@ -49,7 +47,6 @@ func ToProtoProfileItem(pi *ProfileItem) (ProtoProfileItem, error) {
 		return ProtoProfileItem{}, err
 	}
 	return ProtoProfileItem{
-		CustID:  uint64(pi.CustID),
 		OType:   string(pi.OType),
 		Oid:     pi.Oid,
 		Key:     pi.Key,
@@ -59,17 +56,16 @@ func ToProtoProfileItem(pi *ProfileItem) (ProtoProfileItem, error) {
 }
 
 type ProfileItemSer struct {
-	CustID  ftypes.CustID `db:"cust_id"`
-	OType   ftypes.OType  `db:"otype"`
-	Oid     uint64        `db:"oid"`
-	Key     string        `db:"zkey"`
-	Version uint64        `db:"version"`
-	Value   []byte        `db:"value"`
+	OType   ftypes.OType `db:"otype"`
+	Oid     uint64       `db:"oid"`
+	Key     string       `db:"zkey"`
+	Version uint64       `db:"version"`
+	Value   []byte       `db:"value"`
 }
 
 // Converts a ProfileItemSer to ProfileItem
 func (ser *ProfileItemSer) ToProfileItem() (*ProfileItem, error) {
-	pr := ProfileItem{ser.CustID, ser.OType, ser.Oid, ser.Key, ser.Version, value.Nil}
+	pr := ProfileItem{ser.OType, ser.Oid, ser.Key, ser.Version, value.Nil}
 
 	var pval value.PValue
 	if err := proto.Unmarshal(ser.Value, &pval); err != nil {
@@ -98,16 +94,14 @@ func FromProfileItemSerList(pl_ser []ProfileItemSer) ([]ProfileItem, error) {
 }
 
 type ProfileFetchRequest struct {
-	CustID  ftypes.CustID `db:"cust_id"`
-	OType   ftypes.OType  `db:"otype"`
-	Oid     uint64        `db:"oid"`
-	Key     string        `db:"zkey"`
-	Version uint64        `db:"version"`
+	OType   ftypes.OType `db:"otype"`
+	Oid     uint64       `db:"oid"`
+	Key     string       `db:"zkey"`
+	Version uint64       `db:"version"`
 }
 
 func FromProtoProfileFetchRequest(ppfr *ProtoProfileFetchRequest) ProfileFetchRequest {
 	return ProfileFetchRequest{
-		ftypes.CustID(ppfr.CustID),
 		ftypes.OType(ppfr.OType),
 		ppfr.Oid,
 		ppfr.Key,
@@ -117,7 +111,6 @@ func FromProtoProfileFetchRequest(ppfr *ProtoProfileFetchRequest) ProfileFetchRe
 
 func ToProtoProfileFetchRequest(pfr *ProfileFetchRequest) ProtoProfileFetchRequest {
 	return ProtoProfileFetchRequest{
-		CustID:  uint64(pfr.CustID),
 		OType:   string(pfr.OType),
 		Oid:     pfr.Oid,
 		Key:     pfr.Key,
@@ -152,9 +145,6 @@ func ToProtoProfileList(profiles []ProfileItem) (*ProtoProfileList, error) {
 
 // Validate validates the profile item
 func (pi *ProfileItem) Validate() error {
-	if pi.CustID == 0 {
-		return fmt.Errorf("custid can not be zero")
-	}
 	if len(pi.OType) == 0 {
 		return fmt.Errorf("otype can not be empty")
 	}

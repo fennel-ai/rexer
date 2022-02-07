@@ -28,33 +28,33 @@ func TestInsertGet(t *testing.T) {
 
 	// set a couple of queries and verify we can get them
 	ts1 := ftypes.Timestamp(1)
-	query1 := query.QuerySer{QueryId: 0, Custid: tier.CustID, Timestamp: ts1, QuerySer: "hello"}
+	query1 := query.QuerySer{QueryId: 0, Timestamp: ts1, QuerySer: "hello"}
 
-	queryID1, err := Insert(tier, query1.Custid, query1.Timestamp, query1.QuerySer)
+	queryID1, err := Insert(tier, query1.Timestamp, query1.QuerySer)
 	assert.NoError(t, err)
 	query1.QueryId = queryID1
 
 	verifyGet(t, tier, query.QueryRequest{}, []query.QuerySer{query1})
 	verifyGet(t, tier, query.QueryRequest{QueryId: queryID1}, []query.QuerySer{query1})
 	verifyGet(t, tier, query.QueryRequest{QueryId: queryID1}, []query.QuerySer{query1})
-	verifyGet(t, tier, query.QueryRequest{Custid: tier.CustID}, []query.QuerySer{query1})
-	verifyGet(t, tier, query.QueryRequest{Custid: tier.CustID, MinTimestamp: ts1 - 1}, []query.QuerySer{query1})
-	verifyGet(t, tier, query.QueryRequest{Custid: tier.CustID, MinTimestamp: ts1}, []query.QuerySer{query1})
-	verifyGet(t, tier, query.QueryRequest{Custid: tier.CustID, MinTimestamp: ts1 + 1}, []query.QuerySer{})
+	verifyGet(t, tier, query.QueryRequest{}, []query.QuerySer{query1})
+	verifyGet(t, tier, query.QueryRequest{MinTimestamp: ts1 - 1}, []query.QuerySer{query1})
+	verifyGet(t, tier, query.QueryRequest{MinTimestamp: ts1}, []query.QuerySer{query1})
+	verifyGet(t, tier, query.QueryRequest{MinTimestamp: ts1 + 1}, []query.QuerySer{})
 
 	ts2 := ftypes.Timestamp(3)
-	query2 := query.QuerySer{QueryId: 0, Custid: tier.CustID, Timestamp: ts2, QuerySer: "bye"}
-	queryID2, err := Insert(tier, query2.Custid, query2.Timestamp, query2.QuerySer)
+	query2 := query.QuerySer{QueryId: 0, Timestamp: ts2, QuerySer: "bye"}
+	queryID2, err := Insert(tier, query2.Timestamp, query2.QuerySer)
 	assert.NoError(t, err)
 	query2.QueryId = queryID2
 
 	verifyGet(t, tier, query.QueryRequest{}, []query.QuerySer{query1, query2})
 	verifyGet(t, tier, query.QueryRequest{QueryId: queryID1}, []query.QuerySer{query1})
 	verifyGet(t, tier, query.QueryRequest{QueryId: queryID2}, []query.QuerySer{query2})
-	verifyGet(t, tier, query.QueryRequest{Custid: tier.CustID}, []query.QuerySer{query1, query2})
-	verifyGet(t, tier, query.QueryRequest{Custid: tier.CustID, MinTimestamp: ts1 - 1}, []query.QuerySer{query1, query2})
-	verifyGet(t, tier, query.QueryRequest{Custid: tier.CustID, MinTimestamp: ts1}, []query.QuerySer{query1, query2})
-	verifyGet(t, tier, query.QueryRequest{Custid: tier.CustID, MinTimestamp: ts1 + 1}, []query.QuerySer{query2})
-	verifyGet(t, tier, query.QueryRequest{Custid: tier.CustID, MaxTimestamp: ts1}, []query.QuerySer{})
-	verifyGet(t, tier, query.QueryRequest{Custid: tier.CustID, MaxTimestamp: ts2}, []query.QuerySer{query1})
+	verifyGet(t, tier, query.QueryRequest{}, []query.QuerySer{query1, query2})
+	verifyGet(t, tier, query.QueryRequest{MinTimestamp: ts1 - 1}, []query.QuerySer{query1, query2})
+	verifyGet(t, tier, query.QueryRequest{MinTimestamp: ts1}, []query.QuerySer{query1, query2})
+	verifyGet(t, tier, query.QueryRequest{MinTimestamp: ts1 + 1}, []query.QuerySer{query2})
+	verifyGet(t, tier, query.QueryRequest{MaxTimestamp: ts1}, []query.QuerySer{})
+	verifyGet(t, tier, query.QueryRequest{MaxTimestamp: ts2}, []query.QuerySer{query1})
 }
