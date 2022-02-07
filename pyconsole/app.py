@@ -112,8 +112,7 @@ def profile_handler():
 
 
 def _validate_action_get(actor_id, actor_type, target_id, target_type, action_type,
-                         min_action_value, max_action_value, min_timestamp, max_timestamp,
-                         min_action_id, max_action_id, request_id):
+                         min_timestamp, max_timestamp, min_action_id, max_action_id, request_id):
     errors = []
     if (actor_id is not None) and (not is_uint(actor_id, 64)):
         errors.append('actor_id is provided but is not a valid 64-bit unsigned integer')
@@ -144,25 +143,18 @@ def _validate_action_get(actor_id, actor_type, target_id, target_type, action_ty
             errors.append('action_type is provided but is not a valid non-empty string')
         elif len(action_type) > 256:
             errors.append('action_type is provided but is longer than 256 chars')
-    if (min_action_value is not None) and (not is_int(min_action_value, 32)):
-        errors.append('min_action_value is provided but is not a valid 32-bit signed integer')
-    if (max_action_value is not None) and (not is_int(max_action_value, 32)):
-        errors.append('max_action_value is provided but is not a valid 32-bit signed integer')
 
     return errors
 
 
 def _to_action_fetch_request(actor_id, actor_type, target_id, target_type, action_type,
-                             min_action_value, max_action_value, min_timestamp, max_timestamp,
-                             min_action_id, max_action_id, request_id):
+                             min_timestamp, max_timestamp, min_action_id, max_action_id, request_id):
     ret = action.ActionFetchRequest()
     ret.ActorID = _to_int(actor_id)
     ret.ActorType = _to_str(actor_type)
     ret.TargetID = _to_int(target_id)
     ret.TargetType = _to_str(target_type)
     ret.ActionType = _to_str(action_type)
-    ret.MinActionValue = _to_int(min_action_value)
-    ret.MaxActionValue = _to_int(max_action_value)
     ret.MinTimestamp = _to_int(min_timestamp)
     ret.MaxTimestamp = _to_int(max_timestamp)
     ret.MinActionID = _to_int(min_action_id)
@@ -180,21 +172,19 @@ def action_handler():
     target_type = args.get('target_type', None)
     action_type = args.get('action_type', None)
     request_id = args.get('request_id', None)
-    min_action_id = args.get('min_action_id', None)
-    max_action_id = args.get('max_action_id', None)
     min_action_value = args.get('min_action_value', None)
     max_action_value = args.get('max_action_value', None)
     min_timestamp = args.get('min_timestamp', None)
     max_timestamp = args.get('max_timestamp', None)
     errors = _validate_action_get(actor_id, actor_type, target_id, target_type, action_type,
                                   min_action_value, max_action_value, min_timestamp, max_timestamp,
-                                  min_action_id, max_action_id, request_id)
+                                  request_id)
     if len(errors) > 0:
         return jsonify({'errors': errors}), 400
     
     req = _to_action_fetch_request(actor_id, actor_type, target_id, target_type, action_type,
                                    min_action_value, max_action_value, min_timestamp, max_timestamp,
-                                   min_action_id, max_action_id, request_id)
+                                   request_id)
     ser = req.SerializeToString()
     response = requests.post(go_url+'/fetch', data=ser)
     if response.status_code != requests.codes.OK:
