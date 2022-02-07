@@ -8,7 +8,7 @@ import (
 	"fennel/controller/aggregate"
 	libaggregate "fennel/lib/aggregate"
 	"fennel/tier"
-	arg "github.com/alexflint/go-arg"
+	"github.com/alexflint/go-arg"
 )
 
 func processOnce(tier tier.Tier) {

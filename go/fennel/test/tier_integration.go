@@ -4,11 +4,10 @@ package test
 
 import (
 	fkafka "fennel/kafka"
-	"fennel/lib/clock"
 	"fennel/lib/ftypes"
-	"fennel/redis"
 	"fennel/tier"
 	"fmt"
+	"github.com/alexflint/go-arg"
 	"math/rand"
 	"time"
 )
@@ -18,43 +17,41 @@ import (
 func Tier() (tier.Tier, error) {
 	rand.Seed(time.Now().UnixNano())
 	tierID := ftypes.TierID(rand.Uint32())
-	db, err := defaultDB(tierID)
-	if err != nil {
+	var flags tier.TierArgs
+	// Parse flags / environment variables.
+	arg.Parse(&flags)
+	flags.TierID = tierID
+	if err := flags.Valid(); err != nil {
 		return tier.Tier{}, err
 	}
-	redClient, err := integrationRedis(tierID)
-	if err != nil {
+	// do all setup that needs to be done to create a valid tier
+	if err := setup(flags); err != nil {
 		return tier.Tier{}, err
 	}
 
-	Cache := redis.NewCache(redClient)
-
-	// set up kafka for integration
-	if err = setupKafkaTopics(tierID, fkafka.ALL_TOPICS); err != nil {
-		return tier.Tier{}, err
-	}
-	producers, consumers, err := tier.CreateKafka(tierID, test_kafka_servers, kafka_username, kafka_password)
-	if err != nil {
-		return tier.Tier{}, err
-	}
-	return tier.Tier{
-		ID:        tierID,
-		DB:        db,
-		Cache:     Cache,
-		Redis:     redClient,
-		Producers: producers,
-		Consumers: consumers,
-		Clock:     clock.Unix{},
-	}, err
+	// finally, instantiate and return the tier
+	return tier.CreateFromArgs(&flags)
 }
 
-func Teardown(tier tier.Tier) error {
-	if err := drop(tier.ID, logical_test_dbname, username, password, host); err != nil {
+func setup(flags tier.TierArgs) error {
+	return setupKafkaTopics(flags.TierID, flags.KafkaServer, flags.KafkaUsername, flags.KafkaPassword, fkafka.ALL_TOPICS)
+}
+
+func Teardown(tr tier.Tier) error {
+	var flags tier.TierArgs
+	// Parse flags / environment variables.
+	arg.Parse(&flags)
+	flags.TierID = tr.ID
+	if err := flags.Valid(); err != nil {
+		return err
+	}
+
+	if err := drop(tr.ID, flags.MysqlDB, flags.MysqlUsername, flags.MysqlPassword, flags.MysqlHost); err != nil {
 		panic(fmt.Sprintf("error in db teardown: %v\n", err))
 		return err
 	}
 
-	if err := teardownKafkaTopics(tier.ID, fkafka.ALL_TOPICS); err != nil {
+	if err := teardownKafkaTopics(tr.ID, flags.KafkaServer, flags.KafkaUsername, flags.KafkaPassword, fkafka.ALL_TOPICS); err != nil {
 		panic(fmt.Sprintf("unable to teardown kafka topics: %v", err))
 		return err
 	}

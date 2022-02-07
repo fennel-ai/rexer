@@ -6,6 +6,7 @@ import (
 	"context"
 	"fennel/lib/ftypes"
 	"fennel/lib/value"
+	"fennel/resource"
 	"fmt"
 	"github.com/confluentinc/confluent-kafka-go/kafka"
 	"github.com/stretchr/testify/assert"
@@ -80,7 +81,7 @@ func TestProducerConsumer(t *testing.T) {
 }
 
 func setupKafkaTopics(tierID ftypes.TierID, topic string) error {
-	name := TieredName(tierID, topic)
+	name := resource.TieredName(tierID, topic)
 	// Create admin client
 	c, err := kafka.NewAdminClient(ConfigMap(test_kafka_servers, kafka_username, kafka_password))
 	if err != nil {
@@ -105,7 +106,7 @@ func setupKafkaTopics(tierID ftypes.TierID, topic string) error {
 }
 
 func teardownKafkaTopics(tierID ftypes.TierID, topic string) error {
-	name := TieredName(tierID, topic)
+	name := resource.TieredName(tierID, topic)
 	// Create admin client.
 	c, err := kafka.NewAdminClient(ConfigMap(test_kafka_servers, kafka_username, kafka_password))
 	if err != nil {
