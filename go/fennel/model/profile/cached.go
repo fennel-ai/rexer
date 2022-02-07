@@ -14,12 +14,12 @@ const cacheVersion = 0
 // Public API for profile model (includes caching)
 //================================================
 
-func Set(tier tier.Tier, custid ftypes.CustID, otype ftypes.OType, oid uint64, key string, version uint64, valueSer []byte) error {
-	return cachedProvider{base: dbProvider{}}.set(tier, custid, otype, oid, key, version, valueSer)
+func Set(tier tier.Tier, otype ftypes.OType, oid uint64, key string, version uint64, valueSer []byte) error {
+	return cachedProvider{base: dbProvider{}}.set(tier, otype, oid, key, version, valueSer)
 }
 
-func Get(tier tier.Tier, custid ftypes.CustID, otype ftypes.OType, oid uint64, key string, version uint64) ([]byte, error) {
-	return cachedProvider{base: dbProvider{}}.get(tier, custid, otype, oid, key, version)
+func Get(tier tier.Tier, otype ftypes.OType, oid uint64, key string, version uint64) ([]byte, error) {
+	return cachedProvider{base: dbProvider{}}.get(tier, otype, oid, key, version)
 }
 
 //================================================
@@ -30,16 +30,16 @@ type cachedProvider struct {
 	base provider
 }
 
-func (c cachedProvider) set(tier tier.Tier, custid ftypes.CustID, otype ftypes.OType, oid uint64, key string, version uint64, valueSer []byte) error {
-	if err := c.base.set(tier, custid, otype, oid, key, version, valueSer); err != nil {
+func (c cachedProvider) set(tier tier.Tier, otype ftypes.OType, oid uint64, key string, version uint64, valueSer []byte) error {
+	if err := c.base.set(tier, otype, oid, key, version, valueSer); err != nil {
 		return err
 	}
 	// ground truth was successful so now we update the caches
-	k1 := makeKey(tier, custid, otype, oid, key, version)
+	k1 := makeKey(tier, otype, oid, key, version)
 	err1 := tier.Cache.Delete(context.TODO(), k1)
 
 	// whenever we make a write, also invalidate "latest" version
-	k2 := makeKey(tier, custid, otype, oid, key, 0)
+	k2 := makeKey(tier, otype, oid, key, 0)
 	err2 := tier.Cache.Delete(context.TODO(), k2)
 	var ret error = nil
 	if err1 != nil && err1 != tier.Cache.Nil() {
@@ -55,11 +55,11 @@ func (c cachedProvider) set(tier tier.Tier, custid ftypes.CustID, otype ftypes.O
 	return ret
 }
 
-func (c cachedProvider) get(tier tier.Tier, custid ftypes.CustID, otype ftypes.OType, oid uint64, key string, version uint64) ([]byte, error) {
-	k := makeKey(tier, custid, otype, oid, key, version)
+func (c cachedProvider) get(tier tier.Tier, otype ftypes.OType, oid uint64, key string, version uint64) ([]byte, error) {
+	k := makeKey(tier, otype, oid, key, version)
 	v, err := tier.Cache.Get(context.TODO(), k)
 	if err != nil {
-		v, err = c.base.get(tier, custid, otype, oid, key, version)
+		v, err = c.base.get(tier, otype, oid, key, version)
 		if err == nil {
 			// if we could not find in cache but can find in ground truth, set in cache
 			err = tier.Cache.Set(context.TODO(), k, v, 0)
@@ -83,7 +83,7 @@ func cacheName() string {
 	return "cache:profile"
 }
 
-func makeKey(tier tier.Tier, custid ftypes.CustID, otype ftypes.OType, oid uint64, key string, version uint64) string {
+func makeKey(tier tier.Tier, otype ftypes.OType, oid uint64, key string, version uint64) string {
 	prefix := fmt.Sprintf("%d:%s:%d", tier.ID, cacheName(), cacheVersion)
-	return fmt.Sprintf("%s:%d:%s:%d:%s:%d", prefix, custid, otype, oid, key, version)
+	return fmt.Sprintf("%s:%s:%d:%s:%d", prefix, otype, oid, key, version)
 }

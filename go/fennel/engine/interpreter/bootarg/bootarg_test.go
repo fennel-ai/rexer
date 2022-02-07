@@ -5,13 +5,13 @@ import (
 	"fennel/redis"
 	"fennel/test"
 	"fennel/tier"
-	"github.com/stretchr/testify/assert"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func Test_Create_GetInstance(t *testing.T) {
 	tier := tier.Tier{
-		CustID:    123,
 		DB:        db.Connection{},
 		Redis:     redis.Client{},
 		Cache:     nil,

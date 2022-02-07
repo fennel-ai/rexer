@@ -6,9 +6,8 @@ option go_package = "fennel/lib/query";
 
 message ProtoQueryRequest {
   uint64 query_id = 1;
-  uint64 custid = 2;
-  uint64 min_timestamp = 3;
-  uint64 max_timestamp = 4;
+  uint64 min_timestamp = 2;
+  uint64 max_timestamp = 3;
 }
 
 message ProtoAstWithDict {

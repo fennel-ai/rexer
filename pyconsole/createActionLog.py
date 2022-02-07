@@ -53,7 +53,6 @@ with open(outputFname, 'w') as f:
         a.TargetType = targets[target-1]
         a.ActionType = random.choice(actionTypes)
         a.RequestID = i+1
-        a.CustID = 1
         
         aBytes = list(a.SerializeToString())
         

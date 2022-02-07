@@ -7,12 +7,11 @@ import "ftypes.proto";
 import "value.proto";
 
 message ProtoAggregate {
-  uint64 cust_id = 1;
-  string agg_type = 2;
-  string agg_name = 3;
-  Ast query = 4;
-  uint64 timestamp = 5;
-  AggOptions options = 6;
+  string agg_type = 1;
+  string agg_name = 2;
+  Ast query = 3;
+  uint64 timestamp = 4;
+  AggOptions options = 5;
 }
 
 message AggOptions {

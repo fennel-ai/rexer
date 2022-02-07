@@ -1,6 +1,5 @@
 package ftypes
 
-type CustID uint32
 type TierID uint32
 type OidType uint64
 type OType string

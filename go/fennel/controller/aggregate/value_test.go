@@ -17,13 +17,12 @@ func TestTransformActions(t *testing.T) {
 	assert.NoError(t, err)
 	defer test.Teardown(tier)
 
-	custid := ftypes.CustID(12312)
 	actions := make([]action.Action, 0)
 	uid := ftypes.OidType(41)
 	for i := 0; i < 100; i++ {
 		// our query only looks at Like action, not share
-		a1 := getAction(i, custid, uid, ftypes.Timestamp(i+1000), "like")
-		a2 := getAction(i, custid, uid, ftypes.Timestamp(i+1005), "share")
+		a1 := getAction(i, uid, ftypes.Timestamp(i+1000), "like")
+		a2 := getAction(i, uid, ftypes.Timestamp(i+1005), "share")
 		actions = append(actions, a1, a2)
 	}
 
@@ -62,10 +61,9 @@ func getQuery() ast.Ast {
 	}
 }
 
-func getAction(i int, id ftypes.CustID, uid ftypes.OidType, ts ftypes.Timestamp, actionType ftypes.ActionType) action.Action {
+func getAction(i int, uid ftypes.OidType, ts ftypes.Timestamp, actionType ftypes.ActionType) action.Action {
 	return action.Action{
 		ActionID:   ftypes.OidType(1 + i),
-		CustID:     id,
 		ActorID:    uid,
 		ActorType:  "user",
 		TargetID:   3,

@@ -11,9 +11,6 @@ import (
 // Insert takes an action and inserts it both in the DB and Kafka
 // returns the unique ID of the action that was inserted
 func Insert(tier tier.Tier, a actionlib.Action) (uint64, error) {
-	if a.CustID == 0 {
-		a.CustID = tier.CustID
-	}
 	err := a.Validate()
 	if err != nil {
 		return 0, fmt.Errorf("invalid action: %v", err)
