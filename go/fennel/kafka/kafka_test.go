@@ -34,26 +34,23 @@ func TestProducerConsumer(t *testing.T) {
 	// then create producer/consumer
 	resource, err := RemoteProducerConfig{
 		Topic:           topic,
-		TierID:          tierID,
 		BootstrapServer: test_kafka_servers,
 		Username:        kafka_username,
 		Password:        kafka_password,
-	}.Materialize()
+	}.Materialize(tierID)
 	assert.NoError(t, err)
 	producer := resource.(FProducer)
 
 	resource, err = RemoteConsumerConfig{
 		Topic:           topic,
-		TierID:          tierID,
 		BootstrapServer: test_kafka_servers,
 		Username:        kafka_username,
 		Password:        kafka_password,
 		GroupID:         "test_group",
 		OffsetPolicy:    "earliest",
-	}.Materialize()
+	}.Materialize(tierID)
 	assert.NoError(t, err)
 	consumer := resource.(FConsumer)
-
 	// spin up two goroutines that produce/consume 10 messages each asyncrhonously
 	wg := sync.WaitGroup{}
 	wg.Add(2)

@@ -2,8 +2,10 @@ package redis
 
 import (
 	"context"
+	"fennel/lib/ftypes"
 	"github.com/alicebob/miniredis/v2"
 	"github.com/stretchr/testify/assert"
+	"math/rand"
 	"testing"
 	"time"
 )
@@ -12,9 +14,11 @@ import (
 // when I tried doing this earlier with byte string or a struct that impelemented
 // MarshalBinary, it failed. But I gave up soon
 func TestCache(t *testing.T) {
+	rand.Seed(time.Now().UnixNano())
+	tierID := ftypes.TierID(rand.Uint32())
 	mr, err := miniredis.Run()
 	assert.NoError(t, err)
-	resource, err := MiniRedisConfig{MiniRedis: mr}.Materialize()
+	resource, err := MiniRedisConfig{MiniRedis: mr}.Materialize(tierID)
 	client := resource.(Client)
 	cache := NewCache(client)
 	defer client.Close()

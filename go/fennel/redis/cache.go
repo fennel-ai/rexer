@@ -22,15 +22,15 @@ func NewCache(client Client) Cache {
 }
 
 func (c Cache) Get(ctx context.Context, k string) (interface{}, error) {
-	return c.client.Get(ctx, k).Result()
+	return c.client.Get(ctx, k)
 }
 
 func (c Cache) Delete(ctx context.Context, k string) error {
-	return c.client.Del(ctx, k).Err()
+	return c.client.Del(ctx, k)
 }
 
 func (c Cache) Set(ctx context.Context, k string, v interface{}, ttl time.Duration) error {
-	return c.client.Set(ctx, k, v, ttl).Err()
+	return c.client.Set(ctx, k, v, ttl)
 }
 
 func (c Cache) Init() error {

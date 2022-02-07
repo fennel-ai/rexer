@@ -2,8 +2,7 @@ package redis
 
 import (
 	"crypto/tls"
-	"log"
-
+	"fennel/lib/ftypes"
 	"fennel/resource"
 
 	"github.com/alicebob/miniredis/v2"
@@ -11,14 +10,19 @@ import (
 )
 
 type Client struct {
-	conf resource.Config
-	*redis.Client
+	tierID ftypes.TierID
+	conf   resource.Config
+	client *redis.Client
+}
+
+func (c Client) TierID() ftypes.TierID {
+	return c.tierID
 }
 
 func (c Client) Type() resource.Type { return resource.RedisClient }
 
 func (c Client) Close() error {
-	err := c.Client.Close()
+	err := c.client.Close()
 	if err != nil {
 		return err
 	}
@@ -41,9 +45,8 @@ type ClientConfig struct {
 
 var _ resource.Config = ClientConfig{}
 
-func (conf ClientConfig) Materialize() (resource.Resource, error) {
-	log.Printf("Creating a redis client for: %s", conf.Addr)
-	return Client{conf, redis.NewClient(&redis.Options{
+func (conf ClientConfig) Materialize(tierID ftypes.TierID) (resource.Resource, error) {
+	return Client{tierID, conf, redis.NewClient(&redis.Options{
 		Addr:      conf.Addr,
 		TLSConfig: conf.TLSConfig,
 	})}, nil
@@ -57,8 +60,8 @@ type MiniRedisConfig struct {
 	MiniRedis *miniredis.Miniredis
 }
 
-func (conf MiniRedisConfig) Materialize() (resource.Resource, error) {
-	return Client{conf, redis.NewClient(&redis.Options{
+func (conf MiniRedisConfig) Materialize(tierID ftypes.TierID) (resource.Resource, error) {
+	return Client{tierID, conf, redis.NewClient(&redis.Options{
 		Addr:      conf.MiniRedis.Addr(),
 		TLSConfig: nil,
 	})}, nil

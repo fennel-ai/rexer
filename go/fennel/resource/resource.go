@@ -1,5 +1,10 @@
 package resource
 
+import (
+	"fennel/lib/ftypes"
+	"fmt"
+)
+
 type Type uint8
 
 /*
@@ -20,10 +25,15 @@ const (
 )
 
 type Config interface {
-	Materialize() (Resource, error)
+	Materialize(id ftypes.TierID) (Resource, error)
 }
 
 type Resource interface {
 	Close() error
 	Type() Type
+	TierID() ftypes.TierID
+}
+
+func TieredName(tierID ftypes.TierID, name string) string {
+	return fmt.Sprintf("t_%d_%s", tierID, name)
 }
