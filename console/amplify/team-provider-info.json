@@ -9,8 +9,7 @@
       "UnauthRoleName": "amplify-console-westdev-134055-unauthRole",
       "StackName": "amplify-console-westdev-134055",
       "StackId": "arn:aws:cloudformation:us-west-2:030813887342:stack/amplify-console-westdev-134055/25908a90-814c-11ec-9a1f-026757c08eb3",
-      "AmplifyAppId": "d28oiwl5oo960k",
-      "APIGatewayAuthURL": "https://s3.amazonaws.com/amplify-console-westdev-134055-deployment/amplify-cfn-templates/api/APIGatewayAuthStack.json"
+      "AmplifyAppId": "d28oiwl5oo960k"
     },
     "categories": {
       "auth": {
