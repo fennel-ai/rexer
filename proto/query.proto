@@ -10,7 +10,7 @@ message ProtoQueryRequest {
   uint64 max_timestamp = 3;
 }
 
-message ProtoAstWithDict {
+message ProtoBoundQuery {
   Ast ast = 1;
   PVDict dict = 2;
 }
