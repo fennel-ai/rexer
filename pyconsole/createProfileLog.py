@@ -37,7 +37,6 @@ with open(getFname, 'w') as getFile, open(setFname, 'w') as setFile:
         
         if act == SET:
             p = profile.ProfileItem()
-            p.CustID = 1
             p.Oid = len(profiles)+1
             p.OType = random.choice(oTypes)
             p.Key = genRandString(maxKeyLen)

@@ -31,7 +31,6 @@ type TierArgs struct {
 
 type Tier struct {
 	ID        ftypes.TierID
-	CustID    ftypes.CustID
 	DB        db.Connection
 	Redis     redis.Client
 	Cache     cache.Cache
@@ -75,8 +74,7 @@ func CreateFromArgs(args *TierArgs) (tier Tier, err error) {
 		Consumers: consumers,
 		Clock:     clock.Unix{},
 		// TODO: Replace with actual ids.
-		CustID: ftypes.CustID(1),
-		ID:     ftypes.TierID(1),
+		ID: ftypes.TierID(1),
 		// TODO: add client to ElasticCache-backed Redis instead of MemoryDB.
 		Cache: redis.NewCache(redisClient.(redis.Client)),
 	}, nil

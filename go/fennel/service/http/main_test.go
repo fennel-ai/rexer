@@ -68,7 +68,7 @@ func TestLogFetchServerClient(t *testing.T) {
 	verifyFetch(t, c, action.ActionFetchRequest{}, []action.Action{})
 
 	// now we add a couple of actions
-	a := action.Action{CustID: 1, ActorType: "1", ActorID: 2, ActionType: "3", TargetType: "4", TargetID: 5}
+	a := action.Action{ActorType: "1", ActorID: 2, ActionType: "3", TargetType: "4", TargetID: 5}
 	// logging this should fail because some fields (e.g. requestID aren't specified)
 	err = c.LogAction(a)
 	assert.Error(t, err)
@@ -76,17 +76,17 @@ func TestLogFetchServerClient(t *testing.T) {
 	verifyFetch(t, c, action.ActionFetchRequest{}, []action.Action{})
 
 	// but this error disappears when we pass all values
-	action1 := add(t, c, action.Action{CustID: 1, ActorType: "1", ActorID: 2, ActionType: "3", TargetType: "4", TargetID: 5, RequestID: 6, Timestamp: 7, Metadata: value.Nil})
+	action1 := add(t, c, action.Action{ActorType: "1", ActorID: 2, ActionType: "3", TargetType: "4", TargetID: 5, RequestID: 6, Timestamp: 7, Metadata: value.Nil})
 	// and this action should show up in requests
 	verifyFetch(t, c, action.ActionFetchRequest{}, []action.Action{action1})
 
 	// add a couple of actions
 	action2 := add(t, c, action.Action{
-		CustID: 1, ActorType: "11", ActorID: 12, ActionType: "13", TargetType: "14", TargetID: 15, RequestID: 16, Timestamp: 17, Metadata: value.Nil},
+		ActorType: "11", ActorID: 12, ActionType: "13", TargetType: "14", TargetID: 15, RequestID: 16, Timestamp: 17, Metadata: value.Nil},
 	)
 	verifyFetch(t, c, action.ActionFetchRequest{}, []action.Action{action1, action2})
 	action3 := add(t, c, action.Action{
-		CustID: 1, ActorType: "22", ActorID: 23, ActionType: "23", TargetType: "24", TargetID: 25, RequestID: 26, Timestamp: 27, Metadata: value.Nil},
+		ActorType: "22", ActorID: 23, ActionType: "23", TargetType: "24", TargetID: 25, RequestID: 26, Timestamp: 27, Metadata: value.Nil},
 	)
 	verifyFetch(t, c, action.ActionFetchRequest{}, []action.Action{action1, action2, action3})
 }
@@ -109,23 +109,23 @@ func TestProfileServerClient(t *testing.T) {
 	pfr := profilelib.ProfileFetchRequest{}
 
 	// in the beginning, with no value set, we set nil pointer back but with no error
-	checkGetSet(t, c, true, 1, "1", 1, 0, "age", value.Value(nil))
+	checkGetSet(t, c, true, "1", 1, 0, "age", value.Value(nil))
 
 	var expected value.Value = value.List([]value.Value{value.Int(1), value.Bool(false), value.Nil})
-	profileList = append(profileList, checkGetSet(t, c, false, 1, "1", 1, 1, "age", expected))
+	profileList = append(profileList, checkGetSet(t, c, false, "1", 1, 1, "age", expected))
 	checkGetProfileMulti(t, c, pfr, profileList)
 
 	// we can also GetProfile it without using the specific version number
-	checkGetSet(t, c, true, 1, "1", 1, 0, "age", expected)
+	checkGetSet(t, c, true, "1", 1, 0, "age", expected)
 
 	// SetProfile few more key/value pairs and verify it works
-	profileList = append(profileList, checkGetSet(t, c, false, 1, "1", 1, 2, "age", value.Nil))
+	profileList = append(profileList, checkGetSet(t, c, false, "1", 1, 2, "age", value.Nil))
 	checkGetProfileMulti(t, c, pfr, profileList)
-	profileList = append(profileList, checkGetSet(t, c, false, 1, "1", 3, 2, "age", value.Int(1)))
+	profileList = append(profileList, checkGetSet(t, c, false, "1", 3, 2, "age", value.Int(1)))
 	checkGetProfileMulti(t, c, pfr, profileList)
-	checkGetSet(t, c, true, 1, "1", 1, 2, "age", value.Nil)
-	checkGetSet(t, c, true, 1, "1", 1, 0, "age", value.Nil)
-	checkGetSet(t, c, false, 1, "10", 3131, 0, "summary", value.Int(1))
+	checkGetSet(t, c, true, "1", 1, 2, "age", value.Nil)
+	checkGetSet(t, c, true, "1", 1, 0, "age", value.Nil)
+	checkGetSet(t, c, false, "10", 3131, 0, "summary", value.Int(1))
 }
 
 func TestQuery(t *testing.T) {
@@ -186,7 +186,6 @@ func TestHolder_AggregateValue_Valid(t *testing.T) {
 	clock.Set(int64(t0))
 	controller := holder{tier: tier}
 	agg := aggregate.Aggregate{
-		CustID:    tier.CustID,
 		Type:      "rolling_counter",
 		Name:      "mycounter",
 		Query:     ast.MakeInt(1),
@@ -227,10 +226,9 @@ func TestStoreRetrieveAggregate(t *testing.T) {
 
 	// store a couple of aggregates
 	agg := aggregate.Aggregate{
-		CustID: tier.CustID,
-		Type:   "rolling_counter",
-		Name:   "mycounter",
-		Query:  ast.MakeInt(1),
+		Type:  "rolling_counter",
+		Name:  "mycounter",
+		Query: ast.MakeInt(1),
 		Options: aggregate.AggOptions{
 			Duration: 3600 * 24,
 		},
@@ -243,10 +241,9 @@ func TestStoreRetrieveAggregate(t *testing.T) {
 	assert.Equal(t, agg, found)
 	// trying to rewrite the same agg type/name throws an error even if query/options are different
 	agg2 := aggregate.Aggregate{
-		CustID: tier.CustID,
-		Type:   "rolling_counter",
-		Name:   "mycounter",
-		Query:  ast.MakeDouble(3.4),
+		Type:  "rolling_counter",
+		Name:  "mycounter",
+		Query: ast.MakeDouble(3.4),
 		Options: aggregate.AggOptions{
 			Duration: 3600 * 24 * 2,
 		},
@@ -265,10 +262,10 @@ func TestStoreRetrieveAggregate(t *testing.T) {
 
 }
 
-func checkGetSet(t *testing.T, c *client.Client, get bool, custid uint64, otype string, oid uint64, version uint64,
+func checkGetSet(t *testing.T, c *client.Client, get bool, otype string, oid uint64, version uint64,
 	key string, val value.Value) profilelib.ProfileItem {
 	if get {
-		req := profilelib.NewProfileItem(custid, otype, oid, key, version)
+		req := profilelib.NewProfileItem(otype, oid, key, version)
 		found, err := c.GetProfile(&req)
 		assert.NoError(t, err)
 		if found == nil {
@@ -278,10 +275,10 @@ func checkGetSet(t *testing.T, c *client.Client, get bool, custid uint64, otype 
 		}
 		return req
 	} else {
-		profile := profilelib.ProfileItem{CustID: ftypes.CustID(custid), OType: ftypes.OType(otype), Oid: oid, Key: key, Version: version, Value: val}
+		profile := profilelib.ProfileItem{OType: ftypes.OType(otype), Oid: oid, Key: key, Version: version, Value: val}
 		err := c.SetProfile(&profile)
 		assert.NoError(t, err)
-		request := profilelib.NewProfileItem(custid, otype, oid, key, version)
+		request := profilelib.NewProfileItem(otype, oid, key, version)
 		found, err := c.GetProfile(&request)
 		assert.NoError(t, err)
 		if found == nil {

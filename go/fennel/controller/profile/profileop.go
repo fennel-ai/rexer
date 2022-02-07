@@ -32,7 +32,6 @@ func (p *profileOp) Apply(_ value.Dict, in operators.InputIter, out *value.Table
 			return err
 		}
 		req := profile.ProfileItem{
-			CustID:  p.tier.CustID,
 			OType:   ftypes.OType(kwargs["otype"].(value.String)),
 			Oid:     uint64(kwargs["oid"].(value.Int)),
 			Key:     string(kwargs["key"].(value.String)),

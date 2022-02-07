@@ -34,7 +34,6 @@ func Tier() (tier.Tier, error) {
 	}
 	return tier.Tier{
 		ID:        tierID,
-		CustID:    ftypes.CustID(rand.Uint64()),
 		DB:        db,
 		Cache:     Cache,
 		Redis:     redClient,
