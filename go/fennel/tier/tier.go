@@ -47,9 +47,8 @@ func CreateFromArgs(args *TierArgs) (tier Tier, err error) {
 		DBname:   args.MysqlDB,
 		Username: args.MysqlUsername,
 		Password: args.MysqlPassword,
-		TierID:   tierID,
 	}
-	sqlConn, err := mysqlConfig.Materialize()
+	sqlConn, err := mysqlConfig.Materialize(tierID)
 	if err != nil {
 		return tier, fmt.Errorf("failed to connect with mysql: %v", err)
 	}
@@ -58,7 +57,7 @@ func CreateFromArgs(args *TierArgs) (tier Tier, err error) {
 		Addr:      args.RedisServer,
 		TLSConfig: &tls.Config{},
 	}
-	redisClient, err := redisConfig.Materialize()
+	redisClient, err := redisConfig.Materialize(tierID)
 	if err != nil {
 		return tier, fmt.Errorf("failed to create redis client: %v", err)
 	}
@@ -85,20 +84,18 @@ func CreateKafka(tierID ftypes.TierID, server, username, password string) (map[s
 	consumers := make(map[string]kafka.FConsumer)
 	for _, topic := range kafka.ALL_TOPICS {
 		kafkaProducerConfig := kafka.RemoteProducerConfig{
-			TierID:          tierID,
 			BootstrapServer: server,
 			Username:        username,
 			Password:        password,
 			Topic:           topic,
 		}
-		kafkaProducer, err := kafkaProducerConfig.Materialize()
+		kafkaProducer, err := kafkaProducerConfig.Materialize(tierID)
 		if err != nil {
 			return nil, nil, fmt.Errorf("failed to crate kafka producer: %v", err)
 		}
 		producers[topic] = kafkaProducer.(kafka.FProducer)
 
 		kafkaConsumerConfig := kafka.RemoteConsumerConfig{
-			TierID:          tierID,
 			BootstrapServer: server,
 			Username:        username,
 			Password:        password,
@@ -107,7 +104,7 @@ func CreateKafka(tierID ftypes.TierID, server, username, password string) (map[s
 			Topic:        topic,
 			OffsetPolicy: "earliest",
 		}
-		kafkaConsumer, err := kafkaConsumerConfig.Materialize()
+		kafkaConsumer, err := kafkaConsumerConfig.Materialize(tierID)
 		if err != nil {
 			return nil, nil, fmt.Errorf("failed to create kafka consumer: %v", err)
 		}

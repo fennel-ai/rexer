@@ -16,13 +16,12 @@ const (
 
 func defaultDB(tierID ftypes.TierID) (db.Connection, error) {
 	config := db.MySQLConfig{
-		TierID:   tierID,
 		DBname:   logical_test_dbname,
 		Username: username,
 		Password: password,
 		Host:     host,
 	}
-	resource, err := config.Materialize()
+	resource, err := config.Materialize(tierID)
 	if err != nil {
 		return db.Connection{}, err
 	}

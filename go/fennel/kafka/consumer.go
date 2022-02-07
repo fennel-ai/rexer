@@ -43,7 +43,6 @@ func (k RemoteConsumer) Read(pmsg proto.Message) error {
 }
 
 type RemoteConsumerConfig struct {
-	TierID          ftypes.TierID
 	BootstrapServer string
 	Username        string
 	Password        string
@@ -52,11 +51,11 @@ type RemoteConsumerConfig struct {
 	Topic           string
 }
 
-func (conf RemoteConsumerConfig) Materialize() (resource.Resource, error) {
-	if conf.TierID == 0 {
+func (conf RemoteConsumerConfig) Materialize(tierID ftypes.TierID) (resource.Resource, error) {
+	if tierID == 0 {
 		return nil, fmt.Errorf("tier ID not initialized")
 	}
-	conf.Topic = TieredName(conf.TierID, conf.Topic)
+	conf.Topic = TieredName(tierID, conf.Topic)
 	configmap := ConfigMap(conf.BootstrapServer, conf.Username, conf.Password)
 
 	if err := configmap.SetKey("group.id", conf.GroupID); err != nil {
@@ -73,7 +72,7 @@ func (conf RemoteConsumerConfig) Materialize() (resource.Resource, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to subscribe to Topic [%s]: %v", conf.Topic, err)
 	}
-	return RemoteConsumer{conf.TierID, consumer, conf.Topic, conf}, nil
+	return RemoteConsumer{tierID, consumer, conf.Topic, conf}, nil
 }
 
 var _ resource.Config = RemoteConsumerConfig{}

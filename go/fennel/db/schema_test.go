@@ -38,20 +38,20 @@ func recreate(tierID ftypes.TierID, logicalname, username, password, host string
 func TestSyncSchema(t *testing.T) {
 	// get default DB
 	rand.Seed(time.Now().UnixNano())
+	tierID := ftypes.TierID(rand.Uint32())
 	config := MySQLConfig{
-		TierID:   ftypes.TierID(rand.Uint32()),
 		DBname:   "schema_test",
 		Username: "admin",
 		Password: "foundationdb",
 		Host:     "database-nikhil-test.cluster-c00d7gkxaysk.us-west-2.rds.amazonaws.com",
 	}
-	resource, err := config.Materialize()
+	resource, err := config.Materialize(tierID)
 	assert.NoError(t, err)
-	defer drop(config.TierID, config.DBname, config.Username, config.Password, config.Host)
+	defer drop(tierID, config.DBname, config.Username, config.Password, config.Host)
 	db := resource.(Connection)
 
 	// version goes to zero after dropping the DB
-	conn, err := recreate(config.TierID, config.DBname, config.Username, config.Password, config.Host)
+	conn, err := recreate(tierID, config.DBname, config.Username, config.Password, config.Host)
 	assert.NoError(t, err)
 	db.DB = conn
 

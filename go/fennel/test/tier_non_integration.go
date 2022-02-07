@@ -21,11 +21,10 @@ func Tier() (tier.Tier, error) {
 	if err != nil {
 		return tier.Tier{}, err
 	}
-	resource, err := DefaultRedis()
+	redClient, err := mockRedis(tierID)
 	if err != nil {
 		return tier.Tier{}, err
 	}
-	redClient := resource.(redis.Client)
 
 	Cache := redis.NewCache(redClient)
 	producers, consumers, err := createMockKafka(tierID)

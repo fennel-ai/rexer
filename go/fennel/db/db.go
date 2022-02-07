@@ -36,14 +36,13 @@ var _ resource.Resource = Connection{}
 
 type SQLiteConfig struct {
 	dbname string
-	TierID ftypes.TierID
 }
 
-func (conf SQLiteConfig) Materialize() (resource.Resource, error) {
-	if conf.TierID == 0 {
+func (conf SQLiteConfig) Materialize(tierID ftypes.TierID) (resource.Resource, error) {
+	if tierID == 0 {
 		return nil, fmt.Errorf("tier ID not initialized")
 	}
-	dbname := Name(conf.TierID, conf.dbname)
+	dbname := Name(tierID, conf.dbname)
 
 	os.Remove(dbname)
 
@@ -57,7 +56,7 @@ func (conf SQLiteConfig) Materialize() (resource.Resource, error) {
 	if err != nil {
 		return nil, err
 	}
-	conn := Connection{config: conf, DB: DB, tierID: conf.TierID}
+	conn := Connection{config: conf, DB: DB, tierID: tierID}
 	if err = SyncSchema(conn); err != nil {
 		return nil, err
 	}
@@ -71,7 +70,6 @@ var _ resource.Config = SQLiteConfig{}
 //=================================
 
 type MySQLConfig struct {
-	TierID   ftypes.TierID
 	DBname   string
 	Username string
 	Password string
@@ -80,12 +78,12 @@ type MySQLConfig struct {
 
 var _ resource.Config = MySQLConfig{}
 
-func (conf MySQLConfig) Materialize() (resource.Resource, error) {
-	if conf.TierID == 0 {
+func (conf MySQLConfig) Materialize(tierID ftypes.TierID) (resource.Resource, error) {
+	if tierID == 0 {
 		return Connection{}, fmt.Errorf("tier ID not specified")
 	}
-	dbname := Name(conf.TierID, conf.DBname)
-	if err := Create(conf.TierID, conf.DBname, conf.Username, conf.Password, conf.Host); err != nil {
+	dbname := Name(tierID, conf.DBname)
+	if err := Create(tierID, conf.DBname, conf.Username, conf.Password, conf.Host); err != nil {
 		return nil, err
 	}
 	connectStr := fmt.Sprintf("%s:%s@tcp(%s)/%s?tls=true", conf.Username, conf.Password, conf.Host, dbname)
@@ -94,7 +92,7 @@ func (conf MySQLConfig) Materialize() (resource.Resource, error) {
 		return nil, err
 	}
 
-	conn := Connection{config: conf, DB: DB, tierID: conf.TierID}
+	conn := Connection{config: conf, DB: DB, tierID: tierID}
 	if err := SyncSchema(conn); err != nil {
 		return nil, err
 	}

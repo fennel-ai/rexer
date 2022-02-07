@@ -34,11 +34,11 @@ func createMockKafka(tierID ftypes.TierID) (map[string]fkafka.FProducer, map[str
 
 func mockProducerConsumer(tierID ftypes.TierID, topic string) (fkafka.FProducer, fkafka.FConsumer, error) {
 	ch := make(chan []byte, 1000)
-	producer, err := localProducerConfig{tierID: tierID, ch: ch, topic: topic}.Materialize()
+	producer, err := localProducerConfig{ch: ch, topic: topic}.Materialize(tierID)
 	if err != nil {
 		return nil, nil, err
 	}
-	consumer, err := localConsumerConfig{tierID: tierID, Channel: ch, Topic: topic}.Materialize()
+	consumer, err := localConsumerConfig{Channel: ch, Topic: topic}.Materialize(tierID)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -135,16 +135,15 @@ var _ fkafka.FConsumer = localConsumer{}
 //=================================
 
 type localConsumerConfig struct {
-	tierID  ftypes.TierID
 	Channel chan []byte
 	Topic   string
 }
 
-func (l localConsumerConfig) Materialize() (resource.Resource, error) {
-	if l.tierID == 0 {
+func (l localConsumerConfig) Materialize(tierID ftypes.TierID) (resource.Resource, error) {
+	if tierID == 0 {
 		return nil, fmt.Errorf("tier ID not initialized")
 	}
-	return localConsumer{l.tierID, l.Topic, l.Channel}, nil
+	return localConsumer{tierID, l.Topic, l.Channel}, nil
 }
 
 var _ resource.Config = localConsumerConfig{}
@@ -188,16 +187,15 @@ var _ fkafka.FProducer = localProducer{}
 //=================================
 
 type localProducerConfig struct {
-	tierID ftypes.TierID
-	ch     chan []byte
-	topic  string
+	ch    chan []byte
+	topic string
 }
 
-func (conf localProducerConfig) Materialize() (resource.Resource, error) {
-	if conf.tierID == 0 {
+func (conf localProducerConfig) Materialize(tierID ftypes.TierID) (resource.Resource, error) {
+	if tierID == 0 {
 		return nil, fmt.Errorf("tier ID not initialized")
 	}
-	return localProducer{conf.tierID, conf.topic, conf.ch}, nil
+	return localProducer{tierID, conf.topic, conf.ch}, nil
 }
 
 var _ resource.Config = localProducerConfig{}
