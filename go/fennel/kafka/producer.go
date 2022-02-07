@@ -60,7 +60,7 @@ func (conf RemoteProducerConfig) Materialize(tierID ftypes.TierID) (resource.Res
 	if tierID == 0 {
 		return nil, fmt.Errorf("tier ID not initialized")
 	}
-	conf.Topic = TieredName(tierID, conf.Topic)
+	conf.Topic = resource.TieredName(tierID, conf.Topic)
 
 	configmap := ConfigMap(conf.BootstrapServer, conf.Username, conf.Password)
 	producer, err := kafka.NewProducer(configmap)

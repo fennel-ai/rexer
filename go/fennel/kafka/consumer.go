@@ -55,7 +55,7 @@ func (conf RemoteConsumerConfig) Materialize(tierID ftypes.TierID) (resource.Res
 	if tierID == 0 {
 		return nil, fmt.Errorf("tier ID not initialized")
 	}
-	conf.Topic = TieredName(tierID, conf.Topic)
+	conf.Topic = resource.TieredName(tierID, conf.Topic)
 	configmap := ConfigMap(conf.BootstrapServer, conf.Username, conf.Password)
 
 	if err := configmap.SetKey("group.id", conf.GroupID); err != nil {
