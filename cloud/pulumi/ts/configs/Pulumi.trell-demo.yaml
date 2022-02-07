@@ -19,3 +19,5 @@ config:
   configs:redis-conf:
     addr:
       secure: AAABAOCLb/SN1gF+4qJkUzRw7Jbca3R2N+/y9G5LudSu4n0AeiXq2kTAn9tpiLKogB2F5W5yJ7bTvUl8IXT2FIk+Rf3YVzbCa8v8uMgnVhd0rJ7MTyVBUisAAK9czXr006iTqnW0f3o4
+  configs:tier-conf:
+    tier_id: T-001-001-001
