@@ -15,19 +15,18 @@ func Store(tier tier.Tier, aggtype ftypes.AggType, name ftypes.AggName, querySer
 	if len(name) > 255 {
 		return fmt.Errorf("aggregate name can not be longer than 255 chars")
 	}
-	sql := `INSERT INTO aggregate_config VALUES (?, ?, ?, ?, ?, ?)`
-	_, err := tier.DB.Query(sql, tier.CustID, aggtype, name, querySer, ts, optionSer)
+	sql := `INSERT INTO aggregate_config VALUES (?, ?, ?, ?, ?)`
+	_, err := tier.DB.Query(sql, aggtype, name, querySer, ts, optionSer)
 	return err
 }
 
 func Retrieve(tier tier.Tier, aggregateType ftypes.AggType, name ftypes.AggName) (aggregate.AggregateSer, error) {
 	var ret aggregate.AggregateSer
 	err := tier.DB.Get(&ret, `
-			SELECT * FROM aggregate_config 
-			WHERE cust_id = ? 
-			  AND aggregate_type = ? 
+			SELECT * FROM aggregate_config
+			  WHERE aggregate_type = ? 
 			  AND name = ?`,
-		tier.CustID, aggregateType, name,
+		aggregateType, name,
 	)
 	if err != nil && err == sql.ErrNoRows {
 		return aggregate.AggregateSer{}, aggregate.ErrNotFound
@@ -41,10 +40,8 @@ func RetrieveAll(tier tier.Tier, aggtype ftypes.AggType) ([]aggregate.AggregateS
 	ret := make([]aggregate.AggregateSer, 0)
 	err := tier.DB.Select(&ret, `
 			SELECT * FROM aggregate_config 
-			WHERE cust_id = ? 
-			  AND aggregate_type = ? 
-			  `,
-		tier.CustID, aggtype,
+			  WHERE aggregate_type = ?`,
+		aggtype,
 	)
 	if err != nil {
 		return nil, err

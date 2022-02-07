@@ -22,7 +22,6 @@ func TestRetrieveAll(t *testing.T) {
 	assert.Error(t, err)
 
 	agg := aggregate.Aggregate{
-		CustID:    tier.CustID,
 		Type:      "rolling_counter",
 		Timestamp: 1,
 		Options: aggregate.AggOptions{
@@ -56,7 +55,6 @@ func TestDuplicate(t *testing.T) {
 	defer test.Teardown(tier)
 
 	agg := aggregate.Aggregate{
-		CustID:    tier.CustID,
 		Type:      "rolling_counter",
 		Name:      "test_counter",
 		Query:     ast.MakeInt(4),

@@ -8,9 +8,10 @@ import (
 	"fennel/model/aggregate"
 	"fennel/test"
 	"fennel/tier"
+	"testing"
+
 	"github.com/stretchr/testify/assert"
 	"google.golang.org/protobuf/proto"
-	"testing"
 )
 
 // verifies that given a table created from a query, we do correct inserts/queries
@@ -21,7 +22,6 @@ func TestRolling(t *testing.T) {
 
 	start := 24*3600*12 + 60*31
 	agg := libaggregate.Aggregate{
-		CustID:    tier.CustID,
 		Type:      "rolling_counter",
 		Name:      "mycounter",
 		Query:     ast.MakeInt(1),
@@ -66,7 +66,6 @@ func TestTimeseries(t *testing.T) {
 
 	start := 24*3600*12 + 60
 	agg := libaggregate.Aggregate{
-		CustID:    tier.CustID,
 		Type:      "timeseries_counter",
 		Name:      "mycounter",
 		Query:     ast.MakeInt(1),

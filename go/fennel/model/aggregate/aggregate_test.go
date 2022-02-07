@@ -30,7 +30,6 @@ func TestRetrieveStore(t *testing.T) {
 	optionSer, err := proto.Marshal(&options)
 	assert.NoError(t, err)
 	agg := aggregate.AggregateSer{
-		CustID:    tier.CustID,
 		Type:      "rolling_counter",
 		Name:      "test_counter",
 		QuerySer:  querySer,
@@ -73,7 +72,6 @@ func TestRetrieveAll(t *testing.T) {
 	defer test.Teardown(tier)
 
 	agg := aggregate.AggregateSer{
-		CustID:    tier.CustID,
 		Type:      "rolling_counter",
 		Timestamp: 1,
 		OptionSer: []byte("some options"),

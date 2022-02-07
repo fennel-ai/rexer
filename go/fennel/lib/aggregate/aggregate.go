@@ -5,8 +5,9 @@ import (
 	"fennel/lib/ftypes"
 	"fennel/lib/value"
 	"fmt"
-	"google.golang.org/protobuf/proto"
 	"strings"
+
+	"google.golang.org/protobuf/proto"
 )
 
 var ValidTypes = []ftypes.AggType{
@@ -16,7 +17,6 @@ var ValidTypes = []ftypes.AggType{
 }
 
 type Aggregate struct {
-	CustID    ftypes.CustID
 	Type      ftypes.AggType
 	Name      ftypes.AggName
 	Query     ast.Ast
@@ -72,7 +72,6 @@ func ToProtoAggregate(agg Aggregate) (ProtoAggregate, error) {
 		return ProtoAggregate{}, err
 	}
 	return ProtoAggregate{
-		CustId:    uint64(agg.CustID),
 		AggType:   string(agg.Type),
 		AggName:   string(agg.Name),
 		Query:     &pquery,
@@ -87,7 +86,6 @@ func FromProtoAggregate(pagg ProtoAggregate) (Aggregate, error) {
 		return Aggregate{}, err
 	}
 	return Aggregate{
-		CustID:    ftypes.CustID(pagg.CustId),
 		Type:      ftypes.AggType(strings.ToLower(pagg.AggType)),
 		Name:      ftypes.AggName(strings.ToLower(pagg.AggName)),
 		Query:     query,
@@ -97,7 +95,6 @@ func FromProtoAggregate(pagg ProtoAggregate) (Aggregate, error) {
 }
 
 type AggregateSer struct {
-	CustID    ftypes.CustID    `db:"cust_id"`
 	Type      ftypes.AggType   `db:"aggregate_type"`
 	Name      ftypes.AggName   `db:"name"`
 	QuerySer  []byte           `db:"query_ser"`
@@ -106,7 +103,7 @@ type AggregateSer struct {
 }
 
 func (a Aggregate) Equals(b Aggregate) bool {
-	if a.CustID != b.CustID || a.Type != b.Type || a.Name != b.Name || a.Timestamp != b.Timestamp {
+	if a.Type != b.Type || a.Name != b.Name || a.Timestamp != b.Timestamp {
 		return false
 	}
 	return a.Query == b.Query && proto.Equal(&a.Options, &b.Options)
@@ -114,7 +111,6 @@ func (a Aggregate) Equals(b Aggregate) bool {
 
 func FromAggregateSer(ser AggregateSer) (Aggregate, error) {
 	var agg Aggregate
-	agg.CustID = ser.CustID
 	agg.Timestamp = ser.Timestamp
 	agg.Name = ser.Name
 	agg.Type = ser.Type

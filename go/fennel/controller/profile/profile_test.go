@@ -23,7 +23,7 @@ func TestProfileController(t *testing.T) {
 
 	request := profilelib.ProfileFetchRequest{}
 	profiles := []profilelib.ProfileItem{}
-	profiles = append(profiles, profilelib.NewProfileItem(1, "User", 1232, "summary", 1))
+	profiles = append(profiles, profilelib.NewProfileItem("User", 1232, "summary", 1))
 	profiles[0].Value = vals[0]
 
 	// initially before setting, value isn't there so we get nil back
@@ -34,11 +34,11 @@ func TestProfileController(t *testing.T) {
 	checkGetMulti(t, tier, request, []profilelib.ProfileItem{})
 
 	// cannot set an invalid profile
-	err = Set(tier, profilelib.NewProfileItem(1, "", 1, "key", 1))
+	err = Set(tier, profilelib.NewProfileItem("", 1, "key", 1))
 	assert.Error(t, err)
-	err = Set(tier, profilelib.NewProfileItem(1, "User", 0, "key", 1))
+	err = Set(tier, profilelib.NewProfileItem("User", 0, "key", 1))
 	assert.Error(t, err)
-	err = Set(tier, profilelib.NewProfileItem(1, "User", 1, "", 1))
+	err = Set(tier, profilelib.NewProfileItem("User", 1, "", 1))
 	assert.Error(t, err)
 
 	// set a profile
@@ -52,11 +52,11 @@ func TestProfileController(t *testing.T) {
 	checkGetMulti(t, tier, request, profiles)
 
 	// set a few more profiles and verify it works
-	profiles = append(profiles, profilelib.NewProfileItem(1, "User", 1, "age", 2))
+	profiles = append(profiles, profilelib.NewProfileItem("User", 1, "age", 2))
 	profiles[1].Value = vals[1]
 	checkSet(t, tier, profiles[1])
 	checkGetMulti(t, tier, request, profiles)
-	profiles = append(profiles, profilelib.NewProfileItem(1, "User", 3, "age", 2))
+	profiles = append(profiles, profilelib.NewProfileItem("User", 3, "age", 2))
 	profiles[2].Value = vals[2]
 	checkSet(t, tier, profiles[2])
 	checkGetMulti(t, tier, request, profiles)

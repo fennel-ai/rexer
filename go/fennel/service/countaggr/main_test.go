@@ -25,12 +25,12 @@ func TestEndToEnd2(t *testing.T) {
 	tier.Clock = clock
 
 	agg1 := libaggregate.Aggregate{
-		CustID: tier.CustID, Type: "rolling_counter", Name: "counter1", Query: getQuery(),
+		Type: "rolling_counter", Name: "counter1", Query: getQuery(),
 		Timestamp: 123, Options: libaggregate.AggOptions{Duration: 6 * 3600},
 	}
 	assert.NoError(t, aggregate.Store(tier, agg1))
 	agg2 := libaggregate.Aggregate{
-		CustID: tier.CustID, Type: "timeseries_counter", Name: "timeseries", Query: getQuery(),
+		Type: "timeseries_counter", Name: "timeseries", Query: getQuery(),
 		Timestamp: 123, Options: libaggregate.AggOptions{Window: ftypes.Window_HOUR, Limit: 4},
 	}
 	assert.NoError(t, aggregate.Store(tier, agg2))
@@ -90,7 +90,6 @@ func verify(t *testing.T, tier tier.Tier, agg libaggregate.Aggregate, k value.Va
 
 func logAction(t *testing.T, tier tier.Tier, uid ftypes.OidType, ts ftypes.Timestamp) {
 	a1 := actionlib.Action{
-		CustID:     tier.CustID,
 		ActorID:    uid,
 		ActorType:  "user",
 		TargetID:   10,

@@ -10,10 +10,9 @@ func Get(tier tier.Tier, aggtype ftypes.AggType, aggname ftypes.AggName) (ftypes
 	row := tier.DB.QueryRow(`
 		SELECT checkpoint
 		FROM checkpoint 
-		WHERE cust_id = ?
-		  AND aggtype = ?
+		WHERE aggtype = ?
 		  AND aggname = ?;
-	`, tier.CustID, aggtype, aggname,
+	`, aggtype, aggname,
 	)
 	var checkpoint uint64
 	err := row.Scan(&checkpoint)
@@ -29,13 +28,13 @@ func Get(tier tier.Tier, aggtype ftypes.AggType, aggname ftypes.AggName) (ftypes
 
 func Set(tier tier.Tier, aggtype ftypes.AggType, aggname ftypes.AggName, checkpoint ftypes.OidType) error {
 	_, err := tier.DB.Exec(`
-		INSERT INTO checkpoint (cust_id, aggtype, aggname, checkpoint)
-        VALUES (?, ?, ?, ?)
+		INSERT INTO checkpoint (aggtype, aggname, checkpoint)
+        VALUES (?, ?, ?)
 		ON DUPLICATE KEY
 		UPDATE
 			checkpoint = ?
 		;`,
-		tier.CustID, aggtype, aggname, checkpoint, checkpoint,
+		aggtype, aggname, checkpoint, checkpoint,
 	)
 	return err
 }
