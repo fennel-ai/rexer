@@ -45,7 +45,7 @@ const actionMetadata = {
 app.get("/actions/profiles", async (req, res) => {
   try {
     const result = await axios.get(PROFILE_URL, {
-      params: { key: "hello", otype: "type", oid: 1 },
+      params: { key: "hello", otype: "type", oid: 1, version: 1 },
     });
     res.json({ data: result.data });
   } catch (err) {
