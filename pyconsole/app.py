@@ -172,13 +172,12 @@ def action_handler():
     target_type = args.get('target_type', None)
     action_type = args.get('action_type', None)
     request_id = args.get('request_id', None)
-    min_action_value = args.get('min_action_value', None)
-    max_action_value = args.get('max_action_value', None)
+    min_action_id = args.get('min_action_id', None)
+    max_action_id = args.get('max_action_id', None)
     min_timestamp = args.get('min_timestamp', None)
     max_timestamp = args.get('max_timestamp', None)
     errors = _validate_action_get(actor_id, actor_type, target_id, target_type, action_type,
-                                  min_action_value, max_action_value, min_timestamp, max_timestamp,
-                                  request_id)
+                                  min_timestamp, max_timestamp, min_action_id, max_action_id, request_id)
     if len(errors) > 0:
         return jsonify({'errors': errors}), 400
     
