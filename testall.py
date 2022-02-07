@@ -4,15 +4,25 @@ import os
 import subprocess
 import platform
 
+parser = argparse.ArgumentParser()
+parser.add_argument("--integration", action='store_true', help="run tests in integration mode whenever possible")
+args = parser.parse_args()
+integration = args.integration
 
 root = os.getcwd()
 godir = os.path.join(root, 'go/fennel')
-print('Running go tests...')
+
+print('Running go %stests...' % ('integration ' if integration else ''))
 print('-' * 50)
-if platform.processor() in [ 'arm', 'arm64']:
-    p1 = subprocess.Popen(['go test -p 2 -tags dynamic ./...'], shell=True, cwd=godir)
+tags = []
+if platform.processor() in ['arm', 'arm64']:
+    tags.append('dynamic')
+if integration:
+    tags.append('integration')
+if tags:
+    p1 = subprocess.Popen(['go test -p 1 -tags "%s" ./...' % (' '.join(tags))], shell=True, cwd=godir)
 else:
-    p1 = subprocess.Popen(['go test -p 2 ./...'], shell=True, cwd=godir)
+    p1 = subprocess.Popen(['go test -p 1 ./...'], shell=True, cwd=godir)
 p1.wait()
 
 pydir = os.path.join(root, 'pyconsole')

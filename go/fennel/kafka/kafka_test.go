@@ -1,10 +1,11 @@
+//go:build integration
+
 package kafka
 
 import (
 	"context"
 	"fennel/lib/ftypes"
 	"fennel/lib/value"
-	"flag"
 	"fmt"
 	"github.com/confluentinc/confluent-kafka-go/kafka"
 	"github.com/stretchr/testify/assert"
@@ -15,8 +16,6 @@ import (
 	"time"
 )
 
-var integration = flag.Bool("integration", false, "flag to indicate whether to run integration tests")
-
 const (
 	test_kafka_servers = "pkc-pgq85.us-west-2.aws.confluent.cloud:9092"
 	kafka_username     = "PQESAHSX5EUQJPIV"
@@ -24,9 +23,6 @@ const (
 )
 
 func TestProducerConsumer(t *testing.T) {
-	if !*integration {
-		t.SkipNow()
-	}
 	rand.Seed(time.Now().UnixNano())
 	tierID := ftypes.TierID(rand.Uint32())
 

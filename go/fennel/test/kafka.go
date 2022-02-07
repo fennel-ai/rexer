@@ -5,7 +5,6 @@ import (
 	fkafka "fennel/kafka"
 	"fennel/lib/ftypes"
 	"fennel/resource"
-	"fennel/tier"
 	"fmt"
 	"github.com/confluentinc/confluent-kafka-go/kafka"
 	"google.golang.org/protobuf/proto"
@@ -18,27 +17,19 @@ const (
 	kafka_password     = "EDjraEtpIjYQBv9WQ2QINnZZcExKUtm6boweLCsQ5gv3arWSk+VHyD1kfjJ+p382"
 )
 
-func createKafka(tierID ftypes.TierID, integration bool) (map[string]fkafka.FProducer, map[string]fkafka.FConsumer, error) {
+func createMockKafka(tierID ftypes.TierID) (map[string]fkafka.FProducer, map[string]fkafka.FConsumer, error) {
 	producers := make(map[string]fkafka.FProducer, 0)
 	consumers := make(map[string]fkafka.FConsumer, 0)
-	var err error
-	if integration {
-		if err := setupKafkaTopics(tierID, fkafka.ALL_TOPICS); err != nil {
+	for _, topic := range fkafka.ALL_TOPICS {
+		name := fkafka.TieredName(tierID, topic)
+		kProducer, kConsumer, err := mockProducerConsumer(tierID, name)
+		if err != nil {
 			return nil, nil, err
 		}
-		producers, consumers, err = tier.CreateKafka(tierID, test_kafka_servers, kafka_username, kafka_password)
-	} else {
-		for _, topic := range fkafka.ALL_TOPICS {
-			name := fkafka.TieredName(tierID, topic)
-			kProducer, kConsumer, err := mockProducerConsumer(tierID, name)
-			if err != nil {
-				return nil, nil, err
-			}
-			producers[topic] = kProducer
-			consumers[topic] = kConsumer
-		}
+		producers[topic] = kProducer
+		consumers[topic] = kConsumer
 	}
-	return producers, consumers, err
+	return producers, consumers, nil
 }
 
 func mockProducerConsumer(tierID ftypes.TierID, topic string) (fkafka.FProducer, fkafka.FConsumer, error) {
