@@ -12,12 +12,6 @@ const (
 	ACTIONLOG_KAFKA_TOPIC = "actionlog"
 )
 
-const (
-	Like  ftypes.ActionType = "Like"
-	Share ftypes.ActionType = "Share"
-	View  ftypes.ActionType = "View"
-)
-
 type Action struct {
 	ActionID   ftypes.OidType    `db:"action_id"`
 	ActorID    ftypes.OidType    `db:"actor_id"`
