@@ -25,15 +25,14 @@ func init() {
 				action_id BIGINT not null primary key auto_increment,
 				cust_id BIGINT not null,
 				actor_id BIGINT NOT NULL,
-				actor_type varchar(256) NULL,
+				actor_type varchar(256) NOT NULL,
 				target_id BIGINT NOT NULL,
 				target_type varchar(256) NOT NULL,
 				action_type varchar(256) NOT NULL,
-				action_value BIGINT NOT NULL,
 				timestamp BIGINT NOT NULL,
 				request_id BIGINT not null,
+				metadata BLOB NOT NULL,
 				INDEX (cust_id, action_id),
-				INDEX (cust_id, action_value),
 				INDEX (cust_id, timestamp)
 		 );`,
 		4: `CREATE TABLE IF NOT EXISTS checkpoint (

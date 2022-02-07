@@ -211,7 +211,10 @@ func (c *Client) FetchActions(request action.ActionFetchRequest) ([]action.Actio
 	if err != nil {
 		return nil, fmt.Errorf("unmarshal error: %v", err)
 	}
-	actions := action.FromProtoActionList(&actionList)
+	actions, err := action.FromProtoActionList(&actionList)
+	if err != nil {
+		return nil, err
+	}
 	return actions, nil
 }
 
@@ -221,7 +224,10 @@ func (c *Client) LogAction(a action.Action) error {
 	if err != nil {
 		return fmt.Errorf("can not log invalid action: %v", err)
 	}
-	pa := action.ToProtoAction(a)
+	pa, err := action.ToProtoAction(a)
+	if err != nil {
+		return fmt.Errorf("could not convert request to proto: %v", err)
+	}
 	if _, err = c.post(&pa, c.logURL()); err != nil {
 		return err
 	}

@@ -8,11 +8,6 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
-const (
-	User  ftypes.OType = "User"
-	Video ftypes.OType = "Video"
-)
-
 type ProfileItem struct {
 	CustID  ftypes.CustID `db:"cust_id"`
 	OType   ftypes.OType  `db:"otype"`
@@ -78,16 +73,28 @@ func (ser *ProfileItemSer) ToProfileItem() (*ProfileItem, error) {
 
 	var pval value.PValue
 	if err := proto.Unmarshal(ser.Value, &pval); err != nil {
-		return &pr, nil
+		return nil, err
 	}
 
 	val, err := value.FromProtoValue(&pval)
 	if err != nil {
-		return &pr, nil
+		return nil, err
 	}
 
 	pr.Value = val
 	return &pr, nil
+}
+
+func FromProfileItemSerList(pl_ser []ProfileItemSer) ([]ProfileItem, error) {
+	pl := []ProfileItem{}
+	for _, pr_ser := range pl_ser {
+		pr, err := pr_ser.ToProfileItem()
+		if err != nil {
+			return nil, err
+		}
+		pl = append(pl, *pr)
+	}
+	return pl, nil
 }
 
 type ProfileFetchRequest struct {

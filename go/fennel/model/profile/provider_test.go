@@ -32,7 +32,7 @@ func testProviderBasic(t *testing.T, p provider) {
 	// and get it again to verify nothing changes
 	checkGet(t, p, tier, profile1, expected)
 
-	// test getProfileMulti now
+	// test getMulti now
 	request := profile.ProfileFetchRequest{}
 	checkMultiGet(t, tier, request, []profile.ProfileItemSer{profile1})
 }
@@ -105,7 +105,7 @@ func checkGet(t *testing.T, p provider, tier tier.Tier, pi profile.ProfileItemSe
 }
 
 func checkMultiGet(t *testing.T, tier tier.Tier, request profile.ProfileFetchRequest, expected []profile.ProfileItemSer) {
-	found, err := GetProfileMulti(tier, request)
+	found, err := GetMulti(tier, request)
 	assert.NoError(t, err)
 	assert.ElementsMatch(t, expected, found)
 }

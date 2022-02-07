@@ -31,7 +31,7 @@ func TestProfileController(t *testing.T) {
 	checkGet(t, tier, profiles[0], value.Nil)
 
 	// no profiles exist initially
-	checkMultiGet(t, tier, request, []profilelib.ProfileItem{})
+	checkGetMulti(t, tier, request, []profilelib.ProfileItem{})
 
 	// cannot set an invalid profile
 	err = Set(tier, profilelib.NewProfileItem(1, "", 1, "key", 1))
@@ -49,17 +49,17 @@ func TestProfileController(t *testing.T) {
 	profileTmp := profiles[0]
 	profileTmp.Version = 0
 	checkGet(t, tier, profileTmp, vals[0])
-	checkMultiGet(t, tier, request, profiles)
+	checkGetMulti(t, tier, request, profiles)
 
 	// set a few more profiles and verify it works
 	profiles = append(profiles, profilelib.NewProfileItem(1, "User", 1, "age", 2))
 	profiles[1].Value = vals[1]
 	checkSet(t, tier, profiles[1])
-	checkMultiGet(t, tier, request, profiles)
+	checkGetMulti(t, tier, request, profiles)
 	profiles = append(profiles, profilelib.NewProfileItem(1, "User", 3, "age", 2))
 	profiles[2].Value = vals[2]
 	checkSet(t, tier, profiles[2])
-	checkMultiGet(t, tier, request, profiles)
+	checkGetMulti(t, tier, request, profiles)
 	checkGet(t, tier, profiles[1], vals[1])
 	checkGet(t, tier, profiles[2], vals[2])
 }
@@ -78,8 +78,8 @@ func checkGet(t *testing.T, tier tier.Tier, request profilelib.ProfileItem, expe
 	}
 }
 
-func checkMultiGet(t *testing.T, tier tier.Tier, request profilelib.ProfileFetchRequest, expected []profilelib.ProfileItem) {
-	found, err := GetProfileMulti(tier, request)
+func checkGetMulti(t *testing.T, tier tier.Tier, request profilelib.ProfileFetchRequest, expected []profilelib.ProfileItem) {
+	found, err := GetMulti(tier, request)
 	assert.NoError(t, err)
 	assert.ElementsMatch(t, expected, found)
 }

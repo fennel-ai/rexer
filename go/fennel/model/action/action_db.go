@@ -8,7 +8,7 @@ import (
 )
 
 // inserts the action. If successful, returns the actionID
-func Insert(tier tier.Tier, action action.Action) (uint64, error) {
+func Insert(tier tier.Tier, action *action.ActionSer) (uint64, error) {
 	if len(action.ActionType) > 256 {
 		return 0, fmt.Errorf("ActionType too long: action types cannot be longer than 256 chars")
 	}
@@ -20,10 +20,10 @@ func Insert(tier tier.Tier, action action.Action) (uint64, error) {
 	}
 	result, err := tier.DB.NamedExec(`
 		INSERT INTO actionlog (
-			cust_id, actor_id, actor_type, target_id, target_type, action_type, action_value, timestamp, request_id
+			cust_id, actor_id, actor_type, target_id, target_type, action_type, timestamp, request_id, metadata
 	    )
         VALUES (
-			:cust_id, :actor_id, :actor_type, :target_id, :target_type, :action_type, :action_value, :timestamp, :request_id
+			:cust_id, :actor_id, :actor_type, :target_id, :target_type, :action_type, :timestamp, :request_id, :metadata
 		);`,
 		action)
 	if err != nil {
@@ -40,7 +40,7 @@ func Insert(tier tier.Tier, action action.Action) (uint64, error) {
 // For actionID and timestamp ranges, min is exclusive and max is inclusive
 // For actionValue range, both min/max are inclusive
 // TODO: add limit support?
-func Fetch(tier tier.Tier, request action.ActionFetchRequest) ([]action.Action, error) {
+func Fetch(tier tier.Tier, request action.ActionFetchRequest) ([]action.ActionSer, error) {
 	query := "SELECT * FROM actionlog"
 	clauses := make([]string, 0)
 	if request.CustID != 0 {
@@ -60,12 +60,6 @@ func Fetch(tier tier.Tier, request action.ActionFetchRequest) ([]action.Action, 
 	}
 	if len(request.ActionType) != 0 {
 		clauses = append(clauses, "action_type = :action_type")
-	}
-	if request.MinActionValue != 0 {
-		clauses = append(clauses, "action_value >= :min_action_value")
-	}
-	if request.MaxActionValue != 0 {
-		clauses = append(clauses, "action_value <= :max_action_value")
 	}
 	if request.MinTimestamp != 0 {
 		clauses = append(clauses, "timestamp > :min_timestamp")
@@ -87,7 +81,7 @@ func Fetch(tier tier.Tier, request action.ActionFetchRequest) ([]action.Action, 
 		query = fmt.Sprintf("%s WHERE %s", query, strings.Join(clauses, " AND "))
 	}
 	query = fmt.Sprintf("%s ORDER BY timestamp;", query)
-	actions := make([]action.Action, 0)
+	actions := make([]action.ActionSer, 0)
 	statement, err := tier.DB.PrepareNamed(query)
 	if err != nil {
 		return nil, err

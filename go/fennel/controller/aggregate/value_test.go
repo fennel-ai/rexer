@@ -6,8 +6,9 @@ import (
 	"fennel/lib/ftypes"
 	"fennel/lib/value"
 	"fennel/test"
-	"github.com/stretchr/testify/assert"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 // this test verifies that given a list of actions, the query is run on it to produce the right table
@@ -63,16 +64,15 @@ func getQuery() ast.Ast {
 
 func getAction(i int, id ftypes.CustID, uid ftypes.OidType, ts ftypes.Timestamp, actionType ftypes.ActionType) action.Action {
 	return action.Action{
-		ActionID:    ftypes.OidType(1 + i),
-		CustID:      id,
-		ActorID:     uid,
-		ActorType:   "user",
-		TargetID:    3,
-		TargetType:  "video",
-		ActionType:  actionType,
-		ActionValue: 6,
-		Timestamp:   ts,
-		RequestID:   7,
+		ActionID:   ftypes.OidType(1 + i),
+		CustID:     id,
+		ActorID:    uid,
+		ActorType:  "user",
+		TargetID:   3,
+		TargetType: "video",
+		ActionType: actionType,
+		Metadata:   value.Int(6),
+		Timestamp:  ts,
+		RequestID:  7,
 	}
 }
-

@@ -86,7 +86,7 @@ func (D dbProvider) get(tier tier.Tier, custid ftypes.CustID, otype ftypes.OType
 var _ provider = dbProvider{}
 
 // Whatever properties of 'request' are non-zero are used to filter eligible profiles
-func GetProfileMulti(tier tier.Tier, request profile.ProfileFetchRequest) ([]profile.ProfileItemSer, error) {
+func GetMulti(tier tier.Tier, request profile.ProfileFetchRequest) ([]profile.ProfileItemSer, error) {
 	query := "SELECT * FROM profile"
 	clauses := make([]string, 0)
 
