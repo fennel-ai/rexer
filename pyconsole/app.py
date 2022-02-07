@@ -243,4 +243,4 @@ def profile_multi_handler():
 
 go_url = endpoint_flag.default
 c = client.Client(endpoint_flag.default)
-app.run(host="localhost", port="2475")
+# app.run(host="localhost", port="2475")
