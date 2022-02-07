@@ -189,13 +189,13 @@ func (m holder) GetProfileMulti(w http.ResponseWriter, req *http.Request) {
 }
 
 func (m holder) Query(w http.ResponseWriter, req *http.Request) {
-	var protoAstWithDict query.ProtoAstWithDict
-	if err := parse(req, &protoAstWithDict); err != nil {
+	var pbq query.ProtoBoundQuery
+	if err := parse(req, &pbq); err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		log.Printf("Error: %v", err)
 		return
 	}
-	tree, dict, err := query.FromProtoAstWithDict(&protoAstWithDict)
+	tree, dict, err := query.FromProtoBoundQuery(&pbq)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		log.Printf("Error: %v", err)

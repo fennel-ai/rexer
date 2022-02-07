@@ -140,8 +140,8 @@ func (c *Client) GetProfile(request *profileLib.ProfileItem) (*value.Value, erro
 
 func (c *Client) Query(req ast.Ast, reqdict value.Dict) (value.Value, error) {
 	// convert the request to proto version
-	request := query.AstWithDict{Ast: req, Dict: reqdict}
-	protoReq, err := query.ToProtoAstWithDict(&request)
+	request := query.BoundQuery{Ast: req, Dict: reqdict}
+	protoReq, err := query.ToProtoBoundQuery(&request)
 	if err != nil {
 		return nil, fmt.Errorf("invalid request: %v", err)
 	}
