@@ -12,6 +12,19 @@ import (
 	"time"
 )
 
+func create(tierID ftypes.TierID, logicalname, username, password, host string) error {
+	dbname := resource.TieredName(tierID, logicalname)
+	connstr := fmt.Sprintf("%s:%s@tcp(%s)/?tls=true", username, password, host)
+	db, err := sqlx.Open("mysql", connstr)
+	if err != nil {
+		return err
+	}
+	defer db.Close()
+
+	_, err = db.Exec("CREATE DATABASE IF NOT EXISTS " + dbname)
+	return err
+}
+
 func drop(tierID ftypes.TierID, logicalname, username, password, host string) error {
 	dbname := resource.TieredName(tierID, logicalname)
 	connstr := fmt.Sprintf("%s:%s@tcp(%s)/?tls=true", username, password, host)
@@ -28,7 +41,7 @@ func recreate(tierID ftypes.TierID, logicalname, username, password, host string
 	if err := drop(tierID, logicalname, username, password, host); err != nil {
 		return nil, err
 	}
-	if err := Create(tierID, logicalname, username, password, host); err != nil {
+	if err := create(tierID, logicalname, username, password, host); err != nil {
 		return nil, err
 	}
 	dbname := resource.TieredName(tierID, logicalname)
@@ -46,6 +59,10 @@ func TestSyncSchema(t *testing.T) {
 		Password: "foundationdb",
 		Host:     "database-nikhil-test.cluster-c00d7gkxaysk.us-west-2.rds.amazonaws.com",
 	}
+	// create the DB before materializing a connection
+	err := create(tierID, config.DBname, config.Username, config.Password, config.Host)
+	assert.NoError(t, err)
+
 	resource, err := config.Materialize(tierID)
 	assert.NoError(t, err)
 	defer drop(tierID, config.DBname, config.Username, config.Password, config.Host)
