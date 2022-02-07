@@ -21,7 +21,7 @@ func createMockKafka(tierID ftypes.TierID) (map[string]fkafka.FProducer, map[str
 	producers := make(map[string]fkafka.FProducer, 0)
 	consumers := make(map[string]fkafka.FConsumer, 0)
 	for _, topic := range fkafka.ALL_TOPICS {
-		name := fkafka.TieredName(tierID, topic)
+		name := resource.TieredName(tierID, topic)
 		kProducer, kConsumer, err := mockProducerConsumer(tierID, name)
 		if err != nil {
 			return nil, nil, err
@@ -48,7 +48,7 @@ func mockProducerConsumer(tierID ftypes.TierID, topic string) (fkafka.FProducer,
 func setupKafkaTopics(tierID ftypes.TierID, topics []string) error {
 	names := make([]string, len(topics))
 	for i, topic := range topics {
-		names[i] = fkafka.TieredName(tierID, topic)
+		names[i] = resource.TieredName(tierID, topic)
 	}
 	// Create admin client
 	c, err := kafka.NewAdminClient(fkafka.ConfigMap(test_kafka_servers, kafka_username, kafka_password))
@@ -84,7 +84,7 @@ func setupKafkaTopics(tierID ftypes.TierID, topics []string) error {
 func teardownKafkaTopics(tierID ftypes.TierID, topics []string) error {
 	names := make([]string, len(topics))
 	for i, topic := range topics {
-		names[i] = fkafka.TieredName(tierID, topic)
+		names[i] = resource.TieredName(tierID, topic)
 	}
 	// Create admin client.
 	c, err := kafka.NewAdminClient(fkafka.ConfigMap(test_kafka_servers, kafka_username, kafka_password))

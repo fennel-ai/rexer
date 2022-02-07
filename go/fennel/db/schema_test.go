@@ -3,6 +3,7 @@ package db
 import (
 	"database/sql"
 	"fennel/lib/ftypes"
+	"fennel/resource"
 	"fmt"
 	"github.com/jmoiron/sqlx"
 	"github.com/stretchr/testify/assert"
@@ -12,7 +13,7 @@ import (
 )
 
 func drop(tierID ftypes.TierID, logicalname, username, password, host string) error {
-	dbname := Name(tierID, logicalname)
+	dbname := resource.TieredName(tierID, logicalname)
 	connstr := fmt.Sprintf("%s:%s@tcp(%s)/?tls=true", username, password, host)
 	db, err := sqlx.Open("mysql", connstr)
 	if err != nil {
@@ -30,7 +31,7 @@ func recreate(tierID ftypes.TierID, logicalname, username, password, host string
 	if err := Create(tierID, logicalname, username, password, host); err != nil {
 		return nil, err
 	}
-	dbname := Name(tierID, logicalname)
+	dbname := resource.TieredName(tierID, logicalname)
 	connstr := fmt.Sprintf("%s:%s@tcp(%s)/%s?tls=true", username, password, host, dbname)
 	return sqlx.Open("mysql", connstr)
 }

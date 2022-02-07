@@ -3,6 +3,7 @@ package test
 import (
 	"fennel/db"
 	"fennel/lib/ftypes"
+	"fennel/resource"
 	"fmt"
 	"github.com/jmoiron/sqlx"
 )
@@ -34,7 +35,7 @@ func defaultDB(tierID ftypes.TierID) (db.Connection, error) {
 }
 
 func drop(tierID ftypes.TierID, logicalname, username, password, host string) error {
-	dbname := db.Name(tierID, logicalname)
+	dbname := resource.TieredName(tierID, logicalname)
 	connstr := fmt.Sprintf("%s:%s@tcp(%s)/?tls=true", username, password, host)
 	db, err := sqlx.Open("mysql", connstr)
 	if err != nil {

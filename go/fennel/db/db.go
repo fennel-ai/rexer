@@ -42,7 +42,7 @@ func (conf SQLiteConfig) Materialize(tierID ftypes.TierID) (resource.Resource, e
 	if tierID == 0 {
 		return nil, fmt.Errorf("tier ID not initialized")
 	}
-	dbname := Name(tierID, conf.dbname)
+	dbname := resource.TieredName(tierID, conf.dbname)
 
 	os.Remove(dbname)
 
@@ -82,7 +82,7 @@ func (conf MySQLConfig) Materialize(tierID ftypes.TierID) (resource.Resource, er
 	if tierID == 0 {
 		return Connection{}, fmt.Errorf("tier ID not specified")
 	}
-	dbname := Name(tierID, conf.DBname)
+	dbname := resource.TieredName(tierID, conf.DBname)
 	if err := Create(tierID, conf.DBname, conf.Username, conf.Password, conf.Host); err != nil {
 		return nil, err
 	}
@@ -99,12 +99,8 @@ func (conf MySQLConfig) Materialize(tierID ftypes.TierID) (resource.Resource, er
 	return conn, nil
 }
 
-func Name(tierID ftypes.TierID, logicalname string) string {
-	return fmt.Sprintf("t_%d_%s", tierID, logicalname)
-}
-
 func Create(tierID ftypes.TierID, logicalname, username, password, host string) error {
-	dbname := Name(tierID, logicalname)
+	dbname := resource.TieredName(tierID, logicalname)
 	connstr := fmt.Sprintf("%s:%s@tcp(%s)/?tls=true", username, password, host)
 	db, err := sqlx.Open("mysql", connstr)
 	if err != nil {

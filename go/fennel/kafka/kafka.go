@@ -2,9 +2,7 @@ package kafka
 
 import (
 	"fennel/lib/action"
-	"fennel/lib/ftypes"
 	"fennel/resource"
-	"fmt"
 	"github.com/confluentinc/confluent-kafka-go/kafka"
 	"google.golang.org/protobuf/proto"
 )
@@ -22,10 +20,6 @@ type FConsumer interface {
 type FProducer interface {
 	resource.Resource
 	Log(message proto.Message) error
-}
-
-func TieredName(tierID ftypes.TierID, topic string) string {
-	return fmt.Sprintf("t_%d_%s", tierID, topic)
 }
 
 var ALL_TOPICS = []string{
