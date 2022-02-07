@@ -1,22 +1,20 @@
+//go:build integration
+
 package test
 
 import (
-	"fennel/kafka"
+	fkafka "fennel/kafka"
 	"fennel/lib/clock"
-	"flag"
-	"fmt"
-	"math/rand"
-	"time"
-
 	"fennel/lib/ftypes"
 	"fennel/redis"
 	"fennel/tier"
+	"fmt"
+	"math/rand"
+	"time"
 )
 
-var integration = flag.Bool("integration", false, "flag to indicate whether to run integration tests")
-
-// Tier returns a tier to be used in tests based off a standard  test plane
-// if 'integration' flag is set, real resources are used, else resources are mocked whenever possible
+// Tier returns a tier to be used in tests based off a standard test plane
+// since this is only compiled when 'integration' build tag is given, all resources are real
 func Tier() (tier.Tier, error) {
 	rand.Seed(time.Now().UnixNano())
 	tierID := ftypes.TierID(rand.Uint32())
@@ -31,7 +29,12 @@ func Tier() (tier.Tier, error) {
 	redClient := resource.(redis.Client)
 
 	Cache := redis.NewCache(redClient)
-	producers, consumers, err := createKafka(tierID, *integration)
+
+	// set up kafka for integration
+	if err = setupKafkaTopics(tierID, fkafka.ALL_TOPICS); err != nil {
+		return tier.Tier{}, err
+	}
+	producers, consumers, err := tier.CreateKafka(tierID, test_kafka_servers, kafka_username, kafka_password)
 	if err != nil {
 		return tier.Tier{}, err
 	}
@@ -53,11 +56,9 @@ func Teardown(tier tier.Tier) error {
 		return err
 	}
 
-	if *integration {
-		if err := teardownKafkaTopics(tier.ID, kafka.ALL_TOPICS); err != nil {
-			panic(fmt.Sprintf("unable to teardown kafka topics: %v", err))
-			return err
-		}
+	if err := teardownKafkaTopics(tier.ID, fkafka.ALL_TOPICS); err != nil {
+		panic(fmt.Sprintf("unable to teardown kafka topics: %v", err))
+		return err
 	}
 	return nil
 }
