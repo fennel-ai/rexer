@@ -22,8 +22,10 @@ app.use(function (req, res, next) {
   next();
 });
 
-const PROFILE_URL = "http://localhost:2475/profile/";
-const ACTION_URL = "http://localhost:2475/actions/";
+const PROFILE_URL =
+  "http://k8s-ambassad-aesedges-40345becf3-fa1a77f909416990.elb.us-west-2.amazonaws.com/control/profile/";
+const ACTION_URL =
+  "http://k8s-ambassad-aesedges-40345becf3-fa1a77f909416990.elb.us-west-2.amazonaws.com/control/actions/";
 
 const actionMetadata = {
   actionTypes: [
