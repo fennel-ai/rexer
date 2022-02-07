@@ -182,8 +182,7 @@ def action_handler():
         return jsonify({'errors': errors}), 400
     
     req = _to_action_fetch_request(actor_id, actor_type, target_id, target_type, action_type,
-                                   min_action_value, max_action_value, min_timestamp, max_timestamp,
-                                   request_id)
+                                   min_timestamp, max_timestamp, min_action_id, max_action_id, request_id)
     ser = req.SerializeToString()
     response = requests.post(go_url+'/fetch', data=ser)
     if response.status_code != requests.codes.OK:
@@ -243,4 +242,4 @@ def profile_multi_handler():
 
 go_url = endpoint_flag.default
 c = client.Client(endpoint_flag.default)
-#app.run(host="localhost", port="2475")
+app.run(host="localhost", port="2475")
