@@ -83,9 +83,6 @@ func (conf MySQLConfig) Materialize(tierID ftypes.TierID) (resource.Resource, er
 		return Connection{}, fmt.Errorf("tier ID not specified")
 	}
 	dbname := resource.TieredName(tierID, conf.DBname)
-	if err := Create(tierID, conf.DBname, conf.Username, conf.Password, conf.Host); err != nil {
-		return nil, err
-	}
 	connectStr := fmt.Sprintf("%s:%s@tcp(%s)/%s?tls=true", conf.Username, conf.Password, conf.Host, dbname)
 	DB, err := sqlx.Open("mysql", connectStr)
 	if err != nil {
@@ -97,17 +94,4 @@ func (conf MySQLConfig) Materialize(tierID ftypes.TierID) (resource.Resource, er
 		return nil, err
 	}
 	return conn, nil
-}
-
-func Create(tierID ftypes.TierID, logicalname, username, password, host string) error {
-	dbname := resource.TieredName(tierID, logicalname)
-	connstr := fmt.Sprintf("%s:%s@tcp(%s)/?tls=true", username, password, host)
-	db, err := sqlx.Open("mysql", connstr)
-	if err != nil {
-		return err
-	}
-	defer db.Close()
-
-	_, err = db.Exec("CREATE DATABASE IF NOT EXISTS " + dbname)
-	return err
 }

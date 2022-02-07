@@ -34,6 +34,9 @@ func Tier() (tier.Tier, error) {
 }
 
 func setup(flags tier.TierArgs) error {
+	if err := create(flags.TierID, flags.MysqlDB, flags.MysqlUsername, flags.MysqlPassword, flags.MysqlHost); err != nil {
+		return err
+	}
 	return setupKafkaTopics(flags.TierID, flags.KafkaServer, flags.KafkaUsername, flags.KafkaPassword, fkafka.ALL_TOPICS)
 }
 
