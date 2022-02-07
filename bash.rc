@@ -22,3 +22,6 @@ export DOCKER_BUILDKIT=1
 # this is needed to avoid a librdkafka bug on macOS
 # https://github.com/edenhill/kcat/issues/209
 ulimit -n 1024
+
+# this file exports secrets needed for running integration tests
+source testenv.rc

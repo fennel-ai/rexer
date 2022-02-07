@@ -1,0 +1,11 @@
+export KAFKA_SERVER_ADDRESS="pkc-pgq85.us-west-2.aws.confluent.cloud:9092"
+export KAFKA_USERNAME="PQESAHSX5EUQJPIV"
+export KAFKA_PASSWORD="EDjraEtpIjYQBv9WQ2QINnZZcExKUtm6boweLCsQ5gv3arWSk+VHyD1kfjJ+p382"
+export MYSQL_SERVER_ADDRESS="database-nikhil-test.cluster-c00d7gkxaysk.us-west-2.rds.amazonaws.com"
+export MYSQL_DATABASE_NAME="testdb"
+export MYSQL_USERNAME="admin"
+export MYSQL_PASSWORD="foundationdb"
+export REDIS_SERVER_ADDRESS="clustercfg.redis-db-5dec5dd.fbjfph.memorydb.us-west-2.amazonaws.com:6379"
+
+# in tests, we override this with a random tier ID but this is needed for prod
+export TIER_ID=1231

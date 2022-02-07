@@ -11,12 +11,6 @@ import (
 	"time"
 )
 
-const (
-	test_kafka_servers = "pkc-pgq85.us-west-2.aws.confluent.cloud:9092"
-	kafka_username     = "PQESAHSX5EUQJPIV"
-	kafka_password     = "EDjraEtpIjYQBv9WQ2QINnZZcExKUtm6boweLCsQ5gv3arWSk+VHyD1kfjJ+p382"
-)
-
 func createMockKafka(tierID ftypes.TierID) (map[string]fkafka.FProducer, map[string]fkafka.FConsumer, error) {
 	producers := make(map[string]fkafka.FProducer, 0)
 	consumers := make(map[string]fkafka.FConsumer, 0)
@@ -45,13 +39,13 @@ func mockProducerConsumer(tierID ftypes.TierID, topic string) (fkafka.FProducer,
 	return producer.(fkafka.FProducer), consumer.(fkafka.FConsumer), nil
 }
 
-func setupKafkaTopics(tierID ftypes.TierID, topics []string) error {
+func setupKafkaTopics(tierID ftypes.TierID, host, username, password string, topics []string) error {
 	names := make([]string, len(topics))
 	for i, topic := range topics {
 		names[i] = resource.TieredName(tierID, topic)
 	}
 	// Create admin client
-	c, err := kafka.NewAdminClient(fkafka.ConfigMap(test_kafka_servers, kafka_username, kafka_password))
+	c, err := kafka.NewAdminClient(fkafka.ConfigMap(host, username, password))
 	if err != nil {
 		return fmt.Errorf("failed to create admin client: %v", err)
 	}
@@ -81,13 +75,13 @@ func setupKafkaTopics(tierID ftypes.TierID, topics []string) error {
 	return nil
 }
 
-func teardownKafkaTopics(tierID ftypes.TierID, topics []string) error {
+func teardownKafkaTopics(tierID ftypes.TierID, host, username, password string, topics []string) error {
 	names := make([]string, len(topics))
 	for i, topic := range topics {
 		names[i] = resource.TieredName(tierID, topic)
 	}
 	// Create admin client.
-	c, err := kafka.NewAdminClient(fkafka.ConfigMap(test_kafka_servers, kafka_username, kafka_password))
+	c, err := kafka.NewAdminClient(fkafka.ConfigMap(host, username, password))
 	if err != nil {
 		return fmt.Errorf("failed to create admin client: %v", err)
 	}

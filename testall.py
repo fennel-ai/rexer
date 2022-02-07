@@ -20,7 +20,7 @@ if platform.processor() in ['arm', 'arm64']:
 if integration:
     tags.append('integration')
 if tags:
-    p1 = subprocess.Popen(['go test -p 1 -tags "%s" ./...' % (' '.join(tags))], shell=True, cwd=godir)
+    p1 = subprocess.Popen(['go test -p 1 -tags %s ./...' % (','.join(tags))], shell=True, cwd=godir)
 else:
     p1 = subprocess.Popen(['go test -p 1 ./...'], shell=True, cwd=godir)
 p1.wait()
