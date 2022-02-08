@@ -76,3 +76,8 @@ func RetrieveAll(tier tier.Tier) ([]aggregate.Aggregate, error) {
 	}
 	return ret, nil
 }
+
+func Deactivate(tier tier.Tier, aggname ftypes.AggName) error {
+	err := modelAgg.Deactivate(tier, aggname)
+	return err
+}

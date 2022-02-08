@@ -113,3 +113,30 @@ func TestLongStrings(t *testing.T) {
 	err = Store(tier, ftypes.AggName(utils.RandString(255)), []byte("query"), 1, optionSer)
 	assert.NoError(t, err)
 }
+
+func TestDeactivate(t *testing.T) {
+	tier, err := test.Tier()
+	assert.NoError(t, err)
+	defer test.Teardown(tier)
+
+	options := aggregate.AggOptions{
+		AggType: "rolling_counter",
+	}
+	optionSer, err := proto.Marshal(&options)
+	assert.NoError(t, err)
+
+	err = Store(tier, "my_counter", []byte("query"), 1, optionSer)
+	assert.NoError(t, err)
+
+	// Can retrieve before deactivating
+	_, err = Retrieve(tier, "my_counter")
+	assert.NoError(t, err)
+
+	err = Deactivate(tier, "my_counter")
+	assert.NoError(t, err)
+
+	// But cannot after deactivating
+	_, err = Retrieve(tier, "my_counter")
+	assert.Error(t, err)
+	assert.ErrorIs(t, err, aggregate.ErrNotFound)
+}
