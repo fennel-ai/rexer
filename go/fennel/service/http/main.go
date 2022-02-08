@@ -254,7 +254,7 @@ func (m holder) RetrieveAggregate(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 	// call controller
-	ret, err := aggregate2.Retrieve(m.tier, ftypes.AggType(protoReq.AggType), ftypes.AggName(protoReq.AggName))
+	ret, err := aggregate2.Retrieve(m.tier, ftypes.AggName(protoReq.AggName))
 	if err == aggregate.ErrNotFound {
 		// we don't throw an error, just return empty response
 		return
@@ -293,7 +293,7 @@ func (m holder) AggregateValue(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 	// call controller
-	ret, err := aggregate2.Value(m.tier, getAggValue.AggType, getAggValue.AggName, getAggValue.Key)
+	ret, err := aggregate2.Value(m.tier, getAggValue.AggName, getAggValue.Key)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		log.Printf("Error: %v", err)

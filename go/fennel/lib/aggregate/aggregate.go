@@ -17,7 +17,6 @@ var ValidTypes = []ftypes.AggType{
 }
 
 type Aggregate struct {
-	Type      ftypes.AggType
 	Name      ftypes.AggName
 	Query     ast.Ast
 	Timestamp ftypes.Timestamp
@@ -35,14 +34,14 @@ func IsValid(s ftypes.AggType) bool {
 }
 
 func (agg Aggregate) Validate() error {
-	if !IsValid(agg.Type) {
+	if !IsValid(ftypes.AggType(agg.Options.AggType)) {
 		return fmt.Errorf("invalid aggregate type, valid types are: %v", ValidTypes)
 	}
 	if len(agg.Name) == 0 {
 		return fmt.Errorf("aggregate name can not be of zero length")
 	}
 	options := agg.Options
-	switch strings.ToLower(string(agg.Type)) {
+	switch strings.ToLower(agg.Options.AggType) {
 	case "rolling_counter":
 		if options.Duration == 0 {
 			return fmt.Errorf("duration can not be zero for rolling counters")
@@ -61,7 +60,7 @@ func (agg Aggregate) Validate() error {
 			return fmt.Errorf("duration & limit are not relevant for time series and should be set to zero")
 		}
 	default:
-		return fmt.Errorf("unsupported aggregation type: %v", agg.Type)
+		return fmt.Errorf("unsupported aggregation type: %v", agg.Options.AggType)
 	}
 	return nil
 }
@@ -72,7 +71,6 @@ func ToProtoAggregate(agg Aggregate) (ProtoAggregate, error) {
 		return ProtoAggregate{}, err
 	}
 	return ProtoAggregate{
-		AggType:   string(agg.Type),
 		AggName:   string(agg.Name),
 		Query:     &pquery,
 		Timestamp: uint64(agg.Timestamp),
@@ -85,17 +83,17 @@ func FromProtoAggregate(pagg ProtoAggregate) (Aggregate, error) {
 	if err != nil {
 		return Aggregate{}, err
 	}
-	return Aggregate{
-		Type:      ftypes.AggType(strings.ToLower(pagg.AggType)),
+	agg := Aggregate{
 		Name:      ftypes.AggName(strings.ToLower(pagg.AggName)),
 		Query:     query,
 		Timestamp: ftypes.Timestamp(pagg.Timestamp),
 		Options:   *pagg.Options,
-	}, nil
+	}
+	agg.Options.AggType = strings.ToLower(agg.Options.AggType)
+	return agg, nil
 }
 
 type AggregateSer struct {
-	Type      ftypes.AggType   `db:"aggregate_type"`
 	Name      ftypes.AggName   `db:"name"`
 	QuerySer  []byte           `db:"query_ser"`
 	Timestamp ftypes.Timestamp `db:"timestamp"`
@@ -103,7 +101,7 @@ type AggregateSer struct {
 }
 
 func (a Aggregate) Equals(b Aggregate) bool {
-	if a.Type != b.Type || a.Name != b.Name || a.Timestamp != b.Timestamp {
+	if a.Options.AggType != b.Options.AggType || a.Name != b.Name || a.Timestamp != b.Timestamp {
 		return false
 	}
 	return a.Query == b.Query && proto.Equal(&a.Options, &b.Options)
@@ -113,7 +111,6 @@ func FromAggregateSer(ser AggregateSer) (Aggregate, error) {
 	var agg Aggregate
 	agg.Timestamp = ser.Timestamp
 	agg.Name = ser.Name
-	agg.Type = ser.Type
 	if err := ast.Unmarshal(ser.QuerySer, &agg.Query); err != nil {
 		return Aggregate{}, err
 	}
@@ -124,7 +121,6 @@ func FromAggregateSer(ser AggregateSer) (Aggregate, error) {
 }
 
 type GetAggValueRequest struct {
-	AggType ftypes.AggType
 	AggName ftypes.AggName
 	Key     value.Value
 }
@@ -135,7 +131,6 @@ func FromProtoGetAggValueRequest(pr *ProtoGetAggValueRequest) (GetAggValueReques
 		return GetAggValueRequest{}, err
 	}
 	return GetAggValueRequest{
-		AggType: ftypes.AggType(pr.GetAggType()),
 		AggName: ftypes.AggName(pr.GetAggName()),
 		Key:     key,
 	}, nil
@@ -147,7 +142,6 @@ func ToProtoGetAggValueRequest(gavr GetAggValueRequest) (ProtoGetAggValueRequest
 		return ProtoGetAggValueRequest{}, nil
 	}
 	return ProtoGetAggValueRequest{
-		AggType: string(gavr.AggType),
 		AggName: string(gavr.AggName),
 		Key:     &pkey,
 	}, nil
