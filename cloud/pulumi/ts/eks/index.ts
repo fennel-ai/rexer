@@ -109,9 +109,7 @@ function setupAmbassadorIngress(cluster: k8s.Provider): pulumi.Output<string> {
             (obj: any, opts: pulumi.CustomResourceOptions) => {
                 if (obj.kind === "Deployment" && obj.metadata.name === "aes-edge-stack") {
                     const metadata = obj.spec.template.metadata
-                    if (metadata.annotations == null) {
-                        metadata.annotations = {}
-                    }
+                    metadata.annotations = metadata.annotations || {}
                     // We use inject=enabled instead of inject=ingress as per
                     // https://github.com/linkerd/linkerd2/issues/6650#issuecomment-898732177.
                     // Otherwise, we see the issue reported in the above bug report.
@@ -122,9 +120,7 @@ function setupAmbassadorIngress(cluster: k8s.Provider): pulumi.Output<string> {
             (obj: any, opts: pulumi.CustomResourceOptions) => {
                 if (obj.kind === "Service" && obj.spec.type === "LoadBalancer") {
                     const metadata = obj.metadata
-                    if (metadata.annotations == null) {
-                        metadata.annotations = {}
-                    }
+                    metadata.annotations = metadata.annotations || {}
                     // Set load-balancer type as external to bypass k8s in-tree
                     // load-balancer controller and use AWS Load Balancer Controller
                     // instead.
