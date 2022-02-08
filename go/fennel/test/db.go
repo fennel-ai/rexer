@@ -5,6 +5,7 @@ import (
 	"fennel/lib/ftypes"
 	"fennel/resource"
 	"fmt"
+
 	"github.com/jmoiron/sqlx"
 )
 
@@ -16,6 +17,9 @@ const (
 )
 
 func defaultDB(tierID ftypes.TierID) (db.Connection, error) {
+	if err := create(tierID, logical_test_dbname, username, password, host); err != nil {
+		return db.Connection{}, err
+	}
 	config := db.MySQLConfig{
 		DBname:   logical_test_dbname,
 		Username: username,
@@ -28,9 +32,6 @@ func defaultDB(tierID ftypes.TierID) (db.Connection, error) {
 	}
 	DB := resource.(db.Connection)
 
-	if err := create(tierID, logical_test_dbname, username, password, host); err != nil {
-		return db.Connection{}, err
-	}
 	return DB, nil
 }
 
