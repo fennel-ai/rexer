@@ -150,6 +150,15 @@ const appDep = image.imageName.apply(() => {
                                     }
                                 }
                             },
+                            {
+                                name: "TIER_ID",
+                                valueFrom: {
+                                    configMapKeyRef: {
+                                        name: "tier-conf",
+                                        key: "tier_id",
+                                    }
+                                }
+                            },
                         ]
                     },],
                 },
