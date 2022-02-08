@@ -52,7 +52,7 @@ func TestDuplicate(t *testing.T) {
 
 	agg := aggregate.Aggregate{
 		Name:      "test_counter",
-		Query:     ast.MakeInt(4),
+		Query:     ast.Query{},
 		Timestamp: 1,
 		Options: aggregate.AggOptions{
 			AggType:  "rolling_counter",
@@ -63,15 +63,17 @@ func TestDuplicate(t *testing.T) {
 	assert.NoError(t, err)
 
 	// No error with duplicate store with different timestamp
+	// Naive equality comparison would panic here as
+	// ast Query contains slice which is incomparable
 	agg.Timestamp = 2
 	err = Store(tier, agg)
 	assert.NoError(t, err)
 
 	// Error if different query
-	agg.Query = ast.MakeInt(6)
+	agg.Query = ast.MakeInt(4)
 	err = Store(tier, agg)
 	assert.Error(t, err)
-	agg.Query = ast.MakeInt(4)
+	agg.Query = ast.Query{}
 
 	// Error if different options
 	agg.Options.Duration = uint64(time.Hour * 24 * 6)

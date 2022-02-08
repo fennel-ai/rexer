@@ -27,7 +27,7 @@ func Store(tier tier.Tier, agg aggregate.Aggregate) error {
 		// if they are different, return error
 		// if they are the same, do nothing
 		// TODO: maybe not use proto.Equal here
-		if agg.Query == agg2.Query && proto.Equal(&agg.Options, &agg2.Options) {
+		if agg.Query.Equals(agg2.Query) && proto.Equal(&agg.Options, &agg2.Options) {
 			return nil
 		} else {
 			return fmt.Errorf("already present but with different query/options")
