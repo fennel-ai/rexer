@@ -104,7 +104,7 @@ func (a Aggregate) Equals(b Aggregate) bool {
 	if a.Options.AggType != b.Options.AggType || a.Name != b.Name || a.Timestamp != b.Timestamp {
 		return false
 	}
-	return a.Query == b.Query && proto.Equal(&a.Options, &b.Options)
+	return a.Query.Equals(b.Query) && proto.Equal(&a.Options, &b.Options)
 }
 
 func FromAggregateSer(ser AggregateSer) (Aggregate, error) {
