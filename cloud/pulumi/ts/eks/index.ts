@@ -262,6 +262,8 @@ export = async () => {
         createOidcProvider: true
     });
 
+    const instanceRole = cluster.core.instanceRoles.apply((roles) => { return roles[0].name })
+
     // Export the cluster's kubeconfig.
     const kubeconfig = cluster.kubeconfig;
 
@@ -288,5 +290,5 @@ export = async () => {
         }
     }, { provider: cluster.provider })
 
-    return { kubeconfig, oidcUrl, ingress }
+    return { kubeconfig, oidcUrl, ingress, instanceRole }
 }
