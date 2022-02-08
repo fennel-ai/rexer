@@ -78,3 +78,34 @@ func TestDuplicate(t *testing.T) {
 	err = Store(tier, agg)
 	assert.Error(t, err)
 }
+
+func TestDeactivate(t *testing.T) {
+	tier, err := test.Tier()
+	assert.NoError(t, err)
+	defer test.Teardown(tier)
+
+	agg := aggregate.Aggregate{
+		Name:      "my_counter",
+		Query:     ast.MakeInt(4),
+		Timestamp: 1,
+		Options: aggregate.AggOptions{
+			AggType:  "rolling_counter",
+			Duration: uint64(time.Hour * 24 * 7),
+		},
+	}
+
+	err = Store(tier, agg)
+	assert.NoError(t, err)
+
+	// Can retrieve before deactivating
+	_, err = Retrieve(tier, "my_counter")
+	assert.NoError(t, err)
+
+	err = Deactivate(tier, "my_counter")
+	assert.NoError(t, err)
+
+	// But cannot after deactivating
+	_, err = Retrieve(tier, "my_counter")
+	assert.Error(t, err)
+	assert.ErrorIs(t, err, aggregate.ErrNotFound)
+}
