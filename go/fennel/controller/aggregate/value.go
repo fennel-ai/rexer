@@ -15,8 +15,8 @@ import (
 	"fmt"
 )
 
-func Value(tier tier.Tier, aggtype ftypes.AggType, name ftypes.AggName, key value.Value) (value.Value, error) {
-	agg, err := Retrieve(tier, aggtype, name)
+func Value(tier tier.Tier, name ftypes.AggName, key value.Value) (value.Value, error) {
+	agg, err := Retrieve(tier, name)
 	if err != nil {
 		return value.Nil, err
 	}
@@ -24,7 +24,7 @@ func Value(tier tier.Tier, aggtype ftypes.AggType, name ftypes.AggName, key valu
 }
 
 func Update(tier tier.Tier, agg aggregate.Aggregate) error {
-	point, err := checkpoint.Get(tier, agg.Type, agg.Name)
+	point, err := checkpoint.Get(tier, ftypes.AggType(agg.Options.AggType), agg.Name)
 	if err != nil {
 		return err
 	}
@@ -36,11 +36,11 @@ func Update(tier tier.Tier, agg aggregate.Aggregate) error {
 	if err != nil {
 		return err
 	}
-	if err = routeUpdate(tier, agg.Name, agg.Type, table); err != nil {
+	if err = routeUpdate(tier, agg.Name, ftypes.AggType(agg.Options.AggType), table); err != nil {
 		return err
 	}
 	last := actions[len(actions)-1]
-	return checkpoint.Set(tier, agg.Type, agg.Name, last.ActionID)
+	return checkpoint.Set(tier, ftypes.AggType(agg.Options.AggType), agg.Name, last.ActionID)
 }
 
 //============================
@@ -88,7 +88,7 @@ func routeUpdate(tier tier.Tier, aggname ftypes.AggName, aggtype ftypes.AggType,
 }
 
 func routeValue(tier tier.Tier, agg aggregate.Aggregate, key value.Value) (value.Value, error) {
-	switch agg.Type {
+	switch agg.Options.AggType {
 	case "rolling_counter":
 		return counter.RollingValue(tier, agg, key)
 	case "timeseries_counter":
@@ -96,6 +96,6 @@ func routeValue(tier tier.Tier, agg aggregate.Aggregate, key value.Value) (value
 	case "stream":
 		return streamValue(tier, agg, key)
 	default:
-		return value.Nil, fmt.Errorf("invalid aggregate type: %v", agg.Type)
+		return value.Nil, fmt.Errorf("invalid aggregate type: %v", agg.Options.AggType)
 	}
 }

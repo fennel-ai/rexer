@@ -18,7 +18,7 @@ func Store(tier tier.Tier, agg aggregate.Aggregate) error {
 	}
 
 	// Check if agg already exists in db
-	agg2, err := Retrieve(tier, agg.Type, agg.Name)
+	agg2, err := Retrieve(tier, agg.Name)
 	// Only error that should happen is when agg is not present
 	if err != nil && err != aggregate.ErrNotFound {
 		return err
@@ -46,31 +46,24 @@ func Store(tier tier.Tier, agg aggregate.Aggregate) error {
 		agg.Timestamp = ftypes.Timestamp(time.Now().Unix())
 	}
 
-	return modelAgg.Store(tier, agg.Type, agg.Name, querySer, agg.Timestamp, optionSer)
+	return modelAgg.Store(tier, agg.Name, querySer, agg.Timestamp, optionSer)
 }
 
-func Retrieve(tier tier.Tier, aggtype ftypes.AggType, aggname ftypes.AggName) (aggregate.Aggregate, error) {
+func Retrieve(tier tier.Tier, aggname ftypes.AggName) (aggregate.Aggregate, error) {
 	empty := aggregate.Aggregate{}
-	if !aggregate.IsValid(aggtype) {
-		return empty, fmt.Errorf("invalid aggregate type: %v", aggtype)
-	}
 	if len(aggname) == 0 {
 		return empty, fmt.Errorf("aggregate name can not be of length zero")
 	}
-	aggser, err := modelAgg.Retrieve(tier, aggtype, aggname)
+	aggser, err := modelAgg.Retrieve(tier, aggname)
 	if err != nil {
 		return empty, err
 	}
 	return aggregate.FromAggregateSer(aggser)
 }
 
-// RetrieveAll returns all aggregates of given aggtype
-func RetrieveAll(tier tier.Tier, aggtype ftypes.AggType) ([]aggregate.Aggregate, error) {
-	if !aggregate.IsValid(aggtype) {
-		return nil, fmt.Errorf("invalid aggregate type: %v", aggtype)
-	}
-
-	retSer, err := modelAgg.RetrieveAll(tier, aggtype)
+// RetrieveAll returns all aggregates
+func RetrieveAll(tier tier.Tier) ([]aggregate.Aggregate, error) {
+	retSer, err := modelAgg.RetrieveAll(tier)
 	if err != nil {
 		return nil, err
 	}

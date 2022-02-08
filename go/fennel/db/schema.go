@@ -62,12 +62,11 @@ func init() {
 				INDEX (timestamp)
 		 );`,
 		8: `CREATE TABLE IF NOT EXISTS aggregate_config (
-				aggregate_type VARCHAR(255) NOT NULL,
 				name VARCHAR(255) NOT NULL,
 				query_ser BLOB NOT NULL,
 				timestamp BIGINT NOT NULL,
 				options_ser BLOB NOT NULL,
-				PRIMARY KEY(aggregate_type, name)
+				PRIMARY KEY(name)
 			);`,
 	}
 	tablenames = []string{

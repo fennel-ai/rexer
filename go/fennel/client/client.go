@@ -235,8 +235,8 @@ func (c *Client) LogAction(a action.Action) error {
 }
 
 func (c *Client) StoreAggregate(agg aggregate.Aggregate) error {
-	if ok := aggregate.IsValid(agg.Type); !ok {
-		return fmt.Errorf("invalid aggregate type: %v", agg.Type)
+	if ok := aggregate.IsValid(ftypes.AggType(agg.Options.AggType)); !ok {
+		return fmt.Errorf("invalid aggregate type: %v", agg.Options.AggType)
 	}
 
 	protoAgg, err := aggregate.ToProtoAggregate(agg)
@@ -247,17 +247,14 @@ func (c *Client) StoreAggregate(agg aggregate.Aggregate) error {
 	return err
 }
 
-func (c *Client) RetrieveAggregate(aggtype ftypes.AggType, aggname ftypes.AggName) (aggregate.Aggregate, error) {
+func (c *Client) RetrieveAggregate(aggname ftypes.AggName) (aggregate.Aggregate, error) {
 	empty := aggregate.Aggregate{}
-	if ok := aggregate.IsValid(aggtype); !ok {
-		return empty, fmt.Errorf("invalid aggregate type: %v", aggtype)
-	}
 	if len(aggname) == 0 {
 		return empty, fmt.Errorf("aggregate name can not be of length zero")
 	}
 
 	// convert to proto request and send to server
-	aggreq := aggregate.AggRequest{AggType: string(aggtype), AggName: string(aggname)}
+	aggreq := aggregate.AggRequest{AggName: string(aggname)}
 	response, err := c.post(&aggreq, c.retrieveAggregateURL())
 	if err != nil {
 		return empty, err
@@ -279,9 +276,9 @@ func (c *Client) RetrieveAggregate(aggtype ftypes.AggType, aggname ftypes.AggNam
 	}
 }
 
-func (c *Client) GetAggregateValue(aggtype ftypes.AggType, aggname ftypes.AggName, key value.Value) (value.Value, error) {
+func (c *Client) GetAggregateValue(aggname ftypes.AggName, key value.Value) (value.Value, error) {
 	// convert to proto request and send to server
-	aggreq := aggregate.GetAggValueRequest{AggType: aggtype, AggName: aggname, Key: key}
+	aggreq := aggregate.GetAggValueRequest{AggName: aggname, Key: key}
 	preq, err := aggregate.ToProtoGetAggValueRequest(aggreq)
 	if err != nil {
 		return value.Nil, err

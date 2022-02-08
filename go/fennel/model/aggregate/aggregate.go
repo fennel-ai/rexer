@@ -8,26 +8,18 @@ import (
 	"fmt"
 )
 
-func Store(tier tier.Tier, aggtype ftypes.AggType, name ftypes.AggName, querySer []byte, ts ftypes.Timestamp, optionSer []byte) error {
-	if len(aggtype) > 255 {
-		return fmt.Errorf("aggregate type can not be longer than 255 chars")
-	}
+func Store(tier tier.Tier, name ftypes.AggName, querySer []byte, ts ftypes.Timestamp, optionSer []byte) error {
 	if len(name) > 255 {
 		return fmt.Errorf("aggregate name can not be longer than 255 chars")
 	}
-	sql := `INSERT INTO aggregate_config VALUES (?, ?, ?, ?, ?)`
-	_, err := tier.DB.Query(sql, aggtype, name, querySer, ts, optionSer)
+	sql := `INSERT INTO aggregate_config VALUES (?, ?, ?, ?)`
+	_, err := tier.DB.Query(sql, name, querySer, ts, optionSer)
 	return err
 }
 
-func Retrieve(tier tier.Tier, aggregateType ftypes.AggType, name ftypes.AggName) (aggregate.AggregateSer, error) {
+func Retrieve(tier tier.Tier, name ftypes.AggName) (aggregate.AggregateSer, error) {
 	var ret aggregate.AggregateSer
-	err := tier.DB.Get(&ret, `
-			SELECT * FROM aggregate_config
-			  WHERE aggregate_type = ? 
-			  AND name = ?`,
-		aggregateType, name,
-	)
+	err := tier.DB.Get(&ret, `SELECT * FROM aggregate_config WHERE name = ?`, name)
 	if err != nil && err == sql.ErrNoRows {
 		return aggregate.AggregateSer{}, aggregate.ErrNotFound
 	} else if err != nil {
@@ -36,13 +28,9 @@ func Retrieve(tier tier.Tier, aggregateType ftypes.AggType, name ftypes.AggName)
 	return ret, nil
 }
 
-func RetrieveAll(tier tier.Tier, aggtype ftypes.AggType) ([]aggregate.AggregateSer, error) {
+func RetrieveAll(tier tier.Tier) ([]aggregate.AggregateSer, error) {
 	ret := make([]aggregate.AggregateSer, 0)
-	err := tier.DB.Select(&ret, `
-			SELECT * FROM aggregate_config 
-			  WHERE aggregate_type = ?`,
-		aggtype,
-	)
+	err := tier.DB.Select(&ret, `SELECT * FROM aggregate_config`)
 	if err != nil {
 		return nil, err
 	}

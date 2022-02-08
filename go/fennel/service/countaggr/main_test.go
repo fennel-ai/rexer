@@ -25,13 +25,20 @@ func TestEndToEnd2(t *testing.T) {
 	tier.Clock = clock
 
 	agg1 := libaggregate.Aggregate{
-		Type: "rolling_counter", Name: "counter1", Query: getQuery(),
-		Timestamp: 123, Options: libaggregate.AggOptions{Duration: 6 * 3600},
+		Name: "counter1", Query: getQuery(), Timestamp: 123,
+		Options: libaggregate.AggOptions{
+			AggType:  "rolling_counter",
+			Duration: 6 * 3600,
+		},
 	}
 	assert.NoError(t, aggregate.Store(tier, agg1))
 	agg2 := libaggregate.Aggregate{
-		Type: "timeseries_counter", Name: "timeseries", Query: getQuery(),
-		Timestamp: 123, Options: libaggregate.AggOptions{Window: ftypes.Window_HOUR, Limit: 4},
+		Name: "timeseries", Query: getQuery(), Timestamp: 123,
+		Options: libaggregate.AggOptions{
+			AggType: "timeseries_counter",
+			Window:  ftypes.Window_HOUR,
+			Limit:   4,
+		},
 	}
 	assert.NoError(t, aggregate.Store(tier, agg2))
 	uid1 := ftypes.OidType(1312)
@@ -83,7 +90,7 @@ func TestEndToEnd2(t *testing.T) {
 }
 
 func verify(t *testing.T, tier tier.Tier, agg libaggregate.Aggregate, k value.Value, expected interface{}) {
-	found, err := aggregate.Value(tier, agg.Type, agg.Name, k)
+	found, err := aggregate.Value(tier, agg.Name, k)
 	assert.NoError(t, err)
 	assert.Equal(t, expected, found)
 }

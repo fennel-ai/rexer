@@ -17,19 +17,15 @@ func TestRetrieveAll(t *testing.T) {
 	assert.NoError(t, err)
 	defer test.Teardown(tier)
 
-	// calling retrievall on invalid type returns an error
-	_, err = RetrieveAll(tier, "some invalid type")
-	assert.Error(t, err)
-
 	agg := aggregate.Aggregate{
-		Type:      "rolling_counter",
 		Timestamp: 1,
 		Options: aggregate.AggOptions{
+			AggType:  "rolling_counter",
 			Duration: 3600 * 24,
 		},
 	}
 	// initially retrieve all is empty
-	found, err := RetrieveAll(tier, agg.Type)
+	found, err := RetrieveAll(tier)
 	assert.NoError(t, err)
 	assert.Empty(t, found)
 
@@ -40,7 +36,7 @@ func TestRetrieveAll(t *testing.T) {
 		err = Store(tier, agg)
 		assert.NoError(t, err)
 		expected = append(expected, agg)
-		found, err = RetrieveAll(tier, agg.Type)
+		found, err = RetrieveAll(tier)
 		assert.NoError(t, err)
 		assert.Equal(t, len(expected), len(found))
 		for j, ag1 := range found {
@@ -55,11 +51,13 @@ func TestDuplicate(t *testing.T) {
 	defer test.Teardown(tier)
 
 	agg := aggregate.Aggregate{
-		Type:      "rolling_counter",
 		Name:      "test_counter",
 		Query:     ast.MakeInt(4),
 		Timestamp: 1,
-		Options:   aggregate.AggOptions{Duration: uint64(time.Hour * 24 * 7)},
+		Options: aggregate.AggOptions{
+			AggType:  "rolling_counter",
+			Duration: uint64(time.Hour * 24 * 7),
+		},
 	}
 	err = Store(tier, agg)
 	assert.NoError(t, err)

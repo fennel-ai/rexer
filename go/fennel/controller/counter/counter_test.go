@@ -22,11 +22,11 @@ func TestRolling(t *testing.T) {
 
 	start := 24*3600*12 + 60*31
 	agg := libaggregate.Aggregate{
-		Type:      "rolling_counter",
 		Name:      "mycounter",
 		Query:     ast.MakeInt(1),
 		Timestamp: 0,
 		Options: libaggregate.AggOptions{
+			AggType:  "rolling_counter",
 			Duration: 3600 * 28,
 		},
 	}
@@ -36,7 +36,7 @@ func TestRolling(t *testing.T) {
 	assert.NoError(t, err)
 
 	key := value.List{value.Int(1), value.Int(2)}
-	assert.NoError(t, aggregate.Store(tier, agg.Type, agg.Name, querySer, agg.Timestamp, optionSer))
+	assert.NoError(t, aggregate.Store(tier, agg.Name, querySer, agg.Timestamp, optionSer))
 	table := value.NewTable()
 	// create an event every minute for 2 days
 	for i := 0; i < 60*24*2; i++ {
@@ -66,14 +66,14 @@ func TestTimeseries(t *testing.T) {
 
 	start := 24*3600*12 + 60
 	agg := libaggregate.Aggregate{
-		Type:      "timeseries_counter",
 		Name:      "mycounter",
 		Query:     ast.MakeInt(1),
 		Timestamp: 0,
 		// at any time, we want data from last 9 hours
 		Options: libaggregate.AggOptions{
-			Window: ftypes.Window_HOUR,
-			Limit:  9,
+			AggType: "timeseries_counter",
+			Window:  ftypes.Window_HOUR,
+			Limit:   9,
 		},
 	}
 	querySer, err := ast.Marshal(agg.Query)
@@ -81,7 +81,7 @@ func TestTimeseries(t *testing.T) {
 	optionSer, err := proto.Marshal(&agg.Options)
 	assert.NoError(t, err)
 
-	assert.NoError(t, aggregate.Store(tier, agg.Type, agg.Name, querySer, agg.Timestamp, optionSer))
+	assert.NoError(t, aggregate.Store(tier, agg.Name, querySer, agg.Timestamp, optionSer))
 	key := value.List{value.Int(1), value.Int(2)}
 	table := value.NewTable()
 	// create an event every minute for 2 days
