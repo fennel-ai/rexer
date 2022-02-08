@@ -1,5 +1,14 @@
 config:
   aws:region: ap-south-1
+  configs:db-conf:
+    db:
+      secure: AAABAPl1TvBDNF0RNDeNbStyulCI9vf/O3LISWnbpZ6uIA==
+    host:
+      secure: AAABABcnrg0nIuaj3gOsBQcN4sp/4T98sRUjvhAcbyqSvZOwI2/0LI+dvVZPqWSeQRAb1kwftHVHDIb7B1aY5KZs
+    password:
+      secure: AAABAIWwxRSjQTl8Sc8xjHlABDB6lAI8X7wF3Cajth79jIi+w0xqS5Te8EHeVqKL5FUjSDWNvQHrIbQ7pyCyiZphIJC++2lQjljPP4oGOYX9FmUcVw==
+    username:
+      secure: AAABAFhdVRK3V2+WyHWGLWdwmEV697+/+X2cpXB78hEL/a5ef9CtTpshQVk=
   configs:kafka-conf:
     password:
       secure: AAABAOXy7h1bLjpYCFKVHF7WeWaSEoTCWnCiZoB4kPCaV8lHTwYL2OgkmT8UK8wZJDJIrAPMd+Q+HG14VBWv/npCQ5MZap7BoZV+RdBi1hGpxEvRd9PvsBQiaZMK9Tj8
@@ -7,17 +16,8 @@ config:
       secure: AAABADd3Aa8Q99K5VXVjCUTMSw/YZLLt10m2qB/l55aTFF2ItwIe0+ycwx366MvZr3C1Gkux/UbHbnk3wFMpIqAY0HaqgYjNXRpXM2A=
     username:
       secure: AAABAMvI1Hxc1KknN4kReP3lWrpt82wy5b8jMfvJIDemI6kL2qAjHmR+R4mCA9H0
-  configs:planetscale-conf:
-    db:
-      secure: AAABABT1N8wc3TBN8nMGuFYWRuSf3fBmUj1Sw6hq60pjBi0SwNyOPjeI
-    host:
-      secure: AAABACzEX3XTQEa5NvZoubjctf2GovuCQz/f3UmCSrd4mpmDYzFMZOW3i5/dIMO0lXGG24AwLItS6c18gV2S16bU
-    password:
-      secure: AAABAJSJfYnprIweoGFi9PjCLydIDohLLgLyLI/iNBwS8O1VNr1hPb1zxuL8HmoITDERNIVTJfgNWNM7JEv12rbqcoCLdcqrMp/XIjlnRI0Vu53GlA==
-    username:
-      secure: AAABAA9Mn90FUe4Aj4zqu4OGiTjkc9//TjrhWzV3DxtOK2yBAXesyI5rRAE=
   configs:redis-conf:
     addr:
       secure: AAABAOCLb/SN1gF+4qJkUzRw7Jbca3R2N+/y9G5LudSu4n0AeiXq2kTAn9tpiLKogB2F5W5yJ7bTvUl8IXT2FIk+Rf3YVzbCa8v8uMgnVhd0rJ7MTyVBUisAAK9czXr006iTqnW0f3o4
   configs:tier-conf:
-    tier_id: T-001-001-001
+    tier_id: "92195"
