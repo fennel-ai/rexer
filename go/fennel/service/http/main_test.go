@@ -186,11 +186,13 @@ func TestHolder_AggregateValue_Valid(t *testing.T) {
 	clock.Set(int64(t0))
 	controller := holder{tier: tier}
 	agg := aggregate.Aggregate{
-		Type:      "rolling_counter",
 		Name:      "mycounter",
 		Query:     ast.MakeInt(1),
 		Timestamp: t0,
-		Options:   aggregate.AggOptions{Duration: 6 * 3600},
+		Options: aggregate.AggOptions{
+			AggType:  "rolling_counter",
+			Duration: 6 * 3600,
+		},
 	}
 	key := value.Int(4)
 	keystr := key.String()
@@ -221,30 +223,30 @@ func TestStoreRetrieveAggregate(t *testing.T) {
 	assert.NoError(t, err)
 
 	// initially can not retrieve anything
-	_, err = c.RetrieveAggregate("rolling_counter", "mycounter")
+	_, err = c.RetrieveAggregate("mycounter")
 	assert.ErrorIs(t, err, aggregate.ErrNotFound)
 
 	// store a couple of aggregates
 	agg := aggregate.Aggregate{
-		Type:  "rolling_counter",
 		Name:  "mycounter",
 		Query: ast.MakeInt(1),
 		Options: aggregate.AggOptions{
+			AggType:  "rolling_counter",
 			Duration: 3600 * 24,
 		},
 		Timestamp: 123,
 	}
 	err = c.StoreAggregate(agg)
 	assert.NoError(t, err)
-	found, err := c.RetrieveAggregate("rolling_counter", "mycounter")
+	found, err := c.RetrieveAggregate("mycounter")
 	assert.NoError(t, err)
 	assert.Equal(t, agg, found)
-	// trying to rewrite the same agg type/name throws an error even if query/options are different
+	// trying to rewrite the same agg name throws an error even if query/options are different
 	agg2 := aggregate.Aggregate{
-		Type:  "rolling_counter",
 		Name:  "mycounter",
 		Query: ast.MakeDouble(3.4),
 		Options: aggregate.AggOptions{
+			AggType:  "rolling_counter",
 			Duration: 3600 * 24 * 2,
 		},
 		Timestamp: 123,
@@ -252,11 +254,11 @@ func TestStoreRetrieveAggregate(t *testing.T) {
 	err = c.StoreAggregate(agg2)
 	assert.Error(t, err)
 
-	// but it works if even one of type/name are different
+	// but it works if names are different
 	agg2.Name = "another counter"
 	err = c.StoreAggregate(agg2)
 	assert.NoError(t, err)
-	found, err = c.RetrieveAggregate("rolling_counter", "another counter")
+	found, err = c.RetrieveAggregate("another counter")
 	assert.NoError(t, err)
 	assert.Equal(t, agg2, found)
 
@@ -303,7 +305,7 @@ func checkGetProfileMulti(t *testing.T, c *client.Client, request profilelib.Pro
 func valueSendReceive(t *testing.T, controller holder, agg aggregate.Aggregate, key, expected value.Value) {
 	pkey, err := value.ToProtoValue(key)
 	assert.NoError(t, err)
-	pagr := aggregate.ProtoGetAggValueRequest{AggType: string(agg.Type), AggName: string(agg.Name), Key: &pkey}
+	pagr := aggregate.ProtoGetAggValueRequest{AggName: string(agg.Name), Key: &pkey}
 	ser, err := proto.Marshal(&pagr)
 	assert.NoError(t, err)
 	w := httptest.NewRecorder()

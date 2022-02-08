@@ -25,12 +25,12 @@ func TestRetrieveStore(t *testing.T) {
 	assert.NoError(t, err)
 
 	options := aggregate.AggOptions{
+		AggType:  "rolling_counter",
 		Duration: uint64(time.Hour * 24 * 7),
 	}
 	optionSer, err := proto.Marshal(&options)
 	assert.NoError(t, err)
 	agg := aggregate.AggregateSer{
-		Type:      "rolling_counter",
 		Name:      "test_counter",
 		QuerySer:  querySer,
 		Timestamp: 1,
@@ -38,31 +38,27 @@ func TestRetrieveStore(t *testing.T) {
 	}
 
 	// initially we can't retrieve
-	found, err := Retrieve(tier, agg.Type, agg.Name)
+	found, err := Retrieve(tier, agg.Name)
 	assert.Error(t, err)
 	assert.ErrorIs(t, err, aggregate.ErrNotFound)
 
 	// store and retrieve again
-	err = Store(tier, agg.Type, agg.Name, agg.QuerySer, agg.Timestamp, agg.OptionSer)
+	err = Store(tier, agg.Name, agg.QuerySer, agg.Timestamp, agg.OptionSer)
 	assert.NoError(t, err)
-	found, err = Retrieve(tier, agg.Type, agg.Name)
+	found, err = Retrieve(tier, agg.Name)
 	assert.NoError(t, err)
 	assert.Equal(t, agg, found)
 
 	// and still can't retrieve if specs are different
-	found, err = Retrieve(tier, "random agg type", agg.Name)
+	found, err = Retrieve(tier, "random agg name")
 	assert.Error(t, err)
 	assert.ErrorIs(t, err, aggregate.ErrNotFound)
 
-	found, err = Retrieve(tier, agg.Type, "random agg name")
-	assert.Error(t, err)
-	assert.ErrorIs(t, err, aggregate.ErrNotFound)
-
-	// finally, storing for same type/name doesn't work
+	// finally, storing for same name doesn't work
 	query2 := ast.Atom{Type: ast.Int, Lexeme: "7"}
 	querySer2, err := ast.Marshal(query2)
 	assert.NoError(t, err)
-	err = Store(tier, agg.Type, agg.Name, querySer2, agg.Timestamp+1, agg.OptionSer)
+	err = Store(tier, agg.Name, querySer2, agg.Timestamp+1, agg.OptionSer)
 	assert.Error(t, err)
 }
 
@@ -71,19 +67,24 @@ func TestRetrieveAll(t *testing.T) {
 	assert.NoError(t, err)
 	defer test.Teardown(tier)
 
+	options := aggregate.AggOptions{
+		AggType: "rolling_counter",
+	}
+	optionSer, err := proto.Marshal(&options)
+	assert.NoError(t, err)
+
 	agg := aggregate.AggregateSer{
-		Type:      "rolling_counter",
 		Timestamp: 1,
-		OptionSer: []byte("some options"),
+		OptionSer: optionSer,
 	}
 	expected := make([]aggregate.AggregateSer, 0)
 	for i := 0; i < 5; i++ {
-		found, err := RetrieveAll(tier, agg.Type)
+		found, err := RetrieveAll(tier)
 		assert.NoError(t, err)
-		assert.Equal(t, expected, found)
+		assert.ElementsMatch(t, expected, found)
 		agg.Name = ftypes.AggName(fmt.Sprintf("name:%d", i))
 		agg.QuerySer = []byte(fmt.Sprintf("some query: %d", i))
-		err = Store(tier, agg.Type, agg.Name, agg.QuerySer, agg.Timestamp, agg.OptionSer)
+		err = Store(tier, agg.Name, agg.QuerySer, agg.Timestamp, agg.OptionSer)
 		assert.NoError(t, err)
 		expected = append(expected, agg)
 	}
@@ -94,19 +95,21 @@ func TestLongStrings(t *testing.T) {
 	assert.NoError(t, err)
 	defer test.Teardown(tier)
 
-	aggtype := ftypes.AggType("rolling_counter")
-
-	// can not insert normal sized data
-	err = Store(tier, aggtype, "my_counter", []byte("query"), 1, []byte("some options"))
+	options := aggregate.AggOptions{
+		AggType: "rolling_counter",
+	}
+	optionSer, err := proto.Marshal(&options)
 	assert.NoError(t, err)
 
-	// but can not if either aggtype or name is longer than 255 chars
-	err = Store(tier, ftypes.AggType(utils.RandString(256)), "my_counter", []byte("query"), 1, []byte("some options"))
-	assert.Error(t, err)
-	err = Store(tier, aggtype, ftypes.AggName(utils.RandString(256)), []byte("query"), 1, []byte("some options"))
+	// can insert normal sized data
+	err = Store(tier, "my_counter", []byte("query"), 1, optionSer)
+	assert.NoError(t, err)
+
+	// but can not if aggname is longer than 255 chars
+	err = Store(tier, ftypes.AggName(utils.RandString(256)), []byte("query"), 1, optionSer)
 	assert.Error(t, err)
 
 	// but works if it is upto 255 chars
-	err = Store(tier, ftypes.AggType(utils.RandString(255)), ftypes.AggName(utils.RandString(255)), []byte("query"), 1, []byte("some options"))
+	err = Store(tier, ftypes.AggName(utils.RandString(255)), []byte("query"), 1, optionSer)
 	assert.NoError(t, err)
 }

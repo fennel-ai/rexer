@@ -4,12 +4,13 @@ import (
 	"fennel/lib/aggregate"
 	"fennel/lib/ftypes"
 	"fennel/lib/value"
-	"github.com/stretchr/testify/assert"
-	"google.golang.org/protobuf/proto"
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"google.golang.org/protobuf/proto"
 )
 
 func TestClient_GetAggregateValue(t *testing.T) {
@@ -18,10 +19,9 @@ func TestClient_GetAggregateValue(t *testing.T) {
 	expected := value.Int(1)
 	ser, err := value.Marshal(expected)
 	assert.NoError(t, err)
-	aggtype, aggname := ftypes.AggType("sometype"), ftypes.AggName("somename")
+	aggname := ftypes.AggName("somename")
 	k := value.Bool(true)
 	agvr := aggregate.GetAggValueRequest{
-		AggType: aggtype,
 		AggName: aggname,
 		Key:     k,
 	}
@@ -42,7 +42,7 @@ func TestClient_GetAggregateValue(t *testing.T) {
 	c, err := NewClient(svr.URL, svr.Client())
 	assert.NoError(t, err)
 
-	found, err := c.GetAggregateValue(aggtype, aggname, k)
+	found, err := c.GetAggregateValue(aggname, k)
 	assert.NoError(t, err)
 	assert.Equal(t, expected, found)
 }
