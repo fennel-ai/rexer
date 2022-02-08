@@ -12,8 +12,8 @@ func Store(tier tier.Tier, name ftypes.AggName, querySer []byte, ts ftypes.Times
 	if len(name) > 255 {
 		return fmt.Errorf("aggregate name can not be longer than 255 chars")
 	}
-	sql := `INSERT INTO aggregate_config VALUES (?, ?, ?, ?, ?)`
-	_, err := tier.DB.Query(sql, name, querySer, ts, optionSer, 1)
+	sql := `INSERT INTO aggregate_config (name, query_ser, timestamp, options_ser) VALUES (?, ?, ?, ?)`
+	_, err := tier.DB.Query(sql, name, querySer, ts, optionSer)
 	return err
 }
 
