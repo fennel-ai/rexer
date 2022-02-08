@@ -7,26 +7,24 @@ import "ftypes.proto";
 import "value.proto";
 
 message ProtoAggregate {
-  string agg_type = 1;
-  string agg_name = 2;
-  Ast query = 3;
-  uint64 timestamp = 4;
-  AggOptions options = 5;
+  string agg_name = 1;
+  Ast query = 2;
+  uint64 timestamp = 3;
+  AggOptions options = 4;
 }
 
 message AggOptions {
-  uint64 duration = 1;
-  Window window = 2;
-  uint64 limit = 3;
+  string agg_type = 1;
+  uint64 duration = 2;
+  Window window = 3;
+  uint64 limit = 4;
 }
 
 message AggRequest {
-  string agg_type = 1;
-  string agg_name = 2;
+  string agg_name = 1;
 }
 
 message ProtoGetAggValueRequest {
-  string  agg_type = 1;
-  string  agg_name = 2;
-  PValue key = 3;
+  string  agg_name = 1;
+  PValue key = 2;
 }
