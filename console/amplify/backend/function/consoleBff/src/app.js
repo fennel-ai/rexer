@@ -10,12 +10,10 @@ const axios = require("axios");
 
 var express = require("express");
 var bodyParser = require("body-parser");
-var awsServerlessExpressMiddleware = require("aws-serverless-express/middleware");
 
 // declare a new express app
 var app = express();
 app.use(bodyParser.json());
-app.use(awsServerlessExpressMiddleware.eventContext());
 
 // Enable CORS for all methods
 app.use(function (req, res, next) {
@@ -24,8 +22,13 @@ app.use(function (req, res, next) {
   next();
 });
 
-const PROFILE_URL = `${domainToTierURL["trell.co"]}/profile/`;
-const ACTION_URL = `${domainToTierURL["trell.co"]}/actions/`;
+const domainToURL = {
+  "trell.in":
+    "http://k8s-ambassad-aesedges-40345becf3-fa1a77f909416990.elb.us-west-2.amazonaws.com/control",
+};
+
+const PROFILE_URL = "/profile/";
+const ACTION_URL = "/actions/";
 
 const actionMetadata = {
   actionTypes: [
