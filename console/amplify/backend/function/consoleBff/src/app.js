@@ -5,7 +5,7 @@ Licensed under the Apache License, Version 2.0 (the "License"). You may not use 
 or in the "license" file accompanying this file. This file is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and limitations under the License.
 */
-
+const domainToTierURL = require("./map").domainToTierURL();
 const axios = require("axios");
 
 var express = require("express");
@@ -24,10 +24,8 @@ app.use(function (req, res, next) {
   next();
 });
 
-const PROFILE_URL =
-  "http://k8s-ambassad-aesedges-40345becf3-fa1a77f909416990.elb.us-west-2.amazonaws.com/control/profile/";
-const ACTION_URL =
-  "http://k8s-ambassad-aesedges-40345becf3-fa1a77f909416990.elb.us-west-2.amazonaws.com/control/actions/";
+const PROFILE_URL = `${domainToTierURL["trell.co"]}/profile/`;
+const ACTION_URL = `${domainToTierURL["trell.co"]}/actions/`;
 
 const actionMetadata = {
   actionTypes: [
