@@ -66,7 +66,7 @@ func init() {
 				query_ser BLOB NOT NULL,
 				timestamp BIGINT NOT NULL,
 				options_ser BLOB NOT NULL,
-				active BOOL NOT NULL,
+				active BOOL NOT NULL DEFAULT TRUE,
 				PRIMARY KEY(name)
 			);`,
 	}
