@@ -19,8 +19,8 @@ const kafkaCreds = new k8s.core.v1.Secret("kafka-config", {
     }
 }, { deleteBeforeReplace: true })
 
-const pscreds = new k8s.core.v1.Secret("planetscale-config", {
-    stringData: config.requireSecretObject("planetscale-conf"),
+const pscreds = new k8s.core.v1.Secret("db-config", {
+    stringData: config.requireSecretObject("db-conf"),
     metadata: {
         namespace: "fennel",
         name: "mysql-conf",
