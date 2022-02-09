@@ -42,7 +42,7 @@ const actionMetadata = {
   actorTypes: [{ val: 0, text: "USER" }],
 };
 
-const parseQuery = (req) => {
+const mapUserToDomain = (req) => {
   if (!req.query || !req.query.query) {
     throw new Error("No query.");
   }
@@ -60,7 +60,7 @@ const parseQuery = (req) => {
 };
 app.get("/actions/profiles", async (req, res) => {
   try {
-    const tierUrl = parseQuery(req);
+    const tierUrl = mapUserToDomain(req);
     const apiUrl = `${tierUrl}/${PROFILE_URL}`;
     const result = await axios.get(apiUrl, {
       params: { key: "hello", otype: "type", oid: 1, version: 1 },
@@ -73,7 +73,7 @@ app.get("/actions/profiles", async (req, res) => {
 
 app.get("/actions/actions", async (req, res) => {
   try {
-    const tierUrl = parseQuery(req);
+    const tierUrl = mapUserToDomain(req);
     const apiUrl = `${tierUrl}/${ACTION_URL}`;
     const result = await axios.get(apiUrl, {
       params: { min_action_value: 0 },
