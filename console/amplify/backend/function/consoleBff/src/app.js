@@ -26,6 +26,8 @@ app.use(function (req, res, next) {
 const domainToURL = {
   "trell.in":
     "http://k8s-ambassad-aesedges-40345becf3-fa1a77f909416990.elb.us-west-2.amazonaws.com/control",
+  "fennel.ai":
+    "http://k8s-ambassad-aesedges-40345becf3-fa1a77f909416990.elb.us-west-2.amazonaws.com/control",
 };
 
 const PROFILE_URL = "profile/";
