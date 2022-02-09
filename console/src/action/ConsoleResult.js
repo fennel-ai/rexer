@@ -21,9 +21,8 @@ const ConsoleResult = ({ data, metadata }) => {
           </tr>
         </thead>
         <tbody>
-          {data.map((item) => (
-            <ActionRow data={item} key={item.actionId} />
-          ))}
+          {data &&
+            data.map((item) => <ActionRow data={item} key={item.actionId} />)}
         </tbody>
       </table>
     </div>

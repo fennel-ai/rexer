@@ -15,9 +15,8 @@ const ConsoleResult = ({ results }) => (
         </tr>
       </thead>
       <tbody>
-        {results.map((item) => (
-          <ActionRow data={item} key={item.oId} />
-        ))}
+        {results &&
+          results.map((item) => <ActionRow data={item} key={item.oId} />)}
       </tbody>
     </table>
   </div>
