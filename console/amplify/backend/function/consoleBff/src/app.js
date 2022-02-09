@@ -5,7 +5,6 @@ Licensed under the Apache License, Version 2.0 (the "License"). You may not use 
 or in the "license" file accompanying this file. This file is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and limitations under the License.
 */
-
 const axios = require("axios");
 
 var express = require("express");
@@ -24,10 +23,15 @@ app.use(function (req, res, next) {
   next();
 });
 
-const PROFILE_URL =
-  "http://k8s-ambassad-aesedges-40345becf3-fa1a77f909416990.elb.us-west-2.amazonaws.com/control/profile/";
-const ACTION_URL =
-  "http://k8s-ambassad-aesedges-40345becf3-fa1a77f909416990.elb.us-west-2.amazonaws.com/control/actions/";
+const domainToURL = {
+  "trell.in":
+    "http://k8s-ambassad-aesedges-40345becf3-fa1a77f909416990.elb.us-west-2.amazonaws.com/control",
+  "fennel.ai":
+    "http://k8s-ambassad-aesedges-40345becf3-fa1a77f909416990.elb.us-west-2.amazonaws.com/control",
+};
+
+const PROFILE_URL = "profile/";
+const ACTION_URL = "actions/";
 
 const actionMetadata = {
   actionTypes: [
@@ -42,25 +46,45 @@ const actionMetadata = {
   actorTypes: [{ val: 0, text: "USER" }],
 };
 
+const mapUserToDomain = (req) => {
+  if (!req.query || !req.query.query) {
+    throw new Error("No query.");
+  }
+  const username = JSON.parse(req.query.query).username;
+  if (!username) {
+    throw new Error("Username / email not passed in.");
+  }
+  const email = username.split("@");
+  const tierUrl = domainToURL[email];
+  if (tierUrl) {
+    return tierUrl;
+  } else {
+    throw new Error("Domain does not map to a URL.");
+  }
+};
 app.get("/actions/profiles", async (req, res) => {
   try {
-    const result = await axios.get(PROFILE_URL, {
+    const tierUrl = mapUserToDomain(req);
+    const apiUrl = `${tierUrl}/${PROFILE_URL}`;
+    const result = await axios.get(apiUrl, {
       params: { key: "hello", otype: "type", oid: 1, version: 1 },
     });
     res.json({ data: result.data });
   } catch (err) {
-    res.json({ error: "Failed to get profiles." });
+    res.json({ error: err.message });
   }
 });
 
 app.get("/actions/actions", async (req, res) => {
   try {
-    const result = await axios.get(ACTION_URL, {
+    const tierUrl = mapUserToDomain(req);
+    const apiUrl = `${tierUrl}/${ACTION_URL}`;
+    const result = await axios.get(apiUrl, {
       params: { min_action_value: 0 },
     });
     res.json({ data: result.data });
   } catch (err) {
-    res.json({ error: "Failed to get actions." });
+    res.json({ error: err.message });
   }
 });
 
