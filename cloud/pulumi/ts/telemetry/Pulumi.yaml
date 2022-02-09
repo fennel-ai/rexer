@@ -1,0 +1,3 @@
+name: telemetry
+runtime: nodejs
+description: Pulumi project for setting up telemetry

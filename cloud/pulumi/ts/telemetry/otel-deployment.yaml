@@ -1,0 +1,414 @@
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: aws-otel-eks
+  labels:
+    name: aws-otel-eks
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: aws-otel-collector-account
+  namespace: aws-otel-eks
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: aoc-agent-role
+rules:
+  - apiGroups:
+      - ""
+    resources:
+      - nodes
+      - nodes/proxy
+      - nodes/metrics
+      - services
+      - endpoints
+      - pods
+    verbs:
+      - get
+      - list
+      - watch
+  - apiGroups:
+      - ""
+    resources:
+      - nodes/stats
+      - configmaps
+      - events
+    verbs:
+      - create
+      - get
+  # To ensure that only one ADOT collector from the DaemonSet is collecting cluster-level metrics
+  - apiGroups:
+      - ""
+    resources:
+      - configmaps
+    resourceNames:
+      - otel-container-insight-clusterleader
+    verbs:
+      - get
+      - update
+  - apiGroups:
+      - extensions
+    resources:
+      - ingresses
+    verbs:
+      - get
+      - list
+      - watch
+  - apiGroups:
+      - apps
+    resources:
+      - replicasets
+    verbs:
+      - list
+      - watch
+  - apiGroups:
+      - batch
+    resources:
+      - jobs
+    verbs:
+      - list
+      - watch
+  - nonResourceURLs:
+      - /metrics
+    verbs:
+      - get
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: aoc-agent-role-binding
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: aoc-agent-role
+subjects:
+  - kind: ServiceAccount
+    name: aws-otel-collector-account
+    namespace: aws-otel-eks
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: otel-agent-conf
+  namespace: aws-otel-eks
+  labels:
+    app: opentelemetry
+    component: otel-agent-conf
+data:
+  otel-agent-config: |
+    extensions:
+      health_check:
+      pprof:
+      zpages:
+
+    receivers:
+      otlp:
+        protocols:
+          grpc:
+            endpoint: 0.0.0.0:4317
+          http:
+            endpoint: 0.0.0.0:4318
+      awscontainerinsightreceiver:
+      prometheus:
+        config:
+          global:
+            scrape_interval: 1m
+            scrape_timeout: 10s
+          scrape_configs:
+            - job_name: 'kubernetes-pods'
+              sample_limit: 10000
+              kubernetes_sd_configs:
+              - role: pod
+              relabel_configs:
+              - action: keep
+                regex: true
+                source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_scrape]
+              - action: replace
+                source_labels: [__address__, __meta_kubernetes_pod_annotation_prometheus_io_port]
+                regex: ([^:]+)(?::\d+)?;(\d+)
+                replacement: $$1:$$2
+                target_label: __address__
+              - action: replace
+                source_labels: [__meta_kubernetes_namespace]
+                target_label: Namespace
+              - action: replace
+                source_labels: [__meta_kubernetes_pod_name]
+                target_label: PodName
+              - action: replace
+                source_labels: [__meta_kubernetes_pod_container_name]
+                target_label: ContainerName
+              - action: replace
+                source_labels: [__meta_kubernetes_pod_controller_name]
+                target_label: PodControllerName
+              - action: replace
+                source_labels: [__meta_kubernetes_pod_controller_kind]
+                target_label: PodControllerKind
+              - action: replace
+                source_labels: [__meta_kubernetes_pod_phase]
+                target_label: PodPhase
+              # Exclude high cardinality metrics
+              metric_relabel_configs:
+              - action: drop
+                source_labels: [__name__]
+                regex: 'go_gc_duration_seconds.*'
+            - job_name: 'kubernetes-service-endpoints'
+              kubernetes_sd_configs:
+              - role: endpoints
+              relabel_configs:
+              - action: keep
+                regex: true
+                source_labels: [__meta_kubernetes_service_annotation_prometheus_io_scrape]
+              - action: replace
+                source_labels: [__address__, __meta_kubernetes_service_annotation_prometheus_io_port]
+                regex: ([^:]+)(?::\d+)?;(\d+)
+                replacement: $$1:$$2
+                target_label: __address__
+              - action: labelmap
+                regex: __meta_kubernetes_pod_label_(.+)
+              - action: replace
+                source_labels: [__meta_kubernetes_namespace]
+                target_label: Namespace
+              - action: replace
+                source_labels: [__meta_kubernetes_service_name]
+                target_label: Service
+              - action: replace
+                source_labels: [__meta_kubernetes_pod_node_name]
+                target_label: kubernetes_node
+              - action: replace
+                source_labels: [__meta_kubernetes_pod_name]
+                target_label: PodName
+              - action: replace
+                source_labels: [__meta_kubernetes_pod_container_name]
+                target_label: ContainerName
+              # Exclude high cardinality metrics
+              metric_relabel_configs:
+              - source_labels: [__name__]
+                regex: 'go_gc_duration_seconds.*'
+                action: drop
+
+
+    processors:
+      batch/traces:
+        timeout: 10s
+        send_batch_size: 50
+      batch/metrics:
+        timeout: 60s
+      resourcedetection/ec2:
+        detectors: [ env ]
+        timeout: 2s
+        override: false
+      resource:
+        attributes:
+          - key: TaskId
+            from_attribute: job
+            action: insert
+          - key: receiver
+            value: "prometheus"
+            action: insert
+
+    exporters:
+      awsxray:
+      awsemf/containerinsights:
+        namespace: ContainerInsights
+        log_group_name: '/aws/containerinsights/{ClusterName}/performance'
+        log_stream_name: '{NodeName}'
+        resource_to_telemetry_conversion:
+          enabled: true
+        dimension_rollup_option: NoDimensionRollup
+        parse_json_encoded_attr_values: [Sources, kubernetes]
+        metric_declarations:
+          # node metrics
+          - metric_name_selectors:
+              - node_cpu_utilization
+              - node_memory_utilization
+              - node_network_total_bytes
+              - node_cpu_reserved_capacity
+              - node_memory_reserved_capacity
+              - node_number_of_running_pods
+              - node_number_of_running_containers
+            dimensions: [[NodeName, InstanceId, ClusterName]]
+          - metric_name_selectors:
+              - node_cpu_utilization
+              - node_memory_utilization
+              - node_network_total_bytes
+              - node_cpu_reserved_capacity
+              - node_memory_reserved_capacity
+              - node_number_of_running_pods
+              - node_number_of_running_containers
+              - node_cpu_usage_total
+              - node_cpu_limit
+              - node_memory_working_set
+              - node_memory_limit
+            dimensions: [[ClusterName]]
+          # pod metrics
+          - metric_name_selectors:
+              - pod_cpu_utilization
+              - pod_memory_utilization
+              - pod_network_rx_bytes
+              - pod_network_tx_bytes
+              - pod_cpu_utilization_over_pod_limit
+              - pod_memory_utilization_over_pod_limit
+            dimensions: [[PodName, Namespace, ClusterName], [Service, Namespace, ClusterName], [Namespace, ClusterName], [ClusterName]]
+          - metric_name_selectors:
+              - pod_cpu_reserved_capacity
+              - pod_memory_reserved_capacity
+            dimensions: [[PodName, Namespace, ClusterName], [ClusterName]]
+          - metric_name_selectors:
+              - pod_number_of_container_restarts
+            dimensions: [[PodName, Namespace, ClusterName]]
+          # cluster metrics
+          - metric_name_selectors:
+              - cluster_node_count
+              - cluster_failed_node_count
+            dimensions: [[ClusterName]]
+          # service metrics
+          - metric_name_selectors:
+              - service_number_of_running_pods
+            dimensions: [[Service, Namespace, ClusterName], [ClusterName]]
+          # node fs metrics
+          - metric_name_selectors:
+              - node_filesystem_utilization
+            dimensions: [[NodeName, InstanceId, ClusterName], [ClusterName]]
+          # namespace metrics
+          - metric_name_selectors:
+              - namespace_number_of_running_pods
+            dimensions: [[Namespace, ClusterName], [ClusterName]]
+
+      awsemf/prometheus:
+        namespace: ContainerInsights/Prometheus
+        log_group_name: "/aws/containerinsights/{ClusterName}/prometheus"
+        log_stream_name: "{TaskId}"
+        resource_to_telemetry_conversion:
+          enabled: true
+        dimension_rollup_option: NoDimensionRollup
+        parse_json_encoded_attr_values: [Sources, kubernetes]
+        metric_declarations:
+
+    service:
+      telemetry:
+        logs:
+          level: "debug"
+      extensions:
+        - health_check
+        - pprof
+        - zpages
+      pipelines:
+        traces:
+          receivers:
+            - otlp
+          processors:
+            - batch/traces
+          exporters:
+            - awsxray
+        metrics/containerinsights:
+          receivers:
+            - awscontainerinsightreceiver
+          processors:
+            - resourcedetection/ec2
+            - resource
+            - batch/metrics
+          exporters:
+            - awsemf/containerinsights
+        metrics/prometheus:
+          receivers:
+            - prometheus
+          processors:
+            - resourcedetection/ec2
+            - resource
+            - batch/metrics
+          exporters:
+            - awsemf/prometheus
+
+---
+# create Daemonset
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: aws-otel-collector
+  namespace: aws-otel-eks
+spec:
+  selector:
+    matchLabels:
+      name: aws-otel-collector
+  template:
+    metadata:
+      labels:
+        name: aws-otel-collector
+    spec:
+      serviceAccountName: aws-otel-collector-account
+      containers:
+        - name: aws-otel-collector
+          image: amazon/aws-otel-collector:latest
+          env:
+            - name: K8S_NODE_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: spec.nodeName
+            - name: HOST_IP
+              valueFrom:
+                fieldRef:
+                  fieldPath: status.hostIP
+            - name: HOST_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: spec.nodeName
+            - name: K8S_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+          imagePullPolicy: Always
+          command:
+            - "/awscollector"
+            - "--config=/conf/otel-agent-config.yaml"
+          volumeMounts:
+            - name: rootfs
+              mountPath: /rootfs
+              readOnly: true
+            - name: dockersock
+              mountPath: /var/run/docker.sock
+              readOnly: true
+            - name: varlibdocker
+              mountPath: /var/lib/docker
+              readOnly: true
+            - name: sys
+              mountPath: /sys
+              readOnly: true
+            - name: devdisk
+              mountPath: /dev/disk
+              readOnly: true
+            - name: otel-agent-config-vol
+              mountPath: /conf
+          resources:
+            limits:
+              cpu: 512m
+              memory: 512Mi
+            requests:
+              cpu: 128m
+              memory: 128Mi
+      volumes:
+        - configMap:
+            name: otel-agent-conf
+            items:
+              - key: otel-agent-config
+                path: otel-agent-config.yaml
+          name: otel-agent-config-vol
+        - name: rootfs
+          hostPath:
+            path: /
+        - name: dockersock
+          hostPath:
+            path: /var/run/docker.sock
+        - name: varlibdocker
+          hostPath:
+            path: /var/lib/docker
+        - name: sys
+          hostPath:
+            path: /sys
+        - name: devdisk
+          hostPath:
+            path: /dev/disk/
+---
+
