@@ -9,10 +9,12 @@ const axios = require("axios");
 
 var express = require("express");
 var bodyParser = require("body-parser");
+var awsServerlessExpressMiddleware = require("aws-serverless-express/middleware");
 
 // declare a new express app
 var app = express();
 app.use(bodyParser.json());
+app.use(awsServerlessExpressMiddleware.eventContext());
 
 // Enable CORS for all methods
 app.use(function (req, res, next) {
