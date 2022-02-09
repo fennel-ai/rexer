@@ -73,6 +73,11 @@ func (c Client) retrieveAggregateURL() string {
 	return fmt.Sprintf(c.url.String())
 }
 
+func (c Client) deactivateAggregateURL() string {
+	c.url.Path = "/deactivate_aggregate"
+	return fmt.Sprintf(c.url.String())
+}
+
 func (c Client) getAggregateValueURL() string {
 	c.url.Path = "/aggregate_value"
 	return fmt.Sprintf(c.url.String())
@@ -274,6 +279,17 @@ func (c *Client) RetrieveAggregate(aggname ftypes.AggName) (aggregate.Aggregate,
 	} else {
 		return ret, nil
 	}
+}
+
+func (c *Client) DeactivateAggregate(aggname ftypes.AggName) error {
+	if len(aggname) == 0 {
+		return fmt.Errorf("aggregate name can not be of length zero")
+	}
+
+	// convert to proto request and send to server
+	aggreq := aggregate.AggRequest{AggName: string(aggname)}
+	_, err := c.post(&aggreq, c.deactivateAggregateURL())
+	return err
 }
 
 func (c *Client) GetAggregateValue(aggname ftypes.AggName, key value.Value) (value.Value, error) {

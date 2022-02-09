@@ -210,7 +210,7 @@ func TestHolder_AggregateValue_Valid(t *testing.T) {
 	valueSendReceive(t, controller, agg, key, value.Int(1))
 }
 
-func TestStoreRetrieveAggregate(t *testing.T) {
+func TestStoreRetrieveDeactivateAggregate(t *testing.T) {
 	// create a service + client
 	tier, err := test.Tier()
 	assert.NoError(t, err)
@@ -262,6 +262,12 @@ func TestStoreRetrieveAggregate(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, agg2, found)
 
+	// cannot retrieve after deactivating
+	err = c.DeactivateAggregate(agg.Name)
+	assert.NoError(t, err)
+	_, err = c.RetrieveAggregate(agg.Name)
+	assert.Error(t, err)
+	assert.ErrorIs(t, err, aggregate.ErrNotFound)
 }
 
 func checkGetSet(t *testing.T, c *client.Client, get bool, otype string, oid uint64, version uint64,

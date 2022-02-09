@@ -279,6 +279,21 @@ func (m holder) RetrieveAggregate(w http.ResponseWriter, req *http.Request) {
 	w.Write(ser)
 }
 
+func (m holder) DeactivateAggregate(w http.ResponseWriter, req *http.Request) {
+	var protoReq aggregate.AggRequest
+	if err := parse(req, &protoReq); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		log.Printf("Error: %v", err)
+		return
+	}
+	err := aggregate2.Deactivate(m.tier, ftypes.AggName(protoReq.AggName))
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		log.Printf("Error: %v", err)
+		return
+	}
+}
+
 func (m holder) AggregateValue(w http.ResponseWriter, req *http.Request) {
 	var protoReq aggregate.ProtoGetAggValueRequest
 	if err := parse(req, &protoReq); err != nil {
@@ -318,6 +333,7 @@ func setHandlers(controller holder, mux *http.ServeMux) {
 	mux.HandleFunc("/query", controller.Query)
 	mux.HandleFunc("/store_aggregate", controller.StoreAggregate)
 	mux.HandleFunc("/retrieve_aggregate", controller.RetrieveAggregate)
+	mux.HandleFunc("/deactivate_aggregate", controller.DeactivateAggregate)
 	mux.HandleFunc("/aggregate_value", controller.AggregateValue)
 }
 
