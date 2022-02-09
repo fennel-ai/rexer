@@ -9,6 +9,7 @@ const axios = require("axios");
 
 var express = require("express");
 var bodyParser = require("body-parser");
+var cors = require("cors");
 var awsServerlessExpressMiddleware = require("aws-serverless-express/middleware");
 
 // declare a new express app
@@ -17,11 +18,11 @@ app.use(bodyParser.json());
 app.use(awsServerlessExpressMiddleware.eventContext());
 
 // Enable CORS for all methods
-app.use(function (req, res, next) {
-  res.header("Access-Control-Allow-Origin", "*");
-  res.header("Access-Control-Allow-Headers", "*");
-  next();
-});
+var corsOptions = {
+  origin: 'https://app.fennel.ai',
+  optionSuccessStatus: 200 // some legacy browsers (IE11, various SmartTVs) choke on 204
+}
+app.use(cors(corsOptions))
 
 const domainToURL = {
   "trell.in":
