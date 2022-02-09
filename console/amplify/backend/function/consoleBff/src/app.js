@@ -47,6 +47,14 @@ const actionMetadata = {
   actorTypes: [{ val: 0, text: "USER" }],
 };
 
+const profileMetadata = {
+  oTypes: [
+    { val: 'USER', text: 'USER' },
+    { val: 'VIDEO', text: 'VIDEO' },
+  ],
+  latestVersion: 1,
+};
+
 const mapUserToDomain = (req) => {
   if (!req.query || !req.query.query) {
     throw new Error("No query.");
