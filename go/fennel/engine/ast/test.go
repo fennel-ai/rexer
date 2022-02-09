@@ -30,7 +30,9 @@ func MakeBool(b bool) Atom {
 var TestExamples []Ast
 
 func init() {
-
+	// This should not contain duplicates
+	// Used in ast_test.go to check if each element
+	// is equal to only itself.
 	TestExamples = []Ast{
 		MakeInt(4),
 		MakeBool(false),
@@ -98,5 +100,5 @@ func init() {
 		lookups = append(lookups, Lookup{On: t, Property: "someprop"})
 		lookups = append(lookups, Lookup{On: t, Property: "some prop with space"})
 	}
-	TestExamples = append(lookups, lookups...)
+	TestExamples = append(TestExamples, lookups...)
 }
