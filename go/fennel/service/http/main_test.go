@@ -6,7 +6,6 @@ import (
 	"fennel/lib/aggregate"
 	"fennel/model/counter"
 	"io/ioutil"
-	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
@@ -20,6 +19,7 @@ import (
 	"fennel/lib/value"
 	"fennel/test"
 
+	"github.com/gorilla/mux"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -45,10 +45,10 @@ func add(t *testing.T, c *client.Client, a action.Action) action.Action {
 	return a
 }
 
-func startTestServer(controller holder) *httptest.Server {
-	mux := http.NewServeMux()
-	setHandlers(controller, mux)
-	server := httptest.NewServer(mux)
+func startTestServer(controller server) *httptest.Server {
+	router := mux.NewRouter()
+	controller.setHandlers(router)
+	server := httptest.NewServer(router)
 	return server
 }
 
@@ -58,7 +58,7 @@ func TestLogFetchServerClient(t *testing.T) {
 	assert.NoError(t, err)
 	defer test.Teardown(tier)
 
-	controller := holder{tier: tier}
+	controller := server{tier: tier}
 	server := startTestServer(controller)
 	defer server.Close()
 	c, err := client.NewClient(server.URL, server.Client())
@@ -98,7 +98,7 @@ func TestProfileServerClient(t *testing.T) {
 	assert.NoError(t, err)
 	defer test.Teardown(tier)
 
-	controller := holder{tier: tier}
+	controller := server{tier: tier}
 	server := startTestServer(controller)
 	defer server.Close()
 	c, err := client.NewClient(server.URL, server.Client())
@@ -134,7 +134,7 @@ func TestQuery(t *testing.T) {
 	assert.NoError(t, err)
 	defer test.Teardown(tier)
 
-	controller := holder{tier: tier}
+	controller := server{tier: tier}
 	server := startTestServer(controller)
 	defer server.Close()
 	c, err := client.NewClient(server.URL, server.Client())
@@ -175,7 +175,7 @@ func TestQuery(t *testing.T) {
 	assert.Equal(t, dict1, found)
 }
 
-func TestHolder_AggregateValue_Valid(t *testing.T) {
+func TestServer_AggregateValue_Valid(t *testing.T) {
 	tier, err := test.Tier()
 	assert.NoError(t, err)
 	defer test.Teardown(tier)
@@ -184,7 +184,7 @@ func TestHolder_AggregateValue_Valid(t *testing.T) {
 	tier.Clock = clock
 	t0 := ftypes.Timestamp(3600 * 10)
 	clock.Set(int64(t0))
-	controller := holder{tier: tier}
+	controller := server{tier: tier}
 	agg := aggregate.Aggregate{
 		Name:      "mycounter",
 		Query:     ast.MakeInt(1),
@@ -216,7 +216,7 @@ func TestStoreRetrieveDeactivateAggregate(t *testing.T) {
 	assert.NoError(t, err)
 	defer test.Teardown(tier)
 
-	controller := holder{tier: tier}
+	controller := server{tier: tier}
 	server := startTestServer(controller)
 	defer server.Close()
 	c, err := client.NewClient(server.URL, server.Client())
@@ -316,7 +316,7 @@ func checkGetProfileMulti(t *testing.T, c *client.Client, request profilelib.Pro
 	}
 }
 
-func valueSendReceive(t *testing.T, controller holder, agg aggregate.Aggregate, key, expected value.Value) {
+func valueSendReceive(t *testing.T, controller server, agg aggregate.Aggregate, key, expected value.Value) {
 	pkey, err := value.ToProtoValue(key)
 	assert.NoError(t, err)
 	pagr := aggregate.ProtoGetAggValueRequest{AggName: string(agg.Name), Key: &pkey}

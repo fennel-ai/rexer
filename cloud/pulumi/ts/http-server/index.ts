@@ -52,6 +52,7 @@ export const fullImageName = image.imageName;
 
 // Create a load balanced Kubernetes service using this image, and export its IP.
 const appLabels = { app: name };
+const metricsPort = 2112;
 const appDep = image.imageName.apply(() => {
     return new k8s.apps.v1.Deployment("http-server-deployment", {
         metadata: {
@@ -65,15 +66,28 @@ const appDep = image.imageName.apply(() => {
                 metadata: {
                     labels: appLabels,
                     namespace: namespace,
+                    annotations: {
+                        "prometheus.io/scrape": "true",
+                        "prometheus.io/port": metricsPort.toString(),
+                    }
                 },
                 spec: {
                     containers: [{
+                        command: [
+                            "/root/server",
+                            "--metrics-port",
+                            "2112",
+                        ],
                         name: name,
                         image: image.imageName,
                         imagePullPolicy: "Always",
                         ports: [
                             {
                                 containerPort: 2425,
+                                protocol: "TCP",
+                            },
+                            {
+                                containerPort: metricsPort,
                                 protocol: "TCP",
                             },
                         ],

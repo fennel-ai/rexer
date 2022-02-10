@@ -2,363 +2,112 @@ package main
 
 import (
 	"fmt"
-	"io/ioutil"
 	"log"
 	"net/http"
+	"strconv"
 
-	"fennel/controller/action"
-	aggregate2 "fennel/controller/aggregate"
-	profile2 "fennel/controller/profile"
-	"fennel/engine/interpreter"
-	"fennel/engine/interpreter/bootarg"
-	actionlib "fennel/lib/action"
-	"fennel/lib/aggregate"
-	"fennel/lib/ftypes"
 	httplib "fennel/lib/http"
-	profilelib "fennel/lib/profile"
-	"fennel/lib/query"
-	"fennel/lib/value"
 	_ "fennel/opdefs"
+	"fennel/service/common"
 	"fennel/tier"
 
 	"github.com/alexflint/go-arg"
-
-	"google.golang.org/protobuf/proto"
+	"github.com/gorilla/mux"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promauto"
 )
 
-type holder struct {
-	tier tier.Tier
+//------------------------ START metric definitions ----------------------------
+
+var totalRequests = promauto.NewCounterVec(
+	prometheus.CounterOpts{
+		Name: "http_requests_total",
+		Help: "Number of get requests.",
+	},
+	[]string{"path"},
+)
+
+var responseStatus = promauto.NewCounterVec(
+	prometheus.CounterOpts{
+		Name: "response_status",
+		Help: "Status of HTTP response",
+	},
+	[]string{"path", "status"},
+)
+
+var httpDuration = promauto.NewSummaryVec(prometheus.SummaryOpts{
+	Name: "http_response_time_seconds",
+	Help: "Duration of HTTP requests.",
+	// Track quantiles with +/- 5% error.
+	Objectives: map[float64]float64{
+		0.0:  5,
+		0.25: 5,
+		0.50: 5,
+		0.75: 5,
+		1.0:  5,
+	},
+}, []string{"path"})
+
+//------------------------ END metric definitions ------------------------------
+
+// response writer to capture status code from header.
+type responseWriter struct {
+	http.ResponseWriter
+	statusCode int
 }
 
-func parse(req *http.Request, msg proto.Message) error {
-	defer req.Body.Close()
-	body, err := ioutil.ReadAll(req.Body)
-	if err != nil {
-		return err
-	}
-	return proto.Unmarshal(body, msg)
+func (rw *responseWriter) WriteHeader(code int) {
+	rw.statusCode = code
+	rw.ResponseWriter.WriteHeader(code)
 }
 
-func (m holder) Log(w http.ResponseWriter, req *http.Request) {
-	var pa actionlib.ProtoAction
-	if err := parse(req, &pa); err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		log.Printf("Error: %v", err)
-		return
-	}
-	a, err := actionlib.FromProtoAction(&pa)
-	if err != nil {
-		http.Error(w, fmt.Sprintf("invalid request: %v", err), http.StatusBadRequest)
-		log.Printf("Error: %v", err)
-		return
-	}
-	// fwd to controller
-
-	aid, err := action.Insert(m.tier, a)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		log.Printf("Error: %v", err)
-		return
-	}
-	// write the actionID back
-	fmt.Fprintf(w, fmt.Sprintf("%d", aid))
+func NewResponseWriter(w http.ResponseWriter) *responseWriter {
+	return &responseWriter{w, http.StatusOK}
 }
 
-func (m holder) Fetch(w http.ResponseWriter, req *http.Request) {
-	var protoRequest actionlib.ProtoActionFetchRequest
-	if err := parse(req, &protoRequest); err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		log.Printf("Error: %v", err)
-		return
-	}
-	request := actionlib.FromProtoActionFetchRequest(&protoRequest)
-	// send to controller
-	actions, err := action.Fetch(m.tier, request)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		log.Printf("Error: %v", err)
-		return
-	}
-	actionList, err := actionlib.ToProtoActionList(actions)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		log.Printf("Error: %v", err)
-		return
-	}
-	ser, err := proto.Marshal(actionList)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		log.Printf("Error: %v", err)
-		return
-	}
-	w.Write(ser)
-}
-
-func (m holder) GetProfile(w http.ResponseWriter, req *http.Request) {
-	var protoReq profilelib.ProtoProfileItem
-	if err := parse(req, &protoReq); err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		log.Printf("Error: %v", err)
-		return
-	}
-	request, err := profilelib.FromProtoProfileItem(&protoReq)
-	if err != nil {
-		http.Error(w, fmt.Sprintf("invalid request: %v", err), http.StatusBadRequest)
-		log.Printf("Error: %v", err)
-		return
-	}
-	// send to controller
-	val, err := profile2.Get(m.tier, request)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		log.Printf("Error: %v", err)
-		return
-	}
-	if val == nil {
-		// no error but no value to return either, so we just write nothing and client knows that
-		// empty response means no value
-		fmt.Fprintf(w, string(""))
-		return
-	}
-	// now convert value to proto and serialize it
-	pval, err := value.ToProtoValue(val)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		log.Printf("Error: %v", err)
-		return
-	}
-	valueSer, err := proto.Marshal(&pval)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		log.Printf("Error: %v", err)
-		return
-	}
-	w.Write(valueSer)
-}
-
-// TODO: add some locking etc to ensure that if two requests try to modify
-// the same key/value, we don't Run into a race condition
-func (m holder) SetProfile(w http.ResponseWriter, req *http.Request) {
-	var protoReq profilelib.ProtoProfileItem
-	if err := parse(req, &protoReq); err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		log.Printf("Error: %v", err)
-		return
-	}
-	request, err := profilelib.FromProtoProfileItem(&protoReq)
-	if err != nil {
-		http.Error(w, fmt.Sprintf("invalid request: %v", err), http.StatusBadRequest)
-		log.Printf("Error: %v", err)
-		return
-	}
-	// send to controller
-	if err = profile2.Set(m.tier, request); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		log.Printf("Error: %v", err)
-		return
-	}
-}
-
-func (m holder) GetProfileMulti(w http.ResponseWriter, req *http.Request) {
-	var protoRequest profilelib.ProtoProfileFetchRequest
-	if err := parse(req, &protoRequest); err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		log.Printf("Error: %v", err)
-		return
-	}
-	request := profilelib.FromProtoProfileFetchRequest(&protoRequest)
-	// send to controller
-	profiles, err := profile2.GetMulti(m.tier, request)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		log.Printf("Error: %v", err)
-		return
-	}
-	profileList, err := profilelib.ToProtoProfileList(profiles)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		log.Printf("Error: %v", err)
-		return
-	}
-	ser, err := proto.Marshal(profileList)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		log.Printf("Error: %v", err)
-		return
-	}
-	w.Write(ser)
-}
-
-func (m holder) Query(w http.ResponseWriter, req *http.Request) {
-	var pbq query.ProtoBoundQuery
-	if err := parse(req, &pbq); err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		log.Printf("Error: %v", err)
-		return
-	}
-	tree, dict, err := query.FromProtoBoundQuery(&pbq)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		log.Printf("Error: %v", err)
-		return
-	}
-	// execute the tree
-	i := interpreter.NewInterpreter(bootarg.Create(m.tier))
-	i.SetQueryArgs(dict)
-	ret, err := tree.AcceptValue(i)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		log.Printf("Error: %v", err)
-		return
-	}
-	pval, err := value.ToProtoValue(ret)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		log.Printf("Error: %v", err)
-		return
-	}
-	ser, err := proto.Marshal(&pval)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		log.Printf("Error: %v", err)
-		return
-	}
-	w.Write(ser)
-}
-
-func (m holder) StoreAggregate(w http.ResponseWriter, req *http.Request) {
-	var protoAgg aggregate.ProtoAggregate
-	if err := parse(req, &protoAgg); err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		log.Printf("Error: %v", err)
-		return
-	}
-	agg, err := aggregate.FromProtoAggregate(protoAgg)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		log.Printf("Error: %v", err)
-		return
-	}
-	// call controller
-	if err = aggregate2.Store(m.tier, agg); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		log.Printf("Error: %v", err)
-		return
-	}
-}
-
-func (m holder) RetrieveAggregate(w http.ResponseWriter, req *http.Request) {
-	var protoReq aggregate.AggRequest
-	if err := parse(req, &protoReq); err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		log.Printf("Error: %v", err)
-		return
-	}
-	// call controller
-	ret, err := aggregate2.Retrieve(m.tier, ftypes.AggName(protoReq.AggName))
-	if err == aggregate.ErrNotFound {
-		// we don't throw an error, just return empty response
-		return
-	} else if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		log.Printf("Error: %v", err)
-		return
-	}
-	// to send ret back, we will convert it to proto, marshal it and then write it back
-	protoRet, err := aggregate.ToProtoAggregate(ret)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		log.Printf("Error: %v", err)
-		return
-	}
-	ser, err := proto.Marshal(&protoRet)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		log.Printf("Error: %v", err)
-		return
-	}
-	w.Write(ser)
-}
-
-func (m holder) DeactivateAggregate(w http.ResponseWriter, req *http.Request) {
-	var protoReq aggregate.AggRequest
-	if err := parse(req, &protoReq); err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		log.Printf("Error: %v", err)
-		return
-	}
-	err := aggregate2.Deactivate(m.tier, ftypes.AggName(protoReq.AggName))
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		log.Printf("Error: %v", err)
-		return
-	}
-}
-
-func (m holder) AggregateValue(w http.ResponseWriter, req *http.Request) {
-	var protoReq aggregate.ProtoGetAggValueRequest
-	if err := parse(req, &protoReq); err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		log.Printf("Error: %v", err)
-		return
-	}
-	getAggValue, err := aggregate.FromProtoGetAggValueRequest(&protoReq)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		log.Printf("Error: %v", err)
-		return
-	}
-	// call controller
-	ret, err := aggregate2.Value(m.tier, getAggValue.AggName, getAggValue.Key)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		log.Printf("Error: %v", err)
-		return
-	}
-	// marshal ret and then write it back
-	ser, err := value.Marshal(ret)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		log.Printf("Error: %v", err)
-		return
-	}
-	w.Write(ser)
-}
-
-func setHandlers(controller holder, mux *http.ServeMux) {
-	mux.HandleFunc("/fetch", controller.Fetch)
-	mux.HandleFunc("/get", controller.GetProfile)
-	mux.HandleFunc("/set", controller.SetProfile)
-	mux.HandleFunc("/log", controller.Log)
-	mux.HandleFunc("/get_multi", controller.GetProfileMulti)
-	mux.HandleFunc("/query", controller.Query)
-	mux.HandleFunc("/store_aggregate", controller.StoreAggregate)
-	mux.HandleFunc("/retrieve_aggregate", controller.RetrieveAggregate)
-	mux.HandleFunc("/deactivate_aggregate", controller.DeactivateAggregate)
-	mux.HandleFunc("/aggregate_value", controller.AggregateValue)
+// middleware to "log" response codes, latency histogram and count total number
+// of requests.
+func prometheusMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		route := mux.CurrentRoute(r)
+		path, _ := route.GetPathTemplate()
+		timer := prometheus.NewTimer(httpDuration.WithLabelValues(path))
+		rw := NewResponseWriter(w)
+		next.ServeHTTP(rw, r)
+		statusCode := rw.statusCode
+		timer.ObserveDuration()
+		responseStatus.WithLabelValues(path, strconv.Itoa(statusCode)).Inc()
+		totalRequests.WithLabelValues(path).Inc()
+	})
 }
 
 func main() {
-	// spin up http service
-	server := &http.Server{Addr: fmt.Sprintf(":%d", httplib.PORT)}
-	mux := http.NewServeMux()
-
+	// Parse flags / environment variables.
 	var flags struct {
 		tier.TierArgs
+		common.PrometheusArgs
 	}
-	// Parse flags / environment variables.
 	arg.MustParse(&flags)
+
+	router := mux.NewRouter()
+
+	// Start a prometheus server and add a middleware to the main router to capture
+	// standard metrics.
+	common.StartPromMetricsServer(flags.MetricsPort)
+	router.Use(prometheusMiddleware)
+
 	tier, err := tier.CreateFromArgs(&flags.TierArgs)
 	if err != nil {
 		panic(fmt.Sprintf("Failed to setup tier connectors: %v", err))
 
 	}
-	controller := holder{tier}
-	setHandlers(controller, mux)
-	server.Handler = mux
-	log.Printf("starting http service on %s...", server.Addr)
-	log.Println("server is ready...")
-	if err := server.ListenAndServe(); err != http.ErrServerClosed {
+	controller := server{tier}
+	controller.setHandlers(router)
+
+	// spin up http service
+	addr := fmt.Sprintf("localhost:%d", httplib.PORT)
+	log.Printf("starting http service on %s...", addr)
+	if err := http.ListenAndServe(addr, router); err != http.ErrServerClosed {
 		// unexpected error. port in use?
 		log.Fatalf("ListenAndServe(): %v", err)
 	}
