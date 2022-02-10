@@ -36,6 +36,7 @@ var _ resource.Resource = Connection{}
 
 type SQLiteConfig struct {
 	dbname string
+	schema Schema
 }
 
 func (conf SQLiteConfig) Materialize(tierID ftypes.TierID) (resource.Resource, error) {
@@ -57,7 +58,7 @@ func (conf SQLiteConfig) Materialize(tierID ftypes.TierID) (resource.Resource, e
 		return nil, err
 	}
 	conn := Connection{config: conf, DB: DB, tierID: tierID}
-	if err = SyncSchema(conn); err != nil {
+	if err = syncSchema(conn, conf.schema); err != nil {
 		return nil, err
 	}
 	return conn, nil
@@ -74,6 +75,7 @@ type MySQLConfig struct {
 	Username string
 	Password string
 	Host     string
+	Schema   Schema
 }
 
 var _ resource.Config = MySQLConfig{}
@@ -90,7 +92,7 @@ func (conf MySQLConfig) Materialize(tierID ftypes.TierID) (resource.Resource, er
 	}
 
 	conn := Connection{config: conf, DB: DB, tierID: tierID}
-	if err := SyncSchema(conn); err != nil {
+	if err := syncSchema(conn, conf.Schema); err != nil {
 		return nil, err
 	}
 	return conn, nil

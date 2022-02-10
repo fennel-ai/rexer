@@ -82,6 +82,7 @@ func CreateFromArgs(args *TierArgs) (tier Tier, err error) {
 		DBname:   args.MysqlDB,
 		Username: args.MysqlUsername,
 		Password: args.MysqlPassword,
+		Schema:   Schema,
 	}
 	sqlConn, err := mysqlConfig.Materialize(tierID)
 	if err != nil {

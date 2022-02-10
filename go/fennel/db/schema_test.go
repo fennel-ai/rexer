@@ -58,6 +58,11 @@ func TestSyncSchema(t *testing.T) {
 		Username: "admin",
 		Password: "foundationdb",
 		Host:     "database-nikhil-test.cluster-c00d7gkxaysk.us-west-2.rds.amazonaws.com",
+		Schema: Schema{
+			1: `CREATE TABLE IF NOT EXISTS schema_test (
+			zkey INT NOT NULL,
+			value INT NOT NULL
+	   );`},
 	}
 	// create the DB before materializing a connection
 	err := create(tierID, config.DBname, config.Username, config.Password, config.Host)
@@ -79,15 +84,15 @@ func TestSyncSchema(t *testing.T) {
 	assert.Equal(t, uint32(0), version)
 
 	// now we slowly apply all the schemas and it should work without any errors
-	err = SyncSchema(db)
+	err = syncSchema(db, config.Schema)
 	assert.NoError(t, err)
 
-	// version should at least be 2 because our schema has at least two statements
+	// version should be at one now
 	version, err = schemaVersion(db)
 	assert.NoError(t, err)
-	assert.True(t, version >= 2)
+	assert.True(t, version == 1)
 
-	// and we should be able to do queries against schema_test table (which is our second table for testing)
+	// and we should be able to do queries against schema_test table
 	_, err = db.Query("insert into schema_test values (?, ?);", 1, 2)
 	assert.NoError(t, err)
 	_, err = db.Query("insert into schema_test values (?, ?);", 3, 4)
