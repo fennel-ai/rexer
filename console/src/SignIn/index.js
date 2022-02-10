@@ -1,6 +1,7 @@
-import { useState } from "react";
+import React, { useState } from "react";
 import { Auth } from "aws-amplify";
 import { NavLink, useNavigate } from "react-router-dom";
+import { loadAuthPage } from "../AuthFunctions";
 import { styles } from "../styles";
 
 export const SignIn = () => {
@@ -8,6 +9,10 @@ export const SignIn = () => {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const navigate = useNavigate();
+
+  React.useEffect(() => {
+    loadAuthPage(navigate);
+  }, []);
 
   async function signIn() {
     try {

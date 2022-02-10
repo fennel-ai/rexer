@@ -1,13 +1,19 @@
+import * as React from "react";
 import { useState } from "react";
 import { Auth } from "aws-amplify";
 import { NavLink, useNavigate } from "react-router-dom";
 import { styles } from "../styles";
+import { loadAuthPage } from "../AuthFunctions";
 
 export const SignUp = () => {
   const [password, setPassword] = useState("");
   const [email, setEmail] = useState("");
   const [error, setError] = useState("");
   const navigate = useNavigate();
+
+  React.useEffect(() => {
+    loadAuthPage(navigate);
+  }, []);
 
   async function signUp() {
     try {
