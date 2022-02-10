@@ -59,7 +59,11 @@ const Console = () => {
 
   React.useEffect(() => {
     loadLoggedInPage(setUsername, navigate);
-    API.get("consoleBff", `${API_ENDPOINT}/metadata`, { username })
+    API.get("consoleBff", `${API_ENDPOINT}/metadata`, {
+      queryStringParameters: {
+        username,
+      },
+    })
       .then(setMetadata)
       .catch((error) => {
         console.log("Failed to load metadata.", error);
@@ -72,7 +76,9 @@ const Console = () => {
     const query = getQuery(form);
     query["username"] = username;
 
-    API.get("consoleBff", API_ENDPOINT, query)
+    API.get("consoleBff", API_ENDPOINT, {
+      queryStringParameters: query,
+    })
       .then((response) => setResults(response.data))
       .catch((error) => console.log(error));
 
