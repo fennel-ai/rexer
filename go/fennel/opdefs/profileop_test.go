@@ -14,6 +14,38 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+func TestDefault(t *testing.T) {
+	tier, err := test.Tier()
+	assert.NoError(t, err)
+	defer test.Teardown(tier)
+	query := ast.OpCall{
+		Operand:   ast.Var{Name: "table"},
+		Namespace: "std",
+		Name:      "addProfileColumn",
+		Kwargs: ast.Dict{Values: map[string]ast.Ast{
+			"otype":   ast.MakeString("user"),
+			"oid":     ast.MakeInt(123),
+			"key":     ast.MakeString("some key"),
+			"name":    ast.MakeString("some name"),
+			"default": ast.MakeDouble(3.4),
+		}},
+	}
+	i := interpreter.NewInterpreter(bootarg.Create(tier))
+	table := value.NewTable()
+	err = table.Append(value.Dict{})
+	assert.NoError(t, err)
+	err = table.Append(value.Dict{})
+	assert.NoError(t, err)
+	assert.NoError(t, i.SetVar("table", table))
+	out, err := query.AcceptValue(i)
+	assert.NoError(t, err)
+	outtable := out.(value.Table)
+	rows := outtable.Pull()
+	assert.Len(t, rows, 2)
+	assert.Equal(t, value.Dict{"some name": value.Double(3.4)}, rows[0])
+	assert.Equal(t, value.Dict{"some name": value.Double(3.4)}, rows[1])
+}
+
 func TestProfileOp(t *testing.T) {
 	tier, err := test.Tier()
 	assert.NoError(t, err)

@@ -39,9 +39,15 @@ func (p *profileOp) Apply(staticKwargs value.Dict, in operators.InputIter, out *
 			Key:     string(kwargs["key"].(value.String)),
 			Version: uint64(kwargs["version"].(value.Int)),
 		}
-		if row[colname], err = profile.Get(p.tier, req); err != nil {
+		val, err := profile.Get(p.tier, req)
+		if err != nil {
 			return err
+		} else if val == nil {
+			row[colname] = staticKwargs["default"]
+		} else {
+			row[colname] = val
 		}
+
 		if err = out.Append(row); err != nil {
 			return err
 		}
@@ -55,7 +61,8 @@ func (p *profileOp) Signature() *operators.Signature {
 		Param("oid", value.Types.Int, false, false, value.Nil).
 		Param("key", value.Types.String, false, false, value.Nil).
 		Param("version", value.Types.Int, false, true, value.Int(0)).
-		Param("name", value.Types.String, true, false, value.Nil)
+		Param("name", value.Types.String, true, false, value.Nil).
+		Param("default", value.Types.Any, true, true, value.Nil)
 }
 
 var _ operators.Operator = &profileOp{}
