@@ -2,17 +2,13 @@ package db
 
 import (
 	"database/sql"
-	"fmt"
-	"strings"
 )
 
 var defs map[uint32]string
-var tablenames []string
 
 func init() {
 	// if you want to make any change to schema (create table, drop table, alter table etc.)
 	// add a versioned query here. Numbers should be increasing with no gaps and no repetitions
-	// Also, if  you create a create table query, also add the table name to "tablenames" list
 	defs = map[uint32]string{
 		1: `CREATE TABLE IF NOT EXISTS schema_version (
 				version INT NOT NULL
@@ -70,33 +66,6 @@ func init() {
 				PRIMARY KEY(name)
 			);`,
 	}
-	tablenames = []string{
-		"schema_version",
-		"schema_test",
-		"actionlog",
-		"profile",
-		"counter_bucket",
-		"query_ast",
-		"aggregate_config",
-		"checkpoint",
-	}
-
-	if err := verifyDefs(); err != nil {
-		panic(err)
-	}
-}
-
-func verifyDefs() error {
-	num_create_tables := 0
-	for _, query := range defs {
-		if strings.Contains(strings.ToLower(query), "create table") {
-			num_create_tables += 1
-		}
-	}
-	if num_create_tables != len(tablenames) {
-		return fmt.Errorf("number of tables & create table queries not same in number - did you forget to keep them in sync?")
-	}
-	return nil
 }
 
 func schemaVersion(db Connection) (uint32, error) {
