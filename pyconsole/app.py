@@ -50,8 +50,8 @@ def _validate_profile_get(otype, oid, key, version):
         errors.append('otype is not a valid string')
     elif len(otype) == 0:
         errors.append('otype is not a non-empty string')
-    elif len(otype) > 256:
-        errors.append('otype is longer than 256 characters')
+    elif len(otype) > 255:
+        errors.append('otype is longer than 255 characters')
 
     if oid is None:
         errors.append('oid is not specified')
@@ -63,8 +63,8 @@ def _validate_profile_get(otype, oid, key, version):
             errors.append('key is provided but is not a valid string')
         elif len(key) == 0:
             errors.append('key is provided but is not a non-empty string')
-        elif len(key) > 256:
-            errors.append('key is provided but is longer than 256 characters')
+        elif len(key) > 255:
+            errors.append('key is provided but is longer than 255 characters')
     if version is not None and not is_uint(version, 64):
         errors.append('version is provided but is not a valid 64-bit unsigned integer')
 
@@ -131,18 +131,18 @@ def _validate_action_get(actor_id, actor_type, target_id, target_type, action_ty
     if (actor_type is not None):
         if not is_str(actor_type):
             errors.append('actor_type is provided but is not a valid non-empty string')
-        elif len(actor_type) > 256:
-            errors.append('actor_type is provided but is longer than 256 chars')
+        elif len(actor_type) > 255:
+            errors.append('actor_type is provided but is longer than 255 chars')
     if (target_type is not None):
         if not is_str(target_type):
             errors.append('target_type is provided but is not a valid non-empty string')
-        elif len(target_type) > 256:
-            errors.append('target_type is provided but is longer than 256 chars')
+        elif len(target_type) > 255:
+            errors.append('target_type is provided but is longer than 255 chars')
     if (action_type is not None):
         if not is_str(action_type):
             errors.append('action_type is provided but is not a valid non-empty string')
-        elif len(action_type) > 256:
-            errors.append('action_type is provided but is longer than 256 chars')
+        elif len(action_type) > 255:
+            errors.append('action_type is provided but is longer than 255 chars')
 
     return errors
 
