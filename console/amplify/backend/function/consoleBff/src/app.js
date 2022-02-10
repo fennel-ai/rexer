@@ -19,10 +19,10 @@ app.use(awsServerlessExpressMiddleware.eventContext());
 
 // Enable CORS for all methods
 var corsOptions = {
-  origin: 'https://app.fennel.ai',
-  optionSuccessStatus: 200 // some legacy browsers (IE11, various SmartTVs) choke on 204
-}
-app.use(cors(corsOptions))
+  origin: "https://app.fennel.ai",
+  optionSuccessStatus: 200, // some legacy browsers (IE11, various SmartTVs) choke on 204
+};
+app.use(cors(corsOptions));
 
 const domainToURL = {
   "trell.in":
@@ -49,17 +49,17 @@ const actionMetadata = {
 
 const profileMetadata = {
   oTypes: [
-    { val: 'USER', text: 'USER' },
-    { val: 'VIDEO', text: 'VIDEO' },
+    { val: "USER", text: "USER" },
+    { val: "VIDEO", text: "VIDEO" },
   ],
   latestVersion: 1,
 };
 
 const mapUserToDomain = (req) => {
-  if (!req.query || !req.query.query) {
+  if (!req.query) {
     throw new Error("No query.");
   }
-  const username = JSON.parse(req.query.query).username;
+  const username = req.query.username;
   if (!username) {
     throw new Error("Username / email not passed in.");
   }
