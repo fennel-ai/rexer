@@ -35,11 +35,11 @@ func (c cachedProvider) set(tier tier.Tier, otype ftypes.OType, oid uint64, key 
 		return err
 	}
 	// ground truth was successful so now we update the caches
-	k1 := makeKey(tier, otype, oid, key, version)
+	k1 := makeKey(otype, oid, key, version)
 	err1 := tier.Cache.Delete(context.TODO(), k1)
 
 	// whenever we make a write, also invalidate "latest" version
-	k2 := makeKey(tier, otype, oid, key, 0)
+	k2 := makeKey(otype, oid, key, 0)
 	err2 := tier.Cache.Delete(context.TODO(), k2)
 	var ret error = nil
 	if err1 != nil && err1 != tier.Cache.Nil() {
@@ -56,7 +56,7 @@ func (c cachedProvider) set(tier tier.Tier, otype ftypes.OType, oid uint64, key 
 }
 
 func (c cachedProvider) get(tier tier.Tier, otype ftypes.OType, oid uint64, key string, version uint64) ([]byte, error) {
-	k := makeKey(tier, otype, oid, key, version)
+	k := makeKey(otype, oid, key, version)
 	v, err := tier.Cache.Get(context.TODO(), k)
 	if err != nil {
 		v, err = c.base.get(tier, otype, oid, key, version)
@@ -83,7 +83,7 @@ func cacheName() string {
 	return "cache:profile"
 }
 
-func makeKey(tier tier.Tier, otype ftypes.OType, oid uint64, key string, version uint64) string {
-	prefix := fmt.Sprintf("%d:%s:%d", tier.ID, cacheName(), cacheVersion)
+func makeKey(otype ftypes.OType, oid uint64, key string, version uint64) string {
+	prefix := fmt.Sprintf("%s:%d", cacheName(), cacheVersion)
 	return fmt.Sprintf("%s:%s:%d:%s:%d", prefix, otype, oid, key, version)
 }
