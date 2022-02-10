@@ -93,11 +93,12 @@ class TestEndToEnd(unittest.TestCase):
 
         # Total views gained by a Trail on last 2 days for given city+gender+age_group
         q = Var('args').actions.apply(
-          Ops.std.filter(where=it.action_type == String('view'))).apply(
-          Ops.std.addProfileColumn(name=String('city'), otype=String('user'), oid=it.actor_id, key=String('city'))).apply(
-          Ops.std.addProfileColumn(name=String('gender'), otype=String('user'), oid=it.actor_id, key=String('gender'))).apply(
-          Ops.std.addProfileColumn(name=String('age_group'), otype=String('user'), oid=it.actor_id, key=String('age_group'))).apply(
-          Ops.std.addColumn(name=String('key'), value=List(it.target_id, it.city, it.gender, it.age_group)))
+          Ops.std.filter(where=it.action_type == String('view')),
+          Ops.std.addProfileColumn(name=String('city'), otype=String('user'), oid=it.actor_id, key=String('city')),
+          Ops.std.addProfileColumn(name=String('gender'), otype=String('user'), oid=it.actor_id, key=String('gender')),
+          Ops.std.addProfileColumn(name=String('age_group'), otype=String('user'), oid=it.actor_id, key=String('age_group')),
+          Ops.std.addColumn(name=String('key'), value=List(it.target_id, it.city, it.gender, it.age_group)),
+        )
 
         options = {'duration': 3600*24*2, 'aggregate_type': 'rolling_counter', }
         c.store_aggregate('trail_view_by_city_gender_agegroup_2days', q, options)
