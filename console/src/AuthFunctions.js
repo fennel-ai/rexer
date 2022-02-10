@@ -2,7 +2,8 @@ import { Auth } from "aws-amplify";
 
 export const loadLoggedInPage = async (setUsername, navigate) => {
   const user = await Auth.currentAuthenticatedUser();
-  if (user) setUsername(user.username);
+  if (user && user.attributes && user.attributes.email)
+    setUsername(user.attributes.email);
   else navigate("/");
 };
 
