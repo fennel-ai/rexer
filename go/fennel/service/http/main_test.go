@@ -268,6 +268,14 @@ func TestStoreRetrieveDeactivateAggregate(t *testing.T) {
 	_, err = c.RetrieveAggregate(agg.Name)
 	assert.Error(t, err)
 	assert.ErrorIs(t, err, aggregate.ErrNotFound)
+
+	// but can deactivate again without error
+	err = c.DeactivateAggregate(agg.Name)
+	assert.NoError(t, err)
+
+	// but cannot deactivate aggregate that does not exist
+	err = c.DeactivateAggregate("nonexistent aggregate")
+	assert.Error(t, err)
 }
 
 func checkGetSet(t *testing.T, c *client.Client, get bool, otype string, oid uint64, version uint64,

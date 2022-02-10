@@ -35,6 +35,7 @@ func TestRetrieveStore(t *testing.T) {
 		QuerySer:  querySer,
 		Timestamp: 1,
 		OptionSer: optionSer,
+		Active:    true,
 	}
 
 	// initially we can't retrieve
@@ -76,6 +77,7 @@ func TestRetrieveAll(t *testing.T) {
 	agg := aggregate.AggregateSer{
 		Timestamp: 1,
 		OptionSer: optionSer,
+		Active:    true,
 	}
 	expected := make([]aggregate.AggregateSer, 0)
 	for i := 0; i < 5; i++ {

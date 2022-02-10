@@ -24,8 +24,8 @@ func Store(tier tier.Tier, agg aggregate.Aggregate) error {
 		return err
 	} else if err == nil {
 		// if already present, check if query and options are the same
-		// if they are different, return error
 		// if they are the same, do nothing
+		// if they are different, return error
 		// TODO: maybe not use proto.Equal here
 		if agg.Query.Equals(agg2.Query) && proto.Equal(&agg.Options, &agg2.Options) {
 			return nil
@@ -78,6 +78,22 @@ func RetrieveAll(tier tier.Tier) ([]aggregate.Aggregate, error) {
 }
 
 func Deactivate(tier tier.Tier, aggname ftypes.AggName) error {
-	err := modelAgg.Deactivate(tier, aggname)
-	return err
+	if len(aggname) == 0 {
+		return fmt.Errorf("aggregate name can not be of length zero")
+	}
+	// Check if agg already exists in db
+	aggser, err := modelAgg.RetrieveNoFilter(tier, aggname)
+	// If it is absent, it returns aggregate.ErrNotFound
+	// If any other error, return it as well
+	if err != nil {
+		return err
+	}
+	// If it is present and inactive, do nothing
+	// otherwise, deactivate
+	if !aggser.Active {
+		return nil
+	} else {
+		err := modelAgg.Deactivate(tier, aggname)
+		return err
+	}
 }

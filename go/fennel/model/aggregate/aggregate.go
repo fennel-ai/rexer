@@ -19,7 +19,7 @@ func Store(tier tier.Tier, name ftypes.AggName, querySer []byte, ts ftypes.Times
 
 func Retrieve(tier tier.Tier, name ftypes.AggName) (aggregate.AggregateSer, error) {
 	var ret aggregate.AggregateSer
-	err := tier.DB.Get(&ret, `SELECT name, query_ser, timestamp, options_ser FROM aggregate_config WHERE name = ? AND active = TRUE`, name)
+	err := tier.DB.Get(&ret, `SELECT * FROM aggregate_config WHERE name = ? AND active = TRUE`, name)
 	if err != nil && err == sql.ErrNoRows {
 		return aggregate.AggregateSer{}, aggregate.ErrNotFound
 	} else if err != nil {
@@ -30,9 +30,20 @@ func Retrieve(tier tier.Tier, name ftypes.AggName) (aggregate.AggregateSer, erro
 
 func RetrieveAll(tier tier.Tier) ([]aggregate.AggregateSer, error) {
 	ret := make([]aggregate.AggregateSer, 0)
-	err := tier.DB.Select(&ret, `SELECT name, query_ser, timestamp, options_ser FROM aggregate_config WHERE active = TRUE`)
+	err := tier.DB.Select(&ret, `SELECT * FROM aggregate_config WHERE active = TRUE`)
 	if err != nil {
 		return nil, err
+	}
+	return ret, nil
+}
+
+func RetrieveNoFilter(tier tier.Tier, name ftypes.AggName) (aggregate.AggregateSer, error) {
+	var ret aggregate.AggregateSer
+	err := tier.DB.Get(&ret, `SELECT * FROM aggregate_config WHERE name = ?`, name)
+	if err != nil && err == sql.ErrNoRows {
+		return aggregate.AggregateSer{}, aggregate.ErrNotFound
+	} else if err != nil {
+		return aggregate.AggregateSer{}, err
 	}
 	return ret, nil
 }
