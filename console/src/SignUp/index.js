@@ -4,6 +4,7 @@ import { Auth } from "aws-amplify";
 import { NavLink, useNavigate } from "react-router-dom";
 import { styles } from "../styles";
 import { loadAuthPage } from "../AuthFunctions";
+import { validateEmail } from "./helpers";
 
 export const SignUp = () => {
   const [password, setPassword] = useState("");
@@ -17,6 +18,7 @@ export const SignUp = () => {
 
   async function signUp() {
     try {
+      validateEmail(email);
       await Auth.signUp({
         username: email,
         password,
