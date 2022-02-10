@@ -43,7 +43,7 @@ func (D dbProvider) set(tier tier.Tier, otype ftypes.OType, oid uint64, key stri
 }
 
 func (D dbProvider) get(tier tier.Tier, otype ftypes.OType, oid uint64, key string, version uint64) ([]byte, error) {
-	var value [][]byte
+	var value [][]byte = nil
 	var err error
 	if version > 0 {
 		err = tier.DB.Select(&value, `

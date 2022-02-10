@@ -23,6 +23,9 @@ func testProviderBasic(t *testing.T, p provider) {
 	profile1 := profile.NewProfileItemSer("1", 1232, "summary", 1, expected)
 	checkGet(t, p, tier, profile1, []byte(nil))
 
+	// and repeating this should be same (vs any cache issues)
+	checkGet(t, p, tier, profile1, []byte(nil))
+
 	// now set the value
 	checkSet(t, p, tier, profile1, expected)
 

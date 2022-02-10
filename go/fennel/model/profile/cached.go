@@ -58,9 +58,13 @@ func (c cachedProvider) set(tier tier.Tier, otype ftypes.OType, oid uint64, key 
 func (c cachedProvider) get(tier tier.Tier, otype ftypes.OType, oid uint64, key string, version uint64) ([]byte, error) {
 	k := makeKey(otype, oid, key, version)
 	v, err := tier.Cache.Get(context.TODO(), k)
-	if err != nil {
+	if err == tier.Cache.Nil() {
 		v, err = c.base.get(tier, otype, oid, key, version)
-		if err == nil {
+		v2 := v.([]byte)
+		// we only want to set in cache when ground truth has non-nil result
+		// but v is an interface, so we first have to cast it in byte[] and then check
+		// for nil
+		if err == nil && v2 != nil {
 			// if we could not find in cache but can find in ground truth, set in cache
 			err = tier.Cache.Set(context.TODO(), k, v, 0)
 		}
