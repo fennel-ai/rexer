@@ -9,6 +9,8 @@ import (
 	libaggregate "fennel/lib/aggregate"
 	"fennel/tier"
 
+	// we need this to ensure that all operators are built with aggregator
+	_ "fennel/opdefs"
 	"github.com/alexflint/go-arg"
 )
 
@@ -32,17 +34,16 @@ func processOnce(tier tier.Tier) {
 }
 
 func main() {
-	var flags struct {
-		tier.TierArgs
-	}
+	var flags tier.TierArgs
 	// Parse flags / environment variables.
 	arg.MustParse(&flags)
-	tier, err := tier.CreateFromArgs(&flags.TierArgs)
+	tier, err := tier.CreateFromArgs(&flags)
 	if err != nil {
 		panic(err)
 	}
+	log.Println("server is ready...")
 	for {
 		processOnce(tier)
-		time.Sleep(time.Minute)
+		time.Sleep(10 * time.Second)
 	}
 }

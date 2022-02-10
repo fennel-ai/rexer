@@ -18,6 +18,7 @@ import (
 	profilelib "fennel/lib/profile"
 	"fennel/lib/query"
 	"fennel/lib/value"
+	_ "fennel/opdefs"
 	"fennel/tier"
 
 	"github.com/alexflint/go-arg"
@@ -356,6 +357,7 @@ func main() {
 	setHandlers(controller, mux)
 	server.Handler = mux
 	log.Printf("starting http service on %s...", server.Addr)
+	log.Println("server is ready...")
 	if err := server.ListenAndServe(); err != http.ErrServerClosed {
 		// unexpected error. port in use?
 		log.Fatalf("ListenAndServe(): %v", err)

@@ -11,6 +11,7 @@ import (
 	"fennel/lib/ftypes"
 	"fennel/lib/value"
 	"fennel/model/checkpoint"
+	_ "fennel/opdefs"
 	"fennel/tier"
 	"fmt"
 )
@@ -31,6 +32,9 @@ func Update(tier tier.Tier, agg aggregate.Aggregate) error {
 	actions, err := action.Fetch(tier, libaction.ActionFetchRequest{MinActionID: point})
 	if err != nil {
 		return err
+	}
+	if len(actions) == 0 {
+		return nil
 	}
 	table, err := transformActions(tier, actions, agg.Query)
 	if err != nil {
