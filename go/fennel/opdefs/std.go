@@ -1,14 +1,14 @@
-package operators
+package opdefs
 
 import (
+	"fennel/engine/operators"
 	"fennel/lib/value"
 )
 
 func init() {
-	registry = make(map[string]map[string]Operator)
-	ops := []Operator{FilterOperator{}, TakeOperator{}, AddColumnOperator{}}
+	ops := []operators.Operator{FilterOperator{}, TakeOperator{}, AddColumnOperator{}}
 	for _, op := range ops {
-		if err := Register(op); err != nil {
+		if err := operators.Register(op); err != nil {
 			panic(err)
 		}
 	}
@@ -20,12 +20,12 @@ func (f FilterOperator) Init(_ value.Dict, _ map[string]interface{}) error {
 	return nil
 }
 
-func (f FilterOperator) Signature() *Signature {
-	return NewSignature(f, "std", "filter").
+func (f FilterOperator) Signature() *operators.Signature {
+	return operators.NewSignature(f, "std", "filter").
 		Param("where", value.Types.Bool, false, false, value.Bool(false))
 }
 
-func (f FilterOperator) Apply(_ value.Dict, in InputIter, out *value.Table) error {
+func (f FilterOperator) Apply(_ value.Dict, in operators.InputIter, out *value.Table) error {
 	for in.HasMore() {
 		row, contextKwargs, err := in.Next()
 		if err != nil {
@@ -45,12 +45,12 @@ func (f TakeOperator) Init(_ value.Dict, _ map[string]interface{}) error {
 	return nil
 }
 
-func (f TakeOperator) Signature() *Signature {
-	return NewSignature(f, "std", "take").
+func (f TakeOperator) Signature() *operators.Signature {
+	return operators.NewSignature(f, "std", "take").
 		Param("limit", value.Types.Int, true, false, value.Nil)
 }
 
-func (f TakeOperator) Apply(staticKwargs value.Dict, in InputIter, out *value.Table) error {
+func (f TakeOperator) Apply(staticKwargs value.Dict, in operators.InputIter, out *value.Table) error {
 	limit := staticKwargs["limit"].(value.Int)
 	taken := 0
 	for in.HasMore() && taken < int(limit) {
@@ -66,19 +66,19 @@ func (f TakeOperator) Apply(staticKwargs value.Dict, in InputIter, out *value.Ta
 
 type AddColumnOperator struct{}
 
-var _ Operator = AddColumnOperator{}
+var _ operators.Operator = AddColumnOperator{}
 
 func (op AddColumnOperator) Init(_ value.Dict, _ map[string]interface{}) error {
 	return nil
 }
 
-func (op AddColumnOperator) Signature() *Signature {
-	return NewSignature(op, "std", "addColumn").
+func (op AddColumnOperator) Signature() *operators.Signature {
+	return operators.NewSignature(op, "std", "addColumn").
 		Param("name", value.Types.String, true, false, value.Nil).
 		Param("value", value.Types.Any, false, false, value.Nil)
 }
 
-func (op AddColumnOperator) Apply(staticKwargs value.Dict, in InputIter, out *value.Table) error {
+func (op AddColumnOperator) Apply(staticKwargs value.Dict, in operators.InputIter, out *value.Table) error {
 	name := string(staticKwargs["name"].(value.String))
 	for in.HasMore() {
 		row, contextKwargs, err := in.Next()

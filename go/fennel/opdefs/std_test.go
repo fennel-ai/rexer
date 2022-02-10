@@ -1,6 +1,7 @@
-package operators
+package opdefs
 
 import (
+	"fennel/engine/operators"
 	"fennel/lib/utils"
 	"fennel/lib/value"
 	"github.com/stretchr/testify/assert"
@@ -30,7 +31,7 @@ func getTable() value.Table {
 	return table
 }
 
-func testValid(t *testing.T, op Operator, staticKwargs value.Dict, intable value.Table, contextKwargTable value.Table, expected value.Table) {
+func testValid(t *testing.T, op operators.Operator, staticKwargs value.Dict, intable value.Table, contextKwargTable value.Table, expected value.Table) {
 	outtable := value.NewTable()
 	zt := utils.NewZipTable()
 	for i, in := range intable.Pull() {
@@ -42,17 +43,17 @@ func testValid(t *testing.T, op Operator, staticKwargs value.Dict, intable value
 }
 
 func TestFilterOperator_Apply(t *testing.T) {
-	op, err := Locate("std", "filter")
+	op, err := operators.Locate("std", "filter")
 	assert.NoError(t, err)
 
 	intable := getTable()
 	// not passing "where" fails Validation
-	assert.Error(t, Typecheck(op, map[string]reflect.Type{}, map[string]reflect.Type{}, map[string]reflect.Type{}))
+	assert.Error(t, operators.Typecheck(op, map[string]reflect.Type{}, map[string]reflect.Type{}, map[string]reflect.Type{}))
 
 	// passing where true works
 	whereTrue := value.Dict{"where": value.Bool(true)}
 	whereFalse := value.Dict{"where": value.Bool(false)}
-	assert.NoError(t, Typecheck(op, map[string]reflect.Type{}, map[string]reflect.Type{}, whereTrue.Schema()))
+	assert.NoError(t, operators.Typecheck(op, map[string]reflect.Type{}, map[string]reflect.Type{}, whereTrue.Schema()))
 
 	contextKwargTable := value.NewTable()
 	contextKwargTable.Append(whereTrue)
@@ -72,15 +73,15 @@ func TestFilterOperator_Apply(t *testing.T) {
 }
 
 func TestTakeOperator_Apply(t *testing.T) {
-	op, err := Locate("std", "take")
+	op, err := operators.Locate("std", "take")
 	assert.NoError(t, err)
 
 	intable := getTable()
 	// not passing "limit" fails validation
-	assert.Error(t, Typecheck(op, map[string]reflect.Type{}, map[string]reflect.Type{}, map[string]reflect.Type{}))
+	assert.Error(t, operators.Typecheck(op, map[string]reflect.Type{}, map[string]reflect.Type{}, map[string]reflect.Type{}))
 
 	// and it fails validation even when limit is passed but isn't int
-	assert.Error(t, Typecheck(op, map[string]reflect.Type{"limit": value.Types.Bool}, map[string]reflect.Type{}, map[string]reflect.Type{}))
+	assert.Error(t, operators.Typecheck(op, map[string]reflect.Type{"limit": value.Types.Bool}, map[string]reflect.Type{}, map[string]reflect.Type{}))
 
 	// passing limit 2 works
 	expected := value.NewTable()

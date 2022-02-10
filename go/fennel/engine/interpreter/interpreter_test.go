@@ -4,6 +4,7 @@ import (
 	"fennel/engine/ast"
 	"fennel/engine/operators"
 	"fennel/lib/value"
+	_ "fennel/opdefs"
 	"fmt"
 	"github.com/stretchr/testify/assert"
 	"testing"
