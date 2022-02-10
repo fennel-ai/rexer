@@ -78,7 +78,7 @@ app.get("/actions/profiles", async (req, res) => {
     const result = await axios.get(apiUrl, {
       params: { key: "hello", otype: "type", oid: 1, version: 1 },
     });
-    res.json({ data: result.data });
+    res.json({ data: req.query });
   } catch (err) {
     res.json({ error: err.message });
   }
