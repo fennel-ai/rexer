@@ -93,18 +93,19 @@ func FromProtoAggregate(pagg ProtoAggregate) (Aggregate, error) {
 	return agg, nil
 }
 
-type AggregateSer struct {
-	Name      ftypes.AggName   `db:"name"`
-	QuerySer  []byte           `db:"query_ser"`
-	Timestamp ftypes.Timestamp `db:"timestamp"`
-	OptionSer []byte           `db:"options_ser"`
-}
-
 func (a Aggregate) Equals(b Aggregate) bool {
 	if a.Options.AggType != b.Options.AggType || a.Name != b.Name || a.Timestamp != b.Timestamp {
 		return false
 	}
 	return a.Query.Equals(b.Query) && proto.Equal(&a.Options, &b.Options)
+}
+
+type AggregateSer struct {
+	Name      ftypes.AggName   `db:"name"`
+	QuerySer  []byte           `db:"query_ser"`
+	Timestamp ftypes.Timestamp `db:"timestamp"`
+	OptionSer []byte           `db:"options_ser"`
+	Active    bool             `db:"active"`
 }
 
 func FromAggregateSer(ser AggregateSer) (Aggregate, error) {

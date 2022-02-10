@@ -96,6 +96,11 @@ func TestDeactivate(t *testing.T) {
 		},
 	}
 
+	// Deactivating when aggregate doesn't exist should throw an error
+	err = Deactivate(tier, "my_counter")
+	assert.Error(t, err)
+	assert.ErrorIs(t, err, aggregate.ErrNotFound)
+
 	err = Store(tier, agg)
 	assert.NoError(t, err)
 
@@ -110,4 +115,8 @@ func TestDeactivate(t *testing.T) {
 	_, err = Retrieve(tier, "my_counter")
 	assert.Error(t, err)
 	assert.ErrorIs(t, err, aggregate.ErrNotFound)
+
+	// And can deactivate multiple times
+	err = Deactivate(tier, "my_counter")
+	assert.NoError(t, err)
 }
