@@ -17,7 +17,7 @@ const (
 )
 
 func defaultDB(tierID ftypes.TierID) (db.Connection, error) {
-	if err := create(tierID, logical_test_dbname, username, password, host); err != nil {
+	if err := setupDB(tierID, logical_test_dbname, username, password, host); err != nil {
 		return db.Connection{}, err
 	}
 	config := db.MySQLConfig{
@@ -48,12 +48,12 @@ func drop(tierID ftypes.TierID, logicalname, username, password, host string) er
 	return err
 }
 
-func create(tierID ftypes.TierID, logicalname, username, password, host string) error {
+func setupDB(tierID ftypes.TierID, logicalname, username, password, host string) error {
 	dbname := resource.TieredName(tierID, logicalname)
 	connstr := fmt.Sprintf("%s:%s@tcp(%s)/?tls=true", username, password, host)
 	db, err := sqlx.Open("mysql", connstr)
 	if err != nil {
-		return err
+		return fmt.Errorf("could not open DB: %v", err)
 	}
 	defer db.Close()
 

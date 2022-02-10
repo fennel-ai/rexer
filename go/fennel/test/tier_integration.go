@@ -24,8 +24,8 @@ func Tier() (tier.Tier, error) {
 	if err := flags.Valid(); err != nil {
 		return tier.Tier{}, err
 	}
-	// do all setup that needs to be done to create a valid tier
-	if err := setup(flags); err != nil {
+	// do all Setup that needs to be done to setup a valid tier
+	if err := Setup(flags); err != nil {
 		return tier.Tier{}, err
 	}
 
@@ -33,8 +33,8 @@ func Tier() (tier.Tier, error) {
 	return tier.CreateFromArgs(&flags)
 }
 
-func setup(flags tier.TierArgs) error {
-	if err := create(flags.TierID, flags.MysqlDB, flags.MysqlUsername, flags.MysqlPassword, flags.MysqlHost); err != nil {
+func Setup(flags tier.TierArgs) error {
+	if err := setupDB(flags.TierID, flags.MysqlDB, flags.MysqlUsername, flags.MysqlPassword, flags.MysqlHost); err != nil {
 		return err
 	}
 	return setupKafkaTopics(flags.TierID, flags.KafkaServer, flags.KafkaUsername, flags.KafkaPassword, fkafka.ALL_TOPICS)
