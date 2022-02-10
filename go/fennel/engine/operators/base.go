@@ -94,7 +94,7 @@ func Typecheck(op Operator, staticKwargs map[string]reflect.Type, inputSchema ma
 	// first, let's validate static kwargs
 	sig := op.Signature()
 	if len(sig.StaticKwargs) != len(staticKwargs) {
-		return fmt.Errorf("incorrect number of static kwargs passed - expected: %d but got: %d", len(sig.StaticKwargs), len(staticKwargs))
+		return fmt.Errorf("[%s.%s] incorrect number of static kwargs passed - expected: %d but got: %d", sig.Module, sig.Name, len(sig.StaticKwargs), len(staticKwargs))
 	}
 	for k, p := range sig.StaticKwargs {
 		t := p.Type
@@ -108,7 +108,7 @@ func Typecheck(op Operator, staticKwargs map[string]reflect.Type, inputSchema ma
 	}
 	// next, let's look at contextual kwargs
 	if len(sig.ContextKwargs) != len(contextKwargSchema) {
-		return fmt.Errorf("incorrect number of contextual kwargs passed - expected: %d but got: %d", len(sig.ContextKwargs), len(contextKwargSchema))
+		return fmt.Errorf("[%s.%s] incorrect number of contextual kwargs passed - expected: %d but got: %d", sig.Module, sig.Name, len(sig.ContextKwargs), len(contextKwargSchema))
 	}
 	for k, p := range sig.ContextKwargs {
 		t := p.Type
