@@ -4,68 +4,14 @@ import (
 	"database/sql"
 )
 
-var defs map[uint32]string
+type Schema map[uint32]string
 
-func init() {
-	// if you want to make any change to schema (create table, drop table, alter table etc.)
-	// add a versioned query here. Numbers should be increasing with no gaps and no repetitions
-	defs = map[uint32]string{
-		1: `CREATE TABLE IF NOT EXISTS schema_version (
-				version INT NOT NULL
-			);`,
-		2: `CREATE TABLE IF NOT EXISTS schema_test (
-				zkey INT NOT NULL,
-				value INT NOT NULL
-			);`,
-		3: `CREATE TABLE IF NOT EXISTS actionlog (
-				action_id BIGINT not null primary key auto_increment,
-				actor_id BIGINT NOT NULL,
-				actor_type varchar(256) NOT NULL,
-				target_id BIGINT NOT NULL,
-				target_type varchar(256) NOT NULL,
-				action_type varchar(256) NOT NULL,
-				timestamp BIGINT NOT NULL,
-				request_id BIGINT not null,
-				metadata BLOB NOT NULL,
-				INDEX (timestamp)
-		 );`,
-		4: `CREATE TABLE IF NOT EXISTS checkpoint (
-				aggtype VARCHAR(255) NOT NULL,
-				aggname VARCHAR(255) NOT NULL,
-				checkpoint BIGINT NOT NULL DEFAULT 0,
-				PRIMARY KEY(aggtype, aggname)
-		 );`,
-		5: `CREATE TABLE IF NOT EXISTS profile (
-				otype varchar(256) not null,
-				oid BIGINT not null,
-				zkey varchar(256) not null,
-				version BIGINT not null,
-				value blob not null,
-				PRIMARY KEY(otype, oid, zkey, version)
-		 );`,
-		6: `CREATE TABLE IF NOT EXISTS counter_bucket (
-				counter_type INT NOT NULL,
-				window_type INT NOT NULL,
-				idx BIGINT NOT NULL,
-				count BIGINT NOT NULL DEFAULT 0,
-				zkey varchar(256) NOT NULL,
-				PRIMARY KEY(counter_type, window_type, zkey, idx)
-		 );`,
-		7: `CREATE TABLE IF NOT EXISTS query_ast (
-				query_id BIGINT NOT NULL PRIMARY KEY AUTO_INCREMENT,
-				timestamp BIGINT NOT NULL,
-				query_ser BLOB NOT NULL,
-				INDEX (timestamp)
-		 );`,
-		8: `CREATE TABLE IF NOT EXISTS aggregate_config (
-				name VARCHAR(255) NOT NULL,
-				query_ser BLOB NOT NULL,
-				timestamp BIGINT NOT NULL,
-				options_ser BLOB NOT NULL,
-				active BOOL NOT NULL DEFAULT TRUE,
-				PRIMARY KEY(name)
-			);`,
-	}
+func initSchemaVersion(db Connection) error {
+	_, err := db.Exec(`
+			create table if not exists schema_version (
+			version INT NOT NULL
+	)`)
+	return err
 }
 
 func schemaVersion(db Connection) (uint32, error) {
@@ -90,7 +36,10 @@ func incrementSchemaVersion(db Connection, curr uint32) error {
 	return err
 }
 
-func SyncSchema(db Connection) error {
+func syncSchema(db Connection, defs Schema) error {
+	if err := initSchemaVersion(db); err != nil {
+		return err
+	}
 	curr, err := schemaVersion(db)
 	if err != nil {
 		return err

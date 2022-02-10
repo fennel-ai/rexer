@@ -4,6 +4,7 @@ import (
 	"fennel/db"
 	"fennel/lib/ftypes"
 	"fennel/resource"
+	"fennel/tier"
 	"fmt"
 
 	"github.com/jmoiron/sqlx"
@@ -25,6 +26,7 @@ func defaultDB(tierID ftypes.TierID) (db.Connection, error) {
 		Username: username,
 		Password: password,
 		Host:     host,
+		Schema:   tier.Schema,
 	}
 	resource, err := config.Materialize(tierID)
 	if err != nil {
