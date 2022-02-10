@@ -89,21 +89,21 @@ func TestLongTypes(t *testing.T) {
 	action1ser, err := action1.ToActionSer()
 	assert.NoError(t, err)
 
-	// ActionType can't be longer than 256 chars
-	action1ser.ActionType = ftypes.ActionType(utils.RandString(257))
-	_, err = Insert(tier, action1ser)
-	assert.Error(t, err)
+	// ActionType can't be longer than 255 chars
 	action1ser.ActionType = ftypes.ActionType(utils.RandString(256))
-
-	// ActorType can't be longer than 256 chars
-	action1ser.ActorType = ftypes.OType(utils.RandString(257))
 	_, err = Insert(tier, action1ser)
 	assert.Error(t, err)
+	action1ser.ActionType = ftypes.ActionType(utils.RandString(255))
+
+	// ActorType can't be longer than 255 chars
 	action1ser.ActorType = ftypes.OType(utils.RandString(256))
-
-	// TargetType can't be longer than 256 chars
-	action1ser.TargetType = ftypes.OType(utils.RandString(257))
 	_, err = Insert(tier, action1ser)
 	assert.Error(t, err)
+	action1ser.ActorType = ftypes.OType(utils.RandString(255))
+
+	// TargetType can't be longer than 255 chars
 	action1ser.TargetType = ftypes.OType(utils.RandString(256))
+	_, err = Insert(tier, action1ser)
+	assert.Error(t, err)
+	action1ser.TargetType = ftypes.OType(utils.RandString(255))
 }

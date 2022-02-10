@@ -23,11 +23,11 @@ func (D dbProvider) set(tier tier.Tier, otype ftypes.OType, oid uint64, key stri
 	if version == 0 {
 		return fmt.Errorf("version can not be zero")
 	}
-	if len(key) > 256 {
-		return fmt.Errorf("makeKey too long: keys can only be upto 256 chars")
+	if len(key) > 255 {
+		return fmt.Errorf("makeKey too long: keys can only be upto 255 chars")
 	}
-	if len(otype) > 256 {
-		return fmt.Errorf("otype too long: otypes can only be upto 256 chars")
+	if len(otype) > 255 {
+		return fmt.Errorf("otype too long: otypes can only be upto 255 chars")
 	}
 	_, err := tier.DB.Exec(`
 		INSERT INTO profile 
