@@ -54,7 +54,8 @@ func init() {
 				timestamp BIGINT NOT NULL,
 				options_ser BLOB NOT NULL,
 				active BOOL NOT NULL DEFAULT TRUE,
-				PRIMARY KEY(name)
+				PRIMARY KEY(name),
+				INDEX (active)
 		);`,
 	}
 }
