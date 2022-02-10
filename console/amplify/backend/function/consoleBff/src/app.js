@@ -64,7 +64,11 @@ const mapUserToDomain = (req) => {
     throw new Error("Username / email not passed in.");
   }
   const email = username.split("@");
-  const tierUrl = domainToURL[email];
+  if (!email || email.length < 2) {
+    throw new Error("Email is improperly formatted or missing.");
+  }
+  const domain = email[1];
+  const tierUrl = domainToURL[domain];
   if (tierUrl) {
     return tierUrl;
   } else {
