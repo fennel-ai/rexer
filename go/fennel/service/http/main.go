@@ -105,6 +105,9 @@ func main() {
 	controller.setHandlers(router)
 
 	// spin up http service
+	// Note: don't delete this log line - e2e tests rely on this to be printed
+	// to know that server has initialized and is ready to take traffic
+	log.Println("server is ready...")
 	addr := fmt.Sprintf("localhost:%d", httplib.PORT)
 	log.Printf("starting http service on %s...", addr)
 	if err := http.ListenAndServe(addr, router); err != http.ErrServerClosed {

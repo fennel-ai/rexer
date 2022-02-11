@@ -41,6 +41,8 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
+	// Note: don't delete this log line - e2e tests rely on this to be printed
+	// to know that server has initialized and is ready to take traffic
 	log.Println("server is ready...")
 	for {
 		processOnce(tier)
