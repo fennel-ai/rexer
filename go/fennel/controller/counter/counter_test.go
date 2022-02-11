@@ -6,6 +6,7 @@ import (
 	"fennel/lib/ftypes"
 	"fennel/lib/value"
 	"fennel/model/aggregate"
+	counter2 "fennel/model/counter"
 	"fennel/test"
 	"fennel/tier"
 	"testing"
@@ -47,14 +48,14 @@ func TestRolling(t *testing.T) {
 		}
 		assert.NoError(t, table.Append(row))
 	}
-	err = Update(tier, agg.Name, table)
+	err = Update(tier, agg.Name, table, counter2.RollingCounter{})
 	assert.NoError(t, err)
 
 	clock := &test.FakeClock{}
 	tier.Clock = clock
 	clock.Set(int64(start + 24*3600*2))
 	// at the end of 2 days, rolling counter should only be worth 28 hours, not full 48 hours
-	found, err := RollingValue(tier, agg, key)
+	found, err := Value(tier, agg, key, counter2.RollingCounter{Duration: 28 * 3600})
 	assert.NoError(t, err)
 	assert.Equal(t, value.Int(28*60), found)
 }
@@ -76,6 +77,10 @@ func TestTimeseries(t *testing.T) {
 			Limit:   9,
 		},
 	}
+	histogram := counter2.TimeseriesCounter{
+		Window: ftypes.Window_HOUR,
+		Limit:  9,
+	}
 	querySer, err := ast.Marshal(agg.Query)
 	assert.NoError(t, err)
 	optionSer, err := proto.Marshal(&agg.Options)
@@ -93,15 +98,18 @@ func TestTimeseries(t *testing.T) {
 		}
 		assert.NoError(t, table.Append(row))
 	}
-	err = Update(tier, agg.Name, table)
+	err = Update(tier, agg.Name, table, histogram)
 	assert.NoError(t, err)
 
 	clock := &test.FakeClock{}
 	tier.Clock = clock
 	clock.Set(int64(start + 24*3600*2))
 	// at the end of 2 days, we should get one data point each for 9 days
-	found, err := TimeseriesValue(tier, agg, key)
+	f, err := Value(tier, agg, key, histogram)
 	assert.NoError(t, err)
+	found, ok := f.(value.List)
+	assert.True(t, ok)
+
 	assert.Len(t, found, 9)
 	for i := range found {
 		assert.Equal(t, value.Int(60), found[i])
@@ -110,8 +118,10 @@ func TestTimeseries(t *testing.T) {
 	// but if we set time to just at 6 hours from start, we will still 9 entries, but few will be zero padded
 	// and since our start time is 1 min delayed, the 4th entry will be one short of 60
 	clock.Set(int64(start + 6*3600))
-	found, err = TimeseriesValue(tier, agg, key)
+	f, err = Value(tier, agg, key, histogram)
 	assert.NoError(t, err)
+	found, ok = f.(value.List)
+	assert.True(t, ok)
 	assert.Len(t, found, 9)
 	for i := range found {
 		if i < 3 {
@@ -145,5 +155,5 @@ func assertInvalid(tier tier.Tier, t *testing.T, ds ...value.Dict) {
 		err := table.Append(d)
 		assert.NoError(t, err)
 	}
-	assert.Error(t, Update(tier, "some name", table))
+	assert.Error(t, Update(tier, "some name", table, counter2.RollingCounter{}))
 }

@@ -2,11 +2,7 @@ package counter
 
 import (
 	"fennel/lib/ftypes"
-	"fmt"
 )
-
-// global version of counter namespace - increment to invalidate all data stored in redis
-const version = 1
 
 type Bucket struct {
 	Key    string
@@ -15,40 +11,43 @@ type Bucket struct {
 	Count  int64
 }
 
-// BucketizeDuration bucketizes the [start, end] using minute/hour/day windows
-func BucketizeDuration(key string, start ftypes.Timestamp, end ftypes.Timestamp) []Bucket {
-	days, dayStart, dayEnd := bucketizeTimeseries(key, start, end, ftypes.Window_DAY)
-	hours1, hourStart, _ := bucketizeTimeseries(key, start, dayStart, ftypes.Window_HOUR)
-	hours2, _, hoursEnd := bucketizeTimeseries(key, dayEnd, end, ftypes.Window_HOUR)
-
-	mins1, _, _ := bucketizeTimeseries(key, start, hourStart, ftypes.Window_MINUTE)
-	mins2, _, _ := bucketizeTimeseries(key, hoursEnd, end, ftypes.Window_MINUTE)
-	ret := append(mins1, hours1...)
-	ret = append(ret, days...)
-	ret = append(ret, hours2...)
-	ret = append(ret, mins2...)
+// BucketizeDuration bucketizes the [start, end] only using the given window types
+func BucketizeDuration(key string, start ftypes.Timestamp, end ftypes.Timestamp, windows []ftypes.Window) []Bucket {
+	periods := []period{{start, end}}
+	ret := make([]Bucket, 0)
+	// iterate through in the right order - first day, then hour, then minute
+	for _, w := range []ftypes.Window{ftypes.Window_DAY, ftypes.Window_HOUR, ftypes.Window_MINUTE} {
+		if contains(windows, w) {
+			nextPeriods := make([]period, 0)
+			for _, p := range periods {
+				buckets, bucketStart, bucketEnd := bucketizeTimeseries(key, p.start, p.end, w)
+				ret = append(ret, buckets...)
+				nextPeriods = append(nextPeriods, period{p.start, bucketStart}, period{bucketEnd, p.end})
+			}
+			periods = nextPeriods
+		}
+	}
 	return ret
 }
 
-func BucketizeTimeseries(key string, start, end ftypes.Timestamp, window ftypes.Window) ([]Bucket, error) {
-	if window != ftypes.Window_HOUR && window != ftypes.Window_DAY {
-		return nil, fmt.Errorf("unsupported window type - only hours & days are supported")
+func BucketizeMoment(key string, ts ftypes.Timestamp, count int64, windows []ftypes.Window) []Bucket {
+	ret := make([]Bucket, len(windows))
+	for i, w := range windows {
+		switch w {
+		case ftypes.Window_MINUTE:
+			ret[i] = Bucket{Key: key, Window: ftypes.Window_MINUTE, Index: uint64(ts) / 60, Count: count}
+		case ftypes.Window_HOUR:
+			ret[i] = Bucket{Key: key, Window: ftypes.Window_HOUR, Index: uint64(ts) / 3600, Count: count}
+		case ftypes.Window_DAY:
+			ret[i] = Bucket{Key: key, Window: ftypes.Window_DAY, Index: uint64(ts) / (24 * 3600), Count: count}
+		}
 	}
-	ret, _, _ := bucketizeTimeseries(key, start, end, window)
-	return ret, nil
-}
-
-func BucketizeMoment(key string, ts ftypes.Timestamp, count int64) []Bucket {
-	return []Bucket{
-		{Key: key, Window: ftypes.Window_MINUTE, Index: uint64(ts) / 60, Count: count},
-		{Key: key, Window: ftypes.Window_HOUR, Index: uint64(ts) / 3600, Count: count},
-		{Key: key, Window: ftypes.Window_DAY, Index: uint64(ts) / (24 * 3600), Count: count},
-	}
+	return ret
 }
 
 // MergeBuckets takes a list of buckets and "merges" their counts if rest of their properties
 // are identical this reduces the number of keys to touch in storage
-func MergeBuckets(buckets []Bucket) []Bucket {
+func MergeBuckets(histogram Histogram, buckets []Bucket) []Bucket {
 	seen := make(map[Bucket]int64, 0)
 	for i, _ := range buckets {
 		mapkey := buckets[i]
@@ -57,7 +56,7 @@ func MergeBuckets(buckets []Bucket) []Bucket {
 		if !ok {
 			current = 0
 		}
-		seen[mapkey] = current + buckets[i].Count
+		seen[mapkey] = histogram.Merge(current, buckets[i].Count)
 	}
 	ret := make([]Bucket, 0, len(seen))
 	for b, c := range seen {
@@ -78,7 +77,7 @@ func boundary(start, end ftypes.Timestamp, period uint64) (uint64, uint64) {
 	return startBoundary, endBoundary
 }
 
-// bucketizeTimeseries returns a list of buckets of size 'window' that begin at or after 'start'
+// bucketizeTimeseries returns a list of buckets of size 'Window' that begin at or after 'start'
 // and go until at or before 'end'. Each bucket's count is left at 0
 func bucketizeTimeseries(key string, start, end ftypes.Timestamp, window ftypes.Window) ([]Bucket, ftypes.Timestamp, ftypes.Timestamp) {
 	var period uint64
@@ -103,4 +102,18 @@ func bucketizeTimeseries(key string, start, end ftypes.Timestamp, window ftypes.
 		ret[i-startBoundary] = Bucket{Key: key, Window: window, Index: i, Count: 0}
 	}
 	return ret, bucketStart, bucketEnd
+}
+
+func contains(windows []ftypes.Window, window ftypes.Window) bool {
+	for _, w := range windows {
+		if w == window {
+			return true
+		}
+	}
+	return false
+}
+
+type period struct {
+	start ftypes.Timestamp
+	end   ftypes.Timestamp
 }

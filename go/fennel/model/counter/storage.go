@@ -3,12 +3,14 @@ package counter
 import (
 	"context"
 	"fennel/lib/ftypes"
+	"fennel/redis"
 	"fennel/tier"
 	"fmt"
 	"strconv"
-
-	"github.com/go-redis/redis/v8"
 )
+
+// global version of counter namespace - increment to invalidate all data stored in redis
+const version = 1
 
 // TODO: all keys of an aggregatore are mapped to the same slot
 // this is not good and we need to find a better distribution strategy
@@ -18,27 +20,6 @@ func redisKeys(tier tier.Tier, name ftypes.AggName, buckets []Bucket) []string {
 		ret[i] = fmt.Sprintf("counter:%d{%s}%s:%d:%d", version, name, b.Key, b.Window, b.Index)
 	}
 	return ret
-}
-
-func IncrementMulti(tier tier.Tier, name ftypes.AggName, buckets []Bucket) error {
-	rkeys := redisKeys(tier, name, buckets)
-	cur, err := GetMulti(tier, name, buckets)
-	if err != nil {
-		return err
-	}
-	vals := make(map[string]interface{}, 0)
-	for i, k := range rkeys {
-		vals[k] = fmt.Sprintf("%d", cur[i]+buckets[i].Count)
-	}
-	return tier.Redis.MSet(context.TODO(), vals)
-}
-
-func Get(tier tier.Tier, name ftypes.AggName, bucket Bucket) (int64, error) {
-	ret, err := GetMulti(tier, name, []Bucket{bucket})
-	if err != nil {
-		return 0, err
-	}
-	return ret[0], nil
 }
 
 func GetMulti(tier tier.Tier, name ftypes.AggName, buckets []Bucket) ([]int64, error) {
@@ -70,4 +51,21 @@ func GetMulti(tier tier.Tier, name ftypes.AggName, buckets []Bucket) ([]int64, e
 		}
 	}
 	return ret, nil
+}
+
+func Update(tier tier.Tier, name ftypes.AggName, buckets []Bucket, histogram Histogram) error {
+	rkeys := redisKeys(tier, name, buckets)
+	cur, err := GetMulti(tier, name, buckets)
+	if err != nil {
+		return err
+	}
+	vals := make(map[string]interface{}, 0)
+	for i, _ := range cur {
+		merged := histogram.Merge(cur[i], buckets[i].Count)
+		k := rkeys[i]
+		if vals[k], err = histogram.Marshal(merged); err != nil {
+			return err
+		}
+	}
+	return tier.Redis.MSet(context.TODO(), vals)
 }
