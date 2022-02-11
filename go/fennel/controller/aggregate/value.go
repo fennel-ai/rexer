@@ -11,7 +11,7 @@ import (
 	"fennel/lib/ftypes"
 	"fennel/lib/value"
 	"fennel/model/checkpoint"
-	counter2 "fennel/model/counter"
+	modelCounter "fennel/model/counter"
 	_ "fennel/opdefs"
 	"fennel/tier"
 	"fmt"
@@ -26,7 +26,7 @@ func Value(tier tier.Tier, name ftypes.AggName, key value.Value) (value.Value, e
 	if err != nil {
 		return nil, err
 	}
-	return counter.Value(tier, agg, key, histogram)
+	return counter.Value(tier, agg.Name, key, histogram)
 }
 
 func Update(tier tier.Tier, agg aggregate.Aggregate) error {
@@ -89,14 +89,16 @@ func loadInterpreter(tier tier.Tier, actions []libaction.Action) (interpreter.In
 	return ret, nil
 }
 
-func toHistogram(agg aggregate.Aggregate) (counter2.Histogram, error) {
+func toHistogram(agg aggregate.Aggregate) (modelCounter.Histogram, error) {
 	switch agg.Options.AggType {
 	case "rolling_counter":
-		return counter2.RollingCounter{Duration: agg.Options.Duration}, nil
+		return modelCounter.RollingCounter{Duration: agg.Options.Duration}, nil
 	case "timeseries_counter":
-		return counter2.TimeseriesCounter{
+		return modelCounter.TimeseriesCounter{
 			Window: agg.Options.Window, Limit: agg.Options.Limit,
 		}, nil
+	case "rolling_average":
+		return modelCounter.RollingAverage{Duration: agg.Options.Duration}, nil
 	default:
 		return nil, fmt.Errorf("invalid aggregate type: %v", agg.Options.AggType)
 	}

@@ -53,7 +53,7 @@ func MergeBuckets(histogram Histogram, buckets []Bucket) ([]Bucket, error) {
 	var err error
 	for i, _ := range buckets {
 		mapkey := buckets[i]
-		mapkey.Count = histogram.Zero()
+		mapkey.Count = value.Nil // note, for hashmap to be hashable, this needs to be hashable as well
 		current, ok := seen[mapkey]
 		if !ok {
 			current = histogram.Zero()

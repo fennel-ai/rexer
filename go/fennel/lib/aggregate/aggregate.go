@@ -13,6 +13,7 @@ import (
 var ValidTypes = []ftypes.AggType{
 	"rolling_counter",
 	"timeseries_counter",
+	"rolling_average",
 	"stream",
 }
 
@@ -41,13 +42,14 @@ func (agg Aggregate) Validate() error {
 		return fmt.Errorf("aggregate name can not be of zero length")
 	}
 	options := agg.Options
-	switch strings.ToLower(agg.Options.AggType) {
-	case "rolling_counter":
+	aggtype := agg.Options.AggType
+	switch strings.ToLower(aggtype) {
+	case "rolling_counter", "rolling_average":
 		if options.Duration == 0 {
-			return fmt.Errorf("duration can not be zero for rolling counters")
+			return fmt.Errorf("duration can not be zero for %s", aggtype)
 		}
 		if options.Window != 0 || options.Limit != 0 {
-			return fmt.Errorf("retention, window and limit should all be zero for rolling counters")
+			return fmt.Errorf("retention, window and limit should all be zero for %v", aggtype)
 		}
 	case "timeseries_counter":
 		if options.Window != ftypes.Window_HOUR && options.Window != ftypes.Window_DAY {

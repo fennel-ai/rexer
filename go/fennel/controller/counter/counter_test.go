@@ -55,7 +55,7 @@ func TestRolling(t *testing.T) {
 	tier.Clock = clock
 	clock.Set(int64(start + 24*3600*2))
 	// at the end of 2 days, rolling counter should only be worth 28 hours, not full 48 hours
-	found, err := Value(tier, agg, key, counter2.RollingCounter{Duration: 28 * 3600})
+	found, err := Value(tier, agg.Name, key, counter2.RollingCounter{Duration: 28 * 3600})
 	assert.NoError(t, err)
 	assert.Equal(t, value.Int(28*60), found)
 }
@@ -105,7 +105,7 @@ func TestTimeseries(t *testing.T) {
 	tier.Clock = clock
 	clock.Set(int64(start + 24*3600*2))
 	// at the end of 2 days, we should get one data point each for 9 days
-	f, err := Value(tier, agg, key, histogram)
+	f, err := Value(tier, agg.Name, key, histogram)
 	assert.NoError(t, err)
 	found, ok := f.(value.List)
 	assert.True(t, ok)
@@ -118,7 +118,7 @@ func TestTimeseries(t *testing.T) {
 	// but if we set time to just at 6 hours from start, we will still 9 entries, but few will be zero padded
 	// and since our start time is 1 min delayed, the 4th entry will be one short of 60
 	clock.Set(int64(start + 6*3600))
-	f, err = Value(tier, agg, key, histogram)
+	f, err = Value(tier, agg.Name, key, histogram)
 	assert.NoError(t, err)
 	found, ok = f.(value.List)
 	assert.True(t, ok)
@@ -132,6 +132,41 @@ func TestTimeseries(t *testing.T) {
 			assert.Equal(t, value.Int(60), found[i])
 		}
 	}
+}
+
+func TestRollingAverage(t *testing.T) {
+	tier, err := test.Tier()
+	assert.NoError(t, err)
+	defer test.Teardown(tier)
+
+	start := 24*3600*12 + 60*31
+	aggname := ftypes.AggName("some counter")
+
+	key := value.List{value.Int(1), value.Int(2)}
+	//assert.NoError(t, aggregate.Store(tier, agg.Name, querySer, agg.Timestamp, optionSer))
+	table := value.NewTable()
+	// create an event every minute for 2 days
+	for i := 0; i < 60*24*2; i++ {
+		ts := ftypes.Timestamp(start + i*60 + 30)
+		row := value.Dict{
+			"timestamp": value.Int(ts),
+			"key":       key,
+			"amount":    value.Int(i / (24 * 60)), // amount is zero for first day and one for the next day
+		}
+		assert.NoError(t, table.Append(row))
+	}
+	histogram := counter2.RollingAverage{Duration: 28 * 3600}
+	err = Update(tier, aggname, table, histogram)
+	assert.NoError(t, err)
+
+	clock := &test.FakeClock{}
+	tier.Clock = clock
+	clock.Set(int64(start + 24*3600*2))
+	// at the end of 2 days, rolling average should only be worth 28 hours, not full 48 hours
+	found, err := Value(tier, aggname, key, histogram)
+	assert.NoError(t, err)
+	expected := float64(24*60) / float64(28*60)
+	assert.Equal(t, value.Double(expected), found)
 }
 
 func TestCounterUpdateInvalid(t *testing.T) {
