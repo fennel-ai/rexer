@@ -2,17 +2,18 @@ package counter
 
 import (
 	"fennel/lib/ftypes"
+	"fennel/lib/value"
 )
 
 type Bucket struct {
 	Key    string
 	Window ftypes.Window
 	Index  uint64
-	Count  int64
+	Count  value.Value
 }
 
 // BucketizeDuration bucketizes the [start, end] only using the given window types
-func BucketizeDuration(key string, start ftypes.Timestamp, end ftypes.Timestamp, windows []ftypes.Window) []Bucket {
+func BucketizeDuration(key string, start ftypes.Timestamp, end ftypes.Timestamp, windows []ftypes.Window, zero value.Value) []Bucket {
 	periods := []period{{start, end}}
 	ret := make([]Bucket, 0)
 	// iterate through in the right order - first day, then hour, then minute
@@ -20,7 +21,7 @@ func BucketizeDuration(key string, start ftypes.Timestamp, end ftypes.Timestamp,
 		if contains(windows, w) {
 			nextPeriods := make([]period, 0)
 			for _, p := range periods {
-				buckets, bucketStart, bucketEnd := bucketizeTimeseries(key, p.start, p.end, w)
+				buckets, bucketStart, bucketEnd := bucketizeTimeseries(key, p.start, p.end, w, zero)
 				ret = append(ret, buckets...)
 				nextPeriods = append(nextPeriods, period{p.start, bucketStart}, period{bucketEnd, p.end})
 			}
@@ -30,7 +31,7 @@ func BucketizeDuration(key string, start ftypes.Timestamp, end ftypes.Timestamp,
 	return ret
 }
 
-func BucketizeMoment(key string, ts ftypes.Timestamp, count int64, windows []ftypes.Window) []Bucket {
+func BucketizeMoment(key string, ts ftypes.Timestamp, count value.Value, windows []ftypes.Window) []Bucket {
 	ret := make([]Bucket, len(windows))
 	for i, w := range windows {
 		switch w {
@@ -47,23 +48,27 @@ func BucketizeMoment(key string, ts ftypes.Timestamp, count int64, windows []fty
 
 // MergeBuckets takes a list of buckets and "merges" their counts if rest of their properties
 // are identical this reduces the number of keys to touch in storage
-func MergeBuckets(histogram Histogram, buckets []Bucket) []Bucket {
-	seen := make(map[Bucket]int64, 0)
+func MergeBuckets(histogram Histogram, buckets []Bucket) ([]Bucket, error) {
+	seen := make(map[Bucket]value.Value, 0)
+	var err error
 	for i, _ := range buckets {
 		mapkey := buckets[i]
-		mapkey.Count = 0
+		mapkey.Count = histogram.Zero()
 		current, ok := seen[mapkey]
 		if !ok {
-			current = 0
+			current = histogram.Zero()
 		}
-		seen[mapkey] = histogram.Merge(current, buckets[i].Count)
+		seen[mapkey], err = histogram.Merge(current, buckets[i].Count)
+		if err != nil {
+			return nil, err
+		}
 	}
 	ret := make([]Bucket, 0, len(seen))
 	for b, c := range seen {
 		b.Count = c
 		ret = append(ret, b)
 	}
-	return ret
+	return ret, nil
 }
 
 //===========================
@@ -79,7 +84,7 @@ func boundary(start, end ftypes.Timestamp, period uint64) (uint64, uint64) {
 
 // bucketizeTimeseries returns a list of buckets of size 'Window' that begin at or after 'start'
 // and go until at or before 'end'. Each bucket's count is left at 0
-func bucketizeTimeseries(key string, start, end ftypes.Timestamp, window ftypes.Window) ([]Bucket, ftypes.Timestamp, ftypes.Timestamp) {
+func bucketizeTimeseries(key string, start, end ftypes.Timestamp, window ftypes.Window, zero value.Value) ([]Bucket, ftypes.Timestamp, ftypes.Timestamp) {
 	var period uint64
 	switch window {
 	case ftypes.Window_MINUTE:
@@ -99,7 +104,7 @@ func bucketizeTimeseries(key string, start, end ftypes.Timestamp, window ftypes.
 	bucketEnd := ftypes.Timestamp(endBoundary * period)
 	ret := make([]Bucket, endBoundary-startBoundary)
 	for i := startBoundary; i < endBoundary; i++ {
-		ret[i-startBoundary] = Bucket{Key: key, Window: window, Index: i, Count: 0}
+		ret[i-startBoundary] = Bucket{Key: key, Window: window, Index: i, Count: zero}
 	}
 	return ret, bucketStart, bucketEnd
 }

@@ -15,20 +15,27 @@ func (r RollingCounter) Start(end ftypes.Timestamp) ftypes.Timestamp {
 	return end - ftypes.Timestamp(r.Duration)
 }
 
-func (r RollingCounter) Reduce(values []int64) (value.Value, error) {
-	var total int64 = 0
+func (r RollingCounter) Reduce(values []value.Value) (value.Value, error) {
+	var total value.Value = value.Int(0)
+	var err error
 	for i, _ := range values {
-		total += values[i]
+		total, err = total.Op("+", values[i])
+		if err != nil {
+			return nil, err
+		}
 	}
-	return value.Int(total), nil
+	return total, nil
 }
 
-func (r RollingCounter) Merge(a, b int64) int64 {
-	return a + b
+func (r RollingCounter) Merge(a, b value.Value) (value.Value, error) {
+	if _, ok := a.(value.Int); !ok {
+		return nil, fmt.Errorf("expected int but got: %v", a)
+	}
+	return a.Op("+", b)
 }
 
-func (r RollingCounter) Empty() int64 {
-	return 0
+func (r RollingCounter) Zero() value.Value {
+	return value.Int(0)
 }
 
 func (r RollingCounter) Bucketize(table value.Table) ([]Bucket, error) {
@@ -45,7 +52,7 @@ func (r RollingCounter) Bucketize(table value.Table) ([]Bucket, error) {
 	for _, row := range table.Pull() {
 		ts := row["timestamp"].(value.Int)
 		key := row["key"].String()
-		buckets = append(buckets, BucketizeMoment(key, ftypes.Timestamp(ts), 1, r.Windows())...)
+		buckets = append(buckets, BucketizeMoment(key, ftypes.Timestamp(ts), value.Int(1), r.Windows())...)
 	}
 	return buckets, nil
 }
@@ -56,12 +63,20 @@ func (r RollingCounter) Windows() []ftypes.Window {
 	}
 }
 
-func (r RollingCounter) Marshal(v int64) (string, error) {
-	return fmt.Sprintf("%d", v), nil
+func (r RollingCounter) Marshal(v value.Value) (string, error) {
+	n, ok := v.(value.Int)
+	if !ok {
+		return "", fmt.Errorf("expected int, but got: %v", v)
+	}
+	return fmt.Sprintf("%d", int64(n)), nil
 }
 
-func (r RollingCounter) Unmarshal(s string) (int64, error) {
-	return strconv.ParseInt(s, 10, 64)
+func (r RollingCounter) Unmarshal(s string) (value.Value, error) {
+	n, err := strconv.ParseInt(s, 10, 64)
+	if err != nil {
+		return nil, err
+	}
+	return value.Int(n), nil
 }
 
 var _ Histogram = RollingCounter{}
