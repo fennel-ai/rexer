@@ -51,6 +51,9 @@ func ToProtoValue(v Value) (PValue, error) {
 }
 
 func FromProtoValue(pv *PValue) (Value, error) {
+	if pv == nil {
+		return Nil, fmt.Errorf("protovalue is empty")
+	}
 	if pvi, ok := pv.Node.(*PValue_Int); ok {
 		return Int(pvi.Int), nil
 	}
