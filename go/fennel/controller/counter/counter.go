@@ -1,18 +1,17 @@
 package counter
 
 import (
-	"fennel/lib/aggregate"
 	"fennel/lib/ftypes"
 	"fennel/lib/value"
 	"fennel/model/counter"
 	"fennel/tier"
 )
 
-func Value(tier tier.Tier, agg aggregate.Aggregate, key value.Value, histogram counter.Histogram) (value.Value, error) {
+func Value(tier tier.Tier, aggname ftypes.AggName, key value.Value, histogram counter.Histogram) (value.Value, error) {
 	end := ftypes.Timestamp(tier.Clock.Now())
 	start := histogram.Start(end)
 	buckets := counter.BucketizeDuration(key.String(), start, end, histogram.Windows(), histogram.Zero())
-	counts, err := counter.GetMulti(tier, agg.Name, buckets, histogram)
+	counts, err := counter.GetMulti(tier, aggname, buckets, histogram)
 	if err != nil {
 		return value.List{}, err
 	}
