@@ -25,3 +25,6 @@ ulimit -n 1024
 
 # this file exports secrets needed for running integration tests
 source testenv.rc
+
+# Set fennel as default org in Pulumi.
+pulumi org set-default fennel
