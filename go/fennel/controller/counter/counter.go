@@ -11,8 +11,8 @@ import (
 func Value(tier tier.Tier, agg aggregate.Aggregate, key value.Value, histogram counter.Histogram) (value.Value, error) {
 	end := ftypes.Timestamp(tier.Clock.Now())
 	start := histogram.Start(end)
-	buckets := counter.BucketizeDuration(key.String(), start, end, histogram.Windows())
-	counts, err := counter.GetMulti(tier, agg.Name, buckets)
+	buckets := counter.BucketizeDuration(key.String(), start, end, histogram.Windows(), histogram.Zero())
+	counts, err := counter.GetMulti(tier, agg.Name, buckets, histogram)
 	if err != nil {
 		return value.List{}, err
 	}
@@ -24,6 +24,9 @@ func Update(tier tier.Tier, aggname ftypes.AggName, table value.Table, histogram
 	if err != nil {
 		return err
 	}
-	buckets = counter.MergeBuckets(histogram, buckets)
+	buckets, err = counter.MergeBuckets(histogram, buckets)
+	if err != nil {
+		return err
+	}
 	return counter.Update(tier, aggname, buckets, histogram)
 }

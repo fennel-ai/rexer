@@ -3,10 +3,10 @@ package counter
 import (
 	"context"
 	"fennel/lib/ftypes"
+	"fennel/lib/value"
 	"fennel/redis"
 	"fennel/tier"
 	"fmt"
-	"strconv"
 )
 
 // global version of counter namespace - increment to invalidate all data stored in redis
@@ -22,32 +22,30 @@ func redisKeys(tier tier.Tier, name ftypes.AggName, buckets []Bucket) []string {
 	return ret
 }
 
-func GetMulti(tier tier.Tier, name ftypes.AggName, buckets []Bucket) ([]int64, error) {
+func GetMulti(tier tier.Tier, name ftypes.AggName, buckets []Bucket, histogram Histogram) ([]value.Value, error) {
 	rkeys := redisKeys(tier, name, buckets)
 	res, err := tier.Redis.MGet(context.TODO(), rkeys...)
 	if err != nil {
 		return nil, err
 	}
-	ret := make([]int64, len(buckets))
+	ret := make([]value.Value, len(buckets))
 	for i, v := range res {
 		switch t := v.(type) {
 		case nil:
-			ret[i] = 0
+			ret[i] = histogram.Zero()
 		case error:
 			if t != redis.Nil {
 				return nil, t
 			} else {
-				ret[i] = 0
+				ret[i] = histogram.Zero()
 			}
 		case string:
-			ret[i], err = strconv.ParseInt(t, 10, 64)
+			ret[i], err = histogram.Unmarshal(t)
 			if err != nil {
 				return nil, err
 			}
-		case int64:
-			ret[i] = t
-		case int:
-			ret[i] = int64(t)
+		default:
+			return nil, fmt.Errorf("unexpected type from redis")
 		}
 	}
 	return ret, nil
@@ -55,13 +53,16 @@ func GetMulti(tier tier.Tier, name ftypes.AggName, buckets []Bucket) ([]int64, e
 
 func Update(tier tier.Tier, name ftypes.AggName, buckets []Bucket, histogram Histogram) error {
 	rkeys := redisKeys(tier, name, buckets)
-	cur, err := GetMulti(tier, name, buckets)
+	cur, err := GetMulti(tier, name, buckets, histogram)
 	if err != nil {
 		return err
 	}
 	vals := make(map[string]interface{}, 0)
 	for i, _ := range cur {
-		merged := histogram.Merge(cur[i], buckets[i].Count)
+		merged, err := histogram.Merge(cur[i], buckets[i].Count)
+		if err != nil {
+			return err
+		}
 		k := rkeys[i]
 		if vals[k], err = histogram.Marshal(merged); err != nil {
 			return err

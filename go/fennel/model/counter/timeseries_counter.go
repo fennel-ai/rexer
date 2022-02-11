@@ -26,7 +26,7 @@ func (r TimeseriesCounter) Start(end ftypes.Timestamp) ftypes.Timestamp {
 	return start
 }
 
-func (r TimeseriesCounter) Reduce(values []int64) (value.Value, error) {
+func (r TimeseriesCounter) Reduce(values []value.Value) (value.Value, error) {
 	// we have to take the last Limit values only and if there are fewer than that
 	// available we pad a few entries with zeros.
 	limit := int(r.Limit)
@@ -34,7 +34,7 @@ func (r TimeseriesCounter) Reduce(values []int64) (value.Value, error) {
 	ret := make([]value.Value, r.Limit)
 	var i int
 	for i = 0; i < limit && i < len(values); i++ {
-		ret[limit-1-i] = value.Int(values[last-i])
+		ret[limit-1-i] = values[last-i]
 	}
 	for ; i < limit; i++ {
 		ret[limit-1-i] = value.Int(0)
@@ -42,12 +42,15 @@ func (r TimeseriesCounter) Reduce(values []int64) (value.Value, error) {
 	return value.List(ret), nil
 }
 
-func (r TimeseriesCounter) Merge(a, b int64) int64 {
-	return a + b
+func (r TimeseriesCounter) Merge(a, b value.Value) (value.Value, error) {
+	if _, ok := a.(value.Int); !ok {
+		return nil, fmt.Errorf("expected int but got: %v", a)
+	}
+	return a.Op("+", b)
 }
 
-func (r TimeseriesCounter) Empty() int64 {
-	return 0
+func (r TimeseriesCounter) Zero() value.Value {
+	return value.Int(0)
 }
 
 func (r TimeseriesCounter) Bucketize(table value.Table) ([]Bucket, error) {
@@ -64,7 +67,7 @@ func (r TimeseriesCounter) Bucketize(table value.Table) ([]Bucket, error) {
 	for _, row := range table.Pull() {
 		ts := row["timestamp"].(value.Int)
 		key := row["key"].String()
-		buckets = append(buckets, BucketizeMoment(key, ftypes.Timestamp(ts), 1, r.Windows())...)
+		buckets = append(buckets, BucketizeMoment(key, ftypes.Timestamp(ts), value.Int(1), r.Windows())...)
 	}
 	return buckets, nil
 }
@@ -73,12 +76,20 @@ func (r TimeseriesCounter) Windows() []ftypes.Window {
 	return []ftypes.Window{r.Window}
 }
 
-func (r TimeseriesCounter) Marshal(v int64) (string, error) {
-	return fmt.Sprintf("%d", v), nil
+func (r TimeseriesCounter) Marshal(v value.Value) (string, error) {
+	n, ok := v.(value.Int)
+	if !ok {
+		return "", fmt.Errorf("expected int, but got: %v", v)
+	}
+	return fmt.Sprintf("%d", int64(n)), nil
 }
 
-func (r TimeseriesCounter) Unmarshal(s string) (int64, error) {
-	return strconv.ParseInt(s, 10, 64)
+func (r TimeseriesCounter) Unmarshal(s string) (value.Value, error) {
+	n, err := strconv.ParseInt(s, 10, 64)
+	if err != nil {
+		return nil, err
+	}
+	return value.Int(n), nil
 }
 
 var _ Histogram = TimeseriesCounter{}

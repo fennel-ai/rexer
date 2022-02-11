@@ -7,11 +7,11 @@ import (
 
 type Histogram interface {
 	Start(end ftypes.Timestamp) ftypes.Timestamp
-	Reduce(values []int64) (value.Value, error)
-	Merge(a, b int64) int64
-	Empty() int64
+	Reduce(values []value.Value) (value.Value, error)
+	Merge(a, b value.Value) (value.Value, error)
+	Zero() value.Value
 	Bucketize(actions value.Table) ([]Bucket, error)
 	Windows() []ftypes.Window
-	Marshal(v int64) (string, error)
-	Unmarshal(s string) (int64, error)
+	Marshal(v value.Value) (string, error)
+	Unmarshal(s string) (value.Value, error)
 }
