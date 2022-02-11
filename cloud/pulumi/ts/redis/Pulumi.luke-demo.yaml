@@ -1,3 +1,2 @@
 config:
   aws:profile: admin
-  aws:region: us-west-2
