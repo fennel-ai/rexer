@@ -11,6 +11,7 @@ import (
 	"fennel/lib/ftypes"
 	"fennel/lib/value"
 	"fennel/model/checkpoint"
+	counter2 "fennel/model/counter"
 	_ "fennel/opdefs"
 	"fennel/tier"
 	"fmt"
@@ -40,7 +41,7 @@ func Update(tier tier.Tier, agg aggregate.Aggregate) error {
 	if err != nil {
 		return err
 	}
-	if err = routeUpdate(tier, agg.Name, ftypes.AggType(agg.Options.AggType), table); err != nil {
+	if err = routeUpdate(tier, agg, table); err != nil {
 		return err
 	}
 	last := actions[len(actions)-1]
@@ -80,12 +81,15 @@ func loadInterpreter(tier tier.Tier, actions []libaction.Action) (interpreter.In
 	return ret, nil
 }
 
-func routeUpdate(tier tier.Tier, aggname ftypes.AggName, aggtype ftypes.AggType, table value.Table) error {
-	switch aggtype {
+func routeUpdate(tier tier.Tier, agg aggregate.Aggregate, table value.Table) error {
+	aggType := ftypes.AggType(agg.Options.AggType)
+	switch aggType {
 	case "rolling_counter":
-		return counter.Update(tier, aggname, table)
+		return counter.Update(tier, agg.Name, table, counter2.RollingCounter{})
 	case "timeseries_counter":
-		return counter.Update(tier, aggname, table)
+		return counter.Update(tier, agg.Name, table, counter2.TimeseriesCounter{
+			Window: agg.Options.Window, Limit: agg.Options.Limit,
+		})
 	default:
 		return fmt.Errorf("invalid aggregator type")
 	}
@@ -94,9 +98,11 @@ func routeUpdate(tier tier.Tier, aggname ftypes.AggName, aggtype ftypes.AggType,
 func routeValue(tier tier.Tier, agg aggregate.Aggregate, key value.Value) (value.Value, error) {
 	switch agg.Options.AggType {
 	case "rolling_counter":
-		return counter.RollingValue(tier, agg, key)
+		return counter.Value(tier, agg, key, counter2.RollingCounter{Duration: agg.Options.Duration})
 	case "timeseries_counter":
-		return counter.TimeseriesValue(tier, agg, key)
+		return counter.Value(tier, agg, key, counter2.TimeseriesCounter{
+			Window: agg.Options.Window, Limit: agg.Options.Limit,
+		})
 	case "stream":
 		return streamValue(tier, agg, key)
 	default:

@@ -22,6 +22,10 @@ func (c Client) Get(ctx context.Context, k string) (interface{}, error) {
 }
 
 func (c Client) MGet(ctx context.Context, ks ...string) ([]interface{}, error) {
+	// this check is to handle a bug, likely related to https://github.com/redis/node-redis/issues/125
+	if len(ks) == 0 {
+		return []interface{}{}, nil
+	}
 	ks = c.mTieredKey(ks)
 	return c.client.MGet(ctx, ks...).Result()
 }
