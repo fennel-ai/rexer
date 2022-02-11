@@ -184,7 +184,7 @@ func TestServer_AggregateValue_Valid(t *testing.T) {
 	tier.Clock = clock
 	t0 := ftypes.Timestamp(3600 * 10)
 	clock.Set(int64(t0))
-	controller := server{tier: tier}
+	holder := server{tier: tier}
 	agg := aggregate.Aggregate{
 		Name:      "mycounter",
 		Query:     ast.MakeInt(1),
@@ -199,15 +199,16 @@ func TestServer_AggregateValue_Valid(t *testing.T) {
 	assert.Equal(t, int64(t0), tier.Clock.Now())
 	assert.NoError(t, aggregate2.Store(tier, agg))
 	// initially count is zero
-	valueSendReceive(t, controller, agg, key, value.Int(0))
+	valueSendReceive(t, holder, agg, key, value.Int(0))
 
 	// now create an increment
+	h := counter.RollingCounter{Duration: 6 * 3600}
 	t1 := ftypes.Timestamp(t0 + 3600)
-	buckets := counter.BucketizeMoment(keystr, t1, 1)
-	err = counter.IncrementMulti(tier, agg.Name, buckets)
+	buckets := counter.BucketizeMoment(keystr, t1, 1, h.Windows())
+	err = counter.Update(tier, agg.Name, buckets, h)
 	assert.NoError(t, err)
 	clock.Set(int64(t1 + 60))
-	valueSendReceive(t, controller, agg, key, value.Int(1))
+	valueSendReceive(t, holder, agg, key, value.Int(1))
 }
 
 func TestStoreRetrieveDeactivateAggregate(t *testing.T) {

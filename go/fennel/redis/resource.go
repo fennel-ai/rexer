@@ -15,6 +15,8 @@ type Client struct {
 	client *redis.Client
 }
 
+var Nil = redis.Nil
+
 func (c Client) TierID() ftypes.TierID {
 	return c.tierID
 }
