@@ -2,15 +2,15 @@
 apiVersion: v1
 kind: Namespace
 metadata:
-  name: aws-otel-eks
+  name: otel-eks
   labels:
-    name: aws-otel-eks
+    name: otel-eks
 ---
 apiVersion: v1
 kind: ServiceAccount
 metadata:
-  name: aws-otel-collector-account
-  namespace: aws-otel-eks
+  name: otel-collector-account
+  namespace: otel-eks
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
@@ -86,14 +86,14 @@ roleRef:
   name: aoc-agent-role
 subjects:
   - kind: ServiceAccount
-    name: aws-otel-collector-account
-    namespace: aws-otel-eks
+    name: otel-collector-account
+    namespace: otel-eks
 ---
 apiVersion: v1
 kind: ConfigMap
 metadata:
   name: otel-agent-conf
-  namespace: aws-otel-eks
+  namespace: otel-eks
   labels:
     app: opentelemetry
     component: otel-agent-conf
@@ -196,9 +196,13 @@ data:
         send_batch_size: 50
       batch/metrics:
         timeout: 60s
-      resourcedetection/ec2:
-        detectors: [ env ]
-        timeout: 2s
+      resourcedetection:
+        detectors:
+          - env
+          - system
+          - ec2
+          - eks
+        timeout: 10s
         override: false
       resource:
         attributes:
@@ -307,7 +311,7 @@ data:
           receivers:
             - awscontainerinsightreceiver
           processors:
-            - resourcedetection/ec2
+            - resourcedetection
             - resource
             - batch/metrics
           exporters:
@@ -316,7 +320,7 @@ data:
           receivers:
             - prometheus
           processors:
-            - resourcedetection/ec2
+            - resourcedetection
             - resource
             - batch/metrics
           exporters:
@@ -327,21 +331,21 @@ data:
 apiVersion: apps/v1
 kind: DaemonSet
 metadata:
-  name: aws-otel-collector
-  namespace: aws-otel-eks
+  name: otel-collector
+  namespace: otel-eks
 spec:
   selector:
     matchLabels:
-      name: aws-otel-collector
+      name: otel-collector
   template:
     metadata:
       labels:
-        name: aws-otel-collector
+        name: otel-collector
     spec:
-      serviceAccountName: aws-otel-collector-account
+      serviceAccountName: otel-collector-account
       containers:
-        - name: aws-otel-collector
-          image: amazon/aws-otel-collector:latest
+        - name: otel-collector
+          image: otel/opentelemetry-collector-contrib:latest
           env:
             - name: K8S_NODE_NAME
               valueFrom:
@@ -361,7 +365,7 @@ spec:
                   fieldPath: metadata.namespace
           imagePullPolicy: Always
           command:
-            - "/awscollector"
+            - "/otelcontribcol"
             - "--config=/conf/otel-agent-config.yaml"
           volumeMounts:
             - name: rootfs
