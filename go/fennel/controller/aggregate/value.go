@@ -22,7 +22,11 @@ func Value(tier tier.Tier, name ftypes.AggName, key value.Value) (value.Value, e
 	if err != nil {
 		return value.Nil, err
 	}
-	return routeValue(tier, agg, key)
+	histogram, err := toHistogram(agg)
+	if err != nil {
+		return nil, err
+	}
+	return counter.Value(tier, agg, key, histogram)
 }
 
 func Update(tier tier.Tier, agg aggregate.Aggregate) error {
@@ -41,7 +45,11 @@ func Update(tier tier.Tier, agg aggregate.Aggregate) error {
 	if err != nil {
 		return err
 	}
-	if err = routeUpdate(tier, agg, table); err != nil {
+	histogram, err := toHistogram(agg)
+	if err != nil {
+		return err
+	}
+	if err = counter.Update(tier, agg.Name, table, histogram); err != nil {
 		return err
 	}
 	last := actions[len(actions)-1]
@@ -81,31 +89,15 @@ func loadInterpreter(tier tier.Tier, actions []libaction.Action) (interpreter.In
 	return ret, nil
 }
 
-func routeUpdate(tier tier.Tier, agg aggregate.Aggregate, table value.Table) error {
-	aggType := ftypes.AggType(agg.Options.AggType)
-	switch aggType {
-	case "rolling_counter":
-		return counter.Update(tier, agg.Name, table, counter2.RollingCounter{})
-	case "timeseries_counter":
-		return counter.Update(tier, agg.Name, table, counter2.TimeseriesCounter{
-			Window: agg.Options.Window, Limit: agg.Options.Limit,
-		})
-	default:
-		return fmt.Errorf("invalid aggregator type")
-	}
-}
-
-func routeValue(tier tier.Tier, agg aggregate.Aggregate, key value.Value) (value.Value, error) {
+func toHistogram(agg aggregate.Aggregate) (counter2.Histogram, error) {
 	switch agg.Options.AggType {
 	case "rolling_counter":
-		return counter.Value(tier, agg, key, counter2.RollingCounter{Duration: agg.Options.Duration})
+		return counter2.RollingCounter{Duration: agg.Options.Duration}, nil
 	case "timeseries_counter":
-		return counter.Value(tier, agg, key, counter2.TimeseriesCounter{
+		return counter2.TimeseriesCounter{
 			Window: agg.Options.Window, Limit: agg.Options.Limit,
-		})
-	case "stream":
-		return streamValue(tier, agg, key)
+		}, nil
 	default:
-		return value.Nil, fmt.Errorf("invalid aggregate type: %v", agg.Options.AggType)
+		return nil, fmt.Errorf("invalid aggregate type: %v", agg.Options.AggType)
 	}
 }
