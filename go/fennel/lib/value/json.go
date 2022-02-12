@@ -6,104 +6,109 @@ import (
 	"github.com/buger/jsonparser"
 )
 
-func FromJson(data []byte) (Value, error) {
+func FromJSON(data []byte) (Value, error) {
 	vdata, vtype, _, err := jsonparser.Get(data)
 	if err != nil {
 		return nil, err
 	}
-	val, err := parseJson(vdata, vtype)
-	if err != nil {
-		return nil, err
-	}
-	return val, nil
+	return parseJSON(vdata, vtype)
 }
 
-func ToJson(val Value) ([]byte, error) {
-	switch val.(type) {
-	case nil_:
-		data, err := json.Marshal(nil)
-		if err != nil {
-			return nil, err
-		}
-		return data, nil
-	case Bool, Int, Double, String, List, Dict:
-		data, err := json.Marshal(val)
-		if err != nil {
-			return nil, err
-		}
-		return data, nil
-	default:
-		return nil, fmt.Errorf("json serialization for %T not implemented", val)
-	}
+func ToJSON(val Value) ([]byte, error) {
+	return json.Marshal(val)
 }
 
-func parseJson(vdata []byte, vtype jsonparser.ValueType) (Value, error) {
+func parseJSON(vdata []byte, vtype jsonparser.ValueType) (Value, error) {
 	switch vtype {
 	case jsonparser.Boolean:
-		if v, err := jsonparser.ParseBoolean(vdata); err == nil {
-			return Bool(v), nil
-		} else {
-			return nil, err
-		}
+		return parseJSONBoolean(vdata)
 	case jsonparser.Number:
-		if v, err := jsonparser.ParseInt(vdata); err == nil {
-			return Int(v), nil
-		} else if v, err := jsonparser.ParseFloat(vdata); err == nil {
-			return Double(v), nil
-		} else {
-			return nil, err
-		}
+		return parseJSONNumber(vdata)
 	case jsonparser.String:
-		if v, err := jsonparser.ParseString(vdata); err == nil {
-			return String(v), nil
-		} else {
-			return nil, err
-		}
+		return parseJSONString(vdata)
 	case jsonparser.Array:
-		var ret List
-		var errors []error
-		handler := func(value []byte, dataType jsonparser.ValueType, offset int, err error) {
-			if err != nil {
-				errors = append(errors, err)
-			}
-			v, err := parseJson(value, dataType)
-			if err != nil {
-				errors = append(errors, err)
-			} else {
-				ret = append(ret, v)
-			}
-		}
-		_, err := jsonparser.ArrayEach(vdata, handler)
-		if err != nil {
-			return nil, err
-		}
-		if len(errors) != 0 {
-			// TODO: Maybe combine errors instead of returning only first error
-			return nil, errors[0]
-		}
-		return ret, nil
+		return parseJSONArray(vdata)
 	case jsonparser.Object:
-		ret := make(Dict)
-		handler := func(key []byte, value []byte, dataType jsonparser.ValueType, offset int) error {
-			k, err := jsonparser.ParseString(key)
-			if err != nil {
-				return err
-			}
-			v, err := parseJson(value, dataType)
-			if err != nil {
-				return err
-			}
-			ret[k] = v
-			return nil
-		}
-		err := jsonparser.ObjectEach(vdata, handler)
-		if err != nil {
-			return nil, err
-		}
-		return ret, nil
+		return parseJSONObject(vdata)
 	case jsonparser.Null:
 		return Nil, nil
 	default:
 		return nil, fmt.Errorf("unknown type")
 	}
+}
+
+func parseJSONBoolean(data []byte) (Value, error) {
+	if v, err := jsonparser.ParseBoolean(data); err != nil {
+		return nil, err
+	} else {
+		return Bool(v), nil
+	}
+}
+
+func parseJSONNumber(data []byte) (Value, error) {
+	vFloat, err := jsonparser.ParseFloat(data)
+	if err != nil {
+		return nil, err
+	}
+	vInt, err := jsonparser.ParseInt(data)
+	if err != nil {
+		return Double(vFloat), nil
+	} else {
+		return Int(vInt), nil
+	}
+}
+
+func parseJSONString(data []byte) (Value, error) {
+	if v, err := jsonparser.ParseString(data); err != nil {
+		return nil, err
+	} else {
+		return String(v), nil
+	}
+}
+
+func parseJSONArray(data []byte) (Value, error) {
+	var ret List
+	var errors []error
+	handler := func(value []byte, dataType jsonparser.ValueType, _ int, err error) {
+		if err != nil {
+			errors = append(errors, err)
+			return
+		}
+		v, err := parseJSON(value, dataType)
+		if err != nil {
+			errors = append(errors, err)
+			return
+		}
+		ret = append(ret, v)
+	}
+	_, err := jsonparser.ArrayEach(data, handler)
+	if err != nil {
+		return nil, err
+	}
+	if len(errors) != 0 {
+		// should this combine errors instead of returning only first error?
+		return nil, errors[0]
+	}
+	return ret, nil
+}
+
+func parseJSONObject(data []byte) (Value, error) {
+	ret := make(Dict)
+	handler := func(key []byte, value []byte, dataType jsonparser.ValueType, _ int) error {
+		k, err := jsonparser.ParseString(key)
+		if err != nil {
+			return err
+		}
+		v, err := parseJSON(value, dataType)
+		if err != nil {
+			return err
+		}
+		ret[k] = v
+		return nil
+	}
+	err := jsonparser.ObjectEach(data, handler)
+	if err != nil {
+		return nil, err
+	}
+	return ret, nil
 }

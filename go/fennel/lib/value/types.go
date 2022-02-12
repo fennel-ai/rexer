@@ -18,6 +18,7 @@ type Value interface {
 	// also, each value should return a unique & non-ambiguous string
 	String() string
 	Clone() Value
+	MarshalJSON() ([]byte, error)
 }
 
 var _ Value = Int(0)
@@ -49,6 +50,9 @@ func (I Int) Clone() Value {
 func (I Int) Op(opt string, other Value) (Value, error) {
 	return route(I, opt, other)
 }
+func (I Int) MarshalJSON() ([]byte, error) {
+	return json.Marshal(int64(I))
+}
 
 type Double float64
 
@@ -73,6 +77,9 @@ func (d Double) Clone() Value {
 func (d Double) Op(opt string, other Value) (Value, error) {
 	return route(d, opt, other)
 }
+func (d Double) MarshalJSON() ([]byte, error) {
+	return json.Marshal(float64(d))
+}
 
 type Bool bool
 
@@ -91,9 +98,11 @@ func (b Bool) String() string {
 func (b Bool) Clone() Value {
 	return Bool(b)
 }
-
 func (b Bool) Op(opt string, other Value) (Value, error) {
 	return route(b, opt, other)
+}
+func (b Bool) MarshalJSON() ([]byte, error) {
+	return json.Marshal(bool(b))
 }
 
 type String string
@@ -115,6 +124,9 @@ func (s String) Clone() Value {
 }
 func (s String) Op(opt string, other Value) (Value, error) {
 	return route(s, opt, other)
+}
+func (s String) MarshalJSON() ([]byte, error) {
+	return json.Marshal(string(s))
 }
 
 type nil_ struct{}
@@ -192,6 +204,9 @@ func (l List) Clone() Value {
 	}
 	return List(clone)
 }
+func (l List) MarshalJSON() ([]byte, error) {
+	return json.Marshal([]Value(l))
+}
 
 type Dict map[string]Value
 
@@ -240,6 +255,9 @@ func (d Dict) Clone() Value {
 		clone[k] = v.Clone()
 	}
 	return Dict(clone)
+}
+func (d Dict) MarshalJSON() ([]byte, error) {
+	return json.Marshal(map[string]Value(d))
 }
 
 func (d Dict) flatten() Dict {
@@ -391,4 +409,8 @@ func (t Table) Clone() Value {
 		ret.Append(cloned)
 	}
 	return ret
+}
+
+func (t Table) MarshalJSON() ([]byte, error) {
+	return nil, fmt.Errorf("json serialization for %T not implemented", t)
 }
