@@ -1,6 +1,7 @@
 package value
 
 import (
+	"encoding/json"
 	"fmt"
 	"reflect"
 	"sort"
@@ -137,6 +138,9 @@ func (n nil_) Clone() Value {
 }
 func (n nil_) Op(opt string, other Value) (Value, error) {
 	return route(n, opt, other)
+}
+func (n nil_) MarshalJSON() ([]byte, error) {
+	return json.Marshal(nil)
 }
 
 type List []Value
