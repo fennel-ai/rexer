@@ -32,8 +32,6 @@ func TestInvalidDict(t *testing.T) {
 
 	_, err := FromJson([]byte(dJson))
 	assert.Error(t, err)
-
-	fmt.Println(err)
 }
 
 func addJsonTests(t *testing.T) {
