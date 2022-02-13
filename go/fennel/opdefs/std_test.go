@@ -43,6 +43,7 @@ func testValid(t *testing.T, op operators.Operator, staticKwargs value.Dict, int
 }
 
 func TestFilterOperator_Apply(t *testing.T) {
+	t.Parallel()
 	op, err := operators.Locate("std", "filter")
 	assert.NoError(t, err)
 
@@ -73,6 +74,7 @@ func TestFilterOperator_Apply(t *testing.T) {
 }
 
 func TestTakeOperator_Apply(t *testing.T) {
+	t.Parallel()
 	op, err := operators.Locate("std", "take")
 	assert.NoError(t, err)
 
