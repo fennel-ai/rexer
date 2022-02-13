@@ -3,6 +3,7 @@ package kafka
 import (
 	"fennel/lib/action"
 	"fennel/resource"
+
 	"github.com/confluentinc/confluent-kafka-go/kafka"
 	"google.golang.org/protobuf/proto"
 )
@@ -15,6 +16,7 @@ const (
 type FConsumer interface {
 	resource.Resource
 	Read(message proto.Message) error
+	Backlog() (int, error)
 }
 
 type FProducer interface {

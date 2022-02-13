@@ -6,9 +6,10 @@ import (
 	"fennel/lib/ftypes"
 	"fennel/resource"
 	"fmt"
+	"time"
+
 	"github.com/confluentinc/confluent-kafka-go/kafka"
 	"google.golang.org/protobuf/proto"
-	"time"
 )
 
 func createMockKafka(tierID ftypes.TierID) (map[string]fkafka.FProducer, map[string]fkafka.FConsumer, error) {
@@ -120,6 +121,10 @@ func (l localConsumer) Close() error {
 
 func (l localConsumer) Type() resource.Type {
 	return resource.KafkaConsumer
+}
+
+func (l localConsumer) Backlog() (int, error) {
+	return len(l.Channel), nil
 }
 
 var _ fkafka.FConsumer = localConsumer{}
