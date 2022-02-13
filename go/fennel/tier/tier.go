@@ -11,6 +11,8 @@ import (
 	"fennel/lib/clock"
 	"fennel/lib/ftypes"
 	"fennel/redis"
+
+	"go.uber.org/zap"
 )
 
 type TierArgs struct {
@@ -23,6 +25,7 @@ type TierArgs struct {
 	MysqlPassword string        `arg:"--mysql-password,env:MYSQL_PASSWORD"`
 	TierID        ftypes.TierID `arg:"--tier-id,env:TIER_ID"`
 	RedisServer   string        `arg:"--redis-server,env:REDIS_SERVER_ADDRESS"`
+	Dev           bool          `arg:"--dev" default:"true"`
 }
 
 func (args TierArgs) Valid() error {
@@ -72,6 +75,7 @@ type Tier struct {
 	Producers map[string]kafka.FProducer
 	Consumers map[string]kafka.FConsumer
 	Clock     clock.Clock
+	Logger    *zap.Logger
 }
 
 func CreateFromArgs(args *TierArgs) (tier Tier, err error) {
@@ -102,6 +106,17 @@ func CreateFromArgs(args *TierArgs) (tier Tier, err error) {
 		return tier, err
 	}
 
+	var logger *zap.Logger
+	if args.Dev {
+		logger, err = zap.NewDevelopment()
+	} else {
+		logger, err = zap.NewProduction()
+	}
+	if err != nil {
+		return tier, fmt.Errorf("failed to construct logger: %v", err)
+	}
+	logger = logger.With(zap.Uint32("TIER_ID", args.TierID.Value()))
+
 	return Tier{
 		DB:        sqlConn.(db.Connection),
 		Redis:     redisClient.(redis.Client),
@@ -109,6 +124,7 @@ func CreateFromArgs(args *TierArgs) (tier Tier, err error) {
 		Consumers: consumers,
 		Clock:     clock.Unix{},
 		ID:        tierID,
+		Logger:    logger,
 		// TODO: add client to ElasticCache-backed Redis instead of MemoryDB.
 		Cache: redis.NewCache(redisClient.(redis.Client)),
 	}, nil

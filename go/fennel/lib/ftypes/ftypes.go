@@ -1,6 +1,11 @@
 package ftypes
 
 type TierID uint32
+
+func (t TierID) Value() uint32 {
+	return uint32(t)
+}
+
 type OidType uint64
 type OType string
 
