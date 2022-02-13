@@ -4,7 +4,6 @@ import (
 	"fennel/lib/ftypes"
 	"fennel/lib/value"
 	"fmt"
-	"strconv"
 )
 
 type TimeseriesCounter struct {
@@ -76,20 +75,12 @@ func (r TimeseriesCounter) Windows() []ftypes.Window {
 	return []ftypes.Window{r.Window}
 }
 
-func (r TimeseriesCounter) Marshal(v value.Value) (string, error) {
-	n, ok := v.(value.Int)
+func (r TimeseriesCounter) Validate(v value.Value) error {
+	_, ok := v.(value.Int)
 	if !ok {
-		return "", fmt.Errorf("expected int, but got: %v", v)
+		return fmt.Errorf("expected int, but got: %v", v)
 	}
-	return fmt.Sprintf("%d", int64(n)), nil
-}
-
-func (r TimeseriesCounter) Unmarshal(s string) (value.Value, error) {
-	n, err := strconv.ParseInt(s, 10, 64)
-	if err != nil {
-		return nil, err
-	}
-	return value.Int(n), nil
+	return nil
 }
 
 var _ Histogram = TimeseriesCounter{}

@@ -4,8 +4,6 @@ import (
 	"fennel/lib/ftypes"
 	"fennel/lib/value"
 	"fmt"
-	"strconv"
-	"strings"
 )
 
 /*
@@ -105,28 +103,9 @@ func (r RollingAverage) Windows() []ftypes.Window {
 	}
 }
 
-func (r RollingAverage) Marshal(v value.Value) (string, error) {
-	sum, num, err := r.extract(v)
-	if err != nil {
-		return "", err
-	}
-	return fmt.Sprintf("%d,%d", sum, num), nil
-}
-
-func (r RollingAverage) Unmarshal(s string) (value.Value, error) {
-	l := strings.Split(s, ",")
-	if len(l) != 2 {
-		return nil, fmt.Errorf("expected two comma separated ints, but found: %v", s)
-	}
-	sum, err := strconv.ParseInt(l[0], 10, 64)
-	if err != nil {
-		return nil, err
-	}
-	num, err := strconv.ParseInt(l[1], 10, 64)
-	if err != nil {
-		return nil, err
-	}
-	return value.List{value.Int(sum), value.Int(num)}, nil
+func (r RollingAverage) Validate(v value.Value) error {
+	_, _, err := r.extract(v)
+	return err
 }
 
 var _ Histogram = RollingAverage{}

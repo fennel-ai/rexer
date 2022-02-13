@@ -48,7 +48,7 @@ func TestRollingAverage_Reduce(t *testing.T) {
 	}
 }
 
-func TestRollingAverage_Marshal_Valid(t *testing.T) {
+func TestRollingAverage_Valid(t *testing.T) {
 	t.Parallel()
 	h := RollingAverage{}
 	validCases := []value.Value{
@@ -59,15 +59,12 @@ func TestRollingAverage_Marshal_Valid(t *testing.T) {
 		value.List{value.Int(-1e12), value.Int(12318123)},
 	}
 	for _, n := range validCases {
-		s, err := h.Marshal(n)
+		err := h.Validate(n)
 		assert.NoError(t, err)
-		m, err := h.Unmarshal(s)
-		assert.NoError(t, err)
-		assert.Equal(t, n, m)
 	}
 }
 
-func TestRollingAverage_Marshal_Invalid(t *testing.T) {
+func TestRollingAverage_Invalid(t *testing.T) {
 	t.Parallel()
 	h := RollingAverage{}
 	invalidCases := []value.Value{
@@ -79,7 +76,7 @@ func TestRollingAverage_Marshal_Invalid(t *testing.T) {
 		value.Nil,
 	}
 	for _, n := range invalidCases {
-		_, err := h.Marshal(n)
+		err := h.Validate(n)
 		assert.Error(t, err)
 	}
 }
