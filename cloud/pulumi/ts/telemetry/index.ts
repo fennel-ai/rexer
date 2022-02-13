@@ -5,6 +5,7 @@ import * as k8s from "@pulumi/kubernetes";
 export = async () => {
     setupOtelPolicy();
     await setupAdotCollector();
+    await setupFluentBit();
     return { MonitoredDeployment, MonitoredReplicaSet }
 }
 
@@ -101,4 +102,40 @@ async function setupAdotCollector() {
             },
         ],
     })
+}
+
+// Setup fluentbit as a daemon-set following instructions at:
+// https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/Container-Insights-setup-logs-FluentBit.html
+async function setupFluentBit() {
+    const ns = new k8s.core.v1.Namespace("cloudwatch-ns", {
+        metadata: {
+            name: "amazon-cloudwatch",
+            labels: {
+                "name": "amazon-cloudwatch",
+            },
+        },
+    })
+
+    const region = (await aws.getRegion()).name;
+    const config = new pulumi.Config();
+    const eksClusterName = config.require("eksClusterName");
+    const cm = new k8s.core.v1.ConfigMap("cluster-info-configmap", {
+        data: {
+            "cluster.name": eksClusterName,
+            "read.head": "Off",
+            "http.server": "On",
+            "http.port": "2020",
+            "read.tail": "On",
+            "logs.region": region,
+        },
+        metadata: {
+            name: "fluent-bit-cluster-info",
+            namespace: ns.id,
+        }
+    })
+
+    const deployment = new k8s.yaml.ConfigFile("fluent-bit-config", {
+        file: "fluent-bit.yaml",
+    }, { dependsOn: cm })
+
 }
