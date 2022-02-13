@@ -16,6 +16,8 @@ type RemoteConsumer struct {
 	conf  resource.Config
 }
 
+var _ FConsumer = RemoteConsumer{}
+
 func (k RemoteConsumer) TierID() ftypes.TierID {
 	return k.tierID
 }
@@ -40,6 +42,50 @@ func (k RemoteConsumer) Read(pmsg proto.Message) error {
 		return fmt.Errorf("failed to parse msg from kafka to action: %v", err)
 	}
 	return nil
+}
+
+// Backlog returns the combined total of "lag" all topic partitions have that
+// this consumer consumes from. For example, if this consumer is consuming from
+// topic "foo" and is assigned to partitions 0, 2, and 3, then the backlog will
+// be the log-end offset minus the current offset for all three partitions,
+// added together.
+// Original: https://github.com/confluentinc/confluent-kafka-go/issues/201#issue-330947997
+// An alternate implementation is sketched here:
+// https://github.com/confluentinc/confluent-kafka-go/issues/690#issuecomment-932810037.
+func (k RemoteConsumer) Backlog() (int, error) {
+	var n int
+
+	// Get the current assigned topic partitions.
+	toppars, err := k.Assignment()
+	if err != nil {
+		return n, err
+	}
+
+	// Get the current offset for each partition, assigned to this consumer group.
+	toppars, err = k.Committed(toppars, 5000 /* timeoutMs */)
+	if err != nil {
+		return n, err
+	}
+
+	// Loop over the topic partitions, get the high watermark for each toppar, and
+	// subtract the current offset from that number, to get the total "lag". We
+	// combine this value for each toppar to get the final backlog integer.
+	var l, h int64
+	for i := range toppars {
+		l, h, err = k.QueryWatermarkOffsets(*toppars[i].Topic, toppars[i].Partition, 5000 /* timeoutMs */)
+		if err != nil {
+			return n, err
+		}
+
+		o := int64(toppars[i].Offset)
+		if toppars[i].Offset == kafka.OffsetInvalid {
+			o = l
+		}
+
+		n = n + int(h-o)
+	}
+
+	return n, nil
 }
 
 type RemoteConsumerConfig struct {
