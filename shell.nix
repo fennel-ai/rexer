@@ -59,6 +59,7 @@ with pkgs; mkShell {
     pkgs.fzf-zsh # wrap fzf to use in oh-my-zsh
     pkgs.ripgrep # grep, but faster
     pkgs.delta # A syntax-highlighting pager for git
+    pkgs.wget
   ];
   shellHook =
   ''
