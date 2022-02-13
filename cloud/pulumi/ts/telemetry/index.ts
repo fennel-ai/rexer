@@ -85,7 +85,7 @@ async function setupAdotCollector() {
         file: "otel-deployment.yaml",
         transformations: [
             (obj: any, opts: pulumi.CustomResourceOptions) => {
-                if (obj.kind === "DaemonSet") {
+                if (obj.kind === "Deployment") {
                     let containers = obj.spec.template.spec.containers;
                     obj.spec.template.spec.containers = containers.map((container: any) => {
                         container.env.push({
