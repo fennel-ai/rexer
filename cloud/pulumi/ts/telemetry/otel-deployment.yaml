@@ -329,11 +329,12 @@ data:
 ---
 # create Daemonset
 apiVersion: apps/v1
-kind: DaemonSet
+kind: Deployment
 metadata:
   name: otel-collector
   namespace: otel-eks
 spec:
+  replicas: 1
   selector:
     matchLabels:
       name: otel-collector
