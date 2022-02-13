@@ -42,7 +42,7 @@ func (I Int) Equal(v Value) bool {
 	}
 }
 func (I Int) String() string {
-	return fmt.Sprintf("Int(%v)", int32(I))
+	return fmt.Sprintf("Int(%v)", int64(I))
 }
 func (I Int) Clone() Value {
 	return Int(I)
