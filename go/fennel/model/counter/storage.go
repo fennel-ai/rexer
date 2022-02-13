@@ -58,7 +58,7 @@ func Update(tier tier.Tier, name ftypes.AggName, buckets []Bucket, histogram His
 		return err
 	}
 	vals := make(map[string]interface{}, 0)
-	for i, _ := range cur {
+	for i := range cur {
 		merged, err := histogram.Merge(cur[i], buckets[i].Count)
 		if err != nil {
 			return err

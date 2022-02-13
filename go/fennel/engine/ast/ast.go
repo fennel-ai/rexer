@@ -150,10 +150,10 @@ func (q Query) Equals(ast Ast) bool {
 type AtomType uint8
 
 const (
-	Int    AtomType = 1
-	String AtomType = 2
-	Bool   AtomType = 3
-	Double AtomType = 4
+	Int AtomType = 1 + iota
+	String
+	Bool
+	Double
 )
 
 type Atom struct {
@@ -298,10 +298,10 @@ func (opcall OpCall) AcceptString(v VisitorString) string {
 func (opcall OpCall) Equals(ast Ast) bool {
 	switch opcall2 := ast.(type) {
 	case OpCall:
-		return (opcall.Operand.Equals(opcall2.Operand) &&
+		return opcall.Operand.Equals(opcall2.Operand) &&
 			opcall.Namespace == opcall2.Namespace &&
 			opcall.Name == opcall2.Name &&
-			opcall.Kwargs.Equals(opcall2.Kwargs))
+			opcall.Kwargs.Equals(opcall2.Kwargs)
 	default:
 		return false
 	}
@@ -345,9 +345,9 @@ func (ifelse IfElse) AcceptString(v VisitorString) string {
 func (ifelse IfElse) Equals(ast Ast) bool {
 	switch ifelse2 := ast.(type) {
 	case IfElse:
-		return (ifelse.Condition.Equals(ifelse2.Condition) &&
+		return ifelse.Condition.Equals(ifelse2.Condition) &&
 			ifelse.ThenDo.Equals(ifelse2.ThenDo) &&
-			ifelse.ElseDo.Equals(ifelse2.ElseDo))
+			ifelse.ElseDo.Equals(ifelse2.ElseDo)
 	default:
 		return false
 	}

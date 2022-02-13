@@ -47,7 +47,7 @@ func (r RollingAverage) ratio(sum, num int64) value.Double {
 
 func (r RollingAverage) Reduce(values []value.Value) (value.Value, error) {
 	var num, sum int64
-	for i, _ := range values {
+	for i := range values {
 		a, b, err := r.extract(values[i])
 		if err != nil {
 			return nil, err

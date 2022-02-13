@@ -18,7 +18,7 @@ func (r RollingCounter) Start(end ftypes.Timestamp) ftypes.Timestamp {
 func (r RollingCounter) Reduce(values []value.Value) (value.Value, error) {
 	var total value.Value = value.Int(0)
 	var err error
-	for i, _ := range values {
+	for i := range values {
 		total, err = total.Op("+", values[i])
 		if err != nil {
 			return nil, err
