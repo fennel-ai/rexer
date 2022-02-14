@@ -40,7 +40,7 @@ print('-' * 50)
 p3 = subprocess.Popen(['poetry run python -m unittest discover rexerclient'], shell=True, cwd=rexerclient)
 p3.wait()
 
-print('Running full e2e integration tests with python client...')
+print('Running e2e integration tests with python client...')
 print('-' * 50)
 p4 = subprocess.Popen(['poetry run python -m unittest discover ../rexer/e2etests'], shell=True, cwd=rexerclient)
 p4.wait()
