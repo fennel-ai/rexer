@@ -51,7 +51,7 @@ func BucketizeMoment(key string, ts ftypes.Timestamp, count value.Value, windows
 func MergeBuckets(histogram Histogram, buckets []Bucket) ([]Bucket, error) {
 	seen := make(map[Bucket]value.Value, 0)
 	var err error
-	for i, _ := range buckets {
+	for i := range buckets {
 		mapkey := buckets[i]
 		mapkey.Count = value.Nil // note, for hashmap to be hashable, this needs to be hashable as well
 		current, ok := seen[mapkey]

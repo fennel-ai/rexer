@@ -12,6 +12,4 @@ type Histogram interface {
 	Zero() value.Value
 	Bucketize(actions value.Table) ([]Bucket, error)
 	Windows() []ftypes.Window
-	Marshal(v value.Value) (string, error)
-	Unmarshal(s string) (value.Value, error)
 }

@@ -4,7 +4,6 @@ import (
 	"fennel/lib/ftypes"
 	"fennel/lib/value"
 	"fmt"
-	"strconv"
 )
 
 type RollingCounter struct {
@@ -18,7 +17,7 @@ func (r RollingCounter) Start(end ftypes.Timestamp) ftypes.Timestamp {
 func (r RollingCounter) Reduce(values []value.Value) (value.Value, error) {
 	var total value.Value = value.Int(0)
 	var err error
-	for i, _ := range values {
+	for i := range values {
 		total, err = total.Op("+", values[i])
 		if err != nil {
 			return nil, err
@@ -61,22 +60,6 @@ func (r RollingCounter) Windows() []ftypes.Window {
 	return []ftypes.Window{
 		ftypes.Window_MINUTE, ftypes.Window_HOUR, ftypes.Window_DAY,
 	}
-}
-
-func (r RollingCounter) Marshal(v value.Value) (string, error) {
-	n, ok := v.(value.Int)
-	if !ok {
-		return "", fmt.Errorf("expected int, but got: %v", v)
-	}
-	return fmt.Sprintf("%d", int64(n)), nil
-}
-
-func (r RollingCounter) Unmarshal(s string) (value.Value, error) {
-	n, err := strconv.ParseInt(s, 10, 64)
-	if err != nil {
-		return nil, err
-	}
-	return value.Int(n), nil
 }
 
 var _ Histogram = RollingCounter{}

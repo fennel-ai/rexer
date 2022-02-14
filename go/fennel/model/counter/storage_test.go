@@ -40,7 +40,7 @@ func TestHistogram_GetMulti_Update(t *testing.T) {
 	assert.Equal(t, []value.Value{2 * count, 2 * count, 2 * count}, counts)
 
 	// some random get still gives 0
-	for i, _ := range buckets {
+	for i := range buckets {
 		buckets[i].Index += 1
 	}
 	counts, err = GetMulti(tier, name, buckets, histogram)

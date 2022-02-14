@@ -40,7 +40,7 @@ func GetMulti(tier tier.Tier, name ftypes.AggName, buckets []Bucket, histogram H
 				ret[i] = histogram.Zero()
 			}
 		case string:
-			ret[i], err = histogram.Unmarshal(t)
+			ret[i], err = value.FromJSON([]byte(t))
 			if err != nil {
 				return nil, err
 			}
@@ -58,13 +58,13 @@ func Update(tier tier.Tier, name ftypes.AggName, buckets []Bucket, histogram His
 		return err
 	}
 	vals := make(map[string]interface{}, 0)
-	for i, _ := range cur {
+	for i := range cur {
 		merged, err := histogram.Merge(cur[i], buckets[i].Count)
 		if err != nil {
 			return err
 		}
 		k := rkeys[i]
-		if vals[k], err = histogram.Marshal(merged); err != nil {
+		if vals[k], err = value.ToJSON(merged); err != nil {
 			return err
 		}
 	}

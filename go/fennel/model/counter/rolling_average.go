@@ -4,8 +4,6 @@ import (
 	"fennel/lib/ftypes"
 	"fennel/lib/value"
 	"fmt"
-	"strconv"
-	"strings"
 )
 
 /*
@@ -47,7 +45,7 @@ func (r RollingAverage) ratio(sum, num int64) value.Double {
 
 func (r RollingAverage) Reduce(values []value.Value) (value.Value, error) {
 	var num, sum int64
-	for i, _ := range values {
+	for i := range values {
 		a, b, err := r.extract(values[i])
 		if err != nil {
 			return nil, err
@@ -103,30 +101,6 @@ func (r RollingAverage) Windows() []ftypes.Window {
 	return []ftypes.Window{
 		ftypes.Window_MINUTE, ftypes.Window_HOUR, ftypes.Window_DAY,
 	}
-}
-
-func (r RollingAverage) Marshal(v value.Value) (string, error) {
-	sum, num, err := r.extract(v)
-	if err != nil {
-		return "", err
-	}
-	return fmt.Sprintf("%d,%d", sum, num), nil
-}
-
-func (r RollingAverage) Unmarshal(s string) (value.Value, error) {
-	l := strings.Split(s, ",")
-	if len(l) != 2 {
-		return nil, fmt.Errorf("expected two comma separated ints, but found: %v", s)
-	}
-	sum, err := strconv.ParseInt(l[0], 10, 64)
-	if err != nil {
-		return nil, err
-	}
-	num, err := strconv.ParseInt(l[1], 10, 64)
-	if err != nil {
-		return nil, err
-	}
-	return value.List{value.Int(sum), value.Int(num)}, nil
 }
 
 var _ Histogram = RollingAverage{}
