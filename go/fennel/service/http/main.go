@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"log"
+	"net"
 	"net/http"
 	"strconv"
 
@@ -104,14 +105,21 @@ func main() {
 	controller := server{tier}
 	controller.setHandlers(router)
 
-	// spin up http service
+	addr := fmt.Sprintf("localhost:%d", httplib.PORT)
+	log.Printf("starting http service on %s...", addr)
+	l, err := net.Listen("tcp", addr)
+	if err != nil {
+		log.Fatalf("Listen(): %v", err)
+		panic(err)
+	}
+
+	// Signal that server is open for business.
 	// Note: don't delete this log line - e2e tests rely on this to be printed
 	// to know that server has initialized and is ready to take traffic
 	log.Println("server is ready...")
-	addr := fmt.Sprintf("localhost:%d", httplib.PORT)
-	log.Printf("starting http service on %s...", addr)
-	if err := http.ListenAndServe(addr, router); err != http.ErrServerClosed {
-		// unexpected error. port in use?
-		log.Fatalf("ListenAndServe(): %v", err)
+
+	if err = http.Serve(l, router); err != http.ErrServerClosed {
+		log.Fatalf("Serve(): %v", err)
+		panic(err)
 	}
 }
