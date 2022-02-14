@@ -2,6 +2,7 @@ package profile
 
 import (
 	profilelib "fennel/lib/profile"
+	"fennel/lib/timer"
 	"fennel/lib/value"
 	"fennel/model/profile"
 	"fennel/tier"
@@ -11,6 +12,7 @@ import (
 )
 
 func Get(tier tier.Tier, request profilelib.ProfileItem) (value.Value, error) {
+	defer timer.Start(tier.ID, "controller.profile.get").ObserveDuration()
 	if err := request.Validate(); err != nil {
 		return nil, err
 	}
@@ -33,6 +35,7 @@ func Get(tier tier.Tier, request profilelib.ProfileItem) (value.Value, error) {
 }
 
 func Set(tier tier.Tier, request profilelib.ProfileItem) error {
+	defer timer.Start(tier.ID, "controller.profile.set").ObserveDuration()
 	if err := request.Validate(); err != nil {
 		return err
 	}

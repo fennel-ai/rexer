@@ -2,6 +2,7 @@ package action
 
 import (
 	"fennel/lib/action"
+	"fennel/lib/timer"
 	"fennel/tier"
 	"fmt"
 	"strings"
@@ -9,6 +10,7 @@ import (
 
 // inserts the action. If successful, returns the actionID
 func Insert(tier tier.Tier, action *action.ActionSer) (uint64, error) {
+	defer timer.Start(tier.ID, "model.action.insert").ObserveDuration()
 	if len(action.ActionType) > 255 {
 		return 0, fmt.Errorf("ActionType too long: action types cannot be longer than 255 chars")
 	}
@@ -41,6 +43,7 @@ func Insert(tier tier.Tier, action *action.ActionSer) (uint64, error) {
 // For actionValue range, both min/max are inclusive
 // TODO: add limit support?
 func Fetch(tier tier.Tier, request action.ActionFetchRequest) ([]action.ActionSer, error) {
+	defer timer.Start(tier.ID, "model.action.fetch").ObserveDuration()
 	query := "SELECT * FROM actionlog"
 	clauses := make([]string, 0)
 	if len(request.ActorType) != 0 {

@@ -3,6 +3,7 @@ package action
 import (
 	actionlib "fennel/lib/action"
 	"fennel/lib/ftypes"
+	"fennel/lib/timer"
 	"fennel/model/action"
 	"fennel/tier"
 	"fmt"
@@ -11,6 +12,7 @@ import (
 // Insert takes an action and inserts it both in the DB and Kafka
 // returns the unique ID of the action that was inserted
 func Insert(tier tier.Tier, a actionlib.Action) (uint64, error) {
+	defer timer.Start(tier.ID, "controller.action.insert").ObserveDuration()
 	err := a.Validate()
 	if err != nil {
 		return 0, fmt.Errorf("invalid action: %v", err)
@@ -44,6 +46,7 @@ func Insert(tier tier.Tier, a actionlib.Action) (uint64, error) {
 }
 
 func Fetch(this tier.Tier, request actionlib.ActionFetchRequest) ([]actionlib.Action, error) {
+	defer timer.Start(this.ID, "controller.action.fetch").ObserveDuration()
 	actionsSer, err := action.Fetch(this, request)
 	if err != nil {
 		return nil, err

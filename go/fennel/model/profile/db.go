@@ -3,6 +3,7 @@ package profile
 import (
 	"fennel/lib/ftypes"
 	"fennel/lib/profile"
+	"fennel/lib/timer"
 	"fennel/tier"
 	"fmt"
 	"strings"
@@ -20,6 +21,7 @@ type provider interface {
 type dbProvider struct{}
 
 func (D dbProvider) set(tier tier.Tier, otype ftypes.OType, oid uint64, key string, version uint64, valueSer []byte) error {
+	defer timer.Start(tier.ID, "model.profile.db.set").ObserveDuration()
 	if version == 0 {
 		return fmt.Errorf("version can not be zero")
 	}
@@ -43,6 +45,7 @@ func (D dbProvider) set(tier tier.Tier, otype ftypes.OType, oid uint64, key stri
 }
 
 func (D dbProvider) get(tier tier.Tier, otype ftypes.OType, oid uint64, key string, version uint64) ([]byte, error) {
+	defer timer.Start(tier.ID, "model.profile.db.get").ObserveDuration()
 	var value [][]byte = nil
 	var err error
 	if version > 0 {

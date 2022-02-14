@@ -2,6 +2,7 @@ package kafka
 
 import (
 	"fennel/lib/ftypes"
+	"fennel/lib/timer"
 	"fennel/resource"
 	"fmt"
 
@@ -33,6 +34,7 @@ func (k RemoteConsumer) Type() resource.Type {
 }
 
 func (k RemoteConsumer) Read(pmsg proto.Message) error {
+	defer timer.Start(k.tierID, "kafka.read").ObserveDuration()
 	kmsg, err := k.ReadMessage(-1)
 	if err != nil {
 		return fmt.Errorf("failed to read msg from kafka: %v", err)
@@ -53,6 +55,7 @@ func (k RemoteConsumer) Read(pmsg proto.Message) error {
 // An alternate implementation is sketched here:
 // https://github.com/confluentinc/confluent-kafka-go/issues/690#issuecomment-932810037.
 func (k RemoteConsumer) Backlog() (int, error) {
+	defer timer.Start(k.tierID, "kafka.backlog").ObserveDuration()
 	var n int
 
 	// Get the current assigned topic partitions.
