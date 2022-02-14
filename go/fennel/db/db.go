@@ -90,6 +90,9 @@ func (conf MySQLConfig) Materialize(tierID ftypes.TierID) (resource.Resource, er
 	if err != nil {
 		return nil, err
 	}
+	DB.SetMaxOpenConns(800)  // The default is 0 (unlimited)
+	DB.SetMaxIdleConns(100)  // defaultMaxIdleConns = 2
+	DB.SetConnMaxLifetime(0) // 0, connections are reused forever.
 
 	conn := Connection{config: conf, DB: DB, tierID: tierID}
 	if err := syncSchema(conn, conf.Schema); err != nil {
