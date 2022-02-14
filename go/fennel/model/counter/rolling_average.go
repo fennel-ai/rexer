@@ -103,9 +103,4 @@ func (r RollingAverage) Windows() []ftypes.Window {
 	}
 }
 
-func (r RollingAverage) Validate(v value.Value) error {
-	_, _, err := r.extract(v)
-	return err
-}
-
 var _ Histogram = RollingAverage{}

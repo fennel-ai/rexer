@@ -75,12 +75,4 @@ func (r TimeseriesCounter) Windows() []ftypes.Window {
 	return []ftypes.Window{r.Window}
 }
 
-func (r TimeseriesCounter) Validate(v value.Value) error {
-	_, ok := v.(value.Int)
-	if !ok {
-		return fmt.Errorf("expected int, but got: %v", v)
-	}
-	return nil
-}
-
 var _ Histogram = TimeseriesCounter{}

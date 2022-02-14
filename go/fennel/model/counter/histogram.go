@@ -12,5 +12,4 @@ type Histogram interface {
 	Zero() value.Value
 	Bucketize(actions value.Table) ([]Bucket, error)
 	Windows() []ftypes.Window
-	Validate(value.Value) error
 }

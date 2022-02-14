@@ -48,39 +48,6 @@ func TestRollingAverage_Reduce(t *testing.T) {
 	}
 }
 
-func TestRollingAverage_Valid(t *testing.T) {
-	t.Parallel()
-	h := RollingAverage{}
-	validCases := []value.Value{
-		value.List{value.Int(0), value.Int(-1)},
-		value.List{value.Int(2), value.Int(1)},
-		value.List{value.Int(0), value.Int(0)},
-		value.List{value.Int(1e12), value.Int(12318123)},
-		value.List{value.Int(-1e12), value.Int(12318123)},
-	}
-	for _, n := range validCases {
-		err := h.Validate(n)
-		assert.NoError(t, err)
-	}
-}
-
-func TestRollingAverage_Invalid(t *testing.T) {
-	t.Parallel()
-	h := RollingAverage{}
-	invalidCases := []value.Value{
-		value.List{value.Int(0), value.Int(-1), value.Int(4)},
-		value.List{value.Int(2)},
-		value.List{value.Double(0), value.Int(0)},
-		value.Int(1),
-		value.Dict{},
-		value.Nil,
-	}
-	for _, n := range invalidCases {
-		err := h.Validate(n)
-		assert.Error(t, err)
-	}
-}
-
 func TestRollingAverage_Merge_Valid(t *testing.T) {
 	t.Parallel()
 	h := RollingAverage{}

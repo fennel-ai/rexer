@@ -62,12 +62,4 @@ func (r RollingCounter) Windows() []ftypes.Window {
 	}
 }
 
-func (r RollingCounter) Validate(v value.Value) error {
-	_, ok := v.(value.Int)
-	if !ok {
-		return fmt.Errorf("expected int, but got: %v", v)
-	}
-	return nil
-}
-
 var _ Histogram = RollingCounter{}

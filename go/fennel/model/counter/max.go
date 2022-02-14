@@ -116,9 +116,4 @@ func (m Max) Windows() []ftypes.Window {
 	}
 }
 
-func (m Max) Validate(v value.Value) error {
-	_, _, err := m.extract(v)
-	return err
-}
-
 var _ Histogram = Max{}
