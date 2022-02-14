@@ -6,6 +6,10 @@ import (
 	"fmt"
 )
 
+/*
+	Max maintains maximum of a bucket with two vars (maxv and empty).
+	Maxv is the maximum value. If empty is true, the bucket is empty so maxv is ignored.
+*/
 type Max struct {
 	Duration uint64
 }

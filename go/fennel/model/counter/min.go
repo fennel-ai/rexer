@@ -6,6 +6,10 @@ import (
 	"fmt"
 )
 
+/*
+	Min maintains minimum of a bucket with two vars (minv and empty).
+	Minv is the minimum value. If empty is true, the bucket is empty so minv is ignored.
+*/
 type Min struct {
 	Duration uint64
 }
