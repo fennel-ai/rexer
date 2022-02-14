@@ -70,6 +70,10 @@ const appDep = image.imageName.apply(() => {
                         name: name,
                         image: image.imageName,
                         imagePullPolicy: "Always",
+                        command: [
+                            "/root/countaggr",
+                            "--dev=false"
+                        ],
                         env: [
                             {
                                 name: "KAFKA_SERVER_ADDRESS",
