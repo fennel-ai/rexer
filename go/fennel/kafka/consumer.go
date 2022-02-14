@@ -1,9 +1,11 @@
 package kafka
 
 import (
+	"fmt"
+	"log"
+
 	"fennel/lib/ftypes"
 	"fennel/resource"
-	"fmt"
 
 	"github.com/confluentinc/confluent-kafka-go/kafka"
 	"google.golang.org/protobuf/proto"
@@ -114,7 +116,11 @@ func (conf RemoteConsumerConfig) Materialize(tierID ftypes.TierID) (resource.Res
 	if err != nil {
 		return nil, fmt.Errorf("failed to create kafka consumer: %v", err)
 	}
-	err = consumer.Subscribe(conf.Topic, nil)
+	rebalanceCb := func(_ *kafka.Consumer, e kafka.Event) error {
+		log.Printf("Got kafka partition rebalance event: %v", e.String())
+		return nil
+	}
+	err = consumer.Subscribe(conf.Topic, rebalanceCb)
 	if err != nil {
 		return nil, fmt.Errorf("failed to subscribe to Topic [%s]: %v", conf.Topic, err)
 	}
