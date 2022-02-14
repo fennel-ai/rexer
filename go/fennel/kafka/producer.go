@@ -1,12 +1,14 @@
 package kafka
 
 import (
+	"fmt"
+	"log"
+
 	"fennel/lib/ftypes"
 	"fennel/resource"
-	"fmt"
+
 	"github.com/confluentinc/confluent-kafka-go/kafka"
 	"google.golang.org/protobuf/proto"
-	"log"
 )
 
 //=================================
@@ -40,6 +42,8 @@ func (k RemoteProducer) Log(protoMsg proto.Message) error {
 		TopicPartition: kafka.TopicPartition{Topic: &k.topic, Partition: kafka.PartitionAny},
 		Value:          value,
 	}
+	// TODO: Do we need to call Flush periodically? What about on receicing SIGINT
+	// or SIGTERM signals?
 	return k.Produce(&kafkaMsg, nil)
 }
 
