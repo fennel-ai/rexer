@@ -13,6 +13,7 @@ import (
 	"fennel/redis"
 
 	"go.uber.org/zap"
+	"go.uber.org/zap/zapcore"
 )
 
 type TierArgs struct {
@@ -110,12 +111,14 @@ func CreateFromArgs(args *TierArgs) (tier Tier, err error) {
 	if args.Dev {
 		logger, err = zap.NewDevelopment()
 	} else {
-		logger, err = zap.NewProduction()
+		config := zap.NewProductionConfig()
+		config.EncoderConfig.EncodeTime = zapcore.RFC3339TimeEncoder
+		logger, err = config.Build()
 	}
 	if err != nil {
 		return tier, fmt.Errorf("failed to construct logger: %v", err)
 	}
-	logger = logger.With(zap.Uint32("TIER_ID", args.TierID.Value()))
+	logger = logger.With(zap.Uint32("tier_id", args.TierID.Value()))
 
 	return Tier{
 		DB:        sqlConn.(db.Connection),
