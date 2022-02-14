@@ -45,6 +45,16 @@ func (m Min) extract(v value.Value) (int64, bool, error) {
 	return int64(minv), false, nil
 }
 
+func (m Min) merge(v1 int64, e1 bool, v2 int64, e2 bool) (int64, bool) {
+	if e1 {
+		return v2, e2
+	}
+	if e2 {
+		return v1, e1
+	}
+	return min(v1, v2), false
+}
+
 func (m Min) Reduce(values []value.Value) (value.Value, error) {
 	var minv int64 = 0
 	empty := true
@@ -53,12 +63,7 @@ func (m Min) Reduce(values []value.Value) (value.Value, error) {
 		if err != nil {
 			return nil, err
 		}
-		if empty {
-			minv = v
-			empty = e
-		} else if !e {
-			minv = min(minv, v)
-		}
+		minv, empty = m.merge(minv, empty, v, e)
 	}
 	return value.List{value.Int(minv), value.Bool(empty)}, nil
 }
@@ -72,13 +77,8 @@ func (m Min) Merge(a, b value.Value) (value.Value, error) {
 	if err != nil {
 		return nil, err
 	}
-	if e1 {
-		return b, nil
-	}
-	if e2 {
-		return a, nil
-	}
-	return value.List{value.Int(min(v1, v2)), value.Bool(false)}, nil
+	v, e := m.merge(v1, e1, v2, e2)
+	return value.List{value.Int(v), value.Bool(e)}, nil
 }
 
 func (m Min) Zero() value.Value {
