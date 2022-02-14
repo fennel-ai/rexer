@@ -1,11 +1,6 @@
 package main
 
 import (
-	"fmt"
-	"io/ioutil"
-	"log"
-	"net/http"
-
 	"fennel/controller/action"
 	aggregate2 "fennel/controller/aggregate"
 	profile2 "fennel/controller/profile"
@@ -18,6 +13,11 @@ import (
 	"fennel/lib/query"
 	"fennel/lib/value"
 	"fennel/tier"
+	"fmt"
+	"io/ioutil"
+	"log"
+	"net/http"
+	_ "net/http/pprof"
 
 	"github.com/gorilla/mux"
 	"google.golang.org/protobuf/proto"
@@ -47,6 +47,10 @@ func (s server) setHandlers(router *mux.Router) {
 	router.HandleFunc("/retrieve_aggregate", s.RetrieveAggregate)
 	router.HandleFunc("/deactivate_aggregate", s.DeactivateAggregate)
 	router.HandleFunc("/aggregate_value", s.AggregateValue)
+
+	// for any requests starting with /debug, hand the control to default servemux
+	// needed to enable pprof
+	router.PathPrefix("/debug/").Handler(http.DefaultServeMux)
 }
 
 func (m server) Log(w http.ResponseWriter, req *http.Request) {
@@ -63,7 +67,6 @@ func (m server) Log(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 	// fwd to controller
-
 	aid, err := action.Insert(m.tier, a)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)

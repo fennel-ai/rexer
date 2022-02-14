@@ -2,12 +2,14 @@ package main
 
 import (
 	"log"
+	"net/http"
 	"sync"
 	"time"
 
 	"fennel/controller/aggregate"
 	libaggregate "fennel/lib/aggregate"
 	"fennel/tier"
+	_ "net/http/pprof"
 
 	// we need this to ensure that all operators are built with aggregator
 	_ "fennel/opdefs"
@@ -63,6 +65,9 @@ func main() {
 	}
 	// Start monitoring kafka lag in a go-routine.
 	go monitorKafkaLag(tier)
+	go func() {
+		log.Println(http.ListenAndServe("localhost:2411", nil))
+	}()
 	// Note: don't delete this log line - e2e tests rely on this to be printed
 	// to know that server has initialized and is ready to take traffic
 	log.Println("server is ready...")
