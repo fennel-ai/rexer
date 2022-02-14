@@ -77,6 +77,7 @@ const appDep = image.imageName.apply(() => {
                             "/root/server",
                             "--metrics-port",
                             "2112",
+                            "--dev=false"
                         ],
                         name: name,
                         image: image.imageName,
