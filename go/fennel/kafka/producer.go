@@ -5,6 +5,7 @@ import (
 	"log"
 
 	"fennel/lib/ftypes"
+	"fennel/lib/timer"
 	"fennel/resource"
 
 	"github.com/confluentinc/confluent-kafka-go/kafka"
@@ -34,6 +35,7 @@ func (k RemoteProducer) Type() resource.Type {
 }
 
 func (k RemoteProducer) Log(protoMsg proto.Message) error {
+	defer timer.Start(k.tierID, "kafka.log").ObserveDuration()
 	value, err := proto.Marshal(protoMsg)
 	if err != nil {
 		return fmt.Errorf("failed to serialize protoMsg to proto: %v", err)

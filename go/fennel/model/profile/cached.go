@@ -3,6 +3,7 @@ package profile
 import (
 	"context"
 	"fennel/lib/ftypes"
+	"fennel/lib/timer"
 	"fennel/tier"
 	"fmt"
 )
@@ -31,6 +32,7 @@ type cachedProvider struct {
 }
 
 func (c cachedProvider) set(tier tier.Tier, otype ftypes.OType, oid uint64, key string, version uint64, valueSer []byte) error {
+	defer timer.Start(tier.ID, "model.profile.cached.set").ObserveDuration()
 	if err := c.base.set(tier, otype, oid, key, version, valueSer); err != nil {
 		return err
 	}
@@ -56,6 +58,7 @@ func (c cachedProvider) set(tier tier.Tier, otype ftypes.OType, oid uint64, key 
 }
 
 func (c cachedProvider) get(tier tier.Tier, otype ftypes.OType, oid uint64, key string, version uint64) ([]byte, error) {
+	defer timer.Start(tier.ID, "model.profile.cached.get").ObserveDuration()
 	k := makeKey(otype, oid, key, version)
 	v, err := tier.Cache.Get(context.TODO(), k)
 	if err == tier.Cache.Nil() {
