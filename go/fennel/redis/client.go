@@ -13,10 +13,10 @@ func (c Client) Set(ctx context.Context, k string, v interface{}, ttl time.Durat
 	return c.client.Set(ctx, k, v, ttl).Err()
 }
 
-func (c Client) Del(ctx context.Context, k string) error {
+func (c Client) Del(ctx context.Context, k ...string) error {
 	defer timer.Start(c.TierID(), "redis.del").ObserveDuration()
-	k = c.tieredKey(k)
-	return c.client.Del(ctx, k).Err()
+	k = c.mTieredKey(k)
+	return c.client.Del(ctx, k...).Err()
 }
 
 func (c Client) Get(ctx context.Context, k string) (interface{}, error) {

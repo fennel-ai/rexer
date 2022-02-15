@@ -38,23 +38,13 @@ func (c cachedProvider) set(tier tier.Tier, otype ftypes.OType, oid uint64, key 
 	}
 	// ground truth was successful so now we update the caches
 	k1 := makeKey(otype, oid, key, version)
-	err1 := tier.Cache.Delete(context.TODO(), k1)
-
 	// whenever we make a write, also invalidate "latest" version
 	k2 := makeKey(otype, oid, key, 0)
-	err2 := tier.Cache.Delete(context.TODO(), k2)
-	var ret error = nil
-	if err1 != nil && err1 != tier.Cache.Nil() {
-		ret = err1
+	err := tier.Cache.Delete(context.TODO(), k1, k2)
+	if err != tier.Cache.Nil() {
+		return err
 	}
-	if err2 != nil && err2 != tier.Cache.Nil() {
-		if ret != nil {
-			ret = fmt.Errorf("%w; %v", err2, ret)
-		} else {
-			ret = err2
-		}
-	}
-	return ret
+	return nil
 }
 
 func (c cachedProvider) get(tier tier.Tier, otype ftypes.OType, oid uint64, key string, version uint64) ([]byte, error) {
