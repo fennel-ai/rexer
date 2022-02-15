@@ -1,11 +1,10 @@
 import requests
-import json
 from absl import flags
 from flask import Flask, request, jsonify
 from google.protobuf import json_format
 
-from rexerclient import client, value
-from rexerclient.models import action, profile
+from rexerclient import client
+from rexerclient.models import action
 
 app = Flask('console')
 
@@ -107,7 +106,7 @@ def profile_handler():
     req = _to_profile_item(otype, oid, key, version)
     # TODO: client's get_profile returns a single value but
     # we need a list of all relevant profile rows here
-    response = requests.post(go_url+'/get', data=json.dumps(req))
+    response = requests.post(go_url+'/get', json=req)
     if response.status_code != requests.codes.OK:
         response.raise_for_status()
     return response.content
@@ -213,12 +212,12 @@ def _validate_profile_get_multi(otype, oid, key, version):
 
 
 def _to_profile_fetch_request(otype, oid, key, version):
-    ret = profile.ProfileFetchRequest()
-    ret.OType = _to_str(otype)
-    ret.Oid = _to_int(oid)
-    ret.Key = _to_str(key)
-    ret.Version = _to_int(version)
-    return ret
+    return {
+        'OType': _to_str(otype),
+        'Oid': _to_int(oid),
+        'Key': _to_str(key),
+        'Version': _to_int(version)
+    }
 
 
 @app.route('/profile_multi/', methods=['GET'])
@@ -232,17 +231,10 @@ def profile_multi_handler():
     if len(errors) > 0:
         return jsonify({'errors': errors}), 400
     req = _to_profile_fetch_request(otype, oid, key, version)
-    ser = req.SerializeToString()
-    response = requests.post(go_url+'/get_multi', data=ser)
+    response = requests.post(go_url+'/get_multi', json=req)
     if response.status_code != requests.codes.OK:
         response.raise_for_status()
-    pl = profile.ProfileList()
-    pl.ParseFromString(response.content)
-    profiles = profile.from_proto_profile_list(pl)
-    strs = []
-    for p in profiles:
-        strs.append(json_format.MessageToJson(p, including_default_value_fields=True))
-    return '[' + ', '.join(strs) + ']'
+    return response.content
 
 
 go_url = endpoint_flag.default
