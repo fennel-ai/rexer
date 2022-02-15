@@ -1,2 +1,7 @@
 config:
   aws:region: us-west-2
+  kafka:bootstrapServers: "3000"
+  tier:host: localhost
+  tier:password: abc123
+  tier:port: "3000"
+  tier:username: luke

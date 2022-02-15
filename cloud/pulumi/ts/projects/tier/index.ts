@@ -17,9 +17,9 @@ const provider = new mysql.Provider("mysql-provider", {
   password,
 });
 
-const database = new mysql.Database("mysql-database", {});
+const database = new mysql.Database("mysql-database", {}, { provider });
 
-const partitions = config.getNumber("partitions") || 100;
+const partitions = 1;
 const replicationFactor = config.getNumber("replicationFactor") || 2;
 
 const logs = new kafka.Topic("kafka-logs", {
@@ -28,6 +28,5 @@ const logs = new kafka.Topic("kafka-logs", {
 });
 
 // Export the name of the bucket
-export const providerId = provider.id;
 export const databaseId = database.id;
 export const logsId = logs.id;
