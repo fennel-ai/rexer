@@ -1,7 +1,6 @@
 package profile
 
 import (
-	"encoding/json"
 	"fennel/lib/ftypes"
 	"fennel/lib/value"
 	"fmt"
@@ -159,41 +158,61 @@ func (pi *ProfileItem) Validate() error {
 	return nil
 }
 
-func FromJSON(data []byte) (ProfileItem, error) {
-	var zero ProfileItem
+func (pi *ProfileItem) UnmarshalJSON(data []byte) error {
 	otype, err := jsonparser.GetString(data, "OType")
 	if err != nil {
-		return zero, fmt.Errorf("failed to parse OType json: %v", err)
+		return fmt.Errorf("failed to parse OType json: %v", err)
 	}
 	oid, err := jsonparser.GetInt(data, "Oid")
 	if err != nil {
-		return zero, fmt.Errorf("failed to parse Oid json: %v", err)
+		return fmt.Errorf("failed to parse Oid json: %v", err)
 	}
 	key, err := jsonparser.GetString(data, "Key")
 	if err != nil {
-		return zero, fmt.Errorf("failed to parse Key json: %v", err)
+		return fmt.Errorf("failed to parse Key json: %v", err)
 	}
 	vdata, _, _, err := jsonparser.Get(data, "Value")
 	if err != nil {
-		return zero, fmt.Errorf("failed to get Value json: %v", err)
+		return fmt.Errorf("failed to get Value json: %v", err)
 	}
 	val, err := value.FromJSON(vdata)
 	if err != nil {
-		return zero, fmt.Errorf("failed to parse Value json: %v", err)
+		return fmt.Errorf("failed to parse Value json: %v", err)
 	}
 	version, err := jsonparser.GetInt(data, "Version")
 	if err != nil {
-		return zero, fmt.Errorf("failed to parse Version json: %v", err)
+		return fmt.Errorf("failed to parse Version json: %v", err)
 	}
-	return ProfileItem{
-		OType:   ftypes.OType(otype),
-		Oid:     uint64(oid),
-		Key:     key,
-		Value:   val,
-		Version: uint64(version),
-	}, nil
+
+	pi.OType = ftypes.OType(otype)
+	pi.Oid = uint64(oid)
+	pi.Key = key
+	pi.Value = val
+	pi.Version = uint64(version)
+	return nil
 }
 
-func ToJSON(pi *ProfileItem) ([]byte, error) {
-	return json.Marshal(pi)
+func (pfr *ProfileFetchRequest) UnmarshalJSON(data []byte) error {
+	otype, err := jsonparser.GetString(data, "OType")
+	if err != nil {
+		return fmt.Errorf("failed to parse OType json: %v", err)
+	}
+	oid, err := jsonparser.GetInt(data, "Oid")
+	if err != nil {
+		return fmt.Errorf("failed to parse Oid json: %v", err)
+	}
+	key, err := jsonparser.GetString(data, "Key")
+	if err != nil {
+		return fmt.Errorf("failed to parse Key json: %v", err)
+	}
+	version, err := jsonparser.GetInt(data, "Version")
+	if err != nil {
+		return fmt.Errorf("failed to parse Version json: %v", err)
+	}
+
+	pfr.OType = ftypes.OType(otype)
+	pfr.Oid = uint64(oid)
+	pfr.Key = key
+	pfr.Version = uint64(version)
+	return nil
 }
