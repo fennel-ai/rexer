@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"fennel/controller/action"
 	aggregate2 "fennel/controller/aggregate"
 	profile2 "fennel/controller/profile"
@@ -115,8 +116,8 @@ func (m server) GetProfile(w http.ResponseWriter, req *http.Request) {
 		log.Printf("Error: %v", err)
 		return
 	}
-	request, err := profilelib.FromJSON(data)
-	if err != nil {
+	var request profilelib.ProfileItem
+	if err := json.Unmarshal(data, &request); err != nil {
 		http.Error(w, fmt.Sprintf("invalid request: %v", err), http.StatusBadRequest)
 		log.Printf("Error: %v", err)
 		return
@@ -134,14 +135,14 @@ func (m server) GetProfile(w http.ResponseWriter, req *http.Request) {
 		fmt.Fprintf(w, string(""))
 		return
 	}
-	// now convert value to json bytes
-	valJSON, err := value.ToJSON(val)
+	// now serialize value to JSON
+	valSer, err := value.ToJSON(val)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		log.Printf("Error: %v", err)
 		return
 	}
-	w.Write(valJSON)
+	w.Write(valSer)
 }
 
 // TODO: add some locking etc to ensure that if two requests try to modify
@@ -154,8 +155,8 @@ func (m server) SetProfile(w http.ResponseWriter, req *http.Request) {
 		log.Printf("Error: %v", err)
 		return
 	}
-	request, err := profilelib.FromJSON(data)
-	if err != nil {
+	var request profilelib.ProfileItem
+	if err := json.Unmarshal(data, &request); err != nil {
 		http.Error(w, fmt.Sprintf("invalid request: %v", err), http.StatusBadRequest)
 		log.Printf("Error: %v", err)
 		return
@@ -169,13 +170,19 @@ func (m server) SetProfile(w http.ResponseWriter, req *http.Request) {
 }
 
 func (m server) GetProfileMulti(w http.ResponseWriter, req *http.Request) {
-	var protoRequest profilelib.ProtoProfileFetchRequest
-	if err := parse(req, &protoRequest); err != nil {
+	defer req.Body.Close()
+	data, err := ioutil.ReadAll(req.Body)
+	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		log.Printf("Error: %v", err)
 		return
 	}
-	request := profilelib.FromProtoProfileFetchRequest(&protoRequest)
+	var request profilelib.ProfileFetchRequest
+	if err := json.Unmarshal(data, &request); err != nil {
+		http.Error(w, fmt.Sprintf("invalid request: %v", err), http.StatusBadRequest)
+		log.Printf("Error: %v", err)
+		return
+	}
 	// send to controller
 	profiles, err := profile2.GetMulti(m.tier, request)
 	if err != nil {
@@ -183,13 +190,7 @@ func (m server) GetProfileMulti(w http.ResponseWriter, req *http.Request) {
 		log.Printf("Error: %v", err)
 		return
 	}
-	profileList, err := profilelib.ToProtoProfileList(profiles)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		log.Printf("Error: %v", err)
-		return
-	}
-	ser, err := proto.Marshal(profileList)
+	ser, err := json.Marshal(profiles)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		log.Printf("Error: %v", err)

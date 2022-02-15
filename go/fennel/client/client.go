@@ -2,6 +2,7 @@ package client
 
 import (
 	"bytes"
+	"encoding/json"
 	"fennel/engine/ast"
 	"fennel/lib/action"
 	"fennel/lib/aggregate"
@@ -133,11 +134,11 @@ func (c *Client) GetProfile(request *profileLib.ProfileItem) (*value.Value, erro
 	if err := request.Validate(); err != nil {
 		return nil, fmt.Errorf("invalid request: %v", err)
 	}
-	data, err := profileLib.ToJSON(request)
+	req, err := json.Marshal(request)
 	if err != nil {
 		return nil, fmt.Errorf("could not convert to json: %v", err)
 	}
-	response, err := c.postJSON(data, c.getProfileURL())
+	response, err := c.postJSON(req, c.getProfileURL())
 	if err != nil {
 		return nil, err
 	}
@@ -155,10 +156,10 @@ func (c *Client) GetProfile(request *profileLib.ProfileItem) (*value.Value, erro
 	}
 }
 
-func (c *Client) Query(req ast.Ast, reqdict value.Dict) (value.Value, error) {
+func (c *Client) Query(request ast.Ast, reqdict value.Dict) (value.Value, error) {
 	// convert the request to proto version
-	request := query.BoundQuery{Ast: req, Dict: reqdict}
-	protoReq, err := query.ToProtoBoundQuery(&request)
+	req := query.BoundQuery{Ast: request, Dict: reqdict}
+	protoReq, err := query.ToProtoBoundQuery(&req)
 	if err != nil {
 		return nil, fmt.Errorf("invalid request: %v", err)
 	}
@@ -181,36 +182,34 @@ func (c *Client) Query(req ast.Ast, reqdict value.Dict) (value.Value, error) {
 	}
 }
 
-func (c *Client) SetProfile(req *profileLib.ProfileItem) error {
+func (c *Client) SetProfile(request *profileLib.ProfileItem) error {
 	// validate and convert to json
-	if err := req.Validate(); err != nil {
+	if err := request.Validate(); err != nil {
 		return fmt.Errorf("invalid request: %v", err)
 	}
-	data, err := profileLib.ToJSON(req)
+	req, err := json.Marshal(request)
 	if err != nil {
 		return fmt.Errorf("could not convert to json: %v", err)
 	}
-	if _, err = c.postJSON(data, c.setProfileURL()); err != nil {
+	if _, err = c.postJSON(req, c.setProfileURL()); err != nil {
 		return err
 	}
 	return nil
 }
 
 func (c *Client) GetProfileMulti(request profileLib.ProfileFetchRequest) ([]profileLib.ProfileItem, error) {
-	protoRequest := profileLib.ToProtoProfileFetchRequest(&request)
-	response, err := c.post(&protoRequest, c.getProfileMultiURL())
+	req, err := json.Marshal(request)
+	if err != nil {
+		return nil, err
+	}
+	response, err := c.postJSON(req, c.getProfileMultiURL())
 	if err != nil {
 		return nil, err
 	}
 
-	var profileList profileLib.ProtoProfileList
-	err = proto.Unmarshal(response, &profileList)
-	if err != nil {
+	var profiles []profileLib.ProfileItem
+	if err = json.Unmarshal(response, &profiles); err != nil {
 		return nil, fmt.Errorf("unmarshal error: %v", err)
-	}
-	profiles, err := profileLib.FromProtoProfileList(&profileList)
-	if err != nil {
-		return nil, err
 	}
 	return profiles, nil
 }
