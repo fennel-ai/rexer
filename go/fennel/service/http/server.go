@@ -108,13 +108,14 @@ func (m server) Fetch(w http.ResponseWriter, req *http.Request) {
 }
 
 func (m server) GetProfile(w http.ResponseWriter, req *http.Request) {
-	var protoReq profilelib.ProtoProfileItem
-	if err := parse(req, &protoReq); err != nil {
+	defer req.Body.Close()
+	data, err := ioutil.ReadAll(req.Body)
+	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		log.Printf("Error: %v", err)
 		return
 	}
-	request, err := profilelib.FromProtoProfileItem(&protoReq)
+	request, err := profilelib.FromJSON(data)
 	if err != nil {
 		http.Error(w, fmt.Sprintf("invalid request: %v", err), http.StatusBadRequest)
 		log.Printf("Error: %v", err)
@@ -133,32 +134,27 @@ func (m server) GetProfile(w http.ResponseWriter, req *http.Request) {
 		fmt.Fprintf(w, string(""))
 		return
 	}
-	// now convert value to proto and serialize it
-	pval, err := value.ToProtoValue(val)
+	// now convert value to json bytes
+	valJSON, err := value.ToJSON(val)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		log.Printf("Error: %v", err)
 		return
 	}
-	valueSer, err := proto.Marshal(&pval)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		log.Printf("Error: %v", err)
-		return
-	}
-	w.Write(valueSer)
+	w.Write(valJSON)
 }
 
 // TODO: add some locking etc to ensure that if two requests try to modify
 // the same key/value, we don't Run into a race condition
 func (m server) SetProfile(w http.ResponseWriter, req *http.Request) {
-	var protoReq profilelib.ProtoProfileItem
-	if err := parse(req, &protoReq); err != nil {
+	defer req.Body.Close()
+	data, err := ioutil.ReadAll(req.Body)
+	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		log.Printf("Error: %v", err)
 		return
 	}
-	request, err := profilelib.FromProtoProfileItem(&protoReq)
+	request, err := profilelib.FromJSON(data)
 	if err != nil {
 		http.Error(w, fmt.Sprintf("invalid request: %v", err), http.StatusBadRequest)
 		log.Printf("Error: %v", err)

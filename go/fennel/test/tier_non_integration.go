@@ -12,7 +12,7 @@ import (
 	"time"
 )
 
-// Tier returns a tier to be used in tests based off a standard  test plane
+// Tier returns a tier to be used in tests based off a standard test plane
 // since this is only compiled when 'integration' build tag is not given, most resources are mocked
 func Tier() (tier.Tier, error) {
 	rand.Seed(time.Now().UnixNano())
