@@ -11,13 +11,12 @@ var fnDuration = promauto.NewSummaryVec(prometheus.SummaryOpts{
 	Name: "fn_duration_seconds",
 	Help: "Duration of individual go functions",
 	Objectives: map[float64]float64{
-		0.0:  5,
-		0.50: 5,
-		0.75: 5,
-		0.90: 5,
-		0.95: 5,
-		0.99: 5,
-		1.0:  5,
+		0.25: 0.05,
+		0.50: 0.05,
+		0.75: 0.05,
+		0.90: 0.05,
+		0.95: 0.02,
+		0.99: 0.01,
 	},
 }, []string{"tier_id", "function_name"})
 
