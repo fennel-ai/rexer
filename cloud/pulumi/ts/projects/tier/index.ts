@@ -1,11 +1,33 @@
 import * as pulumi from "@pulumi/pulumi";
-import * as aws from "@pulumi/aws";
-import * as awsx from "@pulumi/awsx";
-import { eks } from "../../library/tier/eksLib";
+import * as mysql from "@pulumi/mysql";
+import * as kafka from "@pulumi/kafka";
 
-// Create an AWS resource (S3 Bucket)
-const bucket = new aws.s3.Bucket("my-bucket");
+const config = new pulumi.Config();
+
+const host = config.require("host");
+const username = config.require("username");
+const password = config.require("password");
+const port = config.require("port");
+
+// endpoint (required parameter for provider) - The address of the MySQL server to use. Most often a "hostname:port"
+const endpoint = `${host}:${port}`;
+const provider = new mysql.Provider("mysql-provider", {
+  endpoint,
+  username,
+  password,
+});
+
+const database = new mysql.Database("mysql-database", {});
+
+const partitions = config.getNumber("partitions") || 100;
+const replicationFactor = config.getNumber("replicationFactor") || 2;
+
+const logs = new kafka.Topic("kafka-logs", {
+  partitions,
+  replicationFactor,
+});
 
 // Export the name of the bucket
-export const bucketName = bucket.id;
-export const foo = eks.foo();
+export const providerId = provider.id;
+export const databaseId = database.id;
+export const logsId = logs.id;
