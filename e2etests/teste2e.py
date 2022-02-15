@@ -67,7 +67,7 @@ class TestEndToEnd(unittest.TestCase):
         c = client.Client(URL)
         uid = 12312
         video_id = 456
-        city = value.String('delhi')
+        city = 'delhi'
         gender = value.Int(1)
         age_group = value.Int(3)
 
@@ -99,7 +99,7 @@ class TestEndToEnd(unittest.TestCase):
 
         found = c.aggregate_value(
             'trail_view_by_city_gender_agegroup_2days',
-            value.List(value.Int(video_id), city, gender, age_group),
+            value.List(value.Int(video_id), value.String(city), gender, age_group),
         )
         self.assertEqual(value.Int(1), found)
 
