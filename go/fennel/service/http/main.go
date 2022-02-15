@@ -1,21 +1,20 @@
 package main
 
 import (
-	"fmt"
-	"log"
-	"net"
-	"net/http"
-	"strconv"
-
 	httplib "fennel/lib/http"
 	_ "fennel/opdefs"
 	"fennel/service/common"
 	"fennel/tier"
-
+	"fmt"
 	"github.com/alexflint/go-arg"
 	"github.com/gorilla/mux"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
+	"log"
+	"net"
+	"net/http"
+	"strconv"
+	"time"
 )
 
 //------------------------ START metric definitions ----------------------------
@@ -39,13 +38,14 @@ var responseStatus = promauto.NewCounterVec(
 var httpDuration = promauto.NewSummaryVec(prometheus.SummaryOpts{
 	Name: "http_response_time_seconds",
 	Help: "Duration of HTTP requests.",
-	// Track quantiles with +/- 5% error.
+	// Track quantiles within small error
 	Objectives: map[float64]float64{
-		0.0:  5,
-		0.25: 5,
-		0.50: 5,
-		0.75: 5,
-		1.0:  5,
+		0.25: 0.05,
+		0.50: 0.05,
+		0.75: 0.05,
+		0.90: 0.05,
+		0.95: 0.02,
+		0.99: 0.01,
 	},
 }, []string{"path"})
 
@@ -96,6 +96,8 @@ func main() {
 	// standard metrics.
 	common.StartPromMetricsServer(flags.MetricsPort)
 	router.Use(prometheusMiddleware)
+	router.Use(httplib.TimeoutMiddleware(2 * time.Second))
+	router.Use(httplib.RateLimitingMiddleware(1000))
 
 	tier, err := tier.CreateFromArgs(&flags.TierArgs)
 	if err != nil {
