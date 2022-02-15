@@ -25,8 +25,8 @@ func (c Cache) Get(ctx context.Context, k string) (interface{}, error) {
 	return c.client.Get(ctx, k)
 }
 
-func (c Cache) Delete(ctx context.Context, k string) error {
-	return c.client.Del(ctx, k)
+func (c Cache) Delete(ctx context.Context, k ...string) error {
+	return c.client.Del(ctx, k...)
 }
 
 func (c Cache) Set(ctx context.Context, k string, v interface{}, ttl time.Duration) error {
