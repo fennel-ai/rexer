@@ -107,20 +107,37 @@ func (c Client) post(protoMessage proto.Message, url string) ([]byte, error) {
 	return body, nil
 }
 
+func (c Client) postJSON(data []byte, url string) ([]byte, error) {
+	reqBody := bytes.NewBuffer(data)
+	response, err := c.httpclient.Post(url, "application/json", reqBody)
+	if err != nil {
+		return nil, fmt.Errorf("server error: %v", err)
+	}
+	defer response.Body.Close()
+	body, err := ioutil.ReadAll(response.Body)
+	if err != nil {
+		return nil, fmt.Errorf("could not read server response: %v", err)
+	}
+	// handle http error given by the server
+	if response.StatusCode < 200 || response.StatusCode >= 300 {
+		return nil, fmt.Errorf("%s: %s", http.StatusText(response.StatusCode), string(body))
+	}
+	return body, nil
+}
+
 // GetProfile if no matching value is found, a nil pointer is returned with no error
 // If a matching value is found, a valid Value pointer is returned with no error
 // If an error occurs, a nil pointer is returned with a non-nil error
 func (c *Client) GetProfile(request *profileLib.ProfileItem) (*value.Value, error) {
-	// convert the profile item to proto version
+	// validate and convert to json
 	if err := request.Validate(); err != nil {
 		return nil, fmt.Errorf("invalid request: %v", err)
 	}
-	protoReq, err := profileLib.ToProtoProfileItem(request)
+	data, err := profileLib.ToJSON(request)
 	if err != nil {
-		return nil, fmt.Errorf("invalid request: %v", err)
+		return nil, fmt.Errorf("could not convert to json: %v", err)
 	}
-
-	response, err := c.post(&protoReq, c.getProfileURL())
+	response, err := c.postJSON(data, c.getProfileURL())
 	if err != nil {
 		return nil, err
 	}
@@ -129,13 +146,8 @@ func (c *Client) GetProfile(request *profileLib.ProfileItem) (*value.Value, erro
 		// i.e. no valid value is found, so we return nil pointer
 		return nil, nil
 	}
-	// now try to read response as a serialized ProtoValue
-	var pv value.PValue
-	if err = proto.Unmarshal(response, &pv); err != nil {
-		return nil, fmt.Errorf("could not unmarshal server response: %v", err)
-	}
-	// now convert proto value to real value
-	v, err := value.FromProtoValue(&pv)
+	// now try to read response as a JSON object and convert to value
+	v, err := value.FromJSON(response)
 	if err != nil {
 		return nil, err
 	} else {
@@ -170,16 +182,15 @@ func (c *Client) Query(req ast.Ast, reqdict value.Dict) (value.Value, error) {
 }
 
 func (c *Client) SetProfile(req *profileLib.ProfileItem) error {
-	// first convert to proto
+	// validate and convert to json
 	if err := req.Validate(); err != nil {
 		return fmt.Errorf("invalid request: %v", err)
 	}
-	protoReq, err := profileLib.ToProtoProfileItem(req)
+	data, err := profileLib.ToJSON(req)
 	if err != nil {
-		return fmt.Errorf("could not convert request to proto: %v", err)
+		return fmt.Errorf("could not convert to json: %v", err)
 	}
-	// serialize the request to be sent on wire
-	if _, err = c.post(&protoReq, c.setProfileURL()); err != nil {
+	if _, err = c.postJSON(data, c.setProfileURL()); err != nil {
 		return err
 	}
 	return nil
