@@ -1,4 +1,5 @@
 import requests
+import json
 from absl import flags
 from flask import Flask, request, jsonify
 from google.protobuf import json_format
@@ -10,6 +11,7 @@ app = Flask('console')
 
 # Flags:
 endpoint_flag = flags.DEFINE_string("endpoint", "http://localhost:2425", "URL for the data-plane API end-point")
+
 
 def build_app(**kwargs):
     global c, go_url
@@ -29,12 +31,14 @@ def is_uint(s, size=32):
     except:
         return False
 
+
 def is_int(s, size=32):
     try:
         n = int(s)
         return -(2 ** (size - 1)) <= n < (2 ** (size - 1))
     except:
         return False
+
 
 def is_str(s):
     if isinstance(s, str):
@@ -74,18 +78,19 @@ def _validate_profile_get(otype, oid, key, version):
 def _to_int(s, default=0):
     return int(s) if s is not None else default
 
+
 def _to_str(s, default=''):
     return str(s) if s is not None else default
 
 
 def _to_profile_item(otype, oid, key, version):
-    ret = profile.ProfileItem()
-    ret.OType = str(otype)
-    ret.Oid = int(oid)
-    ret.Key = key if key is not None else ""
-    ret.Version = _to_int(version)
-    ret.Value.CopyFrom(value.Nil())
-    return ret
+    return {
+        'OType': str(otype),
+        'Oid': int(oid),
+        'Key': _to_str(key),
+        'Value': None,
+        'Version': _to_int(version)
+    }
 
 
 @app.route('/profile/', methods=['GET'])
@@ -102,13 +107,10 @@ def profile_handler():
     req = _to_profile_item(otype, oid, key, version)
     # TODO: client's get_profile returns a single value but
     # we need a list of all relevant profile rows here
-    ser = req.SerializeToString()
-    response = requests.post(go_url+'/get', data=ser)
+    response = requests.post(go_url+'/get', data=json.dumps(req))
     if response.status_code != requests.codes.OK:
         response.raise_for_status()
-    v = value.Value()
-    v.ParseFromString(response.content)
-    return json_format.MessageToJson(v)
+    return response.content
 
 
 def _validate_action_get(actor_id, actor_type, target_id, target_type, action_type,
@@ -128,17 +130,17 @@ def _validate_action_get(actor_id, actor_type, target_id, target_type, action_ty
         errors.append('max_timestamp is provided but is not a valid 64-bit unsigned integer')
     if (request_id is not None) and (not is_uint(request_id, 64)):
         errors.append('request_id is provided but is not a valid 64-bit unsigned integer')
-    if (actor_type is not None):
+    if actor_type is not None:
         if not is_str(actor_type):
             errors.append('actor_type is provided but is not a valid non-empty string')
         elif len(actor_type) > 255:
             errors.append('actor_type is provided but is longer than 255 chars')
-    if (target_type is not None):
+    if target_type is not None:
         if not is_str(target_type):
             errors.append('target_type is provided but is not a valid non-empty string')
         elif len(target_type) > 255:
             errors.append('target_type is provided but is longer than 255 chars')
-    if (action_type is not None):
+    if action_type is not None:
         if not is_str(action_type):
             errors.append('action_type is provided but is not a valid non-empty string')
         elif len(action_type) > 255:
@@ -195,6 +197,7 @@ def action_handler():
         strs.append(json_format.MessageToJson(a, including_default_value_fields=True))
     return '[' + ', '.join(strs) + ']'
 
+
 def _validate_profile_get_multi(otype, oid, key, version):
     errors = []
     if (otype is not None) and (not is_str(otype)):
@@ -208,6 +211,7 @@ def _validate_profile_get_multi(otype, oid, key, version):
     
     return errors
 
+
 def _to_profile_fetch_request(otype, oid, key, version):
     ret = profile.ProfileFetchRequest()
     ret.OType = _to_str(otype)
@@ -215,6 +219,7 @@ def _to_profile_fetch_request(otype, oid, key, version):
     ret.Key = _to_str(key)
     ret.Version = _to_int(version)
     return ret
+
 
 @app.route('/profile_multi/', methods=['GET'])
 def profile_multi_handler():
@@ -242,4 +247,4 @@ def profile_multi_handler():
 
 go_url = endpoint_flag.default
 c = client.Client(endpoint_flag.default)
-app.run(host="localhost", port="2475")
+app.run(host="localhost", port=2475)
