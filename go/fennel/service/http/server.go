@@ -55,14 +55,15 @@ func (s server) setHandlers(router *mux.Router) {
 }
 
 func (m server) Log(w http.ResponseWriter, req *http.Request) {
-	var pa actionlib.ProtoAction
-	if err := parse(req, &pa); err != nil {
+	defer req.Body.Close()
+	data, err := ioutil.ReadAll(req.Body)
+	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		log.Printf("Error: %v", err)
 		return
 	}
-	a, err := actionlib.FromProtoAction(&pa)
-	if err != nil {
+	var a actionlib.Action
+	if err := json.Unmarshal(data, &a); err != nil {
 		http.Error(w, fmt.Sprintf("invalid request: %v", err), http.StatusBadRequest)
 		log.Printf("Error: %v", err)
 		return
@@ -79,13 +80,19 @@ func (m server) Log(w http.ResponseWriter, req *http.Request) {
 }
 
 func (m server) Fetch(w http.ResponseWriter, req *http.Request) {
-	var protoRequest actionlib.ProtoActionFetchRequest
-	if err := parse(req, &protoRequest); err != nil {
+	defer req.Body.Close()
+	data, err := ioutil.ReadAll(req.Body)
+	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		log.Printf("Error: %v", err)
 		return
 	}
-	request := actionlib.FromProtoActionFetchRequest(&protoRequest)
+	var request actionlib.ActionFetchRequest
+	if err := json.Unmarshal(data, &request); err != nil {
+		http.Error(w, fmt.Sprintf("invalid request: %v", err), http.StatusBadRequest)
+		log.Printf("Error: %v", err)
+		return
+	}
 	// send to controller
 	actions, err := action.Fetch(m.tier, request)
 	if err != nil {
@@ -93,13 +100,7 @@ func (m server) Fetch(w http.ResponseWriter, req *http.Request) {
 		log.Printf("Error: %v", err)
 		return
 	}
-	actionList, err := actionlib.ToProtoActionList(actions)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		log.Printf("Error: %v", err)
-		return
-	}
-	ser, err := proto.Marshal(actionList)
+	ser, err := json.Marshal(actions)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		log.Printf("Error: %v", err)

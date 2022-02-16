@@ -150,18 +150,18 @@ def _validate_action_get(actor_id, actor_type, target_id, target_type, action_ty
 
 def _to_action_fetch_request(actor_id, actor_type, target_id, target_type, action_type,
                              min_timestamp, max_timestamp, min_action_id, max_action_id, request_id):
-    ret = action.ActionFetchRequest()
-    ret.ActorID = _to_int(actor_id)
-    ret.ActorType = _to_str(actor_type)
-    ret.TargetID = _to_int(target_id)
-    ret.TargetType = _to_str(target_type)
-    ret.ActionType = _to_str(action_type)
-    ret.MinTimestamp = _to_int(min_timestamp)
-    ret.MaxTimestamp = _to_int(max_timestamp)
-    ret.MinActionID = _to_int(min_action_id)
-    ret.MaxActionID = _to_int(max_action_id)
-    ret.RequestID = _to_int(request_id)
-    return ret
+    return {
+        'ActorID': _to_int(actor_id),
+        'ActorType': _to_str(actor_type),
+        'TargetID': _to_int(target_id),
+        'TargetType': _to_str(target_type),
+        'ActionType': _to_str(action_type),
+        'MinTimestamp': _to_int(min_timestamp),
+        'MaxTimestamp': _to_int(max_timestamp),
+        'MinActionID': _to_int(min_action_id),
+        'MaxActionID': _to_int(max_action_id),
+        'RequestID': _to_int(request_id),
+    }
 
 
 @app.route('/actions/', methods=['GET'])
@@ -184,17 +184,10 @@ def action_handler():
     
     req = _to_action_fetch_request(actor_id, actor_type, target_id, target_type, action_type,
                                    min_timestamp, max_timestamp, min_action_id, max_action_id, request_id)
-    ser = req.SerializeToString()
-    response = requests.post(go_url+'/fetch', data=ser)
+    response = requests.post(go_url+'/fetch', json=req)
     if response.status_code != requests.codes.OK:
         response.raise_for_status()
-    al = action.ActionList()
-    al.ParseFromString(response.content)
-    actions = action.from_proto_action_list(al)
-    strs = []
-    for a in actions:
-        strs.append(json_format.MessageToJson(a, including_default_value_fields=True))
-    return '[' + ', '.join(strs) + ']'
+    return response.content
 
 
 def _validate_profile_get_multi(otype, oid, key, version):

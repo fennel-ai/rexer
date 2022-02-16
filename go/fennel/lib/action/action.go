@@ -4,7 +4,7 @@ import (
 	"fennel/lib/ftypes"
 	"fennel/lib/value"
 	"fmt"
-
+	"github.com/buger/jsonparser"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -285,4 +285,116 @@ func ToTable(actions []Action) (value.Table, error) {
 		}
 	}
 	return table, nil
+}
+
+func (a *Action) UnmarshalJSON(data []byte) error {
+	var action_id, actor_id, target_id, timestamp, request_id int64
+	var actor_type, target_type, action_type string
+	var metadata value.Value
+	var errors []error
+	handler := func(idx int, vdata []byte, vtype jsonparser.ValueType, err error) {
+		if err != nil {
+			errors = append(errors, err)
+			return
+		}
+		switch idx {
+		case 0:
+			action_id, err = jsonparser.ParseInt(vdata)
+		case 1:
+			actor_id, err = jsonparser.ParseInt(vdata)
+		case 2:
+			actor_type, err = jsonparser.ParseString(vdata)
+		case 3:
+			target_id, err = jsonparser.ParseInt(vdata)
+		case 4:
+			target_type, err = jsonparser.ParseString(vdata)
+		case 5:
+			action_type, err = jsonparser.ParseString(vdata)
+		case 6:
+			timestamp, err = jsonparser.ParseInt(vdata)
+		case 7:
+			request_id, err = jsonparser.ParseInt(vdata)
+		case 8:
+			metadata, err = value.FromJSON(vdata)
+		default:
+			err = fmt.Errorf("unknown index")
+		}
+		if err != nil {
+			errors = append(errors, err)
+		}
+	}
+	paths := [][]string{{"ActionID"}, {"ActorID"}, {"ActorType"}, {"TargetID"}, {"TargetType"}, {"ActionType"},
+		{"Timestamp"}, {"RequestID"}, {"Metadata"}}
+	jsonparser.EachKey(data, handler, paths...)
+	if len(errors) != 0 {
+		// should this combine errors instead of returning only first error?
+		return fmt.Errorf("failed to parse action json: %v", errors[0])
+	}
+	a.ActionID = ftypes.OidType(action_id)
+	a.ActorID = ftypes.OidType(actor_id)
+	a.ActorType = ftypes.OType(actor_type)
+	a.TargetID = ftypes.OidType(target_id)
+	a.TargetType = ftypes.OType(target_type)
+	a.ActionType = ftypes.ActionType(action_type)
+	a.Timestamp = ftypes.Timestamp(timestamp)
+	a.RequestID = ftypes.RequestID(request_id)
+	a.Metadata = metadata
+	return nil
+}
+
+func (afr *ActionFetchRequest) UnmarshalJSON(data []byte) error {
+	var actor_id, target_id, min_timestamp, max_timestamp, min_action_id, max_action_id, request_id int64
+	var actor_type, target_type, action_type string
+	var errors []error
+	handler := func(idx int, vdata []byte, vtype jsonparser.ValueType, err error) {
+		if err != nil {
+			errors = append(errors, err)
+			return
+		}
+		switch idx {
+		case 0:
+			actor_id, err = jsonparser.ParseInt(vdata)
+		case 1:
+			actor_type, err = jsonparser.ParseString(vdata)
+		case 2:
+			target_id, err = jsonparser.ParseInt(vdata)
+		case 3:
+			target_type, err = jsonparser.ParseString(vdata)
+		case 4:
+			action_type, err = jsonparser.ParseString(vdata)
+		case 5:
+			min_timestamp, err = jsonparser.ParseInt(vdata)
+		case 6:
+			max_timestamp, err = jsonparser.ParseInt(vdata)
+		case 7:
+			min_action_id, err = jsonparser.ParseInt(vdata)
+		case 8:
+			max_action_id, err = jsonparser.ParseInt(vdata)
+		case 9:
+			request_id, err = jsonparser.ParseInt(vdata)
+		default:
+			err = fmt.Errorf("unknown index")
+		}
+		if err != nil {
+			errors = append(errors, err)
+		}
+	}
+	paths := [][]string{{"ActorID"}, {"ActorType"}, {"TargetID"}, {"TargetType"}, {"ActionType"},
+		{"MinTimestamp"}, {"MaxTimestamp"}, {"MinActionID"}, {"MaxActionID"}, {"RequestID"}}
+	jsonparser.EachKey(data, handler, paths...)
+	if len(errors) != 0 {
+		// should this combine errors instead of returning only first error?
+		return fmt.Errorf("failed to parse action profile request json: %v", errors[0])
+	}
+	afr.ActorID = ftypes.OidType(actor_id)
+	afr.ActorType = ftypes.OType(actor_type)
+	afr.TargetID = ftypes.OidType(target_id)
+	afr.TargetType = ftypes.OType(target_type)
+	afr.ActorType = ftypes.OType(action_type)
+	afr.MinTimestamp = ftypes.Timestamp(min_timestamp)
+	afr.MaxTimestamp = ftypes.Timestamp(max_timestamp)
+	afr.MinActionID = ftypes.OidType(min_action_id)
+	afr.MaxActionID = ftypes.OidType(max_action_id)
+	afr.RequestID = ftypes.RequestID(request_id)
+	return nil
 }

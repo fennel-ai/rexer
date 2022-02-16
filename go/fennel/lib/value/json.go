@@ -69,12 +69,12 @@ func parseJSONString(data []byte) (Value, error) {
 func parseJSONArray(data []byte) (Value, error) {
 	var ret List
 	var errors []error
-	handler := func(value []byte, dataType jsonparser.ValueType, _ int, err error) {
+	handler := func(vdata []byte, vtype jsonparser.ValueType, _ int, err error) {
 		if err != nil {
 			errors = append(errors, err)
 			return
 		}
-		v, err := parseJSON(value, dataType)
+		v, err := parseJSON(vdata, vtype)
 		if err != nil {
 			errors = append(errors, err)
 			return
@@ -94,12 +94,12 @@ func parseJSONArray(data []byte) (Value, error) {
 
 func parseJSONObject(data []byte) (Value, error) {
 	ret := make(Dict)
-	handler := func(key []byte, value []byte, dataType jsonparser.ValueType, _ int) error {
+	handler := func(key []byte, vdata []byte, vtype jsonparser.ValueType, _ int) error {
 		k, err := jsonparser.ParseString(key)
 		if err != nil {
 			return err
 		}
-		v, err := parseJSON(value, dataType)
+		v, err := parseJSON(vdata, vtype)
 		if err != nil {
 			return err
 		}
