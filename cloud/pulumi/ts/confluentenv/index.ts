@@ -1,7 +1,7 @@
 import * as pulumi from "@pulumi/pulumi";
 import * as confluent from "@pulumi/confluent";
 
-type input = {
+export type input = {
     region: string,
     username: string,
     password: pulumi.Output<string>,
@@ -14,7 +14,7 @@ const parseConfig = (): input => {
         username: config.require("username"),
         password: config.requireSecret("password"),
         region: config.require("region"),
-        envName: config.require("env-name"),
+        envName: config.require("envName"),
     }
 }
 
