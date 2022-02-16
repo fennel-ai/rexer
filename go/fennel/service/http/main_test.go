@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	aggregate2 "fennel/controller/aggregate"
 	"fennel/engine/ast"
 	"fennel/lib/aggregate"
@@ -205,7 +206,7 @@ func TestServer_AggregateValue_Valid(t *testing.T) {
 	h := counter.RollingCounter{Duration: 6 * 3600}
 	t1 := ftypes.Timestamp(t0 + 3600)
 	buckets := counter.BucketizeMoment(keystr, t1, value.Int(1), h.Windows())
-	err = counter.Update(tier, agg.Name, buckets, h)
+	err = counter.Update(context.Background(), tier, agg.Name, buckets, h)
 	assert.NoError(t, err)
 	clock.Set(int64(t1 + 60))
 	valueSendReceive(t, holder, agg, key, value.Int(1))

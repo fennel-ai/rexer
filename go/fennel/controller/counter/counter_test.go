@@ -1,6 +1,7 @@
 package counter
 
 import (
+	"context"
 	"fennel/engine/ast"
 	libaggregate "fennel/lib/aggregate"
 	"fennel/lib/ftypes"
@@ -21,6 +22,7 @@ func TestRolling(t *testing.T) {
 	assert.NoError(t, err)
 	defer test.Teardown(tier)
 
+	ctx := context.Background()
 	start := 24*3600*12 + 60*31
 	agg := libaggregate.Aggregate{
 		Name:      "mycounter",
@@ -48,14 +50,14 @@ func TestRolling(t *testing.T) {
 		}
 		assert.NoError(t, table.Append(row))
 	}
-	err = Update(tier, agg.Name, table, counter2.RollingCounter{})
+	err = Update(ctx, tier, agg.Name, table, counter2.RollingCounter{})
 	assert.NoError(t, err)
 
 	clock := &test.FakeClock{}
 	tier.Clock = clock
 	clock.Set(int64(start + 24*3600*2))
 	// at the end of 2 days, rolling counter should only be worth 28 hours, not full 48 hours
-	found, err := Value(tier, agg.Name, key, counter2.RollingCounter{Duration: 28 * 3600})
+	found, err := Value(ctx, tier, agg.Name, key, counter2.RollingCounter{Duration: 28 * 3600})
 	assert.NoError(t, err)
 	assert.Equal(t, value.Int(28*60), found)
 }
@@ -65,6 +67,7 @@ func TestTimeseries(t *testing.T) {
 	assert.NoError(t, err)
 	defer test.Teardown(tier)
 
+	ctx := context.Background()
 	start := 24*3600*12 + 60
 	agg := libaggregate.Aggregate{
 		Name:      "mycounter",
@@ -98,14 +101,14 @@ func TestTimeseries(t *testing.T) {
 		}
 		assert.NoError(t, table.Append(row))
 	}
-	err = Update(tier, agg.Name, table, histogram)
+	err = Update(ctx, tier, agg.Name, table, histogram)
 	assert.NoError(t, err)
 
 	clock := &test.FakeClock{}
 	tier.Clock = clock
 	clock.Set(int64(start + 24*3600*2))
 	// at the end of 2 days, we should get one data point each for 9 days
-	f, err := Value(tier, agg.Name, key, histogram)
+	f, err := Value(ctx, tier, agg.Name, key, histogram)
 	assert.NoError(t, err)
 	found, ok := f.(value.List)
 	assert.True(t, ok)
@@ -118,7 +121,7 @@ func TestTimeseries(t *testing.T) {
 	// but if we set time to just at 6 hours from start, we will still 9 entries, but few will be zero padded
 	// and since our start time is 1 min delayed, the 4th entry will be one short of 60
 	clock.Set(int64(start + 6*3600))
-	f, err = Value(tier, agg.Name, key, histogram)
+	f, err = Value(ctx, tier, agg.Name, key, histogram)
 	assert.NoError(t, err)
 	found, ok = f.(value.List)
 	assert.True(t, ok)
@@ -139,6 +142,7 @@ func TestRollingAverage(t *testing.T) {
 	assert.NoError(t, err)
 	defer test.Teardown(tier)
 
+	ctx := context.Background()
 	start := 24*3600*12 + 60*31
 	aggname := ftypes.AggName("some counter")
 
@@ -156,14 +160,14 @@ func TestRollingAverage(t *testing.T) {
 		assert.NoError(t, table.Append(row))
 	}
 	histogram := counter2.RollingAverage{Duration: 28 * 3600}
-	err = Update(tier, aggname, table, histogram)
+	err = Update(ctx, tier, aggname, table, histogram)
 	assert.NoError(t, err)
 
 	clock := &test.FakeClock{}
 	tier.Clock = clock
 	clock.Set(int64(start + 24*3600*2))
 	// at the end of 2 days, rolling average should only be worth 28 hours, not full 48 hours
-	found, err := Value(tier, aggname, key, histogram)
+	found, err := Value(ctx, tier, aggname, key, histogram)
 	assert.NoError(t, err)
 	expected := float64(24*60) / float64(28*60)
 	assert.Equal(t, value.Double(expected), found)
@@ -173,22 +177,23 @@ func TestCounterUpdateInvalid(t *testing.T) {
 	tier, err := test.Tier()
 	assert.NoError(t, err)
 	defer test.Teardown(tier)
+	ctx := context.Background()
 	// no col for key or timestamp
-	assertInvalid(tier, t, value.Dict{"hi": value.Int(1)}, value.Dict{"hi": value.Int(3)})
+	assertInvalid(tier, ctx, t, value.Dict{"hi": value.Int(1)}, value.Dict{"hi": value.Int(3)})
 	// no col for key
-	assertInvalid(tier, t, value.Dict{"timestamp": value.Int(1)}, value.Dict{"timestamp": value.Int(3)})
+	assertInvalid(tier, ctx, t, value.Dict{"timestamp": value.Int(1)}, value.Dict{"timestamp": value.Int(3)})
 	// timestamp is not int
-	assertInvalid(tier, t,
+	assertInvalid(tier, ctx, t,
 		value.Dict{"timestamp": value.Double(1), "key": value.List{value.Int(1)}},
 		value.Dict{"timestamp": value.Double(3), "key": value.List{value.Int(3)}},
 	)
 }
 
-func assertInvalid(tier tier.Tier, t *testing.T, ds ...value.Dict) {
+func assertInvalid(tier tier.Tier, ctx context.Context, t *testing.T, ds ...value.Dict) {
 	table := value.NewTable()
 	for _, d := range ds {
 		err := table.Append(d)
 		assert.NoError(t, err)
 	}
-	assert.Error(t, Update(tier, "some name", table, counter2.RollingCounter{}))
+	assert.Error(t, Update(ctx, tier, "some name", table, counter2.RollingCounter{}))
 }

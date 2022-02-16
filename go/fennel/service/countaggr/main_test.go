@@ -91,7 +91,7 @@ func TestEndToEnd2(t *testing.T) {
 }
 
 func verify(t *testing.T, tier tier.Tier, agg libaggregate.Aggregate, k value.Value, expected interface{}) {
-	found, err := aggregate.Value(tier, agg.Name, k)
+	found, err := aggregate.Value(context.Background(), tier, agg.Name, k)
 	assert.NoError(t, err)
 	assert.Equal(t, expected, found)
 }

@@ -18,7 +18,7 @@ import (
 	"fmt"
 )
 
-func Value(tier tier.Tier, name ftypes.AggName, key value.Value) (value.Value, error) {
+func Value(ctx context.Context, tier tier.Tier, name ftypes.AggName, key value.Value) (value.Value, error) {
 	agg, err := Retrieve(tier, name)
 	if err != nil {
 		return value.Nil, err
@@ -27,15 +27,15 @@ func Value(tier tier.Tier, name ftypes.AggName, key value.Value) (value.Value, e
 	if err != nil {
 		return nil, err
 	}
-	return counter.Value(tier, agg.Name, key, histogram)
+	return counter.Value(ctx, tier, agg.Name, key, histogram)
 }
 
-func Update(tier tier.Tier, agg aggregate.Aggregate) error {
+func Update(ctx context.Context, tier tier.Tier, agg aggregate.Aggregate) error {
 	point, err := checkpoint.Get(tier, ftypes.AggType(agg.Options.AggType), agg.Name)
 	if err != nil {
 		return err
 	}
-	actions, err := action.Fetch(context.TODO(), tier, libaction.ActionFetchRequest{MinActionID: point})
+	actions, err := action.Fetch(ctx, tier, libaction.ActionFetchRequest{MinActionID: point})
 	if err != nil {
 		return err
 	}
@@ -50,7 +50,7 @@ func Update(tier tier.Tier, agg aggregate.Aggregate) error {
 	if err != nil {
 		return err
 	}
-	if err = counter.Update(tier, agg.Name, table, histogram); err != nil {
+	if err = counter.Update(ctx, tier, agg.Name, table, histogram); err != nil {
 		return err
 	}
 	last := actions[len(actions)-1]

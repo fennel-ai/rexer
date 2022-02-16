@@ -23,9 +23,9 @@ func redisKeys(tier tier.Tier, name ftypes.AggName, buckets []Bucket) []string {
 	return ret
 }
 
-func GetMulti(tier tier.Tier, name ftypes.AggName, buckets []Bucket, histogram Histogram) ([]value.Value, error) {
+func GetMulti(ctx context.Context, tier tier.Tier, name ftypes.AggName, buckets []Bucket, histogram Histogram) ([]value.Value, error) {
 	rkeys := redisKeys(tier, name, buckets)
-	res, err := tier.Redis.MGet(context.TODO(), rkeys...)
+	res, err := tier.Redis.MGet(ctx, rkeys...)
 	if err != nil {
 		return nil, err
 	}
@@ -52,9 +52,9 @@ func GetMulti(tier tier.Tier, name ftypes.AggName, buckets []Bucket, histogram H
 	return ret, nil
 }
 
-func Update(tier tier.Tier, name ftypes.AggName, buckets []Bucket, histogram Histogram) error {
+func Update(ctx context.Context, tier tier.Tier, name ftypes.AggName, buckets []Bucket, histogram Histogram) error {
 	rkeys := redisKeys(tier, name, buckets)
-	cur, err := GetMulti(tier, name, buckets, histogram)
+	cur, err := GetMulti(ctx, tier, name, buckets, histogram)
 	if err != nil {
 		return err
 	}
@@ -68,5 +68,5 @@ func Update(tier tier.Tier, name ftypes.AggName, buckets []Bucket, histogram His
 			return err
 		}
 	}
-	return tier.Redis.MSet(context.TODO(), rkeys, vals, make([]time.Duration, len(rkeys)))
+	return tier.Redis.MSet(ctx, rkeys, vals, make([]time.Duration, len(rkeys)))
 }

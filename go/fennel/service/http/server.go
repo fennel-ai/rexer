@@ -320,7 +320,7 @@ func (m server) AggregateValue(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 	// call controller
-	ret, err := aggregate2.Value(m.tier, getAggValue.AggName, getAggValue.Key)
+	ret, err := aggregate2.Value(req.Context(), m.tier, getAggValue.AggName, getAggValue.Key)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		log.Printf("Error: %v", err)
