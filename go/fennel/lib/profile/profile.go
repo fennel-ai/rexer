@@ -175,14 +175,14 @@ func (pi *ProfileItem) UnmarshalJSON(data []byte) error {
 		case 2:
 			key, err = jsonparser.ParseString(vdata)
 		case 3:
-			val, err = value.FromJSON(vdata)
+			val, err = value.ParseJSON(vdata, vtype)
 		case 4:
 			version, err = jsonparser.ParseInt(vdata)
 		default:
 			err = fmt.Errorf("unknown index")
 		}
 		if err != nil {
-			errors = append(errors, err)
+			errors = append(errors, fmt.Errorf("for case %d with data %s: %v", idx, vdata, err))
 		}
 	}
 	paths := [][]string{{"OType"}, {"Oid"}, {"Key"}, {"Value"}, {"Version"}}
