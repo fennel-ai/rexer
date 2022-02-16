@@ -5,7 +5,6 @@ import (
 	"fennel/lib/value"
 	"fmt"
 	"github.com/buger/jsonparser"
-
 	"google.golang.org/protobuf/proto"
 )
 
@@ -159,31 +158,39 @@ func (pi *ProfileItem) Validate() error {
 }
 
 func (pi *ProfileItem) UnmarshalJSON(data []byte) error {
-	otype, err := jsonparser.GetString(data, "OType")
-	if err != nil {
-		return fmt.Errorf("failed to parse OType json: %v", err)
+	var otype, key string
+	var oid, version int64
+	var val value.Value
+	var errors []error
+	handler := func(idx int, vdata []byte, vtype jsonparser.ValueType, err error) {
+		if err != nil {
+			errors = append(errors, err)
+			return
+		}
+		switch idx {
+		case 0:
+			otype, err = jsonparser.ParseString(vdata)
+		case 1:
+			oid, err = jsonparser.ParseInt(vdata)
+		case 2:
+			key, err = jsonparser.ParseString(vdata)
+		case 3:
+			val, err = value.FromJSON(vdata)
+		case 4:
+			version, err = jsonparser.ParseInt(vdata)
+		default:
+			err = fmt.Errorf("unknown index")
+		}
+		if err != nil {
+			errors = append(errors, err)
+		}
 	}
-	oid, err := jsonparser.GetInt(data, "Oid")
-	if err != nil {
-		return fmt.Errorf("failed to parse Oid json: %v", err)
+	paths := [][]string{{"OType"}, {"Oid"}, {"Key"}, {"Value"}, {"Version"}}
+	jsonparser.EachKey(data, handler, paths...)
+	if len(errors) != 0 {
+		// should this combine errors instead of returning only first error?
+		return fmt.Errorf("failed to parse profile json: %v", errors[0])
 	}
-	key, err := jsonparser.GetString(data, "Key")
-	if err != nil {
-		return fmt.Errorf("failed to parse Key json: %v", err)
-	}
-	vdata, _, _, err := jsonparser.Get(data, "Value")
-	if err != nil {
-		return fmt.Errorf("failed to get Value json: %v", err)
-	}
-	val, err := value.FromJSON(vdata)
-	if err != nil {
-		return fmt.Errorf("failed to parse Value json: %v", err)
-	}
-	version, err := jsonparser.GetInt(data, "Version")
-	if err != nil {
-		return fmt.Errorf("failed to parse Version json: %v", err)
-	}
-
 	pi.OType = ftypes.OType(otype)
 	pi.Oid = uint64(oid)
 	pi.Key = key
@@ -193,23 +200,36 @@ func (pi *ProfileItem) UnmarshalJSON(data []byte) error {
 }
 
 func (pfr *ProfileFetchRequest) UnmarshalJSON(data []byte) error {
-	otype, err := jsonparser.GetString(data, "OType")
-	if err != nil {
-		return fmt.Errorf("failed to parse OType json: %v", err)
+	var otype, key string
+	var oid, version int64
+	var errors []error
+	handler := func(idx int, vdata []byte, vtype jsonparser.ValueType, err error) {
+		if err != nil {
+			errors = append(errors, err)
+			return
+		}
+		switch idx {
+		case 0:
+			otype, err = jsonparser.ParseString(vdata)
+		case 1:
+			oid, err = jsonparser.ParseInt(vdata)
+		case 2:
+			key, err = jsonparser.ParseString(vdata)
+		case 3:
+			version, err = jsonparser.ParseInt(vdata)
+		default:
+			err = fmt.Errorf("unknown index")
+		}
+		if err != nil {
+			errors = append(errors, err)
+		}
 	}
-	oid, err := jsonparser.GetInt(data, "Oid")
-	if err != nil {
-		return fmt.Errorf("failed to parse Oid json: %v", err)
+	paths := [][]string{{"OType"}, {"Oid"}, {"Key"}, {"Version"}}
+	jsonparser.EachKey(data, handler, paths...)
+	if len(errors) != 0 {
+		// should this combine errors instead of returning only first error?
+		return fmt.Errorf("failed to parse profile fetch request json: %v", errors[0])
 	}
-	key, err := jsonparser.GetString(data, "Key")
-	if err != nil {
-		return fmt.Errorf("failed to parse Key json: %v", err)
-	}
-	version, err := jsonparser.GetInt(data, "Version")
-	if err != nil {
-		return fmt.Errorf("failed to parse Version json: %v", err)
-	}
-
 	pfr.OType = ftypes.OType(otype)
 	pfr.Oid = uint64(oid)
 	pfr.Key = key
