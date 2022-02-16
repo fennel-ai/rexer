@@ -5,6 +5,7 @@ import (
 	"fennel/lib/timer"
 	"fennel/resource"
 	"fmt"
+	"github.com/go-redis/redis/v8"
 	"time"
 )
 
@@ -26,6 +27,8 @@ func (c Client) Get(ctx context.Context, k string) (interface{}, error) {
 	return c.client.Get(ctx, k).Result()
 }
 
+// MGet takes a list of strings and returns a list of interfaces along with an error
+// returned is either the correct value of key or redis.Nil
 func (c Client) MGet(ctx context.Context, ks ...string) ([]interface{}, error) {
 	defer timer.Start(c.TierID(), "redis.mget").ObserveDuration()
 	// this check is to handle a bug, likely related to https://github.com/redis/node-redis/issues/125
@@ -33,7 +36,13 @@ func (c Client) MGet(ctx context.Context, ks ...string) ([]interface{}, error) {
 		return []interface{}{}, nil
 	}
 	ks = c.mTieredKey(ks)
-	return c.client.MGet(ctx, ks...).Result()
+	vs, err := c.client.MGet(ctx, ks...).Result()
+	for i := range vs {
+		if vs[i] == nil {
+			vs[i] = redis.Nil
+		}
+	}
+	return vs, err
 }
 
 func (c Client) MSet(ctx context.Context, keys []string, values []interface{}, ttls []time.Duration) error {
