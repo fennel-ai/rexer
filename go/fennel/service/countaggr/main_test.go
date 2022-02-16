@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"fennel/controller/action"
 	"fennel/controller/aggregate"
 	"fennel/engine/ast"
@@ -108,9 +109,9 @@ func logAction(t *testing.T, tier tier.Tier, uid ftypes.OidType, ts ftypes.Times
 	}
 	a2 := a1
 	a2.ActionType = "share"
-	_, err := action.Insert(tier, a1)
+	_, err := action.Insert(context.Background(), tier, a1)
 	assert.NoError(t, err)
-	_, err = action.Insert(tier, a2)
+	_, err = action.Insert(context.Background(), tier, a2)
 	assert.NoError(t, err)
 }
 

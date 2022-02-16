@@ -1,6 +1,7 @@
 package action
 
 import (
+	"context"
 	"fennel/lib/action"
 	"fennel/lib/timer"
 	"fennel/tier"
@@ -8,8 +9,8 @@ import (
 	"strings"
 )
 
-// inserts the action. If successful, returns the actionID
-func Insert(tier tier.Tier, action *action.ActionSer) (uint64, error) {
+// Insert inserts the action in DB. If successful, returns the actionID
+func Insert(ctx context.Context, tier tier.Tier, action *action.ActionSer) (uint64, error) {
 	defer timer.Start(tier.ID, "model.action.insert").ObserveDuration()
 	if len(action.ActionType) > 255 {
 		return 0, fmt.Errorf("ActionType too long: action types cannot be longer than 255 chars")
@@ -20,7 +21,7 @@ func Insert(tier tier.Tier, action *action.ActionSer) (uint64, error) {
 	if len(action.TargetType) > 255 {
 		return 0, fmt.Errorf("TargetType too long: target types cannot be longer than 255 chars")
 	}
-	result, err := tier.DB.NamedExec(`
+	result, err := tier.DB.NamedExecContext(ctx, `
 		INSERT INTO actionlog (
 			actor_id, actor_type, target_id, target_type, action_type, timestamp, request_id, metadata
 	    )
@@ -42,7 +43,7 @@ func Insert(tier tier.Tier, action *action.ActionSer) (uint64, error) {
 // For actionID and timestamp ranges, min is exclusive and max is inclusive
 // For actionValue range, both min/max are inclusive
 // TODO: add limit support?
-func Fetch(tier tier.Tier, request action.ActionFetchRequest) ([]action.ActionSer, error) {
+func Fetch(ctx context.Context, tier tier.Tier, request action.ActionFetchRequest) ([]action.ActionSer, error) {
 	defer timer.Start(tier.ID, "model.action.fetch").ObserveDuration()
 	query := "SELECT * FROM actionlog"
 	clauses := make([]string, 0)
@@ -82,7 +83,7 @@ func Fetch(tier tier.Tier, request action.ActionFetchRequest) ([]action.ActionSe
 	}
 	query = fmt.Sprintf("%s ORDER BY timestamp;", query)
 	actions := make([]action.ActionSer, 0)
-	statement, err := tier.DB.PrepareNamed(query)
+	statement, err := tier.DB.PrepareNamedContext(ctx, query)
 	if err != nil {
 		return nil, err
 	}
