@@ -1,0 +1,11 @@
+{
+    "name": "kafkatopics",
+    "devDependencies": {
+        "@types/node": "^14"
+    },
+    "dependencies": {
+        "@pulumi/confluent": "^0.2.2",
+        "@pulumi/kafka": "^3.1.2",
+        "@pulumi/pulumi": "^3.0.0"
+    }
+}
