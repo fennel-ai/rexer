@@ -34,6 +34,17 @@ func testClient(t *testing.T, c Client) {
 
 }
 
+func testMGet(t *testing.T, c Client) {
+	ctx := context.Background()
+	// keys with valid value are returned in MGet. Keys without value get an error
+	k1, k2 := "{a}k1", "{a}k2"
+	assert.NoError(t, c.Set(ctx, k1, "myvalue", 0))
+	vals, err := c.MGet(ctx, k1, k2)
+	assert.NoError(t, err)
+	assert.Equal(t, "myvalue", vals[0])
+	assert.Equal(t, redis.Nil, vals[1])
+}
+
 func testDeleteMulti(t *testing.T, c Client) {
 	ctx := context.Background()
 
@@ -65,10 +76,7 @@ func TestRedisClientLocal(t *testing.T) {
 	client, err := MiniRedisConfig{MiniRedis: mr}.Materialize(tierID)
 	assert.NoError(t, err)
 	defer client.Close()
-	t.Run("local_get_set", func(t *testing.T) {
-		testClient(t, client.(Client))
-	})
-	t.Run("delete_multi", func(t *testing.T) {
-		testDeleteMulti(t, client.(Client))
-	})
+	t.Run("local_get_set", func(t *testing.T) { testClient(t, client.(Client)) })
+	t.Run("local_delete_multi", func(t *testing.T) { testDeleteMulti(t, client.(Client)) })
+	t.Run("local_mget", func(t *testing.T) { testMGet(t, client.(Client)) })
 }

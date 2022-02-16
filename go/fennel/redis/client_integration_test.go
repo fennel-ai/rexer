@@ -25,9 +25,8 @@ func TestRedisClientIntegration(t *testing.T) {
 	conf := ClientConfig{Addr: addr, TLSConfig: &tls.Config{}}
 	rdb, err := conf.Materialize(tierID)
 	assert.NoError(t, err)
-	t.Run("integration_get_set_del", func(t *testing.T) {
-		testClient(t, rdb.(Client))
-	})
+	t.Run("integration_get_set_del", func(t *testing.T) { testClient(t, rdb.(Client)) })
+	t.Run("integration_mget", func(t *testing.T) { testMGet(t, rdb.(Client)) })
 }
 
 func TestMultiSetTTL(t *testing.T) {

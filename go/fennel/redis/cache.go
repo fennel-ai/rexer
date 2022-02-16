@@ -11,6 +11,14 @@ type Cache struct {
 	client Client
 }
 
+func (c Cache) MGet(ctx context.Context, k ...string) ([]interface{}, error) {
+	return c.client.MGet(ctx, k...)
+}
+
+func (c Cache) MSet(ctx context.Context, ks []string, vs []interface{}, ttls []time.Duration) error {
+	return c.client.MSet(ctx, ks, vs, ttls)
+}
+
 func (c Cache) Nil() error {
 	return redis.Nil
 }
