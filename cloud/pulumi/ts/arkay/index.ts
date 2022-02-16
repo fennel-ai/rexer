@@ -10,5 +10,5 @@ setupTier(
         },
         topicNames: ["my-favorite-topic"],
     },
-    true,
+    false,
 )

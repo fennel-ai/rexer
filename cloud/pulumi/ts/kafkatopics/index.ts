@@ -1,11 +1,10 @@
 import * as confluent from "@pulumi/confluent";
 import * as kafka from "@pulumi/kafka";
 import * as pulumi from "@pulumi/pulumi";
-import process = require('process');
 
-// operator for type-safety for string key access:
-// https://schneidenbach.gitbooks.io/typescript-cookbook/content/nameof-operator.html
-const nameof = <T>(name: keyof T) => name;
+import { nameof } from "../lib/util";
+
+import process = require('process');
 
 export type cluster = {
     environmentId: string,
