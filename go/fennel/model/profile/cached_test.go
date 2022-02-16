@@ -1,6 +1,7 @@
 package profile
 
 import (
+	"context"
 	"fennel/db"
 	"fennel/lib/profile"
 	"fennel/lib/value"
@@ -20,10 +21,10 @@ type mockProvider struct {
 func (m *mockProvider) change(n []byte) {
 	m.ret = n
 }
-func (m *mockProvider) set(tier tier.Tier, otype ftypes.OType, oid uint64, key string, version uint64, valueSer []byte) error {
+func (m *mockProvider) set(ctx context.Context, tier tier.Tier, otype ftypes.OType, oid uint64, key string, version uint64, valueSer []byte) error {
 	return nil
 }
-func (m *mockProvider) get(tier tier.Tier, otype ftypes.OType, oid uint64, key string, version uint64) ([]byte, error) {
+func (m *mockProvider) get(ctx context.Context, tier tier.Tier, otype ftypes.OType, oid uint64, key string, version uint64) ([]byte, error) {
 	return m.ret, nil
 }
 
@@ -38,6 +39,7 @@ func TestCaching(t *testing.T) {
 	tier, err := test.Tier()
 	assert.NoError(t, err)
 	defer test.Teardown(tier)
+	ctx := context.Background()
 
 	origmock := []byte{1, 2, 3}
 	gt := mockProvider{origmock}
@@ -47,7 +49,7 @@ func TestCaching(t *testing.T) {
 	//assert.NoError(t, err)
 
 	// initially we should get the mocked origmock value back
-	found, err := p.get(tier, "1", 1232, "summary", 1)
+	found, err := p.get(ctx, tier, "1", 1232, "summary", 1)
 	assert.NoError(t, err)
 	assert.Equal(t, origmock, found)
 
@@ -56,16 +58,16 @@ func TestCaching(t *testing.T) {
 	gt.change(newmock)
 
 	// we should still get origmock back because it's in cache
-	found, err = p.get(tier, "1", 1232, "summary", 1)
+	found, err = p.get(ctx, tier, "1", 1232, "summary", 1)
 	assert.NoError(t, err)
 	assert.Equal(t, origmock, found)
 
 	// but if we set a new value, we will delete the key (remember: we don't fill cache on sets)
-	err = p.set(tier, "1", 1232, "summary", 1, []byte{7, 8, 9})
+	err = p.set(ctx, tier, "1", 1232, "summary", 1, []byte{7, 8, 9})
 	assert.NoError(t, err)
 
 	// so subsequent gets should get the new updated mock back
-	found, err = p.get(tier, "1", 1232, "summary", 1)
+	found, err = p.get(ctx, tier, "1", 1232, "summary", 1)
 	assert.Equal(t, newmock, found)
 }
 
@@ -77,6 +79,7 @@ func TestCachedGetBatch(t *testing.T) {
 	tier, err := test.Tier()
 	assert.NoError(t, err)
 	defer test.Teardown(tier)
+	ctx := context.Background()
 	p := cachedProvider{base: dbProvider{}}
 
 	expected1, _ := value.Marshal(value.Int(1))
@@ -92,22 +95,22 @@ func TestCachedGetBatch(t *testing.T) {
 	// same as three but version set to zero
 	profile4 := profile.NewProfileItem("1", 1232, "summary", 0)
 	// initially all are empty
-	found, err := p.getBatched(tier, []profile.ProfileItem{profile1, profile2, profile3, profile4})
+	found, err := p.getBatched(ctx, tier, []profile.ProfileItem{profile1, profile2, profile3, profile4})
 	assert.NoError(t, err)
 	assert.Equal(t, [][]byte{nil, nil, nil, nil}, found)
 
 	// do a bunch of sets
-	assert.NoError(t, p.set(tier, profile1.OType, profile1.Oid, profile1.Key, profile1.Version, expected1))
-	assert.NoError(t, p.set(tier, profile2.OType, profile2.Oid, profile2.Key, profile2.Version, expected2))
-	assert.NoError(t, p.set(tier, profile3.OType, profile3.Oid, profile3.Key, profile3.Version, expected3))
+	assert.NoError(t, p.set(ctx, tier, profile1.OType, profile1.Oid, profile1.Key, profile1.Version, expected1))
+	assert.NoError(t, p.set(ctx, tier, profile2.OType, profile2.Oid, profile2.Key, profile2.Version, expected2))
+	assert.NoError(t, p.set(ctx, tier, profile3.OType, profile3.Oid, profile3.Key, profile3.Version, expected3))
 
-	found, err = p.getBatched(tier, []profile.ProfileItem{profile1, profile2, profile3, profile4})
+	found, err = p.getBatched(ctx, tier, []profile.ProfileItem{profile1, profile2, profile3, profile4})
 	assert.NoError(t, err)
 	assert.Equal(t, [][]byte{expected1, expected2, expected3, expected4}, found)
 
 	// now that everything should be in cache, we will "disable" db and verify that it still works
 	tier.DB = db.Connection{}
-	found, err = p.getBatched(tier, []profile.ProfileItem{profile1, profile2, profile3, profile4})
+	found, err = p.getBatched(ctx, tier, []profile.ProfileItem{profile1, profile2, profile3, profile4})
 	assert.NoError(t, err)
 	assert.Equal(t, [][]byte{expected1, expected2, expected3, expected4}, found)
 }

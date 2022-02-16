@@ -1,6 +1,7 @@
 package opdefs
 
 import (
+	"context"
 	"fennel/controller/profile"
 	"fennel/engine/interpreter/bootarg"
 	"fennel/engine/operators"
@@ -44,7 +45,7 @@ func (p *profileOp) Apply(staticKwargs value.Dict, in operators.InputIter, out *
 		reqs = append(reqs, req)
 		rows = append(rows, row)
 	}
-	vals, err := profile.GetBatched(p.tier, reqs)
+	vals, err := profile.GetBatched(context.TODO(), p.tier, reqs)
 	if err != nil {
 		return err
 	}

@@ -124,7 +124,7 @@ func (m server) GetProfile(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 	// send to controller
-	val, err := profile2.Get(m.tier, request)
+	val, err := profile2.Get(req.Context(), m.tier, request)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		log.Printf("Error: %v", err)
@@ -163,7 +163,7 @@ func (m server) SetProfile(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 	// send to controller
-	if err = profile2.Set(m.tier, request); err != nil {
+	if err = profile2.Set(req.Context(), m.tier, request); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		log.Printf("Error: %v", err)
 		return
@@ -185,7 +185,7 @@ func (m server) GetProfileMulti(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 	// send to controller
-	profiles, err := profile2.GetMulti(m.tier, request)
+	profiles, err := profile2.GetMulti(req.Context(), m.tier, request)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		log.Printf("Error: %v", err)

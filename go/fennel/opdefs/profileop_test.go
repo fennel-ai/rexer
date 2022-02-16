@@ -1,6 +1,7 @@
 package opdefs
 
 import (
+	"context"
 	"fennel/controller/profile"
 	"fennel/engine/ast"
 	"fennel/engine/interpreter"
@@ -50,16 +51,17 @@ func TestProfileOp(t *testing.T) {
 	tier, err := test.Tier()
 	assert.NoError(t, err)
 	defer test.Teardown(tier)
+	ctx := context.Background()
 
 	otype1, oid1, key1, val1, ver1 := ftypes.OType("user"), uint64(123), "summary", value.Int(5), uint64(1)
 	otype2, oid2, key2, val2, ver2 := ftypes.OType("user"), uint64(223), "age", value.Int(7), uint64(4)
 	req1 := profilelib.ProfileItem{OType: otype1, Oid: oid1, Key: key1, Version: ver1, Value: val1}
-	assert.NoError(t, profile.Set(tier, req1))
+	assert.NoError(t, profile.Set(ctx, tier, req1))
 	req2a := profilelib.ProfileItem{OType: otype2, Oid: oid2, Key: key2, Version: ver2 - 1, Value: value.Int(1121)}
-	assert.NoError(t, profile.Set(tier, req2a))
+	assert.NoError(t, profile.Set(ctx, tier, req2a))
 	// this key has multiple versions but we should pick up the latest one if not provided explicitly
 	req2b := profilelib.ProfileItem{OType: otype2, Oid: oid2, Key: key2, Version: ver2, Value: val2}
-	assert.NoError(t, profile.Set(tier, req2b))
+	assert.NoError(t, profile.Set(ctx, tier, req2b))
 
 	query := ast.OpCall{
 		Operand:   ast.Var{Name: "table"},
