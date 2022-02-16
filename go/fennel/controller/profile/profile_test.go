@@ -83,3 +83,30 @@ func checkGetMulti(t *testing.T, tier tier.Tier, request profilelib.ProfileFetch
 	assert.NoError(t, err)
 	assert.ElementsMatch(t, expected, found)
 }
+
+func TestGetBatched(t *testing.T) {
+	tier, err := test.Tier()
+	assert.NoError(t, err)
+	defer test.Teardown(tier)
+
+	vals := []value.Value{value.Int(1), value.Int(2), value.Int(3)}
+	profiles := []profilelib.ProfileItem{
+		{"User", uint64(1), "summary", 1, vals[0]},
+		{"User", uint64(2), "summary", 1, vals[1]},
+		{"User", uint64(3), "summary", 1, vals[2]},
+	}
+
+	// initially nothing exists
+	found, err := GetBatched(tier, profiles)
+	assert.NoError(t, err)
+	assert.Equal(t, []value.Value{nil, nil, nil}, found)
+
+	// set a few
+	checkSet(t, tier, profiles[0])
+	checkSet(t, tier, profiles[1])
+	checkSet(t, tier, profiles[2])
+
+	found, err = GetBatched(tier, profiles)
+	assert.NoError(t, err)
+	assert.Equal(t, vals, found)
+}
