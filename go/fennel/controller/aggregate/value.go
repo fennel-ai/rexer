@@ -31,7 +31,7 @@ func Value(ctx context.Context, tier tier.Tier, name ftypes.AggName, key value.V
 }
 
 func Update(ctx context.Context, tier tier.Tier, agg aggregate.Aggregate) error {
-	point, err := checkpoint.Get(tier, ftypes.AggType(agg.Options.AggType), agg.Name)
+	point, err := checkpoint.Get(ctx, tier, ftypes.AggType(agg.Options.AggType), agg.Name)
 	if err != nil {
 		return err
 	}
@@ -54,7 +54,7 @@ func Update(ctx context.Context, tier tier.Tier, agg aggregate.Aggregate) error 
 		return err
 	}
 	last := actions[len(actions)-1]
-	return checkpoint.Set(tier, ftypes.AggType(agg.Options.AggType), agg.Name, last.ActionID)
+	return checkpoint.Set(ctx, tier, ftypes.AggType(agg.Options.AggType), agg.Name, last.ActionID)
 }
 
 //============================
