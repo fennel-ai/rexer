@@ -7,6 +7,7 @@ import (
 	"fennel/redis"
 	"fennel/tier"
 	"fmt"
+	"time"
 )
 
 // global version of counter namespace - increment to invalidate all data stored in redis
@@ -57,16 +58,15 @@ func Update(tier tier.Tier, name ftypes.AggName, buckets []Bucket, histogram His
 	if err != nil {
 		return err
 	}
-	vals := make(map[string]interface{}, 0)
+	vals := make([]interface{}, len(cur))
 	for i := range cur {
 		merged, err := histogram.Merge(cur[i], buckets[i].Count)
 		if err != nil {
 			return err
 		}
-		k := rkeys[i]
-		if vals[k], err = value.ToJSON(merged); err != nil {
+		if vals[i], err = value.ToJSON(merged); err != nil {
 			return err
 		}
 	}
-	return tier.Redis.MSet(context.TODO(), vals)
+	return tier.Redis.MSet(context.TODO(), rkeys, vals, make([]time.Duration, len(rkeys)))
 }
