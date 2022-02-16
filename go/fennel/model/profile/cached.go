@@ -3,9 +3,11 @@ package profile
 import (
 	"context"
 	"fennel/lib/ftypes"
+	"fennel/lib/profile"
 	"fennel/lib/timer"
 	"fennel/tier"
 	"fmt"
+	"time"
 )
 
 // increment this to invalidate all existing cache keys for profile
@@ -21,6 +23,10 @@ func Set(tier tier.Tier, otype ftypes.OType, oid uint64, key string, version uin
 
 func Get(tier tier.Tier, otype ftypes.OType, oid uint64, key string, version uint64) ([]byte, error) {
 	return cachedProvider{base: dbProvider{}}.get(tier, otype, oid, key, version)
+}
+
+func GetBatched(tier tier.Tier, reqs []profile.ProfileItem) ([][]byte, error) {
+	return cachedProvider{base: dbProvider{}}.getBatched(tier, reqs)
 }
 
 //================================================
@@ -49,29 +55,57 @@ func (c cachedProvider) set(tier tier.Tier, otype ftypes.OType, oid uint64, key 
 
 func (c cachedProvider) get(tier tier.Tier, otype ftypes.OType, oid uint64, key string, version uint64) ([]byte, error) {
 	defer timer.Start(tier.ID, "model.profile.cached.get").ObserveDuration()
-	k := makeKey(otype, oid, key, version)
-	v, err := tier.Cache.Get(context.TODO(), k)
-	if err == tier.Cache.Nil() {
-		v, err = c.base.get(tier, otype, oid, key, version)
-		v2 := v.([]byte)
-		// we only want to set in cache when ground truth has non-nil result
-		// but v is an interface, so we first have to cast it in byte[] and then check
-		// for nil
-		if err == nil && v2 != nil {
-			// if we could not find in cache but can find in ground truth, set in cache
-			err = tier.Cache.Set(context.TODO(), k, v, 0)
+	ret, err := c.getBatched(tier, []profile.ProfileItem{{OType: otype, Oid: oid, Key: key, Version: version}})
+	if err != nil {
+		return nil, err
+	}
+	return ret[0], nil
+}
+
+func (c cachedProvider) getBatched(tier tier.Tier, reqs []profile.ProfileItem) ([][]byte, error) {
+	defer timer.Start(tier.ID, "model.profile.cached.get_batched").ObserveDuration()
+	rets := make([][]byte, len(reqs))
+	keys := make([]string, len(reqs))
+	for i, req := range reqs {
+		keys[i] = makeKey(req.OType, req.Oid, req.Key, req.Version)
+	}
+	vals, err := tier.Cache.MGet(context.TODO(), keys...)
+	if err != nil {
+		// if we got an error from cache, no need to panic - we just pretend nothing was found in cache
+		for i := range vals {
+			vals[i] = tier.Cache.Nil()
 		}
 	}
+	tosetKeys := make([]string, 0)
+	tosetVals := make([]interface{}, 0)
 
-	// since v is technically an interface, and we want to return []byte, we will take
-	// attempts at converting tier to []byte
-	if v_ret, ok := v.([]byte); ok {
-		return v_ret, err
+	for i, v := range vals {
+		if v == tier.Cache.Nil() {
+			req := reqs[i]
+			v, err = c.base.get(tier, req.OType, req.Oid, req.Key, req.Version)
+			v2 := v.([]byte)
+			// we only want to set in cache when ground truth has non-nil result
+			// but v is an interface, so we first have to cast it in byte[] and then check
+			// for nil
+			if err == nil && v2 != nil {
+				// if we could not find in cache but can find in ground truth, set in cache
+				tosetKeys = append(tosetKeys, keys[i])
+				tosetVals = append(tosetVals, v)
+			}
+		}
+		// since v is technically an interface, and we want to return []byte, we will take
+		// attempts at converting tier to []byte
+		switch t := v.(type) {
+		case []byte:
+			rets[i] = t
+		case string:
+			rets[i] = []byte(t)
+		default:
+			return nil, fmt.Errorf("value not of type []byte or string: %v", v)
+		}
 	}
-	if v_ret, ok := v.(string); ok {
-		return []byte(v_ret), err
-	}
-	return nil, fmt.Errorf("value not of type []byte or string: %v", v)
+	err = tier.Cache.MSet(context.TODO(), tosetKeys, tosetVals, make([]time.Duration, len(tosetVals)))
+	return rets, err
 }
 
 var _ provider = cachedProvider{}

@@ -56,6 +56,29 @@ func Set(tier tier.Tier, request profilelib.ProfileItem) error {
 	return nil
 }
 
+// GetBatched takes a list of profile items (value field is ignored) and returns a list of values
+// corresponding to the value of each profile item. If profile item doesn't exist and hence the value
+// is not found, nil is returned instead
+func GetBatched(tier tier.Tier, requests []profilelib.ProfileItem) ([]value.Value, error) {
+	sers, err := profile.GetBatched(tier, requests)
+	if err != nil {
+		return nil, err
+	}
+	ret := make([]value.Value, len(sers))
+	for i := range sers {
+		// if we don't have this data stored, well just return a nil
+		if sers[i] == nil {
+			ret[i] = nil
+		} else {
+			err = value.Unmarshal(sers[i], &ret[i])
+			if err != nil {
+				return nil, err
+			}
+		}
+	}
+	return ret, nil
+}
+
 func GetMulti(tier tier.Tier, request profilelib.ProfileFetchRequest) ([]profilelib.ProfileItem, error) {
 	profilesSer, err := profile.GetMulti(tier, request)
 	if err != nil {

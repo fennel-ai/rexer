@@ -1,6 +1,9 @@
 package profile
 
 import (
+	"fennel/db"
+	"fennel/lib/profile"
+	"fennel/lib/value"
 	"testing"
 
 	"fennel/lib/ftypes"
@@ -68,4 +71,43 @@ func TestCaching(t *testing.T) {
 
 func TestCachedDBVersion(t *testing.T) {
 	testProviderVersion(t, cachedProvider{base: dbProvider{}})
+}
+
+func TestCachedGetBatch(t *testing.T) {
+	tier, err := test.Tier()
+	assert.NoError(t, err)
+	defer test.Teardown(tier)
+	p := cachedProvider{base: dbProvider{}}
+
+	expected1, _ := value.Marshal(value.Int(1))
+	expected2, _ := value.Marshal(value.Int(2))
+	expected3, _ := value.Marshal(value.Int(3))
+	expected4 := expected3
+
+	profile1 := profile.NewProfileItem("1", 1232, "summary", 1)
+	profile2 := profile.NewProfileItem("2", 1232, "something else", 1)
+
+	// same as one but with different version
+	profile3 := profile.NewProfileItem("1", 1232, "summary", 5)
+	// same as three but version set to zero
+	profile4 := profile.NewProfileItem("1", 1232, "summary", 0)
+	// initially all are empty
+	found, err := p.getBatched(tier, []profile.ProfileItem{profile1, profile2, profile3, profile4})
+	assert.NoError(t, err)
+	assert.Equal(t, [][]byte{nil, nil, nil, nil}, found)
+
+	// do a bunch of sets
+	assert.NoError(t, p.set(tier, profile1.OType, profile1.Oid, profile1.Key, profile1.Version, expected1))
+	assert.NoError(t, p.set(tier, profile2.OType, profile2.Oid, profile2.Key, profile2.Version, expected2))
+	assert.NoError(t, p.set(tier, profile3.OType, profile3.Oid, profile3.Key, profile3.Version, expected3))
+
+	found, err = p.getBatched(tier, []profile.ProfileItem{profile1, profile2, profile3, profile4})
+	assert.NoError(t, err)
+	assert.Equal(t, [][]byte{expected1, expected2, expected3, expected4}, found)
+
+	// now that everything should be in cache, we will "disable" db and verify that it still works
+	tier.DB = db.Connection{}
+	found, err = p.getBatched(tier, []profile.ProfileItem{profile1, profile2, profile3, profile4})
+	assert.NoError(t, err)
+	assert.Equal(t, [][]byte{expected1, expected2, expected3, expected4}, found)
 }

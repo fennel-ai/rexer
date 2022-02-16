@@ -28,6 +28,8 @@ func (p *profileOp) Init(args value.Dict, bootargs map[string]interface{}) error
 
 func (p *profileOp) Apply(staticKwargs value.Dict, in operators.InputIter, out *value.Table) error {
 	colname := string(staticKwargs["name"].(value.String))
+	reqs := make([]libprofile.ProfileItem, 0)
+	rows := make([]value.Dict, 0)
 	for in.HasMore() {
 		row, kwargs, err := in.Next()
 		if err != nil {
@@ -39,15 +41,20 @@ func (p *profileOp) Apply(staticKwargs value.Dict, in operators.InputIter, out *
 			Key:     string(kwargs["key"].(value.String)),
 			Version: uint64(kwargs["version"].(value.Int)),
 		}
-		val, err := profile.Get(p.tier, req)
-		if err != nil {
-			return err
-		} else if val == nil {
+		reqs = append(reqs, req)
+		rows = append(rows, row)
+	}
+	vals, err := profile.GetBatched(p.tier, reqs)
+	if err != nil {
+		return err
+	}
+	for i, v := range vals {
+		row := rows[i]
+		if v == nil {
 			row[colname] = staticKwargs["default"]
 		} else {
-			row[colname] = val
+			row[colname] = v
 		}
-
 		if err = out.Append(row); err != nil {
 			return err
 		}
