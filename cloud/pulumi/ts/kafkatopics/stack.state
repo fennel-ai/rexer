@@ -1,0 +1,53 @@
+{
+    "version": 3,
+    "deployment": {
+        "manifest": {
+            "time": "2022-02-15T20:17:23.682522-08:00",
+            "magic": "c51f7579a74e3b22b75681e48e5eb7c86e9b44fb0ab7aa4d27aca5090bd933ea",
+            "version": "v3.22.1"
+        },
+        "secrets_providers": {
+            "type": "service",
+            "state": {
+                "url": "https://api.pulumi.com",
+                "owner": "fennel",
+                "project": "kafkatopics",
+                "stack": "dev"
+            }
+        },
+        "resources": [
+            {
+                "urn": "urn:pulumi:dev::kafkatopics::pulumi:pulumi:Stack::kafkatopics-dev",
+                "custom": false,
+                "type": "pulumi:pulumi:Stack"
+            },
+            {
+                "urn": "urn:pulumi:dev::kafkatopics::pulumi:providers:confluent::conf-provider",
+                "custom": true,
+                "id": "4e372faa-2983-47b8-b276-79f5d133246f",
+                "type": "pulumi:providers:confluent",
+                "inputs": {
+                    "password": {
+                        "4dabf18193072939515e22adb298388d": "1b47061264138c4ac30d75fd1eb44270",
+                        "ciphertext": "AAABADZwTYZqgvhBDaeP0m1d23WrCXZrkWrN0mOi7TFMfRecqor6pQ01brlwPMM68A=="
+                    },
+                    "username": "abhay@fennel.ai",
+                    "version": "0.2.2"
+                },
+                "outputs": {
+                    "password": {
+                        "4dabf18193072939515e22adb298388d": "1b47061264138c4ac30d75fd1eb44270",
+                        "ciphertext": "AAABACcqz/lQJDiEGPx4cjPbYnEKnNFXhziKN/EUcgGdCKqO1/39YnugsIrCtx/kVg=="
+                    },
+                    "username": "abhay@fennel.ai",
+                    "version": "0.2.2"
+                },
+                "parent": "urn:pulumi:dev::kafkatopics::pulumi:pulumi:Stack::kafkatopics-dev",
+                "propertyDependencies": {
+                    "password": null,
+                    "username": null
+                }
+            }
+        ]
+    }
+}
