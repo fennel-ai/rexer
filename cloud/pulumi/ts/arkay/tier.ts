@@ -1,16 +1,15 @@
 import { InlineProgramArgs, LocalWorkspace } from "@pulumi/pulumi/automation";
-import * as kafkatopics from "../kafkatopics";
-import process = require('process')
 import * as pulumi from "@pulumi/pulumi"
+
+import * as kafkatopics from "../kafkatopics";
+import { nameof } from "../lib/util"
+
+import process = require('process')
 
 export const plugins = {
     "kafka": "v3.1.2",
     "confluent": "v0.2.2"
 }
-
-// operator for type-safety for string key access:
-// https://schneidenbach.gitbooks.io/typescript-cookbook/content/nameof-operator.html
-const nameof = <T>(name: keyof T) => name;
 
 // This is our pulumi program in "inline function" form
 const setupResources = async () => {
@@ -22,7 +21,6 @@ const setupResources = async () => {
         topicNames: config.requireObject("topicNames"),
         kafkaCluster: config.requireObject("kafkaCluster"),
     })
-    return kafkaTopicOutput
 };
 
 export type tierConfig = {
@@ -72,10 +70,6 @@ export const setupTier = async (config: tierConfig, destroy?: boolean) => {
     console.info("updating stack...");
     const upRes = await stack.up({ onOutput: console.info });
     console.log(upRes)
-    const output: kafkatopics.outputType = {
-        topics: upRes.outputs[nameof<kafkatopics.outputType>("topics")].value
-    }
-    console.log("Output of kafkatopics: ", output)
 };
 
 export default setupTier
