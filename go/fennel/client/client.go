@@ -136,7 +136,7 @@ func (c *Client) GetProfile(request *profileLib.ProfileItem) (*value.Value, erro
 	}
 	req, err := json.Marshal(request)
 	if err != nil {
-		return nil, fmt.Errorf("could not convert to json: %v", err)
+		return nil, fmt.Errorf("could not convert request to json: %v", err)
 	}
 	response, err := c.postJSON(req, c.getProfileURL())
 	if err != nil {
@@ -189,7 +189,7 @@ func (c *Client) SetProfile(request *profileLib.ProfileItem) error {
 	}
 	req, err := json.Marshal(request)
 	if err != nil {
-		return fmt.Errorf("could not convert to json: %v", err)
+		return fmt.Errorf("could not convert request to json: %v", err)
 	}
 	if _, err = c.postJSON(req, c.setProfileURL()); err != nil {
 		return err
@@ -206,7 +206,7 @@ func (c *Client) GetProfileMulti(request profileLib.ProfileFetchRequest) ([]prof
 	if err != nil {
 		return nil, err
 	}
-
+	// now read all profiles
 	var profiles []profileLib.ProfileItem
 	if err = json.Unmarshal(response, &profiles); err != nil {
 		return nil, fmt.Errorf("unmarshal error: %v", err)
@@ -215,35 +215,32 @@ func (c *Client) GetProfileMulti(request profileLib.ProfileFetchRequest) ([]prof
 }
 
 func (c *Client) FetchActions(request action.ActionFetchRequest) ([]action.Action, error) {
-	protoRequest := action.ToProtoActionFetchRequest(request)
-	response, err := c.post(&protoRequest, c.fetchURL())
+	req, err := json.Marshal(request)
+	if err != nil {
+		return nil, err
+	}
+	response, err := c.postJSON(req, c.fetchURL())
 	if err != nil {
 		return nil, err
 	}
 	// now read all actions
-	var actionList action.ProtoActionList
-	err = proto.Unmarshal(response, &actionList)
-	if err != nil {
+	var actions []action.Action
+	if err = json.Unmarshal(response, &actions); err != nil {
 		return nil, fmt.Errorf("unmarshal error: %v", err)
-	}
-	actions, err := action.FromProtoActionList(&actionList)
-	if err != nil {
-		return nil, err
 	}
 	return actions, nil
 }
 
 // LogAction makes the http request to server to log the given action
-func (c *Client) LogAction(a action.Action) error {
-	err := a.Validate()
-	if err != nil {
+func (c *Client) LogAction(request action.Action) error {
+	if err := request.Validate(); err != nil {
 		return fmt.Errorf("can not log invalid action: %v", err)
 	}
-	pa, err := action.ToProtoAction(a)
+	req, err := json.Marshal(request)
 	if err != nil {
-		return fmt.Errorf("could not convert request to proto: %v", err)
+		return fmt.Errorf("could not convert request to json: %v", err)
 	}
-	if _, err = c.post(&pa, c.logURL()); err != nil {
+	if _, err = c.postJSON(req, c.logURL()); err != nil {
 		return err
 	}
 	return nil
