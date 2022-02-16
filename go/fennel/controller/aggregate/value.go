@@ -1,6 +1,7 @@
 package aggregate
 
 import (
+	"context"
 	"fennel/controller/action"
 	"fennel/controller/counter"
 	"fennel/engine/ast"
@@ -34,7 +35,7 @@ func Update(tier tier.Tier, agg aggregate.Aggregate) error {
 	if err != nil {
 		return err
 	}
-	actions, err := action.Fetch(tier, libaction.ActionFetchRequest{MinActionID: point})
+	actions, err := action.Fetch(context.TODO(), tier, libaction.ActionFetchRequest{MinActionID: point})
 	if err != nil {
 		return err
 	}

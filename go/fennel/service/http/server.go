@@ -69,7 +69,7 @@ func (m server) Log(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 	// fwd to controller
-	aid, err := action.Insert(m.tier, a)
+	aid, err := action.Insert(req.Context(), m.tier, a)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		log.Printf("Error: %v", err)
@@ -94,7 +94,7 @@ func (m server) Fetch(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 	// send to controller
-	actions, err := action.Fetch(m.tier, request)
+	actions, err := action.Fetch(req.Context(), m.tier, request)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		log.Printf("Error: %v", err)
