@@ -1,9 +1,10 @@
 package http
 
 import (
-	"context"
 	"net/http"
 	"time"
+
+	"github.com/gorilla/mux"
 )
 
 const (
@@ -11,38 +12,24 @@ const (
 )
 
 // TODO: write a test
-
-func TimeoutMiddleware(timeout time.Duration) func(h http.Handler) http.Handler {
+func TimeoutMiddleware(timeout time.Duration) mux.MiddlewareFunc {
 	return func(h http.Handler) http.Handler {
-		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			ctx, cancel := context.WithTimeout(r.Context(), timeout)
-			defer cancel()
-
-			r = r.WithContext(ctx)
-
-			done := make(chan bool)
-			go func() {
-				h.ServeHTTP(w, r)
-				done <- true
-			}()
-
-			select {
-			case <-ctx.Done():
-				http.Error(w, "server timeout", http.StatusGatewayTimeout)
-			case <-done:
-			}
-		})
+		return http.TimeoutHandler(h, timeout, "server timed out")
 	}
 }
 
 // TODO: write a test
-func RateLimitingMiddleware(maxConnections int) func(h http.Handler) http.Handler {
-	ratelimit := make(chan struct{}, maxConnections)
+func RateLimitingMiddleware(maxConcurrentRequests int) mux.MiddlewareFunc {
+	bucket := make(chan struct{}, maxConcurrentRequests)
 	return func(h http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			ratelimit <- struct{}{}
-			defer func() { <-ratelimit }()
-			h.ServeHTTP(w, r)
+			select {
+			case bucket <- struct{}{}:
+				h.ServeHTTP(w, r)
+				<-bucket
+			case <-r.Cancel:
+				return
+			}
 		})
 	}
 }
