@@ -93,8 +93,7 @@ class TestEndToEnd(unittest.TestCase):
         c.store_aggregate('trail_view_by_city_gender_agegroup_2days', q, options)
 
         c.log(actor_type='user', actor_id=uid, target_type='video', target_id=video_id, action_type='view',
-              request_id=1, timestamp=int(time.time()), metadata=value.Dict(device_type=value.String('android')),
-        )
+              request_id=1, timestamp=int(time.time()), metadata={'device_type': 'android'})
         time.sleep(60)
 
         found = c.aggregate_value(
@@ -131,7 +130,7 @@ class TestLoad(unittest.TestCase):
             Ops.profile.addField(name='country', otype='user', oid=it.actor_id, key='country'),
             Ops.profile.addField(name='os', otype='user', oid=it.actor_id, key='os'),
             Ops.profile.addField(name='city', otype='user', oid=it.actor_id, key='city'),
-            Ops.profile.addField(name='mobile_brand', otype='user',oid=it.actor_id, key='mobile_brand'),
+            Ops.profile.addField(name='mobile_brand', otype='user', oid=it.actor_id, key='mobile_brand'),
             Ops.profile.addField(name='gender', otype='user', oid=it.actor_id, key='gender'),
             # Ops.std.addField(name=String('day_of_week'), value=Ops.time.dayOfWeek(timestamp=it.timestamp)),
             # Ops.std.addField(name=String('time_bucket'), value=Ops.time.hourOfDay(timestamp=it.timestamp), size=Int(3600)),
