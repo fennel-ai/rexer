@@ -39,10 +39,7 @@ func (D dbProvider) set(ctx context.Context, tier tier.Tier, otype ftypes.OType,
 			(?, ?, ?, ?, ?);`,
 		otype, oid, key, version, valueSer,
 	)
-	if err != nil {
-		return err
-	}
-	return nil
+	return err
 }
 
 func (D dbProvider) get(ctx context.Context, tier tier.Tier, otype ftypes.OType, oid uint64, key string, version uint64) ([]byte, error) {
