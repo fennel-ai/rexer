@@ -1,57 +1,82 @@
 import * as confluent from "@pulumi/confluent";
 import * as kafka from "@pulumi/kafka";
 import * as pulumi from "@pulumi/pulumi";
+import process = require('process');
 
-type cluster = {
+// operator for type-safety for string key access:
+// https://schneidenbach.gitbooks.io/typescript-cookbook/content/nameof-operator.html
+const nameof = <T>(name: keyof T) => name;
+
+export type cluster = {
     environmentId: string,
     id: string,
     bootstrapServers: string,
 }
 
-export type input = {
+export type inputType = {
     username: string,
     password: pulumi.Output<string>
     topicNames: [string],
     kafkaCluster: cluster
 }
 
-const parseConfig = (): input => {
+export type outputType = {
+    topics: kafka.Topic[]
+}
+
+const parseConfig = (): inputType => {
     const config = new pulumi.Config();
     return {
-        username: config.require("username"),
-        password: config.requireSecret("password"),
-        topicNames: config.requireObject("topicNames"),
-        kafkaCluster: config.requireObject("cluster")
+        username: config.require(nameof<inputType>("username")),
+        password: config.requireSecret(nameof<inputType>("password")),
+        topicNames: config.requireObject(nameof<inputType>("topicNames")),
+        kafkaCluster: config.requireObject(nameof<inputType>("kafkaCluster"))
     }
 }
 
-const config = parseConfig();
+export const setup = (input: inputType) => {
+    const confluentProvider = new confluent.Provider("conf-provider", {
+        username: input.username,
+        password: input.password,
+    })
 
-const confluentProvider = new confluent.Provider("conf-provider", {
-    username: config.username,
-    password: config.password,
-})
+    const apiKey = new confluent.ApiKey("key", {
+        environmentId: input.kafkaCluster.environmentId,
+        clusterId: input.kafkaCluster.id,
+    }, { provider: confluentProvider })
 
-const apiKey = new confluent.ApiKey("key", {
-    environmentId: config.kafkaCluster.environmentId,
-    clusterId: config.kafkaCluster.id,
-}, { provider: confluentProvider })
+    const kafkaProvider = new kafka.Provider("kafka-provider", {
+        bootstrapServers: [input.kafkaCluster.bootstrapServers.substring(input.kafkaCluster.bootstrapServers.lastIndexOf('/') + 1)],
+        saslUsername: apiKey.key,
+        saslPassword: apiKey.secret,
+        saslMechanism: "plain",
+        tlsEnabled: true,
+    })
 
-const kafkaProvider = new kafka.Provider("kafka-provider", {
-    bootstrapServers: [config.kafkaCluster.bootstrapServers.substring(config.kafkaCluster.bootstrapServers.lastIndexOf('/') + 1)],
-    saslUsername: apiKey.key,
-    saslPassword: apiKey.secret,
-    saslMechanism: "plain",
-    tlsEnabled: true,
-})
+    const topics = input.topicNames.map((topicName) => {
+        return new kafka.Topic(`topic-${topicName}`, {
+            name: topicName,
+            partitions: 1,
+            // We set replication factor to 3 regardless of the cluster availability
+            // since that's the minimum required by confluent cloud:
+            // https://github.com/Mongey/terraform-provider-kafka/issues/40#issuecomment-456897983
+            replicationFactor: 3,
+        }, { provider: kafkaProvider })
+    })
 
-export const topics = config.topicNames.map((topicName) => {
-    return new kafka.Topic(`topic-${topicName}`, {
-        name: topicName,
-        partitions: 1,
-        // We set replication factor to 3 regardless of the cluster availability
-        // since that's the minimum required by confluent cloud:
-        // https://github.com/Mongey/terraform-provider-kafka/issues/40#issuecomment-456897983
-        replicationFactor: 3,
-    }, { provider: kafkaProvider })
-})
+    const output: outputType = {
+        topics
+    }
+    return output
+}
+
+let output;
+// Run the main function only if this program is run through the pulumi CLI.
+// Unfortunately, in that case the argv0 itself is not "pulumi", but the full
+// path of node: e.g. /nix/store/7q04aq0sq6im9a0k09gzfa1xfncc0xgm-nodejs-14.18.1/bin/node
+if (process.argv0 !== 'node') {
+    pulumi.log.info("Running...")
+    const input = parseConfig();
+    output = setup(input)
+}
+export { output };
