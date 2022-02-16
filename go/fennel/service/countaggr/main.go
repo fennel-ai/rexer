@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"log"
 	"net/http"
 	"sync"
@@ -28,7 +29,7 @@ func processOnce(tier tier.Tier) {
 		wg.Add(1)
 		go func(agg libaggregate.Aggregate) {
 			defer wg.Done()
-			err := aggregate.Update(tier, agg)
+			err := aggregate.Update(context.TODO(), tier, agg)
 			if err != nil {
 				log.Printf("Error found in aggregate for agg type: %v and name: %s. Err: %v", agg.Options.AggType, agg.Name, err)
 			}
