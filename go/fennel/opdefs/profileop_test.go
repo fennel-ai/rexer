@@ -20,8 +20,8 @@ func TestDefault(t *testing.T) {
 	defer test.Teardown(tier)
 	query := ast.OpCall{
 		Operand:   ast.Var{Name: "table"},
-		Namespace: "std",
-		Name:      "addProfileColumn",
+		Namespace: "profile",
+		Name:      "addField",
 		Kwargs: ast.Dict{Values: map[string]ast.Ast{
 			"otype":   ast.MakeString("user"),
 			"oid":     ast.MakeInt(123),
@@ -63,8 +63,8 @@ func TestProfileOp(t *testing.T) {
 
 	query := ast.OpCall{
 		Operand:   ast.Var{Name: "table"},
-		Namespace: "std",
-		Name:      "addProfileColumn",
+		Namespace: "profile",
+		Name:      "addField",
 		Kwargs: ast.Dict{Values: map[string]ast.Ast{
 			"otype": ast.Lookup{On: ast.At{}, Property: "otype"},
 			"oid":   ast.Lookup{On: ast.At{}, Property: "oid"},

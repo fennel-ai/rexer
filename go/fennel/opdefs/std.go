@@ -6,7 +6,7 @@ import (
 )
 
 func init() {
-	ops := []operators.Operator{FilterOperator{}, TakeOperator{}, AddColumnOperator{}}
+	ops := []operators.Operator{FilterOperator{}, TakeOperator{}, AddField{}}
 	for _, op := range ops {
 		if err := operators.Register(op); err != nil {
 			panic(err)
@@ -64,21 +64,21 @@ func (f TakeOperator) Apply(staticKwargs value.Dict, in operators.InputIter, out
 	return nil
 }
 
-type AddColumnOperator struct{}
+type AddField struct{}
 
-var _ operators.Operator = AddColumnOperator{}
+var _ operators.Operator = AddField{}
 
-func (op AddColumnOperator) Init(_ value.Dict, _ map[string]interface{}) error {
+func (op AddField) Init(_ value.Dict, _ map[string]interface{}) error {
 	return nil
 }
 
-func (op AddColumnOperator) Signature() *operators.Signature {
-	return operators.NewSignature(op, "std", "addColumn").
+func (op AddField) Signature() *operators.Signature {
+	return operators.NewSignature(op, "std", "addField").
 		Param("name", value.Types.String, true, false, value.Nil).
 		Param("value", value.Types.Any, false, false, value.Nil)
 }
 
-func (op AddColumnOperator) Apply(staticKwargs value.Dict, in operators.InputIter, out *value.Table) error {
+func (op AddField) Apply(staticKwargs value.Dict, in operators.InputIter, out *value.Table) error {
 	name := string(staticKwargs["name"].(value.String))
 	for in.HasMore() {
 		row, contextKwargs, err := in.Next()

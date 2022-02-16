@@ -56,7 +56,7 @@ func (p *profileOp) Apply(staticKwargs value.Dict, in operators.InputIter, out *
 }
 
 func (p *profileOp) Signature() *operators.Signature {
-	return operators.NewSignature(p, "std", "addProfileColumn").
+	return operators.NewSignature(p, "profile", "addField").
 		Param("otype", value.Types.String, false, false, value.Nil).
 		Param("oid", value.Types.Int, false, false, value.Nil).
 		Param("key", value.Types.String, false, false, value.Nil).
