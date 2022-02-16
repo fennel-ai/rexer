@@ -83,10 +83,10 @@ class TestEndToEnd(unittest.TestCase):
         # Total views gained by a Trail on last 2 days for given city+gender+age_group
         q = Var('args').actions.apply(
           Ops.std.filter(where=(it.action_type == 'view') & (it.target_type == 'video')),
-          Ops.std.addProfileColumn(name='city', otype='user', oid=it.actor_id, key='city'),
-          Ops.std.addProfileColumn(name='gender', otype='user', oid=it.actor_id, key='gender'),
-          Ops.std.addProfileColumn(name='age_group', otype='user', oid=it.actor_id, key='age_group'),
-          Ops.std.addColumn(name='key', value=List(it.target_id, it.city, it.gender, it.age_group)),
+          Ops.profile.addField(name='city', otype='user', oid=it.actor_id, key='city'),
+          Ops.profile.addField(name='gender', otype='user', oid=it.actor_id, key='gender'),
+          Ops.profile.addField(name='age_group', otype='user', oid=it.actor_id, key='age_group'),
+          Ops.std.addField(name='key', value=List(it.target_id, it.city, it.gender, it.age_group)),
         )
 
         options = {'duration': 3600*24*2, 'aggregate_type': 'rolling_counter', }
@@ -117,10 +117,10 @@ class TestLoad(unittest.TestCase):
         # Total views gained by a Trail on last 2 days for given city+gender+age_group
         q = Var('args').actions.apply(
             Ops.std.filter(where=(it.action_type == 'view') & (it.target_type == 'video')),
-            Ops.std.addProfileColumn(name='city', otype='user', oid=it.actor_id, key='city'),
-            Ops.std.addProfileColumn(name='gender', otype='user', oid=it.actor_id, key='gender'),
-            Ops.std.addProfileColumn(name='age_group', otype='user', oid=it.actor_id, key='age_group'),
-            Ops.std.addColumn(name='key', value=List(it.target_id, it.city, it.gender, it.age_group)),
+            Ops.profile.addField(name='city', otype='user', oid=it.actor_id, key='city'),
+            Ops.profile.addField(name='gender', otype='user', oid=it.actor_id, key='gender'),
+            Ops.profile.addField(name='age_group', otype='user', oid=it.actor_id, key='age_group'),
+            Ops.std.addField(name='key', value=List(it.target_id, it.city, it.gender, it.age_group)),
         )
         options = {'duration': 3600*24*2, 'aggregate_type': 'rolling_counter', }
         c.store_aggregate('trail_view_by_city_gender_agegroup_2days', q, options)
@@ -128,15 +128,15 @@ class TestLoad(unittest.TestCase):
         # Avg-watchtime of a  video for given country+OS+city_sate+mobile_brand+gender in 30 days
         q = Var('args').actions.apply(
             Ops.std.filter(where=it.action_type == 'view'),
-            Ops.std.addProfileColumn(name='country', otype='user', oid=it.actor_id, key='country'),
-            Ops.std.addProfileColumn(name='os', otype='user', oid=it.actor_id, key='os'),
-            Ops.std.addProfileColumn(name='city', otype='user', oid=it.actor_id, key='city'),
-            Ops.std.addProfileColumn(name='mobile_brand', otype='user',oid=it.actor_id, key='mobile_brand'),
-            Ops.std.addProfileColumn(name='gender', otype='user', oid=it.actor_id, key='gender'),
-            # Ops.std.addColumn(name=String('day_of_week'), value=Ops.time.dayOfWeek(timestamp=it.timestamp)),
-            # Ops.std.addColumn(name=String('time_bucket'), value=Ops.time.hourOfDay(timestamp=it.timestamp), size=Int(3600)),
-            Ops.std.addColumn(name='amount', value=it.metadata.watch_time),
-            Ops.std.addColumn(name='key', value=[it.target_id, it.country, it.os, it.city, it.mobile_brand, it.gender]),
+            Ops.profile.addField(name='country', otype='user', oid=it.actor_id, key='country'),
+            Ops.profile.addField(name='os', otype='user', oid=it.actor_id, key='os'),
+            Ops.profile.addField(name='city', otype='user', oid=it.actor_id, key='city'),
+            Ops.profile.addField(name='mobile_brand', otype='user',oid=it.actor_id, key='mobile_brand'),
+            Ops.profile.addField(name='gender', otype='user', oid=it.actor_id, key='gender'),
+            # Ops.std.addField(name=String('day_of_week'), value=Ops.time.dayOfWeek(timestamp=it.timestamp)),
+            # Ops.std.addField(name=String('time_bucket'), value=Ops.time.hourOfDay(timestamp=it.timestamp), size=Int(3600)),
+            Ops.std.addField(name='amount', value=it.metadata.watch_time),
+            Ops.std.addField(name='key', value=[it.target_id, it.country, it.os, it.city, it.mobile_brand, it.gender]),
         )
         options = {'aggregate_type': 'rolling_average', 'duration': 3600*24*30}
         c.store_aggregate('video_avg_watchtime_by_country_os_citystate_mobile_gender_30days', q, options)
@@ -144,10 +144,10 @@ class TestLoad(unittest.TestCase):
         # Avg-watchtime of a user id  for creatorId in 2-hour window averaged over 30 days
         q = Var('args').actions.apply(
             Ops.std.filter(where=(it.action_type == 'view') & (it.target_type == 'video')),
-            Ops.std.addProfileColumn(name='creator_id', otype='user', oid=it.actor_id, key='creatorId'),
-            # Ops.std.addColumn(name=String('time_bucket'), value=Ops.time.hourOfDay(timestamp=it.timestamp), size=Int(3600)),
-            Ops.std.addColumn(name='amount', value=it.metadata.watch_time),
-            Ops.std.addColumn(name='key', value=[it.actor_id, it.creator_id]),
+            Ops.profile.addField(name='creator_id', otype='user', oid=it.actor_id, key='creatorId'),
+            # Ops.std.addField(name=String('time_bucket'), value=Ops.time.hourOfDay(timestamp=it.timestamp), size=Int(3600)),
+            Ops.std.addField(name='amount', value=it.metadata.watch_time),
+            Ops.std.addField(name='key', value=[it.actor_id, it.creator_id]),
         )
         options = {'aggregate_type': 'rolling_average', 'duration': 3600*24*30}
         c.store_aggregate('user_creator_avg_watchtime_by_2hour_windows_30days', q, options)

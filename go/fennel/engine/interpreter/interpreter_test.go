@@ -410,7 +410,7 @@ func getOpCallQuery() ast.Ast {
 			}},
 		},
 		Namespace: "std",
-		Name:      "addColumn",
+		Name:      "addField",
 		Kwargs: ast.Dict{Values: map[string]ast.Ast{
 			"name": ast.MakeString("key"),
 			"value": ast.List{Values: []ast.Ast{ast.Lookup{
