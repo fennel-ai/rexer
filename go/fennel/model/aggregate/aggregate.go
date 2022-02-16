@@ -1,6 +1,7 @@
 package aggregate
 
 import (
+	"context"
 	"database/sql"
 	"fennel/lib/aggregate"
 	"fennel/lib/ftypes"
@@ -8,18 +9,18 @@ import (
 	"fmt"
 )
 
-func Store(tier tier.Tier, name ftypes.AggName, querySer []byte, ts ftypes.Timestamp, optionSer []byte) error {
+func Store(ctx context.Context, tier tier.Tier, name ftypes.AggName, querySer []byte, ts ftypes.Timestamp, optionSer []byte) error {
 	if len(name) > 255 {
 		return fmt.Errorf("aggregate name can not be longer than 255 chars")
 	}
 	sql := `INSERT INTO aggregate_config (name, query_ser, timestamp, options_ser) VALUES (?, ?, ?, ?)`
-	_, err := tier.DB.Query(sql, name, querySer, ts, optionSer)
+	_, err := tier.DB.QueryContext(ctx, sql, name, querySer, ts, optionSer)
 	return err
 }
 
-func Retrieve(tier tier.Tier, name ftypes.AggName) (aggregate.AggregateSer, error) {
+func Retrieve(ctx context.Context, tier tier.Tier, name ftypes.AggName) (aggregate.AggregateSer, error) {
 	var ret aggregate.AggregateSer
-	err := tier.DB.Get(&ret, `SELECT * FROM aggregate_config WHERE name = ? AND active = TRUE`, name)
+	err := tier.DB.GetContext(ctx, &ret, `SELECT * FROM aggregate_config WHERE name = ? AND active = TRUE`, name)
 	if err != nil && err == sql.ErrNoRows {
 		return aggregate.AggregateSer{}, aggregate.ErrNotFound
 	} else if err != nil {
@@ -28,18 +29,18 @@ func Retrieve(tier tier.Tier, name ftypes.AggName) (aggregate.AggregateSer, erro
 	return ret, nil
 }
 
-func RetrieveAll(tier tier.Tier) ([]aggregate.AggregateSer, error) {
+func RetrieveAll(ctx context.Context, tier tier.Tier) ([]aggregate.AggregateSer, error) {
 	ret := make([]aggregate.AggregateSer, 0)
-	err := tier.DB.Select(&ret, `SELECT * FROM aggregate_config WHERE active = TRUE`)
+	err := tier.DB.SelectContext(ctx, &ret, `SELECT * FROM aggregate_config WHERE active = TRUE`)
 	if err != nil {
 		return nil, err
 	}
 	return ret, nil
 }
 
-func RetrieveNoFilter(tier tier.Tier, name ftypes.AggName) (aggregate.AggregateSer, error) {
+func RetrieveNoFilter(ctx context.Context, tier tier.Tier, name ftypes.AggName) (aggregate.AggregateSer, error) {
 	var ret aggregate.AggregateSer
-	err := tier.DB.Get(&ret, `SELECT * FROM aggregate_config WHERE name = ?`, name)
+	err := tier.DB.GetContext(ctx, &ret, `SELECT * FROM aggregate_config WHERE name = ?`, name)
 	if err != nil && err == sql.ErrNoRows {
 		return aggregate.AggregateSer{}, aggregate.ErrNotFound
 	} else if err != nil {
@@ -48,7 +49,7 @@ func RetrieveNoFilter(tier tier.Tier, name ftypes.AggName) (aggregate.AggregateS
 	return ret, nil
 }
 
-func Deactivate(tier tier.Tier, name ftypes.AggName) error {
-	_, err := tier.DB.Exec(`UPDATE aggregate_config SET active = FALSE WHERE name = ?`, name)
+func Deactivate(ctx context.Context, tier tier.Tier, name ftypes.AggName) error {
+	_, err := tier.DB.ExecContext(ctx, `UPDATE aggregate_config SET active = FALSE WHERE name = ?`, name)
 	return err
 }

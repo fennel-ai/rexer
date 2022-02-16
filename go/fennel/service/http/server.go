@@ -251,7 +251,7 @@ func (m server) StoreAggregate(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 	// call controller
-	if err = aggregate2.Store(m.tier, agg); err != nil {
+	if err = aggregate2.Store(req.Context(), m.tier, agg); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		log.Printf("Error: %v", err)
 		return
@@ -266,7 +266,7 @@ func (m server) RetrieveAggregate(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 	// call controller
-	ret, err := aggregate2.Retrieve(m.tier, ftypes.AggName(protoReq.AggName))
+	ret, err := aggregate2.Retrieve(req.Context(), m.tier, ftypes.AggName(protoReq.AggName))
 	if err == aggregate.ErrNotFound {
 		// we don't throw an error, just return empty response
 		return
@@ -298,7 +298,7 @@ func (m server) DeactivateAggregate(w http.ResponseWriter, req *http.Request) {
 		log.Printf("Error: %v", err)
 		return
 	}
-	err := aggregate2.Deactivate(m.tier, ftypes.AggName(protoReq.AggName))
+	err := aggregate2.Deactivate(req.Context(), m.tier, ftypes.AggName(protoReq.AggName))
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		log.Printf("Error: %v", err)
