@@ -4,6 +4,7 @@ import (
 	"context"
 	"fennel/lib/timer"
 	"fennel/resource"
+	"fmt"
 	"time"
 )
 
@@ -35,16 +36,21 @@ func (c Client) MGet(ctx context.Context, ks ...string) ([]interface{}, error) {
 	return c.client.MGet(ctx, ks...).Result()
 }
 
-func (c Client) MSet(ctx context.Context, values map[string]interface{}) error {
+func (c Client) MSet(ctx context.Context, keys []string, values []interface{}, ttls []time.Duration) error {
 	defer timer.Start(c.TierID(), "redis.mset").ObserveDuration()
-	vals := make([]interface{}, 2*len(values))
-	i := 0
-	for k, v := range values {
-		vals[i] = c.tieredKey(k)
-		vals[i+1] = v
-		i += 2
+	if len(keys) != len(values) || len(keys) != len(ttls) {
+		return fmt.Errorf("keys, values, and ttls should all be slices of the same length")
 	}
-	return c.client.MSet(ctx, vals...).Err()
+	// NOTE: we are using transactioned pipeline here, which enforces cross-slot errors
+	// looks like non-transaction pipeline doesn't enforce this kind of error, but comes
+	// with weaker guarantees. Someday, we should explore this and see if non-transaction
+	// pipelines make more sense for us in general
+	pipe := c.client.TxPipeline()
+	for i, _ := range keys {
+		pipe.Set(ctx, c.tieredKey(keys[i]), values[i], ttls[i])
+	}
+	_, err := pipe.Exec(ctx)
+	return err
 }
 
 func (c Client) tieredKey(k string) string {
