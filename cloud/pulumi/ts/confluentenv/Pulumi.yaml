@@ -1,0 +1,3 @@
+name: confluentenv
+runtime: nodejs
+description: Pulumi project to setup a confluent environment

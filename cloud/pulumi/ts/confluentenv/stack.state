@@ -1,0 +1,78 @@
+{
+    "version": 3,
+    "deployment": {
+        "manifest": {
+            "time": "2022-02-15T22:07:15.971628-08:00",
+            "magic": "716f0bdad25b3b8e2145d2be034ba3ea4bdfb2c5330ba1d595d227e45289fbfd",
+            "version": "v3.24.1"
+        },
+        "secrets_providers": {
+            "type": "service",
+            "state": {
+                "url": "https://api.pulumi.com",
+                "owner": "fennel",
+                "project": "confluentenv",
+                "stack": "dev"
+            }
+        },
+        "resources": [
+            {
+                "urn": "urn:pulumi:dev::confluentenv::pulumi:pulumi:Stack::confluentenv-dev",
+                "custom": false,
+                "type": "pulumi:pulumi:Stack",
+                "outputs": {
+                    "cluster": {
+                        "availability": "LOW",
+                        "bootstrapServers": "SASL_SSL://pkc-pgq85.us-west-2.aws.confluent.cloud:9092",
+                        "environmentId": "env-y06jp",
+                        "id": "lkc-6kdkoj",
+                        "name": "cluster-232658d",
+                        "region": "us-west-2",
+                        "serviceProvider": "AWS",
+                        "urn": "urn:pulumi:dev::confluentenv::confluent:index/kafkaCluster:KafkaCluster::cluster"
+                    }
+                }
+            },
+            {
+                "urn": "urn:pulumi:dev::confluentenv::pulumi:providers:confluent::default_0_2_2",
+                "custom": true,
+                "id": "41482134-6b0e-40ec-beb9-9ad29b0a2950",
+                "type": "pulumi:providers:confluent",
+                "inputs": {
+                    "version": "0.2.2"
+                },
+                "outputs": {
+                    "version": "0.2.2"
+                },
+                "sequenceNumber": 1
+            },
+            {
+                "urn": "urn:pulumi:dev::confluentenv::pulumi:providers:confluent::conf-provider",
+                "custom": true,
+                "id": "f9ca5d01-3bd8-4daf-bd02-dfb73af2be59",
+                "type": "pulumi:providers:confluent",
+                "inputs": {
+                    "password": {
+                        "4dabf18193072939515e22adb298388d": "1b47061264138c4ac30d75fd1eb44270",
+                        "ciphertext": "AAABAGmoiJAQbcgcwJ3swbj3hKZDLIWvBL9sL2OOFwdIlmHHyTm3NnPZgYQHWsBXgg=="
+                    },
+                    "username": "abhay@fennel.ai",
+                    "version": "0.2.2"
+                },
+                "outputs": {
+                    "password": {
+                        "4dabf18193072939515e22adb298388d": "1b47061264138c4ac30d75fd1eb44270",
+                        "ciphertext": "AAABANY0YVYF+5FWPRr9OW3naE2/4s9fXumRRex6Mmpfm4SdViNQHIW8pZ4YG7L0aA=="
+                    },
+                    "username": "abhay@fennel.ai",
+                    "version": "0.2.2"
+                },
+                "parent": "urn:pulumi:dev::confluentenv::pulumi:pulumi:Stack::confluentenv-dev",
+                "propertyDependencies": {
+                    "password": null,
+                    "username": null
+                }
+            }
+        ]
+    }
+}
