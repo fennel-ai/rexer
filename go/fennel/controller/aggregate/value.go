@@ -19,7 +19,7 @@ import (
 )
 
 func Value(ctx context.Context, tier tier.Tier, name ftypes.AggName, key value.Value) (value.Value, error) {
-	agg, err := Retrieve(tier, name)
+	agg, err := Retrieve(ctx, tier, name)
 	if err != nil {
 		return value.Nil, err
 	}

@@ -20,8 +20,9 @@ import (
 )
 
 func processOnce(tier tier.Tier) {
+	ctx := context.TODO()
 	wg := sync.WaitGroup{}
-	aggs, err := aggregate.RetrieveAll(tier)
+	aggs, err := aggregate.RetrieveAll(ctx, tier)
 	if err != nil {
 		panic(err)
 	}
@@ -29,7 +30,7 @@ func processOnce(tier tier.Tier) {
 		wg.Add(1)
 		go func(agg libaggregate.Aggregate) {
 			defer wg.Done()
-			err := aggregate.Update(context.TODO(), tier, agg)
+			err := aggregate.Update(ctx, tier, agg)
 			if err != nil {
 				log.Printf("Error found in aggregate for agg type: %v and name: %s. Err: %v", agg.Options.AggType, agg.Name, err)
 			}

@@ -1,6 +1,7 @@
 package aggregate
 
 import (
+	"context"
 	"fennel/engine/ast"
 	"fennel/lib/aggregate"
 	"fennel/lib/ftypes"
@@ -12,13 +13,13 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
-func Store(tier tier.Tier, agg aggregate.Aggregate) error {
+func Store(ctx context.Context, tier tier.Tier, agg aggregate.Aggregate) error {
 	if err := agg.Validate(); err != nil {
 		return err
 	}
 
 	// Check if agg already exists in db
-	agg2, err := Retrieve(tier, agg.Name)
+	agg2, err := Retrieve(ctx, tier, agg.Name)
 	// Only error that should happen is when agg is not present
 	if err != nil && err != aggregate.ErrNotFound {
 		return err
@@ -46,15 +47,15 @@ func Store(tier tier.Tier, agg aggregate.Aggregate) error {
 		agg.Timestamp = ftypes.Timestamp(time.Now().Unix())
 	}
 
-	return modelAgg.Store(tier, agg.Name, querySer, agg.Timestamp, optionSer)
+	return modelAgg.Store(ctx, tier, agg.Name, querySer, agg.Timestamp, optionSer)
 }
 
-func Retrieve(tier tier.Tier, aggname ftypes.AggName) (aggregate.Aggregate, error) {
+func Retrieve(ctx context.Context, tier tier.Tier, aggname ftypes.AggName) (aggregate.Aggregate, error) {
 	empty := aggregate.Aggregate{}
 	if len(aggname) == 0 {
 		return empty, fmt.Errorf("aggregate name can not be of length zero")
 	}
-	aggser, err := modelAgg.Retrieve(tier, aggname)
+	aggser, err := modelAgg.Retrieve(ctx, tier, aggname)
 	if err != nil {
 		return empty, err
 	}
@@ -62,8 +63,8 @@ func Retrieve(tier tier.Tier, aggname ftypes.AggName) (aggregate.Aggregate, erro
 }
 
 // RetrieveAll returns all aggregates
-func RetrieveAll(tier tier.Tier) ([]aggregate.Aggregate, error) {
-	retSer, err := modelAgg.RetrieveAll(tier)
+func RetrieveAll(ctx context.Context, tier tier.Tier) ([]aggregate.Aggregate, error) {
+	retSer, err := modelAgg.RetrieveAll(ctx, tier)
 	if err != nil {
 		return nil, err
 	}
@@ -77,12 +78,12 @@ func RetrieveAll(tier tier.Tier) ([]aggregate.Aggregate, error) {
 	return ret, nil
 }
 
-func Deactivate(tier tier.Tier, aggname ftypes.AggName) error {
+func Deactivate(ctx context.Context, tier tier.Tier, aggname ftypes.AggName) error {
 	if len(aggname) == 0 {
 		return fmt.Errorf("aggregate name can not be of length zero")
 	}
 	// Check if agg already exists in db
-	aggser, err := modelAgg.RetrieveNoFilter(tier, aggname)
+	aggser, err := modelAgg.RetrieveNoFilter(ctx, tier, aggname)
 	// If it is absent, it returns aggregate.ErrNotFound
 	// If any other error, return it as well
 	if err != nil {
@@ -93,7 +94,7 @@ func Deactivate(tier tier.Tier, aggname ftypes.AggName) error {
 	if !aggser.Active {
 		return nil
 	} else {
-		err := modelAgg.Deactivate(tier, aggname)
+		err := modelAgg.Deactivate(ctx, tier, aggname)
 		return err
 	}
 }

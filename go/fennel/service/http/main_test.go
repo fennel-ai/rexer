@@ -181,6 +181,7 @@ func TestServer_AggregateValue_Valid(t *testing.T) {
 	assert.NoError(t, err)
 	defer test.Teardown(tier)
 
+	ctx := context.Background()
 	clock := &test.FakeClock{}
 	tier.Clock = clock
 	t0 := ftypes.Timestamp(3600 * 10)
@@ -198,7 +199,7 @@ func TestServer_AggregateValue_Valid(t *testing.T) {
 	key := value.Int(4)
 	keystr := key.String()
 	assert.Equal(t, int64(t0), tier.Clock.Now())
-	assert.NoError(t, aggregate2.Store(tier, agg))
+	assert.NoError(t, aggregate2.Store(ctx, tier, agg))
 	// initially count is zero
 	valueSendReceive(t, holder, agg, key, value.Int(0))
 

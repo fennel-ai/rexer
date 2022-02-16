@@ -25,6 +25,7 @@ func TestEndToEnd2(t *testing.T) {
 	clock := &test.FakeClock{}
 	tier.Clock = clock
 
+	ctx := context.Background()
 	agg1 := libaggregate.Aggregate{
 		Name: "counter1", Query: getQuery(), Timestamp: 123,
 		Options: libaggregate.AggOptions{
@@ -32,7 +33,7 @@ func TestEndToEnd2(t *testing.T) {
 			Duration: 6 * 3600,
 		},
 	}
-	assert.NoError(t, aggregate.Store(tier, agg1))
+	assert.NoError(t, aggregate.Store(ctx, tier, agg1))
 	agg2 := libaggregate.Aggregate{
 		Name: "timeseries", Query: getQuery(), Timestamp: 123,
 		Options: libaggregate.AggOptions{
@@ -41,7 +42,7 @@ func TestEndToEnd2(t *testing.T) {
 			Limit:   4,
 		},
 	}
-	assert.NoError(t, aggregate.Store(tier, agg2))
+	assert.NoError(t, aggregate.Store(ctx, tier, agg2))
 	uid1 := ftypes.OidType(1312)
 	uid2 := ftypes.OidType(8312)
 	key1 := value.Int(uid1)
