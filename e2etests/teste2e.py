@@ -33,13 +33,15 @@ class TestTier(object):
 
 
 @contextlib.contextmanager
-def gorun(path, tags, env):
+def gorun(path, tags, env, wait=False):
     dir = ''.join(random.choice(string.ascii_lowercase) for _ in range(8))
     binary = '/tmp/%s/%s' % (dir, path)
     b = subprocess.Popen(['go', 'build', '--tags', tags, '-o', binary, path], cwd=GODIR)
     b.wait()
     p = subprocess.Popen([binary], stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL, env=env)
     # p = subprocess.Popen([binary], stderr=sys.stderr, stdout=sys.stdout, env=env)
+    if wait:
+        p.wait()
     yield
     try:
         p.kill()
@@ -109,7 +111,7 @@ class TestLoad(unittest.TestCase):
     def test_load(self):
         c = client.Client(URL)
         self.set_aggregates(c)
-        with gorun('fennel/test/cmds/loadtest', 'dynamic', os.environ.copy()):
+        with gorun('fennel/test/cmds/loadtest', 'dynamic', os.environ.copy(), wait=True):
             pass
 
     def set_aggregates(self, c: client.Client):
