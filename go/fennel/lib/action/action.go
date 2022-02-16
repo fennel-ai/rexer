@@ -315,7 +315,7 @@ func (a *Action) UnmarshalJSON(data []byte) error {
 		case 7:
 			request_id, err = jsonparser.ParseInt(vdata)
 		case 8:
-			metadata, err = value.FromJSON(vdata)
+			metadata, err = value.ParseJSON(vdata, vtype)
 		default:
 			err = fmt.Errorf("unknown index")
 		}

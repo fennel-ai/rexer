@@ -11,14 +11,14 @@ func FromJSON(data []byte) (Value, error) {
 	if err != nil {
 		return nil, err
 	}
-	return parseJSON(vdata, vtype)
+	return ParseJSON(vdata, vtype)
 }
 
 func ToJSON(val Value) ([]byte, error) {
 	return json.Marshal(val)
 }
 
-func parseJSON(vdata []byte, vtype jsonparser.ValueType) (Value, error) {
+func ParseJSON(vdata []byte, vtype jsonparser.ValueType) (Value, error) {
 	switch vtype {
 	case jsonparser.Boolean:
 		return parseJSONBoolean(vdata)
@@ -74,7 +74,7 @@ func parseJSONArray(data []byte) (Value, error) {
 			errors = append(errors, err)
 			return
 		}
-		v, err := parseJSON(vdata, vtype)
+		v, err := ParseJSON(vdata, vtype)
 		if err != nil {
 			errors = append(errors, err)
 			return
@@ -99,7 +99,7 @@ func parseJSONObject(data []byte) (Value, error) {
 		if err != nil {
 			return err
 		}
-		v, err := parseJSON(vdata, vtype)
+		v, err := ParseJSON(vdata, vtype)
 		if err != nil {
 			return err
 		}
