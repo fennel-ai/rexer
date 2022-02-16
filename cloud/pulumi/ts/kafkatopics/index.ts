@@ -20,7 +20,7 @@ const parseConfig = (): input => {
     return {
         username: config.require("username"),
         password: config.requireSecret("password"),
-        topicNames: config.requireObject<[string]>("topicNames"),
+        topicNames: config.requireObject("topicNames"),
         kafkaCluster: config.requireObject("cluster")
     }
 }
