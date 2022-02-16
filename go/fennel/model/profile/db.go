@@ -1,6 +1,7 @@
 package profile
 
 import (
+	"context"
 	"fennel/lib/ftypes"
 	"fennel/lib/profile"
 	"fennel/lib/timer"
@@ -14,13 +15,13 @@ import (
 
 // we create a private interface to make testing caching easier
 type provider interface {
-	set(tier tier.Tier, otype ftypes.OType, oid uint64, key string, version uint64, valueSer []byte) error
-	get(tier tier.Tier, otype ftypes.OType, oid uint64, key string, version uint64) ([]byte, error)
+	set(ctx context.Context, tier tier.Tier, otype ftypes.OType, oid uint64, key string, version uint64, valueSer []byte) error
+	get(ctx context.Context, tier tier.Tier, otype ftypes.OType, oid uint64, key string, version uint64) ([]byte, error)
 }
 
 type dbProvider struct{}
 
-func (D dbProvider) set(tier tier.Tier, otype ftypes.OType, oid uint64, key string, version uint64, valueSer []byte) error {
+func (D dbProvider) set(ctx context.Context, tier tier.Tier, otype ftypes.OType, oid uint64, key string, version uint64, valueSer []byte) error {
 	defer timer.Start(tier.ID, "model.profile.db.set").ObserveDuration()
 	if version == 0 {
 		return fmt.Errorf("version can not be zero")
@@ -31,7 +32,7 @@ func (D dbProvider) set(tier tier.Tier, otype ftypes.OType, oid uint64, key stri
 	if len(otype) > 255 {
 		return fmt.Errorf("otype too long: otypes can only be upto 255 chars")
 	}
-	_, err := tier.DB.Exec(`
+	_, err := tier.DB.ExecContext(ctx, `
 		INSERT INTO profile 
 			(otype, oid, zkey, version, value)
 		VALUES
@@ -44,12 +45,12 @@ func (D dbProvider) set(tier tier.Tier, otype ftypes.OType, oid uint64, key stri
 	return nil
 }
 
-func (D dbProvider) get(tier tier.Tier, otype ftypes.OType, oid uint64, key string, version uint64) ([]byte, error) {
+func (D dbProvider) get(ctx context.Context, tier tier.Tier, otype ftypes.OType, oid uint64, key string, version uint64) ([]byte, error) {
 	defer timer.Start(tier.ID, "model.profile.db.get").ObserveDuration()
 	var value [][]byte = nil
 	var err error
 	if version > 0 {
-		err = tier.DB.Select(&value, `
+		err = tier.DB.SelectContext(ctx, &value, `
 		SELECT value
 		FROM profile 
 		WHERE
@@ -62,7 +63,7 @@ func (D dbProvider) get(tier tier.Tier, otype ftypes.OType, oid uint64, key stri
 		)
 	} else {
 		// if version isn't given, just pick the highest version
-		err = tier.DB.Select(&value, `
+		err = tier.DB.SelectContext(ctx, &value, `
 		SELECT value
 		FROM profile 
 		WHERE
@@ -87,7 +88,7 @@ func (D dbProvider) get(tier tier.Tier, otype ftypes.OType, oid uint64, key stri
 var _ provider = dbProvider{}
 
 // Whatever properties of 'request' are non-zero are used to filter eligible profiles
-func GetMulti(tier tier.Tier, request profile.ProfileFetchRequest) ([]profile.ProfileItemSer, error) {
+func GetMulti(ctx context.Context, tier tier.Tier, request profile.ProfileFetchRequest) ([]profile.ProfileItemSer, error) {
 	query := "SELECT * FROM profile"
 	clauses := make([]string, 0)
 
@@ -108,7 +109,7 @@ func GetMulti(tier tier.Tier, request profile.ProfileFetchRequest) ([]profile.Pr
 		query = fmt.Sprintf("%s WHERE %s", query, strings.Join(clauses, " AND "))
 	}
 	profiles := make([]profile.ProfileItemSer, 0)
-	statement, err := tier.DB.PrepareNamed(query)
+	statement, err := tier.DB.PrepareNamedContext(ctx, query)
 	if err != nil {
 		return nil, err
 	}

@@ -1,6 +1,7 @@
 package profile
 
 import (
+	"context"
 	profilelib "fennel/lib/profile"
 	"fennel/lib/timer"
 	"fennel/lib/value"
@@ -11,12 +12,12 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
-func Get(tier tier.Tier, request profilelib.ProfileItem) (value.Value, error) {
+func Get(ctx context.Context, tier tier.Tier, request profilelib.ProfileItem) (value.Value, error) {
 	defer timer.Start(tier.ID, "controller.profile.get").ObserveDuration()
 	if err := request.Validate(); err != nil {
 		return nil, err
 	}
-	valueSer, err := profile.Get(tier, request.OType, request.Oid, request.Key, request.Version)
+	valueSer, err := profile.Get(ctx, tier, request.OType, request.Oid, request.Key, request.Version)
 	if err != nil {
 		return nil, err
 	} else if valueSer == nil {
@@ -34,7 +35,7 @@ func Get(tier tier.Tier, request profilelib.ProfileItem) (value.Value, error) {
 	return val, nil
 }
 
-func Set(tier tier.Tier, request profilelib.ProfileItem) error {
+func Set(ctx context.Context, tier tier.Tier, request profilelib.ProfileItem) error {
 	defer timer.Start(tier.ID, "controller.profile.set").ObserveDuration()
 	if err := request.Validate(); err != nil {
 		return err
@@ -50,7 +51,7 @@ func Set(tier tier.Tier, request profilelib.ProfileItem) error {
 	if err != nil {
 		return err
 	}
-	if err = profile.Set(tier, request.OType, request.Oid, request.Key, request.Version, valSer); err != nil {
+	if err = profile.Set(ctx, tier, request.OType, request.Oid, request.Key, request.Version, valSer); err != nil {
 		return err
 	}
 	return nil
@@ -59,8 +60,8 @@ func Set(tier tier.Tier, request profilelib.ProfileItem) error {
 // GetBatched takes a list of profile items (value field is ignored) and returns a list of values
 // corresponding to the value of each profile item. If profile item doesn't exist and hence the value
 // is not found, nil is returned instead
-func GetBatched(tier tier.Tier, requests []profilelib.ProfileItem) ([]value.Value, error) {
-	sers, err := profile.GetBatched(tier, requests)
+func GetBatched(ctx context.Context, tier tier.Tier, requests []profilelib.ProfileItem) ([]value.Value, error) {
+	sers, err := profile.GetBatched(ctx, tier, requests)
 	if err != nil {
 		return nil, err
 	}
@@ -79,8 +80,8 @@ func GetBatched(tier tier.Tier, requests []profilelib.ProfileItem) ([]value.Valu
 	return ret, nil
 }
 
-func GetMulti(tier tier.Tier, request profilelib.ProfileFetchRequest) ([]profilelib.ProfileItem, error) {
-	profilesSer, err := profile.GetMulti(tier, request)
+func GetMulti(ctx context.Context, tier tier.Tier, request profilelib.ProfileFetchRequest) ([]profilelib.ProfileItem, error) {
+	profilesSer, err := profile.GetMulti(ctx, tier, request)
 	if err != nil {
 		return nil, err
 	}
