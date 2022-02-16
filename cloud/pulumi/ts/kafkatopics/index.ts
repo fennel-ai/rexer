@@ -24,6 +24,10 @@ export type outputType = {
     topics: kafka.Topic[]
 }
 
+// We have parseConfig as a standard function across all components because
+// we do not want to call config.require inside of setup since the config parameters
+// could come from either config.require or from parameters passed in by calling setup
+// in another file.
 const parseConfig = (): inputType => {
     const config = new pulumi.Config();
     return {
