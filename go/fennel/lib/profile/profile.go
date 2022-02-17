@@ -6,7 +6,6 @@ import (
 	"fennel/lib/value"
 	"fmt"
 	"github.com/buger/jsonparser"
-	"google.golang.org/protobuf/proto"
 )
 
 type ProfileItem struct {
@@ -23,12 +22,6 @@ func NewProfileItem(otype string, oid uint64, k string, version uint64) ProfileI
 	}
 }
 
-func NewProfileItemSer(otype string, oid uint64, key string, version uint64, val []byte) ProfileItemSer {
-	return ProfileItemSer{
-		ftypes.OType(otype), oid, key, version, val,
-	}
-}
-
 type ProfileItemSer struct {
 	OType   ftypes.OType `db:"otype"`
 	Oid     uint64       `db:"oid"`
@@ -37,20 +30,19 @@ type ProfileItemSer struct {
 	Value   []byte       `db:"value"`
 }
 
-// Converts a ProfileItemSer to ProfileItem
+func NewProfileItemSer(otype string, oid uint64, key string, version uint64, val []byte) ProfileItemSer {
+	return ProfileItemSer{
+		ftypes.OType(otype), oid, key, version, val,
+	}
+}
+
+// ToProfileItem converts a ProfileItemSer to ProfileItem
 func (ser *ProfileItemSer) ToProfileItem() (*ProfileItem, error) {
 	pr := ProfileItem{ser.OType, ser.Oid, ser.Key, ser.Version, value.Nil}
-
-	var pval value.PValue
-	if err := proto.Unmarshal(ser.Value, &pval); err != nil {
+	var val value.Value
+	if err := value.Unmarshal(ser.Value, &val); err != nil {
 		return nil, err
 	}
-
-	val, err := value.FromProtoValue(&pval)
-	if err != nil {
-		return nil, err
-	}
-
 	pr.Value = val
 	return &pr, nil
 }
