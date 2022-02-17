@@ -86,7 +86,9 @@ func TestActionJSON(t *testing.T) {
 		var a2 Action
 		err := json.Unmarshal([]byte(tst.str), &a2)
 		assert.NoError(t, err)
-		assert.True(t, tst.a.Equals(a2, false))
+		b, err := tst.a.Equals(a2, false)
+		assert.NoError(t, err)
+		assert.True(t, b)
 	}
 	// Test marshal
 	for _, tst := range tests {
