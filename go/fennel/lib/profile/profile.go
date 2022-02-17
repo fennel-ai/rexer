@@ -1,6 +1,7 @@
 package profile
 
 import (
+	"encoding/json"
 	"fennel/lib/ftypes"
 	"fennel/lib/value"
 	"fmt"
@@ -94,10 +95,10 @@ func FromProfileItemSerList(pl_ser []ProfileItemSer) ([]ProfileItem, error) {
 }
 
 type ProfileFetchRequest struct {
-	OType   ftypes.OType `db:"otype"`
-	Oid     uint64       `db:"oid"`
-	Key     string       `db:"zkey"`
-	Version uint64       `db:"version"`
+	OType   ftypes.OType `db:"otype" json:"OType"`
+	Oid     uint64       `db:"oid" json:"Oid"`
+	Key     string       `db:"zkey" json:"Key"`
+	Version uint64       `db:"version" json:"Version"`
 }
 
 func FromProtoProfileFetchRequest(ppfr *ProtoProfileFetchRequest) ProfileFetchRequest {
@@ -157,82 +158,49 @@ func (pi *ProfileItem) Validate() error {
 	return nil
 }
 
-func (pi *ProfileItem) UnmarshalJSON(data []byte) error {
-	var otype, key string
-	var oid, version int64
-	var val value.Value
-	var errors []error
-	handler := func(idx int, vdata []byte, vtype jsonparser.ValueType, err error) {
-		if err != nil {
-			errors = append(errors, err)
-			return
-		}
-		switch idx {
-		case 0:
-			otype, err = jsonparser.ParseString(vdata)
-		case 1:
-			oid, err = jsonparser.ParseInt(vdata)
-		case 2:
-			key, err = jsonparser.ParseString(vdata)
-		case 3:
-			val, err = value.ParseJSON(vdata, vtype)
-		case 4:
-			version, err = jsonparser.ParseInt(vdata)
-		default:
-			err = fmt.Errorf("unknown index")
-		}
-		if err != nil {
-			errors = append(errors, fmt.Errorf("for case %d with data %s: %v", idx, vdata, err))
+func (pi *ProfileItem) Equals(pi2 *ProfileItem) bool {
+	if pi.OType != pi2.OType {
+		return false
+	}
+	if pi.Oid != pi2.Oid {
+		return false
+	}
+	if pi.Key != pi2.Key {
+		return false
+	}
+	if pi.Value != nil {
+		if !pi.Value.Equal(pi2.Value) {
+			return false
 		}
 	}
-	paths := [][]string{{"OType"}, {"Oid"}, {"Key"}, {"Value"}, {"Version"}}
-	jsonparser.EachKey(data, handler, paths...)
-	if len(errors) != 0 {
-		// should this combine errors instead of returning only first error?
-		return fmt.Errorf("failed to parse profile json: %v", errors[0])
+	if pi.Version != pi2.Version {
+		return false
 	}
-	pi.OType = ftypes.OType(otype)
-	pi.Oid = uint64(oid)
-	pi.Key = key
-	pi.Value = val
-	pi.Version = uint64(version)
-	return nil
+	return true
 }
 
-func (pfr *ProfileFetchRequest) UnmarshalJSON(data []byte) error {
-	var otype, key string
-	var oid, version int64
-	var errors []error
-	handler := func(idx int, vdata []byte, vtype jsonparser.ValueType, err error) {
-		if err != nil {
-			errors = append(errors, err)
-			return
-		}
-		switch idx {
-		case 0:
-			otype, err = jsonparser.ParseString(vdata)
-		case 1:
-			oid, err = jsonparser.ParseInt(vdata)
-		case 2:
-			key, err = jsonparser.ParseString(vdata)
-		case 3:
-			version, err = jsonparser.ParseInt(vdata)
-		default:
-			err = fmt.Errorf("unknown index")
-		}
-		if err != nil {
-			errors = append(errors, err)
-		}
+func (pi *ProfileItem) UnmarshalJSON(data []byte) error {
+	var fields struct {
+		OType   ftypes.OType `json:"otype"`
+		Oid     uint64       `json:"oid"`
+		Key     string       `json:"key"`
+		Version uint64       `json:"version"`
 	}
-	paths := [][]string{{"OType"}, {"Oid"}, {"Key"}, {"Version"}}
-	jsonparser.EachKey(data, handler, paths...)
-	if len(errors) != 0 {
-		// should this combine errors instead of returning only first error?
-		return fmt.Errorf("failed to parse profile fetch request json: %v", errors[0])
+	err := json.Unmarshal(data, &fields)
+	if err != nil {
+		return fmt.Errorf("error unmarshalling profile json: %v", err)
 	}
-	pfr.OType = ftypes.OType(otype)
-	pfr.Oid = uint64(oid)
-	pfr.Key = key
-	pfr.Version = uint64(version)
+	pi.OType = fields.OType
+	pi.Oid = fields.Oid
+	pi.Key = fields.Key
+	pi.Version = fields.Version
+	vdata, vtype, _, err := jsonparser.Get(data, "Value")
+	if err != nil {
+		return fmt.Errorf("error getting value from profile json: %v", err)
+	}
+	pi.Value, err = value.ParseJSON(vdata, vtype)
+	if err != nil {
+		return fmt.Errorf("error parsing value from profile json: %v", err)
+	}
 	return nil
 }
