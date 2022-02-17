@@ -42,12 +42,10 @@ func TestProfileItemJSON(t *testing.T) {
 
 	// Test unmarshal
 	for _, tst := range tests {
-		var pi2 ProfileItem
-		err := json.Unmarshal([]byte(tst.str), &pi2)
+		var pi ProfileItem
+		err := json.Unmarshal([]byte(tst.str), &pi)
 		assert.NoError(t, err)
-		b, err := tst.pi.Equals(&pi2)
-		assert.NoError(t, err)
-		assert.True(t, b)
+		assert.True(t, tst.pi.Equals(&pi))
 	}
 	// Test marshal
 	for _, tst := range tests {
