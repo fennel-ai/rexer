@@ -1,4 +1,4 @@
-package opdefs
+package time
 
 import (
 	"fennel/engine/operators"

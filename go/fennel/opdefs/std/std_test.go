@@ -1,4 +1,4 @@
-package opdefs
+package std
 
 import (
 	"fennel/engine/operators"
