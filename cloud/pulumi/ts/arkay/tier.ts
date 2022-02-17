@@ -6,9 +6,15 @@ import { nameof } from "../lib/util"
 
 import process = require('process')
 
-export const plugins = {
-    "kafka": "v3.1.2",
-    "confluent": "v0.2.2"
+const setupPlugins = async (stack: pulumi.automation.Stack) => {
+    // TODO: aggregate plugins from all projects. If there are multiple versions
+    // of the same plugin, pick the more recent one.
+    let plugins = kafkatopics.plugins
+    console.info("installing plugins...");
+    for (var key in plugins) {
+        await stack.workspace.installPlugin(key, plugins[key])
+    }
+    console.info("plugins installed");
 }
 
 // This is our pulumi program in "inline function" form
@@ -44,14 +50,9 @@ export const setupTier = async (config: tierConfig, destroy?: boolean) => {
     const stack = await LocalWorkspace.createOrSelectStack(args);
     console.info("successfully initialized stack");
 
-    console.info("installing plugins...");
-    Object.keys(plugins).forEach(async (key) => {
-        await stack.workspace.installPlugin(key, plugins[key])
-    })
-    console.info("plugins installed");
+    await setupPlugins(stack)
 
     console.info("setting up config");
-    // TODO: Get these as input arguments to the function.
     await stack.setConfig(nameof<kafkatopics.inputType>("topicNames"), { value: JSON.stringify(config.topicNames) })
     await stack.setConfig(nameof<kafkatopics.inputType>("kafkaCluster"), { value: JSON.stringify(config.kafkaCluster) })
     console.info("config set");

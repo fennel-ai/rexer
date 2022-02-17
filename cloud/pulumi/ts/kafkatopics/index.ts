@@ -6,6 +6,11 @@ import { nameof } from "../lib/util";
 
 import process = require('process');
 
+export const plugins = {
+    "kafka": "v3.1.2",
+    "confluent": "v0.2.2"
+}
+
 export type cluster = {
     environmentId: string,
     id: string,
