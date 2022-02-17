@@ -122,38 +122,39 @@ func (a *Action) Validate() error {
 	return nil
 }
 
-func (a Action) Equals(other Action, ignoreID bool) (bool, error) {
-	if a.Metadata == nil || other.Metadata == nil {
-		return false, fmt.Errorf("metadata of action should be value.Nil not nil pointer")
-	}
+func (a Action) Equals(other Action, ignoreID bool) bool {
 	if !ignoreID && a.ActionID != other.ActionID {
-		return false, nil
+		return false
 	}
 	if a.ActorID != other.ActorID {
-		return false, nil
+		return false
 	}
 	if a.ActorType != other.ActorType {
-		return false, nil
+		return false
 	}
 	if a.TargetID != other.TargetID {
-		return false, nil
+		return false
 	}
 	if a.TargetType != other.TargetType {
-		return false, nil
+		return false
 	}
 	if a.ActionType != other.ActionType {
-		return false, nil
+		return false
 	}
 	if a.Timestamp != other.Timestamp {
-		return false, nil
+		return false
 	}
 	if a.RequestID != other.RequestID {
-		return false, nil
+		return false
 	}
-	if !a.Metadata.Equal(other.Metadata) {
-		return false, nil
+	if a.Metadata == nil {
+		if other.Metadata != nil {
+			return false
+		}
+	} else if !a.Metadata.Equal(other.Metadata) {
+		return false
 	}
-	return true, nil
+	return true
 }
 
 func (a Action) ToValueDict() value.Dict {

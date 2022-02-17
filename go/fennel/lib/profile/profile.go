@@ -80,26 +80,27 @@ func (pi *ProfileItem) Validate() error {
 	return nil
 }
 
-func (pi *ProfileItem) Equals(pi2 *ProfileItem) (bool, error) {
-	if pi.Value == nil || pi2.Value == nil {
-		return false, fmt.Errorf("value of profile item should be value.Nil not nil pointer")
+func (pi *ProfileItem) Equals(other *ProfileItem) bool {
+	if pi.OType != other.OType {
+		return false
 	}
-	if pi.OType != pi2.OType {
-		return false, nil
+	if pi.Oid != other.Oid {
+		return false
 	}
-	if pi.Oid != pi2.Oid {
-		return false, nil
+	if pi.Key != other.Key {
+		return false
 	}
-	if pi.Key != pi2.Key {
-		return false, nil
+	if pi.Value == nil {
+		if other.Value != nil {
+			return false
+		}
+	} else if !pi.Value.Equal(other.Value) {
+		return false
 	}
-	if !pi.Value.Equal(pi2.Value) {
-		return false, nil
+	if pi.Version != other.Version {
+		return false
 	}
-	if pi.Version != pi2.Version {
-		return false, nil
-	}
-	return true, nil
+	return true
 }
 
 func (pi *ProfileItem) UnmarshalJSON(data []byte) error {
