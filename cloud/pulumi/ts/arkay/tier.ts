@@ -2,6 +2,7 @@ import { InlineProgramArgs, LocalWorkspace } from "@pulumi/pulumi/automation";
 import * as pulumi from "@pulumi/pulumi"
 
 import * as kafkatopics from "../kafkatopics";
+import * as mysql from "../mysql"
 import { nameof } from "../lib/util"
 
 import process = require('process')
@@ -26,6 +27,12 @@ const setupResources = async () => {
         password: pulumi.output(process.env.CONFLUENT_CLOUD_PASSWORD),
         topicNames: config.requireObject("topicNames"),
         kafkaCluster: config.requireObject("kafkaCluster"),
+    })
+    // setup mysql db
+    const mySqlOutput = mysql.setup({
+        username: 'admin',
+        password: pulumi.output('foundation'),
+        endpoint: 'database-nikhil-test.cluster-c00d7gkxaysk.us-west-2.rds.amazonaws.com'
     })
 };
 

@@ -1,0 +1,60 @@
+{
+    "version": 3,
+    "deployment": {
+        "manifest": {
+            "time": "2022-02-16T20:30:04.668743-05:00",
+            "magic": "c51f7579a74e3b22b75681e48e5eb7c86e9b44fb0ab7aa4d27aca5090bd933ea",
+            "version": "v3.22.1"
+        },
+        "secrets_providers": {
+            "type": "service",
+            "state": {
+                "url": "https://api.pulumi.com",
+                "owner": "fennel",
+                "project": "mysql",
+                "stack": "dev"
+            }
+        },
+        "resources": [
+            {
+                "urn": "urn:pulumi:dev::mysql::pulumi:pulumi:Stack::mysql-dev",
+                "custom": false,
+                "type": "pulumi:pulumi:Stack"
+            },
+            {
+                "urn": "urn:pulumi:dev::mysql::pulumi:providers:mysql::mysql-provider",
+                "custom": true,
+                "id": "0921dbc1-de87-400f-ab06-eded980db97a",
+                "type": "pulumi:providers:mysql",
+                "inputs": {
+                    "endpoint": "database-nikhil-test.cluster-c00d7gkxaysk.us-west-2.rds.amazonaws.com",
+                    "password": {
+                        "4dabf18193072939515e22adb298388d": "1b47061264138c4ac30d75fd1eb44270",
+                        "ciphertext": "AAABAE+Q12PLa9BnQVpSFbnx38vAjHQDxfX4Duzsp6MiOg7BFw+ISTWgRt0="
+                    },
+                    "tls": "false",
+                    "username": "admin",
+                    "version": "3.1.0"
+                },
+                "outputs": {
+                    "endpoint": "database-nikhil-test.cluster-c00d7gkxaysk.us-west-2.rds.amazonaws.com",
+                    "password": {
+                        "4dabf18193072939515e22adb298388d": "1b47061264138c4ac30d75fd1eb44270",
+                        "ciphertext": "AAABAE+Q12PLa9BnQVpSFbnx38vAjHQDxfX4Duzsp6MiOg7BFw+ISTWgRt0="
+                    },
+                    "tls": "false",
+                    "username": "admin",
+                    "version": "3.1.0"
+                },
+                "parent": "urn:pulumi:dev::mysql::pulumi:pulumi:Stack::mysql-dev",
+                "propertyDependencies": {
+                    "endpoint": null,
+                    "password": null,
+                    "tls": null,
+                    "username": null
+                }
+            }
+        ],
+        "pending_operations": []
+    }
+}

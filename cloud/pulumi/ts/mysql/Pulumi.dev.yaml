@@ -1,0 +1,5 @@
+config:
+  aws:region: us-west-2
+  mysql:endpoint: database-nikhil-test.cluster-c00d7gkxaysk.us-west-2.rds.amazonaws.com
+  mysql:password: foundation
+  mysql:username: admin
