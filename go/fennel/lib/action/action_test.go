@@ -1,7 +1,10 @@
 package action
 
 import (
+	"encoding/json"
 	"fennel/lib/value"
+	"fmt"
+	"math"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -44,4 +47,100 @@ func TestToTable(t *testing.T) {
 	found, err := ToTable([]Action{a1, a2, a3})
 	assert.NoError(t, err)
 	assert.Equal(t, expected, found)
+}
+
+func TestActionJSON(t *testing.T) {
+	tests := []struct {
+		str string
+		a   Action
+	}{{
+		str: makeActionJSON(0, 0, "", 0, "", "", 0, 0, "null"),
+		a:   Action{Metadata: value.Nil},
+	}, {
+		str: makeActionJSON(1, 2, "3", 4, "5", "6", 7, 8, "9"),
+		a:   Action{1, 2, "3", 4, "5", "6", 7, 8, value.Int(9)},
+	}, {
+		str: makeActionJSON(0, 0, "", 0, "", "", 0, 0, "true"),
+		a:   Action{Metadata: value.Bool(true)},
+	}, {
+		str: makeActionJSON(0, 0, "", 0, "", "", 0, 0, "4.9"),
+		a:   Action{Metadata: value.Double(4.9)},
+	}, {
+		str: makeActionJSON(0, 0, "", 0, "", "", 0, 0, `"some string"`),
+		a:   Action{Metadata: value.String("some string")},
+	}, {
+		str: makeActionJSON(0, 0, "", 0, "", "", 0, 0, "[1,[],{}]"),
+		a:   Action{Metadata: value.List{value.Int(1), value.List{}, value.Dict{}}},
+	}, {
+		str: makeActionJSON(0, 0, "", 0, "", "", 0, 0, `{"key":"123"}`),
+		a:   Action{Metadata: value.Dict{"key": value.String("123")}},
+	}, {
+		str: makeActionJSON(math.MaxUint64, math.MaxUint64, "", math.MaxUint64, "", "",
+			math.MaxUint64, math.MaxUint64, "null"),
+		a: Action{ActionID: math.MaxUint64, ActorID: math.MaxUint64, TargetID: math.MaxUint64,
+			Timestamp: math.MaxUint64, RequestID: math.MaxUint64, Metadata: value.Nil},
+	}}
+
+	// Test unmarshal
+	for _, tst := range tests {
+		var a2 Action
+		err := json.Unmarshal([]byte(tst.str), &a2)
+		assert.NoError(t, err)
+		assert.True(t, tst.a.Equals(a2, false))
+	}
+	// Test marshal
+	for _, tst := range tests {
+		jsonbytes, err := json.Marshal(tst.a)
+		assert.NoError(t, err)
+		assert.Equal(t, tst.str, string(jsonbytes))
+	}
+}
+
+func TestActionFetchRequestJSON(t *testing.T) {
+	tests := []struct {
+		str string
+		afr ActionFetchRequest
+	}{{
+		str: makeActionFetchRequestJSON(0, 0, 0, "", 0, "", "", 0, 0, 0),
+		afr: ActionFetchRequest{},
+	}, {
+		str: makeActionFetchRequestJSON(1, 2, 3, "4", 5, "6", "7", 8, 9, 10),
+		afr: ActionFetchRequest{1, 2, 3, "4", 5, "6", "7", 8, 9, 10},
+	}, {
+		str: makeActionFetchRequestJSON(math.MaxUint64, math.MaxUint64, math.MaxUint64, "", math.MaxUint64, "", "",
+			math.MaxUint64, math.MaxUint64, math.MaxUint64),
+		afr: ActionFetchRequest{math.MaxUint64, math.MaxUint64, math.MaxUint64, "", math.MaxUint64, "", "",
+			math.MaxUint64, math.MaxUint64, math.MaxUint64},
+	}}
+
+	// Test unmarshal
+	for _, tst := range tests {
+		var afr2 ActionFetchRequest
+		err := json.Unmarshal([]byte(tst.str), &afr2)
+		assert.NoError(t, err)
+		assert.Equal(t, tst.afr, afr2)
+	}
+	// Test marshal
+	for _, tst := range tests {
+		jsonbytes, err := json.Marshal(tst.afr)
+		assert.NoError(t, err)
+		assert.Equal(t, tst.str, string(jsonbytes))
+	}
+}
+
+func makeActionJSON(actionID uint64, actorID uint64, actorType string, targetID uint64, targetType string,
+	actionType string, timestamp uint64, requestID uint64, metadata string) string {
+	return fmt.Sprintf(`{"ActionID":%d,"ActorID":%d,"ActorType":"%s","TargetID":%d,"TargetType":"%s",`+
+		`"ActionType":"%s","Timestamp":%d,"RequestID":%d,"Metadata":%s}`,
+		actionID, actorID, actorType, targetID, targetType, actionType, timestamp, requestID, metadata)
+}
+
+func makeActionFetchRequestJSON(
+	minActionID uint64, maxActionID uint64, actorID uint64, actorType string, targetID uint64, targetType string,
+	actionType string, minTimestamp uint64, maxTimestamp uint64, requestID uint64) string {
+	return fmt.Sprintf(
+		`{"MinActionID":%d,"MaxActionID":%d,"ActorID":%d,"ActorType":"%s","TargetID":%d,"TargetType":"%s",`+
+			`"ActionType":"%s","MinTimestamp":%d,"MaxTimestamp":%d,"RequestID":%d}`,
+		minActionID, maxActionID, actorID, actorType, targetID, targetType,
+		actionType, minTimestamp, maxTimestamp, requestID)
 }
