@@ -1,34 +1,12 @@
 package time
 
 import (
-	"fennel/engine/operators"
 	"fennel/lib/utils"
 	"fennel/lib/value"
-	"github.com/stretchr/testify/assert"
+	"fennel/test/optest"
 	"math/rand"
 	"testing"
 )
-
-func check(t *testing.T, op operators.Operator, static value.Dict, inputs, context []value.Dict, expected []value.Dict) {
-	iter := utils.NewZipTable()
-	for i, row := range inputs {
-		assert.NoError(t, iter.Append(row, context[i]))
-	}
-	outtable := value.NewTable()
-	assert.NoError(t, op.Apply(static, iter.Iter(), &outtable))
-	found := outtable.Pull()
-	assert.Len(t, found, len(expected))
-	assert.ElementsMatch(t, expected, found)
-}
-
-func checkerror(t *testing.T, op operators.Operator, static value.Dict, inputs, context []value.Dict) {
-	iter := utils.NewZipTable()
-	for i, row := range inputs {
-		assert.NoError(t, iter.Append(row, context[i]))
-	}
-	outtable := value.NewTable()
-	assert.Error(t, op.Apply(static, iter.Iter(), &outtable))
-}
 
 func TestDayOfWeek_Valid(t *testing.T) {
 	t.Parallel()
@@ -57,7 +35,7 @@ func TestDayOfWeek_Valid(t *testing.T) {
 		inputs = append(inputs, value.Dict{"something_else": value.Int(i)})
 		expected = append(expected, value.Dict{"something_else": value.Int(i), name: value.Int(case_.day)})
 	}
-	check(t, op, value.Dict{"name": value.String(name)}, inputs, context, expected)
+	optest.Assert(t, op, value.Dict{"name": value.String(name)}, inputs, context, expected)
 }
 
 func TestDayOfWeek_Invalid(t *testing.T) {
@@ -71,7 +49,7 @@ func TestDayOfWeek_Invalid(t *testing.T) {
 		context := make([]value.Dict, 0)
 		context = append(context, value.Dict{"timestamp": value.Int(week)}, value.Dict{"timestamp": value.Int(case_)})
 		inputs = append(inputs, value.Dict{}, value.Dict{})
-		checkerror(t, op, value.Dict{"name": value.String(name)}, inputs, context)
+		optest.AssertError(t, op, value.Dict{"name": value.String(name)}, inputs, context)
 	}
 }
 
@@ -98,7 +76,7 @@ func TestTimeBucketOfDay_Valid(t *testing.T) {
 			inputs = append(inputs, value.Dict{"something_else": value.Int(i)})
 			expected = append(expected, value.Dict{"something_else": value.Int(i), name: value.Int(case_.index)})
 		}
-		check(t, op, value.Dict{"bucket": value.Int(bucket), "name": value.String(name)}, inputs, context, expected)
+		optest.Assert(t, op, value.Dict{"bucket": value.Int(bucket), "name": value.String(name)}, inputs, context, expected)
 	}
 }
 
@@ -106,16 +84,16 @@ func TestTimeBucketOfDay_Invalid(t *testing.T) {
 	t.Parallel()
 	op := timeBucketOfDay{}
 	name := value.String(utils.RandString(6))
-	checkerror(t, op, value.Dict{"name": name, "bucket": value.Int(3600)}, []value.Dict{{}, {}}, []value.Dict{
+	optest.AssertError(t, op, value.Dict{"name": name, "bucket": value.Int(3600)}, []value.Dict{{}, {}}, []value.Dict{
 		{"timestamp": value.Int(24 * 3600)}, {"timestamp": value.Int(-1123)},
 	})
-	checkerror(t, op, value.Dict{"name": name, "bucket": value.Int(3600)}, []value.Dict{{}, {}}, []value.Dict{
+	optest.AssertError(t, op, value.Dict{"name": name, "bucket": value.Int(3600)}, []value.Dict{{}, {}}, []value.Dict{
 		{"timestamp": value.Int(24 * 3600)}, {"timestamp": value.Int(-1)},
 	})
-	checkerror(t, op, value.Dict{"name": name, "bucket": value.Int(3600)}, []value.Dict{{}, {}}, []value.Dict{
+	optest.AssertError(t, op, value.Dict{"name": name, "bucket": value.Int(3600)}, []value.Dict{{}, {}}, []value.Dict{
 		{"timestamp": value.Int(24 * 3600)}, {"timestamp": value.Int(0)},
 	})
-	checkerror(t, op, value.Dict{"name": name, "bucket": value.Int(0)}, []value.Dict{{}, {}}, []value.Dict{
+	optest.AssertError(t, op, value.Dict{"name": name, "bucket": value.Int(0)}, []value.Dict{{}, {}}, []value.Dict{
 		{"timestamp": value.Int(24 * 3600)}, {"timestamp": value.Int(351)},
 	})
 }
