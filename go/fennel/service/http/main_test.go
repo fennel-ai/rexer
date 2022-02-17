@@ -36,7 +36,9 @@ func equals(t *testing.T, expected []action.Action, found []action.Action) {
 	// instead, we use Equals method on Action struct and tell it to ignore IDs
 	assert.Equal(t, len(expected), len(found))
 	for i, e := range expected {
-		assert.True(t, e.Equals(found[i], true))
+		b, err := e.Equals(found[i], true)
+		assert.NoError(t, err)
+		assert.True(t, b)
 	}
 }
 
