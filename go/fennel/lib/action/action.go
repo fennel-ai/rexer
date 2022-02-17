@@ -6,7 +6,6 @@ import (
 	"fennel/lib/value"
 	"fmt"
 	"github.com/buger/jsonparser"
-	"google.golang.org/protobuf/proto"
 )
 
 const (
@@ -48,17 +47,11 @@ func (a *Action) ToActionSer() (*ActionSer, error) {
 		Timestamp:  a.Timestamp,
 		RequestID:  a.RequestID,
 	}
-
-	pval, err := value.ToProtoValue(a.Metadata)
+	valSer, err := value.Marshal(a.Metadata)
 	if err != nil {
 		return nil, err
 	}
-	val_ser, err := proto.Marshal(&pval)
-	if err != nil {
-		return nil, err
-	}
-
-	ser.Metadata = val_ser
+	ser.Metadata = valSer
 	return &ser, nil
 }
 
@@ -73,17 +66,10 @@ func (ser *ActionSer) ToAction() (*Action, error) {
 		Timestamp:  ser.Timestamp,
 		RequestID:  ser.RequestID,
 	}
-
-	var pval value.PValue
-	if err := proto.Unmarshal(ser.Metadata, &pval); err != nil {
+	var val value.Value
+	if err := value.Unmarshal(ser.Metadata, &val); err != nil {
 		return nil, err
 	}
-
-	val, err := value.FromProtoValue(&pval)
-	if err != nil {
-		return nil, err
-	}
-
 	a.Metadata = val
 	return &a, nil
 }
