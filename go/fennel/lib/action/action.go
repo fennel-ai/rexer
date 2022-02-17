@@ -1,6 +1,7 @@
 package action
 
 import (
+	"encoding/json"
 	"fennel/lib/ftypes"
 	"fennel/lib/value"
 	"fmt"
@@ -136,16 +137,16 @@ func FromActionSerList(al_ser []ActionSer) ([]Action, error) {
 }
 
 type ActionFetchRequest struct {
-	MinActionID  ftypes.OidType    `db:"min_action_id"`
-	MaxActionID  ftypes.OidType    `db:"max_action_id"`
-	ActorID      ftypes.OidType    `db:"actor_id"`
-	ActorType    ftypes.OType      `db:"actor_type"`
-	TargetID     ftypes.OidType    `db:"target_id"`
-	TargetType   ftypes.OType      `db:"target_type"`
-	ActionType   ftypes.ActionType `db:"action_type"`
-	MinTimestamp ftypes.Timestamp  `db:"min_timestamp"`
-	MaxTimestamp ftypes.Timestamp  `db:"max_timestamp"`
-	RequestID    ftypes.RequestID  `db:"request_id"`
+	MinActionID  ftypes.OidType    `db:"min_action_id" json:"MinActionID"`
+	MaxActionID  ftypes.OidType    `db:"max_action_id" json:"MaxActionID"`
+	ActorID      ftypes.OidType    `db:"actor_id" json:"ActorID"`
+	ActorType    ftypes.OType      `db:"actor_type" json:"ActorType"`
+	TargetID     ftypes.OidType    `db:"target_id" json:"TargetID"`
+	TargetType   ftypes.OType      `db:"target_type" json:"TargetType"`
+	ActionType   ftypes.ActionType `db:"action_type" json:"ActionType"`
+	MinTimestamp ftypes.Timestamp  `db:"min_timestamp" json:"MinTimestamp"`
+	MaxTimestamp ftypes.Timestamp  `db:"max_timestamp" json:"MaxTimestamp"`
+	RequestID    ftypes.RequestID  `db:"request_id" json:"RequestID"`
 }
 
 func FromProtoActionFetchRequest(pa *ProtoActionFetchRequest) ActionFetchRequest {
@@ -288,113 +289,35 @@ func ToTable(actions []Action) (value.Table, error) {
 }
 
 func (a *Action) UnmarshalJSON(data []byte) error {
-	var action_id, actor_id, target_id, timestamp, request_id int64
-	var actor_type, target_type, action_type string
-	var metadata value.Value
-	var errors []error
-	handler := func(idx int, vdata []byte, vtype jsonparser.ValueType, err error) {
-		if err != nil {
-			errors = append(errors, err)
-			return
-		}
-		switch idx {
-		case 0:
-			action_id, err = jsonparser.ParseInt(vdata)
-		case 1:
-			actor_id, err = jsonparser.ParseInt(vdata)
-		case 2:
-			actor_type, err = jsonparser.ParseString(vdata)
-		case 3:
-			target_id, err = jsonparser.ParseInt(vdata)
-		case 4:
-			target_type, err = jsonparser.ParseString(vdata)
-		case 5:
-			action_type, err = jsonparser.ParseString(vdata)
-		case 6:
-			timestamp, err = jsonparser.ParseInt(vdata)
-		case 7:
-			request_id, err = jsonparser.ParseInt(vdata)
-		case 8:
-			metadata, err = value.ParseJSON(vdata, vtype)
-		default:
-			err = fmt.Errorf("unknown index")
-		}
-		if err != nil {
-			errors = append(errors, err)
-		}
+	var fields struct {
+		ActionID   ftypes.OidType    `json:"ActionID"`
+		ActorID    ftypes.OidType    `json:"ActorID"`
+		ActorType  ftypes.OType      `json:"ActorType"`
+		TargetID   ftypes.OidType    `json:"TargetID"`
+		TargetType ftypes.OType      `json:"TargetType"`
+		ActionType ftypes.ActionType `json:"ActionType"`
+		Timestamp  ftypes.Timestamp  `json:"Timestamp"`
+		RequestID  ftypes.RequestID  `json:"RequestID"`
 	}
-	paths := [][]string{{"ActionID"}, {"ActorID"}, {"ActorType"}, {"TargetID"}, {"TargetType"}, {"ActionType"},
-		{"Timestamp"}, {"RequestID"}, {"Metadata"}}
-	jsonparser.EachKey(data, handler, paths...)
-	if len(errors) != 0 {
-		// should this combine errors instead of returning only first error?
-		return fmt.Errorf("failed to parse action json: %v", errors[0])
+	err := json.Unmarshal(data, &fields)
+	if err != nil {
+		return fmt.Errorf("error unmarshalling action json: %v", err)
 	}
-	a.ActionID = ftypes.OidType(action_id)
-	a.ActorID = ftypes.OidType(actor_id)
-	a.ActorType = ftypes.OType(actor_type)
-	a.TargetID = ftypes.OidType(target_id)
-	a.TargetType = ftypes.OType(target_type)
-	a.ActionType = ftypes.ActionType(action_type)
-	a.Timestamp = ftypes.Timestamp(timestamp)
-	a.RequestID = ftypes.RequestID(request_id)
-	a.Metadata = metadata
-	return nil
-}
-
-func (afr *ActionFetchRequest) UnmarshalJSON(data []byte) error {
-	var actor_id, target_id, min_timestamp, max_timestamp, min_action_id, max_action_id, request_id int64
-	var actor_type, target_type, action_type string
-	var errors []error
-	handler := func(idx int, vdata []byte, vtype jsonparser.ValueType, err error) {
-		if err != nil {
-			errors = append(errors, err)
-			return
-		}
-		switch idx {
-		case 0:
-			actor_id, err = jsonparser.ParseInt(vdata)
-		case 1:
-			actor_type, err = jsonparser.ParseString(vdata)
-		case 2:
-			target_id, err = jsonparser.ParseInt(vdata)
-		case 3:
-			target_type, err = jsonparser.ParseString(vdata)
-		case 4:
-			action_type, err = jsonparser.ParseString(vdata)
-		case 5:
-			min_timestamp, err = jsonparser.ParseInt(vdata)
-		case 6:
-			max_timestamp, err = jsonparser.ParseInt(vdata)
-		case 7:
-			min_action_id, err = jsonparser.ParseInt(vdata)
-		case 8:
-			max_action_id, err = jsonparser.ParseInt(vdata)
-		case 9:
-			request_id, err = jsonparser.ParseInt(vdata)
-		default:
-			err = fmt.Errorf("unknown index")
-		}
-		if err != nil {
-			errors = append(errors, err)
-		}
+	a.ActionID = fields.ActionID
+	a.ActorID = fields.ActorID
+	a.ActorType = fields.ActorType
+	a.TargetID = fields.TargetID
+	a.TargetType = fields.TargetType
+	a.ActionType = fields.ActionType
+	a.Timestamp = fields.Timestamp
+	a.RequestID = fields.RequestID
+	vdata, vtype, _, err := jsonparser.Get(data, "Metadata")
+	if err != nil {
+		return fmt.Errorf("error getting metadata from action json: %v", err)
 	}
-	paths := [][]string{{"ActorID"}, {"ActorType"}, {"TargetID"}, {"TargetType"}, {"ActionType"},
-		{"MinTimestamp"}, {"MaxTimestamp"}, {"MinActionID"}, {"MaxActionID"}, {"RequestID"}}
-	jsonparser.EachKey(data, handler, paths...)
-	if len(errors) != 0 {
-		// should this combine errors instead of returning only first error?
-		return fmt.Errorf("failed to parse action profile request json: %v", errors[0])
+	a.Metadata, err = value.ParseJSON(vdata, vtype)
+	if err != nil {
+		return fmt.Errorf("error parsing metadata from action json: %v", err)
 	}
-	afr.ActorID = ftypes.OidType(actor_id)
-	afr.ActorType = ftypes.OType(actor_type)
-	afr.TargetID = ftypes.OidType(target_id)
-	afr.TargetType = ftypes.OType(target_type)
-	afr.ActorType = ftypes.OType(action_type)
-	afr.MinTimestamp = ftypes.Timestamp(min_timestamp)
-	afr.MaxTimestamp = ftypes.Timestamp(max_timestamp)
-	afr.MinActionID = ftypes.OidType(min_action_id)
-	afr.MaxActionID = ftypes.OidType(max_action_id)
-	afr.RequestID = ftypes.RequestID(request_id)
 	return nil
 }
