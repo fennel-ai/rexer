@@ -158,7 +158,7 @@ func (pi *ProfileItem) Validate() error {
 	return nil
 }
 
-func (pi *ProfileItem) Equals(pi2 *ProfileItem) bool {
+func (pi *ProfileItem) Equals(pi2 *ProfileItem, ignoreValue bool) bool {
 	if pi.OType != pi2.OType {
 		return false
 	}
@@ -168,8 +168,10 @@ func (pi *ProfileItem) Equals(pi2 *ProfileItem) bool {
 	if pi.Key != pi2.Key {
 		return false
 	}
-	if pi.Value != nil {
-		if !pi.Value.Equal(pi2.Value) {
+	if !ignoreValue {
+		if pi.Value == nil || pi2.Value == nil {
+			panic(fmt.Errorf("value of profile item should be value.Nil not nil pointer"))
+		} else if !pi.Value.Equal(pi2.Value) {
 			return false
 		}
 	}
