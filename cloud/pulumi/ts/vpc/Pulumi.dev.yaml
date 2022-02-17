@@ -1,0 +1,4 @@
+config:
+  vpc:cidr: 10.0.0.0/16
+  vpc:region: us-west-2
+  vpc:roleArn: arn:aws:iam::136736114676:role/admin
