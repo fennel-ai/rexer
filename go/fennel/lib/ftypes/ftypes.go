@@ -15,3 +15,5 @@ type RequestID uint64
 
 type AggType string
 type AggName string
+
+type ModelID string
