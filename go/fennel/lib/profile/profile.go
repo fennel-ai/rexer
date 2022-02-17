@@ -170,7 +170,7 @@ func (pi *ProfileItem) Equals(pi2 *ProfileItem, ignoreValue bool) bool {
 	}
 	if !ignoreValue {
 		if pi.Value == nil || pi2.Value == nil {
-			panic(fmt.Errorf("value of profile item should be value.Nil not nil pointer"))
+			panic("value of profile item should be value.Nil not nil pointer")
 		} else if !pi.Value.Equal(pi2.Value) {
 			return false
 		}
