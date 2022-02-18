@@ -88,33 +88,6 @@ func TestTableSchema(t *testing.T) {
 	assert.True(t, table.Equal(cloned))
 }
 
-func TestTableSchemaNested(t *testing.T) {
-	row1, _ := NewDict(map[string]Value{
-		"a.inner": Int(1),
-		"b":       String("hi"),
-	})
-	inner, _ := NewDict(map[string]Value{"inner": Int(1)})
-
-	row2, _ := NewDict(map[string]Value{
-		"b": String("bye"),
-		"a": inner,
-	})
-	row3, _ := NewDict(map[string]Value{
-		"a.inner": Int(7),
-		"b":       String("hello"),
-	})
-	table := NewTable()
-	err := table.Append(row1)
-	assert.NoError(t, err)
-	err = table.Append(row2)
-	assert.NoError(t, err)
-	err = table.Append(row3)
-	assert.NoError(t, err)
-
-	assert.Equal(t, 3, len(table.rows))
-	assert.Equal(t, []Dict{row1, row2.flatten(), row3}, table.Pull())
-}
-
 func TestTable_Iter(t *testing.T) {
 	row1, _ := NewDict(map[string]Value{
 		"a": Int(1),
