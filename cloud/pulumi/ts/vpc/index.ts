@@ -52,6 +52,18 @@ function createPublicRouteTable(vpc: aws.ec2.Vpc): pulumi.Output<string> {
     return routeTable.id
 }
 
+function createSubnet(name: string, vpcId: pulumi.Input<string>, subnet: string, az: string, provider: aws.Provider) {
+    return new aws.ec2.Subnet(name, {
+        vpcId: vpcId,
+        cidrBlock: subnet,
+        availabilityZone: az,
+        tags: {
+            "Name": name,
+            ...fennelStdTags,
+        }
+    }, { provider })
+}
+
 export const setup = async (input: inputType) => {
 
     const provider = new aws.Provider("aws-provider", {
@@ -82,48 +94,16 @@ export const setup = async (input: inputType) => {
     const subnetMask = Number(mask) + 2
 
     let subnet = new netmask.Netmask(`${ip}/${subnetMask}`)
-    const primaryPublicSubnet = new aws.ec2.Subnet("primary-public-subnet", {
-        vpcId: vpc.id,
-        cidrBlock: subnet.toString(),
-        availabilityZone: primaryAz,
-        tags: {
-            "Name": "fennel-primary-public-subnet",
-            ...fennelStdTags,
-        }
-    }, { provider })
+    const primaryPublicSubnet = createSubnet("fennel-primary-public-subnet", vpc.id, subnet.toString(), primaryAz, provider)
 
     subnet = subnet.next()
-    const secondaryPublicSubnet = new aws.ec2.Subnet("secondary-public-subnet", {
-        vpcId: vpc.id,
-        cidrBlock: subnet.toString(),
-        availabilityZone: secondaryAz,
-        tags: {
-            "Name": "fennel-secondary-public-subnet",
-            ...fennelStdTags,
-        }
-    }, { provider })
+    const secondaryPublicSubnet = createSubnet("fennel-secondary-public-subnet", vpc.id, subnet.toString(), secondaryAz, provider)
 
     subnet = subnet.next()
-    const primaryPrivateSubnet = new aws.ec2.Subnet("primary-private-subnet", {
-        vpcId: vpc.id,
-        cidrBlock: subnet.toString(),
-        availabilityZone: primaryAz,
-        tags: {
-            "Name": "fennel-primary-private-subnet",
-            ...fennelStdTags,
-        }
-    }, { provider })
+    const primaryPrivateSubnet = createSubnet("fennel-primary-private-subnet", vpc.id, subnet.toString(), primaryAz, provider)
 
     subnet = subnet.next()
-    const secondaryPrivateSubnet = new aws.ec2.Subnet("secondary-private-subnet", {
-        vpcId: vpc.id,
-        cidrBlock: subnet.toString(),
-        availabilityZone: secondaryAz,
-        tags: {
-            "Name": "fennel-secondary-private-subnet",
-            ...fennelStdTags,
-        }
-    }, { provider })
+    const secondaryPrivateSubnet = createSubnet("fennel-secondary-private-subnet", vpc.id, subnet.toString(), secondaryAz, provider)
 
     const output: outputType = {
         vpcId: vpc.id,
