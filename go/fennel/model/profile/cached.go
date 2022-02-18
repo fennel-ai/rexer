@@ -116,5 +116,5 @@ func cacheName() string {
 
 func makeKey(otype ftypes.OType, oid uint64, key string, version uint64) string {
 	prefix := fmt.Sprintf("%s:%d", cacheName(), cacheVersion)
-	return fmt.Sprintf("%s:%s:%d:%s:%d", prefix, otype, oid, key, version)
+	return fmt.Sprintf("%s:{%s:%d:%s}:%d", prefix, otype, oid, key, version)
 }

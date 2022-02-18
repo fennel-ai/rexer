@@ -40,6 +40,8 @@ def gorun(path, tags, env):
     b.wait()
     p = subprocess.Popen([binary], stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL, env=env)
     # p = subprocess.Popen([binary], stderr=sys.stderr, stdout=sys.stdout, env=env)
+
+    time.sleep(10)
     yield
     try:
         p.kill()
