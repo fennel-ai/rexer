@@ -10,13 +10,11 @@ const NUM_REPLICAS = 0;
 const config = new pulumi.Config();
 
 async function setupRedisCluster(): Promise<aws.memorydb.Cluster> {
-    // TODO: Setup in non-default VPC.
-    const vpc = await aws.ec2.getVpc({
-        default: true,
-    })
+
+    const vpcId = config.require("vpcId")
 
     const subnets = await aws.ec2.getSubnetIds({
-        vpcId: vpc.id,
+        vpcId
     })
 
     const subnetGroup = new aws.memorydb.SubnetGroup("redis-subnet-group",
@@ -28,7 +26,16 @@ async function setupRedisCluster(): Promise<aws.memorydb.Cluster> {
 
     const redisSg = new aws.ec2.SecurityGroup("redis-sg", {
         namePrefix: "redis-sg-",
-        vpcId: vpc.id,
+        vpcId,
+    })
+
+    const allowEksTraffic = new aws.ec2.SecurityGroupRule("allow-eks", {
+        securityGroupId: redisSg.id,
+        sourceSecurityGroupId: config.require("eksSecurityGroup"),
+        fromPort: 0,
+        toPort: 65535,
+        type: "ingress",
+        protocol: "tcp",
     })
 
     const cluster = new aws.memorydb.Cluster("redis-db",
@@ -40,7 +47,7 @@ async function setupRedisCluster(): Promise<aws.memorydb.Cluster> {
             autoMinorVersionUpgrade: true,
             tlsEnabled: true,
             numReplicasPerShard: NUM_REPLICAS,
-            securityGroupIds: [redisSg.id, "sg-00f377810f399193f"],
+            securityGroupIds: [redisSg.id],
         }
     )
 
