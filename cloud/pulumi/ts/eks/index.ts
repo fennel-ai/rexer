@@ -248,6 +248,10 @@ export = async () => {
     // Create an EKS cluster with the default configuration.
     const cluster = new eks.Cluster("eks-cluster", {
         vpcId,
+        endpointPrivateAccess: true,
+        // TODO: disable public access once we figure out how to get the cluster
+        // up and running when nodes are running in private subnet.
+        endpointPublicAccess: true,
         subnetIds: subnetIds.ids,
         nodeGroupOptions: {
             instanceType: "t2.medium",
