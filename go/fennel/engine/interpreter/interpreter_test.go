@@ -113,11 +113,8 @@ func TestInterpreter_VisitTable(t *testing.T) {
 	}
 	astrow2 := ast.Dict{
 		Values: map[string]ast.Ast{
-			"a": ast.Dict{
-				Values: map[string]ast.Ast{
-					"inner": ast.MakeInt(5),
-				}},
-			"b": ast.MakeString("bye"),
+			"a.inner": ast.MakeInt(5),
+			"b":       ast.MakeString("bye"),
 		},
 	}
 	astrow3 := ast.Dict{
@@ -208,11 +205,8 @@ func TestInterpreter_VisitOpcall(t *testing.T) {
 	}
 	astrow2 := ast.Dict{
 		Values: map[string]ast.Ast{
-			"a": ast.Dict{
-				Values: map[string]ast.Ast{
-					"inner": ast.MakeInt(5),
-				}},
-			"b": ast.MakeString("bye"),
+			"a.inner": ast.MakeInt(5),
+			"b":       ast.MakeString("bye"),
 		},
 	}
 	astrow3 := ast.Dict{

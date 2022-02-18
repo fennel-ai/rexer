@@ -260,25 +260,8 @@ func (d Dict) MarshalJSON() ([]byte, error) {
 	return json.Marshal(map[string]Value(d))
 }
 
-func (d Dict) flatten() Dict {
-	ret := make(map[string]Value)
-	for k, v := range d {
-		switch v.(type) {
-		case Dict:
-			for k2, v2 := range v.(Dict).flatten() {
-				knew := fmt.Sprintf("%s.%s", k, k2)
-				ret[knew] = v2
-			}
-		default:
-			ret[k] = v
-		}
-	}
-	return ret
-}
-
 func (d Dict) Schema() map[string]reflect.Type {
-	fd := d.flatten()
-	ret := make(map[string]reflect.Type, len(fd))
+	ret := make(map[string]reflect.Type, len(d))
 	for k, v := range d {
 		ret[k] = reflect.TypeOf(v)
 	}
@@ -296,7 +279,6 @@ func NewTable() Table {
 }
 
 func (t *Table) Append(row Dict) error {
-	row = row.flatten()
 	if len(t.rows) == 0 {
 		t.schema = row.Schema()
 	} else if !t.schemaMatches(row.Schema()) {

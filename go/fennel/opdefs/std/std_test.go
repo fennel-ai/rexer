@@ -14,11 +14,9 @@ func getTable() value.Table {
 		"a.inner": value.Int(1),
 		"b":       value.String("hi"),
 	})
-	inner, _ := value.NewDict(map[string]value.Value{"inner": value.Int(1)})
-
 	row2, _ := value.NewDict(map[string]value.Value{
-		"b": value.String("bye"),
-		"a": inner,
+		"b":       value.String("bye"),
+		"a.inner": value.Int(1),
 	})
 	row3, _ := value.NewDict(map[string]value.Value{
 		"a.inner": value.Int(7),
