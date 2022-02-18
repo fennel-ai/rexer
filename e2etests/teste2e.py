@@ -10,7 +10,7 @@ import subprocess
 import time
 import unittest
 
-from rexerclient.rql import Var, Int, String, it, Ops, List
+from rexerclient.rql import Var, Int, String, it, Ops, List, Cond
 from rexerclient import client, models, value
 
 
@@ -104,6 +104,10 @@ class TestEndToEnd(unittest.TestCase):
             value.List(value.Int(video_id), value.String(city), value.Int(gender), value.Int(age_group)),
         )
         self.assertEqual(value.Int(1), found)
+
+        cond = Cond(Int(1) <= 5, "correct", "incorrect")
+        found = c.query(cond)
+        self.assertEqual("correct", found)
 
 
 @unittest.skip
