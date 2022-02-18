@@ -105,10 +105,10 @@ func (pi *ProfileItem) Equals(other *ProfileItem) bool {
 
 func (pi *ProfileItem) UnmarshalJSON(data []byte) error {
 	var fields struct {
-		OType   ftypes.OType `json:"otype"`
-		Oid     uint64       `json:"oid"`
-		Key     string       `json:"key"`
-		Version uint64       `json:"version"`
+		OType   ftypes.OType `json:"OType"`
+		Oid     uint64       `json:"Oid"`
+		Key     string       `json:"Key"`
+		Version uint64       `json:"Version"`
 	}
 	err := json.Unmarshal(data, &fields)
 	if err != nil {

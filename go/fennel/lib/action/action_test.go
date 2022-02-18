@@ -113,10 +113,10 @@ func TestActionFetchRequestJSON(t *testing.T) {
 	}}
 	// Test unmarshal
 	for _, tst := range tests {
-		var afr2 ActionFetchRequest
-		err := json.Unmarshal([]byte(tst.str), &afr2)
+		var afr ActionFetchRequest
+		err := json.Unmarshal([]byte(tst.str), &afr)
 		assert.NoError(t, err)
-		assert.Equal(t, tst.afr, afr2)
+		assert.Equal(t, tst.afr, afr)
 	}
 	// Test marshal
 	for _, tst := range tests {
