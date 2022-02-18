@@ -2,6 +2,7 @@ package kafka
 
 import (
 	"fennel/lib/action"
+	"fennel/lib/feature"
 	"fennel/resource"
 
 	"github.com/confluentinc/confluent-kafka-go/kafka"
@@ -26,6 +27,7 @@ type FProducer interface {
 
 var ALL_TOPICS = []string{
 	action.ACTIONLOG_KAFKA_TOPIC,
+	feature.KAFKA_TOPIC_NAME,
 }
 
 func ConfigMap(server, username, password string) *kafka.ConfigMap {
