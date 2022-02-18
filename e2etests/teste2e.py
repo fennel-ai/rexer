@@ -11,7 +11,7 @@ import time
 import unittest
 
 from rexerclient.rql import Var, Int, String, it, Ops, List, Cond
-from rexerclient import client, models, value
+from rexerclient import client, models
 
 
 ROOT = os.getenv("FENNEL_ROOT")
@@ -101,9 +101,9 @@ class TestEndToEnd(unittest.TestCase):
 
         found = c.aggregate_value(
             'trail_view_by_city_gender_agegroup_2days',
-            value.List(value.Int(video_id), value.String(city), value.Int(gender), value.Int(age_group)),
+            [video_id, city, gender, age_group],
         )
-        self.assertEqual(value.Int(1), found)
+        self.assertEqual(1, found)
 
         cond = Cond(Int(1) <= 5, "correct", "incorrect")
         found = c.query(cond)
