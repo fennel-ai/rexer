@@ -66,6 +66,7 @@ export const setup = async (input: inputType) => {
     const vpc = new aws.ec2.Vpc("vpc", {
         cidrBlock: input.cidr,
         tags: {
+            "Name": "fennel-vpc",
             ...fennelStdTags
         }
     }, { provider })
@@ -86,6 +87,7 @@ export const setup = async (input: inputType) => {
         cidrBlock: subnet.toString(),
         availabilityZone: primaryAz,
         tags: {
+            "Name": "fennel-primary-public-subnet",
             ...fennelStdTags,
         }
     }, { provider })
@@ -96,6 +98,7 @@ export const setup = async (input: inputType) => {
         cidrBlock: subnet.toString(),
         availabilityZone: secondaryAz,
         tags: {
+            "Name": "fennel-secondary-public-subnet",
             ...fennelStdTags,
         }
     }, { provider })
@@ -106,6 +109,7 @@ export const setup = async (input: inputType) => {
         cidrBlock: subnet.toString(),
         availabilityZone: primaryAz,
         tags: {
+            "Name": "fennel-primary-private-subnet",
             ...fennelStdTags,
         }
     }, { provider })
@@ -116,6 +120,7 @@ export const setup = async (input: inputType) => {
         cidrBlock: subnet.toString(),
         availabilityZone: secondaryAz,
         tags: {
+            "Name": "fennel-secondary-private-subnet",
             ...fennelStdTags,
         }
     }, { provider })
