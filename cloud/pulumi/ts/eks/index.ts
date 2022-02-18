@@ -56,7 +56,7 @@ function setupLinkerd(cluster: k8s.Provider) {
     }, { dependsOn: linkerd.ready })
 }
 
-function setupAmbassadorIngress(cluster: k8s.Provider): pulumi.Output<string> {
+function setupAmbassadorIngress(cluster: k8s.Provider, publicSubnetIds: string[]): pulumi.Output<string> {
     // Create namespace.
     const ns = new k8s.core.v1.Namespace("aes-ns", {
         metadata: {
@@ -86,7 +86,8 @@ function setupAmbassadorIngress(cluster: k8s.Provider): pulumi.Output<string> {
 
     const config = new pulumi.Config();
 
-    const { subnets, scheme } = config.requireObject("loadBalancerConfig")
+    // TODO: change to config.get(...)
+    const loadBalancerScheme: string = config.require("loadBalancerScheme")
 
     // Install ambassador via helm.
     const ambassador = new k8s.helm.v3.Chart("aes", {
@@ -129,11 +130,11 @@ function setupAmbassadorIngress(cluster: k8s.Provider): pulumi.Output<string> {
                     // Use NLB in instance mode since we don't currently setup the VPC CNI plugin.
                     metadata.annotations["service.beta.kubernetes.io/aws-load-balancer-nlb-target-type"] = "instance"
                     // Specify the load balancer scheme. Should be one of ["internal", "internet-facing"].
-                    metadata.annotations["service.beta.kubernetes.io/aws-load-balancer-scheme"] = scheme || "internal"
+                    metadata.annotations["service.beta.kubernetes.io/aws-load-balancer-scheme"] = loadBalancerScheme || "internal"
                     // Specify the subnets in which to deploy the load balancer.
                     // For internet-facing load-balancers this should be a list of public subnets and
                     // for internal load-balancers this should be j list of private subnets.
-                    metadata.annotations["service.beta.kubernetes.io/aws-load-balancer-subnets"] = subnets
+                    metadata.annotations["service.beta.kubernetes.io/aws-load-balancer-subnets"] = publicSubnetIds
                 }
             },
         ]
@@ -244,7 +245,6 @@ export = async () => {
         vpcId
     })
 
-
     // Create an EKS cluster with the default configuration.
     const cluster = new eks.Cluster("eks-cluster", {
         vpcId,
@@ -281,8 +281,9 @@ export = async () => {
     const lbc = await setupLoadBalancerController(cluster)
 
     // Install Ambassador after load-balancer controller.
-    const ingress = lbc.ready.apply((_) => {
-        return setupAmbassadorIngress(cluster.provider)
+    // TODO: use only cluster.core.publicSubnetIds.
+    const ingress = pulumi.all([cluster.core.subnetIds!, lbc.ready]).apply(([publicSubnetIds]) => {
+        return setupAmbassadorIngress(cluster.provider, publicSubnetIds)
     })
 
     // Setup fennel namespace.
