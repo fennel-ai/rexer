@@ -1,6 +1,7 @@
 package client
 
 import (
+	"encoding/json"
 	"fennel/lib/aggregate"
 	"fennel/lib/ftypes"
 	"fennel/lib/value"
@@ -10,14 +11,13 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	"google.golang.org/protobuf/proto"
 )
 
 func TestClient_GetAggregateValue(t *testing.T) {
 	// to test - if we call client with correct args, it calls server
 	// with the correct serialized stuff and deserializes the response back
 	expected := value.Int(1)
-	ser, err := value.Marshal(expected)
+	ser, err := value.ToJSON(expected)
 	assert.NoError(t, err)
 	aggname := ftypes.AggName("somename")
 	k := value.Bool(true)
@@ -25,9 +25,7 @@ func TestClient_GetAggregateValue(t *testing.T) {
 		AggName: aggname,
 		Key:     k,
 	}
-	pagvr, err := aggregate.ToProtoGetAggValueRequest(agvr)
-	assert.NoError(t, err)
-	exp_req, err := proto.Marshal(&pagvr)
+	expReq, err := json.Marshal(agvr)
 	assert.NoError(t, err)
 
 	// now setup the server
@@ -35,7 +33,7 @@ func TestClient_GetAggregateValue(t *testing.T) {
 		// server should verify that the request body is simplfy the serialized proto struct
 		req, err := ioutil.ReadAll(r.Body)
 		assert.NoError(t, err)
-		assert.Equal(t, exp_req, req)
+		assert.Equal(t, expReq, req)
 		w.Write(ser)
 	}))
 	defer svr.Close()

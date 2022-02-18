@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fennel/engine/ast"
 	"fennel/lib/value"
+	"fmt"
 	"github.com/stretchr/testify/assert"
 	"testing"
 )
@@ -41,6 +42,7 @@ func TestBoundQueryJSON(t *testing.T) {
 		// Ast does not serialize to a unique string
 		// So test by converting to and from JSON
 		ser, err := ToBoundQueryJSON(tst.tree, tst.args)
+		assert.NoError(t, err)
 		tree, args, err := FromBoundQueryJSON(ser)
 		assert.NoError(t, err)
 		assert.True(t, tst.tree.Equals(tree))
@@ -58,6 +60,5 @@ func makeBoundQueryJSON(tree ast.Ast, args value.Dict) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return `{"ast":"` + astStr + `","args":` + string(argsSer) + `}`, nil
-	//return fmt.Sprintf(`{"ast":"%s","args":%s}`, astStr, argsSer), nil
+	return fmt.Sprintf(`{"Ast":"%s","Args":%s}`, astStr, argsSer), nil
 }

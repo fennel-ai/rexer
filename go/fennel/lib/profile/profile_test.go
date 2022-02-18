@@ -70,10 +70,10 @@ func TestProfileFetchRequestJSON(t *testing.T) {
 	}}
 	// Test unmarshal
 	for _, tst := range tests {
-		var pfr2 ProfileFetchRequest
-		err := json.Unmarshal([]byte(tst.str), &pfr2)
+		var pfr ProfileFetchRequest
+		err := json.Unmarshal([]byte(tst.str), &pfr)
 		assert.NoError(t, err)
-		assert.Equal(t, tst.pfr, pfr2)
+		assert.Equal(t, tst.pfr, pfr)
 	}
 	// Test marshal
 	for _, tst := range tests {

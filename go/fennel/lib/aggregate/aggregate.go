@@ -67,39 +67,11 @@ func (agg Aggregate) Validate() error {
 	return nil
 }
 
-func ToProtoAggregate(agg Aggregate) (ProtoAggregate, error) {
-	pquery, err := ast.ToProtoAst(agg.Query)
-	if err != nil {
-		return ProtoAggregate{}, err
-	}
-	return ProtoAggregate{
-		AggName:   string(agg.Name),
-		Query:     &pquery,
-		Timestamp: uint64(agg.Timestamp),
-		Options:   &agg.Options,
-	}, nil
-}
-
-func FromProtoAggregate(pagg ProtoAggregate) (Aggregate, error) {
-	query, err := ast.FromProtoAst(*pagg.Query)
-	if err != nil {
-		return Aggregate{}, err
-	}
-	agg := Aggregate{
-		Name:      ftypes.AggName(strings.ToLower(pagg.AggName)),
-		Query:     query,
-		Timestamp: ftypes.Timestamp(pagg.Timestamp),
-		Options:   *pagg.Options,
-	}
-	agg.Options.AggType = strings.ToLower(agg.Options.AggType)
-	return agg, nil
-}
-
-func (a Aggregate) Equals(b Aggregate) bool {
-	if a.Options.AggType != b.Options.AggType || a.Name != b.Name || a.Timestamp != b.Timestamp {
+func (agg Aggregate) Equals(other Aggregate) bool {
+	if agg.Options.AggType != other.Options.AggType || agg.Name != other.Name || agg.Timestamp != other.Timestamp {
 		return false
 	}
-	return a.Query.Equals(b.Query) && proto.Equal(&a.Options, &b.Options)
+	return agg.Query.Equals(other.Query) && proto.Equal(&agg.Options, &other.Options)
 }
 
 type AggregateSer struct {
@@ -124,30 +96,8 @@ func FromAggregateSer(ser AggregateSer) (Aggregate, error) {
 }
 
 type GetAggValueRequest struct {
-	AggName ftypes.AggName
-	Key     value.Value
-}
-
-func FromProtoGetAggValueRequest(pr *ProtoGetAggValueRequest) (GetAggValueRequest, error) {
-	key, err := value.FromProtoValue(pr.GetKey())
-	if err != nil {
-		return GetAggValueRequest{}, err
-	}
-	return GetAggValueRequest{
-		AggName: ftypes.AggName(pr.GetAggName()),
-		Key:     key,
-	}, nil
-}
-
-func ToProtoGetAggValueRequest(gavr GetAggValueRequest) (ProtoGetAggValueRequest, error) {
-	pkey, err := value.ToProtoValue(gavr.Key)
-	if err != nil {
-		return ProtoGetAggValueRequest{}, nil
-	}
-	return ProtoGetAggValueRequest{
-		AggName: string(gavr.AggName),
-		Key:     &pkey,
-	}, nil
+	AggName ftypes.AggName `json:"Name"`
+	Key     value.Value    `json:"Key"`
 }
 
 type notFound int

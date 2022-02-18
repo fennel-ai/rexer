@@ -183,10 +183,8 @@ func (c *Client) SetProfile(request *profileLib.ProfileItem) error {
 	if err != nil {
 		return fmt.Errorf("could not convert request to json: %v", err)
 	}
-	if _, err = c.postJSON(req, c.setProfileURL()); err != nil {
-		return err
-	}
-	return nil
+	_, err = c.postJSON(req, c.setProfileURL())
+	return err
 }
 
 func (c *Client) GetProfileMulti(request profileLib.ProfileFetchRequest) ([]profileLib.ProfileItem, error) {
@@ -232,22 +230,19 @@ func (c *Client) LogAction(request action.Action) error {
 	if err != nil {
 		return fmt.Errorf("could not convert request to json: %v", err)
 	}
-	if _, err = c.postJSON(req, c.logURL()); err != nil {
-		return err
-	}
-	return nil
+	_, err = c.postJSON(req, c.logURL())
+	return err
 }
 
 func (c *Client) StoreAggregate(agg aggregate.Aggregate) error {
 	if ok := aggregate.IsValid(ftypes.AggType(agg.Options.AggType)); !ok {
 		return fmt.Errorf("invalid aggregate type: %v", agg.Options.AggType)
 	}
-
-	protoAgg, err := aggregate.ToProtoAggregate(agg)
+	req, err := json.Marshal(agg)
 	if err != nil {
 		return err
 	}
-	_, err = c.post(&protoAgg, c.storeAggregateURL())
+	_, err = c.postJSON(req, c.storeAggregateURL())
 	return err
 }
 
@@ -257,9 +252,11 @@ func (c *Client) RetrieveAggregate(aggname ftypes.AggName) (aggregate.Aggregate,
 		return empty, fmt.Errorf("aggregate name can not be of length zero")
 	}
 
-	// convert to proto request and send to server
-	aggreq := aggregate.AggRequest{AggName: string(aggname)}
-	response, err := c.post(&aggreq, c.retrieveAggregateURL())
+	// convert to json request and send to server
+	req, err := json.Marshal(struct {
+		Name string `json:"Name"`
+	}{Name: string(aggname)})
+	response, err := c.postJSON(req, c.retrieveAggregateURL())
 	if err != nil {
 		return empty, err
 	}
@@ -268,43 +265,41 @@ func (c *Client) RetrieveAggregate(aggname ftypes.AggName) (aggregate.Aggregate,
 		return empty, aggregate.ErrNotFound
 	}
 	// convert server response back to an aggregate tier
-	var pret aggregate.ProtoAggregate
-	if err = proto.Unmarshal(response, &pret); err != nil {
-		return empty, err
+	var ret aggregate.Aggregate
+	if err = json.Unmarshal(response, &ret); err != nil {
+		return empty, fmt.Errorf("unmarshal error: %v", err)
 	}
-	ret, err := aggregate.FromProtoAggregate(pret)
-	if err != nil {
-		return empty, err
-	} else {
-		return ret, nil
-	}
+	return ret, nil
 }
 
 func (c *Client) DeactivateAggregate(aggname ftypes.AggName) error {
 	if len(aggname) == 0 {
 		return fmt.Errorf("aggregate name can not be of length zero")
 	}
-
-	// convert to proto request and send to server
-	aggreq := aggregate.AggRequest{AggName: string(aggname)}
-	_, err := c.post(&aggreq, c.deactivateAggregateURL())
+	// convert to json request and send to server
+	req, err := json.Marshal(struct {
+		Name string `json:"Name"`
+	}{Name: string(aggname)})
+	_, err = c.postJSON(req, c.deactivateAggregateURL())
 	return err
 }
 
 func (c *Client) GetAggregateValue(aggname ftypes.AggName, key value.Value) (value.Value, error) {
-	// convert to proto request and send to server
+	// convert to json request and send to server
 	aggreq := aggregate.GetAggValueRequest{AggName: aggname, Key: key}
-	preq, err := aggregate.ToProtoGetAggValueRequest(aggreq)
+	req, err := json.Marshal(aggreq)
 	if err != nil {
 		return value.Nil, err
 	}
 
-	response, err := c.post(&preq, c.getAggregateValueURL())
+	response, err := c.postJSON(req, c.getAggregateValueURL())
 	if err != nil {
 		return value.Nil, err
 	}
 	// convert server response back to a value object and return
-	var ret value.Value
-	err = value.Unmarshal(response, &ret)
-	return ret, err
+	ret, err := value.FromJSON(response)
+	if err != nil {
+		return nil, fmt.Errorf("error parsing value json: %v", ret)
+	}
+	return ret, nil
 }

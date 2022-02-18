@@ -57,7 +57,7 @@ func ToProtoBoundQuery(bq *BoundQuery) (ProtoBoundQuery, error) {
 
 func FromBoundQueryJSON(data []byte) (ast.Ast, value.Dict, error) {
 	// Extract the ast first
-	astStr, err := jsonparser.GetString(data, "ast")
+	astStr, err := jsonparser.GetString(data, "Ast")
 	if err != nil {
 		return nil, nil, fmt.Errorf("error parsing ast json: %v", err)
 	}
@@ -71,7 +71,7 @@ func FromBoundQueryJSON(data []byte) (ast.Ast, value.Dict, error) {
 		return nil, nil, fmt.Errorf("error unmarshalling ast: %v", err)
 	}
 	// Now extract args
-	vdata, vtype, _, err := jsonparser.Get(data, "args")
+	vdata, vtype, _, err := jsonparser.Get(data, "Args")
 	if err != nil {
 		return nil, nil, fmt.Errorf("error getting args: %v", err)
 	}
@@ -93,8 +93,8 @@ func ToBoundQueryJSON(tree ast.Ast, args value.Dict) ([]byte, error) {
 	}
 	astStr := base64.StdEncoding.EncodeToString(astSer)
 	bq := struct {
-		Ast  string     `json:"ast"`
-		Args value.Dict `json:"args"`
+		Ast  string     `json:"Ast"`
+		Args value.Dict `json:"Args"`
 	}{Ast: astStr, Args: args}
 	return json.Marshal(bq)
 }
