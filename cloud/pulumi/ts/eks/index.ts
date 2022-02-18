@@ -95,7 +95,7 @@ function setupAmbassadorIngress(cluster: k8s.Provider, publicSubnetIds: string[]
             repo: "https://app.getambassador.io"
         },
         chart: "edge-stack",
-        version: "7.2.1",
+        version: "7.3.0",
         namespace: ns.id,
         values: {
             "emissary-ingress": {
@@ -268,6 +268,7 @@ export = async () => {
         providerCredentialOpts: {
             profileName: "admin"
         },
+        nodeAssociatePublicIpAddress: false,
         createOidcProvider: true
     });
 
