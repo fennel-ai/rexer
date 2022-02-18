@@ -1,3 +1,5 @@
 config:
   aws:profile: admin
   aws:region: ap-south-1
+  redis:eksSecurityGroup: sg-00f377810f399193f
+  redis:vpcId: vpc-09355ee92ec01d6f6
