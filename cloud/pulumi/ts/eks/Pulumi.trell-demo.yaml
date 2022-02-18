@@ -5,3 +5,4 @@ config:
     secure: AAABACgVMCAG/WFF2nE9P0XC7BLNa6nPJTNMW4vocIdViuOw0yranlSDnc8rWtWoE9bW0w3nfuL+be0ukQ0eZpAdsciI4u/KEYnJ/EFtSQ70+H+451ufOcS++PGF2ikkb4EaURyMRy/UxJ9JeKbgPkWd++Ws8V+CCWnMxHRdqLfZlGoY
   eks:ami: ami-018410e7cefe1d15f
   eks:loadBalancerConfig: '{"scheme": "internet-facing", "subnets": ["subnet-0ac6f13fe8fcd49ef"]}'
+  eks:vpcId: vpc-09355ee92ec01d6f6
