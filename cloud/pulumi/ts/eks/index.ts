@@ -238,8 +238,17 @@ async function setupLoadBalancerController(cluster: eks.Cluster) {
 export = async () => {
     const config = new pulumi.Config();
 
+    const vpcId = config.require("vpcId");
+
+    const subnetIds = await aws.ec2.getSubnetIds({
+        vpcId
+    })
+
+
     // Create an EKS cluster with the default configuration.
     const cluster = new eks.Cluster("eks-cluster", {
+        vpcId,
+        subnetIds: subnetIds.ids,
         nodeGroupOptions: {
             instanceType: "t2.medium",
             desiredCapacity: 3,
@@ -286,5 +295,7 @@ export = async () => {
         }
     }, { provider: cluster.provider })
 
-    return { kubeconfig, oidcUrl, ingress, instanceRole }
+    const workerSg = cluster.nodeSecurityGroup.id
+
+    return { kubeconfig, oidcUrl, ingress, instanceRole, workerSg }
 }
