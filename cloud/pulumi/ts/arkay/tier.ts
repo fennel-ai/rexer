@@ -30,8 +30,8 @@ const setupResources = async () => {
     })
     // setup mysql db
     const mySqlOutput = mysql.setup({
-        username: 'admin',
-        password: pulumi.output('foundationdb'),
+        username: process.env.MYSQL_USERNAME,
+        password: pulumi.output(process.env.MYSQL_PASSWORD),
         endpoint: 'database-nikhil-test.cluster-c00d7gkxaysk.us-west-2.rds.amazonaws.com'
     })
 };
