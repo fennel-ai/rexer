@@ -33,6 +33,11 @@ func parse(req *http.Request, msg proto.Message) error {
 	return proto.Unmarshal(body, msg)
 }
 
+func readRequest(req *http.Request) ([]byte, error) {
+	defer req.Body.Close()
+	return ioutil.ReadAll(req.Body)
+}
+
 type server struct {
 	tier tier.Tier
 }
@@ -55,8 +60,7 @@ func (s server) setHandlers(router *mux.Router) {
 }
 
 func (m server) Log(w http.ResponseWriter, req *http.Request) {
-	defer req.Body.Close()
-	data, err := ioutil.ReadAll(req.Body)
+	data, err := readRequest(req)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		log.Printf("Error: %v", err)
@@ -80,8 +84,7 @@ func (m server) Log(w http.ResponseWriter, req *http.Request) {
 }
 
 func (m server) Fetch(w http.ResponseWriter, req *http.Request) {
-	defer req.Body.Close()
-	data, err := ioutil.ReadAll(req.Body)
+	data, err := readRequest(req)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		log.Printf("Error: %v", err)
@@ -110,8 +113,7 @@ func (m server) Fetch(w http.ResponseWriter, req *http.Request) {
 }
 
 func (m server) GetProfile(w http.ResponseWriter, req *http.Request) {
-	defer req.Body.Close()
-	data, err := ioutil.ReadAll(req.Body)
+	data, err := readRequest(req)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		log.Printf("Error: %v", err)
@@ -149,8 +151,7 @@ func (m server) GetProfile(w http.ResponseWriter, req *http.Request) {
 // TODO: add some locking etc to ensure that if two requests try to modify
 // the same key/value, we don't Run into a race condition
 func (m server) SetProfile(w http.ResponseWriter, req *http.Request) {
-	defer req.Body.Close()
-	data, err := ioutil.ReadAll(req.Body)
+	data, err := readRequest(req)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		log.Printf("Error: %v", err)
@@ -171,8 +172,7 @@ func (m server) SetProfile(w http.ResponseWriter, req *http.Request) {
 }
 
 func (m server) GetProfileMulti(w http.ResponseWriter, req *http.Request) {
-	defer req.Body.Close()
-	data, err := ioutil.ReadAll(req.Body)
+	data, err := readRequest(req)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		log.Printf("Error: %v", err)
@@ -201,8 +201,7 @@ func (m server) GetProfileMulti(w http.ResponseWriter, req *http.Request) {
 }
 
 func (m server) Query(w http.ResponseWriter, req *http.Request) {
-	defer req.Body.Close()
-	data, err := ioutil.ReadAll(req.Body)
+	data, err := readRequest(req)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		log.Printf("Error: %v", err)
@@ -210,7 +209,7 @@ func (m server) Query(w http.ResponseWriter, req *http.Request) {
 	}
 	tree, args, err := query.FromBoundQueryJSON(data)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		http.Error(w, fmt.Sprintf("invalid request: %v", err), http.StatusBadRequest)
 		log.Printf("Error: %v", err)
 		return
 	}
@@ -238,15 +237,15 @@ func (m server) Query(w http.ResponseWriter, req *http.Request) {
 }
 
 func (m server) StoreAggregate(w http.ResponseWriter, req *http.Request) {
-	var protoAgg aggregate.ProtoAggregate
-	if err := parse(req, &protoAgg); err != nil {
+	data, err := readRequest(req)
+	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		log.Printf("Error: %v", err)
 		return
 	}
-	agg, err := aggregate.FromProtoAggregate(protoAgg)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+	var agg aggregate.Aggregate
+	if err := json.Unmarshal(data, &agg); err != nil {
+		http.Error(w, fmt.Sprintf("invalid request: %v", err), http.StatusBadRequest)
 		log.Printf("Error: %v", err)
 		return
 	}
@@ -259,14 +258,22 @@ func (m server) StoreAggregate(w http.ResponseWriter, req *http.Request) {
 }
 
 func (m server) RetrieveAggregate(w http.ResponseWriter, req *http.Request) {
-	var protoReq aggregate.AggRequest
-	if err := parse(req, &protoReq); err != nil {
+	data, err := readRequest(req)
+	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		log.Printf("Error: %v", err)
 		return
 	}
+	var aggReq struct {
+		Name string `json:"Name"`
+	}
+	if err := json.Unmarshal(data, &aggReq); err != nil {
+		http.Error(w, fmt.Sprintf("invalid request: %v", err), http.StatusBadRequest)
+		log.Printf("Error: %v", err)
+		return
+	}
 	// call controller
-	ret, err := aggregate2.Retrieve(req.Context(), m.tier, ftypes.AggName(protoReq.AggName))
+	ret, err := aggregate2.Retrieve(req.Context(), m.tier, ftypes.AggName(aggReq.Name))
 	if err == aggregate.ErrNotFound {
 		// we don't throw an error, just return empty response
 		return
@@ -275,14 +282,8 @@ func (m server) RetrieveAggregate(w http.ResponseWriter, req *http.Request) {
 		log.Printf("Error: %v", err)
 		return
 	}
-	// to send ret back, we will convert it to proto, marshal it and then write it back
-	protoRet, err := aggregate.ToProtoAggregate(ret)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		log.Printf("Error: %v", err)
-		return
-	}
-	ser, err := proto.Marshal(&protoRet)
+	// to send ret back, marshal to json and then write it back
+	ser, err := json.Marshal(&ret)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		log.Printf("Error: %v", err)
@@ -292,13 +293,21 @@ func (m server) RetrieveAggregate(w http.ResponseWriter, req *http.Request) {
 }
 
 func (m server) DeactivateAggregate(w http.ResponseWriter, req *http.Request) {
-	var protoReq aggregate.AggRequest
-	if err := parse(req, &protoReq); err != nil {
+	data, err := readRequest(req)
+	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		log.Printf("Error: %v", err)
 		return
 	}
-	err := aggregate2.Deactivate(req.Context(), m.tier, ftypes.AggName(protoReq.AggName))
+	var aggReq struct {
+		Name string `json:"Name"`
+	}
+	if err := json.Unmarshal(data, &aggReq); err != nil {
+		http.Error(w, fmt.Sprintf("invalid request: %v", err), http.StatusBadRequest)
+		log.Printf("Error: %v", err)
+		return
+	}
+	err = aggregate2.Deactivate(req.Context(), m.tier, ftypes.AggName(aggReq.Name))
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		log.Printf("Error: %v", err)
@@ -307,15 +316,15 @@ func (m server) DeactivateAggregate(w http.ResponseWriter, req *http.Request) {
 }
 
 func (m server) AggregateValue(w http.ResponseWriter, req *http.Request) {
-	var protoReq aggregate.ProtoGetAggValueRequest
-	if err := parse(req, &protoReq); err != nil {
+	data, err := readRequest(req)
+	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		log.Printf("Error: %v", err)
 		return
 	}
-	getAggValue, err := aggregate.FromProtoGetAggValueRequest(&protoReq)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+	var getAggValue aggregate.GetAggValueRequest
+	if err := json.Unmarshal(data, &getAggValue); err != nil {
+		http.Error(w, fmt.Sprintf("invalid request: %v", err), http.StatusBadRequest)
 		log.Printf("Error: %v", err)
 		return
 	}
@@ -327,7 +336,7 @@ func (m server) AggregateValue(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 	// marshal ret and then write it back
-	ser, err := value.Marshal(ret)
+	ser, err := value.ToJSON(ret)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		log.Printf("Error: %v", err)

@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	aggregate2 "fennel/controller/aggregate"
 	"fennel/engine/ast"
 	"fennel/lib/aggregate"
@@ -10,8 +11,6 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
-
-	"google.golang.org/protobuf/proto"
 
 	"fennel/client"
 	"fennel/lib/action"
@@ -333,10 +332,8 @@ func checkGetProfileMulti(t *testing.T, c *client.Client, request profilelib.Pro
 }
 
 func valueSendReceive(t *testing.T, controller server, agg aggregate.Aggregate, key, expected value.Value) {
-	pkey, err := value.ToProtoValue(key)
-	assert.NoError(t, err)
-	pagr := aggregate.ProtoGetAggValueRequest{AggName: string(agg.Name), Key: &pkey}
-	ser, err := proto.Marshal(&pagr)
+	gavr := aggregate.GetAggValueRequest{AggName: agg.Name, Key: key}
+	ser, err := json.Marshal(gavr)
 	assert.NoError(t, err)
 	w := httptest.NewRecorder()
 	r := httptest.NewRequest("POST", "/aggregate_value", strings.NewReader(string(ser)))
@@ -344,8 +341,7 @@ func valueSendReceive(t *testing.T, controller server, agg aggregate.Aggregate, 
 	// parse server response back
 	response, err := ioutil.ReadAll(w.Body)
 	assert.NoError(t, err)
-	var found value.Value
-	err = value.Unmarshal(response, &found)
+	found, err := value.FromJSON(response)
 	assert.NoError(t, err)
 
 	assert.NoError(t, err)
