@@ -1,20 +1,22 @@
 package main
 
 import (
-	httplib "fennel/lib/http"
-	_ "fennel/opdefs"
-	"fennel/service/common"
-	"fennel/tier"
 	"fmt"
-	"github.com/alexflint/go-arg"
-	"github.com/gorilla/mux"
-	"github.com/prometheus/client_golang/prometheus"
-	"github.com/prometheus/client_golang/prometheus/promauto"
 	"log"
 	"net"
 	"net/http"
 	"strconv"
 	"time"
+
+	httplib "fennel/lib/http"
+	_ "fennel/opdefs"
+	"fennel/service/common"
+	"fennel/tier"
+
+	"github.com/alexflint/go-arg"
+	"github.com/gorilla/mux"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promauto"
 )
 
 //------------------------ START metric definitions ----------------------------
@@ -107,7 +109,7 @@ func main() {
 	controller := server{tier}
 	controller.setHandlers(router)
 
-	addr := fmt.Sprintf("localhost:%d", httplib.PORT)
+	addr := fmt.Sprintf(":%d", httplib.PORT)
 	log.Printf("starting http service on %s...", addr)
 	l, err := net.Listen("tcp", addr)
 	if err != nil {
