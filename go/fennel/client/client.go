@@ -156,30 +156,22 @@ func (c *Client) GetProfile(request *profileLib.ProfileItem) (*value.Value, erro
 	}
 }
 
-func (c *Client) Query(request ast.Ast, reqdict value.Dict) (value.Value, error) {
+func (c *Client) Query(reqAst ast.Ast, reqArgs value.Dict) (value.Value, error) {
 	// convert the request to proto version
-	req := query.BoundQuery{Ast: request, Dict: reqdict}
-	protoReq, err := query.ToProtoBoundQuery(&req)
+	req, err := query.ToBoundQueryJSON(reqAst, reqArgs)
 	if err != nil {
 		return nil, fmt.Errorf("invalid request: %v", err)
 	}
-
-	response, err := c.post(&protoReq, c.queryURL())
+	response, err := c.postJSON(req, c.queryURL())
 	if err != nil {
 		return nil, err
 	}
-	// now try to read response as a serialized ProtoValue
-	var pv value.PValue
-	if err = proto.Unmarshal(response, &pv); err != nil {
-		return nil, fmt.Errorf("could not unmarshal server response: %v", err)
-	}
-	// now convert proto value to real value
-	v, err := value.FromProtoValue(&pv)
+	// now try to read response as a JSON object and convert to value
+	v, err := value.FromJSON(response)
 	if err != nil {
-		return nil, err
-	} else {
-		return v, nil
+		return nil, fmt.Errorf("error parsing value json: %v", err)
 	}
+	return v, nil
 }
 
 func (c *Client) SetProfile(request *profileLib.ProfileItem) error {

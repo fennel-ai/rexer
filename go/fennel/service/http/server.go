@@ -201,13 +201,14 @@ func (m server) GetProfileMulti(w http.ResponseWriter, req *http.Request) {
 }
 
 func (m server) Query(w http.ResponseWriter, req *http.Request) {
-	var pbq query.ProtoBoundQuery
-	if err := parse(req, &pbq); err != nil {
+	defer req.Body.Close()
+	data, err := ioutil.ReadAll(req.Body)
+	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		log.Printf("Error: %v", err)
 		return
 	}
-	tree, dict, err := query.FromProtoBoundQuery(&pbq)
+	tree, args, err := query.FromBoundQueryJSON(data)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		log.Printf("Error: %v", err)
@@ -215,20 +216,19 @@ func (m server) Query(w http.ResponseWriter, req *http.Request) {
 	}
 	// execute the tree
 	i := interpreter.NewInterpreter(bootarg.Create(m.tier))
-	i.SetQueryArgs(dict)
+	err = i.SetQueryArgs(args)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		log.Printf("Error: %v", err)
+		return
+	}
 	ret, err := tree.AcceptValue(i)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		log.Printf("Error: %v", err)
 		return
 	}
-	pval, err := value.ToProtoValue(ret)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		log.Printf("Error: %v", err)
-		return
-	}
-	ser, err := proto.Marshal(&pval)
+	ser, err := value.ToJSON(ret)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		log.Printf("Error: %v", err)
