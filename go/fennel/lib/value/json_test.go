@@ -47,9 +47,9 @@ func TestJSON(t *testing.T) {
 	}
 	// Test ToJSON()
 	for _, tst := range tests {
-		jsonbytes, err := ToJSON(tst.val)
+		ser, err := ToJSON(tst.val)
 		assert.NoError(t, err)
-		assert.Equal(t, tst.str, string(jsonbytes))
+		assert.Equal(t, tst.str, string(ser))
 	}
 }
 

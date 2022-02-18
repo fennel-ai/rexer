@@ -80,7 +80,6 @@ func TestActionJSON(t *testing.T) {
 		a: Action{ActionID: math.MaxUint64, ActorID: math.MaxUint64, TargetID: math.MaxUint64,
 			Timestamp: math.MaxUint64, RequestID: math.MaxUint64, Metadata: value.Nil},
 	}}
-
 	// Test unmarshal
 	for _, tst := range tests {
 		var a Action
@@ -90,9 +89,9 @@ func TestActionJSON(t *testing.T) {
 	}
 	// Test marshal
 	for _, tst := range tests {
-		jsonbytes, err := json.Marshal(tst.a)
+		ser, err := json.Marshal(tst.a)
 		assert.NoError(t, err)
-		assert.Equal(t, tst.str, string(jsonbytes))
+		assert.Equal(t, tst.str, string(ser))
 	}
 }
 
@@ -112,7 +111,6 @@ func TestActionFetchRequestJSON(t *testing.T) {
 		afr: ActionFetchRequest{math.MaxUint64, math.MaxUint64, math.MaxUint64, "", math.MaxUint64, "", "",
 			math.MaxUint64, math.MaxUint64, math.MaxUint64},
 	}}
-
 	// Test unmarshal
 	for _, tst := range tests {
 		var afr2 ActionFetchRequest
@@ -122,9 +120,9 @@ func TestActionFetchRequestJSON(t *testing.T) {
 	}
 	// Test marshal
 	for _, tst := range tests {
-		jsonbytes, err := json.Marshal(tst.afr)
+		ser, err := json.Marshal(tst.afr)
 		assert.NoError(t, err)
-		assert.Equal(t, tst.str, string(jsonbytes))
+		assert.Equal(t, tst.str, string(ser))
 	}
 }
 

@@ -39,7 +39,6 @@ func TestProfileItemJSON(t *testing.T) {
 			uint64(math.MaxUint64), uint64(math.MaxUint64)),
 		pi: ProfileItem{Oid: math.MaxUint64, Version: math.MaxUint64, Value: value.Nil},
 	}}
-
 	// Test unmarshal
 	for _, tst := range tests {
 		var pi ProfileItem
@@ -49,9 +48,9 @@ func TestProfileItemJSON(t *testing.T) {
 	}
 	// Test marshal
 	for _, tst := range tests {
-		jsonbytes, err := json.Marshal(tst.pi)
+		ser, err := json.Marshal(tst.pi)
 		assert.NoError(t, err)
-		assert.Equal(t, tst.str, string(jsonbytes))
+		assert.Equal(t, tst.str, string(ser))
 	}
 }
 
@@ -69,7 +68,6 @@ func TestProfileFetchRequestJSON(t *testing.T) {
 		str: fmt.Sprintf(`{"OType":"","Oid":%d,"Key":"","Version":%d}`, uint64(math.MaxUint64), uint64(math.MaxUint64)),
 		pfr: ProfileFetchRequest{Oid: uint64(math.MaxUint64), Version: uint64(math.MaxUint64)},
 	}}
-
 	// Test unmarshal
 	for _, tst := range tests {
 		var pfr2 ProfileFetchRequest
@@ -79,8 +77,8 @@ func TestProfileFetchRequestJSON(t *testing.T) {
 	}
 	// Test marshal
 	for _, tst := range tests {
-		jsonbytes, err := json.Marshal(tst.pfr)
+		ser, err := json.Marshal(tst.pfr)
 		assert.NoError(t, err)
-		assert.Equal(t, tst.str, string(jsonbytes))
+		assert.Equal(t, tst.str, string(ser))
 	}
 }
