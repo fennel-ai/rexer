@@ -108,13 +108,27 @@ function createPrivateNacl(vpcId: pulumi.Output<string>, subnets: pulumi.Output<
     return privateNacl.id
 }
 
-function createSubnet(name: string, vpcId: pulumi.Output<string>, subnet: string, az: string, provider: aws.Provider) {
+function createPrivateSubnet(name: string, vpcId: pulumi.Output<string>, subnet: string, az: string, provider: aws.Provider) {
     return new aws.ec2.Subnet(name, {
         vpcId: vpcId,
         cidrBlock: subnet,
         availabilityZone: az,
         tags: {
             "Name": name,
+            "kubernetes.io/role/internal-elb": "1",
+            ...fennelStdTags,
+        }
+    }, { provider })
+}
+
+function createPublicSubnet(name: string, vpcId: pulumi.Output<string>, subnet: string, az: string, provider: aws.Provider) {
+    return new aws.ec2.Subnet(name, {
+        vpcId: vpcId,
+        cidrBlock: subnet,
+        availabilityZone: az,
+        tags: {
+            "Name": name,
+            "kubernetes.io/role/elb": "1",
             ...fennelStdTags,
         }
     }, { provider })
@@ -140,7 +154,7 @@ function setupPrivateRouteTable(vpcId: pulumi.Output<string>, subnets: pulumi.Ou
     const allowAll = new aws.ec2.Route("allow-all-private-rt", {
         routeTableId: privateRt.id,
         destinationCidrBlock: "0.0.0.0/0",
-        gatewayId: natGateway.id,
+        natGatewayId: natGateway.id,
     }, { provider })
 
     subnets.map((subnetId, idx) => {
@@ -215,16 +229,16 @@ export const setup = async (input: inputType) => {
     const subnetMask = Number(mask) + 2
 
     let subnet = new netmask.Netmask(`${ip}/${subnetMask}`)
-    const primaryPublicSubnet = createSubnet("fennel-primary-public-subnet", vpcId, subnet.toString(), primaryAz, provider)
+    const primaryPublicSubnet = createPublicSubnet("fennel-primary-public-subnet", vpcId, subnet.toString(), primaryAz, provider)
 
     subnet = subnet.next()
-    const secondaryPublicSubnet = createSubnet("fennel-secondary-public-subnet", vpcId, subnet.toString(), secondaryAz, provider)
+    const secondaryPublicSubnet = createPublicSubnet("fennel-secondary-public-subnet", vpcId, subnet.toString(), secondaryAz, provider)
 
     subnet = subnet.next()
-    const primaryPrivateSubnet = createSubnet("fennel-primary-private-subnet", vpcId, subnet.toString(), primaryAz, provider)
+    const primaryPrivateSubnet = createPrivateSubnet("fennel-primary-private-subnet", vpcId, subnet.toString(), primaryAz, provider)
 
     subnet = subnet.next()
-    const secondaryPrivateSubnet = createSubnet("fennel-secondary-private-subnet", vpcId, subnet.toString(), secondaryAz, provider)
+    const secondaryPrivateSubnet = createPrivateSubnet("fennel-secondary-private-subnet", vpcId, subnet.toString(), secondaryAz, provider)
 
     const privateSubnets = [primaryPrivateSubnet.id, secondaryPrivateSubnet.id];
     const publicSubnets = [primaryPublicSubnet.id, secondaryPublicSubnet.id];
