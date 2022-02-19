@@ -108,6 +108,12 @@ func GetOperatorsJSON() ([]byte, error) {
 					Optional: p.Optional,
 				}
 			}
+			for _, p := range sig.StaticKwargs {
+				opdata[module][fname][p.Name] = param{
+					Type:     value.Types.ToString(p.Type),
+					Optional: p.Optional,
+				}
+			}
 		}
 	}
 	return json.Marshal(opdata)
