@@ -2,12 +2,13 @@ package action
 
 import (
 	"context"
+	"fmt"
+	"testing"
+
 	actionlib "fennel/lib/action"
 	"fennel/lib/ftypes"
 	"fennel/lib/value"
 	"fennel/test"
-	"fmt"
-	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"google.golang.org/protobuf/proto"
@@ -52,7 +53,8 @@ func TestInsert(t *testing.T) {
 	expected1, err := actionlib.ToProtoAction(a1)
 	assert.NoError(t, err)
 	var found actionlib.ProtoAction
-	consumer := tier.Consumers[actionlib.ACTIONLOG_KAFKA_TOPIC]
+	consumer, err := tier.NewKafkaConsumer(actionlib.ACTIONLOG_KAFKA_TOPIC, "somegroup", "earliest")
+	assert.NoError(t, err)
 	err = consumer.Read(&found)
 	assert.NoError(t, err)
 	assert.True(t, proto.Equal(&expected1, &found), fmt.Sprintf("Expected: %v, found: %v", expected1, found))

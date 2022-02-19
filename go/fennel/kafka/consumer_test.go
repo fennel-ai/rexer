@@ -29,7 +29,8 @@ func TestBacklog(t *testing.T) {
 		assert.Equal(t, 0, remaining)
 	}
 
-	consumer := tier.Consumers[topicId]
+	consumer, err := tier.NewKafkaConsumer(topicId, "somegroup", "earliest")
+	assert.NoError(t, err)
 	// Read 1 message. This is required to actually have the broker assign a
 	// partition to the consumer.
 	err = consumer.Read(message)
