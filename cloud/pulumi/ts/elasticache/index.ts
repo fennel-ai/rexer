@@ -25,7 +25,8 @@ export type inputType = {
 }
 
 export type outputType = {
-    cacheNodes: pulumi.Output<{ [key: string]: string }>,
+    primaryAddress: pulumi.Output<string>,
+    replicaAddress: pulumi.Output<string>,
 }
 
 const REDIS_VERSION = "6.x";
@@ -85,26 +86,28 @@ export const setup = async (input: inputType) => {
     }
 
     const cluster = pulumi.all(sgRules).apply(() => {
-        return new aws.elasticache.Cluster("cache-cluster", {
-            subnetGroupName: subnetGroup.name,
-            securityGroupIds: [cacheSg.id],
+        return new aws.elasticache.ReplicationGroup("cache-cluster", {
+            // "redis" is optional here and also the only allowed value, but we
+            // set it here anyway to be explicit.
             engine: "redis",
             engineVersion: REDIS_VERSION,
+            replicationGroupDescription: "redis-based elastic cache",
             nodeType: NODE_TYPE,
-            preferredAvailabilityZones: input.azs,
-            numCacheNodes: 1,
+            securityGroupIds: [cacheSg.id],
+            subnetGroupName: subnetGroup.name,
+            availabilityZones: input.azs,
+            transitEncryptionEnabled: true,
+            atRestEncryptionEnabled: true,
             tags: { ...fennelStdTags },
         }, { provider })
     })
 
-    const cacheNodes = cluster.cacheNodes.apply(cacheNodes => {
-        let nodes: { [key: string]: string } = {}
-        cacheNodes.map(node => { nodes[node.availabilityZone] = `${node.address}:${node.port}` })
-        return nodes
-    })
+    const primaryAddress = cluster.primaryEndpointAddress
+    const replicaAddress = cluster.readerEndpointAddress
 
     const output: outputType = {
-        cacheNodes,
+        primaryAddress,
+        replicaAddress,
     }
     return output
 }
