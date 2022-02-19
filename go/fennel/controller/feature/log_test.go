@@ -6,6 +6,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
+	"fennel/kafka"
 	"fennel/lib/feature"
 	"fennel/lib/ftypes"
 	"fennel/lib/value"
@@ -66,7 +67,10 @@ func TestLog_Read(t *testing.T) {
 
 	err = Log(ctx, tier, row)
 	assert.NoError(t, err)
-	rowptr, err := Read(ctx, tier)
+	consumer, err := tier.NewKafkaConsumer(feature.KAFKA_TOPIC_NAME, "testgroup", kafka.DefaultOffsetPolicy)
+	assert.NoError(t, err)
+	defer consumer.Close()
+	rowptr, err := Read(ctx, tier, consumer)
 	assert.NoError(t, err)
 	assert.Equal(t, row, *rowptr)
 }

@@ -3,6 +3,7 @@ package feature
 import (
 	"context"
 
+	"fennel/kafka"
 	"fennel/lib/feature"
 	"fennel/tier"
 )
@@ -29,11 +30,7 @@ func Log(ctx context.Context, tr tier.Tier, row feature.Row) error {
 	return LogMulti(ctx, tr, []feature.Row{row})
 }
 
-func Read(ctx context.Context, tr tier.Tier) (*feature.Row, error) {
-	consumer, err := tr.NewKafkaConsumer(feature.KAFKA_TOPIC_NAME, consumerGroup, "earliest")
-	if err != nil {
-		return nil, err
-	}
+func Read(ctx context.Context, tr tier.Tier, consumer kafka.FConsumer) (*feature.Row, error) {
 	var prow feature.ProtoRow
 	if err := consumer.ReadProto(ctx, &prow, -1); err != nil {
 		return nil, err

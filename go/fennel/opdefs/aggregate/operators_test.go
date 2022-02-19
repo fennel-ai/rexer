@@ -2,6 +2,10 @@ package aggregate
 
 import (
 	"context"
+	"testing"
+
+	"github.com/stretchr/testify/assert"
+
 	controller_action "fennel/controller/action"
 	"fennel/controller/aggregate"
 	"fennel/engine/ast"
@@ -11,8 +15,6 @@ import (
 	"fennel/lib/value"
 	"fennel/test"
 	"fennel/test/optest"
-	"github.com/stretchr/testify/assert"
-	"testing"
 )
 
 func TestAggValue_Apply(t *testing.T) {
@@ -43,7 +45,10 @@ func TestAggValue_Apply(t *testing.T) {
 		assert.NoError(t, err)
 	}
 	clock.Set(t0 + 3600)
-	assert.NoError(t, aggregate.Update(ctx, tier, agg))
+	consumer, err := tier.NewKafkaConsumer(action.ACTIONLOG_KAFKA_TOPIC, string(agg.Name), "earliest")
+	defer consumer.Close()
+	assert.NoError(t, err)
+	assert.NoError(t, aggregate.Update(ctx, tier, consumer, agg))
 	found, err := aggregate.Value(ctx, tier, agg.Name, value.Int(1))
 	assert.NoError(t, err)
 	assert.Equal(t, value.Int(2), found)

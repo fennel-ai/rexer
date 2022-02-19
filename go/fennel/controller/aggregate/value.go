@@ -2,20 +2,23 @@ package aggregate
 
 import (
 	"context"
-	"fennel/controller/action"
+	"fmt"
+	"time"
+
+	"google.golang.org/protobuf/proto"
+
 	"fennel/controller/counter"
 	"fennel/engine/ast"
 	"fennel/engine/interpreter"
 	"fennel/engine/interpreter/bootarg"
+	"fennel/kafka"
 	libaction "fennel/lib/action"
 	"fennel/lib/aggregate"
 	"fennel/lib/ftypes"
 	"fennel/lib/value"
-	"fennel/model/checkpoint"
 	modelCounter "fennel/model/counter"
 	_ "fennel/opdefs"
 	"fennel/tier"
-	"fmt"
 )
 
 func Value(ctx context.Context, tier tier.Tier, name ftypes.AggName, key value.Value) (value.Value, error) {
@@ -30,12 +33,8 @@ func Value(ctx context.Context, tier tier.Tier, name ftypes.AggName, key value.V
 	return counter.Value(ctx, tier, agg.Name, key, histogram)
 }
 
-func Update(ctx context.Context, tier tier.Tier, agg aggregate.Aggregate) error {
-	point, err := checkpoint.Get(ctx, tier, ftypes.AggType(agg.Options.AggType), agg.Name)
-	if err != nil {
-		return err
-	}
-	actions, err := action.Fetch(ctx, tier, libaction.ActionFetchRequest{MinActionID: point})
+func Update(ctx context.Context, tier tier.Tier, consumer kafka.FConsumer, agg aggregate.Aggregate) error {
+	actions, err := readActions(ctx, consumer)
 	if err != nil {
 		return err
 	}
@@ -53,13 +52,34 @@ func Update(ctx context.Context, tier tier.Tier, agg aggregate.Aggregate) error 
 	if err = counter.Update(ctx, tier, agg.Name, table, histogram); err != nil {
 		return err
 	}
-	last := actions[len(actions)-1]
-	return checkpoint.Set(ctx, tier, ftypes.AggType(agg.Options.AggType), agg.Name, last.ActionID)
+	// TODO: currently our kafka is committing things by default
+	// and so when we commit, it has nothing to commit. Ideally we will fix that
+	// and start returning the error of commit call itself
+	consumer.Commit()
+	return nil
 }
 
 //============================
 // Private helpers below
 //============================
+
+func readActions(ctx context.Context, consumer kafka.FConsumer) ([]libaction.Action, error) {
+	msgs, err := consumer.ReadBatch(ctx, 10000, time.Second*5)
+	if err != nil {
+		return nil, err
+	}
+	actions := make([]libaction.Action, len(msgs))
+	for i := range msgs {
+		var pa libaction.ProtoAction
+		if err = proto.Unmarshal(msgs[i], &pa); err != nil {
+			return nil, err
+		}
+		if actions[i], err = libaction.FromProtoAction(&pa); err != nil {
+			return nil, err
+		}
+	}
+	return actions, nil
+}
 
 func transformActions(tier tier.Tier, actions []libaction.Action, query ast.Ast) (value.Table, error) {
 	interpreter, err := loadInterpreter(tier, actions)

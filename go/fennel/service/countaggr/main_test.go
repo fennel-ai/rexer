@@ -2,17 +2,20 @@ package main
 
 import (
 	"context"
+	"sync"
+	"testing"
+	"time"
+
 	"fennel/controller/action"
 	"fennel/controller/aggregate"
 	"fennel/engine/ast"
+	"fennel/kafka"
 	actionlib "fennel/lib/action"
 	libaggregate "fennel/lib/aggregate"
 	"fennel/lib/ftypes"
 	"fennel/lib/value"
 	"fennel/test"
 	"fennel/tier"
-	"testing"
-	"time"
 
 	"github.com/stretchr/testify/assert"
 )
@@ -56,6 +59,13 @@ func TestEndToEnd2(t *testing.T) {
 	verify(t, tier, agg2, key1, value.List{value.Int(0), value.Int(0), value.Int(0), value.Int(0)})
 	verify(t, tier, agg2, key2, value.List{value.Int(0), value.Int(0), value.Int(0), value.Int(0)})
 
+	consumer1, err := tier.NewKafkaConsumer(actionlib.ACTIONLOG_KAFKA_TOPIC, string(agg1.Name), kafka.DefaultOffsetPolicy)
+	assert.NoError(t, err)
+	defer consumer1.Close()
+	consumer2, err := tier.NewKafkaConsumer(actionlib.ACTIONLOG_KAFKA_TOPIC, string(agg2.Name), kafka.DefaultOffsetPolicy)
+	assert.NoError(t, err)
+	defer consumer2.Close()
+
 	// now fire a few actions and run action processing
 	for i := 1; i <= 4; i += 1 {
 		if i%2 == 0 {
@@ -71,7 +81,8 @@ func TestEndToEnd2(t *testing.T) {
 	verify(t, tier, agg1, key2, value.Int(0))
 	verify(t, tier, agg2, key1, value.List{value.Int(0), value.Int(0), value.Int(0), value.Int(0)})
 	verify(t, tier, agg2, key2, value.List{value.Int(0), value.Int(0), value.Int(0), value.Int(0)})
-	processOnce(tier)
+
+	processInParallel(tier, agg1, agg2, consumer1, consumer2)
 
 	// now the counts should be two each for each key (note: actions that were fired as share didn't count)
 	verify(t, tier, agg1, key1, value.Int(2))
@@ -81,7 +92,7 @@ func TestEndToEnd2(t *testing.T) {
 
 	// add one more action but only from uid1
 	logAction(t, tier, uid1, t1+ftypes.Timestamp(1))
-	processOnce(tier)
+	processInParallel(tier, agg1, agg2, consumer1, consumer2)
 
 	t2 := t1 + 3*3600
 	clock.Set(int64(t2))
@@ -89,6 +100,20 @@ func TestEndToEnd2(t *testing.T) {
 	verify(t, tier, agg1, key2, value.Int(2))
 	verify(t, tier, agg2, key1, value.List{value.Int(0), value.Int(1), value.Int(0), value.Int(0)})
 	verify(t, tier, agg2, key2, value.List{value.Int(0), value.Int(0), value.Int(0), value.Int(0)})
+}
+
+func processInParallel(tier tier.Tier, agg1, agg2 libaggregate.Aggregate, c1, c2 kafka.FConsumer) {
+	wg := sync.WaitGroup{}
+	wg.Add(2)
+	go func() {
+		defer wg.Done()
+		aggregate.Update(context.Background(), tier, c1, agg1)
+	}()
+	go func() {
+		defer wg.Done()
+		aggregate.Update(context.Background(), tier, c2, agg2)
+	}()
+	wg.Wait()
 }
 
 func verify(t *testing.T, tier tier.Tier, agg libaggregate.Aggregate, k value.Value, expected interface{}) {

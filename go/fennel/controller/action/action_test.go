@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	"fennel/kafka"
 	actionlib "fennel/lib/action"
 	"fennel/lib/ftypes"
 	"fennel/lib/value"
@@ -54,7 +55,7 @@ func TestInsert(t *testing.T) {
 	expected1, err := actionlib.ToProtoAction(a1)
 	assert.NoError(t, err)
 	var found actionlib.ProtoAction
-	consumer, err := tier.NewKafkaConsumer(actionlib.ACTIONLOG_KAFKA_TOPIC, "somegroup", "earliest")
+	consumer, err := tier.NewKafkaConsumer(actionlib.ACTIONLOG_KAFKA_TOPIC, "somegroup", kafka.DefaultOffsetPolicy)
 	assert.NoError(t, err)
 	defer consumer.Close()
 	err = consumer.ReadProto(ctx, &found, time.Second*5)
