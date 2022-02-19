@@ -7,6 +7,7 @@ import (
 	profile2 "fennel/controller/profile"
 	"fennel/engine/interpreter"
 	"fennel/engine/interpreter/bootarg"
+	"fennel/engine/operators"
 	actionlib "fennel/lib/action"
 	"fennel/lib/aggregate"
 	"fennel/lib/ftypes"
@@ -53,6 +54,7 @@ func (s server) setHandlers(router *mux.Router) {
 	router.HandleFunc("/retrieve_aggregate", s.RetrieveAggregate)
 	router.HandleFunc("/deactivate_aggregate", s.DeactivateAggregate)
 	router.HandleFunc("/aggregate_value", s.AggregateValue)
+	router.HandleFunc("/get_operators", s.GetOperators)
 
 	// for any requests starting with /debug, hand the control to default servemux
 	// needed to enable pprof
@@ -343,4 +345,20 @@ func (m server) AggregateValue(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 	w.Write(ser)
+}
+
+func (m server) GetOperators(w http.ResponseWriter, req *http.Request) {
+	_, err := readRequest(req)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		log.Printf("Error: %v", err)
+		return
+	}
+	data, err := operators.GetOperatorsJSON()
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		log.Printf("Error: %v", err)
+		return
+	}
+	w.Write(data)
 }

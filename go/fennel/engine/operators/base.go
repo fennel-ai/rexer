@@ -1,6 +1,7 @@
 package operators
 
 import (
+	"encoding/json"
 	"fennel/lib/utils"
 	"fennel/lib/value"
 	"fmt"
@@ -88,6 +89,34 @@ func Register(op Operator) error {
 	}
 	registry[module][name] = op
 	return nil
+}
+
+func GetOperatorsJSON() ([]byte, error) {
+	type param struct {
+		Type     string `json:"Type"`
+		Optional bool   `json:"Optional"`
+	}
+	opdata := make(map[string]map[string]map[string]param)
+	for module, ops := range registry {
+		opdata[module] = make(map[string]map[string]param)
+		for fname, op := range ops {
+			opdata[module][fname] = make(map[string]param)
+			sig := op.Signature()
+			for _, p := range sig.ContextKwargs {
+				opdata[module][fname][p.Name] = param{
+					Type:     value.Types.ToString(p.Type),
+					Optional: p.Optional,
+				}
+			}
+			for _, p := range sig.StaticKwargs {
+				opdata[module][fname][p.Name] = param{
+					Type:     value.Types.ToString(p.Type),
+					Optional: p.Optional,
+				}
+			}
+		}
+	}
+	return json.Marshal(opdata)
 }
 
 func Typecheck(op Operator, staticKwargs map[string]reflect.Type, inputSchema map[string]reflect.Type, contextKwargSchema map[string]reflect.Type) error {

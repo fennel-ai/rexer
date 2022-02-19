@@ -103,3 +103,8 @@ func TestRegister(t *testing.T) {
 	err = Register(testOp3{})
 	assert.NoError(t, err)
 }
+
+func TestGetOperatorsJSON(t *testing.T) {
+	_, err := GetOperatorsJSON()
+	assert.NoError(t, err)
+}
