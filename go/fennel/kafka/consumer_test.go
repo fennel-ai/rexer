@@ -3,7 +3,6 @@ package kafka_test
 import (
 	"testing"
 
-	"fennel/kafka"
 	"fennel/lib/action"
 	"fennel/test"
 
@@ -21,25 +20,22 @@ func TestBacklog(t *testing.T) {
 	producer := tier.Producers[topicId]
 	message := &action.ProtoAction{}
 	for i := 0; i < 10; i++ {
-		err = producer.Log(message)
+		err = producer.LogProto(message, nil)
 		assert.NoError(t, err)
 	}
-	if rp, ok := producer.(kafka.RemoteProducer); ok {
-		remaining := rp.Flush(1000 /* timeoutMs */)
-		assert.Equal(t, 0, remaining)
-	}
+	err = producer.Flush(1000 /* timeoutMs */)
+	assert.NoError(t, err)
 
 	consumer, err := tier.NewKafkaConsumer(topicId, "somegroup", "earliest")
 	assert.NoError(t, err)
 	// Read 1 message. This is required to actually have the broker assign a
 	// partition to the consumer.
-	err = consumer.Read(message)
+	err = consumer.ReadProto(message, -1)
 	assert.NoError(t, err)
 	// Commit the read offset.
-	if rc, ok := consumer.(kafka.RemoteConsumer); ok {
-		_, err = rc.Commit()
-		assert.NoError(t, err)
-	}
+	err = consumer.Commit()
+	assert.NoError(t, err)
+
 	// Now calculate the backlog.
 	backlog, err := consumer.Backlog()
 	assert.NoError(t, err)
