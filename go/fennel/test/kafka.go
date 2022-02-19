@@ -2,42 +2,49 @@ package test
 
 import (
 	"context"
+	"fmt"
+	"time"
+
 	fkafka "fennel/kafka"
 	"fennel/lib/ftypes"
 	"fennel/resource"
-	"fmt"
-	"time"
+	"fennel/tier"
 
 	"github.com/confluentinc/confluent-kafka-go/kafka"
 	"google.golang.org/protobuf/proto"
 )
 
-func createMockKafka(tierID ftypes.TierID) (map[string]fkafka.FProducer, map[string]fkafka.FConsumer, error) {
+func createMockKafka(tierID ftypes.TierID) (map[string]fkafka.FProducer, tier.KafkaConsumerCreator, error) {
+	topicCh := make(map[string]chan []byte)
 	producers := make(map[string]fkafka.FProducer, 0)
-	consumers := make(map[string]fkafka.FConsumer, 0)
 	for _, topic := range fkafka.ALL_TOPICS {
-		name := resource.TieredName(tierID, topic)
-		kProducer, kConsumer, err := mockProducerConsumer(tierID, name)
+		ch := make(chan []byte, 1000)
+		topicCh[topic] = ch
+		prodConfig := localProducerConfig{
+			ch:    ch,
+			topic: topic,
+		}
+		kProducer, err := prodConfig.Materialize(tierID)
 		if err != nil {
 			return nil, nil, err
 		}
-		producers[topic] = kProducer
-		consumers[topic] = kConsumer
+		producers[topic] = kProducer.(fkafka.FProducer)
 	}
-	return producers, consumers, nil
-}
-
-func mockProducerConsumer(tierID ftypes.TierID, topic string) (fkafka.FProducer, fkafka.FConsumer, error) {
-	ch := make(chan []byte, 1000)
-	producer, err := localProducerConfig{ch: ch, topic: topic}.Materialize(tierID)
-	if err != nil {
-		return nil, nil, err
+	consumerCreator := func(topic, groupID, offsetPolicy string) (fkafka.FConsumer, error) {
+		ch, ok := topicCh[topic]
+		if !ok {
+			return nil, fmt.Errorf("unrecognized topic: %v", topic)
+		}
+		kConsumer, err := localConsumerConfig{
+			Channel: ch,
+			Topic:   topic,
+		}.Materialize(tierID)
+		if err != nil {
+			return nil, err
+		}
+		return kConsumer.(fkafka.FConsumer), nil
 	}
-	consumer, err := localConsumerConfig{Channel: ch, Topic: topic}.Materialize(tierID)
-	if err != nil {
-		return nil, nil, err
-	}
-	return producer.(fkafka.FProducer), consumer.(fkafka.FConsumer), nil
+	return producers, consumerCreator, nil
 }
 
 func setupKafkaTopics(tierID ftypes.TierID, host, username, password string, topics []string) error {

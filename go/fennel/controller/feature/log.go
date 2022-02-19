@@ -2,8 +2,13 @@ package feature
 
 import (
 	"context"
+
 	"fennel/lib/feature"
 	"fennel/tier"
+)
+
+const (
+	consumerGroup = "default"
 )
 
 func LogMulti(ctx context.Context, tr tier.Tier, rows []feature.Row) error {
@@ -25,7 +30,10 @@ func Log(ctx context.Context, tr tier.Tier, row feature.Row) error {
 }
 
 func Read(ctx context.Context, tr tier.Tier) (*feature.Row, error) {
-	consumer := tr.Consumers[feature.KAFKA_TOPIC_NAME]
+	consumer, err := tr.NewKafkaConsumer(feature.KAFKA_TOPIC_NAME, consumerGroup, "earliest")
+	if err != nil {
+		return nil, err
+	}
 	var prow feature.ProtoRow
 	if err := consumer.Read(&prow); err != nil {
 		return nil, err

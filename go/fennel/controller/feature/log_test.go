@@ -2,12 +2,14 @@ package feature
 
 import (
 	"context"
+	"testing"
+
+	"github.com/stretchr/testify/assert"
+
 	"fennel/lib/feature"
 	"fennel/lib/ftypes"
 	"fennel/lib/value"
 	"fennel/test"
-	"github.com/stretchr/testify/assert"
-	"testing"
 )
 
 func TestLogMulti_Kafka(t *testing.T) {
@@ -33,7 +35,7 @@ func TestLogMulti_Kafka(t *testing.T) {
 	}
 	err = LogMulti(ctx, tier, rows)
 	assert.NoError(t, err)
-	consumer := tier.Consumers[feature.KAFKA_TOPIC_NAME]
+	consumer, err := tier.NewKafkaConsumer(feature.KAFKA_TOPIC_NAME, "somegroup", "earliest")
 	for i := 0; i < 10; i++ {
 		var pmsg feature.ProtoRow
 		err = consumer.Read(&pmsg)

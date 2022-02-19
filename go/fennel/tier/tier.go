@@ -29,6 +29,8 @@ type TierArgs struct {
 	Dev           bool          `arg:"--dev" default:"true"`
 }
 
+type KafkaConsumerCreator func(string, string, string) (kafka.FConsumer, error)
+
 func (args TierArgs) Valid() error {
 	missingFields := make([]string, 0)
 	if args.KafkaServer == "" {
@@ -69,14 +71,14 @@ func (args TierArgs) Valid() error {
 */
 
 type Tier struct {
-	ID        ftypes.TierID
-	DB        db.Connection
-	Redis     redis.Client
-	Cache     cache.Cache
-	Producers map[string]kafka.FProducer
-	Consumers map[string]kafka.FConsumer
-	Clock     clock.Clock
-	Logger    *zap.Logger
+	ID               ftypes.TierID
+	DB               db.Connection
+	Redis            redis.Client
+	Cache            cache.Cache
+	Producers        map[string]kafka.FProducer
+	Clock            clock.Clock
+	Logger           *zap.Logger
+	NewKafkaConsumer KafkaConsumerCreator
 }
 
 func CreateFromArgs(args *TierArgs) (tier Tier, err error) {
@@ -102,9 +104,25 @@ func CreateFromArgs(args *TierArgs) (tier Tier, err error) {
 	if err != nil {
 		return tier, fmt.Errorf("failed to create redis client: %v", err)
 	}
-	producers, consumers, err := CreateKafka(tierID, args.KafkaServer, args.KafkaUsername, args.KafkaPassword)
+	producers, err := CreateKafka(tierID, args.KafkaServer, args.KafkaUsername, args.KafkaPassword)
 	if err != nil {
 		return tier, err
+	}
+
+	consumerCreator := func(topic, groupID, offsetPolicy string) (kafka.FConsumer, error) {
+		kafkaConsumerConfig := kafka.RemoteConsumerConfig{
+			BootstrapServer: args.KafkaServer,
+			Username:        args.KafkaUsername,
+			Password:        args.KafkaPassword,
+			GroupID:         groupID,
+			Topic:           topic,
+			OffsetPolicy:    offsetPolicy,
+		}
+		kafkaConsumer, err := kafkaConsumerConfig.Materialize(args.TierID)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create kafka consumer: %v", err)
+		}
+		return kafkaConsumer.(kafka.FConsumer), nil
 	}
 
 	var logger *zap.Logger
@@ -124,18 +142,17 @@ func CreateFromArgs(args *TierArgs) (tier Tier, err error) {
 		DB:        sqlConn.(db.Connection),
 		Redis:     redisClient.(redis.Client),
 		Producers: producers,
-		Consumers: consumers,
 		Clock:     clock.Unix{},
 		ID:        tierID,
 		Logger:    logger,
 		// TODO: add client to ElasticCache-backed Redis instead of MemoryDB.
-		Cache: redis.NewCache(redisClient.(redis.Client)),
+		Cache:            redis.NewCache(redisClient.(redis.Client)),
+		NewKafkaConsumer: consumerCreator,
 	}, nil
 }
 
-func CreateKafka(tierID ftypes.TierID, server, username, password string) (map[string]kafka.FProducer, map[string]kafka.FConsumer, error) {
+func CreateKafka(tierID ftypes.TierID, server, username, password string) (map[string]kafka.FProducer, error) {
 	producers := make(map[string]kafka.FProducer)
-	consumers := make(map[string]kafka.FConsumer)
 	for _, topic := range kafka.ALL_TOPICS {
 		kafkaProducerConfig := kafka.RemoteProducerConfig{
 			BootstrapServer: server,
@@ -145,24 +162,10 @@ func CreateKafka(tierID ftypes.TierID, server, username, password string) (map[s
 		}
 		kafkaProducer, err := kafkaProducerConfig.Materialize(tierID)
 		if err != nil {
-			return nil, nil, fmt.Errorf("failed to crate kafka producer: %v", err)
+			return nil, fmt.Errorf("failed to crate kafka producer: %v", err)
 		}
 		producers[topic] = kafkaProducer.(kafka.FProducer)
 
-		kafkaConsumerConfig := kafka.RemoteConsumerConfig{
-			BootstrapServer: server,
-			Username:        username,
-			Password:        password,
-			// TODO: configure group id, and offset policy.
-			GroupID:      "test",
-			Topic:        topic,
-			OffsetPolicy: "earliest",
-		}
-		kafkaConsumer, err := kafkaConsumerConfig.Materialize(tierID)
-		if err != nil {
-			return nil, nil, fmt.Errorf("failed to create kafka consumer: %v", err)
-		}
-		consumers[topic] = kafkaConsumer.(kafka.FConsumer)
 	}
-	return producers, consumers, nil
+	return producers, nil
 }

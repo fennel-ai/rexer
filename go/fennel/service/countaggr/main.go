@@ -4,19 +4,18 @@ import (
 	"context"
 	"log"
 	"net/http"
+	_ "net/http/pprof"
 	"sync"
 	"time"
 
 	"fennel/controller/aggregate"
 	libaggregate "fennel/lib/aggregate"
 	"fennel/tier"
-	_ "net/http/pprof"
 
 	// we need this to ensure that all operators are built with aggregator
 	_ "fennel/opdefs"
 
 	"github.com/alexflint/go-arg"
-	"go.uber.org/zap"
 )
 
 func processOnce(tier tier.Tier) {
@@ -39,21 +38,22 @@ func processOnce(tier tier.Tier) {
 	wg.Wait()
 }
 
+// TODO(nikhil): enable this back
 func monitorKafkaLag(t tier.Tier) {
 	ticker := time.NewTicker(30 * time.Second)
-	logger := t.Logger
+	//logger := t.Logger
 	for {
 		<-ticker.C
-		for topic, consumer := range t.Consumers {
-			backlog, err := consumer.Backlog()
-			if err != nil {
-				logger.Error("failed to read kafka backlog", zap.Error(err))
-			}
-			logger.Info("kafka backlog",
-				zap.String("topic", topic),
-				zap.Int("backlog", backlog),
-			)
-		}
+		//for topic, consumer := range t.Consumers {
+		//	backlog, err := consumer.Backlog()
+		//	if err != nil {
+		//		logger.Error("failed to read kafka backlog", zap.Error(err))
+		//	}
+		//	logger.Info("kafka backlog",
+		//		zap.String("topic", topic),
+		//		zap.Int("backlog", backlog),
+		//	)
+		//}
 	}
 }
 

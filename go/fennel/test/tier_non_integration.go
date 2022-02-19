@@ -3,13 +3,14 @@
 package test
 
 import (
+	"fmt"
+	"math/rand"
+	"time"
+
 	"fennel/lib/clock"
 	"fennel/lib/ftypes"
 	"fennel/redis"
 	"fennel/tier"
-	"fmt"
-	"math/rand"
-	"time"
 )
 
 // Tier returns a tier to be used in tests based off a standard test plane
@@ -27,18 +28,18 @@ func Tier() (tier.Tier, error) {
 	}
 
 	Cache := redis.NewCache(redClient)
-	producers, consumers, err := createMockKafka(tierID)
+	producers, consumerCreator, err := createMockKafka(tierID)
 	if err != nil {
 		return tier.Tier{}, err
 	}
 	return tier.Tier{
-		ID:        tierID,
-		DB:        db,
-		Cache:     Cache,
-		Redis:     redClient,
-		Producers: producers,
-		Consumers: consumers,
-		Clock:     clock.Unix{},
+		ID:               tierID,
+		DB:               db,
+		Cache:            Cache,
+		Redis:            redClient,
+		Producers:        producers,
+		Clock:            clock.Unix{},
+		NewKafkaConsumer: consumerCreator,
 	}, err
 }
 
