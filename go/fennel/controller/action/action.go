@@ -2,12 +2,13 @@ package action
 
 import (
 	"context"
+	"fmt"
+
 	actionlib "fennel/lib/action"
 	"fennel/lib/ftypes"
 	"fennel/lib/timer"
 	"fennel/model/action"
 	"fennel/tier"
-	"fmt"
 )
 
 // Insert takes an action and inserts it both in the DB and Kafka
@@ -39,7 +40,7 @@ func Insert(ctx context.Context, tier tier.Tier, a actionlib.Action) (uint64, er
 		return ret, err
 	}
 	producer := tier.Producers[actionlib.ACTIONLOG_KAFKA_TOPIC]
-	err = producer.Log(&pa)
+	err = producer.LogProto(&pa, nil)
 	if err != nil {
 		return ret, err
 	}

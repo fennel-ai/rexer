@@ -18,7 +18,7 @@ func LogMulti(ctx context.Context, tr tier.Tier, rows []feature.Row) error {
 		if err != nil {
 			return err
 		}
-		if err = producer.Log(msg); err != nil {
+		if err = producer.LogProto(msg, nil); err != nil {
 			return err
 		}
 	}
@@ -35,7 +35,7 @@ func Read(ctx context.Context, tr tier.Tier) (*feature.Row, error) {
 		return nil, err
 	}
 	var prow feature.ProtoRow
-	if err := consumer.Read(&prow); err != nil {
+	if err := consumer.ReadProto(&prow, -1); err != nil {
 		return nil, err
 	}
 	row, err := feature.FromProtoRow(prow)

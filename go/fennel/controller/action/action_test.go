@@ -55,13 +55,13 @@ func TestInsert(t *testing.T) {
 	var found actionlib.ProtoAction
 	consumer, err := tier.NewKafkaConsumer(actionlib.ACTIONLOG_KAFKA_TOPIC, "somegroup", "earliest")
 	assert.NoError(t, err)
-	err = consumer.Read(&found)
+	err = consumer.ReadProto(&found, -1)
 	assert.NoError(t, err)
 	assert.True(t, proto.Equal(&expected1, &found), fmt.Sprintf("Expected: %v, found: %v", expected1, found))
 
 	expected2, err := actionlib.ToProtoAction(a2)
 	assert.NoError(t, err)
-	err = consumer.Read(&found)
+	err = consumer.ReadProto(&found, -1)
 	assert.NoError(t, err)
 	assert.True(t, proto.Equal(&expected2, &found), fmt.Sprintf("Expected: %v, found: %v", expected2, found))
 }

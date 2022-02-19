@@ -3,6 +3,7 @@ package kafka
 import (
 	"fmt"
 	"log"
+	"time"
 
 	"fennel/lib/ftypes"
 	"fennel/lib/timer"
@@ -15,8 +16,13 @@ import (
 type RemoteConsumer struct {
 	tierID ftypes.TierID
 	*kafka.Consumer
-	topic string
-	conf  resource.Config
+	topic   string
+	groupid string
+	conf    resource.Config
+}
+
+func (k RemoteConsumer) GroupID() string {
+	return k.groupid
 }
 
 var _ FConsumer = RemoteConsumer{}
@@ -35,9 +41,9 @@ func (k RemoteConsumer) Type() resource.Type {
 	return resource.KafkaConsumer
 }
 
-func (k RemoteConsumer) Read(pmsg proto.Message) error {
-	defer timer.Start(k.tierID, "kafka.read").ObserveDuration()
-	kmsg, err := k.ReadMessage(-1)
+func (k RemoteConsumer) ReadProto(pmsg proto.Message, timeout time.Duration) error {
+	defer timer.Start(k.tierID, "kafka.read_proto").ObserveDuration()
+	kmsg, err := k.ReadMessage(timeout)
 	if err != nil {
 		return fmt.Errorf("failed to read msg from kafka: %v", err)
 	}
@@ -46,6 +52,47 @@ func (k RemoteConsumer) Read(pmsg proto.Message) error {
 		return fmt.Errorf("failed to parse msg from kafka to action: %v", err)
 	}
 	return nil
+}
+
+// ReadBatch polls over Kafka and keeps reading messages until either it has read 'upto' messages
+// or timeout time has elapsed
+func (k RemoteConsumer) ReadBatch(upto int, timeout time.Duration) ([][]byte, error) {
+	timer := time.Tick(timeout)
+	ret := make([][]byte, 0)
+	for len(ret) < upto {
+		select {
+		case <-timer:
+			return ret, nil
+		default:
+			msg, err := k.ReadMessage(time.Millisecond * 100)
+			switch err {
+			case nil:
+				ret = append(ret, msg.Value)
+			default:
+				if kerr, ok := err.(kafka.Error); ok && kerr.Code() != kafka.ErrTimedOut {
+					return nil, err
+				}
+			}
+		}
+	}
+	return ret, nil
+}
+
+// Commit commits the offsets (in a blocking manner)
+func (k RemoteConsumer) Commit() error {
+	_, err := k.Consumer.Commit()
+	return err
+}
+
+// AsyncCommit commits the offsets but does so in an async manner without blocking
+// and returns a channel of errors which the caller can use to check the error status
+func (k RemoteConsumer) AsyncCommit() chan error {
+	ret := make(chan error)
+	go func() {
+		defer close(ret)
+		ret <- k.Commit()
+	}()
+	return ret
 }
 
 // Backlog returns the combined total of "lag" all topic partitions have that
@@ -127,7 +174,7 @@ func (conf RemoteConsumerConfig) Materialize(tierID ftypes.TierID) (resource.Res
 	if err != nil {
 		return nil, fmt.Errorf("failed to subscribe to Topic [%s]: %v", conf.Topic, err)
 	}
-	return RemoteConsumer{tierID, consumer, conf.Topic, conf}, nil
+	return RemoteConsumer{tierID, consumer, conf.Topic, conf.GroupID, conf}, nil
 }
 
 var _ resource.Config = RemoteConsumerConfig{}

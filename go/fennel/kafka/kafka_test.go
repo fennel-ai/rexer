@@ -4,17 +4,19 @@ package kafka
 
 import (
 	"context"
-	"fennel/lib/ftypes"
-	"fennel/lib/value"
-	"fennel/resource"
 	"fmt"
-	"github.com/confluentinc/confluent-kafka-go/kafka"
-	"github.com/stretchr/testify/assert"
-	"google.golang.org/protobuf/proto"
 	"math/rand"
 	"sync"
 	"testing"
 	"time"
+
+	"github.com/confluentinc/confluent-kafka-go/kafka"
+	"github.com/stretchr/testify/assert"
+	"google.golang.org/protobuf/proto"
+
+	"fennel/lib/ftypes"
+	"fennel/lib/value"
+	"fennel/resource"
 )
 
 const (
@@ -61,7 +63,7 @@ func TestProducerConsumer(t *testing.T) {
 			v := value.Int(i)
 			msg, err := value.ToProtoValue(v)
 			assert.NoError(t, err)
-			assert.NoError(t, producer.Log(&msg))
+			assert.NoError(t, producer.LogProto(&msg, nil))
 		}
 		wg.Done()
 	}()
@@ -71,7 +73,7 @@ func TestProducerConsumer(t *testing.T) {
 			expected, err := value.ToProtoValue(v)
 			assert.NoError(t, err)
 			var found value.PValue
-			err = consumer.Read(&found)
+			err = consumer.ReadProto(&found, -1)
 			assert.NoError(t, err)
 			assert.True(t, proto.Equal(&expected, &found))
 		}
