@@ -16,6 +16,10 @@ import (
 	"go.uber.org/zap/zapcore"
 )
 
+const (
+	cacheServer = "cache-cluster-2e9d74d.fbjfph.0001.usw2.cache.amazonaws.com:6379"
+)
+
 type TierArgs struct {
 	KafkaServer   string        `arg:"--kafka-server,env:KAFKA_SERVER_ADDRESS"`
 	KafkaUsername string        `arg:"--kafka-user,env:KAFKA_USERNAME"`
@@ -104,6 +108,13 @@ func CreateFromArgs(args *TierArgs) (tier Tier, err error) {
 	if err != nil {
 		return tier, fmt.Errorf("failed to create redis client: %v", err)
 	}
+
+	// TODO: use address parsed from args instead of hardcoded thing
+	cacheClientConfig := redis.ClientConfig{Addr: cacheServer}
+	cacheClient, err := cacheClientConfig.Materialize(tierID)
+	if err != nil {
+		return tier, fmt.Errorf("failed to create cache client: %v", err)
+	}
 	producers, err := CreateKafka(tierID, args.KafkaServer, args.KafkaUsername, args.KafkaPassword)
 	if err != nil {
 		return tier, err
@@ -139,14 +150,13 @@ func CreateFromArgs(args *TierArgs) (tier Tier, err error) {
 	logger = logger.With(zap.Uint32("tier_id", args.TierID.Value()))
 
 	return Tier{
-		DB:        sqlConn.(db.Connection),
-		Redis:     redisClient.(redis.Client),
-		Producers: producers,
-		Clock:     clock.Unix{},
-		ID:        tierID,
-		Logger:    logger,
-		// TODO: add client to ElasticCache-backed Redis instead of MemoryDB.
-		Cache:            redis.NewCache(redisClient.(redis.Client)),
+		DB:               sqlConn.(db.Connection),
+		Redis:            redisClient.(redis.Client),
+		Producers:        producers,
+		Clock:            clock.Unix{},
+		ID:               tierID,
+		Logger:           logger,
+		Cache:            redis.NewCache(cacheClient.(redis.Client)),
 		NewKafkaConsumer: consumerCreator,
 	}, nil
 }
