@@ -11,8 +11,12 @@ export type inputType = {
   endpoint: string;
 };
 
+export const plugins = {
+  "mysql": "v3.1.0",
+}
+
 export type outputType = {
-  database: mysql.Database;
+  database: pulumi.Output<string>,
 };
 
 const parseConfig = (): inputType => {
@@ -35,7 +39,7 @@ export const setup = (input: inputType) => {
   const database = new mysql.Database("mysql-database", {}, { provider });
 
   const output: outputType = {
-    database,
+    database: database.name,
   };
   return output;
 };

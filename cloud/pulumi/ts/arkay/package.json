@@ -7,6 +7,7 @@
     "@pulumi/aws": "^4.37.4",
     "@pulumi/confluent": "^0.2.2",
     "@pulumi/kafka": "^3.1.2",
+    "@pulumi/mysql": "^3.1.0",
     "@pulumi/pulumi": "^3.24.1",
     "@types/node": "^17.0.18",
     "process": "^0.11.10",

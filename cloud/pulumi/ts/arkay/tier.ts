@@ -10,7 +10,10 @@ import process = require('process')
 const setupPlugins = async (stack: pulumi.automation.Stack) => {
     // TODO: aggregate plugins from all projects. If there are multiple versions
     // of the same plugin, pick the more recent one.
-    let plugins = kafkatopics.plugins
+    let plugins = {
+        ...kafkatopics.plugins,
+        ...mysql.plugins,
+    }
     console.info("installing plugins...");
     for (var key in plugins) {
         await stack.workspace.installPlugin(key, plugins[key])
@@ -32,8 +35,9 @@ const setupResources = async () => {
     const mySqlOutput = mysql.setup({
         username: process.env.MYSQL_USERNAME,
         password: pulumi.output(process.env.MYSQL_PASSWORD),
-        endpoint: 'database-nikhil-test.cluster-c00d7gkxaysk.us-west-2.rds.amazonaws.com'
+        endpoint: process.env.MYSQL_SERVER_ADDRESS,
     })
+    mySqlOutput.database.apply((db) => console.log("Database created: ", db))
 };
 
 export type tierConfig = {
