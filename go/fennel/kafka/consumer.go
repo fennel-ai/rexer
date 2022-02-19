@@ -70,6 +70,9 @@ func (k RemoteConsumer) ReadProto(ctx context.Context, pmsg proto.Message, timeo
 // ReadBatch polls over Kafka and keeps reading messages until either it has read 'upto' messages
 // or timeout time has elapsed
 func (k RemoteConsumer) ReadBatch(ctx context.Context, upto int, timeout time.Duration) ([][]byte, error) {
+	if timeout < 0 {
+		return nil, fmt.Errorf("read batch timeout can not be negative")
+	}
 	timer := time.Tick(timeout)
 	ret := make([][]byte, 0)
 	start := time.Now()
@@ -80,7 +83,13 @@ func (k RemoteConsumer) ReadBatch(ctx context.Context, upto int, timeout time.Du
 		case <-ctx.Done():
 			return ret, nil
 		default:
-			msg, err := k.ReadMessage(timeout - time.Since(start))
+			t := timeout - time.Since(start)
+			// while this is unlikely to happen, still being cautious
+			if t < 0 {
+				return ret, nil
+			}
+
+			msg, err := k.ReadMessage(t)
 			if err == nil {
 				ret = append(ret, msg.Value)
 			} else if kerr, ok := err.(kafka.Error); ok && kerr.Code() != kafka.ErrTimedOut {

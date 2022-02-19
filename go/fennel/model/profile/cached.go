@@ -2,12 +2,13 @@ package profile
 
 import (
 	"context"
+	"fmt"
+	"time"
+
 	"fennel/lib/ftypes"
 	"fennel/lib/profile"
 	"fennel/lib/timer"
 	"fennel/tier"
-	"fmt"
-	"time"
 )
 
 // increment this to invalidate all existing cache keys for profile

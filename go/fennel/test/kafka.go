@@ -35,8 +35,9 @@ func createMockKafka(tierID ftypes.TierID) (map[string]fkafka.FProducer, tier.Ka
 			return nil, fmt.Errorf("unrecognized topic: %v", topic)
 		}
 		kConsumer, err := fkafka.MockConsumerConfig{
-			Broker: broker,
-			Topic:  topic,
+			Broker:  broker,
+			Topic:   topic,
+			GroupID: groupID,
 		}.Materialize(tierID)
 		if err != nil {
 			return nil, err

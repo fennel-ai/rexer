@@ -2,14 +2,17 @@ package feature
 
 import (
 	"context"
+	"testing"
+
+	"github.com/stretchr/testify/assert"
+
 	feature2 "fennel/controller/feature"
+	"fennel/kafka"
 	"fennel/lib/feature"
 	"fennel/lib/ftypes"
 	"fennel/lib/value"
 	"fennel/test"
 	"fennel/test/optest"
-	"github.com/stretchr/testify/assert"
-	"testing"
 )
 
 func TestFeatureLog_Apply(t *testing.T) {
@@ -20,6 +23,9 @@ func TestFeatureLog_Apply(t *testing.T) {
 	tier.Clock = clock
 	t0 := int64(1231231)
 	clock.Set(t0)
+	consumer, err := tier.NewKafkaConsumer(feature.KAFKA_TOPIC_NAME, "testgroup", kafka.DefaultOffsetPolicy)
+	assert.NoError(t, err)
+	defer consumer.Close()
 
 	f1 := value.Dict{"f1": value.Int(2), "f2": value.Double(1.0)}
 	f2 := value.Dict{"f1": value.Int(3), "f2": value.Double(1.8)}
@@ -58,7 +64,7 @@ func TestFeatureLog_Apply(t *testing.T) {
 	}
 	optest.Assert(t, featureLog{tier}, static, inputs, kwargs, inputs)
 	for _, r := range rows {
-		rowptr, err := feature2.Read(context.TODO(), tier)
+		rowptr, err := feature2.Read(context.TODO(), tier, consumer)
 		assert.NoError(t, err)
 		assert.Equal(t, r, *rowptr)
 	}
