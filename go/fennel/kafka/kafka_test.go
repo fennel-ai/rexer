@@ -87,20 +87,23 @@ func testReadBatch(t *testing.T, producer FProducer, consumer FConsumer) {
 	wg.Wait()
 }
 
-func mockProducerConsumer(t *testing.T, tierID ftypes.TierID) (FProducer, FConsumer) {
-	broker := NewMockTopicBroker()
+func getMockProducer(t *testing.T, tierID ftypes.TierID, topic string, broker *MockBroker) FProducer {
 	producer, err := MockProducerConfig{
-		Broker: &broker,
-		Topic:  "sometopic",
+		Broker: broker,
+		Topic:  topic,
 	}.Materialize(tierID)
 	assert.NoError(t, err)
+	return producer.(FProducer)
+}
+
+func getMockConsumer(t *testing.T, tierID ftypes.TierID, topic, groupID string, broker *MockBroker) FConsumer {
 	consumer, err := MockConsumerConfig{
-		Broker:  &broker,
-		Topic:   "sometopic",
-		GroupID: "somegroup",
+		Broker:  broker,
+		Topic:   topic,
+		GroupID: groupID,
 	}.Materialize(tierID)
 	assert.NoError(t, err)
-	return producer.(FProducer), consumer.(FConsumer)
+	return consumer.(FConsumer)
 }
 
 func testBacklog(t *testing.T, producer FProducer, consumer FConsumer) {
@@ -137,20 +140,112 @@ func testBacklog(t *testing.T, producer FProducer, consumer FConsumer) {
 	wg.Wait()
 }
 
+func testDifferentConsumerGroups(t *testing.T, producer FProducer, consumer1, consumer2 FConsumer) {
+	// this test verifies that consumers of different groups are independent and dont' affect
+	// each other's commits/messages
+	ctx := context.Background()
+	expected := make([][]byte, 0)
+	for i := 0; i < 5; i++ {
+		expected = append(expected, []byte(fmt.Sprintf("%d", i)))
+	}
+	wg := sync.WaitGroup{}
+	wg.Add(2)
+	go func() {
+		defer wg.Done()
+		defer producer.Close()
+		for _, msg := range expected {
+			assert.NoError(t, producer.Log(ctx, msg, nil))
+		}
+	}()
+	go func() {
+		defer wg.Done()
+		defer consumer1.Close()
+		defer consumer2.Close()
+		found, err := consumer1.ReadBatch(ctx, 5, -1)
+		assert.NoError(t, err)
+		assert.Equal(t, expected, found)
+		consumer1.Commit()
+		found, err = consumer2.ReadBatch(ctx, 5, -1)
+		assert.NoError(t, err)
+		assert.Equal(t, expected, found)
+	}()
+	wg.Wait()
+}
+
+func testSameConsumerGroup(t *testing.T, producer FProducer, consumer1, consumer2 FConsumer) {
+	// this test verifies that consumers of same group don't duplicate read messages
+	ctx := context.Background()
+	expected := make([][]byte, 0)
+	found1 := make([][]byte, 0)
+	found2 := make([][]byte, 0)
+	for i := 0; i < 10; i++ {
+		expected = append(expected, []byte(fmt.Sprintf("%d", i)))
+	}
+	wg := sync.WaitGroup{}
+	wg.Add(3)
+	go func() {
+		defer wg.Done()
+		defer producer.Close()
+		for _, msg := range expected {
+			assert.NoError(t, producer.Log(ctx, msg, nil))
+		}
+	}()
+	go func() {
+		defer wg.Done()
+		defer consumer1.Close()
+		var err error
+		found1, err = consumer1.ReadBatch(ctx, 5, -1)
+		assert.NoError(t, err)
+		assert.NoError(t, consumer1.Commit())
+	}()
+	go func() {
+		defer wg.Done()
+		defer consumer2.Close()
+		var err error
+		found2, err = consumer2.ReadBatch(ctx, 5, -1)
+		assert.NoError(t, err)
+		assert.NoError(t, consumer2.Commit())
+	}()
+	wg.Wait()
+	found := append(found1, found2...)
+	assert.ElementsMatch(t, expected, found)
+}
+
 func TestLocal(t *testing.T) {
 	rand.Seed(time.Now().UnixNano())
+	topic := "topic"
 	tierID := ftypes.TierID(rand.Uint32())
 
 	t.Run("local_producer_consumer", func(t *testing.T) {
-		producer, consumer := mockProducerConsumer(t, tierID)
+		broker := NewMockTopicBroker()
+		producer := getMockProducer(t, tierID, topic, &broker)
+		consumer := getMockConsumer(t, tierID, topic, "group", &broker)
 		testProducerConsumer(t, producer, consumer)
 	})
 	t.Run("local_read_batch", func(t *testing.T) {
-		producer, consumer := mockProducerConsumer(t, tierID)
+		broker := NewMockTopicBroker()
+		producer := getMockProducer(t, tierID, topic, &broker)
+		consumer := getMockConsumer(t, tierID, topic, "group", &broker)
 		testReadBatch(t, producer, consumer)
 	})
 	t.Run("local_flush_commit_backlog", func(t *testing.T) {
-		producer, consumer := mockProducerConsumer(t, tierID)
+		broker := NewMockTopicBroker()
+		producer := getMockProducer(t, tierID, topic, &broker)
+		consumer := getMockConsumer(t, tierID, topic, "group", &broker)
 		testBacklog(t, producer, consumer)
+	})
+	t.Run("local_different_consumer_groups", func(t *testing.T) {
+		broker := NewMockTopicBroker()
+		producer := getMockProducer(t, tierID, topic, &broker)
+		consumer1 := getMockConsumer(t, tierID, topic, "group1", &broker)
+		consumer2 := getMockConsumer(t, tierID, topic, "group2", &broker)
+		testDifferentConsumerGroups(t, producer, consumer1, consumer2)
+	})
+	t.Run("local_same_consumer_group", func(t *testing.T) {
+		broker := NewMockTopicBroker()
+		producer := getMockProducer(t, tierID, topic, &broker)
+		consumer1 := getMockConsumer(t, tierID, topic, "group", &broker)
+		consumer2 := getMockConsumer(t, tierID, topic, "group", &broker)
+		testSameConsumerGroup(t, producer, consumer1, consumer2)
 	})
 }
