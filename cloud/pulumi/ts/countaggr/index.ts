@@ -156,6 +156,24 @@ const appDep = image.imageName.apply(() => {
                                     }
                                 }
                             },
+                            {
+                                name: "CACHE_PRIMARY",
+                                valueFrom: {
+                                    secretKeyRef: {
+                                        name: "cache-conf",
+                                        key: "primary",
+                                    }
+                                }
+                            },
+                            {
+                                name: "CACHE_REPLICA",
+                                valueFrom: {
+                                    secretKeyRef: {
+                                        name: "cache-conf",
+                                        key: "replica",
+                                    }
+                                }
+                            },
                         ]
                     }],
                 },

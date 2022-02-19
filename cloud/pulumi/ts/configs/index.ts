@@ -11,6 +11,14 @@ const rc = new k8s.core.v1.Secret("redis-config", {
     },
 }, { deleteBeforeReplace: true })
 
+const cacheConf = new k8s.core.v1.Secret("cache-config", {
+    stringData: config.requireSecretObject("cache-conf"),
+    metadata: {
+        namespace: "fennel",
+        name: "cache-conf"
+    }
+}, { deleteBeforeReplace: true })
+
 const kafkaCreds = new k8s.core.v1.Secret("kafka-config", {
     stringData: config.requireSecretObject("kafka-conf"),
     metadata: {

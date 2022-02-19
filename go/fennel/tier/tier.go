@@ -16,10 +16,6 @@ import (
 	"go.uber.org/zap/zapcore"
 )
 
-const (
-	cacheServer = "cache-cluster-2e9d74d.fbjfph.0001.usw2.cache.amazonaws.com:6379"
-)
-
 type TierArgs struct {
 	KafkaServer   string        `arg:"--kafka-server,env:KAFKA_SERVER_ADDRESS"`
 	KafkaUsername string        `arg:"--kafka-user,env:KAFKA_USERNAME"`
@@ -30,6 +26,8 @@ type TierArgs struct {
 	MysqlPassword string        `arg:"--mysql-password,env:MYSQL_PASSWORD"`
 	TierID        ftypes.TierID `arg:"--tier-id,env:TIER_ID"`
 	RedisServer   string        `arg:"--redis-server,env:REDIS_SERVER_ADDRESS"`
+	CachePrimary  string        `arg:"--cache-primary,env:CACHE_PRIMARY"`
+	CacheReplica  string        `arg:"--cache-replica,env:CACHE_REPLICA"`
 	Dev           bool          `arg:"--dev" default:"true"`
 }
 
@@ -109,8 +107,10 @@ func CreateFromArgs(args *TierArgs) (tier Tier, err error) {
 		return tier, fmt.Errorf("failed to create redis client: %v", err)
 	}
 
-	// TODO: use address parsed from args instead of hardcoded thing
-	cacheClientConfig := redis.ClientConfig{Addr: cacheServer}
+	cacheClientConfig := redis.ClientConfig{
+		Addr:      args.CachePrimary,
+		TLSConfig: &tls.Config{},
+	}
 	cacheClient, err := cacheClientConfig.Materialize(tierID)
 	if err != nil {
 		return tier, fmt.Errorf("failed to create cache client: %v", err)

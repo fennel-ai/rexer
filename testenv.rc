@@ -6,6 +6,7 @@ export MYSQL_DATABASE_NAME="testdb"
 export MYSQL_USERNAME="admin"
 export MYSQL_PASSWORD="foundationdb"
 export REDIS_SERVER_ADDRESS="clustercfg.redis-db-5dec5dd.fbjfph.memorydb.us-west-2.amazonaws.com:6379"
+export CACHE_PRIMARY="master.cache-cluster-4b22868.fbjfph.usw2.cache.amazonaws.com:6379"
 
 # in tests, we override this with a random tier ID but this is needed for prod
 export TIER_ID=1231
