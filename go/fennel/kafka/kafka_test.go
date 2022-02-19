@@ -1,5 +1,3 @@
-//go:build integration
-
 package kafka
 
 import (
@@ -10,115 +8,149 @@ import (
 	"testing"
 	"time"
 
-	"github.com/confluentinc/confluent-kafka-go/kafka"
 	"github.com/stretchr/testify/assert"
 	"google.golang.org/protobuf/proto"
 
 	"fennel/lib/ftypes"
 	"fennel/lib/value"
-	"fennel/resource"
 )
 
-const (
-	test_kafka_servers = "pkc-pgq85.us-west-2.aws.confluent.cloud:9092"
-	kafka_username     = "PQESAHSX5EUQJPIV"
-	kafka_password     = "EDjraEtpIjYQBv9WQ2QINnZZcExKUtm6boweLCsQ5gv3arWSk+VHyD1kfjJ+p382"
-)
-
-func TestProducerConsumer(t *testing.T) {
-	rand.Seed(time.Now().UnixNano())
-	tierID := ftypes.TierID(rand.Uint32())
-
-	// first create the topics
-	topic := "kafka_test_topic"
-	assert.NoError(t, setupKafkaTopics(tierID, topic))
-	defer teardownKafkaTopics(tierID, topic)
-
-	// then create producer/consumer
-	resource, err := RemoteProducerConfig{
-		Topic:           topic,
-		BootstrapServer: test_kafka_servers,
-		Username:        kafka_username,
-		Password:        kafka_password,
-	}.Materialize(tierID)
-	assert.NoError(t, err)
-	producer := resource.(FProducer)
-
-	resource, err = RemoteConsumerConfig{
-		Topic:           topic,
-		BootstrapServer: test_kafka_servers,
-		Username:        kafka_username,
-		Password:        kafka_password,
-		GroupID:         "test_group",
-		OffsetPolicy:    "earliest",
-	}.Materialize(tierID)
-	assert.NoError(t, err)
-	consumer := resource.(FConsumer)
+func testProducerConsumer(t *testing.T, producer FProducer, consumer FConsumer) {
 	// spin up two goroutines that produce/consume 10 messages each asyncrhonously
 	wg := sync.WaitGroup{}
 	wg.Add(2)
+	ctx := context.Background()
 
 	go func() {
+		defer wg.Done()
+		defer producer.Close()
 		for i := 0; i < 10; i++ {
 			v := value.Int(i)
 			msg, err := value.ToProtoValue(v)
 			assert.NoError(t, err)
-			assert.NoError(t, producer.LogProto(&msg, nil))
+			assert.NoError(t, producer.LogProto(ctx, &msg, nil))
 		}
-		wg.Done()
+		assert.NoError(t, producer.Flush(time.Second*5))
 	}()
 	go func() {
+		defer wg.Done()
+		defer consumer.Close()
 		for i := 0; i < 10; i++ {
 			v := value.Int(i)
 			expected, err := value.ToProtoValue(v)
 			assert.NoError(t, err)
 			var found value.PValue
-			err = consumer.ReadProto(&found, -1)
+			err = consumer.ReadProto(ctx, &found, time.Second*30)
 			assert.NoError(t, err)
 			assert.True(t, proto.Equal(&expected, &found))
 		}
-		wg.Done()
 	}()
 	wg.Wait()
 }
 
-func setupKafkaTopics(tierID ftypes.TierID, topic string) error {
-	name := resource.TieredName(tierID, topic)
-	// Create admin client
-	c, err := kafka.NewAdminClient(ConfigMap(test_kafka_servers, kafka_username, kafka_password))
-	if err != nil {
-		return fmt.Errorf("failed to create admin client: %v", err)
+func testReadBatch(t *testing.T, producer FProducer, consumer FConsumer) {
+	expected := make([][]byte, 0)
+	for i := 0; i < 10; i++ {
+		msg := []byte(fmt.Sprintf("%d", i))
+		expected = append(expected, msg)
 	}
-	defer c.Close()
-
-	// now create the topic
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
-
-	results, err := c.CreateTopics(ctx, []kafka.TopicSpecification{{Topic: name, NumPartitions: 1}})
-	if err != nil {
-		return fmt.Errorf("failed to create topics: %v", err)
-	}
-	for _, tr := range results {
-		if tr.Error.Code() != kafka.ErrNoError {
-			return fmt.Errorf(tr.Error.Error())
+	wg := sync.WaitGroup{}
+	wg.Add(2)
+	ctx := context.Background()
+	go func() {
+		defer wg.Done()
+		defer producer.Close()
+		for _, msg := range expected {
+			assert.NoError(t, producer.Log(ctx, msg, nil))
 		}
-	}
-	return nil
+	}()
+	go func() {
+		defer wg.Done()
+		defer consumer.Close()
+		// read in a batch of 4, 4, 2
+		batch1, err := consumer.ReadBatch(ctx, 4, time.Second*30)
+		assert.NoError(t, err)
+		assert.Len(t, batch1, 4)
+
+		batch2, err := consumer.ReadBatch(ctx, 4, time.Second*30)
+		assert.NoError(t, err)
+		assert.Len(t, batch2, 4)
+
+		batch3, err := consumer.ReadBatch(ctx, 2, time.Second*30)
+		assert.NoError(t, err)
+		assert.Len(t, batch3, 2)
+		found := append(batch1, batch2...)
+		found = append(found, batch3...)
+
+		assert.ElementsMatch(t, expected, found)
+	}()
+	wg.Wait()
 }
 
-func teardownKafkaTopics(tierID ftypes.TierID, topic string) error {
-	name := resource.TieredName(tierID, topic)
-	// Create admin client.
-	c, err := kafka.NewAdminClient(ConfigMap(test_kafka_servers, kafka_username, kafka_password))
-	if err != nil {
-		return fmt.Errorf("failed to create admin client: %v", err)
-	}
-	defer c.Close()
+func mockProducerConsumer(t *testing.T, tierID ftypes.TierID) (FProducer, FConsumer) {
+	broker := NewMockTopicBroker()
+	producer, err := MockProducerConfig{
+		Broker: &broker,
+		Topic:  "sometopic",
+	}.Materialize(tierID)
+	assert.NoError(t, err)
+	consumer, err := MockConsumerConfig{
+		Broker:  &broker,
+		Topic:   "sometopic",
+		GroupID: "somegroup",
+	}.Materialize(tierID)
+	assert.NoError(t, err)
+	return producer.(FProducer), consumer.(FConsumer)
+}
 
-	// delete the topic
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
-	_, err = c.DeleteTopics(ctx, []string{name})
-	return err
+func testBacklog(t *testing.T, producer FProducer, consumer FConsumer) {
+	wg := sync.WaitGroup{}
+	wg.Add(2)
+	ctx := context.Background()
+	message := []byte(fmt.Sprintf("hello"))
+	go func() {
+		defer wg.Done()
+		defer producer.Close()
+		for i := 0; i < 10; i++ {
+			err := producer.Log(ctx, message, nil)
+			assert.NoError(t, err)
+		}
+		assert.NoError(t, producer.Flush(time.Second*5))
+	}()
+
+	// Read 1 message. This is required to actually have the Broker assign a
+	// partition to the consumer.
+	go func() {
+		defer wg.Done()
+		defer consumer.Close()
+		found, err := consumer.ReadBatch(ctx, 2, time.Second*5)
+		assert.NoError(t, err)
+		assert.ElementsMatch(t, [][]byte{message, message}, found)
+		// Commit the read offset.
+		err = consumer.Commit()
+		assert.NoError(t, err)
+		// Now calculate the backlog.
+		backlog, err := consumer.Backlog()
+		assert.NoError(t, err)
+		assert.Equal(t, 8, backlog)
+	}()
+	wg.Wait()
+}
+
+func TestLocal(t *testing.T) {
+	rand.Seed(time.Now().UnixNano())
+	tierID := ftypes.TierID(rand.Uint32())
+
+	t.Run("local_producer_consumer", func(t *testing.T) {
+		producer, consumer := mockProducerConsumer(t, tierID)
+		testProducerConsumer(t, producer, consumer)
+	})
+	t.Run("local_read_batch", func(t *testing.T) {
+		producer, consumer := mockProducerConsumer(t, tierID)
+		testReadBatch(t, producer, consumer)
+	})
+	t.Run("local_flush_commit_backlog", func(t *testing.T) {
+		producer, consumer := mockProducerConsumer(t, tierID)
+		testBacklog(t, producer, consumer)
+	})
 }

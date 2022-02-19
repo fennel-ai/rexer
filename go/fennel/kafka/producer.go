@@ -1,6 +1,7 @@
 package kafka
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"time"
@@ -23,13 +24,22 @@ type RemoteProducer struct {
 	*kafka.Producer
 }
 
-func (k RemoteProducer) Log(message []byte, partitionKey []byte) error {
+func (k RemoteProducer) Log(ctx context.Context, message []byte, partitionKey []byte) error {
 	kafkaMsg := kafka.Message{
 		Key:            partitionKey,
 		TopicPartition: kafka.TopicPartition{Topic: &k.topic},
 		Value:          message,
 	}
-	return k.Produce(&kafkaMsg, nil)
+	ch := make(chan error, 1)
+	go func() {
+		ch <- k.Produce(&kafkaMsg, nil)
+	}()
+	select {
+	case <-ctx.Done():
+		return fmt.Errorf("context timed out before logging")
+	case err := <-ch:
+		return err
+	}
 }
 
 func (k RemoteProducer) Flush(timeout time.Duration) error {
@@ -40,7 +50,11 @@ func (k RemoteProducer) Flush(timeout time.Duration) error {
 }
 
 func (k RemoteProducer) Close() error {
-	return k.Close()
+	if err := k.Flush(time.Second * 10); err != nil {
+		return err
+	}
+	k.Producer.Close()
+	return nil
 }
 
 func (k RemoteProducer) TierID() ftypes.TierID {
@@ -51,8 +65,8 @@ func (k RemoteProducer) Type() resource.Type {
 	return resource.KafkaProducer
 }
 
-func (k RemoteProducer) LogProto(protoMsg proto.Message, partitionKey []byte) error {
-	defer timer.Start(k.tierID, "kafka.log").ObserveDuration()
+func (k RemoteProducer) LogProto(ctx context.Context, protoMsg proto.Message, partitionKey []byte) error {
+	defer timer.Start(k.tierID, "kafka.log_proto").ObserveDuration()
 	value, err := proto.Marshal(protoMsg)
 	if err != nil {
 		return fmt.Errorf("failed to serialize protoMsg to proto: %v", err)
@@ -62,9 +76,16 @@ func (k RemoteProducer) LogProto(protoMsg proto.Message, partitionKey []byte) er
 		TopicPartition: kafka.TopicPartition{Topic: &k.topic},
 		Value:          value,
 	}
-	// TODO: Do we need to call Flush periodically? What about on receicing SIGINT
-	// or SIGTERM signals?
-	return k.Produce(&kafkaMsg, nil)
+	ch := make(chan error, 1)
+	go func() {
+		ch <- k.Produce(&kafkaMsg, nil)
+	}()
+	select {
+	case <-ctx.Done():
+		return fmt.Errorf("context timed out before logging")
+	case err := <-ch:
+		return err
+	}
 }
 
 var _ FProducer = RemoteProducer{}

@@ -38,7 +38,7 @@ func TestLogMulti_Kafka(t *testing.T) {
 	consumer, err := tier.NewKafkaConsumer(feature.KAFKA_TOPIC_NAME, "somegroup", "earliest")
 	for i := 0; i < 10; i++ {
 		var pmsg feature.ProtoRow
-		err = consumer.ReadProto(&pmsg, -1)
+		err = consumer.ReadProto(ctx, &pmsg, -1)
 		assert.NoError(t, err)
 		msg, err := feature.FromProtoRow(pmsg)
 		assert.NoError(t, err)

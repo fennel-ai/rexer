@@ -1,6 +1,7 @@
 package kafka
 
 import (
+	"context"
 	"time"
 
 	"fennel/lib/action"
@@ -18,8 +19,8 @@ const (
 
 type FConsumer interface {
 	resource.Resource
-	ReadProto(message proto.Message, timeout time.Duration) error
-	ReadBatch(upto int, timeout time.Duration) ([][]byte, error)
+	ReadProto(ctx context.Context, message proto.Message, timeout time.Duration) error
+	ReadBatch(ctx context.Context, upto int, timeout time.Duration) ([][]byte, error)
 	Backlog() (int, error)
 	Commit() error
 	AsyncCommit() chan error
@@ -28,8 +29,8 @@ type FConsumer interface {
 
 type FProducer interface {
 	resource.Resource
-	LogProto(message proto.Message, partitionKey []byte) error
-	Log(message []byte, partitionKey []byte) error
+	LogProto(ctx context.Context, message proto.Message, partitionKey []byte) error
+	Log(ctx context.Context, message []byte, partitionKey []byte) error
 	Flush(timeout time.Duration) error
 }
 

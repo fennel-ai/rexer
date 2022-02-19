@@ -1,6 +1,7 @@
 package kafka
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"time"
@@ -34,6 +35,7 @@ func (k RemoteConsumer) TierID() ftypes.TierID {
 var _ resource.Resource = RemoteConsumer{}
 
 func (k RemoteConsumer) Close() error {
+	k.Consumer.Close()
 	return nil
 }
 
@@ -41,37 +43,51 @@ func (k RemoteConsumer) Type() resource.Type {
 	return resource.KafkaConsumer
 }
 
-func (k RemoteConsumer) ReadProto(pmsg proto.Message, timeout time.Duration) error {
+func (k RemoteConsumer) ReadProto(ctx context.Context, pmsg proto.Message, timeout time.Duration) error {
 	defer timer.Start(k.tierID, "kafka.read_proto").ObserveDuration()
-	kmsg, err := k.ReadMessage(timeout)
-	if err != nil {
-		return fmt.Errorf("failed to read msg from kafka: %v", err)
+	ch := make(chan error)
+	go func() {
+		kmsg, err := k.ReadMessage(timeout)
+		if err != nil {
+			ch <- fmt.Errorf("failed to read msg from kafka: %v", err)
+			return
+		}
+		err = proto.Unmarshal(kmsg.Value, pmsg)
+		if err != nil {
+			ch <- fmt.Errorf("failed to parse msg from kafka to action: %v", err)
+			return
+		}
+		ch <- nil
+	}()
+	select {
+	case <-ctx.Done():
+		return fmt.Errorf("context cancelled before reading")
+	case err := <-ch:
+		return err
 	}
-	err = proto.Unmarshal(kmsg.Value, pmsg)
-	if err != nil {
-		return fmt.Errorf("failed to parse msg from kafka to action: %v", err)
-	}
-	return nil
 }
 
 // ReadBatch polls over Kafka and keeps reading messages until either it has read 'upto' messages
 // or timeout time has elapsed
-func (k RemoteConsumer) ReadBatch(upto int, timeout time.Duration) ([][]byte, error) {
+func (k RemoteConsumer) ReadBatch(ctx context.Context, upto int, timeout time.Duration) ([][]byte, error) {
+	if timeout < 0 {
+		return nil, fmt.Errorf("indefinite wait not allowed so timeout has to be positive")
+	}
 	timer := time.Tick(timeout)
 	ret := make([][]byte, 0)
+	start := time.Now()
 	for len(ret) < upto {
 		select {
 		case <-timer:
 			return ret, nil
+		case <-ctx.Done():
+			return ret, nil
 		default:
-			msg, err := k.ReadMessage(time.Millisecond * 100)
-			switch err {
-			case nil:
+			msg, err := k.ReadMessage(timeout - time.Since(start))
+			if err == nil {
 				ret = append(ret, msg.Value)
-			default:
-				if kerr, ok := err.(kafka.Error); ok && kerr.Code() != kafka.ErrTimedOut {
-					return nil, err
-				}
+			} else if kerr, ok := err.(kafka.Error); ok && kerr.Code() != kafka.ErrTimedOut {
+				return nil, err
 			}
 		}
 	}
@@ -172,7 +188,7 @@ func (conf RemoteConsumerConfig) Materialize(tierID ftypes.TierID) (resource.Res
 	}
 	err = consumer.Subscribe(conf.Topic, rebalanceCb)
 	if err != nil {
-		return nil, fmt.Errorf("failed to subscribe to Topic [%s]: %v", conf.Topic, err)
+		return nil, fmt.Errorf("failed to subscribe to topic [%s]: %v", conf.Topic, err)
 	}
 	return RemoteConsumer{tierID, consumer, conf.Topic, conf.GroupID, conf}, nil
 }
