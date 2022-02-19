@@ -1,5 +1,10 @@
 config:
   aws:region: ap-south-1
+  configs:cache-conf:
+    primary:
+      secure: AAABAJgqPOP+JQhyjiLOoPizbYi17GdBRTgizu+h1nOnRgdIMqaT4n49ex/8/7bzVZM9IRa27XOzI3BCHLfA33yv8vYhKGii8xkSZqJkr/VDljWVytcn6R2Ge7V1tgkbLQ==
+    replica:
+      secure: AAABALz3cvVU52QbcbvT6K9bnvsQjbVfTPjUaFB4FV0PkRHE7n4mwjH8pQJXAvLCCKfyGo9CvQA3MY5Bbd9O4ZuEBq6qP/WtgTJV7DJJifqQrwQyWNFFnKJA1IcVskWoA38=
   configs:db-conf:
     db:
       secure: AAABAM+5mxWk0KajzA094KENDYi73pkRZ7b1eRveQph8nw==

@@ -1,6 +1,11 @@
 config:
   aws:profile: admin
   aws:region: us-west-2
+  configs:cache-conf:
+    primary:
+      secure: AAABAOVXjzi9gTxx9DQKpiN1KLe62VK7nVhEjpz7IpromgyAXMTzSEnOOtrykUxB5Vyts3N2XPxh1S4Yw4hO+/w45X23XeoRJUUZMvaCgH1CHHccOGV9Xa0c8Phjj2YkQQ==
+    replica:
+      secure: AAABAMTMmU6f5hmaWY60+/LrHjac8JY1F+KcIoLBKNWISz7plQxdYQmgWZAXXYd5SL3OzvM9GziY5d9BymdNYMMvZCebWHZKfaT3fuAKQmjk9FcFm/t273oWUyFIjfdMwg8=
   configs:kafka-conf:
     password:
       secure: AAABAIbdM4rB2+1NX+gNhK01aNAHXyzSEUyQUS8Nm3QhqbxY1rsbvaeWn5csL8jXhape2pDRlyP4VMS3blnZnbV976KQ6AxDX7SH5sn71caPBgE4xjoG6F5B5sQ5xza2
