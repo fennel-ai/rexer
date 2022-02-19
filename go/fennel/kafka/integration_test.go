@@ -24,26 +24,48 @@ const (
 
 func TestIntegration(t *testing.T) {
 	rand.Seed(time.Now().UnixNano())
+	topic := "testtopic"
 	t.Run("integration_producer_consumer", func(t *testing.T) {
 		t.Parallel()
 		tierID := ftypes.TierID(rand.Uint32())
-		producer, consumer := integrationProducerConsumer(t, tierID, "topic", "group", "earliest")
+		producer := integrationProducer(t, tierID, topic)
+		consumer := integrationConsumer(t, tierID, topic, "group", "earliest")
 		defer teardownKafkaTopics(tierID, "topic")
 		testProducerConsumer(t, producer, consumer)
 	})
 	t.Run("integration_read_batch", func(t *testing.T) {
 		t.Parallel()
 		tierID := ftypes.TierID(rand.Uint32())
-		producer, consumer := integrationProducerConsumer(t, tierID, "topic", "group", "earliest")
+		producer := integrationProducer(t, tierID, topic)
+		consumer := integrationConsumer(t, tierID, topic, "group", "earliest")
 		defer teardownKafkaTopics(tierID, "topic")
 		testReadBatch(t, producer, consumer)
 	})
 	t.Run("integration_flush_commit_backlog", func(t *testing.T) {
 		t.Parallel()
 		tierID := ftypes.TierID(rand.Uint32())
-		producer, consumer := integrationProducerConsumer(t, tierID, "topic", "group", "earliest")
+		producer := integrationProducer(t, tierID, topic)
+		consumer := integrationConsumer(t, tierID, topic, "group", "earliest")
 		defer teardownKafkaTopics(tierID, "topic")
 		testBacklog(t, producer, consumer)
+	})
+	t.Run("integration_different_consumer_groups", func(t *testing.T) {
+		t.Parallel()
+		tierID := ftypes.TierID(rand.Uint32())
+		producer := integrationProducer(t, tierID, topic)
+		consumer1 := integrationConsumer(t, tierID, topic, "group1", "earliest")
+		consumer2 := integrationConsumer(t, tierID, topic, "group2", "earliest")
+		defer teardownKafkaTopics(tierID, "topic")
+		testDifferentConsumerGroups(t, producer, consumer1, consumer2)
+	})
+	t.Run("integration_same_consumer_groups", func(t *testing.T) {
+		t.Parallel()
+		tierID := ftypes.TierID(rand.Uint32())
+		producer := integrationProducer(t, tierID, topic)
+		consumer1 := integrationConsumer(t, tierID, topic, "group", "earliest")
+		consumer2 := integrationConsumer(t, tierID, topic, "group", "earliest")
+		defer teardownKafkaTopics(tierID, "topic")
+		testSameConsumerGroup(t, producer, consumer1, consumer2)
 	})
 }
 
@@ -60,7 +82,7 @@ func setupKafkaTopics(tierID ftypes.TierID, topic string) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
-	results, err := c.CreateTopics(ctx, []kafka.TopicSpecification{{Topic: name, NumPartitions: 1}})
+	results, err := c.CreateTopics(ctx, []kafka.TopicSpecification{{Topic: name, NumPartitions: 2}})
 	if err != nil {
 		return fmt.Errorf("failed to create topics: %v", err)
 	}
@@ -88,11 +110,11 @@ func teardownKafkaTopics(tierID ftypes.TierID, topic string) error {
 	return err
 }
 
-func integrationProducerConsumer(t *testing.T, tierID ftypes.TierID, topic, groupid, offsetpolicy string) (FProducer, FConsumer) {
+func integrationProducer(t *testing.T, tierID ftypes.TierID, topic string) FProducer {
 	// first create the topics
 	assert.NoError(t, setupKafkaTopics(tierID, topic))
 
-	// then create producer/consumer
+	// then create producer
 	resource, err := RemoteProducerConfig{
 		Topic:           topic,
 		BootstrapServer: test_kafka_servers,
@@ -101,8 +123,11 @@ func integrationProducerConsumer(t *testing.T, tierID ftypes.TierID, topic, grou
 	}.Materialize(tierID)
 	assert.NoError(t, err)
 	producer := resource.(FProducer)
+	return producer
+}
 
-	resource, err = RemoteConsumerConfig{
+func integrationConsumer(t *testing.T, tierID ftypes.TierID, topic, groupid, offsetpolicy string) FConsumer {
+	resource, err := RemoteConsumerConfig{
 		Topic:           topic,
 		BootstrapServer: test_kafka_servers,
 		Username:        kafka_username,
@@ -112,5 +137,5 @@ func integrationProducerConsumer(t *testing.T, tierID ftypes.TierID, topic, grou
 	}.Materialize(tierID)
 	assert.NoError(t, err)
 	consumer := resource.(FConsumer)
-	return producer, consumer
+	return consumer
 }
