@@ -27,3 +27,26 @@ func init() {
 		Any:    reflect.TypeOf((*Value)(nil)).Elem(),
 	}
 }
+
+func (ts _types) ToString(t reflect.Type) string {
+	switch t {
+	case Types.Bool:
+		return "Bool"
+	case Types.Int:
+		return "Int"
+	case Types.Double:
+		return "Double"
+	case Types.String:
+		return "String"
+	case Types.List:
+		return "List"
+	case Types.Dict:
+		return "Dict"
+	case Types.Table:
+		return "Table"
+	case Types.Any:
+		return "Any"
+	default:
+		return "Unknown"
+	}
+}
