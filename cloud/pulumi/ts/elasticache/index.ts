@@ -21,17 +21,15 @@ export type inputType = {
     region: string,
     vpcId: string,
     azs: string[],
-    eksSecurityGroup: string,
+    connectedSecurityGroups: { [key: string]: string }
 }
 
 export type outputType = {
-    cacheNodes: pulumi.Output<cacheNode[]>,
+    cacheNodes: pulumi.Output<{ [key: string]: string }>,
 }
 
 const REDIS_VERSION = "6.x";
 const NODE_TYPE = "cache.t4g.medium";
-// TODO: Increase replica count once we add more than one subnet to group.
-const NUM_REPLICAS = 0;
 
 const parseConfig = (): inputType => {
     const config = new pulumi.Config();
@@ -40,13 +38,8 @@ const parseConfig = (): inputType => {
         roleArn: config.require(nameof<inputType>("roleArn")),
         vpcId: config.require(nameof<inputType>("vpcId")),
         azs: config.requireObject(nameof<inputType>("azs")),
-        eksSecurityGroup: config.require(nameof<inputType>("eksSecurityGroup")),
+        connectedSecurityGroups: config.requireObject(nameof<inputType>("connectedSecurityGroups")),
     }
-}
-
-type cacheNode = {
-    availabilityZone: string
-    address: string
 }
 
 export const setup = async (input: inputType) => {
@@ -79,33 +72,35 @@ export const setup = async (input: inputType) => {
         tags: { ...fennelStdTags }
     }, { provider })
 
-    const allowEksTraffic = new aws.ec2.SecurityGroupRule("allow-eks", {
-        securityGroupId: cacheSg.id,
-        sourceSecurityGroupId: input.eksSecurityGroup,
-        fromPort: 0,
-        toPort: 65535,
-        type: "ingress",
-        protocol: "tcp",
-    }, { provider })
+    let sgRules: pulumi.Output<string>[] = []
+    for (var key in input.connectedSecurityGroups) {
+        sgRules.push(new aws.ec2.SecurityGroupRule(`allow-${key}`, {
+            securityGroupId: cacheSg.id,
+            sourceSecurityGroupId: input.connectedSecurityGroups[key],
+            fromPort: 0,
+            toPort: 65535,
+            type: "ingress",
+            protocol: "tcp",
+        }, { provider }).id)
+    }
 
-    const cluster = new aws.elasticache.Cluster("cache-cluster", {
-        subnetGroupName: subnetGroup.name,
-        securityGroupIds: [cacheSg.id],
-        engine: "redis",
-        engineVersion: REDIS_VERSION,
-        nodeType: NODE_TYPE,
-        preferredAvailabilityZones: input.azs,
-        numCacheNodes: 1,
-        tags: { ...fennelStdTags },
-    }, { provider })
+    const cluster = pulumi.all(sgRules).apply(() => {
+        return new aws.elasticache.Cluster("cache-cluster", {
+            subnetGroupName: subnetGroup.name,
+            securityGroupIds: [cacheSg.id],
+            engine: "redis",
+            engineVersion: REDIS_VERSION,
+            nodeType: NODE_TYPE,
+            preferredAvailabilityZones: input.azs,
+            numCacheNodes: 1,
+            tags: { ...fennelStdTags },
+        }, { provider })
+    })
 
-    const cacheNodes: pulumi.Output<cacheNode[]> = cluster.cacheNodes.apply(nodes => {
-        return nodes.map(node => {
-            return {
-                availabilityZone: node.availabilityZone,
-                address: `${node.address}:${node.port}`
-            }
-        })
+    const cacheNodes = cluster.cacheNodes.apply(cacheNodes => {
+        let nodes: { [key: string]: string } = {}
+        cacheNodes.map(node => { nodes[node.availabilityZone] = `${node.address}:${node.port}` })
+        return nodes
     })
 
     const output: outputType = {
