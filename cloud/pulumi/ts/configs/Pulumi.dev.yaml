@@ -6,6 +6,15 @@ config:
       secure: AAABAOVXjzi9gTxx9DQKpiN1KLe62VK7nVhEjpz7IpromgyAXMTzSEnOOtrykUxB5Vyts3N2XPxh1S4Yw4hO+/w45X23XeoRJUUZMvaCgH1CHHccOGV9Xa0c8Phjj2YkQQ==
     replica:
       secure: AAABAMTMmU6f5hmaWY60+/LrHjac8JY1F+KcIoLBKNWISz7plQxdYQmgWZAXXYd5SL3OzvM9GziY5d9BymdNYMMvZCebWHZKfaT3fuAKQmjk9FcFm/t273oWUyFIjfdMwg8=
+  configs:db-conf:
+    db:
+      secure: AAABAKUNQTXn6xafU/uuhThtgozzDQgLRlaeE4CKTl5HtRxGZCQDGVHI4w==
+    host:
+      secure: AAABAMxSHeM/PlzZX7ip2Afvt20szx+cCVvwt9AWf1wnEHbIXoG384tcltGQvgy4mTlyX4tIG1xtBRSVXkUKuAs=
+    password:
+      secure: AAABAPmTebSVWqi/d7HPtIVNtWkLdhg9DiV/FsqheLuHXaNssAA2W33qNmSWRJPxMJn4EIhr5JneYtT/bmkSoCLXwquXPoD7xVyG77I7PXoX2vUYeg==
+    username:
+      secure: AAABAGgw7cVZ2OodbtR85+YGijQ7K7E3mvX7rCavzZ8GLMQk1HlNIz/0zZU=
   configs:kafka-conf:
     password:
       secure: AAABAIbdM4rB2+1NX+gNhK01aNAHXyzSEUyQUS8Nm3QhqbxY1rsbvaeWn5csL8jXhape2pDRlyP4VMS3blnZnbV976KQ6AxDX7SH5sn71caPBgE4xjoG6F5B5sQ5xza2
@@ -13,15 +22,8 @@ config:
       secure: AAABAKJtpAGDbadKC9q4heRYTs+1wa7oGgTxqECjwi5RqfXiVYVcohnKkcWivwnjzJm6h9TsR+gXbAdKCaCJVu6VG3L4mFjgzlDc7A==
     username:
       secure: AAABAA7+HpYiJgQslJMJG79MG24E3yPHGKrYfukgec9GBE0gBc3U4pdPPVe5+v1A
-  configs:planetscale-conf:
-    db:
-      secure: AAABAKUNQTXn6xafU/uuhThtgozzDQgLRlaeE4CKTl5HtRxGZCQDGVHI4w==
-    host:
-      secure: AAABAKybwgv1YehxZDMVj5uE8hVcPo2Y2ZMBtYPNC/RJytS2UDE4wMy5yGJXmUdsOU8jLhpOQujGUFDjR/8Fxfg=
-    password:
-      secure: AAABAKeB67q8qIbRITPFXEHYAhipW0Bo/0gN+PhzZjEPRW+sArEb+U/nQjKiY/Da67mbzfHqnYRSMVAKMJkS59AJlNEAZrAxZpX1CnKE7m7gyey3Eg==
-    username:
-      secure: AAABAF18S+awH0xlyoyKde80Tm2tgKUgwl6QwMUqKUnDiijGQbOJxNdnfdg=
   configs:redis-conf:
     addr:
       secure: AAABAI2/SEzv6GHUvfsEQG6qd7NeaeGTrBZUOcsywkUxpAzqmgEKiVWdQBRYWihHL94NuJHZsGtxAILLLocML2Bx7Btto+slcrF27Uul9EGMhX95juL07hV7Jv7Wbolu8tuwvZmpXLs=
+  configs:tier-conf:
+    tier_id: "100"
