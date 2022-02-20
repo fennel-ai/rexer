@@ -19,7 +19,7 @@ type Connection struct {
 }
 
 func (c Connection) Close() error {
-	return c.Close()
+	return c.DB.Close()
 }
 
 func (c Connection) Type() resource.Type {
