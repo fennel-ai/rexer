@@ -120,6 +120,8 @@ func toHistogram(agg aggregate.Aggregate) (modelCounter.Histogram, error) {
 		}, nil
 	case "rolling_average":
 		return modelCounter.RollingAverage{Duration: agg.Options.Duration}, nil
+	case "stream":
+		return modelCounter.Stream{Duration: agg.Options.Duration}, nil
 	default:
 		return nil, fmt.Errorf("invalid aggregate type: %v", agg.Options.AggType)
 	}

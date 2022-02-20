@@ -1,9 +1,11 @@
 package aggregate
 
 import (
-	"fennel/lib/ftypes"
-	"github.com/stretchr/testify/assert"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
+
+	"fennel/lib/ftypes"
 )
 
 func TestAggregate_Validate_Valid(t *testing.T) {
@@ -12,6 +14,7 @@ func TestAggregate_Validate_Valid(t *testing.T) {
 		{Name: "some name", Options: AggOptions{AggType: "rolling_average", Duration: 1231}},
 		{Name: "some name", Options: AggOptions{AggType: "timeseries_counter", Window: ftypes.Window_DAY, Limit: 10}},
 		{Name: "some name", Options: AggOptions{AggType: "timeseries_counter", Window: ftypes.Window_HOUR, Limit: 10}},
+		{Name: "some name", Options: AggOptions{AggType: "stream", Duration: 1212}},
 	}
 	for _, test := range validCases {
 		assert.NoError(t, test.Validate())
@@ -31,6 +34,10 @@ func TestAggregate_Validate_Invalid(t *testing.T) {
 		{Options: AggOptions{AggType: "timeseries_counter", Window: ftypes.Window_HOUR}},
 		{Options: AggOptions{AggType: "timeseries_counter", Duration: 41}},
 		{Options: AggOptions{AggType: "timeseries_counter", Window: ftypes.Window_HOUR, Limit: 10, Duration: 12}},
+		{Options: AggOptions{AggType: "stream", Window: ftypes.Window_HOUR, Limit: 10, Duration: 12}},
+		{Options: AggOptions{AggType: "stream", Window: ftypes.Window_HOUR, Duration: 12}},
+		{Options: AggOptions{AggType: "stream", Window: ftypes.Window_HOUR}},
+		{Options: AggOptions{AggType: "stream"}},
 		{Options: AggOptions{AggType: "random", Duration: 41}},
 	}
 	for _, test := range validCases {

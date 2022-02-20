@@ -1,11 +1,12 @@
 package aggregate
 
 import (
+	"fmt"
+	"strings"
+
 	"fennel/engine/ast"
 	"fennel/lib/ftypes"
 	"fennel/lib/value"
-	"fmt"
-	"strings"
 
 	"google.golang.org/protobuf/proto"
 )
@@ -15,6 +16,9 @@ var ValidTypes = []ftypes.AggType{
 	"timeseries_counter",
 	"rolling_average",
 	"stream",
+	"min",
+	"max",
+	"stddev",
 }
 
 type Aggregate struct {
@@ -60,6 +64,13 @@ func (agg Aggregate) Validate() error {
 		}
 		if options.Duration != 0 {
 			return fmt.Errorf("duration & limit are not relevant for time series and should be set to zero")
+		}
+	case "stream":
+		if options.Duration == 0 {
+			return fmt.Errorf("duration can not be zero for %s", aggtype)
+		}
+		if options.Window != 0 || options.Limit != 0 {
+			return fmt.Errorf("retention, window, and limit should all be zero for %v", aggtype)
 		}
 	default:
 		return fmt.Errorf("unsupported aggregation type: %v", agg.Options.AggType)
