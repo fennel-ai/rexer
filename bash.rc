@@ -6,7 +6,7 @@ setupDevEnv() {
 alias devenv="setupDevEnv"
 
 # flask specific variables
-export FLASK_APP="$FENNEL_ROOT/pyclient/app.py"
+export FLASK_APP="$FENNEL_ROOT/pyconsole/app.py"
 export FLASK_ENV=development
 
 git config pull.rebase true
@@ -24,7 +24,7 @@ export DOCKER_BUILDKIT=1
 ulimit -n 1024
 
 # this file exports secrets needed for running integration tests
-source testenv.rc
+source $FENNEL_ROOT/testenv.rc
 
 # Set fennel as default org in Pulumi.
 pulumi org set-default fennel
