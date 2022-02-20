@@ -91,21 +91,7 @@ func (c Client) post(protoMessage proto.Message, url string) ([]byte, error) {
 		return nil, fmt.Errorf("marshal error on client: %v", err)
 	}
 
-	reqBody := bytes.NewBuffer(ser)
-	response, err := c.httpclient.Post(url, "application/json", reqBody)
-	if err != nil {
-		return nil, fmt.Errorf("server error: %v", err)
-	}
-	defer response.Body.Close()
-	body, err := ioutil.ReadAll(response.Body)
-	if err != nil {
-		return nil, fmt.Errorf("could not read server response: %v", err)
-	}
-	// handle http error given by the server
-	if response.StatusCode < 200 || response.StatusCode >= 300 {
-		return nil, fmt.Errorf("%s: %s", http.StatusText(response.StatusCode), string(body))
-	}
-	return body, nil
+	return c.postJSON(ser, url)
 }
 
 func (c Client) postJSON(data []byte, url string) ([]byte, error) {
