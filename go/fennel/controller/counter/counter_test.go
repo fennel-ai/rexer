@@ -2,6 +2,8 @@ package counter
 
 import (
 	"context"
+	"testing"
+
 	"fennel/engine/ast"
 	libaggregate "fennel/lib/aggregate"
 	"fennel/lib/ftypes"
@@ -10,7 +12,6 @@ import (
 	counter2 "fennel/model/counter"
 	"fennel/test"
 	"fennel/tier"
-	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"google.golang.org/protobuf/proto"
@@ -171,6 +172,44 @@ func TestRollingAverage(t *testing.T) {
 	assert.NoError(t, err)
 	expected := float64(24*60) / float64(28*60)
 	assert.Equal(t, value.Double(expected), found)
+}
+
+func TestStream(t *testing.T) {
+	tier, err := test.Tier()
+	assert.NoError(t, err)
+	defer test.Teardown(tier)
+
+	ctx := context.Background()
+	start := 24*3600*12 + 60*31
+	aggname := ftypes.AggName("some stream")
+
+	key := value.List{value.String("user_follows"), value.Int(2)}
+	table := value.NewTable()
+	expected := make([]value.Value, 0)
+	// create an event every minute for 2 days
+	for i := 0; i < 60*24*2; i++ {
+		ts := ftypes.Timestamp(start + i*60 + 30)
+		row := value.Dict{
+			"timestamp": value.Int(ts),
+			"key":       key,
+			"element":   value.Int(i),
+		}
+		assert.NoError(t, table.Append(row))
+		if i >= 20*60 {
+			expected = append(expected, value.Int(i))
+		}
+	}
+	histogram := counter2.Stream{Duration: 28 * 3600}
+	err = Update(ctx, tier, aggname, table, histogram)
+	assert.NoError(t, err)
+
+	clock := &test.FakeClock{}
+	tier.Clock = clock
+	clock.Set(int64(start + 24*3600*2))
+	// at the end of 2 days, rolling average should only be worth 28 hours, not full 48 hours
+	found, err := Value(ctx, tier, aggname, key, histogram)
+	assert.NoError(t, err)
+	assert.ElementsMatch(t, expected, found.(value.List))
 }
 
 func TestCounterUpdateInvalid(t *testing.T) {

@@ -1,11 +1,13 @@
 package counter
 
 import (
+	"fmt"
+	"testing"
+
+	"github.com/stretchr/testify/assert"
+
 	"fennel/lib/ftypes"
 	"fennel/lib/value"
-	"fmt"
-	"github.com/stretchr/testify/assert"
-	"testing"
 )
 
 func TestMax_Reduce(t *testing.T) {
@@ -89,7 +91,7 @@ func TestMax_Bucketize_Valid(t *testing.T) {
 	actions := value.NewTable()
 	expected := make([]Bucket, 0)
 	DAY := 3600 * 24
-	for i := 0; i < 1; i++ {
+	for i := 0; i < 5; i++ {
 		v := value.List{value.Int(i), value.String("hi")}
 		d := value.Dict{
 			"key":       v,

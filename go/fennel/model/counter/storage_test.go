@@ -2,11 +2,13 @@ package counter
 
 import (
 	"context"
+	"testing"
+
+	"github.com/stretchr/testify/assert"
+
 	"fennel/lib/ftypes"
 	"fennel/lib/value"
 	"fennel/test"
-	"github.com/stretchr/testify/assert"
-	"testing"
 )
 
 func TestHistogram_GetMulti_Update(t *testing.T) {
@@ -50,7 +52,7 @@ func TestHistogram_GetMulti_Update(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, []value.Value{value.Int(0), value.Int(0), value.Int(0)}, counts)
 
-	// finally, this composes well with bucketize duration
+	// finally, this composes well with bucketize Duration
 	// adding 60 seconds so all minute/hour etc windows are captured
 	buckets = BucketizeDuration(key, 0, ts+65, all, histogram.Zero())
 	counts, err = GetMulti(ctx, tier, name, buckets, histogram)

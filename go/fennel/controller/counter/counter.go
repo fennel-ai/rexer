@@ -2,6 +2,7 @@ package counter
 
 import (
 	"context"
+
 	"fennel/lib/ftypes"
 	"fennel/lib/value"
 	"fennel/model/counter"
@@ -14,7 +15,7 @@ func Value(ctx context.Context, tier tier.Tier, aggname ftypes.AggName, key valu
 	buckets := counter.BucketizeDuration(key.String(), start, end, histogram.Windows(), histogram.Zero())
 	counts, err := counter.GetMulti(ctx, tier, aggname, buckets, histogram)
 	if err != nil {
-		return value.List{}, err
+		return nil, err
 	}
 	return histogram.Reduce(counts)
 }
