@@ -108,7 +108,6 @@ func ProfileHandler(w http.ResponseWriter, req *http.Request) {
 			return
 		}
 		response, err := postJSON(ser, pathGetProfile)
-		fmt.Printf("profile response: %v\n", response)
 		if err != nil {
 			handleInternalServerError(w, err)
 			return
