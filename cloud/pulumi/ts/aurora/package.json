@@ -7,7 +7,6 @@
     "dependencies": {
         "@pulumi/aws": "^4.37.4",
         "@pulumi/pulumi": "^3.0.0",
-        "generate-password": "^1.7.0",
         "ts-node": "^10.4.0",
         "typescript": "^4.5.5"
     }
