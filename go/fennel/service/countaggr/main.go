@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"log"
-	"net/http"
 	_ "net/http/pprof"
 	"time"
 
@@ -14,6 +13,7 @@ import (
 	libaggregate "fennel/lib/aggregate"
 	"fennel/lib/ftypes"
 	_ "fennel/opdefs" // ensure that all operators are present in the binary
+	"fennel/service/common"
 	"fennel/tier"
 
 	"github.com/alexflint/go-arg"
@@ -54,17 +54,19 @@ func processAggregate(tr tier.Tier, agg libaggregate.Aggregate) error {
 }
 
 func main() {
-	var flags tier.TierArgs
+	// Parse flags / environment variables.
+	var flags struct {
+		tier.TierArgs
+		common.PrometheusArgs
+	}
 	// Parse flags / environment variables.
 	arg.MustParse(&flags)
-	tr, err := tier.CreateFromArgs(&flags)
+	tr, err := tier.CreateFromArgs(&flags.TierArgs)
 	if err != nil {
 		panic(err)
 	}
-	// start a server so that promethus collector can ingest metrics
-	go func() {
-		log.Println(http.ListenAndServe("localhost:2411", nil))
-	}()
+	// Start a prometheus server.
+	common.StartPromMetricsServer(flags.MetricsPort)
 	// Note: don't delete this log line - e2e tests rely on this to be printed
 	// to know that server has initialized and is ready to take traffic
 	log.Println("server is ready...")
