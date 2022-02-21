@@ -104,9 +104,9 @@ func TestStddev_Bucketize_Valid(t *testing.T) {
 	for i := 0; i < 5; i++ {
 		v := value.List{value.Int(i), value.String("hi")}
 		d := value.Dict{
-			"key":       v,
+			"groupkey":  v,
 			"timestamp": value.Int(DAY + i*3600 + 1),
-			"amount":    value.Int(i),
+			"value":     value.Int(i),
 		}
 		count := value.List{value.Int(i), value.Int(i * i), value.Int(1)}
 		assert.NoError(t, actions.Append(d))
@@ -127,12 +127,12 @@ func TestStddev_Bucketize_Invalid(t *testing.T) {
 	h := Stddev{}
 	cases := [][]value.Dict{
 		{value.Dict{}},
-		{value.Dict{"key": value.Int(1), "timestamp": value.Int(2)}},
-		{value.Dict{"key": value.Int(1), "timestamp": value.Int(2), "amount": value.Nil}},
-		{value.Dict{"key": value.Int(1), "timestamp": value.Bool(true), "amount": value.Int(4)}},
-		{value.Dict{"key": value.Int(1), "timestamp": value.Double(1.0), "amount": value.Int(3)}},
-		{value.Dict{"key": value.Int(1), "amount": value.Int(3)}},
-		{value.Dict{"timestamp": value.Int(1), "amount": value.Int(3)}},
+		{value.Dict{"groupkey": value.Int(1), "timestamp": value.Int(2)}},
+		{value.Dict{"groupkey": value.Int(1), "timestamp": value.Int(2), "value": value.Nil}},
+		{value.Dict{"groupkey": value.Int(1), "timestamp": value.Bool(true), "value": value.Int(4)}},
+		{value.Dict{"groupkey": value.Int(1), "timestamp": value.Double(1.0), "value": value.Int(3)}},
+		{value.Dict{"groupkey": value.Int(1), "value": value.Int(3)}},
+		{value.Dict{"timestamp": value.Int(1), "value": value.Int(3)}},
 	}
 	for _, test := range cases {
 		table := value.NewTable()

@@ -1,9 +1,10 @@
 package counter
 
 import (
+	"fmt"
+
 	"fennel/lib/ftypes"
 	"fennel/lib/value"
-	"fmt"
 )
 
 type RollingCounter struct {
@@ -39,9 +40,9 @@ func (r RollingCounter) Zero() value.Value {
 
 func (r RollingCounter) Bucketize(table value.Table) ([]Bucket, error) {
 	schema := table.Schema()
-	type_, ok := schema["key"]
+	type_, ok := schema["groupkey"]
 	if !ok {
-		return nil, fmt.Errorf("query does not create column called 'key'")
+		return nil, fmt.Errorf("query does not create column called 'groupkey'")
 	}
 	type_, ok = schema["timestamp"]
 	if !ok || type_ != value.Types.Int {
@@ -50,7 +51,7 @@ func (r RollingCounter) Bucketize(table value.Table) ([]Bucket, error) {
 	buckets := make([]Bucket, 0, table.Len())
 	for _, row := range table.Pull() {
 		ts := row["timestamp"].(value.Int)
-		key := row["key"].String()
+		key := row["groupkey"].String()
 		buckets = append(buckets, BucketizeMoment(key, ftypes.Timestamp(ts), value.Int(1), r.Windows())...)
 	}
 	return buckets, nil

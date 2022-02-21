@@ -134,9 +134,9 @@ func TestStream_Bucketize_Valid(t *testing.T) {
 		v := value.Int(1)
 		e := value.Int(i)
 		d := value.Dict{
-			"key":       v,
+			"groupkey":  v,
 			"timestamp": value.Int(DAY + i*3600 + 1),
-			"element":   e,
+			"value":     e,
 		}
 		assert.NoError(t, actions.Append(d))
 		expected = append(expected, Bucket{Count: value.List{e}, Window: ftypes.Window_DAY, Index: 1, Key: v.String()})
@@ -153,11 +153,11 @@ func TestStream_Bucketize_Invalid(t *testing.T) {
 	h := RollingAverage{}
 	cases := [][]value.Dict{
 		{value.Dict{}},
-		{value.Dict{"key": value.Int(1), "timestamp": value.Int(2)}},
-		{value.Dict{"key": value.Int(1), "timestamp": value.Bool(true), "element": value.Int(4)}},
-		{value.Dict{"key": value.Int(1), "timestamp": value.Double(1.0), "element": value.Int(3)}},
-		{value.Dict{"key": value.Int(1), "amount": value.Int(3)}},
-		{value.Dict{"timestamp": value.Int(1), "amount": value.Int(3)}},
+		{value.Dict{"groupkey": value.Int(1), "timestamp": value.Int(2)}},
+		{value.Dict{"groupkey": value.Int(1), "timestamp": value.Bool(true), "value": value.Int(4)}},
+		{value.Dict{"groupkey": value.Int(1), "timestamp": value.Double(1.0), "value": value.Int(3)}},
+		{value.Dict{"groupkey": value.Int(1), "value": value.Int(3)}},
+		{value.Dict{"timestamp": value.Int(1), "value": value.Int(3)}},
 	}
 	for _, test := range cases {
 		table := value.NewTable()

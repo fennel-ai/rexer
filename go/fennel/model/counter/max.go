@@ -1,9 +1,10 @@
 package counter
 
 import (
+	"fmt"
+
 	"fennel/lib/ftypes"
 	"fennel/lib/value"
-	"fmt"
 )
 
 /*
@@ -87,23 +88,23 @@ func (m Max) Zero() value.Value {
 
 func (m Max) Bucketize(actions value.Table) ([]Bucket, error) {
 	schema := actions.Schema()
-	type_, ok := schema["key"]
+	type_, ok := schema["groupkey"]
 	if !ok {
-		return nil, fmt.Errorf("query does not create column called 'key'")
+		return nil, fmt.Errorf("query does not create column called 'groupkey'")
 	}
 	type_, ok = schema["timestamp"]
 	if !ok || type_ != value.Types.Int {
 		return nil, fmt.Errorf("query does not create column called 'timestamp' with datatype of 'int'")
 	}
-	type_, ok = schema["amount"]
+	type_, ok = schema["value"]
 	if !ok || type_ != value.Types.Int {
-		return nil, fmt.Errorf("query does not create column called 'amount' with datatype of 'int'")
+		return nil, fmt.Errorf("query does not create column called 'value' with datatype of 'int'")
 	}
 	buckets := make([]Bucket, 0, actions.Len())
 	for _, row := range actions.Pull() {
 		ts := row["timestamp"].(value.Int)
-		key := row["key"].String()
-		amount := row["amount"].(value.Int)
+		key := row["groupkey"].String()
+		amount := row["value"].(value.Int)
 		c := value.List{amount, value.Bool(false)}
 		buckets = append(buckets, BucketizeMoment(key, ftypes.Timestamp(ts), c, m.Windows())...)
 	}
