@@ -27,7 +27,6 @@ func Store(ctx context.Context, tier tier.Tier, agg aggregate.Aggregate) error {
 		// if already present, check if query and options are the same
 		// if they are the same, do nothing
 		// if they are different, return error
-		// TODO: maybe not use proto.Equal here
 		if agg.Query.Equals(agg2.Query) && proto.Equal(&agg.Options, &agg2.Options) {
 			return nil
 		} else {
