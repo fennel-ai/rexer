@@ -35,7 +35,7 @@ func TestTransformActions(t *testing.T) {
 	assert.Equal(t, 100, table.Len())
 	for i, row := range table.Pull() {
 		assert.Equal(t, value.Int(i+1000), row["timestamp"])
-		assert.Equal(t, value.List{value.Int(uid)}, row["key"])
+		assert.Equal(t, value.List{value.Int(uid)}, row["groupkey"])
 	}
 }
 
@@ -92,7 +92,7 @@ func getQuery() ast.Ast {
 		Namespace: "std",
 		Name:      "addField",
 		Kwargs: ast.Dict{Values: map[string]ast.Ast{
-			"name": ast.MakeString("key"),
+			"name": ast.MakeString("groupkey"),
 			"value": ast.List{Values: []ast.Ast{ast.Lookup{
 				On:       ast.At{},
 				Property: "actor_id",

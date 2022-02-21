@@ -47,7 +47,7 @@ func TestRolling(t *testing.T) {
 		ts := ftypes.Timestamp(start + i*60 + 30)
 		row := value.Dict{
 			"timestamp": value.Int(ts),
-			"key":       key,
+			"groupkey":  key,
 		}
 		assert.NoError(t, table.Append(row))
 	}
@@ -98,7 +98,7 @@ func TestTimeseries(t *testing.T) {
 		ts := ftypes.Timestamp(start + i*60 + 30)
 		row := value.Dict{
 			"timestamp": value.Int(ts),
-			"key":       key,
+			"groupkey":  key,
 		}
 		assert.NoError(t, table.Append(row))
 	}
@@ -155,8 +155,8 @@ func TestRollingAverage(t *testing.T) {
 		ts := ftypes.Timestamp(start + i*60 + 30)
 		row := value.Dict{
 			"timestamp": value.Int(ts),
-			"key":       key,
-			"amount":    value.Int(i / (24 * 60)), // amount is zero for first day and one for the next day
+			"groupkey":  key,
+			"value":     value.Int(i / (24 * 60)), // amount is zero for first day and one for the next day
 		}
 		assert.NoError(t, table.Append(row))
 	}
@@ -191,8 +191,8 @@ func TestStream(t *testing.T) {
 		ts := ftypes.Timestamp(start + i*60 + 30)
 		row := value.Dict{
 			"timestamp": value.Int(ts),
-			"key":       key,
-			"element":   value.Int(i),
+			"groupkey":  key,
+			"value":     value.Int(i),
 		}
 		assert.NoError(t, table.Append(row))
 		if i >= 20*60 {

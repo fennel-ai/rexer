@@ -57,22 +57,22 @@ func (s Stream) Zero() value.Value {
 
 func (s Stream) Bucketize(actions value.Table) ([]Bucket, error) {
 	schema := actions.Schema()
-	_, ok := schema["key"]
+	_, ok := schema["groupkey"]
 	if !ok {
-		return nil, fmt.Errorf("expected field 'key' not present")
+		return nil, fmt.Errorf("expected field 'groupkey' not present")
 	}
 	type_, ok := schema["timestamp"]
 	if !ok || type_ != value.Types.Int {
 		return nil, fmt.Errorf("expected field 'timestamp' not present")
 	}
-	if _, ok = schema["element"]; !ok {
-		return nil, fmt.Errorf("expected field 'element' not present")
+	if _, ok = schema["value"]; !ok {
+		return nil, fmt.Errorf("expected field 'value' not present")
 	}
 	buckets := make([]Bucket, 0, actions.Len())
 	for _, row := range actions.Pull() {
 		ts := row["timestamp"].(value.Int)
-		key := row["key"]
-		element := row["element"]
+		key := row["groupkey"]
+		element := row["value"]
 		buckets = append(buckets, BucketizeMoment(key.String(), ftypes.Timestamp(ts), value.List{element}, s.Windows())...)
 	}
 	return buckets, nil

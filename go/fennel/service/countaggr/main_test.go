@@ -158,7 +158,7 @@ func getQuery() ast.Ast {
 		Namespace: "std",
 		Name:      "addField",
 		Kwargs: ast.Dict{Values: map[string]ast.Ast{
-			"name": ast.MakeString("key"),
+			"name": ast.MakeString("groupkey"),
 			"value": ast.Lookup{
 				On:       ast.At{},
 				Property: "actor_id",

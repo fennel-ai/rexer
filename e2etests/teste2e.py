@@ -89,7 +89,7 @@ class TestEndToEnd(unittest.TestCase):
           Ops.profile.addField(name='city', otype='user', oid=it.actor_id, key='city'),
           Ops.profile.addField(name='gender', otype='user', oid=it.actor_id, key='gender'),
           Ops.profile.addField(name='age_group', otype='user', oid=it.actor_id, key='age_group'),
-          Ops.std.addField(name='key', value=List(it.target_id, it.city, it.gender, it.age_group)),
+          Ops.std.addField(name='groupkey', value=List(it.target_id, it.city, it.gender, it.age_group)),
         )
 
         options = {'duration': 3600*24*2, 'aggregate_type': 'rolling_counter', }
