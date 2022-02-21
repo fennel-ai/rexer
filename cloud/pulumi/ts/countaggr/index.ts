@@ -31,6 +31,7 @@ const registryInfo = repo.registryId.apply(async id => {
 });
 
 const root = process.env["FENNEL_ROOT"]!
+const metricsPort = 2113
 
 // Build and publish the container image.
 const image = new docker.Image("countaggr-img", {
@@ -72,7 +73,15 @@ const appDep = image.imageName.apply(() => {
                         imagePullPolicy: "Always",
                         command: [
                             "/root/countaggr",
+                            "--metrics-port",
+                            `${metricsPort}`,
                             "--dev=false"
+                        ],
+                        ports: [
+                            {
+                                containerPort: metricsPort,
+                                protocol: "TCP",
+                            },
                         ],
                         env: [
                             {
