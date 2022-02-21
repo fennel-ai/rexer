@@ -78,7 +78,8 @@ func TestServer_ProfileMultiHandler(t *testing.T) {
 	expected := profile.ProfileFetchRequest{OType: "abc", Oid: math.MaxUint64, Key: "xyz", Version: math.MaxUint64 - 1}
 	// Prepare profiles that will be returned by the server
 	profiles := make([]profile.ProfileItem, 0)
-	profiles = append(profiles, profile.ProfileItem{OType: "1", Oid: 2, Key: "3", Version: 4, Value: value.Int(5)})
+	profiles = append(profiles, profile.ProfileItem{OType: "1", Oid: math.MaxUint64 - 2, Key: "3",
+		Version: math.MaxUint64 - 4, Value: value.Int(5)})
 	profiles = append(profiles, profile.ProfileItem{OType: "5", Oid: 4, Key: "3", Version: 2, Value: value.Int(1)})
 	profilesSer, err := json.Marshal(profiles)
 	assert.NoError(t, err)
@@ -141,10 +142,11 @@ func TestServer_ActionsHandler(t *testing.T) {
 	}
 	// Prepare actions that will be returned by the server
 	actions := make([]action.Action, 0)
-	actions = append(actions, action.Action{ActionID: 1, ActorID: 2, ActorType: "3", TargetID: 4, TargetType: "5",
-		ActionType: "6", Timestamp: 7, RequestID: 8, Metadata: value.Nil})
+	actions = append(actions, action.Action{ActionID: math.MaxUint64 - 1, ActorID: math.MaxUint64 - 2, ActorType: "3",
+		TargetID: math.MaxUint64 - 4, TargetType: "5", ActionType: "6", Timestamp: math.MaxUint64 - 7,
+		RequestID: math.MaxUint64 - 8, Metadata: value.Int(9)})
 	actions = append(actions, action.Action{ActionID: 8, ActorID: 7, ActorType: "6", TargetID: 5, TargetType: "4",
-		ActionType: "3", Timestamp: 2, RequestID: 1, Metadata: value.Nil})
+		ActionType: "3", Timestamp: 2, RequestID: 1, Metadata: value.String("abc")})
 	actionsSer, err := json.Marshal(actions)
 	assert.NoError(t, err)
 	// Set up the endpoint server
@@ -178,9 +180,13 @@ func TestServer_ActionsHandler(t *testing.T) {
 		"request_id=-1",
 		"request_id=abc",
 		"min_timestamp=-1",
+		"min_timestamp=abc",
 		"max_timestamp=-1",
+		"max_timestamp=abc",
 		"min_action_id=-1",
+		"min_action_id=abc",
 		"max_action_id=-1",
+		"max_action_id=abc",
 	}
 	for _, badStr := range badReqStrs {
 		req = httptest.NewRequest("GET", "/actions/?"+badStr, nil)
