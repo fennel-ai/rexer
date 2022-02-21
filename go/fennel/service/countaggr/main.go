@@ -2,22 +2,22 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"net/http"
 	_ "net/http/pprof"
-
-	"go.uber.org/zap"
+	"time"
 
 	"fennel/controller/aggregate"
 	"fennel/kafka"
 	"fennel/lib/action"
 	libaggregate "fennel/lib/aggregate"
+	"fennel/lib/ftypes"
+	_ "fennel/opdefs" // ensure that all operators are present in the binary
 	"fennel/tier"
 
-	// ensure that all operators are present in the binary
-	_ "fennel/opdefs"
-
 	"github.com/alexflint/go-arg"
+	"go.uber.org/zap"
 )
 
 func logKafkaLag(t tier.Tier, consumer kafka.FConsumer) {
@@ -29,6 +29,28 @@ func logKafkaLag(t tier.Tier, consumer kafka.FConsumer) {
 		zap.String("consumer_group", consumer.GroupID()),
 		zap.Int("backlog", backlog),
 	)
+}
+
+// Set of aggregates that are currently being processed by the system.
+var processedAggregates map[ftypes.AggName]struct{}
+
+func processAggregate(tr tier.Tier, agg libaggregate.Aggregate) error {
+	consumer, err := tr.NewKafkaConsumer(action.ACTIONLOG_KAFKA_TOPIC, string(agg.Name), "earliest")
+	if err != nil {
+		return fmt.Errorf("unable to start consumer for aggregate: %s. Error: %v", agg.Name, err)
+	}
+	go func(tr tier.Tier, consumer kafka.FConsumer, agg libaggregate.Aggregate) {
+		defer consumer.Close()
+		for {
+			ctx := context.TODO()
+			err := aggregate.Update(ctx, tr, consumer, agg)
+			if err != nil {
+				log.Printf("Error found in aggregate: %s. Err: %v", agg.Name, err)
+			}
+			logKafkaLag(tr, consumer)
+		}
+	}(tr, consumer, agg)
+	return nil
 }
 
 func main() {
@@ -47,26 +69,22 @@ func main() {
 	// to know that server has initialized and is ready to take traffic
 	log.Println("server is ready...")
 
-	aggs, err := aggregate.RetrieveAll(context.Background(), tr)
-	if err != nil {
-		panic(err)
-	}
-	for _, agg := range aggs {
-		consumer, err := tr.NewKafkaConsumer(action.ACTIONLOG_KAFKA_TOPIC, string(agg.Name), "earliest")
+	ticker := time.NewTicker(time.Minute)
+	for {
+		aggs, err := aggregate.RetrieveAll(context.Background(), tr)
 		if err != nil {
-			log.Printf("unable to start consumer for aggregate: %s. Error: %v", agg.Name, err)
-			continue
+			panic(err)
 		}
-		go func(tr tier.Tier, consumer kafka.FConsumer, agg libaggregate.Aggregate) {
-			defer consumer.Close()
-			for {
-				ctx := context.TODO()
-				err := aggregate.Update(ctx, tr, consumer, agg)
+		log.Printf("Retrieved aggregates: %v", aggs)
+		for _, agg := range aggs {
+			if _, ok := processedAggregates[agg.Name]; !ok {
+				err := processAggregate(tr, agg)
 				if err != nil {
-					log.Printf("Error found in aggregate: %s. Err: %v", agg.Name, err)
+					tr.Logger.Error("Could not start aggregate processing", zap.String("aggregateName", string(agg.Name)), zap.Error(err))
 				}
-				logKafkaLag(tr, consumer)
+				processedAggregates[agg.Name] = struct{}{}
 			}
-		}(tr, consumer, agg)
+		}
+		<-ticker.C
 	}
 }
