@@ -15,11 +15,12 @@ import (
 	"strconv"
 )
 
-const goUrl = "http://localhost:2425"
 const (
-	pathGetProfile      = goUrl + "/get"
-	pathGetProfileMulti = goUrl + "/get_multi"
-	pathFetchActions    = goUrl + "/fetch"
+	serverAddress       = ":2475"
+	endpoint            = "http://localhost:2425"
+	pathGetProfile      = "/get"
+	pathGetProfileMulti = "/get_multi"
+	pathFetchActions    = "/fetch"
 )
 
 func postJSON(data []byte, url string) ([]byte, error) {
@@ -61,7 +62,11 @@ func getString(vals url.Values, key string, optional bool) (string, error) {
 
 func getUint64(vals url.Values, key string, optional bool) (uint64, error) {
 	if vals.Has(key) {
-		return strconv.ParseUint(vals.Get(key), 10, 64)
+		res, err := strconv.ParseUint(vals.Get(key), 10, 64)
+		if err != nil {
+			return 0, fmt.Errorf("unable to parse '%s' into an unsigned 64-bit integer", vals.Get(key))
+		}
+		return res, nil
 	} else if !optional {
 		return 0, fmt.Errorf("missing required argument '%s'", key)
 	}
@@ -85,7 +90,7 @@ func loadProfileQueryValues(vals url.Values, otype *string, oid *uint64, key *st
 	return nil
 }
 
-func ProfileHandler(w http.ResponseWriter, req *http.Request) {
+func (s server) ProfileHandler(w http.ResponseWriter, req *http.Request) {
 	switch req.Method {
 	case "GET":
 		// Process the request
@@ -107,7 +112,7 @@ func ProfileHandler(w http.ResponseWriter, req *http.Request) {
 			handleInternalServerError(w, err)
 			return
 		}
-		response, err := postJSON(ser, pathGetProfile)
+		response, err := postJSON(ser, s.endpoint+pathGetProfile)
 		if err != nil {
 			handleInternalServerError(w, err)
 			return
@@ -135,7 +140,7 @@ func loadProfileMultiQueryValues(vals url.Values, otype *string, oid *uint64, ke
 	return nil
 }
 
-func ProfileMultiHandler(w http.ResponseWriter, req *http.Request) {
+func (s server) ProfileMultiHandler(w http.ResponseWriter, req *http.Request) {
 	switch req.Method {
 	case "GET":
 		// Process the request
@@ -153,7 +158,7 @@ func ProfileMultiHandler(w http.ResponseWriter, req *http.Request) {
 			handleInternalServerError(w, err)
 			return
 		}
-		response, err := postJSON(ser, pathGetProfileMulti)
+		response, err := postJSON(ser, s.endpoint+pathGetProfileMulti)
 		if err != nil {
 			handleInternalServerError(w, err)
 			return
@@ -164,8 +169,9 @@ func ProfileMultiHandler(w http.ResponseWriter, req *http.Request) {
 	}
 }
 
-func loadActionsQueryValues(vals url.Values, actorID *uint64, actorType *string, targetID *uint64, targetType *string,
-	actionType *string, minTimestamp *uint64, maxTimestamp *uint64, minActionID *uint64, maxActionID *uint64) error {
+func loadActionsQueryValues(
+	vals url.Values, actorID *uint64, actorType *string, targetID *uint64, targetType *string, actionType *string,
+	minTimestamp *uint64, maxTimestamp *uint64, minActionID *uint64, maxActionID *uint64, requestID *uint64) error {
 	var err error
 	if *actorID, err = getUint64(vals, "actor_id", true); err != nil {
 		return err
@@ -176,7 +182,7 @@ func loadActionsQueryValues(vals url.Values, actorID *uint64, actorType *string,
 	if *targetID, err = getUint64(vals, "target_id", true); err != nil {
 		return err
 	}
-	if *targetType, err = getString(vals, "targetr_type", true); err != nil {
+	if *targetType, err = getString(vals, "target_type", true); err != nil {
 		return err
 	}
 	if *actionType, err = getString(vals, "action_type", true); err != nil {
@@ -194,17 +200,20 @@ func loadActionsQueryValues(vals url.Values, actorID *uint64, actorType *string,
 	if *maxActionID, err = getUint64(vals, "max_action_id", true); err != nil {
 		return err
 	}
+	if *requestID, err = getUint64(vals, "request_id", true); err != nil {
+		return err
+	}
 	return nil
 }
 
-func ActionsHandler(w http.ResponseWriter, req *http.Request) {
+func (s server) ActionsHandler(w http.ResponseWriter, req *http.Request) {
 	switch req.Method {
 	case "GET":
 		// Process the request
 		var actorType, targetType, actionType string
-		var actorID, targetID, minTimestamp, maxTimestamp, minActionID, maxActionID uint64
+		var actorID, targetID, minTimestamp, maxTimestamp, minActionID, maxActionID, requestID uint64
 		err := loadActionsQueryValues(req.URL.Query(), &actorID, &actorType, &targetID, &targetType, &actionType,
-			&minTimestamp, &maxTimestamp, &minActionID, &maxActionID)
+			&minTimestamp, &maxTimestamp, &minActionID, &maxActionID, &requestID)
 		if err != nil {
 			handleInvalidRequest(w, err)
 			return
@@ -217,8 +226,9 @@ func ActionsHandler(w http.ResponseWriter, req *http.Request) {
 			ActionType:   ftypes.ActionType(actionType),
 			MinTimestamp: ftypes.Timestamp(minTimestamp),
 			MaxTimestamp: ftypes.Timestamp(maxTimestamp),
-			MinActionID:  ftypes.OidType(maxActionID),
+			MinActionID:  ftypes.OidType(minActionID),
 			MaxActionID:  ftypes.OidType(maxActionID),
+			RequestID:    ftypes.RequestID(requestID),
 		}
 		// Call the server and write back the response
 		ser, err := json.Marshal(afr)
@@ -226,7 +236,7 @@ func ActionsHandler(w http.ResponseWriter, req *http.Request) {
 			handleInternalServerError(w, err)
 			return
 		}
-		response, err := postJSON(ser, pathFetchActions)
+		response, err := postJSON(ser, s.endpoint+pathFetchActions)
 		if err != nil {
 			handleInternalServerError(w, err)
 			return
@@ -237,11 +247,34 @@ func ActionsHandler(w http.ResponseWriter, req *http.Request) {
 	}
 }
 
+func setRoutes(s *server) {
+	s.router = mux.NewRouter()
+	s.router.HandleFunc("/profile/", s.ProfileHandler)
+	s.router.HandleFunc("/actions/", s.ActionsHandler)
+	s.router.HandleFunc("/profile_multi/", s.ProfileMultiHandler)
+}
+
+func createServer(address, endpoint string) *server {
+	server := server{
+		address:  address,
+		endpoint: endpoint,
+	}
+	setRoutes(&server)
+	return &server
+}
+
+type server struct {
+	address  string
+	endpoint string
+	router   *mux.Router
+}
+
+func (s server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	s.router.ServeHTTP(w, r)
+}
+
 func main() {
-	router := mux.NewRouter()
-	router.HandleFunc("/profile/", ProfileHandler)
-	router.HandleFunc("/actions/", ActionsHandler)
-	router.HandleFunc("/profile_multi/", ProfileMultiHandler)
-	log.Println("starting http service on :2475")
-	log.Fatal(http.ListenAndServe(":2475", router))
+	server := createServer(serverAddress, endpoint)
+	log.Printf("starting http service on '%s'\n", server.address)
+	log.Fatal(http.ListenAndServe(server.address, server))
 }
