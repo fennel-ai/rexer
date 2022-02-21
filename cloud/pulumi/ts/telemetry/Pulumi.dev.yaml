@@ -1,0 +1,5 @@
+config:
+  aws:profile: admin
+  aws:region: us-west-2
+  telemetry:eksClusterName: eks-cluster-eksCluster-89d10be
+  telemetry:instanceRole: eks-cluster-instanceRole-role-09cb2a6
