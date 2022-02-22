@@ -18,14 +18,20 @@ func TestMin_Reduce(t *testing.T) {
 		output value.Value
 	}{{
 		makeMinVals([]int64{2, 7, 5}, []bool{false, false, false}),
-		makeMinVal(2, false),
+		value.Int(2),
 	}, {
 		makeMinVals([]int64{0}, []bool{true}),
-		makeMinVal(0, true),
-	}, {
-		makeMinVals([]int64{-4, -7, -12}, []bool{false, false, true}),
-		makeMinVal(-7, false),
-	}}
+		value.Int(0),
+	},
+		{
+			makeMinVals([]int64{-4, -7, -12}, []bool{false, false, true}),
+			value.Int(-7),
+		},
+		{
+			makeMinVals([]int64{}, []bool{}),
+			value.Int(0),
+		},
+	}
 	for _, c := range cases {
 		found, err := h.Reduce(c.input)
 		assert.NoError(t, err)

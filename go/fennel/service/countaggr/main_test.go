@@ -28,7 +28,7 @@ type scenario struct {
 	consumer kafka.FConsumer
 }
 
-func TestEndToEnd2(t *testing.T) {
+func TestEndToEnd(t *testing.T) {
 	tier, err := test.Tier()
 	assert.NoError(t, err)
 	defer test.Teardown(tier)
@@ -68,8 +68,8 @@ func TestEndToEnd2(t *testing.T) {
 				Name: "agg_4", Query: getQuery(), Timestamp: 123,
 				Options: libaggregate.AggOptions{AggType: "min", Duration: 6 * 3600},
 			},
-			value.List{value.Int(0), value.Bool(true)},
-			value.Int(uid), value.List{value.Int(1), value.Bool(false)},
+			value.Int(0),
+			value.Int(uid), value.Int(1),
 			nil,
 		},
 		{
@@ -77,8 +77,8 @@ func TestEndToEnd2(t *testing.T) {
 				Name: "agg_5", Query: getQuery(), Timestamp: 123,
 				Options: libaggregate.AggOptions{AggType: "max", Duration: 6 * 3600},
 			},
-			value.List{value.Int(0), value.Bool(true)},
-			value.Int(uid), value.List{value.Int(2), value.Bool(false)},
+			value.Int(0),
+			value.Int(uid), value.Int(2),
 			nil,
 		},
 		{
