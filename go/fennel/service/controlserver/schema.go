@@ -13,17 +13,17 @@ var Schema = db.Schema{
 				tier_id INT UNSIGNED NOT NULL PRIMARY KEY AUTO_INCREMENT,
 				data_plane_id INT UNSIGNED NOT NULL,
 				customer_id INT UNSIGNED NOT NULL,
-				pulimi_stack VARCHAR(32) NOT NULL,
+				pulimi_stack VARCHAR(128) NOT NULL UNIQUE,
 				api_url VARCHAR(256) NOT NULL UNIQUE,
 				k8s_namespace VARCHAR(32) NOT NULL UNIQUE
 		);`,
 	3: `CREATE TABLE IF NOT EXISTS data_plane (
 				data_plane_id INT UNSIGNED NOT NULL PRIMARY KEY AUTO_INCREMENT,
-				aws_role VARCHAR(64) NOT NULL,
-				region VARCHAR(64) NOT NULL,
-				pulimi_stack VARCHAR(32) NOT NULL UNIQUE,
+				aws_role VARCHAR(128) NOT NULL,
+				region VARCHAR(16) NOT NULL,
+				pulimi_stack VARCHAR(128) NOT NULL UNIQUE,
 				vpc_id VARCHAR(32) NOT NULL UNIQUE,
-				eks_cluster_id VARCHAR(32) NOT NULL UNIQUE,
+				eks_cluster_id VARCHAR(64) NOT NULL UNIQUE,
 				kafka_instance_id INT UNSIGNED NOT NULL UNIQUE,
 				db_instance_id INT UNSIGNED NOT NULL UNIQUE,
 				redis_instance_id INT UNSIGNED NOT NULL UNIQUE,
@@ -38,7 +38,7 @@ var Schema = db.Schema{
 				kafka_api_key VARCHAR(128) NOT NULL,
 				kafka_secret_key VARCHAR(128) NOT NULL
 		);`,
-	5: `CREATE TABLE IF NOT EXISTS db (
+	5: `CREATE TABLE IF NOT EXISTS memorydb (
 				instance_id INT UNSIGNED NOT NULL PRIMARY KEY AUTO_INCREMENT,
 				cluster_id VARCHAR(32) NOT NULL,
 				cluster_security_group VARCHAR(32) NOT NULL,
@@ -48,7 +48,7 @@ var Schema = db.Schema{
 		);`,
 	6: `CREATE TABLE IF NOT EXISTS redis (
 				instance_id INT UNSIGNED NOT NULL PRIMARY KEY AUTO_INCREMENT,
-				memory_db_cluster_id VARCHAR(32) NOT NULL,
+				cluster_id VARCHAR(32) NOT NULL,
 				cluster_security_group VARCHAR(32) NOT NULL,
 				hostname VARCHAR(128) NOT NULL
 		);`,
