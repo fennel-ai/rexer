@@ -113,16 +113,16 @@ func loadInterpreter(tier tier.Tier, actions []libaction.Action) (interpreter.In
 
 func toHistogram(agg aggregate.Aggregate) (modelCounter.Histogram, error) {
 	switch agg.Options.AggType {
-	case "rolling_counter":
+	case "count":
 		return modelCounter.RollingCounter{Duration: agg.Options.Duration}, nil
-	case "timeseries_counter":
+	case "timeseries_count":
 		return modelCounter.TimeseriesCounter{
 			Window: agg.Options.Window, Limit: agg.Options.Limit,
 		}, nil
-	case "rolling_average":
+	case "average":
 		return modelCounter.RollingAverage{Duration: agg.Options.Duration}, nil
-	case "stream":
-		return modelCounter.Stream{Duration: agg.Options.Duration}, nil
+	case "list":
+		return modelCounter.List{Duration: agg.Options.Duration}, nil
 	case "min":
 		return modelCounter.Min{Duration: agg.Options.Duration}, nil
 	case "max":

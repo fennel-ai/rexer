@@ -39,7 +39,7 @@ func TestEndToEnd(t *testing.T) {
 		{
 			libaggregate.Aggregate{
 				Name: "agg_1", Query: getQuery(), Timestamp: 123,
-				Options: libaggregate.AggOptions{AggType: "rolling_counter", Duration: 6 * 3600},
+				Options: libaggregate.AggOptions{AggType: "count", Duration: 6 * 3600},
 			},
 			value.Int(0),
 			value.Int(uid), value.Int(2),
@@ -48,7 +48,7 @@ func TestEndToEnd(t *testing.T) {
 		{
 			libaggregate.Aggregate{
 				Name: "agg_2", Query: getQuery(), Timestamp: 123,
-				Options: libaggregate.AggOptions{AggType: "timeseries_counter", Window: ftypes.Window_HOUR, Limit: 4},
+				Options: libaggregate.AggOptions{AggType: "timeseries_count", Window: ftypes.Window_HOUR, Limit: 4},
 			},
 			value.List{value.Int(0), value.Int(0), value.Int(0), value.Int(0)},
 			value.Int(uid), value.List{value.Int(0), value.Int(0), value.Int(2), value.Int(0)},
@@ -57,7 +57,7 @@ func TestEndToEnd(t *testing.T) {
 		{
 			libaggregate.Aggregate{
 				Name: "agg_3", Query: getQuery(), Timestamp: 123,
-				Options: libaggregate.AggOptions{AggType: "stream", Duration: 6 * 3600},
+				Options: libaggregate.AggOptions{AggType: "list", Duration: 6 * 3600},
 			},
 			value.List{},
 			value.Int(uid), value.List{value.Int(1), value.Int(2)},
@@ -88,6 +88,15 @@ func TestEndToEnd(t *testing.T) {
 			},
 			value.Double(0),
 			value.Int(uid), value.Double(0.5),
+			nil,
+		},
+		{
+			libaggregate.Aggregate{
+				Name: "agg_7", Query: getQuery(), Timestamp: 123,
+				Options: libaggregate.AggOptions{AggType: "average", Duration: 6 * 3600},
+			},
+			value.Double(0),
+			value.Int(uid), value.Double(1.5),
 			nil,
 		},
 	}

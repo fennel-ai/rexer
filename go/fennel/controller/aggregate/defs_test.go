@@ -2,13 +2,14 @@ package aggregate
 
 import (
 	"context"
+	"fmt"
+	"testing"
+	"time"
+
 	"fennel/engine/ast"
 	"fennel/lib/aggregate"
 	"fennel/lib/ftypes"
 	"fennel/test"
-	"fmt"
-	"testing"
-	"time"
 
 	"github.com/stretchr/testify/assert"
 )
@@ -22,7 +23,7 @@ func TestRetrieveAll(t *testing.T) {
 	agg := aggregate.Aggregate{
 		Timestamp: 1,
 		Options: aggregate.AggOptions{
-			AggType:  "rolling_counter",
+			AggType:  "count",
 			Duration: 3600 * 24,
 		},
 	}
@@ -58,7 +59,7 @@ func TestDuplicate(t *testing.T) {
 		Query:     ast.Query{},
 		Timestamp: 1,
 		Options: aggregate.AggOptions{
-			AggType:  "rolling_counter",
+			AggType:  "count",
 			Duration: uint64(time.Hour * 24 * 7),
 		},
 	}
@@ -95,7 +96,7 @@ func TestDeactivate(t *testing.T) {
 		Query:     ast.MakeInt(4),
 		Timestamp: 1,
 		Options: aggregate.AggOptions{
-			AggType:  "rolling_counter",
+			AggType:  "count",
 			Duration: uint64(time.Hour * 24 * 7),
 		},
 	}

@@ -199,7 +199,7 @@ func TestStream(t *testing.T) {
 			expected = append(expected, value.Int(i))
 		}
 	}
-	histogram := counter2.Stream{Duration: 28 * 3600}
+	histogram := counter2.List{Duration: 28 * 3600}
 	err = Update(ctx, tier, aggname, table, histogram)
 	assert.NoError(t, err)
 
