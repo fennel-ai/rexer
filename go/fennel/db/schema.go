@@ -2,11 +2,12 @@ package db
 
 import (
 	"database/sql"
+	"github.com/jmoiron/sqlx"
 )
 
 type Schema map[uint32]string
 
-func initSchemaVersion(db Connection) error {
+func initSchemaVersion(db *sqlx.DB) error {
 	_, err := db.Exec(`
 			create table if not exists schema_version (
 			version INT NOT NULL
@@ -14,7 +15,7 @@ func initSchemaVersion(db Connection) error {
 	return err
 }
 
-func schemaVersion(db Connection) (uint32, error) {
+func schemaVersion(db *sqlx.DB) (uint32, error) {
 	row := db.QueryRow("SELECT version FROM schema_version")
 	var total sql.NullInt32
 	row.Scan(&total)
@@ -26,7 +27,7 @@ func schemaVersion(db Connection) (uint32, error) {
 	}
 }
 
-func incrementSchemaVersion(db Connection, curr uint32) error {
+func incrementSchemaVersion(db *sqlx.DB, curr uint32) error {
 	var err error
 	if curr == 0 {
 		_, err = db.Query("INSERT INTO schema_version VALUES (?);", 1)
@@ -36,7 +37,7 @@ func incrementSchemaVersion(db Connection, curr uint32) error {
 	return err
 }
 
-func syncSchema(db Connection, defs Schema) error {
+func syncSchema(db *sqlx.DB, defs Schema) error {
 	if err := initSchemaVersion(db); err != nil {
 		return err
 	}
