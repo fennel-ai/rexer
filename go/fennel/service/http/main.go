@@ -6,7 +6,6 @@ import (
 	"net"
 	"net/http"
 	"strconv"
-	"time"
 
 	httplib "fennel/lib/http"
 	_ "fennel/opdefs"
@@ -98,8 +97,10 @@ func main() {
 	// standard metrics.
 	common.StartPromMetricsServer(flags.MetricsPort)
 	router.Use(prometheusMiddleware)
-	router.Use(httplib.TimeoutMiddleware(2 * time.Second))
-	router.Use(httplib.RateLimitingMiddleware(1000))
+	// TODO: add-back timeout and rate-limiting middleware once system is more
+	// consistently functioning end-to-end.
+	// router.Use(httplib.TimeoutMiddleware(2 * time.Second))
+	// router.Use(httplib.RateLimitingMiddleware(1000))
 
 	tier, err := tier.CreateFromArgs(&flags.TierArgs)
 	if err != nil {
