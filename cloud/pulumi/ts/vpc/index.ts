@@ -43,9 +43,9 @@ const parseConfig = (): inputType => {
 }
 
 // TODO: Tighten rules for more security.
-function createPublicNacl(vpcId: pulumi.Output<string>, subnets: pulumi.Output<string>[], provider: aws.Provider): pulumi.Output<string> {
+function createPublicNacl(vpc: aws.ec2.Vpc, subnets: pulumi.Output<string>[], provider: aws.Provider): pulumi.Output<string> {
     const privateNacl = new aws.ec2.NetworkAcl("public-nacl", {
-        vpcId: vpcId,
+        vpcId: vpc.id,
         subnetIds: subnets,
         egress: [
             // Allow all egress TCP traffic.
@@ -76,9 +76,9 @@ function createPublicNacl(vpcId: pulumi.Output<string>, subnets: pulumi.Output<s
 }
 
 // TODO: Tighten rules for more security.
-function createPrivateNacl(vpcId: pulumi.Output<string>, subnets: pulumi.Output<string>[], provider: aws.Provider): pulumi.Output<string> {
+function createPrivateNacl(vpc: aws.ec2.Vpc, subnets: pulumi.Output<string>[], provider: aws.Provider): pulumi.Output<string> {
     const privateNacl = new aws.ec2.NetworkAcl("private-nacl", {
-        vpcId: vpcId,
+        vpcId: vpc.id,
         subnetIds: subnets,
         egress: [
             // Allow all egress TCP traffic.
@@ -90,6 +90,15 @@ function createPrivateNacl(vpcId: pulumi.Output<string>, subnets: pulumi.Output<
                 toPort: 65535,
                 protocol: "tcp",
             },
+            // Allow all traffic within vpc.
+            {
+                ruleNo: 101,
+                action: "ALLOW",
+                cidrBlock: vpc.cidrBlock,
+                fromPort: 0,
+                toPort: 0,
+                protocol: "-1",
+            },
         ],
         ingress: [
             // Allow all ingress TCP traffic.
@@ -100,6 +109,15 @@ function createPrivateNacl(vpcId: pulumi.Output<string>, subnets: pulumi.Output<
                 fromPort: 0,
                 toPort: 65535,
                 protocol: "tcp",
+            },
+            // Allow all traffic within vpc.
+            {
+                ruleNo: 101,
+                action: "ALLOW",
+                cidrBlock: vpc.cidrBlock,
+                fromPort: 0,
+                toPort: 0,
+                protocol: "-1",
             },
         ],
         tags: { ...fennelStdTags }
@@ -243,8 +261,8 @@ export const setup = async (input: inputType) => {
     const privateSubnets = [primaryPrivateSubnet.id, secondaryPrivateSubnet.id];
     const publicSubnets = [primaryPublicSubnet.id, secondaryPublicSubnet.id];
 
-    const privateNacl = createPrivateNacl(vpcId, privateSubnets, provider)
-    const publicNacl = createPublicNacl(vpcId, publicSubnets, provider)
+    const privateNacl = createPrivateNacl(vpc, privateSubnets, provider)
+    const publicNacl = createPublicNacl(vpc, publicSubnets, provider)
 
     const publicRouteTable = setupPublicRouteTable(vpcId, publicSubnets, provider)
     const privateRouteTable = setupPrivateRouteTable(vpcId, privateSubnets, primaryPublicSubnet.id, provider)
