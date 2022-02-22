@@ -67,25 +67,11 @@ func (k RemoteProducer) Type() resource.Type {
 
 func (k RemoteProducer) LogProto(ctx context.Context, protoMsg proto.Message, partitionKey []byte) error {
 	defer timer.Start(k.tierID, "kafka.log_proto").ObserveDuration()
-	value, err := proto.Marshal(protoMsg)
+	raw, err := proto.Marshal(protoMsg)
 	if err != nil {
 		return fmt.Errorf("failed to serialize protoMsg to proto: %v", err)
 	}
-	kafkaMsg := kafka.Message{
-		Key:            partitionKey,
-		TopicPartition: kafka.TopicPartition{Topic: &k.topic},
-		Value:          value,
-	}
-	ch := make(chan error, 1)
-	go func() {
-		ch <- k.Produce(&kafkaMsg, nil)
-	}()
-	select {
-	case <-ctx.Done():
-		return fmt.Errorf("context timed out before logging")
-	case err := <-ch:
-		return err
-	}
+	return k.Log(ctx, raw, partitionKey)
 }
 
 var _ FProducer = RemoteProducer{}
