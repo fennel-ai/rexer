@@ -31,9 +31,6 @@ func logKafkaLag(t tier.Tier, consumer kafka.FConsumer) {
 	)
 }
 
-// Set of aggregates that are currently being processed by the system.
-var processedAggregates map[ftypes.AggName]struct{}
-
 func processAggregate(tr tier.Tier, agg libaggregate.Aggregate) error {
 	consumer, err := tr.NewKafkaConsumer(action.ACTIONLOG_KAFKA_TOPIC, string(agg.Name), "earliest")
 	if err != nil {
@@ -73,6 +70,8 @@ func main() {
 	// to know that server has initialized and is ready to take traffic
 	log.Println("server is ready...")
 
+	// Set of aggregates that are currently being processed by the system.
+	processedAggregates := make(map[ftypes.AggName]struct{})
 	ticker := time.NewTicker(time.Minute)
 	for {
 		aggs, err := aggregate.RetrieveAll(context.Background(), tr)
