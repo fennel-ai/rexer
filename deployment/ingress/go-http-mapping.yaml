@@ -8,6 +8,7 @@ spec:
   hostname: "*"
   prefix: /data/
   service: http-server.fennel:2425
+  timeout_ms: 30000
 
 ---
 
