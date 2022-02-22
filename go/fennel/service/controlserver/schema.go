@@ -38,7 +38,7 @@ var Schema = db.Schema{
 				kafka_api_key VARCHAR(128) NOT NULL,
 				kafka_secret_key VARCHAR(128) NOT NULL
 		);`,
-	5: `CREATE TABLE IF NOT EXISTS memorydb (
+	5: `CREATE TABLE IF NOT EXISTS db (
 				instance_id INT UNSIGNED NOT NULL PRIMARY KEY AUTO_INCREMENT,
 				cluster_id VARCHAR(32) NOT NULL,
 				cluster_security_group VARCHAR(32) NOT NULL,
@@ -46,7 +46,7 @@ var Schema = db.Schema{
 				admin_username VARCHAR(32) NOT NULL,
 				admin_password VARCHAR(32) NOT NULL
 		);`,
-	6: `CREATE TABLE IF NOT EXISTS redis (
+	6: `CREATE TABLE IF NOT EXISTS memory_db (
 				instance_id INT UNSIGNED NOT NULL PRIMARY KEY AUTO_INCREMENT,
 				cluster_id VARCHAR(32) NOT NULL,
 				cluster_security_group VARCHAR(32) NOT NULL,
