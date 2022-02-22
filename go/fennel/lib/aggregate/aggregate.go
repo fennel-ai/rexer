@@ -48,7 +48,7 @@ func (agg Aggregate) Validate() error {
 	options := agg.Options
 	aggtype := agg.Options.AggType
 	switch strings.ToLower(aggtype) {
-	case "rolling_counter", "rolling_average":
+	case "rolling_counter", "rolling_average", "min", "max", "stddev", "stream":
 		if options.Duration == 0 {
 			return fmt.Errorf("duration can not be zero for %s", aggtype)
 		}
@@ -64,13 +64,6 @@ func (agg Aggregate) Validate() error {
 		}
 		if options.Duration != 0 {
 			return fmt.Errorf("duration & limit are not relevant for time series and should be set to zero")
-		}
-	case "stream":
-		if options.Duration == 0 {
-			return fmt.Errorf("duration can not be zero for %s", aggtype)
-		}
-		if options.Window != 0 || options.Limit != 0 {
-			return fmt.Errorf("retention, window, and limit should all be zero for %v", aggtype)
 		}
 	default:
 		return fmt.Errorf("unsupported aggregation type: %v", agg.Options.AggType)

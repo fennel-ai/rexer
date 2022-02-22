@@ -42,6 +42,7 @@ func Update(ctx context.Context, tier tier.Tier, consumer kafka.FConsumer, agg a
 		return nil
 	}
 	table, err := transformActions(tier, actions, agg.Query)
+
 	if err != nil {
 		return err
 	}
@@ -122,6 +123,12 @@ func toHistogram(agg aggregate.Aggregate) (modelCounter.Histogram, error) {
 		return modelCounter.RollingAverage{Duration: agg.Options.Duration}, nil
 	case "stream":
 		return modelCounter.Stream{Duration: agg.Options.Duration}, nil
+	case "min":
+		return modelCounter.Min{Duration: agg.Options.Duration}, nil
+	case "max":
+		return modelCounter.Max{Duration: agg.Options.Duration}, nil
+	case "stddev":
+		return modelCounter.Stddev{Duration: agg.Options.Duration}, nil
 	default:
 		return nil, fmt.Errorf("invalid aggregate type: %v", agg.Options.AggType)
 	}
