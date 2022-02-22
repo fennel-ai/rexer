@@ -15,6 +15,9 @@ func TestAggregate_Validate_Valid(t *testing.T) {
 		{Name: "some name", Options: AggOptions{AggType: "timeseries_counter", Window: ftypes.Window_DAY, Limit: 10}},
 		{Name: "some name", Options: AggOptions{AggType: "timeseries_counter", Window: ftypes.Window_HOUR, Limit: 10}},
 		{Name: "some name", Options: AggOptions{AggType: "stream", Duration: 1212}},
+		{Name: "some name", Options: AggOptions{AggType: "min", Duration: 1212}},
+		{Name: "some name", Options: AggOptions{AggType: "max", Duration: 1212}},
+		{Name: "some name", Options: AggOptions{AggType: "stddev", Duration: 1212}},
 	}
 	for _, test := range validCases {
 		assert.NoError(t, test.Validate())
@@ -38,6 +41,18 @@ func TestAggregate_Validate_Invalid(t *testing.T) {
 		{Options: AggOptions{AggType: "stream", Window: ftypes.Window_HOUR, Duration: 12}},
 		{Options: AggOptions{AggType: "stream", Window: ftypes.Window_HOUR}},
 		{Options: AggOptions{AggType: "stream"}},
+		{Options: AggOptions{AggType: "min", Window: ftypes.Window_HOUR, Limit: 10, Duration: 12}},
+		{Options: AggOptions{AggType: "min", Window: ftypes.Window_HOUR, Duration: 12}},
+		{Options: AggOptions{AggType: "min", Window: ftypes.Window_HOUR}},
+		{Options: AggOptions{AggType: "min"}},
+		{Options: AggOptions{AggType: "max", Window: ftypes.Window_HOUR, Limit: 10, Duration: 12}},
+		{Options: AggOptions{AggType: "max", Window: ftypes.Window_HOUR, Duration: 12}},
+		{Options: AggOptions{AggType: "max", Window: ftypes.Window_HOUR}},
+		{Options: AggOptions{AggType: "max"}},
+		{Options: AggOptions{AggType: "stddev", Window: ftypes.Window_HOUR, Limit: 10, Duration: 12}},
+		{Options: AggOptions{AggType: "stddev", Window: ftypes.Window_HOUR, Duration: 12}},
+		{Options: AggOptions{AggType: "stddev", Window: ftypes.Window_HOUR}},
+		{Options: AggOptions{AggType: "stddev"}},
 		{Options: AggOptions{AggType: "random", Duration: 41}},
 	}
 	for _, test := range validCases {

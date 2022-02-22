@@ -2,12 +2,13 @@ package counter
 
 import (
 	"context"
+	"fmt"
+	"time"
+
 	"fennel/lib/ftypes"
 	"fennel/lib/value"
 	"fennel/redis"
 	"fennel/tier"
-	"fmt"
-	"time"
 )
 
 // global version of counter namespace - increment to invalidate all data stored in redis
