@@ -7,11 +7,11 @@ import (
 	"fennel/lib/value"
 )
 
-type Stream struct {
+type List struct {
 	Duration uint64
 }
 
-func (s Stream) extract(v value.Value) (value.List, error) {
+func (s List) extract(v value.Value) (value.List, error) {
 	l, ok := v.(value.List)
 	if !ok {
 		return value.List{}, fmt.Errorf("value expected to be list but instead found: %v", v)
@@ -19,12 +19,12 @@ func (s Stream) extract(v value.Value) (value.List, error) {
 	return l, nil
 }
 
-func (s Stream) Start(end ftypes.Timestamp) ftypes.Timestamp {
+func (s List) Start(end ftypes.Timestamp) ftypes.Timestamp {
 	return end - ftypes.Timestamp(s.Duration)
 }
 
 // Reduce just appends all the lists to an empty list
-func (s Stream) Reduce(values []value.Value) (value.Value, error) {
+func (s List) Reduce(values []value.Value) (value.Value, error) {
 	z := s.Zero().(value.List)
 	for i := range values {
 		l, err := s.extract(values[i])
@@ -36,7 +36,7 @@ func (s Stream) Reduce(values []value.Value) (value.Value, error) {
 	return z, nil
 }
 
-func (s Stream) Merge(a, b value.Value) (value.Value, error) {
+func (s List) Merge(a, b value.Value) (value.Value, error) {
 	la, err := s.extract(a)
 	if err != nil {
 		return nil, err
@@ -51,11 +51,11 @@ func (s Stream) Merge(a, b value.Value) (value.Value, error) {
 	return value.List(ret), nil
 }
 
-func (s Stream) Zero() value.Value {
+func (s List) Zero() value.Value {
 	return value.List{}
 }
 
-func (s Stream) Bucketize(actions value.Table) ([]Bucket, error) {
+func (s List) Bucketize(actions value.Table) ([]Bucket, error) {
 	schema := actions.Schema()
 	_, ok := schema["groupkey"]
 	if !ok {
@@ -78,10 +78,10 @@ func (s Stream) Bucketize(actions value.Table) ([]Bucket, error) {
 	return buckets, nil
 }
 
-func (s Stream) Windows() []ftypes.Window {
+func (s List) Windows() []ftypes.Window {
 	return []ftypes.Window{
 		ftypes.Window_MINUTE, ftypes.Window_HOUR, ftypes.Window_DAY,
 	}
 }
 
-var _ Histogram = Stream{}
+var _ Histogram = List{}

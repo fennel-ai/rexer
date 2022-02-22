@@ -3,14 +3,15 @@ package main
 import (
 	"context"
 	"encoding/json"
-	aggregate2 "fennel/controller/aggregate"
-	"fennel/engine/ast"
-	"fennel/lib/aggregate"
-	"fennel/model/counter"
 	"io/ioutil"
 	"net/http/httptest"
 	"strings"
 	"testing"
+
+	aggregate2 "fennel/controller/aggregate"
+	"fennel/engine/ast"
+	"fennel/lib/aggregate"
+	"fennel/model/counter"
 
 	"fennel/client"
 	"fennel/lib/action"
@@ -204,7 +205,7 @@ func TestServer_AggregateValue_Valid(t *testing.T) {
 		Query:     ast.MakeInt(1),
 		Timestamp: t0,
 		Options: aggregate.AggOptions{
-			AggType:  "rolling_counter",
+			AggType:  "count",
 			Duration: 6 * 3600,
 		},
 	}
@@ -246,7 +247,7 @@ func TestStoreRetrieveDeactivateAggregate(t *testing.T) {
 		Name:  "mycounter",
 		Query: ast.MakeInt(1),
 		Options: aggregate.AggOptions{
-			AggType:  "rolling_counter",
+			AggType:  "count",
 			Duration: 3600 * 24,
 		},
 		Timestamp: 123,
@@ -261,7 +262,7 @@ func TestStoreRetrieveDeactivateAggregate(t *testing.T) {
 		Name:  "mycounter",
 		Query: ast.MakeDouble(3.4),
 		Options: aggregate.AggOptions{
-			AggType:  "rolling_counter",
+			AggType:  "count",
 			Duration: 3600 * 24 * 2,
 		},
 		Timestamp: 123,

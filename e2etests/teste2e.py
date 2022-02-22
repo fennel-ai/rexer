@@ -128,7 +128,7 @@ class TestLoad(unittest.TestCase):
             Ops.profile.addField(name='age_group', otype='user', oid=it.actor_id, key='age_group'),
             Ops.std.addField(name='key', value=List(it.target_id, it.city, it.gender, it.age_group)),
         )
-        options = {'duration': 3600*24*2, 'aggregate_type': 'rolling_counter', }
+        options = {'duration': 3600*24*2, 'aggregate_type': 'count', }
         c.store_aggregate('trail_view_by_city_gender_agegroup_2days', q, options)
 
         # Avg-watchtime of a  video for given country+OS+city_sate+mobile_brand+gender in 30 days
@@ -144,7 +144,7 @@ class TestLoad(unittest.TestCase):
             Ops.std.addField(name='amount', value=it.metadata.watch_time),
             Ops.std.addField(name='key', value=[it.target_id, it.country, it.os, it.city, it.mobile_brand, it.gender]),
         )
-        options = {'aggregate_type': 'rolling_average', 'duration': 3600*24*30}
+        options = {'aggregate_type': 'average', 'duration': 3600*24*30}
         c.store_aggregate('video_avg_watchtime_by_country_os_citystate_mobile_gender_30days', q, options)
 
         # Avg-watchtime of a user id  for creatorId in 2-hour window averaged over 30 days
@@ -155,7 +155,7 @@ class TestLoad(unittest.TestCase):
             Ops.std.addField(name='amount', value=it.metadata.watch_time),
             Ops.std.addField(name='key', value=[it.actor_id, it.creator_id]),
         )
-        options = {'aggregate_type': 'rolling_average', 'duration': 3600*24*30}
+        options = {'aggregate_type': 'average', 'duration': 3600*24*30}
         c.store_aggregate('user_creator_avg_watchtime_by_2hour_windows_30days', q, options)
 
 

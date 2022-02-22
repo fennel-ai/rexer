@@ -10,9 +10,9 @@ import (
 	"fennel/lib/value"
 )
 
-func TestStream_Reduce(t *testing.T) {
+func TestList_Reduce(t *testing.T) {
 	t.Parallel()
-	h := Stream{}
+	h := List{}
 	cases := []struct {
 		input  []value.Value
 		output value.Value
@@ -50,9 +50,9 @@ func TestStream_Reduce(t *testing.T) {
 	}
 }
 
-func TestStream_Merge_Valid(t *testing.T) {
+func TestList_Merge_Valid(t *testing.T) {
 	t.Parallel()
-	h := Stream{}
+	h := List{}
 	validCases := []struct {
 		input1 value.Value
 		input2 value.Value
@@ -91,7 +91,7 @@ func TestStream_Merge_Valid(t *testing.T) {
 	}
 }
 
-func TestStream_Merge_Invalid(t *testing.T) {
+func TestList_Merge_Invalid(t *testing.T) {
 	t.Parallel()
 	h := RollingAverage{}
 	invalidCases := []struct {
@@ -124,9 +124,9 @@ func TestStream_Merge_Invalid(t *testing.T) {
 	}
 }
 
-func TestStream_Bucketize_Valid(t *testing.T) {
+func TestList_Bucketize_Valid(t *testing.T) {
 	t.Parallel()
-	h := Stream{}
+	h := List{}
 	actions := value.NewTable()
 	expected := make([]Bucket, 0)
 	DAY := 3600 * 24
@@ -148,7 +148,7 @@ func TestStream_Bucketize_Valid(t *testing.T) {
 	assert.ElementsMatch(t, expected, buckets)
 }
 
-func TestStream_Bucketize_Invalid(t *testing.T) {
+func TestList_Bucketize_Invalid(t *testing.T) {
 	t.Parallel()
 	h := RollingAverage{}
 	cases := [][]value.Dict{

@@ -28,7 +28,7 @@ func TestAggValue_Apply(t *testing.T) {
 	agg := libaggregate.Aggregate{
 		Name: "counter1", Query: getQuery(), Timestamp: 123,
 		Options: libaggregate.AggOptions{
-			AggType:  "rolling_counter",
+			AggType:  "count",
 			Duration: 6 * 3600,
 		},
 	}
