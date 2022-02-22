@@ -4,10 +4,11 @@ import (
 	"fennel/lib/ftypes"
 	"fennel/resource"
 	"fmt"
+	"os"
+
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/jmoiron/sqlx"
 	_ "github.com/mattn/go-sqlite3"
-	"os"
 )
 
 type Connection struct {
@@ -53,7 +54,7 @@ func (conf SQLiteConfig) Materialize(tierID ftypes.TierID) (resource.Resource, e
 	}
 	file.Close()
 
-	DB, err := sqlx.Open("sqlite3", fmt.Sprintf("./%s", dbname))
+	DB, err := sqlx.Connect("sqlite3", fmt.Sprintf("./%s", dbname))
 	if err != nil {
 		return nil, err
 	}
@@ -86,7 +87,7 @@ func (conf MySQLConfig) Materialize(tierID ftypes.TierID) (resource.Resource, er
 	}
 	dbname := resource.TieredName(tierID, conf.DBname)
 	connectStr := fmt.Sprintf("%s:%s@tcp(%s)/%s?tls=true", conf.Username, conf.Password, conf.Host, dbname)
-	DB, err := sqlx.Open("mysql", connectStr)
+	DB, err := sqlx.Connect("mysql", connectStr)
 	if err != nil {
 		return nil, err
 	}
