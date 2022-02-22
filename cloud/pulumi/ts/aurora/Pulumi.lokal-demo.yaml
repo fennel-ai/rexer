@@ -1,7 +1,10 @@
 config:
-  aurora:eksSecurityGroup: sg-0006d194d4056a089
+  aurora:connectedSecurityGroups: '["sg-0006d194d4056a089"]'
   aurora:maxCapacity: "16"
   aurora:minCapacity: "8"
+  aurora:password:
+    secure: AAABAPtkmfHwUPkgAVAzTjJ+hUrmbBnSKgeKUnZI0uDbP6B3oOKkMwtS
+  aurora:username: admin
   aurora:vpcId: vpc-0e6a5fb976f69b466
   aws:profile: admin
   aws:region: ap-south-1

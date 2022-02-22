@@ -1,7 +1,6 @@
 import * as pulumi from "@pulumi/pulumi";
 import * as aws from "@pulumi/aws";
 import * as process from "process";
-import * as passwordgen from "generate-password";
 
 // TODO: use version from common library.
 // operator for type-safety for string key access:
@@ -17,15 +16,15 @@ export const plugins = {}
 
 export type inputType = {
     vpcId: string,
-    eksSecurityGroup: string,
     minCapacity: number,
     maxCapacity: number,
+    username: string,
+    password: pulumi.Output<string>,
+    connectedSecurityGroups: { [key: string]: string }
 }
 
 export type outputType = {
     host: pulumi.Output<string>,
-    username: string,
-    password: string,
 }
 
 
@@ -35,7 +34,9 @@ const parseConfig = (): inputType => {
         vpcId: config.require(nameof<inputType>("vpcId")),
         minCapacity: config.requireNumber(nameof<inputType>("minCapacity")),
         maxCapacity: config.requireNumber(nameof<inputType>("maxCapacity")),
-        eksSecurityGroup: config.require(nameof<inputType>("eksSecurityGroup")),
+        connectedSecurityGroups: config.requireObject(nameof<inputType>("connectedSecurityGroups")),
+        username: config.require(nameof<inputType>("username")),
+        password: config.requireSecret(nameof<inputType>("password")),
     }
 }
 
@@ -62,18 +63,17 @@ export const setup = async (input: inputType) => {
         tags: { ...fennelStdTags },
     })
 
-    const allowEksTraffic = new aws.ec2.SecurityGroupRule("allow-eks", {
-        securityGroupId: securityGroup.id,
-        sourceSecurityGroupId: input.eksSecurityGroup,
-        // TODO: restrict port.
-        fromPort: 0,
-        toPort: 65535,
-        type: "ingress",
-        protocol: "tcp",
-    })
-
-    const masterUsername = "admin";
-    const masterPassword = passwordgen.generate({ strict: true });
+    let sgRules: pulumi.Output<string>[] = []
+    for (var key in input.connectedSecurityGroups) {
+        sgRules.push(new aws.ec2.SecurityGroupRule(`allow-${key}`, {
+            securityGroupId: securityGroup.id,
+            sourceSecurityGroupId: input.connectedSecurityGroups[key],
+            fromPort: 0,
+            toPort: 65535,
+            type: "ingress",
+            protocol: "tcp",
+        }).id)
+    }
 
     const cluster = new aws.rds.Cluster("db-instance", {
         dbSubnetGroupName: subnetGroup.name,
@@ -81,20 +81,20 @@ export const setup = async (input: inputType) => {
         clusterIdentifierPrefix: "fenneldb-",
         engine: aws.rds.EngineType.AuroraMysql,
         engineMode: aws.rds.EngineMode.Serverless,
-        engineVersion: "5.7.mysql_aurora.2.10.2",
-        masterUsername: masterUsername,
-        masterPassword: masterPassword,
+        engineVersion: "5.7.mysql_aurora.2.07.1",
+        masterUsername: input.username,
+        masterPassword: input.password,
         scalingConfiguration: {
             minCapacity: input.minCapacity,
             maxCapacity: input.maxCapacity,
         },
+        // TODO: Remove this for prod clusters.
+        skipFinalSnapshot: true,
         tags: { ...fennelStdTags }
     })
 
     const output: outputType = {
         host: cluster.endpoint,
-        username: masterUsername,
-        password: masterPassword,
     }
 
     return output
