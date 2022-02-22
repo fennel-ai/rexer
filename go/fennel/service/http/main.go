@@ -90,6 +90,7 @@ func main() {
 		common.PrometheusArgs
 	}
 	arg.MustParse(&flags)
+	log.SetFlags(log.LstdFlags | log.Lshortfile)
 
 	router := mux.NewRouter()
 
