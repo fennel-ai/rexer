@@ -61,6 +61,8 @@ func main() {
 	}
 	// Parse flags / environment variables.
 	arg.MustParse(&flags)
+	log.SetFlags(log.LstdFlags | log.Lshortfile)
+
 	tr, err := tier.CreateFromArgs(&flags.TierArgs)
 	if err != nil {
 		panic(err)

@@ -142,7 +142,10 @@ func CreateFromArgs(args *TierArgs) (tier Tier, err error) {
 	} else {
 		config := zap.NewProductionConfig()
 		config.EncoderConfig.EncodeTime = zapcore.RFC3339TimeEncoder
-		logger, err = config.Build()
+		logger, err = config.Build(
+			zap.AddCaller(),
+			zap.AddStacktrace(zap.ErrorLevel),
+		)
 	}
 	if err != nil {
 		return tier, fmt.Errorf("failed to construct logger: %v", err)
