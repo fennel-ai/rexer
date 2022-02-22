@@ -1,14 +1,19 @@
 config:
   aws:region: ap-south-1
+  configs:cache-conf:
+    primary:
+      secure: AAABAGpKQnbdDYf7otdAUDgmhoaOLvWwlpXTstKV4xucyQZe/nwNG+9qu2meaVxPp/RxQzWKPZT7zfUy9JBTZxIIJiuf9kMQ2BbfqX90Xd+hRB1zyC6lT/h1N4EXaOqkgtLKMwkz7rcA
+    replica:
+      secure: AAABAG43j1u8KBojMpT/ZauwCthe3jPOgoki9GZVyO1oNhEaq4gknra/wljWT3IEYj2/5sl7EeDNe6lgriCZ1YthhaVazZYkjQ0XN8ucq6wrJLI+hI5lpOdMSLN1rYI4Xrrg7VgxiZ/g
   configs:db-conf:
     db:
       secure: AAABAPl1TvBDNF0RNDeNbStyulCI9vf/O3LISWnbpZ6uIA==
     host:
-      secure: AAABABcnrg0nIuaj3gOsBQcN4sp/4T98sRUjvhAcbyqSvZOwI2/0LI+dvVZPqWSeQRAb1kwftHVHDIb7B1aY5KZs
+      secure: AAABAAvQoHfhAwGxX3OIL6Y+ScoOEv2X8I2zYdwBCq2qoeCNTsGRmn5meh1rVdmHOz8wotWiLEyKDA4R624CgKxc
     password:
-      secure: AAABAIWwxRSjQTl8Sc8xjHlABDB6lAI8X7wF3Cajth79jIi+w0xqS5Te8EHeVqKL5FUjSDWNvQHrIbQ7pyCyiZphIJC++2lQjljPP4oGOYX9FmUcVw==
+      secure: AAABAFDUAzrGTZqHIRUHZz9abjsA9/LjSmknlEpMXtid7zgZvGpRBCgYeeVtvG9ciXFuZ/FTvGpUDmwIf7qHbLmFjRhb3qgNct8zg4zJXHBlxIBvqg==
     username:
-      secure: AAABAFhdVRK3V2+WyHWGLWdwmEV697+/+X2cpXB78hEL/a5ef9CtTpshQVk=
+      secure: AAABAI38nwDKBSdL1ni/NdvHtZ/ldJdPVYlqsQJ/ZabHU4t18EcO/BHkhCc=
   configs:kafka-conf:
     password:
       secure: AAABAOXy7h1bLjpYCFKVHF7WeWaSEoTCWnCiZoB4kPCaV8lHTwYL2OgkmT8UK8wZJDJIrAPMd+Q+HG14VBWv/npCQ5MZap7BoZV+RdBi1hGpxEvRd9PvsBQiaZMK9Tj8
