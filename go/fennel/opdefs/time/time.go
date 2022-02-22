@@ -1,10 +1,20 @@
 package time
 
 import (
+	"fmt"
+
 	"fennel/engine/operators"
 	"fennel/lib/value"
-	"fmt"
 )
+
+func init() {
+	ops := []operators.Operator{timeBucketOfDay{}, dayOfWeek{}}
+	for _, op := range ops {
+		if err := operators.Register(op); err != nil {
+			panic(err)
+		}
+	}
+}
 
 type timeBucketOfDay struct{}
 
