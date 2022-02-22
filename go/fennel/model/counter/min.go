@@ -66,7 +66,7 @@ func (m Min) Reduce(values []value.Value) (value.Value, error) {
 		}
 		minv, empty = m.merge(minv, empty, v, e)
 	}
-	return value.List{value.Int(minv), value.Bool(empty)}, nil
+	return value.Int(minv), nil
 }
 
 func (m Min) Merge(a, b value.Value) (value.Value, error) {

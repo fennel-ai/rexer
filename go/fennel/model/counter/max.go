@@ -66,7 +66,7 @@ func (m Max) Reduce(values []value.Value) (value.Value, error) {
 		}
 		maxv, empty = m.merge(maxv, empty, v, e)
 	}
-	return value.List{value.Int(maxv), value.Bool(empty)}, nil
+	return value.Int(maxv), nil
 }
 
 func (m Max) Merge(a, b value.Value) (value.Value, error) {

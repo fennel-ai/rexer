@@ -18,14 +18,20 @@ func TestMax_Reduce(t *testing.T) {
 		output value.Value
 	}{{
 		makeMaxVals([]int64{2, 7, 5}, []bool{false, false, false}),
-		makeMaxVal(7, false),
+		value.Int(7),
 	}, {
 		makeMaxVals([]int64{0}, []bool{true}),
-		makeMaxVal(0, true),
-	}, {
-		makeMaxVals([]int64{-4, -7, 2}, []bool{false, false, true}),
-		makeMaxVal(-4, false),
-	}}
+		value.Int(0),
+	},
+		{
+			makeMaxVals([]int64{-4, -7, 2}, []bool{false, false, true}),
+			value.Int(-4),
+		},
+		{
+			makeMaxVals([]int64{}, []bool{}),
+			value.Int(0),
+		},
+	}
 	for _, c := range cases {
 		found, err := h.Reduce(c.input)
 		assert.NoError(t, err)
