@@ -58,7 +58,7 @@ func (conf SQLiteConfig) Materialize(tierID ftypes.TierID) (resource.Resource, e
 		return nil, err
 	}
 	conn := Connection{config: conf, DB: DB, tierID: tierID}
-	if err = syncSchema(conn, conf.schema); err != nil {
+	if err = syncSchema(conn.DB, conf.schema); err != nil {
 		return nil, err
 	}
 	return conn, nil
@@ -95,7 +95,7 @@ func (conf MySQLConfig) Materialize(tierID ftypes.TierID) (resource.Resource, er
 	DB.SetConnMaxLifetime(0) // 0, connections are reused forever.
 
 	conn := Connection{config: conf, DB: DB, tierID: tierID}
-	if err := syncSchema(conn, conf.Schema); err != nil {
+	if err := syncSchema(conn.DB, conf.Schema); err != nil {
 		return nil, err
 	}
 	return conn, nil

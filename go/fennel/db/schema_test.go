@@ -79,16 +79,16 @@ func TestSyncSchema(t *testing.T) {
 	db.DB = conn
 
 	// since we just created a new DB, it's version starts at zero
-	version, err := schemaVersion(db)
+	version, err := schemaVersion(db.DB)
 	assert.NoError(t, err)
 	assert.Equal(t, uint32(0), version)
 
 	// now we slowly apply all the schemas and it should work without any errors
-	err = syncSchema(db, config.Schema)
+	err = syncSchema(db.DB, config.Schema)
 	assert.NoError(t, err)
 
 	// version should be at one now
-	version, err = schemaVersion(db)
+	version, err = schemaVersion(db.DB)
 	assert.NoError(t, err)
 	assert.True(t, version == 1)
 
