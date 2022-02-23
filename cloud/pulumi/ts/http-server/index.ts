@@ -6,7 +6,6 @@ import * as path from "path";
 import * as process from "process";
 
 
-const namespace = "fennel"
 const name = "http-server"
 
 // TODO: use version from common library.
@@ -22,26 +21,47 @@ export const fennelStdTags = {
 export const plugins = {
     "kubernetes": "3.14.1",
     "docker": "v3.1.0",
-    "aws": "v4.0.0"
+    "aws": "v4.37.4"
 }
 
-export type inputType = {}
+export type inputType = {
+    region: string,
+    roleArn: string,
+    kubeconfig: string,
+    namespace: string,
+}
 
-export type outputType = {}
+export type outputType = {
+    svc: pulumi.Output<k8s.core.v1.Service>,
+}
 
 const parseConfig = (): inputType => {
     const config = new pulumi.Config();
-    return {}
+    return {
+        region: config.require(nameof<inputType>("region")),
+        roleArn: config.require(nameof<inputType>("roleArn")),
+        kubeconfig: config.require(nameof<inputType>("kubeconfig")),
+        namespace: config.require(nameof<inputType>("namespace")),
+    }
 }
 
 export const setup = async (input: inputType) => {
+    const awsProvider = new aws.Provider("aws-provider", {
+        region: <aws.Region>input.region,
+        assumeRole: {
+            roleArn: input.roleArn,
+            // TODO: Also populate the externalId field to prevent "confused deputy"
+            // attacks: https://docs.aws.amazon.com/IAM/latest/UserGuide/confused-deputy.html
+        }
+    })
+
     // Create a private ECR repository.
     const repo = new aws.ecr.Repository("http-server-repo", {
         imageScanningConfiguration: {
             scanOnPush: true
         },
         imageTagMutability: "MUTABLE"
-    });
+    }, { provider: awsProvider });
 
     // Get registry info (creds and endpoint).
     const imageName = repo.repositoryUrl;
@@ -61,7 +81,6 @@ export const setup = async (input: inputType) => {
 
     const root = process.env["FENNEL_ROOT"]!
 
-
     // Build and publish the container image.
     const image = new docker.Image("http-server-img", {
         build: {
@@ -75,6 +94,11 @@ export const setup = async (input: inputType) => {
         registry: registryInfo,
     });
 
+    const k8sProvider = new k8s.Provider("k8s-provider", {
+        kubeconfig: input.kubeconfig,
+        namespace: input.namespace,
+    })
+
     const baseImageName = image.baseImageName;
     const fullImageName = image.imageName;
 
@@ -85,7 +109,6 @@ export const setup = async (input: inputType) => {
         return new k8s.apps.v1.Deployment("http-server-deployment", {
             metadata: {
                 name: "http-server",
-                namespace: namespace,
             },
             spec: {
                 selector: { matchLabels: appLabels },
@@ -93,7 +116,6 @@ export const setup = async (input: inputType) => {
                 template: {
                     metadata: {
                         labels: appLabels,
-                        namespace: namespace,
                         annotations: {
                             "prometheus.io/scrape": "true",
                             "prometheus.io/port": metricsPort.toString(),
@@ -225,7 +247,7 @@ export const setup = async (input: inputType) => {
                     },
                 },
             },
-        }, { deleteBeforeReplace: true });
+        }, { provider: k8sProvider, deleteBeforeReplace: true });
     })
 
     const appSvc = appDep.apply(() => {
@@ -233,17 +255,19 @@ export const setup = async (input: inputType) => {
             metadata: {
                 labels: appLabels,
                 name: name,
-                namespace: namespace,
             },
             spec: {
                 type: "ClusterIP",
                 ports: [{ port: 2425, targetPort: 2425, protocol: "TCP" }],
                 selector: appLabels,
             },
-        }, { deleteBeforeReplace: true })
+        }, { provider: k8sProvider, deleteBeforeReplace: true })
     }
     )
-    const output: outputType = {}
+
+    const output: outputType = {
+        svc: appSvc,
+    }
     return output
 }
 
