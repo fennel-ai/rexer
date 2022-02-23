@@ -67,6 +67,15 @@ func TestIntegration(t *testing.T) {
 		defer teardownKafkaTopics(tierID, "topic")
 		testSameConsumerGroup(t, producer, consumer1, consumer2)
 	})
+	t.Run("integration_no_auto_commit", func(t *testing.T) {
+		t.Parallel()
+		tierID := ftypes.TierID(rand.Uint32())
+		producer := integrationProducer(t, tierID, topic)
+		consumer1 := integrationConsumer(t, tierID, topic, "group", "earliest")
+		consumer2 := integrationConsumer(t, tierID, topic, "group", "earliest")
+		defer teardownKafkaTopics(tierID, "topic")
+		testNoAutoCommit(t, producer, consumer1, consumer2)
+	})
 }
 
 func setupKafkaTopics(tierID ftypes.TierID, topic string) error {

@@ -121,12 +121,12 @@ func testBacklog(t *testing.T, producer FProducer, consumer FConsumer) {
 		assert.NoError(t, producer.Flush(time.Second*5))
 	}()
 
-	// Read 1 message. This is required to actually have the Broker assign a
+	// Read 2 messages. This is required to actually have the Broker assign a
 	// partition to the consumer.
 	go func() {
 		defer wg.Done()
 		defer consumer.Close()
-		found, err := consumer.ReadBatch(ctx, 2, time.Second*5)
+		found, err := consumer.ReadBatch(ctx, 2, time.Second*30)
 		assert.NoError(t, err)
 		assert.ElementsMatch(t, [][]byte{message, message}, found)
 		// Commit the read offset.
@@ -209,6 +209,42 @@ func testSameConsumerGroup(t *testing.T, producer FProducer, consumer1, consumer
 	wg.Wait()
 	found := append(found1, found2...)
 	assert.ElementsMatch(t, expected, found)
+}
+
+func testNoAutoCommit(t *testing.T, producer FProducer, consumer1, consumer2 FConsumer) {
+	// verify that if a consumer closes before committing, its messages
+	// get assigned to another consumer
+	// NOTE: current local / mock kafka implementation doesn't support commits so this
+	// only applies to the remote kafka
+	ctx := context.Background()
+	expected := make([][]byte, 0)
+	found := make([][]byte, 0)
+	for i := 0; i < 10; i++ {
+		expected = append(expected, []byte(fmt.Sprintf("%d", i)))
+	}
+	wg := sync.WaitGroup{}
+	wg.Add(2)
+	go func() {
+		defer wg.Done()
+		defer producer.Close()
+		for _, msg := range expected {
+			assert.NoError(t, producer.Log(ctx, msg, nil))
+		}
+	}()
+	go func() {
+		// consumer 1 reads some messages but then closes before doing commit
+		defer wg.Done()
+		_, err := consumer1.ReadBatch(ctx, 5, time.Second*30)
+		assert.NoError(t, err)
+		consumer1.Close()
+	}()
+	wg.Wait()
+	// now consumer 2 is kicked off, which should be able to read all messages
+	defer consumer2.Close()
+	found, err := consumer2.ReadBatch(ctx, 10, time.Second*30)
+	assert.NoError(t, err)
+	assert.NoError(t, consumer2.Commit())
+	assert.ElementsMatch(t, found, expected)
 }
 
 func TestLocal(t *testing.T) {

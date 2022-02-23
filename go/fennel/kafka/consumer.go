@@ -184,6 +184,10 @@ func (conf RemoteConsumerConfig) Materialize(tierID ftypes.TierID) (resource.Res
 	if err := configmap.SetKey("auto.offset.reset", conf.OffsetPolicy); err != nil {
 		return nil, err
 	}
+	// disable auto committing so we can have tighter control over it
+	if err := configmap.SetKey("enable.auto.commit", false); err != nil {
+		return nil, err
+	}
 	consumer, err := kafka.NewConsumer(configmap)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create kafka consumer: %v", err)
