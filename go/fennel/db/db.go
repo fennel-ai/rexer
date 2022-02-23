@@ -5,6 +5,7 @@ import (
 	"fennel/resource"
 	"fmt"
 	"os"
+	"time"
 
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/jmoiron/sqlx"
@@ -91,9 +92,15 @@ func (conf MySQLConfig) Materialize(tierID ftypes.TierID) (resource.Resource, er
 	if err != nil {
 		return nil, err
 	}
-	DB.SetMaxOpenConns(800)  // The default is 0 (unlimited)
-	DB.SetMaxIdleConns(100)  // defaultMaxIdleConns = 2
-	DB.SetConnMaxLifetime(0) // 0, connections are reused forever.
+	// The default is 0 (unlimited)
+	DB.SetMaxOpenConns(800)
+	// defaultMaxIdleConns = 2
+	DB.SetMaxIdleConns(100)
+	// Use connections for an hour before expiry. This is especially useful in
+	// an elastic environment like Aurora where servers might be added or removed
+	// depending on load. Otherwise, connections can remain in a "broken" state and
+	// cause hard-to-debug errors much later.
+	DB.SetConnMaxLifetime(1 * time.Hour)
 
 	conn := Connection{config: conf, DB: DB, tierID: tierID}
 	if err := syncSchema(conn.DB, conf.Schema); err != nil {
