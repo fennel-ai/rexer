@@ -3,7 +3,9 @@ package tier
 import (
 	"crypto/tls"
 	"fmt"
+	"log"
 	"strings"
+	"time"
 
 	"fennel/db"
 	"fennel/kafka"
@@ -86,6 +88,7 @@ type Tier struct {
 func CreateFromArgs(args *TierArgs) (tier Tier, err error) {
 	tierID := args.TierID
 
+	log.Print("Connecting to mysql")
 	mysqlConfig := db.MySQLConfig{
 		Host:     args.MysqlHost,
 		DBname:   args.MysqlDB,
@@ -97,7 +100,16 @@ func CreateFromArgs(args *TierArgs) (tier Tier, err error) {
 	if err != nil {
 		return tier, fmt.Errorf("failed to connect with mysql: %v", err)
 	}
+	// Start a goroutine to periodically record db connection stats.
+	go func() {
+		ticker := time.NewTicker(30 * time.Second)
+		defer ticker.Stop()
+		for ; true; <-ticker.C {
+			db.RecordConnectionStats(sqlConn.(db.Connection).DB, 30*time.Second)
+		}
+	}()
 
+	log.Print("Connecting to redis")
 	redisConfig := redis.ClientConfig{
 		Addr:      args.RedisServer,
 		TLSConfig: &tls.Config{},
@@ -107,6 +119,7 @@ func CreateFromArgs(args *TierArgs) (tier Tier, err error) {
 		return tier, fmt.Errorf("failed to create redis client: %v", err)
 	}
 
+	log.Print("Connecting to cache")
 	cacheClientConfig := redis.ClientConfig{
 		Addr:      args.CachePrimary,
 		TLSConfig: &tls.Config{},
@@ -115,11 +128,14 @@ func CreateFromArgs(args *TierArgs) (tier Tier, err error) {
 	if err != nil {
 		return tier, fmt.Errorf("failed to create cache client: %v", err)
 	}
+
+	log.Print("Creating kafka producer")
 	producers, err := CreateKafka(tierID, args.KafkaServer, args.KafkaUsername, args.KafkaPassword)
 	if err != nil {
 		return tier, err
 	}
 
+	log.Print("Creating kafka consumer")
 	consumerCreator := func(topic, groupID, offsetPolicy string) (kafka.FConsumer, error) {
 		kafkaConsumerConfig := kafka.RemoteConsumerConfig{
 			BootstrapServer: args.KafkaServer,
@@ -136,6 +152,7 @@ func CreateFromArgs(args *TierArgs) (tier Tier, err error) {
 		return kafkaConsumer.(kafka.FConsumer), nil
 	}
 
+	log.Print("Creating logger")
 	var logger *zap.Logger
 	if args.Dev {
 		logger, err = zap.NewDevelopment()
