@@ -1,7 +1,9 @@
 package redis
 
 import (
+	"context"
 	"crypto/tls"
+
 	"fennel/lib/ftypes"
 	"fennel/resource"
 
@@ -48,10 +50,13 @@ type ClientConfig struct {
 var _ resource.Config = ClientConfig{}
 
 func (conf ClientConfig) Materialize(tierID ftypes.TierID) (resource.Resource, error) {
-	return Client{tierID, conf, redis.NewClient(&redis.Options{
+	client := Client{tierID, conf, redis.NewClient(&redis.Options{
 		Addr:      conf.Addr,
 		TLSConfig: conf.TLSConfig,
-	})}, nil
+	})}
+	// do a ping and verify that the client can actually talk to the server
+	ctx := context.Background()
+	return client, client.client.Ping(ctx).Err()
 }
 
 //=================================
