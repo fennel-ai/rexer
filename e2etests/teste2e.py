@@ -21,44 +21,56 @@ URL = 'http://localhost:2425'
 
 class TestTier(object):
     def __init__(self, tier_id):
-        self.tier_id = tier_id
+        self.env = os.environ.copy()
+        self.env['TIER_ID'] = str(tier_id)
 
     def __enter__(self):
-        cmd = 'TIER_ID=%d bash -c "go run --tags dynamic,integration fennel/test/cmds/tiergod --mode create"' % self.tier_id
-        subprocess.Popen(cmd, shell=True, cwd=GODIR).wait()
+        with gorun('fennel/test/cmds/tiergod', 'dynamic,integration', self.env, flags=['--mode', 'create'], wait=True):
+            pass
 
     def __exit__(self, exc_type, exc_val, exc_tb):
-        cmd = 'TIER_ID=%d bash -c "go run --tags dynamic,integration fennel/test/cmds/tiergod --mode destroy"' % self.tier_id
-        subprocess.Popen(cmd, shell=True, cwd=GODIR).wait()
+        with gorun('fennel/test/cmds/tiergod', 'dynamic,integration', self.env, flags=['--mode', 'destroy'], wait=True):
+            pass
 
 
 @contextlib.contextmanager
-def gorun(path, tags, env, wait=False):
+def gorun(path, tags, env, flags=None, wait=False, sleep=0):
+    if flags is None:
+        flags = []
+
     dir = ''.join(random.choice(string.ascii_lowercase) for _ in range(8))
     binary = '/tmp/%s/%s' % (dir, path)
+    print('going to build:', path)
     b = subprocess.Popen(['go', 'build', '--tags', tags, '-o', binary, path], cwd=GODIR)
     b.wait()
+    print('build: ', 'success' if b.returncode == 0 else 'fail')
+    print('going to run:', path, ' '.join(flags))
     p = subprocess.Popen([binary], stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL, env=env)
-    # p = subprocess.Popen([binary], stderr=sys.stderr, stdout=sys.stdout, env=env)
+    # p = subprocess.Popen([binary] + flags, stderr=sys.stderr, stdout=sys.stdout, env=env)
     if wait:
         p.wait()
-    time.sleep(7)
-    yield
+    if sleep:
+        time.sleep(sleep)
     try:
-        p.kill()
+        yield
     finally:
+        print('going to kill:', path, ' '.join(flags))
+        p.kill()
         p.wait()
-    os.remove(binary)
+        os.remove(binary)
+        print('done killing:', path, ' '.join(flags))
 
 
 def tiered(wrapped):
     @functools.wraps(wrapped)
     def fn(*args, **kwargs):
         tier_id = random.randint(0, 1e8)
+        env = os.environ.copy()
+        env['TIER_ID'] = str(tier_id)
         with TestTier(tier_id):
-            env = os.environ.copy()
-            env['TIER_ID'] = str(tier_id)
+            env['METRICS_PORT'] = str(2436)
             with gorun('fennel/service/http', 'dynamic,integration', env):
+                env['METRICS_PORT'] = str(2446)
                 with gorun('fennel/service/countaggr', 'dynamic,integration', env):
                     return wrapped(*args, **kwargs)
     return fn
@@ -92,22 +104,35 @@ class TestEndToEnd(unittest.TestCase):
           Ops.std.addField(name='groupkey', value=List(it.target_id, it.city, it.gender, it.age_group)),
         )
 
-        options = {'duration': 3600*24*2, 'aggregate_type': 'rolling_counter', }
+        options = {'duration': 3600*24*2, 'aggregate_type': 'count', }
         c.store_aggregate('trail_view_by_city_gender_agegroup_2days', q, options)
 
         c.log(actor_type='user', actor_id=uid, target_type='video', target_id=video_id, action_type='view',
               request_id=1, timestamp=int(time.time()), metadata={'device_type': 'android'})
-        time.sleep(60)
 
-        found = c.aggregate_value(
-            'trail_view_by_city_gender_agegroup_2days',
-            [video_id, city, gender, age_group],
-        )
-        self.assertEqual(1, found)
-
+        # while countaggr is processing the action, check that query call is working
         cond = Cond(Int(1) <= 5, "correct", "incorrect")
         found = c.query(cond)
         self.assertEqual("correct", found)
+
+        # now sleep for upto a minute and verify count processing worked
+        # we could also just sleep for full minute but this rolling sleep
+        # allows test to end earlier in happy cases
+        slept = 0
+        passed = False
+        while slept < 120:
+            found = c.aggregate_value(
+                'trail_view_by_city_gender_agegroup_2days',
+                [video_id, city, gender, age_group],
+            )
+            if found == 1:
+                passed = True
+                break
+            time.sleep(10)
+            slept += 10
+        self.assertTrue(passed)
+
+        print('all checks passed...')
 
 
 @unittest.skip
