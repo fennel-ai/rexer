@@ -53,11 +53,7 @@ func Update(ctx context.Context, tier tier.Tier, consumer kafka.FConsumer, agg a
 	if err = counter.Update(ctx, tier, agg.Name, table, histogram); err != nil {
 		return err
 	}
-	// TODO: currently our kafka is committing things by default
-	// and so when we commit, it has nothing to commit. Ideally we will fix that
-	// and start returning the error of commit call itself
-	consumer.Commit()
-	return nil
+	return consumer.Commit()
 }
 
 //============================
