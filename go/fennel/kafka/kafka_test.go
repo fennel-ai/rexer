@@ -2,6 +2,7 @@ package kafka
 
 import (
 	"context"
+	"fennel/resource"
 	"fmt"
 	"math/rand"
 	"sync"
@@ -90,8 +91,8 @@ func testReadBatch(t *testing.T, producer FProducer, consumer FConsumer) {
 func getMockProducer(t *testing.T, tierID ftypes.TierID, topic string, broker *MockBroker) FProducer {
 	producer, err := MockProducerConfig{
 		Broker: broker,
-		Topic:  topic,
-	}.Materialize(tierID)
+		Topic:  resource.TieredName(tierID, topic),
+	}.Materialize(resource.GetTierScope(tierID))
 	assert.NoError(t, err)
 	return producer.(FProducer)
 }
@@ -99,9 +100,9 @@ func getMockProducer(t *testing.T, tierID ftypes.TierID, topic string, broker *M
 func getMockConsumer(t *testing.T, tierID ftypes.TierID, topic, groupID string, broker *MockBroker) FConsumer {
 	consumer, err := MockConsumerConfig{
 		Broker:  broker,
-		Topic:   topic,
+		Topic:   resource.TieredName(tierID, topic),
 		GroupID: groupID,
-	}.Materialize(tierID)
+	}.Materialize(resource.GetTierScope(tierID))
 	assert.NoError(t, err)
 	return consumer.(FConsumer)
 }

@@ -6,6 +6,7 @@ import (
 
 	"fennel/lib/ftypes"
 	"fennel/resource"
+	"fmt"
 
 	"github.com/alicebob/miniredis/v2"
 	"github.com/go-redis/redis/v8"
@@ -49,8 +50,11 @@ type ClientConfig struct {
 
 var _ resource.Config = ClientConfig{}
 
-func (conf ClientConfig) Materialize(tierID ftypes.TierID) (resource.Resource, error) {
-	client := Client{tierID, conf, redis.NewClient(&redis.Options{
+func (conf ClientConfig) Materialize(scope resource.Scope) (resource.Resource, error) {
+	if scope.GetTierID() == 0 {
+		return nil, fmt.Errorf("tier ID not valid")
+	}
+	client := Client{scope.GetTierID(), conf, redis.NewClient(&redis.Options{
 		Addr:      conf.Addr,
 		TLSConfig: conf.TLSConfig,
 	})}
@@ -67,8 +71,11 @@ type MiniRedisConfig struct {
 	MiniRedis *miniredis.Miniredis
 }
 
-func (conf MiniRedisConfig) Materialize(tierID ftypes.TierID) (resource.Resource, error) {
-	return Client{tierID, conf, redis.NewClient(&redis.Options{
+func (conf MiniRedisConfig) Materialize(scope resource.Scope) (resource.Resource, error) {
+	if scope.GetTierID() == 0 {
+		return nil, fmt.Errorf("tier ID not valid")
+	}
+	return Client{scope.GetTierID(), conf, redis.NewClient(&redis.Options{
 		Addr:      conf.MiniRedis.Addr(),
 		TLSConfig: nil,
 	})}, nil

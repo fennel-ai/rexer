@@ -12,8 +12,7 @@ import (
 	"time"
 )
 
-func create(tierID ftypes.TierID, logicalname, username, password, host string) error {
-	dbname := resource.TieredName(tierID, logicalname)
+func create(dbname, username, password, host string) error {
 	connstr := fmt.Sprintf("%s:%s@tcp(%s)/?tls=true", username, password, host)
 	db, err := sqlx.Open("mysql", connstr)
 	if err != nil {
@@ -25,8 +24,7 @@ func create(tierID ftypes.TierID, logicalname, username, password, host string) 
 	return err
 }
 
-func drop(tierID ftypes.TierID, logicalname, username, password, host string) error {
-	dbname := resource.TieredName(tierID, logicalname)
+func drop(dbname, username, password, host string) error {
 	connstr := fmt.Sprintf("%s:%s@tcp(%s)/?tls=true", username, password, host)
 	db, err := sqlx.Open("mysql", connstr)
 	if err != nil {
@@ -37,14 +35,13 @@ func drop(tierID ftypes.TierID, logicalname, username, password, host string) er
 	return err
 }
 
-func recreate(tierID ftypes.TierID, logicalname, username, password, host string) (*sqlx.DB, error) {
-	if err := drop(tierID, logicalname, username, password, host); err != nil {
+func recreate(dbname, username, password, host string) (*sqlx.DB, error) {
+	if err := drop(dbname, username, password, host); err != nil {
 		return nil, err
 	}
-	if err := create(tierID, logicalname, username, password, host); err != nil {
+	if err := create(dbname, username, password, host); err != nil {
 		return nil, err
 	}
-	dbname := resource.TieredName(tierID, logicalname)
 	connstr := fmt.Sprintf("%s:%s@tcp(%s)/%s?tls=true", username, password, host, dbname)
 	return sqlx.Open("mysql", connstr)
 }
@@ -54,7 +51,7 @@ func TestSyncSchema(t *testing.T) {
 	rand.Seed(time.Now().UnixNano())
 	tierID := ftypes.TierID(rand.Uint32())
 	config := MySQLConfig{
-		DBname:   "schema_test",
+		DBname:   resource.TieredName(tierID, "schema_test"),
 		Username: "admin",
 		Password: "foundationdb",
 		Host:     "database-nikhil-test.cluster-c00d7gkxaysk.us-west-2.rds.amazonaws.com",
@@ -65,16 +62,16 @@ func TestSyncSchema(t *testing.T) {
 	   );`},
 	}
 	// create the DB before materializing a connection
-	err := create(tierID, config.DBname, config.Username, config.Password, config.Host)
+	err := create(config.DBname, config.Username, config.Password, config.Host)
 	assert.NoError(t, err)
 
-	resource, err := config.Materialize(tierID)
+	resource, err := config.Materialize(resource.GetTierScope(tierID))
 	assert.NoError(t, err)
-	defer drop(tierID, config.DBname, config.Username, config.Password, config.Host)
+	defer drop(config.DBname, config.Username, config.Password, config.Host)
 	db := resource.(Connection)
 
 	// version goes to zero after dropping the DB
-	conn, err := recreate(tierID, config.DBname, config.Username, config.Password, config.Host)
+	conn, err := recreate(config.DBname, config.Username, config.Password, config.Host)
 	assert.NoError(t, err)
 	db.DB = conn
 

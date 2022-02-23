@@ -1,7 +1,6 @@
 package db
 
 import (
-	"fennel/lib/ftypes"
 	"fennel/resource"
 	"fmt"
 	"os"
@@ -14,12 +13,8 @@ import (
 
 type Connection struct {
 	config resource.Config
-	tierID ftypes.TierID
+	scope  resource.Scope
 	*sqlx.DB
-}
-
-func (c Connection) TierID() ftypes.TierID {
-	return c.tierID
 }
 
 func (c Connection) Close() error {
@@ -41,25 +36,20 @@ type SQLiteConfig struct {
 	schema Schema
 }
 
-func (conf SQLiteConfig) Materialize(tierID ftypes.TierID) (resource.Resource, error) {
-	if tierID == 0 {
-		return nil, fmt.Errorf("tier ID not initialized")
-	}
-	dbname := resource.TieredName(tierID, conf.dbname)
+func (conf SQLiteConfig) Materialize(scope resource.Scope) (resource.Resource, error) {
+	os.Remove(conf.dbname)
 
-	os.Remove(dbname)
-
-	file, err := os.Create(dbname)
+	file, err := os.Create(conf.dbname)
 	if err != nil {
 		return nil, err
 	}
 	file.Close()
 
-	DB, err := sqlx.Connect("sqlite3", fmt.Sprintf("./%s", dbname))
+	DB, err := sqlx.Connect("sqlite3", fmt.Sprintf("./%s", conf.dbname))
 	if err != nil {
 		return nil, err
 	}
-	conn := Connection{config: conf, DB: DB, tierID: tierID}
+	conn := Connection{config: conf, DB: DB, scope: scope}
 	if err = syncSchema(conn.DB, conf.schema); err != nil {
 		return nil, err
 	}
@@ -82,12 +72,8 @@ type MySQLConfig struct {
 
 var _ resource.Config = MySQLConfig{}
 
-func (conf MySQLConfig) Materialize(tierID ftypes.TierID) (resource.Resource, error) {
-	if tierID == 0 {
-		return Connection{}, fmt.Errorf("tier ID not specified")
-	}
-	dbname := resource.TieredName(tierID, conf.DBname)
-	connectStr := fmt.Sprintf("%s:%s@tcp(%s)/%s?tls=true", conf.Username, conf.Password, conf.Host, dbname)
+func (conf MySQLConfig) Materialize(scope resource.Scope) (resource.Resource, error) {
+	connectStr := fmt.Sprintf("%s:%s@tcp(%s)/%s?tls=true", conf.Username, conf.Password, conf.Host, conf.DBname)
 	DB, err := sqlx.Connect("mysql", connectStr)
 	if err != nil {
 		return nil, err
@@ -102,7 +88,7 @@ func (conf MySQLConfig) Materialize(tierID ftypes.TierID) (resource.Resource, er
 	// cause hard-to-debug errors much later.
 	DB.SetConnMaxLifetime(1 * time.Hour)
 
-	conn := Connection{config: conf, DB: DB, tierID: tierID}
+	conn := Connection{config: conf, DB: DB, scope: scope}
 	if err := syncSchema(conn.DB, conf.Schema); err != nil {
 		return nil, err
 	}
