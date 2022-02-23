@@ -1,4 +1,4 @@
-package main
+package mothership
 
 import "fennel/db"
 
@@ -29,7 +29,14 @@ var Schema = db.Schema{
 				redis_instance_id INT UNSIGNED NOT NULL UNIQUE,
 				elasticache_instance_id INT UNSIGNED NOT NULL UNIQUE
 		);`,
-	4: `CREATE TABLE IF NOT EXISTS kafka (
+	4: `CREATE TABLE IF NOT EXISTS eks (
+				instance_id INT UNSIGNED NOT NULL PRIMARY KEY AUTO_INCREMENT,
+				cluster_id VARCHAR(32) NOT NULL,
+				min_instances INT UNSIGNED,
+				max_instances INT UNSIGNED,
+				instance_type VARCHAR(32) NOT NULL
+		);`,
+	5: `CREATE TABLE IF NOT EXISTS kafka (
 				instance_id INT UNSIGNED NOT NULL PRIMARY KEY AUTO_INCREMENT,
 				confluent_environment VARCHAR(32) NOT NULL,
 				confluent_cluster_id VARCHAR(32) NOT NULL,
@@ -38,7 +45,7 @@ var Schema = db.Schema{
 				kafka_api_key VARCHAR(128) NOT NULL,
 				kafka_secret_key VARCHAR(128) NOT NULL
 		);`,
-	5: `CREATE TABLE IF NOT EXISTS db (
+	6: `CREATE TABLE IF NOT EXISTS db (
 				instance_id INT UNSIGNED NOT NULL PRIMARY KEY AUTO_INCREMENT,
 				cluster_id VARCHAR(32) NOT NULL,
 				cluster_security_group VARCHAR(32) NOT NULL,
@@ -46,13 +53,13 @@ var Schema = db.Schema{
 				admin_username VARCHAR(32) NOT NULL,
 				admin_password VARCHAR(32) NOT NULL
 		);`,
-	6: `CREATE TABLE IF NOT EXISTS memory_db (
+	7: `CREATE TABLE IF NOT EXISTS memory_db (
 				instance_id INT UNSIGNED NOT NULL PRIMARY KEY AUTO_INCREMENT,
 				cluster_id VARCHAR(32) NOT NULL,
 				cluster_security_group VARCHAR(32) NOT NULL,
 				hostname VARCHAR(128) NOT NULL
 		);`,
-	7: `CREATE TABLE IF NOT EXISTS elasticache (
+	8: `CREATE TABLE IF NOT EXISTS elasticache (
 				instance_id INT UNSIGNED NOT NULL PRIMARY KEY AUTO_INCREMENT,
 				cluster_id VARCHAR(32) NOT NULL,
 				cluster_security_group VARCHAR(32) NOT NULL,
