@@ -8,7 +8,6 @@ import (
 
 	"google.golang.org/protobuf/proto"
 
-	"fennel/lib/ftypes"
 	"fennel/lib/utils"
 	"fennel/resource"
 )
@@ -69,7 +68,7 @@ func (l *MockBroker) Backlog(groupID string) int {
 //=================================
 
 type mockConsumer struct {
-	tierID  ftypes.TierID
+	scope   resource.Scope
 	groupid string
 	Topic   string
 	broker  *MockBroker
@@ -130,10 +129,6 @@ func (l mockConsumer) GroupID() string {
 	return l.groupid
 }
 
-func (l mockConsumer) TierID() ftypes.TierID {
-	return l.tierID
-}
-
 func (l mockConsumer) Close() error {
 	return nil
 }
@@ -159,10 +154,7 @@ type MockConsumerConfig struct {
 }
 
 func (l MockConsumerConfig) Materialize(scope resource.Scope) (resource.Resource, error) {
-	if scope.GetTierID() == 0 {
-		return nil, fmt.Errorf("tier ID not initialized")
-	}
-	return mockConsumer{scope.GetTierID(), l.GroupID, l.Topic, l.Broker}, nil
+	return mockConsumer{scope, l.GroupID, l.Topic, l.Broker}, nil
 }
 
 var _ resource.Config = MockConsumerConfig{}
@@ -172,7 +164,7 @@ var _ resource.Config = MockConsumerConfig{}
 //=================================
 
 type mockProducer struct {
-	tierID ftypes.TierID
+	scope  resource.Scope
 	topic  string
 	broker *MockBroker
 }
@@ -195,10 +187,6 @@ func (l mockProducer) Flush(timeout time.Duration) error {
 	return nil
 }
 
-func (l mockProducer) TierID() ftypes.TierID {
-	return l.tierID
-}
-
 func (l mockProducer) Close() error {
 	return nil
 }
@@ -219,10 +207,7 @@ type MockProducerConfig struct {
 }
 
 func (conf MockProducerConfig) Materialize(scope resource.Scope) (resource.Resource, error) {
-	if scope.GetTierID() == 0 {
-		return nil, fmt.Errorf("tier ID not initialized")
-	}
-	return mockProducer{scope.GetTierID(), conf.Topic, conf.Broker}, nil
+	return mockProducer{scope, conf.Topic, conf.Broker}, nil
 }
 
 var _ resource.Config = MockProducerConfig{}

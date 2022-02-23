@@ -6,7 +6,6 @@ import (
 	"log"
 	"time"
 
-	"fennel/lib/ftypes"
 	"fennel/lib/timer"
 	"fennel/resource"
 
@@ -15,7 +14,7 @@ import (
 )
 
 type RemoteConsumer struct {
-	tierID ftypes.TierID
+	scope resource.Scope
 	*kafka.Consumer
 	topic   string
 	groupid string
@@ -27,10 +26,6 @@ func (k RemoteConsumer) GroupID() string {
 }
 
 var _ FConsumer = RemoteConsumer{}
-
-func (k RemoteConsumer) TierID() ftypes.TierID {
-	return k.tierID
-}
 
 var _ resource.Resource = RemoteConsumer{}
 
@@ -44,7 +39,7 @@ func (k RemoteConsumer) Type() resource.Type {
 }
 
 func (k RemoteConsumer) ReadProto(ctx context.Context, pmsg proto.Message, timeout time.Duration) error {
-	defer timer.Start(k.tierID, "kafka.read_proto").ObserveDuration()
+	defer timer.Start(k.scope.GetTierID(), "kafka.read_proto").ObserveDuration()
 	ch := make(chan error)
 	go func() {
 		kmsg, err := k.ReadMessage(timeout)
@@ -126,7 +121,7 @@ func (k RemoteConsumer) AsyncCommit() chan error {
 // An alternate implementation is sketched here:
 // https://github.com/confluentinc/confluent-kafka-go/issues/690#issuecomment-932810037.
 func (k RemoteConsumer) Backlog() (int, error) {
-	defer timer.Start(k.tierID, "kafka.backlog").ObserveDuration()
+	defer timer.Start(k.scope.GetTierID(), "kafka.backlog").ObserveDuration()
 	var n int
 
 	// Get the current assigned topic partitions.
@@ -172,9 +167,6 @@ type RemoteConsumerConfig struct {
 }
 
 func (conf RemoteConsumerConfig) Materialize(scope resource.Scope) (resource.Resource, error) {
-	if scope.GetTierID() == 0 {
-		return nil, fmt.Errorf("tier ID not initialized")
-	}
 	configmap := ConfigMap(conf.BootstrapServer, conf.Username, conf.Password)
 
 	if err := configmap.SetKey("group.id", conf.GroupID); err != nil {
@@ -199,7 +191,7 @@ func (conf RemoteConsumerConfig) Materialize(scope resource.Scope) (resource.Res
 	if err != nil {
 		return nil, fmt.Errorf("failed to subscribe to topic [%s]: %v", conf.Topic, err)
 	}
-	return RemoteConsumer{scope.GetTierID(), consumer, conf.Topic, conf.GroupID, conf}, nil
+	return RemoteConsumer{scope, consumer, conf.Topic, conf.GroupID, conf}, nil
 }
 
 var _ resource.Config = RemoteConsumerConfig{}
