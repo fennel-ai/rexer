@@ -57,3 +57,7 @@ func TieredName(tierID ftypes.TierID, name string) string {
 func GetTierScope(id ftypes.TierID) Scope {
 	return Scope{path: []string{fmt.Sprintf("%d", id)}}
 }
+
+func GetMothershipScope() Scope {
+	return Scope{path: []string{}}
+}
