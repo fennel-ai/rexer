@@ -32,7 +32,6 @@ type Config interface {
 type Resource interface {
 	Close() error
 	Type() Type
-	TierID() ftypes.TierID
 }
 
 type Scope struct {
@@ -41,6 +40,9 @@ type Scope struct {
 
 // GetTierID returns 0 (invalid tier) when scope has no TierID.
 func (s *Scope) GetTierID() ftypes.TierID {
+	if len(s.path) < 1 {
+		return 0
+	}
 	t, err := strconv.ParseUint(s.path[0], 10, 64)
 	if err != nil {
 		return 0
