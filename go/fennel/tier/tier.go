@@ -61,6 +61,9 @@ func (args TierArgs) Valid() error {
 	if args.RedisServer == "" {
 		missingFields = append(missingFields, "REDIS_SERVER_ADDRESS")
 	}
+	if args.CachePrimary == "" {
+		missingFields = append(missingFields, "CACHE_PRIMARY")
+	}
 	if args.TierID == 0 {
 		missingFields = append(missingFields, "TIER_ID")
 	}
