@@ -5,14 +5,17 @@ package redis
 import (
 	"context"
 	"crypto/tls"
-	"fennel/lib/ftypes"
-	"fennel/lib/utils"
 	"fmt"
-	"github.com/go-redis/redis/v8"
-	"github.com/stretchr/testify/assert"
 	"math/rand"
+	"strings"
 	"testing"
 	"time"
+
+	"github.com/go-redis/redis/v8"
+	"github.com/stretchr/testify/assert"
+
+	"fennel/lib/ftypes"
+	"fennel/lib/utils"
 )
 
 const (
@@ -106,4 +109,27 @@ func TestMultiGetSet(t *testing.T) {
 	assert.Error(t, c.MSet(ctx, keys, values, make([]time.Duration, len(keys))))
 	_, err = c.MGet(ctx, keys...)
 	assert.Error(t, err)
+}
+
+func TestClientConfig_Materialize_Invalid(t *testing.T) {
+	rand.Seed(time.Now().UnixNano())
+	tierID := ftypes.TierID(rand.Uint32())
+	scenarios := []struct {
+		name string
+		conf ClientConfig
+	}{
+		{"invalid_url", ClientConfig{"some_random.aws.com:6379", &tls.Config{}}},
+		// i.e. include the url without the port
+		{"no_port", ClientConfig{strings.Split(addr, ":6379")[0], &tls.Config{}}},
+		// i.e. valid url but without tls config
+		{"no_tls", ClientConfig{addr, nil}},
+	}
+	for i := range scenarios {
+		scenario := scenarios[i]
+		t.Run(scenario.name, func(t *testing.T) {
+			t.Parallel()
+			_, err := scenario.conf.Materialize(tierID)
+			assert.Error(t, err)
+		})
+	}
 }
