@@ -72,15 +72,15 @@ func main() {
 
 	// Set of aggregates that are currently being processed by the system.
 	processedAggregates := make(map[ftypes.AggName]struct{})
-	ticker := time.NewTicker(time.Minute)
+	ticker := time.NewTicker(time.Second * 15)
 	for {
 		aggs, err := aggregate.RetrieveAll(context.Background(), tr)
 		if err != nil {
 			panic(err)
 		}
-		log.Printf("Retrieved aggregates: %v", aggs)
 		for _, agg := range aggs {
 			if _, ok := processedAggregates[agg.Name]; !ok {
+				log.Printf("Retrieved a new aggregate: %v", aggs)
 				err := processAggregate(tr, agg)
 				if err != nil {
 					tr.Logger.Error("Could not start aggregate processing", zap.String("aggregateName", string(agg.Name)), zap.Error(err))

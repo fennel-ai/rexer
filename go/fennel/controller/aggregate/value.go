@@ -38,6 +38,7 @@ func Update(ctx context.Context, tier tier.Tier, consumer kafka.FConsumer, agg a
 	if err != nil {
 		return err
 	}
+	tier.Logger.Info(fmt.Sprintf("found %d new actions for aggregate: %s", len(actions), agg.Name))
 	if len(actions) == 0 {
 		return nil
 	}
