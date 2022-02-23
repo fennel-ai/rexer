@@ -4,6 +4,7 @@ import (
 	"context"
 	"fennel/lib/ftypes"
 	"fennel/lib/utils"
+	"fennel/resource"
 	"github.com/alicebob/miniredis/v2"
 	"math/rand"
 	"testing"
@@ -73,7 +74,7 @@ func TestRedisClientLocal(t *testing.T) {
 	tierID := ftypes.TierID(rand.Uint32())
 	mr, err := miniredis.Run()
 	assert.NoError(t, err)
-	client, err := MiniRedisConfig{MiniRedis: mr}.Materialize(tierID)
+	client, err := MiniRedisConfig{MiniRedis: mr}.Materialize(resource.GetTierScope(tierID))
 	assert.NoError(t, err)
 	defer client.Close()
 	t.Run("local_get_set", func(t *testing.T) { testClient(t, client.(Client)) })

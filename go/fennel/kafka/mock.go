@@ -158,11 +158,11 @@ type MockConsumerConfig struct {
 	GroupID string
 }
 
-func (l MockConsumerConfig) Materialize(tierID ftypes.TierID) (resource.Resource, error) {
-	if tierID == 0 {
+func (l MockConsumerConfig) Materialize(scope resource.Scope) (resource.Resource, error) {
+	if scope.GetTierID() == 0 {
 		return nil, fmt.Errorf("tier ID not initialized")
 	}
-	return mockConsumer{tierID, l.GroupID, l.Topic, l.Broker}, nil
+	return mockConsumer{scope.GetTierID(), l.GroupID, l.Topic, l.Broker}, nil
 }
 
 var _ resource.Config = MockConsumerConfig{}
@@ -218,11 +218,11 @@ type MockProducerConfig struct {
 	Topic  string
 }
 
-func (conf MockProducerConfig) Materialize(tierID ftypes.TierID) (resource.Resource, error) {
-	if tierID == 0 {
+func (conf MockProducerConfig) Materialize(scope resource.Scope) (resource.Resource, error) {
+	if scope.GetTierID() == 0 {
 		return nil, fmt.Errorf("tier ID not initialized")
 	}
-	return mockProducer{tierID, conf.Topic, conf.Broker}, nil
+	return mockProducer{scope.GetTierID(), conf.Topic, conf.Broker}, nil
 }
 
 var _ resource.Config = MockProducerConfig{}

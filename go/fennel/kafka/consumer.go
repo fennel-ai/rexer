@@ -171,11 +171,10 @@ type RemoteConsumerConfig struct {
 	Topic           string
 }
 
-func (conf RemoteConsumerConfig) Materialize(tierID ftypes.TierID) (resource.Resource, error) {
-	if tierID == 0 {
+func (conf RemoteConsumerConfig) Materialize(scope resource.Scope) (resource.Resource, error) {
+	if scope.GetTierID() == 0 {
 		return nil, fmt.Errorf("tier ID not initialized")
 	}
-	conf.Topic = resource.TieredName(tierID, conf.Topic)
 	configmap := ConfigMap(conf.BootstrapServer, conf.Username, conf.Password)
 
 	if err := configmap.SetKey("group.id", conf.GroupID); err != nil {
@@ -200,7 +199,7 @@ func (conf RemoteConsumerConfig) Materialize(tierID ftypes.TierID) (resource.Res
 	if err != nil {
 		return nil, fmt.Errorf("failed to subscribe to topic [%s]: %v", conf.Topic, err)
 	}
-	return RemoteConsumer{tierID, consumer, conf.Topic, conf.GroupID, conf}, nil
+	return RemoteConsumer{scope.GetTierID(), consumer, conf.Topic, conf.GroupID, conf}, nil
 }
 
 var _ resource.Config = RemoteConsumerConfig{}

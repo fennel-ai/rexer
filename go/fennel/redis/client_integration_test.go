@@ -5,6 +5,9 @@ package redis
 import (
 	"context"
 	"crypto/tls"
+	"fennel/lib/ftypes"
+	"fennel/lib/utils"
+	"fennel/resource"
 	"fmt"
 	"math/rand"
 	"strings"
@@ -13,9 +16,6 @@ import (
 
 	"github.com/go-redis/redis/v8"
 	"github.com/stretchr/testify/assert"
-
-	"fennel/lib/ftypes"
-	"fennel/lib/utils"
 )
 
 const (
@@ -26,7 +26,7 @@ func TestRedisClientIntegration(t *testing.T) {
 	rand.Seed(time.Now().UnixNano())
 	tierID := ftypes.TierID(rand.Uint32())
 	conf := ClientConfig{Addr: addr, TLSConfig: &tls.Config{}}
-	rdb, err := conf.Materialize(tierID)
+	rdb, err := conf.Materialize(resource.GetTierScope(tierID))
 	assert.NoError(t, err)
 	t.Run("integration_get_set_del", func(t *testing.T) { testClient(t, rdb.(Client)) })
 	t.Run("integration_mget", func(t *testing.T) { testMGet(t, rdb.(Client)) })
@@ -36,7 +36,7 @@ func TestMultiSetTTL(t *testing.T) {
 	rand.Seed(time.Now().UnixNano())
 	tierID := ftypes.TierID(rand.Uint32())
 	conf := ClientConfig{Addr: addr, TLSConfig: &tls.Config{}}
-	rdb, err := conf.Materialize(tierID)
+	rdb, err := conf.Materialize(resource.GetTierScope(tierID))
 	assert.NoError(t, err)
 	ctx := context.Background()
 	c := rdb.(Client)
@@ -76,7 +76,7 @@ func TestMultiGetSet(t *testing.T) {
 	rand.Seed(time.Now().UnixNano())
 	tierID := ftypes.TierID(rand.Uint32())
 	conf := ClientConfig{Addr: addr, TLSConfig: &tls.Config{}}
-	rdb, err := conf.Materialize(tierID)
+	rdb, err := conf.Materialize(resource.GetTierScope(tierID))
 	assert.NoError(t, err)
 	ctx := context.Background()
 	c := rdb.(Client)
@@ -128,7 +128,7 @@ func TestClientConfig_Materialize_Invalid(t *testing.T) {
 		scenario := scenarios[i]
 		t.Run(scenario.name, func(t *testing.T) {
 			t.Parallel()
-			_, err := scenario.conf.Materialize(tierID)
+			_, err := scenario.conf.Materialize(resource.GetTierScope(tierID))
 			assert.Error(t, err)
 		})
 	}

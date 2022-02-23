@@ -22,13 +22,13 @@ func defaultDB(tierID ftypes.TierID) (db.Connection, error) {
 		return db.Connection{}, err
 	}
 	config := db.MySQLConfig{
-		DBname:   logical_test_dbname,
+		DBname:   resource.TieredName(tierID, logical_test_dbname),
 		Username: username,
 		Password: password,
 		Host:     host,
 		Schema:   tier.Schema,
 	}
-	resource, err := config.Materialize(tierID)
+	resource, err := config.Materialize(resource.GetTierScope(tierID))
 	if err != nil {
 		return db.Connection{}, err
 	}

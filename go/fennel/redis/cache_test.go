@@ -3,6 +3,7 @@ package redis
 import (
 	"context"
 	"fennel/lib/ftypes"
+	resource2 "fennel/resource"
 	"github.com/alicebob/miniredis/v2"
 	"github.com/stretchr/testify/assert"
 	"math/rand"
@@ -18,7 +19,7 @@ func TestCache(t *testing.T) {
 	tierID := ftypes.TierID(rand.Uint32())
 	mr, err := miniredis.Run()
 	assert.NoError(t, err)
-	resource, err := MiniRedisConfig{MiniRedis: mr}.Materialize(tierID)
+	resource, err := MiniRedisConfig{MiniRedis: mr}.Materialize(resource2.GetTierScope(tierID))
 	client := resource.(Client)
 	cache := NewCache(client)
 	defer client.Close()

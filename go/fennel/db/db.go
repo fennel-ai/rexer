@@ -41,25 +41,24 @@ type SQLiteConfig struct {
 	schema Schema
 }
 
-func (conf SQLiteConfig) Materialize(tierID ftypes.TierID) (resource.Resource, error) {
-	if tierID == 0 {
-		return nil, fmt.Errorf("tier ID not initialized")
+func (conf SQLiteConfig) Materialize(scope resource.Scope) (resource.Resource, error) {
+	if scope.GetTierID() == 0 {
+		return nil, fmt.Errorf("tier ID not valid")
 	}
-	dbname := resource.TieredName(tierID, conf.dbname)
 
-	os.Remove(dbname)
+	os.Remove(conf.dbname)
 
-	file, err := os.Create(dbname)
+	file, err := os.Create(conf.dbname)
 	if err != nil {
 		return nil, err
 	}
 	file.Close()
 
-	DB, err := sqlx.Connect("sqlite3", fmt.Sprintf("./%s", dbname))
+	DB, err := sqlx.Connect("sqlite3", fmt.Sprintf("./%s", conf.dbname))
 	if err != nil {
 		return nil, err
 	}
-	conn := Connection{config: conf, DB: DB, tierID: tierID}
+	conn := Connection{config: conf, DB: DB, tierID: scope.GetTierID()}
 	if err = syncSchema(conn.DB, conf.schema); err != nil {
 		return nil, err
 	}
@@ -82,12 +81,11 @@ type MySQLConfig struct {
 
 var _ resource.Config = MySQLConfig{}
 
-func (conf MySQLConfig) Materialize(tierID ftypes.TierID) (resource.Resource, error) {
-	if tierID == 0 {
-		return Connection{}, fmt.Errorf("tier ID not specified")
+func (conf MySQLConfig) Materialize(scope resource.Scope) (resource.Resource, error) {
+	if scope.GetTierID() == 0 {
+		return nil, fmt.Errorf("tier ID not valid")
 	}
-	dbname := resource.TieredName(tierID, conf.DBname)
-	connectStr := fmt.Sprintf("%s:%s@tcp(%s)/%s?tls=true", conf.Username, conf.Password, conf.Host, dbname)
+	connectStr := fmt.Sprintf("%s:%s@tcp(%s)/%s?tls=true", conf.Username, conf.Password, conf.Host, conf.DBname)
 	DB, err := sqlx.Connect("mysql", connectStr)
 	if err != nil {
 		return nil, err
@@ -102,7 +100,7 @@ func (conf MySQLConfig) Materialize(tierID ftypes.TierID) (resource.Resource, er
 	// cause hard-to-debug errors much later.
 	DB.SetConnMaxLifetime(1 * time.Hour)
 
-	conn := Connection{config: conf, DB: DB, tierID: tierID}
+	conn := Connection{config: conf, DB: DB, tierID: scope.GetTierID()}
 	if err := syncSchema(conn.DB, conf.Schema); err != nil {
 		return nil, err
 	}

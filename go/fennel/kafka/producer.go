@@ -87,11 +87,10 @@ type RemoteProducerConfig struct {
 	Password        string
 }
 
-func (conf RemoteProducerConfig) Materialize(tierID ftypes.TierID) (resource.Resource, error) {
-	if tierID == 0 {
-		return nil, fmt.Errorf("tier ID not initialized")
+func (conf RemoteProducerConfig) Materialize(scope resource.Scope) (resource.Resource, error) {
+	if scope.GetTierID() == 0 {
+		return nil, fmt.Errorf("tier ID not valid")
 	}
-	conf.Topic = resource.TieredName(tierID, conf.Topic)
 
 	configmap := ConfigMap(conf.BootstrapServer, conf.Username, conf.Password)
 	producer, err := kafka.NewProducer(configmap)
@@ -108,7 +107,7 @@ func (conf RemoteProducerConfig) Materialize(tierID ftypes.TierID) (resource.Res
 			}
 		}
 	}()
-	return RemoteProducer{tierID, conf.Topic, producer}, err
+	return RemoteProducer{scope.GetTierID(), conf.Topic, producer}, err
 }
 
 var _ resource.Config = RemoteProducerConfig{}

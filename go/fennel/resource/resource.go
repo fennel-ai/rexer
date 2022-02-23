@@ -3,6 +3,7 @@ package resource
 import (
 	"fennel/lib/ftypes"
 	"fmt"
+	"strconv"
 )
 
 type Type uint8
@@ -25,7 +26,7 @@ const (
 )
 
 type Config interface {
-	Materialize(id ftypes.TierID) (Resource, error)
+	Materialize(scope Scope) (Resource, error)
 }
 
 type Resource interface {
@@ -34,6 +35,23 @@ type Resource interface {
 	TierID() ftypes.TierID
 }
 
+type Scope struct {
+	path []string
+}
+
+// GetTierID returns 0 (invalid tier) when scope has no TierID.
+func (s *Scope) GetTierID() ftypes.TierID {
+	t, err := strconv.ParseUint(s.path[0], 10, 64)
+	if err != nil {
+		return 0
+	}
+	return ftypes.TierID(t)
+}
+
 func TieredName(tierID ftypes.TierID, name string) string {
 	return fmt.Sprintf("t_%d_%s", tierID, name)
+}
+
+func GetTierScope(id ftypes.TierID) Scope {
+	return Scope{path: []string{fmt.Sprintf("%d", id)}}
 }

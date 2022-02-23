@@ -125,11 +125,11 @@ func integrationProducer(t *testing.T, tierID ftypes.TierID, topic string) FProd
 
 	// then create producer
 	resource, err := RemoteProducerConfig{
-		Topic:           topic,
+		Topic:           resource.TieredName(tierID, topic),
 		BootstrapServer: test_kafka_servers,
 		Username:        kafka_username,
 		Password:        kafka_password,
-	}.Materialize(tierID)
+	}.Materialize(resource.GetTierScope(tierID))
 	assert.NoError(t, err)
 	producer := resource.(FProducer)
 	return producer
@@ -137,13 +137,13 @@ func integrationProducer(t *testing.T, tierID ftypes.TierID, topic string) FProd
 
 func integrationConsumer(t *testing.T, tierID ftypes.TierID, topic, groupid, offsetpolicy string) FConsumer {
 	resource, err := RemoteConsumerConfig{
-		Topic:           topic,
+		Topic:           resource.TieredName(tierID, topic),
 		BootstrapServer: test_kafka_servers,
 		Username:        kafka_username,
 		Password:        kafka_password,
 		GroupID:         groupid,
 		OffsetPolicy:    offsetpolicy,
-	}.Materialize(tierID)
+	}.Materialize(resource.GetTierScope(tierID))
 	assert.NoError(t, err)
 	consumer := resource.(FConsumer)
 	return consumer
