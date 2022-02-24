@@ -1,62 +1,47 @@
-import * as confluent from "@pulumi/confluent";
-import * as kafka from "@pulumi/kafka";
 import * as pulumi from "@pulumi/pulumi";
+import * as kafka from "@pulumi/kafka";
+import * as process from "process";
 
-import { nameof } from "../lib/util";
+// TODO: use version from common library.
+// operator for type-safety for string key access:
+// https://schneidenbach.gitbooks.io/typescript-cookbook/content/nameof-operator.html
+export const nameof = <T>(name: keyof T) => name;
 
-import process = require('process');
+// TODO: move to common library module.
+export const fennelStdTags = {
+    "managed-by": "fennel.ai",
+}
 
 export const plugins = {
     "kafka": "v3.1.2",
-    "confluent": "v0.2.2"
-}
-
-export type cluster = {
-    environmentId: string,
-    id: string,
-    bootstrapServers: string,
 }
 
 export type inputType = {
-    username: string,
-    password: pulumi.Output<string>
-    topicNames: [string],
-    kafkaCluster: cluster
+    apiKey: string,
+    apiSecret: pulumi.Output<string>
+    topicNames: string[],
+    bootstrapServer: string,
 }
 
 export type outputType = {
     topics: kafka.Topic[]
 }
 
-// We have parseConfig as a standard function across all components because
-// we do not want to call config.require inside of setup since the config parameters
-// could come from either config.require or from parameters passed in by calling setup
-// in another file.
 const parseConfig = (): inputType => {
     const config = new pulumi.Config();
     return {
-        username: config.require(nameof<inputType>("username")),
-        password: config.requireSecret(nameof<inputType>("password")),
+        apiKey: config.require(nameof<inputType>("apiKey")),
+        apiSecret: config.requireSecret(nameof<inputType>("apiSecret")),
         topicNames: config.requireObject(nameof<inputType>("topicNames")),
-        kafkaCluster: config.requireObject(nameof<inputType>("kafkaCluster"))
+        bootstrapServer: config.require(nameof<inputType>("bootstrapServer"))
     }
 }
 
-export const setup = (input: inputType) => {
-    const confluentProvider = new confluent.Provider("conf-provider", {
-        username: input.username,
-        password: input.password,
-    })
-
-    const apiKey = new confluent.ApiKey("key", {
-        environmentId: input.kafkaCluster.environmentId,
-        clusterId: input.kafkaCluster.id,
-    }, { provider: confluentProvider })
-
+export const setup = async (input: inputType) => {
     const kafkaProvider = new kafka.Provider("kafka-provider", {
-        bootstrapServers: [input.kafkaCluster.bootstrapServers.substring(input.kafkaCluster.bootstrapServers.lastIndexOf('/') + 1)],
-        saslUsername: apiKey.key,
-        saslPassword: apiKey.secret,
+        bootstrapServers: [input.bootstrapServer],
+        saslUsername: input.apiKey,
+        saslPassword: input.apiSecret,
         saslMechanism: "plain",
         tlsEnabled: true,
     })
@@ -78,13 +63,18 @@ export const setup = (input: inputType) => {
     return output
 }
 
-let output;
-// Run the main function only if this program is run through the pulumi CLI.
-// Unfortunately, in that case the argv0 itself is not "pulumi", but the full
-// path of node: e.g. /nix/store/7q04aq0sq6im9a0k09gzfa1xfncc0xgm-nodejs-14.18.1/bin/node
-if (process.argv0 !== 'node') {
-    pulumi.log.info("Running...")
-    const input = parseConfig();
-    output = setup(input)
+async function run() {
+    let output: outputType | undefined;
+    // Run the main function only if this program is run through the pulumi CLI.
+    // Unfortunately, in that case the argv0 itself is not "pulumi", but the full
+    // path of node: e.g. /nix/store/7q04aq0sq6im9a0k09gzfa1xfncc0xgm-nodejs-14.18.1/bin/node
+    if (process.argv0 !== 'node') {
+        pulumi.log.info("Running...")
+        const input: inputType = parseConfig();
+        output = await setup(input)
+    }
+    return output
 }
-export { output };
+
+
+export const output = await run();
