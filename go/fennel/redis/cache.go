@@ -2,9 +2,10 @@ package redis
 
 import (
 	"context"
+	"time"
+
 	"fennel/lib/cache"
 	"github.com/go-redis/redis/v8"
-	"time"
 )
 
 type Cache struct {

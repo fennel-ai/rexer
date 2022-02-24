@@ -5,26 +5,25 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/go-redis/redis/v8"
-
+	"fennel/lib/ftypes"
 	"fennel/lib/timer"
-	"fennel/resource"
+	"github.com/go-redis/redis/v8"
 )
 
 func (c Client) Set(ctx context.Context, k string, v interface{}, ttl time.Duration) error {
-	defer timer.Start(ctx, c.TierID(), "redis.set").Stop()
+	defer timer.Start(ctx, ftypes.TierID(c.ID()), "redis.set").Stop()
 	k = c.tieredKey(k)
 	return c.client.Set(ctx, k, v, ttl).Err()
 }
 
 func (c Client) Del(ctx context.Context, k ...string) error {
-	defer timer.Start(ctx, c.TierID(), "redis.del").Stop()
+	defer timer.Start(ctx, ftypes.TierID(c.ID()), "redis.del").Stop()
 	k = c.mTieredKey(k)
 	return c.client.Del(ctx, k...).Err()
 }
 
 func (c Client) Get(ctx context.Context, k string) (interface{}, error) {
-	defer timer.Start(ctx, c.TierID(), "redis.get").Stop()
+	defer timer.Start(ctx, ftypes.TierID(c.ID()), "redis.get").Stop()
 	k = c.tieredKey(k)
 	return c.client.Get(ctx, k).Result()
 }
@@ -32,7 +31,7 @@ func (c Client) Get(ctx context.Context, k string) (interface{}, error) {
 // MGet takes a list of strings and returns a list of interfaces along with an error
 // returned is either the correct value of key or redis.Nil
 func (c Client) MGet(ctx context.Context, ks ...string) ([]interface{}, error) {
-	defer timer.Start(ctx, c.TierID(), "redis.mget").Stop()
+	defer timer.Start(ctx, ftypes.TierID(c.ID()), "redis.mget").Stop()
 	// this check is to handle a bug, likely related to https://github.com/redis/node-redis/issues/125
 	if len(ks) == 0 {
 		return []interface{}{}, nil
@@ -49,7 +48,7 @@ func (c Client) MGet(ctx context.Context, ks ...string) ([]interface{}, error) {
 }
 
 func (c Client) MSet(ctx context.Context, keys []string, values []interface{}, ttls []time.Duration) error {
-	defer timer.Start(ctx, c.TierID(), "redis.mset").Stop()
+	defer timer.Start(ctx, ftypes.TierID(c.ID()), "redis.mset").Stop()
 	if len(keys) != len(values) || len(keys) != len(ttls) {
 		return fmt.Errorf("keys, values, and ttls should all be slices of the same length")
 	}
@@ -66,13 +65,13 @@ func (c Client) MSet(ctx context.Context, keys []string, values []interface{}, t
 }
 
 func (c Client) tieredKey(k string) string {
-	return resource.TieredName(c.tierID, k)
+	return c.PrefixedName(k)
 }
 
 func (c Client) mTieredKey(ks []string) []string {
 	ret := make([]string, len(ks))
 	for i, k := range ks {
-		ret[i] = resource.TieredName(c.tierID, k)
+		ret[i] = c.PrefixedName(k)
 	}
 	return ret
 }
