@@ -1,12 +1,14 @@
 package std
 
 import (
+	"reflect"
+	"testing"
+
+	"github.com/stretchr/testify/assert"
+
 	"fennel/engine/operators"
 	"fennel/lib/utils"
 	"fennel/lib/value"
-	"github.com/stretchr/testify/assert"
-	"reflect"
-	"testing"
 )
 
 func getTable() value.Table {
@@ -47,12 +49,12 @@ func TestFilterOperator_Apply(t *testing.T) {
 
 	intable := getTable()
 	// not passing "where" fails Validation
-	assert.Error(t, operators.Typecheck(op, map[string]reflect.Type{}, map[string]reflect.Type{}, map[string]reflect.Type{}))
+	assert.Error(t, operators.Typecheck(op, map[string]reflect.Type{}, value.Types.Any, map[string]reflect.Type{}))
 
 	// passing where true works
 	whereTrue := value.Dict{"where": value.Bool(true)}
 	whereFalse := value.Dict{"where": value.Bool(false)}
-	assert.NoError(t, operators.Typecheck(op, map[string]reflect.Type{}, map[string]reflect.Type{}, whereTrue.Schema()))
+	assert.NoError(t, operators.Typecheck(op, map[string]reflect.Type{}, value.Types.Any, whereTrue.Schema()))
 
 	contextKwargTable := value.NewTable()
 	contextKwargTable.Append(whereTrue)
@@ -78,10 +80,10 @@ func TestTakeOperator_Apply(t *testing.T) {
 
 	intable := getTable()
 	// not passing "limit" fails validation
-	assert.Error(t, operators.Typecheck(op, map[string]reflect.Type{}, map[string]reflect.Type{}, map[string]reflect.Type{}))
+	assert.Error(t, operators.Typecheck(op, map[string]reflect.Type{}, value.Types.Any, map[string]reflect.Type{}))
 
 	// and it fails validation even when limit is passed but isn't int
-	assert.Error(t, operators.Typecheck(op, map[string]reflect.Type{"limit": value.Types.Bool}, map[string]reflect.Type{}, map[string]reflect.Type{}))
+	assert.Error(t, operators.Typecheck(op, map[string]reflect.Type{"limit": value.Types.Bool}, value.Types.Any, map[string]reflect.Type{}))
 
 	// passing limit 2 works
 	expected := value.NewTable()

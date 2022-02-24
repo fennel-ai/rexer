@@ -1,9 +1,10 @@
 package operators
 
 import (
-	"fennel/lib/value"
 	"reflect"
 	"testing"
+
+	"fennel/lib/value"
 
 	"github.com/stretchr/testify/assert"
 )
@@ -27,7 +28,7 @@ func (top testOp) Signature() *Signature {
 		Param("p1", value.Types.Bool, true, false, value.Nil).
 		Param("p2", value.Types.Double, false, false, value.Double(3.0)).
 		Param("p3", value.Types.Any, true, false, value.Nil).
-		Input("c1", value.Types.String)
+		Input(value.Types.String)
 }
 
 type testOp2 struct{}
@@ -72,14 +73,14 @@ func TestTypecheck(t *testing.T) {
 		"p2": value.Types.Double,
 	}
 	empty := map[string]reflect.Type{}
-	inputIncorrect := map[string]reflect.Type{"c2": reflect.TypeOf(2)}
-	inputCorrect := map[string]reflect.Type{"c1": value.Types.String}
+	inputIncorrect1 := reflect.TypeOf(2)
+	inputIncorrect2 := reflect.TypeOf(value.Int(2))
+	inputCorrect := value.Types.String
 	contextual := map[string]reflect.Type{"p2": value.Types.Double}
 
-	assert.Error(t, Typecheck(op, kwargsCorrect, empty, empty))
-	assert.Error(t, Typecheck(op, kwargsCorrect, inputIncorrect, empty))
-	assert.Error(t, Typecheck(op, kwargsCorrect, inputIncorrect, empty))
-	assert.Error(t, Typecheck(op, kwargsCorrect, inputIncorrect, contextual))
+	assert.Error(t, Typecheck(op, kwargsCorrect, inputIncorrect1, empty))
+	assert.Error(t, Typecheck(op, kwargsCorrect, inputIncorrect2, empty))
+	assert.Error(t, Typecheck(op, kwargsCorrect, inputIncorrect1, contextual))
 	assert.Error(t, Typecheck(op, kwargsCorrect, inputCorrect, empty))
 	assert.Error(t, Typecheck(op, kwargsIncorrect, inputCorrect, contextual))
 
