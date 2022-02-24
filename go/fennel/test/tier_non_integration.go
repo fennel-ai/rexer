@@ -11,6 +11,8 @@ import (
 	"fennel/lib/ftypes"
 	"fennel/redis"
 	"fennel/tier"
+
+	"go.uber.org/zap"
 )
 
 // Tier returns a tier to be used in tests based off a standard test plane
@@ -32,6 +34,11 @@ func Tier() (tier.Tier, error) {
 	if err != nil {
 		return tier.Tier{}, err
 	}
+	logger, err := zap.NewDevelopment()
+	if err != nil {
+		return tier.Tier{}, fmt.Errorf("failed to construct logger: %v", err)
+	}
+	logger = logger.With(zap.Uint32("tier_id", uint32(tierID)))
 	return tier.Tier{
 		ID:               tierID,
 		DB:               db,
@@ -40,6 +47,7 @@ func Tier() (tier.Tier, error) {
 		Producers:        producers,
 		Clock:            clock.Unix{},
 		NewKafkaConsumer: consumerCreator,
+		Logger:           logger,
 	}, err
 }
 
