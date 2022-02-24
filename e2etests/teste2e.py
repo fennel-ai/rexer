@@ -69,7 +69,7 @@ def tiered(wrapped):
         env['TIER_ID'] = str(tier_id)
         with TestTier(tier_id):
             env['METRICS_PORT'] = str(2436)
-            with gorun('fennel/service/http', 'dynamic,integration', env, sleep=10):
+            with gorun('fennel/service/http', 'dynamic,integration', env, sleep=20):
                 env['METRICS_PORT'] = str(2446)
                 with gorun('fennel/service/countaggr', 'dynamic,integration', env):
                     return wrapped(*args, **kwargs)
