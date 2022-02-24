@@ -118,8 +118,9 @@ func TestEndToEnd(t *testing.T) {
 	}
 
 	// now fire a few actions
-	logAction(t, tier, uid, t0+ftypes.Timestamp(1), value.Dict{"value": value.Int(1)})
-	logAction(t, tier, uid, t0+ftypes.Timestamp(2), value.Dict{"value": value.Int(2)})
+	actions1 := logAction(t, tier, uid, t0+ftypes.Timestamp(1), value.Dict{"value": value.Int(1)})
+	actions2 := logAction(t, tier, uid, t0+ftypes.Timestamp(2), value.Dict{"value": value.Int(2)})
+	actions := append(actions1, actions2...)
 
 	t1 := t0 + 7200
 	clock.Set(int64(t1))
@@ -131,6 +132,20 @@ func TestEndToEnd(t *testing.T) {
 	// now the counts should have updated
 	for _, scenario := range scenarios {
 		verify(t, tier, scenario.agg, scenario.key, scenario.expected)
+	}
+
+	// unrelatedly, actions get inserted in DB with one iteration of insertInDB
+	found, err := action.Fetch(ctx, tier, actionlib.ActionFetchRequest{})
+	assert.NoError(t, err)
+	assert.Empty(t, found)
+	consumer, err := tier.NewKafkaConsumer(actionlib.ACTIONLOG_KAFKA_TOPIC, "insert_in_db", kafka.DefaultOffsetPolicy)
+	assert.NoError(t, err)
+	defer consumer.Close()
+	assert.NoError(t, action.TransferToDB(ctx, tier, consumer))
+	found, err = action.Fetch(ctx, tier, actionlib.ActionFetchRequest{})
+	assert.NoError(t, err)
+	for i, a := range actions {
+		assert.True(t, a.Equals(found[i], true))
 	}
 }
 
@@ -152,7 +167,7 @@ func verify(t *testing.T, tier tier.Tier, agg libaggregate.Aggregate, k value.Va
 	assert.Equal(t, expected, found)
 }
 
-func logAction(t *testing.T, tier tier.Tier, uid ftypes.OidType, ts ftypes.Timestamp, metadata value.Value) {
+func logAction(t *testing.T, tier tier.Tier, uid ftypes.OidType, ts ftypes.Timestamp, metadata value.Value) []actionlib.Action {
 	a1 := actionlib.Action{
 		ActorID:    uid,
 		ActorType:  "user",
@@ -165,10 +180,11 @@ func logAction(t *testing.T, tier tier.Tier, uid ftypes.OidType, ts ftypes.Times
 	}
 	a2 := a1
 	a2.ActionType = "share"
-	_, err := action.Insert(context.Background(), tier, a1)
+	err := action.Insert(context.Background(), tier, a1)
 	assert.NoError(t, err)
-	_, err = action.Insert(context.Background(), tier, a2)
+	err = action.Insert(context.Background(), tier, a2)
 	assert.NoError(t, err)
+	return []actionlib.Action{a1, a2}
 }
 
 func getQuery() ast.Ast {

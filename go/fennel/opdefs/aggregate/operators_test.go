@@ -41,7 +41,7 @@ func TestAggValue_Apply(t *testing.T) {
 	uids := []ftypes.OidType{1, 2, 1}
 	for i := 0; i < 3; i++ {
 		a := getAction(uids[i], ftypes.Timestamp(t0), "like")
-		_, err = controller_action.Insert(ctx, tier, a)
+		err = controller_action.Insert(ctx, tier, a)
 		assert.NoError(t, err)
 	}
 	clock.Set(t0 + 3600)

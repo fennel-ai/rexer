@@ -7,6 +7,7 @@ import (
 	_ "net/http/pprof"
 	"time"
 
+	action2 "fennel/controller/action"
 	"fennel/controller/aggregate"
 	"fennel/kafka"
 	"fennel/lib/action"
@@ -32,7 +33,7 @@ func logKafkaLag(t tier.Tier, consumer kafka.FConsumer) {
 }
 
 func processAggregate(tr tier.Tier, agg libaggregate.Aggregate) error {
-	consumer, err := tr.NewKafkaConsumer(action.ACTIONLOG_KAFKA_TOPIC, string(agg.Name), "earliest")
+	consumer, err := tr.NewKafkaConsumer(action.ACTIONLOG_KAFKA_TOPIC, string(agg.Name), kafka.DefaultOffsetPolicy)
 	if err != nil {
 		return fmt.Errorf("unable to start consumer for aggregate: %s. Error: %v", agg.Name, err)
 	}
@@ -47,6 +48,24 @@ func processAggregate(tr tier.Tier, agg libaggregate.Aggregate) error {
 			logKafkaLag(tr, consumer)
 		}
 	}(tr, consumer, agg)
+	return nil
+}
+
+func startActionDBInsertion(tr tier.Tier) error {
+	consumer, err := tr.NewKafkaConsumer(action.ACTIONLOG_KAFKA_TOPIC, "_put_actions_in_db", kafka.DefaultOffsetPolicy)
+	if err != nil {
+		return fmt.Errorf("unable to start consumer for inserting actions in DB: %v", err)
+	}
+	go func(tr tier.Tier, consumer kafka.FConsumer) {
+		defer consumer.Close()
+		ctx := context.Background()
+		for {
+			if err := action2.TransferToDB(ctx, tr, consumer); err != nil {
+				tr.Logger.Error("error while reading/writing actions to insert in db:", zap.Error(err))
+			}
+			time.Sleep(time.Second)
+		}
+	}(tr, consumer)
 	return nil
 }
 
@@ -69,6 +88,11 @@ func main() {
 	// Note: don't delete this log line - e2e tests rely on this to be printed
 	// to know that server has initialized and is ready to take traffic
 	log.Println("server is ready...")
+
+	// first kick off a goroutine to transfer actions from kafka to DB
+	if err = startActionDBInsertion(tr); err != nil {
+		panic(err)
+	}
 
 	// Set of aggregates that are currently being processed by the system.
 	processedAggregates := make(map[ftypes.AggName]struct{})

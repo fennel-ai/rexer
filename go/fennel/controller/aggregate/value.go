@@ -5,8 +5,7 @@ import (
 	"fmt"
 	"time"
 
-	"google.golang.org/protobuf/proto"
-
+	"fennel/controller/action"
 	"fennel/controller/counter"
 	"fennel/engine/ast"
 	"fennel/engine/interpreter"
@@ -34,7 +33,7 @@ func Value(ctx context.Context, tier tier.Tier, name ftypes.AggName, key value.V
 }
 
 func Update(ctx context.Context, tier tier.Tier, consumer kafka.FConsumer, agg aggregate.Aggregate) error {
-	actions, err := readActions(ctx, consumer)
+	actions, err := action.ReadBatch(ctx, consumer, 10000, time.Second*10)
 	if err != nil {
 		return err
 	}
@@ -60,24 +59,6 @@ func Update(ctx context.Context, tier tier.Tier, consumer kafka.FConsumer, agg a
 //============================
 // Private helpers below
 //============================
-
-func readActions(ctx context.Context, consumer kafka.FConsumer) ([]libaction.Action, error) {
-	msgs, err := consumer.ReadBatch(ctx, 10000, time.Second*5)
-	if err != nil {
-		return nil, err
-	}
-	actions := make([]libaction.Action, len(msgs))
-	for i := range msgs {
-		var pa libaction.ProtoAction
-		if err = proto.Unmarshal(msgs[i], &pa); err != nil {
-			return nil, err
-		}
-		if actions[i], err = libaction.FromProtoAction(&pa); err != nil {
-			return nil, err
-		}
-	}
-	return actions, nil
-}
 
 func transformActions(tier tier.Tier, actions []libaction.Action, query ast.Ast) (value.Table, error) {
 	interpreter, err := loadInterpreter(tier, actions)

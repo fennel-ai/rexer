@@ -2,6 +2,12 @@ package main
 
 import (
 	"encoding/json"
+	"fmt"
+	"io/ioutil"
+	"log"
+	"net/http"
+	_ "net/http/pprof"
+
 	"fennel/controller/action"
 	aggregate2 "fennel/controller/aggregate"
 	profile2 "fennel/controller/profile"
@@ -15,11 +21,6 @@ import (
 	"fennel/lib/query"
 	"fennel/lib/value"
 	"fennel/tier"
-	"fmt"
-	"io/ioutil"
-	"log"
-	"net/http"
-	_ "net/http/pprof"
 
 	"github.com/gorilla/mux"
 	"google.golang.org/protobuf/proto"
@@ -75,14 +76,12 @@ func (m server) Log(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 	// fwd to controller
-	aid, err := action.Insert(req.Context(), m.tier, a)
-	if err != nil {
+	if err = action.Insert(req.Context(), m.tier, a); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		log.Printf("Error: %v", err)
 		return
 	}
-	// write the actionID back
-	fmt.Fprintf(w, fmt.Sprintf("%d", aid))
+	// nothing to do on successful call :)
 }
 
 func (m server) Fetch(w http.ResponseWriter, req *http.Request) {

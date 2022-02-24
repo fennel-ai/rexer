@@ -2,10 +2,12 @@ package action
 
 import (
 	"encoding/json"
+	"fmt"
+
+	"github.com/buger/jsonparser"
+
 	"fennel/lib/ftypes"
 	"fennel/lib/value"
-	"fmt"
-	"github.com/buger/jsonparser"
 )
 
 const (
@@ -118,6 +120,15 @@ func (a *Action) Validate() error {
 	}
 	if a.RequestID == 0 {
 		return fmt.Errorf("action request ID can not be zero")
+	}
+	if len(a.ActionType) > 255 {
+		return fmt.Errorf("action type too long: action types cannot be longer than 255 chars")
+	}
+	if len(a.ActorType) > 255 {
+		return fmt.Errorf("actor type too long: actor types cannot be longer than 255 chars")
+	}
+	if len(a.TargetType) > 255 {
+		return fmt.Errorf("target type too long: target types cannot be longer than 255 chars")
 	}
 	return nil
 }

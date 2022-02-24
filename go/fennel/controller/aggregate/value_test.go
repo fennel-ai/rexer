@@ -1,12 +1,9 @@
 package aggregate
 
 import (
-	"context"
 	"testing"
 
-	action2 "fennel/controller/action"
 	"fennel/engine/ast"
-	"fennel/kafka"
 	"fennel/lib/action"
 	"fennel/lib/ftypes"
 	"fennel/lib/value"
@@ -37,42 +34,6 @@ func TestTransformActions(t *testing.T) {
 		assert.Equal(t, value.Int(i+1000), row["timestamp"])
 		assert.Equal(t, value.List{value.Int(uid)}, row["groupkey"])
 	}
-}
-
-func Test_ReadActions(t *testing.T) {
-	tier, err := test.Tier()
-	assert.NoError(t, err)
-	defer test.Teardown(tier)
-	ctx := context.Background()
-
-	actions := make([]action.Action, 0)
-	uid := ftypes.OidType(41)
-	for i := 0; i < 100; i++ {
-		a1 := getAction(i, uid, ftypes.Timestamp(i+1000), "like")
-		a2 := getAction(i, uid, ftypes.Timestamp(i+1005), "share")
-		aid, err := action2.Insert(ctx, tier, a1)
-		assert.NoError(t, err)
-		a1.ActionID = ftypes.OidType(aid)
-		aid, err = action2.Insert(ctx, tier, a2)
-		assert.NoError(t, err)
-		a2.ActionID = ftypes.OidType(aid)
-		actions = append(actions, a1, a2)
-	}
-	c1, err := tier.NewKafkaConsumer(action.ACTIONLOG_KAFKA_TOPIC, "one", kafka.DefaultOffsetPolicy)
-	defer c1.Close()
-	assert.NoError(t, err)
-	c2, err := tier.NewKafkaConsumer(action.ACTIONLOG_KAFKA_TOPIC, "two", kafka.DefaultOffsetPolicy)
-	assert.NoError(t, err)
-	defer c2.Close()
-
-	// verify both c1 and c2 produce the same actions
-	found1, err := readActions(ctx, c1)
-	assert.NoError(t, err)
-	assert.Equal(t, found1, actions)
-
-	found2, err := readActions(ctx, c2)
-	assert.NoError(t, err)
-	assert.Equal(t, found2, actions)
 }
 
 func getQuery() ast.Ast {
