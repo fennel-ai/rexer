@@ -23,9 +23,9 @@ if not py_only:
     if integration:
         tags.append('integration')
     if tags:
-        p1 = subprocess.Popen(['go test -p 1 -tags %s ./...' % (','.join(tags))], shell=True, cwd=godir)
+        p1 = subprocess.Popen(['go test -p 5 -tags %s ./...' % (','.join(tags))], shell=True, cwd=godir)
     else:
-        p1 = subprocess.Popen(['go test -p 1 ./...'], shell=True, cwd=godir)
+        p1 = subprocess.Popen(['go test -p 5 ./...'], shell=True, cwd=godir)
     p1.wait()
 
 pydir = os.path.join(root, 'pyconsole')
