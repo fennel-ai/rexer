@@ -2,10 +2,11 @@ package operators
 
 import (
 	"encoding/json"
-	"fennel/lib/utils"
-	"fennel/lib/value"
 	"fmt"
 	"reflect"
+
+	"fennel/lib/utils"
+	"fennel/lib/value"
 )
 
 func init() {
@@ -38,11 +39,10 @@ type Param struct {
 	Default  value.Value
 }
 
-// TODO: support optional parameters with default values
 type Signature struct {
 	Module        string
 	Name          string
-	inputs        map[string]reflect.Type
+	input         reflect.Type
 	StaticKwargs  map[string]Param
 	ContextKwargs map[string]Param
 }
@@ -50,7 +50,7 @@ type Signature struct {
 func NewSignature(op Operator, module, name string) *Signature {
 	return &Signature{
 		module, name,
-		make(map[string]reflect.Type, 0),
+		value.Types.Any,
 		make(map[string]Param, 0),
 		make(map[string]Param, 0),
 	}
@@ -67,8 +67,8 @@ func (s *Signature) Param(name string, t reflect.Type, static bool, optional boo
 	return s
 }
 
-func (s *Signature) Input(colname string, t reflect.Type) *Signature {
-	s.inputs[colname] = t
+func (s *Signature) Input(t reflect.Type) *Signature {
+	s.input = t
 	return s
 }
 
@@ -119,7 +119,7 @@ func GetOperatorsJSON() ([]byte, error) {
 	return json.Marshal(opdata)
 }
 
-func Typecheck(op Operator, staticKwargs map[string]reflect.Type, inputSchema map[string]reflect.Type, contextKwargSchema map[string]reflect.Type) error {
+func Typecheck(op Operator, staticKwargs map[string]reflect.Type, inputType reflect.Type, contextKwargSchema map[string]reflect.Type) error {
 	// first, let's validate static kwargs
 	sig := op.Signature()
 	if len(sig.StaticKwargs) != len(staticKwargs) {
@@ -150,14 +150,8 @@ func Typecheck(op Operator, staticKwargs map[string]reflect.Type, inputSchema ma
 		}
 	}
 	// next let's validate input table inputSchema
-	for k, t := range sig.inputs {
-		vt, ok := inputSchema[k]
-		if !ok {
-			return fmt.Errorf("operator '%s.%s' expects col '%s' in input table but not found", sig.Module, sig.Name, k)
-		}
-		if vt != t {
-			return fmt.Errorf("type of  input column '%s' expected to be '%s' but found to be '%s'", k, t, vt)
-		}
+	if sig.input != value.Types.Any && sig.input != inputType {
+		return fmt.Errorf("operator '%s.%s' expects input to be list of '%s' but found to be list of '%s'", sig.Module, sig.Name, sig.input, inputType)
 	}
 	return nil
 }

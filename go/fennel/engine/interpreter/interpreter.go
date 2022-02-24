@@ -1,13 +1,14 @@
 package interpreter
 
 import (
+	"fmt"
+	"strconv"
+	"strings"
+
 	"fennel/engine/ast"
 	"fennel/engine/operators"
 	"fennel/lib/utils"
 	"fennel/lib/value"
-	"fmt"
-	"strconv"
-	"strings"
 )
 
 type Interpreter struct {
@@ -228,8 +229,9 @@ func (i Interpreter) VisitOpcall(operand ast.Ast, namespace, name string, kwargs
 		return value.Nil, err
 	}
 	// verify typing of all kwargs
-	inputSchema, contextKwargSchema := inputTable.Schema()
-	if err = operators.Typecheck(op, staticKwargs.Schema(), inputSchema, contextKwargSchema); err != nil {
+	_, contextKwargSchema := inputTable.Schema()
+	// TODO: for now, we treat all input as list of dicts but we will change this soon
+	if err = operators.Typecheck(op, staticKwargs.Schema(), value.Types.Dict, contextKwargSchema); err != nil {
 		return value.Nil, err
 	}
 

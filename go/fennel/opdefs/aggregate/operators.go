@@ -2,6 +2,7 @@ package aggregate
 
 import (
 	"context"
+
 	"fennel/controller/aggregate"
 	"fennel/engine/interpreter/bootarg"
 	"fennel/engine/operators"
@@ -45,6 +46,7 @@ func (a AggValue) Apply(kwargs value.Dict, in operators.InputIter, out *value.Ta
 
 func (a AggValue) Signature() *operators.Signature {
 	return operators.NewSignature(a, "aggregate", "addField").
+		Input(value.Types.Dict).
 		Param("name", value.Types.String, true, false, value.Nil).
 		Param("aggregate", value.Types.String, true, false, value.Nil).
 		Param("key", value.Types.Any, false, false, value.Nil)

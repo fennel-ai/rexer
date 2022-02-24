@@ -50,6 +50,7 @@ func (t timeBucketOfDay) Apply(kwargs value.Dict, in operators.InputIter, out *v
 
 func (t timeBucketOfDay) Signature() *operators.Signature {
 	return operators.NewSignature(t, "time", "addTimeBucketOfDay").
+		Input(value.Types.Dict).
 		Param("timestamp", value.Types.Int, false, false, value.Nil).
 		Param("bucket", value.Types.Int, true, false, value.Nil).
 		Param("name", value.Types.String, true, false, value.Nil)
@@ -86,6 +87,7 @@ func (d dayOfWeek) Apply(kwargs value.Dict, in operators.InputIter, out *value.T
 
 func (d dayOfWeek) Signature() *operators.Signature {
 	return operators.NewSignature(d, "time", "addDayOfWeek").
+		Input(value.Types.Dict).
 		Param("timestamp", value.Types.Int, false, false, value.Nil).
 		Param("name", value.Types.String, true, false, value.Nil)
 }
