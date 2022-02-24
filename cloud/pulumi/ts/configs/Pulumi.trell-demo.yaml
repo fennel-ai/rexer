@@ -1,11 +1,11 @@
 config:
   aws:region: ap-south-1
-  configs:cache-conf:
+  configs:cacheConfig:
     primary:
       secure: AAABAGpKQnbdDYf7otdAUDgmhoaOLvWwlpXTstKV4xucyQZe/nwNG+9qu2meaVxPp/RxQzWKPZT7zfUy9JBTZxIIJiuf9kMQ2BbfqX90Xd+hRB1zyC6lT/h1N4EXaOqkgtLKMwkz7rcA
     replica:
       secure: AAABAG43j1u8KBojMpT/ZauwCthe3jPOgoki9GZVyO1oNhEaq4gknra/wljWT3IEYj2/5sl7EeDNe6lgriCZ1YthhaVazZYkjQ0XN8ucq6wrJLI+hI5lpOdMSLN1rYI4Xrrg7VgxiZ/g
-  configs:db-conf:
+  configs:dbConfig:
     db:
       secure: AAABAPl1TvBDNF0RNDeNbStyulCI9vf/O3LISWnbpZ6uIA==
     host:
@@ -14,15 +14,15 @@ config:
       secure: AAABAFDUAzrGTZqHIRUHZz9abjsA9/LjSmknlEpMXtid7zgZvGpRBCgYeeVtvG9ciXFuZ/FTvGpUDmwIf7qHbLmFjRhb3qgNct8zg4zJXHBlxIBvqg==
     username:
       secure: AAABAI38nwDKBSdL1ni/NdvHtZ/ldJdPVYlqsQJ/ZabHU4t18EcO/BHkhCc=
-  configs:kafka-conf:
+  configs:kafkaConfig:
     password:
       secure: AAABAOXy7h1bLjpYCFKVHF7WeWaSEoTCWnCiZoB4kPCaV8lHTwYL2OgkmT8UK8wZJDJIrAPMd+Q+HG14VBWv/npCQ5MZap7BoZV+RdBi1hGpxEvRd9PvsBQiaZMK9Tj8
     server:
       secure: AAABADd3Aa8Q99K5VXVjCUTMSw/YZLLt10m2qB/l55aTFF2ItwIe0+ycwx366MvZr3C1Gkux/UbHbnk3wFMpIqAY0HaqgYjNXRpXM2A=
     username:
       secure: AAABAMvI1Hxc1KknN4kReP3lWrpt82wy5b8jMfvJIDemI6kL2qAjHmR+R4mCA9H0
-  configs:redis-conf:
+  configs:redisConfig:
     addr:
       secure: AAABAOCLb/SN1gF+4qJkUzRw7Jbca3R2N+/y9G5LudSu4n0AeiXq2kTAn9tpiLKogB2F5W5yJ7bTvUl8IXT2FIk+Rf3YVzbCa8v8uMgnVhd0rJ7MTyVBUisAAK9czXr006iTqnW0f3o4
-  configs:tier-conf:
+  configs:tierConfig:
     tier_id: "92195"
