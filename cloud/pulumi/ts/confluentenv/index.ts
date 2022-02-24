@@ -1,37 +1,84 @@
 import * as pulumi from "@pulumi/pulumi";
 import * as confluent from "@pulumi/confluent";
 
-export type input = {
+import * as process from "process";
+
+// TODO: use version from common library.
+// operator for type-safety for string key access:
+// https://schneidenbach.gitbooks.io/typescript-cookbook/content/nameof-operator.html
+export const nameof = <T>(name: keyof T) => name;
+
+// TODO: move to common library module.
+export const fennelStdTags = {
+    "managed-by": "fennel.ai",
+}
+
+export const plugins = {}
+
+export type inputType = {
     region: string,
     username: string,
     password: pulumi.Output<string>,
     envName: string,
 }
 
-const parseConfig = (): input => {
+export type outputType = {
+    apiKey: pulumi.Output<string>,
+    apiSecret: pulumi.Output<string>,
+}
+
+const parseConfig = (): inputType => {
     const config = new pulumi.Config();
     return {
-        username: config.require("username"),
-        password: config.requireSecret("password"),
-        region: config.require("region"),
-        envName: config.require("envName"),
+        username: config.require(nameof<inputType>("username")),
+        password: config.requireSecret(nameof<inputType>("password")),
+        region: config.require(nameof<inputType>("region")),
+        envName: config.require(nameof<inputType>("envName")),
     }
 }
 
-const config = parseConfig();
+export const setup = async (input: inputType) => {
+    const provider = new confluent.Provider("conf-provider", {
+        username: input.username,
+        password: input.password,
+    })
 
-const provider = new confluent.Provider("conf-provider", {
-    username: config.username,
-    password: config.password,
-})
+    const env = new confluent.ConfluentEnvironment("conf-env", {
+        name: input.envName,
+    }, { provider })
 
-const env = new confluent.ConfluentEnvironment("conf-env", {
-    name: config.envName,
-}, { provider })
+    const cluster = new confluent.KafkaCluster("cluster", {
+        availability: "LOW",
+        environmentId: env.id,
+        region: input.region,
+        serviceProvider: "AWS",
+    }, { provider });
 
-export const cluster = new confluent.KafkaCluster("cluster", {
-    availability: "LOW",
-    environmentId: env.id,
-    region: config.region,
-    serviceProvider: "AWS",
-}, { provider });
+    const apiKey = new confluent.ApiKey("key", {
+        environmentId: cluster.environmentId,
+        clusterId: cluster.id,
+    }, { provider })
+
+    const output: outputType = {
+        apiKey: apiKey.key,
+        apiSecret: apiKey.secret,
+    }
+
+    return output
+}
+
+async function run() {
+    let output: outputType | undefined;
+    // Run the main function only if this program is run through the pulumi CLI.
+    // Unfortunately, in that case the argv0 itself is not "pulumi", but the full
+    // path of node: e.g. /nix/store/7q04aq0sq6im9a0k09gzfa1xfncc0xgm-nodejs-14.18.1/bin/node
+    if (process.argv0 !== 'node') {
+        pulumi.log.info("Running...")
+        const input: inputType = parseConfig();
+        output = await setup(input)
+    }
+    return output
+}
+
+
+export const output = await run();
