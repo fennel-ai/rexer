@@ -13,15 +13,6 @@ import (
 // Insert inserts the action in DB. If successful, returns the actionID
 func Insert(ctx context.Context, tier tier.Tier, action *action.ActionSer) (uint64, error) {
 	defer timer.Start(ctx, tier.ID, "model.action.insert").Stop()
-	if len(action.ActionType) > 255 {
-		return 0, fmt.Errorf("ActionType too long: action types cannot be longer than 255 chars")
-	}
-	if len(action.ActorType) > 255 {
-		return 0, fmt.Errorf("ActorType too long: actor types cannot be longer than 255 chars")
-	}
-	if len(action.TargetType) > 255 {
-		return 0, fmt.Errorf("TargetType too long: target types cannot be longer than 255 chars")
-	}
 	result, err := tier.DB.NamedExecContext(ctx, `
 		INSERT INTO actionlog (
 			actor_id, actor_type, target_id, target_type, action_type, timestamp, request_id, metadata
@@ -38,6 +29,30 @@ func Insert(ctx context.Context, tier tier.Tier, action *action.ActionSer) (uint
 		return 0, err
 	}
 	return uint64(actionID), nil
+}
+
+// InsertBatch Inserts a batch of actions in the database and returns an error if there is a
+// failure. All actions are inserted at once and so either the whole insertion works or none
+// of it does
+func InsertBatch(ctx context.Context, tier tier.Tier, actions []action.ActionSer) error {
+	defer timer.Start(ctx, tier.ID, "model.action.insert_batch").Stop()
+	sql := `INSERT INTO actionlog (
+				 actor_id, actor_type, target_id, target_type, action_type, timestamp, request_id, metadata
+			)
+			VALUES `
+	vals := make([]interface{}, 0)
+	for i := range actions {
+		a := actions[i]
+		sql += "(?, ?, ?, ?, ?, ?, ?, ?),"
+		vals = append(vals, a.ActorID, a.ActorType, a.TargetID, a.TargetType, a.ActionType, a.Timestamp, a.RequestID, a.Metadata)
+	}
+	sql = strings.TrimSuffix(sql, ",") // remove the last trailing comma
+	stmt, err := tier.DB.Prepare(sql)
+	if err != nil {
+		return err
+	}
+	_, err = stmt.Exec(vals...)
+	return err
 }
 
 // Whatever properties of 'request' are non-zero are used to filter eligible actions

@@ -6,7 +6,6 @@ import (
 
 	"fennel/lib/action"
 	"fennel/lib/ftypes"
-	"fennel/lib/utils"
 	"fennel/lib/value"
 	"fennel/test"
 
@@ -72,41 +71,35 @@ func TestActionDBBasic(t *testing.T) {
 	assert.ElementsMatch(t, []action.ActionSer{*action2ser}, found)
 }
 
-func TestLongTypes(t *testing.T) {
+func TestInsertBatch(t *testing.T) {
 	tier, err := test.Tier()
 	assert.NoError(t, err)
 	defer test.Teardown(tier)
-
 	ctx := context.Background()
-	// valid action
-	action1 := action.Action{
-		ActorID:    111,
-		ActorType:  "11",
-		TargetType: "12",
-		TargetID:   121,
-		ActionType: "13",
-		Metadata:   value.Int(14),
-		Timestamp:  15,
-		RequestID:  16,
-	}
+
+	var request action.ActionFetchRequest
+	// initially before setting, value isn't there so we get empty response
+	found, err := Fetch(ctx, tier, request)
+	assert.NoError(t, err)
+	assert.Empty(t, found)
+
+	// now insert a few actions
+	action1 := action.Action{ActorID: 111, ActorType: "11", TargetType: "12", TargetID: 121, ActionType: "13", Metadata: value.Int(14), Timestamp: 15, RequestID: 16}
 	action1ser, err := action1.ToActionSer()
 	assert.NoError(t, err)
+	action2 := action.Action{ActorID: 211, ActorType: "21", TargetType: "22", TargetID: 221, ActionType: "23", Metadata: value.Int(24), Timestamp: 25, RequestID: 26}
+	action2ser, err := action2.ToActionSer()
+	assert.NoError(t, InsertBatch(ctx, tier, []action.ActionSer{*action1ser, *action2ser}))
 
-	// ActionType can't be longer than 255 chars
-	action1ser.ActionType = ftypes.ActionType(utils.RandString(256))
-	_, err = Insert(ctx, tier, action1ser)
-	assert.Error(t, err)
-	action1ser.ActionType = ftypes.ActionType(utils.RandString(255))
+	found, err = Fetch(ctx, tier, request)
+	assert.NoError(t, err)
+	assert.Len(t, found, 2)
 
-	// ActorType can't be longer than 255 chars
-	action1ser.ActorType = ftypes.OType(utils.RandString(256))
-	_, err = Insert(ctx, tier, action1ser)
-	assert.Error(t, err)
-	action1ser.ActorType = ftypes.OType(utils.RandString(255))
+	f1ptr, err := found[0].ToAction()
+	assert.NoError(t, err)
+	assert.True(t, f1ptr.Equals(action1, true))
 
-	// TargetType can't be longer than 255 chars
-	action1ser.TargetType = ftypes.OType(utils.RandString(256))
-	_, err = Insert(ctx, tier, action1ser)
-	assert.Error(t, err)
-	action1ser.TargetType = ftypes.OType(utils.RandString(255))
+	f2ptr, err := found[1].ToAction()
+	assert.NoError(t, err)
+	assert.True(t, f2ptr.Equals(action2, true))
 }

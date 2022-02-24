@@ -8,8 +8,10 @@ import (
 	"strings"
 	"testing"
 
+	action2 "fennel/controller/action"
 	aggregate2 "fennel/controller/aggregate"
 	"fennel/engine/ast"
+	"fennel/kafka"
 	"fennel/lib/aggregate"
 	"fennel/model/counter"
 
@@ -58,12 +60,17 @@ func TestLogFetchServerClient(t *testing.T) {
 	tier, err := test.Tier()
 	assert.NoError(t, err)
 	defer test.Teardown(tier)
+	ctx := context.Background()
 
 	controller := server{tier: tier}
 	server := startTestServer(controller)
 	defer server.Close()
 	c, err := client.NewClient(server.URL, server.Client())
 	assert.NoError(t, err)
+
+	consumer, err := tier.NewKafkaConsumer(action.ACTIONLOG_KAFKA_TOPIC, "somegroup", kafka.DefaultOffsetPolicy)
+	assert.NoError(t, err)
+	defer consumer.Close()
 
 	// in the beginning, with no value set, we get []actions but with no error
 	verifyFetch(t, c, action.ActionFetchRequest{}, []action.Action{})
@@ -77,19 +84,22 @@ func TestLogFetchServerClient(t *testing.T) {
 	verifyFetch(t, c, action.ActionFetchRequest{}, []action.Action{})
 
 	// but this error disappears when we pass all values
-	action1 := add(t, c, action.Action{ActorType: "1", ActorID: 2, ActionType: "3", TargetType: "4", TargetID: 5, RequestID: 6, Timestamp: 7, Metadata: value.Nil})
-	// and this action should show up in requests
-	verifyFetch(t, c, action.ActionFetchRequest{}, []action.Action{action1})
+	a1 := add(t, c, action.Action{ActorType: "1", ActorID: 2, ActionType: "3", TargetType: "4", TargetID: 5, RequestID: 6, Timestamp: 7, Metadata: value.Nil})
+	// and this action should show up in requests (after we trnasfer it to DB)
+	assert.NoError(t, action2.TransferToDB(ctx, tier, consumer))
+	verifyFetch(t, c, action.ActionFetchRequest{}, []action.Action{a1})
 
 	// add a couple of actions
-	action2 := add(t, c, action.Action{
+	a2 := add(t, c, action.Action{
 		ActorType: "11", ActorID: 12, ActionType: "13", TargetType: "14", TargetID: 15, RequestID: 16, Timestamp: 17, Metadata: value.Nil},
 	)
-	verifyFetch(t, c, action.ActionFetchRequest{}, []action.Action{action1, action2})
-	action3 := add(t, c, action.Action{
+	assert.NoError(t, action2.TransferToDB(ctx, tier, consumer))
+	verifyFetch(t, c, action.ActionFetchRequest{}, []action.Action{a1, a2})
+	a3 := add(t, c, action.Action{
 		ActorType: "22", ActorID: 23, ActionType: "23", TargetType: "24", TargetID: 25, RequestID: 26, Timestamp: 27, Metadata: value.Nil},
 	)
-	verifyFetch(t, c, action.ActionFetchRequest{}, []action.Action{action1, action2, action3})
+	assert.NoError(t, action2.TransferToDB(ctx, tier, consumer))
+	verifyFetch(t, c, action.ActionFetchRequest{}, []action.Action{a1, a2, a3})
 }
 
 // TODO: add more tests covering more error conditions
