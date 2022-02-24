@@ -1,6 +1,6 @@
 config:
-  confluentenv:envName: test-auto-api
+  confluentenv:envName: trell-hosted
   confluentenv:password:
     secure: AAABAJ+c2wVKrO4c8eOv4E4OpIznxtm/MoG4JZUQnfXc7QXiBFx5ydMwZ9lmzz4=
-  confluentenv:region: us-west-2
+  confluentenv:region: ap-south-1
   confluentenv:username: abhay@fennel.ai

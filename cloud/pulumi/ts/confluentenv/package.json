@@ -1,12 +1,14 @@
 {
     "name": "confluentenv",
+    "type": "module",
     "devDependencies": {
         "@types/node": "^14"
     },
     "dependencies": {
         "@pulumi/confluent": "^0.2.2",
         "@pulumi/kafka": "^3.1.2",
-        "@pulumi/pulumi": "^3.0.0",
-        "url": "^0.11.0"
+        "@pulumi/pulumi": "^3.24.1",
+        "ts-node": "^10.5.0",
+        "typescript": "^4.5.5"
     }
 }
