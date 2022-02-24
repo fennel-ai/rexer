@@ -2,11 +2,12 @@ package tier
 
 import (
 	"crypto/tls"
-	"fennel/resource"
 	"fmt"
 	"log"
 	"strings"
 	"time"
+
+	"fennel/resource"
 
 	"fennel/db"
 	"fennel/kafka"
@@ -105,15 +106,6 @@ func CreateFromArgs(args *TierArgs) (tier Tier, err error) {
 	if err != nil {
 		return tier, fmt.Errorf("failed to connect with mysql: %v", err)
 	}
-	// Start a goroutine to periodically record db connection stats.
-	go func() {
-		ticker := time.NewTicker(30 * time.Second)
-		defer ticker.Stop()
-		for ; true; <-ticker.C {
-			db.RecordConnectionStats(sqlConn.(db.Connection).DB, 30*time.Second)
-		}
-	}()
-
 	log.Print("Connecting to redis")
 	redisConfig := redis.ClientConfig{
 		Addr:      args.RedisServer,
@@ -133,6 +125,16 @@ func CreateFromArgs(args *TierArgs) (tier Tier, err error) {
 	if err != nil {
 		return tier, fmt.Errorf("failed to create cache client: %v", err)
 	}
+	// Start a goroutine to periodically record various connection stats.
+	go func() {
+		ticker := time.NewTicker(30 * time.Second)
+		defer ticker.Stop()
+		for ; true; <-ticker.C {
+			db.RecordConnectionStats(sqlConn.(db.Connection))
+			redis.RecordConnectionStats("redis", redisClient.(redis.Client))
+			redis.RecordConnectionStats("elasticache", cacheClient.(redis.Client))
+		}
+	}()
 
 	log.Print("Creating kafka producer")
 	producers, err := CreateKafka(scope, args.KafkaServer, args.KafkaUsername, args.KafkaPassword)
