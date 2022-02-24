@@ -39,7 +39,7 @@ func (k RemoteConsumer) Type() resource.Type {
 }
 
 func (k RemoteConsumer) ReadProto(ctx context.Context, pmsg proto.Message, timeout time.Duration) error {
-	defer timer.Start(k.scope.GetTierID(), "kafka.read_proto").ObserveDuration()
+	defer timer.Start(ctx, k.scope.GetTierID(), "kafka.read_proto").Stop()
 	ch := make(chan error)
 	go func() {
 		kmsg, err := k.ReadMessage(timeout)
@@ -121,9 +121,7 @@ func (k RemoteConsumer) AsyncCommit() chan error {
 // An alternate implementation is sketched here:
 // https://github.com/confluentinc/confluent-kafka-go/issues/690#issuecomment-932810037.
 func (k RemoteConsumer) Backlog() (int, error) {
-	defer timer.Start(k.scope.GetTierID(), "kafka.backlog").ObserveDuration()
 	var n int
-
 	// Get the current assigned topic partitions.
 	toppars, err := k.Assignment()
 	if err != nil {
@@ -150,7 +148,6 @@ func (k RemoteConsumer) Backlog() (int, error) {
 		if toppars[i].Offset == kafka.OffsetInvalid {
 			o = l
 		}
-
 		n = n + int(h-o)
 	}
 

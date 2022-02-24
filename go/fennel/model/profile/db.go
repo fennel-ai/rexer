@@ -2,12 +2,13 @@ package profile
 
 import (
 	"context"
+	"fmt"
+	"strings"
+
 	"fennel/lib/ftypes"
 	"fennel/lib/profile"
 	"fennel/lib/timer"
 	"fennel/tier"
-	"fmt"
-	"strings"
 
 	_ "github.com/go-sql-driver/mysql"
 	_ "github.com/mattn/go-sqlite3"
@@ -22,7 +23,7 @@ type provider interface {
 type dbProvider struct{}
 
 func (D dbProvider) set(ctx context.Context, tier tier.Tier, otype ftypes.OType, oid uint64, key string, version uint64, valueSer []byte) error {
-	defer timer.Start(tier.ID, "model.profile.db.set").ObserveDuration()
+	defer timer.Start(ctx, tier.ID, "model.profile.db.set").Stop()
 	if version == 0 {
 		return fmt.Errorf("version can not be zero")
 	}
@@ -43,7 +44,7 @@ func (D dbProvider) set(ctx context.Context, tier tier.Tier, otype ftypes.OType,
 }
 
 func (D dbProvider) get(ctx context.Context, tier tier.Tier, otype ftypes.OType, oid uint64, key string, version uint64) ([]byte, error) {
-	defer timer.Start(tier.ID, "model.profile.db.get").ObserveDuration()
+	defer timer.Start(ctx, tier.ID, "model.profile.db.get").Stop()
 	var value [][]byte = nil
 	var err error
 	if version > 0 {

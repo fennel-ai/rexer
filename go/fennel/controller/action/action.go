@@ -14,7 +14,7 @@ import (
 // Insert takes an action and inserts it both in the DB and Kafka
 // returns the unique ID of the action that was inserted
 func Insert(ctx context.Context, tier tier.Tier, a actionlib.Action) (uint64, error) {
-	defer timer.Start(tier.ID, "controller.action.insert").ObserveDuration()
+	defer timer.Start(ctx, tier.ID, "controller.action.insert").Stop()
 	err := a.Validate()
 	if err != nil {
 		return 0, fmt.Errorf("invalid action: %v", err)
@@ -48,7 +48,7 @@ func Insert(ctx context.Context, tier tier.Tier, a actionlib.Action) (uint64, er
 }
 
 func Fetch(ctx context.Context, this tier.Tier, request actionlib.ActionFetchRequest) ([]actionlib.Action, error) {
-	defer timer.Start(this.ID, "controller.action.fetch").ObserveDuration()
+	defer timer.Start(ctx, this.ID, "controller.action.fetch").Stop()
 	actionsSer, err := action.Fetch(ctx, this, request)
 	if err != nil {
 		return nil, err

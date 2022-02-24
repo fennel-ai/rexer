@@ -6,6 +6,7 @@ import (
 	"net"
 	"net/http"
 	"strconv"
+	"time"
 
 	httplib "fennel/lib/http"
 	_ "fennel/opdefs"
@@ -91,6 +92,11 @@ func main() {
 	}
 	arg.MustParse(&flags)
 	log.SetFlags(log.LstdFlags | log.Lshortfile)
+	tier, err := tier.CreateFromArgs(&flags.TierArgs)
+	if err != nil {
+		panic(fmt.Sprintf("Failed to setup tier connectors: %v", err))
+
+	}
 
 	router := mux.NewRouter()
 
@@ -102,12 +108,8 @@ func main() {
 	// consistently functioning end-to-end.
 	// router.Use(httplib.TimeoutMiddleware(2 * time.Second))
 	// router.Use(httplib.RateLimitingMiddleware(1000))
+	router.Use(httplib.Tracer(tier.Logger, time.Millisecond*100, 0.01))
 
-	tier, err := tier.CreateFromArgs(&flags.TierArgs)
-	if err != nil {
-		panic(fmt.Sprintf("Failed to setup tier connectors: %v", err))
-
-	}
 	controller := server{tier}
 	controller.setHandlers(router)
 
