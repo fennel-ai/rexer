@@ -1,9 +1,0 @@
-config:
-  kafkatopics:kafkaCluster:
-    bootstrapServers: SASL_SSL://pkc-pgq85.us-west-2.aws.confluent.cloud:9092
-    environmentId: env-k36j2
-    id: lkc-12r9x3
-  kafkatopics:password:
-    secure: AAABANZ6SG0vJXL9GHyGKdk87NRe/j0vkUMzI+Cl8jzp1P9jsituYVBYmkkHqPI=
-  kafkatopics:topicNames: '["abhay-demo-topic", "luke-demo-topic"]'
-  kafkatopics:username: abhay@fennel.ai

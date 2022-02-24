@@ -23,6 +23,7 @@ export type inputType = {
 }
 
 export type outputType = {
+    bootstrapServer: pulumi.Output<string>,
     apiKey: pulumi.Output<string>,
     apiSecret: pulumi.Output<string>,
 }
@@ -60,6 +61,7 @@ export const setup = async (input: inputType) => {
     }, { provider })
 
     const output: outputType = {
+        bootstrapServer: cluster.bootstrapServers,
         apiKey: apiKey.key,
         apiSecret: apiKey.secret,
     }
