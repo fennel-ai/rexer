@@ -23,6 +23,7 @@ interface map {
 
 export type inputType = {
     kubeconfig: string,
+    namespace: string,
     tierConfig: map,
     redisConfig: pulumi.Output<map>,
     cacheConfig: pulumi.Output<map>,
@@ -35,8 +36,9 @@ export type outputType = {}
 const parseConfig = (): inputType => {
     const config = new pulumi.Config();
     return {
-        tierConfig: config.requireObject(nameof<inputType>("tierConfig")),
+        namespace: config.require(nameof<inputType>("namespace")),
         kubeconfig: config.require(nameof<inputType>("kubeconfig")),
+        tierConfig: config.requireObject(nameof<inputType>("tierConfig")),
         redisConfig: config.requireSecretObject(nameof<inputType>("redisConfig")),
         cacheConfig: config.requireSecretObject(nameof<inputType>("cacheConfig")),
         dbConfig: config.requireSecretObject(nameof<inputType>("dbConfig")),
@@ -47,12 +49,12 @@ const parseConfig = (): inputType => {
 export const setup = async (input: inputType) => {
     const provider = new k8s.Provider("k8s-provider", {
         kubeconfig: input.kubeconfig,
+        namespace: input.namespace,
     })
 
     const rc = new k8s.core.v1.Secret("redis-config", {
         stringData: input.redisConfig,
         metadata: {
-            namespace: "fennel",
             name: "redis-conf",
         },
     }, { provider, deleteBeforeReplace: true })
@@ -60,7 +62,6 @@ export const setup = async (input: inputType) => {
     const cacheConf = new k8s.core.v1.Secret("cache-config", {
         stringData: input.cacheConfig,
         metadata: {
-            namespace: "fennel",
             name: "cache-conf"
         }
     }, { provider, deleteBeforeReplace: true })
@@ -69,14 +70,12 @@ export const setup = async (input: inputType) => {
         stringData: input.kafkaConfig,
         metadata: {
             name: "kafka-conf",
-            namespace: "fennel",
         }
     }, { provider, deleteBeforeReplace: true })
 
     const dbCreds = new k8s.core.v1.Secret("db-config", {
         stringData: input.dbConfig,
         metadata: {
-            namespace: "fennel",
             name: "mysql-conf",
         }
     }, { provider, deleteBeforeReplace: true })
@@ -84,7 +83,6 @@ export const setup = async (input: inputType) => {
     const tierConf = new k8s.core.v1.ConfigMap("tier-conf", {
         data: input.tierConfig,
         metadata: {
-            namespace: "fennel",
             name: "tier-conf",
         }
     }, { provider, deleteBeforeReplace: true })
