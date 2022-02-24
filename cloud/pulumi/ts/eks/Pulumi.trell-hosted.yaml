@@ -1,0 +1,5 @@
+config:
+  eks:ami: ami-018410e7cefe1d15f
+  eks:region: ap-south-1
+  eks:roleArn: arn:aws:iam::136736114676:role/admin
+  eks:vpcId: vpc-032772d0e2d16d900
