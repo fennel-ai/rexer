@@ -41,6 +41,7 @@ const parseConfig = (): inputType => {
 export const setup = async (input: inputType) => {
     const k8sProvider = new k8s.Provider("k8s-provider", {
         kubeconfig: input.kubeconfig,
+        namespace: input.namespace,
     })
 
     // Install emissary-ingress via helm.
@@ -52,9 +53,11 @@ export const setup = async (input: inputType) => {
         fetchOpts: {
             repo: "https://app.getambassador.io"
         },
+        // helm Chart resource creation does not respect namespace field in the
+        // provided k8s provider, so we explicitly specify the namespace here.
+        namespace: input.namespace,
         chart: "emissary-ingress",
         version: "7.3.1",
-        namespace: input.namespace,
         transformations: [
             (obj: any, opts: pulumi.CustomResourceOptions) => {
                 if (obj.kind === "Deployment" && obj.metadata.name === "aes-emissary-ingress") {
@@ -88,6 +91,46 @@ export const setup = async (input: inputType) => {
             },
         ]
     }, { provider: k8sProvider })
+
+    emissaryIngress.ready.apply(() => {
+        // Setup http and https listeners as per instructions at:
+        // https://www.getambassador.io/docs/edge-stack/latest/howtos/configure-communications/#basic-http-and-https
+        const httplistener = new k8s.apiextensions.CustomResource("http-listener", {
+            "apiVersion": "getambassador.io/v3alpha1",
+            "kind": "Listener",
+            "metadata": {
+                "name": "http-listener"
+            },
+            "spec": {
+                "port": 8080,
+                "protocol": "HTTPS",
+                "securityModel": "XFP",
+                "hostBinding": {
+                    "namespace": {
+                        "from": "SELF",
+                    }
+                }
+            }
+        }, { provider: k8sProvider })
+
+        const httpslistener = new k8s.apiextensions.CustomResource("https-listener", {
+            "apiVersion": "getambassador.io/v3alpha1",
+            "kind": "Listener",
+            "metadata": {
+                "name": "https-listener"
+            },
+            "spec": {
+                "port": 8443,
+                "protocol": "HTTPS",
+                "securityModel": "XFP",
+                "hostBinding": {
+                    "namespace": {
+                        "from": "SELF",
+                    }
+                }
+            }
+        }, { provider: k8sProvider })
+    })
 
     const loadBalancerUrl = emissaryIngress.ready.apply((_) => {
         const ingressResource = emissaryIngress.getResource("v1/Service", input.namespace, "aes-emissary-ingress");
