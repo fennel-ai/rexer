@@ -85,30 +85,48 @@ class TestEndToEnd(unittest.TestCase):
         city = 'delhi'
         gender = 1
         age_group = 3
+        creator_id = 567
 
-        # for entity which is of type "user" and user_id 12312, set "age" to be 31
+        # set some profiles
         c.set_profile("user", uid, "city", city)
         c.set_profile("user", uid, "gender", gender)
         c.set_profile("user", uid, "age_group", age_group)
+        c.set_profile('video', video_id, "creatorId", creator_id)
 
         self.assertEqual(city, c.get_profile("user", uid, "city"))
         self.assertEqual(gender, c.get_profile("user", uid, "gender"))
         self.assertEqual(age_group, c.get_profile("user", uid, "age_group"))
+        self.assertEqual(creator_id, c.get_profile("video", video_id, "creatorId"))
 
-        # Total views gained by a Trail on last 2 days for given city+gender+age_group
-        q = Var('args').actions.apply(
+        # Total views gained by a video in last 2 days for given city+gender+age_group
+        q1 = Var('args').actions.apply(
           Ops.std.filter(where=(it.action_type == 'view') & (it.target_type == 'video')),
           Ops.profile.addField(name='city', otype='user', oid=it.actor_id, key='city'),
           Ops.profile.addField(name='gender', otype='user', oid=it.actor_id, key='gender'),
           Ops.profile.addField(name='age_group', otype='user', oid=it.actor_id, key='age_group'),
-          Ops.std.addField(name='groupkey', value=List(it.target_id, it.city, it.gender, it.age_group)),
+          Ops.std.addField(name='groupkey', value=[it.target_id, it.city, it.gender, it.age_group]),
         )
-
         options = {'duration': 3600*24*2, 'aggregate_type': 'count', }
-        c.store_aggregate('trail_view_by_city_gender_agegroup_2days', q, options)
+        c.store_aggregate('trail_view_by_city_gender_agegroup_2days', q1, options)
 
+        # average watch time of uid on videos created by creator_id by 2 hour windows
+        q2 = Var('args').actions.apply(
+            Ops.std.filter(where=it.action_type == 'view'),
+            Ops.profile.addField(name='creator_id', otype='video', oid=it.target_id, key='creatorId'),
+            Ops.time.addTimeBucketOfDay(name='time_bucket', timestamp=it.timestamp, bucket=2*3600),
+            Ops.std.addField(name='groupkey', value=[it.actor_id, it.creator_id, it.time_bucket]),
+            Ops.std.addField(name='value', value=it.metadata.watch_time),
+        )
+        options = {'aggregate_type': 'average', 'duration': 3600*24*30}
+        c.store_aggregate('user_creator_avg_watchtime_by_2hour_windows_30days', q2, options)
+
+        ts = int(time.time())
         c.log(actor_type='user', actor_id=uid, target_type='video', target_id=video_id, action_type='view',
-              request_id=1, timestamp=int(time.time()), metadata={'device_type': 'android'})
+              request_id=1, timestamp=ts, metadata={'watch_time': 20})
+        # second action was logged 3 days in history so should not apply towards agg1 but only to agg2
+        c.log(actor_type='user', actor_id=uid, target_type='video', target_id=video_id, action_type='view',
+              request_id=1, timestamp=ts-3*24*3600, metadata={'watch_time': 22})
+        b = int((ts % (24*3600)) / (2*3600))
 
         # while countaggr is processing the action, check that query call is working
         cond = Cond(Int(1) <= 5, "correct", "incorrect")
@@ -121,15 +139,16 @@ class TestEndToEnd(unittest.TestCase):
         slept = 0
         passed = False
         while slept < 120:
-            found = c.aggregate_value(
+            found1 = c.aggregate_value(
                 'trail_view_by_city_gender_agegroup_2days',
                 [video_id, city, gender, age_group],
             )
-            if found == 1:
+            found2 = c.aggregate_value('user_creator_avg_watchtime_by_2hour_windows_30days', [uid, creator_id, b])
+            if found1 == 1 and found2 == 21:
                 passed = True
                 break
-            time.sleep(10)
-            slept += 10
+            time.sleep(5)
+            slept += 5
         self.assertTrue(passed)
 
         print('all checks passed...')
