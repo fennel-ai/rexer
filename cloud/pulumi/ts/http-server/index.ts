@@ -262,8 +262,59 @@ export const setup = async (input: inputType) => {
                 selector: appLabels,
             },
         }, { provider: k8sProvider, deleteBeforeReplace: true })
-    }
-    )
+    })
+
+    // Setup ingress resources for http-server.
+    const mapping = new k8s.apiextensions.CustomResource("api-server-mapping", {
+        apiVersion: "getambassador.io/v3alpha1",
+        kind: "Mapping",
+        metadata: {
+            name: "data-server-mapping",
+            labels: {
+                "svc": "go-http",
+            }
+        },
+        spec: {
+            "hostname": "*",
+            "prefix": "/data/",
+            "service": "http-server:2425",
+            "timeout_ms": 30000,
+        }
+    }, { provider: k8sProvider })
+
+    const host = new k8s.apiextensions.CustomResource("api-server-host", {
+        apiVersion: "getambassador.io/v3alpha1",
+        kind: "Host",
+        metadata: {
+            name: "api-server-host",
+            labels: {
+                "svc": "go-http",
+            }
+        },
+        spec: {
+            "hostname": "*",
+            "acmeProvider": {
+                "authority": "none",
+            },
+            "tlsSecret": {
+                "name": "tls-cert",
+            },
+            "tls": {
+                "min_tls_version": "v1.2",
+                "alpn_protocols": "h2",
+            },
+            "mappingSelector": {
+                "matchLabels": {
+                    "svc": "go-http",
+                }
+            },
+            "requestPolicy": {
+                "insecure": {
+                    "action": "Route",
+                }
+            }
+        }
+    }, { provider: k8sProvider })
 
     const output: outputType = {
         svc: appSvc,
