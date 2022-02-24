@@ -56,7 +56,7 @@ function setupLinkerd(cluster: k8s.Provider) {
     }, { dependsOn: linkerd.ready })
 }
 
-function setupEmissaryIngressCrds(cluster: k8s.Provider, publicSubnetIds: string[]) {
+function setupEmissaryIngressCrds(cluster: k8s.Provider) {
     // Create CRDs.
     const emissaryCrds = new k8s.yaml.ConfigFile("emissary-crds", {
         file: "emissary-crds.yaml"
@@ -81,7 +81,7 @@ function setupEmissaryIngressCrds(cluster: k8s.Provider, publicSubnetIds: string
     })
 }
 
-async function setupIamRoleForServiceAccount(namespace: string, serviceAccountName: string, cluster: eks.Cluster) {
+async function setupIamRoleForServiceAccount(awsProvider: aws.Provider, namespace: string, serviceAccountName: string, cluster: eks.Cluster) {
     // Account id
     const current = await aws.getCallerIdentity({});
     const accountId = current.accountId
@@ -109,7 +109,7 @@ async function setupIamRoleForServiceAccount(namespace: string, serviceAccountNa
                }
              ]
            }`
-        })
+        }, { provider: awsProvider })
     })
 
     const acc = role.apply(role => {
@@ -128,13 +128,12 @@ async function setupIamRoleForServiceAccount(namespace: string, serviceAccountNa
     return { "role": role, "serviceAccount": acc }
 }
 
-async function setupLoadBalancerController(cluster: eks.Cluster) {
-
+async function setupLoadBalancerController(awsProvider: aws.Provider, cluster: eks.Cluster) {
     const serviceAccountName = "aws-load-balancer-controller"
 
     // Create k8s service account and IAM role for LoadBalanacerController, and
     // associate the above policy with the account.
-    const { role } = await setupIamRoleForServiceAccount("kube-system", serviceAccountName, cluster)
+    const { role } = await setupIamRoleForServiceAccount(awsProvider, "kube-system", serviceAccountName, cluster)
 
     // Create policy for lb-controller.
     try {
@@ -146,12 +145,12 @@ async function setupLoadBalancerController(cluster: eks.Cluster) {
     const iamPolicy = new aws.iam.Policy("lbc-policy", {
         namePrefix: "AWSLoadBalancerControllerIAMPolicy",
         policy: policyJson,
-    })
+    }, { provider: awsProvider })
 
     const attachPolicy = new aws.iam.RolePolicyAttachment("attach-lbc-policy", {
         role: role.id,
         policyArn: iamPolicy.arn,
-    })
+    }, { provider: awsProvider })
 
     const lbc = new k8s.helm.v3.Chart("aws-lbc", {
         fetchOpts: {
@@ -176,9 +175,18 @@ export = async () => {
 
     const vpcId = config.require("vpcId");
 
+    const awsProvider = new aws.Provider("aws-provider", {
+        region: <aws.Region>config.require("region"),
+        assumeRole: {
+            roleArn: config.require("roleArn")
+            // TODO: Also populate the externalId field to prevent "confused deputy"
+            // attacks: https://docs.aws.amazon.com/IAM/latest/UserGuide/confused-deputy.html
+        }
+    })
+
     const subnetIds = await aws.ec2.getSubnetIds({
         vpcId
-    })
+    }, { provider: awsProvider })
 
     // Create an EKS cluster with the default configuration.
     const cluster = new eks.Cluster("eks-cluster", {
@@ -201,11 +209,11 @@ export = async () => {
             amiId: config.require("ami"),
         },
         providerCredentialOpts: {
-            profileName: "admin"
+            roleArn: config.require("roleArn"),
         },
         nodeAssociatePublicIpAddress: false,
         createOidcProvider: true
-    });
+    }, { provider: awsProvider });
 
     const instanceRole = cluster.core.instanceRoles.apply((roles) => { return roles[0].name })
 
@@ -218,12 +226,11 @@ export = async () => {
     setupLinkerd(cluster.provider)
 
     // Setup AWS load balancer controller.
-    const lbc = await setupLoadBalancerController(cluster)
+    const lbc = await setupLoadBalancerController(awsProvider, cluster)
 
-    // Install Ambassador after load-balancer controller.
-    // TODO: use only cluster.core.publicSubnetIds.
-    const ingress = pulumi.all([cluster.core.subnetIds!, lbc.ready]).apply(([publicSubnetIds]) => {
-        return setupEmissaryIngressCrds(cluster.provider, publicSubnetIds)
+    // Install emissary-ingress CRDs after load-balancer controller.
+    const ingress = pulumi.all([cluster.core.subnetIds!, lbc.ready]).apply(([subnetIds]) => {
+        return setupEmissaryIngressCrds(cluster.provider)
     })
 
     // Setup fennel namespace.
