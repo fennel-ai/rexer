@@ -43,12 +43,6 @@ export const setup = async (input: inputType) => {
         kubeconfig: input.kubeconfig,
     })
 
-    const ns = new k8s.core.v1.Namespace("ingress-ns", {
-        metadata: {
-            name: input.namespace,
-        }
-    }, { provider: k8sProvider })
-
     // Install emissary-ingress via helm.
     const emissaryIngress = new k8s.helm.v3.Chart("ingress", {
         fetchOpts: {
