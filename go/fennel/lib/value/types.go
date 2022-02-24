@@ -161,13 +161,14 @@ func (l List) Op(opt string, other Value) (Value, error) {
 	return route(l, opt, other)
 }
 
-func NewList(values []Value) (Value, error) {
+func NewList(values []Value) List {
 	ret := make([]Value, 0, len(values))
 	for _, v := range values {
 		ret = append(ret, v)
 	}
-	return List(ret), nil
+	return ret
 }
+
 func (l List) isValue() {}
 func (l List) Equal(right Value) bool {
 	switch right.(type) {
@@ -206,6 +207,11 @@ func (l List) Clone() Value {
 }
 func (l List) MarshalJSON() ([]byte, error) {
 	return json.Marshal([]Value(l))
+}
+
+func (l *List) Append(v Value) error {
+	*l = append(*l, v)
+	return nil
 }
 
 type Dict map[string]Value
