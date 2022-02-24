@@ -1,0 +1,10 @@
+config:
+  aurora:connectedSecurityGroups: '{"eks": "sg-002cccb6949c21318"}'
+  aurora:maxCapacity: "16"
+  aurora:minCapacity: "8"
+  aurora:password:
+    secure: AAABALgd/f2etPJWpKsPVIawqYcGnCO+0uhjjZDbXq1ZYNq9VloTRBJSFk/DXQA=
+  aurora:region: ap-south-1
+  aurora:roleArn: arn:aws:iam::136736114676:role/admin
+  aurora:username: admin
+  aurora:vpcId: vpc-032772d0e2d16d900
