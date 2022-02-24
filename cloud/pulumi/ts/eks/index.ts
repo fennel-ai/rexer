@@ -56,16 +56,16 @@ function setupLinkerd(cluster: k8s.Provider) {
     }, { dependsOn: linkerd.ready })
 }
 
-function setupAmbassadorIngress(cluster: k8s.Provider, publicSubnetIds: string[]): pulumi.Output<string> {
+function setupEmissaryIngressCrds(cluster: k8s.Provider, publicSubnetIds: string[]) {
     // Create CRDs.
-    const aesCrds = new k8s.yaml.ConfigFile("aes-cerds", {
-        file: "aes-crds.yaml"
+    const emissaryCrds = new k8s.yaml.ConfigFile("emissary-crds", {
+        file: "emissary-crds.yaml"
     }, { provider: cluster })
 
 
     // Configure default Module to add linkerd headers as per:
     // https://www.getambassador.io/docs/edge-stack/latest/topics/using/mappings/#linkerd-interoperability-add_linkerd_headers
-    const l5dmapping = aesCrds.resources.apply(() => {
+    const l5dmapping = emissaryCrds.resources.apply(() => {
         return new k8s.apiextensions.CustomResource("l5d-mapping", {
             "apiVersion": "getambassador.io/v3alpha1",
             "kind": "Module",
@@ -78,74 +78,6 @@ function setupAmbassadorIngress(cluster: k8s.Provider, publicSubnetIds: string[]
                 }
             }
         }, { provider: cluster })
-    })
-
-    const config = new pulumi.Config();
-
-    // TODO: change to config.get(...)
-    const loadBalancerScheme: string = config.require("loadBalancerScheme")
-
-    // Create namespace.
-    const ns = new k8s.core.v1.Namespace("aes-ns", {
-        metadata: {
-            name: "ambassador"
-        }
-    }, { provider: cluster })
-
-    // Install ambassador via helm.
-    const ambassador = new k8s.helm.v3.Chart("aes", {
-        fetchOpts: {
-            repo: "https://app.getambassador.io"
-        },
-        chart: "edge-stack",
-        version: "7.3.0",
-        namespace: ns.id,
-        values: {
-            "emissary-ingress": {
-                "createDefaultListeners": true,
-                "agent": {
-                    // Token to connect cluster to ambassador cloud.
-                    "cloudConnectToken": config.requireSecret("aes-token")
-                }
-            }
-        },
-        transformations: [
-            (obj: any, opts: pulumi.CustomResourceOptions) => {
-                if (obj.kind === "Deployment" && obj.metadata.name === "aes-edge-stack") {
-                    const metadata = obj.spec.template.metadata
-                    metadata.annotations = metadata.annotations || {}
-                    // We use inject=enabled instead of inject=ingress as per
-                    // https://github.com/linkerd/linkerd2/issues/6650#issuecomment-898732177.
-                    // Otherwise, we see the issue reported in the above bug report.
-                    metadata.annotations["linkerd.io/inject"] = "enabled"
-                    metadata.annotations["config.linkerd.io/skip-inbound-ports"] = "80,443"
-                }
-            },
-            (obj: any, opts: pulumi.CustomResourceOptions) => {
-                if (obj.kind === "Service" && obj.spec.type === "LoadBalancer") {
-                    const metadata = obj.metadata
-                    metadata.annotations = metadata.annotations || {}
-                    // Set load-balancer type as external to bypass k8s in-tree
-                    // load-balancer controller and use AWS Load Balancer Controller
-                    // instead.
-                    // https://kubernetes-sigs.github.io/aws-load-balancer-controller/v2.3/guide/service/nlb/#configuration
-                    metadata.annotations["service.beta.kubernetes.io/aws-load-balancer-type"] = "external"
-                    // Use NLB in instance mode since we don't currently setup the VPC CNI plugin.
-                    metadata.annotations["service.beta.kubernetes.io/aws-load-balancer-nlb-target-type"] = "instance"
-                    // Specify the load balancer scheme. Should be one of ["internal", "internet-facing"].
-                    metadata.annotations["service.beta.kubernetes.io/aws-load-balancer-scheme"] = loadBalancerScheme || "internal"
-                    // Specify the subnets in which to deploy the load balancer.
-                    // For internet-facing load-balancers this should be a list of public subnets and
-                    // for internal load-balancers this should be j list of private subnets.
-                    metadata.annotations["service.beta.kubernetes.io/aws-load-balancer-subnets"] = publicSubnetIds
-                }
-            },
-        ]
-    }, { provider: cluster, dependsOn: l5dmapping })
-
-    return ambassador.ready.apply((_) => {
-        const ingressResource = ambassador.getResource("v1/Service", "ambassador", "aes-edge-stack");
-        return ingressResource.status.loadBalancer.ingress[0].hostname
     })
 }
 
@@ -291,7 +223,7 @@ export = async () => {
     // Install Ambassador after load-balancer controller.
     // TODO: use only cluster.core.publicSubnetIds.
     const ingress = pulumi.all([cluster.core.subnetIds!, lbc.ready]).apply(([publicSubnetIds]) => {
-        return setupAmbassadorIngress(cluster.provider, publicSubnetIds)
+        return setupEmissaryIngressCrds(cluster.provider, publicSubnetIds)
     })
 
     // Setup fennel namespace.
