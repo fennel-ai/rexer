@@ -44,7 +44,11 @@ export const setup = async (input: inputType) => {
     })
 
     // Install emissary-ingress via helm.
-    const emissaryIngress = new k8s.helm.v3.Chart("ingress", {
+    // NOTE: the name of the pulumi resource for the helm chart is also prefixed
+    // to resource names. So if we're changing the name of the chart, we should also
+    // change the lookup names of the emissary service/deployment in the transformation
+    // spec and when looking up the URL.
+    const emissaryIngress = new k8s.helm.v3.Chart("aes", {
         fetchOpts: {
             repo: "https://app.getambassador.io"
         },
@@ -53,7 +57,7 @@ export const setup = async (input: inputType) => {
         namespace: input.namespace,
         transformations: [
             (obj: any, opts: pulumi.CustomResourceOptions) => {
-                if (obj.kind === "Deployment" && obj.metadata.name === "emissary-ingress") {
+                if (obj.kind === "Deployment" && obj.metadata.name === "aes-emissary-ingress") {
                     const metadata = obj.spec.template.metadata
                     metadata.annotations = metadata.annotations || {}
                     // We use inject=enabled instead of inject=ingress as per
@@ -86,7 +90,7 @@ export const setup = async (input: inputType) => {
     }, { provider: k8sProvider })
 
     const loadBalancerUrl = emissaryIngress.ready.apply((_) => {
-        const ingressResource = emissaryIngress.getResource("v1/Service", input.namespace, "emissary-ingress");
+        const ingressResource = emissaryIngress.getResource("v1/Service", input.namespace, "aes-emissary-ingress");
         return ingressResource.status.loadBalancer.ingress[0].hostname
     })
 
