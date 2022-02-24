@@ -23,22 +23,13 @@ type RemoteProducer struct {
 	*kafka.Producer
 }
 
-func (k RemoteProducer) Log(ctx context.Context, message []byte, partitionKey []byte) error {
+func (k RemoteProducer) Log(_ context.Context, message []byte, partitionKey []byte) error {
 	kafkaMsg := kafka.Message{
 		Key:            partitionKey,
 		TopicPartition: kafka.TopicPartition{Topic: &k.topic},
 		Value:          message,
 	}
-	ch := make(chan error, 1)
-	go func() {
-		ch <- k.Produce(&kafkaMsg, nil)
-	}()
-	select {
-	case <-ctx.Done():
-		return fmt.Errorf("context timed out before logging")
-	case err := <-ch:
-		return err
-	}
+	return k.Produce(&kafkaMsg, nil)
 }
 
 func (k RemoteProducer) Flush(timeout time.Duration) error {

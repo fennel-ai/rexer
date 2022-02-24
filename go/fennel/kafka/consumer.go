@@ -183,8 +183,8 @@ func (conf RemoteConsumerConfig) Materialize(scope resource.Scope) (resource.Res
 	if err != nil {
 		return nil, fmt.Errorf("failed to create kafka consumer: %v", err)
 	}
-	rebalanceCb := func(_ *kafka.Consumer, e kafka.Event) error {
-		log.Printf("Got kafka partition rebalance event: %v", e.String())
+	rebalanceCb := func(c *kafka.Consumer, e kafka.Event) error {
+		log.Printf("[%s:%s:%s]Got kafka partition rebalance event: %v", conf.Topic, conf.GroupID, c.String(), e.String())
 		return nil
 	}
 	err = consumer.Subscribe(conf.Topic, rebalanceCb)
