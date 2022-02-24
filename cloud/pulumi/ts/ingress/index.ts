@@ -1,5 +1,6 @@
 import * as pulumi from "@pulumi/pulumi";
 import * as k8s from "@pulumi/kubernetes";
+import { local } from "@pulumi/command";
 
 import * as process from "process";
 
@@ -14,7 +15,8 @@ export const fennelStdTags = {
 }
 
 export const plugins = {
-    "kubernetes": "v3.16.0"
+    "kubernetes": "v3.16.0",
+    "command": "v0.0.3"
 }
 
 export type inputType = {
@@ -26,6 +28,8 @@ export type inputType = {
 
 export type outputType = {
     loadBalancerUrl: pulumi.Output<string>
+    tlsCert: pulumi.Output<string>,
+    tlsKey: pulumi.Output<string>,
 }
 
 const parseConfig = (): inputType => {
@@ -137,8 +141,46 @@ export const setup = async (input: inputType) => {
         return ingressResource.status.loadBalancer.ingress[0].hostname
     })
 
+    const tlsKeyCert = loadBalancerUrl.apply(url => {
+        // Create TLS certificate for the generated url.
+        // Setup root and issuer CA as per https://linkerd.io/2.11/tasks/generate-certificates/.
+        const cmd = `step certificate create fennel cert.pem key.pem --profile=self-signed --subtle --san=${url} --no-password --insecure -kty=RSA --size 4096`
+        const createCertificate = new local.Command("root-ca", {
+            create: cmd,
+            delete: "rm -f cert.pem key.pem"
+        })
+
+        const cert = new local.Command("cert", {
+            create: "cat cert.pem | base64"
+        }, { dependsOn: createCertificate }).stdout
+
+        const key = new local.Command("key", {
+            create: "cat key.pem | base64"
+        }, { dependsOn: createCertificate }).stdout
+
+        const secret = new k8s.core.v1.Secret("tls", {
+            type: "kubernetes.io/tls",
+            metadata: {
+                name: "tls-cert",
+            },
+            data: {
+                "tls.crt": cert,
+                "tls.key": key,
+            }
+        }, { provider: k8sProvider })
+
+        // Delete files
+        new local.Command("cleanup", {
+            create: "rm -f cert.pem key.pem"
+        }, { dependsOn: secret })
+
+        return { cert, key }
+    })
+
     const output: outputType = {
         loadBalancerUrl,
+        tlsCert: tlsKeyCert.cert,
+        tlsKey: pulumi.secret(tlsKeyCert.key),
     }
 
     return output
