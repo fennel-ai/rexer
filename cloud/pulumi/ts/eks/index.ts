@@ -57,37 +57,40 @@ function setupLinkerd(cluster: k8s.Provider) {
 }
 
 function setupAmbassadorIngress(cluster: k8s.Provider, publicSubnetIds: string[]): pulumi.Output<string> {
+    // Create CRDs.
+    const aesCrds = new k8s.yaml.ConfigFile("aes-cerds", {
+        file: "aes-crds.yaml"
+    }, { provider: cluster })
+
+
+    // Configure default Module to add linkerd headers as per:
+    // https://www.getambassador.io/docs/edge-stack/latest/topics/using/mappings/#linkerd-interoperability-add_linkerd_headers
+    const l5dmapping = aesCrds.resources.apply(() => {
+        return new k8s.apiextensions.CustomResource("l5d-mapping", {
+            "apiVersion": "getambassador.io/v3alpha1",
+            "kind": "Module",
+            "metadata": {
+                "name": "ambassador"
+            },
+            "spec": {
+                "config": {
+                    "add_linkerd_headers": true
+                }
+            }
+        }, { provider: cluster })
+    })
+
+    const config = new pulumi.Config();
+
+    // TODO: change to config.get(...)
+    const loadBalancerScheme: string = config.require("loadBalancerScheme")
+
     // Create namespace.
     const ns = new k8s.core.v1.Namespace("aes-ns", {
         metadata: {
             name: "ambassador"
         }
     }, { provider: cluster })
-
-    // Create CRDs.
-    const aesCrds = new k8s.yaml.ConfigFile("aes-cerds", {
-        file: "aes-crds.yaml"
-    }, { provider: cluster, dependsOn: ns })
-
-    // Configure default Module to add linkerd headers as per:
-    // https://www.getambassador.io/docs/edge-stack/latest/topics/using/mappings/#linkerd-interoperability-add_linkerd_headers
-    const l5dmapping = new k8s.apiextensions.CustomResource("l5d-mapping", {
-        "apiVersion": "getambassador.io/v3alpha1",
-        "kind": "Module",
-        "metadata": {
-            "name": "ambassador"
-        },
-        "spec": {
-            "config": {
-                "add_linkerd_headers": true
-            }
-        }
-    }, { provider: cluster, dependsOn: aesCrds.ready })
-
-    const config = new pulumi.Config();
-
-    // TODO: change to config.get(...)
-    const loadBalancerScheme: string = config.require("loadBalancerScheme")
 
     // Install ambassador via helm.
     const ambassador = new k8s.helm.v3.Chart("aes", {
