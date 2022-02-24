@@ -2,14 +2,15 @@ package db
 
 import (
 	"database/sql"
-	"fennel/lib/ftypes"
-	"fennel/resource"
 	"fmt"
-	"github.com/jmoiron/sqlx"
-	"github.com/stretchr/testify/assert"
 	"math/rand"
 	"testing"
 	"time"
+
+	"fennel/lib/ftypes"
+	"fennel/resource"
+	"github.com/jmoiron/sqlx"
+	"github.com/stretchr/testify/assert"
 )
 
 func create(dbname, username, password, host string) error {
@@ -50,22 +51,25 @@ func TestSyncSchema(t *testing.T) {
 	// get default DB
 	rand.Seed(time.Now().UnixNano())
 	tierID := ftypes.TierID(rand.Uint32())
+	scope := resource.NewTierScope(1, tierID)
 	config := MySQLConfig{
-		DBname:   resource.TieredName(tierID, "schema_test"),
+		DBname:   scope.PrefixedName("schema_test"),
 		Username: "admin",
 		Password: "foundationdb",
 		Host:     "database-nikhil-test.cluster-c00d7gkxaysk.us-west-2.rds.amazonaws.com",
 		Schema: Schema{
 			1: `CREATE TABLE IF NOT EXISTS schema_test (
-			zkey INT NOT NULL,
-			value INT NOT NULL
-	   );`},
+					zkey INT NOT NULL,
+					value INT NOT NULL
+			);`,
+		},
+		Scope: scope,
 	}
 	// create the DB before materializing a connection
 	err := create(config.DBname, config.Username, config.Password, config.Host)
 	assert.NoError(t, err)
 
-	resource, err := config.Materialize(resource.GetTierScope(tierID))
+	resource, err := config.Materialize()
 	assert.NoError(t, err)
 	defer drop(config.DBname, config.Username, config.Password, config.Host)
 	db := resource.(Connection)
