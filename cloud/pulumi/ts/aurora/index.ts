@@ -15,6 +15,8 @@ export const fennelStdTags = {
 export const plugins = {}
 
 export type inputType = {
+    roleArn: string,
+    region: string,
     vpcId: string,
     minCapacity: number,
     maxCapacity: number,
@@ -31,6 +33,8 @@ export type outputType = {
 const parseConfig = (): inputType => {
     const config = new pulumi.Config();
     return {
+        roleArn: config.require(nameof<inputType>("roleArn")),
+        region: config.require(nameof<inputType>("region")),
         vpcId: config.require(nameof<inputType>("vpcId")),
         minCapacity: config.requireNumber(nameof<inputType>("minCapacity")),
         maxCapacity: config.requireNumber(nameof<inputType>("maxCapacity")),
@@ -41,6 +45,14 @@ const parseConfig = (): inputType => {
 }
 
 export const setup = async (input: inputType) => {
+    const provider = new aws.Provider("aws-provider", {
+        region: <aws.Region>input.region,
+        assumeRole: {
+            roleArn: input.roleArn,
+            // TODO: Also populate the externalId field to prevent "confused deputy"
+            // attacks: https://docs.aws.amazon.com/IAM/latest/UserGuide/confused-deputy.html
+        }
+    })
 
     const subnetIds = await aws.ec2.getSubnetIds({
         vpcId: input.vpcId,
@@ -49,19 +61,19 @@ export const setup = async (input: inputType) => {
             name: "tag:Name",
             values: ["fennel-primary-private-subnet", "fennel-secondary-private-subnet"],
         }]
-    })
+    }, { provider })
 
     const subnetGroup = new aws.rds.SubnetGroup("db-subnetgroup", {
         subnetIds: subnetIds.ids,
         description: "Subnet group for primary database",
         tags: { ...fennelStdTags },
-    })
+    }, { provider })
 
     const securityGroup = new aws.ec2.SecurityGroup("db-sg", {
         namePrefix: "fenneldb-sg-",
         vpcId: input.vpcId,
         tags: { ...fennelStdTags },
-    })
+    }, { provider })
 
     let sgRules: pulumi.Output<string>[] = []
     for (var key in input.connectedSecurityGroups) {
@@ -72,7 +84,7 @@ export const setup = async (input: inputType) => {
             toPort: 65535,
             type: "ingress",
             protocol: "tcp",
-        }).id)
+        }, { provider }).id)
     }
 
     const cluster = new aws.rds.Cluster("db-instance", {
@@ -91,7 +103,7 @@ export const setup = async (input: inputType) => {
         // TODO: Remove this for prod clusters.
         skipFinalSnapshot: true,
         tags: { ...fennelStdTags }
-    })
+    }, { provider })
 
     const output: outputType = {
         host: cluster.endpoint,
