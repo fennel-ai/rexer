@@ -66,7 +66,7 @@ export const setup = async (input: inputType) => {
     // Get registry info (creds and endpoint).
     const imageName = repo.repositoryUrl;
     const registryInfo = repo.registryId.apply(async id => {
-        const credentials = await aws.ecr.getCredentials({ registryId: id });
+        const credentials = await aws.ecr.getCredentials({ registryId: id }, { provider: awsProvider });
         const decodedCredentials = Buffer.from(credentials.authorizationToken, "base64").toString();
         const [username, password] = decodedCredentials.split(":");
         if (!password || !username) {
