@@ -27,59 +27,65 @@ func TestIntegration(t *testing.T) {
 	topic := "testtopic"
 	t.Run("integration_producer_consumer", func(t *testing.T) {
 		tierID := ftypes.TierID(rand.Uint32())
+		scope := resource.NewTierScope(1, tierID)
 		t.Parallel()
-		producer := integrationProducer(t, tierID, topic)
-		consumer := integrationConsumer(t, tierID, topic, "group", "earliest")
-		defer teardownKafkaTopics(tierID, topic)
+		producer := integrationProducer(t, scope, topic)
+		consumer := integrationConsumer(t, scope, topic, "group", "earliest")
+		defer teardownKafkaTopics(scope, topic)
 		testProducerConsumer(t, producer, consumer)
 	})
 	t.Run("integration_read_batch", func(t *testing.T) {
 		tierID := ftypes.TierID(rand.Uint32())
+		scope := resource.NewTierScope(1, tierID)
 		t.Parallel()
-		producer := integrationProducer(t, tierID, topic)
-		consumer := integrationConsumer(t, tierID, topic, "group", "earliest")
-		defer teardownKafkaTopics(tierID, topic)
+		producer := integrationProducer(t, scope, topic)
+		consumer := integrationConsumer(t, scope, topic, "group", "earliest")
+		defer teardownKafkaTopics(scope, topic)
 		testReadBatch(t, producer, consumer)
 	})
 	t.Run("integration_flush_commit_backlog", func(t *testing.T) {
 		tierID := ftypes.TierID(rand.Uint32())
+		scope := resource.NewTierScope(1, tierID)
 		t.Parallel()
-		producer := integrationProducer(t, tierID, topic)
-		consumer := integrationConsumer(t, tierID, topic, "group", "earliest")
-		defer teardownKafkaTopics(tierID, topic)
+		producer := integrationProducer(t, scope, topic)
+		consumer := integrationConsumer(t, scope, topic, "group", "earliest")
+		defer teardownKafkaTopics(scope, topic)
 		testBacklog(t, producer, consumer)
 	})
 	t.Run("integration_different_consumer_groups", func(t *testing.T) {
 		tierID := ftypes.TierID(rand.Uint32())
+		scope := resource.NewTierScope(1, tierID)
 		t.Parallel()
-		producer := integrationProducer(t, tierID, topic)
-		consumer1 := integrationConsumer(t, tierID, topic, "group1", "earliest")
-		consumer2 := integrationConsumer(t, tierID, topic, "group2", "earliest")
-		defer teardownKafkaTopics(tierID, topic)
+		producer := integrationProducer(t, scope, topic)
+		consumer1 := integrationConsumer(t, scope, topic, "group1", "earliest")
+		consumer2 := integrationConsumer(t, scope, topic, "group2", "earliest")
+		defer teardownKafkaTopics(scope, topic)
 		testDifferentConsumerGroups(t, producer, consumer1, consumer2)
 	})
 	t.Run("integration_same_consumer_groups", func(t *testing.T) {
 		tierID := ftypes.TierID(rand.Uint32())
+		scope := resource.NewTierScope(1, tierID)
 		t.Parallel()
-		producer := integrationProducer(t, tierID, topic)
-		consumer1 := integrationConsumer(t, tierID, topic, "group", "earliest")
-		consumer2 := integrationConsumer(t, tierID, topic, "group", "earliest")
-		defer teardownKafkaTopics(tierID, topic)
+		producer := integrationProducer(t, scope, topic)
+		consumer1 := integrationConsumer(t, scope, topic, "group", "earliest")
+		consumer2 := integrationConsumer(t, scope, topic, "group", "earliest")
+		defer teardownKafkaTopics(scope, topic)
 		testSameConsumerGroup(t, producer, consumer1, consumer2)
 	})
 	t.Run("integration_no_auto_commit", func(t *testing.T) {
 		tierID := ftypes.TierID(rand.Uint32())
+		scope := resource.NewTierScope(1, tierID)
 		t.Parallel()
-		producer := integrationProducer(t, tierID, topic)
-		consumer1 := integrationConsumer(t, tierID, topic, "group", "earliest")
-		consumer2 := integrationConsumer(t, tierID, topic, "group", "earliest")
-		defer teardownKafkaTopics(tierID, topic)
+		producer := integrationProducer(t, scope, topic)
+		consumer1 := integrationConsumer(t, scope, topic, "group", "earliest")
+		consumer2 := integrationConsumer(t, scope, topic, "group", "earliest")
+		defer teardownKafkaTopics(scope, topic)
 		testNoAutoCommit(t, producer, consumer1, consumer2)
 	})
 }
 
-func setupKafkaTopics(tierID ftypes.TierID, topic string) error {
-	name := resource.TieredName(tierID, topic)
+func setupKafkaTopics(scope resource.Scope, topic string) error {
+	name := scope.PrefixedName(topic)
 	// Create admin client
 	c, err := kafka.NewAdminClient(ConfigMap(test_kafka_servers, kafka_username, kafka_password))
 	if err != nil {
@@ -103,8 +109,8 @@ func setupKafkaTopics(tierID ftypes.TierID, topic string) error {
 	return nil
 }
 
-func teardownKafkaTopics(tierID ftypes.TierID, topic string) error {
-	name := resource.TieredName(tierID, topic)
+func teardownKafkaTopics(scope resource.Scope, topic string) error {
+	name := scope.PrefixedName(topic)
 	// Create admin client.
 	c, err := kafka.NewAdminClient(ConfigMap(test_kafka_servers, kafka_username, kafka_password))
 	if err != nil {
@@ -119,31 +125,33 @@ func teardownKafkaTopics(tierID ftypes.TierID, topic string) error {
 	return err
 }
 
-func integrationProducer(t *testing.T, tierID ftypes.TierID, topic string) FProducer {
+func integrationProducer(t *testing.T, scope resource.Scope, topic string) FProducer {
 	// first create the topics
-	assert.NoError(t, setupKafkaTopics(tierID, topic))
+	assert.NoError(t, setupKafkaTopics(scope, topic))
 
 	// then create producer
 	resource, err := RemoteProducerConfig{
-		Topic:           resource.TieredName(tierID, topic),
+		Topic:           scope.PrefixedName(topic),
 		BootstrapServer: test_kafka_servers,
 		Username:        kafka_username,
 		Password:        kafka_password,
-	}.Materialize(resource.GetTierScope(tierID))
+		Scope:           scope,
+	}.Materialize()
 	assert.NoError(t, err)
 	producer := resource.(FProducer)
 	return producer
 }
 
-func integrationConsumer(t *testing.T, tierID ftypes.TierID, topic, groupid, offsetpolicy string) FConsumer {
+func integrationConsumer(t *testing.T, scope resource.Scope, topic, groupid, offsetpolicy string) FConsumer {
 	resource, err := RemoteConsumerConfig{
-		Topic:           resource.TieredName(tierID, topic),
+		Topic:           scope.PrefixedName(topic),
 		BootstrapServer: test_kafka_servers,
 		Username:        kafka_username,
 		Password:        kafka_password,
 		GroupID:         groupid,
 		OffsetPolicy:    offsetpolicy,
-	}.Materialize(resource.GetTierScope(tierID))
+		Scope:           scope,
+	}.Materialize()
 	assert.NoError(t, err)
 	consumer := resource.(FConsumer)
 	return consumer
