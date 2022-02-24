@@ -1,8 +1,12 @@
 package timer
 
 import (
-	"fennel/lib/ftypes"
+	"context"
 	"fmt"
+	"time"
+
+	"fennel/lib/ftypes"
+
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 )
@@ -20,6 +24,31 @@ var fnDuration = promauto.NewSummaryVec(prometheus.SummaryOpts{
 	},
 }, []string{"tier_id", "function_name"})
 
-func Start(tierID ftypes.TierID, funcName string) *prometheus.Timer {
-	return prometheus.NewTimer(fnDuration.WithLabelValues(fmt.Sprintf("%d", tierID), funcName))
+type Timer struct {
+	span   string
+	tierID ftypes.TierID
+	timer  *prometheus.Timer
+	trace  *trace
+}
+
+func (t Timer) Stop() {
+	t.timer.ObserveDuration()
+	if t.trace != nil {
+		t.trace.record(fmt.Sprintf("exit:%s", t.span), time.Now())
+	}
+}
+
+func Start(ctx context.Context, tierID ftypes.TierID, funcName string) Timer {
+	ctxval := ctx.Value(traceKey{})
+	var tr *trace = nil
+	if ctxval != nil {
+		tr = ctxval.(*trace)
+		tr.record(fmt.Sprintf("enter:%s", funcName), time.Now())
+	}
+	return Timer{
+		span:   funcName,
+		tierID: tierID,
+		timer:  prometheus.NewTimer(fnDuration.WithLabelValues(fmt.Sprintf("%d", tierID), funcName)),
+		trace:  tr,
+	}
 }

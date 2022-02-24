@@ -39,7 +39,7 @@ type cachedProvider struct {
 }
 
 func (c cachedProvider) set(ctx context.Context, tier tier.Tier, otype ftypes.OType, oid uint64, key string, version uint64, valueSer []byte) error {
-	defer timer.Start(tier.ID, "model.profile.cached.set").ObserveDuration()
+	defer timer.Start(ctx, tier.ID, "model.profile.cached.set").Stop()
 	if err := c.base.set(ctx, tier, otype, oid, key, version, valueSer); err != nil {
 		return err
 	}
@@ -55,7 +55,7 @@ func (c cachedProvider) set(ctx context.Context, tier tier.Tier, otype ftypes.OT
 }
 
 func (c cachedProvider) get(ctx context.Context, tier tier.Tier, otype ftypes.OType, oid uint64, key string, version uint64) ([]byte, error) {
-	defer timer.Start(tier.ID, "model.profile.cached.get").ObserveDuration()
+	defer timer.Start(ctx, tier.ID, "model.profile.cached.get").Stop()
 	ret, err := c.getBatched(ctx, tier, []profile.ProfileItem{{OType: otype, Oid: oid, Key: key, Version: version}})
 	if err != nil {
 		return nil, err
@@ -64,7 +64,7 @@ func (c cachedProvider) get(ctx context.Context, tier tier.Tier, otype ftypes.OT
 }
 
 func (c cachedProvider) getBatched(ctx context.Context, tier tier.Tier, reqs []profile.ProfileItem) ([][]byte, error) {
-	defer timer.Start(tier.ID, "model.profile.cached.get_batched").ObserveDuration()
+	defer timer.Start(ctx, tier.ID, "model.profile.cached.get_batched").Stop()
 	rets := make([][]byte, len(reqs))
 	keys := make([]string, len(reqs))
 	for i, req := range reqs {

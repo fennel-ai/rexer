@@ -2,27 +2,29 @@ package redis
 
 import (
 	"context"
+	"fmt"
+	"time"
+
+	"github.com/go-redis/redis/v8"
+
 	"fennel/lib/timer"
 	"fennel/resource"
-	"fmt"
-	"github.com/go-redis/redis/v8"
-	"time"
 )
 
 func (c Client) Set(ctx context.Context, k string, v interface{}, ttl time.Duration) error {
-	defer timer.Start(c.TierID(), "redis.set").ObserveDuration()
+	defer timer.Start(ctx, c.TierID(), "redis.set").Stop()
 	k = c.tieredKey(k)
 	return c.client.Set(ctx, k, v, ttl).Err()
 }
 
 func (c Client) Del(ctx context.Context, k ...string) error {
-	defer timer.Start(c.TierID(), "redis.del").ObserveDuration()
+	defer timer.Start(ctx, c.TierID(), "redis.del").Stop()
 	k = c.mTieredKey(k)
 	return c.client.Del(ctx, k...).Err()
 }
 
 func (c Client) Get(ctx context.Context, k string) (interface{}, error) {
-	defer timer.Start(c.TierID(), "redis.get").ObserveDuration()
+	defer timer.Start(ctx, c.TierID(), "redis.get").Stop()
 	k = c.tieredKey(k)
 	return c.client.Get(ctx, k).Result()
 }
@@ -30,12 +32,13 @@ func (c Client) Get(ctx context.Context, k string) (interface{}, error) {
 // MGet takes a list of strings and returns a list of interfaces along with an error
 // returned is either the correct value of key or redis.Nil
 func (c Client) MGet(ctx context.Context, ks ...string) ([]interface{}, error) {
-	defer timer.Start(c.TierID(), "redis.mget").ObserveDuration()
+	defer timer.Start(ctx, c.TierID(), "redis.mget").Stop()
 	// this check is to handle a bug, likely related to https://github.com/redis/node-redis/issues/125
 	if len(ks) == 0 {
 		return []interface{}{}, nil
 	}
 	ks = c.mTieredKey(ks)
+	c.client.PoolStats()
 	vs, err := c.client.MGet(ctx, ks...).Result()
 	for i := range vs {
 		if vs[i] == nil {
@@ -46,7 +49,7 @@ func (c Client) MGet(ctx context.Context, ks ...string) ([]interface{}, error) {
 }
 
 func (c Client) MSet(ctx context.Context, keys []string, values []interface{}, ttls []time.Duration) error {
-	defer timer.Start(c.TierID(), "redis.mset").ObserveDuration()
+	defer timer.Start(ctx, c.TierID(), "redis.mset").Stop()
 	if len(keys) != len(values) || len(keys) != len(ttls) {
 		return fmt.Errorf("keys, values, and ttls should all be slices of the same length")
 	}

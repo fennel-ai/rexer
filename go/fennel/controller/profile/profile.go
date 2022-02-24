@@ -2,18 +2,19 @@ package profile
 
 import (
 	"context"
+	"time"
+
 	profilelib "fennel/lib/profile"
 	"fennel/lib/timer"
 	"fennel/lib/value"
 	"fennel/model/profile"
 	"fennel/tier"
-	"time"
 
 	"google.golang.org/protobuf/proto"
 )
 
 func Get(ctx context.Context, tier tier.Tier, request profilelib.ProfileItem) (value.Value, error) {
-	defer timer.Start(tier.ID, "controller.profile.get").ObserveDuration()
+	defer timer.Start(ctx, tier.ID, "controller.profile.get").Stop()
 	if err := request.Validate(); err != nil {
 		return nil, err
 	}
@@ -36,7 +37,7 @@ func Get(ctx context.Context, tier tier.Tier, request profilelib.ProfileItem) (v
 }
 
 func Set(ctx context.Context, tier tier.Tier, request profilelib.ProfileItem) error {
-	defer timer.Start(tier.ID, "controller.profile.set").ObserveDuration()
+	defer timer.Start(ctx, tier.ID, "controller.profile.set").Stop()
 	if err := request.Validate(); err != nil {
 		return err
 	}

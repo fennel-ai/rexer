@@ -2,16 +2,17 @@ package action
 
 import (
 	"context"
+	"fmt"
+	"strings"
+
 	"fennel/lib/action"
 	"fennel/lib/timer"
 	"fennel/tier"
-	"fmt"
-	"strings"
 )
 
 // Insert inserts the action in DB. If successful, returns the actionID
 func Insert(ctx context.Context, tier tier.Tier, action *action.ActionSer) (uint64, error) {
-	defer timer.Start(tier.ID, "model.action.insert").ObserveDuration()
+	defer timer.Start(ctx, tier.ID, "model.action.insert").Stop()
 	if len(action.ActionType) > 255 {
 		return 0, fmt.Errorf("ActionType too long: action types cannot be longer than 255 chars")
 	}
@@ -44,7 +45,7 @@ func Insert(ctx context.Context, tier tier.Tier, action *action.ActionSer) (uint
 // For actionValue range, both min/max are inclusive
 // TODO: add limit support?
 func Fetch(ctx context.Context, tier tier.Tier, request action.ActionFetchRequest) ([]action.ActionSer, error) {
-	defer timer.Start(tier.ID, "model.action.fetch").ObserveDuration()
+	defer timer.Start(ctx, tier.ID, "model.action.fetch").Stop()
 	query := "SELECT * FROM actionlog"
 	clauses := make([]string, 0)
 	if len(request.ActorType) != 0 {
