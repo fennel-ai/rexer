@@ -1,9 +1,6 @@
 package db
 
 import (
-	"time"
-
-	"github.com/jmoiron/sqlx"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 )
@@ -32,7 +29,7 @@ var close_stats = promauto.NewGaugeVec(prometheus.GaugeOpts{
 	Help: "Stats about closed db connections",
 }, []string{"metric"})
 
-func RecordConnectionStats(db *sqlx.DB, period time.Duration) {
+func RecordConnectionStats(db Connection) {
 	stats := db.Stats()
 
 	conn_stats.WithLabelValues("num_open").Observe(float64(stats.OpenConnections))
