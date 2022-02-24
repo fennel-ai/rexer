@@ -158,7 +158,7 @@ func (i Interpreter) VisitList(values []ast.Ast) (value.Value, error) {
 		}
 		ret = append(ret, val)
 	}
-	return value.NewList(ret)
+	return value.NewList(ret), nil
 }
 
 func (i Interpreter) VisitDict(values map[string]ast.Ast) (value.Value, error) {

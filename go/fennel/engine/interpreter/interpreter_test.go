@@ -1,13 +1,15 @@
 package interpreter
 
 import (
+	"fmt"
+	"testing"
+
+	"github.com/stretchr/testify/assert"
+
 	"fennel/engine/ast"
 	"fennel/engine/operators"
 	"fennel/lib/value"
 	_ "fennel/opdefs"
-	"fmt"
-	"github.com/stretchr/testify/assert"
-	"testing"
 )
 
 func getInterpreter() Interpreter {
@@ -63,10 +65,10 @@ func TestInterpreter_VisitList(t *testing.T) {
 	testValid(t, ast.List{Values: []ast.Ast{}}, value.List{})
 
 	// list with just one element works
-	l, _ := value.NewList([]value.Value{value.Double(3.4)})
+	l := value.NewList([]value.Value{value.Double(3.4)})
 	testValid(t, &ast.List{Values: []ast.Ast{ast.MakeDouble(3.4)}}, l)
 	// and so does a multi-element list with mixed types
-	l, _ = value.NewList([]value.Value{value.Double(3.4), value.Bool(false), value.String("hi")})
+	l = value.NewList([]value.Value{value.Double(3.4), value.Bool(false), value.String("hi")})
 	testValid(t, &ast.List{Values: []ast.Ast{ast.MakeDouble(3.4), ast.MakeBool(false), ast.MakeString("hi")}}, l)
 }
 

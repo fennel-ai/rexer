@@ -1,17 +1,16 @@
 package value
 
 import (
-	"github.com/stretchr/testify/assert"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func TestNewIntList(t *testing.T) {
 	values := make([]Value, 0)
 	values = append(values, Int(1))
 	values = append(values, Int(2))
-	ret, err := NewList(values)
-	list := ret.(List)
-	assert.NoError(t, err)
+	list := NewList(values)
 	assert.Equal(t, List(values), list)
 }
 
@@ -142,4 +141,15 @@ func TestTable_Iter(t *testing.T) {
 	assert.False(t, it.HasMore())
 	_, err = it.Next()
 	assert.Error(t, err)
+}
+
+func TestList_Append(t *testing.T) {
+	l := NewList([]Value{})
+	assert.Len(t, l, 0)
+
+	assert.NoError(t, l.Append(Int(2)))
+	assert.Len(t, l, 1)
+	assert.NoError(t, l.Append(Bool(false)))
+	assert.Len(t, l, 2)
+	assert.Equal(t, List{Int(2), Bool(false)}, l)
 }
