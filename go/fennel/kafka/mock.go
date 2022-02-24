@@ -68,7 +68,7 @@ func (l *MockBroker) Backlog(groupID string) int {
 //=================================
 
 type mockConsumer struct {
-	scope   resource.Scope
+	resource.Scope
 	groupid string
 	Topic   string
 	broker  *MockBroker
@@ -151,10 +151,11 @@ type MockConsumerConfig struct {
 	Broker  *MockBroker
 	Topic   string
 	GroupID string
+	Scope   resource.Scope
 }
 
-func (l MockConsumerConfig) Materialize(scope resource.Scope) (resource.Resource, error) {
-	return mockConsumer{scope, l.GroupID, l.Topic, l.Broker}, nil
+func (l MockConsumerConfig) Materialize() (resource.Resource, error) {
+	return mockConsumer{l.Scope, l.GroupID, l.Topic, l.Broker}, nil
 }
 
 var _ resource.Config = MockConsumerConfig{}
@@ -164,7 +165,7 @@ var _ resource.Config = MockConsumerConfig{}
 //=================================
 
 type mockProducer struct {
-	scope  resource.Scope
+	resource.Scope
 	topic  string
 	broker *MockBroker
 }
@@ -204,10 +205,11 @@ var _ FProducer = mockProducer{}
 type MockProducerConfig struct {
 	Broker *MockBroker
 	Topic  string
+	Scope  resource.Scope
 }
 
-func (conf MockProducerConfig) Materialize(scope resource.Scope) (resource.Resource, error) {
-	return mockProducer{scope, conf.Topic, conf.Broker}, nil
+func (conf MockProducerConfig) Materialize() (resource.Resource, error) {
+	return mockProducer{conf.Scope, conf.Topic, conf.Broker}, nil
 }
 
 var _ resource.Config = MockProducerConfig{}

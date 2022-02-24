@@ -6,6 +6,7 @@ import (
 	"log"
 	"time"
 
+	"fennel/lib/ftypes"
 	"fennel/lib/timer"
 	"fennel/resource"
 
@@ -14,8 +15,8 @@ import (
 )
 
 type RemoteConsumer struct {
-	scope resource.Scope
 	*kafka.Consumer
+	resource.Scope
 	topic   string
 	groupid string
 	conf    resource.Config
@@ -39,7 +40,7 @@ func (k RemoteConsumer) Type() resource.Type {
 }
 
 func (k RemoteConsumer) ReadProto(ctx context.Context, pmsg proto.Message, timeout time.Duration) error {
-	defer timer.Start(ctx, k.scope.GetTierID(), "kafka.read_proto").Stop()
+	defer timer.Start(ctx, ftypes.TierID(k.ID()), "kafka.read_proto").Stop()
 	ch := make(chan error)
 	go func() {
 		kmsg, err := k.ReadMessage(timeout)
@@ -161,9 +162,10 @@ type RemoteConsumerConfig struct {
 	GroupID         string
 	OffsetPolicy    string
 	Topic           string
+	Scope           resource.Scope
 }
 
-func (conf RemoteConsumerConfig) Materialize(scope resource.Scope) (resource.Resource, error) {
+func (conf RemoteConsumerConfig) Materialize() (resource.Resource, error) {
 	configmap := ConfigMap(conf.BootstrapServer, conf.Username, conf.Password)
 
 	if err := configmap.SetKey("group.id", conf.GroupID); err != nil {
@@ -188,7 +190,7 @@ func (conf RemoteConsumerConfig) Materialize(scope resource.Scope) (resource.Res
 	if err != nil {
 		return nil, fmt.Errorf("failed to subscribe to topic [%s]: %v", conf.Topic, err)
 	}
-	return RemoteConsumer{scope, consumer, conf.Topic, conf.GroupID, conf}, nil
+	return RemoteConsumer{consumer, conf.Scope, conf.Topic, conf.GroupID, nil}, nil
 }
 
 var _ resource.Config = RemoteConsumerConfig{}

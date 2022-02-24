@@ -2,13 +2,14 @@ package redis
 
 import (
 	"context"
+	"math/rand"
+	"testing"
+	"time"
+
 	"fennel/lib/ftypes"
 	resource2 "fennel/resource"
 	"github.com/alicebob/miniredis/v2"
 	"github.com/stretchr/testify/assert"
-	"math/rand"
-	"testing"
-	"time"
 )
 
 // TODO: make this test work with a struct (or some non-string)
@@ -17,9 +18,10 @@ import (
 func TestCache(t *testing.T) {
 	rand.Seed(time.Now().UnixNano())
 	tierID := ftypes.TierID(rand.Uint32())
+	scope := resource2.NewTierScope(1, tierID)
 	mr, err := miniredis.Run()
 	assert.NoError(t, err)
-	resource, err := MiniRedisConfig{MiniRedis: mr}.Materialize(resource2.GetTierScope(tierID))
+	resource, err := MiniRedisConfig{MiniRedis: mr, Scope: scope}.Materialize()
 	client := resource.(Client)
 	cache := NewCache(client)
 	defer client.Close()

@@ -92,17 +92,17 @@ type Tier struct {
 
 func CreateFromArgs(args *TierArgs) (tier Tier, err error) {
 	tierID := args.TierID
-	scope := resource.GetTierScope(tierID)
+	scope := resource.NewTierScope(1, tierID)
 
 	log.Print("Connecting to mysql")
 	mysqlConfig := db.MySQLConfig{
 		Host:     args.MysqlHost,
-		DBname:   resource.TieredName(tierID, args.MysqlDB),
+		DBname:   scope.PrefixedName(args.MysqlDB),
 		Username: args.MysqlUsername,
 		Password: args.MysqlPassword,
 		Schema:   Schema,
 	}
-	sqlConn, err := mysqlConfig.Materialize(scope)
+	sqlConn, err := mysqlConfig.Materialize()
 	if err != nil {
 		return tier, fmt.Errorf("failed to connect with mysql: %v", err)
 	}
@@ -110,8 +110,9 @@ func CreateFromArgs(args *TierArgs) (tier Tier, err error) {
 	redisConfig := redis.ClientConfig{
 		Addr:      args.RedisServer,
 		TLSConfig: &tls.Config{},
+		Scope:     scope,
 	}
-	redisClient, err := redisConfig.Materialize(scope)
+	redisClient, err := redisConfig.Materialize()
 	if err != nil {
 		return tier, fmt.Errorf("failed to create redis client: %v", err)
 	}
@@ -120,8 +121,9 @@ func CreateFromArgs(args *TierArgs) (tier Tier, err error) {
 	cacheClientConfig := redis.ClientConfig{
 		Addr:      args.CachePrimary,
 		TLSConfig: &tls.Config{},
+		Scope:     scope,
 	}
-	cacheClient, err := cacheClientConfig.Materialize(scope)
+	cacheClient, err := cacheClientConfig.Materialize()
 	if err != nil {
 		return tier, fmt.Errorf("failed to create cache client: %v", err)
 	}
@@ -149,10 +151,11 @@ func CreateFromArgs(args *TierArgs) (tier Tier, err error) {
 			Username:        args.KafkaUsername,
 			Password:        args.KafkaPassword,
 			GroupID:         groupID,
-			Topic:           resource.TieredName(tierID, topic),
+			Topic:           scope.PrefixedName(topic),
 			OffsetPolicy:    offsetPolicy,
+			Scope:           scope,
 		}
-		kafkaConsumer, err := kafkaConsumerConfig.Materialize(scope)
+		kafkaConsumer, err := kafkaConsumerConfig.Materialize()
 		if err != nil {
 			return nil, fmt.Errorf("failed to create kafka consumer: %v", err)
 		}
@@ -195,9 +198,10 @@ func CreateKafka(scope resource.Scope, server, username, password string) (map[s
 			BootstrapServer: server,
 			Username:        username,
 			Password:        password,
-			Topic:           resource.TieredName(scope.GetTierID(), topic),
+			Topic:           scope.PrefixedName(topic),
+			Scope:           scope,
 		}
-		kafkaProducer, err := kafkaProducerConfig.Materialize(scope)
+		kafkaProducer, err := kafkaProducerConfig.Materialize()
 		if err != nil {
 			return nil, fmt.Errorf("failed to crate kafka producer: %v", err)
 		}

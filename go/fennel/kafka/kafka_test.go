@@ -89,21 +89,22 @@ func testReadBatch(t *testing.T, producer FProducer, consumer FConsumer) {
 	wg.Wait()
 }
 
-func getMockProducer(t *testing.T, tierID ftypes.TierID, topic string, broker *MockBroker) FProducer {
+func getMockProducer(t *testing.T, scope resource.Scope, topic string, broker *MockBroker) FProducer {
 	producer, err := MockProducerConfig{
 		Broker: broker,
-		Topic:  resource.TieredName(tierID, topic),
-	}.Materialize(resource.GetTierScope(tierID))
+		Topic:  scope.PrefixedName(topic),
+	}.Materialize()
 	assert.NoError(t, err)
 	return producer.(FProducer)
 }
 
-func getMockConsumer(t *testing.T, tierID ftypes.TierID, topic, groupID string, broker *MockBroker) FConsumer {
+func getMockConsumer(t *testing.T, scope resource.Scope, topic, groupID string, broker *MockBroker) FConsumer {
 	consumer, err := MockConsumerConfig{
 		Broker:  broker,
-		Topic:   resource.TieredName(tierID, topic),
+		Topic:   scope.PrefixedName(topic),
 		GroupID: groupID,
-	}.Materialize(resource.GetTierScope(tierID))
+		Scope:   scope,
+	}.Materialize()
 	assert.NoError(t, err)
 	return consumer.(FConsumer)
 }
@@ -255,37 +256,38 @@ func TestLocal(t *testing.T) {
 	rand.Seed(time.Now().UnixNano())
 	topic := "topic"
 	tierID := ftypes.TierID(rand.Uint32())
+	scope := resource.NewTierScope(1, tierID)
 
 	t.Run("local_producer_consumer", func(t *testing.T) {
 		broker := NewMockTopicBroker()
-		producer := getMockProducer(t, tierID, topic, &broker)
-		consumer := getMockConsumer(t, tierID, topic, "group", &broker)
+		producer := getMockProducer(t, scope, topic, &broker)
+		consumer := getMockConsumer(t, scope, topic, "group", &broker)
 		testProducerConsumer(t, producer, consumer)
 	})
 	t.Run("local_read_batch", func(t *testing.T) {
 		broker := NewMockTopicBroker()
-		producer := getMockProducer(t, tierID, topic, &broker)
-		consumer := getMockConsumer(t, tierID, topic, "group", &broker)
+		producer := getMockProducer(t, scope, topic, &broker)
+		consumer := getMockConsumer(t, scope, topic, "group", &broker)
 		testReadBatch(t, producer, consumer)
 	})
 	t.Run("local_flush_commit_backlog", func(t *testing.T) {
 		broker := NewMockTopicBroker()
-		producer := getMockProducer(t, tierID, topic, &broker)
-		consumer := getMockConsumer(t, tierID, topic, "group", &broker)
+		producer := getMockProducer(t, scope, topic, &broker)
+		consumer := getMockConsumer(t, scope, topic, "group", &broker)
 		testBacklog(t, producer, consumer)
 	})
 	t.Run("local_different_consumer_groups", func(t *testing.T) {
 		broker := NewMockTopicBroker()
-		producer := getMockProducer(t, tierID, topic, &broker)
-		consumer1 := getMockConsumer(t, tierID, topic, "group1", &broker)
-		consumer2 := getMockConsumer(t, tierID, topic, "group2", &broker)
+		producer := getMockProducer(t, scope, topic, &broker)
+		consumer1 := getMockConsumer(t, scope, topic, "group1", &broker)
+		consumer2 := getMockConsumer(t, scope, topic, "group2", &broker)
 		testDifferentConsumerGroups(t, producer, consumer1, consumer2)
 	})
 	t.Run("local_same_consumer_group", func(t *testing.T) {
 		broker := NewMockTopicBroker()
-		producer := getMockProducer(t, tierID, topic, &broker)
-		consumer1 := getMockConsumer(t, tierID, topic, "group", &broker)
-		consumer2 := getMockConsumer(t, tierID, topic, "group", &broker)
+		producer := getMockProducer(t, scope, topic, &broker)
+		consumer1 := getMockConsumer(t, scope, topic, "group", &broker)
+		consumer2 := getMockConsumer(t, scope, topic, "group", &broker)
 		testSameConsumerGroup(t, producer, consumer1, consumer2)
 	})
 }

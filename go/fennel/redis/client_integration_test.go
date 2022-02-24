@@ -5,14 +5,15 @@ package redis
 import (
 	"context"
 	"crypto/tls"
-	"fennel/lib/ftypes"
-	"fennel/lib/utils"
-	"fennel/resource"
 	"fmt"
 	"math/rand"
 	"strings"
 	"testing"
 	"time"
+
+	"fennel/lib/ftypes"
+	"fennel/lib/utils"
+	"fennel/resource"
 
 	"github.com/go-redis/redis/v8"
 	"github.com/stretchr/testify/assert"
@@ -25,8 +26,9 @@ const (
 func TestRedisClientIntegration(t *testing.T) {
 	rand.Seed(time.Now().UnixNano())
 	tierID := ftypes.TierID(rand.Uint32())
-	conf := ClientConfig{Addr: addr, TLSConfig: &tls.Config{}}
-	rdb, err := conf.Materialize(resource.GetTierScope(tierID))
+	scope := resource.NewTierScope(1, tierID)
+	conf := ClientConfig{Addr: addr, TLSConfig: &tls.Config{}, Scope: scope}
+	rdb, err := conf.Materialize()
 	assert.NoError(t, err)
 	t.Run("integration_get_set_del", func(t *testing.T) { testClient(t, rdb.(Client)) })
 	t.Run("integration_mget", func(t *testing.T) { testMGet(t, rdb.(Client)) })
@@ -35,8 +37,9 @@ func TestRedisClientIntegration(t *testing.T) {
 func TestMultiSetTTL(t *testing.T) {
 	rand.Seed(time.Now().UnixNano())
 	tierID := ftypes.TierID(rand.Uint32())
-	conf := ClientConfig{Addr: addr, TLSConfig: &tls.Config{}}
-	rdb, err := conf.Materialize(resource.GetTierScope(tierID))
+	scope := resource.NewTierScope(1, tierID)
+	conf := ClientConfig{Addr: addr, TLSConfig: &tls.Config{}, Scope: scope}
+	rdb, err := conf.Materialize()
 	assert.NoError(t, err)
 	ctx := context.Background()
 	c := rdb.(Client)
@@ -75,8 +78,9 @@ func TestMultiSetTTL(t *testing.T) {
 func TestMultiGetSet(t *testing.T) {
 	rand.Seed(time.Now().UnixNano())
 	tierID := ftypes.TierID(rand.Uint32())
-	conf := ClientConfig{Addr: addr, TLSConfig: &tls.Config{}}
-	rdb, err := conf.Materialize(resource.GetTierScope(tierID))
+	scope := resource.NewTierScope(1, tierID)
+	conf := ClientConfig{Addr: addr, TLSConfig: &tls.Config{}, Scope: scope}
+	rdb, err := conf.Materialize()
 	assert.NoError(t, err)
 	ctx := context.Background()
 	c := rdb.(Client)
@@ -114,21 +118,22 @@ func TestMultiGetSet(t *testing.T) {
 func TestClientConfig_Materialize_Invalid(t *testing.T) {
 	rand.Seed(time.Now().UnixNano())
 	tierID := ftypes.TierID(rand.Uint32())
+	scope := resource.NewTierScope(1, tierID)
 	scenarios := []struct {
 		name string
 		conf ClientConfig
 	}{
-		{"invalid_url", ClientConfig{"some_random.aws.com:6379", &tls.Config{}}},
+		{"invalid_url", ClientConfig{"some_random.aws.com:6379", &tls.Config{}, scope}},
 		// i.e. include the url without the port
-		{"no_port", ClientConfig{strings.Split(addr, ":6379")[0], &tls.Config{}}},
+		{"no_port", ClientConfig{strings.Split(addr, ":6379")[0], &tls.Config{}, scope}},
 		// i.e. valid url but without tls config
-		{"no_tls", ClientConfig{addr, nil}},
+		{"no_tls", ClientConfig{addr, nil, scope}},
 	}
 	for i := range scenarios {
 		scenario := scenarios[i]
 		t.Run(scenario.name, func(t *testing.T) {
 			t.Parallel()
-			_, err := scenario.conf.Materialize(resource.GetTierScope(tierID))
+			_, err := scenario.conf.Materialize()
 			assert.Error(t, err)
 		})
 	}

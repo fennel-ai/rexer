@@ -6,6 +6,7 @@ import (
 	"log"
 	"time"
 
+	"fennel/lib/ftypes"
 	"fennel/lib/timer"
 	"fennel/resource"
 
@@ -18,9 +19,9 @@ import (
 //=================================
 
 type RemoteProducer struct {
-	scope resource.Scope
 	topic string
 	*kafka.Producer
+	resource.Scope
 }
 
 func (k RemoteProducer) Log(_ context.Context, message []byte, partitionKey []byte) error {
@@ -52,7 +53,7 @@ func (k RemoteProducer) Type() resource.Type {
 }
 
 func (k RemoteProducer) LogProto(ctx context.Context, protoMsg proto.Message, partitionKey []byte) error {
-	defer timer.Start(ctx, k.scope.GetTierID(), "kafka.log_proto").Stop()
+	defer timer.Start(ctx, ftypes.TierID(k.ID()), "kafka.log_proto").Stop()
 	raw, err := proto.Marshal(protoMsg)
 	if err != nil {
 		return fmt.Errorf("failed to serialize protoMsg to proto: %v", err)
@@ -71,9 +72,10 @@ type RemoteProducerConfig struct {
 	BootstrapServer string
 	Username        string
 	Password        string
+	Scope           resource.Scope
 }
 
-func (conf RemoteProducerConfig) Materialize(scope resource.Scope) (resource.Resource, error) {
+func (conf RemoteProducerConfig) Materialize() (resource.Resource, error) {
 	configmap := ConfigMap(conf.BootstrapServer, conf.Username, conf.Password)
 	producer, err := kafka.NewProducer(configmap)
 	if err != nil {
@@ -89,7 +91,7 @@ func (conf RemoteProducerConfig) Materialize(scope resource.Scope) (resource.Res
 			}
 		}
 	}()
-	return RemoteProducer{scope, conf.Topic, producer}, err
+	return RemoteProducer{conf.Topic, producer, conf.Scope}, err
 }
 
 var _ resource.Config = RemoteProducerConfig{}

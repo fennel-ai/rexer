@@ -1,11 +1,12 @@
 package test
 
 import (
+	"fmt"
+
 	"fennel/db"
 	"fennel/lib/ftypes"
 	"fennel/resource"
 	"fennel/tier"
-	"fmt"
 
 	"github.com/jmoiron/sqlx"
 )
@@ -18,17 +19,19 @@ const (
 )
 
 func defaultDB(tierID ftypes.TierID) (db.Connection, error) {
+	scope := resource.NewTierScope(1, tierID)
 	if err := setupDB(tierID, logical_test_dbname, username, password, host); err != nil {
 		return db.Connection{}, err
 	}
 	config := db.MySQLConfig{
-		DBname:   resource.TieredName(tierID, logical_test_dbname),
+		DBname:   scope.PrefixedName(logical_test_dbname),
 		Username: username,
 		Password: password,
 		Host:     host,
 		Schema:   tier.Schema,
+		Scope:    scope,
 	}
-	resource, err := config.Materialize(resource.GetTierScope(tierID))
+	resource, err := config.Materialize()
 	if err != nil {
 		return db.Connection{}, err
 	}
@@ -38,7 +41,8 @@ func defaultDB(tierID ftypes.TierID) (db.Connection, error) {
 }
 
 func drop(tierID ftypes.TierID, logicalname, username, password, host string) error {
-	dbname := resource.TieredName(tierID, logicalname)
+	scope := resource.NewTierScope(1, tierID)
+	dbname := scope.PrefixedName(logicalname)
 	connstr := fmt.Sprintf("%s:%s@tcp(%s)/?tls=true", username, password, host)
 	db, err := sqlx.Open("mysql", connstr)
 	if err != nil {
@@ -51,7 +55,8 @@ func drop(tierID ftypes.TierID, logicalname, username, password, host string) er
 }
 
 func setupDB(tierID ftypes.TierID, logicalname, username, password, host string) error {
-	dbname := resource.TieredName(tierID, logicalname)
+	scope := resource.NewTierScope(1, tierID)
+	dbname := scope.PrefixedName(logicalname)
 	connstr := fmt.Sprintf("%s:%s@tcp(%s)/?tls=true", username, password, host)
 	db, err := sqlx.Open("mysql", connstr)
 	if err != nil {

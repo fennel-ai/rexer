@@ -2,13 +2,14 @@ package redis
 
 import (
 	"context"
+	"math/rand"
+	"testing"
+	"time"
+
 	"fennel/lib/ftypes"
 	"fennel/lib/utils"
 	"fennel/resource"
 	"github.com/alicebob/miniredis/v2"
-	"math/rand"
-	"testing"
-	"time"
 
 	"github.com/go-redis/redis/v8"
 	"github.com/stretchr/testify/assert"
@@ -72,9 +73,10 @@ func testDeleteMulti(t *testing.T, c Client) {
 func TestRedisClientLocal(t *testing.T) {
 	rand.Seed(time.Now().UnixNano())
 	tierID := ftypes.TierID(rand.Uint32())
+	scope := resource.NewTierScope(1, tierID)
 	mr, err := miniredis.Run()
 	assert.NoError(t, err)
-	client, err := MiniRedisConfig{MiniRedis: mr}.Materialize(resource.GetTierScope(tierID))
+	client, err := MiniRedisConfig{MiniRedis: mr, Scope: scope}.Materialize()
 	assert.NoError(t, err)
 	defer client.Close()
 	t.Run("local_get_set", func(t *testing.T) { testClient(t, client.(Client)) })

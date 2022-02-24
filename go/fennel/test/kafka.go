@@ -14,6 +14,7 @@ import (
 )
 
 func createMockKafka(tierID ftypes.TierID) (map[string]fkafka.FProducer, tier.KafkaConsumerCreator, error) {
+	scope := resource.NewTierScope(1, tierID)
 	brokerMap := make(map[string]*fkafka.MockBroker)
 	producers := make(map[string]fkafka.FProducer)
 	for _, topic := range fkafka.ALL_TOPICS {
@@ -21,9 +22,9 @@ func createMockKafka(tierID ftypes.TierID) (map[string]fkafka.FProducer, tier.Ka
 		brokerMap[topic] = &broker
 		prodConfig := fkafka.MockProducerConfig{
 			Broker: &broker,
-			Topic:  resource.TieredName(tierID, topic),
+			Topic:  scope.PrefixedName(topic),
 		}
-		kProducer, err := prodConfig.Materialize(resource.GetTierScope(tierID))
+		kProducer, err := prodConfig.Materialize()
 		if err != nil {
 			return nil, nil, err
 		}
@@ -36,9 +37,9 @@ func createMockKafka(tierID ftypes.TierID) (map[string]fkafka.FProducer, tier.Ka
 		}
 		kConsumer, err := fkafka.MockConsumerConfig{
 			Broker:  broker,
-			Topic:   resource.TieredName(tierID, topic),
+			Topic:   scope.PrefixedName(topic),
 			GroupID: groupID,
-		}.Materialize(resource.GetTierScope(tierID))
+		}.Materialize()
 		if err != nil {
 			return nil, err
 		}
@@ -48,9 +49,10 @@ func createMockKafka(tierID ftypes.TierID) (map[string]fkafka.FProducer, tier.Ka
 }
 
 func setupKafkaTopics(tierID ftypes.TierID, host, username, password string, topics []string) error {
+	scope := resource.NewTierScope(1, tierID)
 	names := make([]string, len(topics))
 	for i, topic := range topics {
-		names[i] = resource.TieredName(tierID, topic)
+		names[i] = scope.PrefixedName(topic)
 	}
 	// Create admin client
 	c, err := kafka.NewAdminClient(fkafka.ConfigMap(host, username, password))
@@ -84,9 +86,10 @@ func setupKafkaTopics(tierID ftypes.TierID, host, username, password string, top
 }
 
 func teardownKafkaTopics(tierID ftypes.TierID, host, username, password string, topics []string) error {
+	scope := resource.NewTierScope(1, tierID)
 	names := make([]string, len(topics))
 	for i, topic := range topics {
-		names[i] = resource.TieredName(tierID, topic)
+		names[i] = scope.PrefixedName(topic)
 	}
 	// Create admin client.
 	c, err := kafka.NewAdminClient(fkafka.ConfigMap(host, username, password))
