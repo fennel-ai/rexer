@@ -3,13 +3,14 @@
 package test
 
 import (
+	"fmt"
+	"math/rand"
+	"time"
+
 	fkafka "fennel/kafka"
 	"fennel/lib/ftypes"
 	"fennel/tier"
-	"fmt"
 	"github.com/alexflint/go-arg"
-	"math/rand"
-	"time"
 )
 
 // Tier returns a tier to be used in tests based off a standard test plane

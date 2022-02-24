@@ -1,10 +1,11 @@
 package mothership
 
 import (
-	"fennel/db"
-	"fennel/resource"
 	"fmt"
 	"log"
+
+	"fennel/db"
+	"fennel/resource"
 )
 
 type Mothership struct {
@@ -19,8 +20,9 @@ func Create(hostname, dbname, username, password string) (mothership Mothership,
 		Username: username,
 		Password: password,
 		Schema:   Schema,
+		Scope:    resource.NewMothershipScope(1),
 	}
-	sqlConn, err := mysqlConfig.Materialize(resource.GetMothershipScope())
+	sqlConn, err := mysqlConfig.Materialize()
 	if err != nil {
 		return mothership, fmt.Errorf("failed to connect with mysql: %v", err)
 	}

@@ -8,11 +8,12 @@ import (
 )
 
 func mockRedis(tierID ftypes.TierID) (redis.Client, error) {
+	scope := resource.NewTierScope(1, tierID)
 	mr, err := miniredis.Run()
 	if err != nil {
 		return redis.Client{}, err
 	}
-	rdb, err := redis.MiniRedisConfig{MiniRedis: mr}.Materialize(resource.GetTierScope(tierID))
+	rdb, err := redis.MiniRedisConfig{MiniRedis: mr, Scope: scope}.Materialize()
 	if err != nil {
 		return redis.Client{}, err
 	}
