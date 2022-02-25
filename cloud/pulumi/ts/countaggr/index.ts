@@ -112,6 +112,14 @@ export const setup = async (input: inputType) => {
                 template: {
                     metadata: {
                         labels: appLabels,
+                        annotations: {
+                            // Skip Linkerd protocol detection for mysql and redis
+                            // instances running outside the cluster.
+                            // See: https://linkerd.io/2.11/features/protocol-detection/.
+                            "config.linkerd.io/skip-outbound-ports": "3306,6379",
+                            "prometheus.io/scrape": "true",
+                            "prometheus.io/port": metricsPort.toString(),
+                        }
                     },
                     spec: {
                         containers: [{
