@@ -4,6 +4,48 @@ import * as pulumi from "@pulumi/pulumi";
 import { local } from "@pulumi/command";
 import * as aws from "@pulumi/aws";
 import * as fs from 'fs';
+import * as process from "process";
+
+// TODO: use version from common library.
+// operator for type-safety for string key access:
+// https://schneidenbach.gitbooks.io/typescript-cookbook/content/nameof-operator.html
+export const nameof = <T>(name: keyof T) => name;
+
+// TODO: move to common library module.
+export const fennelStdTags = {
+    "managed-by": "fennel.ai",
+}
+
+export const plugins = {
+    "eks": "v0.36.0",
+    "kubernetes": "v3.15.0",
+    "command": "v0.0.3",
+    "aws": "v4.36.0",
+}
+
+export type inputType = {
+    roleArn: string,
+    region: string,
+    vpcId: string,
+    ami: string,
+}
+
+export type outputType = {
+    kubeconfig: pulumi.Output<any>,
+    oidcUrl: pulumi.Output<string>,
+    instanceRole: pulumi.Output<string>,
+    workerSg: pulumi.Output<string>,
+}
+
+const parseConfig = (): inputType => {
+    const config = new pulumi.Config();
+    return {
+        roleArn: config.require(nameof<inputType>("roleArn")),
+        region: config.require(nameof<inputType>("region")),
+        vpcId: config.require(nameof<inputType>("vpcId")),
+        ami: config.require(nameof<inputType>("ami")),
+    }
+}
 
 function setupLinkerd(cluster: k8s.Provider) {
     // Setup root and issuer CA as per https://linkerd.io/2.11/tasks/generate-certificates/.
@@ -170,15 +212,14 @@ async function setupLoadBalancerController(awsProvider: aws.Provider, cluster: e
     return lbc
 }
 
-export = async () => {
-    const config = new pulumi.Config();
 
-    const vpcId = config.require("vpcId");
+export const setup = async (input: inputType) => {
+    const { vpcId, region, roleArn, ami } = input
 
     const awsProvider = new aws.Provider("aws-provider", {
-        region: <aws.Region>config.require("region"),
+        region: <aws.Region>region,
         assumeRole: {
-            roleArn: config.require("roleArn")
+            roleArn,
             // TODO: Also populate the externalId field to prevent "confused deputy"
             // attacks: https://docs.aws.amazon.com/IAM/latest/UserGuide/confused-deputy.html
         }
@@ -206,10 +247,10 @@ export = async () => {
             // on the AWS AMI catalog with one of the following prefixes:
             // amazon-eks-node / amazon-eks-gpu-node / amazon-eks-arm64-node,
             // depending on the type of machine provisioned.
-            amiId: config.require("ami"),
+            amiId: ami,
         },
         providerCredentialOpts: {
-            roleArn: config.require("roleArn"),
+            roleArn,
         },
         nodeAssociatePublicIpAddress: false,
         createOidcProvider: true
@@ -220,7 +261,7 @@ export = async () => {
     // Export the cluster's kubeconfig.
     const kubeconfig = cluster.kubeconfig;
 
-    const oidcUrl = cluster.core.oidcProvider?.url
+    const oidcUrl = cluster.core.oidcProvider!.url
 
     // Setup linkerd service mesh.
     setupLinkerd(cluster.provider)
@@ -229,7 +270,7 @@ export = async () => {
     const lbc = await setupLoadBalancerController(awsProvider, cluster)
 
     // Install emissary-ingress CRDs after load-balancer controller.
-    const ingress = pulumi.all([cluster.core.subnetIds!, lbc.ready]).apply(([subnetIds]) => {
+    lbc.ready.apply(() => {
         return setupEmissaryIngressCrds(cluster.provider)
     })
 
@@ -245,5 +286,25 @@ export = async () => {
 
     const workerSg = cluster.nodeSecurityGroup.id
 
-    return { kubeconfig, oidcUrl, ingress, instanceRole, workerSg }
+    const output: outputType = {
+        kubeconfig, oidcUrl, instanceRole, workerSg
+    }
+
+    return output
 }
+
+async function run() {
+    let output: outputType | undefined;
+    // Run the main function only if this program is run through the pulumi CLI.
+    // Unfortunately, in that case the argv0 itself is not "pulumi", but the full
+    // path of node: e.g. /nix/store/7q04aq0sq6im9a0k09gzfa1xfncc0xgm-nodejs-14.18.1/bin/node
+    if (process.argv0 !== 'node') {
+        pulumi.log.info("Running...")
+        const input: inputType = parseConfig();
+        output = await setup(input)
+    }
+    return output
+}
+
+
+export const output = await run();
