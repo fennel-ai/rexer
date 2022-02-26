@@ -118,7 +118,6 @@ func main() {
 	l, err := net.Listen("tcp", addr)
 	if err != nil {
 		log.Fatalf("Listen(): %v", err)
-		panic(err)
 	}
 
 	// Signal that server is open for business.
@@ -128,6 +127,5 @@ func main() {
 
 	if err = http.Serve(l, router); err != http.ErrServerClosed {
 		log.Fatalf("Serve(): %v", err)
-		panic(err)
 	}
 }

@@ -29,14 +29,14 @@ func TestRolling(t *testing.T) {
 		Name:      "mycounter",
 		Query:     ast.MakeInt(1),
 		Timestamp: 0,
-		Options: libaggregate.AggOptions{
+		Options: libaggregate.Options{
 			AggType:  "rolling_counter",
 			Duration: 3600 * 28,
 		},
 	}
 	querySer, err := ast.Marshal(agg.Query)
 	assert.NoError(t, err)
-	optionSer, err := proto.Marshal(&agg.Options)
+	optionSer, err := proto.Marshal(libaggregate.ToProtoOptions(agg.Options))
 	assert.NoError(t, err)
 
 	key := value.List{value.Int(1), value.Int(2)}
@@ -75,7 +75,7 @@ func TestTimeseries(t *testing.T) {
 		Query:     ast.MakeInt(1),
 		Timestamp: 0,
 		// at any time, we want data from last 9 hours
-		Options: libaggregate.AggOptions{
+		Options: libaggregate.Options{
 			AggType: "timeseries_counter",
 			Window:  ftypes.Window_HOUR,
 			Limit:   9,
@@ -87,7 +87,7 @@ func TestTimeseries(t *testing.T) {
 	}
 	querySer, err := ast.Marshal(agg.Query)
 	assert.NoError(t, err)
-	optionSer, err := proto.Marshal(&agg.Options)
+	optionSer, err := proto.Marshal(libaggregate.ToProtoOptions(agg.Options))
 	assert.NoError(t, err)
 
 	assert.NoError(t, aggregate.Store(ctx, tier, agg.Name, querySer, agg.Timestamp, optionSer))

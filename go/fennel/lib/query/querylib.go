@@ -3,10 +3,11 @@ package query
 import (
 	"encoding/base64"
 	"encoding/json"
+	"fmt"
+
 	"fennel/engine/ast"
 	"fennel/lib/ftypes"
 	"fennel/lib/value"
-	"fmt"
 	"github.com/buger/jsonparser"
 )
 
@@ -28,7 +29,7 @@ type BoundQuery struct {
 }
 
 func FromProtoBoundQuery(pbq *ProtoBoundQuery) (ast.Ast, value.Dict, error) {
-	tree, err := ast.FromProtoAst(*pbq.Ast)
+	tree, err := ast.FromProtoAst(pbq.Ast)
 	if err != nil {
 		return nil, value.Dict{}, err
 	}

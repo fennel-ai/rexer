@@ -3,6 +3,11 @@ package client
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
+	"io/ioutil"
+	"net/http"
+	"net/url"
+
 	"fennel/engine/ast"
 	"fennel/lib/action"
 	"fennel/lib/aggregate"
@@ -10,10 +15,6 @@ import (
 	profileLib "fennel/lib/profile"
 	"fennel/lib/query"
 	"fennel/lib/value"
-	"fmt"
-	"io/ioutil"
-	"net/http"
-	"net/url"
 
 	"google.golang.org/protobuf/proto"
 )
@@ -235,7 +236,7 @@ func (c *Client) LogAction(request action.Action) error {
 }
 
 func (c *Client) StoreAggregate(agg aggregate.Aggregate) error {
-	if ok := aggregate.IsValid(ftypes.AggType(agg.Options.AggType)); !ok {
+	if ok := aggregate.IsValid(agg.Options.AggType); !ok {
 		return fmt.Errorf("invalid aggregate type: %v", agg.Options.AggType)
 	}
 	req, err := json.Marshal(agg)

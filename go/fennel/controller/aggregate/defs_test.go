@@ -22,7 +22,7 @@ func TestRetrieveAll(t *testing.T) {
 	ctx := context.Background()
 	agg := aggregate.Aggregate{
 		Timestamp: 1,
-		Options: aggregate.AggOptions{
+		Options: aggregate.Options{
 			AggType:  "count",
 			Duration: 3600 * 24,
 		},
@@ -58,7 +58,7 @@ func TestDuplicate(t *testing.T) {
 		Name:      "test_counter",
 		Query:     ast.Query{},
 		Timestamp: 1,
-		Options: aggregate.AggOptions{
+		Options: aggregate.Options{
 			AggType:  "count",
 			Duration: uint64(time.Hour * 24 * 7),
 		},
@@ -95,7 +95,7 @@ func TestDeactivate(t *testing.T) {
 		Name:      "my_counter",
 		Query:     ast.MakeInt(4),
 		Timestamp: 1,
-		Options: aggregate.AggOptions{
+		Options: aggregate.Options{
 			AggType:  "count",
 			Duration: uint64(time.Hour * 24 * 7),
 		},

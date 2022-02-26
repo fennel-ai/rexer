@@ -214,7 +214,7 @@ func TestServer_AggregateValue_Valid(t *testing.T) {
 		Name:      "mycounter",
 		Query:     ast.MakeInt(1),
 		Timestamp: t0,
-		Options: aggregate.AggOptions{
+		Options: aggregate.Options{
 			AggType:  "count",
 			Duration: 6 * 3600,
 		},
@@ -228,7 +228,7 @@ func TestServer_AggregateValue_Valid(t *testing.T) {
 
 	// now create an increment
 	h := counter.RollingCounter{Duration: 6 * 3600}
-	t1 := ftypes.Timestamp(t0 + 3600)
+	t1 := t0 + 3600
 	buckets := counter.BucketizeMoment(keystr, t1, value.Int(1), h.Windows())
 	err = counter.Update(context.Background(), tier, agg.Name, buckets, h)
 	assert.NoError(t, err)
@@ -256,7 +256,7 @@ func TestStoreRetrieveDeactivateAggregate(t *testing.T) {
 	agg := aggregate.Aggregate{
 		Name:  "mycounter",
 		Query: ast.MakeInt(1),
-		Options: aggregate.AggOptions{
+		Options: aggregate.Options{
 			AggType:  "count",
 			Duration: 3600 * 24,
 		},
@@ -271,7 +271,7 @@ func TestStoreRetrieveDeactivateAggregate(t *testing.T) {
 	agg2 := aggregate.Aggregate{
 		Name:  "mycounter",
 		Query: ast.MakeDouble(3.4),
-		Options: aggregate.AggOptions{
+		Options: aggregate.Options{
 			AggType:  "count",
 			Duration: 3600 * 24 * 2,
 		},

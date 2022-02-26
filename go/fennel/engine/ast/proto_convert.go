@@ -1,9 +1,10 @@
 package ast
 
 import (
-	"fennel/engine/ast/proto"
 	"fmt"
 	"strconv"
+
+	"fennel/engine/ast/proto"
 )
 
 func ToProtoAst(ast Ast) (proto.Ast, error) {
@@ -33,11 +34,11 @@ func ToProtoAst(ast Ast) (proto.Ast, error) {
 	case IfElse:
 		return ast.(IfElse).toProto()
 	default:
-		return pnull, fmt.Errorf("invalid ast type")
+		return pnull(), fmt.Errorf("invalid ast type")
 	}
 }
 
-func FromProtoAst(past proto.Ast) (Ast, error) {
+func FromProtoAst(past *proto.Ast) (Ast, error) {
 	switch past.Node.(type) {
 	case *proto.Ast_Atom:
 		return fromProtoAtom(past.Node.(*proto.Ast_Atom))
@@ -75,7 +76,7 @@ func FromProtoAst(past proto.Ast) (Ast, error) {
 func (l Lookup) toProto() (proto.Ast, error) {
 	pon, err := ToProtoAst(l.On)
 	if err != nil {
-		return pnull, err
+		return pnull(), err
 	}
 	return proto.Ast{Node: &proto.Ast_Lookup{Lookup: &proto.Lookup{
 		On:       &pon,
@@ -87,60 +88,60 @@ func (a At) toProto() (proto.Ast, error) {
 	return proto.Ast{Node: &proto.Ast_At{At: &proto.At{}}}, nil
 }
 
-func (atom Atom) toProto() (proto.Ast, error) {
-	switch atom.Type {
+func (a Atom) toProto() (proto.Ast, error) {
+	switch a.Type {
 	case Int:
-		n, err := strconv.ParseInt(atom.Lexeme, 10, 64)
+		n, err := strconv.ParseInt(a.Lexeme, 10, 64)
 		if err == nil {
 			return proto.Ast{Node: &proto.Ast_Atom{Atom: &proto.Atom{Inner: &proto.Atom_Int{Int: n}}}}, nil
 		} else {
-			return pnull, err
+			return pnull(), err
 		}
 	case Double:
-		d, err := strconv.ParseFloat(atom.Lexeme, 64)
+		d, err := strconv.ParseFloat(a.Lexeme, 64)
 		if err == nil {
 			return proto.Ast{Node: &proto.Ast_Atom{Atom: &proto.Atom{Inner: &proto.Atom_Double{Double: d}}}}, nil
 		} else {
-			return pnull, err
+			return pnull(), err
 		}
 
 	case Bool:
-		b, err := strconv.ParseBool(atom.Lexeme)
+		b, err := strconv.ParseBool(a.Lexeme)
 		if err == nil {
 			return proto.Ast{Node: &proto.Ast_Atom{Atom: &proto.Atom{Inner: &proto.Atom_Bool{Bool: b}}}}, nil
 		} else {
-			return pnull, err
+			return pnull(), err
 		}
 	case String:
-		return proto.Ast{Node: &proto.Ast_Atom{Atom: &proto.Atom{Inner: &proto.Atom_String_{String_: atom.Lexeme}}}}, nil
+		return proto.Ast{Node: &proto.Ast_Atom{Atom: &proto.Atom{Inner: &proto.Atom_String_{String_: a.Lexeme}}}}, nil
 	default:
-		return pnull, fmt.Errorf("invalid atom type: %v", atom.Type)
+		return pnull(), fmt.Errorf("invalid atom type: %v", a.Type)
 	}
 
 }
 
-func (binary Binary) toProto() (proto.Ast, error) {
-	protoLeft, err := ToProtoAst(binary.Left)
+func (b Binary) toProto() (proto.Ast, error) {
+	protoLeft, err := ToProtoAst(b.Left)
 	if err != nil {
-		return pnull, err
+		return pnull(), err
 	}
-	protoRight, err := ToProtoAst(binary.Right)
+	protoRight, err := ToProtoAst(b.Right)
 	if err != nil {
-		return pnull, err
+		return pnull(), err
 	}
 	return proto.Ast{Node: &proto.Ast_Binary{Binary: &proto.Binary{
 		Left:  &protoLeft,
 		Right: &protoRight,
-		Op:    binary.Op,
+		Op:    b.Op,
 	}}}, nil
 }
 
-func (list List) toProto() (proto.Ast, error) {
-	ret := make([]*proto.Ast, len(list.Values))
-	for i, ast := range list.Values {
+func (l List) toProto() (proto.Ast, error) {
+	ret := make([]*proto.Ast, len(l.Values))
+	for i, ast := range l.Values {
 		past, err := ToProtoAst(ast)
 		if err != nil {
-			return pnull, err
+			return pnull(), err
 		}
 		ret[i] = &past
 	}
@@ -150,7 +151,7 @@ func (list List) toProto() (proto.Ast, error) {
 func (s Statement) toProto() (proto.Ast, error) {
 	pbody, err := ToProtoAst(s.Body)
 	if err != nil {
-		return pnull, err
+		return pnull(), err
 	}
 	return proto.Ast{Node: &proto.Ast_Statement{Statement: &proto.Statement{
 		Name: s.Name,
@@ -163,7 +164,7 @@ func (q Query) toProto() (proto.Ast, error) {
 	for i, s := range q.Statements {
 		ps, err := ToProtoAst(s)
 		if err != nil {
-			return pnull, err
+			return pnull(), err
 		}
 		ret[i] = ps.GetStatement()
 	}
@@ -175,7 +176,7 @@ func (d Dict) toProto() (proto.Ast, error) {
 	for k, ast := range d.Values {
 		past, err := ToProtoAst(ast)
 		if err != nil {
-			return pnull, err
+			return pnull(), err
 		}
 		ret[k] = &past
 	}
@@ -185,12 +186,12 @@ func (d Dict) toProto() (proto.Ast, error) {
 func (opcall OpCall) toProto() (proto.Ast, error) {
 	poperand, err := ToProtoAst(opcall.Operand)
 	if err != nil {
-		return pnull, err
+		return pnull(), err
 	}
 
 	pdict, err := ToProtoAst(opcall.Kwargs)
 	if err != nil {
-		return pnull, err
+		return pnull(), err
 	}
 	return proto.Ast{Node: &proto.Ast_Opcall{Opcall: &proto.OpCall{
 		Operand:   &poperand,
@@ -200,14 +201,14 @@ func (opcall OpCall) toProto() (proto.Ast, error) {
 	}}}, nil
 }
 
-func (v Var) toProto() (proto.Ast, error) {
-	return proto.Ast{Node: &proto.Ast_Var{Var: &proto.Var{Name: v.Name}}}, nil
+func (va Var) toProto() (proto.Ast, error) {
+	return proto.Ast{Node: &proto.Ast_Var{Var: &proto.Var{Name: va.Name}}}, nil
 }
 
-func (table Table) toProto() (proto.Ast, error) {
-	pinner, err := ToProtoAst(table.Inner)
+func (t Table) toProto() (proto.Ast, error) {
+	pinner, err := ToProtoAst(t.Inner)
 	if err != nil {
-		return pnull, err
+		return pnull(), err
 	}
 	return proto.Ast{Node: &proto.Ast_Table{Table: &proto.Table{Inner: &pinner}}}, nil
 }
@@ -215,15 +216,15 @@ func (table Table) toProto() (proto.Ast, error) {
 func (ifelse IfElse) toProto() (proto.Ast, error) {
 	protoCondition, err := ToProtoAst(ifelse.Condition)
 	if err != nil {
-		return pnull, err
+		return pnull(), err
 	}
 	protoThenDo, err := ToProtoAst(ifelse.ThenDo)
 	if err != nil {
-		return pnull, err
+		return pnull(), err
 	}
 	protoElseDo, err := ToProtoAst(ifelse.ElseDo)
 	if err != nil {
-		return pnull, err
+		return pnull(), err
 	}
 	return proto.Ast{Node: &proto.Ast_Ifelse{Ifelse: &proto.IfElse{
 		Condition: &protoCondition,
@@ -236,15 +237,18 @@ func (ifelse IfElse) toProto() (proto.Ast, error) {
 // More private helpers below
 //=============================
 
-var pnull = proto.Ast{}
 var null = Atom{}
 
-func fromProtoAt(pat *proto.Ast_At) (Ast, error) {
+func pnull() proto.Ast {
+	return proto.Ast{}
+}
+
+func fromProtoAt(_ *proto.Ast_At) (Ast, error) {
 	return At{}, nil
 }
 
 func fromProtoLookup(plookup *proto.Ast_Lookup) (Ast, error) {
-	on, err := FromProtoAst(*plookup.Lookup.On)
+	on, err := FromProtoAst(plookup.Lookup.On)
 	if err != nil {
 		return null, err
 	}
@@ -252,7 +256,7 @@ func fromProtoLookup(plookup *proto.Ast_Lookup) (Ast, error) {
 }
 
 func fromProtoTable(ptable *proto.Ast_Table) (Ast, error) {
-	table, err := FromProtoAst(*ptable.Table.Inner)
+	table, err := FromProtoAst(ptable.Table.Inner)
 	if err != nil {
 		return null, err
 	}
@@ -264,11 +268,11 @@ func fromProtoVar(pvar *proto.Ast_Var) (Ast, error) {
 }
 
 func fromProtoOpcall(popcall *proto.Ast_Opcall) (Ast, error) {
-	operand, err := FromProtoAst(*popcall.Opcall.Operand)
+	operand, err := FromProtoAst(popcall.Opcall.Operand)
 	if err != nil {
 		return null, err
 	}
-	dict, err := FromProtoAst(proto.Ast{Node: &proto.Ast_Dict{Dict: popcall.Opcall.Kwargs}})
+	dict, err := FromProtoAst(&proto.Ast{Node: &proto.Ast_Dict{Dict: popcall.Opcall.Kwargs}})
 	if err != nil {
 		return null, err
 	}
@@ -283,7 +287,7 @@ func fromProtoOpcall(popcall *proto.Ast_Opcall) (Ast, error) {
 func fromProtoQuery(pquery *proto.Ast_Query) (Ast, error) {
 	statements := make([]Statement, len(pquery.Query.Statements))
 	for i, ps := range pquery.Query.Statements {
-		s, err := FromProtoAst(proto.Ast{Node: &proto.Ast_Statement{Statement: ps}})
+		s, err := FromProtoAst(&proto.Ast{Node: &proto.Ast_Statement{Statement: ps}})
 		if err != nil {
 			return null, err
 		}
@@ -293,7 +297,7 @@ func fromProtoQuery(pquery *proto.Ast_Query) (Ast, error) {
 }
 
 func fromProtoStatement(pstatement *proto.Ast_Statement) (Ast, error) {
-	body, err := FromProtoAst(*pstatement.Statement.Body)
+	body, err := FromProtoAst(pstatement.Statement.Body)
 	if err != nil {
 		return null, err
 	}
@@ -330,7 +334,7 @@ func fromProtoList(plist *proto.Ast_List) (Ast, error) {
 	pvalues := plist.List.Values
 	values := make([]Ast, len(pvalues))
 	for i, pv := range pvalues {
-		v, err := FromProtoAst(*pv)
+		v, err := FromProtoAst(pv)
 		if err != nil {
 			return null, err
 		}
@@ -343,7 +347,7 @@ func fromProtoDict(plist *proto.Ast_Dict) (Ast, error) {
 	pvalues := plist.Dict.Values
 	values := make(map[string]Ast, len(pvalues))
 	for i, pv := range pvalues {
-		v, err := FromProtoAst(*pv)
+		v, err := FromProtoAst(pv)
 		if err != nil {
 			return null, err
 		}
@@ -353,11 +357,11 @@ func fromProtoDict(plist *proto.Ast_Dict) (Ast, error) {
 }
 
 func fromProtoBinary(pbin *proto.Ast_Binary) (Ast, error) {
-	left, err := FromProtoAst(*pbin.Binary.Left)
+	left, err := FromProtoAst(pbin.Binary.Left)
 	if err != nil {
 		return null, err
 	}
-	right, err := FromProtoAst(*pbin.Binary.Right)
+	right, err := FromProtoAst(pbin.Binary.Right)
 	if err != nil {
 		return null, err
 	}
@@ -369,15 +373,15 @@ func fromProtoBinary(pbin *proto.Ast_Binary) (Ast, error) {
 }
 
 func fromProtoIfelse(pifelse *proto.Ast_Ifelse) (Ast, error) {
-	condition, err := FromProtoAst(*pifelse.Ifelse.Condition)
+	condition, err := FromProtoAst(pifelse.Ifelse.Condition)
 	if err != nil {
 		return null, err
 	}
-	thenDo, err := FromProtoAst(*pifelse.Ifelse.ThenDo)
+	thenDo, err := FromProtoAst(pifelse.Ifelse.ThenDo)
 	if err != nil {
 		return null, err
 	}
-	elseDo, err := FromProtoAst(*pifelse.Ifelse.ElseDo)
+	elseDo, err := FromProtoAst(pifelse.Ifelse.ElseDo)
 	if err != nil {
 		return null, err
 	}

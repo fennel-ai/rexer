@@ -38,9 +38,9 @@ func TestConvert(t *testing.T) {
 
 func TestInvalidProtoValue(t *testing.T) {
 	empty := PValue{}
-	pvalues := []PValue{
+	pvalues := []*PValue{
 		// a protovalue without a valid type
-		empty,
+		&empty,
 		{
 			// a protovalue containing a list containing a protovalue without a valid type
 			Node: &PValue_List{List: &PVList{Values: []*PValue{&empty}}},
@@ -56,10 +56,10 @@ func TestInvalidProtoValue(t *testing.T) {
 	row2, _ := ToProtoDict(Dict{"mismatch": Int(1), "bye": Bool(true)})
 	ptable := PValue{Node: &PValue_Table{Table: &PVTable{Rows: []*PVDict{&row1, &row2}}}}
 
-	pvalues = append(pvalues, ptable)
+	pvalues = append(pvalues, &ptable)
 
 	for _, pv := range pvalues {
-		_, err := FromProtoValue(&pv)
+		_, err := FromProtoValue(pv)
 		assert.Error(t, err)
 	}
 }

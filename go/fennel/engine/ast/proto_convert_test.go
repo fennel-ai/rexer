@@ -10,7 +10,7 @@ func check(t *testing.T, valid []Ast, invalid []Ast) {
 	for _, test := range valid {
 		past, err := ToProtoAst(test)
 		assert.NoError(t, err)
-		found, err := FromProtoAst(past)
+		found, err := FromProtoAst(&past)
 		assert.NoError(t, err)
 		assert.Equal(t, test, found, test)
 	}

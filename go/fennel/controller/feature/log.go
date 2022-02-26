@@ -35,7 +35,7 @@ func Read(ctx context.Context, tr tier.Tier, consumer kafka.FConsumer) (*feature
 	if err := consumer.ReadProto(ctx, &prow, -1); err != nil {
 		return nil, err
 	}
-	row, err := feature.FromProtoRow(prow)
+	row, err := feature.FromProtoRow(&prow)
 	if err != nil {
 		return nil, err
 	}

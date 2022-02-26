@@ -1,10 +1,11 @@
 package aggregate
 
 import (
+	"strings"
+
 	"fennel/engine/ast"
 	"fennel/lib/ftypes"
 	"fennel/lib/value"
-	"strings"
 )
 
 func FromProtoGetAggValueRequest(pr *ProtoGetAggValueRequest) (GetAggValueRequest, error) {
@@ -38,12 +39,12 @@ func ToProtoAggregate(agg Aggregate) (ProtoAggregate, error) {
 		AggName:   string(agg.Name),
 		Query:     &pquery,
 		Timestamp: uint64(agg.Timestamp),
-		Options:   &agg.Options,
+		Options:   ToProtoOptions(agg.Options),
 	}, nil
 }
 
-func FromProtoAggregate(pagg ProtoAggregate) (Aggregate, error) {
-	query, err := ast.FromProtoAst(*pagg.Query)
+func FromProtoAggregate(pagg *ProtoAggregate) (Aggregate, error) {
+	query, err := ast.FromProtoAst(pagg.Query)
 	if err != nil {
 		return Aggregate{}, err
 	}
@@ -51,8 +52,26 @@ func FromProtoAggregate(pagg ProtoAggregate) (Aggregate, error) {
 		Name:      ftypes.AggName(strings.ToLower(pagg.AggName)),
 		Query:     query,
 		Timestamp: ftypes.Timestamp(pagg.Timestamp),
-		Options:   *pagg.Options,
+		Options:   FromProtoOptions(pagg.Options),
 	}
-	agg.Options.AggType = strings.ToLower(agg.Options.AggType)
+	agg.Options.AggType = ftypes.AggType(strings.ToLower(string(agg.Options.AggType)))
 	return agg, nil
+}
+
+func FromProtoOptions(popt *AggOptions) Options {
+	return Options{
+		AggType:  ftypes.AggType(popt.AggType),
+		Duration: popt.Duration,
+		Window:   popt.Window,
+		Limit:    popt.Limit,
+	}
+}
+
+func ToProtoOptions(opt Options) *AggOptions {
+	return &AggOptions{
+		AggType:  string(opt.AggType),
+		Duration: opt.Duration,
+		Window:   opt.Window,
+		Limit:    opt.Limit,
+	}
 }
