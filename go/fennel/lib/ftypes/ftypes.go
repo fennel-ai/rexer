@@ -1,8 +1,8 @@
 package ftypes
 
-type TierID uint32
+type RealmID uint32
 
-func (t TierID) Value() uint32 {
+func (t RealmID) Value() uint32 {
 	return uint32(t)
 }
 

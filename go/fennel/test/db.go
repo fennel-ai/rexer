@@ -18,8 +18,8 @@ const (
 	logical_test_dbname = "testdb"
 )
 
-func defaultDB(tierID ftypes.TierID) (db.Connection, error) {
-	scope := resource.NewTierScope(1, tierID)
+func defaultDB(tierID ftypes.RealmID) (db.Connection, error) {
+	scope := resource.NewTierScope(tierID)
 	if err := setupDB(tierID, logical_test_dbname, username, password, host); err != nil {
 		return db.Connection{}, err
 	}
@@ -40,8 +40,8 @@ func defaultDB(tierID ftypes.TierID) (db.Connection, error) {
 	return DB, nil
 }
 
-func drop(tierID ftypes.TierID, logicalname, username, password, host string) error {
-	scope := resource.NewTierScope(1, tierID)
+func drop(tierID ftypes.RealmID, logicalname, username, password, host string) error {
+	scope := resource.NewTierScope(tierID)
 	dbname := scope.PrefixedName(logicalname)
 	connstr := fmt.Sprintf("%s:%s@tcp(%s)/?tls=true", username, password, host)
 	db, err := sqlx.Open("mysql", connstr)
@@ -54,8 +54,8 @@ func drop(tierID ftypes.TierID, logicalname, username, password, host string) er
 	return err
 }
 
-func setupDB(tierID ftypes.TierID, logicalname, username, password, host string) error {
-	scope := resource.NewTierScope(1, tierID)
+func setupDB(tierID ftypes.RealmID, logicalname, username, password, host string) error {
+	scope := resource.NewTierScope(tierID)
 	dbname := scope.PrefixedName(logicalname)
 	connstr := fmt.Sprintf("%s:%s@tcp(%s)/?tls=true", username, password, host)
 	db, err := sqlx.Open("mysql", connstr)

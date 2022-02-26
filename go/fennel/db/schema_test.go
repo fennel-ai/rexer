@@ -50,8 +50,8 @@ func recreate(dbname, username, password, host string) (*sqlx.DB, error) {
 func TestSyncSchema(t *testing.T) {
 	// get default DB
 	rand.Seed(time.Now().UnixNano())
-	tierID := ftypes.TierID(rand.Uint32())
-	scope := resource.NewTierScope(1, tierID)
+	tierID := ftypes.RealmID(rand.Uint32())
+	scope := resource.NewTierScope(tierID)
 	config := MySQLConfig{
 		DBname:   scope.PrefixedName("schema_test"),
 		Username: "admin",

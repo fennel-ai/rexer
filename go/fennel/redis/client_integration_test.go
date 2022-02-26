@@ -25,8 +25,8 @@ const (
 
 func TestRedisClientIntegration(t *testing.T) {
 	rand.Seed(time.Now().UnixNano())
-	tierID := ftypes.TierID(rand.Uint32())
-	scope := resource.NewTierScope(1, tierID)
+	tierID := ftypes.RealmID(rand.Uint32())
+	scope := resource.NewTierScope(tierID)
 	conf := ClientConfig{Addr: addr, TLSConfig: &tls.Config{}, Scope: scope}
 	rdb, err := conf.Materialize()
 	assert.NoError(t, err)
@@ -36,8 +36,8 @@ func TestRedisClientIntegration(t *testing.T) {
 
 func TestMultiSetTTL(t *testing.T) {
 	rand.Seed(time.Now().UnixNano())
-	tierID := ftypes.TierID(rand.Uint32())
-	scope := resource.NewTierScope(1, tierID)
+	tierID := ftypes.RealmID(rand.Uint32())
+	scope := resource.NewTierScope(tierID)
 	conf := ClientConfig{Addr: addr, TLSConfig: &tls.Config{}, Scope: scope}
 	rdb, err := conf.Materialize()
 	assert.NoError(t, err)
@@ -77,8 +77,8 @@ func TestMultiSetTTL(t *testing.T) {
 
 func TestMultiGetSet(t *testing.T) {
 	rand.Seed(time.Now().UnixNano())
-	tierID := ftypes.TierID(rand.Uint32())
-	scope := resource.NewTierScope(1, tierID)
+	tierID := ftypes.RealmID(rand.Uint32())
+	scope := resource.NewTierScope(tierID)
 	conf := ClientConfig{Addr: addr, TLSConfig: &tls.Config{}, Scope: scope}
 	rdb, err := conf.Materialize()
 	assert.NoError(t, err)
@@ -117,8 +117,8 @@ func TestMultiGetSet(t *testing.T) {
 
 func TestClientConfig_Materialize_Invalid(t *testing.T) {
 	rand.Seed(time.Now().UnixNano())
-	tierID := ftypes.TierID(rand.Uint32())
-	scope := resource.NewTierScope(1, tierID)
+	tierID := ftypes.RealmID(rand.Uint32())
+	scope := resource.NewTierScope(tierID)
 	scenarios := []struct {
 		name string
 		conf ClientConfig

@@ -26,8 +26,8 @@ func TestIntegration(t *testing.T) {
 	rand.Seed(time.Now().UnixNano())
 	topic := "testtopic"
 	t.Run("integration_producer_consumer", func(t *testing.T) {
-		tierID := ftypes.TierID(rand.Uint32())
-		scope := resource.NewTierScope(1, tierID)
+		tierID := ftypes.RealmID(rand.Uint32())
+		scope := resource.NewTierScope(tierID)
 		t.Parallel()
 		producer := integrationProducer(t, scope, topic)
 		consumer := integrationConsumer(t, scope, topic, "group", "earliest")
@@ -35,8 +35,8 @@ func TestIntegration(t *testing.T) {
 		testProducerConsumer(t, producer, consumer)
 	})
 	t.Run("integration_read_batch", func(t *testing.T) {
-		tierID := ftypes.TierID(rand.Uint32())
-		scope := resource.NewTierScope(1, tierID)
+		tierID := ftypes.RealmID(rand.Uint32())
+		scope := resource.NewTierScope(tierID)
 		t.Parallel()
 		producer := integrationProducer(t, scope, topic)
 		consumer := integrationConsumer(t, scope, topic, "group", "earliest")
@@ -44,8 +44,8 @@ func TestIntegration(t *testing.T) {
 		testReadBatch(t, producer, consumer)
 	})
 	t.Run("integration_flush_commit_backlog", func(t *testing.T) {
-		tierID := ftypes.TierID(rand.Uint32())
-		scope := resource.NewTierScope(1, tierID)
+		tierID := ftypes.RealmID(rand.Uint32())
+		scope := resource.NewTierScope(tierID)
 		t.Parallel()
 		producer := integrationProducer(t, scope, topic)
 		consumer := integrationConsumer(t, scope, topic, "group", "earliest")
@@ -53,8 +53,8 @@ func TestIntegration(t *testing.T) {
 		testBacklog(t, producer, consumer)
 	})
 	t.Run("integration_different_consumer_groups", func(t *testing.T) {
-		tierID := ftypes.TierID(rand.Uint32())
-		scope := resource.NewTierScope(1, tierID)
+		tierID := ftypes.RealmID(rand.Uint32())
+		scope := resource.NewTierScope(tierID)
 		t.Parallel()
 		producer := integrationProducer(t, scope, topic)
 		consumer1 := integrationConsumer(t, scope, topic, "group1", "earliest")
@@ -63,8 +63,8 @@ func TestIntegration(t *testing.T) {
 		testDifferentConsumerGroups(t, producer, consumer1, consumer2)
 	})
 	t.Run("integration_same_consumer_groups", func(t *testing.T) {
-		tierID := ftypes.TierID(rand.Uint32())
-		scope := resource.NewTierScope(1, tierID)
+		tierID := ftypes.RealmID(rand.Uint32())
+		scope := resource.NewTierScope(tierID)
 		t.Parallel()
 		producer := integrationProducer(t, scope, topic)
 		consumer1 := integrationConsumer(t, scope, topic, "group", "earliest")
@@ -73,8 +73,8 @@ func TestIntegration(t *testing.T) {
 		testSameConsumerGroup(t, producer, consumer1, consumer2)
 	})
 	t.Run("integration_no_auto_commit", func(t *testing.T) {
-		tierID := ftypes.TierID(rand.Uint32())
-		scope := resource.NewTierScope(1, tierID)
+		tierID := ftypes.RealmID(rand.Uint32())
+		scope := resource.NewTierScope(tierID)
 		t.Parallel()
 		producer := integrationProducer(t, scope, topic)
 		consumer1 := integrationConsumer(t, scope, topic, "group", "earliest")

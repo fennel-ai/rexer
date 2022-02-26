@@ -19,7 +19,7 @@ import (
 // since this is only compiled when 'integration' build tag is not given, most resources are mocked
 func Tier() (tier.Tier, error) {
 	rand.Seed(time.Now().UnixNano())
-	tierID := ftypes.TierID(rand.Uint32())
+	tierID := ftypes.RealmID(rand.Uint32())
 	db, err := defaultDB(tierID)
 	if err != nil {
 		return tier.Tier{}, err

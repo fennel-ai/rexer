@@ -7,8 +7,8 @@ import (
 	"github.com/alicebob/miniredis/v2"
 )
 
-func mockRedis(tierID ftypes.TierID) (redis.Client, error) {
-	scope := resource.NewTierScope(1, tierID)
+func mockRedis(tierID ftypes.RealmID) (redis.Client, error) {
+	scope := resource.NewTierScope(tierID)
 	mr, err := miniredis.Run()
 	if err != nil {
 		return redis.Client{}, err

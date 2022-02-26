@@ -17,8 +17,8 @@ import (
 // MarshalBinary, it failed. But I gave up soon
 func TestCache(t *testing.T) {
 	rand.Seed(time.Now().UnixNano())
-	tierID := ftypes.TierID(rand.Uint32())
-	scope := resource2.NewTierScope(1, tierID)
+	tierID := ftypes.RealmID(rand.Uint32())
+	scope := resource2.NewTierScope(tierID)
 	mr, err := miniredis.Run()
 	assert.NoError(t, err)
 	resource, err := MiniRedisConfig{MiniRedis: mr, Scope: scope}.Materialize()

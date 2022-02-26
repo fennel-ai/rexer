@@ -22,13 +22,13 @@ var fnDuration = promauto.NewSummaryVec(prometheus.SummaryOpts{
 		0.95: 0.02,
 		0.99: 0.01,
 	},
-}, []string{"tier_id", "function_name"})
+}, []string{"realm_id", "function_name"})
 
 type Timer struct {
-	span   string
-	tierID ftypes.TierID
-	timer  *prometheus.Timer
-	trace  *trace
+	span    string
+	realmID ftypes.RealmID
+	timer   *prometheus.Timer
+	trace   *trace
 }
 
 func (t Timer) Stop() {
@@ -38,7 +38,7 @@ func (t Timer) Stop() {
 	}
 }
 
-func Start(ctx context.Context, tierID ftypes.TierID, funcName string) Timer {
+func Start(ctx context.Context, realmID ftypes.RealmID, funcName string) Timer {
 	ctxval := ctx.Value(traceKey{})
 	var tr *trace = nil
 	if ctxval != nil {
@@ -46,9 +46,9 @@ func Start(ctx context.Context, tierID ftypes.TierID, funcName string) Timer {
 		tr.record(fmt.Sprintf("enter:%s", funcName), time.Now())
 	}
 	return Timer{
-		span:   funcName,
-		tierID: tierID,
-		timer:  prometheus.NewTimer(fnDuration.WithLabelValues(fmt.Sprintf("%d", tierID), funcName)),
-		trace:  tr,
+		span:    funcName,
+		realmID: realmID,
+		timer:   prometheus.NewTimer(fnDuration.WithLabelValues(fmt.Sprintf("%d", realmID), funcName)),
+		trace:   tr,
 	}
 }

@@ -6,7 +6,6 @@ import (
 	"log"
 	"time"
 
-	"fennel/lib/ftypes"
 	"fennel/lib/timer"
 	"fennel/resource"
 
@@ -40,7 +39,7 @@ func (k RemoteConsumer) Type() resource.Type {
 }
 
 func (k RemoteConsumer) ReadProto(ctx context.Context, pmsg proto.Message, timeout time.Duration) error {
-	defer timer.Start(ctx, ftypes.TierID(k.ID()), "kafka.read_proto").Stop()
+	defer timer.Start(ctx, k.ID(), "kafka.read_proto").Stop()
 	ch := make(chan error)
 	go func() {
 		kmsg, err := k.ReadMessage(timeout)
