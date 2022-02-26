@@ -72,8 +72,8 @@ func testDeleteMulti(t *testing.T, c Client) {
 
 func TestRedisClientLocal(t *testing.T) {
 	rand.Seed(time.Now().UnixNano())
-	tierID := ftypes.TierID(rand.Uint32())
-	scope := resource.NewTierScope(1, tierID)
+	tierID := ftypes.RealmID(rand.Uint32())
+	scope := resource.NewTierScope(tierID)
 	mr, err := miniredis.Run()
 	assert.NoError(t, err)
 	client, err := MiniRedisConfig{MiniRedis: mr, Scope: scope}.Materialize()

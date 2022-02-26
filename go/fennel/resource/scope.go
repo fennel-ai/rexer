@@ -7,7 +7,7 @@ import (
 )
 
 type Scope interface {
-	ID() uint32
+	ID() ftypes.RealmID
 	PrefixedName(string) string
 }
 
@@ -15,19 +15,17 @@ var _ Scope = TierScope{}
 var _ Scope = MothershipScope{}
 
 type TierScope struct {
-	mothershipID uint32
-	tierID       ftypes.TierID
+	tierID ftypes.RealmID
 }
 
-func NewTierScope(mothershipID uint32, tierID ftypes.TierID) TierScope {
+func NewTierScope(tierID ftypes.RealmID) TierScope {
 	return TierScope{
-		mothershipID: mothershipID,
-		tierID:       tierID,
+		tierID: tierID,
 	}
 }
 
-func (t TierScope) ID() uint32 {
-	return uint32(t.tierID)
+func (t TierScope) ID() ftypes.RealmID {
+	return t.tierID
 }
 
 func (t TierScope) PrefixedName(name string) string {
@@ -35,16 +33,16 @@ func (t TierScope) PrefixedName(name string) string {
 }
 
 type MothershipScope struct {
-	mothershipID uint32
+	mothershipID ftypes.RealmID
 }
 
-func NewMothershipScope(mothershipID uint32) MothershipScope {
+func NewMothershipScope(mothershipID ftypes.RealmID) MothershipScope {
 	return MothershipScope{
 		mothershipID: mothershipID,
 	}
 }
 
-func (m MothershipScope) ID() uint32 {
+func (m MothershipScope) ID() ftypes.RealmID {
 	return m.mothershipID
 }
 

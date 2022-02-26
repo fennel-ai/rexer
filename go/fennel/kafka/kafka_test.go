@@ -255,8 +255,8 @@ func testNoAutoCommit(t *testing.T, producer FProducer, consumer1, consumer2 FCo
 func TestLocal(t *testing.T) {
 	rand.Seed(time.Now().UnixNano())
 	topic := "topic"
-	tierID := ftypes.TierID(rand.Uint32())
-	scope := resource.NewTierScope(1, tierID)
+	tierID := ftypes.RealmID(rand.Uint32())
+	scope := resource.NewTierScope(tierID)
 
 	t.Run("local_producer_consumer", func(t *testing.T) {
 		broker := NewMockTopicBroker()

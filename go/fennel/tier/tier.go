@@ -21,18 +21,18 @@ import (
 )
 
 type TierArgs struct {
-	KafkaServer   string        `arg:"--kafka-server,env:KAFKA_SERVER_ADDRESS"`
-	KafkaUsername string        `arg:"--kafka-user,env:KAFKA_USERNAME"`
-	KafkaPassword string        `arg:"--kafka-password,env:KAFKA_PASSWORD"`
-	MysqlHost     string        `arg:"--mysql-host,env:MYSQL_SERVER_ADDRESS"`
-	MysqlDB       string        `arg:"--mysql-db,env:MYSQL_DATABASE_NAME"`
-	MysqlUsername string        `arg:"--mysql-user,env:MYSQL_USERNAME"`
-	MysqlPassword string        `arg:"--mysql-password,env:MYSQL_PASSWORD"`
-	TierID        ftypes.TierID `arg:"--tier-id,env:TIER_ID"`
-	RedisServer   string        `arg:"--redis-server,env:REDIS_SERVER_ADDRESS"`
-	CachePrimary  string        `arg:"--cache-primary,env:CACHE_PRIMARY"`
-	CacheReplica  string        `arg:"--cache-replica,env:CACHE_REPLICA"`
-	Dev           bool          `arg:"--dev" default:"true"`
+	KafkaServer   string         `arg:"--kafka-server,env:KAFKA_SERVER_ADDRESS"`
+	KafkaUsername string         `arg:"--kafka-user,env:KAFKA_USERNAME"`
+	KafkaPassword string         `arg:"--kafka-password,env:KAFKA_PASSWORD"`
+	MysqlHost     string         `arg:"--mysql-host,env:MYSQL_SERVER_ADDRESS"`
+	MysqlDB       string         `arg:"--mysql-db,env:MYSQL_DATABASE_NAME"`
+	MysqlUsername string         `arg:"--mysql-user,env:MYSQL_USERNAME"`
+	MysqlPassword string         `arg:"--mysql-password,env:MYSQL_PASSWORD"`
+	TierID        ftypes.RealmID `arg:"--tier-id,env:TIER_ID"`
+	RedisServer   string         `arg:"--redis-server,env:REDIS_SERVER_ADDRESS"`
+	CachePrimary  string         `arg:"--cache-primary,env:CACHE_PRIMARY"`
+	CacheReplica  string         `arg:"--cache-replica,env:CACHE_REPLICA"`
+	Dev           bool           `arg:"--dev" default:"true"`
 }
 
 type KafkaConsumerCreator func(string, string, string) (kafka.FConsumer, error)
@@ -80,7 +80,7 @@ func (args TierArgs) Valid() error {
 */
 
 type Tier struct {
-	ID               ftypes.TierID
+	ID               ftypes.RealmID
 	DB               db.Connection
 	Redis            redis.Client
 	Cache            cache.Cache
@@ -92,7 +92,7 @@ type Tier struct {
 
 func CreateFromArgs(args *TierArgs) (tier Tier, err error) {
 	tierID := args.TierID
-	scope := resource.NewTierScope(1, tierID)
+	scope := resource.NewTierScope(tierID)
 
 	log.Print("Connecting to mysql")
 	mysqlConfig := db.MySQLConfig{

@@ -17,7 +17,7 @@ import (
 // since this is only compiled when 'integration' build tag is given, all resources are real
 func Tier() (tier.Tier, error) {
 	rand.Seed(time.Now().UnixNano())
-	tierID := ftypes.TierID(rand.Uint32())
+	tierID := ftypes.RealmID(rand.Uint32())
 	var flags tier.TierArgs
 	// Parse flags / environment variables.
 	arg.Parse(&flags)

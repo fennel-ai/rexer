@@ -13,8 +13,8 @@ import (
 	"github.com/confluentinc/confluent-kafka-go/kafka"
 )
 
-func createMockKafka(tierID ftypes.TierID) (map[string]fkafka.FProducer, tier.KafkaConsumerCreator, error) {
-	scope := resource.NewTierScope(1, tierID)
+func createMockKafka(tierID ftypes.RealmID) (map[string]fkafka.FProducer, tier.KafkaConsumerCreator, error) {
+	scope := resource.NewTierScope(tierID)
 	brokerMap := make(map[string]*fkafka.MockBroker)
 	producers := make(map[string]fkafka.FProducer)
 	for _, topic := range fkafka.ALL_TOPICS {
@@ -48,8 +48,8 @@ func createMockKafka(tierID ftypes.TierID) (map[string]fkafka.FProducer, tier.Ka
 	return producers, consumerCreator, nil
 }
 
-func setupKafkaTopics(tierID ftypes.TierID, host, username, password string, topics []string) error {
-	scope := resource.NewTierScope(1, tierID)
+func setupKafkaTopics(tierID ftypes.RealmID, host, username, password string, topics []string) error {
+	scope := resource.NewTierScope(tierID)
 	names := make([]string, len(topics))
 	for i, topic := range topics {
 		names[i] = scope.PrefixedName(topic)
@@ -85,8 +85,8 @@ func setupKafkaTopics(tierID ftypes.TierID, host, username, password string, top
 	return nil
 }
 
-func teardownKafkaTopics(tierID ftypes.TierID, host, username, password string, topics []string) error {
-	scope := resource.NewTierScope(1, tierID)
+func teardownKafkaTopics(tierID ftypes.RealmID, host, username, password string, topics []string) error {
+	scope := resource.NewTierScope(tierID)
 	names := make([]string, len(topics))
 	for i, topic := range topics {
 		names[i] = scope.PrefixedName(topic)
