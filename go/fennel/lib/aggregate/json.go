@@ -3,10 +3,11 @@ package aggregate
 import (
 	"encoding/base64"
 	"encoding/json"
+	"fmt"
+
 	"fennel/engine/ast"
 	"fennel/lib/ftypes"
 	"fennel/lib/value"
-	"fmt"
 	"github.com/buger/jsonparser"
 )
 
@@ -28,7 +29,7 @@ func (agg *Aggregate) UnmarshalJSON(data []byte) error {
 	}
 	agg.Name = fields.Name
 	agg.Timestamp = fields.Timestamp
-	agg.Options.AggType = fields.Options.AggType
+	agg.Options.AggType = ftypes.AggType(fields.Options.AggType)
 	agg.Options.Duration = fields.Options.Duration
 	agg.Options.Window = fields.Options.Window
 	agg.Options.Limit = fields.Options.Limit
@@ -64,7 +65,7 @@ func (agg Aggregate) MarshalJSON() ([]byte, error) {
 	fields.Name = agg.Name
 	fields.Query = queryStr
 	fields.Timestamp = agg.Timestamp
-	fields.Options.AggType = agg.Options.AggType
+	fields.Options.AggType = string(agg.Options.AggType)
 	fields.Options.Duration = agg.Options.Duration
 	fields.Options.Window = agg.Options.Window
 	fields.Options.Limit = agg.Options.Limit

@@ -18,7 +18,7 @@ func Unmarshal(data []byte, ast *Ast) error {
 	if err := proto.Unmarshal(data, &pa); err != nil {
 		return err
 	}
-	a, err := FromProtoAst(pa)
+	a, err := FromProtoAst(&pa)
 	if err != nil {
 		return err
 	}

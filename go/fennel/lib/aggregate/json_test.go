@@ -3,12 +3,13 @@ package aggregate
 import (
 	"encoding/base64"
 	"encoding/json"
-	"fennel/engine/ast"
-	"fennel/lib/value"
 	"fmt"
-	"github.com/stretchr/testify/assert"
 	"math"
 	"testing"
+
+	"fennel/engine/ast"
+	"fennel/lib/value"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestAggregateJSON(t *testing.T) {
@@ -20,14 +21,14 @@ func TestAggregateJSON(t *testing.T) {
 	aggs := []Aggregate{
 		{},
 		{Name: "some name", Timestamp: 123,
-			Options: AggOptions{
+			Options: Options{
 				AggType:  "some type",
 				Duration: 12 * 3600,
 				Window:   1,
 				Limit:    10},
 		},
 		{Timestamp: math.MaxUint64,
-			Options: AggOptions{
+			Options: Options{
 				Duration: math.MaxUint64,
 				Limit:    math.MaxUint64,
 			},

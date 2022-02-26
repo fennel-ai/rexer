@@ -3,16 +3,17 @@ package main
 import (
 	"bytes"
 	"encoding/json"
-	"fennel/lib/action"
-	"fennel/lib/ftypes"
-	"fennel/lib/profile"
 	"fmt"
-	"github.com/gorilla/mux"
 	"io/ioutil"
 	"log"
 	"net/http"
 	"net/url"
 	"strconv"
+
+	"fennel/lib/action"
+	"fennel/lib/ftypes"
+	"fennel/lib/profile"
+	"github.com/gorilla/mux"
 )
 
 const (

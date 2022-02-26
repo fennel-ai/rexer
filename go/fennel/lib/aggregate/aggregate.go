@@ -25,7 +25,7 @@ type Aggregate struct {
 	Name      ftypes.AggName
 	Query     ast.Ast
 	Timestamp ftypes.Timestamp
-	Options   AggOptions
+	Options   Options
 }
 
 func IsValid(s ftypes.AggType) bool {
@@ -39,7 +39,7 @@ func IsValid(s ftypes.AggType) bool {
 }
 
 func (agg Aggregate) Validate() error {
-	if !IsValid(ftypes.AggType(agg.Options.AggType)) {
+	if !IsValid(agg.Options.AggType) {
 		return fmt.Errorf("invalid aggregate type, valid types are: %v", ValidTypes)
 	}
 	if len(agg.Name) == 0 {
@@ -47,7 +47,7 @@ func (agg Aggregate) Validate() error {
 	}
 	options := agg.Options
 	aggtype := agg.Options.AggType
-	switch strings.ToLower(aggtype) {
+	switch strings.ToLower(string(aggtype)) {
 	case "count", "average", "min", "max", "stddev", "list":
 		if options.Duration == 0 {
 			return fmt.Errorf("duration can not be zero for %s", aggtype)
@@ -75,7 +75,14 @@ func (agg Aggregate) Equals(other Aggregate) bool {
 	if agg.Options.AggType != other.Options.AggType || agg.Name != other.Name || agg.Timestamp != other.Timestamp {
 		return false
 	}
-	return agg.Query.Equals(other.Query) && proto.Equal(&agg.Options, &other.Options)
+	return agg.Query.Equals(other.Query) && (agg.Options == other.Options)
+}
+
+type Options struct {
+	AggType  ftypes.AggType
+	Duration uint64
+	Window   ftypes.Window
+	Limit    uint64
 }
 
 type AggregateSer struct {
@@ -93,9 +100,11 @@ func FromAggregateSer(ser AggregateSer) (Aggregate, error) {
 	if err := ast.Unmarshal(ser.QuerySer, &agg.Query); err != nil {
 		return Aggregate{}, err
 	}
-	if err := proto.Unmarshal(ser.OptionSer, &agg.Options); err != nil {
+	var popt AggOptions
+	if err := proto.Unmarshal(ser.OptionSer, &popt); err != nil {
 		return Aggregate{}, err
 	}
+	agg.Options = FromProtoOptions(&popt)
 	return agg, nil
 }
 

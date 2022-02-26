@@ -27,7 +27,7 @@ func TestAggValue_Apply(t *testing.T) {
 	// create an aggregate, store it, create some actions, update aggregate and ensure its value returns some result
 	agg := libaggregate.Aggregate{
 		Name: "counter1", Query: getQuery(), Timestamp: 123,
-		Options: libaggregate.AggOptions{
+		Options: libaggregate.Options{
 			AggType:  "count",
 			Duration: 6 * 3600,
 		},
