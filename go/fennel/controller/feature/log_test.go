@@ -41,7 +41,7 @@ func TestLogMulti_Kafka(t *testing.T) {
 		var pmsg feature.ProtoRow
 		err = consumer.ReadProto(ctx, &pmsg, -1)
 		assert.NoError(t, err)
-		msg, err := feature.FromProtoRow(pmsg)
+		msg, err := feature.FromProtoRow(&pmsg)
 		assert.NoError(t, err)
 		assert.Equal(t, rows[i], *msg)
 	}

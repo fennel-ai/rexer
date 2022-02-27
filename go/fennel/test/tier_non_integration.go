@@ -54,7 +54,6 @@ func Tier() (tier.Tier, error) {
 func Teardown(tier tier.Tier) error {
 	if err := drop(tier.ID, logical_test_dbname, username, password, host); err != nil {
 		panic(fmt.Sprintf("error in db teardown: %v\n", err))
-		return err
 	}
 	return nil
 }
