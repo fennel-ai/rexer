@@ -36,6 +36,9 @@ func Insert(ctx context.Context, tier tier.Tier, action *action.ActionSer) (uint
 // of it does
 func InsertBatch(ctx context.Context, tier tier.Tier, actions []action.ActionSer) error {
 	defer timer.Start(ctx, tier.ID, "model.action.insert_batch").Stop()
+	if len(actions) == 0 {
+		return nil
+	}
 	sql := `INSERT INTO actionlog (
 				 actor_id, actor_type, target_id, target_type, action_type, timestamp, request_id, metadata
 			)
