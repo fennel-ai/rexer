@@ -2,10 +2,11 @@ package feature
 
 import (
 	"encoding/json"
-	"fennel/lib/ftypes"
-	"fennel/lib/value"
 	"fmt"
 	"strings"
+
+	"fennel/lib/ftypes"
+	"fennel/lib/value"
 )
 
 const (
@@ -133,7 +134,7 @@ func prefixed(prefix, k string) string {
 var _ json.Marshaler = Row{}
 var _ json.Unmarshaler = &Row{}
 
-func FromProtoRow(pr ProtoRow) (*Row, error) {
+func FromProtoRow(pr *ProtoRow) (*Row, error) {
 	pdata, err := value.FromProtoValue(pr.Features)
 	if err != nil {
 		return nil, err

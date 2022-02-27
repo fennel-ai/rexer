@@ -2,10 +2,11 @@ package feature
 
 import (
 	"encoding/json"
+	"testing"
+
 	"fennel/lib/ftypes"
 	"fennel/lib/value"
 	"github.com/stretchr/testify/assert"
-	"testing"
 )
 
 func TestRow_Marshal(t *testing.T) {
@@ -42,7 +43,7 @@ func TestFrom_To_ProtoRow(t *testing.T) {
 	for _, test := range tests {
 		b, err := ToProto(test)
 		assert.NoError(t, err)
-		back, err := FromProtoRow(*b)
+		back, err := FromProtoRow(b)
 		assert.NoError(t, err)
 		assert.Equal(t, test, *back)
 	}
