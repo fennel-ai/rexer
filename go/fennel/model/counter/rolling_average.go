@@ -16,7 +16,11 @@ type RollingAverage struct {
 }
 
 func (r RollingAverage) Start(end ftypes.Timestamp) ftypes.Timestamp {
-	return end - ftypes.Timestamp(r.Duration)
+	d := ftypes.Timestamp(r.Duration)
+	if end > d {
+		return end - d
+	}
+	return ftypes.Timestamp(0)
 }
 
 func (r RollingAverage) extract(v value.Value) (int64, int64, error) {

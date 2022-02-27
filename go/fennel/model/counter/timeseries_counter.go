@@ -13,17 +13,17 @@ type TimeseriesCounter struct {
 }
 
 func (r TimeseriesCounter) Start(end ftypes.Timestamp) ftypes.Timestamp {
-	var start ftypes.Timestamp
+	var d ftypes.Timestamp
 	switch r.Window {
 	case ftypes.Window_HOUR:
-		start = end - ftypes.Timestamp(1+r.Limit)*3600
+		d = ftypes.Timestamp(1+r.Limit) * 3600
 	case ftypes.Window_DAY:
-		start = end - ftypes.Timestamp(1+r.Limit)*3600*24
+		d = ftypes.Timestamp(1+r.Limit) * 3600 * 24
 	}
-	if start < 0 {
-		start = 0
+	if end > d {
+		return end - d
 	}
-	return start
+	return ftypes.Timestamp(0)
 }
 
 func (r TimeseriesCounter) Reduce(values []value.Value) (value.Value, error) {

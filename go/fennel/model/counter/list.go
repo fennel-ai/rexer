@@ -20,7 +20,11 @@ func (s List) extract(v value.Value) (value.List, error) {
 }
 
 func (s List) Start(end ftypes.Timestamp) ftypes.Timestamp {
-	return end - ftypes.Timestamp(s.Duration)
+	d := ftypes.Timestamp(s.Duration)
+	if end > d {
+		return end - d
+	}
+	return ftypes.Timestamp(0)
 }
 
 // Reduce just appends all the lists to an empty list
