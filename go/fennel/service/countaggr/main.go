@@ -39,13 +39,17 @@ func processAggregate(tr tier.Tier, agg libaggregate.Aggregate) error {
 	}
 	go func(tr tier.Tier, consumer kafka.FConsumer, agg libaggregate.Aggregate) {
 		defer consumer.Close()
+		run := 0
 		for {
+			tr.Logger.Info("Processing aggregate", zap.String("aggregate_name", string(agg.Name)), zap.Int("run", run))
 			ctx := context.TODO()
 			err := aggregate.Update(ctx, tr, consumer, agg)
 			if err != nil {
 				log.Printf("Error found in aggregate: %s. Err: %v", agg.Name, err)
 			}
 			logKafkaLag(tr, consumer)
+			tr.Logger.Info("Processed aggregate", zap.String("aggregate_name", string(agg.Name)), zap.Int("run", run))
+			run += 1
 		}
 	}(tr, consumer, agg)
 	return nil
@@ -63,7 +67,6 @@ func startActionDBInsertion(tr tier.Tier) error {
 			if err := action2.TransferToDB(ctx, tr, consumer); err != nil {
 				tr.Logger.Error("error while reading/writing actions to insert in db:", zap.Error(err))
 			}
-			time.Sleep(time.Second)
 		}
 	}(tr, consumer)
 	return nil

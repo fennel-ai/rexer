@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"time"
 
+	"go.uber.org/zap"
+
 	"fennel/lib/ftypes"
 	"fennel/lib/value"
 	"fennel/redis"
@@ -69,5 +71,6 @@ func Update(ctx context.Context, tier tier.Tier, name ftypes.AggName, buckets []
 			return err
 		}
 	}
+	tier.Logger.Info("Updating redis keys for aggregate", zap.String("aggregate", string(name)), zap.Int("num_keys", len(rkeys)))
 	return tier.Redis.MSet(ctx, rkeys, vals, make([]time.Duration, len(rkeys)))
 }
