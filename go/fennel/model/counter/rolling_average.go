@@ -25,11 +25,7 @@ func (r RollingAverage) Bucketize(groupkey string, v value.Value, timestamp ftyp
 }
 
 func (r RollingAverage) Start(end ftypes.Timestamp) ftypes.Timestamp {
-	d := ftypes.Timestamp(r.Duration)
-	if end > d {
-		return end - d
-	}
-	return ftypes.Timestamp(0)
+	return start(end, r.Duration)
 }
 
 func (r RollingAverage) extract(v value.Value) (int64, int64, error) {

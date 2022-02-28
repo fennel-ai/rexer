@@ -152,3 +152,11 @@ type period struct {
 	start ftypes.Timestamp
 	end   ftypes.Timestamp
 }
+
+func start(end ftypes.Timestamp, duration uint64) ftypes.Timestamp {
+	d := ftypes.Timestamp(duration)
+	if end > d {
+		return end - d
+	}
+	return 0
+}
