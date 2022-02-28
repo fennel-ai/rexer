@@ -236,6 +236,67 @@ func TestServer_AggregateValue_Valid(t *testing.T) {
 	valueSendReceive(t, holder, agg, key, value.Int(1))
 }
 
+func TestServer_BatchAggregateValue(t *testing.T) {
+	tier, err := test.Tier()
+	assert.NoError(t, err)
+	defer test.Teardown(tier)
+
+	ctx := context.Background()
+	clock := &test.FakeClock{}
+	tier.Clock = clock
+	t0 := ftypes.Timestamp(0)
+	holder := server{tier: tier}
+	assert.Equal(t, int64(t0), tier.Clock.Now())
+
+	agg1 := aggregate.Aggregate{
+		Name:      "mycounter",
+		Query:     ast.MakeInt(0),
+		Timestamp: t0,
+		Options: aggregate.Options{
+			AggType:  "count",
+			Duration: 6 * 3600,
+		},
+	}
+	agg2 := aggregate.Aggregate{
+		Name:      "maxelem",
+		Query:     ast.MakeInt(0),
+		Timestamp: t0,
+		Options: aggregate.Options{
+			AggType:  "max",
+			Duration: 6 * 3600,
+		},
+	}
+	assert.NoError(t, aggregate2.Store(ctx, tier, agg1))
+	assert.NoError(t, aggregate2.Store(ctx, tier, agg2))
+
+	// now create changes
+	t1 := t0 + 3600
+	key := value.Nil
+	keystr := key.String()
+
+	h1 := counter.RollingCounter{Duration: 6 * 3600}
+	buckets := counter.BucketizeMoment(keystr, t1, value.Int(1), h1.Windows())
+	err = counter.Update(context.Background(), tier, agg1.Name, buckets, h1)
+	assert.NoError(t, err)
+	buckets = counter.BucketizeMoment(keystr, t1, value.Int(3), h1.Windows())
+	err = counter.Update(context.Background(), tier, agg1.Name, buckets, h1)
+	assert.NoError(t, err)
+	req1 := aggregate.GetAggValueRequest{AggName: "mycounter", Key: key}
+
+	h2 := counter.Max{Duration: 6 * 3600}
+	buckets = counter.BucketizeMoment(keystr, t1, value.List{value.Int(2), value.Bool(false)}, h2.Windows())
+	err = counter.Update(context.Background(), tier, agg2.Name, buckets, h2)
+	assert.NoError(t, err)
+	buckets = counter.BucketizeMoment(keystr, t1, value.List{value.Int(7), value.Bool(false)}, h2.Windows())
+	err = counter.Update(context.Background(), tier, agg2.Name, buckets, h2)
+	assert.NoError(t, err)
+	req2 := aggregate.GetAggValueRequest{AggName: "maxelem", Key: key}
+
+	clock.Set(int64(t1 + 60))
+	batchValueSendReceive(t, holder,
+		[]aggregate.GetAggValueRequest{req1, req2}, []value.Value{value.Int(4), value.Int(7)})
+}
+
 func TestStoreRetrieveDeactivateAggregate(t *testing.T) {
 	// create a service + client
 	tier, err := test.Tier()
@@ -354,7 +415,19 @@ func valueSendReceive(t *testing.T, controller server, agg aggregate.Aggregate, 
 	assert.NoError(t, err)
 	found, err := value.FromJSON(response)
 	assert.NoError(t, err)
+	assert.Equal(t, expected, found)
+}
 
+func batchValueSendReceive(t *testing.T, controller server,
+	reqs []aggregate.GetAggValueRequest, expectedVals []value.Value) {
+	ser, err := json.Marshal(reqs)
 	assert.NoError(t, err)
+	w := httptest.NewRecorder()
+	r := httptest.NewRequest("POST", "/batch_aggregate_value", strings.NewReader(string(ser)))
+	controller.BatchAggregateValue(w, r)
+	// convert vals to json and compare
+	found, err := ioutil.ReadAll(w.Body)
+	assert.NoError(t, err)
+	expected, err := json.Marshal(expectedVals)
 	assert.Equal(t, expected, found)
 }
