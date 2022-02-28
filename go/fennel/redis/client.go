@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"fennel/lib/timer"
+
 	"github.com/go-redis/redis/v8"
 )
 
@@ -51,13 +52,13 @@ func (c Client) MSet(ctx context.Context, keys []string, values []interface{}, t
 	if len(keys) != len(values) || len(keys) != len(ttls) {
 		return fmt.Errorf("keys, values, and ttls should all be slices of the same length")
 	}
-	// NOTE: we are using transactioned pipeline here, which enforces cross-slot errors
-	// looks like non-transaction pipeline doesn't enforce this kind of error, but comes
+	// NOTE: we are using transactioned pipeline here, which enforces cross-slot errors;
+	// Looks like non-transaction pipeline doesn't enforce this kind of error, but comes
 	// with weaker guarantees. Someday, we should explore this and see if non-transaction
 	// pipelines make more sense for us in general
 	pipe := c.client.TxPipeline()
-	for i, _ := range keys {
-		pipe.Set(ctx, c.tieredKey(keys[i]), values[i], ttls[i])
+	for i, key := range keys {
+		pipe.Set(ctx, c.tieredKey(key), values[i], ttls[i])
 	}
 	_, err := pipe.Exec(ctx)
 	return err
@@ -70,7 +71,7 @@ func (c Client) tieredKey(k string) string {
 func (c Client) mTieredKey(ks []string) []string {
 	ret := make([]string, len(ks))
 	for i, k := range ks {
-		ret[i] = c.PrefixedName(k)
+		ret[i] = c.tieredKey(k)
 	}
 	return ret
 }
