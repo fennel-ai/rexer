@@ -55,6 +55,7 @@ func (s server) setHandlers(router *mux.Router) {
 	router.HandleFunc("/retrieve_aggregate", s.RetrieveAggregate)
 	router.HandleFunc("/deactivate_aggregate", s.DeactivateAggregate)
 	router.HandleFunc("/aggregate_value", s.AggregateValue)
+	router.HandleFunc("/batch_aggregate_value", s.BatchAggregateValue)
 	router.HandleFunc("/get_operators", s.GetOperators)
 
 	// for any requests starting with /debug, hand the control to default servemux
@@ -136,7 +137,7 @@ func (m server) GetProfile(w http.ResponseWriter, req *http.Request) {
 	if val == nil {
 		// no error but no value to return either, so we just write nothing and client knows that
 		// empty response means no value
-		fmt.Fprintf(w, string(""))
+		fmt.Fprintf(w, "")
 		return
 	}
 	// now serialize value to JSON
@@ -338,6 +339,34 @@ func (m server) AggregateValue(w http.ResponseWriter, req *http.Request) {
 	}
 	// marshal ret and then write it back
 	ser, err := value.ToJSON(ret)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		log.Printf("Error: %v", err)
+		return
+	}
+	w.Write(ser)
+}
+
+func (m server) BatchAggregateValue(w http.ResponseWriter, req *http.Request) {
+	data, err := readRequest(req)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		log.Printf("Error: %v", err)
+		return
+	}
+	var getAggValueList []aggregate.GetAggValueRequest
+	if err := json.Unmarshal(data, &getAggValueList); err != nil {
+		http.Error(w, fmt.Sprintf("invalid request: %v", err), http.StatusBadRequest)
+		log.Printf("Error: %v", err)
+		return
+	}
+	ret, err := aggregate2.BatchValue(req.Context(), m.tier, getAggValueList)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		log.Printf("Error: %v", err)
+		return
+	}
+	ser, err := json.Marshal(ret)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		log.Printf("Error: %v", err)
