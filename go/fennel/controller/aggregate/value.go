@@ -119,6 +119,8 @@ func toHistogram(agg aggregate.Aggregate) (modelCounter.Histogram, error) {
 		return modelCounter.Max{Duration: agg.Options.Duration}, nil
 	case "stddev":
 		return modelCounter.Stddev{Duration: agg.Options.Duration}, nil
+	case "rate":
+		return modelCounter.Rate{Duration: agg.Options.Duration, Normalize: agg.Options.Normalize}, nil
 	default:
 		return nil, fmt.Errorf("invalid aggregate type: %v", agg.Options.AggType)
 	}

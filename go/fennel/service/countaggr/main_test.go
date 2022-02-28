@@ -99,6 +99,15 @@ func TestEndToEnd(t *testing.T) {
 			value.Int(uid), value.Double(1.5),
 			nil,
 		},
+		{
+			libaggregate.Aggregate{
+				Name: "agg_8", Query: getQueryRate(), Timestamp: 123,
+				Options: libaggregate.Options{AggType: "rate", Duration: 6 * 3600, Normalize: true},
+			},
+			value.Double(0),
+			value.Int(uid), value.Double(0.15003570882017148),
+			nil,
+		},
 	}
 	clock := &test.FakeClock{}
 	tier.Clock = clock
@@ -187,9 +196,42 @@ func logAction(t *testing.T, tier tier.Tier, uid ftypes.OidType, ts ftypes.Times
 	return []actionlib.Action{a1, a2}
 }
 
+func getQueryRate() ast.Ast {
+	return ast.OpCall{
+		Operand: ast.OpCall{
+			Operand: ast.OpCall{
+				Operand:   ast.Lookup{On: ast.Var{Name: "args"}, Property: "actions"},
+				Namespace: "std",
+				Name:      "filter",
+				Kwargs: ast.Dict{Values: map[string]ast.Ast{
+					"where": ast.Binary{
+						Left:  ast.Lookup{On: ast.At{}, Property: "action_type"},
+						Op:    "==",
+						Right: ast.MakeString("like"),
+					},
+				}},
+			},
+			Namespace: "std",
+			Name:      "addField",
+			Kwargs: ast.Dict{Values: map[string]ast.Ast{
+				"name": ast.MakeString("groupkey"),
+				"value": ast.Lookup{
+					On:       ast.At{},
+					Property: "actor_id",
+				}},
+			},
+		},
+		Namespace: "std",
+		Name:      "addField",
+		Kwargs: ast.Dict{Values: map[string]ast.Ast{
+			"name":  ast.MakeString("value"),
+			"value": ast.List{Values: []ast.Ast{ast.MakeInt(1), ast.MakeInt(2)}},
+		}},
+	}
+}
+
 func getQuery() ast.Ast {
 	return ast.OpCall{
-
 		Operand: ast.OpCall{
 			Operand: ast.OpCall{
 				Operand:   ast.Lookup{On: ast.Var{Name: "args"}, Property: "actions"},

@@ -18,6 +18,8 @@ func TestAggregate_Validate_Valid(t *testing.T) {
 		{Name: "some name", Options: Options{AggType: "min", Duration: 1212}},
 		{Name: "some name", Options: Options{AggType: "max", Duration: 1212}},
 		{Name: "some name", Options: Options{AggType: "stddev", Duration: 1212}},
+		{Name: "some name", Options: Options{AggType: "rate", Duration: 1212, Normalize: false}},
+		{Name: "some name", Options: Options{AggType: "rate", Duration: 1212, Normalize: true}},
 	}
 	for _, test := range validCases {
 		assert.NoError(t, test.Validate())
@@ -54,6 +56,10 @@ func TestAggregate_Validate_Invalid(t *testing.T) {
 		{Options: Options{AggType: "stddev", Window: ftypes.Window_HOUR}},
 		{Options: Options{AggType: "stddev"}},
 		{Options: Options{AggType: "random", Duration: 41}},
+		{Options: Options{AggType: "rate"}},
+		{Options: Options{AggType: "rate", Window: ftypes.Window_HOUR, Limit: 10, Duration: 12}},
+		{Options: Options{AggType: "rate", Window: ftypes.Window_HOUR, Duration: 12}},
+		{Options: Options{AggType: "rate", Window: ftypes.Window_HOUR}},
 	}
 	for _, test := range validCases {
 		assert.Error(t, test.Validate())
