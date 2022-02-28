@@ -21,7 +21,7 @@ func Value(ctx context.Context, tier tier.Tier, aggname ftypes.AggName, key valu
 }
 
 func Update(ctx context.Context, tier tier.Tier, aggname ftypes.AggName, table value.Table, histogram counter.Histogram) error {
-	buckets, err := histogram.Bucketize(table)
+	buckets, err := counter.Bucketize(histogram, table)
 	if err != nil {
 		return err
 	}

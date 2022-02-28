@@ -15,6 +15,15 @@ type RollingAverage struct {
 	Duration uint64
 }
 
+func (r RollingAverage) Bucketize(groupkey string, v value.Value, timestamp ftypes.Timestamp) ([]Bucket, error) {
+	v_int, ok := v.(value.Int)
+	if !ok {
+		return nil, fmt.Errorf("expected value to be an int but got: '%s' instead", v)
+	}
+	c := value.List{v_int, value.Int(1)}
+	return BucketizeMoment(groupkey, timestamp, c, r.Windows()), nil
+}
+
 func (r RollingAverage) Start(end ftypes.Timestamp) ftypes.Timestamp {
 	d := ftypes.Timestamp(r.Duration)
 	if end > d {
@@ -75,31 +84,6 @@ func (r RollingAverage) Merge(a, b value.Value) (value.Value, error) {
 
 func (r RollingAverage) Zero() value.Value {
 	return value.List{value.Int(0), value.Int(0)}
-}
-
-func (r RollingAverage) Bucketize(actions value.Table) ([]Bucket, error) {
-	schema := actions.Schema()
-	_, ok := schema["groupkey"]
-	if !ok {
-		return nil, fmt.Errorf("query does not create column called 'groupkey'")
-	}
-	type_, ok := schema["timestamp"]
-	if !ok || type_ != value.Types.Int {
-		return nil, fmt.Errorf("query does not create column called 'timestamp' with datatype of 'int'")
-	}
-	type_, ok = schema["value"]
-	if !ok || type_ != value.Types.Int {
-		return nil, fmt.Errorf("query does not create column called 'value' with datatype of 'int'")
-	}
-	buckets := make([]Bucket, 0, actions.Len())
-	for _, row := range actions.Pull() {
-		ts := row["timestamp"].(value.Int)
-		key := row["groupkey"].String()
-		amount := row["value"].(value.Int)
-		c := value.List{amount, value.Int(1)}
-		buckets = append(buckets, BucketizeMoment(key, ftypes.Timestamp(ts), c, r.Windows())...)
-	}
-	return buckets, nil
 }
 
 func (r RollingAverage) Windows() []ftypes.Window {

@@ -1,6 +1,8 @@
 package counter
 
 import (
+	"fmt"
+
 	"fennel/lib/ftypes"
 	"fennel/lib/value"
 )
@@ -10,6 +12,34 @@ type Bucket struct {
 	Window ftypes.Window
 	Index  uint64
 	Count  value.Value
+}
+
+func Bucketize(histogram Histogram, actions value.Table) ([]Bucket, error) {
+	schema := actions.Schema()
+	_, ok := schema["groupkey"]
+	if !ok {
+		return nil, fmt.Errorf("action does not have a field called 'groupkey'")
+	}
+	type_, ok := schema["timestamp"]
+	if !ok || type_ != value.Types.Int {
+		return nil, fmt.Errorf("action does not have a field called 'timestamp' with datatype of 'int'")
+	}
+	type_, ok = schema["value"]
+	if !ok || type_ != value.Types.Int {
+		return nil, fmt.Errorf("action does not have a field called 'value'")
+	}
+	buckets := make([]Bucket, 0, actions.Len())
+	for _, row := range actions.Pull() {
+		ts := row["timestamp"].(value.Int)
+		key := row["groupkey"].String()
+		v := row["value"]
+		b, err := histogram.Bucketize(key, v, ftypes.Timestamp(ts))
+		if err != nil {
+			return nil, err
+		}
+		buckets = append(buckets, b...)
+	}
+	return buckets, nil
 }
 
 // BucketizeDuration bucketizes the [start, end] only using the given window types

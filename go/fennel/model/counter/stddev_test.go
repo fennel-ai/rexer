@@ -117,7 +117,7 @@ func TestStddev_Bucketize_Valid(t *testing.T) {
 		expected = append(expected, Bucket{Key: v.String(), Window: ftypes.Window_MINUTE,
 			Index: uint64(24*60 + i*60), Count: count})
 	}
-	buckets, err := h.Bucketize(actions)
+	buckets, err := Bucketize(h, actions)
 	assert.NoError(t, err)
 	assert.ElementsMatch(t, expected, buckets)
 }
@@ -139,7 +139,7 @@ func TestStddev_Bucketize_Invalid(t *testing.T) {
 		for _, d := range test {
 			assert.NoError(t, table.Append(d))
 		}
-		_, err := h.Bucketize(table)
+		_, err := Bucketize(h, table)
 		assert.Error(t, err, fmt.Sprintf("case was: %v", table))
 	}
 }
