@@ -138,18 +138,27 @@ class TestEndToEnd(unittest.TestCase):
         # allows test to end earlier in happy cases
         slept = 0
         passed = False
+        expected1 = 1
+        expected2 = 21
         while slept < 120:
             found1 = c.aggregate_value(
                 'trail_view_by_city_gender_agegroup_2days',
                 [video_id, city, gender, age_group],
             )
             found2 = c.aggregate_value('user_creator_avg_watchtime_by_2hour_windows_30days', [uid, creator_id, b])
-            if found1 == 1 and found2 == 21:
+            if found1 == expected1 and found2 == expected2:
                 passed = True
                 break
             time.sleep(5)
             slept += 5
         self.assertTrue(passed)
+
+        # test with batch_aggregate_value()
+        req1 = ('trail_view_by_city_gender_agegroup_2days', [video_id, city, gender, age_group])
+        req2 = ('user_creator_avg_watchtime_by_2hour_windows_30days', [uid, creator_id, b])
+        found1, found2 = c.batch_aggregate_value([req1, req2])
+        self.assertEqual(expected1, found1)
+        self.assertEqual(expected2, found2)
 
         print('all checks passed...')
 
