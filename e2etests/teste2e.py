@@ -105,6 +105,7 @@ class TestEndToEnd(unittest.TestCase):
           Ops.profile.addField(name='gender', otype='user', oid=it.actor_id, key='gender'),
           Ops.profile.addField(name='age_group', otype='user', oid=it.actor_id, key='age_group'),
           Ops.std.addField(name='groupkey', value=[it.target_id, it.city, it.gender, it.age_group]),
+          Ops.std.addField(name='value', value=1),
         )
         options = {'duration': 3600*24*2, 'aggregate_type': 'count', }
         c.store_aggregate('trail_view_by_city_gender_agegroup_2days', q1, options)

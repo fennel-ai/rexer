@@ -1,10 +1,13 @@
 package counter
 
 import (
+	"fmt"
+	"testing"
+
+	"github.com/stretchr/testify/assert"
+
 	"fennel/lib/ftypes"
 	"fennel/lib/value"
-	"github.com/stretchr/testify/assert"
-	"testing"
 )
 
 func TestBucketizeMoment(t *testing.T) {
@@ -152,4 +155,49 @@ func TestMergeBuckets(t *testing.T) {
 	assert.Contains(t, buckets, Bucket{Key: key2, Window: window2, Index: idx1, Count: one})
 	assert.Contains(t, buckets, Bucket{Key: key1, Window: window2, Index: idx1, Count: one})
 	assert.Contains(t, buckets, Bucket{Key: key1, Window: window2, Index: idx2, Count: three})
+}
+
+func TestBucketizeHistogram_Invalid(t *testing.T) {
+	t.Parallel()
+	h := RollingCounter{}
+	cases := [][]value.Dict{
+		{value.Dict{}},
+		{value.Dict{"groupkey": value.Int(1), "timestamp": value.Int(2)}},
+		{value.Dict{"groupkey": value.Int(1), "timestamp": value.Bool(true), "value": value.Int(4)}},
+		{value.Dict{"groupkey": value.Int(1), "timestamp": value.Double(1.0), "value": value.Int(3)}},
+		{value.Dict{"groupkey": value.Int(1), "value": value.Int(3)}},
+		{value.Dict{"timestamp": value.Int(1), "value": value.Int(3)}},
+	}
+	for _, test := range cases {
+		table := value.NewTable()
+		for _, d := range test {
+			assert.NoError(t, table.Append(d))
+		}
+		_, err := Bucketize(h, table)
+		assert.Error(t, err, fmt.Sprintf("case was: %v", table))
+	}
+}
+
+func TestBucketizeHistogram_Valid(t *testing.T) {
+	t.Parallel()
+	h := RollingCounter{}
+	actions := value.NewTable()
+	expected := make([]Bucket, 0)
+	DAY := 3600 * 24
+	for i := 0; i < 5; i++ {
+		v := value.Int(1)
+		e := value.Int(i)
+		d := value.Dict{
+			"groupkey":  v,
+			"timestamp": value.Int(DAY + i*3600 + 1),
+			"value":     e,
+		}
+		assert.NoError(t, actions.Append(d))
+		expected = append(expected, Bucket{Count: e, Window: ftypes.Window_DAY, Index: 1, Key: v.String()})
+		expected = append(expected, Bucket{Key: v.String(), Window: ftypes.Window_HOUR, Index: uint64(24 + i), Count: e})
+		expected = append(expected, Bucket{Key: v.String(), Window: ftypes.Window_MINUTE, Index: uint64(24*60 + i*60), Count: e})
+	}
+	buckets, err := Bucketize(h, actions)
+	assert.NoError(t, err)
+	assert.ElementsMatch(t, expected, buckets)
 }

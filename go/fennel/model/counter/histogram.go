@@ -10,6 +10,6 @@ type Histogram interface {
 	Reduce(values []value.Value) (value.Value, error)
 	Merge(a, b value.Value) (value.Value, error)
 	Zero() value.Value
-	Bucketize(actions value.Table) ([]Bucket, error)
+	Bucketize(groupkey string, v value.Value, timestamp ftypes.Timestamp) ([]Bucket, error)
 	Windows() []ftypes.Window
 }

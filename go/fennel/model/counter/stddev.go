@@ -83,29 +83,13 @@ func (s Stddev) Zero() value.Value {
 	return value.List{value.Int(0), value.Int(0), value.Int(0)}
 }
 
-func (s Stddev) Bucketize(actions value.Table) ([]Bucket, error) {
-	schema := actions.Schema()
-	_, ok := schema["groupkey"]
+func (s Stddev) Bucketize(groupkey string, v value.Value, timestamp ftypes.Timestamp) ([]Bucket, error) {
+	v_int, ok := v.(value.Int)
 	if !ok {
-		return nil, fmt.Errorf("query does not create column called 'groupkey'")
+		return nil, fmt.Errorf("expected value to be an int but got: '%s' instead", v)
 	}
-	type_, ok := schema["timestamp"]
-	if !ok || type_ != value.Types.Int {
-		return nil, fmt.Errorf("query does not create column called 'timestamp' with datatype of 'int'")
-	}
-	type_, ok = schema["value"]
-	if !ok || type_ != value.Types.Int {
-		return nil, fmt.Errorf("query does not create column called 'value' with datatype of 'int'")
-	}
-	buckets := make([]Bucket, 0, actions.Len())
-	for _, row := range actions.Pull() {
-		ts := row["timestamp"].(value.Int)
-		key := row["groupkey"].String()
-		amount := row["value"].(value.Int)
-		c := value.List{amount, amount * amount, value.Int(1)}
-		buckets = append(buckets, BucketizeMoment(key, ftypes.Timestamp(ts), c, s.Windows())...)
-	}
-	return buckets, nil
+	c := value.List{v_int, v_int * v_int, value.Int(1)}
+	return BucketizeMoment(groupkey, timestamp, c, s.Windows()), nil
 }
 
 func (s Stddev) Windows() []ftypes.Window {

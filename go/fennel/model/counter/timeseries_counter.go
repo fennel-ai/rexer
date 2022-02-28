@@ -52,24 +52,11 @@ func (r TimeseriesCounter) Merge(a, b value.Value) (value.Value, error) {
 func (r TimeseriesCounter) Zero() value.Value {
 	return value.Int(0)
 }
-
-func (r TimeseriesCounter) Bucketize(table value.Table) ([]Bucket, error) {
-	schema := table.Schema()
-	_, ok := schema["groupkey"]
-	if !ok {
-		return nil, fmt.Errorf("query does not create column called 'groupkey'")
+func (r TimeseriesCounter) Bucketize(groupkey string, v value.Value, timestamp ftypes.Timestamp) ([]Bucket, error) {
+	if _, ok := v.(value.Int); !ok {
+		return nil, fmt.Errorf("expected value to be an int but got: '%s' instead", v)
 	}
-	type_, ok := schema["timestamp"]
-	if !ok || type_ != value.Types.Int {
-		return nil, fmt.Errorf("query does not create column called 'timestamp' with datatype of 'int'")
-	}
-	buckets := make([]Bucket, 0, table.Len())
-	for _, row := range table.Pull() {
-		ts := row["timestamp"].(value.Int)
-		key := row["groupkey"].String()
-		buckets = append(buckets, BucketizeMoment(key, ftypes.Timestamp(ts), value.Int(1), r.Windows())...)
-	}
-	return buckets, nil
+	return BucketizeMoment(groupkey, timestamp, v, r.Windows()), nil
 }
 
 func (r TimeseriesCounter) Windows() []ftypes.Window {

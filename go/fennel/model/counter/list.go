@@ -59,27 +59,8 @@ func (s List) Zero() value.Value {
 	return value.List{}
 }
 
-func (s List) Bucketize(actions value.Table) ([]Bucket, error) {
-	schema := actions.Schema()
-	_, ok := schema["groupkey"]
-	if !ok {
-		return nil, fmt.Errorf("expected field 'groupkey' not present")
-	}
-	type_, ok := schema["timestamp"]
-	if !ok || type_ != value.Types.Int {
-		return nil, fmt.Errorf("expected field 'timestamp' not present")
-	}
-	if _, ok = schema["value"]; !ok {
-		return nil, fmt.Errorf("expected field 'value' not present")
-	}
-	buckets := make([]Bucket, 0, actions.Len())
-	for _, row := range actions.Pull() {
-		ts := row["timestamp"].(value.Int)
-		key := row["groupkey"]
-		element := row["value"]
-		buckets = append(buckets, BucketizeMoment(key.String(), ftypes.Timestamp(ts), value.List{element}, s.Windows())...)
-	}
-	return buckets, nil
+func (s List) Bucketize(groupkey string, v value.Value, timestamp ftypes.Timestamp) ([]Bucket, error) {
+	return BucketizeMoment(groupkey, timestamp, value.List{v}, s.Windows()), nil
 }
 
 func (s List) Windows() []ftypes.Window {

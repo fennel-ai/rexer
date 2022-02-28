@@ -42,7 +42,7 @@ func TestEndToEnd(t *testing.T) {
 				Options: libaggregate.Options{AggType: "count", Duration: 6 * 3600},
 			},
 			value.Int(0),
-			value.Int(uid), value.Int(2),
+			value.Int(uid), value.Int(3),
 			nil,
 		},
 		{
@@ -51,7 +51,7 @@ func TestEndToEnd(t *testing.T) {
 				Options: libaggregate.Options{AggType: "timeseries_count", Window: ftypes.Window_HOUR, Limit: 4},
 			},
 			value.List{value.Int(0), value.Int(0), value.Int(0), value.Int(0)},
-			value.Int(uid), value.List{value.Int(0), value.Int(0), value.Int(2), value.Int(0)},
+			value.Int(uid), value.List{value.Int(0), value.Int(0), value.Int(3), value.Int(0)},
 			nil,
 		},
 		{

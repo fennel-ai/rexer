@@ -48,6 +48,7 @@ func TestRolling(t *testing.T) {
 		row := value.Dict{
 			"timestamp": value.Int(ts),
 			"groupkey":  key,
+			"value":     value.Int(1),
 		}
 		assert.NoError(t, table.Append(row))
 	}
@@ -99,6 +100,7 @@ func TestTimeseries(t *testing.T) {
 		row := value.Dict{
 			"timestamp": value.Int(ts),
 			"groupkey":  key,
+			"value":     value.Int(1),
 		}
 		assert.NoError(t, table.Append(row))
 	}

@@ -15,6 +15,15 @@ type Max struct {
 	Duration uint64
 }
 
+func (m Max) Bucketize(groupkey string, v value.Value, timestamp ftypes.Timestamp) ([]Bucket, error) {
+	v_int, ok := v.(value.Int)
+	if !ok {
+		return nil, fmt.Errorf("expected value to be an int but got: '%s' instead", v)
+	}
+	c := value.List{v_int, value.Bool(false)}
+	return BucketizeMoment(groupkey, timestamp, c, m.Windows()), nil
+}
+
 func max(a int64, b int64) int64 {
 	if a < b {
 		return b
@@ -88,31 +97,6 @@ func (m Max) Merge(a, b value.Value) (value.Value, error) {
 
 func (m Max) Zero() value.Value {
 	return value.List{value.Int(0), value.Bool(true)}
-}
-
-func (m Max) Bucketize(actions value.Table) ([]Bucket, error) {
-	schema := actions.Schema()
-	_, ok := schema["groupkey"]
-	if !ok {
-		return nil, fmt.Errorf("query does not create column called 'groupkey'")
-	}
-	type_, ok := schema["timestamp"]
-	if !ok || type_ != value.Types.Int {
-		return nil, fmt.Errorf("query does not create column called 'timestamp' with datatype of 'int'")
-	}
-	type_, ok = schema["value"]
-	if !ok || type_ != value.Types.Int {
-		return nil, fmt.Errorf("query does not create column called 'value' with datatype of 'int'")
-	}
-	buckets := make([]Bucket, 0, actions.Len())
-	for _, row := range actions.Pull() {
-		ts := row["timestamp"].(value.Int)
-		key := row["groupkey"].String()
-		amount := row["value"].(value.Int)
-		c := value.List{amount, value.Bool(false)}
-		buckets = append(buckets, BucketizeMoment(key, ftypes.Timestamp(ts), c, m.Windows())...)
-	}
-	return buckets, nil
 }
 
 func (m Max) Windows() []ftypes.Window {
