@@ -7,7 +7,7 @@ import (
 
 const Z_95 = 1.96
 
-func wilson(num uint64, den uint64, lower bool) (float64, error) {
+func Wilson(num uint64, den uint64, lower bool) (float64, error) {
 	if num > den {
 		return 0, fmt.Errorf("numerator can not be greater than denominator for rates")
 	}
