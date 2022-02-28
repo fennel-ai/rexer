@@ -5,10 +5,11 @@ import (
 	"encoding/json"
 	"fmt"
 
+	"github.com/buger/jsonparser"
+
 	"fennel/engine/ast"
 	"fennel/lib/ftypes"
 	"fennel/lib/value"
-	"github.com/buger/jsonparser"
 )
 
 func (agg *Aggregate) UnmarshalJSON(data []byte) error {
@@ -17,10 +18,11 @@ func (agg *Aggregate) UnmarshalJSON(data []byte) error {
 		Query     string           `json:"Query"`
 		Timestamp ftypes.Timestamp `json:"Timestamp"`
 		Options   struct {
-			AggType  string        `json:"Type"`
-			Duration uint64        `json:"Duration"`
-			Window   ftypes.Window `json:"Window"`
-			Limit    uint64        `json:"Limit"`
+			AggType   string        `json:"Type"`
+			Duration  uint64        `json:"Duration"`
+			Window    ftypes.Window `json:"Window"`
+			Limit     uint64        `json:"Limit"`
+			Normalize bool          `json:"Normalize"`
 		} `json:"Options"`
 	}
 	err := json.Unmarshal(data, &fields)
@@ -33,6 +35,7 @@ func (agg *Aggregate) UnmarshalJSON(data []byte) error {
 	agg.Options.Duration = fields.Options.Duration
 	agg.Options.Window = fields.Options.Window
 	agg.Options.Limit = fields.Options.Limit
+	agg.Options.Normalize = fields.Options.Normalize
 	// Extract query now
 	querySer, err := base64.StdEncoding.DecodeString(fields.Query)
 	if err != nil {
@@ -56,10 +59,11 @@ func (agg Aggregate) MarshalJSON() ([]byte, error) {
 		Query     string           `json:"Query"`
 		Timestamp ftypes.Timestamp `json:"Timestamp"`
 		Options   struct {
-			AggType  string        `json:"Type"`
-			Duration uint64        `json:"Duration"`
-			Window   ftypes.Window `json:"Window"`
-			Limit    uint64        `json:"Limit"`
+			AggType   string        `json:"Type"`
+			Duration  uint64        `json:"Duration"`
+			Window    ftypes.Window `json:"Window"`
+			Limit     uint64        `json:"Limit"`
+			Normalize bool          `json:"Normalize"`
 		}
 	}
 	fields.Name = agg.Name
@@ -69,6 +73,7 @@ func (agg Aggregate) MarshalJSON() ([]byte, error) {
 	fields.Options.Duration = agg.Options.Duration
 	fields.Options.Window = agg.Options.Window
 	fields.Options.Limit = agg.Options.Limit
+	fields.Options.Normalize = agg.Options.Normalize
 	return json.Marshal(fields)
 }
 

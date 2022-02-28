@@ -14,7 +14,7 @@ import (
 */
 type Rate struct {
 	Duration  uint64
-	normalize bool
+	Normalize bool
 }
 
 func (r Rate) Bucketize(groupkey string, v value.Value, timestamp ftypes.Timestamp) ([]Bucket, error) {
@@ -62,12 +62,13 @@ func (r Rate) Reduce(values []value.Value) (value.Value, error) {
 	if den == 0 {
 		return value.Double(0), nil
 	}
-	if r.normalize && num > den {
+	if r.Normalize && num > den {
 		return nil, fmt.Errorf("normalized rate requires numerator to be <= denominator but found '%d', '%d'", num, den)
 	}
 	var ratio float64
 	var err error
-	if r.normalize {
+	fmt.Printf("inside reduce, num: %d, den: %d, normalize: %v\n", num, den, r.Normalize)
+	if r.Normalize {
 		ratio, err = math.Wilson(uint64(num), uint64(den), true)
 		if err != nil {
 			return nil, err

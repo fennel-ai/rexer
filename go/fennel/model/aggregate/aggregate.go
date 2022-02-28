@@ -3,10 +3,11 @@ package aggregate
 import (
 	"context"
 	"database/sql"
+	"fmt"
+
 	"fennel/lib/aggregate"
 	"fennel/lib/ftypes"
 	"fennel/tier"
-	"fmt"
 )
 
 func Store(ctx context.Context, tier tier.Tier, name ftypes.AggName, querySer []byte, ts ftypes.Timestamp, optionSer []byte) error {

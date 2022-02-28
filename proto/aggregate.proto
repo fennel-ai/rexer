@@ -18,6 +18,7 @@ message AggOptions {
   uint64 duration = 2;
   Window window = 3;
   uint64 limit = 4;
+  bool normalize = 5;
 }
 
 message AggRequest {

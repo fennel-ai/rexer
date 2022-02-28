@@ -35,7 +35,7 @@ func TestRate_Reduce(t *testing.T) {
 				value.List{value.Int(34), value.Int(199)}},
 			value.Double(float64(35) / float64(200)),
 		},
-		{Rate{normalize: true},
+		{Rate{Normalize: true},
 			[]value.Value{
 				value.List{value.Int(1), value.Int(1)},
 				value.List{value.Int(34), value.Int(199)}},
@@ -89,7 +89,7 @@ func TestRate_Reduce_Invalid(t *testing.T) {
 				value.Double(0.5),
 				value.List{value.Int(34), value.Int(199)}},
 		},
-		{Rate{normalize: true},
+		{Rate{Normalize: true},
 			[]value.Value{
 				value.List{value.Int(1), value.Int(1)},
 				value.List{value.Int(2), value.Int(1)}},

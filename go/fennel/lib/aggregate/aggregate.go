@@ -19,6 +19,7 @@ var ValidTypes = []ftypes.AggType{
 	"min",
 	"max",
 	"stddev",
+	"rate",
 }
 
 type Aggregate struct {
@@ -52,8 +53,15 @@ func (agg Aggregate) Validate() error {
 		if options.Duration == 0 {
 			return fmt.Errorf("duration can not be zero for %s", aggtype)
 		}
+		if options.Window != 0 || options.Limit != 0 || options.Normalize {
+			return fmt.Errorf("window, limit, normalize should all be zero for %v", aggtype)
+		}
+	case "rate":
+		if options.Duration == 0 {
+			return fmt.Errorf("duration can not be zero for %s", aggtype)
+		}
 		if options.Window != 0 || options.Limit != 0 {
-			return fmt.Errorf("retention, window and limit should all be zero for %v", aggtype)
+			return fmt.Errorf("window, limit should all be zero for %v", aggtype)
 		}
 	case "timeseries_count":
 		if options.Window != ftypes.Window_HOUR && options.Window != ftypes.Window_DAY {
@@ -62,8 +70,8 @@ func (agg Aggregate) Validate() error {
 		if options.Limit == 0 {
 			return fmt.Errorf("limit can not be zero for time series counters")
 		}
-		if options.Duration != 0 {
-			return fmt.Errorf("duration & limit are not relevant for time series and should be set to zero")
+		if options.Duration != 0 || options.Normalize {
+			return fmt.Errorf("duration, normalize are not relevant for time series and should be set to zero")
 		}
 	default:
 		return fmt.Errorf("unsupported aggregation type: %v", agg.Options.AggType)
@@ -79,10 +87,11 @@ func (agg Aggregate) Equals(other Aggregate) bool {
 }
 
 type Options struct {
-	AggType  ftypes.AggType
-	Duration uint64
-	Window   ftypes.Window
-	Limit    uint64
+	AggType   ftypes.AggType
+	Duration  uint64
+	Window    ftypes.Window
+	Limit     uint64
+	Normalize bool
 }
 
 type AggregateSer struct {
@@ -91,6 +100,7 @@ type AggregateSer struct {
 	Timestamp ftypes.Timestamp `db:"timestamp"`
 	OptionSer []byte           `db:"options_ser"`
 	Active    bool             `db:"active"`
+	Normalize bool             `db:"normalize"`
 }
 
 func FromAggregateSer(ser AggregateSer) (Aggregate, error) {
