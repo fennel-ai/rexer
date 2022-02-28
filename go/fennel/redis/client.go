@@ -57,8 +57,8 @@ func (c Client) MSet(ctx context.Context, keys []string, values []interface{}, t
 	// with weaker guarantees. Someday, we should explore this and see if non-transaction
 	// pipelines make more sense for us in general
 	pipe := c.client.TxPipeline()
-	for i := range keys {
-		pipe.Set(ctx, c.tieredKey(keys[i]), values[i], ttls[i])
+	for i, key := range keys {
+		pipe.Set(ctx, c.tieredKey(key), values[i], ttls[i])
 	}
 	_, err := pipe.Exec(ctx)
 	return err
