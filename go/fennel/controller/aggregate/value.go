@@ -32,6 +32,18 @@ func Value(ctx context.Context, tier tier.Tier, name ftypes.AggName, key value.V
 	return counter.Value(ctx, tier, agg.Name, key, histogram)
 }
 
+func BatchValue(ctx context.Context, tier tier.Tier, batch []aggregate.GetAggValueRequest) ([]value.Value, error) {
+	ret := make([]value.Value, len(batch))
+	for i, req := range batch {
+		v, err := Value(ctx, tier, req.AggName, req.Key)
+		if err != nil {
+			return nil, err
+		}
+		ret[i] = v
+	}
+	return ret, nil
+}
+
 func Update(ctx context.Context, tier tier.Tier, consumer kafka.FConsumer, agg aggregate.Aggregate) error {
 	actions, err := action.ReadBatch(ctx, consumer, 10000, time.Second*10)
 	if err != nil {
