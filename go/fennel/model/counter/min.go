@@ -24,11 +24,7 @@ func min(a int64, b int64) int64 {
 }
 
 func (m Min) Start(end ftypes.Timestamp) ftypes.Timestamp {
-	d := ftypes.Timestamp(m.Duration)
-	if end > d {
-		return end - d
-	}
-	return ftypes.Timestamp(0)
+	return start(end, m.Duration)
 }
 
 func (m Min) extract(v value.Value) (int64, bool, error) {

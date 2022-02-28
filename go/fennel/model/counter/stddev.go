@@ -13,11 +13,7 @@ type Stddev struct {
 }
 
 func (s Stddev) Start(end ftypes.Timestamp) ftypes.Timestamp {
-	d := ftypes.Timestamp(s.Duration)
-	if end > d {
-		return end - d
-	}
-	return ftypes.Timestamp(0)
+	return start(end, s.Duration)
 }
 
 func (s Stddev) eval(sum, sumsq, num int64) value.Double {
