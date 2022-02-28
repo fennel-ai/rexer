@@ -93,7 +93,7 @@ func TestList_Merge_Valid(t *testing.T) {
 
 func TestList_Merge_Invalid(t *testing.T) {
 	t.Parallel()
-	h := RollingAverage{}
+	h := List{}
 	invalidCases := []struct {
 		input1 value.Value
 		input2 value.Value
@@ -150,7 +150,7 @@ func TestList_Bucketize_Valid(t *testing.T) {
 
 func TestList_Bucketize_Invalid(t *testing.T) {
 	t.Parallel()
-	h := RollingAverage{}
+	h := List{}
 	cases := [][]value.Dict{
 		{value.Dict{}},
 		{value.Dict{"groupkey": value.Int(1), "timestamp": value.Int(2)}},
