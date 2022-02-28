@@ -45,7 +45,7 @@ def gorun(path, tags, env, flags=None, wait=False, sleep=0):
     b.wait()
     print('build: ', 'success' if b.returncode == 0 else 'fail')
     print('going to run:', path, ' '.join(flags))
-    p = subprocess.Popen([binary], stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL, env=env)
+    p = subprocess.Popen([binary] + flags, stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL, env=env)
     # p = subprocess.Popen([binary] + flags, stderr=sys.stderr, stdout=sys.stdout, env=env)
     if wait:
         p.wait()
@@ -179,7 +179,7 @@ class TestLoad(unittest.TestCase):
             Ops.profile.addField(name='city', otype='user', oid=it.actor_id, key='city'),
             Ops.profile.addField(name='gender', otype='user', oid=it.actor_id, key='gender'),
             Ops.profile.addField(name='age_group', otype='user', oid=it.actor_id, key='age_group'),
-            Ops.std.addField(name='key', value=List(it.target_id, it.city, it.gender, it.age_group)),
+            Ops.std.addField(name='groupkey', value=List(it.target_id, it.city, it.gender, it.age_group)),
         )
         options = {'duration': 3600*24*2, 'aggregate_type': 'count', }
         c.store_aggregate('trail_view_by_city_gender_agegroup_2days', q, options)
@@ -192,10 +192,13 @@ class TestLoad(unittest.TestCase):
             Ops.profile.addField(name='city', otype='user', oid=it.actor_id, key='city'),
             Ops.profile.addField(name='mobile_brand', otype='user', oid=it.actor_id, key='mobile_brand'),
             Ops.profile.addField(name='gender', otype='user', oid=it.actor_id, key='gender'),
-            # Ops.std.addField(name=String('day_of_week'), value=Ops.time.dayOfWeek(timestamp=it.timestamp)),
-            # Ops.std.addField(name=String('time_bucket'), value=Ops.time.hourOfDay(timestamp=it.timestamp), size=Int(3600)),
+            Ops.time.addDayOfWeek(name='day_of_week', timestamp=it.timestamp),
+            Ops.time.addTimeBucketOfDay(name='time_bucket', timestamp=it.timestamp, bucket=3600),
             Ops.std.addField(name='amount', value=it.metadata.watch_time),
-            Ops.std.addField(name='key', value=[it.target_id, it.country, it.os, it.city, it.mobile_brand, it.gender]),
+            Ops.std.addField(name='groupkey', value=[
+                it.target_id, it.country, it.os, it.city, it.mobile_brand, it.gender, it.day_of_week, it.time_bucket
+            ]),
+            Ops.std.addField(name='value', value=it.metadata.watch_time),
         )
         options = {'aggregate_type': 'average', 'duration': 3600*24*30}
         c.store_aggregate('video_avg_watchtime_by_country_os_citystate_mobile_gender_30days', q, options)
@@ -204,9 +207,9 @@ class TestLoad(unittest.TestCase):
         q = Var('args').actions.apply(
             Ops.std.filter(where=(it.action_type == 'view') & (it.target_type == 'video')),
             Ops.profile.addField(name='creator_id', otype='user', oid=it.actor_id, key='creatorId'),
-            # Ops.std.addField(name=String('time_bucket'), value=Ops.time.hourOfDay(timestamp=it.timestamp), size=Int(3600)),
-            Ops.std.addField(name='amount', value=it.metadata.watch_time),
-            Ops.std.addField(name='key', value=[it.actor_id, it.creator_id]),
+            Ops.time.addTimeBucketOfDay(name='time_bucket', timestamp=it.timestamp, bucket=2*3600),
+            Ops.std.addField(name='value', value=it.metadata.watch_time),
+            Ops.std.addField(name='groupkey', value=[it.actor_id, it.creator_id, it.time_bucket]),
         )
         options = {'aggregate_type': 'average', 'duration': 3600*24*30}
         c.store_aggregate('user_creator_avg_watchtime_by_2hour_windows_30days', q, options)

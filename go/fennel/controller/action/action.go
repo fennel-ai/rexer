@@ -85,7 +85,7 @@ func ReadBatch(ctx context.Context, consumer kafka.FConsumer, count int, timeout
 }
 
 func TransferToDB(ctx context.Context, tr tier.Tier, consumer kafka.FConsumer) error {
-	actions, err := ReadBatch(ctx, consumer, 1000, time.Second*5)
+	actions, err := ReadBatch(ctx, consumer, 950, time.Second*1)
 	if err == nil {
 		err = dbInsert(ctx, tr, actions)
 	}

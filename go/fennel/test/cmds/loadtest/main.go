@@ -1,15 +1,17 @@
 package main
 
 import (
+	"fmt"
+	"log"
+	"math/rand"
+	"net/http"
+	"time"
+
 	"fennel/client"
 	libaction "fennel/lib/action"
 	"fennel/lib/ftypes"
 	libprofile "fennel/lib/profile"
 	"fennel/lib/value"
-	"fmt"
-	"math/rand"
-	"net/http"
-	"time"
 )
 
 const (
@@ -42,8 +44,10 @@ func logActions(c *client.Client, numproc, total, qps int, uids, video_ids []uin
 						fmt.Printf("[%d] going to log action: %v\n", procid, a)
 					} else {
 						if err := c.LogAction(a); err != nil {
-							errs <- err
-							return
+							log.Printf("loadtest error actionlog: %v", err)
+							continue
+							//errs <- err
+							//return
 						}
 					}
 					num -= 1
@@ -81,8 +85,10 @@ func setProfileInner(numprocs, procid int, c *client.Client, otype ftypes.OType,
 				fmt.Printf("Set profile: (%s, %d, %s) -> %v\n", otype, oid, k, v)
 			} else {
 				if err := c.SetProfile(&pi); err != nil {
-					errs <- err
-					return
+					log.Printf("loadtest error profile: %v", err)
+					continue
+					//errs <- err
+					//return
 				}
 			}
 		}
@@ -105,14 +111,15 @@ func setProfile(c *client.Client, otype ftypes.OType, oids []uint64, fields map[
 }
 
 func main() {
+	log.Printf("entering load test...\n")
 	rand.Seed(time.Now().Unix()) // initialize global pseudo random generator
 	dryrun := false
-	num_uids := 10000
+	num_uids := 1000
 	num_videos := 1000
 	num_creators := 100
 	qps := 10000
-	total := 5 * 60 * qps
-	numprocs := 100 // so 100 processes, each with 100 QPS individually
+	total := 1 * 60 * qps
+	numprocs := 400 // so 100 processes, each with 100 QPS individually
 	uids := make([]uint64, 0, num_uids)
 	for i := 0; i < num_uids; i++ {
 		uids = append(uids, rand.Uint64())
@@ -140,13 +147,28 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
+	start := time.Now()
+	log.Printf("starting user profiles...\n")
 	if err = setProfile(c, ACTOR_TYPE, uids, userFields, dryrun); err != nil {
 		panic(err)
 	}
+	log.Printf("=======DONE========\n")
+	log.Printf("%d user profiles took %dms\n", num_uids*6, time.Since(start).Milliseconds())
+
+	start = time.Now()
+	log.Printf("starting video profiles...\n")
 	if err = setProfile(c, TARGET_TYPE, videoIds, videoFields, dryrun); err != nil {
 		panic(err)
 	}
+	log.Printf("=======DONE========\n")
+	log.Printf("%d video profiles took %dms\n", num_videos, time.Since(start).Milliseconds())
+
+	start = time.Now()
+	log.Printf("starting actions...\n")
 	if err = logActions(c, numprocs, total, qps, uids, videoIds, dryrun); err != nil {
 		panic(err)
 	}
+	log.Printf("=======DONE========\n")
+	log.Printf("%d actions took %dms\n", total, time.Since(start).Milliseconds())
+	log.Printf("done...\n")
 }
