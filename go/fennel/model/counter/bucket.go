@@ -25,7 +25,7 @@ func Bucketize(histogram Histogram, actions value.Table) ([]Bucket, error) {
 		return nil, fmt.Errorf("action does not have a field called 'timestamp' with datatype of 'int'")
 	}
 	type_, ok = schema["value"]
-	if !ok || type_ != value.Types.Int {
+	if !ok {
 		return nil, fmt.Errorf("action does not have a field called 'value'")
 	}
 	buckets := make([]Bucket, 0, actions.Len())
