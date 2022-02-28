@@ -31,18 +31,18 @@ if not py_only:
 pydir = os.path.join(root, 'pyconsole')
 print('Running python tests in pyconsole...')
 print('-' * 50)
-p2 = subprocess.Popen(['poetry run python -m unittest'], shell=True, cwd=pydir)
+p2 = subprocess.Popen(['poetry install && poetry run python -m unittest'], shell=True, cwd=pydir)
 p2.wait()
 
 rexerclient = os.path.join(root, '../rexer-pyclient-alpha/')
 print('Running python tests in rexerclient...')
 print('-' * 50)
-p3 = subprocess.Popen(['poetry run python -m unittest discover rexerclient'], shell=True, cwd=rexerclient)
+p3 = subprocess.Popen(['poetry install && poetry run python -m unittest discover rexerclient'], shell=True, cwd=rexerclient)
 p3.wait()
 
 print('Running e2e integration tests with python client...')
 print('-' * 50)
-p4 = subprocess.Popen(['poetry run python -m unittest discover ../rexer/e2etests'], shell=True, cwd=rexerclient)
+p4 = subprocess.Popen(['poetry install && poetry run python -m unittest discover ../rexer/e2etests'], shell=True, cwd=rexerclient)
 p4.wait()
 
 print('=' * 50)
