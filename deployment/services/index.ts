@@ -52,4 +52,4 @@ const run = async () => {
     })
 };
 
-run();
+run().catch(err => console.error(err));
