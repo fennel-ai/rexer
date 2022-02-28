@@ -79,11 +79,11 @@ func (r RollingAverage) Zero() value.Value {
 
 func (r RollingAverage) Bucketize(actions value.Table) ([]Bucket, error) {
 	schema := actions.Schema()
-	type_, ok := schema["groupkey"]
+	_, ok := schema["groupkey"]
 	if !ok {
 		return nil, fmt.Errorf("query does not create column called 'groupkey'")
 	}
-	type_, ok = schema["timestamp"]
+	type_, ok := schema["timestamp"]
 	if !ok || type_ != value.Types.Int {
 		return nil, fmt.Errorf("query does not create column called 'timestamp' with datatype of 'int'")
 	}
