@@ -144,6 +144,13 @@ func TestStddev_Bucketize_Invalid(t *testing.T) {
 	}
 }
 
+func TestStddev_Start(t *testing.T) {
+	h := Stddev{Duration: 100}
+	assert.Equal(t, h.Start(110), ftypes.Timestamp(10))
+	// Duration > end
+	assert.Equal(t, h.Start(90), ftypes.Timestamp(0))
+}
+
 func extractFromStddev(vals []int64) (int64, int64, int64) {
 	num := int64(len(vals))
 	if num == 0 {

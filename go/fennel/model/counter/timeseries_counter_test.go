@@ -1,9 +1,11 @@
 package counter
 
 import (
+	"fennel/lib/ftypes"
 	"fennel/lib/value"
-	"github.com/stretchr/testify/assert"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func TestTimeseriesCounter_Reduce(t *testing.T) {
@@ -18,4 +20,18 @@ func TestTimeseriesCounter_Reduce(t *testing.T) {
 	found, err = h.Reduce(nums)
 	assert.NoError(t, err)
 	assert.Equal(t, value.List{value.Int(4), value.Int(-2)}, found)
+}
+
+func TestTimeseriesCounter_Start(t *testing.T) {
+	// Limit: 1, Window: Hour makes duration = 7200
+	h := TimeseriesCounter{Limit: 1, Window: ftypes.Window_HOUR}
+	assert.Equal(t, h.Start(7300), ftypes.Timestamp(100))
+	// limit is larger than end.
+	assert.Equal(t, h.Start(7100), ftypes.Timestamp(0))
+
+	// Limit: 1, Window: day makes duration = 172800
+	h = TimeseriesCounter{Limit: 1, Window: ftypes.Window_DAY}
+	assert.Equal(t, h.Start(172900), ftypes.Timestamp(100))
+	// limit is larger than end.
+	assert.Equal(t, h.Start(172700), ftypes.Timestamp(0))
 }

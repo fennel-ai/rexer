@@ -134,3 +134,10 @@ func TestRollingAverage_Bucketize_Invalid(t *testing.T) {
 		assert.Error(t, err, fmt.Sprintf("case was: %v", table))
 	}
 }
+
+func TestRollingAverage_Start(t *testing.T) {
+	h := RollingAverage{Duration: 100}
+	assert.Equal(t, h.Start(110), ftypes.Timestamp(10))
+	// Duration > end
+	assert.Equal(t, h.Start(90), ftypes.Timestamp(0))
+}

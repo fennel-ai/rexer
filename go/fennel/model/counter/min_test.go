@@ -139,6 +139,13 @@ func TestMin_Bucketize_Invalid(t *testing.T) {
 	}
 }
 
+func TestMin_Start(t *testing.T) {
+	h := Min{Duration: 100}
+	assert.Equal(t, h.Start(110), ftypes.Timestamp(10))
+	// Duration > end
+	assert.Equal(t, h.Start(90), ftypes.Timestamp(0))
+}
+
 func makeMinVal(v int64, b bool) value.Value {
 	return value.List{value.Int(v), value.Bool(b)}
 }
