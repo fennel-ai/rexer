@@ -60,6 +60,7 @@ with pkgs; mkShell {
     pkgs.ripgrep # grep, but faster
     pkgs.delta # A syntax-highlighting pager for git
     pkgs.wget
+    pkgs.telnet
   ];
   shellHook =
   ''
