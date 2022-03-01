@@ -28,15 +28,16 @@ func (p *profileOp) Init(args value.Dict, bootargs map[string]interface{}) error
 	return nil
 }
 
-func (p *profileOp) Apply(staticKwargs value.Dict, in operators.InputIter, out *value.Table) error {
+func (p *profileOp) Apply(staticKwargs value.Dict, in operators.InputIter, out *value.List) error {
 	colname := string(staticKwargs["name"].(value.String))
 	reqs := make([]libprofile.ProfileItem, 0)
 	rows := make([]value.Dict, 0)
 	for in.HasMore() {
-		row, kwargs, err := in.Next()
+		rowVal, kwargs, err := in.Next()
 		if err != nil {
 			return err
 		}
+		row := rowVal.(value.Dict)
 		req := libprofile.ProfileItem{
 			OType:   ftypes.OType(kwargs["otype"].(value.String)),
 			Oid:     uint64(kwargs["oid"].(value.Int)),

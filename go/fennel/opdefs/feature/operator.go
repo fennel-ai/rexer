@@ -24,7 +24,7 @@ func (f featureLog) Init(args value.Dict, bootargs map[string]interface{}) error
 	return nil
 }
 
-func (f featureLog) Apply(static value.Dict, in operators.InputIter, out *value.Table) error {
+func (f featureLog) Apply(static value.Dict, in operators.InputIter, out *value.List) error {
 	contextOtype := ftypes.OType(static["context_otype"].(value.String))
 	contextOid := ftypes.OidType(static["context_oid"].(value.Int))
 	workflow := string(static["workflow"].(value.String))

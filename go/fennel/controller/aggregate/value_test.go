@@ -100,8 +100,10 @@ func TestTransformActions(t *testing.T) {
 
 	table, err := transformActions(tier, actions, getQuery())
 	assert.NoError(t, err)
-	assert.Equal(t, 100, table.Len())
-	for i, row := range table.Pull() {
+	assert.Equal(t, 100, len(table))
+	for i, r := range table {
+		row, ok := r.(value.Dict)
+		assert.True(t, ok)
 		assert.Equal(t, value.Int(i+1000), row["timestamp"])
 		assert.Equal(t, value.List{value.Int(uid)}, row["groupkey"])
 	}

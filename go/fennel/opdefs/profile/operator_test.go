@@ -2,6 +2,8 @@ package profile
 
 import (
 	"context"
+	"testing"
+
 	"fennel/controller/profile"
 	"fennel/engine/ast"
 	"fennel/engine/interpreter"
@@ -10,7 +12,6 @@ import (
 	profilelib "fennel/lib/profile"
 	"fennel/lib/value"
 	"fennel/test"
-	"testing"
 
 	"github.com/stretchr/testify/assert"
 )
@@ -32,7 +33,7 @@ func TestDefault(t *testing.T) {
 		}},
 	}
 	i := interpreter.NewInterpreter(bootarg.Create(tier))
-	table := value.NewTable()
+	table := value.List{}
 	err = table.Append(value.Dict{})
 	assert.NoError(t, err)
 	err = table.Append(value.Dict{})
@@ -40,8 +41,7 @@ func TestDefault(t *testing.T) {
 	assert.NoError(t, i.SetVar("table", table))
 	out, err := query.AcceptValue(i)
 	assert.NoError(t, err)
-	outtable := out.(value.Table)
-	rows := outtable.Pull()
+	rows := out.(value.List)
 	assert.Len(t, rows, 2)
 	assert.Equal(t, value.Dict{"some name": value.Double(3.4)}, rows[0])
 	assert.Equal(t, value.Dict{"some name": value.Double(3.4)}, rows[1])
@@ -76,7 +76,7 @@ func TestProfileOp(t *testing.T) {
 		}},
 	}
 	i := interpreter.NewInterpreter(bootarg.Create(tier))
-	table := value.NewTable()
+	table := value.List{}
 	err = table.Append(value.Dict{"otype": value.String(otype1), "oid": value.Int(oid1), "key": value.String(key1), "ver": value.Int(ver1)})
 	assert.NoError(t, err)
 	err = table.Append(value.Dict{"otype": value.String(otype2), "oid": value.Int(oid2), "key": value.String(key2), "ver": value.Int(ver2)})
@@ -84,8 +84,7 @@ func TestProfileOp(t *testing.T) {
 	assert.NoError(t, i.SetVar("table", table))
 	out, err := query.AcceptValue(i)
 	assert.NoError(t, err)
-	outtable := out.(value.Table)
-	rows := outtable.Pull()
+	rows := out.(value.List)
 	assert.Len(t, rows, 2)
 	assert.Equal(t, value.Dict{"otype": value.String(otype1), "oid": value.Int(oid1), "key": value.String(key1), "ver": value.Int(ver1), "profile_value": val1}, rows[0])
 	assert.Equal(t, value.Dict{"otype": value.String(otype2), "oid": value.Int(oid2), "key": value.String(key2), "ver": value.Int(ver2), "profile_value": val2}, rows[1])

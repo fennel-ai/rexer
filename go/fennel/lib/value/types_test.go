@@ -87,7 +87,7 @@ func TestTableSchema(t *testing.T) {
 	assert.True(t, table.Equal(cloned))
 }
 
-func TestTable_Iter(t *testing.T) {
+func TestList_Iter(t *testing.T) {
 	row1, _ := NewDict(map[string]Value{
 		"a": Int(1),
 		"b": String("hi"),
@@ -104,27 +104,24 @@ func TestTable_Iter(t *testing.T) {
 		"a": Int(5),
 		"b": String("fourt"),
 	})
-	table := NewTable()
-	assert.Equal(t, 0, table.Len())
+	table := List{}
+	assert.Equal(t, 0, len(table))
 	err := table.Append(row1)
-	assert.Equal(t, 1, table.Len())
+	assert.Equal(t, 1, len(table))
 	assert.NoError(t, err)
 	err = table.Append(row2)
 	assert.NoError(t, err)
-	assert.Equal(t, 2, table.Len())
-	err = table.Pop()
-	assert.NoError(t, err)
-	assert.Equal(t, 1, table.Len())
+	assert.Equal(t, 2, len(table))
 	err = table.Append(row3)
 	assert.NoError(t, err)
-	assert.Equal(t, 2, table.Len())
+	assert.Equal(t, 3, len(table))
 
 	// now create an iter object and iterate through it
 	it := table.Iter()
 	// before we do anything, now add another row to the table - this should never show in iterator
 	err = table.Append(row4)
 	assert.NoError(t, err)
-	assert.Equal(t, 3, table.Len())
+	assert.Equal(t, 4, len(table))
 
 	// okay now let's start asserting our iter
 	assert.True(t, it.HasMore())
@@ -135,7 +132,11 @@ func TestTable_Iter(t *testing.T) {
 
 	found2, err := it.Next()
 	assert.NoError(t, err)
-	assert.Equal(t, row3, found2)
+	assert.Equal(t, row2, found2)
+
+	found3, err := it.Next()
+	assert.NoError(t, err)
+	assert.Equal(t, row3, found3)
 
 	// now we can't iterate any more and if we try we get an error
 	assert.False(t, it.HasMore())
