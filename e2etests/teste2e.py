@@ -78,6 +78,93 @@ def tiered(wrapped):
 
 class TestEndToEnd(unittest.TestCase):
     @tiered
+    def test_lokal(self):
+        c = client.Client(URL)
+        uid = 12312
+        content_id = 456
+        category = 'sports'
+
+        # Open rate for the user by the hour in the last 7 days:
+        q = Var('args').actions.apply(
+            Ops.std.filter(where=(it.action_type == 'notif_send') | (it.action_type == 'notif_open')),
+            Ops.time.addTimeBucketOfDay(name='hour', timestamp=it.timestamp, bucket=3600),
+            Ops.std.addField(name='groupkey', value=[it.actor_id, it.hour]),
+            Ops.std.addField(name='value', value=Cond(it.action_type == 'notif_send', [0, 1], [1, 0]))
+        )
+        options = {'aggregate_type': 'rate', 'duration': 7*24*3600, 'normalize': True}
+        c.store_aggregate('user_notif_open_rate_by_hour_7days', q, options)
+
+        # User CTR on notifs belonging to category X. Last 7 days.
+        q = Var('args').actions.apply(
+            Ops.std.filter(where=(it.action_type == 'notif_send') | (it.action_type == 'notif_open')),
+            Ops.profile.addField(name='category', otype='content', oid=it.target_id, key='category'),
+            Ops.std.addField(name='groupkey', value=[it.actor_id, it.category]),
+            Ops.std.addField(name='value', value=Cond(it.action_type == 'notif_send', [0, 1], [1, 0]))
+        )
+        options = {'aggregate_type': 'rate', 'duration': 7*24*3600, 'normalize': True}
+        c.store_aggregate('user_notif_open_rate_by_category_hour_7days', q, options)
+
+        # total reactions on a piece of content
+        q = Var('args').actions.apply(
+            Ops.std.filter(where=it.action_type == 'react'),
+            Ops.std.addField(name='groupkey', value=it.target_id),
+            Ops.std.addField(name='value', value=1)
+        )
+        options = {'aggregate_type': 'count', 'duration': 3*3600}
+        c.store_aggregate('content_num_reactions_last_3hours', q, options)
+
+        # num of notifs opened by user in the last 3 days
+        q = Var('args').actions.apply(
+          Ops.std.filter(where=it.action_type == 'notif_open'),
+          Ops.std.addField(name='groupkey', value=it.actor_id),
+          Ops.std.addField(name='value', value=1),
+        )
+        options = {'aggregate_type': 'count', 'duration': 3*24*3600}
+        c.store_aggregate('user_num_notif_opens_last_3days', q, options)
+
+        c.set_profile("content", content_id, "category", category)
+        self.assertEqual(category, c.get_profile("content", content_id, "category"))
+
+        ts = int(time.time())
+        c.log(actor_type='user', actor_id=uid, target_type='content', target_id=content_id, action_type='notif_send',
+              request_id=1, timestamp=ts)
+        c.log(actor_type='user', actor_id=uid, target_type='content', target_id=content_id, action_type='notif_send',
+              request_id=1, timestamp=ts+1)
+        c.log(actor_type='user', actor_id=uid, target_type='content', target_id=content_id, action_type='notif_open',
+              request_id=1, timestamp=ts+2)
+        c.log(actor_type='user', actor_id=uid, target_type='content', target_id=content_id, action_type='react',
+            request_id=2, timestamp=ts+3)
+        # second action was logged 8 days in history so should not apply towards any aggregate
+        c.log(actor_type='user', actor_id=uid, target_type='content', target_id=content_id, action_type='notif_send',
+              request_id=7, timestamp=ts-8*24*3600)
+        b = int((ts % (24*3600)) / 3600)
+
+        # now sleep for upto a minute and verify count processing worked
+        # we could also just sleep for full minute but this rolling sleep
+        # allows test to end earlier in happy cases
+        slept = 0
+        passed = False
+        expected1 = 0.09452865480086611 # normalized for 1 in 2
+        expected2 = 0.09452865480086611 # normalized for 1 in 2
+        expected3 = 1
+        expected4 = 1
+        while slept < 120:
+            found1 = c.aggregate_value(
+                'user_notif_open_rate_by_hour_7days',
+                [uid, b],
+            )
+            found2 = c.aggregate_value('user_notif_open_rate_by_category_hour_7days', [uid, category])
+            found3 = c.aggregate_value('content_num_reactions_last_3hours', content_id)
+            found4 = c.aggregate_value('user_num_notif_opens_last_3days', uid)
+            if found1 == expected1 and found2 == expected2 and found3 == expected3 and found4 == expected4:
+                passed = True
+                break
+            time.sleep(5)
+            slept += 5
+        self.assertTrue(passed)
+        print('all checks passed...')
+
+    @tiered
     def test_end_to_end(self):
         c = client.Client(URL)
         uid = 12312
