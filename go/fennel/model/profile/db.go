@@ -104,7 +104,7 @@ func GetMulti(ctx context.Context, tier tier.Tier, request profile.ProfileFetchR
 	}
 
 	if len(clauses) > 0 {
-		query = fmt.Sprintf("%s WHERE %s", query, strings.Join(clauses, " AND "))
+		query = fmt.Sprintf("%s WHERE %s LIMIT 1000", query, strings.Join(clauses, " AND "))
 	}
 	profiles := make([]profile.ProfileItemSer, 0)
 	statement, err := tier.DB.PrepareNamedContext(ctx, query)
