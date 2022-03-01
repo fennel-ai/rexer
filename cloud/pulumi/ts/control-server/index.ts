@@ -40,7 +40,6 @@ const image = new docker.Image("control-server-img", {
         dockerfile: path.join(root, "dockerfiles/controlserver.dockerfile"),
         args: {
             "platform": "linux/amd64",
-            "ssh": "default",
         },
     },
     imageName: imageName,
@@ -79,12 +78,7 @@ const appDep = image.imageName.apply(() => {
                             },
                         ],
                         command: [
-                            'poetry',
-                            'run',
-                            'gunicorn',
-                            'app:build_app(endpoint="http://http-server.fennel:2425")',
-                            '-b',
-                            ":2475",
+                            "/root/server"
                         ]
                     }],
                 },
