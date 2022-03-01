@@ -31,7 +31,7 @@ const domainToURL = {
     "http://k8s-ambassad-aesedges-40345becf3-fa1a77f909416990.elb.us-west-2.amazonaws.com/control",
 };
 
-const PROFILE_URL = "profile/";
+const PROFILE_URL = "profile_multi/";
 const ACTION_URL = "actions/";
 
 const actionMetadata = {
@@ -75,12 +75,13 @@ const mapUserToDomain = (req) => {
     throw new Error("Domain does not map to a URL.");
   }
 };
+
 app.get("/actions/profiles", async (req, res) => {
   try {
     const tierUrl = mapUserToDomain(req);
     const apiUrl = `${tierUrl}/${PROFILE_URL}`;
     const result = await axios.get(apiUrl, {
-      params: { key: "hello", otype: "type", oid: 1, version: 1 },
+      params: req.query,
     });
     res.json({ data: result.data });
   } catch (err) {
@@ -93,7 +94,7 @@ app.get("/actions/actions", async (req, res) => {
     const tierUrl = mapUserToDomain(req);
     const apiUrl = `${tierUrl}/${ACTION_URL}`;
     const result = await axios.get(apiUrl, {
-      params: { min_action_value: 0 },
+      params: req.query,
     });
     res.json({ data: result.data });
   } catch (err) {
