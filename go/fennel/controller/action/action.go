@@ -33,8 +33,6 @@ func dbInsert(ctx context.Context, tier tier.Tier, actions []actionlib.Action) e
 	return action.InsertBatch(ctx, tier, actionSers)
 }
 
-// Insert takes an action and inserts it both in the DB and Kafka
-// returns the unique ID of the action that was inserted
 func Insert(ctx context.Context, tier tier.Tier, a actionlib.Action) error {
 	defer timer.Start(ctx, tier.ID, "controller.action.insert").Stop()
 	err := a.Validate()
