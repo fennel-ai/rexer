@@ -1,4 +1,5 @@
 config:
   vpc:cidr: 10.100.0.0/16
+  vpc:controlPlane: '{"region":"us-west-2","accountId": "030813887342", "vpcId": "vpc-0d9942e83f94c049c", "roleArn": "arn:aws:iam::030813887342:role/admin", "routeTableId": "rtb-07afe7458db9c4479", "cidrBlock": "172.31.0.0/16"}'
   vpc:region: ap-south-1
   vpc:roleArn: arn:aws:iam::136736114676:role/admin
