@@ -36,9 +36,11 @@ type MothershipScope struct {
 	mothershipID ftypes.RealmID
 }
 
+// NewMothershipScope returns a new scope object with 10^9 added to its ID.
+// MothershipIDs must be between 10^9 and 2*(10^9)-1 inclusive.
 func NewMothershipScope(mothershipID ftypes.RealmID) MothershipScope {
 	return MothershipScope{
-		mothershipID: mothershipID,
+		mothershipID: 1e9 + mothershipID,
 	}
 }
 
