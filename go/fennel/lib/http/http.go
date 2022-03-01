@@ -47,7 +47,7 @@ func Tracer(log *zap.Logger, slowThreshold time.Duration, sampleRate float64) mu
 			start := time.Now()
 			ctx := timer.WithTracing(r.Context())
 			h.ServeHTTP(rw, r.WithContext(ctx))
-			if time.Since(start) > slowThreshold || rand.Float64() > sampleRate {
+			if time.Since(start) > slowThreshold || rand.Float64() < sampleRate {
 				timer.LogTracingInfo(ctx, log)
 			}
 		})
