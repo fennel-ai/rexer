@@ -33,7 +33,7 @@ const parseConfig = (): inputType => {
 }
 
 export const setup = async (input: inputType) => {
-    const k8sProvider = new k8s.Provider("k8s-provider", {
+    const k8sProvider = new k8s.Provider("ns-k8s-provider", {
         kubeconfig: input.kubeconfig,
     })
 

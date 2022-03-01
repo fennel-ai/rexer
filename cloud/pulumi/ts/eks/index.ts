@@ -216,7 +216,7 @@ async function setupLoadBalancerController(awsProvider: aws.Provider, cluster: e
 export const setup = async (input: inputType) => {
     const { vpcId, region, roleArn, ami } = input
 
-    const awsProvider = new aws.Provider("aws-provider", {
+    const awsProvider = new aws.Provider("eks-aws-provider", {
         region: <aws.Region>region,
         assumeRole: {
             roleArn,
