@@ -172,34 +172,6 @@ func (i Interpreter) VisitDict(values map[string]ast.Ast) (value.Value, error) {
 	return value.NewDict(ret)
 }
 
-func (i Interpreter) VisitTable(inner ast.Ast) (value.Value, error) {
-	rows, err := inner.AcceptValue(i)
-	if err != nil {
-		return value.Nil, err
-	}
-
-	switch rows.(type) {
-	case value.List:
-		ret := value.NewTable()
-		for _, elem := range rows.(value.List) {
-			switch elem.(type) {
-			case value.Dict:
-				err = ret.Append(elem.(value.Dict))
-				if err != nil {
-					return value.Nil, fmt.Errorf("table can only be created via list of dicts with same schema")
-				}
-			default:
-				return value.Nil, fmt.Errorf("table can only be created via list of dicts")
-			}
-		}
-		return ret, nil
-	case value.Table:
-		return rows.(value.Table).Clone(), nil
-	default:
-		return value.Nil, fmt.Errorf("table can only be created via list of dicts")
-	}
-}
-
 func (i Interpreter) VisitOpcall(operand ast.Ast, namespace, name string, kwargs ast.Dict) (value.Value, error) {
 	// eval operand and verify it is of the right type
 	val, err := operand.AcceptValue(i)

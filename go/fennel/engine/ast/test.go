@@ -66,19 +66,8 @@ func init() {
 		}},
 		Var{"x"},
 		Var{""},
-		Table{Inner: MakeInt(1)}, // again semantic error but fine syntactically
-		Table{Inner: List{Values: []Ast{
-			Dict{map[string]Ast{
-				"int":  MakeInt(1),
-				"bool": MakeBool(false),
-			}},
-			Dict{map[string]Ast{
-				"int":  MakeInt(3),
-				"bool": MakeBool(true),
-			}},
-		}}}, // again semantic error but fine syntactically
 		OpCall{
-			Operand:   Table{Inner: MakeInt(1)},
+			Operand:   List{Values: []Ast{MakeInt(1)}},
 			Namespace: "my namespace",
 			Name:      "my name",
 			Kwargs:    Dict{Values: map[string]Ast{}},

@@ -11,7 +11,6 @@ type VisitorString interface {
 	VisitBinary(left Ast, op string, right Ast) string
 	VisitList(values []Ast) string
 	VisitDict(values map[string]Ast) string
-	VisitTable(inner Ast) string
 	VisitOpcall(operand Ast, namespace, name string, kwargs Dict) string
 	VisitVar(name string) string
 	VisitStatement(name string, body Ast) string
@@ -26,7 +25,6 @@ type VisitorValue interface {
 	VisitBinary(left Ast, op string, right Ast) (value.Value, error)
 	VisitList(values []Ast) (value.Value, error)
 	VisitDict(values map[string]Ast) (value.Value, error)
-	VisitTable(inner Ast) (value.Value, error)
 	VisitOpcall(operand Ast, namespace, name string, kwargs Dict) (value.Value, error)
 	VisitVar(name string) (value.Value, error)
 	VisitStatement(name string, body Ast) (value.Value, error)
@@ -46,7 +44,7 @@ type Ast interface {
 var _ Ast = Atom{}
 var _ Ast = Binary{}
 var _ Ast = List{}
-var _ Ast = Table{}
+
 var _ Ast = OpCall{}
 var _ Ast = Var{}
 var _ Ast = Statement{}
@@ -254,27 +252,6 @@ func (d Dict) Equals(ast Ast) bool {
 			}
 		}
 		return true
-	default:
-		return false
-	}
-}
-
-type Table struct {
-	Inner Ast
-}
-
-func (t Table) AcceptValue(v VisitorValue) (value.Value, error) {
-	return v.VisitTable(t.Inner)
-}
-
-func (t Table) AcceptString(v VisitorString) string {
-	return v.VisitTable(t.Inner)
-}
-
-func (t Table) Equals(ast Ast) bool {
-	switch t2 := ast.(type) {
-	case Table:
-		return t.Inner.Equals(t2.Inner)
 	default:
 		return false
 	}

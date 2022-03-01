@@ -12,7 +12,7 @@ message Ast {
     Dict dict = 6;
     OpCall opcall = 7;
     Var var = 8;
-    Table table = 9;
+    // Table table = 9; [deprecated now]
     At at = 10;
     Lookup lookup = 11;
     IfElse ifelse = 12;
@@ -60,10 +60,6 @@ message OpCall {
 
 message Var {
   string name = 1;
-}
-
-message Table {
-  Ast inner = 1;
 }
 
 message At {}

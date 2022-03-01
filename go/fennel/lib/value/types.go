@@ -28,7 +28,6 @@ var _ Value = String("")
 var _ Value = List([]Value{Int(0), Bool(true)})
 var _ Value = Dict(map[string]Value{"hi": Int(0), "bye": Bool(true)})
 var _ Value = nil_{}
-var _ Value = Table{}
 
 type Int int64
 
@@ -277,52 +276,6 @@ func (d Dict) Schema() map[string]reflect.Type {
 	return ret
 }
 
-type Table struct {
-	// TODO: don't store each row as Dict but rather as Value array
-	schema map[string]reflect.Type
-	rows   []Dict
-}
-
-func NewTable() Table {
-	return Table{nil, make([]Dict, 0)}
-}
-
-func (t *Table) Append(row Dict) error {
-	if len(t.rows) == 0 {
-		t.schema = row.Schema()
-	} else if !t.schemaMatches(row.Schema()) {
-		return fmt.Errorf("can not append row to table: scheams don't match")
-	}
-	t.rows = append(t.rows, row)
-	return nil
-}
-
-func (t *Table) Schema() map[string]reflect.Type {
-	ret := make(map[string]reflect.Type)
-	if len(t.rows) == 0 {
-		return ret
-	}
-	return t.rows[0].Schema()
-}
-
-// Pop removes the last row added to the table
-func (t *Table) Pop() error {
-	length := t.Len()
-	if length < 1 {
-		return fmt.Errorf("can not pop from empty table")
-	}
-	t.rows = t.rows[:length-1]
-	return nil
-}
-
-func (t *Table) Len() int {
-	return len(t.rows)
-}
-
-func (t *Table) Pull() []Dict {
-	return t.rows
-}
-
 type Iter struct {
 	next int
 	rows List
@@ -339,65 +292,4 @@ func (iter *Iter) Next() (Value, error) {
 	}
 	iter.next += 1
 	return iter.rows[curr], nil
-}
-
-func (t Table) schemaMatches(schema map[string]reflect.Type) bool {
-	if len(t.schema) != len(schema) {
-		return false
-	}
-	for k, v := range t.schema {
-		if v != schema[k] {
-			return false
-		}
-	}
-	return true
-}
-
-func (t Table) isValue() {}
-
-func (t Table) Equal(v Value) bool {
-	switch v.(type) {
-	case Table:
-		other := v.(Table)
-		if len(t.rows) != len(other.rows) {
-			return false
-		}
-		for i, row := range t.rows {
-			if !row.Equal(other.rows[i]) {
-				return false
-			}
-		}
-		return true
-	default:
-		return false
-	}
-}
-
-func (t Table) Op(opt string, other Value) (Value, error) {
-	return route(t, opt, other)
-}
-
-func (t Table) String() string {
-	var sb strings.Builder
-	sb.WriteString("Table")
-	sb.WriteRune('(')
-	for _, row := range t.rows {
-		sb.WriteString(row.String())
-		sb.WriteRune(',')
-	}
-	sb.WriteRune(')')
-	return sb.String()
-}
-
-func (t Table) Clone() Value {
-	ret := NewTable()
-	for _, row := range t.rows {
-		cloned := row.Clone().(Dict)
-		ret.Append(cloned)
-	}
-	return ret
-}
-
-func (t Table) MarshalJSON() ([]byte, error) {
-	return nil, fmt.Errorf("json serialization for %T not implemented", t)
 }
