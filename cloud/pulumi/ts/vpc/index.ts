@@ -2,6 +2,7 @@ import * as pulumi from "@pulumi/pulumi";
 import * as aws from "@pulumi/aws"
 import * as process from "process";
 import * as netmask from "netmask";
+import { isJSDocUnknownTag } from "typescript";
 
 // TODO: use version from common library.
 // operator for type-safety for string key access:
@@ -17,10 +18,20 @@ export const plugins = {
     "aws": "v4.37.4"
 }
 
+type controlPlaneConfig = {
+    roleArn: string,
+    region: string,
+    accountId: string,
+    vpcId: string,
+    cidrBlock: string,
+    routeTableId: string,
+}
+
 export type inputType = {
     cidr: string
     region: string
     roleArn: string
+    controlPlane: controlPlaneConfig,
 }
 
 export type outputType = {
@@ -39,6 +50,7 @@ const parseConfig = (): inputType => {
         cidr: config.require(nameof<inputType>("cidr")),
         region: config.require(nameof<inputType>("region")),
         roleArn: config.require(nameof<inputType>("roleArn")),
+        controlPlane: config.requireObject(nameof<inputType>("controlPlane")),
     }
 }
 
@@ -213,9 +225,60 @@ function setupPublicRouteTable(vpcId: pulumi.Output<string>, subnets: pulumi.Out
     return publicRt.id
 }
 
+function createVpcPeeringConnection(vpc: aws.ec2.Vpc, routeTables: pulumi.Output<string>[], input: inputType, provider: aws.Provider): aws.ec2.VpcPeeringConnection {
+    // create peering connection between vpc and control-plane vpc.
+    const peeringConnection = new aws.ec2.VpcPeeringConnection("peering-connection", {
+        vpcId: vpc.id,
+        peerVpcId: input.controlPlane.vpcId,
+        peerOwnerId: input.controlPlane.accountId,
+        peerRegion: input.controlPlane.region,
+        tags: {
+            ...fennelStdTags,
+            Side: "Requester",
+        }
+    }, { provider })
+
+    const controlPlaneProvider = new aws.Provider("vpc-control-plane-provider", {
+        region: <aws.Region>input.controlPlane.region,
+        assumeRole: {
+            roleArn: input.controlPlane.roleArn,
+            // TODO: Also populate the externalId field to prevent "confused deputy"
+            // attacks: https://docs.aws.amazon.com/IAM/latest/UserGuide/confused-deputy.html
+        }
+    })
+
+    const peeringConnectionAcceptor = new aws.ec2.VpcPeeringConnectionAccepter("peering-connection-acceptor", {
+        vpcPeeringConnectionId: peeringConnection.id,
+        autoAccept: true,
+        accepter: {
+            allowRemoteVpcDnsResolution: true,
+        },
+        tags: {
+            ...fennelStdTags,
+            Side: "Acceptor",
+        }
+    }, { provider: controlPlaneProvider })
+
+    const controlPlaneToDataPlane = new aws.ec2.Route("route-to-data-plane", {
+        routeTableId: input.controlPlane.routeTableId,
+        vpcPeeringConnectionId: peeringConnection.id,
+        destinationCidrBlock: vpc.cidrBlock,
+    }, { provider: controlPlaneProvider })
+
+    const routes = routeTables.map((rt, idx) => {
+        return new aws.ec2.Route(`route-to-control-plane-${idx}`, {
+            routeTableId: rt,
+            vpcPeeringConnectionId: peeringConnection.id,
+            destinationCidrBlock: input.controlPlane.cidrBlock,
+        }, { provider })
+    })
+
+    return peeringConnection
+}
+
 export const setup = async (input: inputType) => {
 
-    const provider = new aws.Provider("vpc-aws-provider", {
+    const provider = new aws.Provider("aws-provider", {
         region: <aws.Region>input.region,
         assumeRole: {
             roleArn: input.roleArn,
@@ -261,11 +324,13 @@ export const setup = async (input: inputType) => {
     const privateSubnets = [primaryPrivateSubnet.id, secondaryPrivateSubnet.id];
     const publicSubnets = [primaryPublicSubnet.id, secondaryPublicSubnet.id];
 
-    const privateNacl = createPrivateNacl(vpc, privateSubnets, provider)
-    const publicNacl = createPublicNacl(vpc, publicSubnets, provider)
-
     const publicRouteTable = setupPublicRouteTable(vpcId, publicSubnets, provider)
     const privateRouteTable = setupPrivateRouteTable(vpcId, privateSubnets, primaryPublicSubnet.id, provider)
+
+    const peeringConnection = createVpcPeeringConnection(vpc, [privateRouteTable], input, provider)
+
+    const privateNacl = createPrivateNacl(vpc, privateSubnets, provider)
+    const publicNacl = createPublicNacl(vpc, publicSubnets, provider)
 
     const output: outputType = {
         vpcId,
