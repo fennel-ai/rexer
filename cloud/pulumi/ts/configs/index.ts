@@ -47,7 +47,7 @@ const parseConfig = (): inputType => {
 }
 
 export const setup = async (input: inputType) => {
-    const provider = new k8s.Provider("k8s-provider", {
+    const provider = new k8s.Provider("configs-k8s-provider", {
         kubeconfig: input.kubeconfig,
         namespace: input.namespace,
     })

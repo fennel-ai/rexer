@@ -46,7 +46,7 @@ const parseConfig = (): inputType => {
 }
 
 export const setup = async (input: inputType) => {
-    const awsProvider = new aws.Provider("aws-provider", {
+    const awsProvider = new aws.Provider("http-aws-provider", {
         region: <aws.Region>input.region,
         assumeRole: {
             roleArn: input.roleArn,
@@ -94,7 +94,7 @@ export const setup = async (input: inputType) => {
         registry: registryInfo,
     });
 
-    const k8sProvider = new k8s.Provider("k8s-provider", {
+    const k8sProvider = new k8s.Provider("httpserver-k8s-provider", {
         kubeconfig: input.kubeconfig,
         namespace: input.namespace,
     })

@@ -215,7 +215,7 @@ function setupPublicRouteTable(vpcId: pulumi.Output<string>, subnets: pulumi.Out
 
 export const setup = async (input: inputType) => {
 
-    const provider = new aws.Provider("aws-provider", {
+    const provider = new aws.Provider("vpc-aws-provider", {
         region: <aws.Region>input.region,
         assumeRole: {
             roleArn: input.roleArn,

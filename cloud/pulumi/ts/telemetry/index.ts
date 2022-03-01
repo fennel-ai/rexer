@@ -170,7 +170,7 @@ async function setupFluentBit(input: inputType, k8sProvider: k8s.Provider) {
 }
 
 const setup = async (input: inputType) => {
-    const awsProvider = new aws.Provider("aws-provider", {
+    const awsProvider = new aws.Provider("tele-aws-provider", {
         region: <aws.Region>input.region,
         assumeRole: {
             roleArn: input.roleArn,
@@ -179,7 +179,7 @@ const setup = async (input: inputType) => {
         }
     })
 
-    const k8sProvider = new k8s.Provider("k8s-provider", {
+    const k8sProvider = new k8s.Provider("tele-k8s-provider", {
         kubeconfig: input.kubeconfig,
     })
 
