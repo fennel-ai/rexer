@@ -39,7 +39,7 @@ func TestEndToEnd(t *testing.T) {
 		{
 			libaggregate.Aggregate{
 				Name: "agg_1", Query: getQuery(), Timestamp: 123,
-				Options: libaggregate.Options{AggType: "count", Duration: 6 * 3600},
+				Options: libaggregate.Options{AggType: "sum", Duration: 6 * 3600},
 			},
 			value.Int(0),
 			value.Int(uid), value.Int(3),
@@ -48,7 +48,7 @@ func TestEndToEnd(t *testing.T) {
 		{
 			libaggregate.Aggregate{
 				Name: "agg_2", Query: getQuery(), Timestamp: 123,
-				Options: libaggregate.Options{AggType: "timeseries_count", Window: ftypes.Window_HOUR, Limit: 4},
+				Options: libaggregate.Options{AggType: "timeseries_sum", Window: ftypes.Window_HOUR, Limit: 4},
 			},
 			value.List{value.Int(0), value.Int(0), value.Int(0), value.Int(0)},
 			value.Int(uid), value.List{value.Int(0), value.Int(0), value.Int(3), value.Int(0)},

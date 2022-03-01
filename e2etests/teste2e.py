@@ -110,7 +110,7 @@ class TestEndToEnd(unittest.TestCase):
             Ops.std.addField(name='groupkey', value=it.target_id),
             Ops.std.addField(name='value', value=1)
         )
-        options = {'aggregate_type': 'count', 'duration': 3*3600}
+        options = {'aggregate_type': 'sum', 'duration': 3*3600}
         c.store_aggregate('content_num_reactions_last_3hours', q, options)
 
         # num of notifs opened by user in the last 3 days
@@ -119,7 +119,7 @@ class TestEndToEnd(unittest.TestCase):
           Ops.std.addField(name='groupkey', value=it.actor_id),
           Ops.std.addField(name='value', value=1),
         )
-        options = {'aggregate_type': 'count', 'duration': 3*24*3600}
+        options = {'aggregate_type': 'sum', 'duration': 3*24*3600}
         c.store_aggregate('user_num_notif_opens_last_3days', q, options)
 
         c.set_profile("content", content_id, "category", category)
@@ -194,7 +194,7 @@ class TestEndToEnd(unittest.TestCase):
           Ops.std.addField(name='groupkey', value=[it.target_id, it.city, it.gender, it.age_group]),
           Ops.std.addField(name='value', value=1),
         )
-        options = {'duration': 3600*24*2, 'aggregate_type': 'count', }
+        options = {'duration': 3600*24*2, 'aggregate_type': 'sum', }
         c.store_aggregate('trail_view_by_city_gender_agegroup_2days', q1, options)
 
         # average watch time of uid on videos created by creator_id by 2 hour windows
@@ -269,7 +269,7 @@ class TestLoad(unittest.TestCase):
             Ops.profile.addField(name='age_group', otype='user', oid=it.actor_id, key='age_group'),
             Ops.std.addField(name='groupkey', value=List(it.target_id, it.city, it.gender, it.age_group)),
         )
-        options = {'duration': 3600*24*2, 'aggregate_type': 'count', }
+        options = {'duration': 3600*24*2, 'aggregate_type': 'sum', }
         c.store_aggregate('trail_view_by_city_gender_agegroup_2days', q, options)
 
         # Avg-watchtime of a  video for given country+OS+city_sate+mobile_brand+gender in 30 days

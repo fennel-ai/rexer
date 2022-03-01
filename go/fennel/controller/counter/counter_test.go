@@ -31,7 +31,7 @@ func TestRolling(t *testing.T) {
 		Query:     ast.MakeInt(1),
 		Timestamp: 0,
 		Options: libaggregate.Options{
-			AggType:  "rolling_counter",
+			AggType:  "sum",
 			Duration: 3600 * 28,
 		},
 	}
