@@ -106,98 +106,6 @@ func TestInterpreter_VisitStatement(t *testing.T) {
 	testError(t, s)
 }
 
-func TestInterpreter_VisitTable(t *testing.T) {
-	astrow1 := ast.Dict{
-		Values: map[string]ast.Ast{
-			"a.inner": ast.MakeInt(3),
-			"b":       ast.MakeString("hi"),
-		},
-	}
-	astrow2 := ast.Dict{
-		Values: map[string]ast.Ast{
-			"a.inner": ast.MakeInt(5),
-			"b":       ast.MakeString("bye"),
-		},
-	}
-	astrow3 := ast.Dict{
-		Values: map[string]ast.Ast{
-			"b":       ast.MakeString("hello"),
-			"a.inner": ast.MakeInt(3),
-		},
-	}
-	row1, _ := value.NewDict(map[string]value.Value{
-		"a.inner": value.Int(3),
-		"b":       value.String("hi"),
-	})
-	row2, _ := value.NewDict(map[string]value.Value{
-		"a.inner": value.Int(5),
-		"b":       value.String("bye"),
-	})
-	row3, _ := value.NewDict(map[string]value.Value{
-		"a.inner": value.Int(3),
-		"b":       value.String("hello"),
-	})
-
-	// creating empty table works
-	testValid(t, ast.Table{Inner: ast.List{}}, value.NewTable())
-	// so does with one row
-	t1 := value.Table{}
-	t1.Append(row1)
-	testValid(t, ast.Table{Inner: ast.List{Values: []ast.Ast{astrow1}}}, t1)
-
-	// and same with multiple rows including nested rows
-	t1.Append(row2)
-	t1.Append(row3)
-	testValid(t, ast.Table{Inner: ast.List{Values: []ast.Ast{astrow1, astrow2, astrow3}}}, t1)
-}
-
-func TestInterpreter_VisitTableErrors(t *testing.T) {
-
-	// visiting table with non-list or non-table doesn't work
-	testError(t, ast.Table{Inner: ast.MakeInt(123)})
-	testError(t, ast.Table{Inner: ast.MakeString("123")})
-	testError(t, ast.Table{Inner: ast.Dict{Values: map[string]ast.Ast{}}})
-
-	// even for lists, it only works when its items are dicts
-	testError(t, ast.Table{Inner: ast.List{Values: []ast.Ast{ast.MakeInt(123)}}})
-	testError(t, ast.Table{Inner: ast.List{Values: []ast.Ast{ast.Dict{Values: map[string]ast.Ast{}}, ast.MakeInt(123)}}})
-
-	// and even then, it only works when they all have the same schema
-	testError(t, &ast.Table{Inner: ast.List{Values: []ast.Ast{ast.Dict{Values: map[string]ast.Ast{
-		"a": ast.MakeInt(123),
-		"b": ast.MakeBool(true),
-	}},
-		ast.Dict{Values: map[string]ast.Ast{}}}}},
-	)
-
-	testError(t, ast.Table{Inner: ast.List{Values: []ast.Ast{
-		ast.Dict{Values: map[string]ast.Ast{
-			"a": ast.MakeInt(123),
-			"b": ast.MakeBool(true),
-		}},
-		ast.Dict{Values: map[string]ast.Ast{
-			"a": ast.MakeInt(123),
-			"c": ast.MakeBool(true),
-		}},
-	}}})
-
-	// same for nested
-	testError(t, &ast.Table{Inner: ast.List{Values: []ast.Ast{
-		ast.Dict{Values: map[string]ast.Ast{
-			"a": ast.MakeInt(123),
-			"b": ast.Dict{
-				Values: map[string]ast.Ast{
-					"inner": ast.MakeInt(123),
-				},
-			},
-		}},
-		ast.Dict{Values: map[string]ast.Ast{
-			"a": ast.MakeInt(123),
-			"c": ast.MakeBool(false),
-		}},
-	}}})
-}
-
 func TestInterpreter_VisitOpcall(t *testing.T) {
 	astrow1 := ast.Dict{
 		Values: map[string]ast.Ast{
@@ -314,7 +222,7 @@ func TestInterpreter_QueryArgs(t *testing.T) {
 var res value.Value
 
 func benchmarkInterpreter_VisitOpcall(numRows int, b *testing.B) {
-	table := value.NewTable()
+	table := value.List{}
 	for i := 0; i < numRows; i++ {
 		row := value.Dict{"hi": value.Int(i), "bye": value.Double(i)}
 		table.Append(row)

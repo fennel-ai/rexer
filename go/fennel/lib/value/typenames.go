@@ -9,7 +9,6 @@ type _types struct {
 	Bool   reflect.Type
 	List   reflect.Type
 	Dict   reflect.Type
-	Table  reflect.Type
 	Any    reflect.Type
 }
 
@@ -23,7 +22,6 @@ func init() {
 		Double: reflect.TypeOf(Double(1.0)),
 		List:   reflect.TypeOf(List{Int(1), Double(3.4)}),
 		Dict:   reflect.TypeOf(Dict{}),
-		Table:  reflect.TypeOf(Table{}),
 		Any:    reflect.TypeOf((*Value)(nil)).Elem(),
 	}
 }
@@ -42,8 +40,6 @@ func (ts _types) ToString(t reflect.Type) string {
 		return "List"
 	case Types.Dict:
 		return "Dict"
-	case Types.Table:
-		return "Table"
 	case Types.Any:
 		return "Any"
 	default:

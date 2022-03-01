@@ -1,8 +1,9 @@
 package value
 
 import (
-	"github.com/stretchr/testify/assert"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func verifyMarshalUnMarshal(t *testing.T, v Value) {
@@ -54,16 +55,6 @@ func TestEqualMarshal(t *testing.T) {
 	dict1 := Dict(kwargs)
 	verifyMarshalUnMarshal(t, dict1)
 	verifyMarshalUnMarshal(t, Dict(map[string]Value{}))
-
-	kwargs2 := make(map[string]Value, 0)
-	kwargs2["a"] = Int(3)
-	kwargs2["b"] = String("hi")
-	kwargs2["c"] = list
-	dict2 := Dict(kwargs)
-	table := NewTable()
-	table.Append(dict1)
-	table.Append(dict2)
-	verifyMarshalUnMarshal(t, table)
 }
 
 func TestUnequalMarshal(t *testing.T) {

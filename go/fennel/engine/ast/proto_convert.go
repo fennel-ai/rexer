@@ -25,8 +25,6 @@ func ToProtoAst(ast Ast) (proto.Ast, error) {
 		return ast.(Query).toProto()
 	case OpCall:
 		return ast.(OpCall).toProto()
-	case Table:
-		return ast.(Table).toProto()
 	case Lookup:
 		return ast.(Lookup).toProto()
 	case At:
@@ -56,8 +54,6 @@ func FromProtoAst(past *proto.Ast) (Ast, error) {
 		return fromProtoOpcall(past.Node.(*proto.Ast_Opcall))
 	case *proto.Ast_Var:
 		return fromProtoVar(past.Node.(*proto.Ast_Var))
-	case *proto.Ast_Table:
-		return fromProtoTable(past.Node.(*proto.Ast_Table))
 	case *proto.Ast_At:
 		return fromProtoAt(past.Node.(*proto.Ast_At))
 	case *proto.Ast_Lookup:
@@ -205,14 +201,6 @@ func (va Var) toProto() (proto.Ast, error) {
 	return proto.Ast{Node: &proto.Ast_Var{Var: &proto.Var{Name: va.Name}}}, nil
 }
 
-func (t Table) toProto() (proto.Ast, error) {
-	pinner, err := ToProtoAst(t.Inner)
-	if err != nil {
-		return pnull(), err
-	}
-	return proto.Ast{Node: &proto.Ast_Table{Table: &proto.Table{Inner: &pinner}}}, nil
-}
-
 func (ifelse IfElse) toProto() (proto.Ast, error) {
 	protoCondition, err := ToProtoAst(ifelse.Condition)
 	if err != nil {
@@ -253,14 +241,6 @@ func fromProtoLookup(plookup *proto.Ast_Lookup) (Ast, error) {
 		return null, err
 	}
 	return Lookup{On: on, Property: plookup.Lookup.Property}, nil
-}
-
-func fromProtoTable(ptable *proto.Ast_Table) (Ast, error) {
-	table, err := FromProtoAst(ptable.Table.Inner)
-	if err != nil {
-		return null, err
-	}
-	return Table{Inner: table}, nil
 }
 
 func fromProtoVar(pvar *proto.Ast_Var) (Ast, error) {

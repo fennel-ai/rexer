@@ -31,18 +31,6 @@ func ToProtoValue(v Value) (PValue, error) {
 			return PValue{Node: &PValue_Nil{}}, err
 		}
 		return PValue{Node: &PValue_Dict{Dict: &pvd}}, nil
-	case Table:
-		list := make([]*PVDict, 0)
-		table := v.(Table)
-		for _, v := range table.Pull() {
-			pv, err := ToProtoDict(v)
-			if err != nil {
-				return PValue{Node: &PValue_Nil{}}, err
-			}
-			list = append(list, &pv)
-		}
-		pvl := &PVTable{Rows: list}
-		return PValue{Node: &PValue_Table{Table: pvl}}, nil
 	case nil_:
 		return PValue{Node: &PValue_Nil{}}, nil
 	default:
@@ -85,21 +73,6 @@ func FromProtoValue(pv *PValue) (Value, error) {
 		}
 		return NewDict(ret)
 	}
-	if pvt, ok := pv.Node.(*PValue_Table); ok {
-		ret := NewTable()
-		for _, pv := range pvt.Table.Rows {
-			d, err := FromProtoDict(pv)
-			if err != nil {
-				return Nil, fmt.Errorf("can not convert element of dict to value: %v", pv)
-			}
-			err = ret.Append(d)
-			if err != nil {
-				return Nil, fmt.Errorf("can not append dict: %v", err)
-			}
-		}
-		return ret, nil
-	}
-
 	if _, ok := pv.Node.(*PValue_Nil); ok {
 		return Nil, nil
 	}
