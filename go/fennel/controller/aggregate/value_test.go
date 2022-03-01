@@ -31,7 +31,7 @@ func TestValueAll(t *testing.T) {
 		Query:     ast.MakeInt(0),
 		Timestamp: t0,
 		Options: aggregate.Options{
-			AggType:  "count",
+			AggType:  "sum",
 			Duration: 6 * 3600,
 		},
 	}

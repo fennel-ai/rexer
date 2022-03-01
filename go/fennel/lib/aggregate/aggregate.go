@@ -12,8 +12,8 @@ import (
 )
 
 var ValidTypes = []ftypes.AggType{
-	"count",
-	"timeseries_count",
+	"sum",
+	"timeseries_sum",
 	"average",
 	"list",
 	"min",
@@ -49,7 +49,7 @@ func (agg Aggregate) Validate() error {
 	options := agg.Options
 	aggtype := agg.Options.AggType
 	switch strings.ToLower(string(aggtype)) {
-	case "count", "average", "min", "max", "stddev", "list":
+	case "sum", "average", "min", "max", "stddev", "list":
 		if options.Duration == 0 {
 			return fmt.Errorf("duration can not be zero for %s", aggtype)
 		}
@@ -63,12 +63,12 @@ func (agg Aggregate) Validate() error {
 		if options.Window != 0 || options.Limit != 0 {
 			return fmt.Errorf("window, limit should all be zero for %v", aggtype)
 		}
-	case "timeseries_count":
+	case "timeseries_sum":
 		if options.Window != ftypes.Window_HOUR && options.Window != ftypes.Window_DAY {
 			return fmt.Errorf("valid windows for time series are 'HOUR' or 'DAY' but got: '%v' instead", options.Window)
 		}
 		if options.Limit == 0 {
-			return fmt.Errorf("limit can not be zero for time series counters")
+			return fmt.Errorf("limit can not be zero for time series sum")
 		}
 		if options.Duration != 0 || options.Normalize {
 			return fmt.Errorf("duration, normalize are not relevant for time series and should be set to zero")

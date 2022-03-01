@@ -215,7 +215,7 @@ func TestServer_AggregateValue_Valid(t *testing.T) {
 		Query:     ast.MakeInt(1),
 		Timestamp: t0,
 		Options: aggregate.Options{
-			AggType:  "count",
+			AggType:  "sum",
 			Duration: 6 * 3600,
 		},
 	}
@@ -253,7 +253,7 @@ func TestServer_BatchAggregateValue(t *testing.T) {
 		Query:     ast.MakeInt(0),
 		Timestamp: t0,
 		Options: aggregate.Options{
-			AggType:  "count",
+			AggType:  "sum",
 			Duration: 6 * 3600,
 		},
 	}
@@ -318,7 +318,7 @@ func TestStoreRetrieveDeactivateAggregate(t *testing.T) {
 		Name:  "mycounter",
 		Query: ast.MakeInt(1),
 		Options: aggregate.Options{
-			AggType:  "count",
+			AggType:  "sum",
 			Duration: 3600 * 24,
 		},
 		Timestamp: 123,
@@ -333,7 +333,7 @@ func TestStoreRetrieveDeactivateAggregate(t *testing.T) {
 		Name:  "mycounter",
 		Query: ast.MakeDouble(3.4),
 		Options: aggregate.Options{
-			AggType:  "count",
+			AggType:  "sum",
 			Duration: 3600 * 24 * 2,
 		},
 		Timestamp: 123,

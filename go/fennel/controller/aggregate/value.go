@@ -103,9 +103,9 @@ func loadInterpreter(tier tier.Tier, actions []libaction.Action) (interpreter.In
 
 func toHistogram(agg aggregate.Aggregate) (modelCounter.Histogram, error) {
 	switch agg.Options.AggType {
-	case "count":
+	case "sum":
 		return modelCounter.RollingCounter{Duration: agg.Options.Duration}, nil
-	case "timeseries_count":
+	case "timeseries_sum":
 		return modelCounter.TimeseriesCounter{
 			Window: agg.Options.Window, Limit: agg.Options.Limit,
 		}, nil

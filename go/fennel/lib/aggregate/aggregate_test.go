@@ -10,10 +10,10 @@ import (
 
 func TestAggregate_Validate_Valid(t *testing.T) {
 	validCases := []Aggregate{
-		{Name: "some name", Options: Options{AggType: "count", Duration: 1231}},
+		{Name: "some name", Options: Options{AggType: "sum", Duration: 1231}},
 		{Name: "some name", Options: Options{AggType: "average", Duration: 1231}},
-		{Name: "some name", Options: Options{AggType: "timeseries_count", Window: ftypes.Window_DAY, Limit: 10}},
-		{Name: "some name", Options: Options{AggType: "timeseries_count", Window: ftypes.Window_HOUR, Limit: 10}},
+		{Name: "some name", Options: Options{AggType: "timeseries_sum", Window: ftypes.Window_DAY, Limit: 10}},
+		{Name: "some name", Options: Options{AggType: "timeseries_sum", Window: ftypes.Window_HOUR, Limit: 10}},
 		{Name: "some name", Options: Options{AggType: "list", Duration: 1212}},
 		{Name: "some name", Options: Options{AggType: "min", Duration: 1212}},
 		{Name: "some name", Options: Options{AggType: "max", Duration: 1212}},
@@ -25,20 +25,21 @@ func TestAggregate_Validate_Valid(t *testing.T) {
 		assert.NoError(t, test.Validate())
 	}
 }
+
 func TestAggregate_Validate_Invalid(t *testing.T) {
 	validCases := []Aggregate{
-		{Options: Options{AggType: "count", Duration: 0}},
-		{Options: Options{AggType: "count", Window: ftypes.Window_MINUTE}},
-		{Options: Options{AggType: "count", Window: ftypes.Window_MINUTE, Duration: 123}},
-		{Options: Options{AggType: "count", Window: ftypes.Window_MINUTE, Limit: 123}},
+		{Options: Options{AggType: "sum", Duration: 0}},
+		{Options: Options{AggType: "sum", Window: ftypes.Window_MINUTE}},
+		{Options: Options{AggType: "sum", Window: ftypes.Window_MINUTE, Duration: 123}},
+		{Options: Options{AggType: "sum", Window: ftypes.Window_MINUTE, Limit: 123}},
 		{Options: Options{AggType: "average", Duration: 0}},
 		{Options: Options{AggType: "average", Window: ftypes.Window_MINUTE}},
 		{Options: Options{AggType: "average", Window: ftypes.Window_MINUTE, Duration: 123}},
 		{Options: Options{AggType: "average", Window: ftypes.Window_MINUTE, Limit: 123}},
-		{Options: Options{AggType: "timeseries_count", Limit: 10}},
-		{Options: Options{AggType: "timeseries_count", Window: ftypes.Window_HOUR}},
-		{Options: Options{AggType: "timeseries_count", Duration: 41}},
-		{Options: Options{AggType: "timeseries_count", Window: ftypes.Window_HOUR, Limit: 10, Duration: 12}},
+		{Options: Options{AggType: "timeseries_sum", Limit: 10}},
+		{Options: Options{AggType: "timeseries_sum", Window: ftypes.Window_HOUR}},
+		{Options: Options{AggType: "timeseries_sum", Duration: 41}},
+		{Options: Options{AggType: "timeseries_sum", Window: ftypes.Window_HOUR, Limit: 10, Duration: 12}},
 		{Options: Options{AggType: "list", Window: ftypes.Window_HOUR, Limit: 10, Duration: 12}},
 		{Options: Options{AggType: "list", Window: ftypes.Window_HOUR, Duration: 12}},
 		{Options: Options{AggType: "list", Window: ftypes.Window_HOUR}},
