@@ -17,7 +17,7 @@ export const plugins = {
 }
 
 
-interface map {
+export interface map {
     [key: string]: string;
 }
 
