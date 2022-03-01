@@ -136,30 +136,30 @@ const setupResources = async () => {
         })
     })
     // setup ingress.
-    await ingress.setup({
+    const ingressOutput = await ingress.setup({
         kubeconfig: input.kubeconfig,
         namespace: input.namespace,
         subnetIds: input.subnetIds,
         loadBalancerScheme: input.loadBalancerScheme,
     })
-    // setup countaggr after configs are setup.
     configsOutput.apply(async () => {
-        return await countaggr.setup({
+        // setup api-server and countaggr after configs are setup.
+        await countaggr.setup({
+            roleArn: input.roleArn,
+            region: input.region,
+            kubeconfig: input.kubeconfig,
+            namespace: input.namespace,
+        });
+        await httpserver.setup({
             roleArn: input.roleArn,
             region: input.region,
             kubeconfig: input.kubeconfig,
             namespace: input.namespace,
         });
     })
-    // setup httpserver after ingress and configs are setup.
-    configsOutput.apply(async () => {
-        return await httpserver.setup({
-            roleArn: input.roleArn,
-            region: input.region,
-            kubeconfig: input.kubeconfig,
-            namespace: input.namespace,
-        });
-    })
+    return {
+        "ingress": ingressOutput
+    }
 };
 
 type TierConf = {
