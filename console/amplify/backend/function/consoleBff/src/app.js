@@ -80,12 +80,19 @@ app.get("/actions/profiles", async (req, res) => {
   try {
     const tierUrl = mapUserToDomain(req);
     const apiUrl = `${tierUrl}/${PROFILE_URL}`;
-    const result = await axios.get(apiUrl, {
+    await axios.get(apiUrl, {
       params: req.query,
+    }).then(result => {
+      res.status(200).json({ data: result.data });
+    }).catch(error => {
+      if(error.response) {
+        res.status(error.response.status).json({error: error.response.data})
+      } else {
+        res.status(500).json({ error: error.message })
+      }
     });
-    res.json({ data: result.data });
   } catch (err) {
-    res.json({ error: err.message });
+    res.status(400).json({ error: err.message });
   }
 });
 
@@ -93,12 +100,19 @@ app.get("/actions/actions", async (req, res) => {
   try {
     const tierUrl = mapUserToDomain(req);
     const apiUrl = `${tierUrl}/${ACTION_URL}`;
-    const result = await axios.get(apiUrl, {
+    await axios.get(apiUrl, {
       params: req.query,
+    }).then(result => {
+      res.status(200).json({ data: result.data });
+    }).catch(error => {
+      if(error.response) {
+        res.status(error.response.status).json({error: error.response.data})
+      } else {
+        res.status(500).json({ error: error.message })
+      }
     });
-    res.json({ data: result.data });
   } catch (err) {
-    res.json({ error: err.message });
+    res.status(400).json({ error: err.message });
   }
 });
 
