@@ -42,7 +42,7 @@ func TestRolling(t *testing.T) {
 
 	key := value.List{value.Int(1), value.Int(2)}
 	assert.NoError(t, aggregate.Store(ctx, tier, agg.Name, querySer, agg.Timestamp, optionSer))
-	table := value.NewTable()
+	table := value.List{}
 	// create an event every minute for 2 days
 	for i := 0; i < 60*24*2; i++ {
 		ts := ftypes.Timestamp(start + i*60 + 30)
@@ -94,7 +94,7 @@ func TestTimeseries(t *testing.T) {
 
 	assert.NoError(t, aggregate.Store(ctx, tier, agg.Name, querySer, agg.Timestamp, optionSer))
 	key := value.List{value.Int(1), value.Int(2)}
-	table := value.NewTable()
+	table := value.List{}
 	// create an event every minute for 2 days
 	for i := 0; i < 60*24*2; i++ {
 		ts := ftypes.Timestamp(start + i*60 + 30)
@@ -152,7 +152,7 @@ func TestRollingAverage(t *testing.T) {
 
 	key := value.List{value.Int(1), value.Int(2)}
 	//assert.NoError(t, aggregate.Store(tier, agg.Name, querySer, agg.Timestamp, optionSer))
-	table := value.NewTable()
+	table := value.List{}
 	// create an event every minute for 2 days
 	for i := 0; i < 60*24*2; i++ {
 		ts := ftypes.Timestamp(start + i*60 + 30)
@@ -187,7 +187,7 @@ func TestStream(t *testing.T) {
 	aggname := ftypes.AggName("some stream")
 
 	key := value.List{value.String("user_follows"), value.Int(2)}
-	table := value.NewTable()
+	table := value.List{}
 	expected := make([]value.Value, 0)
 	// create an event every minute for 2 days
 	for i := 0; i < 60*24*2; i++ {
@@ -225,7 +225,7 @@ func TestRate(t *testing.T) {
 	aggname := ftypes.AggName("some rate")
 
 	key := value.List{value.String("user_follows"), value.Int(2)}
-	table := value.NewTable()
+	table := value.List{}
 	// create an event every minute for 2 days
 	var num, den int64 = 0, 0
 	for i := 0; i < 60*24*2; i++ {
@@ -273,7 +273,7 @@ func TestCounterUpdateInvalid(t *testing.T) {
 }
 
 func assertInvalid(tier tier.Tier, ctx context.Context, t *testing.T, ds ...value.Dict) {
-	table := value.NewTable()
+	table := value.List{}
 	for _, d := range ds {
 		err := table.Append(d)
 		assert.NoError(t, err)

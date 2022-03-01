@@ -23,15 +23,16 @@ func (a AggValue) Init(_ value.Dict, bootargs map[string]interface{}) error {
 	return nil
 }
 
-func (a AggValue) Apply(kwargs value.Dict, in operators.InputIter, out *value.Table) error {
+func (a AggValue) Apply(kwargs value.Dict, in operators.InputIter, out *value.List) error {
 	name := string(kwargs["name"].(value.String))
 	aggname := string(kwargs["aggregate"].(value.String))
 
 	for in.HasMore() {
-		row, contextKwargs, err := in.Next()
+		rowVal, contextKwargs, err := in.Next()
 		if err != nil {
 			return err
 		}
+		row := rowVal.(value.Dict)
 		key := contextKwargs["key"]
 		row[name], err = aggregate.Value(context.TODO(), a.tier, ftypes.AggName(aggname), key)
 		if err != nil {

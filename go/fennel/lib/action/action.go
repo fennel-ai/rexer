@@ -182,15 +182,15 @@ func (a Action) ToValueDict() value.Dict {
 	}
 }
 
-// ToTable takes a list of actions and arranges that in a value.Table if possible,
+// ToList takes a list of actions and arranges that in a value.List
 // else returns errors
-func ToTable(actions []Action) (value.Table, error) {
-	table := value.NewTable()
+func ToList(actions []Action) (value.List, error) {
+	table := value.List{}
 	for i := range actions {
 		d := actions[i].ToValueDict()
 		err := table.Append(d)
 		if err != nil {
-			return value.Table{}, err
+			return value.List{}, err
 		}
 	}
 	return table, nil

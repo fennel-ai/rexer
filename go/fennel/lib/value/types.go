@@ -213,6 +213,9 @@ func (l *List) Append(v Value) error {
 	*l = append(*l, v)
 	return nil
 }
+func (l *List) Iter() Iter {
+	return Iter{0, *l}
+}
 
 type Dict map[string]Value
 
@@ -320,23 +323,19 @@ func (t *Table) Pull() []Dict {
 	return t.rows
 }
 
-func (t *Table) Iter() Iter {
-	return Iter{0, t.rows}
-}
-
 type Iter struct {
 	next int
-	rows []Dict
+	rows List
 }
 
 func (iter *Iter) HasMore() bool {
 	return iter.next < len(iter.rows)
 }
 
-func (iter *Iter) Next() (Dict, error) {
+func (iter *Iter) Next() (Value, error) {
 	curr := iter.next
 	if curr >= len(iter.rows) {
-		return Dict{}, fmt.Errorf("exhaused iter - no more items to iterate upon")
+		return nil, fmt.Errorf("exhaused iter - no more items to iterate upon")
 	}
 	iter.next += 1
 	return iter.rows[curr], nil

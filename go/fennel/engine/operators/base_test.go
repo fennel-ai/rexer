@@ -19,7 +19,7 @@ func (top testOp) Init(args value.Dict, bootargs map[string]interface{}) error {
 	return nil
 }
 
-func (top testOp) Apply(kwargs value.Dict, in InputIter, out *value.Table) error {
+func (top testOp) Apply(kwargs value.Dict, in InputIter, out *value.List) error {
 	return nil
 }
 
@@ -39,7 +39,7 @@ func (top testOp2) Init(_ value.Dict, bootargs map[string]interface{}) error {
 	return nil
 }
 
-func (top testOp2) Apply(_ value.Dict, _ InputIter, _ *value.Table) error {
+func (top testOp2) Apply(_ value.Dict, _ InputIter, _ *value.List) error {
 	return nil
 }
 
@@ -55,7 +55,7 @@ func (top testOp3) Init(_ value.Dict, bootargs map[string]interface{}) error {
 	return nil
 }
 
-func (top testOp3) Apply(_ value.Dict, _ InputIter, _ *value.Table) error {
+func (top testOp3) Apply(_ value.Dict, _ InputIter, _ *value.List) error {
 	return nil
 }
 
@@ -63,33 +63,79 @@ func (top testOp3) Signature() *Signature {
 	return NewSignature(top, "anothertest", "anotherop")
 }
 
-func TestTypecheck(t *testing.T) {
+func TestTypeCheckStaticKwargs(t *testing.T) {
+	t.Parallel()
+	op := testOp{}
+	scenarios := []struct {
+		given   map[string]reflect.Type
+		matches bool
+	}{
+		{
+			map[string]reflect.Type{"p1": value.Types.Bool, "p3": value.Types.String},
+			true,
+		},
+		{
+			map[string]reflect.Type{"p1": value.Types.Bool, "p2": value.Types.Double},
+			false,
+		},
+		{
+			map[string]reflect.Type{},
+			false,
+		},
+	}
+	for _, scenario := range scenarios {
+		err := TypeCheckStaticKwargs(op, scenario.given)
+		if scenario.matches {
+			assert.NoError(t, err)
+		} else {
+			assert.Error(t, err)
+		}
+	}
+}
+
+func TestTypeCheck(t *testing.T) {
+	t.Parallel()
 	op := testOp{}
 
-	// if we don't pass all kwargsCorrect & inputIncorrect, it doesn't work
-	kwargsCorrect := map[string]reflect.Type{"p1": value.Types.Bool, "p3": value.Types.String}
-	kwargsIncorrect := map[string]reflect.Type{
-		"p1": value.Types.Bool,
-		"p2": value.Types.Double,
+	scenarios := []struct {
+		input   reflect.Type
+		context map[string]reflect.Type
+		matches bool
+	}{
+		{
+			value.Types.String,
+			map[string]reflect.Type{"p2": value.Types.Double},
+			true,
+		},
+		{
+			reflect.TypeOf(2),
+			map[string]reflect.Type{"p2": value.Types.Double},
+			false,
+		},
+		{
+			value.Types.Int,
+			map[string]reflect.Type{"p2": value.Types.Double},
+			false,
+		},
+		{
+			value.Types.String,
+			map[string]reflect.Type{"p2": value.Types.Int},
+			false,
+		},
+		{
+			value.Types.String,
+			map[string]reflect.Type{},
+			false,
+		},
 	}
-	empty := map[string]reflect.Type{}
-	inputIncorrect1 := reflect.TypeOf(2)
-	inputIncorrect2 := reflect.TypeOf(value.Int(2))
-	inputCorrect := value.Types.String
-	contextual := map[string]reflect.Type{"p2": value.Types.Double}
-
-	assert.Error(t, Typecheck(op, kwargsCorrect, inputIncorrect1, empty))
-	assert.Error(t, Typecheck(op, kwargsCorrect, inputIncorrect2, empty))
-	assert.Error(t, Typecheck(op, kwargsCorrect, inputIncorrect1, contextual))
-	assert.Error(t, Typecheck(op, kwargsCorrect, inputCorrect, empty))
-	assert.Error(t, Typecheck(op, kwargsIncorrect, inputCorrect, contextual))
-
-	// but it works when all are correct
-	assert.NoError(t, Typecheck(op, kwargsCorrect, inputCorrect, contextual))
-
-	// and for kwargs with type of any, really any type works
-	kwargsCorrect = map[string]reflect.Type{"p1": value.Types.Bool, "p3": value.Types.List}
-	assert.NoError(t, Typecheck(op, kwargsCorrect, inputCorrect, contextual))
+	for _, scenario := range scenarios {
+		err := Typecheck(op, scenario.input, scenario.context)
+		if scenario.matches {
+			assert.NoError(t, err)
+		} else {
+			assert.Error(t, err)
+		}
+	}
 }
 
 func TestRegister(t *testing.T) {

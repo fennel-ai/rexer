@@ -72,18 +72,18 @@ func Update(ctx context.Context, tier tier.Tier, consumer kafka.FConsumer, agg a
 // Private helpers below
 //============================
 
-func transformActions(tier tier.Tier, actions []libaction.Action, query ast.Ast) (value.Table, error) {
+func transformActions(tier tier.Tier, actions []libaction.Action, query ast.Ast) (value.List, error) {
 	interpreter, err := loadInterpreter(tier, actions)
 	if err != nil {
-		return value.Table{}, err
+		return value.List{}, err
 	}
 	result, err := query.AcceptValue(interpreter)
 	if err != nil {
-		return value.Table{}, err
+		return value.List{}, err
 	}
-	table, ok := result.(value.Table)
+	table, ok := result.(value.List)
 	if !ok {
-		return value.Table{}, fmt.Errorf("query did not transform actions into a table")
+		return value.List{}, fmt.Errorf("query did not transform actions into a list")
 	}
 	return table, nil
 }
@@ -91,7 +91,7 @@ func transformActions(tier tier.Tier, actions []libaction.Action, query ast.Ast)
 func loadInterpreter(tier tier.Tier, actions []libaction.Action) (interpreter.Interpreter, error) {
 	bootargs := bootarg.Create(tier)
 	ret := interpreter.NewInterpreter(bootargs)
-	table, err := libaction.ToTable(actions)
+	table, err := libaction.ToList(actions)
 	if err != nil {
 		return ret, err
 	}

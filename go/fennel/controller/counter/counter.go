@@ -20,7 +20,7 @@ func Value(ctx context.Context, tier tier.Tier, aggname ftypes.AggName, key valu
 	return histogram.Reduce(counts)
 }
 
-func Update(ctx context.Context, tier tier.Tier, aggname ftypes.AggName, table value.Table, histogram counter.Histogram) error {
+func Update(ctx context.Context, tier tier.Tier, aggname ftypes.AggName, table value.List, histogram counter.Histogram) error {
 	buckets, err := counter.Bucketize(histogram, table)
 	if err != nil {
 		return err

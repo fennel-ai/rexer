@@ -177,7 +177,7 @@ func TestRate_Merge_Invalid(t *testing.T) {
 func TestRate_Bucketize_Valid(t *testing.T) {
 	t.Parallel()
 	h := Rate{}
-	actions := value.NewTable()
+	actions := value.List{}
 	expected := make([]Bucket, 0)
 	DAY := 3600 * 24
 	for i := 0; i < 5; i++ {
@@ -215,7 +215,7 @@ func TestRate_Bucketize_Invalid(t *testing.T) {
 		{value.Dict{"groupkey": value.Int(1), "timestamp": value.Int(2), "value": value.List{value.Double(1), value.Double(2)}}},
 	}
 	for _, test := range cases {
-		table := value.NewTable()
+		table := value.List{}
 		for _, d := range test {
 			assert.NoError(t, table.Append(d))
 		}

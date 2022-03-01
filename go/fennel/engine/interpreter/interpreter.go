@@ -7,7 +7,6 @@ import (
 
 	"fennel/engine/ast"
 	"fennel/engine/operators"
-	"fennel/lib/utils"
 	"fennel/lib/value"
 )
 
@@ -207,9 +206,9 @@ func (i Interpreter) VisitOpcall(operand ast.Ast, namespace, name string, kwargs
 	if err != nil {
 		return value.Nil, err
 	}
-	inData, ok := val.(value.Table)
+	inData, ok := val.(value.List)
 	if !ok {
-		return value.Nil, fmt.Errorf("operator '%s.%s' can not be applied: operand not a table", namespace, name)
+		return value.Nil, fmt.Errorf("operator '%s.%s' can not be applied: operand not a list", namespace, name)
 	}
 
 	// find & init the operator
@@ -222,21 +221,18 @@ func (i Interpreter) VisitOpcall(operand ast.Ast, namespace, name string, kwargs
 	if err != nil {
 		return value.Nil, err
 	}
+	if err = operators.TypeCheckStaticKwargs(op, staticKwargs.Schema()); err != nil {
+		return value.Nil, err
+	}
 
 	// and same for dynamic kwargs to create InputTable
 	inputTable, err := i.getContextKwargs(op, kwargs, inData)
 	if err != nil {
 		return value.Nil, err
 	}
-	// verify typing of all kwargs
-	_, contextKwargSchema := inputTable.Schema()
-	// TODO: for now, we treat all input as list of dicts but we will change this soon
-	if err = operators.Typecheck(op, staticKwargs.Schema(), value.Types.Dict, contextKwargSchema); err != nil {
-		return value.Nil, err
-	}
-
 	// finally, call the operator
-	outtable := value.NewTable()
+	// typing of input / context kwargs is verified element by element inside the iter
+	outtable := value.List{}
 	if err = op.Apply(staticKwargs, inputTable.Iter(), &outtable); err != nil {
 		return value.Nil, err
 	}
@@ -293,32 +289,32 @@ func (i Interpreter) getStaticKwargs(op operators.Operator, kwargs ast.Dict) (va
 	return ret, nil
 }
 
-func (i Interpreter) getContextKwargs(op operators.Operator, trees ast.Dict, table value.Table) (utils.ZipTable, error) {
-	ret := utils.NewZipTable()
+func (i Interpreter) getContextKwargs(op operators.Operator, trees ast.Dict, table value.List) (operators.ZipTable, error) {
+	ret := operators.NewZipTable(op)
 	sig := op.Signature()
-	for _, v := range table.Pull() {
+	for _, v := range table {
 		kwargs := make(map[string]value.Value)
 		for k, p := range sig.ContextKwargs {
 			tree, ok := trees.Values[k]
 			switch {
 			case !ok && !p.Optional:
-				return utils.ZipTable{}, fmt.Errorf("kwarg '%s' not provided for operator '%s.%s'", k, sig.Module, sig.Name)
+				return operators.ZipTable{}, fmt.Errorf("kwarg '%s' not provided for operator '%s.%s'", k, sig.Module, sig.Name)
 			case !ok && p.Optional:
 				kwargs[k] = p.Default
 			case ok:
 				val, err := i.visitInContext(tree, v)
 				if err != nil {
-					return utils.ZipTable{}, fmt.Errorf("error: %s while evaluating kwarg: %s for operator '%s.%s'", err, k, sig.Module, sig.Name)
+					return operators.ZipTable{}, fmt.Errorf("error: %s while evaluating kwarg: %s for operator '%s.%s'", err, k, sig.Module, sig.Name)
 				}
 				kwargs[k] = val
 			}
 		}
 		dict, err := value.NewDict(kwargs)
 		if err != nil {
-			return utils.ZipTable{}, err
+			return operators.ZipTable{}, err
 		}
 		if err = ret.Append(v, dict); err != nil {
-			return utils.ZipTable{}, err
+			return operators.ZipTable{}, err
 		}
 	}
 	return ret, nil

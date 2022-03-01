@@ -24,7 +24,7 @@ func (t timeBucketOfDay) Init(args value.Dict, bootargs map[string]interface{}) 
 	return nil
 }
 
-func (t timeBucketOfDay) Apply(kwargs value.Dict, in operators.InputIter, out *value.Table) error {
+func (t timeBucketOfDay) Apply(kwargs value.Dict, in operators.InputIter, out *value.List) error {
 	name := string(kwargs["name"].(value.String))
 	bucket := kwargs["bucket"].(value.Int)
 	if bucket <= 0 {
@@ -32,10 +32,11 @@ func (t timeBucketOfDay) Apply(kwargs value.Dict, in operators.InputIter, out *v
 	}
 	day := int64(24 * 3600)
 	for in.HasMore() {
-		row, contextKwargs, err := in.Next()
+		rowVal, contextKwargs, err := in.Next()
 		if err != nil {
 			return err
 		}
+		row := rowVal.(value.Dict)
 		timestamp := contextKwargs["timestamp"].(value.Int)
 		if timestamp <= 0 {
 			return fmt.Errorf("timestamp expected to be positive but found: %v instead", timestamp)
@@ -64,15 +65,16 @@ func (d dayOfWeek) Init(args value.Dict, bootargs map[string]interface{}) error 
 	return nil
 }
 
-func (d dayOfWeek) Apply(kwargs value.Dict, in operators.InputIter, out *value.Table) error {
+func (d dayOfWeek) Apply(kwargs value.Dict, in operators.InputIter, out *value.List) error {
 	name := string(kwargs["name"].(value.String))
 	week := int64(7 * 24 * 3600)
 	day := int64(24 * 3600)
 	for in.HasMore() {
-		row, contextKwargs, err := in.Next()
+		rowVal, contextKwargs, err := in.Next()
 		if err != nil {
 			return err
 		}
+		row := rowVal.(value.Dict)
 		timestamp := contextKwargs["timestamp"].(value.Int)
 		if timestamp <= 0 {
 			return fmt.Errorf("timestamp should be positive but got: %v instead", timestamp)

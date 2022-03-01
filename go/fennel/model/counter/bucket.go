@@ -2,6 +2,7 @@ package counter
 
 import (
 	"fmt"
+	"reflect"
 
 	"fennel/lib/ftypes"
 	"fennel/lib/value"
@@ -14,26 +15,28 @@ type Bucket struct {
 	Count  value.Value
 }
 
-func Bucketize(histogram Histogram, actions value.Table) ([]Bucket, error) {
-	schema := actions.Schema()
-	_, ok := schema["groupkey"]
-	if !ok {
-		return nil, fmt.Errorf("action does not have a field called 'groupkey'")
-	}
-	type_, ok := schema["timestamp"]
-	if !ok || type_ != value.Types.Int {
-		return nil, fmt.Errorf("action does not have a field called 'timestamp' with datatype of 'int'")
-	}
-	type_, ok = schema["value"]
-	if !ok {
-		return nil, fmt.Errorf("action does not have a field called 'value'")
-	}
-	buckets := make([]Bucket, 0, actions.Len())
-	for _, row := range actions.Pull() {
-		ts := row["timestamp"].(value.Int)
-		key := row["groupkey"].String()
-		v := row["value"]
-		b, err := histogram.Bucketize(key, v, ftypes.Timestamp(ts))
+func Bucketize(histogram Histogram, actions value.List) ([]Bucket, error) {
+	buckets := make([]Bucket, 0, len(actions))
+	for _, rowVal := range actions {
+		row, ok := rowVal.(value.Dict)
+		if !ok {
+			return nil, fmt.Errorf("action expected to be dict but found: '%v'", rowVal)
+		}
+		groupkey, ok := row["groupkey"]
+		if !ok {
+			return nil, fmt.Errorf("action '%v' does not have a field called 'groupkey'", rowVal)
+		}
+		ts, ok := row["timestamp"]
+		if !ok || reflect.TypeOf(ts) != value.Types.Int {
+			return nil, fmt.Errorf("action '%v' does not have a field called 'timestamp' with datatype of 'int'", row)
+		}
+		v, ok := row["value"]
+		if !ok {
+			return nil, fmt.Errorf("action '%v' does not have a field called 'value'", row)
+		}
+		ts_int := ts.(value.Int)
+		key := groupkey.String()
+		b, err := histogram.Bucketize(key, v, ftypes.Timestamp(ts_int))
 		if err != nil {
 			return nil, err
 		}

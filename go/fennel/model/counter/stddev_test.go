@@ -98,7 +98,7 @@ func TestStddev_Merge_Invalid(t *testing.T) {
 func TestStddev_Bucketize_Valid(t *testing.T) {
 	t.Parallel()
 	h := Stddev{}
-	actions := value.NewTable()
+	actions := value.List{}
 	expected := make([]Bucket, 0)
 	DAY := 3600 * 24
 	for i := 0; i < 5; i++ {
@@ -135,7 +135,7 @@ func TestStddev_Bucketize_Invalid(t *testing.T) {
 		{value.Dict{"timestamp": value.Int(1), "value": value.Int(3)}},
 	}
 	for _, test := range cases {
-		table := value.NewTable()
+		table := value.List{}
 		for _, d := range test {
 			assert.NoError(t, table.Append(d))
 		}

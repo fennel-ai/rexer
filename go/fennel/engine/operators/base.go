@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"reflect"
 
-	"fennel/lib/utils"
 	"fennel/lib/value"
 )
 
@@ -74,7 +73,7 @@ func (s *Signature) Input(t reflect.Type) *Signature {
 
 type Operator interface {
 	Init(args value.Dict, bootargs map[string]interface{}) error
-	Apply(kwargs value.Dict, in InputIter, out *value.Table) error
+	Apply(kwargs value.Dict, in InputIter, out *value.List) error
 	Signature() *Signature
 }
 
@@ -119,8 +118,7 @@ func GetOperatorsJSON() ([]byte, error) {
 	return json.Marshal(opdata)
 }
 
-func Typecheck(op Operator, staticKwargs map[string]reflect.Type, inputType reflect.Type, contextKwargSchema map[string]reflect.Type) error {
-	// first, let's validate static kwargs
+func TypeCheckStaticKwargs(op Operator, staticKwargs map[string]reflect.Type) error {
 	sig := op.Signature()
 	if len(sig.StaticKwargs) != len(staticKwargs) {
 		return fmt.Errorf("[%s.%s] incorrect number of static kwargs passed - expected: %d but got: %d", sig.Module, sig.Name, len(sig.StaticKwargs), len(staticKwargs))
@@ -135,7 +133,12 @@ func Typecheck(op Operator, staticKwargs map[string]reflect.Type, inputType refl
 			return fmt.Errorf("type of  kwarg '%s' expected to be '%s' but found to be '%s'", k, t, vt)
 		}
 	}
-	// next, let's look at contextual kwargs
+	return nil
+}
+
+func Typecheck(op Operator, inputType reflect.Type, contextKwargSchema map[string]reflect.Type) error {
+	sig := op.Signature()
+	// let's look at contextual kwargs first
 	if len(sig.ContextKwargs) != len(contextKwargSchema) {
 		return fmt.Errorf("[%s.%s] incorrect number of contextual kwargs passed - expected: %d but got: %d", sig.Module, sig.Name, len(sig.ContextKwargs), len(contextKwargSchema))
 	}
@@ -156,4 +159,4 @@ func Typecheck(op Operator, staticKwargs map[string]reflect.Type, inputType refl
 	return nil
 }
 
-type InputIter = utils.ZipIter
+type InputIter = ZipIter

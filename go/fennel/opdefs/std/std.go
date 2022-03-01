@@ -25,7 +25,7 @@ func (f FilterOperator) Signature() *operators.Signature {
 		Param("where", value.Types.Bool, false, false, value.Bool(false))
 }
 
-func (f FilterOperator) Apply(_ value.Dict, in operators.InputIter, out *value.Table) error {
+func (f FilterOperator) Apply(_ value.Dict, in operators.InputIter, out *value.List) error {
 	for in.HasMore() {
 		row, contextKwargs, err := in.Next()
 		if err != nil {
@@ -50,7 +50,7 @@ func (f TakeOperator) Signature() *operators.Signature {
 		Param("limit", value.Types.Int, true, false, value.Nil)
 }
 
-func (f TakeOperator) Apply(staticKwargs value.Dict, in operators.InputIter, out *value.Table) error {
+func (f TakeOperator) Apply(staticKwargs value.Dict, in operators.InputIter, out *value.List) error {
 	limit := staticKwargs["limit"].(value.Int)
 	taken := 0
 	for in.HasMore() && taken < int(limit) {
@@ -75,16 +75,18 @@ func (op AddField) Init(_ value.Dict, _ map[string]interface{}) error {
 func (op AddField) Signature() *operators.Signature {
 	return operators.NewSignature(op, "std", "addField").
 		Param("name", value.Types.String, true, false, value.Nil).
-		Param("value", value.Types.Any, false, false, value.Nil)
+		Param("value", value.Types.Any, false, false, value.Nil).
+		Input(value.Types.Dict)
 }
 
-func (op AddField) Apply(staticKwargs value.Dict, in operators.InputIter, out *value.Table) error {
+func (op AddField) Apply(staticKwargs value.Dict, in operators.InputIter, out *value.List) error {
 	name := string(staticKwargs["name"].(value.String))
 	for in.HasMore() {
-		row, contextKwargs, err := in.Next()
+		rowVal, contextKwargs, err := in.Next()
 		if err != nil {
 			return err
 		}
+		row := rowVal.(value.Dict)
 		row[name] = contextKwargs["value"]
 		out.Append(row)
 	}

@@ -217,7 +217,7 @@ func TestInterpreter_VisitOpcall(t *testing.T) {
 			"a.inner": ast.MakeInt(3),
 		},
 	}
-	astTable := &ast.Table{Inner: ast.List{Values: []ast.Ast{astrow1, astrow2, astrow3}}}
+	astTable := &ast.List{Values: []ast.Ast{astrow1, astrow2, astrow3}}
 	row1, _ := value.NewDict(map[string]value.Value{
 		"a.inner": value.Int(3),
 		"b":       value.String("hi"),
@@ -230,7 +230,7 @@ func TestInterpreter_VisitOpcall(t *testing.T) {
 		"a.inner": value.Int(3),
 		"b":       value.String("hello"),
 	})
-	table := value.NewTable()
+	table := value.List{}
 	table.Append(row1)
 	table.Append(row2)
 	table.Append(row3)
@@ -259,7 +259,7 @@ func TestInterpreter_VisitOpcall(t *testing.T) {
 		Namespace: "std",
 		Name:      "filter",
 		Kwargs:    kwargs,
-	}, value.NewTable())
+	}, value.List{})
 
 	// and if where is more specific, that works too
 	kwargs = ast.Dict{
@@ -271,7 +271,7 @@ func TestInterpreter_VisitOpcall(t *testing.T) {
 			},
 		},
 	}
-	expected := value.NewTable()
+	expected := value.List{}
 	expected.Append(row1)
 	expected.Append(row3)
 	testValid(t, ast.OpCall{
@@ -284,7 +284,7 @@ func TestInterpreter_VisitOpcall(t *testing.T) {
 
 func TestInterpreter_VisitOpcall2(t *testing.T) {
 	// here we create nested opcall that contain both static/contextual kwargs
-	base := value.NewTable()
+	base := value.List{}
 	row1 := value.Dict{"hi": value.Int(1), "bye": value.Double(1)}
 	row2 := value.Dict{"hi": value.Int(2), "bye": value.Double(2)}
 	row3 := value.Dict{"hi": value.Int(3), "bye": value.Double(3)}
@@ -296,7 +296,7 @@ func TestInterpreter_VisitOpcall2(t *testing.T) {
 	query := getOpCallQuery()
 	res, err := query.AcceptValue(i)
 	assert.NoError(t, err)
-	expected := value.NewTable()
+	expected := value.List{}
 	assert.NoError(t, expected.Append(value.Dict{"hi": value.Int(2), "bye": value.Double(2), "key": value.List{value.Double(2)}}))
 	assert.NoError(t, expected.Append(value.Dict{"hi": value.Int(3), "bye": value.Double(3), "key": value.List{value.Double(3)}}))
 	assert.Equal(t, expected, res)
@@ -491,7 +491,7 @@ func TestInterpreter_VisitOpcall3(t *testing.T) {
 		Name:      "op",
 		Kwargs:    ast.Dict{},
 	}
-	table := value.NewTable()
+	table := value.List{}
 	table.Append(value.Dict{"x": value.Int(1)})
 	nonhi := "hello"
 	i := NewInterpreter(map[string]interface{}{
@@ -501,8 +501,7 @@ func TestInterpreter_VisitOpcall3(t *testing.T) {
 	assert.NoError(t, i.SetVar("table", table))
 	out, err := query.AcceptValue(i)
 	assert.NoError(t, err)
-	outtable := out.(value.Table)
-	rows := outtable.Pull()
+	rows := out.(value.List)
 	assert.Len(t, rows, 1)
 	assert.Equal(t, value.Dict{"x": value.Int(1), "num": value.Int(41), "nonhi": value.String(nonhi)}, rows[0])
 }
@@ -515,15 +514,14 @@ func TestInterpreter_VisitOpcall4(t *testing.T) {
 		Name:      "testop",
 		Kwargs:    ast.Dict{},
 	}
-	table := value.NewTable()
+	table := value.List{}
 	table.Append(value.Dict{})
 	i := getInterpreter()
 	i.SetQueryArgs(value.Dict{})
 	assert.NoError(t, i.SetVar("table", table))
 	out, err := query.AcceptValue(i)
 	assert.NoError(t, err)
-	outtable := out.(value.Table)
-	rows := outtable.Pull()
+	rows := out.(value.List)
 	assert.Len(t, rows, 1)
 	assert.Equal(t, value.Dict{"contextual": value.Int(41), "static": value.Int(7)}, rows[0])
 }
@@ -531,9 +529,10 @@ func TestInterpreter_VisitOpcall4(t *testing.T) {
 type testOpDefault struct{}
 
 func (t testOpDefault) Init(args value.Dict, bootargs map[string]interface{}) error { return nil }
-func (t testOpDefault) Apply(kwargs value.Dict, in operators.InputIter, out *value.Table) error {
+func (t testOpDefault) Apply(kwargs value.Dict, in operators.InputIter, out *value.List) error {
 	for in.HasMore() {
-		row, context, _ := in.Next()
+		rowVal, context, _ := in.Next()
+		row := rowVal.(value.Dict)
 		row["contextual"] = context["contextual"]
 		row["static"] = kwargs["static"]
 		out.Append(row)
@@ -543,6 +542,7 @@ func (t testOpDefault) Apply(kwargs value.Dict, in operators.InputIter, out *val
 
 func (t testOpDefault) Signature() *operators.Signature {
 	return operators.NewSignature(t, "test", "testop").
+		Input(value.Types.Dict).
 		Param("contextual", value.Types.Int, false, true, value.Int(41)).
 		Param("static", value.Types.Int, true, true, value.Int(7))
 }
@@ -570,9 +570,10 @@ func (top *testOpInit) Init(args value.Dict, bootargs map[string]interface{}) er
 	return nil
 }
 
-func (top *testOpInit) Apply(kwargs value.Dict, in operators.InputIter, out *value.Table) error {
+func (top *testOpInit) Apply(kwargs value.Dict, in operators.InputIter, out *value.List) error {
 	for in.HasMore() {
-		row, _, _ := in.Next()
+		rowVal, _, _ := in.Next()
+		row := rowVal.(value.Dict)
 		row["num"] = top.num
 		row["nonhi"] = value.String(top.non.hi)
 		out.Append(row)
@@ -581,5 +582,5 @@ func (top *testOpInit) Apply(kwargs value.Dict, in operators.InputIter, out *val
 }
 
 func (top *testOpInit) Signature() *operators.Signature {
-	return operators.NewSignature(top, "test", "op")
+	return operators.NewSignature(top, "test", "op").Input(value.Types.Dict)
 }
