@@ -1,8 +1,14 @@
 package launchrequest
 
-/*
+import (
+	"testing"
+
+	"fennel/mothership"
+	"github.com/stretchr/testify/assert"
+)
+
 func TestDB(t *testing.T) {
-	m, err := mothership.CreateTestMothership()
+	m, err := mothership.NewTestMothership()
 	assert.NoError(t, err)
 	defer mothership.Teardown(m)
 
@@ -19,4 +25,3 @@ func TestDB(t *testing.T) {
 	err = DeleteRequest(m, reqID)
 	assert.NoError(t, err)
 }
-*/
