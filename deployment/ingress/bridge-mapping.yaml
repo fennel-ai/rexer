@@ -1,13 +1,13 @@
 apiVersion: getambassador.io/v3alpha1
 kind: Mapping
 metadata:
-  name: control-server-mapping
+  name: bridge-mapping
   labels:
-    svc: control-server
+    svc: bridge
 spec:
   hostname: "*"
   prefix: /control/
-  service: control-server.fennel:2475
+  service: bridge.fennel:2475
 
 ---
 
@@ -19,7 +19,7 @@ spec:
   hostname: "*"
   mappingSelector:
     matchLabels:
-      svc: control-server
+      svc: bridge
   requestPolicy:
     insecure:
       action: Route

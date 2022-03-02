@@ -1,5 +1,5 @@
 {
-    "name": "control-server",
+    "name": "bridge",
     "devDependencies": {
         "@types/node": "^14"
     },

@@ -4,10 +4,10 @@ import * as path from "path";
 import * as k8s from "@pulumi/kubernetes";
 
 const namespace = "fennel"
-const name = "control-server"
+const name = "bridge"
 
 // Create a private ECR repository.
-const repo = new aws.ecr.Repository("control-server-repo", {
+const repo = new aws.ecr.Repository("bridge-repo", {
     imageScanningConfiguration: {
         scanOnPush: true
     },
@@ -34,7 +34,7 @@ const root = process.env["FENNEL_ROOT"]!
 
 
 // Build and publish the container image.
-const image = new docker.Image("control-server-img", {
+const image = new docker.Image("bridge-img", {
     build: {
         context: root,
         dockerfile: path.join(root, "dockerfiles/bridge.dockerfile"),
@@ -53,9 +53,9 @@ export const fullImageName = image.imageName;
 // Create a load balanced Kubernetes service using this image, and export its IP.
 const appLabels = { app: name };
 const appDep = image.imageName.apply(() => {
-    return new k8s.apps.v1.Deployment("control-server-deployment", {
+    return new k8s.apps.v1.Deployment("bridge-deployment", {
         metadata: {
-            name: "control-server",
+            name: "bridge",
             namespace: namespace,
         },
         spec: {

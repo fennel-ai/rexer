@@ -100,7 +100,7 @@ const setupResources = async () => {
     // setup mysql db.
     // Comment this when direct connection to the db instance is not possible.
     // This will usually be when trying to setup a tier in a customer vpc, which
-    // should usually be done through the control-server.
+    // should usually be done through the bridge.
     const sqlDB = await mysql.setup({
         username: input.dbUsername,
         password: input.dbPassword,
