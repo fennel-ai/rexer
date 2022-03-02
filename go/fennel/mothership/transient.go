@@ -12,12 +12,12 @@ import (
 
 const (
 	testUsername      = "admin"
-	testPassword      = "foundationdb"
-	testHostname      = "database-nikhil-test.cluster-c00d7gkxaysk.us-west-2.rds.amazonaws.com"
+	testPassword      = "Ph0Bw#drps2fod%"
+	testHostname      = "mothership-test-database.cluster-c00d7gkxaysk.us-west-2.rds.amazonaws.com"
 	testLogicalDBName = "controldb"
 )
 
-func CreateTestMothership() (mothership Mothership, err error) {
+func NewTestMothership() (mothership Mothership, err error) {
 	rand.Seed(time.Now().UnixNano())
 	mothershipID := ftypes.RealmID(rand.Uint32())
 	scope := resource.NewMothershipScope(mothershipID)

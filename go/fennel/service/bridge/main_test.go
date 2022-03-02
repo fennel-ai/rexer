@@ -6,18 +6,13 @@ import (
 
 	"fennel/mothership"
 	"fennel/mothership/model/launchrequest"
-	"github.com/alexflint/go-arg"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestPollLaunchRequests(t *testing.T) {
-	var flags struct {
-		mothership.MothershipArgs
-		BridgeArgs
-	}
-	arg.Parse(&flags)
-	m, err := mothership.CreateFromArgs(&flags.MothershipArgs)
+	m, err := mothership.NewTestMothership()
 	assert.NoError(t, err)
+	defer mothership.Teardown(m)
 
 	go pollLaunchRequests(m)
 	_, err = launchrequest.InsertRequest(m, []byte(`{}`), []byte(`{"state":"COMPLETED"}`))

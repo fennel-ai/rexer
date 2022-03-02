@@ -1,8 +1,15 @@
 package launchrequest
 
-/*
+import (
+	"testing"
+
+	"fennel/mothership"
+	"fennel/mothership/model/launchrequest"
+	"github.com/stretchr/testify/assert"
+)
+
 func TestProcessCompletedRequests(t *testing.T) {
-	m, err := mothership.CreateTestMothership()
+	m, err := mothership.NewTestMothership()
 	assert.NoError(t, err)
 	defer mothership.Teardown(m)
 
@@ -22,4 +29,3 @@ func TestProcessCompletedRequests(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Len(t, completed, 0)
 }
-*/
