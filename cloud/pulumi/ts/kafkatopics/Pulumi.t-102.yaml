@@ -1,6 +1,0 @@
-config:
-  kafkatopics:apiKey: 5BKYUM3VAJZRNZ4O
-  kafkatopics:apiSecret:
-    secure: AAABAHGemtDIbWwlZOmgnNF6UGO3JgkjUI9CoBOYBgEqgq0aBBOq47Ay9QeuDhWs0tj33VqS+S2wU1bQl/zP7Fq9v7dGxdeCMQFJUwERdCESFEvxhbBqnuvgt3ytCdtA
-  kafkatopics:bootstrapServer: pkc-l7pr2.ap-south-1.aws.confluent.cloud:9092
-  kafkatopics:topicNames: '["t_102_actionlog","t_102_featurelog"]'
