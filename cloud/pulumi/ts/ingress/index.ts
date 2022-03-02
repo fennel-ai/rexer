@@ -68,18 +68,19 @@ export const setup = async (input: inputType) => {
         transformations: [
             (obj: any, opts: pulumi.CustomResourceOptions) => {
                 if (obj.kind === "Deployment" && obj.metadata.name === `${chartName}-emissary-ingress`) {
-                    const metadata = obj.spec.template.metadata
+                    const metadata = obj.spec.template.metadata || {}
                     metadata.annotations = metadata.annotations || {}
                     // We use inject=enabled instead of inject=ingress as per
                     // https://github.com/linkerd/linkerd2/issues/6650#issuecomment-898732177.
                     // Otherwise, we see the issue reported in the above bug report.
                     metadata.annotations["linkerd.io/inject"] = "enabled"
                     metadata.annotations["config.linkerd.io/skip-inbound-ports"] = "80,443"
+                    obj.spec.template.metadata = metadata
                 }
             },
             (obj: any, opts: pulumi.CustomResourceOptions) => {
                 if (obj.kind === "Service" && obj.spec.type === "LoadBalancer") {
-                    const metadata = obj.metadata
+                    const metadata = obj.metadata || {}
                     metadata.annotations = metadata.annotations || {}
                     // Set load-balancer type as external to bypass k8s in-tree
                     // load-balancer controller and use AWS Load Balancer Controller
@@ -93,7 +94,9 @@ export const setup = async (input: inputType) => {
                     // Specify the subnets in which to deploy the load balancer.
                     // For internet-facing load-balancers this should be a list of public subnets and
                     // for internal load-balancers this should be a list of private subnets.
-                    metadata.annotations["service.beta.kubernetes.io/aws-load-balancer-subnets"] = input.subnetIds
+                    // metadata.annotations["service.beta.kubernetes.io/aws-load-balancer-subnets"] = input.subnetIds
+                    metadata.annotations["service.beta.kubernetes.io/aws-load-balancer-subnets"] = input.subnetIds.toString()
+                    obj.metadata = metadata
                 }
             },
         ]
