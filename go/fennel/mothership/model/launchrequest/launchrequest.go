@@ -5,8 +5,8 @@ import (
 )
 
 func InsertRequest(m mothership.Mothership, config []byte, status []byte) (uint32, error) {
-	query := "INSERT INTO launch_request(status, config) VALUES (CAST(? AS JSON), CAST(? AS JSON));"
-	res, err := m.DB.Exec(query, status, config)
+	query := "INSERT INTO launch_request(config, status) VALUES (CAST(? AS JSON), CAST(? AS JSON));"
+	res, err := m.DB.Exec(query, config, status)
 	if err != nil {
 		return 0, err
 	}
