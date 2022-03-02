@@ -28,6 +28,7 @@ export type inputType = {
     region: string,
     vpcId: string,
     ami: string,
+    connectedVpcCidrs: string[],
 }
 
 export type outputType = {
@@ -44,6 +45,7 @@ const parseConfig = (): inputType => {
         region: config.require(nameof<inputType>("region")),
         vpcId: config.require(nameof<inputType>("vpcId")),
         ami: config.require(nameof<inputType>("ami")),
+        connectedVpcCidrs: config.requireObject(nameof<inputType>("connectedVpcCidrs")),
     }
 }
 
@@ -256,6 +258,16 @@ export const setup = async (input: inputType) => {
         nodeAssociatePublicIpAddress: false,
         createOidcProvider: true
     }, { provider: awsProvider });
+
+    // Connect cluster node security group to connected vpcs.
+    const sgRules = new aws.ec2.SecurityGroupRule(`eks-sg-rule`, {
+        type: "ingress",
+        fromPort: 0,
+        toPort: 65535,
+        protocol: "tcp",
+        cidrBlocks: input.connectedVpcCidrs,
+        securityGroupId: cluster.nodeSecurityGroup.id
+    }, { provider: awsProvider })
 
     const instanceRole = cluster.core.instanceRoles.apply((roles) => { return roles[0].name })
 
