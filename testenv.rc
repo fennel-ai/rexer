@@ -7,6 +7,11 @@ export MYSQL_USERNAME="admin"
 export MYSQL_PASSWORD="foundationdb"
 export REDIS_SERVER_ADDRESS="clustercfg.redis-db-5dec5dd.fbjfph.memorydb.us-west-2.amazonaws.com:6379"
 export CACHE_PRIMARY="master.cache-cluster-4b22868.fbjfph.usw2.cache.amazonaws.com:6379"
+export MOTHERSHIP_ID=1
+export MOTHERSHIP_MYSQL_ADDRESS="dw48w7ntx844.us-west-2.psdb.cloud"
+export MOTHERSHIP_MYSQL_DBNAME="controldb"
+export MOTHERSHIP_MYSQL_USERNAME="nehb2dtbg1hr"
+export MOTHERSHIP_MYSQL_PASSWORD="pscale_pw_iOqKp0qepUAER8E-_APgydji6Ajj7fNQD7pfSseFYvg"
 
 # in tests, we override this with a random tier ID but this is needed for prod
 export TIER_ID=1231

@@ -1,7 +1,7 @@
 package main
 
 import (
-	"flag"
+	"fmt"
 	"log"
 	"net/http"
 	"time"
@@ -27,26 +27,27 @@ func pollLaunchRequests(m mothership.Mothership) {
 }
 
 type BridgeArgs struct {
+	Endpoint string `arg:"--bridge-endpoint,env:BRIDGE_ENDPOINT" default:"http://localhost:2425"`
+	Port     uint32 `arg:"--bridge-port,env:BRIDGE_PORT" default:"2475"`
 }
 
 func main() {
 	// Parse flags / environment variables.
 	var flags struct {
-		mothership.Args
+		mothership.MothershipArgs
+		BridgeArgs
 	}
 	arg.MustParse(&flags)
-	endpoint := flag.String("BRIDGE_ENDPOINT", "http://localhost:2425", "server address to connect to")
-	serverAddress := flag.String("BRIDGE_ADDRESS", ":2475", "address of the control server")
-	flag.Parse()
 
-	m, err := mothership.Create()
+	m, err := mothership.CreateFromArgs(&flags.MothershipArgs)
 	if err != nil {
 		log.Fatalf("Error creating mothership: %v", err)
 	}
 
-	server := createServer(*serverAddress, *endpoint)
+	server := createServer(flags.BridgeArgs.Port, flags.BridgeArgs.Endpoint)
 	go pollLaunchRequests(m)
 
-	log.Printf("starting http service on '%s'\n", server.address)
-	log.Fatal(http.ListenAndServe(server.address, server))
+	address := fmt.Sprintf(":%d", server.port)
+	log.Printf("starting http service on '%s'\n", address)
+	log.Fatal(http.ListenAndServe(address, server))
 }
