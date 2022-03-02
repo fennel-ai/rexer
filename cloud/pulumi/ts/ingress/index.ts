@@ -53,7 +53,10 @@ export const setup = async (input: inputType) => {
     // to resource names. So if we're changing the name of the chart, we should also
     // change the lookup names of the emissary service/deployment in the transformation
     // spec and when looking up the URL.
-    const emissaryIngress = new k8s.helm.v3.Chart("aes", {
+    // We add a namspace to the name of the helm chart to avoid name collisions
+    // with other ingresses in the same data plane.
+    const chartName = `aes-${input.namespace}`;
+    const emissaryIngress = new k8s.helm.v3.Chart(chartName, {
         fetchOpts: {
             repo: "https://app.getambassador.io"
         },
@@ -64,7 +67,7 @@ export const setup = async (input: inputType) => {
         version: "7.3.1",
         transformations: [
             (obj: any, opts: pulumi.CustomResourceOptions) => {
-                if (obj.kind === "Deployment" && obj.metadata.name === "aes-emissary-ingress") {
+                if (obj.kind === "Deployment" && obj.metadata.name === `${chartName}-emissary-ingress`) {
                     const metadata = obj.spec.template.metadata
                     metadata.annotations = metadata.annotations || {}
                     // We use inject=enabled instead of inject=ingress as per
@@ -137,7 +140,7 @@ export const setup = async (input: inputType) => {
     })
 
     const loadBalancerUrl = emissaryIngress.ready.apply((_) => {
-        const ingressResource = emissaryIngress.getResource("v1/Service", input.namespace, "aes-emissary-ingress");
+        const ingressResource = emissaryIngress.getResource("v1/Service", input.namespace, `${chartName}-emissary-ingress`);
         return ingressResource.status.loadBalancer.ingress[0].hostname
     })
 
