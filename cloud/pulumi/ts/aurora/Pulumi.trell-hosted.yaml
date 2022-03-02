@@ -1,5 +1,6 @@
 config:
   aurora:connectedSecurityGroups: '{"eks": "sg-002cccb6949c21318"}'
+  aurora:connectedCidrBlocks: '["172.31.0.0/16"]'
   aurora:maxCapacity: "16"
   aurora:minCapacity: "8"
   aurora:password:
