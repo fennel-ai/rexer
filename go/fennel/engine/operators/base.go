@@ -30,6 +30,10 @@ func Locate(namespace, name string) (Operator, error) {
 	}
 }
 
+func IsMapper(op Operator) bool {
+	return op.Signature().Mapper
+}
+
 type Param struct {
 	Name     string
 	Static   bool
@@ -44,14 +48,16 @@ type Signature struct {
 	input         reflect.Type
 	StaticKwargs  map[string]Param
 	ContextKwargs map[string]Param
+	Mapper        bool
 }
 
-func NewSignature(module, name string) *Signature {
+func NewSignature(module, name string, mapper bool) *Signature {
 	return &Signature{
 		module, name,
 		value.Types.Any,
 		make(map[string]Param, 0),
 		make(map[string]Param, 0),
+		mapper,
 	}
 }
 

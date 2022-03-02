@@ -22,7 +22,7 @@ func (top testOpZip) Apply(kwargs value.Dict, in InputIter, out *value.List) err
 }
 
 func (top testOpZip) Signature() *Signature {
-	return NewSignature("test", "op").
+	return NewSignature("test", "op", true).
 		Param("p1", value.Types.Bool, true, false, value.Nil).
 		Param("p2", value.Types.Double, false, false, value.Double(3.0)).
 		Param("p3", value.Types.Any, false, false, value.Nil).

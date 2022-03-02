@@ -21,7 +21,7 @@ func (f FilterOperator) Init(_ value.Dict, _ map[string]interface{}) error {
 }
 
 func (f FilterOperator) Signature() *operators.Signature {
-	return operators.NewSignature("std", "filter").
+	return operators.NewSignature("std", "filter", false).
 		Param("where", value.Types.Bool, false, false, value.Bool(false))
 }
 
@@ -46,7 +46,7 @@ func (f TakeOperator) Init(_ value.Dict, _ map[string]interface{}) error {
 }
 
 func (f TakeOperator) Signature() *operators.Signature {
-	return operators.NewSignature("std", "take").
+	return operators.NewSignature("std", "take", false).
 		Param("limit", value.Types.Int, true, false, value.Nil)
 }
 
@@ -73,7 +73,7 @@ func (op AddField) Init(_ value.Dict, _ map[string]interface{}) error {
 }
 
 func (op AddField) Signature() *operators.Signature {
-	return operators.NewSignature("std", "addField").
+	return operators.NewSignature("std", "addField", true).
 		Param("name", value.Types.String, true, false, value.Nil).
 		Param("value", value.Types.Any, false, false, value.Nil).
 		Input(value.Types.Dict)

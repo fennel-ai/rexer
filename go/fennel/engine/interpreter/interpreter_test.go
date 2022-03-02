@@ -437,6 +437,7 @@ func TestInterpreter_VisitOpcall4(t *testing.T) {
 type testOpDefault struct{}
 
 func (t testOpDefault) Init(args value.Dict, bootargs map[string]interface{}) error { return nil }
+
 func (t testOpDefault) Apply(kwargs value.Dict, in operators.InputIter, out *value.List) error {
 	for in.HasMore() {
 		rowVal, context, _ := in.Next()
@@ -449,7 +450,7 @@ func (t testOpDefault) Apply(kwargs value.Dict, in operators.InputIter, out *val
 }
 
 func (t testOpDefault) Signature() *operators.Signature {
-	return operators.NewSignature("test", "testop").
+	return operators.NewSignature("test", "testop", true).
 		Input(value.Types.Dict).
 		Param("contextual", value.Types.Int, false, true, value.Int(41)).
 		Param("static", value.Types.Int, true, true, value.Int(7))
@@ -490,5 +491,5 @@ func (top *testOpInit) Apply(kwargs value.Dict, in operators.InputIter, out *val
 }
 
 func (top *testOpInit) Signature() *operators.Signature {
-	return operators.NewSignature("test", "op").Input(value.Types.Dict)
+	return operators.NewSignature("test", "op", false).Input(value.Types.Dict)
 }

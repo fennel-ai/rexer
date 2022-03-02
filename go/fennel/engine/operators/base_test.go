@@ -24,7 +24,7 @@ func (top testOp) Apply(kwargs value.Dict, in InputIter, out *value.List) error 
 }
 
 func (top testOp) Signature() *Signature {
-	return NewSignature("test", "op").
+	return NewSignature("test", "op", false).
 		Param("p1", value.Types.Bool, true, false, value.Nil).
 		Param("p2", value.Types.Double, false, false, value.Double(3.0)).
 		Param("p3", value.Types.Any, true, false, value.Nil).
@@ -44,7 +44,7 @@ func (top testOp2) Apply(_ value.Dict, _ InputIter, _ *value.List) error {
 }
 
 func (top testOp2) Signature() *Signature {
-	return NewSignature("test", "op")
+	return NewSignature("test", "op", true)
 }
 
 type testOp3 struct{}
@@ -60,7 +60,7 @@ func (top testOp3) Apply(_ value.Dict, _ InputIter, _ *value.List) error {
 }
 
 func (top testOp3) Signature() *Signature {
-	return NewSignature("anothertest", "anotherop")
+	return NewSignature("anothertest", "anotherop", true)
 }
 
 func TestTypeCheckStaticKwargs(t *testing.T) {
@@ -154,4 +154,10 @@ func TestRegister(t *testing.T) {
 func TestGetOperatorsJSON(t *testing.T) {
 	_, err := GetOperatorsJSON()
 	assert.NoError(t, err)
+}
+
+func TestIsMapper(t *testing.T) {
+	assert.False(t, IsMapper(testOp{}))
+	assert.True(t, IsMapper(testOp2{}))
+	assert.True(t, IsMapper(testOp3{}))
 }
