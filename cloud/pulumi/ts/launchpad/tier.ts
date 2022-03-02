@@ -235,10 +235,6 @@ const setupTier = async (args: TierConf, destroy?: boolean) => {
 
     console.info("config set");
 
-    console.info("refreshing stack...");
-    await stack.refresh({ onOutput: console.info });
-    console.info("refresh complete");
-
     if (destroy) {
         console.info("destroying stack...");
         await stack.destroy({ onOutput: console.info });

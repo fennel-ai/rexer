@@ -28,8 +28,8 @@ setupTier(
         cachePrimaryEndpoint: process.env.CACHE_PRIMARY!,
         cacheReplicaEndpoint: process.env.CACHE_REPLICA!,
 
-        subnetIds: ["subnet-05f8b4e79c24389a5", "subnet-0cc2d645a7c062809"],
-        loadBalancerScheme: "internet-facing",
+        subnetIds: ["subnet-07b7f4dc20c5b9258", "subnet-0f81a1af4aee30667"],
+        loadBalancerScheme: "internal",
     },
     true,
 ).catch(err => console.log(err))
