@@ -18,7 +18,7 @@ export const plugins = {
     "aws": "v4.37.4"
 }
 
-type controlPlaneConfig = {
+export type controlPlaneConfig = {
     roleArn: string,
     region: string,
     accountId: string,

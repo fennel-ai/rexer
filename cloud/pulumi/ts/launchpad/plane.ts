@@ -1,18 +1,30 @@
 import { InlineProgramArgs, LocalWorkspace } from "@pulumi/pulumi/automation";
 import * as pulumi from "@pulumi/pulumi"
 
+import * as vpc from "../vpc";
+
 import { nameof } from "../lib/util"
 
 import * as process from "process";
 
 type inputType = {
-    planeId: number
+    planeId: number,
+    // vpc configuration.
+    cidr: string,
+    region: string,
+    roleArn: string,
+    // control plane configuration.
+    controlPlaneConfig: vpc.controlPlaneConfig,
 }
 
 const parseConfig = (): inputType => {
     const config = new pulumi.Config();
     return {
         planeId: Number(config.require(nameof<inputType>("planeId"))),
+        cidr: config.require(nameof<inputType>("cidr")),
+        region: config.require(nameof<inputType>("region")),
+        roleArn: config.require(nameof<inputType>("roleArn")),
+        controlPlaneConfig: config.requireObject(nameof<inputType>("controlPlaneConfig")),
     };
 };
 
@@ -20,6 +32,7 @@ const setupPlugins = async (stack: pulumi.automation.Stack) => {
     // TODO: aggregate plugins from all projects. If there are multiple versions
     // of the same plugin in different projects, we might want to use the latest.
     let plugins: { [key: string]: string } = {
+        ...vpc.plugins,
     }
     console.info("installing plugins...");
     for (var key in plugins) {
@@ -31,10 +44,22 @@ const setupPlugins = async (stack: pulumi.automation.Stack) => {
 // This is our pulumi program in "inline function" form
 const setupResources = async () => {
     const input = parseConfig();
+    await vpc.setup({
+        cidr: input.cidr,
+        region: input.region,
+        roleArn: input.roleArn,
+        controlPlane: input.controlPlaneConfig,
+    })
 };
 
 type PlaneConf = {
-    planeId: string,
+    planeId: number,
+    // vpc configuration.
+    cidr: string,
+    region: string,
+    roleArn: string,
+    // control plane configuration.
+    controlPlaneConfig: vpc.controlPlaneConfig,
 }
 
 const setupDataPlane = async (args: PlaneConf, destroy?: boolean) => {
@@ -57,6 +82,10 @@ const setupDataPlane = async (args: PlaneConf, destroy?: boolean) => {
     console.info("setting up config");
 
     await stack.setConfig(nameof<inputType>("planeId"), { value: String(args.planeId) })
+    await stack.setConfig(nameof<inputType>("cidr"), { value: args.cidr })
+    await stack.setConfig(nameof<inputType>("region"), { value: args.region })
+    await stack.setConfig(nameof<inputType>("roleArn"), { value: args.roleArn })
+    await stack.setConfig(nameof<inputType>("controlPlaneConfig"), { value: JSON.stringify(args.controlPlaneConfig) })
 
     console.info("config set");
 
