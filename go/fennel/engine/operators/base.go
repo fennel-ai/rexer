@@ -46,7 +46,7 @@ type Signature struct {
 	ContextKwargs map[string]Param
 }
 
-func NewSignature(op Operator, module, name string) *Signature {
+func NewSignature(module, name string) *Signature {
 	return &Signature{
 		module, name,
 		value.Types.Any,

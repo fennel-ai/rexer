@@ -46,7 +46,7 @@ func (a AggValue) Apply(kwargs value.Dict, in operators.InputIter, out *value.Li
 }
 
 func (a AggValue) Signature() *operators.Signature {
-	return operators.NewSignature(a, "aggregate", "addField").
+	return operators.NewSignature("aggregate", "addField").
 		Input(value.Types.Dict).
 		Param("name", value.Types.String, true, false, value.Nil).
 		Param("aggregate", value.Types.String, true, false, value.Nil).
