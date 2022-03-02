@@ -17,18 +17,14 @@ export const plugins = {
 }
 
 
-export interface map {
-    [key: string]: string;
-}
-
 export type inputType = {
     kubeconfig: string,
     namespace: string,
-    tierConfig: map,
-    redisConfig: pulumi.Output<map>,
-    cacheConfig: pulumi.Output<map>,
-    dbConfig: pulumi.Output<map>,
-    kafkaConfig: pulumi.Output<map>,
+    tierConfig: Record<string, string>,
+    redisConfig: pulumi.Output<Record<string, string>>,
+    cacheConfig: pulumi.Output<Record<string, string>>,
+    dbConfig: pulumi.Output<Record<string, string>>,
+    kafkaConfig: pulumi.Output<Record<string, string>>,
 }
 
 export type outputType = {}

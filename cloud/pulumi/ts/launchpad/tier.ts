@@ -11,6 +11,7 @@ import * as ingress from "../ingress";
 import * as ns from "../k8s-ns";
 
 import * as process from "process";
+import { stringify } from "querystring";
 
 type inputType = {
     tierId: number
@@ -117,25 +118,25 @@ const setupResources = async () => {
         return await configs.setup({
             kubeconfig: input.kubeconfig,
             namespace: input.namespace,
-            tierConfig: { "tier_id": String(input.tierId) } as configs.map,
+            tierConfig: { "tier_id": String(input.tierId) },
             redisConfig: pulumi.output({
                 "addr": input.redisEndpoint,
-            } as configs.map),
+            } as Record<string, string>),
             cacheConfig: pulumi.output({
                 "primary": input.cachePrimaryEndpoint,
                 "replica": input.cacheReplicaEndpoint,
-            } as configs.map),
+            } as Record<string, string>),
             dbConfig: pulumi.output({
                 "host": input.dbEndpoint,
                 "db": input.db,
                 "username": input.dbUsername,
                 "password": dbPassword,
-            } as configs.map),
+            } as Record<string, string>),
             kafkaConfig: pulumi.output({
                 "server": input.bootstrapServer,
                 "username": input.kafkaApiKey,
                 "password": kafkaPassword,
-            } as configs.map),
+            } as Record<string, string>),
         })
     })
     // setup ingress.
