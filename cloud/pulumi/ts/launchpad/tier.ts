@@ -98,13 +98,15 @@ const setupResources = async () => {
         bootstrapServer: input.bootstrapServer,
     })
     // setup mysql db.
-    // Uncomment this once we have the ability to create a db in a remote VPC.
-    // const sqlDB = await mysql.setup({
-    //     username: input.dbUsername,
-    //     password: input.dbPassword,
-    //     endpoint: input.dbEndpoint,
-    //     db: input.db,
-    // })
+    // Comment this when direct connection to the db instance is not possible.
+    // This will usually be when trying to setup a tier in a customer vpc, which
+    // should usually be done through the control-server.
+    const sqlDB = await mysql.setup({
+        username: input.dbUsername,
+        password: input.dbPassword,
+        endpoint: input.dbEndpoint,
+        db: input.db,
+    })
     // setup k8s namespace.
     const namespace = await ns.setup({
         namespace: input.namespace,
