@@ -1,7 +1,0 @@
-config:
-  aws:region: us-west-2
-  mysql:db: t_102_db
-  mysql:endpoint: fenneldb-20220224161622851900000002.cluster-cqstayrfv2mn.ap-south-1.rds.amazonaws.com
-  mysql:password:
-    secure: AAABAOb68gD9aICT7jbxZdeRQzUkZPiw+8UylDD9GJGTvjE3WQ1rAon37obnmNY=
-  mysql:username: admin
