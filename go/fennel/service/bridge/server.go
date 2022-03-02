@@ -253,9 +253,9 @@ func setRoutes(s *server) {
 	s.router.HandleFunc("/profile_multi/", s.ProfileMultiHandler)
 }
 
-func createServer(address, endpoint string) *server {
+func createServer(port uint32, endpoint string) *server {
 	server := server{
-		address:  address,
+		port:     port,
 		endpoint: endpoint,
 	}
 	setRoutes(&server)
@@ -263,7 +263,7 @@ func createServer(address, endpoint string) *server {
 }
 
 type server struct {
-	address  string
+	port     uint32
 	endpoint string
 	router   *mux.Router
 }

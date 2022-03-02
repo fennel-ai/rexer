@@ -42,7 +42,7 @@ func TestServer_ProfileHandler(t *testing.T) {
 	}))
 	defer es.Close()
 	// Set up server and test valid request
-	s := createServer("", es.URL)
+	s := createServer(0, es.URL)
 	rr := httptest.NewRecorder()
 	s.ServeHTTP(rr, req)
 	// Verify response is as expected
@@ -100,7 +100,7 @@ func TestServer_ProfileMultiHandler(t *testing.T) {
 	}))
 	defer es.Close()
 	// Set up server and test valid request
-	s := createServer("", es.URL)
+	s := createServer(0, es.URL)
 	rr := httptest.NewRecorder()
 	s.ServeHTTP(rr, req)
 	// Verify response is as expected
@@ -166,7 +166,7 @@ func TestServer_ActionsHandler(t *testing.T) {
 	}))
 	defer es.Close()
 	// Set up server and test valid request
-	s := createServer("", es.URL)
+	s := createServer(0, es.URL)
 	rr := httptest.NewRecorder()
 	s.ServeHTTP(rr, req)
 	// Verify response is as expected

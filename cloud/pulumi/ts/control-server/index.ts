@@ -37,7 +37,7 @@ const root = process.env["FENNEL_ROOT"]!
 const image = new docker.Image("control-server-img", {
     build: {
         context: root,
-        dockerfile: path.join(root, "dockerfiles/controlserver.dockerfile"),
+        dockerfile: path.join(root, "dockerfiles/bridge.dockerfile"),
         args: {
             "platform": "linux/amd64",
         },
