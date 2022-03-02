@@ -1,17 +1,17 @@
 package main
 
 import (
+	"flag"
 	"log"
 	"net/http"
 	"time"
 
 	"fennel/mothership"
 	"fennel/mothership/controller/launchrequest"
+	"github.com/alexflint/go-arg"
 )
 
 const (
-	serverAddress       = ":2475"
-	endpoint            = "http://localhost:2425"
 	requestPollingDelay = time.Minute
 )
 
@@ -26,13 +26,25 @@ func pollLaunchRequests(m mothership.Mothership) {
 	}
 }
 
+type BridgeArgs struct {
+}
+
 func main() {
+	// Parse flags / environment variables.
+	var flags struct {
+		mothership.Args
+	}
+	arg.MustParse(&flags)
+	endpoint := flag.String("BRIDGE_ENDPOINT", "http://localhost:2425", "server address to connect to")
+	serverAddress := flag.String("BRIDGE_ADDRESS", ":2475", "address of the control server")
+	flag.Parse()
+
 	m, err := mothership.Create()
 	if err != nil {
 		log.Fatalf("Error creating mothership: %v", err)
 	}
 
-	server := createServer(serverAddress, endpoint)
+	server := createServer(*serverAddress, *endpoint)
 	go pollLaunchRequests(m)
 
 	log.Printf("starting http service on '%s'\n", server.address)
