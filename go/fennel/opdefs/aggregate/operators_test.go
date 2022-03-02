@@ -58,7 +58,7 @@ func TestAggValue_Apply(t *testing.T) {
 
 	static := value.Dict{"name": value.String("myaggresults"), "aggregate": value.String(agg.Name)}
 	inputs := []value.Dict{{"a": value.String("hi")}, {"a": value.String("bye")}, {"a": value.String("yo")}}
-	contexKwargs := []value.Dict{{"key": value.Int(1)}, {"key": value.Int(2)}, {"key": value.Int(3)}}
+	contexKwargs := []value.Dict{{"groupkey": value.Int(1)}, {"groupkey": value.Int(2)}, {"groupkey": value.Int(3)}}
 	outputs := []value.Dict{
 		{"a": value.String("hi"), "myaggresults": value.Int(2)},
 		{"a": value.String("bye"), "myaggresults": value.Int(1)},
