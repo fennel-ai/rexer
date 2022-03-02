@@ -449,7 +449,7 @@ func (t testOpDefault) Apply(kwargs value.Dict, in operators.InputIter, out *val
 }
 
 func (t testOpDefault) Signature() *operators.Signature {
-	return operators.NewSignature(t, "test", "testop").
+	return operators.NewSignature("test", "testop").
 		Input(value.Types.Dict).
 		Param("contextual", value.Types.Int, false, true, value.Int(41)).
 		Param("static", value.Types.Int, true, true, value.Int(7))
@@ -490,5 +490,5 @@ func (top *testOpInit) Apply(kwargs value.Dict, in operators.InputIter, out *val
 }
 
 func (top *testOpInit) Signature() *operators.Signature {
-	return operators.NewSignature(top, "test", "op").Input(value.Types.Dict)
+	return operators.NewSignature("test", "op").Input(value.Types.Dict)
 }

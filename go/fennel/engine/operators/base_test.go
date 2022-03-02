@@ -24,7 +24,7 @@ func (top testOp) Apply(kwargs value.Dict, in InputIter, out *value.List) error 
 }
 
 func (top testOp) Signature() *Signature {
-	return NewSignature(top, "test", "op").
+	return NewSignature("test", "op").
 		Param("p1", value.Types.Bool, true, false, value.Nil).
 		Param("p2", value.Types.Double, false, false, value.Double(3.0)).
 		Param("p3", value.Types.Any, true, false, value.Nil).
@@ -44,7 +44,7 @@ func (top testOp2) Apply(_ value.Dict, _ InputIter, _ *value.List) error {
 }
 
 func (top testOp2) Signature() *Signature {
-	return NewSignature(top, "test", "op")
+	return NewSignature("test", "op")
 }
 
 type testOp3 struct{}
@@ -60,7 +60,7 @@ func (top testOp3) Apply(_ value.Dict, _ InputIter, _ *value.List) error {
 }
 
 func (top testOp3) Signature() *Signature {
-	return NewSignature(top, "anothertest", "anotherop")
+	return NewSignature("anothertest", "anotherop")
 }
 
 func TestTypeCheckStaticKwargs(t *testing.T) {
