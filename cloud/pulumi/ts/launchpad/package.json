@@ -9,6 +9,7 @@
     "@pulumi/command": "0.0.3",
     "@pulumi/confluent": "^0.2.2",
     "@pulumi/docker": "^3.1.0",
+    "@pulumi/eks": "^0.37.1",
     "@pulumi/kafka": "^3.1.2",
     "@pulumi/kubernetes": "^3.16.0",
     "@pulumi/mysql": "^3.1.0",

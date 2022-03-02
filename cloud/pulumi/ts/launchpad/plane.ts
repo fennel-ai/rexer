@@ -2,6 +2,7 @@ import { InlineProgramArgs, LocalWorkspace } from "@pulumi/pulumi/automation";
 import * as pulumi from "@pulumi/pulumi"
 
 import * as vpc from "../vpc";
+import * as eks from "../eks";
 
 import { nameof } from "../lib/util"
 
@@ -33,6 +34,7 @@ const setupPlugins = async (stack: pulumi.automation.Stack) => {
     // of the same plugin in different projects, we might want to use the latest.
     let plugins: { [key: string]: string } = {
         ...vpc.plugins,
+        ...eks.plugins,
     }
     console.info("installing plugins...");
     for (var key in plugins) {
@@ -44,11 +46,19 @@ const setupPlugins = async (stack: pulumi.automation.Stack) => {
 // This is our pulumi program in "inline function" form
 const setupResources = async () => {
     const input = parseConfig();
-    await vpc.setup({
+    const vpcOutput = await vpc.setup({
         cidr: input.cidr,
         region: input.region,
         roleArn: input.roleArn,
         controlPlane: input.controlPlaneConfig,
+    })
+    const eksOutput = vpcOutput.vpcId.apply(async vpcId => {
+        await eks.setup({
+            roleArn: input.roleArn,
+            region: input.region,
+            vpcId: vpcId,
+            connectedVpcCidrs: [input.controlPlaneConfig.cidrBlock],
+        })
     })
 };
 
