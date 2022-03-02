@@ -23,11 +23,19 @@ export const plugins = {
     "aws": "v4.36.0",
 }
 
+// NOTE: The AMI used should be an eks-worker AMI that can be searched
+// on the AWS AMI catalog with one of the following prefixes:
+// amazon-eks-node / amazon-eks-gpu-node / amazon-eks-arm64-node,
+// depending on the type of machine provisioned.
+const AMI_BY_REGION: Record<string, string> = {
+    "ap-south-1": "ami-018410e7cefe1d15f",
+    "us-west-2": "ami-047a7967ea0436232",
+}
+
 export type inputType = {
     roleArn: string,
     region: string,
     vpcId: string,
-    ami: string,
     connectedVpcCidrs: string[],
 }
 
@@ -44,7 +52,6 @@ const parseConfig = (): inputType => {
         roleArn: config.require(nameof<inputType>("roleArn")),
         region: config.require(nameof<inputType>("region")),
         vpcId: config.require(nameof<inputType>("vpcId")),
-        ami: config.require(nameof<inputType>("ami")),
         connectedVpcCidrs: config.requireObject(nameof<inputType>("connectedVpcCidrs")),
     }
 }
@@ -217,7 +224,7 @@ async function setupLoadBalancerController(awsProvider: aws.Provider, cluster: e
 
 
 export const setup = async (input: inputType) => {
-    const { vpcId, region, roleArn, ami } = input
+    const { vpcId, region, roleArn } = input
 
     const awsProvider = new aws.Provider("eks-aws-provider", {
         region: <aws.Region>region,
@@ -246,11 +253,7 @@ export const setup = async (input: inputType) => {
             minSize: 3,
             maxSize: 3,
             // Make AMI a config parameter since AMI-ids are unique to region.
-            // NOTE: The AMI used should be an eks-worker AMI that can be searched
-            // on the AWS AMI catalog with one of the following prefixes:
-            // amazon-eks-node / amazon-eks-gpu-node / amazon-eks-arm64-node,
-            // depending on the type of machine provisioned.
-            amiId: ami,
+            amiId: AMI_BY_REGION[region],
         },
         providerCredentialOpts: {
             roleArn,
