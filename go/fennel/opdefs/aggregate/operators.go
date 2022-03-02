@@ -33,7 +33,7 @@ func (a AggValue) Apply(kwargs value.Dict, in operators.InputIter, out *value.Li
 			return err
 		}
 		row := rowVal.(value.Dict)
-		key := contextKwargs["key"]
+		key := contextKwargs["groupkey"]
 		row[name], err = aggregate.Value(context.TODO(), a.tier, ftypes.AggName(aggname), key)
 		if err != nil {
 			return err
@@ -50,7 +50,7 @@ func (a AggValue) Signature() *operators.Signature {
 		Input(value.Types.Dict).
 		Param("name", value.Types.String, true, false, value.Nil).
 		Param("aggregate", value.Types.String, true, false, value.Nil).
-		Param("key", value.Types.Any, false, false, value.Nil)
+		Param("groupkey", value.Types.Any, false, false, value.Nil)
 }
 
 var _ operators.Operator = AggValue{}
