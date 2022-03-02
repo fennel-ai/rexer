@@ -5,6 +5,7 @@ import { local } from "@pulumi/command";
 import * as aws from "@pulumi/aws";
 import * as fs from 'fs';
 import * as process from "process";
+import * as path from 'path';
 
 // TODO: use version from common library.
 // operator for type-safety for string key access:
@@ -109,8 +110,10 @@ function setupLinkerd(cluster: k8s.Provider) {
 
 function setupEmissaryIngressCrds(cluster: k8s.Provider) {
     // Create CRDs.
+    const root = process.env.FENNEL_ROOT!;
+    const crdFile = path.join(root, "/deployment/artifacts/emissary-crds.yaml")
     const emissaryCrds = new k8s.yaml.ConfigFile("emissary-crds", {
-        file: "emissary-crds.yaml"
+        file: crdFile,
     }, { provider: cluster })
 
 
@@ -189,7 +192,9 @@ async function setupLoadBalancerController(awsProvider: aws.Provider, cluster: e
 
     // Create policy for lb-controller.
     try {
-        var policyJson = fs.readFileSync('iam-policy.json', 'utf8')
+        const root = process.env.FENNEL_ROOT!;
+        const policyFilePath = path.join(root, "/deployment/artifacts/iam-policy.json")
+        var policyJson = fs.readFileSync(policyFilePath, 'utf8')
     } catch (err) {
         console.error(err)
         process.exit()
