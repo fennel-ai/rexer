@@ -125,7 +125,7 @@ function setupEmissaryIngressCrds(cluster: k8s.Provider) {
 
 async function setupIamRoleForServiceAccount(awsProvider: aws.Provider, namespace: string, serviceAccountName: string, cluster: eks.Cluster) {
     // Account id
-    const current = await aws.getCallerIdentity({});
+    const current = await aws.getCallerIdentity({ provider: awsProvider });
     const accountId = current.accountId
 
     // Create k8s service account and IAM role for LoadBalanacerController, and
@@ -145,7 +145,8 @@ async function setupIamRoleForServiceAccount(awsProvider: aws.Provider, namespac
                  "Action": "sts:AssumeRoleWithWebIdentity",
                  "Condition": {
                    "StringEquals": {
-                     "${oidcUrl}:sub": "system:serviceaccount:${namespace}:${serviceAccountName}"
+                     "${oidcUrl}:sub": "system:serviceaccount:${namespace}:${serviceAccountName}",
+                     "${oidcUrl}:aud": "sts.amazonaws.com"
                    }
                  }
                }
