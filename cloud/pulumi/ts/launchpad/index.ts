@@ -60,7 +60,11 @@ setupDataPlane(
             minCapacity: 1,
             maxCapacity: 4,
             password: "password",
-        }
+        },
+        confluentConf: {
+            username: process.env.CONFLUENT_CLOUD_USERNAME!,
+            password: process.env.CONFLUENT_CLOUD_PASSWORD!,
+        },
     },
     false
 )
