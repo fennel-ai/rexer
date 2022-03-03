@@ -2,6 +2,7 @@ import * as aws from "@pulumi/aws";
 import * as pulumi from "@pulumi/pulumi";
 import * as k8s from "@pulumi/kubernetes";
 import * as process from "process";
+import * as path from "path";
 import { input } from "@pulumi/aws/types";
 
 // TODO: use version from common library.
@@ -110,8 +111,10 @@ function setupOtelPolicy(input: inputType, awsProvider: aws.Provider) {
 // Setup the ADOT (AWS Distro for OpenTelemetry) Collector to collect metrics
 // and traces and forward them to cloudwatch.
 async function setupAdotCollector(input: inputType, k8sProvider: k8s.Provider) {
+    const root = process.env.FENNEL_ROOT!;
+    const deploymentFilePath = path.join(root, "/deployment/artifacts/otel-deployment.yaml")
     const collector = new k8s.yaml.ConfigFile("adot-collector", {
-        file: "otel-deployment.yaml",
+        file: deploymentFilePath,
         transformations: [
             (obj: any, opts: pulumi.CustomResourceOptions) => {
                 if (obj.kind === "Deployment") {
