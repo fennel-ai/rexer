@@ -8,11 +8,13 @@ import (
 
 	"fennel/mothership"
 	"fennel/mothership/controller/launchrequest"
+
 	"github.com/alexflint/go-arg"
 )
 
 const (
 	requestPollingDelay = time.Minute
+	dataPlaneEndpoint   = "http://http-server.fennel:2425"
 )
 
 func pollLaunchRequests(m mothership.Mothership) {
@@ -27,8 +29,7 @@ func pollLaunchRequests(m mothership.Mothership) {
 }
 
 type BridgeArgs struct {
-	Endpoint string `arg:"--bridge-endpoint,env:BRIDGE_ENDPOINT" default:"http://localhost:2425"`
-	Port     uint32 `arg:"--bridge-port,env:BRIDGE_PORT" default:"2475"`
+	Port uint32 `arg:"--bridge-port,env:BRIDGE_PORT" default:"2475"`
 }
 
 func main() {
@@ -44,7 +45,7 @@ func main() {
 		log.Fatalf("Error creating mothership: %v", err)
 	}
 
-	server := createServer(flags.BridgeArgs.Port, flags.BridgeArgs.Endpoint)
+	server := createServer(flags.BridgeArgs.Port, dataPlaneEndpoint)
 	go pollLaunchRequests(m)
 
 	address := fmt.Sprintf(":%d", server.port)
