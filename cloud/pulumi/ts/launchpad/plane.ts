@@ -7,6 +7,7 @@ import * as aurora from "../aurora";
 import * as elasticache from "../elasticache";
 import * as redis from "../redis";
 import * as confluentenv from "../confluentenv";
+import * as telemetry from "../telemetry";
 
 import { nameof } from "../lib/util"
 
@@ -46,6 +47,7 @@ const setupPlugins = async (stack: pulumi.automation.Stack) => {
         ...elasticache.plugins,
         ...redis.plugins,
         ...confluentenv.plugins,
+        ...telemetry.plugins,
     }
     console.info("installing plugins...");
     for (var key in plugins) {
@@ -84,6 +86,28 @@ const setupResources = async () => {
                 "eks": eks.workerSg,
             },
             connectedCidrBlocks: [input.controlPlaneConf.cidrBlock],
+        })
+    })
+    const redisOutput = pulumi.all([vpcOutput, eksOutput]).apply(async ([vpc, eks]) => {
+        return redis.setup({
+            roleArn: input.roleArn,
+            region: input.region,
+            vpcId: vpc.vpcId,
+            connectedSecurityGroups: {
+                "eks": eks.workerSg,
+            },
+            azs: vpc.azs,
+        })
+    })
+    const elasticacheOutput = pulumi.all([vpcOutput, eksOutput]).apply(async ([vpc, eks]) => {
+        return elasticache.setup({
+            roleArn: input.roleArn,
+            region: input.region,
+            vpcId: vpc.vpcId,
+            azs: vpc.azs,
+            connectedSecurityGroups: {
+                "eks": eks.workerSg,
+            }
         })
     })
 };

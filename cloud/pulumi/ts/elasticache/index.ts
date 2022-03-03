@@ -75,7 +75,7 @@ export const setup = async (input: inputType) => {
 
     let sgRules: pulumi.Output<string>[] = []
     for (var key in input.connectedSecurityGroups) {
-        sgRules.push(new aws.ec2.SecurityGroupRule(`allow-${key}`, {
+        sgRules.push(new aws.ec2.SecurityGroupRule(`ec-allow-${key}`, {
             securityGroupId: cacheSg.id,
             sourceSecurityGroupId: input.connectedSecurityGroups[key],
             fromPort: 0,
@@ -96,6 +96,7 @@ export const setup = async (input: inputType) => {
             securityGroupIds: [cacheSg.id],
             subnetGroupName: subnetGroup.name,
             availabilityZones: input.azs,
+            numberCacheClusters: input.azs.length,
             transitEncryptionEnabled: true,
             atRestEncryptionEnabled: true,
             tags: { ...fennelStdTags },

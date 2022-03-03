@@ -78,7 +78,7 @@ export const setup = async (input: inputType) => {
 
     let sgRules: pulumi.Output<string>[] = []
     for (var key in input.connectedSecurityGroups) {
-        sgRules.push(new aws.ec2.SecurityGroupRule(`allow-${key}`, {
+        sgRules.push(new aws.ec2.SecurityGroupRule(`redis-allow-${key}`, {
             securityGroupId: redisSg.id,
             sourceSecurityGroupId: input.connectedSecurityGroups[key],
             fromPort: 0,
