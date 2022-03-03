@@ -11,6 +11,15 @@ import (
 	"fennel/tier"
 )
 
+func init() {
+	ops := []operators.Operator{AggValue{}}
+	for _, op := range ops {
+		if err := operators.Register(op); err != nil {
+			panic(err)
+		}
+	}
+}
+
 type AggValue struct {
 	tier tier.Tier
 }
