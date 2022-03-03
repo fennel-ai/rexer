@@ -42,6 +42,7 @@ export type outputType = {
     publicRouteTable: pulumi.Output<string>
     publicNacl: pulumi.Output<string>
     privateNacl: pulumi.Output<string>
+    azs: string[]
 }
 
 const parseConfig = (): inputType => {
@@ -340,6 +341,7 @@ export const setup = async (input: inputType) => {
         publicNacl,
         privateRouteTable,
         publicRouteTable,
+        azs: [primaryAz, secondaryAz],
     }
 
     return output
