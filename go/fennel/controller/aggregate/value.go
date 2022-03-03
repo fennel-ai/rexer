@@ -16,6 +16,7 @@ import (
 	"fennel/lib/ftypes"
 	"fennel/lib/value"
 	modelCounter "fennel/model/counter"
+	_ "fennel/opdefs/std"
 	"fennel/tier"
 )
 

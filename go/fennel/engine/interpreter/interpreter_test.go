@@ -9,7 +9,7 @@ import (
 	"fennel/engine/ast"
 	"fennel/engine/operators"
 	"fennel/lib/value"
-	_ "fennel/opdefs"
+	_ "fennel/opdefs/std"
 )
 
 func getInterpreter() Interpreter {
