@@ -284,7 +284,7 @@ export const setup = async (input: inputType) => {
             "service": "http-server:2425",
             "timeout_ms": 30000,
         }
-    }, { provider: k8sProvider })
+    }, { provider: k8sProvider, deleteBeforeReplace: true })
 
     const host = new k8s.apiextensions.CustomResource("api-server-host", {
         apiVersion: "getambassador.io/v3alpha1",
@@ -318,7 +318,7 @@ export const setup = async (input: inputType) => {
                 }
             }
         }
-    }, { provider: k8sProvider })
+    }, { provider: k8sProvider, deleteBeforeReplace: true })
 
     const output: outputType = {
         svc: appSvc,
