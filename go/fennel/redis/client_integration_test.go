@@ -102,17 +102,18 @@ func TestMultiGetSet(t *testing.T) {
 		assert.Equal(t, values[i], v)
 	}
 
-	// but we get errors when keys aren't shared carefully
+	// and since we use clustered client with pipeline, but we get no errors even when keys aren't sharded carefully
 	keys = make([]string, 0)
 	values = make([]interface{}, 0)
 	for j := 0; j < 100; j++ {
-		k := fmt.Sprintf("%skey:%d%s", utils.RandString(5), j, utils.RandString(5))
+		k := fmt.Sprintf("%s{key:%d}%s", utils.RandString(5), j, utils.RandString(5))
 		keys = append(keys, k)
 		values = append(values, utils.RandString(5))
 	}
-	assert.Error(t, c.MSet(ctx, keys, values, make([]time.Duration, len(keys))))
-	_, err = c.MGet(ctx, keys...)
-	assert.Error(t, err)
+	assert.NoError(t, c.MSet(ctx, keys, values, make([]time.Duration, len(keys))))
+	found, err := c.MGet(ctx, keys...)
+	assert.NoError(t, err)
+	assert.Equal(t, values, found)
 }
 
 func TestClientConfig_Materialize_Invalid(t *testing.T) {
