@@ -3,30 +3,37 @@ import * as pulumi from "@pulumi/pulumi"
 
 import * as vpc from "../vpc";
 import * as eks from "../eks";
+import * as aurora from "../aurora";
+import * as elasticache from "../elasticache";
+import * as redis from "../redis";
+import * as confluentenv from "../confluentenv";
 
 import { nameof } from "../lib/util"
 
 import * as process from "process";
 
-type inputType = {
-    planeId: number,
-    // vpc configuration.
+type VpcConfig = {
     cidr: string,
-    region: string,
-    roleArn: string,
-    // control plane configuration.
-    controlPlaneConfig: vpc.controlPlaneConfig,
 }
 
-const parseConfig = (): inputType => {
+type DBConfig = {
+    minCapacity: number,
+    maxCapacity: number,
+    password: string,
+}
+
+type PlaneConf = {
+    planeId: number,
+    region: string,
+    roleArn: string,
+    vpcConf: VpcConfig,
+    dbConf: DBConfig,
+    controlPlaneConf: vpc.controlPlaneConfig,
+}
+
+const parseConfig = (): PlaneConf => {
     const config = new pulumi.Config();
-    return {
-        planeId: Number(config.require(nameof<inputType>("planeId"))),
-        cidr: config.require(nameof<inputType>("cidr")),
-        region: config.require(nameof<inputType>("region")),
-        roleArn: config.require(nameof<inputType>("roleArn")),
-        controlPlaneConfig: config.requireObject(nameof<inputType>("controlPlaneConfig")),
-    };
+    return config.requireObject("input");
 };
 
 const setupPlugins = async (stack: pulumi.automation.Stack) => {
@@ -35,6 +42,10 @@ const setupPlugins = async (stack: pulumi.automation.Stack) => {
     let plugins: { [key: string]: string } = {
         ...vpc.plugins,
         ...eks.plugins,
+        ...aurora.plugins,
+        ...elasticache.plugins,
+        ...redis.plugins,
+        ...confluentenv.plugins,
     }
     console.info("installing plugins...");
     for (var key in plugins) {
@@ -47,30 +58,35 @@ const setupPlugins = async (stack: pulumi.automation.Stack) => {
 const setupResources = async () => {
     const input = parseConfig();
     const vpcOutput = await vpc.setup({
-        cidr: input.cidr,
         region: input.region,
         roleArn: input.roleArn,
-        controlPlane: input.controlPlaneConfig,
+        cidr: input.vpcConf.cidr,
+        controlPlane: input.controlPlaneConf,
     })
     const eksOutput = vpcOutput.vpcId.apply(async vpcId => {
-        await eks.setup({
+        return eks.setup({
             roleArn: input.roleArn,
             region: input.region,
             vpcId: vpcId,
-            connectedVpcCidrs: [input.controlPlaneConfig.cidrBlock],
+            connectedVpcCidrs: [input.controlPlaneConf.cidrBlock],
+        })
+    })
+    const auroraOutput = pulumi.all([vpcOutput, eksOutput]).apply(async ([vpc, eks]) => {
+        return aurora.setup({
+            roleArn: input.roleArn,
+            region: input.region,
+            vpcId: vpc.vpcId,
+            minCapacity: input.dbConf.minCapacity,
+            maxCapacity: input.dbConf.maxCapacity,
+            username: "admin",
+            password: pulumi.output(input.dbConf.password),
+            connectedSecurityGroups: {
+                "eks": eks.workerSg,
+            },
+            connectedCidrBlocks: [input.controlPlaneConf.cidrBlock],
         })
     })
 };
-
-type PlaneConf = {
-    planeId: number,
-    // vpc configuration.
-    cidr: string,
-    region: string,
-    roleArn: string,
-    // control plane configuration.
-    controlPlaneConfig: vpc.controlPlaneConfig,
-}
 
 const setupDataPlane = async (args: PlaneConf, destroy?: boolean) => {
     const projectName = `launchpad`
@@ -91,11 +107,7 @@ const setupDataPlane = async (args: PlaneConf, destroy?: boolean) => {
 
     console.info("setting up config");
 
-    await stack.setConfig(nameof<inputType>("planeId"), { value: String(args.planeId) })
-    await stack.setConfig(nameof<inputType>("cidr"), { value: args.cidr })
-    await stack.setConfig(nameof<inputType>("region"), { value: args.region })
-    await stack.setConfig(nameof<inputType>("roleArn"), { value: args.roleArn })
-    await stack.setConfig(nameof<inputType>("controlPlaneConfig"), { value: JSON.stringify(args.controlPlaneConfig) })
+    await stack.setConfig("input", { value: JSON.stringify(args) })
 
     console.info("config set");
 
