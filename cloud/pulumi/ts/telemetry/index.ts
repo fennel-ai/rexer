@@ -163,8 +163,10 @@ async function setupFluentBit(input: inputType, k8sProvider: k8s.Provider) {
         }
     }, { provider: k8sProvider })
 
+    const root = process.env.FENNEL_ROOT!;
+    const fluentBitConfigPath = path.join(root, "/deployment/artifacts/fluent-bit.yaml")
     const deployment = new k8s.yaml.ConfigFile("fluent-bit-config", {
-        file: "fluent-bit.yaml",
+        file: fluentBitConfigPath,
     }, {
         provider: k8sProvider,
         dependsOn: cm
