@@ -13,6 +13,7 @@ import (
 	libaggregate "fennel/lib/aggregate"
 	"fennel/lib/ftypes"
 	"fennel/lib/value"
+	_ "fennel/opdefs/std"
 	"fennel/test"
 	"fennel/test/optest"
 )
