@@ -172,7 +172,7 @@ async function setupFluentBit(input: inputType, k8sProvider: k8s.Provider) {
 
 }
 
-const setup = async (input: inputType) => {
+export const setup = async (input: inputType) => {
     const awsProvider = new aws.Provider("tele-aws-provider", {
         region: <aws.Region>input.region,
         assumeRole: {
