@@ -41,6 +41,7 @@ export type inputType = {
 }
 
 export type outputType = {
+    clusterName: pulumi.Output<string>,
     kubeconfig: pulumi.Output<any>,
     oidcUrl: pulumi.Output<string>,
     instanceRole: pulumi.Output<string>,
@@ -307,8 +308,10 @@ export const setup = async (input: inputType) => {
 
     const workerSg = cluster.nodeSecurityGroup.id
 
+    const clusterName = cluster.core.cluster.name
+
     const output: outputType = {
-        kubeconfig, oidcUrl, instanceRole, workerSg
+        kubeconfig, oidcUrl, instanceRole, workerSg, clusterName
     }
 
     return output
