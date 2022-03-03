@@ -122,6 +122,16 @@ const setupResources = async () => {
         password: pulumi.output(input.confluentConf.password),
         envName: `plane-${input.planeId}`,
     })
+    const telemetryOutput = pulumi.all([eksOutput.clusterName, eksOutput.kubeconfig, eksOutput.instanceRole]).apply(
+        async ([eksClusterName, kubeconfig, nodeInstanceRole]) => {
+            return telemetry.setup({
+                region: input.region,
+                roleArn: input.roleArn,
+                eksClusterName,
+                kubeconfig,
+                nodeInstanceRole,
+            })
+        })
 };
 
 const setupDataPlane = async (args: PlaneConf, destroy?: boolean) => {
