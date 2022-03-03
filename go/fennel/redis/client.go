@@ -49,6 +49,10 @@ func (c Client) MGet(ctx context.Context, ks ...string) ([]interface{}, error) {
 
 func (c Client) MSet(ctx context.Context, keys []string, values []interface{}, ttls []time.Duration) error {
 	defer timer.Start(ctx, c.ID(), "redis.mset").Stop()
+	// nothing to write if there are no keys.
+	if len(keys) == 0 {
+		return nil
+	}
 	if len(keys) != len(values) || len(keys) != len(ttls) {
 		return fmt.Errorf("keys, values, and ttls should all be slices of the same length")
 	}
