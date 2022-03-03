@@ -33,7 +33,7 @@ func logActions(c *client.Client, numproc, total, qps int, uids, video_ids []uin
 					a := libaction.Action{
 						ActorID:    ftypes.OidType(uids[rand.Intn(len(uids))]),
 						ActorType:  ACTOR_TYPE,
-						TargetID:   ftypes.OidType(uids[rand.Intn(len(video_ids))]),
+						TargetID:   ftypes.OidType(video_ids[rand.Intn(len(video_ids))]),
 						TargetType: TARGET_TYPE,
 						ActionType: ACTION_TYPE,
 						Timestamp:  ftypes.Timestamp(time.Now().Unix()),
@@ -119,7 +119,7 @@ func main() {
 	num_creators := 100
 	qps := 10000
 	total := 1 * 60 * qps
-	numprocs := 400 // so 100 processes, each with 100 QPS individually
+	numprocs := 400 // so 400 processes, each with 150 QPS individually
 	uids := make([]uint64, 0, num_uids)
 	for i := 0; i < num_uids; i++ {
 		uids = append(uids, rand.Uint64())
