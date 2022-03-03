@@ -13,7 +13,7 @@ export const fennelStdTags = {
 }
 
 export const plugins = {
-    "kubernetes": "v3.15.0"
+    "kubernetes": "v3.16.0"
 }
 
 

@@ -9,8 +9,6 @@ import * as redis from "../redis";
 import * as confluentenv from "../confluentenv";
 import * as telemetry from "../telemetry";
 
-import { nameof } from "../lib/util"
-
 import * as process from "process";
 
 type VpcConfig = {

@@ -12,7 +12,9 @@ export const fennelStdTags = {
     "managed-by": "fennel.ai",
 }
 
-export const plugins = {}
+export const plugins = {
+    "aws": "v4.38.0",
+}
 
 export type inputType = {
     roleArn: string,
