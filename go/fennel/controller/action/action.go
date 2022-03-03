@@ -50,6 +50,36 @@ func Insert(ctx context.Context, tier tier.Tier, a actionlib.Action) error {
 	return producer.LogProto(ctx, &pa, nil)
 }
 
+func BatchInsert(ctx context.Context, tier tier.Tier, as []actionlib.Action) error {
+	defer timer.Start(ctx, tier.ID, "controller.action.batchinsert").Stop()
+	// validate all the actions first so that there are no partial entries due to invalid inputs.
+	pas := make([]*actionlib.ProtoAction, 0)
+	for _, a := range as {
+		err := a.Validate()
+		if err != nil {
+			return fmt.Errorf("invalid action: %v", err)
+		}
+		if a.Timestamp == 0 {
+			a.Timestamp = ftypes.Timestamp(tier.Clock.Now())
+		}
+		pa, err := actionlib.ToProtoAction(a)
+		if err != nil {
+			return err
+		}
+		pas = append(pas, &pa)
+	}
+
+	producer := tier.Producers[actionlib.ACTIONLOG_KAFKA_TOPIC]
+	// TODO: Define and implement batch logging once the downstream API moves out of experimental
+	for _, pa := range pas {
+		err := producer.LogProto(ctx, pa, nil)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 func Fetch(ctx context.Context, this tier.Tier, request actionlib.ActionFetchRequest) ([]actionlib.Action, error) {
 	defer timer.Start(ctx, this.ID, "controller.action.fetch").Stop()
 	actionsSer, err := action.Fetch(ctx, this, request)
