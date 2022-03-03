@@ -1,3 +1,3 @@
-name: control-server
+name: bridge
 runtime: nodejs
 description: Pulumi program to setup control-plane www
