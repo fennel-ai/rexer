@@ -50,10 +50,17 @@ const controlPlane: vpc.controlPlaneConfig = {
 setupDataPlane(
     {
         planeId: Number(planeId),
-        cidr: "10.101.0.0/16",
         region: "ap-south-1",
         roleArn: "arn:aws:iam::136736114676:role/admin",
-        controlPlaneConfig: controlPlane,
+        vpcConf: {
+            cidr: "10.101.0.0/16",
+        },
+        controlPlaneConf: controlPlane,
+        dbConf: {
+            minCapacity: 1,
+            maxCapacity: 4,
+            password: "password",
+        }
     },
     false
 )

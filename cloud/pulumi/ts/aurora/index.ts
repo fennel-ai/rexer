@@ -47,7 +47,7 @@ const parseConfig = (): inputType => {
 }
 
 export const setup = async (input: inputType) => {
-    const provider = new aws.Provider("aws-provider", {
+    const provider = new aws.Provider("aurora-aws-provider", {
         region: <aws.Region>input.region,
         assumeRole: {
             roleArn: input.roleArn,
