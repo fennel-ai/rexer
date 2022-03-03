@@ -28,8 +28,13 @@ jobs:
           nix_path: nixpkgs=channel:nixos-unstable
       - run: nix-build
       
+      - name: install and run direnv
+        run: |
+          sudo apt get install direnv
+          direnv allow .
+
       # Runs the unit tests 
       - name: run fennel go unit tests
-      - run: |
+        run: |
           cd go/fennel
           go test -v ./...
