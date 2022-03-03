@@ -9,6 +9,7 @@ import (
 	"fennel/lib/ftypes"
 	"fennel/lib/utils"
 	"fennel/resource"
+
 	"github.com/alicebob/miniredis/v2"
 
 	"github.com/go-redis/redis/v8"
@@ -47,6 +48,20 @@ func testMGet(t *testing.T, c Client) {
 	assert.Equal(t, redis.Nil, vals[1])
 }
 
+func testMSet(t *testing.T, c Client) {
+	ctx := context.Background()
+	// empty keys is a no op
+	assert.NoError(t, c.MSet(ctx, []string{}, []interface{}{""}, []time.Duration{}))
+	// keys with valid value are returned in MGet. Keys without value get an error
+	k1, k2 := "{a}k1", "{a}k2"
+	v1, v2 := "value1", "value2"
+	assert.NoError(t, c.MSet(ctx, []string{k1, k2}, []interface{}{v1, v2}, make([]time.Duration, 2)))
+	vals, err := c.MGet(ctx, k1, k2)
+	assert.NoError(t, err)
+	assert.Equal(t, "value1", vals[0])
+	assert.Equal(t, "value2", vals[1])
+}
+
 func testDeleteMulti(t *testing.T, c Client) {
 	ctx := context.Background()
 
@@ -82,4 +97,5 @@ func TestRedisClientLocal(t *testing.T) {
 	t.Run("local_get_set", func(t *testing.T) { testClient(t, client.(Client)) })
 	t.Run("local_delete_multi", func(t *testing.T) { testDeleteMulti(t, client.(Client)) })
 	t.Run("local_mget", func(t *testing.T) { testMGet(t, client.(Client)) })
+	t.Run("local_mset", func(t *testing.T) { testMSet(t, client.(Client)) })
 }
