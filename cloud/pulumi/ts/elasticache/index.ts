@@ -19,9 +19,8 @@ export const plugins = {
 export type inputType = {
     roleArn: string,
     region: string,
-    vpcId: string,
-    azs: string[],
-    connectedSecurityGroups: { [key: string]: string }
+    vpcId: pulumi.Output<string>,
+    connectedSecurityGroups: Record<string, pulumi.Output<string>>,
 }
 
 export type outputType = {
@@ -37,8 +36,7 @@ const parseConfig = (): inputType => {
     return {
         region: config.require(nameof<inputType>("region")),
         roleArn: config.require(nameof<inputType>("roleArn")),
-        vpcId: config.require(nameof<inputType>("vpcId")),
-        azs: config.requireObject(nameof<inputType>("azs")),
+        vpcId: pulumi.output(config.require(nameof<inputType>("vpcId"))),
         connectedSecurityGroups: config.requireObject(nameof<inputType>("connectedSecurityGroups")),
     }
 }
@@ -54,14 +52,16 @@ export const setup = async (input: inputType) => {
         }
     })
 
-    const subnetIds = await aws.ec2.getSubnetIds({
-        vpcId: input.vpcId,
-        // TODO: use better method for filtering private subnets.
-        filters: [{
-            name: "tag:Name",
-            values: ["fennel-primary-private-subnet", "fennel-secondary-private-subnet"],
-        }]
-    }, { provider })
+    const subnetIds = input.vpcId.apply(async vpcId => {
+        return await aws.ec2.getSubnetIds({
+            vpcId: vpcId,
+            // TODO: use better method for filtering private subnets.
+            filters: [{
+                name: "tag:Name",
+                values: ["fennel-primary-private-subnet", "fennel-secondary-private-subnet"],
+            }]
+        }, { provider })
+    })
 
     const subnetGroup = new aws.elasticache.SubnetGroup("cache-subnets", {
         subnetIds: subnetIds.ids,
@@ -85,23 +85,24 @@ export const setup = async (input: inputType) => {
         }, { provider }).id)
     }
 
-    const cluster = pulumi.all(sgRules).apply(() => {
-        return new aws.elasticache.ReplicationGroup("cache-cluster", {
-            // "redis" is optional here and also the only allowed value, but we
-            // set it here anyway to be explicit.
-            engine: "redis",
-            engineVersion: REDIS_VERSION,
-            replicationGroupDescription: "redis-based elastic cache",
-            nodeType: NODE_TYPE,
-            securityGroupIds: [cacheSg.id],
-            subnetGroupName: subnetGroup.name,
-            availabilityZones: input.azs,
-            numberCacheClusters: input.azs.length,
-            transitEncryptionEnabled: true,
-            atRestEncryptionEnabled: true,
-            tags: { ...fennelStdTags },
-        }, { provider })
-    })
+    const cluster = new aws.elasticache.ReplicationGroup("cache-cluster", {
+        // "redis" is optional here and also the only allowed value, but we
+        // set it here anyway to be explicit.
+        engine: "redis",
+        engineVersion: REDIS_VERSION,
+        replicationGroupDescription: "redis-based elastic cache",
+        nodeType: NODE_TYPE,
+        securityGroupIds: [cacheSg.id],
+        subnetGroupName: subnetGroup.name,
+        transitEncryptionEnabled: true,
+        atRestEncryptionEnabled: true,
+        clusterMode: {
+            numNodeGroups: 2,
+            replicasPerNodeGroup: 1,
+        },
+        automaticFailoverEnabled: true,
+        tags: { ...fennelStdTags },
+    }, { provider })
 
     const primaryAddress = cluster.primaryEndpointAddress
     const replicaAddress = cluster.readerEndpointAddress
