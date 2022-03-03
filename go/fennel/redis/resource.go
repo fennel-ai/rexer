@@ -12,7 +12,7 @@ import (
 
 type Client struct {
 	conf   resource.Config
-	client *redis.Client
+	client *redis.ClusterClient
 	resource.Scope
 }
 
@@ -48,8 +48,8 @@ var _ resource.Config = ClientConfig{}
 func (conf ClientConfig) Materialize() (resource.Resource, error) {
 	client := Client{
 		conf: conf,
-		client: redis.NewClient(&redis.Options{
-			Addr:      conf.Addr,
+		client: redis.NewClusterClient(&redis.ClusterOptions{
+			Addrs:     []string{conf.Addr},
 			TLSConfig: conf.TLSConfig,
 		}),
 		Scope: conf.Scope}
@@ -68,8 +68,8 @@ type MiniRedisConfig struct {
 }
 
 func (conf MiniRedisConfig) Materialize() (resource.Resource, error) {
-	return Client{conf, redis.NewClient(&redis.Options{
-		Addr:      conf.MiniRedis.Addr(),
+	return Client{conf, redis.NewClusterClient(&redis.ClusterOptions{
+		Addrs:     []string{conf.MiniRedis.Addr()},
 		TLSConfig: nil,
 	}), conf.Scope}, nil
 }
