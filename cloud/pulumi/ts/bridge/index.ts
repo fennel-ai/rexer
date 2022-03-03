@@ -104,7 +104,11 @@ const appDep = image.imageName.apply(() => {
                             {
                                 name: "MOTHERSHIP_MYSQL_DBNAME",
                                 value: config.require("db"),
-                            }
+                            },
+                            {
+                                name: "BRIDGE_PORT",
+                                value: "2475",
+                            },
                         ]
                     }],
                 },
