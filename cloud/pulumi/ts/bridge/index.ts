@@ -1,7 +1,9 @@
 import * as docker from "@pulumi/docker";
 import * as aws from "@pulumi/aws"
+import * as pulumi from "@pulumi/pulumi"
 import * as path from "path";
 import * as k8s from "@pulumi/kubernetes";
+import { rootPulumiStackTypeName } from "@pulumi/pulumi/runtime";
 
 const namespace = "fennel"
 const name = "bridge"
@@ -50,6 +52,8 @@ const image = new docker.Image("bridge-img", {
 export const baseImageName = image.baseImageName;
 export const fullImageName = image.imageName;
 
+const config = new pulumi.Config();
+
 // Create a load balanced Kubernetes service using this image, and export its IP.
 const appLabels = { app: name };
 const appDep = image.imageName.apply(() => {
@@ -78,7 +82,29 @@ const appDep = image.imageName.apply(() => {
                             },
                         ],
                         command: [
-                            "/root/server"
+                            "/root/bridge"
+                        ],
+                        env: [
+                            {
+                                name: "MOTHERSHIP_ID",
+                                value: config.require("mothershipId"),
+                            },
+                            {
+                                name: "MOTHERSHIP_MYSQL_ADDRESS",
+                                value: config.require("dbhost"),
+                            },
+                            {
+                                name: "MOTHERSHIP_MYSQL_USERNAME",
+                                value: config.require("dbuser"),
+                            },
+                            {
+                                name: "MOTHERSHIP_MYSQL_PASSWORD",
+                                value: config.requireSecret("dbpassword"),
+                            },
+                            {
+                                name: "MOTHERSHIP_MYSQL_DBNAME",
+                                value: config.require("db"),
+                            }
                         ]
                     }],
                 },
