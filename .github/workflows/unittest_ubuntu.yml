@@ -4,9 +4,6 @@ name: unit-tests
 
 # Controls when the workflow will run
 on:
-  pull_request:
-    branches: [ main ]
-
   # Allows you to run this workflow manually from the Actions tab
   workflow_dispatch:
 
@@ -21,6 +18,11 @@ jobs:
     steps:
       # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
       - uses: actions/checkout@v2
+      # Install python - this is required to install and run nix.
+      # Nix will however install a version specified in our codebase and run the tests using it.
+      - uses: actions/setup-python@v2
+        with:
+          python-version: '3.x'
 
       # Install nix on the remote machine
       - uses: cachix/install-nix-action@v15
