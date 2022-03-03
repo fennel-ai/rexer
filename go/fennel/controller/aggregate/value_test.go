@@ -10,6 +10,7 @@ import (
 	"fennel/lib/ftypes"
 	"fennel/lib/value"
 	"fennel/model/counter"
+	_ "fennel/opdefs/std"
 	"fennel/test"
 
 	"github.com/stretchr/testify/assert"
