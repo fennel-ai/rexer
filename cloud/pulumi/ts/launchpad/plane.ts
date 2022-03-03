@@ -23,12 +23,18 @@ type DBConfig = {
     password: string,
 }
 
+type ConfluentConfig = {
+    username: string,
+    password: string,
+}
+
 type PlaneConf = {
     planeId: number,
     region: string,
     roleArn: string,
     vpcConf: VpcConfig,
     dbConf: DBConfig,
+    confluentConf: ConfluentConfig,
     controlPlaneConf: vpc.controlPlaneConfig,
 }
 
@@ -109,6 +115,12 @@ const setupResources = async () => {
                 "eks": eks.workerSg,
             }
         })
+    })
+    const confluentOutput = await confluentenv.setup({
+        region: input.region,
+        username: input.confluentConf.username,
+        password: pulumi.output(input.confluentConf.password),
+        envName: `plane-${input.planeId}`,
     })
 };
 
