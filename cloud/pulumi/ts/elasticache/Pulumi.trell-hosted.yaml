@@ -1,6 +1,0 @@
-config:
-  elasticache:azs: '["ap-south-1a"]'
-  elasticache:connectedSecurityGroups: '{"eks": "sg-002cccb6949c21318"}'
-  elasticache:region: ap-south-1
-  elasticache:roleArn: arn:aws:iam::136736114676:role/admin
-  elasticache:vpcId: vpc-032772d0e2d16d900
