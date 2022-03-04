@@ -97,6 +97,7 @@ export const setup = async (input: inputType) => {
                     // metadata.annotations["service.beta.kubernetes.io/aws-load-balancer-subnets"] = input.subnetIds
                     metadata.annotations["service.beta.kubernetes.io/aws-load-balancer-subnets"] = input.subnetIds.toString()
                     obj.metadata = metadata
+                    obj.spec["loadBalancerSourceRanges"] = ["0.0.0.0/0"]
                 }
             },
         ]
