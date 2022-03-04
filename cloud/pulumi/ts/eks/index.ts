@@ -117,10 +117,14 @@ function setupEmissaryIngressCrds(cluster: k8s.Provider) {
         file: crdFile,
     }, { provider: cluster })
 
-
     // Configure default Module to add linkerd headers as per:
     // https://www.getambassador.io/docs/edge-stack/latest/topics/using/mappings/#linkerd-interoperability-add_linkerd_headers
     const l5dmapping = emissaryCrds.resources.apply(() => {
+        // Sleep for 2 mins so services deployed by emissary can be ready.
+        const sleeper = new local.Command("sleeper", {
+            create: "sleep 120",
+        })
+
         return new k8s.apiextensions.CustomResource("l5d-mapping", {
             "apiVersion": "getambassador.io/v3alpha1",
             "kind": "Module",
@@ -132,7 +136,7 @@ function setupEmissaryIngressCrds(cluster: k8s.Provider) {
                     "add_linkerd_headers": true
                 }
             }
-        }, { provider: cluster })
+        }, { provider: cluster, dependsOn: sleeper })
     })
 }
 
