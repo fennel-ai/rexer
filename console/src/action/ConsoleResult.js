@@ -11,18 +11,18 @@ const ConsoleResult = ({ data, metadata }) => {
           <tr style={styles.tableRow}>
             <th style={styles.tableHeaderData}>Action ID</th>
             <th style={styles.tableHeaderData}>Action Type</th>
-            <th style={styles.tableHeaderData}>Action Value</th>
-            <th style={styles.tableHeaderData}>Target ID</th>
-            <th style={styles.tableHeaderData}>Target Type</th>
             <th style={styles.tableHeaderData}>Actor ID</th>
             <th style={styles.tableHeaderData}>Actor Type</th>
+            <th style={styles.tableHeaderData}>Target ID</th>
+            <th style={styles.tableHeaderData}>Target Type</th>
             <th style={styles.tableHeaderData}>Request ID</th>
             <th style={styles.tableHeaderData}>Timestamp</th>
+            <th style={styles.tableHeaderData}>Metadata</th>
           </tr>
         </thead>
         <tbody>
           {data &&
-            data.map((item) => <ActionRow data={item} key={item.actionId} />)}
+            data.map((item) => <ActionRow data={item} key={item.ActionID} />)}
         </tbody>
       </table>
     </div>
@@ -43,17 +43,17 @@ const formatDate = (ms) => {
 
 const ActionRow = ({ data }) => (
   <tr style={styles.tableRow}>
-    <td style={styles.tableData}>{data.actionId}</td>
-    <td style={styles.tableData}>{data.actionType}</td>
-    <td style={styles.tableData}>{data.actionValue}</td>
-    <td style={styles.tableData}>{data.targetId}</td>
-    <td style={styles.tableData}>{data.targetType}</td>
-    <td style={styles.tableData}>{data.actorId}</td>
-    <td style={styles.tableData}>{data.actorType}</td>
-    <td style={styles.tableData}>{data.requestId}</td>
+    <td style={styles.tableData}>{data.ActionID}</td>
+    <td style={styles.tableData}>{data.ActionType}</td>
+    <td style={styles.tableData}>{data.ActorID}</td>
+    <td style={styles.tableData}>{data.ActorType}</td>
+    <td style={styles.tableData}>{data.TargetID}</td>
+    <td style={styles.tableData}>{data.TargetType}</td>
+    <td style={styles.tableData}>{data.RequestID}</td>
     <td style={styles.tableData} className="timestamp">
-      {formatDate(data.timestamp)}
+      {formatDate(data.Timestamp)}
     </td>
+    <td style={styles.tableData}>{data.Metadata}</td>
   </tr>
 );
 
