@@ -24,7 +24,7 @@ jobs:
       # Install direnv and enable it on our current directory.
       - name: install direnv and allow it
         run: |
-          curl -sfL https://direnv.net/install.sh | bash
+          sudo snap install direnv
           chmod +x direnv
           eval "$(direnv hook bash)"
           exec bash
