@@ -37,4 +37,4 @@ jobs:
       # We should get rid of 10s here eventually.
       - name: run the go unit tests
         run: |
-          nix-shell shell.nix --run "cd go/fennel && go test -v -timeout 10s ./..."
+          nix-shell shell.nix --run "cd go/fennel && go test -v ./..."
