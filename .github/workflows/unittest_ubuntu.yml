@@ -24,7 +24,16 @@ jobs:
         with:
           python-version: '3.x'
 
-      # Install nix on the remote machine
+      # nix installation will fail if nix is already installed.
+      # instead of an update (which has complicated syntax), we will clean install it.
+      - name: remove nix backup file if it exists
+        run: |
+          FILE=/etc/bash.bashrc.backup-before-nix
+          if test -f "$FILE"; then
+            sudo rm "$FILE"
+          fi
+
+      # Clean install nix on the remote machine
       - uses: cachix/install-nix-action@v15
         with:
           nix_path: nixpkgs=channel:nixos-unstable
