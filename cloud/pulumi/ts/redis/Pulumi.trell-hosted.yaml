@@ -1,6 +1,0 @@
-config:
-  redis:azs: '["ap-south-1a", "ap-south-1b"]'
-  redis:connectedSecurityGroups: '{"eks": "sg-002cccb6949c21318"}'
-  redis:region: ap-south-1
-  redis:roleArn: arn:aws:iam::136736114676:role/admin
-  redis:vpcId: vpc-032772d0e2d16d900
