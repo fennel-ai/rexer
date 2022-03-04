@@ -17,8 +17,10 @@ const (
 	dataPlaneEndpoint   = "http://http-server.fennel:2425"
 )
 
-func pollLaunchRequests(m mothership.Mothership) {
-	for {
+func pollLaunchRequestStatus(m mothership.Mothership) {
+	ticker := time.NewTicker(requestPollingDelay)
+	defer ticker.Stop()
+	for ; true; <-ticker.C {
 		log.Print("processing completed requests")
 		err := launchrequest.ProcessCompletedRequests(m)
 		if err != nil {
@@ -46,7 +48,7 @@ func main() {
 	}
 
 	server := createServer(flags.BridgeArgs.Port, dataPlaneEndpoint)
-	go pollLaunchRequests(m)
+	go pollLaunchRequestStatus(m)
 
 	address := fmt.Sprintf(":%d", server.port)
 	log.Printf("starting http service on '%s'\n", address)

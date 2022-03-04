@@ -9,12 +9,12 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestPollLaunchRequests(t *testing.T) {
+func TestPollLaunchRequestStatus(t *testing.T) {
 	m, err := mothership.NewTestMothership()
 	assert.NoError(t, err)
 	defer mothership.Teardown(m)
 
-	go pollLaunchRequests(m)
+	go pollLaunchRequestStatus(m)
 	_, err = launchrequest.InsertRequest(m, []byte(`{}`), []byte(`{"state":"COMPLETED"}`))
 	assert.NoError(t, err)
 	_, err = launchrequest.InsertRequest(m, []byte(`{}`), []byte(`{"state":"PENDING"}`))
