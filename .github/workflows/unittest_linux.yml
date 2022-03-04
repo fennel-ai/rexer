@@ -19,18 +19,17 @@ jobs:
       # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
       - uses: actions/checkout@v2
 
-      # Install python - this is required to install and run nix.
-      # Nix will however install a version specified in our codebase and run the tests using it.
-      - uses: actions/setup-python@v2
-        with:
-          python-version: '3.x'
-
       # Assumes that the remote machine has nix installed in it already.
 
-      # Clean install nix on the remote machine
-      - name: install packages using nix
-        run: nix-build shell.nix
-
+      # Install direnv and enable it on our current directory.
+      - name: install direnv and allow it
+        run: |
+          curl -sfL https://direnv.net/install.sh | bash
+          chmod +x direnv
+          eval "$(direnv hook bash)"
+          exec bash
+          direnv allow .
+          
       # Runs the unit tests 
       - name: run fennel go unit tests
         run: |
