@@ -19,9 +19,9 @@ export const plugins = {
 export type inputType = {
     roleArn: string,
     region: string,
-    vpcId: string,
+    vpcId: pulumi.Output<string>,
     azs: string[],
-    connectedSecurityGroups: { [key: string]: string }
+    connectedSecurityGroups: Record<string, pulumi.Output<string>>,
 }
 
 export type outputType = {
@@ -40,7 +40,7 @@ const parseConfig = (): inputType => {
     return {
         region: config.require(nameof<inputType>("region")),
         roleArn: config.require(nameof<inputType>("roleArn")),
-        vpcId: config.require(nameof<inputType>("vpcId")),
+        vpcId: pulumi.output(config.require(nameof<inputType>("vpcId"))),
         azs: config.requireObject(nameof<inputType>("azs")),
         connectedSecurityGroups: config.requireObject(nameof<inputType>("connectedSecurityGroups")),
     }
@@ -56,14 +56,16 @@ export const setup = async (input: inputType) => {
         }
     })
 
-    const subnetIds = await aws.ec2.getSubnetIds({
-        vpcId: input.vpcId,
-        // TODO: use better method for filtering private subnets.
-        filters: [{
-            name: "tag:Name",
-            values: ["fennel-primary-private-subnet", "fennel-secondary-private-subnet"],
-        }]
-    }, { provider })
+    const subnetIds = input.vpcId.apply(async vpcId => {
+        return await aws.ec2.getSubnetIds({
+            vpcId: vpcId,
+            // TODO: use better method for filtering private subnets.
+            filters: [{
+                name: "tag:Name",
+                values: ["fennel-primary-private-subnet", "fennel-secondary-private-subnet"],
+            }]
+        }, { provider })
+    })
 
     const subnetGroup = new aws.memorydb.SubnetGroup("redis-subnet-group", {
         subnetIds: subnetIds.ids,

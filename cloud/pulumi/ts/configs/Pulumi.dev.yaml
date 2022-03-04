@@ -3,7 +3,7 @@ config:
   aws:region: us-west-2
   configs:cacheConfig:
     primary:
-      secure: AAABAOVXjzi9gTxx9DQKpiN1KLe62VK7nVhEjpz7IpromgyAXMTzSEnOOtrykUxB5Vyts3N2XPxh1S4Yw4hO+/w45X23XeoRJUUZMvaCgH1CHHccOGV9Xa0c8Phjj2YkQQ==
+      secure: AAABAOifkzLnBj8WKWWTEL4pkPZQBxIROsDPQp1BtGEDA7C9Yin3I1Eiolov/HMFjsVaxU7ju+nQDPG/Qry+zsowCWmWqSs04NTLoqiFn1X8GiLP1IhuRR2UE8Z9QOAsKZQuk1g=
     replica:
       secure: AAABAMTMmU6f5hmaWY60+/LrHjac8JY1F+KcIoLBKNWISz7plQxdYQmgWZAXXYd5SL3OzvM9GziY5d9BymdNYMMvZCebWHZKfaT3fuAKQmjk9FcFm/t273oWUyFIjfdMwg8=
   configs:dbConfig:
@@ -22,6 +22,8 @@ config:
       secure: AAABAKJtpAGDbadKC9q4heRYTs+1wa7oGgTxqECjwi5RqfXiVYVcohnKkcWivwnjzJm6h9TsR+gXbAdKCaCJVu6VG3L4mFjgzlDc7A==
     username:
       secure: AAABAA7+HpYiJgQslJMJG79MG24E3yPHGKrYfukgec9GBE0gBc3U4pdPPVe5+v1A
+  configs:kubeconfig: '{"apiVersion":"v1","clusters":[{"cluster":{"certificate-authority-data":"LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSUM1ekNDQWMrZ0F3SUJBZ0lCQURBTkJna3Foa2lHOXcwQkFRc0ZBREFWTVJNd0VRWURWUVFERXdwcmRXSmwKY201bGRHVnpNQjRYRFRJeE1USXhNakl3TlRjek5Wb1hEVE14TVRJeE1ESXdOVGN6TlZvd0ZURVRNQkVHQTFVRQpBeE1LYTNWaVpYSnVaWFJsY3pDQ0FTSXdEUVlKS29aSWh2Y05BUUVCQlFBRGdnRVBBRENDQVFvQ2dnRUJBSjVvCkw3SkpmS1BjYW9WcEFmL3lqM3FHUDJxcW41YWllbEJBZEpTaGtlVFA3SXEvSUNPWTVvdWZnbkJnUzVFa0RaOVkKTksvWkt4L3prcm8rMnl6U0cxVCtBM0ExV2RuaVdnbjBuUVFYVlZPeDF6Y1NMbDBhTUFqTk1tSkl2Q0dudzJKMApFRytNaFlSNFg5Um03M1RUTDRRL0xrNlpUZDFSNHdJTmZpcndOaHhTdE1kT2dKRjlCK0RaR2lvQ0drdjh2Ti91Cjczcm5iN3MwcmdtNHBYcXQvK0g4VXVTZlFFREQ0aWZyajlEUzFHTE9lcG8vTVJQTnNjR2wycjJZZkxEeC9DS24KN045WTROMHdOZ1RYdGN3UmtJdk8yTjlFMmo5c2lSdVpZVmdtU05RMlo2bWVjOGFlWWVsRE5ZTHBnV2JuWE51VAplV2g2TEtxYVNtcUxWczlGT1lFQ0F3RUFBYU5DTUVBd0RnWURWUjBQQVFIL0JBUURBZ0trTUE4R0ExVWRFd0VCCi93UUZNQU1CQWY4d0hRWURWUjBPQkJZRUZGc3hVUjg2anBvK0I0ZS9nSWtZdjlIOXVXbDhNQTBHQ1NxR1NJYjMKRFFFQkN3VUFBNElCQVFBR2RYb1pDZWxpRGgwSXJreE56emJWUXEzRmdpcVhzVFRFRWMyNEE0ZzBhL0p2ZE1hdwpONTJZVWxXNjBneUROTExVNDZGZCtXUEcrazlsVXpFRU5YZE05ZTAzRDJENC8rTE1ObFh3S2xSUmFyVVM0ZVpaCkhaSmxLZlZTdDlnNWJ2c0dWN0kzcXhTaVl5TUZLR1kxMFcvdzhtRnNUaXhFRFFyZldPeTAxNi9vSXhScGhyTGgKeDJkelJUWElvVGw3bjRSaEhXTU5iRTNFVkRCMmlicmRWN29xRnhDMlFwb3JvNlk5SmlHb1RKK09NR1JyQjFrdQpGMzZnV0RFemFEdGNXVUE4cnMrbDNNWjQ3WG5GS1hYaEN2OHZUZUQvb2FtZTFwSmhERW1oYmN2eXNJalVnbFZZCko0cU51OTY2YVNMK2N6ZUhiVnZrYzhJemFQL2RWbGxtYXk4SwotLS0tLUVORCBDRVJUSUZJQ0FURS0tLS0tCg==","server":"https://48ED7444C97D979AEAAF85AF7893955E.gr7.us-west-2.eks.amazonaws.com"},"name":"kubernetes"}],"contexts":[{"context":{"cluster":"kubernetes","user":"aws"},"name":"aws"}],"current-context":"aws","kind":"Config","users":[{"name":"aws","user":{"exec":{"apiVersion":"client.authentication.k8s.io/v1alpha1","args":["eks","get-token","--cluster-name","eks-cluster-eksCluster-89d10be"],"command":"aws","env":[{"name":"AWS_PROFILE","value":"admin"}]}}}]}'
+  configs:namespace: fennel
   configs:redisConfig:
     addr:
       secure: AAABAI2/SEzv6GHUvfsEQG6qd7NeaeGTrBZUOcsywkUxpAzqmgEKiVWdQBRYWihHL94NuJHZsGtxAILLLocML2Bx7Btto+slcrF27Uul9EGMhX95juL07hV7Jv7Wbolu8tuwvZmpXLs=

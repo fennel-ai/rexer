@@ -69,50 +69,41 @@ const setupResources = async () => {
         cidr: input.vpcConf.cidr,
         controlPlane: input.controlPlaneConf,
     })
-    const eksOutput = vpcOutput.vpcId.apply(async vpcId => {
-        return eks.setup({
-            roleArn: input.roleArn,
-            region: input.region,
-            vpcId: vpcId,
-            connectedVpcCidrs: [input.controlPlaneConf.cidrBlock],
-        })
+    const eksOutput = await eks.setup({
+        roleArn: input.roleArn,
+        region: input.region,
+        vpcId: vpcOutput.vpcId,
+        connectedVpcCidrs: [input.controlPlaneConf.cidrBlock],
     })
-    const auroraOutput = pulumi.all([vpcOutput, eksOutput]).apply(async ([vpc, eks]) => {
-        return aurora.setup({
-            roleArn: input.roleArn,
-            region: input.region,
-            vpcId: vpc.vpcId,
-            minCapacity: input.dbConf.minCapacity,
-            maxCapacity: input.dbConf.maxCapacity,
-            username: "admin",
-            password: pulumi.output(input.dbConf.password),
-            connectedSecurityGroups: {
-                "eks": eks.workerSg,
-            },
-            connectedCidrBlocks: [input.controlPlaneConf.cidrBlock],
-        })
+    const auroraOutput = aurora.setup({
+        roleArn: input.roleArn,
+        region: input.region,
+        vpcId: vpcOutput.vpcId,
+        minCapacity: input.dbConf.minCapacity,
+        maxCapacity: input.dbConf.maxCapacity,
+        username: "admin",
+        password: pulumi.output(input.dbConf.password),
+        connectedSecurityGroups: {
+            "eks": eksOutput.workerSg,
+        },
+        connectedCidrBlocks: [input.controlPlaneConf.cidrBlock],
     })
-    const redisOutput = pulumi.all([vpcOutput, eksOutput]).apply(async ([vpc, eks]) => {
-        return redis.setup({
-            roleArn: input.roleArn,
-            region: input.region,
-            vpcId: vpc.vpcId,
-            connectedSecurityGroups: {
-                "eks": eks.workerSg,
-            },
-            azs: vpc.azs,
-        })
+    const redisOutput = await redis.setup({
+        roleArn: input.roleArn,
+        region: input.region,
+        vpcId: vpcOutput.vpcId,
+        connectedSecurityGroups: {
+            "eks": eksOutput.workerSg,
+        },
+        azs: vpcOutput.azs,
     })
-    const elasticacheOutput = pulumi.all([vpcOutput, eksOutput]).apply(async ([vpc, eks]) => {
-        return elasticache.setup({
-            roleArn: input.roleArn,
-            region: input.region,
-            vpcId: vpc.vpcId,
-            azs: vpc.azs,
-            connectedSecurityGroups: {
-                "eks": eks.workerSg,
-            }
-        })
+    const elasticacheOutput = await elasticache.setup({
+        roleArn: input.roleArn,
+        region: input.region,
+        vpcId: vpcOutput.vpcId,
+        connectedSecurityGroups: {
+            "eks": eksOutput.workerSg,
+        }
     })
     const confluentOutput = await confluentenv.setup({
         region: input.region,
@@ -120,16 +111,21 @@ const setupResources = async () => {
         password: pulumi.output(input.confluentConf.password),
         envName: `plane-${input.planeId}`,
     })
-    const telemetryOutput = pulumi.all([eksOutput.clusterName, eksOutput.kubeconfig, eksOutput.instanceRole]).apply(
-        async ([eksClusterName, kubeconfig, nodeInstanceRole]) => {
-            return telemetry.setup({
-                region: input.region,
-                roleArn: input.roleArn,
-                eksClusterName,
-                kubeconfig,
-                nodeInstanceRole,
-            })
-        })
+    const telemetryOutput = await telemetry.setup({
+        region: input.region,
+        roleArn: input.roleArn,
+        eksClusterName: eksOutput.clusterName,
+        kubeconfig: eksOutput.kubeconfig,
+        nodeInstanceRole: eksOutput.instanceRole,
+    })
+    return {
+        "kubeconfig": eksOutput.kubeconfig,
+        "vpc": vpcOutput,
+        "redis": redisOutput,
+        "elasticache": elasticacheOutput,
+        "conluent": confluentOutput,
+        "db": auroraOutput,
+    }
 };
 
 const setupDataPlane = async (args: PlaneConf, destroy?: boolean) => {
