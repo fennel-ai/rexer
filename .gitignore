@@ -22,3 +22,5 @@ Cargo.lock
 **/.DS_Store
 
 .direnv/*
+
+.github/*
