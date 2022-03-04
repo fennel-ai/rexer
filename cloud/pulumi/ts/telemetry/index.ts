@@ -23,9 +23,9 @@ export const plugins = {
 export type inputType = {
     roleArn: string,
     region: string,
-    kubeconfig: string,
-    eksClusterName: string,
-    nodeInstanceRole: string,
+    kubeconfig: pulumi.Output<any>,
+    eksClusterName: pulumi.Output<string>,
+    nodeInstanceRole: pulumi.Output<string>,
 }
 
 export type outputType = {}
@@ -35,9 +35,9 @@ const parseConfig = (): inputType => {
     return {
         roleArn: config.require(nameof<inputType>("roleArn")),
         region: config.require(nameof<inputType>("region")),
-        kubeconfig: config.require(nameof<inputType>("kubeconfig")),
-        eksClusterName: config.require(nameof<inputType>("eksClusterName")),
-        nodeInstanceRole: config.require(nameof<inputType>("nodeInstanceRole")),
+        kubeconfig: pulumi.output(config.require(nameof<inputType>("kubeconfig"))),
+        eksClusterName: pulumi.output(config.require(nameof<inputType>("eksClusterName"))),
+        nodeInstanceRole: pulumi.output(config.require(nameof<inputType>("nodeInstanceRole"))),
     }
 }
 

@@ -19,12 +19,12 @@ export const plugins = {
 export type inputType = {
     roleArn: string,
     region: string,
-    vpcId: string,
+    vpcId: pulumi.Output<string>,
     minCapacity: number,
     maxCapacity: number,
     username: string,
     password: pulumi.Output<string>,
-    connectedSecurityGroups: { [key: string]: string }
+    connectedSecurityGroups: Record<string, pulumi.Output<string>>,
     connectedCidrBlocks: string[],
 }
 
@@ -38,7 +38,7 @@ const parseConfig = (): inputType => {
     return {
         roleArn: config.require(nameof<inputType>("roleArn")),
         region: config.require(nameof<inputType>("region")),
-        vpcId: config.require(nameof<inputType>("vpcId")),
+        vpcId: pulumi.output(config.require(nameof<inputType>("vpcId"))),
         minCapacity: config.requireNumber(nameof<inputType>("minCapacity")),
         maxCapacity: config.requireNumber(nameof<inputType>("maxCapacity")),
         connectedSecurityGroups: config.requireObject(nameof<inputType>("connectedSecurityGroups")),
@@ -58,14 +58,16 @@ export const setup = async (input: inputType) => {
         }
     })
 
-    const subnetIds = await aws.ec2.getSubnetIds({
-        vpcId: input.vpcId,
-        // TODO: use better method for filtering private subnets.
-        filters: [{
-            name: "tag:Name",
-            values: ["fennel-primary-private-subnet", "fennel-secondary-private-subnet"],
-        }]
-    }, { provider })
+    const subnetIds = input.vpcId.apply(async vpcId => {
+        return await aws.ec2.getSubnetIds({
+            vpcId: vpcId,
+            // TODO: use better method for filtering private subnets.
+            filters: [{
+                name: "tag:Name",
+                values: ["fennel-primary-private-subnet", "fennel-secondary-private-subnet"],
+            }]
+        }, { provider })
+    })
 
     const subnetGroup = new aws.rds.SubnetGroup("db-subnetgroup", {
         subnetIds: subnetIds.ids,

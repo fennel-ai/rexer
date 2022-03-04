@@ -66,5 +66,5 @@ setupDataPlane(
             password: process.env.CONFLUENT_CLOUD_PASSWORD!,
         },
     },
-    false
+    true
 )

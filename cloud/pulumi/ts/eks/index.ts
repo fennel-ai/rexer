@@ -36,7 +36,7 @@ const AMI_BY_REGION: Record<string, string> = {
 export type inputType = {
     roleArn: string,
     region: string,
-    vpcId: string,
+    vpcId: pulumi.Output<string>,
     connectedVpcCidrs: string[],
 }
 
@@ -53,7 +53,7 @@ const parseConfig = (): inputType => {
     return {
         roleArn: config.require(nameof<inputType>("roleArn")),
         region: config.require(nameof<inputType>("region")),
-        vpcId: config.require(nameof<inputType>("vpcId")),
+        vpcId: pulumi.output(config.require(nameof<inputType>("vpcId"))),
         connectedVpcCidrs: config.requireObject(nameof<inputType>("connectedVpcCidrs")),
     }
 }
@@ -241,9 +241,11 @@ export const setup = async (input: inputType) => {
         }
     })
 
-    const subnetIds = await aws.ec2.getSubnetIds({
-        vpcId
-    }, { provider: awsProvider })
+    const subnetIds = vpcId.apply(async vpcId => {
+        return await aws.ec2.getSubnetIds({
+            vpcId
+        }, { provider: awsProvider })
+    })
 
     // Create an EKS cluster with the default configuration.
     const cluster = new eks.Cluster("eks-cluster", {
