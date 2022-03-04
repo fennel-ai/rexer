@@ -24,8 +24,7 @@ export type inputType = {
 }
 
 export type outputType = {
-    primaryAddress: pulumi.Output<string>,
-    replicaAddress: pulumi.Output<string>,
+    "endpoint": pulumi.Output<string>,
 }
 
 const REDIS_VERSION = "6.x";
@@ -108,8 +107,7 @@ export const setup = async (input: inputType) => {
     const replicaAddress = cluster.readerEndpointAddress
 
     const output: outputType = {
-        primaryAddress,
-        replicaAddress,
+        endpoint: cluster.configurationEndpointAddress,
     }
     return output
 }
