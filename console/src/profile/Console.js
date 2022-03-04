@@ -24,7 +24,7 @@ const getQuery = (form) => {
     params.version = form.filterVersion.value;
   }
 
-  return { queryStringParameters: params };
+  return params;
 };
 
 const Console = () => {
