@@ -33,7 +33,7 @@ jobs:
           nix_path: nixpkgs=channel:nixos-unstable
         continue-on-error: true
 
-      - run: nix-build
+      - run: nix-build nix.shell
       - run: nix-shell --run "echo OK"
       - run: nix-shell
       
