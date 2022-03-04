@@ -9,6 +9,7 @@ on:
 
 env:
   DISABLE_PULUMI: true
+  NIX_PATH: channel:nixos-unstable
 
 # A workflow run is made up of one or more jobs that can run sequentially or in parallel
 jobs:
