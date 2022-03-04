@@ -6,9 +6,6 @@ name: unit-tests-linux-x64
 on:
   # Allows you to run this workflow manually from the Actions tab
   workflow_dispatch:
-  
-env:
-  DISABLE_PULUMI: true
 
 # A workflow run is made up of one or more jobs that can run sequentially or in parallel
 jobs:
@@ -24,14 +21,11 @@ jobs:
 
       # Assumes that the remote machine has nix installed in it already.
       
-      # Setup nix by changing into the directory
-      - name: enable nix shell
-        run: |
-          export INSTALL_PULUMI=false
-          nix-shell
-
-      # Runs the unit tests 
-      - name: run fennel go unit tests
-        run: |
-          cd go/fennel
-          go test -v ./...
+      - uses: workflow/nix-shell-action@v1
+        env:
+          DISABLE_PULUMI: true
+        with:
+          script: |
+            cd go/fennel
+            go test -v ./...
+          
