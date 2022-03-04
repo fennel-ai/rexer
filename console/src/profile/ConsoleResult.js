@@ -12,11 +12,12 @@ const ConsoleResult = ({ results }) => (
           <th style={styles.tableHeaderData}>OID</th>
           <th style={styles.tableHeaderData}>Key</th>
           <th style={styles.tableHeaderData}>Version</th>
+          <th style={styles.tableHeaderData}>Value</th>
         </tr>
       </thead>
       <tbody>
         {results &&
-          results.map((item) => <ActionRow data={item} key={item.oId} />)}
+          results.map((item) => <ActionRow data={item} key={[item.Oid, item.Key, item.Version]} />)}
       </tbody>
     </table>
   </div>
@@ -24,10 +25,11 @@ const ConsoleResult = ({ results }) => (
 
 const ActionRow = ({ data }) => (
   <tr style={styles.tableRow}>
-    <td style={styles.tableData}>{data.oType}</td>
-    <td style={styles.tableData}>{data.oId}</td>
-    <td style={styles.tableData}>{data.key}</td>
-    <td style={styles.tableData}>{data.version}</td>
+    <td style={styles.tableData}>{data.OType}</td>
+    <td style={styles.tableData}>{data.Oid}</td>
+    <td style={styles.tableData}>{data.Key}</td>
+    <td style={styles.tableData}>{data.Version}</td>
+    <td style={styles.tableData}>{data.Value}</td>
   </tr>
 );
 
