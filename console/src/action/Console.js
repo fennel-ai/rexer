@@ -41,14 +41,8 @@ const getQuery = (form) => {
   if (form.filterMaxActionId.value !== "") {
     params.max_action_id = form.filterMaxActionId.value;
   }
-  if (form.filterMinActionValue.value !== "") {
-    params.min_action_value = form.filterMinActionValue.value;
-  }
-  if (form.filterMaxActionValue.value !== "") {
-    params.max_action_value = form.filterMaxActionValue.value;
-  }
 
-  return { queryStringParameters: params };
+  return params
 };
 
 const Console = () => {

@@ -18,11 +18,27 @@ app.use(bodyParser.json());
 app.use(awsServerlessExpressMiddleware.eventContext());
 
 // Enable CORS for all methods
+app.use(function(req, res, next) {
+  res.header("Access-Control-Allow-Origin", "*")
+  res.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept")
+  next()
+});
+
+/* TODO: fix code to whitelist only specified address
+var whitelist = ['https://app.fennel.ai', 'http://localhost:3000']
 var corsOptions = {
-  origin: "https://app.fennel.ai",
+  origin: function (origin, callback) {
+    console.log(origin)
+    console.log(whitelist.indexOf(origin))
+    if (whitelist.indexOf(origin) !== -1) {
+      callback(null, true)
+    } else {
+      callback(new Error('Not allowed by CORS'))
+    }
+  },
   optionSuccessStatus: 200, // some legacy browsers (IE11, various SmartTVs) choke on 204
-};
-app.use(cors(corsOptions));
+}
+app.use(cors(corsOptions));*/
 
 const domainToURL = {
   "trell.in":
@@ -80,12 +96,21 @@ app.get("/actions/profiles", async (req, res) => {
   try {
     const tierUrl = mapUserToDomain(req);
     const apiUrl = `${tierUrl}/${PROFILE_URL}`;
-    const result = await axios.get(apiUrl, {
+    await axios.get(apiUrl, {
       params: req.query,
+    }).then(result => {
+      res.status(200).json({ data: result.data });
+    }).catch(error => {
+      console.log(error)
+      if(error.response) {
+        res.status(error.response.status).json({error: error.response.data})
+      } else {
+        res.status(500).json({ error: error.message })
+      }
     });
-    res.json({ data: result.data });
   } catch (err) {
-    res.json({ error: err.message });
+    console.log(err)
+    res.status(400).json({ error: err.message });
   }
 });
 
@@ -93,12 +118,22 @@ app.get("/actions/actions", async (req, res) => {
   try {
     const tierUrl = mapUserToDomain(req);
     const apiUrl = `${tierUrl}/${ACTION_URL}`;
-    const result = await axios.get(apiUrl, {
+    console.log(req.query);
+    await axios.get(apiUrl, {
       params: req.query,
+    }).then(result => {
+      res.status(200).json({ data: result.data });
+    }).catch(error => {
+      console.log(error)
+      if(error.response) {
+        res.status(error.response.status).json({error: error.response.data})
+      } else {
+        res.status(500).json({ error: error.message })
+      }
     });
-    res.json({ data: result.data });
   } catch (err) {
-    res.json({ error: err.message });
+    console.log(err)
+    res.status(400).json({ error: err.message });
   }
 });
 
