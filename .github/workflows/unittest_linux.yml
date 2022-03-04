@@ -28,9 +28,19 @@ jobs:
           eval "$(direnv hook bash)"
           exec bash
           direnv allow .
-          
+      
+      # Setup nix by changing into the directory
+      - name: enable nix env
+        run: |
+          pwd
+          cd ..
+          pwd
+          cd rexer
+
       # Runs the unit tests 
       - name: run fennel go unit tests
         run: |
+          pwd
           cd go/fennel
+          pwd
           go test -v ./...
