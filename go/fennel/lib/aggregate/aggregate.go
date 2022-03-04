@@ -41,7 +41,7 @@ func IsValid(s ftypes.AggType) bool {
 
 func (agg Aggregate) Validate() error {
 	if !IsValid(agg.Options.AggType) {
-		return fmt.Errorf("invalid aggregate type, valid types are: %v", ValidTypes)
+		return fmt.Errorf("invalid aggregate type: '%v'; valid types are: %v", agg.Options.AggType, ValidTypes)
 	}
 	if len(agg.Name) == 0 {
 		return fmt.Errorf("aggregate name can not be of zero length")
