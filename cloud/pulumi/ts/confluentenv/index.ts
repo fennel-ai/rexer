@@ -61,7 +61,7 @@ export const setup = async (input: inputType) => {
     }, { provider })
 
     const output: outputType = {
-        bootstrapServer: cluster.bootstrapServers,
+        bootstrapServer: cluster.bootstrapServers.apply(server => server.substring(server.indexOf(":") + 3)),
         apiKey: apiKey.key,
         apiSecret: apiKey.secret,
     }
