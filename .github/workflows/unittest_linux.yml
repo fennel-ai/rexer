@@ -20,27 +20,15 @@ jobs:
       - uses: actions/checkout@v2
 
       # Assumes that the remote machine has nix installed in it already.
-
-      # Install direnv and enable it on our current directory.
-      - name: install direnv and allow it
-        run: |
-          sudo snap install direnv
-          eval "$(direnv hook bash)"
-          exec bash
-          direnv allow .
       
       # Setup nix by changing into the directory
-      - name: enable nix env
+      - name: enable nix shell
         run: |
-          pwd
-          cd ..
-          pwd
-          cd rexer
+          export INSTALL_PULUMI=false
+          nix-shell
 
       # Runs the unit tests 
       - name: run fennel go unit tests
         run: |
-          pwd
           cd go/fennel
-          pwd
           go test -v ./...
