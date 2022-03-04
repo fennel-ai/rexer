@@ -106,8 +106,12 @@ export const setup = async (input: inputType) => {
     const primaryAddress = cluster.primaryEndpointAddress
     const replicaAddress = cluster.readerEndpointAddress
 
+    const endpoint = pulumi.all([cluster.configurationEndpointAddress, cluster.port]).apply(([address, port]) => {
+        return `${address}:${port}`
+    })
+
     const output: outputType = {
-        endpoint: cluster.configurationEndpointAddress,
+        endpoint
     }
     return output
 }
