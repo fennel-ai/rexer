@@ -229,15 +229,6 @@ export const setup = async (input: inputType) => {
                                         }
                                     }
                                 },
-                                {
-                                    name: "CACHE_REPLICA",
-                                    valueFrom: {
-                                        secretKeyRef: {
-                                            name: "cache-conf",
-                                            key: "replica",
-                                        }
-                                    }
-                                },
                             ]
                         }],
                     },
