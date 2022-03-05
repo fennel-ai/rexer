@@ -34,8 +34,9 @@ jobs:
           nix_path: nixpkgs=channel:nixos-unstable
         continue-on-error: true
 
+      - name: restart shell session
+        run: exec bash
+
       # We should get rid of 10s here eventually.
       - name: run the go unit tests
-        run: |
-          exec bash
-          nix-shell shell.nix --run "cd go/fennel && go test -v ./..."
+        run: nix-shell shell.nix --run "cd go/fennel && go test -v ./..."
