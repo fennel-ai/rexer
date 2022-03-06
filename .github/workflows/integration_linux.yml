@@ -18,7 +18,10 @@ jobs:
     steps:
       # Setup up testenv
       - name: setup testenv
-        run: source testenv.rc
+        run: |
+          touch .env
+          cat testenv.rc >> .env
+          cat .env
 
       # Install build essentials
       - name: install build essential
