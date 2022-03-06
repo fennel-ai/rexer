@@ -1,8 +1,9 @@
 package value
 
 import (
-	"github.com/stretchr/testify/assert"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func verifyOp(t *testing.T, left, right, expected Value, op string) {
@@ -26,23 +27,43 @@ func TestInvalid(t *testing.T) {
 	l := List([]Value{Int(1), Double(2.0), Bool(true)})
 	di := Dict(map[string]Value{"a": Int(2), "b": Double(1.0)})
 	n := Nil
-	ops := []string{"+", "-", "*", "/", ">", ">=", "<", "<=", "and", "or", "[]", "%"}
 
+	ops := []string{"+", "-", "*", "/", ">", ">=", "<", "<=", "and", "or", "[]", "%", "in"}
+	allBut := func(xs ...string) []string {
+		var res []string
+		for _, op := range ops {
+			valid := true
+			for _, x := range xs {
+				if op == x {
+					valid = false
+					break
+				}
+			}
+			if valid {
+				res = append(res, op)
+			}
+		}
+		return res
+	}
+
+	// ints with themselves
+	verifyError(t, i, i, []string{"and", "or", "[]", "in"})
 	// ints with others
-	verifyError(t, i, d, []string{"and", "or", "[]", "%"})
+	verifyError(t, i, d, []string{"and", "or", "[]", "%", "in"})
 	verifyError(t, i, b, ops)
 	verifyError(t, i, s, ops)
-	verifyError(t, i, l, ops)
+	verifyError(t, i, l, allBut("in"))
 	verifyError(t, i, di, ops)
 	verifyError(t, i, n, ops)
 	// and div/modulo throws an error when denominator is zero
 	verifyError(t, i, Int(0), []string{"%", "/"})
 	verifyError(t, i, Double(0), []string{"%", "/"})
 
-	verifyError(t, d, i, []string{"and", "or", "%", "[]"})
+	verifyError(t, d, i, []string{"and", "or", "%", "[]", "in"})
+	verifyError(t, d, d, []string{"and", "or", "%", "[]", "in"})
 	verifyError(t, d, b, ops)
 	verifyError(t, d, s, ops)
-	verifyError(t, d, l, ops)
+	verifyError(t, d, l, allBut("in"))
 	verifyError(t, d, di, ops)
 	verifyError(t, d, n, ops)
 	// and div throws an error when denominator is zero
@@ -50,39 +71,46 @@ func TestInvalid(t *testing.T) {
 	verifyError(t, d, Double(0), []string{"/"})
 
 	verifyError(t, b, i, ops)
-	verifyError(t, b, b, []string{"+", "-", "*", "/", ">", ">=", "<", "<=", "[]", "%"})
+	verifyError(t, b, d, ops)
+	verifyError(t, b, b, allBut("and", "or"))
 	verifyError(t, b, s, ops)
-	verifyError(t, b, l, ops)
+	verifyError(t, b, l, allBut("in"))
 	verifyError(t, b, di, ops)
 	verifyError(t, b, n, ops)
 
 	verifyError(t, s, i, ops)
+	verifyError(t, s, d, ops)
 	verifyError(t, s, b, ops)
-	verifyError(t, s, s, ops)
-	verifyError(t, s, l, ops)
-	verifyError(t, s, di, ops)
+	// can only do concatenation with two lists
+	verifyError(t, s, s, allBut("+"))
+	verifyError(t, s, l, allBut("in"))
+	verifyError(t, s, di, allBut("in"))
 	verifyError(t, s, n, ops)
 
 	// can only do indexing using a list and an int
-	verifyError(t, l, i, []string{"+", "-", "*", "/", ">", ">=", "<", "<=", "and", "or", "%"})
+	verifyError(t, l, i, allBut("[]"))
+	verifyError(t, l, d, ops)
 	verifyError(t, l, b, ops)
 	verifyError(t, l, s, ops)
-	verifyError(t, l, l, ops)
+	// can only do concatenation and "in" with two lists
+	verifyError(t, l, l, allBut("+", "in"))
 	verifyError(t, l, di, ops)
 	verifyError(t, l, n, ops)
 
 	verifyError(t, di, i, ops)
+	verifyError(t, di, d, ops)
 	verifyError(t, di, b, ops)
 	// can only do an indexing on dictionary using a string
-	verifyError(t, di, s, []string{"+", "-", "*", "/", ">", ">=", "<", "<=", "and", "or", "%"})
-	verifyError(t, di, l, ops)
+	verifyError(t, di, s, allBut("[]]"))
+	verifyError(t, di, l, allBut("in"))
 	verifyError(t, di, di, ops)
 	verifyError(t, di, n, ops)
 
 	verifyError(t, n, i, ops)
+	verifyError(t, n, d, ops)
 	verifyError(t, n, b, ops)
 	verifyError(t, n, s, ops)
-	verifyError(t, n, l, ops)
+	verifyError(t, n, l, allBut("in"))
 	verifyError(t, n, di, ops)
 	verifyError(t, n, n, ops)
 }
@@ -114,7 +142,8 @@ func TestValidArithmetic(t *testing.T) {
 	verifyOp(t, base, Double(2.0), Double(4.0), "*")
 	// Div
 	base = Int(4)
-	verifyOp(t, base, Int(2), Double(2.0), "/")
+	verifyOp(t, base, Int(2), Int(2), "/")
+	verifyOp(t, base, Int(8), Double(0.5), "/")
 	verifyOp(t, base, Double(2.0), Double(2.0), "/")
 	base = Double(4.0)
 	verifyOp(t, base, Int(2), Double(2.0), "/")
@@ -137,22 +166,30 @@ func TestValidRelation(t *testing.T) {
 	verifyOp(t, base, Int(1), Bool(true), ">=")
 	verifyOp(t, base, Int(1), Bool(false), "<")
 	verifyOp(t, base, Int(1), Bool(true), "<=")
+	verifyOp(t, base, Int(1), Bool(true), "==")
+	verifyOp(t, base, Int(1), Bool(false), "!=")
 
 	verifyOp(t, base, Double(1.0), Bool(false), ">")
 	verifyOp(t, base, Double(1.0), Bool(true), ">=")
 	verifyOp(t, base, Double(1.0), Bool(false), "<")
 	verifyOp(t, base, Double(1.0), Bool(true), "<=")
+	verifyOp(t, base, Double(1.0), Bool(true), "==")
+	verifyOp(t, base, Double(1.0), Bool(false), "!=")
 
 	base = Double(1.0)
 	verifyOp(t, base, Int(1), Bool(false), ">")
 	verifyOp(t, base, Int(1), Bool(true), ">=")
 	verifyOp(t, base, Int(1), Bool(false), "<")
 	verifyOp(t, base, Int(1), Bool(true), "<=")
+	verifyOp(t, base, Int(1), Bool(true), "==")
+	verifyOp(t, base, Int(1), Bool(false), "!=")
 
 	verifyOp(t, base, Double(1.0), Bool(false), ">")
 	verifyOp(t, base, Double(1.0), Bool(true), ">=")
 	verifyOp(t, base, Double(1.0), Bool(false), "<")
 	verifyOp(t, base, Double(1.0), Bool(true), "<=")
+	verifyOp(t, base, Double(1.0), Bool(true), "==")
+	verifyOp(t, base, Double(1.0), Bool(false), "!=")
 }
 
 func TestBoolean(t *testing.T) {
@@ -195,4 +232,30 @@ func TestIndex_Dict(t *testing.T) {
 	// but index error when using strings that don't exist
 	_, err := di.Op("[]", String("hello"))
 	assert.Error(t, err)
+}
+
+func TestConcatenation(t *testing.T) {
+	s1 := String("abc")
+	s2 := String("xyz")
+	verifyOp(t, s1, s2, String("abcxyz"), "+")
+
+	l1 := List([]Value{Int(1), Nil})
+	l2 := List([]Value{Double(2), Bool(false)})
+	verifyOp(t, l1, l2, List([]Value{Int(1), Nil, Double(2), Bool(false)}), "+")
+}
+
+func TestIn(t *testing.T) {
+	vals := []Value{Nil, Bool(false), Int(-1), Double(7.0), String("xyz"), List{Nil, List{}}, Dict{}}
+
+	l0 := List{}
+	l1 := NewList(vals)
+
+	for _, v := range vals {
+		verifyOp(t, v, l0, Bool(false), "in")
+		verifyOp(t, v, l1, Bool(true), "in")
+	}
+
+	d := Dict{"key": Nil}
+	verifyOp(t, String("key"), d, Bool(true), "in")
+	verifyOp(t, String("bad key"), d, Bool(false), "in")
 }

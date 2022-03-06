@@ -34,6 +34,8 @@ func route(l Value, opt string, other Value) (Value, error) {
 		return index(l, other)
 	case "%":
 		return modulo(l, other)
+	case "in":
+		return in(l, other)
 	}
 	return Nil, nil
 }
@@ -53,43 +55,59 @@ func modulo(left Value, right Value) (Value, error) {
 	return lint % rint, nil
 }
 
-// TODO: implement add for string and lists
 func add(left Value, right Value) (Value, error) {
-	switch left.(type) {
+	switch left := left.(type) {
 	case Int:
-		switch right.(type) {
+		switch right := right.(type) {
 		case Int:
-			return Int(int(left.(Int)) + int(right.(Int))), nil
+			return Int(int(left) + int(right)), nil
 		case Double:
-			return Double(float64(left.(Int)) + float64(right.(Double))), nil
+			return Double(float64(left) + float64(right)), nil
 
 		}
 	case Double:
-		switch right.(type) {
+		switch right := right.(type) {
 		case Int:
-			return Double(float64(left.(Double)) + float64(right.(Int))), nil
+			return Double(float64(left) + float64(right)), nil
 		case Double:
-			return Double(float64(left.(Double)) + float64(right.(Double))), nil
+			return Double(float64(left) + float64(right)), nil
+		}
+	case String:
+		switch right := right.(type) {
+		case String:
+			return String(string(left) + string(right)), nil
+		}
+	case List:
+		switch right := right.(type) {
+		case List:
+			v := make([]Value, len(left)+len(right))
+			for i, lval := range left {
+				v[i] = lval.Clone()
+			}
+			for i, rval := range right {
+				v[len(left)+i] = rval.Clone()
+			}
+			return List(v), nil
 		}
 	}
-	return nil, fmt.Errorf("'+' only supported between numbers")
+	return nil, fmt.Errorf("'+' only supported between numbers, strings and lists")
 }
 
 func sub(left Value, right Value) (Value, error) {
-	switch left.(type) {
+	switch left := left.(type) {
 	case Int:
-		switch right.(type) {
+		switch right := right.(type) {
 		case Int:
-			return Int(int(left.(Int)) - int(right.(Int))), nil
+			return Int(int(left) - int(right)), nil
 		case Double:
-			return Double(float64(left.(Int)) - float64(right.(Double))), nil
+			return Double(float64(left) - float64(right)), nil
 		}
 	case Double:
-		switch right.(type) {
+		switch right := right.(type) {
 		case Int:
-			return Double(float64(left.(Double)) - float64(right.(Int))), nil
+			return Double(float64(left) - float64(right)), nil
 		case Double:
-			return Double(float64(left.(Double)) - float64(right.(Double))), nil
+			return Double(float64(left) - float64(right)), nil
 		}
 	}
 	return nil, fmt.Errorf("'+' only supported between numbers")
@@ -100,41 +118,44 @@ func div(left Value, right Value) (Value, error) {
 		return Nil, fmt.Errorf("division by zero while using /")
 	}
 
-	switch left.(type) {
+	switch left := left.(type) {
 	case Int:
-		switch right.(type) {
+		switch right := right.(type) {
 		case Int:
-			return Double(float64(left.(Int)) / float64(right.(Int))), nil
+			if left%right == 0 {
+				return Int(int(left) / int(right)), nil
+			} else {
+				return Double(float64(left) / float64(right)), nil
+			}
 		case Double:
-			return Double(float64(left.(Int)) / float64(right.(Double))), nil
+			return Double(float64(left) / float64(right)), nil
 		}
 	case Double:
-		switch right.(type) {
+		switch right := right.(type) {
 		case Int:
-			return Double(float64(left.(Double)) / float64(right.(Int))), nil
+			return Double(float64(left) / float64(right)), nil
 		case Double:
-			return Double(float64(left.(Double)) / float64(right.(Double))), nil
+			return Double(float64(left) / float64(right)), nil
 		}
 	}
 	return nil, fmt.Errorf("'/' only supported between numbers")
 }
 
 func mul(left Value, right Value) (Value, error) {
-
-	switch left.(type) {
+	switch left := left.(type) {
 	case Int:
-		switch right.(type) {
+		switch right := right.(type) {
 		case Int:
-			return Int(int(left.(Int)) * int(right.(Int))), nil
+			return Int(int(left) * int(right)), nil
 		case Double:
-			return Double(float64(left.(Int)) * float64(right.(Double))), nil
+			return Double(float64(left) * float64(right)), nil
 		}
 	case Double:
-		switch right.(type) {
+		switch right := right.(type) {
 		case Int:
-			return Double(float64(left.(Double)) * float64(right.(Int))), nil
+			return Double(float64(left) * float64(right)), nil
 		case Double:
-			return Double(float64(left.(Double)) * float64(right.(Double))), nil
+			return Double(float64(left) * float64(right)), nil
 		}
 	}
 	return nil, fmt.Errorf("'*' only supported between numbers")
@@ -149,102 +170,102 @@ func neq(left Value, right Value) (Value, error) {
 }
 
 func or(left Value, right Value) (Value, error) {
-	switch left.(type) {
+	switch left := left.(type) {
 	case Bool:
-		switch right.(type) {
+		switch right := right.(type) {
 		case Bool:
-			return Bool(bool(left.(Bool)) || bool(right.(Bool))), nil
+			return Bool(bool(left) || bool(right)), nil
 		}
 	}
 	return nil, fmt.Errorf("'or' only supported between numbers")
 }
 
 func and(left Value, right Value) (Value, error) {
-	switch left.(type) {
+	switch left := left.(type) {
 	case Bool:
-		switch right.(type) {
+		switch right := right.(type) {
 		case Bool:
-			return Bool(bool(left.(Bool)) && bool(right.(Bool))), nil
+			return Bool(bool(left) && bool(right)), nil
 		}
 	}
 	return nil, fmt.Errorf("'and' only supported between numbers")
 }
 
 func lt(left Value, right Value) (Value, error) {
-	switch left.(type) {
+	switch left := left.(type) {
 	case Int:
-		switch right.(type) {
+		switch right := right.(type) {
 		case Int:
-			return Bool(int(left.(Int)) < int(right.(Int))), nil
+			return Bool(int(left) < int(right)), nil
 		case Double:
-			return Bool(float64(left.(Int)) < float64(right.(Double))), nil
+			return Bool(float64(left) < float64(right)), nil
 		}
 	case Double:
-		switch right.(type) {
+		switch right := right.(type) {
 		case Int:
-			return Bool(float64(left.(Double)) < float64(right.(Int))), nil
+			return Bool(float64(left) < float64(right)), nil
 		case Double:
-			return Bool(float64(left.(Double)) < float64(right.(Double))), nil
+			return Bool(float64(left) < float64(right)), nil
 		}
 	}
 	return nil, fmt.Errorf("'<' only supported between numbers")
 }
 
 func lte(left Value, right Value) (Value, error) {
-	switch left.(type) {
+	switch left := left.(type) {
 	case Int:
-		switch right.(type) {
+		switch right := right.(type) {
 		case Int:
-			return Bool(int(left.(Int)) <= int(right.(Int))), nil
+			return Bool(int(left) <= int(right)), nil
 		case Double:
-			return Bool(float64(left.(Int)) <= float64(right.(Double))), nil
+			return Bool(float64(left) <= float64(right)), nil
 		}
 	case Double:
-		switch right.(type) {
+		switch right := right.(type) {
 		case Int:
-			return Bool(float64(left.(Double)) <= float64(right.(Int))), nil
+			return Bool(float64(left) <= float64(right)), nil
 		case Double:
-			return Bool(float64(left.(Double)) <= float64(right.(Double))), nil
+			return Bool(float64(left) <= float64(right)), nil
 		}
 	}
 	return nil, fmt.Errorf("'<=' only supported between numbers")
 }
 
 func gt(left Value, right Value) (Value, error) {
-	switch left.(type) {
+	switch left := left.(type) {
 	case Int:
-		switch right.(type) {
+		switch right := right.(type) {
 		case Int:
-			return Bool(int(left.(Int)) > int(right.(Int))), nil
+			return Bool(int(left) > int(right)), nil
 		case Double:
-			return Bool(float64(left.(Int)) > float64(right.(Double))), nil
+			return Bool(float64(left) > float64(right)), nil
 		}
 	case Double:
-		switch right.(type) {
+		switch right := right.(type) {
 		case Int:
-			return Bool(float64(left.(Double)) > float64(right.(Int))), nil
+			return Bool(float64(left) > float64(right)), nil
 		case Double:
-			return Bool(float64(left.(Double)) > float64(right.(Double))), nil
+			return Bool(float64(left) > float64(right)), nil
 		}
 	}
 	return nil, fmt.Errorf("'>' only supported between numbers")
 }
 
 func gte(left Value, right Value) (Value, error) {
-	switch left.(type) {
+	switch left := left.(type) {
 	case Int:
-		switch right.(type) {
+		switch right := right.(type) {
 		case Int:
-			return Bool(int(left.(Int)) >= int(right.(Int))), nil
+			return Bool(int(left) >= int(right)), nil
 		case Double:
-			return Bool(float64(left.(Int)) >= float64(right.(Double))), nil
+			return Bool(float64(left) >= float64(right)), nil
 		}
 	case Double:
-		switch right.(type) {
+		switch right := right.(type) {
 		case Int:
-			return Bool(float64(left.(Double)) >= float64(right.(Int))), nil
+			return Bool(float64(left) >= float64(right)), nil
 		case Double:
-			return Bool(float64(left.(Double)) >= float64(right.(Double))), nil
+			return Bool(float64(left) >= float64(right)), nil
 		}
 	}
 	return nil, fmt.Errorf("'>=' only supported between numbers")
@@ -274,5 +295,25 @@ func index(left Value, right Value) (Value, error) {
 		}
 		return ret, nil
 	}
-	return nil, fmt.Errorf("'index' operation supported only list or dict but got: '%T' instead", left)
+	return nil, fmt.Errorf("'index' operation supported only on lists or dicts but got: '%T' instead", left)
+}
+
+func in(val Value, container Value) (Value, error) {
+	switch c := container.(type) {
+	case List:
+		for _, elem := range c {
+			if val.Equal(elem) {
+				return Bool(true), nil
+			}
+		}
+		return Bool(false), nil
+	case Dict:
+		v, ok := val.(String)
+		if !ok {
+			return Nil, fmt.Errorf("'val' must be a string when 'container' is a dict but got '%T' instead", v)
+		}
+		_, ok = c[string(v)]
+		return Bool(ok), nil
+	}
+	return nil, fmt.Errorf("'in' operation only supported on lists or ducts but got: '%T' instead", container)
 }
