@@ -2,8 +2,9 @@ package value
 
 import (
 	"fmt"
-	"github.com/stretchr/testify/assert"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func TestJSON(t *testing.T) {
@@ -22,6 +23,14 @@ func TestJSON(t *testing.T) {
 		{str: `""`, val: String("")},
 		{str: `"abc"`, val: String("abc")},
 	}
+
+	// Test nil pointer list and dict not marshalling to null
+	tests = append(tests, test{str: "[]", val: List(nil)})
+	tests = append(tests, test{str: "{}", val: Dict(nil)})
+	tests = append(tests, test{str: "[[[],{}]]", val: List{List{List(nil), Dict(nil)}}})
+	tests = append(tests, test{str: `{"1":{"2":{"3":[],"4":{}}}}`, val: Dict{"1": Dict{"2": Dict{
+		"3": List(nil), "4": Dict(nil),
+	}}}})
 
 	l1 := List{Nil, Int(4), Double(3.14), String("xyz")}
 	l1Str := "[null,4,3.14,\"xyz\"]"
@@ -43,7 +52,7 @@ func TestJSON(t *testing.T) {
 	for _, tst := range tests {
 		val, err := FromJSON([]byte(tst.str))
 		assert.NoError(t, err)
-		assert.True(t, tst.val.Equal(val))
+		assert.True(t, val.Equal(tst.val))
 	}
 	// Test ToJSON()
 	for _, tst := range tests {
@@ -54,7 +63,7 @@ func TestJSON(t *testing.T) {
 }
 
 func TestInvalidDict(t *testing.T) {
-	dStr := "{1:3.14,\"k2\":128,\"k3\":\"abc\"}"
+	dStr := `{1:3.14,"k2":128,"k3":"abc"}`
 	_, err := FromJSON([]byte(dStr))
 	assert.Error(t, err)
 }
