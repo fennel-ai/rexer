@@ -49,6 +49,7 @@ func (s server) setHandlers(router *mux.Router) {
 	router.HandleFunc("/get", s.GetProfile)
 	router.HandleFunc("/set", s.SetProfile)
 	router.HandleFunc("/log", s.Log)
+	router.HandleFunc("/log_multi", s.LogMulti)
 	router.HandleFunc("/get_multi", s.GetProfileMulti)
 	router.HandleFunc("/query", s.Query)
 	router.HandleFunc("/store_aggregate", s.StoreAggregate)
@@ -78,6 +79,28 @@ func (m server) Log(w http.ResponseWriter, req *http.Request) {
 	}
 	// fwd to controller
 	if err = action.Insert(req.Context(), m.tier, a); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		log.Printf("Error: %v", err)
+		return
+	}
+	// nothing to do on successful call :)
+}
+
+func (m server) LogMulti(w http.ResponseWriter, req *http.Request) {
+	data, err := readRequest(req)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		log.Printf("error: %v; no action was logged", err)
+		return
+	}
+	var a []actionlib.Action
+	if err := json.Unmarshal(data, &a); err != nil {
+		http.Error(w, fmt.Sprintf("invalid request: %v; no action was logged", err), http.StatusBadRequest)
+		log.Printf("Error: %v", err)
+		return
+	}
+	// fwd to controller
+	if err = action.BatchInsert(req.Context(), m.tier, a); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		log.Printf("Error: %v", err)
 		return

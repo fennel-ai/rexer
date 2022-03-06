@@ -42,10 +42,14 @@ func equals(t *testing.T, expected []action.Action, found []action.Action) {
 	}
 }
 
-func add(t *testing.T, c *client.Client, a action.Action) action.Action {
+func add(t *testing.T, c *client.Client, a action.Action) {
 	err := c.LogAction(a)
 	assert.NoError(t, err)
-	return a
+}
+
+func addBatch(t *testing.T, c *client.Client, as []action.Action) {
+	err := c.LogActions(as)
+	assert.NoError(t, err)
 }
 
 func startTestServer(controller server) *httptest.Server {
@@ -84,20 +88,18 @@ func TestLogFetchServerClient(t *testing.T) {
 	verifyFetch(t, c, action.ActionFetchRequest{}, []action.Action{})
 
 	// but this error disappears when we pass all values
-	a1 := add(t, c, action.Action{ActorType: "1", ActorID: 2, ActionType: "3", TargetType: "4", TargetID: 5, RequestID: 6, Timestamp: 7, Metadata: value.Nil})
+	a1 := action.Action{ActorType: "1", ActorID: 2, ActionType: "3", TargetType: "4", TargetID: 5, RequestID: 6, Timestamp: 7, Metadata: value.Nil}
+	add(t, c, a1)
 	// and this action should show up in requests (after we trnasfer it to DB)
 	assert.NoError(t, action2.TransferToDB(ctx, tier, consumer))
 	verifyFetch(t, c, action.ActionFetchRequest{}, []action.Action{a1})
 
-	// add a couple of actions
-	a2 := add(t, c, action.Action{
-		ActorType: "11", ActorID: 12, ActionType: "13", TargetType: "14", TargetID: 15, RequestID: 16, Timestamp: 17, Metadata: value.Nil},
-	)
-	assert.NoError(t, action2.TransferToDB(ctx, tier, consumer))
-	verifyFetch(t, c, action.ActionFetchRequest{}, []action.Action{a1, a2})
-	a3 := add(t, c, action.Action{
-		ActorType: "22", ActorID: 23, ActionType: "23", TargetType: "24", TargetID: 25, RequestID: 26, Timestamp: 27, Metadata: value.Nil},
-	)
+	// add a couple of actions as a batch
+	a2 := action.Action{
+		ActorType: "11", ActorID: 12, ActionType: "13", TargetType: "14", TargetID: 15, RequestID: 16, Timestamp: 17, Metadata: value.Nil}
+	a3 := action.Action{
+		ActorType: "22", ActorID: 23, ActionType: "23", TargetType: "24", TargetID: 25, RequestID: 26, Timestamp: 27, Metadata: value.Nil}
+	addBatch(t, c, []action.Action{a2, a3})
 	assert.NoError(t, action2.TransferToDB(ctx, tier, consumer))
 	verifyFetch(t, c, action.ActionFetchRequest{}, []action.Action{a1, a2, a3})
 }

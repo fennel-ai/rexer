@@ -57,7 +57,7 @@ func TestDBInsertFetch(t *testing.T) {
 	assert.True(t, a4.Equals(found[3], true))
 }
 
-func TestKafkaInsertRead(t *testing.T) {
+func testKafkaInsertRead(t *testing.T, batch bool) {
 	tier, err := test.Tier()
 	defer test.Teardown(tier)
 	assert.NoError(t, err)
@@ -72,8 +72,12 @@ func TestKafkaInsertRead(t *testing.T) {
 	// and now verify that data has gone to kafka as well
 	a1 := getAction(1, 12, 0, "like")
 	a2 := getAction(2, 22, t1, "like")
-	assert.NoError(t, Insert(ctx, tier, a1))
-	assert.NoError(t, Insert(ctx, tier, a2))
+	if batch {
+		assert.NoError(t, BatchInsert(ctx, tier, []actionlib.Action{a1, a2}))
+	} else {
+		assert.NoError(t, Insert(ctx, tier, a1))
+		assert.NoError(t, Insert(ctx, tier, a2))
+	}
 
 	// when time is not specified we use the current time to populate it
 	a1.Timestamp = t1
@@ -96,6 +100,14 @@ func TestKafkaInsertRead(t *testing.T) {
 	for i, a := range actions {
 		assert.True(t, a.Equals(found[i], true))
 	}
+}
+
+func TestKafkaInsertRead(t *testing.T) {
+	testKafkaInsertRead(t /* batch= */, false)
+}
+
+func TestKafkaBatchInsertRead(t *testing.T) {
+	testKafkaInsertRead(t /* batch= */, true)
 }
 
 func TestLongTypes(t *testing.T) {

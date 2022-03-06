@@ -40,6 +40,11 @@ func (c Client) logURL() string {
 	return fmt.Sprintf(c.url.String())
 }
 
+func (c Client) logMultiURL() string {
+	c.url.Path = "/log_multi"
+	return fmt.Sprintf(c.url.String())
+}
+
 func (c Client) fetchURL() string {
 	c.url.Path = "/fetch"
 	return fmt.Sprintf(c.url.String())
@@ -218,6 +223,21 @@ func (c *Client) LogAction(request action.Action) error {
 		return fmt.Errorf("could not convert request to json: %v", err)
 	}
 	_, err = c.postJSON(req, c.logURL())
+	return err
+}
+
+// LogActions makes the http request to server to log the given action
+func (c *Client) LogActions(request []action.Action) error {
+	for _, a := range request {
+		if err := a.Validate(); err != nil {
+			return fmt.Errorf("can not log invalid action: %v", err)
+		}
+	}
+	req, err := json.Marshal(request)
+	if err != nil {
+		return fmt.Errorf("could not convert request to json: %v", err)
+	}
+	_, err = c.postJSON(req, c.logMultiURL())
 	return err
 }
 
