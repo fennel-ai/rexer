@@ -105,7 +105,7 @@ func TestEndToEnd(t *testing.T) {
 				Options: libaggregate.Options{AggType: "rate", Duration: 6 * 3600, Normalize: true},
 			},
 			value.Double(0),
-			value.Int(uid), value.Double(0.15003570882017148),
+			value.Int(uid), value.Double(0.15003570882017145),
 			nil,
 		},
 	}
