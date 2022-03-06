@@ -81,7 +81,7 @@ func TestInvalid(t *testing.T) {
 	verifyError(t, s, i, ops)
 	verifyError(t, s, d, ops)
 	verifyError(t, s, b, ops)
-	// can only do concatenation with two lists
+	// can only do concatenation with two strings
 	verifyError(t, s, s, allBut("+"))
 	verifyError(t, s, l, allBut("in"))
 	verifyError(t, s, di, allBut("in"))
