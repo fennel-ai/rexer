@@ -96,6 +96,6 @@ func ToBoundQueryJSON(tree ast.Ast, args value.Dict) ([]byte, error) {
 	bq := struct {
 		Ast  string     `json:"Ast"`
 		Args value.Dict `json:"Args"`
-	}{Ast: astStr, Args: args}
+	}{Ast: astStr, Args: value.Clean(args).(value.Dict)}
 	return json.Marshal(bq)
 }

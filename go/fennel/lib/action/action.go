@@ -76,14 +76,14 @@ func (ser *ActionSer) ToAction() (*Action, error) {
 	return &a, nil
 }
 
-func FromActionSerList(al_ser []ActionSer) ([]Action, error) {
-	al := []Action{}
-	for _, a_ser := range al_ser {
-		a, err := a_ser.ToAction()
+func FromActionSerList(alSer []ActionSer) ([]Action, error) {
+	al := make([]Action, len(alSer))
+	for i, aSer := range alSer {
+		a, err := aSer.ToAction()
 		if err != nil {
 			return nil, err
 		}
-		al = append(al, *a)
+		al[i] = *a
 	}
 	return al, nil
 }
@@ -194,6 +194,13 @@ func ToList(actions []Action) (value.List, error) {
 		}
 	}
 	return table, nil
+}
+
+func (a Action) MarshalJSON() ([]byte, error) {
+	type Action_ Action
+	a_ := Action_(a)
+	a_.Metadata = value.Clean(a.Metadata)
+	return json.Marshal(a_)
 }
 
 func (a *Action) UnmarshalJSON(data []byte) error {

@@ -77,6 +77,13 @@ func (agg Aggregate) MarshalJSON() ([]byte, error) {
 	return json.Marshal(fields)
 }
 
+func (gavr GetAggValueRequest) MarshalJSON() ([]byte, error) {
+	type GAVR_ GetAggValueRequest
+	gavr_ := GAVR_(gavr)
+	gavr_.Key = value.Clean(gavr.Key)
+	return json.Marshal(gavr_)
+}
+
 func (gavr *GetAggValueRequest) UnmarshalJSON(data []byte) error {
 	var fields struct {
 		AggName ftypes.AggName `json:"Name"`

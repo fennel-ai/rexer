@@ -2,11 +2,12 @@ package profile
 
 import (
 	"encoding/json"
-	"fennel/lib/value"
 	"fmt"
-	"github.com/stretchr/testify/assert"
 	"math"
 	"testing"
+
+	"fennel/lib/value"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestProfileItemJSON(t *testing.T) {
@@ -29,8 +30,20 @@ func TestProfileItemJSON(t *testing.T) {
 		str: `{"OType":"","Oid":0,"Key":"","Version":0,"Value":3.14}`,
 		pi:  ProfileItem{Value: value.Double(3.14)},
 	}, {
+		str: `{"OType":"","Oid":0,"Key":"","Version":0,"Value":[]}`,
+		pi:  ProfileItem{Value: value.List(nil)},
+	}, {
+		str: `{"OType":"","Oid":0,"Key":"","Version":0,"Value":[[]]}`,
+		pi:  ProfileItem{Value: value.List{value.List(nil)}},
+	}, {
 		str: `{"OType":"","Oid":0,"Key":"","Version":0,"Value":[null]}`,
 		pi:  ProfileItem{Value: value.List{value.Nil}},
+	}, {
+		str: `{"OType":"","Oid":0,"Key":"","Version":0,"Value":{}}`,
+		pi:  ProfileItem{Value: value.Dict(nil)},
+	}, {
+		str: `{"OType":"","Oid":0,"Key":"","Version":0,"Value":{"0":{}}}`,
+		pi:  ProfileItem{Value: value.Dict{"0": value.Dict(nil)}},
 	}, {
 		str: `{"OType":"","Oid":0,"Key":"","Version":0,"Value":{"k1":4.5}}`,
 		pi:  ProfileItem{Value: value.Dict{"k1": value.Double(4.5)}},

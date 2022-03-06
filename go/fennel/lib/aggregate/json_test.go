@@ -82,8 +82,14 @@ func TestGetAggValueRequestJSON(t *testing.T) {
 		str:  `{"Name":"some name","Key":"pqrs"}`,
 		gavr: GetAggValueRequest{AggName: "some name", Key: value.String("pqrs")},
 	}, {
+		str:  `{"Name":"some name","Key":[]}`,
+		gavr: GetAggValueRequest{AggName: "some name", Key: value.List(nil)},
+	}, {
 		str:  `{"Name":"some name","Key":[null]}`,
 		gavr: GetAggValueRequest{AggName: "some name", Key: value.List{value.Nil}},
+	}, {
+		str:  `{"Name":"some name","Key":{}}`,
+		gavr: GetAggValueRequest{AggName: "some name", Key: value.Dict(nil)},
 	}, {
 		str:  `{"Name":"some name","Key":{"k1":4.5}}`,
 		gavr: GetAggValueRequest{AggName: "some name", Key: value.Dict{"k1": value.Double(4.5)}},

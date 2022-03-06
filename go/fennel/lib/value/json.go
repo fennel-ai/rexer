@@ -3,8 +3,68 @@ package value
 import (
 	"encoding/json"
 	"fmt"
+
 	"github.com/buger/jsonparser"
 )
+
+// Clean takes a value, and returns a value with nil lists/dicts replaced by empty lists/dicts
+func Clean(v Value) Value {
+	switch v := v.(type) {
+	case List:
+		if v == nil {
+			return List{}
+		} else {
+			cleanList(v)
+		}
+	case Dict:
+		if v == nil {
+			return Dict{}
+		} else {
+			cleanDict(v)
+		}
+	}
+	return v
+}
+
+// cleanList recursively converts all nil lists/dicts in the list to empty lists/dicts
+func cleanList(l List) {
+	for i, e := range l {
+		switch e := e.(type) {
+		case List:
+			if e == nil {
+				l[i] = List{}
+			} else {
+				cleanList(e)
+			}
+		case Dict:
+			if e == nil {
+				l[i] = Dict{}
+			} else {
+				cleanDict(e)
+			}
+		}
+	}
+}
+
+// cleanDict recursively converts all nil lists/dicts in the dict to empty lists/dicts
+func cleanDict(d Dict) {
+	for k, v := range d {
+		switch v := v.(type) {
+		case List:
+			if v == nil {
+				d[k] = List{}
+			} else {
+				cleanList(v)
+			}
+		case Dict:
+			if v == nil {
+				d[k] = Dict{}
+			} else {
+				cleanDict(v)
+			}
+		}
+	}
+}
 
 func FromJSON(data []byte) (Value, error) {
 	vdata, vtype, _, err := jsonparser.Get(data)
@@ -15,6 +75,22 @@ func FromJSON(data []byte) (Value, error) {
 }
 
 func ToJSON(val Value) ([]byte, error) {
+	// When val is a nil list/dict json.Marshal() marshals it as null. Marshal empty list/dict instead.
+	// When val is a non-nul list/dict, recursively clean up elements which may be nil lists/dicts.
+	switch val := val.(type) {
+	case List:
+		if val == nil {
+			return json.Marshal(List{})
+		} else {
+			cleanList(val)
+		}
+	case Dict:
+		if val == nil {
+			return json.Marshal(Dict{})
+		} else {
+			cleanDict(val)
+		}
+	}
 	return json.Marshal(val)
 }
 
