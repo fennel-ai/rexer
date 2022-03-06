@@ -33,9 +33,11 @@ type Int int64
 
 func (I Int) isValue() {}
 func (I Int) Equal(v Value) bool {
-	switch v.(type) {
+	switch v := v.(type) {
 	case Int:
-		return v.(Int) == I
+		return v == I
+	case Double:
+		return float64(v) == float64(I)
 	default:
 		return false
 	}
@@ -57,9 +59,11 @@ type Double float64
 
 func (d Double) isValue() {}
 func (d Double) Equal(v Value) bool {
-	switch v.(type) {
+	switch v := v.(type) {
+	case Int:
+		return float64(v) == float64(d)
 	case Double:
-		return v.(Double) == d
+		return v == d
 	default:
 		return false
 	}
@@ -84,9 +88,9 @@ type Bool bool
 
 func (b Bool) isValue() {}
 func (b Bool) Equal(v Value) bool {
-	switch v.(type) {
+	switch v := v.(type) {
 	case Bool:
-		return v.(Bool) == b
+		return v == b
 	default:
 		return false
 	}
@@ -108,9 +112,9 @@ type String string
 
 func (s String) isValue() {}
 func (s String) Equal(v Value) bool {
-	switch v.(type) {
+	switch v := v.(type) {
 	case String:
-		return v.(String) == s
+		return v == s
 	default:
 		return false
 	}
@@ -170,9 +174,8 @@ func NewList(values []Value) List {
 
 func (l List) isValue() {}
 func (l List) Equal(right Value) bool {
-	switch right.(type) {
+	switch r := right.(type) {
 	case List:
-		r := right.(List)
 		if len(r) != len(l) {
 			return false
 		}
@@ -232,9 +235,8 @@ func NewDict(values map[string]Value) (Dict, error) {
 
 func (d Dict) isValue() {}
 func (d Dict) Equal(v Value) bool {
-	switch v.(type) {
+	switch right := v.(type) {
 	case Dict:
-		right := v.(Dict)
 		if len(right) != len(d) {
 			return false
 		}
