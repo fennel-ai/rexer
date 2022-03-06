@@ -2,12 +2,12 @@ package query
 
 import (
 	"encoding/base64"
-	"encoding/json"
+	"fmt"
+	"testing"
+
 	"fennel/engine/ast"
 	"fennel/lib/value"
-	"fmt"
 	"github.com/stretchr/testify/assert"
-	"testing"
 )
 
 func TestBoundQueryJSON(t *testing.T) {
@@ -18,6 +18,7 @@ func TestBoundQueryJSON(t *testing.T) {
 	}
 	var tests []test
 	vals := []value.Dict{
+		value.Dict(nil),
 		{},
 		{"k1": value.Nil},
 		{"k1": value.Double(3.14), "k2": value.Int(128), "k3": value.String("abc"), "k4": value.Bool(false)},
@@ -56,7 +57,7 @@ func makeBoundQueryJSON(tree ast.Ast, args value.Dict) (string, error) {
 		return "", err
 	}
 	astStr := base64.StdEncoding.EncodeToString(astSer)
-	argsSer, err := json.Marshal(args)
+	argsSer, err := value.ToJSON(args)
 	if err != nil {
 		return "", err
 	}

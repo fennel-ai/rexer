@@ -389,7 +389,7 @@ func (m server) BatchAggregateValue(w http.ResponseWriter, req *http.Request) {
 		log.Printf("Error: %v", err)
 		return
 	}
-	ser, err := json.Marshal(ret)
+	ser, err := value.ToJSON(value.List(ret))
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		log.Printf("Error: %v", err)

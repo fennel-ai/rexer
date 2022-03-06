@@ -24,7 +24,7 @@ func TestServer_ProfileHandler(t *testing.T) {
 	expected := profile.NewProfileItem("abc", math.MaxUint64, "xyz", math.MaxUint64-1)
 	// Prepare value that will be returned by the server
 	val := value.Double(3.14)
-	valSer, err := json.Marshal(val)
+	valSer, err := value.ToJSON(val)
 	assert.NoError(t, err)
 	// Set up the endpoint server
 	es := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

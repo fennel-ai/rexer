@@ -2,9 +2,10 @@ package profile
 
 import (
 	"encoding/json"
+	"fmt"
+
 	"fennel/lib/ftypes"
 	"fennel/lib/value"
-	"fmt"
 	"github.com/buger/jsonparser"
 )
 
@@ -47,14 +48,14 @@ func (ser *ProfileItemSer) ToProfileItem() (*ProfileItem, error) {
 	return &pr, nil
 }
 
-func FromProfileItemSerList(pl_ser []ProfileItemSer) ([]ProfileItem, error) {
-	pl := []ProfileItem{}
-	for _, pr_ser := range pl_ser {
-		pr, err := pr_ser.ToProfileItem()
+func FromProfileItemSerList(plSer []ProfileItemSer) ([]ProfileItem, error) {
+	pl := make([]ProfileItem, len(plSer))
+	for i, prSer := range plSer {
+		pr, err := prSer.ToProfileItem()
 		if err != nil {
 			return nil, err
 		}
-		pl = append(pl, *pr)
+		pl[i] = *pr
 	}
 	return pl, nil
 }
@@ -101,6 +102,13 @@ func (pi *ProfileItem) Equals(other *ProfileItem) bool {
 		return false
 	}
 	return true
+}
+
+func (pi ProfileItem) MarshalJSON() ([]byte, error) {
+	type ProfileItem_ ProfileItem
+	pi_ := ProfileItem_(pi)
+	pi_.Value = value.Clean(pi.Value)
+	return json.Marshal(pi_)
 }
 
 func (pi *ProfileItem) UnmarshalJSON(data []byte) error {
