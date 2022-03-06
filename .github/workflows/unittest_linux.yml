@@ -22,7 +22,7 @@ jobs:
     steps:
       # Install build essentials
       - name: install build essential
-        run: sudo apt-get install build-essential
+        run: sudo apt-get --assume-yes install build-essential
 
       # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
       - uses: actions/checkout@v2
