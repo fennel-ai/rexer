@@ -16,6 +16,10 @@ jobs:
 
     # Steps represent a sequence of tasks that will be executed as part of the job
     steps:
+      # Setup up testenv
+      - name: setup testenv
+        run: source testenv.rc
+
       # Install build essentials
       - name: install build essential
         run: sudo apt-get --assume-yes install build-essential
