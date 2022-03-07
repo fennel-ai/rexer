@@ -23,8 +23,8 @@ func NewInterpreter(bootargs map[string]interface{}) Interpreter {
 	return ret
 }
 
-func (i Interpreter) QueryArgs() value.Dict {
-	args, err := i.env.Lookup("__args__")
+func (i Interpreter) queryArgs() value.Dict {
+	args, err := i.env.Lookup("args")
 	if err != nil {
 		return value.Dict{}
 	}
@@ -35,12 +35,35 @@ func (i Interpreter) QueryArgs() value.Dict {
 	return asdict
 }
 
-func (i Interpreter) SetQueryArgs(args value.Dict) error {
-	return i.env.Define("__args__", args)
-}
-
-func (i Interpreter) SetVar(name string, v value.Value) error {
-	return i.env.Define(name, v)
+// Eval the given query in separate goroutine after setting Var("args") -> args
+// args are set up in the base environment, which makes it possible for
+// user query to create own variable called "args" which may shadow query args
+func (i Interpreter) Eval(query ast.Ast, args value.Dict) (value.Value, error) {
+	resch := make(chan value.Value, 1)
+	errch := make(chan error, 1)
+	go func() {
+		ii := NewInterpreter(i.bootargs)
+		if err := ii.env.Define("args", args); err != nil {
+			errch <- err
+			return
+		}
+		// push a new environment on top of base environment
+		// this way, user query can define a variable called "args" if they want to
+		// which will mask the query args
+		ii.env = ii.env.PushEnv()
+		res, err := query.AcceptValue(ii)
+		if err != nil {
+			errch <- err
+		} else {
+			resch <- res
+		}
+	}()
+	select {
+	case res := <-resch:
+		return res, nil
+	case err := <-errch:
+		return nil, err
+	}
 }
 
 func (i Interpreter) VisitLookup(on ast.Ast, property string) (value.Value, error) {
@@ -297,6 +320,6 @@ func (i Interpreter) getOperator(namespace, name string) (operators.Operator, er
 	if err != nil {
 		return op, err
 	}
-	err = op.Init(i.QueryArgs(), i.bootargs)
+	err = op.Init(i.queryArgs(), i.bootargs)
 	return op, err
 }
