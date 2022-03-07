@@ -18,6 +18,7 @@ func TestJSON(t *testing.T) {
 		{str: "false", val: Bool(false)},
 		{str: "4", val: Int(4)},
 		{str: "-3", val: Int(-3)},
+		{str: "1.0", val: Double(1.0)},
 		{str: "3.14", val: Double(3.14)},
 		{str: "-111.11", val: Double(-111.11)},
 		{str: `""`, val: String("")},
