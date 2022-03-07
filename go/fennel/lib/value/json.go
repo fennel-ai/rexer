@@ -75,9 +75,9 @@ func FromJSON(data []byte) (Value, error) {
 }
 
 func ToJSON(val Value) ([]byte, error) {
-	// When val is a nil list/dict json.Marshal() marshals it as null. Marshal empty list/dict instead.
-	// When val is a non-nul list/dict, recursively clean up elements which may be nil lists/dicts.
 	switch val := val.(type) {
+	// When val is a nil list/dict, json.Marshal() marshals it as null. Marshal empty list/dict instead.
+	// When val is a non-nul list/dict, recursively clean up elements which may be nil lists/dicts.
 	case List:
 		if val == nil {
 			return json.Marshal(List{})
@@ -90,6 +90,20 @@ func ToJSON(val Value) ([]byte, error) {
 		} else {
 			cleanDict(val)
 		}
+	// When double is integral, json.Marshal() marshals it as an int.
+	// Add ".0" at the end in that case.
+	case Double:
+		ser, err := json.Marshal(val)
+		if err != nil {
+			return nil, err
+		}
+		for _, b := range ser {
+			if b == '.' {
+				return ser, nil
+			}
+		}
+		ser = append(ser, '.', '0')
+		return ser, nil
 	}
 	return json.Marshal(val)
 }
@@ -123,7 +137,7 @@ func parseJSONBoolean(data []byte) (Value, error) {
 
 func parseJSONNumber(data []byte) (Value, error) {
 	for i := 0; i < len(data); i++ {
-		if data[i] == byte('.') {
+		if data[i] == '.' {
 			v, err := jsonparser.ParseFloat(data)
 			return Double(v), err
 		}
