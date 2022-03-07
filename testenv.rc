@@ -1,12 +1,15 @@
 export KAFKA_SERVER_ADDRESS="pkc-pgq85.us-west-2.aws.confluent.cloud:9092"
-export KAFKA_USERNAME="PQESAHSX5EUQJPIV"
-export KAFKA_PASSWORD="EDjraEtpIjYQBv9WQ2QINnZZcExKUtm6boweLCsQ5gv3arWSk+VHyD1kfjJ+p382"
-export MYSQL_SERVER_ADDRESS="database-nikhil-test.cluster-c00d7gkxaysk.us-west-2.rds.amazonaws.com"
-export MYSQL_DATABASE_NAME="testdb"
+export KAFKA_USERNAME="L56PWU5R7JTGVRED"
+export KAFKA_PASSWORD="35nsUAnQJ8uA7qIFQgkIMpJNUFuA7lds1yxrq2ofc9XjaUxVvAHYCDco30OolmdY"
+export MYSQL_SERVER_ADDRESS="fenneldb-20220306224345556900000001.cluster-c00d7gkxaysk.us-west-2.rds.amazonaws.com"
+export MYSQL_DATABASE_NAME="db"
 export MYSQL_USERNAME="admin"
 export MYSQL_PASSWORD="foundationdb"
-export REDIS_SERVER_ADDRESS="clustercfg.redis-db-5dec5dd.fbjfph.memorydb.us-west-2.amazonaws.com:6379"
-export CACHE_PRIMARY="clustercfg.cache-cluster-95105a6.fbjfph.usw2.cache.amazonaws.com:6379"
+export REDIS_SERVER_ADDRESS="clustercfg.redis-db-54c4908.fbjfph.memorydb.us-west-2.amazonaws.com:6379"
+export CACHE_PRIMARY="clustercfg.cache-cluster-7dc06bf.fbjfph.usw2.cache.amazonaws.com:6379"
+export KUBECONFIG="$FENNEL_ROOT/cloud/pulumi/ts/eks/kubeconfig-plane-2.json"
+export AWS_ROLE_ARN="arn:aws:iam::030813887342:role/admin"
+
 export MOTHERSHIP_ID=1
 export MOTHERSHIP_MYSQL_ADDRESS="dw48w7ntx844.us-west-2.psdb.cloud"
 export MOTHERSHIP_MYSQL_DBNAME="controldb"
@@ -14,4 +17,4 @@ export MOTHERSHIP_MYSQL_USERNAME="nehb2dtbg1hr"
 export MOTHERSHIP_MYSQL_PASSWORD="pscale_pw_iOqKp0qepUAER8E-_APgydji6Ajj7fNQD7pfSseFYvg"
 
 # in tests, we override this with a random tier ID but this is needed for prod
-export TIER_ID=1231
+export TIER_ID=103
