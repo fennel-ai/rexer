@@ -240,13 +240,7 @@ func (m server) Query(w http.ResponseWriter, req *http.Request) {
 	}
 	// execute the tree
 	i := interpreter.NewInterpreter(bootarg.Create(m.tier))
-	err = i.SetQueryArgs(args)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		log.Printf("Error: %v", err)
-		return
-	}
-	ret, err := tree.AcceptValue(i)
+	ret, err := i.Eval(tree, args)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		log.Printf("Error: %v", err)

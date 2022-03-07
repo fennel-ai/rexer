@@ -21,7 +21,10 @@ func TestDefault(t *testing.T) {
 	assert.NoError(t, err)
 	defer test.Teardown(tier)
 	query := ast.OpCall{
-		Operand:   ast.Var{Name: "table"},
+		Operand: ast.Lookup{
+			On:       ast.Var{"args"},
+			Property: "actions",
+		},
 		Namespace: "profile",
 		Name:      "addField",
 		Kwargs: ast.Dict{Values: map[string]ast.Ast{
@@ -38,8 +41,7 @@ func TestDefault(t *testing.T) {
 	assert.NoError(t, err)
 	err = table.Append(value.Dict{})
 	assert.NoError(t, err)
-	assert.NoError(t, i.SetVar("table", table))
-	out, err := query.AcceptValue(i)
+	out, err := i.Eval(query, value.Dict{"actions": table})
 	assert.NoError(t, err)
 	rows := out.(value.List)
 	assert.Len(t, rows, 2)
@@ -64,7 +66,10 @@ func TestProfileOp(t *testing.T) {
 	assert.NoError(t, profile.Set(ctx, tier, req2b))
 
 	query := ast.OpCall{
-		Operand:   ast.Var{Name: "table"},
+		Operand: ast.Lookup{
+			On:       ast.Var{"args"},
+			Property: "actions",
+		},
 		Namespace: "profile",
 		Name:      "addField",
 		Kwargs: ast.Dict{Values: map[string]ast.Ast{
@@ -81,8 +86,7 @@ func TestProfileOp(t *testing.T) {
 	assert.NoError(t, err)
 	err = table.Append(value.Dict{"otype": value.String(otype2), "oid": value.Int(oid2), "key": value.String(key2), "ver": value.Int(ver2)})
 	assert.NoError(t, err)
-	assert.NoError(t, i.SetVar("table", table))
-	out, err := query.AcceptValue(i)
+	out, err := i.Eval(query, value.Dict{"actions": table})
 	assert.NoError(t, err)
 	rows := out.(value.List)
 	assert.Len(t, rows, 2)

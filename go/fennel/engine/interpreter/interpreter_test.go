@@ -200,9 +200,8 @@ func TestInterpreter_VisitOpcall2(t *testing.T) {
 	assert.NoError(t, base.Append(row2))
 	assert.NoError(t, base.Append(row3))
 	i := getInterpreter()
-	i.SetVar("table", base)
 	query := getOpCallQuery()
-	res, err := query.AcceptValue(i)
+	res, err := i.Eval(query, value.Dict{"table": base})
 	assert.NoError(t, err)
 	expected := value.List{}
 	assert.NoError(t, expected.Append(value.Dict{"hi": value.Int(2), "bye": value.Double(2), "key": value.List{value.Double(2)}}))
@@ -213,10 +212,38 @@ func TestInterpreter_VisitOpcall2(t *testing.T) {
 func TestInterpreter_QueryArgs(t *testing.T) {
 	i := getInterpreter()
 	// initially nothing
-	assert.Equal(t, value.Dict{}, i.QueryArgs())
+	assert.Equal(t, value.Dict{}, i.queryArgs())
 	args := value.Dict{"x": value.Int(1)}
-	assert.NoError(t, i.SetQueryArgs(args))
-	assert.Equal(t, args, i.QueryArgs())
+	assert.NoError(t, i.env.Define("args", args))
+	assert.Equal(t, args, i.queryArgs())
+}
+
+func TestInterpreter_QueryArgsRedefine(t *testing.T) {
+	// verify that user query can crate a variable called
+	// args if they want to which will shadow query args
+	i := getInterpreter()
+	query := ast.Query{
+		Statements: []ast.Statement{
+			{
+				Name: "args",
+				Body: ast.Dict{Values: map[string]ast.Ast{"x": ast.MakeInt(5)}},
+			},
+			{
+				"", ast.Binary{
+					Left: ast.Lookup{
+						On:       ast.Var{"args"},
+						Property: "x",
+					},
+					Op:    "+",
+					Right: ast.MakeInt(1),
+				},
+			},
+		},
+	}
+	// expected should be with x = 5 (which is set in the query), not x = 2 (which is query arg)
+	res, err := i.Eval(query, value.Dict{"x": value.Int(2)})
+	assert.NoError(t, err)
+	assert.Equal(t, value.Int(6), res)
 }
 
 var res value.Value
@@ -228,15 +255,16 @@ func benchmarkInterpreter_VisitOpcall(numRows int, b *testing.B) {
 		table.Append(row)
 	}
 	evaler := getInterpreter()
-	evaler.SetVar("table", table)
 	query := getOpCallQuery()
 	for i := 0; i < b.N; i++ {
-		res, _ = query.AcceptValue(evaler)
+		res, _ = evaler.Eval(query, value.Dict{"table": table})
 	}
 }
 
 func BenchmarkInterpreter_VisitOpcall100(b *testing.B) { benchmarkInterpreter_VisitOpcall(100, b) }
-func BenchmarkInterpreter_VisitOpcall1K(b *testing.B)  { benchmarkInterpreter_VisitOpcall(1000, b) }
+
+func BenchmarkInterpreter_VisitOpcall1K(b *testing.B) { benchmarkInterpreter_VisitOpcall(1000, b) }
+
 func BenchmarkInterpreter_VisitOpcall10K(b *testing.B) { benchmarkInterpreter_VisitOpcall(10000, b) }
 
 func TestInterpreter_VisitAt(t *testing.T) {
@@ -282,27 +310,10 @@ func TestInterpreter_VisitLookup(t *testing.T) {
 	testValid(t, ast.Lookup{nested, "hi"}, value.Double(4.4))
 }
 
-func TestInterpreter_SetVar(t *testing.T) {
-	i := getInterpreter()
-	name := "key"
-	val := value.Int(4)
-	_, err := i.env.Lookup(name)
-	assert.Error(t, err)
-
-	assert.NoError(t, i.SetVar(name, val))
-	found, err := i.env.Lookup(name)
-	assert.NoError(t, err)
-	assert.Equal(t, val, found)
-	assert.Error(t, i.SetVar(name, val))
-	found, err = i.env.Lookup(name)
-	assert.NoError(t, err)
-	assert.Equal(t, val, found)
-}
-
 func getOpCallQuery() ast.Ast {
 	return ast.OpCall{
 		Operand: ast.OpCall{
-			Operand:   ast.Var{Name: "table"},
+			Operand:   ast.Lookup{On: ast.Var{Name: "args"}, Property: "table"},
 			Namespace: "std",
 			Name:      "filter",
 			Kwargs: ast.Dict{Values: map[string]ast.Ast{
@@ -394,7 +405,10 @@ func TestInterpreter_VisitOpcall3(t *testing.T) {
 	operators.Register(&testOpInit{})
 	// then create an ast that uses this op
 	query := ast.OpCall{
-		Operand:   ast.Var{Name: "table"},
+		Operand: ast.Lookup{
+			On:       ast.Var{"args"},
+			Property: "table",
+		},
 		Namespace: "test",
 		Name:      "op",
 		Kwargs:    ast.Dict{},
@@ -405,9 +419,7 @@ func TestInterpreter_VisitOpcall3(t *testing.T) {
 	i := NewInterpreter(map[string]interface{}{
 		"__teststruct__": testNonValue{hi: nonhi},
 	})
-	i.SetQueryArgs(value.Dict{"num": value.Int(41)})
-	assert.NoError(t, i.SetVar("table", table))
-	out, err := query.AcceptValue(i)
+	out, err := i.Eval(query, value.Dict{"num": value.Int(41), "table": table})
 	assert.NoError(t, err)
 	rows := out.(value.List)
 	assert.Len(t, rows, 1)
@@ -417,7 +429,10 @@ func TestInterpreter_VisitOpcall3(t *testing.T) {
 func TestInterpreter_VisitOpcall4(t *testing.T) {
 	operators.Register(testOpDefault{})
 	query := ast.OpCall{
-		Operand:   ast.Var{Name: "table"},
+		Operand: ast.Lookup{
+			On:       ast.Var{Name: "args"},
+			Property: "table",
+		},
 		Namespace: "test",
 		Name:      "testop",
 		Kwargs:    ast.Dict{},
@@ -425,9 +440,7 @@ func TestInterpreter_VisitOpcall4(t *testing.T) {
 	table := value.List{}
 	table.Append(value.Dict{})
 	i := getInterpreter()
-	i.SetQueryArgs(value.Dict{})
-	assert.NoError(t, i.SetVar("table", table))
-	out, err := query.AcceptValue(i)
+	out, err := i.Eval(query, value.Dict{"table": table})
 	assert.NoError(t, err)
 	rows := out.(value.List)
 	assert.Len(t, rows, 1)

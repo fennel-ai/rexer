@@ -72,11 +72,13 @@ func Update(ctx context.Context, tier tier.Tier, consumer kafka.FConsumer, agg a
 //============================
 
 func transformActions(tier tier.Tier, actions []libaction.Action, query ast.Ast) (value.List, error) {
-	interpreter, err := loadInterpreter(tier, actions)
+	bootargs := bootarg.Create(tier)
+	interpreter := interpreter.NewInterpreter(bootargs)
+	table, err := libaction.ToList(actions)
 	if err != nil {
 		return value.List{}, err
 	}
-	result, err := query.AcceptValue(interpreter)
+	result, err := interpreter.Eval(query, value.Dict{"actions": table})
 	if err != nil {
 		return value.List{}, err
 	}
@@ -85,19 +87,6 @@ func transformActions(tier tier.Tier, actions []libaction.Action, query ast.Ast)
 		return value.List{}, fmt.Errorf("query did not transform actions into a list")
 	}
 	return table, nil
-}
-
-func loadInterpreter(tier tier.Tier, actions []libaction.Action) (interpreter.Interpreter, error) {
-	bootargs := bootarg.Create(tier)
-	ret := interpreter.NewInterpreter(bootargs)
-	table, err := libaction.ToList(actions)
-	if err != nil {
-		return ret, err
-	}
-	if err = ret.SetVar("args", value.Dict{"actions": table}); err != nil {
-		return ret, err
-	}
-	return ret, nil
 }
 
 func toHistogram(agg aggregate.Aggregate) (modelCounter.Histogram, error) {
