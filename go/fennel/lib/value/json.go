@@ -122,16 +122,14 @@ func parseJSONBoolean(data []byte) (Value, error) {
 }
 
 func parseJSONNumber(data []byte) (Value, error) {
-	vFloat, err := jsonparser.ParseFloat(data)
-	if err != nil {
-		return nil, err
+	for i := 0; i < len(data); i++ {
+		if data[i] == byte('.') {
+			v, err := jsonparser.ParseFloat(data)
+			return Double(v), err
+		}
 	}
-	vInt, err := jsonparser.ParseInt(data)
-	if err != nil {
-		return Double(vFloat), nil
-	} else {
-		return Int(vInt), nil
-	}
+	v, err := jsonparser.ParseInt(data)
+	return Int(v), err
 }
 
 func parseJSONString(data []byte) (Value, error) {
