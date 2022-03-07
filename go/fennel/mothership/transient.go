@@ -13,7 +13,7 @@ import (
 const (
 	testUsername      = "admin"
 	testPassword      = "Ph0Bw#drps2fod%"
-	testHostname      = "mothership-test-database.cluster-c00d7gkxaysk.us-west-2.rds.amazonaws.com"
+	testHostname      = "fenneldb-20220307183123601300000002.cluster-c00d7gkxaysk.us-west-2.rds.amazonaws.com"
 	testLogicalDBName = "controldb"
 )
 
