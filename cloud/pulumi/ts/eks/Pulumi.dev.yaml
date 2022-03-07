@@ -1,7 +1,0 @@
-config:
-  aws:profile: admin
-  aws:region: us-west-2
-  eks:aes-token:
-    secure: AAABAGdu9SaLy8t6j5yzsrNOPWn8PVnMzLoLn4WiB847TGlzOP6VcoYOZ1YrOJb/xg2pRierHVtS43l2WnJwvGmx91mGKFqTYXqYxPvIABvkJbPbv00AI/YMAKdoZe+xOIZZSPBcYlFyQMR902c+PRnGgkjcvFV+B/NQvOf4lRkgSGV/
-  eks:ami: ami-047a7967ea0436232
-  eks:loadBalancerConfig: '{"scheme": "internal", "subnets": ["subnet-07aa4b44ebd42517e"]}'
