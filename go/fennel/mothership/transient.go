@@ -36,8 +36,8 @@ func NewTestMothership() (mothership Mothership, err error) {
 }
 
 func ClearTestTables(DB *sqlx.DB) error {
-	tables := []string{"schema_version",
-		"customer", "tier", "data_plane", "eks", "kafka", "db", "memory_db", "elasticache", "launch_request"}
+	tables := []string{"schema_version", "customer", "tier", "data_plane",
+		"eks", "kafka", "db", "memory_db", "elasticache", "launch_request", "launch_history"}
 	for _, table := range tables {
 		_, err := DB.Exec(fmt.Sprintf("DROP TABLE IF EXISTS %s;", table))
 		if err != nil {
