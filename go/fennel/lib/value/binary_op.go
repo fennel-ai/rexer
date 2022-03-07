@@ -51,7 +51,7 @@ func modulo(left Value, right Value) (Value, error) {
 		return Nil, fmt.Errorf("'%%' only supported between ints but got: '%v'", right)
 	}
 	if rint == 0 {
-		return Nil, fmt.Errorf("division by zero while using %%")
+		return Nil, fmt.Errorf("division by zero while using '%%'")
 	}
 	return lint % rint, nil
 }
@@ -116,7 +116,7 @@ func sub(left Value, right Value) (Value, error) {
 
 func div(left Value, right Value) (Value, error) {
 	if right.Equal(Int(0)) || right.Equal(Double(0)) {
-		return Nil, fmt.Errorf("division by zero while using /")
+		return Nil, fmt.Errorf("division by zero while using '/'")
 	}
 
 	switch left := left.(type) {
@@ -140,7 +140,7 @@ func div(left Value, right Value) (Value, error) {
 
 func fdiv(left Value, right Value) (Value, error) {
 	if right.Equal(Int(0)) || right.Equal(Double(0)) {
-		return Nil, fmt.Errorf("division by zero while using /")
+		return Nil, fmt.Errorf("division by zero while using '//'")
 	}
 
 	switch left := left.(type) {
