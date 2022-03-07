@@ -83,8 +83,8 @@ function setupLinkerd(cluster: k8s.Provider) {
     }, { dependsOn: issuerCA })
 
     // Install linkerd
-    const linkerd = new k8s.helm.v3.Chart("linkerd", {
-        fetchOpts: {
+    const linkerd = new k8s.helm.v3.Release("linkerd", {
+        repositoryOpts: {
             "repo": "https://helm.linkerd.io/stable"
         },
         chart: "linkerd2",
@@ -100,22 +100,27 @@ function setupLinkerd(cluster: k8s.Provider) {
                 }
             }
         }
-    }, { provider: cluster, dependsOn: [readCaCrt, readIssuerCrt, readIssuerKey] })
+    }, { provider: cluster })
 
 
     // Delete files
     new local.Command("cleanup", {
         create: "rm -f ca.crt ca.key issuer.crt issuer.key"
-    }, { dependsOn: linkerd.ready })
+    }, { dependsOn: linkerd })
+
+    return linkerd
 }
 
-function setupEmissaryIngressCrds(cluster: k8s.Provider) {
+async function setupEmissaryIngressCrds(awsProvider: aws.Provider, cluster: eks.Cluster) {
+    // Setup AWS load balancer controller.
+    const lbc = await setupLoadBalancerController(awsProvider, cluster)
+
     // Create CRDs.
     const root = process.env.FENNEL_ROOT!;
     const crdFile = path.join(root, "/deployment/artifacts/emissary-crds.yaml")
     const emissaryCrds = new k8s.yaml.ConfigFile("emissary-crds", {
         file: crdFile,
-    }, { provider: cluster })
+    }, { provider: cluster.provider, dependsOn: lbc })
 
     // Configure default Module to add linkerd headers as per:
     // https://www.getambassador.io/docs/edge-stack/latest/topics/using/mappings/#linkerd-interoperability-add_linkerd_headers
@@ -136,7 +141,7 @@ function setupEmissaryIngressCrds(cluster: k8s.Provider) {
                     "add_linkerd_headers": true
                 }
             }
-        }, { provider: cluster, dependsOn: sleeper })
+        }, { provider: cluster.provider, dependsOn: sleeper })
     })
 }
 
@@ -214,8 +219,8 @@ async function setupLoadBalancerController(awsProvider: aws.Provider, cluster: e
         policyArn: iamPolicy.arn,
     }, { provider: awsProvider })
 
-    const lbc = new k8s.helm.v3.Chart("aws-lbc", {
-        fetchOpts: {
+    const lbc = new k8s.helm.v3.Release("aws-lbc", {
+        repositoryOpts: {
             repo: "https://aws.github.io/eks-charts"
         },
         chart: "aws-load-balancer-controller",
@@ -292,15 +297,10 @@ export const setup = async (input: inputType) => {
     const oidcUrl = cluster.core.oidcProvider!.url
 
     // Setup linkerd service mesh.
-    setupLinkerd(cluster.provider)
-
-    // Setup AWS load balancer controller.
-    const lbc = await setupLoadBalancerController(awsProvider, cluster)
+    const linkerd = setupLinkerd(cluster.provider)
 
     // Install emissary-ingress CRDs after load-balancer controller.
-    lbc.ready.apply(() => {
-        return setupEmissaryIngressCrds(cluster.provider)
-    })
+    await setupEmissaryIngressCrds(awsProvider, cluster)
 
     // Setup fennel namespace.
     const ns = new k8s.core.v1.Namespace("fennel-ns", {
