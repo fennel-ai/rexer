@@ -14,7 +14,7 @@ import (
 const (
 	username            = "admin"
 	password            = "foundationdb"
-	host                = "database-nikhil-test.cluster-c00d7gkxaysk.us-west-2.rds.amazonaws.com"
+	host                = "fenneldb-20220306224345556900000001.cluster-c00d7gkxaysk.us-west-2.rds.amazonaws.com"
 	logical_test_dbname = "testdb"
 )
 
