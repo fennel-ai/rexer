@@ -56,7 +56,7 @@ func TestSyncSchema(t *testing.T) {
 		DBname:   scope.PrefixedName("schema_test"),
 		Username: "admin",
 		Password: "foundationdb",
-		Host:     "database-nikhil-test.cluster-c00d7gkxaysk.us-west-2.rds.amazonaws.com",
+		Host:     "fenneldb-20220306224345556900000001",
 		Schema: Schema{
 			1: `CREATE TABLE IF NOT EXISTS schema_test (
 					zkey INT NOT NULL,
