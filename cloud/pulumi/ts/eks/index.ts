@@ -41,11 +41,11 @@ export type inputType = {
 }
 
 export type outputType = {
-    clusterName: pulumi.Output<string>,
-    kubeconfig: pulumi.Output<any>,
-    oidcUrl: pulumi.Output<string>,
-    instanceRole: pulumi.Output<string>,
-    workerSg: pulumi.Output<string>,
+    clusterName: string,
+    kubeconfig: any,
+    oidcUrl: string,
+    instanceRole: string,
+    workerSg: string,
 }
 
 const parseConfig = (): inputType => {
@@ -238,7 +238,7 @@ async function setupLoadBalancerController(awsProvider: aws.Provider, cluster: e
 }
 
 
-export const setup = async (input: inputType) => {
+export const setup = async (input: inputType): Promise<pulumi.Output<outputType>> => {
     const { vpcId, region, roleArn } = input
 
     const awsProvider = new aws.Provider("eks-aws-provider", {
@@ -316,15 +316,15 @@ export const setup = async (input: inputType) => {
 
     const clusterName = cluster.core.cluster.name
 
-    const output: outputType = {
+    const output = pulumi.output({
         kubeconfig, oidcUrl, instanceRole, workerSg, clusterName
-    }
+    })
 
     return output
 }
 
 async function run() {
-    let output: outputType | undefined;
+    let output: pulumi.Output<outputType> | undefined;
     // Run the main function only if this program is run through the pulumi CLI.
     // Unfortunately, in that case the argv0 itself is not "pulumi", but the full
     // path of node: e.g. /nix/store/7q04aq0sq6im9a0k09gzfa1xfncc0xgm-nodejs-14.18.1/bin/node

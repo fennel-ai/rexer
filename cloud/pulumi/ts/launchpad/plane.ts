@@ -16,8 +16,8 @@ type VpcConfig = {
 }
 
 type DBConfig = {
-    minCapacity: number,
-    maxCapacity: number,
+    minCapacity?: number
+    maxCapacity?: number,
     password: string,
 }
 
@@ -37,9 +37,18 @@ type PlaneConf = {
     roleArn: string,
     vpcConf: VpcConfig,
     dbConf: DBConfig,
-    redisConf: RedisConfig,
     confluentConf: ConfluentConfig,
     controlPlaneConf: vpc.controlPlaneConfig,
+    redisConf?: RedisConfig,
+}
+
+export type PlaneOutput = {
+    eks: eks.outputType,
+    vpc: vpc.outputType,
+    redis: redis.outputType,
+    elasticache: elasticache.outputType,
+    confluent: confluentenv.outputType,
+    db: aurora.outputType,
 }
 
 const parseConfig = (): PlaneConf => {
@@ -85,8 +94,8 @@ const setupResources = async () => {
         roleArn: input.roleArn,
         region: input.region,
         vpcId: vpcOutput.vpcId,
-        minCapacity: input.dbConf.minCapacity,
-        maxCapacity: input.dbConf.maxCapacity,
+        minCapacity: input.dbConf.minCapacity || 1,
+        maxCapacity: input.dbConf.maxCapacity || 1,
         username: "admin",
         password: pulumi.output(input.dbConf.password),
         connectedSecurityGroups: {
@@ -101,8 +110,8 @@ const setupResources = async () => {
         connectedSecurityGroups: {
             "eks": eksOutput.workerSg,
         },
-        numShards: input.redisConf.numShards,
-        numReplicasPerShard: input.redisConf.numReplicasPerShard,
+        numShards: input.redisConf?.numShards,
+        numReplicasPerShard: input.redisConf?.numReplicasPerShard,
         azs: vpcOutput.azs,
     })
     const elasticacheOutput = await elasticache.setup({
@@ -127,12 +136,12 @@ const setupResources = async () => {
         nodeInstanceRole: eksOutput.instanceRole,
     })
     return {
-        "kubeconfig": eksOutput.kubeconfig,
-        "vpc": vpcOutput,
-        "redis": redisOutput,
-        "elasticache": elasticacheOutput,
-        "confluent": confluentOutput,
-        "db": auroraOutput,
+        eks: eksOutput,
+        vpc: vpcOutput,
+        redis: redisOutput,
+        elasticache: elasticacheOutput,
+        confluent: confluentOutput,
+        db: auroraOutput,
     }
 };
 

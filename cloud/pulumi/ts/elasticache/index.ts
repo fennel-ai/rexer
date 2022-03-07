@@ -24,7 +24,7 @@ export type inputType = {
 }
 
 export type outputType = {
-    "endpoint": pulumi.Output<string>,
+    "endpoint": string,
 }
 
 const REDIS_VERSION = "6.x";
@@ -40,7 +40,7 @@ const parseConfig = (): inputType => {
     }
 }
 
-export const setup = async (input: inputType) => {
+export const setup = async (input: inputType): Promise<pulumi.Output<outputType>> => {
 
     const provider = new aws.Provider("cache-aws-provider", {
         region: <aws.Region>input.region,
@@ -110,14 +110,15 @@ export const setup = async (input: inputType) => {
         return `${address}:${port}`
     })
 
-    const output: outputType = {
+    const output = pulumi.output({
         endpoint
-    }
+    })
+
     return output
 }
 
 async function run() {
-    let output: outputType | undefined;
+    let output: pulumi.Output<outputType> | undefined;
     // Run the main function only if this program is run through the pulumi CLI.
     // Unfortunately, in that case the argv0 itself is not "pulumi", but the full
     // path of node: e.g. /nix/store/7q04aq0sq6im9a0k09gzfa1xfncc0xgm-nodejs-14.18.1/bin/node

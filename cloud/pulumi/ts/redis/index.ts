@@ -22,14 +22,14 @@ export type inputType = {
     vpcId: pulumi.Output<string>,
     numShards?: number,
     numReplicasPerShard?: number,
-    azs: string[],
+    azs: pulumi.Output<string[]>,
     connectedSecurityGroups: Record<string, pulumi.Output<string>>,
 }
 
 export type outputType = {
-    clusterId: pulumi.Output<string>,
-    clusterEndPoints: pulumi.Output<string[]>,
-    clusterSecurityGroupIds: pulumi.Output<string[] | undefined>,
+    clusterId: string,
+    clusterEndPoints: string[],
+    clusterSecurityGroupIds?: string[],
 }
 
 const DEFAULT_REDIS_VERSION = "6.2";
@@ -43,14 +43,14 @@ const parseConfig = (): inputType => {
         region: config.require(nameof<inputType>("region")),
         roleArn: config.require(nameof<inputType>("roleArn")),
         vpcId: pulumi.output(config.require(nameof<inputType>("vpcId"))),
-        azs: config.requireObject(nameof<inputType>("azs")),
+        azs: pulumi.output(config.requireObject(nameof<inputType>("azs"))),
         connectedSecurityGroups: config.requireObject(nameof<inputType>("connectedSecurityGroups")),
         numShards: config.getNumber(nameof<inputType>("numShards")),
         numReplicasPerShard: config.getNumber(nameof<inputType>("numReplicasPerShard")),
     }
 }
 
-export const setup = async (input: inputType) => {
+export const setup = async (input: inputType): Promise<pulumi.Output<outputType>> => {
     const provider = new aws.Provider("redis-aws-provider", {
         region: <aws.Region>input.region,
         assumeRole: {
@@ -107,16 +107,17 @@ export const setup = async (input: inputType) => {
         tags: { ...fennelStdTags },
     }, { provider })
 
-    const output: outputType = {
+    const output = pulumi.output({
         clusterId: cluster.id,
         clusterEndPoints: cluster.clusterEndpoints.apply(endpoints => endpoints.map(endpoint => `${endpoint.address}:${endpoint.port}`)),
         clusterSecurityGroupIds: cluster.securityGroupIds,
-    }
+    })
+
     return output
 }
 
 async function run() {
-    let output: outputType | undefined;
+    let output: pulumi.Output<outputType> | undefined;
     // Run the main function only if this program is run through the pulumi CLI.
     // Unfortunately, in that case the argv0 itself is not "pulumi", but the full
     // path of node: e.g. /nix/store/7q04aq0sq6im9a0k09gzfa1xfncc0xgm-nodejs-14.18.1/bin/node
