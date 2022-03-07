@@ -1,15 +1,19 @@
 package time
 
 import (
+	"math/rand"
+	"testing"
+
 	"fennel/lib/utils"
 	"fennel/lib/value"
 	"fennel/test/optest"
-	"math/rand"
-	"testing"
+	"fennel/tier"
 )
 
 func TestDayOfWeek_Valid(t *testing.T) {
 	t.Parallel()
+	// operator doesn't need real tier, so creating a fake
+	tier := tier.Tier{}
 	op := dayOfWeek{}
 	week := int64(7 * 24 * 3600)
 	day := int64(24 * 3600)
@@ -35,11 +39,13 @@ func TestDayOfWeek_Valid(t *testing.T) {
 		inputs = append(inputs, value.Dict{"something_else": value.Int(i)})
 		expected = append(expected, value.Dict{"something_else": value.Int(i), name: value.Int(case_.day)})
 	}
-	optest.Assert(t, op, value.Dict{"name": value.String(name)}, inputs, context, expected)
+	optest.Assert(t, tier, op, value.Dict{"name": value.String(name)}, inputs, context, expected)
 }
 
 func TestDayOfWeek_Invalid(t *testing.T) {
 	t.Parallel()
+	// operator doesn't need real tier, so creating a fake
+	tier := tier.Tier{}
 	op := dayOfWeek{}
 	week := int64(7 * 24 * 3600)
 	cases := []int64{-1, -12312312, 0}
@@ -49,12 +55,14 @@ func TestDayOfWeek_Invalid(t *testing.T) {
 		context := make([]value.Dict, 0)
 		context = append(context, value.Dict{"timestamp": value.Int(week)}, value.Dict{"timestamp": value.Int(case_)})
 		inputs = append(inputs, value.Dict{}, value.Dict{})
-		optest.AssertError(t, op, value.Dict{"name": value.String(name)}, inputs, context)
+		optest.AssertError(t, tier, op, value.Dict{"name": value.String(name)}, inputs, context)
 	}
 }
 
 func TestTimeBucketOfDay_Valid(t *testing.T) {
 	t.Parallel()
+	// operator doesn't need real tier, so creating a fake
+	tier := tier.Tier{}
 	op := timeBucketOfDay{}
 	day := int64(24 * 3600)
 	cases := map[int64][]struct {
@@ -76,24 +84,26 @@ func TestTimeBucketOfDay_Valid(t *testing.T) {
 			inputs = append(inputs, value.Dict{"something_else": value.Int(i)})
 			expected = append(expected, value.Dict{"something_else": value.Int(i), name: value.Int(case_.index)})
 		}
-		optest.Assert(t, op, value.Dict{"bucket": value.Int(bucket), "name": value.String(name)}, inputs, context, expected)
+		optest.Assert(t, tier, op, value.Dict{"bucket": value.Int(bucket), "name": value.String(name)}, inputs, context, expected)
 	}
 }
 
 func TestTimeBucketOfDay_Invalid(t *testing.T) {
 	t.Parallel()
+	// operator doesn't need real tier, so creating a fake
+	tier := tier.Tier{}
 	op := timeBucketOfDay{}
 	name := value.String(utils.RandString(6))
-	optest.AssertError(t, op, value.Dict{"name": name, "bucket": value.Int(3600)}, []value.Dict{{}, {}}, []value.Dict{
+	optest.AssertError(t, tier, op, value.Dict{"name": name, "bucket": value.Int(3600)}, []value.Dict{{}, {}}, []value.Dict{
 		{"timestamp": value.Int(24 * 3600)}, {"timestamp": value.Int(-1123)},
 	})
-	optest.AssertError(t, op, value.Dict{"name": name, "bucket": value.Int(3600)}, []value.Dict{{}, {}}, []value.Dict{
+	optest.AssertError(t, tier, op, value.Dict{"name": name, "bucket": value.Int(3600)}, []value.Dict{{}, {}}, []value.Dict{
 		{"timestamp": value.Int(24 * 3600)}, {"timestamp": value.Int(-1)},
 	})
-	optest.AssertError(t, op, value.Dict{"name": name, "bucket": value.Int(3600)}, []value.Dict{{}, {}}, []value.Dict{
+	optest.AssertError(t, tier, op, value.Dict{"name": name, "bucket": value.Int(3600)}, []value.Dict{{}, {}}, []value.Dict{
 		{"timestamp": value.Int(24 * 3600)}, {"timestamp": value.Int(0)},
 	})
-	optest.AssertError(t, op, value.Dict{"name": name, "bucket": value.Int(0)}, []value.Dict{{}, {}}, []value.Dict{
+	optest.AssertError(t, tier, op, value.Dict{"name": name, "bucket": value.Int(0)}, []value.Dict{{}, {}}, []value.Dict{
 		{"timestamp": value.Int(24 * 3600)}, {"timestamp": value.Int(351)},
 	})
 }

@@ -62,7 +62,7 @@ func TestFeatureLog_Apply(t *testing.T) {
 			ModelPrediction: 0.79,
 		},
 	}
-	optest.Assert(t, featureLog{tier}, static, inputs, kwargs, inputs)
+	optest.Assert(t, tier, &featureLog{tier}, static, inputs, kwargs, inputs)
 	for _, r := range rows {
 		rowptr, err := feature2.Read(context.TODO(), tier, consumer)
 		assert.NoError(t, err)
