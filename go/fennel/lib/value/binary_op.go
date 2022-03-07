@@ -2,6 +2,7 @@ package value
 
 import (
 	"fmt"
+	"math"
 )
 
 func route(l Value, opt string, other Value) (Value, error) {
@@ -14,6 +15,8 @@ func route(l Value, opt string, other Value) (Value, error) {
 		return mul(l, other)
 	case "/":
 		return div(l, other)
+	case "//":
+		return fdiv(l, other)
 	case "==":
 		return eq(l, other)
 	case "!=":
@@ -34,8 +37,6 @@ func route(l Value, opt string, other Value) (Value, error) {
 		return index(l, other)
 	case "%":
 		return modulo(l, other)
-	case "in":
-		return in(l, other)
 	}
 	return Nil, nil
 }
@@ -50,7 +51,7 @@ func modulo(left Value, right Value) (Value, error) {
 		return Nil, fmt.Errorf("'%%' only supported between ints but got: '%v'", right)
 	}
 	if rint == 0 {
-		return Nil, fmt.Errorf("division by zero while using %%")
+		return Nil, fmt.Errorf("division by zero while using '%%'")
 	}
 	return lint % rint, nil
 }
@@ -115,18 +116,14 @@ func sub(left Value, right Value) (Value, error) {
 
 func div(left Value, right Value) (Value, error) {
 	if right.Equal(Int(0)) || right.Equal(Double(0)) {
-		return Nil, fmt.Errorf("division by zero while using /")
+		return Nil, fmt.Errorf("division by zero while using '/'")
 	}
 
 	switch left := left.(type) {
 	case Int:
 		switch right := right.(type) {
 		case Int:
-			if left%right == 0 {
-				return Int(int(left) / int(right)), nil
-			} else {
-				return Double(float64(left) / float64(right)), nil
-			}
+			return Double(float64(left) / float64(right)), nil
 		case Double:
 			return Double(float64(left) / float64(right)), nil
 		}
@@ -139,6 +136,31 @@ func div(left Value, right Value) (Value, error) {
 		}
 	}
 	return nil, fmt.Errorf("'/' only supported between numbers")
+}
+
+func fdiv(left Value, right Value) (Value, error) {
+	if right.Equal(Int(0)) || right.Equal(Double(0)) {
+		return Nil, fmt.Errorf("division by zero while using '//'")
+	}
+
+	switch left := left.(type) {
+	case Int:
+		switch right := right.(type) {
+		case Int:
+			return Int(math.Floor(float64(left) / float64(right))), nil
+		case Double:
+			return Double(math.Floor(float64(left) / float64(right))), nil
+		}
+	case Double:
+		switch right := right.(type) {
+		case Int:
+			return Double(math.Floor(float64(left) / float64(right))), nil
+		case Double:
+			return Double(math.Floor(float64(left) / float64(right))), nil
+		}
+	}
+	return nil, fmt.Errorf("'//' only supported between numbers")
+
 }
 
 func mul(left Value, right Value) (Value, error) {
@@ -296,24 +318,4 @@ func index(left Value, right Value) (Value, error) {
 		return ret, nil
 	}
 	return nil, fmt.Errorf("'index' operation supported only on lists or dicts but got: '%T' instead", left)
-}
-
-func in(val Value, container Value) (Value, error) {
-	switch c := container.(type) {
-	case List:
-		for _, elem := range c {
-			if val.Equal(elem) {
-				return Bool(true), nil
-			}
-		}
-		return Bool(false), nil
-	case Dict:
-		v, ok := val.(String)
-		if !ok {
-			return Nil, fmt.Errorf("'val' must be a string when 'container' is a dict but got '%T' instead", v)
-		}
-		_, ok = c[string(v)]
-		return Bool(ok), nil
-	}
-	return nil, fmt.Errorf("'in' operation only supported on lists or ducts but got: '%T' instead", container)
 }
