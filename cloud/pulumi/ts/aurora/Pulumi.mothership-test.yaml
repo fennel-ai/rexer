@@ -1,0 +1,10 @@
+config:
+  aurora:connectedSecurityGroups: '{"vpn": "sg-05fd7bc0ebbd4afd7"}'
+  aurora:maxCapacity: "4"
+  aurora:minCapacity: "1"
+  aurora:password:
+    secure: AAABAOj8of+LCaLVSlajpZ4UDwAfRStI8ljZ3R99rVmxlV6ldQ88rGPNwPF8xGQ=
+  aurora:region: us-west-2
+  aurora:roleArn: arn:aws:iam::030813887342:role/admin
+  aurora:username: admin
+  aurora:vpcId: vpc-0d9942e83f94c049c
