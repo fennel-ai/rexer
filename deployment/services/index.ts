@@ -3,7 +3,7 @@ import * as upath from "upath";
 
 const process = require('process');
 
-const stacks = ["fennel/dev", "fennel/trell-demo", "fennel/lokal-demo", "fennel/t-102"] as const;
+const stacks = ["fennel/dev", "fennel/lokal-demo"] as const;
 type Stack = typeof stacks[number];
 
 
