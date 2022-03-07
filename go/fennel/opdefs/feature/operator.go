@@ -12,11 +12,15 @@ import (
 	"fennel/tier"
 )
 
+func init() {
+	operators.Register(&featureLog{})
+}
+
 type featureLog struct {
 	tier tier.Tier
 }
 
-func (f featureLog) Init(args value.Dict, bootargs map[string]interface{}) error {
+func (f *featureLog) Init(args value.Dict, bootargs map[string]interface{}) error {
 	var err error
 	if f.tier, err = bootarg.GetTier(bootargs); err != nil {
 		return err
@@ -24,7 +28,7 @@ func (f featureLog) Init(args value.Dict, bootargs map[string]interface{}) error
 	return nil
 }
 
-func (f featureLog) Apply(static value.Dict, in operators.InputIter, out *value.List) error {
+func (f *featureLog) Apply(static value.Dict, in operators.InputIter, out *value.List) error {
 	contextOtype := ftypes.OType(static["context_otype"].(value.String))
 	contextOid := ftypes.OidType(static["context_oid"].(value.Int))
 	workflow := string(static["workflow"].(value.String))
@@ -62,7 +66,7 @@ func (f featureLog) Apply(static value.Dict, in operators.InputIter, out *value.
 	return nil
 }
 
-func (f featureLog) Signature() *operators.Signature {
+func (f *featureLog) Signature() *operators.Signature {
 	return operators.NewSignature("feature", "log", true).
 		Input(value.Types.Dict).
 		Param("context_otype", value.Types.String, true, false, value.Nil).
@@ -77,4 +81,4 @@ func (f featureLog) Signature() *operators.Signature {
 		Param("timestamp", value.Types.Int, false, true, value.Int(0))
 }
 
-var _ operators.Operator = featureLog{}
+var _ operators.Operator = &featureLog{}
