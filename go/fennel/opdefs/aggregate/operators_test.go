@@ -65,7 +65,7 @@ func TestAggValue_Apply(t *testing.T) {
 		{"a": value.String("bye"), "myaggresults": value.Int(1)},
 		{"a": value.String("yo"), "myaggresults": value.Int(0)},
 	}
-	optest.Assert(t, AggValue{tier}, static, inputs, contexKwargs, outputs)
+	optest.Assert(t, &AggValue{tier}, static, inputs, contexKwargs, outputs)
 }
 
 func getQuery() ast.Ast {
