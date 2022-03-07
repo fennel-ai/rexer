@@ -90,21 +90,17 @@ export const setup = async (input: inputType) => {
         }, { provider }).id)
     }
 
-    const cluster = pulumi.all(sgRules).apply(() => {
-        return new aws.memorydb.Cluster("redis-db",
-            {
-                subnetGroupName: subnetGroup.id,
-                aclName: "open-access",
-                engineVersion: REDIS_VERSION,
-                nodeType: NODE_TYPE,
-                autoMinorVersionUpgrade: true,
-                tlsEnabled: true,
-                numReplicasPerShard: NUM_REPLICAS,
-                securityGroupIds: [redisSg.id],
-                tags: { ...fennelStdTags },
-            }, { provider }
-        )
-    })
+    const cluster = new aws.memorydb.Cluster("redis-db", {
+        subnetGroupName: subnetGroup.id,
+        aclName: "open-access",
+        engineVersion: REDIS_VERSION,
+        nodeType: NODE_TYPE,
+        autoMinorVersionUpgrade: true,
+        tlsEnabled: true,
+        numReplicasPerShard: NUM_REPLICAS,
+        securityGroupIds: [redisSg.id],
+        tags: { ...fennelStdTags },
+    }, { provider })
 
     const output: outputType = {
         clusterId: cluster.id,
