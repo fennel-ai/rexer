@@ -123,12 +123,12 @@ const setupResources = async () => {
         "vpc": vpcOutput,
         "redis": redisOutput,
         "elasticache": elasticacheOutput,
-        "conluent": confluentOutput,
+        "confluent": confluentOutput,
         "db": auroraOutput,
     }
 };
 
-const setupDataPlane = async (args: PlaneConf, destroy?: boolean) => {
+const setupDataPlane = async (args: PlaneConf, preview?: boolean, destroy?: boolean) => {
     const projectName = `launchpad`
     const stackName = `fennel/${projectName}/plane-${args.planeId}`
 
@@ -151,6 +151,13 @@ const setupDataPlane = async (args: PlaneConf, destroy?: boolean) => {
 
     console.info("config set");
 
+    if (preview) {
+        console.info("previewing stack...");
+        await stack.preview({ onOutput: console.info });
+        console.info("stack previewed");
+        process.exit(0);
+    }
+
     if (destroy) {
         console.info("destroying stack...");
         await stack.destroy({ onOutput: console.info });
@@ -161,6 +168,7 @@ const setupDataPlane = async (args: PlaneConf, destroy?: boolean) => {
     console.info("updating stack...");
     const upRes = await stack.up({ onOutput: console.info });
     console.log(upRes)
+    return upRes.outputs
 };
 
 export default setupDataPlane
