@@ -23,9 +23,9 @@ export type inputType = {
 }
 
 export type outputType = {
-    bootstrapServer: pulumi.Output<string>,
-    apiKey: pulumi.Output<string>,
-    apiSecret: pulumi.Output<string>,
+    bootstrapServer: string,
+    apiKey: string,
+    apiSecret: string,
 }
 
 const parseConfig = (): inputType => {
@@ -38,7 +38,7 @@ const parseConfig = (): inputType => {
     }
 }
 
-export const setup = async (input: inputType) => {
+export const setup = async (input: inputType): Promise<pulumi.Output<outputType>> => {
     const provider = new confluent.Provider("conf-provider", {
         username: input.username,
         password: input.password,
@@ -60,17 +60,17 @@ export const setup = async (input: inputType) => {
         clusterId: cluster.id,
     }, { provider })
 
-    const output: outputType = {
+    const output = pulumi.output({
         bootstrapServer: cluster.bootstrapServers.apply(server => server.substring(server.indexOf(":") + 3)),
         apiKey: apiKey.key,
         apiSecret: apiKey.secret,
-    }
+    })
 
     return output
 }
 
 async function run() {
-    let output: outputType | undefined;
+    let output: pulumi.Output<outputType> | undefined;
     // Run the main function only if this program is run through the pulumi CLI.
     // Unfortunately, in that case the argv0 itself is not "pulumi", but the full
     // path of node: e.g. /nix/store/7q04aq0sq6im9a0k09gzfa1xfncc0xgm-nodejs-14.18.1/bin/node

@@ -1,4 +1,5 @@
 config:
+  aurora:connectedCidrBlocks: '["172.31.0.0/16"]'
   aurora:connectedSecurityGroups: '{"vpn": "sg-05fd7bc0ebbd4afd7"}'
   aurora:maxCapacity: "4"
   aurora:minCapacity: "1"

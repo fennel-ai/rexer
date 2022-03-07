@@ -1,42 +1,15 @@
 import setupTier from "./tier";
-import setupDataPlane from "./plane";
+import setupDataPlane, { PlaneOutput } from "./plane";
 import * as vpc from "../vpc";
+import * as eks from "../eks";
+import * as aurora from "../aurora";
+import * as elasticache from "../elasticache";
+import * as redis from "../redis";
+import * as confluentenv from "../confluentenv";
 
 import * as process from "process";
-
-// const tierId = process.env.TIER_ID!;
-
-// setupTier(
-//     {
-//         tierId: parseInt(tierId),
-
-//         bootstrapServer: process.env.KAFKA_SERVER_ADDRESS!,
-//         topicNames: [`t_${tierId}_actionlog`, `t_${tierId}_featurelog`],
-//         kafkaApiKey: process.env.KAFKA_USERNAME!,
-//         kafkaApiSecret: process.env.KAFKA_PASSWORD!,
-
-//         db: process.env.MYSQL_DATABASE_NAME!,
-//         dbEndpoint: process.env.MYSQL_SERVER_ADDRESS!,
-//         dbUsername: process.env.MYSQL_USERNAME!,
-//         dbPassword: process.env.MYSQL_PASSWORD!,
-
-//         roleArn: process.env.AWS_ROLE_ARN!,
-//         region: process.env.AWS_REGION!,
-
-//         kubeconfig: process.env.KUBECONFIG!,
-//         namespace: `t-${tierId}`,
-
-//         redisEndpoint: process.env.REDIS_SERVER_ADDRESS!,
-//         cachePrimaryEndpoint: process.env.CACHE_PRIMARY!,
-//         cacheReplicaEndpoint: process.env.CACHE_REPLICA!,
-
-//         subnetIds: ["subnet-07b7f4dc20c5b9258", "subnet-0f81a1af4aee30667"],
-//         loadBalancerScheme: "internal",
-//     },
-//     true,
-// ).catch(err => console.log(err))
-
-const planeId = 1;
+import * as assert from "assert";
+import { nameof } from "../lib/util";
 
 const controlPlane: vpc.controlPlaneConfig = {
     region: "us-west-2",
@@ -47,27 +20,72 @@ const controlPlane: vpc.controlPlaneConfig = {
     cidrBlock: "172.31.0.0/16"
 }
 
-setupDataPlane(
-    {
-        planeId: Number(planeId),
-        region: "ap-south-1",
-        roleArn: "arn:aws:iam::136736114676:role/admin",
-        vpcConf: {
-            cidr: "10.101.0.0/16",
-        },
-        controlPlaneConf: controlPlane,
-        dbConf: {
-            minCapacity: 1,
-            maxCapacity: 4,
-            password: "password",
-        },
-        confluentConf: {
-            username: process.env.CONFLUENT_CLOUD_USERNAME!,
-            password: process.env.CONFLUENT_CLOUD_PASSWORD!,
-        },
-        redisConf: {
-            numShards: 1,
-        },
+
+//================== Data plane configuration variables ========================
+
+const dataPlaneRegion = "us-west-2"
+const dataPlaneRoleArn = "arn:aws:iam::030813887342:role/admin"
+const dataPlaneCidr = "10.102.0.0/16"
+const dbPassword = "foundationdb"
+const dbMinCapacity = 4
+const dbMaxCapacity = 16
+const planeId = 2;
+const tierId = 103;
+const confluentUsername = process.env.CONFLUENT_CLOUD_USERNAME;
+assert.ok(confluentUsername, "CONFLUENT_CLOUD_USERNAME must be set");
+const confluentPassword = process.env.CONFLUENT_CLOUD_PASSWORD;
+assert.ok(confluentPassword, "CONFLUENT_CLOUD_PASSWORD must be set");
+
+//==============================================================================
+
+const dataplane = await setupDataPlane({
+    planeId: Number(planeId),
+    region: dataPlaneRegion,
+    roleArn: dataPlaneRoleArn,
+    vpcConf: {
+        cidr: dataPlaneCidr,
     },
-    true
-)
+    controlPlaneConf: controlPlane,
+    dbConf: {
+        password: dbPassword,
+        minCapacity: dbMinCapacity,
+        maxCapacity: dbMaxCapacity,
+    },
+    confluentConf: {
+        username: confluentUsername,
+        password: confluentPassword,
+    },
+})
+
+const confluentOutput = dataplane[nameof<PlaneOutput>("confluent")].value as confluentenv.outputType
+const dbOutput = dataplane[nameof<PlaneOutput>("db")].value as aurora.outputType
+const eksOutput = dataplane[nameof<PlaneOutput>("eks")].value as eks.outputType
+const redisOutput = dataplane[nameof<PlaneOutput>("redis")].value as redis.outputType
+const elasticacheOutput = dataplane[nameof<PlaneOutput>("elasticache")].value as elasticache.outputType
+const vpcOutput = dataplane[nameof<PlaneOutput>("vpc")].value as vpc.outputType
+
+setupTier({
+    tierId: Number(tierId),
+
+    bootstrapServer: confluentOutput.bootstrapServer,
+    topicNames: [`t_${tierId}_actionlog`, `t_${tierId}_featurelog`],
+    kafkaApiKey: confluentOutput.apiKey,
+    kafkaApiSecret: confluentOutput.apiSecret,
+
+    db: "db",
+    dbEndpoint: dbOutput.host,
+    dbUsername: "admin",
+    dbPassword: dbPassword,
+
+    roleArn: dataPlaneRoleArn,
+    region: dataPlaneRegion,
+
+    kubeconfig: JSON.stringify(eksOutput.kubeconfig),
+    namespace: `t-${tierId}`,
+
+    redisEndpoint: redisOutput.clusterEndPoints[0],
+    cachePrimaryEndpoint: elasticacheOutput.endpoint,
+    subnetIds: vpcOutput.privateSubnets,
+    loadBalancerScheme: "internal",
+},
+).catch(err => console.log(err))

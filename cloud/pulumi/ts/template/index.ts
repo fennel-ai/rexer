@@ -15,6 +15,7 @@ export const plugins = {}
 
 export type inputType = {}
 
+// should not contain any pulumi.Output<> types.
 export type outputType = {}
 
 const parseConfig = (): inputType => {
@@ -22,13 +23,13 @@ const parseConfig = (): inputType => {
     return {}
 }
 
-export const setup = async (input: inputType) => {
-    const output: outputType = {}
+export const setup = async (input: inputType): Promise<pulumi.Output<outputType>> => {
+    const output = pulumi.output({})
     return output
 }
 
 async function run() {
-    let output: outputType | undefined;
+    let output: pulumi.Output<outputType> | undefined;
     // Run the main function only if this program is run through the pulumi CLI.
     // Unfortunately, in that case the argv0 itself is not "pulumi", but the full
     // path of node: e.g. /nix/store/7q04aq0sq6im9a0k09gzfa1xfncc0xgm-nodejs-14.18.1/bin/node

@@ -29,9 +29,8 @@ export type inputType = {
 }
 
 export type outputType = {
-    host: pulumi.Output<string>,
+    host: string,
 }
-
 
 const parseConfig = (): inputType => {
     const config = new pulumi.Config();
@@ -48,7 +47,7 @@ const parseConfig = (): inputType => {
     }
 }
 
-export const setup = async (input: inputType) => {
+export const setup = async (input: inputType): Promise<pulumi.Output<outputType>> => {
     const provider = new aws.Provider("aurora-aws-provider", {
         region: <aws.Region>input.region,
         assumeRole: {
@@ -121,15 +120,15 @@ export const setup = async (input: inputType) => {
         tags: { ...fennelStdTags }
     }, { provider })
 
-    const output: outputType = {
+    const output = pulumi.output({
         host: cluster.endpoint,
-    }
+    })
 
     return output
 }
 
 async function run() {
-    let output: outputType | undefined;
+    let output: pulumi.Output<outputType> | undefined;
     // Run the main function only if this program is run through the pulumi CLI.
     // Unfortunately, in that case the argv0 itself is not "pulumi", but the full
     // path of node: e.g. /nix/store/7q04aq0sq6im9a0k09gzfa1xfncc0xgm-nodejs-14.18.1/bin/node
