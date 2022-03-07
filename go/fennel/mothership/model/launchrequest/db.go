@@ -11,7 +11,10 @@ func InsertRequest(m mothership.Mothership, config []byte, status []byte) (uint3
 		return 0, err
 	}
 	reqID, err := res.LastInsertId()
-	return uint32(reqID), err
+	if err != nil {
+		return 0, err
+	}
+	return uint32(reqID), nil
 }
 
 func DeleteRequest(m mothership.Mothership, requestID uint32) error {
