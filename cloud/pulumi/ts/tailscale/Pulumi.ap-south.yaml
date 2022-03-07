@@ -1,5 +1,0 @@
-config:
-  aws:profile: admin
-  aws:region: ap-south-1
-  tailscale:ami: ami-03fa4afc89e4a8a09
-  tailscale:subnet: subnet-0d8681a922963a15e
