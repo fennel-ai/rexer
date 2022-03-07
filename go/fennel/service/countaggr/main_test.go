@@ -173,7 +173,14 @@ func processInParallel(tier tier.Tier, scenarios []*scenario) {
 func verify(t *testing.T, tier tier.Tier, agg libaggregate.Aggregate, k value.Value, expected interface{}) {
 	found, err := aggregate.Value(context.Background(), tier, agg.Name, k)
 	assert.NoError(t, err)
-	assert.Equal(t, expected, found)
+	// for floats, it's best to not do direct equality comparison but verify their differnce is small
+	if _, ok := expected.(value.Double); ok {
+		asfloat, ok := found.(value.Double)
+		assert.True(t, ok)
+		assert.True(t, float64(expected.(value.Double)-asfloat) < 1e-6)
+	} else {
+		assert.Equal(t, expected, found)
+	}
 }
 
 func logAction(t *testing.T, tier tier.Tier, uid ftypes.OidType, ts ftypes.Timestamp, metadata value.Value) []actionlib.Action {
