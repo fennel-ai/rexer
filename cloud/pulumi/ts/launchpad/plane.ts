@@ -26,12 +26,18 @@ type ConfluentConfig = {
     password: string,
 }
 
+type RedisConfig = {
+    numShards?: number,
+    numReplicasPerShard?: number,
+}
+
 type PlaneConf = {
     planeId: number,
     region: string,
     roleArn: string,
     vpcConf: VpcConfig,
     dbConf: DBConfig,
+    redisConf: RedisConfig,
     confluentConf: ConfluentConfig,
     controlPlaneConf: vpc.controlPlaneConfig,
 }
@@ -95,6 +101,8 @@ const setupResources = async () => {
         connectedSecurityGroups: {
             "eks": eksOutput.workerSg,
         },
+        numShards: input.redisConf.numShards,
+        numReplicasPerShard: input.redisConf.numReplicasPerShard,
         azs: vpcOutput.azs,
     })
     const elasticacheOutput = await elasticache.setup({

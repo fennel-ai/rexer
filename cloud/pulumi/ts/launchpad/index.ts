@@ -65,6 +65,9 @@ setupDataPlane(
             username: process.env.CONFLUENT_CLOUD_USERNAME!,
             password: process.env.CONFLUENT_CLOUD_PASSWORD!,
         },
+        redisConf: {
+            numShards: 1,
+        },
     },
     true
 )

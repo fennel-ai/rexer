@@ -20,6 +20,8 @@ export type inputType = {
     roleArn: string,
     region: string,
     vpcId: pulumi.Output<string>,
+    numShards?: number,
+    numReplicasPerShard?: number,
     azs: string[],
     connectedSecurityGroups: Record<string, pulumi.Output<string>>,
 }
@@ -30,10 +32,10 @@ export type outputType = {
     clusterSecurityGroupIds: pulumi.Output<string[] | undefined>,
 }
 
-const REDIS_VERSION = "6.2";
-const NODE_TYPE = "db.t4g.small";
-// TODO: Increase replica count once we add more than one subnet to group.
-const NUM_REPLICAS = 0;
+const DEFAULT_REDIS_VERSION = "6.2";
+const DEFAULT_NODE_TYPE = "db.t4g.small";
+const DEFAULT_NUM_SHARDS = 1;
+const DEFAULT_NUM_REPLICAS_PER_SHARD = 0;
 
 const parseConfig = (): inputType => {
     const config = new pulumi.Config();
@@ -43,6 +45,8 @@ const parseConfig = (): inputType => {
         vpcId: pulumi.output(config.require(nameof<inputType>("vpcId"))),
         azs: config.requireObject(nameof<inputType>("azs")),
         connectedSecurityGroups: config.requireObject(nameof<inputType>("connectedSecurityGroups")),
+        numShards: config.getNumber(nameof<inputType>("numShards")),
+        numReplicasPerShard: config.getNumber(nameof<inputType>("numReplicasPerShard")),
     }
 }
 
@@ -93,12 +97,13 @@ export const setup = async (input: inputType) => {
     const cluster = new aws.memorydb.Cluster("redis-db", {
         subnetGroupName: subnetGroup.id,
         aclName: "open-access",
-        engineVersion: REDIS_VERSION,
-        nodeType: NODE_TYPE,
+        engineVersion: DEFAULT_REDIS_VERSION,
+        nodeType: DEFAULT_NODE_TYPE,
         autoMinorVersionUpgrade: true,
         tlsEnabled: true,
-        numReplicasPerShard: NUM_REPLICAS,
         securityGroupIds: [redisSg.id],
+        numShards: input.numShards || DEFAULT_NUM_SHARDS,
+        numReplicasPerShard: input.numReplicasPerShard || DEFAULT_NUM_REPLICAS_PER_SHARD,
         tags: { ...fennelStdTags },
     }, { provider })
 
