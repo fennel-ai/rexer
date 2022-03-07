@@ -2,6 +2,7 @@ package value
 
 import (
 	"fmt"
+	"math"
 )
 
 func route(l Value, opt string, other Value) (Value, error) {
@@ -14,6 +15,8 @@ func route(l Value, opt string, other Value) (Value, error) {
 		return mul(l, other)
 	case "/":
 		return div(l, other)
+	case "//":
+		return fdiv(l, other)
 	case "==":
 		return eq(l, other)
 	case "!=":
@@ -122,11 +125,7 @@ func div(left Value, right Value) (Value, error) {
 	case Int:
 		switch right := right.(type) {
 		case Int:
-			if left%right == 0 {
-				return Int(int(left) / int(right)), nil
-			} else {
-				return Double(float64(left) / float64(right)), nil
-			}
+			return Double(float64(left) / float64(right)), nil
 		case Double:
 			return Double(float64(left) / float64(right)), nil
 		}
@@ -139,6 +138,31 @@ func div(left Value, right Value) (Value, error) {
 		}
 	}
 	return nil, fmt.Errorf("'/' only supported between numbers")
+}
+
+func fdiv(left Value, right Value) (Value, error) {
+	if right.Equal(Int(0)) || right.Equal(Double(0)) {
+		return Nil, fmt.Errorf("division by zero while using /")
+	}
+
+	switch left := left.(type) {
+	case Int:
+		switch right := right.(type) {
+		case Int:
+			return Int(math.Floor(float64(left) / float64(right))), nil
+		case Double:
+			return Double(math.Floor(float64(left) / float64(right))), nil
+		}
+	case Double:
+		switch right := right.(type) {
+		case Int:
+			return Double(math.Floor(float64(left) / float64(right))), nil
+		case Double:
+			return Double(math.Floor(float64(left) / float64(right))), nil
+		}
+	}
+	return nil, fmt.Errorf("'//' only supported between numbers")
+
 }
 
 func mul(left Value, right Value) (Value, error) {

@@ -28,7 +28,7 @@ func TestInvalid(t *testing.T) {
 	di := Dict(map[string]Value{"a": Int(2), "b": Double(1.0)})
 	n := Nil
 
-	ops := []string{"+", "-", "*", "/", ">", ">=", "<", "<=", "and", "or", "[]", "%", "in"}
+	ops := []string{"+", "-", "*", "/", "//", ">", ">=", "<", "<=", "and", "or", "[]", "%", "in"}
 	allBut := func(xs ...string) []string {
 		var res []string
 		for _, op := range ops {
@@ -56,8 +56,8 @@ func TestInvalid(t *testing.T) {
 	verifyError(t, i, di, ops)
 	verifyError(t, i, n, ops)
 	// and div/modulo throws an error when denominator is zero
-	verifyError(t, i, Int(0), []string{"%", "/"})
-	verifyError(t, i, Double(0), []string{"%", "/"})
+	verifyError(t, i, Int(0), []string{"%", "/", "//"})
+	verifyError(t, i, Double(0), []string{"%", "/", "//"})
 
 	verifyError(t, d, i, []string{"and", "or", "%", "[]", "in"})
 	verifyError(t, d, d, []string{"and", "or", "%", "[]", "in"})
@@ -67,8 +67,8 @@ func TestInvalid(t *testing.T) {
 	verifyError(t, d, di, ops)
 	verifyError(t, d, n, ops)
 	// and div throws an error when denominator is zero
-	verifyError(t, d, Int(0), []string{"/"})
-	verifyError(t, d, Double(0), []string{"/"})
+	verifyError(t, d, Int(0), []string{"/", "//"})
+	verifyError(t, d, Double(0), []string{"/", "//"})
 
 	verifyError(t, b, i, ops)
 	verifyError(t, b, d, ops)
@@ -140,14 +140,26 @@ func TestValidArithmetic(t *testing.T) {
 	base = Double(2.0)
 	verifyOp(t, base, Int(2), Double(4.0), "*")
 	verifyOp(t, base, Double(2.0), Double(4.0), "*")
+
 	// Div
 	base = Int(4)
-	verifyOp(t, base, Int(2), Int(2), "/")
+	verifyOp(t, base, Int(2), Double(2), "/")
 	verifyOp(t, base, Int(8), Double(0.5), "/")
 	verifyOp(t, base, Double(2.0), Double(2.0), "/")
 	base = Double(4.0)
 	verifyOp(t, base, Int(2), Double(2.0), "/")
 	verifyOp(t, base, Double(2.0), Double(2.0), "/")
+
+	// Floor Div
+	base = Int(2)
+	verifyOp(t, base, Int(1), Int(2), "//")
+	verifyOp(t, base, Int(3), Int(0), "//")
+	verifyOp(t, base, Double(3.0), Double(0.0), "//")
+	verifyOp(t, base, Double(-3.0), Double(-1.0), "//")
+	base = Double(2.0)
+	verifyOp(t, base, Int(1), Double(2.0), "//")
+	verifyOp(t, base, Double(3.0), Double(0.0), "//")
+	verifyOp(t, base, Double(-3.0), Double(-1.0), "//")
 
 	// modulo
 	base = Int(4)
