@@ -25,7 +25,7 @@ export type inputType = {
     username: string,
     password: pulumi.Output<string>,
     connectedSecurityGroups: Record<string, pulumi.Output<string>>,
-    connectedCidrBlocks: string[],
+    connectedCidrBlocks?: string[],
 }
 
 export type outputType = {
@@ -42,7 +42,7 @@ const parseConfig = (): inputType => {
         minCapacity: config.requireNumber(nameof<inputType>("minCapacity")),
         maxCapacity: config.requireNumber(nameof<inputType>("maxCapacity")),
         connectedSecurityGroups: config.requireObject(nameof<inputType>("connectedSecurityGroups")),
-        connectedCidrBlocks: config.requireObject(nameof<inputType>("connectedCidrBlocks")),
+        connectedCidrBlocks: config.getObject(nameof<inputType>("connectedCidrBlocks")),
         username: config.require(nameof<inputType>("username")),
         password: config.requireSecret(nameof<inputType>("password")),
     }
@@ -92,14 +92,16 @@ export const setup = async (input: inputType) => {
             protocol: "tcp",
         }, { provider }).id)
     }
-    sgRules.push(new aws.ec2.SecurityGroupRule(`aurora-allow-connected-cidr`, {
-        securityGroupId: securityGroup.id,
-        cidrBlocks: input.connectedCidrBlocks,
-        fromPort: 0,
-        toPort: 65535,
-        type: "ingress",
-        protocol: "tcp",
-    }, { provider }).id)
+    if (input.connectedCidrBlocks !== undefined) {
+        sgRules.push(new aws.ec2.SecurityGroupRule(`aurora-allow-connected-cidr`, {
+            securityGroupId: securityGroup.id,
+            cidrBlocks: input.connectedCidrBlocks,
+            fromPort: 0,
+            toPort: 65535,
+            type: "ingress",
+            protocol: "tcp",
+        }, { provider }).id)
+    }
 
     const cluster = new aws.rds.Cluster("db-instance", {
         dbSubnetGroupName: subnetGroup.name,
