@@ -11,7 +11,6 @@ import * as ingress from "../ingress";
 import * as ns from "../k8s-ns";
 
 import * as process from "process";
-import { stringify } from "querystring";
 
 type inputType = {
     tierId: number
@@ -34,7 +33,6 @@ type inputType = {
     redisEndpoint: string,
     // elasticache configuration.
     cachePrimaryEndpoint: string,
-    cacheReplicaEndpoint: string,
     // ingress configuration.
     subnetIds: string[],
     loadBalancerScheme: string,
@@ -62,7 +60,6 @@ const parseConfig = (): inputType => {
 
         redisEndpoint: config.require(nameof<inputType>("redisEndpoint")),
         cachePrimaryEndpoint: config.require(nameof<inputType>("cachePrimaryEndpoint")),
-        cacheReplicaEndpoint: config.require(nameof<inputType>("cacheReplicaEndpoint")),
 
         subnetIds: config.requireObject(nameof<inputType>("subnetIds")),
         loadBalancerScheme: config.require(nameof<inputType>("loadBalancerScheme")),
@@ -124,7 +121,6 @@ const setupResources = async () => {
             } as Record<string, string>),
             cacheConfig: pulumi.output({
                 "primary": input.cachePrimaryEndpoint,
-                "replica": input.cacheReplicaEndpoint,
             } as Record<string, string>),
             dbConfig: pulumi.output({
                 "host": input.dbEndpoint,
@@ -187,7 +183,6 @@ type TierConf = {
     redisEndpoint: string,
     // elasticache configuration.
     cachePrimaryEndpoint: string,
-    cacheReplicaEndpoint: string,
     // ingress configuration.
     subnetIds: string[],
     loadBalancerScheme: string,
@@ -231,7 +226,6 @@ const setupTier = async (args: TierConf, destroy?: boolean) => {
 
     await stack.setConfig(nameof<inputType>("redisEndpoint"), { value: args.redisEndpoint })
     await stack.setConfig(nameof<inputType>("cachePrimaryEndpoint"), { value: args.cachePrimaryEndpoint })
-    await stack.setConfig(nameof<inputType>("cacheReplicaEndpoint"), { value: args.cacheReplicaEndpoint })
 
     await stack.setConfig(nameof<inputType>("subnetIds"), { value: JSON.stringify(args.subnetIds) })
     await stack.setConfig(nameof<inputType>("loadBalancerScheme"), { value: args.loadBalancerScheme })
