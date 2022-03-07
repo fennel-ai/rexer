@@ -1,6 +1,0 @@
-config:
-  elasticache:azs: '["us-west-2a","us-west-2b"]'
-  elasticache:connectedSecurityGroups: '{"eks": "sg-0742742ab251e8ab3", "tailscale": "sg-05fd7bc0ebbd4afd7"}'
-  elasticache:region: us-west-2
-  elasticache:roleArn: arn:aws:iam::030813887342:role/admin
-  elasticache:vpcId: vpc-0d9942e83f94c049c

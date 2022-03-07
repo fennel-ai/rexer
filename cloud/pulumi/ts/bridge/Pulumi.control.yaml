@@ -1,9 +1,0 @@
-config:
-  aws:profile: admin
-  aws:region: us-west-2
-  bridge:db: controldb
-  bridge:dbhost: dw48w7ntx844.us-west-2.psdb.cloud
-  bridge:dbpassword:
-    secure: AAABAGc9WCfru33uDl3ject1xLNke03a5mTrCGIpXXxcv8UW1ppWHu/JM46sj5qkYbr+lLo/6Bo10UTtCxVbVkJb6lbMZdu1BB8z2GqejTF84kAlIQ==
-  bridge:dbuser: jx90b5i7d77d
-  bridge:mothershipId: "1"
