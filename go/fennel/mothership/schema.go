@@ -72,8 +72,8 @@ var Schema = db.Schema{
                 status JSON NOT NULL
         );`,
 	10: `CREATE TABLE IF NOT EXISTS launch_history (
-				launch_request_id INT UNSIGNED NOT NULL PRIMARY KEY,
-				config JSON NOT NULL,
-				status JSON NOT NULL
-		);`,
+                launch_request_id INT UNSIGNED NOT NULL PRIMARY KEY,
+                config JSON NOT NULL,
+                status JSON NOT NULL
+        );`,
 }
