@@ -10,7 +10,7 @@ import subprocess
 import time
 import unittest
 
-from rexerclient.rql import Var, Int, String, it, Ops, List, Cond
+from rexerclient.rql import Var, Int, String, it, Ops, List, Cond, Make
 from rexerclient import client
 from rexerclient.models import action
 
@@ -235,7 +235,11 @@ class TestEndToEnd(unittest.TestCase):
                 'trail_view_by_city_gender_agegroup_2days',
                 [video_id, city, gender, age_group],
             )
-            found2 = c.aggregate_value('user_creator_avg_watchtime_by_2hour_windows_30days', [uid, creator_id, b])
+            q = Make([{'uid': uid, 'creator_id': creator_id, 'b': b}]).apply(
+                Ops.aggregate.addField(name='found', aggregate='user_creator_avg_watchtime_by_2hour_windows_30days',
+                                       groupkey=[it.uid, it.creator_id, it.b])
+            )[0].found
+            found2 = c.query(q)
             if found1 == expected1 and found2 == expected2:
                 passed = True
                 break

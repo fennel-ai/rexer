@@ -12,7 +12,7 @@ import (
 )
 
 func init() {
-	ops := []operators.Operator{AggValue{}}
+	ops := []operators.Operator{&AggValue{}}
 	for _, op := range ops {
 		if err := operators.Register(op); err != nil {
 			panic(err)
@@ -24,7 +24,7 @@ type AggValue struct {
 	tier tier.Tier
 }
 
-func (a AggValue) Init(_ value.Dict, bootargs map[string]interface{}) error {
+func (a *AggValue) Init(_ value.Dict, bootargs map[string]interface{}) error {
 	var err error
 	if a.tier, err = bootarg.GetTier(bootargs); err != nil {
 		return err
@@ -32,7 +32,7 @@ func (a AggValue) Init(_ value.Dict, bootargs map[string]interface{}) error {
 	return nil
 }
 
-func (a AggValue) Apply(kwargs value.Dict, in operators.InputIter, out *value.List) error {
+func (a *AggValue) Apply(kwargs value.Dict, in operators.InputIter, out *value.List) error {
 	name := string(kwargs["name"].(value.String))
 	aggname := string(kwargs["aggregate"].(value.String))
 
@@ -54,7 +54,7 @@ func (a AggValue) Apply(kwargs value.Dict, in operators.InputIter, out *value.Li
 	return nil
 }
 
-func (a AggValue) Signature() *operators.Signature {
+func (a *AggValue) Signature() *operators.Signature {
 	return operators.NewSignature("aggregate", "addField", true).
 		Input(value.Types.Dict).
 		Param("name", value.Types.String, true, false, value.Nil).
@@ -62,4 +62,4 @@ func (a AggValue) Signature() *operators.Signature {
 		Param("groupkey", value.Types.Any, false, false, value.Nil)
 }
 
-var _ operators.Operator = AggValue{}
+var _ operators.Operator = &AggValue{}
