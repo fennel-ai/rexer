@@ -37,8 +37,6 @@ func route(l Value, opt string, other Value) (Value, error) {
 		return index(l, other)
 	case "%":
 		return modulo(l, other)
-	case "in":
-		return in(l, other)
 	}
 	return Nil, nil
 }
@@ -320,24 +318,4 @@ func index(left Value, right Value) (Value, error) {
 		return ret, nil
 	}
 	return nil, fmt.Errorf("'index' operation supported only on lists or dicts but got: '%T' instead", left)
-}
-
-func in(val Value, container Value) (Value, error) {
-	switch c := container.(type) {
-	case List:
-		for _, elem := range c {
-			if val.Equal(elem) {
-				return Bool(true), nil
-			}
-		}
-		return Bool(false), nil
-	case Dict:
-		v, ok := val.(String)
-		if !ok {
-			return Nil, fmt.Errorf("'val' must be a string when 'container' is a dict but got '%T' instead", v)
-		}
-		_, ok = c[string(v)]
-		return Bool(ok), nil
-	}
-	return nil, fmt.Errorf("'in' operation only supported on lists or ducts but got: '%T' instead", container)
 }

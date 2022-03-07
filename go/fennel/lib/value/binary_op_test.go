@@ -28,7 +28,7 @@ func TestInvalid(t *testing.T) {
 	di := Dict(map[string]Value{"a": Int(2), "b": Double(1.0)})
 	n := Nil
 
-	ops := []string{"+", "-", "*", "/", "//", ">", ">=", "<", "<=", "and", "or", "[]", "%", "in"}
+	ops := []string{"+", "-", "*", "/", "//", ">", ">=", "<", "<=", "and", "or", "[]", "%"}
 	allBut := func(xs ...string) []string {
 		var res []string
 		for _, op := range ops {
@@ -47,23 +47,23 @@ func TestInvalid(t *testing.T) {
 	}
 
 	// ints with themselves
-	verifyError(t, i, i, []string{"and", "or", "[]", "in"})
+	verifyError(t, i, i, []string{"and", "or", "[]"})
 	// ints with others
-	verifyError(t, i, d, []string{"and", "or", "[]", "%", "in"})
+	verifyError(t, i, d, []string{"and", "or", "[]", "%"})
 	verifyError(t, i, b, ops)
 	verifyError(t, i, s, ops)
-	verifyError(t, i, l, allBut("in"))
+	verifyError(t, i, l, ops)
 	verifyError(t, i, di, ops)
 	verifyError(t, i, n, ops)
 	// and div/modulo throws an error when denominator is zero
 	verifyError(t, i, Int(0), []string{"%", "/", "//"})
 	verifyError(t, i, Double(0), []string{"%", "/", "//"})
 
-	verifyError(t, d, i, []string{"and", "or", "%", "[]", "in"})
-	verifyError(t, d, d, []string{"and", "or", "%", "[]", "in"})
+	verifyError(t, d, i, []string{"and", "or", "%", "[]"})
+	verifyError(t, d, d, []string{"and", "or", "%", "[]"})
 	verifyError(t, d, b, ops)
 	verifyError(t, d, s, ops)
-	verifyError(t, d, l, allBut("in"))
+	verifyError(t, d, l, ops)
 	verifyError(t, d, di, ops)
 	verifyError(t, d, n, ops)
 	// and div throws an error when denominator is zero
@@ -74,7 +74,7 @@ func TestInvalid(t *testing.T) {
 	verifyError(t, b, d, ops)
 	verifyError(t, b, b, allBut("and", "or"))
 	verifyError(t, b, s, ops)
-	verifyError(t, b, l, allBut("in"))
+	verifyError(t, b, l, ops)
 	verifyError(t, b, di, ops)
 	verifyError(t, b, n, ops)
 
@@ -83,8 +83,8 @@ func TestInvalid(t *testing.T) {
 	verifyError(t, s, b, ops)
 	// can only do concatenation with two strings
 	verifyError(t, s, s, allBut("+"))
-	verifyError(t, s, l, allBut("in"))
-	verifyError(t, s, di, allBut("in"))
+	verifyError(t, s, l, ops)
+	verifyError(t, s, di, ops)
 	verifyError(t, s, n, ops)
 
 	// can only do indexing using a list and an int
@@ -92,8 +92,8 @@ func TestInvalid(t *testing.T) {
 	verifyError(t, l, d, ops)
 	verifyError(t, l, b, ops)
 	verifyError(t, l, s, ops)
-	// can only do concatenation and "in" with two lists
-	verifyError(t, l, l, allBut("+", "in"))
+	// can only do concatenation with two lists
+	verifyError(t, l, l, allBut("+"))
 	verifyError(t, l, di, ops)
 	verifyError(t, l, n, ops)
 
@@ -102,7 +102,7 @@ func TestInvalid(t *testing.T) {
 	verifyError(t, di, b, ops)
 	// can only do an indexing on dictionary using a string
 	verifyError(t, di, s, allBut("[]]"))
-	verifyError(t, di, l, allBut("in"))
+	verifyError(t, di, l, ops)
 	verifyError(t, di, di, ops)
 	verifyError(t, di, n, ops)
 
@@ -110,7 +110,7 @@ func TestInvalid(t *testing.T) {
 	verifyError(t, n, d, ops)
 	verifyError(t, n, b, ops)
 	verifyError(t, n, s, ops)
-	verifyError(t, n, l, allBut("in"))
+	verifyError(t, n, l, ops)
 	verifyError(t, n, di, ops)
 	verifyError(t, n, n, ops)
 }
@@ -254,20 +254,4 @@ func TestConcatenation(t *testing.T) {
 	l1 := List([]Value{Int(1), Nil})
 	l2 := List([]Value{Double(2), Bool(false)})
 	verifyOp(t, l1, l2, List([]Value{Int(1), Nil, Double(2), Bool(false)}), "+")
-}
-
-func TestIn(t *testing.T) {
-	vals := []Value{Nil, Bool(false), Int(-1), Double(7.0), String("xyz"), List{Nil, List{}}, Dict{}}
-
-	l0 := List{}
-	l1 := NewList(vals)
-
-	for _, v := range vals {
-		verifyOp(t, v, l0, Bool(false), "in")
-		verifyOp(t, v, l1, Bool(true), "in")
-	}
-
-	d := Dict{"key": Nil}
-	verifyOp(t, String("key"), d, Bool(true), "in")
-	verifyOp(t, String("bad key"), d, Bool(false), "in")
 }
