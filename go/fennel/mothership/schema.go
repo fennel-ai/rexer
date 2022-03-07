@@ -13,7 +13,7 @@ var Schema = db.Schema{
                 tier_id INT UNSIGNED NOT NULL PRIMARY KEY AUTO_INCREMENT,
                 data_plane_id INT UNSIGNED NOT NULL,
                 customer_id INT UNSIGNED NOT NULL,
-                pulimi_stack VARCHAR(128) NOT NULL UNIQUE,
+                pulumi_stack VARCHAR(128) NOT NULL UNIQUE,
                 api_url VARCHAR(256) NOT NULL UNIQUE,
                 k8s_namespace VARCHAR(32) NOT NULL UNIQUE
         );`,
@@ -21,19 +21,19 @@ var Schema = db.Schema{
                 data_plane_id INT UNSIGNED NOT NULL PRIMARY KEY AUTO_INCREMENT,
                 aws_role VARCHAR(128) NOT NULL,
                 region VARCHAR(16) NOT NULL,
-                pulimi_stack VARCHAR(128) NOT NULL UNIQUE,
+                pulumi_stack VARCHAR(128) NOT NULL UNIQUE,
                 vpc_id VARCHAR(32) NOT NULL UNIQUE,
-                eks_cluster_id VARCHAR(64) NOT NULL UNIQUE,
+                eks_instance_id INT UNSIGNED NOT NULL UNIQUE,
                 kafka_instance_id INT UNSIGNED NOT NULL UNIQUE,
                 db_instance_id INT UNSIGNED NOT NULL UNIQUE,
-                redis_instance_id INT UNSIGNED NOT NULL UNIQUE,
+                memory_db_instance_id INT UNSIGNED NOT NULL UNIQUE,
                 elasticache_instance_id INT UNSIGNED NOT NULL UNIQUE
         );`,
 	4: `CREATE TABLE IF NOT EXISTS eks (
                 instance_id INT UNSIGNED NOT NULL PRIMARY KEY AUTO_INCREMENT,
-                cluster_id VARCHAR(32) NOT NULL,
-                min_instances INT UNSIGNED,
-                max_instances INT UNSIGNED,
+                cluster_id VARCHAR(64) NOT NULL,
+                min_instances INT UNSIGNED NOT NULL,
+                max_instances INT UNSIGNED NOT NULL,
                 instance_type VARCHAR(32) NOT NULL
         );`,
 	5: `CREATE TABLE IF NOT EXISTS kafka (
@@ -72,8 +72,8 @@ var Schema = db.Schema{
                 status JSON NOT NULL
         );`,
 	10: `CREATE TABLE IF NOT EXISTS launch_history (
-				launch_request_id INT UNSIGNED NOT NULL PRIMARY KEY,
-				config JSON NOT NULL,
-				status JSON NOT NULL
-		);`,
+                launch_request_id INT UNSIGNED NOT NULL PRIMARY KEY,
+                config JSON NOT NULL,
+                status JSON NOT NULL
+        );`,
 }
