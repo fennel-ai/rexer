@@ -176,8 +176,6 @@ func testDifferentConsumerGroups(t *testing.T, producer FProducer, consumer1, co
 }
 
 func testSameConsumerGroup(t *testing.T, producer FProducer, consumer1, consumer2 FConsumer) {
-	// TODO(nikhil): enable this test back and make it work in integration mode
-	t.Skip()
 	// this test verifies that consumers of same group don't duplicate read messages
 	ctx := context.Background()
 	expected := make([][]byte, 0)
@@ -239,9 +237,9 @@ func testNoAutoCommit(t *testing.T, producer FProducer, consumer1, consumer2 FCo
 	go func() {
 		// consumer 1 reads some messages but then closes before doing commit
 		defer wg.Done()
+		defer consumer1.Close()
 		_, err := consumer1.ReadBatch(ctx, 5, time.Second*30)
 		assert.NoError(t, err)
-		consumer1.Close()
 	}()
 	wg.Wait()
 	// now consumer 2 is kicked off, which should be able to read all messages
