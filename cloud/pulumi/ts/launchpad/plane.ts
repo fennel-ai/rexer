@@ -31,7 +31,7 @@ type RedisConfig = {
     numReplicasPerShard?: number,
 }
 
-type PlaneConf = {
+export type PlaneConf = {
     planeId: number,
     region: string,
     roleArn: string,
@@ -90,7 +90,7 @@ const setupResources = async () => {
         vpcId: vpcOutput.vpcId,
         connectedVpcCidrs: [input.controlPlaneConf.cidrBlock],
     })
-    const auroraOutput = aurora.setup({
+    const auroraOutput = await aurora.setup({
         roleArn: input.roleArn,
         region: input.region,
         vpcId: vpcOutput.vpcId,
