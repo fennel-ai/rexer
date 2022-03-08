@@ -22,6 +22,7 @@ export type inputType = {
     vpcId: pulumi.Output<string>,
     numShards?: number,
     numReplicasPerShard?: number,
+    nodeType?: string,
     azs: pulumi.Output<string[]>,
     connectedSecurityGroups: Record<string, pulumi.Output<string>>,
 }
@@ -47,6 +48,7 @@ const parseConfig = (): inputType => {
         connectedSecurityGroups: config.requireObject(nameof<inputType>("connectedSecurityGroups")),
         numShards: config.getNumber(nameof<inputType>("numShards")),
         numReplicasPerShard: config.getNumber(nameof<inputType>("numReplicasPerShard")),
+        nodeType: config.get(nameof<inputType>("nodeType")),
     }
 }
 
@@ -98,12 +100,12 @@ export const setup = async (input: inputType): Promise<pulumi.Output<outputType>
         subnetGroupName: subnetGroup.id,
         aclName: "open-access",
         engineVersion: DEFAULT_REDIS_VERSION,
-        nodeType: DEFAULT_NODE_TYPE,
         autoMinorVersionUpgrade: true,
         tlsEnabled: true,
         securityGroupIds: [redisSg.id],
         numShards: input.numShards || DEFAULT_NUM_SHARDS,
         numReplicasPerShard: input.numReplicasPerShard || DEFAULT_NUM_REPLICAS_PER_SHARD,
+        nodeType: input.nodeType || DEFAULT_NODE_TYPE,
         tags: { ...fennelStdTags },
     }, { provider })
 

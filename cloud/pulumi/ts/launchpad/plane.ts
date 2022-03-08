@@ -29,6 +29,7 @@ type ConfluentConfig = {
 type RedisConfig = {
     numShards?: number,
     numReplicasPerShard?: number,
+    nodeType?: string,
 }
 
 export type PlaneConf = {
@@ -112,6 +113,7 @@ const setupResources = async () => {
         },
         numShards: input.redisConf?.numShards,
         numReplicasPerShard: input.redisConf?.numReplicasPerShard,
+        nodeType: input.redisConf?.nodeType,
         azs: vpcOutput.azs,
     })
     const elasticacheOutput = await elasticache.setup({
