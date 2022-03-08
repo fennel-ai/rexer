@@ -1,9 +1,6 @@
 export FENNEL_ROOT="$( cd -- "$(dirname "$0")" >/dev/null 2>&1 ; pwd -P )"
 export PYTHONPATH="$FENNEL_ROOT/../rexer-pyclient-alpha/rexerclient/gen:$PYTHONPATH"
-setupDevEnv() {
-  export KUBECONFIG=$FENNEL_ROOT/cloud/pulumi/ts/eks/kubeconfig-dev.json
-}
-alias devenv="setupDevEnv"
+export AWS_PROFILE=default
 
 # flask specific variables
 export FLASK_APP="$FENNEL_ROOT/pyconsole/app.py"
