@@ -20,8 +20,8 @@ type timeBucketOfDay struct{}
 
 var _ operators.Operator = timeBucketOfDay{}
 
-func (t timeBucketOfDay) Init(args value.Dict, bootargs map[string]interface{}) error {
-	return nil
+func (t timeBucketOfDay) New(args value.Dict, bootargs map[string]interface{}) (operators.Operator, error) {
+	return timeBucketOfDay{}, nil
 }
 
 func (t timeBucketOfDay) Apply(kwargs value.Dict, in operators.InputIter, out *value.List) error {
@@ -61,8 +61,8 @@ type dayOfWeek struct{}
 
 var _ operators.Operator = dayOfWeek{}
 
-func (d dayOfWeek) Init(args value.Dict, bootargs map[string]interface{}) error {
-	return nil
+func (d dayOfWeek) New(args value.Dict, bootargs map[string]interface{}) (operators.Operator, error) {
+	return dayOfWeek{}, nil
 }
 
 func (d dayOfWeek) Apply(kwargs value.Dict, in operators.InputIter, out *value.List) error {

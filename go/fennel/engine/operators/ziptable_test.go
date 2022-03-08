@@ -13,8 +13,8 @@ type testOpZip struct {
 
 var _ Operator = testOp{}
 
-func (top testOpZip) Init(args value.Dict, bootargs map[string]interface{}) error {
-	return nil
+func (top testOpZip) New(args value.Dict, bootargs map[string]interface{}) (Operator, error) {
+	return nil, nil
 }
 
 func (top testOpZip) Apply(kwargs value.Dict, in InputIter, out *value.List) error {

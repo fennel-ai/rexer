@@ -78,7 +78,7 @@ func (s *Signature) Input(t reflect.Type) *Signature {
 }
 
 type Operator interface {
-	Init(args value.Dict, bootargs map[string]interface{}) error
+	New(args value.Dict, bootargs map[string]interface{}) (Operator, error)
 	Apply(kwargs value.Dict, in InputIter, out *value.List) error
 	Signature() *Signature
 }

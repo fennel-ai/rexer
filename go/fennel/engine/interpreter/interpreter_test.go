@@ -447,9 +447,40 @@ func TestInterpreter_VisitOpcall4(t *testing.T) {
 	assert.Equal(t, value.Dict{"contextual": value.Int(41), "static": value.Int(7)}, rows[0])
 }
 
+func TestInterpreter_VisitOpcall5(t *testing.T) {
+	// verifies that if the same operator appears twice in a query,
+	// it works, even when the operator has some internal state
+	operators.Register(&rowCount{})
+	query := ast.OpCall{
+		Operand: ast.OpCall{
+			Operand: ast.Lookup{
+				On:       ast.Var{Name: "args"},
+				Property: "input",
+			},
+			Namespace: "test",
+			Name:      "row_count",
+			Kwargs:    ast.Dict{},
+		},
+		Namespace: "test",
+		Name:      "row_count",
+		Kwargs:    ast.Dict{},
+	}
+	input := value.List{}
+	input.Append(value.Int(10))
+	input.Append(value.Int(20))
+	i := getInterpreter()
+	out, err := i.Eval(query, value.Dict{"input": input})
+	assert.NoError(t, err)
+	rows := out.(value.List)
+	assert.Len(t, rows, 4)
+	assert.Equal(t, value.List{value.Int(10), value.Int(20), value.Int(2), value.Int(3)}, rows)
+}
+
 type testOpDefault struct{}
 
-func (t testOpDefault) Init(args value.Dict, bootargs map[string]interface{}) error { return nil }
+func (t testOpDefault) New(args value.Dict, bootargs map[string]interface{}) (operators.Operator, error) {
+	return testOpDefault{}, nil
+}
 
 func (t testOpDefault) Apply(kwargs value.Dict, in operators.InputIter, out *value.List) error {
 	for in.HasMore() {
@@ -479,20 +510,21 @@ type testNonValue struct {
 	hi string
 }
 
-var _ operators.Operator = &testOpInit{}
+var _ operators.Operator = testOpInit{}
 
-func (top *testOpInit) Init(args value.Dict, bootargs map[string]interface{}) error {
+func (top testOpInit) New(args value.Dict, bootargs map[string]interface{}) (operators.Operator, error) {
 	// take one arg from args and one from bootarg to verify that init is working
 	num, ok := args["num"]
 	if !ok {
-		return fmt.Errorf("num not passed")
+		return nil, fmt.Errorf("num not passed")
 	}
-	top.num = num.(value.Int)
-	top.non = bootargs["__teststruct__"].(testNonValue)
-	return nil
+	return testOpInit{
+		num: num.(value.Int),
+		non: bootargs["__teststruct__"].(testNonValue),
+	}, nil
 }
 
-func (top *testOpInit) Apply(kwargs value.Dict, in operators.InputIter, out *value.List) error {
+func (top testOpInit) Apply(kwargs value.Dict, in operators.InputIter, out *value.List) error {
 	for in.HasMore() {
 		rowVal, _, _ := in.Next()
 		row := rowVal.(value.Dict)
@@ -503,6 +535,30 @@ func (top *testOpInit) Apply(kwargs value.Dict, in operators.InputIter, out *val
 	return nil
 }
 
-func (top *testOpInit) Signature() *operators.Signature {
+func (top testOpInit) Signature() *operators.Signature {
 	return operators.NewSignature("test", "op", false).Input(value.Types.Dict)
 }
+
+type rowCount struct {
+	num int
+}
+
+func (r *rowCount) New(args value.Dict, bootargs map[string]interface{}) (operators.Operator, error) {
+	return &rowCount{}, nil
+}
+
+func (r *rowCount) Apply(kwargs value.Dict, in operators.InputIter, out *value.List) error {
+	for in.HasMore() {
+		v, _, _ := in.Next()
+		r.num += 1
+		out.Append(v)
+	}
+	out.Append(value.Int(r.num))
+	return nil
+}
+
+func (r *rowCount) Signature() *operators.Signature {
+	return operators.NewSignature("test", "row_count", false)
+}
+
+var _ operators.Operator = &rowCount{}
