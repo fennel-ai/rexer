@@ -113,9 +113,12 @@ func ReadBatch(ctx context.Context, consumer kafka.FConsumer, count int, timeout
 }
 
 func TransferToDB(ctx context.Context, tr tier.Tier, consumer kafka.FConsumer) error {
-	actions, err := ReadBatch(ctx, consumer, 950, time.Second*1)
+	actions, err := ReadBatch(ctx, consumer, 950, time.Second*10)
 	if err != nil {
 		return err
+	}
+	if len(actions) == 0 {
+		return nil
 	}
 	if err = dbInsert(ctx, tr, actions); err != nil {
 		return err

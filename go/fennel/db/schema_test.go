@@ -7,10 +7,15 @@ import (
 	"testing"
 	"time"
 
-	"fennel/lib/ftypes"
-	"fennel/resource"
 	"github.com/jmoiron/sqlx"
 	"github.com/stretchr/testify/assert"
+
+	"fennel/lib/ftypes"
+	"fennel/resource"
+)
+
+const (
+	host = "fenneldb-20220306224345556900000001.cluster-c00d7gkxaysk.us-west-2.rds.amazonaws.com"
 )
 
 func create(dbname, username, password, host string) error {
@@ -56,7 +61,7 @@ func TestSyncSchema(t *testing.T) {
 		DBname:   scope.PrefixedName("schema_test"),
 		Username: "admin",
 		Password: "foundationdb",
-		Host:     "fenneldb-20220306224345556900000001.cluster-c00d7gkxaysk.us-west-2.rds.amazonaws.com",
+		Host:     host,
 		Schema: Schema{
 			1: `CREATE TABLE IF NOT EXISTS schema_test (
 					zkey INT NOT NULL,

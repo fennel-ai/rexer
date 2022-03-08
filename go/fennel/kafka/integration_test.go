@@ -13,13 +13,14 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"fennel/lib/ftypes"
+	"fennel/lib/utils"
 	"fennel/resource"
 )
 
 const (
 	test_kafka_servers = "pkc-pgq85.us-west-2.aws.confluent.cloud:9092"
-	kafka_username     = "PQESAHSX5EUQJPIV"
-	kafka_password     = "EDjraEtpIjYQBv9WQ2QINnZZcExKUtm6boweLCsQ5gv3arWSk+VHyD1kfjJ+p382"
+	kafka_username     = "L56PWU5R7JTGVRED"
+	kafka_password     = "35nsUAnQJ8uA7qIFQgkIMpJNUFuA7lds1yxrq2ofc9XjaUxVvAHYCDco30OolmdY"
 )
 
 func TestIntegration(t *testing.T) {
@@ -30,7 +31,7 @@ func TestIntegration(t *testing.T) {
 		scope := resource.NewTierScope(tierID)
 		t.Parallel()
 		producer := integrationProducer(t, scope, topic)
-		consumer := integrationConsumer(t, scope, topic, "group", "earliest")
+		consumer := integrationConsumer(t, scope, topic, utils.RandString(5), DefaultOffsetPolicy)
 		defer teardownKafkaTopics(scope, topic)
 		testProducerConsumer(t, producer, consumer)
 	})
@@ -39,7 +40,7 @@ func TestIntegration(t *testing.T) {
 		scope := resource.NewTierScope(tierID)
 		t.Parallel()
 		producer := integrationProducer(t, scope, topic)
-		consumer := integrationConsumer(t, scope, topic, "group", "earliest")
+		consumer := integrationConsumer(t, scope, topic, utils.RandString(5), DefaultOffsetPolicy)
 		defer teardownKafkaTopics(scope, topic)
 		testReadBatch(t, producer, consumer)
 	})
@@ -48,7 +49,7 @@ func TestIntegration(t *testing.T) {
 		scope := resource.NewTierScope(tierID)
 		t.Parallel()
 		producer := integrationProducer(t, scope, topic)
-		consumer := integrationConsumer(t, scope, topic, "group", "earliest")
+		consumer := integrationConsumer(t, scope, topic, utils.RandString(5), DefaultOffsetPolicy)
 		defer teardownKafkaTopics(scope, topic)
 		testBacklog(t, producer, consumer)
 	})
@@ -57,8 +58,8 @@ func TestIntegration(t *testing.T) {
 		scope := resource.NewTierScope(tierID)
 		t.Parallel()
 		producer := integrationProducer(t, scope, topic)
-		consumer1 := integrationConsumer(t, scope, topic, "group1", "earliest")
-		consumer2 := integrationConsumer(t, scope, topic, "group2", "earliest")
+		consumer1 := integrationConsumer(t, scope, topic, utils.RandString(5), DefaultOffsetPolicy)
+		consumer2 := integrationConsumer(t, scope, topic, utils.RandString(5), DefaultOffsetPolicy)
 		defer teardownKafkaTopics(scope, topic)
 		testDifferentConsumerGroups(t, producer, consumer1, consumer2)
 	})
@@ -66,9 +67,10 @@ func TestIntegration(t *testing.T) {
 		tierID := ftypes.RealmID(rand.Uint32())
 		scope := resource.NewTierScope(tierID)
 		t.Parallel()
+		group := utils.RandString(5)
 		producer := integrationProducer(t, scope, topic)
-		consumer1 := integrationConsumer(t, scope, topic, "group", "earliest")
-		consumer2 := integrationConsumer(t, scope, topic, "group", "earliest")
+		consumer1 := integrationConsumer(t, scope, topic, group, DefaultOffsetPolicy)
+		consumer2 := integrationConsumer(t, scope, topic, group, DefaultOffsetPolicy)
 		defer teardownKafkaTopics(scope, topic)
 		testSameConsumerGroup(t, producer, consumer1, consumer2)
 	})
@@ -76,9 +78,10 @@ func TestIntegration(t *testing.T) {
 		tierID := ftypes.RealmID(rand.Uint32())
 		scope := resource.NewTierScope(tierID)
 		t.Parallel()
+		group := utils.RandString(5)
 		producer := integrationProducer(t, scope, topic)
-		consumer1 := integrationConsumer(t, scope, topic, "group", "earliest")
-		consumer2 := integrationConsumer(t, scope, topic, "group", "earliest")
+		consumer1 := integrationConsumer(t, scope, topic, group, DefaultOffsetPolicy)
+		consumer2 := integrationConsumer(t, scope, topic, group, DefaultOffsetPolicy)
 		defer teardownKafkaTopics(scope, topic)
 		testNoAutoCommit(t, producer, consumer1, consumer2)
 	})

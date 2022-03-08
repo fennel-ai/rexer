@@ -2,6 +2,7 @@ package action
 
 import (
 	"context"
+	"sync"
 	"testing"
 	"time"
 
@@ -63,13 +64,11 @@ func testKafkaInsertRead(t *testing.T, batch bool) {
 	assert.NoError(t, err)
 	ctx := context.Background()
 
-	// insert actions and verify fetch works right away
 	clock := test.FakeClock{}
 	tier.Clock = &clock
 	t1 := ftypes.Timestamp(456)
 	clock.Set(int64(t1))
 
-	// and now verify that data has gone to kafka as well
 	a1 := getAction(1, 12, 0, "like")
 	a2 := getAction(2, 22, t1, "like")
 	if batch {
@@ -83,31 +82,41 @@ func testKafkaInsertRead(t *testing.T, batch bool) {
 	a1.Timestamp = t1
 	actions := []actionlib.Action{a1, a2}
 
-	consumer1, err := tier.NewKafkaConsumer(actionlib.ACTIONLOG_KAFKA_TOPIC, "somegroup", kafka.DefaultOffsetPolicy)
-	assert.NoError(t, err)
-	defer consumer1.Close()
-	found, err := ReadBatch(ctx, consumer1, 2, time.Second*30)
-	assert.NoError(t, err)
-	assert.Equal(t, actions, found)
+	wg := sync.WaitGroup{}
+	wg.Add(2)
+	go func() {
+		defer wg.Done()
+		consumer1, err := tier.NewKafkaConsumer(actionlib.ACTIONLOG_KAFKA_TOPIC, utils.RandString(6), kafka.DefaultOffsetPolicy)
+		assert.NoError(t, err)
+		defer consumer1.Close()
+		found, err := ReadBatch(ctx, consumer1, 2, time.Second*30)
+		assert.NoError(t, err)
+		assert.Equal(t, actions, found)
+	}()
 
 	// finally, transferring these from kafka to DB also works
-	consumer2, err := tier.NewKafkaConsumer(actionlib.ACTIONLOG_KAFKA_TOPIC, "insert_in_db", kafka.DefaultOffsetPolicy)
-	assert.NoError(t, err)
-	defer consumer2.Close()
-	assert.NoError(t, TransferToDB(ctx, tier, consumer2))
-	found, err = Fetch(ctx, tier, actionlib.ActionFetchRequest{})
-	assert.NoError(t, err)
-	for i, a := range actions {
-		assert.True(t, a.Equals(found[i], true))
-	}
+	go func() {
+		defer wg.Done()
+		consumer2, err := tier.NewKafkaConsumer(actionlib.ACTIONLOG_KAFKA_TOPIC, utils.RandString(6), kafka.DefaultOffsetPolicy)
+		assert.NoError(t, err)
+		defer consumer2.Close()
+		assert.NoError(t, TransferToDB(ctx, tier, consumer2))
+		found, err := Fetch(ctx, tier, actionlib.ActionFetchRequest{})
+		assert.NoError(t, err)
+		assert.Len(t, found, len(actions))
+		for i, a := range actions {
+			assert.True(t, a.Equals(found[i], true))
+		}
+	}()
+	wg.Wait()
 }
 
 func TestKafkaInsertRead(t *testing.T) {
-	testKafkaInsertRead(t /* batch= */, false)
+	testKafkaInsertRead(t, false)
 }
 
 func TestKafkaBatchInsertRead(t *testing.T) {
-	testKafkaInsertRead(t /* batch= */, true)
+	testKafkaInsertRead(t, true)
 }
 
 func TestLongTypes(t *testing.T) {
