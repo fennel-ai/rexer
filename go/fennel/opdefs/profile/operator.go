@@ -13,22 +13,22 @@ import (
 )
 
 func init() {
-	operators.Register(&profileOp{})
+	operators.Register(profileOp{})
 }
 
 type profileOp struct {
 	tier tier.Tier
 }
 
-func (p *profileOp) Init(args value.Dict, bootargs map[string]interface{}) error {
-	var err error
-	if p.tier, err = bootarg.GetTier(bootargs); err != nil {
-		return err
+func (p profileOp) New(args value.Dict, bootargs map[string]interface{}) (operators.Operator, error) {
+	tr, err := bootarg.GetTier(bootargs)
+	if err != nil {
+		return nil, err
 	}
-	return nil
+	return profileOp{tr}, nil
 }
 
-func (p *profileOp) Apply(staticKwargs value.Dict, in operators.InputIter, out *value.List) error {
+func (p profileOp) Apply(staticKwargs value.Dict, in operators.InputIter, out *value.List) error {
 	colname := string(staticKwargs["name"].(value.String))
 	reqs := make([]libprofile.ProfileItem, 0)
 	rows := make([]value.Dict, 0)
@@ -65,7 +65,7 @@ func (p *profileOp) Apply(staticKwargs value.Dict, in operators.InputIter, out *
 	return nil
 }
 
-func (p *profileOp) Signature() *operators.Signature {
+func (p profileOp) Signature() *operators.Signature {
 	return operators.NewSignature("profile", "addField", true).
 		Input(value.Types.Dict).
 		Param("otype", value.Types.String, false, false, value.Nil).
@@ -76,4 +76,4 @@ func (p *profileOp) Signature() *operators.Signature {
 		Param("default", value.Types.Any, true, true, value.Nil)
 }
 
-var _ operators.Operator = &profileOp{}
+var _ operators.Operator = profileOp{}

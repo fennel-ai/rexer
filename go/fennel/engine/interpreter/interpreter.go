@@ -320,6 +320,6 @@ func (i Interpreter) getOperator(namespace, name string) (operators.Operator, er
 	if err != nil {
 		return op, err
 	}
-	err = op.Init(i.queryArgs(), i.bootargs)
-	return op, err
+	ret, err := op.New(i.queryArgs(), i.bootargs)
+	return ret, err
 }

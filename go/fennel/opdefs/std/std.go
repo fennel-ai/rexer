@@ -16,8 +16,8 @@ func init() {
 
 type FilterOperator struct{}
 
-func (f FilterOperator) Init(_ value.Dict, _ map[string]interface{}) error {
-	return nil
+func (f FilterOperator) New(args value.Dict, bootargs map[string]interface{}) (operators.Operator, error) {
+	return FilterOperator{}, nil
 }
 
 func (f FilterOperator) Signature() *operators.Signature {
@@ -41,8 +41,8 @@ func (f FilterOperator) Apply(_ value.Dict, in operators.InputIter, out *value.L
 
 type TakeOperator struct{}
 
-func (f TakeOperator) Init(_ value.Dict, _ map[string]interface{}) error {
-	return nil
+func (f TakeOperator) New(args value.Dict, bootargs map[string]interface{}) (operators.Operator, error) {
+	return TakeOperator{}, nil
 }
 
 func (f TakeOperator) Signature() *operators.Signature {
@@ -68,8 +68,8 @@ type AddField struct{}
 
 var _ operators.Operator = AddField{}
 
-func (op AddField) Init(_ value.Dict, _ map[string]interface{}) error {
-	return nil
+func (op AddField) New(args value.Dict, bootargs map[string]interface{}) (operators.Operator, error) {
+	return AddField{}, nil
 }
 
 func (op AddField) Signature() *operators.Signature {

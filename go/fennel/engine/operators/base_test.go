@@ -15,8 +15,8 @@ type testOp struct {
 
 var _ Operator = testOp{}
 
-func (top testOp) Init(args value.Dict, bootargs map[string]interface{}) error {
-	return nil
+func (top testOp) New(args value.Dict, bootargs map[string]interface{}) (Operator, error) {
+	return top, nil
 }
 
 func (top testOp) Apply(kwargs value.Dict, in InputIter, out *value.List) error {
@@ -35,8 +35,8 @@ type testOp2 struct{}
 
 var _ Operator = testOp2{}
 
-func (top testOp2) Init(_ value.Dict, bootargs map[string]interface{}) error {
-	return nil
+func (top testOp2) New(args value.Dict, bootargs map[string]interface{}) (Operator, error) {
+	return top, nil
 }
 
 func (top testOp2) Apply(_ value.Dict, _ InputIter, _ *value.List) error {
@@ -51,8 +51,8 @@ type testOp3 struct{}
 
 var _ Operator = testOp3{}
 
-func (top testOp3) Init(_ value.Dict, bootargs map[string]interface{}) error {
-	return nil
+func (top testOp3) New(args value.Dict, bootargs map[string]interface{}) (Operator, error) {
+	return top, nil
 }
 
 func (top testOp3) Apply(_ value.Dict, _ InputIter, _ *value.List) error {
