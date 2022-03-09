@@ -28,10 +28,11 @@ func Bucketize(histogram Histogram, actions value.List) ([]Bucket, error) {
 		}
 		ts_int := ts.(value.Int)
 		key := groupkey.String()
-		b, err := histogram.Bucketize(key, v, ftypes.Timestamp(ts_int))
+		v, err := histogram.Transform(v)
 		if err != nil {
 			return nil, err
 		}
+		b := histogram.BucketizeMoment(key, ftypes.Timestamp(ts_int), v)
 		buckets = append(buckets, b...)
 	}
 	return buckets, nil

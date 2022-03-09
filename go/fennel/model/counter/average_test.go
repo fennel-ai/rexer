@@ -12,7 +12,7 @@ import (
 
 func TestRollingAverage_Reduce(t *testing.T) {
 	t.Parallel()
-	h := RollingAverage{}
+	h := NewAverage("somename", 100)
 	cases := []struct {
 		input  []value.Value
 		output value.Value
@@ -52,7 +52,7 @@ func TestRollingAverage_Reduce(t *testing.T) {
 
 func TestRollingAverage_Merge_Valid(t *testing.T) {
 	t.Parallel()
-	h := RollingAverage{}
+	h := NewAverage("somename", 100)
 	validCases := [][]int64{
 		{1, 2, 1, 2, 2, 4},
 		{1, 2, -1, 2, 0, 4},
@@ -69,7 +69,7 @@ func TestRollingAverage_Merge_Valid(t *testing.T) {
 
 func TestRollingAverage_Merge_Invalid(t *testing.T) {
 	t.Parallel()
-	h := RollingAverage{}
+	h := NewAverage("somename", 100)
 	invalidCases := []struct {
 		a value.Value
 		b value.Value
@@ -92,7 +92,7 @@ func TestRollingAverage_Merge_Invalid(t *testing.T) {
 
 func TestRollingAverage_Bucketize_Valid(t *testing.T) {
 	t.Parallel()
-	h := RollingAverage{}
+	h := NewAverage("somename", 123)
 	actions := value.List{}
 	expected := make([]Bucket, 0)
 	DAY := 3600 * 24
@@ -115,7 +115,7 @@ func TestRollingAverage_Bucketize_Valid(t *testing.T) {
 
 func TestRollingAverage_Bucketize_Invalid(t *testing.T) {
 	t.Parallel()
-	h := RollingAverage{}
+	h := NewAverage("somename", 123)
 	cases := [][]value.Dict{
 		{value.Dict{}},
 		{value.Dict{"groupkey": value.Int(1), "timestamp": value.Int(2)}},
@@ -136,7 +136,7 @@ func TestRollingAverage_Bucketize_Invalid(t *testing.T) {
 }
 
 func TestRollingAverage_Start(t *testing.T) {
-	h := RollingAverage{Duration: 100}
+	h := average{Duration: 100}
 	assert.Equal(t, h.Start(110), ftypes.Timestamp(10))
 	// Duration > end
 	assert.Equal(t, h.Start(90), ftypes.Timestamp(0))

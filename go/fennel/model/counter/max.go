@@ -8,20 +8,31 @@ import (
 )
 
 /*
-	Max maintains maximum of a bucket with two vars (maxv and empty).
+	rollingMax maintains maximum of a bucket with two vars (maxv and empty).
 	Maxv is the maximum value. If empty is true, the bucket is empty so maxv is ignored.
 */
-type Max struct {
+type rollingMax struct {
 	Duration uint64
+	Bucketizer
+	BucketStore
 }
 
-func (m Max) Bucketize(groupkey string, v value.Value, timestamp ftypes.Timestamp) ([]Bucket, error) {
+func (m rollingMax) Transform(v value.Value) (value.Value, error) {
 	v_int, ok := v.(value.Int)
 	if !ok {
 		return nil, fmt.Errorf("expected value to be an int but got: '%s' instead", v)
 	}
-	c := value.List{v_int, value.Bool(false)}
-	return BucketizeMoment(groupkey, timestamp, c, m.Windows()), nil
+	return value.List{v_int, value.Bool(false)}, nil
+}
+
+func NewMax(name ftypes.AggName, duration uint64) Histogram {
+	return rollingMax{
+		Duration: duration,
+		Bucketizer: FixedWidthBucketizer{windows: []ftypes.Window{
+			ftypes.Window_MINUTE, ftypes.Window_DAY, ftypes.Window_HOUR,
+		}},
+		BucketStore: FlatRedisStorage{name: name},
+	}
 }
 
 func max(a int64, b int64) int64 {
@@ -32,11 +43,11 @@ func max(a int64, b int64) int64 {
 	}
 }
 
-func (m Max) Start(end ftypes.Timestamp) ftypes.Timestamp {
+func (m rollingMax) Start(end ftypes.Timestamp) ftypes.Timestamp {
 	return start(end, m.Duration)
 }
 
-func (m Max) extract(v value.Value) (int64, bool, error) {
+func (m rollingMax) extract(v value.Value) (int64, bool, error) {
 	l, ok := v.(value.List)
 	if !ok || len(l) != 2 {
 		return 0, false, fmt.Errorf("expected list of two elements but got: %v", v)
@@ -55,7 +66,7 @@ func (m Max) extract(v value.Value) (int64, bool, error) {
 	return int64(maxv), false, nil
 }
 
-func (m Max) merge(v1 int64, e1 bool, v2 int64, e2 bool) (int64, bool) {
+func (m rollingMax) merge(v1 int64, e1 bool, v2 int64, e2 bool) (int64, bool) {
 	if e1 {
 		return v2, e2
 	}
@@ -65,7 +76,7 @@ func (m Max) merge(v1 int64, e1 bool, v2 int64, e2 bool) (int64, bool) {
 	return max(v1, v2), false
 }
 
-func (m Max) Reduce(values []value.Value) (value.Value, error) {
+func (m rollingMax) Reduce(values []value.Value) (value.Value, error) {
 	var maxv int64 = 0
 	empty := true
 	for _, v := range values {
@@ -78,7 +89,7 @@ func (m Max) Reduce(values []value.Value) (value.Value, error) {
 	return value.Int(maxv), nil
 }
 
-func (m Max) Merge(a, b value.Value) (value.Value, error) {
+func (m rollingMax) Merge(a, b value.Value) (value.Value, error) {
 	v1, e1, err := m.extract(a)
 	if err != nil {
 		return nil, err
@@ -91,14 +102,8 @@ func (m Max) Merge(a, b value.Value) (value.Value, error) {
 	return value.List{value.Int(v), value.Bool(e)}, nil
 }
 
-func (m Max) Zero() value.Value {
+func (m rollingMax) Zero() value.Value {
 	return value.List{value.Int(0), value.Bool(true)}
 }
 
-func (m Max) Windows() []ftypes.Window {
-	return []ftypes.Window{
-		ftypes.Window_MINUTE, ftypes.Window_HOUR, ftypes.Window_DAY,
-	}
-}
-
-var _ Histogram = Max{}
+var _ Histogram = rollingMax{}

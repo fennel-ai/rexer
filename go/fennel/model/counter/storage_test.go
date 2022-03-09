@@ -20,7 +20,7 @@ func TestHistogram_GetMulti_Update(t *testing.T) {
 	all := []ftypes.Window{ftypes.Window_MINUTE, ftypes.Window_DAY, ftypes.Window_HOUR}
 
 	name := ftypes.AggName("mycounter")
-	histogram := RollingCounter{Duration: 3600 * 14 * 30}
+	histogram := rollingSum{Duration: 3600 * 14 * 30}
 	key := "hello"
 	count := value.Int(5)
 	ts := ftypes.Timestamp(3600*24*11 + 123)
@@ -31,14 +31,14 @@ func TestHistogram_GetMulti_Update(t *testing.T) {
 	assert.Equal(t, []value.Value{value.Int(0), value.Int(0), value.Int(0)}, counts)
 
 	// then do a couple of increments
-	err = Update(ctx, tier, name, buckets, RollingCounter{})
+	err = Update(ctx, tier, name, buckets, rollingSum{})
 	assert.NoError(t, err)
 	counts, err = GetMulti(ctx, tier, name, buckets, histogram)
 	assert.NoError(t, err)
 	assert.Equal(t, []value.Value{count, count, count}, counts)
 
 	// and again?
-	err = Update(ctx, tier, name, buckets, RollingCounter{})
+	err = Update(ctx, tier, name, buckets, rollingSum{})
 	assert.NoError(t, err)
 	counts, err = GetMulti(ctx, tier, name, buckets, histogram)
 	assert.NoError(t, err)

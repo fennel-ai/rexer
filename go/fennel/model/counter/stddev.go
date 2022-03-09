@@ -8,15 +8,27 @@ import (
 	"fennel/lib/value"
 )
 
-type Stddev struct {
+type rollingStdDev struct {
 	Duration uint64
+	Bucketizer
+	BucketStore
 }
 
-func (s Stddev) Start(end ftypes.Timestamp) ftypes.Timestamp {
+func NewStdDev(name ftypes.AggName, duration uint64) Histogram {
+	return rollingStdDev{
+		Duration: duration,
+		Bucketizer: FixedWidthBucketizer{windows: []ftypes.Window{
+			ftypes.Window_MINUTE, ftypes.Window_DAY, ftypes.Window_HOUR,
+		}},
+		BucketStore: FlatRedisStorage{name: name},
+	}
+}
+
+func (s rollingStdDev) Start(end ftypes.Timestamp) ftypes.Timestamp {
 	return start(end, s.Duration)
 }
 
-func (s Stddev) eval(sum, sumsq, num int64) value.Double {
+func (s rollingStdDev) eval(sum, sumsq, num int64) value.Double {
 	if num == 0 {
 		return value.Double(0)
 	} else {
@@ -26,7 +38,7 @@ func (s Stddev) eval(sum, sumsq, num int64) value.Double {
 	}
 }
 
-func (s Stddev) extract(v value.Value) (int64, int64, int64, error) {
+func (s rollingStdDev) extract(v value.Value) (int64, int64, int64, error) {
 	l, ok := v.(value.List)
 	if !ok || len(l) != 3 {
 		return 0, 0, 0, fmt.Errorf("expected list of three elements but got: %v", v)
@@ -46,11 +58,11 @@ func (s Stddev) extract(v value.Value) (int64, int64, int64, error) {
 	return int64(sum), int64(sumSq), int64(num), nil
 }
 
-func (s Stddev) merge(s1, ssq1, n1, s2, ssq2, n2 int64) (int64, int64, int64) {
+func (s rollingStdDev) merge(s1, ssq1, n1, s2, ssq2, n2 int64) (int64, int64, int64) {
 	return s1 + s2, ssq1 + ssq2, n1 + n2
 }
 
-func (s Stddev) Reduce(values []value.Value) (value.Value, error) {
+func (s rollingStdDev) Reduce(values []value.Value) (value.Value, error) {
 	var sum, sumsq, num int64 = 0, 0, 0
 	for _, v := range values {
 		sum_, sumsq_, num_, err := s.extract(v)
@@ -62,7 +74,7 @@ func (s Stddev) Reduce(values []value.Value) (value.Value, error) {
 	return s.eval(sum, sumsq, num), nil
 }
 
-func (s Stddev) Merge(a, b value.Value) (value.Value, error) {
+func (s rollingStdDev) Merge(a, b value.Value) (value.Value, error) {
 	s1, ssq1, n1, err := s.extract(a)
 	if err != nil {
 		return nil, err
@@ -75,23 +87,16 @@ func (s Stddev) Merge(a, b value.Value) (value.Value, error) {
 	return value.List{value.Int(sum), value.Int(sumsq), value.Int(num)}, nil
 }
 
-func (s Stddev) Zero() value.Value {
+func (s rollingStdDev) Zero() value.Value {
 	return value.List{value.Int(0), value.Int(0), value.Int(0)}
 }
 
-func (s Stddev) Bucketize(groupkey string, v value.Value, timestamp ftypes.Timestamp) ([]Bucket, error) {
+func (s rollingStdDev) Transform(v value.Value) (value.Value, error) {
 	v_int, ok := v.(value.Int)
 	if !ok {
 		return nil, fmt.Errorf("expected value to be an int but got: '%s' instead", v)
 	}
-	c := value.List{v_int, v_int * v_int, value.Int(1)}
-	return BucketizeMoment(groupkey, timestamp, c, s.Windows()), nil
+	return value.List{v_int, v_int * v_int, value.Int(1)}, nil
 }
 
-func (s Stddev) Windows() []ftypes.Window {
-	return []ftypes.Window{
-		ftypes.Window_MINUTE, ftypes.Window_HOUR, ftypes.Window_DAY,
-	}
-}
-
-var _ Histogram = Stddev{}
+var _ Histogram = rollingStdDev{}

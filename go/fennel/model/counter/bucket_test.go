@@ -148,7 +148,7 @@ func TestMergeBuckets(t *testing.T) {
 	b3 := Bucket{Key: key1, Window: window2, Index: idx1, Count: one}
 	b4 := Bucket{Key: key1, Window: window2, Index: idx2, Count: one}
 	b4b := Bucket{Key: key1, Window: window2, Index: idx2, Count: value.Int(2)}
-	buckets, err := MergeBuckets(RollingCounter{}, []Bucket{b1, b1b, b2, b3, b4, b4b})
+	buckets, err := MergeBuckets(rollingSum{}, []Bucket{b1, b1b, b2, b3, b4, b4b})
 	assert.NoError(t, err)
 	assert.Len(t, buckets, 4)
 	assert.Contains(t, buckets, Bucket{Key: key1, Window: window1, Index: idx1, Count: value.Int(4)})
@@ -159,7 +159,7 @@ func TestMergeBuckets(t *testing.T) {
 
 func TestBucketizeHistogram_Invalid(t *testing.T) {
 	t.Parallel()
-	h := RollingCounter{}
+	h := NewSum("somename", 100)
 	cases := [][]value.Dict{
 		{value.Dict{}},
 		{value.Dict{"groupkey": value.Int(1), "timestamp": value.Int(2)}},
@@ -180,7 +180,7 @@ func TestBucketizeHistogram_Invalid(t *testing.T) {
 
 func TestBucketizeHistogram_Valid(t *testing.T) {
 	t.Parallel()
-	h := RollingCounter{}
+	h := NewSum("somename", 100)
 	actions := value.List{}
 	expected := make([]Bucket, 0)
 	DAY := 3600 * 24
