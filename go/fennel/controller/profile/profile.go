@@ -42,7 +42,7 @@ func Set(ctx context.Context, tier tier.Tier, request profilelib.ProfileItem) er
 		return err
 	}
 	if request.Version == 0 {
-		request.Version = uint64(time.Now().Unix())
+		request.Version = uint64(time.Now().UnixMicro())
 	}
 	pval, err := value.ToProtoValue(request.Value)
 	if err != nil {
