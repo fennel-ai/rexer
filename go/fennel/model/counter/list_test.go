@@ -139,9 +139,9 @@ func TestList_Bucketize_Valid(t *testing.T) {
 			"value":     e,
 		}
 		assert.NoError(t, actions.Append(d))
-		expected = append(expected, Bucket{Count: value.List{e}, Window: ftypes.Window_DAY, Index: 1, Key: v.String()})
-		expected = append(expected, Bucket{Key: v.String(), Window: ftypes.Window_HOUR, Index: uint64(24 + i), Count: value.List{e}})
-		expected = append(expected, Bucket{Key: v.String(), Window: ftypes.Window_MINUTE, Index: uint64(24*60 + i*60), Count: value.List{e}})
+		expected = append(expected, Bucket{Value: value.List{e}, Window: ftypes.Window_DAY, Index: 1, Width: 1, Key: v.String()})
+		expected = append(expected, Bucket{Key: v.String(), Window: ftypes.Window_HOUR, Index: uint64(24 + i), Width: 1, Value: value.List{e}})
+		expected = append(expected, Bucket{Key: v.String(), Window: ftypes.Window_MINUTE, Index: uint64(24*60 + i*60), Width: 1, Value: value.List{e}})
 	}
 	buckets, err := Bucketize(h, actions)
 	assert.NoError(t, err)

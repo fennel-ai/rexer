@@ -50,7 +50,7 @@ func (f FlatRedisStorage) Set(ctx context.Context, tier tier.Tier, buckets []Buc
 	rkeys := redisKeys(tier, f.name, buckets)
 	vals := make([]interface{}, len(buckets))
 	for i := range buckets {
-		s, err := value.ToJSON(buckets[i].Count)
+		s, err := value.ToJSON(buckets[i].Value)
 		if err != nil {
 			return err
 		}
@@ -62,15 +62,10 @@ func (f FlatRedisStorage) Set(ctx context.Context, tier tier.Tier, buckets []Buc
 
 var _ BucketStore = FlatRedisStorage{}
 
-// global version of counter namespace - increment to invalidate all data stored in redis
-const version = 1
-
-// TODO: all keys of an aggregatore are mapped to the same slot
-// this is not good and we need to find a better distribution strategy
 func redisKeys(tier tier.Tier, name ftypes.AggName, buckets []Bucket) []string {
 	ret := make([]string, len(buckets))
 	for i, b := range buckets {
-		ret[i] = fmt.Sprintf("counter:%d{%s}%s:%d:%d", version, name, b.Key, b.Window, b.Index)
+		ret[i] = fmt.Sprintf("agg:%s:%s:%d:%d:%d", name, b.Key, b.Window, b.Width, b.Index)
 	}
 	return ret
 }
@@ -86,11 +81,11 @@ func Update(ctx context.Context, tier tier.Tier, name ftypes.AggName, buckets []
 		return err
 	}
 	for i := range cur {
-		merged, err := histogram.Merge(cur[i], buckets[i].Count)
+		merged, err := histogram.Merge(cur[i], buckets[i].Value)
 		if err != nil {
 			return err
 		}
-		buckets[i].Count = merged
+		buckets[i].Value = merged
 	}
 	return store.Set(ctx, tier, buckets)
 }

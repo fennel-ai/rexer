@@ -20,8 +20,8 @@ type average struct {
 func NewAverage(name ftypes.AggName, duration uint64) Histogram {
 	return average{
 		Duration: duration,
-		Bucketizer: FixedWidthBucketizer{windows: []ftypes.Window{
-			ftypes.Window_MINUTE, ftypes.Window_HOUR, ftypes.Window_DAY,
+		Bucketizer: fixedWidthBucketizer{map[ftypes.Window]uint64{
+			ftypes.Window_MINUTE: 1, ftypes.Window_HOUR: 1, ftypes.Window_DAY: 1,
 		}},
 		BucketStore: FlatRedisStorage{name},
 	}
