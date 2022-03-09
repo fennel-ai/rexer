@@ -1,95 +1,155 @@
 package std
 
 import (
-	"reflect"
 	"testing"
 
-	"github.com/stretchr/testify/assert"
-
-	"fennel/engine/operators"
 	"fennel/lib/value"
+	"fennel/test/optest"
+	"fennel/tier"
 )
 
-func getTable() value.List {
-	row1, _ := value.NewDict(map[string]value.Value{
-		"a.inner": value.Int(1),
-		"b":       value.String("hi"),
-	})
-	row2, _ := value.NewDict(map[string]value.Value{
-		"b":       value.String("bye"),
-		"a.inner": value.Int(1),
-	})
-	row3, _ := value.NewDict(map[string]value.Value{
-		"a.inner": value.Int(7),
-		"b":       value.String("hello"),
-	})
-	table := value.List{}
-	table.Append(row1)
-	table.Append(row2)
-	table.Append(row3)
-	return table
-}
-
-func testValid(t *testing.T, op operators.Operator, staticKwargs value.Dict, intable value.List, contextKwargTable []value.Dict, expected value.List) {
-	outtable := value.List{}
-	zt := operators.NewZipTable(op)
-	for i, in := range intable {
-		zt.Append(in, contextKwargTable[i])
-	}
-	err := op.Apply(staticKwargs, zt.Iter(), &outtable)
-	assert.NoError(t, err)
-	assert.Equal(t, expected, outtable)
-}
-
 func TestFilterOperator_Apply(t *testing.T) {
-	t.Parallel()
-	op, err := operators.Locate("std", "filter")
-	assert.NoError(t, err)
-
-	intable := getTable()
-	// not passing "where" fails Validation
-	assert.Error(t, operators.Typecheck(op, value.Types.Any, map[string]reflect.Type{}))
+	intable := []value.Dict{
+		{"a.inner": value.Int(1), "b": value.String("hi")},
+		{"a.inner": value.Int(1), "b": value.String("bye")},
+		{"a.inner": value.Int(7), "b": value.String("hello")},
+	}
 
 	// passing where true works
 	whereTrue := value.Dict{"where": value.Bool(true)}
 	whereFalse := value.Dict{"where": value.Bool(false)}
-	assert.NoError(t, operators.Typecheck(op, value.Types.Any, whereTrue.Schema()))
 
 	contextKwargTable := []value.Dict{whereTrue, whereFalse, whereTrue}
-	expected := value.List{}
-	expected.Append(intable[0].(value.Dict))
-	expected.Append(intable[2].(value.Dict))
-	testValid(t, op, whereTrue, intable, contextKwargTable, expected)
+	expected := []value.Dict{
+		{"a.inner": value.Int(1), "b": value.String("hi")},
+		{"a.inner": value.Int(7), "b": value.String("hello")},
+	}
+
+	tr := tier.Tier{}
+	optest.Assert(t, tr, &FilterOperator{}, whereTrue, intable, contextKwargTable, expected)
 
 	// and when we filter everything, we should get empty table
 	contextKwargTable = []value.Dict{whereFalse, whereFalse, whereFalse}
-	testValid(t, op, whereTrue, intable, contextKwargTable, value.List{})
+	optest.Assert(t, tr, &FilterOperator{}, whereTrue, intable, contextKwargTable, []value.Dict{})
 }
 
 func TestTakeOperator_Apply(t *testing.T) {
-	t.Parallel()
-	op, err := operators.Locate("std", "take")
-	assert.NoError(t, err)
-
-	intable := getTable()
-	// not passing "limit" fails validation
-	assert.Error(t, operators.TypeCheckStaticKwargs(op, map[string]reflect.Type{}))
-	assert.NoError(t, operators.Typecheck(op, value.Types.Any, map[string]reflect.Type{}))
-
-	// and it fails validation even when limit is passed but isn't int
-	assert.Error(t, operators.TypeCheckStaticKwargs(op, map[string]reflect.Type{"limit": value.Types.Bool}))
-	assert.NoError(t, operators.Typecheck(op, value.Types.Any, map[string]reflect.Type{}))
+	intable := []value.Dict{
+		{"a.inner": value.Int(1), "b": value.String("hi")},
+		{"a.inner": value.Int(1), "b": value.String("bye")},
+		{"a.inner": value.Int(7), "b": value.String("hello")},
+	}
 
 	// passing limit 2 works
-	expected := value.List{}
-	for i, row := range intable {
-		if i < 2 {
-			expected.Append(row)
-		}
+	expected := []value.Dict{
+		{"a.inner": value.Int(1), "b": value.String("hi")},
+		{"a.inner": value.Int(1), "b": value.String("bye")},
 	}
 	contextKwargTable := []value.Dict{{}, {}, {}}
-	testValid(t, op, value.Dict{"limit": value.Int(2)}, intable, contextKwargTable, expected)
+	tr := tier.Tier{}
+	optest.Assert(t, tr, &TakeOperator{}, value.Dict{"limit": value.Int(2)}, intable, contextKwargTable, expected)
 
 	// and when the limit is very large, it only returns intable as it is
-	testValid(t, op, value.Dict{"limit": value.Int(10000)}, intable, contextKwargTable, intable)
+	optest.Assert(t, tr, &TakeOperator{}, value.Dict{"limit": value.Int(10000)}, intable, contextKwargTable, intable)
+}
+
+func TestExplodeOperator_KeyNotString(t *testing.T) {
+	intable := []value.Dict{
+		{"a.list": value.List{value.Int(1), value.Int(5)}, "b": value.String("hi")},
+	}
+
+	tr := tier.Tier{}
+	skwargs := value.Dict{"keys": value.Int(2)}
+	optest.AssertError(t, tr, &ExplodeOperator{}, skwargs, intable, []value.Dict{{}})
+	skwargs = value.Dict{"keys": value.List{value.Int(2)}}
+	optest.AssertError(t, tr, &ExplodeOperator{}, skwargs, intable, []value.Dict{{}})
+	skwargs = value.Dict{"keys": value.List{value.String("a.list"), value.Int(2)}}
+	optest.AssertError(t, tr, &ExplodeOperator{}, skwargs, intable, []value.Dict{{}})
+}
+
+func TestExplodeOperator_KeyNotPresent(t *testing.T) {
+	intable := []value.Dict{
+		{"a.list": value.List{value.Int(1), value.Int(5)}, "b": value.String("hi")},
+	}
+
+	tr := tier.Tier{}
+	skwargs := value.Dict{"keys": value.String("c")}
+	optest.AssertError(t, tr, &ExplodeOperator{}, skwargs, intable, []value.Dict{{}})
+}
+
+func TestExplodeOperator_ListScalarKeys(t *testing.T) {
+	intable := []value.Dict{
+		{"a.list": value.List{value.Int(1), value.Int(5)}, "b": value.String("hi")},
+	}
+
+	tr := tier.Tier{}
+	skwargs := value.Dict{"keys": value.List{value.String("a.list"), value.String("b")}}
+	optest.AssertError(t, tr, &ExplodeOperator{}, skwargs, intable, []value.Dict{{}})
+}
+
+func TestExplodeOperator_ScalarKeys(t *testing.T) {
+	intable := []value.Dict{
+		{"a": value.Int(1), "b": value.String("hi")},
+	}
+
+	tr := tier.Tier{}
+	skwargs := value.Dict{"keys": value.List{value.String("a"), value.String("b")}}
+	optest.Assert(t, tr, &ExplodeOperator{}, skwargs, intable, []value.Dict{{}}, intable)
+}
+
+func TestExplodeOperator_NonMatchingRowWiseElements(t *testing.T) {
+	intable := []value.Dict{
+		{"a.list": value.List{value.Int(1), value.Int(5)}, "b": value.List{value.String("hi")}},
+	}
+
+	tr := tier.Tier{}
+	skwargs := value.Dict{"keys": value.List{value.String("a.list"), value.String("b")}}
+	optest.AssertError(t, tr, &ExplodeOperator{}, skwargs, intable, []value.Dict{{}})
+}
+
+func TestExplodeOperator_Apply(t *testing.T) {
+	intable := []value.Dict{
+		{"a.list": value.List{value.Int(1), value.Int(5)}, "b": value.String("hi")},
+		{"a.list": value.List{value.Int(10), value.Int(15)}, "b": value.String("bye")},
+		{"a.list": value.List{value.Int(3), value.Int(8)}, "b": value.String("hello")},
+	}
+
+	contextKwargTable := []value.Dict{{}, {}, {}}
+
+	expected := []value.Dict{
+		{"a.list": value.Int(1), "b": value.String("hi")},
+		{"a.list": value.Int(5), "b": value.String("hi")},
+		{"a.list": value.Int(10), "b": value.String("bye")},
+		{"a.list": value.Int(15), "b": value.String("bye")},
+		{"a.list": value.Int(3), "b": value.String("hello")},
+		{"a.list": value.Int(8), "b": value.String("hello")},
+	}
+
+	tr := tier.Tier{}
+	skwargs := value.Dict{"keys": value.String("a.list")}
+	optest.Assert(t, tr, &ExplodeOperator{}, skwargs, intable, contextKwargTable, expected)
+	skwargs = value.Dict{"keys": value.List{value.String("a.list")}}
+	optest.Assert(t, tr, &ExplodeOperator{}, skwargs, intable, contextKwargTable, expected)
+}
+
+func TestExplodeOperator_ApplyListKeys(t *testing.T) {
+	intable := []value.Dict{
+		{"a.list": value.List{value.Int(1), value.Int(5)}, "b.list": value.List{value.String("hi"), value.String("hello")}},
+		{"a.list": value.List{value.Int(10)}, "b.list": value.List{value.String("hi")}},
+		{"a.list": value.List{}, "b.list": value.List{}},
+	}
+
+	contextKwargTable := []value.Dict{{}, {}, {}}
+
+	expected := []value.Dict{
+		{"a.list": value.Int(1), "b.list": value.String("hi")},
+		{"a.list": value.Int(5), "b.list": value.String("hello")},
+		{"a.list": value.Int(10), "b.list": value.String("hi")},
+		{"a.list": value.Nil, "b.list": value.Nil},
+	}
+
+	tr := tier.Tier{}
+	skwargs := value.Dict{"keys": value.List{value.String("a.list"), value.String("b.list")}}
+	// should work with a list of strings
+	optest.Assert(t, tr, &ExplodeOperator{}, skwargs, intable, contextKwargTable, expected)
 }
