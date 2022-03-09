@@ -12,7 +12,7 @@ with pkgs; mkShell {
     pkgs.ssh-agents
 
     # Protobuf
-    pkgs.protobuf
+    pkgs.protobuf3_17
 
     # Packages for go development.
     pkgs.go_1_17
