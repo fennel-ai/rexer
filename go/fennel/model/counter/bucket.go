@@ -7,13 +7,6 @@ import (
 	"fennel/lib/value"
 )
 
-type Bucket struct {
-	Key    string
-	Window ftypes.Window
-	Index  uint64
-	Count  value.Value
-}
-
 func Bucketize(histogram Histogram, actions value.List) ([]Bucket, error) {
 	buckets := make([]Bucket, 0, len(actions))
 	for _, rowVal := range actions {
@@ -46,36 +39,11 @@ func Bucketize(histogram Histogram, actions value.List) ([]Bucket, error) {
 
 // BucketizeDuration bucketizes the [start, end] only using the given window types
 func BucketizeDuration(key string, start ftypes.Timestamp, end ftypes.Timestamp, windows []ftypes.Window, zero value.Value) []Bucket {
-	periods := []period{{start, end}}
-	ret := make([]Bucket, 0)
-	// iterate through in the right order - first day, then hour, then minute
-	for _, w := range []ftypes.Window{ftypes.Window_DAY, ftypes.Window_HOUR, ftypes.Window_MINUTE} {
-		if contains(windows, w) {
-			nextPeriods := make([]period, 0)
-			for _, p := range periods {
-				buckets, bucketStart, bucketEnd := bucketizeTimeseries(key, p.start, p.end, w, zero)
-				ret = append(ret, buckets...)
-				nextPeriods = append(nextPeriods, period{p.start, bucketStart}, period{bucketEnd, p.end})
-			}
-			periods = nextPeriods
-		}
-	}
-	return ret
+	return FixedWidthBucketizer{windows: windows}.BucketizeDuration(key, start, end, zero)
 }
 
 func BucketizeMoment(key string, ts ftypes.Timestamp, count value.Value, windows []ftypes.Window) []Bucket {
-	ret := make([]Bucket, len(windows))
-	for i, w := range windows {
-		switch w {
-		case ftypes.Window_MINUTE:
-			ret[i] = Bucket{Key: key, Window: ftypes.Window_MINUTE, Index: uint64(ts) / 60, Count: count}
-		case ftypes.Window_HOUR:
-			ret[i] = Bucket{Key: key, Window: ftypes.Window_HOUR, Index: uint64(ts) / 3600, Count: count}
-		case ftypes.Window_DAY:
-			ret[i] = Bucket{Key: key, Window: ftypes.Window_DAY, Index: uint64(ts) / (24 * 3600), Count: count}
-		}
-	}
-	return ret
+	return FixedWidthBucketizer{windows: windows}.BucketizeMoment(key, ts, count)
 }
 
 // MergeBuckets takes a list of buckets and "merges" their counts if rest of their properties
