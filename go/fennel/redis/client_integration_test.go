@@ -7,6 +7,7 @@ import (
 	"crypto/tls"
 	"fmt"
 	"math/rand"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -52,7 +53,7 @@ func TestMultiSetTTL(t *testing.T) {
 		assert.Equal(t, redis.Nil, err)
 	}
 	ttl1 := time.Second
-	ttl2 := time.Second + ttl1
+	ttl2 := 5*time.Second + ttl1
 	assert.NoError(t, c.MSet(ctx, []string{k1, k2, k3}, vals, []time.Duration{ttl1, ttl2, ttl1}))
 	for i, k := range []string{k1, k2, k3} {
 		found, err := c.Get(ctx, k)
@@ -70,7 +71,7 @@ func TestMultiSetTTL(t *testing.T) {
 	assert.Equal(t, vals[1], found)
 
 	// sleep some more and even this should be gone
-	time.Sleep(ttl1)
+	time.Sleep(ttl2 - ttl1)
 	_, err = c.Get(ctx, k2)
 	assert.Equal(t, redis.Nil, err)
 }
@@ -138,4 +139,103 @@ func TestClientConfig_Materialize_Invalid(t *testing.T) {
 			assert.Error(t, err)
 		})
 	}
+}
+
+func TestSetNX(t *testing.T) {
+	rand.Seed(time.Now().UnixNano())
+	tierID := ftypes.RealmID(rand.Uint32())
+	scope := resource.NewTierScope(tierID)
+	conf := ClientConfig{Addr: addr, TLSConfig: &tls.Config{}, Scope: scope}
+	rdb, err := conf.Materialize()
+	assert.NoError(t, err)
+
+	ctx := context.Background()
+	c := rdb.(Client)
+	ttl := 5 * time.Second
+
+	// set key works initially
+	ok, err := c.SetNX(ctx, "key", 1, ttl)
+	assert.NoError(t, err)
+	assert.Equal(t, true, ok)
+
+	// setting again should not work
+	ok, err = c.SetNX(ctx, "key", 1, ttl)
+	assert.NoError(t, err)
+	assert.Equal(t, false, ok)
+
+	// sleep and set again; works because key expired
+	time.Sleep(ttl)
+	ok, err = c.SetNX(ctx, "key", 1, ttl)
+	assert.NoError(t, err)
+	assert.Equal(t, true, ok)
+}
+
+func TestSetNXPipelined(t *testing.T) {
+	rand.Seed(time.Now().UnixNano())
+	tierID := ftypes.RealmID(rand.Uint32())
+	scope := resource.NewTierScope(tierID)
+	conf := ClientConfig{Addr: addr, TLSConfig: &tls.Config{}, Scope: scope}
+	rdb, err := conf.Materialize()
+	assert.NoError(t, err)
+
+	ctx := context.Background()
+	c := rdb.(Client)
+	n := 5
+	ttl := 5 * time.Second
+	ttls := make([]time.Duration, n)
+	keys := make([]string, n)
+	values := make([]interface{}, n)
+	exp := make([]bool, n)
+
+	// try setting with no elements
+	_, err = c.SetNXPipelined(ctx, nil, nil, nil)
+	assert.NoError(t, err)
+
+	// set 5 keys, all should succeed
+	for i := 0; i < n; i++ {
+		ttls[i] = ttl
+		keys[i] = strconv.Itoa(i)
+		values[i] = 1
+		exp[i] = true
+	}
+	ok, err := c.SetNXPipelined(ctx, keys, values, ttls)
+	assert.NoError(t, err)
+	assert.Equal(t, exp, ok)
+
+	// try setting the same 5 keys again, should fail because already set
+	for i := 0; i < n; i++ {
+		exp[i] = false
+	}
+	ok, err = c.SetNXPipelined(ctx, keys, values, ttls)
+	assert.NoError(t, err)
+	assert.Equal(t, exp, ok)
+
+	// sleep until keys expire and try again, should succeed
+	for i := 0; i < n; i++ {
+		exp[i] = true
+	}
+	time.Sleep(ttl)
+	ok, err = c.SetNXPipelined(ctx, keys, values, ttls)
+	assert.NoError(t, err)
+	assert.Equal(t, exp, ok)
+
+	// try setting some new keys, only new keys should set successfully
+	keys = []string{"3", "4", "5", "6", "7"}
+	exp = []bool{false, false, true, true, true}
+	ok, err = c.SetNXPipelined(ctx, keys, values, ttls)
+	assert.NoError(t, err)
+	assert.Equal(t, exp, ok)
+
+	// try pipelining with multiple instances of same keys
+	keys = []string{"a", "b", "a", "b", "a"}
+	ok, err = c.SetNXPipelined(ctx, keys, values, ttls)
+	assert.NoError(t, err)
+	count := 0
+	for i := range ok {
+		if ok[i] {
+			count++
+		}
+	}
+	// number of set keys should be the number of unique keys
+	assert.Equal(t, 2, count)
 }
