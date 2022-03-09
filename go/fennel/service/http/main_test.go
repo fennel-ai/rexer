@@ -42,13 +42,15 @@ func equals(t *testing.T, expected []action.Action, found []action.Action) {
 	}
 }
 
+// add logs an action without a dedup key
 func add(t *testing.T, c *client.Client, a action.Action) {
-	err := c.LogAction(a)
+	err := c.LogAction(a, "")
 	assert.NoError(t, err)
 }
 
+// addBatch logs multiple actions with no dedup key for any of them
 func addBatch(t *testing.T, c *client.Client, as []action.Action) {
-	err := c.LogActions(as)
+	err := c.LogActions(as, nil)
 	assert.NoError(t, err)
 }
 
@@ -82,7 +84,7 @@ func TestLogFetchServerClient(t *testing.T) {
 	// now we add a couple of actions
 	a := action.Action{ActorType: "1", ActorID: 2, ActionType: "3", TargetType: "4", TargetID: 5}
 	// logging this should fail because some fields (e.g. requestID aren't specified)
-	err = c.LogAction(a)
+	err = c.LogAction(a, "")
 	assert.Error(t, err)
 	// and no action was logged on service
 	verifyFetch(t, c, action.ActionFetchRequest{}, []action.Action{})
@@ -90,7 +92,7 @@ func TestLogFetchServerClient(t *testing.T) {
 	// but this error disappears when we pass all values
 	a1 := action.Action{ActorType: "1", ActorID: 2, ActionType: "3", TargetType: "4", TargetID: 5, RequestID: 6, Timestamp: 7, Metadata: value.Nil}
 	add(t, c, a1)
-	// and this action should show up in requests (after we trnasfer it to DB)
+	// and this action should show up in requests (after we transfer it to DB)
 	assert.NoError(t, action2.TransferToDB(ctx, tier, consumer))
 	verifyFetch(t, c, action.ActionFetchRequest{}, []action.Action{a1})
 
@@ -102,6 +104,95 @@ func TestLogFetchServerClient(t *testing.T) {
 	addBatch(t, c, []action.Action{a2, a3})
 	assert.NoError(t, action2.TransferToDB(ctx, tier, consumer))
 	verifyFetch(t, c, action.ActionFetchRequest{}, []action.Action{a1, a2, a3})
+
+	// test duplicate behaviour without dedup_key
+	d1 := action.Action{
+		ActorID:    1,
+		ActorType:  "2",
+		TargetID:   3,
+		TargetType: "4",
+		ActionType: "no_dedup",
+		Timestamp:  5,
+		RequestID:  6,
+		Metadata:   value.Nil,
+	}
+	err = c.LogAction(d1, "")
+	assert.NoError(t, err)
+	err = c.LogAction(d1, "")
+	assert.NoError(t, err)
+	assert.NoError(t, action2.TransferToDB(ctx, tier, consumer))
+	// two actions without dedup keys, should get back two actions
+	verifyFetch(t, c, action.ActionFetchRequest{ActionType: "no_dedup"}, []action.Action{d1, d1})
+
+	// test duplicate behaviour with dedup_key
+	d2 := action.Action{
+		ActorID:    1,
+		ActorType:  "2",
+		TargetID:   3,
+		TargetType: "4",
+		ActionType: "dedup",
+		Timestamp:  5,
+		RequestID:  6,
+		Metadata:   value.Nil,
+	}
+	err = c.LogAction(d2, "dedup_key")
+	assert.NoError(t, err)
+	err = c.LogAction(d2, "dedup_key")
+	assert.NoError(t, err)
+	assert.NoError(t, action2.TransferToDB(ctx, tier, consumer))
+	// logged two actions with same dedup key, should get back one action
+	verifyFetch(t, c, action.ActionFetchRequest{ActionType: "dedup"}, []action.Action{d2})
+
+	// now test duplicates with log_multi
+	d3 := action.Action{
+		ActorID:    1,
+		ActorType:  "2",
+		TargetID:   3,
+		TargetType: "4",
+		ActionType: "no_dedup_multi",
+		Timestamp:  5,
+		RequestID:  6,
+		Metadata:   value.Nil,
+	}
+	err = c.LogActions([]action.Action{d3, d3, d3}, nil)
+	assert.NoError(t, err)
+	assert.NoError(t, action2.TransferToDB(ctx, tier, consumer))
+	// logged three actions with no dedup key, should get back three actions
+	verifyFetch(t, c, action.ActionFetchRequest{ActionType: "no_dedup_multi"}, []action.Action{d3, d3, d3})
+
+	d4 := action.Action{
+		ActorID:    1,
+		ActorType:  "2",
+		TargetID:   3,
+		TargetType: "4",
+		ActionType: "dedup_multi",
+		Timestamp:  5,
+		RequestID:  6,
+		Metadata:   value.Nil,
+	}
+	err = c.LogActions([]action.Action{d4, d4, d4}, []string{"dedup_multi", "dedup_multi", "dedup_multi"})
+	assert.NoError(t, err)
+	assert.NoError(t, action2.TransferToDB(ctx, tier, consumer))
+	// logged three actions with same dedup key, should get back one action
+	verifyFetch(t, c, action.ActionFetchRequest{ActionType: "dedup_multi"}, []action.Action{d4})
+
+	// now test with a mix of dedup keys
+	d5 := action.Action{
+		ActorID:    1,
+		ActorType:  "2",
+		TargetID:   3,
+		TargetType: "4",
+		ActionType: "dedup_mix",
+		Timestamp:  5,
+		RequestID:  6,
+		Metadata:   value.Nil,
+	}
+	err = c.LogActions([]action.Action{d5, d5, d5, d5, d5},
+		[]string{"dedup_mix_1", "", "dedup_mix_2", "dedup_mix_2", "dedup_mix_1"})
+	assert.NoError(t, err)
+	assert.NoError(t, action2.TransferToDB(ctx, tier, consumer))
+	// of the 5 actions, only three of them will be set
+	verifyFetch(t, c, action.ActionFetchRequest{ActionType: "dedup_mix"}, []action.Action{d5, d5, d5})
 }
 
 // TODO: add more tests covering more error conditions
