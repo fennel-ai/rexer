@@ -15,6 +15,7 @@ func init() {
 		ExplodeOperator{},
 		SortOperator{},
 		ShuffleOperator{},
+		UniqueOperator{},
 	}
 	for _, op := range ops {
 		if err := operators.Register(op); err != nil {
