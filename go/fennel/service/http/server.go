@@ -7,6 +7,7 @@ import (
 	"log"
 	"net/http"
 	_ "net/http/pprof"
+	"time"
 
 	"fennel/controller/action"
 	aggregate2 "fennel/controller/aggregate"
@@ -21,10 +22,12 @@ import (
 	"fennel/lib/query"
 	"fennel/lib/value"
 	"fennel/tier"
-
+	"github.com/buger/jsonparser"
 	"github.com/gorilla/mux"
 	"google.golang.org/protobuf/proto"
 )
+
+const dedupTTL = 6 * time.Hour
 
 func parse(req *http.Request, msg proto.Message) error {
 	defer req.Body.Close()
@@ -77,6 +80,26 @@ func (m server) Log(w http.ResponseWriter, req *http.Request) {
 		log.Printf("Error: %v", err)
 		return
 	}
+	dedupKey, err := jsonparser.GetString(data, "DedupKey")
+	if err != nil {
+		http.Error(w, fmt.Sprintf("invalid request: %v", err), http.StatusBadRequest)
+		log.Printf("Error: %v", err)
+		return
+	}
+	// If dedupKey is non-empty, request is ignored if dedupKey is already present in redis.
+	// Try to set if it does not exist. If it succeeds, proceed normally.
+	// Otherwise, drop request.
+	if dedupKey != "" {
+		ok, err := m.tier.Redis.SetNX(req.Context(), dedupKey, 1, dedupTTL)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			log.Printf("Error: %v", err)
+			return
+		}
+		if !ok {
+			return
+		}
+	}
 	// fwd to controller
 	if err = action.Insert(req.Context(), m.tier, a); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -93,14 +116,45 @@ func (m server) LogMulti(w http.ResponseWriter, req *http.Request) {
 		log.Printf("error: %v; no action was logged", err)
 		return
 	}
-	var a []actionlib.Action
-	if err := json.Unmarshal(data, &a); err != nil {
+	var actions []actionlib.Action
+	var dedupItems []struct{ DedupKey string }
+	if err := json.Unmarshal(data, &actions); err != nil {
 		http.Error(w, fmt.Sprintf("invalid request: %v; no action was logged", err), http.StatusBadRequest)
 		log.Printf("Error: %v", err)
 		return
 	}
+	if err := json.Unmarshal(data, &dedupItems); err != nil {
+		http.Error(w, fmt.Sprintf("invalid request: %v; no action was logged", err), http.StatusBadRequest)
+		log.Printf("Error: %v", err)
+		return
+	}
+	var batch []actionlib.Action
+	var keys []string
+	var vals []interface{}
+	var ttls []time.Duration
+	var ids []int
+	for i, d := range dedupItems {
+		if d.DedupKey == "" {
+			// If dedup key is empty, add action to batch directly
+			batch = append(batch, actions[i])
+		} else {
+			// otherwise, store them for duplication check
+			keys = append(keys, d.DedupKey)
+			vals = append(vals, 1)
+			ttls = append(ttls, dedupTTL)
+			ids = append(ids, i)
+		}
+	}
+	// Check for dedup with a pipeline
+	ok, err := m.tier.Redis.SetNXPipelined(req.Context(), keys, vals, ttls)
+	for i, _ := range ok {
+		if ok[i] {
+			// If dedup key of an action was not set, add to batch
+			batch = append(batch, actions[ids[i]])
+		}
+	}
 	// fwd to controller
-	if err = action.BatchInsert(req.Context(), m.tier, a); err != nil {
+	if err = action.BatchInsert(req.Context(), m.tier, batch); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		log.Printf("Error: %v", err)
 		return

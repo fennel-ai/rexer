@@ -43,7 +43,7 @@ func logActions(c *client.Client, numproc, total, qps int, uids, video_ids []uin
 					if dryrun {
 						fmt.Printf("[%d] going to log action: %v\n", procid, a)
 					} else {
-						if err := c.LogAction(a); err != nil {
+						if err := c.LogAction(a, ""); err != nil {
 							log.Printf("loadtest error actionlog: %v", err)
 							continue
 							//errs <- err

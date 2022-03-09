@@ -213,12 +213,20 @@ func (c *Client) FetchActions(request action.ActionFetchRequest) ([]action.Actio
 	return actions, nil
 }
 
-// LogAction makes the http request to server to log the given action
-func (c *Client) LogAction(request action.Action) error {
+// LogAction takes an action and a dedup key makes the http request to server to log the given action
+func (c *Client) LogAction(request action.Action, dedupKey string) error {
 	if err := request.Validate(); err != nil {
 		return fmt.Errorf("can not log invalid action: %v", err)
 	}
-	req, err := json.Marshal(request)
+	dedupReq := struct {
+		action.Action
+		DedupKey   string
+		value.Bool // Dummy field to prevent Action.MarshalJSON() from being called
+	}{
+		Action:   request,
+		DedupKey: dedupKey,
+	}
+	req, err := json.Marshal(dedupReq)
 	if err != nil {
 		return fmt.Errorf("could not convert request to json: %v", err)
 	}
@@ -226,14 +234,24 @@ func (c *Client) LogAction(request action.Action) error {
 	return err
 }
 
-// LogActions makes the http request to server to log the given action
-func (c *Client) LogActions(request []action.Action) error {
-	for _, a := range request {
+// LogActions takes a list of actions and dedup keys and makes the http request to server to log the given actions
+func (c *Client) LogActions(request []action.Action, dedupKeys []string) error {
+	if dedupKeys == nil {
+		dedupKeys = make([]string, len(request))
+	}
+	dedupReq := make([]struct {
+		action.Action
+		DedupKey   string
+		value.Bool // Dummy field to prevent Action.MarshalJSON() from being called
+	}, len(request))
+	for i, a := range request {
 		if err := a.Validate(); err != nil {
 			return fmt.Errorf("can not log invalid action: %v", err)
 		}
+		dedupReq[i].Action = a
+		dedupReq[i].DedupKey = dedupKeys[i]
 	}
-	req, err := json.Marshal(request)
+	req, err := json.Marshal(dedupReq)
 	if err != nil {
 		return fmt.Errorf("could not convert request to json: %v", err)
 	}
