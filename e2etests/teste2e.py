@@ -127,17 +127,23 @@ class TestEndToEnd(unittest.TestCase):
         self.assertEqual(category, c.get_profile("content", content_id, "category"))
 
         ts = int(time.time())
-        c.log(action.Action(actor_type='user', actor_id=uid, target_type='content', target_id=content_id, action_type='notif_send',
-            request_id=1, timestamp=ts))
-        c.log(action.Action(actor_type='user', actor_id=uid, target_type='content', target_id=content_id, action_type='notif_send',
-            request_id=1, timestamp=ts+1))
-        c.log(action.Action(actor_type='user', actor_id=uid, target_type='content', target_id=content_id, action_type='notif_open',
-            request_id=1, timestamp=ts+2))
-        c.log(action.Action(actor_type='user', actor_id=uid, target_type='content', target_id=content_id, action_type='react',
-            request_id=2, timestamp=ts+3))
-        # second action was logged 8 days in history so should not apply towards any aggregate
-        c.log(action.Action(actor_type='user', actor_id=uid, target_type='content', target_id=content_id, action_type='notif_send',
-            request_id=7, timestamp=ts-8*24*3600))
+        a1 = action.Action(actor_type='user', actor_id=uid, target_type='content', target_id=content_id,
+                           action_type='notif_send', request_id=1, timestamp=ts, dedup_key="a1")
+        a2 = action.Action(actor_type='user', actor_id=uid, target_type='content', target_id=content_id,
+                           action_type='notif_send', request_id=1, timestamp=ts+1, dedup_key="a2")
+        a3 = action.Action(actor_type='user', actor_id=uid, target_type='content', target_id=content_id,
+                           action_type='notif_open', request_id=1, timestamp=ts+2, dedup_key="a3")
+        a4 = action.Action(actor_type='user', actor_id=uid, target_type='content', target_id=content_id,
+                           action_type='react', request_id=2, timestamp=ts+3, dedup_key="a4")
+        # log multiple times with dedup
+        for i in range(5):
+            c.log(a1)
+            c.log(a2)
+            c.log(a3)
+            c.log(a4)
+        # this action was logged 8 days in history so should not apply towards any aggregate
+        c.log(action.Action(actor_type='user', actor_id=uid, target_type='content', target_id=content_id,
+                            action_type='notif_send', request_id=7, timestamp=ts-8*24*3600))
         b = int((ts % (24*3600)) / 3600)
 
         # now sleep for upto a minute and verify count processing worked
@@ -210,12 +216,17 @@ class TestEndToEnd(unittest.TestCase):
         c.store_aggregate('user_creator_avg_watchtime_by_2hour_windows_30days', q2, options)
 
         ts = int(time.time())
-        c.log_multi([
-                action.Action(actor_type='user', actor_id=uid, target_type='video', target_id=video_id,
-                    action_type='view', request_id=1, timestamp=ts, metadata={'watch_time': 20}),
-                action.Action(actor_type='user', actor_id=uid, target_type='video', target_id=video_id,
-                    action_type='view', request_id=1, timestamp=ts - 3*24*3600, metadata={'watch_time': 22}),
-            ])
+
+        # send multiple times with dedup keys
+        actions = [
+            action.Action(actor_type='user', actor_id=uid, target_type='video', target_id=video_id, action_type='view',
+                          request_id=1, timestamp=ts, metadata={'watch_time': 20}, dedup_key="action1"),
+            action.Action(actor_type='user', actor_id=uid, target_type='video', target_id=video_id, action_type='view',
+                          request_id=1, timestamp=ts - 3*24*3600, metadata={'watch_time': 22}, dedup_key="action2"),
+        ]
+        c.log_multi(actions)
+        c.log_multi(actions)
+        c.log_multi(actions)
         b = int((ts % (24*3600)) / (2*3600))
 
         # while countaggr is processing the action, check that query call is working
