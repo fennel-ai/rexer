@@ -13,6 +13,55 @@ import (
 	"fennel/tier"
 )
 
+type FlatRedisStorage struct {
+	name ftypes.AggName
+}
+
+func (f FlatRedisStorage) Get(ctx context.Context, tier tier.Tier, buckets []Bucket, default_ value.Value) ([]value.Value, error) {
+	rkeys := redisKeys(tier, f.name, buckets)
+	res, err := tier.Redis.MGet(ctx, rkeys...)
+	if err != nil {
+		return nil, err
+	}
+	ret := make([]value.Value, len(buckets))
+	for i, v := range res {
+		switch t := v.(type) {
+		case nil:
+			ret[i] = default_
+		case error:
+			if t != redis.Nil {
+				return nil, t
+			} else {
+				ret[i] = default_
+			}
+		case string:
+			ret[i], err = value.FromJSON([]byte(t))
+			if err != nil {
+				return nil, err
+			}
+		default:
+			return nil, fmt.Errorf("unexpected type from redis")
+		}
+	}
+	return ret, nil
+}
+
+func (f FlatRedisStorage) Set(ctx context.Context, tier tier.Tier, buckets []Bucket) error {
+	rkeys := redisKeys(tier, f.name, buckets)
+	vals := make([]interface{}, len(buckets))
+	for i := range buckets {
+		s, err := value.ToJSON(buckets[i].Count)
+		if err != nil {
+			return err
+		}
+		vals[i] = s
+	}
+	tier.Logger.Info("Updating redis keys for aggregate", zap.String("aggregate", string(f.name)), zap.Int("num_keys", len(rkeys)))
+	return tier.Redis.MSet(ctx, rkeys, vals, make([]time.Duration, len(rkeys)))
+}
+
+var _ BucketStore = FlatRedisStorage{}
+
 // global version of counter namespace - increment to invalidate all data stored in redis
 const version = 1
 
@@ -27,50 +76,21 @@ func redisKeys(tier tier.Tier, name ftypes.AggName, buckets []Bucket) []string {
 }
 
 func GetMulti(ctx context.Context, tier tier.Tier, name ftypes.AggName, buckets []Bucket, histogram Histogram) ([]value.Value, error) {
-	rkeys := redisKeys(tier, name, buckets)
-	res, err := tier.Redis.MGet(ctx, rkeys...)
-	if err != nil {
-		return nil, err
-	}
-	ret := make([]value.Value, len(buckets))
-	for i, v := range res {
-		switch t := v.(type) {
-		case nil:
-			ret[i] = histogram.Zero()
-		case error:
-			if t != redis.Nil {
-				return nil, t
-			} else {
-				ret[i] = histogram.Zero()
-			}
-		case string:
-			ret[i], err = value.FromJSON([]byte(t))
-			if err != nil {
-				return nil, err
-			}
-		default:
-			return nil, fmt.Errorf("unexpected type from redis")
-		}
-	}
-	return ret, nil
+	return FlatRedisStorage{name}.Get(ctx, tier, buckets, histogram.Zero())
 }
 
 func Update(ctx context.Context, tier tier.Tier, name ftypes.AggName, buckets []Bucket, histogram Histogram) error {
-	rkeys := redisKeys(tier, name, buckets)
-	cur, err := GetMulti(ctx, tier, name, buckets, histogram)
+	store := FlatRedisStorage{name}
+	cur, err := store.Get(ctx, tier, buckets, histogram.Zero())
 	if err != nil {
 		return err
 	}
-	vals := make([]interface{}, len(cur))
 	for i := range cur {
 		merged, err := histogram.Merge(cur[i], buckets[i].Count)
 		if err != nil {
 			return err
 		}
-		if vals[i], err = value.ToJSON(merged); err != nil {
-			return err
-		}
+		buckets[i].Count = merged
 	}
-	tier.Logger.Info("Updating redis keys for aggregate", zap.String("aggregate", string(name)), zap.Int("num_keys", len(rkeys)))
-	return tier.Redis.MSet(ctx, rkeys, vals, make([]time.Duration, len(rkeys)))
+	return store.Set(ctx, tier, buckets)
 }
