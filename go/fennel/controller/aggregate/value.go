@@ -92,23 +92,21 @@ func transformActions(tier tier.Tier, actions []libaction.Action, query ast.Ast)
 func toHistogram(agg aggregate.Aggregate) (modelCounter.Histogram, error) {
 	switch agg.Options.AggType {
 	case "sum":
-		return modelCounter.RollingCounter{Duration: agg.Options.Duration}, nil
+		return modelCounter.NewSum(agg.Name, agg.Options.Duration), nil
 	case "timeseries_sum":
-		return modelCounter.TimeseriesCounter{
-			Window: agg.Options.Window, Limit: agg.Options.Limit,
-		}, nil
+		return modelCounter.NewTimeseriesSum(agg.Name, agg.Options.Window, agg.Options.Limit), nil
 	case "average":
-		return modelCounter.RollingAverage{Duration: agg.Options.Duration}, nil
+		return modelCounter.NewAverage(agg.Name, agg.Options.Duration), nil
 	case "list":
-		return modelCounter.List{Duration: agg.Options.Duration}, nil
+		return modelCounter.NewList(agg.Name, agg.Options.Duration), nil
 	case "min":
-		return modelCounter.Min{Duration: agg.Options.Duration}, nil
+		return modelCounter.NewMin(agg.Name, agg.Options.Duration), nil
 	case "max":
-		return modelCounter.Max{Duration: agg.Options.Duration}, nil
+		return modelCounter.NewMax(agg.Name, agg.Options.Duration), nil
 	case "stddev":
-		return modelCounter.Stddev{Duration: agg.Options.Duration}, nil
+		return modelCounter.NewStdDev(agg.Name, agg.Options.Duration), nil
 	case "rate":
-		return modelCounter.Rate{Duration: agg.Options.Duration, Normalize: agg.Options.Normalize}, nil
+		return modelCounter.NewRate(agg.Name, agg.Options.Duration, agg.Options.Normalize), nil
 	default:
 		return nil, fmt.Errorf("invalid aggregate type: %v", agg.Options.AggType)
 	}

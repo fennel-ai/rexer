@@ -1,22 +1,23 @@
 package counter
 
 import (
+	"testing"
+
 	"fennel/lib/ftypes"
 	"fennel/lib/value"
-	"testing"
 
 	"github.com/stretchr/testify/assert"
 )
 
 func TestTimeseriesCounter_Reduce(t *testing.T) {
-	h := TimeseriesCounter{Limit: 4}
+	h := timeseriesSum{Limit: 4}
 	//nums := []int64{1, 4, -2}
 	nums := []value.Value{value.Int(1), value.Int(4), value.Int(-2)}
 	found, err := h.Reduce(nums)
 	assert.NoError(t, err)
 	assert.Equal(t, value.List{value.Int(0), value.Int(1), value.Int(4), value.Int(-2)}, found)
 
-	h = TimeseriesCounter{Limit: 2}
+	h = timeseriesSum{Limit: 2}
 	found, err = h.Reduce(nums)
 	assert.NoError(t, err)
 	assert.Equal(t, value.List{value.Int(4), value.Int(-2)}, found)
@@ -24,13 +25,13 @@ func TestTimeseriesCounter_Reduce(t *testing.T) {
 
 func TestTimeseriesCounter_Start(t *testing.T) {
 	// Limit: 1, Window: Hour makes duration = 7200
-	h := TimeseriesCounter{Limit: 1, Window: ftypes.Window_HOUR}
+	h := timeseriesSum{Limit: 1, Window: ftypes.Window_HOUR}
 	assert.Equal(t, h.Start(7300), ftypes.Timestamp(100))
 	// limit is larger than end.
 	assert.Equal(t, h.Start(7100), ftypes.Timestamp(0))
 
 	// Limit: 1, Window: day makes duration = 172800
-	h = TimeseriesCounter{Limit: 1, Window: ftypes.Window_DAY}
+	h = timeseriesSum{Limit: 1, Window: ftypes.Window_DAY}
 	assert.Equal(t, h.Start(172900), ftypes.Timestamp(100))
 	// limit is larger than end.
 	assert.Equal(t, h.Start(172700), ftypes.Timestamp(0))

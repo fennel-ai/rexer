@@ -13,7 +13,7 @@ import (
 
 func TestStddev_Reduce(t *testing.T) {
 	t.Parallel()
-	h := Stddev{}
+	h := NewStdDev("name", 123)
 	cases := []struct {
 		input  []value.Value
 		output value.Value
@@ -41,7 +41,7 @@ func TestStddev_Reduce(t *testing.T) {
 
 func TestStddev_Merge_Valid(t *testing.T) {
 	t.Parallel()
-	h := Stddev{}
+	h := NewStdDev("name", 123)
 	validCases := [][]int64{
 		{4, -2, 9, -11, 3},
 		{2, -7, 6, 0},
@@ -66,7 +66,7 @@ func TestStddev_Merge_Valid(t *testing.T) {
 
 func TestStddev_Merge_Invalid(t *testing.T) {
 	t.Parallel()
-	h := Stddev{}
+	h := NewStdDev("name", 123)
 	validStddevVals := makeStddevVals([][]int64{
 		{-9, -8, -7}, {-6, -5}, {-4, -3, -2, -1, 0}, {}, {0, 1, 2, 3, 4}, {5, 6}, {7, 8, 9},
 	})
@@ -97,7 +97,7 @@ func TestStddev_Merge_Invalid(t *testing.T) {
 
 func TestStddev_Bucketize_Valid(t *testing.T) {
 	t.Parallel()
-	h := Stddev{}
+	h := NewStdDev("name", 123)
 	actions := value.List{}
 	expected := make([]Bucket, 0)
 	DAY := 3600 * 24
@@ -124,7 +124,7 @@ func TestStddev_Bucketize_Valid(t *testing.T) {
 
 func TestStddev_Bucketize_Invalid(t *testing.T) {
 	t.Parallel()
-	h := Stddev{}
+	h := NewStdDev("name", 123)
 	cases := [][]value.Dict{
 		{value.Dict{}},
 		{value.Dict{"groupkey": value.Int(1), "timestamp": value.Int(2)}},
@@ -145,7 +145,7 @@ func TestStddev_Bucketize_Invalid(t *testing.T) {
 }
 
 func TestStddev_Start(t *testing.T) {
-	h := Stddev{Duration: 100}
+	h := NewStdDev("name", 100)
 	assert.Equal(t, h.Start(110), ftypes.Timestamp(10))
 	// Duration > end
 	assert.Equal(t, h.Start(90), ftypes.Timestamp(0))

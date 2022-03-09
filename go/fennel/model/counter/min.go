@@ -8,11 +8,23 @@ import (
 )
 
 /*
-	Min maintains minimum of a bucket with two vars (minv and empty).
+	rollingMin maintains minimum of a bucket with two vars (minv and empty).
 	Minv is the minimum value. If empty is true, the bucket is empty so minv is ignored.
 */
-type Min struct {
+type rollingMin struct {
 	Duration uint64
+	Bucketizer
+	BucketStore
+}
+
+func NewMin(name ftypes.AggName, duration uint64) Histogram {
+	return rollingMin{
+		Duration: duration,
+		Bucketizer: FixedWidthBucketizer{windows: []ftypes.Window{
+			ftypes.Window_MINUTE, ftypes.Window_DAY, ftypes.Window_HOUR,
+		}},
+		BucketStore: FlatRedisStorage{name: name},
+	}
 }
 
 func min(a int64, b int64) int64 {
@@ -23,11 +35,11 @@ func min(a int64, b int64) int64 {
 	}
 }
 
-func (m Min) Start(end ftypes.Timestamp) ftypes.Timestamp {
+func (m rollingMin) Start(end ftypes.Timestamp) ftypes.Timestamp {
 	return start(end, m.Duration)
 }
 
-func (m Min) extract(v value.Value) (int64, bool, error) {
+func (m rollingMin) extract(v value.Value) (int64, bool, error) {
 	l, ok := v.(value.List)
 	if !ok || len(l) != 2 {
 		return 0, false, fmt.Errorf("expected list of two elements but got: %v", v)
@@ -46,7 +58,7 @@ func (m Min) extract(v value.Value) (int64, bool, error) {
 	return int64(minv), false, nil
 }
 
-func (m Min) merge(v1 int64, e1 bool, v2 int64, e2 bool) (int64, bool) {
+func (m rollingMin) merge(v1 int64, e1 bool, v2 int64, e2 bool) (int64, bool) {
 	if e1 {
 		return v2, e2
 	}
@@ -56,7 +68,7 @@ func (m Min) merge(v1 int64, e1 bool, v2 int64, e2 bool) (int64, bool) {
 	return min(v1, v2), false
 }
 
-func (m Min) Reduce(values []value.Value) (value.Value, error) {
+func (m rollingMin) Reduce(values []value.Value) (value.Value, error) {
 	var minv int64 = 0
 	empty := true
 	for _, v := range values {
@@ -69,7 +81,7 @@ func (m Min) Reduce(values []value.Value) (value.Value, error) {
 	return value.Int(minv), nil
 }
 
-func (m Min) Merge(a, b value.Value) (value.Value, error) {
+func (m rollingMin) Merge(a, b value.Value) (value.Value, error) {
 	v1, e1, err := m.extract(a)
 	if err != nil {
 		return nil, err
@@ -82,22 +94,16 @@ func (m Min) Merge(a, b value.Value) (value.Value, error) {
 	return value.List{value.Int(v), value.Bool(e)}, nil
 }
 
-func (m Min) Zero() value.Value {
+func (m rollingMin) Zero() value.Value {
 	return value.List{value.Int(0), value.Bool(true)}
 }
 
-func (m Min) Bucketize(groupkey string, v value.Value, timestamp ftypes.Timestamp) ([]Bucket, error) {
+func (m rollingMin) Transform(v value.Value) (value.Value, error) {
 	v_int, ok := v.(value.Int)
 	if !ok {
 		return nil, fmt.Errorf("expected value to be an int but got: '%s' instead", v)
 	}
-	c := value.List{v_int, value.Bool(false)}
-	return BucketizeMoment(groupkey, timestamp, c, m.Windows()), nil
-}
-func (m Min) Windows() []ftypes.Window {
-	return []ftypes.Window{
-		ftypes.Window_MINUTE, ftypes.Window_HOUR, ftypes.Window_DAY,
-	}
+	return value.List{v_int, value.Bool(false)}, nil
 }
 
-var _ Histogram = Min{}
+var _ Histogram = rollingMin{}

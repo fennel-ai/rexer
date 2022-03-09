@@ -12,7 +12,7 @@ import (
 func Value(ctx context.Context, tier tier.Tier, aggname ftypes.AggName, key value.Value, histogram counter.Histogram) (value.Value, error) {
 	end := ftypes.Timestamp(tier.Clock.Now())
 	start := histogram.Start(end)
-	buckets := counter.BucketizeDuration(key.String(), start, end, histogram.Windows(), histogram.Zero())
+	buckets := histogram.BucketizeDuration(key.String(), start, end, histogram.Zero())
 	counts, err := counter.GetMulti(ctx, tier, aggname, buckets, histogram)
 	if err != nil {
 		return nil, err

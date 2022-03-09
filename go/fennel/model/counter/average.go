@@ -11,24 +11,37 @@ import (
 	Maintains a rolling average by storing a pair of ints (denoting sum and count)
 	in each bucket representing the total sum / count of events within that bucket.
 */
-type RollingAverage struct {
+type average struct {
 	Duration uint64
+	Bucketizer
+	BucketStore
 }
 
-func (r RollingAverage) Bucketize(groupkey string, v value.Value, timestamp ftypes.Timestamp) ([]Bucket, error) {
+func NewAverage(name ftypes.AggName, duration uint64) Histogram {
+	return average{
+		Duration: duration,
+		Bucketizer: FixedWidthBucketizer{windows: []ftypes.Window{
+			ftypes.Window_MINUTE, ftypes.Window_HOUR, ftypes.Window_DAY,
+		}},
+		BucketStore: FlatRedisStorage{name},
+	}
+}
+
+func (r average) Transform(v value.Value) (value.Value, error) {
 	v_int, ok := v.(value.Int)
 	if !ok {
 		return nil, fmt.Errorf("expected value to be an int but got: '%s' instead", v)
 	}
-	c := value.List{v_int, value.Int(1)}
-	return BucketizeMoment(groupkey, timestamp, c, r.Windows()), nil
+	return value.List{v_int, value.Int(1)}, nil
 }
 
-func (r RollingAverage) Start(end ftypes.Timestamp) ftypes.Timestamp {
+var _ Histogram = average{}
+
+func (r average) Start(end ftypes.Timestamp) ftypes.Timestamp {
 	return start(end, r.Duration)
 }
 
-func (r RollingAverage) extract(v value.Value) (int64, int64, error) {
+func (r average) extract(v value.Value) (int64, int64, error) {
 	l, ok := v.(value.List)
 	if !ok || len(l) != 2 {
 		return 0, 0, fmt.Errorf("expected list of two elements but got: %v", v)
@@ -44,7 +57,7 @@ func (r RollingAverage) extract(v value.Value) (int64, int64, error) {
 	return int64(a), int64(b), nil
 }
 
-func (r RollingAverage) ratio(sum, num int64) value.Double {
+func (r average) ratio(sum, num int64) value.Double {
 	if num == 0 {
 		return value.Double(0)
 	} else {
@@ -53,7 +66,7 @@ func (r RollingAverage) ratio(sum, num int64) value.Double {
 	}
 }
 
-func (r RollingAverage) Reduce(values []value.Value) (value.Value, error) {
+func (r average) Reduce(values []value.Value) (value.Value, error) {
 	var num, sum int64
 	for i := range values {
 		a, b, err := r.extract(values[i])
@@ -66,7 +79,7 @@ func (r RollingAverage) Reduce(values []value.Value) (value.Value, error) {
 	return r.ratio(sum, num), nil
 }
 
-func (r RollingAverage) Merge(a, b value.Value) (value.Value, error) {
+func (r average) Merge(a, b value.Value) (value.Value, error) {
 	s1, n1, err := r.extract(a)
 	if err != nil {
 		return nil, err
@@ -78,14 +91,6 @@ func (r RollingAverage) Merge(a, b value.Value) (value.Value, error) {
 	return value.List{value.Int(s1 + s2), value.Int(n1 + n2)}, nil
 }
 
-func (r RollingAverage) Zero() value.Value {
+func (r average) Zero() value.Value {
 	return value.List{value.Int(0), value.Int(0)}
 }
-
-func (r RollingAverage) Windows() []ftypes.Window {
-	return []ftypes.Window{
-		ftypes.Window_MINUTE, ftypes.Window_HOUR, ftypes.Window_DAY,
-	}
-}
-
-var _ Histogram = RollingAverage{}

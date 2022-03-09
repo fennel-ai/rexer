@@ -17,39 +17,39 @@ func TestRate_Reduce(t *testing.T) {
 		input  []value.Value
 		output value.Value
 	}{
-		{Rate{},
+		{NewRate("some", 100, false),
 			[]value.Value{
 				value.List{value.Int(0), value.Int(1)},
 				value.List{value.Int(4), value.Int(2)},
 				value.List{value.Int(0), value.Int(0)}},
 			value.Double(float64(4) / float64(3)),
 		},
-		{Rate{},
+		{NewRate("some", 100, false),
 			[]value.Value{
 				value.List{value.Int(0), value.Int(0)}},
 			value.Double(0),
 		},
-		{Rate{},
+		{NewRate("some", 100, false),
 			[]value.Value{
 				value.List{value.Int(1), value.Int(1)},
 				value.List{value.Int(34), value.Int(199)}},
 			value.Double(float64(35) / float64(200)),
 		},
-		{Rate{Normalize: true},
+		{NewRate("some", 100, true),
 			[]value.Value{
 				value.List{value.Int(1), value.Int(1)},
 				value.List{value.Int(34), value.Int(199)}},
 			value.Double(0.12860441174608936),
 		},
 		{
-			Rate{},
+			NewRate("some", 100, false),
 			[]value.Value{
 				value.List{value.Int(0), value.Int(1)},
 				value.List{value.Int(2), value.Int(1)}},
 			value.Double(1.),
 		},
 		{
-			Rate{},
+			NewRate("some", 100, false),
 			[]value.Value{
 				value.List{value.Int(1e17), value.Int(1e17)},
 				value.List{value.Int(0), value.Int(1e17)}},
@@ -75,21 +75,21 @@ func TestRate_Reduce_Invalid(t *testing.T) {
 		h     Histogram
 		input []value.Value
 	}{
-		{Rate{},
+		{NewRate("some", 100, false),
 			[]value.Value{
 				value.List{value.Int(-1), value.Int(1)},
 				value.List{value.Int(0), value.Int(0)}},
 		},
-		{Rate{},
+		{NewRate("some", 100, false),
 			[]value.Value{
 				value.List{value.Int(0), value.Int(-1)}},
 		},
-		{Rate{},
+		{NewRate("some", 100, false),
 			[]value.Value{
 				value.Double(0.5),
 				value.List{value.Int(34), value.Int(199)}},
 		},
-		{Rate{Normalize: true},
+		{NewRate("some", 100, true),
 			[]value.Value{
 				value.List{value.Int(1), value.Int(1)},
 				value.List{value.Int(2), value.Int(1)}},
@@ -108,7 +108,7 @@ func TestRate_Reduce_Invalid(t *testing.T) {
 
 func TestRate_Merge_Valid(t *testing.T) {
 	t.Parallel()
-	h := Rate{}
+	h := NewRate("some", 100, false)
 	validCases := []struct {
 		input1 value.Value
 		input2 value.Value
@@ -139,7 +139,7 @@ func TestRate_Merge_Valid(t *testing.T) {
 
 func TestRate_Merge_Invalid(t *testing.T) {
 	t.Parallel()
-	h := Rate{}
+	h := NewRate("some", 100, false)
 	invalidCases := []struct {
 		input1 value.Value
 		input2 value.Value
@@ -176,7 +176,7 @@ func TestRate_Merge_Invalid(t *testing.T) {
 
 func TestRate_Bucketize_Valid(t *testing.T) {
 	t.Parallel()
-	h := Rate{}
+	h := NewRate("some", 100, false)
 	actions := value.List{}
 	expected := make([]Bucket, 0)
 	DAY := 3600 * 24
@@ -200,7 +200,7 @@ func TestRate_Bucketize_Valid(t *testing.T) {
 
 func TestRate_Bucketize_Invalid(t *testing.T) {
 	t.Parallel()
-	h := Rate{}
+	h := NewRate("some", 100, false)
 	cases := [][]value.Dict{
 		{value.Dict{}},
 		{value.Dict{"groupkey": value.Int(1), "timestamp": value.Int(2)}},
@@ -225,7 +225,7 @@ func TestRate_Bucketize_Invalid(t *testing.T) {
 }
 
 func TestRate_Start(t *testing.T) {
-	h := Rate{Duration: 100}
+	h := rollingRate{Duration: 100}
 	assert.Equal(t, h.Start(110), ftypes.Timestamp(10))
 	// Duration > end
 	assert.Equal(t, h.Start(90), ftypes.Timestamp(0))

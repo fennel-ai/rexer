@@ -12,7 +12,7 @@ import (
 
 func TestList_Reduce(t *testing.T) {
 	t.Parallel()
-	h := List{}
+	h := NewList("some_name", 123)
 	cases := []struct {
 		input  []value.Value
 		output value.Value
@@ -52,7 +52,7 @@ func TestList_Reduce(t *testing.T) {
 
 func TestList_Merge_Valid(t *testing.T) {
 	t.Parallel()
-	h := List{}
+	h := NewList("some_name", 123)
 	validCases := []struct {
 		input1 value.Value
 		input2 value.Value
@@ -93,7 +93,7 @@ func TestList_Merge_Valid(t *testing.T) {
 
 func TestList_Merge_Invalid(t *testing.T) {
 	t.Parallel()
-	h := List{}
+	h := NewList("some_name", 123)
 	invalidCases := []struct {
 		input1 value.Value
 		input2 value.Value
@@ -126,7 +126,7 @@ func TestList_Merge_Invalid(t *testing.T) {
 
 func TestList_Bucketize_Valid(t *testing.T) {
 	t.Parallel()
-	h := List{}
+	h := NewList("some_name", 123)
 	actions := value.List{}
 	expected := make([]Bucket, 0)
 	DAY := 3600 * 24
@@ -150,7 +150,7 @@ func TestList_Bucketize_Valid(t *testing.T) {
 
 func TestList_Bucketize_Invalid(t *testing.T) {
 	t.Parallel()
-	h := List{}
+	h := NewList("some_name", 123)
 	cases := [][]value.Dict{
 		{value.Dict{}},
 		{value.Dict{"groupkey": value.Int(1), "timestamp": value.Int(2)}},
@@ -170,7 +170,7 @@ func TestList_Bucketize_Invalid(t *testing.T) {
 }
 
 func TestList_Start(t *testing.T) {
-	h := List{Duration: 100}
+	h := NewList("some_name", 100)
 	assert.Equal(t, h.Start(110), ftypes.Timestamp(10))
 	// Duration > end
 	assert.Equal(t, h.Start(90), ftypes.Timestamp(0))

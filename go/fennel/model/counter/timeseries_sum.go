@@ -7,12 +7,25 @@ import (
 	"fennel/lib/value"
 )
 
-type TimeseriesCounter struct {
+type timeseriesSum struct {
 	Window ftypes.Window
 	Limit  uint64
+	Bucketizer
+	BucketStore
 }
 
-func (r TimeseriesCounter) Start(end ftypes.Timestamp) ftypes.Timestamp {
+func NewTimeseriesSum(name ftypes.AggName, window ftypes.Window, limit uint64) Histogram {
+	return timeseriesSum{
+		Window: window,
+		Limit:  limit,
+		Bucketizer: FixedWidthBucketizer{windows: []ftypes.Window{
+			window,
+		}},
+		BucketStore: FlatRedisStorage{name: name},
+	}
+}
+
+func (r timeseriesSum) Start(end ftypes.Timestamp) ftypes.Timestamp {
 	var d uint64
 	switch r.Window {
 	case ftypes.Window_HOUR:
@@ -23,7 +36,7 @@ func (r TimeseriesCounter) Start(end ftypes.Timestamp) ftypes.Timestamp {
 	return start(end, d)
 }
 
-func (r TimeseriesCounter) Reduce(values []value.Value) (value.Value, error) {
+func (r timeseriesSum) Reduce(values []value.Value) (value.Value, error) {
 	// we have to take the last Limit values only and if there are fewer than that
 	// available we pad a few entries with zeros.
 	limit := int(r.Limit)
@@ -39,25 +52,22 @@ func (r TimeseriesCounter) Reduce(values []value.Value) (value.Value, error) {
 	return value.List(ret), nil
 }
 
-func (r TimeseriesCounter) Merge(a, b value.Value) (value.Value, error) {
+func (r timeseriesSum) Merge(a, b value.Value) (value.Value, error) {
 	if _, ok := a.(value.Int); !ok {
 		return nil, fmt.Errorf("expected int but got: %v", a)
 	}
 	return a.Op("+", b)
 }
 
-func (r TimeseriesCounter) Zero() value.Value {
+func (r timeseriesSum) Zero() value.Value {
 	return value.Int(0)
 }
-func (r TimeseriesCounter) Bucketize(groupkey string, v value.Value, timestamp ftypes.Timestamp) ([]Bucket, error) {
+
+func (r timeseriesSum) Transform(v value.Value) (value.Value, error) {
 	if _, ok := v.(value.Int); !ok {
 		return nil, fmt.Errorf("expected value to be an int but got: '%s' instead", v)
 	}
-	return BucketizeMoment(groupkey, timestamp, v, r.Windows()), nil
+	return v, nil
 }
 
-func (r TimeseriesCounter) Windows() []ftypes.Window {
-	return []ftypes.Window{r.Window}
-}
-
-var _ Histogram = TimeseriesCounter{}
+var _ Histogram = timeseriesSum{}

@@ -347,9 +347,10 @@ func TestServer_AggregateValue_Valid(t *testing.T) {
 	valueSendReceive(t, holder, agg, key, value.Int(0))
 
 	// now create an increment
-	h := counter.RollingCounter{Duration: 6 * 3600}
+	h := counter.NewSum(agg.Name, 6*3600)
 	t1 := t0 + 3600
-	buckets := counter.BucketizeMoment(keystr, t1, value.Int(1), h.Windows())
+	//buckets := counter.BucketizeMoment(keystr, t1, value.Int(1), h.Windows())
+	buckets := h.BucketizeMoment(keystr, t1, value.Int(1))
 	err = counter.Update(context.Background(), tier, agg.Name, buckets, h)
 	assert.NoError(t, err)
 	clock.Set(int64(t1 + 60))
@@ -394,20 +395,26 @@ func TestServer_BatchAggregateValue(t *testing.T) {
 	key := value.Nil
 	keystr := key.String()
 
-	h1 := counter.RollingCounter{Duration: 6 * 3600}
-	buckets := counter.BucketizeMoment(keystr, t1, value.Int(1), h1.Windows())
+	//h1 := counter.rollingSum{Duration: 6 * 3600}
+	h1 := counter.NewSum("somename", 6*3600)
+	//buckets := counter.BucketizeMoment(keystr, t1, value.Int(1), h1.Windows())
+	buckets := h1.BucketizeMoment(keystr, t1, value.Int(1))
 	err = counter.Update(context.Background(), tier, agg1.Name, buckets, h1)
 	assert.NoError(t, err)
-	buckets = counter.BucketizeMoment(keystr, t1, value.Int(3), h1.Windows())
+	//buckets = counter.BucketizeMoment(keystr, t1, value.Int(3), h1.Windows())
+	buckets = h1.BucketizeMoment(keystr, t1, value.Int(3))
 	err = counter.Update(context.Background(), tier, agg1.Name, buckets, h1)
 	assert.NoError(t, err)
 	req1 := aggregate.GetAggValueRequest{AggName: "mycounter", Key: key}
 
-	h2 := counter.Max{Duration: 6 * 3600}
-	buckets = counter.BucketizeMoment(keystr, t1, value.List{value.Int(2), value.Bool(false)}, h2.Windows())
+	//h2 := counter.rollingMax{Duration: 6 * 3600}
+	h2 := counter.NewMax("something", 6*3600)
+	//buckets = counter.BucketizeMoment(keystr, t1, value.List{value.Int(2), value.Bool(false)}, h2.Windows())
+	buckets = h2.BucketizeMoment(keystr, t1, value.List{value.Int(2), value.Bool(false)})
 	err = counter.Update(context.Background(), tier, agg2.Name, buckets, h2)
 	assert.NoError(t, err)
-	buckets = counter.BucketizeMoment(keystr, t1, value.List{value.Int(7), value.Bool(false)}, h2.Windows())
+	//buckets = counter.BucketizeMoment(keystr, t1, value.List{value.Int(7), value.Bool(false)}, h2.Windows())
+	buckets = h2.BucketizeMoment(keystr, t1, value.List{value.Int(7), value.Bool(false)})
 	err = counter.Update(context.Background(), tier, agg2.Name, buckets, h2)
 	assert.NoError(t, err)
 	req2 := aggregate.GetAggValueRequest{AggName: "maxelem", Key: key}
