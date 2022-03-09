@@ -18,8 +18,8 @@ func NewTimeseriesSum(name ftypes.AggName, window ftypes.Window, limit uint64) H
 	return timeseriesSum{
 		Window: window,
 		Limit:  limit,
-		Bucketizer: FixedWidthBucketizer{windows: []ftypes.Window{
-			window,
+		Bucketizer: fixedWidthBucketizer{map[ftypes.Window]uint64{
+			window: 1,
 		}},
 		BucketStore: FlatRedisStorage{name: name},
 	}

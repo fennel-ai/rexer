@@ -20,8 +20,8 @@ type rollingMin struct {
 func NewMin(name ftypes.AggName, duration uint64) Histogram {
 	return rollingMin{
 		Duration: duration,
-		Bucketizer: FixedWidthBucketizer{windows: []ftypes.Window{
-			ftypes.Window_MINUTE, ftypes.Window_DAY, ftypes.Window_HOUR,
+		Bucketizer: fixedWidthBucketizer{map[ftypes.Window]uint64{
+			ftypes.Window_MINUTE: 1, ftypes.Window_HOUR: 1, ftypes.Window_DAY: 1,
 		}},
 		BucketStore: FlatRedisStorage{name: name},
 	}

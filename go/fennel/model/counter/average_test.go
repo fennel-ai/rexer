@@ -104,9 +104,9 @@ func TestRollingAverage_Bucketize_Valid(t *testing.T) {
 			"value":     value.Int(i),
 		}
 		assert.NoError(t, actions.Append(d))
-		expected = append(expected, Bucket{Key: v.String(), Window: ftypes.Window_DAY, Index: 1, Count: value.List{value.Int(i), value.Int(1)}})
-		expected = append(expected, Bucket{Key: v.String(), Window: ftypes.Window_HOUR, Index: uint64(24 + i), Count: value.List{value.Int(i), value.Int(1)}})
-		expected = append(expected, Bucket{Key: v.String(), Window: ftypes.Window_MINUTE, Index: uint64(24*60 + i*60), Count: value.List{value.Int(i), value.Int(1)}})
+		expected = append(expected, Bucket{Key: v.String(), Window: ftypes.Window_DAY, Index: 1, Width: 1, Value: value.List{value.Int(i), value.Int(1)}})
+		expected = append(expected, Bucket{Key: v.String(), Window: ftypes.Window_HOUR, Index: uint64(24 + i), Width: 1, Value: value.List{value.Int(i), value.Int(1)}})
+		expected = append(expected, Bucket{Key: v.String(), Window: ftypes.Window_MINUTE, Index: uint64(24*60 + i*60), Width: 1, Value: value.List{value.Int(i), value.Int(1)}})
 	}
 	buckets, err := Bucketize(h, actions)
 	assert.NoError(t, err)

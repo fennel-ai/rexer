@@ -11,8 +11,9 @@ import (
 type Bucket struct {
 	Key    string
 	Window ftypes.Window
+	Width  uint64
 	Index  uint64
-	Count  value.Value
+	Value  value.Value
 }
 
 type Bucketizer interface {

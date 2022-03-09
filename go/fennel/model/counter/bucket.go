@@ -40,11 +40,19 @@ func Bucketize(histogram Histogram, actions value.List) ([]Bucket, error) {
 
 // BucketizeDuration bucketizes the [start, end] only using the given window types
 func BucketizeDuration(key string, start ftypes.Timestamp, end ftypes.Timestamp, windows []ftypes.Window, zero value.Value) []Bucket {
-	return FixedWidthBucketizer{windows: windows}.BucketizeDuration(key, start, end, zero)
+	sizes := make(map[ftypes.Window]uint64)
+	for _, w := range windows {
+		sizes[w] = 1
+	}
+	return fixedWidthBucketizer{sizes}.BucketizeDuration(key, start, end, zero)
 }
 
 func BucketizeMoment(key string, ts ftypes.Timestamp, count value.Value, windows []ftypes.Window) []Bucket {
-	return FixedWidthBucketizer{windows: windows}.BucketizeMoment(key, ts, count)
+	sizes := make(map[ftypes.Window]uint64)
+	for _, w := range windows {
+		sizes[w] = 1
+	}
+	return fixedWidthBucketizer{sizes}.BucketizeMoment(key, ts, count)
 }
 
 // MergeBuckets takes a list of buckets and "merges" their counts if rest of their properties
@@ -54,19 +62,19 @@ func MergeBuckets(histogram Histogram, buckets []Bucket) ([]Bucket, error) {
 	var err error
 	for i := range buckets {
 		mapkey := buckets[i]
-		mapkey.Count = value.Nil // note, for hashmap to be hashable, this needs to be hashable as well
+		mapkey.Value = value.Nil // note, for hashmap to be hashable, this needs to be hashable as well
 		current, ok := seen[mapkey]
 		if !ok {
 			current = histogram.Zero()
 		}
-		seen[mapkey], err = histogram.Merge(current, buckets[i].Count)
+		seen[mapkey], err = histogram.Merge(current, buckets[i].Value)
 		if err != nil {
 			return nil, err
 		}
 	}
 	ret := make([]Bucket, 0, len(seen))
 	for b, c := range seen {
-		b.Count = c
+		b.Value = c
 		ret = append(ret, b)
 	}
 	return ret, nil
@@ -85,15 +93,15 @@ func boundary(start, end ftypes.Timestamp, period uint64) (uint64, uint64) {
 
 // bucketizeTimeseries returns a list of buckets of size 'Window' that begin at or after 'start'
 // and go until at or before 'end'. Each bucket's count is left at 0
-func bucketizeTimeseries(key string, start, end ftypes.Timestamp, window ftypes.Window, zero value.Value) ([]Bucket, ftypes.Timestamp, ftypes.Timestamp) {
+func bucketizeTimeseries(key string, start, end ftypes.Timestamp, window ftypes.Window, width uint64, zero value.Value) ([]Bucket, ftypes.Timestamp, ftypes.Timestamp) {
 	var period uint64
 	switch window {
 	case ftypes.Window_MINUTE:
-		period = 60
+		period = 60 * width
 	case ftypes.Window_HOUR:
-		period = 3600
+		period = 3600 * width
 	case ftypes.Window_DAY:
-		period = 24 * 3600
+		period = 24 * 3600 * width
 	default:
 		panic("this should never happen")
 	}
@@ -105,7 +113,7 @@ func bucketizeTimeseries(key string, start, end ftypes.Timestamp, window ftypes.
 	bucketEnd := ftypes.Timestamp(endBoundary * period)
 	ret := make([]Bucket, endBoundary-startBoundary)
 	for i := startBoundary; i < endBoundary; i++ {
-		ret[i-startBoundary] = Bucket{Key: key, Window: window, Index: i, Count: zero}
+		ret[i-startBoundary] = Bucket{Key: key, Window: window, Index: i, Width: width, Value: zero}
 	}
 	return ret, bucketStart, bucketEnd
 }
