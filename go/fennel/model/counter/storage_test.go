@@ -8,6 +8,7 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"fennel/lib/ftypes"
+	"fennel/lib/utils"
 	"fennel/lib/value"
 	"fennel/test"
 )
@@ -131,8 +132,8 @@ func TestTwoLevelRedisStore(t *testing.T) {
 		{
 			Bucket{Key: k, Window: ftypes.Window_MINUTE, Width: 2, Index: 3, Value: value.Int(1)},
 			slot{g: group{key: k, id: 0}, window: ftypes.Window_MINUTE, width: 2, idx: 3, val: value.Int(1)},
-			fmt.Sprintf("%d:%s:%s", ftypes.Window_MINUTE, toBuf(2), toBuf(3)),
-			fmt.Sprintf("agg_l2:%s:%s:8:%s", g.name, k, toBuf(0)),
+			fmt.Sprintf("%v%v", toBuf(2), toBuf(3)),
+			fmt.Sprintf("agg_l2:%s:%s:%v%v", g.name, k, toBuf(8*3600), toBuf(0)),
 			false,
 		},
 		{
@@ -145,15 +146,15 @@ func TestTwoLevelRedisStore(t *testing.T) {
 		{
 			Bucket{Key: k, Window: ftypes.Window_HOUR, Width: 2, Index: 30, Value: value.Int(1)},
 			slot{g: group{key: k, id: 7}, window: ftypes.Window_HOUR, width: 2, idx: 2, val: value.Int(1)},
-			fmt.Sprintf("%d:%s:%s", ftypes.Window_HOUR, toBuf(2), toBuf(2)),
-			fmt.Sprintf("agg_l2:%s:%s:8:%s", g.name, k, toBuf(7)),
+			fmt.Sprintf("%d:%v%v", ftypes.Window_HOUR, toBuf(2), toBuf(2)),
+			fmt.Sprintf("agg_l2:%s:%s:%v%v", g.name, k, toBuf(8*3600), toBuf(7)),
 			false,
 		},
 		{
 			Bucket{Key: k, Window: ftypes.Window_HOUR, Width: 2, Index: 24 * 30, Value: value.Int(1)},
 			slot{g: group{key: k, id: 180}, window: ftypes.Window_HOUR, width: 2, idx: 0, val: value.Int(1)},
-			fmt.Sprintf("%d:%s:%s", ftypes.Window_HOUR, toBuf(2), toBuf(0)),
-			fmt.Sprintf("agg_l2:%s:%s:8:%s", g.name, k, toBuf(180)),
+			fmt.Sprintf("%d:%v%v", ftypes.Window_HOUR, toBuf(2), toBuf(0)),
+			fmt.Sprintf("agg_l2:%s:%s:%v%v", g.name, k, toBuf(8*3600), toBuf(180)),
 			false,
 		},
 	}
@@ -168,4 +169,32 @@ func TestTwoLevelRedisStore(t *testing.T) {
 			assert.Equal(t, scene.rkey, g.redisKey(s.g))
 		}
 	}
+}
+
+func BenchmarkStorage(b *testing.B) {
+	tier, err := test.Tier()
+	assert.NoError(b, err)
+	defer test.Teardown(tier)
+	ctx := context.Background()
+
+	buckets := make([]Bucket, 0)
+	groupKey := utils.RandString(30)
+	for i := 0; i < 1000; i++ {
+		b := Bucket{
+			Key:    fmt.Sprintf("%s:%d", groupKey, i/50),
+			Window: ftypes.Window_MINUTE,
+			Width:  6,
+			Index:  uint64(i),
+			Value:  value.Int(i),
+		}
+		buckets = append(buckets, b)
+	}
+	s1 := FlatRedisStorage{name: ftypes.AggName(utils.RandString(30))}
+	s2 := twoLevelRedisStore{
+		name:      ftypes.AggName(utils.RandString(30)),
+		period:    24 * 3600,
+		retention: 0,
+	}
+	s1.Set(ctx, tier, buckets)
+	s2.Set(ctx, tier, buckets)
 }
