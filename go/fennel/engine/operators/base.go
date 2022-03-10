@@ -3,7 +3,6 @@ package operators
 import (
 	"encoding/json"
 	"fmt"
-	"reflect"
 
 	"fennel/lib/value"
 )
@@ -37,7 +36,7 @@ func IsMapper(op Operator) bool {
 type Param struct {
 	Name     string
 	Static   bool
-	Type     reflect.Type
+	Type     value.Type
 	Optional bool
 	Default  value.Value
 }
@@ -45,7 +44,7 @@ type Param struct {
 type Signature struct {
 	Module        string
 	Name          string
-	input         reflect.Type
+	input         value.Type
 	StaticKwargs  map[string]Param
 	ContextKwargs map[string]Param
 	Mapper        bool
@@ -61,7 +60,7 @@ func NewSignature(module, name string, mapper bool) *Signature {
 	}
 }
 
-func (s *Signature) Param(name string, t reflect.Type, static bool, optional bool, default_ value.Value) *Signature {
+func (s *Signature) Param(name string, t value.Type, static bool, optional bool, default_ value.Value) *Signature {
 	p := Param{name, static, t, optional, default_}
 	if static {
 		s.StaticKwargs[name] = p
@@ -72,7 +71,7 @@ func (s *Signature) Param(name string, t reflect.Type, static bool, optional boo
 	return s
 }
 
-func (s *Signature) Input(t reflect.Type) *Signature {
+func (s *Signature) Input(t value.Type) *Signature {
 	s.input = t
 	return s
 }
@@ -109,13 +108,13 @@ func GetOperatorsJSON() ([]byte, error) {
 			sig := op.Signature()
 			for _, p := range sig.ContextKwargs {
 				opdata[module][fname][p.Name] = param{
-					Type:     value.Types.ToString(p.Type),
+					Type:     p.Type.String(),
 					Optional: p.Optional,
 				}
 			}
 			for _, p := range sig.StaticKwargs {
 				opdata[module][fname][p.Name] = param{
-					Type:     value.Types.ToString(p.Type),
+					Type:     p.Type.String(),
 					Optional: p.Optional,
 				}
 			}
@@ -124,43 +123,44 @@ func GetOperatorsJSON() ([]byte, error) {
 	return json.Marshal(opdata)
 }
 
-func TypeCheckStaticKwargs(op Operator, staticKwargs map[string]reflect.Type) error {
+func TypeCheckStaticKwargs(op Operator, staticKwargs value.Dict) error {
 	sig := op.Signature()
 	if len(sig.StaticKwargs) != len(staticKwargs) {
-		return fmt.Errorf("[%s.%s] incorrect number of static kwargs passed - expected: %d but got: %d", sig.Module, sig.Name, len(sig.StaticKwargs), len(staticKwargs))
+		return fmt.Errorf("[%s.%s] incorrect number of static kwargs passed - expected: %d but got: %d",
+			sig.Module, sig.Name, len(sig.StaticKwargs), len(staticKwargs))
 	}
 	for k, p := range sig.StaticKwargs {
-		t := p.Type
-		vt, ok := staticKwargs[k]
+		v, ok := staticKwargs[k]
 		if !ok {
 			return fmt.Errorf("operator '%s' expects kwarg '%s' but not found", op, k)
 		}
-		if t != value.Types.Any && vt != t {
-			return fmt.Errorf("type of  kwarg '%s' expected to be '%s' but found to be '%s'", k, t, vt)
+		if err := p.Type.Validate(v); err != nil {
+			return fmt.Errorf("type of kwarg '%s' is not of type '%s': %s", k, p.Type, err)
 		}
 	}
 	return nil
 }
 
-func Typecheck(op Operator, inputType reflect.Type, contextKwargSchema map[string]reflect.Type) error {
+func Typecheck(op Operator, inputVal value.Value, contextKwargs value.Dict) error {
 	sig := op.Signature()
 	// let's look at contextual kwargs first
-	if len(sig.ContextKwargs) != len(contextKwargSchema) {
-		return fmt.Errorf("[%s.%s] incorrect number of contextual kwargs passed - expected: %d but got: %d", sig.Module, sig.Name, len(sig.ContextKwargs), len(contextKwargSchema))
+	if len(sig.ContextKwargs) != len(contextKwargs) {
+		return fmt.Errorf("[%s.%s] incorrect number of contextual kwargs passed - expected: %d but got: %d",
+			sig.Module, sig.Name, len(sig.ContextKwargs), len(contextKwargs))
 	}
 	for k, p := range sig.ContextKwargs {
-		t := p.Type
-		vt, ok := contextKwargSchema[k]
+		v, ok := contextKwargs[k]
 		if !ok {
 			return fmt.Errorf("operator '%s.%s' expects kwarg '%s' but not found", sig.Module, sig.Name, k)
 		}
-		if t != value.Types.Any && vt != t {
-			return fmt.Errorf("type of kwarg '%s' expected to be '%s' but found to be '%s'", k, t, vt)
+		if err := p.Type.Validate(v); err != nil {
+			return fmt.Errorf("type of kwarg '%s'is not of type '%s': %s", k, p.Type, err)
 		}
 	}
-	// next let's validate input table inputSchema
-	if sig.input != value.Types.Any && sig.input != inputType {
-		return fmt.Errorf("operator '%s.%s' expects input to be list of '%s' but found to be list of '%s'", sig.Module, sig.Name, sig.input, inputType)
+	// next let's validate input
+	if err := sig.input.Validate(inputVal); err != nil {
+		return fmt.Errorf("element of input list to operator '%s.%s' is not of type '%s': %s",
+			sig.Module, sig.Name, sig.input, err)
 	}
 	return nil
 }
