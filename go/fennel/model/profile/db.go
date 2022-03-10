@@ -18,6 +18,7 @@ import (
 type provider interface {
 	set(ctx context.Context, tier tier.Tier, otype ftypes.OType, oid uint64, key string, version uint64, valueSer []byte) error
 	get(ctx context.Context, tier tier.Tier, otype ftypes.OType, oid uint64, key string, version uint64) ([]byte, error)
+	getversion(ctx context.Context, tier tier.Tier, otype ftypes.OType, oid uint64, key string) (uint64, error)
 }
 
 type dbProvider struct{}
@@ -80,6 +81,34 @@ func (D dbProvider) get(ctx context.Context, tier tier.Tier, otype ftypes.OType,
 		return nil, nil
 	} else {
 		return value[0], nil
+	}
+}
+
+// getversion returns the largest version of the profile identified using given attributes
+//
+// returns "0" if no profile exists
+func (D dbProvider) getversion(ctx context.Context, tier tier.Tier, otype ftypes.OType, oid uint64, key string) (uint64, error) {
+	defer timer.Start(ctx, tier.ID, "model.profile.db.getversion").Stop()
+	var v []uint64
+	// if version isn't given, just pick the highest version
+	err := tier.DB.SelectContext(ctx, &v, `
+	SELECT version
+	FROM profile 
+	WHERE
+		otype = ?
+		AND oid = ?
+		AND zkey = ?
+	ORDER BY version DESC
+	LIMIT 1
+	`, otype, oid, key,
+	)
+	if err != nil {
+		return 0, err
+	} else if len(v) == 0 {
+		// i.e no valid value is found, so we return nil
+		return 0, nil
+	} else {
+		return v[0], nil
 	}
 }
 

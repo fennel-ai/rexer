@@ -6,8 +6,10 @@ import (
 	"testing"
 	"time"
 
+	"fennel/lib/cache"
 	"fennel/lib/ftypes"
 	resource2 "fennel/resource"
+
 	"github.com/alicebob/miniredis/v2"
 	"github.com/stretchr/testify/assert"
 )
@@ -22,19 +24,20 @@ func TestCache(t *testing.T) {
 	mr, err := miniredis.Run()
 	assert.NoError(t, err)
 	resource, err := MiniRedisConfig{MiniRedis: mr, Scope: scope}.Materialize()
+	assert.NoError(t, err)
 	client := resource.(Client)
-	cache := NewCache(client)
+	c := NewCache(client)
 	defer client.Close()
 
 	k := "hi"
 	exp := "bye"
-	_, err = cache.Get(context.Background(), k)
+	_, err = c.Get(context.Background(), k)
 	assert.Error(t, err)
 
 	// set the cache and check again
-	err = cache.Set(context.Background(), k, exp, 5*time.Second)
+	err = c.Set(context.Background(), k, exp, 5*time.Second)
 	assert.NoError(t, err)
-	v, err := cache.Get(context.Background(), k)
+	v, err := c.Get(context.Background(), k)
 	assert.NoError(t, err)
 	assert.Equal(t, exp, v)
 
@@ -43,19 +46,28 @@ func TestCache(t *testing.T) {
 	mr = conf.MiniRedis
 	mr.FastForward(4 * time.Second)
 	// we can still get it
-	v, err = cache.Get(context.Background(), k)
+	v, err = c.Get(context.Background(), k)
 	assert.NoError(t, err)
 	assert.Equal(t, exp, v)
 
 	// but not if we move it further ahead beyond 5 sec
 	mr.FastForward(1 * time.Second)
 	// we can still get it
-	_, err = cache.Get(context.Background(), k)
+	_, err = c.Get(context.Background(), k)
 	assert.Error(t, err)
 
-	// now try deleting it
-	err = cache.Delete(context.Background(), k)
+	// try setting it in a txn
+	c.RunAsTxn(context.Background(), func(c cache.Txn, keys []string) error {
+		return c.Set(context.Background(), keys[0], "hi2", *new(time.Duration))
+	}, []string{k}, 1)
+
+	v, err = c.Get(context.Background(), k)
 	assert.NoError(t, err)
-	_, err = cache.Get(context.Background(), k)
+	assert.Equal(t, "hi2", v)
+
+	// now try deleting it
+	err = c.Delete(context.Background(), k)
+	assert.NoError(t, err)
+	_, err = c.Get(context.Background(), k)
 	assert.Error(t, err)
 }
