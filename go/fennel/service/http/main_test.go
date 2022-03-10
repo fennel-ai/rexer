@@ -281,14 +281,14 @@ func TestQuery(t *testing.T) {
 		Operand:   table,
 		Namespace: "std",
 		Name:      "filter",
-		Kwargs: ast.Dict{map[string]ast.Ast{"where": ast.Binary{
+		Kwargs: ast.Dict{Values: map[string]ast.Ast{"where": ast.Binary{
 			Left: ast.Lookup{On: ast.At{}, Property: "x"},
 			Op:   "<",
 			Right: ast.Binary{
 				Left: ast.Lookup{On: ast.At{}, Property: "y"},
 				Op:   "-",
 				Right: ast.Lookup{
-					On:       ast.Var{"args"},
+					On:       ast.Var{Name: "args"},
 					Property: "c",
 				},
 			},

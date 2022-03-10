@@ -35,7 +35,7 @@ func run(tr tier.Tier, op operators.Operator, static value.Dict, inputs, context
 	// all static kwargs will be based on Var("args").static
 	for k, _ := range static {
 		kwargs[k] = ast.Lookup{
-			On:       ast.Lookup{ast.Var{"args"}, "static"},
+			On:       ast.Lookup{On: ast.Var{Name: "args"}, Property: "static"},
 			Property: k,
 		}
 	}
@@ -60,7 +60,7 @@ func run(tr tier.Tier, op operators.Operator, static value.Dict, inputs, context
 	// and input is provided as Var("args").input
 	query := ast.OpCall{
 		Operand: ast.Lookup{
-			On:       ast.Var{"args"},
+			On:       ast.Var{Name: "args"},
 			Property: "input",
 		},
 		Namespace: sig.Module,

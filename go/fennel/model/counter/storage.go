@@ -305,10 +305,7 @@ func setInRedis(ctx context.Context, tier tier.Tier, rkeys []string, values []va
 	keySize, valSize := 0, 0
 	vals := make([]interface{}, len(rkeys))
 	for i := range rkeys {
-		s, err := value.ToJSON(values[i])
-		if err != nil {
-			return err
-		}
+		s := value.ToJSON(values[i])
 		vals[i] = s
 		keySize += len(rkeys[i])
 		valSize += len(s)

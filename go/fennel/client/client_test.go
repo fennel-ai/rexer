@@ -2,13 +2,14 @@ package client
 
 import (
 	"encoding/json"
-	"fennel/lib/aggregate"
-	"fennel/lib/ftypes"
-	"fennel/lib/value"
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
 	"testing"
+
+	"fennel/lib/aggregate"
+	"fennel/lib/ftypes"
+	"fennel/lib/value"
 
 	"github.com/stretchr/testify/assert"
 )
@@ -17,8 +18,7 @@ func TestClient_GetAggregateValue(t *testing.T) {
 	// to test - if we call client with correct args, it calls server
 	// with the correct serialized stuff and deserializes the response back
 	expected := value.Int(1)
-	ser, err := value.ToJSON(expected)
-	assert.NoError(t, err)
+	ser := value.ToJSON(expected)
 	aggname := ftypes.AggName("somename")
 	k := value.Bool(true)
 	agvr := aggregate.GetAggValueRequest{
