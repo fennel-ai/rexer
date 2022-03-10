@@ -21,4 +21,4 @@ sudo systemctl enable --now tailscaled
 # 172.31.0.0/16 : Control plane
 # 10.101.0.0/16: Trell Data plane
 # 10.102.0.0/16: Dev data plane
-sudo tailscale up --advertise-routes=172.31.0.0/16,10.101.0.0/16,10.102.0.0/16 --authkey tskey-kgCz7h7CNTRL-sFgK73QSgVehP8xURhceX
+sudo tailscale up --advertise-routes=172.31.0.0/16,10.101.0.0/16,10.102.0.0/16,10.103.0.0/16 --authkey tskey-kgCz7h7CNTRL-sFgK73QSgVehP8xURhceX
