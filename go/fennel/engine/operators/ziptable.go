@@ -1,8 +1,6 @@
 package operators
 
 import (
-	"reflect"
-
 	"fennel/lib/value"
 )
 
@@ -62,7 +60,7 @@ func (zi *ZipIter) Next() (value.Value, value.Dict, error) {
 		return value.Dict{}, value.Dict{}, err
 	}
 	second := second_val.(value.Dict)
-	if err = Typecheck(zi.op, reflect.TypeOf(first), second.Schema()); err != nil {
+	if err = Typecheck(zi.op, first, second); err != nil {
 		return nil, value.Dict{}, err
 	}
 	return first, second, nil

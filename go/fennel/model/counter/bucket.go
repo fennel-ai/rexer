@@ -2,7 +2,6 @@ package counter
 
 import (
 	"fmt"
-	"reflect"
 
 	"fennel/lib/ftypes"
 	"fennel/lib/value"
@@ -27,7 +26,7 @@ func Bucketize(histogram Histogram, actions value.List) ([]Bucket, error) {
 			return nil, fmt.Errorf("action '%v' does not have a field called 'groupkey'", rowVal)
 		}
 		ts, ok := row["timestamp"]
-		if !ok || reflect.TypeOf(ts) != value.Types.Int {
+		if !ok || value.Types.Int.Validate(ts) != nil {
 			return nil, fmt.Errorf("action '%v' does not have a field called 'timestamp' with datatype of 'int'", row)
 		}
 		v, ok := row["value"]
