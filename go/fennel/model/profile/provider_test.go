@@ -2,7 +2,6 @@ package profile
 
 import (
 	"context"
-	"fennel/lib/ftypes"
 	"fennel/lib/profile"
 	"fennel/lib/value"
 	"fennel/test"
@@ -25,22 +24,18 @@ func testProviderBasic(t *testing.T, p provider) {
 	// and calling get on a row that doesn't exist is not an error
 	profile1 := profile.NewProfileItemSer("1", 1232, "summary", 1, expected)
 	checkGet(t, ctx, p, tier, profile1, []byte(nil))
-	checkGetVersion(t, ctx, p, tier, "1", 1232, "summary", 0)
 
 	// and repeating this should be same (vs any cache issues)
 	checkGet(t, ctx, p, tier, profile1, []byte(nil))
-	checkGetVersion(t, ctx, p, tier, "1", 1232, "summary", 0)
 
 	// now set the value
 	checkSet(t, ctx, p, tier, profile1, expected)
 
 	// now get the same value back
 	checkGet(t, ctx, p, tier, profile1, expected)
-	checkGetVersion(t, ctx, p, tier, "1", 1232, "summary", 1)
 
 	// and get it again to verify nothing changes
 	checkGet(t, ctx, p, tier, profile1, expected)
-	checkGetVersion(t, ctx, p, tier, "1", 1232, "summary", 1)
 
 	// test getMulti now
 	request := profile.ProfileFetchRequest{}
@@ -90,11 +85,8 @@ func testProviderVersion(t *testing.T, p provider) {
 
 	// we can get any of these versions back
 	checkGet(t, ctx, p, tier, profiles[0], expected1)
-	checkGetVersion(t, ctx, p, tier, "1", 1232, "summary", 10)
 	checkGet(t, ctx, p, tier, profiles[1], expected2)
-	checkGetVersion(t, ctx, p, tier, "1", 1232, "summary", 10)
 	checkGet(t, ctx, p, tier, profiles[2], expected3)
-	checkGetVersion(t, ctx, p, tier, "1", 1232, "summary", 10)
 
 	// if we ask for version 0, by default get the highest version
 	found, err := p.get(ctx, tier, "1", 1232, "summary", 0)
@@ -122,10 +114,4 @@ func checkMultiGet(t *testing.T, ctx context.Context, tier tier.Tier, request pr
 	found, err := GetMulti(ctx, tier, request)
 	assert.NoError(t, err)
 	assert.ElementsMatch(t, expected, found)
-}
-
-func checkGetVersion(t *testing.T, ctx context.Context, p provider, tier tier.Tier, otype ftypes.OType, oid uint64, key string, expectedv uint64) {
-	found, err := p.getversion(ctx, tier, otype, oid, key)
-	assert.NoError(t, err)
-	assert.Equal(t, expectedv, found)
 }

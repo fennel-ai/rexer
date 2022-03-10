@@ -136,14 +136,11 @@ func TestGetBatched(t *testing.T) {
 	defer test.Teardown(tier)
 	ctx := context.Background()
 
-	// mini-redis does not play well with cache keys in different "slots" (in the same txn),
-	// currently it is determined using (otype, oid, key). We test behavior across
-	// different objects in `_integration_test`
 	vals := []value.Value{value.Int(1), value.Int(2), value.Int(3)}
 	profiles := []profilelib.ProfileItem{
-		{OType: "User", Oid: uint64(1), Key: "summary", Version: 1, Value: vals[0]},
-		{OType: "User", Oid: uint64(1), Key: "summary", Version: 2, Value: vals[1]},
-		{OType: "User", Oid: uint64(1), Key: "summary", Version: 3, Value: vals[2]},
+		{"User", uint64(1), "summary", 1, vals[0]},
+		{"User", uint64(2), "summary", 1, vals[1]},
+		{"User", uint64(3), "summary", 1, vals[2]},
 	}
 
 	// initially nothing exists
