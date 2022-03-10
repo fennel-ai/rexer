@@ -22,6 +22,7 @@ import (
 	"fennel/lib/query"
 	"fennel/lib/value"
 	"fennel/tier"
+
 	"github.com/buger/jsonparser"
 	"github.com/gorilla/mux"
 	"google.golang.org/protobuf/proto"
@@ -51,6 +52,7 @@ func (s server) setHandlers(router *mux.Router) {
 	router.HandleFunc("/fetch", s.Fetch)
 	router.HandleFunc("/get", s.GetProfile)
 	router.HandleFunc("/set", s.SetProfile)
+	router.HandleFunc("/set_profiles", s.SetProfiles)
 	router.HandleFunc("/log", s.Log)
 	router.HandleFunc("/log_multi", s.LogMulti)
 	router.HandleFunc("/get_multi", s.GetProfileMulti)
@@ -244,6 +246,27 @@ func (m server) SetProfile(w http.ResponseWriter, req *http.Request) {
 	}
 	// send to controller
 	if err = profile2.Set(req.Context(), m.tier, request); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		log.Printf("Error: %v", err)
+		return
+	}
+}
+
+func (m server) SetProfiles(w http.ResponseWriter, req *http.Request) {
+	data, err := readRequest(req)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		log.Printf("Error: %v", err)
+		return
+	}
+	var request []profilelib.ProfileItem
+	if err := json.Unmarshal(data, &request); err != nil {
+		http.Error(w, fmt.Sprintf("invalid request: %v", err), http.StatusBadRequest)
+		log.Printf("Error: %v", err)
+		return
+	}
+	// send to controller
+	if err = profile2.SetMulti(req.Context(), m.tier, request); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		log.Printf("Error: %v", err)
 		return

@@ -2,13 +2,17 @@ package profile
 
 import (
 	"context"
+	"fennel/kafka"
 	profilelib "fennel/lib/profile"
+	"fennel/lib/utils"
 	"fennel/lib/value"
 	"fennel/test"
 	"fennel/tier"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
+	"google.golang.org/protobuf/proto"
 )
 
 // TODO: Add more tests
@@ -64,6 +68,46 @@ func TestProfileController(t *testing.T) {
 	checkGetMulti(t, ctx, tier, request, profiles)
 	checkGet(t, ctx, tier, profiles[1], vals[1])
 	checkGet(t, ctx, tier, profiles[2], vals[2])
+}
+
+func TestProfileSetMultiWritesToKafka(t *testing.T) {
+	tier, err := test.Tier()
+	assert.NoError(t, err)
+	defer test.Teardown(tier)
+	ctx := context.Background()
+
+	profiles := []profilelib.ProfileItem{}
+	profiles = append(profiles, profilelib.NewProfileItem("User", 1232, "summary", 1))
+	profiles = append(profiles, profilelib.NewProfileItem("User", 1233, "summary foo", 10))
+	profiles = append(profiles, profilelib.NewProfileItem("User", 1234, "summary", 12))
+	profiles = append(profiles, profilelib.NewProfileItem("User", 1232, "summary2", 11))
+
+	assert.NoError(t, SetMulti(ctx, tier, profiles))
+
+	// Read kafka to check that profiles have been written
+	found, err := readBatch(t, ctx, tier, 4)
+	assert.NoError(t, err)
+	assert.Equal(t, profiles, found)
+}
+
+func readBatch(t *testing.T, ctx context.Context, tier tier.Tier, count int) ([]profilelib.ProfileItem, error) {
+	consumer, err := tier.NewKafkaConsumer(profilelib.PROFILELOG_KAFKA_TOPIC, utils.RandString(6), kafka.DefaultOffsetPolicy)
+	assert.NoError(t, err)
+	defer consumer.Close()
+
+	msgs, err := consumer.ReadBatch(ctx, count, time.Second*30)
+	assert.NoError(t, err)
+	actual := make([]profilelib.ProfileItem, len(msgs))
+	for i := range msgs {
+		var p profilelib.ProtoProfileItem
+		if err = proto.Unmarshal(msgs[i], &p); err != nil {
+			return nil, err
+		}
+		if actual[i], err = profilelib.FromProtoProfileItem(&p); err != nil {
+			return nil, err
+		}
+	}
+	return actual, nil
 }
 
 func checkSet(t *testing.T, ctx context.Context, tier tier.Tier, request profilelib.ProfileItem) {

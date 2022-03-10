@@ -6,7 +6,12 @@ import (
 
 	"fennel/lib/ftypes"
 	"fennel/lib/value"
+
 	"github.com/buger/jsonparser"
+)
+
+const (
+	PROFILELOG_KAFKA_TOPIC = "profilelog"
 )
 
 type ProfileItem struct {
