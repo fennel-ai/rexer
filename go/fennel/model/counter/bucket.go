@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"fennel/lib/ftypes"
+	"fennel/lib/utils"
 	"fennel/lib/value"
 )
 
@@ -99,6 +100,31 @@ func bucketizeTimeseries(key string, start, end ftypes.Timestamp, window ftypes.
 		ret[i-startBoundary] = Bucket{Key: key, Window: window, Index: i, Width: width, Value: zero}
 	}
 	return ret, bucketStart, bucketEnd
+}
+
+// trailingPartial returns the partial bucket that started within [start, end] but didn't fully finish before end
+// if there is no such bucket, ok (2nd return value) is false
+func trailingPartial(key string, start, end ftypes.Timestamp, window ftypes.Window, width uint64, zero value.Value) (Bucket, bool) {
+	d, err := utils.Duration(window)
+	if err != nil {
+		return Bucket{}, false
+	}
+	period := d * width
+	startBoundary, endBoundary := boundary(start, end, period)
+	if endBoundary < startBoundary {
+		return Bucket{}, false
+	}
+	if endBoundary*period == uint64(end) {
+		// last bucket perfectly lines up with the end so there is no trailing partial bucket
+		return Bucket{}, false
+	}
+	return Bucket{
+		Key:    key,
+		Window: window,
+		Width:  width,
+		Index:  endBoundary,
+		Value:  zero,
+	}, true
 }
 
 type period struct {
