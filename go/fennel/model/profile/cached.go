@@ -48,7 +48,7 @@ func (c cachedProvider) set(ctx context.Context, tier tier.Tier, otype ftypes.OT
 	}
 	// ground truth was successful so now we update the caches
 	k1 := makeKey(otype, oid, key, version)
-	err := tier.Cache.Set(ctx, k1, valueSer, *new(time.Duration))
+	err := tier.Cache.Set(ctx, k1, valueSer, 0 /* no expiry */)
 	if err != nil {
 		return err
 	}
@@ -71,7 +71,7 @@ func (c cachedProvider) set(ctx context.Context, tier tier.Tier, otype ftypes.OT
 		// in which case the value of v1 should be written. v2 > v1, in which case we wouldn't update
 		// the cache.
 		if v <= version {
-			err = txn.Set(ctx, ks[0], valueSer, *new(time.Duration))
+			err = txn.Set(ctx, ks[0], valueSer, 0 /* no expiry */)
 			if err != nil {
 				return err
 			}
