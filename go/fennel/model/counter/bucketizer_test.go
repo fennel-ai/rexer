@@ -299,3 +299,38 @@ func TestBucketizeHistogram_Valid(t *testing.T) {
 	assert.NoError(t, err)
 	assert.ElementsMatch(t, expected, buckets)
 }
+
+func TestTrailingPartial(t *testing.T) {
+	t.Parallel()
+	scenarios := []struct {
+		key   string
+		start ftypes.Timestamp
+		end   ftypes.Timestamp
+		w     ftypes.Window
+		width uint64
+		idx   uint64
+		ok    bool
+	}{
+		{"k", 24 * 3600, 2 * 24 * 3600, ftypes.Window_HOUR, 7, 6, true},
+		// buckets line up perfectly to fill [start, end], so no partial bucket left
+		{"k", 24 * 3600, 2 * 24 * 3600, ftypes.Window_DAY, 1, 0, false},
+		// bucket is so large that we literally get a single bucket that takes most of the duration and
+		// non trailing buckets should get nothing
+		{"k", 24 * 3600, 2 * 24 * 3600, ftypes.Window_HOUR, 25, 1, true},
+		// bucket is so large that no "tick" of this bucket falls in the entire [start, end]
+		{"k", 24 * 3600, 2 * 24 * 3600, ftypes.Window_HOUR, 50, 0, false},
+	}
+	for _, scene := range scenarios {
+		found, ok := trailingPartial(scene.key, scene.start, scene.end, scene.w, scene.width, value.Int(4))
+		assert.Equal(t, scene.ok, ok)
+		if scene.ok {
+			assert.Equal(t, Bucket{
+				Key:    scene.key,
+				Window: scene.w,
+				Width:  scene.width,
+				Index:  scene.idx,
+				Value:  value.Int(4),
+			}, found)
+		}
+	}
+}
