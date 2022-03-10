@@ -1,48 +1,136 @@
 package value
 
-import "reflect"
+import (
+	"fmt"
+	"reflect"
+)
 
-type _types struct {
-	Int    reflect.Type
-	Double reflect.Type
-	String reflect.Type
-	Bool   reflect.Type
-	List   reflect.Type
-	Dict   reflect.Type
-	Any    reflect.Type
+type Type interface {
+	Validate(Value) error
+	String() string
 }
 
-var Types _types
+var _ Type = anyType{}
+var _ Type = baseType{}
+var _ Type = compoundType{}
+var _ Type = listType{}
+var _ Type = dictType{}
+
+type anyType struct{}
+
+func (at anyType) Validate(Value) error {
+	return nil
+}
+
+func (at anyType) String() string {
+	return "Any"
+}
+
+type baseType struct {
+	name  string
+	_type reflect.Type
+}
+
+func (bt baseType) Validate(v Value) error {
+	if bt._type != reflect.TypeOf(v) {
+		return fmt.Errorf("value '%s' does not satisfy expected type '%s'", v, bt)
+	}
+	return nil
+}
+
+func (bt baseType) String() string {
+	return bt.name
+}
+
+type compoundType struct {
+	name   string
+	_types []Type
+}
+
+func (ct compoundType) Validate(v Value) error {
+	for _, t := range ct._types {
+		if err := t.Validate(v); err == nil {
+			return nil
+		}
+	}
+	return fmt.Errorf("value '%s' does not satisfy expected type '%s'", v, ct)
+}
+
+func (ct compoundType) String() string {
+	return ct.name
+}
+
+type listType struct {
+	name     string
+	elemType Type
+}
+
+func (lt listType) Validate(v Value) error {
+	l, ok := v.(List)
+	if !ok {
+		return fmt.Errorf("expected a list but found '%s'", v)
+	}
+	for i := range l {
+		if err := lt.elemType.Validate(l[i]); err != nil {
+			return fmt.Errorf("value '%s' of element '%d' of list does not satisfy expected type '%s'",
+				l[i], i, lt.elemType)
+		}
+	}
+	return nil
+}
+
+func (lt listType) String() string {
+	return lt.name
+}
+
+type dictType struct {
+	name     string
+	elemType Type
+}
+
+func (dt dictType) Validate(v Value) error {
+	d, ok := v.(Dict)
+	if !ok {
+		return fmt.Errorf("expected a dict but found '%s'", v)
+	}
+	for k := range d {
+		if err := dt.elemType.Validate(d[k]); err != nil {
+			return fmt.Errorf("value '%s' of key '%s' of dict does not satisfy expected type '%s'",
+				d[k], k, dt.elemType)
+		}
+	}
+	return nil
+}
+
+func (dt dictType) String() string {
+	return dt.name
+}
+
+type typeIndex struct {
+	// Base types
+	Int    Type
+	Double Type
+	String Type
+	Bool   Type
+	List   Type
+	Dict   Type
+	Any    Type
+	// Other types
+	Number Type
+}
+
+var Types typeIndex
 
 func init() {
-	Types = _types{
-		Int:    reflect.TypeOf(Int(1)),
-		String: reflect.TypeOf(String("hi")),
-		Bool:   reflect.TypeOf(Bool(true)),
-		Double: reflect.TypeOf(Double(1.0)),
-		List:   reflect.TypeOf(List{Int(1), Double(3.4)}),
-		Dict:   reflect.TypeOf(Dict{}),
-		Any:    reflect.TypeOf((*Value)(nil)).Elem(),
-	}
-}
-
-func (ts _types) ToString(t reflect.Type) string {
-	switch t {
-	case Types.Bool:
-		return "Bool"
-	case Types.Int:
-		return "Int"
-	case Types.Double:
-		return "Double"
-	case Types.String:
-		return "String"
-	case Types.List:
-		return "List"
-	case Types.Dict:
-		return "Dict"
-	case Types.Any:
-		return "Any"
-	default:
-		return "Unknown"
-	}
+	Types = typeIndex{}
+	Types.Any = anyType{}
+	// Set base types
+	Types.Bool = baseType{"Bool", reflect.TypeOf(Bool(true))}
+	Types.Int = baseType{"Int", reflect.TypeOf(Int(1))}
+	Types.Double = baseType{"Double", reflect.TypeOf(Double(1.0))}
+	Types.String = baseType{"String", reflect.TypeOf(String("hi"))}
+	Types.List = baseType{"List", reflect.TypeOf(List{Int(1), Double(3.4)})}
+	Types.Dict = baseType{"Dict", reflect.TypeOf(Dict{})}
+	// Set other types (ensure subtypes are set before using them)
+	Types.Number = compoundType{"Number", []Type{Types.Int, Types.Double}}
 }
