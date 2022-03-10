@@ -5,7 +5,6 @@ import (
 	"fennel/db"
 	"fennel/lib/profile"
 	"fennel/lib/value"
-	"math"
 	"math/rand"
 	"sync"
 	"testing"
@@ -28,13 +27,19 @@ func (m *mockProvider) change(n []byte) {
 func (m *mockProvider) set(ctx context.Context, tier tier.Tier, otype ftypes.OType, oid uint64, key string, version uint64, valueSer []byte) error {
 	return nil
 }
+func (m *mockProvider) setBatch(ctx context.Context, tier tier.Tier, profiles []profile.ProfileItemSer) error {
+	return nil
+}
 func (m *mockProvider) get(ctx context.Context, tier tier.Tier, otype ftypes.OType, oid uint64, key string, version uint64) ([]byte, error) {
 	return m.ret, nil
 }
-func (m *mockProvider) getversion(ctx context.Context, tier tier.Tier, otype ftypes.OType, oid uint64, key string) (uint64, error) {
-	return math.MaxUint64, nil
+func (m *mockProvider) getVersionBatched(ctx context.Context, tier tier.Tier, vids []versionIdentifier) (map[versionIdentifier]uint64, error) {
+	mp := make(map[versionIdentifier]uint64)
+	mp[vids[0]] = 1
+	return mp, nil
 }
 
+// this is used only in `TestCaching`
 var _ provider = &mockProvider{}
 
 func TestCachedDBBasic(t *testing.T) {
@@ -125,6 +130,9 @@ func TestCachedGetBatch(t *testing.T) {
 }
 
 func TestCachedDBConcurrentSet(t *testing.T) {
+	// mini-redis does not play well with cache keys in different "slots" (in the same txn),
+	// currently it is determined using (otype, oid, key). We test `setBatch` behavior across
+	// different objects in `_integration_test`
 	tier, err := test.Tier()
 	assert.NoError(t, err)
 	defer test.Teardown(tier)
@@ -217,13 +225,13 @@ func TestCachedDBEventuallyConsistent(t *testing.T) {
 	c := cachedProvider{base: db}
 
 	// mini-redis does not play well with cache keys in different "slots" (in the same txn),
-	// currently it is determined using (otype, oid, key). We test behavior across
+	// currently it is determined using (otype, oid, key). We test `setBatch` behavior across
 	// different objects in `_integration_test`
 
 	// creates versioned profiles for ("user", 1, "age")
 	for i := uint64(1); i <= 5; i++ {
 		v, _ := value.Marshal(value.List{value.Int(i)})
-		assert.NoError(t, c.set(ctx, tier, "user", i, "age", i, v))
+		assert.NoError(t, c.set(ctx, tier, "user", 1, "age", i, v))
 	}
 
 	// remove few entries from the cache - eviction

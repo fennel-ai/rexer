@@ -3,6 +3,8 @@ package profile
 import (
 	"context"
 	"fmt"
+	"regexp"
+	"strconv"
 	"time"
 
 	"fennel/lib/cache"
@@ -25,6 +27,10 @@ func Set(ctx context.Context, tier tier.Tier, otype ftypes.OType, oid uint64, ke
 	return cachedProvider{base: dbProvider{}}.set(ctx, tier, otype, oid, key, version, valueSer)
 }
 
+func SetBatch(ctx context.Context, tier tier.Tier, profiles []profile.ProfileItemSer) error {
+	return cachedProvider{base: dbProvider{}}.setBatch(ctx, tier, profiles)
+}
+
 func Get(ctx context.Context, tier tier.Tier, otype ftypes.OType, oid uint64, key string, version uint64) ([]byte, error) {
 	return cachedProvider{base: dbProvider{}}.get(ctx, tier, otype, oid, key, version)
 }
@@ -43,40 +49,96 @@ type cachedProvider struct {
 
 func (c cachedProvider) set(ctx context.Context, tier tier.Tier, otype ftypes.OType, oid uint64, key string, version uint64, valueSer []byte) error {
 	defer timer.Start(ctx, tier.ID, "model.profile.cached.set").Stop()
-	if err := c.base.set(ctx, tier, otype, oid, key, version, valueSer); err != nil {
+	return c.setBatch(ctx, tier, []profile.ProfileItemSer{profile.NewProfileItemSer(string(otype), oid, key, version, valueSer)})
+}
+
+func (c cachedProvider) setBatch(ctx context.Context, tier tier.Tier, profiles []profile.ProfileItemSer) error {
+	defer timer.Start(ctx, tier.ID, "model.profile.cached.setBatch").Stop()
+	if err := c.base.setBatch(ctx, tier, profiles); err != nil {
 		return err
 	}
-	// ground truth was successful so now we update the caches
-	k1 := makeKey(otype, oid, key, version)
-	err := tier.Cache.Set(ctx, k1, valueSer, 0 /* no expiry */)
-	if err != nil {
+	// ground truth was successful so now we update the caches for each version
+	keys := make([]string, 0)
+	valsToSet := make([]interface{}, 0)
+	for _, profile := range profiles {
+		k := makeKey(profile.OType, profile.Oid, profile.Key, profile.Version)
+		keys = append(keys, k)
+		valsToSet = append(valsToSet, profile.Value)
+	}
+	if err := tier.Cache.MSet(ctx, keys, valsToSet, make([]time.Duration, len(keys))); err != nil {
 		return err
 	}
 
-	// this could be the latest version for the profile, optimistically set it
-	k2 := makeKey(otype, oid, key, 0)
-	txnLogic := func(txn cache.Txn, ks []string) error {
-		if len(ks) != 1 {
-			return fmt.Errorf("expected only one key, given: %+v", ks)
+	// To store the latest, only consider the value of the largest version of the profile (otype, oid, key)
+	latestValByKey := make(map[versionIdentifier]profile.ProfileItemSer)
+
+	for _, p := range profiles {
+		verId := versionIdentifier{p.OType, p.Oid, p.Key}
+		val, ok := latestValByKey[verId]
+		if !ok {
+			latestValByKey[verId] = p
+		} else {
+			if p.Version > val.Version {
+				latestValByKey[verId] = p
+			}
 		}
-		v, err := c.getversion(ctx, tier, otype, oid, key)
+	}
+
+	latestKeys := make([]string, 0)
+	for _, profile := range profiles {
+		latestKeys = append(latestKeys, makeKey(profile.OType, profile.Oid, profile.Key, 0))
+	}
+
+	// few of the profiles could be the latest profiles, optimistically set them
+	txnLogic := func(txn cache.Txn, ks []string) error {
+		// get the latest version of a profile identified using (otype, oid, key) and compare it
+		// with the latest versioned profile in the current batch, to figure out if the
+		// cache entry for the "latest" profile should be updated
+		vids := make([]versionIdentifier, 0)
+		for _, k := range ks {
+			vid, err := parseKey(k)
+			if err != nil {
+				return err
+			}
+			vids = append(vids, vid)
+		}
+
+		vMap, err := c.base.getVersionBatched(ctx, tier, vids)
 		if err != nil {
 			return err
 		}
 
-		// checking against the ground truth version helps minimize the conflict on concurrent sets.
-		//
-		// say two set commands with versions v0 < v1 concurrently reach this stage, `c.getversion`
-		// returns the highest version for (otype, oid, key) - say v2. It is possible that v1 == v2,
-		// in which case the value of v1 should be written. v2 > v1, in which case we wouldn't update
-		// the cache.
-		if v <= version {
-			err = txn.Set(ctx, ks[0], valueSer, 0 /* no expiry */)
+		keysToSet := make([]string, 0)
+		valsToSet := make([]interface{}, 0)
+
+		for _, k := range ks {
+			vid, err := parseKey(k)
 			if err != nil {
 				return err
 			}
+			latestV, ok := vMap[vid]
+			if !ok {
+				// no version was found. Ideally this should never happen since DB should have
+				// the data - we set the data in the same function.
+				return fmt.Errorf("could not get version for profile: %s from the DB", k)
+			}
+			if p, ok := latestValByKey[vid]; ok {
+				// checking against the ground truth version helps minimize the conflict on concurrent sets.
+				//
+				// say two set commands with versions v0 < v1 concurrently reach this stage, `c.getversion`
+				// returns the highest version for (otype, oid, key) - say v2. It is possible that v1 == v2,
+				// in which case the value of v1 should be written. v2 > v1, in which case we wouldn't update
+				// the cache.
+				if latestV <= p.Version {
+					// set the value for the key in the cache!
+					keysToSet = append(keysToSet, k)
+					valsToSet = append(valsToSet, p.Value)
+				}
+			}
 		}
-		return nil
+
+		// Set them on cache
+		return txn.MSet(ctx, keysToSet, valsToSet, make([]time.Duration, len(keysToSet)))
 	}
 	// we retry atmost 3 times before we fail. Above logic should not fail on concurrent writes, but
 	// it is possible that there could be a conflict with "get".
@@ -84,11 +146,11 @@ func (c cachedProvider) set(ctx context.Context, tier tier.Tier, otype ftypes.OT
 	// say, `set` is called with version v1 > v0 (latest version) but the entry for the latest profile
 	// (version = 0) was evicted. A concurrent `get` call could update the cache with the value corresponding
 	// to v0 and the above logic aborting due to lack of retries.
-	return tier.Cache.RunAsTxn(ctx, txnLogic, []string{k2}, 3)
+	return tier.Cache.RunAsTxn(ctx, txnLogic, latestKeys, 3)
 }
 
-func (c cachedProvider) getversion(ctx context.Context, tier tier.Tier, otype ftypes.OType, oid uint64, key string) (uint64, error) {
-	return c.base.getversion(ctx, tier, otype, oid, key)
+func (c cachedProvider) getVersionBatched(ctx context.Context, tier tier.Tier, vids []versionIdentifier) (map[versionIdentifier]uint64, error) {
+	return c.base.getVersionBatched(ctx, tier, vids)
 }
 
 func (c cachedProvider) get(ctx context.Context, tier tier.Tier, otype ftypes.OType, oid uint64, key string, version uint64) ([]byte, error) {
@@ -199,4 +261,22 @@ func cacheName() string {
 func makeKey(otype ftypes.OType, oid uint64, key string, version uint64) string {
 	prefix := fmt.Sprintf("%s:%d", cacheName(), cacheVersion)
 	return fmt.Sprintf("%s:{%s:%d:%s}:%d", prefix, otype, oid, key, version)
+}
+
+func parseKey(key string) (versionIdentifier, error) {
+	re, err := regexp.Compile(":{(.+):(\\d+):(.+)}:")
+	if err != nil {
+		return versionIdentifier{}, err
+	}
+	match := re.FindStringSubmatch(key)
+	if match != nil {
+		// match[0] is the string matched
+		vid := versionIdentifier{otype: ftypes.OType(match[1]), key: match[3]}
+		vid.oid, err = strconv.ParseUint(match[2], 10, 64)
+		if err != nil {
+			return versionIdentifier{}, err
+		}
+		return vid, nil
+	}
+	return versionIdentifier{}, fmt.Errorf("failed to parse key: %s", key)
 }

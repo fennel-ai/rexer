@@ -22,6 +22,21 @@ type ProfileItem struct {
 	Value   value.Value  `db:"value"`
 }
 
+func (p *ProfileItem) ToProfileItemSer() (*ProfileItemSer, error) {
+	ser := ProfileItemSer{
+		OType:   p.OType,
+		Oid:     p.Oid,
+		Key:     p.Key,
+		Version: p.Version,
+	}
+	valSer, err := value.Marshal(p.Value)
+	if err != nil {
+		return nil, err
+	}
+	ser.Value = valSer
+	return &ser, nil
+}
+
 func NewProfileItem(otype string, oid uint64, k string, version uint64) ProfileItem {
 	return ProfileItem{
 		ftypes.OType(otype), oid, k, version, value.Nil,

@@ -59,6 +59,66 @@ func TestCachedGetBatchMultipleObjs(t *testing.T) {
 	assert.Equal(t, [][]byte{expected1, expected2, expected3, expected4}, found)
 }
 
+func TestCachedDBConcurrentMultiSet(t *testing.T) {
+	tier, err := test.Tier()
+	assert.NoError(t, err)
+	defer test.Teardown(tier)
+	ctx := context.Background()
+	c := cachedProvider{base: dbProvider{}}
+
+	profiles := make([]profile.ProfileItemSer, 0)
+	cacheKeys := make([]string, 0)
+	for i := uint64(0); i < 10; i++ {
+		v, _ := value.Marshal(value.List{value.Int(i)})
+		p := profile.ProfileItemSer{
+			OType:   "user",
+			Oid:     i % 2,
+			Key:     "age",
+			Version: i + 1,
+			Value:   v,
+		}
+		profiles = append(profiles, p)
+		cacheKeys = append(cacheKeys, makeKey(p.OType, p.Oid, p.Key, p.Version))
+	}
+
+	wg := sync.WaitGroup{}
+	wg.Add(10)
+	go func() {
+		// goroutine to write profile data
+		for i := 0; i < 5; i++ {
+			go func(i int) {
+				defer wg.Done()
+				defer wg.Done()
+				assert.NoError(t, c.setBatch(ctx, tier, []profile.ProfileItemSer{
+					profiles[i*2], profiles[i*2 + 1],
+				}))
+			}(i)
+		}
+	}()
+	wg.Wait()
+
+	// check for all profiles are set in cache
+	vs, err := tier.Cache.MGet(ctx, cacheKeys...)
+	assert.NoError(t, err)
+	for i, v := range vs {
+		expectedv, _ := value.Marshal(value.List{value.Int(i)})
+		assert.Equal(t, expectedv, []byte(v.(string)))
+	}
+
+	// check that the latest profile can be accessed by provided version = 0
+	v, err := tier.Cache.Get(ctx, makeKey("user", 0, "age", 0))
+	assert.NoError(t, err)
+	// ("user", 0, "age", 9) would be the lastest profile
+	expectedv, _ := value.Marshal(value.List{value.Int(8)})
+	assert.Equal(t, expectedv, []byte(v.(string)))
+
+	v, err = tier.Cache.Get(ctx, makeKey("user", 1, "age", 0))
+	assert.NoError(t, err)
+	// ("user", 1, "age", 10) would be the lastest profile
+	expectedv, _ = value.Marshal(value.List{value.Int(9)})
+	assert.Equal(t, expectedv, []byte(v.(string)))
+}
+
 // tests that the cache is atleast eventually consistent (it is not easy to test intermediate states)
 //
 // we do so by assuming multiple cache evictions have taken place (only DB entries exist), perform
@@ -73,10 +133,12 @@ func TestCachedDBEventuallyConsistentMultipleObjs(t *testing.T) {
 	c := cachedProvider{base: db}
 
 	// creates versioned profiles for ("user", 0, "age") and ("user", 1, "age")
+	p := make([]profile.ProfileItemSer, 0)
 	for i := uint64(1); i <= 10; i++ {
 		v, _ := value.Marshal(value.List{value.Int(i)})
-		assert.NoError(t, c.set(ctx, tier, "user", i%2, "age", i, v))
+		p = append(p, profile.ProfileItemSer{OType: "user", Oid: i%2, Key: "age", Version: i, Value: v})
 	}
+	assert.NoError(t, c.setBatch(ctx, tier, p))
 
 	// remove few entries from the cache - eviction
 	// these could be random, for the sake of testing, picking few numbers..
@@ -126,22 +188,22 @@ func TestCachedDBEventuallyConsistentMultipleObjs(t *testing.T) {
 
 	// set new profiles, should update latest "versions" in the cache
 	go func() {
+		p := make([]profile.ProfileItemSer, 0)
 		for i := uint64(1); i <= 3; i++ {
-			go func(i uint64) {
-				defer wg.Done()
-				v, _ := value.Marshal(value.List{value.Int(i * 20)})
-				assert.NoError(t, c.set(ctx, tier, "user", 0, "age", i*20, v))
-			}(i)
+			defer wg.Done()
+			v, _ := value.Marshal(value.List{value.Int(i*20)})
+			p = append(p, profile.ProfileItemSer{OType: "user", Oid: 0, Key: "age", Version: i*20, Value: v})
 		}
+		assert.NoError(t, c.setBatch(ctx, tier, p))
 	}()
 	go func() {
+		p := make([]profile.ProfileItemSer, 0)
 		for i := uint64(3); i >= 1; i-- {
-			go func(i uint64) {
-				defer wg.Done()
-				v, _ := value.Marshal(value.List{value.Int(i * 20)})
-				assert.NoError(t, c.set(ctx, tier, "user", 1, "age", i*20, v))
-			}(i)
+			defer wg.Done()
+			v, _ := value.Marshal(value.List{value.Int(i*20)})
+			p = append(p, profile.ProfileItemSer{OType: "user", Oid: 1, Key: "age", Version: i*20, Value: v})
 		}
+		assert.NoError(t, c.setBatch(ctx, tier, p))
 	}()
 	wg.Wait()
 
