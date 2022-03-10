@@ -25,16 +25,12 @@ func (f FlatRedisStorage) Get(ctx context.Context, tier tier.Tier, buckets []Buc
 
 func (f FlatRedisStorage) Set(ctx context.Context, tier tier.Tier, buckets []Bucket) error {
 	rkeys := f.redisKeys(f.name, buckets)
-	vals := make([]interface{}, len(buckets))
+	vals := make([]value.Value, len(buckets))
 	for i := range buckets {
-		s, err := value.ToJSON(buckets[i].Value)
-		if err != nil {
-			return err
-		}
-		vals[i] = s
+		vals[i] = buckets[i].Value
 	}
 	tier.Logger.Info("Updating redis keys for aggregate", zap.String("aggregate", string(f.name)), zap.Int("num_keys", len(rkeys)))
-	return tier.Redis.MSet(ctx, rkeys, vals, make([]time.Duration, len(rkeys)))
+	return setInRedis(ctx, tier, rkeys, vals, make([]time.Duration, len(rkeys)))
 }
 
 func (f FlatRedisStorage) redisKeys(name ftypes.AggName, buckets []Bucket) []string {
@@ -69,15 +65,12 @@ type twoLevelRedisStore struct {
 	retention uint64
 }
 
-func NewTwoLevelStorage(name ftypes.AggName, period, retention uint64) (BucketStore, error) {
-	if period < 3600 || period%3600 != 0 {
-		return nil, fmt.Errorf("period for two level storage should be in multiple of 3600 sec")
-	}
+func NewTwoLevelStorage(name ftypes.AggName, period, retention uint64) BucketStore {
 	return twoLevelRedisStore{
 		name:      name,
 		period:    period,
 		retention: retention,
-	}, nil
+	}
 }
 
 type slot struct {
@@ -131,7 +124,13 @@ func (t twoLevelRedisStore) Get(ctx context.Context, tier tier.Tier, buckets []B
 }
 
 func (t twoLevelRedisStore) slotKey(s slot) string {
-	return fmt.Sprintf("%d:%s:%s", s.window, toBuf(s.width), toBuf(uint64(s.idx)))
+	// since minute is the more common type which also produces a lot of keys,
+	// we use this window by default to save couple more bytes per slot key
+	if s.window == ftypes.Window_MINUTE {
+		return fmt.Sprintf("%v%v", toBuf(s.width), toBuf(uint64(s.idx)))
+	} else {
+		return fmt.Sprintf("%d:%v%v", s.window, toBuf(s.width), toBuf(uint64(s.idx)))
+	}
 }
 
 func toBuf(n uint64) []byte {
@@ -141,8 +140,7 @@ func toBuf(n uint64) []byte {
 }
 
 func (t twoLevelRedisStore) redisKey(g group) string {
-	// since period is always a multiple of an hour, we just use # hour in redis key to save more space
-	return fmt.Sprintf("agg_l2:%s:%s:%d:%s", t.name, g.key, t.period/3600, toBuf(g.id))
+	return fmt.Sprintf("agg_l2:%s:%s:%v%v", t.name, g.key, toBuf(t.period), toBuf(g.id))
 }
 
 func (t twoLevelRedisStore) toSlot(b *Bucket) (slot, error) {
@@ -268,7 +266,12 @@ func interpretRedisResponse(v interface{}, default_ value.Value) (value.Value, e
 	}
 }
 
+var logSizes = false
+
 func setInRedis(ctx context.Context, tier tier.Tier, rkeys []string, values []value.Value, ttls []time.Duration) error {
+	if len(rkeys) != len(values) || len(rkeys) != len(ttls) {
+		return fmt.Errorf("can not set in redis: keys, values, ttls should be of equal length")
+	}
 	vals := make([]interface{}, len(rkeys))
 	for i := range rkeys {
 		s, err := value.ToJSON(values[i])
