@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promauto"
 	"go.uber.org/zap"
 
 	"fennel/lib/ftypes"
@@ -13,6 +15,20 @@ import (
 	"fennel/redis"
 	"fennel/tier"
 )
+
+var metrics = promauto.NewSummaryVec(prometheus.SummaryOpts{
+	Name: "aggregate_storage_bytes",
+	Help: "Distribution of storage bytes for aggregates",
+	// Track quantiles within small error
+	Objectives: map[float64]float64{
+		0.25: 0.05,
+		0.50: 0.05,
+		0.75: 0.05,
+		0.90: 0.05,
+		0.95: 0.02,
+		0.99: 0.01,
+	},
+}, []string{"metric"})
 
 type FlatRedisStorage struct {
 	name ftypes.AggName
@@ -120,6 +136,7 @@ func (t twoLevelRedisStore) Get(ctx context.Context, tier tier.Tier, buckets []B
 			ret[i] = default_
 		}
 	}
+	t.logStats(groupVals, "get")
 	return ret, nil
 }
 
@@ -210,8 +227,21 @@ func (t twoLevelRedisStore) Set(ctx context.Context, tier tier.Tier, buckets []B
 	for i := range ttls {
 		ttls[i] = time.Second * time.Duration(t.retention)
 	}
+	t.logStats(groupVals, "set")
 	tier.Logger.Info("Updating redis keys for aggregate", zap.String("aggregate", string(t.name)), zap.Int("num_keys", len(rkeys)))
 	return setInRedis(ctx, tier, rkeys, groupVals, ttls)
+}
+
+func (t twoLevelRedisStore) logStats(groupVals []value.Value, mode string) {
+	valsPerKey := 0
+	count := 0
+	for i := range groupVals {
+		if asdict, ok := groupVals[i].(value.Dict); ok {
+			valsPerKey += len(asdict)
+			count += 1
+		}
+	}
+	metrics.WithLabelValues(fmt.Sprintf("l2_num_vals_per_key_in_%s", mode)).Observe(float64(valsPerKey) / float64(count))
 }
 
 var _ BucketStore = twoLevelRedisStore{}
@@ -272,6 +302,7 @@ func setInRedis(ctx context.Context, tier tier.Tier, rkeys []string, values []va
 	if len(rkeys) != len(values) || len(rkeys) != len(ttls) {
 		return fmt.Errorf("can not set in redis: keys, values, ttls should be of equal length")
 	}
+	keySize, valSize := 0, 0
 	vals := make([]interface{}, len(rkeys))
 	for i := range rkeys {
 		s, err := value.ToJSON(values[i])
@@ -279,6 +310,10 @@ func setInRedis(ctx context.Context, tier tier.Tier, rkeys []string, values []va
 			return err
 		}
 		vals[i] = s
+		keySize += len(rkeys[i])
+		valSize += len(s)
 	}
+	metrics.WithLabelValues("redis_key_size_bytes").Observe(float64(keySize))
+	metrics.WithLabelValues("redis_value_size_bytes").Observe(float64(valSize))
 	return tier.Redis.MSet(ctx, rkeys, vals, ttls)
 }
