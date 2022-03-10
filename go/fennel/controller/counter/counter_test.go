@@ -25,7 +25,7 @@ func TestRolling(t *testing.T) {
 	defer test.Teardown(tier)
 
 	ctx := context.Background()
-	start := 24*3600*12 + 60*31
+	start := 24*3600*12 + 60*30
 	agg := libaggregate.Aggregate{
 		Name:      "mycounter",
 		Query:     ast.MakeInt(1),
@@ -144,7 +144,7 @@ func TestRollingAverage(t *testing.T) {
 	defer test.Teardown(tier)
 
 	ctx := context.Background()
-	start := 24*3600*12 + 60*31
+	start := 24*3600*12 + 60*30
 	aggname := ftypes.AggName("some counter")
 
 	key := value.List{value.Int(1), value.Int(2)}
@@ -180,7 +180,7 @@ func TestStream(t *testing.T) {
 	defer test.Teardown(tier)
 
 	ctx := context.Background()
-	start := 24*3600*12 + 60*31
+	start := 24*3600*12 + 60*30
 	aggname := ftypes.AggName("some stream")
 
 	key := value.List{value.String("user_follows"), value.Int(2)}
@@ -218,7 +218,7 @@ func TestRate(t *testing.T) {
 	defer test.Teardown(tier)
 
 	ctx := context.Background()
-	start := 24*3600*12 + 60*31
+	start := 24*3600*12 + 60*30
 	aggname := ftypes.AggName("some rate")
 
 	key := value.List{value.String("user_follows"), value.Int(2)}

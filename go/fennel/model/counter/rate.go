@@ -24,9 +24,11 @@ func NewRate(name ftypes.AggName, duration uint64, normalize bool) Histogram {
 		Duration:  duration,
 		Normalize: normalize,
 		Bucketizer: fixedWidthBucketizer{map[ftypes.Window]uint64{
-			ftypes.Window_MINUTE: 1, ftypes.Window_HOUR: 1, ftypes.Window_DAY: 1,
-		}},
-		BucketStore: FlatRedisStorage{name: name},
+			ftypes.Window_MINUTE: 6,
+			ftypes.Window_DAY:    1,
+		}, true},
+		// retain all keys for 1.5days + duration
+		BucketStore: NewTwoLevelStorage(name, 24*3600, duration+24*3600*1.5),
 	}
 }
 

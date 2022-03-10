@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"fennel/lib/ftypes"
+	"fennel/lib/utils"
 	"fennel/lib/value"
 )
 
@@ -15,13 +16,23 @@ type timeseriesSum struct {
 }
 
 func NewTimeseriesSum(name ftypes.AggName, window ftypes.Window, limit uint64) Histogram {
+	d, err := utils.Duration(window)
+	if err != nil {
+		d = 0
+	}
+	retention := uint64(0)
+	if d > 0 {
+		// retain all keys for 1.5days + duration
+		retention = limit*d + 24*3600*1.5
+	}
 	return timeseriesSum{
 		Window: window,
 		Limit:  limit,
 		Bucketizer: fixedWidthBucketizer{map[ftypes.Window]uint64{
 			window: 1,
-		}},
-		BucketStore: FlatRedisStorage{name: name},
+		}, false},
+		// retain all keys for 1.5days + duration
+		BucketStore: NewTwoLevelStorage(name, 24*3600, retention),
 	}
 }
 

@@ -6,7 +6,8 @@ import (
 )
 
 type fixedWidthBucketizer struct {
-	sizes map[ftypes.Window]uint64
+	sizes                  map[ftypes.Window]uint64
+	includeTrailingPartial bool
 }
 
 func (f fixedWidthBucketizer) BucketizeMoment(key string, ts ftypes.Timestamp, v value.Value) []Bucket {
@@ -43,6 +44,20 @@ func (f fixedWidthBucketizer) BucketizeDuration(key string, start, end ftypes.Ti
 			nextPeriods = append(nextPeriods, period{p.start, bucketStart}, period{bucketEnd, p.end})
 		}
 		periods = nextPeriods
+	}
+	if f.includeTrailingPartial {
+		// append a window of the smallest possible size (which is why we iterate in the order of minute -> hour -> day)
+		for _, w := range []ftypes.Window{ftypes.Window_MINUTE, ftypes.Window_HOUR, ftypes.Window_DAY} {
+			width, ok := f.sizes[w]
+			if !ok || width == 0 {
+				continue
+			}
+			if partial, ok := trailingPartial(key, start, end, w, width, v); ok {
+				ret = append(ret, partial)
+			}
+			// we break because we only want to find the trailing partial of the smallest size
+			break
+		}
 	}
 	return ret
 }
