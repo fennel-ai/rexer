@@ -12,6 +12,9 @@ Cargo.lock
 # all .idea files
 **/.idea/**/*
 
+# all vscode files
+**/.vscode/**
+
 # bad python files
 # Byte-compiled / optimized / DLL files
 **/__pycache__/**/*
