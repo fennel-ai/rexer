@@ -216,7 +216,7 @@ func (i Interpreter) VisitOpcall(operand ast.Ast, namespace, name string, kwargs
 	if err != nil {
 		return value.Nil, err
 	}
-	if err = operators.TypeCheckStaticKwargs(op, staticKwargs.Schema()); err != nil {
+	if err = operators.TypeCheckStaticKwargs(op, staticKwargs); err != nil {
 		return value.Nil, err
 	}
 

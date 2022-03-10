@@ -1,7 +1,6 @@
 package operators
 
 import (
-	"reflect"
 	"testing"
 
 	"fennel/lib/value"
@@ -67,19 +66,19 @@ func TestTypeCheckStaticKwargs(t *testing.T) {
 	t.Parallel()
 	op := testOp{}
 	scenarios := []struct {
-		given   map[string]reflect.Type
+		given   value.Dict
 		matches bool
 	}{
 		{
-			map[string]reflect.Type{"p1": value.Types.Bool, "p3": value.Types.String},
+			value.Dict{"p1": value.Bool(true), "p3": value.String("abc")},
 			true,
 		},
 		{
-			map[string]reflect.Type{"p1": value.Types.Bool, "p2": value.Types.Double},
+			value.Dict{"p1": value.Bool(false), "p2": value.Double(4.0)},
 			false,
 		},
 		{
-			map[string]reflect.Type{},
+			value.Dict{},
 			false,
 		},
 	}
@@ -98,33 +97,33 @@ func TestTypeCheck(t *testing.T) {
 	op := testOp{}
 
 	scenarios := []struct {
-		input   reflect.Type
-		context map[string]reflect.Type
+		input   value.Value
+		context value.Dict
 		matches bool
 	}{
 		{
-			value.Types.String,
-			map[string]reflect.Type{"p2": value.Types.Double},
+			value.String("xyz"),
+			value.Dict{"p2": value.Double(9.0)},
 			true,
 		},
 		{
-			reflect.TypeOf(2),
-			map[string]reflect.Type{"p2": value.Types.Double},
+			value.Int(2),
+			value.Dict{"p2": value.Double(9.0)},
 			false,
 		},
 		{
-			value.Types.Int,
-			map[string]reflect.Type{"p2": value.Types.Double},
+			value.Int(4),
+			value.Dict{"p2": value.Double(16.0)},
 			false,
 		},
 		{
-			value.Types.String,
-			map[string]reflect.Type{"p2": value.Types.Int},
+			value.String("pqrs"),
+			value.Dict{"p2": value.Int(3)},
 			false,
 		},
 		{
-			value.Types.String,
-			map[string]reflect.Type{},
+			value.String("ijk"),
+			value.Dict{},
 			false,
 		},
 	}
