@@ -103,7 +103,7 @@ const setupResources = async () => {
         username: input.dbUsername,
         password: input.dbPassword,
         endpoint: input.dbEndpoint,
-        db: input.db,
+        db: `t_${input.tierId}_input.db`,
     })
     // setup k8s namespace.
     const namespace = await ns.setup({
