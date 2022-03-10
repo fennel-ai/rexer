@@ -68,8 +68,8 @@ func (k RemoteConsumer) ReadBatch(ctx context.Context, upto int, timeout time.Du
 	if timeout < 0 {
 		return nil, fmt.Errorf("read batch timeout can not be negative")
 	}
-	timer := time.Tick(timeout)
-	ret := make([][]byte, 0)
+	timer := time.NewTimer(timeout).C
+	var ret [][]byte
 	start := time.Now()
 	for len(ret) < upto {
 		select {
@@ -83,7 +83,6 @@ func (k RemoteConsumer) ReadBatch(ctx context.Context, upto int, timeout time.Du
 			if t < 0 {
 				return ret, nil
 			}
-
 			msg, err := k.ReadMessage(t)
 			if err == nil {
 				ret = append(ret, msg.Value)
