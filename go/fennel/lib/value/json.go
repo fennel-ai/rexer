@@ -1,7 +1,6 @@
 package value
 
 import (
-	"encoding/json"
 	"fmt"
 
 	"github.com/buger/jsonparser"
@@ -75,37 +74,39 @@ func FromJSON(data []byte) (Value, error) {
 }
 
 func ToJSON(val Value) ([]byte, error) {
-	switch val := val.(type) {
-	// When val is a nil list/dict, json.Marshal() marshals it as null. Marshal empty list/dict instead.
-	// When val is a non-nul list/dict, recursively clean up elements which may be nil lists/dicts.
-	case List:
-		if val == nil {
-			return json.Marshal(List{})
-		} else {
-			cleanList(val)
-		}
-	case Dict:
-		if val == nil {
-			return json.Marshal(Dict{})
-		} else {
-			cleanDict(val)
-		}
-	// When double is integral, json.Marshal() marshals it as an int.
-	// Add ".0" at the end in that case.
-	case Double:
-		ser, err := json.Marshal(val)
-		if err != nil {
-			return nil, err
-		}
-		for _, b := range ser {
-			if b == '.' {
-				return ser, nil
+	return []byte(val.String()), nil
+	/*
+		switch val := val.(type) {
+		// When val is a nil list/dict, json.Marshal() marshals it as null. Marshal empty list/dict instead.
+		// When val is a non-nul list/dict, recursively clean up elements which may be nil lists/dicts.
+		case List:
+			if val == nil {
+				return json.Marshal(List{})
+			} else {
+				cleanList(val)
 			}
+		case Dict:
+			if val == nil {
+				return json.Marshal(Dict{})
+			} else {
+				cleanDict(val)
+			}
+		// When double is integral, json.Marshal() marshals it as an int.
+		// Add ".0" at the end in that case.
+		case Double:
+			ser, err := json.Marshal(val)
+			if err != nil {
+				return nil, err
+			}
+			for _, b := range ser {
+				if b == '.' {
+					return ser, nil
+				}
+			}
+			ser = append(ser, '.', '0')
+			return ser, nil
 		}
-		ser = append(ser, '.', '0')
-		return ser, nil
-	}
-	return json.Marshal(val)
+		return json.Marshal(val)*/
 }
 
 func ParseJSON(vdata []byte, vtype jsonparser.ValueType) (Value, error) {
