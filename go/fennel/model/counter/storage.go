@@ -19,12 +19,12 @@ type FlatRedisStorage struct {
 }
 
 func (f FlatRedisStorage) Get(ctx context.Context, tier tier.Tier, buckets []Bucket, default_ value.Value) ([]value.Value, error) {
-	rkeys := redisKeys(tier, f.name, buckets)
+	rkeys := f.redisKeys(f.name, buckets)
 	return readFromRedis(ctx, tier, rkeys, default_)
 }
 
 func (f FlatRedisStorage) Set(ctx context.Context, tier tier.Tier, buckets []Bucket) error {
-	rkeys := redisKeys(tier, f.name, buckets)
+	rkeys := f.redisKeys(f.name, buckets)
 	vals := make([]interface{}, len(buckets))
 	for i := range buckets {
 		s, err := value.ToJSON(buckets[i].Value)
@@ -35,6 +35,14 @@ func (f FlatRedisStorage) Set(ctx context.Context, tier tier.Tier, buckets []Buc
 	}
 	tier.Logger.Info("Updating redis keys for aggregate", zap.String("aggregate", string(f.name)), zap.Int("num_keys", len(rkeys)))
 	return tier.Redis.MSet(ctx, rkeys, vals, make([]time.Duration, len(rkeys)))
+}
+
+func (f FlatRedisStorage) redisKeys(name ftypes.AggName, buckets []Bucket) []string {
+	ret := make([]string, len(buckets))
+	for i, b := range buckets {
+		ret[i] = fmt.Sprintf("agg:%s:%s:%d:%d:%d", name, b.Key, b.Window, b.Width, b.Index)
+	}
+	return ret
 }
 
 var _ BucketStore = FlatRedisStorage{}
@@ -210,21 +218,8 @@ func (t twoLevelRedisStore) Set(ctx context.Context, tier tier.Tier, buckets []B
 
 var _ BucketStore = twoLevelRedisStore{}
 
-func redisKeys(tier tier.Tier, name ftypes.AggName, buckets []Bucket) []string {
-	ret := make([]string, len(buckets))
-	for i, b := range buckets {
-		ret[i] = fmt.Sprintf("agg:%s:%s:%d:%d:%d", name, b.Key, b.Window, b.Width, b.Index)
-	}
-	return ret
-}
-
-func GetMulti(ctx context.Context, tier tier.Tier, name ftypes.AggName, buckets []Bucket, histogram Histogram) ([]value.Value, error) {
-	return FlatRedisStorage{name}.Get(ctx, tier, buckets, histogram.Zero())
-}
-
-func Update(ctx context.Context, tier tier.Tier, name ftypes.AggName, buckets []Bucket, histogram Histogram) error {
-	store := FlatRedisStorage{name}
-	cur, err := store.Get(ctx, tier, buckets, histogram.Zero())
+func Update(ctx context.Context, tier tier.Tier, buckets []Bucket, histogram Histogram) error {
+	cur, err := histogram.Get(ctx, tier, buckets, histogram.Zero())
 	if err != nil {
 		return err
 	}
@@ -235,7 +230,7 @@ func Update(ctx context.Context, tier tier.Tier, name ftypes.AggName, buckets []
 		}
 		buckets[i].Value = merged
 	}
-	return store.Set(ctx, tier, buckets)
+	return histogram.Set(ctx, tier, buckets)
 }
 
 //==========================================================

@@ -9,18 +9,18 @@ import (
 	"fennel/tier"
 )
 
-func Value(ctx context.Context, tier tier.Tier, aggname ftypes.AggName, key value.Value, histogram counter.Histogram) (value.Value, error) {
+func Value(ctx context.Context, tier tier.Tier, key value.Value, histogram counter.Histogram) (value.Value, error) {
 	end := ftypes.Timestamp(tier.Clock.Now())
 	start := histogram.Start(end)
 	buckets := histogram.BucketizeDuration(key.String(), start, end, histogram.Zero())
-	counts, err := counter.GetMulti(ctx, tier, aggname, buckets, histogram)
+	counts, err := histogram.Get(ctx, tier, buckets, histogram.Zero())
 	if err != nil {
 		return nil, err
 	}
 	return histogram.Reduce(counts)
 }
 
-func Update(ctx context.Context, tier tier.Tier, aggname ftypes.AggName, table value.List, histogram counter.Histogram) error {
+func Update(ctx context.Context, tier tier.Tier, table value.List, histogram counter.Histogram) error {
 	buckets, err := counter.Bucketize(histogram, table)
 	if err != nil {
 		return err
@@ -29,5 +29,5 @@ func Update(ctx context.Context, tier tier.Tier, aggname ftypes.AggName, table v
 	if err != nil {
 		return err
 	}
-	return counter.Update(ctx, tier, aggname, buckets, histogram)
+	return counter.Update(ctx, tier, buckets, histogram)
 }

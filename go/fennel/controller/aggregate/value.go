@@ -28,7 +28,7 @@ func Value(ctx context.Context, tier tier.Tier, name ftypes.AggName, key value.V
 	if err != nil {
 		return nil, err
 	}
-	return counter.Value(ctx, tier, agg.Name, key, histogram)
+	return counter.Value(ctx, tier, key, histogram)
 }
 
 func BatchValue(ctx context.Context, tier tier.Tier, batch []aggregate.GetAggValueRequest) ([]value.Value, error) {
@@ -61,7 +61,7 @@ func Update(ctx context.Context, tier tier.Tier, consumer kafka.FConsumer, agg a
 	if err != nil {
 		return err
 	}
-	if err = counter.Update(ctx, tier, agg.Name, table, histogram); err != nil {
+	if err = counter.Update(ctx, tier, table, histogram); err != nil {
 		return err
 	}
 	return consumer.Commit()
