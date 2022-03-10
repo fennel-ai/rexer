@@ -173,7 +173,7 @@ func TestInterpreter_VisitOpcall(t *testing.T) {
 	kwargs = ast.Dict{
 		Values: map[string]ast.Ast{
 			"where": ast.Binary{
-				Left:  ast.Lookup{ast.At{}, "a.inner"},
+				Left:  ast.Lookup{On: ast.At{}, Property: "a.inner"},
 				Right: ast.MakeInt(3),
 				Op:    "==",
 			},
@@ -229,9 +229,9 @@ func TestInterpreter_QueryArgsRedefine(t *testing.T) {
 				Body: ast.Dict{Values: map[string]ast.Ast{"x": ast.MakeInt(5)}},
 			},
 			{
-				"", ast.Binary{
+				Body: ast.Binary{
 					Left: ast.Lookup{
-						On:       ast.Var{"args"},
+						On:       ast.Var{Name: "args"},
 						Property: "x",
 					},
 					Op:    "+",
@@ -289,25 +289,25 @@ func TestInterpreter_VisitLookup(t *testing.T) {
 	// lookups on non dicts all fail
 	for _, tree := range ast.TestExamples {
 		if _, ok := tree.(ast.Dict); !ok {
-			testError(t, ast.Lookup{tree, "hi"})
+			testError(t, ast.Lookup{On: tree, Property: "hi"})
 		}
 	}
 	// and we get error on empty dict too
 	testError(t, ast.Lookup{On: ast.Dict{Values: map[string]ast.Ast{}}, Property: "hi"})
 
 	// dict with just one element works only if property is same
-	d := ast.Dict{map[string]ast.Ast{"hi": ast.MakeDouble(3.4)}}
-	testValid(t, ast.Lookup{d, "hi"}, value.Double(3.4))
-	testError(t, ast.Lookup{d, "bye"})
+	d := ast.Dict{Values: map[string]ast.Ast{"hi": ast.MakeDouble(3.4)}}
+	testValid(t, ast.Lookup{On: d, Property: "hi"}, value.Double(3.4))
+	testError(t, ast.Lookup{On: d, Property: "bye"})
 
 	// and so does a multi-element list with mixed types and nesting
-	nested := ast.Dict{map[string]ast.Ast{
+	nested := ast.Dict{Values: map[string]ast.Ast{
 		"hi":     ast.MakeDouble(4.4),
 		"bye":    ast.MakeBool(false),
 		"nested": d,
 	}}
-	testValid(t, ast.Lookup{ast.Lookup{nested, "nested"}, "hi"}, value.Double(3.4))
-	testValid(t, ast.Lookup{nested, "hi"}, value.Double(4.4))
+	testValid(t, ast.Lookup{On: ast.Lookup{On: nested, Property: "nested"}, Property: "hi"}, value.Double(3.4))
+	testValid(t, ast.Lookup{On: nested, Property: "hi"}, value.Double(4.4))
 }
 
 func getOpCallQuery() ast.Ast {
@@ -406,7 +406,7 @@ func TestInterpreter_VisitOpcall3(t *testing.T) {
 	// then create an ast that uses this op
 	query := ast.OpCall{
 		Operand: ast.Lookup{
-			On:       ast.Var{"args"},
+			On:       ast.Var{Name: "args"},
 			Property: "table",
 		},
 		Namespace: "test",

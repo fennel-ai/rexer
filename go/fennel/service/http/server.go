@@ -219,14 +219,8 @@ func (m server) GetProfile(w http.ResponseWriter, req *http.Request) {
 		fmt.Fprintf(w, "")
 		return
 	}
-	// now serialize value to JSON
-	valSer, err := value.ToJSON(val)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		log.Printf("Error: %v", err)
-		return
-	}
-	w.Write(valSer)
+	// now serialize value to JSON and write
+	w.Write(value.ToJSON(val))
 }
 
 // TODO: add some locking etc to ensure that if two requests try to modify
@@ -323,13 +317,7 @@ func (m server) Query(w http.ResponseWriter, req *http.Request) {
 		log.Printf("Error: %v", err)
 		return
 	}
-	ser, err := value.ToJSON(ret)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		log.Printf("Error: %v", err)
-		return
-	}
-	w.Write(ser)
+	w.Write(value.ToJSON(ret))
 }
 
 func (m server) StoreAggregate(w http.ResponseWriter, req *http.Request) {
@@ -432,13 +420,7 @@ func (m server) AggregateValue(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 	// marshal ret and then write it back
-	ser, err := value.ToJSON(ret)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		log.Printf("Error: %v", err)
-		return
-	}
-	w.Write(ser)
+	w.Write(value.ToJSON(ret))
 }
 
 func (m server) BatchAggregateValue(w http.ResponseWriter, req *http.Request) {
@@ -460,13 +442,7 @@ func (m server) BatchAggregateValue(w http.ResponseWriter, req *http.Request) {
 		log.Printf("Error: %v", err)
 		return
 	}
-	ser, err := value.ToJSON(value.List(ret))
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		log.Printf("Error: %v", err)
-		return
-	}
-	w.Write(ser)
+	w.Write(value.ToJSON(value.List(ret)))
 }
 
 func (m server) GetOperators(w http.ResponseWriter, req *http.Request) {

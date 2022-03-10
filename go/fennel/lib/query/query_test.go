@@ -57,9 +57,6 @@ func makeBoundQueryJSON(tree ast.Ast, args value.Dict) (string, error) {
 		return "", err
 	}
 	astStr := base64.StdEncoding.EncodeToString(astSer)
-	argsSer, err := value.ToJSON(args)
-	if err != nil {
-		return "", err
-	}
+	argsSer := value.ToJSON(args)
 	return fmt.Sprintf(`{"Ast":"%s","Args":%s}`, astStr, argsSer), nil
 }
