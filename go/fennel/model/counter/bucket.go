@@ -38,23 +38,6 @@ func Bucketize(histogram Histogram, actions value.List) ([]Bucket, error) {
 	return buckets, nil
 }
 
-// BucketizeDuration bucketizes the [start, end] only using the given window types
-func BucketizeDuration(key string, start ftypes.Timestamp, end ftypes.Timestamp, windows []ftypes.Window, zero value.Value) []Bucket {
-	sizes := make(map[ftypes.Window]uint64)
-	for _, w := range windows {
-		sizes[w] = 1
-	}
-	return fixedWidthBucketizer{sizes}.BucketizeDuration(key, start, end, zero)
-}
-
-func BucketizeMoment(key string, ts ftypes.Timestamp, count value.Value, windows []ftypes.Window) []Bucket {
-	sizes := make(map[ftypes.Window]uint64)
-	for _, w := range windows {
-		sizes[w] = 1
-	}
-	return fixedWidthBucketizer{sizes}.BucketizeMoment(key, ts, count)
-}
-
 // MergeBuckets takes a list of buckets and "merges" their counts if rest of their properties
 // are identical this reduces the number of keys to touch in storage
 func MergeBuckets(histogram Histogram, buckets []Bucket) ([]Bucket, error) {
@@ -116,15 +99,6 @@ func bucketizeTimeseries(key string, start, end ftypes.Timestamp, window ftypes.
 		ret[i-startBoundary] = Bucket{Key: key, Window: window, Index: i, Width: width, Value: zero}
 	}
 	return ret, bucketStart, bucketEnd
-}
-
-func contains(windows []ftypes.Window, window ftypes.Window) bool {
-	for _, w := range windows {
-		if w == window {
-			return true
-		}
-	}
-	return false
 }
 
 type period struct {
