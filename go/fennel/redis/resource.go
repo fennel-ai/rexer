@@ -10,11 +10,9 @@ import (
 	"github.com/go-redis/redis/v8"
 )
 
-// TODO: Consider adding tags for `client` and validating that it can either be a
-// `redis.Client` or `redis.Tx`
 type Client struct {
 	conf   resource.Config
-	client redis.Cmdable
+	client *redis.ClusterClient
 	resource.Scope
 }
 
@@ -23,15 +21,9 @@ var Nil = redis.Nil
 func (c Client) Type() resource.Type { return resource.RedisClient }
 
 func (c Client) Close() error {
-	if client, ok := (c.client).(*redis.ClusterClient); ok {
-		if err := client.Close(); err != nil {
-			return err
-		}
-	}
-	if client, ok := (c.client).(*redis.Tx); ok {
-		if err := client.Close(client.Context()); err != nil {
-			return err
-		}
+	err := c.client.Close()
+	if err != nil {
+		return err
 	}
 	if conf, ok := c.conf.(MiniRedisConfig); ok {
 		conf.MiniRedis.Close()
