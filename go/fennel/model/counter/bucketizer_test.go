@@ -14,7 +14,12 @@ func TestBucketizeMoment(t *testing.T) {
 	key := "hello"
 	count := value.Int(3)
 	all := []ftypes.Window{ftypes.Window_MINUTE, ftypes.Window_HOUR, ftypes.Window_DAY}
-	found := BucketizeMoment(key, 3601, count, all)
+	f := fixedWidthBucketizer{map[ftypes.Window]uint64{
+		ftypes.Window_MINUTE: 1,
+		ftypes.Window_HOUR:   1,
+		ftypes.Window_DAY:    1,
+	}}
+	found := f.BucketizeMoment(key, 3601, count)
 	assert.Len(t, found, 3)
 	assert.Contains(t, found, Bucket{
 		Key:    key,
@@ -40,7 +45,10 @@ func TestBucketizeMoment(t *testing.T) {
 
 	// also test one window at a time
 	for _, w := range all {
-		found = BucketizeMoment(key, 3601, count, []ftypes.Window{w})
+		f := fixedWidthBucketizer{map[ftypes.Window]uint64{
+			w: 1,
+		}}
+		found = f.BucketizeMoment(key, 3601, count)
 		assert.Len(t, found, 1)
 		assert.Equal(t, w, found[0].Window)
 	}
@@ -118,7 +126,10 @@ func TestBucketizeDuration_SingleWindow2(t *testing.T) {
 	v := value.Int(91)
 	start := ftypes.Timestamp(3601)
 	end := ftypes.Timestamp(2*24*3600 + 3665) // i.e. 2 days + 1 minute + few seconds later
-	found := BucketizeDuration(key, start, end, []ftypes.Window{ftypes.Window_HOUR}, v)
+	f := fixedWidthBucketizer{map[ftypes.Window]uint64{
+		ftypes.Window_HOUR: 1,
+	}}
+	found := f.BucketizeDuration(key, start, end, v)
 
 	assert.Len(t, found, 47)
 	for i := 0; i < 47; i++ {
@@ -130,7 +141,11 @@ func TestBucketizeDuration_SingleWindow2(t *testing.T) {
 			Value:  v,
 		}, i)
 	}
-	found = BucketizeDuration(key, start, end, []ftypes.Window{ftypes.Window_DAY}, v)
+	f = fixedWidthBucketizer{map[ftypes.Window]uint64{
+		ftypes.Window_DAY: 1,
+	}}
+	found = f.BucketizeDuration(key, start, end, v)
+	//found = BucketizeDuration(key, start, end, []ftypes.Window{ftypes.Window_DAY}, v)
 	assert.Len(t, found, 1)
 	assert.Contains(t, found, Bucket{
 		Key:    key,
@@ -145,8 +160,12 @@ func TestBucketizeDuration_All(t *testing.T) {
 	key := "hello"
 	v := value.String("12")
 	// something basic
-	all := []ftypes.Window{ftypes.Window_MINUTE, ftypes.Window_DAY, ftypes.Window_HOUR}
-	buckets := BucketizeDuration(key, 0, 24*3600+3601, all, v)
+	f := fixedWidthBucketizer{map[ftypes.Window]uint64{
+		ftypes.Window_MINUTE: 1,
+		ftypes.Window_HOUR:   1,
+		ftypes.Window_DAY:    1,
+	}}
+	buckets := f.BucketizeDuration(key, 0, 24*3600+3601, v)
 	assert.Equal(t, 2, len(buckets))
 	assert.Equal(t, Bucket{
 		Key:    key,
@@ -166,7 +185,7 @@ func TestBucketizeDuration_All(t *testing.T) {
 	// now let's try a more involved case
 	start := ftypes.Timestamp(3601)
 	end := ftypes.Timestamp(2*24*3600 + 3665) // i.e. 2 days + 1 minute + few seconds later
-	buckets = BucketizeDuration(key, start, end, all, v)
+	buckets = f.BucketizeDuration(key, start, end, v)
 	// we expect 1 day, 23 hours, 59 minutes?
 	expected := make([]Bucket, 0)
 	for i := 0; i < 59; i++ {
