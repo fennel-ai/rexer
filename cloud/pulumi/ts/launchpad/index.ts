@@ -103,7 +103,7 @@ setupTier({
     tierId: Number(tierId),
 
     bootstrapServer: confluentOutput.bootstrapServer,
-    topicNames: [`t_${tierId}_actionlog`, `t_${tierId}_featurelog`],
+    topicNames: [`t_${tierId}_actionlog`, `t_${tierId}_featurelog`, `t_${tierId}_profilelog`],
     kafkaApiKey: confluentOutput.apiKey,
     kafkaApiSecret: confluentOutput.apiSecret,
 
