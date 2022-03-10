@@ -65,10 +65,11 @@ func startActionDBInsertion(tr tier.Tier) error {
 		defer consumer.Close()
 		ctx := context.Background()
 		for {
-			defer timer.Start(ctx, tr.ID, "countaggr.TransferToDB").Stop()
+			t := timer.Start(ctx, tr.ID, "countaggr.TransferToDB")
 			if err := action2.TransferToDB(ctx, tr, consumer); err != nil {
 				tr.Logger.Error("error while reading/writing actions to insert in db:", zap.Error(err))
 			}
+			t.Stop()
 		}
 	}(tr, consumer)
 	return nil
