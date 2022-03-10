@@ -2,6 +2,7 @@ package counter
 
 import (
 	"context"
+	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -11,7 +12,7 @@ import (
 	"fennel/test"
 )
 
-func TestFlatRedisStorage(t *testing.T) {
+func TestStorage(t *testing.T) {
 	t.Parallel()
 	tier, err := test.Tier()
 	assert.NoError(t, err)
@@ -34,6 +35,38 @@ func TestFlatRedisStorage(t *testing.T) {
 			value.Int(0),
 			[]value.Value{value.String("hi"), value.Int(5)},
 			[]value.Value{value.Nil, value.Int(4)},
+		},
+		{
+			twoLevelRedisStore{
+				name:      "name2",
+				period:    24 * 3600,
+				retention: 0,
+			},
+			[]Bucket{
+				{Key: "k1", Window: ftypes.Window_DAY, Width: 1, Index: 5, Value: nil},
+				{Key: "k2", Window: ftypes.Window_HOUR, Width: 6, Index: 7, Value: nil},
+				{Key: "k3", Window: ftypes.Window_HOUR, Width: 6, Index: 8, Value: nil},
+			},
+			value.Int(0),
+			[]value.Value{value.String("hi"), value.Nil, value.Int(51)},
+			[]value.Value{value.Nil, value.Int(4), value.Int(1)},
+		},
+		{
+			twoLevelRedisStore{
+				name:      "name3",
+				period:    24 * 3600,
+				retention: 0,
+			},
+			[]Bucket{
+				{Key: "k1", Window: ftypes.Window_DAY, Width: 1, Index: 5, Value: nil},
+				{Key: "k1", Window: ftypes.Window_HOUR, Width: 6, Index: 9, Value: nil},
+				{Key: "k1", Window: ftypes.Window_HOUR, Width: 6, Index: 8, Value: nil},
+				{Key: "k1", Window: ftypes.Window_MINUTE, Width: 6, Index: 480, Value: nil},
+				{Key: "k2", Window: ftypes.Window_HOUR, Width: 6, Index: 8, Value: nil},
+			},
+			value.Int(0),
+			[]value.Value{value.String("hi"), value.Nil, value.Int(51), value.List{value.Int(1)}, value.Dict{"hi": value.Nil}},
+			[]value.Value{value.Nil, value.Int(4), value.Int(1), value.Int(2), value.Int(3)},
 		},
 	}
 	for _, scene := range scenarios {
@@ -77,6 +110,62 @@ func TestFlatRedisStorage(t *testing.T) {
 			} else {
 				assert.Equal(t, scene.v2[i], found[i])
 			}
+		}
+	}
+}
+
+func TestTwoLevelRedisStore(t *testing.T) {
+	g := twoLevelRedisStore{
+		name:      "something",
+		period:    8 * 3600,
+		retention: 3 * 24 * 3600,
+	}
+	k := "key"
+	scenarios := []struct {
+		b       Bucket
+		s       slot
+		slotkey string
+		rkey    string
+		err     bool
+	}{
+		{
+			Bucket{Key: k, Window: ftypes.Window_MINUTE, Width: 2, Index: 3, Value: value.Int(1)},
+			slot{g: group{key: k, id: 0}, window: ftypes.Window_MINUTE, width: 2, idx: 3, val: value.Int(1)},
+			fmt.Sprintf("%d:%s:%s", ftypes.Window_MINUTE, toBuf(2), toBuf(3)),
+			fmt.Sprintf("agg_l2:%s:%s:8:%s", g.name, k, toBuf(0)),
+			false,
+		},
+		{
+			Bucket{Key: k, Window: ftypes.Window_DAY, Width: 2, Index: 3, Value: value.Int(1)},
+			slot{},
+			"",
+			"",
+			true,
+		},
+		{
+			Bucket{Key: k, Window: ftypes.Window_HOUR, Width: 2, Index: 30, Value: value.Int(1)},
+			slot{g: group{key: k, id: 7}, window: ftypes.Window_HOUR, width: 2, idx: 2, val: value.Int(1)},
+			fmt.Sprintf("%d:%s:%s", ftypes.Window_HOUR, toBuf(2), toBuf(2)),
+			fmt.Sprintf("agg_l2:%s:%s:8:%s", g.name, k, toBuf(7)),
+			false,
+		},
+		{
+			Bucket{Key: k, Window: ftypes.Window_HOUR, Width: 2, Index: 24 * 30, Value: value.Int(1)},
+			slot{g: group{key: k, id: 180}, window: ftypes.Window_HOUR, width: 2, idx: 0, val: value.Int(1)},
+			fmt.Sprintf("%d:%s:%s", ftypes.Window_HOUR, toBuf(2), toBuf(0)),
+			fmt.Sprintf("agg_l2:%s:%s:8:%s", g.name, k, toBuf(180)),
+			false,
+		},
+	}
+	for _, scene := range scenarios {
+		s, err := g.toSlot(&scene.b)
+		if scene.err {
+			assert.Error(t, err)
+		} else {
+			assert.NoError(t, err)
+			assert.Equal(t, scene.s, s)
+			assert.Equal(t, scene.slotkey, g.slotKey(s))
+			assert.Equal(t, scene.rkey, g.redisKey(s.g))
 		}
 	}
 }
