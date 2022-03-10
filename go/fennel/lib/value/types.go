@@ -43,10 +43,10 @@ func (I Int) Equal(v Value) bool {
 	}
 }
 func (I Int) String() string {
-	return fmt.Sprintf("Int(%v)", int64(I))
+	return strconv.FormatInt(int64(I), 10)
 }
 func (I Int) Clone() Value {
-	return Int(I)
+	return I
 }
 func (I Int) Op(opt string, other Value) (Value, error) {
 	return route(I, opt, other)
@@ -72,10 +72,21 @@ func (d Double) String() string {
 	// here we take the minimum number of decimal places needed to represent the float
 	// so 3.4 is represented as just that, not 3.400000
 	// this helps keep the representation unique
-	return fmt.Sprintf("Double(%s)", strconv.FormatFloat(float64(d), 'f', -1, 64))
+	// Integral floats are to be differentiated from integers
+	// so 2 is represented as 2.0
+	str := strconv.FormatFloat(float64(d), 'f', -1, 64)
+	for i := range str {
+		if str[i] == '.' {
+			return str
+		}
+	}
+	sb := strings.Builder{}
+	sb.WriteString(str)
+	sb.WriteString(".0")
+	return sb.String()
 }
 func (d Double) Clone() Value {
-	return Double(d)
+	return d
 }
 func (d Double) Op(opt string, other Value) (Value, error) {
 	return route(d, opt, other)
@@ -96,10 +107,10 @@ func (b Bool) Equal(v Value) bool {
 	}
 }
 func (b Bool) String() string {
-	return fmt.Sprintf("Bool(%v)", bool(b))
+	return strconv.FormatBool(bool(b))
 }
 func (b Bool) Clone() Value {
-	return Bool(b)
+	return b
 }
 func (b Bool) Op(opt string, other Value) (Value, error) {
 	return route(b, opt, other)
@@ -120,10 +131,14 @@ func (s String) Equal(v Value) bool {
 	}
 }
 func (s String) String() string {
-	return fmt.Sprintf("String(%s)", string(s))
+	sb := strings.Builder{}
+	sb.WriteString(`"`)
+	sb.WriteString(string(s))
+	sb.WriteString(`"`)
+	return sb.String()
 }
 func (s String) Clone() Value {
-	return String(s)
+	return s
 }
 func (s String) Op(opt string, other Value) (Value, error) {
 	return route(s, opt, other)
@@ -146,7 +161,7 @@ func (n nil_) Equal(v Value) bool {
 	}
 }
 func (n nil_) String() string {
-	return fmt.Sprintf("Nil")
+	return "null"
 }
 func (n nil_) Clone() Value {
 	return Nil
@@ -192,9 +207,11 @@ func (l List) Equal(right Value) bool {
 func (l List) String() string {
 	sb := strings.Builder{}
 	sb.WriteString("[")
-	for _, v := range l {
-		s := fmt.Sprintf("%v, ", v.String())
-		sb.WriteString(s)
+	for i, v := range l {
+		sb.WriteString(v.String())
+		if i != len(l)-1 {
+			sb.WriteString(",")
+		}
 	}
 	sb.WriteString("]")
 	return sb.String()
@@ -230,7 +247,7 @@ func NewDict(values map[string]Value) (Dict, error) {
 	for k, v := range values {
 		ret[k] = v
 	}
-	return Dict(ret), nil
+	return ret, nil
 }
 
 func (d Dict) isValue() {}
@@ -253,11 +270,21 @@ func (d Dict) Equal(v Value) bool {
 func (d Dict) String() string {
 	s := make([]string, 0, len(d))
 	for k, v := range d {
-		s = append(s, fmt.Sprintf("%s: %v", k, v.String()))
+		sb := strings.Builder{}
+		sb.WriteString(`"`)
+		sb.WriteString(k)
+		sb.WriteString(`"`)
+		sb.WriteString(":")
+		sb.WriteString(v.String())
+		s = append(s, sb.String())
 	}
 	// we sort these strings so that each dictionary gets a unique representation
 	sort.Strings(s)
-	return fmt.Sprintf("{%s}", strings.Join(s, ", "))
+	sb := strings.Builder{}
+	sb.WriteString("{")
+	sb.WriteString(strings.Join(s, ","))
+	sb.WriteString("}")
+	return sb.String()
 }
 func (d Dict) Clone() Value {
 	clone := make(map[string]Value, len(d))
