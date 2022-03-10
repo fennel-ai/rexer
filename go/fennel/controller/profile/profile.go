@@ -49,11 +49,35 @@ func Set(ctx context.Context, tier tier.Tier, request profilelib.ProfileItem) er
 		return err
 	}
 	valSer, err := proto.Marshal(&pval)
-	if err != nil {
-		return err
-	}
 	if err = profile.Set(ctx, tier, request.OType, request.Oid, request.Key, request.Version, valSer); err != nil {
 		return err
+	}
+	return nil
+}
+
+func SetMulti(ctx context.Context, tier tier.Tier, request []profilelib.ProfileItem) error {
+	defer timer.Start(ctx, tier.ID, "controller.profile.setmulti").Stop()
+	profiles := make([]*profilelib.ProtoProfileItem, 0)
+	for _, profile := range request {
+		if err := profile.Validate(); err != nil {
+			return err
+		}
+		if profile.Version == 0 {
+			profile.Version = uint64(time.Now().UnixMicro())
+		}
+		protoVal, err := profilelib.ToProtoProfileItem(&profile)
+		if err != nil {
+			return err
+		}
+		profiles = append(profiles, &protoVal)
+	}
+	producer := tier.Producers[profilelib.PROFILELOG_KAFKA_TOPIC]
+	// TODO: Define and implement batch logging once the downstream API moves out of experimental
+	for _, p := range profiles {
+		err := producer.LogProto(ctx, p, nil)
+		if err != nil {
+			return err
+		}
 	}
 	return nil
 }

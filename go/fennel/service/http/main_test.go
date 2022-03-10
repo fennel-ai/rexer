@@ -7,6 +7,7 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
 
 	action2 "fennel/controller/action"
 	aggregate2 "fennel/controller/aggregate"
@@ -24,6 +25,7 @@ import (
 
 	"github.com/gorilla/mux"
 	"github.com/stretchr/testify/assert"
+	"google.golang.org/protobuf/proto"
 )
 
 func verifyFetch(t *testing.T, c *client.Client, request action.ActionFetchRequest, expected []action.Action) {
@@ -230,6 +232,33 @@ func TestProfileServerClient(t *testing.T) {
 	checkGetSet(t, c, true, "1", 1, 2, "age", value.Nil)
 	checkGetSet(t, c, true, "1", 1, 0, "age", value.Nil)
 	checkGetSet(t, c, false, "10", 3131, 0, "summary", value.Int(1))
+
+	// Try writing multiple profiles and assert they were queued on kafka
+	assert.NoError(t, c.SetProfiles(profileList))
+	consumer, err := tier.NewKafkaConsumer(profilelib.PROFILELOG_KAFKA_TOPIC, "someprofilegroup", kafka.DefaultOffsetPolicy)
+	assert.NoError(t, err)
+	ctx := context.Background()
+	actual, err := batchReadProfilesFromConsumer(t, ctx, consumer, 3)
+	assert.NoError(t, err)
+	assert.ElementsMatch(t, profileList, actual)
+	consumer.Close()
+
+	// Write another batch, previous entries should still be there
+	profileList2 := make([]profilelib.ProfileItem, 0)
+	for i := uint64(1); i <= 3; i++ {
+		p := profilelib.ProfileItem{OType: ftypes.OType("2"), Oid: i, Key: "foo", Version: i, Value: value.Int(i * 10)}
+		profileList2 = append(profileList2, p)
+		profileList = append(profileList, p)
+	}
+
+	assert.NoError(t, c.SetProfiles(profileList2))
+
+	consumer, err = tier.NewKafkaConsumer(profilelib.PROFILELOG_KAFKA_TOPIC, "someprofilegroup2", kafka.DefaultOffsetPolicy)
+	assert.NoError(t, err)
+	actual, err = batchReadProfilesFromConsumer(t, ctx, consumer, 6)
+	assert.NoError(t, err)
+	assert.ElementsMatch(t, profileList, actual)
+	consumer.Close()
 }
 
 func TestQuery(t *testing.T) {
@@ -521,4 +550,20 @@ func batchValueSendReceive(t *testing.T, controller server,
 	assert.NoError(t, err)
 	expected, err := json.Marshal(expectedVals)
 	assert.Equal(t, expected, found)
+}
+
+func batchReadProfilesFromConsumer(t *testing.T, ctx context.Context, consumer kafka.FConsumer, upto int) ([]profilelib.ProfileItem, error) {
+	actualp, err := consumer.ReadBatch(ctx, upto, time.Second*10)
+	assert.NoError(t, err)
+	actual := make([]profilelib.ProfileItem, len(actualp))
+	for i := range actualp {
+		var p profilelib.ProtoProfileItem
+		if err = proto.Unmarshal(actualp[i], &p); err != nil {
+			return nil, err
+		}
+		if actual[i], err = profilelib.FromProtoProfileItem(&p); err != nil {
+			return nil, err
+		}
+	}
+	return actual, nil
 }

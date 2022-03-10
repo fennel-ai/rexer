@@ -12,6 +12,7 @@ import (
 	"fennel/lib/action"
 	"fennel/lib/aggregate"
 	"fennel/lib/ftypes"
+	"fennel/lib/profile"
 	profileLib "fennel/lib/profile"
 	"fennel/lib/query"
 	"fennel/lib/value"
@@ -62,6 +63,11 @@ func (c Client) getProfileURL() string {
 
 func (c Client) setProfileURL() string {
 	c.url.Path = "/set"
+	return fmt.Sprintf(c.url.String())
+}
+
+func (c Client) setProfilesURL() string {
+	c.url.Path = "/set_profiles"
 	return fmt.Sprintf(c.url.String())
 }
 
@@ -176,6 +182,24 @@ func (c *Client) SetProfile(request *profileLib.ProfileItem) error {
 		return fmt.Errorf("could not convert request to json: %v", err)
 	}
 	_, err = c.postJSON(req, c.setProfileURL())
+	return err
+}
+
+func (c *Client) SetProfiles(request []profileLib.ProfileItem) error {
+	// validate and convert to json
+	profiles := make([]profile.ProfileItem, 0)
+	for _, p := range request {
+		if err := p.Validate(); err != nil {
+			return fmt.Errorf("invalid request: %v", err)
+		}
+		profiles = append(profiles, p)
+	}
+
+	req, err := json.Marshal(profiles)
+	if err != nil {
+		return fmt.Errorf("could not convert request to json: %v", err)
+	}
+	_, err = c.postJSON(req, c.setProfilesURL())
 	return err
 }
 
