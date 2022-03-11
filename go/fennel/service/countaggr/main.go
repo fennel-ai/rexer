@@ -9,6 +9,7 @@ import (
 
 	action2 "fennel/controller/action"
 	"fennel/controller/aggregate"
+	profile2 "fennel/controller/profile"
 	"fennel/kafka"
 	"fennel/lib/action"
 	libaggregate "fennel/lib/aggregate"
@@ -86,7 +87,7 @@ func startProfileDBInsertion(tr tier.Tier) error {
 		ctx := context.Background()
 		for {
 			t := timer.Start(ctx, tr.ID, "countaggr.TransferProfilesToDB")
-			if err := action2.TransferToDB(ctx, tr, consumer); err != nil {
+			if err := profile2.TransferToDB(ctx, tr, consumer); err != nil {
 				tr.Logger.Error("error while reading/writing actions to insert in db:", zap.Error(err))
 			}
 			t.Stop()

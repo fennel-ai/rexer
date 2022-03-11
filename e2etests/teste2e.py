@@ -12,7 +12,7 @@ import unittest
 
 from rexerclient.rql import Var, Int, String, it, Ops, List, Cond, Make
 from rexerclient import client
-from rexerclient.models import action
+from rexerclient.models import action, profile
 
 
 ROOT = os.getenv("FENNEL_ROOT")
@@ -181,16 +181,29 @@ class TestEndToEnd(unittest.TestCase):
         age_group = 3
         creator_id = 567
 
-        # set some profiles
-        c.set_profile("user", uid, "city", city)
-        c.set_profile("user", uid, "gender", gender)
-        c.set_profile("user", uid, "age_group", age_group)
-        c.set_profile('video', video_id, "creatorId", creator_id)
+        # set some profiles using set_profiles
+        c.set_profiles([
+            profile.Profile(otype="user", oid=uid, key="city", value=city),
+            profile.Profile(otype="user", oid=uid, key="gender", value=gender),
+            profile.Profile(otype="user", oid=uid, key="age_group", value=age_group),
+            profile.Profile(otype="video", oid=video_id, key="creatorId", value=creator_id),
+        ])
 
-        self.assertEqual(city, c.get_profile("user", uid, "city"))
-        self.assertEqual(gender, c.get_profile("user", uid, "gender"))
-        self.assertEqual(age_group, c.get_profile("user", uid, "age_group"))
-        self.assertEqual(creator_id, c.get_profile("video", video_id, "creatorId"))
+        slept = 0
+        passed = False
+        while slept < 120:
+            passed = (
+                city == c.get_profile("user", uid, "city") and
+                gender == c.get_profile("user", uid, "gender") and
+                age_group == c.get_profile("user", uid, "age_group") and
+                creator_id == c.get_profile("video", video_id, "creatorId")
+            )
+            if passed:
+                break
+
+            time.sleep(5)
+            slept += 5
+        self.assertTrue(passed)
 
         # Total views gained by a video in last 2 days for given city+gender+age_group
         q1 = Var('args').actions.apply(
