@@ -35,6 +35,8 @@ const tierConfs: Record<number, number> = {
     103: 2,
     // Aditya's new dev tier.
     104: 3,
+    // Lokal prod tier.
+    105: 4,
 }
 
 // map from plane id to its configuration.
@@ -100,6 +102,24 @@ const planeConfs: Record<number, PlaneConf> = {
             numShards: 2,
             nodeType: "db.t4g.medium",
         }
+    },
+    4: {
+        planeId: 4,
+        region: "ap-south-1",
+        roleArn: "arn:aws:iam::030813887342:role/admin",
+        vpcConf: {
+            cidr: "10.104.0.0/16"
+        },
+        dbConf: {
+            minCapacity: 1,
+            maxCapacity: 4,
+            password: "password"
+        },
+        confluentConf: {
+            username: confluentUsername,
+            password: confluentPassword
+        },
+        controlPlaneConf: controlPlane,
     },
 }
 
