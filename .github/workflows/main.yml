@@ -1,0 +1,60 @@
+# This is a basic workflow to help you get started with Actions
+
+name: e2e-tests-linux-x64
+
+# Controls when the workflow will run
+on:
+  # Allows you to run this workflow manually from the Actions tab
+  workflow_dispatch:
+  
+  # Allows running unit test on every pull request
+  pull_request:
+
+# A workflow run is made up of one or more jobs that can run sequentially or in parallel
+jobs:
+  # This workflow contains a single job called "build"
+  build:
+    # The type of runner that the job will run on
+    runs-on: [self-hosted, Linux, X64]
+
+    # Steps represent a sequence of tasks that will be executed as part of the job
+    steps:
+      # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
+      - uses: actions/checkout@v2
+
+      - uses: actions/checkout@v1  
+        with:
+          repository: fennel-ai/rexer-pyclient-alpha
+          token: ${{ secrets.ACCESS_TOKEN }}
+
+      - uses: actions/setup-python@v2
+        with:
+          python-version: '3.x'
+
+      # Install and configure poetry
+      - name: Install Poetry
+        uses: snok/install-poetry@v1
+        with:
+          virtualenvs-create: true
+          virtualenvs-in-project: true
+          installer-parallel: true
+
+      # Load cached venv if cache exists
+      - name: Load cached venv
+        id: cached-poetry-dependencies
+        uses: actions/cache@v2
+        with:
+          path: .venv
+          key: venv-${{ runner.os }}-${{ steps.setup-python.outputs.python-version }}-${{ hashFiles('**/poetry.lock') }}
+
+      # Install rexer which will be used later in the e2etest.py
+      - name: Install dependencies
+        working-directory: ../rexer-pyclient-alpha
+        if: steps.cached-poetry-dependencies.outputs.cache-hit != 'true'
+        run: poetry install --no-interaction
+        
+      # Run the test
+      - name: Run test
+        working-directory: e2etests/
+        run: poetry run python -m unittest discover 
+        
