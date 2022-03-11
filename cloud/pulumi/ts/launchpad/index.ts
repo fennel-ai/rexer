@@ -66,7 +66,7 @@ const planeConfs: Record<number, PlaneConf> = {
         },
         dbConf: {
             minCapacity: 4,
-            maxCapacity: 16,
+            maxCapacity: 4,
             password: "foundationdb"
         },
         confluentConf: {
@@ -75,7 +75,7 @@ const planeConfs: Record<number, PlaneConf> = {
         },
         controlPlaneConf: controlPlane,
         redisConf: {
-            numShards: 2,
+            numShards: 1,
             nodeType: "db.t4g.medium",
         }
     },
@@ -105,13 +105,22 @@ const planeConfs: Record<number, PlaneConf> = {
 
 //==============================================================================
 
-const tierId = Number.parseInt(process.argv[process.argv.length - 1])
-console.log("Got tier id: ", tierId);
+var tierId = 0;
+var planeId = 0;
 
-const planeConf = planeConfs[tierConfs[tierId]]
+const id = Number.parseInt(process.argv[process.argv.length - 1])
+if (id in planeConfs) {
+    planeId = id
+} else if (id in tierConfs) {
+    tierId = id
+    planeId = tierConfs[tierId]
+} else {
+    console.log(`${id} is neither a tier nor a plane`)
+    process.exit(1)
+}
 
-// Create/update/delete the data plane.
-console.log("Updating plane: ", tierConfs[tierId]);
+console.log("Updating plane: ", planeId)
+const planeConf = planeConfs[planeId]
 const dataplane = await setupDataPlane(planeConf);
 
 const confluentOutput = dataplane[nameof<PlaneOutput>("confluent")].value as confluentenv.outputType
@@ -122,28 +131,30 @@ const elasticacheOutput = dataplane[nameof<PlaneOutput>("elasticache")].value as
 const vpcOutput = dataplane[nameof<PlaneOutput>("vpc")].value as vpc.outputType
 
 // Create/update/delete the tier.
-console.log("Updating tier: ", tierId);
-setupTier({
-    tierId: Number(tierId),
+if (tierId !== 0) {
+    console.log("Updating tier: ", tierId);
+    setupTier({
+        tierId: Number(tierId),
 
-    bootstrapServer: confluentOutput.bootstrapServer,
-    topicNames: [`t_${tierId}_actionlog`, `t_${tierId}_featurelog`, `t_${tierId}_profilelog`],
-    kafkaApiKey: confluentOutput.apiKey,
-    kafkaApiSecret: confluentOutput.apiSecret,
+        bootstrapServer: confluentOutput.bootstrapServer,
+        topicNames: [`t_${tierId}_actionlog`, `t_${tierId}_featurelog`, `t_${tierId}_profilelog`],
+        kafkaApiKey: confluentOutput.apiKey,
+        kafkaApiSecret: confluentOutput.apiSecret,
 
-    db: "db",
-    dbEndpoint: dbOutput.host,
-    dbUsername: "admin",
-    dbPassword: planeConf.dbConf.password,
+        db: "db",
+        dbEndpoint: dbOutput.host,
+        dbUsername: "admin",
+        dbPassword: planeConf.dbConf.password,
 
-    roleArn: planeConf.roleArn,
-    region: planeConf.region,
+        roleArn: planeConf.roleArn,
+        region: planeConf.region,
 
-    kubeconfig: JSON.stringify(eksOutput.kubeconfig),
-    namespace: `t-${tierId}`,
+        kubeconfig: JSON.stringify(eksOutput.kubeconfig),
+        namespace: `t-${tierId}`,
 
-    redisEndpoint: redisOutput.clusterEndPoints[0],
-    cachePrimaryEndpoint: elasticacheOutput.endpoint,
-    subnetIds: vpcOutput.privateSubnets,
-    loadBalancerScheme: "internal",
-}).catch(err => console.log(err))
+        redisEndpoint: redisOutput.clusterEndPoints[0],
+        cachePrimaryEndpoint: elasticacheOutput.endpoint,
+        subnetIds: vpcOutput.privateSubnets,
+        loadBalancerScheme: "internal",
+    }, false).catch(err => console.log(err))
+}
