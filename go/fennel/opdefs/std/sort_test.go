@@ -8,7 +8,7 @@ import (
 	"fennel/tier"
 )
 
-func TestSortOp_Apply(t *testing.T) {
+func TestSortOperator_Apply(t *testing.T) {
 	intable := []value.Dict{
 		{"name": value.String("first")},
 		{"name": value.String("second")},
@@ -20,7 +20,7 @@ func TestSortOp_Apply(t *testing.T) {
 		{"by": value.Double(3.0)},
 	}
 
-	orders := []value.Dict{{"desc": value.Bool(false)}, {"desc": value.Bool(false)}}
+	orders := []value.Dict{{"desc": value.Bool(false)}, {"desc": value.Bool(true)}}
 
 	expected := [][]value.Dict{
 		{
@@ -36,6 +36,6 @@ func TestSortOp_Apply(t *testing.T) {
 	}
 
 	tr := tier.Tier{}
-	optest.Assert(t, tr, &SortOperator{}, orders[0], intable, contextKwargs, expected[0])
-	optest.Assert(t, tr, &SortOperator{}, orders[1], intable, contextKwargs, expected[1])
+	optest.AssertEqual(t, tr, &SortOperator{}, orders[0], intable, contextKwargs, expected[0])
+	optest.AssertEqual(t, tr, &SortOperator{}, orders[1], intable, contextKwargs, expected[1])
 }
