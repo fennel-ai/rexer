@@ -28,8 +28,8 @@ func TestJSON(t *testing.T) {
 	// Test nil pointer list and dict not marshalling to null
 	tests = append(tests, test{str: "[]", val: List(nil)})
 	tests = append(tests, test{str: "{}", val: Dict(nil)})
-	tests = append(tests, test{str: "[[[],{}]]", val: List{List{List(nil), Dict(nil)}}})
-	tests = append(tests, test{str: `{"1":{"2":{"3":[],"4":{}}}}`, val: Dict{"1": Dict{"2": Dict{
+	tests = append(tests, test{str: "[[null,[],{}]]", val: List{List{nil, List(nil), Dict(nil)}}})
+	tests = append(tests, test{str: `{"0":null,"1":{"2":{"3":[],"4":{}}}}`, val: Dict{"0": nil, "1": Dict{"2": Dict{
 		"3": List(nil), "4": Dict(nil),
 	}}}})
 
