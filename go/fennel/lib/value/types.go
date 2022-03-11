@@ -1,7 +1,6 @@
 package value
 
 import (
-	"encoding/json"
 	"fmt"
 	"reflect"
 	"sort"
@@ -52,7 +51,7 @@ func (I Int) Op(opt string, other Value) (Value, error) {
 	return route(I, opt, other)
 }
 func (I Int) MarshalJSON() ([]byte, error) {
-	return json.Marshal(int64(I))
+	return []byte(I.String()), nil
 }
 
 type Double float64
@@ -92,7 +91,7 @@ func (d Double) Op(opt string, other Value) (Value, error) {
 	return route(d, opt, other)
 }
 func (d Double) MarshalJSON() ([]byte, error) {
-	return json.Marshal(float64(d))
+	return []byte(d.String()), nil
 }
 
 type Bool bool
@@ -116,7 +115,7 @@ func (b Bool) Op(opt string, other Value) (Value, error) {
 	return route(b, opt, other)
 }
 func (b Bool) MarshalJSON() ([]byte, error) {
-	return json.Marshal(bool(b))
+	return []byte(b.String()), nil
 }
 
 type String string
@@ -144,7 +143,7 @@ func (s String) Op(opt string, other Value) (Value, error) {
 	return route(s, opt, other)
 }
 func (s String) MarshalJSON() ([]byte, error) {
-	return json.Marshal(string(s))
+	return []byte(s.String()), nil
 }
 
 type nil_ struct{}
@@ -170,7 +169,7 @@ func (n nil_) Op(opt string, other Value) (Value, error) {
 	return route(n, opt, other)
 }
 func (n nil_) MarshalJSON() ([]byte, error) {
-	return json.Marshal(nil)
+	return []byte(n.String()), nil
 }
 
 type List []Value
@@ -208,7 +207,11 @@ func (l List) String() string {
 	sb := strings.Builder{}
 	sb.WriteString("[")
 	for i, v := range l {
-		sb.WriteString(v.String())
+		if v == nil {
+			sb.WriteString("null")
+		} else {
+			sb.WriteString(v.String())
+		}
 		if i != len(l)-1 {
 			sb.WriteString(",")
 		}
@@ -225,7 +228,7 @@ func (l List) Clone() Value {
 	return List(clone)
 }
 func (l List) MarshalJSON() ([]byte, error) {
-	return json.Marshal([]Value(l))
+	return []byte(l.String()), nil
 }
 
 func (l *List) Append(v Value) error {
@@ -275,7 +278,11 @@ func (d Dict) String() string {
 		sb.WriteString(k)
 		sb.WriteString(`"`)
 		sb.WriteString(":")
-		sb.WriteString(v.String())
+		if v == nil {
+			sb.WriteString("null")
+		} else {
+			sb.WriteString(v.String())
+		}
 		s = append(s, sb.String())
 	}
 	// we sort these strings so that each dictionary gets a unique representation
@@ -294,7 +301,7 @@ func (d Dict) Clone() Value {
 	return Dict(clone)
 }
 func (d Dict) MarshalJSON() ([]byte, error) {
-	return json.Marshal(map[string]Value(d))
+	return []byte(d.String()), nil
 }
 
 func (d Dict) Schema() map[string]reflect.Type {
