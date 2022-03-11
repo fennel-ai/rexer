@@ -60,6 +60,5 @@ jobs:
         
       # Run the test
       - name: Run test
-        working-directory: e2etests/
-        run: poetry run python -m unittest discover 
-        
+        working-directory: ../rexer-pyclient-alpha/rexer-client-${{ github.run_id }}-${{ github.run_number }}
+        run: poetry run python -m unittest discover ../../rexer/e2etests
