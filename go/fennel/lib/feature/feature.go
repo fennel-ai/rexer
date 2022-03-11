@@ -124,7 +124,7 @@ func (r Row) MarshalJSON() ([]byte, error) {
 	d["model_id"] = value.String(r.ModelID)
 	d["request_id"] = value.Int(r.RequestID)
 	d["model_prediction"] = value.Double(r.ModelPrediction)
-	return value.ToJSON(d)
+	return value.ToJSON(d), nil
 }
 
 func prefixed(prefix, k string) string {

@@ -1,69 +1,24 @@
 package value
 
 import (
-	"encoding/json"
 	"fmt"
 
 	"github.com/buger/jsonparser"
 )
 
-// Clean takes a value, and returns a value with nil lists/dicts replaced by empty lists/dicts
+// Clean takes a value, and returns a value with nil list/dict replaced by empty list/dict
 func Clean(v Value) Value {
 	switch v := v.(type) {
 	case List:
 		if v == nil {
 			return List{}
-		} else {
-			cleanList(v)
 		}
 	case Dict:
 		if v == nil {
 			return Dict{}
-		} else {
-			cleanDict(v)
 		}
 	}
 	return v
-}
-
-// cleanList recursively converts all nil lists/dicts in the list to empty lists/dicts
-func cleanList(l List) {
-	for i, e := range l {
-		switch e := e.(type) {
-		case List:
-			if e == nil {
-				l[i] = List{}
-			} else {
-				cleanList(e)
-			}
-		case Dict:
-			if e == nil {
-				l[i] = Dict{}
-			} else {
-				cleanDict(e)
-			}
-		}
-	}
-}
-
-// cleanDict recursively converts all nil lists/dicts in the dict to empty lists/dicts
-func cleanDict(d Dict) {
-	for k, v := range d {
-		switch v := v.(type) {
-		case List:
-			if v == nil {
-				d[k] = List{}
-			} else {
-				cleanList(v)
-			}
-		case Dict:
-			if v == nil {
-				d[k] = Dict{}
-			} else {
-				cleanDict(v)
-			}
-		}
-	}
 }
 
 func FromJSON(data []byte) (Value, error) {
@@ -74,38 +29,11 @@ func FromJSON(data []byte) (Value, error) {
 	return ParseJSON(vdata, vtype)
 }
 
-func ToJSON(val Value) ([]byte, error) {
-	switch val := val.(type) {
-	// When val is a nil list/dict, json.Marshal() marshals it as null. Marshal empty list/dict instead.
-	// When val is a non-nul list/dict, recursively clean up elements which may be nil lists/dicts.
-	case List:
-		if val == nil {
-			return json.Marshal(List{})
-		} else {
-			cleanList(val)
-		}
-	case Dict:
-		if val == nil {
-			return json.Marshal(Dict{})
-		} else {
-			cleanDict(val)
-		}
-	// When double is integral, json.Marshal() marshals it as an int.
-	// Add ".0" at the end in that case.
-	case Double:
-		ser, err := json.Marshal(val)
-		if err != nil {
-			return nil, err
-		}
-		for _, b := range ser {
-			if b == '.' {
-				return ser, nil
-			}
-		}
-		ser = append(ser, '.', '0')
-		return ser, nil
+func ToJSON(val Value) []byte {
+	if val == nil {
+		return []byte("null")
 	}
-	return json.Marshal(val)
+	return []byte(val.String())
 }
 
 func ParseJSON(vdata []byte, vtype jsonparser.ValueType) (Value, error) {
