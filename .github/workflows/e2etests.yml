@@ -33,8 +33,10 @@ jobs:
       - run: mv rexer-client-${{ github.run_id }}-${{ github.run_number }} ../rexer-pyclient-alpha
 
       # Install build essentials
-      - name: install build essential
-        run: sudo apt-get --assume-yes install build-essential
+      - name: install build essential and pkg-config
+        run: |
+          sudo apt-get --assume-yes install build-essential
+          sudo apt-get --assume-yes install pkg-config
 
       # Install go (we use 1.17.0 version, so we will stick to it)
       - uses: actions/setup-go@v2
