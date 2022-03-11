@@ -90,3 +90,15 @@ func TestList_Append(t *testing.T) {
 	assert.Len(t, l, 2)
 	assert.Equal(t, List{Int(2), Bool(false)}, l)
 }
+
+func TestStringingNilValue(t *testing.T) {
+	l1 := List{nil}
+	l2 := List{List{nil}}
+	d1 := Dict{"0": nil}
+	d2 := Dict{"0": Dict{"_": nil}}
+
+	assert.Equal(t, `[null]`, l1.String())
+	assert.Equal(t, `[[null]]`, l2.String())
+	assert.Equal(t, `{"0":null}`, d1.String())
+	assert.Equal(t, `{"0":{"_":null}}`, d2.String())
+}
