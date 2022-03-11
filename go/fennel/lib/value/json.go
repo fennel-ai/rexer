@@ -6,63 +6,19 @@ import (
 	"github.com/buger/jsonparser"
 )
 
-// Clean takes a value, and returns a value with nil lists/dicts replaced by empty lists/dicts
+// Clean takes a value, and returns a value with nil list/dict replaced by empty list/dict
 func Clean(v Value) Value {
 	switch v := v.(type) {
 	case List:
 		if v == nil {
 			return List{}
-		} else {
-			cleanList(v)
 		}
 	case Dict:
 		if v == nil {
 			return Dict{}
-		} else {
-			cleanDict(v)
 		}
 	}
 	return v
-}
-
-// cleanList recursively converts all nil lists/dicts in the list to empty lists/dicts
-func cleanList(l List) {
-	for i, e := range l {
-		switch e := e.(type) {
-		case List:
-			if e == nil {
-				l[i] = List{}
-			} else {
-				cleanList(e)
-			}
-		case Dict:
-			if e == nil {
-				l[i] = Dict{}
-			} else {
-				cleanDict(e)
-			}
-		}
-	}
-}
-
-// cleanDict recursively converts all nil lists/dicts in the dict to empty lists/dicts
-func cleanDict(d Dict) {
-	for k, v := range d {
-		switch v := v.(type) {
-		case List:
-			if v == nil {
-				d[k] = List{}
-			} else {
-				cleanList(v)
-			}
-		case Dict:
-			if v == nil {
-				d[k] = Dict{}
-			} else {
-				cleanDict(v)
-			}
-		}
-	}
 }
 
 func FromJSON(data []byte) (Value, error) {
