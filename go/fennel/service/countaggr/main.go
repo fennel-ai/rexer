@@ -13,6 +13,7 @@ import (
 	"fennel/lib/action"
 	libaggregate "fennel/lib/aggregate"
 	"fennel/lib/ftypes"
+	"fennel/lib/profile"
 	"fennel/lib/timer"
 	_ "fennel/opdefs" // ensure that all operators are present in the binary
 	"fennel/service/common"
@@ -75,6 +76,25 @@ func startActionDBInsertion(tr tier.Tier) error {
 	return nil
 }
 
+func startProfileDBInsertion(tr tier.Tier) error {
+	consumer, err := tr.NewKafkaConsumer(profile.PROFILELOG_KAFKA_TOPIC, "_put_profiles_in_db", kafka.DefaultOffsetPolicy)
+	if err != nil {
+		return fmt.Errorf("unable to start consumer for inserting profiles in DB: %v", err)
+	}
+	go func(tr tier.Tier, consumer kafka.FConsumer) {
+		defer consumer.Close()
+		ctx := context.Background()
+		for {
+			t := timer.Start(ctx, tr.ID, "countaggr.TransferProfilesToDB")
+			if err := action2.TransferToDB(ctx, tr, consumer); err != nil {
+				tr.Logger.Error("error while reading/writing actions to insert in db:", zap.Error(err))
+			}
+			t.Stop()
+		}
+	}(tr, consumer)
+	return nil
+}
+
 func main() {
 	// Parse flags / environment variables.
 	var flags struct {
@@ -97,6 +117,10 @@ func main() {
 
 	// first kick off a goroutine to transfer actions from kafka to DB
 	if err = startActionDBInsertion(tr); err != nil {
+		panic(err)
+	}
+
+	if err = startProfileDBInsertion(tr); err != nil {
 		panic(err)
 	}
 

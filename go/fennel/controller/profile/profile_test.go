@@ -13,7 +13,6 @@ import (
 	"fennel/tier"
 
 	"github.com/stretchr/testify/assert"
-	"google.golang.org/protobuf/proto"
 )
 
 // TODO: Add more tests
@@ -71,6 +70,38 @@ func TestProfileController(t *testing.T) {
 	checkGet(t, ctx, tier, profiles[2], vals[2])
 }
 
+func TestProfileDBInsert(t *testing.T) {
+	tier, err := test.Tier()
+	assert.NoError(t, err)
+	defer test.Teardown(tier)
+	ctx := context.Background()
+
+	// mini-redis does not play well with cache keys in different "slots" (in the same txn),
+	// currently it is determined using (otype, oid, key). We test behavior across
+	// different objects in `_integration_test`
+
+	vals := []value.Value{value.Int(1), value.Int(2), value.Int(3), value.Int(4)}
+	profiles := []profilelib.ProfileItem{
+		{OType: "User", Oid: 1222, Key: "summary", Version: 1, Value: vals[0]},
+		{OType: "User", Oid: 1222, Key: "summary", Version: 10, Value: vals[1]},
+		{OType: "User", Oid: 1222, Key: "summary", Version: 12, Value: vals[2]},
+		{OType: "User", Oid: 1222, Key: "summary", Version: 11, Value: vals[3]},
+	}
+	assert.NoError(t, dbInsert(ctx, tier, profiles))
+
+	// check that the entries were written
+	actual, err := GetBatched(ctx, tier, profiles)
+	assert.NoError(t, err)
+	assert.ElementsMatch(t, actual, vals)
+
+	v, err := GetBatched(ctx, tier, []profilelib.ProfileItem{
+		{OType: "User", Oid: 1222, Key: "summary", Version: 0},
+		{OType: "User", Oid: 1222, Key: "summary", Version: 11},
+	})
+	assert.NoError(t, err)
+	assert.ElementsMatch(t, []value.Value{vals[2], vals[3]}, v)
+}
+
 func TestProfileSetMultiWritesToKafka(t *testing.T) {
 	tier, err := test.Tier()
 	assert.NoError(t, err)
@@ -86,29 +117,11 @@ func TestProfileSetMultiWritesToKafka(t *testing.T) {
 	assert.NoError(t, SetMulti(ctx, tier, profiles))
 
 	// Read kafka to check that profiles have been written
-	found, err := readBatch(t, ctx, tier, 4)
-	assert.NoError(t, err)
-	assert.Equal(t, profiles, found)
-}
-
-func readBatch(t *testing.T, ctx context.Context, tier tier.Tier, count int) ([]profilelib.ProfileItem, error) {
 	consumer, err := tier.NewKafkaConsumer(profilelib.PROFILELOG_KAFKA_TOPIC, utils.RandString(6), kafka.DefaultOffsetPolicy)
 	assert.NoError(t, err)
-	defer consumer.Close()
-
-	msgs, err := consumer.ReadBatch(ctx, count, time.Second*30)
+	found, err := ReadBatch(ctx, consumer, 4, time.Second*10)
 	assert.NoError(t, err)
-	actual := make([]profilelib.ProfileItem, len(msgs))
-	for i := range msgs {
-		var p profilelib.ProtoProfileItem
-		if err = proto.Unmarshal(msgs[i], &p); err != nil {
-			return nil, err
-		}
-		if actual[i], err = profilelib.FromProtoProfileItem(&p); err != nil {
-			return nil, err
-		}
-	}
-	return actual, nil
+	assert.Equal(t, profiles, found)
 }
 
 func checkSet(t *testing.T, ctx context.Context, tier tier.Tier, request profilelib.ProfileItem) {

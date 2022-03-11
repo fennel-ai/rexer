@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"fennel/lib/value"
+
 	"github.com/stretchr/testify/assert"
 )
 
@@ -94,4 +95,16 @@ func TestProfileFetchRequestJSON(t *testing.T) {
 		assert.NoError(t, err)
 		assert.Equal(t, tst.str, string(ser))
 	}
+}
+
+func TestProfileItemToSer(t *testing.T) {
+	// Value set
+	p := ProfileItem{OType: "user", Oid: 12, Key: "xyz", Version: 1, Value: value.Int(2)}
+	pser, err := p.ToProfileItemSer()
+	assert.NoError(t, err)
+	actualV, err := value.Marshal(value.Int(2))
+	assert.NoError(t, err)
+	assert.Equal(t, pser, &ProfileItemSer{
+		OType: "user", Oid: 12, Key: "xyz", Version: 1, Value: actualV,
+	})
 }

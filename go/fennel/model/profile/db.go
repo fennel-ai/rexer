@@ -17,31 +17,60 @@ import (
 // we create a private interface to make testing caching easier
 type provider interface {
 	set(ctx context.Context, tier tier.Tier, otype ftypes.OType, oid uint64, key string, version uint64, valueSer []byte) error
+	setBatch(ctx context.Context, tier tier.Tier, profiles []profile.ProfileItemSer) error
 	get(ctx context.Context, tier tier.Tier, otype ftypes.OType, oid uint64, key string, version uint64) ([]byte, error)
-	getversion(ctx context.Context, tier tier.Tier, otype ftypes.OType, oid uint64, key string) (uint64, error)
+	getVersionBatched(ctx context.Context, tier tier.Tier, vids []versionIdentifier) (map[versionIdentifier]uint64, error)
 }
 
 type dbProvider struct{}
 
+type versionIdentifier struct {
+	otype ftypes.OType
+	oid   uint64
+	key   string
+}
+
+func (D dbProvider) setBatch(ctx context.Context, tier tier.Tier, profiles []profile.ProfileItemSer) error {
+	defer timer.Start(ctx, tier.ID, "model.profile.db.setBatch").Stop()
+	if len(profiles) == 0 {
+		return nil
+	}
+	// validate profiles
+	for _, profile := range profiles {
+		if profile.Version == 0 {
+			return fmt.Errorf("version can not be zero")
+		}
+		if len(profile.Key) > 255 {
+			return fmt.Errorf("Key too long: keys can only be upto 255 chars")
+		}
+		if len(profile.OType) > 255 {
+			return fmt.Errorf("otype too long: otypes can only be upto 255 chars")
+		}
+	}
+
+	// write
+	sql := `
+		INSERT INTO profile
+			(otype, oid, zkey, version, value)
+		VALUES `
+	vals := make([]interface{}, 0)
+	for _, profile := range profiles {
+		sql += "(?, ?, ?, ?, ?),"
+		vals = append(vals, profile.OType, profile.Oid, profile.Key, profile.Version, profile.Value)
+	}
+	sql = strings.TrimSuffix(sql, ",") // remove the last trailing comma
+
+	stmt, err := tier.DB.Prepare(sql)
+	if err != nil {
+		return err
+	}
+	_, err = stmt.Exec(vals...)
+	return err
+}
+
 func (D dbProvider) set(ctx context.Context, tier tier.Tier, otype ftypes.OType, oid uint64, key string, version uint64, valueSer []byte) error {
 	defer timer.Start(ctx, tier.ID, "model.profile.db.set").Stop()
-	if version == 0 {
-		return fmt.Errorf("version can not be zero")
-	}
-	if len(key) > 255 {
-		return fmt.Errorf("makeKey too long: keys can only be upto 255 chars")
-	}
-	if len(otype) > 255 {
-		return fmt.Errorf("otype too long: otypes can only be upto 255 chars")
-	}
-	_, err := tier.DB.ExecContext(ctx, `
-		INSERT INTO profile 
-			(otype, oid, zkey, version, value)
-		VALUES
-			(?, ?, ?, ?, ?);`,
-		otype, oid, key, version, valueSer,
-	)
-	return err
+	return D.setBatch(ctx, tier, []profile.ProfileItemSer{profile.NewProfileItemSer(string(otype), oid, key, version, valueSer)})
 }
 
 func (D dbProvider) get(ctx context.Context, tier tier.Tier, otype ftypes.OType, oid uint64, key string, version uint64) ([]byte, error) {
@@ -84,32 +113,44 @@ func (D dbProvider) get(ctx context.Context, tier tier.Tier, otype ftypes.OType,
 	}
 }
 
-// getversion returns the largest version of the profile identified using given attributes
-//
-// returns "0" if no profile exists
-func (D dbProvider) getversion(ctx context.Context, tier tier.Tier, otype ftypes.OType, oid uint64, key string) (uint64, error) {
-	defer timer.Start(ctx, tier.ID, "model.profile.db.getversion").Stop()
-	var v []uint64
-	// if version isn't given, just pick the highest version
-	err := tier.DB.SelectContext(ctx, &v, `
-	SELECT version
-	FROM profile 
-	WHERE
-		otype = ?
-		AND oid = ?
-		AND zkey = ?
-	ORDER BY version DESC
-	LIMIT 1
-	`, otype, oid, key,
-	)
-	if err != nil {
-		return 0, err
-	} else if len(v) == 0 {
-		// i.e no valid value is found, so we return nil
-		return 0, nil
-	} else {
-		return v[0], nil
+// getVersionBatched returns the largest version of the profile identified using (otype, oid, key)
+func (D dbProvider) getVersionBatched(ctx context.Context, tier tier.Tier, vids []versionIdentifier) (map[versionIdentifier]uint64, error) {
+	// deduplicate profiles on (otype, oid, key)
+	vidUnique := make(map[versionIdentifier]struct{})
+	for _, vid := range vids {
+		if _, ok := vidUnique[vid]; !ok {
+			vidUnique[vid] = struct{}{}
+		}
 	}
+
+	// construct the select query and execute it
+	sql := `
+		SELECT otype, oid, zkey, max(version) as version
+		FROM profile
+		WHERE (otype, oid, zkey) in 
+	`
+	v := make([]interface{}, 0)
+	inval := "("
+	for vid, _ := range vidUnique {
+		inval += "(?, ?, ?),"
+		v = append(v, vid.otype, vid.oid, vid.key)
+	}
+	inval = strings.TrimSuffix(inval, ",") // remove the last trailing comma
+	inval += ")"
+	sql += inval
+	sql += " GROUP BY otype, oid, zkey"
+
+	profilereqs := make([]profile.ProfileFetchRequest, 0)
+	err := tier.DB.SelectContext(ctx, &profilereqs, sql, v...)
+	if err != nil {
+		return nil, err
+	}
+
+	versionByVid := make(map[versionIdentifier]uint64)
+	for _, p := range profilereqs {
+		versionByVid[versionIdentifier{p.OType, p.Oid, p.Key}] = p.Version
+	}
+	return versionByVid, nil
 }
 
 var _ provider = dbProvider{}

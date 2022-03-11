@@ -2,8 +2,10 @@ package profile
 
 import (
 	"context"
+	"fmt"
 	"time"
 
+	"fennel/kafka"
 	profilelib "fennel/lib/profile"
 	"fennel/lib/timer"
 	"fennel/lib/value"
@@ -80,6 +82,56 @@ func SetMulti(ctx context.Context, tier tier.Tier, request []profilelib.ProfileI
 		}
 	}
 	return nil
+}
+
+func dbInsert(ctx context.Context, tier tier.Tier, profiles []profilelib.ProfileItem) error {
+	profileSers := make([]profilelib.ProfileItemSer, len(profiles))
+	for i, p := range profiles {
+		if err := p.Validate(); err != nil {
+			return fmt.Errorf("invalid action: %v", err)
+		}
+		if p.Version == 0 {
+			p.Version = uint64(time.Now().UnixMicro())
+		}
+		pSer, err := p.ToProfileItemSer()
+		if err != nil {
+			return err
+		}
+		profileSers[i] = *pSer
+	}
+	return profile.SetBatch(ctx, tier, profileSers)
+}
+
+func ReadBatch(ctx context.Context, consumer kafka.FConsumer, count int, timeout time.Duration) ([]profilelib.ProfileItem, error) {
+	msgs, err := consumer.ReadBatch(ctx, count, timeout)
+	if err != nil {
+		return nil, err
+	}
+	profiles := make([]profilelib.ProfileItem, len(msgs))
+	for i := range msgs {
+		var p profilelib.ProtoProfileItem
+		if err = proto.Unmarshal(msgs[i], &p); err != nil {
+			return nil, err
+		}
+		if profiles[i], err = profilelib.FromProtoProfileItem(&p); err != nil {
+			return nil, err
+		}
+	}
+	return profiles, nil
+}
+
+func TransferToDB(ctx context.Context, tr tier.Tier, consumer kafka.FConsumer) error {
+	profiles, err := ReadBatch(ctx, consumer, 950, time.Second*10)
+	if err != nil {
+		return err
+	}
+	if len(profiles) == 0 {
+		return nil
+	}
+	if err = dbInsert(ctx, tr, profiles); err != nil {
+		return err
+	}
+	return consumer.Commit()
 }
 
 // GetBatched takes a list of profile items (value field is ignored) and returns a list of values

@@ -125,7 +125,8 @@ func checkMultiGet(t *testing.T, ctx context.Context, tier tier.Tier, request pr
 }
 
 func checkGetVersion(t *testing.T, ctx context.Context, p provider, tier tier.Tier, otype ftypes.OType, oid uint64, key string, expectedv uint64) {
-	found, err := p.getversion(ctx, tier, otype, oid, key)
+	v := versionIdentifier{otype: otype, oid: oid, key: key}
+	found, err := p.getVersionBatched(ctx, tier, []versionIdentifier{v})
 	assert.NoError(t, err)
-	assert.Equal(t, expectedv, found)
+	assert.Equal(t, expectedv, found[v])
 }
