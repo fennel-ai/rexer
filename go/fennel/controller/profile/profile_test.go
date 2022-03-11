@@ -2,14 +2,15 @@ package profile
 
 import (
 	"context"
+	"testing"
+	"time"
+
 	"fennel/kafka"
 	profilelib "fennel/lib/profile"
 	"fennel/lib/utils"
 	"fennel/lib/value"
 	"fennel/test"
 	"fennel/tier"
-	"testing"
-	"time"
 
 	"github.com/stretchr/testify/assert"
 	"google.golang.org/protobuf/proto"
@@ -138,9 +139,9 @@ func TestGetBatched(t *testing.T) {
 
 	vals := []value.Value{value.Int(1), value.Int(2), value.Int(3)}
 	profiles := []profilelib.ProfileItem{
-		{"User", uint64(1), "summary", 1, vals[0]},
-		{"User", uint64(2), "summary", 1, vals[1]},
-		{"User", uint64(3), "summary", 1, vals[2]},
+		{OType: "User", Oid: uint64(1), Key: "summary", Version: 1, Value: vals[0]},
+		{OType: "User", Oid: uint64(2), Key: "summary", Version: 1, Value: vals[1]},
+		{OType: "User", Oid: uint64(3), Key: "summary", Version: 1, Value: vals[2]},
 	}
 
 	// initially nothing exists

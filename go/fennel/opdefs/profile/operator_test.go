@@ -22,7 +22,7 @@ func TestDefault(t *testing.T) {
 	defer test.Teardown(tier)
 	query := ast.OpCall{
 		Operand: ast.Lookup{
-			On:       ast.Var{"args"},
+			On:       ast.Var{Name: "args"},
 			Property: "actions",
 		},
 		Namespace: "profile",
@@ -67,7 +67,7 @@ func TestProfileOp(t *testing.T) {
 
 	query := ast.OpCall{
 		Operand: ast.Lookup{
-			On:       ast.Var{"args"},
+			On:       ast.Var{Name: "args"},
 			Property: "actions",
 		},
 		Namespace: "profile",
