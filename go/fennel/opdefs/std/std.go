@@ -1,13 +1,20 @@
 package std
 
 import (
+	"fmt"
+
 	"fennel/engine/operators"
 	"fennel/lib/value"
-	"fmt"
 )
 
 func init() {
-	ops := []operators.Operator{FilterOperator{}, TakeOperator{}, AddField{}, ExplodeOperator{}}
+	ops := []operators.Operator{
+		FilterOperator{},
+		TakeOperator{},
+		AddField{},
+		ExplodeOperator{},
+		SortOperator{},
+	}
 	for _, op := range ops {
 		if err := operators.Register(op); err != nil {
 			panic(err)
