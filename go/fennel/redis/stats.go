@@ -3,6 +3,7 @@ package redis
 import (
 	"fmt"
 
+	"github.com/go-redis/redis/v8"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 )
@@ -26,7 +27,11 @@ var connGauge = promauto.NewGaugeVec(prometheus.GaugeOpts{
 }, []string{"metric"})
 
 func RecordConnectionStats(name string, c Client) {
-	stats := c.client.PoolStats()
+	client, ok := c.client.(*redis.ClusterClient)
+	if !ok {
+		return
+	}
+	stats := client.PoolStats()
 
 	connGauge.WithLabelValues(fmt.Sprintf("%s:hits", name)).Set(float64(stats.Hits))
 	connGauge.WithLabelValues(fmt.Sprintf("%s:misses", name)).Set(float64(stats.Misses))

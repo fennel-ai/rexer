@@ -55,15 +55,15 @@ func TestProfileOp(t *testing.T) {
 	defer test.Teardown(tier)
 	ctx := context.Background()
 
-	otype1, oid1, key1, val1, ver1 := ftypes.OType("user"), uint64(123), "summary", value.Int(5), uint64(1)
-	otype2, oid2, key2, val2, ver2 := ftypes.OType("user"), uint64(223), "age", value.Int(7), uint64(4)
-	req1 := profilelib.ProfileItem{OType: otype1, Oid: oid1, Key: key1, Version: ver1, Value: val1}
-	assert.NoError(t, profile.Set(ctx, tier, req1))
-	req2a := profilelib.ProfileItem{OType: otype2, Oid: oid2, Key: key2, Version: ver2 - 1, Value: value.Int(1121)}
-	assert.NoError(t, profile.Set(ctx, tier, req2a))
+	// mini-redis does not work well cache keys being in different slots
+	// we run a trimmed version of the test as unit test and add cases where the keys are stored in different
+	// slots in `_integration_test`
+	otype1, oid1, key1, val1, ver1 := ftypes.OType("user"), uint64(223), "age", value.Int(7), uint64(4)
+	req1a := profilelib.ProfileItem{OType: otype1, Oid: oid1, Key: key1, Version: ver1 - 1, Value: value.Int(1121)}
+	assert.NoError(t, profile.Set(ctx, tier, req1a))
 	// this key has multiple versions but we should pick up the latest one if not provided explicitly
-	req2b := profilelib.ProfileItem{OType: otype2, Oid: oid2, Key: key2, Version: ver2, Value: val2}
-	assert.NoError(t, profile.Set(ctx, tier, req2b))
+	req1b := profilelib.ProfileItem{OType: otype1, Oid: oid1, Key: key1, Version: ver1, Value: val1}
+	assert.NoError(t, profile.Set(ctx, tier, req1b))
 
 	query := ast.OpCall{
 		Operand: ast.Lookup{
@@ -84,12 +84,9 @@ func TestProfileOp(t *testing.T) {
 	table := value.List{}
 	err = table.Append(value.Dict{"otype": value.String(otype1), "oid": value.Int(oid1), "key": value.String(key1), "ver": value.Int(ver1)})
 	assert.NoError(t, err)
-	err = table.Append(value.Dict{"otype": value.String(otype2), "oid": value.Int(oid2), "key": value.String(key2), "ver": value.Int(ver2)})
-	assert.NoError(t, err)
 	out, err := i.Eval(query, value.Dict{"actions": table})
 	assert.NoError(t, err)
 	rows := out.(value.List)
-	assert.Len(t, rows, 2)
+	assert.Len(t, rows, 1)
 	assert.Equal(t, value.Dict{"otype": value.String(otype1), "oid": value.Int(oid1), "key": value.String(key1), "ver": value.Int(ver1), "profile_value": val1}, rows[0])
-	assert.Equal(t, value.Dict{"otype": value.String(otype2), "oid": value.Int(oid2), "key": value.String(key2), "ver": value.Int(ver2), "profile_value": val2}, rows[1])
 }
