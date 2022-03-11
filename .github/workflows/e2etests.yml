@@ -54,7 +54,7 @@ jobs:
 
       # Install rexer which will be used later in the e2etest.py
       - name: Install dependencies
-        working-directory: ../rexer-pyclient-alpha
+        working-directory: ../rexer-pyclient-alpha/rexer-client-${{ github.run_id }}-${{ github.run_number }}
         if: steps.cached-poetry-dependencies.outputs.cache-hit != 'true'
         run: poetry install --no-interaction
         
