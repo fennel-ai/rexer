@@ -52,12 +52,10 @@ func Teardown(tr tier.Tier) error {
 
 	if err := drop(tr.ID, flags.MysqlDB, flags.MysqlUsername, flags.MysqlPassword, flags.MysqlHost); err != nil {
 		panic(fmt.Sprintf("error in db teardown: %v\n", err))
-		return err
 	}
 
 	if err := teardownKafkaTopics(tr.ID, flags.KafkaServer, flags.KafkaUsername, flags.KafkaPassword, fkafka.ALL_TOPICS); err != nil {
 		panic(fmt.Sprintf("unable to teardown kafka topics: %v", err))
-		return err
 	}
 	return nil
 }
