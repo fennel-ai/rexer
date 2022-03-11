@@ -22,6 +22,26 @@ func Assert(t *testing.T, tr tier.Tier, op operators.Operator, static value.Dict
 	assert.ElementsMatch(t, expected, found)
 }
 
+func AssertEqual(t *testing.T, tr tier.Tier, op operators.Operator, static value.Dict, inputs, context []value.Dict, expected []value.Dict) {
+	found, err := run(tr, op, static, inputs, context)
+	assert.NoError(t, err)
+	aslist, ok := found.(value.List)
+	assert.True(t, ok)
+	assert.Len(t, aslist, len(expected))
+	for i, exp := range expected {
+		assert.True(t, exp.Equal(aslist[i]))
+	}
+}
+
+func AssertElementsMatch(t *testing.T, tr tier.Tier, op operators.Operator, static value.Dict, inputs, context []value.Dict, expected []value.Dict) {
+	found, err := run(tr, op, static, inputs, context)
+	assert.NoError(t, err)
+	aslist, ok := found.(value.List)
+	assert.True(t, ok)
+	assert.Len(t, aslist, len(expected))
+	assert.ElementsMatch(t, expected, found)
+}
+
 func AssertError(t *testing.T, tr tier.Tier, op operators.Operator, static value.Dict, inputs, context []value.Dict) {
 	_, err := run(tr, op, static, inputs, context)
 	assert.Error(t, err)
