@@ -20,5 +20,7 @@ sudo systemctl enable --now tailscaled
 # TODO: Don't save the tailscale authkey in plaintext.
 # 172.31.0.0/16 : Control plane
 # 10.101.0.0/16: Trell Data plane
-# 10.102.0.0/16: Dev data plane
-sudo tailscale up --advertise-routes=172.31.0.0/16,10.101.0.0/16,10.102.0.0/16,10.103.0.0/16 --authkey tskey-kgCz7h7CNTRL-sFgK73QSgVehP8xURhceX
+# 10.102.0.0/16: Test data plane
+# 10.103.0.0/16: Dev data plane
+# 10.104.0.0/16: Lokal prod data plane
+sudo tailscale up --advertise-routes=172.31.0.0/16,10.101.0.0/16,10.102.0.0/16,10.103.0.0/16,10.104.0.0/16 --authkey tskey-kgCz7h7CNTRL-sFgK73QSgVehP8xURhceX
