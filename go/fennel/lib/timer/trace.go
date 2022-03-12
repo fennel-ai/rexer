@@ -58,6 +58,6 @@ func LogTracingInfo(ctx context.Context, log *zap.Logger) error {
 	for _, e := range trace.events {
 		sb.WriteString(fmt.Sprintf("\t%5dms: %s\n", e.elapsed.Milliseconds(), e.event))
 	}
-	log.Debug(sb.String())
+	log.Info(sb.String())
 	return nil
 }
