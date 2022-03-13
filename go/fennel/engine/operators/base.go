@@ -15,8 +15,6 @@ type Registry = map[string]map[string]Operator
 
 var registry Registry
 
-// TODO: how do we create multiple structs for each operator to avoid sharing state
-// in a single request
 func Locate(namespace, name string) (Operator, error) {
 	if ns, ok := registry[namespace]; !ok {
 		return nil, fmt.Errorf("unregistered operator namespace: '%s'", namespace)
