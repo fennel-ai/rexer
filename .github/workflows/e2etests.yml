@@ -37,6 +37,7 @@ jobs:
         run: |
           sudo apt-get --assume-yes install build-essential
           sudo apt-get --assume-yes install pkg-config
+          sudo apt-get --assume-yes install librdkafka
 
       # Install go (we use 1.17.0 version, so we will stick to it)
       - uses: actions/setup-go@v2
