@@ -243,8 +243,8 @@ class TestEndToEnd(unittest.TestCase):
         b = int((ts % (24*3600)) / (2*3600))
 
         # while countaggr is processing the action, check that query call is working
-        cond = Cond(Int(1) <= 5, "correct", "incorrect")
-        found = c.query(cond)
+        cond = Cond(Var('args').x <= 5, "correct", "incorrect")
+        found = c.query(cond, {'x': 5})
         self.assertEqual("correct", found)
 
         # now sleep for upto a minute and verify count processing worked
