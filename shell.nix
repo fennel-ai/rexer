@@ -23,6 +23,10 @@ with pkgs; mkShell {
     pkgs.openssl
     pkgs.pkg-config
 
+    # Install act - https://github.com/nektos/act
+    # `act` is used to run and test github actions locally.
+    pkgs.act
+
     # Packages for python development
     # We install python 3.9 instead of 3.10 because of a known
     # compatibility issue between the nix version of poetry (1.1.12)
