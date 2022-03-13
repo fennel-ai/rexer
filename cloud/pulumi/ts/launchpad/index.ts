@@ -31,8 +31,6 @@ assert.ok(confluentPassword, "CONFLUENT_CLOUD_PASSWORD must be set");
 const tierConfs: Record<number, number> = {
     // Trell-hosted tier.
     102: 1,
-    // Aditya's dev tier.
-    103: 2,
     // Aditya's new dev tier.
     104: 3,
     // Lokal prod tier.
@@ -58,28 +56,6 @@ const planeConfs: Record<number, PlaneConf> = {
             password: confluentPassword
         },
         controlPlaneConf: controlPlane,
-    },
-    2: {
-        planeId: 2,
-        region: "us-west-2",
-        roleArn: "arn:aws:iam::030813887342:role/admin",
-        vpcConf: {
-            cidr: "10.102.0.0/16"
-        },
-        dbConf: {
-            minCapacity: 4,
-            maxCapacity: 4,
-            password: "foundationdb"
-        },
-        confluentConf: {
-            username: confluentUsername,
-            password: confluentPassword
-        },
-        controlPlaneConf: controlPlane,
-        redisConf: {
-            numShards: 1,
-            nodeType: "db.t4g.medium",
-        }
     },
     3: {
         planeId: 3,
