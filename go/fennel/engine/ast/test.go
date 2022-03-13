@@ -83,7 +83,29 @@ func init() {
 			ThenDo:    MakeInt(9),
 			ElseDo:    MakeInt(5),
 		},
+		FnCall{
+			Module: "std",
+			Name:   "something",
+			Kwargs: map[string]Ast{
+				"hi":        MakeBool(false),
+				"something": List{Values: []Ast{MakeInt(1), MakeDouble(3.4)}},
+			},
+		},
+		FnCall{
+			Module: "std",
+			Name:   "something",
+			Kwargs: map[string]Ast{
+				"hi":        Dict{Values: map[string]Ast{}},
+				"something": List{Values: []Ast{MakeInt(1), MakeDouble(3.4)}},
+			},
+		},
+		FnCall{
+			Module: "std",
+			Name:   "something",
+			Kwargs: map[string]Ast{},
+		},
 	}
+
 	lookups := make([]Ast, 0)
 	for _, t := range TestExamples {
 		lookups = append(lookups, Lookup{On: t, Property: "someprop"})
