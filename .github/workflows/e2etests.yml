@@ -29,19 +29,11 @@ jobs:
       # https://github.com/actions/checkout/issues/197#issuecomment-829560171
       - run: mv rexer-client-${{ github.run_id }}-${{ github.run_number }} ../rexer-pyclient-alpha
 
-      # Install build essentials
+      # Install prerequisites
       - name: install build essential and pkg-config
         run: |
           sudo apt-get --assume-yes install build-essential
           sudo apt-get --assume-yes install pkg-config
-          
-      - name: Install librdkafka
-        run: |
-          git clone https://github.com/edenhill/librdkafka.git
-          cd librdkafka
-          ./configure
-          make
-          sudo make install
 
       # Install go (we use 1.17.0 version, so we will stick to it)
       - uses: actions/setup-go@v2
@@ -74,14 +66,31 @@ jobs:
           key: venv-${{ runner.os }}-${{ steps.setup-python.outputs.python-version }}-${{ hashFiles('**/poetry.lock') }}
 
       # Install rexer which will be used later in the e2etest.py
-      - name: Install dependencies
+      - name: Install dependencies using poetry
         working-directory: ../rexer-pyclient-alpha/rexer-client-${{ github.run_id }}-${{ github.run_number }}
         if: steps.cached-poetry-dependencies.outputs.cache-hit != 'true'
         run: poetry install --no-interaction
+
+      - name: Install kafka dependencies
+        run: |
+          sudo apt-get --assume-yes remove --auto-remove librdkafka-dev
+          sudo apt-get --assume-yes install libssl-dev
+          sudo curl -Lk -o $HOME/librdkafka-1.8.0.tar.gz https://github.com/edenhill/librdkafka/archive/v1.8.0.tar.gz &&       tar -xzf $HOME/librdkafka-1.8.0.tar.gz -C $HOME &&  cd $HOME/librdkafka-1.8.0 &&  ./configure && make && sudo make install && sudo make clean && ./configure --clean
 
       # Run the test
       - name: Run test
         env:
           FENNEL_ROOT: ${{ github.workspace }}
+          KAFKA_SERVER_ADDRESS: ${{ secrets.KAFKA_SERVER_ADDRESS }}
+          KAFKA_USERNAME: ${{ secrets.KAFKA_USERNAME }}
+          KAFKA_PASSWORD: ${{ secrets.KAFKA_PASSWORD }}
+          MYSQL_SERVER_ADDRESS: ${{ secrets.MYSQL_SERVER_ADDRESS }}
+          MYSQL_DATABASE_NAME: ${{ secrets.MYSQL_DATABASE_NAME }}
+          MYSQL_USERNAME: ${{ secrets.MYSQL_USERNAME }}
+          MYSQL_PASSWORD: ${{ secrets.MYSQL_PASSWORD }}
+          REDIS_SERVER_ADDRESS: ${{ secrets.REDIS_SERVER_ADDRESS }}
+          CACHE_PRIMARY: ${{ secrets.CACHE_PRIMARY }}
+          TIER_ID: ${{ secrets.TIER_ID }}
         working-directory: ../rexer-pyclient-alpha/rexer-client-${{ github.run_id }}-${{ github.run_number }}
-        run: poetry run python -m unittest discover ../../rexer/e2etests
+        run: |
+          poetry run python -m unittest discover ../../rexer/e2etests
