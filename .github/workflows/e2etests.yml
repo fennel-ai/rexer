@@ -37,14 +37,14 @@ jobs:
         run: |
           sudo apt-get --assume-yes install build-essential
           sudo apt-get --assume-yes install pkg-config
-          sudo apt-get --assume-yes install librdkafka-dev
           
-      - name: Install confluent platform
+      - name: Install librdkafka
         run: |
-          wget -qO - https://packages.confluent.io/deb/7.0/archive.key | sudo apt-key add -
-          sudo add-apt-repository "deb [arch=amd64] https://packages.confluent.io/deb/7.0 stable main"
-          sudo add-apt-repository "deb https://packages.confluent.io/clients/deb $(lsb_release -cs) main"
-          sudo apt-get --assume-yes install confluent-platform
+          git clone https://github.com/edenhill/librdkafka.git
+          cd librdkafka
+          ./configure
+          make
+          sudo make install
 
       # Install go (we use 1.17.0 version, so we will stick to it)
       - uses: actions/setup-go@v2
