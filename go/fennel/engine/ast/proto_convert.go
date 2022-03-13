@@ -8,58 +8,38 @@ import (
 )
 
 func ToProtoAst(ast Ast) (proto.Ast, error) {
-	switch ast.(type) {
-	case Atom:
-		return ast.(Atom).toProto()
-	case Binary:
-		return ast.(Binary).toProto()
-	case Var:
-		return ast.(Var).toProto()
-	case List:
-		return ast.(List).toProto()
-	case Dict:
-		return ast.(Dict).toProto()
-	case Statement:
-		return ast.(Statement).toProto()
-	case Query:
-		return ast.(Query).toProto()
-	case OpCall:
-		return ast.(OpCall).toProto()
-	case Lookup:
-		return ast.(Lookup).toProto()
-	case At:
-		return ast.(At).toProto()
-	case IfElse:
-		return ast.(IfElse).toProto()
-	default:
-		return pnull(), fmt.Errorf("invalid ast type")
+	if ast == nil {
+		return pnull(), fmt.Errorf("can not convert nil ast to proto")
 	}
+	return ast.toProto()
 }
 
 func FromProtoAst(past *proto.Ast) (Ast, error) {
-	switch past.Node.(type) {
+	switch n := past.Node.(type) {
 	case *proto.Ast_Atom:
-		return fromProtoAtom(past.Node.(*proto.Ast_Atom))
+		return fromProtoAtom(n)
 	case *proto.Ast_Binary:
-		return fromProtoBinary(past.Node.(*proto.Ast_Binary))
+		return fromProtoBinary(n)
 	case *proto.Ast_List:
-		return fromProtoList(past.Node.(*proto.Ast_List))
+		return fromProtoList(n)
 	case *proto.Ast_Dict:
-		return fromProtoDict(past.Node.(*proto.Ast_Dict))
+		return fromProtoDict(n)
 	case *proto.Ast_Statement:
-		return fromProtoStatement(past.Node.(*proto.Ast_Statement))
+		return fromProtoStatement(n)
 	case *proto.Ast_Query:
-		return fromProtoQuery(past.Node.(*proto.Ast_Query))
+		return fromProtoQuery(n)
 	case *proto.Ast_Opcall:
-		return fromProtoOpcall(past.Node.(*proto.Ast_Opcall))
+		return fromProtoOpcall(n)
 	case *proto.Ast_Var:
-		return fromProtoVar(past.Node.(*proto.Ast_Var))
+		return fromProtoVar(n)
 	case *proto.Ast_At:
-		return fromProtoAt(past.Node.(*proto.Ast_At))
+		return fromProtoAt(n)
 	case *proto.Ast_Lookup:
-		return fromProtoLookup(past.Node.(*proto.Ast_Lookup))
+		return fromProtoLookup(n)
 	case *proto.Ast_Ifelse:
-		return fromProtoIfelse(past.Node.(*proto.Ast_Ifelse))
+		return fromProtoIfelse(n)
+	case *proto.Ast_Fncall:
+		return fromProtoFnCall(n)
 	default:
 		return null, fmt.Errorf("invalid proto ast: %v", past)
 	}
@@ -221,6 +201,22 @@ func (ifelse IfElse) toProto() (proto.Ast, error) {
 	}}}, nil
 }
 
+func (f FnCall) toProto() (proto.Ast, error) {
+	protoDict := make(map[string]*proto.Ast, len(f.Kwargs))
+	for k, v := range f.Kwargs {
+		ast, err := ToProtoAst(v)
+		if err != nil {
+			return pnull(), err
+		}
+		protoDict[k] = &ast
+	}
+	return proto.Ast{Node: &proto.Ast_Fncall{Fncall: &proto.FnCall{
+		Module: f.Module,
+		Name:   f.Name,
+		Kwargs: protoDict,
+	}}}, nil
+}
+
 //=============================
 // More private helpers below
 //=============================
@@ -369,5 +365,21 @@ func fromProtoIfelse(pifelse *proto.Ast_Ifelse) (Ast, error) {
 		Condition: condition,
 		ThenDo:    thenDo,
 		ElseDo:    elseDo,
+	}, nil
+}
+
+func fromProtoFnCall(pfncall *proto.Ast_Fncall) (Ast, error) {
+	kwargs := make(map[string]Ast, len(pfncall.Fncall.Kwargs))
+	for k, pv := range pfncall.Fncall.Kwargs {
+		v, err := FromProtoAst(pv)
+		if err != nil {
+			return null, err
+		}
+		kwargs[k] = v
+	}
+	return FnCall{
+		Module: pfncall.Fncall.Module,
+		Name:   pfncall.Fncall.Name,
+		Kwargs: kwargs,
 	}, nil
 }

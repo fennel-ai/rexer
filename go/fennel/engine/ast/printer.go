@@ -7,6 +7,15 @@ import (
 
 type Printer struct{}
 
+func (p Printer) VisitFnCall(module, name string, kwargs map[string]Ast) string {
+	sb := strings.Builder{}
+	for k, v := range kwargs {
+		sb.WriteString(fmt.Sprintf("%s=%s, ", k, v.AcceptString(p)))
+	}
+	kstr := strings.TrimSuffix(sb.String(), ", ")
+	return fmt.Sprintf("%s.%s(%s)", module, name, kstr)
+}
+
 func (p Printer) VisitLookup(on Ast, property string) string {
 	return fmt.Sprintf("%s.%s", on.AcceptString(p), property)
 }

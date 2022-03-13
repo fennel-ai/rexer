@@ -1,8 +1,9 @@
 package ast
 
 import (
-	"github.com/stretchr/testify/assert"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func TestMarshal(t *testing.T) {
@@ -12,6 +13,6 @@ func TestMarshal(t *testing.T) {
 		var found Ast
 		err = Unmarshal(data, &found)
 		assert.NoError(t, err)
-		assert.Equal(t, test, found)
+		assert.Equal(t, test, found, test)
 	}
 }

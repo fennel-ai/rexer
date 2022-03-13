@@ -28,6 +28,11 @@ func TestFromProtoAst(t *testing.T) {
 		List{[]Ast{MakeBool(false), nil, MakeBool(true)}},
 		IfElse{Condition: MakeBool(true), ThenDo: nil, ElseDo: MakeInt(5)},
 		IfElse{Condition: MakeBool(true), ThenDo: MakeInt(4), ElseDo: nil},
+		FnCall{
+			Module: "std",
+			Name:   "name",
+			Kwargs: map[string]Ast{"hi": nil},
+		},
 	}
 	check(t, valid, invalid)
 }

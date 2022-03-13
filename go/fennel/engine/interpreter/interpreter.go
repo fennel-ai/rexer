@@ -15,6 +15,37 @@ type Interpreter struct {
 	bootargs map[string]interface{}
 }
 
+func (i Interpreter) VisitFnCall(module, name string, kwargs map[string]ast.Ast) (value.Value, error) {
+	// find & init the operator
+	op, err := i.getOperator(module, name)
+	if err != nil {
+		return value.Nil, err
+	}
+	// now eval  kwargs and verify they are of the right type
+	vKwargs := make(map[string]value.Value, len(kwargs))
+	for k, ast := range kwargs {
+		if v, err := ast.AcceptValue(i); err != nil {
+			return nil, err
+		} else {
+			vKwargs[k] = v
+		}
+	}
+	inputTable := operators.NewZipTable(op)
+	if err := inputTable.Append(value.Nil, vKwargs); err != nil {
+		return nil, err
+	}
+	// finally, call the function
+	// typing of input / context kwargs is verified element by element inside the iter
+	outtable := value.List{}
+	if err = op.Apply(value.Dict{}, inputTable.Iter(), &outtable); err != nil {
+		return value.Nil, err
+	}
+	if len(outtable) != 1 {
+		return nil, fmt.Errorf("function did not return the value")
+	}
+	return outtable[0], nil
+}
+
 var _ ast.VisitorValue = Interpreter{}
 
 func NewInterpreter(bootargs map[string]interface{}) Interpreter {
