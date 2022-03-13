@@ -6,9 +6,6 @@ name: e2e-tests-linux-x64
 on:
   # Allows you to run this workflow manually from the Actions tab
   workflow_dispatch:
-  
-  # Allows running unit test on every pull request
-  pull_request:
 
 # A workflow run is made up of one or more jobs that can run sequentially or in parallel
 jobs:
@@ -24,8 +21,37 @@ jobs:
 
       - uses: actions/checkout@v2  
         with:
+          path: rexer-client-${{ github.run_id }}-${{ github.run_number }}
           repository: fennel-ai/rexer-pyclient-alpha
           token: ${{ secrets.ACCESS_TOKEN }}
+
+      # Move the repo explicitly, sadly github actions doesn't support this by default..
+      # https://github.com/actions/checkout/issues/197#issuecomment-829560171
+      - run: mv rexer-client-${{ github.run_id }}-${{ github.run_number }} ../rexer-pyclient-alpha
+
+      # Install build essentials
+      - name: install build essential and pkg-config
+        run: |
+          sudo apt-get --assume-yes install build-essential
+          sudo apt-get --assume-yes install pkg-config
+          
+      - name: Install librdkafka
+        run: |
+          git clone https://github.com/edenhill/librdkafka.git
+          cd librdkafka
+          ./configure
+          make
+          sudo make install
+
+      # Install go (we use 1.17.0 version, so we will stick to it)
+      - uses: actions/setup-go@v2
+        with:
+          go-version: '1.17'
+          
+      - name: Install go module (required for running go subprocesses)
+        run: |
+          cd go/fennel
+          go mod download
 
       - uses: actions/setup-python@v2
         with:
@@ -49,12 +75,13 @@ jobs:
 
       # Install rexer which will be used later in the e2etest.py
       - name: Install dependencies
-        working-directory: ../rexer-pyclient-alpha
+        working-directory: ../rexer-pyclient-alpha/rexer-client-${{ github.run_id }}-${{ github.run_number }}
         if: steps.cached-poetry-dependencies.outputs.cache-hit != 'true'
         run: poetry install --no-interaction
-        
+
       # Run the test
       - name: Run test
-        working-directory: e2etests/
-        run: poetry run python -m unittest discover 
-        
+        env:
+          FENNEL_ROOT: ${{ github.workspace }}
+        working-directory: ../rexer-pyclient-alpha/rexer-client-${{ github.run_id }}-${{ github.run_number }}
+        run: poetry run python -m unittest discover ../../rexer/e2etests
