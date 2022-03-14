@@ -57,6 +57,29 @@ const planeConfs: Record<number, PlaneConf> = {
         },
         controlPlaneConf: controlPlane,
     },
+    // this is used for test resources
+    2: {
+        planeId: 2,
+        region: "us-west-2",
+        roleArn: "arn:aws:iam::030813887342:role/admin",
+        vpcConf: {
+            cidr: "10.102.0.0/16"
+        },
+        dbConf: {
+            minCapacity: 4,
+            maxCapacity: 4,
+            password: "foundationdb"
+        },
+        confluentConf: {
+            username: confluentUsername,
+            password: confluentPassword
+        },
+        controlPlaneConf: controlPlane,
+        redisConf: {
+            numShards: 1,
+            nodeType: "db.t4g.medium",
+        }
+    },
     3: {
         planeId: 3,
         region: "us-west-2",
