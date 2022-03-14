@@ -124,15 +124,16 @@ async function setupEmissaryIngressCrds(awsProvider: aws.Provider, cluster: eks.
 
     // Configure default Module to add linkerd headers as per:
     // https://www.getambassador.io/docs/edge-stack/latest/topics/using/mappings/#linkerd-interoperability-add_linkerd_headers
-    const l5dmapping = cluster.kubeconfig.apply((kubeconfig) => {
-        // Wait for emissary-apiext deployment to be ready. There's no straightforward
-        // way for us to ensure that the emissaryCrds config is applied before this
-        // command is run, so we just wait for the deployment to be ready with a
-        // large timeout (1 hr).
-        const waiter = new local.Command("waiter", {
-            create: "kubectl wait deploy/emissary-apiext --for condition=available -n emissary-system",
-        }, { customTimeouts: { create: "1h" } })
 
+    // Wait for emissary-apiext deployment to be ready. There's no straightforward
+    // way for us to ensure that the emissaryCrds config is applied before this
+    // command is run, so we just wait for the deployment to be ready with a
+    // large timeout (1 hr).
+    const waiter = new local.Command("waiter", {
+        create: "kubectl wait deploy/emissary-apiext --for condition=available -n emissary-system",
+    }, { customTimeouts: { create: "1h" } })
+
+    const l5dmapping = waiter.stdout.apply(() => {
         return new k8s.apiextensions.CustomResource("l5d-mapping", {
             "apiVersion": "getambassador.io/v3alpha1",
             "kind": "Module",
