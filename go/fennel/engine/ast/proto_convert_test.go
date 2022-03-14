@@ -33,6 +33,18 @@ func TestFromProtoAst(t *testing.T) {
 			Name:   "name",
 			Kwargs: map[string]Ast{"hi": nil},
 		},
+		HighFnCall{
+			Type:    0,
+			Varname: "x",
+			Lambda:  Var{"x"},
+			Iter:    nil,
+		},
+		HighFnCall{
+			Type:    0,
+			Varname: "x",
+			Lambda:  nil,
+			Iter:    Dict{map[string]Ast{"hi": nil}},
+		},
 	}
 	check(t, valid, invalid)
 }

@@ -10,7 +10,7 @@ import subprocess
 import time
 import unittest
 
-from rexerclient.rql import Var, Int, String, it, Ops, List, Cond, Make
+from rexerclient.rql import Var, Int, String, it, Ops, List, Cond, Make, Map
 from rexerclient import client
 from rexerclient.models import action, profile
 
@@ -242,11 +242,6 @@ class TestEndToEnd(unittest.TestCase):
         c.log_multi(actions)
         b = int((ts % (24*3600)) / (2*3600))
 
-        # while countaggr is processing the action, check that query call is working
-        cond = Cond(Var('args').x <= 5, "correct", "incorrect")
-        found = c.query(cond, {'x': 5})
-        self.assertEqual("correct", found)
-
         # now sleep for upto a minute and verify count processing worked
         # we could also just sleep for full minute but this rolling sleep
         # allows test to end earlier in happy cases
@@ -280,6 +275,16 @@ class TestEndToEnd(unittest.TestCase):
 
         print('all checks passed...')
 
+    @tiered
+    def test_queries(self):
+        c = client.Client(URL)
+        cond = Cond(Var('args').x <= 5, "correct", "incorrect")
+        found = c.query(cond, {'x': 5})
+        self.assertEqual("correct", found)
+
+        q = Map('x', Cond(Var('x') <= Var('args').x, 'small', 'large'), [2, 3, 4])
+        found = c.query(q, {'x': 2.5})
+        self.assertEqual(['small', 'large', 'large'], found)
 
 @unittest.skip
 class TestLoad(unittest.TestCase):
