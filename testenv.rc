@@ -1,6 +1,6 @@
 export KAFKA_SERVER_ADDRESS="pkc-pgq85.us-west-2.aws.confluent.cloud:9092"
-export KAFKA_USERNAME="L56PWU5R7JTGVRED"
-export KAFKA_PASSWORD="35nsUAnQJ8uA7qIFQgkIMpJNUFuA7lds1yxrq2ofc9XjaUxVvAHYCDco30OolmdY"
+export KAFKA_USERNAME="55ZBCUQQJVHPAZRM"
+export KAFKA_PASSWORD="jmtGVe4vTL8UBwntoYjfHpLLmo6clc9zm4+pqwuLkvdA0O+Tv/yRDRm/5KrppwgA"
 export MYSQL_SERVER_ADDRESS="fenneldb-20220314043639794500000002.cluster-c00d7gkxaysk.us-west-2.rds.amazonaws.com"
 export MYSQL_DATABASE_NAME="db"
 export MYSQL_USERNAME="admin"
