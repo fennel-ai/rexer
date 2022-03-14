@@ -1,8 +1,10 @@
 import * as pulumi from "@pulumi/pulumi";
+import * as aws from "@pulumi/aws";
 import * as k8s from "@pulumi/kubernetes";
 import { local } from "@pulumi/command";
 
 import * as process from "process";
+import { VpcEndpointService } from "@pulumi/aws/ec2";
 
 // TODO: use version from common library.
 // operator for type-safety for string key access:
@@ -16,10 +18,13 @@ export const fennelStdTags = {
 
 export const plugins = {
     "kubernetes": "v3.16.0",
-    "command": "v0.0.3"
+    "command": "v0.0.3",
+    "aws": "v4.38.1",
 }
 
 export type inputType = {
+    roleArn: string,
+    region: string,
     kubeconfig: string,
     namespace: string,
     loadBalancerScheme: string,
@@ -28,6 +33,7 @@ export type inputType = {
 
 export type outputType = {
     loadBalancerUrl: pulumi.Output<string>
+    endpontServiceName: pulumi.Output<string>
     tlsCert: pulumi.Output<string>,
     tlsKey: pulumi.Output<string>,
 }
@@ -35,6 +41,8 @@ export type outputType = {
 const parseConfig = (): inputType => {
     const config = new pulumi.Config();
     return {
+        roleArn: config.require(nameof<inputType>("roleArn")),
+        region: config.require(nameof<inputType>("region")),
         kubeconfig: config.require(nameof<inputType>("kubeconfig")),
         namespace: config.require(nameof<inputType>("namespace")),
         loadBalancerScheme: config.get(nameof<inputType>("loadBalancerScheme")) || "internal",
@@ -42,10 +50,26 @@ const parseConfig = (): inputType => {
     }
 }
 
+function getLoadBalancerName(url: string) {
+    // ELBs have an associated hostname, that looks like this:
+    // ${balancer_name}-${opaque_identifier}.${region}.elb.amazonaws.com
+    const firstPart = url.split(".")[0];
+    return firstPart.substring(0, firstPart.lastIndexOf("-"))
+}
+
 export const setup = async (input: inputType) => {
     const k8sProvider = new k8s.Provider("ingress-k8s-provider", {
         kubeconfig: input.kubeconfig,
         namespace: input.namespace,
+    })
+
+    const awsProvider = new aws.Provider("ingress-aws-provider", {
+        region: <aws.Region>input.region,
+        assumeRole: {
+            roleArn: input.roleArn,
+            // TODO: Also populate the externalId field to prevent "confused deputy"
+            // attacks: https://docs.aws.amazon.com/IAM/latest/UserGuide/confused-deputy.html
+        }
     })
 
     // Install emissary-ingress via helm.
@@ -184,10 +208,30 @@ export const setup = async (input: inputType) => {
         return { cert, key }
     })
 
+    const vpcEndpontService = loadBalancerUrl.apply(async (url) => {
+        const lb = await aws.lb.getLoadBalancer({
+            name: getLoadBalancerName(url),
+        }, { provider: awsProvider })
+
+        return new aws.ec2.VpcEndpointService("ingress-vpc-endpoint-service", {
+            acceptanceRequired: true,
+            allowedPrincipals: [
+                // Allow anyone to discover the service.
+                "*",
+            ],
+            networkLoadBalancerArns: [lb.arn],
+            tags: {
+                ...fennelStdTags,
+                "Name": `${input.namespace}-endpoint-service`
+            },
+        }, { provider: awsProvider })
+    })
+
     const output: outputType = {
         loadBalancerUrl,
         tlsCert: tlsKeyCert.cert,
         tlsKey: pulumi.secret(tlsKeyCert.key),
+        endpontServiceName: vpcEndpontService.serviceName,
     }
 
     return output

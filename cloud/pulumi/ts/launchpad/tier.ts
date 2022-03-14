@@ -137,6 +137,8 @@ const setupResources = async () => {
     })
     // setup ingress.
     const ingressOutput = await ingress.setup({
+        roleArn: input.roleArn,
+        region: input.region,
         kubeconfig: input.kubeconfig,
         namespace: input.namespace,
         subnetIds: input.subnetIds,
