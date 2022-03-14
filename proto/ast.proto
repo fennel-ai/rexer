@@ -17,6 +17,7 @@ message Ast {
     Lookup lookup = 11;
     IfElse ifelse = 12;
     FnCall fncall = 13;
+    HighFnCall hfncall = 14;
   }
 }
 
@@ -81,4 +82,20 @@ message FnCall {
   string module = 1;
   string name = 2;
   map<string, Ast> kwargs = 3;
+}
+
+message HighFnCall {
+  HighFnType Type = 1;
+  string varname = 2;
+  Ast Lambda = 3;
+  Ast iter = 4;
+}
+
+enum HighFnType {
+  none = 0;
+  map = 1;
+  filter = 2;
+  orderby = 3;
+  groupby = 4;
+  reduce = 5;
 }

@@ -15,6 +15,59 @@ type Interpreter struct {
 	bootargs map[string]interface{}
 }
 
+func (i Interpreter) VisitHighFnCall(Type ast.HighFnType, varname string, lambda ast.Ast, iter ast.Ast) (value.Value, error) {
+	viter, err := iter.AcceptValue(i)
+	if err != nil {
+		return nil, err
+	}
+	list, ok := viter.(value.List)
+	if !ok {
+		return nil, fmt.Errorf("%s can only be applied on lists but got: '%s' instead", Type, iter)
+	}
+	switch Type {
+	case ast.Map:
+		return i.visitMap(varname, lambda, list)
+	case ast.Filter:
+		return i.visitFilter(varname, lambda, list)
+	default:
+		return nil, fmt.Errorf("unsupported higher order function: %s", Type)
+	}
+}
+
+func (i Interpreter) visitMap(varname string, lambda ast.Ast, list value.List) (value.Value, error) {
+	out := value.List{}
+	for _, v := range list {
+		res, err := i.visitInContext(lambda, varname, v)
+		if err != nil {
+			return nil, err
+		}
+		if err = out.Append(res); err != nil {
+			return nil, err
+		}
+	}
+	return out, nil
+}
+
+func (i Interpreter) visitFilter(varname string, lambda ast.Ast, list value.List) (value.Value, error) {
+	out := value.List{}
+	for _, v := range list {
+		res, err := i.visitInContext(lambda, varname, v)
+		if err != nil {
+			return nil, err
+		}
+		include, ok := res.(value.Bool)
+		if !ok {
+			return nil, fmt.Errorf("lambda expression in filter should evaluate to bool but got: '%s' instead", res)
+		}
+		if include {
+			if err = out.Append(v); err != nil {
+				return nil, err
+			}
+		}
+	}
+	return out, nil
+}
+
 func (i Interpreter) VisitFnCall(module, name string, kwargs map[string]ast.Ast) (value.Value, error) {
 	// find & init the operator
 	op, err := i.getOperator(module, name)
@@ -113,11 +166,11 @@ func (i Interpreter) VisitLookup(on ast.Ast, property string) (value.Value, erro
 	return ret, nil
 }
 
-func (i Interpreter) visitInContext(tree ast.Ast, v value.Value) (value.Value, error) {
+func (i Interpreter) visitInContext(tree ast.Ast, varname string, v value.Value) (value.Value, error) {
 	i.env = i.env.PushEnv()
 	defer func() { i.env, _ = i.env.PopEnv() }()
 
-	if err := i.env.Define("@", v); err != nil {
+	if err := i.env.Define(varname, v); err != nil {
 		return value.Nil, err
 	}
 	return tree.AcceptValue(i)
@@ -328,7 +381,7 @@ func (i Interpreter) getContextKwargs(op operators.Operator, trees ast.Dict, tab
 			case !ok && p.Optional:
 				kwargs[k] = p.Default
 			case ok:
-				val, err := i.visitInContext(tree, v)
+				val, err := i.visitInContext(tree, "@", v)
 				if err != nil {
 					return operators.ZipTable{}, fmt.Errorf("error: %s while evaluating kwarg: %s for operator '%s.%s'", err, k, sig.Module, sig.Name)
 				}

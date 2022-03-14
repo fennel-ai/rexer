@@ -7,6 +7,10 @@ import (
 
 type Printer struct{}
 
+func (p Printer) VisitHighFnCall(Type HighFnType, varname string, lambda Ast, iter Ast) string {
+	return fmt.Sprintf("%s(lambda %s: %s, %s)", Type, varname, lambda.AcceptString(p), iter.AcceptString(p))
+}
+
 func (p Printer) VisitFnCall(module, name string, kwargs map[string]Ast) string {
 	sb := strings.Builder{}
 	for k, v := range kwargs {
@@ -95,4 +99,21 @@ func (p Printer) VisitIfelse(condition Ast, thenDo Ast, elseDo Ast) string {
 		thenDo.AcceptString(p),
 		elseDo.AcceptString(p),
 	)
+}
+
+func (t HighFnType) String() string {
+	switch t {
+	case Map:
+		return "map"
+	case Filter:
+		return "filter"
+	case GroupBy:
+		return "groupby"
+	case OrderBy:
+		return "orderby"
+	case Reduce:
+		return "reduce"
+	default:
+		return fmt.Sprintf("unknown:%d", t)
+	}
 }

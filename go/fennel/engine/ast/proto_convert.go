@@ -40,6 +40,8 @@ func FromProtoAst(past *proto.Ast) (Ast, error) {
 		return fromProtoIfelse(n)
 	case *proto.Ast_Fncall:
 		return fromProtoFnCall(n)
+	case *proto.Ast_Hfncall:
+		return fromProtoHighFnCall(n)
 	default:
 		return null, fmt.Errorf("invalid proto ast: %v", past)
 	}
@@ -217,6 +219,27 @@ func (f FnCall) toProto() (proto.Ast, error) {
 	}}}, nil
 }
 
+func (h HighFnCall) toProto() (proto.Ast, error) {
+	plambda, err := ToProtoAst(h.Lambda)
+	if err != nil {
+		return pnull(), err
+	}
+	piter, err := ToProtoAst(h.Iter)
+	if err != nil {
+		return pnull(), err
+	}
+	ptype, err := toProtoHighFnType(h.Type)
+	if err != nil {
+		return pnull(), err
+	}
+	return proto.Ast{Node: &proto.Ast_Hfncall{Hfncall: &proto.HighFnCall{
+		Type:    ptype,
+		Varname: h.Varname,
+		Lambda:  &plambda,
+		Iter:    &piter,
+	}}}, nil
+}
+
 //=============================
 // More private helpers below
 //=============================
@@ -382,4 +405,59 @@ func fromProtoFnCall(pfncall *proto.Ast_Fncall) (Ast, error) {
 		Name:   pfncall.Fncall.Name,
 		Kwargs: kwargs,
 	}, nil
+}
+
+func fromProtoHighFnCall(phfncall *proto.Ast_Hfncall) (Ast, error) {
+	lambda, err := FromProtoAst(phfncall.Hfncall.Lambda)
+	if err != nil {
+		return null, err
+	}
+	iter, err := FromProtoAst(phfncall.Hfncall.Iter)
+	if err != nil {
+		return null, err
+	}
+	type_, err := fromProtoHighFnType(phfncall.Hfncall.Type)
+	if err != nil {
+		return null, err
+	}
+	return HighFnCall{
+		Type:    type_,
+		Varname: phfncall.Hfncall.Varname,
+		Lambda:  lambda,
+		Iter:    iter,
+	}, nil
+}
+
+func fromProtoHighFnType(t proto.HighFnType) (HighFnType, error) {
+	switch t {
+	case proto.HighFnType_map:
+		return Map, nil
+	case proto.HighFnType_filter:
+		return Filter, nil
+	case proto.HighFnType_reduce:
+		return Reduce, nil
+	case proto.HighFnType_groupby:
+		return GroupBy, nil
+	case proto.HighFnType_orderby:
+		return OrderBy, nil
+	default:
+		return 0, fmt.Errorf("invalid highfntype: %v", t)
+	}
+}
+
+func toProtoHighFnType(t HighFnType) (proto.HighFnType, error) {
+	switch t {
+	case Map:
+		return proto.HighFnType_map, nil
+	case Filter:
+		return proto.HighFnType_filter, nil
+	case Reduce:
+		return proto.HighFnType_reduce, nil
+	case GroupBy:
+		return proto.HighFnType_groupby, nil
+	case OrderBy:
+		return proto.HighFnType_orderby, nil
+	default:
+		return 0, fmt.Errorf("invalid highfntype: %v", t)
+	}
 }
