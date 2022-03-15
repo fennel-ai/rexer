@@ -45,4 +45,4 @@ jobs:
           TIER_ID: ${{ secrets.TIER_ID }}
         run: |
           cd go/fennel
-          go test -v -p 5 -tags integration ./...
+          go test -v -p 5 -tags integration ./... -count 1
