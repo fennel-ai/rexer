@@ -269,7 +269,7 @@ export const setup = async (input: inputType): Promise<pulumi.Output<outputType>
         endpointPublicAccess: true,
         subnetIds: subnetIds.ids,
         nodeGroupOptions: {
-            instanceType: "t2.medium",
+            instanceType: "t3.medium",
             desiredCapacity: 3,
             minSize: 3,
             maxSize: 3,
