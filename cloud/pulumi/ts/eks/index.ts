@@ -241,6 +241,22 @@ async function setupLoadBalancerController(awsProvider: aws.Provider, cluster: e
     return lbc
 }
 
+// Setup https://github.com/kubernetes-sigs/descheduler/.
+// Descheduler for Kubernetes is used to rebalance clusters by evicting pods
+// that can potentially be scheduled on better nodes.
+function setupDescheduler(cluster: eks.Cluster) {
+    const descheduler = new k8s.helm.v3.Release("descheduler", {
+        repositoryOpts: {
+            repo: "https://kubernetes-sigs.github.io/descheduler/",
+        },
+        chart: "descheduler",
+        namespace: "kube-system",
+        values: {
+            // Run descheduler every 30 minutes.
+            "schedule": "*/30 * * * *"
+        }
+    }, { provider: cluster.provider })
+}
 
 export const setup = async (input: inputType): Promise<pulumi.Output<outputType>> => {
     const { vpcId, region, roleArn } = input
@@ -282,6 +298,9 @@ export const setup = async (input: inputType): Promise<pulumi.Output<outputType>
         nodeAssociatePublicIpAddress: false,
         createOidcProvider: true
     }, { provider: awsProvider });
+
+    // Install descheduler.
+    setupDescheduler(cluster)
 
     // Connect cluster node security group to connected vpcs.
     const sgRules = new aws.ec2.SecurityGroupRule(`eks-sg-rule`, {
