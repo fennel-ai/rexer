@@ -11,6 +11,10 @@ with pkgs; mkShell {
     pkgs.git
     pkgs.ssh-agents
 
+    # for xgboost
+    pkgs.cmake
+    llvmPackages.openmp
+
     # Protobuf
     pkgs.protobuf3_17
 
@@ -33,6 +37,7 @@ with pkgs; mkShell {
     # and python 3.10 (https://github.com/python-poetry/poetry/issues/4210)
     pkgs.python39Full
     pkgs.poetry
+    pkgs.pipenv
 
     # Packages for javascript development
     pkgs.nodejs
