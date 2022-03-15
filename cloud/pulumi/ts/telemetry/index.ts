@@ -113,29 +113,31 @@ function setupOtelPolicy(input: inputType, awsProvider: aws.Provider) {
 async function setupAdotCollector(input: inputType, k8sProvider: k8s.Provider) {
     const root = process.env.FENNEL_ROOT!;
     const deploymentFilePath = path.join(root, "/deployment/artifacts/otel-deployment.yaml")
-    const collector = new k8s.yaml.ConfigFile("adot-collector", {
-        file: deploymentFilePath,
-        transformations: [
-            (obj: any, opts: pulumi.CustomResourceOptions) => {
-                if (obj.kind === "Deployment") {
-                    let containers = obj.spec.template.spec.containers;
-                    obj.spec.template.spec.containers = containers.map((container: any) => {
-                        container.env.push({
-                            name: "AWS_REGION",
-                            value: input.region,
-                        } as k8s.types.output.core.v1.EnvVar)
-                        input.eksClusterName.apply(eksClusterName => {
+    // TODO: Consider refactoring this to avoid creating a config file inside the callback of `apply`. 
+    // `.apply` should not have any side-effects, but in this case it seems unavoidable
+    input.eksClusterName.apply(eksClusterName => {
+        const collector = new k8s.yaml.ConfigFile("adot-collector", {
+            file: deploymentFilePath,
+            transformations: [
+                (obj: any, opts: pulumi.CustomResourceOptions) => {
+                    if (obj.kind === "Deployment") {
+                        let containers = obj.spec.template.spec.containers;
+                        obj.spec.template.spec.containers = containers.map((container: any) => {
+                            container.env.push({
+                                name: "AWS_REGION",
+                                value: input.region,
+                            } as k8s.types.output.core.v1.EnvVar)
                             container.env.push({
                                 name: "OTEL_RESOURCE_ATTRIBUTES",
                                 value: `ClusterName=${eksClusterName}`,
                             } as k8s.types.output.core.v1.EnvVar)
+                            return container
                         })
-                        return container
-                    })
-                }
-            },
-        ],
-    }, { provider: k8sProvider })
+                    }
+                },
+            ],
+        }, { provider: k8sProvider })
+    })
 }
 
 // Setup fluentbit as a daemon-set following instructions at:
