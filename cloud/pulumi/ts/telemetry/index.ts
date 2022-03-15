@@ -124,10 +124,12 @@ async function setupAdotCollector(input: inputType, k8sProvider: k8s.Provider) {
                             name: "AWS_REGION",
                             value: input.region,
                         } as k8s.types.output.core.v1.EnvVar)
-                        container.env.push({
-                            name: "OTEL_RESOURCE_ATTRIBUTES",
-                            value: `ClusterName=${input.eksClusterName}`,
-                        } as k8s.types.output.core.v1.EnvVar)
+                        input.eksClusterName.apply(eksClusterName => {
+                            container.env.push({
+                                name: "OTEL_RESOURCE_ATTRIBUTES",
+                                value: `ClusterName=${eksClusterName}`,
+                            } as k8s.types.output.core.v1.EnvVar)
+                        })
                         return container
                     })
                 }
