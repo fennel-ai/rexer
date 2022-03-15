@@ -127,111 +127,105 @@ export const setup = async (input: inputType) => {
         ]
     }, { provider: k8sProvider })
 
-    emissaryIngress.ready.apply(() => {
-        // Setup http and https listeners as per instructions at:
-        // https://www.getambassador.io/docs/edge-stack/latest/howtos/configure-communications/#basic-http-and-https
-        const httplistener = new k8s.apiextensions.CustomResource("http-listener", {
-            "apiVersion": "getambassador.io/v3alpha1",
-            "kind": "Listener",
-            "metadata": {
-                "name": "http-listener"
-            },
-            "spec": {
-                "port": 8080,
-                "protocol": "HTTPS",
-                "securityModel": "XFP",
-                "hostBinding": {
-                    "namespace": {
-                        "from": "SELF",
-                    }
+    // Setup http and https listeners as per instructions at:
+    // https://www.getambassador.io/docs/edge-stack/latest/howtos/configure-communications/#basic-http-and-https
+    const httplistener = new k8s.apiextensions.CustomResource("http-listener", {
+        "apiVersion": "getambassador.io/v3alpha1",
+        "kind": "Listener",
+        "metadata": {
+            "name": "http-listener"
+        },
+        "spec": {
+            "port": 8080,
+            "protocol": "HTTPS",
+            "securityModel": "XFP",
+            "hostBinding": {
+                "namespace": {
+                    "from": "SELF",
                 }
             }
-        }, { provider: k8sProvider })
+        }
+    }, { provider: k8sProvider, dependsOn: emissaryIngress.ready })
 
-        const httpslistener = new k8s.apiextensions.CustomResource("https-listener", {
-            "apiVersion": "getambassador.io/v3alpha1",
-            "kind": "Listener",
-            "metadata": {
-                "name": "https-listener"
-            },
-            "spec": {
-                "port": 8443,
-                "protocol": "HTTPS",
-                "securityModel": "XFP",
-                "hostBinding": {
-                    "namespace": {
-                        "from": "SELF",
-                    }
+    const httpslistener = new k8s.apiextensions.CustomResource("https-listener", {
+        "apiVersion": "getambassador.io/v3alpha1",
+        "kind": "Listener",
+        "metadata": {
+            "name": "https-listener"
+        },
+        "spec": {
+            "port": 8443,
+            "protocol": "HTTPS",
+            "securityModel": "XFP",
+            "hostBinding": {
+                "namespace": {
+                    "from": "SELF",
                 }
             }
-        }, { provider: k8sProvider })
-    })
+        }
+    }, { provider: k8sProvider, dependsOn: emissaryIngress.ready })
 
     const loadBalancerUrl = emissaryIngress.ready.apply((_) => {
         const ingressResource = emissaryIngress.getResource("v1/Service", input.namespace, `${chartName}-emissary-ingress`);
         return ingressResource.status.loadBalancer.ingress[0].hostname
     })
 
-    const tlsKeyCert = loadBalancerUrl.apply(url => {
-        // Create TLS certificate for the generated url.
-        // Setup root and issuer CA as per https://linkerd.io/2.11/tasks/generate-certificates/.
-        const cmd = `step certificate create fennel cert.pem key.pem --profile=self-signed --subtle --san=${url} --no-password --insecure -kty=RSA --size 4096`
-        const createCertificate = new local.Command("root-ca", {
-            create: cmd,
-            delete: "rm -f cert.pem key.pem"
-        })
-
-        const cert = new local.Command("cert", {
-            create: "cat cert.pem | base64"
-        }, { dependsOn: createCertificate }).stdout
-
-        const key = new local.Command("key", {
-            create: "cat key.pem | base64"
-        }, { dependsOn: createCertificate }).stdout
-
-        const secret = new k8s.core.v1.Secret("tls", {
-            type: "kubernetes.io/tls",
-            metadata: {
-                name: "tls-cert",
-            },
-            data: {
-                "tls.crt": cert,
-                "tls.key": key,
-            }
-        }, { provider: k8sProvider })
-
-        // Delete files
-        new local.Command("cleanup", {
-            create: "rm -f cert.pem key.pem"
-        }, { dependsOn: secret })
-
-        return { cert, key }
+    // Create TLS certificate for the generated url.
+    // Setup root and issuer CA as per https://linkerd.io/2.11/tasks/generate-certificates/.
+    const cmd = loadBalancerUrl.apply(url => `step certificate create fennel cert.pem key.pem --profile=self-signed --subtle --san=${url} --no-password --insecure -kty=RSA --size 4096`)
+    const createCertificate = new local.Command("root-ca", {
+        create: cmd,
+        delete: "rm -f cert.pem key.pem"
     })
 
-    const vpcEndpontService = loadBalancerUrl.apply(async (url) => {
-        const lb = await aws.lb.getLoadBalancer({
-            name: getLoadBalancerName(url),
-        }, { provider: awsProvider })
+    const cert = new local.Command("cert", {
+        create: "cat cert.pem | base64"
+    }, { dependsOn: createCertificate }).stdout
 
-        return new aws.ec2.VpcEndpointService("ingress-vpc-endpoint-service", {
-            acceptanceRequired: true,
-            allowedPrincipals: [
-                // Allow anyone to discover the service.
-                "*",
-            ],
-            networkLoadBalancerArns: [lb.arn],
-            tags: {
-                ...fennelStdTags,
-                "Name": `${input.namespace}-endpoint-service`
-            },
+    const key = new local.Command("key", {
+        create: "cat key.pem | base64"
+    }, { dependsOn: createCertificate }).stdout
+
+    const secret = new k8s.core.v1.Secret("tls", {
+        type: "kubernetes.io/tls",
+        metadata: {
+            name: "tls-cert",
+        },
+        data: {
+            "tls.crt": cert,
+            "tls.key": key,
+        }
+    }, { provider: k8sProvider })
+
+    // Delete files
+    new local.Command("cleanup", {
+        create: "rm -f cert.pem key.pem"
+    }, { dependsOn: secret })
+
+    const lb = loadBalancerUrl.apply(url => {
+        return aws.lb.getLoadBalancer({
+            name: getLoadBalancerName(url)
         }, { provider: awsProvider })
     })
+
+    const vpcEndpointService = new aws.ec2.VpcEndpointService("ingress-vpc-endpoint-service", {
+        acceptanceRequired: true,
+        allowedPrincipals: [
+            // Allow anyone to discover the service.
+            "*",
+        ],
+        networkLoadBalancerArns: [lb.arn],
+        tags: {
+            ...fennelStdTags,
+            "Name": `${input.namespace}-endpoint-service`
+        },
+    }, { provider: awsProvider })
 
     const output: outputType = {
         loadBalancerUrl,
-        tlsCert: tlsKeyCert.cert,
-        tlsKey: pulumi.secret(tlsKeyCert.key),
-        endpontServiceName: vpcEndpontService.serviceName,
+        tlsCert: cert,
+        tlsKey: pulumi.secret(key),
+        endpontServiceName: vpcEndpointService.serviceName,
     }
 
     return output
