@@ -138,6 +138,7 @@ const setupResources = async () => {
         planeId: input.planeId,
     })
     const telemetryOutput = await telemetry.setup({
+        planeId: input.planeId,
         region: input.region,
         roleArn: input.roleArn,
         eksClusterName: eksOutput.clusterName,
