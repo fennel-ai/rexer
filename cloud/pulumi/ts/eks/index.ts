@@ -223,21 +223,24 @@ async function setupLoadBalancerController(awsProvider: aws.Provider, cluster: e
         policyArn: iamPolicy.arn,
     }, { provider: awsProvider })
 
+    const lbcValues = cluster.core.cluster.name.apply(clustername => {
+        return {
+            "clusterName": clustername,
+            "serviceAccount": {
+                "create": false,
+                "name": serviceAccountName,
+            }
+        }
+    })
+
     const lbc = new k8s.helm.v3.Release("aws-lbc", {
         repositoryOpts: {
             repo: "https://aws.github.io/eks-charts"
         },
         chart: "aws-load-balancer-controller",
         namespace: "kube-system",
-        values: {
-            "clusterName": cluster.core.cluster.name,
-            "serviceAccount": {
-                "create": false,
-                "name": serviceAccountName,
-            }
-        }
+        values: lbcValues,
     }, { provider: cluster.provider, dependsOn: attachPolicy })
-
     return lbc
 }
 
