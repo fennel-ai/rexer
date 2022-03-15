@@ -25,17 +25,17 @@ export const plugins = {
 export type inputType = {
     roleArn: string,
     region: string,
-    kubeconfig: string,
+    kubeconfig: pulumi.Input<string>,
     namespace: string,
     loadBalancerScheme: string,
-    subnetIds: string[],
+    subnetIds: pulumi.Input<string[]>,
 }
 
 export type outputType = {
-    loadBalancerUrl: pulumi.Output<string>
-    endpontServiceName: pulumi.Output<string>
-    tlsCert: pulumi.Output<string>,
-    tlsKey: pulumi.Output<string>,
+    loadBalancerUrl: string,
+    endpontServiceName: string,
+    tlsCert: string,
+    tlsKey: string,
 }
 
 const parseConfig = (): inputType => {
@@ -165,8 +165,8 @@ export const setup = async (input: inputType) => {
         }
     }, { provider: k8sProvider, dependsOn: emissaryIngress.ready })
 
-    const loadBalancerUrl = emissaryIngress.ready.apply((_) => {
-        const ingressResource = emissaryIngress.getResource("v1/Service", input.namespace, `${chartName}-emissary-ingress`);
+    const loadBalancerUrl = pulumi.all([input.namespace, emissaryIngress.ready]).apply(([namespace]) => {
+        const ingressResource = emissaryIngress.getResource("v1/Service", namespace, `${chartName}-emissary-ingress`);
         return ingressResource.status.loadBalancer.ingress[0].hostname
     })
 
@@ -221,18 +221,18 @@ export const setup = async (input: inputType) => {
         },
     }, { provider: awsProvider })
 
-    const output: outputType = {
+    const output: pulumi.Output<outputType> = pulumi.output({
         loadBalancerUrl,
         tlsCert: cert,
         tlsKey: pulumi.secret(key),
         endpontServiceName: vpcEndpointService.serviceName,
-    }
+    })
 
     return output
 }
 
 async function run() {
-    let output: outputType | undefined;
+    let output: pulumi.Output<outputType> | undefined;
     // Run the main function only if this program is run through the pulumi CLI.
     // Unfortunately, in that case the argv0 itself is not "pulumi", but the full
     // path of node: e.g. /nix/store/7q04aq0sq6im9a0k09gzfa1xfncc0xgm-nodejs-14.18.1/bin/node
