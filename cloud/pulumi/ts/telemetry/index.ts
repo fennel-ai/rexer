@@ -26,6 +26,7 @@ export type inputType = {
     kubeconfig: pulumi.Output<any>,
     eksClusterName: pulumi.Output<string>,
     nodeInstanceRole: pulumi.Output<string>,
+    prometheusEndpoint: pulumi.Input<string>,
 }
 
 export type outputType = {}
@@ -38,6 +39,7 @@ const parseConfig = (): inputType => {
         kubeconfig: pulumi.output(config.require(nameof<inputType>("kubeconfig"))),
         eksClusterName: pulumi.output(config.require(nameof<inputType>("eksClusterName"))),
         nodeInstanceRole: pulumi.output(config.require(nameof<inputType>("nodeInstanceRole"))),
+        prometheusEndpoint: config.require(nameof<inputType>("prometheusEndpoint")),
     }
 }
 
@@ -87,7 +89,8 @@ function setupOtelPolicy(input: inputType, awsProvider: aws.Provider) {
                     "xray:GetSamplingRules",
                     "xray:GetSamplingTargets",
                     "xray:GetSamplingStatisticSummaries",
-                    "ssm:GetParameters"
+                    "ssm:GetParameters",
+                    "aps:RemoteWrite"
                 ],
                 "Resource": "*"
             }
@@ -115,7 +118,7 @@ async function setupAdotCollector(input: inputType, k8sProvider: k8s.Provider) {
     const deploymentFilePath = path.join(root, "/deployment/artifacts/otel-deployment.yaml")
     // TODO: Consider refactoring this to avoid creating a config file inside the callback of `apply`. 
     // `.apply` should not have any side-effects, but in this case it seems unavoidable
-    input.eksClusterName.apply(eksClusterName => {
+    pulumi.all([input.eksClusterName, input.prometheusEndpoint]).apply(([eksClusterName, prometheusEndpoint])=> {
         const collector = new k8s.yaml.ConfigFile("adot-collector", {
             file: deploymentFilePath,
             transformations: [
@@ -133,6 +136,12 @@ async function setupAdotCollector(input: inputType, k8sProvider: k8s.Provider) {
                             } as k8s.types.output.core.v1.EnvVar)
                             return container
                         })
+                    }
+                    if (obj.kind == "ConfigMap") {
+                        let otelAgentConfig = obj.data["otel-agent-config"]
+                        otelAgentConfig = otelAgentConfig.replace("%%AMP_ENDPOINT%%", prometheusEndpoint)
+                        otelAgentConfig = otelAgentConfig.replace("%%AWS_REGION%%", input.region)
+                        obj.data["otel-agent-config"] = otelAgentConfig
                     }
                 },
             ],
