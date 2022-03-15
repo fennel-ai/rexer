@@ -275,6 +275,7 @@ export const setup = async (input: inputType): Promise<pulumi.Output<outputType>
             maxSize: 3,
             // Make AMI a config parameter since AMI-ids are unique to region.
             amiId: AMI_BY_REGION[region],
+            nodeAssociatePublicIpAddress: false,
         },
         providerCredentialOpts: {
             roleArn,
