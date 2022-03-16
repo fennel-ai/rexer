@@ -21,7 +21,7 @@ import (
 )
 
 const (
-	addr = "clustercfg.redis-db-54c4908.fbjfph.memorydb.us-west-2.amazonaws.com:6379"
+	addr = "clustercfg.redis-db-da7043b.fbjfph.memorydb.us-west-2.amazonaws.com:6379"
 )
 
 func TestRedisClientIntegration(t *testing.T) {
