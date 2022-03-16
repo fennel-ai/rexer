@@ -33,6 +33,10 @@ type RedisConfig = {
     nodeType?: string,
 }
 
+type PrometheusConf = {
+    includeAMP: boolean
+}
+
 export type PlaneConf = {
     planeId: number,
     region: string,
@@ -42,6 +46,7 @@ export type PlaneConf = {
     confluentConf: ConfluentConfig,
     controlPlaneConf: vpc.controlPlaneConfig,
     redisConf?: RedisConfig,
+    prometheusConf: PrometheusConf,
 }
 
 export type PlaneOutput = {
@@ -132,11 +137,20 @@ const setupResources = async () => {
         password: pulumi.output(input.confluentConf.password),
         envName: `plane-${input.planeId}`,
     })
-    const prometheusOutput = await prometheus.setup({
-        region: input.region,
-        roleArn: input.roleArn,
-        planeId: input.planeId,
+
+    let prometheusOutput = pulumi.output({
+        arn: "",
+        prometheusWriteEndpoint: "",
+        prometheusQueryEndpoint: "",
     })
+    if (input.prometheusConf.includeAMP) {
+        prometheusOutput = await prometheus.setup({
+            region: input.region,
+            roleArn: input.roleArn,
+            planeId: input.planeId,
+        })
+    }
+
     const telemetryOutput = await telemetry.setup({
         planeId: input.planeId,
         region: input.region,
