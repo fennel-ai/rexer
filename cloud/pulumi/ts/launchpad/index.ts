@@ -56,6 +56,9 @@ const planeConfs: Record<number, PlaneConf> = {
             password: confluentPassword
         },
         controlPlaneConf: controlPlane,
+        prometheusConf: {
+            includeAMP: false
+        }
     },
     // this is used for test resources
     2: {
@@ -78,6 +81,9 @@ const planeConfs: Record<number, PlaneConf> = {
         redisConf: {
             numShards: 1,
             nodeType: "db.t4g.medium",
+        },
+        prometheusConf: {
+            includeAMP: true
         }
     },
     3: {
@@ -100,6 +106,9 @@ const planeConfs: Record<number, PlaneConf> = {
         redisConf: {
             numShards: 2,
             nodeType: "db.t4g.medium",
+        },
+        prometheusConf: {
+            includeAMP: true
         }
     },
     4: {
@@ -119,6 +128,9 @@ const planeConfs: Record<number, PlaneConf> = {
             password: confluentPassword
         },
         controlPlaneConf: controlPlane,
+        prometheusConf: {
+            includeAMP: false
+        }
     },
 }
 

@@ -321,9 +321,7 @@ data:
             - resourcedetection
             - resource
             - batch/metrics
-          exporters:
-            - awsemf/containerinsights
-            - awsprometheusremotewrite
+          exporters: %%CONTAINER_INSIGHTS_EXPORTERS%%
         metrics/prometheus:
           receivers:
             - prometheus
@@ -331,9 +329,7 @@ data:
             - resourcedetection
             - resource
             - batch/metrics
-          exporters:
-            - awsemf/prometheus
-            - awsprometheusremotewrite
+          exporters: %%PROMETHEUS_EXPORTERS%%
 
 ---
 # create Daemonset

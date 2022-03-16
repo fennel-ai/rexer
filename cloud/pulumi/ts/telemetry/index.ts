@@ -139,11 +139,23 @@ async function setupAdotCollector(input: inputType, k8sProvider: k8s.Provider) {
                             return container
                         })
                     }
-                    if (obj.kind == "ConfigMap") {
+                    if (obj.kind === "ConfigMap") {
                         let otelAgentConfig = obj.data["otel-agent-config"]
-                        otelAgentConfig = otelAgentConfig.replace("%%AMP_ENDPOINT%%", prometheusEndpoint)
-                        otelAgentConfig = otelAgentConfig.replace("%%AWS_REGION%%", input.region)
+                        if (prometheusEndpoint === "") {
+                            otelAgentConfig = otelAgentConfig.replace(
+                                "%%CONTAINER_INSIGHTS_EXPORTERS%%", "[awsemf/containerinsights]")
+                            otelAgentConfig = otelAgentConfig.replace(
+                                "%%PROMETHEUS_EXPORTERS%%", "[awsemf/prometheus]")
+                        } else {
+                            otelAgentConfig = otelAgentConfig.replace(
+                                "%%CONTAINER_INSIGHTS_EXPORTERS%%", "[awsemf/containerinsights, awsprometheusremotewrite]")
+                            otelAgentConfig = otelAgentConfig.replace(
+                                "%%PROMETHEUS_EXPORTERS%%", "[awsemf/prometheus, awsprometheusremotewrite]")
+                            otelAgentConfig = otelAgentConfig.replace("%%AMP_ENDPOINT%%", prometheusEndpoint)
+                            otelAgentConfig = otelAgentConfig.replace("%%AWS_REGION%%", input.region)
+                        }
                         otelAgentConfig = otelAgentConfig.replace("%%PLANE_ID%%", `plane-${input.planeId}`)
+                        console.log(otelAgentConfig);
                         obj.data["otel-agent-config"] = otelAgentConfig
                     }
                 },
