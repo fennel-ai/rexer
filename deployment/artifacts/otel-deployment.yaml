@@ -291,6 +291,13 @@ data:
         parse_json_encoded_attr_values: [Sources, kubernetes]
         metric_declarations:
 
+      awsprometheusremotewrite:
+        # This should be replaced before it is used for deployment
+        endpoint: "%%AMP_ENDPOINT%%"
+        aws_auth:
+          service: "aps"
+          region: "%%AWS_REGION%%"
+
     service:
       telemetry:
         logs:
@@ -316,6 +323,7 @@ data:
             - batch/metrics
           exporters:
             - awsemf/containerinsights
+            - awsprometheusremotewrite
         metrics/prometheus:
           receivers:
             - prometheus
@@ -325,6 +333,7 @@ data:
             - batch/metrics
           exporters:
             - awsemf/prometheus
+            - awsprometheusremotewrite
 
 ---
 # create Daemonset

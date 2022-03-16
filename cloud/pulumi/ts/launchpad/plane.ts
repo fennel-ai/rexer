@@ -8,6 +8,7 @@ import * as elasticache from "../elasticache";
 import * as redis from "../redis";
 import * as confluentenv from "../confluentenv";
 import * as telemetry from "../telemetry";
+import * as prometheus from "../prometheus";
 
 import * as process from "process";
 
@@ -50,6 +51,7 @@ export type PlaneOutput = {
     elasticache: elasticache.outputType,
     confluent: confluentenv.outputType,
     db: aurora.outputType,
+    prometheus: prometheus.outputType,
 }
 
 const parseConfig = (): PlaneConf => {
@@ -130,12 +132,18 @@ const setupResources = async () => {
         password: pulumi.output(input.confluentConf.password),
         envName: `plane-${input.planeId}`,
     })
+    const prometheusOutput = await prometheus.setup({
+        region: input.region,
+        roleArn: input.roleArn,
+        planeId: input.planeId,
+    })
     const telemetryOutput = await telemetry.setup({
         region: input.region,
         roleArn: input.roleArn,
         eksClusterName: eksOutput.clusterName,
         kubeconfig: eksOutput.kubeconfig,
         nodeInstanceRole: eksOutput.instanceRole,
+        prometheusEndpoint: prometheusOutput.prometheusWriteEndpoint,
     })
     return {
         eks: eksOutput,
@@ -144,6 +152,7 @@ const setupResources = async () => {
         elasticache: elasticacheOutput,
         confluent: confluentOutput,
         db: auroraOutput,
+        prometheus: prometheusOutput,
     }
 };
 
