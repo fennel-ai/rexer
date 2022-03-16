@@ -21,6 +21,7 @@ export const plugins = {
 }
 
 export type inputType = {
+    planeId: number,
     roleArn: string,
     region: string,
     kubeconfig: pulumi.Output<any>,
@@ -34,6 +35,7 @@ export type outputType = {}
 const parseConfig = (): inputType => {
     const config = new pulumi.Config();
     return {
+        planeId: config.requireNumber(nameof<inputType>("planeId")),
         roleArn: config.require(nameof<inputType>("roleArn")),
         region: config.require(nameof<inputType>("region")),
         kubeconfig: pulumi.output(config.require(nameof<inputType>("kubeconfig"))),
@@ -141,6 +143,7 @@ async function setupAdotCollector(input: inputType, k8sProvider: k8s.Provider) {
                         let otelAgentConfig = obj.data["otel-agent-config"]
                         otelAgentConfig = otelAgentConfig.replace("%%AMP_ENDPOINT%%", prometheusEndpoint)
                         otelAgentConfig = otelAgentConfig.replace("%%AWS_REGION%%", input.region)
+                        otelAgentConfig = otelAgentConfig.replace("%%PLANE_ID%%", `plane-${input.planeId}`)
                         obj.data["otel-agent-config"] = otelAgentConfig
                     }
                 },
@@ -169,6 +172,7 @@ async function setupFluentBit(input: inputType, k8sProvider: k8s.Provider) {
             "http.port": "2020",
             "read.tail": "On",
             "logs.region": input.region,
+            "plane.id": `plane-${input.planeId}`,
         },
         metadata: {
             name: "fluent-bit-cluster-info",
