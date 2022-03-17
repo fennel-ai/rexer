@@ -130,76 +130,78 @@ export const setupPrometheus = async (input: inputType): Promise<pulumi.Output<o
                 "prometheus.yml": {
                     "scrape_configs": `
                     - job_name: 'kubernetes-pods'
-                        sample_limit: 10000
-                        kubernetes_sd_configs:
+                      sample_limit: 10000
+
+                      kubernetes_sd_configs:
                         - role: pod
-                        relabel_configs:
+
+                      relabel_configs:
                         - action: keep
-                        regex: true
-                        source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_scrape]
+                          regex: true
+                          source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_scrape]
                         - action: replace
-                        source_labels: [__address__, __meta_kubernetes_pod_annotation_prometheus_io_port]
-                        regex: ([^:]+)(?::\d+)?;(\d+)
-                        replacement: $$1:$$2
-                        target_label: __address__
+                          source_labels: [__address__, __meta_kubernetes_pod_annotation_prometheus_io_port]
+                          regex: ([^:]+)(?::\d+)?;(\d+)
+                          replacement: $$1:$$2
+                          target_label: __address__
                         - action: replace
-                        source_labels: [__meta_kubernetes_namespace]
-                        target_label: Namespace
+                          source_labels: [__meta_kubernetes_namespace]
+                          target_label: Namespace
                         - action: replace
-                        source_labels: [__meta_kubernetes_pod_name]
-                        target_label: PodName
+                          source_labels: [__meta_kubernetes_pod_name]
+                          target_label: PodName
                         - action: replace
-                        source_labels: [__meta_kubernetes_pod_container_name]
-                        target_label: ContainerName
+                          source_labels: [__meta_kubernetes_pod_container_name]
+                          target_label: ContainerName
                         - action: replace
-                        source_labels: [__meta_kubernetes_pod_controller_name]
-                        target_label: PodControllerName
+                          source_labels: [__meta_kubernetes_pod_controller_name]
+                          target_label: PodControllerName
                         - action: replace
-                        source_labels: [__meta_kubernetes_pod_controller_kind]
-                        target_label: PodControllerKind
+                          source_labels: [__meta_kubernetes_pod_controller_kind]
+                          target_label: PodControllerKind
                         - action: replace
-                        source_labels: [__meta_kubernetes_pod_phase]
-                        target_label: PodPhase
+                          source_labels: [__meta_kubernetes_pod_phase]
+                          target_label: PodPhase
                         # Exclude high cardinality metrics
-                        metric_relabel_configs:
                         - action: drop
-                        source_labels: [__name__]
-                        regex: 'go_gc_duration_seconds.*'
+                          source_labels: [__name__]
+                          regex: 'go_gc_duration_seconds.*'
 
                     - job_name: 'kubernetes-service-endpoints'
-                        kubernetes_sd_configs:
+
+                      kubernetes_sd_configs:
                         - role: endpoints
-                        relabel_configs:
+                      
+                      relabel_configs:
                         - action: keep
-                        regex: true
-                        source_labels: [__meta_kubernetes_service_annotation_prometheus_io_scrape]
+                          regex: true
+                          source_labels: [__meta_kubernetes_service_annotation_prometheus_io_scrape]
                         - action: replace
-                        source_labels: [__address__, __meta_kubernetes_service_annotation_prometheus_io_port]
-                        regex: ([^:]+)(?::\d+)?;(\d+)
-                        replacement: $$1:$$2
-                        target_label: __address__
+                          source_labels: [__address__, __meta_kubernetes_service_annotation_prometheus_io_port]
+                          regex: ([^:]+)(?::\d+)?;(\d+)
+                          replacement: $$1:$$2
+                          target_label: __address__
                         - action: labelmap
-                        regex: __meta_kubernetes_pod_label_(.+)
+                          regex: __meta_kubernetes_pod_label_(.+)
                         - action: replace
-                        source_labels: [__meta_kubernetes_namespace]
-                        target_label: Namespace
+                          source_labels: [__meta_kubernetes_namespace]
+                          target_label: Namespace
                         - action: replace
-                        source_labels: [__meta_kubernetes_service_name]
-                        target_label: Service
+                          source_labels: [__meta_kubernetes_service_name]
+                          target_label: Service
                         - action: replace
-                        source_labels: [__meta_kubernetes_pod_node_name]
-                        target_label: kubernetes_node
+                          source_labels: [__meta_kubernetes_pod_node_name]
+                          target_label: kubernetes_node
                         - action: replace
-                        source_labels: [__meta_kubernetes_pod_name]
-                        target_label: PodName
+                          source_labels: [__meta_kubernetes_pod_name]
+                          target_label: PodName
                         - action: replace
-                        source_labels: [__meta_kubernetes_pod_container_name]
-                        target_label: ContainerName
+                          source_labels: [__meta_kubernetes_pod_container_name]
+                          target_label: ContainerName
                         # Exclude high cardinality metrics
-                        metric_relabel_configs:
-                        - source_labels: [__name__]
-                        regex: 'go_gc_duration_seconds.*'
-                        action: drop
+                        - action: drop
+                          source_labels: [__name__]
+                          regex: 'go_gc_duration_seconds.*'
                     `
                 }
             }

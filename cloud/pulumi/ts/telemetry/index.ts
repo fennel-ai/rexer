@@ -161,7 +161,6 @@ async function setupAdotCollector(input: inputType, k8sProvider: k8s.Provider) {
                             otelAgentConfig = otelAgentConfig.replace("%%AWS_REGION%%", input.region)
                         }
                         otelAgentConfig = otelAgentConfig.replace("%%PLANE_ID%%", `plane-${input.planeId}`)
-                        console.log(otelAgentConfig);
                         obj.data["otel-agent-config"] = otelAgentConfig
                     }
                 },
