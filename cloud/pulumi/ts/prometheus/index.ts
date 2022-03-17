@@ -1,3 +1,4 @@
+import * as k8s from "@pulumi/kubernetes";
 import * as pulumi from "@pulumi/pulumi";
 import * as aws from "@pulumi/aws";
 import * as process from "process";
@@ -13,10 +14,13 @@ export const fennelStdTags = {
 }
 
 export const plugins = {
-    "aws": "v4.38.0"
+    "aws": "v4.38.0",
+    "kubernetes": "v3.16.0"
 }
 
 export type inputType = {
+    useAMP: boolean,
+    kubeconfig: pulumi.Input<any>,
     region: string,
     roleArn: string,
     planeId: number,
@@ -32,13 +36,15 @@ export type outputType = {
 const parseConfig = (): inputType => {
     const config = new pulumi.Config();
     return {
+        useAMP: config.requireBoolean(nameof<inputType>("useAMP")),
+        kubeconfig: config.require(nameof<inputType>("kubeconfig")),
         region: config.require(nameof<inputType>("region")),
         roleArn: config.require(nameof<inputType>("roleArn")),
         planeId: config.requireNumber(nameof<inputType>("planeId")),
     }
 }
 
-export const setup = async (input: inputType): Promise<pulumi.Output<outputType>> => {
+export const setupAMP = async (input: inputType): Promise<pulumi.Output<outputType>> => {
     const awsProvider = new aws.Provider("prom-aws-provider", {
         region: <aws.Region>input.region,
         assumeRole: {
@@ -69,6 +75,151 @@ export const setup = async (input: inputType): Promise<pulumi.Output<outputType>
         prometheusQueryEndpoint,
     })
     return output
+}
+
+export const setupPrometheus = async (input: inputType): Promise<pulumi.Output<outputType>> => {
+    const k8sProvider = new k8s.Provider("prom-k8s-provider", {
+        kubeconfig: input.kubeconfig,
+    })
+
+    // By default prometheus chart creates 4 pods - alertmanager, node-exporter, pushgateway and server.
+    // We disable alertmanager - since we will create alerts using grafana.
+    // We disable node-exporter - node-exporter exports node and OS level metrics which are too granular for us now.
+    // We disable pushgateway - this prometheus service is useful when metrics need to be collected from
+    //  short lived jobs which is not the case for us.
+    const prometheusRelease = new k8s.helm.v3.Release("prometheus", {
+        repositoryOpts: {
+            "repo": "https://prometheus-community.github.io/helm-charts"
+        },
+        chart: "prometheus",
+        values: {
+            "serviceAccounts": {
+                "alertmanager": {
+                    "create": false
+                },
+                "pushgateway": {
+                    "create": false
+                },
+                "nodeExporter": {
+                    "create": false
+                }
+            },
+            "alertmanager": {
+                "enabled": false
+            },
+            "pushgateway": {
+                "enabled": false
+            },
+            "nodeExporter": {
+                "enabled": false
+            },
+            // Set service type as LoadBalancer so that AWS LBC creates a corresponding
+            // NLB for the servers endpoint. NLB endpoint could then be used to query metrics.
+            "server": {
+                "service": {
+                    "type": "LoadBalancer"
+                }
+            },
+            // Server configmap entries.
+            //
+            // This is copied from `deployment/artifacts/otel-deployment.yaml` to have the same footprint of
+            // metrics being captured from prometheus.
+            //
+            // This overrides the configurations defined in the config map template in the chart.
+            "serverFiles": {
+                "prometheus.yml": {
+                    "scrape_configs": `
+                    - job_name: 'kubernetes-pods'
+                        sample_limit: 10000
+                        kubernetes_sd_configs:
+                        - role: pod
+                        relabel_configs:
+                        - action: keep
+                        regex: true
+                        source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_scrape]
+                        - action: replace
+                        source_labels: [__address__, __meta_kubernetes_pod_annotation_prometheus_io_port]
+                        regex: ([^:]+)(?::\d+)?;(\d+)
+                        replacement: $$1:$$2
+                        target_label: __address__
+                        - action: replace
+                        source_labels: [__meta_kubernetes_namespace]
+                        target_label: Namespace
+                        - action: replace
+                        source_labels: [__meta_kubernetes_pod_name]
+                        target_label: PodName
+                        - action: replace
+                        source_labels: [__meta_kubernetes_pod_container_name]
+                        target_label: ContainerName
+                        - action: replace
+                        source_labels: [__meta_kubernetes_pod_controller_name]
+                        target_label: PodControllerName
+                        - action: replace
+                        source_labels: [__meta_kubernetes_pod_controller_kind]
+                        target_label: PodControllerKind
+                        - action: replace
+                        source_labels: [__meta_kubernetes_pod_phase]
+                        target_label: PodPhase
+                        # Exclude high cardinality metrics
+                        metric_relabel_configs:
+                        - action: drop
+                        source_labels: [__name__]
+                        regex: 'go_gc_duration_seconds.*'
+
+                    - job_name: 'kubernetes-service-endpoints'
+                        kubernetes_sd_configs:
+                        - role: endpoints
+                        relabel_configs:
+                        - action: keep
+                        regex: true
+                        source_labels: [__meta_kubernetes_service_annotation_prometheus_io_scrape]
+                        - action: replace
+                        source_labels: [__address__, __meta_kubernetes_service_annotation_prometheus_io_port]
+                        regex: ([^:]+)(?::\d+)?;(\d+)
+                        replacement: $$1:$$2
+                        target_label: __address__
+                        - action: labelmap
+                        regex: __meta_kubernetes_pod_label_(.+)
+                        - action: replace
+                        source_labels: [__meta_kubernetes_namespace]
+                        target_label: Namespace
+                        - action: replace
+                        source_labels: [__meta_kubernetes_service_name]
+                        target_label: Service
+                        - action: replace
+                        source_labels: [__meta_kubernetes_pod_node_name]
+                        target_label: kubernetes_node
+                        - action: replace
+                        source_labels: [__meta_kubernetes_pod_name]
+                        target_label: PodName
+                        - action: replace
+                        source_labels: [__meta_kubernetes_pod_container_name]
+                        target_label: ContainerName
+                        # Exclude high cardinality metrics
+                        metric_relabel_configs:
+                        - source_labels: [__name__]
+                        regex: 'go_gc_duration_seconds.*'
+                        action: drop
+                    `
+                }
+            }
+        }
+    }, {provider: k8sProvider})
+
+    const output = pulumi.output({
+        arn: "",  // ARN for a K8S pod does not exist
+        prometheusWriteEndpoint: "",
+        prometheusQueryEndpoint: "",
+    })
+    return output
+}
+
+
+export const setup = async (input: inputType): Promise<pulumi.Output<outputType>> => {
+    if (input.useAMP) {
+        return setupAMP(input)
+    }
+    return setupPrometheus(input)
 }
 
 async function run() {

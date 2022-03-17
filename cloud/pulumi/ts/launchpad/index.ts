@@ -57,7 +57,7 @@ const planeConfs: Record<number, PlaneConf> = {
         },
         controlPlaneConf: controlPlane,
         prometheusConf: {
-            includeAMP: false
+            useAMP: false
         }
     },
     // this is used for test resources
@@ -83,7 +83,7 @@ const planeConfs: Record<number, PlaneConf> = {
             nodeType: "db.t4g.medium",
         },
         prometheusConf: {
-            includeAMP: true
+            useAMP: true
         }
     },
     3: {
@@ -108,7 +108,7 @@ const planeConfs: Record<number, PlaneConf> = {
             nodeType: "db.t4g.medium",
         },
         prometheusConf: {
-            includeAMP: true
+            useAMP: true
         }
     },
     4: {
@@ -129,7 +129,7 @@ const planeConfs: Record<number, PlaneConf> = {
         },
         controlPlaneConf: controlPlane,
         prometheusConf: {
-            includeAMP: false
+            useAMP: false
         }
     },
 }

@@ -3,7 +3,8 @@ import * as pulumi from "@pulumi/pulumi";
 import * as k8s from "@pulumi/kubernetes";
 import * as process from "process";
 import * as path from "path";
-import { input } from "@pulumi/aws/types";
+import * as fs from 'fs';
+import * as md5 from 'ts-md5/dist/md5';
 
 // TODO: use version from common library.
 // operator for type-safety for string key access:
@@ -117,7 +118,12 @@ function setupOtelPolicy(input: inputType, awsProvider: aws.Provider) {
 // and traces and forward them to cloudwatch.
 async function setupAdotCollector(input: inputType, k8sProvider: k8s.Provider) {
     const root = process.env.FENNEL_ROOT!;
+
+    // Generate a file hash so that any changes in the file, forces pod restart.
+    // Without this, any changes to the ConfigMap would not get reflected as the configmap is mounted
+    // on pod initialization and any updates to the ConfigMap of the pod are later not reflected.
     const deploymentFilePath = path.join(root, "/deployment/artifacts/otel-deployment.yaml")
+    const filehash = md5.Md5.hashStr(fs.readFileSync(deploymentFilePath).toString())
     // TODO: Consider refactoring this to avoid creating a config file inside the callback of `apply`. 
     // `.apply` should not have any side-effects, but in this case it seems unavoidable
     pulumi.all([input.eksClusterName, input.prometheusEndpoint]).apply(([eksClusterName, prometheusEndpoint])=> {
@@ -134,7 +140,7 @@ async function setupAdotCollector(input: inputType, k8sProvider: k8s.Provider) {
                             } as k8s.types.output.core.v1.EnvVar)
                             container.env.push({
                                 name: "OTEL_RESOURCE_ATTRIBUTES",
-                                value: `ClusterName=${eksClusterName}`,
+                                value: `ClusterName=${eksClusterName},FileHash=${filehash}`,
                             } as k8s.types.output.core.v1.EnvVar)
                             return container
                         })
@@ -160,7 +166,7 @@ async function setupAdotCollector(input: inputType, k8sProvider: k8s.Provider) {
                     }
                 },
             ],
-        }, { provider: k8sProvider })
+        }, { provider: k8sProvider, replaceOnChanges: ["*"] })
     })
 }
 
