@@ -13,8 +13,8 @@ func verifyOp(t *testing.T, left, right, expected Value, op string) {
 	assert.Equal(t, expected, ret)
 
 	// and verify future forms too
-	lf := &Future{lock: sync.Mutex{}, fn: func() Value { return left }, cached: nil}
-	rf := &Future{lock: sync.Mutex{}, fn: func() Value { return right }, cached: nil}
+	lf := getFuture(left)
+	rf := getFuture(right)
 	fret, err := lf.Op(op, right)
 	assert.NoError(t, err)
 	assert.Equal(t, expected, fret)
@@ -33,8 +33,8 @@ func verifyError(t *testing.T, left, right Value, ops []string) {
 		_, err := left.Op(op, right)
 		assert.Error(t, err)
 		// and also with future
-		lf := &Future{lock: sync.Mutex{}, fn: func() Value { return left }, cached: nil}
-		rf := &Future{lock: sync.Mutex{}, fn: func() Value { return right }, cached: nil}
+		lf := getFuture(left)
+		rf := getFuture(right)
 		_, err = lf.Op(op, right)
 		assert.Error(t, err)
 
@@ -264,13 +264,7 @@ func TestIndexList(t *testing.T) {
 	l := List([]Value{Int(1), Double(2.0), Bool(true)})
 	testIndexList(t, l, l)
 	// also with futures
-	testIndexList(t, &Future{
-		lock: sync.Mutex{},
-		fn: func() Value {
-			return l
-		},
-		cached: nil,
-	}, l)
+	testIndexList(t, getFuture(l), l)
 }
 
 func testIndex_Dict(t *testing.T, v Value, di Dict) {
@@ -288,13 +282,7 @@ func TestIndex_Dict(t *testing.T) {
 	di := Dict(map[string]Value{"a": Int(2), "b": Double(1.0)})
 	testIndex_Dict(t, di, di)
 	// and also futures
-	testIndex_Dict(t, &Future{
-		lock: sync.Mutex{},
-		fn: func() Value {
-			return di
-		},
-		cached: nil,
-	}, di)
+	testIndex_Dict(t, getFuture(di), di)
 }
 
 func TestConcatenation(t *testing.T) {
@@ -305,4 +293,14 @@ func TestConcatenation(t *testing.T) {
 	l1 := List([]Value{Int(1), Nil})
 	l2 := List([]Value{Double(2), Bool(false)})
 	verifyOp(t, l1, l2, List([]Value{Int(1), Nil, Double(2), Bool(false)}), "+")
+}
+
+func getFuture(v Value) *Future {
+	ch := make(chan Value, 1)
+	ch <- v
+	return &Future{
+		lock:   sync.Mutex{},
+		ch:     ch,
+		cached: nil,
+	}
 }

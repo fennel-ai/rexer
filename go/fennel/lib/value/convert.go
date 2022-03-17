@@ -34,7 +34,7 @@ func ToProtoValue(v Value) (PValue, error) {
 	case nil_:
 		return PValue{Node: &PValue_Nil{}}, nil
 	case *Future:
-		return ToProtoValue(t.Await())
+		return ToProtoValue(t.await())
 	default:
 		return PValue{Node: &PValue_Nil{}}, fmt.Errorf("invalid value: %v", v)
 	}
