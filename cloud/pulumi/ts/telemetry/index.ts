@@ -149,18 +149,21 @@ async function setupAdotCollector(input: inputType, k8sProvider: k8s.Provider) {
                         let otelAgentConfig = obj.data["otel-agent-config"]
                         if (prometheusEndpoint === "") {
                             otelAgentConfig = otelAgentConfig.replace(
-                                "%%CONTAINER_INSIGHTS_EXPORTERS%%", "[awsemf/containerinsights]")
+                                new RegExp("%%CONTAINER_INSIGHTS_EXPORTERS%%", 'g'), "[awsemf/containerinsights]")
                             otelAgentConfig = otelAgentConfig.replace(
-                                "%%PROMETHEUS_EXPORTERS%%", "[awsemf/prometheus]")
+                                new RegExp("%%PROMETHEUS_EXPORTERS%%", 'g'), "[awsemf/prometheus]")
                         } else {
                             otelAgentConfig = otelAgentConfig.replace(
-                                "%%CONTAINER_INSIGHTS_EXPORTERS%%", "[awsemf/containerinsights, awsprometheusremotewrite]")
+                                new RegExp("%%CONTAINER_INSIGHTS_EXPORTERS%%", 'g'), "[awsemf/containerinsights, awsprometheusremotewrite]")
                             otelAgentConfig = otelAgentConfig.replace(
-                                "%%PROMETHEUS_EXPORTERS%%", "[awsemf/prometheus, awsprometheusremotewrite]")
-                            otelAgentConfig = otelAgentConfig.replace("%%AMP_ENDPOINT%%", prometheusEndpoint)
-                            otelAgentConfig = otelAgentConfig.replace("%%AWS_REGION%%", input.region)
+                                new RegExp("%%PROMETHEUS_EXPORTERS%%", 'g'), "[awsemf/prometheus, awsprometheusremotewrite]")
+                            otelAgentConfig = otelAgentConfig.replace(
+                                new RegExp("%%AMP_ENDPOINT%%", 'g'), prometheusEndpoint)
+                            otelAgentConfig = otelAgentConfig.replace(
+                                new RegExp("%%AWS_REGION%%", 'g'), input.region)
                         }
-                        otelAgentConfig = otelAgentConfig.replace("%%PLANE_ID%%", `plane-${input.planeId}`)
+                        otelAgentConfig = otelAgentConfig.replace(
+                            new RegExp("%%PLANE_ID%%", 'g'), `plane-${input.planeId}`)
                         obj.data["otel-agent-config"] = otelAgentConfig
                     }
                 },
