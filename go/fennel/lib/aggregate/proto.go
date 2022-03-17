@@ -61,7 +61,7 @@ func FromProtoAggregate(pagg *ProtoAggregate) (Aggregate, error) {
 func FromProtoOptions(popt *AggOptions) Options {
 	return Options{
 		AggType:   ftypes.AggType(popt.AggType),
-		Duration:  popt.Duration,
+		Durations: popt.Durations,
 		Window:    popt.Window,
 		Limit:     popt.Limit,
 		Normalize: popt.Normalize,
@@ -71,7 +71,7 @@ func FromProtoOptions(popt *AggOptions) Options {
 func ToProtoOptions(opt Options) *AggOptions {
 	return &AggOptions{
 		AggType:   string(opt.AggType),
-		Duration:  opt.Duration,
+		Durations: opt.Durations,
 		Window:    opt.Window,
 		Limit:     opt.Limit,
 		Normalize: opt.Normalize,

@@ -50,15 +50,22 @@ func (agg Aggregate) Validate() error {
 	aggtype := agg.Options.AggType
 	switch strings.ToLower(string(aggtype)) {
 	case "sum", "average", "min", "max", "stddev", "list":
-		if options.Duration == 0 {
-			return fmt.Errorf("duration can not be zero for %s", aggtype)
+		if len(options.Durations) < 1 {
+			return fmt.Errorf("at least one duration must be provided for %s", aggtype)
+		}
+		for _, d := range options.Durations {
+			if d == 0 {
+				return fmt.Errorf("duration can not be zero for %s", aggtype)
+			}
 		}
 		if options.Window != 0 || options.Limit != 0 || options.Normalize {
 			return fmt.Errorf("window, limit, normalize should all be zero for %v", aggtype)
 		}
 	case "rate":
-		if options.Duration == 0 {
-			return fmt.Errorf("duration can not be zero for %s", aggtype)
+		for _, d := range options.Durations {
+			if d == 0 {
+				return fmt.Errorf("duration can not be zero for %s", aggtype)
+			}
 		}
 		if options.Window != 0 || options.Limit != 0 {
 			return fmt.Errorf("window, limit should all be zero for %v", aggtype)
@@ -70,8 +77,11 @@ func (agg Aggregate) Validate() error {
 		if options.Limit == 0 {
 			return fmt.Errorf("limit can not be zero for time series sum")
 		}
-		if options.Duration != 0 || options.Normalize {
-			return fmt.Errorf("duration, normalize are not relevant for time series and should be set to zero")
+		if len(options.Durations) != 0 {
+			return fmt.Errorf("durations are not relevant for time series and should be set to empty list")
+		}
+		if options.Normalize {
+			return fmt.Errorf("normalize is not relevant for time series and should be set to zero")
 		}
 	default:
 		return fmt.Errorf("unsupported aggregation type: %v", agg.Options.AggType)
@@ -83,15 +93,39 @@ func (agg Aggregate) Equals(other Aggregate) bool {
 	if agg.Options.AggType != other.Options.AggType || agg.Name != other.Name || agg.Timestamp != other.Timestamp {
 		return false
 	}
-	return agg.Query.Equals(other.Query) && (agg.Options == other.Options)
+	return agg.Query.Equals(other.Query) && agg.Options.Equals(other.Options)
 }
 
 type Options struct {
 	AggType   ftypes.AggType
-	Duration  uint64
+	Durations []uint64
 	Window    ftypes.Window
 	Limit     uint64
 	Normalize bool
+}
+
+func (o Options) Equals(other Options) bool {
+	if o.AggType != other.AggType {
+		return false
+	}
+	if len(o.Durations) != len(other.Durations) {
+		return false
+	}
+	for i := range o.Durations {
+		if o.Durations[i] != other.Durations[i] {
+			return false
+		}
+	}
+	if o.Window != other.Window {
+		return false
+	}
+	if o.Limit != other.Limit {
+		return false
+	}
+	if o.Normalize != other.Normalize {
+		return false
+	}
+	return true
 }
 
 type AggregateSer struct {

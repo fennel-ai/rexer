@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"testing"
-	"time"
 
 	"fennel/engine/ast"
 	"fennel/lib/aggregate"
@@ -26,8 +25,8 @@ func TestRetrieveStore(t *testing.T) {
 	assert.NoError(t, err)
 
 	options := aggregate.AggOptions{
-		AggType:  "rolling_counter",
-		Duration: uint64(time.Hour * 24 * 7),
+		AggType:   "rolling_counter",
+		Durations: []uint64{3600 * 24 * 7},
 	}
 	optionSer, err := proto.Marshal(&options)
 	assert.NoError(t, err)

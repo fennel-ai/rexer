@@ -28,7 +28,7 @@ func Store(ctx context.Context, tier tier.Tier, agg aggregate.Aggregate) error {
 		// if already present, check if query and options are the same
 		// if they are the same, do nothing
 		// if they are different, return error
-		if agg.Query.Equals(agg2.Query) && (agg.Options == agg2.Options) {
+		if agg.Query.Equals(agg2.Query) && agg.Options.Equals(agg2.Options) {
 			return nil
 		} else {
 			return fmt.Errorf("already present but with different query/options")

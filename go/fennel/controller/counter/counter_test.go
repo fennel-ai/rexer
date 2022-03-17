@@ -31,8 +31,8 @@ func TestRolling(t *testing.T) {
 		Query:     ast.MakeInt(1),
 		Timestamp: 0,
 		Options: libaggregate.Options{
-			AggType:  "sum",
-			Duration: 3600 * 28,
+			AggType:   "sum",
+			Durations: []uint64{3600 * 14, 3600 * 28},
 		},
 	}
 	querySer, err := ast.Marshal(agg.Query)
