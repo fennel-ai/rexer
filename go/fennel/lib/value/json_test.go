@@ -2,7 +2,6 @@ package value
 
 import (
 	"fmt"
-	"sync"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -61,13 +60,7 @@ func TestJSON(t *testing.T) {
 		ser := ToJSON(tst.val)
 		assert.Equal(t, tst.str, string(ser))
 		// also test future
-		f := &Future{
-			lock: sync.Mutex{},
-			fn: func() Value {
-				return tst.val
-			},
-			cached: nil,
-		}
+		f := getFuture(tst.val)
 		serf := ToJSON(f)
 		assert.Equal(t, tst.str, string(serf))
 	}

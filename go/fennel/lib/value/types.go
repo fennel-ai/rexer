@@ -333,40 +333,48 @@ func (iter *Iter) Next() (Value, error) {
 
 type Future struct {
 	lock   sync.Mutex
-	fn     func() Value
+	ch     <-chan Value
 	cached Value
 }
 
-func (f *Future) Await() Value {
+func NewFuture(ch <-chan Value) Future {
+	return Future{
+		lock:   sync.Mutex{},
+		ch:     ch,
+		cached: nil,
+	}
+}
+
+func (f *Future) await() Value {
 	if f.cached != nil {
 		return f.cached
 	}
 	f.lock.Lock()
 	defer f.lock.Unlock()
-	f.cached = f.fn()
+	f.cached = <-f.ch
 	return f.cached
 }
 
 func (f *Future) isValue() {}
 
 func (f *Future) Equal(v Value) bool {
-	return f.Await().Equal(v)
+	return f.await().Equal(v)
 }
 
 func (f *Future) Op(opt string, other Value) (Value, error) {
-	return f.Await().Op(opt, other)
+	return f.await().Op(opt, other)
 }
 
 func (f *Future) String() string {
-	return f.Await().String()
+	return f.await().String()
 }
 
 func (f *Future) Clone() Value {
-	return f.Await().Clone()
+	return f.await().Clone()
 }
 
 func (f *Future) MarshalJSON() ([]byte, error) {
-	return f.Await().MarshalJSON()
+	return f.await().MarshalJSON()
 }
 
 var _ Value = &Future{}

@@ -1,7 +1,6 @@
 package value
 
 import (
-	"sync"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -32,13 +31,7 @@ func TestConvert(t *testing.T) {
 		assert.Equal(t, v, v2)
 
 		// also verify futures
-		f := &Future{
-			lock: sync.Mutex{},
-			fn: func() Value {
-				return v
-			},
-			cached: nil,
-		}
+		f := getFuture(v)
 		pf, err := ToProtoValue(f)
 		assert.NoError(t, err)
 		assert.Equal(t, pv, pf)
