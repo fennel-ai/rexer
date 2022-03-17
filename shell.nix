@@ -15,7 +15,7 @@ with pkgs; mkShell {
     pkgs.protobuf3_17
 
     # Packages for go development.
-    pkgs.go_1_17
+    unstable.pkgs.go_1_18
     pkgs.protoc-gen-go
 
     # Packages to build kafka go client
