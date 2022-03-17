@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"testing"
-	"time"
 
 	"fennel/engine/ast"
 	"fennel/lib/aggregate"
@@ -23,8 +22,8 @@ func TestRetrieveAll(t *testing.T) {
 	agg := aggregate.Aggregate{
 		Timestamp: 1,
 		Options: aggregate.Options{
-			AggType:  "sum",
-			Duration: 3600 * 24,
+			AggType:   "sum",
+			Durations: []uint64{3600 * 24, 3600 * 24 * 2},
 		},
 	}
 	// initially retrieve all is empty
@@ -59,8 +58,8 @@ func TestDuplicate(t *testing.T) {
 		Query:     ast.Query{},
 		Timestamp: 1,
 		Options: aggregate.Options{
-			AggType:  "sum",
-			Duration: uint64(time.Hour * 24 * 7),
+			AggType:   "sum",
+			Durations: []uint64{3600 * 24 * 7},
 		},
 	}
 	err = Store(ctx, tier, agg)
@@ -80,7 +79,7 @@ func TestDuplicate(t *testing.T) {
 	agg.Query = ast.Query{}
 
 	// Error if different options
-	agg.Options.Duration = uint64(time.Hour * 24 * 6)
+	agg.Options.Durations = []uint64{3600 * 24 * 6}
 	err = Store(ctx, tier, agg)
 	assert.Error(t, err)
 }
@@ -96,8 +95,8 @@ func TestDeactivate(t *testing.T) {
 		Query:     ast.MakeInt(4),
 		Timestamp: 1,
 		Options: aggregate.Options{
-			AggType:  "sum",
-			Duration: uint64(time.Hour * 24 * 7),
+			AggType:   "sum",
+			Durations: []uint64{3600 * 24 * 7},
 		},
 	}
 

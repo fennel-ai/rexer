@@ -5,6 +5,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"math"
+	"strconv"
+	"strings"
 	"testing"
 
 	"fennel/engine/ast"
@@ -22,15 +24,15 @@ func TestAggregateJSON(t *testing.T) {
 		{},
 		{Name: "some name", Timestamp: 123,
 			Options: Options{
-				AggType:  "some type",
-				Duration: 12 * 3600,
-				Window:   1,
-				Limit:    10},
+				AggType:   "some type",
+				Durations: []uint64{120, 12 * 3600},
+				Window:    1,
+				Limit:     10},
 		},
 		{Timestamp: math.MaxUint64,
 			Options: Options{
-				Duration: math.MaxUint64,
-				Limit:    math.MaxUint64,
+				Durations: []uint64{math.MaxUint64},
+				Limit:     math.MaxUint64,
 			},
 		},
 	}
@@ -47,7 +49,7 @@ func TestAggregateJSON(t *testing.T) {
 		var agg Aggregate
 		err := json.Unmarshal([]byte(tst.str), &agg)
 		assert.NoError(t, err)
-		assert.Equal(t, tst.agg, agg)
+		assert.True(t, tst.agg.Equals(agg))
 	}
 	// Test marshal
 	for _, tst := range tests {
@@ -117,10 +119,15 @@ func makeAggregateJSON(agg *Aggregate) (string, error) {
 		return "", err
 	}
 	queryStr := base64.StdEncoding.EncodeToString(querySer)
+
+	var dStr []string
+	for _, d := range agg.Options.Durations {
+		dStr = append(dStr, strconv.FormatUint(d, 10))
+	}
 	return fmt.Sprintf(
 			`{"Name":"%s","Query":"%s","Timestamp":%d,`+
-				`"Options":{"Type":"%s","Duration":%d,"Window":%d,"Limit":%d}}`,
+				`"Options":{"Type":"%s","Durations":%s,"Window":%d,"Limit":%d}}`,
 			agg.Name, queryStr, agg.Timestamp,
-			agg.Options.AggType, agg.Options.Duration, agg.Options.Window, agg.Options.Limit),
+			agg.Options.AggType, "["+strings.Join(dStr, ",")+"]", agg.Options.Window, agg.Options.Limit),
 		nil
 }

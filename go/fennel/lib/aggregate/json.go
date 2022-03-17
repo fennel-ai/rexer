@@ -19,7 +19,7 @@ func (agg *Aggregate) UnmarshalJSON(data []byte) error {
 		Timestamp ftypes.Timestamp `json:"Timestamp"`
 		Options   struct {
 			AggType   string        `json:"Type"`
-			Duration  uint64        `json:"Duration"`
+			Durations []uint64      `json:"Durations"`
 			Window    ftypes.Window `json:"Window"`
 			Limit     uint64        `json:"Limit"`
 			Normalize bool          `json:"Normalize"`
@@ -32,7 +32,7 @@ func (agg *Aggregate) UnmarshalJSON(data []byte) error {
 	agg.Name = fields.Name
 	agg.Timestamp = fields.Timestamp
 	agg.Options.AggType = ftypes.AggType(fields.Options.AggType)
-	agg.Options.Duration = fields.Options.Duration
+	agg.Options.Durations = fields.Options.Durations
 	agg.Options.Window = fields.Options.Window
 	agg.Options.Limit = fields.Options.Limit
 	agg.Options.Normalize = fields.Options.Normalize
@@ -60,7 +60,7 @@ func (agg Aggregate) MarshalJSON() ([]byte, error) {
 		Timestamp ftypes.Timestamp `json:"Timestamp"`
 		Options   struct {
 			AggType   string        `json:"Type"`
-			Duration  uint64        `json:"Duration"`
+			Durations []uint64      `json:"Durations"`
 			Window    ftypes.Window `json:"Window"`
 			Limit     uint64        `json:"Limit"`
 			Normalize bool          `json:"Normalize"`
@@ -70,7 +70,7 @@ func (agg Aggregate) MarshalJSON() ([]byte, error) {
 	fields.Query = queryStr
 	fields.Timestamp = agg.Timestamp
 	fields.Options.AggType = string(agg.Options.AggType)
-	fields.Options.Duration = agg.Options.Duration
+	fields.Options.Durations = agg.Options.Durations
 	fields.Options.Window = agg.Options.Window
 	fields.Options.Limit = agg.Options.Limit
 	fields.Options.Normalize = agg.Options.Normalize

@@ -32,8 +32,8 @@ func TestValueAll(t *testing.T) {
 		Query:     ast.MakeInt(0),
 		Timestamp: t0,
 		Options: aggregate.Options{
-			AggType:  "sum",
-			Duration: 6 * 3600,
+			AggType:   "sum",
+			Durations: []uint64{6 * 3600, 3 * 3600},
 		},
 	}
 	agg2 := aggregate.Aggregate{
@@ -41,8 +41,8 @@ func TestValueAll(t *testing.T) {
 		Query:     ast.MakeInt(0),
 		Timestamp: t0,
 		Options: aggregate.Options{
-			AggType:  "min",
-			Duration: 6 * 3600,
+			AggType:   "min",
+			Durations: []uint64{6 * 3600, 3 * 3600},
 		},
 	}
 	assert.NoError(t, Store(ctx, tier, agg1))

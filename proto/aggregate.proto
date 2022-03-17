@@ -15,7 +15,7 @@ message ProtoAggregate {
 
 message AggOptions {
   string agg_type = 1;
-  uint64 duration = 2;
+  repeated uint64 durations = 2;
   Window window = 3;
   uint64 limit = 4;
   bool normalize = 5;

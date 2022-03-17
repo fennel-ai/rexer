@@ -92,7 +92,7 @@ class TestEndToEnd(unittest.TestCase):
             Ops.std.addField(name='groupkey', value=[it.actor_id, it.hour]),
             Ops.std.addField(name='value', value=Cond(it.action_type == 'notif_send', [0, 1], [1, 0]))
         )
-        options = {'aggregate_type': 'rate', 'duration': 7*24*3600, 'normalize': True}
+        options = {'aggregate_type': 'rate', 'durations': [4*24*3600, 7*24*3600], 'normalize': True}
         c.store_aggregate('user_notif_open_rate_by_hour_7days', q, options)
 
         # User CTR on notifs belonging to category X. Last 7 days.
@@ -102,7 +102,7 @@ class TestEndToEnd(unittest.TestCase):
             Ops.std.addField(name='groupkey', value=[it.actor_id, it.category]),
             Ops.std.addField(name='value', value=Cond(it.action_type == 'notif_send', [0, 1], [1, 0]))
         )
-        options = {'aggregate_type': 'rate', 'duration': 7*24*3600, 'normalize': True}
+        options = {'aggregate_type': 'rate', 'durations': [7*24*3600], 'normalize': True}
         c.store_aggregate('user_notif_open_rate_by_category_hour_7days', q, options)
 
         # total reactions on a piece of content
@@ -111,7 +111,7 @@ class TestEndToEnd(unittest.TestCase):
             Ops.std.addField(name='groupkey', value=it.target_id),
             Ops.std.addField(name='value', value=1)
         )
-        options = {'aggregate_type': 'sum', 'duration': 3*3600}
+        options = {'aggregate_type': 'sum', 'durations': [3*3600]}
         c.store_aggregate('content_num_reactions_last_3hours', q, options)
 
         # num of notifs opened by user in the last 3 days
@@ -120,7 +120,7 @@ class TestEndToEnd(unittest.TestCase):
           Ops.std.addField(name='groupkey', value=it.actor_id),
           Ops.std.addField(name='value', value=1),
         )
-        options = {'aggregate_type': 'sum', 'duration': 3*24*3600}
+        options = {'aggregate_type': 'sum', 'durations': [3*24*3600]}
         c.store_aggregate('user_num_notif_opens_last_3days', q, options)
 
         c.set_profile("content", content_id, "category", category)
@@ -214,7 +214,7 @@ class TestEndToEnd(unittest.TestCase):
           Ops.std.addField(name='groupkey', value=[it.target_id, it.city, it.gender, it.age_group]),
           Ops.std.addField(name='value', value=1),
         )
-        options = {'duration': 3600*24*2, 'aggregate_type': 'sum', }
+        options = {'durations': [3600*24*2], 'aggregate_type': 'sum', }
         c.store_aggregate('trail_view_by_city_gender_agegroup_2days', q1, options)
 
         # average watch time of uid on videos created by creator_id by 2 hour windows
@@ -225,7 +225,7 @@ class TestEndToEnd(unittest.TestCase):
             Ops.std.addField(name='groupkey', value=[it.actor_id, it.creator_id, it.time_bucket]),
             Ops.std.addField(name='value', value=it.metadata.watch_time),
         )
-        options = {'aggregate_type': 'average', 'duration': 3600*24*30}
+        options = {'aggregate_type': 'average', 'durations': [3600*24*30]}
         c.store_aggregate('user_creator_avg_watchtime_by_2hour_windows_30days', q2, options)
 
         ts = int(time.time())
@@ -320,7 +320,7 @@ class TestLoad(unittest.TestCase):
             Ops.std.addField(name='groupkey', value=List(it.target_id, it.city, it.gender, it.age_group)),
             Ops.std.addField(name='value', value=1),
         )
-        options = {'duration': 3600*24*2, 'aggregate_type': 'sum', }
+        options = {'durations': [3600*24*2], 'aggregate_type': 'sum', }
         c.store_aggregate('trail_view_by_city_gender_agegroup_2days', q, options)
 
         # Avg-watchtime of a  video for given country+OS+city_sate+mobile_brand+gender in 30 days
@@ -339,7 +339,7 @@ class TestLoad(unittest.TestCase):
             ]),
             Ops.std.addField(name='value', value=it.metadata.watch_time),
         )
-        options = {'aggregate_type': 'average', 'duration': 3600*24*30}
+        options = {'aggregate_type': 'average', 'durations': [3600*24*30]}
         c.store_aggregate('video_avg_watchtime_by_country_os_citystate_mobile_gender_30days', q, options)
 
         # Avg-watchtime of a user id  for creatorId in 2-hour window averaged over 30 days
@@ -350,7 +350,7 @@ class TestLoad(unittest.TestCase):
             Ops.std.addField(name='value', value=it.metadata.watch_time),
             Ops.std.addField(name='groupkey', value=[it.actor_id, it.creator_id, it.time_bucket]),
         )
-        options = {'aggregate_type': 'average', 'duration': 3600*24*30}
+        options = {'aggregate_type': 'average', 'durations': [3600*24*30]}
         c.store_aggregate('user_creator_avg_watchtime_by_2hour_windows_30days', q, options)
 
 

@@ -90,24 +90,35 @@ func transformActions(tier tier.Tier, actions []libaction.Action, query ast.Ast)
 }
 
 func toHistogram(agg aggregate.Aggregate) (modelCounter.Histogram, error) {
+	d := reduceMax(agg.Options.Durations)
 	switch agg.Options.AggType {
 	case "sum":
-		return modelCounter.NewSum(agg.Name, agg.Options.Duration), nil
+		return modelCounter.NewSum(agg.Name, d), nil
 	case "timeseries_sum":
 		return modelCounter.NewTimeseriesSum(agg.Name, agg.Options.Window, agg.Options.Limit), nil
 	case "average":
-		return modelCounter.NewAverage(agg.Name, agg.Options.Duration), nil
+		return modelCounter.NewAverage(agg.Name, d), nil
 	case "list":
-		return modelCounter.NewList(agg.Name, agg.Options.Duration), nil
+		return modelCounter.NewList(agg.Name, d), nil
 	case "min":
-		return modelCounter.NewMin(agg.Name, agg.Options.Duration), nil
+		return modelCounter.NewMin(agg.Name, d), nil
 	case "max":
-		return modelCounter.NewMax(agg.Name, agg.Options.Duration), nil
+		return modelCounter.NewMax(agg.Name, d), nil
 	case "stddev":
-		return modelCounter.NewStdDev(agg.Name, agg.Options.Duration), nil
+		return modelCounter.NewStdDev(agg.Name, d), nil
 	case "rate":
-		return modelCounter.NewRate(agg.Name, agg.Options.Duration, agg.Options.Normalize), nil
+		return modelCounter.NewRate(agg.Name, d, agg.Options.Normalize), nil
 	default:
 		return nil, fmt.Errorf("invalid aggregate type: %v", agg.Options.AggType)
 	}
+}
+
+func reduceMax(vals []uint64) uint64 {
+	var max uint64 = 0
+	for _, v := range vals {
+		if v > max {
+			max = v
+		}
+	}
+	return max
 }
