@@ -1,4 +1,6 @@
-package value
+package tvalue
+
+import "fennel/lib/value"
 
 type tag struct {
 	label string
@@ -80,11 +82,11 @@ func (ts *tagset) clone() *tagset {
 }
 
 type TValue struct {
-	Value
+	value.Value
 	*tagset
 }
 
-func NewTValue(v Value, tvs ...TValue) TValue {
+func NewTValue(v value.Value, tvs ...TValue) TValue {
 	ret := TValue{
 		Value:  v,
 		tagset: nil,

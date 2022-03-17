@@ -1,9 +1,11 @@
-package value
+package tvalue
 
 import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+
+	"fennel/lib/value"
 )
 
 func TestTagset(t *testing.T) {
@@ -26,18 +28,18 @@ func TestTagset(t *testing.T) {
 }
 
 func TestTValue(t *testing.T) {
-	tv1 := NewTValue(Int(1))
+	tv1 := NewTValue(value.Int(1))
 	assert.Empty(t, tv1.Tags())
 
 	// can natively access all value methods on it
-	found, err := tv1.Op("+", Int(2))
+	found, err := tv1.Op("+", value.Int(2))
 	assert.NoError(t, err)
-	assert.Equal(t, Int(3), found)
+	assert.Equal(t, value.Int(3), found)
 
 	// and take value to typecast
-	vint, ok := tv1.Value.(Int)
+	vint, ok := tv1.Value.(value.Int)
 	assert.True(t, ok)
-	assert.Equal(t, Int(1), vint)
+	assert.Equal(t, value.Int(1), vint)
 
 	// can add tags, inherit them, and print them
 	v1 := "hello"
@@ -47,22 +49,22 @@ func TestTValue(t *testing.T) {
 	tv1.Tag("hi", v1)
 	equals(t, map[string][]string{"hi": {v1}}, tv1.Tags())
 
-	tv2 := NewTValue(Int(121))
+	tv2 := NewTValue(value.Int(121))
 	tv2.Tag("hi", v2)
 	equals(t, map[string][]string{"hi": {v2}}, tv2.Tags())
 
-	tv3 := NewTValue(Int(221))
+	tv3 := NewTValue(value.Int(221))
 	tv3.Tag("hi", v3)
 	equals(t, map[string][]string{"hi": {v3}}, tv3.Tags())
 
-	tv4 := NewTValue(Nil, tv1)
+	tv4 := NewTValue(value.Nil, tv1)
 	equals(t, tv1.Tags(), tv4.Tags())
 	tv4.InheritTags(tv2, tv3)
 	equals(t, map[string][]string{"hi": {v1, v2, v3}}, tv4.Tags())
 
 	// even if tv1's tags change now, no effect on tv4 (and also test selftag along the way)
 	tv1.SelfTag("bye")
-	equals(t, map[string][]string{"hi": {v1}, "bye": {Int(1).String()}}, tv1.Tags())
+	equals(t, map[string][]string{"hi": {v1}, "bye": {value.Int(1).String()}}, tv1.Tags())
 	equals(t, map[string][]string{"hi": {v1, v2, v3}}, tv4.Tags())
 }
 
