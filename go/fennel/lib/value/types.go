@@ -6,6 +6,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"sync"
 )
 
 type Value interface {
@@ -329,3 +330,43 @@ func (iter *Iter) Next() (Value, error) {
 	iter.next += 1
 	return iter.rows[curr], nil
 }
+
+type Future struct {
+	lock   sync.Mutex
+	fn     func() Value
+	cached Value
+}
+
+func (f *Future) Await() Value {
+	if f.cached != nil {
+		return f.cached
+	}
+	f.lock.Lock()
+	defer f.lock.Unlock()
+	f.cached = f.fn()
+	return f.cached
+}
+
+func (f *Future) isValue() {}
+
+func (f *Future) Equal(v Value) bool {
+	return f.Await().Equal(v)
+}
+
+func (f *Future) Op(opt string, other Value) (Value, error) {
+	return f.Await().Op(opt, other)
+}
+
+func (f *Future) String() string {
+	return f.Await().String()
+}
+
+func (f *Future) Clone() Value {
+	return f.Await().Clone()
+}
+
+func (f *Future) MarshalJSON() ([]byte, error) {
+	return f.Await().MarshalJSON()
+}
+
+var _ Value = &Future{}

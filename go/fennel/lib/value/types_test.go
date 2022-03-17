@@ -1,7 +1,9 @@
 package value
 
 import (
+	"sync"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 )
@@ -101,4 +103,23 @@ func TestStringingNilValue(t *testing.T) {
 	assert.Equal(t, `[[null]]`, l2.String())
 	assert.Equal(t, `{"0":null}`, d1.String())
 	assert.Equal(t, `{"0":{"_":null}}`, d2.String())
+}
+
+func TestFuture_Await(t *testing.T) {
+	v := Int(5)
+	n := 0
+	f := &Future{
+		lock: sync.Mutex{},
+		fn: func() Value {
+			n += 1
+			time.Sleep(time.Millisecond)
+			return v
+		},
+		cached: nil,
+	}
+	assert.Equal(t, 0, n)
+	assert.Equal(t, v, f.Await())
+	assert.Equal(t, 1, n)
+	assert.Equal(t, v.String(), f.String())
+	assert.Equal(t, 1, n)
 }

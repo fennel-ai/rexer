@@ -1,6 +1,7 @@
 package value
 
 import (
+	"sync"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -10,11 +11,37 @@ func verifyOp(t *testing.T, left, right, expected Value, op string) {
 	ret, err := left.Op(op, right)
 	assert.NoError(t, err)
 	assert.Equal(t, expected, ret)
+
+	// and verify future forms too
+	lf := &Future{lock: sync.Mutex{}, fn: func() Value { return left }, cached: nil}
+	rf := &Future{lock: sync.Mutex{}, fn: func() Value { return right }, cached: nil}
+	fret, err := lf.Op(op, right)
+	assert.NoError(t, err)
+	assert.Equal(t, expected, fret)
+
+	fret, err = left.Op(op, rf)
+	assert.NoError(t, err)
+	assert.Equal(t, expected, fret)
+
+	fret, err = lf.Op(op, rf)
+	assert.NoError(t, err)
+	assert.Equal(t, expected, fret)
 }
 
 func verifyError(t *testing.T, left, right Value, ops []string) {
 	for _, op := range ops {
 		_, err := left.Op(op, right)
+		assert.Error(t, err)
+		// and also with future
+		lf := &Future{lock: sync.Mutex{}, fn: func() Value { return left }, cached: nil}
+		rf := &Future{lock: sync.Mutex{}, fn: func() Value { return right }, cached: nil}
+		_, err = lf.Op(op, right)
+		assert.Error(t, err)
+
+		_, err = left.Op(op, rf)
+		assert.Error(t, err)
+
+		_, err = lf.Op(op, rf)
 		assert.Error(t, err)
 	}
 }
@@ -219,31 +246,55 @@ func TestBoolean(t *testing.T) {
 	verifyOp(t, base, Bool(false), Bool(false), "or")
 }
 
-func TestIndexList(t *testing.T) {
-	l := List([]Value{Int(1), Double(2.0), Bool(true)})
-
+func testIndexList(t *testing.T, v Value, l List) {
 	for i, expected := range l {
-		found, err := l.Op("[]", Int(i))
+		found, err := v.Op("[]", Int(i))
 		assert.NoError(t, err)
 		assert.Equal(t, expected, found)
 	}
 	// but index error when using larger values or negative values
-	_, err := l.Op("[]", Int(3))
+	_, err := v.Op("[]", Int(3))
 	assert.Error(t, err)
-	_, err = l.Op("[]", Int(-1))
+	_, err = v.Op("[]", Int(-1))
+	assert.Error(t, err)
+
+}
+
+func TestIndexList(t *testing.T) {
+	l := List([]Value{Int(1), Double(2.0), Bool(true)})
+	testIndexList(t, l, l)
+	// also with futures
+	testIndexList(t, &Future{
+		lock: sync.Mutex{},
+		fn: func() Value {
+			return l
+		},
+		cached: nil,
+	}, l)
+}
+
+func testIndex_Dict(t *testing.T, v Value, di Dict) {
+	for k, expected := range di {
+		found, err := v.Op("[]", String(k))
+		assert.NoError(t, err)
+		assert.Equal(t, expected, found)
+	}
+	// but index error when using strings that don't exist
+	_, err := v.Op("[]", String("hello"))
 	assert.Error(t, err)
 }
 
 func TestIndex_Dict(t *testing.T) {
 	di := Dict(map[string]Value{"a": Int(2), "b": Double(1.0)})
-	for k, expected := range di {
-		found, err := di.Op("[]", String(k))
-		assert.NoError(t, err)
-		assert.Equal(t, expected, found)
-	}
-	// but index error when using strings that don't exist
-	_, err := di.Op("[]", String("hello"))
-	assert.Error(t, err)
+	testIndex_Dict(t, di, di)
+	// and also futures
+	testIndex_Dict(t, &Future{
+		lock: sync.Mutex{},
+		fn: func() Value {
+			return di
+		},
+		cached: nil,
+	}, di)
 }
 
 func TestConcatenation(t *testing.T) {

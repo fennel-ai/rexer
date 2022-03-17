@@ -1,6 +1,7 @@
 package value
 
 import (
+	"sync"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -13,6 +14,20 @@ func verifyMarshalUnMarshal(t *testing.T, v Value) {
 	err = Unmarshal(b, &u)
 	assert.NoError(t, err)
 	assert.Equal(t, v, u)
+
+	// also test futures
+	f := &Future{
+		lock: sync.Mutex{},
+		fn: func() Value {
+			return v
+		},
+		cached: nil,
+	}
+	bf, err := Marshal(f)
+	assert.NoError(t, err)
+	err = Unmarshal(bf, &u)
+	assert.NoError(t, err)
+	assert.Equal(t, u, v)
 }
 
 func verifyUnequalMarshal(t *testing.T, v Value, unequal []Value) {
