@@ -5,18 +5,18 @@ import (
 )
 
 func ToProtoValue(v Value) (PValue, error) {
-	switch v.(type) {
+	switch t := v.(type) {
 	case Int:
-		return PValue{Node: &PValue_Int{Int: int64(v.(Int))}}, nil
+		return PValue{Node: &PValue_Int{Int: int64(t)}}, nil
 	case Double:
-		return PValue{Node: &PValue_Double{Double: float64(v.(Double))}}, nil
+		return PValue{Node: &PValue_Double{Double: float64(t)}}, nil
 	case Bool:
-		return PValue{Node: &PValue_Bool{Bool: bool(v.(Bool))}}, nil
+		return PValue{Node: &PValue_Bool{Bool: bool(t)}}, nil
 	case String:
-		return PValue{Node: &PValue_String_{String_: string(v.(String))}}, nil
+		return PValue{Node: &PValue_String_{String_: string(t)}}, nil
 	case List:
-		list := make([]*PValue, len(v.(List)))
-		for i, v := range v.(List) {
+		list := make([]*PValue, len(t))
+		for i, v := range t {
 			pv, err := ToProtoValue(v)
 			if err != nil {
 				return PValue{Node: &PValue_Nil{}}, err
@@ -26,13 +26,15 @@ func ToProtoValue(v Value) (PValue, error) {
 		pvl := &PVList{Values: list}
 		return PValue{Node: &PValue_List{List: pvl}}, nil
 	case Dict:
-		pvd, err := ToProtoDict(v.(Dict))
+		pvd, err := ToProtoDict(t)
 		if err != nil {
 			return PValue{Node: &PValue_Nil{}}, err
 		}
 		return PValue{Node: &PValue_Dict{Dict: &pvd}}, nil
 	case nil_:
 		return PValue{Node: &PValue_Nil{}}, nil
+	case *Future:
+		return ToProtoValue(t.Await())
 	default:
 		return PValue{Node: &PValue_Nil{}}, fmt.Errorf("invalid value: %v", v)
 	}

@@ -6,6 +6,9 @@ import (
 )
 
 func route(l Value, opt string, other Value) (Value, error) {
+	if f, ok := other.(*Future); ok {
+		other = f.Await()
+	}
 	switch opt {
 	case "+":
 		return add(l, other)
