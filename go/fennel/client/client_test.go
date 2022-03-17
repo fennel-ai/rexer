@@ -21,16 +21,18 @@ func TestClient_GetAggregateValue(t *testing.T) {
 	ser := value.ToJSON(expected)
 	aggname := ftypes.AggName("somename")
 	k := value.Bool(true)
+	kwargs := value.Dict{"duration": value.Int(120)}
 	agvr := aggregate.GetAggValueRequest{
 		AggName: aggname,
 		Key:     k,
+		Kwargs:  kwargs,
 	}
 	expReq, err := json.Marshal(agvr)
 	assert.NoError(t, err)
 
 	// now setup the server
 	svr := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		// server should verify that the request body is simplfy the serialized proto struct
+		// server should verify that the request body is simply the serialized json
 		req, err := ioutil.ReadAll(r.Body)
 		assert.NoError(t, err)
 		assert.Equal(t, expReq, req)
@@ -40,7 +42,7 @@ func TestClient_GetAggregateValue(t *testing.T) {
 	c, err := NewClient(svr.URL, svr.Client())
 	assert.NoError(t, err)
 
-	found, err := c.GetAggregateValue(aggname, k)
+	found, err := c.GetAggregateValue(aggname, k, kwargs)
 	assert.NoError(t, err)
 	assert.Equal(t, expected, found)
 }

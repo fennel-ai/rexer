@@ -149,7 +149,7 @@ func (m server) LogMulti(w http.ResponseWriter, req *http.Request) {
 	}
 	// Check for dedup with a pipeline
 	ok, err := m.tier.Redis.SetNXPipelined(req.Context(), keys, vals, ttls)
-	for i, _ := range ok {
+	for i := range ok {
 		if ok[i] {
 			// If dedup key of an action was not set, add to batch
 			batch = append(batch, actions[ids[i]])
@@ -413,7 +413,7 @@ func (m server) AggregateValue(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 	// call controller
-	ret, err := aggregate2.Value(req.Context(), m.tier, getAggValue.AggName, getAggValue.Key)
+	ret, err := aggregate2.Value(req.Context(), m.tier, getAggValue.AggName, getAggValue.Key, getAggValue.Kwargs)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		log.Printf("Error: %v", err)

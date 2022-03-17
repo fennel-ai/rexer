@@ -3,6 +3,7 @@ package checkpoint
 import (
 	"context"
 	"database/sql"
+
 	"fennel/lib/ftypes"
 	"fennel/tier"
 )

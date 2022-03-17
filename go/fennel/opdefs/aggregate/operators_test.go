@@ -45,27 +45,45 @@ func TestAggValue_Apply(t *testing.T) {
 		err = controller_action.Insert(ctx, tier, a)
 		assert.NoError(t, err)
 	}
+	// Insert one action at a later timestamp
+	a := getAction(2, ftypes.Timestamp(t0+1800), "like")
+	err = controller_action.Insert(ctx, tier, a)
+	assert.NoError(t, err)
 	clock.Set(t0 + 3600)
 	consumer, err := tier.NewKafkaConsumer(action.ACTIONLOG_KAFKA_TOPIC, string(agg.Name), "earliest")
 	defer consumer.Close()
 	assert.NoError(t, err)
 	assert.NoError(t, aggregate.Update(ctx, tier, consumer, agg))
-	found, err := aggregate.Value(ctx, tier, agg.Name, value.Int(1))
+	found, err := aggregate.Value(ctx, tier, agg.Name, value.Int(1), value.Dict{})
 	assert.NoError(t, err)
 	assert.Equal(t, value.Int(2), found)
-	found, err = aggregate.Value(ctx, tier, agg.Name, value.Int(2))
+	found, err = aggregate.Value(ctx, tier, agg.Name, value.Int(2), value.Dict{})
+	assert.NoError(t, err)
+	assert.Equal(t, value.Int(2), found)
+	found, err = aggregate.Value(ctx, tier, agg.Name, value.Int(2), value.Dict{"duration": value.Int(2000)})
 	assert.NoError(t, err)
 	assert.Equal(t, value.Int(1), found)
 
 	static := value.Dict{"name": value.String("myaggresults"), "aggregate": value.String(agg.Name)}
-	inputs := []value.Dict{{"a": value.String("hi")}, {"a": value.String("bye")}, {"a": value.String("yo")}}
-	contexKwargs := []value.Dict{{"groupkey": value.Int(1)}, {"groupkey": value.Int(2)}, {"groupkey": value.Int(3)}}
+	inputs := []value.Dict{
+		{"a": value.String("hi")},
+		{"a": value.String("bye")},
+		{"a": value.String("yo")},
+		{"a": value.String("kwargs")},
+	}
+	contextKwargs := []value.Dict{
+		{"groupkey": value.Int(1), "kwargs": value.Dict{}},
+		{"groupkey": value.Int(2), "kwargs": value.Dict{}},
+		{"groupkey": value.Int(3), "kwargs": value.Dict{}},
+		{"groupkey": value.Int(2), "kwargs": value.Dict{"duration": value.Int(2000)}},
+	}
 	outputs := []value.Dict{
 		{"a": value.String("hi"), "myaggresults": value.Int(2)},
-		{"a": value.String("bye"), "myaggresults": value.Int(1)},
+		{"a": value.String("bye"), "myaggresults": value.Int(2)},
 		{"a": value.String("yo"), "myaggresults": value.Int(0)},
+		{"a": value.String("kwargs"), "myaggresults": value.Int(1)},
 	}
-	optest.Assert(t, tier, &AggValue{tier}, static, inputs, contexKwargs, outputs)
+	optest.Assert(t, tier, &AggValue{tier}, static, inputs, contextKwargs, outputs)
 }
 
 func getQuery() ast.Ast {

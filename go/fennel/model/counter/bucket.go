@@ -139,3 +139,22 @@ func start(end ftypes.Timestamp, duration uint64) ftypes.Timestamp {
 	}
 	return 0
 }
+
+func extractDuration(kwargs value.Dict, maxDuration uint64) (uint64, error) {
+	if v, ok := kwargs["duration"]; !ok {
+		// when there is no duration specified, use duration specified when aggregate was created
+		return maxDuration, nil
+	} else {
+		d, ok := v.(value.Int)
+		if !ok {
+			return 0, fmt.Errorf("error: expected kwarg 'duration' to be an int but found: '%v'", v)
+		}
+		if d < 0 {
+			return 0, fmt.Errorf("error: kwarg 'duration' should be non-negative but is negative")
+		}
+		if uint64(d) > maxDuration {
+			return 0, fmt.Errorf("error: kwarg 'duration' exceeds maximum duration '%v' of aggregate", maxDuration)
+		}
+		return uint64(d), nil
+	}
+}

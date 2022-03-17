@@ -2,9 +2,10 @@ package checkpoint
 
 import (
 	"context"
+	"testing"
+
 	"fennel/lib/ftypes"
 	"fennel/test"
-	"testing"
 
 	"github.com/stretchr/testify/assert"
 )

@@ -4,10 +4,11 @@ package profile
 
 import (
 	"context"
+	"testing"
+
 	profilelib "fennel/lib/profile"
 	"fennel/lib/value"
 	"fennel/test"
-	"testing"
 
 	"github.com/stretchr/testify/assert"
 )

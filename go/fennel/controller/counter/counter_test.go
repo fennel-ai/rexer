@@ -53,16 +53,21 @@ func TestRolling(t *testing.T) {
 		}
 		assert.NoError(t, table.Append(row))
 	}
-	err = Update(ctx, tier, table, counter2.NewSum("mycounter", 3600*28))
+	histogram := counter2.NewSum("mycounter", 3600*28)
+	err = Update(ctx, tier, table, histogram)
 	assert.NoError(t, err)
 
 	clock := &test.FakeClock{}
 	tier.Clock = clock
 	clock.Set(int64(start + 24*3600*2))
 	// at the end of 2 days, rolling counter should only be worth 28 hours, not full 48 hours
-	found, err := Value(ctx, tier, key, counter2.NewSum("mycounter", 28*3600))
+	found, err := Value(ctx, tier, key, histogram, value.Dict{})
 	assert.NoError(t, err)
 	assert.Equal(t, value.Int(28*60), found)
+	// with a duration of 1 day, rolling counter should only be worth 24 hours
+	found, err = Value(ctx, tier, key, histogram, value.Dict{"duration": value.Int(24 * 3600)})
+	assert.NoError(t, err)
+	assert.Equal(t, value.Int(24*60), found)
 }
 
 func TestTimeseries(t *testing.T) {
@@ -109,7 +114,7 @@ func TestTimeseries(t *testing.T) {
 	tier.Clock = clock
 	clock.Set(int64(start + 24*3600*2))
 	// at the end of 2 days, we should get one data point each for 9 days
-	f, err := Value(ctx, tier, key, histogram)
+	f, err := Value(ctx, tier, key, histogram, value.Dict{})
 	assert.NoError(t, err)
 	found, ok := f.(value.List)
 	assert.True(t, ok)
@@ -122,7 +127,7 @@ func TestTimeseries(t *testing.T) {
 	// but if we set time to just at 6 hours from start, we will still 9 entries, but few will be zero padded
 	// and since our start time is 1 min delayed, the 4th entry will be one short of 60
 	clock.Set(int64(start + 6*3600))
-	f, err = Value(ctx, tier, key, histogram)
+	f, err = Value(ctx, tier, key, histogram, value.Dict{})
 	assert.NoError(t, err)
 	found, ok = f.(value.List)
 	assert.True(t, ok)
@@ -168,9 +173,14 @@ func TestRollingAverage(t *testing.T) {
 	tier.Clock = clock
 	clock.Set(int64(start + 24*3600*2))
 	// at the end of 2 days, rolling average should only be worth 28 hours, not full 48 hours
-	found, err := Value(ctx, tier, key, histogram)
+	found, err := Value(ctx, tier, key, histogram, value.Dict{})
 	assert.NoError(t, err)
 	expected := float64(24*60) / float64(28*60)
+	assert.Equal(t, value.Double(expected), found)
+	// with a duration of 1 day, rolling average should only be worth 24 hours
+	found, err = Value(ctx, tier, key, histogram, value.Dict{"duration": value.Int(24 * 3600)})
+	assert.NoError(t, err)
+	expected = float64(24*60) / float64(24*60)
 	assert.Equal(t, value.Double(expected), found)
 }
 
@@ -186,6 +196,7 @@ func TestStream(t *testing.T) {
 	key := value.List{value.String("user_follows"), value.Int(2)}
 	table := value.List{}
 	expected := make([]value.Value, 0)
+	expected2 := make([]value.Value, 0)
 	// create an event every minute for 2 days
 	for i := 0; i < 60*24*2; i++ {
 		ts := ftypes.Timestamp(start + i*60 + 30)
@@ -198,6 +209,9 @@ func TestStream(t *testing.T) {
 		if i >= 20*60 {
 			expected = append(expected, value.Int(i))
 		}
+		if i >= 24*60 {
+			expected2 = append(expected2, value.Int(i))
+		}
 	}
 	histogram := counter2.NewList(aggname, 28*3600)
 	err = Update(ctx, tier, table, histogram)
@@ -206,10 +220,14 @@ func TestStream(t *testing.T) {
 	clock := &test.FakeClock{}
 	tier.Clock = clock
 	clock.Set(int64(start + 24*3600*2))
-	// at the end of 2 days, rolling average should only be worth 28 hours, not full 48 hours
-	found, err := Value(ctx, tier, key, histogram)
+	// at the end of 2 days, stream should only be worth 28 hours, not full 48 hours
+	found, err := Value(ctx, tier, key, histogram, value.Dict{})
 	assert.NoError(t, err)
 	assert.ElementsMatch(t, expected, found.(value.List))
+	// with a duration of 1 day, stream should only be worth 24 hours
+	found, err = Value(ctx, tier, key, histogram, value.Dict{"duration": value.Int(24 * 3600)})
+	assert.NoError(t, err)
+	assert.ElementsMatch(t, expected2, found)
 }
 
 func TestRate(t *testing.T) {
@@ -225,6 +243,7 @@ func TestRate(t *testing.T) {
 	table := value.List{}
 	// create an event every minute for 2 days
 	var num, den int64 = 0, 0
+	var num2, den2 int64 = 0, 0
 	for i := 0; i < 60*24*2; i++ {
 		ts := ftypes.Timestamp(start + i*60 + 30)
 		row := value.Dict{
@@ -237,6 +256,10 @@ func TestRate(t *testing.T) {
 			num += int64(i)
 			den += int64(i + 1)
 		}
+		if i >= 24*60 {
+			num2 += int64(i)
+			den2 += int64(i + 1)
+		}
 	}
 	histogram := counter2.NewRate(aggname, 28*3600, true)
 	err = Update(ctx, tier, table, histogram)
@@ -245,11 +268,16 @@ func TestRate(t *testing.T) {
 	clock := &test.FakeClock{}
 	tier.Clock = clock
 	clock.Set(int64(start + 24*3600*2))
-	// at the end of 2 days, rolling average should only be worth 28 hours, not full 48 hours
-	found, err := Value(ctx, tier, key, histogram)
+	// at the end of 2 days, rate should only be worth 28 hours, not full 48 hours
+	found, err := Value(ctx, tier, key, histogram, value.Dict{})
 	assert.NoError(t, err)
 	expected, err := math.Wilson(uint64(num), uint64(den), true)
 	assert.NoError(t, err)
+	assert.Equal(t, value.Double(expected), found)
+	// with a duration of 1 day, rate should only be worth 24 hours
+	found, err = Value(ctx, tier, key, histogram, value.Dict{"duration": value.Int(24 * 3600)})
+	assert.NoError(t, err)
+	expected, err = math.Wilson(uint64(num2), uint64(den2), true)
 	assert.Equal(t, value.Double(expected), found)
 }
 

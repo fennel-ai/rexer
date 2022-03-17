@@ -67,31 +67,31 @@ func TestGetAggValueRequestJSON(t *testing.T) {
 		str  string
 		gavr GetAggValueRequest
 	}{{
-		str:  `{"Name":"","Key":null}`,
+		str:  `{"Name":"","Key":null,"Kwargs":{}}`,
 		gavr: GetAggValueRequest{Key: value.Nil},
 	}, {
-		str:  `{"Name":"some name","Key":-5}`,
-		gavr: GetAggValueRequest{AggName: "some name", Key: value.Int(-5)},
+		str:  `{"Name":"some name","Key":-5,"Kwargs":{"duration":1}}`,
+		gavr: GetAggValueRequest{AggName: "some name", Key: value.Int(-5), Kwargs: value.Dict{"duration": value.Int(1)}},
 	}, {
-		str:  `{"Name":"some name","Key":true}`,
-		gavr: GetAggValueRequest{AggName: "some name", Key: value.Bool(true)},
+		str:  `{"Name":"some name","Key":true,"Kwargs":{"something":{}}}`,
+		gavr: GetAggValueRequest{AggName: "some name", Key: value.Bool(true), Kwargs: value.Dict{"something": value.Dict(nil)}},
 	}, {
-		str:  `{"Name":"some name","Key":-12.9}`,
-		gavr: GetAggValueRequest{AggName: "some name", Key: value.Double(-12.9)},
+		str:  `{"Name":"some name","Key":-12.9,"Kwargs":{}}`,
+		gavr: GetAggValueRequest{AggName: "some name", Key: value.Double(-12.9), Kwargs: value.Dict(nil)},
 	}, {
-		str:  `{"Name":"some name","Key":"pqrs"}`,
+		str:  `{"Name":"some name","Key":"pqrs","Kwargs":{}}`,
 		gavr: GetAggValueRequest{AggName: "some name", Key: value.String("pqrs")},
 	}, {
-		str:  `{"Name":"some name","Key":[]}`,
+		str:  `{"Name":"some name","Key":[],"Kwargs":{}}`,
 		gavr: GetAggValueRequest{AggName: "some name", Key: value.List(nil)},
 	}, {
-		str:  `{"Name":"some name","Key":[null]}`,
+		str:  `{"Name":"some name","Key":[null],"Kwargs":{}}`,
 		gavr: GetAggValueRequest{AggName: "some name", Key: value.List{value.Nil}},
 	}, {
-		str:  `{"Name":"some name","Key":{}}`,
+		str:  `{"Name":"some name","Key":{},"Kwargs":{}}`,
 		gavr: GetAggValueRequest{AggName: "some name", Key: value.Dict(nil)},
 	}, {
-		str:  `{"Name":"some name","Key":{"k1":4.5}}`,
+		str:  `{"Name":"some name","Key":{"k1":4.5},"Kwargs":{}}`,
 		gavr: GetAggValueRequest{AggName: "some name", Key: value.Dict{"k1": value.Double(4.5)}},
 	}}
 	// Test unmarshal
@@ -101,6 +101,7 @@ func TestGetAggValueRequestJSON(t *testing.T) {
 		assert.NoError(t, err)
 		assert.Equal(t, tst.gavr.AggName, gavr.AggName)
 		assert.True(t, tst.gavr.Key.Equal(gavr.Key))
+		assert.True(t, tst.gavr.Kwargs.Equal(gavr.Kwargs))
 	}
 	// Test marshal
 	for _, tst := range tests {

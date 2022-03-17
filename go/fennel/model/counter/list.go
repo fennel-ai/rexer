@@ -37,8 +37,12 @@ func (s list) extract(v value.Value) (value.List, error) {
 	return l, nil
 }
 
-func (s list) Start(end ftypes.Timestamp) ftypes.Timestamp {
-	return start(end, s.Duration)
+func (s list) Start(end ftypes.Timestamp, kwargs value.Dict) (ftypes.Timestamp, error) {
+	d, err := extractDuration(kwargs, s.Duration)
+	if err != nil {
+		return 0, err
+	}
+	return start(end, d), nil
 }
 
 // Reduce just appends all the lists to an empty list

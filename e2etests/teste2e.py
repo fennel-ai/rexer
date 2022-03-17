@@ -151,8 +151,8 @@ class TestEndToEnd(unittest.TestCase):
         # allows test to end earlier in happy cases
         slept = 0
         passed = False
-        expected1 = 0.09452865480086611 # normalized for 1 in 2
-        expected2 = 0.09452865480086611 # normalized for 1 in 2
+        expected1 = 0.09452865480086611  # normalized for 1 in 2
+        expected2 = 0.09452865480086611  # normalized for 1 in 2
         expected3 = 1
         expected4 = 1
         while slept < 120:
@@ -249,6 +249,8 @@ class TestEndToEnd(unittest.TestCase):
         passed = False
         expected1 = 1
         expected2 = 21
+        expected3 = expected4 = 20
+        kwargs = {"duration": 1200}
         while slept < 120:
             found1 = c.aggregate_value(
                 'trail_view_by_city_gender_agegroup_2days',
@@ -259,7 +261,17 @@ class TestEndToEnd(unittest.TestCase):
                                        groupkey=[it.uid, it.creator_id, it.b])
             )[0].found
             found2 = c.query(q)
-            if found1 == expected1 and found2 == expected2:
+            found3 = c.aggregate_value(
+                'user_creator_avg_watchtime_by_2hour_windows_30days',
+                [uid, creator_id, b], kwargs
+            )
+            q2 = Make([{'uid': uid, 'creator_id': creator_id, 'b': b}]).apply(
+                Ops.aggregate.addField(name='found', aggregate='user_creator_avg_watchtime_by_2hour_windows_30days',
+                                       groupkey=[it.uid, it.creator_id, it.b], kwargs=kwargs)
+            )[0].found
+            found4 = c.query(q2)
+
+            if found1 == expected1 and found2 == expected2 and found3 == expected3 and found4 == expected4:
                 passed = True
                 break
             time.sleep(5)
@@ -267,11 +279,13 @@ class TestEndToEnd(unittest.TestCase):
         self.assertTrue(passed)
 
         # test with batch_aggregate_value()
-        req1 = ('trail_view_by_city_gender_agegroup_2days', [video_id, city, gender, age_group])
-        req2 = ('user_creator_avg_watchtime_by_2hour_windows_30days', [uid, creator_id, b])
-        found1, found2 = c.batch_aggregate_value([req1, req2])
+        req1 = ('trail_view_by_city_gender_agegroup_2days', [video_id, city, gender, age_group], None)
+        req2 = ('user_creator_avg_watchtime_by_2hour_windows_30days', [uid, creator_id, b], None)
+        req3 = ('user_creator_avg_watchtime_by_2hour_windows_30days', [uid, creator_id, b], kwargs)
+        found1, found2, found3 = c.batch_aggregate_value([req1, req2, req3])
         self.assertEqual(expected1, found1)
         self.assertEqual(expected2, found2)
+        self.assertEqual(expected3, found3)
 
         print('all checks passed...')
 
@@ -285,6 +299,7 @@ class TestEndToEnd(unittest.TestCase):
         q = Map('x', Cond(Var('x') <= Var('args').x, 'small', 'large'), [2, 3, 4])
         found = c.query(q, {'x': 2.5})
         self.assertEqual(['small', 'large', 'large'], found)
+
 
 @unittest.skip
 class TestLoad(unittest.TestCase):

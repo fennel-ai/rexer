@@ -1,8 +1,9 @@
 package interpreter
 
 import (
-	"fennel/lib/value"
 	"testing"
+
+	"fennel/lib/value"
 
 	"github.com/stretchr/testify/assert"
 )

@@ -26,13 +26,21 @@ func TestTimeseriesCounter_Reduce(t *testing.T) {
 func TestTimeseriesCounter_Start(t *testing.T) {
 	// Limit: 1, Window: Hour makes duration = 7200
 	h := timeseriesSum{Limit: 1, Window: ftypes.Window_HOUR}
-	assert.Equal(t, h.Start(7300), ftypes.Timestamp(100))
+	s, err := h.Start(7300, value.Dict{})
+	assert.NoError(t, err)
+	assert.Equal(t, s, ftypes.Timestamp(100))
 	// limit is larger than end.
-	assert.Equal(t, h.Start(7100), ftypes.Timestamp(0))
+	s, err = h.Start(7100, value.Dict{})
+	assert.NoError(t, err)
+	assert.Equal(t, s, ftypes.Timestamp(0))
 
 	// Limit: 1, Window: day makes duration = 172800
 	h = timeseriesSum{Limit: 1, Window: ftypes.Window_DAY}
-	assert.Equal(t, h.Start(172900), ftypes.Timestamp(100))
+	s, err = h.Start(172900, value.Dict{})
+	assert.NoError(t, err)
+	assert.Equal(t, s, ftypes.Timestamp(100))
 	// limit is larger than end.
-	assert.Equal(t, h.Start(172700), ftypes.Timestamp(0))
+	s, err = h.Start(172700, value.Dict{})
+	assert.NoError(t, err)
+	assert.Equal(t, s, ftypes.Timestamp(0))
 }

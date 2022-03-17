@@ -60,28 +60,36 @@ func TestValueAll(t *testing.T) {
 	buckets = h1.BucketizeMoment(keystr, t1, value.Int(3))
 	err = counter.Update(context.Background(), tier, buckets, h1)
 	assert.NoError(t, err)
-	req1 := aggregate.GetAggValueRequest{AggName: "mycounter", Key: key}
+	req1 := aggregate.GetAggValueRequest{AggName: "mycounter", Key: key, Kwargs: value.Dict{}}
 	exp1 := value.Int(4)
 
-	h2 := counter.NewMin(agg2.Name, 6*3600)
+	h2 := counter.NewMin(agg2.Name, 24*3600)
 	buckets = h2.BucketizeMoment(keystr, t1, value.List{value.Int(2), value.Bool(false)})
 	err = counter.Update(context.Background(), tier, buckets, h2)
 	assert.NoError(t, err)
 	buckets = h2.BucketizeMoment(keystr, t1, value.List{value.Int(7), value.Bool(false)})
 	err = counter.Update(context.Background(), tier, buckets, h2)
 	assert.NoError(t, err)
-	req2 := aggregate.GetAggValueRequest{AggName: "minelem", Key: key}
+	req2 := aggregate.GetAggValueRequest{AggName: "minelem", Key: key, Kwargs: value.Dict{}}
 	exp2 := value.Int(2)
+	// Test kwargs with duration of an hour
+	buckets = h2.BucketizeMoment(keystr, t1+5400, value.List{value.Int(5), value.Bool(false)})
+	err = counter.Update(context.Background(), tier, buckets, h2)
+	assert.NoError(t, err)
+	req3 := aggregate.GetAggValueRequest{AggName: "minelem", Key: key, Kwargs: value.Dict{"duration": value.Int(3600)}}
+	exp3 := value.Int(5)
 
-	clock.Set(int64(t1 + 60))
+	clock.Set(int64(t1 + 2*3600))
 	// Test Value()
-	found1, err := Value(ctx, tier, req1.AggName, req1.Key)
-	assert.Equal(t, found1, exp1)
-	found2, err := Value(ctx, tier, req2.AggName, req2.Key)
-	assert.Equal(t, found2, exp2)
+	found1, err := Value(ctx, tier, req1.AggName, req1.Key, req1.Kwargs)
+	assert.Equal(t, exp1, found1)
+	found2, err := Value(ctx, tier, req2.AggName, req2.Key, req2.Kwargs)
+	assert.Equal(t, exp2, found2)
+	found3, err := Value(ctx, tier, req3.AggName, req3.Key, req3.Kwargs)
+	assert.Equal(t, exp3, found3)
 	// Test BatchValue()
-	ret, err := BatchValue(ctx, tier, []aggregate.GetAggValueRequest{req1, req2})
-	assert.Equal(t, []value.Value{exp1, exp2}, ret)
+	ret, err := BatchValue(ctx, tier, []aggregate.GetAggValueRequest{req1, req2, req3})
+	assert.Equal(t, []value.Value{exp1, exp2, exp3}, ret)
 }
 
 // this test verifies that given a list of actions, the query is run on it to produce the right table

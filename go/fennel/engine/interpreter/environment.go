@@ -1,8 +1,9 @@
 package interpreter
 
 import (
-	"fennel/lib/value"
 	"fmt"
+
+	"fennel/lib/value"
 )
 
 type Env struct {

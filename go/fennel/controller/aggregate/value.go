@@ -19,7 +19,7 @@ import (
 	"fennel/tier"
 )
 
-func Value(ctx context.Context, tier tier.Tier, name ftypes.AggName, key value.Value) (value.Value, error) {
+func Value(ctx context.Context, tier tier.Tier, name ftypes.AggName, key value.Value, kwargs value.Dict) (value.Value, error) {
 	agg, err := Retrieve(ctx, tier, name)
 	if err != nil {
 		return value.Nil, err
@@ -28,13 +28,13 @@ func Value(ctx context.Context, tier tier.Tier, name ftypes.AggName, key value.V
 	if err != nil {
 		return nil, err
 	}
-	return counter.Value(ctx, tier, key, histogram)
+	return counter.Value(ctx, tier, key, histogram, kwargs)
 }
 
 func BatchValue(ctx context.Context, tier tier.Tier, batch []aggregate.GetAggValueRequest) ([]value.Value, error) {
 	ret := make([]value.Value, len(batch))
 	for i, req := range batch {
-		v, err := Value(ctx, tier, req.AggName, req.Key)
+		v, err := Value(ctx, tier, req.AggName, req.Key, req.Kwargs)
 		if err != nil {
 			return nil, err
 		}

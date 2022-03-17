@@ -1,8 +1,9 @@
 package bootarg
 
 import (
-	"fennel/tier"
 	"fmt"
+
+	"fennel/tier"
 )
 
 func Create(tier tier.Tier) map[string]interface{} {

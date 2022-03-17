@@ -333,9 +333,9 @@ func (c *Client) DeactivateAggregate(aggname ftypes.AggName) error {
 	return err
 }
 
-func (c *Client) GetAggregateValue(aggname ftypes.AggName, key value.Value) (value.Value, error) {
+func (c *Client) GetAggregateValue(aggname ftypes.AggName, key value.Value, kwargs value.Dict) (value.Value, error) {
 	// convert to json request and send to server
-	aggreq := aggregate.GetAggValueRequest{AggName: aggname, Key: key}
+	aggreq := aggregate.GetAggValueRequest{AggName: aggname, Key: key, Kwargs: kwargs}
 	req, err := json.Marshal(aggreq)
 	if err != nil {
 		return value.Nil, err
