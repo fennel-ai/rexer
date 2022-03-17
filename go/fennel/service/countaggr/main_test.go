@@ -171,7 +171,7 @@ func processInParallel(tier tier.Tier, scenarios []*scenario) {
 }
 
 func verify(t *testing.T, tier tier.Tier, agg libaggregate.Aggregate, k value.Value, expected interface{}) {
-	found, err := aggregate.Value(context.Background(), tier, agg.Name, k)
+	found, err := aggregate.Value(context.Background(), tier, agg.Name, k, value.Dict{})
 	assert.NoError(t, err)
 	// for floats, it's best to not do direct equality comparison but verify their differnce is small
 	if _, ok := expected.(value.Double); ok {

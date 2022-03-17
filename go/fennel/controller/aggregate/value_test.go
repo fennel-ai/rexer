@@ -75,9 +75,9 @@ func TestValueAll(t *testing.T) {
 
 	clock.Set(int64(t1 + 60))
 	// Test Value()
-	found1, err := Value(ctx, tier, req1.AggName, req1.Key)
+	found1, err := Value(ctx, tier, req1.AggName, req1.Key, value.Dict{})
 	assert.Equal(t, found1, exp1)
-	found2, err := Value(ctx, tier, req2.AggName, req2.Key)
+	found2, err := Value(ctx, tier, req2.AggName, req2.Key, value.Dict{})
 	assert.Equal(t, found2, exp2)
 	// Test BatchValue()
 	ret, err := BatchValue(ctx, tier, []aggregate.GetAggValueRequest{req1, req2})

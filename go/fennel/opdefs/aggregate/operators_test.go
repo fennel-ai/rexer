@@ -50,16 +50,20 @@ func TestAggValue_Apply(t *testing.T) {
 	defer consumer.Close()
 	assert.NoError(t, err)
 	assert.NoError(t, aggregate.Update(ctx, tier, consumer, agg))
-	found, err := aggregate.Value(ctx, tier, agg.Name, value.Int(1))
+	found, err := aggregate.Value(ctx, tier, agg.Name, value.Int(1), value.Dict{})
 	assert.NoError(t, err)
 	assert.Equal(t, value.Int(2), found)
-	found, err = aggregate.Value(ctx, tier, agg.Name, value.Int(2))
+	found, err = aggregate.Value(ctx, tier, agg.Name, value.Int(2), value.Dict{})
 	assert.NoError(t, err)
 	assert.Equal(t, value.Int(1), found)
 
 	static := value.Dict{"name": value.String("myaggresults"), "aggregate": value.String(agg.Name)}
 	inputs := []value.Dict{{"a": value.String("hi")}, {"a": value.String("bye")}, {"a": value.String("yo")}}
-	contexKwargs := []value.Dict{{"groupkey": value.Int(1)}, {"groupkey": value.Int(2)}, {"groupkey": value.Int(3)}}
+	contexKwargs := []value.Dict{
+		{"groupkey": value.Int(1), "index": value.Int(0)},
+		{"groupkey": value.Int(2), "index": value.Int(0)},
+		{"groupkey": value.Int(3), "index": value.Int(0)},
+	}
 	outputs := []value.Dict{
 		{"a": value.String("hi"), "myaggresults": value.Int(2)},
 		{"a": value.String("bye"), "myaggresults": value.Int(1)},

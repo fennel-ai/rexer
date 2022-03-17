@@ -26,8 +26,12 @@ func NewStdDev(name ftypes.AggName, duration uint64) Histogram {
 	}
 }
 
-func (s rollingStdDev) Start(end ftypes.Timestamp) ftypes.Timestamp {
-	return start(end, s.Duration)
+func (s rollingStdDev) Start(end ftypes.Timestamp, kwargs value.Dict) (ftypes.Timestamp, error) {
+	d, err := extractDuration(kwargs, s.Duration)
+	if err != nil {
+		return 0, err
+	}
+	return start(end, d), nil
 }
 
 func (s rollingStdDev) eval(sum, sumsq, num int64) value.Double {

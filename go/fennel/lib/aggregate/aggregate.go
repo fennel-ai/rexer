@@ -121,6 +121,7 @@ func FromAggregateSer(ser AggregateSer) (Aggregate, error) {
 type GetAggValueRequest struct {
 	AggName ftypes.AggName `json:"Name"`
 	Key     value.Value    `json:"Key"`
+	Kwargs  value.Dict     `json:"Kwargs"`
 }
 
 type notFound int

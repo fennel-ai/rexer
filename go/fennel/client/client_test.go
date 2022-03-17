@@ -40,7 +40,7 @@ func TestClient_GetAggregateValue(t *testing.T) {
 	c, err := NewClient(svr.URL, svr.Client())
 	assert.NoError(t, err)
 
-	found, err := c.GetAggregateValue(aggname, k)
+	found, err := c.GetAggregateValue(aggname, k, value.Dict{})
 	assert.NoError(t, err)
 	assert.Equal(t, expected, found)
 }

@@ -40,8 +40,12 @@ func (r rollingRate) Transform(v value.Value) (value.Value, error) {
 	return value.List{value.Int(a), value.Int(b)}, nil
 }
 
-func (r rollingRate) Start(end ftypes.Timestamp) ftypes.Timestamp {
-	return start(end, r.Duration)
+func (r rollingRate) Start(end ftypes.Timestamp, kwargs value.Dict) (ftypes.Timestamp, error) {
+	d, err := extractDuration(kwargs, r.Duration)
+	if err != nil {
+		return 0, err
+	}
+	return start(end, d), nil
 }
 
 func (r rollingRate) extract(v value.Value) (int64, int64, error) {

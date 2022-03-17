@@ -25,8 +25,12 @@ func NewSum(name ftypes.AggName, duration uint64) Histogram {
 	}
 }
 
-func (r rollingSum) Start(end ftypes.Timestamp) ftypes.Timestamp {
-	return start(end, r.Duration)
+func (r rollingSum) Start(end ftypes.Timestamp, kwargs value.Dict) (ftypes.Timestamp, error) {
+	d, err := extractDuration(kwargs, r.Duration)
+	if err != nil {
+		return 0, err
+	}
+	return start(end, d), nil
 }
 
 func (r rollingSum) Reduce(values []value.Value) (value.Value, error) {

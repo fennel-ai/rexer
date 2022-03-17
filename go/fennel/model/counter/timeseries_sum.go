@@ -36,7 +36,7 @@ func NewTimeseriesSum(name ftypes.AggName, window ftypes.Window, limit uint64) H
 	}
 }
 
-func (r timeseriesSum) Start(end ftypes.Timestamp) ftypes.Timestamp {
+func (r timeseriesSum) Start(end ftypes.Timestamp, _ value.Dict) (ftypes.Timestamp, error) {
 	var d uint64
 	switch r.Window {
 	case ftypes.Window_HOUR:
@@ -44,7 +44,7 @@ func (r timeseriesSum) Start(end ftypes.Timestamp) ftypes.Timestamp {
 	case ftypes.Window_DAY:
 		d = (1 + r.Limit) * 3600 * 24
 	}
-	return start(end, d)
+	return start(end, d), nil
 }
 
 func (r timeseriesSum) Reduce(values []value.Value) (value.Value, error) {

@@ -9,9 +9,12 @@ import (
 	"fennel/tier"
 )
 
-func Value(ctx context.Context, tier tier.Tier, key value.Value, histogram counter.Histogram) (value.Value, error) {
+func Value(ctx context.Context, tier tier.Tier, key value.Value, histogram counter.Histogram, kwargs value.Dict) (value.Value, error) {
 	end := ftypes.Timestamp(tier.Clock.Now())
-	start := histogram.Start(end)
+	start, err := histogram.Start(end, kwargs)
+	if err != nil {
+		return nil, err
+	}
 	buckets := histogram.BucketizeDuration(key.String(), start, end, histogram.Zero())
 	counts, err := histogram.Get(ctx, tier, buckets, histogram.Zero())
 	if err != nil {

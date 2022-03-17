@@ -37,8 +37,12 @@ func min(a int64, b int64) int64 {
 	}
 }
 
-func (m rollingMin) Start(end ftypes.Timestamp) ftypes.Timestamp {
-	return start(end, m.Duration)
+func (m rollingMin) Start(end ftypes.Timestamp, kwargs value.Dict) (ftypes.Timestamp, error) {
+	d, err := extractDuration(kwargs, m.Duration)
+	if err != nil {
+		return 0, err
+	}
+	return start(end, d), nil
 }
 
 func (m rollingMin) extract(v value.Value) (int64, bool, error) {

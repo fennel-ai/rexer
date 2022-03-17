@@ -139,9 +139,13 @@ func TestMax_Bucketize_Invalid(t *testing.T) {
 
 func TestMax_Start(t *testing.T) {
 	h := rollingMax{Duration: 100}
-	assert.Equal(t, h.Start(110), ftypes.Timestamp(10))
+	s, err := h.Start(110, value.Dict{})
+	assert.NoError(t, err)
+	assert.Equal(t, s, ftypes.Timestamp(10))
 	// Duration > end
-	assert.Equal(t, h.Start(90), ftypes.Timestamp(0))
+	s, err = h.Start(90, value.Dict{})
+	assert.NoError(t, err)
+	assert.Equal(t, s, ftypes.Timestamp(0))
 }
 
 func makeMaxVal(v int64, b bool) value.Value {

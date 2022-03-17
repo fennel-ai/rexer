@@ -267,8 +267,8 @@ class TestEndToEnd(unittest.TestCase):
         self.assertTrue(passed)
 
         # test with batch_aggregate_value()
-        req1 = ('trail_view_by_city_gender_agegroup_2days', [video_id, city, gender, age_group])
-        req2 = ('user_creator_avg_watchtime_by_2hour_windows_30days', [uid, creator_id, b])
+        req1 = ('trail_view_by_city_gender_agegroup_2days', [video_id, city, gender, age_group], None)
+        req2 = ('user_creator_avg_watchtime_by_2hour_windows_30days', [uid, creator_id, b], None)
         found1, found2 = c.batch_aggregate_value([req1, req2])
         self.assertEqual(expected1, found1)
         self.assertEqual(expected2, found2)

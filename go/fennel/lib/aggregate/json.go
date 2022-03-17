@@ -81,6 +81,7 @@ func (gavr GetAggValueRequest) MarshalJSON() ([]byte, error) {
 	type GAVR_ GetAggValueRequest
 	gavr_ := GAVR_(gavr)
 	gavr_.Key = value.Clean(gavr.Key)
+	gavr_.Kwargs = value.Clean(gavr.Kwargs).(value.Dict)
 	return json.Marshal(gavr_)
 }
 
@@ -100,6 +101,18 @@ func (gavr *GetAggValueRequest) UnmarshalJSON(data []byte) error {
 	gavr.Key, err = value.ParseJSON(vdata, vtype)
 	if err != nil {
 		return fmt.Errorf("error parsing key from aggvaluerequest json: %v", err)
+	}
+	vdata, vtype, _, err = jsonparser.Get(data, "Kwargs")
+	if err != nil {
+		return fmt.Errorf("error getting kwargs from aggvaluerequest json: %v", err)
+	}
+	kwargs, err := value.ParseJSON(vdata, vtype)
+	if err != nil {
+		return fmt.Errorf("error parsing kwargs from aggvaluerequest json: %v", err)
+	}
+	var ok bool
+	if gavr.Kwargs, ok = kwargs.(value.Dict); !ok {
+		return fmt.Errorf("kwargs in aggvaluerequest json should be dict but found: '%v'", kwargs)
 	}
 	return nil
 }
