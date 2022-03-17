@@ -24,7 +24,8 @@ type scenario struct {
 	agg      libaggregate.Aggregate
 	initial  value.Value
 	key      value.Value
-	expected value.Value
+	kwargs   []value.Dict
+	expected []value.Value
 	consumer kafka.FConsumer
 }
 
@@ -42,7 +43,9 @@ func TestEndToEnd(t *testing.T) {
 				Options: libaggregate.Options{AggType: "sum", Duration: 6 * 3600},
 			},
 			value.Int(0),
-			value.Int(uid), value.Int(3),
+			value.Int(uid),
+			[]value.Dict{{}, {"duration": value.Int(3600)}},
+			[]value.Value{value.Int(3), value.Int(2)},
 			nil,
 		},
 		{
@@ -51,7 +54,9 @@ func TestEndToEnd(t *testing.T) {
 				Options: libaggregate.Options{AggType: "timeseries_sum", Window: ftypes.Window_HOUR, Limit: 4},
 			},
 			value.List{value.Int(0), value.Int(0), value.Int(0), value.Int(0)},
-			value.Int(uid), value.List{value.Int(0), value.Int(0), value.Int(3), value.Int(0)},
+			value.Int(uid),
+			[]value.Dict{{}},
+			[]value.Value{value.List{value.Int(0), value.Int(0), value.Int(1), value.Int(2)}},
 			nil,
 		},
 		{
@@ -60,7 +65,9 @@ func TestEndToEnd(t *testing.T) {
 				Options: libaggregate.Options{AggType: "list", Duration: 6 * 3600},
 			},
 			value.List{},
-			value.Int(uid), value.List{value.Int(1), value.Int(2)},
+			value.Int(uid),
+			[]value.Dict{{}, {"duration": value.Int(3600)}},
+			[]value.Value{value.List{value.Int(1), value.Int(2)}, value.List{value.Int(2)}},
 			nil,
 		},
 		{
@@ -69,7 +76,9 @@ func TestEndToEnd(t *testing.T) {
 				Options: libaggregate.Options{AggType: "min", Duration: 6 * 3600},
 			},
 			value.Int(0),
-			value.Int(uid), value.Int(1),
+			value.Int(uid),
+			[]value.Dict{{}, {"duration": value.Int(3600)}},
+			[]value.Value{value.Int(1), value.Int(2)},
 			nil,
 		},
 		{
@@ -78,7 +87,9 @@ func TestEndToEnd(t *testing.T) {
 				Options: libaggregate.Options{AggType: "max", Duration: 6 * 3600},
 			},
 			value.Int(0),
-			value.Int(uid), value.Int(2),
+			value.Int(uid),
+			[]value.Dict{{}, {"duration": value.Int(3600)}},
+			[]value.Value{value.Int(2), value.Int(2)},
 			nil,
 		},
 		{
@@ -87,7 +98,9 @@ func TestEndToEnd(t *testing.T) {
 				Options: libaggregate.Options{AggType: "stddev", Duration: 6 * 3600},
 			},
 			value.Double(0),
-			value.Int(uid), value.Double(0.5),
+			value.Int(uid),
+			[]value.Dict{{}, {"duration": value.Int(3600)}},
+			[]value.Value{value.Double(0.5), value.Double(0)},
 			nil,
 		},
 		{
@@ -96,7 +109,9 @@ func TestEndToEnd(t *testing.T) {
 				Options: libaggregate.Options{AggType: "average", Duration: 6 * 3600},
 			},
 			value.Double(0),
-			value.Int(uid), value.Double(1.5),
+			value.Int(uid),
+			[]value.Dict{{}, {"duration": value.Int(3600)}},
+			[]value.Value{value.Double(1.5), value.Double(2)},
 			nil,
 		},
 		{
@@ -105,7 +120,9 @@ func TestEndToEnd(t *testing.T) {
 				Options: libaggregate.Options{AggType: "rate", Duration: 6 * 3600, Normalize: true},
 			},
 			value.Double(0),
-			value.Int(uid), value.Double(0.15003570882017145),
+			value.Int(uid),
+			[]value.Dict{{}, {"duration": value.Int(3600)}},
+			[]value.Value{value.Double(0.15003570882017145), value.Double(0.09452865480086611)},
 			nil,
 		},
 	}
@@ -118,7 +135,9 @@ func TestEndToEnd(t *testing.T) {
 		// first store all aggregates
 		assert.NoError(t, aggregate.Store(ctx, tier, scenario.agg))
 		// and verify initial value is right
-		verify(t, tier, scenario.agg, scenario.key, scenario.initial)
+		for i := range scenario.kwargs {
+			verify(t, tier, scenario.agg, scenario.key, scenario.kwargs[i], scenario.initial)
+		}
 
 		// next create kafka consumers for each
 		scenario.consumer, err = tier.NewKafkaConsumer(actionlib.ACTIONLOG_KAFKA_TOPIC, string(scenario.agg.Name), kafka.DefaultOffsetPolicy)
@@ -128,19 +147,23 @@ func TestEndToEnd(t *testing.T) {
 
 	// now fire a few actions
 	actions1 := logAction(t, tier, uid, t0+ftypes.Timestamp(1), value.Dict{"value": value.Int(1)})
-	actions2 := logAction(t, tier, uid, t0+ftypes.Timestamp(2), value.Dict{"value": value.Int(2)})
+	actions2 := logAction(t, tier, uid, t0+ftypes.Timestamp(4000), value.Dict{"value": value.Int(2)})
 	actions := append(actions1, actions2...)
 
 	t1 := t0 + 7200
 	clock.Set(int64(t1))
 	// counts don't change until we run process, after which, they do
 	for _, scenario := range scenarios {
-		verify(t, tier, scenario.agg, scenario.key, scenario.initial)
+		for i := range scenario.kwargs {
+			verify(t, tier, scenario.agg, scenario.key, scenario.kwargs[i], scenario.initial)
+		}
 	}
 	processInParallel(tier, scenarios)
 	// now the counts should have updated
 	for _, scenario := range scenarios {
-		verify(t, tier, scenario.agg, scenario.key, scenario.expected)
+		for i := range scenario.kwargs {
+			verify(t, tier, scenario.agg, scenario.key, scenario.kwargs[i], scenario.expected[i])
+		}
 	}
 
 	// unrelatedly, actions get inserted in DB with one iteration of insertInDB
@@ -170,8 +193,8 @@ func processInParallel(tier tier.Tier, scenarios []*scenario) {
 	wg.Wait()
 }
 
-func verify(t *testing.T, tier tier.Tier, agg libaggregate.Aggregate, k value.Value, expected interface{}) {
-	found, err := aggregate.Value(context.Background(), tier, agg.Name, k, value.Dict{})
+func verify(t *testing.T, tier tier.Tier, agg libaggregate.Aggregate, k value.Value, kwargs value.Dict, expected interface{}) {
+	found, err := aggregate.Value(context.Background(), tier, agg.Name, k, kwargs)
 	assert.NoError(t, err)
 	// for floats, it's best to not do direct equality comparison but verify their differnce is small
 	if _, ok := expected.(value.Double); ok {

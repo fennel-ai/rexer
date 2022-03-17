@@ -70,14 +70,14 @@ func TestGetAggValueRequestJSON(t *testing.T) {
 		str:  `{"Name":"","Key":null,"Kwargs":{}}`,
 		gavr: GetAggValueRequest{Key: value.Nil},
 	}, {
-		str:  `{"Name":"some name","Key":-5,"Kwargs":{}}`,
-		gavr: GetAggValueRequest{AggName: "some name", Key: value.Int(-5)},
+		str:  `{"Name":"some name","Key":-5,"Kwargs":{"duration":1}}`,
+		gavr: GetAggValueRequest{AggName: "some name", Key: value.Int(-5), Kwargs: value.Dict{"duration": value.Int(1)}},
 	}, {
-		str:  `{"Name":"some name","Key":true,"Kwargs":{}}`,
-		gavr: GetAggValueRequest{AggName: "some name", Key: value.Bool(true)},
+		str:  `{"Name":"some name","Key":true,"Kwargs":{"something":{}}}`,
+		gavr: GetAggValueRequest{AggName: "some name", Key: value.Bool(true), Kwargs: value.Dict{"something": value.Dict(nil)}},
 	}, {
 		str:  `{"Name":"some name","Key":-12.9,"Kwargs":{}}`,
-		gavr: GetAggValueRequest{AggName: "some name", Key: value.Double(-12.9)},
+		gavr: GetAggValueRequest{AggName: "some name", Key: value.Double(-12.9), Kwargs: value.Dict(nil)},
 	}, {
 		str:  `{"Name":"some name","Key":"pqrs","Kwargs":{}}`,
 		gavr: GetAggValueRequest{AggName: "some name", Key: value.String("pqrs")},
@@ -101,6 +101,7 @@ func TestGetAggValueRequestJSON(t *testing.T) {
 		assert.NoError(t, err)
 		assert.Equal(t, tst.gavr.AggName, gavr.AggName)
 		assert.True(t, tst.gavr.Key.Equal(gavr.Key))
+		assert.True(t, tst.gavr.Kwargs.Equal(gavr.Kwargs))
 	}
 	// Test marshal
 	for _, tst := range tests {

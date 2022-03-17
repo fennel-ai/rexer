@@ -344,7 +344,7 @@ func TestServer_AggregateValue_Valid(t *testing.T) {
 	assert.Equal(t, int64(t0), tier.Clock.Now())
 	assert.NoError(t, aggregate2.Store(ctx, tier, agg))
 	// initially count is zero
-	valueSendReceive(t, holder, agg, key, value.Int(0))
+	valueSendReceive(t, holder, agg, key, value.Int(0), value.Dict{})
 
 	// now create an increment
 	h := counter.NewSum(agg.Name, 6*3600)
@@ -354,7 +354,16 @@ func TestServer_AggregateValue_Valid(t *testing.T) {
 	err = counter.Update(context.Background(), tier, buckets, h)
 	assert.NoError(t, err)
 	clock.Set(int64(t1 + 60))
-	valueSendReceive(t, holder, agg, key, value.Int(1))
+	valueSendReceive(t, holder, agg, key, value.Int(1), value.Dict{})
+
+	// create another increment at a later timestamp
+	t2 := t1 + 3600
+	buckets = h.BucketizeMoment(keystr, t2, value.Int(1))
+	err = counter.Update(context.Background(), tier, buckets, h)
+	assert.NoError(t, err)
+	clock.Set(int64(t2 + 60))
+	valueSendReceive(t, holder, agg, key, value.Int(2), value.Dict{})
+	valueSendReceive(t, holder, agg, key, value.Int(1), value.Dict{"duration": value.Int(120)})
 }
 
 func TestServer_BatchAggregateValue(t *testing.T) {
@@ -402,7 +411,7 @@ func TestServer_BatchAggregateValue(t *testing.T) {
 	buckets = h1.BucketizeMoment(keystr, t1, value.Int(3))
 	err = counter.Update(context.Background(), tier, buckets, h1)
 	assert.NoError(t, err)
-	req1 := aggregate.GetAggValueRequest{AggName: "mycounter", Key: key}
+	req1 := aggregate.GetAggValueRequest{AggName: "mycounter", Key: key, Kwargs: value.Dict{}}
 
 	h2 := counter.NewMax(agg2.Name, 6*3600)
 	buckets = h2.BucketizeMoment(keystr, t1, value.List{value.Int(2), value.Bool(false)})
@@ -411,11 +420,22 @@ func TestServer_BatchAggregateValue(t *testing.T) {
 	buckets = h2.BucketizeMoment(keystr, t1, value.List{value.Int(7), value.Bool(false)})
 	err = counter.Update(context.Background(), tier, buckets, h2)
 	assert.NoError(t, err)
-	req2 := aggregate.GetAggValueRequest{AggName: "maxelem", Key: key}
+	req2 := aggregate.GetAggValueRequest{AggName: "maxelem", Key: key, Kwargs: value.Dict{}}
 
 	clock.Set(int64(t1 + 60))
 	batchValueSendReceive(t, holder,
 		[]aggregate.GetAggValueRequest{req1, req2}, []value.Value{value.Int(4), value.Int(7)})
+
+	// create some more changes at a later timestamp
+	t2 := t1 + 3600
+	buckets = h1.BucketizeMoment(keystr, t2, value.Int(9))
+	err = counter.Update(context.Background(), tier, buckets, h1)
+	assert.NoError(t, err)
+	req3 := aggregate.GetAggValueRequest{AggName: "mycounter", Key: key, Kwargs: value.Dict{"duration": value.Int(1800)}}
+
+	clock.Set(int64(t2 + 60))
+	batchValueSendReceive(t, holder,
+		[]aggregate.GetAggValueRequest{req1, req2, req3}, []value.Value{value.Int(13), value.Int(7), value.Int(9)})
 }
 
 func TestStoreRetrieveDeactivateAggregate(t *testing.T) {
@@ -524,8 +544,8 @@ func checkGetProfileMulti(t *testing.T, c *client.Client, request profilelib.Pro
 	}
 }
 
-func valueSendReceive(t *testing.T, controller server, agg aggregate.Aggregate, key, expected value.Value) {
-	gavr := aggregate.GetAggValueRequest{AggName: agg.Name, Key: key}
+func valueSendReceive(t *testing.T, controller server, agg aggregate.Aggregate, key, expected value.Value, kwargs value.Dict) {
+	gavr := aggregate.GetAggValueRequest{AggName: agg.Name, Key: key, Kwargs: kwargs}
 	ser, err := json.Marshal(gavr)
 	assert.NoError(t, err)
 	w := httptest.NewRecorder()
@@ -550,7 +570,7 @@ func batchValueSendReceive(t *testing.T, controller server,
 	found, err := ioutil.ReadAll(w.Body)
 	assert.NoError(t, err)
 	expected, err := json.Marshal(expectedVals)
-	assert.Equal(t, expected, found)
+	assert.Equal(t, string(expected), string(found))
 }
 
 func batchReadProfilesFromConsumer(t *testing.T, ctx context.Context, consumer kafka.FConsumer, upto int) ([]profilelib.ProfileItem, error) {

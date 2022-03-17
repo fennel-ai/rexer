@@ -232,4 +232,8 @@ func TestRate_Start(t *testing.T) {
 	s, err = h.Start(90, value.Dict{})
 	assert.NoError(t, err)
 	assert.Equal(t, s, ftypes.Timestamp(0))
+	// Test kwargs
+	s, err = h.Start(200, value.Dict{"duration": value.Int(50)})
+	assert.NoError(t, err)
+	assert.Equal(t, s, ftypes.Timestamp(150))
 }
