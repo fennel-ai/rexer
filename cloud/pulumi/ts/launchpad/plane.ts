@@ -34,7 +34,12 @@ type RedisConfig = {
 }
 
 type PrometheusConf = {
-    includeAMP: boolean
+    // This should be set to `true` if Amazon Managed Prometheus (AMP) should be
+    // used to store metrics.
+    //
+    // This should be eventually removed and assumed `true` by default.
+    // Currently AMP is not available in ap-sount-1 where we have data planes.
+    useAMP: boolean
 }
 
 export type PlaneConf = {
@@ -138,18 +143,13 @@ const setupResources = async () => {
         envName: `plane-${input.planeId}`,
     })
 
-    let prometheusOutput = pulumi.output({
-        arn: "",
-        prometheusWriteEndpoint: "",
-        prometheusQueryEndpoint: "",
+    const prometheusOutput = await prometheus.setup({
+        useAMP: input.prometheusConf.useAMP,
+        kubeconfig: eksOutput.kubeconfig,
+        region: input.region,
+        roleArn: input.roleArn,
+        planeId: input.planeId,
     })
-    if (input.prometheusConf.includeAMP) {
-        prometheusOutput = await prometheus.setup({
-            region: input.region,
-            roleArn: input.roleArn,
-            planeId: input.planeId,
-        })
-    }
 
     const telemetryOutput = await telemetry.setup({
         planeId: input.planeId,
