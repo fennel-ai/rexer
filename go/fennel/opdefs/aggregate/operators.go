@@ -6,6 +6,7 @@ import (
 	"fennel/controller/aggregate"
 	"fennel/engine/interpreter/bootarg"
 	"fennel/engine/operators"
+	aggregate2 "fennel/lib/aggregate"
 	"fennel/lib/ftypes"
 	"fennel/lib/value"
 	"fennel/tier"
@@ -36,18 +37,28 @@ func (a AggValue) Apply(kwargs value.Dict, in operators.InputIter, out *value.Li
 	name := string(kwargs["name"].(value.String))
 	aggname := string(kwargs["aggregate"].(value.String))
 
+	var reqs []aggregate2.GetAggValueRequest
+	var rows []value.Dict
 	for in.HasMore() {
 		rowVal, contextKwargs, err := in.Next()
 		if err != nil {
 			return err
 		}
-		row := rowVal.(value.Dict)
-		key := contextKwargs["groupkey"]
-		aggKwargs := contextKwargs["kwargs"].(value.Dict)
-		row[name], err = aggregate.Value(context.TODO(), a.tier, ftypes.AggName(aggname), key, aggKwargs)
-		if err != nil {
-			return err
+		req := aggregate2.GetAggValueRequest{
+			AggName: ftypes.AggName(aggname),
+			Key:     contextKwargs["groupkey"],
+			Kwargs:  contextKwargs["kwargs"].(value.Dict),
 		}
+		reqs = append(reqs, req)
+		row := rowVal.(value.Dict)
+		rows = append(rows, row)
+	}
+	res, err := aggregate.BatchValue(context.TODO(), a.tier, reqs)
+	if err != nil {
+		return err
+	}
+	for i, row := range rows {
+		row[name] = res[i]
 		if err = out.Append(row); err != nil {
 			return err
 		}
