@@ -125,6 +125,23 @@ func TestEndToEnd(t *testing.T) {
 			[]value.Value{value.Double(0.15003570882017145), value.Double(0.09452865480086611)},
 			nil,
 		},
+		{
+			libaggregate.Aggregate{
+				Name: "agg_9", Query: getQueryTopK(), Timestamp: 123,
+				Options: libaggregate.Options{AggType: "topk", Durations: []uint64{3 * 3600, 6 * 3600}},
+			},
+			value.List{},
+			value.Int(uid),
+			[]value.Dict{{}, {"duration": value.Int(3600)}},
+			[]value.Value{
+				value.List{
+					value.Dict{"data": value.Int(time.Hour*24*15 + 4000), "score": value.Double(2)},
+					value.Dict{"data": value.Int(time.Hour*24*15 + 1), "score": value.Double(1)},
+				},
+				value.List{value.Dict{"data": value.Int(time.Hour*24*15 + 4000), "score": value.Double(2)}},
+			},
+			nil,
+		},
 	}
 	clock := &test.FakeClock{}
 	tier.Clock = clock
@@ -296,6 +313,52 @@ func getQuery() ast.Ast {
 				},
 				Property: "value",
 			},
+		}},
+	}
+}
+
+func getQueryTopK() ast.Ast {
+	return ast.OpCall{
+		Operand: ast.OpCall{
+			Operand: ast.OpCall{
+				Operand:   ast.Lookup{On: ast.Var{Name: "args"}, Property: "actions"},
+				Namespace: "std",
+				Name:      "filter",
+				Kwargs: ast.Dict{Values: map[string]ast.Ast{
+					"where": ast.Binary{
+						Left:  ast.Lookup{On: ast.At{}, Property: "action_type"},
+						Op:    "==",
+						Right: ast.MakeString("like"),
+					},
+				}},
+			},
+			Namespace: "std",
+			Name:      "addField",
+			Kwargs: ast.Dict{Values: map[string]ast.Ast{
+				"name": ast.MakeString("groupkey"),
+				"value": ast.Lookup{
+					On:       ast.At{},
+					Property: "actor_id",
+				}},
+			},
+		},
+		Namespace: "std",
+		Name:      "addField",
+		Kwargs: ast.Dict{Values: map[string]ast.Ast{
+			"name": ast.MakeString("value"),
+			"value": ast.Dict{Values: map[string]ast.Ast{
+				"data": ast.Lookup{
+					On:       ast.At{},
+					Property: "timestamp",
+				},
+				"score": ast.Lookup{
+					On: ast.Lookup{
+						On:       ast.At{},
+						Property: "metadata",
+					},
+					Property: "value",
+				},
+			}},
 		}},
 	}
 }

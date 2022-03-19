@@ -20,6 +20,7 @@ var ValidTypes = []ftypes.AggType{
 	"max",
 	"stddev",
 	"rate",
+	"topk",
 }
 
 type Aggregate struct {
@@ -49,7 +50,7 @@ func (agg Aggregate) Validate() error {
 	options := agg.Options
 	aggtype := agg.Options.AggType
 	switch strings.ToLower(string(aggtype)) {
-	case "sum", "average", "min", "max", "stddev", "list":
+	case "sum", "average", "min", "max", "stddev", "list", "topk":
 		if len(options.Durations) < 1 {
 			return fmt.Errorf("at least one duration must be provided for %s", aggtype)
 		}
