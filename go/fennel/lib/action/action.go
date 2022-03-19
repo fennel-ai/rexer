@@ -38,8 +38,8 @@ type ActionSer struct {
 	Metadata   []byte            `db:"metadata"`
 }
 
-func (a *Action) ToActionSer() (*ActionSer, error) {
-	ser := ActionSer{
+func (a *Action) ToActionSer() *ActionSer {
+	return &ActionSer{
 		ActionID:   a.ActionID,
 		ActorID:    a.ActorID,
 		ActorType:  a.ActorType,
@@ -48,13 +48,8 @@ func (a *Action) ToActionSer() (*ActionSer, error) {
 		ActionType: a.ActionType,
 		Timestamp:  a.Timestamp,
 		RequestID:  a.RequestID,
+		Metadata:   value.ToJSON(a.Metadata),
 	}
-	valSer, err := value.Marshal(a.Metadata)
-	if err != nil {
-		return nil, err
-	}
-	ser.Metadata = valSer
-	return &ser, nil
 }
 
 func (ser *ActionSer) ToAction() (*Action, error) {
@@ -69,7 +64,8 @@ func (ser *ActionSer) ToAction() (*Action, error) {
 		RequestID:  ser.RequestID,
 	}
 	var val value.Value
-	if err := value.Unmarshal(ser.Metadata, &val); err != nil {
+	val, err := value.FromJSON(ser.Metadata)
+	if err != nil {
 		return nil, err
 	}
 	a.Metadata = val

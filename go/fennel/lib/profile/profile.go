@@ -22,19 +22,14 @@ type ProfileItem struct {
 	Value   value.Value  `db:"value"`
 }
 
-func (p *ProfileItem) ToProfileItemSer() (*ProfileItemSer, error) {
-	ser := ProfileItemSer{
-		OType:   p.OType,
-		Oid:     p.Oid,
-		Key:     p.Key,
-		Version: p.Version,
+func (pi *ProfileItem) ToProfileItemSer() *ProfileItemSer {
+	return &ProfileItemSer{
+		OType:   pi.OType,
+		Oid:     pi.Oid,
+		Key:     pi.Key,
+		Version: pi.Version,
+		Value:   value.ToJSON(pi.Value),
 	}
-	valSer, err := value.Marshal(p.Value)
-	if err != nil {
-		return nil, err
-	}
-	ser.Value = valSer
-	return &ser, nil
 }
 
 func NewProfileItem(otype string, oid uint64, k string, version uint64) ProfileItem {
@@ -60,8 +55,8 @@ func NewProfileItemSer(otype string, oid uint64, key string, version uint64, val
 // ToProfileItem converts a ProfileItemSer to ProfileItem
 func (ser *ProfileItemSer) ToProfileItem() (*ProfileItem, error) {
 	pr := ProfileItem{ser.OType, ser.Oid, ser.Key, ser.Version, value.Nil}
-	var val value.Value
-	if err := value.Unmarshal(ser.Value, &val); err != nil {
+	val, err := value.FromJSON(ser.Value)
+	if err != nil {
 		return nil, err
 	}
 	pr.Value = val
