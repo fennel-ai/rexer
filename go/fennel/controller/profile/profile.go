@@ -93,10 +93,7 @@ func dbInsert(ctx context.Context, tier tier.Tier, profiles []profilelib.Profile
 		if p.Version == 0 {
 			p.Version = uint64(time.Now().UnixMicro())
 		}
-		pSer, err := p.ToProfileItemSer()
-		if err != nil {
-			return err
-		}
+		pSer := p.ToProfileItemSer()
 		profileSers[i] = *pSer
 	}
 	return profile.SetBatch(ctx, tier, profileSers)
