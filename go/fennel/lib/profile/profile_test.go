@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"math"
+	"strconv"
 	"testing"
 
 	"fennel/lib/value"
@@ -97,14 +98,42 @@ func TestProfileFetchRequestJSON(t *testing.T) {
 	}
 }
 
-func TestProfileItemToSer(t *testing.T) {
-	// Value set
+func TestProfileItem_ToProfileItemSer(t *testing.T) {
 	p := ProfileItem{OType: "user", Oid: 12, Key: "xyz", Version: 1, Value: value.Int(2)}
-	pser, err := p.ToProfileItemSer()
+	pSer := p.ToProfileItemSer()
+	assert.Equal(t, &ProfileItemSer{
+		OType: "user", Oid: 12, Key: "xyz", Version: 1, Value: []byte("2"),
+	}, pSer)
+}
+
+func TestProfileItemSer_ToProfileItem(t *testing.T) {
+	pSer := ProfileItemSer{OType: "user", Oid: 12, Key: "xyz", Version: 1, Value: []byte("2")}
+	p, err := pSer.ToProfileItem()
 	assert.NoError(t, err)
-	actualV, err := value.Marshal(value.Int(2))
+	expected := ProfileItem{OType: "user", Oid: 12, Key: "xyz", Version: 1, Value: value.Int(2)}
+	assert.Equal(t, expected, p)
+}
+
+func TestFromProfileItemSerList(t *testing.T) {
+	plSer := make([]ProfileItemSer, 10)
+	expected := make([]ProfileItem, 10)
+	for i := 0; i < 10; i++ {
+		plSer[i] = ProfileItemSer{
+			OType:   "some type",
+			Oid:     uint64(i),
+			Key:     "some key",
+			Version: 1,
+			Value:   []byte(strconv.Itoa(10-i) + ".0"),
+		}
+		expected[i] = ProfileItem{
+			OType:   "some type",
+			Oid:     uint64(i),
+			Key:     "some key",
+			Version: 1,
+			Value:   value.Double(10 - i),
+		}
+	}
+	pl, err := FromProfileItemSerList(plSer)
 	assert.NoError(t, err)
-	assert.Equal(t, pser, &ProfileItemSer{
-		OType: "user", Oid: 12, Key: "xyz", Version: 1, Value: actualV,
-	})
+	assert.Equal(t, expected, pl)
 }
