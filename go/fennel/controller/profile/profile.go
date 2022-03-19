@@ -27,11 +27,7 @@ func Get(ctx context.Context, tier tier.Tier, request profilelib.ProfileItem) (v
 		// i.e. no error but also value found
 		return nil, nil
 	}
-	var pval value.PValue
-	if err = proto.Unmarshal(valueSer, &pval); err != nil {
-		return nil, err
-	}
-	val, err := value.FromProtoValue(&pval)
+	val, err := value.FromJSON(valueSer)
 	if err != nil {
 		return nil, err
 	}
@@ -46,12 +42,8 @@ func Set(ctx context.Context, tier tier.Tier, request profilelib.ProfileItem) er
 	if request.Version == 0 {
 		request.Version = uint64(time.Now().UnixMicro())
 	}
-	pval, err := value.ToProtoValue(request.Value)
-	if err != nil {
-		return err
-	}
-	valSer, err := proto.Marshal(&pval)
-	if err = profile.Set(ctx, tier, request.OType, request.Oid, request.Key, request.Version, valSer); err != nil {
+	valSer := value.ToJSON(request.Value)
+	if err := profile.Set(ctx, tier, request.OType, request.Oid, request.Key, request.Version, valSer); err != nil {
 		return err
 	}
 	return nil
@@ -93,10 +85,7 @@ func dbInsert(ctx context.Context, tier tier.Tier, profiles []profilelib.Profile
 		if p.Version == 0 {
 			p.Version = uint64(time.Now().UnixMicro())
 		}
-		pSer, err := p.ToProfileItemSer()
-		if err != nil {
-			return err
-		}
+		pSer := p.ToProfileItemSer()
 		profileSers[i] = *pSer
 	}
 	return profile.SetBatch(ctx, tier, profileSers)
@@ -148,7 +137,7 @@ func GetBatched(ctx context.Context, tier tier.Tier, requests []profilelib.Profi
 		if sers[i] == nil {
 			ret[i] = nil
 		} else {
-			err = value.Unmarshal(sers[i], &ret[i])
+			ret[i], err = value.FromJSON(sers[i])
 			if err != nil {
 				return nil, err
 			}

@@ -24,10 +24,7 @@ func dbInsert(ctx context.Context, tier tier.Tier, actions []actionlib.Action) e
 		if a.Timestamp == 0 {
 			a.Timestamp = ftypes.Timestamp(tier.Clock.Now())
 		}
-		aSer, err := a.ToActionSer()
-		if err != nil {
-			return err
-		}
+		aSer := a.ToActionSer()
 		actionSers[i] = *aSer
 	}
 	return action.InsertBatch(ctx, tier, actionSers)
