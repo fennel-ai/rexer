@@ -29,8 +29,6 @@ assert.ok(confluentPassword, "CONFLUENT_CLOUD_PASSWORD must be set");
 
 // map from tier id to plane id.
 const tierConfs: Record<number, number> = {
-    // Trell-hosted tier.
-    102: 1,
     // Aditya's new dev tier.
     104: 3,
     // Lokal prod tier.
@@ -41,27 +39,6 @@ const tierConfs: Record<number, number> = {
 
 // map from plane id to its configuration.
 const planeConfs: Record<number, PlaneConf> = {
-    1: {
-        planeId: 1,
-        region: "ap-south-1",
-        roleArn: "arn:aws:iam::136736114676:role/admin",
-        vpcConf: {
-            cidr: "10.101.0.0/16"
-        },
-        dbConf: {
-            minCapacity: 1,
-            maxCapacity: 4,
-            password: "password"
-        },
-        confluentConf: {
-            username: confluentUsername,
-            password: confluentPassword
-        },
-        controlPlaneConf: controlPlane,
-        prometheusConf: {
-            useAMP: false
-        }
-    },
     // this is used for test resources
     2: {
         planeId: 2,
