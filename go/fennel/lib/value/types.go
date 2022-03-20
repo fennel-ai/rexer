@@ -19,6 +19,14 @@ type Value interface {
 	String() string
 	Clone() Value
 	MarshalJSON() ([]byte, error)
+
+	// Wrap wraps a value to be a list (if not already)
+	Wrap() List
+
+	// Unwrap extracts a non-list value from a value
+	// if it is a 1-member list, that element is returned. All other lists
+	// throw an error. Non-list values are returned as it is
+	Unwrap() (Value, error)
 }
 
 var _ Value = Int(0)
@@ -30,6 +38,14 @@ var _ Value = Dict(map[string]Value{"hi": Int(0), "bye": Bool(true)})
 var _ Value = nil_{}
 
 type Int int64
+
+func (I Int) Wrap() List {
+	return NewList([]Value{I})
+}
+
+func (I Int) Unwrap() (Value, error) {
+	return I, nil
+}
 
 func (I Int) isValue() {}
 func (I Int) Equal(v Value) bool {
@@ -56,6 +72,14 @@ func (I Int) MarshalJSON() ([]byte, error) {
 }
 
 type Double float64
+
+func (d Double) Wrap() List {
+	return NewList([]Value{d})
+}
+
+func (d Double) Unwrap() (Value, error) {
+	return d, nil
+}
 
 func (d Double) isValue() {}
 func (d Double) Equal(v Value) bool {
@@ -97,6 +121,14 @@ func (d Double) MarshalJSON() ([]byte, error) {
 
 type Bool bool
 
+func (b Bool) Wrap() List {
+	return NewList([]Value{b})
+}
+
+func (b Bool) Unwrap() (Value, error) {
+	return b, nil
+}
+
 func (b Bool) isValue() {}
 func (b Bool) Equal(v Value) bool {
 	switch v := v.(type) {
@@ -120,6 +152,14 @@ func (b Bool) MarshalJSON() ([]byte, error) {
 }
 
 type String string
+
+func (s String) Wrap() List {
+	return NewList([]Value{s})
+}
+
+func (s String) Unwrap() (Value, error) {
+	return s, nil
+}
 
 func (s String) isValue() {}
 func (s String) Equal(v Value) bool {
@@ -149,6 +189,14 @@ func (s String) MarshalJSON() ([]byte, error) {
 
 type nil_ struct{}
 
+func (n nil_) Wrap() List {
+	return NewList([]Value{Nil})
+}
+
+func (n nil_) Unwrap() (Value, error) {
+	return Nil, nil
+}
+
 var Nil = nil_{}
 
 func (n nil_) isValue() {}
@@ -174,6 +222,17 @@ func (n nil_) MarshalJSON() ([]byte, error) {
 }
 
 type List []Value
+
+func (l List) Wrap() List {
+	return l
+}
+
+func (l List) Unwrap() (Value, error) {
+	if len(l) == 1 {
+		return l[0], nil
+	}
+	return nil, fmt.Errorf("can not unwrap list of length: '%d'", len(l))
+}
 
 func (l List) Op(opt string, other Value) (Value, error) {
 	return route(l, opt, other)
@@ -241,6 +300,14 @@ func (l *List) Iter() Iter {
 }
 
 type Dict map[string]Value
+
+func (d Dict) Wrap() List {
+	return NewList([]Value{d})
+}
+
+func (d Dict) Unwrap() (Value, error) {
+	return d, nil
+}
 
 func (d Dict) Op(opt string, other Value) (Value, error) {
 	return route(d, opt, other)
@@ -335,6 +402,14 @@ type Future struct {
 	lock   sync.Mutex
 	ch     <-chan Value
 	cached Value
+}
+
+func (f *Future) Wrap() List {
+	return NewList([]Value{f})
+}
+
+func (f *Future) Unwrap() (Value, error) {
+	return f, nil
 }
 
 func NewFuture(ch <-chan Value) Future {

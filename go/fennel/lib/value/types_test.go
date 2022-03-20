@@ -108,3 +108,52 @@ func TestFuture_Await(t *testing.T) {
 	f := getFuture(v)
 	assert.Equal(t, v.String(), f.String())
 }
+
+func Test_Unwrap(t *testing.T) {
+	t.Parallel()
+	scenarios := []struct {
+		v   Value
+		e   Value
+		err bool
+	}{
+		{Int(2), Int(2), false},
+		{Double(2.0), Double(2.0), false},
+		{Nil, Nil, false},
+		{String("hi"), String("hi"), false},
+		{Dict{"x": Int(1), "y": List{}}, Dict{"x": Int(1), "y": List{}}, false},
+		{Bool(true), Bool(true), false},
+		{List{Int(3)}, Int(3), false},
+		{List{}, nil, true},
+		{List{Int(2), Nil}, nil, true},
+	}
+	for _, scene := range scenarios {
+		found, err := scene.v.Unwrap()
+		if scene.err {
+			assert.Error(t, err)
+		} else {
+			assert.NoError(t, err)
+			assert.Equal(t, scene.e, found)
+		}
+	}
+}
+func Test_Wrap(t *testing.T) {
+	t.Parallel()
+	scenarios := []struct {
+		v Value
+		e Value
+	}{
+		{Int(2), List{Int(2)}},
+		{Double(2.0), List{Double(2.0)}},
+		{Nil, List{Nil}},
+		{String("hi"), List{String("hi")}},
+		{Dict{"x": Int(1), "y": List{}}, List{Dict{"x": Int(1), "y": List{}}}},
+		{Bool(true), List{Bool(true)}},
+		{List{Int(3)}, List{Int(3)}},
+		{List{}, List{}},
+		{List{Int(2), Nil}, List{Int(2), Nil}},
+	}
+	for _, scene := range scenarios {
+		found := scene.v.Wrap()
+		assert.Equal(t, scene.e, found)
+	}
+}
