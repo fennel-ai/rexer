@@ -74,6 +74,10 @@ const prometheusScrapeConfigs = {
             "action": "replace",
             "source_labels": ["__meta_kubernetes_pod_phase"],
             "target_label": "PodPhase",
+        }, {
+            "action": "drop",
+            "source_labels": ["__meta_kubernetes_pod_container_name"],
+            "regex": "(linkerd-init|linkerd-proxy)",
         }],
         // fails with: "str `__name__` into model.LabelNames"
         // "metric_relabel_configs": [{

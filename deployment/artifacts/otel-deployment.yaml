@@ -137,6 +137,9 @@ data:
               - action: replace
                 source_labels: [__meta_kubernetes_pod_name]
                 target_label: PodName
+              - action: drop
+                source_labels: [__meta_kubernetes_pod_container_name]
+                regex: (linkerd-init|linkerd-proxy)
               - action: replace
                 source_labels: [__meta_kubernetes_pod_container_name]
                 target_label: ContainerName
