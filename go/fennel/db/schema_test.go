@@ -19,7 +19,7 @@ const (
 )
 
 func create(dbname, username, password, host string) error {
-	connstr := fmt.Sprintf("%s:%s@tcp(%s)/", username, password, host)
+	connstr := fmt.Sprintf("%s:%s@tcp(%s)/?tls=true", username, password, host)
 	db, err := sqlx.Open("mysql", connstr)
 	if err != nil {
 		return err
@@ -31,7 +31,7 @@ func create(dbname, username, password, host string) error {
 }
 
 func drop(dbname, username, password, host string) error {
-	connstr := fmt.Sprintf("%s:%s@tcp(%s)/", username, password, host)
+	connstr := fmt.Sprintf("%s:%s@tcp(%s)/?tls=true", username, password, host)
 	db, err := sqlx.Open("mysql", connstr)
 	if err != nil {
 		return err
@@ -48,7 +48,7 @@ func recreate(dbname, username, password, host string) (*sqlx.DB, error) {
 	if err := create(dbname, username, password, host); err != nil {
 		return nil, err
 	}
-	connstr := fmt.Sprintf("%s:%s@tcp(%s)/%s", username, password, host, dbname)
+	connstr := fmt.Sprintf("%s:%s@tcp(%s)/%s?tls=true", username, password, host, dbname)
 	return sqlx.Open("mysql", connstr)
 }
 

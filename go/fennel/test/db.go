@@ -43,7 +43,7 @@ func defaultDB(tierID ftypes.RealmID) (db.Connection, error) {
 func drop(tierID ftypes.RealmID, logicalname, username, password, host string) error {
 	scope := resource.NewTierScope(tierID)
 	dbname := scope.PrefixedName(logicalname)
-	connstr := fmt.Sprintf("%s:%s@tcp(%s)/", username, password, host)
+	connstr := fmt.Sprintf("%s:%s@tcp(%s)/?tls=true", username, password, host)
 	db, err := sqlx.Open("mysql", connstr)
 	if err != nil {
 		return err
@@ -57,7 +57,7 @@ func drop(tierID ftypes.RealmID, logicalname, username, password, host string) e
 func setupDB(tierID ftypes.RealmID, logicalname, username, password, host string) error {
 	scope := resource.NewTierScope(tierID)
 	dbname := scope.PrefixedName(logicalname)
-	connstr := fmt.Sprintf("%s:%s@tcp(%s)/", username, password, host)
+	connstr := fmt.Sprintf("%s:%s@tcp(%s)/?tls=true", username, password, host)
 	db, err := sqlx.Open("mysql", connstr)
 	if err != nil {
 		return fmt.Errorf("could not open DB: %v", err)

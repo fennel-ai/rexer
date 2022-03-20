@@ -76,7 +76,7 @@ type MySQLConfig struct {
 var _ resource.Config = MySQLConfig{}
 
 func (conf MySQLConfig) Materialize() (resource.Resource, error) {
-	connectStr := fmt.Sprintf("%s:%s@tcp(%s)/%s", conf.Username, conf.Password, conf.Host, conf.DBname)
+	connectStr := fmt.Sprintf("%s:%s@tcp(%s)/%s?tls=true", conf.Username, conf.Password, conf.Host, conf.DBname)
 	DB, err := sqlx.Connect("mysql", connectStr)
 	if err != nil {
 		return nil, err
