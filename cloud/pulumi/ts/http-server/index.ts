@@ -115,7 +115,7 @@ export const setup = async (input: inputType) => {
             },
             spec: {
                 selector: { matchLabels: appLabels },
-                replicas: 1,
+                replicas: 2,
                 template: {
                     metadata: {
                         labels: appLabels,
