@@ -2,12 +2,13 @@ package profile
 
 import (
 	"context"
+	"testing"
+
 	"fennel/lib/ftypes"
 	"fennel/lib/profile"
 	"fennel/lib/value"
 	"fennel/test"
 	"fennel/tier"
-	"testing"
 
 	"github.com/stretchr/testify/assert"
 )
@@ -19,7 +20,7 @@ func testProviderBasic(t *testing.T, p provider) {
 	ctx := context.Background()
 
 	val := value.Int(2)
-	expected, _ := value.Marshal(val)
+	expected := value.ToJSON(val)
 
 	// initially before setting, value isn't there so we get nil back
 	// and calling get on a row that doesn't exist is not an error
@@ -60,7 +61,7 @@ func testProviderVersion(t *testing.T, p provider) {
 	checkMultiGet(t, ctx, tier, request, profiles)
 
 	val1 := value.Int(2)
-	expected1, _ := value.Marshal(val1)
+	expected1 := value.ToJSON(val1)
 
 	// first setting a version of 0 isn't possible
 	err = p.set(ctx, tier, "1", 1232, "summary", 0, expected1)
@@ -73,7 +74,7 @@ func testProviderVersion(t *testing.T, p provider) {
 
 	// and can set another version on the same value
 	val2 := value.String("hello")
-	expected2, _ := value.Marshal(val2)
+	expected2 := value.ToJSON(val2)
 	profiles = append(profiles, profile.NewProfileItemSer("1", 1232, "summary", 2, expected2))
 	checkSet(t, ctx, p, tier, profiles[1], expected2)
 	checkMultiGet(t, ctx, tier, request, profiles)
@@ -83,7 +84,7 @@ func testProviderVersion(t *testing.T, p provider) {
 		"hi":  value.Int(1),
 		"bye": value.List([]value.Value{value.Bool(true), value.String("yo")}),
 	})
-	expected3, _ := value.Marshal(val3)
+	expected3 := value.ToJSON(val3)
 	profiles = append(profiles, profile.NewProfileItemSer("1", 1232, "summary", 10, expected3))
 	checkSet(t, ctx, p, tier, profiles[2], expected3)
 	checkMultiGet(t, ctx, tier, request, profiles)

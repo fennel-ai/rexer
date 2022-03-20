@@ -21,6 +21,7 @@ const (
 
 type FConsumer interface {
 	resource.Resource
+	Read(ctx context.Context, timeout time.Duration) ([]byte, error)
 	ReadProto(ctx context.Context, message proto.Message, timeout time.Duration) error
 	ReadBatch(ctx context.Context, upto int, timeout time.Duration) ([][]byte, error)
 	Backlog() (int, error)

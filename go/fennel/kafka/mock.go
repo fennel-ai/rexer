@@ -74,6 +74,25 @@ type mockConsumer struct {
 	broker  *MockBroker
 }
 
+func (l mockConsumer) Read(ctx context.Context, timeout time.Duration) ([]byte, error) {
+	ticker := time.Tick(timeout)
+	for {
+		select {
+		case <-ctx.Done():
+			return nil, fmt.Errorf("context cancelled - no new messages to read")
+		case <-ticker:
+			return nil, fmt.Errorf("timeout - no new messages to read")
+		default:
+			ser, err := l.broker.Read(l.groupid)
+			if err == nil {
+				return ser, nil
+			} else {
+				time.Sleep(10 * time.Millisecond)
+			}
+		}
+	}
+}
+
 func (l mockConsumer) ReadProto(ctx context.Context, message proto.Message, timeout time.Duration) error {
 	ticker := time.Tick(timeout)
 	for {

@@ -2,13 +2,14 @@ package profile
 
 import (
 	"context"
-	"fennel/db"
-	"fennel/lib/profile"
-	"fennel/lib/value"
 	"math/rand"
 	"sync"
 	"testing"
 	"time"
+
+	"fennel/db"
+	"fennel/lib/profile"
+	"fennel/lib/value"
 
 	"fennel/lib/ftypes"
 	"fennel/test"
@@ -95,8 +96,8 @@ func TestCachedGetBatch(t *testing.T) {
 	ctx := context.Background()
 	p := cachedProvider{base: dbProvider{}}
 
-	expected1, _ := value.Marshal(value.Int(1))
-	expected2, _ := value.Marshal(value.Int(3))
+	expected1 := value.ToJSON(value.Int(1))
+	expected2 := value.ToJSON(value.Int(3))
 	expected3 := expected2
 
 	// mini-redis does not play well with cache keys in different "slots" (in the same txn),
@@ -160,7 +161,7 @@ func TestCachedDBConcurrentSet(t *testing.T) {
 		for _, p := range profiles {
 			go func(p profile.ProfileItem) {
 				defer wg.Done()
-				v, _ := value.Marshal(p.Value)
+				v := value.ToJSON(p.Value)
 				assert.NoError(t, c.set(ctx, tier, p.OType, p.Oid, p.Key, p.Version, v))
 			}(p)
 		}
@@ -171,7 +172,7 @@ func TestCachedDBConcurrentSet(t *testing.T) {
 	vs, err := tier.Cache.MGet(ctx, cacheKeys...)
 	assert.NoError(t, err)
 	for i, v := range vs {
-		expectedv, _ := value.Marshal(value.List{value.Int(i)})
+		expectedv := value.ToJSON(value.List{value.Int(i)})
 		assert.Equal(t, expectedv, []byte(v.(string)))
 	}
 
@@ -179,13 +180,13 @@ func TestCachedDBConcurrentSet(t *testing.T) {
 	v, err := tier.Cache.Get(ctx, makeKey("user", 0, "age", 0))
 	assert.NoError(t, err)
 	// ("user", 0, "age", 9) would be the lastest profile
-	expectedv, _ := value.Marshal(value.List{value.Int(8)})
+	expectedv := value.ToJSON(value.List{value.Int(8)})
 	assert.Equal(t, expectedv, []byte(v.(string)))
 
 	v, err = tier.Cache.Get(ctx, makeKey("user", 1, "age", 0))
 	assert.NoError(t, err)
 	// ("user", 1, "age", 10) would be the lastest profile
-	expectedv, _ = value.Marshal(value.List{value.Int(9)})
+	expectedv = value.ToJSON(value.List{value.Int(9)})
 	assert.Equal(t, expectedv, []byte(v.(string)))
 }
 
@@ -230,7 +231,7 @@ func TestCachedDBEventuallyConsistent(t *testing.T) {
 
 	// creates versioned profiles for ("user", 1, "age")
 	for i := uint64(1); i <= 5; i++ {
-		v, _ := value.Marshal(value.List{value.Int(i)})
+		v := value.ToJSON(value.List{value.Int(i)})
 		assert.NoError(t, c.set(ctx, tier, "user", 1, "age", i, v))
 	}
 
@@ -275,7 +276,7 @@ func TestCachedDBEventuallyConsistent(t *testing.T) {
 		for i := uint64(1); i <= 3; i++ {
 			go func(i uint64) {
 				defer wg.Done()
-				v, _ := value.Marshal(value.List{value.Int(i * 20)})
+				v := value.ToJSON(value.List{value.Int(i * 20)})
 				assert.NoError(t, c.set(ctx, tier, "user", 1, "age", i*20, v))
 			}(i)
 		}
@@ -285,6 +286,6 @@ func TestCachedDBEventuallyConsistent(t *testing.T) {
 	v, err := tier.Cache.Get(ctx, makeKey("user", 1, "age", 0))
 	assert.NoError(t, err)
 	// ("user", 1, "age", 60) would be the lastest profile
-	expectedv, _ := value.Marshal(value.List{value.Int(60)})
+	expectedv := value.ToJSON(value.List{value.Int(60)})
 	assert.Equal(t, expectedv, []byte(v.(string)))
 }
