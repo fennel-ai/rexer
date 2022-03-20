@@ -4,6 +4,7 @@ import * as k8s from "@pulumi/kubernetes";
 import * as pulumi from "@pulumi/pulumi";
 import * as path from "path";
 import * as process from "process";
+import * as childProcess from "child_process";
 
 
 const name = "http-server"
@@ -64,7 +65,6 @@ export const setup = async (input: inputType) => {
     }, { provider: awsProvider });
 
     // Get registry info (creds and endpoint).
-    const imageName = repo.repositoryUrl;
     const registryInfo = repo.registryId.apply(async id => {
         const credentials = await aws.ecr.getCredentials({ registryId: id }, { provider: awsProvider });
         const decodedCredentials = Buffer.from(credentials.authorizationToken, "base64").toString();
@@ -80,6 +80,12 @@ export const setup = async (input: inputType) => {
     });
 
     const root = process.env["FENNEL_ROOT"]!
+    // Get the (hash) commit id.
+    // NOTE: This requires git to be installed and DOES NOT take local changes or commits into consideration.
+    const hashId = childProcess.execSync('git rev-parse --short HEAD').toString().trim()
+    const imageName = repo.repositoryUrl.apply( imgName => {
+        return `${imgName}:${hashId}`
+    })
 
     // Build and publish the container image.
     const image = new docker.Image("http-server-img", {
@@ -98,9 +104,6 @@ export const setup = async (input: inputType) => {
         kubeconfig: input.kubeconfig,
         namespace: input.namespace,
     })
-
-    const baseImageName = image.baseImageName;
-    const fullImageName = image.imageName;
 
     // Create a load balanced Kubernetes service using this image, and export its IP.
     const appLabels = { app: name };
