@@ -30,10 +30,10 @@ func schemaVersion(db *sqlx.DB) (uint32, error) {
 
 func incrementSchemaVersion(db *sqlx.DB, curr uint32) error {
 	var err error
-	if curr == 0 {
-		_, err = db.Query("INSERT INTO schema_version VALUES (?);", 1)
+	if curr == 1 {
+		_, err = db.Query("INSERT INTO schema_version VALUES (?);", curr)
 	} else {
-		_, err = db.Query("UPDATE schema_version SET version = version + 1")
+		_, err = db.Query("UPDATE schema_version SET version = ?", curr)
 	}
 	return err
 }
@@ -51,7 +51,7 @@ func syncSchema(db *sqlx.DB, defs Schema) error {
 		if _, err = db.Exec(defs[i]); err != nil {
 			return err
 		}
-		if err = incrementSchemaVersion(db, i-1); err != nil {
+		if err = incrementSchemaVersion(db, i); err != nil {
 			return err
 		}
 	}

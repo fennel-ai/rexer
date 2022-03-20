@@ -4,6 +4,9 @@ import "fennel/db"
 
 // if you want to make any change to Schema (create table, drop table, alter table etc.)
 // add a versioned query here. Numbers should be increasing with no gaps and no repetitions
+//
+// NOTE: Queries here should be idempotent in nature i.e. the queries written here should
+// take into consideration that they could be executed more than once
 var Schema = db.Schema{
 	1: `CREATE TABLE IF NOT EXISTS actionlog (
 				action_id BIGINT UNSIGNED not null primary key auto_increment,

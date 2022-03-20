@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"fmt"
 	"math/rand"
+	"sync"
 	"testing"
 	"time"
 
@@ -109,4 +110,73 @@ func TestSyncSchema(t *testing.T) {
 	row.Scan(&total)
 	assert.True(t, total.Valid)
 	assert.Equal(t, int32(7), total.Int32)
+}
+
+func TestConcurrentSyncSchema(t *testing.T) {
+	// get default DB
+	rand.Seed(time.Now().UnixNano())
+	tierID := ftypes.RealmID(rand.Uint32())
+	scope := resource.NewTierScope(tierID)
+	config := MySQLConfig{
+		DBname:   scope.PrefixedName("schema_test"),
+		Username: "admin",
+		Password: "foundationdb",
+		Host:     host,
+		// Add more schema queries to have potential overlap b/w them
+		// when two goroutines try to sync the schema
+		Schema: Schema{
+			1: `CREATE TABLE IF NOT EXISTS schema_test (
+					zkey INT NOT NULL,
+					value INT NOT NULL
+			);`,
+			2: `CREATE TABLE IF NOT EXISTS schema_test2 (
+					zkey INT NOT NULL,
+					value INT NOT NULL
+			);`,
+			3: `CREATE TABLE IF NOT EXISTS schema_test3 (
+					zkey INT NOT NULL,
+					value INT NOT NULL
+			);`,
+			4: `CREATE TABLE IF NOT EXISTS schema_test4 (
+					zkey INT NOT NULL,
+					value INT NOT NULL
+			);`,
+		},
+		Scope: scope,
+	}
+	// create the DB before materializing a connection
+	err := create(config.DBname, config.Username, config.Password, config.Host)
+	assert.NoError(t, err)
+
+	resource, err := config.Materialize()
+	assert.NoError(t, err)
+	defer drop(config.DBname, config.Username, config.Password, config.Host)
+	db := resource.(Connection)
+
+	// version goes to zero after dropping the DB
+	conn, err := recreate(config.DBname, config.Username, config.Password, config.Host)
+	assert.NoError(t, err)
+	db.DB = conn
+
+	// since we just created a new DB, it's version starts at zero
+	version, err := schemaVersion(db.DB)
+	assert.NoError(t, err)
+	assert.Equal(t, uint32(0), version)
+
+	wg := sync.WaitGroup{}
+	wg.Add(2)
+	// spin up two routines which will both try to sync the schemas on the same DB
+	for i := 0; i < 2; i++ {
+		go func() {
+			defer wg.Done()
+			err = syncSchema(db.DB, config.Schema)
+			assert.NoError(t, err)
+		}()
+	}
+	wg.Wait()
+
+	// version should be at one now
+	version, err = schemaVersion(db.DB)
+	assert.NoError(t, err)
+	assert.Equal(t, uint32(4), version)
 }
