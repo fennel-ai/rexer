@@ -12,12 +12,26 @@ import (
 	"fennel/lib/ftypes"
 	libprofile "fennel/lib/profile"
 	"fennel/lib/value"
+
+	"github.com/alexflint/go-arg"
 )
 
+type LoadTestArg struct {
+	Url         string `arg:"--url" default:"http://localhost:2425"`
+	NumUids     int    `arg:"--num_uids" default:"1000"`
+	NumVideos   int    `arg:"--num_videos" default:"1000"`
+	NumCreators int    `arg:"--num_creators" default:"100"`
+	Qps         int    `arg:"--qps" default:"10000"`
+	Dryrun      bool   `arg:"--dry_run" default:"false"`
+	Uid         int    `arg:"--uid" default:"-1"` // If NumUids == 1 and Uid is set, use it
+	NumProcs    int    `arg:"--num_procs" default:"400"`
+}
+
 const (
-	ACTOR_TYPE     = "user"
-	TARGET_TYPE    = "video"
-	ACTION_TYPE    = "view"
+	ACTOR_TYPE  = "user"
+	TARGET_TYPE = "video"
+	// To avoid any external traffic intervening with load/e2e tests.
+	ACTION_TYPE    = "e2etest_view"
 	METADATA_FIELD = "watch_time"
 )
 
@@ -27,7 +41,7 @@ func logActions(c *client.Client, numproc, total, qps int, uids, video_ids []uin
 	qps_per_proc := qps / numproc
 	for i := 0; i < numproc; i++ {
 		go func(procid int, uids, video_ids []uint64, num, qps int) {
-			for num >= 0 {
+			for num > 0 {
 				start := time.Now().UnixMilli()
 				for i := 0; i < qps; i++ {
 					a := libaction.Action{
@@ -112,17 +126,22 @@ func setProfile(c *client.Client, otype ftypes.OType, oids []uint64, fields map[
 
 func main() {
 	log.Printf("entering load test...\n")
+	var flags LoadTestArg
+	arg.MustParse(&flags)
+	log.Printf("flags passed: %+v\n", flags)
+	log.SetFlags(log.LstdFlags | log.Lshortfile)
+
 	rand.Seed(time.Now().Unix()) // initialize global pseudo random generator
-	dryrun := false
-	num_uids := 1000
-	num_videos := 1000
-	num_creators := 100
-	qps := 10000
-	total := 1 * 60 * qps
-	numprocs := 400 // so 400 processes, each with 150 QPS individually
-	uids := make([]uint64, 0, num_uids)
-	for i := 0; i < num_uids; i++ {
-		uids = append(uids, rand.Uint64())
+	total := 1 * 60 * flags.Qps
+	uids := make([]uint64, 0, flags.NumUids)
+
+	// if the NumUids == 1, use the Uid passed by the caller.
+	if flags.NumUids == 1 && flags.Uid > 0 {
+		uids = append(uids, uint64(flags.Uid))
+	} else {
+		for i := 0; i < flags.NumUids; i++ {
+			uids = append(uids, rand.Uint64())
+		}
 	}
 	userFields := map[string][]value.Value{
 		"city":         {value.String("DEL"), value.String("HYD"), value.String("SFO"), value.String("MUM"), value.String("LAX")},
@@ -132,40 +151,40 @@ func main() {
 		"os":           {value.String("android"), value.String("ios")},
 		"mobile_brand": {value.String("xiaomi"), value.String("apple"), value.String("samsung")},
 	}
-	creatorIDs := make([]value.Value, 0, num_creators)
-	for i := 0; i < num_creators; i++ {
+	creatorIDs := make([]value.Value, 0, flags.NumCreators)
+	for i := 0; i < flags.NumCreators; i++ {
 		creatorIDs = append(creatorIDs, value.Int(rand.Uint32()))
 	}
-	videoIds := make([]uint64, 0, num_videos)
-	for i := 0; i < num_videos; i++ {
+	videoIds := make([]uint64, 0, flags.NumVideos)
+	for i := 0; i < flags.NumVideos; i++ {
 		videoIds = append(videoIds, rand.Uint64())
 	}
 	videoFields := map[string][]value.Value{
 		"creator_id": creatorIDs,
 	}
-	c, err := client.NewClient("http://localhost:2425", &http.Client{})
+	c, err := client.NewClient(flags.Url, &http.Client{})
 	if err != nil {
 		panic(err)
 	}
 	start := time.Now()
 	log.Printf("starting user profiles...\n")
-	if err = setProfile(c, ACTOR_TYPE, uids, userFields, dryrun); err != nil {
+	if err = setProfile(c, ACTOR_TYPE, uids, userFields, flags.Dryrun); err != nil {
 		panic(err)
 	}
 	log.Printf("=======DONE========\n")
-	log.Printf("%d user profiles took %dms\n", num_uids*6, time.Since(start).Milliseconds())
+	log.Printf("%d user profiles took %dms\n", flags.NumUids*6, time.Since(start).Milliseconds())
 
 	start = time.Now()
 	log.Printf("starting video profiles...\n")
-	if err = setProfile(c, TARGET_TYPE, videoIds, videoFields, dryrun); err != nil {
+	if err = setProfile(c, TARGET_TYPE, videoIds, videoFields, flags.Dryrun); err != nil {
 		panic(err)
 	}
 	log.Printf("=======DONE========\n")
-	log.Printf("%d video profiles took %dms\n", num_videos, time.Since(start).Milliseconds())
+	log.Printf("%d video profiles took %dms\n", flags.NumVideos, time.Since(start).Milliseconds())
 
 	start = time.Now()
 	log.Printf("starting actions...\n")
-	if err = logActions(c, numprocs, total, qps, uids, videoIds, dryrun); err != nil {
+	if err = logActions(c, flags.NumProcs, total, flags.Qps, uids, videoIds, flags.Dryrun); err != nil {
 		panic(err)
 	}
 	log.Printf("=======DONE========\n")

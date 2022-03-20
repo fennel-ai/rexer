@@ -1,22 +1,17 @@
-import contextlib
-import string
-import sys
-
 import functools
 
 import os
 import random
-import subprocess
 import time
 import unittest
+
+import lib
 
 from rexerclient.rql import var, op, cond
 from rexerclient import client
 from rexerclient.models import action, profile
 
 
-ROOT = os.getenv("FENNEL_ROOT")
-GODIR = os.path.join(ROOT, 'go/fennel')
 URL = 'http://localhost:2425'
 
 
@@ -26,40 +21,12 @@ class TestTier(object):
         self.env['TIER_ID'] = str(tier_id)
 
     def __enter__(self):
-        with gorun('fennel/test/cmds/tiergod', 'dynamic,integration', self.env, flags=['--mode', 'create'], wait=True):
+        with lib.gorun('fennel/test/cmds/tiergod', 'dynamic,integration', self.env, flags=['--mode', 'create'], wait=True):
             pass
 
     def __exit__(self, exc_type, exc_val, exc_tb):
-        with gorun('fennel/test/cmds/tiergod', 'dynamic,integration', self.env, flags=['--mode', 'destroy'], wait=True):
+        with lib.gorun('fennel/test/cmds/tiergod', 'dynamic,integration', self.env, flags=['--mode', 'destroy'], wait=True):
             pass
-
-
-@contextlib.contextmanager
-def gorun(path, tags, env, flags=None, wait=False, sleep=0):
-    if flags is None:
-        flags = []
-
-    dir = ''.join(random.choice(string.ascii_lowercase) for _ in range(8))
-    binary = '/tmp/%s/%s' % (dir, path)
-    print('going to build:', path)
-    b = subprocess.Popen(['go', 'build', '--tags', tags, '-o', binary, path], cwd=GODIR)
-    b.wait()
-    print('build: ', 'success' if b.returncode == 0 else 'fail')
-    print('going to run:', path, ' '.join(flags))
-    p = subprocess.Popen([binary] + flags, stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL, env=env)
-    # p = subprocess.Popen([binary] + flags, stderr=sys.stderr, stdout=sys.stdout, env=env)
-    if wait:
-        p.wait()
-    if sleep:
-        time.sleep(sleep)
-    try:
-        yield
-    finally:
-        print('going to kill:', path, ' '.join(flags))
-        p.kill()
-        p.wait()
-        os.remove(binary)
-        print('done killing:', path, ' '.join(flags))
 
 
 def tiered(wrapped):
@@ -70,9 +37,9 @@ def tiered(wrapped):
         env['TIER_ID'] = str(tier_id)
         with TestTier(tier_id):
             env['METRICS_PORT'] = str(2436)
-            with gorun('fennel/service/http', 'dynamic,integration', env, sleep=20):
+            with lib.gorun('fennel/service/http', 'dynamic,integration', env):
                 env['METRICS_PORT'] = str(2446)
-                with gorun('fennel/service/countaggr', 'dynamic,integration', env):
+                with lib.gorun('fennel/service/countaggr', 'dynamic,integration', env):
                     return wrapped(*args, **kwargs)
     return fn
 
@@ -295,7 +262,7 @@ class TestLoad(unittest.TestCase):
     def test_load(self):
         c = client.Client(URL)
         self.set_aggregates(c)
-        with gorun('fennel/test/cmds/loadtest', 'dynamic', os.environ.copy(), wait=True):
+        with lib.gorun('fennel/test/cmds/loadtest', 'dynamic', os.environ.copy(), wait=True):
             pass
 
     def set_aggregates(self, c: client.Client):
