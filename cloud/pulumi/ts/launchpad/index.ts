@@ -35,6 +35,8 @@ const tierConfs: Record<number, number> = {
     104: 3,
     // Lokal prod tier.
     105: 4,
+    // Fennel staging tier using Fennel's staging data plane.
+    106: 3,
 }
 
 // map from plane id to its configuration.
@@ -86,6 +88,7 @@ const planeConfs: Record<number, PlaneConf> = {
             useAMP: true
         }
     },
+    // Fennel's staging data plane to run dev tiers
     3: {
         planeId: 3,
         region: "us-west-2",
