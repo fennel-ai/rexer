@@ -4,15 +4,17 @@ import (
 	"context"
 	"fmt"
 	"math/rand"
+	"strconv"
 	"sync"
 	"testing"
 	"time"
 
-	"fennel/resource"
-
+	"fennel/lib/aggregate"
 	"fennel/lib/ftypes"
 	"fennel/lib/value"
+	"fennel/resource"
 	"github.com/stretchr/testify/assert"
+	"google.golang.org/protobuf/proto"
 )
 
 func testProducerConsumer(t *testing.T, producer FProducer, consumer FConsumer) {
@@ -40,6 +42,37 @@ func testProducerConsumer(t *testing.T, producer FProducer, consumer FConsumer) 
 			found, err := consumer.Read(ctx, time.Second*30)
 			assert.NoError(t, err)
 			assert.Equal(t, expected, found)
+		}
+	}()
+	wg.Wait()
+}
+
+func testProducerConsumerProto(t *testing.T, producer FProducer, consumer FConsumer) {
+	// spin up two goroutines that produce/consume 10 messages each asyncrhonously
+	wg := sync.WaitGroup{}
+	wg.Add(2)
+	ctx := context.Background()
+
+	go func() {
+		defer wg.Done()
+		defer producer.Close()
+		for i := 0; i < 10; i++ {
+			aggname := strconv.Itoa(i)
+			msg := aggregate.AggRequest{AggName: aggname}
+			assert.NoError(t, producer.LogProto(ctx, &msg, nil))
+		}
+		assert.NoError(t, producer.Flush(time.Second*5))
+	}()
+	go func() {
+		defer wg.Done()
+		defer consumer.Close()
+		for i := 0; i < 10; i++ {
+			aggname := strconv.Itoa(i)
+			expected := aggregate.AggRequest{AggName: aggname}
+			var found aggregate.AggRequest
+			err := consumer.ReadProto(ctx, &found, time.Second*30)
+			assert.NoError(t, err)
+			assert.True(t, proto.Equal(&expected, &found))
 		}
 	}()
 	wg.Wait()
@@ -256,6 +289,12 @@ func TestLocal(t *testing.T) {
 		producer := getMockProducer(t, scope, topic, &broker)
 		consumer := getMockConsumer(t, scope, topic, "group", &broker)
 		testProducerConsumer(t, producer, consumer)
+	})
+	t.Run("local_producer_consumer_proto", func(t *testing.T) {
+		broker := NewMockTopicBroker()
+		producer := getMockProducer(t, scope, topic, &broker)
+		consumer := getMockConsumer(t, scope, topic, "group", &broker)
+		testProducerConsumerProto(t, producer, consumer)
 	})
 	t.Run("local_read_batch", func(t *testing.T) {
 		broker := NewMockTopicBroker()
