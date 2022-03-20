@@ -35,6 +35,15 @@ func TestIntegration(t *testing.T) {
 		defer teardownKafkaTopics(scope, topic)
 		testProducerConsumer(t, producer, consumer)
 	})
+	t.Run("integration_producer_consumer_proto", func(t *testing.T) {
+		tierID := ftypes.RealmID(rand.Uint32())
+		scope := resource.NewTierScope(tierID)
+		t.Parallel()
+		producer := integrationProducer(t, scope, topic)
+		consumer := integrationConsumer(t, scope, topic, utils.RandString(5), DefaultOffsetPolicy)
+		defer teardownKafkaTopics(scope, topic)
+		testProducerConsumerProto(t, producer, consumer)
+	})
 	t.Run("integration_read_batch", func(t *testing.T) {
 		tierID := ftypes.RealmID(rand.Uint32())
 		scope := resource.NewTierScope(tierID)
