@@ -50,7 +50,7 @@ func ClearTestTables(DB *sqlx.DB) error {
 func Setup(mID ftypes.RealmID) error {
 	scope := resource.NewMothershipScope(mID)
 	dbname := scope.PrefixedName(testLogicalDBName)
-	connectStr := fmt.Sprintf("%s:%s@tcp(%s)/",
+	connectStr := fmt.Sprintf("%s:%s@tcp(%s)/?tls=true",
 		testUsername, testPassword, testHostname)
 	DB, err := sqlx.Open("mysql", connectStr)
 	if err != nil {
@@ -71,7 +71,7 @@ func Setup(mID ftypes.RealmID) error {
 func Teardown(m Mothership) error {
 	scope := resource.NewMothershipScope(m.ID)
 	dbname := scope.PrefixedName(testLogicalDBName)
-	connectStr := fmt.Sprintf("%s:%s@tcp(%s)/%s",
+	connectStr := fmt.Sprintf("%s:%s@tcp(%s)/%s?tls=true",
 		testUsername, testPassword, testHostname, dbname)
 	DB, err := sqlx.Open("mysql", connectStr)
 	if err != nil {

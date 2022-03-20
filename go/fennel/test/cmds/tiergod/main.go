@@ -81,7 +81,7 @@ func pruneKafka(host, username, password string) (reterr error) {
 }
 
 func pruneDB(host, username, password string) error {
-	connstr := fmt.Sprintf("%s:%s@tcp(%s)/", username, password, host)
+	connstr := fmt.Sprintf("%s:%s@tcp(%s)/?tls=true", username, password, host)
 	db, err := sqlx.Open("mysql", connstr)
 	if err != nil {
 		return fmt.Errorf("could not open DB: %v", err)
