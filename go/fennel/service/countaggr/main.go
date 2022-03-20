@@ -21,18 +21,22 @@ import (
 	"fennel/tier"
 
 	"github.com/alexflint/go-arg"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promauto"
 	"go.uber.org/zap"
 )
+
+var backlog_stats = promauto.NewGaugeVec(prometheus.GaugeOpts{
+	Name: "aggregator_backlog",
+	Help: "Stats about kafka consumer group backlog",
+}, []string{"consumer_group"})
 
 func logKafkaLag(t tier.Tier, consumer kafka.FConsumer) {
 	backlog, err := consumer.Backlog()
 	if err != nil {
 		t.Logger.Error("failed to read kafka backlog", zap.Error(err))
 	}
-	t.Logger.Info("aggregator_backlog",
-		zap.String("consumer_group", consumer.GroupID()),
-		zap.Int("backlog", backlog),
-	)
+	backlog_stats.WithLabelValues(consumer.GroupID()).Set(float64(backlog))
 }
 
 func processAggregate(tr tier.Tier, agg libaggregate.Aggregate) error {
