@@ -10,11 +10,9 @@ import (
 
 	"fennel/resource"
 
-	"github.com/stretchr/testify/assert"
-	"google.golang.org/protobuf/proto"
-
 	"fennel/lib/ftypes"
 	"fennel/lib/value"
+	"github.com/stretchr/testify/assert"
 )
 
 func testProducerConsumer(t *testing.T, producer FProducer, consumer FConsumer) {
@@ -28,9 +26,8 @@ func testProducerConsumer(t *testing.T, producer FProducer, consumer FConsumer) 
 		defer producer.Close()
 		for i := 0; i < 10; i++ {
 			v := value.Int(i)
-			msg, err := value.ToProtoValue(v)
-			assert.NoError(t, err)
-			assert.NoError(t, producer.LogProto(ctx, &msg, nil))
+			msg := value.ToJSON(v)
+			assert.NoError(t, producer.Log(ctx, msg, nil))
 		}
 		assert.NoError(t, producer.Flush(time.Second*5))
 	}()
@@ -39,12 +36,10 @@ func testProducerConsumer(t *testing.T, producer FProducer, consumer FConsumer) 
 		defer consumer.Close()
 		for i := 0; i < 10; i++ {
 			v := value.Int(i)
-			expected, err := value.ToProtoValue(v)
+			expected := value.ToJSON(v)
+			found, err := consumer.Read(ctx, time.Second*30)
 			assert.NoError(t, err)
-			var found value.PValue
-			err = consumer.ReadProto(ctx, &found, time.Second*30)
-			assert.NoError(t, err)
-			assert.True(t, proto.Equal(&expected, &found))
+			assert.Equal(t, expected, found)
 		}
 	}()
 	wg.Wait()

@@ -30,7 +30,7 @@ func TestLongKey(t *testing.T) {
 	p := dbProvider{}
 
 	val := value.Int(2)
-	expected, _ := value.Marshal(val)
+	expected := value.ToJSON(val)
 
 	// can not set value on a makeKey that is greater than 255 chars
 	err = p.set(ctx, tier, "1", 1232, utils.RandString(256), 1, expected)
@@ -49,7 +49,7 @@ func TestLongOType(t *testing.T) {
 	p := dbProvider{}
 
 	val := value.Int(5)
-	expected, _ := value.Marshal(val)
+	expected := value.ToJSON(val)
 
 	// otype cannot be longer than 255 chars
 	err = p.set(ctx, tier, ftypes.OType(utils.RandString(256)), 23, "key", 1, expected)
@@ -69,8 +69,8 @@ func TestSetBatch(t *testing.T) {
 
 	val := value.Int(2)
 	val1 := value.Int(5)
-	v, _ := value.Marshal(val)
-	v1, _ := value.Marshal(val1)
+	v := value.ToJSON(val)
+	v1 := value.ToJSON(val1)
 	profiles := []profile.ProfileItemSer{
 		{OType: "12", Oid: 1, Key: "age", Version: 1, Value: v},
 		{OType: "12", Oid: 1, Key: "age", Version: 5, Value: v1},
@@ -95,8 +95,8 @@ func TestGetVersionBatched(t *testing.T) {
 
 	val := value.Int(2)
 	val1 := value.Int(5)
-	v, _ := value.Marshal(val)
-	v1, _ := value.Marshal(val1)
+	v := value.ToJSON(val)
+	v1 := value.ToJSON(val1)
 	profiles := []profile.ProfileItemSer{
 		{OType: "12", Oid: 1, Key: "age", Version: 1, Value: v},
 		{OType: "12", Oid: 1, Key: "age2", Version: 5, Value: v1},

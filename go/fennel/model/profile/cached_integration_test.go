@@ -24,9 +24,9 @@ func TestCachedGetBatchMultipleObjs(t *testing.T) {
 	ctx := context.Background()
 	p := cachedProvider{base: dbProvider{}}
 
-	expected1, _ := value.Marshal(value.Int(1))
-	expected2, _ := value.Marshal(value.Int(3))
-	expected3, _ := value.Marshal(value.Int(5))
+	expected1 := value.ToJSON(value.Int(1))
+	expected2 := value.ToJSON(value.Int(3))
+	expected3 := value.ToJSON(value.Int(5))
 	expected4 := expected3
 
 	profile1 := profile.NewProfileItem("1", 1232, "summary", 1)
@@ -69,7 +69,7 @@ func TestCachedDBConcurrentMultiSet(t *testing.T) {
 	profiles := make([]profile.ProfileItemSer, 0)
 	cacheKeys := make([]string, 0)
 	for i := uint64(0); i < 10; i++ {
-		v, _ := value.Marshal(value.List{value.Int(i)})
+		v := value.ToJSON(value.List{value.Int(i)})
 		p := profile.ProfileItemSer{
 			OType:   "user",
 			Oid:     i % 2,
@@ -90,7 +90,7 @@ func TestCachedDBConcurrentMultiSet(t *testing.T) {
 				defer wg.Done()
 				defer wg.Done()
 				assert.NoError(t, c.setBatch(ctx, tier, []profile.ProfileItemSer{
-					profiles[i*2], profiles[i*2 + 1],
+					profiles[i*2], profiles[i*2+1],
 				}))
 			}(i)
 		}
@@ -101,7 +101,7 @@ func TestCachedDBConcurrentMultiSet(t *testing.T) {
 	vs, err := tier.Cache.MGet(ctx, cacheKeys...)
 	assert.NoError(t, err)
 	for i, v := range vs {
-		expectedv, _ := value.Marshal(value.List{value.Int(i)})
+		expectedv := value.ToJSON(value.List{value.Int(i)})
 		assert.Equal(t, expectedv, []byte(v.(string)))
 	}
 
@@ -109,13 +109,13 @@ func TestCachedDBConcurrentMultiSet(t *testing.T) {
 	v, err := tier.Cache.Get(ctx, makeKey("user", 0, "age", 0))
 	assert.NoError(t, err)
 	// ("user", 0, "age", 9) would be the lastest profile
-	expectedv, _ := value.Marshal(value.List{value.Int(8)})
+	expectedv := value.ToJSON(value.List{value.Int(8)})
 	assert.Equal(t, expectedv, []byte(v.(string)))
 
 	v, err = tier.Cache.Get(ctx, makeKey("user", 1, "age", 0))
 	assert.NoError(t, err)
 	// ("user", 1, "age", 10) would be the lastest profile
-	expectedv, _ = value.Marshal(value.List{value.Int(9)})
+	expectedv = value.ToJSON(value.List{value.Int(9)})
 	assert.Equal(t, expectedv, []byte(v.(string)))
 }
 
@@ -135,8 +135,8 @@ func TestCachedDBEventuallyConsistentMultipleObjs(t *testing.T) {
 	// creates versioned profiles for ("user", 0, "age") and ("user", 1, "age")
 	p := make([]profile.ProfileItemSer, 0)
 	for i := uint64(1); i <= 10; i++ {
-		v, _ := value.Marshal(value.List{value.Int(i)})
-		p = append(p, profile.ProfileItemSer{OType: "user", Oid: i%2, Key: "age", Version: i, Value: v})
+		v := value.ToJSON(value.List{value.Int(i)})
+		p = append(p, profile.ProfileItemSer{OType: "user", Oid: i % 2, Key: "age", Version: i, Value: v})
 	}
 	assert.NoError(t, c.setBatch(ctx, tier, p))
 
@@ -191,8 +191,8 @@ func TestCachedDBEventuallyConsistentMultipleObjs(t *testing.T) {
 		p := make([]profile.ProfileItemSer, 0)
 		for i := uint64(1); i <= 3; i++ {
 			defer wg.Done()
-			v, _ := value.Marshal(value.List{value.Int(i*20)})
-			p = append(p, profile.ProfileItemSer{OType: "user", Oid: 0, Key: "age", Version: i*20, Value: v})
+			v := value.ToJSON(value.List{value.Int(i * 20)})
+			p = append(p, profile.ProfileItemSer{OType: "user", Oid: 0, Key: "age", Version: i * 20, Value: v})
 		}
 		assert.NoError(t, c.setBatch(ctx, tier, p))
 	}()
@@ -200,8 +200,8 @@ func TestCachedDBEventuallyConsistentMultipleObjs(t *testing.T) {
 		p := make([]profile.ProfileItemSer, 0)
 		for i := uint64(3); i >= 1; i-- {
 			defer wg.Done()
-			v, _ := value.Marshal(value.List{value.Int(i*20)})
-			p = append(p, profile.ProfileItemSer{OType: "user", Oid: 1, Key: "age", Version: i*20, Value: v})
+			v := value.ToJSON(value.List{value.Int(i * 20)})
+			p = append(p, profile.ProfileItemSer{OType: "user", Oid: 1, Key: "age", Version: i * 20, Value: v})
 		}
 		assert.NoError(t, c.setBatch(ctx, tier, p))
 	}()
@@ -212,12 +212,12 @@ func TestCachedDBEventuallyConsistentMultipleObjs(t *testing.T) {
 	v, err := tier.Cache.Get(ctx, makeKey("user", 0, "age", 0))
 	assert.NoError(t, err)
 	// ("user", 0, "age", 60) would be the lastest profile
-	expectedv, _ := value.Marshal(value.List{value.Int(60)})
+	expectedv := value.ToJSON(value.List{value.Int(60)})
 	assert.Equal(t, expectedv, []byte(v.(string)))
 
 	v, err = tier.Cache.Get(ctx, makeKey("user", 1, "age", 0))
 	assert.NoError(t, err)
 	// ("user", 1, "age", 60) would be the lastest profile
-	expectedv, _ = value.Marshal(value.List{value.Int(60)})
+	expectedv = value.ToJSON(value.List{value.Int(60)})
 	assert.Equal(t, expectedv, []byte(v.(string)))
 }
