@@ -124,7 +124,18 @@ export const setup = async (input: inputType) => {
                     obj.spec["loadBalancerSourceRanges"] = ["0.0.0.0/0"]
                 }
             },
-        ]
+        ],
+        // Emissary ingress supports working across namespaces. Since we create similar listeners for different
+        // tiers on the same cluster, emissary ingress routes requests across them. We scope the ingress to
+        // respect a single namespace (namespace it is created in i.e. tier id).
+        values: {
+            "scope": {
+                "singleNamespace": true,
+            },
+            "namespace": {
+                "name": input.namespace,
+            },
+        },
     }, { provider: k8sProvider })
 
     // Setup http and https listeners as per instructions at:
