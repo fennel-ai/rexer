@@ -48,6 +48,7 @@ const parseConfig = (): inputType => {
         namespace: config.require(nameof<inputType>("namespace")),
         loadBalancerScheme: config.get(nameof<inputType>("loadBalancerScheme")) || "internal",
         subnetIds: config.requireObject(nameof<inputType>("subnetIds")),
+        tierId: config.requireNumber(nameof<inputType>("tierId")),
     }
 }
 
