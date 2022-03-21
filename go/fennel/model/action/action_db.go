@@ -50,11 +50,7 @@ func InsertBatch(ctx context.Context, tier tier.Tier, actions []action.ActionSer
 		vals = append(vals, a.ActorID, a.ActorType, a.TargetID, a.TargetType, a.ActionType, a.Timestamp, a.RequestID, a.Metadata)
 	}
 	sql = strings.TrimSuffix(sql, ",") // remove the last trailing comma
-	stmt, err := tier.DB.Prepare(sql)
-	if err != nil {
-		return err
-	}
-	_, err = stmt.Exec(vals...)
+	_, err := tier.DB.ExecContext(ctx, sql, vals...)
 	return err
 }
 
