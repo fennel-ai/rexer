@@ -212,24 +212,26 @@ func TestInterpreter_VisitLookup(t *testing.T) {
 
 func getOpCallQuery() ast.Ast {
 	return ast.OpCall{
-		Operand: ast.OpCall{
-			Operand:   ast.Lookup{On: ast.Var{Name: "args"}, Property: "table"},
+		Operands: []ast.Ast{ast.OpCall{
+			Operands:  []ast.Ast{ast.Lookup{On: ast.Var{Name: "args"}, Property: "table"}},
+			Vars:      []string{"at"},
 			Namespace: "std",
 			Name:      "filter",
 			Kwargs: ast.Dict{Values: map[string]ast.Ast{
 				"where": ast.Binary{
-					Left:  ast.Lookup{On: ast.At{}, Property: "hi"},
+					Left:  ast.Lookup{On: ast.Var{Name: "at"}, Property: "hi"},
 					Op:    ">=",
 					Right: ast.MakeInt(2),
 				},
 			}},
-		},
+		}},
+		Vars:      []string{"at"},
 		Namespace: "std",
 		Name:      "addField",
 		Kwargs: ast.Dict{Values: map[string]ast.Ast{
 			"name": ast.MakeString("key"),
 			"value": ast.List{Values: []ast.Ast{ast.Lookup{
-				On:       ast.At{},
+				On:       ast.Var{Name: "at"},
 				Property: "bye",
 			}}},
 		}},

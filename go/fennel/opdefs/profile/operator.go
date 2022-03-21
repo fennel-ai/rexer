@@ -33,10 +33,11 @@ func (p profileOp) Apply(staticKwargs value.Dict, in operators.InputIter, out *v
 	reqs := make([]libprofile.ProfileItem, 0)
 	rows := make([]value.Dict, 0)
 	for in.HasMore() {
-		rowVal, kwargs, err := in.Next()
+		heads, kwargs, err := in.Next()
 		if err != nil {
 			return err
 		}
+		rowVal, _ := heads.Get("0")
 		row := rowVal.(value.Dict)
 		req := libprofile.ProfileItem{
 			OType:   ftypes.OType(kwargs.GetUnsafe("otype").(value.String)),

@@ -40,10 +40,11 @@ func (a AggValue) Apply(kwargs value.Dict, in operators.InputIter, out *value.Li
 	var reqs []aggregate2.GetAggValueRequest
 	var rows []value.Dict
 	for in.HasMore() {
-		rowVal, contextKwargs, err := in.Next()
+		heads, contextKwargs, err := in.Next()
 		if err != nil {
 			return err
 		}
+		rowVal, _ := heads.Get("0")
 		req := aggregate2.GetAggValueRequest{
 			AggName: ftypes.AggName(aggname),
 			Key:     get(contextKwargs, "groupkey"),

@@ -73,12 +73,12 @@ func run(tr tier.Tier, op operators.Operator, static value.Dict, inputs, context
 		}
 	}
 	field := "__test__context__"
-	// context kwarg k will be accessible via it.field.k
+	// context kwarg k will be accessible via Var("its").field.k
 	if len(context) > 0 {
 		for k, _ := range context[0].Iter() {
 			kwargs[k] = ast.Lookup{
 				On: ast.Lookup{
-					On:       ast.At{},
+					On:       ast.Var{Name: "its"},
 					Property: field,
 				},
 				Property: k,
@@ -92,10 +92,11 @@ func run(tr tier.Tier, op operators.Operator, static value.Dict, inputs, context
 
 	// and input is provided as Var("args").input
 	query := ast.OpCall{
-		Operand: ast.Lookup{
+		Operands: []ast.Ast{ast.Lookup{
 			On:       ast.Var{Name: "args"},
 			Property: "input",
-		},
+		}},
+		Vars:      []string{"its"},
 		Namespace: sig.Module,
 		Name:      sig.Name,
 		Kwargs:    ast.Dict{Values: kwargs},

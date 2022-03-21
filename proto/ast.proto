@@ -54,10 +54,12 @@ message Dict {
 }
 
 message OpCall {
-  Ast operand = 1;
+//  [deprecated] Ast operand = 1;
   string namespace = 2;
   string name = 3;
   Dict kwargs = 4;
+  repeated Ast operands = 5;
+  repeated string vars = 6;
 }
 
 message Var {

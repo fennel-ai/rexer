@@ -24,10 +24,11 @@ func (e ExplodeOperator) Signature() *operators.Signature {
 func (e ExplodeOperator) Apply(staticKwargs value.Dict, in operators.InputIter, out *value.List) error {
 	keys, _ := staticKwargs.Get("keys")
 	for in.HasMore() {
-		row, _, err := in.Next()
+		rows, _, err := in.Next()
 		if err != nil {
 			return err
 		}
+		row, _ := rows.Get("0")
 		rowVal := row.(value.Dict)
 
 		// `keys` are either a string (e.g. `keys='foo'``) or list of strings (e.g. `keys=['foo', 'bar']`)

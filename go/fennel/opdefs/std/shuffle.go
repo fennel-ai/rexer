@@ -24,10 +24,11 @@ func (op ShuffleOperator) Signature() *operators.Signature {
 func (op ShuffleOperator) Apply(_ value.Dict, in operators.InputIter, out *value.List) error {
 	var rows []value.Value
 	for in.HasMore() {
-		row, _, err := in.Next()
+		heads, _, err := in.Next()
 		if err != nil {
 			return err
 		}
+		row, _ := heads.Get("0")
 		rows = append(rows, row)
 	}
 	rand.Shuffle(len(rows), reflect.Swapper(rows))

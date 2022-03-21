@@ -23,10 +23,11 @@ func (op UniqueOperator) Apply(staticKwargs value.Dict, in operators.InputIter, 
 	n, _ := staticKwargs.Get("name")
 	name := string(n.(value.String))
 	for in.HasMore() {
-		r, _, err := in.Next()
+		heads, _, err := in.Next()
 		if err != nil {
 			return err
 		}
+		r, _ := heads.Get("0")
 		row := r.(value.Dict)
 		if values, ok := row.Get(name); ok {
 			valToVisited := make(map[string]struct{})
@@ -38,7 +39,6 @@ func (op UniqueOperator) Apply(staticKwargs value.Dict, in operators.InputIter, 
 					if _, found := valToVisited[val.String()]; !found {
 						valToVisited[val.String()] = struct{}{}
 						vals.Append(val)
-						//vals = append(vals, val)
 					}
 				}
 				row.Set(name, vals)

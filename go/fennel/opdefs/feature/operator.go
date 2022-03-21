@@ -36,10 +36,11 @@ func (f featureLog) Apply(static value.Dict, in operators.InputIter, out *value.
 	modelID := ftypes.ModelID(get(static, "model_id").(value.String))
 
 	for in.HasMore() {
-		row, kwargs, err := in.Next()
+		heads, kwargs, err := in.Next()
 		if err != nil {
 			return err
 		}
+		row, _ := heads.Get("0")
 		ts := ftypes.Timestamp(get(kwargs, "timestamp").(value.Int))
 		if ts == 0 {
 			ts = ftypes.Timestamp(f.tier.Clock.Now())

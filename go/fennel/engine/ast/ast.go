@@ -5,13 +5,12 @@ import (
 	"fennel/lib/value"
 )
 
-// TODO: make this generic instead of string
 type VisitorString interface {
 	VisitAtom(at AtomType, lexeme string) string
 	VisitBinary(left Ast, op string, right Ast) string
 	VisitList(values []Ast) string
 	VisitDict(values map[string]Ast) string
-	VisitOpcall(operand Ast, namespace, name string, kwargs Dict) string
+	VisitOpcall(operands []Ast, vars []string, namespace, name string, kwargs Dict) string
 	VisitVar(name string) string
 	VisitStatement(name string, body Ast) string
 	VisitQuery(statements []Statement) string
@@ -27,7 +26,7 @@ type VisitorValue interface {
 	VisitBinary(left Ast, op string, right Ast) (value.Value, error)
 	VisitList(values []Ast) (value.Value, error)
 	VisitDict(values map[string]Ast) (value.Value, error)
-	VisitOpcall(operand Ast, namespace, name string, kwargs Dict) (value.Value, error)
+	VisitOpcall(operand []Ast, vars []string, namespace, name string, kwargs Dict) (value.Value, error)
 	VisitVar(name string) (value.Value, error)
 	VisitStatement(name string, body Ast) (value.Value, error)
 	VisitQuery(statements []Statement) (value.Value, error)
@@ -262,24 +261,35 @@ func (d Dict) Equals(ast Ast) bool {
 }
 
 type OpCall struct {
-	Operand   Ast
+	Operands  []Ast
+	Vars      []string
 	Namespace string
 	Name      string
 	Kwargs    Dict
 }
 
 func (opcall OpCall) AcceptValue(v VisitorValue) (value.Value, error) {
-	return v.VisitOpcall(opcall.Operand, opcall.Namespace, opcall.Name, opcall.Kwargs)
+	return v.VisitOpcall(opcall.Operands, opcall.Vars, opcall.Namespace, opcall.Name, opcall.Kwargs)
 }
 
 func (opcall OpCall) AcceptString(v VisitorString) string {
-	return v.VisitOpcall(opcall.Operand, opcall.Namespace, opcall.Name, opcall.Kwargs)
+	return v.VisitOpcall(opcall.Operands, opcall.Vars, opcall.Namespace, opcall.Name, opcall.Kwargs)
 }
 
 func (opcall OpCall) Equals(ast Ast) bool {
 	switch opcall2 := ast.(type) {
 	case OpCall:
-		return opcall.Operand.Equals(opcall2.Operand) &&
+		if len(opcall.Vars) != len(opcall2.Vars) {
+			return false
+		}
+		for i := range opcall.Vars {
+			if opcall.Vars[i] != opcall2.Vars[i] {
+				return false
+			}
+		}
+		l1 := List{Values: opcall.Operands}
+		l2 := List{Values: opcall2.Operands}
+		return l1.Equals(l2) &&
 			opcall.Namespace == opcall2.Namespace &&
 			opcall.Name == opcall2.Name &&
 			opcall.Kwargs.Equals(opcall2.Kwargs)

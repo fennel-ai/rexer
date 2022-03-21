@@ -63,8 +63,19 @@ func (p Printer) VisitTable(inner Ast) string {
 	return fmt.Sprintf("table(%s)", inner.AcceptString(p))
 }
 
-func (p Printer) VisitOpcall(operand Ast, namespace, name string, kwargs Dict) string {
-	return fmt.Sprintf("%s | %s.%s(%s)", operand.AcceptString(p), namespace, name, kwargs.AcceptString(p))
+func (p Printer) VisitOpcall(operands []Ast, vars []string, namespace, name string, kwargs Dict) string {
+	inputs := make([]string, len(operands))
+	for i := range operands {
+		inputs[i] = operands[i].AcceptString(p)
+	}
+	return fmt.Sprintf(
+		"%s.%s(%s, vars=%s, kwargs=%s)",
+		namespace,
+		name,
+		strings.Join(inputs, ","),
+		strings.Join(vars, ","),
+		kwargs.AcceptString(p),
+	)
 }
 
 func (p Printer) VisitVar(name string) string {

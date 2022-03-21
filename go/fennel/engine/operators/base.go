@@ -46,8 +46,10 @@ type Signature struct {
 	StaticKwargs  map[string]Param
 	ContextKwargs map[string]Param
 	Mapper        bool
+	NumOperands   int
 }
 
+// TODO: allow num operands to be specified in constructor
 func NewSignature(module, name string, mapper bool) *Signature {
 	return &Signature{
 		module, name,
@@ -55,6 +57,7 @@ func NewSignature(module, name string, mapper bool) *Signature {
 		make(map[string]Param, 0),
 		make(map[string]Param, 0),
 		mapper,
+		1,
 	}
 }
 

@@ -67,7 +67,8 @@ func init() {
 		Var{"x"},
 		Var{""},
 		OpCall{
-			Operand:   List{Values: []Ast{MakeInt(1)}},
+			Operands:  []Ast{MakeInt(1), MakeInt(2)},
+			Vars:      []string{"x", "y"},
 			Namespace: "my namespace",
 			Name:      "my name",
 			Kwargs:    Dict{Values: map[string]Ast{}},
