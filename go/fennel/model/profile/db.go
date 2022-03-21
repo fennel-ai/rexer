@@ -60,11 +60,7 @@ func (D dbProvider) setBatch(ctx context.Context, tier tier.Tier, profiles []pro
 	}
 	sql = strings.TrimSuffix(sql, ",") // remove the last trailing comma
 
-	stmt, err := tier.DB.Prepare(sql)
-	if err != nil {
-		return err
-	}
-	_, err = stmt.Exec(vals...)
+	_, err := tier.DB.ExecContext(ctx, sql, vals...)
 	return err
 }
 
