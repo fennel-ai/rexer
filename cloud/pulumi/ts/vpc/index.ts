@@ -326,13 +326,13 @@ export const setup = async (input: inputType): Promise<pulumi.Output<outputType>
     const privateSubnets = [primaryPrivateSubnet.id, secondaryPrivateSubnet.id];
     const publicSubnets = [primaryPublicSubnet.id, secondaryPublicSubnet.id];
 
-    const publicRouteTable = setupPublicRouteTable(vpcId, publicSubnets, provider)
-    const privateRouteTable = setupPrivateRouteTable(vpcId, privateSubnets, primaryPublicSubnet.id, provider)
+    const publicRouteTable = setupPublicRouteTable(input, vpcId, publicSubnets, provider)
+    const privateRouteTable = setupPrivateRouteTable(input, vpcId, privateSubnets, primaryPublicSubnet.id, provider)
 
     const peeringConnection = createVpcPeeringConnection(vpc, [privateRouteTable], input, provider)
 
-    const privateNacl = createPrivateNacl(vpc, privateSubnets, provider)
-    const publicNacl = createPublicNacl(vpc, publicSubnets, provider)
+    const privateNacl = createPrivateNacl(input, vpc, privateSubnets, provider)
+    const publicNacl = createPublicNacl(input, vpc, publicSubnets, provider)
 
     const output = pulumi.output({
         vpcId,
