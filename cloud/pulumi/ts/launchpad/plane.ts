@@ -96,6 +96,7 @@ const setupResources = async () => {
         roleArn: input.roleArn,
         cidr: input.vpcConf.cidr,
         controlPlane: input.controlPlaneConf,
+        planeId: input.planeId,
     })
     const eksOutput = await eks.setup({
         roleArn: input.roleArn,
@@ -115,6 +116,7 @@ const setupResources = async () => {
             "eks": eksOutput.workerSg,
         },
         connectedCidrBlocks: [input.controlPlaneConf.cidrBlock],
+        planeId: input.planeId,
     })
     const redisOutput = await redis.setup({
         roleArn: input.roleArn,
@@ -127,6 +129,7 @@ const setupResources = async () => {
         numReplicasPerShard: input.redisConf?.numReplicasPerShard,
         nodeType: input.redisConf?.nodeType,
         azs: vpcOutput.azs,
+        planeId: input.planeId,
     })
     const elasticacheOutput = await elasticache.setup({
         roleArn: input.roleArn,
@@ -134,7 +137,8 @@ const setupResources = async () => {
         vpcId: vpcOutput.vpcId,
         connectedSecurityGroups: {
             "eks": eksOutput.workerSg,
-        }
+        },
+        planeId: input.planeId,
     })
     const confluentOutput = await confluentenv.setup({
         region: input.region,

@@ -111,9 +111,9 @@ function setupLinkerd(cluster: k8s.Provider) {
     return linkerd
 }
 
-async function setupEmissaryIngressCrds(awsProvider: aws.Provider, cluster: eks.Cluster) {
+async function setupEmissaryIngressCrds(input: inputType, awsProvider: aws.Provider, cluster: eks.Cluster) {
     // Setup AWS load balancer controller.
-    const lbc = await setupLoadBalancerController(awsProvider, cluster)
+    const lbc = await setupLoadBalancerController(input, awsProvider, cluster)
 
     // Create CRDs.
     const root = process.env.FENNEL_ROOT!;
@@ -149,16 +149,16 @@ async function setupEmissaryIngressCrds(awsProvider: aws.Provider, cluster: eks.
     })
 }
 
-async function setupIamRoleForServiceAccount(awsProvider: aws.Provider, namespace: string, serviceAccountName: string, cluster: eks.Cluster) {
+async function setupIamRoleForServiceAccount(input: inputType, awsProvider: aws.Provider, namespace: string, serviceAccountName: string, cluster: eks.Cluster) {
     // Account id
     const current = await aws.getCallerIdentity({ provider: awsProvider });
     const accountId = current.accountId
 
-    // Create k8s service account and IAM role for LoadBalanacerController, and
+    // Create k8s service account and IAM role for LoadBalancerController, and
     // associate the above policy with the account.
     const role = cluster.core.oidcProvider!.url.apply(oidcUrl => {
         return new aws.iam.Role("lbc-role", {
-            namePrefix: serviceAccountName,
+            namePrefix: `p-${input.planeId}-${serviceAccountName}`,
             description: "IAM role for AWS load-balancer-controller",
             assumeRolePolicy: `{
              "Version": "2012-10-17",
@@ -197,12 +197,12 @@ async function setupIamRoleForServiceAccount(awsProvider: aws.Provider, namespac
     return { "role": role, "serviceAccount": acc }
 }
 
-async function setupLoadBalancerController(awsProvider: aws.Provider, cluster: eks.Cluster) {
+async function setupLoadBalancerController(input: inputType, awsProvider: aws.Provider, cluster: eks.Cluster) {
     const serviceAccountName = "aws-load-balancer-controller"
 
     // Create k8s service account and IAM role for LoadBalanacerController, and
     // associate the above policy with the account.
-    const { role } = await setupIamRoleForServiceAccount(awsProvider, "kube-system", serviceAccountName, cluster)
+    const { role } = await setupIamRoleForServiceAccount(input, awsProvider, "kube-system", serviceAccountName, cluster)
 
     // Create policy for lb-controller.
     try {
@@ -213,12 +213,12 @@ async function setupLoadBalancerController(awsProvider: aws.Provider, cluster: e
         console.error(err)
         process.exit()
     }
-    const iamPolicy = new aws.iam.Policy("lbc-policy", {
+    const iamPolicy = new aws.iam.Policy(`p-${input.planeId}-lbc-policy`, {
         namePrefix: "AWSLoadBalancerControllerIAMPolicy",
         policy: policyJson,
     }, { provider: awsProvider })
 
-    const attachPolicy = new aws.iam.RolePolicyAttachment("attach-lbc-policy", {
+    const attachPolicy = new aws.iam.RolePolicyAttachment(`p-${input.planeId}-attach-lbc-policy`, {
         role: role.id,
         policyArn: iamPolicy.arn,
     }, { provider: awsProvider })
@@ -280,7 +280,7 @@ export const setup = async (input: inputType): Promise<pulumi.Output<outputType>
     })
 
     // Create an EKS cluster with the default configuration.
-    const cluster = new eks.Cluster("eks-cluster", {
+    const cluster = new eks.Cluster(`p-${input.planeId}-eks-cluster`, {
         vpcId,
         endpointPrivateAccess: true,
         // TODO: disable public access once we figure out how to get the cluster
@@ -307,7 +307,7 @@ export const setup = async (input: inputType): Promise<pulumi.Output<outputType>
     setupDescheduler(cluster)
 
     // Connect cluster node security group to connected vpcs.
-    const sgRules = new aws.ec2.SecurityGroupRule(`eks-sg-rule`, {
+    const sgRules = new aws.ec2.SecurityGroupRule(`p-${input.planeId}-eks-sg-rule`, {
         type: "ingress",
         fromPort: 0,
         toPort: 65535,
@@ -327,7 +327,7 @@ export const setup = async (input: inputType): Promise<pulumi.Output<outputType>
     const linkerd = setupLinkerd(cluster.provider)
 
     // Install emissary-ingress CRDs after load-balancer controller.
-    await setupEmissaryIngressCrds(awsProvider, cluster)
+    await setupEmissaryIngressCrds(input, awsProvider, cluster)
 
     // Setup fennel namespace.
     const ns = new k8s.core.v1.Namespace("fennel-ns", {

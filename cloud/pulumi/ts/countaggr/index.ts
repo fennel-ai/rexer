@@ -29,6 +29,7 @@ export type inputType = {
     roleArn: string,
     kubeconfig: string,
     namespace: string,
+    tierId: number,
 }
 
 export type outputType = {
@@ -42,6 +43,7 @@ const parseConfig = (): inputType => {
         roleArn: config.require(nameof<inputType>("roleArn")),
         kubeconfig: config.require(nameof<inputType>("kubeconfig")),
         namespace: config.require(nameof<inputType>("namespace")),
+        tierId: config.requireNumber(nameof<inputType>("tierId")),
     }
 }
 
@@ -56,7 +58,7 @@ export const setup = async (input: inputType) => {
     })
 
     // Create a private ECR repository.
-    const repo = new aws.ecr.Repository("countaggr-repo", {
+    const repo = new aws.ecr.Repository(`t-${input.tierId}-countaggr-repo`, {
         imageScanningConfiguration: {
             scanOnPush: true
         },

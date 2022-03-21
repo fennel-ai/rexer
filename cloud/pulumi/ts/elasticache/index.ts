@@ -21,6 +21,7 @@ export type inputType = {
     region: string,
     vpcId: pulumi.Output<string>,
     connectedSecurityGroups: Record<string, pulumi.Output<string>>,
+    planeId: number,
 }
 
 export type outputType = {
@@ -37,6 +38,7 @@ const parseConfig = (): inputType => {
         roleArn: config.require(nameof<inputType>("roleArn")),
         vpcId: pulumi.output(config.require(nameof<inputType>("vpcId"))),
         connectedSecurityGroups: config.requireObject(nameof<inputType>("connectedSecurityGroups")),
+        planeId: config.requireNumber(nameof<inputType>("planeId")),
     }
 }
 
@@ -57,24 +59,24 @@ export const setup = async (input: inputType): Promise<pulumi.Output<outputType>
             // TODO: use better method for filtering private subnets.
             filters: [{
                 name: "tag:Name",
-                values: ["fennel-primary-private-subnet", "fennel-secondary-private-subnet"],
+                values: [`p-${input.planeId}-primary-private-subnet`, `p-${input.planeId}-secondary-private-subnet`],
             }]
         }, { provider })
     })
 
-    const subnetGroup = new aws.elasticache.SubnetGroup("cache-subnets", {
+    const subnetGroup = new aws.elasticache.SubnetGroup(`p-${input.planeId}-cache-subnets`, {
         subnetIds: subnetIds.ids,
         tags: { ...fennelStdTags },
     }, { provider })
 
-    const cacheSg = new aws.ec2.SecurityGroup("cache-sg", {
+    const cacheSg = new aws.ec2.SecurityGroup(`p-${input.planeId}-cache-sg`, {
         vpcId: input.vpcId,
         tags: { ...fennelStdTags }
     }, { provider })
 
     let sgRules: pulumi.Output<string>[] = []
     for (var key in input.connectedSecurityGroups) {
-        sgRules.push(new aws.ec2.SecurityGroupRule(`ec-allow-${key}`, {
+        sgRules.push(new aws.ec2.SecurityGroupRule(`p-${input.planeId}-ec-allow-${key}`, {
             securityGroupId: cacheSg.id,
             sourceSecurityGroupId: input.connectedSecurityGroups[key],
             fromPort: 0,
@@ -84,7 +86,7 @@ export const setup = async (input: inputType): Promise<pulumi.Output<outputType>
         }, { provider }).id)
     }
 
-    const cluster = new aws.elasticache.ReplicationGroup("cache-cluster", {
+    const cluster = new aws.elasticache.ReplicationGroup(`p-${input.planeId}-cache-cluster`, {
         // "redis" is optional here and also the only allowed value, but we
         // set it here anyway to be explicit.
         engine: "redis",

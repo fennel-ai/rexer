@@ -102,7 +102,7 @@ function setupOtelPolicy(input: inputType, awsProvider: aws.Provider) {
     `
 
     const policy = new aws.iam.Policy("otel-collector-policy", {
-        namePrefix: "AWSDistroOpenTelemetryPolicy-",
+        namePrefix: `p-${input.planeId}-AWSDistroOpenTelemetryPolicy-`,
         policy: rawPolicyStr,
     }, { provider: awsProvider });
 

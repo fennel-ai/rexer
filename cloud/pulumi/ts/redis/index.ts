@@ -25,6 +25,7 @@ export type inputType = {
     nodeType?: string,
     azs: pulumi.Output<string[]>,
     connectedSecurityGroups: Record<string, pulumi.Output<string>>,
+    planeId: number,
 }
 
 export type outputType = {
@@ -49,6 +50,7 @@ const parseConfig = (): inputType => {
         numShards: config.getNumber(nameof<inputType>("numShards")),
         numReplicasPerShard: config.getNumber(nameof<inputType>("numReplicasPerShard")),
         nodeType: config.get(nameof<inputType>("nodeType")),
+        planeId: config.requireNumber(nameof<inputType>("planeId")),
     }
 }
 
@@ -68,25 +70,25 @@ export const setup = async (input: inputType): Promise<pulumi.Output<outputType>
             // TODO: use better method for filtering private subnets.
             filters: [{
                 name: "tag:Name",
-                values: ["fennel-primary-private-subnet", "fennel-secondary-private-subnet"],
+                values: [`p-${input.planeId}-primary-private-subnet`, `p-${input.planeId}-secondary-private-subnet`],
             }]
         }, { provider })
     })
 
-    const subnetGroup = new aws.memorydb.SubnetGroup("redis-subnet-group", {
+    const subnetGroup = new aws.memorydb.SubnetGroup(`p-${input.planeId}-redis-subnet-group`, {
         subnetIds: subnetIds.ids,
         tags: { ...fennelStdTags },
     }, { provider })
 
     const redisSg = new aws.ec2.SecurityGroup("redis-sg", {
-        namePrefix: "redis-sg-",
+        namePrefix: `p-${input.planeId}-redis-sg-`,
         vpcId: input.vpcId,
         tags: { ...fennelStdTags }
     }, { provider })
 
     let sgRules: pulumi.Output<string>[] = []
     for (var key in input.connectedSecurityGroups) {
-        sgRules.push(new aws.ec2.SecurityGroupRule(`redis-allow-${key}`, {
+        sgRules.push(new aws.ec2.SecurityGroupRule(`p-${input.planeId}-redis-allow-${key}`, {
             securityGroupId: redisSg.id,
             sourceSecurityGroupId: input.connectedSecurityGroups[key],
             fromPort: 0,
@@ -96,7 +98,7 @@ export const setup = async (input: inputType): Promise<pulumi.Output<outputType>
         }, { provider }).id)
     }
 
-    const cluster = new aws.memorydb.Cluster("redis-db", {
+    const cluster = new aws.memorydb.Cluster(`p-${input.planeId}-redis-db`, {
         subnetGroupName: subnetGroup.id,
         aclName: "open-access",
         engineVersion: DEFAULT_REDIS_VERSION,
