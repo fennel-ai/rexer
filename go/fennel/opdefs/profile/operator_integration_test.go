@@ -62,6 +62,6 @@ func TestProfileOpMultipleObjs(t *testing.T) {
 	assert.Equal(t, 2, rows.Len())
 	r, _ := rows.At(0)
 	assert.Equal(t, value.NewDict(map[string]value.Value{"otype": value.String(otype1), "oid": value.Int(oid1), "key": value.String(key1), "ver": value.Int(ver1), "profile_value": val1}), r)
-	r, _ = rows.At(0)
+	r, _ = rows.At(1)
 	assert.Equal(t, value.NewDict(map[string]value.Value{"otype": value.String(otype2), "oid": value.Int(oid2), "key": value.String(key2), "ver": value.Int(ver2), "profile_value": val2}), r)
 }
