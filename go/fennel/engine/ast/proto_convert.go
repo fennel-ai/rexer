@@ -162,9 +162,13 @@ func (d Dict) toProto() (proto.Ast, error) {
 }
 
 func (opcall OpCall) toProto() (proto.Ast, error) {
-	poperand, err := ToProtoAst(opcall.Operand)
-	if err != nil {
-		return pnull(), err
+	poperands := make([]*proto.Ast, len(opcall.Operands))
+	for i, operand := range opcall.Operands {
+		poperand, err := ToProtoAst(operand)
+		if err != nil {
+			return pnull(), err
+		}
+		poperands[i] = &poperand
 	}
 
 	pdict, err := ToProtoAst(opcall.Kwargs)
@@ -172,7 +176,8 @@ func (opcall OpCall) toProto() (proto.Ast, error) {
 		return pnull(), err
 	}
 	return proto.Ast{Node: &proto.Ast_Opcall{Opcall: &proto.OpCall{
-		Operand:   &poperand,
+		Operands:  poperands,
+		Vars:      opcall.Vars,
 		Namespace: opcall.Namespace,
 		Name:      opcall.Name,
 		Kwargs:    pdict.GetDict(),
@@ -267,20 +272,24 @@ func fromProtoVar(pvar *proto.Ast_Var) (Ast, error) {
 }
 
 func fromProtoOpcall(popcall *proto.Ast_Opcall) (Ast, error) {
-	operand, err := FromProtoAst(popcall.Opcall.Operand)
-	if err != nil {
-		return null, err
+	ret := OpCall{
+		Name:      popcall.Opcall.Name,
+		Namespace: popcall.Opcall.Namespace,
+		Vars:      popcall.Opcall.Vars,
+	}
+	for i := range popcall.Opcall.Operands {
+		operand, err := FromProtoAst(popcall.Opcall.Operands[i])
+		if err != nil {
+			return null, err
+		}
+		ret.Operands = append(ret.Operands, operand)
 	}
 	dict, err := FromProtoAst(&proto.Ast{Node: &proto.Ast_Dict{Dict: popcall.Opcall.Kwargs}})
 	if err != nil {
 		return null, err
 	}
-	return OpCall{
-		Operand:   operand,
-		Namespace: popcall.Opcall.Namespace,
-		Name:      popcall.Opcall.Name,
-		Kwargs:    dict.(Dict),
-	}, nil
+	ret.Kwargs = dict.(Dict)
+	return ret, nil
 }
 
 func fromProtoQuery(pquery *proto.Ast_Query) (Ast, error) {

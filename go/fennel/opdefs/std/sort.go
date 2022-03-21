@@ -30,10 +30,11 @@ func (op SortOperator) Apply(staticKwargs value.Dict, in operators.InputIter, ou
 	}
 	var rows []sortableRow
 	for in.HasMore() {
-		row, contextKwargs, err := in.Next()
+		heads, contextKwargs, err := in.Next()
 		if err != nil {
 			return err
 		}
+		row, _ := heads.Get("0")
 		var v float64
 		key, _ := contextKwargs.Get("by")
 		switch key := key.(type) {

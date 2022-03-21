@@ -1,6 +1,8 @@
 package operators
 
 import (
+	"fmt"
+
 	"fennel/lib/value"
 )
 
@@ -18,7 +20,7 @@ func NewZipTable(op Operator) ZipTable {
 }
 
 // TODO: this almost certainly has weird race conditions if run in paralle. Fix
-func (zt *ZipTable) Append(first value.Value, second value.Dict) error {
+func (zt *ZipTable) Append(first value.Dict, second value.Dict) error {
 	if err := zt.first.Append(first); err != nil {
 		return err
 	}
@@ -50,18 +52,26 @@ func (zi *ZipIter) HasMore() bool {
 	return zi.first.HasMore() && zi.second.HasMore()
 }
 
-func (zi *ZipIter) Next() (value.Value, value.Dict, error) {
+func (zi *ZipIter) Next() (value.Dict, value.Dict, error) {
 	first, err := zi.first.Next()
 	if err != nil {
 		return value.Dict{}, value.Dict{}, err
+	}
+	asdict, ok := first.(value.Dict)
+	if !ok {
+		return value.Dict{}, value.Dict{}, fmt.Errorf("expected dict of operands but found: %s", first)
 	}
 	second_val, err := zi.second.Next()
 	if err != nil {
 		return value.Dict{}, value.Dict{}, err
 	}
-	second := second_val.(value.Dict)
-	if err = Typecheck(zi.op, first, second); err != nil {
-		return nil, value.Dict{}, err
+	first_head, ok := asdict.Get("0")
+	if !ok {
+		return value.Dict{}, value.Dict{}, fmt.Errorf("value not found")
 	}
-	return first, second, nil
+	second := second_val.(value.Dict)
+	if err = Typecheck(zi.op, first_head, second); err != nil {
+		return value.Dict{}, value.Dict{}, err
+	}
+	return asdict, second, nil
 }

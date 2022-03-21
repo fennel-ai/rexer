@@ -278,14 +278,15 @@ func TestQuery(t *testing.T) {
 	d3 := ast.Dict{Values: map[string]ast.Ast{"x": ast.MakeInt(1), "y": ast.MakeInt(7)}}
 	table := ast.List{Values: []ast.Ast{d1, d2, d3}}
 	e := ast.OpCall{
-		Operand:   table,
+		Operands:  []ast.Ast{table},
+		Vars:      []string{"at"},
 		Namespace: "std",
 		Name:      "filter",
 		Kwargs: ast.Dict{Values: map[string]ast.Ast{"where": ast.Binary{
-			Left: ast.Lookup{On: ast.At{}, Property: "x"},
+			Left: ast.Lookup{On: ast.Var{Name: "at"}, Property: "x"},
 			Op:   "<",
 			Right: ast.Binary{
-				Left: ast.Lookup{On: ast.At{}, Property: "y"},
+				Left: ast.Lookup{On: ast.Var{Name: "at"}, Property: "y"},
 				Op:   "-",
 				Right: ast.Lookup{
 					On:       ast.Var{Name: "args"},

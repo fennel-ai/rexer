@@ -93,7 +93,7 @@ func TestIterTypeCheck(t *testing.T) {
 		zt := NewZipTable(op)
 		for i := 0; i < scenario.rows.Len(); i++ {
 			v, _ := scenario.rows.At(i)
-			assert.NoError(t, zt.Append(v, scenario.kwargs[i]), scenario.name)
+			assert.NoError(t, zt.Append(value.NewDict(map[string]value.Value{"0": v}), scenario.kwargs[i]), scenario.name)
 		}
 		iter := zt.Iter()
 		for i := 0; i < scenario.rows.Len(); i++ {
@@ -102,8 +102,9 @@ func TestIterTypeCheck(t *testing.T) {
 			if scenario.errs[i] {
 				assert.Error(t, err, scenario.name)
 			} else {
+				assert.NoError(t, err, scenario.name)
 				v, _ := scenario.rows.At(i)
-				assert.Equal(t, v, row, scenario.name)
+				assert.Equal(t, value.NewDict(map[string]value.Value{"0": v}), row, scenario.name)
 				assert.Equal(t, scenario.kwargs[i], kwargs, scenario.name)
 			}
 		}

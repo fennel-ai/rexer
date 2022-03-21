@@ -38,7 +38,7 @@ func (i Interpreter) visitMap(varname string, lambda ast.Ast, list value.List) (
 	out := value.NewList()
 	for j := 0; j < list.Len(); j++ {
 		v, _ := list.At(j)
-		res, err := i.visitInContext(lambda, varname, v)
+		res, err := i.visitInContext(lambda, map[string]value.Value{varname: v})
 		if err != nil {
 			return nil, err
 		}
@@ -53,7 +53,7 @@ func (i Interpreter) visitFilter(varname string, lambda ast.Ast, list value.List
 	out := value.NewList()
 	for j := 0; j < list.Len(); j++ {
 		v, _ := list.At(j)
-		res, err := i.visitInContext(lambda, varname, v)
+		res, err := i.visitInContext(lambda, map[string]value.Value{varname: v})
 		if err != nil {
 			return nil, err
 		}
@@ -86,7 +86,7 @@ func (i Interpreter) VisitFnCall(module, name string, kwargs map[string]ast.Ast)
 		}
 	}
 	inputTable := operators.NewZipTable(op)
-	if err := inputTable.Append(value.Nil, value.NewDict(vKwargs)); err != nil {
+	if err := inputTable.Append(value.NewDict(map[string]value.Value{"0": nil}), value.NewDict(vKwargs)); err != nil {
 		return nil, err
 	}
 	// finally, call the function
@@ -168,12 +168,14 @@ func (i Interpreter) VisitLookup(on ast.Ast, property string) (value.Value, erro
 	return ret, nil
 }
 
-func (i Interpreter) visitInContext(tree ast.Ast, varname string, v value.Value) (value.Value, error) {
+func (i Interpreter) visitInContext(tree ast.Ast, varmap map[string]value.Value) (value.Value, error) {
 	i.env = i.env.PushEnv()
 	defer func() { i.env, _ = i.env.PopEnv() }()
 
-	if err := i.env.Define(varname, v); err != nil {
-		return value.Nil, err
+	for k, v := range varmap {
+		if err := i.env.Define(k, v); err != nil {
+			return value.Nil, err
+		}
 	}
 	return tree.AcceptValue(i)
 }
@@ -286,21 +288,33 @@ func (i Interpreter) VisitDict(values map[string]ast.Ast) (value.Value, error) {
 	return value.NewDict(ret), nil
 }
 
-func (i Interpreter) VisitOpcall(operand ast.Ast, namespace, name string, kwargs ast.Dict) (value.Value, error) {
-	// eval operand and verify it is of the right type
-	val, err := operand.AcceptValue(i)
-	if err != nil {
-		return value.Nil, err
+func (i Interpreter) VisitOpcall(operands []ast.Ast, vars []string, namespace, name string, kwargs ast.Dict) (value.Value, error) {
+	// either vars should be not defined at all or if they are defined, number should match that of operands
+	if len(vars) > 0 && len(operands) != len(vars) {
+		return nil, fmt.Errorf("operator '%s.%s' can not be applied: different number of operands and variables", namespace, name)
 	}
-	inData, ok := val.(value.List)
-	if !ok {
-		return value.Nil, fmt.Errorf("operator '%s.%s' can not be applied: operand not a list", namespace, name)
+	// eval operands and verify it is of the right type
+	voperands := make([]value.List, len(operands))
+	for j, operand := range operands {
+		val, err := operand.AcceptValue(i)
+		if err != nil {
+			return value.Nil, err
+		}
+		inData, ok := val.(value.List)
+		if !ok {
+			return value.Nil, fmt.Errorf("operator '%s.%s' can not be applied: operand not a list", namespace, name)
+		}
+		voperands[j] = inData
 	}
 
 	// find & init the operator
 	op, err := i.getOperator(namespace, name)
 	if err != nil {
 		return value.Nil, err
+	}
+	// verify number of operands
+	if len(voperands) != op.Signature().NumOperands {
+		return nil, fmt.Errorf("operator '%s.%s' can not be applied: expects %d operands but received %d operands", namespace, name, op.Signature().NumOperands, len(voperands))
 	}
 	// now eval static kwargs and verify they are of the right type
 	staticKwargs, err := i.getStaticKwargs(op, kwargs)
@@ -312,7 +326,7 @@ func (i Interpreter) VisitOpcall(operand ast.Ast, namespace, name string, kwargs
 	}
 
 	// and same for dynamic kwargs to create InputTable
-	inputTable, err := i.getContextKwargs(op, kwargs, inData)
+	inputTable, err := i.getContextKwargs(op, kwargs, voperands, vars)
 	if err != nil {
 		return value.Nil, err
 	}
@@ -373,32 +387,49 @@ func (i Interpreter) getStaticKwargs(op operators.Operator, kwargs ast.Dict) (va
 	return ret, nil
 }
 
-func (i Interpreter) getContextKwargs(op operators.Operator, trees ast.Dict, table value.List) (operators.ZipTable, error) {
+func (i Interpreter) getContextKwargs(op operators.Operator, trees ast.Dict, inputs []value.List, vars []string) (operators.ZipTable, error) {
 	ret := operators.NewZipTable(op)
 	sig := op.Signature()
-	for j := 0; j < table.Len(); j++ {
-		v, _ := table.At(j)
-		kwargs := make(map[string]value.Value)
+	// TODO: relax to potentially having zero inputs?
+	for j := 0; j < inputs[0].Len(); j++ {
+		// TODO: convert these to tuples when tuples are built out
+		v := value.NewDict(nil)
+		for idx := range inputs {
+			val, err := inputs[idx].At(j)
+			if err != nil {
+				return operators.ZipTable{}, fmt.Errorf("unequal length of operands")
+			}
+			v.Set(fmt.Sprintf("%d", idx), val)
+		}
+
+		// set all the lambda variables as needed
+		varmap := make(map[string]value.Value)
+		for idx := range vars {
+			varname := vars[idx]
+			varval, err := inputs[idx].At(j)
+			if err != nil {
+				return operators.ZipTable{}, fmt.Errorf("unequal length of operands")
+			}
+			varmap[varname] = varval
+		}
+		// now using these lambda variables, evaluate kwargs variables
+		kwargs := value.NewDict(nil)
 		for k, p := range sig.ContextKwargs {
 			tree, ok := trees.Values[k]
 			switch {
 			case !ok && !p.Optional:
 				return operators.ZipTable{}, fmt.Errorf("kwarg '%s' not provided for operator '%s.%s'", k, sig.Module, sig.Name)
 			case !ok && p.Optional:
-				kwargs[k] = p.Default
+				kwargs.Set(k, p.Default)
 			case ok:
-				val, err := i.visitInContext(tree, "@", v)
+				val, err := i.visitInContext(tree, varmap)
 				if err != nil {
 					return operators.ZipTable{}, fmt.Errorf("error: %s while evaluating kwarg: %s for operator '%s.%s'", err, k, sig.Module, sig.Name)
 				}
-				kwargs[k] = val
+				kwargs.Set(k, val)
 			}
 		}
-		dict := value.NewDict(kwargs)
-		//if err != nil {
-		//	return operators.ZipTable{}, err
-		//}
-		if err := ret.Append(v, dict); err != nil {
+		if err := ret.Append(v, kwargs); err != nil {
 			return operators.ZipTable{}, err
 		}
 	}

@@ -34,10 +34,11 @@ func (t timeBucketOfDay) Apply(kwargs value.Dict, in operators.InputIter, out *v
 	}
 	day := int64(24 * 3600)
 	for in.HasMore() {
-		rowVal, contextKwargs, err := in.Next()
+		heads, contextKwargs, err := in.Next()
 		if err != nil {
 			return err
 		}
+		rowVal, _ := heads.Get("0")
 		row := rowVal.(value.Dict)
 		ts, _ := contextKwargs.Get("timestamp")
 		timestamp := ts.(value.Int)
@@ -75,10 +76,11 @@ func (d dayOfWeek) Apply(kwargs value.Dict, in operators.InputIter, out *value.L
 	week := int64(7 * 24 * 3600)
 	day := int64(24 * 3600)
 	for in.HasMore() {
-		rowVal, contextKwargs, err := in.Next()
+		heads, contextKwargs, err := in.Next()
 		if err != nil {
 			return err
 		}
+		rowVal, _ := heads.Get("0")
 		row := rowVal.(value.Dict)
 		ts, _ := contextKwargs.Get("timestamp")
 		timestamp := ts.(value.Int)

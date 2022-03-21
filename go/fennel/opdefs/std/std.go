@@ -35,10 +35,11 @@ func (f FilterOperator) Signature() *operators.Signature {
 
 func (f FilterOperator) Apply(_ value.Dict, in operators.InputIter, out *value.List) error {
 	for in.HasMore() {
-		row, contextKwargs, err := in.Next()
+		heads, contextKwargs, err := in.Next()
 		if err != nil {
 			return err
 		}
+		row, _ := heads.Get("0")
 		v, _ := contextKwargs.Get("where")
 		where := v.(value.Bool)
 		if where {
@@ -64,10 +65,11 @@ func (f TakeOperator) Apply(staticKwargs value.Dict, in operators.InputIter, out
 	limit := v.(value.Int)
 	taken := 0
 	for in.HasMore() && taken < int(limit) {
-		row, _, err := in.Next()
+		heads, _, err := in.Next()
 		if err != nil {
 			return err
 		}
+		row, _ := heads.Get("0")
 		out.Append(row)
 		taken += 1
 	}
@@ -93,10 +95,11 @@ func (op AddField) Apply(staticKwargs value.Dict, in operators.InputIter, out *v
 	n, _ := staticKwargs.Get("name")
 	name := string(n.(value.String))
 	for in.HasMore() {
-		rowVal, contextKwargs, err := in.Next()
+		heads, contextKwargs, err := in.Next()
 		if err != nil {
 			return err
 		}
+		rowVal, _ := heads.Get("0")
 		row := rowVal.(value.Dict)
 		v, _ := contextKwargs.Get("value")
 		row.Set(name, v)

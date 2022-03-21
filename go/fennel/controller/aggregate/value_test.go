@@ -126,24 +126,26 @@ func get(d value.Dict, k string) value.Value {
 
 func getQuery() ast.Ast {
 	return ast.OpCall{
-		Operand: ast.OpCall{
-			Operand:   ast.Lookup{On: ast.Var{Name: "args"}, Property: "actions"},
+		Operands: []ast.Ast{ast.OpCall{
+			Operands:  []ast.Ast{ast.Lookup{On: ast.Var{Name: "args"}, Property: "actions"}},
+			Vars:      []string{"e"},
 			Namespace: "std",
 			Name:      "filter",
 			Kwargs: ast.Dict{Values: map[string]ast.Ast{
 				"where": ast.Binary{
-					Left:  ast.Lookup{On: ast.At{}, Property: "action_type"},
+					Left:  ast.Lookup{On: ast.Var{Name: "e"}, Property: "action_type"},
 					Op:    "==",
 					Right: ast.MakeString("like"),
 				},
 			}},
-		},
+		}},
+		Vars:      []string{"var"},
 		Namespace: "std",
 		Name:      "addField",
 		Kwargs: ast.Dict{Values: map[string]ast.Ast{
 			"name": ast.MakeString("groupkey"),
 			"value": ast.List{Values: []ast.Ast{ast.Lookup{
-				On:       ast.At{},
+				On:       ast.Var{Name: "var"},
 				Property: "actor_id",
 			}}},
 		}},

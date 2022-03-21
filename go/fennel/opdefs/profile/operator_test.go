@@ -21,10 +21,10 @@ func TestDefault(t *testing.T) {
 	assert.NoError(t, err)
 	defer test.Teardown(tier)
 	query := ast.OpCall{
-		Operand: ast.Lookup{
+		Operands: []ast.Ast{ast.Lookup{
 			On:       ast.Var{Name: "args"},
 			Property: "actions",
-		},
+		}},
 		Namespace: "profile",
 		Name:      "addField",
 		Kwargs: ast.Dict{Values: map[string]ast.Ast{
@@ -69,16 +69,17 @@ func TestProfileOp(t *testing.T) {
 	assert.NoError(t, profile.Set(ctx, tier, req1b))
 
 	query := ast.OpCall{
-		Operand: ast.Lookup{
+		Operands: []ast.Ast{ast.Lookup{
 			On:       ast.Var{Name: "args"},
 			Property: "actions",
-		},
+		}},
+		Vars:      []string{"a"},
 		Namespace: "profile",
 		Name:      "addField",
 		Kwargs: ast.Dict{Values: map[string]ast.Ast{
-			"otype": ast.Lookup{On: ast.At{}, Property: "otype"},
-			"oid":   ast.Lookup{On: ast.At{}, Property: "oid"},
-			"key":   ast.Lookup{On: ast.At{}, Property: "key"},
+			"otype": ast.Lookup{On: ast.Var{Name: "a"}, Property: "otype"},
+			"oid":   ast.Lookup{On: ast.Var{Name: "a"}, Property: "oid"},
+			"key":   ast.Lookup{On: ast.Var{Name: "a"}, Property: "key"},
 			"name":  ast.MakeString("profile_value"),
 			// since version is an optional value, we don't pass it and still get the latest value back
 		}},

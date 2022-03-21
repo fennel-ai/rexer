@@ -55,7 +55,7 @@ func TestInterpreter_VisitOpcall(t *testing.T) {
 		},
 	}
 	testValid(t, ast.OpCall{
-		Operand:   astTable,
+		Operands:  []ast.Ast{astTable},
 		Namespace: "std",
 		Name:      "filter",
 		Kwargs:    kwargs,
@@ -68,7 +68,7 @@ func TestInterpreter_VisitOpcall(t *testing.T) {
 		},
 	}
 	testValid(t, ast.OpCall{
-		Operand:   astTable,
+		Operands:  []ast.Ast{astTable},
 		Namespace: "std",
 		Name:      "filter",
 		Kwargs:    kwargs,
@@ -78,7 +78,7 @@ func TestInterpreter_VisitOpcall(t *testing.T) {
 	kwargs = ast.Dict{
 		Values: map[string]ast.Ast{
 			"where": ast.Binary{
-				Left:  ast.Lookup{On: ast.At{}, Property: "a.inner"},
+				Left:  ast.Lookup{On: ast.Var{Name: "myvar"}, Property: "a.inner"},
 				Right: ast.MakeInt(3),
 				Op:    "==",
 			},
@@ -88,7 +88,8 @@ func TestInterpreter_VisitOpcall(t *testing.T) {
 	expected.Append(row1)
 	expected.Append(row3)
 	testValid(t, ast.OpCall{
-		Operand:   astTable,
+		Operands:  []ast.Ast{astTable},
+		Vars:      []string{"myvar"},
 		Namespace: "std",
 		Name:      "filter",
 		Kwargs:    kwargs,
@@ -119,10 +120,10 @@ func TestInterpreter_VisitOpcall3(t *testing.T) {
 	operators.Register(&testOpInit{})
 	// then create an ast that uses this op
 	query := ast.OpCall{
-		Operand: ast.Lookup{
+		Operands: []ast.Ast{ast.Lookup{
 			On:       ast.Var{Name: "args"},
 			Property: "table",
-		},
+		}},
 		Namespace: "test",
 		Name:      "op",
 		Kwargs:    ast.Dict{},
@@ -144,10 +145,10 @@ func TestInterpreter_VisitOpcall3(t *testing.T) {
 func TestInterpreter_VisitOpcall4(t *testing.T) {
 	operators.Register(testOpDefault{})
 	query := ast.OpCall{
-		Operand: ast.Lookup{
+		Operands: []ast.Ast{ast.Lookup{
 			On:       ast.Var{Name: "args"},
 			Property: "table",
-		},
+		}},
 		Namespace: "test",
 		Name:      "testop",
 		Kwargs:    ast.Dict{},
@@ -169,15 +170,15 @@ func TestInterpreter_VisitOpcall5(t *testing.T) {
 	// it works, even when the operator has some internal state
 	operators.Register(&rowCount{})
 	query := ast.OpCall{
-		Operand: ast.OpCall{
-			Operand: ast.Lookup{
+		Operands: []ast.Ast{ast.OpCall{
+			Operands: []ast.Ast{ast.Lookup{
 				On:       ast.Var{Name: "args"},
 				Property: "input",
-			},
+			}},
 			Namespace: "test",
 			Name:      "row_count",
 			Kwargs:    ast.Dict{},
-		},
+		}},
 		Namespace: "test",
 		Name:      "row_count",
 		Kwargs:    ast.Dict{},
@@ -243,7 +244,8 @@ func (t testOpDefault) New(args value.Dict, bootargs map[string]interface{}) (op
 
 func (t testOpDefault) Apply(kwargs value.Dict, in operators.InputIter, out *value.List) error {
 	for in.HasMore() {
-		rowVal, context, _ := in.Next()
+		heads, context, _ := in.Next()
+		rowVal, _ := heads.Get("0")
 		row := rowVal.(value.Dict)
 		c, _ := context.Get("contextual")
 		row.Set("contextual", c)
@@ -288,7 +290,8 @@ func (top testOpInit) New(args value.Dict, bootargs map[string]interface{}) (ope
 
 func (top testOpInit) Apply(kwargs value.Dict, in operators.InputIter, out *value.List) error {
 	for in.HasMore() {
-		rowVal, _, _ := in.Next()
+		heads, _, _ := in.Next()
+		rowVal, _ := heads.Get("0")
 		row := rowVal.(value.Dict)
 		row.Set("num", top.num)
 		row.Set("nonhi", value.String(top.non.hi))
@@ -311,7 +314,8 @@ func (r *rowCount) New(args value.Dict, bootargs map[string]interface{}) (operat
 
 func (r *rowCount) Apply(kwargs value.Dict, in operators.InputIter, out *value.List) error {
 	for in.HasMore() {
-		v, _, _ := in.Next()
+		heads, _, _ := in.Next()
+		v, _ := heads.Get("0")
 		r.num += 1
 		out.Append(v)
 	}
