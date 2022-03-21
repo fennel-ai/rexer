@@ -18,23 +18,23 @@ func TestRollingAverage_Reduce(t *testing.T) {
 		output value.Value
 	}{
 		{[]value.Value{
-			value.List{value.Int(0), value.Int(1)},
-			value.List{value.Int(4), value.Int(2)},
-			value.List{value.Int(0), value.Int(0)}},
+			value.NewList(value.Int(0), value.Int(1)),
+			value.NewList(value.Int(4), value.Int(2)),
+			value.NewList(value.Int(0), value.Int(0))},
 			value.Double(float64(4) / float64(3)),
 		},
 		{[]value.Value{
-			value.List{value.Int(0), value.Int(0)}},
+			value.NewList(value.Int(0), value.Int(0))},
 			value.Double(0),
 		},
 		{[]value.Value{
-			value.List{value.Int(0), value.Int(-1)},
-			value.List{value.Int(2), value.Int(1)}},
+			value.NewList(value.Int(0), value.Int(-1)),
+			value.NewList(value.Int(2), value.Int(1))},
 			value.Double(0),
 		},
 		{[]value.Value{
-			value.List{value.Int(-1), value.Int(1)},
-			value.List{value.Int(2), value.Int(1)}},
+			value.NewList(value.Int(-1), value.Int(1)),
+			value.NewList(value.Int(2), value.Int(1))},
 			value.Double(0.5),
 		},
 	}
@@ -61,9 +61,9 @@ func TestRollingAverage_Merge_Valid(t *testing.T) {
 		{1e12, 1, -1e12, 1, 0, 2},
 	}
 	for _, n := range validCases {
-		found, err := h.Merge(value.List{value.Int(n[0]), value.Int(n[1])}, value.List{value.Int(n[2]), value.Int(n[3])})
+		found, err := h.Merge(value.NewList(value.Int(n[0]), value.Int(n[1])), value.NewList(value.Int(n[2]), value.Int(n[3])))
 		assert.NoError(t, err)
-		assert.Equal(t, value.List{value.Int(n[4]), value.Int(n[5])}, found)
+		assert.Equal(t, value.NewList(value.Int(n[4]), value.Int(n[5])), found)
 	}
 }
 
@@ -74,12 +74,12 @@ func TestRollingAverage_Merge_Invalid(t *testing.T) {
 		a value.Value
 		b value.Value
 	}{
-		{value.List{value.Int(0), value.Int(-1), value.Int(4)}, value.List{value.Int(2), value.Int(3)}},
-		{value.List{value.Int(0), value.Int(-1)}, value.List{value.Int(2)}},
-		{value.List{value.Double(0), value.Int(-1)}, value.List{value.Int(2), value.Double(3)}},
-		{value.List{}, value.List{value.Int(2), value.Double(3)}},
-		{value.Dict{}, value.List{value.Int(2), value.Double(3)}},
-		{value.Nil, value.List{value.Int(2), value.Double(3)}},
+		{value.NewList(value.Int(0), value.Int(-1), value.Int(4)), value.NewList(value.Int(2), value.Int(3))},
+		{value.NewList(value.Int(0), value.Int(-1)), value.NewList(value.Int(2))},
+		{value.NewList(value.Double(0), value.Int(-1)), value.NewList(value.Int(2), value.Double(3))},
+		{value.NewList(), value.NewList(value.Int(2), value.Double(3))},
+		{value.NewDict(map[string]value.Value{}), value.NewList(value.Int(2), value.Double(3))},
+		{value.Nil, value.NewList(value.Int(2), value.Double(3))},
 	}
 	for _, n := range invalidCases {
 		_, err := h.Merge(n.a, n.b)
@@ -97,15 +97,15 @@ func TestRollingAverage_Bucketize_Valid(t *testing.T) {
 	expected := make([]Bucket, 0)
 	DAY := 3600 * 24
 	for i := 0; i < 5; i++ {
-		v := value.List{value.Int(i), value.String("hi")}
-		d := value.Dict{
+		v := value.NewList(value.Int(i), value.String("hi"))
+		d := value.NewDict(map[string]value.Value{
 			"groupkey":  v,
 			"timestamp": value.Int(DAY + i*3600 + 1),
 			"value":     value.Int(i),
-		}
+		})
 		assert.NoError(t, actions.Append(d))
-		expected = append(expected, Bucket{Key: v.String(), Window: ftypes.Window_DAY, Index: 1, Width: 1, Value: value.List{value.Int(i), value.Int(1)}})
-		expected = append(expected, Bucket{Key: v.String(), Window: ftypes.Window_MINUTE, Index: uint64(24*10 + i*10), Width: 6, Value: value.List{value.Int(i), value.Int(1)}})
+		expected = append(expected, Bucket{Key: v.String(), Window: ftypes.Window_DAY, Index: 1, Width: 1, Value: value.NewList(value.Int(i), value.Int(1))})
+		expected = append(expected, Bucket{Key: v.String(), Window: ftypes.Window_MINUTE, Index: uint64(24*10 + i*10), Width: 6, Value: value.NewList(value.Int(i), value.Int(1))})
 	}
 	buckets, err := Bucketize(h, actions)
 	assert.NoError(t, err)
@@ -117,12 +117,12 @@ func TestRollingAverage_Bucketize_Invalid(t *testing.T) {
 	h := NewAverage("somename", 123)
 	cases := [][]value.Dict{
 		{value.Dict{}},
-		{value.Dict{"groupkey": value.Int(1), "timestamp": value.Int(2)}},
-		{value.Dict{"groupkey": value.Int(1), "timestamp": value.Int(2), "value": value.Nil}},
-		{value.Dict{"groupkey": value.Int(1), "timestamp": value.Bool(true), "value": value.Int(4)}},
-		{value.Dict{"groupkey": value.Int(1), "timestamp": value.Double(1.0), "value": value.Int(3)}},
-		{value.Dict{"groupkey": value.Int(1), "value": value.Int(3)}},
-		{value.Dict{"timestamp": value.Int(1), "value": value.Int(3)}},
+		{value.NewDict(map[string]value.Value{"groupkey": value.Int(1), "timestamp": value.Int(2)})},
+		{value.NewDict(map[string]value.Value{"groupkey": value.Int(1), "timestamp": value.Int(2), "value": value.Nil})},
+		{value.NewDict(map[string]value.Value{"groupkey": value.Int(1), "timestamp": value.Bool(true), "value": value.Int(4)})},
+		{value.NewDict(map[string]value.Value{"groupkey": value.Int(1), "timestamp": value.Double(1.0), "value": value.Int(3)})},
+		{value.NewDict(map[string]value.Value{"groupkey": value.Int(1), "value": value.Int(3)})},
+		{value.NewDict(map[string]value.Value{"timestamp": value.Int(1), "value": value.Int(3)})},
 	}
 	for _, test := range cases {
 		table := value.List{}
@@ -144,7 +144,7 @@ func TestRollingAverage_Start(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, s, ftypes.Timestamp(0))
 	// Test kwargs
-	s, err = h.Start(200, value.Dict{"duration": value.Int(50)})
+	s, err = h.Start(200, value.NewDict(map[string]value.Value{"duration": value.Int(50)}))
 	assert.NoError(t, err)
 	assert.Equal(t, s, ftypes.Timestamp(150))
 }

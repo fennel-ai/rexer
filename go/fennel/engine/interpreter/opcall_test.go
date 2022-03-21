@@ -31,19 +31,19 @@ func TestInterpreter_VisitOpcall(t *testing.T) {
 		},
 	}
 	astTable := &ast.List{Values: []ast.Ast{astrow1, astrow2, astrow3}}
-	row1, _ := value.NewDict(map[string]value.Value{
+	row1 := value.NewDict(map[string]value.Value{
 		"a.inner": value.Int(3),
 		"b":       value.String("hi"),
 	})
-	row2, _ := value.NewDict(map[string]value.Value{
+	row2 := value.NewDict(map[string]value.Value{
 		"a.inner": value.Int(5),
 		"b":       value.String("bye"),
 	})
-	row3, _ := value.NewDict(map[string]value.Value{
+	row3 := value.NewDict(map[string]value.Value{
 		"a.inner": value.Int(3),
 		"b":       value.String("hello"),
 	})
-	table := value.List{}
+	table := value.NewList()
 	table.Append(row1)
 	table.Append(row2)
 	table.Append(row3)
@@ -72,7 +72,7 @@ func TestInterpreter_VisitOpcall(t *testing.T) {
 		Namespace: "std",
 		Name:      "filter",
 		Kwargs:    kwargs,
-	}, value.List{})
+	}, value.NewList())
 
 	// and if where is more specific, that works too
 	kwargs = ast.Dict{
@@ -98,19 +98,19 @@ func TestInterpreter_VisitOpcall(t *testing.T) {
 func TestInterpreter_VisitOpcall2(t *testing.T) {
 	// here we create nested opcall that contain both static/contextual kwargs
 	base := value.List{}
-	row1 := value.Dict{"hi": value.Int(1), "bye": value.Double(1)}
-	row2 := value.Dict{"hi": value.Int(2), "bye": value.Double(2)}
-	row3 := value.Dict{"hi": value.Int(3), "bye": value.Double(3)}
+	row1 := value.NewDict(map[string]value.Value{"hi": value.Int(1), "bye": value.Double(1)})
+	row2 := value.NewDict(map[string]value.Value{"hi": value.Int(2), "bye": value.Double(2)})
+	row3 := value.NewDict(map[string]value.Value{"hi": value.Int(3), "bye": value.Double(3)})
 	assert.NoError(t, base.Append(row1))
 	assert.NoError(t, base.Append(row2))
 	assert.NoError(t, base.Append(row3))
 	i := getInterpreter()
 	query := getOpCallQuery()
-	res, err := i.Eval(query, value.Dict{"table": base})
+	res, err := i.Eval(query, value.NewDict(map[string]value.Value{"table": base}))
 	assert.NoError(t, err)
 	expected := value.List{}
-	assert.NoError(t, expected.Append(value.Dict{"hi": value.Int(2), "bye": value.Double(2), "key": value.List{value.Double(2)}}))
-	assert.NoError(t, expected.Append(value.Dict{"hi": value.Int(3), "bye": value.Double(3), "key": value.List{value.Double(3)}}))
+	assert.NoError(t, expected.Append(value.NewDict(map[string]value.Value{"hi": value.Int(2), "bye": value.Double(2), "key": value.NewList(value.Double(2))})))
+	assert.NoError(t, expected.Append(value.NewDict(map[string]value.Value{"hi": value.Int(3), "bye": value.Double(3), "key": value.NewList(value.Double(3))})))
 	assert.Equal(t, expected, res)
 }
 
@@ -128,16 +128,17 @@ func TestInterpreter_VisitOpcall3(t *testing.T) {
 		Kwargs:    ast.Dict{},
 	}
 	table := value.List{}
-	table.Append(value.Dict{"x": value.Int(1)})
+	table.Append(value.NewDict(map[string]value.Value{"x": value.Int(1)}))
 	nonhi := "hello"
 	i := NewInterpreter(map[string]interface{}{
 		"__teststruct__": testNonValue{hi: nonhi},
 	})
-	out, err := i.Eval(query, value.Dict{"num": value.Int(41), "table": table})
+	out, err := i.Eval(query, value.NewDict(map[string]value.Value{"num": value.Int(41), "table": table}))
 	assert.NoError(t, err)
 	rows := out.(value.List)
-	assert.Len(t, rows, 1)
-	assert.Equal(t, value.Dict{"x": value.Int(1), "num": value.Int(41), "nonhi": value.String(nonhi)}, rows[0])
+	assert.Equal(t, 1, rows.Len())
+	row, _ := rows.At(0)
+	assert.Equal(t, value.NewDict(map[string]value.Value{"x": value.Int(1), "num": value.Int(41), "nonhi": value.String(nonhi)}), row)
 }
 
 func TestInterpreter_VisitOpcall4(t *testing.T) {
@@ -151,14 +152,16 @@ func TestInterpreter_VisitOpcall4(t *testing.T) {
 		Name:      "testop",
 		Kwargs:    ast.Dict{},
 	}
-	table := value.List{}
-	table.Append(value.Dict{})
+	table := value.NewList()
+	table.Append(value.NewDict(map[string]value.Value{}))
 	i := getInterpreter()
-	out, err := i.Eval(query, value.Dict{"table": table})
+	out, err := i.Eval(query, value.NewDict(map[string]value.Value{"table": table}))
 	assert.NoError(t, err)
 	rows := out.(value.List)
-	assert.Len(t, rows, 1)
-	assert.Equal(t, value.Dict{"contextual": value.Int(41), "static": value.Int(7)}, rows[0])
+	//assert.Len(t, rows, 1)
+	assert.Equal(t, 1, rows.Len())
+	row, _ := rows.At(0)
+	assert.Equal(t, value.NewDict(map[string]value.Value{"contextual": value.Int(41), "static": value.Int(7)}), row)
 }
 
 func TestInterpreter_VisitOpcall5(t *testing.T) {
@@ -183,11 +186,11 @@ func TestInterpreter_VisitOpcall5(t *testing.T) {
 	input.Append(value.Int(10))
 	input.Append(value.Int(20))
 	i := getInterpreter()
-	out, err := i.Eval(query, value.Dict{"input": input})
+	out, err := i.Eval(query, value.NewDict(map[string]value.Value{"input": input}))
 	assert.NoError(t, err)
 	rows := out.(value.List)
-	assert.Len(t, rows, 4)
-	assert.Equal(t, value.List{value.Int(10), value.Int(20), value.Int(2), value.Int(3)}, rows)
+	assert.Equal(t, 4, rows.Len())
+	assert.Equal(t, value.NewList(value.Int(10), value.Int(20), value.Int(2), value.Int(3)), rows)
 }
 
 func TestInterpreter_VisitFnCall(t *testing.T) {
@@ -213,16 +216,6 @@ func TestInterpreter_VisitFnCall(t *testing.T) {
 			}, err: true, expected: nil,
 		},
 		{
-			query: ast.FnCall{
-				Module: "test",
-				Name:   "zip",
-				Kwargs: map[string]ast.Ast{
-					"left":  ast.List{[]ast.Ast{ast.MakeInt(1), ast.MakeInt(3)}},
-					"right": ast.List{[]ast.Ast{ast.MakeInt(2), ast.MakeString("hi")}},
-				}}, err: false,
-			expected: value.List{value.List{value.Int(1), value.Int(2)}, value.List{value.Int(3), value.String("hi")}},
-		},
-		{
 			ast.FnCall{
 				Module: "test",
 				Name:   "square",
@@ -236,7 +229,7 @@ func TestInterpreter_VisitFnCall(t *testing.T) {
 		if scene.err {
 			assert.Error(t, err)
 		} else {
-			assert.NoError(t, err)
+			assert.NoError(t, err, scene.query)
 			assert.Equal(t, scene.expected, found)
 		}
 	}
@@ -252,8 +245,11 @@ func (t testOpDefault) Apply(kwargs value.Dict, in operators.InputIter, out *val
 	for in.HasMore() {
 		rowVal, context, _ := in.Next()
 		row := rowVal.(value.Dict)
-		row["contextual"] = context["contextual"]
-		row["static"] = kwargs["static"]
+		c, _ := context.Get("contextual")
+		row.Set("contextual", c)
+		s, _ := kwargs.Get("static")
+		//row["static"] = kwargs["static"]
+		row.Set("static", s)
 		out.Append(row)
 	}
 	return nil
@@ -280,7 +276,7 @@ var _ operators.Operator = testOpInit{}
 
 func (top testOpInit) New(args value.Dict, bootargs map[string]interface{}) (operators.Operator, error) {
 	// take one arg from args and one from bootarg to verify that init is working
-	num, ok := args["num"]
+	num, ok := args.Get("num")
 	if !ok {
 		return nil, fmt.Errorf("num not passed")
 	}
@@ -294,8 +290,8 @@ func (top testOpInit) Apply(kwargs value.Dict, in operators.InputIter, out *valu
 	for in.HasMore() {
 		rowVal, _, _ := in.Next()
 		row := rowVal.(value.Dict)
-		row["num"] = top.num
-		row["nonhi"] = value.String(top.non.hi)
+		row.Set("num", top.num)
+		row.Set("nonhi", value.String(top.non.hi))
 		out.Append(row)
 	}
 	return nil
@@ -340,7 +336,8 @@ func (s squareFn) Apply(kwargs value.Dict, in operators.InputIter, out *value.Li
 	if err != nil {
 		return err
 	}
-	switch n := kwargs["x"].(type) {
+	v, _ := kwargs.Get("x")
+	switch n := v.(type) {
 	case value.Int:
 		out.Append(n * n)
 	case value.Double:
@@ -359,13 +356,13 @@ var _ operators.Operator = squareFn{}
 func benchmarkInterpreter_VisitOpcall(numRows int, b *testing.B) {
 	table := value.List{}
 	for i := 0; i < numRows; i++ {
-		row := value.Dict{"hi": value.Int(i), "bye": value.Double(i)}
+		row := value.NewDict(map[string]value.Value{"hi": value.Int(i), "bye": value.Double(i)})
 		table.Append(row)
 	}
 	evaler := getInterpreter()
 	query := getOpCallQuery()
 	for i := 0; i < b.N; i++ {
-		res, _ = evaler.Eval(query, value.Dict{"table": table})
+		res, _ = evaler.Eval(query, value.NewDict(map[string]value.Value{"table": table}))
 	}
 }
 
@@ -380,13 +377,18 @@ func (e zip) Apply(kwargs value.Dict, in operators.InputIter, out *value.List) e
 	if err != nil {
 		return err
 	}
-	left, right := kwargs["left"].(value.List), kwargs["right"].(value.List)
-	if len(left) != len(right) {
+	l, _ := kwargs.Get("left")
+	r, _ := kwargs.Get("right")
+	left, right := l.(value.List), r.(value.List)
+	if left.Len() != right.Len() {
 		return fmt.Errorf("unequal lengths")
 	}
 	ret := value.List{}
-	for i := range left {
-		ret.Append(value.List{left[i], right[i]})
+	//for i := range left {
+	for i := 0; i < left.Len(); i++ {
+		l, _ := left.At(i)
+		r, _ := right.At(i)
+		ret.Append(value.NewDict(map[string]value.Value{"left": l, "right": r}))
 	}
 	return out.Append(ret)
 }

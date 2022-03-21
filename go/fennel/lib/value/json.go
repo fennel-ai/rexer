@@ -6,15 +6,16 @@ import (
 	"github.com/buger/jsonparser"
 )
 
+// TODO: this is not needed any more, clean/deelete
 // Clean takes a value, and returns a value with nil list/dict replaced by empty list/dict
 func Clean(v Value) Value {
 	switch v := v.(type) {
 	case List:
-		if v == nil {
+		if v.values == nil {
 			return List{}
 		}
 	case Dict:
-		if v == nil {
+		if v.values == nil {
 			return Dict{}
 		}
 	}
@@ -95,7 +96,8 @@ func parseJSONArray(data []byte) (Value, error) {
 			errors = append(errors, err)
 			return
 		}
-		ret = append(ret, v)
+		ret.Append(v)
+		//ret = append(ret, v)
 	}
 	_, err := jsonparser.ArrayEach(data, handler)
 	if err != nil {
@@ -109,7 +111,7 @@ func parseJSONArray(data []byte) (Value, error) {
 }
 
 func parseJSONObject(data []byte) (Value, error) {
-	ret := make(Dict)
+	ret := NewDict(map[string]Value{})
 	handler := func(key []byte, vdata []byte, vtype jsonparser.ValueType, _ int) error {
 		k, err := jsonparser.ParseString(key)
 		if err != nil {
@@ -119,7 +121,7 @@ func parseJSONObject(data []byte) (Value, error) {
 		if err != nil {
 			return err
 		}
-		ret[k] = v
+		ret.Set(k, v)
 		return nil
 	}
 	err := jsonparser.ObjectEach(data, handler)

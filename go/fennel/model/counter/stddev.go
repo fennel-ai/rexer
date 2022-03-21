@@ -46,20 +46,23 @@ func (s rollingStdDev) eval(sum, sumsq, num int64) value.Double {
 
 func (s rollingStdDev) extract(v value.Value) (int64, int64, int64, error) {
 	l, ok := v.(value.List)
-	if !ok || len(l) != 3 {
+	if !ok || l.Len() != 3 {
 		return 0, 0, 0, fmt.Errorf("expected list of three elements but got: %v", v)
 	}
-	sum, ok := l[0].(value.Int)
+	e, _ := l.At(0)
+	sum, ok := e.(value.Int)
 	if !ok {
-		return 0, 0, 0, fmt.Errorf("expected integer but found: %v", l[0])
+		return 0, 0, 0, fmt.Errorf("expected integer but found: %v", e)
 	}
-	sumSq, ok := l[1].(value.Int)
+	e, _ = l.At(1)
+	sumSq, ok := e.(value.Int)
 	if !ok {
-		return 0, 0, 0, fmt.Errorf("expected integer but found: %v", l[1])
+		return 0, 0, 0, fmt.Errorf("expected integer but found: %v", e)
 	}
-	num, ok := l[2].(value.Int)
+	e, _ = l.At(2)
+	num, ok := e.(value.Int)
 	if !ok {
-		return 0, 0, 0, fmt.Errorf("expected integer but found: %v", l[2])
+		return 0, 0, 0, fmt.Errorf("expected integer but found: %v", e)
 	}
 	return int64(sum), int64(sumSq), int64(num), nil
 }
@@ -90,11 +93,11 @@ func (s rollingStdDev) Merge(a, b value.Value) (value.Value, error) {
 		return nil, err
 	}
 	sum, sumsq, num := s.merge(s1, ssq1, n1, s2, ssq2, n2)
-	return value.List{value.Int(sum), value.Int(sumsq), value.Int(num)}, nil
+	return value.NewList(value.Int(sum), value.Int(sumsq), value.Int(num)), nil
 }
 
 func (s rollingStdDev) Zero() value.Value {
-	return value.List{value.Int(0), value.Int(0), value.Int(0)}
+	return value.NewList(value.Int(0), value.Int(0), value.Int(0))
 }
 
 func (s rollingStdDev) Transform(v value.Value) (value.Value, error) {
@@ -102,7 +105,7 @@ func (s rollingStdDev) Transform(v value.Value) (value.Value, error) {
 	if !ok {
 		return nil, fmt.Errorf("expected value to be an int but got: '%s' instead", v)
 	}
-	return value.List{v_int, v_int * v_int, value.Int(1)}, nil
+	return value.NewList(v_int, v_int*v_int, value.Int(1)), nil
 }
 
 var _ Histogram = rollingStdDev{}

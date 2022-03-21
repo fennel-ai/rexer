@@ -14,7 +14,7 @@ type list struct {
 }
 
 func (s list) Transform(v value.Value) (value.Value, error) {
-	return value.List{v}, nil
+	return value.NewList(v), nil
 }
 
 func NewList(name ftypes.AggName, duration uint64) Histogram {
@@ -53,7 +53,7 @@ func (s list) Reduce(values []value.Value) (value.Value, error) {
 		if err != nil {
 			return nil, err
 		}
-		z = append(z, l...)
+		z.Append(l)
 	}
 	return z, nil
 }
@@ -67,14 +67,14 @@ func (s list) Merge(a, b value.Value) (value.Value, error) {
 	if err != nil {
 		return nil, err
 	}
-	ret := make([]value.Value, 0, len(la)+len(lb))
-	ret = append(ret, la...)
-	ret = append(ret, lb...)
-	return value.List(ret), nil
+	ret := value.NewList()
+	ret.Append(la)
+	ret.Append(lb)
+	return ret, nil
 }
 
 func (s list) Zero() value.Value {
-	return value.List{}
+	return value.NewList()
 }
 
 var _ Histogram = list{}

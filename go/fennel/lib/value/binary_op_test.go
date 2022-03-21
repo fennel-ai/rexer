@@ -51,8 +51,8 @@ func TestInvalid(t *testing.T) {
 	d := Double(3.0)
 	b := Bool(false)
 	s := String("hi")
-	l := List([]Value{Int(1), Double(2.0), Bool(true)})
-	di := Dict(map[string]Value{"a": Int(2), "b": Double(1.0)})
+	l := NewList(Int(1), Double(2.0), Bool(true))
+	di := NewDict(map[string]Value{"a": Int(2), "b": Double(1.0)})
 	n := Nil
 
 	ops := []string{"+", "-", "*", "/", "//", ">", ">=", "<", "<=", "and", "or", "[]", "%"}
@@ -247,7 +247,7 @@ func TestBoolean(t *testing.T) {
 }
 
 func testIndexList(t *testing.T, v Value, l List) {
-	for i, expected := range l {
+	for i, expected := range l.values {
 		found, err := v.Op("[]", Int(i))
 		assert.NoError(t, err)
 		assert.Equal(t, expected, found)
@@ -261,14 +261,14 @@ func testIndexList(t *testing.T, v Value, l List) {
 }
 
 func TestIndexList(t *testing.T) {
-	l := List([]Value{Int(1), Double(2.0), Bool(true)})
+	l := NewList(Int(1), Double(2.0), Bool(true))
 	testIndexList(t, l, l)
 	// also with futures
 	testIndexList(t, getFuture(l), l)
 }
 
 func testIndex_Dict(t *testing.T, v Value, di Dict) {
-	for k, expected := range di {
+	for k, expected := range di.Iter() {
 		found, err := v.Op("[]", String(k))
 		assert.NoError(t, err)
 		assert.Equal(t, expected, found)
@@ -279,7 +279,7 @@ func testIndex_Dict(t *testing.T, v Value, di Dict) {
 }
 
 func TestIndex_Dict(t *testing.T) {
-	di := Dict(map[string]Value{"a": Int(2), "b": Double(1.0)})
+	di := NewDict(map[string]Value{"a": Int(2), "b": Double(1.0)})
 	testIndex_Dict(t, di, di)
 	// and also futures
 	testIndex_Dict(t, getFuture(di), di)
@@ -290,9 +290,9 @@ func TestConcatenation(t *testing.T) {
 	s2 := String("xyz")
 	verifyOp(t, s1, s2, String("abcxyz"), "+")
 
-	l1 := List([]Value{Int(1), Nil})
-	l2 := List([]Value{Double(2), Bool(false)})
-	verifyOp(t, l1, l2, List([]Value{Int(1), Nil, Double(2), Bool(false)}), "+")
+	l1 := NewList(Int(1), Nil)
+	l2 := NewList(Double(2), Bool(false))
+	verifyOp(t, l1, l2, NewList(Int(1), Nil, Double(2), Bool(false)), "+")
 }
 
 func getFuture(v Value) *Future {

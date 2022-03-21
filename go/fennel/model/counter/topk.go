@@ -32,11 +32,11 @@ func (t topK) Transform(v value.Value) (value.Value, error) {
 	if !ok {
 		return nil, fmt.Errorf("expected value to be a dict but got: '%s' instead", v)
 	}
-	data, ok := elem["data"]
+	data, ok := elem.Get("data")
 	if !ok {
 		return nil, fmt.Errorf("key 'data' not found in dict")
 	}
-	sval, ok := elem["score"]
+	sval, ok := elem.Get("score")
 	if !ok {
 		return nil, fmt.Errorf("key 'score' not found in dict")
 	}
@@ -49,7 +49,7 @@ func (t topK) Transform(v value.Value) (value.Value, error) {
 	default:
 		return nil, fmt.Errorf("expected key 'score' of dict to be an int or float but got: '%s' instead", s)
 	}
-	return value.List{value.Dict{"data": data, "score": score}}, nil
+	return value.NewList(value.NewDict(map[string]value.Value{"data": data, "score": score})), nil
 }
 
 func (t topK) Start(end ftypes.Timestamp, kwargs value.Dict) (ftypes.Timestamp, error) {
@@ -61,7 +61,7 @@ func (t topK) Start(end ftypes.Timestamp, kwargs value.Dict) (ftypes.Timestamp, 
 }
 
 func (t topK) Reduce(values []value.Value) (value.Value, error) {
-	res := value.List{}
+	res := make([]value.Value, 0)
 	for _, v := range values {
 		v, err := t.extract(v)
 		if err != nil {
@@ -70,10 +70,11 @@ func (t topK) Reduce(values []value.Value) (value.Value, error) {
 		res = t.merge(res, v)
 	}
 	ret := make([]value.Value, len(res))
-	for i, v := range res {
-		ret[i] = v.(value.Dict)
+	for i := 0; i < len(res); i++ {
+		v := res[i]
+		ret[i], _ = v.(value.Dict)
 	}
-	return value.List(ret), nil
+	return value.NewList(ret...), nil
 }
 
 func (t topK) Merge(a, b value.Value) (value.Value, error) {
@@ -86,7 +87,7 @@ func (t topK) Merge(a, b value.Value) (value.Value, error) {
 		return nil, err
 	}
 	lc := t.merge(la, lb)
-	return value.List(lc), nil
+	return value.NewList(lc...), nil
 }
 
 func (t topK) Zero() value.Value {
@@ -99,16 +100,17 @@ func (t topK) extract(v value.Value) ([]value.Value, error) {
 		return nil, fmt.Errorf("expected list but got: %v", v)
 	}
 	var ret []value.Value
-	for _, e := range l {
-		e, ok := e.(value.Dict)
+	for i := 0; i < l.Len(); i++ {
+		elem, _ := l.At(i)
+		e, ok := elem.(value.Dict)
 		if !ok {
 			return nil, fmt.Errorf("expected element of list to be a dict but got: %v", v)
 		}
-		_, ok = e["data"]
+		_, ok = e.Get("data")
 		if !ok {
 			return nil, fmt.Errorf("key 'data' not found in dict")
 		}
-		score, ok := e["score"]
+		score, ok := e.Get("score")
 		if !ok {
 			return nil, fmt.Errorf("key 'score' not found in dict")
 		}
@@ -165,8 +167,11 @@ func (t topK) merge(a, b []value.Value) []value.Value {
 }
 
 func (t topK) less(a, b value.Value) bool {
-	fa := a.(value.Dict)["score"].(value.Double)
-	fb := b.(value.Dict)["score"].(value.Double)
+	f, _ := a.(value.Dict).Get("score")
+	fa := f.(value.Double)
+	f, _ = b.(value.Dict).Get("score")
+	//fb := b.(value.Dict)["score"].(value.Double)
+	fb := f.(value.Double)
 	return float64(fa) < float64(fb)
 }
 

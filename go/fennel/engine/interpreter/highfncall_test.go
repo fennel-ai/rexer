@@ -24,7 +24,7 @@ func TestInterpreter_VisitHighFnCall_Map(t *testing.T) {
 				Iter:    ast.List{Values: []ast.Ast{ast.MakeInt(1), ast.MakeInt(2), ast.MakeInt(-1)}},
 			},
 			err:      false,
-			expected: value.List{value.Int(2), value.Int(4), value.Int(-2)},
+			expected: value.NewList(value.Int(2), value.Int(4), value.Int(-2)),
 		},
 		{
 			tree: ast.HighFnCall{
@@ -34,7 +34,7 @@ func TestInterpreter_VisitHighFnCall_Map(t *testing.T) {
 				Iter:    ast.List{Values: []ast.Ast{ast.MakeInt(1), ast.MakeInt(2), ast.MakeInt(-1)}},
 			},
 			err:      false,
-			expected: value.List{value.Int(3), value.Int(6), value.Int(-3)},
+			expected: value.NewList(value.Int(3), value.Int(6), value.Int(-3)),
 		},
 		{
 			tree: ast.HighFnCall{
@@ -71,12 +71,12 @@ func TestInterpreter_VisitHighFnCall_Map(t *testing.T) {
 				},
 			},
 			err:      false,
-			expected: value.List{value.Bool(false), value.Bool(true), value.Bool(true)},
+			expected: value.NewList(value.Bool(false), value.Bool(true), value.Bool(true)),
 		},
 	}
 	for _, scene := range scenarios {
 		i := getInterpreter()
-		res, err := i.Eval(scene.tree, value.Dict{"n": value.Int(3)})
+		res, err := i.Eval(scene.tree, value.NewDict(map[string]value.Value{"n": value.Int(3)}))
 		if scene.err {
 			assert.Error(t, err)
 		} else {
@@ -101,7 +101,7 @@ func TestInterpreter_VisitHighFnCall_Filter(t *testing.T) {
 				Iter:    ast.List{Values: []ast.Ast{ast.MakeInt(2), ast.MakeInt(4), ast.MakeInt(3)}},
 			},
 			err:      false,
-			expected: value.List{value.Int(4), value.Int(3)},
+			expected: value.NewList(value.Int(4), value.Int(3)),
 		},
 		{
 			tree: ast.HighFnCall{
@@ -126,7 +126,7 @@ func TestInterpreter_VisitHighFnCall_Filter(t *testing.T) {
 	}
 	for _, scene := range scenarios {
 		i := getInterpreter()
-		res, err := i.Eval(scene.tree, value.Dict{"n": value.Int(3)})
+		res, err := i.Eval(scene.tree, value.NewDict(map[string]value.Value{"n": value.Int(3)}))
 		if scene.err {
 			assert.Error(t, err)
 		} else {

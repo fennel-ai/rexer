@@ -80,9 +80,9 @@ func testProviderVersion(t *testing.T, p provider) {
 	checkMultiGet(t, ctx, tier, request, profiles)
 
 	// versions can also be non-continuous
-	val3 := value.Dict(map[string]value.Value{
+	val3 := value.NewDict(map[string]value.Value{
 		"hi":  value.Int(1),
-		"bye": value.List([]value.Value{value.Bool(true), value.String("yo")}),
+		"bye": value.NewList(value.Bool(true), value.String("yo")),
 	})
 	expected3 := value.ToJSON(val3)
 	profiles = append(profiles, profile.NewProfileItemSer("1", 1232, "summary", 10, expected3))

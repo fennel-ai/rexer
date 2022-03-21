@@ -35,7 +35,7 @@ func (op SortOperator) Apply(staticKwargs value.Dict, in operators.InputIter, ou
 			return err
 		}
 		var v float64
-		key := contextKwargs["by"]
+		key, _ := contextKwargs.Get("by")
 		switch key := key.(type) {
 		case value.Int:
 			v = float64(key)
@@ -48,7 +48,8 @@ func (op SortOperator) Apply(staticKwargs value.Dict, in operators.InputIter, ou
 		rows = append(rows, sortableRow{data: row, key: v})
 	}
 	sort.SliceStable(rows, func(i, j int) bool {
-		if !staticKwargs["desc"].(value.Bool) {
+		v, _ := staticKwargs.Get("desc")
+		if !v.(value.Bool) {
 			return rows[i].key < rows[j].key
 		} else {
 			return rows[i].key > rows[j].key

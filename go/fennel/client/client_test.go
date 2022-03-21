@@ -21,7 +21,7 @@ func TestClient_GetAggregateValue(t *testing.T) {
 	ser := value.ToJSON(expected)
 	aggname := ftypes.AggName("somename")
 	k := value.Bool(true)
-	kwargs := value.Dict{"duration": value.Int(120)}
+	kwargs := value.NewDict(map[string]value.Value{"duration": value.Int(120)})
 	agvr := aggregate.GetAggValueRequest{
 		AggName: aggname,
 		Key:     k,

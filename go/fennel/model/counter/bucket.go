@@ -9,21 +9,22 @@ import (
 )
 
 func Bucketize(histogram Histogram, actions value.List) ([]Bucket, error) {
-	buckets := make([]Bucket, 0, len(actions))
-	for _, rowVal := range actions {
+	buckets := make([]Bucket, 0, actions.Len())
+	for i := 0; i < actions.Len(); i++ {
+		rowVal, _ := actions.At(i)
 		row, ok := rowVal.(value.Dict)
 		if !ok {
 			return nil, fmt.Errorf("action expected to be dict but found: '%v'", rowVal)
 		}
-		groupkey, ok := row["groupkey"]
+		groupkey, ok := row.Get("groupkey")
 		if !ok {
 			return nil, fmt.Errorf("action '%v' does not have a field called 'groupkey'", rowVal)
 		}
-		ts, ok := row["timestamp"]
+		ts, ok := row.Get("timestamp")
 		if !ok || value.Types.Int.Validate(ts) != nil {
 			return nil, fmt.Errorf("action '%v' does not have a field called 'timestamp' with datatype of 'int'", row)
 		}
-		v, ok := row["value"]
+		v, ok := row.Get("value")
 		if !ok {
 			return nil, fmt.Errorf("action '%v' does not have a field called 'value'", row)
 		}
@@ -141,7 +142,7 @@ func start(end ftypes.Timestamp, duration uint64) ftypes.Timestamp {
 }
 
 func extractDuration(kwargs value.Dict, maxDuration uint64) (uint64, error) {
-	if v, ok := kwargs["duration"]; !ok {
+	if v, ok := kwargs.Get("duration"); !ok {
 		// when there is no duration specified, use duration specified when aggregate was created
 		return maxDuration, nil
 	} else {

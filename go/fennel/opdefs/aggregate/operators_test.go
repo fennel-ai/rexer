@@ -54,34 +54,34 @@ func TestAggValue_Apply(t *testing.T) {
 	defer consumer.Close()
 	assert.NoError(t, err)
 	assert.NoError(t, aggregate.Update(ctx, tier, consumer, agg))
-	found, err := aggregate.Value(ctx, tier, agg.Name, value.Int(1), value.Dict{})
+	found, err := aggregate.Value(ctx, tier, agg.Name, value.Int(1), value.NewDict(map[string]value.Value{}))
 	assert.NoError(t, err)
 	assert.Equal(t, value.Int(2), found)
-	found, err = aggregate.Value(ctx, tier, agg.Name, value.Int(2), value.Dict{})
+	found, err = aggregate.Value(ctx, tier, agg.Name, value.Int(2), value.NewDict(map[string]value.Value{}))
 	assert.NoError(t, err)
 	assert.Equal(t, value.Int(2), found)
-	found, err = aggregate.Value(ctx, tier, agg.Name, value.Int(2), value.Dict{"duration": value.Int(2000)})
+	found, err = aggregate.Value(ctx, tier, agg.Name, value.Int(2), value.NewDict(map[string]value.Value{"duration": value.Int(2000)}))
 	assert.NoError(t, err)
 	assert.Equal(t, value.Int(1), found)
 
-	static := value.Dict{"name": value.String("myaggresults"), "aggregate": value.String(agg.Name)}
+	static := value.NewDict(map[string]value.Value{"name": value.String("myaggresults"), "aggregate": value.String(agg.Name)})
 	inputs := []value.Dict{
-		{"a": value.String("hi")},
-		{"a": value.String("bye")},
-		{"a": value.String("yo")},
-		{"a": value.String("kwargs")},
+		value.NewDict(map[string]value.Value{"a": value.String("hi")}),
+		value.NewDict(map[string]value.Value{"a": value.String("bye")}),
+		value.NewDict(map[string]value.Value{"a": value.String("yo")}),
+		value.NewDict(map[string]value.Value{"a": value.String("kwargs")}),
 	}
 	contextKwargs := []value.Dict{
-		{"groupkey": value.Int(1), "kwargs": value.Dict{}},
-		{"groupkey": value.Int(2), "kwargs": value.Dict{}},
-		{"groupkey": value.Int(3), "kwargs": value.Dict{}},
-		{"groupkey": value.Int(2), "kwargs": value.Dict{"duration": value.Int(2000)}},
+		value.NewDict(map[string]value.Value{"groupkey": value.Int(1), "kwargs": value.NewDict(map[string]value.Value{})}),
+		value.NewDict(map[string]value.Value{"groupkey": value.Int(2), "kwargs": value.NewDict(map[string]value.Value{})}),
+		value.NewDict(map[string]value.Value{"groupkey": value.Int(3), "kwargs": value.NewDict(map[string]value.Value{})}),
+		value.NewDict(map[string]value.Value{"groupkey": value.Int(2), "kwargs": value.NewDict(map[string]value.Value{"duration": value.Int(2000)})}),
 	}
 	outputs := []value.Dict{
-		{"a": value.String("hi"), "myaggresults": value.Int(2)},
-		{"a": value.String("bye"), "myaggresults": value.Int(2)},
-		{"a": value.String("yo"), "myaggresults": value.Int(0)},
-		{"a": value.String("kwargs"), "myaggresults": value.Int(1)},
+		value.NewDict(map[string]value.Value{"a": value.String("hi"), "myaggresults": value.Int(2)}),
+		value.NewDict(map[string]value.Value{"a": value.String("bye"), "myaggresults": value.Int(2)}),
+		value.NewDict(map[string]value.Value{"a": value.String("yo"), "myaggresults": value.Int(0)}),
+		value.NewDict(map[string]value.Value{"a": value.String("kwargs"), "myaggresults": value.Int(1)}),
 	}
 	optest.Assert(t, tier, &AggValue{tier}, static, inputs, contextKwargs, outputs)
 }

@@ -27,13 +27,16 @@ func TestFeatureLog_Apply(t *testing.T) {
 	assert.NoError(t, err)
 	defer consumer.Close()
 
-	f1 := value.Dict{"f1": value.Int(2), "f2": value.Double(1.0)}
-	f2 := value.Dict{"f1": value.Int(3), "f2": value.Double(1.8)}
-	static := value.Dict{"context_otype": value.String("user"), "context_oid": value.Int(1), "workflow": value.String("homefeed"), "request_id": value.Int(1232), "model_id": value.String("mymodel")}
-	inputs := []value.Dict{{"something": value.Bool(true), "b": value.Int(1)}, {"something": value.Bool(false), "b": value.Int(4)}}
+	f1 := value.NewDict(map[string]value.Value{"f1": value.Int(2), "f2": value.Double(1.0)})
+	f2 := value.NewDict(map[string]value.Value{"f1": value.Int(3), "f2": value.Double(1.8)})
+	static := value.NewDict(map[string]value.Value{"context_otype": value.String("user"), "context_oid": value.Int(1), "workflow": value.String("homefeed"), "request_id": value.Int(1232), "model_id": value.String("mymodel")})
+	inputs := []value.Dict{
+		value.NewDict(map[string]value.Value{"something": value.Bool(true), "b": value.Int(1)}),
+		value.NewDict(map[string]value.Value{"something": value.Bool(false), "b": value.Int(4)}),
+	}
 	kwargs := []value.Dict{
-		{"candidate_otype": value.String("video"), "candidate_oid": value.Int(723), "features": f1, "model_prediction": value.Double(0.59), "timestamp": value.Int(0)},
-		{"candidate_otype": value.String("video"), "candidate_oid": value.Int(823), "features": f2, "model_prediction": value.Double(0.79), "timestamp": value.Int(12312)},
+		value.NewDict(map[string]value.Value{"candidate_otype": value.String("video"), "candidate_oid": value.Int(723), "features": f1, "model_prediction": value.Double(0.59), "timestamp": value.Int(0)}),
+		value.NewDict(map[string]value.Value{"candidate_otype": value.String("video"), "candidate_oid": value.Int(823), "features": f2, "model_prediction": value.Double(0.79), "timestamp": value.Int(12312)}),
 	}
 
 	rows := []feature.Row{

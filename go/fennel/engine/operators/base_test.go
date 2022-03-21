@@ -70,11 +70,11 @@ func TestTypeCheckStaticKwargs(t *testing.T) {
 		matches bool
 	}{
 		{
-			value.Dict{"p1": value.Bool(true), "p3": value.String("abc")},
+			value.NewDict(map[string]value.Value{"p1": value.Bool(true), "p3": value.String("abc")}),
 			true,
 		},
 		{
-			value.Dict{"p1": value.Bool(false), "p2": value.Double(4.0)},
+			value.NewDict(map[string]value.Value{"p1": value.Bool(false), "p2": value.Double(4.0)}),
 			false,
 		},
 		{
@@ -103,22 +103,22 @@ func TestTypeCheck(t *testing.T) {
 	}{
 		{
 			value.String("xyz"),
-			value.Dict{"p2": value.Double(9.0)},
+			value.NewDict(map[string]value.Value{"p2": value.Double(9.0)}),
 			true,
 		},
 		{
 			value.Int(2),
-			value.Dict{"p2": value.Double(9.0)},
+			value.NewDict(map[string]value.Value{"p2": value.Double(9.0)}),
 			false,
 		},
 		{
 			value.Int(4),
-			value.Dict{"p2": value.Double(16.0)},
+			value.NewDict(map[string]value.Value{"p2": value.Double(16.0)}),
 			false,
 		},
 		{
 			value.String("pqrs"),
-			value.Dict{"p2": value.Int(3)},
+			value.NewDict(map[string]value.Value{"p2": value.Int(3)}),
 			false,
 		},
 		{

@@ -18,8 +18,8 @@ func TestConvert(t *testing.T) {
 		Double(0.0),
 		Double(1e0),
 		Double(-1e0),
-		List{Int(1), Bool(false), String("hi"), List{Int(5)}},
-		Dict{"a": Int(2), "b": Dict{}, "c": List{}, "d": Double(-4.2)},
+		NewList(Int(1), Bool(false), String("hi"), NewList(Int(5))),
+		NewDict(map[string]Value{"a": Int(2), "b": NewDict(map[string]Value{}), "c": NewList(), "d": Double(-4.2)}),
 		Nil,
 	}
 

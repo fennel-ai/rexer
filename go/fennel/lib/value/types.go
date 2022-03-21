@@ -33,14 +33,14 @@ var _ Value = Int(0)
 var _ Value = Double(0)
 var _ Value = Bool(true)
 var _ Value = String("")
-var _ Value = List([]Value{Int(0), Bool(true)})
-var _ Value = Dict(map[string]Value{"hi": Int(0), "bye": Bool(true)})
+var _ Value = List{}
+var _ Value = Dict{}
 var _ Value = nil_{}
 
 type Int int64
 
 func (I Int) Wrap() List {
-	return NewList([]Value{I})
+	return NewList(I)
 }
 
 func (I Int) Unwrap() (Value, error) {
@@ -74,7 +74,7 @@ func (I Int) MarshalJSON() ([]byte, error) {
 type Double float64
 
 func (d Double) Wrap() List {
-	return NewList([]Value{d})
+	return NewList(d)
 }
 
 func (d Double) Unwrap() (Value, error) {
@@ -122,7 +122,7 @@ func (d Double) MarshalJSON() ([]byte, error) {
 type Bool bool
 
 func (b Bool) Wrap() List {
-	return NewList([]Value{b})
+	return NewList(b)
 }
 
 func (b Bool) Unwrap() (Value, error) {
@@ -154,7 +154,7 @@ func (b Bool) MarshalJSON() ([]byte, error) {
 type String string
 
 func (s String) Wrap() List {
-	return NewList([]Value{s})
+	return NewList(s)
 }
 
 func (s String) Unwrap() (Value, error) {
@@ -190,7 +190,7 @@ func (s String) MarshalJSON() ([]byte, error) {
 type nil_ struct{}
 
 func (n nil_) Wrap() List {
-	return NewList([]Value{Nil})
+	return NewList(Nil)
 }
 
 func (n nil_) Unwrap() (Value, error) {
@@ -221,27 +221,31 @@ func (n nil_) MarshalJSON() ([]byte, error) {
 	return []byte(n.String()), nil
 }
 
-type List []Value
+// TODO: hide internal details of List struct so people can not create lists without using
+// NewList. That way, we can ensure that no one creates nested lists
+type List struct {
+	values []Value
+}
 
 func (l List) Wrap() List {
 	return l
 }
 
 func (l List) Unwrap() (Value, error) {
-	if len(l) == 1 {
-		return l[0], nil
+	if len(l.values) == 1 {
+		return l.values[0], nil
 	}
-	return nil, fmt.Errorf("can not unwrap list of length: '%d'", len(l))
+	return nil, fmt.Errorf("can not unwrap list of length: '%d'", len(l.values))
 }
 
 func (l List) Op(opt string, other Value) (Value, error) {
 	return route(l, opt, other)
 }
 
-func NewList(values []Value) List {
-	ret := make([]Value, 0, len(values))
+func NewList(values ...Value) List {
+	ret := List{values: make([]Value, 0, len(values))}
 	for _, v := range values {
-		ret = append(ret, v)
+		ret.Append(v)
 	}
 	return ret
 }
@@ -250,11 +254,11 @@ func (l List) isValue() {}
 func (l List) Equal(right Value) bool {
 	switch r := right.(type) {
 	case List:
-		if len(r) != len(l) {
+		if len(r.values) != len(l.values) {
 			return false
 		}
-		for i, lv := range l {
-			if !lv.Equal(r[i]) {
+		for i, lv := range l.values {
+			if !lv.Equal(r.values[i]) {
 				return false
 			}
 		}
@@ -266,13 +270,13 @@ func (l List) Equal(right Value) bool {
 func (l List) String() string {
 	sb := strings.Builder{}
 	sb.WriteString("[")
-	for i, v := range l {
+	for i, v := range l.values {
 		if v == nil {
 			sb.WriteString("null")
 		} else {
 			sb.WriteString(v.String())
 		}
-		if i != len(l)-1 {
+		if i != len(l.values)-1 {
 			sb.WriteString(",")
 		}
 	}
@@ -280,29 +284,50 @@ func (l List) String() string {
 	return sb.String()
 }
 func (l List) Clone() Value {
-	clone := make([]Value, 0, len(l))
+	clone := make([]Value, 0, len(l.values))
 
-	for _, v := range l {
+	for _, v := range l.values {
 		clone = append(clone, v.Clone())
 	}
-	return List(clone)
+	return NewList(clone...)
 }
 func (l List) MarshalJSON() ([]byte, error) {
 	return []byte(l.String()), nil
 }
 
 func (l *List) Append(v Value) error {
-	*l = append(*l, v)
+	// lists can never be nested
+	if aslist, ok := v.(List); ok {
+		for i := range aslist.values {
+			l.Append(aslist.values[i])
+		}
+	} else {
+		l.values = append(l.values, v)
+	}
 	return nil
 }
+
 func (l *List) Iter() Iter {
 	return Iter{0, *l}
 }
 
-type Dict map[string]Value
+func (l List) Len() int {
+	return len(l.values)
+}
+
+func (l List) At(idx int) (Value, error) {
+	if idx < 0 || idx >= l.Len() {
+		return nil, fmt.Errorf("index '%d' out of bounds for list of length: '%d'", idx, l.Len())
+	}
+	return l.values[idx], nil
+}
+
+type Dict struct {
+	values map[string]Value
+}
 
 func (d Dict) Wrap() List {
-	return NewList([]Value{d})
+	return NewList(d)
 }
 
 func (d Dict) Unwrap() (Value, error) {
@@ -313,23 +338,50 @@ func (d Dict) Op(opt string, other Value) (Value, error) {
 	return route(d, opt, other)
 }
 
-func NewDict(values map[string]Value) (Dict, error) {
+func NewDict(values map[string]Value) Dict {
 	ret := make(map[string]Value, len(values))
 	for k, v := range values {
 		ret[k] = v
 	}
-	return ret, nil
+	return Dict{ret}
+}
+
+func (d Dict) Len() int {
+	return len(d.values)
+}
+
+func (d Dict) Get(k string) (Value, bool) {
+	v, ok := d.values[k]
+	return v, ok
+}
+
+func (d Dict) GetUnsafe(k string) Value {
+	if v, ok := d.values[k]; ok {
+		return v
+	}
+	return nil
+}
+
+func (d *Dict) Set(k string, value Value) {
+	d.values[k] = value
+}
+
+func (d Dict) Iter() map[string]Value {
+	return d.values
+}
+func (d *Dict) Del(k string) {
+	delete(d.values, k)
 }
 
 func (d Dict) isValue() {}
 func (d Dict) Equal(v Value) bool {
 	switch right := v.(type) {
 	case Dict:
-		if len(right) != len(d) {
+		if right.Len() != d.Len() {
 			return false
 		}
-		for k, lv := range d {
-			if rv, ok := right[k]; !(ok && lv.Equal(rv)) {
+		for k, lv := range d.Iter() {
+			if rv, ok := right.Get(k); !(ok && lv.Equal(rv)) {
 				return false
 			}
 		}
@@ -339,8 +391,8 @@ func (d Dict) Equal(v Value) bool {
 	}
 }
 func (d Dict) String() string {
-	s := make([]string, 0, len(d))
-	for k, v := range d {
+	s := make([]string, 0, d.Len())
+	for k, v := range d.Iter() {
 		sb := strings.Builder{}
 		sb.WriteString(`"`)
 		sb.WriteString(k)
@@ -362,19 +414,19 @@ func (d Dict) String() string {
 	return sb.String()
 }
 func (d Dict) Clone() Value {
-	clone := make(map[string]Value, len(d))
-	for k, v := range d {
+	clone := make(map[string]Value, d.Len())
+	for k, v := range d.Iter() {
 		clone[k] = v.Clone()
 	}
-	return Dict(clone)
+	return NewDict(clone)
 }
 func (d Dict) MarshalJSON() ([]byte, error) {
 	return []byte(d.String()), nil
 }
 
 func (d Dict) Schema() map[string]reflect.Type {
-	ret := make(map[string]reflect.Type, len(d))
-	for k, v := range d {
+	ret := make(map[string]reflect.Type, d.Len())
+	for k, v := range d.Iter() {
 		ret[k] = reflect.TypeOf(v)
 	}
 	return ret
@@ -386,16 +438,16 @@ type Iter struct {
 }
 
 func (iter *Iter) HasMore() bool {
-	return iter.next < len(iter.rows)
+	return iter.next < len(iter.rows.values)
 }
 
 func (iter *Iter) Next() (Value, error) {
 	curr := iter.next
-	if curr >= len(iter.rows) {
+	if curr >= len(iter.rows.values) {
 		return nil, fmt.Errorf("exhaused iter - no more items to iterate upon")
 	}
 	iter.next += 1
-	return iter.rows[curr], nil
+	return iter.rows.values[curr], nil
 }
 
 type Future struct {
@@ -405,7 +457,7 @@ type Future struct {
 }
 
 func (f *Future) Wrap() List {
-	return NewList([]Value{f})
+	return NewList(f)
 }
 
 func (f *Future) Unwrap() (Value, error) {

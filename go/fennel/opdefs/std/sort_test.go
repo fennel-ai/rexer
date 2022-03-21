@@ -10,28 +10,31 @@ import (
 
 func TestSortOperator_Apply(t *testing.T) {
 	intable := []value.Dict{
-		{"name": value.String("first")},
-		{"name": value.String("second")},
-		{"name": value.String("third")},
+		value.NewDict(map[string]value.Value{"name": value.String("first")}),
+		value.NewDict(map[string]value.Value{"name": value.String("second")}),
+		value.NewDict(map[string]value.Value{"name": value.String("third")}),
 	}
 	contextKwargs := []value.Dict{
-		{"by": value.Int(2)},
-		{"by": value.Double(1.0)},
-		{"by": value.Double(3.0)},
+		value.NewDict(map[string]value.Value{"by": value.Int(2)}),
+		value.NewDict(map[string]value.Value{"by": value.Double(1.0)}),
+		value.NewDict(map[string]value.Value{"by": value.Double(3.0)}),
 	}
 
-	orders := []value.Dict{{"desc": value.Bool(false)}, {"desc": value.Bool(true)}}
+	orders := []value.Dict{
+		value.NewDict(map[string]value.Value{"desc": value.Bool(false)}),
+		value.NewDict(map[string]value.Value{"desc": value.Bool(true)}),
+	}
 
 	expected := [][]value.Dict{
 		{
-			{"name": value.String("second")},
-			{"name": value.String("first")},
-			{"name": value.String("third")},
+			value.NewDict(map[string]value.Value{"name": value.String("second")}),
+			value.NewDict(map[string]value.Value{"name": value.String("first")}),
+			value.NewDict(map[string]value.Value{"name": value.String("third")}),
 		},
 		{
-			{"name": value.String("third")},
-			{"name": value.String("first")},
-			{"name": value.String("second")},
+			value.NewDict(map[string]value.Value{"name": value.String("third")}),
+			value.NewDict(map[string]value.Value{"name": value.String("first")}),
+			value.NewDict(map[string]value.Value{"name": value.String("second")}),
 		},
 	}
 

@@ -25,8 +25,10 @@ func (t timeBucketOfDay) New(args value.Dict, bootargs map[string]interface{}) (
 }
 
 func (t timeBucketOfDay) Apply(kwargs value.Dict, in operators.InputIter, out *value.List) error {
-	name := string(kwargs["name"].(value.String))
-	bucket := kwargs["bucket"].(value.Int)
+	n, _ := kwargs.Get("name")
+	name := string(n.(value.String))
+	b, _ := kwargs.Get("bucket")
+	bucket := b.(value.Int)
 	if bucket <= 0 {
 		return fmt.Errorf("bucket should be positive but found %v instead", bucket)
 	}
@@ -37,11 +39,12 @@ func (t timeBucketOfDay) Apply(kwargs value.Dict, in operators.InputIter, out *v
 			return err
 		}
 		row := rowVal.(value.Dict)
-		timestamp := contextKwargs["timestamp"].(value.Int)
+		ts, _ := contextKwargs.Get("timestamp")
+		timestamp := ts.(value.Int)
 		if timestamp <= 0 {
 			return fmt.Errorf("timestamp expected to be positive but found: %v instead", timestamp)
 		}
-		row[name] = value.Int((int64(timestamp) % day) / int64(bucket))
+		row.Set(name, value.Int((int64(timestamp)%day)/int64(bucket)))
 		if err = out.Append(row); err != nil {
 			return err
 		}
@@ -66,7 +69,9 @@ func (d dayOfWeek) New(args value.Dict, bootargs map[string]interface{}) (operat
 }
 
 func (d dayOfWeek) Apply(kwargs value.Dict, in operators.InputIter, out *value.List) error {
-	name := string(kwargs["name"].(value.String))
+	n, _ := kwargs.Get("name")
+	name := string(n.(value.String))
+	//name := string(kwargs["name"].(value.String))
 	week := int64(7 * 24 * 3600)
 	day := int64(24 * 3600)
 	for in.HasMore() {
@@ -75,11 +80,13 @@ func (d dayOfWeek) Apply(kwargs value.Dict, in operators.InputIter, out *value.L
 			return err
 		}
 		row := rowVal.(value.Dict)
-		timestamp := contextKwargs["timestamp"].(value.Int)
+		ts, _ := contextKwargs.Get("timestamp")
+		timestamp := ts.(value.Int)
+		//timestamp := contextKwargs["timestamp"].(value.Int)
 		if timestamp <= 0 {
 			return fmt.Errorf("timestamp should be positive but got: %v instead", timestamp)
 		}
-		row[name] = value.Int((int64(timestamp) % week) / (day))
+		row.Set(name, value.Int((int64(timestamp)%week)/(day)))
 		if err = out.Append(row); err != nil {
 			return err
 		}

@@ -60,25 +60,24 @@ func TestInterpreter_VisitBinary(t *testing.T) {
 
 func TestInterpreter_VisitList(t *testing.T) {
 	// Empty list works
-	testValid(t, ast.List{Values: []ast.Ast{}}, value.List{})
-
+	testValid(t, ast.List{Values: []ast.Ast{}}, value.NewList())
 	// list with just one element works
-	l := value.NewList([]value.Value{value.Double(3.4)})
+	l := value.NewList(value.Double(3.4))
 	testValid(t, &ast.List{Values: []ast.Ast{ast.MakeDouble(3.4)}}, l)
 	// and so does a multi-element list with mixed types
-	l = value.NewList([]value.Value{value.Double(3.4), value.Bool(false), value.String("hi")})
+	l = value.NewList(value.Double(3.4), value.Bool(false), value.String("hi"))
 	testValid(t, &ast.List{Values: []ast.Ast{ast.MakeDouble(3.4), ast.MakeBool(false), ast.MakeString("hi")}}, l)
 }
 
 func TestInterpreter_VisitDict(t *testing.T) {
 	// Empty dict works
-	testValid(t, ast.Dict{Values: map[string]ast.Ast{}}, value.Dict{})
+	testValid(t, ast.Dict{Values: map[string]ast.Ast{}}, value.NewDict(map[string]value.Value{}))
 
 	// dict with just one element works
-	d, _ := value.NewDict(map[string]value.Value{"hi": value.Double(3.4)})
+	d := value.NewDict(map[string]value.Value{"hi": value.Double(3.4)})
 	testValid(t, ast.Dict{Values: map[string]ast.Ast{"hi": ast.MakeDouble(3.4)}}, d)
 	// and so does a multi-element list with mixed types and nesting
-	nested, _ := value.NewDict(map[string]value.Value{
+	nested := value.NewDict(map[string]value.Value{
 		"hi":     value.Double(3.4),
 		"bye":    value.Bool(false),
 		"nested": d,
@@ -108,7 +107,7 @@ func TestInterpreter_QueryArgs(t *testing.T) {
 	i := getInterpreter()
 	// initially nothing
 	assert.Equal(t, value.Dict{}, i.queryArgs())
-	args := value.Dict{"x": value.Int(1)}
+	args := value.NewDict(map[string]value.Value{"x": value.Int(1)})
 	assert.NoError(t, i.env.Define("args", args))
 	assert.Equal(t, args, i.queryArgs())
 }
@@ -136,7 +135,7 @@ func TestInterpreter_QueryArgsRedefine(t *testing.T) {
 		},
 	}
 	// expected should be with x = 5 (which is set in the query), not x = 2 (which is query arg)
-	res, err := i.Eval(query, value.Dict{"x": value.Int(2)})
+	res, err := i.Eval(query, value.NewDict(map[string]value.Value{"x": value.Int(2)}))
 	assert.NoError(t, err)
 	assert.Equal(t, value.Int(6), res)
 }
@@ -148,7 +147,7 @@ func TestInterpreter_VisitAt(t *testing.T) {
 	values := []value.Value{
 		value.Int(5),
 		value.Bool(false),
-		value.List([]value.Value{value.Double(3.4)}),
+		value.NewList(value.Double(3.4)),
 	}
 	// value of at is just whatever is set to be @
 	for _, v := range values {

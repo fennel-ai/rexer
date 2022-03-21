@@ -37,7 +37,7 @@ func (r rollingRate) Transform(v value.Value) (value.Value, error) {
 	if err != nil {
 		return nil, err
 	}
-	return value.List{value.Int(a), value.Int(b)}, nil
+	return value.NewList(value.Int(a), value.Int(b)), nil
 }
 
 func (r rollingRate) Start(end ftypes.Timestamp, kwargs value.Dict) (ftypes.Timestamp, error) {
@@ -50,16 +50,18 @@ func (r rollingRate) Start(end ftypes.Timestamp, kwargs value.Dict) (ftypes.Time
 
 func (r rollingRate) extract(v value.Value) (int64, int64, error) {
 	l, ok := v.(value.List)
-	if !ok || len(l) != 2 {
+	if !ok || l.Len() != 2 {
 		return 0, 0, fmt.Errorf("expected list of two elements but got: %v", v)
 	}
-	first, ok := l[0].(value.Int)
+	e, _ := l.At(0)
+	first, ok := e.(value.Int)
 	if !ok {
-		return 0, 0, fmt.Errorf("expected int but found: %v", l[1])
+		return 0, 0, fmt.Errorf("expected int but found: %v", e)
 	}
-	second, ok := l[1].(value.Int)
+	e, _ = l.At(1)
+	second, ok := e.(value.Int)
 	if !ok {
-		return 0, 0, fmt.Errorf("expected int but found: %v", l[1])
+		return 0, 0, fmt.Errorf("expected int but found: %v", e)
 	}
 	if first < 0 || second < 0 {
 		return 0, 0, fmt.Errorf("numerator & denominator should be non-negative but found: '%s', '%s' instead", first, second)
@@ -105,11 +107,11 @@ func (r rollingRate) Merge(a, b value.Value) (value.Value, error) {
 	if err != nil {
 		return nil, err
 	}
-	return value.List{value.Int(n1 + n2), value.Int(d1 + d2)}, nil
+	return value.NewList(value.Int(n1+n2), value.Int(d1+d2)), nil
 }
 
 func (r rollingRate) Zero() value.Value {
-	return value.List{value.Int(0), value.Int(0)}
+	return value.NewList(value.Int(0), value.Int(0))
 }
 
 var _ Histogram = rollingRate{}

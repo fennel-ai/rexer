@@ -47,17 +47,19 @@ func (m rollingMin) Start(end ftypes.Timestamp, kwargs value.Dict) (ftypes.Times
 
 func (m rollingMin) extract(v value.Value) (int64, bool, error) {
 	l, ok := v.(value.List)
-	if !ok || len(l) != 2 {
+	if !ok || l.Len() != 2 {
 		return 0, false, fmt.Errorf("expected list of two elements but got: %v", v)
 	}
-	empty, ok := l[1].(value.Bool)
+	e, _ := l.At(1)
+	empty, ok := e.(value.Bool)
 	if !ok {
-		return 0, false, fmt.Errorf("expected boolean but found: %v", l[1])
+		return 0, false, fmt.Errorf("expected boolean but found: %v", e)
 	}
 	if empty {
 		return 0, true, nil
 	}
-	minv, ok := l[0].(value.Int)
+	e, _ = l.At(0)
+	minv, ok := e.(value.Int)
 	if !ok {
 		return 0, false, fmt.Errorf("expected integer but found: %v", minv)
 	}
@@ -97,11 +99,11 @@ func (m rollingMin) Merge(a, b value.Value) (value.Value, error) {
 		return nil, err
 	}
 	v, e := m.merge(v1, e1, v2, e2)
-	return value.List{value.Int(v), value.Bool(e)}, nil
+	return value.NewList(value.Int(v), value.Bool(e)), nil
 }
 
 func (m rollingMin) Zero() value.Value {
-	return value.List{value.Int(0), value.Bool(true)}
+	return value.NewList(value.Int(0), value.Bool(true))
 }
 
 func (m rollingMin) Transform(v value.Value) (value.Value, error) {
@@ -109,7 +111,7 @@ func (m rollingMin) Transform(v value.Value) (value.Value, error) {
 	if !ok {
 		return nil, fmt.Errorf("expected value to be an int but got: '%s' instead", v)
 	}
-	return value.List{v_int, value.Bool(false)}, nil
+	return value.NewList(v_int, value.Bool(false)), nil
 }
 
 var _ Histogram = rollingMin{}

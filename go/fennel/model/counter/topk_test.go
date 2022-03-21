@@ -6,9 +6,10 @@ import (
 	"sort"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
+
 	"fennel/lib/ftypes"
 	"fennel/lib/value"
-	"github.com/stretchr/testify/assert"
 )
 
 func TestTopK_Reduce(t *testing.T) {
@@ -20,11 +21,11 @@ func TestTopK_Reduce(t *testing.T) {
 		output value.Value
 	}, numCases)
 
-	cases[0].input = []value.Value{value.List{value.Dict{"data": value.Int(2), "score": value.Double(5)}}}
+	cases[0].input = []value.Value{value.NewList(value.NewDict(map[string]value.Value{"data": value.Int(2), "score": value.Double(5)}))}
 	cases[0].output = cases[0].input[0]
 
 	cases[1].input = []value.Value{}
-	cases[1].output = value.List{}
+	cases[1].output = value.NewList()
 
 	for i := 2; i < numCases; i++ {
 		cases[i].input = []value.Value{}
@@ -53,12 +54,12 @@ func TestTopK_Merge_Valid(t *testing.T) {
 	numCases := 7
 	validCases := make([][]value.Value, numCases)
 
-	validCases[0] = append(validCases[0], value.List{})
-	validCases[0] = append(validCases[0], value.List{})
-	validCases[0] = append(validCases[0], value.List{})
+	validCases[0] = append(validCases[0], value.NewList())
+	validCases[0] = append(validCases[0], value.NewList())
+	validCases[0] = append(validCases[0], value.NewList())
 
-	validCases[1] = append(validCases[1], value.List{value.Dict{"data": value.String("x"), "score": value.Double(-1)}})
-	validCases[1] = append(validCases[1], value.List{value.Dict{"data": value.Double(3.1), "score": value.Double(19)}})
+	validCases[1] = append(validCases[1], value.NewList(value.NewDict(map[string]value.Value{"data": value.String("x"), "score": value.Double(-1)})))
+	validCases[1] = append(validCases[1], value.NewList(value.NewDict(map[string]value.Value{"data": value.Double(3.1), "score": value.Double(19)})))
 	validCases[1] = append(validCases[1], findTopK([]value.Value{validCases[1][0], validCases[1][1]}))
 
 	for i := 2; i < numCases; i++ {
@@ -86,17 +87,14 @@ func TestTopK_Merge_Invalid(t *testing.T) {
 		genTopKList(100),
 	}
 	invalidTopKVals := []value.Value{
-		value.Dict{},
+		value.NewDict(map[string]value.Value{}),
 		value.Nil,
-		value.List{value.Double(2)},
-		value.List{value.Dict{}},
-		value.List{value.Dict{"data": value.Int(0)}},
-		value.List{value.Dict{"score": value.Double(0.0)}},
-		value.List{value.Dict{"data": value.Int(0), "score": value.Int(0)}},
-		value.List{
-			value.Dict{"score": value.Double(0.0)},
-			value.Dict{"data": value.Int(0), "score": value.Int(0)},
-		},
+		value.NewList(value.Double(2)),
+		value.NewList(value.NewDict(map[string]value.Value{})),
+		value.NewList(value.NewDict(map[string]value.Value{"data": value.Int(0)})),
+		value.NewList(value.NewDict(map[string]value.Value{"score": value.Double(0.0)})),
+		value.NewList(value.NewDict(map[string]value.Value{"data": value.Int(0), "score": value.Int(0)})),
+		value.NewList(value.NewDict(map[string]value.Value{"score": value.Double(0.0)}), value.NewDict(map[string]value.Value{"data": value.Int(0), "score": value.Int(0)})),
 	}
 	var allTopKVals []value.Value
 	allTopKVals = append(allTopKVals, validTopKVals...)
@@ -115,21 +113,21 @@ func TestTopK_Merge_Invalid(t *testing.T) {
 func TestTopK_Bucketize_Valid(t *testing.T) {
 	t.Parallel()
 	h := NewTopK("somename", 123)
-	actions := value.List{}
+	actions := value.NewList()
 	expected := make([]Bucket, 0)
 	DAY := 3600 * 24
 	for i := 0; i < 5; i++ {
-		v := value.List{value.Int(i), value.String("hi")}
-		d := value.Dict{
+		v := value.NewList(value.Int(i), value.String("hi"))
+		d := value.NewDict(map[string]value.Value{
 			"groupkey":  v,
 			"timestamp": value.Int(DAY + i*3600 + 1),
-			"value":     value.Dict{"data": value.Int(i), "score": value.Int(i)},
-		}
+			"value":     value.NewDict(map[string]value.Value{"data": value.Int(i), "score": value.Int(i)}),
+		})
 		assert.NoError(t, actions.Append(d))
 		expected = append(expected, Bucket{Key: v.String(), Window: ftypes.Window_DAY,
-			Index: 1, Width: 1, Value: value.List{value.Dict{"data": value.Int(i), "score": value.Double(i)}}})
+			Index: 1, Width: 1, Value: value.NewList(value.NewDict(map[string]value.Value{"data": value.Int(i), "score": value.Double(i)}))})
 		expected = append(expected, Bucket{Key: v.String(), Window: ftypes.Window_MINUTE,
-			Index: uint64(24*10 + i*10), Width: 6, Value: value.List{value.Dict{"data": value.Int(i), "score": value.Double(i)}}})
+			Index: uint64(24*10 + i*10), Width: 6, Value: value.NewList(value.NewDict(map[string]value.Value{"data": value.Int(i), "score": value.Double(i)}))})
 	}
 	buckets, err := Bucketize(h, actions)
 	assert.NoError(t, err)
@@ -140,13 +138,13 @@ func TestTopK_Bucketize_Invalid(t *testing.T) {
 	t.Parallel()
 	h := NewMax("somename", 123)
 	cases := [][]value.Dict{
-		{value.Dict{}},
-		{value.Dict{"groupkey": value.Int(1), "timestamp": value.Int(2)}},
-		{value.Dict{"groupkey": value.Int(1), "timestamp": value.Int(2), "value": value.Nil}},
-		{value.Dict{"groupkey": value.Int(1), "timestamp": value.Bool(true), "value": value.Int(4)}},
-		{value.Dict{"groupkey": value.Int(1), "timestamp": value.Double(1.0), "value": value.Int(3)}},
-		{value.Dict{"groupkey": value.Int(1), "value": value.Int(3)}},
-		{value.Dict{"timestamp": value.Int(1), "value": value.Int(3)}},
+		{value.NewDict(map[string]value.Value{})},
+		{value.NewDict(map[string]value.Value{"groupkey": value.Int(1), "timestamp": value.Int(2)})},
+		{value.NewDict(map[string]value.Value{"groupkey": value.Int(1), "timestamp": value.Int(2), "value": value.Nil})},
+		{value.NewDict(map[string]value.Value{"groupkey": value.Int(1), "timestamp": value.Bool(true), "value": value.Int(4)})},
+		{value.NewDict(map[string]value.Value{"groupkey": value.Int(1), "timestamp": value.Double(1.0), "value": value.Int(3)})},
+		{value.NewDict(map[string]value.Value{"groupkey": value.Int(1), "value": value.Int(3)})},
+		{value.NewDict(map[string]value.Value{"timestamp": value.Int(1), "value": value.Int(3)})},
 	}
 	for _, test := range cases {
 		table := value.List{}
@@ -160,15 +158,15 @@ func TestTopK_Bucketize_Invalid(t *testing.T) {
 
 func TestTopK_Start(t *testing.T) {
 	h := topK{Duration: 100}
-	s, err := h.Start(110, value.Dict{})
+	s, err := h.Start(110, value.NewDict(map[string]value.Value{}))
 	assert.NoError(t, err)
 	assert.Equal(t, s, ftypes.Timestamp(10))
 	// Duration > end
-	s, err = h.Start(90, value.Dict{})
+	s, err = h.Start(90, value.NewDict(map[string]value.Value{}))
 	assert.NoError(t, err)
 	assert.Equal(t, s, ftypes.Timestamp(0))
 	// Test kwargs
-	s, err = h.Start(200, value.Dict{"duration": value.Int(50)})
+	s, err = h.Start(200, value.NewDict(map[string]value.Value{"duration": value.Int(50)}))
 	assert.NoError(t, err)
 	assert.Equal(t, s, ftypes.Timestamp(150))
 }
@@ -176,32 +174,41 @@ func TestTopK_Start(t *testing.T) {
 func genTopKList(n int) value.Value {
 	l := make([]value.Value, n)
 	for i := range l {
-		l[i] = value.Dict{
+		l[i] = value.NewDict(map[string]value.Value{
 			"data":  value.Nil,
 			"score": value.Double(rand.NormFloat64()),
-		}
+		})
 	}
 	sort.SliceStable(l, func(i, j int) bool {
-		a := float64(l[i].(value.Dict)["score"].(value.Double))
-		b := float64(l[j].(value.Dict)["score"].(value.Double))
+		s, _ := l[i].(value.Dict).Get("score")
+		a := float64(s.(value.Double))
+		s, _ = l[j].(value.Dict).Get("score")
+		b := float64(s.(value.Double))
 		return a > b
 	})
-	return value.List(l)
+	return value.NewList(l...)
 }
 
 func findTopK(vals []value.Value) value.Value {
 	var all []value.Value
 	for _, v := range vals {
 		v := v.(value.List)
-		all = append(all, v...)
+		for i := 0; i < v.Len(); i++ {
+			e, _ := v.At(i)
+			all = append(all, e)
+		}
 	}
 	sort.SliceStable(all, func(i, j int) bool {
-		a := float64(all[i].(value.Dict)["score"].(value.Double))
-		b := float64(all[j].(value.Dict)["score"].(value.Double))
+		s, _ := all[i].(value.Dict).Get("score")
+		a := float64(s.(value.Double))
+		//a := float64(all[i].(value.Dict)["score"].(value.Double))
+		s, _ = all[j].(value.Dict).Get("score")
+		b := float64(s.(value.Double))
+		//b := float64(all[j].(value.Dict)["score"].(value.Double))
 		return a > b
 	})
 	if len(all) > numK {
-		return value.List(all[:numK])
+		return value.NewList(all[:numK]...)
 	}
-	return value.List(all)
+	return value.NewList(all...)
 }

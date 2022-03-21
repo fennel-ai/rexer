@@ -69,7 +69,7 @@ func TestCachedDBConcurrentMultiSet(t *testing.T) {
 	profiles := make([]profile.ProfileItemSer, 0)
 	cacheKeys := make([]string, 0)
 	for i := uint64(0); i < 10; i++ {
-		v := value.ToJSON(value.List{value.Int(i)})
+		v := value.ToJSON(value.NewList(value.Int(i)))
 		p := profile.ProfileItemSer{
 			OType:   "user",
 			Oid:     i % 2,
@@ -101,7 +101,11 @@ func TestCachedDBConcurrentMultiSet(t *testing.T) {
 	vs, err := tier.Cache.MGet(ctx, cacheKeys...)
 	assert.NoError(t, err)
 	for i, v := range vs {
+<<<<<<< HEAD
 		expectedv := value.ToJSON(value.List{value.Int(i)})
+=======
+		expectedv, _ := value.Marshal(value.NewList(value.Int(i)))
+>>>>>>> a76d697 (value: hide List/Dict behind struct vs naked typedef; disallow nested lists)
 		assert.Equal(t, expectedv, []byte(v.(string)))
 	}
 
@@ -109,13 +113,21 @@ func TestCachedDBConcurrentMultiSet(t *testing.T) {
 	v, err := tier.Cache.Get(ctx, makeKey("user", 0, "age", 0))
 	assert.NoError(t, err)
 	// ("user", 0, "age", 9) would be the lastest profile
+<<<<<<< HEAD
 	expectedv := value.ToJSON(value.List{value.Int(8)})
+=======
+	expectedv, _ := value.Marshal(value.NewList(value.Int(8)))
+>>>>>>> a76d697 (value: hide List/Dict behind struct vs naked typedef; disallow nested lists)
 	assert.Equal(t, expectedv, []byte(v.(string)))
 
 	v, err = tier.Cache.Get(ctx, makeKey("user", 1, "age", 0))
 	assert.NoError(t, err)
 	// ("user", 1, "age", 10) would be the lastest profile
+<<<<<<< HEAD
 	expectedv = value.ToJSON(value.List{value.Int(9)})
+=======
+	expectedv, _ = value.Marshal(value.NewList(value.Int(9)))
+>>>>>>> a76d697 (value: hide List/Dict behind struct vs naked typedef; disallow nested lists)
 	assert.Equal(t, expectedv, []byte(v.(string)))
 }
 
@@ -135,7 +147,11 @@ func TestCachedDBEventuallyConsistentMultipleObjs(t *testing.T) {
 	// creates versioned profiles for ("user", 0, "age") and ("user", 1, "age")
 	p := make([]profile.ProfileItemSer, 0)
 	for i := uint64(1); i <= 10; i++ {
+<<<<<<< HEAD
 		v := value.ToJSON(value.List{value.Int(i)})
+=======
+		v, _ := value.Marshal(value.NewList(value.Int(i)))
+>>>>>>> a76d697 (value: hide List/Dict behind struct vs naked typedef; disallow nested lists)
 		p = append(p, profile.ProfileItemSer{OType: "user", Oid: i % 2, Key: "age", Version: i, Value: v})
 	}
 	assert.NoError(t, c.setBatch(ctx, tier, p))
@@ -191,7 +207,11 @@ func TestCachedDBEventuallyConsistentMultipleObjs(t *testing.T) {
 		p := make([]profile.ProfileItemSer, 0)
 		for i := uint64(1); i <= 3; i++ {
 			defer wg.Done()
+<<<<<<< HEAD
 			v := value.ToJSON(value.List{value.Int(i * 20)})
+=======
+			v, _ := value.Marshal(value.NewList(value.Int(i * 20)))
+>>>>>>> a76d697 (value: hide List/Dict behind struct vs naked typedef; disallow nested lists)
 			p = append(p, profile.ProfileItemSer{OType: "user", Oid: 0, Key: "age", Version: i * 20, Value: v})
 		}
 		assert.NoError(t, c.setBatch(ctx, tier, p))
@@ -200,7 +220,11 @@ func TestCachedDBEventuallyConsistentMultipleObjs(t *testing.T) {
 		p := make([]profile.ProfileItemSer, 0)
 		for i := uint64(3); i >= 1; i-- {
 			defer wg.Done()
+<<<<<<< HEAD
 			v := value.ToJSON(value.List{value.Int(i * 20)})
+=======
+			v, _ := value.Marshal(value.NewList(value.Int(i * 20)))
+>>>>>>> a76d697 (value: hide List/Dict behind struct vs naked typedef; disallow nested lists)
 			p = append(p, profile.ProfileItemSer{OType: "user", Oid: 1, Key: "age", Version: i * 20, Value: v})
 		}
 		assert.NoError(t, c.setBatch(ctx, tier, p))
@@ -212,12 +236,20 @@ func TestCachedDBEventuallyConsistentMultipleObjs(t *testing.T) {
 	v, err := tier.Cache.Get(ctx, makeKey("user", 0, "age", 0))
 	assert.NoError(t, err)
 	// ("user", 0, "age", 60) would be the lastest profile
+<<<<<<< HEAD
 	expectedv := value.ToJSON(value.List{value.Int(60)})
+=======
+	expectedv, _ := value.Marshal(value.NewList(value.Int(60)))
+>>>>>>> a76d697 (value: hide List/Dict behind struct vs naked typedef; disallow nested lists)
 	assert.Equal(t, expectedv, []byte(v.(string)))
 
 	v, err = tier.Cache.Get(ctx, makeKey("user", 1, "age", 0))
 	assert.NoError(t, err)
 	// ("user", 1, "age", 60) would be the lastest profile
+<<<<<<< HEAD
 	expectedv = value.ToJSON(value.List{value.Int(60)})
+=======
+	expectedv, _ = value.Marshal(value.NewList(value.Int(60)))
+>>>>>>> a76d697 (value: hide List/Dict behind struct vs naked typedef; disallow nested lists)
 	assert.Equal(t, expectedv, []byte(v.(string)))
 }

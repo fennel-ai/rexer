@@ -35,8 +35,9 @@ func (i Interpreter) VisitHighFnCall(Type ast.HighFnType, varname string, lambda
 }
 
 func (i Interpreter) visitMap(varname string, lambda ast.Ast, list value.List) (value.Value, error) {
-	out := value.List{}
-	for _, v := range list {
+	out := value.NewList()
+	for j := 0; j < list.Len(); j++ {
+		v, _ := list.At(j)
 		res, err := i.visitInContext(lambda, varname, v)
 		if err != nil {
 			return nil, err
@@ -49,8 +50,9 @@ func (i Interpreter) visitMap(varname string, lambda ast.Ast, list value.List) (
 }
 
 func (i Interpreter) visitFilter(varname string, lambda ast.Ast, list value.List) (value.Value, error) {
-	out := value.List{}
-	for _, v := range list {
+	out := value.NewList()
+	for j := 0; j < list.Len(); j++ {
+		v, _ := list.At(j)
 		res, err := i.visitInContext(lambda, varname, v)
 		if err != nil {
 			return nil, err
@@ -84,19 +86,19 @@ func (i Interpreter) VisitFnCall(module, name string, kwargs map[string]ast.Ast)
 		}
 	}
 	inputTable := operators.NewZipTable(op)
-	if err := inputTable.Append(value.Nil, vKwargs); err != nil {
+	if err := inputTable.Append(value.Nil, value.NewDict(vKwargs)); err != nil {
 		return nil, err
 	}
 	// finally, call the function
 	// typing of input / context kwargs is verified element by element inside the iter
-	outtable := value.List{}
-	if err = op.Apply(value.Dict{}, inputTable.Iter(), &outtable); err != nil {
+	outtable := value.NewList()
+	if err = op.Apply(value.NewDict(map[string]value.Value{}), inputTable.Iter(), &outtable); err != nil {
 		return value.Nil, err
 	}
-	if len(outtable) != 1 {
-		return nil, fmt.Errorf("function did not return the value")
+	if outtable.Len() != 1 {
+		return nil, fmt.Errorf("function did not return the value: %v", outtable)
 	}
-	return outtable[0], nil
+	return outtable.At(0)
 }
 
 var _ ast.VisitorValue = Interpreter{}
@@ -159,7 +161,7 @@ func (i Interpreter) VisitLookup(on ast.Ast, property string) (value.Value, erro
 	if !ok {
 		return value.Nil, fmt.Errorf("can only do property lookup: %s on non-dict value: '%s'", property, on)
 	}
-	ret, ok := asdict[property]
+	ret, ok := asdict.Get(property)
 	if !ok {
 		return value.Nil, fmt.Errorf("property: %s does not exist in the dictionary: '%s'", property, asdict)
 	}
@@ -264,7 +266,7 @@ func (i Interpreter) VisitList(values []ast.Ast) (value.Value, error) {
 		}
 		ret = append(ret, val)
 	}
-	return value.NewList(ret), nil
+	return value.NewList(ret...), nil
 }
 
 func (i Interpreter) VisitDict(values map[string]ast.Ast) (value.Value, error) {
@@ -276,7 +278,7 @@ func (i Interpreter) VisitDict(values map[string]ast.Ast) (value.Value, error) {
 		}
 		ret[k] = val
 	}
-	return value.NewDict(ret)
+	return value.NewDict(ret), nil
 }
 
 func (i Interpreter) VisitOpcall(operand ast.Ast, namespace, name string, kwargs ast.Dict) (value.Value, error) {
@@ -311,7 +313,7 @@ func (i Interpreter) VisitOpcall(operand ast.Ast, namespace, name string, kwargs
 	}
 	// finally, call the operator
 	// typing of input / context kwargs is verified element by element inside the iter
-	outtable := value.List{}
+	outtable := value.NewList()
 	if err = op.Apply(staticKwargs, inputTable.Iter(), &outtable); err != nil {
 		return value.Nil, err
 	}
@@ -345,10 +347,7 @@ func (i Interpreter) VisitIfelse(condition ast.Ast, thenDo ast.Ast, elseDo ast.A
 }
 
 func (i Interpreter) getStaticKwargs(op operators.Operator, kwargs ast.Dict) (value.Dict, error) {
-	ret, err := value.NewDict(map[string]value.Value{})
-	if err != nil {
-		return ret, err
-	}
+	ret := value.NewDict(map[string]value.Value{})
 	sig := op.Signature()
 	for k, p := range sig.StaticKwargs {
 		tree, ok := kwargs.Values[k]
@@ -356,13 +355,14 @@ func (i Interpreter) getStaticKwargs(op operators.Operator, kwargs ast.Dict) (va
 		case !ok && !p.Optional:
 			return value.Dict{}, fmt.Errorf("kwarg '%s' not provided for operator '%s.%s'", k, sig.Module, sig.Name)
 		case !ok && p.Optional:
-			ret[k] = p.Default
+			ret.Set(k, p.Default)
+			//ret[k] = p.Default
 		case ok:
 			val, err := tree.AcceptValue(i)
 			if err != nil {
 				return value.Dict{}, fmt.Errorf("error: %s while evaluating kwarg: %s for operator '%s.%s'", err, k, sig.Module, sig.Name)
 			}
-			ret[k] = val
+			ret.Set(k, val)
 		}
 	}
 	return ret, nil
@@ -371,7 +371,8 @@ func (i Interpreter) getStaticKwargs(op operators.Operator, kwargs ast.Dict) (va
 func (i Interpreter) getContextKwargs(op operators.Operator, trees ast.Dict, table value.List) (operators.ZipTable, error) {
 	ret := operators.NewZipTable(op)
 	sig := op.Signature()
-	for _, v := range table {
+	for j := 0; j < table.Len(); j++ {
+		v, _ := table.At(j)
 		kwargs := make(map[string]value.Value)
 		for k, p := range sig.ContextKwargs {
 			tree, ok := trees.Values[k]
@@ -388,11 +389,11 @@ func (i Interpreter) getContextKwargs(op operators.Operator, trees ast.Dict, tab
 				kwargs[k] = val
 			}
 		}
-		dict, err := value.NewDict(kwargs)
-		if err != nil {
-			return operators.ZipTable{}, err
-		}
-		if err = ret.Append(v, dict); err != nil {
+		dict := value.NewDict(kwargs)
+		//if err != nil {
+		//	return operators.ZipTable{}, err
+		//}
+		if err := ret.Append(v, dict); err != nil {
 			return operators.ZipTable{}, err
 		}
 	}

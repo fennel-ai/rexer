@@ -123,12 +123,12 @@ func GetOperatorsJSON() ([]byte, error) {
 
 func TypeCheckStaticKwargs(op Operator, staticKwargs value.Dict) error {
 	sig := op.Signature()
-	if len(sig.StaticKwargs) != len(staticKwargs) {
+	if len(sig.StaticKwargs) != staticKwargs.Len() {
 		return fmt.Errorf("[%s.%s] incorrect number of static kwargs passed - expected: %d but got: %d",
-			sig.Module, sig.Name, len(sig.StaticKwargs), len(staticKwargs))
+			sig.Module, sig.Name, len(sig.StaticKwargs), staticKwargs.Len())
 	}
 	for k, p := range sig.StaticKwargs {
-		v, ok := staticKwargs[k]
+		v, ok := staticKwargs.Get(k)
 		if !ok {
 			return fmt.Errorf("operator '%s' expects kwarg '%s' but not found", op, k)
 		}
@@ -142,12 +142,12 @@ func TypeCheckStaticKwargs(op Operator, staticKwargs value.Dict) error {
 func Typecheck(op Operator, inputVal value.Value, contextKwargs value.Dict) error {
 	sig := op.Signature()
 	// let's look at contextual kwargs first
-	if len(sig.ContextKwargs) != len(contextKwargs) {
+	if len(sig.ContextKwargs) != contextKwargs.Len() {
 		return fmt.Errorf("[%s.%s] incorrect number of contextual kwargs passed - expected: %d but got: %d",
-			sig.Module, sig.Name, len(sig.ContextKwargs), len(contextKwargs))
+			sig.Module, sig.Name, len(sig.ContextKwargs), contextKwargs.Len())
 	}
 	for k, p := range sig.ContextKwargs {
-		v, ok := contextKwargs[k]
+		v, ok := contextKwargs.Get(k)
 		if !ok {
 			return fmt.Errorf("operator '%s.%s' expects kwarg '%s' but not found", sig.Module, sig.Name, k)
 		}

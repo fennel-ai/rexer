@@ -34,8 +34,8 @@ func (a AggValue) New(args value.Dict, bootargs map[string]interface{}) (operato
 }
 
 func (a AggValue) Apply(kwargs value.Dict, in operators.InputIter, out *value.List) error {
-	name := string(kwargs["name"].(value.String))
-	aggname := string(kwargs["aggregate"].(value.String))
+	name := string(get(kwargs, "name").(value.String))
+	aggname := string(get(kwargs, "aggregate").(value.String))
 
 	var reqs []aggregate2.GetAggValueRequest
 	var rows []value.Dict
@@ -46,8 +46,8 @@ func (a AggValue) Apply(kwargs value.Dict, in operators.InputIter, out *value.Li
 		}
 		req := aggregate2.GetAggValueRequest{
 			AggName: ftypes.AggName(aggname),
-			Key:     contextKwargs["groupkey"],
-			Kwargs:  contextKwargs["kwargs"].(value.Dict),
+			Key:     get(contextKwargs, "groupkey"),
+			Kwargs:  get(contextKwargs, "kwargs").(value.Dict),
 		}
 		reqs = append(reqs, req)
 		row := rowVal.(value.Dict)
@@ -58,12 +58,17 @@ func (a AggValue) Apply(kwargs value.Dict, in operators.InputIter, out *value.Li
 		return err
 	}
 	for i, row := range rows {
-		row[name] = res[i]
+		row.Set(name, res[i])
 		if err = out.Append(row); err != nil {
 			return err
 		}
 	}
 	return nil
+}
+
+func get(d value.Dict, k string) value.Value {
+	ret, _ := d.Get(k)
+	return ret
 }
 
 func (a AggValue) Signature() *operators.Signature {

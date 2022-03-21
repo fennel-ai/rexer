@@ -29,7 +29,7 @@ func (p profileOp) New(args value.Dict, bootargs map[string]interface{}) (operat
 }
 
 func (p profileOp) Apply(staticKwargs value.Dict, in operators.InputIter, out *value.List) error {
-	colname := string(staticKwargs["name"].(value.String))
+	colname := string(staticKwargs.GetUnsafe("name").(value.String))
 	reqs := make([]libprofile.ProfileItem, 0)
 	rows := make([]value.Dict, 0)
 	for in.HasMore() {
@@ -39,10 +39,10 @@ func (p profileOp) Apply(staticKwargs value.Dict, in operators.InputIter, out *v
 		}
 		row := rowVal.(value.Dict)
 		req := libprofile.ProfileItem{
-			OType:   ftypes.OType(kwargs["otype"].(value.String)),
-			Oid:     uint64(kwargs["oid"].(value.Int)),
-			Key:     string(kwargs["key"].(value.String)),
-			Version: uint64(kwargs["version"].(value.Int)),
+			OType:   ftypes.OType(kwargs.GetUnsafe("otype").(value.String)),
+			Oid:     uint64(kwargs.GetUnsafe("oid").(value.Int)),
+			Key:     string(kwargs.GetUnsafe("key").(value.String)),
+			Version: uint64(kwargs.GetUnsafe("version").(value.Int)),
 		}
 		reqs = append(reqs, req)
 		rows = append(rows, row)
@@ -54,9 +54,9 @@ func (p profileOp) Apply(staticKwargs value.Dict, in operators.InputIter, out *v
 	for i, v := range vals {
 		row := rows[i]
 		if v == nil {
-			row[colname] = staticKwargs["default"]
+			row.Set(colname, staticKwargs.GetUnsafe("default"))
 		} else {
-			row[colname] = v
+			row.Set(colname, v)
 		}
 		if err = out.Append(row); err != nil {
 			return err

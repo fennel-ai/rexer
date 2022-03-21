@@ -442,7 +442,7 @@ func (m server) BatchAggregateValue(w http.ResponseWriter, req *http.Request) {
 		log.Printf("Error: %v", err)
 		return
 	}
-	w.Write(value.ToJSON(value.List(ret)))
+	w.Write(value.ToJSON(value.NewList(ret...)))
 }
 
 func (m server) GetOperators(w http.ResponseWriter, req *http.Request) {

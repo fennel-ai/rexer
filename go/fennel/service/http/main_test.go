@@ -217,7 +217,7 @@ func TestProfileServerClient(t *testing.T) {
 	// in the beginning, with no value set, we set nil pointer back but with no error
 	checkGetSet(t, c, true, "1", 1, 0, "age", value.Value(nil))
 
-	var expected value.Value = value.List([]value.Value{value.Int(1), value.Bool(false), value.Nil})
+	var expected value.Value = value.NewList(value.Int(1), value.Bool(false), value.Nil)
 	profileList = append(profileList, checkGetSet(t, c, false, "1", 1, 1, "age", expected))
 	checkGetProfileMulti(t, c, pfr, profileList)
 
@@ -295,24 +295,24 @@ func TestQuery(t *testing.T) {
 		}},
 		},
 	}
-	found, err := c.Query(e, value.Dict{"c": value.Int(1)})
+	found, err := c.Query(e, value.NewDict(map[string]value.Value{"c": value.Int(1)}))
 	assert.NoError(t, err)
-	expected := value.List{}
-	expected.Append(value.Dict{"x": value.Int(1), "y": value.Int(3)})
-	expected.Append(value.Dict{"x": value.Int(1), "y": value.Int(7)})
+	expected := value.NewList()
+	expected.Append(value.NewDict(map[string]value.Value{"x": value.Int(1), "y": value.Int(3)}))
+	expected.Append(value.NewDict(map[string]value.Value{"x": value.Int(1), "y": value.Int(7)}))
 	assert.Equal(t, expected, found)
 	e2 := ast.IfElse{
 		Condition: ast.Binary{Left: ast.MakeInt(4), Op: ">", Right: ast.MakeInt(7)},
 		ThenDo:    ast.MakeString("abc"),
 		ElseDo:    ast.MakeString("xyz"),
 	}
-	found, err = c.Query(e2, value.Dict{})
+	found, err = c.Query(e2, value.NewDict(map[string]value.Value{}))
 	assert.NoError(t, err)
 	assert.True(t, value.String("xyz").Equal(found))
 
 	// Test if dict values are set
 	ast1 := ast.Var{Name: "args"}
-	args1 := value.Dict{"key1": value.Int(4)}
+	args1 := value.NewDict(map[string]value.Value{"key1": value.Int(4)})
 
 	found, err = c.Query(ast1, args1)
 	assert.NoError(t, err)
@@ -344,7 +344,7 @@ func TestServer_AggregateValue_Valid(t *testing.T) {
 	assert.Equal(t, int64(t0), tier.Clock.Now())
 	assert.NoError(t, aggregate2.Store(ctx, tier, agg))
 	// initially count is zero
-	valueSendReceive(t, holder, agg, key, value.Int(0), value.Dict{})
+	valueSendReceive(t, holder, agg, key, value.Int(0), value.NewDict(map[string]value.Value{}))
 
 	// now create an increment
 	h := counter.NewSum(agg.Name, 6*3600)
@@ -354,7 +354,7 @@ func TestServer_AggregateValue_Valid(t *testing.T) {
 	err = counter.Update(context.Background(), tier, buckets, h)
 	assert.NoError(t, err)
 	clock.Set(int64(t1 + 60))
-	valueSendReceive(t, holder, agg, key, value.Int(1), value.Dict{})
+	valueSendReceive(t, holder, agg, key, value.Int(1), value.NewDict(map[string]value.Value{}))
 
 	// create another increment at a later timestamp
 	t2 := t1 + 3600
@@ -362,8 +362,8 @@ func TestServer_AggregateValue_Valid(t *testing.T) {
 	err = counter.Update(context.Background(), tier, buckets, h)
 	assert.NoError(t, err)
 	clock.Set(int64(t2 + 60))
-	valueSendReceive(t, holder, agg, key, value.Int(2), value.Dict{})
-	valueSendReceive(t, holder, agg, key, value.Int(1), value.Dict{"duration": value.Int(120)})
+	valueSendReceive(t, holder, agg, key, value.Int(2), value.NewDict(map[string]value.Value{}))
+	valueSendReceive(t, holder, agg, key, value.Int(1), value.NewDict(map[string]value.Value{"duration": value.Int(120)}))
 }
 
 func TestServer_BatchAggregateValue(t *testing.T) {
@@ -411,16 +411,16 @@ func TestServer_BatchAggregateValue(t *testing.T) {
 	buckets = h1.BucketizeMoment(keystr, t1, value.Int(3))
 	err = counter.Update(context.Background(), tier, buckets, h1)
 	assert.NoError(t, err)
-	req1 := aggregate.GetAggValueRequest{AggName: "mycounter", Key: key, Kwargs: value.Dict{}}
+	req1 := aggregate.GetAggValueRequest{AggName: "mycounter", Key: key, Kwargs: value.NewDict(map[string]value.Value{})}
 
 	h2 := counter.NewMax(agg2.Name, 6*3600)
-	buckets = h2.BucketizeMoment(keystr, t1, value.List{value.Int(2), value.Bool(false)})
+	buckets = h2.BucketizeMoment(keystr, t1, value.NewList(value.Int(2), value.Bool(false)))
 	err = counter.Update(context.Background(), tier, buckets, h2)
 	assert.NoError(t, err)
-	buckets = h2.BucketizeMoment(keystr, t1, value.List{value.Int(7), value.Bool(false)})
+	buckets = h2.BucketizeMoment(keystr, t1, value.NewList(value.Int(7), value.Bool(false)))
 	err = counter.Update(context.Background(), tier, buckets, h2)
 	assert.NoError(t, err)
-	req2 := aggregate.GetAggValueRequest{AggName: "maxelem", Key: key, Kwargs: value.Dict{}}
+	req2 := aggregate.GetAggValueRequest{AggName: "maxelem", Key: key, Kwargs: value.NewDict(map[string]value.Value{})}
 
 	clock.Set(int64(t1 + 60))
 	batchValueSendReceive(t, holder,
@@ -431,7 +431,7 @@ func TestServer_BatchAggregateValue(t *testing.T) {
 	buckets = h1.BucketizeMoment(keystr, t2, value.Int(9))
 	err = counter.Update(context.Background(), tier, buckets, h1)
 	assert.NoError(t, err)
-	req3 := aggregate.GetAggValueRequest{AggName: "mycounter", Key: key, Kwargs: value.Dict{"duration": value.Int(1800)}}
+	req3 := aggregate.GetAggValueRequest{AggName: "mycounter", Key: key, Kwargs: value.NewDict(map[string]value.Value{"duration": value.Int(1800)})}
 
 	clock.Set(int64(t2 + 60))
 	batchValueSendReceive(t, holder,

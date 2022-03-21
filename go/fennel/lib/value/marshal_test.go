@@ -50,9 +50,9 @@ func TestEqualMarshal(t *testing.T) {
 	verifyMarshalUnMarshal(t, String("hi"))
 	verifyMarshalUnMarshal(t, String("i12_%2342]{"))
 	values := []Value{Int(1), Int(2), String("here"), Bool(false), Nil}
-	list := List(values)
+	list := NewList(values...)
 	verifyMarshalUnMarshal(t, list)
-	verifyMarshalUnMarshal(t, List([]Value{}))
+	verifyMarshalUnMarshal(t, NewList())
 
 	verifyMarshalUnMarshal(t, Nil)
 
@@ -60,9 +60,9 @@ func TestEqualMarshal(t *testing.T) {
 	kwargs["a"] = Int(1)
 	kwargs["b"] = String("hi")
 	kwargs["c"] = list
-	dict1 := Dict(kwargs)
+	dict1 := NewDict(kwargs)
 	verifyMarshalUnMarshal(t, dict1)
-	verifyMarshalUnMarshal(t, Dict(map[string]Value{}))
+	verifyMarshalUnMarshal(t, NewDict(map[string]Value{}))
 }
 
 func TestUnequalMarshal(t *testing.T) {
@@ -70,14 +70,14 @@ func TestUnequalMarshal(t *testing.T) {
 	d := Double(3.0)
 	b := Bool(false)
 	s := String("hi")
-	l := List([]Value{Int(1), Double(2.0), Bool(true)})
-	di := Dict(map[string]Value{"a": Int(2), "b": Double(1.0)})
+	l := NewList(Int(1), Double(2.0), Bool(true))
+	di := NewDict(map[string]Value{"a": Int(2), "b": Double(1.0)})
 	n := Nil
 	verifyUnequalMarshal(t, Int(123), []Value{i, d, b, s, l, di, n})
 	verifyUnequalMarshal(t, Double(-5.0), []Value{i, d, b, s, l, di, n})
 	verifyUnequalMarshal(t, String("bye"), []Value{i, d, b, s, l, di, n})
 	verifyUnequalMarshal(t, Bool(true), []Value{i, d, b, s, l, di, n})
 	verifyUnequalMarshal(t, Nil, []Value{i, d, b, s, l, di})
-	verifyUnequalMarshal(t, List([]Value{Int(2), Bool(true)}), []Value{i, d, b, s, l, di})
-	verifyUnequalMarshal(t, Dict(map[string]Value{"b": Int(2)}), []Value{i, d, b, s, l, di})
+	verifyUnequalMarshal(t, NewList(Int(2), Bool(true)), []Value{i, d, b, s, l, di})
+	verifyUnequalMarshal(t, NewDict(map[string]Value{"b": Int(2)}), []Value{i, d, b, s, l, di})
 }

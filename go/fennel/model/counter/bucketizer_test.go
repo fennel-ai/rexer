@@ -259,15 +259,15 @@ func TestBucketizeHistogram_Invalid(t *testing.T) {
 	t.Parallel()
 	h := NewSum("somename", 100)
 	cases := [][]value.Dict{
-		{value.Dict{}},
-		{value.Dict{"groupkey": value.Int(1), "timestamp": value.Int(2)}},
-		{value.Dict{"groupkey": value.Int(1), "timestamp": value.Bool(true), "value": value.Int(4)}},
-		{value.Dict{"groupkey": value.Int(1), "timestamp": value.Double(1.0), "value": value.Int(3)}},
-		{value.Dict{"groupkey": value.Int(1), "value": value.Int(3)}},
-		{value.Dict{"timestamp": value.Int(1), "value": value.Int(3)}},
+		{value.NewDict(map[string]value.Value{})},
+		{value.NewDict(map[string]value.Value{"groupkey": value.Int(1), "timestamp": value.Int(2)})},
+		{value.NewDict(map[string]value.Value{"groupkey": value.Int(1), "timestamp": value.Bool(true), "value": value.Int(4)})},
+		{value.NewDict(map[string]value.Value{"groupkey": value.Int(1), "timestamp": value.Double(1.0), "value": value.Int(3)})},
+		{value.NewDict(map[string]value.Value{"groupkey": value.Int(1), "value": value.Int(3)})},
+		{value.NewDict(map[string]value.Value{"timestamp": value.Int(1), "value": value.Int(3)})},
 	}
 	for _, test := range cases {
-		table := value.List{}
+		table := value.NewList()
 		for _, d := range test {
 			assert.NoError(t, table.Append(d))
 		}
@@ -279,17 +279,17 @@ func TestBucketizeHistogram_Invalid(t *testing.T) {
 func TestBucketizeHistogram_Valid(t *testing.T) {
 	t.Parallel()
 	h := NewSum("somename", 100)
-	actions := value.List{}
+	actions := value.NewList()
 	expected := make([]Bucket, 0)
 	DAY := 3600 * 24
 	for i := 0; i < 5; i++ {
 		v := value.Int(1)
 		e := value.Int(i)
-		d := value.Dict{
+		d := value.NewDict(map[string]value.Value{
 			"groupkey":  v,
 			"timestamp": value.Int(DAY + i*3600 + 1),
 			"value":     e,
-		}
+		})
 		assert.NoError(t, actions.Append(d))
 		expected = append(expected, Bucket{Value: e, Window: ftypes.Window_DAY, Index: 1, Width: 1, Key: v.String()})
 		expected = append(expected, Bucket{Key: v.String(), Window: ftypes.Window_MINUTE, Width: 6, Index: uint64(24*10 + i*10), Value: e})

@@ -44,7 +44,7 @@ func TestEndToEnd(t *testing.T) {
 			},
 			value.Int(0),
 			value.Int(uid),
-			[]value.Dict{{}, {"duration": value.Int(3600)}},
+			[]value.Dict{value.NewDict(nil), value.NewDict(map[string]value.Value{"duration": value.Int(3600)})},
 			[]value.Value{value.Int(3), value.Int(2)},
 			nil,
 		},
@@ -53,10 +53,10 @@ func TestEndToEnd(t *testing.T) {
 				Name: "agg_2", Query: getQuery(), Timestamp: 123,
 				Options: libaggregate.Options{AggType: "timeseries_sum", Window: ftypes.Window_HOUR, Limit: 4},
 			},
-			value.List{value.Int(0), value.Int(0), value.Int(0), value.Int(0)},
+			value.NewList(value.Int(0), value.Int(0), value.Int(0), value.Int(0)),
 			value.Int(uid),
 			[]value.Dict{{}},
-			[]value.Value{value.List{value.Int(0), value.Int(0), value.Int(1), value.Int(2)}},
+			[]value.Value{value.NewList(value.Int(0), value.Int(0), value.Int(1), value.Int(2))},
 			nil,
 		},
 		{
@@ -64,10 +64,13 @@ func TestEndToEnd(t *testing.T) {
 				Name: "agg_3", Query: getQuery(), Timestamp: 123,
 				Options: libaggregate.Options{AggType: "list", Durations: []uint64{3 * 3600, 6 * 3600}},
 			},
-			value.List{},
+			value.NewList(),
 			value.Int(uid),
-			[]value.Dict{{}, {"duration": value.Int(3600)}},
-			[]value.Value{value.List{value.Int(1), value.Int(2)}, value.List{value.Int(2)}},
+			[]value.Dict{
+				value.NewDict(nil),
+				value.NewDict(map[string]value.Value{"duration": value.Int(3600)}),
+			},
+			[]value.Value{value.NewList(value.Int(1), value.Int(2)), value.NewList(value.Int(2))},
 			nil,
 		},
 		{
@@ -77,7 +80,9 @@ func TestEndToEnd(t *testing.T) {
 			},
 			value.Int(0),
 			value.Int(uid),
-			[]value.Dict{{}, {"duration": value.Int(3600)}},
+			[]value.Dict{
+				value.NewDict(nil),
+				value.NewDict(map[string]value.Value{"duration": value.Int(3600)})},
 			[]value.Value{value.Int(1), value.Int(2)},
 			nil,
 		},
@@ -88,7 +93,9 @@ func TestEndToEnd(t *testing.T) {
 			},
 			value.Int(0),
 			value.Int(uid),
-			[]value.Dict{{}, {"duration": value.Int(3600)}},
+			[]value.Dict{
+				value.NewDict(nil),
+				value.NewDict(map[string]value.Value{"duration": value.Int(3600)})},
 			[]value.Value{value.Int(2), value.Int(2)},
 			nil,
 		},
@@ -99,7 +106,9 @@ func TestEndToEnd(t *testing.T) {
 			},
 			value.Double(0),
 			value.Int(uid),
-			[]value.Dict{{}, {"duration": value.Int(3600)}},
+			[]value.Dict{
+				value.NewDict(nil),
+				value.NewDict(map[string]value.Value{"duration": value.Int(3600)})},
 			[]value.Value{value.Double(0.5), value.Double(0)},
 			nil,
 		},
@@ -110,7 +119,9 @@ func TestEndToEnd(t *testing.T) {
 			},
 			value.Double(0),
 			value.Int(uid),
-			[]value.Dict{{}, {"duration": value.Int(3600)}},
+			[]value.Dict{
+				value.NewDict(nil),
+				value.NewDict(map[string]value.Value{"duration": value.Int(3600)})},
 			[]value.Value{value.Double(1.5), value.Double(2)},
 			nil,
 		},
@@ -121,7 +132,9 @@ func TestEndToEnd(t *testing.T) {
 			},
 			value.Double(0),
 			value.Int(uid),
-			[]value.Dict{{}, {"duration": value.Int(3600)}},
+			[]value.Dict{
+				value.NewDict(nil),
+				value.NewDict(map[string]value.Value{"duration": value.Int(3600)})},
 			[]value.Value{value.Double(0.15003570882017145), value.Double(0.09452865480086611)},
 			nil,
 		},
@@ -130,15 +143,17 @@ func TestEndToEnd(t *testing.T) {
 				Name: "agg_9", Query: getQueryTopK(), Timestamp: 123,
 				Options: libaggregate.Options{AggType: "topk", Durations: []uint64{3 * 3600, 6 * 3600}},
 			},
-			value.List{},
+			value.NewList(),
 			value.Int(uid),
-			[]value.Dict{{}, {"duration": value.Int(3600)}},
+			[]value.Dict{
+				value.NewDict(nil),
+				value.NewDict(map[string]value.Value{"duration": value.Int(3600)})},
 			[]value.Value{
-				value.List{
-					value.Dict{"data": value.Int(time.Hour*24*15 + 4000), "score": value.Double(2)},
-					value.Dict{"data": value.Int(time.Hour*24*15 + 1), "score": value.Double(1)},
-				},
-				value.List{value.Dict{"data": value.Int(time.Hour*24*15 + 4000), "score": value.Double(2)}},
+				value.NewList(
+					value.NewDict(map[string]value.Value{"data": value.Int(time.Hour*24*15 + 4000), "score": value.Double(2)}),
+					value.NewDict(map[string]value.Value{"data": value.Int(time.Hour*24*15 + 1), "score": value.Double(1)}),
+				),
+				value.NewList(value.NewDict(map[string]value.Value{"data": value.Int(time.Hour*24*15 + 4000), "score": value.Double(2)})),
 			},
 			nil,
 		},
@@ -163,8 +178,8 @@ func TestEndToEnd(t *testing.T) {
 	}
 
 	// now fire a few actions
-	actions1 := logAction(t, tier, uid, t0+ftypes.Timestamp(1), value.Dict{"value": value.Int(1)})
-	actions2 := logAction(t, tier, uid, t0+ftypes.Timestamp(4000), value.Dict{"value": value.Int(2)})
+	actions1 := logAction(t, tier, uid, t0+ftypes.Timestamp(1), value.NewDict(map[string]value.Value{"value": value.Int(1)}))
+	actions2 := logAction(t, tier, uid, t0+ftypes.Timestamp(4000), value.NewDict(map[string]value.Value{"value": value.Int(2)}))
 	actions := append(actions1, actions2...)
 
 	t1 := t0 + 7200
@@ -219,7 +234,7 @@ func verify(t *testing.T, tier tier.Tier, agg libaggregate.Aggregate, k value.Va
 		assert.True(t, ok)
 		assert.True(t, float64(expected.(value.Double)-asfloat) < 1e-6)
 	} else {
-		assert.Equal(t, expected, found)
+		assert.Equal(t, expected, found, agg)
 	}
 }
 

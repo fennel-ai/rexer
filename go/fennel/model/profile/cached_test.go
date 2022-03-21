@@ -148,7 +148,7 @@ func TestCachedDBConcurrentSet(t *testing.T) {
 			Oid:     i % 2,
 			Key:     "age",
 			Version: i + 1,
-			Value:   value.List{value.Int(i)},
+			Value:   value.NewList(value.Int(i)),
 		}
 		profiles = append(profiles, p)
 		cacheKeys = append(cacheKeys, makeKey(p.OType, p.Oid, p.Key, p.Version))
@@ -172,7 +172,7 @@ func TestCachedDBConcurrentSet(t *testing.T) {
 	vs, err := tier.Cache.MGet(ctx, cacheKeys...)
 	assert.NoError(t, err)
 	for i, v := range vs {
-		expectedv := value.ToJSON(value.List{value.Int(i)})
+		expectedv := value.ToJSON(value.NewList(value.Int(i)))
 		assert.Equal(t, expectedv, []byte(v.(string)))
 	}
 
@@ -180,13 +180,13 @@ func TestCachedDBConcurrentSet(t *testing.T) {
 	v, err := tier.Cache.Get(ctx, makeKey("user", 0, "age", 0))
 	assert.NoError(t, err)
 	// ("user", 0, "age", 9) would be the lastest profile
-	expectedv := value.ToJSON(value.List{value.Int(8)})
+	expectedv := value.ToJSON(value.NewList(value.Int(8)))
 	assert.Equal(t, expectedv, []byte(v.(string)))
 
 	v, err = tier.Cache.Get(ctx, makeKey("user", 1, "age", 0))
 	assert.NoError(t, err)
 	// ("user", 1, "age", 10) would be the lastest profile
-	expectedv = value.ToJSON(value.List{value.Int(9)})
+	expectedv = value.ToJSON(value.NewList(value.Int(9)))
 	assert.Equal(t, expectedv, []byte(v.(string)))
 }
 
@@ -231,7 +231,7 @@ func TestCachedDBEventuallyConsistent(t *testing.T) {
 
 	// creates versioned profiles for ("user", 1, "age")
 	for i := uint64(1); i <= 5; i++ {
-		v := value.ToJSON(value.List{value.Int(i)})
+		v := value.ToJSON(value.NewList(value.Int(i)))
 		assert.NoError(t, c.set(ctx, tier, "user", 1, "age", i, v))
 	}
 
@@ -276,7 +276,7 @@ func TestCachedDBEventuallyConsistent(t *testing.T) {
 		for i := uint64(1); i <= 3; i++ {
 			go func(i uint64) {
 				defer wg.Done()
-				v := value.ToJSON(value.List{value.Int(i * 20)})
+				v := value.ToJSON(value.NewList(value.Int(i * 20)))
 				assert.NoError(t, c.set(ctx, tier, "user", 1, "age", i*20, v))
 			}(i)
 		}
@@ -286,6 +286,6 @@ func TestCachedDBEventuallyConsistent(t *testing.T) {
 	v, err := tier.Cache.Get(ctx, makeKey("user", 1, "age", 0))
 	assert.NoError(t, err)
 	// ("user", 1, "age", 60) would be the lastest profile
-	expectedv := value.ToJSON(value.List{value.Int(60)})
+	expectedv := value.ToJSON(value.NewList(value.Int(60)))
 	assert.Equal(t, expectedv, []byte(v.(string)))
 }

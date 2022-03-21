@@ -35,8 +35,8 @@ func (r *Row) UnmarshalJSON(bytes []byte) error {
 	if !ok {
 		return fmt.Errorf("can not unmarshal feature row - expected dict but found: %v", d)
 	}
-	r.Features = make(map[string]value.Value)
-	for k, v := range asdict {
+	r.Features = value.NewDict(make(map[string]value.Value))
+	for k, v := range asdict.Iter() {
 		if len(k) == 0 {
 			return fmt.Errorf("can not unmarshal feature row, json contains empty key")
 		}
@@ -103,27 +103,27 @@ func (r *Row) UnmarshalJSON(bytes []byte) error {
 			if len(pieces) != 2 || pieces[0] != "feature" {
 				return fmt.Errorf("can not unmarshal feature row, invalid field: %v", k)
 			}
-			r.Features[pieces[1]] = v
+			r.Features.Set(pieces[1], v)
 		}
 	}
 	return nil
 }
 
 func (r Row) MarshalJSON() ([]byte, error) {
-	d := value.Dict{}
-	for k, v := range r.Features {
+	d := value.NewDict(map[string]value.Value{})
+	for k, v := range r.Features.Iter() {
 		pk := prefixed("feature", k)
-		d[pk] = v
+		d.Set(pk, v)
 	}
-	d["context_otype"] = value.String(r.ContextOType)
-	d["context_oid"] = value.Int(r.ContextOid)
-	d["candidate_otype"] = value.String(r.CandidateOType)
-	d["candidate_oid"] = value.Int(r.CandidateOid)
-	d["timestamp"] = value.Int(r.Timestamp)
-	d["workflow"] = value.String(r.Workflow)
-	d["model_id"] = value.String(r.ModelID)
-	d["request_id"] = value.Int(r.RequestID)
-	d["model_prediction"] = value.Double(r.ModelPrediction)
+	d.Set("context_otype", value.String(r.ContextOType))
+	d.Set("context_oid", value.Int(r.ContextOid))
+	d.Set("candidate_otype", value.String(r.CandidateOType))
+	d.Set("candidate_oid", value.Int(r.CandidateOid))
+	d.Set("timestamp", value.Int(r.Timestamp))
+	d.Set("workflow", value.String(r.Workflow))
+	d.Set("model_id", value.String(r.ModelID))
+	d.Set("request_id", value.Int(r.RequestID))
+	d.Set("model_prediction", value.Double(r.ModelPrediction))
 	return value.ToJSON(d), nil
 }
 

@@ -38,7 +38,7 @@ func logActions(c *client.Client, numproc, total, qps int, uids, video_ids []uin
 						ActionType: ACTION_TYPE,
 						Timestamp:  ftypes.Timestamp(time.Now().Unix()),
 						RequestID:  1,
-						Metadata:   value.Dict{METADATA_FIELD: value.Int(rand.Intn(60))},
+						Metadata:   value.NewDict(map[string]value.Value{METADATA_FIELD: value.Int(rand.Intn(60))}),
 					}
 					if dryrun {
 						fmt.Printf("[%d] going to log action: %v\n", procid, a)

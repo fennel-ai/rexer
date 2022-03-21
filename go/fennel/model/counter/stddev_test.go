@@ -71,14 +71,14 @@ func TestStddev_Merge_Invalid(t *testing.T) {
 		{-9, -8, -7}, {-6, -5}, {-4, -3, -2, -1, 0}, {}, {0, 1, 2, 3, 4}, {5, 6}, {7, 8, 9},
 	})
 	invalidStddevVals := []value.Value{
-		value.List{value.Double(1.0), value.Int(4), value.Int(7)},
-		value.List{value.Int(2), value.Double(2.0), value.Int(3)},
-		value.List{value.Int(4), value.Int(16), value.Double(0.0)},
-		value.List{value.Int(1), value.Int(2), value.Int(3), value.Int(4)},
-		value.List{value.Int(-4), value.Int(16)},
-		value.List{value.Int(0)},
-		value.List{},
-		value.Dict{},
+		value.NewList(value.Double(1.0), value.Int(4), value.Int(7)),
+		value.NewList(value.Int(2), value.Double(2.0), value.Int(3)),
+		value.NewList(value.Int(4), value.Int(16), value.Double(0.0)),
+		value.NewList(value.Int(1), value.Int(2), value.Int(3), value.Int(4)),
+		value.NewList(value.Int(-4), value.Int(16)),
+		value.NewList(value.Int(0)),
+		value.NewList(),
+		value.NewDict(map[string]value.Value{}),
 		value.Nil,
 	}
 	var allStddevVals []value.Value
@@ -98,17 +98,17 @@ func TestStddev_Merge_Invalid(t *testing.T) {
 func TestStddev_Bucketize_Valid(t *testing.T) {
 	t.Parallel()
 	h := NewStdDev("name", 123)
-	actions := value.List{}
+	actions := value.NewList()
 	expected := make([]Bucket, 0)
 	DAY := 3600 * 24
 	for i := 0; i < 5; i++ {
-		v := value.List{value.Int(i), value.String("hi")}
-		d := value.Dict{
+		v := value.NewList(value.Int(i), value.String("hi"))
+		d := value.NewDict(map[string]value.Value{
 			"groupkey":  v,
 			"timestamp": value.Int(DAY + i*3600 + 1),
 			"value":     value.Int(i),
-		}
-		count := value.List{value.Int(i), value.Int(i * i), value.Int(1)}
+		})
+		count := value.NewList(value.Int(i), value.Int(i*i), value.Int(1))
 		assert.NoError(t, actions.Append(d))
 		expected = append(expected, Bucket{Key: v.String(), Window: ftypes.Window_DAY,
 			Index: 1, Width: 1, Value: count})
@@ -124,16 +124,16 @@ func TestStddev_Bucketize_Invalid(t *testing.T) {
 	t.Parallel()
 	h := NewStdDev("name", 123)
 	cases := [][]value.Dict{
-		{value.Dict{}},
-		{value.Dict{"groupkey": value.Int(1), "timestamp": value.Int(2)}},
-		{value.Dict{"groupkey": value.Int(1), "timestamp": value.Int(2), "value": value.Nil}},
-		{value.Dict{"groupkey": value.Int(1), "timestamp": value.Bool(true), "value": value.Int(4)}},
-		{value.Dict{"groupkey": value.Int(1), "timestamp": value.Double(1.0), "value": value.Int(3)}},
-		{value.Dict{"groupkey": value.Int(1), "value": value.Int(3)}},
-		{value.Dict{"timestamp": value.Int(1), "value": value.Int(3)}},
+		{value.NewDict(map[string]value.Value{})},
+		{value.NewDict(map[string]value.Value{"groupkey": value.Int(1), "timestamp": value.Int(2)})},
+		{value.NewDict(map[string]value.Value{"groupkey": value.Int(1), "timestamp": value.Int(2), "value": value.Nil})},
+		{value.NewDict(map[string]value.Value{"groupkey": value.Int(1), "timestamp": value.Bool(true), "value": value.Int(4)})},
+		{value.NewDict(map[string]value.Value{"groupkey": value.Int(1), "timestamp": value.Double(1.0), "value": value.Int(3)})},
+		{value.NewDict(map[string]value.Value{"groupkey": value.Int(1), "value": value.Int(3)})},
+		{value.NewDict(map[string]value.Value{"timestamp": value.Int(1), "value": value.Int(3)})},
 	}
 	for _, test := range cases {
-		table := value.List{}
+		table := value.NewList()
 		for _, d := range test {
 			assert.NoError(t, table.Append(d))
 		}
@@ -152,7 +152,7 @@ func TestStddev_Start(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, s, ftypes.Timestamp(0))
 	// Test kwargs
-	s, err = h.Start(200, value.Dict{"duration": value.Int(50)})
+	s, err = h.Start(200, value.NewDict(map[string]value.Value{"duration": value.Int(50)}))
 	assert.NoError(t, err)
 	assert.Equal(t, s, ftypes.Timestamp(150))
 }
@@ -182,7 +182,7 @@ func stddev(vals []int64) float64 {
 
 func makeStddevVal(vals []int64) value.Value {
 	sum, sumsq, num := extractFromStddev(vals)
-	return value.List{value.Int(sum), value.Int(sumsq), value.Int(num)}
+	return value.NewList(value.Int(sum), value.Int(sumsq), value.Int(num))
 }
 
 func makeStddevVals(cases [][]int64) []value.Value {

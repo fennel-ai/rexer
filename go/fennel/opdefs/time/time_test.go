@@ -35,11 +35,11 @@ func TestDayOfWeek_Valid(t *testing.T) {
 	name := utils.RandString(6)
 	for i, case_ := range cases {
 		n := rand.Uint32()
-		context = append(context, value.Dict{"timestamp": value.Int(int64(n)*week + case_.timestamp)})
-		inputs = append(inputs, value.Dict{"something_else": value.Int(i)})
-		expected = append(expected, value.Dict{"something_else": value.Int(i), name: value.Int(case_.day)})
+		context = append(context, value.NewDict(map[string]value.Value{"timestamp": value.Int(int64(n)*week + case_.timestamp)}))
+		inputs = append(inputs, value.NewDict(map[string]value.Value{"something_else": value.Int(i)}))
+		expected = append(expected, value.NewDict(map[string]value.Value{"something_else": value.Int(i), name: value.Int(case_.day)}))
 	}
-	optest.Assert(t, tier, op, value.Dict{"name": value.String(name)}, inputs, context, expected)
+	optest.Assert(t, tier, op, value.NewDict(map[string]value.Value{"name": value.String(name)}), inputs, context, expected)
 }
 
 func TestDayOfWeek_Invalid(t *testing.T) {
@@ -53,9 +53,9 @@ func TestDayOfWeek_Invalid(t *testing.T) {
 	for _, case_ := range cases {
 		inputs := make([]value.Dict, 0)
 		context := make([]value.Dict, 0)
-		context = append(context, value.Dict{"timestamp": value.Int(week)}, value.Dict{"timestamp": value.Int(case_)})
-		inputs = append(inputs, value.Dict{}, value.Dict{})
-		optest.AssertError(t, tier, op, value.Dict{"name": value.String(name)}, inputs, context)
+		context = append(context, value.NewDict(map[string]value.Value{"timestamp": value.Int(week)}), value.NewDict(map[string]value.Value{"timestamp": value.Int(case_)}))
+		inputs = append(inputs, value.NewDict(map[string]value.Value{}), value.NewDict(map[string]value.Value{}))
+		optest.AssertError(t, tier, op, value.NewDict(map[string]value.Value{"name": value.String(name)}), inputs, context)
 	}
 }
 
@@ -80,11 +80,11 @@ func TestTimeBucketOfDay_Valid(t *testing.T) {
 		name := utils.RandString(6)
 		n := rand.Uint32()
 		for i, case_ := range scenario {
-			context = append(context, value.Dict{"timestamp": value.Int(int64(n)*day + case_.timestamp)})
-			inputs = append(inputs, value.Dict{"something_else": value.Int(i)})
-			expected = append(expected, value.Dict{"something_else": value.Int(i), name: value.Int(case_.index)})
+			context = append(context, value.NewDict(map[string]value.Value{"timestamp": value.Int(int64(n)*day + case_.timestamp)}))
+			inputs = append(inputs, value.NewDict(map[string]value.Value{"something_else": value.Int(i)}))
+			expected = append(expected, value.NewDict(map[string]value.Value{"something_else": value.Int(i), name: value.Int(case_.index)}))
 		}
-		optest.Assert(t, tier, op, value.Dict{"bucket": value.Int(bucket), "name": value.String(name)}, inputs, context, expected)
+		optest.Assert(t, tier, op, value.NewDict(map[string]value.Value{"bucket": value.Int(bucket), "name": value.String(name)}), inputs, context, expected)
 	}
 }
 
@@ -94,16 +94,36 @@ func TestTimeBucketOfDay_Invalid(t *testing.T) {
 	tier := tier.Tier{}
 	op := timeBucketOfDay{}
 	name := value.String(utils.RandString(6))
-	optest.AssertError(t, tier, op, value.Dict{"name": name, "bucket": value.Int(3600)}, []value.Dict{{}, {}}, []value.Dict{
-		{"timestamp": value.Int(24 * 3600)}, {"timestamp": value.Int(-1123)},
+	optest.AssertError(t, tier, op, value.NewDict(map[string]value.Value{"name": name, "bucket": value.Int(3600)}), []value.Dict{
+		value.NewDict(map[string]value.Value{}),
+		value.NewDict(map[string]value.Value{}),
+	}, []value.Dict{
+		value.NewDict(map[string]value.Value{"timestamp": value.Int(24 * 3600)}),
+		value.NewDict(map[string]value.Value{"timestamp": value.Int(-1123)}),
 	})
-	optest.AssertError(t, tier, op, value.Dict{"name": name, "bucket": value.Int(3600)}, []value.Dict{{}, {}}, []value.Dict{
-		{"timestamp": value.Int(24 * 3600)}, {"timestamp": value.Int(-1)},
-	})
-	optest.AssertError(t, tier, op, value.Dict{"name": name, "bucket": value.Int(3600)}, []value.Dict{{}, {}}, []value.Dict{
-		{"timestamp": value.Int(24 * 3600)}, {"timestamp": value.Int(0)},
-	})
-	optest.AssertError(t, tier, op, value.Dict{"name": name, "bucket": value.Int(0)}, []value.Dict{{}, {}}, []value.Dict{
-		{"timestamp": value.Int(24 * 3600)}, {"timestamp": value.Int(351)},
-	})
+	optest.AssertError(t, tier, op,
+		value.NewDict(map[string]value.Value{"name": name, "bucket": value.Int(3600)}), []value.Dict{
+			value.NewDict(map[string]value.Value{}),
+			value.NewDict(map[string]value.Value{}),
+		}, []value.Dict{
+			value.NewDict(map[string]value.Value{"timestamp": value.Int(24 * 3600)}),
+			value.NewDict(map[string]value.Value{"timestamp": value.Int(-1)}),
+		})
+	optest.AssertError(t, tier, op,
+		value.NewDict(map[string]value.Value{"name": name, "bucket": value.Int(3600)}), []value.Dict{
+			value.NewDict(map[string]value.Value{}),
+			value.NewDict(map[string]value.Value{}),
+		}, []value.Dict{
+			value.NewDict(map[string]value.Value{"timestamp": value.Int(24 * 3600)}),
+			value.NewDict(map[string]value.Value{"timestamp": value.Int(0)}),
+		})
+	optest.AssertError(t, tier, op,
+		value.NewDict(map[string]value.Value{"name": name, "bucket": value.Int(0)}),
+		[]value.Dict{
+			value.NewDict(map[string]value.Value{}),
+			value.NewDict(map[string]value.Value{}),
+		}, []value.Dict{
+			value.NewDict(map[string]value.Value{"timestamp": value.Int(24 * 3600)}),
+			value.NewDict(map[string]value.Value{"timestamp": value.Int(351)}),
+		})
 }

@@ -34,7 +34,7 @@ func TestMin_Reduce(t *testing.T) {
 	}
 	for _, c := range cases {
 		found, err := h.Reduce(c.input)
-		assert.NoError(t, err)
+		assert.NoError(t, err, c.input)
 		assert.Equal(t, c.output, found)
 
 		// and this works even when one of the elements is zero of the histogram
@@ -70,11 +70,11 @@ func TestMin_Merge_Invalid(t *testing.T) {
 		[]bool{false, false, false, true, false, false},
 	)
 	invalidMinVals := []value.Value{
-		value.List{value.Double(2.0), value.Bool(false)},
-		value.List{value.Int(2), value.Int(1)},
-		value.List{value.Int(7), value.Bool(false), value.Int(2)},
-		value.List{},
-		value.Dict{},
+		value.NewList(value.Double(2.0), value.Bool(false)),
+		value.NewList(value.Int(2), value.Int(1)),
+		value.NewList(value.Int(7), value.Bool(false), value.Int(2)),
+		value.NewList(),
+		value.NewDict(map[string]value.Value{}),
 		value.Nil,
 	}
 	var allMinVals []value.Value
@@ -98,17 +98,17 @@ func TestMin_Bucketize_Valid(t *testing.T) {
 	expected := make([]Bucket, 0)
 	DAY := 3600 * 24
 	for i := 0; i < 5; i++ {
-		v := value.List{value.Int(i), value.String("hi")}
-		d := value.Dict{
+		v := value.NewList(value.Int(i), value.String("hi"))
+		d := value.NewDict(map[string]value.Value{
 			"groupkey":  v,
 			"timestamp": value.Int(DAY + i*3600 + 1),
 			"value":     value.Int(i),
-		}
+		})
 		assert.NoError(t, actions.Append(d))
 		expected = append(expected, Bucket{Key: v.String(), Window: ftypes.Window_DAY,
-			Index: 1, Width: 1, Value: value.List{value.Int(i), value.Bool(false)}})
+			Index: 1, Width: 1, Value: value.NewList(value.Int(i), value.Bool(false))})
 		expected = append(expected, Bucket{Key: v.String(), Window: ftypes.Window_MINUTE,
-			Index: uint64(24*10 + i*10), Width: 6, Value: value.List{value.Int(i), value.Bool(false)}})
+			Index: uint64(24*10 + i*10), Width: 6, Value: value.NewList(value.Int(i), value.Bool(false))})
 	}
 	buckets, err := Bucketize(h, actions)
 	assert.NoError(t, err)
@@ -120,15 +120,15 @@ func TestMin_Bucketize_Invalid(t *testing.T) {
 	h := NewMin("agg", 123)
 	cases := [][]value.Dict{
 		{value.Dict{}},
-		{value.Dict{"groupkey": value.Int(1), "timestamp": value.Int(2)}},
-		{value.Dict{"groupkey": value.Int(1), "timestamp": value.Int(2), "value": value.Nil}},
-		{value.Dict{"groupkey": value.Int(1), "timestamp": value.Bool(true), "value": value.Int(4)}},
-		{value.Dict{"groupkey": value.Int(1), "timestamp": value.Double(1.0), "value": value.Int(3)}},
-		{value.Dict{"groupkey": value.Int(1), "value": value.Int(3)}},
-		{value.Dict{"timestamp": value.Int(1), "value": value.Int(3)}},
+		{value.NewDict(map[string]value.Value{"groupkey": value.Int(1), "timestamp": value.Int(2)})},
+		{value.NewDict(map[string]value.Value{"groupkey": value.Int(1), "timestamp": value.Int(2), "value": value.Nil})},
+		{value.NewDict(map[string]value.Value{"groupkey": value.Int(1), "timestamp": value.Bool(true), "value": value.Int(4)})},
+		{value.NewDict(map[string]value.Value{"groupkey": value.Int(1), "timestamp": value.Double(1.0), "value": value.Int(3)})},
+		{value.NewDict(map[string]value.Value{"groupkey": value.Int(1), "value": value.Int(3)})},
+		{value.NewDict(map[string]value.Value{"timestamp": value.Int(1), "value": value.Int(3)})},
 	}
 	for _, test := range cases {
-		table := value.List{}
+		table := value.NewList()
 		for _, d := range test {
 			assert.NoError(t, table.Append(d))
 		}
@@ -147,13 +147,13 @@ func TestMin_Start(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, s, ftypes.Timestamp(0))
 	// Test kwargs
-	s, err = h.Start(200, value.Dict{"duration": value.Int(50)})
+	s, err = h.Start(200, value.NewDict(map[string]value.Value{"duration": value.Int(50)}))
 	assert.NoError(t, err)
 	assert.Equal(t, s, ftypes.Timestamp(150))
 }
 
 func makeMinVal(v int64, b bool) value.Value {
-	return value.List{value.Int(v), value.Bool(b)}
+	return value.NewList(value.Int(v), value.Bool(b))
 }
 
 func makeMinVals(vs []int64, bs []bool) []value.Value {
