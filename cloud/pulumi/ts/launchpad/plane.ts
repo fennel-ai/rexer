@@ -103,6 +103,7 @@ const setupResources = async () => {
         region: input.region,
         vpcId: vpcOutput.vpcId,
         connectedVpcCidrs: [input.controlPlaneConf.cidrBlock],
+        planeId: input.planeId,
     })
     const auroraOutput = await aurora.setup({
         roleArn: input.roleArn,

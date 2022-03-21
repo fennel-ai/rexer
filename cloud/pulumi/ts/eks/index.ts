@@ -38,6 +38,7 @@ export type inputType = {
     region: string,
     vpcId: pulumi.Output<string>,
     connectedVpcCidrs: string[],
+    planeId: number,
 }
 
 export type outputType = {
@@ -55,6 +56,7 @@ const parseConfig = (): inputType => {
         region: config.require(nameof<inputType>("region")),
         vpcId: pulumi.output(config.require(nameof<inputType>("vpcId"))),
         connectedVpcCidrs: config.requireObject(nameof<inputType>("connectedVpcCidrs")),
+        planeId: config.requireNumber(nameof<inputType>("planeId")),
     }
 }
 
