@@ -5,9 +5,10 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
+
 	"fennel/engine/ast"
 	"fennel/lib/value"
-	"github.com/stretchr/testify/assert"
 )
 
 func TestBoundQueryJSON(t *testing.T) {
@@ -18,11 +19,11 @@ func TestBoundQueryJSON(t *testing.T) {
 	}
 	var tests []test
 	vals := []value.Dict{
-		value.Dict(nil),
-		{},
-		{"k1": value.Nil},
-		{"k1": value.Double(3.14), "k2": value.Int(128), "k3": value.String("abc"), "k4": value.Bool(false)},
-		{"k1": value.List{value.List{}, value.Dict{}}, "k2": value.Dict{"x": value.List{}}},
+		value.NewDict(nil),
+		value.NewDict(map[string]value.Value{}),
+		value.NewDict(map[string]value.Value{"k1": value.Nil}),
+		value.NewDict(map[string]value.Value{"k1": value.Double(3.14), "k2": value.Int(128), "k3": value.String("abc"), "k4": value.Bool(false)}),
+		value.NewDict(map[string]value.Value{"k1": value.NewList(value.List{}, value.Dict{}), "k2": value.NewDict(map[string]value.Value{"x": value.List{}})}),
 	}
 	for i, tr := range ast.TestExamples {
 		v := vals[i%len(vals)]

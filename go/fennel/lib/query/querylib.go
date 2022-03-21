@@ -5,10 +5,11 @@ import (
 	"encoding/json"
 	"fmt"
 
+	"github.com/buger/jsonparser"
+
 	"fennel/engine/ast"
 	"fennel/lib/ftypes"
 	"fennel/lib/value"
-	"github.com/buger/jsonparser"
 )
 
 type QueryRequest struct {
@@ -60,29 +61,29 @@ func FromBoundQueryJSON(data []byte) (ast.Ast, value.Dict, error) {
 	// Extract the ast first
 	astStr, err := jsonparser.GetString(data, "Ast")
 	if err != nil {
-		return nil, nil, fmt.Errorf("error parsing ast json: %v", err)
+		return nil, value.Dict{}, fmt.Errorf("error parsing ast json: %v", err)
 	}
 	astSer, err := base64.StdEncoding.DecodeString(astStr)
 	if err != nil {
-		return nil, nil, fmt.Errorf("error decoding ast from base64: %v", err)
+		return nil, value.Dict{}, fmt.Errorf("error decoding ast from base64: %v", err)
 	}
 	var tree ast.Ast
 	err = ast.Unmarshal(astSer, &tree)
 	if err != nil {
-		return nil, nil, fmt.Errorf("error unmarshalling ast: %v", err)
+		return nil, value.Dict{}, fmt.Errorf("error unmarshalling ast: %v", err)
 	}
 	// Now extract args
 	vdata, vtype, _, err := jsonparser.Get(data, "Args")
 	if err != nil {
-		return nil, nil, fmt.Errorf("error getting args: %v", err)
+		return nil, value.Dict{}, fmt.Errorf("error getting args: %v", err)
 	}
 	argsVar, err := value.ParseJSON(vdata, vtype)
 	if err != nil {
-		return nil, nil, fmt.Errorf("error parsing args json: %v", err)
+		return nil, value.Dict{}, fmt.Errorf("error parsing args json: %v", err)
 	}
 	args, ok := argsVar.(value.Dict)
 	if !ok {
-		return nil, nil, fmt.Errorf("expected value Dict but found: %v", argsVar)
+		return nil, value.Dict{}, fmt.Errorf("expected value Dict but found: %v", argsVar)
 	}
 	return tree, args, nil
 }

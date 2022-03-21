@@ -25,7 +25,7 @@ func TestAction_ToValueDict(t *testing.T) {
 		RequestID:  10,
 		Metadata:   value.Int(8),
 	}
-	expected := value.Dict{
+	expected := value.NewDict(map[string]value.Value{
 		"action_id":   value.Int(1),
 		"actor_id":    value.Int(3),
 		"actor_type":  value.String("user"),
@@ -35,7 +35,7 @@ func TestAction_ToValueDict(t *testing.T) {
 		"timestamp":   value.Int(9),
 		"request_id":  value.Int(10),
 		"metadata":    value.Int(8),
-	}
+	})
 	assert.Equal(t, expected, a.ToValueDict())
 }
 
@@ -73,16 +73,16 @@ func TestActionJSON(t *testing.T) {
 		a:   Action{Metadata: value.String("some string")},
 	}, {
 		str: makeActionJSON(0, 0, "", 0, "", "", 0, 0, "[]"),
-		a:   Action{Metadata: value.List(nil)},
+		a:   Action{Metadata: value.NewList()},
 	}, {
-		str: makeActionJSON(0, 0, "", 0, "", "", 0, 0, "[1,[],{}]"),
-		a:   Action{Metadata: value.List{value.Int(1), value.List{}, value.Dict{}}},
+		str: makeActionJSON(0, 0, "", 0, "", "", 0, 0, "[1,{}]"),
+		a:   Action{Metadata: value.NewList(value.Int(1), value.NewList(), value.NewDict(map[string]value.Value{}))},
 	}, {
 		str: makeActionJSON(0, 0, "", 0, "", "", 0, 0, `{}`),
-		a:   Action{Metadata: value.Dict(nil)},
+		a:   Action{Metadata: value.NewDict(nil)},
 	}, {
 		str: makeActionJSON(0, 0, "", 0, "", "", 0, 0, `{"key":"123"}`),
-		a:   Action{Metadata: value.Dict{"key": value.String("123")}},
+		a:   Action{Metadata: value.NewDict(map[string]value.Value{"key": value.String("123")})},
 	}, {
 		str: makeActionJSON(math.MaxUint64, math.MaxUint64, "", math.MaxUint64, "", "",
 			math.MaxUint64, math.MaxUint64, "null"),

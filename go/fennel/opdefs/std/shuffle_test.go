@@ -10,9 +10,9 @@ import (
 
 func TestShuffleOperator_Apply(t *testing.T) {
 	intable := []value.Dict{
-		{"name": value.String("first")},
-		{"name": value.String("second")},
-		{"name": value.String("third")},
+		value.NewDict(map[string]value.Value{"name": value.String("first")}),
+		value.NewDict(map[string]value.Value{"name": value.String("second")}),
+		value.NewDict(map[string]value.Value{"name": value.String("third")}),
 	}
 	staticKwargs := value.Dict{}
 	contextKwargs := []value.Dict{{}, {}, {}}

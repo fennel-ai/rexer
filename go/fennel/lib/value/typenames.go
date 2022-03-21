@@ -70,10 +70,11 @@ func (lt listType) Validate(v Value) error {
 	if !ok {
 		return fmt.Errorf("expected a list but found '%s'", v)
 	}
-	for i := range l {
-		if err := lt.elemType.Validate(l[i]); err != nil {
+	for i := 0; i < l.Len(); i++ {
+		v, _ := l.At(i)
+		if err := lt.elemType.Validate(v); err != nil {
 			return fmt.Errorf("value '%s' of element '%d' of list does not satisfy expected type '%s'",
-				l[i], i, lt.elemType)
+				v, i, lt.elemType)
 		}
 	}
 	return nil
@@ -93,10 +94,11 @@ func (dt dictType) Validate(v Value) error {
 	if !ok {
 		return fmt.Errorf("expected a dict but found '%s'", v)
 	}
-	for k := range d {
-		if err := dt.elemType.Validate(d[k]); err != nil {
+	for k := range d.Iter() {
+		v, _ := d.Get(k)
+		if err := dt.elemType.Validate(v); err != nil {
 			return fmt.Errorf("value '%s' of key '%s' of dict does not satisfy expected type '%s'",
-				d[k], k, dt.elemType)
+				v, k, dt.elemType)
 		}
 	}
 	return nil
@@ -129,7 +131,7 @@ func init() {
 	Types.Int = baseType{"Int", reflect.TypeOf(Int(1))}
 	Types.Double = baseType{"Double", reflect.TypeOf(Double(1.0))}
 	Types.String = baseType{"String", reflect.TypeOf(String("hi"))}
-	Types.List = baseType{"List", reflect.TypeOf(List{Int(1), Double(3.4)})}
+	Types.List = baseType{"List", reflect.TypeOf(NewList(Int(1), Double(3.4)))}
 	Types.Dict = baseType{"Dict", reflect.TypeOf(Dict{})}
 	// Set other types (ensure subtypes are set before using them)
 	Types.Number = compoundType{"Number", []Type{Types.Int, Types.Double}}

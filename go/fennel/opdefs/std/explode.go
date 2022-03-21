@@ -1,9 +1,10 @@
 package std
 
 import (
+	"fmt"
+
 	"fennel/engine/operators"
 	"fennel/lib/value"
-	"fmt"
 )
 
 type ExplodeOperator struct{}
@@ -21,7 +22,7 @@ func (e ExplodeOperator) Signature() *operators.Signature {
 }
 
 func (e ExplodeOperator) Apply(staticKwargs value.Dict, in operators.InputIter, out *value.List) error {
-	keys := staticKwargs["keys"]
+	keys, _ := staticKwargs.Get("keys")
 	for in.HasMore() {
 		row, _, err := in.Next()
 		if err != nil {
@@ -37,19 +38,21 @@ func (e ExplodeOperator) Apply(staticKwargs value.Dict, in operators.InputIter, 
 				return err
 			}
 			// if the value type is a list, explode it. else just set it as is
-			vs, ok := rowVal[kstr].(value.List)
+			val, _ := rowVal.Get(kstr)
+			vs, ok := val.(value.List)
 			if !ok {
 				out.Append(rowVal)
 			} else {
 				// if the list is empty, write `Nil`
-				if len(vs) == 0 {
+				if vs.Len() == 0 {
 					newRow := rowVal.Clone().(value.Dict)
-					newRow[kstr] = value.Nil
+					newRow.Set(kstr, value.Nil)
 					out.Append(newRow)
 				} else {
-					for _, v := range vs {
+					for i := 0; i < vs.Len(); i++ {
+						v, _ := vs.At(i)
 						newRow := rowVal.Clone().(value.Dict)
-						newRow[kstr] = v
+						newRow.Set(kstr, v)
 						out.Append(newRow)
 					}
 				}
@@ -57,28 +60,32 @@ func (e ExplodeOperator) Apply(staticKwargs value.Dict, in operators.InputIter, 
 		case value.List:
 			// provided a list of keys, the length of each list-like row entry should match
 			// if the values are scalar, they are written as-is
-			if len(keys) == 0 {
+			if keys.Len() == 0 {
 				return fmt.Errorf("list of keys provided should not be empty")
 			}
-			kstr, err := validateKey(keys[0], rowVal)
+			k, _ := keys.At(0)
+			kstr, err := validateKey(k, rowVal)
 			if err != nil {
 				return err
 			}
 			// every list-like entry should match in length, otherwise write the information as-is
 			// in case of empty lists, write the value.Nil
 			expectedLength := -1
-			if vs, ok := rowVal[kstr].(value.List); ok {
-				expectedLength = len(vs)
+			val, _ := rowVal.Get(kstr)
+			if vs, ok := val.(value.List); ok {
+				expectedLength = vs.Len()
 			}
-			for i := 1; i < len(keys); i++ {
-				kstr, err := validateKey(keys[i], rowVal)
+			for i := 1; i < keys.Len(); i++ {
+				k, _ := keys.At(i)
+				kstr, err := validateKey(k, rowVal)
 				if err != nil {
 					return err
 				}
-				if vs, ok := rowVal[kstr].(value.List); ok {
-					if expectedLength != len(vs) {
+				val, _ := rowVal.Get(kstr)
+				if vs, ok := val.(value.List); ok {
+					if expectedLength != vs.Len() {
 						return fmt.Errorf("columns must have matching element counts. "+
-							"Given: %d, %d", expectedLength, len(vs))
+							"Given: %d, %d", expectedLength, vs.Len())
 					}
 				} else {
 					if expectedLength != -1 {
@@ -92,19 +99,23 @@ func (e ExplodeOperator) Apply(staticKwargs value.Dict, in operators.InputIter, 
 				out.Append(rowVal)
 			} else if expectedLength == 0 {
 				newRow := rowVal.Clone().(value.Dict)
-				for ki := 0; ki < len(keys); ki++ {
-					kstr := string(keys[ki].(value.String))
-					newRow[kstr] = value.Nil
+				for ki := 0; ki < keys.Len(); ki++ {
+					k, _ := keys.At(ki)
+					kstr := string(k.(value.String))
+					newRow.Set(kstr, value.Nil)
 				}
 				out.Append(newRow)
 			} else {
 				// explode each key
 				for i := 0; i < expectedLength; i++ {
 					newRow := rowVal.Clone().(value.Dict)
-					for ki := 0; ki < len(keys); ki++ {
-						kstr := string(keys[ki].(value.String))
-						vs := rowVal[kstr].(value.List)
-						newRow[kstr] = vs[i]
+					for ki := 0; ki < keys.Len(); ki++ {
+						k, _ := keys.At(ki)
+						kstr := string(k.(value.String))
+						val, _ := rowVal.Get(kstr)
+						vs := val.(value.List)
+						v, _ := vs.At(i)
+						newRow.Set(kstr, v)
 					}
 					out.Append(newRow)
 				}
@@ -123,7 +134,7 @@ func validateKey(key value.Value, rowVal value.Dict) (string, error) {
 		return "", fmt.Errorf("key must be a string, given: %+v", key)
 	}
 	kstr := string(k)
-	_, ok = rowVal[kstr]
+	_, ok = rowVal.Get(kstr)
 	if !ok {
 		return "", fmt.Errorf("key: %s is invalid", kstr)
 	}

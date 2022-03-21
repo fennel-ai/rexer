@@ -12,8 +12,8 @@ type ZipTable struct {
 }
 
 func NewZipTable(op Operator) ZipTable {
-	first := value.NewList([]value.Value{})
-	second := make([]value.Value, 0)
+	first := value.NewList()
+	second := value.NewList()
 	return ZipTable{first, second, op}
 }
 
@@ -22,12 +22,12 @@ func (zt *ZipTable) Append(first value.Value, second value.Dict) error {
 	if err := zt.first.Append(first); err != nil {
 		return err
 	}
-	zt.second = append(zt.second, second)
+	zt.second.Append(second)
 	return nil
 }
 
 func (zt *ZipTable) Len() int {
-	return len(zt.first)
+	return zt.first.Len()
 }
 
 func (zt *ZipTable) Iter() ZipIter {

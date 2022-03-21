@@ -15,12 +15,12 @@ func TestTimeseriesCounter_Reduce(t *testing.T) {
 	nums := []value.Value{value.Int(1), value.Int(4), value.Int(-2)}
 	found, err := h.Reduce(nums)
 	assert.NoError(t, err)
-	assert.Equal(t, value.List{value.Int(0), value.Int(1), value.Int(4), value.Int(-2)}, found)
+	assert.Equal(t, value.NewList(value.Int(0), value.Int(1), value.Int(4), value.Int(-2)), found)
 
 	h = timeseriesSum{Limit: 2}
 	found, err = h.Reduce(nums)
 	assert.NoError(t, err)
-	assert.Equal(t, value.List{value.Int(4), value.Int(-2)}, found)
+	assert.Equal(t, value.NewList(value.Int(4), value.Int(-2)), found)
 }
 
 func TestTimeseriesCounter_Start(t *testing.T) {

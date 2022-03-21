@@ -39,7 +39,8 @@ func (f FilterOperator) Apply(_ value.Dict, in operators.InputIter, out *value.L
 		if err != nil {
 			return err
 		}
-		where := contextKwargs["where"].(value.Bool)
+		v, _ := contextKwargs.Get("where")
+		where := v.(value.Bool)
 		if where {
 			out.Append(row)
 		}
@@ -59,7 +60,8 @@ func (f TakeOperator) Signature() *operators.Signature {
 }
 
 func (f TakeOperator) Apply(staticKwargs value.Dict, in operators.InputIter, out *value.List) error {
-	limit := staticKwargs["limit"].(value.Int)
+	v, _ := staticKwargs.Get("limit")
+	limit := v.(value.Int)
 	taken := 0
 	for in.HasMore() && taken < int(limit) {
 		row, _, err := in.Next()
@@ -88,14 +90,16 @@ func (op AddField) Signature() *operators.Signature {
 }
 
 func (op AddField) Apply(staticKwargs value.Dict, in operators.InputIter, out *value.List) error {
-	name := string(staticKwargs["name"].(value.String))
+	n, _ := staticKwargs.Get("name")
+	name := string(n.(value.String))
 	for in.HasMore() {
 		rowVal, contextKwargs, err := in.Next()
 		if err != nil {
 			return err
 		}
 		row := rowVal.(value.Dict)
-		row[name] = contextKwargs["value"]
+		v, _ := contextKwargs.Get("value")
+		row.Set(name, v)
 		out.Append(row)
 	}
 	return nil

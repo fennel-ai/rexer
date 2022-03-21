@@ -165,7 +165,7 @@ func (a Action) Equals(other Action, ignoreID bool) bool {
 }
 
 func (a Action) ToValueDict() value.Dict {
-	return value.Dict{
+	return value.NewDict(map[string]value.Value{
 		"action_id":   value.Int(a.ActionID),
 		"actor_id":    value.Int(a.ActorID),
 		"actor_type":  value.String(a.ActorType),
@@ -175,7 +175,7 @@ func (a Action) ToValueDict() value.Dict {
 		"timestamp":   value.Int(a.Timestamp),
 		"request_id":  value.Int(a.RequestID),
 		"metadata":    a.Metadata,
-	}
+	})
 }
 
 // ToList takes a list of actions and arranges that in a value.List

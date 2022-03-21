@@ -29,32 +29,32 @@ func (f featureLog) New(args value.Dict, bootargs map[string]interface{}) (opera
 }
 
 func (f featureLog) Apply(static value.Dict, in operators.InputIter, out *value.List) error {
-	contextOtype := ftypes.OType(static["context_otype"].(value.String))
-	contextOid := ftypes.OidType(static["context_oid"].(value.Int))
-	workflow := string(static["workflow"].(value.String))
-	requestID := ftypes.RequestID(static["request_id"].(value.Int))
-	modelID := ftypes.ModelID(static["model_id"].(value.String))
+	contextOtype := ftypes.OType(get(static, "context_otype").(value.String))
+	contextOid := ftypes.OidType(get(static, "context_oid").(value.Int))
+	workflow := string(get(static, "workflow").(value.String))
+	requestID := ftypes.RequestID(get(static, "request_id").(value.Int))
+	modelID := ftypes.ModelID(get(static, "model_id").(value.String))
 
 	for in.HasMore() {
 		row, kwargs, err := in.Next()
 		if err != nil {
 			return err
 		}
-		ts := ftypes.Timestamp(kwargs["timestamp"].(value.Int))
+		ts := ftypes.Timestamp(get(kwargs, "timestamp").(value.Int))
 		if ts == 0 {
 			ts = ftypes.Timestamp(f.tier.Clock.Now())
 		}
 		msg := libfeature.Row{
 			ContextOType:    contextOtype,
 			ContextOid:      contextOid,
-			CandidateOType:  ftypes.OType(kwargs["candidate_otype"].(value.String)),
-			CandidateOid:    ftypes.OidType(kwargs["candidate_oid"].(value.Int)),
-			Features:        kwargs["features"].(value.Dict),
+			CandidateOType:  ftypes.OType(get(kwargs, "candidate_otype").(value.String)),
+			CandidateOid:    ftypes.OidType(get(kwargs, "candidate_oid").(value.Int)),
+			Features:        get(kwargs, "features").(value.Dict),
 			Workflow:        workflow,
 			RequestID:       requestID,
 			Timestamp:       ts,
 			ModelID:         modelID,
-			ModelPrediction: float64(kwargs["model_prediction"].(value.Double)),
+			ModelPrediction: float64(get(kwargs, "model_prediction").(value.Double)),
 		}
 		if err = feature.Log(context.TODO(), f.tier, msg); err != nil {
 			return err
@@ -82,3 +82,8 @@ func (f featureLog) Signature() *operators.Signature {
 }
 
 var _ operators.Operator = &featureLog{}
+
+func get(d value.Dict, k string) value.Value {
+	ret, _ := d.Get(k)
+	return ret
+}

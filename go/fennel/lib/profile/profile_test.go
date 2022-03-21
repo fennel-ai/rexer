@@ -33,27 +33,29 @@ func TestProfileItemJSON(t *testing.T) {
 		pi:  ProfileItem{Value: value.Double(3.14)},
 	}, {
 		str: `{"OType":"","Oid":0,"Key":"","Version":0,"Value":[]}`,
-		pi:  ProfileItem{Value: value.List(nil)},
-	}, {
-		str: `{"OType":"","Oid":0,"Key":"","Version":0,"Value":[[]]}`,
-		pi:  ProfileItem{Value: value.List{value.List(nil)}},
-	}, {
-		str: `{"OType":"","Oid":0,"Key":"","Version":0,"Value":[null]}`,
-		pi:  ProfileItem{Value: value.List{value.Nil}},
-	}, {
-		str: `{"OType":"","Oid":0,"Key":"","Version":0,"Value":{}}`,
-		pi:  ProfileItem{Value: value.Dict(nil)},
-	}, {
-		str: `{"OType":"","Oid":0,"Key":"","Version":0,"Value":{"0":{}}}`,
-		pi:  ProfileItem{Value: value.Dict{"0": value.Dict(nil)}},
-	}, {
-		str: `{"OType":"","Oid":0,"Key":"","Version":0,"Value":{"k1":4.5}}`,
-		pi:  ProfileItem{Value: value.Dict{"k1": value.Double(4.5)}},
-	}, {
-		str: fmt.Sprintf(`{"OType":"","Oid":%d,"Key":"","Version":%d,"Value":null}`,
-			uint64(math.MaxUint64), uint64(math.MaxUint64)),
-		pi: ProfileItem{Oid: math.MaxUint64, Version: math.MaxUint64, Value: value.Nil},
-	}}
+		pi:  ProfileItem{Value: value.NewList()},
+	},
+		{
+			str: `{"OType":"","Oid":0,"Key":"","Version":0,"Value":[]}`,
+			pi:  ProfileItem{Value: value.NewList(value.NewList())},
+		},
+		{
+			str: `{"OType":"","Oid":0,"Key":"","Version":0,"Value":[null]}`,
+			pi:  ProfileItem{Value: value.NewList(value.Nil)},
+		}, {
+			str: `{"OType":"","Oid":0,"Key":"","Version":0,"Value":{}}`,
+			pi:  ProfileItem{Value: value.NewDict(nil)},
+		}, {
+			str: `{"OType":"","Oid":0,"Key":"","Version":0,"Value":{"0":{}}}`,
+			pi:  ProfileItem{Value: value.NewDict(map[string]value.Value{"0": value.NewDict(nil)})},
+		}, {
+			str: `{"OType":"","Oid":0,"Key":"","Version":0,"Value":{"k1":4.5}}`,
+			pi:  ProfileItem{Value: value.NewDict(map[string]value.Value{"k1": value.Double(4.5)})},
+		}, {
+			str: fmt.Sprintf(`{"OType":"","Oid":%d,"Key":"","Version":%d,"Value":null}`,
+				uint64(math.MaxUint64), uint64(math.MaxUint64)),
+			pi: ProfileItem{Oid: math.MaxUint64, Version: math.MaxUint64, Value: value.Nil},
+		}}
 	// Test unmarshal
 	for _, tst := range tests {
 		var pi ProfileItem

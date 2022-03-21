@@ -18,24 +18,24 @@ func TestList_Reduce(t *testing.T) {
 		output value.Value
 	}{
 		{[]value.Value{
-			value.List{value.Int(0), value.Int(1)},
-			value.List{value.Int(4), value.Int(2)},
-			value.List{value.Int(0), value.Int(0)}},
-			value.List{value.Int(0), value.Int(1), value.Int(4), value.Int(2), value.Int(0), value.Int(0)},
+			value.NewList(value.Int(0), value.Int(1)),
+			value.NewList(value.Int(4), value.Int(2)),
+			value.NewList(value.Int(0), value.Int(0))},
+			value.NewList(value.Int(0), value.Int(1), value.Int(4), value.Int(2), value.Int(0), value.Int(0)),
 		},
 		{[]value.Value{
-			value.List{value.Int(0), value.Int(0)}},
-			value.List{value.Int(0), value.Int(0)},
+			value.NewList(value.Int(0), value.Int(0))},
+			value.NewList(value.Int(0), value.Int(0)),
 		},
 		{[]value.Value{
-			value.List{value.Int(0), value.Int(-1)},
-			value.List{value.Int(2), value.Int(1)}},
-			value.List{value.Int(0), value.Int(-1), value.Int(2), value.Int(1)},
+			value.NewList(value.Int(0), value.Int(-1)),
+			value.NewList(value.Int(2), value.Int(1))},
+			value.NewList(value.Int(0), value.Int(-1), value.Int(2), value.Int(1)),
 		},
 		{[]value.Value{
-			value.List{value.Int(1e17), value.Int(-1e17)},
-			value.List{value.Int(2), value.Int(1)}},
-			value.List{value.Int(1e17), value.Int(-1e17), value.Int(2), value.Int(1)},
+			value.NewList(value.Int(1e17), value.Int(-1e17)),
+			value.NewList(value.Int(2), value.Int(1))},
+			value.NewList(value.Int(1e17), value.Int(-1e17), value.Int(2), value.Int(1)),
 		},
 	}
 	for _, c := range cases {
@@ -59,29 +59,29 @@ func TestList_Merge_Valid(t *testing.T) {
 		output value.Value
 	}{
 		{
-			value.List{value.Int(0), value.Int(1)},
-			value.List{value.Int(1), value.Int(3)},
-			value.List{value.Int(0), value.Int(1), value.Int(1), value.Int(3)},
+			value.NewList(value.Int(0), value.Int(1)),
+			value.NewList(value.Int(1), value.Int(3)),
+			value.NewList(value.Int(0), value.Int(1), value.Int(1), value.Int(3)),
 		},
 		{
-			value.List{value.Int(0), value.Int(0)},
-			value.List{value.Nil, value.Bool(true)},
-			value.List{value.Int(0), value.Int(0), value.Nil, value.Bool(true)},
+			value.NewList(value.Int(0), value.Int(0)),
+			value.NewList(value.Nil, value.Bool(true)),
+			value.NewList(value.Int(0), value.Int(0), value.Nil, value.Bool(true)),
 		},
 		{
-			value.List{value.Int(0), value.Int(-1)},
-			value.List{value.Int(2), value.List{value.Int(3)}},
-			value.List{value.Int(0), value.Int(-1), value.Int(2), value.List{value.Int(3)}},
+			value.NewList(value.Int(0), value.Int(-1)),
+			value.NewList(value.Int(2), value.NewList(value.Int(3))),
+			value.NewList(value.Int(0), value.Int(-1), value.Int(2), value.NewList(value.Int(3))),
 		},
 		{
-			value.List{value.Int(1e17), value.Int(-1e17)},
-			value.List{},
-			value.List{value.Int(1e17), value.Int(-1e17)},
+			value.NewList(value.Int(1e17), value.Int(-1e17)),
+			value.NewList(),
+			value.NewList(value.Int(1e17), value.Int(-1e17)),
 		},
 		{
-			value.List{},
-			value.List{},
-			value.List{},
+			value.NewList(),
+			value.NewList(),
+			value.NewList(),
 		},
 	}
 	for _, n := range validCases {
@@ -99,7 +99,7 @@ func TestList_Merge_Invalid(t *testing.T) {
 		input2 value.Value
 	}{
 		{
-			value.List{value.Int(0), value.Int(1)},
+			value.NewList(value.Int(0), value.Int(1)),
 			value.Int(0),
 		},
 		{
@@ -107,12 +107,12 @@ func TestList_Merge_Invalid(t *testing.T) {
 			value.Bool(false),
 		},
 		{
-			value.List{},
-			value.Dict{},
+			value.NewList(),
+			value.NewDict(map[string]value.Value{}),
 		},
 		{
 			value.Double(0.0),
-			value.List{},
+			value.NewList(),
 		},
 	}
 	for _, n := range invalidCases {
@@ -127,20 +127,20 @@ func TestList_Merge_Invalid(t *testing.T) {
 func TestList_Bucketize_Valid(t *testing.T) {
 	t.Parallel()
 	h := NewList("some_name", 123)
-	actions := value.List{}
+	actions := value.NewList()
 	expected := make([]Bucket, 0)
 	DAY := 3600 * 24
 	for i := 0; i < 5; i++ {
 		v := value.Int(1)
 		e := value.Int(i)
-		d := value.Dict{
+		d := value.NewDict(map[string]value.Value{
 			"groupkey":  v,
 			"timestamp": value.Int(DAY + i*3600 + 1),
 			"value":     e,
-		}
+		})
 		assert.NoError(t, actions.Append(d))
-		expected = append(expected, Bucket{Value: value.List{e}, Window: ftypes.Window_DAY, Index: 1, Width: 1, Key: v.String()})
-		expected = append(expected, Bucket{Key: v.String(), Window: ftypes.Window_MINUTE, Index: uint64(24*10 + i*10), Width: 6, Value: value.List{e}})
+		expected = append(expected, Bucket{Value: value.NewList(e), Window: ftypes.Window_DAY, Index: 1, Width: 1, Key: v.String()})
+		expected = append(expected, Bucket{Key: v.String(), Window: ftypes.Window_MINUTE, Index: uint64(24*10 + i*10), Width: 6, Value: value.NewList(e)})
 	}
 	buckets, err := Bucketize(h, actions)
 	assert.NoError(t, err)
@@ -151,15 +151,15 @@ func TestList_Bucketize_Invalid(t *testing.T) {
 	t.Parallel()
 	h := NewList("some_name", 123)
 	cases := [][]value.Dict{
-		{value.Dict{}},
-		{value.Dict{"groupkey": value.Int(1), "timestamp": value.Int(2)}},
-		{value.Dict{"groupkey": value.Int(1), "timestamp": value.Bool(true), "value": value.Int(4)}},
-		{value.Dict{"groupkey": value.Int(1), "timestamp": value.Double(1.0), "value": value.Int(3)}},
-		{value.Dict{"groupkey": value.Int(1), "value": value.Int(3)}},
-		{value.Dict{"timestamp": value.Int(1), "value": value.Int(3)}},
+		{value.NewDict(map[string]value.Value{})},
+		{value.NewDict(map[string]value.Value{"groupkey": value.Int(1), "timestamp": value.Int(2)})},
+		{value.NewDict(map[string]value.Value{"groupkey": value.Int(1), "timestamp": value.Bool(true), "value": value.Int(4)})},
+		{value.NewDict(map[string]value.Value{"groupkey": value.Int(1), "timestamp": value.Double(1.0), "value": value.Int(3)})},
+		{value.NewDict(map[string]value.Value{"groupkey": value.Int(1), "value": value.Int(3)})},
+		{value.NewDict(map[string]value.Value{"timestamp": value.Int(1), "value": value.Int(3)})},
 	}
 	for _, test := range cases {
-		table := value.List{}
+		table := value.NewList()
 		for _, d := range test {
 			assert.NoError(t, table.Append(d))
 		}
@@ -170,15 +170,15 @@ func TestList_Bucketize_Invalid(t *testing.T) {
 
 func TestList_Start(t *testing.T) {
 	h := NewList("some_name", 100)
-	s, err := h.Start(110, value.Dict{})
+	s, err := h.Start(110, value.NewDict(map[string]value.Value{}))
 	assert.NoError(t, err)
 	assert.Equal(t, s, ftypes.Timestamp(10))
 	// Duration > end
-	s, err = h.Start(90, value.Dict{})
+	s, err = h.Start(90, value.NewDict(map[string]value.Value{}))
 	assert.NoError(t, err)
 	assert.Equal(t, s, ftypes.Timestamp(0))
 	// Test kwargs
-	s, err = h.Start(200, value.Dict{"duration": value.Int(50)})
+	s, err = h.Start(200, value.NewDict(map[string]value.Value{"duration": value.Int(50)}))
 	assert.NoError(t, err)
 	assert.Equal(t, s, ftypes.Timestamp(150))
 }

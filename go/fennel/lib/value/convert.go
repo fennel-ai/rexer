@@ -15,8 +15,8 @@ func ToProtoValue(v Value) (PValue, error) {
 	case String:
 		return PValue{Node: &PValue_String_{String_: string(t)}}, nil
 	case List:
-		list := make([]*PValue, len(t))
-		for i, v := range t {
+		list := make([]*PValue, t.Len())
+		for i, v := range t.values {
 			pv, err := ToProtoValue(v)
 			if err != nil {
 				return PValue{Node: &PValue_Nil{}}, err
@@ -62,7 +62,7 @@ func FromProtoValue(pv *PValue) (Value, error) {
 			}
 			ret = append(ret, v)
 		}
-		return List(ret), nil
+		return NewList(ret...), nil
 	}
 	if pvd, ok := pv.Node.(*PValue_Dict); ok {
 		ret := make(map[string]Value, 0)
@@ -73,7 +73,7 @@ func FromProtoValue(pv *PValue) (Value, error) {
 			}
 			ret[k] = v
 		}
-		return NewDict(ret)
+		return NewDict(ret), nil
 	}
 	if _, ok := pv.Node.(*PValue_Nil); ok {
 		return Nil, nil
@@ -90,12 +90,12 @@ func FromProtoDict(pd *PVDict) (Dict, error) {
 		}
 		ret[k] = v
 	}
-	return ret, nil
+	return NewDict(ret), nil
 }
 
 func ToProtoDict(d Dict) (PVDict, error) {
-	dict := make(map[string]*PValue, len(d))
-	for k, v := range d {
+	dict := make(map[string]*PValue, d.Len())
+	for k, v := range d.Iter() {
 		pv, err := ToProtoValue(v)
 		if err != nil {
 			return PVDict{}, err

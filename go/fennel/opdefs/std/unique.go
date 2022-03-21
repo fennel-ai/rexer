@@ -20,25 +20,28 @@ func (op UniqueOperator) Signature() *operators.Signature {
 }
 
 func (op UniqueOperator) Apply(staticKwargs value.Dict, in operators.InputIter, out *value.List) error {
-	name := string(staticKwargs["name"].(value.String))
+	n, _ := staticKwargs.Get("name")
+	name := string(n.(value.String))
 	for in.HasMore() {
 		r, _, err := in.Next()
 		if err != nil {
 			return err
 		}
 		row := r.(value.Dict)
-		if values, ok := row[name]; ok {
+		if values, ok := row.Get(name); ok {
 			valToVisited := make(map[string]struct{})
 			switch v := values.(type) {
 			case value.List:
 				var vals value.List
-				for _, val := range v {
+				for i := 0; i < v.Len(); i++ {
+					val, _ := v.At(i)
 					if _, found := valToVisited[val.String()]; !found {
 						valToVisited[val.String()] = struct{}{}
-						vals = append(vals, val)
+						vals.Append(val)
+						//vals = append(vals, val)
 					}
 				}
-				row[name] = vals
+				row.Set(name, vals)
 			}
 		}
 		out.Append(row)

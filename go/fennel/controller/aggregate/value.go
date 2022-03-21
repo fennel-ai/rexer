@@ -76,15 +76,15 @@ func transformActions(tier tier.Tier, actions []libaction.Action, query ast.Ast)
 	interpreter := interpreter.NewInterpreter(bootargs)
 	table, err := libaction.ToList(actions)
 	if err != nil {
-		return value.List{}, err
+		return value.NewList(), err
 	}
-	result, err := interpreter.Eval(query, value.Dict{"actions": table})
+	result, err := interpreter.Eval(query, value.NewDict(map[string]value.Value{"actions": table}))
 	if err != nil {
-		return value.List{}, err
+		return value.NewList(), err
 	}
 	table, ok := result.(value.List)
 	if !ok {
-		return value.List{}, fmt.Errorf("query did not transform actions into a list")
+		return value.NewList(), fmt.Errorf("query did not transform actions into a list")
 	}
 	return table, nil
 }

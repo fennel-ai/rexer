@@ -40,17 +40,17 @@ func TestRolling(t *testing.T) {
 	optionSer, err := proto.Marshal(libaggregate.ToProtoOptions(agg.Options))
 	assert.NoError(t, err)
 
-	key := value.List{value.Int(1), value.Int(2)}
+	key := value.NewList(value.Int(1), value.Int(2))
 	assert.NoError(t, aggregate.Store(ctx, tier, agg.Name, querySer, agg.Timestamp, optionSer))
-	table := value.List{}
+	table := value.NewList()
 	// create an event every minute for 2 days
 	for i := 0; i < 60*24*2; i++ {
 		ts := ftypes.Timestamp(start + i*60 + 30)
-		row := value.Dict{
+		row := value.NewDict(map[string]value.Value{
 			"timestamp": value.Int(ts),
 			"groupkey":  key,
 			"value":     value.Int(1),
-		}
+		})
 		assert.NoError(t, table.Append(row))
 	}
 	histogram := counter2.NewSum("mycounter", 3600*28)
@@ -61,11 +61,11 @@ func TestRolling(t *testing.T) {
 	tier.Clock = clock
 	clock.Set(int64(start + 24*3600*2))
 	// at the end of 2 days, rolling counter should only be worth 28 hours, not full 48 hours
-	found, err := Value(ctx, tier, key, histogram, value.Dict{})
+	found, err := Value(ctx, tier, key, histogram, value.NewDict(map[string]value.Value{}))
 	assert.NoError(t, err)
 	assert.Equal(t, value.Int(28*60), found)
 	// with a duration of 1 day, rolling counter should only be worth 24 hours
-	found, err = Value(ctx, tier, key, histogram, value.Dict{"duration": value.Int(24 * 3600)})
+	found, err = Value(ctx, tier, key, histogram, value.NewDict(map[string]value.Value{"duration": value.Int(24 * 3600)}))
 	assert.NoError(t, err)
 	assert.Equal(t, value.Int(24*60), found)
 }
@@ -95,16 +95,16 @@ func TestTimeseries(t *testing.T) {
 	assert.NoError(t, err)
 
 	assert.NoError(t, aggregate.Store(ctx, tier, agg.Name, querySer, agg.Timestamp, optionSer))
-	key := value.List{value.Int(1), value.Int(2)}
-	table := value.List{}
+	key := value.NewList(value.Int(1), value.Int(2))
+	table := value.NewList()
 	// create an event every minute for 2 days
 	for i := 0; i < 60*24*2; i++ {
 		ts := ftypes.Timestamp(start + i*60 + 30)
-		row := value.Dict{
+		row := value.NewDict(map[string]value.Value{
 			"timestamp": value.Int(ts),
 			"groupkey":  key,
 			"value":     value.Int(1),
-		}
+		})
 		assert.NoError(t, table.Append(row))
 	}
 	err = Update(ctx, tier, table, histogram)
@@ -114,31 +114,38 @@ func TestTimeseries(t *testing.T) {
 	tier.Clock = clock
 	clock.Set(int64(start + 24*3600*2))
 	// at the end of 2 days, we should get one data point each for 9 days
-	f, err := Value(ctx, tier, key, histogram, value.Dict{})
+	f, err := Value(ctx, tier, key, histogram, value.NewDict(map[string]value.Value{}))
 	assert.NoError(t, err)
 	found, ok := f.(value.List)
 	assert.True(t, ok)
 
-	assert.Len(t, found, 9)
-	for i := range found {
-		assert.Equal(t, value.Int(60), found[i])
+	//assert.Len(t, found, 9)
+	assert.Equal(t, 9, found.Len())
+	for i := 0; i < found.Len(); i++ {
+		e, err := found.At(i)
+		assert.NoError(t, err)
+		assert.Equal(t, value.Int(60), e)
 	}
 
 	// but if we set time to just at 6 hours from start, we will still 9 entries, but few will be zero padded
 	// and since our start time is 1 min delayed, the 4th entry will be one short of 60
 	clock.Set(int64(start + 6*3600))
-	f, err = Value(ctx, tier, key, histogram, value.Dict{})
+	f, err = Value(ctx, tier, key, histogram, value.NewDict(map[string]value.Value{}))
 	assert.NoError(t, err)
 	found, ok = f.(value.List)
 	assert.True(t, ok)
-	assert.Len(t, found, 9)
-	for i := range found {
+	//assert.Len(t, found, 9)
+	assert.Equal(t, 9, found.Len())
+	for i := 0; i < found.Len(); i++ {
+		e, err := found.At(i)
+		assert.NoError(t, err)
+		//for i := range found {
 		if i < 3 {
-			assert.Equal(t, value.Int(0), found[i])
+			assert.Equal(t, value.Int(0), e)
 		} else if i == 3 {
-			assert.Equal(t, value.Int(59), found[i])
+			assert.Equal(t, value.Int(59), e)
 		} else {
-			assert.Equal(t, value.Int(60), found[i])
+			assert.Equal(t, value.Int(60), e)
 		}
 	}
 }
@@ -152,17 +159,17 @@ func TestRollingAverage(t *testing.T) {
 	start := 24*3600*12 + 60*30
 	aggname := ftypes.AggName("some counter")
 
-	key := value.List{value.Int(1), value.Int(2)}
+	key := value.NewList(value.Int(1), value.Int(2))
 	//assert.NoError(t, aggregate.Store(tier, agg.Name, querySer, agg.Timestamp, optionSer))
-	table := value.List{}
+	table := value.NewList()
 	// create an event every minute for 2 days
 	for i := 0; i < 60*24*2; i++ {
 		ts := ftypes.Timestamp(start + i*60 + 30)
-		row := value.Dict{
+		row := value.NewDict(map[string]value.Value{
 			"timestamp": value.Int(ts),
 			"groupkey":  key,
 			"value":     value.Int(i / (24 * 60)), // amount is zero for first day and one for the next day
-		}
+		})
 		assert.NoError(t, table.Append(row))
 	}
 	histogram := counter2.NewAverage(aggname, 28*3600)
@@ -173,12 +180,12 @@ func TestRollingAverage(t *testing.T) {
 	tier.Clock = clock
 	clock.Set(int64(start + 24*3600*2))
 	// at the end of 2 days, rolling average should only be worth 28 hours, not full 48 hours
-	found, err := Value(ctx, tier, key, histogram, value.Dict{})
+	found, err := Value(ctx, tier, key, histogram, value.NewDict(map[string]value.Value{}))
 	assert.NoError(t, err)
 	expected := float64(24*60) / float64(28*60)
 	assert.Equal(t, value.Double(expected), found)
 	// with a duration of 1 day, rolling average should only be worth 24 hours
-	found, err = Value(ctx, tier, key, histogram, value.Dict{"duration": value.Int(24 * 3600)})
+	found, err = Value(ctx, tier, key, histogram, value.NewDict(map[string]value.Value{"duration": value.Int(24 * 3600)}))
 	assert.NoError(t, err)
 	expected = float64(24*60) / float64(24*60)
 	assert.Equal(t, value.Double(expected), found)
@@ -193,18 +200,18 @@ func TestStream(t *testing.T) {
 	start := 24*3600*12 + 60*30
 	aggname := ftypes.AggName("some stream")
 
-	key := value.List{value.String("user_follows"), value.Int(2)}
+	key := value.NewList(value.String("user_follows"), value.Int(2))
 	table := value.List{}
 	expected := make([]value.Value, 0)
 	expected2 := make([]value.Value, 0)
 	// create an event every minute for 2 days
 	for i := 0; i < 60*24*2; i++ {
 		ts := ftypes.Timestamp(start + i*60 + 30)
-		row := value.Dict{
+		row := value.NewDict(map[string]value.Value{
 			"timestamp": value.Int(ts),
 			"groupkey":  key,
 			"value":     value.Int(i),
-		}
+		})
 		assert.NoError(t, table.Append(row))
 		if i >= 20*60 {
 			expected = append(expected, value.Int(i))
@@ -221,13 +228,21 @@ func TestStream(t *testing.T) {
 	tier.Clock = clock
 	clock.Set(int64(start + 24*3600*2))
 	// at the end of 2 days, stream should only be worth 28 hours, not full 48 hours
-	found, err := Value(ctx, tier, key, histogram, value.Dict{})
+	found, err := Value(ctx, tier, key, histogram, value.NewDict(map[string]value.Value{}))
 	assert.NoError(t, err)
-	assert.ElementsMatch(t, expected, found.(value.List))
+	assert.ElementsMatch(t, expected, slice(found.(value.List)))
 	// with a duration of 1 day, stream should only be worth 24 hours
-	found, err = Value(ctx, tier, key, histogram, value.Dict{"duration": value.Int(24 * 3600)})
+	found, err = Value(ctx, tier, key, histogram, value.NewDict(map[string]value.Value{"duration": value.Int(24 * 3600)}))
 	assert.NoError(t, err)
-	assert.ElementsMatch(t, expected2, found)
+	assert.ElementsMatch(t, expected2, slice(found.(value.List)))
+}
+
+func slice(l value.List) []value.Value {
+	elems := make([]value.Value, l.Len())
+	for i := 0; i < l.Len(); i++ {
+		elems[i], _ = l.At(i)
+	}
+	return elems
 }
 
 func TestRate(t *testing.T) {
@@ -239,18 +254,18 @@ func TestRate(t *testing.T) {
 	start := 24*3600*12 + 60*30
 	aggname := ftypes.AggName("some rate")
 
-	key := value.List{value.String("user_follows"), value.Int(2)}
+	key := value.NewList(value.String("user_follows"), value.Int(2))
 	table := value.List{}
 	// create an event every minute for 2 days
 	var num, den int64 = 0, 0
 	var num2, den2 int64 = 0, 0
 	for i := 0; i < 60*24*2; i++ {
 		ts := ftypes.Timestamp(start + i*60 + 30)
-		row := value.Dict{
+		row := value.NewDict(map[string]value.Value{
 			"timestamp": value.Int(ts),
 			"groupkey":  key,
-			"value":     value.List{value.Int(i), value.Int(i + 1)},
-		}
+			"value":     value.NewList(value.Int(i), value.Int(i+1)),
+		})
 		assert.NoError(t, table.Append(row))
 		if i >= 20*60 {
 			num += int64(i)
@@ -269,13 +284,13 @@ func TestRate(t *testing.T) {
 	tier.Clock = clock
 	clock.Set(int64(start + 24*3600*2))
 	// at the end of 2 days, rate should only be worth 28 hours, not full 48 hours
-	found, err := Value(ctx, tier, key, histogram, value.Dict{})
+	found, err := Value(ctx, tier, key, histogram, value.NewDict(map[string]value.Value{}))
 	assert.NoError(t, err)
 	expected, err := math.Wilson(uint64(num), uint64(den), true)
 	assert.NoError(t, err)
 	assert.Equal(t, value.Double(expected), found)
 	// with a duration of 1 day, rate should only be worth 24 hours
-	found, err = Value(ctx, tier, key, histogram, value.Dict{"duration": value.Int(24 * 3600)})
+	found, err = Value(ctx, tier, key, histogram, value.NewDict(map[string]value.Value{"duration": value.Int(24 * 3600)}))
 	assert.NoError(t, err)
 	expected, err = math.Wilson(uint64(num2), uint64(den2), true)
 	assert.Equal(t, value.Double(expected), found)
@@ -287,13 +302,13 @@ func TestCounterUpdateInvalid(t *testing.T) {
 	defer test.Teardown(tier)
 	ctx := context.Background()
 	// no col for key or timestamp
-	assertInvalid(tier, ctx, t, value.Dict{"hi": value.Int(1)}, value.Dict{"hi": value.Int(3)})
+	assertInvalid(tier, ctx, t, value.NewDict(map[string]value.Value{"hi": value.Int(1)}), value.NewDict(map[string]value.Value{"hi": value.Int(3)}))
 	// no col for key
-	assertInvalid(tier, ctx, t, value.Dict{"timestamp": value.Int(1)}, value.Dict{"timestamp": value.Int(3)})
+	assertInvalid(tier, ctx, t, value.NewDict(map[string]value.Value{"timestamp": value.Int(1)}), value.NewDict(map[string]value.Value{"timestamp": value.Int(3)}))
 	// timestamp is not int
 	assertInvalid(tier, ctx, t,
-		value.Dict{"timestamp": value.Double(1), "key": value.List{value.Int(1)}},
-		value.Dict{"timestamp": value.Double(3), "key": value.List{value.Int(3)}},
+		value.NewDict(map[string]value.Value{"timestamp": value.Double(1), "key": value.NewList(value.Int(1))}),
+		value.NewDict(map[string]value.Value{"timestamp": value.Double(3), "key": value.NewList(value.Int(3))}),
 	)
 }
 

@@ -18,8 +18,13 @@ func Assert(t *testing.T, tr tier.Tier, op operators.Operator, static value.Dict
 	assert.NoError(t, err)
 	aslist, ok := found.(value.List)
 	assert.True(t, ok)
-	assert.Len(t, aslist, len(expected))
-	assert.ElementsMatch(t, expected, found)
+	//assert.Len(t, aslist, len(expected))
+	assert.Equal(t, len(expected), aslist.Len())
+	foundlist := make([]value.Value, aslist.Len())
+	for i := 0; i < aslist.Len(); i++ {
+		foundlist[i], _ = aslist.At(i)
+	}
+	assert.ElementsMatch(t, expected, foundlist)
 }
 
 func AssertEqual(t *testing.T, tr tier.Tier, op operators.Operator, static value.Dict, inputs, context []value.Dict, expected []value.Dict) {
@@ -27,9 +32,12 @@ func AssertEqual(t *testing.T, tr tier.Tier, op operators.Operator, static value
 	assert.NoError(t, err)
 	aslist, ok := found.(value.List)
 	assert.True(t, ok)
-	assert.Len(t, aslist, len(expected))
+	//assert.Len(t, aslist, len(expected))
+	assert.Equal(t, len(expected), aslist.Len())
 	for i, exp := range expected {
-		assert.True(t, exp.Equal(aslist[i]))
+		e, err := aslist.At(i)
+		assert.NoError(t, err)
+		assert.True(t, exp.Equal(e))
 	}
 }
 
@@ -38,8 +46,13 @@ func AssertElementsMatch(t *testing.T, tr tier.Tier, op operators.Operator, stat
 	assert.NoError(t, err)
 	aslist, ok := found.(value.List)
 	assert.True(t, ok)
-	assert.Len(t, aslist, len(expected))
-	assert.ElementsMatch(t, expected, found)
+	//assert.Len(t, aslist, len(expected))
+	assert.Equal(t, len(expected), aslist.Len())
+	foundlist := make([]value.Value, aslist.Len())
+	for i := 0; i < aslist.Len(); i++ {
+		foundlist[i], _ = aslist.At(i)
+	}
+	assert.ElementsMatch(t, expected, foundlist)
 }
 
 func AssertError(t *testing.T, tr tier.Tier, op operators.Operator, static value.Dict, inputs, context []value.Dict) {
@@ -53,7 +66,7 @@ func run(tr tier.Tier, op operators.Operator, static value.Dict, inputs, context
 	sig := op.Signature()
 	kwargs := make(map[string]ast.Ast)
 	// all static kwargs will be based on Var("args").static
-	for k, _ := range static {
+	for k, _ := range static.Iter() {
 		kwargs[k] = ast.Lookup{
 			On:       ast.Lookup{On: ast.Var{Name: "args"}, Property: "static"},
 			Property: k,
@@ -62,7 +75,7 @@ func run(tr tier.Tier, op operators.Operator, static value.Dict, inputs, context
 	field := "__test__context__"
 	// context kwarg k will be accessible via it.field.k
 	if len(context) > 0 {
-		for k, _ := range context[0] {
+		for k, _ := range context[0].Iter() {
 			kwargs[k] = ast.Lookup{
 				On: ast.Lookup{
 					On:       ast.At{},
@@ -74,7 +87,7 @@ func run(tr tier.Tier, op operators.Operator, static value.Dict, inputs, context
 	}
 	// actually augment input to have the field so that context kwargs can be read
 	for i := range inputs {
-		inputs[i][field] = context[i]
+		inputs[i].Set(field, context[i])
 	}
 
 	// and input is provided as Var("args").input
@@ -92,12 +105,15 @@ func run(tr tier.Tier, op operators.Operator, static value.Dict, inputs, context
 		l.Append(inputs[i])
 	}
 	i := interpreter.NewInterpreter(bootarg.Create(tr))
-	found, err := i.Eval(query, value.Dict{"input": l, "static": static})
+	found, err := i.Eval(query, value.NewDict(map[string]value.Value{"input": l, "static": static}))
 	aslist, ok := found.(value.List)
 	// before returning, remove the extra field that we had added
 	if err == nil && ok {
-		for i := range aslist {
-			delete(aslist[i].(value.Dict), field)
+		for i := 0; i < aslist.Len(); i++ {
+			e, _ := aslist.At(i)
+			dict := e.(value.Dict)
+			dict.Del(field)
+			//delete(e.(value.Dict), field)
 		}
 	}
 	return found, err

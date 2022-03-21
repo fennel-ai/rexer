@@ -19,40 +19,40 @@ func TestRate_Reduce(t *testing.T) {
 	}{
 		{NewRate("some", 100, false),
 			[]value.Value{
-				value.List{value.Int(0), value.Int(1)},
-				value.List{value.Int(4), value.Int(2)},
-				value.List{value.Int(0), value.Int(0)}},
+				value.NewList(value.Int(0), value.Int(1)),
+				value.NewList(value.Int(4), value.Int(2)),
+				value.NewList(value.Int(0), value.Int(0))},
 			value.Double(float64(4) / float64(3)),
 		},
 		{NewRate("some", 100, false),
 			[]value.Value{
-				value.List{value.Int(0), value.Int(0)}},
+				value.NewList(value.Int(0), value.Int(0))},
 			value.Double(0),
 		},
 		{NewRate("some", 100, false),
 			[]value.Value{
-				value.List{value.Int(1), value.Int(1)},
-				value.List{value.Int(34), value.Int(199)}},
+				value.NewList(value.Int(1), value.Int(1)),
+				value.NewList(value.Int(34), value.Int(199))},
 			value.Double(float64(35) / float64(200)),
 		},
 		{NewRate("some", 100, true),
 			[]value.Value{
-				value.List{value.Int(1), value.Int(1)},
-				value.List{value.Int(34), value.Int(199)}},
+				value.NewList(value.Int(1), value.Int(1)),
+				value.NewList(value.Int(34), value.Int(199))},
 			value.Double(0.12860441174608936),
 		},
 		{
 			NewRate("some", 100, false),
 			[]value.Value{
-				value.List{value.Int(0), value.Int(1)},
-				value.List{value.Int(2), value.Int(1)}},
+				value.NewList(value.Int(0), value.Int(1)),
+				value.NewList(value.Int(2), value.Int(1))},
 			value.Double(1.),
 		},
 		{
 			NewRate("some", 100, false),
 			[]value.Value{
-				value.List{value.Int(1e17), value.Int(1e17)},
-				value.List{value.Int(0), value.Int(1e17)}},
+				value.NewList(value.Int(1e17), value.Int(1e17)),
+				value.NewList(value.Int(0), value.Int(1e17))},
 			value.Double(0.5),
 		},
 	}
@@ -77,22 +77,22 @@ func TestRate_Reduce_Invalid(t *testing.T) {
 	}{
 		{NewRate("some", 100, false),
 			[]value.Value{
-				value.List{value.Int(-1), value.Int(1)},
-				value.List{value.Int(0), value.Int(0)}},
+				value.NewList(value.Int(-1), value.Int(1)),
+				value.NewList(value.Int(0), value.Int(0))},
 		},
 		{NewRate("some", 100, false),
 			[]value.Value{
-				value.List{value.Int(0), value.Int(-1)}},
+				value.NewList(value.Int(0), value.Int(-1))},
 		},
 		{NewRate("some", 100, false),
 			[]value.Value{
 				value.Double(0.5),
-				value.List{value.Int(34), value.Int(199)}},
+				value.NewList(value.Int(34), value.Int(199))},
 		},
 		{NewRate("some", 100, true),
 			[]value.Value{
-				value.List{value.Int(1), value.Int(1)},
-				value.List{value.Int(2), value.Int(1)}},
+				value.NewList(value.Int(1), value.Int(1)),
+				value.NewList(value.Int(2), value.Int(1))},
 		},
 	}
 	for _, c := range cases {
@@ -115,19 +115,19 @@ func TestRate_Merge_Valid(t *testing.T) {
 		output value.Value
 	}{
 		{
-			value.List{value.Int(0), value.Int(1)},
-			value.List{value.Int(1), value.Int(3)},
-			value.List{value.Int(1), value.Int(4)},
+			value.NewList(value.Int(0), value.Int(1)),
+			value.NewList(value.Int(1), value.Int(3)),
+			value.NewList(value.Int(1), value.Int(4)),
 		},
 		{
-			value.List{value.Int(0), value.Int(0)},
-			value.List{value.Int(7), value.Int(11)},
-			value.List{value.Int(7), value.Int(11)},
+			value.NewList(value.Int(0), value.Int(0)),
+			value.NewList(value.Int(7), value.Int(11)),
+			value.NewList(value.Int(7), value.Int(11)),
 		},
 		{
-			value.List{value.Int(1e17), value.Int(1e17)},
-			value.List{value.Int(1), value.Int(1)},
-			value.List{value.Int(1 + 1e17), value.Int(1 + 1e17)},
+			value.NewList(value.Int(1e17), value.Int(1e17)),
+			value.NewList(value.Int(1), value.Int(1)),
+			value.NewList(value.Int(1+1e17), value.Int(1+1e17)),
 		},
 	}
 	for _, n := range validCases {
@@ -145,7 +145,7 @@ func TestRate_Merge_Invalid(t *testing.T) {
 		input2 value.Value
 	}{
 		{
-			value.List{value.Int(0), value.Int(1)},
+			value.NewList(value.Int(0), value.Int(1)),
 			value.Int(0),
 		},
 		{
@@ -153,16 +153,16 @@ func TestRate_Merge_Invalid(t *testing.T) {
 			value.Bool(false),
 		},
 		{
-			value.List{},
-			value.Dict{},
+			value.NewList(),
+			value.NewDict(map[string]value.Value{}),
 		},
 		{
 			value.Double(0.0),
 			value.List{},
 		},
 		{
-			value.List{value.Int(1), value.Int(-1)},
-			value.List{value.Int(1), value.Int(1)},
+			value.NewList(value.Int(1), value.Int(-1)),
+			value.NewList(value.Int(1), value.Int(1)),
 		},
 	}
 	for i, n := range invalidCases {
@@ -182,12 +182,12 @@ func TestRate_Bucketize_Valid(t *testing.T) {
 	DAY := 3600 * 24
 	for i := 0; i < 5; i++ {
 		v := value.Int(1)
-		e := value.List{value.Int(i), value.Int(i)}
-		d := value.Dict{
+		e := value.NewList(value.Int(i), value.Int(i))
+		d := value.NewDict(map[string]value.Value{
 			"groupkey":  v,
 			"timestamp": value.Int(DAY + i*3600 + 1),
 			"value":     e,
-		}
+		})
 		assert.NoError(t, actions.Append(d))
 		expected = append(expected, Bucket{Value: e, Window: ftypes.Window_DAY, Index: 1, Width: 1, Key: v.String()})
 		expected = append(expected, Bucket{Key: v.String(), Window: ftypes.Window_MINUTE, Width: 6, Index: uint64(24*10 + i*10), Value: e})
@@ -202,16 +202,16 @@ func TestRate_Bucketize_Invalid(t *testing.T) {
 	h := NewRate("some", 100, false)
 	cases := [][]value.Dict{
 		{value.Dict{}},
-		{value.Dict{"groupkey": value.Int(1), "timestamp": value.Int(2)}},
-		{value.Dict{"groupkey": value.Int(1), "timestamp": value.Bool(true), "value": value.Int(4)}},
-		{value.Dict{"groupkey": value.Int(1), "timestamp": value.Double(1.0), "value": value.Int(3)}},
-		{value.Dict{"groupkey": value.Int(1), "value": value.Int(3)}},
-		{value.Dict{"timestamp": value.Int(1), "value": value.Int(3)}},
-		{value.Dict{"groupkey": value.Int(1), "timestamp": value.Int(2), "value": value.Int(1)}},
-		{value.Dict{"groupkey": value.Int(1), "timestamp": value.Int(2), "value": value.Double(1)}},
-		{value.Dict{"groupkey": value.Int(1), "timestamp": value.Int(2), "value": value.List{value.Int(1)}}},
-		{value.Dict{"groupkey": value.Int(1), "timestamp": value.Int(2), "value": value.List{value.Int(1), value.Int(2), value.Int(3)}}},
-		{value.Dict{"groupkey": value.Int(1), "timestamp": value.Int(2), "value": value.List{value.Double(1), value.Double(2)}}},
+		{value.NewDict(map[string]value.Value{"groupkey": value.Int(1), "timestamp": value.Int(2)})},
+		{value.NewDict(map[string]value.Value{"groupkey": value.Int(1), "timestamp": value.Bool(true), "value": value.Int(4)})},
+		{value.NewDict(map[string]value.Value{"groupkey": value.Int(1), "timestamp": value.Double(1.0), "value": value.Int(3)})},
+		{value.NewDict(map[string]value.Value{"groupkey": value.Int(1), "value": value.Int(3)})},
+		{value.NewDict(map[string]value.Value{"timestamp": value.Int(1), "value": value.Int(3)})},
+		{value.NewDict(map[string]value.Value{"groupkey": value.Int(1), "timestamp": value.Int(2), "value": value.Int(1)})},
+		{value.NewDict(map[string]value.Value{"groupkey": value.Int(1), "timestamp": value.Int(2), "value": value.Double(1)})},
+		{value.NewDict(map[string]value.Value{"groupkey": value.Int(1), "timestamp": value.Int(2), "value": value.NewList(value.Int(1))})},
+		{value.NewDict(map[string]value.Value{"groupkey": value.Int(1), "timestamp": value.Int(2), "value": value.NewList(value.Int(1), value.Int(2), value.Int(3))})},
+		{value.NewDict(map[string]value.Value{"groupkey": value.Int(1), "timestamp": value.Int(2), "value": value.NewList(value.Double(1), value.Double(2))})},
 	}
 	for _, test := range cases {
 		table := value.List{}
@@ -233,7 +233,7 @@ func TestRate_Start(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, s, ftypes.Timestamp(0))
 	// Test kwargs
-	s, err = h.Start(200, value.Dict{"duration": value.Int(50)})
+	s, err = h.Start(200, value.NewDict(map[string]value.Value{"duration": value.Int(50)}))
 	assert.NoError(t, err)
 	assert.Equal(t, s, ftypes.Timestamp(150))
 }

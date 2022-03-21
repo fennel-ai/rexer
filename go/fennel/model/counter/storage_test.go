@@ -66,7 +66,7 @@ func TestStorage(t *testing.T) {
 				{Key: "k2", Window: ftypes.Window_HOUR, Width: 6, Index: 8, Value: nil},
 			},
 			value.Int(0),
-			[]value.Value{value.String("hi"), value.Nil, value.Int(51), value.List{value.Int(1)}, value.Dict{"hi": value.Nil}},
+			[]value.Value{value.String("hi"), value.Nil, value.Int(51), value.NewList(value.Int(1)), value.NewDict(map[string]value.Value{"hi": value.Nil})},
 			[]value.Value{value.Nil, value.Int(4), value.Int(1), value.Int(2), value.Int(3)},
 		},
 	}

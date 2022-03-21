@@ -34,19 +34,19 @@ func TestNewZipTable(t *testing.T) {
 	op := testOpZip{}
 	zt := NewZipTable(op)
 	assert.Equal(t, 0, zt.Len())
-	row1, _ := value.NewDict(map[string]value.Value{
+	row1 := value.NewDict(map[string]value.Value{
 		"a": value.Int(1),
 		"b": value.String("hi"),
 	})
-	row2, _ := value.NewDict(map[string]value.Value{
+	row2 := value.NewDict(map[string]value.Value{
 		"a": value.Int(5),
 		"b": value.String("bye"),
 	})
-	row3, _ := value.NewDict(map[string]value.Value{
+	row3 := value.NewDict(map[string]value.Value{
 		"a": value.Int(9),
 		"b": value.String("third"),
 	})
-	row4, _ := value.NewDict(map[string]value.Value{
+	row4 := value.NewDict(map[string]value.Value{
 		"a": value.Int(122),
 		"b": value.String("fourt"),
 	})
@@ -67,46 +67,43 @@ func TestIterTypeCheck(t *testing.T) {
 		errs   []bool
 		name   string
 	}{
-		{value.List{value.String("hello"), value.String("again")},
-			[]value.Dict{{"p2": value.Double(3.0), "p3": value.Nil}, {"p2": value.Double(12.1), "p3": value.Int(2)}},
+		{value.NewList(value.String("hello"), value.String("again")),
+			[]value.Dict{value.NewDict(map[string]value.Value{"p2": value.Double(3.0), "p3": value.Nil}), value.NewDict(map[string]value.Value{"p2": value.Double(12.1), "p3": value.Int(2)})},
 			[]bool{false, false},
 			"basic",
 		},
-		{value.List{value.String("hello"), value.Int(3)},
-			[]value.Dict{{"p2": value.Double(3.0), "p3": value.Nil}, {"p2": value.Double(12.1), "p3": value.Int(2)}},
+		{value.NewList(value.String("hello"), value.Int(3)),
+			[]value.Dict{value.NewDict(map[string]value.Value{"p2": value.Double(3.0), "p3": value.Nil}), value.NewDict(map[string]value.Value{"p2": value.Double(12.1), "p3": value.Int(2)})},
 			[]bool{false, true},
 			"basic_input_mistyping",
 		},
-		{value.List{value.Nil, value.Int(3)},
-			[]value.Dict{{"p2": value.Double(3.0), "p3": value.Nil}, {"p2": value.Double(12.1), "p3": value.Int(2)}},
+		{value.NewList(value.Nil, value.Int(3)),
+			[]value.Dict{value.NewDict(map[string]value.Value{"p2": value.Double(3.0), "p3": value.Nil}), value.NewDict(map[string]value.Value{"p2": value.Double(12.1), "p3": value.Int(2)})},
 			[]bool{true, true},
 			"basic_input_mistyping_2",
 		},
-		{value.List{value.String("hello"), value.String("again")},
-			[]value.Dict{{"p2": value.Int(3.0), "p3": value.Nil}, {"p2": value.Double(12.1), "p3": value.Int(2)}},
+		{value.NewList(value.String("hello"), value.String("again")),
+			[]value.Dict{value.NewDict(map[string]value.Value{"p2": value.Int(3.0), "p3": value.Nil}), value.NewDict(map[string]value.Value{"p2": value.Double(12.1), "p3": value.Int(2)})},
 			[]bool{true, false},
 			"basic_kwarg_mistyping",
-		},
-		{value.List{value.String("hello"), value.List{value.String("again")}},
-			[]value.Dict{{"p2": value.Int(3.0), "p3": value.Nil}, {"p2": value.Nil, "p3": value.Int(2)}},
-			[]bool{true, true},
-			"kwarg_input_mistyping",
 		},
 	}
 
 	for _, scenario := range scenarios {
 		zt := NewZipTable(op)
-		for i, v := range scenario.rows {
+		for i := 0; i < scenario.rows.Len(); i++ {
+			v, _ := scenario.rows.At(i)
 			assert.NoError(t, zt.Append(v, scenario.kwargs[i]), scenario.name)
 		}
 		iter := zt.Iter()
-		for i := range scenario.rows {
+		for i := 0; i < scenario.rows.Len(); i++ {
 			assert.True(t, iter.HasMore(), scenario.name)
 			row, kwargs, err := iter.Next()
 			if scenario.errs[i] {
 				assert.Error(t, err, scenario.name)
 			} else {
-				assert.Equal(t, scenario.rows[i], row, scenario.name)
+				v, _ := scenario.rows.At(i)
+				assert.Equal(t, v, row, scenario.name)
 				assert.Equal(t, scenario.kwargs[i], kwargs, scenario.name)
 			}
 		}

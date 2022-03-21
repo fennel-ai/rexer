@@ -60,7 +60,7 @@ func (r timeseriesSum) Reduce(values []value.Value) (value.Value, error) {
 	for ; i < limit; i++ {
 		ret[limit-1-i] = value.Int(0)
 	}
-	return value.List(ret), nil
+	return value.NewList(ret...), nil
 }
 
 func (r timeseriesSum) Merge(a, b value.Value) (value.Value, error) {

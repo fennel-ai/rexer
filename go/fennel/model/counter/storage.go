@@ -131,7 +131,7 @@ func (t twoLevelRedisStore) Get(ctx context.Context, tier tier.Tier, buckets []B
 			return nil, fmt.Errorf("could not read data: expected dict but found: %v\n", groupVals[ptr])
 		}
 		idxStr := t.slotKey(s)
-		ret[i], ok = dict[idxStr]
+		ret[i], ok = dict.Get(idxStr)
 		if !ok {
 			ret[i] = default_
 		}
@@ -219,7 +219,7 @@ func (t twoLevelRedisStore) Set(ctx context.Context, tier tier.Tier, buckets []B
 			return fmt.Errorf("could not read data: expected dict but found: %v\n", groupVals[ptr])
 		}
 		idxStr := t.slotKey(s)
-		dict[idxStr] = s.val
+		dict.Set(idxStr, s.val)
 		groupVals[ptr] = dict
 	}
 	// we set each key with a ttl of retention seconds
@@ -237,7 +237,7 @@ func (t twoLevelRedisStore) logStats(groupVals []value.Value, mode string) {
 	count := 0
 	for i := range groupVals {
 		if asdict, ok := groupVals[i].(value.Dict); ok {
-			valsPerKey += len(asdict)
+			valsPerKey += asdict.Len()
 			count += 1
 		}
 	}

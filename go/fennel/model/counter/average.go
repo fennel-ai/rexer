@@ -34,7 +34,7 @@ func (r average) Transform(v value.Value) (value.Value, error) {
 	if !ok {
 		return nil, fmt.Errorf("expected value to be an int but got: '%s' instead", v)
 	}
-	return value.List{v_int, value.Int(1)}, nil
+	return value.NewList(v_int, value.Int(1)), nil
 }
 
 var _ Histogram = average{}
@@ -49,16 +49,18 @@ func (r average) Start(end ftypes.Timestamp, kwargs value.Dict) (ftypes.Timestam
 
 func (r average) extract(v value.Value) (int64, int64, error) {
 	l, ok := v.(value.List)
-	if !ok || len(l) != 2 {
+	if !ok || l.Len() != 2 {
 		return 0, 0, fmt.Errorf("expected list of two elements but got: %v", v)
 	}
-	a, ok := l[0].(value.Int)
+	f, _ := l.At(0)
+	a, ok := f.(value.Int)
 	if !ok {
-		return 0, 0, fmt.Errorf("expected integer but found: %v", l[0])
+		return 0, 0, fmt.Errorf("expected integer but found: %v", f)
 	}
-	b, ok := l[1].(value.Int)
+	f, _ = l.At(1)
+	b, ok := f.(value.Int)
 	if !ok {
-		return 0, 0, fmt.Errorf("expected integer but found: %v", l[1])
+		return 0, 0, fmt.Errorf("expected integer but found: %v", f)
 	}
 	return int64(a), int64(b), nil
 }
@@ -94,9 +96,9 @@ func (r average) Merge(a, b value.Value) (value.Value, error) {
 	if err != nil {
 		return nil, err
 	}
-	return value.List{value.Int(s1 + s2), value.Int(n1 + n2)}, nil
+	return value.NewList(value.Int(s1+s2), value.Int(n1+n2)), nil
 }
 
 func (r average) Zero() value.Value {
-	return value.List{value.Int(0), value.Int(0)}
+	return value.NewList(value.Int(0), value.Int(0))
 }

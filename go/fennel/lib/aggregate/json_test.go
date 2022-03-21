@@ -9,9 +9,10 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
+
 	"fennel/engine/ast"
 	"fennel/lib/value"
-	"github.com/stretchr/testify/assert"
 )
 
 func TestAggregateJSON(t *testing.T) {
@@ -73,28 +74,28 @@ func TestGetAggValueRequestJSON(t *testing.T) {
 		gavr: GetAggValueRequest{Key: value.Nil},
 	}, {
 		str:  `{"Name":"some name","Key":-5,"Kwargs":{"duration":1}}`,
-		gavr: GetAggValueRequest{AggName: "some name", Key: value.Int(-5), Kwargs: value.Dict{"duration": value.Int(1)}},
+		gavr: GetAggValueRequest{AggName: "some name", Key: value.Int(-5), Kwargs: value.NewDict(map[string]value.Value{"duration": value.Int(1)})},
 	}, {
 		str:  `{"Name":"some name","Key":true,"Kwargs":{"something":{}}}`,
-		gavr: GetAggValueRequest{AggName: "some name", Key: value.Bool(true), Kwargs: value.Dict{"something": value.Dict(nil)}},
+		gavr: GetAggValueRequest{AggName: "some name", Key: value.Bool(true), Kwargs: value.NewDict(map[string]value.Value{"something": value.NewDict(nil)})},
 	}, {
 		str:  `{"Name":"some name","Key":-12.9,"Kwargs":{}}`,
-		gavr: GetAggValueRequest{AggName: "some name", Key: value.Double(-12.9), Kwargs: value.Dict(nil)},
+		gavr: GetAggValueRequest{AggName: "some name", Key: value.Double(-12.9), Kwargs: value.NewDict(map[string]value.Value{})},
 	}, {
 		str:  `{"Name":"some name","Key":"pqrs","Kwargs":{}}`,
 		gavr: GetAggValueRequest{AggName: "some name", Key: value.String("pqrs")},
 	}, {
 		str:  `{"Name":"some name","Key":[],"Kwargs":{}}`,
-		gavr: GetAggValueRequest{AggName: "some name", Key: value.List(nil)},
+		gavr: GetAggValueRequest{AggName: "some name", Key: value.NewList()},
 	}, {
 		str:  `{"Name":"some name","Key":[null],"Kwargs":{}}`,
-		gavr: GetAggValueRequest{AggName: "some name", Key: value.List{value.Nil}},
+		gavr: GetAggValueRequest{AggName: "some name", Key: value.NewList(value.Nil)},
 	}, {
 		str:  `{"Name":"some name","Key":{},"Kwargs":{}}`,
-		gavr: GetAggValueRequest{AggName: "some name", Key: value.Dict(nil)},
+		gavr: GetAggValueRequest{AggName: "some name", Key: value.NewDict(nil)},
 	}, {
 		str:  `{"Name":"some name","Key":{"k1":4.5},"Kwargs":{}}`,
-		gavr: GetAggValueRequest{AggName: "some name", Key: value.Dict{"k1": value.Double(4.5)}},
+		gavr: GetAggValueRequest{AggName: "some name", Key: value.NewDict(map[string]value.Value{"k1": value.Double(4.5)})},
 	}}
 	// Test unmarshal
 	for _, tst := range tests {

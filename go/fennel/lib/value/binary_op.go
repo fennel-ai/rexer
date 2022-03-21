@@ -84,14 +84,14 @@ func add(left Value, right Value) (Value, error) {
 	case List:
 		switch right := right.(type) {
 		case List:
-			v := make([]Value, len(left)+len(right))
-			for i, lval := range left {
+			v := make([]Value, left.Len()+right.Len())
+			for i, lval := range left.values {
 				v[i] = lval.Clone()
 			}
-			for i, rval := range right {
-				v[len(left)+i] = rval.Clone()
+			for i, rval := range right.values {
+				v[left.Len()+i] = rval.Clone()
 			}
-			return List(v), nil
+			return List{values: v}, nil
 		}
 	}
 	return nil, fmt.Errorf("'+' only supported between numbers, strings and lists")
@@ -303,10 +303,7 @@ func index(left Value, right Value) (Value, error) {
 			return Nil, fmt.Errorf("can only index a list with int but got: '%s' instead", right)
 		}
 		idx := int(asInt)
-		if idx < 0 || idx >= len(asList) {
-			return Nil, fmt.Errorf("index out of bounds. Length of list: %d but index is: %d", len(asList), idx)
-		}
-		return left.(List)[idx], nil
+		return asList.At(idx)
 	}
 	if asDict, ok := left.(Dict); ok {
 		asStr, ok := right.(String)
@@ -314,7 +311,7 @@ func index(left Value, right Value) (Value, error) {
 			return Nil, fmt.Errorf("can only index a dict with string but got: '%s' instead", right)
 		}
 		idx := string(asStr)
-		ret, ok := asDict[idx]
+		ret, ok := asDict.Get(idx)
 		if !ok {
 			return Nil, fmt.Errorf("dict doesn't have property: %s", idx)
 		}
