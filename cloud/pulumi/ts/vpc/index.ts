@@ -52,11 +52,12 @@ const parseConfig = (): inputType => {
         region: config.require(nameof<inputType>("region")),
         roleArn: config.require(nameof<inputType>("roleArn")),
         controlPlane: config.requireObject(nameof<inputType>("controlPlane")),
+        planeId: config.requireNumber(nameof<inputType>("planeId")),
     }
 }
 
 // TODO: Tighten rules for more security.
-function createPublicNacl(vpc: aws.ec2.Vpc, subnets: pulumi.Output<string>[], provider: aws.Provider): pulumi.Output<string> {
+function createPublicNacl(input: inputType, vpc: aws.ec2.Vpc, subnets: pulumi.Output<string>[], provider: aws.Provider): pulumi.Output<string> {
     const privateNacl = new aws.ec2.NetworkAcl(`p-${input.planeId}-public-nacl`, {
         vpcId: vpc.id,
         subnetIds: subnets,
@@ -89,7 +90,7 @@ function createPublicNacl(vpc: aws.ec2.Vpc, subnets: pulumi.Output<string>[], pr
 }
 
 // TODO: Tighten rules for more security.
-function createPrivateNacl(vpc: aws.ec2.Vpc, subnets: pulumi.Output<string>[], provider: aws.Provider): pulumi.Output<string> {
+function createPrivateNacl(input: inputType, vpc: aws.ec2.Vpc, subnets: pulumi.Output<string>[], provider: aws.Provider): pulumi.Output<string> {
     const privateNacl = new aws.ec2.NetworkAcl(`p-${input.planeId}-private-nacl`, {
         vpcId: vpc.id,
         subnetIds: subnets,
@@ -165,7 +166,7 @@ function createPublicSubnet(name: string, vpcId: pulumi.Output<string>, subnet: 
     }, { provider })
 }
 
-function setupPrivateRouteTable(vpcId: pulumi.Output<string>, subnets: pulumi.Output<string>[], publicSubnet: pulumi.Output<string>, provider: aws.Provider): pulumi.Output<string> {
+function setupPrivateRouteTable(input: inputType, vpcId: pulumi.Output<string>, subnets: pulumi.Output<string>[], publicSubnet: pulumi.Output<string>, provider: aws.Provider): pulumi.Output<string> {
     const eip = new aws.ec2.Eip(`p-${input.planeId}-eip`, {
         tags: { ...fennelStdTags }
     }, { provider })
@@ -198,7 +199,7 @@ function setupPrivateRouteTable(vpcId: pulumi.Output<string>, subnets: pulumi.Ou
     return privateRt.id
 }
 
-function setupPublicRouteTable(vpcId: pulumi.Output<string>, subnets: pulumi.Output<string>[], provider: aws.Provider): pulumi.Output<string> {
+function setupPublicRouteTable(input: inputType, vpcId: pulumi.Output<string>, subnets: pulumi.Output<string>[], provider: aws.Provider): pulumi.Output<string> {
     const igw = new aws.ec2.InternetGateway(`p-${input.planeId}-internet-gateway`, {
         vpcId: vpcId,
         tags: { ...fennelStdTags }
