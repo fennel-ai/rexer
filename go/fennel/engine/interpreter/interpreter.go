@@ -245,10 +245,15 @@ func (i Interpreter) VisitAtom(at ast.AtomType, lexeme string) (value.Value, err
 }
 
 func (i Interpreter) VisitBinary(left ast.Ast, op string, right ast.Ast) (value.Value, error) {
-	// TODO: short-circuit for bool and/or
 	l, err := left.AcceptValue(i)
 	if err != nil {
 		return value.Nil, err
+	}
+	if op == "and" && l.Equal(value.Bool(false)) {
+		return value.Bool(false), nil
+	}
+	if op == "or" && l.Equal(value.Bool(true)) {
+		return value.Bool(true), nil
 	}
 	r, err := right.AcceptValue(i)
 	if err != nil {

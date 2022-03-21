@@ -58,6 +58,31 @@ func TestInterpreter_VisitBinary(t *testing.T) {
 	})
 }
 
+func TestInterpreter_VisitBinary_Shortcircuit_Bool(t *testing.T) {
+	t.Parallel()
+	invalid := ast.Binary{Left: ast.MakeInt(1), Op: "*", Right: ast.MakeString("hi")}
+	// verify this node throws error when evaluated
+	testError(t, invalid)
+
+	// but no error when short circuit happens
+	testValid(t, ast.Binary{Left: ast.MakeBool(true), Op: "or", Right: invalid}, value.Bool(true))
+	testValid(t, ast.Binary{Left: ast.MakeBool(false), Op: "and", Right: invalid}, value.Bool(false))
+	// and same happens when valuates evaluate to bool but aren't bool asts to start with
+	testValid(t, ast.Binary{
+		Left:  ast.Binary{Left: ast.MakeInt(1), Op: ">=", Right: ast.MakeDouble(3.1)},
+		Op:    "and",
+		Right: invalid,
+	}, value.Bool(false))
+	testValid(t, ast.Binary{Left: ast.Binary{Left: ast.MakeInt(6), Op: ">=", Right: ast.MakeDouble(3.1)},
+		Op:    "or",
+		Right: invalid,
+	}, value.Bool(true))
+
+	// and error comes again when short circuit doesn't happen
+	testError(t, ast.Binary{Left: ast.MakeBool(false), Op: "or", Right: invalid})
+	testError(t, ast.Binary{Left: ast.MakeBool(true), Op: "and", Right: invalid})
+}
+
 func TestInterpreter_VisitList(t *testing.T) {
 	// Empty list works
 	testValid(t, ast.List{Values: []ast.Ast{}}, value.NewList())
