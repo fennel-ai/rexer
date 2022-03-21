@@ -26,6 +26,7 @@ export type inputType = {
     password: pulumi.Output<string>,
     connectedSecurityGroups: Record<string, pulumi.Output<string>>,
     connectedCidrBlocks?: string[],
+    planeId: number,
 }
 
 export type outputType = {
@@ -44,6 +45,7 @@ const parseConfig = (): inputType => {
         connectedCidrBlocks: config.getObject(nameof<inputType>("connectedCidrBlocks")),
         username: config.require(nameof<inputType>("username")),
         password: config.requireSecret(nameof<inputType>("password")),
+        planeId: config.requireNumber(nameof<inputType>("planeId")),
     }
 }
 
@@ -63,26 +65,26 @@ export const setup = async (input: inputType): Promise<pulumi.Output<outputType>
             // TODO: use better method for filtering private subnets.
             filters: [{
                 name: "tag:Name",
-                values: ["fennel-primary-private-subnet", "fennel-secondary-private-subnet"],
+                values: [`p-${input.planeId}-primary-private-subnet`, `p-${input.planeId}-secondary-private-subnet`],
             }]
         }, { provider })
     })
 
-    const subnetGroup = new aws.rds.SubnetGroup("db-subnetgroup", {
+    const subnetGroup = new aws.rds.SubnetGroup(`p-${input.planeId}-db-subnetgroup`, {
         subnetIds: subnetIds.ids,
         description: "Subnet group for primary database",
         tags: { ...fennelStdTags },
     }, { provider })
 
-    const securityGroup = new aws.ec2.SecurityGroup("db-sg", {
-        namePrefix: "fenneldb-sg-",
+    const securityGroup = new aws.ec2.SecurityGroup(`p-${input.planeId}-db-sg`, {
+        namePrefix: `p-${input.planeId}-db-sg-`,
         vpcId: input.vpcId,
         tags: { ...fennelStdTags },
     }, { provider })
 
     let sgRules: pulumi.Output<string>[] = []
     for (var key in input.connectedSecurityGroups) {
-        sgRules.push(new aws.ec2.SecurityGroupRule(`allow-${key}`, {
+        sgRules.push(new aws.ec2.SecurityGroupRule(`p-${input.planeId}-allow-${key}`, {
             securityGroupId: securityGroup.id,
             sourceSecurityGroupId: input.connectedSecurityGroups[key],
             fromPort: 0,
@@ -92,7 +94,7 @@ export const setup = async (input: inputType): Promise<pulumi.Output<outputType>
         }, { provider }).id)
     }
     if (input.connectedCidrBlocks !== undefined) {
-        sgRules.push(new aws.ec2.SecurityGroupRule(`aurora-allow-connected-cidr`, {
+        sgRules.push(new aws.ec2.SecurityGroupRule(`p-${input.planeId}-aurora-allow-connected-cidr`, {
             securityGroupId: securityGroup.id,
             cidrBlocks: input.connectedCidrBlocks,
             fromPort: 0,
@@ -105,7 +107,7 @@ export const setup = async (input: inputType): Promise<pulumi.Output<outputType>
     const cluster = new aws.rds.Cluster("db-instance", {
         dbSubnetGroupName: subnetGroup.name,
         vpcSecurityGroupIds: [securityGroup.id],
-        clusterIdentifierPrefix: "fenneldb-",
+        clusterIdentifierPrefix: `p-${input.planeId}-db-`,
         engine: aws.rds.EngineType.AuroraMysql,
         engineMode: aws.rds.EngineMode.Serverless,
         engineVersion: "5.7.mysql_aurora.2.07.1",

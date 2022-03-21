@@ -154,7 +154,7 @@ export const setupAMP = async (input: inputType): Promise<pulumi.Output<outputTy
         }
     })
 
-    const workspaceName = `fennel-prom-${input.planeId}`
+    const workspaceName = `p-${input.planeId}-prom`
     const prom = new aws.amp.Workspace(workspaceName, {
         alias: workspaceName,
     }, {provider: awsProvider})

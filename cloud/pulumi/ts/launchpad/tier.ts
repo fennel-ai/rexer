@@ -143,6 +143,7 @@ const setupResources = async () => {
         namespace: input.namespace,
         subnetIds: input.subnetIds,
         loadBalancerScheme: input.loadBalancerScheme,
+        tierId: input.tierId,
     })
     configsOutput.apply(async () => {
         // setup api-server and countaggr after configs are setup.
@@ -151,12 +152,14 @@ const setupResources = async () => {
             region: input.region,
             kubeconfig: input.kubeconfig,
             namespace: input.namespace,
+            tierId: input.tierId,
         });
         await httpserver.setup({
             roleArn: input.roleArn,
             region: input.region,
             kubeconfig: input.kubeconfig,
             namespace: input.namespace,
+            tierId: input.tierId,
         });
     })
     return {

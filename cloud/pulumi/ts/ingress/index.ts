@@ -29,6 +29,7 @@ export type inputType = {
     namespace: string,
     loadBalancerScheme: string,
     subnetIds: pulumi.Input<string[]>,
+    tierId: number,
 }
 
 export type outputType = {
@@ -219,7 +220,7 @@ export const setup = async (input: inputType) => {
         }, { provider: awsProvider })
     })
 
-    const vpcEndpointService = new aws.ec2.VpcEndpointService("ingress-vpc-endpoint-service", {
+    const vpcEndpointService = new aws.ec2.VpcEndpointService(`t-${input.tierId}-ingress-vpc-endpoint-service`, {
         acceptanceRequired: true,
         allowedPrincipals: [
             // Allow anyone to discover the service.

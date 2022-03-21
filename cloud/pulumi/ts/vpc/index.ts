@@ -31,6 +31,7 @@ export type inputType = {
     region: string
     roleArn: string
     controlPlane: controlPlaneConfig,
+    planeId: number,
 }
 
 export type outputType = {
@@ -56,7 +57,7 @@ const parseConfig = (): inputType => {
 
 // TODO: Tighten rules for more security.
 function createPublicNacl(vpc: aws.ec2.Vpc, subnets: pulumi.Output<string>[], provider: aws.Provider): pulumi.Output<string> {
-    const privateNacl = new aws.ec2.NetworkAcl("public-nacl", {
+    const privateNacl = new aws.ec2.NetworkAcl(`p-${input.planeId}-public-nacl`, {
         vpcId: vpc.id,
         subnetIds: subnets,
         egress: [
@@ -89,7 +90,7 @@ function createPublicNacl(vpc: aws.ec2.Vpc, subnets: pulumi.Output<string>[], pr
 
 // TODO: Tighten rules for more security.
 function createPrivateNacl(vpc: aws.ec2.Vpc, subnets: pulumi.Output<string>[], provider: aws.Provider): pulumi.Output<string> {
-    const privateNacl = new aws.ec2.NetworkAcl("private-nacl", {
+    const privateNacl = new aws.ec2.NetworkAcl(`p-${input.planeId}-private-nacl`, {
         vpcId: vpc.id,
         subnetIds: subnets,
         egress: [
@@ -165,30 +166,30 @@ function createPublicSubnet(name: string, vpcId: pulumi.Output<string>, subnet: 
 }
 
 function setupPrivateRouteTable(vpcId: pulumi.Output<string>, subnets: pulumi.Output<string>[], publicSubnet: pulumi.Output<string>, provider: aws.Provider): pulumi.Output<string> {
-    const eip = new aws.ec2.Eip("eip", {
+    const eip = new aws.ec2.Eip(`p-${input.planeId}-eip`, {
         tags: { ...fennelStdTags }
     }, { provider })
 
-    const natGateway = new aws.ec2.NatGateway("nat-gateway", {
+    const natGateway = new aws.ec2.NatGateway(`p-${input.planeId}-nat-gateway`, {
         allocationId: eip.allocationId,
         subnetId: publicSubnet,
         tags: { ...fennelStdTags }
     }, { provider })
 
-    const privateRt = new aws.ec2.RouteTable("private-rt", {
+    const privateRt = new aws.ec2.RouteTable(`p-${input.planeId}-private-rt`, {
         vpcId: vpcId,
         tags: { ...fennelStdTags }
     }, { provider })
 
     // Create routes outside route-table so we can add routes in other projects as well.
-    const allowAll = new aws.ec2.Route("allow-all-private-rt", {
+    const allowAll = new aws.ec2.Route(`p-${input.planeId}-allow-all-private-rt`, {
         routeTableId: privateRt.id,
         destinationCidrBlock: "0.0.0.0/0",
         natGatewayId: natGateway.id,
     }, { provider })
 
     subnets.map((subnetId, idx) => {
-        return new aws.ec2.RouteTableAssociation(`rt-assoc-private-${idx}`, {
+        return new aws.ec2.RouteTableAssociation(`p-${input.planeId}-rt-assoc-private-${idx}`, {
             subnetId: subnetId,
             routeTableId: privateRt.id,
         }, { provider })
@@ -198,25 +199,25 @@ function setupPrivateRouteTable(vpcId: pulumi.Output<string>, subnets: pulumi.Ou
 }
 
 function setupPublicRouteTable(vpcId: pulumi.Output<string>, subnets: pulumi.Output<string>[], provider: aws.Provider): pulumi.Output<string> {
-    const igw = new aws.ec2.InternetGateway("internet-gateway", {
+    const igw = new aws.ec2.InternetGateway(`p-${input.planeId}-internet-gateway`, {
         vpcId: vpcId,
         tags: { ...fennelStdTags }
     }, { provider })
 
-    const publicRt = new aws.ec2.RouteTable("public-rt", {
+    const publicRt = new aws.ec2.RouteTable(`p-${input.planeId}-public-rt`, {
         vpcId: vpcId,
         tags: { ...fennelStdTags }
     }, { provider })
 
     // Create routes outside route-table so we can add routes in other projects as well.
-    const allowAll = new aws.ec2.Route("allow-all-public-rt", {
+    const allowAll = new aws.ec2.Route(`p-${input.planeId}-allow-all-public-rt`, {
         routeTableId: publicRt.id,
         destinationCidrBlock: "0.0.0.0/0",
         gatewayId: igw.id,
     }, { provider })
 
     subnets.map((subnetId, idx) => {
-        return new aws.ec2.RouteTableAssociation(`rt-assoc-public-${idx}`, {
+        return new aws.ec2.RouteTableAssociation(`p-${input.planeId}-rt-assoc-public-${idx}`, {
             subnetId: subnetId,
             routeTableId: publicRt.id,
         }, { provider })
@@ -227,7 +228,7 @@ function setupPublicRouteTable(vpcId: pulumi.Output<string>, subnets: pulumi.Out
 
 function createVpcPeeringConnection(vpc: aws.ec2.Vpc, routeTables: pulumi.Output<string>[], input: inputType, provider: aws.Provider): aws.ec2.VpcPeeringConnection {
     // create peering connection between vpc and control-plane vpc.
-    const peeringConnection = new aws.ec2.VpcPeeringConnection("peering-connection", {
+    const peeringConnection = new aws.ec2.VpcPeeringConnection(`p-${input.planeId}-peering-connection`, {
         vpcId: vpc.id,
         peerVpcId: input.controlPlane.vpcId,
         peerOwnerId: input.controlPlane.accountId,
@@ -247,7 +248,7 @@ function createVpcPeeringConnection(vpc: aws.ec2.Vpc, routeTables: pulumi.Output
         }
     })
 
-    const peeringConnectionAcceptor = new aws.ec2.VpcPeeringConnectionAccepter("peering-connection-acceptor", {
+    const peeringConnectionAcceptor = new aws.ec2.VpcPeeringConnectionAccepter(`p-${input.planeId}-peering-connection-acceptor`, {
         vpcPeeringConnectionId: peeringConnection.id,
         autoAccept: true,
         accepter: {
@@ -259,14 +260,14 @@ function createVpcPeeringConnection(vpc: aws.ec2.Vpc, routeTables: pulumi.Output
         }
     }, { provider: controlPlaneProvider })
 
-    const controlPlaneToDataPlane = new aws.ec2.Route("route-to-data-plane", {
+    const controlPlaneToDataPlane = new aws.ec2.Route(`p-${input.planeId}-route-to-data-plane`, {
         routeTableId: input.controlPlane.routeTableId,
         vpcPeeringConnectionId: peeringConnection.id,
         destinationCidrBlock: vpc.cidrBlock,
     }, { provider: controlPlaneProvider })
 
     const routes = routeTables.map((rt, idx) => {
-        return new aws.ec2.Route(`route-to-control-plane-${idx}`, {
+        return new aws.ec2.Route(`p-${input.planeId}-route-to-control-plane-${idx}`, {
             routeTableId: rt,
             vpcPeeringConnectionId: peeringConnection.id,
             destinationCidrBlock: input.controlPlane.cidrBlock,
@@ -289,7 +290,7 @@ export const setup = async (input: inputType): Promise<pulumi.Output<outputType>
 
     const vpcCidr = input.cidr
 
-    const vpc = new aws.ec2.Vpc("vpc", {
+    const vpc = new aws.ec2.Vpc(`p-${input.planeId}-vpc`, {
         cidrBlock: vpcCidr,
         tags: {
             "Name": "fennel-vpc",
@@ -310,16 +311,16 @@ export const setup = async (input: inputType): Promise<pulumi.Output<outputType>
     const subnetMask = Number(mask) + 2
 
     let subnet = new netmask.Netmask(`${ip}/${subnetMask}`)
-    const primaryPublicSubnet = createPublicSubnet("fennel-primary-public-subnet", vpcId, subnet.toString(), primaryAz, provider)
+    const primaryPublicSubnet = createPublicSubnet(`p-${input.planeId}-primary-public-subnet`, vpcId, subnet.toString(), primaryAz, provider)
 
     subnet = subnet.next()
-    const secondaryPublicSubnet = createPublicSubnet("fennel-secondary-public-subnet", vpcId, subnet.toString(), secondaryAz, provider)
+    const secondaryPublicSubnet = createPublicSubnet(`p-${input.planeId}-secondary-public-subnet`, vpcId, subnet.toString(), secondaryAz, provider)
 
     subnet = subnet.next()
-    const primaryPrivateSubnet = createPrivateSubnet("fennel-primary-private-subnet", vpcId, subnet.toString(), primaryAz, provider)
+    const primaryPrivateSubnet = createPrivateSubnet(`p-${input.planeId}-primary-private-subnet`, vpcId, subnet.toString(), primaryAz, provider)
 
     subnet = subnet.next()
-    const secondaryPrivateSubnet = createPrivateSubnet("fennel-secondary-private-subnet", vpcId, subnet.toString(), secondaryAz, provider)
+    const secondaryPrivateSubnet = createPrivateSubnet(`p-${input.planeId}-secondary-private-subnet`, vpcId, subnet.toString(), secondaryAz, provider)
 
     const privateSubnets = [primaryPrivateSubnet.id, secondaryPrivateSubnet.id];
     const publicSubnets = [primaryPublicSubnet.id, secondaryPublicSubnet.id];
