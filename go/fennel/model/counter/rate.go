@@ -28,7 +28,7 @@ func NewRate(name ftypes.AggName, duration uint64, normalize bool) Histogram {
 			ftypes.Window_DAY:    1,
 		}, true},
 		// retain all keys for 1.5days + duration
-		BucketStore: NewTwoLevelStorage(name, 24*3600, duration+24*3600*1.5),
+		BucketStore: NewTwoLevelStorage(24*3600, duration+24*3600*1.5),
 	}
 }
 

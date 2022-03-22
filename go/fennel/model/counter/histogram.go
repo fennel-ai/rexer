@@ -22,8 +22,11 @@ type Bucketizer interface {
 }
 
 type BucketStore interface {
-	Get(ctx context.Context, tier tier.Tier, buckets []Bucket, default_ value.Value) ([]value.Value, error)
-	Set(ctx context.Context, tier tier.Tier, buckets []Bucket) error
+	GetBucketStore() BucketStore
+	Get(ctx context.Context, tier tier.Tier, name ftypes.AggName, buckets []Bucket, default_ value.Value) ([]value.Value, error)
+	GetMulti(ctx context.Context, tier tier.Tier, names []ftypes.AggName, buckets [][]Bucket, defaults []value.Value) ([][]value.Value, error)
+	Set(ctx context.Context, tier tier.Tier, name ftypes.AggName, buckets []Bucket) error
+	SetMulti(ctx context.Context, tier tier.Tier, names []ftypes.AggName, buckets [][]Bucket) error
 }
 
 type MergeReduce interface {
