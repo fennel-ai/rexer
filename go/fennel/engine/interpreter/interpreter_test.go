@@ -167,24 +167,6 @@ func TestInterpreter_QueryArgsRedefine(t *testing.T) {
 
 var res value.Value
 
-func TestInterpreter_VisitAt(t *testing.T) {
-	testError(t, ast.At{})
-	values := []value.Value{
-		value.Int(5),
-		value.Bool(false),
-		value.NewList(value.Double(3.4)),
-	}
-	// value of at is just whatever is set to be @
-	for _, v := range values {
-		i := getInterpreter()
-		err := i.env.Define("@", v)
-		assert.NoError(t, err)
-		ret, err := ast.At{}.AcceptValue(i)
-		assert.NoError(t, err)
-		assert.Equal(t, v, ret)
-	}
-}
-
 func TestInterpreter_VisitLookup(t *testing.T) {
 	// lookups on non dicts all fail
 	for _, tree := range ast.TestExamples {

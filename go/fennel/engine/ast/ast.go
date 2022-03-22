@@ -14,7 +14,6 @@ type VisitorString interface {
 	VisitVar(name string) string
 	VisitStatement(name string, body Ast) string
 	VisitQuery(statements []Statement) string
-	VisitAt() string
 	VisitLookup(on Ast, property string) string
 	VisitIfelse(condition Ast, thenDo Ast, elseDo Ast) string
 	VisitFnCall(module, name string, kwargs map[string]Ast) string
@@ -30,7 +29,6 @@ type VisitorValue interface {
 	VisitVar(name string) (value.Value, error)
 	VisitStatement(name string, body Ast) (value.Value, error)
 	VisitQuery(statements []Statement) (value.Value, error)
-	VisitAt() (value.Value, error)
 	VisitLookup(on Ast, property string) (value.Value, error)
 	VisitIfelse(condition Ast, thenDo Ast, elseDo Ast) (value.Value, error)
 	VisitFnCall(module, name string, kwargs map[string]Ast) (value.Value, error)
@@ -52,7 +50,6 @@ var _ Ast = OpCall{}
 var _ Ast = Var{}
 var _ Ast = Statement{}
 var _ Ast = Query{}
-var _ Ast = At{}
 var _ Ast = Lookup{}
 var _ Ast = IfElse{}
 
@@ -73,25 +70,6 @@ func (l Lookup) Equals(ast Ast) bool {
 	switch l2 := ast.(type) {
 	case Lookup:
 		return l.On.Equals(l2.On) && l.Property == l2.Property
-	default:
-		return false
-	}
-}
-
-type At struct{}
-
-func (a At) AcceptValue(v VisitorValue) (value.Value, error) {
-	return v.VisitAt()
-}
-
-func (a At) AcceptString(v VisitorString) string {
-	return v.VisitAt()
-}
-
-func (a At) Equals(ast Ast) bool {
-	switch ast.(type) {
-	case At:
-		return true
 	default:
 		return false
 	}

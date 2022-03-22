@@ -73,7 +73,6 @@ func init() {
 			Name:      "my name",
 			Kwargs:    Dict{Values: map[string]Ast{}},
 		},
-		At{},
 		IfElse{
 			Condition: MakeBool(true),
 			ThenDo:    MakeInt(4),

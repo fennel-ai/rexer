@@ -180,10 +180,6 @@ func (i Interpreter) visitInContext(tree ast.Ast, varmap map[string]value.Value)
 	return tree.AcceptValue(i)
 }
 
-func (i Interpreter) VisitAt() (value.Value, error) {
-	return i.env.Lookup("@")
-}
-
 func (i Interpreter) VisitStatement(name string, body ast.Ast) (value.Value, error) {
 	val, err := body.AcceptValue(i)
 	if err != nil {
