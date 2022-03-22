@@ -16,8 +16,6 @@ import (
 	profileLib "fennel/lib/profile"
 	"fennel/lib/query"
 	"fennel/lib/value"
-
-	"google.golang.org/protobuf/proto"
 )
 
 type Client struct {
@@ -37,73 +35,75 @@ func NewClient(hostport string, httpclient *http.Client) (*Client, error) {
 }
 
 func (c Client) logURL() string {
-	c.url.Path = "/log"
-	return fmt.Sprintf(c.url.String())
+	url := *c.url
+	url.Path = url.Path + "/log"
+	return fmt.Sprintf(url.String())
 }
 
 func (c Client) logMultiURL() string {
-	c.url.Path = "/log_multi"
-	return fmt.Sprintf(c.url.String())
+	url := *c.url
+	url.Path = url.Path + "/log_multi"
+	return fmt.Sprintf(url.String())
 }
 
 func (c Client) fetchURL() string {
-	c.url.Path = "/fetch"
-	return fmt.Sprintf(c.url.String())
+	url := *c.url
+	url.Path = url.Path + "/fetch"
+	return fmt.Sprintf(url.String())
 }
 
 func (c Client) queryURL() string {
-	c.url.Path = "/query"
-	return fmt.Sprintf(c.url.String())
+	url := *c.url
+	url.Path = url.Path + "/query"
+	return fmt.Sprintf(url.String())
 }
 
 func (c Client) getProfileURL() string {
-	c.url.Path = "/get"
-	return fmt.Sprintf(c.url.String())
+	url := *c.url
+	url.Path = url.Path + "/get"
+	return fmt.Sprintf(url.String())
 }
 
 func (c Client) setProfileURL() string {
-	c.url.Path = "/set"
-	return fmt.Sprintf(c.url.String())
+	url := *c.url
+	url.Path = url.Path + "/set"
+	return fmt.Sprintf(url.String())
 }
 
 func (c Client) setProfilesURL() string {
-	c.url.Path = "/set_profiles"
-	return fmt.Sprintf(c.url.String())
+	url := *c.url
+	url.Path = url.Path + "/set_profiles"
+	return fmt.Sprintf(url.String())
 }
 
 func (c Client) getProfileMultiURL() string {
-	c.url.Path = "/get_multi"
-	return fmt.Sprintf(c.url.String())
+	url := *c.url
+	url.Path = url.Path + "/get_multi"
+	return fmt.Sprintf(url.String())
 }
 
 func (c Client) storeAggregateURL() string {
-	c.url.Path = "/store_aggregate"
-	return fmt.Sprintf(c.url.String())
+	url := *c.url
+	url.Path = url.Path + "/store_aggregate"
+	return fmt.Sprintf(url.String())
 }
 
 func (c Client) retrieveAggregateURL() string {
-	c.url.Path = "/retrieve_aggregate"
-	return fmt.Sprintf(c.url.String())
+	url := *c.url
+	url.Path = url.Path + "/retrieve_aggregate"
+	return fmt.Sprintf(url.String())
 }
 
 func (c Client) deactivateAggregateURL() string {
-	c.url.Path = "/deactivate_aggregate"
-	return fmt.Sprintf(c.url.String())
+	url := *c.url
+	url.Path = url.Path + "/deactivate_aggregate"
+	return fmt.Sprintf(url.String())
 }
 
 func (c Client) getAggregateValueURL() string {
-	c.url.Path = "/aggregate_value"
-	return fmt.Sprintf(c.url.String())
-}
-
-func (c Client) post(protoMessage proto.Message, url string) ([]byte, error) {
-	// serialize the request to be sent on wire
-	ser, err := proto.Marshal(protoMessage)
-	if err != nil {
-		return nil, fmt.Errorf("marshal error on client: %v", err)
-	}
-
-	return c.postJSON(ser, url)
+	url := *c.url
+	url.Path = url.Path + "/aggregate_value"
+	return fmt.Sprintf(url.String())
 }
 
 func (c Client) postJSON(data []byte, url string) ([]byte, error) {
