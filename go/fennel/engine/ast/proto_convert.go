@@ -32,8 +32,6 @@ func FromProtoAst(past *proto.Ast) (Ast, error) {
 		return fromProtoOpcall(n)
 	case *proto.Ast_Var:
 		return fromProtoVar(n)
-	case *proto.Ast_At:
-		return fromProtoAt(n)
 	case *proto.Ast_Lookup:
 		return fromProtoLookup(n)
 	case *proto.Ast_Ifelse:
@@ -60,10 +58,6 @@ func (l Lookup) toProto() (proto.Ast, error) {
 		On:       &pon,
 		Property: l.Property,
 	}}}, nil
-}
-
-func (a At) toProto() (proto.Ast, error) {
-	return proto.Ast{Node: &proto.Ast_At{At: &proto.At{}}}, nil
 }
 
 func (a Atom) toProto() (proto.Ast, error) {
@@ -253,10 +247,6 @@ var null = Atom{}
 
 func pnull() proto.Ast {
 	return proto.Ast{}
-}
-
-func fromProtoAt(_ *proto.Ast_At) (Ast, error) {
-	return At{}, nil
 }
 
 func fromProtoLookup(plookup *proto.Ast_Lookup) (Ast, error) {

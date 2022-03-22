@@ -24,10 +24,6 @@ func (p Printer) VisitLookup(on Ast, property string) string {
 	return fmt.Sprintf("%s.%s", on.AcceptString(p), property)
 }
 
-func (p Printer) VisitAt() string {
-	return "@"
-}
-
 var _ VisitorString = Printer{}
 
 func (p Printer) VisitBinary(left Ast, op string, right Ast) string {
