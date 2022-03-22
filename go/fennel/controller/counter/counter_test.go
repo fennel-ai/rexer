@@ -53,19 +53,22 @@ func TestRolling(t *testing.T) {
 		})
 		assert.NoError(t, table.Append(row))
 	}
-	histogram := counter2.NewSum("mycounter", 3600*28)
-	err = Update(ctx, tier, table, histogram)
+	name := ftypes.AggName("mycounter")
+	histogram := counter2.NewSum(name, 3600*28)
+	err = Update(ctx, tier, name, table, histogram)
 	assert.NoError(t, err)
 
 	clock := &test.FakeClock{}
 	tier.Clock = clock
 	clock.Set(int64(start + 24*3600*2))
 	// at the end of 2 days, rolling counter should only be worth 28 hours, not full 48 hours
-	found, err := Value(ctx, tier, key, histogram, value.NewDict(map[string]value.Value{}))
+	found, err := Value(ctx, tier, name, key, histogram, value.NewDict(map[string]value.Value{}))
 	assert.NoError(t, err)
 	assert.Equal(t, value.Int(28*60), found)
 	// with a duration of 1 day, rolling counter should only be worth 24 hours
-	found, err = Value(ctx, tier, key, histogram, value.NewDict(map[string]value.Value{"duration": value.Int(24 * 3600)}))
+	found, err = Value(
+		ctx, tier, name, key, histogram, value.NewDict(map[string]value.Value{"duration": value.Int(24 * 3600)}),
+	)
 	assert.NoError(t, err)
 	assert.Equal(t, value.Int(24*60), found)
 }
@@ -88,7 +91,7 @@ func TestTimeseries(t *testing.T) {
 			Limit:   9,
 		},
 	}
-	histogram := counter2.NewTimeseriesSum("mycounter", ftypes.Window_HOUR, 9)
+	histogram := counter2.NewTimeseriesSum(agg.Name, ftypes.Window_HOUR, 9)
 	querySer, err := ast.Marshal(agg.Query)
 	assert.NoError(t, err)
 	optionSer, err := proto.Marshal(libaggregate.ToProtoOptions(agg.Options))
@@ -107,14 +110,14 @@ func TestTimeseries(t *testing.T) {
 		})
 		assert.NoError(t, table.Append(row))
 	}
-	err = Update(ctx, tier, table, histogram)
+	err = Update(ctx, tier, agg.Name, table, histogram)
 	assert.NoError(t, err)
 
 	clock := &test.FakeClock{}
 	tier.Clock = clock
 	clock.Set(int64(start + 24*3600*2))
 	// at the end of 2 days, we should get one data point each for 9 days
-	f, err := Value(ctx, tier, key, histogram, value.NewDict(map[string]value.Value{}))
+	f, err := Value(ctx, tier, agg.Name, key, histogram, value.NewDict(map[string]value.Value{}))
 	assert.NoError(t, err)
 	found, ok := f.(value.List)
 	assert.True(t, ok)
@@ -130,7 +133,7 @@ func TestTimeseries(t *testing.T) {
 	// but if we set time to just at 6 hours from start, we will still 9 entries, but few will be zero padded
 	// and since our start time is 1 min delayed, the 4th entry will be one short of 60
 	clock.Set(int64(start + 6*3600))
-	f, err = Value(ctx, tier, key, histogram, value.NewDict(map[string]value.Value{}))
+	f, err = Value(ctx, tier, agg.Name, key, histogram, value.NewDict(map[string]value.Value{}))
 	assert.NoError(t, err)
 	found, ok = f.(value.List)
 	assert.True(t, ok)
@@ -173,19 +176,21 @@ func TestRollingAverage(t *testing.T) {
 		assert.NoError(t, table.Append(row))
 	}
 	histogram := counter2.NewAverage(aggname, 28*3600)
-	err = Update(ctx, tier, table, histogram)
+	err = Update(ctx, tier, aggname, table, histogram)
 	assert.NoError(t, err)
 
 	clock := &test.FakeClock{}
 	tier.Clock = clock
 	clock.Set(int64(start + 24*3600*2))
 	// at the end of 2 days, rolling average should only be worth 28 hours, not full 48 hours
-	found, err := Value(ctx, tier, key, histogram, value.NewDict(map[string]value.Value{}))
+	found, err := Value(ctx, tier, aggname, key, histogram, value.NewDict(map[string]value.Value{}))
 	assert.NoError(t, err)
 	expected := float64(24*60) / float64(28*60)
 	assert.Equal(t, value.Double(expected), found)
 	// with a duration of 1 day, rolling average should only be worth 24 hours
-	found, err = Value(ctx, tier, key, histogram, value.NewDict(map[string]value.Value{"duration": value.Int(24 * 3600)}))
+	found, err = Value(
+		ctx, tier, aggname, key, histogram, value.NewDict(map[string]value.Value{"duration": value.Int(24 * 3600)}),
+	)
 	assert.NoError(t, err)
 	expected = float64(24*60) / float64(24*60)
 	assert.Equal(t, value.Double(expected), found)
@@ -221,18 +226,20 @@ func TestStream(t *testing.T) {
 		}
 	}
 	histogram := counter2.NewList(aggname, 28*3600)
-	err = Update(ctx, tier, table, histogram)
+	err = Update(ctx, tier, aggname, table, histogram)
 	assert.NoError(t, err)
 
 	clock := &test.FakeClock{}
 	tier.Clock = clock
 	clock.Set(int64(start + 24*3600*2))
 	// at the end of 2 days, stream should only be worth 28 hours, not full 48 hours
-	found, err := Value(ctx, tier, key, histogram, value.NewDict(map[string]value.Value{}))
+	found, err := Value(ctx, tier, aggname, key, histogram, value.NewDict(map[string]value.Value{}))
 	assert.NoError(t, err)
 	assert.ElementsMatch(t, expected, slice(found.(value.List)))
 	// with a duration of 1 day, stream should only be worth 24 hours
-	found, err = Value(ctx, tier, key, histogram, value.NewDict(map[string]value.Value{"duration": value.Int(24 * 3600)}))
+	found, err = Value(
+		ctx, tier, aggname, key, histogram, value.NewDict(map[string]value.Value{"duration": value.Int(24 * 3600)}),
+	)
 	assert.NoError(t, err)
 	assert.ElementsMatch(t, expected2, slice(found.(value.List)))
 }
@@ -277,20 +284,20 @@ func TestRate(t *testing.T) {
 		}
 	}
 	histogram := counter2.NewRate(aggname, 28*3600, true)
-	err = Update(ctx, tier, table, histogram)
+	err = Update(ctx, tier, aggname, table, histogram)
 	assert.NoError(t, err)
 
 	clock := &test.FakeClock{}
 	tier.Clock = clock
 	clock.Set(int64(start + 24*3600*2))
 	// at the end of 2 days, rate should only be worth 28 hours, not full 48 hours
-	found, err := Value(ctx, tier, key, histogram, value.NewDict(map[string]value.Value{}))
+	found, err := Value(ctx, tier, aggname, key, histogram, value.NewDict(map[string]value.Value{}))
 	assert.NoError(t, err)
 	expected, err := math.Wilson(uint64(num), uint64(den), true)
 	assert.NoError(t, err)
 	assert.Equal(t, value.Double(expected), found)
 	// with a duration of 1 day, rate should only be worth 24 hours
-	found, err = Value(ctx, tier, key, histogram, value.NewDict(map[string]value.Value{"duration": value.Int(24 * 3600)}))
+	found, err = Value(ctx, tier, aggname, key, histogram, value.NewDict(map[string]value.Value{"duration": value.Int(24 * 3600)}))
 	assert.NoError(t, err)
 	expected, err = math.Wilson(uint64(num2), uint64(den2), true)
 	assert.Equal(t, value.Double(expected), found)
@@ -318,5 +325,5 @@ func assertInvalid(tier tier.Tier, ctx context.Context, t *testing.T, ds ...valu
 		err := table.Append(d)
 		assert.NoError(t, err)
 	}
-	assert.Error(t, Update(ctx, tier, table, counter2.NewSum("somename", 123)))
+	assert.Error(t, Update(ctx, tier, "somename", table, counter2.NewSum("somename", 123)))
 }
