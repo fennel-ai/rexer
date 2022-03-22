@@ -19,8 +19,8 @@ import (
 
 const (
 	test_kafka_servers = "pkc-pgq85.us-west-2.aws.confluent.cloud:9092"
-	kafka_username     = "RRPBREJPEYGSVWXO"
-	kafka_password     = "7TBbJc1V2aGsjs0wQcJR2cm1TGcy3bUIA1qmvV5IDif3gRDml/dr1amPaRbOoAZN"
+	kafka_username     = "HWGB3CSLWYNXWNA3"
+	kafka_password     = "t7SYuJa4OsQI600/c4x8IBppm6zvPHevjWNC0klU501UViMydaeW0BqsEt+xFSxw"
 )
 
 func TestIntegration(t *testing.T) {

@@ -16,7 +16,7 @@ import (
 )
 
 const (
-	host = "fenneldb-20220314043639794500000002.cluster-c00d7gkxaysk.us-west-2.rds.amazonaws.com"
+	host = "p-2-db-20220322011744501900000001.cluster-c00d7gkxaysk.us-west-2.rds.amazonaws.com"
 )
 
 func create(dbname, username, password, host string) error {
