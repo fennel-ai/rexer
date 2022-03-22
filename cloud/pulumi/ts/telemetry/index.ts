@@ -101,13 +101,13 @@ function setupOtelPolicy(input: inputType, awsProvider: aws.Provider) {
     }
     `
 
-    const policy = new aws.iam.Policy("otel-collector-policy", {
+    const policy = new aws.iam.Policy(`p-${input.planeId}-otel-collector-policy`, {
         namePrefix: `p-${input.planeId}-AWSDistroOpenTelemetryPolicy-`,
         policy: rawPolicyStr,
     }, { provider: awsProvider });
 
 
-    const attachOtelPolicy = new aws.iam.RolePolicyAttachment("otel-instance", {
+    const attachOtelPolicy = new aws.iam.RolePolicyAttachment(`p-${input.planeId}-otel-instance`, {
         policyArn: policy.arn,
         role: input.nodeInstanceRole,
     }, { provider: awsProvider });

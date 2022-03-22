@@ -159,7 +159,7 @@ async function setupIamRoleForServiceAccount(input: inputType, awsProvider: aws.
     // Create k8s service account and IAM role for LoadBalancerController, and
     // associate the above policy with the account.
     const role = cluster.core.oidcProvider!.url.apply(oidcUrl => {
-        return new aws.iam.Role("lbc-role", {
+        return new aws.iam.Role(`p-${input.planeId}-lbc-role`, {
             namePrefix: `p-${input.planeId}-${serviceAccountName}`,
             description: "IAM role for AWS load-balancer-controller",
             assumeRolePolicy: `{
@@ -216,7 +216,7 @@ async function setupLoadBalancerController(input: inputType, awsProvider: aws.Pr
         process.exit()
     }
     const iamPolicy = new aws.iam.Policy(`p-${input.planeId}-lbc-policy`, {
-        namePrefix: "AWSLoadBalancerControllerIAMPolicy",
+        namePrefix: `p-${input.planeId}-AWSLoadBalancerControllerIAMPolicy`,
         policy: policyJson,
     }, { provider: awsProvider })
 

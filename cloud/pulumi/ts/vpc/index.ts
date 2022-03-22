@@ -265,7 +265,7 @@ function createVpcPeeringConnection(vpc: aws.ec2.Vpc, routeTables: pulumi.Output
         routeTableId: input.controlPlane.routeTableId,
         vpcPeeringConnectionId: peeringConnection.id,
         destinationCidrBlock: vpc.cidrBlock,
-    }, { provider: controlPlaneProvider })
+    }, { provider: controlPlaneProvider, deleteBeforeReplace: true })
 
     const routes = routeTables.map((rt, idx) => {
         return new aws.ec2.Route(`p-${input.planeId}-route-to-control-plane-${idx}`, {

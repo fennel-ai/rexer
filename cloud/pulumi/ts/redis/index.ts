@@ -80,7 +80,7 @@ export const setup = async (input: inputType): Promise<pulumi.Output<outputType>
         tags: { ...fennelStdTags },
     }, { provider })
 
-    const redisSg = new aws.ec2.SecurityGroup("redis-sg", {
+    const redisSg = new aws.ec2.SecurityGroup(`p-${input.planeId}-redis-sg`, {
         namePrefix: `p-${input.planeId}-redis-sg-`,
         vpcId: input.vpcId,
         tags: { ...fennelStdTags }
