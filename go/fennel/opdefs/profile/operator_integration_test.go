@@ -35,16 +35,17 @@ func TestProfileOpMultipleObjs(t *testing.T) {
 	assert.NoError(t, profile.Set(ctx, tier, req2b))
 
 	query := ast.OpCall{
-		Operand: ast.Lookup{
+		Operands: []ast.Ast{ast.Lookup{
 			On:       ast.Var{Name: "args"},
 			Property: "actions",
-		},
+		}},
+		Vars:      []string{"at"},
 		Namespace: "profile",
 		Name:      "addField",
 		Kwargs: ast.Dict{Values: map[string]ast.Ast{
-			"otype": ast.Lookup{On: ast.At{}, Property: "otype"},
-			"oid":   ast.Lookup{On: ast.At{}, Property: "oid"},
-			"key":   ast.Lookup{On: ast.At{}, Property: "key"},
+			"otype": ast.Lookup{On: ast.Var{Name: "at"}, Property: "otype"},
+			"oid":   ast.Lookup{On: ast.Var{Name: "at"}, Property: "oid"},
+			"key":   ast.Lookup{On: ast.Var{Name: "at"}, Property: "key"},
 			"name":  ast.MakeString("profile_value"),
 			// since version is an optional value, we don't pass it and still get the latest value back
 		}},
