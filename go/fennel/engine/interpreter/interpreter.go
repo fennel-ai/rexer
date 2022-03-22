@@ -31,7 +31,7 @@ func (i Interpreter) VisitFnCall(module, name string, kwargs map[string]ast.Ast)
 		}
 	}
 	inputTable := operators.NewZipTable(op)
-	if err := inputTable.Append(value.NewDict(map[string]value.Value{"0": nil}), value.NewDict(vKwargs)); err != nil {
+	if err := inputTable.Append([]value.Value{nil}, value.NewDict(vKwargs)); err != nil {
 		return nil, err
 	}
 	// finally, call the function
@@ -253,10 +253,6 @@ func (i Interpreter) VisitOpcall(operands []ast.Ast, vars []string, namespace, n
 	if err != nil {
 		return value.Nil, err
 	}
-	// verify number of operands
-	if len(voperands) != op.Signature().NumOperands {
-		return nil, fmt.Errorf("operator '%s.%s' can not be applied: expects %d operands but received %d operands", namespace, name, op.Signature().NumOperands, len(voperands))
-	}
 	// now eval static kwargs and verify they are of the right type
 	staticKwargs, err := i.getStaticKwargs(op, kwargs)
 	if err != nil {
@@ -266,7 +262,7 @@ func (i Interpreter) VisitOpcall(operands []ast.Ast, vars []string, namespace, n
 		return value.Nil, err
 	}
 
-	// and same for dynamic kwargs to create InputTable
+	// and same for inputs + dynamic kwargs to create InputTable
 	inputTable, err := i.getContextKwargs(op, kwargs, voperands, vars)
 	if err != nil {
 		return value.Nil, err
@@ -334,13 +330,13 @@ func (i Interpreter) getContextKwargs(op operators.Operator, trees ast.Dict, inp
 	// TODO: relax to potentially having zero inputs?
 	for j := 0; j < inputs[0].Len(); j++ {
 		// TODO: convert these to tuples when tuples are built out
-		v := value.NewDict(nil)
+		v := make([]value.Value, len(inputs))
 		for idx := range inputs {
 			val, err := inputs[idx].At(j)
 			if err != nil {
 				return operators.ZipTable{}, fmt.Errorf("unequal length of operands")
 			}
-			v.Set(fmt.Sprintf("%d", idx), val)
+			v[idx] = val
 		}
 
 		// set all the lambda variables as needed

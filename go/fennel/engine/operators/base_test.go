@@ -23,11 +23,11 @@ func (top testOp) Apply(kwargs value.Dict, in InputIter, out *value.List) error 
 }
 
 func (top testOp) Signature() *Signature {
-	return NewSignature("test", "op", false).
+	return NewSignature("test", "op").
 		Param("p1", value.Types.Bool, true, false, value.Nil).
 		Param("p2", value.Types.Double, false, false, value.Double(3.0)).
 		Param("p3", value.Types.Any, true, false, value.Nil).
-		Input(value.Types.String)
+		Input([]value.Type{value.Types.String})
 }
 
 type testOp2 struct{}
@@ -43,7 +43,8 @@ func (top testOp2) Apply(_ value.Dict, _ InputIter, _ *value.List) error {
 }
 
 func (top testOp2) Signature() *Signature {
-	return NewSignature("test", "op", true)
+	return NewSignature("test", "op").
+		Input([]value.Type{value.Types.String, value.Types.Int, value.Types.Any})
 }
 
 type testOp3 struct{}
@@ -59,7 +60,7 @@ func (top testOp3) Apply(_ value.Dict, _ InputIter, _ *value.List) error {
 }
 
 func (top testOp3) Signature() *Signature {
-	return NewSignature("anothertest", "anotherop", true)
+	return NewSignature("anothertest", "anotherop").Input(nil)
 }
 
 func TestTypeCheckStaticKwargs(t *testing.T) {
@@ -94,41 +95,91 @@ func TestTypeCheckStaticKwargs(t *testing.T) {
 
 func TestTypeCheck(t *testing.T) {
 	t.Parallel()
-	op := testOp{}
+	op1 := testOp{}  // expects exactly one input of string
+	op2 := testOp2{} // expects 3 inputs: string, int, anything
+	op3 := testOp3{} // expects any number of any inputs
 
 	scenarios := []struct {
-		input   value.Value
+		op      Operator
+		input   []value.Value
 		context value.Dict
 		matches bool
 	}{
 		{
-			value.String("xyz"),
+			op1,
+			[]value.Value{value.String("xyz")},
 			value.NewDict(map[string]value.Value{"p2": value.Double(9.0)}),
 			true,
 		},
 		{
-			value.Int(2),
+			op1,
+			[]value.Value{value.Int(2)},
 			value.NewDict(map[string]value.Value{"p2": value.Double(9.0)}),
 			false,
 		},
 		{
-			value.Int(4),
+			op1,
+			[]value.Value{value.Int(4)},
 			value.NewDict(map[string]value.Value{"p2": value.Double(16.0)}),
 			false,
 		},
 		{
-			value.String("pqrs"),
+			op1,
+			[]value.Value{value.String("pqrs")},
 			value.NewDict(map[string]value.Value{"p2": value.Int(3)}),
 			false,
 		},
 		{
-			value.String("ijk"),
+			op1,
+			[]value.Value{value.String("ijk")},
 			value.Dict{},
 			false,
 		},
+		{
+			op2,
+			[]value.Value{value.String("ijk")},
+			value.Dict{},
+			false,
+		},
+		{
+			op2,
+			[]value.Value{},
+			value.Dict{},
+			false,
+		},
+		{
+			op2,
+			[]value.Value{value.String("jhi"), value.Int(4), value.Int(5)},
+			value.Dict{},
+			true,
+		},
+		{
+			op2,
+			[]value.Value{value.String("jhi"), value.Int(4), value.Nil},
+			value.Dict{},
+			true,
+		},
+		{
+			op3,
+			[]value.Value{value.String("jhi"), value.Int(4), value.Nil},
+			value.Dict{},
+			true,
+		},
+		{
+			op3,
+			[]value.Value{value.String("jhi")},
+			value.Dict{},
+			true,
+		},
+		{
+			op3,
+			[]value.Value{value.NewDict(map[string]value.Value{"jhi": value.Int(3)})},
+			value.Dict{},
+			true,
+		},
 	}
 	for _, scenario := range scenarios {
-		err := Typecheck(op, scenario.input, scenario.context)
+		err := Typecheck(scenario.op, scenario.input, scenario.context)
 		if scenario.matches {
 			assert.NoError(t, err)
 		} else {
@@ -153,10 +204,4 @@ func TestRegister(t *testing.T) {
 func TestGetOperatorsJSON(t *testing.T) {
 	_, err := GetOperatorsJSON()
 	assert.NoError(t, err)
-}
-
-func TestIsMapper(t *testing.T) {
-	assert.False(t, IsMapper(testOp{}))
-	assert.True(t, IsMapper(testOp2{}))
-	assert.True(t, IsMapper(testOp3{}))
 }

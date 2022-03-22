@@ -245,7 +245,8 @@ func (t testOpDefault) New(args value.Dict, bootargs map[string]interface{}) (op
 func (t testOpDefault) Apply(kwargs value.Dict, in operators.InputIter, out *value.List) error {
 	for in.HasMore() {
 		heads, context, _ := in.Next()
-		rowVal, _ := heads.Get("0")
+		rowVal := heads[0]
+		//rowVal, _ := heads.Get("0")
 		row := rowVal.(value.Dict)
 		c, _ := context.Get("contextual")
 		row.Set("contextual", c)
@@ -258,8 +259,8 @@ func (t testOpDefault) Apply(kwargs value.Dict, in operators.InputIter, out *val
 }
 
 func (t testOpDefault) Signature() *operators.Signature {
-	return operators.NewSignature("test", "testop", true).
-		Input(value.Types.Dict).
+	return operators.NewSignature("test", "testop").
+		Input([]value.Type{value.Types.Dict}).
 		Param("contextual", value.Types.Int, false, true, value.Int(41)).
 		Param("static", value.Types.Int, true, true, value.Int(7))
 }
@@ -291,7 +292,8 @@ func (top testOpInit) New(args value.Dict, bootargs map[string]interface{}) (ope
 func (top testOpInit) Apply(kwargs value.Dict, in operators.InputIter, out *value.List) error {
 	for in.HasMore() {
 		heads, _, _ := in.Next()
-		rowVal, _ := heads.Get("0")
+		rowVal := heads[0]
+		//rowVal, _ := heads.Get("0")
 		row := rowVal.(value.Dict)
 		row.Set("num", top.num)
 		row.Set("nonhi", value.String(top.non.hi))
@@ -301,7 +303,7 @@ func (top testOpInit) Apply(kwargs value.Dict, in operators.InputIter, out *valu
 }
 
 func (top testOpInit) Signature() *operators.Signature {
-	return operators.NewSignature("test", "op", false).Input(value.Types.Dict)
+	return operators.NewSignature("test", "op").Input([]value.Type{value.Types.Dict})
 }
 
 type rowCount struct {
@@ -315,7 +317,7 @@ func (r *rowCount) New(args value.Dict, bootargs map[string]interface{}) (operat
 func (r *rowCount) Apply(kwargs value.Dict, in operators.InputIter, out *value.List) error {
 	for in.HasMore() {
 		heads, _, _ := in.Next()
-		v, _ := heads.Get("0")
+		v := heads[0]
 		r.num += 1
 		out.Append(v)
 	}
@@ -324,7 +326,7 @@ func (r *rowCount) Apply(kwargs value.Dict, in operators.InputIter, out *value.L
 }
 
 func (r *rowCount) Signature() *operators.Signature {
-	return operators.NewSignature("test", "row_count", false)
+	return operators.NewSignature("test", "row_count")
 }
 
 var _ operators.Operator = &rowCount{}
@@ -351,7 +353,7 @@ func (s squareFn) Apply(kwargs value.Dict, in operators.InputIter, out *value.Li
 }
 
 func (s squareFn) Signature() *operators.Signature {
-	return operators.NewSignature("test", "square", true).
+	return operators.NewSignature("test", "square").
 		Param("x", value.Types.Number, false, false, value.Int(0))
 }
 
@@ -398,7 +400,7 @@ func (e zip) Apply(kwargs value.Dict, in operators.InputIter, out *value.List) e
 }
 
 func (e zip) Signature() *operators.Signature {
-	return operators.NewSignature("test", "zip", false).
+	return operators.NewSignature("test", "zip").
 		Param("left", value.Types.List, false, false, nil).
 		Param("right", value.Types.List, false, false, nil)
 }

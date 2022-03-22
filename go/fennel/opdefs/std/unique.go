@@ -14,9 +14,9 @@ func (op UniqueOperator) New(_ value.Dict, _ map[string]interface{}) (operators.
 }
 
 func (op UniqueOperator) Signature() *operators.Signature {
-	return operators.NewSignature("std", "unique", false).
+	return operators.NewSignature("std", "unique").
 		Param("name", value.Types.String /*t=*/, true /*static=*/, false /*optional=*/, value.Nil).
-		Input(value.Types.Dict)
+		Input([]value.Type{value.Types.Dict})
 }
 
 func (op UniqueOperator) Apply(staticKwargs value.Dict, in operators.InputIter, out *value.List) error {
@@ -27,7 +27,7 @@ func (op UniqueOperator) Apply(staticKwargs value.Dict, in operators.InputIter, 
 		if err != nil {
 			return err
 		}
-		r, _ := heads.Get("0")
+		r := heads[0]
 		row := r.(value.Dict)
 		if values, ok := row.Get(name); ok {
 			valToVisited := make(map[string]struct{})

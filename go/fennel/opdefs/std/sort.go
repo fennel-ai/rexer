@@ -17,8 +17,8 @@ func (op SortOperator) New(_ value.Dict, _ map[string]interface{}) (operators.Op
 }
 
 func (op SortOperator) Signature() *operators.Signature {
-	return operators.NewSignature("std", "sort", true).
-		Input(value.Types.Dict).
+	return operators.NewSignature("std", "sort").
+		Input([]value.Type{value.Types.Dict}).
 		Param("by", value.Types.Number, false, false, value.Nil).
 		Param("desc", value.Types.Bool, true, true, value.Bool(false))
 }
@@ -34,7 +34,7 @@ func (op SortOperator) Apply(staticKwargs value.Dict, in operators.InputIter, ou
 		if err != nil {
 			return err
 		}
-		row, _ := heads.Get("0")
+		row := heads[0]
 		var v float64
 		key, _ := contextKwargs.Get("by")
 		switch key := key.(type) {

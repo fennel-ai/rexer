@@ -2,11 +2,12 @@ package operators
 
 import (
 	"fmt"
+	"strconv"
 
 	"fennel/lib/value"
 )
 
-// ZipTable represents a list of values (input) and list of dicts (contextual kwargs)
+// ZipTable represents a list of values (inputs) and list of dicts (contextual kwargs)
 type ZipTable struct {
 	first  value.List
 	second value.List
@@ -20,8 +21,9 @@ func NewZipTable(op Operator) ZipTable {
 }
 
 // TODO: this almost certainly has weird race conditions if run in paralle. Fix
-func (zt *ZipTable) Append(first value.Dict, second value.Dict) error {
-	if err := zt.first.Append(first); err != nil {
+func (zt *ZipTable) Append(first []value.Value, second value.Dict) error {
+	d := toDict(first)
+	if err := zt.first.Append(d); err != nil {
 		return err
 	}
 	zt.second.Append(second)
@@ -52,26 +54,50 @@ func (zi *ZipIter) HasMore() bool {
 	return zi.first.HasMore() && zi.second.HasMore()
 }
 
-func (zi *ZipIter) Next() (value.Dict, value.Dict, error) {
+func (zi *ZipIter) Next() ([]value.Value, value.Dict, error) {
 	first, err := zi.first.Next()
 	if err != nil {
-		return value.Dict{}, value.Dict{}, err
+		return nil, value.Dict{}, err
 	}
 	asdict, ok := first.(value.Dict)
 	if !ok {
-		return value.Dict{}, value.Dict{}, fmt.Errorf("expected dict of operands but found: %s", first)
+		return nil, value.Dict{}, fmt.Errorf("expected dict of operands but found: %s", first)
+	}
+	aslist, err := fromDict(asdict)
+	if err != nil {
+		return nil, value.Dict{}, err
 	}
 	second_val, err := zi.second.Next()
 	if err != nil {
-		return value.Dict{}, value.Dict{}, err
-	}
-	first_head, ok := asdict.Get("0")
-	if !ok {
-		return value.Dict{}, value.Dict{}, fmt.Errorf("value not found")
+		return nil, value.Dict{}, err
 	}
 	second := second_val.(value.Dict)
-	if err = Typecheck(zi.op, first_head, second); err != nil {
-		return value.Dict{}, value.Dict{}, err
+	if err = Typecheck(zi.op, aslist, second); err != nil {
+		return nil, value.Dict{}, err
 	}
-	return asdict, second, nil
+	return aslist, second, nil
+}
+
+func toDict(elems []value.Value) value.Value {
+	m := make(map[string]value.Value, len(elems))
+	for i := range elems {
+		k := fmt.Sprintf("%d", i)
+		m[k] = elems[i]
+	}
+	return value.NewDict(m)
+}
+
+func fromDict(d value.Dict) ([]value.Value, error) {
+	ret := make([]value.Value, d.Len())
+	for k, v := range d.Iter() {
+		n, err := strconv.Atoi(k)
+		if err != nil {
+			return nil, err
+		}
+		if n < 0 || n >= len(ret) {
+			return nil, fmt.Errorf("unexpected index in dictionary: %d", n)
+		}
+		ret[n] = v
+	}
+	return ret, nil
 }

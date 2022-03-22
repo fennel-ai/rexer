@@ -38,7 +38,7 @@ func (t timeBucketOfDay) Apply(kwargs value.Dict, in operators.InputIter, out *v
 		if err != nil {
 			return err
 		}
-		rowVal, _ := heads.Get("0")
+		rowVal := heads[0]
 		row := rowVal.(value.Dict)
 		ts, _ := contextKwargs.Get("timestamp")
 		timestamp := ts.(value.Int)
@@ -54,8 +54,8 @@ func (t timeBucketOfDay) Apply(kwargs value.Dict, in operators.InputIter, out *v
 }
 
 func (t timeBucketOfDay) Signature() *operators.Signature {
-	return operators.NewSignature("time", "addTimeBucketOfDay", true).
-		Input(value.Types.Dict).
+	return operators.NewSignature("time", "addTimeBucketOfDay").
+		Input([]value.Type{value.Types.Dict}).
 		Param("timestamp", value.Types.Int, false, false, value.Nil).
 		Param("bucket", value.Types.Int, true, false, value.Nil).
 		Param("name", value.Types.String, true, false, value.Nil)
@@ -80,7 +80,7 @@ func (d dayOfWeek) Apply(kwargs value.Dict, in operators.InputIter, out *value.L
 		if err != nil {
 			return err
 		}
-		rowVal, _ := heads.Get("0")
+		rowVal := heads[0]
 		row := rowVal.(value.Dict)
 		ts, _ := contextKwargs.Get("timestamp")
 		timestamp := ts.(value.Int)
@@ -97,8 +97,8 @@ func (d dayOfWeek) Apply(kwargs value.Dict, in operators.InputIter, out *value.L
 }
 
 func (d dayOfWeek) Signature() *operators.Signature {
-	return operators.NewSignature("time", "addDayOfWeek", true).
-		Input(value.Types.Dict).
+	return operators.NewSignature("time", "addDayOfWeek").
+		Input([]value.Type{value.Types.Dict}).
 		Param("timestamp", value.Types.Int, false, false, value.Nil).
 		Param("name", value.Types.String, true, false, value.Nil)
 }

@@ -17,8 +17,8 @@ func (op ShuffleOperator) New(_ value.Dict, _ map[string]interface{}) (operators
 }
 
 func (op ShuffleOperator) Signature() *operators.Signature {
-	return operators.NewSignature("std", "shuffle", true).
-		Input(value.Types.Dict)
+	return operators.NewSignature("std", "shuffle").
+		Input([]value.Type{value.Types.Dict})
 }
 
 func (op ShuffleOperator) Apply(_ value.Dict, in operators.InputIter, out *value.List) error {
@@ -28,7 +28,7 @@ func (op ShuffleOperator) Apply(_ value.Dict, in operators.InputIter, out *value
 		if err != nil {
 			return err
 		}
-		row, _ := heads.Get("0")
+		row := heads[0]
 		rows = append(rows, row)
 	}
 	rand.Shuffle(len(rows), reflect.Swapper(rows))

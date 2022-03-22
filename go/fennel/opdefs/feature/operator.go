@@ -40,7 +40,7 @@ func (f featureLog) Apply(static value.Dict, in operators.InputIter, out *value.
 		if err != nil {
 			return err
 		}
-		row, _ := heads.Get("0")
+		row := heads[0]
 		ts := ftypes.Timestamp(get(kwargs, "timestamp").(value.Int))
 		if ts == 0 {
 			ts = ftypes.Timestamp(f.tier.Clock.Now())
@@ -68,8 +68,8 @@ func (f featureLog) Apply(static value.Dict, in operators.InputIter, out *value.
 }
 
 func (f featureLog) Signature() *operators.Signature {
-	return operators.NewSignature("feature", "log", true).
-		Input(value.Types.Dict).
+	return operators.NewSignature("feature", "log").
+		Input([]value.Type{value.Types.Dict}).
 		Param("context_otype", value.Types.String, true, false, value.Nil).
 		Param("context_oid", value.Types.Int, true, false, value.Nil).
 		Param("candidate_otype", value.Types.String, false, false, value.Nil).
