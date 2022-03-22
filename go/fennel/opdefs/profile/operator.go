@@ -37,7 +37,7 @@ func (p profileOp) Apply(staticKwargs value.Dict, in operators.InputIter, out *v
 		if err != nil {
 			return err
 		}
-		rowVal, _ := heads.Get("0")
+		rowVal := heads[0]
 		row := rowVal.(value.Dict)
 		req := libprofile.ProfileItem{
 			OType:   ftypes.OType(kwargs.GetUnsafe("otype").(value.String)),
@@ -67,8 +67,8 @@ func (p profileOp) Apply(staticKwargs value.Dict, in operators.InputIter, out *v
 }
 
 func (p profileOp) Signature() *operators.Signature {
-	return operators.NewSignature("profile", "addField", true).
-		Input(value.Types.Dict).
+	return operators.NewSignature("profile", "addField").
+		Input([]value.Type{value.Types.Dict}).
 		Param("otype", value.Types.String, false, false, value.Nil).
 		Param("oid", value.Types.Int, false, false, value.Nil).
 		Param("key", value.Types.String, false, false, value.Nil).

@@ -22,11 +22,11 @@ func (top testOpZip) Apply(kwargs value.Dict, in InputIter, out *value.List) err
 }
 
 func (top testOpZip) Signature() *Signature {
-	return NewSignature("test", "op", true).
+	return NewSignature("test", "op").
 		Param("p1", value.Types.Bool, true, false, value.Nil).
 		Param("p2", value.Types.Double, false, false, value.Double(3.0)).
 		Param("p3", value.Types.Any, false, false, value.Nil).
-		Input(value.Types.String)
+		Input([]value.Type{value.Types.String})
 }
 
 func TestNewZipTable(t *testing.T) {
@@ -50,10 +50,10 @@ func TestNewZipTable(t *testing.T) {
 		"a": value.Int(122),
 		"b": value.String("fourt"),
 	})
-	err := zt.Append(row1, row2)
+	err := zt.Append([]value.Value{row1}, row2)
 	assert.NoError(t, err)
 	assert.Equal(t, 1, zt.Len())
-	err = zt.Append(row3, row4)
+	err = zt.Append([]value.Value{row3}, row4)
 	assert.NoError(t, err)
 	assert.Equal(t, 2, zt.Len())
 }
@@ -93,7 +93,7 @@ func TestIterTypeCheck(t *testing.T) {
 		zt := NewZipTable(op)
 		for i := 0; i < scenario.rows.Len(); i++ {
 			v, _ := scenario.rows.At(i)
-			assert.NoError(t, zt.Append(value.NewDict(map[string]value.Value{"0": v}), scenario.kwargs[i]), scenario.name)
+			assert.NoError(t, zt.Append([]value.Value{v}, scenario.kwargs[i]), scenario.name)
 		}
 		iter := zt.Iter()
 		for i := 0; i < scenario.rows.Len(); i++ {
@@ -104,7 +104,7 @@ func TestIterTypeCheck(t *testing.T) {
 			} else {
 				assert.NoError(t, err, scenario.name)
 				v, _ := scenario.rows.At(i)
-				assert.Equal(t, value.NewDict(map[string]value.Value{"0": v}), row, scenario.name)
+				assert.Equal(t, []value.Value{v}, row, scenario.name)
 				assert.Equal(t, scenario.kwargs[i], kwargs, scenario.name)
 			}
 		}

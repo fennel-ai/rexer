@@ -16,9 +16,9 @@ func (e ExplodeOperator) New(_ value.Dict, _ map[string]interface{}) (operators.
 }
 
 func (e ExplodeOperator) Signature() *operators.Signature {
-	return operators.NewSignature("std", "explode", true).
+	return operators.NewSignature("std", "explode").
 		Param("keys", value.Types.Any, true, false, value.Nil).
-		Input(value.Types.Dict)
+		Input([]value.Type{value.Types.Dict})
 }
 
 func (e ExplodeOperator) Apply(staticKwargs value.Dict, in operators.InputIter, out *value.List) error {
@@ -28,7 +28,7 @@ func (e ExplodeOperator) Apply(staticKwargs value.Dict, in operators.InputIter, 
 		if err != nil {
 			return err
 		}
-		row, _ := rows.Get("0")
+		row := rows[0]
 		rowVal := row.(value.Dict)
 
 		// `keys` are either a string (e.g. `keys='foo'``) or list of strings (e.g. `keys=['foo', 'bar']`)

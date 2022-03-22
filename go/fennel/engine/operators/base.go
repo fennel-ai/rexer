@@ -27,10 +27,6 @@ func Locate(namespace, name string) (Operator, error) {
 	}
 }
 
-func IsMapper(op Operator) bool {
-	return op.Signature().Mapper
-}
-
 type Param struct {
 	Name     string
 	Static   bool
@@ -40,24 +36,22 @@ type Param struct {
 }
 
 type Signature struct {
-	Module        string
-	Name          string
-	input         value.Type
+	Module string
+	Name   string
+	// type of each input
+	// a zero length list means any number of inputs with any types are allowed
+	// default value is a single element list with type of 'Any'
+	InputTypes    []value.Type
 	StaticKwargs  map[string]Param
 	ContextKwargs map[string]Param
-	Mapper        bool
-	NumOperands   int
 }
 
-// TODO: allow num operands to be specified in constructor
-func NewSignature(module, name string, mapper bool) *Signature {
+func NewSignature(module, name string) *Signature {
 	return &Signature{
 		module, name,
-		value.Types.Any,
+		[]value.Type{value.Types.Any},
 		make(map[string]Param, 0),
 		make(map[string]Param, 0),
-		mapper,
-		1,
 	}
 }
 
@@ -72,8 +66,11 @@ func (s *Signature) Param(name string, t value.Type, static bool, optional bool,
 	return s
 }
 
-func (s *Signature) Input(t value.Type) *Signature {
-	s.input = t
+func (s *Signature) Input(types []value.Type) *Signature {
+	s.InputTypes = make([]value.Type, len(types))
+	for i := 0; i < len(types); i++ {
+		s.InputTypes[i] = types[i]
+	}
 	return s
 }
 
@@ -142,7 +139,7 @@ func TypeCheckStaticKwargs(op Operator, staticKwargs value.Dict) error {
 	return nil
 }
 
-func Typecheck(op Operator, inputVal value.Value, contextKwargs value.Dict) error {
+func Typecheck(op Operator, inputVal []value.Value, contextKwargs value.Dict) error {
 	sig := op.Signature()
 	// let's look at contextual kwargs first
 	if len(sig.ContextKwargs) != contextKwargs.Len() {
@@ -155,13 +152,20 @@ func Typecheck(op Operator, inputVal value.Value, contextKwargs value.Dict) erro
 			return fmt.Errorf("operator '%s.%s' expects kwarg '%s' but not found", sig.Module, sig.Name, k)
 		}
 		if err := p.Type.Validate(v); err != nil {
-			return fmt.Errorf("type of kwarg '%s'is not of type '%s': %s", k, p.Type, err)
+			return fmt.Errorf("operator '%s.%s' expects type of kwarg '%s' to be of type '%s': %s", sig.Module, sig.Name, k, p.Type, err)
 		}
 	}
-	// next let's validate input
-	if err := sig.input.Validate(inputVal); err != nil {
-		return fmt.Errorf("element of input list to operator '%s.%s' is not of type '%s': %s",
-			sig.Module, sig.Name, sig.input, err)
+	// next let's validate InputTypes
+	if len(sig.InputTypes) > 0 {
+		if len(inputVal) != len(sig.InputTypes) {
+			return fmt.Errorf("operator '%s.%s' expects '%d' inputs but received '%d' inputs", sig.Module, sig.Name, len(sig.InputTypes), len(inputVal))
+		}
+		for i := 0; i < len(inputVal); i++ {
+			if err := sig.InputTypes[i].Validate(inputVal[i]); err != nil {
+				return fmt.Errorf("input # '%d' for operator '%s.%s' not found to be of expected type '%s': %s",
+					i, sig.Module, sig.Name, sig.InputTypes[i], err)
+			}
+		}
 	}
 	return nil
 }

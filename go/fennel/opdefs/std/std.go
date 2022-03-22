@@ -29,7 +29,7 @@ func (f FilterOperator) New(args value.Dict, bootargs map[string]interface{}) (o
 }
 
 func (f FilterOperator) Signature() *operators.Signature {
-	return operators.NewSignature("std", "filter", false).
+	return operators.NewSignature("std", "filter").
 		Param("where", value.Types.Bool, false, false, value.Bool(false))
 }
 
@@ -39,7 +39,7 @@ func (f FilterOperator) Apply(_ value.Dict, in operators.InputIter, out *value.L
 		if err != nil {
 			return err
 		}
-		row, _ := heads.Get("0")
+		row := heads[0]
 		v, _ := contextKwargs.Get("where")
 		where := v.(value.Bool)
 		if where {
@@ -56,7 +56,7 @@ func (f TakeOperator) New(args value.Dict, bootargs map[string]interface{}) (ope
 }
 
 func (f TakeOperator) Signature() *operators.Signature {
-	return operators.NewSignature("std", "take", false).
+	return operators.NewSignature("std", "take").
 		Param("limit", value.Types.Int, true, false, value.Nil)
 }
 
@@ -69,7 +69,7 @@ func (f TakeOperator) Apply(staticKwargs value.Dict, in operators.InputIter, out
 		if err != nil {
 			return err
 		}
-		row, _ := heads.Get("0")
+		row := heads[0]
 		out.Append(row)
 		taken += 1
 	}
@@ -85,10 +85,10 @@ func (op AddField) New(args value.Dict, bootargs map[string]interface{}) (operat
 }
 
 func (op AddField) Signature() *operators.Signature {
-	return operators.NewSignature("std", "addField", true).
+	return operators.NewSignature("std", "addField").
 		Param("name", value.Types.String, true, false, value.Nil).
 		Param("value", value.Types.Any, false, false, value.Nil).
-		Input(value.Types.Dict)
+		Input([]value.Type{value.Types.Dict})
 }
 
 func (op AddField) Apply(staticKwargs value.Dict, in operators.InputIter, out *value.List) error {
@@ -99,7 +99,7 @@ func (op AddField) Apply(staticKwargs value.Dict, in operators.InputIter, out *v
 		if err != nil {
 			return err
 		}
-		rowVal, _ := heads.Get("0")
+		rowVal := heads[0]
 		row := rowVal.(value.Dict)
 		v, _ := contextKwargs.Get("value")
 		row.Set(name, v)

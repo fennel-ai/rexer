@@ -44,7 +44,7 @@ func (a AggValue) Apply(kwargs value.Dict, in operators.InputIter, out *value.Li
 		if err != nil {
 			return err
 		}
-		rowVal, _ := heads.Get("0")
+		rowVal := heads[0]
 		req := aggregate2.GetAggValueRequest{
 			AggName: ftypes.AggName(aggname),
 			Key:     get(contextKwargs, "groupkey"),
@@ -73,8 +73,8 @@ func get(d value.Dict, k string) value.Value {
 }
 
 func (a AggValue) Signature() *operators.Signature {
-	return operators.NewSignature("aggregate", "addField", true).
-		Input(value.Types.Dict).
+	return operators.NewSignature("aggregate", "addField").
+		Input([]value.Type{value.Types.Dict}).
 		Param("name", value.Types.String, true, false, value.Nil).
 		Param("aggregate", value.Types.String, true, false, value.Nil).
 		Param("groupkey", value.Types.Any, false, false, value.Nil).
