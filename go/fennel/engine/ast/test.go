@@ -104,22 +104,6 @@ func init() {
 			Name:   "something",
 			Kwargs: map[string]Ast{},
 		},
-		HighFnCall{
-			Type:    Map,
-			Varname: "x",
-			Lambda:  Var{Name: "x"},
-			Iter:    List{[]Ast{}},
-		},
-		HighFnCall{
-			Type:    Map,
-			Varname: "x",
-			Lambda: Binary{
-				Left:  Var{"x"},
-				Op:    "*",
-				Right: MakeInt(2),
-			},
-			Iter: List{Values: []Ast{MakeInt(1), MakeInt(3)}},
-		},
 	}
 
 	lookups := make([]Ast, 0)

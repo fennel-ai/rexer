@@ -17,7 +17,6 @@ type VisitorString interface {
 	VisitLookup(on Ast, property string) string
 	VisitIfelse(condition Ast, thenDo Ast, elseDo Ast) string
 	VisitFnCall(module, name string, kwargs map[string]Ast) string
-	VisitHighFnCall(Type HighFnType, varname string, lambda Ast, iter Ast) string
 }
 
 type VisitorValue interface {
@@ -32,7 +31,6 @@ type VisitorValue interface {
 	VisitLookup(on Ast, property string) (value.Value, error)
 	VisitIfelse(condition Ast, thenDo Ast, elseDo Ast) (value.Value, error)
 	VisitFnCall(module, name string, kwargs map[string]Ast) (value.Value, error)
-	VisitHighFnCall(Type HighFnType, varname string, lambda Ast, iter Ast) (value.Value, error)
 }
 
 type Ast interface {
@@ -344,37 +342,3 @@ func (f FnCall) Equals(ast Ast) bool {
 }
 
 var _ Ast = FnCall{}
-
-type HighFnType uint8
-
-const (
-	Map     HighFnType = 1
-	Filter             = 2
-	OrderBy            = 3
-	GroupBy            = 4
-	Reduce             = 5
-)
-
-type HighFnCall struct {
-	Type    HighFnType
-	Varname string
-	Lambda  Ast
-	Iter    Ast
-}
-
-func (h HighFnCall) AcceptValue(v VisitorValue) (value.Value, error) {
-	return v.VisitHighFnCall(h.Type, h.Varname, h.Lambda, h.Iter)
-}
-
-func (h HighFnCall) AcceptString(v VisitorString) string {
-	return v.VisitHighFnCall(h.Type, h.Varname, h.Lambda, h.Iter)
-}
-
-func (h HighFnCall) Equals(ast Ast) bool {
-	if hfncall, ok := ast.(HighFnCall); ok {
-		return h.Type == hfncall.Type && h.Varname == hfncall.Varname && h.Lambda.Equals(hfncall.Lambda) && h.Iter.Equals(hfncall.Iter)
-	}
-	return false
-}
-
-var _ Ast = HighFnCall{}
