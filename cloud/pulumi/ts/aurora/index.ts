@@ -27,6 +27,9 @@ export type inputType = {
     connectedSecurityGroups: Record<string, pulumi.Output<string>>,
     connectedCidrBlocks?: string[],
     planeId: number,
+    // Upon deletion of the cluster, should the final snapshot be skipped.
+    // We should ideally set this to `false` for production tiers and true for the test/staging tiers.
+    skipFinalSnapshot: boolean,
 }
 
 export type outputType = {
@@ -46,6 +49,7 @@ const parseConfig = (): inputType => {
         username: config.require(nameof<inputType>("username")),
         password: config.requireSecret(nameof<inputType>("password")),
         planeId: config.requireNumber(nameof<inputType>("planeId")),
+        skipFinalSnapshot: config.requireBoolean(nameof<inputType>("skipFinalSnapshot")),
     }
 }
 
@@ -117,8 +121,7 @@ export const setup = async (input: inputType): Promise<pulumi.Output<outputType>
             minCapacity: input.minCapacity,
             maxCapacity: input.maxCapacity,
         },
-        // TODO: Remove this for prod clusters.
-        skipFinalSnapshot: true,
+        skipFinalSnapshot: input.skipFinalSnapshot,
         tags: { ...fennelStdTags }
     }, { provider })
 

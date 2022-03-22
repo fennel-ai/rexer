@@ -48,9 +48,10 @@ const planeConfs: Record<number, PlaneConf> = {
             cidr: "10.102.0.0/16"
         },
         dbConf: {
-            minCapacity: 4,
+            minCapacity: 1,
             maxCapacity: 4,
-            password: "foundationdb"
+            password: "foundationdb",
+            skipFinalSnapshot: true,
         },
         confluentConf: {
             username: confluentUsername,
@@ -74,9 +75,10 @@ const planeConfs: Record<number, PlaneConf> = {
             cidr: "10.103.0.0/16"
         },
         dbConf: {
-            minCapacity: 4,
-            maxCapacity: 16,
-            password: "foundationdb"
+            minCapacity: 1,
+            maxCapacity: 4,
+            password: "foundationdb",
+            skipFinalSnapshot: true,
         },
         confluentConf: {
             username: confluentUsername,
@@ -100,8 +102,9 @@ const planeConfs: Record<number, PlaneConf> = {
         },
         dbConf: {
             minCapacity: 1,
-            maxCapacity: 4,
-            password: "password"
+            maxCapacity: 8,
+            password: "password",
+            skipFinalSnapshot: false,
         },
         confluentConf: {
             username: confluentUsername,
