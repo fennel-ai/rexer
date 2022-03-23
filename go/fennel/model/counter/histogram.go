@@ -23,10 +23,10 @@ type Bucketizer interface {
 
 type BucketStore interface {
 	GetBucketStore() BucketStore
-	Get(ctx context.Context, tier tier.Tier, h Histogram, buckets []Bucket) ([]value.Value, error)
-	GetMulti(ctx context.Context, tier tier.Tier, buckets map[Histogram][]Bucket) (map[Histogram][]value.Value, error)
-	Set(ctx context.Context, tier tier.Tier, h Histogram, buckets []Bucket) error
-	SetMulti(ctx context.Context, tier tier.Tier, buckets map[Histogram][]Bucket) error
+	Get(context.Context, tier.Tier, ftypes.AggName, []Bucket, value.Value) ([]value.Value, error)
+	GetMulti(context.Context, tier.Tier, map[ftypes.AggName][]Bucket, map[ftypes.AggName]value.Value) (map[ftypes.AggName][]value.Value, error)
+	Set(context.Context, tier.Tier, ftypes.AggName, []Bucket) error
+	SetMulti(context.Context, tier.Tier, map[ftypes.AggName][]Bucket) error
 }
 
 type MergeReduce interface {
