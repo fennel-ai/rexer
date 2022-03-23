@@ -15,12 +15,15 @@ import (
 	"fennel/lib/clock"
 	"fennel/lib/ftypes"
 	"fennel/redis"
+	"fennel/sagemaker"
 
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 )
 
 type TierArgs struct {
+	sagemaker.SagemakerArgs
+
 	KafkaServer   string         `arg:"--kafka-server,env:KAFKA_SERVER_ADDRESS"`
 	KafkaUsername string         `arg:"--kafka-user,env:KAFKA_USERNAME"`
 	KafkaPassword string         `arg:"--kafka-password,env:KAFKA_PASSWORD"`
@@ -88,6 +91,7 @@ type Tier struct {
 	Clock            clock.Clock
 	Logger           *zap.Logger
 	NewKafkaConsumer KafkaConsumerCreator
+	SagemakerClient  sagemaker.SMClient
 }
 
 func CreateFromArgs(args *TierArgs) (tier Tier, err error) {
@@ -179,6 +183,11 @@ func CreateFromArgs(args *TierArgs) (tier Tier, err error) {
 	}
 	logger = logger.With(zap.Uint32("tier_id", args.TierID.Value()))
 
+	smclient, err := sagemaker.NewClient(args.SagemakerArgs)
+	if err != nil {
+		return tier, fmt.Errorf("failed to create sagemaker client: %v", err)
+	}
+
 	return Tier{
 		DB:               sqlConn.(db.Connection),
 		Redis:            redisClient.(redis.Client),
@@ -188,6 +197,7 @@ func CreateFromArgs(args *TierArgs) (tier Tier, err error) {
 		Logger:           logger,
 		Cache:            redis.NewCache(cacheClient.(redis.Client)),
 		NewKafkaConsumer: consumerCreator,
+		SagemakerClient:  smclient,
 	}, nil
 }
 
