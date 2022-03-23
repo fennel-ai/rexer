@@ -20,6 +20,7 @@ type DBConfig = {
     minCapacity?: number
     maxCapacity?: number,
     password: string,
+    skipFinalSnapshot: boolean,
 }
 
 type ConfluentConfig = {
@@ -118,6 +119,7 @@ const setupResources = async () => {
         },
         connectedCidrBlocks: [input.controlPlaneConf.cidrBlock],
         planeId: input.planeId,
+        skipFinalSnapshot: input.dbConf.skipFinalSnapshot,
     })
     const redisOutput = await redis.setup({
         roleArn: input.roleArn,
