@@ -9,6 +9,7 @@ import (
 )
 
 type rollingStdDev struct {
+	name     ftypes.AggName
 	Duration uint64
 	Bucketizer
 	BucketStore
@@ -16,6 +17,7 @@ type rollingStdDev struct {
 
 func NewStdDev(name ftypes.AggName, duration uint64) Histogram {
 	return rollingStdDev{
+		name:     name,
 		Duration: duration,
 		Bucketizer: fixedWidthBucketizer{map[ftypes.Window]uint64{
 			ftypes.Window_MINUTE: 6,
@@ -24,6 +26,10 @@ func NewStdDev(name ftypes.AggName, duration uint64) Histogram {
 		// retain all keys for 1.5days + duration
 		BucketStore: NewTwoLevelStorage(24*3600, duration+24*3600*1.5),
 	}
+}
+
+func (s rollingStdDev) Name() ftypes.AggName {
+	return s.name
 }
 
 func (s rollingStdDev) Start(end ftypes.Timestamp, kwargs value.Dict) (ftypes.Timestamp, error) {

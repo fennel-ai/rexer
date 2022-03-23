@@ -12,6 +12,7 @@ import (
 	in each bucket representing the total sum / count of events within that bucket.
 */
 type average struct {
+	name     ftypes.AggName
 	Duration uint64
 	Bucketizer
 	BucketStore
@@ -19,6 +20,7 @@ type average struct {
 
 func NewAverage(name ftypes.AggName, duration uint64) Histogram {
 	return average{
+		name:     name,
 		Duration: duration,
 		Bucketizer: fixedWidthBucketizer{map[ftypes.Window]uint64{
 			ftypes.Window_MINUTE: 6,
@@ -27,6 +29,10 @@ func NewAverage(name ftypes.AggName, duration uint64) Histogram {
 		// retain all keys for 1.5days + duration
 		BucketStore: NewTwoLevelStorage(24*3600, duration+24*3600*1.5),
 	}
+}
+
+func (r average) Name() ftypes.AggName {
+	return r.name
 }
 
 func (r average) Transform(v value.Value) (value.Value, error) {

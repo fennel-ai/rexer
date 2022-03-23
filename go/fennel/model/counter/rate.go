@@ -13,6 +13,7 @@ import (
 	It stores two numbers - num (numerator) and den (denominator)
 */
 type rollingRate struct {
+	name      ftypes.AggName
 	Duration  uint64
 	Normalize bool
 	Bucketizer
@@ -21,6 +22,7 @@ type rollingRate struct {
 
 func NewRate(name ftypes.AggName, duration uint64, normalize bool) Histogram {
 	return rollingRate{
+		name:      name,
 		Duration:  duration,
 		Normalize: normalize,
 		Bucketizer: fixedWidthBucketizer{map[ftypes.Window]uint64{
@@ -30,6 +32,10 @@ func NewRate(name ftypes.AggName, duration uint64, normalize bool) Histogram {
 		// retain all keys for 1.5days + duration
 		BucketStore: NewTwoLevelStorage(24*3600, duration+24*3600*1.5),
 	}
+}
+
+func (r rollingRate) Name() ftypes.AggName {
+	return r.name
 }
 
 func (r rollingRate) Transform(v value.Value) (value.Value, error) {

@@ -8,6 +8,7 @@ import (
 )
 
 type rollingSum struct {
+	name     ftypes.AggName
 	Duration uint64
 	Bucketizer
 	BucketStore
@@ -15,6 +16,7 @@ type rollingSum struct {
 
 func NewSum(name ftypes.AggName, duration uint64) Histogram {
 	return rollingSum{
+		name:     name,
 		Duration: duration,
 		Bucketizer: fixedWidthBucketizer{map[ftypes.Window]uint64{
 			ftypes.Window_MINUTE: 6,
@@ -23,6 +25,10 @@ func NewSum(name ftypes.AggName, duration uint64) Histogram {
 		// retain all keys for 1.5days + duration
 		BucketStore: NewTwoLevelStorage(24*3600, duration+24*3600*1.5),
 	}
+}
+
+func (r rollingSum) Name() ftypes.AggName {
+	return r.name
 }
 
 func (r rollingSum) Start(end ftypes.Timestamp, kwargs value.Dict) (ftypes.Timestamp, error) {

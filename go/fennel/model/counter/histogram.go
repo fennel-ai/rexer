@@ -23,10 +23,10 @@ type Bucketizer interface {
 
 type BucketStore interface {
 	GetBucketStore() BucketStore
-	Get(ctx context.Context, tier tier.Tier, name ftypes.AggName, buckets []Bucket, default_ value.Value) ([]value.Value, error)
-	GetMulti(ctx context.Context, tier tier.Tier, names []ftypes.AggName, buckets [][]Bucket, defaults []value.Value) ([][]value.Value, error)
-	Set(ctx context.Context, tier tier.Tier, name ftypes.AggName, buckets []Bucket) error
-	SetMulti(ctx context.Context, tier tier.Tier, names []ftypes.AggName, buckets [][]Bucket) error
+	Get(ctx context.Context, tier tier.Tier, h Histogram, buckets []Bucket) ([]value.Value, error)
+	GetMulti(ctx context.Context, tier tier.Tier, buckets map[Histogram][]Bucket) (map[Histogram][]value.Value, error)
+	Set(ctx context.Context, tier tier.Tier, h Histogram, buckets []Bucket) error
+	SetMulti(ctx context.Context, tier tier.Tier, buckets map[Histogram][]Bucket) error
 }
 
 type MergeReduce interface {
@@ -37,6 +37,7 @@ type MergeReduce interface {
 }
 
 type Histogram interface {
+	Name() ftypes.AggName
 	Start(end ftypes.Timestamp, kwargs value.Dict) (ftypes.Timestamp, error)
 	Bucketizer
 	MergeReduce

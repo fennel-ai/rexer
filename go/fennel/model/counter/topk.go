@@ -10,6 +10,7 @@ import (
 const numK = 100
 
 type topK struct {
+	name     ftypes.AggName
 	Duration uint64
 	Bucketizer
 	BucketStore
@@ -17,6 +18,7 @@ type topK struct {
 
 func NewTopK(name ftypes.AggName, duration uint64) Histogram {
 	return topK{
+		name:     name,
 		Duration: duration,
 		Bucketizer: fixedWidthBucketizer{map[ftypes.Window]uint64{
 			ftypes.Window_MINUTE: 6,
@@ -25,6 +27,10 @@ func NewTopK(name ftypes.AggName, duration uint64) Histogram {
 		// retain all keys for 1.5days + duration
 		BucketStore: NewTwoLevelStorage(24*3600, duration+24*3600*1.5),
 	}
+}
+
+func (t topK) Name() ftypes.AggName {
+	return t.name
 }
 
 func (t topK) Transform(v value.Value) (value.Value, error) {

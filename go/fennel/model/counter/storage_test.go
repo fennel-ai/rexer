@@ -3,6 +3,7 @@ package counter
 import (
 	"context"
 	"fmt"
+	"log"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -22,20 +23,18 @@ func TestStorage(t *testing.T) {
 
 	scenarios := []struct {
 		store   BucketStore
-		name    ftypes.AggName
 		buckets []Bucket
-		z       value.Value
+		h       Histogram
 		v1      []value.Value
 		v2      []value.Value
 	}{
 		{
 			FlatRedisStorage{},
-			"name1",
 			[]Bucket{
 				{Key: "k1", Window: ftypes.Window_DAY, Width: 1, Index: 5, Value: nil},
 				{Key: "k2", Window: ftypes.Window_HOUR, Width: 7, Index: 8, Value: nil},
 			},
-			value.Int(0),
+			NewSum("name1", 0),
 			[]value.Value{value.String("hi"), value.Int(5)},
 			[]value.Value{value.Nil, value.Int(4)},
 		},
@@ -44,13 +43,12 @@ func TestStorage(t *testing.T) {
 				period:    24 * 3600,
 				retention: 0,
 			},
-			"name2",
 			[]Bucket{
 				{Key: "k1", Window: ftypes.Window_DAY, Width: 1, Index: 5, Value: nil},
 				{Key: "k2", Window: ftypes.Window_HOUR, Width: 6, Index: 7, Value: nil},
 				{Key: "k3", Window: ftypes.Window_HOUR, Width: 6, Index: 8, Value: nil},
 			},
-			value.Int(0),
+			NewSum("name2", 0),
 			[]value.Value{value.String("hi"), value.Nil, value.Int(51)},
 			[]value.Value{value.Nil, value.Int(4), value.Int(1)},
 		},
@@ -59,7 +57,6 @@ func TestStorage(t *testing.T) {
 				period:    24 * 3600,
 				retention: 0,
 			},
-			"name3",
 			[]Bucket{
 				{Key: "k1", Window: ftypes.Window_DAY, Width: 1, Index: 5, Value: nil},
 				{Key: "k1", Window: ftypes.Window_HOUR, Width: 6, Index: 9, Value: nil},
@@ -67,7 +64,7 @@ func TestStorage(t *testing.T) {
 				{Key: "k1", Window: ftypes.Window_MINUTE, Width: 6, Index: 480, Value: nil},
 				{Key: "k2", Window: ftypes.Window_HOUR, Width: 6, Index: 8, Value: nil},
 			},
-			value.Int(0),
+			NewSum("name3", 0),
 			[]value.Value{
 				value.String("hi"),
 				value.Nil,
@@ -79,21 +76,22 @@ func TestStorage(t *testing.T) {
 		},
 	}
 	for _, scene := range scenarios {
+		log.Print(scene)
 		// initially nothing is found
-		found, err := scene.store.Get(ctx, tier, scene.name, scene.buckets, scene.z)
+		found, err := scene.store.Get(ctx, tier, scene.h, scene.buckets)
 		assert.NoError(t, err)
 		assert.Len(t, found, len(scene.buckets))
 		for _, v := range found {
-			assert.Equal(t, scene.z, v)
+			assert.Equal(t, scene.h.Zero(), v)
 		}
 		// set values
 		for i := range scene.buckets {
 			scene.buckets[i].Value = scene.v1[i]
 		}
-		assert.NoError(t, scene.store.Set(ctx, tier, scene.name, scene.buckets))
+		assert.NoError(t, scene.store.Set(ctx, tier, scene.h, scene.buckets))
 
 		// check it went through
-		found, err = scene.store.Get(ctx, tier, scene.name, scene.buckets, scene.z)
+		found, err = scene.store.Get(ctx, tier, scene.h, scene.buckets)
 		assert.NoError(t, err)
 		assert.Len(t, found, len(scene.buckets))
 		for i, v := range found {
@@ -109,8 +107,8 @@ func TestStorage(t *testing.T) {
 			scene.buckets[i].Value = scene.v2[i]
 			odd = append(odd, scene.buckets[i])
 		}
-		assert.NoError(t, scene.store.Set(ctx, tier, scene.name, odd))
-		found, err = scene.store.Get(ctx, tier, scene.name, scene.buckets, scene.z)
+		assert.NoError(t, scene.store.Set(ctx, tier, scene.h, odd))
+		found, err = scene.store.Get(ctx, tier, scene.h, scene.buckets)
 		assert.NoError(t, err)
 		assert.Len(t, found, len(scene.buckets))
 		for i := range scene.buckets {
@@ -130,104 +128,92 @@ func TestStorageMulti(t *testing.T) {
 	defer test.Teardown(tier)
 	ctx := context.Background()
 
-	names := []ftypes.AggName{
-		"agg0",
-		"agg1",
-		"agg2",
-		"agg3",
-	}
-	buckets := [][]Bucket{
-		{},
-		{
+	buckets := map[Histogram][]Bucket{
+		NewSum("agg0", 0): {},
+		NewSum("agg1", 0): {
 			{Key: "k1", Window: ftypes.Window_DAY, Width: 1, Index: 5, Value: nil},
 			{Key: "k1", Window: ftypes.Window_HOUR, Width: 6, Index: 7, Value: nil},
 			{Key: "k2", Window: ftypes.Window_HOUR, Width: 6, Index: 8, Value: nil},
 			{Key: "k2", Window: ftypes.Window_HOUR, Width: 6, Index: 9, Value: nil},
 			{Key: "k3", Window: ftypes.Window_HOUR, Width: 6, Index: 406, Value: nil},
 		},
-		{
+		NewSum("agg2", 0): {
 			{Key: "k2", Window: ftypes.Window_HOUR, Width: 6, Index: 8, Value: nil},
 			{Key: "k2", Window: ftypes.Window_HOUR, Width: 6, Index: 9, Value: nil},
 			{Key: "k3", Window: ftypes.Window_HOUR, Width: 6, Index: 406, Value: nil},
 		},
-		{
+		NewSum("agg3", 0): {
 			{Key: "k1", Window: ftypes.Window_HOUR, Width: 6, Index: 7, Value: nil},
 			{Key: "k2", Window: ftypes.Window_HOUR, Width: 6, Index: 8, Value: nil},
 			{Key: "k2", Window: ftypes.Window_HOUR, Width: 6, Index: 9, Value: nil},
 			{Key: "k3", Window: ftypes.Window_HOUR, Width: 6, Index: 406, Value: nil},
 		},
 	}
-	defaults := []value.Value{
-		value.Nil,
-		value.Int(0),
-		value.Double(0.0),
-		value.String(""),
-	}
 	// initially nothing to be found
-	vals, err := FlatRedisStorage{}.GetMulti(ctx, tier, names, buckets, defaults)
+	vals, err := FlatRedisStorage{}.GetMulti(ctx, tier, buckets)
 	assert.NoError(t, err)
 	assert.Equal(t, len(buckets), len(vals))
-	for i, vals := range vals {
-		assert.Equal(t, len(vals), len(buckets[i]))
-		for _, v := range vals {
-			assert.True(t, defaults[i].Equal(v))
+	for h := range buckets {
+		assert.Equal(t, len(vals[h]), len(buckets[h]))
+		for i := range buckets[h] {
+			assert.True(t, h.Zero().Equal(vals[h][i]))
 		}
 	}
 	// set values and check with FlatRedisStorage
-	expected := [][]value.Value{
-		{},
-		{value.Int(1), value.Int(2), value.Int(3), value.Int(4), value.Int(5)},
-		{value.Double(1.0), value.Double(2.0), value.Double(3.0)},
-		{value.String("a"), value.String("b"), value.String("c"), value.String("d")},
+	expected := map[Histogram][]value.Value{
+		NewSum("agg1", 0): {},
+		NewSum("agg2", 0): {value.Int(1), value.Int(2), value.Int(3), value.Int(4), value.Int(5)},
+		NewSum("agg3", 0): {value.Double(1.0), value.Double(2.0), value.Double(3.0)},
+		NewSum("agg4", 0): {value.String("a"), value.String("b"), value.String("c"), value.String("d")},
 	}
-	for i := range buckets {
-		for j := range buckets[i] {
-			buckets[i][j].Value = expected[i][j]
+	for h := range buckets {
+		for i := range buckets[h] {
+			buckets[h][i].Value = expected[h][i]
 		}
 	}
-	err = FlatRedisStorage{}.SetMulti(ctx, tier, names, buckets)
+	err = FlatRedisStorage{}.SetMulti(ctx, tier, buckets)
 	assert.NoError(t, err)
-	for i := range buckets {
-		for j := range buckets[i] {
-			buckets[i][j].Value = nil
+	for h := range buckets {
+		for i := range buckets[h] {
+			buckets[h][i].Value = nil
 		}
 	}
-	found, err := FlatRedisStorage{}.GetMulti(ctx, tier, names, buckets, defaults)
+	found, err := FlatRedisStorage{}.GetMulti(ctx, tier, buckets)
 	assert.NoError(t, err)
 	assert.Equal(t, len(expected), len(found))
-	for i := range found {
-		assert.Equal(t, len(expected[i]), len(found[i]))
-		for j := range found[i] {
-			assert.True(t, expected[i][j].Equal(found[i][j]))
+	for h := range found {
+		assert.Equal(t, len(expected[h]), len(found[h]))
+		for i := range found[h] {
+			assert.True(t, expected[h][i].Equal(found[h][i]))
 		}
 	}
 	// set values and check with TwoLevelRedisStore
 	store := twoLevelRedisStore{period: 24 * 3600, retention: 0}
-	expected = [][]value.Value{
-		{},
-		{value.Int(5), value.Int(4), value.Int(3), value.Int(2), value.Int(1)},
-		{value.Double(3.0), value.Double(2.0), value.Double(1.0)},
-		{value.String("d"), value.String("c"), value.String("b"), value.String("a")},
+	expected = map[Histogram][]value.Value{
+		NewSum("agg1", 0): {},
+		NewSum("agg2", 0): {value.Int(5), value.Int(4), value.Int(3), value.Int(2), value.Int(1)},
+		NewSum("agg3", 0): {value.Double(3.0), value.Double(2.0), value.Double(1.0)},
+		NewSum("agg4", 0): {value.String("d"), value.String("c"), value.String("b"), value.String("a")},
 	}
-	for i := range buckets {
-		for j := range buckets[i] {
-			buckets[i][j].Value = expected[i][j]
+	for h := range buckets {
+		for i := range buckets[h] {
+			buckets[h][i].Value = expected[h][i]
 		}
 	}
-	err = store.SetMulti(ctx, tier, names, buckets)
+	err = store.SetMulti(ctx, tier, buckets)
 	assert.NoError(t, err)
-	for i := range buckets {
-		for j := range buckets[i] {
-			buckets[i][j].Value = nil
+	for h := range buckets {
+		for i := range buckets[h] {
+			buckets[h][i].Value = nil
 		}
 	}
-	found, err = store.GetMulti(ctx, tier, names, buckets, defaults)
+	found, err = store.GetMulti(ctx, tier, buckets)
 	assert.NoError(t, err)
 	assert.Equal(t, len(expected), len(found))
-	for i := range found {
-		assert.Equal(t, len(expected[i]), len(found[i]))
-		for j := range found[i] {
-			assert.True(t, expected[i][j].Equal(found[i][j]))
+	for h := range found {
+		assert.Equal(t, len(expected[h]), len(found[h]))
+		for i := range found[h] {
+			assert.True(t, expected[h][i].Equal(found[h][i]))
 		}
 	}
 }
@@ -306,13 +292,13 @@ func BenchmarkStorage(b *testing.B) {
 		}
 		buckets = append(buckets, b)
 	}
-	name1 := ftypes.AggName(utils.RandString(30))
+	h1 := NewSum(ftypes.AggName(utils.RandString(30)), 0)
 	s1 := FlatRedisStorage{}
-	name2 := ftypes.AggName(utils.RandString(30))
+	h2 := NewSum(ftypes.AggName(utils.RandString(30)), 0)
 	s2 := twoLevelRedisStore{
 		period:    24 * 3600,
 		retention: 0,
 	}
-	s1.Set(ctx, tier, name1, buckets)
-	s2.Set(ctx, tier, name2, buckets)
+	s1.Set(ctx, tier, h1, buckets)
+	s2.Set(ctx, tier, h2, buckets)
 }

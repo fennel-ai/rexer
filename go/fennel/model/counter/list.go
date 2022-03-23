@@ -8,9 +8,14 @@ import (
 )
 
 type list struct {
+	name     ftypes.AggName
 	Duration uint64
 	Bucketizer
 	BucketStore
+}
+
+func (s list) Name() ftypes.AggName {
+	return s.name
 }
 
 func (s list) Transform(v value.Value) (value.Value, error) {
@@ -19,6 +24,7 @@ func (s list) Transform(v value.Value) (value.Value, error) {
 
 func NewList(name ftypes.AggName, duration uint64) Histogram {
 	return list{
+		name:     name,
 		Duration: duration,
 		Bucketizer: fixedWidthBucketizer{map[ftypes.Window]uint64{
 			ftypes.Window_MINUTE: 6,

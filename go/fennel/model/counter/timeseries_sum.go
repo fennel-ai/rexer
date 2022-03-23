@@ -9,6 +9,7 @@ import (
 )
 
 type timeseriesSum struct {
+	name   ftypes.AggName
 	Window ftypes.Window
 	Limit  uint64
 	Bucketizer
@@ -26,6 +27,7 @@ func NewTimeseriesSum(name ftypes.AggName, window ftypes.Window, limit uint64) H
 		retention = limit*d + 24*3600*1.5
 	}
 	return timeseriesSum{
+		name:   name,
 		Window: window,
 		Limit:  limit,
 		Bucketizer: fixedWidthBucketizer{map[ftypes.Window]uint64{
@@ -34,6 +36,10 @@ func NewTimeseriesSum(name ftypes.AggName, window ftypes.Window, limit uint64) H
 		// retain all keys for 1.5days + duration
 		BucketStore: NewTwoLevelStorage(24*3600, retention),
 	}
+}
+
+func (r timeseriesSum) Name() ftypes.AggName {
+	return r.name
 }
 
 func (r timeseriesSum) Start(end ftypes.Timestamp, _ value.Dict) (ftypes.Timestamp, error) {
