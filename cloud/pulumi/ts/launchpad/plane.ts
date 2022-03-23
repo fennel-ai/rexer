@@ -34,6 +34,12 @@ type RedisConfig = {
     nodeType?: string,
 }
 
+type CacheConfg = {
+    nodeType?: string,
+    numNodeGroups?: number,
+    replicasPerNodeGroup?: number,
+}
+
 type PrometheusConf = {
     // This should be set to `true` if Amazon Managed Prometheus (AMP) should be
     // used to store metrics.
@@ -52,6 +58,7 @@ export type PlaneConf = {
     confluentConf: ConfluentConfig,
     controlPlaneConf: vpc.controlPlaneConfig,
     redisConf?: RedisConfig,
+    cacheConf?: CacheConfg,
     prometheusConf: PrometheusConf,
 }
 
@@ -142,6 +149,7 @@ const setupResources = async () => {
             "eks": eksOutput.workerSg,
         },
         planeId: input.planeId,
+        nodeType: input.cacheConf?.nodeType,
     })
     const confluentOutput = await confluentenv.setup({
         region: input.region,
