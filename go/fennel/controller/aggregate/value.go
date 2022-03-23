@@ -28,19 +28,29 @@ func Value(ctx context.Context, tier tier.Tier, name ftypes.AggName, key value.V
 	if err != nil {
 		return nil, err
 	}
-	return counter.Value(ctx, tier, key, histogram, kwargs)
+	return counter.Value(ctx, tier, name, key, histogram, kwargs)
 }
 
 func BatchValue(ctx context.Context, tier tier.Tier, batch []aggregate.GetAggValueRequest) ([]value.Value, error) {
-	ret := make([]value.Value, len(batch))
+	n := len(batch)
+	histograms := make([]modelCounter.Histogram, n)
+	names := make([]ftypes.AggName, n)
+	keys := make([]value.Value, n)
+	kwargs := make([]value.Dict, n)
 	for i, req := range batch {
-		v, err := Value(ctx, tier, req.AggName, req.Key, req.Kwargs)
+		agg, err := Retrieve(ctx, tier, req.AggName)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("failed to retrieve aggregate at index %d of batch: %v", i, err)
 		}
-		ret[i] = v
+		histograms[i], err = toHistogram(agg)
+		if err != nil {
+			return nil, fmt.Errorf("failed to make histogram from aggregate at index %d of batch: %v", i, err)
+		}
+		names[i] = req.AggName
+		keys[i] = req.Key
+		kwargs[i] = req.Kwargs
 	}
-	return ret, nil
+	return counter.BatchValue(ctx, tier, names, keys, histograms, kwargs)
 }
 
 func Update(ctx context.Context, tier tier.Tier, consumer kafka.FConsumer, agg aggregate.Aggregate) error {
@@ -61,7 +71,7 @@ func Update(ctx context.Context, tier tier.Tier, consumer kafka.FConsumer, agg a
 	if err != nil {
 		return err
 	}
-	if err = counter.Update(ctx, tier, table, histogram); err != nil {
+	if err = counter.Update(ctx, tier, agg.Name, table, histogram); err != nil {
 		return err
 	}
 	return consumer.Commit()
