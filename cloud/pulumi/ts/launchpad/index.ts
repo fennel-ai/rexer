@@ -111,6 +111,11 @@ const planeConfs: Record<number, PlaneConf> = {
             password: confluentPassword
         },
         controlPlaneConf: controlPlane,
+        redisConf: {
+            numShards: 1,
+            nodeType: "db.r6g.large",
+            numReplicasPerShard: 1,
+        },
         prometheusConf: {
             useAMP: false
         }
