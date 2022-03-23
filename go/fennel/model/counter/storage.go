@@ -30,22 +30,80 @@ var metrics = promauto.NewSummaryVec(prometheus.SummaryOpts{
 	},
 }, []string{"metric"})
 
-type FlatRedisStorage struct {
-	name ftypes.AggName
+type FlatRedisStorage struct{}
+
+func (f FlatRedisStorage) GetBucketStore() BucketStore {
+	return f
 }
 
-func (f FlatRedisStorage) Get(ctx context.Context, tier tier.Tier, buckets []Bucket, default_ value.Value) ([]value.Value, error) {
-	rkeys := f.redisKeys(f.name, buckets)
-	return readFromRedis(ctx, tier, rkeys, default_)
+func (f FlatRedisStorage) Get(
+	ctx context.Context, tier tier.Tier, name ftypes.AggName, buckets []Bucket, default_ value.Value,
+) ([]value.Value, error) {
+	rkeys := f.redisKeys(name, buckets)
+	defaults := make([]value.Value, len(rkeys))
+	for i := range defaults {
+		defaults[i] = default_
+	}
+	return readFromRedis(ctx, tier, rkeys, defaults)
 }
 
-func (f FlatRedisStorage) Set(ctx context.Context, tier tier.Tier, buckets []Bucket) error {
-	rkeys := f.redisKeys(f.name, buckets)
-	vals := make([]value.Value, len(buckets))
+func (f FlatRedisStorage) GetMulti(
+	ctx context.Context, tier tier.Tier, names []ftypes.AggName, buckets [][]Bucket, defaults_ []value.Value,
+) ([][]value.Value, error) {
+	var rkeys []string
+	var defaults []value.Value
+	for i := range buckets {
+		rkeys = append(rkeys, f.redisKeys(names[i], buckets[i])...)
+		for range buckets[i] {
+			defaults = append(defaults, defaults_[i])
+		}
+	}
+	rvals, err := readFromRedis(ctx, tier, rkeys, defaults)
+	if err != nil {
+		return nil, err
+	}
+	vals := make([][]value.Value, len(names))
+	cur := 0
+	for i := range buckets {
+		vals[i] = make([]value.Value, len(buckets[i]))
+		for j := range buckets[i] {
+			vals[i][j] = rvals[cur]
+			cur++
+		}
+	}
+	return vals, nil
+}
+
+func (f FlatRedisStorage) Set(ctx context.Context, tier tier.Tier, name ftypes.AggName, buckets []Bucket) error {
+	rkeys := f.redisKeys(name, buckets)
+	vals := make([]value.Value, len(rkeys))
 	for i := range buckets {
 		vals[i] = buckets[i].Value
 	}
-	tier.Logger.Info("Updating redis keys for aggregate", zap.String("aggregate", string(f.name)), zap.Int("num_keys", len(rkeys)))
+	tier.Logger.Info(
+		"Updating redis keys for aggregate", zap.String("aggregate", string(name)), zap.Int("num_keys", len(rkeys)),
+	)
+	return setInRedis(ctx, tier, rkeys, vals, make([]time.Duration, len(rkeys)))
+}
+
+func (f FlatRedisStorage) SetMulti(
+	ctx context.Context, tier tier.Tier, names []ftypes.AggName, buckets [][]Bucket,
+) error {
+	var rkeys []string
+	var vals []value.Value
+	keyCount := make([]int, len(names))
+	for i := range buckets {
+		rkeys = append(rkeys, f.redisKeys(names[i], buckets[i])...)
+		for _, b := range buckets[i] {
+			vals = append(vals, b.Value)
+		}
+	}
+	for i, name := range names {
+		tier.Logger.Info("Updating redis keys for aggregate",
+			zap.String("aggregate", string(name)),
+			zap.Int("num_keys", keyCount[i]),
+		)
+	}
 	return setInRedis(ctx, tier, rkeys, vals, make([]time.Duration, len(rkeys)))
 }
 
@@ -76,14 +134,12 @@ var _ BucketStore = FlatRedisStorage{}
 
 */
 type twoLevelRedisStore struct {
-	name      ftypes.AggName
 	period    uint64
 	retention uint64
 }
 
-func NewTwoLevelStorage(name ftypes.AggName, period, retention uint64) BucketStore {
+func NewTwoLevelStorage(period, retention uint64) BucketStore {
 	return twoLevelRedisStore{
-		name:      name,
 		period:    period,
 		retention: retention,
 	}
@@ -98,46 +154,175 @@ type slot struct {
 }
 
 type group struct {
-	key string
-	id  uint64
+	aggname ftypes.AggName
+	key     string
+	id      uint64
 }
 
-func (t twoLevelRedisStore) Get(ctx context.Context, tier tier.Tier, buckets []Bucket, default_ value.Value) ([]value.Value, error) {
+func (t twoLevelRedisStore) GetBucketStore() BucketStore {
+	return twoLevelRedisStore{period: t.period}
+}
+
+func (t twoLevelRedisStore) get(
+	ctx context.Context, tier tier.Tier, names []ftypes.AggName, buckets []Bucket, defaults []value.Value,
+) ([]value.Value, error) {
+	// track seen groups, so we do not send duplicate groups to redis
+	// 'seen' maps group to index in the array of groups sent to redis
 	seen := make(map[group]int)
+	var rkeys []string
 	slots := make([]slot, len(buckets))
-	rkeys := make([]string, 0)
-	for i := range buckets {
-		s, err := t.toSlot(&buckets[i])
+	for i, b := range buckets {
+		s, err := t.toSlot(names[i], &b)
 		if err != nil {
 			return nil, err
 		}
 		slots[i] = s
-		g := s.g
-		if _, ok := seen[g]; !ok {
-			seen[g] = len(seen)
-			rkeys = append(rkeys, t.redisKey(g))
+		if _, ok := seen[s.g]; !ok {
+			rkeys = append(rkeys, t.redisKey(names[i], s.g))
+			seen[s.g] = len(rkeys) - 1
 		}
 	}
-	groupVals, err := readFromRedis(ctx, tier, rkeys, value.Dict{})
+	// now load all groups from redis and get values from relevant slots
+	defaults_ := make([]value.Value, len(rkeys))
+	for i := range defaults_ {
+		defaults_[i] = value.NewDict(map[string]value.Value{})
+	}
+	groupVals, err := readFromRedis(ctx, tier, rkeys, defaults_)
 	if err != nil {
 		return nil, err
 	}
 	ret := make([]value.Value, len(buckets))
 	for i, s := range slots {
-		g := s.g
-		ptr := seen[g]
-		dict, ok := groupVals[ptr].(value.Dict)
+		ptr := seen[s.g]
+		slotDict, ok := groupVals[ptr].(value.Dict)
 		if !ok {
 			return nil, fmt.Errorf("could not read data: expected dict but found: %v\n", groupVals[ptr])
 		}
 		idxStr := t.slotKey(s)
-		ret[i], ok = dict.Get(idxStr)
+		ret[i], ok = slotDict.Get(idxStr)
 		if !ok {
-			ret[i] = default_
+			ret[i] = defaults[i]
 		}
 	}
 	t.logStats(groupVals, "get")
 	return ret, nil
+}
+
+func (t twoLevelRedisStore) Get(
+	ctx context.Context, tier tier.Tier, name ftypes.AggName, buckets []Bucket, default_ value.Value,
+) ([]value.Value, error) {
+	n := len(buckets)
+	names := make([]ftypes.AggName, n)
+	defaults := make([]value.Value, n)
+	for i := range names {
+		names[i] = name
+		defaults[i] = default_
+	}
+	return t.get(ctx, tier, names, buckets, defaults)
+}
+
+func (t twoLevelRedisStore) GetMulti(
+	ctx context.Context, tier tier.Tier, names []ftypes.AggName, buckets [][]Bucket, defaults []value.Value,
+) ([][]value.Value, error) {
+	var names_ []ftypes.AggName
+	var buckets_ []Bucket
+	var defaults_ []value.Value
+	var indices []int
+	for i := range buckets {
+		for _, b := range buckets[i] {
+			names_ = append(names_, names[i])
+			buckets_ = append(buckets_, b)
+			defaults_ = append(defaults_, defaults[i])
+			indices = append(indices, i)
+		}
+	}
+	vals, err := t.get(ctx, tier, names_, buckets_, defaults_)
+	if err != nil {
+		return nil, err
+	}
+	ret := make([][]value.Value, len(names))
+	cur := 0
+	for i := range buckets {
+		ret[i] = make([]value.Value, len(buckets[i]))
+		for j := range buckets[i] {
+			ret[i][j] = vals[cur]
+			cur++
+		}
+	}
+	return ret, nil
+}
+
+func (t twoLevelRedisStore) set(ctx context.Context, tier tier.Tier, names []ftypes.AggName, buckets []Bucket) error {
+	// track seen groups, so we do not send duplicate groups to redis
+	// 'seen' maps group to index in the array of groups sent to redis
+	seen := make(map[group]int)
+	var rkeys []string
+	slots := make([]slot, len(buckets))
+	keyCount := make(map[ftypes.AggName]int)
+	for i, b := range buckets {
+		s, err := t.toSlot(names[i], &b)
+		if err != nil {
+			return err
+		}
+		slots[i] = s
+		if _, ok := seen[s.g]; !ok {
+			rkeys = append(rkeys, t.redisKey(names[i], s.g))
+			seen[s.g] = len(rkeys) - 1
+			keyCount[names[i]]++
+		}
+	}
+	// now load all groups from redis first and update relevant slots
+	defaults := make([]value.Value, len(rkeys))
+	for i := range defaults {
+		defaults[i] = value.NewDict(map[string]value.Value{})
+	}
+	groupVals, err := readFromRedis(ctx, tier, rkeys, defaults)
+	if err != nil {
+		return err
+	}
+	for _, s := range slots {
+		ptr := seen[s.g]
+		slotDict, ok := groupVals[ptr].(value.Dict)
+		if !ok {
+			return fmt.Errorf("could not read data: expected dict but found: %v\n", groupVals[ptr])
+		}
+		idxStr := t.slotKey(s)
+		slotDict.Set(idxStr, s.val)
+		groupVals[ptr] = slotDict
+	}
+	// we set each key with a ttl of retention seconds
+	ttls := make([]time.Duration, len(rkeys))
+	for i := range ttls {
+		ttls[i] = time.Second * time.Duration(t.retention)
+	}
+	t.logStats(groupVals, "set")
+	for name, numKeys := range keyCount {
+		tier.Logger.Info(
+			"Updating redis keys for aggregate", zap.String("aggregate", string(name)), zap.Int("num_keys", numKeys),
+		)
+	}
+	return setInRedis(ctx, tier, rkeys, groupVals, ttls)
+}
+
+func (t twoLevelRedisStore) Set(ctx context.Context, tier tier.Tier, name ftypes.AggName, buckets []Bucket) error {
+	names := make([]ftypes.AggName, len(buckets))
+	for i := range names {
+		names[i] = name
+	}
+	return t.set(ctx, tier, names, buckets)
+}
+
+func (t twoLevelRedisStore) SetMulti(
+	ctx context.Context, tier tier.Tier, names []ftypes.AggName, buckets [][]Bucket) error {
+	var names_ []ftypes.AggName
+	var buckets_ []Bucket
+	for i := range buckets {
+		for _, b := range buckets[i] {
+			names_ = append(names_, names[i])
+			buckets_ = append(buckets_, b)
+		}
+	}
+	return t.set(ctx, tier, names_, buckets_)
 }
 
 func (t twoLevelRedisStore) slotKey(s slot) string {
@@ -156,21 +341,22 @@ func toBuf(n uint64) []byte {
 	return buf[:k]
 }
 
-func (t twoLevelRedisStore) redisKey(g group) string {
-	return fmt.Sprintf("agg_l2:%s:%s:%v%v", t.name, g.key, toBuf(t.period), toBuf(g.id))
+func (t twoLevelRedisStore) redisKey(name ftypes.AggName, g group) string {
+	return fmt.Sprintf("agg_l2:%s:%s:%v%v", name, g.key, toBuf(t.period), toBuf(g.id))
 }
 
-func (t twoLevelRedisStore) toSlot(b *Bucket) (slot, error) {
+func (t twoLevelRedisStore) toSlot(name ftypes.AggName, b *Bucket) (slot, error) {
 	d := toDuration(b.Window) * b.Width
 	if t.period%d != 0 {
 		return slot{}, fmt.Errorf("can only store buckets with width that can fully fit in period of: '%d'sec", t.period)
 	}
-	start_ts := d * b.Index
-	gap := start_ts % t.period
+	startTs := d * b.Index
+	gap := startTs % t.period
 	return slot{
 		g: group{
-			key: b.Key,
-			id:  start_ts / t.period,
+			aggname: name,
+			key:     b.Key,
+			id:      startTs / t.period,
 		},
 		window: b.Window,
 		width:  b.Width,
@@ -191,47 +377,6 @@ func toDuration(w ftypes.Window) uint64 {
 	return 0
 }
 
-func (t twoLevelRedisStore) Set(ctx context.Context, tier tier.Tier, buckets []Bucket) error {
-	seen := make(map[group]int)
-	slots := make([]slot, len(buckets))
-	rkeys := make([]string, 0)
-	for i := range buckets {
-		s, err := t.toSlot(&buckets[i])
-		if err != nil {
-			return err
-		}
-		slots[i] = s
-		g := s.g
-		if _, ok := seen[g]; !ok {
-			seen[g] = len(seen)
-			rkeys = append(rkeys, t.redisKey(g))
-		}
-	}
-	groupVals, err := readFromRedis(ctx, tier, rkeys, value.Dict{})
-	if err != nil {
-		return err
-	}
-	for _, s := range slots {
-		g := s.g
-		ptr := seen[g]
-		dict, ok := groupVals[ptr].(value.Dict)
-		if !ok {
-			return fmt.Errorf("could not read data: expected dict but found: %v\n", groupVals[ptr])
-		}
-		idxStr := t.slotKey(s)
-		dict.Set(idxStr, s.val)
-		groupVals[ptr] = dict
-	}
-	// we set each key with a ttl of retention seconds
-	ttls := make([]time.Duration, len(rkeys))
-	for i := range ttls {
-		ttls[i] = time.Second * time.Duration(t.retention)
-	}
-	t.logStats(groupVals, "set")
-	tier.Logger.Info("Updating redis keys for aggregate", zap.String("aggregate", string(t.name)), zap.Int("num_keys", len(rkeys)))
-	return setInRedis(ctx, tier, rkeys, groupVals, ttls)
-}
-
 func (t twoLevelRedisStore) logStats(groupVals []value.Value, mode string) {
 	valsPerKey := 0
 	count := 0
@@ -241,38 +386,39 @@ func (t twoLevelRedisStore) logStats(groupVals []value.Value, mode string) {
 			count += 1
 		}
 	}
-	metrics.WithLabelValues(fmt.Sprintf("l2_num_vals_per_key_in_%s", mode)).Observe(float64(valsPerKey) / float64(count))
+	metrics.WithLabelValues(
+		fmt.Sprintf("l2_num_vals_per_key_in_%s", mode)).Observe(float64(valsPerKey) / float64(count))
 }
 
 var _ BucketStore = twoLevelRedisStore{}
 
-func Update(ctx context.Context, tier tier.Tier, buckets []Bucket, histogram Histogram) error {
-	cur, err := histogram.Get(ctx, tier, buckets, histogram.Zero())
+func Update(ctx context.Context, tier tier.Tier, name ftypes.AggName, buckets []Bucket, h Histogram) error {
+	cur, err := h.Get(ctx, tier, name, buckets, h.Zero())
 	if err != nil {
 		return err
 	}
 	for i := range cur {
-		merged, err := histogram.Merge(cur[i], buckets[i].Value)
+		merged, err := h.Merge(cur[i], buckets[i].Value)
 		if err != nil {
 			return err
 		}
 		buckets[i].Value = merged
 	}
-	return histogram.Set(ctx, tier, buckets)
+	return h.Set(ctx, tier, name, buckets)
 }
 
 //==========================================================
 // Private helpers for talking to redis
 //==========================================================
 
-func readFromRedis(ctx context.Context, tier tier.Tier, rkeys []string, default_ value.Value) ([]value.Value, error) {
+func readFromRedis(ctx context.Context, tier tier.Tier, rkeys []string, defaults []value.Value) ([]value.Value, error) {
 	res, err := tier.Redis.MGet(ctx, rkeys...)
 	if err != nil {
 		return nil, err
 	}
 	ret := make([]value.Value, len(rkeys))
 	for i, v := range res {
-		if ret[i], err = interpretRedisResponse(v, default_.Clone()); err != nil {
+		if ret[i], err = interpretRedisResponse(v, defaults[i].Clone()); err != nil {
 			return nil, err
 		}
 	}
