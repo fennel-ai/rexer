@@ -52,11 +52,13 @@ func (f FlatRedisStorage) GetMulti(
 ) (map[ftypes.AggName][]value.Value, error) {
 	var rkeys []string
 	var defaults []value.Value
-	ptr := make(map[ftypes.AggName]int, len(buckets))
+	start := make(map[ftypes.AggName]int, len(buckets))
 	for name, buckets := range buckets {
+		start[name] = len(rkeys)
 		rkeys = append(rkeys, f.redisKeys(name, buckets)...)
-		ptr[name] = len(rkeys) - 1
-		defaults = append(defaults, defaults_[name])
+		for range buckets {
+			defaults = append(defaults, defaults_[name])
+		}
 	}
 	rvals, err := readFromRedis(ctx, tier, rkeys, defaults)
 	if err != nil {
@@ -64,7 +66,8 @@ func (f FlatRedisStorage) GetMulti(
 	}
 	vals := make(map[ftypes.AggName][]value.Value, len(buckets))
 	for h, buckets := range buckets {
-		s := ptr[h]
+		s := start[h]
+		vals[h] = make([]value.Value, len(buckets))
 		for i := range buckets {
 			vals[h][i] = rvals[s+i]
 		}
@@ -173,6 +176,7 @@ func (t twoLevelRedisStore) get(
 		if err != nil {
 			return nil, err
 		}
+		slots[i] = s
 		if _, ok := seen[s.g]; !ok {
 			rkeys = append(rkeys, t.redisKey(names[i], s.g))
 			seen[s.g] = len(rkeys) - 1
@@ -237,6 +241,9 @@ func (t twoLevelRedisStore) GetMulti(
 		return nil, err
 	}
 	ret := make(map[ftypes.AggName][]value.Value, len(buckets_))
+	for name := range buckets_ {
+		ret[name] = make([]value.Value, len(buckets_[name]))
+	}
 	for i, v := range vals {
 		ret[names[i]][indices[i]] = v
 	}
@@ -255,6 +262,7 @@ func (t twoLevelRedisStore) set(ctx context.Context, tier tier.Tier, names []fty
 		if err != nil {
 			return err
 		}
+		slots[i] = s
 		if _, ok := seen[s.g]; !ok {
 			rkeys = append(rkeys, t.redisKey(names[i], s.g))
 			seen[s.g] = len(rkeys) - 1
