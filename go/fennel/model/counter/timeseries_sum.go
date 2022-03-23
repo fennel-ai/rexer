@@ -32,7 +32,7 @@ func NewTimeseriesSum(name ftypes.AggName, window ftypes.Window, limit uint64) H
 			window: 1,
 		}, false},
 		// retain all keys for 1.5days + duration
-		BucketStore: NewTwoLevelStorage(name, 24*3600, retention),
+		BucketStore: NewTwoLevelStorage(24*3600, retention),
 	}
 }
 
