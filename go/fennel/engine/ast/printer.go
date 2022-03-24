@@ -23,7 +23,11 @@ func (p Printer) VisitLookup(on Ast, property string) string {
 var _ VisitorString = Printer{}
 
 func (p Printer) VisitUnary(op string, operand Ast) string {
-	return fmt.Sprintf("%s%s", op, operand.AcceptString(p))
+	if op == "len" || op == "str" {
+		return fmt.Sprintf("%s(%s)", op, operand.AcceptString(p))
+	} else {
+		return fmt.Sprintf("%s%s", op, operand.AcceptString(p))
+	}
 }
 
 func (p Printer) VisitBinary(left Ast, op string, right Ast) string {
