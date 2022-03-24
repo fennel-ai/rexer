@@ -49,6 +49,10 @@ func init() {
 			"hi":  MakeBool(false),
 			"bye": List{Values: []Ast{MakeInt(1), MakeString("yo")}},
 		}},
+		Unary{
+			Op:      "!",
+			Operand: MakeBool(true),
+		},
 		Binary{
 			Left:  MakeInt(1),
 			Op:    "+",

@@ -43,6 +43,18 @@ func TestInterpreter_VisitAtom(t *testing.T) {
 	testValid(t, ast.MakeString("3.2"), value.String("3.2"))
 }
 
+func TestInterpreter_VisitUnary(t *testing.T) {
+	testValid(t, ast.Unary{
+		Op:      "!",
+		Operand: ast.MakeBool(false),
+	}, value.Bool(true))
+
+	testError(t, ast.Unary{
+		Op:      "!",
+		Operand: ast.MakeInt(4),
+	})
+}
+
 func TestInterpreter_VisitBinary(t *testing.T) {
 	testValid(t, ast.Binary{
 		Left:  ast.MakeInt(5),

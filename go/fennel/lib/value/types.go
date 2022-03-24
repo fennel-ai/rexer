@@ -13,6 +13,7 @@ type Value interface {
 	isValue()
 	Equal(v Value) bool
 	Op(opt string, other Value) (Value, error)
+	OpUnary(opt string) (Value, error)
 	// String is used to construct aggregation keys so don't ever change
 	// this presentation logic because that could invalidate existing keys
 	// also, each value should return a unique & non-ambiguous string
@@ -36,6 +37,7 @@ var _ Value = String("")
 var _ Value = List{}
 var _ Value = Dict{}
 var _ Value = nil_{}
+var _ Value = &Future{}
 
 type Int int64
 
@@ -66,6 +68,9 @@ func (I Int) Clone() Value {
 }
 func (I Int) Op(opt string, other Value) (Value, error) {
 	return route(I, opt, other)
+}
+func (I Int) OpUnary(opt string) (Value, error) {
+	return routeUnary(opt, I)
 }
 func (I Int) MarshalJSON() ([]byte, error) {
 	return []byte(I.String()), nil
@@ -115,6 +120,9 @@ func (d Double) Clone() Value {
 func (d Double) Op(opt string, other Value) (Value, error) {
 	return route(d, opt, other)
 }
+func (d Double) OpUnary(opt string) (Value, error) {
+	return routeUnary(opt, d)
+}
 func (d Double) MarshalJSON() ([]byte, error) {
 	return []byte(d.String()), nil
 }
@@ -146,6 +154,9 @@ func (b Bool) Clone() Value {
 }
 func (b Bool) Op(opt string, other Value) (Value, error) {
 	return route(b, opt, other)
+}
+func (b Bool) OpUnary(opt string) (Value, error) {
+	return routeUnary(opt, b)
 }
 func (b Bool) MarshalJSON() ([]byte, error) {
 	return []byte(b.String()), nil
@@ -183,6 +194,9 @@ func (s String) Clone() Value {
 func (s String) Op(opt string, other Value) (Value, error) {
 	return route(s, opt, other)
 }
+func (s String) OpUnary(opt string) (Value, error) {
+	return routeUnary(opt, s)
+}
 func (s String) MarshalJSON() ([]byte, error) {
 	return []byte(s.String()), nil
 }
@@ -217,6 +231,9 @@ func (n nil_) Clone() Value {
 func (n nil_) Op(opt string, other Value) (Value, error) {
 	return route(n, opt, other)
 }
+func (n nil_) OpUnary(opt string) (Value, error) {
+	return routeUnary(opt, n)
+}
 func (n nil_) MarshalJSON() ([]byte, error) {
 	return []byte(n.String()), nil
 }
@@ -240,6 +257,9 @@ func (l List) Unwrap() (Value, error) {
 
 func (l List) Op(opt string, other Value) (Value, error) {
 	return route(l, opt, other)
+}
+func (l List) OpUnary(opt string) (Value, error) {
+	return routeUnary(opt, l)
 }
 
 func NewList(values ...Value) List {
@@ -336,6 +356,9 @@ func (d Dict) Unwrap() (Value, error) {
 
 func (d Dict) Op(opt string, other Value) (Value, error) {
 	return route(d, opt, other)
+}
+func (d Dict) OpUnary(opt string) (Value, error) {
+	return routeUnary(opt, d)
 }
 
 func NewDict(values map[string]Value) Dict {
@@ -491,6 +514,9 @@ func (f *Future) Equal(v Value) bool {
 func (f *Future) Op(opt string, other Value) (Value, error) {
 	return f.await().Op(opt, other)
 }
+func (f *Future) OpUnary(opt string) (Value, error) {
+	return f.await().OpUnary(opt)
+}
 
 func (f *Future) String() string {
 	return f.await().String()
@@ -503,5 +529,3 @@ func (f *Future) Clone() Value {
 func (f *Future) MarshalJSON() ([]byte, error) {
 	return f.await().MarshalJSON()
 }
-
-var _ Value = &Future{}
