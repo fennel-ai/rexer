@@ -102,7 +102,7 @@ func getQuery() ast.Ast {
 		Operands: []ast.Ast{ast.OpCall{
 			Namespace: "std",
 			Name:      "set",
-			Operands:  []ast.Ast{ast.Lookup{On: ast.Var{Name: "args"}, Property: "actions"}},
+			Operands:  []ast.Ast{ast.Var{Name: "actions"}},
 			Vars:      []string{"a"},
 			Kwargs: ast.Dict{Values: map[string]ast.Ast{
 				"name": ast.MakeString("groupkey"),

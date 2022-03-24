@@ -288,9 +288,8 @@ func TestQuery(t *testing.T) {
 			Right: ast.Binary{
 				Left: ast.Lookup{On: ast.Var{Name: "at"}, Property: "y"},
 				Op:   "-",
-				Right: ast.Lookup{
-					On:       ast.Var{Name: "args"},
-					Property: "c",
+				Right: ast.Var{
+					Name: "c",
 				},
 			},
 		}},
@@ -312,12 +311,13 @@ func TestQuery(t *testing.T) {
 	assert.True(t, value.String("xyz").Equal(found))
 
 	// Test if dict values are set
-	ast1 := ast.Var{Name: "args"}
+	ast1 := ast.Var{Name: "key1"}
 	args1 := value.NewDict(map[string]value.Value{"key1": value.Int(4)})
+	exp1 := value.Int(4)
 
 	found, err = c.Query(ast1, args1)
 	assert.NoError(t, err)
-	assert.True(t, args1.Equal(found))
+	assert.True(t, exp1.Equal(found))
 }
 
 func TestServer_AggregateValue_Valid(t *testing.T) {

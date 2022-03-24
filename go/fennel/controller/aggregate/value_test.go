@@ -133,7 +133,7 @@ func getQuery() ast.Ast {
 		Operands: []ast.Ast{ast.OpCall{
 			Namespace: "std",
 			Name:      "filter",
-			Operands:  []ast.Ast{ast.Lookup{On: ast.Var{Name: "args"}, Property: "actions"}},
+			Operands:  []ast.Ast{ast.Var{Name: "actions"}},
 			Vars:      []string{"e"},
 			Kwargs: ast.Dict{Values: map[string]ast.Ast{
 				"where": ast.Binary{

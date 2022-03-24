@@ -123,11 +123,8 @@ func TestInterpreter_VisitOpcall3(t *testing.T) {
 	query := ast.OpCall{
 		Namespace: "test",
 		Name:      "op",
-		Operands: []ast.Ast{ast.Lookup{
-			On:       ast.Var{Name: "args"},
-			Property: "table",
-		}},
-		Kwargs: ast.Dict{},
+		Operands:  []ast.Ast{ast.Var{Name: "table"}},
+		Kwargs:    ast.Dict{},
 	}
 	table := value.List{}
 	table.Append(value.NewDict(map[string]value.Value{"x": value.Int(1)}))
@@ -148,11 +145,8 @@ func TestInterpreter_VisitOpcall4(t *testing.T) {
 	query := ast.OpCall{
 		Namespace: "test",
 		Name:      "testop",
-		Operands: []ast.Ast{ast.Lookup{
-			On:       ast.Var{Name: "args"},
-			Property: "table",
-		}},
-		Kwargs: ast.Dict{},
+		Operands:  []ast.Ast{ast.Var{Name: "table"}},
+		Kwargs:    ast.Dict{},
 	}
 	table := value.NewList()
 	table.Append(value.NewDict(map[string]value.Value{}))
@@ -174,11 +168,8 @@ func TestInterpreter_VisitOpcall5(t *testing.T) {
 		Operands: []ast.Ast{ast.OpCall{
 			Namespace: "test",
 			Name:      "row_count",
-			Operands: []ast.Ast{ast.Lookup{
-				On:       ast.Var{Name: "args"},
-				Property: "input",
-			}},
-			Kwargs: ast.Dict{},
+			Operands:  []ast.Ast{ast.Var{Name: "input"}},
+			Kwargs:    ast.Dict{},
 		}},
 		Namespace: "test",
 		Name:      "row_count",
