@@ -7,6 +7,7 @@ import (
 
 type VisitorString interface {
 	VisitAtom(at AtomType, lexeme string) string
+	VisitUnary(op string, operand Ast) string
 	VisitBinary(left Ast, op string, right Ast) string
 	VisitList(values []Ast) string
 	VisitDict(values map[string]Ast) string
@@ -21,6 +22,7 @@ type VisitorString interface {
 
 type VisitorValue interface {
 	VisitAtom(at AtomType, lexeme string) (value.Value, error)
+	VisitUnary(op string, operand Ast) (value.Value, error)
 	VisitBinary(left Ast, op string, right Ast) (value.Value, error)
 	VisitList(values []Ast) (value.Value, error)
 	VisitDict(values map[string]Ast) (value.Value, error)
@@ -41,6 +43,7 @@ type Ast interface {
 }
 
 var _ Ast = Atom{}
+var _ Ast = Unary{}
 var _ Ast = Binary{}
 var _ Ast = List{}
 
@@ -150,6 +153,28 @@ func (a Atom) Equals(ast Ast) bool {
 	switch a2 := ast.(type) {
 	case Atom:
 		return a.Type == a2.Type && a.Lexeme == a2.Lexeme
+	default:
+		return false
+	}
+}
+
+type Unary struct {
+	Op      string
+	Operand Ast
+}
+
+func (u Unary) AcceptString(v VisitorString) string {
+	return v.VisitUnary(u.Op, u.Operand)
+}
+
+func (u Unary) AcceptValue(v VisitorValue) (value.Value, error) {
+	return v.VisitUnary(u.Op, u.Operand)
+}
+
+func (u Unary) Equals(ast Ast) bool {
+	switch u2 := ast.(type) {
+	case Unary:
+		return u.Op == u2.Op && u.Operand.Equals(u2.Operand)
 	default:
 		return false
 	}

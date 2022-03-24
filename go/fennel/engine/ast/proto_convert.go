@@ -18,6 +18,8 @@ func FromProtoAst(past *proto.Ast) (Ast, error) {
 	switch n := past.Node.(type) {
 	case *proto.Ast_Atom:
 		return fromProtoAtom(n)
+	case *proto.Ast_Unary:
+		return fromProtoUnary(n)
 	case *proto.Ast_Binary:
 		return fromProtoBinary(n)
 	case *proto.Ast_List:
@@ -88,6 +90,17 @@ func (a Atom) toProto() (proto.Ast, error) {
 		return pnull(), fmt.Errorf("invalid atom type: %v", a.Type)
 	}
 
+}
+
+func (u Unary) toProto() (proto.Ast, error) {
+	protoOperand, err := ToProtoAst(u.Operand)
+	if err != nil {
+		return pnull(), err
+	}
+	return proto.Ast{Node: &proto.Ast_Unary{Unary: &proto.Unary{
+		Op:      u.Op,
+		Operand: &protoOperand,
+	}}}, nil
 }
 
 func (b Binary) toProto() (proto.Ast, error) {
@@ -329,6 +342,17 @@ func fromProtoDict(plist *proto.Ast_Dict) (Ast, error) {
 		values[i] = v
 	}
 	return Dict{Values: values}, nil
+}
+
+func fromProtoUnary(pun *proto.Ast_Unary) (Ast, error) {
+	operand, err := FromProtoAst(pun.Unary.Operand)
+	if err != nil {
+		return nil, err
+	}
+	return Unary{
+		Op:      pun.Unary.Op,
+		Operand: operand,
+	}, nil
 }
 
 func fromProtoBinary(pbin *proto.Ast_Binary) (Ast, error) {
