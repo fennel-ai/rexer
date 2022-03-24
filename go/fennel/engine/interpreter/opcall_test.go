@@ -120,9 +120,8 @@ func TestInterpreter_VisitOpcall3(t *testing.T) {
 	operators.Register(&testOpInit{})
 	// then create an ast that uses this op
 	query := ast.OpCall{
-		Operands: []ast.Ast{ast.Lookup{
-			On:       ast.Var{Name: "args"},
-			Property: "table",
+		Operands: []ast.Ast{ast.Var{
+			Name: "table",
 		}},
 		Namespace: "test",
 		Name:      "op",
@@ -145,9 +144,8 @@ func TestInterpreter_VisitOpcall3(t *testing.T) {
 func TestInterpreter_VisitOpcall4(t *testing.T) {
 	operators.Register(testOpDefault{})
 	query := ast.OpCall{
-		Operands: []ast.Ast{ast.Lookup{
-			On:       ast.Var{Name: "args"},
-			Property: "table",
+		Operands: []ast.Ast{ast.Var{
+			Name: "table",
 		}},
 		Namespace: "test",
 		Name:      "testop",
@@ -171,9 +169,8 @@ func TestInterpreter_VisitOpcall5(t *testing.T) {
 	operators.Register(&rowCount{})
 	query := ast.OpCall{
 		Operands: []ast.Ast{ast.OpCall{
-			Operands: []ast.Ast{ast.Lookup{
-				On:       ast.Var{Name: "args"},
-				Property: "input",
+			Operands: []ast.Ast{ast.Var{
+				Name: "input",
 			}},
 			Namespace: "test",
 			Name:      "row_count",
