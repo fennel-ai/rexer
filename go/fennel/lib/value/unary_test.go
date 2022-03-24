@@ -38,7 +38,7 @@ func TestUnaryInvalid(t *testing.T) {
 	di := NewDict(map[string]Value{"z": Int(-3), "y": Double(-1.0)})
 	n := Nil
 
-	ops := []string{"~"}
+	ops := []string{"~", "len"}
 	allBut := func(xs ...string) []string {
 		var res []string
 		for _, op := range ops {
@@ -56,16 +56,44 @@ func TestUnaryInvalid(t *testing.T) {
 		return res
 	}
 
-	verifyUnaryError(t, i, ops)
-	verifyUnaryError(t, d, ops)
-	verifyUnaryError(t, b, allBut("~"))
-	verifyUnaryError(t, s, ops)
-	verifyUnaryError(t, l, ops)
-	verifyUnaryError(t, di, ops)
-	verifyUnaryError(t, n, ops)
+	verifyUnaryError(t, i, allBut("str"))
+	verifyUnaryError(t, d, allBut("str"))
+	verifyUnaryError(t, b, allBut("~", "str"))
+	verifyUnaryError(t, s, allBut("str"))
+	verifyUnaryError(t, l, allBut("len", "str"))
+	verifyUnaryError(t, di, allBut("len", "str"))
+	verifyUnaryError(t, n, allBut("str"))
 }
 
 func TestNot(t *testing.T) {
 	verifyUnaryOp(t, "~", Bool(false), Bool(true))
 	verifyUnaryOp(t, "~", Bool(true), Bool(false))
+}
+
+func TestLen(t *testing.T) {
+	verifyUnaryOp(t, "len", NewList(), Int(0))
+	verifyUnaryOp(t, "len", NewList(Nil, Bool(false), Int(0), Double(0.0), String("")), Int(5))
+}
+
+func TestStr(t *testing.T) {
+	vals := []Value{
+		Nil,
+		Bool(false),
+		Bool(true),
+		Int(0),
+		Int(12),
+		Int(-13),
+		Double(0),
+		Double(7.5),
+		Double(-6.5),
+		String(""),
+		String("pqrs"),
+		NewList(),
+		NewList(Nil, Bool(false), Int(0), Double(0), String("")),
+		NewDict(map[string]Value{}),
+		NewDict(map[string]Value{"": Nil, ".": Bool(true)}),
+	}
+	for _, v := range vals {
+		verifyUnaryOp(t, "str", v, String(v.String()))
+	}
 }
