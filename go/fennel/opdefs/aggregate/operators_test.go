@@ -64,7 +64,7 @@ func TestAggValue_Apply(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, value.Int(1), found)
 
-	static := value.NewDict(map[string]value.Value{"name": value.String("myaggresults"), "aggregate": value.String(agg.Name)})
+	static := value.NewDict(map[string]value.Value{"field": value.String("myaggresults"), "aggregate": value.String(agg.Name)})
 	inputs := []value.Dict{
 		value.NewDict(map[string]value.Value{"a": value.String("hi")}),
 		value.NewDict(map[string]value.Value{"a": value.String("bye")}),
