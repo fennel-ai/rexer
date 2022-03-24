@@ -62,7 +62,7 @@ class TestEndToEnd(unittest.TestCase):
         c.store_aggregate('user_notif_open_rate_by_hour_7days', with_val, options)
 
         # User CTR on notifs belonging to category X. Last 7 days.
-        q = op.profile.addField(notif_events, name='category', otype='content', key='category', var='e', oid=var('e').target_id)
+        q = op.std.profile(notif_events, field='category', otype='content', key='category', var='e', oid=var('e').target_id)
         q = op.std.addField(q, var='e', name='groupkey', value=[var('e').actor_id, var('e').category])
         q = op.std.addField(q, var='e', name='value', value=cond(var('e').action_type == 'notif_send', [0, 1], [1, 0]))
 
@@ -168,9 +168,9 @@ class TestEndToEnd(unittest.TestCase):
         # Total views gained by a video in last 2 days for given city+gender+age_group
         actions = var('args').actions
         q1 = op.std.filter(actions, var='a', where=(var('a').action_type == 'view') & (var('a').target_type == 'video'))
-        q1 = op.profile.addField(q1, var='e', name='city', otype='user', oid=var('e').actor_id, key='city')
-        q1 = op.profile.addField(q1, name='gender', otype='user', var='e', oid=var('e').actor_id, key='gender')
-        q1 = op.profile.addField(q1, name='age_group', otype='user', var='e', oid=var('e').actor_id, key='age_group')
+        q1 = op.std.profile(q1, var='e', field='city', otype='user', oid=var('e').actor_id, key='city')
+        q1 = op.std.profile(q1, var='e', field='gender', otype='user', oid=var('e').actor_id, key='gender')
+        q1 = op.std.profile(q1, var='e', field='age_group', otype='user', oid=var('e').actor_id, key='age_group')
         q1 = op.std.addField(q1, name='groupkey', var=('e', ), value=[var('e').target_id, var('e').city, var('e').gender, var('e').age_group])
         q1 = op.std.addField(q1, name='value', value=1)
 
@@ -179,7 +179,7 @@ class TestEndToEnd(unittest.TestCase):
 
         # average watch time of uid on videos created by creator_id by 2 hour windows
         q2 = op.std.filter(actions, var='a', where=var('a').action_type == 'view')
-        q2 = op.profile.addField(q2, var='e', name='creator_id', otype='video', oid=var('e').target_id, key='creatorId')
+        q2 = op.std.profile(q2, var='e', field='creator_id', otype='video', oid=var('e').target_id, key='creatorId')
         q2 = op.time.addTimeBucketOfDay(q2, var='e', name='time_bucket', timestamp=var('e').timestamp, bucket=2*3600)
         q2 = op.std.addField(q2, name='groupkey', var='e', value=[var('e').actor_id, var('e').creator_id, var('e').time_bucket])
         q2 = op.std.addField(q2, name='value', var='e', value=var('e').metadata.watch_time)
@@ -269,9 +269,9 @@ class TestLoad(unittest.TestCase):
         # Total views gained by a video in last 2 days for given city+gender+age_group
         actions = var('args').actions
         q1 = op.std.filter(actions, var='a', where=(var('a').action_type == 'view') & (var('a').target_type == 'video'))
-        q1 = op.profile.addField(q1, var='e', name='city', otype='user', oid=var('e').actor_id, key='city')
-        q1 = op.profile.addField(q1, name='gender', otype='user', var='e', oid=var('e').actor_id, key='gender')
-        q1 = op.profile.addField(q1, name='age_group', otype='user', var='e', oid=var('e').actor_id, key='age_group')
+        q1 = op.std.profile(q1, var='e', field='city', otype='user', oid=var('e').actor_id, key='city')
+        q1 = op.std.profile(q1, var='e', field='gender', otype='user', oid=var('e').actor_id, key='gender')
+        q1 = op.std.profile(q1, var='e', field='age_group', otype='user', oid=var('e').actor_id, key='age_group')
         q1 = op.std.addField(q1, name='groupkey', var=('e', ), value=[var('e').target_id, var('e').city, var('e').gender, var('e').age_group])
         q1 = op.std.addField(q1, name='value', value=1)
 
@@ -280,7 +280,7 @@ class TestLoad(unittest.TestCase):
 
         # average watch time of uid on videos created by creator_id by 2 hour windows
         q2 = op.std.filter(actions, var='a', where=var('a').action_type == 'view')
-        q2 = op.profile.addField(q2, var='e', name='creator_id', otype='video', oid=var('e').target_id, key='creatorId')
+        q2 = op.std.profile(q2, var='e', field='creator_id', otype='video', oid=var('e').target_id, key='creatorId')
         q2 = op.time.addTimeBucketOfDay(q2, var='e', name='time_bucket', timestamp=var('e').timestamp, bucket=2*3600)
         q2 = op.std.addField(q2, name='groupkey', var='e', value=[var('e').actor_id, var('e').creator_id, var('e').time_bucket])
         q2 = op.std.addField(q2, name='value', var='e', value=var('e').metadata.watch_time)

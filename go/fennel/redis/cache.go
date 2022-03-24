@@ -3,6 +3,7 @@ package redis
 import (
 	"context"
 	"fmt"
+	"log"
 	"time"
 
 	"fennel/lib/cache"
@@ -98,6 +99,7 @@ func (c Cache) RunAsTxn(ctx context.Context, txnLogic func(c cache.Txn, keys []s
 
 			// there was an error other than Txn failure due to key conflict; non-retriable
 			if err != redis.TxFailedErr {
+				log.Printf("error: %v", err)
 				invalidate = true
 				break
 			}

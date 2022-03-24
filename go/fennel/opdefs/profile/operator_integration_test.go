@@ -66,3 +66,55 @@ func TestProfileOpMultipleObjs(t *testing.T) {
 	r, _ = rows.At(1)
 	assert.Equal(t, value.NewDict(map[string]value.Value{"otype": value.String(otype2), "oid": value.Int(oid2), "key": value.String(key2), "ver": value.Int(ver2), "profile_value": val2}), r)
 }
+
+func TestNonDictProfile(t *testing.T) {
+	tier, err := test.Tier()
+	assert.NoError(t, err)
+	defer test.Teardown(tier)
+
+	// Set some profiles.
+	ctx := context.Background()
+	otype, key := ftypes.OType("user"), "age"
+	req1a := profilelib.ProfileItem{OType: otype, Oid: 1, Key: key, Value: value.Int(13)}
+	assert.NoError(t, profile.Set(ctx, tier, req1a))
+	req1b := profilelib.ProfileItem{OType: otype, Oid: 2, Key: key, Value: value.Int(15)}
+	assert.NoError(t, profile.Set(ctx, tier, req1b))
+
+	intable := []value.Dict{
+		value.NewDict(map[string]value.Value{
+			"index": value.Int(1),
+		}),
+		value.NewDict(map[string]value.Value{
+			"index": value.Int(2),
+		}),
+		value.NewDict(map[string]value.Value{
+			"index": value.Int(5),
+		}),
+	}
+	staticKwargs := value.NewDict(map[string]value.Value{
+		"default": value.Int(10),
+	})
+	contextKwargs := []value.Dict{
+		value.NewDict(map[string]value.Value{
+			"otype": value.String(otype),
+			"key":   value.String(key),
+			"oid":   value.Int(1),
+		}),
+		value.NewDict(map[string]value.Value{
+			"otype": value.String(otype),
+			"key":   value.String(key),
+			"oid":   value.Int(2),
+		}),
+		value.NewDict(map[string]value.Value{
+			"otype": value.String(otype),
+			"key":   value.String(key),
+			"oid":   value.Int(5),
+		}),
+	}
+
+	optest.AssertElementsMatch(t, tier, &profileOp{tier: tier}, staticKwargs, intable, contextKwargs, []value.Value{
+		value.Int(13),
+		value.Int(15),
+		value.Int(10),
+	})
+}

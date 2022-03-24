@@ -25,8 +25,8 @@ func TestDefault(t *testing.T) {
 			On:       ast.Var{Name: "args"},
 			Property: "actions",
 		}},
-		Namespace: "profile",
-		Name:      "addField",
+		Namespace: "std",
+		Name:      "profile",
 		Kwargs: ast.Dict{Values: map[string]ast.Ast{
 			"otype":   ast.MakeString("user"),
 			"oid":     ast.MakeInt(123),
@@ -74,8 +74,8 @@ func TestProfileOp(t *testing.T) {
 			Property: "actions",
 		}},
 		Vars:      []string{"a"},
-		Namespace: "profile",
-		Name:      "addField",
+		Namespace: "std",
+		Name:      "profile",
 		Kwargs: ast.Dict{Values: map[string]ast.Ast{
 			"otype": ast.Lookup{On: ast.Var{Name: "a"}, Property: "otype"},
 			"oid":   ast.Lookup{On: ast.Var{Name: "a"}, Property: "oid"},

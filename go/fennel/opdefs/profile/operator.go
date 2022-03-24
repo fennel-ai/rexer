@@ -2,6 +2,7 @@ package profile
 
 import (
 	"context"
+	"fmt"
 
 	"fennel/controller/profile"
 	"fennel/engine/interpreter/bootarg"
@@ -29,16 +30,14 @@ func (p profileOp) New(args value.Dict, bootargs map[string]interface{}) (operat
 }
 
 func (p profileOp) Apply(staticKwargs value.Dict, in operators.InputIter, out *value.List) error {
-	colname := string(staticKwargs.GetUnsafe("name").(value.String))
-	reqs := make([]libprofile.ProfileItem, 0)
-	rows := make([]value.Dict, 0)
+	var reqs []libprofile.ProfileItem
+	var rows []value.Value
 	for in.HasMore() {
 		heads, kwargs, err := in.Next()
 		if err != nil {
 			return err
 		}
 		rowVal := heads[0]
-		row := rowVal.(value.Dict)
 		req := libprofile.ProfileItem{
 			OType:   ftypes.OType(kwargs.GetUnsafe("otype").(value.String)),
 			Oid:     uint64(kwargs.GetUnsafe("oid").(value.Int)),
@@ -46,20 +45,30 @@ func (p profileOp) Apply(staticKwargs value.Dict, in operators.InputIter, out *v
 			Version: uint64(kwargs.GetUnsafe("version").(value.Int)),
 		}
 		reqs = append(reqs, req)
-		rows = append(rows, row)
+		rows = append(rows, rowVal)
 	}
 	vals, err := profile.GetBatched(context.TODO(), p.tier, reqs)
 	if err != nil {
 		return err
 	}
+	field := string(staticKwargs.GetUnsafe("field").(value.String))
+	defaultValue := staticKwargs.GetUnsafe("default")
 	for i, v := range vals {
-		row := rows[i]
 		if v == nil {
-			row.Set(colname, staticKwargs.GetUnsafe("default"))
-		} else {
-			row.Set(colname, v)
+			v = defaultValue
 		}
-		if err = out.Append(row); err != nil {
+		var outRow value.Value
+		if len(field) > 0 {
+			if d, ok := rows[i].(value.Dict); !ok {
+				return fmt.Errorf("input values should be dict with field for profile operator is non-empty")
+			} else {
+				d.Set(field, v)
+				outRow = d
+			}
+		} else {
+			outRow = v
+		}
+		if err = out.Append(outRow); err != nil {
 			return err
 		}
 	}
@@ -67,13 +76,13 @@ func (p profileOp) Apply(staticKwargs value.Dict, in operators.InputIter, out *v
 }
 
 func (p profileOp) Signature() *operators.Signature {
-	return operators.NewSignature("profile", "addField").
-		Input([]value.Type{value.Types.Dict}).
+	return operators.NewSignature("std", "profile").
+		Input([]value.Type{value.Types.Any}).
 		Param("otype", value.Types.String, false, false, value.Nil).
 		Param("oid", value.Types.Int, false, false, value.Nil).
 		Param("key", value.Types.String, false, false, value.Nil).
 		Param("version", value.Types.Int, false, true, value.Int(0)).
-		Param("name", value.Types.String, true, false, value.Nil).
+		Param("field", value.Types.String, true, true, value.String("")).
 		Param("default", value.Types.Any, true, true, value.Nil)
 }
 

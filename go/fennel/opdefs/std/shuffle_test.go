@@ -18,5 +18,9 @@ func TestShuffleOperator_Apply(t *testing.T) {
 	contextKwargs := []value.Dict{{}, {}, {}}
 
 	tr := tier.Tier{}
-	optest.AssertElementsMatch(t, tr, &ShuffleOperator{}, staticKwargs, intable, contextKwargs, intable)
+	outTable := make([]value.Value, len(intable))
+	for i, in := range intable {
+		outTable[i] = in
+	}
+	optest.AssertElementsMatch(t, tr, &ShuffleOperator{}, staticKwargs, intable, contextKwargs, outTable)
 }
