@@ -110,6 +110,12 @@ const planeConfs: Record<number, PlaneConf> = {
             username: confluentUsername,
             password: confluentPassword
         },
+        // See: https://coda.io/d/_drT3IgChqqL/Elasticache-diagnosis_su1nA#_luLc1
+        cacheConf: {
+            nodeType: "cache.r6g.large",
+            numNodeGroups: 1,
+            replicasPerNodeGroup: 1,
+        },
         controlPlaneConf: controlPlane,
         prometheusConf: {
             useAMP: false

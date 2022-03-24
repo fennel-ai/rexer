@@ -22,6 +22,9 @@ export type inputType = {
     vpcId: pulumi.Output<string>,
     connectedSecurityGroups: Record<string, pulumi.Output<string>>,
     planeId: number,
+    nodeType?: string,
+    numNodeGroups?: number,
+    replicasPerNodeGroup?: number,
 }
 
 export type outputType = {
@@ -30,6 +33,8 @@ export type outputType = {
 
 const REDIS_VERSION = "6.x";
 const NODE_TYPE = "cache.t4g.medium";
+const DEFAULT_NODE_GROUPS = 2;
+const DEFAULT_REPLICAS_PER_NODE_GROUPS = 1;
 
 const parseConfig = (): inputType => {
     const config = new pulumi.Config();
@@ -39,6 +44,9 @@ const parseConfig = (): inputType => {
         vpcId: pulumi.output(config.require(nameof<inputType>("vpcId"))),
         connectedSecurityGroups: config.requireObject(nameof<inputType>("connectedSecurityGroups")),
         planeId: config.requireNumber(nameof<inputType>("planeId")),
+        nodeType: config.require(nameof<inputType>("nodeType")),
+        numNodeGroups: config.requireNumber(nameof<inputType>("numNodeGroups")),
+        replicasPerNodeGroup: config.requireNumber(nameof<inputType>("replicasPerNodeGroup"))
     }
 }
 
@@ -92,14 +100,14 @@ export const setup = async (input: inputType): Promise<pulumi.Output<outputType>
         engine: "redis",
         engineVersion: REDIS_VERSION,
         replicationGroupDescription: "redis-based elastic cache",
-        nodeType: NODE_TYPE,
+        nodeType: input.nodeType || NODE_TYPE,
         securityGroupIds: [cacheSg.id],
         subnetGroupName: subnetGroup.name,
         transitEncryptionEnabled: true,
         atRestEncryptionEnabled: true,
         clusterMode: {
-            numNodeGroups: 2,
-            replicasPerNodeGroup: 1,
+            numNodeGroups: input.numNodeGroups || DEFAULT_NODE_GROUPS,
+            replicasPerNodeGroup: input.replicasPerNodeGroup || DEFAULT_REPLICAS_PER_NODE_GROUPS,
         },
         automaticFailoverEnabled: true,
         tags: { ...fennelStdTags },
