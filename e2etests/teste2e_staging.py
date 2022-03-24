@@ -13,7 +13,7 @@ from rexerclient import client
 _URL = "http://k8s-t106-aest106e-8954308bfc-65423d0e968f5435.elb.us-west-2.amazonaws.com/data"
 _AGGREGATE_NAME = "views_per_user_aggr"
 _USER_ID = 245771976
-_NUM_ACTIONS = 20 
+_NUM_ACTIONS = 20
 # Load test log these many actions in a second for a minute
 _NEW_ACTIONS = 1200
 _NUM_PROCS = 5
@@ -33,8 +33,8 @@ class TestStagingEndToEnd(unittest.TestCase):
 
         actions = var('args').actions
         view_events = op.std.filter(actions, var='a', where=var('a').action_type == 'e2etest_view')
-        with_key = op.std.addField(view_events, var='e', name='groupkey', value=var('e').actor_id)
-        with_val = op.std.addField(with_key, name='value', value=1)
+        with_key = op.std.set(view_events, var='e', name='groupkey', value=var('e').actor_id)
+        with_val = op.std.set(with_key, name='value', value=1)
         # Store aggregate, if this store already exists (with the same options), this is a no-op
         options = {'durations': [3600*24], 'aggregate_type': 'sum'}
         c.store_aggregate(_AGGREGATE_NAME, with_val, options)

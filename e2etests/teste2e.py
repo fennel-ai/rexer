@@ -58,30 +58,30 @@ class TestEndToEnd(unittest.TestCase):
         actions = var('args').actions
         notif_events = op.std.filter(actions, var='a', where=(var('a').action_type == 'notif_send') |(var('a').action_type == 'notif_open'))
         with_time = op.time.addTimeBucketOfDay(notif_events, var='e', name='hour', timestamp=var('e').timestamp, bucket=3600)
-        with_key = op.std.addField(with_time, var='e', name='groupkey', value=[var('e').actor_id, var('e').hour])
-        with_val = op.std.addField(with_key, var='e', name='value', value=cond(var('e').action_type == 'notif_send', [0, 1], [1, 0]))
+        with_key = op.std.set(with_time, var='e', name='groupkey', value=[var('e').actor_id, var('e').hour])
+        with_val = op.std.set(with_key, var='e', name='value', value=cond(var('e').action_type == 'notif_send', [0, 1], [1, 0]))
         options = {'aggregate_type': 'rate', 'durations': [4*24*3600, 7*24*3600], 'normalize': True}
         c.store_aggregate('user_notif_open_rate_by_hour_7days', with_val, options)
 
         # User CTR on notifs belonging to category X. Last 7 days.
         q = op.std.profile(notif_events, field='category', otype='content', key='category', var='e', oid=var('e').target_id)
-        q = op.std.addField(q, var='e', name='groupkey', value=[var('e').actor_id, var('e').category])
-        q = op.std.addField(q, var='e', name='value', value=cond(var('e').action_type == 'notif_send', [0, 1], [1, 0]))
+        q = op.std.set(q, var='e', name='groupkey', value=[var('e').actor_id, var('e').category])
+        q = op.std.set(q, var='e', name='value', value=cond(var('e').action_type == 'notif_send', [0, 1], [1, 0]))
 
         options = {'aggregate_type': 'rate', 'durations': [7*24*3600], 'normalize': True}
         c.store_aggregate('user_notif_open_rate_by_category_hour_7days', q, options)
 
         # total reactions on a piece of content
         q = op.std.filter(actions, var='a', where=var('a').action_type == 'react')
-        q = op.std.addField(q, var='e', name='groupkey', value=var('e').target_id)
-        q = op.std.addField(q, name='value', value=1)
+        q = op.std.set(q, var='e', name='groupkey', value=var('e').target_id)
+        q = op.std.set(q, name='value', value=1)
         options = {'aggregate_type': 'sum', 'durations': [3*3600]}
         c.store_aggregate('content_num_reactions_last_3hours', q, options)
         #
         # # num of notifs opened by user in the last 3 days
         q = op.std.filter(actions, var='a', where=var('a').action_type == 'notif_open')
-        q = op.std.addField(q, var='e', name='groupkey', value=var('e').actor_id)
-        q = op.std.addField(q, name='value', value=1)
+        q = op.std.set(q, var='e', name='groupkey', value=var('e').actor_id)
+        q = op.std.set(q, name='value', value=1)
         options = {'aggregate_type': 'sum', 'durations': [3*24*3600]}
         c.store_aggregate('user_num_notif_opens_last_3days', q, options)
 
@@ -173,8 +173,8 @@ class TestEndToEnd(unittest.TestCase):
         q1 = op.std.profile(q1, var='e', field='city', otype='user', oid=var('e').actor_id, key='city')
         q1 = op.std.profile(q1, var='e', field='gender', otype='user', oid=var('e').actor_id, key='gender')
         q1 = op.std.profile(q1, var='e', field='age_group', otype='user', oid=var('e').actor_id, key='age_group')
-        q1 = op.std.addField(q1, name='groupkey', var=('e', ), value=[var('e').target_id, var('e').city, var('e').gender, var('e').age_group])
-        q1 = op.std.addField(q1, name='value', value=1)
+        q1 = op.std.set(q1, name='groupkey', var=('e', ), value=[var('e').target_id, var('e').city, var('e').gender, var('e').age_group])
+        q1 = op.std.set(q1, name='value', value=1)
 
         options = {'durations': [3600*24*2], 'aggregate_type': 'sum', }
         c.store_aggregate('trail_view_by_city_gender_agegroup_2days', q1, options)
@@ -183,8 +183,8 @@ class TestEndToEnd(unittest.TestCase):
         q2 = op.std.filter(actions, var='a', where=var('a').action_type == 'view')
         q2 = op.std.profile(q2, var='e', field='creator_id', otype='video', oid=var('e').target_id, key='creatorId')
         q2 = op.time.addTimeBucketOfDay(q2, var='e', name='time_bucket', timestamp=var('e').timestamp, bucket=2*3600)
-        q2 = op.std.addField(q2, name='groupkey', var='e', value=[var('e').actor_id, var('e').creator_id, var('e').time_bucket])
-        q2 = op.std.addField(q2, name='value', var='e', value=var('e').metadata.watch_time)
+        q2 = op.std.set(q2, name='groupkey', var='e', value=[var('e').actor_id, var('e').creator_id, var('e').time_bucket])
+        q2 = op.std.set(q2, name='value', var='e', value=var('e').metadata.watch_time)
         options = {'aggregate_type': 'average', 'durations': [3600*24*30]}
         c.store_aggregate('user_creator_avg_watchtime_by_2hour_windows_30days', q2, options)
 
@@ -274,8 +274,8 @@ class TestLoad(unittest.TestCase):
         q1 = op.std.profile(q1, var='e', field='city', otype='user', oid=var('e').actor_id, key='city')
         q1 = op.std.profile(q1, var='e', field='gender', otype='user', oid=var('e').actor_id, key='gender')
         q1 = op.std.profile(q1, var='e', field='age_group', otype='user', oid=var('e').actor_id, key='age_group')
-        q1 = op.std.addField(q1, name='groupkey', var=('e', ), value=[var('e').target_id, var('e').city, var('e').gender, var('e').age_group])
-        q1 = op.std.addField(q1, name='value', value=1)
+        q1 = op.std.set(q1, name='groupkey', var=('e', ), value=[var('e').target_id, var('e').city, var('e').gender, var('e').age_group])
+        q1 = op.std.set(q1, name='value', value=1)
 
         options = {'durations': [3600*24*2], 'aggregate_type': 'sum', }
         c.store_aggregate('trail_view_by_city_gender_agegroup_2days', q1, options)
@@ -284,8 +284,8 @@ class TestLoad(unittest.TestCase):
         q2 = op.std.filter(actions, var='a', where=var('a').action_type == 'view')
         q2 = op.std.profile(q2, var='e', field='creator_id', otype='video', oid=var('e').target_id, key='creatorId')
         q2 = op.time.addTimeBucketOfDay(q2, var='e', name='time_bucket', timestamp=var('e').timestamp, bucket=2*3600)
-        q2 = op.std.addField(q2, name='groupkey', var='e', value=[var('e').actor_id, var('e').creator_id, var('e').time_bucket])
-        q2 = op.std.addField(q2, name='value', var='e', value=var('e').metadata.watch_time)
+        q2 = op.std.set(q2, name='groupkey', var='e', value=[var('e').actor_id, var('e').creator_id, var('e').time_bucket])
+        q2 = op.std.set(q2, name='value', var='e', value=var('e').metadata.watch_time)
         options = {'aggregate_type': 'average', 'durations': [3600*24*30]}
         c.store_aggregate('user_creator_avg_watchtime_by_2hour_windows_30days', q2, options)
 

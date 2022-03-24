@@ -8,9 +8,14 @@ package opdefs
 import (
 	_ "fennel/opdefs/aggregate"
 	_ "fennel/opdefs/feature"
+	_ "fennel/opdefs/time"
+
 	_ "fennel/opdefs/std"
 	_ "fennel/opdefs/std/bool"
+	_ "fennel/opdefs/std/dedup"
+	_ "fennel/opdefs/std/group"
+	_ "fennel/opdefs/std/map"
 	_ "fennel/opdefs/std/number"
 	_ "fennel/opdefs/std/profile"
-	_ "fennel/opdefs/time"
+	_ "fennel/opdefs/std/set"
 )

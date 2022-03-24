@@ -8,6 +8,7 @@ import (
 	"fennel/engine/ast"
 	"fennel/lib/value"
 	_ "fennel/opdefs/std"
+	_ "fennel/opdefs/std/set"
 )
 
 func getInterpreter() Interpreter {
@@ -221,7 +222,7 @@ func getOpCallQuery() ast.Ast {
 		}},
 		Vars:      []string{"at"},
 		Namespace: "std",
-		Name:      "addField",
+		Name:      "set",
 		Kwargs: ast.Dict{Values: map[string]ast.Ast{
 			"name": ast.MakeString("key"),
 			"value": ast.List{Values: []ast.Ast{ast.Lookup{

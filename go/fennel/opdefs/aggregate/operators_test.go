@@ -13,7 +13,7 @@ import (
 	libaggregate "fennel/lib/aggregate"
 	"fennel/lib/ftypes"
 	"fennel/lib/value"
-	_ "fennel/opdefs/std"
+	_ "fennel/opdefs/std/set"
 	"fennel/test"
 	"fennel/test/optest"
 )
@@ -97,11 +97,13 @@ func TestAggValue_Apply(t *testing.T) {
 
 func getQuery() ast.Ast {
 	return ast.OpCall{
+		Namespace: "std",
+		Name:      "set",
 		Operands: []ast.Ast{ast.OpCall{
+			Namespace: "std",
+			Name:      "set",
 			Operands:  []ast.Ast{ast.Lookup{On: ast.Var{Name: "args"}, Property: "actions"}},
 			Vars:      []string{"a"},
-			Namespace: "std",
-			Name:      "addField",
 			Kwargs: ast.Dict{Values: map[string]ast.Ast{
 				"name": ast.MakeString("groupkey"),
 				"value": ast.Lookup{
@@ -110,8 +112,6 @@ func getQuery() ast.Ast {
 				}},
 			},
 		}},
-		Namespace: "std",
-		Name:      "addField",
 		Kwargs: ast.Dict{Values: map[string]ast.Ast{
 			"name":  ast.MakeString("value"),
 			"value": ast.MakeInt(1),

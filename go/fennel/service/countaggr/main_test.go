@@ -276,7 +276,7 @@ func getQueryRate() ast.Ast {
 			}},
 			Vars:      []string{"okay"},
 			Namespace: "std",
-			Name:      "addField",
+			Name:      "set",
 			Kwargs: ast.Dict{Values: map[string]ast.Ast{
 				"name": ast.MakeString("groupkey"),
 				"value": ast.Lookup{
@@ -286,7 +286,7 @@ func getQueryRate() ast.Ast {
 			},
 		}},
 		Namespace: "std",
-		Name:      "addField",
+		Name:      "set",
 		Kwargs: ast.Dict{Values: map[string]ast.Ast{
 			"name":  ast.MakeString("value"),
 			"value": ast.List{Values: []ast.Ast{ast.MakeInt(1), ast.MakeInt(2)}},
@@ -296,12 +296,16 @@ func getQueryRate() ast.Ast {
 
 func getQuery() ast.Ast {
 	return ast.OpCall{
+		Namespace: "std",
+		Name:      "set",
 		Operands: []ast.Ast{ast.OpCall{
+			Namespace: "std",
+			Name:      "set",
 			Operands: []ast.Ast{ast.OpCall{
-				Operands:  []ast.Ast{ast.Lookup{On: ast.Var{Name: "args"}, Property: "actions"}},
-				Vars:      []string{"v"},
 				Namespace: "std",
 				Name:      "filter",
+				Operands:  []ast.Ast{ast.Lookup{On: ast.Var{Name: "args"}, Property: "actions"}},
+				Vars:      []string{"v"},
 				Kwargs: ast.Dict{Values: map[string]ast.Ast{
 					"where": ast.Binary{
 						Left:  ast.Lookup{On: ast.Var{Name: "v"}, Property: "action_type"},
@@ -310,9 +314,7 @@ func getQuery() ast.Ast {
 					},
 				}},
 			}},
-			Vars:      []string{"at"},
-			Namespace: "std",
-			Name:      "addField",
+			Vars: []string{"at"},
 			Kwargs: ast.Dict{Values: map[string]ast.Ast{
 				"name": ast.MakeString("groupkey"),
 				"value": ast.Lookup{
@@ -321,9 +323,7 @@ func getQuery() ast.Ast {
 				}},
 			},
 		}},
-		Vars:      []string{"it"},
-		Namespace: "std",
-		Name:      "addField",
+		Vars: []string{"it"},
 		Kwargs: ast.Dict{Values: map[string]ast.Ast{
 			"name": ast.MakeString("value"),
 			"value": ast.Lookup{
@@ -355,7 +355,7 @@ func getQueryTopK() ast.Ast {
 			}},
 			Vars:      []string{"at"},
 			Namespace: "std",
-			Name:      "addField",
+			Name:      "set",
 			Kwargs: ast.Dict{Values: map[string]ast.Ast{
 				"name": ast.MakeString("groupkey"),
 				"value": ast.Lookup{
@@ -366,7 +366,7 @@ func getQueryTopK() ast.Ast {
 		}},
 		Vars:      []string{"at"},
 		Namespace: "std",
-		Name:      "addField",
+		Name:      "set",
 		Kwargs: ast.Dict{Values: map[string]ast.Ast{
 			"name": ast.MakeString("value"),
 			"value": ast.Dict{Values: map[string]ast.Ast{
