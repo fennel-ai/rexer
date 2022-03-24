@@ -65,7 +65,7 @@ func TestAggValue_Apply(t *testing.T) {
 	assert.Equal(t, value.Int(1), found)
 
 	static := value.NewDict(map[string]value.Value{"field": value.String("myaggresults"), "aggregate": value.String(agg.Name)})
-	inputs := []value.Dict{
+	inputs := []value.Value{
 		value.NewDict(map[string]value.Value{"a": value.String("hi")}),
 		value.NewDict(map[string]value.Value{"a": value.String("bye")}),
 		value.NewDict(map[string]value.Value{"a": value.String("yo")}),
@@ -92,7 +92,7 @@ func TestAggValue_Apply(t *testing.T) {
 		value.Int(0),
 		value.Int(1),
 	}
-	optest.Assert(t, tier, &AggValue{tier}, static, inputs, contextKwargs, outputs)
+	optest.AssertEqual(t, tier, &AggValue{tier}, static, inputs, contextKwargs, outputs)
 }
 
 func getQuery() ast.Ast {

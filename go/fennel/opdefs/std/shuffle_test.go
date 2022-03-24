@@ -9,7 +9,7 @@ import (
 )
 
 func TestShuffleOperator_Apply(t *testing.T) {
-	intable := []value.Dict{
+	intable := []value.Value{
 		value.NewDict(map[string]value.Value{"name": value.String("first")}),
 		value.NewDict(map[string]value.Value{"name": value.String("second")}),
 		value.NewDict(map[string]value.Value{"name": value.String("third")}),

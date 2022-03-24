@@ -30,7 +30,7 @@ func TestFeatureLog_Apply(t *testing.T) {
 	f1 := value.NewDict(map[string]value.Value{"f1": value.Int(2), "f2": value.Double(1.0)})
 	f2 := value.NewDict(map[string]value.Value{"f1": value.Int(3), "f2": value.Double(1.8)})
 	static := value.NewDict(map[string]value.Value{"context_otype": value.String("user"), "context_oid": value.Int(1), "workflow": value.String("homefeed"), "request_id": value.Int(1232), "model_id": value.String("mymodel")})
-	inputs := []value.Dict{
+	inputs := []value.Value{
 		value.NewDict(map[string]value.Value{"something": value.Bool(true), "b": value.Int(1)}),
 		value.NewDict(map[string]value.Value{"something": value.Bool(false), "b": value.Int(4)}),
 	}

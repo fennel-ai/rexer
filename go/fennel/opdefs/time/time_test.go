@@ -29,7 +29,7 @@ func TestDayOfWeek_Valid(t *testing.T) {
 		{5 * day, 5}, {6*day - 1, 5},
 		{6 * day, 6}, {7*day - 1, 6},
 	}
-	var inputs []value.Dict
+	var inputs []value.Value
 	var context []value.Dict
 	var expected []value.Value
 	name := utils.RandString(6)
@@ -51,7 +51,7 @@ func TestDayOfWeek_Invalid(t *testing.T) {
 	cases := []int64{-1, -12312312, 0}
 	name := utils.RandString(6)
 	for _, case_ := range cases {
-		inputs := make([]value.Dict, 0)
+		inputs := make([]value.Value, 0)
 		context := make([]value.Dict, 0)
 		context = append(context, value.NewDict(map[string]value.Value{"timestamp": value.Int(week)}), value.NewDict(map[string]value.Value{"timestamp": value.Int(case_)}))
 		inputs = append(inputs, value.NewDict(map[string]value.Value{}), value.NewDict(map[string]value.Value{}))
@@ -74,7 +74,7 @@ func TestTimeBucketOfDay_Valid(t *testing.T) {
 		6 * 3600: {{1, 0}, {day - 1, 3}, {3600*9 + 5, 1}},
 	}
 	for bucket, scenario := range cases {
-		var inputs []value.Dict
+		var inputs []value.Value
 		var context []value.Dict
 		var expected []value.Value
 		name := utils.RandString(6)
@@ -94,7 +94,7 @@ func TestTimeBucketOfDay_Invalid(t *testing.T) {
 	tier := tier.Tier{}
 	op := timeBucketOfDay{}
 	name := value.String(utils.RandString(6))
-	optest.AssertError(t, tier, op, value.NewDict(map[string]value.Value{"name": name, "bucket": value.Int(3600)}), []value.Dict{
+	optest.AssertError(t, tier, op, value.NewDict(map[string]value.Value{"name": name, "bucket": value.Int(3600)}), []value.Value{
 		value.NewDict(map[string]value.Value{}),
 		value.NewDict(map[string]value.Value{}),
 	}, []value.Dict{
@@ -102,7 +102,7 @@ func TestTimeBucketOfDay_Invalid(t *testing.T) {
 		value.NewDict(map[string]value.Value{"timestamp": value.Int(-1123)}),
 	})
 	optest.AssertError(t, tier, op,
-		value.NewDict(map[string]value.Value{"name": name, "bucket": value.Int(3600)}), []value.Dict{
+		value.NewDict(map[string]value.Value{"name": name, "bucket": value.Int(3600)}), []value.Value{
 			value.NewDict(map[string]value.Value{}),
 			value.NewDict(map[string]value.Value{}),
 		}, []value.Dict{
@@ -110,7 +110,7 @@ func TestTimeBucketOfDay_Invalid(t *testing.T) {
 			value.NewDict(map[string]value.Value{"timestamp": value.Int(-1)}),
 		})
 	optest.AssertError(t, tier, op,
-		value.NewDict(map[string]value.Value{"name": name, "bucket": value.Int(3600)}), []value.Dict{
+		value.NewDict(map[string]value.Value{"name": name, "bucket": value.Int(3600)}), []value.Value{
 			value.NewDict(map[string]value.Value{}),
 			value.NewDict(map[string]value.Value{}),
 		}, []value.Dict{
@@ -119,7 +119,7 @@ func TestTimeBucketOfDay_Invalid(t *testing.T) {
 		})
 	optest.AssertError(t, tier, op,
 		value.NewDict(map[string]value.Value{"name": name, "bucket": value.Int(0)}),
-		[]value.Dict{
+		[]value.Value{
 			value.NewDict(map[string]value.Value{}),
 			value.NewDict(map[string]value.Value{}),
 		}, []value.Dict{
