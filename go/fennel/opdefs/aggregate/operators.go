@@ -33,25 +33,23 @@ func (a AggValue) New(args value.Dict, bootargs map[string]interface{}) (operato
 	return AggValue{tr}, nil
 }
 
-func (a AggValue) Apply(kwargs value.Dict, in operators.InputIter, out *value.List) error {
+func (a AggValue) Apply(kwargs value.Dict, in operators.InputIter, outs *value.List) error {
 	aggname := string(get(kwargs, "aggregate").(value.String))
 
 	var reqs []aggregate2.GetAggValueRequest
-	var rows []value.Dict
+	var rows []value.Value
 	for in.HasMore() {
 		heads, contextKwargs, err := in.Next()
 		if err != nil {
 			return err
 		}
-		rowVal := heads[0]
 		req := aggregate2.GetAggValueRequest{
 			AggName: ftypes.AggName(aggname),
 			Key:     get(contextKwargs, "groupkey"),
 			Kwargs:  get(contextKwargs, "kwargs").(value.Dict),
 		}
 		reqs = append(reqs, req)
-		row := rowVal.(value.Dict)
-		rows = append(rows, row)
+		rows = append(rows, heads[0])
 	}
 	res, err := aggregate.BatchValue(context.TODO(), a.tier, reqs)
 	if err != nil {
@@ -59,8 +57,15 @@ func (a AggValue) Apply(kwargs value.Dict, in operators.InputIter, out *value.Li
 	}
 	field := string(get(kwargs, "field").(value.String))
 	for i, row := range rows {
-		row.Set(field, res[i])
-		if err = out.Append(row); err != nil {
+		var out value.Value
+		if len(field) > 0 {
+			d := row.(value.Dict)
+			d.Set(field, res[i])
+			out = d
+		} else {
+			out = res[i]
+		}
+		if err := outs.Append(out); err != nil {
 			return err
 		}
 	}
@@ -75,7 +80,7 @@ func get(d value.Dict, k string) value.Value {
 func (a AggValue) Signature() *operators.Signature {
 	return operators.NewSignature("std", "aggregate").
 		Input([]value.Type{value.Types.Dict}).
-		Param("field", value.Types.String, true, false, value.Nil).
+		Param("field", value.Types.String, true, true, value.String("")).
 		Param("aggregate", value.Types.String, true, false, value.Nil).
 		Param("groupkey", value.Types.Any, false, false, value.Nil).
 		Param("kwargs", value.Types.Dict, false, true, value.Dict{})
