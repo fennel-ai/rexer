@@ -187,7 +187,7 @@ func TestInterpreter_VisitLookup(t *testing.T) {
 func getOpCallQuery() ast.Ast {
 	return ast.OpCall{
 		Operands: []ast.Ast{ast.OpCall{
-			Operands:  []ast.Ast{ast.Lookup{On: ast.Var{Name: "args"}, Property: "table"}},
+			Operands:  []ast.Ast{ast.Var{Name: "table"}},
 			Vars:      []string{"at"},
 			Namespace: "std",
 			Name:      "filter",

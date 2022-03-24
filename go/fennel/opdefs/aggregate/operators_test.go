@@ -98,7 +98,7 @@ func TestAggValue_Apply(t *testing.T) {
 func getQuery() ast.Ast {
 	return ast.OpCall{
 		Operands: []ast.Ast{ast.OpCall{
-			Operands:  []ast.Ast{ast.Lookup{On: ast.Var{Name: "args"}, Property: "actions"}},
+			Operands:  []ast.Ast{ast.Var{Name: "actions"}},
 			Vars:      []string{"a"},
 			Namespace: "std",
 			Name:      "addField",

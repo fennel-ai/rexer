@@ -31,7 +31,7 @@ class TestStagingEndToEnd(unittest.TestCase):
     def test_viewtime(self):
         c = client.Client(_URL)
 
-        actions = var('args').actions
+        actions = var('actions')
         view_events = op.std.filter(actions, var='a', where=var('a').action_type == 'e2etest_view')
         with_key = op.std.addField(view_events, var='e', name='groupkey', value=var('e').actor_id)
         with_val = op.std.addField(with_key, name='value', value=1)

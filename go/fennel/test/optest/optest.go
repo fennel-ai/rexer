@@ -62,10 +62,10 @@ func AssertError(t *testing.T, tr tier.Tier, op operators.Operator, static value
 func run(tr tier.Tier, op operators.Operator, static value.Dict, inputs, context []value.Dict) (value.Value, error) {
 	sig := op.Signature()
 	kwargs := make(map[string]ast.Ast)
-	// all static kwargs will be based on Var("args").static
+	// all static kwargs will be based on Var("static")
 	for k, _ := range static.Iter() {
 		kwargs[k] = ast.Lookup{
-			On:       ast.Lookup{On: ast.Var{Name: "args"}, Property: "static"},
+			On:       ast.Var{Name: "static"},
 			Property: k,
 		}
 	}
@@ -87,11 +87,10 @@ func run(tr tier.Tier, op operators.Operator, static value.Dict, inputs, context
 		inputs[i].Set(field, context[i])
 	}
 
-	// and input is provided as Var("args").input
+	// and input is provided as Var("input")
 	query := ast.OpCall{
-		Operands: []ast.Ast{ast.Lookup{
-			On:       ast.Var{Name: "args"},
-			Property: "input",
+		Operands: []ast.Ast{ast.Var{
+			Name: "input",
 		}},
 		Vars:      []string{"its"},
 		Namespace: sig.Module,

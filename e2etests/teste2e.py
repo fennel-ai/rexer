@@ -55,7 +55,7 @@ class TestEndToEnd(unittest.TestCase):
         category = 'sports'
 
         # Open rate for the user by the hour in the last 7 days:
-        actions = var('args').actions
+        actions = var('actions')
         notif_events = op.std.filter(actions, var='a', where=(var('a').action_type == 'notif_send') |(var('a').action_type == 'notif_open'))
         with_time = op.time.addTimeBucketOfDay(notif_events, var='e', name='hour', timestamp=var('e').timestamp, bucket=3600)
         with_key = op.std.addField(with_time, var='e', name='groupkey', value=[var('e').actor_id, var('e').hour])
@@ -168,7 +168,7 @@ class TestEndToEnd(unittest.TestCase):
         self.assertTrue(passed)
 
         # Total views gained by a video in last 2 days for given city+gender+age_group
-        actions = var('args').actions
+        actions = var('actions')
         q1 = op.std.filter(actions, var='a', where=(var('a').action_type == 'view') & (var('a').target_type == 'video'))
         q1 = op.std.profile(q1, var='e', field='city', otype='user', oid=var('e').actor_id, key='city')
         q1 = op.std.profile(q1, var='e', field='gender', otype='user', oid=var('e').actor_id, key='gender')
@@ -253,8 +253,8 @@ class TestEndToEnd(unittest.TestCase):
     @tiered
     def test_queries(self):
         c = client.Client(URL)
-        cond = cond(var('args').x <= 5, "correct", "incorrect")
-        found = c.query(cond, {'x': 5})
+        cond_ = cond(var('x') <= 5, "correct", "incorrect")
+        found = c.query(cond_, {'x': 5})
         self.assertEqual("correct", found)
 
 
@@ -269,7 +269,7 @@ class TestLoad(unittest.TestCase):
 
     def set_aggregates(self, c: client.Client):
         # Total views gained by a video in last 2 days for given city+gender+age_group
-        actions = var('args').actions
+        actions = var('actions')
         q1 = op.std.filter(actions, var='a', where=(var('a').action_type == 'view') & (var('a').target_type == 'video'))
         q1 = op.std.profile(q1, var='e', field='city', otype='user', oid=var('e').actor_id, key='city')
         q1 = op.std.profile(q1, var='e', field='gender', otype='user', oid=var('e').actor_id, key='gender')

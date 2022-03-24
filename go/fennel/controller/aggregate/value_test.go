@@ -128,7 +128,7 @@ func get(d value.Dict, k string) value.Value {
 func getQuery() ast.Ast {
 	return ast.OpCall{
 		Operands: []ast.Ast{ast.OpCall{
-			Operands:  []ast.Ast{ast.Lookup{On: ast.Var{Name: "args"}, Property: "actions"}},
+			Operands:  []ast.Ast{ast.Var{Name: "actions"}},
 			Vars:      []string{"e"},
 			Namespace: "std",
 			Name:      "filter",
