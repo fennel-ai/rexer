@@ -8,7 +8,6 @@ package opdefs
 import (
 	_ "fennel/opdefs/aggregate"
 	_ "fennel/opdefs/feature"
-	_ "fennel/opdefs/profile"
 	_ "fennel/opdefs/std"
 	_ "fennel/opdefs/time"
 )
