@@ -84,6 +84,15 @@ func TestAggValue_Apply(t *testing.T) {
 		value.NewDict(map[string]value.Value{"a": value.String("kwargs"), "myaggresults": value.Int(1)}),
 	}
 	optest.Assert(t, tier, &AggValue{tier}, static, inputs, contextKwargs, outputs)
+
+	static = value.NewDict(map[string]value.Value{"aggregate": value.String(agg.Name)})
+	outputs = []value.Value{
+		value.Int(2),
+		value.Int(2),
+		value.Int(0),
+		value.Int(1),
+	}
+	optest.Assert(t, tier, &AggValue{tier}, static, inputs, contextKwargs, outputs)
 }
 
 func getQuery() ast.Ast {
