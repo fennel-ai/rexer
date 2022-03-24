@@ -143,38 +143,18 @@ func TestInterpreter_VisitStatement(t *testing.T) {
 func TestInterpreter_QueryArgs(t *testing.T) {
 	i := getInterpreter()
 	// initially nothing
-	assert.Equal(t, value.Dict{}, i.queryArgs())
-	args := value.NewDict(map[string]value.Value{"x": value.Int(1)})
-	assert.NoError(t, i.env.Define("args", args))
+	assert.Equal(t, value.NewDict(map[string]value.Value{}), i.queryArgs())
+	// queryargs are found at the root env
+	args := value.NewDict(map[string]value.Value{"x": value.Int(0)})
+	assert.NoError(t, i.env.Define("__args__", args))
 	assert.Equal(t, args, i.queryArgs())
-}
-
-func TestInterpreter_QueryArgsRedefine(t *testing.T) {
-	// verify that user query can crate a variable called
-	// args if they want to which will shadow query args
-	i := getInterpreter()
-	query := ast.Query{
-		Statements: []ast.Statement{
-			{
-				Name: "args",
-				Body: ast.Dict{Values: map[string]ast.Ast{"x": ast.MakeInt(5)}},
-			},
-			{
-				Body: ast.Binary{
-					Left: ast.Lookup{
-						On:       ast.Var{Name: "args"},
-						Property: "x",
-					},
-					Op:    "+",
-					Right: ast.MakeInt(1),
-				},
-			},
-		},
-	}
-	// expected should be with x = 5 (which is set in the query), not x = 2 (which is query arg)
-	res, err := i.Eval(query, value.NewDict(map[string]value.Value{"x": value.Int(2)}))
-	assert.NoError(t, err)
-	assert.Equal(t, value.Int(6), res)
+	// should work even if we create child envs
+	i.env = i.env.PushEnv()
+	i.env = i.env.PushEnv()
+	assert.Equal(t, args, i.queryArgs())
+	// or even if we shadow query args
+	assert.NoError(t, i.env.Define("__args__", value.String("ijk")))
+	assert.Equal(t, args, i.queryArgs())
 }
 
 var res value.Value
@@ -294,4 +274,56 @@ func testDualBranchEvaluation(t *testing.T) {
 	ret, err = b.AcceptValue(i)
 	assert.NoError(t, err)
 	assert.Equal(t, value.String("xyz"), ret)
+}
+
+func TestInterpreter_Eval(t *testing.T) {
+	i := getInterpreter()
+
+	// first, test some query
+	query1 := ast.IfElse{
+		Condition: ast.MakeBool(false),
+		ThenDo:    ast.MakeInt(+1),
+		ElseDo:    ast.MakeInt(-1),
+	}
+	args1 := value.NewDict(map[string]value.Value{})
+	expected1 := value.Int(-1)
+
+	found1, err := i.Eval(query1, args1)
+	assert.NoError(t, err)
+	assert.True(t, expected1.Equal(found1))
+
+	// now test a query which uses args
+	query2 := ast.IfElse{
+		Condition: ast.Var{Name: "x"},
+		ThenDo:    ast.MakeInt(+1),
+		ElseDo:    ast.MakeInt(-1),
+	}
+	args2 := value.NewDict(map[string]value.Value{"x": value.Bool(true)})
+	expected2 := value.Int(+1)
+
+	found2, err := i.Eval(query2, args2)
+	assert.NoError(t, err)
+	assert.True(t, expected2.Equal(found2))
+
+	// now test shadowing args
+	query3 := ast.Query{Statements: []ast.Statement{
+		{
+			Name: "x",
+			Body: ast.MakeBool(false),
+		},
+		{
+			Name: "",
+			Body: ast.IfElse{
+				Condition: ast.Var{Name: "x"},
+				ThenDo:    ast.MakeInt(+1),
+				ElseDo:    ast.MakeInt(-1),
+			},
+		},
+	}}
+	args3 := value.NewDict(map[string]value.Value{"x": value.Bool(true)})
+	expected3 := value.Int(-1)
+
+	found3, err := i.Eval(query3, args3)
+	assert.NoError(t, err)
+	assert.True(t, expected3.Equal(found3))
 }
