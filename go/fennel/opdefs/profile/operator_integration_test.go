@@ -81,7 +81,7 @@ func TestNonDictProfile(t *testing.T) {
 	req1b := profilelib.ProfileItem{OType: otype, Oid: 2, Key: key, Value: value.Int(15)}
 	assert.NoError(t, profile.Set(ctx, tier, req1b))
 
-	intable := []value.Dict{
+	intable := []value.Value{
 		value.NewDict(map[string]value.Value{
 			"index": value.Int(1),
 		}),

@@ -9,7 +9,7 @@ import (
 )
 
 func TestFilterOperator_Apply(t *testing.T) {
-	intable := []value.Dict{
+	intable := []value.Value{
 		value.NewDict(map[string]value.Value{"a.inner": value.Int(1), "b": value.String("hi")}),
 		value.NewDict(map[string]value.Value{"a.inner": value.Int(1), "b": value.String("bye")}),
 		value.NewDict(map[string]value.Value{"a.inner": value.Int(7), "b": value.String("hello")}),
@@ -34,7 +34,7 @@ func TestFilterOperator_Apply(t *testing.T) {
 }
 
 func TestTakeOperator_Apply(t *testing.T) {
-	intable := []value.Dict{
+	intable := []value.Value{
 		value.NewDict(map[string]value.Value{"a.inner": value.Int(1), "b": value.String("hi")}),
 		value.NewDict(map[string]value.Value{"a.inner": value.Int(1), "b": value.String("bye")}),
 		value.NewDict(map[string]value.Value{"a.inner": value.Int(7), "b": value.String("hello")}),

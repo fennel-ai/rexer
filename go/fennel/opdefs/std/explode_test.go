@@ -9,7 +9,7 @@ import (
 )
 
 func TestExplodeOperator_KeyNotString(t *testing.T) {
-	intable := []value.Dict{
+	intable := []value.Value{
 		value.NewDict(map[string]value.Value{"a.list": value.NewList(value.Int(1), value.Int(5)), "b": value.String("hi")}),
 	}
 
@@ -23,7 +23,7 @@ func TestExplodeOperator_KeyNotString(t *testing.T) {
 }
 
 func TestExplodeOperator_KeyNotPresent(t *testing.T) {
-	intable := []value.Dict{
+	intable := []value.Value{
 		value.NewDict(map[string]value.Value{"a.list": value.NewList(value.Int(1), value.Int(5)), "b": value.String("hi")}),
 	}
 
@@ -33,7 +33,7 @@ func TestExplodeOperator_KeyNotPresent(t *testing.T) {
 }
 
 func TestExplodeOperator_ListScalarKeys(t *testing.T) {
-	intable := []value.Dict{
+	intable := []value.Value{
 		value.NewDict(map[string]value.Value{"a.list": value.NewList(value.Int(1), value.Int(5)), "b": value.String("hi")}),
 	}
 
@@ -43,7 +43,7 @@ func TestExplodeOperator_ListScalarKeys(t *testing.T) {
 }
 
 func TestExplodeOperator_ScalarKeys(t *testing.T) {
-	intable := []value.Dict{
+	intable := []value.Value{
 		value.NewDict(map[string]value.Value{"a": value.Int(1), "b": value.String("hi")}),
 	}
 	outtable := []value.Value{intable[0].Clone()}
@@ -54,7 +54,7 @@ func TestExplodeOperator_ScalarKeys(t *testing.T) {
 }
 
 func TestExplodeOperator_NonMatchingRowWiseElements(t *testing.T) {
-	intable := []value.Dict{
+	intable := []value.Value{
 		value.NewDict(map[string]value.Value{"a.list": value.NewList(value.Int(1), value.Int(5)), "b": value.NewList(value.String("hi"))}),
 	}
 
@@ -64,7 +64,7 @@ func TestExplodeOperator_NonMatchingRowWiseElements(t *testing.T) {
 }
 
 func TestExplodeOperator_Apply(t *testing.T) {
-	intable := []value.Dict{
+	intable := []value.Value{
 		value.NewDict(map[string]value.Value{"a.list": value.NewList(value.Int(1), value.Int(5)), "b": value.String("hi")}),
 		value.NewDict(map[string]value.Value{"a.list": value.NewList(value.Int(10), value.Int(15)), "b": value.String("bye")}),
 		value.NewDict(map[string]value.Value{"a.list": value.NewList(value.Int(3), value.Int(8)), "b": value.String("hello")}),
@@ -89,7 +89,7 @@ func TestExplodeOperator_Apply(t *testing.T) {
 }
 
 func TestExplodeOperator_ApplyListKeys(t *testing.T) {
-	intable := []value.Dict{
+	intable := []value.Value{
 		value.NewDict(map[string]value.Value{"a.list": value.NewList(value.Int(1), value.Int(5)), "b.list": value.NewList(value.String("hi"), value.String("hello"))}),
 		value.NewDict(map[string]value.Value{"a.list": value.NewList(value.Int(10)), "b.list": value.NewList(value.String("hi"))}),
 		value.NewDict(map[string]value.Value{"a.list": value.NewList(), "b.list": value.NewList()}),

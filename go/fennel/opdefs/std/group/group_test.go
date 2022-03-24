@@ -12,14 +12,14 @@ func TestGrouper_Apply(t *testing.T) {
 	t.Parallel()
 	op := grouper{}
 	scenarios := []struct {
-		inputs   []value.Dict
+		inputs   []value.Value
 		static   value.Dict
 		context  []value.Dict
 		err      bool
 		expected []value.Value
 	}{
 		{
-			[]value.Dict{
+			[]value.Value{
 				value.NewDict(map[string]value.Value{"x": value.Int(1)}),
 				value.NewDict(map[string]value.Value{"x": value.Int(2)}),
 				value.NewDict(map[string]value.Value{"x": value.Int(3)}),
@@ -51,7 +51,7 @@ func TestGrouper_Apply(t *testing.T) {
 			},
 		},
 		{
-			[]value.Dict{
+			[]value.Value{
 				value.NewDict(map[string]value.Value{"x": value.Int(1)}),
 				value.NewDict(map[string]value.Value{"x": value.Int(2)}),
 			},
