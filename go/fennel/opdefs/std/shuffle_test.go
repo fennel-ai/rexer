@@ -20,7 +20,7 @@ func TestShuffleOperator_Apply(t *testing.T) {
 	tr := tier.Tier{}
 	outTable := make([]value.Value, len(intable))
 	for i, in := range intable {
-		outTable[i] = in
+		outTable[i] = in.Clone()
 	}
 	optest.AssertElementsMatch(t, tr, &ShuffleOperator{}, staticKwargs, intable, contextKwargs, outTable)
 }

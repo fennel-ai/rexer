@@ -46,7 +46,7 @@ func TestExplodeOperator_ScalarKeys(t *testing.T) {
 	intable := []value.Dict{
 		value.NewDict(map[string]value.Value{"a": value.Int(1), "b": value.String("hi")}),
 	}
-	outtable := []value.Value{intable[0]}
+	outtable := []value.Value{intable[0].Clone()}
 
 	tr := tier.Tier{}
 	skwargs := value.NewDict(map[string]value.Value{"keys": value.NewList(value.String("a"), value.String("b"))})

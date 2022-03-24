@@ -18,7 +18,6 @@ func Assert(t *testing.T, tr tier.Tier, op operators.Operator, static value.Dict
 	assert.NoError(t, err)
 	aslist, ok := found.(value.List)
 	assert.True(t, ok)
-	//assert.Len(t, aslist, len(expected))
 	assert.Equal(t, len(expected), aslist.Len())
 	foundlist := make([]value.Value, aslist.Len())
 	for i := 0; i < aslist.Len(); i++ {
@@ -32,7 +31,6 @@ func AssertEqual(t *testing.T, tr tier.Tier, op operators.Operator, static value
 	assert.NoError(t, err)
 	aslist, ok := found.(value.List)
 	assert.True(t, ok)
-	//assert.Len(t, aslist, len(expected))
 	assert.Equal(t, len(expected), aslist.Len())
 	for i, exp := range expected {
 		e, err := aslist.At(i)
@@ -46,7 +44,6 @@ func AssertElementsMatch(t *testing.T, tr tier.Tier, op operators.Operator, stat
 	assert.NoError(t, err)
 	aslist, ok := found.(value.List)
 	assert.True(t, ok)
-	//assert.Len(t, aslist, len(expected))
 	assert.Equal(t, len(expected), aslist.Len())
 	foundlist := make([]value.Value, aslist.Len())
 	for i := 0; i < aslist.Len(); i++ {
@@ -107,15 +104,32 @@ func run(tr tier.Tier, op operators.Operator, static value.Dict, inputs, context
 	}
 	i := interpreter.NewInterpreter(bootarg.Create(tr))
 	found, err := i.Eval(query, value.NewDict(map[string]value.Value{"input": l, "static": static}))
-	aslist, ok := found.(value.List)
 	// before returning, remove the extra field that we had added
-	if err == nil && ok {
-		for i := 0; i < aslist.Len(); i++ {
-			e, _ := aslist.At(i)
-			if dict, ok := e.(value.Dict); ok {
-				dict.Del(field)
-			}
-		}
+	if err == nil {
+		found = cleanup(found, field)
 	}
 	return found, err
+}
+
+func cleanup(v value.Value, f string) value.Value {
+	switch t := v.(type) {
+	case value.List:
+		ret := value.NewList()
+		for i := 0; i < t.Len(); i++ {
+			e, _ := t.At(i)
+			ret.Append(cleanup(e, f))
+		}
+		return ret
+	case value.Dict:
+		ret := value.NewDict(nil)
+		for k, v := range t.Iter() {
+			if k == f {
+				continue
+			}
+			ret.Set(k, cleanup(v, f))
+		}
+		return ret
+	default:
+		return t
+	}
 }

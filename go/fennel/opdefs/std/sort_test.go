@@ -21,8 +21,8 @@ func TestSortOperator_Apply(t *testing.T) {
 	}
 
 	orders := []value.Dict{
-		value.NewDict(map[string]value.Value{"desc": value.Bool(false)}),
-		value.NewDict(map[string]value.Value{"desc": value.Bool(true)}),
+		value.NewDict(map[string]value.Value{"reverse": value.Bool(false)}),
+		value.NewDict(map[string]value.Value{"reverse": value.Bool(true)}),
 	}
 
 	expected := [][]value.Value{

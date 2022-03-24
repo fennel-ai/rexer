@@ -67,7 +67,7 @@ func TestFeatureLog_Apply(t *testing.T) {
 	}
 	outputs := make([]value.Value, len(inputs))
 	for i, input := range inputs {
-		outputs[i] = input
+		outputs[i] = input.Clone()
 	}
 	optest.Assert(t, tier, &featureLog{tier}, static, inputs, kwargs, outputs)
 	for _, r := range rows {

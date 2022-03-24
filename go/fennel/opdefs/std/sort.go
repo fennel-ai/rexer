@@ -20,7 +20,7 @@ func (op SortOperator) Signature() *operators.Signature {
 	return operators.NewSignature("std", "sort").
 		Input([]value.Type{value.Types.Dict}).
 		Param("by", value.Types.Number, false, false, value.Nil).
-		Param("desc", value.Types.Bool, true, true, value.Bool(false))
+		Param("reverse", value.Types.Bool, true, true, value.Bool(false))
 }
 
 func (op SortOperator) Apply(staticKwargs value.Dict, in operators.InputIter, out *value.List) error {
@@ -49,7 +49,7 @@ func (op SortOperator) Apply(staticKwargs value.Dict, in operators.InputIter, ou
 		rows = append(rows, sortableRow{data: row, key: v})
 	}
 	sort.SliceStable(rows, func(i, j int) bool {
-		v, _ := staticKwargs.Get("desc")
+		v, _ := staticKwargs.Get("reverse")
 		if !v.(value.Bool) {
 			return rows[i].key < rows[j].key
 		} else {
