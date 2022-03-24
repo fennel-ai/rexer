@@ -11,6 +11,7 @@ import (
 	"fennel/lib/value"
 	"fennel/model/counter"
 	_ "fennel/opdefs/std"
+	_ "fennel/opdefs/std/set"
 	"fennel/test"
 
 	"github.com/stretchr/testify/assert"
@@ -127,11 +128,13 @@ func get(d value.Dict, k string) value.Value {
 
 func getQuery() ast.Ast {
 	return ast.OpCall{
+		Namespace: "std",
+		Name:      "set",
 		Operands: []ast.Ast{ast.OpCall{
-			Operands:  []ast.Ast{ast.Lookup{On: ast.Var{Name: "args"}, Property: "actions"}},
-			Vars:      []string{"e"},
 			Namespace: "std",
 			Name:      "filter",
+			Operands:  []ast.Ast{ast.Lookup{On: ast.Var{Name: "args"}, Property: "actions"}},
+			Vars:      []string{"e"},
 			Kwargs: ast.Dict{Values: map[string]ast.Ast{
 				"where": ast.Binary{
 					Left:  ast.Lookup{On: ast.Var{Name: "e"}, Property: "action_type"},
@@ -140,9 +143,7 @@ func getQuery() ast.Ast {
 				},
 			}},
 		}},
-		Vars:      []string{"var"},
-		Namespace: "std",
-		Name:      "addField",
+		Vars: []string{"var"},
 		Kwargs: ast.Dict{Values: map[string]ast.Ast{
 			"name": ast.MakeString("groupkey"),
 			"value": ast.List{Values: []ast.Ast{ast.Lookup{

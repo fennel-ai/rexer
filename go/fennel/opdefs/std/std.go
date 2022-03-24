@@ -9,7 +9,6 @@ func init() {
 	ops := []operators.Operator{
 		FilterOperator{},
 		TakeOperator{},
-		AddField{},
 		ExplodeOperator{},
 		SortOperator{},
 		ShuffleOperator{},
@@ -72,38 +71,6 @@ func (f TakeOperator) Apply(staticKwargs value.Dict, in operators.InputIter, out
 		row := heads[0]
 		out.Append(row)
 		taken += 1
-	}
-	return nil
-}
-
-type AddField struct{}
-
-var _ operators.Operator = AddField{}
-
-func (op AddField) New(args value.Dict, bootargs map[string]interface{}) (operators.Operator, error) {
-	return AddField{}, nil
-}
-
-func (op AddField) Signature() *operators.Signature {
-	return operators.NewSignature("std", "addField").
-		Param("name", value.Types.String, true, false, value.Nil).
-		Param("value", value.Types.Any, false, false, value.Nil).
-		Input([]value.Type{value.Types.Dict})
-}
-
-func (op AddField) Apply(staticKwargs value.Dict, in operators.InputIter, out *value.List) error {
-	n, _ := staticKwargs.Get("name")
-	name := string(n.(value.String))
-	for in.HasMore() {
-		heads, contextKwargs, err := in.Next()
-		if err != nil {
-			return err
-		}
-		rowVal := heads[0]
-		row := rowVal.(value.Dict)
-		v, _ := contextKwargs.Get("value")
-		row.Set(name, v)
-		out.Append(row)
 	}
 	return nil
 }
