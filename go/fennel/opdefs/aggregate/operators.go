@@ -79,7 +79,7 @@ func get(d value.Dict, k string) value.Value {
 
 func (a AggValue) Signature() *operators.Signature {
 	return operators.NewSignature("std", "aggregate").
-		Input([]value.Type{value.Types.Dict}).
+		Input([]value.Type{value.Types.Any}).
 		Param("field", value.Types.String, true, true, value.String("")).
 		Param("aggregate", value.Types.String, true, false, value.Nil).
 		Param("groupkey", value.Types.Any, false, false, value.Nil).
