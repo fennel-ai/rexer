@@ -18,7 +18,13 @@ message Ast {
     IfElse ifelse = 12;
     FnCall fncall = 13;
     // HighFnCall hfncall = 14; [deprecated now]
+    Unary unary = 15;
   }
+}
+
+message Unary {
+  string op = 1;
+  Ast operand = 2;
 }
 
 message Binary {

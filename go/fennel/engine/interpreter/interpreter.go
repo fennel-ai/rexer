@@ -187,6 +187,14 @@ func (i Interpreter) VisitAtom(at ast.AtomType, lexeme string) (value.Value, err
 	}
 }
 
+func (i Interpreter) VisitUnary(op string, operand ast.Ast) (value.Value, error) {
+	v, err := operand.AcceptValue(i)
+	if err != nil {
+		return value.Nil, err
+	}
+	return v.OpUnary(op)
+}
+
 func (i Interpreter) VisitBinary(left ast.Ast, op string, right ast.Ast) (value.Value, error) {
 	l, err := left.AcceptValue(i)
 	if err != nil {
