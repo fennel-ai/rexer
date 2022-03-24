@@ -40,6 +40,8 @@ def tiered(wrapped):
             with lib.gorun('fennel/service/http', 'dynamic,integration', env):
                 env['METRICS_PORT'] = str(2446)
                 with lib.gorun('fennel/service/countaggr', 'dynamic,integration', env):
+                    # Wait for the services to be up.
+                    time.sleep(10)
                     return wrapped(*args, **kwargs)
     return fn
 
