@@ -13,19 +13,6 @@ import (
 	"fennel/tier"
 )
 
-func Assert(t *testing.T, tr tier.Tier, op operators.Operator, static value.Dict, inputs []value.Value, context []value.Dict, expected []value.Value) {
-	found, err := run(tr, op, static, inputs, context)
-	assert.NoError(t, err)
-	aslist, ok := found.(value.List)
-	assert.True(t, ok)
-	assert.Equal(t, len(expected), aslist.Len())
-	foundlist := make([]value.Value, aslist.Len())
-	for i := 0; i < aslist.Len(); i++ {
-		foundlist[i], _ = aslist.At(i)
-	}
-	assert.ElementsMatch(t, expected, foundlist)
-}
-
 func AssertEqual(t *testing.T, tr tier.Tier, op operators.Operator, static value.Dict, inputs []value.Value, context []value.Dict, expected []value.Value) {
 	found, err := run(tr, op, static, inputs, context)
 	assert.NoError(t, err)

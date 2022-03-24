@@ -69,7 +69,7 @@ func TestFeatureLog_Apply(t *testing.T) {
 	for i, input := range inputs {
 		outputs[i] = input.Clone()
 	}
-	optest.Assert(t, tier, &featureLog{tier}, static, inputs, kwargs, outputs)
+	optest.AssertElementsMatch(t, tier, &featureLog{tier}, static, inputs, kwargs, outputs)
 	for _, r := range rows {
 		rowptr, err := feature2.Read(context.TODO(), tier, consumer)
 		assert.NoError(t, err)

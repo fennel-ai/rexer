@@ -39,7 +39,7 @@ func TestDayOfWeek_Valid(t *testing.T) {
 		inputs = append(inputs, value.NewDict(map[string]value.Value{"something_else": value.Int(i)}))
 		expected = append(expected, value.NewDict(map[string]value.Value{"something_else": value.Int(i), name: value.Int(case_.day)}))
 	}
-	optest.Assert(t, tier, op, value.NewDict(map[string]value.Value{"name": value.String(name)}), inputs, context, expected)
+	optest.AssertElementsMatch(t, tier, op, value.NewDict(map[string]value.Value{"name": value.String(name)}), inputs, context, expected)
 }
 
 func TestDayOfWeek_Invalid(t *testing.T) {
@@ -84,7 +84,7 @@ func TestTimeBucketOfDay_Valid(t *testing.T) {
 			inputs = append(inputs, value.NewDict(map[string]value.Value{"something_else": value.Int(i)}))
 			expected = append(expected, value.NewDict(map[string]value.Value{"something_else": value.Int(i), name: value.Int(case_.index)}))
 		}
-		optest.Assert(t, tier, op, value.NewDict(map[string]value.Value{"bucket": value.Int(bucket), "name": value.String(name)}), inputs, context, expected)
+		optest.AssertElementsMatch(t, tier, op, value.NewDict(map[string]value.Value{"bucket": value.Int(bucket), "name": value.String(name)}), inputs, context, expected)
 	}
 }
 
