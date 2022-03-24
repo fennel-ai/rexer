@@ -1,6 +1,7 @@
 package optest
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -22,7 +23,7 @@ func AssertEqual(t *testing.T, tr tier.Tier, op operators.Operator, static value
 	for i, exp := range expected {
 		e, err := aslist.At(i)
 		assert.NoError(t, err)
-		assert.True(t, exp.Equal(e))
+		assert.True(t, exp.Equal(e), fmt.Sprintf("expected: %s, found: %s", expected, e))
 	}
 }
 
