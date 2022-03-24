@@ -14,6 +14,7 @@ import (
 	profilelib "fennel/lib/profile"
 	"fennel/lib/value"
 	"fennel/test"
+	"fennel/test/optest"
 
 	"github.com/stretchr/testify/assert"
 )
@@ -40,13 +41,13 @@ func TestProfileOpMultipleObjs(t *testing.T) {
 			Property: "actions",
 		}},
 		Vars:      []string{"at"},
-		Namespace: "profile",
-		Name:      "addField",
+		Namespace: "std",
+		Name:      "profile",
 		Kwargs: ast.Dict{Values: map[string]ast.Ast{
 			"otype": ast.Lookup{On: ast.Var{Name: "at"}, Property: "otype"},
 			"oid":   ast.Lookup{On: ast.Var{Name: "at"}, Property: "oid"},
 			"key":   ast.Lookup{On: ast.Var{Name: "at"}, Property: "key"},
-			"name":  ast.MakeString("profile_value"),
+			"field": ast.MakeString("profile_value"),
 			// since version is an optional value, we don't pass it and still get the latest value back
 		}},
 	}
@@ -65,4 +66,56 @@ func TestProfileOpMultipleObjs(t *testing.T) {
 	assert.Equal(t, value.NewDict(map[string]value.Value{"otype": value.String(otype1), "oid": value.Int(oid1), "key": value.String(key1), "ver": value.Int(ver1), "profile_value": val1}), r)
 	r, _ = rows.At(1)
 	assert.Equal(t, value.NewDict(map[string]value.Value{"otype": value.String(otype2), "oid": value.Int(oid2), "key": value.String(key2), "ver": value.Int(ver2), "profile_value": val2}), r)
+}
+
+func TestNonDictProfile(t *testing.T) {
+	tier, err := test.Tier()
+	assert.NoError(t, err)
+	defer test.Teardown(tier)
+
+	// Set some profiles.
+	ctx := context.Background()
+	otype, key := ftypes.OType("user"), "age"
+	req1a := profilelib.ProfileItem{OType: otype, Oid: 1, Key: key, Value: value.Int(13)}
+	assert.NoError(t, profile.Set(ctx, tier, req1a))
+	req1b := profilelib.ProfileItem{OType: otype, Oid: 2, Key: key, Value: value.Int(15)}
+	assert.NoError(t, profile.Set(ctx, tier, req1b))
+
+	intable := []value.Dict{
+		value.NewDict(map[string]value.Value{
+			"index": value.Int(1),
+		}),
+		value.NewDict(map[string]value.Value{
+			"index": value.Int(2),
+		}),
+		value.NewDict(map[string]value.Value{
+			"index": value.Int(5),
+		}),
+	}
+	staticKwargs := value.NewDict(map[string]value.Value{
+		"default": value.Int(10),
+	})
+	contextKwargs := []value.Dict{
+		value.NewDict(map[string]value.Value{
+			"otype": value.String(otype),
+			"key":   value.String(key),
+			"oid":   value.Int(1),
+		}),
+		value.NewDict(map[string]value.Value{
+			"otype": value.String(otype),
+			"key":   value.String(key),
+			"oid":   value.Int(2),
+		}),
+		value.NewDict(map[string]value.Value{
+			"otype": value.String(otype),
+			"key":   value.String(key),
+			"oid":   value.Int(5),
+		}),
+	}
+
+	optest.AssertElementsMatch(t, tier, &profileOp{tier: tier}, staticKwargs, intable, contextKwargs, []value.Value{
+		value.Int(13),
+		value.Int(15),
+		value.Int(10),
+	})
 }

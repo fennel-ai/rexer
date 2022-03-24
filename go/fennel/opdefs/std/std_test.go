@@ -20,7 +20,7 @@ func TestFilterOperator_Apply(t *testing.T) {
 	whereFalse := value.NewDict(map[string]value.Value{"where": value.Bool(false)})
 
 	contextKwargTable := []value.Dict{whereTrue, whereFalse, whereTrue}
-	expected := []value.Dict{
+	expected := []value.Value{
 		value.NewDict(map[string]value.Value{"a.inner": value.Int(1), "b": value.String("hi")}),
 		value.NewDict(map[string]value.Value{"a.inner": value.Int(7), "b": value.String("hello")}),
 	}
@@ -30,7 +30,7 @@ func TestFilterOperator_Apply(t *testing.T) {
 
 	// and when we filter everything, we should get empty table
 	contextKwargTable = []value.Dict{whereFalse, whereFalse, whereFalse}
-	optest.Assert(t, tr, &FilterOperator{}, whereTrue, intable, contextKwargTable, []value.Dict{})
+	optest.Assert(t, tr, &FilterOperator{}, whereTrue, intable, contextKwargTable, []value.Value{})
 }
 
 func TestTakeOperator_Apply(t *testing.T) {
@@ -41,7 +41,7 @@ func TestTakeOperator_Apply(t *testing.T) {
 	}
 
 	// passing limit 2 works
-	expected := []value.Dict{
+	expected := []value.Value{
 		value.NewDict(map[string]value.Value{"a.inner": value.Int(1), "b": value.String("hi")}),
 		value.NewDict(map[string]value.Value{"a.inner": value.Int(1), "b": value.String("bye")}),
 	}
@@ -50,5 +50,9 @@ func TestTakeOperator_Apply(t *testing.T) {
 	optest.Assert(t, tr, &TakeOperator{}, value.NewDict(map[string]value.Value{"limit": value.Int(2)}), intable, contextKwargTable, expected)
 
 	// and when the limit is very large, it only returns intable as it is
-	optest.Assert(t, tr, &TakeOperator{}, value.NewDict(map[string]value.Value{"limit": value.Int(10000)}), intable, contextKwargTable, intable)
+	outtable := make([]value.Value, len(intable))
+	for i, input := range intable {
+		outtable[i] = input
+	}
+	optest.Assert(t, tr, &TakeOperator{}, value.NewDict(map[string]value.Value{"limit": value.Int(10000)}), intable, contextKwargTable, outtable)
 }

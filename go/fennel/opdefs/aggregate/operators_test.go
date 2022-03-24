@@ -77,7 +77,7 @@ func TestAggValue_Apply(t *testing.T) {
 		value.NewDict(map[string]value.Value{"groupkey": value.Int(3), "kwargs": value.NewDict(map[string]value.Value{})}),
 		value.NewDict(map[string]value.Value{"groupkey": value.Int(2), "kwargs": value.NewDict(map[string]value.Value{"duration": value.Int(2000)})}),
 	}
-	outputs := []value.Dict{
+	outputs := []value.Value{
 		value.NewDict(map[string]value.Value{"a": value.String("hi"), "myaggresults": value.Int(2)}),
 		value.NewDict(map[string]value.Value{"a": value.String("bye"), "myaggresults": value.Int(2)}),
 		value.NewDict(map[string]value.Value{"a": value.String("yo"), "myaggresults": value.Int(0)}),

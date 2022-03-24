@@ -46,10 +46,11 @@ func TestExplodeOperator_ScalarKeys(t *testing.T) {
 	intable := []value.Dict{
 		value.NewDict(map[string]value.Value{"a": value.Int(1), "b": value.String("hi")}),
 	}
+	outtable := []value.Value{intable[0]}
 
 	tr := tier.Tier{}
 	skwargs := value.NewDict(map[string]value.Value{"keys": value.NewList(value.String("a"), value.String("b"))})
-	optest.Assert(t, tr, &ExplodeOperator{}, skwargs, intable, []value.Dict{{}}, intable)
+	optest.Assert(t, tr, &ExplodeOperator{}, skwargs, intable, []value.Dict{{}}, outtable)
 }
 
 func TestExplodeOperator_NonMatchingRowWiseElements(t *testing.T) {
@@ -71,7 +72,7 @@ func TestExplodeOperator_Apply(t *testing.T) {
 
 	contextKwargTable := []value.Dict{{}, {}, {}}
 
-	expected := []value.Dict{
+	expected := []value.Value{
 		value.NewDict(map[string]value.Value{"a.list": value.Int(1), "b": value.String("hi")}),
 		value.NewDict(map[string]value.Value{"a.list": value.Int(5), "b": value.String("hi")}),
 		value.NewDict(map[string]value.Value{"a.list": value.Int(10), "b": value.String("bye")}),
@@ -96,7 +97,7 @@ func TestExplodeOperator_ApplyListKeys(t *testing.T) {
 
 	contextKwargTable := []value.Dict{{}, {}, {}}
 
-	expected := []value.Dict{
+	expected := []value.Value{
 		value.NewDict(map[string]value.Value{"a.list": value.Int(1), "b.list": value.String("hi")}),
 		value.NewDict(map[string]value.Value{"a.list": value.Int(5), "b.list": value.String("hello")}),
 		value.NewDict(map[string]value.Value{"a.list": value.Int(10), "b.list": value.String("hi")}),

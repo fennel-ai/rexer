@@ -13,7 +13,7 @@ import (
 	"fennel/tier"
 )
 
-func Assert(t *testing.T, tr tier.Tier, op operators.Operator, static value.Dict, inputs, context []value.Dict, expected []value.Dict) {
+func Assert(t *testing.T, tr tier.Tier, op operators.Operator, static value.Dict, inputs, context []value.Dict, expected []value.Value) {
 	found, err := run(tr, op, static, inputs, context)
 	assert.NoError(t, err)
 	aslist, ok := found.(value.List)
@@ -27,7 +27,7 @@ func Assert(t *testing.T, tr tier.Tier, op operators.Operator, static value.Dict
 	assert.ElementsMatch(t, expected, foundlist)
 }
 
-func AssertEqual(t *testing.T, tr tier.Tier, op operators.Operator, static value.Dict, inputs, context []value.Dict, expected []value.Dict) {
+func AssertEqual(t *testing.T, tr tier.Tier, op operators.Operator, static value.Dict, inputs, context []value.Dict, expected []value.Value) {
 	found, err := run(tr, op, static, inputs, context)
 	assert.NoError(t, err)
 	aslist, ok := found.(value.List)
@@ -41,7 +41,7 @@ func AssertEqual(t *testing.T, tr tier.Tier, op operators.Operator, static value
 	}
 }
 
-func AssertElementsMatch(t *testing.T, tr tier.Tier, op operators.Operator, static value.Dict, inputs, context []value.Dict, expected []value.Dict) {
+func AssertElementsMatch(t *testing.T, tr tier.Tier, op operators.Operator, static value.Dict, inputs, context []value.Dict, expected []value.Value) {
 	found, err := run(tr, op, static, inputs, context)
 	assert.NoError(t, err)
 	aslist, ok := found.(value.List)
@@ -112,9 +112,9 @@ func run(tr tier.Tier, op operators.Operator, static value.Dict, inputs, context
 	if err == nil && ok {
 		for i := 0; i < aslist.Len(); i++ {
 			e, _ := aslist.At(i)
-			dict := e.(value.Dict)
-			dict.Del(field)
-			//delete(e.(value.Dict), field)
+			if dict, ok := e.(value.Dict); ok {
+				dict.Del(field)
+			}
 		}
 	}
 	return found, err
