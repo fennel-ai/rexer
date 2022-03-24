@@ -25,10 +25,28 @@ import (
 
 	"github.com/buger/jsonparser"
 	"github.com/gorilla/mux"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promauto"
 	"google.golang.org/protobuf/proto"
 )
 
 const dedupTTL = 6 * time.Hour
+
+var totalActions = promauto.NewCounterVec(
+	prometheus.CounterOpts{
+		Name: "actions_total",
+		Help: "Total number of actions.",
+	},
+	[]string{"path"},
+)
+
+var totalDedupedActions = promauto.NewCounterVec(
+	prometheus.CounterOpts{
+		Name: "deduped_actions_total",
+		Help: "Total numbe of actions deduped.",
+	},
+	[]string{"path"},
+)
 
 func parse(req *http.Request, msg proto.Message) error {
 	defer req.Body.Close()
@@ -99,6 +117,7 @@ func (m server) Log(w http.ResponseWriter, req *http.Request) {
 			return
 		}
 		if !ok {
+			totalDedupedActions.WithLabelValues("log").Inc()
 			return
 		}
 	}
@@ -108,6 +127,7 @@ func (m server) Log(w http.ResponseWriter, req *http.Request) {
 		log.Printf("Error: %v", err)
 		return
 	}
+	totalActions.WithLabelValues("log").Inc()
 	// nothing to do on successful call :)
 }
 
@@ -153,6 +173,8 @@ func (m server) LogMulti(w http.ResponseWriter, req *http.Request) {
 		if ok[i] {
 			// If dedup key of an action was not set, add to batch
 			batch = append(batch, actions[ids[i]])
+		} else {
+			totalDedupedActions.WithLabelValues("log_multi").Inc()
 		}
 	}
 	// fwd to controller
@@ -161,6 +183,7 @@ func (m server) LogMulti(w http.ResponseWriter, req *http.Request) {
 		log.Printf("Error: %v", err)
 		return
 	}
+	totalActions.WithLabelValues("log_multi").Add(float64(len(batch)))
 	// nothing to do on successful call :)
 }
 
