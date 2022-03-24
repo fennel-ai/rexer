@@ -216,8 +216,8 @@ class TestEndToEnd(unittest.TestCase):
                 'trail_view_by_city_gender_agegroup_2days',
                 [video_id, city, gender, age_group],
             )
-            q1 = op.aggregate.addField(
-                [{'uid': uid, 'creator_id': creator_id, 'b': b}], name='found',
+            q1 = op.std.aggregate(
+                [{'uid': uid, 'creator_id': creator_id, 'b': b}], field='found',
                 aggregate='user_creator_avg_watchtime_by_2hour_windows_30days', var='e', groupkey=[var('e').uid, var('e').creator_id, var('e').b]
             )[0].found
             found2 = c.query(q1)
@@ -225,7 +225,7 @@ class TestEndToEnd(unittest.TestCase):
                 'user_creator_avg_watchtime_by_2hour_windows_30days',
                 [uid, creator_id, b], kwargs
             )
-            q2 = op.aggregate.addField([{'uid': uid, 'creator_id': creator_id, 'b': b}], name='found',
+            q2 = op.std.aggregate([{'uid': uid, 'creator_id': creator_id, 'b': b}], field='found',
                 aggregate='user_creator_avg_watchtime_by_2hour_windows_30days', var='e',
                 groupkey=[var('e').uid, var('e').creator_id, var('e').b], kwargs=kwargs
             )[0].found
