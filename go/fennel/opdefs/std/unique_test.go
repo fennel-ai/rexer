@@ -35,5 +35,5 @@ func TestUniqueOperator_Apply(t *testing.T) {
 
 	tr := tier.Tier{}
 	skwargs := value.NewDict(map[string]value.Value{"name": value.String("foo")})
-	optest.Assert(t, tr, &UniqueOperator{}, skwargs, intable, contextKwargTable, expected)
+	optest.AssertElementsMatch(t, tr, &UniqueOperator{}, skwargs, intable, contextKwargTable, expected)
 }

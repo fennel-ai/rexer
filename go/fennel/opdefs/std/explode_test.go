@@ -50,7 +50,7 @@ func TestExplodeOperator_ScalarKeys(t *testing.T) {
 
 	tr := tier.Tier{}
 	skwargs := value.NewDict(map[string]value.Value{"keys": value.NewList(value.String("a"), value.String("b"))})
-	optest.Assert(t, tr, &ExplodeOperator{}, skwargs, intable, []value.Dict{{}}, outtable)
+	optest.AssertElementsMatch(t, tr, &ExplodeOperator{}, skwargs, intable, []value.Dict{{}}, outtable)
 }
 
 func TestExplodeOperator_NonMatchingRowWiseElements(t *testing.T) {
@@ -83,9 +83,9 @@ func TestExplodeOperator_Apply(t *testing.T) {
 
 	tr := tier.Tier{}
 	skwargs := value.NewDict(map[string]value.Value{"keys": value.String("a.list")})
-	optest.Assert(t, tr, &ExplodeOperator{}, skwargs, intable, contextKwargTable, expected)
+	optest.AssertElementsMatch(t, tr, &ExplodeOperator{}, skwargs, intable, contextKwargTable, expected)
 	skwargs = value.NewDict(map[string]value.Value{"keys": value.NewList(value.String("a.list"))})
-	optest.Assert(t, tr, &ExplodeOperator{}, skwargs, intable, contextKwargTable, expected)
+	optest.AssertElementsMatch(t, tr, &ExplodeOperator{}, skwargs, intable, contextKwargTable, expected)
 }
 
 func TestExplodeOperator_ApplyListKeys(t *testing.T) {
@@ -107,5 +107,5 @@ func TestExplodeOperator_ApplyListKeys(t *testing.T) {
 	tr := tier.Tier{}
 	skwargs := value.NewDict(map[string]value.Value{"keys": value.NewList(value.String("a.list"), value.String("b.list"))})
 	// should work with a list of strings
-	optest.Assert(t, tr, &ExplodeOperator{}, skwargs, intable, contextKwargTable, expected)
+	optest.AssertElementsMatch(t, tr, &ExplodeOperator{}, skwargs, intable, contextKwargTable, expected)
 }
