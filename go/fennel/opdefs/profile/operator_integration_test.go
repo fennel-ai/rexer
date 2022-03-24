@@ -14,6 +14,7 @@ import (
 	profilelib "fennel/lib/profile"
 	"fennel/lib/value"
 	"fennel/test"
+	"fennel/test/optest"
 
 	"github.com/stretchr/testify/assert"
 )
@@ -40,13 +41,13 @@ func TestProfileOpMultipleObjs(t *testing.T) {
 			Property: "actions",
 		}},
 		Vars:      []string{"at"},
-		Namespace: "profile",
-		Name:      "addField",
+		Namespace: "std",
+		Name:      "profile",
 		Kwargs: ast.Dict{Values: map[string]ast.Ast{
 			"otype": ast.Lookup{On: ast.Var{Name: "at"}, Property: "otype"},
 			"oid":   ast.Lookup{On: ast.Var{Name: "at"}, Property: "oid"},
 			"key":   ast.Lookup{On: ast.Var{Name: "at"}, Property: "key"},
-			"name":  ast.MakeString("profile_value"),
+			"field": ast.MakeString("profile_value"),
 			// since version is an optional value, we don't pass it and still get the latest value back
 		}},
 	}

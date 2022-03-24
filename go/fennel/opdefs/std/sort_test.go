@@ -25,7 +25,7 @@ func TestSortOperator_Apply(t *testing.T) {
 		value.NewDict(map[string]value.Value{"desc": value.Bool(true)}),
 	}
 
-	expected := [][]value.Dict{
+	expected := [][]value.Value{
 		{
 			value.NewDict(map[string]value.Value{"name": value.String("second")}),
 			value.NewDict(map[string]value.Value{"name": value.String("first")}),

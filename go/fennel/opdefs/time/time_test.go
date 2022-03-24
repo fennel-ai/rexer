@@ -29,9 +29,9 @@ func TestDayOfWeek_Valid(t *testing.T) {
 		{5 * day, 5}, {6*day - 1, 5},
 		{6 * day, 6}, {7*day - 1, 6},
 	}
-	inputs := make([]value.Dict, 0)
-	context := make([]value.Dict, 0)
-	expected := make([]value.Dict, 0)
+	var inputs []value.Dict
+	var context []value.Dict
+	var expected []value.Value
 	name := utils.RandString(6)
 	for i, case_ := range cases {
 		n := rand.Uint32()
@@ -74,9 +74,9 @@ func TestTimeBucketOfDay_Valid(t *testing.T) {
 		6 * 3600: {{1, 0}, {day - 1, 3}, {3600*9 + 5, 1}},
 	}
 	for bucket, scenario := range cases {
-		inputs := make([]value.Dict, 0)
-		context := make([]value.Dict, 0)
-		expected := make([]value.Dict, 0)
+		var inputs []value.Dict
+		var context []value.Dict
+		var expected []value.Value
 		name := utils.RandString(6)
 		n := rand.Uint32()
 		for i, case_ := range scenario {

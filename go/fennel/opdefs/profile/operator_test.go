@@ -31,7 +31,7 @@ func TestDefault(t *testing.T) {
 			"otype":   ast.MakeString("user"),
 			"oid":     ast.MakeInt(123),
 			"key":     ast.MakeString("some key"),
-			"name":    ast.MakeString("some name"),
+			"field":   ast.MakeString("some name"),
 			"default": ast.MakeDouble(3.4),
 		}},
 	}
@@ -80,7 +80,7 @@ func TestProfileOp(t *testing.T) {
 			"otype": ast.Lookup{On: ast.Var{Name: "a"}, Property: "otype"},
 			"oid":   ast.Lookup{On: ast.Var{Name: "a"}, Property: "oid"},
 			"key":   ast.Lookup{On: ast.Var{Name: "a"}, Property: "key"},
-			"name":  ast.MakeString("profile_value"),
+			"field": ast.MakeString("profile_value"),
 			// since version is an optional value, we don't pass it and still get the latest value back
 		}},
 	}
