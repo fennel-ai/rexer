@@ -59,6 +59,10 @@ message Dict {
   map<string, Ast> values = 1;
 }
 
+message Tuple {
+  repeated Ast values = 1;
+}
+
 message OpCall {
 //  [deprecated] Ast operand = 1;
   string namespace = 2;

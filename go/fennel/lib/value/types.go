@@ -36,6 +36,7 @@ var _ Value = Bool(true)
 var _ Value = String("")
 var _ Value = List{}
 var _ Value = Dict{}
+var _ Value = Tuple{}
 var _ Value = nil_{}
 var _ Value = &Future{}
 
@@ -453,6 +454,83 @@ func (d Dict) Schema() map[string]reflect.Type {
 		ret[k] = reflect.TypeOf(v)
 	}
 	return ret
+}
+
+type Tuple struct {
+	values []Value
+}
+
+func (t Tuple) Wrap() List {
+	return NewList(t)
+}
+
+func (t Tuple) Unwrap() (Value, error) {
+	return t, nil
+}
+
+func (t Tuple) Op(opt string, other Value) (Value, error) {
+	return route(t, opt, other)
+}
+func (t Tuple) OpUnary(opt string) (Value, error) {
+	return routeUnary(opt, t)
+}
+
+func (t Tuple) isValue() {}
+func (t Tuple) Equal(right Value) bool {
+	switch r := right.(type) {
+	case Tuple:
+		if len(r.values) != len(t.values) {
+			return false
+		}
+		for i, lv := range t.values {
+			if !lv.Equal(r.values[i]) {
+				return false
+			}
+		}
+		return true
+	default:
+		return false
+	}
+}
+func (t Tuple) String() string {
+	sb := strings.Builder{}
+	sb.WriteString("(")
+	for i, v := range t.values {
+		if v == nil {
+			sb.WriteString("null")
+		} else {
+			sb.WriteString(v.String())
+		}
+		if i != len(t.values)-1 {
+			sb.WriteString(",")
+		}
+	}
+	sb.WriteString(")")
+	return sb.String()
+}
+
+func (t Tuple) Clone() Value {
+	clone := make([]Value, 0, len(t.values))
+
+	for _, v := range t.values {
+		clone = append(clone, v.Clone())
+	}
+	return NewList(clone...)
+}
+
+func (t Tuple) MarshalJSON() ([]byte, error) {
+	return []byte(t.String()), nil
+}
+
+func (t Tuple) Len() int {
+	return len(t.values)
+}
+
+func (t Tuple) At(idx int) (Value, error) {
+	if idx < 0 || idx >= t.Len() {
+		return nil, fmt.Errorf("index '%d' out of bounds for list of length: '%d'", idx, t.Len())
+	}
+	return t.values[idx], nil
 }
 
 type Iter struct {

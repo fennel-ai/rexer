@@ -18,6 +18,10 @@ func Clean(v Value) Value {
 		if v.values == nil {
 			return Dict{}
 		}
+	case Tuple:
+		if v.values == nil {
+			return Tuple{}
+		}
 	}
 	return v
 }
