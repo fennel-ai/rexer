@@ -38,7 +38,7 @@ jobs:
         run: |
           sudo apt-get --assume-yes remove --auto-remove librdkafka-dev
           sudo apt-get --assume-yes install libssl-dev
-          sudo curl -Lk -o $HOME/librdkafka-1.8.0.tar.gz https://github.com/edenhill/librdkafka/archive/v1.8.0.tar.gz &&       tar -xzf $HOME/librdkafka-1.8.0.tar.gz -C $HOME &&  cd $HOME/librdkafka-1.8.0 &&  ./configure && make && sudo make install && ldconfig && sudo make clean && ./configure --clean
+          sudo curl -Lk -o $HOME/librdkafka-1.8.0.tar.gz https://github.com/edenhill/librdkafka/archive/v1.8.0.tar.gz &&       tar -xzf $HOME/librdkafka-1.8.0.tar.gz -C $HOME &&  cd $HOME/librdkafka-1.8.0 &&  ./configure && make && sudo make install && sudo ldconfig && sudo make clean && ./configure --clean
 
       - name: prune test resources
         env:
