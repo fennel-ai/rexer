@@ -30,15 +30,12 @@ type SagemakerArgs struct {
 func NewClient(args SagemakerArgs) (SMClient, error) {
 	sess := session.Must(session.NewSession(
 		&aws.Config{
-			Region: aws.String(args.Region),
+			Region:                        aws.String(args.Region),
+			CredentialsChainVerboseErrors: aws.Bool(true),
 		},
 	))
-	runtime := sagemakerruntime.New(sess, &aws.Config{
-		CredentialsChainVerboseErrors: aws.Bool(true),
-	})
-	metadata := sagemaker.New(sess, &aws.Config{
-		CredentialsChainVerboseErrors: aws.Bool(true),
-	})
+	runtime := sagemakerruntime.New(sess)
+	metadata := sagemaker.New(sess)
 	return SMClient{
 		args:           args,
 		runtimeClient:  runtime,

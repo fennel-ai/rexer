@@ -31,6 +31,7 @@ type InferenceServer interface {
 type ScoreRequest struct {
 	ModelName    string
 	ModelVersion string
+	// TODO: change to Tuple when ready.
 	FeatureLists []value.List
 }
 
