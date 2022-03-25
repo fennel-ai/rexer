@@ -21,9 +21,7 @@ func TestDefault(t *testing.T) {
 	assert.NoError(t, err)
 	defer test.Teardown(tier)
 	query := ast.OpCall{
-		Operands: []ast.Ast{ast.Var{
-			Name: "actions",
-		}},
+		Operands:  []ast.Ast{ast.Var{Name: "actions"}},
 		Namespace: "std",
 		Name:      "profile",
 		Kwargs: ast.Dict{Values: map[string]ast.Ast{
@@ -68,9 +66,7 @@ func TestProfileOp(t *testing.T) {
 	assert.NoError(t, profile.Set(ctx, tier, req1b))
 
 	query := ast.OpCall{
-		Operands: []ast.Ast{ast.Var{
-			Name: "actions",
-		}},
+		Operands:  []ast.Ast{ast.Var{Name: "actions"}},
 		Vars:      []string{"a"},
 		Namespace: "std",
 		Name:      "profile",

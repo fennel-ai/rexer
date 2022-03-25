@@ -83,9 +83,7 @@ func run(tr tier.Tier, op operators.Operator, static value.Dict, inputs []value.
 
 	// and input is provided as Var("input")
 	query := ast.OpCall{
-		Operands: []ast.Ast{ast.Var{
-			Name: "input",
-		}},
+		Operands:  []ast.Ast{ast.Var{Name: "input"}},
 		Vars:      []string{"its"},
 		Namespace: sig.Module,
 		Name:      sig.Name,

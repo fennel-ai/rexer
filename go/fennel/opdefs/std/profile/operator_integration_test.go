@@ -36,9 +36,7 @@ func TestProfileOpMultipleObjs(t *testing.T) {
 	assert.NoError(t, profile.Set(ctx, tier, req2b))
 
 	query := ast.OpCall{
-		Operands: []ast.Ast{ast.Var{
-			Name: "actions",
-		}},
+		Operands:  []ast.Ast{ast.Var{Name: "actions"}},
 		Vars:      []string{"at"},
 		Namespace: "std",
 		Name:      "profile",

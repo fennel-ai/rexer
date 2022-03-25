@@ -286,11 +286,9 @@ func TestQuery(t *testing.T) {
 			Left: ast.Lookup{On: ast.Var{Name: "at"}, Property: "x"},
 			Op:   "<",
 			Right: ast.Binary{
-				Left: ast.Lookup{On: ast.Var{Name: "at"}, Property: "y"},
-				Op:   "-",
-				Right: ast.Var{
-					Name: "c",
-				},
+				Left:  ast.Lookup{On: ast.Var{Name: "at"}, Property: "y"},
+				Op:    "-",
+				Right: ast.Var{Name: "c"},
 			},
 		}},
 		},
