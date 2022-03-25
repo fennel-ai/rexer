@@ -7,7 +7,7 @@ import unittest
 
 import lib
 
-from rexerclient.rql import var, op, cond, in_, len as len_
+from rexerclient.rql import var, op, cond, in_, len as len_, Int
 from rexerclient import client
 from rexerclient.models import action, profile
 
@@ -57,7 +57,7 @@ class TestEndToEnd(unittest.TestCase):
         # Open rate for the user by the hour in the last 7 days:
         actions = var('actions')
         notif_events = op.std.filter(actions, var='a', where=(var('a').action_type == 'notif_send') |(var('a').action_type == 'notif_open'))
-        with_time = op.time.addTimeBucketOfDay(notif_events, var='e', name='hour', timestamp=var('e').timestamp, bucket=3600)
+        with_time = op.std.set(notif_events, var='e', name='hour', value=var('e').timestamp % (24 * 3600) // Int(3600))
         with_key = op.std.set(with_time, var='e', name='groupkey', value=[var('e').actor_id, var('e').hour])
         with_val = op.std.set(with_key, var='e', name='value', value=cond(var('e').action_type == 'notif_send', [0, 1], [1, 0]))
         options = {'aggregate_type': 'rate', 'durations': [4*24*3600, 7*24*3600], 'normalize': True}
@@ -133,6 +133,7 @@ class TestEndToEnd(unittest.TestCase):
         self.assertTrue(passed)
         print('all checks passed...')
 
+    #@unittest.skip
     @tiered
     def test_end_to_end(self):
         c = client.Client(URL)
@@ -182,7 +183,7 @@ class TestEndToEnd(unittest.TestCase):
         # average watch time of uid on videos created by creator_id by 2 hour windows
         q2 = op.std.filter(actions, var='a', where=var('a').action_type == 'view')
         q2 = op.std.profile(q2, var='e', field='creator_id', otype='video', oid=var('e').target_id, key='creatorId')
-        q2 = op.time.addTimeBucketOfDay(q2, var='e', name='time_bucket', timestamp=var('e').timestamp, bucket=2*3600)
+        q2 = op.std.set(q2, var='e', name='time_bucket', value=var('e').timestamp % (24 * 3600) // Int(2*3600))
         q2 = op.std.set(q2, name='groupkey', var='e', value=[var('e').actor_id, var('e').creator_id, var('e').time_bucket])
         q2 = op.std.set(q2, name='value', var='e', value=var('e').metadata.watch_time)
         options = {'aggregate_type': 'average', 'durations': [3600*24*30]}
@@ -295,7 +296,7 @@ class TestLoad(unittest.TestCase):
         # average watch time of uid on videos created by creator_id by 2 hour windows
         q2 = op.std.filter(actions, var='a', where=var('a').action_type == 'view')
         q2 = op.std.profile(q2, var='e', field='creator_id', otype='video', oid=var('e').target_id, key='creatorId')
-        q2 = op.time.addTimeBucketOfDay(q2, var='e', name='time_bucket', timestamp=var('e').timestamp, bucket=2*3600)
+        q2 = op.std.set(q2, var='e', name='time_bucket', value=var('e').timestamp % (24 * 3600) // Int(2*3600))
         q2 = op.std.set(q2, name='groupkey', var='e', value=[var('e').actor_id, var('e').creator_id, var('e').time_bucket])
         q2 = op.std.set(q2, name='value', var='e', value=var('e').metadata.watch_time)
         options = {'aggregate_type': 'average', 'durations': [3600*24*30]}
