@@ -7,7 +7,7 @@ import unittest
 
 import lib
 
-from rexerclient.rql import var, op, cond
+from rexerclient.rql import var, op, cond, in_, len as len_
 from rexerclient import client
 from rexerclient.models import action, profile
 
@@ -256,6 +256,18 @@ class TestEndToEnd(unittest.TestCase):
         cond = cond(var('args').x <= 5, "correct", "incorrect")
         found = c.query(cond, {'x': 5})
         self.assertEqual("correct", found)
+
+        found = c.query(in_(3, [2, 4, len_([1, 2, 3])]))
+        self.assertTrue(found)
+
+        found = c.query(in_('hi', [2, 4, len_([1, 2, 3])]))
+        self.assertFalse(found)
+
+        found = c.query(in_('hi', {'hi': 1, 'bye': 'great'}))
+        self.assertTrue(found)
+
+        found = c.query(in_('missing', {'hi': 1, 'bye': 'great'}))
+        self.assertFalse(found)
 
 
 @unittest.skip

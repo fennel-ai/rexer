@@ -40,8 +40,35 @@ func route(l Value, opt string, other Value) (Value, error) {
 		return index(l, other)
 	case "%":
 		return modulo(l, other)
+	case "in":
+		return contains(l, other)
 	}
 	return Nil, nil
+}
+
+func contains(e Value, iter Value) (Value, error) {
+	switch t := iter.(type) {
+	case List:
+		for i := 0; i < t.Len(); i++ {
+			v, _ := t.At(i)
+			if v.Equal(e) {
+				return Bool(true), nil
+			}
+		}
+	case Dict:
+		asstr, ok := e.(String)
+		if !ok {
+			return nil, fmt.Errorf("'in' operation on dicts can only be done using strings, but given: '%s'", e)
+		}
+		for k, _ := range t.Iter() {
+			if k == string(asstr) {
+				return Bool(true), nil
+			}
+		}
+	default:
+		return nil, fmt.Errorf("'in' operator is only defined on lists/dicts but called on: '%s'", iter)
+	}
+	return Bool(false), nil
 }
 
 func modulo(left Value, right Value) (Value, error) {
