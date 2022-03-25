@@ -31,7 +31,7 @@ func (e *Env) Redefine(name string, value value.Value) error {
 
 func (e *Env) Lookup(name string) (value.Value, error) {
 	if ret, ok := e.table[name]; ok {
-		return ret, nil
+		return ret.Clone(), nil
 	}
 	if e.parent == nil {
 		return value.Nil, fmt.Errorf("undefined variable: '%s'", name)

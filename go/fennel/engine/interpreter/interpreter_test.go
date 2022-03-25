@@ -328,3 +328,48 @@ func TestInterpreter_Eval(t *testing.T) {
 	assert.NoError(t, err)
 	assert.True(t, expected3.Equal(found3))
 }
+
+func TestInterpreter_VisitVarClone(t *testing.T) {
+	i := getInterpreter()
+	// checking if var actually clones
+	// define a variable and perform an opcall that changes the input
+	// check if output is as expected and original variable was not changed
+	query := ast.Query{Statements: []ast.Statement{
+		{
+			Name: "x",
+			Body: ast.Dict{Values: map[string]ast.Ast{"key": ast.MakeInt(0)}},
+		},
+		{
+			Name: "y",
+			Body: ast.OpCall{
+				Namespace: "std",
+				Name:      "set",
+				Operands:  []ast.Ast{ast.List{Values: []ast.Ast{ast.Var{Name: "x"}}}},
+				Vars:      nil,
+				Kwargs: ast.Dict{Values: map[string]ast.Ast{
+					"name":  ast.MakeString("col"),
+					"value": ast.MakeString("new"),
+				}},
+			},
+		},
+		{
+			Name: "",
+			Body: ast.Dict{Values: map[string]ast.Ast{
+				"x": ast.Var{Name: "x"},
+				"y": ast.Var{Name: "y"},
+			}},
+		},
+	}}
+	expectedX := value.NewDict(map[string]value.Value{"key": value.Int(0)})
+	expectedY := value.NewList(value.NewDict(map[string]value.Value{
+		"col": value.String("new"),
+		"key": value.Int(0),
+	}))
+
+	found, err := query.AcceptValue(i)
+	assert.NoError(t, err)
+	asDict, ok := found.(value.Dict)
+	assert.True(t, ok)
+	assert.True(t, expectedX.Equal(asDict.GetUnsafe("x")))
+	assert.True(t, expectedY.Equal(asDict.GetUnsafe("y")))
+}
