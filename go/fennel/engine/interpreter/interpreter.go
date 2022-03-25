@@ -57,10 +57,7 @@ func NewInterpreter(bootargs map[string]interface{}) Interpreter {
 func (i Interpreter) queryArgs() value.Dict {
 	// query args are present in the root Env (has no parent)
 	rootEnv := i.env
-	for {
-		if rootEnv.parent == nil {
-			break
-		}
+	for rootEnv.parent != nil {
 		rootEnv = rootEnv.parent
 	}
 	args, err := rootEnv.Lookup("__args__")
