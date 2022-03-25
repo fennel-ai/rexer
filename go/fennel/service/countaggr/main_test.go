@@ -262,7 +262,7 @@ func getQueryRate() ast.Ast {
 	return ast.OpCall{
 		Operands: []ast.Ast{ast.OpCall{
 			Operands: []ast.Ast{ast.OpCall{
-				Operands:  []ast.Ast{ast.Lookup{On: ast.Var{Name: "args"}, Property: "actions"}},
+				Operands:  []ast.Ast{ast.Var{Name: "actions"}},
 				Vars:      []string{"hi"},
 				Namespace: "std",
 				Name:      "filter",
@@ -304,7 +304,7 @@ func getQuery() ast.Ast {
 			Operands: []ast.Ast{ast.OpCall{
 				Namespace: "std",
 				Name:      "filter",
-				Operands:  []ast.Ast{ast.Lookup{On: ast.Var{Name: "args"}, Property: "actions"}},
+				Operands:  []ast.Ast{ast.Var{Name: "actions"}},
 				Vars:      []string{"v"},
 				Kwargs: ast.Dict{Values: map[string]ast.Ast{
 					"where": ast.Binary{
@@ -341,7 +341,7 @@ func getQueryTopK() ast.Ast {
 	return ast.OpCall{
 		Operands: []ast.Ast{ast.OpCall{
 			Operands: []ast.Ast{ast.OpCall{
-				Operands:  []ast.Ast{ast.Lookup{On: ast.Var{Name: "args"}, Property: "actions"}},
+				Operands:  []ast.Ast{ast.Var{Name: "actions"}},
 				Vars:      []string{"var"},
 				Namespace: "std",
 				Name:      "filter",

@@ -51,20 +51,20 @@ func run(tr tier.Tier, op operators.Operator, static value.Dict, inputs []value.
 	sig := op.Signature()
 	kwargs := make(map[string]ast.Ast)
 
-	// all static kwargs will be based on Var("args").static
+	// all static kwargs will be based on Var("static")
 	for k, _ := range static.Iter() {
 		kwargs[k] = ast.Lookup{
-			On:       ast.Lookup{On: ast.Var{Name: "args"}, Property: "static"},
+			On:       ast.Var{Name: "static"},
 			Property: k,
 		}
 	}
 	field := "context"
-	// context kwarg k will be accessible via Var("args").field[str(@)].k
+	// context kwarg k will be accessible Var("field")[str(@)].k
 	if len(context) > 0 {
 		for k, _ := range context[0].Iter() {
 			kwargs[k] = ast.Lookup{
 				On: ast.Binary{
-					Left: ast.Lookup{On: ast.Var{Name: "args"}, Property: field},
+					Left: ast.Var{Name: field},
 					Op:   "[]",
 					Right: ast.Unary{
 						Op:      "str",
@@ -81,12 +81,9 @@ func run(tr tier.Tier, op operators.Operator, static value.Dict, inputs []value.
 		kwargs_data.Set(k, context[i])
 	}
 
-	// and input is provided as Var("args").input
+	// and input is provided as Var("input")
 	query := ast.OpCall{
-		Operands: []ast.Ast{ast.Lookup{
-			On:       ast.Var{Name: "args"},
-			Property: "input",
-		}},
+		Operands:  []ast.Ast{ast.Var{Name: "input"}},
 		Vars:      []string{"its"},
 		Namespace: sig.Module,
 		Name:      sig.Name,
