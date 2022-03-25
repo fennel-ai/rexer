@@ -1,3 +1,5 @@
+# Remove this once Amazon Managed Prometheus is available in other regions and we migrate away from
+# self hosted prometheus instances.
 ---
 apiVersion: v1
 kind: Namespace
@@ -112,86 +114,6 @@ data:
           http:
             endpoint: 0.0.0.0:4318
       awscontainerinsightreceiver:
-      prometheus:
-        config:
-          global:
-            scrape_interval: 1m
-            scrape_timeout: 10s
-          scrape_configs:
-            - job_name: 'kubernetes-pods'
-              sample_limit: 10000
-              kubernetes_sd_configs:
-              - role: pod
-              relabel_configs:
-              - action: keep
-                regex: true
-                source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_scrape]
-              - action: replace
-                source_labels: [__address__, __meta_kubernetes_pod_annotation_prometheus_io_port]
-                regex: ([^:]+)(?::\d+)?;(\d+)
-                replacement: $$1:$$2
-                target_label: __address__
-              - action: replace
-                source_labels: [__meta_kubernetes_namespace]
-                target_label: Namespace
-              - action: replace
-                source_labels: [__meta_kubernetes_pod_name]
-                target_label: PodName
-              - action: drop
-                source_labels: [__meta_kubernetes_pod_container_name]
-                regex: (linkerd-init|linkerd-proxy)
-              - action: replace
-                source_labels: [__meta_kubernetes_pod_container_name]
-                target_label: ContainerName
-              - action: replace
-                source_labels: [__meta_kubernetes_pod_controller_name]
-                target_label: PodControllerName
-              - action: replace
-                source_labels: [__meta_kubernetes_pod_controller_kind]
-                target_label: PodControllerKind
-              - action: replace
-                source_labels: [__meta_kubernetes_pod_phase]
-                target_label: PodPhase
-              # Exclude high cardinality metrics
-              metric_relabel_configs:
-              - action: drop
-                source_labels: [__name__]
-                regex: 'go_gc_duration_seconds.*'
-            - job_name: 'kubernetes-service-endpoints'
-              kubernetes_sd_configs:
-              - role: endpoints
-              relabel_configs:
-              - action: keep
-                regex: true
-                source_labels: [__meta_kubernetes_service_annotation_prometheus_io_scrape]
-              - action: replace
-                source_labels: [__address__, __meta_kubernetes_service_annotation_prometheus_io_port]
-                regex: ([^:]+)(?::\d+)?;(\d+)
-                replacement: $$1:$$2
-                target_label: __address__
-              - action: labelmap
-                regex: __meta_kubernetes_pod_label_(.+)
-              - action: replace
-                source_labels: [__meta_kubernetes_namespace]
-                target_label: Namespace
-              - action: replace
-                source_labels: [__meta_kubernetes_service_name]
-                target_label: Service
-              - action: replace
-                source_labels: [__meta_kubernetes_pod_node_name]
-                target_label: kubernetes_node
-              - action: replace
-                source_labels: [__meta_kubernetes_pod_name]
-                target_label: PodName
-              - action: replace
-                source_labels: [__meta_kubernetes_pod_container_name]
-                target_label: ContainerName
-              # Exclude high cardinality metrics
-              metric_relabel_configs:
-              - source_labels: [__name__]
-                regex: 'go_gc_duration_seconds.*'
-                action: drop
-
 
     processors:
       batch/traces:
@@ -211,9 +133,6 @@ data:
         attributes:
           - key: TaskId
             from_attribute: job
-            action: insert
-          - key: receiver
-            value: "prometheus"
             action: insert
 
     exporters:
@@ -284,13 +203,6 @@ data:
               - namespace_number_of_running_pods
             dimensions: [[Namespace, ClusterName], [ClusterName]]
 
-      awsprometheusremotewrite:
-        # This should be replaced before it is used for deployment
-        endpoint: "%%AMP_ENDPOINT%%"
-        aws_auth:
-          service: "aps"
-          region: "%%AWS_REGION%%"
-
     service:
       telemetry:
         logs:
@@ -316,15 +228,6 @@ data:
             - batch/metrics
           exporters:
             - awsemf/containerinsights
-        metrics/prometheus:
-          receivers:
-            - prometheus
-          processors:
-            - resourcedetection
-            - resource
-            - batch/metrics
-          exporters:
-            - awsprometheusremotewrite
 
 ---
 # create Daemonset
