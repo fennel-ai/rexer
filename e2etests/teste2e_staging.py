@@ -28,6 +28,7 @@ class _Status(Enum):
 
 
 class TestStagingEndToEnd(unittest.TestCase):
+    @unittest.skip
     def test_viewtime(self):
         c = client.Client(_URL)
 
