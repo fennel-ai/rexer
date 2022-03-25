@@ -150,6 +150,8 @@ const setupResources = async () => {
         },
         planeId: input.planeId,
         nodeType: input.cacheConf?.nodeType,
+        numNodeGroups: input.cacheConf?.numNodeGroups,
+        replicasPerNodeGroup: input.cacheConf?.replicasPerNodeGroup,
     })
     const confluentOutput = await confluentenv.setup({
         region: input.region,
