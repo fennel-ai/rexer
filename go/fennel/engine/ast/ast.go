@@ -262,10 +262,10 @@ func (d Dict) Equals(ast Ast) bool {
 }
 
 type OpCall struct {
-	Operands  []Ast
-	Vars      []string
 	Namespace string
 	Name      string
+	Operands  []Ast
+	Vars      []string
 	Kwargs    Dict
 }
 
