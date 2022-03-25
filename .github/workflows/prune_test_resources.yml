@@ -22,11 +22,19 @@ jobs:
     steps:
       # Install build essentials
       - name: install build essential
-        run: sudo apt-get --assume-yes install build-essential
+        run: |
+          sudo apt-get --assume-yes install build-essential
+          sudo apt-get --assume-yes install pkg-config
+
+      - name: Install kafka dependencies
+        run: |
+          sudo apt-get --assume-yes remove --auto-remove librdkafka-dev
+          sudo apt-get --assume-yes install libssl-dev
+          sudo curl -Lk -o $HOME/librdkafka-1.8.0.tar.gz https://github.com/edenhill/librdkafka/archive/v1.8.0.tar.gz &&       tar -xzf $HOME/librdkafka-1.8.0.tar.gz -C $HOME &&  cd $HOME/librdkafka-1.8.0 &&  ./configure && make && sudo make install && sudo make clean && ./configure --clean
 
       # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
       - uses: actions/checkout@v2
-      
+
       # Install go (we use 1.17.0 version, so we will stick to it)
       - uses: actions/setup-go@v2
         with:
