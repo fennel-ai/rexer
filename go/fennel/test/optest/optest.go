@@ -59,12 +59,12 @@ func run(tr tier.Tier, op operators.Operator, static value.Dict, inputs []value.
 		}
 	}
 	field := "context"
-	// context kwarg k will be accessible via Var("args").field[str(@)].k
+	// context kwarg k will be accessible Var("field")[str(@)].k
 	if len(context) > 0 {
 		for k, _ := range context[0].Iter() {
 			kwargs[k] = ast.Lookup{
 				On: ast.Binary{
-					Left: ast.Lookup{On: ast.Var{Name: "args"}, Property: field},
+					Left: ast.Var{Name: field},
 					Op:   "[]",
 					Right: ast.Unary{
 						Op:      "str",
