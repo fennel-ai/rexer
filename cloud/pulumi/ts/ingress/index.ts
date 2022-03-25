@@ -221,6 +221,10 @@ export const setup = async (input: inputType) => {
         }, { provider: awsProvider })
     })
 
+    // TODO: VPC Endpoint service creation succeeds only when the NLB is in "Active" state.
+    // Since LB is created in the background and might take time to become "Active", just adding an
+    // dependency on `emissaryIngress` is not sufficient.
+    // Figure out how creation of VPC Endpoint Service could wait on NLB coming to Active state. Use AWS SDK explicitly?
     const vpcEndpointService = new aws.ec2.VpcEndpointService(`t-${input.tierId}-ingress-vpc-endpoint-service`, {
         acceptanceRequired: true,
         allowedPrincipals: [
@@ -232,7 +236,7 @@ export const setup = async (input: inputType) => {
             ...fennelStdTags,
             "Name": `${input.namespace}-endpoint-service`
         },
-    }, { provider: awsProvider })
+    }, { provider: awsProvider, dependsOn: emissaryIngress.ready })
 
     const output: pulumi.Output<outputType> = pulumi.output({
         loadBalancerUrl,
