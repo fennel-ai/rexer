@@ -112,14 +112,14 @@ const planeConfs: Record<number, PlaneConf> = {
         },
         // See: https://coda.io/d/_drT3IgChqqL/Elasticache-diagnosis_su1nA#_luLc1
         cacheConf: {
-            nodeType: "cache.r6g.large",
-            numNodeGroups: 1,
+            nodeType: "cache.t4g.medium",
+            numNodeGroups: 2,
             replicasPerNodeGroup: 1,
         },
         controlPlaneConf: controlPlane,
         redisConf: {
-            numShards: 1,
-            nodeType: "db.r6g.large",
+            numShards: 2,
+            nodeType: "db.t4g.medium",
             numReplicasPerShard: 1,
         },
         prometheusConf: {
