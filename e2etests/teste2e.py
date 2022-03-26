@@ -48,7 +48,6 @@ def tiered(wrapped):
 
 
 class TestEndToEnd(unittest.TestCase):
-    @unittest.skip
     @tiered
     def test_lokal(self):
         c = client.Client(URL)
@@ -293,6 +292,13 @@ class TestEndToEnd(unittest.TestCase):
         self.assertFalse(found)
 
         self.assertTrue(c.query(in_(len_([1, 2, 3]), [2, 5, 'hi', 3])))
+
+        # test a complex combination of groupby, sortby and map
+        q = [{'a': 1, 'b': 'one'}, {'a': 2, 'b': 'one'}, {'a': 3, 'b': 'two'}, {'a': 4, 'b': 'three'}]
+        q = op.std.group(q, var='e', by=var('e').b)
+        q = op.std.sort(q, var='g', by=len_(var('g').elements), reverse=True)
+        q = op.std.map(q, var='e', to={'x': var('e').group, 'y': var('e').elements[0].a})
+        self.assertEqual([{'x': 'one', 'y': 1}, {'x': 'two', 'y': 3}, {'x': 'three', 'y': 4}], c.query(q))
 
 
 @unittest.skip
