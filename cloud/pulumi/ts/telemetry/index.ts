@@ -118,15 +118,21 @@ function setupOtelPolicy(input: inputType, awsProvider: aws.Provider) {
 // and traces and forward them to cloudwatch.
 async function setupAdotCollector(input: inputType, k8sProvider: k8s.Provider) {
     const root = process.env.FENNEL_ROOT!;
-
-    // Generate a file hash so that any changes in the file, forces pod restart.
-    // Without this, any changes to the ConfigMap would not get reflected as the configmap is mounted
-    // on pod initialization and any updates to the ConfigMap of the pod are later not reflected.
-    const deploymentFilePath = path.join(root, "/deployment/artifacts/otel-deployment.yaml")
-    const filehash = md5.Md5.hashStr(fs.readFileSync(deploymentFilePath).toString())
     // TODO: Consider refactoring this to avoid creating a config file inside the callback of `apply`. 
     // `.apply` should not have any side-effects, but in this case it seems unavoidable
     pulumi.all([input.eksClusterName, input.prometheusEndpoint]).apply(([eksClusterName, prometheusEndpoint])=> {
+        // Generate a file hash so that any changes in the file, forces pod restart.
+        // Without this, any changes to the ConfigMap would not get reflected as the configmap is mounted
+        // on pod initialization and any updates to the ConfigMap of the pod are later not reflected.
+        let deploymentFilePath;
+
+        // TODO: Remove `otel-deployment-no-prom.yaml` once we move away from self-hosted Prometheus instances.
+        if (prometheusEndpoint) {
+            deploymentFilePath = path.join(root, "/deployment/artifacts/otel-deployment.yaml")
+        } else {
+            deploymentFilePath = path.join(root, "/deployment/artifacts/otel-deployment-no-prom.yaml")
+        }
+        const filehash = md5.Md5.hashStr(fs.readFileSync(deploymentFilePath).toString())
         const collector = new k8s.yaml.ConfigFile("adot-collector", {
             file: deploymentFilePath,
             transformations: [
@@ -147,16 +153,7 @@ async function setupAdotCollector(input: inputType, k8sProvider: k8s.Provider) {
                     }
                     if (obj.kind === "ConfigMap") {
                         let otelAgentConfig = obj.data["otel-agent-config"]
-                        if (prometheusEndpoint === "") {
-                            otelAgentConfig = otelAgentConfig.replace(
-                                new RegExp("%%CONTAINER_INSIGHTS_EXPORTERS%%", 'g'), "[awsemf/containerinsights]")
-                            otelAgentConfig = otelAgentConfig.replace(
-                                new RegExp("%%PROMETHEUS_EXPORTERS%%", 'g'), "[awsemf/prometheus]")
-                        } else {
-                            otelAgentConfig = otelAgentConfig.replace(
-                                new RegExp("%%CONTAINER_INSIGHTS_EXPORTERS%%", 'g'), "[awsemf/containerinsights, awsprometheusremotewrite]")
-                            otelAgentConfig = otelAgentConfig.replace(
-                                new RegExp("%%PROMETHEUS_EXPORTERS%%", 'g'), "[awsemf/prometheus, awsprometheusremotewrite]")
+                        if (prometheusEndpoint) {
                             otelAgentConfig = otelAgentConfig.replace(
                                 new RegExp("%%AMP_ENDPOINT%%", 'g'), prometheusEndpoint)
                             otelAgentConfig = otelAgentConfig.replace(
