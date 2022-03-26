@@ -121,7 +121,7 @@ func (i Interpreter) VisitLookup(on ast.Ast, property string) (value.Value, erro
 	}
 	ret, ok := asdict.Get(property)
 	if !ok {
-		return value.Nil, fmt.Errorf("property: %s does not exist in the dictionary: '%s'", property, asdict)
+		return value.Nil, fmt.Errorf("property '%s' does not exist in the dictionary: '%s'", property, asdict)
 	}
 	return ret, nil
 }
@@ -382,7 +382,7 @@ func (i Interpreter) getContextKwargs(op operators.Operator, trees ast.Dict, inp
 			case ok:
 				val, err := i.visitInContext(tree, varmap)
 				if err != nil {
-					return operators.ZipTable{}, fmt.Errorf("error: %s while evaluating kwarg: %s for operator '%s.%s'", err, k, sig.Module, sig.Name)
+					return operators.ZipTable{}, fmt.Errorf("error: %s while evaluating kwarg '%s' for operator '%s.%s'", err, k, sig.Module, sig.Name)
 				}
 				kwargs.Set(k, val)
 			}
