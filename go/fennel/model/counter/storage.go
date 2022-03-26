@@ -11,6 +11,7 @@ import (
 	"go.uber.org/zap"
 
 	"fennel/lib/ftypes"
+	"fennel/lib/timer"
 	"fennel/lib/value"
 	"fennel/redis"
 	"fennel/tier"
@@ -39,6 +40,7 @@ func (f FlatRedisStorage) GetBucketStore() BucketStore {
 func (f FlatRedisStorage) Get(
 	ctx context.Context, tier tier.Tier, name ftypes.AggName, buckets []Bucket, default_ value.Value,
 ) ([]value.Value, error) {
+	defer timer.Start(ctx, tier.ID, "flatredis.get").Stop()
 	rkeys := f.redisKeys(name, buckets)
 	defaults := make([]value.Value, len(rkeys))
 	for i := range defaults {
@@ -50,6 +52,7 @@ func (f FlatRedisStorage) Get(
 func (f FlatRedisStorage) GetMulti(
 	ctx context.Context, tier tier.Tier, names []ftypes.AggName, buckets [][]Bucket, defaults_ []value.Value,
 ) ([][]value.Value, error) {
+	defer timer.Start(ctx, tier.ID, "flatredis.get_multi").Stop()
 	var rkeys []string
 	var defaults []value.Value
 	for i := range buckets {
@@ -75,6 +78,7 @@ func (f FlatRedisStorage) GetMulti(
 }
 
 func (f FlatRedisStorage) Set(ctx context.Context, tier tier.Tier, name ftypes.AggName, buckets []Bucket) error {
+	defer timer.Start(ctx, tier.ID, "flatredis.set").Stop()
 	rkeys := f.redisKeys(name, buckets)
 	vals := make([]value.Value, len(rkeys))
 	for i := range buckets {
@@ -89,6 +93,7 @@ func (f FlatRedisStorage) Set(ctx context.Context, tier tier.Tier, name ftypes.A
 func (f FlatRedisStorage) SetMulti(
 	ctx context.Context, tier tier.Tier, names []ftypes.AggName, buckets [][]Bucket,
 ) error {
+	defer timer.Start(ctx, tier.ID, "flatredis.set_multi").Stop()
 	var rkeys []string
 	var vals []value.Value
 	keyCount := make([]int, len(names))
@@ -211,6 +216,7 @@ func (t twoLevelRedisStore) get(
 func (t twoLevelRedisStore) Get(
 	ctx context.Context, tier tier.Tier, name ftypes.AggName, buckets []Bucket, default_ value.Value,
 ) ([]value.Value, error) {
+	defer timer.Start(ctx, tier.ID, "twolevelredis.get").Stop()
 	n := len(buckets)
 	names := make([]ftypes.AggName, n)
 	defaults := make([]value.Value, n)
@@ -224,6 +230,7 @@ func (t twoLevelRedisStore) Get(
 func (t twoLevelRedisStore) GetMulti(
 	ctx context.Context, tier tier.Tier, names []ftypes.AggName, buckets [][]Bucket, defaults []value.Value,
 ) ([][]value.Value, error) {
+	defer timer.Start(ctx, tier.ID, "twolevelredis.get_multi").Stop()
 	var names_ []ftypes.AggName
 	var buckets_ []Bucket
 	var defaults_ []value.Value
@@ -305,6 +312,7 @@ func (t twoLevelRedisStore) set(ctx context.Context, tier tier.Tier, names []fty
 }
 
 func (t twoLevelRedisStore) Set(ctx context.Context, tier tier.Tier, name ftypes.AggName, buckets []Bucket) error {
+	defer timer.Start(ctx, tier.ID, "twolevelredis.set").Stop()
 	names := make([]ftypes.AggName, len(buckets))
 	for i := range names {
 		names[i] = name
@@ -314,6 +322,7 @@ func (t twoLevelRedisStore) Set(ctx context.Context, tier tier.Tier, name ftypes
 
 func (t twoLevelRedisStore) SetMulti(
 	ctx context.Context, tier tier.Tier, names []ftypes.AggName, buckets [][]Bucket) error {
+	defer timer.Start(ctx, tier.ID, "twolevelredis.set_multi").Stop()
 	var names_ []ftypes.AggName
 	var buckets_ []Bucket
 	for i := range buckets {
@@ -393,6 +402,7 @@ func (t twoLevelRedisStore) logStats(groupVals []value.Value, mode string) {
 var _ BucketStore = twoLevelRedisStore{}
 
 func Update(ctx context.Context, tier tier.Tier, name ftypes.AggName, buckets []Bucket, h Histogram) error {
+	defer timer.Start(ctx, tier.ID, "counter.update").Stop()
 	cur, err := h.Get(ctx, tier, name, buckets, h.Zero())
 	if err != nil {
 		return err
