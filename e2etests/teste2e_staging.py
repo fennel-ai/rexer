@@ -5,8 +5,7 @@ import unittest
 
 import lib
 
-from rexerclient.rql import var, op
-from rexerclient import client
+import rexerclient as rex
 
 
 # URL to the staging tier LB
@@ -30,15 +29,19 @@ class _Status(Enum):
 class TestStagingEndToEnd(unittest.TestCase):
     @unittest.skip
     def test_viewtime(self):
-        c = client.Client(_URL)
+        c = rex.Client(_URL)
 
-        actions = var('actions')
-        view_events = op.std.filter(actions, var='a', where=var('a').action_type == 'e2etest_view')
-        with_key = op.std.set(view_events, var='e', name='groupkey', value=var('e').actor_id)
-        with_val = op.std.set(with_key, name='value', value=1)
-        # Store aggregate, if this store already exists (with the same options), this is a no-op
-        options = {'durations': [3600*24], 'aggregate_type': 'sum'}
-        c.store_aggregate(_AGGREGATE_NAME, with_val, options)
+        @rex.aggregate(
+            name=_AGGREGATE_NAME, aggregate_type='sum',
+            action_types=['e2etest_view'], config={'durations':[3600*24]},
+        )
+        def agg(actions):
+            view_events = rex.op.std.filter(actions, var='a', where=rex.var('a').action_type == 'e2etest_view')
+            with_key = rex.op.std.set(view_events, var='e', name='groupkey', value=rex.var('e').actor_id)
+            return rex.op.std.set(with_key, name='value', value=1)
+        # # Store aggregate, if this store already exists (with the same options), this is a no-op
+        agg.store(c)
+        # c.store_aggregate(_AGGREGATE_NAME, with_val, options)
         c.set_profile("user", _USER_ID, "age", 24)
 
         # Query for this aggregates value
