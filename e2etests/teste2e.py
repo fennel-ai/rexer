@@ -64,7 +64,7 @@ class TestEndToEnd(unittest.TestCase):
             with_time = op.std.set(actions, var='e', name='hour', value=var('e').timestamp % (24 * 3600) // 3600)
             with_key = op.std.set(with_time, var='e', name='groupkey', value=[var('e').actor_id, var('e').hour])
             return op.std.set(with_key, var='e', name='value', value=cond(var('e').action_type == 'notif_send', [0, 1], [1, 0]))
-        agg_user_notif_open_rate_by_hour.store(c)
+        agg_user_notif_open_rate_by_hour.store(client=c)
 
         @rex.aggregate(
             name='user_notif_open_rate_by_category',
@@ -75,7 +75,7 @@ class TestEndToEnd(unittest.TestCase):
             q = op.std.profile(actions, field='category', otype='content', key='category', var='e', oid=var('e').target_id)
             q = op.std.set(q, var='e', name='groupkey', value=[var('e').actor_id, var('e').category])
             return op.std.set(q, var='e', name='value', value=cond(var('e').action_type == 'notif_send', [0, 1], [1, 0]))
-        agg_user_notif_open_rate_by_category.store(c)
+        agg_user_notif_open_rate_by_category.store(client=c)
 
         @rex.aggregate(
             name='content_num_reactions',
@@ -84,7 +84,7 @@ class TestEndToEnd(unittest.TestCase):
         def agg_reactions_by_post(actions):
             q = op.std.set(actions, var='e', name='groupkey', value=var('e').target_id)
             return op.std.set(q, name='value', value=1)
-        agg_reactions_by_post.store(c)
+        agg_reactions_by_post.store(client=c)
 
         @rex.aggregate(
             name='user_num_notif_opens',
@@ -93,7 +93,7 @@ class TestEndToEnd(unittest.TestCase):
         def agg_user_num_notif_opens(actions):
             q = op.std.set(actions, var='e', name='groupkey', value=var('e').actor_id)
             return op.std.set(q, name='value', value=1)
-        agg_user_num_notif_opens.store(c)
+        agg_user_num_notif_opens.store(client=c)
 
         c.set_profile("content", content_id, "category", category)
         self.assertEqual(category, c.get_profile("content", content_id, "category"))
@@ -117,7 +117,7 @@ class TestEndToEnd(unittest.TestCase):
         c.log(action.Action(actor_type='user', actor_id=uid, target_type='content', target_id=content_id,
                             action_type='notif_send', request_id=7, timestamp=ts-8*24*3600))
 
-        # also verify that eval of actions works well
+        # also verify that test of actions works well
         actions = [a1, a2, a3, a4]
         expected = [
             {'action_type': 'notif_send', 'actor_id': 12312, 'actor_type': 'user', 'category': 'sports',
@@ -130,7 +130,7 @@ class TestEndToEnd(unittest.TestCase):
              'dedup_key': 'a3', 'groupkey': [12312, 'sports'], 'metadata': {}, 'request_id': 1, 'target_id': 456,
              'target_type': 'content', 'timestamp': ts+2, 'value': [1, 0]}
         ]
-        self.assertEqual(expected, agg_user_notif_open_rate_by_category.eval(c, actions))
+        self.assertEqual(expected, agg_user_notif_open_rate_by_category.test(actions, client=c))
 
         b = int((ts % (24*3600)) / 3600)
 
@@ -204,7 +204,7 @@ class TestEndToEnd(unittest.TestCase):
                 var('e').target_id, var('e').city, var('e').gender, var('e').age_group
             ])
             return op.std.set(q, name='value', value=1)
-        agg1.store(c)
+        agg1.store(client=c)
 
         @rex.aggregate(
             name='user_creator_avg_watchtime_by_2hour_windows',
@@ -216,7 +216,7 @@ class TestEndToEnd(unittest.TestCase):
             q = op.std.set(q, var='e', name='time_bucket', value=var('e').timestamp % (24 * 3600) // (2*3600))
             q = op.std.set(q, name='groupkey', var='e', value=[var('e').actor_id, var('e').creator_id, var('e').time_bucket])
             return op.std.set(q, name='value', var='e', value=var('e').metadata.watch_time)
-        agg2.store(c)
+        agg2.store(client=c)
 
         ts = int(time.time())
         b = int((ts % (24*3600)) / (2*3600))
@@ -324,7 +324,7 @@ class TestLoad(unittest.TestCase):
                 var('e').target_id, var('e').city, var('e').gender, var('e').age_group
             ])
             return op.std.set(q, name='value', value=1)
-        agg1.store(c)
+        agg1.store(client=c)
 
         @rex.aggregate(
             name='user_creator_avg_watchtime_by_2hour_windows',
@@ -336,7 +336,7 @@ class TestLoad(unittest.TestCase):
             q = op.std.set(q, var='e', name='time_bucket', value=var('e').timestamp % (24 * 3600) // (2*3600))
             q = op.std.set(q, name='groupkey', var='e', value=[var('e').actor_id, var('e').creator_id, var('e').time_bucket])
             return op.std.set(q, name='value', var='e', value=var('e').metadata.watch_time)
-        agg2.store(c)
+        agg2.store(client=c)
 
 
 if __name__ == '__main__':
