@@ -40,7 +40,7 @@ class TestStagingEndToEnd(unittest.TestCase):
             with_key = rex.op.std.set(view_events, var='e', name='groupkey', value=rex.var('e').actor_id)
             return rex.op.std.set(with_key, name='value', value=1)
         # # Store aggregate, if this store already exists (with the same options), this is a no-op
-        agg.store(c)
+        agg.store(client=c)
         # c.store_aggregate(_AGGREGATE_NAME, with_val, options)
         c.set_profile("user", _USER_ID, "age", 24)
 
