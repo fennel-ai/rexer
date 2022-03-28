@@ -74,6 +74,44 @@ export const setup = async (input: inputType) => {
         }
     })
 
+    // Setup http and https listeners as per instructions at:
+    // https://www.getambassador.io/docs/edge-stack/latest/howtos/configure-communications/#basic-http-and-https
+    const httplistener = new k8s.apiextensions.CustomResource("http-listener", {
+        "apiVersion": "getambassador.io/v3alpha1",
+        "kind": "Listener",
+        "metadata": {
+            "name": "http-listener"
+        },
+        "spec": {
+            "port": 8080,
+            "protocol": "HTTPS",
+            "securityModel": "XFP",
+            "hostBinding": {
+                "namespace": {
+                    "from": "SELF",
+                }
+            }
+        }
+    }, { provider: k8sProvider })
+
+    const httpslistener = new k8s.apiextensions.CustomResource("https-listener", {
+        "apiVersion": "getambassador.io/v3alpha1",
+        "kind": "Listener",
+        "metadata": {
+            "name": "https-listener"
+        },
+        "spec": {
+            "port": 8443,
+            "protocol": "HTTPS",
+            "securityModel": "XFP",
+            "hostBinding": {
+                "namespace": {
+                    "from": "SELF",
+                }
+            }
+        }
+    }, { provider: k8sProvider })
+
     // Install emissary-ingress via helm.
     // NOTE: the name of the pulumi resource for the helm chart is also prefixed
     // to resource names. So if we're changing the name of the chart, we should also
@@ -138,45 +176,13 @@ export const setup = async (input: inputType) => {
                 "name": input.namespace,
             },
         },
-    }, { provider: k8sProvider })
+    }, {
+        provider: k8sProvider,
+        // Note: We ensure that listeners are created before the ingress helm
+        // chart is deployed. See PR-505 for more details.
+        dependsOn: [httplistener, httpslistener],
+    })
 
-    // Setup http and https listeners as per instructions at:
-    // https://www.getambassador.io/docs/edge-stack/latest/howtos/configure-communications/#basic-http-and-https
-    const httplistener = new k8s.apiextensions.CustomResource("http-listener", {
-        "apiVersion": "getambassador.io/v3alpha1",
-        "kind": "Listener",
-        "metadata": {
-            "name": "http-listener"
-        },
-        "spec": {
-            "port": 8080,
-            "protocol": "HTTPS",
-            "securityModel": "XFP",
-            "hostBinding": {
-                "namespace": {
-                    "from": "SELF",
-                }
-            }
-        }
-    }, { provider: k8sProvider, dependsOn: emissaryIngress.ready })
-
-    const httpslistener = new k8s.apiextensions.CustomResource("https-listener", {
-        "apiVersion": "getambassador.io/v3alpha1",
-        "kind": "Listener",
-        "metadata": {
-            "name": "https-listener"
-        },
-        "spec": {
-            "port": 8443,
-            "protocol": "HTTPS",
-            "securityModel": "XFP",
-            "hostBinding": {
-                "namespace": {
-                    "from": "SELF",
-                }
-            }
-        }
-    }, { provider: k8sProvider, dependsOn: emissaryIngress.ready })
 
     const loadBalancerUrl = pulumi.all([input.namespace, emissaryIngress.ready]).apply(([namespace]) => {
         const ingressResource = emissaryIngress.getResource("v1/Service", namespace, `${chartName}-emissary-ingress`);
@@ -260,6 +266,5 @@ async function run() {
     }
     return output
 }
-
 
 export const output = await run();
