@@ -56,6 +56,8 @@ jobs:
 
       # Run the test
       - name: Run test
+        env:
+          FENNEL_ROOT: ${{ github.workspace }}
         working-directory: ../rexer-pyclient-alpha/rexer-client-${{ github.run_id }}-${{ github.run_number }}-${{ github.run_attempt }}
         run: |
           poetry run python -m unittest discover ../../rexer/e2etests -p "teste2e_staging.py"
