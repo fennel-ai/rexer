@@ -475,6 +475,10 @@ func (t Tuple) OpUnary(opt string) (Value, error) {
 	return routeUnary(opt, t)
 }
 
+func NewTuple(values ...Value) Tuple {
+	return Tuple{values: values}
+}
+
 func (t Tuple) isValue() {}
 func (t Tuple) Equal(right Value) bool {
 	switch r := right.(type) {
@@ -492,9 +496,11 @@ func (t Tuple) Equal(right Value) bool {
 		return false
 	}
 }
+
 func (t Tuple) String() string {
 	sb := strings.Builder{}
-	sb.WriteString("(")
+	sb.WriteString("{\"__tuple__\":")
+	sb.WriteString("[")
 	for i, v := range t.values {
 		if v == nil {
 			sb.WriteString("null")
@@ -505,7 +511,7 @@ func (t Tuple) String() string {
 			sb.WriteString(",")
 		}
 	}
-	sb.WriteString(")")
+	sb.WriteString("]}")
 	return sb.String()
 }
 
@@ -515,7 +521,7 @@ func (t Tuple) Clone() Value {
 	for _, v := range t.values {
 		clone = append(clone, v.Clone())
 	}
-	return NewList(clone...)
+	return NewTuple(clone...)
 }
 
 func (t Tuple) MarshalJSON() ([]byte, error) {

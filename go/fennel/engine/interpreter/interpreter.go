@@ -225,6 +225,18 @@ func (i Interpreter) VisitList(values []ast.Ast) (value.Value, error) {
 	return value.NewList(ret...), nil
 }
 
+func (i Interpreter) VisitTuple(values []ast.Ast) (value.Value, error) {
+	ret := make([]value.Value, 0, len(values))
+	for _, v := range values {
+		val, err := v.AcceptValue(i)
+		if err != nil {
+			return value.Nil, err
+		}
+		ret = append(ret, val)
+	}
+	return value.NewTuple(ret...), nil
+}
+
 func (i Interpreter) VisitDict(values map[string]ast.Ast) (value.Value, error) {
 	ret := make(map[string]value.Value, len(values))
 	for k, v := range values {
@@ -335,6 +347,7 @@ func (i Interpreter) getStaticKwargs(op operators.Operator, kwargs ast.Dict) (va
 func (i Interpreter) getContextKwargs(op operators.Operator, trees ast.Dict, inputs []value.List, vars []string) (operators.ZipTable, error) {
 	ret := operators.NewZipTable(op)
 	sig := op.Signature()
+
 	// TODO: relax to potentially having zero inputs?
 	for j := 0; j < inputs[0].Len(); j++ {
 		// TODO: convert these to tuples when tuples are built out
@@ -357,6 +370,7 @@ func (i Interpreter) getContextKwargs(op operators.Operator, trees ast.Dict, inp
 			}
 			varmap[varname] = varval
 		}
+
 		// now using these lambda variables, evaluate kwargs variables
 		kwargs := value.NewDict(nil)
 		for k, p := range sig.ContextKwargs {
@@ -371,6 +385,7 @@ func (i Interpreter) getContextKwargs(op operators.Operator, trees ast.Dict, inp
 				if err != nil {
 					return operators.ZipTable{}, fmt.Errorf("error: %s while evaluating kwarg: %s for operator '%s.%s'", err, k, sig.Module, sig.Name)
 				}
+
 				kwargs.Set(k, val)
 			}
 		}

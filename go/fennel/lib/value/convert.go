@@ -25,6 +25,17 @@ func ToProtoValue(v Value) (PValue, error) {
 		}
 		pvl := &PVList{Values: list}
 		return PValue{Node: &PValue_List{List: pvl}}, nil
+	case Tuple:
+		list := make([]*PValue, t.Len())
+		for i, v := range t.values {
+			pv, err := ToProtoValue(v)
+			if err != nil {
+				return PValue{Node: &PValue_Nil{}}, err
+			}
+			list[i] = &pv
+		}
+		pvl := &PVTuple{Values: list}
+		return PValue{Node: &PValue_Tuple{Tuple: pvl}}, nil
 	case Dict:
 		pvd, err := ToProtoDict(t)
 		if err != nil {
@@ -63,6 +74,17 @@ func FromProtoValue(pv *PValue) (Value, error) {
 			ret = append(ret, v)
 		}
 		return NewList(ret...), nil
+	}
+	if pvl, ok := pv.Node.(*PValue_Tuple); ok {
+		ret := make([]Value, 0)
+		for _, pv := range pvl.Tuple.Values {
+			v, err := FromProtoValue(pv)
+			if err != nil {
+				return Nil, fmt.Errorf("can not convert element of tuple to value: %v", pv)
+			}
+			ret = append(ret, v)
+		}
+		return NewTuple(ret...), nil
 	}
 	if pvd, ok := pv.Node.(*PValue_Dict); ok {
 		ret := make(map[string]Value, 0)

@@ -19,6 +19,7 @@ message Ast {
     FnCall fncall = 13;
     // HighFnCall hfncall = 14; [deprecated now]
     Unary unary = 15;
+    Tuple tuple = 16;
   }
 }
 

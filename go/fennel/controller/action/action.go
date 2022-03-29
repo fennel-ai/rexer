@@ -59,7 +59,9 @@ func BatchInsert(ctx context.Context, tier tier.Tier, as []actionlib.Action) err
 		if a.Timestamp == 0 {
 			a.Timestamp = ftypes.Timestamp(tier.Clock.Now())
 		}
+		fmt.Println("Before proto action: ", a)
 		pa, err := actionlib.ToProtoAction(a)
+		fmt.Println("Proto form of action: ", pa)
 		if err != nil {
 			return err
 		}
