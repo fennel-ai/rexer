@@ -24,7 +24,10 @@ type Cache interface {
 	// NOTE: the logic in func `l` must use the `txn` instance to modify the
 	// state of the cache. In the failure mode (txn could not be committed after retries),
 	// all the cache entries corresponding to `keys` are invalidated to NOT leave the
-	// cache in a potentially inconsistent state
+	// cache in a potentially inconsistent state.
+	//
+	// Returns an error in case the txn could not be committed and invalidating cache entries
+	// failed.
 	RunAsTxn(ctx context.Context, l func(txn Txn, keys []string) error, keys []string, r int) error
 
 	// Nil returns the error that the cache returns when the key isn't found
@@ -40,5 +43,16 @@ type Txn interface {
 	MGet(ctx context.Context, k ...string) ([]interface{}, error)
 
 	Set(ctx context.Context, k string, v interface{}, ttl time.Duration) error
-	MSet(ctx context.Context, ks []string, vs []interface{}, ttls []time.Duration) error
+
+	// MSetNoTxn sets multiple keys and values without using a transaction pipeline
+	//
+	// We use TxPipeline to enforce cross-slot errors. In case of a txn, we are dealing only with
+	// the keys in the same slot
+	MSetNoTxn(ctx context.Context, ks []string, vs []interface{}, ttls []time.Duration) error
+
+	// sets given expiration on the given redis key
+	Expire(ctx context.Context, ks []string, ttls []time.Duration) error
+
+	// persists the given key
+	Persist(ctx context.Context, ks []string) error
 }

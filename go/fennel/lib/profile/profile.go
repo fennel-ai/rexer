@@ -63,6 +63,19 @@ func (ser *ProfileItemSer) ToProfileItem() (*ProfileItem, error) {
 	return &pr, nil
 }
 
+func (ser *ProfileItemSer) Validate() error {
+	if ser.Version == 0 {
+		return fmt.Errorf("version can not be zero")
+	}
+	if len(ser.Key) > 255 {
+		return fmt.Errorf("Key too long: keys can only be upto 255 chars")
+	}
+	if len(ser.OType) > 255 {
+		return fmt.Errorf("otype too long: otypes can only be upto 255 chars")
+	}
+	return nil
+}
+
 func FromProfileItemSerList(plSer []ProfileItemSer) ([]ProfileItem, error) {
 	pl := make([]ProfileItem, len(plSer))
 	for i, prSer := range plSer {

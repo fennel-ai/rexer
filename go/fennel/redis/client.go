@@ -89,6 +89,23 @@ func (c Client) MSet(ctx context.Context, keys []string, values []interface{}, t
 	return err
 }
 
+func (c Client) MSetNoTxn(ctx context.Context, keys []string, values []interface{}, ttls []time.Duration) error {
+	defer timer.Start(ctx, c.ID(), "redis.mset_notxn").Stop()
+	// nothing to write if there are no keys.
+	if len(keys) == 0 {
+		return nil
+	}
+	if len(keys) != len(values) || len(keys) != len(ttls) {
+		return fmt.Errorf("keys, values, and ttls should all be slices of the same length")
+	}
+	pipe := c.client.Pipeline()
+	for i, key := range keys {
+		pipe.Set(ctx, c.tieredKey(key), values[i], ttls[i])
+	}
+	_, err := pipe.Exec(ctx)
+	return err
+}
+
 // SetNXPipelined pipelines and executes multiple SetNX commands and returns their result as a list of bools
 // Returns any error before execution but ignores errors that happen during execution
 func (c Client) SetNXPipelined(ctx context.Context, keys []string, values []interface{}, ttls []time.Duration) (
@@ -119,6 +136,34 @@ func (c Client) SetNXPipelined(ctx context.Context, keys []string, values []inte
 		}
 	}
 	return ok, nil
+}
+
+func (c Client) Expire(ctx context.Context, keys []string, ttls []time.Duration) error {
+	defer timer.Start(ctx, c.ID(), "redis.expire").Stop()
+
+	pipe := c.client.Pipeline()
+	for i, key := range keys {
+		err := pipe.Expire(ctx, c.tieredKey(key), ttls[i]).Err()
+		if err != nil {
+			return err
+		}
+	}
+	_, err := pipe.Exec(ctx)
+	return err
+}
+
+func (c Client) Persist(ctx context.Context, keys []string) error {
+	defer timer.Start(ctx, c.ID(), "redis.persist").Stop()
+
+	pipe := c.client.Pipeline()
+	for _, key := range keys {
+		err := pipe.Persist(ctx, c.tieredKey(key)).Err()
+		if err != nil {
+			return err
+		}
+	}
+	_, err := pipe.Exec(ctx)
+	return err
 }
 
 func (c Client) tieredKey(k string) string {

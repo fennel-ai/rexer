@@ -37,14 +37,8 @@ func (D dbProvider) setBatch(ctx context.Context, tier tier.Tier, profiles []pro
 	}
 	// validate profiles
 	for _, profile := range profiles {
-		if profile.Version == 0 {
-			return fmt.Errorf("version can not be zero")
-		}
-		if len(profile.Key) > 255 {
-			return fmt.Errorf("Key too long: keys can only be upto 255 chars")
-		}
-		if len(profile.OType) > 255 {
-			return fmt.Errorf("otype too long: otypes can only be upto 255 chars")
+		if err := profile.Validate(); err != nil {
+			return err
 		}
 	}
 
@@ -60,6 +54,8 @@ func (D dbProvider) setBatch(ctx context.Context, tier tier.Tier, profiles []pro
 	}
 	sql = strings.TrimSuffix(sql, ",") // remove the last trailing comma
 
+	// this is to simulate insert if not exists semantics in sql
+	sql += " ON DUPLICATE KEY UPDATE value=value;"
 	_, err := tier.DB.ExecContext(ctx, sql, vals...)
 	return err
 }
@@ -127,7 +123,7 @@ func (D dbProvider) getVersionBatched(ctx context.Context, tier tier.Tier, vids 
 	`
 	v := make([]interface{}, 0)
 	inval := "("
-	for vid, _ := range vidUnique {
+	for vid := range vidUnique {
 		inval += "(?, ?, ?),"
 		v = append(v, vid.otype, vid.oid, vid.key)
 	}
