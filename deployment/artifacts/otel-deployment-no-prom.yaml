@@ -1,0 +1,322 @@
+# Remove this once Amazon Managed Prometheus is available in other regions and we migrate away from
+# self hosted prometheus instances.
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: otel-eks
+  labels:
+    name: otel-eks
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: otel-collector-account
+  namespace: otel-eks
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: aoc-agent-role
+rules:
+  - apiGroups:
+      - ""
+    resources:
+      - nodes
+      - nodes/proxy
+      - nodes/metrics
+      - services
+      - endpoints
+      - pods
+    verbs:
+      - get
+      - list
+      - watch
+  - apiGroups:
+      - ""
+    resources:
+      - nodes/stats
+      - configmaps
+      - events
+    verbs:
+      - create
+      - get
+  # To ensure that only one ADOT collector from the DaemonSet is collecting cluster-level metrics
+  - apiGroups:
+      - ""
+    resources:
+      - configmaps
+    resourceNames:
+      - otel-container-insight-clusterleader
+    verbs:
+      - get
+      - update
+  - apiGroups:
+      - extensions
+    resources:
+      - ingresses
+    verbs:
+      - get
+      - list
+      - watch
+  - apiGroups:
+      - apps
+    resources:
+      - replicasets
+    verbs:
+      - list
+      - watch
+  - apiGroups:
+      - batch
+    resources:
+      - jobs
+    verbs:
+      - list
+      - watch
+  - nonResourceURLs:
+      - /metrics
+    verbs:
+      - get
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: aoc-agent-role-binding
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: aoc-agent-role
+subjects:
+  - kind: ServiceAccount
+    name: otel-collector-account
+    namespace: otel-eks
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: otel-agent-conf
+  namespace: otel-eks
+  labels:
+    app: opentelemetry
+    component: otel-agent-conf
+data:
+  otel-agent-config: |
+    extensions:
+      health_check:
+      pprof:
+      zpages:
+
+    receivers:
+      otlp:
+        protocols:
+          grpc:
+            endpoint: 0.0.0.0:4317
+          http:
+            endpoint: 0.0.0.0:4318
+      awscontainerinsightreceiver:
+
+    processors:
+      batch/traces:
+        timeout: 10s
+        send_batch_size: 50
+      batch/metrics:
+        timeout: 60s
+      resourcedetection:
+        detectors:
+          - env
+          - system
+          - ec2
+          - eks
+        timeout: 10s
+        override: false
+      resource:
+        attributes:
+          - key: TaskId
+            from_attribute: job
+            action: insert
+
+    exporters:
+      awsxray:
+      awsemf/containerinsights:
+        namespace: ContainerInsights
+        log_group_name: '/aws/containerinsights/%%PLANE_ID%%/{ClusterName}/performance'
+        log_stream_name: '{NodeName}'
+        resource_to_telemetry_conversion:
+          enabled: true
+        dimension_rollup_option: NoDimensionRollup
+        parse_json_encoded_attr_values: [Sources, kubernetes]
+        metric_declarations:
+          # node metrics
+          - metric_name_selectors:
+              - node_cpu_utilization
+              - node_memory_utilization
+              - node_network_total_bytes
+              - node_cpu_reserved_capacity
+              - node_memory_reserved_capacity
+              - node_number_of_running_pods
+              - node_number_of_running_containers
+            dimensions: [[NodeName, InstanceId, ClusterName]]
+          - metric_name_selectors:
+              - node_cpu_utilization
+              - node_memory_utilization
+              - node_network_total_bytes
+              - node_cpu_reserved_capacity
+              - node_memory_reserved_capacity
+              - node_number_of_running_pods
+              - node_number_of_running_containers
+              - node_cpu_usage_total
+              - node_cpu_limit
+              - node_memory_working_set
+              - node_memory_limit
+            dimensions: [[ClusterName]]
+          # pod metrics
+          - metric_name_selectors:
+              - pod_cpu_utilization
+              - pod_memory_utilization
+              - pod_network_rx_bytes
+              - pod_network_tx_bytes
+              - pod_cpu_utilization_over_pod_limit
+              - pod_memory_utilization_over_pod_limit
+            dimensions: [[PodName, Namespace, ClusterName], [Service, Namespace, ClusterName], [Namespace, ClusterName], [ClusterName]]
+          - metric_name_selectors:
+              - pod_cpu_reserved_capacity
+              - pod_memory_reserved_capacity
+            dimensions: [[PodName, Namespace, ClusterName], [ClusterName]]
+          - metric_name_selectors:
+              - pod_number_of_container_restarts
+            dimensions: [[PodName, Namespace, ClusterName]]
+          # cluster metrics
+          - metric_name_selectors:
+              - cluster_node_count
+              - cluster_failed_node_count
+            dimensions: [[ClusterName]]
+          # service metrics
+          - metric_name_selectors:
+              - service_number_of_running_pods
+            dimensions: [[Service, Namespace, ClusterName], [ClusterName]]
+          # node fs metrics
+          - metric_name_selectors:
+              - node_filesystem_utilization
+            dimensions: [[NodeName, InstanceId, ClusterName], [ClusterName]]
+          # namespace metrics
+          - metric_name_selectors:
+              - namespace_number_of_running_pods
+            dimensions: [[Namespace, ClusterName], [ClusterName]]
+
+    service:
+      telemetry:
+        logs:
+          level: "debug"
+      extensions:
+        - health_check
+        - pprof
+        - zpages
+      pipelines:
+        traces:
+          receivers:
+            - otlp
+          processors:
+            - batch/traces
+          exporters:
+            - awsxray
+        metrics/containerinsights:
+          receivers:
+            - awscontainerinsightreceiver
+          processors:
+            - resourcedetection
+            - resource
+            - batch/metrics
+          exporters:
+            - awsemf/containerinsights
+
+---
+# create Daemonset
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: otel-collector
+  namespace: otel-eks
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      name: otel-collector
+  template:
+    metadata:
+      labels:
+        name: otel-collector
+    spec:
+      serviceAccountName: otel-collector-account
+      containers:
+        - name: otel-collector
+          image: otel/opentelemetry-collector-contrib:latest
+          env:
+            - name: K8S_NODE_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: spec.nodeName
+            - name: HOST_IP
+              valueFrom:
+                fieldRef:
+                  fieldPath: status.hostIP
+            - name: HOST_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: spec.nodeName
+            - name: K8S_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+          imagePullPolicy: Always
+          command:
+            - "/otelcontribcol"
+            - "--config=/conf/otel-agent-config.yaml"
+          volumeMounts:
+            - name: rootfs
+              mountPath: /rootfs
+              readOnly: true
+            - name: dockersock
+              mountPath: /var/run/docker.sock
+              readOnly: true
+            - name: varlibdocker
+              mountPath: /var/lib/docker
+              readOnly: true
+            - name: sys
+              mountPath: /sys
+              readOnly: true
+            - name: devdisk
+              mountPath: /dev/disk
+              readOnly: true
+            - name: otel-agent-config-vol
+              mountPath: /conf
+          resources:
+            limits:
+              cpu: 512m
+              memory: 512Mi
+            requests:
+              cpu: 128m
+              memory: 128Mi
+      volumes:
+        - configMap:
+            name: otel-agent-conf
+            items:
+              - key: otel-agent-config
+                path: otel-agent-config.yaml
+          name: otel-agent-config-vol
+        - name: rootfs
+          hostPath:
+            path: /
+        - name: dockersock
+          hostPath:
+            path: /var/run/docker.sock
+        - name: varlibdocker
+          hostPath:
+            path: /var/lib/docker
+        - name: sys
+          hostPath:
+            path: /sys
+        - name: devdisk
+          hostPath:
+            path: /dev/disk/
+---
+

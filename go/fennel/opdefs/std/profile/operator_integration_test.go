@@ -36,10 +36,7 @@ func TestProfileOpMultipleObjs(t *testing.T) {
 	assert.NoError(t, profile.Set(ctx, tier, req2b))
 
 	query := ast.OpCall{
-		Operands: []ast.Ast{ast.Lookup{
-			On:       ast.Var{Name: "args"},
-			Property: "actions",
-		}},
+		Operands:  []ast.Ast{ast.Var{Name: "actions"}},
 		Vars:      []string{"at"},
 		Namespace: "std",
 		Name:      "profile",
@@ -81,7 +78,7 @@ func TestNonDictProfile(t *testing.T) {
 	req1b := profilelib.ProfileItem{OType: otype, Oid: 2, Key: key, Value: value.Int(15)}
 	assert.NoError(t, profile.Set(ctx, tier, req1b))
 
-	intable := []value.Dict{
+	intable := []value.Value{
 		value.NewDict(map[string]value.Value{
 			"index": value.Int(1),
 		}),

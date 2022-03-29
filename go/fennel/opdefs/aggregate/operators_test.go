@@ -13,7 +13,7 @@ import (
 	libaggregate "fennel/lib/aggregate"
 	"fennel/lib/ftypes"
 	"fennel/lib/value"
-	_ "fennel/opdefs/std"
+	_ "fennel/opdefs/std/set"
 	"fennel/test"
 	"fennel/test/optest"
 )
@@ -65,7 +65,7 @@ func TestAggValue_Apply(t *testing.T) {
 	assert.Equal(t, value.Int(1), found)
 
 	static := value.NewDict(map[string]value.Value{"field": value.String("myaggresults"), "aggregate": value.String(agg.Name)})
-	inputs := []value.Dict{
+	inputs := []value.Value{
 		value.NewDict(map[string]value.Value{"a": value.String("hi")}),
 		value.NewDict(map[string]value.Value{"a": value.String("bye")}),
 		value.NewDict(map[string]value.Value{"a": value.String("yo")}),
@@ -83,7 +83,7 @@ func TestAggValue_Apply(t *testing.T) {
 		value.NewDict(map[string]value.Value{"a": value.String("yo"), "myaggresults": value.Int(0)}),
 		value.NewDict(map[string]value.Value{"a": value.String("kwargs"), "myaggresults": value.Int(1)}),
 	}
-	optest.Assert(t, tier, &AggValue{tier}, static, inputs, contextKwargs, outputs)
+	optest.AssertEqual(t, tier, &AggValue{tier}, static, inputs, contextKwargs, outputs)
 
 	static = value.NewDict(map[string]value.Value{"aggregate": value.String(agg.Name)})
 	outputs = []value.Value{
@@ -92,16 +92,18 @@ func TestAggValue_Apply(t *testing.T) {
 		value.Int(0),
 		value.Int(1),
 	}
-	optest.Assert(t, tier, &AggValue{tier}, static, inputs, contextKwargs, outputs)
+	optest.AssertEqual(t, tier, &AggValue{tier}, static, inputs, contextKwargs, outputs)
 }
 
 func getQuery() ast.Ast {
 	return ast.OpCall{
+		Namespace: "std",
+		Name:      "set",
 		Operands: []ast.Ast{ast.OpCall{
-			Operands:  []ast.Ast{ast.Lookup{On: ast.Var{Name: "args"}, Property: "actions"}},
-			Vars:      []string{"a"},
 			Namespace: "std",
-			Name:      "addField",
+			Name:      "set",
+			Operands:  []ast.Ast{ast.Var{Name: "actions"}},
+			Vars:      []string{"a"},
 			Kwargs: ast.Dict{Values: map[string]ast.Ast{
 				"name": ast.MakeString("groupkey"),
 				"value": ast.Lookup{
@@ -110,8 +112,6 @@ func getQuery() ast.Ast {
 				}},
 			},
 		}},
-		Namespace: "std",
-		Name:      "addField",
 		Kwargs: ast.Dict{Values: map[string]ast.Ast{
 			"name":  ast.MakeString("value"),
 			"value": ast.MakeInt(1),

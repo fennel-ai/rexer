@@ -9,7 +9,7 @@ import (
 )
 
 func TestShuffleOperator_Apply(t *testing.T) {
-	intable := []value.Dict{
+	intable := []value.Value{
 		value.NewDict(map[string]value.Value{"name": value.String("first")}),
 		value.NewDict(map[string]value.Value{"name": value.String("second")}),
 		value.NewDict(map[string]value.Value{"name": value.String("third")}),
@@ -20,7 +20,7 @@ func TestShuffleOperator_Apply(t *testing.T) {
 	tr := tier.Tier{}
 	outTable := make([]value.Value, len(intable))
 	for i, in := range intable {
-		outTable[i] = in.Clone()
+		outTable[i] = in
 	}
 	optest.AssertElementsMatch(t, tr, &ShuffleOperator{}, staticKwargs, intable, contextKwargs, outTable)
 }

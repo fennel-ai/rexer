@@ -55,32 +55,45 @@ func NewInterpreter(bootargs map[string]interface{}) Interpreter {
 }
 
 func (i Interpreter) queryArgs() value.Dict {
-	args, err := i.env.Lookup("args")
+	// query args are present in the root Env (has no parent)
+	rootEnv := i.env
+	for rootEnv.parent != nil {
+		rootEnv = rootEnv.parent
+	}
+	args, err := rootEnv.Lookup("__args__")
 	if err != nil {
-		return value.Dict{}
+		return value.NewDict(map[string]value.Value{})
 	}
-	asdict, ok := args.(value.Dict)
+	asDict, ok := args.(value.Dict)
 	if !ok {
-		return value.Dict{}
+		return value.NewDict(map[string]value.Value{})
 	}
-	return asdict
+	return asDict
 }
 
-// Eval the given query in separate goroutine after setting Var("args") -> args
+// Eval the given query in separate goroutine after unpacking args
 // args are set up in the base environment, which makes it possible for
-// user query to create own variable called "args" which may shadow query args
+// user query to create own variables with names which may shadow variables in query args
 func (i Interpreter) Eval(query ast.Ast, args value.Dict) (value.Value, error) {
 	resch := make(chan value.Value, 1)
 	errch := make(chan error, 1)
 	go func() {
 		ii := NewInterpreter(i.bootargs)
-		if err := ii.env.Define("args", args); err != nil {
+		err := ii.env.Define("__args__", args)
+		if err != nil {
 			errch <- err
 			return
 		}
+		args := args.Iter()
+		for name, val := range args {
+			if err = ii.env.Define(name, val); err != nil {
+				errch <- err
+				return
+			}
+		}
 		// push a new environment on top of base environment
-		// this way, user query can define a variable called "args" if they want to
-		// which will mask the query args
+		// this way, user query can define variables with the
+		// same names as those in query args which they will now mask
 		ii.env = ii.env.PushEnv()
 		res, err := query.AcceptValue(ii)
 		if err != nil {
@@ -108,7 +121,7 @@ func (i Interpreter) VisitLookup(on ast.Ast, property string) (value.Value, erro
 	}
 	ret, ok := asdict.Get(property)
 	if !ok {
-		return value.Nil, fmt.Errorf("property: %s does not exist in the dictionary: '%s'", property, asdict)
+		return value.Nil, fmt.Errorf("property '%s' does not exist in the dictionary: '%s'", property, asdict)
 	}
 	return ret, nil
 }
@@ -381,7 +394,7 @@ func (i Interpreter) getContextKwargs(op operators.Operator, trees ast.Dict, inp
 			case ok:
 				val, err := i.visitInContext(tree, varmap)
 				if err != nil {
-					return operators.ZipTable{}, fmt.Errorf("error: %s while evaluating kwarg: %s for operator '%s.%s'", err, k, sig.Module, sig.Name)
+					return operators.ZipTable{}, fmt.Errorf("error: %s while evaluating kwarg '%s' for operator '%s.%s'", err, k, sig.Module, sig.Name)
 				}
 				kwargs.Set(k, val)
 			}

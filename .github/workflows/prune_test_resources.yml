@@ -16,21 +16,29 @@ jobs:
   # This workflow contains a single job called "build"
   build:
     # The type of runner that the job will run on
-    runs-on: [self-hosted, Linux, X64]
+    runs-on: [self-hosted, Linux, X64, e2e-tests]
 
     # Steps represent a sequence of tasks that will be executed as part of the job
     steps:
       # Install build essentials
       - name: install build essential
-        run: sudo apt-get --assume-yes install build-essential
+        run: |
+          sudo apt-get --assume-yes install build-essential
+          sudo apt-get --assume-yes install pkg-config
 
       # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
       - uses: actions/checkout@v2
-      
+
       # Install go (we use 1.17.0 version, so we will stick to it)
       - uses: actions/setup-go@v2
         with:
           go-version: '1.17'
+
+      - name: Install kafka dependencies
+        run: |
+          sudo apt-get --assume-yes remove --auto-remove librdkafka-dev
+          sudo apt-get --assume-yes install libssl-dev
+          sudo curl -Lk -o $HOME/librdkafka-1.8.0.tar.gz https://github.com/edenhill/librdkafka/archive/v1.8.0.tar.gz &&       tar -xzf $HOME/librdkafka-1.8.0.tar.gz -C $HOME &&  cd $HOME/librdkafka-1.8.0 &&  ./configure && make && sudo make install && sudo ldconfig && sudo make clean && ./configure --clean
 
       - name: prune test resources
         env:

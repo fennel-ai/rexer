@@ -9,6 +9,7 @@ import (
 	"fennel/engine/ast"
 	"fennel/engine/operators"
 	"fennel/lib/value"
+	_ "fennel/opdefs/std"
 )
 
 func TestInterpreter_VisitOpcall(t *testing.T) {
@@ -55,9 +56,9 @@ func TestInterpreter_VisitOpcall(t *testing.T) {
 		},
 	}
 	testValid(t, ast.OpCall{
-		Operands:  []ast.Ast{astTable},
 		Namespace: "std",
 		Name:      "filter",
+		Operands:  []ast.Ast{astTable},
 		Kwargs:    kwargs,
 	}, table)
 
@@ -68,9 +69,9 @@ func TestInterpreter_VisitOpcall(t *testing.T) {
 		},
 	}
 	testValid(t, ast.OpCall{
-		Operands:  []ast.Ast{astTable},
 		Namespace: "std",
 		Name:      "filter",
+		Operands:  []ast.Ast{astTable},
 		Kwargs:    kwargs,
 	}, value.NewList())
 
@@ -88,10 +89,10 @@ func TestInterpreter_VisitOpcall(t *testing.T) {
 	expected.Append(row1)
 	expected.Append(row3)
 	testValid(t, ast.OpCall{
-		Operands:  []ast.Ast{astTable},
-		Vars:      []string{"myvar"},
 		Namespace: "std",
 		Name:      "filter",
+		Operands:  []ast.Ast{astTable},
+		Vars:      []string{"myvar"},
 		Kwargs:    kwargs,
 	}, expected)
 }
@@ -120,12 +121,9 @@ func TestInterpreter_VisitOpcall3(t *testing.T) {
 	operators.Register(&testOpInit{})
 	// then create an ast that uses this op
 	query := ast.OpCall{
-		Operands: []ast.Ast{ast.Lookup{
-			On:       ast.Var{Name: "args"},
-			Property: "table",
-		}},
 		Namespace: "test",
 		Name:      "op",
+		Operands:  []ast.Ast{ast.Var{Name: "table"}},
 		Kwargs:    ast.Dict{},
 	}
 	table := value.List{}
@@ -145,12 +143,9 @@ func TestInterpreter_VisitOpcall3(t *testing.T) {
 func TestInterpreter_VisitOpcall4(t *testing.T) {
 	operators.Register(testOpDefault{})
 	query := ast.OpCall{
-		Operands: []ast.Ast{ast.Lookup{
-			On:       ast.Var{Name: "args"},
-			Property: "table",
-		}},
 		Namespace: "test",
 		Name:      "testop",
+		Operands:  []ast.Ast{ast.Var{Name: "table"}},
 		Kwargs:    ast.Dict{},
 	}
 	table := value.NewList()
@@ -171,12 +166,9 @@ func TestInterpreter_VisitOpcall5(t *testing.T) {
 	operators.Register(&rowCount{})
 	query := ast.OpCall{
 		Operands: []ast.Ast{ast.OpCall{
-			Operands: []ast.Ast{ast.Lookup{
-				On:       ast.Var{Name: "args"},
-				Property: "input",
-			}},
 			Namespace: "test",
 			Name:      "row_count",
+			Operands:  []ast.Ast{ast.Var{Name: "input"}},
 			Kwargs:    ast.Dict{},
 		}},
 		Namespace: "test",

@@ -15,7 +15,7 @@ jobs:
   # This workflow contains a single job called "build"
   build:
     # The type of runner that the job will run on
-    runs-on: [self-hosted, Linux, X64]
+    runs-on: [self-hosted, Linux, X64, e2e-tests]
 
     # Steps represent a sequence of tasks that will be executed as part of the job
     steps:
@@ -87,4 +87,4 @@ jobs:
           TIER_ID: ${{ secrets.TIER_ID }}
         working-directory: ../rexer-pyclient-alpha/rexer-client-${{ github.run_id }}-${{ github.run_number }}-${{ github.run_attempt }}
         run: |
-          poetry run python -m unittest discover ../../rexer/e2etests
+          poetry run python -m unittest discover ../../rexer/e2etests -p "teste2e.py"

@@ -284,16 +284,6 @@ data:
               - namespace_number_of_running_pods
             dimensions: [[Namespace, ClusterName], [ClusterName]]
 
-      awsemf/prometheus:
-        namespace: ContainerInsights/Prometheus
-        log_group_name: "/aws/containerinsights/%%PLANE_ID%%/{ClusterName}/prometheus"
-        log_stream_name: "{TaskId}"
-        resource_to_telemetry_conversion:
-          enabled: true
-        dimension_rollup_option: NoDimensionRollup
-        parse_json_encoded_attr_values: [Sources, kubernetes]
-        metric_declarations:
-
       awsprometheusremotewrite:
         # This should be replaced before it is used for deployment
         endpoint: "%%AMP_ENDPOINT%%"
@@ -324,7 +314,8 @@ data:
             - resourcedetection
             - resource
             - batch/metrics
-          exporters: %%CONTAINER_INSIGHTS_EXPORTERS%%
+          exporters:
+            - awsemf/containerinsights
         metrics/prometheus:
           receivers:
             - prometheus
@@ -332,7 +323,8 @@ data:
             - resourcedetection
             - resource
             - batch/metrics
-          exporters: %%PROMETHEUS_EXPORTERS%%
+          exporters:
+            - awsprometheusremotewrite
 
 ---
 # create Daemonset

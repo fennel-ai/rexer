@@ -9,7 +9,7 @@ import (
 )
 
 func TestUniqueOperator_Apply(t *testing.T) {
-	intable := []value.Dict{
+	intable := []value.Value{
 		value.NewDict(map[string]value.Value{"foo": value.Int(2)}),
 		value.NewDict(map[string]value.Value{"foo": value.NewDict(map[string]value.Value{"col1": value.String("age")})}),
 		value.NewDict(map[string]value.Value{"bar": value.NewList(value.String("bar"), value.String("bar"))}),
@@ -35,5 +35,5 @@ func TestUniqueOperator_Apply(t *testing.T) {
 
 	tr := tier.Tier{}
 	skwargs := value.NewDict(map[string]value.Value{"name": value.String("foo")})
-	optest.Assert(t, tr, &UniqueOperator{}, skwargs, intable, contextKwargTable, expected)
+	optest.AssertElementsMatch(t, tr, &UniqueOperator{}, skwargs, intable, contextKwargTable, expected)
 }

@@ -7,7 +7,8 @@ import unittest
 
 import lib
 
-from rexerclient.rql import var, op, cond
+from rexerclient.rql import var, cond, in_, len_, op
+import rexerclient as rex
 from rexerclient import client
 from rexerclient.models import action, profile
 
@@ -54,36 +55,45 @@ class TestEndToEnd(unittest.TestCase):
         content_id = 456
         category = 'sports'
 
-        # Open rate for the user by the hour in the last 7 days:
-        actions = var('args').actions
-        notif_events = op.std.filter(actions, var='a', where=(var('a').action_type == 'notif_send') |(var('a').action_type == 'notif_open'))
-        with_time = op.time.addTimeBucketOfDay(notif_events, var='e', name='hour', timestamp=var('e').timestamp, bucket=3600)
-        with_key = op.std.addField(with_time, var='e', name='groupkey', value=[var('e').actor_id, var('e').hour])
-        with_val = op.std.addField(with_key, var='e', name='value', value=cond(var('e').action_type == 'notif_send', [0, 1], [1, 0]))
-        options = {'aggregate_type': 'rate', 'durations': [4*24*3600, 7*24*3600], 'normalize': True}
-        c.store_aggregate('user_notif_open_rate_by_hour_7days', with_val, options)
+        @rex.aggregate(
+            name='user_notif_open_rate_by_hour',
+            aggregate_type='rate', action_types=['notif_send', 'notif_open'],
+            config={'durations': [4 * 24 * 3600, 7 * 24 * 3600], 'normalize': True},
+        )
+        def agg_user_notif_open_rate_by_hour(actions):
+            with_time = op.std.set(actions, var='e', name='hour', value=var('e').timestamp % (24 * 3600) // 3600)
+            with_key = op.std.set(with_time, var='e', name='groupkey', value=[var('e').actor_id, var('e').hour])
+            return op.std.set(with_key, var='e', name='value', value=cond(var('e').action_type == 'notif_send', [0, 1], [1, 0]))
+        agg_user_notif_open_rate_by_hour.store(client=c)
 
-        # User CTR on notifs belonging to category X. Last 7 days.
-        q = op.std.profile(notif_events, field='category', otype='content', key='category', var='e', oid=var('e').target_id)
-        q = op.std.addField(q, var='e', name='groupkey', value=[var('e').actor_id, var('e').category])
-        q = op.std.addField(q, var='e', name='value', value=cond(var('e').action_type == 'notif_send', [0, 1], [1, 0]))
+        @rex.aggregate(
+            name='user_notif_open_rate_by_category',
+            aggregate_type='rate', action_types=['notif_send', 'notif_open'],
+            config={'durations': [4 * 24 * 3600, 7 * 24 * 3600], 'normalize': True},
+        )
+        def agg_user_notif_open_rate_by_category(actions):
+            q = op.std.profile(actions, field='category', otype='content', key='category', var='e', oid=var('e').target_id)
+            q = op.std.set(q, var='e', name='groupkey', value=[var('e').actor_id, var('e').category])
+            return op.std.set(q, var='e', name='value', value=cond(var('e').action_type == 'notif_send', [0, 1], [1, 0]))
+        agg_user_notif_open_rate_by_category.store(client=c)
 
-        options = {'aggregate_type': 'rate', 'durations': [7*24*3600], 'normalize': True}
-        c.store_aggregate('user_notif_open_rate_by_category_hour_7days', q, options)
+        @rex.aggregate(
+            name='content_num_reactions',
+            aggregate_type='sum', action_types=['react'], config={'durations': [7 * 24 * 3600]},
+        )
+        def agg_reactions_by_post(actions):
+            q = op.std.set(actions, var='e', name='groupkey', value=var('e').target_id)
+            return op.std.set(q, name='value', value=1)
+        agg_reactions_by_post.store(client=c)
 
-        # total reactions on a piece of content
-        q = op.std.filter(actions, var='a', where=var('a').action_type == 'react')
-        q = op.std.addField(q, var='e', name='groupkey', value=var('e').target_id)
-        q = op.std.addField(q, name='value', value=1)
-        options = {'aggregate_type': 'sum', 'durations': [3*3600]}
-        c.store_aggregate('content_num_reactions_last_3hours', q, options)
-        #
-        # # num of notifs opened by user in the last 3 days
-        q = op.std.filter(actions, var='a', where=var('a').action_type == 'notif_open')
-        q = op.std.addField(q, var='e', name='groupkey', value=var('e').actor_id)
-        q = op.std.addField(q, name='value', value=1)
-        options = {'aggregate_type': 'sum', 'durations': [3*24*3600]}
-        c.store_aggregate('user_num_notif_opens_last_3days', q, options)
+        @rex.aggregate(
+            name='user_num_notif_opens',
+            aggregate_type='sum', action_types=['notif_open'], config={'durations': [7 * 24 * 3600]},
+        )
+        def agg_user_num_notif_opens(actions):
+            q = op.std.set(actions, var='e', name='groupkey', value=var('e').actor_id)
+            return op.std.set(q, name='value', value=1)
+        agg_user_num_notif_opens.store(client=c)
 
         c.set_profile("content", content_id, "category", category)
         self.assertEqual(category, c.get_profile("content", content_id, "category"))
@@ -106,6 +116,22 @@ class TestEndToEnd(unittest.TestCase):
         # this action was logged 8 days in history so should not apply towards any aggregate
         c.log(action.Action(actor_type='user', actor_id=uid, target_type='content', target_id=content_id,
                             action_type='notif_send', request_id=7, timestamp=ts-8*24*3600))
+
+        # also verify that test of actions works well
+        actions = [a1, a2, a3, a4]
+        expected = [
+            {'action_type': 'notif_send', 'actor_id': 12312, 'actor_type': 'user', 'category': 'sports',
+             'dedup_key': 'a1', 'groupkey': [12312, 'sports'], 'metadata': {}, 'request_id': 1, 'target_id': 456,
+             'target_type': 'content', 'timestamp': ts, 'value': [0, 1]},
+            {'action_type': 'notif_send', 'actor_id': 12312, 'actor_type': 'user', 'category': 'sports',
+             'dedup_key': 'a2', 'groupkey': [12312, 'sports'], 'metadata': {}, 'request_id': 1, 'target_id': 456,
+             'target_type': 'content', 'timestamp': ts+1, 'value': [0, 1]},
+            {'action_type': 'notif_open', 'actor_id': 12312, 'actor_type': 'user', 'category': 'sports',
+             'dedup_key': 'a3', 'groupkey': [12312, 'sports'], 'metadata': {}, 'request_id': 1, 'target_id': 456,
+             'target_type': 'content', 'timestamp': ts+2, 'value': [1, 0]}
+        ]
+        self.assertEqual(expected, agg_user_notif_open_rate_by_category.test(actions, client=c))
+
         b = int((ts % (24*3600)) / 3600)
 
         # now sleep for upto a minute and verify count processing worked
@@ -118,13 +144,10 @@ class TestEndToEnd(unittest.TestCase):
         expected3 = 1
         expected4 = 1
         while slept < 120:
-            found1 = c.aggregate_value(
-                'user_notif_open_rate_by_hour_7days',
-                [uid, b],
-            )
-            found2 = c.aggregate_value('user_notif_open_rate_by_category_hour_7days', [uid, category])
-            found3 = c.aggregate_value('content_num_reactions_last_3hours', content_id)
-            found4 = c.aggregate_value('user_num_notif_opens_last_3days', uid)
+            found1 = c.aggregate_value('user_notif_open_rate_by_hour', [uid, b])
+            found2 = c.aggregate_value('user_notif_open_rate_by_category', [uid, category])
+            found3 = c.aggregate_value('content_num_reactions', content_id)
+            found4 = c.aggregate_value('user_num_notif_opens', uid)
             if found1 == expected1 and found2 == expected2 and found3 == expected3 and found4 == expected4:
                 passed = True
                 break
@@ -282,28 +305,35 @@ class TestEndToEnd(unittest.TestCase):
         self.assertTrue(passed)
 
         # Total views gained by a video in last 2 days for given city+gender+age_group
-        actions = var('args').actions
-        q1 = op.std.filter(actions, var='a', where=(var('a').action_type == 'view') & (var('a').target_type == 'video'))
-        q1 = op.std.profile(q1, var='e', field='city', otype='user', oid=var('e').actor_id, key='city')
-        q1 = op.std.profile(q1, var='e', field='gender', otype='user', oid=var('e').actor_id, key='gender')
-        q1 = op.std.profile(q1, var='e', field='age_group', otype='user', oid=var('e').actor_id, key='age_group')
-        q1 = op.std.addField(q1, name='groupkey', var=('e', ), value=[var('e').target_id, var('e').city, var('e').gender, var('e').age_group])
-        q1 = op.std.addField(q1, name='value', value=1)
+        @rex.aggregate(
+            name='video_view_by_city_gender_agegroup',
+            aggregate_type='sum', action_types=['view'], config={'durations': [2*24*3600]},
+        )
+        def agg1(actions):
+            q = op.std.filter(actions, var='a', where=var('a').target_type == 'video')
+            q = op.std.profile(q, var='e', field='city', otype='user', oid=var('e').actor_id, key='city')
+            q = op.std.profile(q, var='e', field='gender', otype='user', oid=var('e').actor_id, key='gender')
+            q = op.std.profile(q, var='e', field='age_group', otype='user', oid=var('e').actor_id, key='age_group')
+            q = op.std.set(q, name='groupkey', var=('e', ), value=[
+                var('e').target_id, var('e').city, var('e').gender, var('e').age_group
+            ])
+            return op.std.set(q, name='value', value=1)
+        agg1.store(client=c)
 
-        options = {'durations': [3600*24*2], 'aggregate_type': 'sum', }
-        c.store_aggregate('trail_view_by_city_gender_agegroup_2days', q1, options)
-
-        # average watch time of uid on videos created by creator_id by 2 hour windows
-        q2 = op.std.filter(actions, var='a', where=var('a').action_type == 'view')
-        q2 = op.std.profile(q2, var='e', field='creator_id', otype='video', oid=var('e').target_id, key='creatorId')
-        q2 = op.time.addTimeBucketOfDay(q2, var='e', name='time_bucket', timestamp=var('e').timestamp, bucket=2*3600)
-        q2 = op.std.addField(q2, name='groupkey', var='e', value=[var('e').actor_id, var('e').creator_id, var('e').time_bucket])
-        q2 = op.std.addField(q2, name='value', var='e', value=var('e').metadata.watch_time)
-        options = {'aggregate_type': 'average', 'durations': [3600*24*30]}
-        c.store_aggregate('user_creator_avg_watchtime_by_2hour_windows_30days', q2, options)
+        @rex.aggregate(
+            name='user_creator_avg_watchtime_by_2hour_windows',
+            aggregate_type='average', action_types=['view'], config={'durations': [30*24*3600]},
+        )
+        def agg2(actions):
+            q = op.std.filter(actions, var='a', where=var('a').action_type == 'view')
+            q = op.std.profile(q, var='e', field='creator_id', otype='video', oid=var('e').target_id, key='creatorId')
+            q = op.std.set(q, var='e', name='time_bucket', value=var('e').timestamp % (24 * 3600) // (2*3600))
+            q = op.std.set(q, name='groupkey', var='e', value=[var('e').actor_id, var('e').creator_id, var('e').time_bucket])
+            return op.std.set(q, name='value', var='e', value=var('e').metadata.watch_time)
+        agg2.store(client=c)
 
         ts = int(time.time())
-
+        b = int((ts % (24*3600)) / (2*3600))
         # send multiple times with dedup keys
         actions = [
             action.Action(actor_type='user', actor_id=uid, target_type='video', target_id=video_id, action_type='view',
@@ -314,7 +344,6 @@ class TestEndToEnd(unittest.TestCase):
         c.log_multi(actions)
         c.log_multi(actions)
         c.log_multi(actions)
-        b = int((ts % (24*3600)) / (2*3600))
 
         # now sleep for upto a minute and verify count processing worked
         # we could also just sleep for full minute but this rolling sleep
@@ -326,21 +355,15 @@ class TestEndToEnd(unittest.TestCase):
         expected3 = expected4 = 20
         kwargs = {"duration": 1200}
         while slept < 120:
-            found1 = c.aggregate_value(
-                'trail_view_by_city_gender_agegroup_2days',
-                [video_id, city, gender, age_group],
-            )
+            found1 = c.aggregate_value('video_view_by_city_gender_agegroup', [video_id, city, gender, age_group])
             q1 = op.std.aggregate(
                 [{'uid': uid, 'creator_id': creator_id, 'b': b}], field='found',
-                aggregate='user_creator_avg_watchtime_by_2hour_windows_30days', var='e', groupkey=[var('e').uid, var('e').creator_id, var('e').b]
+                aggregate='user_creator_avg_watchtime_by_2hour_windows', var='e', groupkey=[var('e').uid, var('e').creator_id, var('e').b]
             )[0].found
             found2 = c.query(q1)
-            found3 = c.aggregate_value(
-                'user_creator_avg_watchtime_by_2hour_windows_30days',
-                [uid, creator_id, b], kwargs
-            )
+            found3 = c.aggregate_value('user_creator_avg_watchtime_by_2hour_windows', [uid, creator_id, b], kwargs)
             q2 = op.std.aggregate([{'uid': uid, 'creator_id': creator_id, 'b': b}], field='found',
-                aggregate='user_creator_avg_watchtime_by_2hour_windows_30days', var='e',
+                aggregate='user_creator_avg_watchtime_by_2hour_windows', var='e',
                 groupkey=[var('e').uid, var('e').creator_id, var('e').b], kwargs=kwargs
             )[0].found
             found4 = c.query(q2)
@@ -353,9 +376,9 @@ class TestEndToEnd(unittest.TestCase):
         self.assertTrue(passed)
 
         # test with batch_aggregate_value()
-        req1 = ('trail_view_by_city_gender_agegroup_2days', [video_id, city, gender, age_group], None)
-        req2 = ('user_creator_avg_watchtime_by_2hour_windows_30days', [uid, creator_id, b], None)
-        req3 = ('user_creator_avg_watchtime_by_2hour_windows_30days', [uid, creator_id, b], kwargs)
+        req1 = ('video_view_by_city_gender_agegroup', [video_id, city, gender, age_group], None)
+        req2 = ('user_creator_avg_watchtime_by_2hour_windows', [uid, creator_id, b], None)
+        req3 = ('user_creator_avg_watchtime_by_2hour_windows', [uid, creator_id, b], kwargs)
         found1, found2, found3 = c.batch_aggregate_value([req1, req2, req3])
         self.assertEqual(expected1, found1)
         self.assertEqual(expected2, found2)
@@ -363,13 +386,33 @@ class TestEndToEnd(unittest.TestCase):
 
         print('all checks passed...')
 
-    @unittest.skip
     @tiered
     def test_queries(self):
         c = client.Client(URL)
-        cond = cond(var('args').x <= 5, "correct", "incorrect")
-        found = c.query(cond, {'x': 5})
+        cond_ = cond(var('x') <= 5, "correct", "incorrect")
+        found = c.query(cond_, {'x': 5})
         self.assertEqual("correct", found)
+
+        found = c.query(in_(3, [2, 4, len_([1, 2, 3])]))
+        self.assertTrue(found)
+
+        found = c.query(in_('hi', [2, 4, len_([1, 2, 3])]))
+        self.assertFalse(found)
+
+        found = c.query(in_('hi', {'hi': 1, 'bye': 'great'}))
+        self.assertTrue(found)
+
+        found = c.query(in_('missing', {'hi': 1, 'bye': 'great'}))
+        self.assertFalse(found)
+
+        self.assertTrue(c.query(in_(len_([1, 2, 3]), [2, 5, 'hi', 3])))
+
+        # test a complex combination of groupby, sortby and map
+        q = [{'a': 1, 'b': 'one'}, {'a': 2, 'b': 'one'}, {'a': 3, 'b': 'two'}, {'a': 4, 'b': 'three'}]
+        q = op.std.group(q, var='e', by=var('e').b)
+        q = op.std.sort(q, var='g', by=len_(var('g').elements), reverse=True)
+        q = op.std.map(q, var='e', to={'x': var('e').group, 'y': var('e').elements[0].a})
+        self.assertEqual([{'x': 'one', 'y': 1}, {'x': 'two', 'y': 3}, {'x': 'three', 'y': 4}], c.query(q))
 
 
 @unittest.skip
@@ -382,26 +425,32 @@ class TestLoad(unittest.TestCase):
             pass
 
     def set_aggregates(self, c: client.Client):
-        # Total views gained by a video in last 2 days for given city+gender+age_group
-        actions = var('args').actions
-        q1 = op.std.filter(actions, var='a', where=(var('a').action_type == 'view') & (var('a').target_type == 'video'))
-        q1 = op.std.profile(q1, var='e', field='city', otype='user', oid=var('e').actor_id, key='city')
-        q1 = op.std.profile(q1, var='e', field='gender', otype='user', oid=var('e').actor_id, key='gender')
-        q1 = op.std.profile(q1, var='e', field='age_group', otype='user', oid=var('e').actor_id, key='age_group')
-        q1 = op.std.addField(q1, name='groupkey', var=('e', ), value=[var('e').target_id, var('e').city, var('e').gender, var('e').age_group])
-        q1 = op.std.addField(q1, name='value', value=1)
+        @rex.aggregate(
+            name='video_view_by_city_gender_agegroup',
+            aggregate_type='sum', action_types=['view'], config={'durations': [2*24*3600]},
+        )
+        def agg1(actions):
+            q = op.std.filter(actions, var='a', where=var('a').target_type == 'video')
+            q = op.std.profile(q, var='e', field='city', otype='user', oid=var('e').actor_id, key='city')
+            q = op.std.profile(q, var='e', field='gender', otype='user', oid=var('e').actor_id, key='gender')
+            q = op.std.profile(q, var='e', field='age_group', otype='user', oid=var('e').actor_id, key='age_group')
+            q = op.std.set(q, name='groupkey', var=('e', ), value=[
+                var('e').target_id, var('e').city, var('e').gender, var('e').age_group
+            ])
+            return op.std.set(q, name='value', value=1)
+        agg1.store(client=c)
 
-        options = {'durations': [3600*24*2], 'aggregate_type': 'sum', }
-        c.store_aggregate('trail_view_by_city_gender_agegroup_2days', q1, options)
-
-        # average watch time of uid on videos created by creator_id by 2 hour windows
-        q2 = op.std.filter(actions, var='a', where=var('a').action_type == 'view')
-        q2 = op.std.profile(q2, var='e', field='creator_id', otype='video', oid=var('e').target_id, key='creatorId')
-        q2 = op.time.addTimeBucketOfDay(q2, var='e', name='time_bucket', timestamp=var('e').timestamp, bucket=2*3600)
-        q2 = op.std.addField(q2, name='groupkey', var='e', value=[var('e').actor_id, var('e').creator_id, var('e').time_bucket])
-        q2 = op.std.addField(q2, name='value', var='e', value=var('e').metadata.watch_time)
-        options = {'aggregate_type': 'average', 'durations': [3600*24*30]}
-        c.store_aggregate('user_creator_avg_watchtime_by_2hour_windows_30days', q2, options)
+        @rex.aggregate(
+            name='user_creator_avg_watchtime_by_2hour_windows',
+            aggregate_type='average', action_types=['view'], config={'durations': [30*24*3600]},
+        )
+        def agg2(actions):
+            q = op.std.filter(actions, var='a', where=var('a').action_type == 'view')
+            q = op.std.profile(q, var='e', field='creator_id', otype='video', oid=var('e').target_id, key='creatorId')
+            q = op.std.set(q, var='e', name='time_bucket', value=var('e').timestamp % (24 * 3600) // (2*3600))
+            q = op.std.set(q, name='groupkey', var='e', value=[var('e').actor_id, var('e').creator_id, var('e').time_bucket])
+            return op.std.set(q, name='value', var='e', value=var('e').metadata.watch_time)
+        agg2.store(client=c)
 
 
 if __name__ == '__main__':

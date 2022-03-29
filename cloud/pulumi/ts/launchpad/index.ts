@@ -48,8 +48,8 @@ const planeConfs: Record<number, PlaneConf> = {
             cidr: "10.102.0.0/16"
         },
         dbConf: {
-            minCapacity: 1,
-            maxCapacity: 4,
+            minCapacity: 8,
+            maxCapacity: 8,
             password: "foundationdb",
             skipFinalSnapshot: true,
         },
@@ -101,7 +101,7 @@ const planeConfs: Record<number, PlaneConf> = {
             cidr: "10.104.0.0/16"
         },
         dbConf: {
-            minCapacity: 1,
+            minCapacity: 4,
             maxCapacity: 8,
             password: "password",
             skipFinalSnapshot: false,
@@ -112,14 +112,14 @@ const planeConfs: Record<number, PlaneConf> = {
         },
         // See: https://coda.io/d/_drT3IgChqqL/Elasticache-diagnosis_su1nA#_luLc1
         cacheConf: {
-            nodeType: "cache.r6g.large",
-            numNodeGroups: 1,
+            nodeType: "cache.t4g.medium",
+            numNodeGroups: 2,
             replicasPerNodeGroup: 1,
         },
         controlPlaneConf: controlPlane,
         redisConf: {
-            numShards: 1,
-            nodeType: "db.r6g.large",
+            numShards: 2,
+            nodeType: "db.t4g.medium",
             numReplicasPerShard: 1,
         },
         prometheusConf: {

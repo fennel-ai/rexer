@@ -13,30 +13,30 @@ on:
 
 # A workflow run is made up of one or more jobs that can run sequentially or in parallel
 jobs:
-  # This workflow contains a single job called "build"
   build:
     # The type of runner that the job will run on
-    runs-on: [self-hosted, Linux, X64]
+    runs-on: [self-hosted, Linux, X64, e2e-tests]
 
     # Steps represent a sequence of tasks that will be executed as part of the job
     steps:
       # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
       - uses: actions/checkout@v2
 
+      - uses: actions/checkout@v2  
+        with:
+          path: rexer-client-${{ github.run_id }}-${{ github.run_number }}-${{ github.run_attempt }}	
+          repository: fennel-ai/rexer-pyclient-alpha
+          token: ${{ secrets.ACCESS_TOKEN }}
+
+      # Move the repo explicitly, sadly github actions doesn't support this by default..
+      # https://github.com/actions/checkout/issues/197#issuecomment-829560171
+      - run: mv rexer-client-${{ github.run_id }}-${{ github.run_number }}-${{ github.run_attempt }} ../rexer-pyclient-alpha
+
       # Install prerequisites
       - name: install build essential and pkg-config
         run: |
           sudo apt-get --assume-yes install build-essential
-          sudo apt-get --assume-yes install pkg-config
-      # Install go (we use 1.17.0 version, so we will stick to it)
-      - uses: actions/setup-go@v2
-        with:
-          go-version: '1.17'
-          
-      - name: Install go module (required for running go subprocesses)
-        run: |
-          cd go/fennel
-          go mod download
+
       - uses: actions/setup-python@v2
         with:
           python-version: '3.x'
@@ -49,17 +49,15 @@ jobs:
           virtualenvs-in-project: true
           installer-parallel: true
 
-      - name: Install kafka dependencies
-        run: |
-          sudo apt-get --assume-yes remove --auto-remove librdkafka-dev
-          sudo apt-get --assume-yes install libssl-dev
-          sudo curl -Lk -o $HOME/librdkafka-1.8.0.tar.gz https://github.com/edenhill/librdkafka/archive/v1.8.0.tar.gz &&       tar -xzf $HOME/librdkafka-1.8.0.tar.gz -C $HOME &&  cd $HOME/librdkafka-1.8.0 &&  ./configure && make && sudo make install && sudo make clean && ./configure --clean
+      # Install rexer which will be used later in the e2etest_staging.py
+      - name: Install dependencies using poetry
+        working-directory: ../rexer-pyclient-alpha/rexer-client-${{ github.run_id }}-${{ github.run_number }}-${{ github.run_attempt }}
+        run: poetry install --no-interaction
 
       # Run the test
       - name: Run test
         env:
           FENNEL_ROOT: ${{ github.workspace }}
+        working-directory: ../rexer-pyclient-alpha/rexer-client-${{ github.run_id }}-${{ github.run_number }}-${{ github.run_attempt }}
         run: |
-          cd e2etests/
-          poetry install
-          poetry run python -m unittest teste2e_staging.py
+          poetry run python -m unittest discover ../../rexer/e2etests -p "teste2e_staging.py"

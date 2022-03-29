@@ -1,6 +1,7 @@
 package value
 
 import (
+	"fmt"
 	"sync"
 	"testing"
 
@@ -55,7 +56,7 @@ func TestBinaryInvalid(t *testing.T) {
 	di := NewDict(map[string]Value{"a": Int(2), "b": Double(1.0)})
 	n := Nil
 
-	ops := []string{"+", "-", "*", "/", "//", ">", ">=", "<", "<=", "and", "or", "[]", "%"}
+	ops := []string{"+", "-", "*", "/", "//", ">", ">=", "<", "<=", "and", "or", "[]", "%", "in"}
 	allBut := func(xs ...string) []string {
 		var res []string
 		for _, op := range ops {
@@ -79,7 +80,7 @@ func TestBinaryInvalid(t *testing.T) {
 	verifyBinaryError(t, i, d, []string{"and", "or", "[]", "%"})
 	verifyBinaryError(t, i, b, ops)
 	verifyBinaryError(t, i, s, ops)
-	verifyBinaryError(t, i, l, ops)
+	verifyBinaryError(t, i, l, allBut("in"))
 	verifyBinaryError(t, i, di, ops)
 	verifyBinaryError(t, i, n, ops)
 	// and div/modulo throws an error when denominator is zero
@@ -90,7 +91,7 @@ func TestBinaryInvalid(t *testing.T) {
 	verifyBinaryError(t, d, d, []string{"and", "or", "%", "[]"})
 	verifyBinaryError(t, d, b, ops)
 	verifyBinaryError(t, d, s, ops)
-	verifyBinaryError(t, d, l, ops)
+	verifyBinaryError(t, d, l, allBut("in"))
 	verifyBinaryError(t, d, di, ops)
 	verifyBinaryError(t, d, n, ops)
 	// and div throws an error when denominator is zero
@@ -101,7 +102,7 @@ func TestBinaryInvalid(t *testing.T) {
 	verifyBinaryError(t, b, d, ops)
 	verifyBinaryError(t, b, b, allBut("and", "or"))
 	verifyBinaryError(t, b, s, ops)
-	verifyBinaryError(t, b, l, ops)
+	verifyBinaryError(t, b, l, allBut("in"))
 	verifyBinaryError(t, b, di, ops)
 	verifyBinaryError(t, b, n, ops)
 
@@ -110,8 +111,8 @@ func TestBinaryInvalid(t *testing.T) {
 	verifyBinaryError(t, s, b, ops)
 	// can only do concatenation with two strings
 	verifyBinaryError(t, s, s, allBut("+"))
-	verifyBinaryError(t, s, l, ops)
-	verifyBinaryError(t, s, di, ops)
+	verifyBinaryError(t, s, l, allBut("in"))
+	verifyBinaryError(t, s, di, allBut("in"))
 	verifyBinaryError(t, s, n, ops)
 
 	// can only do indexing using a list and an int
@@ -120,7 +121,7 @@ func TestBinaryInvalid(t *testing.T) {
 	verifyBinaryError(t, l, b, ops)
 	verifyBinaryError(t, l, s, ops)
 	// can only do concatenation with two lists
-	verifyBinaryError(t, l, l, allBut("+"))
+	verifyBinaryError(t, l, l, allBut("+", "in"))
 	verifyBinaryError(t, l, di, ops)
 	verifyBinaryError(t, l, n, ops)
 
@@ -129,7 +130,7 @@ func TestBinaryInvalid(t *testing.T) {
 	verifyBinaryError(t, di, b, ops)
 	// can only do an indexing on dictionary using a string
 	verifyBinaryError(t, di, s, allBut("[]]"))
-	verifyBinaryError(t, di, l, ops)
+	verifyBinaryError(t, di, l, allBut("in"))
 	verifyBinaryError(t, di, di, ops)
 	verifyBinaryError(t, di, n, ops)
 
@@ -137,7 +138,7 @@ func TestBinaryInvalid(t *testing.T) {
 	verifyBinaryError(t, n, d, ops)
 	verifyBinaryError(t, n, b, ops)
 	verifyBinaryError(t, n, s, ops)
-	verifyBinaryError(t, n, l, ops)
+	verifyBinaryError(t, n, l, allBut("in"))
 	verifyBinaryError(t, n, di, ops)
 	verifyBinaryError(t, n, n, ops)
 }
@@ -302,5 +303,45 @@ func getFuture(v Value) *Future {
 		lock:   sync.Mutex{},
 		ch:     ch,
 		cached: nil,
+	}
+}
+
+func TestContains_Valid(t *testing.T) {
+	scenarios := []struct {
+		left  Value
+		right Value
+		exp   Value
+	}{
+		{
+			String("hi"),
+			NewList(Int(1), Int(2), String("hi")),
+			Bool(true),
+		},
+		{
+			String("bye"),
+			NewList(Int(1), Int(2), String("hi")),
+			Bool(false),
+		},
+		{
+			NewDict(map[string]Value{"x": Int(1), "y": Int(2)}),
+			NewList(Int(1), Int(2), String("hi"), NewDict(map[string]Value{"x": Int(1), "y": Int(2)})),
+			Bool(true),
+		},
+		{
+			String("x"),
+			NewDict(map[string]Value{"x": Int(1), "y": Int(2)}),
+			Bool(true),
+		},
+		{
+			String("bye"),
+			NewDict(map[string]Value{"x": Int(1), "y": Int(2)}),
+			Bool(false),
+		},
+	}
+	for i, scene := range scenarios {
+		found, err := scene.left.Op("in", scene.right)
+		msg := fmt.Sprintf("[%d] %s in %s = %s", i, scene.left, scene.right, scene.exp)
+		assert.NoError(t, err, msg)
+		assert.Equal(t, scene.exp, found, msg)
 	}
 }
