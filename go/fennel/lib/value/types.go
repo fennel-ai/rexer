@@ -476,6 +476,9 @@ func (t Tuple) OpUnary(opt string) (Value, error) {
 }
 
 func NewTuple(values ...Value) Tuple {
+	if len(values) == 0 {
+		return Tuple{}
+	}
 	return Tuple{values: values}
 }
 
