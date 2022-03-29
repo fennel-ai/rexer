@@ -13,7 +13,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestInference(t *testing.T) {
+func TestPredict(t *testing.T) {
 	intable := []value.Value{
 		value.NewDict(map[string]value.Value{"foo": value.Nil}),
 		value.NewDict(map[string]value.Value{"bar": value.Nil}),
@@ -36,13 +36,13 @@ func TestInference(t *testing.T) {
 	defer test.Teardown(tier)
 	err = test.AddSagemakerClientToTier(&tier)
 	assert.NoError(t, err)
-	optest.AssertEqual(t, tier, &inferenceOperator{}, value.NewDict(map[string]value.Value{
+	optest.AssertEqual(t, tier, &predictOperator{}, value.NewDict(map[string]value.Value{
 		"model_name":    value.String("integration-test-xgboost-model"),
 		"model_version": value.String("v1"),
 	}), intable, contextKwargTable, expected)
 }
 
-func TestInferenceError(t *testing.T) {
+func TestPredictError(t *testing.T) {
 	intable := []value.Value{
 		value.Nil,
 	}
@@ -57,13 +57,13 @@ func TestInferenceError(t *testing.T) {
 	defer test.Teardown(tier)
 	err = test.AddSagemakerClientToTier(&tier)
 	assert.NoError(t, err)
-	optest.AssertError(t, tier, &inferenceOperator{}, value.NewDict(map[string]value.Value{
+	optest.AssertError(t, tier, &predictOperator{}, value.NewDict(map[string]value.Value{
 		"model_name":    value.String("integration-test-xgboost-model"),
 		"model_version": value.String("v1"),
 	}), intable, contextKwargTable)
 }
 
-func TestInferenceErrorNoModel(t *testing.T) {
+func TestPredictErrorNoModel(t *testing.T) {
 	intable := []value.Value{
 		value.Nil,
 	}
@@ -78,5 +78,5 @@ func TestInferenceErrorNoModel(t *testing.T) {
 	defer test.Teardown(tier)
 	err = test.AddSagemakerClientToTier(&tier)
 	assert.NoError(t, err)
-	optest.AssertError(t, tier, &inferenceOperator{}, value.Dict{} /* no static kwargs */, intable, contextKwargTable)
+	optest.AssertError(t, tier, &predictOperator{}, value.Dict{} /* no static kwargs */, intable, contextKwargTable)
 }
