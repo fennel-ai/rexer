@@ -20,10 +20,7 @@ func Get(ctx context.Context, tier tier.Tier, request profilelib.ProfileItem) (v
 	if err := request.Validate(); err != nil {
 		return nil, err
 	}
-	fmt.Println("Here")
 	valueSer, err := profile.Get(ctx, tier, request.OType, request.Oid, request.Key, request.Version)
-	fmt.Println("Here2")
-	fmt.Println(valueSer, err)
 	if err != nil {
 		return nil, err
 	} else if valueSer == nil {
@@ -31,7 +28,6 @@ func Get(ctx context.Context, tier tier.Tier, request profilelib.ProfileItem) (v
 		return nil, nil
 	}
 	val, err := value.FromJSON(valueSer)
-	fmt.Println(err)
 	if err != nil {
 		return nil, err
 	}
@@ -47,7 +43,6 @@ func Set(ctx context.Context, tier tier.Tier, request profilelib.ProfileItem) er
 		request.Version = uint64(time.Now().UnixMicro())
 	}
 	valSer := value.ToJSON(request.Value)
-	fmt.Println(valSer)
 	if err := profile.Set(ctx, tier, request.OType, request.Oid, request.Key, request.Version, valSer); err != nil {
 		return err
 	}

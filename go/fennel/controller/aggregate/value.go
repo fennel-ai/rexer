@@ -24,7 +24,6 @@ func Value(ctx context.Context, tier tier.Tier, name ftypes.AggName, key value.V
 	if err != nil {
 		return value.Nil, err
 	}
-	fmt.Println("Looking for key: ", key)
 	histogram, err := toHistogram(agg)
 	if err != nil {
 		return nil, err
@@ -89,10 +88,8 @@ func transformActions(tier tier.Tier, actions []libaction.Action, query ast.Ast)
 	if err != nil {
 		return value.NewList(), err
 	}
-	fmt.Println("Running aggregate query for actions")
 
 	result, err := interpreter.Eval(query, value.NewDict(map[string]value.Value{"actions": table}))
-	fmt.Println("Resule for aggregate query: ", result, "Err :", err)
 	if err != nil {
 		return value.NewList(), err
 	}

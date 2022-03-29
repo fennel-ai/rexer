@@ -29,7 +29,6 @@ class _Status(Enum):
 
 class TestStagingEndToEnd(unittest.TestCase):
     def test_viewtime(self):
-        return
         c = client.Client(_URL)
 
         actions = var('args').actions
@@ -44,6 +43,7 @@ class TestStagingEndToEnd(unittest.TestCase):
         # Query for this aggregates value
         init_val = c.aggregate_value(_AGGREGATE_NAME, _USER_ID, {'duration': 24*3600})
         print('Initial value of the aggregate: ', init_val)
+        
         # Generate traffic
         with lib.gorun(path='fennel/test/cmds/loadtest', tags='dynamic', env=os.environ.copy(), wait=True, flags=_FLAGS):
             # Query for the value as the loadtest runs simulateneously. We query for 120 seconds after which
