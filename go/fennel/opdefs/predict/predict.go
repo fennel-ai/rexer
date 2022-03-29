@@ -31,7 +31,7 @@ func (iop inferenceOperator) New(args value.Dict, bootargs map[string]interface{
 }
 
 func (iop inferenceOperator) Signature() *operators.Signature {
-	return operators.NewSignature("std", "inference").
+	return operators.NewSignature("std", "predict").
 		Input([]value.Type{value.Types.Any}).
 		// TODO: change to Tuple when ready.
 		Param("features", value.Types.List, false, false, value.Nil).
