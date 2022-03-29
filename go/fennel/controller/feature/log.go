@@ -2,6 +2,7 @@ package feature
 
 import (
 	"context"
+	"time"
 
 	"fennel/kafka"
 	"fennel/lib/feature"
@@ -23,6 +24,7 @@ func LogMulti(ctx context.Context, tr tier.Tier, rows []feature.Row) error {
 			return err
 		}
 	}
+	producer.Flush(time.Millisecond * 20)
 	return nil
 }
 

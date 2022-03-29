@@ -44,7 +44,6 @@ def tiered(wrapped):
                     # Wait for the services to be up.
                     time.sleep(10)
                     return wrapped(*args, **kwargs)
-
     return fn
 
 

@@ -2,6 +2,7 @@ package feature
 
 import (
 	"context"
+	"fmt"
 
 	"fennel/controller/feature"
 	"fennel/engine/interpreter/bootarg"
@@ -21,6 +22,7 @@ type featureLog struct {
 }
 
 func (f featureLog) New(args value.Dict, bootargs map[string]interface{}) (operators.Operator, error) {
+	fmt.Print("\n-------- Called feature.log.New()\n")
 	tr, err := bootarg.GetTier(bootargs)
 	if err != nil {
 		return nil, err
@@ -56,6 +58,7 @@ func (f featureLog) Apply(static value.Dict, in operators.InputIter, out *value.
 			ModelVersion:    modelVersion,
 			ModelPrediction: float64(get(kwargs, "model_prediction").(value.Double)),
 		}
+		fmt.Printf("\n-------- going to write: %+v\n", msg)
 		if err = feature.Log(context.TODO(), f.tier, msg); err != nil {
 			return err
 		}

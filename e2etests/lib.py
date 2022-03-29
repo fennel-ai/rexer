@@ -1,5 +1,3 @@
-from typing import Optional
-
 import contextlib
 import os
 import random

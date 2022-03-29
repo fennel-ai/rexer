@@ -47,7 +47,7 @@ p3.wait()
 if not no_e2e:
     print('Running e2e integration tests with python client...')
     print('-' * 50)
-    p4 = subprocess.Popen(['poetry install && poetry run python -m unittest discover ../rexer/e2etests/ -p "teste2e.py"'], shell=True, cwd=rexerclient)
+    p4 = subprocess.Popen(['poetry install && poetry run python -m unittest discover ../rexer/e2etests/ -p "feature_logging.py"'], shell=True, cwd=rexerclient)
     p4.wait()
 
 if run_e2e_staging:
