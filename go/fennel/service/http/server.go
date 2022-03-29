@@ -232,7 +232,6 @@ func (m server) GetProfile(w http.ResponseWriter, req *http.Request) {
 		log.Printf("Error: %v", err)
 		return
 	}
-
 	// send to controller
 	val, err := profile2.Get(req.Context(), m.tier, request)
 	if err != nil {
@@ -360,7 +359,6 @@ func (m server) StoreAggregate(w http.ResponseWriter, req *http.Request) {
 		log.Printf("Error: %v", err)
 		return
 	}
-
 	// call controller
 	if err = aggregate2.Store(req.Context(), m.tier, agg); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
