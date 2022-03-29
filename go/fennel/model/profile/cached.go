@@ -13,11 +13,18 @@ import (
 	"fennel/lib/timer"
 	"fennel/tier"
 
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promauto"
 	"go.uber.org/zap"
 )
 
 // increment this to invalidate all existing cache keys for profile
 const cacheVersion = 0
+
+var profiles_cache_failures = promauto.NewCounter(prometheus.CounterOpts{
+	Name: "profile_cache_mset_failures",
+	Help: "Number of failures while trying to set versioned profiles in the cache",
+})
 
 //================================================
 // Public API for profile model (includes caching)
@@ -54,22 +61,36 @@ func (c cachedProvider) set(ctx context.Context, tier tier.Tier, otype ftypes.OT
 
 func (c cachedProvider) setBatch(ctx context.Context, tier tier.Tier, profiles []profile.ProfileItemSer) error {
 	defer timer.Start(ctx, tier.ID, "model.profile.cached.setBatch").Stop()
+
+	// NOTE: the implementation assumes that in scenarios where the cache could be inconsistent with the DB, the caller would retry
+	// which should lead to eventually consistency of the cache
+	//
+	// e.g. in case a process crash, say after setting profiles on the DB, the cache for the latest profiles is now potentially
+	// inconsistent. Since the writes to the DB are idempotent, multiple retries for the same profile(s) will make the cache consistent
+	// with the DB, if not with the profiles involved in the current, a concurrent call could succeed in setting the latest profile
+
+	// Write to DB
 	if err := c.base.setBatch(ctx, tier, profiles); err != nil {
 		return err
 	}
+
 	// ground truth was successful so now we update the caches for each version
-	keys := make([]string, 0)
-	valsToSet := make([]interface{}, 0)
-	for _, profile := range profiles {
-		k := makeKey(profile.OType, profile.Oid, profile.Key, profile.Version)
-		keys = append(keys, k)
-		valsToSet = append(valsToSet, profile.Value)
-	}
-	if err := tier.Cache.MSet(ctx, keys, valsToSet, make([]time.Duration, len(keys))); err != nil {
-		return err
+	keys := make([]string, len(profiles))
+	valsToSet := make([]interface{}, len(profiles))
+	for i, p := range profiles {
+		k := makeKey(p.OType, p.Oid, p.Key, p.Version)
+		keys[i] = k
+		valsToSet[i] = p.Value
 	}
 
-	// To store the latest, only consider the value of the largest version of the profile (otype, oid, key)
+	// If cache could not be updated for the versioned profiles, it is fine since on the next read calls,
+	// the profile will be fetched from the DB and set on cache
+	if err := tier.Cache.MSet(ctx, keys, valsToSet, make([]time.Duration, len(keys))); err != nil {
+		tier.Logger.Warn("failed to set versioned profiles on cache. err: ", zap.Error(err))
+		profiles_cache_failures.Inc()
+	}
+
+	// To store the latest, only consider the value of the largest version of the profile key (otype, oid, key)
 	latestValByKey := make(map[versionIdentifier]profile.ProfileItemSer)
 
 	for _, p := range profiles {
@@ -103,6 +124,8 @@ func (c cachedProvider) setBatch(ctx context.Context, tier tier.Tier, profiles [
 			vids = append(vids, vid)
 		}
 
+		// if fetching versions failed, return the error. If this is not resolved after retries,
+		// cache for the latest profiles will be invalidated which leaves the cache in a consistent state
 		vMap, err := c.base.getVersionBatched(ctx, tier, vids)
 		if err != nil {
 			return err
@@ -140,7 +163,7 @@ func (c cachedProvider) setBatch(ctx context.Context, tier tier.Tier, profiles [
 		// Set them on cache
 		return txn.MSet(ctx, keysToSet, valsToSet, make([]time.Duration, len(keysToSet)))
 	}
-	// we retry atmost 3 times before we fail. Above logic should not fail on concurrent writes, but
+	// we retry atmost 3 times before we give up. Above logic should not fail on concurrent writes, but
 	// it is possible that there could be a conflict with "get".
 	//
 	// say, `set` is called with version v1 > v0 (latest version) but the entry for the latest profile
@@ -224,8 +247,7 @@ func (c cachedProvider) getBatched(ctx context.Context, tier tier.Tier, reqs []p
 		return tx.MSet(ctx, tosetKeys, tosetVals, make([]time.Duration, len(tosetVals)))
 	}
 	// we retry this logic atmost 3 times after which we fail
-	err := tier.Cache.RunAsTxn(ctx, txnLogic, keys, 3)
-
+	//
 	// to avoid breaking critical workflows (computing profile aggregate values), silently
 	// discard the error and return the profiles fetched as part of the execution of `txnLogic` above.
 	//
@@ -234,7 +256,7 @@ func (c cachedProvider) getBatched(ctx context.Context, tier tier.Tier, reqs []p
 	// concurrently, triggering another retry. This would abort the txn and invalidate the cache entries
 	// for the keys; but it is possible that an entry was made in `rets[]` for the corresponding key
 	// in one of the earlier attempts and was never overwritten in the later attempts.
-	if err != nil {
+	if err := tier.Cache.RunAsTxn(ctx, txnLogic, keys, 3); err != nil {
 		tier.Logger.Error("returning (potentially) partial results, txn failed with: ", zap.Error(err))
 	}
 

@@ -51,6 +51,13 @@ func TestProfileController(t *testing.T) {
 	checkSet(t, ctx, tier, profiles[0])
 	// test getting back the profile
 	checkGet(t, ctx, tier, profiles[0], vals[0])
+	// test that the profile was written to kafka queue as well
+	consumer, err := tier.NewKafkaConsumer(profilelib.PROFILELOG_KAFKA_TOPIC, utils.RandString(6), kafka.DefaultOffsetPolicy)
+	assert.NoError(t, err)
+	found, err := ReadBatch(ctx, consumer, 1, time.Second*2)
+	assert.NoError(t, err)
+	assert.Equal(t, profiles, found)
+
 	// can get without using the specific version number
 	profileTmp := profiles[0]
 	profileTmp.Version = 0
