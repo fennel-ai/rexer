@@ -100,7 +100,7 @@ func (c cachedProvider) setBatch(ctx context.Context, tier tier.Tier, profiles [
 		for i := 0; i < len(latestKeys); i++ {
 			lease = append(lease, time.Duration(leaseDuration)*time.Second)
 		}
-		if err := txn.Expire(ctx, latestKeys, lease); err != nil {
+		if err := tier.Cache.Expire(ctx, latestKeys, lease); err != nil {
 			tier.Logger.Error("failed to set lease on latest keys with: ", zap.Error(err))
 			return err
 		}

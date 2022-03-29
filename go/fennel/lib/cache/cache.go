@@ -30,6 +30,9 @@ type Cache interface {
 	// failed.
 	RunAsTxn(ctx context.Context, l func(txn Txn, keys []string) error, keys []string, r int) error
 
+	// sets given expiration on the given redis key
+	Expire(ctx context.Context, ks []string, ttls []time.Duration) error
+
 	// Nil returns the error that the cache returns when the key isn't found
 	Nil() error
 }
@@ -49,9 +52,6 @@ type Txn interface {
 	// We use TxPipeline to enforce cross-slot errors. In case of a txn, we are dealing only with
 	// the keys in the same slot
 	MSetNoTxn(ctx context.Context, ks []string, vs []interface{}, ttls []time.Duration) error
-
-	// sets given expiration on the given redis key
-	Expire(ctx context.Context, ks []string, ttls []time.Duration) error
 
 	// persists the given key
 	Persist(ctx context.Context, ks []string) error
