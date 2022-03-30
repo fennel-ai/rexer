@@ -30,7 +30,7 @@ class TestStagingEndToEnd(unittest.TestCase):
     @unittest.skip
     def test_viewtime(self):
         c = rex.Client(_URL)  
-    
+
         @rex.aggregate(
             name=_AGGREGATE_NAME, aggregate_type='sum',
             action_types=['e2etest_view'], config={'durations':[3600*24]},
