@@ -206,23 +206,37 @@ class TestEndToEnd(unittest.TestCase):
         q1 = op.std.profile(q1, var='e', field='city', otype='user', oid=var('e').actor_id, key='city')
         q1 = op.std.profile(q1, var='e', field='gender', otype='user', oid=var('e').actor_id, key='gender')
         # Group by a tuple of tuples
-        q1 = op.std.addField(q1, name='groupkey', var=('e', ), value=(var('e').city, var('e').gender))
-        q1 = op.std.addField(q1, name='value', value=1)
+        q1 = op.std.set(q1, name='groupkey', var=('e', ), value=(var('e').city, var('e').gender))
+        q1 = op.std.set(q1, name='value', value=1)
 
         options = {'durations': [3600*24*3], 'aggregate_type': 'sum', }
+        @rex.aggregate(
+            name='trail_view_by_city_gender_agegroup_2days',
+            aggregate_type='sum', action_types=['view'], config={'durations': [2*24*3600]},
+        )
+        def agg1(actions):
+            q = op.std.filter(actions, var='a', where=var('a').target_type == 'video')
+            q = op.std.profile(q, var='e', field='city', otype='user', oid=var('e').actor_id, key='city')
+            q = op.std.profile(q, var='e', field='gender', otype='user', oid=var('e').actor_id, key='gender')
+            q = op.std.set(q, name='groupkey', var=('e', ), value=(var('e').city, var('e').gender))
+            return op.std.set(q, name='value',  var=('e', ), value=1)
+        agg1.store(client=c)
+        
         # Group key is tuple
-        c.store_aggregate('trail_view_by_city_gender_agegroup_2days', q1, options)
         ts = int(time.time())
 
-        actions = var('args').actions
-        q1 = op.std.filter(actions, var='a', where=(var('a').action_type == 'view') & (var('a').target_type == 'video'))
-        q1 = op.std.profile(q1, var='e', field='city', otype='user', oid=var('e').actor_id, key='city')
-        q1 = op.std.profile(q1, var='e', field='gender', otype='user', oid=var('e').actor_id, key='gender')
-        q1 = op.std.addField(q1, name='groupkey', var = ('e',), value=var('e').gender)
-        q1 = op.std.addField(q1, name='value', var=('e', ), value=(var('e').city))
-        # Group value is tuple
-        options = {'durations': [3600*24*3*7], 'aggregate_type': 'list', }
-        c.store_aggregate('list_of_cities', q1, options)
+        # Total views gained by a video in last 2 days for given city+gender+age_group
+        @rex.aggregate(
+            name='list_of_cities',
+            aggregate_type='list', action_types=['view'], config={'durations': [7*24*3600]},
+        )
+        def agg2(actions):
+            q = op.std.filter(actions, var='a', where=var('a').target_type == 'video')
+            q = op.std.profile(q, var='e', field='city', otype='user', oid=var('e').actor_id, key='city')
+            q = op.std.profile(q, var='e', field='gender', otype='user', oid=var('e').actor_id, key='gender')
+            q = op.std.set(q, name='groupkey', var=('e', ), value=var('e').gender)
+            return op.std.set(q, name='value',  var=('e', ), value=(var('e').city))
+        agg2.store(client=c)
 
         # send multiple times with dedup keys
         actions = [

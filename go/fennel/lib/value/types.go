@@ -503,9 +503,7 @@ func (t Tuple) Equal(right Value) bool {
 func (t Tuple) String() string {
 	sb := strings.Builder{}
 	// TODO: Reuse tuple_indicator defined in json.go
-	sb.WriteString("{\"")
-	sb.WriteString("{\"__tuple__\":")
-	sb.WriteString(":[")
+	sb.WriteString("{\"__tuple__\":[")
 	for i, v := range t.values {
 		if v == nil {
 			sb.WriteString("null")

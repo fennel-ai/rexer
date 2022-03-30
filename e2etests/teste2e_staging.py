@@ -29,7 +29,7 @@ class _Status(Enum):
 class TestStagingEndToEnd(unittest.TestCase):
     @unittest.skip
     def test_viewtime(self):
-        c = rex.Client(_URL)
+        c = rex.Client(_URL)  
 
         @rex.aggregate(
             name=_AGGREGATE_NAME, aggregate_type='sum',
