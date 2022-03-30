@@ -206,8 +206,8 @@ class TestEndToEnd(unittest.TestCase):
         q1 = op.std.profile(q1, var='e', field='city', otype='user', oid=var('e').actor_id, key='city')
         q1 = op.std.profile(q1, var='e', field='gender', otype='user', oid=var('e').actor_id, key='gender')
         # Group by a tuple of tuples
-        q1 = op.std.addField(q1, name='groupkey', var=('e', ), value=(var('e').city, var('e').gender))
-        q1 = op.std.addField(q1, name='value', value=1)
+        q1 = op.std.set(q1, name='groupkey', var=('e', ), value=(var('e').city, var('e').gender))
+        q1 = op.std.set(q1, name='value', value=1)
 
         options = {'durations': [3600*24*3], 'aggregate_type': 'sum', }
         # Group key is tuple
@@ -218,8 +218,8 @@ class TestEndToEnd(unittest.TestCase):
         q1 = op.std.filter(actions, var='a', where=(var('a').action_type == 'view') & (var('a').target_type == 'video'))
         q1 = op.std.profile(q1, var='e', field='city', otype='user', oid=var('e').actor_id, key='city')
         q1 = op.std.profile(q1, var='e', field='gender', otype='user', oid=var('e').actor_id, key='gender')
-        q1 = op.std.addField(q1, name='groupkey', var = ('e',), value=var('e').gender)
-        q1 = op.std.addField(q1, name='value', var=('e', ), value=(var('e').city))
+        q1 = op.std.set(q1, name='groupkey', var = ('e',), value=var('e').gender)
+        q1 = op.std.set(q1, name='value', var=('e', ), value=(var('e').city))
         # Group value is tuple
         options = {'durations': [3600*24*3*7], 'aggregate_type': 'list', }
         c.store_aggregate('list_of_cities', q1, options)
