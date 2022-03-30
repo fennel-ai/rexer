@@ -35,6 +35,8 @@ const tierConfs: Record<number, number> = {
     105: 4,
     // Fennel staging tier using Fennel's staging data plane.
     106: 3,
+    // Lokal dev tier on their dev data plane.
+    107: 5,
 }
 
 // map from plane id to its configuration.
@@ -121,6 +123,41 @@ const planeConfs: Record<number, PlaneConf> = {
             numShards: 2,
             nodeType: "db.t4g.medium",
             numReplicasPerShard: 1,
+        },
+        prometheusConf: {
+            useAMP: false
+        }
+    },
+    // Lokal's dev tier data plane
+    5: {
+        planeId: 5,
+        region: "ap-south-1",
+        roleArn: "arn:aws:iam::030813887342:role/admin",
+        vpcConf: {
+            cidr: "10.105.0.0/16"
+        },
+        dbConf: {
+            minCapacity: 1,
+            maxCapacity: 8,
+            password: "password",
+            skipFinalSnapshot: false,
+        },
+        confluentConf: {
+            username: confluentUsername,
+            password: confluentPassword
+        },
+        // since availability or performance is not a concern,
+        // use a small nodetype for elasticache, min configuration for shards and replicas
+        cacheConf: {
+            nodeType: "cache.t4g.small",
+            numNodeGroups: 1,
+            replicasPerNodeGroup: 0,
+        },
+        controlPlaneConf: controlPlane,
+        redisConf: {
+            numShards: 1,
+            nodeType: "db.t4g.small",
+            numReplicasPerShard: 0,
         },
         prometheusConf: {
             useAMP: false
