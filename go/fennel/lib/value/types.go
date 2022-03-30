@@ -502,8 +502,10 @@ func (t Tuple) Equal(right Value) bool {
 
 func (t Tuple) String() string {
 	sb := strings.Builder{}
+	// TODO: Reuse tuple_indicator defined in json.go
+	sb.WriteString("{\"")
 	sb.WriteString("{\"__tuple__\":")
-	sb.WriteString("[")
+	sb.WriteString(":[")
 	for i, v := range t.values {
 		if v == nil {
 			sb.WriteString("null")
@@ -537,7 +539,7 @@ func (t Tuple) Len() int {
 
 func (t Tuple) At(idx int) (Value, error) {
 	if idx < 0 || idx >= t.Len() {
-		return nil, fmt.Errorf("index '%d' out of bounds for list of length: '%d'", idx, t.Len())
+		return nil, fmt.Errorf("index '%d' out of bounds for tuple of length: '%d'", idx, t.Len())
 	}
 	return t.values[idx], nil
 }
