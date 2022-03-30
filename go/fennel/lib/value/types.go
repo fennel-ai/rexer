@@ -505,7 +505,7 @@ func (t Tuple) String() string {
 	// TODO: Reuse tuple_indicator defined in json.go
 	sb.WriteString("{\"")
 	sb.WriteString("{\"__tuple__\":")
-	sb.WriteString(":[")
+	sb.WriteString("[")
 	for i, v := range t.values {
 		if v == nil {
 			sb.WriteString("null")
