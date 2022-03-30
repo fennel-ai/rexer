@@ -233,31 +233,40 @@ func TestProfileServerClient(t *testing.T) {
 	checkGetSet(t, c, true, "1", 1, 0, "age", value.Nil)
 	checkGetSet(t, c, false, "10", 3131, 0, "summary", value.Int(1))
 
-	// Try writing multiple profiles and assert they were queued on kafka
-	assert.NoError(t, c.SetProfiles(profileList))
+	// these profiles are also written to kafka queue
 	consumer, err := tier.NewKafkaConsumer(profilelib.PROFILELOG_KAFKA_TOPIC, "someprofilegroup", kafka.DefaultOffsetPolicy)
 	assert.NoError(t, err)
-	ctx := context.Background()
-	actual, err := batchReadProfilesFromConsumer(t, ctx, consumer, 3)
+	actual, err := batchReadProfilesFromConsumer(t, context.Background(), consumer, 3)
 	assert.NoError(t, err)
 	assert.ElementsMatch(t, profileList, actual)
 	consumer.Close()
+}
+
+func TestSetProfilesQueuesToKafka(t *testing.T) {
+	tier, err := test.Tier()
+	assert.NoError(t, err)
+	defer test.Teardown(tier)
+
+	controller := server{tier: tier}
+	server := startTestServer(controller)
+	defer server.Close()
+	c, err := client.NewClient(server.URL, server.Client())
+	assert.NoError(t, err)
 
 	// Write another batch, previous entries should still be there
 	profileList2 := make([]profilelib.ProfileItem, 0)
 	for i := uint64(1); i <= 3; i++ {
 		p := profilelib.ProfileItem{OType: ftypes.OType("2"), Oid: i, Key: "foo", Version: i, Value: value.Int(i * 10)}
 		profileList2 = append(profileList2, p)
-		profileList = append(profileList, p)
 	}
 
 	assert.NoError(t, c.SetProfiles(profileList2))
 
-	consumer, err = tier.NewKafkaConsumer(profilelib.PROFILELOG_KAFKA_TOPIC, "someprofilegroup2", kafka.DefaultOffsetPolicy)
+	consumer, err := tier.NewKafkaConsumer(profilelib.PROFILELOG_KAFKA_TOPIC, "someprofilegroup2", kafka.DefaultOffsetPolicy)
 	assert.NoError(t, err)
-	actual, err = batchReadProfilesFromConsumer(t, ctx, consumer, 6)
+	actual, err := batchReadProfilesFromConsumer(t, context.Background(), consumer, 6)
 	assert.NoError(t, err)
-	assert.ElementsMatch(t, profileList, actual)
+	assert.ElementsMatch(t, profileList2, actual)
 	consumer.Close()
 }
 
