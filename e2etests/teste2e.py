@@ -261,7 +261,7 @@ class TestEndToEnd(unittest.TestCase):
             q2 = op.std.aggregate([{'gender': gender}],
                 field='found', aggregate='list_of_cities', var='e', groupkey=var('e').gender)[0].found
             found3 = c.query(q2)
-
+            
             if found1 == expected1 and found2 == expected2 and compare_lists(found3, expected3):
                 passed = True
                 break
