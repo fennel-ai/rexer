@@ -6,6 +6,8 @@ import (
 	"github.com/buger/jsonparser"
 )
 
+const tuple_indicator string = "__tuple__"
+
 // TODO: this is not needed any more, clean/deelete
 // Clean takes a value, and returns a value with nil list/dict replaced by empty list/dict
 func Clean(v Value) Value {
@@ -17,6 +19,10 @@ func Clean(v Value) Value {
 	case Dict:
 		if v.values == nil {
 			return Dict{}
+		}
+	case Tuple:
+		if v.values == nil {
+			return Tuple{}
 		}
 	}
 	return v
@@ -117,6 +123,18 @@ func parseJSONObject(data []byte) (Value, error) {
 		if err != nil {
 			return err
 		}
+		// Since Json doesn't have a way to distinguish between array and tuple,
+		// We annotated a tuple object as a dict eg {"__tuple__": (1, 2, 3)}
+		// Hence {a: 1, b: (3,4)} is represented as {a: 1, b: {"__tuple__" : (3, 4)}}
+		if k == tuple_indicator {
+			v, err := parseJSONArray(vdata)
+			if err != nil {
+				return err
+			}
+			ret.Set(k, v)
+			return nil
+		}
+
 		v, err := ParseJSON(vdata, vtype)
 		if err != nil {
 			return err
@@ -128,5 +146,12 @@ func parseJSONObject(data []byte) (Value, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	// If the entire object was just a tuple, unwrap it and return the tuple
+	if val, ok := ret.Get(tuple_indicator); ok {
+		l := val.(List)
+		return NewTuple(l.values...), nil
+	}
+
 	return ret, nil
 }

@@ -107,6 +107,16 @@ func TestInterpreter_VisitList(t *testing.T) {
 	testValid(t, &ast.List{Values: []ast.Ast{ast.MakeDouble(3.4), ast.MakeBool(false), ast.MakeString("hi")}}, l)
 }
 
+func TestInterpreter_VisitTuple(t *testing.T) {
+	// Empty tuple works
+	testValid(t, ast.Tuple{Values: []ast.Ast{}}, value.NewTuple())
+	// Tuple with just one element works
+	l := value.NewTuple(value.Double(3.4))
+	testValid(t, &ast.Tuple{Values: []ast.Ast{ast.MakeDouble(3.4)}}, l)
+	// and so does a multi-element Tuple with mixed types
+	l = value.NewTuple(value.Double(3.4), value.Bool(false), value.String("hi"))
+	testValid(t, &ast.Tuple{Values: []ast.Ast{ast.MakeDouble(3.4), ast.MakeBool(false), ast.MakeString("hi")}}, l)
+}
 func TestInterpreter_VisitDict(t *testing.T) {
 	// Empty dict works
 	testValid(t, ast.Dict{Values: map[string]ast.Ast{}}, value.NewDict(map[string]value.Value{}))

@@ -154,7 +154,121 @@ class TestEndToEnd(unittest.TestCase):
             time.sleep(5)
             slept += 5
         self.assertTrue(passed)
-        print('all checks passed...')
+        print('all checks passed...') 
+
+    @tiered
+    def test_e2e_tuple(self):
+        def compare_lists(l1, l2):
+            if len(l1) != len(l2):
+                return False
+            l1_set = set(l1)
+            for i in range(len(l2)):
+                if l2[i] not in l1_set:
+                    return False
+            return True
+
+        c = client.Client(URL)
+        uid = 12312
+        uid2 = 453
+        # This test does not make logical sense, but is purely to test tuples
+        # hence cities and gender is a tuple
+        city = ('mumbai', ('delhi','bangalore'))
+        city2 = (('la','nd'), ('sf','ny'))
+        gender = (0, 1)
+        video_id = 456
+        # Phase 1 of tests, write a tuple from profile and read from profile
+        c.set_profiles([
+            profile.Profile(otype="user", oid=uid, key="city", value=city),
+            profile.Profile(otype="user", oid=uid, key="gender", value=gender),
+            profile.Profile(otype="user", oid=uid2, key="city", value=city2),
+            profile.Profile(otype="user", oid=uid2, key="gender", value=gender),
+        ])
+
+        slept = 0
+        passed = False
+        while slept < 120:
+            passed = (
+                city == c.get_profile("user", uid, "city") and
+                gender == c.get_profile("user", uid, "gender")
+            )
+            if passed:
+                break
+
+            time.sleep(5)
+            slept += 5
+        self.assertTrue(passed)
+
+        # Phase 2 of tests, group by a tuple and read aggregate keyed on a tuple
+
+        # Total views gained by a video in last 2 days for given city+gender
+        actions = var('args').actions
+        q1 = op.std.filter(actions, var='a', where=(var('a').action_type == 'view') & (var('a').target_type == 'video'))
+        q1 = op.std.profile(q1, var='e', field='city', otype='user', oid=var('e').actor_id, key='city')
+        q1 = op.std.profile(q1, var='e', field='gender', otype='user', oid=var('e').actor_id, key='gender')
+        # Group by a tuple of tuples
+        q1 = op.std.addField(q1, name='groupkey', var=('e', ), value=(var('e').city, var('e').gender))
+        q1 = op.std.addField(q1, name='value', value=1)
+
+        options = {'durations': [3600*24*3], 'aggregate_type': 'sum', }
+        # Group key is tuple
+        c.store_aggregate('trail_view_by_city_gender_agegroup_2days', q1, options)
+        ts = int(time.time())
+
+        actions = var('args').actions
+        q1 = op.std.filter(actions, var='a', where=(var('a').action_type == 'view') & (var('a').target_type == 'video'))
+        q1 = op.std.profile(q1, var='e', field='city', otype='user', oid=var('e').actor_id, key='city')
+        q1 = op.std.profile(q1, var='e', field='gender', otype='user', oid=var('e').actor_id, key='gender')
+        q1 = op.std.addField(q1, name='groupkey', var = ('e',), value=var('e').gender)
+        q1 = op.std.addField(q1, name='value', var=('e', ), value=(var('e').city))
+        # Group value is tuple
+        options = {'durations': [3600*24*3*7], 'aggregate_type': 'list', }
+        c.store_aggregate('list_of_cities', q1, options)
+
+        # send multiple times with dedup keys
+        actions = [
+            action.Action(actor_type='user', actor_id=uid, target_type='video', target_id=video_id, action_type='view',
+                          request_id=1, timestamp=ts, metadata={'watch_time': 20}, dedup_key="action1"),
+            action.Action(actor_type='user', actor_id=uid, target_type='video', target_id=video_id, action_type='view',
+                          request_id=1, timestamp=ts - 24*3600, metadata={'watch_time': 22}, dedup_key="action2"),
+            action.Action(actor_type='user', actor_id=uid2, target_type='video', target_id=video_id, action_type='view',
+                          request_id=21, timestamp=ts - 4*24*3600, metadata={'watch_time': 24}, dedup_key="action3"),
+        ]
+        c.log_multi(actions)
+
+        b = int((ts % (24*3600)) / (2*3600))
+
+        # now sleep for upto a minute and verify count processing worked
+        # we could also just sleep for full minute but this rolling sleep
+        # allows test to end earlier in happy cases
+        slept = 0
+        passed = False
+        expected1 = 2
+        expected2 = 2
+        expected3 = [(('la','nd'), ('sf','ny')), ('mumbai', ('delhi', 'bangalore')), ('mumbai', ('delhi', 'bangalore'))]
+
+        kwargs = {"duration": 1200}
+        time.sleep(5)
+        while slept < 120:
+            found1 = c.aggregate_value(
+                'trail_view_by_city_gender_agegroup_2days',
+                 (city, gender),
+            )
+            q1 = op.std.aggregate(
+                [{'uid': uid, 'b': b, 'city': city, 'gender': gender}], field='found',
+                aggregate='trail_view_by_city_gender_agegroup_2days', var='e', groupkey=(var('e').city, var('e').gender)
+            )[0].found
+            found2 = c.query(q1)    
+            q2 = op.std.aggregate([{'gender': gender}],
+                field='found', aggregate='list_of_cities', var='e', groupkey=var('e').gender)[0].found
+            found3 = c.query(q2)
+
+            if found1 == expected1 and found2 == expected2 and compare_lists(found3, expected3):
+                passed = True
+                break
+            time.sleep(5)
+            slept += 5
+        self.assertTrue(passed)
+        print('all checks passed. ...')
 
     @tiered
     def test_end_to_end(self):

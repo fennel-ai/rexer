@@ -145,6 +145,7 @@ func (m server) LogMulti(w http.ResponseWriter, req *http.Request) {
 		log.Printf("Error: %v", err)
 		return
 	}
+
 	if err := json.Unmarshal(data, &dedupItems); err != nil {
 		http.Error(w, fmt.Sprintf("invalid request: %v; no action was logged", err), http.StatusBadRequest)
 		log.Printf("Error: %v", err)
@@ -167,7 +168,9 @@ func (m server) LogMulti(w http.ResponseWriter, req *http.Request) {
 			ids = append(ids, i)
 		}
 	}
+
 	// Check for dedup with a pipeline
+	// TODO: Better variable name for ok
 	ok, err := m.tier.Redis.SetNXPipelined(req.Context(), keys, vals, ttls)
 	for i := range ok {
 		if ok[i] {

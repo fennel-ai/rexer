@@ -88,6 +88,7 @@ func transformActions(tier tier.Tier, actions []libaction.Action, query ast.Ast)
 	if err != nil {
 		return value.NewList(), err
 	}
+
 	result, err := interpreter.Eval(query, value.NewDict(map[string]value.Value{"actions": table}))
 	if err != nil {
 		return value.NewList(), err

@@ -48,6 +48,16 @@ func (p Printer) VisitList(values []Ast) string {
 	return sb.String()
 }
 
+func (p Printer) VisitTuple(values []Ast) string {
+	var sb strings.Builder
+	sb.WriteByte('(')
+	for _, v := range values {
+		sb.WriteString(fmt.Sprintf("%s, ", v.AcceptString(p)))
+	}
+	sb.WriteByte(')')
+	return sb.String()
+}
+
 func (p Printer) VisitDict(values map[string]Ast) string {
 	var sb strings.Builder
 	sb.WriteByte('{')

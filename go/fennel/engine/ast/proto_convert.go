@@ -24,6 +24,8 @@ func FromProtoAst(past *proto.Ast) (Ast, error) {
 		return fromProtoBinary(n)
 	case *proto.Ast_List:
 		return fromProtoList(n)
+	case *proto.Ast_Tuple:
+		return fromProtoTuple(n)
 	case *proto.Ast_Dict:
 		return fromProtoDict(n)
 	case *proto.Ast_Statement:
@@ -129,6 +131,18 @@ func (l List) toProto() (proto.Ast, error) {
 		ret[i] = &past
 	}
 	return proto.Ast{Node: &proto.Ast_List{List: &proto.List{Values: ret}}}, nil
+}
+
+func (t Tuple) toProto() (proto.Ast, error) {
+	ret := make([]*proto.Ast, len(t.Values))
+	for i, ast := range t.Values {
+		past, err := ToProtoAst(ast)
+		if err != nil {
+			return pnull(), err
+		}
+		ret[i] = &past
+	}
+	return proto.Ast{Node: &proto.Ast_Tuple{Tuple: &proto.Tuple{Values: ret}}}, nil
 }
 
 func (s Statement) toProto() (proto.Ast, error) {
@@ -329,6 +343,19 @@ func fromProtoList(plist *proto.Ast_List) (Ast, error) {
 		values[i] = v
 	}
 	return List{Values: values}, nil
+}
+
+func fromProtoTuple(plist *proto.Ast_Tuple) (Ast, error) {
+	pvalues := plist.Tuple.Values
+	values := make([]Ast, len(pvalues))
+	for i, pv := range pvalues {
+		v, err := FromProtoAst(pv)
+		if err != nil {
+			return null, err
+		}
+		values[i] = v
+	}
+	return Tuple{Values: values}, nil
 }
 
 func fromProtoDict(plist *proto.Ast_Dict) (Ast, error) {

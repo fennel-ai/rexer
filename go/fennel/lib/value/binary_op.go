@@ -332,6 +332,14 @@ func index(left Value, right Value) (Value, error) {
 		idx := int(asInt)
 		return asList.At(idx)
 	}
+	if asTuple, ok := left.(Tuple); ok {
+		asInt, ok := right.(Int)
+		if !ok {
+			return Nil, fmt.Errorf("can only index a tuple with int but got: '%s' instead", right)
+		}
+		idx := int(asInt)
+		return asTuple.At(idx)
+	}
 	if asDict, ok := left.(Dict); ok {
 		asStr, ok := right.(String)
 		if !ok {

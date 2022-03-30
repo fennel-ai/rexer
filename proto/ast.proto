@@ -19,6 +19,7 @@ message Ast {
     FnCall fncall = 13;
     // HighFnCall hfncall = 14; [deprecated now]
     Unary unary = 15;
+    Tuple tuple = 16;
   }
 }
 
@@ -57,6 +58,10 @@ message List {
 
 message Dict {
   map<string, Ast> values = 1;
+}
+
+message Tuple {
+  repeated Ast values = 1;
 }
 
 message OpCall {
