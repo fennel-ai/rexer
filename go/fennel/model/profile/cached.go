@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"regexp"
 	"strconv"
+	"sync"
 	"time"
 
 	"fennel/lib/cache"
@@ -202,7 +203,7 @@ func (c cachedProvider) getBatched(ctx context.Context, tier tier.Tier, reqs []p
 		keys = append(keys, k)
 	}
 
-	keyToVal := make(map[string][]byte)
+	var keyToVal sync.Map
 	// run the logic as part of a txn
 	//
 	// NOTE: the logic here should assume that it could be retried if one of the provided keys
@@ -237,9 +238,9 @@ func (c cachedProvider) getBatched(ctx context.Context, tier tier.Tier, reqs []p
 			// attempts at converting tier to []byte
 			switch t := v.(type) {
 			case []byte:
-				keyToVal[key] = t
+				keyToVal.Store(key, t)
 			case string:
-				keyToVal[key] = []byte(t)
+				keyToVal.Store(key, []byte(t))
 			default:
 				return fmt.Errorf("value not of type []byte or string: %v", v)
 			}
@@ -264,8 +265,8 @@ func (c cachedProvider) getBatched(ctx context.Context, tier tier.Tier, reqs []p
 	rets := make([][]byte, len(reqs))
 	for i, req := range reqs {
 		key := makeKey(req.OType, req.Oid, req.Key, req.Version)
-		if v, ok := keyToVal[key]; ok {
-			rets[i] = v
+		if v, ok := keyToVal.Load(key); ok {
+			rets[i] = v.([]byte)
 		} else {
 			// Return nil to show that either the profile does not exist or could not be fetched
 			rets[i] = nil
