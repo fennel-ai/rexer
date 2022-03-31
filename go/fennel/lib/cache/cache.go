@@ -26,6 +26,8 @@ type Cache interface {
 	// all the cache entries corresponding to `keys` are invalidated to NOT leave the
 	// cache in a potentially inconsistent state
 	//
+	// NOTE: the logic in func `l` could be run as part of different routines concurrently
+	//
 	// Returns an error if cache entries in the scope could not be invalidated in case of
 	// txn retry exhaustion or non-retriable error
 	RunAsTxn(ctx context.Context, l func(txn Txn, keys []string) error, keys []string, r int) error
