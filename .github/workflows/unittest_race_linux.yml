@@ -33,6 +33,12 @@ jobs:
 
       # -count 1 is required to force override test caches
       - name: run go unit tests
+        env:
+          MYSQL_SERVER_ADDRESS: ${{ secrets.MYSQL_SERVER_ADDRESS }}
+          MYSQL_DATABASE_NAME: ${{ secrets.MYSQL_DATABASE_NAME }}
+          MYSQL_USERNAME: ${{ secrets.MYSQL_USERNAME }}
+          MYSQL_PASSWORD: ${{ secrets.MYSQL_PASSWORD }}
+          REDIS_SERVER_ADDRESS: ${{ secrets.REDIS_SERVER_ADDRESS }}
         run: |
           cd go/fennel
           go test -race -v -p 5 ./... -count 1
