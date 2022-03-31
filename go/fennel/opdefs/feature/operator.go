@@ -33,7 +33,6 @@ func (f featureLog) Apply(static value.Dict, in operators.InputIter, out *value.
 	contextOid := ftypes.OidType(get(static, "context_oid").(value.Int))
 	workflow := string(get(static, "workflow").(value.String))
 	requestID := ftypes.RequestID(get(static, "request_id").(value.Int))
-	modelID := ftypes.ModelID(get(static, "model_id").(value.String))
 
 	for in.HasMore() {
 		heads, kwargs, err := in.Next()
@@ -54,7 +53,8 @@ func (f featureLog) Apply(static value.Dict, in operators.InputIter, out *value.
 			Workflow:        workflow,
 			RequestID:       requestID,
 			Timestamp:       ts,
-			ModelID:         modelID,
+			ModelName:       ftypes.ModelName(get(static, "model_name").(value.String)),
+			ModelVersion:    ftypes.ModelVersion(get(static, "model_version").(value.String)),
 			ModelPrediction: float64(get(kwargs, "model_prediction").(value.Double)),
 		}
 		if err = feature.Log(context.TODO(), f.tier, msg); err != nil {
@@ -77,7 +77,8 @@ func (f featureLog) Signature() *operators.Signature {
 		Param("features", value.Types.Dict, false, false, value.Nil).
 		Param("workflow", value.Types.String, true, false, value.Nil).
 		Param("request_id", value.Types.Int, true, false, value.Nil).
-		Param("model_id", value.Types.String, true, true, value.String("")).
+		Param("model_name", value.Types.String, true, true, value.String("")).
+		Param("model_version", value.Types.String, true, true, value.String("")).
 		Param("model_prediction", value.Types.Double, false, true, value.Double(-1)).
 		Param("timestamp", value.Types.Int, false, true, value.Int(0))
 }
