@@ -109,6 +109,8 @@ export const setup = async (input: inputType): Promise<pulumi.Output<outputType>
     }
 
     const cluster = new aws.rds.Cluster("db-instance", {
+        // Apply any changes proposed immediately instead of applying them during maintenance window
+        applyImmediately: true,
         dbSubnetGroupName: subnetGroup.name,
         vpcSecurityGroupIds: [securityGroup.id],
         clusterIdentifierPrefix: `p-${input.planeId}-db-`,
