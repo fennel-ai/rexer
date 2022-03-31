@@ -49,12 +49,14 @@ var _ Ast = Unary{}
 var _ Ast = Binary{}
 var _ Ast = List{}
 var _ Ast = Tuple{}
+var _ Ast = Dict{}
 var _ Ast = OpCall{}
 var _ Ast = Var{}
 var _ Ast = Statement{}
 var _ Ast = Query{}
 var _ Ast = Lookup{}
 var _ Ast = IfElse{}
+var _ Ast = FnCall{}
 
 type Lookup struct {
 	On       Ast
@@ -396,5 +398,3 @@ func (f FnCall) Equals(ast Ast) bool {
 	}
 	return false
 }
-
-var _ Ast = FnCall{}
