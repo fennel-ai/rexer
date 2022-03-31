@@ -7,6 +7,7 @@ import (
 	"crypto/tls"
 	"fmt"
 	"math/rand"
+	"os"
 	"strconv"
 	"strings"
 	"testing"
@@ -20,15 +21,15 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-const (
-	addr = "clustercfg.p-2-redis-db-69f0a76.fbjfph.memorydb.us-west-2.amazonaws.com:6379"
+var (
+	hostAddr = os.Getenv("REDIS_SERVER_ADDRESS")
 )
 
 func TestRedisClientIntegration(t *testing.T) {
 	rand.Seed(time.Now().UnixNano())
 	tierID := ftypes.RealmID(rand.Uint32())
 	scope := resource.NewTierScope(tierID)
-	conf := ClientConfig{Addr: addr, TLSConfig: &tls.Config{}, Scope: scope}
+	conf := ClientConfig{Addr: hostAddr, TLSConfig: &tls.Config{}, Scope: scope}
 	rdb, err := conf.Materialize()
 	assert.NoError(t, err)
 	t.Run("integration_get_set_del", func(t *testing.T) { testClient(t, rdb.(Client)) })
@@ -39,7 +40,7 @@ func TestMultiSetTTL(t *testing.T) {
 	rand.Seed(time.Now().UnixNano())
 	tierID := ftypes.RealmID(rand.Uint32())
 	scope := resource.NewTierScope(tierID)
-	conf := ClientConfig{Addr: addr, TLSConfig: &tls.Config{}, Scope: scope}
+	conf := ClientConfig{Addr: hostAddr, TLSConfig: &tls.Config{}, Scope: scope}
 	rdb, err := conf.Materialize()
 	assert.NoError(t, err)
 	ctx := context.Background()
@@ -80,7 +81,7 @@ func TestMultiGetSet(t *testing.T) {
 	rand.Seed(time.Now().UnixNano())
 	tierID := ftypes.RealmID(rand.Uint32())
 	scope := resource.NewTierScope(tierID)
-	conf := ClientConfig{Addr: addr, TLSConfig: &tls.Config{}, Scope: scope}
+	conf := ClientConfig{Addr: hostAddr, TLSConfig: &tls.Config{}, Scope: scope}
 	rdb, err := conf.Materialize()
 	assert.NoError(t, err)
 	ctx := context.Background()
@@ -127,9 +128,9 @@ func TestClientConfig_Materialize_Invalid(t *testing.T) {
 	}{
 		{"invalid_url", ClientConfig{"some_random.aws.com:6379", &tls.Config{}, scope}},
 		// i.e. include the url without the port
-		{"no_port", ClientConfig{strings.Split(addr, ":6379")[0], &tls.Config{}, scope}},
+		{"no_port", ClientConfig{strings.Split(hostAddr, ":6379")[0], &tls.Config{}, scope}},
 		// i.e. valid url but without tls config
-		{"no_tls", ClientConfig{addr, nil, scope}},
+		{"no_tls", ClientConfig{hostAddr, nil, scope}},
 	}
 	for i := range scenarios {
 		scenario := scenarios[i]
@@ -145,7 +146,7 @@ func TestDeleteCrossSlot(t *testing.T) {
 	rand.Seed(time.Now().UnixNano())
 	tierID := ftypes.RealmID(rand.Uint32())
 	scope := resource.NewTierScope(tierID)
-	conf := ClientConfig{Addr: addr, TLSConfig: &tls.Config{}, Scope: scope}
+	conf := ClientConfig{Addr: hostAddr, TLSConfig: &tls.Config{}, Scope: scope}
 	rdb, err := conf.Materialize()
 	assert.NoError(t, err)
 
@@ -176,7 +177,7 @@ func TestSetNX(t *testing.T) {
 	rand.Seed(time.Now().UnixNano())
 	tierID := ftypes.RealmID(rand.Uint32())
 	scope := resource.NewTierScope(tierID)
-	conf := ClientConfig{Addr: addr, TLSConfig: &tls.Config{}, Scope: scope}
+	conf := ClientConfig{Addr: hostAddr, TLSConfig: &tls.Config{}, Scope: scope}
 	rdb, err := conf.Materialize()
 	assert.NoError(t, err)
 
@@ -205,7 +206,7 @@ func TestSetNXPipelined(t *testing.T) {
 	rand.Seed(time.Now().UnixNano())
 	tierID := ftypes.RealmID(rand.Uint32())
 	scope := resource.NewTierScope(tierID)
-	conf := ClientConfig{Addr: addr, TLSConfig: &tls.Config{}, Scope: scope}
+	conf := ClientConfig{Addr: hostAddr, TLSConfig: &tls.Config{}, Scope: scope}
 	rdb, err := conf.Materialize()
 	assert.NoError(t, err)
 

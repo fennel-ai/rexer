@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"fmt"
 	"math/rand"
+	"os"
 	"sync"
 	"testing"
 	"time"
@@ -15,8 +16,10 @@ import (
 	"fennel/resource"
 )
 
-const (
-	host = "p-2-db-20220322011744501900000001.cluster-c00d7gkxaysk.us-west-2.rds.amazonaws.com"
+var (
+	host     = os.Getenv("MYSQL_SERVER_ADDRESS")
+	username = os.Getenv("MYSQL_USERNAME")
+	password = os.Getenv("MYSQL_PASSWORD")
 )
 
 func create(dbname, username, password, host string) error {
@@ -60,8 +63,8 @@ func TestSyncSchema(t *testing.T) {
 	scope := resource.NewTierScope(tierID)
 	config := MySQLConfig{
 		DBname:   scope.PrefixedName("schema_test"),
-		Username: "admin",
-		Password: "foundationdb",
+		Username: username,
+		Password: password,
 		Host:     host,
 		Schema: Schema{
 			1: `CREATE TABLE IF NOT EXISTS schema_test (
@@ -119,8 +122,8 @@ func TestConcurrentSyncSchema(t *testing.T) {
 	scope := resource.NewTierScope(tierID)
 	config := MySQLConfig{
 		DBname:   scope.PrefixedName("schema_test"),
-		Username: "admin",
-		Password: "foundationdb",
+		Username: username,
+		Password: password,
 		Host:     host,
 		// Add more schema queries to have potential overlap b/w them
 		// when two goroutines try to sync the schema

@@ -5,6 +5,7 @@ package test
 import (
 	"fmt"
 	"math/rand"
+	"os"
 	"time"
 
 	"fennel/lib/clock"
@@ -20,7 +21,7 @@ import (
 func Tier() (tier.Tier, error) {
 	rand.Seed(time.Now().UnixNano())
 	tierID := ftypes.RealmID(rand.Uint32())
-	db, err := defaultDB(tierID)
+	db, err := defaultDB(tierID, "testdb" /*logicalname*/, os.Getenv("MYSQL_USERNAME"), os.Getenv("MYSQL_PASSWORD"), os.Getenv("MYSQL_SERVER_ADDRESS"))
 	if err != nil {
 		return tier.Tier{}, err
 	}
@@ -52,7 +53,7 @@ func Tier() (tier.Tier, error) {
 }
 
 func Teardown(tier tier.Tier) error {
-	if err := drop(tier.ID, logical_test_dbname, username, password, host); err != nil {
+	if err := drop(tier.ID, "testdb" /*logicalname*/, os.Getenv("MYSQL_USERNAME"), os.Getenv("MYSQL_PASSWORD"), os.Getenv("MYSQL_SERVER_ADDRESS")); err != nil {
 		panic(fmt.Sprintf("error in db teardown: %v\n", err))
 	}
 	return nil
