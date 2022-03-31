@@ -93,6 +93,6 @@ var Schema = db.Schema{
 			PRIMARY KEY (name, endpoint_config_name)
 		);`,
 	// ==================== END Schema for model registry ======================
-	11: `ALTER TABLE actionlog ADD metadata_text TEXT;`,
-	12: `ALTER TABLE profile ADD value_text TEXT;`,
+	11: `ALTER TABLE actionlog ADD metadata_text TEXT NOT NULL;`,
+	12: `ALTER TABLE profile ADD value_text TEXT NOT NULL;`,
 }
