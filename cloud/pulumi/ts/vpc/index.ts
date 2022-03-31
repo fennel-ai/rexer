@@ -278,6 +278,19 @@ function createVpcPeeringConnection(vpc: aws.ec2.Vpc, routeTables: pulumi.Output
     return peeringConnection
 }
 
+function createS3VpcEndpoint(vpc: aws.ec2.Vpc, routeTables: pulumi.Output<string[]>, input: inputType, awsProvider: aws.Provider): aws.ec2.VpcEndpoint {
+    return new aws.ec2.VpcEndpoint("s3-endpoint", {
+        serviceName: `com.amazonaws.${input.region}.s3`,
+        vpcEndpointType: "Gateway",
+        vpcId: vpc.id,
+        routeTableIds: routeTables,
+        tags: {
+            ...fennelStdTags,
+            "Name": `p-${input.planeId}-s3-endpoint`,
+        }
+    }, { provider: awsProvider })
+}
+
 export const setup = async (input: inputType): Promise<pulumi.Output<outputType>> => {
 
     const provider = new aws.Provider("aws-provider", {
@@ -333,6 +346,8 @@ export const setup = async (input: inputType): Promise<pulumi.Output<outputType>
 
     const privateNacl = createPrivateNacl(input, vpc, privateSubnets, provider)
     const publicNacl = createPublicNacl(input, vpc, publicSubnets, provider)
+
+    const s3vpce = createS3VpcEndpoint(vpc, pulumi.output([privateRouteTable]), input, provider)
 
     const output = pulumi.output({
         vpcId,
