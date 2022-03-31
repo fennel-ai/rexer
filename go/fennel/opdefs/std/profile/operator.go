@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	"fennel/controller/mock"
 	"fennel/controller/profile"
 	"fennel/engine/interpreter/bootarg"
 	"fennel/engine/operators"
@@ -19,6 +20,7 @@ func init() {
 
 type profileOp struct {
 	tier tier.Tier
+	args value.Dict
 }
 
 func (p profileOp) New(args value.Dict, bootargs map[string]interface{}) (operators.Operator, error) {
@@ -26,12 +28,26 @@ func (p profileOp) New(args value.Dict, bootargs map[string]interface{}) (operat
 	if err != nil {
 		return nil, err
 	}
-	return profileOp{tr}, nil
+	return profileOp{tr, args}, nil
 }
 
-func (p profileOp) Apply(staticKwargs value.Dict, in operators.InputIter, out *value.List) error {
+func (p profileOp) Apply(staticKwargs value.Dict, in operators.InputIter, out *value.List) (err error) {
 	var reqs []libprofile.ProfileItem
 	var rows []value.Value
+	var vals []value.Value
+	// check if the op has to use mocked profiles
+	var doMock bool
+	var mockID value.Int
+	mockVal, ok := p.args.Get("__mock_id__")
+	if !ok {
+		doMock = false
+	} else {
+		doMock = true
+		mockID, ok = mockVal.(value.Int)
+		if !ok {
+			return fmt.Errorf("expected '__mock_id__' to be an int but found: '%v'", mockVal)
+		}
+	}
 	for in.HasMore() {
 		heads, kwargs, err := in.Next()
 		if err != nil {
@@ -47,9 +63,13 @@ func (p profileOp) Apply(staticKwargs value.Dict, in operators.InputIter, out *v
 		reqs = append(reqs, req)
 		rows = append(rows, rowVal)
 	}
-	vals, err := profile.GetBatched(context.TODO(), p.tier, reqs)
-	if err != nil {
-		return err
+	if !doMock {
+		vals, err = profile.GetBatched(context.TODO(), p.tier, reqs)
+		if err != nil {
+			return err
+		}
+	} else {
+		vals = mock.GetProfiles(reqs, int64(mockID))
 	}
 	field := string(staticKwargs.GetUnsafe("field").(value.String))
 	defaultValue := staticKwargs.GetUnsafe("default")

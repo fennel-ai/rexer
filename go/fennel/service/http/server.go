@@ -5,12 +5,14 @@ import (
 	"fmt"
 	"io/ioutil"
 	"log"
+	"math/rand"
 	"net/http"
 	_ "net/http/pprof"
 	"time"
 
 	"fennel/controller/action"
 	aggregate2 "fennel/controller/aggregate"
+	"fennel/controller/mock"
 	profile2 "fennel/controller/profile"
 	"fennel/engine/interpreter"
 	"fennel/engine/interpreter/bootarg"
@@ -329,12 +331,16 @@ func (m server) Query(w http.ResponseWriter, req *http.Request) {
 		log.Printf("Error: %v", err)
 		return
 	}
-	tree, args, err := query.FromBoundQueryJSON(data)
+	tree, args, mockData, err := query.FromBoundQueryJSON(data)
 	if err != nil {
 		http.Error(w, fmt.Sprintf("invalid request: %v", err), http.StatusBadRequest)
 		log.Printf("Error: %v", err)
 		return
 	}
+	// set mock data
+	mockID := rand.Int63()
+	args.Set("__mock_id__", value.Int(mockID))
+	mock.Store[mockID] = &mockData
 	// execute the tree
 	i := interpreter.NewInterpreter(bootarg.Create(m.tier))
 	ret, err := i.Eval(tree, args)
@@ -343,6 +349,8 @@ func (m server) Query(w http.ResponseWriter, req *http.Request) {
 		log.Printf("Error: %v", err)
 		return
 	}
+	// unset mock data
+	mock.Store[mockID] = nil
 	w.Write(value.ToJSON(ret))
 }
 

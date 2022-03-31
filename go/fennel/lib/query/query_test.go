@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"testing"
 
+	"fennel/controller/mock"
 	"github.com/stretchr/testify/assert"
 
 	"fennel/engine/ast"
@@ -34,7 +35,7 @@ func TestBoundQueryJSON(t *testing.T) {
 
 	// Test unmarshal
 	for _, tst := range tests {
-		tree, args, err := FromBoundQueryJSON([]byte(tst.str))
+		tree, args, _, err := FromBoundQueryJSON([]byte(tst.str))
 		assert.NoError(t, err)
 		assert.True(t, tst.tree.Equals(tree))
 		assert.True(t, tst.args.Equal(args))
@@ -43,9 +44,9 @@ func TestBoundQueryJSON(t *testing.T) {
 	for _, tst := range tests {
 		// Ast does not serialize to a unique string
 		// So test by converting to and from JSON
-		ser, err := ToBoundQueryJSON(tst.tree, tst.args)
+		ser, err := ToBoundQueryJSON(tst.tree, tst.args, mock.Data{})
 		assert.NoError(t, err)
-		tree, args, err := FromBoundQueryJSON(ser)
+		tree, args, _, err := FromBoundQueryJSON(ser)
 		assert.NoError(t, err)
 		assert.True(t, tst.tree.Equals(tree))
 		assert.True(t, tst.args.Equal(args))
@@ -59,5 +60,5 @@ func makeBoundQueryJSON(tree ast.Ast, args value.Dict) (string, error) {
 	}
 	astStr := base64.StdEncoding.EncodeToString(astSer)
 	argsSer := value.ToJSON(args)
-	return fmt.Sprintf(`{"Ast":"%s","Args":%s}`, astStr, argsSer), nil
+	return fmt.Sprintf(`{"Ast":"%s","Args":%s,"Mock":{}}`, astStr, argsSer), nil
 }

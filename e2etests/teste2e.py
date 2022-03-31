@@ -95,8 +95,7 @@ class TestEndToEnd(unittest.TestCase):
             return op.std.set(q, name='value', value=1)
         agg_user_num_notif_opens.store(client=c)
 
-        c.set_profile("content", content_id, "category", category)
-        self.assertEqual(category, c.get_profile("content", content_id, "category"))
+        p1 = profile.Profile(otype="content", oid=content_id, key="category", value=category)
 
         ts = int(time.time())
         a1 = action.Action(actor_type='user', actor_id=uid, target_type='content', target_id=content_id,
@@ -107,6 +106,25 @@ class TestEndToEnd(unittest.TestCase):
                            action_type='notif_open', request_id=1, timestamp=ts+2, dedup_key="a3")
         a4 = action.Action(actor_type='user', actor_id=uid, target_type='content', target_id=content_id,
                            action_type='react', request_id=2, timestamp=ts+3, dedup_key="a4")
+
+        # verify that test of actions works well
+        mock = {'Profiles': [p1]}
+        actions = [a1, a2, a3, a4]
+        expected = [
+            {'action_id': 1, 'action_type': 'notif_send', 'actor_id': 12312, 'actor_type': 'user', 'category': 'sports',
+             'groupkey': [12312, 'sports'], 'metadata': {}, 'request_id': 1, 'target_id': 456,
+             'target_type': 'content', 'timestamp': ts, 'value': [0, 1]},
+            {'action_id': 2, 'action_type': 'notif_send', 'actor_id': 12312, 'actor_type': 'user', 'category': 'sports',
+             'groupkey': [12312, 'sports'], 'metadata': {}, 'request_id': 1, 'target_id': 456,
+             'target_type': 'content', 'timestamp': ts+1, 'value': [0, 1]},
+            {'action_id': 3, 'action_type': 'notif_open', 'actor_id': 12312, 'actor_type': 'user', 'category': 'sports',
+             'groupkey': [12312, 'sports'], 'metadata': {}, 'request_id': 1, 'target_id': 456,
+             'target_type': 'content', 'timestamp': ts+2, 'value': [1, 0]}
+        ]
+        self.assertEqual(expected, agg_user_notif_open_rate_by_category.test(actions, client=c, mock=mock))
+
+        c.set_profile("content", content_id, "category", category)
+        self.assertEqual(category, c.get_profile("content", content_id, "category"))
         # log multiple times with dedup
         for i in range(5):
             c.log(a1)
@@ -116,21 +134,6 @@ class TestEndToEnd(unittest.TestCase):
         # this action was logged 8 days in history so should not apply towards any aggregate
         c.log(action.Action(actor_type='user', actor_id=uid, target_type='content', target_id=content_id,
                             action_type='notif_send', request_id=7, timestamp=ts-8*24*3600))
-
-        # also verify that test of actions works well
-        actions = [a1, a2, a3, a4]
-        expected = [
-            {'action_type': 'notif_send', 'actor_id': 12312, 'actor_type': 'user', 'category': 'sports',
-             'dedup_key': 'a1', 'groupkey': [12312, 'sports'], 'metadata': {}, 'request_id': 1, 'target_id': 456,
-             'target_type': 'content', 'timestamp': ts, 'value': [0, 1]},
-            {'action_type': 'notif_send', 'actor_id': 12312, 'actor_type': 'user', 'category': 'sports',
-             'dedup_key': 'a2', 'groupkey': [12312, 'sports'], 'metadata': {}, 'request_id': 1, 'target_id': 456,
-             'target_type': 'content', 'timestamp': ts+1, 'value': [0, 1]},
-            {'action_type': 'notif_open', 'actor_id': 12312, 'actor_type': 'user', 'category': 'sports',
-             'dedup_key': 'a3', 'groupkey': [12312, 'sports'], 'metadata': {}, 'request_id': 1, 'target_id': 456,
-             'target_type': 'content', 'timestamp': ts+2, 'value': [1, 0]}
-        ]
-        self.assertEqual(expected, agg_user_notif_open_rate_by_category.test(actions, client=c))
 
         b = int((ts % (24*3600)) / 3600)
 
@@ -154,7 +157,7 @@ class TestEndToEnd(unittest.TestCase):
             time.sleep(5)
             slept += 5
         self.assertTrue(passed)
-        print('all checks passed...') 
+        print('all checks passed...')
 
     @tiered
     def test_e2e_tuple(self):

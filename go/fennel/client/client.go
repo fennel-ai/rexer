@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"net/url"
 
+	"fennel/controller/mock"
 	"fennel/engine/ast"
 	"fennel/lib/action"
 	"fennel/lib/aggregate"
@@ -154,9 +155,9 @@ func (c *Client) GetProfile(request *profileLib.ProfileItem) (*value.Value, erro
 	}
 }
 
-func (c *Client) Query(reqAst ast.Ast, reqArgs value.Dict) (value.Value, error) {
+func (c *Client) Query(reqAst ast.Ast, reqArgs value.Dict, reqMock mock.Data) (value.Value, error) {
 	// convert the request to proto version
-	req, err := query.ToBoundQueryJSON(reqAst, reqArgs)
+	req, err := query.ToBoundQueryJSON(reqAst, reqArgs, reqMock)
 	if err != nil {
 		return nil, fmt.Errorf("invalid request: %v", err)
 	}

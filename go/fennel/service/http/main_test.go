@@ -11,6 +11,7 @@ import (
 
 	action2 "fennel/controller/action"
 	aggregate2 "fennel/controller/aggregate"
+	"fennel/controller/mock"
 	"fennel/engine/ast"
 	"fennel/kafka"
 	"fennel/lib/aggregate"
@@ -302,7 +303,7 @@ func TestQuery(t *testing.T) {
 		}},
 		},
 	}
-	found, err := c.Query(e, value.NewDict(map[string]value.Value{"c": value.Int(1)}))
+	found, err := c.Query(e, value.NewDict(map[string]value.Value{"c": value.Int(1)}), mock.Data{})
 	assert.NoError(t, err)
 	expected := value.NewList()
 	expected.Append(value.NewDict(map[string]value.Value{"x": value.Int(1), "y": value.Int(3)}))
@@ -313,7 +314,7 @@ func TestQuery(t *testing.T) {
 		ThenDo:    ast.MakeString("abc"),
 		ElseDo:    ast.MakeString("xyz"),
 	}
-	found, err = c.Query(e2, value.NewDict(map[string]value.Value{}))
+	found, err = c.Query(e2, value.NewDict(map[string]value.Value{}), mock.Data{})
 	assert.NoError(t, err)
 	assert.True(t, value.String("xyz").Equal(found))
 
@@ -322,7 +323,7 @@ func TestQuery(t *testing.T) {
 	args1 := value.NewDict(map[string]value.Value{"key1": value.Int(4)})
 	exp1 := value.Int(4)
 
-	found, err = c.Query(ast1, args1)
+	found, err = c.Query(ast1, args1, mock.Data{})
 	assert.NoError(t, err)
 	assert.True(t, exp1.Equal(found))
 }
