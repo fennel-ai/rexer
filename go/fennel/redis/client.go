@@ -25,8 +25,14 @@ func (c Client) SetNX(ctx context.Context, key string, v interface{}, ttl time.D
 
 func (c Client) Del(ctx context.Context, k ...string) error {
 	defer timer.Start(ctx, c.ID(), "redis.del").Stop()
-	k = c.mTieredKey(k)
-	return c.client.Del(ctx, k...).Err()
+	pipe := c.client.Pipeline()
+	for _, key := range k {
+		if err := pipe.Del(ctx, c.tieredKey(key)).Err(); err != nil {
+			return err
+		}
+	}
+	_, err := pipe.Exec(ctx)
+	return err
 }
 
 func (c Client) Get(ctx context.Context, k string) (interface{}, error) {

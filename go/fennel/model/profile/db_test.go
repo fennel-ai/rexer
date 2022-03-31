@@ -60,6 +60,27 @@ func TestLongOType(t *testing.T) {
 	assert.NoError(t, err)
 }
 
+func TestMultiSet(t *testing.T) {
+	tier, err := test.Tier()
+	assert.NoError(t, err)
+	defer test.Teardown(tier)
+	ctx := context.Background()
+	p := dbProvider{}
+
+	val := value.Int(2)
+	v := value.ToJSON(val)
+	val1 := value.Int(5)
+	v1 := value.ToJSON(val1)
+
+	assert.NoError(t, p.set(ctx, tier, "12", 1, "age", 1, v))
+	// write the same profile should not fail the call, nor should it
+	// update the existing value
+	assert.NoError(t, p.set(ctx, tier, "12", 1, "age", 1, v1))
+
+	actual, _ := p.get(ctx, tier, "12", 1, "age", 1)
+	assert.Equal(t, v, actual)
+}
+
 func TestSetBatch(t *testing.T) {
 	tier, err := test.Tier()
 	assert.NoError(t, err)

@@ -60,6 +60,17 @@ func (D dbProvider) setBatch(ctx context.Context, tier tier.Tier, profiles []pro
 	}
 	sql = strings.TrimSuffix(sql, ",") // remove the last trailing comma
 
+	// this is to simulate `insert if not exists` semantics in SQL by setting value to itself
+	// in case of INSERT returns a duplicate key error
+	//
+	// NOTE: This may result in unexpected behavior is the user tries to set a different
+	// value for a versioned profile. Previously we had adopted failing such requests, but to
+	// make the behavior idempotent, we do not fail the request but retain the value as is.
+	// We expect the user to not set the version in case of such updates.
+	//
+	// NOTE: any AUTO_INCREMENT columns are incremented if UPDATE path is triggered
+	sql += " ON DUPLICATE KEY UPDATE value=value"
+
 	_, err := tier.DB.ExecContext(ctx, sql, vals...)
 	return err
 }

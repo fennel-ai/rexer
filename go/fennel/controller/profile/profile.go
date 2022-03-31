@@ -42,6 +42,20 @@ func Set(ctx context.Context, tier tier.Tier, request profilelib.ProfileItem) er
 	if request.Version == 0 {
 		request.Version = uint64(time.Now().UnixMicro())
 	}
+
+	// write to Kafka to ensure that profile will be written eventually even if the set call here fails;
+	// Since Kafka consumer will retry in case of failures, the cache will be eventually consistent
+	// with the DB. However, in the sunny scenario, this may lead to multiple writes to the DB and cache.
+	// Kafka consumer consumes and writes profiles in batch, the added latency of a double write is not linearly high
+	p, err := profilelib.ToProtoProfileItem(&request)
+	if err != nil {
+		return err
+	}
+	producer := tier.Producers[profilelib.PROFILELOG_KAFKA_TOPIC]
+	if err := producer.LogProto(ctx, &p, nil); err != nil {
+		return err
+	}
+
 	valSer := value.ToJSON(request.Value)
 	if err := profile.Set(ctx, tier, request.OType, request.Oid, request.Key, request.Version, valSer); err != nil {
 		return err

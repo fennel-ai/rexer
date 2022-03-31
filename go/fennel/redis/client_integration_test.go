@@ -141,6 +141,37 @@ func TestClientConfig_Materialize_Invalid(t *testing.T) {
 	}
 }
 
+func TestDeleteCrossSlot(t *testing.T) {
+	rand.Seed(time.Now().UnixNano())
+	tierID := ftypes.RealmID(rand.Uint32())
+	scope := resource.NewTierScope(tierID)
+	conf := ClientConfig{Addr: addr, TLSConfig: &tls.Config{}, Scope: scope}
+	rdb, err := conf.Materialize()
+	assert.NoError(t, err)
+
+	ctx := context.Background()
+	c := rdb.(Client)
+	ttl := 5 * time.Second
+	keys := []string{"{foo1}:1", "{foo2}:2", "{foo3}:3"}
+	vals := []interface{}{"v1", "v2", "v3"}
+
+	// set key works initially
+	assert.NoError(t, c.MSet(ctx, keys, vals, []time.Duration{ttl, ttl, ttl}))
+
+	// get to see if the values are set correctly
+	actual, err := c.MGet(ctx, keys...)
+	assert.NoError(t, err)
+	assert.Equal(t, actual, vals)
+
+	// delete the keys now
+	assert.NoError(t, c.Del(ctx, keys...))
+
+	// nothing should exist now
+	noVal, err := c.MGet(ctx, keys...)
+	assert.NoError(t, err)
+	assert.Equal(t, noVal, []interface{}{redis.Nil, redis.Nil, redis.Nil})
+}
+
 func TestSetNX(t *testing.T) {
 	rand.Seed(time.Now().UnixNano())
 	tierID := ftypes.RealmID(rand.Uint32())
