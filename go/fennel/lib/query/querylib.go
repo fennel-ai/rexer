@@ -88,8 +88,11 @@ func FromBoundQueryJSON(data []byte) (tree ast.Ast, args value.Dict, mockData mo
 	}
 	// Now get mock data
 	vdata, _, _, err = jsonparser.Get(data, "Mock")
-	if err != nil {
+	if err != nil && err != jsonparser.KeyPathNotFoundError {
 		return tree, args, mockData, fmt.Errorf("error getting mock: %v", err)
+	}
+	if err == jsonparser.KeyPathNotFoundError {
+		return tree, args, mockData, nil
 	}
 	err = json.Unmarshal(vdata, &mockData)
 	if err != nil {

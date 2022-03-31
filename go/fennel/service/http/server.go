@@ -339,8 +339,10 @@ func (m server) Query(w http.ResponseWriter, req *http.Request) {
 	}
 	// set mock data
 	mockID := rand.Int63()
-	args.Set("__mock_id__", value.Int(mockID))
-	mock.Store[mockID] = &mockData
+	if mockData.Profiles == nil {
+		args.Set("__mock_id__", value.Int(mockID))
+		mock.Store[mockID] = &mockData
+	}
 	// execute the tree
 	i := interpreter.NewInterpreter(bootarg.Create(m.tier))
 	ret, err := i.Eval(tree, args)
@@ -350,7 +352,9 @@ func (m server) Query(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 	// unset mock data
-	mock.Store[mockID] = nil
+	if mockData.Profiles == nil {
+		mock.Store[mockID] = nil
+	}
 	w.Write(value.ToJSON(ret))
 }
 
