@@ -78,7 +78,6 @@ func (c Cache) RunAsTxn(ctx context.Context, txnLogic func(c cache.Txn, keys []s
 	}
 
 	var slotToResult sync.Map
-	rctr := 0
 	// NOTE: it is possible that the txnLogic successfully executes for a subset of keys
 	// and fails for the rest e.g.
 	//  i) a certain subset of keys are retried more than the rest (in which case increasing `r` should help)
@@ -86,10 +85,13 @@ func (c Cache) RunAsTxn(ctx context.Context, txnLogic func(c cache.Txn, keys []s
 	//  iii) redis level errors for certain keys/slots
 	//
 	// Upon encountering first error, the retries are aborted and cache entries for the keys are invalidated
-	for ; rctr < r; rctr++ {
+	for rctr := 0; rctr < r; rctr++ {
 		errs := make(chan error, len(slotToKeys))
+		wg := sync.WaitGroup{}
+		wg.Add(len(slotToKeys))
 		for s, ks := range slotToKeys {
 			go func(slot int64, keys []string) {
+				defer wg.Done()
 				if _, ok := slotToResult.Load(slot); ok {
 					errs <- nil
 					return
@@ -116,6 +118,7 @@ func (c Cache) RunAsTxn(ctx context.Context, txnLogic func(c cache.Txn, keys []s
 				errs <- nil
 			}(s, ks)
 		}
+		wg.Wait()
 
 		invalidate := false
 		done := 0
@@ -133,10 +136,11 @@ func (c Cache) RunAsTxn(ctx context.Context, txnLogic func(c cache.Txn, keys []s
 		}
 		if done == len(slotToKeys) {
 			// watch for every slot succeeded
+			retry_stats.Set(float64(rctr))
 			return nil
 		}
 	}
-	retry_stats.Set(float64(rctr))
+	retry_stats.Set(float64(r))
 	// In case of a failure or exhausting retries, delete all the cache entries
 	if err := c.Delete(ctx, ks...); err != nil {
 		// if invalidating cache entries fails, return an error
