@@ -15,10 +15,10 @@ func Insert(ctx context.Context, tier tier.Tier, action *action.ActionSer) (uint
 	defer timer.Start(ctx, tier.ID, "model.action.insert").Stop()
 	result, err := tier.DB.NamedExecContext(ctx, `
 		INSERT INTO actionlog (
-			actor_id, actor_type, target_id, target_type, action_type, timestamp, request_id, metadata
+			actor_id, actor_type, target_id, target_type, action_type, timestamp, request_id, metadata, metadata_text
 	    )
         VALUES (
-			:actor_id, :actor_type, :target_id, :target_type, :action_type, :timestamp, :request_id, :metadata
+			:actor_id, :actor_type, :target_id, :target_type, :action_type, :timestamp, :request_id, :metadata, :metadata
 		);`,
 		action)
 	if err != nil {
@@ -40,14 +40,14 @@ func InsertBatch(ctx context.Context, tier tier.Tier, actions []action.ActionSer
 		return nil
 	}
 	sql := `INSERT INTO actionlog (
-				 actor_id, actor_type, target_id, target_type, action_type, timestamp, request_id, metadata
+				 actor_id, actor_type, target_id, target_type, action_type, timestamp, request_id, metadata, metadata_text
 			)
 			VALUES `
 	vals := make([]interface{}, 0)
 	for i := range actions {
 		a := actions[i]
-		sql += "(?, ?, ?, ?, ?, ?, ?, ?),"
-		vals = append(vals, a.ActorID, a.ActorType, a.TargetID, a.TargetType, a.ActionType, a.Timestamp, a.RequestID, a.Metadata)
+		sql += "(?, ?, ?, ?, ?, ?, ?, ?, ?),"
+		vals = append(vals, a.ActorID, a.ActorType, a.TargetID, a.TargetType, a.ActionType, a.Timestamp, a.RequestID, a.Metadata, a.Metadata)
 	}
 	sql = strings.TrimSuffix(sql, ",") // remove the last trailing comma
 	_, err := tier.DB.ExecContext(ctx, sql, vals...)
@@ -60,7 +60,8 @@ func InsertBatch(ctx context.Context, tier tier.Tier, actions []action.ActionSer
 // TODO: add limit support?
 func Fetch(ctx context.Context, tier tier.Tier, request action.ActionFetchRequest) ([]action.ActionSer, error) {
 	defer timer.Start(ctx, tier.ID, "model.action.fetch").Stop()
-	query := "SELECT * FROM actionlog"
+	// exclude metadata_text from the query until schema changes to use metadata as text
+	query := "SELECT action_id, actor_id, actor_type, target_id, target_type, action_type, timestamp, request_id, metadata FROM actionlog"
 	clauses := make([]string, 0)
 	if len(request.ActorType) != 0 {
 		clauses = append(clauses, "actor_type = :actor_type")
