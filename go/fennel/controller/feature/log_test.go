@@ -30,7 +30,8 @@ func TestLogMulti_Kafka(t *testing.T) {
 			Workflow:        "something",
 			RequestID:       12,
 			Timestamp:       12312,
-			ModelID:         "some model",
+			ModelName:       "some model",
+			ModelVersion:    "0.1.0",
 			ModelPrediction: 0.1323,
 		})
 	}
@@ -61,7 +62,8 @@ func TestLog_Read(t *testing.T) {
 		Workflow:        "something",
 		RequestID:       12,
 		Timestamp:       12312,
-		ModelID:         "some model",
+		ModelName:       "some model",
+		ModelVersion:    "0.1.0",
 		ModelPrediction: 0.1323,
 	}
 

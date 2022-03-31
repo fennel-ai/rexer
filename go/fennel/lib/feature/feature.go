@@ -14,16 +14,17 @@ const (
 )
 
 type Row struct {
-	ContextOType    ftypes.OType     `json:"context_otype"`
-	ContextOid      ftypes.OidType   `json:"context_oid"`
-	CandidateOType  ftypes.OType     `json:"candidate_otype"`
-	CandidateOid    ftypes.OidType   `json:"candidate_oid"`
-	Features        value.Dict       `json:"data"`
-	Workflow        string           `json:"workflow"`
-	RequestID       ftypes.RequestID `json:"request_id"`
-	Timestamp       ftypes.Timestamp `json:"timestamp"`
-	ModelID         ftypes.ModelID   `json:"model_id"`
-	ModelPrediction float64          `json:"model_prediction"`
+	ContextOType    ftypes.OType        `json:"context_otype"`
+	ContextOid      ftypes.OidType      `json:"context_oid"`
+	CandidateOType  ftypes.OType        `json:"candidate_otype"`
+	CandidateOid    ftypes.OidType      `json:"candidate_oid"`
+	Features        value.Dict          `json:"data"`
+	Workflow        string              `json:"workflow"`
+	RequestID       ftypes.RequestID    `json:"request_id"`
+	Timestamp       ftypes.Timestamp    `json:"timestamp"`
+	ModelName       ftypes.ModelName    `json:"model_name"`
+	ModelVersion    ftypes.ModelVersion `json:"model_version"`
+	ModelPrediction float64             `json:"model_prediction"`
 }
 
 func (r *Row) UnmarshalJSON(bytes []byte) error {
@@ -47,12 +48,18 @@ func (r *Row) UnmarshalJSON(bytes []byte) error {
 				return fmt.Errorf("can not unmarshal feature row, expected string for workflow but found: %v", v)
 			}
 			r.Workflow = string(s)
-		case "model_id":
+		case "model_name":
 			s, ok := v.(value.String)
 			if !ok {
-				return fmt.Errorf("can not unmarshal feature row, expected string for model_id but found: %v", v)
+				return fmt.Errorf("can not unmarshal feature row, expected string for model_name but found: %v", v)
 			}
-			r.ModelID = ftypes.ModelID(s)
+			r.ModelName = ftypes.ModelName(s)
+		case "model_version":
+			s, ok := v.(value.String)
+			if !ok {
+				return fmt.Errorf("can not unmarshal feature row, expected string for model_version but found: %v", v)
+			}
+			r.ModelVersion = ftypes.ModelVersion(s)
 		case "request_id":
 			n, ok := v.(value.Int)
 			if !ok {
@@ -121,8 +128,9 @@ func (r Row) MarshalJSON() ([]byte, error) {
 	d.Set("candidate_oid", value.Int(r.CandidateOid))
 	d.Set("timestamp", value.Int(r.Timestamp))
 	d.Set("workflow", value.String(r.Workflow))
-	d.Set("model_id", value.String(r.ModelID))
 	d.Set("request_id", value.Int(r.RequestID))
+	d.Set("model_name", value.String(r.ModelName))
+	d.Set("model_version", value.String(r.ModelVersion))
 	d.Set("model_prediction", value.Double(r.ModelPrediction))
 	return value.ToJSON(d), nil
 }
@@ -152,7 +160,8 @@ func FromProtoRow(pr *ProtoRow) (*Row, error) {
 		Workflow:        pr.Workflow,
 		RequestID:       ftypes.RequestID(pr.RequestID),
 		Timestamp:       ftypes.Timestamp(pr.Timestamp),
-		ModelID:         ftypes.ModelID(pr.ModelID),
+		ModelName:       ftypes.ModelName(pr.ModelName),
+		ModelVersion:    ftypes.ModelVersion(pr.ModelVersion),
 		ModelPrediction: pr.ModelPrediction,
 	}, nil
 }
@@ -171,7 +180,8 @@ func ToProto(r Row) (*ProtoRow, error) {
 		Workflow:        r.Workflow,
 		RequestID:       uint64(r.RequestID),
 		Timestamp:       uint64(r.Timestamp),
-		ModelID:         string(r.ModelID),
+		ModelName:       string(r.ModelName),
+		ModelVersion:    string(r.ModelVersion),
 		ModelPrediction: r.ModelPrediction,
 	}, nil
 }
