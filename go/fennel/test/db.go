@@ -11,20 +11,13 @@ import (
 	"github.com/jmoiron/sqlx"
 )
 
-const (
-	username            = "admin"
-	password            = "foundationdb"
-	host                = "p-2-db-20220322011744501900000001.cluster-c00d7gkxaysk.us-west-2.rds.amazonaws.com"
-	logical_test_dbname = "testdb"
-)
-
-func defaultDB(tierID ftypes.RealmID) (db.Connection, error) {
+func defaultDB(tierID ftypes.RealmID, logicalname, username, password, host string) (db.Connection, error) {
 	scope := resource.NewTierScope(tierID)
-	if err := setupDB(tierID, logical_test_dbname, username, password, host); err != nil {
+	if err := setupDB(tierID, logicalname, username, password, host); err != nil {
 		return db.Connection{}, err
 	}
 	config := db.MySQLConfig{
-		DBname:   scope.PrefixedName(logical_test_dbname),
+		DBname:   scope.PrefixedName(logicalname),
 		Username: username,
 		Password: password,
 		Host:     host,
