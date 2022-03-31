@@ -95,6 +95,8 @@ export const setup = async (input: inputType): Promise<pulumi.Output<outputType>
     }
 
     const cluster = new aws.elasticache.ReplicationGroup(`p-${input.planeId}-cache-cluster`, {
+        // Apply any changes proposed immediately instead of applying them during maintenance window
+        applyImmediately: true,
         // "redis" is optional here and also the only allowed value, but we
         // set it here anyway to be explicit.
         engine: "redis",
