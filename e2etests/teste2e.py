@@ -61,9 +61,9 @@ class TestEndToEnd(unittest.TestCase):
             config={'durations': [4 * 24 * 3600, 7 * 24 * 3600], 'normalize': True},
         )
         def agg_user_notif_open_rate_by_hour(actions):
-            with_time = op.std.set(actions, var='e', name='hour', value=var('e').timestamp % (24 * 3600) // 3600)
-            with_key = op.std.set(with_time, var='e', name='groupkey', value=[var('e').actor_id, var('e').hour])
-            return op.std.set(with_key, var='e', name='value', value=cond(var('e').action_type == 'notif_send', [0, 1], [1, 0]))
+            with_time = op.std.set(actions, var='e', field='hour', value=var('e').timestamp % (24 * 3600) // 3600)
+            with_key = op.std.set(with_time, var='e', field='groupkey', value=[var('e').actor_id, var('e').hour])
+            return op.std.set(with_key, var='e', field='value', value=cond(var('e').action_type == 'notif_send', [0, 1], [1, 0]))
         agg_user_notif_open_rate_by_hour.store(client=c)
 
         @rex.aggregate(
@@ -73,8 +73,8 @@ class TestEndToEnd(unittest.TestCase):
         )
         def agg_user_notif_open_rate_by_category(actions):
             q = op.std.profile(actions, field='category', otype='content', key='category', var='e', oid=var('e').target_id)
-            q = op.std.set(q, var='e', name='groupkey', value=[var('e').actor_id, var('e').category])
-            return op.std.set(q, var='e', name='value', value=cond(var('e').action_type == 'notif_send', [0, 1], [1, 0]))
+            q = op.std.set(q, var='e', field='groupkey', value=[var('e').actor_id, var('e').category])
+            return op.std.set(q, var='e', field='value', value=cond(var('e').action_type == 'notif_send', [0, 1], [1, 0]))
         agg_user_notif_open_rate_by_category.store(client=c)
 
         @rex.aggregate(
@@ -82,8 +82,8 @@ class TestEndToEnd(unittest.TestCase):
             aggregate_type='sum', action_types=['react'], config={'durations': [7 * 24 * 3600]},
         )
         def agg_reactions_by_post(actions):
-            q = op.std.set(actions, var='e', name='groupkey', value=var('e').target_id)
-            return op.std.set(q, name='value', value=1)
+            q = op.std.set(actions, var='e', field='groupkey', value=var('e').target_id)
+            return op.std.set(q, field='value', value=1)
         agg_reactions_by_post.store(client=c)
 
         @rex.aggregate(
@@ -91,8 +91,8 @@ class TestEndToEnd(unittest.TestCase):
             aggregate_type='sum', action_types=['notif_open'], config={'durations': [7 * 24 * 3600]},
         )
         def agg_user_num_notif_opens(actions):
-            q = op.std.set(actions, var='e', name='groupkey', value=var('e').actor_id)
-            return op.std.set(q, name='value', value=1)
+            q = op.std.set(actions, var='e', field='groupkey', value=var('e').actor_id)
+            return op.std.set(q, field='value', value=1)
         agg_user_num_notif_opens.store(client=c)
 
         p1 = profile.Profile(otype="content", oid=content_id, key="category", value=category)
@@ -209,8 +209,8 @@ class TestEndToEnd(unittest.TestCase):
         q1 = op.std.profile(q1, var='e', field='city', otype='user', oid=var('e').actor_id, key='city')
         q1 = op.std.profile(q1, var='e', field='gender', otype='user', oid=var('e').actor_id, key='gender')
         # Group by a tuple of tuples
-        q1 = op.std.set(q1, name='groupkey', var=('e', ), value=(var('e').city, var('e').gender))
-        q1 = op.std.set(q1, name='value', value=1)
+        q1 = op.std.set(q1, field='groupkey', var=('e', ), value=(var('e').city, var('e').gender))
+        q1 = op.std.set(q1, field='value', value=1)
 
         options = {'durations': [3600*24*3], 'aggregate_type': 'sum', }
         @rex.aggregate(
@@ -221,8 +221,8 @@ class TestEndToEnd(unittest.TestCase):
             q = op.std.filter(actions, var='a', where=var('a').target_type == 'video')
             q = op.std.profile(q, var='e', field='city', otype='user', oid=var('e').actor_id, key='city')
             q = op.std.profile(q, var='e', field='gender', otype='user', oid=var('e').actor_id, key='gender')
-            q = op.std.set(q, name='groupkey', var=('e', ), value=(var('e').city, var('e').gender))
-            return op.std.set(q, name='value',  var=('e', ), value=1)
+            q = op.std.set(q, field='groupkey', var=('e', ), value=(var('e').city, var('e').gender))
+            return op.std.set(q, field='value',  var=('e', ), value=1)
         agg1.store(client=c)
         
         # Group key is tuple
@@ -237,8 +237,8 @@ class TestEndToEnd(unittest.TestCase):
             q = op.std.filter(actions, var='a', where=var('a').target_type == 'video')
             q = op.std.profile(q, var='e', field='city', otype='user', oid=var('e').actor_id, key='city')
             q = op.std.profile(q, var='e', field='gender', otype='user', oid=var('e').actor_id, key='gender')
-            q = op.std.set(q, name='groupkey', var=('e', ), value=var('e').gender)
-            return op.std.set(q, name='value',  var=('e', ), value=(var('e').city))
+            q = op.std.set(q, field='groupkey', var=('e', ), value=var('e').gender)
+            return op.std.set(q, field='value',  var=('e', ), value=(var('e').city))
         agg2.store(client=c)
 
         # send multiple times with dedup keys
@@ -331,10 +331,10 @@ class TestEndToEnd(unittest.TestCase):
             q = op.std.profile(q, var='e', field='city', otype='user', oid=var('e').actor_id, key='city')
             q = op.std.profile(q, var='e', field='gender', otype='user', oid=var('e').actor_id, key='gender')
             q = op.std.profile(q, var='e', field='age_group', otype='user', oid=var('e').actor_id, key='age_group')
-            q = op.std.set(q, name='groupkey', var=('e', ), value=[
+            q = op.std.set(q, field='groupkey', var=('e', ), value=[
                 var('e').target_id, var('e').city, var('e').gender, var('e').age_group
             ])
-            return op.std.set(q, name='value', value=1)
+            return op.std.set(q, field='value', value=1)
         agg1.store(client=c)
 
         @rex.aggregate(
@@ -344,9 +344,9 @@ class TestEndToEnd(unittest.TestCase):
         def agg2(actions):
             q = op.std.filter(actions, var='a', where=var('a').action_type == 'view')
             q = op.std.profile(q, var='e', field='creator_id', otype='video', oid=var('e').target_id, key='creatorId')
-            q = op.std.set(q, var='e', name='time_bucket', value=var('e').timestamp % (24 * 3600) // (2*3600))
-            q = op.std.set(q, name='groupkey', var='e', value=[var('e').actor_id, var('e').creator_id, var('e').time_bucket])
-            return op.std.set(q, name='value', var='e', value=var('e').metadata.watch_time)
+            q = op.std.set(q, var='e', field='time_bucket', value=var('e').timestamp % (24 * 3600) // (2*3600))
+            q = op.std.set(q, field='groupkey', var='e', value=[var('e').actor_id, var('e').creator_id, var('e').time_bucket])
+            return op.std.set(q, field='value', var='e', value=var('e').metadata.watch_time)
         agg2.store(client=c)
 
         ts = int(time.time())
@@ -451,10 +451,10 @@ class TestLoad(unittest.TestCase):
             q = op.std.profile(q, var='e', field='city', otype='user', oid=var('e').actor_id, key='city')
             q = op.std.profile(q, var='e', field='gender', otype='user', oid=var('e').actor_id, key='gender')
             q = op.std.profile(q, var='e', field='age_group', otype='user', oid=var('e').actor_id, key='age_group')
-            q = op.std.set(q, name='groupkey', var=('e', ), value=[
+            q = op.std.set(q, field='groupkey', var=('e', ), value=[
                 var('e').target_id, var('e').city, var('e').gender, var('e').age_group
             ])
-            return op.std.set(q, name='value', value=1)
+            return op.std.set(q, field='value', value=1)
         agg1.store(client=c)
 
         @rex.aggregate(
@@ -464,9 +464,9 @@ class TestLoad(unittest.TestCase):
         def agg2(actions):
             q = op.std.filter(actions, var='a', where=var('a').action_type == 'view')
             q = op.std.profile(q, var='e', field='creator_id', otype='video', oid=var('e').target_id, key='creatorId')
-            q = op.std.set(q, var='e', name='time_bucket', value=var('e').timestamp % (24 * 3600) // (2*3600))
-            q = op.std.set(q, name='groupkey', var='e', value=[var('e').actor_id, var('e').creator_id, var('e').time_bucket])
-            return op.std.set(q, name='value', var='e', value=var('e').metadata.watch_time)
+            q = op.std.set(q, var='e', field='time_bucket', value=var('e').timestamp % (24 * 3600) // (2*3600))
+            q = op.std.set(q, field='groupkey', var='e', value=[var('e').actor_id, var('e').creator_id, var('e').time_bucket])
+            return op.std.set(q, field='value', var='e', value=var('e').metadata.watch_time)
         agg2.store(client=c)
 
 

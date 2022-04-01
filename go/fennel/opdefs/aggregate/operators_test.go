@@ -105,7 +105,7 @@ func getQuery() ast.Ast {
 			Operands:  []ast.Ast{ast.Var{Name: "actions"}},
 			Vars:      []string{"a"},
 			Kwargs: ast.Dict{Values: map[string]ast.Ast{
-				"name": ast.MakeString("groupkey"),
+				"field": ast.MakeString("groupkey"),
 				"value": ast.Lookup{
 					On:       ast.Var{Name: "a"},
 					Property: "actor_id",
@@ -113,7 +113,7 @@ func getQuery() ast.Ast {
 			},
 		}},
 		Kwargs: ast.Dict{Values: map[string]ast.Ast{
-			"name":  ast.MakeString("value"),
+			"field": ast.MakeString("value"),
 			"value": ast.MakeInt(1),
 		}},
 	}

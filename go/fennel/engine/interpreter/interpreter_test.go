@@ -214,7 +214,7 @@ func getOpCallQuery() ast.Ast {
 		Namespace: "std",
 		Name:      "set",
 		Kwargs: ast.Dict{Values: map[string]ast.Ast{
-			"name": ast.MakeString("key"),
+			"field": ast.MakeString("key"),
 			"value": ast.List{Values: []ast.Ast{ast.Lookup{
 				On:       ast.Var{Name: "at"},
 				Property: "bye",
@@ -357,7 +357,7 @@ func TestInterpreter_VisitVarClone(t *testing.T) {
 				Operands:  []ast.Ast{ast.List{Values: []ast.Ast{ast.Var{Name: "x"}}}},
 				Vars:      nil,
 				Kwargs: ast.Dict{Values: map[string]ast.Ast{
-					"name":  ast.MakeString("col"),
+					"field": ast.MakeString("col"),
 					"value": ast.MakeString("new"),
 				}},
 			},
