@@ -6,7 +6,7 @@ export MYSQL_DATABASE_NAME="db"
 export MYSQL_USERNAME="admin"
 export MYSQL_PASSWORD="foundationdb"
 export REDIS_SERVER_ADDRESS="clustercfg.p-2-redis-db-69f0a76.fbjfph.memorydb.us-west-2.amazonaws.com:6379"
-export CACHE_PRIMARY="clustercfg.p-2-cache-cluster-5f9e2eb.fbjfph.usw2.cache.amazonaws.com:6379"
+export CACHE_PRIMARY="clustercfg.p-2-cache-cluster-672822a.fbjfph.usw2.cache.amazonaws.com:6379"
 export KUBECONFIG="$FENNEL_ROOT/cloud/pulumi/ts/eks/kubeconfig-plane-2.json"
 export AWS_ROLE_ARN="arn:aws:iam::030813887342:role/admin"
 
