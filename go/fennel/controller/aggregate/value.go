@@ -19,9 +19,6 @@ import (
 	"fennel/tier"
 )
 
-type void struct{}
-var member void
-
 func Value(ctx context.Context, tier tier.Tier, name ftypes.AggName, key value.Value, kwargs value.Dict) (value.Value, error) {
 	agg, err := Retrieve(ctx, tier, name)
 	if err != nil {
@@ -41,13 +38,12 @@ func BatchValue(ctx context.Context, tier tier.Tier, batch []aggregate.GetAggVal
 	keys := make([]value.Value, n)
 	kwargs := make([]value.Dict, n)
 	aggregateMap := make(map[ftypes.AggName]aggregate.Aggregate)
-	requiredAggregates := make(map[ftypes.AggName]void)
 	for _, req := range batch {
-		requiredAggregates[req.AggName] = member
+		aggregateMap[req.AggName] = aggregate.Aggregate{}
 	}
 
 	var err error
-	for aggname := range requiredAggregates {
+	for aggname := range aggregateMap {
 		aggregateMap[aggname], err = Retrieve(ctx, tier, aggname)
 		if err != nil {
 			return nil, fmt.Errorf("failed to retrieve aggregate %s ", aggname)
