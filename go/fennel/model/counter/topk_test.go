@@ -14,7 +14,7 @@ import (
 
 func TestTopK_Reduce(t *testing.T) {
 	t.Parallel()
-	h := NewTopK("somename", 123)
+	h := NewTopK("somename", []uint64{123})
 	numCases := 7
 	cases := make([]struct {
 		input  []value.Value
@@ -50,7 +50,7 @@ func TestTopK_Reduce(t *testing.T) {
 
 func TestTopK_Merge_Valid(t *testing.T) {
 	t.Parallel()
-	h := NewTopK("somename", 123)
+	h := NewTopK("somename", []uint64{123})
 	numCases := 7
 	validCases := make([][]value.Value, numCases)
 
@@ -78,7 +78,7 @@ func TestTopK_Merge_Valid(t *testing.T) {
 
 func TestTopK_Merge_Invalid(t *testing.T) {
 	t.Parallel()
-	h := NewTopK("somename", 123)
+	h := NewTopK("somename", []uint64{123})
 	validTopKVals := []value.Value{
 		genTopKList(0),
 		genTopKList(1),
@@ -112,7 +112,7 @@ func TestTopK_Merge_Invalid(t *testing.T) {
 
 func TestTopK_Bucketize_Valid(t *testing.T) {
 	t.Parallel()
-	h := NewTopK("somename", 123)
+	h := NewTopK("somename", []uint64{123})
 	actions := value.NewList()
 	expected := make([]Bucket, 0)
 	DAY := 3600 * 24
@@ -136,7 +136,7 @@ func TestTopK_Bucketize_Valid(t *testing.T) {
 
 func TestTopK_Bucketize_Invalid(t *testing.T) {
 	t.Parallel()
-	h := NewMax("somename", 123)
+	h := NewMax("somename", []uint64{123})
 	cases := [][]value.Dict{
 		{value.NewDict(map[string]value.Value{})},
 		{value.NewDict(map[string]value.Value{"groupkey": value.Int(1), "timestamp": value.Int(2)})},
@@ -154,21 +154,6 @@ func TestTopK_Bucketize_Invalid(t *testing.T) {
 		_, err := Bucketize(h, table)
 		assert.Error(t, err, fmt.Sprintf("case was: %v", table))
 	}
-}
-
-func TestTopK_Start(t *testing.T) {
-	h := topK{Duration: 100}
-	s, err := h.Start(110, value.NewDict(map[string]value.Value{}))
-	assert.NoError(t, err)
-	assert.Equal(t, s, ftypes.Timestamp(10))
-	// Duration > end
-	s, err = h.Start(90, value.NewDict(map[string]value.Value{}))
-	assert.NoError(t, err)
-	assert.Equal(t, s, ftypes.Timestamp(0))
-	// Test kwargs
-	s, err = h.Start(200, value.NewDict(map[string]value.Value{"duration": value.Int(50)}))
-	assert.NoError(t, err)
-	assert.Equal(t, s, ftypes.Timestamp(150))
 }
 
 func genTopKList(n int) value.Value {

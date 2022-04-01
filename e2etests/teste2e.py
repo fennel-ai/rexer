@@ -155,10 +155,10 @@ class TestEndToEnd(unittest.TestCase):
         expected3 = 1
         expected4 = 1
         while slept < 120:
-            found1 = c.aggregate_value('user_notif_open_rate_by_hour', [uid, b])
-            found2 = c.aggregate_value('user_notif_open_rate_by_category', [uid, category])
-            found3 = c.aggregate_value('content_num_reactions', content_id)
-            found4 = c.aggregate_value('user_num_notif_opens', uid)
+            found1 = c.aggregate_value('user_notif_open_rate_by_hour', [uid, b], {'duration': 7 * 24 * 3600})
+            found2 = c.aggregate_value('user_notif_open_rate_by_category', [uid, category], {'duration': 7 * 24 * 3600})
+            found3 = c.aggregate_value('content_num_reactions', content_id, {'duration': 7 * 24 * 3600})
+            found4 = c.aggregate_value('user_num_notif_opens', uid, {'duration': 7 * 24 * 3600})
             if found1 == expected1 and found2 == expected2 and found3 == expected3 and found4 == expected4:
                 passed = True
                 break
@@ -283,25 +283,30 @@ class TestEndToEnd(unittest.TestCase):
             found1 = c.aggregate_value(
                 'trail_view_by_city_gender_agegroup_2days',
                 (city, gender),
+                {'duration': 2 * 24 * 3600}
             )
             q1 = op.std.aggregate(
                 [{'uid': uid, 'b': b, 'city': city, 'gender': gender}], field='found',
-                name='trail_view_by_city_gender_agegroup_2days', var='e', groupkey=(var('e').city, var('e').gender)
+                name='trail_view_by_city_gender_agegroup_2days', var='e', groupkey=(var('e').city, var('e').gender),
+                kwargs={'duration': 2 * 24 * 3600}
             )[0].found
             found2 = c.query(q1)
 
             q2 = op.std.aggregate([{'gender': gender}],
-                                  field='found', name='list_of_cities', var='e', groupkey=var('e').gender)[0].found
+                                  field='found', name='list_of_cities', var='e', groupkey=var('e').gender,
+                                  kwargs={'duration': 7 * 24 * 3600})[0].found
             found3 = c.query(q2)
 
             q3 = op.std.aggregate(
                 [
-                    {'aggname': 'trail_view_by_city_gender_agegroup_2days', 'groupkey': (city, gender)},
-                    {'aggname': 'list_of_cities', 'groupkey': gender}
+                    {'aggname': 'trail_view_by_city_gender_agegroup_2days', 'groupkey': (city, gender),
+                     'kwargs': {'duration': 2 * 24 * 3600}},
+                    {'aggname': 'list_of_cities', 'groupkey': gender, 'kwargs': {'duration': 7 * 24 * 3600}}
                 ],
                 var='e',
                 name=var('e').aggname,
                 groupkey=var('e').groupkey,
+                kwargs=var('e').kwargs,
             )
             found4 = c.query(q3)
 
@@ -367,7 +372,7 @@ class TestEndToEnd(unittest.TestCase):
 
         @rex.aggregate(
             name='user_creator_avg_watchtime_by_2hour_windows',
-            aggregate_type='average', action_types=['view'], config={'durations': [30 * 24 * 3600]},
+            aggregate_type='average', action_types=['view'], config={'durations': [30 * 24 * 3600, 1200]},
         )
         def agg2(actions):
             q = op.std.filter(actions, var='a', where=var('a').action_type == 'view')
@@ -402,18 +407,23 @@ class TestEndToEnd(unittest.TestCase):
         expected3 = expected4 = 20
         kwargs = {"duration": 1200}
         while slept < 120:
-            found1 = c.aggregate_value('video_view_by_city_gender_agegroup', [video_id, city, gender, age_group])
+            found1 = c.aggregate_value(
+                'video_view_by_city_gender_agegroup',
+                [video_id, city, gender, age_group],
+                {'duration': 2 * 24 * 3600},
+            )
             q1 = op.std.aggregate(
                 [{'uid': uid, 'creator_id': creator_id, 'b': b}], field='found',
                 name='user_creator_avg_watchtime_by_2hour_windows', var='e',
-                groupkey=[var('e').uid, var('e').creator_id, var('e').b]
+                groupkey=[var('e').uid, var('e').creator_id, var('e').b], kwargs={'duration': 30 * 24 * 3600},
             )[0].found
             found2 = c.query(q1)
-            found3 = c.aggregate_value('user_creator_avg_watchtime_by_2hour_windows', [uid, creator_id, b], kwargs)
+            found3 = c.aggregate_value('user_creator_avg_watchtime_by_2hour_windows', [uid, creator_id, b],
+                                       {'duration': 1200})
             q2 = op.std.aggregate([{'uid': uid, 'creator_id': creator_id, 'b': b}], field='found',
                                   name='user_creator_avg_watchtime_by_2hour_windows', var='e',
-                                  groupkey=[var('e').uid, var('e').creator_id, var('e').b], kwargs=kwargs
-                                  )[0].found
+                                  groupkey=[var('e').uid, var('e').creator_id, var('e').b], kwargs={"duration": 1200})[
+                0].found
             found4 = c.query(q2)
 
             if found1 == expected1 and found2 == expected2 and found3 == expected3 and found4 == expected4:
@@ -424,9 +434,9 @@ class TestEndToEnd(unittest.TestCase):
         self.assertTrue(passed)
 
         # test with batch_aggregate_value()
-        req1 = ('video_view_by_city_gender_agegroup', [video_id, city, gender, age_group], None)
-        req2 = ('user_creator_avg_watchtime_by_2hour_windows', [uid, creator_id, b], None)
-        req3 = ('user_creator_avg_watchtime_by_2hour_windows', [uid, creator_id, b], kwargs)
+        req1 = ('video_view_by_city_gender_agegroup', [video_id, city, gender, age_group], {"duration": 2 * 24 * 3600})
+        req2 = ('user_creator_avg_watchtime_by_2hour_windows', [uid, creator_id, b], {"duration": 30 * 24 * 3600})
+        req3 = ('user_creator_avg_watchtime_by_2hour_windows', [uid, creator_id, b], {"duration": 1200})
         found1, found2, found3 = c.batch_aggregate_value([req1, req2, req3])
         self.assertEqual(expected1, found1)
         self.assertEqual(expected2, found2)

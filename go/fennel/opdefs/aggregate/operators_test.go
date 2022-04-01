@@ -30,7 +30,7 @@ func TestAggValue_Apply(t *testing.T) {
 		Name: "counter1", Query: getQuery(), Timestamp: 123,
 		Options: libaggregate.Options{
 			AggType:   "sum",
-			Durations: []uint64{6 * 3600, 3 * 3600},
+			Durations: []uint64{6 * 3600, 3 * 3600, 2000},
 		},
 	}
 	agg2 := libaggregate.Aggregate{
@@ -65,10 +65,10 @@ func TestAggValue_Apply(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NoError(t, aggregate.Update(ctx, tier, consumer, agg))
 	assert.NoError(t, aggregate.Update(ctx, tier, consumer2, agg2))
-	found, err := aggregate.Value(ctx, tier, agg.Name, value.Int(1), value.NewDict(map[string]value.Value{}))
+	found, err := aggregate.Value(ctx, tier, agg.Name, value.Int(1), value.NewDict(map[string]value.Value{"duration": value.Int(6 * 3600)}))
 	assert.NoError(t, err)
 	assert.Equal(t, value.Int(2), found)
-	found, err = aggregate.Value(ctx, tier, agg.Name, value.Int(2), value.NewDict(map[string]value.Value{}))
+	found, err = aggregate.Value(ctx, tier, agg.Name, value.Int(2), value.NewDict(map[string]value.Value{"duration": value.Int(6 * 3600)}))
 	assert.NoError(t, err)
 	assert.Equal(t, value.Int(2), found)
 	found, err = aggregate.Value(ctx, tier, agg.Name, value.Int(2), value.NewDict(map[string]value.Value{"duration": value.Int(2000)}))
@@ -84,9 +84,9 @@ func TestAggValue_Apply(t *testing.T) {
 		value.NewDict(map[string]value.Value{"a": value.String("def")}),
 	}
 	contextKwargs := []value.Dict{
-		value.NewDict(map[string]value.Value{"name": value.String(agg.Name), "groupkey": value.Int(1), "kwargs": value.NewDict(map[string]value.Value{})}),
-		value.NewDict(map[string]value.Value{"name": value.String(agg.Name), "groupkey": value.Int(2), "kwargs": value.NewDict(map[string]value.Value{})}),
-		value.NewDict(map[string]value.Value{"name": value.String(agg.Name), "groupkey": value.Int(3), "kwargs": value.NewDict(map[string]value.Value{})}),
+		value.NewDict(map[string]value.Value{"name": value.String(agg.Name), "groupkey": value.Int(1), "kwargs": value.NewDict(map[string]value.Value{"duration": value.Int(6 * 3600)})}),
+		value.NewDict(map[string]value.Value{"name": value.String(agg.Name), "groupkey": value.Int(2), "kwargs": value.NewDict(map[string]value.Value{"duration": value.Int(6 * 3600)})}),
+		value.NewDict(map[string]value.Value{"name": value.String(agg.Name), "groupkey": value.Int(3), "kwargs": value.NewDict(map[string]value.Value{"duration": value.Int(6 * 3600)})}),
 		value.NewDict(map[string]value.Value{"name": value.String(agg.Name), "groupkey": value.Int(2), "kwargs": value.NewDict(map[string]value.Value{"duration": value.Int(2000)})}),
 		value.NewDict(map[string]value.Value{"name": value.String(agg2.Name), "groupkey": value.Int(1), "kwargs": value.NewDict(map[string]value.Value{"duration": value.Int(6 * 3600)})}),
 	}
