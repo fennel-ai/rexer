@@ -15,7 +15,7 @@ import (
 */
 
 func TestFeatureLog_Apply(t *testing.T) {
-	clientOperators, err := os.ReadFile("../../../../rexer-pyclient-alpha/rexerclient/gen/operators.txt")
+	clientOperators, err := os.ReadFile("../../../../rexer-pyclient-alpha/rexerclient/gen/operators.json")
 	assert.NoError(t, err)
 	ops := operators.GetOperators()
 	if err != nil {

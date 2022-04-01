@@ -20,7 +20,7 @@ Also when checking in the updated client, do increment the client version number
 */
 
 func main() {
-	file, err := os.Create("../../../rexer-pyclient-alpha/rexerclient/gen/operators.txt")
+	file, err := os.Create("../../../rexer-pyclient-alpha/rexerclient/gen/operators.json")
 	if err != nil {
 		log.Fatalf("failed creating file: %s", err)
 	}
