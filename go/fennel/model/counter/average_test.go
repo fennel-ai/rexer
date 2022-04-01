@@ -12,7 +12,7 @@ import (
 
 func TestRollingAverage_Reduce(t *testing.T) {
 	t.Parallel()
-	h := NewAverage("somename", 100)
+	h := NewAverage("somename", []uint64{100})
 	cases := []struct {
 		input  []value.Value
 		output value.Value
@@ -52,7 +52,7 @@ func TestRollingAverage_Reduce(t *testing.T) {
 
 func TestRollingAverage_Merge_Valid(t *testing.T) {
 	t.Parallel()
-	h := NewAverage("somename", 100)
+	h := NewAverage("somename", []uint64{100})
 	validCases := [][]int64{
 		{1, 2, 1, 2, 2, 4},
 		{1, 2, -1, 2, 0, 4},
@@ -69,7 +69,7 @@ func TestRollingAverage_Merge_Valid(t *testing.T) {
 
 func TestRollingAverage_Merge_Invalid(t *testing.T) {
 	t.Parallel()
-	h := NewAverage("somename", 100)
+	h := NewAverage("somename", []uint64{100})
 	invalidCases := []struct {
 		a value.Value
 		b value.Value
@@ -92,7 +92,7 @@ func TestRollingAverage_Merge_Invalid(t *testing.T) {
 
 func TestRollingAverage_Bucketize_Valid(t *testing.T) {
 	t.Parallel()
-	h := NewAverage("somename", 123)
+	h := NewAverage("somename", []uint64{123})
 	actions := value.List{}
 	expected := make([]Bucket, 0)
 	DAY := 3600 * 24
@@ -114,7 +114,7 @@ func TestRollingAverage_Bucketize_Valid(t *testing.T) {
 
 func TestRollingAverage_Bucketize_Invalid(t *testing.T) {
 	t.Parallel()
-	h := NewAverage("somename", 123)
+	h := NewAverage("somename", []uint64{123})
 	cases := [][]value.Dict{
 		{value.Dict{}},
 		{value.NewDict(map[string]value.Value{"groupkey": value.Int(1), "timestamp": value.Int(2)})},
@@ -132,19 +132,4 @@ func TestRollingAverage_Bucketize_Invalid(t *testing.T) {
 		_, err := Bucketize(h, table)
 		assert.Error(t, err, fmt.Sprintf("case was: %v", table))
 	}
-}
-
-func TestRollingAverage_Start(t *testing.T) {
-	h := average{Duration: 100}
-	s, err := h.Start(110, value.Dict{})
-	assert.NoError(t, err)
-	assert.Equal(t, s, ftypes.Timestamp(10))
-	// Duration > end
-	s, err = h.Start(90, value.Dict{})
-	assert.NoError(t, err)
-	assert.Equal(t, s, ftypes.Timestamp(0))
-	// Test kwargs
-	s, err = h.Start(200, value.NewDict(map[string]value.Value{"duration": value.Int(50)}))
-	assert.NoError(t, err)
-	assert.Equal(t, s, ftypes.Timestamp(150))
 }

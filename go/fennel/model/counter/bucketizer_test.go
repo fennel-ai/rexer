@@ -257,7 +257,7 @@ func TestMergeBuckets(t *testing.T) {
 
 func TestBucketizeHistogram_Invalid(t *testing.T) {
 	t.Parallel()
-	h := NewSum("somename", 100)
+	h := NewSum("somename", []uint64{100})
 	cases := [][]value.Dict{
 		{value.NewDict(map[string]value.Value{})},
 		{value.NewDict(map[string]value.Value{"groupkey": value.Int(1), "timestamp": value.Int(2)})},
@@ -278,7 +278,7 @@ func TestBucketizeHistogram_Invalid(t *testing.T) {
 
 func TestBucketizeHistogram_Valid(t *testing.T) {
 	t.Parallel()
-	h := NewSum("somename", 100)
+	h := NewSum("somename", []uint64{100})
 	actions := value.NewList()
 	expected := make([]Bucket, 0)
 	DAY := 3600 * 24

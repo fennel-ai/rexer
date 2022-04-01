@@ -43,7 +43,7 @@ func TestValueAll(t *testing.T) {
 		Timestamp: t0,
 		Options: aggregate.Options{
 			AggType:   "min",
-			Durations: []uint64{6 * 3600, 3 * 3600},
+			Durations: []uint64{24 * 3600, 3 * 3600, 3600},
 		},
 	}
 	assert.NoError(t, Store(ctx, tier, agg1))
@@ -54,17 +54,21 @@ func TestValueAll(t *testing.T) {
 	key := value.Nil
 	keystr := key.String()
 
-	h1 := counter.NewSum(agg1.Name, 6*3600)
+	h1 := counter.NewSum(agg1.Name, agg1.Options.Durations)
 	buckets := h1.BucketizeMoment(keystr, t1, value.Int(1))
 	err = counter.Update(context.Background(), tier, agg1.Name, buckets, h1)
 	assert.NoError(t, err)
 	buckets = h1.BucketizeMoment(keystr, t1, value.Int(3))
 	err = counter.Update(context.Background(), tier, agg1.Name, buckets, h1)
 	assert.NoError(t, err)
-	req1 := aggregate.GetAggValueRequest{AggName: "mycounter", Key: key, Kwargs: value.NewDict(map[string]value.Value{})}
+	req1 := aggregate.GetAggValueRequest{
+		AggName: agg1.Name,
+		Key:     key,
+		Kwargs:  value.NewDict(map[string]value.Value{"duration": value.Int(6 * 3600)}),
+	}
 	exp1 := value.Int(4)
 
-	h2 := counter.NewMin(agg2.Name, 24*3600)
+	h2 := counter.NewMin(agg2.Name, agg2.Options.Durations)
 	buckets = h2.BucketizeMoment(keystr, t1, value.NewList(value.Int(2), value.Bool(false)))
 	err = counter.Update(context.Background(), tier, agg2.Name, buckets, h2)
 	assert.NoError(t, err)
@@ -72,13 +76,21 @@ func TestValueAll(t *testing.T) {
 	err = counter.Update(context.Background(), tier, agg2.Name, buckets, h2)
 
 	assert.NoError(t, err)
-	req2 := aggregate.GetAggValueRequest{AggName: "minelem", Key: key, Kwargs: value.NewDict(map[string]value.Value{})}
+	req2 := aggregate.GetAggValueRequest{
+		AggName: agg2.Name,
+		Key:     key,
+		Kwargs:  value.NewDict(map[string]value.Value{"duration": value.Int(24 * 3600)}),
+	}
 	exp2 := value.Int(2)
 	// Test kwargs with duration of an hour
 	buckets = h2.BucketizeMoment(keystr, t1+5400, value.NewList(value.Int(5), value.Bool(false)))
 	err = counter.Update(context.Background(), tier, agg2.Name, buckets, h2)
 	assert.NoError(t, err)
-	req3 := aggregate.GetAggValueRequest{AggName: "minelem", Key: key, Kwargs: value.NewDict(map[string]value.Value{"duration": value.Int(3600)})}
+	req3 := aggregate.GetAggValueRequest{
+		AggName: agg2.Name,
+		Key:     key,
+		Kwargs:  value.NewDict(map[string]value.Value{"duration": value.Int(3600)}),
+	}
 	exp3 := value.Int(5)
 
 	clock.Set(int64(t1 + 2*3600))

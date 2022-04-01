@@ -345,7 +345,7 @@ func TestServer_AggregateValue_Valid(t *testing.T) {
 		Timestamp: t0,
 		Options: aggregate.Options{
 			AggType:   "sum",
-			Durations: []uint64{3 * 3600, 6 * 3600},
+			Durations: []uint64{3 * 3600, 6 * 3600, 120},
 		},
 	}
 	key := value.Int(4)
@@ -353,16 +353,16 @@ func TestServer_AggregateValue_Valid(t *testing.T) {
 	assert.Equal(t, int64(t0), tier.Clock.Now())
 	assert.NoError(t, aggregate2.Store(ctx, tier, agg))
 	// initially count is zero
-	valueSendReceive(t, holder, agg, key, value.Int(0), value.NewDict(map[string]value.Value{}))
+	valueSendReceive(t, holder, agg, key, value.Int(0), value.NewDict(map[string]value.Value{"duration": value.Int(6 * 3600)}))
 
 	// now create an increment
-	h := counter.NewSum(agg.Name, 6*3600)
+	h := counter.NewSum(agg.Name, agg.Options.Durations)
 	t1 := t0 + 3600
 	buckets := h.BucketizeMoment(keystr, t1, value.Int(1))
 	err = counter.Update(context.Background(), tier, agg.Name, buckets, h)
 	assert.NoError(t, err)
 	clock.Set(int64(t1 + 60))
-	valueSendReceive(t, holder, agg, key, value.Int(1), value.NewDict(map[string]value.Value{}))
+	valueSendReceive(t, holder, agg, key, value.Int(1), value.NewDict(map[string]value.Value{"duration": value.Int(6 * 3600)}))
 
 	// create another increment at a later timestamp
 	t2 := t1 + 3600
@@ -370,7 +370,7 @@ func TestServer_AggregateValue_Valid(t *testing.T) {
 	err = counter.Update(context.Background(), tier, agg.Name, buckets, h)
 	assert.NoError(t, err)
 	clock.Set(int64(t2 + 60))
-	valueSendReceive(t, holder, agg, key, value.Int(2), value.NewDict(map[string]value.Value{}))
+	valueSendReceive(t, holder, agg, key, value.Int(2), value.NewDict(map[string]value.Value{"duration": value.Int(6 * 3600)}))
 	valueSendReceive(t, holder, agg, key, value.Int(1), value.NewDict(map[string]value.Value{"duration": value.Int(120)}))
 }
 
@@ -392,7 +392,7 @@ func TestServer_BatchAggregateValue(t *testing.T) {
 		Timestamp: t0,
 		Options: aggregate.Options{
 			AggType:   "sum",
-			Durations: []uint64{3 * 3600, 6 * 3600},
+			Durations: []uint64{3 * 3600, 6 * 3600, 1800},
 		},
 	}
 	agg2 := aggregate.Aggregate{
@@ -412,7 +412,7 @@ func TestServer_BatchAggregateValue(t *testing.T) {
 	key := value.Nil
 	keystr := key.String()
 
-	h1 := counter.NewSum(agg1.Name, 6*3600)
+	h1 := counter.NewSum(agg1.Name, agg1.Options.Durations)
 	buckets := h1.BucketizeMoment(keystr, t1, value.Int(1))
 	err = counter.Update(context.Background(), tier, agg1.Name, buckets, h1)
 	assert.NoError(t, err)
@@ -420,17 +420,19 @@ func TestServer_BatchAggregateValue(t *testing.T) {
 	err = counter.Update(context.Background(), tier, agg1.Name, buckets, h1)
 	assert.NoError(t, err)
 	req1 := aggregate.GetAggValueRequest{
-		AggName: "mycounter", Key: key, Kwargs: value.NewDict(map[string]value.Value{}),
+		AggName: agg1.Name, Key: key, Kwargs: value.NewDict(map[string]value.Value{"duration": value.Int(6 * 3600)}),
 	}
 
-	h2 := counter.NewMax(agg2.Name, 6*3600)
+	h2 := counter.NewMax(agg2.Name, agg2.Options.Durations)
 	buckets = h2.BucketizeMoment(keystr, t1, value.NewList(value.Int(2), value.Bool(false)))
 	err = counter.Update(context.Background(), tier, agg2.Name, buckets, h2)
 	assert.NoError(t, err)
 	buckets = h2.BucketizeMoment(keystr, t1, value.NewList(value.Int(7), value.Bool(false)))
 	err = counter.Update(context.Background(), tier, agg2.Name, buckets, h2)
 	assert.NoError(t, err)
-	req2 := aggregate.GetAggValueRequest{AggName: "maxelem", Key: key, Kwargs: value.NewDict(map[string]value.Value{})}
+	req2 := aggregate.GetAggValueRequest{
+		AggName: agg2.Name, Key: key, Kwargs: value.NewDict(map[string]value.Value{"duration": value.Int(6 * 3600)}),
+	}
 
 	clock.Set(int64(t1 + 60))
 	batchValueSendReceive(t, holder,
@@ -442,7 +444,7 @@ func TestServer_BatchAggregateValue(t *testing.T) {
 	err = counter.Update(context.Background(), tier, agg1.Name, buckets, h1)
 	assert.NoError(t, err)
 	req3 := aggregate.GetAggValueRequest{
-		AggName: "mycounter", Key: key, Kwargs: value.NewDict(map[string]value.Value{"duration": value.Int(1800)}),
+		AggName: agg1.Name, Key: key, Kwargs: value.NewDict(map[string]value.Value{"duration": value.Int(1800)}),
 	}
 
 	clock.Set(int64(t2 + 60))
