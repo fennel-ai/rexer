@@ -51,12 +51,12 @@ func (D dbProvider) setBatch(ctx context.Context, tier tier.Tier, profiles []pro
 	// write
 	sql := `
 		INSERT INTO profile
-			(otype, oid, zkey, version, value)
+			(otype, oid, zkey, version, value, value_text)
 		VALUES `
 	vals := make([]interface{}, 0)
 	for _, profile := range profiles {
-		sql += "(?, ?, ?, ?, ?),"
-		vals = append(vals, profile.OType, profile.Oid, profile.Key, profile.Version, profile.Value)
+		sql += "(?, ?, ?, ?, ?, ?),"
+		vals = append(vals, profile.OType, profile.Oid, profile.Key, profile.Version, profile.Value, profile.Value)
 	}
 	sql = strings.TrimSuffix(sql, ",") // remove the last trailing comma
 
@@ -164,7 +164,7 @@ var _ provider = dbProvider{}
 
 // Whatever properties of 'request' are non-zero are used to filter eligible profiles
 func GetMulti(ctx context.Context, tier tier.Tier, request profile.ProfileFetchRequest) ([]profile.ProfileItemSer, error) {
-	query := "SELECT * FROM profile"
+	query := "SELECT otype, oid, zkey, version, value FROM profile"
 	clauses := make([]string, 0)
 
 	if len(request.OType) != 0 {
