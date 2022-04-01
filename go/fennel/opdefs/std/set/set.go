@@ -19,8 +19,8 @@ func (op setOperator) New(args value.Dict, bootargs map[string]interface{}) (ope
 
 func (op setOperator) Signature() *operators.Signature {
 	return operators.NewSignature("std", "set").
-		Param("name", value.Types.String, false, false, value.Nil).
-		Param("value", value.Types.Any, false, false, value.Nil).
+		ParamWithHelp("name", value.Types.String, false, false, value.Nil, "ContextKwargs: String param that is serves as the key").
+		ParamWithHelp("value", value.Types.Any, false, false, value.Nil, "ContextKwargs: Expr that gets evaluation and set as the value").
 		Input([]value.Type{value.Types.Dict})
 }
 

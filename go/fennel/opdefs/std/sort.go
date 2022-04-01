@@ -19,8 +19,8 @@ func (op SortOperator) New(_ value.Dict, _ map[string]interface{}) (operators.Op
 func (op SortOperator) Signature() *operators.Signature {
 	return operators.NewSignature("std", "sort").
 		Input([]value.Type{value.Types.Dict}).
-		Param("by", value.Types.Number, false, false, value.Nil).
-		Param("reverse", value.Types.Bool, true, true, value.Bool(false))
+		ParamWithHelp("by", value.Types.Number, false, false, value.Nil, "ContextKwargs: The value to be sorted on").
+		ParamWithHelp("reverse", value.Types.Bool, true, true, value.Bool(false), "StaticKwargs: Set true to get descending sort order")
 }
 
 func (op SortOperator) Apply(staticKwargs value.Dict, in operators.InputIter, out *value.List) error {

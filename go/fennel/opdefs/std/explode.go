@@ -17,7 +17,8 @@ func (e ExplodeOperator) New(_ value.Dict, _ map[string]interface{}) (operators.
 
 func (e ExplodeOperator) Signature() *operators.Signature {
 	return operators.NewSignature("std", "explode").
-		Param("keys", value.Types.Any, true, false, value.Nil).
+		ParamWithHelp("keys", value.Types.Any, true, false, value.Nil,
+			"StaticKwarg: keys are either a string (e.g. `keys='foo'``) or list of strings (e.g. `keys=['foo', 'bar']` based on which a single row is broken into multiple rows each with a unique value of key ").
 		Input([]value.Type{value.Types.Dict})
 }
 

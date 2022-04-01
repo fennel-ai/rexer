@@ -15,7 +15,7 @@ func (op UniqueOperator) New(_ value.Dict, _ map[string]interface{}) (operators.
 
 func (op UniqueOperator) Signature() *operators.Signature {
 	return operators.NewSignature("std", "unique").
-		Param("name", value.Types.String /*t=*/, true /*static=*/, false /*optional=*/, value.Nil).
+		ParamWithHelp("name", value.Types.String /*t=*/, true /*static=*/, false /*optional=*/, value.Nil, "StaticKwargs: Does a unique over the list of values mapped to this param. Returns the unique list that continues to be mapped to this param ").
 		Input([]value.Type{value.Types.Dict})
 }
 
