@@ -145,7 +145,7 @@ func getQuery() ast.Ast {
 		}},
 		Vars: []string{"var"},
 		Kwargs: ast.Dict{Values: map[string]ast.Ast{
-			"name": ast.MakeString("groupkey"),
+			"field": ast.MakeString("groupkey"),
 			"value": ast.List{Values: []ast.Ast{ast.Lookup{
 				On:       ast.Var{Name: "var"},
 				Property: "actor_id",

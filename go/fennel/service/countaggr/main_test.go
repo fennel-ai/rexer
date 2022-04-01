@@ -278,7 +278,7 @@ func getQueryRate() ast.Ast {
 			Namespace: "std",
 			Name:      "set",
 			Kwargs: ast.Dict{Values: map[string]ast.Ast{
-				"name": ast.MakeString("groupkey"),
+				"field": ast.MakeString("groupkey"),
 				"value": ast.Lookup{
 					On:       ast.Var{Name: "okay"},
 					Property: "actor_id",
@@ -288,7 +288,7 @@ func getQueryRate() ast.Ast {
 		Namespace: "std",
 		Name:      "set",
 		Kwargs: ast.Dict{Values: map[string]ast.Ast{
-			"name":  ast.MakeString("value"),
+			"field": ast.MakeString("value"),
 			"value": ast.List{Values: []ast.Ast{ast.MakeInt(1), ast.MakeInt(2)}},
 		}},
 	}
@@ -316,7 +316,7 @@ func getQuery() ast.Ast {
 			}},
 			Vars: []string{"at"},
 			Kwargs: ast.Dict{Values: map[string]ast.Ast{
-				"name": ast.MakeString("groupkey"),
+				"field": ast.MakeString("groupkey"),
 				"value": ast.Lookup{
 					On:       ast.Var{Name: "at"},
 					Property: "actor_id",
@@ -325,7 +325,7 @@ func getQuery() ast.Ast {
 		}},
 		Vars: []string{"it"},
 		Kwargs: ast.Dict{Values: map[string]ast.Ast{
-			"name": ast.MakeString("value"),
+			"field": ast.MakeString("value"),
 			"value": ast.Lookup{
 				On: ast.Lookup{
 					On:       ast.Var{Name: "it"},
@@ -357,7 +357,7 @@ func getQueryTopK() ast.Ast {
 			Namespace: "std",
 			Name:      "set",
 			Kwargs: ast.Dict{Values: map[string]ast.Ast{
-				"name": ast.MakeString("groupkey"),
+				"field": ast.MakeString("groupkey"),
 				"value": ast.Lookup{
 					On:       ast.Var{Name: "at"},
 					Property: "actor_id",
@@ -368,7 +368,7 @@ func getQueryTopK() ast.Ast {
 		Namespace: "std",
 		Name:      "set",
 		Kwargs: ast.Dict{Values: map[string]ast.Ast{
-			"name": ast.MakeString("value"),
+			"field": ast.MakeString("value"),
 			"value": ast.Dict{Values: map[string]ast.Ast{
 				"data": ast.Lookup{
 					On:       ast.Var{Name: "at"},
