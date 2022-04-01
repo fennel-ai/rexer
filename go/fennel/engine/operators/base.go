@@ -33,6 +33,7 @@ type Param struct {
 	Type     value.Type
 	Optional bool
 	Default  value.Value
+	Help     string
 }
 
 type Signature struct {
@@ -56,7 +57,11 @@ func NewSignature(module, name string) *Signature {
 }
 
 func (s *Signature) Param(name string, t value.Type, static bool, optional bool, default_ value.Value) *Signature {
-	p := Param{name, static, t, optional, default_}
+	return s.ParamWithHelp(name, t, static, optional, default_, "")
+}
+
+func (s *Signature) ParamWithHelp(name string, t value.Type, static bool, optional bool, default_ value.Value, help string) *Signature {
+	p := Param{name, static, t, optional, default_, help}
 	if static {
 		s.StaticKwargs[name] = p
 
@@ -68,9 +73,7 @@ func (s *Signature) Param(name string, t value.Type, static bool, optional bool,
 
 func (s *Signature) Input(types []value.Type) *Signature {
 	s.InputTypes = make([]value.Type, len(types))
-	for i := 0; i < len(types); i++ {
-		s.InputTypes[i] = types[i]
-	}
+	copy(s.InputTypes, types)
 	return s
 }
 
@@ -93,11 +96,17 @@ func Register(op Operator) error {
 	return nil
 }
 
+type param struct {
+	Type     string `json:"Type"`
+	Optional bool   `json:"Optional"`
+	Help     string `json:"Help"`
+}
+
 func GetOperatorsJSON() ([]byte, error) {
-	type param struct {
-		Type     string `json:"Type"`
-		Optional bool   `json:"Optional"`
-	}
+	return json.Marshal(GetOperators())
+}
+
+func GetOperators() map[string]map[string]map[string]param {
 	opdata := make(map[string]map[string]map[string]param)
 	for module, ops := range registry {
 		opdata[module] = make(map[string]map[string]param)
@@ -108,17 +117,19 @@ func GetOperatorsJSON() ([]byte, error) {
 				opdata[module][fname][p.Name] = param{
 					Type:     p.Type.String(),
 					Optional: p.Optional,
+					Help:     p.Help,
 				}
 			}
 			for _, p := range sig.StaticKwargs {
 				opdata[module][fname][p.Name] = param{
 					Type:     p.Type.String(),
 					Optional: p.Optional,
+					Help:     p.Help,
 				}
 			}
 		}
 	}
-	return json.Marshal(opdata)
+	return opdata
 }
 
 func TypeCheckStaticKwargs(op Operator, staticKwargs value.Dict) error {
