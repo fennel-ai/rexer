@@ -37,12 +37,21 @@ func BatchValue(ctx context.Context, tier tier.Tier, batch []aggregate.GetAggVal
 	names := make([]ftypes.AggName, n)
 	keys := make([]value.Value, n)
 	kwargs := make([]value.Dict, n)
-	for i, req := range batch {
-		agg, err := Retrieve(ctx, tier, req.AggName)
+	aggregateMap := make(map[ftypes.AggName]aggregate.Aggregate)
+	for _, req := range batch {
+		aggregateMap[req.AggName] = aggregate.Aggregate{}
+	}
+
+	var err error
+	for aggname := range aggregateMap {
+		aggregateMap[aggname], err = Retrieve(ctx, tier, aggname)
 		if err != nil {
-			return nil, fmt.Errorf("failed to retrieve aggregate at index %d of batch: %v", i, err)
+			return nil, fmt.Errorf("failed to retrieve aggregate %s ", aggname)
 		}
-		histograms[i], err = toHistogram(agg)
+	}
+	
+	for i, req := range batch {
+		histograms[i], err = toHistogram(aggregateMap[req.AggName])
 		if err != nil {
 			return nil, fmt.Errorf("failed to make histogram from aggregate at index %d of batch: %v", i, err)
 		}
