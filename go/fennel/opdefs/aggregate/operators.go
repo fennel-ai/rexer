@@ -34,8 +34,6 @@ func (a AggValue) New(args value.Dict, bootargs map[string]interface{}) (operato
 }
 
 func (a AggValue) Apply(kwargs value.Dict, in operators.InputIter, outs *value.List) error {
-	aggname := string(get(kwargs, "aggregate").(value.String))
-
 	var reqs []aggregate2.GetAggValueRequest
 	var rows []value.Value
 	for in.HasMore() {
@@ -44,7 +42,7 @@ func (a AggValue) Apply(kwargs value.Dict, in operators.InputIter, outs *value.L
 			return err
 		}
 		req := aggregate2.GetAggValueRequest{
-			AggName: ftypes.AggName(aggname),
+			AggName: ftypes.AggName(get(contextKwargs, "name").(value.String)),
 			Key:     get(contextKwargs, "groupkey"),
 			Kwargs:  get(contextKwargs, "kwargs").(value.Dict),
 		}
@@ -81,7 +79,7 @@ func (a AggValue) Signature() *operators.Signature {
 	return operators.NewSignature("std", "aggregate").
 		Input([]value.Type{value.Types.Any}).
 		Param("field", value.Types.String, true, true, value.String("")).
-		Param("aggregate", value.Types.String, true, false, value.Nil).
+		Param("name", value.Types.String, false, false, value.Nil).
 		Param("groupkey", value.Types.Any, false, false, value.Nil).
 		Param("kwargs", value.Types.Dict, false, true, value.Dict{})
 }

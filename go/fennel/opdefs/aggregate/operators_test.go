@@ -33,11 +33,19 @@ func TestAggValue_Apply(t *testing.T) {
 			Durations: []uint64{6 * 3600, 3 * 3600},
 		},
 	}
+	agg2 := libaggregate.Aggregate{
+		Name: "second_agg", Query: getQuery(), Timestamp: 123,
+		Options: libaggregate.Options{
+			AggType:   "max",
+			Durations: []uint64{6 * 3600},
+		},
+	}
 	t0 := int64(24 * 3600)
 	clock := &test.FakeClock{}
 	tier.Clock = clock
 	clock.Set(t0)
 	assert.NoError(t, aggregate.Store(ctx, tier, agg))
+	assert.NoError(t, aggregate.Store(ctx, tier, agg2))
 
 	uids := []ftypes.OidType{1, 2, 1}
 	for i := 0; i < 3; i++ {
@@ -52,8 +60,11 @@ func TestAggValue_Apply(t *testing.T) {
 	clock.Set(t0 + 3600)
 	consumer, err := tier.NewKafkaConsumer(action.ACTIONLOG_KAFKA_TOPIC, string(agg.Name), "earliest")
 	defer consumer.Close()
+	consumer2, err := tier.NewKafkaConsumer(action.ACTIONLOG_KAFKA_TOPIC, string(agg2.Name), "earliest")
+	defer consumer2.Close()
 	assert.NoError(t, err)
 	assert.NoError(t, aggregate.Update(ctx, tier, consumer, agg))
+	assert.NoError(t, aggregate.Update(ctx, tier, consumer2, agg2))
 	found, err := aggregate.Value(ctx, tier, agg.Name, value.Int(1), value.NewDict(map[string]value.Value{}))
 	assert.NoError(t, err)
 	assert.Equal(t, value.Int(2), found)
@@ -64,32 +75,36 @@ func TestAggValue_Apply(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, value.Int(1), found)
 
-	static := value.NewDict(map[string]value.Value{"field": value.String("myaggresults"), "aggregate": value.String(agg.Name)})
+	static := value.NewDict(map[string]value.Value{"field": value.String("myaggresults")})
 	inputs := []value.Value{
 		value.NewDict(map[string]value.Value{"a": value.String("hi")}),
 		value.NewDict(map[string]value.Value{"a": value.String("bye")}),
 		value.NewDict(map[string]value.Value{"a": value.String("yo")}),
-		value.NewDict(map[string]value.Value{"a": value.String("kwargs")}),
+		value.NewDict(map[string]value.Value{"a": value.String("abc")}),
+		value.NewDict(map[string]value.Value{"a": value.String("def")}),
 	}
 	contextKwargs := []value.Dict{
-		value.NewDict(map[string]value.Value{"groupkey": value.Int(1), "kwargs": value.NewDict(map[string]value.Value{})}),
-		value.NewDict(map[string]value.Value{"groupkey": value.Int(2), "kwargs": value.NewDict(map[string]value.Value{})}),
-		value.NewDict(map[string]value.Value{"groupkey": value.Int(3), "kwargs": value.NewDict(map[string]value.Value{})}),
-		value.NewDict(map[string]value.Value{"groupkey": value.Int(2), "kwargs": value.NewDict(map[string]value.Value{"duration": value.Int(2000)})}),
+		value.NewDict(map[string]value.Value{"name": value.String(agg.Name), "groupkey": value.Int(1), "kwargs": value.NewDict(map[string]value.Value{})}),
+		value.NewDict(map[string]value.Value{"name": value.String(agg.Name), "groupkey": value.Int(2), "kwargs": value.NewDict(map[string]value.Value{})}),
+		value.NewDict(map[string]value.Value{"name": value.String(agg.Name), "groupkey": value.Int(3), "kwargs": value.NewDict(map[string]value.Value{})}),
+		value.NewDict(map[string]value.Value{"name": value.String(agg.Name), "groupkey": value.Int(2), "kwargs": value.NewDict(map[string]value.Value{"duration": value.Int(2000)})}),
+		value.NewDict(map[string]value.Value{"name": value.String(agg2.Name), "groupkey": value.Int(1), "kwargs": value.NewDict(map[string]value.Value{"duration": value.Int(6 * 3600)})}),
 	}
 	outputs := []value.Value{
 		value.NewDict(map[string]value.Value{"a": value.String("hi"), "myaggresults": value.Int(2)}),
 		value.NewDict(map[string]value.Value{"a": value.String("bye"), "myaggresults": value.Int(2)}),
 		value.NewDict(map[string]value.Value{"a": value.String("yo"), "myaggresults": value.Int(0)}),
-		value.NewDict(map[string]value.Value{"a": value.String("kwargs"), "myaggresults": value.Int(1)}),
+		value.NewDict(map[string]value.Value{"a": value.String("abc"), "myaggresults": value.Int(1)}),
+		value.NewDict(map[string]value.Value{"a": value.String("def"), "myaggresults": value.Int(1)}),
 	}
 	optest.AssertEqual(t, tier, &AggValue{tier}, static, inputs, contextKwargs, outputs)
 
-	static = value.NewDict(map[string]value.Value{"aggregate": value.String(agg.Name)})
+	static = value.NewDict(map[string]value.Value{})
 	outputs = []value.Value{
 		value.Int(2),
 		value.Int(2),
 		value.Int(0),
+		value.Int(1),
 		value.Int(1),
 	}
 	optest.AssertEqual(t, tier, &AggValue{tier}, static, inputs, contextKwargs, outputs)
