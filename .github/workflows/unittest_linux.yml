@@ -25,7 +25,22 @@ jobs:
 
       # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
       - uses: actions/checkout@v2
-      
+    
+      - uses: actions/checkout@v2  
+        with:
+          path: rexer-client-${{ github.run_id }}-${{ github.run_number }}-${{ github.run_attempt }}	
+          repository: fennel-ai/rexer-pyclient-alpha
+          token: ${{ secrets.ACCESS_TOKEN }}
+
+      # Move the repo explicitly, sadly github actions doesn't support this by default..
+      # https://github.com/actions/checkout/issues/197#issuecomment-829560171
+      - run: mv rexer-client-${{ github.run_id }}-${{ github.run_number }}-${{ github.run_attempt }} ../rexer-pyclient-alpha
+
+      # Install prerequisites
+      - name: install build essential and pkg-config
+        run: |
+          sudo apt-get --assume-yes install build-essential
+          sudo apt-get --assume-yes install pkg-config
       # Install go (we use 1.17.0 version, so we will stick to it)
       - uses: actions/setup-go@v2
         with:
@@ -42,3 +57,8 @@ jobs:
         run: |
           cd go/fennel
           go test -v -p 5 ./... -count 1
+
+      # Remove the client directory. Github actions removes the one installed using `actions/checkout@v2` which is now empty since we moved the content
+      - name: Remove rexer-client dir
+        run: |
+          sudo rm -rf ../rexer-pyclient-alpha/rexer-client-${{ github.run_id }}-${{ github.run_number }}-${{ github.run_attempt }}
