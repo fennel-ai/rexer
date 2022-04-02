@@ -29,7 +29,7 @@ func (f FilterOperator) New(args value.Dict, bootargs map[string]interface{}) (o
 
 func (f FilterOperator) Signature() *operators.Signature {
 	return operators.NewSignature("std", "filter").
-		Param("where", value.Types.Bool, false, false, value.Bool(false))
+		ParamWithHelp("where", value.Types.Bool, false, false, value.Bool(false), "ContextKwargs: Expr that evaluates to a boolean.  If true, the row is included in the output.")
 }
 
 func (f FilterOperator) Apply(_ value.Dict, in operators.InputIter, out *value.List) error {

@@ -49,7 +49,7 @@ func (g grouper) Apply(kwargs value.Dict, in operators.InputIter, out *value.Lis
 
 func (g grouper) Signature() *operators.Signature {
 	return operators.NewSignature("std", "group").
-		Param("by", value.Types.Any, false, false, nil)
+		ParamWithHelp("by", value.Types.Any, false, false, nil, "ContextKwargs:  Groups by the value of this expr")
 }
 
 var _ operators.Operator = grouper{}

@@ -78,10 +78,10 @@ func get(d value.Dict, k string) value.Value {
 func (a AggValue) Signature() *operators.Signature {
 	return operators.NewSignature("std", "aggregate").
 		Input([]value.Type{value.Types.Any}).
-		Param("field", value.Types.String, true, true, value.String("")).
-		Param("name", value.Types.String, false, false, value.Nil).
-		Param("groupkey", value.Types.Any, false, false, value.Nil).
-		Param("kwargs", value.Types.Dict, false, false, value.Dict{})
+		ParamWithHelp("field", value.Types.String, true, true, value.String(""), "StaticKwarg: String param that is used as key post evaluation of this operator").
+		ParamWithHelp("name", value.Types.String, false, false, value.Nil, "ContextKwarg: Expr of type string when evaluated provides the name of the aggregate to be used.").
+		ParamWithHelp("groupkey", value.Types.Any, false, false, value.Nil, "ContextKwarg: Expr that is evaluated to provide the lookup/groupkey in the aggregate.").
+		ParamWithHelp("kwargs", value.Types.Dict, false, false, value.Dict{}, "ContextKwarg: Dict of key/value pairs that are passed to the aggregate.")
 }
 
 var _ operators.Operator = AggValue{}
