@@ -8,25 +8,26 @@ import (
 )
 
 type rollingSum struct {
-	Duration uint64
+	Durations []uint64
 	Bucketizer
 	BucketStore
 }
 
-func NewSum(name ftypes.AggName, duration uint64) Histogram {
+func NewSum(name ftypes.AggName, durations []uint64) Histogram {
+	maxDuration := getMaxDuration(durations)
 	return rollingSum{
-		Duration: duration,
+		Durations: durations,
 		Bucketizer: fixedWidthBucketizer{map[ftypes.Window]uint64{
 			ftypes.Window_MINUTE: 6,
 			ftypes.Window_DAY:    1,
 		}, true},
 		// retain all keys for 1.5days + duration
-		BucketStore: NewTwoLevelStorage(24*3600, duration+24*3600*1.5),
+		BucketStore: NewTwoLevelStorage(24*3600, maxDuration+24*3600*1.5),
 	}
 }
 
 func (r rollingSum) Start(end ftypes.Timestamp, kwargs value.Dict) (ftypes.Timestamp, error) {
-	d, err := extractDuration(kwargs, r.Duration)
+	d, err := extractDuration(kwargs, r.Durations)
 	if err != nil {
 		return 0, err
 	}

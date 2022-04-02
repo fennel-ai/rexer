@@ -22,7 +22,7 @@ func TestSet(t *testing.T) {
 	}
 	tr := tier.Tier{}
 	optest.AssertEqual(t, tr, &setOperator{}, value.NewDict(map[string]value.Value{
-		"name": value.String("new_field"),
+		"field": value.String("new_field"),
 	}), intable, contextKwargTable, expected)
 }
 
@@ -33,11 +33,11 @@ func TestSetNameContextual(t *testing.T) {
 	}
 	contextKwargTable := []value.Dict{
 		value.NewDict(map[string]value.Value{
-			"name":  value.String("new_field_first"),
+			"field": value.String("new_field_first"),
 			"value": value.Int(42),
 		}),
 		value.NewDict(map[string]value.Value{
-			"name":  value.String("new_field_second"),
+			"field": value.String("new_field_second"),
 			"value": value.Int(21),
 		}),
 	}
@@ -69,7 +69,7 @@ func TestSignatureError(t *testing.T) {
 	}
 	contextKwargTable := []value.Dict{
 		value.NewDict(map[string]value.Value{
-			"name":  value.Int(2),
+			"field": value.Int(2),
 			"value": value.Int(42),
 		}),
 	}

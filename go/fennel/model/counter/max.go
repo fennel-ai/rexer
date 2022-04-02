@@ -12,7 +12,7 @@ import (
 	Maxv is the maximum value. If empty is true, the bucket is empty so maxv is ignored.
 */
 type rollingMax struct {
-	Duration uint64
+	Durations []uint64
 	Bucketizer
 	BucketStore
 }
@@ -25,15 +25,16 @@ func (m rollingMax) Transform(v value.Value) (value.Value, error) {
 	return value.NewList(v_int, value.Bool(false)), nil
 }
 
-func NewMax(name ftypes.AggName, duration uint64) Histogram {
+func NewMax(name ftypes.AggName, durations []uint64) Histogram {
+	maxDuration := getMaxDuration(durations)
 	return rollingMax{
-		Duration: duration,
+		Durations: durations,
 		Bucketizer: fixedWidthBucketizer{map[ftypes.Window]uint64{
 			ftypes.Window_MINUTE: 6,
 			ftypes.Window_DAY:    1,
 		}, true},
 		// retain all keys for 1.5days + duration
-		BucketStore: NewTwoLevelStorage(24*3600, duration+24*3600*1.5),
+		BucketStore: NewTwoLevelStorage(24*3600, maxDuration+24*3600*1.5),
 	}
 }
 
@@ -46,7 +47,7 @@ func max(a int64, b int64) int64 {
 }
 
 func (m rollingMax) Start(end ftypes.Timestamp, kwargs value.Dict) (ftypes.Timestamp, error) {
-	d, err := extractDuration(kwargs, m.Duration)
+	d, err := extractDuration(kwargs, m.Durations)
 	if err != nil {
 		return 0, err
 	}

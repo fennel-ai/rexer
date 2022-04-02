@@ -100,20 +100,3 @@ func TestInsertBatch(t *testing.T) {
 	assert.NoError(t, err)
 	assert.True(t, f2ptr.Equals(action2, true))
 }
-
-func TestMetadataText(t *testing.T) {
-	tier, err := test.Tier()
-	assert.NoError(t, err)
-	defer test.Teardown(tier)
-	ctx := context.Background()
-
-	action1 := action.Action{ActorID: 111, ActorType: "11", TargetType: "12", TargetID: 121, ActionType: "13", Metadata: value.Int(14), Timestamp: 15, RequestID: 16}
-	action1ser := action1.ToActionSer()
-	_, err = Insert(ctx, tier, action1ser)
-	assert.NoError(t, err)
-
-	var found []string
-	err = tier.DB.Select(&found, "SELECT metadata_text FROM actionlog;")
-	assert.NoError(t, err)
-	assert.Equal(t, []string{"14"}, found)
-}

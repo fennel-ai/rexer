@@ -93,6 +93,25 @@ var Schema = db.Schema{
 			PRIMARY KEY (name, endpoint_config_name)
 		);`,
 	// ==================== END Schema for model registry ======================
-	11: `ALTER TABLE actionlog ADD metadata_text TEXT NOT NULL;`,
-	12: `ALTER TABLE profile ADD value_text TEXT NOT NULL;`,
+
+	// ======= BEGIN versioned profile uniqueness and idempotent inserts =======
+	// The following altering of the profile table schema is to support the following use case:
+	// 	1. We want the DB inserts for profiles to be idempotent
+	//  2. We want to disallow user updating the value of a versioned profile - they should use a different version instead
+	//
+	// Since it is difficult to differentiate 1. initiated by the system/user to 2. in a batch setting,
+	// we add value to the primary key definition (in case of idempotent inserts, we could have a no-op in `ON DUPLICATE KEY UPDATE section`)
+	// and introduce a unique constraint on the versioned-profile key (to avoid different value insert for a versioned-profile).
+	11: `ALTER TABLE profile ADD CONSTRAINT versioned_profile UNIQUE (otype, oid, zkey, version);`,
+
+	// SQL enforces that fields of BLOB type must specify an index prefix length.
+	// See: https://dev.mysql.com/doc/refman/8.0/en/column-indexes.html
+	//
+	// BLOB type supports a max of 64KB. We use a prefix of 1KB (or less if the value stored in it is lesser than that)
+	// for primary key definition. The only failure mode here is user stored a value for a versioned profile and tries updating
+	// it with a value with the same first 1024 bytes -> in this case we would not update the value but also we won't fail the request.
+	//
+	// TODO: Monitor if the size of the prefix should be increased. Document that updating versioned profiles is strongly discouraged in the system.
+	12: `ALTER TABLE profile DROP PRIMARY KEY, ADD PRIMARY KEY(otype, oid, zkey, version, value(1024));`,
+	// ======== END versioned profile uniqueness and idempotent inserts ========
 }

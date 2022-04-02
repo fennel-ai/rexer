@@ -34,8 +34,6 @@ func (a AggValue) New(args value.Dict, bootargs map[string]interface{}) (operato
 }
 
 func (a AggValue) Apply(kwargs value.Dict, in operators.InputIter, outs *value.List) error {
-	aggname := string(get(kwargs, "aggregate").(value.String))
-
 	var reqs []aggregate2.GetAggValueRequest
 	var rows []value.Value
 	for in.HasMore() {
@@ -44,7 +42,7 @@ func (a AggValue) Apply(kwargs value.Dict, in operators.InputIter, outs *value.L
 			return err
 		}
 		req := aggregate2.GetAggValueRequest{
-			AggName: ftypes.AggName(aggname),
+			AggName: ftypes.AggName(get(contextKwargs, "name").(value.String)),
 			Key:     get(contextKwargs, "groupkey"),
 			Kwargs:  get(contextKwargs, "kwargs").(value.Dict),
 		}
@@ -81,7 +79,7 @@ func (a AggValue) Signature() *operators.Signature {
 	return operators.NewSignature("std", "aggregate").
 		Input([]value.Type{value.Types.Any}).
 		ParamWithHelp("field", value.Types.String, true, true, value.String(""), "StaticKwarg: String param that is used as key post evaluation of this operator").
-		ParamWithHelp("aggregate", value.Types.String, true, false, value.Nil, "StaticKwarg: String param that provides the name of the aggregate to be used.").
+		ParamWithHelp("name", value.Types.String, true, false, value.Nil, "StaticKwarg: String param that provides the name of the aggregate to be used.").
 		ParamWithHelp("groupkey", value.Types.Any, false, false, value.Nil, "ContextKwarg: Expr that is evaluated to provide the lookup/groupkey in the aggregate.").
 		ParamWithHelp("kwargs", value.Types.Dict, false, true, value.Dict{}, "ContextKwarg: Dict of key/value pairs that are passed to the aggregate.")
 }

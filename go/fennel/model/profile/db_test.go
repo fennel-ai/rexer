@@ -143,20 +143,3 @@ func TestGetVersionBatched(t *testing.T) {
 	_, found = vMap[vid2]
 	assert.False(t, found)
 }
-
-func TestValueText(t *testing.T) {
-	tier, err := test.Tier()
-	assert.NoError(t, err)
-	defer test.Teardown(tier)
-	ctx := context.Background()
-	p := dbProvider{}
-
-	v := value.String("abc")
-	vSer := value.ToJSON(v)
-	assert.NoError(t, p.set(ctx, tier, "12", 1, "age", 1, vSer))
-
-	var found []string
-	err = tier.DB.Select(&found, "SELECT value_text FROM profile;")
-	assert.NoError(t, err)
-	assert.Equal(t, []string{`"abc"`}, found)
-}

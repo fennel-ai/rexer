@@ -19,7 +19,7 @@ func (op setOperator) New(args value.Dict, bootargs map[string]interface{}) (ope
 
 func (op setOperator) Signature() *operators.Signature {
 	return operators.NewSignature("std", "set").
-		ParamWithHelp("name", value.Types.String, false, false, value.Nil, "ContextKwargs: String param that is serves as the key").
+		ParamWithHelp("field", value.Types.String, false, false, value.Nil, "ContextKwargs: String param that is serves as the key").
 		ParamWithHelp("value", value.Types.Any, false, false, value.Nil, "ContextKwargs: Expr that gets evaluation and set as the value").
 		Input([]value.Type{value.Types.Dict})
 }
@@ -32,7 +32,7 @@ func (op setOperator) Apply(staticKwargs value.Dict, in operators.InputIter, out
 		}
 		row := heads[0].(value.Dict)
 		v, _ := contextKwargs.Get("value")
-		k, _ := contextKwargs.Get("name")
+		k, _ := contextKwargs.Get("field")
 		row.Set(string(k.(value.String)), v)
 		out.Append(row)
 	}

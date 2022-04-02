@@ -8,7 +8,7 @@ import (
 )
 
 type list struct {
-	Duration uint64
+	Durations []uint64
 	Bucketizer
 	BucketStore
 }
@@ -17,15 +17,16 @@ func (s list) Transform(v value.Value) (value.Value, error) {
 	return value.NewList(v), nil
 }
 
-func NewList(name ftypes.AggName, duration uint64) Histogram {
+func NewList(name ftypes.AggName, durations []uint64) Histogram {
+	maxDuration := getMaxDuration(durations)
 	return list{
-		Duration: duration,
+		Durations: durations,
 		Bucketizer: fixedWidthBucketizer{map[ftypes.Window]uint64{
 			ftypes.Window_MINUTE: 6,
 			ftypes.Window_DAY:    1,
 		}, true},
 		// retain all keys for 1.5days + duration
-		BucketStore: NewTwoLevelStorage(24*3600, duration+24*3600*1.5),
+		BucketStore: NewTwoLevelStorage(24*3600, maxDuration+24*3600*1.5),
 	}
 }
 
@@ -38,7 +39,7 @@ func (s list) extract(v value.Value) (value.List, error) {
 }
 
 func (s list) Start(end ftypes.Timestamp, kwargs value.Dict) (ftypes.Timestamp, error) {
-	d, err := extractDuration(kwargs, s.Duration)
+	d, err := extractDuration(kwargs, s.Durations)
 	if err != nil {
 		return 0, err
 	}

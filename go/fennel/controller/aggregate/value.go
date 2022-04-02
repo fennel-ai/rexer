@@ -49,7 +49,7 @@ func BatchValue(ctx context.Context, tier tier.Tier, batch []aggregate.GetAggVal
 			return nil, fmt.Errorf("failed to retrieve aggregate %s ", aggname)
 		}
 	}
-	
+
 	for i, req := range batch {
 		histograms[i], err = toHistogram(aggregateMap[req.AggName])
 		if err != nil {
@@ -110,37 +110,26 @@ func transformActions(tier tier.Tier, actions []libaction.Action, query ast.Ast)
 }
 
 func toHistogram(agg aggregate.Aggregate) (modelCounter.Histogram, error) {
-	d := reduceMax(agg.Options.Durations)
 	switch agg.Options.AggType {
 	case "sum":
-		return modelCounter.NewSum(agg.Name, d), nil
+		return modelCounter.NewSum(agg.Name, agg.Options.Durations), nil
 	case "timeseries_sum":
 		return modelCounter.NewTimeseriesSum(agg.Name, agg.Options.Window, agg.Options.Limit), nil
 	case "average":
-		return modelCounter.NewAverage(agg.Name, d), nil
+		return modelCounter.NewAverage(agg.Name, agg.Options.Durations), nil
 	case "list":
-		return modelCounter.NewList(agg.Name, d), nil
+		return modelCounter.NewList(agg.Name, agg.Options.Durations), nil
 	case "min":
-		return modelCounter.NewMin(agg.Name, d), nil
+		return modelCounter.NewMin(agg.Name, agg.Options.Durations), nil
 	case "max":
-		return modelCounter.NewMax(agg.Name, d), nil
+		return modelCounter.NewMax(agg.Name, agg.Options.Durations), nil
 	case "stddev":
-		return modelCounter.NewStdDev(agg.Name, d), nil
+		return modelCounter.NewStdDev(agg.Name, agg.Options.Durations), nil
 	case "rate":
-		return modelCounter.NewRate(agg.Name, d, agg.Options.Normalize), nil
+		return modelCounter.NewRate(agg.Name, agg.Options.Durations, agg.Options.Normalize), nil
 	case "topk":
-		return modelCounter.NewTopK(agg.Name, d), nil
+		return modelCounter.NewTopK(agg.Name, agg.Options.Durations), nil
 	default:
 		return nil, fmt.Errorf("invalid aggregate type: %v", agg.Options.AggType)
 	}
-}
-
-func reduceMax(vals []uint64) uint64 {
-	var max uint64 = 0
-	for _, v := range vals {
-		if v > max {
-			max = v
-		}
-	}
-	return max
 }
