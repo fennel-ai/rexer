@@ -14,7 +14,7 @@ import (
 	To fix this test please look at go/fennel/opdefs/generate/generate_client_operators.go
 */
 
-func TestFeatureLog_Apply(t *testing.T) {
+func TestGenerateOperatorsJson(t *testing.T) {
 	clientOperators, err := os.ReadFile("../../../../rexer-pyclient-alpha/rexerclient/gen/operators.json")
 	assert.NoError(t, err)
 	ops := operators.GetOperators()
@@ -25,5 +25,5 @@ func TestFeatureLog_Apply(t *testing.T) {
 	if err != nil {
 		log.Fatalf("failed marshalling to json: %s", err)
 	}
-	assert.Equal(t, opsIndented, clientOperators)
+	assert.Equal(t, string(opsIndented), string(clientOperators))
 }
