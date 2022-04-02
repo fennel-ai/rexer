@@ -17,39 +17,39 @@ func TestRate_Reduce(t *testing.T) {
 		input  []value.Value
 		output value.Value
 	}{
-		{NewRate("some", 100, false),
+		{NewRate("some", []uint64{100}, false),
 			[]value.Value{
 				value.NewList(value.Int(0), value.Int(1)),
 				value.NewList(value.Int(4), value.Int(2)),
 				value.NewList(value.Int(0), value.Int(0))},
 			value.Double(float64(4) / float64(3)),
 		},
-		{NewRate("some", 100, false),
+		{NewRate("some", []uint64{100}, false),
 			[]value.Value{
 				value.NewList(value.Int(0), value.Int(0))},
 			value.Double(0),
 		},
-		{NewRate("some", 100, false),
+		{NewRate("some", []uint64{100}, false),
 			[]value.Value{
 				value.NewList(value.Int(1), value.Int(1)),
 				value.NewList(value.Int(34), value.Int(199))},
 			value.Double(float64(35) / float64(200)),
 		},
-		{NewRate("some", 100, true),
+		{NewRate("some", []uint64{100}, true),
 			[]value.Value{
 				value.NewList(value.Int(1), value.Int(1)),
 				value.NewList(value.Int(34), value.Int(199))},
 			value.Double(0.12860441174608936),
 		},
 		{
-			NewRate("some", 100, false),
+			NewRate("some", []uint64{100}, false),
 			[]value.Value{
 				value.NewList(value.Int(0), value.Int(1)),
 				value.NewList(value.Int(2), value.Int(1))},
 			value.Double(1.),
 		},
 		{
-			NewRate("some", 100, false),
+			NewRate("some", []uint64{100}, false),
 			[]value.Value{
 				value.NewList(value.Int(1e17), value.Int(1e17)),
 				value.NewList(value.Int(0), value.Int(1e17))},
@@ -75,21 +75,21 @@ func TestRate_Reduce_Invalid(t *testing.T) {
 		h     Histogram
 		input []value.Value
 	}{
-		{NewRate("some", 100, false),
+		{NewRate("some", []uint64{100}, false),
 			[]value.Value{
 				value.NewList(value.Int(-1), value.Int(1)),
 				value.NewList(value.Int(0), value.Int(0))},
 		},
-		{NewRate("some", 100, false),
+		{NewRate("some", []uint64{100}, false),
 			[]value.Value{
 				value.NewList(value.Int(0), value.Int(-1))},
 		},
-		{NewRate("some", 100, false),
+		{NewRate("some", []uint64{100}, false),
 			[]value.Value{
 				value.Double(0.5),
 				value.NewList(value.Int(34), value.Int(199))},
 		},
-		{NewRate("some", 100, true),
+		{NewRate("some", []uint64{100}, true),
 			[]value.Value{
 				value.NewList(value.Int(1), value.Int(1)),
 				value.NewList(value.Int(2), value.Int(1))},
@@ -108,7 +108,7 @@ func TestRate_Reduce_Invalid(t *testing.T) {
 
 func TestRate_Merge_Valid(t *testing.T) {
 	t.Parallel()
-	h := NewRate("some", 100, false)
+	h := NewRate("some", []uint64{100}, false)
 	validCases := []struct {
 		input1 value.Value
 		input2 value.Value
@@ -139,7 +139,7 @@ func TestRate_Merge_Valid(t *testing.T) {
 
 func TestRate_Merge_Invalid(t *testing.T) {
 	t.Parallel()
-	h := NewRate("some", 100, false)
+	h := NewRate("some", []uint64{100}, false)
 	invalidCases := []struct {
 		input1 value.Value
 		input2 value.Value
@@ -176,7 +176,7 @@ func TestRate_Merge_Invalid(t *testing.T) {
 
 func TestRate_Bucketize_Valid(t *testing.T) {
 	t.Parallel()
-	h := NewRate("some", 100, false)
+	h := NewRate("some", []uint64{100}, false)
 	actions := value.List{}
 	expected := make([]Bucket, 0)
 	DAY := 3600 * 24
@@ -199,7 +199,7 @@ func TestRate_Bucketize_Valid(t *testing.T) {
 
 func TestRate_Bucketize_Invalid(t *testing.T) {
 	t.Parallel()
-	h := NewRate("some", 100, false)
+	h := NewRate("some", []uint64{100}, false)
 	cases := [][]value.Dict{
 		{value.Dict{}},
 		{value.NewDict(map[string]value.Value{"groupkey": value.Int(1), "timestamp": value.Int(2)})},
@@ -221,19 +221,4 @@ func TestRate_Bucketize_Invalid(t *testing.T) {
 		_, err := Bucketize(h, table)
 		assert.Error(t, err, fmt.Sprintf("case was: %v", table))
 	}
-}
-
-func TestRate_Start(t *testing.T) {
-	h := rollingRate{Duration: 100}
-	s, err := h.Start(110, value.Dict{})
-	assert.NoError(t, err)
-	assert.Equal(t, s, ftypes.Timestamp(10))
-	// Duration > end
-	s, err = h.Start(90, value.Dict{})
-	assert.NoError(t, err)
-	assert.Equal(t, s, ftypes.Timestamp(0))
-	// Test kwargs
-	s, err = h.Start(200, value.NewDict(map[string]value.Value{"duration": value.Int(50)}))
-	assert.NoError(t, err)
-	assert.Equal(t, s, ftypes.Timestamp(150))
 }

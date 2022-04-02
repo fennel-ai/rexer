@@ -141,21 +141,32 @@ func start(end ftypes.Timestamp, duration uint64) ftypes.Timestamp {
 	return 0
 }
 
-func extractDuration(kwargs value.Dict, maxDuration uint64) (uint64, error) {
-	if v, ok := kwargs.Get("duration"); !ok {
-		// when there is no duration specified, use duration specified when aggregate was created
-		return maxDuration, nil
-	} else {
-		d, ok := v.(value.Int)
-		if !ok {
-			return 0, fmt.Errorf("error: expected kwarg 'duration' to be an int but found: '%v'", v)
-		}
-		if d < 0 {
-			return 0, fmt.Errorf("error: kwarg 'duration' should be non-negative but is negative")
-		}
-		if uint64(d) > maxDuration {
-			return 0, fmt.Errorf("error: kwarg 'duration' exceeds maximum duration '%v' of aggregate", maxDuration)
-		}
-		return uint64(d), nil
+func extractDuration(kwargs value.Dict, durations []uint64) (uint64, error) {
+	v, ok := kwargs.Get("duration")
+	if !ok {
+		return 0, fmt.Errorf("error: no duration specified")
 	}
+	duration, ok := v.(value.Int)
+	if !ok {
+		return 0, fmt.Errorf("error: expected kwarg 'duration' to be an int but found: '%v'", v)
+	}
+	// check duration is positive so it can be typecast to uint64 safely
+	if duration >= 0 {
+		for _, d := range durations {
+			if uint64(duration) == d {
+				return d, nil
+			}
+		}
+	}
+	return 0, fmt.Errorf("error: specified duration not found in aggregate")
+}
+
+func getMaxDuration(durations []uint64) uint64 {
+	var maxDuration uint64 = 0
+	for _, d := range durations {
+		if d > maxDuration {
+			maxDuration = d
+		}
+	}
+	return maxDuration
 }

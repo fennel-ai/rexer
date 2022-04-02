@@ -12,20 +12,21 @@ import (
 	Minv is the minimum value. If empty is true, the bucket is empty so minv is ignored.
 */
 type rollingMin struct {
-	Duration uint64
+	Durations []uint64
 	Bucketizer
 	BucketStore
 }
 
-func NewMin(name ftypes.AggName, duration uint64) Histogram {
+func NewMin(name ftypes.AggName, durations []uint64) Histogram {
+	maxDuration := getMaxDuration(durations)
 	return rollingMin{
-		Duration: duration,
+		Durations: durations,
 		Bucketizer: fixedWidthBucketizer{map[ftypes.Window]uint64{
 			ftypes.Window_MINUTE: 6,
 			ftypes.Window_DAY:    1,
 		}, true},
 		// retain all keys for 1.5days + duration
-		BucketStore: NewTwoLevelStorage(24*3600, duration+24*3600*1.5),
+		BucketStore: NewTwoLevelStorage(24*3600, maxDuration+24*3600*1.5),
 	}
 }
 
@@ -38,7 +39,7 @@ func min(a int64, b int64) int64 {
 }
 
 func (m rollingMin) Start(end ftypes.Timestamp, kwargs value.Dict) (ftypes.Timestamp, error) {
-	d, err := extractDuration(kwargs, m.Duration)
+	d, err := extractDuration(kwargs, m.Durations)
 	if err != nil {
 		return 0, err
 	}

@@ -81,7 +81,7 @@ func (a AggValue) Signature() *operators.Signature {
 		Param("field", value.Types.String, true, true, value.String("")).
 		Param("name", value.Types.String, false, false, value.Nil).
 		Param("groupkey", value.Types.Any, false, false, value.Nil).
-		Param("kwargs", value.Types.Dict, false, true, value.Dict{})
+		Param("kwargs", value.Types.Dict, false, false, value.Dict{})
 }
 
 var _ operators.Operator = AggValue{}

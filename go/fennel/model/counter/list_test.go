@@ -12,7 +12,7 @@ import (
 
 func TestList_Reduce(t *testing.T) {
 	t.Parallel()
-	h := NewList("some_name", 123)
+	h := NewList("some_name", []uint64{123})
 	cases := []struct {
 		input  []value.Value
 		output value.Value
@@ -52,7 +52,7 @@ func TestList_Reduce(t *testing.T) {
 
 func TestList_Merge_Valid(t *testing.T) {
 	t.Parallel()
-	h := NewList("some_name", 123)
+	h := NewList("some_name", []uint64{123})
 	validCases := []struct {
 		input1 value.Value
 		input2 value.Value
@@ -93,7 +93,7 @@ func TestList_Merge_Valid(t *testing.T) {
 
 func TestList_Merge_Invalid(t *testing.T) {
 	t.Parallel()
-	h := NewList("some_name", 123)
+	h := NewList("some_name", []uint64{123})
 	invalidCases := []struct {
 		input1 value.Value
 		input2 value.Value
@@ -126,7 +126,7 @@ func TestList_Merge_Invalid(t *testing.T) {
 
 func TestList_Bucketize_Valid(t *testing.T) {
 	t.Parallel()
-	h := NewList("some_name", 123)
+	h := NewList("some_name", []uint64{123})
 	actions := value.NewList()
 	expected := make([]Bucket, 0)
 	DAY := 3600 * 24
@@ -149,7 +149,7 @@ func TestList_Bucketize_Valid(t *testing.T) {
 
 func TestList_Bucketize_Invalid(t *testing.T) {
 	t.Parallel()
-	h := NewList("some_name", 123)
+	h := NewList("some_name", []uint64{123})
 	cases := [][]value.Dict{
 		{value.NewDict(map[string]value.Value{})},
 		{value.NewDict(map[string]value.Value{"groupkey": value.Int(1), "timestamp": value.Int(2)})},
@@ -166,19 +166,4 @@ func TestList_Bucketize_Invalid(t *testing.T) {
 		_, err := Bucketize(h, table)
 		assert.Error(t, err, fmt.Sprintf("case was: %v", table))
 	}
-}
-
-func TestList_Start(t *testing.T) {
-	h := NewList("some_name", 100)
-	s, err := h.Start(110, value.NewDict(map[string]value.Value{}))
-	assert.NoError(t, err)
-	assert.Equal(t, s, ftypes.Timestamp(10))
-	// Duration > end
-	s, err = h.Start(90, value.NewDict(map[string]value.Value{}))
-	assert.NoError(t, err)
-	assert.Equal(t, s, ftypes.Timestamp(0))
-	// Test kwargs
-	s, err = h.Start(200, value.NewDict(map[string]value.Value{"duration": value.Int(50)}))
-	assert.NoError(t, err)
-	assert.Equal(t, s, ftypes.Timestamp(150))
 }

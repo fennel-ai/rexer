@@ -37,8 +37,8 @@ class TestStagingEndToEnd(unittest.TestCase):
         )
         def agg(actions):
             view_events = rex.op.std.filter(actions, var='a', where=rex.var('a').action_type == 'e2etest_view')
-            with_key = rex.op.std.set(view_events, var='e', name='groupkey', value=rex.var('e').actor_id)
-            return rex.op.std.set(with_key, name='value', value=1)
+            with_key = rex.op.std.set(view_events, var='e', field='groupkey', value=rex.var('e').actor_id)
+            return rex.op.std.set(with_key, field='value', value=1)
         # # Store aggregate, if this store already exists (with the same options), this is a no-op
         agg.store(client=c)
         # c.store_aggregate(_AGGREGATE_NAME, with_val, options)
