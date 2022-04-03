@@ -31,6 +31,11 @@ jobs:
           path: rexer-client-${{ github.run_id }}-${{ github.run_number }}-${{ github.run_attempt }}	
           repository: fennel-ai/rexer-pyclient-alpha
           token: ${{ secrets.ACCESS_TOKEN }}
+          
+      # Move the repo explicitly, sadly github actions doesn't support this by default..
+      # https://github.com/actions/checkout/issues/197#issuecomment-829560171
+      - name: move client directory
+        run: mv rexer-client-${{ github.run_id }}-${{ github.run_number }}-${{ github.run_attempt }} ../rexer-pyclient-alpha
 
       # Install go (we use 1.17.0 version, so we will stick to it)
       - uses: actions/setup-go@v2
