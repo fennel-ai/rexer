@@ -69,7 +69,7 @@ func (f featureLog) Apply(static value.Dict, in operators.InputIter, out *value.
 func (f featureLog) Signature() *operators.Signature {
 	return operators.NewSignature("feature", "log").
 		Input([]value.Type{value.Types.Dict}).
-		Param("context_otype", value.Types.String, false, false, value.Nil).
+		Param("context_otype", value.Types.String, false, true, value.Nil).
 		Param("context_oid", value.Types.Int, false, false, value.Nil).
 		Param("candidate_otype", value.Types.String, false, false, value.Nil).
 		Param("candidate_oid", value.Types.Int, false, false, value.Nil).
