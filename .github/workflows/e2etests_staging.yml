@@ -20,9 +20,9 @@ jobs:
     # Steps represent a sequence of tasks that will be executed as part of the job
     steps:
       # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
 
-      - uses: actions/checkout@v2  
+      - uses: actions/checkout@v3  
         with:
           path: rexer-pyclient-alpha	
           repository: fennel-ai/rexer-pyclient-alpha
@@ -64,5 +64,6 @@ jobs:
 
       # Remove the client directory. Github actions removes the one installed using `actions/checkout@v2` which is now empty since we moved the content
       - name: Remove rexer-client dir
+        if: always()
         run: |
           sudo rm -rf ../rexer-pyclient-alpha
