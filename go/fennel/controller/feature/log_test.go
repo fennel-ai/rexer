@@ -39,12 +39,12 @@ func TestLogMulti_Kafka(t *testing.T) {
 	assert.NoError(t, err)
 	consumer, err := tier.NewKafkaConsumer(feature.KAFKA_TOPIC_NAME, "somegroup", "earliest")
 	for i := 0; i < 10; i++ {
-		var pmsg feature.ProtoRow
-		err = consumer.ReadProto(ctx, &pmsg, -1)
+		data, err := consumer.Read(ctx, -1)
 		assert.NoError(t, err)
-		msg, err := feature.FromProtoRow(&pmsg)
+		var f feature.Row
+		err = f.UnmarshalJSON(data)
 		assert.NoError(t, err)
-		assert.Equal(t, rows[i], *msg)
+		assert.Equal(t, rows[i], f)
 	}
 }
 
@@ -72,7 +72,7 @@ func TestLog_Read(t *testing.T) {
 	consumer, err := tier.NewKafkaConsumer(feature.KAFKA_TOPIC_NAME, "testgroup", kafka.DefaultOffsetPolicy)
 	assert.NoError(t, err)
 	defer consumer.Close()
-	rowptr, err := Read(ctx, tier, consumer)
+	rowptr, err := Read(ctx, consumer)
 	assert.NoError(t, err)
 	assert.Equal(t, row, *rowptr)
 }

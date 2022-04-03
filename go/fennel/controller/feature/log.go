@@ -14,12 +14,12 @@ const (
 
 func LogMulti(ctx context.Context, tr tier.Tier, rows []feature.Row) error {
 	producer := tr.Producers[feature.KAFKA_TOPIC_NAME]
-	for i := range rows {
-		msg, err := feature.ToProto(rows[i])
+	for _, row := range rows {
+		msg, err := row.MarshalJSON()
 		if err != nil {
 			return err
 		}
-		if err = producer.LogProto(ctx, msg, nil); err != nil {
+		if err = producer.Log(ctx, msg, nil); err != nil {
 			return err
 		}
 	}
@@ -30,14 +30,15 @@ func Log(ctx context.Context, tr tier.Tier, row feature.Row) error {
 	return LogMulti(ctx, tr, []feature.Row{row})
 }
 
-func Read(ctx context.Context, tr tier.Tier, consumer kafka.FConsumer) (*feature.Row, error) {
-	var prow feature.ProtoRow
-	if err := consumer.ReadProto(ctx, &prow, -1); err != nil {
-		return nil, err
-	}
-	row, err := feature.FromProtoRow(&prow)
+func Read(ctx context.Context, consumer kafka.FConsumer) (*feature.Row, error) {
+	data, err := consumer.Read(ctx, -1)
 	if err != nil {
 		return nil, err
 	}
-	return row, nil
+	var row feature.Row
+	err = row.UnmarshalJSON(data)
+	if err != nil {
+		return nil, err
+	}
+	return &row, nil
 }
