@@ -29,10 +29,9 @@ func (f featureLog) New(args value.Dict, bootargs map[string]interface{}) (opera
 }
 
 func (f featureLog) Apply(static value.Dict, in operators.InputIter, out *value.List) error {
-	contextOtype := ftypes.OType(get(static, "context_otype").(value.String))
-	contextOid := ftypes.OidType(get(static, "context_oid").(value.Int))
 	workflow := string(get(static, "workflow").(value.String))
-	requestID := ftypes.RequestID(get(static, "request_id").(value.Int))
+	modelName := ftypes.ModelName(get(static, "model_name").(value.String))
+	modelVersion := ftypes.ModelVersion(get(static, "model_version").(value.String))
 
 	for in.HasMore() {
 		heads, kwargs, err := in.Next()
@@ -45,16 +44,16 @@ func (f featureLog) Apply(static value.Dict, in operators.InputIter, out *value.
 			ts = ftypes.Timestamp(f.tier.Clock.Now())
 		}
 		msg := libfeature.Row{
-			ContextOType:    contextOtype,
-			ContextOid:      contextOid,
+			ContextOType:    ftypes.OType(get(kwargs, "context_otype").(value.String)),
+			ContextOid:      ftypes.OidType(get(kwargs, "context_oid").(value.Int)),
 			CandidateOType:  ftypes.OType(get(kwargs, "candidate_otype").(value.String)),
 			CandidateOid:    ftypes.OidType(get(kwargs, "candidate_oid").(value.Int)),
 			Features:        get(kwargs, "features").(value.Dict),
 			Workflow:        workflow,
-			RequestID:       requestID,
+			RequestID:       ftypes.RequestID(get(kwargs, "request_id").(value.Int)),
 			Timestamp:       ts,
-			ModelName:       ftypes.ModelName(get(static, "model_name").(value.String)),
-			ModelVersion:    ftypes.ModelVersion(get(static, "model_version").(value.String)),
+			ModelName:       modelName,
+			ModelVersion:    modelVersion,
 			ModelPrediction: float64(get(kwargs, "model_prediction").(value.Double)),
 		}
 		if err = feature.Log(context.TODO(), f.tier, msg); err != nil {
@@ -70,13 +69,13 @@ func (f featureLog) Apply(static value.Dict, in operators.InputIter, out *value.
 func (f featureLog) Signature() *operators.Signature {
 	return operators.NewSignature("feature", "log").
 		Input([]value.Type{value.Types.Dict}).
-		Param("context_otype", value.Types.String, true, false, value.Nil).
-		Param("context_oid", value.Types.Int, true, false, value.Nil).
+		Param("context_otype", value.Types.String, false, false, value.Nil).
+		Param("context_oid", value.Types.Int, false, false, value.Nil).
 		Param("candidate_otype", value.Types.String, false, false, value.Nil).
 		Param("candidate_oid", value.Types.Int, false, false, value.Nil).
 		Param("features", value.Types.Dict, false, false, value.Nil).
 		Param("workflow", value.Types.String, true, false, value.Nil).
-		Param("request_id", value.Types.Int, true, false, value.Nil).
+		Param("request_id", value.Types.Int, false, false, value.Nil).
 		Param("model_name", value.Types.String, true, true, value.String("")).
 		Param("model_version", value.Types.String, true, true, value.String("")).
 		Param("model_prediction", value.Types.Double, false, true, value.Double(-1)).
