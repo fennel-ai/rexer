@@ -20,17 +20,17 @@ jobs:
     # Steps represent a sequence of tasks that will be executed as part of the job
     steps:
       # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
 
-      - uses: actions/checkout@v2  
+      - uses: actions/checkout@v3  
         with:
-          path: rexer-client-${{ github.run_id }}-${{ github.run_number }}-${{ github.run_attempt }}	
+          path: rexer-pyclient-alpha
           repository: fennel-ai/rexer-pyclient-alpha
           token: ${{ secrets.ACCESS_TOKEN }}
 
       # Move the repo explicitly, sadly github actions doesn't support this by default..
       # https://github.com/actions/checkout/issues/197#issuecomment-829560171
-      - run: mv rexer-client-${{ github.run_id }}-${{ github.run_number }}-${{ github.run_attempt }} ../rexer-pyclient-alpha
+      - run: mv rexer-pyclient-alpha ../rexer-pyclient-alpha
 
       # Install prerequisites
       - name: install build essential and pkg-config
@@ -62,7 +62,7 @@ jobs:
 
       # Install rexer which will be used later in the e2etest.py
       - name: Install dependencies using poetry
-        working-directory: ../rexer-pyclient-alpha/rexer-client-${{ github.run_id }}-${{ github.run_number }}-${{ github.run_attempt }}
+        working-directory: ../rexer-pyclient-alpha
         run: poetry install --no-interaction
 
       - name: Install kafka dependencies
@@ -85,11 +85,12 @@ jobs:
           REDIS_SERVER_ADDRESS: ${{ secrets.REDIS_SERVER_ADDRESS }}
           CACHE_PRIMARY: ${{ secrets.CACHE_PRIMARY }}
           TIER_ID: ${{ secrets.TIER_ID }}
-        working-directory: ../rexer-pyclient-alpha/rexer-client-${{ github.run_id }}-${{ github.run_number }}-${{ github.run_attempt }}
+        working-directory: ../rexer-pyclient-alpha
         run: |
           poetry run python -m unittest discover ../../rexer/e2etests -p "teste2e.py"
           
       # Remove the client directory. Github actions removes the one installed using `actions/checkout@v2` which is now empty since we moved the content
       - name: Remove rexer-client dir
+        if: always()
         run: |
-          sudo rm -rf ../rexer-pyclient-alpha/rexer-client-${{ github.run_id }}-${{ github.run_number }}-${{ github.run_attempt }}
+          sudo rm -rf ../rexer-pyclient-alpha
