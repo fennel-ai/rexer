@@ -8,6 +8,8 @@ authors = ["Mohit Reddy <mohitreddy1996@gmail.com>"]
 python = "^3.9"
 boto3 = "^1.21.12"
 pyarrow = "^7.0.0"
+pyspark = "^3.2.1"
+pandas = "^1.4.2"
 
 [tool.poetry.dev-dependencies]
 
