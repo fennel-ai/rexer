@@ -18,10 +18,10 @@ export const fennelStdTags = {
 }
 
 export const plugins = {
-    "eks": "v0.36.0",
-    "kubernetes": "v3.16.0",
+    "eks": "v0.37.1",
+    "kubernetes": "v3.18.0",
     "command": "v0.0.3",
-    "aws": "v4.38.0",
+    "aws": "v5.1.0",
 }
 
 // NOTE: The AMI used should be an eks-worker AMI that can be searched
