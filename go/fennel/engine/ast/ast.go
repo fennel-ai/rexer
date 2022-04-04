@@ -10,7 +10,6 @@ type VisitorString interface {
 	VisitUnary(op string, operand Ast) string
 	VisitBinary(left Ast, op string, right Ast) string
 	VisitList(values []Ast) string
-	VisitTuple(values []Ast) string
 	VisitDict(values map[string]Ast) string
 	VisitOpcall(operands []Ast, vars []string, namespace, name string, kwargs Dict) string
 	VisitVar(name string) string
@@ -26,7 +25,6 @@ type VisitorValue interface {
 	VisitUnary(op string, operand Ast) (value.Value, error)
 	VisitBinary(left Ast, op string, right Ast) (value.Value, error)
 	VisitList(values []Ast) (value.Value, error)
-	VisitTuple(values []Ast) (value.Value, error)
 	VisitDict(values map[string]Ast) (value.Value, error)
 	VisitOpcall(operand []Ast, vars []string, namespace, name string, kwargs Dict) (value.Value, error)
 	VisitVar(name string) (value.Value, error)
@@ -48,7 +46,6 @@ var _ Ast = Atom{}
 var _ Ast = Unary{}
 var _ Ast = Binary{}
 var _ Ast = List{}
-var _ Ast = Tuple{}
 var _ Ast = Dict{}
 var _ Ast = OpCall{}
 var _ Ast = Var{}
@@ -226,35 +223,6 @@ func (l List) Equals(ast Ast) bool {
 			return false
 		}
 		for i, v := range l.Values {
-			if !v.Equals(l2.Values[i]) {
-				return false
-			}
-		}
-		return true
-	default:
-		return false
-	}
-}
-
-type Tuple struct {
-	Values []Ast
-}
-
-func (t Tuple) AcceptValue(v VisitorValue) (value.Value, error) {
-	return v.VisitTuple(t.Values)
-}
-
-func (t Tuple) AcceptString(v VisitorString) string {
-	return v.VisitTuple(t.Values)
-}
-
-func (t Tuple) Equals(ast Ast) bool {
-	switch l2 := ast.(type) {
-	case Tuple:
-		if len(t.Values) != len(l2.Values) {
-			return false
-		}
-		for i, v := range t.Values {
 			if !v.Equals(l2.Values[i]) {
 				return false
 			}

@@ -57,9 +57,7 @@ func (op SortOperator) Apply(staticKwargs value.Dict, in operators.InputIter, ou
 		}
 	})
 	for _, row := range rows {
-		if err := out.Append(row.data); err != nil {
-			return err
-		}
+		out.Append(row.data)
 	}
 	return nil
 }

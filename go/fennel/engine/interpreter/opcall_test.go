@@ -103,16 +103,16 @@ func TestInterpreter_VisitOpcall2(t *testing.T) {
 	row1 := value.NewDict(map[string]value.Value{"hi": value.Int(1), "bye": value.Double(1)})
 	row2 := value.NewDict(map[string]value.Value{"hi": value.Int(2), "bye": value.Double(2)})
 	row3 := value.NewDict(map[string]value.Value{"hi": value.Int(3), "bye": value.Double(3)})
-	assert.NoError(t, base.Append(row1))
-	assert.NoError(t, base.Append(row2))
-	assert.NoError(t, base.Append(row3))
+	base.Append(row1)
+	base.Append(row2)
+	base.Append(row3)
 	i := getInterpreter()
 	query := getOpCallQuery()
 	res, err := i.Eval(query, value.NewDict(map[string]value.Value{"table": base}))
 	assert.NoError(t, err)
 	expected := value.List{}
-	assert.NoError(t, expected.Append(value.NewDict(map[string]value.Value{"hi": value.Int(2), "bye": value.Double(2), "key": value.NewList(value.Double(2))})))
-	assert.NoError(t, expected.Append(value.NewDict(map[string]value.Value{"hi": value.Int(3), "bye": value.Double(3), "key": value.NewList(value.Double(3))})))
+	expected.Append(value.NewDict(map[string]value.Value{"hi": value.Int(2), "bye": value.Double(2), "key": value.NewList(value.Double(2))}))
+	expected.Append(value.NewDict(map[string]value.Value{"hi": value.Int(3), "bye": value.Double(3), "key": value.NewList(value.Double(3))}))
 	assert.Equal(t, expected, res)
 }
 
@@ -388,7 +388,8 @@ func (e zip) Apply(kwargs value.Dict, in operators.InputIter, out *value.List) e
 		r, _ := right.At(i)
 		ret.Append(value.NewDict(map[string]value.Value{"left": l, "right": r}))
 	}
-	return out.Append(ret)
+	out.Append(ret)
+	return nil
 }
 
 func (e zip) Signature() *operators.Signature {

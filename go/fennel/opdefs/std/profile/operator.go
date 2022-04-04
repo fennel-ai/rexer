@@ -88,9 +88,7 @@ func (p profileOp) Apply(staticKwargs value.Dict, in operators.InputIter, out *v
 		} else {
 			outRow = v
 		}
-		if err = out.Append(outRow); err != nil {
-			return err
-		}
+		out.Append(outRow)
 	}
 	return nil
 }

@@ -31,7 +31,8 @@ func (a adder) Apply(kwargs value.Dict, in operators.InputIter, out *value.List)
 	if !float {
 		ret = value.Int(sum)
 	}
-	return out.Append(ret)
+	out.Append(ret)
+	return nil
 }
 
 func extract(n value.Value) (float64, bool) {

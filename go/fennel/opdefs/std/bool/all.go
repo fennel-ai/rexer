@@ -22,10 +22,12 @@ func (a allop) Apply(kwargs value.Dict, in operators.InputIter, out *value.List)
 			return err
 		}
 		if !heads[0].(value.Bool) {
-			return out.Append(value.Bool(false))
+			out.Append(value.Bool(false))
+			return nil
 		}
 	}
-	return out.Append(value.Bool(true))
+	out.Append(value.Bool(true))
+	return nil
 }
 
 func (a allop) Signature() *operators.Signature {

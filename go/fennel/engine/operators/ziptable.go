@@ -23,9 +23,7 @@ func NewZipTable(op Operator) ZipTable {
 // TODO: this almost certainly has weird race conditions if run in paralle. Fix
 func (zt *ZipTable) Append(first []value.Value, second value.Dict) error {
 	d := toDict(first)
-	if err := zt.first.Append(d); err != nil {
-		return err
-	}
+	zt.first.Append(d)
 	zt.second.Append(second)
 	return nil
 }

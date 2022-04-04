@@ -28,8 +28,6 @@ func len_(v Value) (Value, error) {
 		return Int(v.Len()), nil
 	case Dict:
 		return Int(v.Len()), nil
-	case Tuple:
-		return Int(v.Len()), nil
 	}
 	return nil, fmt.Errorf("'len' only supported on booleans")
 }

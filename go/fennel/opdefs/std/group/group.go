@@ -40,9 +40,7 @@ func (g grouper) Apply(kwargs value.Dict, in operators.InputIter, out *value.Lis
 			"group":    bys[i],
 			"elements": value.NewList(elements[g]...),
 		})
-		if err := out.Append(d); err != nil {
-			return err
-		}
+		out.Append(d)
 	}
 	return nil
 }

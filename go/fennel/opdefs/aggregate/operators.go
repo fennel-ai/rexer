@@ -63,9 +63,7 @@ func (a AggValue) Apply(kwargs value.Dict, in operators.InputIter, outs *value.L
 		} else {
 			out = res[i]
 		}
-		if err := outs.Append(out); err != nil {
-			return err
-		}
+		outs.Append(out)
 	}
 	return nil
 }

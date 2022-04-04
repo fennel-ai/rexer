@@ -184,10 +184,7 @@ func ToList(actions []Action) (value.List, error) {
 	table := value.List{}
 	for i := range actions {
 		d := actions[i].ToValueDict()
-		err := table.Append(d)
-		if err != nil {
-			return value.List{}, err
-		}
+		table.Append(d)
 	}
 	return table, nil
 }

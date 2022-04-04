@@ -33,21 +33,19 @@ func TestJSON(t *testing.T) {
 	//}}}})
 
 	l1 := NewList(Nil, Int(4), Double(3.14), String("xyz"))
-	l1Str := "[null,4,3.14,\"xyz\"]"
-	l1StrUnwrapped := `null,4,3.14,"xyz"`
+	l1Str := `[null,4,3.14,"xyz"]`
 	tests = append(tests, test{str: l1Str, val: l1})
 
 	d1 := NewDict(map[string]Value{"k1": Double(3.14), "k2": Int(128), "k3": String("abc")})
-	d1Str := "{\"k1\":3.14,\"k2\":128,\"k3\":\"abc\"}"
+	d1Str := `{"k1":3.14,"k2":128,"k3":"abc"}`
 	tests = append(tests, test{str: d1Str, val: d1})
 
 	l2 := NewList(Double(5.4), l1.Clone(), d1.Clone(), Nil)
-	// user unwrapped version of l1 because lists don't nest
-	l2Str := fmt.Sprintf("[5.4,%s,%s,null]", l1StrUnwrapped, d1Str)
+	l2Str := fmt.Sprintf(`[5.4,%s,%s,null]`, l1Str, d1Str)
 	tests = append(tests, test{str: l2Str, val: l2})
 
 	d2 := NewDict(map[string]Value{"k1": Nil, "k2": l1, "k3": d1, "k4": l2})
-	d2Str := fmt.Sprintf("{\"k1\":null,\"k2\":%s,\"k3\":%s,\"k4\":%s}", l1Str, d1Str, l2Str)
+	d2Str := fmt.Sprintf(`{"k1":null,"k2":%s,"k3":%s,"k4":%s}`, l1Str, d1Str, l2Str)
 	tests = append(tests, test{str: d2Str, val: d2})
 
 	// Test FromJSON()

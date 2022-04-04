@@ -30,7 +30,7 @@ func TestUniqueOperator_Apply(t *testing.T) {
 		value.NewDict(map[string]value.Value{"foo": value.NewList(value.Double(1.0))}),
 		value.NewDict(map[string]value.Value{"foo": value.NewList(value.String("val1"), value.String("val2"))}),
 		value.NewDict(map[string]value.Value{"foo": value.NewList(value.Double(1.0), value.Int(4), value.Int(3), value.Int(1))}),
-		value.NewDict(map[string]value.Value{"foo": value.NewList(value.Int(1), value.Double(1.0), value.NewDict(map[string]value.Value{"foo": value.Double(1.0)}))}),
+		value.NewDict(map[string]value.Value{"foo": value.NewList(value.Int(1), value.Double(1.0), value.NewDict(map[string]value.Value{"foo": value.Double(1.0)}), value.NewList(value.Int(1)))}),
 	}
 
 	tr := tier.Tier{}

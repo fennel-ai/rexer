@@ -22,9 +22,7 @@ func (m mapper) Apply(kwargs value.Dict, in operators.InputIter, out *value.List
 		if err != nil {
 			return err
 		}
-		if err = out.Append(context.GetUnsafe("to")); err != nil {
-			return err
-		}
+		out.Append(context.GetUnsafe("to"))
 	}
 	return nil
 }

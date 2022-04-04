@@ -107,8 +107,8 @@ func init() {
 			Module: "std",
 			Name:   "something",
 			Kwargs: map[string]Ast{
-				"hi":        Tuple{Values: []Ast{List{Values: []Ast{MakeInt(1), MakeDouble(3.4)}}, Tuple{Values: []Ast{MakeInt(2), MakeDouble(4.4)}}}},
-				"something": Tuple{Values: []Ast{MakeInt(2), MakeDouble(4.4)}},
+				"hi":        List{Values: []Ast{List{Values: []Ast{MakeInt(1), MakeDouble(3.4)}}, List{Values: []Ast{MakeInt(2), MakeDouble(4.4)}}}},
+				"something": List{Values: []Ast{MakeInt(2), MakeDouble(4.4)}},
 			},
 		},
 		FnCall{
