@@ -31,8 +31,12 @@ parser.add_argument("--post_constituencies_path",
     help="path to the csv file to load post constituencies from."
     "If the file is being read from S3 bucket, this is the path to the object in the bucket."
     "Assumes this file exists.")
-parser.add_argument("--post_locations_path",
-    help="path to the csv file to load post locations from."
+parser.add_argument("--post_districts_path",
+    help="path to the csv file to load post districts from."
+    "If the file is being read from S3 bucket, this is the path to the object in the bucket."
+    "Assumes this file exists.")
+parser.add_argument("--post_states_path",
+    help="path to the csv file to load post states from."
     "If the file is being read from S3 bucket, this is the path to the object in the bucket."
     "Assumes this file exists.")
 parser.add_argument("--post_updated_on_path",
@@ -52,7 +56,8 @@ _USERS_PATH: os.PathLike = args.users_path
 # posts
 _POST_CATEGORIES_PATH: os.PathLike = args.post_categories_path
 _POST_CONSTITUENCIES_PATH: os.PathLike = args.post_constituencies_path
-_POST_LOCATIONS_PATH: os.PathLike = args.post_locations_path
+_POST_DISTRICTS_PATH: os.PathLike = args.post_districts_path
+_POST_STATES_PATH: os.PathLike = args.post_states_path
 _POST_UPDATED_ON_PATH: os.PathLike = args.post_updated_on_path
 _POST_TAGS_PATH: os.PathLike = args.post_tags_path
 
@@ -64,7 +69,8 @@ _USER_CREATED_ON = "created_on"
 _POST_OTYPE = "posts"
 _POST_CATEGORIES = "categories"
 _POST_CONSTITUENCIES = "constituencies"
-_POST_LOCATIONS = "locations"
+_POST_DISTRICTS = "districts"
+_POST_STATES = "states"
 _POST_TAGS = "tags"
 _POST_UPDATED_AT = "updated_at"
 _POST_CREATED_AT = "created_at"
@@ -154,8 +160,8 @@ def posts_constituencies(s3_client: boto3.client, batch_size: int = 10000) -> Li
     yield profiles
 
 
-def posts_locations(s3_client: boto3.client, batch_size: int = 10000) -> List[profile.Profile]:
-    posts_df = get_csv(s3_client=s3_client, file_path=_POST_LOCATIONS_PATH)
+def posts_locations(s3_client: boto3.client, key: str, file_path: str, batch_size: int = 10000) -> List[profile.Profile]:
+    posts_df = get_csv(s3_client=s3_client, file_path=file_path)
     total_entries = len(posts_df)
     profiles = []
     with tqdm(total = total_entries, file = sys.stdout) as pbar:
@@ -163,7 +169,7 @@ def posts_locations(s3_client: boto3.client, batch_size: int = 10000) -> List[pr
             oid = getattr(row, 'post_id')
             locations = getattr(row, 'locations')
             if not pd.isnull(locations):
-                profiles.append(profile.Profile(otype=_POST_OTYPE, oid=oid, key=_POST_LOCATIONS, value=locations))
+                profiles.append(profile.Profile(otype=_POST_OTYPE, oid=oid, key=key, value=locations))
 
             if len(profiles) > batch_size:
                 yield profiles
@@ -247,9 +253,13 @@ def main():
     for batch in posts_constituencies(s3_client):
         rexer_client.set_profiles(batch)
 
-    # print('========== processing posts_locations ==========\n')
-    # for batch in posts_locations(s3_client):
-    #     rexer_client.set_profiles(batch)
+    print('========== processing posts_states ==========\n')
+    for batch in posts_locations(s3_client, key=_POST_STATES, file_path=_POST_STATES_PATH):
+        rexer_client.set_profiles(batch)
+
+    print('========== processing posts_districts ==========\n')
+    for batch in posts_locations(s3_client, key=_POST_DISTRICTS, file_path=_POST_DISTRICTS_PATH):
+        rexer_client.set_profiles(batch)
 
     # print('========== processing posts_tags ==========\n')
     # for batch in posts_tags(s3_client):
