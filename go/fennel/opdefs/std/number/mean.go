@@ -33,7 +33,8 @@ func (a meanop) Apply(_ value.Dict, in operators.InputIter, out *value.List) err
 	} else {
 		ret = sum / float64(num)
 	}
-	return out.Append(value.Double(ret))
+	out.Append(value.Double(ret))
+	return nil
 }
 
 func (a meanop) Signature() *operators.Signature {

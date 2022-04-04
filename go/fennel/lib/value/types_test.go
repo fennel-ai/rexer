@@ -41,21 +41,17 @@ func TestList_Iter(t *testing.T) {
 	})
 	table := List{}
 	assert.Equal(t, 0, table.Len())
-	err := table.Append(row1)
+	table.Append(row1)
 	assert.Equal(t, 1, table.Len())
-	assert.NoError(t, err)
-	err = table.Append(row2)
-	assert.NoError(t, err)
+	table.Append(row2)
 	assert.Equal(t, 2, table.Len())
-	err = table.Append(row3)
-	assert.NoError(t, err)
+	table.Append(row3)
 	assert.Equal(t, 3, table.Len())
 
 	// now create an iter object and iterate through it
 	it := table.Iter()
 	// before we do anything, now add another row to the table - this should never show in iterator
-	err = table.Append(row4)
-	assert.NoError(t, err)
+	table.Append(row4)
 	assert.Equal(t, 4, table.Len())
 
 	// okay now let's start asserting our iter
@@ -84,19 +80,11 @@ func TestList_Append(t *testing.T) {
 	l := NewList()
 	assert.Equal(t, 0, l.Len())
 
-	assert.NoError(t, l.Append(Int(2)))
+	l.Append(Int(2))
 	assert.Equal(t, 1, l.Len())
-	assert.NoError(t, l.Append(Bool(false)))
+	l.Append(Bool(false))
 	assert.Equal(t, 2, l.Len())
 	assert.Equal(t, NewList(Int(2), Bool(false)), l)
-
-	// no nested lists allowed
-	assert.NoError(t, l.Append(NewList(Double(3.0), Bool(false), Nil)))
-	assert.Equal(t, NewList(Int(2), Bool(false), Double(3.0), Bool(false), Nil), l)
-
-	// and this works even when we do multiple level nesting
-	assert.NoError(t, l.Append(NewList(NewList(NewList(String("hi"))))))
-	assert.Equal(t, NewList(Int(2), Bool(false), Double(3.0), Bool(false), Nil, String("hi")), l)
 }
 
 //func TestStringingNilValue(t *testing.T) {
@@ -115,54 +103,4 @@ func TestFuture_Await(t *testing.T) {
 	v := Int(5)
 	f := getFuture(v)
 	assert.Equal(t, v.String(), f.String())
-}
-
-func Test_Unwrap(t *testing.T) {
-	t.Parallel()
-	scenarios := []struct {
-		v   Value
-		e   Value
-		err bool
-	}{
-		{Int(2), Int(2), false},
-		{Double(2.0), Double(2.0), false},
-		{Nil, Nil, false},
-		{String("hi"), String("hi"), false},
-		{NewDict(map[string]Value{"x": Int(1), "y": NewList()}), NewDict(map[string]Value{"x": Int(1), "y": NewList()}), false},
-		{Bool(true), Bool(true), false},
-		{NewList(Int(3)), Int(3), false},
-		{List{}, nil, true},
-		{NewList(Int(2), Nil), nil, true},
-	}
-	for _, scene := range scenarios {
-		found, err := scene.v.Unwrap()
-		if scene.err {
-			assert.Error(t, err)
-		} else {
-			assert.NoError(t, err)
-			assert.Equal(t, scene.e, found)
-		}
-	}
-}
-
-func Test_Wrap(t *testing.T) {
-	t.Parallel()
-	scenarios := []struct {
-		v Value
-		e Value
-	}{
-		{Int(2), NewList(Int(2))},
-		{Double(2.0), NewList(Double(2.0))},
-		{Nil, NewList(Nil)},
-		{String("hi"), NewList(String("hi"))},
-		{NewDict(map[string]Value{"x": Int(1), "y": List{}}), NewList(NewDict(map[string]Value{"x": Int(1), "y": List{}}))},
-		{Bool(true), NewList(Bool(true))},
-		{NewList(Int(3)), NewList(Int(3))},
-		{List{}, List{}},
-		{NewList(Int(2), Nil), NewList(Int(2), Nil)},
-	}
-	for _, scene := range scenarios {
-		found := scene.v.Wrap()
-		assert.Equal(t, scene.e, found)
-	}
 }

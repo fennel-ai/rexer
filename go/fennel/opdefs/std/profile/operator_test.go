@@ -34,10 +34,8 @@ func TestDefault(t *testing.T) {
 	}
 	i := interpreter.NewInterpreter(bootarg.Create(tier))
 	table := value.List{}
-	err = table.Append(value.NewDict(map[string]value.Value{}))
-	assert.NoError(t, err)
-	err = table.Append(value.NewDict(map[string]value.Value{}))
-	assert.NoError(t, err)
+	table.Append(value.NewDict(map[string]value.Value{}))
+	table.Append(value.NewDict(map[string]value.Value{}))
 	out, err := i.Eval(query, value.NewDict(map[string]value.Value{"actions": table}))
 	assert.NoError(t, err)
 	rows := out.(value.List)
@@ -80,8 +78,7 @@ func TestProfileOp(t *testing.T) {
 	}
 	i := interpreter.NewInterpreter(bootarg.Create(tier))
 	table := value.NewList()
-	err = table.Append(value.NewDict(map[string]value.Value{"otype": value.String(otype1), "oid": value.Int(oid1), "key": value.String(key1), "ver": value.Int(ver1)}))
-	assert.NoError(t, err)
+	table.Append(value.NewDict(map[string]value.Value{"otype": value.String(otype1), "oid": value.Int(oid1), "key": value.String(key1), "ver": value.Int(ver1)}))
 	out, err := i.Eval(query, value.NewDict(map[string]value.Value{"actions": table}))
 	assert.NoError(t, err)
 	rows := out.(value.List)

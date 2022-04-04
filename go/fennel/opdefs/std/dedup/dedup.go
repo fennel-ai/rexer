@@ -1,8 +1,6 @@
 package dedup
 
 import (
-	"fmt"
-
 	"fennel/engine/operators"
 	"fennel/lib/value"
 )
@@ -21,7 +19,6 @@ func (d deduper) Apply(kwargs value.Dict, in operators.InputIter, out *value.Lis
 	seen := make(map[string]struct{})
 	for in.HasMore() {
 		heads, kwargs, err := in.Next()
-		fmt.Printf("inside loop: %s, %s, %s\n", heads, kwargs, err)
 		if err != nil {
 			return err
 		}
@@ -35,9 +32,7 @@ func (d deduper) Apply(kwargs value.Dict, in operators.InputIter, out *value.Lis
 			continue
 		}
 		seen[k] = struct{}{}
-		if err = out.Append(row); err != nil {
-			return err
-		}
+		out.Append(row)
 	}
 	return nil
 }

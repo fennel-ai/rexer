@@ -20,14 +20,6 @@ type Value interface {
 	String() string
 	Clone() Value
 	MarshalJSON() ([]byte, error)
-
-	// Wrap wraps a value to be a list (if not already)
-	Wrap() List
-
-	// Unwrap extracts a non-list value from a value
-	// if it is a 1-member list, that element is returned. All other lists
-	// throw an error. Non-list values are returned as it is
-	Unwrap() (Value, error)
 }
 
 var _ Value = Int(0)
@@ -36,19 +28,10 @@ var _ Value = Bool(true)
 var _ Value = String("")
 var _ Value = List{}
 var _ Value = Dict{}
-var _ Value = Tuple{}
 var _ Value = nil_{}
 var _ Value = &Future{}
 
 type Int int64
-
-func (I Int) Wrap() List {
-	return NewList(I)
-}
-
-func (I Int) Unwrap() (Value, error) {
-	return I, nil
-}
 
 func (I Int) isValue() {}
 func (I Int) Equal(v Value) bool {
@@ -78,14 +61,6 @@ func (I Int) MarshalJSON() ([]byte, error) {
 }
 
 type Double float64
-
-func (d Double) Wrap() List {
-	return NewList(d)
-}
-
-func (d Double) Unwrap() (Value, error) {
-	return d, nil
-}
 
 func (d Double) isValue() {}
 func (d Double) Equal(v Value) bool {
@@ -130,14 +105,6 @@ func (d Double) MarshalJSON() ([]byte, error) {
 
 type Bool bool
 
-func (b Bool) Wrap() List {
-	return NewList(b)
-}
-
-func (b Bool) Unwrap() (Value, error) {
-	return b, nil
-}
-
 func (b Bool) isValue() {}
 func (b Bool) Equal(v Value) bool {
 	switch v := v.(type) {
@@ -164,14 +131,6 @@ func (b Bool) MarshalJSON() ([]byte, error) {
 }
 
 type String string
-
-func (s String) Wrap() List {
-	return NewList(s)
-}
-
-func (s String) Unwrap() (Value, error) {
-	return s, nil
-}
 
 func (s String) isValue() {}
 func (s String) Equal(v Value) bool {
@@ -203,14 +162,6 @@ func (s String) MarshalJSON() ([]byte, error) {
 }
 
 type nil_ struct{}
-
-func (n nil_) Wrap() List {
-	return NewList(Nil)
-}
-
-func (n nil_) Unwrap() (Value, error) {
-	return Nil, nil
-}
 
 var Nil = nil_{}
 
@@ -245,17 +196,6 @@ type List struct {
 	values []Value
 }
 
-func (l List) Wrap() List {
-	return l
-}
-
-func (l List) Unwrap() (Value, error) {
-	if len(l.values) == 1 {
-		return l.values[0], nil
-	}
-	return nil, fmt.Errorf("can not unwrap list of length: '%d'", len(l.values))
-}
-
 func (l List) Op(opt string, other Value) (Value, error) {
 	return route(l, opt, other)
 }
@@ -264,11 +204,11 @@ func (l List) OpUnary(opt string) (Value, error) {
 }
 
 func NewList(values ...Value) List {
-	ret := List{values: make([]Value, 0, len(values))}
-	for _, v := range values {
-		ret.Append(v)
+	if len(values) == 0 {
+		return List{values: []Value{}}
+	} else {
+		return List{values: values}
 	}
-	return ret
 }
 
 func (l List) isValue() {}
@@ -316,16 +256,8 @@ func (l List) MarshalJSON() ([]byte, error) {
 	return []byte(l.String()), nil
 }
 
-func (l *List) Append(v Value) error {
-	// lists can never be nested
-	if aslist, ok := v.(List); ok {
-		for i := range aslist.values {
-			l.Append(aslist.values[i])
-		}
-	} else {
-		l.values = append(l.values, v)
-	}
-	return nil
+func (l *List) Append(vals ...Value) {
+	l.values = append(l.values, vals...)
 }
 
 func (l *List) Iter() Iter {
@@ -345,14 +277,6 @@ func (l List) At(idx int) (Value, error) {
 
 type Dict struct {
 	values map[string]Value
-}
-
-func (d Dict) Wrap() List {
-	return NewList(d)
-}
-
-func (d Dict) Unwrap() (Value, error) {
-	return d, nil
 }
 
 func (d Dict) Op(opt string, other Value) (Value, error) {
@@ -456,92 +380,6 @@ func (d Dict) Schema() map[string]reflect.Type {
 	return ret
 }
 
-type Tuple struct {
-	values []Value
-}
-
-func (t Tuple) Wrap() List {
-	return NewList(t)
-}
-
-func (t Tuple) Unwrap() (Value, error) {
-	return t, nil
-}
-
-func (t Tuple) Op(opt string, other Value) (Value, error) {
-	return route(t, opt, other)
-}
-func (t Tuple) OpUnary(opt string) (Value, error) {
-	return routeUnary(opt, t)
-}
-
-func NewTuple(values ...Value) Tuple {
-	if len(values) == 0 {
-		return Tuple{}
-	}
-	return Tuple{values: values}
-}
-
-func (t Tuple) isValue() {}
-func (t Tuple) Equal(right Value) bool {
-	switch r := right.(type) {
-	case Tuple:
-		if len(r.values) != len(t.values) {
-			return false
-		}
-		for i, lv := range t.values {
-			if !lv.Equal(r.values[i]) {
-				return false
-			}
-		}
-		return true
-	default:
-		return false
-	}
-}
-
-func (t Tuple) String() string {
-	sb := strings.Builder{}
-	// TODO: Reuse tuple_indicator defined in json.go
-	sb.WriteString("{\"__tuple__\":[")
-	for i, v := range t.values {
-		if v == nil {
-			sb.WriteString("null")
-		} else {
-			sb.WriteString(v.String())
-		}
-		if i != len(t.values)-1 {
-			sb.WriteString(",")
-		}
-	}
-	sb.WriteString("]}")
-	return sb.String()
-}
-
-func (t Tuple) Clone() Value {
-	clone := make([]Value, 0, len(t.values))
-
-	for _, v := range t.values {
-		clone = append(clone, v.Clone())
-	}
-	return NewTuple(clone...)
-}
-
-func (t Tuple) MarshalJSON() ([]byte, error) {
-	return []byte(t.String()), nil
-}
-
-func (t Tuple) Len() int {
-	return len(t.values)
-}
-
-func (t Tuple) At(idx int) (Value, error) {
-	if idx < 0 || idx >= t.Len() {
-		return nil, fmt.Errorf("index '%d' out of bounds for tuple of length: '%d'", idx, t.Len())
-	}
-	return t.values[idx], nil
-}
-
 type Iter struct {
 	next int
 	rows List
@@ -564,14 +402,6 @@ type Future struct {
 	lock   sync.Mutex
 	ch     <-chan Value
 	cached Value
-}
-
-func (f *Future) Wrap() List {
-	return NewList(f)
-}
-
-func (f *Future) Unwrap() (Value, error) {
-	return f, nil
 }
 
 func NewFuture(ch <-chan Value) Future {

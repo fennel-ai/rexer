@@ -36,7 +36,7 @@ func TestProfileItemJSON(t *testing.T) {
 		pi:  ProfileItem{Value: value.NewList()},
 	},
 		{
-			str: `{"OType":"","Oid":0,"Key":"","Version":0,"Value":[]}`,
+			str: `{"OType":"","Oid":0,"Key":"","Version":0,"Value":[[]]}`,
 			pi:  ProfileItem{Value: value.NewList(value.NewList())},
 		},
 		{

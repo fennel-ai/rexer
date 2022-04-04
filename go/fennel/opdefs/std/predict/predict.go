@@ -33,7 +33,6 @@ func (pop predictOperator) New(args value.Dict, bootargs map[string]interface{})
 func (pop predictOperator) Signature() *operators.Signature {
 	return operators.NewSignature("std", "predict").
 		Input([]value.Type{value.Types.Any}).
-		// TODO: change to Tuple when ready.
 		Param("features", value.Types.List, false, false, value.Nil).
 		Param("model_name", value.Types.String, true, false, value.Nil).
 		Param("model_version", value.Types.String, true, false, value.Nil)
@@ -47,7 +46,6 @@ func (pop predictOperator) Apply(staticKwargs value.Dict, in operators.InputIter
 			return err
 		}
 		features, _ := contextKwargs.Get("features")
-		// TODO: change to Tuple when ready.
 		featureVecs = append(featureVecs, features.(value.List))
 	}
 	modelName := staticKwargs.GetUnsafe("model_name").(value.String)
@@ -62,9 +60,7 @@ func (pop predictOperator) Apply(staticKwargs value.Dict, in operators.InputIter
 		return err
 	}
 	for _, score := range res.Scores {
-		if err := out.Append(score); err != nil {
-			return err
-		}
+		out.Append(score)
 	}
 	return nil
 }

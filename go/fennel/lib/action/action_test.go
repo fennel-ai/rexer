@@ -44,9 +44,9 @@ func TestToList(t *testing.T) {
 	a2 := Action{ActionID: 11, ActorID: 13, ActorType: "other", TargetID: 15, TargetType: "video", ActionType: "myaction", Timestamp: 19, RequestID: 20, Metadata: value.Int(18)}
 	a3 := Action{ActionID: 21, ActorID: 23, ActorType: "admin", TargetID: 25, TargetType: "arbitrary", ActionType: "share", Timestamp: 29, RequestID: 30, Metadata: value.Int(28)}
 	expected := value.List{}
-	assert.NoError(t, expected.Append(a1.ToValueDict()))
-	assert.NoError(t, expected.Append(a2.ToValueDict()))
-	assert.NoError(t, expected.Append(a3.ToValueDict()))
+	expected.Append(a1.ToValueDict())
+	expected.Append(a2.ToValueDict())
+	expected.Append(a3.ToValueDict())
 	found, err := ToList([]Action{a1, a2, a3})
 	assert.NoError(t, err)
 	assert.Equal(t, expected, found)
@@ -76,7 +76,7 @@ func TestActionJSON(t *testing.T) {
 		a:   Action{Metadata: value.NewList()},
 	}, {
 		str: makeActionJSON(0, 0, "", 0, "", "", 0, 0, "[1,{}]"),
-		a:   Action{Metadata: value.NewList(value.Int(1), value.NewList(), value.NewDict(map[string]value.Value{}))},
+		a:   Action{Metadata: value.NewList(value.Int(1), value.NewDict(map[string]value.Value{}))},
 	}, {
 		str: makeActionJSON(0, 0, "", 0, "", "", 0, 0, `{}`),
 		a:   Action{Metadata: value.NewDict(nil)},

@@ -51,7 +51,7 @@ func TestRolling(t *testing.T) {
 			"groupkey":  key,
 			"value":     value.Int(1),
 		})
-		assert.NoError(t, table.Append(row))
+		table.Append(row)
 	}
 	name := ftypes.AggName("mycounter")
 	histogram := counter2.NewSum(name, []uint64{3600 * 28, 3600 * 24})
@@ -108,7 +108,7 @@ func TestTimeseries(t *testing.T) {
 			"groupkey":  key,
 			"value":     value.Int(1),
 		})
-		assert.NoError(t, table.Append(row))
+		table.Append(row)
 	}
 	err = Update(ctx, tier, agg.Name, table, histogram)
 	assert.NoError(t, err)
@@ -173,7 +173,7 @@ func TestRollingAverage(t *testing.T) {
 			"groupkey":  key,
 			"value":     value.Int(i / (24 * 60)), // amount is zero for first day and one for the next day
 		})
-		assert.NoError(t, table.Append(row))
+		table.Append(row)
 	}
 	histogram := counter2.NewAverage(aggname, []uint64{28 * 3600, 24 * 3600})
 	err = Update(ctx, tier, aggname, table, histogram)
@@ -217,7 +217,7 @@ func TestStream(t *testing.T) {
 			"groupkey":  key,
 			"value":     value.Int(i),
 		})
-		assert.NoError(t, table.Append(row))
+		table.Append(row)
 		if i >= 20*60 {
 			expected = append(expected, value.Int(i))
 		}
@@ -273,7 +273,7 @@ func TestRate(t *testing.T) {
 			"groupkey":  key,
 			"value":     value.NewList(value.Int(i), value.Int(i+1)),
 		})
-		assert.NoError(t, table.Append(row))
+		table.Append(row)
 		if i >= 20*60 {
 			num += int64(i)
 			den += int64(i + 1)
@@ -336,7 +336,7 @@ func TestBatchValue(t *testing.T) {
 			"groupkey":  key,
 			"value":     value.Int(1),
 		})
-		assert.NoError(t, table.Append(row))
+		table.Append(row)
 	}
 
 	aggnames := []ftypes.AggName{"sum", "avg"}
@@ -413,8 +413,7 @@ func TestDurations(t *testing.T) {
 func assertInvalid(tier tier.Tier, ctx context.Context, t *testing.T, ds ...value.Dict) {
 	table := value.List{}
 	for _, d := range ds {
-		err := table.Append(d)
-		assert.NoError(t, err)
+		table.Append(d)
 	}
 	assert.Error(t, Update(ctx, tier, "somename", table, counter2.NewSum("somename", []uint64{123})))
 }

@@ -238,18 +238,6 @@ func (i Interpreter) VisitList(values []ast.Ast) (value.Value, error) {
 	return value.NewList(ret...), nil
 }
 
-func (i Interpreter) VisitTuple(values []ast.Ast) (value.Value, error) {
-	ret := make([]value.Value, 0, len(values))
-	for _, v := range values {
-		val, err := v.AcceptValue(i)
-		if err != nil {
-			return value.Nil, err
-		}
-		ret = append(ret, val)
-	}
-	return value.NewTuple(ret...), nil
-}
-
 func (i Interpreter) VisitDict(values map[string]ast.Ast) (value.Value, error) {
 	ret := make(map[string]value.Value, len(values))
 	for k, v := range values {
@@ -362,7 +350,6 @@ func (i Interpreter) getContextKwargs(op operators.Operator, trees ast.Dict, inp
 	sig := op.Signature()
 	// TODO: relax to potentially having zero inputs?
 	for j := 0; j < inputs[0].Len(); j++ {
-		// TODO: convert these to tuples when tuples are built out
 		v := make([]value.Value, len(inputs))
 		for idx := range inputs {
 			val, err := inputs[idx].At(j)

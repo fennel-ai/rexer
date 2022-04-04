@@ -59,9 +59,7 @@ func (f featureLog) Apply(static value.Dict, in operators.InputIter, out *value.
 		if err = feature.Log(context.TODO(), f.tier, msg); err != nil {
 			return err
 		}
-		if err = out.Append(row); err != nil {
-			return err
-		}
+		out.Append(row)
 	}
 	return nil
 }

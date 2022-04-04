@@ -138,7 +138,7 @@ func TestList_Bucketize_Valid(t *testing.T) {
 			"timestamp": value.Int(DAY + i*3600 + 1),
 			"value":     e,
 		})
-		assert.NoError(t, actions.Append(d))
+		actions.Append(d)
 		expected = append(expected, Bucket{Value: value.NewList(e), Window: ftypes.Window_DAY, Index: 1, Width: 1, Key: v.String()})
 		expected = append(expected, Bucket{Key: v.String(), Window: ftypes.Window_MINUTE, Index: uint64(24*10 + i*10), Width: 6, Value: value.NewList(e)})
 	}
@@ -161,7 +161,7 @@ func TestList_Bucketize_Invalid(t *testing.T) {
 	for _, test := range cases {
 		table := value.NewList()
 		for _, d := range test {
-			assert.NoError(t, table.Append(d))
+			table.Append(d)
 		}
 		_, err := Bucketize(h, table)
 		assert.Error(t, err, fmt.Sprintf("case was: %v", table))

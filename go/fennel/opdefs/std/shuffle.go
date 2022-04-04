@@ -33,9 +33,7 @@ func (op ShuffleOperator) Apply(_ value.Dict, in operators.InputIter, out *value
 	}
 	rand.Shuffle(len(rows), reflect.Swapper(rows))
 	for _, row := range rows {
-		if err := out.Append(row); err != nil {
-			return err
-		}
+		out.Append(row)
 	}
 	return nil
 }

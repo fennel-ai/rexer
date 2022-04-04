@@ -12,7 +12,7 @@ message PValue {
     PVDict Dict = 6;
     PVTable Table = 7;
     PVNil Nil = 8;
-    PVTuple Tuple = 9;
+    // [deprecated] PVTuple Tuple = 9;
   }
 }
 
@@ -22,10 +22,6 @@ message PVList {
 
 message PVDict {
   map<string, PValue> values = 1;
-}
-
-message PVTuple {
-  repeated PValue values = 1;
 }
 
 message PVTable {
