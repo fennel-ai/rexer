@@ -1,3 +1,5 @@
+import functools
+import os
 import random
 import time
 import unittest
@@ -7,11 +9,49 @@ import rexerclient as rex
 from rexerclient import client
 from rexerclient.models import action, profile
 
+import lib
 
-_URL = "http://k8s-t106-aest106e-8954308bfc-65423d0e968f5435.elb.us-west-2.amazonaws.com/data"
+
+# _URL = "http://k8s-t106-aest106e-8954308bfc-65423d0e968f5435.elb.us-west-2.amazonaws.com/data"
+
+_URL = 'http://localhost:2425'
+
+
+class TestTier(object):
+    def __init__(self, tier_id):
+        self.env = os.environ.copy()
+        self.env['TIER_ID'] = str(tier_id)
+
+    def __enter__(self):
+        with lib.gorun('fennel/test/cmds/tiergod', 'dynamic,integration', self.env, flags=['--mode', 'create'],
+                       wait=True):
+            pass
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        # with lib.gorun('fennel/test/cmds/tiergod', 'dynamic,integration', self.env, flags=['--mode', 'destroy'],
+        #                wait=True):
+        pass
+
+
+def tiered(wrapped):
+    @functools.wraps(wrapped)
+    def fn(*args, **kwargs):
+        tier_id = random.randint(0, 1e8)
+        env = os.environ.copy()
+        env['TIER_ID'] = str(tier_id)
+        with TestTier(tier_id):
+            env['METRICS_PORT'] = str(2436)
+            with lib.gorun('fennel/service/http', 'dynamic,integration', env):
+                env['METRICS_PORT'] = str(2446)
+                with lib.gorun('fennel/service/countaggr', 'dynamic,integration', env):
+                    # Wait for the services to be up.
+                    time.sleep(10)
+                    return wrapped(*args, **kwargs)
+    return fn
 
 
 class TestEndToEnd(unittest.TestCase):
+    @tiered
     def test_feature_logging(self):
         c = client.Client(_URL)
         
@@ -56,7 +96,7 @@ class TestEndToEnd(unittest.TestCase):
 
         # Log actions
         actions = []
-        action_pair = [{'user_id': 100, 'post_id': 123, 'request_id': 234, 'timestamp': 12344}]
+        action_pair = []
         for _ in range(10000):
             user_id = profiles[random.randint(0, 999)].oid
             post_id = random.randint(0, 100000000)
@@ -82,6 +122,7 @@ class TestEndToEnd(unittest.TestCase):
         with_feature1 = op.std.aggregate(with_location, name='notif_open_in_user_location_1d', field='f1', var='e', groupkey=var('e').location_id, kwargs={'duration': 1 * 24 * 3600})
         with_feature2 = op.std.aggregate(with_feature1, name='user_notif_open_1d', field='f2', var='e', groupkey=var('e').user_id, kwargs={'duration': 1 * 24 * 3600})
         with_feature3 = op.std.aggregate(with_feature2, name='post_view_time_1d', field='f3', var='e', groupkey=var('e').post_id, kwargs={'duration': 1 * 24 * 3600})
+        print('========= calling feature logging...\n')
         c.query(op.feature.log(with_feature3,
             var='e',
             context_otype="user",
