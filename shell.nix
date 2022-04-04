@@ -59,7 +59,6 @@ with pkgs; mkShell {
     # Tools for connecting to dbs
     pkgs.confluent-platform
     pkgs.redis
-    pkgs.pscale
     pkgs.mysql-client
 
     # Some nice-to-have tools
