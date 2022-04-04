@@ -14,7 +14,7 @@ export const fennelStdTags = {
 }
 
 export const plugins = {
-    "kubernetes": "v3.16.0"
+    "kubernetes": "v3.18.0"
 }
 
 export type inputType = {

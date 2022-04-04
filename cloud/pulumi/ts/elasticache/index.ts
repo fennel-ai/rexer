@@ -13,7 +13,7 @@ export const fennelStdTags = {
 }
 
 export const plugins = {
-    "aws": "v4.38.0"
+    "aws": "v5.1.0"
 }
 
 export type inputType = {
