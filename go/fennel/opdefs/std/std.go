@@ -12,7 +12,6 @@ func init() {
 		ExplodeOperator{},
 		SortOperator{},
 		ShuffleOperator{},
-		UniqueOperator{},
 		FlattenOperator{},
 	}
 	for _, op := range ops {
