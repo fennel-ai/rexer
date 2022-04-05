@@ -12,9 +12,9 @@ from rexerclient.models import action, profile
 import lib
 
 
-# _URL = "http://k8s-t106-aest106e-8954308bfc-65423d0e968f5435.elb.us-west-2.amazonaws.com/data"
+_URL = "http://k8s-t106-aest106e-8954308bfc-65423d0e968f5435.elb.us-west-2.amazonaws.com/data"
 
-_URL = 'http://localhost:2425'
+# _URL = 'http://localhost:2425'
 
 
 class TestTier(object):
@@ -51,7 +51,7 @@ def tiered(wrapped):
 
 
 class TestEndToEnd(unittest.TestCase):
-    @tiered
+    # @tiered
     def test_feature_logging(self):
         c = client.Client(_URL)
         
