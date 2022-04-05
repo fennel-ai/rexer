@@ -39,6 +39,6 @@ func TestSortOperator_Apply(t *testing.T) {
 	}
 
 	tr := tier.Tier{}
-	optest.AssertEqual(t, tr, &SortOperator{}, orders[0], intable, contextKwargs, expected[0])
-	optest.AssertEqual(t, tr, &SortOperator{}, orders[1], intable, contextKwargs, expected[1])
+	optest.AssertEqual(t, tr, &SortOperator{}, orders[0], [][]value.Value{intable}, contextKwargs, expected[0])
+	optest.AssertEqual(t, tr, &SortOperator{}, orders[1], [][]value.Value{intable}, contextKwargs, expected[1])
 }

@@ -55,7 +55,7 @@ func TestProfileOpMultipleObjs(t *testing.T) {
 	out, err := i.Eval(query, value.NewDict(map[string]value.Value{"actions": table}))
 	assert.NoError(t, err)
 	rows := out.(value.List)
-	//assert.Len(t, rows, 2)
+	// assert.Len(t, rows, 2)
 	assert.Equal(t, 2, rows.Len())
 	r, _ := rows.At(0)
 	assert.Equal(t, value.NewDict(map[string]value.Value{"otype": value.String(otype1), "oid": value.Int(oid1), "key": value.String(key1), "ver": value.Int(ver1), "profile_value": val1}), r)
@@ -108,7 +108,7 @@ func TestNonDictProfile(t *testing.T) {
 		}),
 	}
 
-	optest.AssertElementsMatch(t, tier, &profileOp{tier: tier}, staticKwargs, intable, contextKwargs, []value.Value{
+	optest.AssertElementsMatch(t, tier, &profileOp{tier: tier}, staticKwargs, [][]value.Value{intable}, contextKwargs, []value.Value{
 		value.Int(13),
 		value.Int(15),
 		value.Int(10),

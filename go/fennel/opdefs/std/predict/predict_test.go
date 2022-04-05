@@ -39,7 +39,7 @@ func TestPredict(t *testing.T) {
 	optest.AssertEqual(t, tier, &predictOperator{}, value.NewDict(map[string]value.Value{
 		"model_name":    value.String("integration-test-xgboost-model"),
 		"model_version": value.String("v1"),
-	}), intable, contextKwargTable, expected)
+	}), [][]value.Value{intable}, contextKwargTable, expected)
 }
 
 func TestPredictError(t *testing.T) {
@@ -60,7 +60,7 @@ func TestPredictError(t *testing.T) {
 	optest.AssertError(t, tier, &predictOperator{}, value.NewDict(map[string]value.Value{
 		"model_name":    value.String("integration-test-xgboost-model"),
 		"model_version": value.String("v1"),
-	}), intable, contextKwargTable)
+	}), [][]value.Value{intable}, contextKwargTable)
 }
 
 func TestPredictErrorNoModel(t *testing.T) {
@@ -78,5 +78,5 @@ func TestPredictErrorNoModel(t *testing.T) {
 	defer test.Teardown(tier)
 	err = test.AddSagemakerClientToTier(&tier)
 	assert.NoError(t, err)
-	optest.AssertError(t, tier, &predictOperator{}, value.Dict{} /* no static kwargs */, intable, contextKwargTable)
+	optest.AssertError(t, tier, &predictOperator{}, value.Dict{} /* no static kwargs */, [][]value.Value{intable}, contextKwargTable)
 }

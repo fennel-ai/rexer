@@ -14,7 +14,7 @@ import (
 	"fennel/tier"
 )
 
-func AssertEqual(t *testing.T, tr tier.Tier, op operators.Operator, static value.Dict, inputs []value.Value, context []value.Dict, expected []value.Value) {
+func AssertEqual(t *testing.T, tr tier.Tier, op operators.Operator, static value.Dict, inputs [][]value.Value, context []value.Dict, expected []value.Value) {
 	found, err := run(tr, op, static, inputs, context)
 	assert.NoError(t, err)
 	aslist, ok := found.(value.List)
@@ -27,7 +27,7 @@ func AssertEqual(t *testing.T, tr tier.Tier, op operators.Operator, static value
 	}
 }
 
-func AssertElementsMatch(t *testing.T, tr tier.Tier, op operators.Operator, static value.Dict, inputs []value.Value, context []value.Dict, expected []value.Value) {
+func AssertElementsMatch(t *testing.T, tr tier.Tier, op operators.Operator, static value.Dict, inputs [][]value.Value, context []value.Dict, expected []value.Value) {
 	found, err := run(tr, op, static, inputs, context)
 	assert.NoError(t, err)
 	aslist, ok := found.(value.List)
@@ -40,15 +40,16 @@ func AssertElementsMatch(t *testing.T, tr tier.Tier, op operators.Operator, stat
 	assert.ElementsMatch(t, expected, foundlist)
 }
 
-func AssertError(t *testing.T, tr tier.Tier, op operators.Operator, static value.Dict, inputs []value.Value, context []value.Dict) {
+func AssertError(t *testing.T, tr tier.Tier, op operators.Operator, static value.Dict, inputs [][]value.Value, context []value.Dict) {
 	_, err := run(tr, op, static, inputs, context)
 	assert.Error(t, err)
 }
 
 // run takes some value properties and creates a real ast that represents that opcall and executes it with
 // an interpreter
-func run(tr tier.Tier, op operators.Operator, static value.Dict, inputs []value.Value, context []value.Dict) (value.Value, error) {
+func run(tr tier.Tier, op operators.Operator, static value.Dict, inputs [][]value.Value, context []value.Dict) (value.Value, error) {
 	sig := op.Signature()
+	queryargs := value.NewDict(nil)
 	kwargs := make(map[string]ast.Ast)
 
 	// all static kwargs will be based on Var("static")
@@ -57,6 +58,17 @@ func run(tr tier.Tier, op operators.Operator, static value.Dict, inputs []value.
 			On:       ast.Var{Name: "static"},
 			Property: k,
 		}
+	}
+	queryargs.Set("static", static)
+	// and input[i] is provided as Var("input_i"), except for the first input which is provided as Var("its")
+	varnames := []string{"its"}
+	for len(varnames) < len(inputs) {
+		varnames = append(varnames, fmt.Sprintf("input_%d", len(varnames)))
+	}
+	asts := make([]ast.Ast, len(inputs))
+	for i, input := range inputs {
+		asts[i] = ast.Var{Name: varnames[i]}
+		queryargs.Set(varnames[i], value.NewList(input...))
 	}
 	field := "context"
 	// context kwarg k will be accessible Var("field")[str(@)].k
@@ -76,23 +88,19 @@ func run(tr tier.Tier, op operators.Operator, static value.Dict, inputs []value.
 		}
 	}
 	kwargs_data := value.NewDict(nil)
-	for i := range inputs {
-		k := inputs[i].String()
+	for i := range inputs[0] {
+		k := inputs[0][i].String()
 		kwargs_data.Set(k, context[i])
 	}
+	queryargs.Set(field, kwargs_data)
 
-	// and input is provided as Var("input")
 	query := ast.OpCall{
-		Operands:  []ast.Ast{ast.Var{Name: "input"}},
-		Vars:      []string{"its"},
+		Operands:  asts,
+		Vars:      varnames,
 		Namespace: sig.Module,
 		Name:      sig.Name,
 		Kwargs:    ast.Dict{Values: kwargs},
 	}
-	l := value.List{}
-	for i := range inputs {
-		l.Append(inputs[i])
-	}
 	i := interpreter.NewInterpreter(bootarg.Create(tr))
-	return i.Eval(query, value.NewDict(map[string]value.Value{"input": l, "static": static, field: kwargs_data}))
+	return i.Eval(query, queryargs)
 }

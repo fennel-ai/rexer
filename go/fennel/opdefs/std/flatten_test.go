@@ -60,9 +60,9 @@ func TestFlattenOperator_Apply(t *testing.T) {
 
 	tr := tier.Tier{}
 	for _, scene := range scenarios {
-		optest.AssertEqual(t, tr, FlattenOperator{}, scene.static, scene.inputs, scene.context, scene.expected)
+		optest.AssertEqual(t, tr, FlattenOperator{}, scene.static, [][]value.Value{scene.inputs}, scene.context, scene.expected)
 	}
 	// negative depth fails
 	optest.AssertError(t, tr, FlattenOperator{},
-		value.NewDict(map[string]value.Value{"depth": value.Int(-1)}), scenarios[0].inputs, scenarios[0].context)
+		value.NewDict(map[string]value.Value{"depth": value.Int(-1)}), [][]value.Value{scenarios[0].inputs}, scenarios[0].context)
 }
