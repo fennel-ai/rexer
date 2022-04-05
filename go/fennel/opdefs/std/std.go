@@ -13,6 +13,7 @@ func init() {
 		SortOperator{},
 		ShuffleOperator{},
 		UniqueOperator{},
+		FlattenOperator{},
 	}
 	for _, op := range ops {
 		if err := operators.Register(op); err != nil {

@@ -2,11 +2,11 @@ package main
 
 import (
 	"encoding/json"
-	"fennel/engine/operators"
-	_ "fennel/opdefs"
-
 	"log"
 	"os"
+
+	"fennel/engine/operators"
+	_ "fennel/opdefs"
 )
 
 /*

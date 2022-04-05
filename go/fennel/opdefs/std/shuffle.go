@@ -32,8 +32,6 @@ func (op ShuffleOperator) Apply(_ value.Dict, in operators.InputIter, out *value
 		rows = append(rows, row)
 	}
 	rand.Shuffle(len(rows), reflect.Swapper(rows))
-	for _, row := range rows {
-		out.Append(row)
-	}
+	out.Append(rows...)
 	return nil
 }
