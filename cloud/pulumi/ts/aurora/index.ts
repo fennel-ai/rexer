@@ -1,6 +1,7 @@
 import * as pulumi from "@pulumi/pulumi";
 import * as aws from "@pulumi/aws";
 import * as process from "process";
+import * as uuid from "uuid";
 
 // TODO: use version from common library.
 // operator for type-safety for string key access:
@@ -108,6 +109,10 @@ export const setup = async (input: inputType): Promise<pulumi.Output<outputType>
         }, { provider }).id)
     }
 
+    // Generate a random ID for the final snapshot identifier since it is possible that we destroy
+    // an RDS cluster and bring up another one in the same plane.
+    const snapshotId = uuid.v4();
+
     const cluster = new aws.rds.Cluster("db-instance", {
         // Apply any changes proposed immediately instead of applying them during maintenance window
         applyImmediately: true,
@@ -124,6 +129,7 @@ export const setup = async (input: inputType): Promise<pulumi.Output<outputType>
             maxCapacity: input.maxCapacity,
         },
         skipFinalSnapshot: input.skipFinalSnapshot,
+        finalSnapshotIdentifier: `p-${input.planeId}-${snapshotId}`, 
         tags: { ...fennelStdTags }
     }, { provider })
 
