@@ -13,7 +13,9 @@ export const fennelStdTags = {
     "managed-by": "fennel.ai",
 }
 
-export const plugins = {}
+export const plugins = {
+    "confluent": "v0.2.2",
+}
 
 export type inputType = {
     region: string,
@@ -26,6 +28,8 @@ export type outputType = {
     bootstrapServer: string,
     apiKey: string,
     apiSecret: string,
+    environmentId: string,
+    clusterId: string,
 }
 
 const parseConfig = (): inputType => {
@@ -64,6 +68,8 @@ export const setup = async (input: inputType): Promise<pulumi.Output<outputType>
         bootstrapServer: cluster.bootstrapServers.apply(server => server.substring(server.indexOf(":") + 3)),
         apiKey: apiKey.key,
         apiSecret: apiKey.secret,
+        environmentId: cluster.environmentId,
+        clusterId: cluster.id,
     })
 
     return output

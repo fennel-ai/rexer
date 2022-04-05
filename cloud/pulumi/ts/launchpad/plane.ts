@@ -9,6 +9,7 @@ import * as redis from "../redis";
 import * as confluentenv from "../confluentenv";
 import * as telemetry from "../telemetry";
 import * as prometheus from "../prometheus";
+import * as connectorSink from "../connectorsink";
 
 import * as process from "process";
 
@@ -70,6 +71,7 @@ export type PlaneOutput = {
     confluent: confluentenv.outputType,
     db: aurora.outputType,
     prometheus: prometheus.outputType,
+    connSink: connectorSink.outputType,
 }
 
 const parseConfig = (): PlaneConf => {
@@ -159,6 +161,11 @@ const setupResources = async () => {
         password: pulumi.output(input.confluentConf.password),
         envName: `plane-${input.planeId}`,
     })
+    const connectorSinkOutput = await connectorSink.setup({
+        region: input.region,
+        roleArn: input.roleArn,
+        planeId: input.planeId
+    })
 
     const prometheusOutput = await prometheus.setup({
         useAMP: input.prometheusConf.useAMP,
@@ -185,6 +192,7 @@ const setupResources = async () => {
         confluent: confluentOutput,
         db: auroraOutput,
         prometheus: prometheusOutput,
+        connSink: connectorSinkOutput,
     }
 };
 
