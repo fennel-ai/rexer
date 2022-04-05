@@ -59,9 +59,9 @@ func TestAdder_Apply(t *testing.T) {
 	}
 	for _, scene := range scenarios {
 		if scene.err {
-			optest.AssertError(t, tier.Tier{}, adder{}, scene.static, scene.inputs, scene.kwargs)
+			optest.AssertError(t, tier.Tier{}, adder{}, scene.static, [][]value.Value{scene.inputs}, scene.kwargs)
 		} else {
-			optest.AssertEqual(t, tier.Tier{}, adder{}, scene.static, scene.inputs, scene.kwargs, scene.expected)
+			optest.AssertEqual(t, tier.Tier{}, adder{}, scene.static, [][]value.Value{scene.inputs}, scene.kwargs, scene.expected)
 		}
 	}
 }

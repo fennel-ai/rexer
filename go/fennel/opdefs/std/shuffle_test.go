@@ -22,5 +22,5 @@ func TestShuffleOperator_Apply(t *testing.T) {
 	for i, in := range intable {
 		outTable[i] = in
 	}
-	optest.AssertElementsMatch(t, tr, &ShuffleOperator{}, staticKwargs, intable, contextKwargs, outTable)
+	optest.AssertElementsMatch(t, tr, &ShuffleOperator{}, staticKwargs, [][]value.Value{intable}, contextKwargs, outTable)
 }

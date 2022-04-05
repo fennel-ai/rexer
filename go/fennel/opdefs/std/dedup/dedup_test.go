@@ -57,9 +57,9 @@ func TestDeduper_Apply(t *testing.T) {
 	}
 	for _, scene := range scenarios {
 		if scene.err {
-			optest.AssertError(t, tier.Tier{}, op, scene.static, scene.inputs, scene.context)
+			optest.AssertError(t, tier.Tier{}, op, scene.static, [][]value.Value{scene.inputs}, scene.context)
 		} else {
-			optest.AssertEqual(t, tier.Tier{}, op, scene.static, scene.inputs, scene.context, scene.expected)
+			optest.AssertEqual(t, tier.Tier{}, op, scene.static, [][]value.Value{scene.inputs}, scene.context, scene.expected)
 		}
 	}
 }

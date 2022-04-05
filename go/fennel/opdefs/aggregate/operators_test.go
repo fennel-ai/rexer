@@ -97,7 +97,7 @@ func TestAggValue_Apply(t *testing.T) {
 		value.NewDict(map[string]value.Value{"a": value.String("abc"), "myaggresults": value.Int(1)}),
 		value.NewDict(map[string]value.Value{"a": value.String("def"), "myaggresults": value.Int(1)}),
 	}
-	optest.AssertEqual(t, tier, &AggValue{tier}, static, inputs, contextKwargs, outputs)
+	optest.AssertEqual(t, tier, &AggValue{tier}, static, [][]value.Value{inputs}, contextKwargs, outputs)
 
 	static = value.NewDict(map[string]value.Value{})
 	outputs = []value.Value{
@@ -107,7 +107,7 @@ func TestAggValue_Apply(t *testing.T) {
 		value.Int(1),
 		value.Int(1),
 	}
-	optest.AssertEqual(t, tier, &AggValue{tier}, static, inputs, contextKwargs, outputs)
+	optest.AssertEqual(t, tier, &AggValue{tier}, static, [][]value.Value{inputs}, contextKwargs, outputs)
 }
 
 func getQuery() ast.Ast {

@@ -23,7 +23,7 @@ func TestSet(t *testing.T) {
 	tr := tier.Tier{}
 	optest.AssertEqual(t, tr, &setOperator{}, value.NewDict(map[string]value.Value{
 		"field": value.String("new_field"),
-	}), intable, contextKwargTable, expected)
+	}), [][]value.Value{intable}, contextKwargTable, expected)
 }
 
 func TestSetNameContextual(t *testing.T) {
@@ -46,7 +46,7 @@ func TestSetNameContextual(t *testing.T) {
 		value.NewDict(map[string]value.Value{"orig": value.Int(2), "new_field_second": value.Int(21)}),
 	}
 	tr := tier.Tier{}
-	optest.AssertEqual(t, tr, &setOperator{}, value.Dict{}, intable, contextKwargTable, expected)
+	optest.AssertEqual(t, tr, &setOperator{}, value.Dict{}, [][]value.Value{intable}, contextKwargTable, expected)
 }
 
 func TestSetError(t *testing.T) {
@@ -60,7 +60,7 @@ func TestSetError(t *testing.T) {
 	}
 	tr := tier.Tier{}
 	// "name" kwarg is not provided.
-	optest.AssertError(t, tr, &setOperator{}, value.Dict{}, intable, contextKwargTable)
+	optest.AssertError(t, tr, &setOperator{}, value.Dict{}, [][]value.Value{intable}, contextKwargTable)
 }
 
 func TestSignatureError(t *testing.T) {
@@ -75,5 +75,5 @@ func TestSignatureError(t *testing.T) {
 	}
 	tr := tier.Tier{}
 	// "name" is int instead of string.
-	optest.AssertError(t, tr, &setOperator{}, value.Dict{}, intable, contextKwargTable)
+	optest.AssertError(t, tr, &setOperator{}, value.Dict{}, [][]value.Value{intable}, contextKwargTable)
 }

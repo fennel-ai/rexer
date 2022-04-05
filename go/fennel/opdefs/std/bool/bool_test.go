@@ -44,11 +44,11 @@ func TestBool(t *testing.T) {
 	}
 	for _, scene := range scenarios {
 		if scene.err {
-			optest.AssertError(t, tier.Tier{}, anyop{}, scene.static, scene.inputs, scene.kwargs)
-			optest.AssertError(t, tier.Tier{}, allop{}, scene.static, scene.inputs, scene.kwargs)
+			optest.AssertError(t, tier.Tier{}, anyop{}, scene.static, [][]value.Value{scene.inputs}, scene.kwargs)
+			optest.AssertError(t, tier.Tier{}, allop{}, scene.static, [][]value.Value{scene.inputs}, scene.kwargs)
 		} else {
-			optest.AssertEqual(t, tier.Tier{}, anyop{}, scene.static, scene.inputs, scene.kwargs, scene.expected_any)
-			optest.AssertEqual(t, tier.Tier{}, allop{}, scene.static, scene.inputs, scene.kwargs, scene.expected_all)
+			optest.AssertEqual(t, tier.Tier{}, anyop{}, scene.static, [][]value.Value{scene.inputs}, scene.kwargs, scene.expected_any)
+			optest.AssertEqual(t, tier.Tier{}, allop{}, scene.static, [][]value.Value{scene.inputs}, scene.kwargs, scene.expected_all)
 		}
 	}
 }

@@ -51,9 +51,9 @@ func TestMeanop_Apply(t *testing.T) {
 			empty = append(empty, value.NewDict(nil))
 		}
 		if scene.err {
-			optest.AssertError(t, tier.Tier{}, meanop{}, value.NewDict(nil), scene.inputs, empty)
+			optest.AssertError(t, tier.Tier{}, meanop{}, value.NewDict(nil), [][]value.Value{scene.inputs}, empty)
 		} else {
-			optest.AssertEqual(t, tier.Tier{}, meanop{}, value.NewDict(nil), scene.inputs, empty, scene.expected)
+			optest.AssertEqual(t, tier.Tier{}, meanop{}, value.NewDict(nil), [][]value.Value{scene.inputs}, empty, scene.expected)
 		}
 	}
 }
