@@ -54,13 +54,7 @@ func (s list) Reduce(values []value.Value) (value.Value, error) {
 		if err != nil {
 			return nil, err
 		}
-		for j := 0; j < l.Len(); j++ {
-			v, err := l.At(j)
-			if err != nil {
-				return nil, err
-			}
-			z.Append(v)
-		}
+		z.Append(l.Values()...)
 	}
 	return z, nil
 }
@@ -75,20 +69,8 @@ func (s list) Merge(a, b value.Value) (value.Value, error) {
 		return nil, err
 	}
 	ret := value.NewList()
-	for i := 0; i < la.Len(); i++ {
-		v, err := la.At(i)
-		if err != nil {
-			return nil, err
-		}
-		ret.Append(v)
-	}
-	for i := 0; i < lb.Len(); i++ {
-		v, err := lb.At(i)
-		if err != nil {
-			return nil, err
-		}
-		ret.Append(v)
-	}
+	ret.Append(la.Values()...)
+	ret.Append(lb.Values()...)
 	return ret, nil
 }
 

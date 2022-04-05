@@ -275,6 +275,10 @@ func (l List) At(idx int) (Value, error) {
 	return l.values[idx], nil
 }
 
+func (l List) Values() []Value {
+	return l.values
+}
+
 type Dict struct {
 	values map[string]Value
 }
