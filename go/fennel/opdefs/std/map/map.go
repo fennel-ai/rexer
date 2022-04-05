@@ -29,7 +29,8 @@ func (m mapper) Apply(kwargs value.Dict, in operators.InputIter, out *value.List
 
 func (m mapper) Signature() *operators.Signature {
 	return operators.NewSignature("std", "map").
-		ParamWithHelp("to", value.Types.Any, false, false, nil, "ContextKwargs:  Each value gets converted to this Expr")
+		ParamWithHelp("to", value.Types.Any, false, false, nil, "ContextKwargs:  Each value gets converted to this Expr").
+		Input(nil)
 }
 
 var _ operators.Operator = mapper{}
