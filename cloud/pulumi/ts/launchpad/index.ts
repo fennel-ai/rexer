@@ -6,6 +6,7 @@ import * as aurora from "../aurora";
 import * as elasticache from "../elasticache";
 import * as redis from "../redis";
 import * as confluentenv from "../confluentenv";
+import * as connsink from "../connectorsink";
 import { nameof } from "../lib/util";
 
 import * as process from "process";
@@ -191,6 +192,7 @@ const eksOutput = dataplane[nameof<PlaneOutput>("eks")].value as eks.outputType
 const redisOutput = dataplane[nameof<PlaneOutput>("redis")].value as redis.outputType
 const elasticacheOutput = dataplane[nameof<PlaneOutput>("elasticache")].value as elasticache.outputType
 const vpcOutput = dataplane[nameof<PlaneOutput>("vpc")].value as vpc.outputType
+const connSinkOutput = dataplane[nameof<PlaneOutput>("connSink")].value as connsink.outputType
 
 // Create/update/delete the tier.
 if (tierId !== 0) {
@@ -202,6 +204,14 @@ if (tierId !== 0) {
         topicNames: [`t_${tierId}_actionlog`, `t_${tierId}_featurelog`, `t_${tierId}_profilelog`],
         kafkaApiKey: confluentOutput.apiKey,
         kafkaApiSecret: confluentOutput.apiSecret,
+
+        confUsername: confluentUsername,
+        confPassword: confluentPassword,
+        clusterId: confluentOutput.clusterId,
+        environmentId: confluentOutput.environmentId,
+        connUserAccessKey: connSinkOutput.userAccessKeyId,
+        connUserSecret: connSinkOutput.userSecretAccessKey,
+        connBucketName: connSinkOutput.bucketName,
 
         db: "db",
         dbEndpoint: dbOutput.host,

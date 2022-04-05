@@ -3,6 +3,7 @@ import * as pulumi from "@pulumi/pulumi"
 
 import { nameof } from "../lib/util"
 import * as kafkatopics from "../kafkatopics";
+import * as kafkaconnectors from "../kafkaconnectors";
 import * as mysql from "../mysql"
 import * as httpserver from "../http-server";
 import * as countaggr from "../countaggr";
@@ -24,6 +25,14 @@ type inputType = {
     bootstrapServer: string,
     kafkaApiKey: string,
     kafkaApiSecret: pulumi.Output<string>,
+    // kafka connectors configuration
+    confUsername: string,
+    confPassword: string,
+    clusterId: string,
+    environmentId: string,
+    connUserAccessKey: string,
+    connUserSecret: string,
+    connBucketName: string,
     // db configuration.
     db: string,
     dbUsername: string,
@@ -47,6 +56,14 @@ const parseConfig = (): inputType => {
         topicNames: config.requireObject(nameof<inputType>("topicNames")),
         kafkaApiKey: config.require(nameof<inputType>("kafkaApiKey")),
         kafkaApiSecret: config.requireSecret(nameof<inputType>("kafkaApiSecret")),
+
+        confUsername: config.require(nameof<inputType>("confUsername")),
+        confPassword: config.require(nameof<inputType>("confPassword")),
+        clusterId: config.require(nameof<inputType>("clusterId")),
+        environmentId: config.require(nameof<inputType>("environmentId")),
+        connUserAccessKey: config.require(nameof<inputType>("connUserAccessKey")),
+        connUserSecret: config.require(nameof<inputType>("connUserSecret")),
+        connBucketName: config.require(nameof<inputType>("connBucketName")),
 
         db: config.require(nameof<inputType>("db")),
         dbUsername: config.require(nameof<inputType>("dbUsername")),
@@ -94,6 +111,19 @@ const setupResources = async () => {
         apiSecret: input.kafkaApiSecret,
         topicNames: input.topicNames,
         bootstrapServer: input.bootstrapServer,
+    })
+    // setup kafka connector to s3 bucket for the action and feature log topics.
+    const kafkaConnectors = await kafkaconnectors.setup({
+        tierId: input.tierId,
+        username: input.confUsername,
+        password: input.confPassword,
+        clusterId: input.clusterId,
+        environmentId: input.environmentId,
+        kafkaApiKey: input.kafkaApiKey,
+        kafkaApiSecret: input.kafkaApiSecret,
+        awsAccessKeyId: input.connUserAccessKey,
+        awsSecretAccessKey: input.connUserSecret,
+        s3BucketName: input.connBucketName,
     })
     // setup mysql db.
     // Comment this when direct connection to the db instance is not possible.
@@ -174,6 +204,16 @@ type TierConf = {
     bootstrapServer: string,
     kafkaApiKey: string,
     kafkaApiSecret: string,
+
+    // connector configuration
+    confUsername: string,
+    confPassword: string,
+    clusterId: string,
+    environmentId: string,
+    connUserAccessKey: string,
+    connUserSecret: string,
+    connBucketName: string,
+
     // db configuration.
     db: string,
     dbUsername: string,
@@ -218,6 +258,18 @@ const setupTier = async (args: TierConf, destroy?: boolean) => {
     await stack.setConfig(nameof<inputType>("kafkaApiKey"), { value: args.kafkaApiKey })
     await stack.setConfig(nameof<inputType>("kafkaApiSecret"), { value: args.kafkaApiSecret, secret: true })
     await stack.setConfig(nameof<inputType>("topicNames"), { value: JSON.stringify(args.topicNames) })
+
+    await stack.setConfig(nameof<inputType>("bootstrapServer"), { value: args.bootstrapServer })
+    await stack.setConfig(nameof<inputType>("kafkaApiKey"), { value: args.kafkaApiKey })
+    await stack.setConfig(nameof<inputType>("kafkaApiSecret"), { value: args.kafkaApiSecret, secret: true })
+
+    await stack.setConfig(nameof<inputType>("confUsername"), { value: args.confUsername })
+    await stack.setConfig(nameof<inputType>("confPassword"), { value: args.confPassword })
+    await stack.setConfig(nameof<inputType>("clusterId"), { value: args.clusterId })
+    await stack.setConfig(nameof<inputType>("environmentId"), { value: args.environmentId })
+    await stack.setConfig(nameof<inputType>("connUserAccessKey"), { value: args.connUserAccessKey })
+    await stack.setConfig(nameof<inputType>("connUserSecret"), { value: args.connUserSecret })
+    await stack.setConfig(nameof<inputType>("connBucketName"), { value: args.connBucketName })
 
     await stack.setConfig(nameof<inputType>("db"), { value: args.db })
     await stack.setConfig(nameof<inputType>("dbUsername"), { value: args.dbUsername })
