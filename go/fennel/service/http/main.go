@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"log"
+	"math/rand"
 	"net"
 	"net/http"
 	"strconv"
@@ -19,7 +20,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promauto"
 )
 
-//------------------------ START metric definitions ----------------------------
+// ------------------------ START metric definitions ----------------------------
 
 var totalRequests = promauto.NewCounterVec(
 	prometheus.CounterOpts{
@@ -51,7 +52,7 @@ var httpDuration = promauto.NewSummaryVec(prometheus.SummaryOpts{
 	},
 }, []string{"path"})
 
-//------------------------ END metric definitions ------------------------------
+// ------------------------ END metric definitions ------------------------------
 
 // response writer to capture status code from header.
 type responseWriter struct {
@@ -85,6 +86,8 @@ func prometheusMiddleware(next http.Handler) http.Handler {
 }
 
 func main() {
+	// seed random number generator so that all uses of rand work well
+	rand.Seed(time.Now().UnixNano())
 	// Parse flags / environment variables.
 	var flags struct {
 		tier.TierArgs

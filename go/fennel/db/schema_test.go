@@ -146,6 +146,7 @@ func TestConcurrentSyncSchema(t *testing.T) {
 					zkey INT NOT NULL,
 					value INT NOT NULL
 			);`,
+			5: `ALTER TABLE schema_test ADD CONSTRAINT test_unique UNIQUE (zkey, value);`,
 		},
 		Scope: scope,
 	}
@@ -176,12 +177,11 @@ func TestConcurrentSyncSchema(t *testing.T) {
 			defer wg.Done()
 			err = syncSchema(db.DB, config.Schema)
 			assert.NoError(t, err)
+			// version should be at five now
+			version, err = schemaVersion(db.DB)
+			assert.NoError(t, err)
+			assert.Equal(t, uint32(5), version)
 		}()
 	}
 	wg.Wait()
-
-	// version should be at one now
-	version, err = schemaVersion(db.DB)
-	assert.NoError(t, err)
-	assert.Equal(t, uint32(4), version)
 }

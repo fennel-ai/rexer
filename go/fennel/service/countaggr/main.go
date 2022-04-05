@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"math/rand"
 	_ "net/http/pprof"
 	"time"
 
@@ -101,6 +102,8 @@ func startProfileDBInsertion(tr tier.Tier) error {
 }
 
 func main() {
+	// seed random number generator so that all uses of rand work well
+	rand.Seed(time.Now().UnixNano())
 	// Parse flags / environment variables.
 	var flags struct {
 		tier.TierArgs
