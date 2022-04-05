@@ -69,6 +69,9 @@ with pkgs; mkShell {
     pkgs.delta # A syntax-highlighting pager for git
     pkgs.wget
     pkgs.inetutils
+
+    # Tools to visualize pprof output.
+    pkgs.graphviz
   ];
   shellHook =
   ''
