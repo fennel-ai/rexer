@@ -19,8 +19,9 @@ func init() {
 }
 
 type profileOp struct {
-	tier tier.Tier
-	args value.Dict
+	tier   tier.Tier
+	args   value.Dict
+	mockID int64
 }
 
 func (p profileOp) New(args value.Dict, bootargs map[string]interface{}) (operators.Operator, error) {
@@ -28,26 +29,23 @@ func (p profileOp) New(args value.Dict, bootargs map[string]interface{}) (operat
 	if err != nil {
 		return nil, err
 	}
-	return profileOp{tr, args}, nil
+	var mockID int64
+	mockVal, ok := args.Get("__mock_id__")
+	if !ok {
+		mockID = 0
+	} else {
+		asInt, ok := mockVal.(value.Int)
+		if !ok {
+			return nil, fmt.Errorf("expected '__mock_id__' to be an int but found: '%v'", mockVal)
+		}
+		mockID = int64(asInt)
+	}
+	return profileOp{tr, args, mockID}, nil
 }
 
 func (p profileOp) Apply(staticKwargs value.Dict, in operators.InputIter, out *value.List) (err error) {
 	var reqs []libprofile.ProfileItem
 	var rows []value.Value
-	var vals []value.Value
-	// check if the op has to use mocked profiles
-	var doMock bool
-	var mockID value.Int
-	mockVal, ok := p.args.Get("__mock_id__")
-	if !ok {
-		doMock = false
-	} else {
-		doMock = true
-		mockID, ok = mockVal.(value.Int)
-		if !ok {
-			return fmt.Errorf("expected '__mock_id__' to be an int but found: '%v'", mockVal)
-		}
-	}
 	for in.HasMore() {
 		heads, kwargs, err := in.Next()
 		if err != nil {
@@ -63,13 +61,14 @@ func (p profileOp) Apply(staticKwargs value.Dict, in operators.InputIter, out *v
 		reqs = append(reqs, req)
 		rows = append(rows, rowVal)
 	}
-	if !doMock {
+	var vals []value.Value
+	if p.mockID != 0 {
+		vals = mock.GetProfiles(reqs, p.mockID)
+	} else {
 		vals, err = profile.GetBatched(context.TODO(), p.tier, reqs)
 		if err != nil {
 			return err
 		}
-	} else {
-		vals = mock.GetProfiles(reqs, int64(mockID))
 	}
 	field := string(staticKwargs.GetUnsafe("field").(value.String))
 	defaultValue := staticKwargs.GetUnsafe("default")
@@ -80,7 +79,7 @@ func (p profileOp) Apply(staticKwargs value.Dict, in operators.InputIter, out *v
 		var outRow value.Value
 		if len(field) > 0 {
 			if d, ok := rows[i].(value.Dict); !ok {
-				return fmt.Errorf("input values should be dict with field for profile operator is non-empty")
+				return fmt.Errorf("input values expected to be dict for profile operator")
 			} else {
 				d.Set(field, v)
 				outRow = d

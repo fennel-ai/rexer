@@ -337,11 +337,17 @@ func (m server) Query(w http.ResponseWriter, req *http.Request) {
 		log.Printf("Error: %v", err)
 		return
 	}
-	// set mock data
-	mockID := rand.Int63()
-	if mockData.Profiles != nil {
+	if len(mockData.Profiles) > 0 {
+		// set mock data
+		mockID := rand.Int63()
 		args.Set("__mock_id__", value.Int(mockID))
 		mock.Store[mockID] = &mockData
+		// unset mock data
+		defer func() {
+			if mockData.Profiles != nil {
+				delete(mock.Store, mockID)
+			}
+		}()
 	}
 	// execute the tree
 	i := interpreter.NewInterpreter(bootarg.Create(m.tier))
@@ -350,10 +356,6 @@ func (m server) Query(w http.ResponseWriter, req *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		log.Printf("Error: %v", err)
 		return
-	}
-	// unset mock data
-	if mockData.Profiles != nil {
-		mock.Store[mockID] = nil
 	}
 	w.Write(value.ToJSON(ret))
 }
