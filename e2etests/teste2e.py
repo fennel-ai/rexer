@@ -320,6 +320,92 @@ class TestEndToEnd(unittest.TestCase):
         q = op.std.map(q, var='e', to={'x': var('e').group, 'y': var('e').elements[0].a})
         self.assertEqual([{'x': 'one', 'y': 1}, {'x': 'two', 'y': 3}, {'x': 'three', 'y': 4}], c.query(q))
 
+    @tiered
+    def test_features(self):
+        c = client.Client(URL)
+        # first set some data
+        uid = 1
+        post_ids = [100 + i for i in range(10)]
+        topics = ['topic1', 'topic2']
+        for p in post_ids:
+            c.set_profile('post', p, 'topic', topics[p % 2])
+            self.assertEqual(topics[p % 2], c.get_profile('post', p, 'topic'))
+        # and log a few actions
+        now = int(time.time())
+        for p in post_ids:
+            # one action for 1 day ago (so applies to both 4 day and 7 day windows)
+            c.log(action.Action(actor_type='user', actor_id=uid, target_type='post', target_id=p,
+                               action_type='click', request_id=1, timestamp=now-24*3600))
+            # one action for 6 day ago (so applies to only 7 day windows)
+            c.log(action.Action(actor_type='user', actor_id=uid, target_type='post', target_id=p,
+                                action_type='click', request_id=1, timestamp=now-6*24*3600))
+
+        # now store some aggregates
+        @rex.aggregate(
+            name='user_clicks', action_types=['click'],
+            aggregate_type='sum', config={'durations': [4*24*3600, 7*24*3600]},
+        )
+        def agg1(events):
+            q = op.std.set(events, field='groupkey', var='e', value=var('e').actor_id)
+            return op.std.set(q, field='value', value=1)
+        agg1.store(client=c)
+
+        @rex.aggregate(
+            name='user_topic_clicks', action_types=['click'],
+            aggregate_type='sum', config={'durations': [4*24*3600, 7*24*3600]},
+        )
+        def agg2(events):
+            q = op.std.profile(events, field='topic', var='e', otype='post', oid=var('e').target_id, key='topic')
+            q = op.std.set(q, field='groupkey', var='e', value=[var('e').actor_id, var('e').topic])
+            return op.std.set(q, field='value', value=1)
+        agg2.store(client=c)
+
+        # now define some features
+        @rex.feature.register('f_num_user_click_4day')
+        def f1(context, candidates):
+            groupkeys = op.std.map(candidates, to=context.uid)
+            return agg1.compute(groupkeys, duration=4*24*3600)
+
+        @rex.feature.register('f_num_user_click_7day')
+        def f2(context, candidates):
+            groupkeys = op.std.map(candidates, to=context.uid)
+            return agg1.compute(groupkeys, duration=7*24*3600)
+
+        @rex.feature.register('f_num_user_topic_click_4day')
+        def f3(context, candidates):
+            topics = op.std.profile(candidates, otype='post', var='e', oid=var('e').post_id, key='topic')
+            groupkeys = op.std.map(topics, to=[context.uid, var('t')], var='t')
+            return agg2.compute(groupkeys, duration=4*24*3600)
+
+        @rex.feature.register('f_num_user_topic_click_7day')
+        def f4(context, candidates):
+            topics = op.std.profile(candidates, otype='post', var='e', oid=var('e').post_id, key='topic')
+            groupkeys = op.std.map(topics, to=[context.uid, var('t')], var='t')
+            return agg2.compute(groupkeys, duration=7*24*3600)
+
+        @rex.feature.register('f_content_topic')
+        def f5(context, candidates):
+            return op.std.profile(candidates, otype='post', var='e', oid=var('e').post_id, key='topic')
+
+        context = {'uid': uid}
+        candidates = [{'post_id': p} for p in post_ids]
+        names = [f3.name, f4.name, f5.name, f1.name, f2.name]
+        expected_vec = [[5, 10, topics[p%2], 10, 20] for p in post_ids]
+        expcted_dict = [{f3.name: 5, f4.name: 10, f5.name: topics[p%2], f1.name: 10, f2.name: 20} for p in post_ids]
+
+        slept = 0
+        found = False
+        while not found and slept < 120:
+            found_vec = c.query(rex.feature.extract(context, candidates, names=names, vectorize=True))
+            found_dict = c.query(rex.feature.extract(context, candidates, vectorize=False))
+            if found_vec == expected_vec and found_dict == expcted_dict:
+                found = True
+                print('all checks passed...')
+            else:
+                time.sleep(5)
+
+        self.assertTrue(found)
+
 
 @unittest.skip
 class TestLoad(unittest.TestCase):
