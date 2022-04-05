@@ -12,18 +12,18 @@ func TestMapper_Apply(t *testing.T) {
 	t.Parallel()
 	op := mapper{}
 	scenarios := []struct {
-		inputs   []value.Value
+		inputs   [][]value.Value
 		static   value.Dict
 		context  []value.Dict
 		err      bool
 		expected []value.Value
 	}{
 		{
-			[]value.Value{
+			[][]value.Value{{
 				value.NewDict(map[string]value.Value{"x": value.Int(1)}),
 				value.NewDict(map[string]value.Value{"x": value.Int(2)}),
 				value.NewDict(map[string]value.Value{"x": value.Int(3)}),
-			},
+			}},
 			value.NewDict(nil),
 			[]value.Dict{
 				value.NewDict(map[string]value.Value{"to": value.String("1")}),
@@ -34,10 +34,10 @@ func TestMapper_Apply(t *testing.T) {
 			[]value.Value{value.String("1"), value.String("2"), value.Int(3)},
 		},
 		{
-			[]value.Value{
+			[][]value.Value{{
 				value.NewDict(map[string]value.Value{"x": value.Int(1)}),
 				value.NewDict(map[string]value.Value{"x": value.Int(3)}),
-			},
+			}},
 			value.NewDict(nil),
 			[]value.Dict{
 				value.NewDict(map[string]value.Value{"to": value.String("1")}),
@@ -46,12 +46,27 @@ func TestMapper_Apply(t *testing.T) {
 			true,
 			nil,
 		},
+		{
+			[][]value.Value{
+				{value.Int(1), value.Int(2), value.Int(3)},
+				{value.String("1"), value.String("2"), value.String("3")},
+			},
+			value.NewDict(nil),
+
+			[]value.Dict{
+				value.NewDict(map[string]value.Value{"to": value.NewList(value.Int(1), value.String("1"))}),
+				value.NewDict(map[string]value.Value{"to": value.NewList(value.Int(2), value.String("2"))}),
+				value.NewDict(map[string]value.Value{"to": value.NewList(value.Int(3), value.String("3"))}),
+			},
+			false,
+			[]value.Value{value.NewList(value.Int(1), value.String("1")), value.NewList(value.Int(2), value.String("2")), value.NewList(value.Int(3), value.String("3"))},
+		},
 	}
 	for _, scene := range scenarios {
 		if scene.err {
-			optest.AssertError(t, tier.Tier{}, op, scene.static, [][]value.Value{scene.inputs}, scene.context)
+			optest.AssertError(t, tier.Tier{}, op, scene.static, scene.inputs, scene.context)
 		} else {
-			optest.AssertEqual(t, tier.Tier{}, op, scene.static, [][]value.Value{scene.inputs}, scene.context, scene.expected)
+			optest.AssertEqual(t, tier.Tier{}, op, scene.static, scene.inputs, scene.context, scene.expected)
 		}
 	}
 }
