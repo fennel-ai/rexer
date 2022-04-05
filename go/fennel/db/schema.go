@@ -70,7 +70,7 @@ func incrementVersion(tx *sql.Tx, v uint32) error {
 }
 
 func execSchema(db *sqlx.DB, defv uint32, def string) error {
-	tx, err := db.BeginTx(context.Background(), nil)
+	tx, err := db.BeginTx(context.Background(), &sql.TxOptions{Isolation: sql.LevelSerializable, ReadOnly: false})
 	if err != nil {
 		return err
 	}
