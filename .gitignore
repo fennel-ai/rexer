@@ -27,3 +27,8 @@ Cargo.lock
 .direnv/*
 
 .github/*
+
+**/node_modules
+
+# intellij IDEA project
+*.iml
