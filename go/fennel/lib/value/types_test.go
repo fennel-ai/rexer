@@ -15,7 +15,7 @@ func TestNewIntList(t *testing.T) {
 }
 
 func TestNewDict(t *testing.T) {
-	values := make(map[string]Value, 0)
+	values := make(map[string]Value)
 	values["a"] = Int(1)
 	values["b"] = String("hi")
 	ret := NewDict(values)

@@ -2,6 +2,7 @@ package counter
 
 import (
 	"fmt"
+	"sort"
 
 	"fennel/lib/ftypes"
 	"fennel/lib/value"
@@ -33,13 +34,17 @@ func (t topK) Transform(v value.Value) (value.Value, error) {
 	if !ok {
 		return nil, fmt.Errorf("expected value to be a dict but got: '%s' instead", v)
 	}
-	data, ok := elem.Get("data")
+	key, ok := elem.Get("key")
 	if !ok {
-		return nil, fmt.Errorf("key 'data' not found in dict")
+		return nil, fmt.Errorf("field 'key' not found in dict")
+	}
+	keystr, ok := key.(value.String)
+	if !ok {
+		return nil, fmt.Errorf("expected field 'key' to be a string but got '%s' instead", key)
 	}
 	sval, ok := elem.Get("score")
 	if !ok {
-		return nil, fmt.Errorf("key 'score' not found in dict")
+		return nil, fmt.Errorf("field 'score' not found in dict")
 	}
 	var score value.Double
 	switch s := sval.(type) {
@@ -48,9 +53,9 @@ func (t topK) Transform(v value.Value) (value.Value, error) {
 	case value.Double:
 		score = s
 	default:
-		return nil, fmt.Errorf("expected key 'score' of dict to be an int or float but got: '%s' instead", s)
+		return nil, fmt.Errorf("expected field 'score' of dict to be an int or float but got: '%s' instead", s)
 	}
-	return value.NewList(value.NewDict(map[string]value.Value{"data": data, "score": score})), nil
+	return value.NewDict(map[string]value.Value{string(keystr): score}), nil
 }
 
 func (t topK) Start(end ftypes.Timestamp, kwargs value.Dict) (ftypes.Timestamp, error) {
@@ -62,118 +67,85 @@ func (t topK) Start(end ftypes.Timestamp, kwargs value.Dict) (ftypes.Timestamp, 
 }
 
 func (t topK) Reduce(values []value.Value) (value.Value, error) {
-	res := make([]value.Value, 0)
-	for _, v := range values {
-		v, err := t.extract(v)
+	all := make([]value.Dict, len(values))
+	var err error
+	for i, v := range values {
+		all[i], err = t.extract(v)
 		if err != nil {
 			return nil, err
 		}
-		res = t.merge(res, v)
 	}
-	ret := make([]value.Value, len(res))
-	for i := 0; i < len(res); i++ {
-		v := res[i]
-		ret[i], _ = v.(value.Dict)
+	d, err := t.merge(all)
+	if err != nil {
+		return nil, err
 	}
-	return value.NewList(ret...), nil
+	// transform to list of lists (first element stores key, second stores the value) and sort
+	l := make([]value.Value, 0, len(values))
+	for k, v := range d.Iter() {
+		l = append(l, value.NewList(value.String(k), v))
+	}
+	sort.SliceStable(l, func(i, j int) bool {
+		vI, _ := l[i].(value.List).At(1)
+		vJ, _ := l[j].(value.List).At(1)
+		less, _ := vI.Op(">", vJ)
+		return bool(less.(value.Bool))
+	})
+	if len(l) > numK {
+		return value.NewList(l[:numK]...), nil
+	} else {
+		return value.NewList(l...), nil
+	}
 }
 
 func (t topK) Merge(a, b value.Value) (value.Value, error) {
-	la, err := t.extract(a)
+	da, err := t.extract(a)
 	if err != nil {
 		return nil, err
 	}
-	lb, err := t.extract(b)
+	db, err := t.extract(b)
 	if err != nil {
 		return nil, err
 	}
-	lc := t.merge(la, lb)
-	return value.NewList(lc...), nil
+	return t.merge([]value.Dict{da, db})
 }
 
 func (t topK) Zero() value.Value {
-	return value.List{}
+	return value.NewDict(map[string]value.Value{})
 }
 
-func (t topK) extract(v value.Value) ([]value.Value, error) {
-	l, ok := v.(value.List)
+func (t topK) extract(v value.Value) (value.Dict, error) {
+	d, ok := v.(value.Dict)
 	if !ok {
-		return nil, fmt.Errorf("expected list but got: %v", v)
+		return value.NewDict(map[string]value.Value{}), fmt.Errorf("expected dict but got: %v", v)
 	}
-	var ret []value.Value
-	for i := 0; i < l.Len(); i++ {
-		elem, _ := l.At(i)
-		e, ok := elem.(value.Dict)
-		if !ok {
-			return nil, fmt.Errorf("expected element of list to be a dict but got: %v", v)
+	// must typecheck for sorting in Reduce to not panic
+	for _, v := range d.Iter() {
+		switch v.(type) {
+		case value.Int, value.Double:
+		default:
+			return value.Dict{}, fmt.Errorf("expected value in dict to be int/float but found: '%v'", v)
 		}
-		_, ok = e.Get("data")
-		if !ok {
-			return nil, fmt.Errorf("key 'data' not found in dict")
+	}
+	return d, nil
+}
+
+func (t topK) merge(ds []value.Dict) (value.Dict, error) {
+	ret := value.NewDict(map[string]value.Value{})
+	for _, d := range ds {
+		for k, v := range d.Iter() {
+			vOld, ok := ret.Get(k)
+			if !ok {
+				ret.Set(k, v)
+			} else {
+				vNew, err := v.Op("+", vOld)
+				if err != nil {
+					return value.Dict{}, nil
+				}
+				ret.Set(k, vNew)
+			}
 		}
-		score, ok := e.Get("score")
-		if !ok {
-			return nil, fmt.Errorf("key 'score' not found in dict")
-		}
-		_, ok = score.(value.Double)
-		if !ok {
-			return nil, fmt.Errorf("key 'score' of dict should be a float but got: '%v' instead", score)
-		}
-		ret = append(ret, e)
 	}
 	return ret, nil
-}
-
-func (t topK) merge(a, b []value.Value) []value.Value {
-	n := len(a) + len(b)
-	if n > numK {
-		n = numK
-	}
-	c := make([]value.Value, n)
-	i, j, k := 0, 0, 0
-	for {
-		if k == len(c) {
-			return c
-		}
-		if i == len(a) {
-			for {
-				if j == len(b) || k == len(c) {
-					return c
-				}
-				c[k] = b[j]
-				k++
-				j++
-			}
-		}
-		if j == len(b) {
-			for {
-				if i == len(a) || k == len(c) {
-					return c
-				}
-				c[k] = a[i]
-				k++
-				i++
-			}
-		}
-		if t.less(a[i], b[j]) {
-			c[k] = b[j]
-			k++
-			j++
-		} else {
-			c[k] = a[i]
-			k++
-			i++
-		}
-	}
-}
-
-func (t topK) less(a, b value.Value) bool {
-	f, _ := a.(value.Dict).Get("score")
-	fa := f.(value.Double)
-	f, _ = b.(value.Dict).Get("score")
-	//fb := b.(value.Dict)["score"].(value.Double)
-	fb := f.(value.Double)
-	return float64(fa) < float64(fb)
 }
 
 var _ Histogram = topK{}
