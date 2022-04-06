@@ -17,13 +17,13 @@ func (e ExplodeOperator) New(_ value.Dict, _ map[string]interface{}) (operators.
 
 func (e ExplodeOperator) Signature() *operators.Signature {
 	return operators.NewSignature("std", "explode").
-		ParamWithHelp("keys", value.Types.Any, true, false, value.Nil,
-			"StaticKwarg: keys are either a string (e.g. `keys='foo'``) or list of strings (e.g. `keys=['foo', 'bar']` based on which a single row is broken into multiple rows each with a unique value of key ").
+		ParamWithHelp("field", value.Types.Any, true, false, value.Nil,
+			"StaticKwarg: field is either a string (e.g. `field='foo'``) or list of strings (e.g. `field=['foo', 'bar']` based on which a single row is broken into multiple rows each with a unique value of field").
 		Input([]value.Type{value.Types.Dict})
 }
 
 func (e ExplodeOperator) Apply(staticKwargs value.Dict, in operators.InputIter, out *value.List) error {
-	keys, _ := staticKwargs.Get("keys")
+	field, _ := staticKwargs.Get("field")
 	for in.HasMore() {
 		rows, _, err := in.Next()
 		if err != nil {
@@ -32,8 +32,8 @@ func (e ExplodeOperator) Apply(staticKwargs value.Dict, in operators.InputIter, 
 		row := rows[0]
 		rowVal := row.(value.Dict)
 
-		// `keys` are either a string (e.g. `keys='foo'``) or list of strings (e.g. `keys=['foo', 'bar']`)
-		switch keys := keys.(type) {
+		// `field` are either a string (e.g. `field='foo'``) or list of strings (e.g. `field=['foo', 'bar']`)
+		switch keys := field.(type) {
 		case value.String:
 			kstr, err := validateKey(keys, rowVal)
 			if err != nil {
@@ -60,10 +60,10 @@ func (e ExplodeOperator) Apply(staticKwargs value.Dict, in operators.InputIter, 
 				}
 			}
 		case value.List:
-			// provided a list of keys, the length of each list-like row entry should match
+			// provided a list of field, the length of each list-like row entry should match
 			// if the values are scalar, they are written as-is
 			if keys.Len() == 0 {
-				return fmt.Errorf("list of keys provided should not be empty")
+				return fmt.Errorf("list of field provided should not be empty")
 			}
 			k, _ := keys.At(0)
 			kstr, err := validateKey(k, rowVal)
@@ -123,7 +123,7 @@ func (e ExplodeOperator) Apply(staticKwargs value.Dict, in operators.InputIter, 
 				}
 			}
 		default:
-			return fmt.Errorf("key(s) provided must be a list of keys or a key string, "+
+			return fmt.Errorf("key(s) provided must be a list of field or a key string, "+
 				"cannot be of type: %+v", keys)
 		}
 	}

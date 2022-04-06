@@ -320,6 +320,13 @@ class TestEndToEnd(unittest.TestCase):
         q = op.std.map(q, var='e', to={'x': var('e').group, 'y': var('e').elements[0].a})
         self.assertEqual([{'x': 'one', 'y': 1}, {'x': 'two', 'y': 3}, {'x': 'three', 'y': 4}], c.query(q))
 
+        # test explode
+        q = [{'a': 1, 'b': 'one'}, {'a': 2, 'b': ['two', 'three']}, {'a': 3, 'b': 'four'}]
+        e1 = op.std.explode(q, field=['b'])
+        e2 = op.std.explode(q, field='b')
+        self.assertEqual([{'a': 1, 'b': 'one'}, {'a': 2, 'b': 'two'}, {'a': 2, 'b': 'three'}, {'a': 3, 'b': 'four'}], c.query(e1))
+        self.assertEqual([{'a': 1, 'b': 'one'}, {'a': 2, 'b': 'two'}, {'a': 2, 'b': 'three'}, {'a': 3, 'b': 'four'}], c.query(e2))
+
     @tiered
     def test_features(self):
         c = client.Client(URL)
