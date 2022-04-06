@@ -116,7 +116,7 @@ class TestEndToEnd(unittest.TestCase):
                            action_type='react', request_id=2, timestamp=ts + 3, dedup_key="a4")
 
         # verify that test of actions works well
-        mock = {'Profiles': [p1]}
+        mock = {'profiles': [p1]}
         actions = [a1, a2, a3, a4]
         expected = [
             {'action_id': 1, 'action_type': 'notif_send', 'actor_id': 12312, 'actor_type': 'user', 'category': 'sports',
