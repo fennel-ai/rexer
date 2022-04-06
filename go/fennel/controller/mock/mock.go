@@ -6,7 +6,7 @@ import (
 )
 
 type Data struct {
-	Profiles []profile.ProfileItem
+	Profiles []profile.ProfileItem `json:"profiles"`
 }
 
 var Store = make(map[int64]*Data)
