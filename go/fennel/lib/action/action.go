@@ -12,6 +12,8 @@ import (
 
 const (
 	ACTIONLOG_KAFKA_TOPIC = "actionlog"
+	// NOTE: `actionlog_json` is used to log actions as "labels" of the training dataset;
+	ACTIONLOG_JSON_KAFKA_TOPIC = "actionlog_json"
 )
 
 type Action struct {

@@ -39,6 +39,9 @@ type FProducer interface {
 
 var ALL_TOPICS = []string{
 	action.ACTIONLOG_KAFKA_TOPIC,
+	// TODO: Deprecate `ACTIONLOG_JSON_KAFKA_TOPIC` once confluent go supports
+	// producing and consuming schema versioned messages
+	action.ACTIONLOG_JSON_KAFKA_TOPIC,
 	feature.KAFKA_TOPIC_NAME,
 	profile.PROFILELOG_KAFKA_TOPIC,
 }
