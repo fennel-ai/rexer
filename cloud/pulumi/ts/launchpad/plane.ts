@@ -10,6 +10,7 @@ import * as confluentenv from "../confluentenv";
 import * as telemetry from "../telemetry";
 import * as prometheus from "../prometheus";
 import * as connectorSink from "../connectorsink";
+import * as glueSource from "../glue-script-source";
 
 import * as process from "process";
 
@@ -72,6 +73,7 @@ export type PlaneOutput = {
     db: aurora.outputType,
     prometheus: prometheus.outputType,
     connSink: connectorSink.outputType,
+    glue: glueSource.outputType,
 }
 
 const parseConfig = (): PlaneConf => {
@@ -90,6 +92,8 @@ const setupPlugins = async (stack: pulumi.automation.Stack) => {
         ...redis.plugins,
         ...confluentenv.plugins,
         ...telemetry.plugins,
+        ...connectorSink.plugins,
+        ...glueSource.plugins,
     }
     console.info("installing plugins...");
     for (var key in plugins) {
@@ -184,6 +188,12 @@ const setupResources = async () => {
         nodeInstanceRole: eksOutput.instanceRole,
         prometheusEndpoint: prometheusOutput.prometheusWriteEndpoint,
     })
+
+    const glueOutput = await glueSource.setup({
+        region: input.region,
+        roleArn: input.roleArn,
+        planeId: input.planeId,
+    })
     return {
         eks: eksOutput,
         vpc: vpcOutput,
@@ -193,6 +203,7 @@ const setupResources = async () => {
         db: auroraOutput,
         prometheus: prometheusOutput,
         connSink: connectorSinkOutput,
+        glue: glueOutput,
     }
 };
 

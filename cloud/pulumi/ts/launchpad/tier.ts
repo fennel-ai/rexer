@@ -10,11 +10,13 @@ import * as countaggr from "../countaggr";
 import * as configs from "../configs";
 import * as ingress from "../ingress";
 import * as ns from "../k8s-ns";
+import * as glue from "../glue";
 
 import * as process from "process";
 
 type inputType = {
-    tierId: number
+    tierId: number,
+    planeId: number,
     // aws and k8s configuration.
     roleArn: string,
     region: string,
@@ -45,12 +47,17 @@ type inputType = {
     // ingress configuration.
     subnetIds: string[],
     loadBalancerScheme: string,
+    // glue configuration
+    glueSourceBucket: string,
+    glueSourceScript: string,
+    glueTrainingDataBucket: string,
 }
 
 const parseConfig = (): inputType => {
     const config = new pulumi.Config();
     return {
-        tierId: Number(config.require(nameof<inputType>("tierId"))),
+        tierId: config.requireNumber(nameof<inputType>("tierId")),
+        planeId: config.requireNumber(nameof<inputType>("planeId")),
 
         bootstrapServer: config.require(nameof<inputType>("bootstrapServer")),
         topicNames: config.requireObject(nameof<inputType>("topicNames")),
@@ -80,6 +87,10 @@ const parseConfig = (): inputType => {
 
         subnetIds: config.requireObject(nameof<inputType>("subnetIds")),
         loadBalancerScheme: config.require(nameof<inputType>("loadBalancerScheme")),
+
+        glueSourceBucket: config.require(nameof<inputType>("glueSourceBucket")),
+        glueSourceScript: config.require(nameof<inputType>("glueSourceScript")),
+        glueTrainingDataBucket: config.require(nameof<inputType>("glueTrainingDataBucket")),
     };
 };
 
@@ -94,6 +105,8 @@ const setupPlugins = async (stack: pulumi.automation.Stack) => {
         ...countaggr.plugins,
         ...ingress.plugins,
         ...ns.plugins,
+        ...kafkaconnectors.plugins,
+        ...glue.plugins,
     }
     console.info("installing plugins...");
     for (var key in plugins) {
@@ -175,6 +188,16 @@ const setupResources = async () => {
         loadBalancerScheme: input.loadBalancerScheme,
         tierId: input.tierId,
     })
+    // setup glue
+    const glueOutput = await glue.setup({
+        region: input.region,
+        roleArn: input.roleArn,
+        tierId: input.tierId,
+        planeId: input.planeId,
+        sourceBucket: input.glueSourceBucket,
+        trainingDataBucket: input.glueTrainingDataBucket,
+        script: input.glueSourceScript,
+    })
     configsOutput.apply(async () => {
         // setup api-server and countaggr after configs are setup.
         await countaggr.setup({
@@ -198,7 +221,8 @@ const setupResources = async () => {
 };
 
 type TierConf = {
-    tierId: number
+    tierId: number,
+    planeId: number,
     // kafka configuration.
     topicNames: string[],
     bootstrapServer: string,
@@ -231,6 +255,10 @@ type TierConf = {
     // ingress configuration.
     subnetIds: string[],
     loadBalancerScheme: string,
+    // glue configuration.
+    glueSourceBucket: string,
+    glueSourceScript: string,
+    glueTrainingDataBucket: string,
 }
 
 const setupTier = async (args: TierConf, destroy?: boolean) => {
@@ -253,6 +281,7 @@ const setupTier = async (args: TierConf, destroy?: boolean) => {
     console.info("setting up config");
 
     await stack.setConfig(nameof<inputType>("tierId"), { value: String(args.tierId) })
+    await stack.setConfig(nameof<inputType>("planeId"), { value: String(args.planeId) })
 
     await stack.setConfig(nameof<inputType>("bootstrapServer"), { value: args.bootstrapServer })
     await stack.setConfig(nameof<inputType>("kafkaApiKey"), { value: args.kafkaApiKey })
@@ -286,6 +315,10 @@ const setupTier = async (args: TierConf, destroy?: boolean) => {
 
     await stack.setConfig(nameof<inputType>("subnetIds"), { value: JSON.stringify(args.subnetIds) })
     await stack.setConfig(nameof<inputType>("loadBalancerScheme"), { value: args.loadBalancerScheme })
+
+    await stack.setConfig(nameof<inputType>("glueSourceBucket"), {value: args.glueSourceBucket})
+    await stack.setConfig(nameof<inputType>("glueSourceScript"), {value: args.glueSourceScript})
+    await stack.setConfig(nameof<inputType>("glueTrainingDataBucket"), {value: args.glueTrainingDataBucket})
 
     console.info("config set");
 

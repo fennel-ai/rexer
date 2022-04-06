@@ -51,6 +51,6 @@ actions_df = spark.read.json(action_logs_path)
 feature_parquet_path = f's3://p-{args["PLANE_ID"]}-training-data/daily/t_{args["TIER_ID"]}_featurelog/year={year}/month={month}/day={day}/features.parquet'
 actions_parquet_path = f's3://p-{args["PLANE_ID"]}-training-data/daily/t_{args["TIER_ID"]}_actionlog/year={year}/month={month}/day={day}/actions.parquet'
 
-# write to parquet in the same day directory
-features_df.write.parquet()
-actions_df.write.parquet()
+# write to parquet in the same day directory and overwrite existing file (if one exists)
+features_df.write.mode('overwrite').parquet(feature_parquet_path)
+actions_df.write.mode('overwrite').parquet(actions_parquet_path)
