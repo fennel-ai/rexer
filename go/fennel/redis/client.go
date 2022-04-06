@@ -83,11 +83,7 @@ func (c Client) MSet(ctx context.Context, keys []string, values []interface{}, t
 	if len(keys) != len(values) || len(keys) != len(ttls) {
 		return fmt.Errorf("keys, values, and ttls should all be slices of the same length")
 	}
-	// NOTE: we are using transactioned pipeline here, which enforces cross-slot errors;
-	// Looks like non-transaction pipeline doesn't enforce this kind of error, but comes
-	// with weaker guarantees. Someday, we should explore this and see if non-transaction
-	// pipelines make more sense for us in general
-	pipe := c.client.TxPipeline()
+	pipe := c.client.Pipeline()
 	for i, key := range keys {
 		pipe.Set(ctx, c.tieredKey(key), values[i], ttls[i])
 	}
