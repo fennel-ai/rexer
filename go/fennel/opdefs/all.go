@@ -17,6 +17,7 @@ import (
 	_ "fennel/opdefs/std/number"
 	_ "fennel/opdefs/std/predict"
 	_ "fennel/opdefs/std/profile"
+	_ "fennel/opdefs/std/rename"
 	_ "fennel/opdefs/std/set"
 	_ "fennel/opdefs/std/zip"
 )
