@@ -14,11 +14,11 @@ func TestExplodeOperator_KeyNotString(t *testing.T) {
 	}
 
 	tr := tier.Tier{}
-	skwargs := value.NewDict(map[string]value.Value{"keys": value.Int(2)})
+	skwargs := value.NewDict(map[string]value.Value{"field": value.Int(2)})
 	optest.AssertError(t, tr, &ExplodeOperator{}, skwargs, [][]value.Value{intable}, []value.Dict{{}})
-	skwargs = value.NewDict(map[string]value.Value{"keys": value.NewList(value.Int(2))})
+	skwargs = value.NewDict(map[string]value.Value{"field": value.NewList(value.Int(2))})
 	optest.AssertError(t, tr, &ExplodeOperator{}, skwargs, [][]value.Value{intable}, []value.Dict{{}})
-	skwargs = value.NewDict(map[string]value.Value{"keys": value.NewList(value.String("a.list"), value.Int(2))})
+	skwargs = value.NewDict(map[string]value.Value{"field": value.NewList(value.String("a.list"), value.Int(2))})
 	optest.AssertError(t, tr, &ExplodeOperator{}, skwargs, [][]value.Value{intable}, []value.Dict{{}})
 }
 
@@ -28,7 +28,7 @@ func TestExplodeOperator_KeyNotPresent(t *testing.T) {
 	}
 
 	tr := tier.Tier{}
-	skwargs := value.NewDict(map[string]value.Value{"keys": value.String("c")})
+	skwargs := value.NewDict(map[string]value.Value{"field": value.String("c")})
 	optest.AssertError(t, tr, &ExplodeOperator{}, skwargs, [][]value.Value{intable}, []value.Dict{{}})
 }
 
@@ -38,7 +38,7 @@ func TestExplodeOperator_ListScalarKeys(t *testing.T) {
 	}
 
 	tr := tier.Tier{}
-	skwargs := value.NewDict(map[string]value.Value{"keys": value.NewList(value.String("a.list"), value.String("b"))})
+	skwargs := value.NewDict(map[string]value.Value{"field": value.NewList(value.String("a.list"), value.String("b"))})
 	optest.AssertError(t, tr, &ExplodeOperator{}, skwargs, [][]value.Value{intable}, []value.Dict{{}})
 }
 
@@ -49,7 +49,7 @@ func TestExplodeOperator_ScalarKeys(t *testing.T) {
 	outtable := []value.Value{intable[0]}
 
 	tr := tier.Tier{}
-	skwargs := value.NewDict(map[string]value.Value{"keys": value.NewList(value.String("a"), value.String("b"))})
+	skwargs := value.NewDict(map[string]value.Value{"field": value.NewList(value.String("a"), value.String("b"))})
 	optest.AssertElementsMatch(t, tr, &ExplodeOperator{}, skwargs, [][]value.Value{intable}, []value.Dict{{}}, outtable)
 }
 
@@ -59,7 +59,7 @@ func TestExplodeOperator_NonMatchingRowWiseElements(t *testing.T) {
 	}
 
 	tr := tier.Tier{}
-	skwargs := value.NewDict(map[string]value.Value{"keys": value.NewList(value.String("a.list"), value.String("b"))})
+	skwargs := value.NewDict(map[string]value.Value{"field": value.NewList(value.String("a.list"), value.String("b"))})
 	optest.AssertError(t, tr, &ExplodeOperator{}, skwargs, [][]value.Value{intable}, []value.Dict{{}})
 }
 
@@ -82,9 +82,9 @@ func TestExplodeOperator_Apply(t *testing.T) {
 	}
 
 	tr := tier.Tier{}
-	skwargs := value.NewDict(map[string]value.Value{"keys": value.String("a.list")})
+	skwargs := value.NewDict(map[string]value.Value{"field": value.String("a.list")})
 	optest.AssertElementsMatch(t, tr, &ExplodeOperator{}, skwargs, [][]value.Value{intable}, contextKwargTable, expected)
-	skwargs = value.NewDict(map[string]value.Value{"keys": value.NewList(value.String("a.list"))})
+	skwargs = value.NewDict(map[string]value.Value{"field": value.NewList(value.String("a.list"))})
 	optest.AssertElementsMatch(t, tr, &ExplodeOperator{}, skwargs, [][]value.Value{intable}, contextKwargTable, expected)
 }
 
@@ -105,7 +105,7 @@ func TestExplodeOperator_ApplyListKeys(t *testing.T) {
 	}
 
 	tr := tier.Tier{}
-	skwargs := value.NewDict(map[string]value.Value{"keys": value.NewList(value.String("a.list"), value.String("b.list"))})
+	skwargs := value.NewDict(map[string]value.Value{"field": value.NewList(value.String("a.list"), value.String("b.list"))})
 	// should work with a list of strings
 	optest.AssertElementsMatch(t, tr, &ExplodeOperator{}, skwargs, [][]value.Value{intable}, contextKwargTable, expected)
 }
