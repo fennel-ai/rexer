@@ -63,7 +63,7 @@ func BatchValue(ctx context.Context, tier tier.Tier, batch []aggregate.GetAggVal
 }
 
 func Update(ctx context.Context, tier tier.Tier, consumer kafka.FConsumer, agg aggregate.Aggregate) error {
-	actions, err := action.ReadBatch(ctx, consumer, 10000, time.Second*10)
+	actions, err := action.ReadBatch(ctx, consumer, 20000, time.Second*10)
 	if err != nil {
 		return err
 	}
