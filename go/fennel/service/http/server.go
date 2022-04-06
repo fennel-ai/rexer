@@ -39,7 +39,7 @@ var totalActions = promauto.NewCounterVec(
 		Name: "actions_total",
 		Help: "Total number of actions.",
 	},
-	[]string{"path"},
+	[]string{"path", "action_type"},
 )
 
 var totalDedupedActions = promauto.NewCounterVec(
@@ -47,7 +47,7 @@ var totalDedupedActions = promauto.NewCounterVec(
 		Name: "deduped_actions_total",
 		Help: "Total numbe of actions deduped.",
 	},
-	[]string{"path"},
+	[]string{"path", "action_type"},
 )
 
 func parse(req *http.Request, msg proto.Message) error {
@@ -119,7 +119,7 @@ func (m server) Log(w http.ResponseWriter, req *http.Request) {
 			return
 		}
 		if !ok {
-			totalDedupedActions.WithLabelValues("log").Inc()
+			totalDedupedActions.WithLabelValues("log", string(a.ActionType)).Inc()
 			return
 		}
 	}
@@ -129,7 +129,7 @@ func (m server) Log(w http.ResponseWriter, req *http.Request) {
 		log.Printf("Error: %v", err)
 		return
 	}
-	totalActions.WithLabelValues("log").Inc()
+	totalActions.WithLabelValues("log", string(a.ActionType)).Inc()
 	// nothing to do on successful call :)
 }
 
@@ -179,7 +179,7 @@ func (m server) LogMulti(w http.ResponseWriter, req *http.Request) {
 			// If dedup key of an action was not set, add to batch
 			batch = append(batch, actions[ids[i]])
 		} else {
-			totalDedupedActions.WithLabelValues("log_multi").Inc()
+			totalDedupedActions.WithLabelValues("log_multi", string(actions[ids[i]].ActionType)).Inc()
 		}
 	}
 	// fwd to controller
@@ -188,7 +188,10 @@ func (m server) LogMulti(w http.ResponseWriter, req *http.Request) {
 		log.Printf("Error: %v", err)
 		return
 	}
-	totalActions.WithLabelValues("log_multi").Add(float64(len(batch)))
+	// increment metrics after successfully writing to the system
+	for _, a := range batch {
+		totalActions.WithLabelValues("log_multi", string(a.ActionType)).Inc()
+	}
 	// nothing to do on successful call :)
 }
 
