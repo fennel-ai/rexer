@@ -156,11 +156,13 @@ func TestEndToEnd(t *testing.T) {
 				value.NewDict(map[string]value.Value{"duration": value.Int(3600)})},
 			[]value.Value{
 				value.NewList(
-					value.NewDict(map[string]value.Value{"data": value.Int(time.Hour*24*15 + 4000), "score": value.Double(2)}),
-					value.NewDict(map[string]value.Value{"data": value.Int(time.Hour*24*15 + 1), "score": value.Double(1)}),
+					value.NewList(value.String("like"), value.Double(3)),
+					value.NewList(value.String("share"), value.Double(1)),
 				),
-				value.NewList(value.NewDict(map[string]value.Value{"data": value.Int(time.Hour*24*15 + 4000), "score": value.Double(2)})),
-			},
+				value.NewList(
+					value.NewList(value.String("like"), value.Double(2)),
+					value.NewList(value.String("share"), value.Double(0.5)),
+				)},
 			nil,
 		},
 	}
@@ -196,7 +198,7 @@ func TestEndToEnd(t *testing.T) {
 			verify(t, tier, scenario.agg, scenario.key, scenario.kwargs[i], scenario.initial)
 		}
 	}
-	processInParallel(tier, scenarios)
+	processInParallel(t, tier, scenarios)
 	// now the counts should have updated
 	for _, scenario := range scenarios {
 		for i := range scenario.kwargs {
@@ -219,13 +221,14 @@ func TestEndToEnd(t *testing.T) {
 	}
 }
 
-func processInParallel(tier tier.Tier, scenarios []*scenario) {
+func processInParallel(t *testing.T, tier tier.Tier, scenarios []*scenario) {
 	wg := sync.WaitGroup{}
 	wg.Add(len(scenarios))
 	for _, sc := range scenarios {
 		go func(s *scenario) {
 			defer wg.Done()
-			aggregate.Update(context.Background(), tier, s.consumer, s.agg)
+			err := aggregate.Update(context.Background(), tier, s.consumer, s.agg)
+			assert.NoError(t, err)
 		}(sc)
 	}
 	wg.Wait()
@@ -257,6 +260,7 @@ func logAction(t *testing.T, tier tier.Tier, uid ftypes.OidType, ts ftypes.Times
 	}
 	a2 := a1
 	a2.ActionType = "share"
+	a2.Metadata = value.NewDict(map[string]value.Value{"value": value.Double(0.5)})
 	err := action.Insert(context.Background(), tier, a1)
 	assert.NoError(t, err)
 	err = action.Insert(context.Background(), tier, a2)
@@ -346,19 +350,7 @@ func getQuery() ast.Ast {
 func getQueryTopK() ast.Ast {
 	return ast.OpCall{
 		Operands: []ast.Ast{ast.OpCall{
-			Operands: []ast.Ast{ast.OpCall{
-				Operands:  []ast.Ast{ast.Var{Name: "actions"}},
-				Vars:      []string{"var"},
-				Namespace: "std",
-				Name:      "filter",
-				Kwargs: ast.Dict{Values: map[string]ast.Ast{
-					"where": ast.Binary{
-						Left:  ast.Lookup{On: ast.Var{Name: "var"}, Property: "action_type"},
-						Op:    "==",
-						Right: ast.MakeString("like"),
-					},
-				}},
-			}},
+			Operands:  []ast.Ast{ast.Var{Name: "actions"}},
 			Vars:      []string{"at"},
 			Namespace: "std",
 			Name:      "set",
@@ -376,9 +368,9 @@ func getQueryTopK() ast.Ast {
 		Kwargs: ast.Dict{Values: map[string]ast.Ast{
 			"field": ast.MakeString("value"),
 			"value": ast.Dict{Values: map[string]ast.Ast{
-				"data": ast.Lookup{
+				"key": ast.Lookup{
 					On:       ast.Var{Name: "at"},
-					Property: "timestamp",
+					Property: "action_type",
 				},
 				"score": ast.Lookup{
 					On: ast.Lookup{

@@ -4,8 +4,10 @@ import (
 	"fmt"
 	"math/rand"
 	"sort"
+	"strconv"
 	"testing"
 
+	"fennel/lib/utils"
 	"github.com/stretchr/testify/assert"
 
 	"fennel/lib/ftypes"
@@ -15,60 +17,66 @@ import (
 func TestTopK_Reduce(t *testing.T) {
 	t.Parallel()
 	h := NewTopK("somename", []uint64{123})
-	numCases := 7
+	numCases := 3
 	cases := make([]struct {
 		input  []value.Value
 		output value.Value
 	}, numCases)
+	n := 1000
+	keys := genKeys(n)
 
-	cases[0].input = []value.Value{value.NewList(value.NewDict(map[string]value.Value{"data": value.Int(2), "score": value.Double(5)}))}
-	cases[0].output = cases[0].input[0]
+	cases[0].input = []value.Value{value.NewDict(map[string]value.Value{"abc": value.Double(5)})}
+	cases[0].output = value.NewList(value.NewList(value.String("abc"), value.Int(5)))
 
 	cases[1].input = []value.Value{}
 	cases[1].output = value.NewList()
 
+	cases[2].input = []value.Value{
+		value.NewDict(map[string]value.Value{"a": value.Int(10), "b": value.Int(4), "c": value.Double(1.0)}),
+		value.NewDict(map[string]value.Value{"a": value.Int(7), "b": value.Int(11), "c": value.Double(20.0)}),
+		value.NewDict(map[string]value.Value{"a": value.Int(4), "b": value.Double(3.0), "c": value.Double(5.0)}),
+	}
+	cases[2].output = value.NewList(
+		value.NewList(value.String("c"), value.Double(26)),
+		value.NewList(value.String("a"), value.Double(21)),
+		value.NewList(value.String("b"), value.Double(18)),
+	)
+
 	for i := 2; i < numCases; i++ {
 		cases[i].input = []value.Value{}
-		n := rand.Intn(100)
-		for j := 0; j < n; j++ {
-			cases[i].input = append(cases[i].input, genTopKList(numK))
+		total := rand.Intn(100)
+		for j := 0; j < total; j++ {
+			cases[i].input = append(cases[i].input, genTopKDict(n, keys))
 		}
-		cases[i].output = findTopK(cases[i].input)
+		cases[i].output = findTopK(t, cases[i].input)
 	}
 
 	for _, c := range cases {
 		found, err := h.Reduce(c.input)
 		assert.NoError(t, err)
-		assert.Equal(t, c.output, found)
+		assert.True(t, c.output.Equal(found))
 
 		// and this works even when one of the elements is zero
 		c.input = append(c.input, h.Zero())
+		found, err = h.Reduce(c.input)
 		assert.NoError(t, err)
-		assert.Equal(t, c.output, found)
+		assert.True(t, c.output.Equal(found))
 	}
 }
 
 func TestTopK_Merge_Valid(t *testing.T) {
 	t.Parallel()
 	h := NewTopK("somename", []uint64{123})
-	numCases := 7
-	validCases := make([][]value.Value, numCases)
+	validCases := make([][]value.Value, 2)
 
-	validCases[0] = append(validCases[0], value.NewList())
-	validCases[0] = append(validCases[0], value.NewList())
-	validCases[0] = append(validCases[0], value.NewList())
+	validCases[0] = append(validCases[0], value.NewDict(map[string]value.Value{}))
+	validCases[0] = append(validCases[0], value.NewDict(map[string]value.Value{}))
+	validCases[0] = append(validCases[0], value.NewDict(map[string]value.Value{}))
 
-	validCases[1] = append(validCases[1], value.NewList(value.NewDict(map[string]value.Value{"data": value.String("x"), "score": value.Double(-1)})))
-	validCases[1] = append(validCases[1], value.NewList(value.NewDict(map[string]value.Value{"data": value.Double(3.1), "score": value.Double(19)})))
-	validCases[1] = append(validCases[1], findTopK([]value.Value{validCases[1][0], validCases[1][1]}))
+	validCases[1] = append(validCases[1], value.NewDict(map[string]value.Value{"x": value.Double(5.5), "y": value.Int(-8)}))
+	validCases[1] = append(validCases[1], value.NewDict(map[string]value.Value{"x": value.Int(-1), "y": value.Double(19.7)}))
+	validCases[1] = append(validCases[1], value.NewDict(map[string]value.Value{"x": value.Double(4.5), "y": value.Double(11.7)}))
 
-	for i := 2; i < numCases; i++ {
-		a := genTopKList(numK)
-		b := genTopKList(numK)
-		validCases[i] = append(validCases[i], a)
-		validCases[i] = append(validCases[i], b)
-		validCases[i] = append(validCases[i], findTopK([]value.Value{a, b}))
-	}
 	for _, c := range validCases {
 		found, err := h.Merge(c[0], c[1])
 		assert.NoError(t, err)
@@ -79,22 +87,20 @@ func TestTopK_Merge_Valid(t *testing.T) {
 func TestTopK_Merge_Invalid(t *testing.T) {
 	t.Parallel()
 	h := NewTopK("somename", []uint64{123})
+	keys := genKeys(1000)
 	validTopKVals := []value.Value{
-		genTopKList(0),
-		genTopKList(1),
-		genTopKList(2),
-		genTopKList(3),
-		genTopKList(100),
+		genTopKDict(0, nil),
+		genTopKDict(1, keys[:1]),
+		genTopKDict(2, keys[:2]),
+		genTopKDict(3, keys[:3]),
+		genTopKDict(1000, keys),
 	}
 	invalidTopKVals := []value.Value{
-		value.NewDict(map[string]value.Value{}),
 		value.Nil,
 		value.NewList(value.Double(2)),
-		value.NewList(value.NewDict(map[string]value.Value{})),
-		value.NewList(value.NewDict(map[string]value.Value{"data": value.Int(0)})),
-		value.NewList(value.NewDict(map[string]value.Value{"score": value.Double(0.0)})),
-		value.NewList(value.NewDict(map[string]value.Value{"data": value.Int(0), "score": value.Int(0)})),
-		value.NewList(value.NewDict(map[string]value.Value{"score": value.Double(0.0)}), value.NewDict(map[string]value.Value{"data": value.Int(0), "score": value.Int(0)})),
+		value.String("xyz"),
+		value.NewDict(map[string]value.Value{"x": value.Bool(false)}),
+		value.NewDict(map[string]value.Value{"y": value.NewList(value.String("xyz"))}),
 	}
 	var allTopKVals []value.Value
 	allTopKVals = append(allTopKVals, validTopKVals...)
@@ -107,6 +113,8 @@ func TestTopK_Merge_Invalid(t *testing.T) {
 			_, err = h.Merge(nv, v)
 			assert.Error(t, err)
 		}
+		_, err := h.Merge(nv, nv)
+		assert.Error(t, err)
 	}
 }
 
@@ -121,13 +129,15 @@ func TestTopK_Bucketize_Valid(t *testing.T) {
 		d := value.NewDict(map[string]value.Value{
 			"groupkey":  v,
 			"timestamp": value.Int(DAY + i*3600 + 1),
-			"value":     value.NewDict(map[string]value.Value{"data": value.Int(i), "score": value.Int(i)}),
+			"value": value.NewDict(map[string]value.Value{
+				"key":   value.String(strconv.Itoa(i)),
+				"score": value.Int(i)}),
 		})
 		actions.Append(d)
-		expected = append(expected, Bucket{Key: v.String(), Window: ftypes.Window_DAY,
-			Index: 1, Width: 1, Value: value.NewList(value.NewDict(map[string]value.Value{"data": value.Int(i), "score": value.Double(i)}))})
-		expected = append(expected, Bucket{Key: v.String(), Window: ftypes.Window_MINUTE,
-			Index: uint64(24*10 + i*10), Width: 6, Value: value.NewList(value.NewDict(map[string]value.Value{"data": value.Int(i), "score": value.Double(i)}))})
+		expected = append(expected, Bucket{Key: v.String(), Window: ftypes.Window_DAY, Index: 1, Width: 1,
+			Value: value.NewDict(map[string]value.Value{strconv.Itoa(i): value.Double(i)})})
+		expected = append(expected, Bucket{Key: v.String(), Window: ftypes.Window_MINUTE, Index: uint64(24*10 + i*10),
+			Width: 6, Value: value.NewDict(map[string]value.Value{strconv.Itoa(i): value.Double(i)})})
 	}
 	buckets, err := Bucketize(h, actions)
 	assert.NoError(t, err)
@@ -156,44 +166,56 @@ func TestTopK_Bucketize_Invalid(t *testing.T) {
 	}
 }
 
-func genTopKList(n int) value.Value {
-	l := make([]value.Value, n)
-	for i := range l {
-		l[i] = value.NewDict(map[string]value.Value{
-			"data":  value.Nil,
-			"score": value.Double(rand.NormFloat64()),
-		})
-	}
-	sort.SliceStable(l, func(i, j int) bool {
-		s, _ := l[i].(value.Dict).Get("score")
-		a := float64(s.(value.Double))
-		s, _ = l[j].(value.Dict).Get("score")
-		b := float64(s.(value.Double))
-		return a > b
-	})
-	return value.NewList(l...)
-}
-
-func findTopK(vals []value.Value) value.Value {
-	var all []value.Value
-	for _, v := range vals {
-		v := v.(value.List)
-		for i := 0; i < v.Len(); i++ {
-			e, _ := v.At(i)
-			all = append(all, e)
+func genTopKDict(n int, keys []string) value.Dict {
+	d := value.NewDict(map[string]value.Value{})
+	for i := 0; i < n; i++ {
+		if i%2 == 0 {
+			d.Set(keys[i], value.Double(1e6*rand.Float64()))
+		} else {
+			d.Set(keys[i], value.Int(rand.Intn(1e6)))
 		}
 	}
-	sort.SliceStable(all, func(i, j int) bool {
-		s, _ := all[i].(value.Dict).Get("score")
-		a := float64(s.(value.Double))
-		//a := float64(all[i].(value.Dict)["score"].(value.Double))
-		s, _ = all[j].(value.Dict).Get("score")
-		b := float64(s.(value.Double))
-		//b := float64(all[j].(value.Dict)["score"].(value.Double))
-		return a > b
-	})
-	if len(all) > numK {
-		return value.NewList(all[:numK]...)
+	return d
+}
+
+func findTopK(t *testing.T, vals []value.Value) value.Value {
+	dictVals := make([]value.Dict, len(vals))
+	for i, v := range vals {
+		dictVals[i] = v.(value.Dict)
 	}
-	return value.NewList(all...)
+	d, err := topK{}.merge(dictVals)
+	assert.NoError(t, err)
+	type elem struct {
+		key string
+		val float64
+	}
+	l := make([]elem, 0, len(d.Iter()))
+	for k, v := range d.Iter() {
+		var v_ float64
+		switch v := v.(type) {
+		case value.Int:
+			v_ = float64(v)
+		case value.Double:
+			v_ = float64(v)
+		default:
+			assert.Fail(t, "expected value to be int/float")
+		}
+		l = append(l, elem{k, v_})
+	}
+	sort.SliceStable(l, func(i, j int) bool {
+		return l[i].val > l[j].val
+	})
+	var ret []value.Value
+	for i := 0; i < numK && i < len(l); i++ {
+		ret = append(ret, value.NewList(value.String(l[i].key), value.Double(l[i].val)))
+	}
+	return value.NewList(ret...)
+}
+
+func genKeys(n int) []string {
+	var keys []string
+	for i := 0; i < n; i++ {
+		keys = append(keys, utils.RandString(32))
+	}
+	return keys
 }
