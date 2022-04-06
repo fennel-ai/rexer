@@ -204,7 +204,7 @@ if (tierId !== 0) {
         planeId: Number(planeId),
 
         bootstrapServer: confluentOutput.bootstrapServer,
-        topicNames: [`t_${tierId}_actionlog`, `t_${tierId}_featurelog`, `t_${tierId}_profilelog`],
+        topicNames: [`t_${tierId}_actionlog`, `t_${tierId}_featurelog`, `t_${tierId}_profilelog`, `t_${tierId}_actionlog_json`],
         kafkaApiKey: confluentOutput.apiKey,
         kafkaApiSecret: confluentOutput.apiSecret,
 

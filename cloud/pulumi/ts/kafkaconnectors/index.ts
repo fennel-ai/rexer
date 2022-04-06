@@ -85,7 +85,7 @@ export const setup = async (input: inputType): Promise<pulumi.Output<outputType>
             //  `s3://<s3-bucket-name>/${topics.dir}/<Topic-Name>/${path.format}/<files>`
             "topics.dir": `daily`,
             // `path.format` has the default value of: `‘year’=YYYY/’month’=MM/’day’=dd/’hour’=HH` - we will use this
-            "topics": `t_${input.tierId}_actionlog,t_${input.tierId}_featurelog`,
+            "topics": `t_${input.tierId}_actionlog_json,t_${input.tierId}_featurelog`,
         },
     }, {provider: confProvider})
 
