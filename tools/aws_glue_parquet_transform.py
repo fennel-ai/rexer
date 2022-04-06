@@ -43,13 +43,13 @@ print(f'======== Reading data from date: year={year}/month={month}/day={day}\n')
 # the format of the s3 objects: `s3://p-{PLANE_ID}-training-data/daily/t_{TIER_ID}_featurelog/year=2022/month=04/day=05/hour=18/xyz.json`
 # read JSON files using wildcard to fetch all the files
 feature_logs_path = f's3://p-{args["PLANE_ID"]}-training-data/daily/t_{args["TIER_ID"]}_featurelog/year={year}/month={month}/day={day}/*/*.json'
-action_logs_path = f's3://p-{args["PLANE_ID"]}-training-data/daily/t_{args["TIER_ID"]}_actionlog/year={year}/month={month}/day={day}/*/*.json'
+action_logs_path = f's3://p-{args["PLANE_ID"]}-training-data/daily/t_{args["TIER_ID"]}_actionlog_json/year={year}/month={month}/day={day}/*/*.json'
 
 features_df = spark.read.json(feature_logs_path)
 actions_df = spark.read.json(action_logs_path)
 
 feature_parquet_path = f's3://p-{args["PLANE_ID"]}-training-data/daily/t_{args["TIER_ID"]}_featurelog/year={year}/month={month}/day={day}/features.parquet'
-actions_parquet_path = f's3://p-{args["PLANE_ID"]}-training-data/daily/t_{args["TIER_ID"]}_actionlog/year={year}/month={month}/day={day}/actions.parquet'
+actions_parquet_path = f's3://p-{args["PLANE_ID"]}-training-data/daily/t_{args["TIER_ID"]}_actionlog_json/year={year}/month={month}/day={day}/actions.parquet'
 
 # write to parquet in the same day directory and overwrite existing file (if one exists)
 features_df.write.mode('overwrite').parquet(feature_parquet_path)
