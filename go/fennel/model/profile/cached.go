@@ -235,7 +235,7 @@ func (c cachedProvider) getBatched(ctx context.Context, tier tier.Tier, reqs []p
 				}
 			}
 			// since v is technically an interface, and we want to return []byte, we will take
-			// attempts at converting tier to []byte
+			// attempts at converting value to []byte
 			switch t := v.(type) {
 			case []byte:
 				keyToVal.Store(key, t)
