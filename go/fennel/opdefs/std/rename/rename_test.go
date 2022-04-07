@@ -25,10 +25,10 @@ func TestRenamer_Apply(t *testing.T) {
 			},
 			[]value.Dict{
 				value.NewDict(map[string]value.Value{
-					"from": value.String("x"), "to": value.String("a"),
+					"field": value.String("x"), "to": value.String("a"),
 				}),
 				value.NewDict(map[string]value.Value{
-					"from": value.String("y"), "to": value.String("b"),
+					"field": value.String("y"), "to": value.String("b"),
 				}),
 			},
 			false,
