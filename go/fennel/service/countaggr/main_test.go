@@ -235,6 +235,7 @@ func processInParallel(t *testing.T, tier tier.Tier, scenarios []*scenario) {
 }
 
 func verify(t *testing.T, tier tier.Tier, agg libaggregate.Aggregate, k value.Value, kwargs value.Dict, expected interface{}) {
+	aggregate.InvalidateCache() // invalidate cache, as it is not being tested here
 	found, err := aggregate.Value(context.Background(), tier, agg.Name, k, kwargs)
 	assert.NoError(t, err)
 	// for floats, it's best to not do direct equality comparison but verify their differnce is small

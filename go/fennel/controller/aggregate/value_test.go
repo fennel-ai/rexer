@@ -3,6 +3,7 @@ package aggregate
 import (
 	"context"
 	"testing"
+	"time"
 
 	"fennel/engine/ast"
 	"fennel/lib/action"
@@ -96,14 +97,102 @@ func TestValueAll(t *testing.T) {
 	clock.Set(int64(t1 + 2*3600))
 	// Test Value()
 	found1, err := Value(ctx, tier, req1.AggName, req1.Key, req1.Kwargs)
+	assert.NoError(t, err)
 	assert.Equal(t, exp1, found1)
 	found2, err := Value(ctx, tier, req2.AggName, req2.Key, req2.Kwargs)
+	assert.NoError(t, err)
 	assert.Equal(t, exp2, found2)
 	found3, err := Value(ctx, tier, req3.AggName, req3.Key, req3.Kwargs)
+	assert.NoError(t, err)
 	assert.Equal(t, exp3, found3)
 	// Test BatchValue()
 	ret, err := BatchValue(ctx, tier, []aggregate.GetAggValueRequest{req1, req2, req3})
 	assert.Equal(t, []value.Value{exp1, exp2, exp3}, ret)
+}
+
+func TestCachedValueAll(t *testing.T) {
+	tier, err := test.Tier()
+	assert.NoError(t, err)
+	defer test.Teardown(tier)
+
+	ctx := context.Background()
+	clock := &test.FakeClock{}
+	tier.Clock = clock
+	t0 := ftypes.Timestamp(0)
+	assert.Equal(t, int64(t0), tier.Clock.Now())
+	t1 := t0 + 1800
+	clock.Set(int64(t1))
+	assert.Equal(t, int64(t1), tier.Clock.Now())
+
+	agg := aggregate.Aggregate{
+		Name:      "agg",
+		Query:     ast.MakeInt(0),
+		Timestamp: t0,
+		Options: aggregate.Options{
+			AggType:   "sum",
+			Durations: []uint64{3600},
+		},
+	}
+	h := counter.NewSum(agg.Name, agg.Options.Durations)
+	key := value.String("key")
+	kwargs := value.NewDict(map[string]value.Value{"duration": value.Int(3600)})
+	assert.NoError(t, Store(ctx, tier, agg))
+
+	// initially we should get 0
+	expected := value.Int(0)
+	found, err := Value(ctx, tier, agg.Name, key, kwargs)
+	assert.NoError(t, err)
+	assert.True(t, expected.Equal(found))
+
+	// wait for value to be cached
+	time.Sleep(10 * time.Millisecond)
+	// update buckets, we should still get back cached value
+	buckets := h.BucketizeMoment(key.String(), t0, value.Int(1))
+	assert.NoError(t, counter.Update(ctx, tier, agg.Name, buckets, h))
+	expected = value.Int(0)
+	found, err = Value(ctx, tier, agg.Name, key, kwargs)
+	assert.NoError(t, err)
+	assert.True(t, expected.Equal(found))
+
+	// test batch now
+	agg1, agg2, agg3 := agg, agg, agg
+	agg1.Name, agg2.Name, agg3.Name = "agg1", "agg2", "agg3"
+	reqs := []aggregate.GetAggValueRequest{
+		{AggName: agg1.Name, Key: key, Kwargs: kwargs},
+		{AggName: agg2.Name, Key: key, Kwargs: kwargs},
+		{AggName: agg3.Name, Key: key, Kwargs: kwargs},
+	}
+	histograms := []counter.Histogram{
+		counter.NewSum(agg1.Name, agg1.Options.Durations),
+		counter.NewSum(agg2.Name, agg2.Options.Durations),
+		counter.NewSum(agg3.Name, agg3.Options.Durations),
+	}
+	assert.NoError(t, Store(ctx, tier, agg1))
+	assert.NoError(t, Store(ctx, tier, agg2))
+	assert.NoError(t, Store(ctx, tier, agg3))
+
+	// initially we only get req1 and req3 and we should find 0s
+	reqs_ := []aggregate.GetAggValueRequest{reqs[0], reqs[2]}
+	expectedVals := []value.Value{value.Int(0), value.Int(0)}
+	foundVals, err := BatchValue(ctx, tier, reqs_)
+	assert.NoError(t, err)
+	for i, expval := range expectedVals {
+		assert.True(t, expval.Equal(foundVals[i]))
+	}
+
+	// wait for values to be cached
+	time.Sleep(10 * time.Millisecond)
+	// update buckets, we should get back cached value from req1 and req3 but ground truth from req2
+	for i, h := range histograms {
+		buckets := h.BucketizeMoment(key.String(), t0, value.Int(1))
+		assert.NoError(t, counter.Update(ctx, tier, reqs[i].AggName, buckets, h))
+	}
+	expectedVals = []value.Value{value.Int(0), value.Int(1), value.Int(0)}
+	foundVals, err = BatchValue(ctx, tier, reqs)
+	assert.NoError(t, err)
+	for i, expval := range expectedVals {
+		assert.True(t, expval.Equal(foundVals[i]))
+	}
 }
 
 // this test verifies that given a list of actions, the query is run on it to produce the right table
