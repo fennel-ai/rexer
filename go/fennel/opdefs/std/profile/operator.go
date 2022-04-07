@@ -22,6 +22,7 @@ type profileOp struct {
 	tier   tier.Tier
 	args   value.Dict
 	mockID int64
+	cached *[]libprofile.ProfileItem
 }
 
 func (p profileOp) New(args value.Dict, bootargs map[string]interface{}) (operators.Operator, error) {
@@ -40,7 +41,11 @@ func (p profileOp) New(args value.Dict, bootargs map[string]interface{}) (operat
 		}
 		mockID = int64(asInt)
 	}
-	return profileOp{tr, args, mockID}, nil
+	cached, err := bootarg.GetCachedProfiles(bootargs)
+	if err != nil {
+		return nil, err
+	}
+	return profileOp{tr, args, mockID, cached}, nil
 }
 
 func (p profileOp) Apply(staticKwargs value.Dict, in operators.InputIter, out *value.List) (err error) {
@@ -65,7 +70,7 @@ func (p profileOp) Apply(staticKwargs value.Dict, in operators.InputIter, out *v
 	if p.mockID != 0 {
 		vals = mock.GetProfiles(reqs, p.mockID)
 	} else {
-		vals, err = profile.GetBatched(context.TODO(), p.tier, reqs)
+		vals, err = p.getProfiles(reqs)
 		if err != nil {
 			return err
 		}
@@ -90,6 +95,46 @@ func (p profileOp) Apply(staticKwargs value.Dict, in operators.InputIter, out *v
 		out.Append(outRow)
 	}
 	return nil
+}
+
+func (p profileOp) getProfiles(profiles []libprofile.ProfileItem) ([]value.Value, error) {
+	res := make([]value.Value, len(profiles))
+	var uncached []libprofile.ProfileItem
+	var ptrs []int
+	// GetBatched returns nil for profiles that were not found
+	// store in cache as it is to avoid querying DB for profiles that we know do not exist
+	// and for profile operator to set default correctly
+	for i, pi := range profiles {
+		found := false
+		for _, cpi := range *p.cached {
+			if pi.Oid == cpi.Oid && pi.OType == cpi.OType && pi.Key == cpi.Key && pi.Version == cpi.Version {
+				// found profile
+				res[i] = cpi.Value
+				found = true
+				break
+			}
+		}
+		if !found {
+			// did not find profile, filter out
+			uncached = append(uncached, pi)
+			ptrs = append(ptrs, i)
+		}
+	}
+	// now get uncached profiles
+	vals, err := profile.GetBatched(context.TODO(), p.tier, uncached)
+	if err != nil {
+		return nil, err
+	}
+	// add them to cache
+	for i, pi := range uncached {
+		pi.Value = vals[i]
+		*p.cached = append(*p.cached, pi)
+	}
+	// finally, return result
+	for i, v := range vals {
+		res[ptrs[i]] = v
+	}
+	return res, nil
 }
 
 func (p profileOp) Signature() *operators.Signature {

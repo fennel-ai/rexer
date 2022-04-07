@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"fennel/db"
+	"fennel/lib/profile"
 	"fennel/redis"
 	"fennel/test"
 	"fennel/tier"
@@ -21,8 +22,14 @@ func Test_Create_GetInstance(t *testing.T) {
 		Clock:            &test.FakeClock{},
 	}
 	b := Create(tier)
-	assert.Len(t, b, 1)
-	found, err := GetTier(b)
+	assert.Len(t, b, 2)
+
+	found1, err := GetTier(b)
 	assert.NoError(t, err)
-	assert.Equal(t, tier, found)
+	assert.Equal(t, tier, found1)
+
+	found2, err := GetCachedProfiles(b)
+	expected2 := make([]profile.ProfileItem, 0)
+	assert.NoError(t, err)
+	assert.Equal(t, expected2, *found2)
 }

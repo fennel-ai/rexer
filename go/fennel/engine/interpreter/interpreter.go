@@ -21,7 +21,7 @@ func (i Interpreter) VisitFnCall(module, name string, kwargs map[string]ast.Ast)
 	if err != nil {
 		return value.Nil, err
 	}
-	// now eval  kwargs and verify they are of the right type
+	// now eval kwargs and verify they are of the right type
 	vKwargs := make(map[string]value.Value, len(kwargs))
 	for k, ast := range kwargs {
 		if v, err := ast.AcceptValue(i); err != nil {
