@@ -21,11 +21,9 @@ import (
 	"go.uber.org/zap"
 )
 
-const (
-	cacheVersion       = 0 // increment this to invalidate all existing cache keys for aggregate
-	cacheValueDuration = time.Minute
-)
+const cacheValueDuration = time.Minute
 
+var cacheVersion = 0 // increment this to invalidate all existing cache keys for aggregate
 var cache *ristretto.Cache
 
 func init() {
@@ -38,6 +36,10 @@ func init() {
 	if err != nil {
 		panic(fmt.Sprintf("failed to create aggregate value cache"))
 	}
+}
+
+func InvalidateCache() {
+	cacheVersion++
 }
 
 func Value(
