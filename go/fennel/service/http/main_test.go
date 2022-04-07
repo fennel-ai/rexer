@@ -559,6 +559,7 @@ func checkGetProfileMulti(t *testing.T, c *client.Client, request profilelib.Pro
 }
 
 func valueSendReceive(t *testing.T, controller server, agg aggregate.Aggregate, key, expected value.Value, kwargs value.Dict) {
+	aggregate2.InvalidateCache() // invalidate cache, as it is not being tested here
 	gavr := aggregate.GetAggValueRequest{AggName: agg.Name, Key: key, Kwargs: kwargs}
 	ser, err := json.Marshal(gavr)
 	assert.NoError(t, err)
@@ -575,6 +576,7 @@ func valueSendReceive(t *testing.T, controller server, agg aggregate.Aggregate, 
 
 func batchValueSendReceive(t *testing.T, controller server,
 	reqs []aggregate.GetAggValueRequest, expectedVals []value.Value) {
+	aggregate2.InvalidateCache() // invalidate cache, as it is not being tested here
 	ser, err := json.Marshal(reqs)
 	assert.NoError(t, err)
 	w := httptest.NewRecorder()
