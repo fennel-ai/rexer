@@ -119,6 +119,9 @@ func main() {
 	}
 	// Start a prometheus server.
 	common.StartPromMetricsServer(flags.MetricsPort)
+	// Start a pprof server to export the standard pprof endpoints.
+	common.StartPprofServer()
+
 	// Note: don't delete this log line - e2e tests rely on this to be printed
 	// to know that server has initialized and is ready to take traffic
 	log.Println("server is ready...")

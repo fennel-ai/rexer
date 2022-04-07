@@ -106,6 +106,9 @@ func main() {
 	// Start a prometheus server and add a middleware to the main router to capture
 	// standard metrics.
 	common.StartPromMetricsServer(flags.MetricsPort)
+	// Start a pprof server to export the standard pprof endpoints.
+	common.StartPprofServer()
+
 	router.Use(prometheusMiddleware)
 	// TODO: add-back timeout and rate-limiting middleware once system is more
 	// consistently functioning end-to-end.
