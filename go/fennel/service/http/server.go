@@ -83,10 +83,6 @@ func (s server) setHandlers(router *mux.Router) {
 	router.HandleFunc("/aggregate_value", s.AggregateValue)
 	router.HandleFunc("/batch_aggregate_value", s.BatchAggregateValue)
 	router.HandleFunc("/get_operators", s.GetOperators)
-
-	// for any requests starting with /debug, hand the control to default servemux
-	// needed to enable pprof
-	router.PathPrefix("/debug/").Handler(http.DefaultServeMux)
 }
 
 func (m server) Log(w http.ResponseWriter, req *http.Request) {
