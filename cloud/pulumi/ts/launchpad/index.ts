@@ -130,7 +130,7 @@ const planeConfs: Record<number, PlaneConf> = {
             useAMP: false
         },
         eksConf: {
-            nodeType: "c5.4xlarge",
+            nodeType: "c6i.4xlarge",
         }
     },
     // Lokal's dev tier data plane
