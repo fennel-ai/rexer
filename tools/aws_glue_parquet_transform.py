@@ -14,6 +14,8 @@ see: https://coda.io/d/_dby7ZnsqEiy/S3-Connector-v-s-Self-hosted-service_su9yb
 from datetime import datetime, timedelta
 
 import sys
+
+import s3fs
 from awsglue.transforms import *
 from awsglue.utils import getResolvedOptions
 from pyspark.context import SparkContext
@@ -42,15 +44,17 @@ print(f'======== Reading data from date: year={year}/month={month}/day={day}\n')
 
 # the format of the s3 objects: `s3://p-{PLANE_ID}-training-data/daily/t_{TIER_ID}_featurelog/year=2022/month=04/day=05/hour=18/xyz.json`
 # read JSON files using wildcard to fetch all the files
+
+# use default credentials which in this case would be derived from GLUE job IAM role which has access to the S3 buckets 
+fs = s3fs.S3FileSystem(anon=False)
 feature_logs_path = f's3://p-{args["PLANE_ID"]}-training-data/daily/t_{args["TIER_ID"]}_featurelog/year={year}/month={month}/day={day}/*/*.json'
+if fs.glob(feature_logs_path):
+    features_df = spark.read.json(feature_logs_path)
+    feature_parquet_path = f's3://p-{args["PLANE_ID"]}-training-data/daily/t_{args["TIER_ID"]}_featurelog/year={year}/month={month}/day={day}/features.parquet'
+    features_df.write.mode('overwrite').parquet(feature_parquet_path)
+
 action_logs_path = f's3://p-{args["PLANE_ID"]}-training-data/daily/t_{args["TIER_ID"]}_actionlog_json/year={year}/month={month}/day={day}/*/*.json'
-
-features_df = spark.read.json(feature_logs_path)
-actions_df = spark.read.json(action_logs_path)
-
-feature_parquet_path = f's3://p-{args["PLANE_ID"]}-training-data/daily/t_{args["TIER_ID"]}_featurelog/year={year}/month={month}/day={day}/features.parquet'
-actions_parquet_path = f's3://p-{args["PLANE_ID"]}-training-data/daily/t_{args["TIER_ID"]}_actionlog_json/year={year}/month={month}/day={day}/actions.parquet'
-
-# write to parquet in the same day directory and overwrite existing file (if one exists)
-features_df.write.mode('overwrite').parquet(feature_parquet_path)
-actions_df.write.mode('overwrite').parquet(actions_parquet_path)
+if fs.glob(action_logs_path):
+    actions_df = spark.read.json(action_logs_path)
+    actions_parquet_path = f's3://p-{args["PLANE_ID"]}-training-data/daily/t_{args["TIER_ID"]}_actionlog_json/year={year}/month={month}/day={day}/actions.parquet'
+    actions_df.write.mode('overwrite').parquet(actions_parquet_path)
