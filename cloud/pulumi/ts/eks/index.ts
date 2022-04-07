@@ -33,12 +33,15 @@ const AMI_BY_REGION: Record<string, string> = {
     "us-west-2": "ami-047a7967ea0436232",
 }
 
+const DEFAULT_NODE_TYPE = "t3.medium"
+
 export type inputType = {
     roleArn: string,
     region: string,
     vpcId: pulumi.Output<string>,
     connectedVpcCidrs: string[],
     planeId: number,
+    nodeType?: string,
 }
 
 export type outputType = {
@@ -57,6 +60,7 @@ const parseConfig = (): inputType => {
         vpcId: pulumi.output(config.require(nameof<inputType>("vpcId"))),
         connectedVpcCidrs: config.requireObject(nameof<inputType>("connectedVpcCidrs")),
         planeId: config.requireNumber(nameof<inputType>("planeId")),
+        nodeType: config.require(nameof<inputType>("nodeType")),
     }
 }
 
@@ -290,7 +294,7 @@ export const setup = async (input: inputType): Promise<pulumi.Output<outputType>
         endpointPublicAccess: true,
         subnetIds: subnetIds.ids,
         nodeGroupOptions: {
-            instanceType: "t3.medium",
+            instanceType: input.nodeType || DEFAULT_NODE_TYPE,
             desiredCapacity: 3,
             minSize: 3,
             maxSize: 3,

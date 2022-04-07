@@ -128,6 +128,9 @@ const planeConfs: Record<number, PlaneConf> = {
         },
         prometheusConf: {
             useAMP: false
+        },
+        eksConf: {
+            nodeType: "t3.xlarge",
         }
     },
     // Lokal's dev tier data plane

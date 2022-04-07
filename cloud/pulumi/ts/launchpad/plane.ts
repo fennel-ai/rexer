@@ -51,6 +51,10 @@ type PrometheusConf = {
     useAMP: boolean
 }
 
+type EksConf = {
+    nodeType: string,
+}
+
 export type PlaneConf = {
     planeId: number,
     region: string,
@@ -62,6 +66,7 @@ export type PlaneConf = {
     redisConf?: RedisConfig,
     cacheConf?: CacheConfg,
     prometheusConf: PrometheusConf,
+    eksConf?: EksConf,
 }
 
 export type PlaneOutput = {
@@ -118,6 +123,7 @@ const setupResources = async () => {
         vpcId: vpcOutput.vpcId,
         connectedVpcCidrs: [input.controlPlaneConf.cidrBlock],
         planeId: input.planeId,
+        nodeType: input.eksConf?.nodeType,
     })
     const auroraOutput = await aurora.setup({
         roleArn: input.roleArn,
