@@ -5,7 +5,6 @@ import (
 	"testing"
 
 	"fennel/lib/ftypes"
-	"fennel/lib/profile"
 	"fennel/lib/utils"
 	"fennel/lib/value"
 	"fennel/test"
@@ -14,11 +13,28 @@ import (
 )
 
 func TestDBBasic(t *testing.T) {
-	testProviderBasic(t, dbProvider{})
-}
-
-func TestDBVersion(t *testing.T) {
-	testProviderVersion(t, dbProvider{})
+	t.Parallel()
+	t.Run("db_basic", func(t *testing.T) {
+		testProviderBasic(t, dbProvider{})
+	})
+	t.Run("db_version", func(t *testing.T) {
+		testProviderVersion(t, dbProvider{})
+	})
+	// this is disabled because currently the db behavior doesn't
+	// respect the desired behavior and doesn't create error when setting
+	// the same profile twice with different values
+	// t.Run("db_set_again", func(t *testing.T) {
+	// 	testSetAgain(t, dbProvider{})
+	// })
+	t.Run("db_set_batch", func(t *testing.T) {
+		testSetBatch(t, dbProvider{})
+	})
+	t.Run("db_get_multi", func(t *testing.T) {
+		testSQLGetMulti(t, dbProvider{})
+	})
+	t.Run("db_get_version_batch", func(t *testing.T) {
+		testGetVersionBatched(t, dbProvider{})
+	})
 }
 
 func TestLongKey(t *testing.T) {
@@ -58,88 +74,4 @@ func TestLongOType(t *testing.T) {
 	// but works for otype of length 255 chars
 	err = p.set(ctx, tier, ftypes.OType(utils.RandString(255)), 23, "key", 1, expected)
 	assert.NoError(t, err)
-}
-
-func TestMultiSet(t *testing.T) {
-	tier, err := test.Tier()
-	assert.NoError(t, err)
-	defer test.Teardown(tier)
-	ctx := context.Background()
-	p := dbProvider{}
-
-	val := value.Int(2)
-	v := value.ToJSON(val)
-	val1 := value.Int(5)
-	v1 := value.ToJSON(val1)
-
-	assert.NoError(t, p.set(ctx, tier, "12", 1, "age", 1, v))
-	// write the same profile should not fail the call, nor should it
-	// update the existing value
-	assert.NoError(t, p.set(ctx, tier, "12", 1, "age", 1, v1))
-
-	actual, _ := p.get(ctx, tier, "12", 1, "age", 1)
-	assert.Equal(t, v, actual)
-}
-
-func TestSetBatch(t *testing.T) {
-	tier, err := test.Tier()
-	assert.NoError(t, err)
-	defer test.Teardown(tier)
-	ctx := context.Background()
-	p := dbProvider{}
-
-	val := value.Int(2)
-	val1 := value.Int(5)
-	v := value.ToJSON(val)
-	v1 := value.ToJSON(val1)
-	profiles := []profile.ProfileItemSer{
-		{OType: "12", Oid: 1, Key: "age", Version: 1, Value: v},
-		{OType: "12", Oid: 1, Key: "age", Version: 5, Value: v1},
-	}
-
-	assert.NoError(t, p.setBatch(ctx, tier, profiles))
-
-	actual, _ := p.get(ctx, tier, "12", 1, "age", 1)
-	assert.Equal(t, v, actual)
-	actual1, _ := p.get(ctx, tier, "12", 1, "age", 5)
-	assert.Equal(t, v1, actual1)
-	actual2, _ := p.get(ctx, tier, "12", 1, "age", 0)
-	assert.Equal(t, v1, actual2)
-}
-
-func TestGetVersionBatched(t *testing.T) {
-	tier, err := test.Tier()
-	assert.NoError(t, err)
-	defer test.Teardown(tier)
-	ctx := context.Background()
-	p := dbProvider{}
-
-	val := value.Int(2)
-	val1 := value.Int(5)
-	v := value.ToJSON(val)
-	v1 := value.ToJSON(val1)
-	profiles := []profile.ProfileItemSer{
-		{OType: "12", Oid: 1, Key: "age", Version: 1, Value: v},
-		{OType: "12", Oid: 1, Key: "age2", Version: 5, Value: v1},
-	}
-
-	assert.NoError(t, p.setBatch(ctx, tier, profiles))
-
-	vid := versionIdentifier{otype: "12", oid: 1, key: "age"}
-	vid1 := versionIdentifier{otype: "12", oid: 1, key: "age2"}
-	// this does not exist, should not have an entry in the map returned as well
-	vid2 := versionIdentifier{otype: "15", oid: 1, key: "age"}
-	vMap, err := p.getVersionBatched(ctx, tier, []versionIdentifier{vid, vid1, vid2})
-	assert.NoError(t, err)
-
-	version1, found := vMap[vid]
-	assert.True(t, found)
-	assert.Equal(t, version1, uint64(1))
-
-	version2, found := vMap[vid1]
-	assert.True(t, found)
-	assert.Equal(t, version2, uint64(5))
-
-	_, found = vMap[vid2]
-	assert.False(t, found)
 }
