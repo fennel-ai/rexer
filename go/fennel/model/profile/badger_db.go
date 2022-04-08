@@ -3,13 +3,13 @@ package profile
 import (
 	"bytes"
 	"context"
-	"encoding/binary"
 	"fennel/lib/codex"
 	"fmt"
 
 	"fennel/fbadger"
 	"fennel/lib/ftypes"
 	"fennel/lib/profile"
+	"fennel/lib/utils/binary"
 	"fennel/tier"
 
 	"github.com/dgraph-io/badger/v3"
@@ -40,7 +40,10 @@ func (b badgerProvider) setBatch(ctx context.Context, tier tier.Tier, profiles [
 			if p.Version == 0 {
 				return fmt.Errorf("profile version should be positive")
 			}
-			k := encodeBadgerKey(p.OType, p.Oid, p.Key, p.Version)
+			k, err := encodeBadgerKey(p.OType, p.Oid, p.Key, p.Version)
+			if err != nil {
+				return err
+			}
 			entry, err := txn.Get(k)
 			switch err {
 			case badger.ErrKeyNotFound:
@@ -86,9 +89,12 @@ func (b badgerProvider) getSpecificVersion(ctx context.Context, tier tier.Tier, 
 	if version == 0 {
 		return nil, fmt.Errorf("version should be positive")
 	}
-	k := encodeBadgerKey(otype, oid, key, version)
+	k, err := encodeBadgerKey(otype, oid, key, version)
+	if err != nil {
+		return nil, err
+	}
 	ret := []byte(nil)
-	err := tier.Badger.View(func(txn *badger.Txn) error {
+	err = tier.Badger.View(func(txn *badger.Txn) error {
 		entry, err := txn.Get(k)
 		if err == badger.ErrKeyNotFound {
 			return nil
@@ -109,7 +115,10 @@ func (b badgerProvider) getVersionBatched(ctx context.Context, tier tier.Tier, v
 	err := tier.Badger.View(func(txn *badger.Txn) error {
 		for _, vid := range vids {
 			func(otype ftypes.OType, oid uint64, key string) {
-				k := encodeBadgerKey(otype, oid, key, 0)
+				k, err := encodeBadgerKey(otype, oid, key, 0)
+				if err != nil {
+					return
+				}
 				iter := txn.NewIterator(badger.DefaultIteratorOptions)
 				defer iter.Close()
 				// iterate over all keys with the same prefix and find the largest version
@@ -132,33 +141,50 @@ func (b badgerProvider) getVersionBatched(ctx context.Context, tier tier.Tier, v
 
 var _ provider = badgerProvider{}
 
-func encodeBadgerKey(otype ftypes.OType, oid uint64, key string, version uint64) []byte {
+func encodeBadgerKey(otype ftypes.OType, oid uint64, key string, version uint64) ([]byte, error) {
 	// 1 byte for tablet, 1 for codex, upto 8 for version, upto 8 for oid, upto 8 each for length of otype/key for total of
-	// 34 extra bytes besides otype/okey (but in practice, we will need much less)
+	// 34 extra binary besides otype/okey (but in practice, we will need much less)
 	keybuf := make([]byte, len(otype)+len(key)+34)
 
 	// first write tablet, default codex, otype length (in varint), otype, oid (in varint), key length (in varint), key, version (in varint)
 	cur := 0
-	n, _ := tablet.Write(keybuf[cur:])
-	cur += n
+	if n, err := tablet.Write(keybuf[cur:]); err != nil {
+		return nil, err
+	} else {
+		cur += n
+	}
 
-	n, _ = default_.Write(keybuf[cur:])
-	cur += n
+	if n, err := default_.Write(keybuf[cur:]); err != nil {
+		return nil, err
+	} else {
+		cur += n
+	}
 
-	cur += binary.PutUvarint(keybuf[cur:], uint64(len(otype)))
-	copy(keybuf[cur:], otype)
-	cur += len(otype)
+	if n, err := binary.PutString(keybuf[cur:], string(otype)); err != nil {
+		return nil, err
+	} else {
+		cur += n
+	}
 
-	cur += binary.PutUvarint(keybuf[cur:], oid)
-
-	cur += binary.PutUvarint(keybuf[cur:], uint64(len(key)))
-	copy(keybuf[cur:], key)
-	cur += len(key)
+	if n, err := binary.PutUvarint(keybuf[cur:], oid); err != nil {
+		return nil, err
+	} else {
+		cur += n
+	}
+	if n, err := binary.PutString(keybuf[cur:], key); err != nil {
+		return nil, err
+	} else {
+		cur += n
+	}
 
 	if version > 0 {
-		cur += binary.PutUvarint(keybuf[cur:], version)
+		if n, err := binary.PutUvarint(keybuf[cur:], version); err != nil {
+			return nil, err
+		} else {
+			cur += n
+		}
 	}
-	return keybuf[:cur]
+	return keybuf[:cur], nil
 }
 
 func decodeBadgerKey(buf []byte) (ftypes.OType, uint64, string, uint64, error) {
@@ -181,29 +207,31 @@ func decodeBadgerKey(buf []byte) (ftypes.OType, uint64, string, uint64, error) {
 	}
 	cur += n
 
-	otypeLen, n := binary.Uvarint(buf[cur:])
-	if n <= 0 {
-		return "", 0, "", 0, fmt.Errorf("badger key has invalid otype length")
+	otype, n, err := binary.ReadString(buf[cur:])
+	if err != nil {
+		return "", 0, "", 0, err
+	} else {
+		cur += n
 	}
-	cur += n
-	otype := string(buf[cur : cur+int(otypeLen)])
-	cur += int(otypeLen)
-	oid, n := binary.Uvarint(buf[cur:])
-	if n <= 0 {
-		return "", 0, "", 0, fmt.Errorf("badger key has invalid oid")
+	oid, n, err := binary.ReadUvarint(buf[cur:])
+	if err != nil {
+		return "", 0, "", 0, err
+	} else {
+		cur += n
 	}
-	cur += n
-	keyLen, n := binary.Uvarint(buf[cur:])
-	if n <= 0 {
-		return "", 0, "", 0, fmt.Errorf("badger key has invalid oid")
+	key, n, err := binary.ReadString(buf[cur:])
+	if err != nil {
+		return "", 0, "", 0, err
+	} else {
+		cur += n
 	}
-	cur += n
-	key := string(buf[cur : cur+int(keyLen)])
-	cur += int(keyLen)
 
-	version, n := binary.Uvarint(buf[cur:])
-	if n <= 0 {
-		return "", 0, "", 0, fmt.Errorf("badger key has invalid version")
+	version, n, err := binary.ReadUvarint(buf[cur:])
+	if err != nil {
+		return "", 0, "", 0, err
+	} else {
+		cur += n
 	}
+
 	return ftypes.OType(otype), oid, key, version, nil
 }
