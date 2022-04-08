@@ -10,6 +10,7 @@ import (
 	fkafka "fennel/kafka"
 	"fennel/lib/ftypes"
 	"fennel/tier"
+
 	"github.com/alexflint/go-arg"
 )
 
@@ -56,6 +57,10 @@ func Teardown(tr tier.Tier) error {
 
 	if err := teardownKafkaTopics(tr.ID, flags.KafkaServer, flags.KafkaUsername, flags.KafkaPassword, fkafka.ALL_TOPICS); err != nil {
 		panic(fmt.Sprintf("unable to teardown kafka topics: %v", err))
+	}
+
+	if err := teardownBadger(tr.Badger); err != nil {
+		panic(fmt.Sprintf("unable to teardown badger: %v", err))
 	}
 	return nil
 }
