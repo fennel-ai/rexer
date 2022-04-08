@@ -1,0 +1,94 @@
+package binary
+
+import (
+	"fennel/lib/utils"
+	"testing"
+
+	"github.com/stretchr/testify/assert"
+)
+
+func TestPut_ReadString(t *testing.T) {
+	scenarios := []struct {
+		buf   []byte
+		input string
+		err   bool
+		n     int
+	}{
+		{make([]byte, 0), "hello", true, 0},
+		{make([]byte, 10), "hello", false, 6},
+		{make([]byte, 256), utils.RandString(256), true, 0},
+		{make([]byte, 500), utils.RandString(127), false, 127 + 1},
+		{make([]byte, 500), utils.RandString(258), false, 258 + 2},
+	}
+	for _, scene := range scenarios {
+		n, err := PutString(scene.buf, scene.input)
+		if scene.err {
+			assert.Error(t, err)
+		} else {
+			assert.NoError(t, err)
+			assert.Equal(t, scene.n, n)
+
+			found, n1, err := ReadString(scene.buf)
+			assert.NoError(t, err)
+			assert.Equal(t, scene.input, found)
+			assert.Equal(t, scene.n, n1)
+		}
+	}
+}
+
+func TestPut_ReadVarint(t *testing.T) {
+	scenarios := []struct {
+		buf   []byte
+		input int64
+		err   bool
+		n     int
+	}{
+		{make([]byte, 0), 1, true, 0},
+		{make([]byte, 10), 1, false, 1},
+		{make([]byte, 1), 255, true, 0},
+		{make([]byte, 3), 255, false, 2},
+		{make([]byte, 3), -255, false, 2},
+	}
+	for _, scene := range scenarios {
+		n, err := PutVarint(scene.buf, scene.input)
+		if scene.err {
+			assert.Error(t, err)
+		} else {
+			assert.NoError(t, err)
+			assert.Equal(t, scene.n, n)
+
+			found, n1, err := ReadVarint(scene.buf)
+			assert.NoError(t, err)
+			assert.Equal(t, scene.input, found)
+			assert.Equal(t, scene.n, n1)
+		}
+	}
+}
+
+func TestPut_ReadUvarint(t *testing.T) {
+	scenarios := []struct {
+		buf   []byte
+		input uint64
+		err   bool
+		n     int
+	}{
+		{make([]byte, 0), 1, true, 0},
+		{make([]byte, 10), 1, false, 1},
+		{make([]byte, 1), 255, true, 0},
+		{make([]byte, 3), 255, false, 2},
+	}
+	for _, scene := range scenarios {
+		n, err := PutUvarint(scene.buf, scene.input)
+		if scene.err {
+			assert.Error(t, err)
+		} else {
+			assert.NoError(t, err)
+			assert.Equal(t, scene.n, n)
+
+			found, n1, err := ReadUvarint(scene.buf)
+			assert.NoError(t, err)
+			assert.Equal(t, scene.input, found)
+			assert.Equal(t, scene.n, n1)
+		}
+	}
+}
