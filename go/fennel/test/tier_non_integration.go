@@ -40,7 +40,7 @@ func Tier() (tier.Tier, error) {
 		return tier.Tier{}, fmt.Errorf("failed to construct logger: %v", err)
 	}
 	logger = logger.With(zap.Uint32("tier_id", uint32(tierID)))
-	badger, err := defaultBadger(tierID, "", true)
+	badger, err := defaultBadger(tierID)
 	if err != nil {
 		return tier.Tier{}, err
 	}
