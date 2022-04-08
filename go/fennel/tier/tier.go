@@ -75,6 +75,9 @@ func (args TierArgs) Valid() error {
 	if args.TierID == 0 {
 		missingFields = append(missingFields, "TIER_ID")
 	}
+	if args.BadgerDir == "" {
+		missingFields = append(missingFields, "BADGER_DIR")
+	}
 	if len(missingFields) > 0 {
 		return fmt.Errorf("missing fields: %s", strings.Join(missingFields, ", "))
 	}
@@ -193,8 +196,7 @@ func CreateFromArgs(args *TierArgs) (tier Tier, err error) {
 	}
 	log.Print("Creating badger")
 
-	dirname := fmt.Sprintf("%s/t_%d", args.BadgerDir, args.TierID)
-	opts := badger.DefaultOptions(dirname)
+	opts := badger.DefaultOptions(args.BadgerDir)
 	// only log warnings and errors
 	opts = opts.WithLoggingLevel(badger.WARNING)
 	badgerConf := fbadger.Config{

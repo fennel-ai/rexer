@@ -3,8 +3,10 @@
 package test
 
 import (
+	"fennel/lib/utils"
 	"fmt"
 	"math/rand"
+	"path/filepath"
 	"time"
 
 	fkafka "fennel/kafka"
@@ -23,6 +25,8 @@ func Tier() (tier.Tier, error) {
 	// Parse flags / environment variables.
 	arg.Parse(&flags)
 	flags.TierID = tierID
+	// random badger dir name so that aggregator and api servers on the same host don't collide
+	flags.BadgerDir = filepath.Join(flags.BadgerDir, utils.RandString(5))
 	if err := flags.Valid(); err != nil {
 		return tier.Tier{}, err
 	}
