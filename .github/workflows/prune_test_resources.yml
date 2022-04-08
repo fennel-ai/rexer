@@ -52,6 +52,7 @@ jobs:
           REDIS_SERVER_ADDRESS: ${{ secrets.REDIS_SERVER_ADDRESS }}
           CACHE_PRIMARY: ${{ secrets.CACHE_PRIMARY }}
           TIER_ID: ${{ secrets.TIER_ID }}
+          BADGER_DIR: ${{ secrets.BADGER_DIR }}
         run: |
           cd go/fennel
           go run -v -tags dynamic,integration fennel/test/cmds/tiergod --mode prune
