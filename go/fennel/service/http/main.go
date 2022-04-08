@@ -92,13 +92,13 @@ func main() {
 	var flags struct {
 		tier.TierArgs
 		common.PrometheusArgs
+		common.PprofArgs
 	}
 	arg.MustParse(&flags)
 	log.SetFlags(log.LstdFlags | log.Lshortfile)
 	tier, err := tier.CreateFromArgs(&flags.TierArgs)
 	if err != nil {
 		panic(fmt.Sprintf("Failed to setup tier connectors: %v", err))
-
 	}
 
 	router := mux.NewRouter()
@@ -107,7 +107,7 @@ func main() {
 	// standard metrics.
 	common.StartPromMetricsServer(flags.MetricsPort)
 	// Start a pprof server to export the standard pprof endpoints.
-	common.StartPprofServer()
+	common.StartPprofServer(flags.PprofPort)
 
 	router.Use(prometheusMiddleware)
 	// TODO: add-back timeout and rate-limiting middleware once system is more

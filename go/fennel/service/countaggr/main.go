@@ -108,6 +108,7 @@ func main() {
 	var flags struct {
 		tier.TierArgs
 		common.PrometheusArgs
+		common.PprofArgs
 	}
 	// Parse flags / environment variables.
 	arg.MustParse(&flags)
@@ -120,7 +121,7 @@ func main() {
 	// Start a prometheus server.
 	common.StartPromMetricsServer(flags.MetricsPort)
 	// Start a pprof server to export the standard pprof endpoints.
-	common.StartPprofServer()
+	common.StartPprofServer(flags.PprofPort)
 
 	// Note: don't delete this log line - e2e tests rely on this to be printed
 	// to know that server has initialized and is ready to take traffic
