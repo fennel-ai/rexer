@@ -9,7 +9,7 @@ import (
 )
 
 func TestEnv_Define_Lookup(t *testing.T) {
-	env := Env{nil, make(map[string]value.Value)}
+	env := NewEnv(nil)
 	ret, err := env.Lookup("var")
 	assert.Error(t, err)
 	var val value.Value = value.Int(1)
@@ -17,18 +17,31 @@ func TestEnv_Define_Lookup(t *testing.T) {
 	assert.NoError(t, err)
 	ret, err = env.Lookup("var")
 	assert.Equal(t, val, ret)
-	err = env.Define("var", value.Bool(true))
-	assert.Error(t, err)
+	assert.Error(t, env.Define("var", value.Bool(true)))
+	assert.Error(t, env.DefineReferencable("var", value.Bool(true)))
+}
 
-	// but can bypass this by calling redefine
-	err = env.Redefine("var", value.Bool(true))
-	assert.NoError(t, err)
-	ret, err = env.Lookup("var")
-	assert.Equal(t, value.Bool(true), ret)
+func TestEnv_DefineReferencable_Lookup(t *testing.T) {
+	env := NewEnv(nil)
+	_, err := env.Lookup("var")
+	assert.Error(t, err)
+	val := value.NewDict(map[string]value.Value{"foo": value.NewList(value.Int(1))})
+	assert.NoError(t, env.DefineReferencable("var", val))
+	ret, err := env.Lookup("var")
+	assert.Equal(t, val, ret)
+
+	retd := ret.(value.Dict)
+	val.Set("y", value.Int(1))
+	found, ok := retd.Get("y")
+	assert.True(t, ok)
+	assert.Equal(t, value.Int(1), found)
+
+	assert.Error(t, env.Define("var", value.Bool(true)))
+	assert.Error(t, env.DefineReferencable("var", value.Bool(true)))
 }
 
 func TestEnv_Push_Pop(t *testing.T) {
-	env := Env{nil, make(map[string]value.Value)}
+	env := NewEnv(nil)
 	var val value.Value = value.Int(1)
 	err := env.Define("var", val)
 	assert.NoError(t, err)

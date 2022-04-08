@@ -131,7 +131,7 @@ func (i Interpreter) visitInContext(tree ast.Ast, varmap map[string]value.Value)
 	defer func() { i.env, _ = i.env.PopEnv() }()
 
 	for k, v := range varmap {
-		if err := i.env.Define(k, v); err != nil {
+		if err := i.env.DefineReferencable(k, v); err != nil {
 			return value.Nil, err
 		}
 	}
