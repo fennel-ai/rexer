@@ -180,6 +180,7 @@ const setupResources = async () => {
     const prometheusOutput = await prometheus.setup({
         useAMP: input.prometheusConf.useAMP,
         kubeconfig: eksOutput.kubeconfig,
+        kubeApiServer: eksOutput.apiServer,
         region: input.region,
         roleArn: input.roleArn,
         planeId: input.planeId,

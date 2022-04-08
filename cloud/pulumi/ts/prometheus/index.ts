@@ -21,6 +21,7 @@ export const plugins = {
 export type inputType = {
     useAMP: boolean,
     kubeconfig: pulumi.Input<any>,
+    apiServer: pulumi.Input<string>,
     region: string,
     roleArn: string,
     planeId: number,
@@ -138,6 +139,7 @@ const parseConfig = (): inputType => {
     return {
         useAMP: config.requireBoolean(nameof<inputType>("useAMP")),
         kubeconfig: config.require(nameof<inputType>("kubeconfig")),
+        apiServer: config.require(nameof<inputType>("apiServer")),
         region: config.require(nameof<inputType>("region")),
         roleArn: config.require(nameof<inputType>("roleArn")),
         planeId: config.requireNumber(nameof<inputType>("planeId")),
@@ -182,9 +184,10 @@ export const setupPrometheus = async (input: inputType): Promise<pulumi.Output<o
         kubeconfig: input.kubeconfig,
     })
 
-    // By default prometheus chart creates 4 pods - alertmanager, node-exporter, pushgateway and server.
+    // By default prometheus chart creates 5 pods - alertmanager, node-exporter, pushgateway, server and node-state-metrics.
     // We disable alertmanager - since we will create alerts using grafana.
     // We disable node-exporter - node-exporter exports node and OS level metrics which are too granular for us now.
+    //  Instead we will use node-state-metrics
     // We disable pushgateway - this prometheus service is useful when metrics need to be collected from
     //  short lived jobs which is not the case for us.
     const prometheusRelease = new k8s.helm.v3.Release("prometheus", {
@@ -228,7 +231,14 @@ export const setupPrometheus = async (input: inputType): Promise<pulumi.Output<o
             // This overrides the configurations defined in the config map template in the chart.
             "serverFiles": {
                 "prometheus.yml": prometheusScrapeConfigs,
-            }
+            },
+            "extraScrapeConfigs": [{
+                "job_name": "kube-state-metrics",
+                "metrics_path": "/metrics",
+                "static_configs": [{
+                    "targets": [input.apiServer],
+                }],
+            }]
         },
     }, {provider: k8sProvider})
 

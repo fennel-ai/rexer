@@ -50,6 +50,7 @@ export type outputType = {
     oidcUrl: string,
     instanceRole: string,
     workerSg: string,
+    apiServer: string,
 }
 
 const parseConfig = (): inputType => {
@@ -348,9 +349,10 @@ export const setup = async (input: inputType): Promise<pulumi.Output<outputType>
     const workerSg = cluster.nodeSecurityGroup.id
 
     const clusterName = cluster.core.cluster.name
+    const apiServer = cluster.core.cluster.endpoint
 
     const output = pulumi.output({
-        kubeconfig, oidcUrl, instanceRole, workerSg, clusterName
+        kubeconfig, oidcUrl, instanceRole, workerSg, clusterName, apiServer
     })
 
     return output
