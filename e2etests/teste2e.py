@@ -1,6 +1,7 @@
 import functools
 import os
 import random
+import string
 import unittest
 
 import time
@@ -38,8 +39,12 @@ def tiered(wrapped):
         env['TIER_ID'] = str(tier_id)
         with TestTier(tier_id):
             env['METRICS_PORT'] = str(2436)
+            env['PPROF_PORT'] = str(2437)
+            env['BADGER_DIR'] = '/tmp/badger/' + lib.randname(5)
             with lib.gorun('fennel/service/http', 'dynamic,integration', env):
                 env['METRICS_PORT'] = str(2446)
+                env['PPROF_PORT'] = str(2467)
+                env['BADGER_DIR'] = '/tmp/badger/' + lib.randname(5)
                 with lib.gorun('fennel/service/countaggr', 'dynamic,integration', env):
                     # Wait for the services to be up.
                     time.sleep(10)

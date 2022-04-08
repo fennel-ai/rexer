@@ -18,7 +18,7 @@ def gorun(path, tags, env, flags=None, wait=False, sleep=0, cwd: str = GODIR):
     if flags is None:
         flags = []
 
-    dir = ''.join(random.choice(string.ascii_lowercase) for _ in range(8))
+    dir = randname(8)
     binary = '/tmp/%s/%s' % (dir, path)
     print('going to build:', path)
     b = subprocess.Popen(['go', 'build', '--tags', tags, '-o', binary, path], cwd=cwd)
@@ -39,3 +39,7 @@ def gorun(path, tags, env, flags=None, wait=False, sleep=0, cwd: str = GODIR):
         p.wait()
         os.remove(binary)
         print('done killing:', path, ' '.join(flags))
+
+
+def randname(n: int = 8) -> str:
+    return ''.join(random.choice(string.ascii_lowercase) for _ in range(n))
