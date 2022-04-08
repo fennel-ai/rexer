@@ -130,6 +130,22 @@ const prometheusScrapeConfigs = {
         //     "regex": "go_gc_duration_seconds.*",
         //     "action": "drop",
         //   }]
+    }, {
+        "job_name": "kubernetes-nodes-cadvisor",
+        "kubernetes_sd_configs": [{
+            "role": "node"
+        }],
+        "scheme": "https",
+        "metrics_path": "/metrics/cadvisor",
+        "tls_config": {
+            "ca_file": "/var/run/secrets/kubernetes.io/serviceaccount/ca.crt",
+            "insecure_skip_verify": true,
+        },
+        "bearer_token_file": "/var/run/secrets/kubernetes.io/serviceaccount/token",
+        "relabel_configs": [{
+            "action": "labelmap",
+            "regex": "__meta_kubernetes_node_label_(.+)",
+        }],
     }],
 }
 
