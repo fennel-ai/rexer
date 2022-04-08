@@ -10,6 +10,7 @@ import (
 	"fennel/resource"
 
 	"fennel/db"
+	"fennel/fbadger"
 	"fennel/kafka"
 	"fennel/lib/cache"
 	"fennel/lib/clock"
@@ -17,25 +18,27 @@ import (
 	"fennel/redis"
 	"fennel/sagemaker"
 
+	"github.com/dgraph-io/badger/v3"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 )
 
 type TierArgs struct {
-	sagemaker.SagemakerArgs
+	sagemaker.SagemakerArgs `json:"sagemaker_._sagemaker_args"`
 
-	KafkaServer   string         `arg:"--kafka-server,env:KAFKA_SERVER_ADDRESS"`
-	KafkaUsername string         `arg:"--kafka-user,env:KAFKA_USERNAME"`
-	KafkaPassword string         `arg:"--kafka-password,env:KAFKA_PASSWORD"`
-	MysqlHost     string         `arg:"--mysql-host,env:MYSQL_SERVER_ADDRESS"`
-	MysqlDB       string         `arg:"--mysql-db,env:MYSQL_DATABASE_NAME"`
-	MysqlUsername string         `arg:"--mysql-user,env:MYSQL_USERNAME"`
-	MysqlPassword string         `arg:"--mysql-password,env:MYSQL_PASSWORD"`
-	TierID        ftypes.RealmID `arg:"--tier-id,env:TIER_ID"`
-	RedisServer   string         `arg:"--redis-server,env:REDIS_SERVER_ADDRESS"`
-	CachePrimary  string         `arg:"--cache-primary,env:CACHE_PRIMARY"`
-	CacheReplica  string         `arg:"--cache-replica,env:CACHE_REPLICA"`
-	Dev           bool           `arg:"--dev" default:"true"`
+	KafkaServer   string         `arg:"--kafka-server,env:KAFKA_SERVER_ADDRESS" json:"kafka_server,omitempty"`
+	KafkaUsername string         `arg:"--kafka-user,env:KAFKA_USERNAME" json:"kafka_username,omitempty"`
+	KafkaPassword string         `arg:"--kafka-password,env:KAFKA_PASSWORD" json:"kafka_password,omitempty"`
+	MysqlHost     string         `arg:"--mysql-host,env:MYSQL_SERVER_ADDRESS" json:"mysql_host,omitempty"`
+	MysqlDB       string         `arg:"--mysql-db,env:MYSQL_DATABASE_NAME" json:"mysql_db,omitempty"`
+	MysqlUsername string         `arg:"--mysql-user,env:MYSQL_USERNAME" json:"mysql_username,omitempty"`
+	MysqlPassword string         `arg:"--mysql-password,env:MYSQL_PASSWORD" json:"mysql_password,omitempty"`
+	TierID        ftypes.RealmID `arg:"--tier-id,env:TIER_ID" json:"tier_id,omitempty"`
+	RedisServer   string         `arg:"--redis-server,env:REDIS_SERVER_ADDRESS" json:"redis_server,omitempty"`
+	CachePrimary  string         `arg:"--cache-primary,env:CACHE_PRIMARY" json:"cache_primary,omitempty"`
+	CacheReplica  string         `arg:"--cache-replica,env:CACHE_REPLICA" json:"cache_replica,omitempty"`
+	Dev           bool           `arg:"--dev" default:"true" json:"dev,omitempty"`
+	BadgerDir     string         `arg:"--badger_dir,env:BADGER_DIR" json:"badger_dir,omitempty"`
 }
 
 type KafkaConsumerCreator func(string, string, string) (kafka.FConsumer, error)
@@ -92,6 +95,7 @@ type Tier struct {
 	Logger           *zap.Logger
 	NewKafkaConsumer KafkaConsumerCreator
 	SagemakerClient  sagemaker.SMClient
+	Badger           fbadger.DB
 }
 
 func CreateFromArgs(args *TierArgs) (tier Tier, err error) {
@@ -187,6 +191,20 @@ func CreateFromArgs(args *TierArgs) (tier Tier, err error) {
 	if err != nil {
 		return tier, fmt.Errorf("failed to create sagemaker client: %v", err)
 	}
+	log.Print("Creating badger")
+
+	dirname := fmt.Sprintf("%s/t_%d", args.BadgerDir, args.TierID)
+	opts := badger.DefaultOptions(dirname)
+	// only log warnings and errors
+	opts = opts.WithLoggingLevel(badger.WARNING)
+	badgerConf := fbadger.Config{
+		Opts:  opts,
+		Scope: scope,
+	}
+	bdb, err := badgerConf.Materialize()
+	if err != nil {
+		return tier, fmt.Errorf("failed to create badger: %v", err)
+	}
 
 	return Tier{
 		DB:               sqlConn.(db.Connection),
@@ -198,6 +216,7 @@ func CreateFromArgs(args *TierArgs) (tier Tier, err error) {
 		Cache:            redis.NewCache(cacheClient.(redis.Client)),
 		NewKafkaConsumer: consumerCreator,
 		SagemakerClient:  smclient,
+		Badger:           bdb.(fbadger.DB),
 	}, nil
 }
 

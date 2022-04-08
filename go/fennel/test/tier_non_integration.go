@@ -40,6 +40,10 @@ func Tier() (tier.Tier, error) {
 		return tier.Tier{}, fmt.Errorf("failed to construct logger: %v", err)
 	}
 	logger = logger.With(zap.Uint32("tier_id", uint32(tierID)))
+	badger, err := defaultBadger(tierID, "", true)
+	if err != nil {
+		return tier.Tier{}, err
+	}
 	return tier.Tier{
 		ID:               tierID,
 		DB:               db,
@@ -49,12 +53,16 @@ func Tier() (tier.Tier, error) {
 		Clock:            clock.Unix{},
 		NewKafkaConsumer: consumerCreator,
 		Logger:           logger,
+		Badger:           badger,
 	}, err
 }
 
 func Teardown(tier tier.Tier) error {
 	if err := drop(tier.ID, "testdb" /*logicalname*/, os.Getenv("MYSQL_USERNAME"), os.Getenv("MYSQL_PASSWORD"), os.Getenv("MYSQL_SERVER_ADDRESS")); err != nil {
 		panic(fmt.Sprintf("error in db teardown: %v\n", err))
+	}
+	if err := teardownBadger(tier.Badger); err != nil {
+		panic(fmt.Sprintf("error in badger teardown: %v\n", err))
 	}
 	return nil
 }
