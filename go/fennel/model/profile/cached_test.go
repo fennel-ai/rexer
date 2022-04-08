@@ -44,7 +44,28 @@ func (m *mockProvider) getVersionBatched(ctx context.Context, tier tier.Tier, vi
 var _ provider = &mockProvider{}
 
 func TestCachedDBBasic(t *testing.T) {
-	testProviderBasic(t, cachedProvider{base: dbProvider{}})
+	t.Parallel()
+	provider := cachedProvider{base: dbProvider{}}
+	t.Run("cache_db_basic", func(t *testing.T) {
+		testProviderBasic(t, provider)
+	})
+	t.Run("cache_db_version", func(t *testing.T) {
+		testProviderVersion(t, provider)
+	})
+	// this doesn't work because the underlying DB call works and so cache assumes it worked
+	// and sets the updated value in cache
+	// t.Run("cache_db_set_again", func(t *testing.T) {
+	// 	testSetAgain(t, provider)
+	// })
+	t.Run("cache_db_set_batch", func(t *testing.T) {
+		testSetBatch(t, provider)
+	})
+	t.Run("cache_db_get_multi", func(t *testing.T) {
+		testSQLGetMulti(t, provider)
+	})
+	t.Run("cache_db_get_version_batch", func(t *testing.T) {
+		testGetVersionBatched(t, provider)
+	})
 }
 
 func TestCaching(t *testing.T) {
@@ -57,9 +78,9 @@ func TestCaching(t *testing.T) {
 	origmock := []byte{1, 2, 3}
 	gt := mockProvider{origmock}
 	p := cachedProvider{base: &gt}
-	//p := CachedDB{cache: redis.NewCache(client.(redis.Client)), groundTruth: &gt}
-	//err = p.Init()
-	//assert.NoError(t, err)
+	// p := CachedDB{cache: redis.NewCache(client.(redis.Client)), groundTruth: &gt}
+	// err = p.Init()
+	// assert.NoError(t, err)
 
 	// initially we should get the mocked origmock value back
 	found, err := p.get(ctx, tier, "1", 1232, "summary", 1)
@@ -83,10 +104,6 @@ func TestCaching(t *testing.T) {
 	found, err = p.get(ctx, tier, "1", 1232, "summary", 1)
 	assert.NoError(t, err)
 	assert.Equal(t, []byte{7, 8, 9}, found)
-}
-
-func TestCachedDBVersion(t *testing.T) {
-	testProviderVersion(t, cachedProvider{base: dbProvider{}})
 }
 
 func TestCachedGetBatch(t *testing.T) {
