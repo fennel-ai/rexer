@@ -4,24 +4,13 @@ import (
 	"fennel/fbadger"
 	"fennel/lib/ftypes"
 	"fennel/resource"
-	"fmt"
-	"io/ioutil"
 	"os"
 
 	"github.com/dgraph-io/badger/v3"
 )
 
-func defaultBadger(tierID ftypes.RealmID, dir string, memory bool) (fbadger.DB, error) {
-	var opts badger.Options
-	if !memory {
-		dir, err := ioutil.TempDir(dir, fmt.Sprintf("badger-%d", tierID))
-		if err != nil {
-			return fbadger.DB{}, err
-		}
-		opts = badger.DefaultOptions(dir)
-	} else {
-		opts = badger.DefaultOptions("").WithInMemory(true)
-	}
+func defaultBadger(tierID ftypes.RealmID) (fbadger.DB, error) {
+	opts := badger.DefaultOptions("").WithInMemory(true)
 	opts = opts.WithLoggingLevel(badger.WARNING)
 	conf := fbadger.Config{
 		Opts:  opts,
