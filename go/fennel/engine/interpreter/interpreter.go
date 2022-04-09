@@ -255,13 +255,15 @@ func (i Interpreter) VisitOpcall(operands []ast.Ast, vars []string, namespace, n
 	if len(vars) > 0 && len(operands) != len(vars) {
 		return nil, fmt.Errorf("operator '%s.%s' can not be applied: different number of operands and variables", namespace, name)
 	}
-	// eval operands and verify it is of the right type
+	// eval operands, potentially in parallel
+	vals, err := i.visitInParallel(operands)
+	if err != nil {
+		return value.Nil, err
+	}
+	// verify each operand is a list
 	voperands := make([]value.List, len(operands))
-	for j, operand := range operands {
-		val, err := operand.AcceptValue(i)
-		if err != nil {
-			return value.Nil, err
-		}
+	for j := range vals {
+		val := vals[j]
 		inData, ok := val.(value.List)
 		if !ok {
 			return value.Nil, fmt.Errorf("operator '%s.%s' can not be applied: operand not a list", namespace, name)
@@ -333,7 +335,7 @@ func (i Interpreter) getStaticKwargs(op operators.Operator, kwargs ast.Dict) (va
 			return value.Dict{}, fmt.Errorf("kwarg '%s' not provided for operator '%s.%s'", k, sig.Module, sig.Name)
 		case !ok && p.Optional:
 			ret.Set(k, p.Default)
-			//ret[k] = p.Default
+			// ret[k] = p.Default
 		case ok:
 			val, err := tree.AcceptValue(i)
 			if err != nil {
@@ -400,4 +402,31 @@ func (i Interpreter) getOperator(namespace, name string) (operators.Operator, er
 	}
 	ret, err := op.New(i.queryArgs(), i.bootargs)
 	return ret, err
+}
+
+func (i Interpreter) visitInParallel(trees []ast.Ast) ([]value.Value, error) {
+	type res struct {
+		value.Value
+		error
+	}
+	results := make([]chan res, len(trees))
+	for j := range trees {
+		ch := make(chan res)
+		go func(ch chan<- res) {
+			val, err := trees[j].AcceptValue(i)
+			ch <- res{val, err}
+		}(ch)
+		results[j] = ch
+	}
+	ret := make([]value.Value, len(trees))
+	for j, result := range results {
+		r := <-result
+		val, err := r.Value, r.error
+		if err != nil {
+			return nil, err
+		} else {
+			ret[j] = val
+		}
+	}
+	return ret, nil
 }
