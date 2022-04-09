@@ -29,7 +29,11 @@ func (r repeater) Apply(kwargs value.Dict, in operators.InputIter, out *value.Li
 			return fmt.Errorf("repeat: negative repeat count")
 		}
 		for i := int64(0); i < count; i++ {
-			out.Append(heads[0])
+			if i == 0 {
+				out.Append(heads[0])
+			} else {
+				out.Append(heads[0].Clone())
+			}
 		}
 	}
 	return nil
