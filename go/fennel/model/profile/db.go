@@ -122,6 +122,8 @@ func (D dbProvider) get(ctx context.Context, tier tier.Tier, otype ftypes.OType,
 
 // getVersionBatched returns the largest version of the profile identified using (otype, oid, key)
 func (D dbProvider) getVersionBatched(ctx context.Context, tier tier.Tier, vids []versionIdentifier) (map[versionIdentifier]uint64, error) {
+	defer timer.Start(ctx, tier.ID, "model.profile.db.getVersionBatched").Stop()
+
 	// deduplicate profiles on (otype, oid, key)
 	vidUnique := make(map[versionIdentifier]struct{})
 	for _, vid := range vids {
