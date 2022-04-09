@@ -6,7 +6,7 @@ type TabletType uint8
 
 const (
 	Profile   TabletType = 1
-	Aggregate            = 2
+	Aggregate TabletType = 2
 )
 
 func (t TabletType) String() string {

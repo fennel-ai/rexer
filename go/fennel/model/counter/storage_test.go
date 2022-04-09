@@ -13,38 +13,84 @@ import (
 	"fennel/test"
 )
 
-func TestStorage(t *testing.T) {
+func TestFlatRedisStorage(t *testing.T) {
 	t.Parallel()
+	t.Run("test_basic", func(t *testing.T) {
+		testStorage(t, FlatRedisStorage{})
+	})
+	t.Run("test_multi", func(t *testing.T) {
+		testStorageMulti(t, FlatRedisStorage{})
+	})
+	t.Run("test_large", func(t *testing.T) {
+		testLarge(t, FlatRedisStorage{}, 20, 1000)
+	})
+}
+
+func TestTwoLevelRedisStore_Get(t *testing.T) {
+	t.Parallel()
+	t.Run("test_basic", func(t *testing.T) {
+		testStorage(t, twoLevelRedisStore{period: 24 * 3600, retention: 0})
+	})
+	t.Run("test_multi", func(t *testing.T) {
+		testStorageMulti(t, twoLevelRedisStore{period: 24 * 3600, retention: 0})
+	})
+	t.Run("test_large", func(t *testing.T) {
+		testLarge(t, twoLevelRedisStore{period: 24 * 3600, retention: 30 * 3600}, 20, 1000)
+	})
+}
+
+func TestBadgerStorage(t *testing.T) {
+	t.Parallel()
+	t.Run("test_basic", func(t *testing.T) {
+		testStorage(t, BadgerStorage{})
+	})
+	t.Run("test_multi", func(t *testing.T) {
+		testStorageMulti(t, BadgerStorage{})
+	})
+	t.Run("test_large", func(t *testing.T) {
+		testLarge(t, BadgerStorage{}, 20, 1000)
+	})
+
+	t.Run("test_encode_decode", func(t *testing.T) {
+		buckets := []Bucket{
+			{"hello", ftypes.Window_HOUR, 11, 123, nil},
+			{"hello", ftypes.Window_MINUTE, 11, 12323, nil},
+			{"hello", ftypes.Window_DAY, 1, 123, nil},
+		}
+		for _, b := range buckets {
+			name := ftypes.AggName(utils.RandString(5))
+			buf, err := badgerEncode(name, b)
+			assert.NoError(t, err)
+			found_name, found_bucket, err := badgerDecode(buf)
+			assert.NoError(t, err)
+			assert.Equal(t, name, found_name)
+			assert.Equal(t, b, found_bucket)
+		}
+	})
+}
+
+func testStorage(t *testing.T, store BucketStore) {
 	tier, err := test.Tier()
 	assert.NoError(t, err)
 	defer test.Teardown(tier)
 	ctx := context.Background()
 
 	scenarios := []struct {
-		name    ftypes.AggName
-		store   BucketStore
 		buckets []Bucket
 		z       value.Value
 		v1      []value.Value
 		v2      []value.Value
 	}{
 		{
-			"name1",
-			FlatRedisStorage{},
 			[]Bucket{
 				{Key: "k1", Window: ftypes.Window_DAY, Width: 1, Index: 5, Value: nil},
-				{Key: "k2", Window: ftypes.Window_HOUR, Width: 7, Index: 8, Value: nil},
+				{Key: "k2", Window: ftypes.Window_HOUR, Width: 4, Index: 8, Value: nil},
 			},
 			value.Int(0),
 			[]value.Value{value.String("hi"), value.Int(5)},
 			[]value.Value{value.Nil, value.Int(4)},
 		},
 		{
-			"name2",
-			twoLevelRedisStore{
-				period:    24 * 3600,
-				retention: 0,
-			},
 			[]Bucket{
 				{Key: "k1", Window: ftypes.Window_DAY, Width: 1, Index: 5, Value: nil},
 				{Key: "k2", Window: ftypes.Window_HOUR, Width: 6, Index: 7, Value: nil},
@@ -55,11 +101,6 @@ func TestStorage(t *testing.T) {
 			[]value.Value{value.Nil, value.Int(4), value.Int(1)},
 		},
 		{
-			"name3",
-			twoLevelRedisStore{
-				period:    24 * 3600,
-				retention: 0,
-			},
 			[]Bucket{
 				{Key: "k1", Window: ftypes.Window_DAY, Width: 1, Index: 5, Value: nil},
 				{Key: "k1", Window: ftypes.Window_HOUR, Width: 6, Index: 9, Value: nil},
@@ -73,8 +114,10 @@ func TestStorage(t *testing.T) {
 		},
 	}
 	for _, scene := range scenarios {
+		// user random strings as names so that tests don't fail due to name collisions
+		name := ftypes.AggName(utils.RandString(10))
 		// initially nothing is found
-		found, err := scene.store.Get(ctx, tier, scene.name, scene.buckets, scene.z)
+		found, err := store.Get(ctx, tier, name, scene.buckets, scene.z)
 		assert.NoError(t, err)
 		assert.Len(t, found, len(scene.buckets))
 		for _, v := range found {
@@ -84,10 +127,10 @@ func TestStorage(t *testing.T) {
 		for i := range scene.buckets {
 			scene.buckets[i].Value = scene.v1[i]
 		}
-		assert.NoError(t, scene.store.Set(ctx, tier, scene.name, scene.buckets))
+		assert.NoError(t, store.Set(ctx, tier, name, scene.buckets))
 
 		// check it went through
-		found, err = scene.store.Get(ctx, tier, scene.name, scene.buckets, scene.z)
+		found, err = store.Get(ctx, tier, name, scene.buckets, scene.z)
 		assert.NoError(t, err)
 		assert.Len(t, found, len(scene.buckets))
 		for i, v := range found {
@@ -103,8 +146,8 @@ func TestStorage(t *testing.T) {
 			scene.buckets[i].Value = scene.v2[i]
 			odd = append(odd, scene.buckets[i])
 		}
-		assert.NoError(t, scene.store.Set(ctx, tier, scene.name, odd))
-		found, err = scene.store.Get(ctx, tier, scene.name, scene.buckets, scene.z)
+		assert.NoError(t, store.Set(ctx, tier, name, odd))
+		found, err = store.Get(ctx, tier, name, scene.buckets, scene.z)
 		assert.NoError(t, err)
 		assert.Len(t, found, len(scene.buckets))
 		for i := range scene.buckets {
@@ -117,8 +160,7 @@ func TestStorage(t *testing.T) {
 	}
 }
 
-func TestStorageMulti(t *testing.T) {
-	t.Parallel()
+func testStorageMulti(t *testing.T, store BucketStore) {
 	tier, err := test.Tier()
 	assert.NoError(t, err)
 	defer test.Teardown(tier)
@@ -166,7 +208,7 @@ func TestStorageMulti(t *testing.T) {
 		value.String(""),
 	}
 	// initially nothing to be found
-	vals, err := FlatRedisStorage{}.GetMulti(ctx, tier, names, buckets, defaults)
+	vals, err := store.GetMulti(ctx, tier, names, buckets, defaults)
 	assert.NoError(t, err)
 	assert.Equal(t, len(buckets), len(vals))
 	for i := range buckets {
@@ -188,36 +230,6 @@ func TestStorageMulti(t *testing.T) {
 			buckets[i][j].Value = expected[i][j]
 		}
 	}
-	err = FlatRedisStorage{}.SetMulti(ctx, tier, names, buckets)
-	assert.NoError(t, err)
-	for i := range buckets {
-		for j := range buckets[i] {
-			buckets[i][j].Value = nil
-		}
-	}
-	found, err := FlatRedisStorage{}.GetMulti(ctx, tier, names, buckets, defaults)
-	assert.NoError(t, err)
-	assert.Equal(t, len(expected), len(found))
-	for i := range found {
-		assert.Equal(t, len(expected[i]), len(found[i]))
-		for j := range found[i] {
-			assert.True(t, expected[i][j].Equal(found[i][j]))
-		}
-	}
-	// set values and check with TwoLevelRedisStore
-	store := twoLevelRedisStore{period: 24 * 3600, retention: 0}
-	expected = [][]value.Value{
-		{},
-		{value.Int(5), value.Int(4), value.Int(3), value.Int(2), value.Int(1)},
-		{value.Double(3.0), value.Double(2.0), value.Double(1.0)},
-		{value.String("d"), value.String("c"), value.String("b"), value.String("a")},
-		{value.String("z"), value.String("c"), value.String("b"), value.String("a")},
-	}
-	for i := range buckets {
-		for j := range buckets[i] {
-			buckets[i][j].Value = expected[i][j]
-		}
-	}
 	err = store.SetMulti(ctx, tier, names, buckets)
 	assert.NoError(t, err)
 	for i := range buckets {
@@ -225,13 +237,44 @@ func TestStorageMulti(t *testing.T) {
 			buckets[i][j].Value = nil
 		}
 	}
-	found, err = store.GetMulti(ctx, tier, names, buckets, defaults)
+	found, err := store.GetMulti(ctx, tier, names, buckets, defaults)
 	assert.NoError(t, err)
 	assert.Equal(t, len(expected), len(found))
 	for i := range found {
 		assert.Equal(t, len(expected[i]), len(found[i]))
 		for j := range found[i] {
 			assert.True(t, expected[i][j].Equal(found[i][j]))
+		}
+	}
+}
+
+func testLarge(t *testing.T, store BucketStore, numAggs, numBuckets int) {
+	tier, err := test.Tier()
+	assert.NoError(t, err)
+	defer test.Teardown(tier)
+	ctx := context.Background()
+
+	names := make([]ftypes.AggName, numAggs)
+	buckets := make([][]Bucket, numAggs)
+	for i := range names {
+		names[i] = ftypes.AggName(utils.RandString(20))
+		buckets[i] = make([]Bucket, numBuckets)
+		for j := range buckets[i] {
+			buckets[i][j] = Bucket{
+				Key:    utils.RandString(30),
+				Window: ftypes.Window_HOUR,
+				Width:  3,
+				Index:  uint64(j),
+				Value:  value.NewList(value.Int(1), value.Int(2)),
+			}
+		}
+	}
+	assert.NoError(t, store.SetMulti(ctx, tier, names, buckets))
+	found, err := store.GetMulti(ctx, tier, names, buckets, make([]value.Value, len(names)))
+	assert.NoError(t, err)
+	for i := range names {
+		for j := range buckets[i] {
+			assert.Equal(t, buckets[i][j].Value, found[i][j])
 		}
 	}
 }
@@ -292,7 +335,8 @@ func TestTwoLevelRedisStore(t *testing.T) {
 	}
 }
 
-func BenchmarkStorage(b *testing.B) {
+func benchmarkStorage(b *testing.B, store BucketStore) {
+	fmt.Printf("inside benchmark...\n")
 	tier, err := test.Tier()
 	assert.NoError(b, err)
 	defer test.Teardown(tier)
@@ -300,7 +344,7 @@ func BenchmarkStorage(b *testing.B) {
 
 	buckets := make([]Bucket, 0)
 	groupKey := utils.RandString(30)
-	for i := 0; i < 1000; i++ {
+	for i := 0; i < 10000; i++ {
 		b := Bucket{
 			Key:    fmt.Sprintf("%s:%d", groupKey, i/50),
 			Window: ftypes.Window_MINUTE,
@@ -310,13 +354,24 @@ func BenchmarkStorage(b *testing.B) {
 		}
 		buckets = append(buckets, b)
 	}
-	name1 := ftypes.AggName(utils.RandString(30))
-	s1 := FlatRedisStorage{}
-	name2 := ftypes.AggName(utils.RandString(30))
-	s2 := twoLevelRedisStore{
-		period:    24 * 3600,
-		retention: 0,
+	name := ftypes.AggName(utils.RandString(30))
+	store.Set(ctx, tier, name, buckets)
+	dummy := 0
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		vals, _ := store.Get(ctx, tier, name, buckets, value.Int(1))
+		dummy += len(vals)
 	}
-	s1.Set(ctx, tier, name1, buckets)
-	s2.Set(ctx, tier, name2, buckets)
+}
+
+func BenchmarkStorage(b *testing.B) {
+	b.Run("flat_redis", func(b *testing.B) {
+		benchmarkStorage(b, FlatRedisStorage{})
+	})
+	b.Run("two_level_redis_storage", func(b *testing.B) {
+		benchmarkStorage(b, twoLevelRedisStore{period: 24 * 3600})
+	})
+	b.Run("badger_flat_storage", func(b *testing.B) {
+		benchmarkStorage(b, BadgerStorage{})
+	})
 }
