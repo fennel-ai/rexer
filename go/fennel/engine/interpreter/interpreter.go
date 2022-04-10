@@ -412,10 +412,10 @@ func (i Interpreter) visitInParallel(trees []ast.Ast) ([]value.Value, error) {
 	results := make([]chan res, len(trees))
 	for j := range trees {
 		ch := make(chan res)
-		go func(ch chan<- res) {
-			val, err := trees[j].AcceptValue(i)
+		go func(ch chan<- res, idx int) {
+			val, err := trees[idx].AcceptValue(i)
 			ch <- res{val, err}
-		}(ch)
+		}(ch, j)
 		results[j] = ch
 	}
 	ret := make([]value.Value, len(trees))
