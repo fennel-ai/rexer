@@ -53,6 +53,11 @@ type PrometheusConf = {
 
 type EksConf = {
     nodeType: string,
+    desiredCapacity: number,
+}
+
+type HttpServerConf = {
+    replicas: number,
 }
 
 export type PlaneConf = {
@@ -67,6 +72,8 @@ export type PlaneConf = {
     cacheConf?: CacheConfg,
     prometheusConf: PrometheusConf,
     eksConf?: EksConf,
+    // TODO: Create tier specific configurations and move this there
+    httpServerConf?: HttpServerConf,
 }
 
 export type PlaneOutput = {
@@ -124,6 +131,7 @@ const setupResources = async () => {
         connectedVpcCidrs: [input.controlPlaneConf.cidrBlock],
         planeId: input.planeId,
         nodeType: input.eksConf?.nodeType,
+        desiredCapacity: input.eksConf?.desiredCapacity,
     })
     const auroraOutput = await aurora.setup({
         roleArn: input.roleArn,
