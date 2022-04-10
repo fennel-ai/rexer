@@ -7,15 +7,15 @@ import (
 	"strings"
 	"time"
 
-	"fennel/resource"
-
 	"fennel/db"
 	"fennel/fbadger"
 	"fennel/kafka"
 	"fennel/lib/cache"
 	"fennel/lib/clock"
 	"fennel/lib/ftypes"
+	"fennel/pcache"
 	"fennel/redis"
+	"fennel/resource"
 	"fennel/sagemaker"
 
 	"github.com/dgraph-io/badger/v3"
@@ -93,6 +93,7 @@ type Tier struct {
 	DB               db.Connection
 	Redis            redis.Client
 	Cache            cache.Cache
+	PCache           pcache.PCache
 	Producers        map[string]kafka.FProducer
 	Clock            clock.Clock
 	Logger           *zap.Logger
@@ -138,6 +139,15 @@ func CreateFromArgs(args *TierArgs) (tier Tier, err error) {
 	if err != nil {
 		return tier, fmt.Errorf("failed to create cache client: %v", err)
 	}
+
+	log.Print("Creating process-level cache")
+	// Capcity: 32 MB
+	// Expected size of item: 32 bytes
+	pCache, err := pcache.NewPCache(1<<25, 1<<5)
+	if err != nil {
+		return tier, fmt.Errorf("failed to create process-level cache: %v", err)
+	}
+
 	// Start a goroutine to periodically record various connection stats.
 	go func() {
 		ticker := time.NewTicker(30 * time.Second)
@@ -146,6 +156,7 @@ func CreateFromArgs(args *TierArgs) (tier Tier, err error) {
 			db.RecordConnectionStats(sqlConn.(db.Connection))
 			redis.RecordConnectionStats("redis", redisClient.(redis.Client))
 			redis.RecordConnectionStats("elasticache", cacheClient.(redis.Client))
+			pcache.RecordStats("pcache", pCache)
 		}
 	}()
 
@@ -216,6 +227,7 @@ func CreateFromArgs(args *TierArgs) (tier Tier, err error) {
 		ID:               tierID,
 		Logger:           logger,
 		Cache:            redis.NewCache(cacheClient.(redis.Client)),
+		PCache:           pCache,
 		NewKafkaConsumer: consumerCreator,
 		SagemakerClient:  smclient,
 		Badger:           bdb.(fbadger.DB),
