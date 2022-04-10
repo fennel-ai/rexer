@@ -17,26 +17,12 @@ import (
 	"fennel/lib/value"
 	modelCounter "fennel/model/counter"
 	"fennel/tier"
-	"github.com/dgraph-io/ristretto"
 	"go.uber.org/zap"
 )
 
 const cacheValueDuration = time.Minute
 
 var cacheVersion = 0 // increment this to invalidate all existing cache keys for aggregate
-var cache *ristretto.Cache
-
-func init() {
-	var err error
-	cache, err = ristretto.NewCache(&ristretto.Config{
-		NumCounters: 10 * (1 << 20), // expecting to store 1 million unique items in full cache
-		MaxCost:     1 << 25,        // 32 MB
-		BufferItems: 64,             // ristretto recommends keeping this at 64
-	})
-	if err != nil {
-		panic(fmt.Sprintf("failed to create aggregate value cache"))
-	}
-}
 
 func InvalidateCache() {
 	cacheVersion++
@@ -46,7 +32,7 @@ func Value(
 	ctx context.Context, tier tier.Tier, name ftypes.AggName, key value.Value, kwargs value.Dict,
 ) (value.Value, error) {
 	ckey := makeCacheKey(name, key, kwargs)
-	v, ok := cache.Get(ckey)
+	v, ok := tier.PCache.Get(ckey)
 	// If already present in cache and no failure interpreting it, return directly
 	if ok {
 		if val, ok := fromCacheValue(tier, v); ok {
@@ -58,9 +44,9 @@ func Value(
 	if err != nil {
 		return nil, err
 	}
-	ok = cache.SetWithTTL(ckey, val, 0, cacheValueDuration)
+	ok = tier.PCache.SetWithTTL(ckey, val, cacheValueDuration)
 	if !ok {
-		tier.Logger.Warn(
+		tier.Logger.Info(
 			fmt.Sprintf("failed to set aggregate value in cache: key: '%s' value: '%s'", ckey, val.String()),
 		)
 	}
@@ -77,7 +63,7 @@ func BatchValue(ctx context.Context, tier tier.Tier, batch []aggregate.GetAggVal
 	found := make([]bool, len(batch))
 	for i, ckey := range ckeys {
 		var v interface{}
-		v, ok := cache.Get(ckey)
+		v, ok := tier.PCache.Get(ckey)
 		if ok {
 			val, ok := fromCacheValue(tier, v)
 			vals[i] = val
@@ -110,9 +96,9 @@ func BatchValue(ctx context.Context, tier tier.Tier, batch []aggregate.GetAggVal
 	}
 	// now set uncached values in cache
 	for i := range uckeys {
-		ok := cache.SetWithTTL(uckeys[i], ucvals[i], 0, cacheValueDuration)
+		ok := tier.PCache.SetWithTTL(uckeys[i], ucvals[i], cacheValueDuration)
 		if !ok {
-			tier.Logger.Warn(fmt.Sprintf(
+			tier.Logger.Info(fmt.Sprintf(
 				"failed to set aggregate value in cache: key: '%s' value: '%s'", uckeys[i], ucvals[i].String(),
 			))
 		}

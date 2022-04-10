@@ -10,6 +10,7 @@ import (
 
 	"fennel/lib/clock"
 	"fennel/lib/ftypes"
+	"fennel/pcache"
 	"fennel/redis"
 	"fennel/tier"
 
@@ -35,6 +36,12 @@ func Tier() (tier.Tier, error) {
 	if err != nil {
 		return tier.Tier{}, err
 	}
+
+	PCache, err := pcache.NewPCache(1<<25, 1<<5)
+	if err != nil {
+		return tier.Tier{}, err
+	}
+
 	logger, err := zap.NewDevelopment()
 	if err != nil {
 		return tier.Tier{}, fmt.Errorf("failed to construct logger: %v", err)
@@ -48,6 +55,7 @@ func Tier() (tier.Tier, error) {
 		ID:               tierID,
 		DB:               db,
 		Cache:            Cache,
+		PCache:           PCache,
 		Redis:            redClient,
 		Producers:        producers,
 		Clock:            clock.Unix{},
