@@ -270,7 +270,11 @@ func testLarge(t *testing.T, store BucketStore, numAggs, numBuckets int) {
 		}
 	}
 	assert.NoError(t, store.SetMulti(ctx, tier, names, buckets))
-	found, err := store.GetMulti(ctx, tier, names, buckets, make([]value.Value, len(names)))
+	defaults := make([]value.Value, len(names))
+	for i := range defaults {
+		defaults[i] = value.Nil
+	}
+	found, err := store.GetMulti(ctx, tier, names, buckets, defaults)
 	assert.NoError(t, err)
 	for i := range names {
 		for j := range buckets[i] {
