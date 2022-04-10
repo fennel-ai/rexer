@@ -131,6 +131,10 @@ const planeConfs: Record<number, PlaneConf> = {
         },
         eksConf: {
             nodeType: "c6i.4xlarge",
+            desiredCapacity: 4,
+        },
+        httpServerConf: {
+            replicas: 3,
         }
     },
     // Lokal's dev tier data plane
@@ -238,5 +242,7 @@ if (tierId !== 0) {
         glueSourceBucket: glueOutput.scriptSourceBucket,
         glueSourceScript: glueOutput.scriptPath,
         glueTrainingDataBucket: connSinkOutput.bucketName,
+
+        httpServerReplicas: planeConf.httpServerConf?.replicas,
     }, false).catch(err => console.log(err))
 }

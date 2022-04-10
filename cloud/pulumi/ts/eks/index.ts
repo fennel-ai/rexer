@@ -34,6 +34,7 @@ const AMI_BY_REGION: Record<string, string> = {
 }
 
 const DEFAULT_NODE_TYPE = "t3.medium"
+const DEFAULT_DESIRED_CAPACITY = 3
 
 export type inputType = {
     roleArn: string,
@@ -42,6 +43,7 @@ export type inputType = {
     connectedVpcCidrs: string[],
     planeId: number,
     nodeType?: string,
+    desiredCapacity?: number,
 }
 
 export type outputType = {
@@ -61,6 +63,7 @@ const parseConfig = (): inputType => {
         connectedVpcCidrs: config.requireObject(nameof<inputType>("connectedVpcCidrs")),
         planeId: config.requireNumber(nameof<inputType>("planeId")),
         nodeType: config.require(nameof<inputType>("nodeType")),
+        desiredCapacity: config.requireNumber(nameof<inputType>("desiredCapacity")),
     }
 }
 
@@ -285,6 +288,8 @@ export const setup = async (input: inputType): Promise<pulumi.Output<outputType>
         }, { provider: awsProvider })
     })
 
+    const nodeCapacity = input.desiredCapacity || DEFAULT_DESIRED_CAPACITY
+
     // Create an EKS cluster with the default configuration.
     const cluster = new eks.Cluster(`p-${input.planeId}-eks-cluster`, {
         vpcId,
@@ -295,9 +300,9 @@ export const setup = async (input: inputType): Promise<pulumi.Output<outputType>
         subnetIds: subnetIds.ids,
         nodeGroupOptions: {
             instanceType: input.nodeType || DEFAULT_NODE_TYPE,
-            desiredCapacity: 3,
-            minSize: 3,
-            maxSize: 3,
+            desiredCapacity: nodeCapacity,
+            minSize: nodeCapacity,
+            maxSize: nodeCapacity,
             // Make AMI a config parameter since AMI-ids are unique to region.
             amiId: AMI_BY_REGION[region],
             nodeAssociatePublicIpAddress: false,

@@ -25,12 +25,15 @@ export const plugins = {
     "aws": "v5.1.0"
 }
 
+const DEFAULT_REPLICAS = 2
+
 export type inputType = {
     region: string,
     roleArn: string,
     kubeconfig: string,
     namespace: string,
     tierId: number,
+    replicas?: number,
 }
 
 export type outputType = {
@@ -45,6 +48,7 @@ const parseConfig = (): inputType => {
         kubeconfig: config.require(nameof<inputType>("kubeconfig")),
         namespace: config.require(nameof<inputType>("namespace")),
         tierId: config.requireNumber(nameof<inputType>("tierId")),
+        replicas: config.requireNumber(nameof<inputType>("replicas")),
     }
 }
 
@@ -117,7 +121,7 @@ export const setup = async (input: inputType) => {
             },
             spec: {
                 selector: { matchLabels: appLabels },
-                replicas: 2,
+                replicas: input.replicas || DEFAULT_REPLICAS,
                 template: {
                     metadata: {
                         labels: appLabels,

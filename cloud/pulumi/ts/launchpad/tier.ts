@@ -51,6 +51,8 @@ type inputType = {
     glueSourceBucket: string,
     glueSourceScript: string,
     glueTrainingDataBucket: string,
+    // http server configuration
+    httpServerReplicas?: number,
 }
 
 const parseConfig = (): inputType => {
@@ -91,6 +93,8 @@ const parseConfig = (): inputType => {
         glueSourceBucket: config.require(nameof<inputType>("glueSourceBucket")),
         glueSourceScript: config.require(nameof<inputType>("glueSourceScript")),
         glueTrainingDataBucket: config.require(nameof<inputType>("glueTrainingDataBucket")),
+
+        httpServerReplicas: config.requireNumber(nameof<inputType>("httpServerReplicas")),
     };
 };
 
@@ -213,6 +217,7 @@ const setupResources = async () => {
             kubeconfig: input.kubeconfig,
             namespace: input.namespace,
             tierId: input.tierId,
+            replicas: input.httpServerReplicas,
         });
     })
     return {
@@ -259,6 +264,9 @@ type TierConf = {
     glueSourceBucket: string,
     glueSourceScript: string,
     glueTrainingDataBucket: string,
+
+    // http server configuration
+    httpServerReplicas?: number,
 }
 
 const setupTier = async (args: TierConf, destroy?: boolean) => {
@@ -319,6 +327,8 @@ const setupTier = async (args: TierConf, destroy?: boolean) => {
     await stack.setConfig(nameof<inputType>("glueSourceBucket"), {value: args.glueSourceBucket})
     await stack.setConfig(nameof<inputType>("glueSourceScript"), {value: args.glueSourceScript})
     await stack.setConfig(nameof<inputType>("glueTrainingDataBucket"), {value: args.glueTrainingDataBucket})
+
+    await stack.setConfig(nameof<inputType>("httpServerReplicas"), {value: String(args.httpServerReplicas)})
 
     console.info("config set");
 
