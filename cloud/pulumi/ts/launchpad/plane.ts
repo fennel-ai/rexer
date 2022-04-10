@@ -72,6 +72,7 @@ export type PlaneConf = {
     cacheConf?: CacheConfg,
     prometheusConf: PrometheusConf,
     eksConf?: EksConf,
+    // TODO: Create tier specific configurations and move this there
     httpServerConf?: HttpServerConf,
 }
 
