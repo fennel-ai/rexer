@@ -25,7 +25,15 @@ import (
 var totalRequests = promauto.NewCounterVec(
 	prometheus.CounterOpts{
 		Name: "http_requests_total",
-		Help: "Number of get requests.",
+		Help: "Number of incoming HTTP requests.",
+	},
+	[]string{"path"},
+)
+
+var totalRequestsProcessed = promauto.NewCounterVec(
+	prometheus.CounterOpts{
+		Name: "http_requests_processed_total",
+		Help: "Number of HTTP requests processed.",
 	},
 	[]string{"path"},
 )
@@ -75,13 +83,14 @@ func prometheusMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		route := mux.CurrentRoute(r)
 		path, _ := route.GetPathTemplate()
+		totalRequests.WithLabelValues(path).Inc()
 		timer := prometheus.NewTimer(httpDuration.WithLabelValues(path))
 		rw := NewResponseWriter(w)
 		next.ServeHTTP(rw, r)
 		statusCode := rw.statusCode
 		timer.ObserveDuration()
 		responseStatus.WithLabelValues(path, strconv.Itoa(statusCode)).Inc()
-		totalRequests.WithLabelValues(path).Inc()
+		totalRequestsProcessed.WithLabelValues(path).Inc()
 	})
 }
 
