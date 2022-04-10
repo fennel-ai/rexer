@@ -151,7 +151,19 @@ async function setupEmissaryIngressCrds(input: inputType, awsProvider: aws.Provi
             },
             "spec": {
                 "config": {
-                    "add_linkerd_headers": true
+                    "add_linkerd_headers": true,
+                    // https://www.getambassador.io/docs/edge-stack/latest/topics/using/circuit-breakers/
+                    //
+                    // NOTE: circuit breaker configured below is a GLOBAL circuit breaker.
+                    "circuit_breakers": {
+                        // Specifies the maximum number of connections that Ambassador Edge Stack will make to the services.
+                        "max_connections": 3072,
+                        // Specifies the maximum number of requests that will be queued while waiting for a connection.
+                        "max_pending_requests": 1024,
+                        // Specifies the maximum number of parallel outstanding requests to an upstream service.
+                        "max_requests": 3072,
+                        // default - "max_retries": 3,
+                    }
                 }
             }
         }, { provider: cluster.provider, dependsOn: waiter })
