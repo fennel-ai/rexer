@@ -37,7 +37,7 @@ func Tier() (tier.Tier, error) {
 		return tier.Tier{}, err
 	}
 
-	PCache, err := pcache.NewPCache(1<<25, 1<<5)
+	PCache, err := pcache.NewPCache(1<<31, 1<<6)
 	if err != nil {
 		return tier.Tier{}, err
 	}
