@@ -142,8 +142,8 @@ async function setupEmissaryIngressCrds(input: inputType, awsProvider: aws.Provi
         create: "kubectl wait deploy/emissary-apiext --for condition=available -n emissary-system",
     }, { customTimeouts: { create: "1h" } })
 
-    const l5dmapping = waiter.stdout.apply(() => {
-        return new k8s.apiextensions.CustomResource("l5d-mapping", {
+    const l5dAmbConfig = waiter.stdout.apply(() => {
+        return new k8s.apiextensions.CustomResource("l5d-amb-config", {
             "apiVersion": "getambassador.io/v3alpha1",
             "kind": "Module",
             "metadata": {
