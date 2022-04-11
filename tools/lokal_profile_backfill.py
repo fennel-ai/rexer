@@ -75,7 +75,7 @@ _POST_TAGS = "tags"
 _POST_UPDATED_AT = "updated_at"
 _POST_CREATED_AT = "created_at"
 
-_URL = "http://k8s-t106-aest106e-8954308bfc-65423d0e968f5435.elb.us-west-2.amazonaws.com/data"
+_URL = "http://k8s-t105-aest105e-d6f321c2f7-d4f810982b96255d.elb.ap-south-1.amazonaws.com/data"
 
 _CSV_EXTENSION = ".csv"
 
