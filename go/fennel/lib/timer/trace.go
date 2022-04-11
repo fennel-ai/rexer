@@ -35,9 +35,8 @@ func (t *trace) record(key string, ts time.Time) {
 
 func WithTracing(ctx context.Context) context.Context {
 	return context.WithValue(ctx, traceKey{}, &trace{
-		lock:   sync.Mutex{},
-		start:  time.Now(),
-		events: make([]traceEvent, 0),
+		lock:  sync.Mutex{},
+		start: time.Now(),
 	})
 }
 
