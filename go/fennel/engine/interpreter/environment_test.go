@@ -83,7 +83,7 @@ func TestEnv_Push_Pop(t *testing.T) {
 	// now pop env and all this goes away
 	fenv, err := env2.PopEnv()
 	assert.NoError(t, err)
-	assert.Equal(t, &env, fenv)
+	assert.Equal(t, env, fenv)
 	_, err = env.Lookup(var2)
 	assert.Error(t, err)
 	ret, err = env.Lookup("var")

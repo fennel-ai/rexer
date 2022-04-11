@@ -14,7 +14,7 @@ import (
 	aggregate2 "fennel/controller/aggregate"
 	"fennel/controller/mock"
 	profile2 "fennel/controller/profile"
-	"fennel/engine/interpreter"
+	"fennel/engine"
 	"fennel/engine/interpreter/bootarg"
 	"fennel/engine/operators"
 	actionlib "fennel/lib/action"
@@ -22,6 +22,7 @@ import (
 	"fennel/lib/ftypes"
 	profilelib "fennel/lib/profile"
 	"fennel/lib/query"
+	"fennel/lib/timer"
 	"fennel/lib/value"
 	"fennel/tier"
 
@@ -324,6 +325,7 @@ func (m server) GetProfileMulti(w http.ResponseWriter, req *http.Request) {
 }
 
 func (m server) Query(w http.ResponseWriter, req *http.Request) {
+	defer timer.Start(req.Context(), m.tier.ID, "query").Stop()
 	data, err := readRequest(req)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
@@ -349,8 +351,8 @@ func (m server) Query(w http.ResponseWriter, req *http.Request) {
 		}()
 	}
 	// execute the tree
-	i := interpreter.NewInterpreter(bootarg.Create(m.tier), map[string]interface{}{})
-	ret, err := i.Eval(tree, args)
+	executor := engine.NewQueryExecutor(bootarg.Create(m.tier))
+	ret, err := executor.Exec(req.Context(), tree, args)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		log.Printf("Error: %v", err)

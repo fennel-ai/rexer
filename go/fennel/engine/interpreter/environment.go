@@ -12,8 +12,12 @@ type Env struct {
 	useRef map[string]bool
 }
 
-func NewEnv(parent *Env) Env {
-	return Env{parent, make(map[string]value.Value), make(map[string]bool)}
+func NewEnv(parent *Env) *Env {
+	return &Env{
+		parent: parent,
+		table:  make(map[string]value.Value),
+		useRef: make(map[string]bool),
+	}
 }
 
 func (e *Env) define(name string, value value.Value, useRef bool) error {
@@ -60,8 +64,7 @@ func (e *Env) Lookup(name string) (value.Value, error) {
 
 // PushEnv creates an environment that is child of the caller
 func (e *Env) PushEnv() *Env {
-	ret := NewEnv(e)
-	return &ret
+	return NewEnv(e)
 }
 
 // PopEnv removes the outermost environment to return the parent environment

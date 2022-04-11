@@ -32,11 +32,13 @@ func TestDefault(t *testing.T) {
 			"default": ast.MakeDouble(3.4),
 		}},
 	}
-	i := interpreter.NewInterpreter(bootarg.Create(tier), map[string]interface{}{})
 	table := value.List{}
 	table.Append(value.NewDict(map[string]value.Value{}))
 	table.Append(value.NewDict(map[string]value.Value{}))
-	out, err := i.Eval(query, value.NewDict(map[string]value.Value{"actions": table}))
+	i, err := interpreter.NewInterpreter(context.Background(), bootarg.Create(tier),
+		value.NewDict(map[string]value.Value{"actions": table}))
+	assert.NoError(t, err)
+	out, err := query.AcceptValue(i)
 	assert.NoError(t, err)
 	rows := out.(value.List)
 	//assert.Len(t, rows, 2)
@@ -76,13 +78,15 @@ func TestProfileOp(t *testing.T) {
 			// since version is an optional value, we don't pass it and still get the latest value back
 		}},
 	}
-	i := interpreter.NewInterpreter(bootarg.Create(tier), map[string]interface{}{})
 	table := value.NewList()
 	table.Append(value.NewDict(map[string]value.Value{
 		"otype": value.String(otype1),
 		"oid":   value.Int(oid1),
 		"key":   value.String(key1),
 	}))
+	i, err := interpreter.NewInterpreter(context.Background(), bootarg.Create(tier),
+		value.NewDict(map[string]value.Value{"actions": table}))
+	assert.NoError(t, err)
 	expected := value.NewDict(map[string]value.Value{
 		"otype":         value.String(otype1),
 		"oid":           value.Int(oid1),
@@ -113,7 +117,6 @@ func TestProfileOpCache(t *testing.T) {
 		}},
 	}
 
-	i := interpreter.NewInterpreter(bootarg.Create(tier), map[string]interface{}{})
 	inTable := value.NewList()
 	inTable.Append(value.NewDict(map[string]value.Value{
 		"otype":   value.String(otype),
@@ -128,6 +131,9 @@ func TestProfileOpCache(t *testing.T) {
 		"version":       value.Int(ver),
 		"profile_value": value.Nil,
 	})
+	i, err := interpreter.NewInterpreter(context.Background(), bootarg.Create(tier),
+		value.NewDict(map[string]value.Value{"actions": inTable}))
+	assert.NoError(t, err)
 	verify(t, &i, query, inTable, expected)
 
 	// test cache by setting a profile now
@@ -137,7 +143,9 @@ func TestProfileOpCache(t *testing.T) {
 	verify(t, &i, query, inTable, expected)
 
 	// use a new interpreter now, should get back stored value now
-	i = interpreter.NewInterpreter(bootarg.Create(tier), map[string]interface{}{})
+	i, err = interpreter.NewInterpreter(context.Background(), bootarg.Create(tier),
+		value.NewDict(map[string]value.Value{"actions": inTable}))
+	assert.NoError(t, err)
 	expected2 := expected.Clone().(value.Dict)
 	expected2.Set("profile_value", val)
 	verify(t, &i, query, inTable, expected2)
@@ -161,7 +169,7 @@ func TestProfileOpCache(t *testing.T) {
 }
 
 func verify(t *testing.T, i *interpreter.Interpreter, query ast.Ast, table value.List, expected value.Dict) {
-	out, err := i.Eval(query, value.NewDict(map[string]value.Value{"actions": table}))
+	out, err := query.AcceptValue(i)
 	assert.NoError(t, err)
 	rows := out.(value.List)
 	assert.Equal(t, 1, rows.Len())
