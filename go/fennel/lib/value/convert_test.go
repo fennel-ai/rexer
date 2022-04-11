@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"google.golang.org/protobuf/proto"
 )
 
 func TestConvert(t *testing.T) {
@@ -34,7 +35,7 @@ func TestConvert(t *testing.T) {
 		f := getFuture(v)
 		pf, err := ToProtoValue(f)
 		assert.NoError(t, err)
-		assert.Equal(t, pv, pf)
+		assert.True(t, proto.Equal(&pv, &pf))
 	}
 }
 
