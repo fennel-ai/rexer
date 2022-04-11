@@ -20,7 +20,7 @@ func TestCreateModel(t *testing.T) {
 	})
 	assert.NoError(t, err)
 
-	err = c.CreateModel(context.TODO(), []lib.Model{
+	err = c.CreateModel(context.Background(), []lib.Model{
 		{
 			Name:             "my-test-model",
 			Version:          "v1",
@@ -64,13 +64,13 @@ func TestEndpointConfigExists(t *testing.T) {
 		InstanceCount: 1,
 	}
 
-	err = c.CreateEndpointConfig(context.TODO(), endpointCfg)
+	err = c.CreateEndpointConfig(context.Background(), endpointCfg)
 	assert.NoError(t, err)
 	exists, err = c.EndpointConfigExists(context.Background(), configName)
 	assert.NoError(t, err)
 	assert.True(t, exists)
 
-	err = c.DeleteEndpointConfig(context.TODO(), configName)
+	err = c.DeleteEndpointConfig(context.Background(), configName)
 	assert.NoError(t, err)
 	exists, err = c.EndpointConfigExists(context.Background(), configName)
 	assert.NoError(t, err)
@@ -94,13 +94,13 @@ func TestEndpointExists(t *testing.T) {
 			log.Printf("endpoint can't be deleted while it is in Creating state")
 			return
 		}
-		err = c.DeleteEndpoint(context.TODO(), endpointName)
+		err = c.DeleteEndpoint(context.Background(), endpointName)
 		assert.NoError(t, err)
 		exists, err = c.EndpointExists(context.Background(), endpointName)
 		assert.NoError(t, err)
 		assert.False(t, exists)
 	} else {
-		err = c.CreateEndpoint(context.TODO(), lib.SagemakerEndpoint{
+		err = c.CreateEndpoint(context.Background(), lib.SagemakerEndpoint{
 			Name:               endpointName,
 			EndpointConfigName: "integration-test-endpoint-config",
 		})
@@ -121,7 +121,7 @@ func TestUpdateEndpoint(t *testing.T) {
 	endpointName := "integration-test-endpoint"
 	endpointCfgName := "integration-test-endpoint-config"
 	// Updating endpoint with the same endpoint configuration should fail.
-	err = c.UpdateEndpoint(context.TODO(), lib.SagemakerEndpoint{
+	err = c.UpdateEndpoint(context.Background(), lib.SagemakerEndpoint{
 		Name:               endpointName,
 		EndpointConfigName: endpointCfgName,
 	})
@@ -156,7 +156,7 @@ func TestScoreSvm(t *testing.T) {
 		value.NewList(value.String("6:1 7:1 11:1 22:1 29:1 34:1 36:1 40:1 42:1 53:1 58:1 65:1 69:1 77:1 86:1 88:1 92:1 95:1 102:1 106:1 118:1 124:1")),
 		value.NewList(value.String("3:1 10:1 20:1 21:1 23:1 34:1 36:1 39:1 42:1 53:1 56:1 65:1 69:1 77:1 86:1 88:1 92:1 95:1 102:1 105:1 116:1 120:1")),
 	}
-	response, err := c.Score(context.TODO(), &lib.ScoreRequest{
+	response, err := c.Score(context.Background(), &lib.ScoreRequest{
 		ModelName:    "integration-test-xgboost-model",
 		ModelVersion: "v1",
 		FeatureLists: featureVectors,
@@ -176,7 +176,7 @@ func TestScoreCsv(t *testing.T) {
 	featureVectors := []value.List{
 		csv.(value.List),
 	}
-	response, err := c.Score(context.TODO(), &lib.ScoreRequest{
+	response, err := c.Score(context.Background(), &lib.ScoreRequest{
 		ModelName:    "integration-test-xgboost-model",
 		ModelVersion: "v1",
 		FeatureLists: featureVectors,

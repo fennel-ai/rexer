@@ -44,7 +44,7 @@ func TestEnsureEndpoint(t *testing.T) {
 	assert.Equal(t, uint32(1), modelId)
 
 	// Ensure model is served on sagemaker.
-	err = EnsureEndpointExists(context.TODO(), tier, endpointName)
+	err = EnsureEndpointExists(context.Background(), tier, endpointName)
 	assert.NoError(t, err)
 
 	// assert that registry resources are created in db.
@@ -60,23 +60,23 @@ func TestEnsureEndpoint(t *testing.T) {
 	assert.Equal(t, endpointName, endpoints[0].Name)
 
 	// assert that resources are created in sagemaker.
-	exists, err := tier.SagemakerClient.EndpointExists(context.TODO(), endpointName)
+	exists, err := tier.SagemakerClient.EndpointExists(context.Background(), endpointName)
 	assert.NoError(t, err)
 	assert.True(t, exists)
 	defer func() {
-		err := tier.SagemakerClient.DeleteEndpoint(context.TODO(), endpointName)
+		err := tier.SagemakerClient.DeleteEndpoint(context.Background(), endpointName)
 		assert.NoError(t, err)
 	}()
 
-	exists, err = tier.SagemakerClient.EndpointConfigExists(context.TODO(), endpointCfg.Name)
+	exists, err = tier.SagemakerClient.EndpointConfigExists(context.Background(), endpointCfg.Name)
 	assert.NoError(t, err)
 	assert.True(t, exists)
 	defer func() {
-		err := tier.SagemakerClient.DeleteEndpointConfig(context.TODO(), endpointCfg.Name)
+		err := tier.SagemakerClient.DeleteEndpointConfig(context.Background(), endpointCfg.Name)
 		assert.NoError(t, err)
 	}()
 
-	exists, err = tier.SagemakerClient.ModelExists(context.TODO(), sagemakerModels[0])
+	exists, err = tier.SagemakerClient.ModelExists(context.Background(), sagemakerModels[0])
 	assert.NoError(t, err)
 	assert.True(t, exists)
 	defer func() {
@@ -85,10 +85,10 @@ func TestEnsureEndpoint(t *testing.T) {
 		for status != "InService" {
 			log.Printf("Waiting for endpoint [%s] to be in service...", endpointName)
 			time.Sleep(time.Second * 10)
-			status, err = tier.SagemakerClient.GetEndpointStatus(context.TODO(), endpointName)
+			status, err = tier.SagemakerClient.GetEndpointStatus(context.Background(), endpointName)
 			assert.NoError(t, err)
 		}
-		err := tier.SagemakerClient.DeleteModel(context.TODO(), sagemakerModels[0])
+		err := tier.SagemakerClient.DeleteModel(context.Background(), sagemakerModels[0])
 		assert.NoError(t, err)
 	}()
 }
