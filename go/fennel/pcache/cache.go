@@ -39,3 +39,7 @@ func (pc *PCache) SetWithTTL(key, value interface{}, ttl time.Duration) bool {
 func (pc *PCache) Get(key interface{}) (interface{}, bool) {
 	return pc.Cache.Get(key)
 }
+
+func (pc *PCache) GetTTL(key interface{}) (time.Duration, bool) {
+	return pc.Cache.GetTTL(key)
+}
