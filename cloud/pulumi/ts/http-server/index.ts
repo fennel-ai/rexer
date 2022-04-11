@@ -37,6 +37,7 @@ export type inputType = {
 }
 
 export type outputType = {
+    appLabels: {[key: string]: string},
     svc: pulumi.Output<k8s.core.v1.Service>,
 }
 
@@ -121,6 +122,8 @@ export const setup = async (input: inputType) => {
             },
             spec: {
                 selector: { matchLabels: appLabels },
+                // NOTE: If changing number replicas, please take: size and desired capacity of the nodegroup,
+                // affinity b/w http-server and countaggr services into consideration.
                 replicas: input.replicas || DEFAULT_REPLICAS,
                 template: {
                     metadata: {
@@ -321,6 +324,7 @@ export const setup = async (input: inputType) => {
     }, { provider: k8sProvider, deleteBeforeReplace: true })
 
     const output: outputType = {
+        appLabels: appLabels,
         svc: appSvc,
     }
     return output
