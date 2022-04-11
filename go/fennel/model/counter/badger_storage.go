@@ -120,9 +120,9 @@ func (b BadgerStorage) Set(ctx context.Context, tier tier.Tier, name ftypes.AggN
 
 var _ BucketStore = BadgerStorage{}
 
-// defaultCodec key design is: tablet | codex | groupkey | width | index | aggregate_name
+// defaultCodec key design is: tablet | codex | groupkey | window | width | index | aggregate_name
 func badgerEncode(name ftypes.AggName, bucket Bucket) ([]byte, error) {
-	buf := make([]byte, 2+len(bucket.Key)+8+8+len(name))
+	buf := make([]byte, 2+8+len(bucket.Key)+8+8+8+8+len(name))
 	cur := 0
 	if n, err := tablet.Write(buf[cur:]); err != nil {
 		return nil, err
