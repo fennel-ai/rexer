@@ -72,8 +72,8 @@ _POST_CONSTITUENCIES = "constituencies"
 _POST_DISTRICTS = "districts"
 _POST_STATES = "states"
 _POST_TAGS = "tags"
-_POST_UPDATED_AT = "updated_at"
-_POST_CREATED_AT = "created_at"
+_POST_UPDATED_AT = "updated_on"
+_POST_CREATED_AT = "created_on"
 
 _URL = "http://k8s-t105-aest105e-d6f321c2f7-d4f810982b96255d.elb.ap-south-1.amazonaws.com/data"
 
