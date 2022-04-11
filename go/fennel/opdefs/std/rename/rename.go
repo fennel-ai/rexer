@@ -1,6 +1,7 @@
 package rename
 
 import (
+	"context"
 	"fmt"
 
 	"fennel/engine/operators"
@@ -19,7 +20,7 @@ func (r renamer) New(
 	return renamer{}, nil
 }
 
-func (r renamer) Apply(kwargs value.Dict, in operators.InputIter, out *value.List) error {
+func (r renamer) Apply(_ context.Context, kwargs value.Dict, in operators.InputIter, out *value.List) error {
 	for in.HasMore() {
 		heads, kwargs, err := in.Next()
 		if err != nil {

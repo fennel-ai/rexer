@@ -1,6 +1,7 @@
 package set
 
 import (
+	"context"
 	"fennel/engine/operators"
 	"fennel/lib/value"
 )
@@ -26,7 +27,7 @@ func (op setOperator) Signature() *operators.Signature {
 		Input([]value.Type{value.Types.Dict})
 }
 
-func (op setOperator) Apply(staticKwargs value.Dict, in operators.InputIter, out *value.List) error {
+func (op setOperator) Apply(_ context.Context, staticKwargs value.Dict, in operators.InputIter, out *value.List) error {
 	for in.HasMore() {
 		heads, contextKwargs, err := in.Next()
 		if err != nil {

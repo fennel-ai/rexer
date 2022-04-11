@@ -1,6 +1,7 @@
 package number
 
 import (
+	"context"
 	"fennel/engine/operators"
 	"fennel/lib/value"
 )
@@ -17,7 +18,7 @@ func (a adder) New(
 	return adder{}, nil
 }
 
-func (a adder) Apply(kwargs value.Dict, in operators.InputIter, out *value.List) error {
+func (a adder) Apply(_ context.Context, kwargs value.Dict, in operators.InputIter, out *value.List) error {
 	sum, float := extract(kwargs.GetUnsafe("start"))
 
 	for in.HasMore() {

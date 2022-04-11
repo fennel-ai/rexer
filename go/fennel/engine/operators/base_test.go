@@ -1,6 +1,7 @@
 package operators
 
 import (
+	"context"
 	"testing"
 
 	"fennel/lib/value"
@@ -20,7 +21,7 @@ func (top testOp) New(
 	return top, nil
 }
 
-func (top testOp) Apply(kwargs value.Dict, in InputIter, out *value.List) error {
+func (top testOp) Apply(_ context.Context, kwargs value.Dict, in InputIter, out *value.List) error {
 	return nil
 }
 
@@ -42,7 +43,7 @@ func (top testOp2) New(
 	return top, nil
 }
 
-func (top testOp2) Apply(_ value.Dict, _ InputIter, _ *value.List) error {
+func (top testOp2) Apply(_ context.Context, _ value.Dict, _ InputIter, _ *value.List) error {
 	return nil
 }
 
@@ -61,7 +62,7 @@ func (top testOp3) New(
 	return top, nil
 }
 
-func (top testOp3) Apply(_ value.Dict, _ InputIter, _ *value.List) error {
+func (top testOp3) Apply(_ context.Context, _ value.Dict, _ InputIter, _ *value.List) error {
 	return nil
 }
 

@@ -1,6 +1,7 @@
 package std
 
 import (
+	"context"
 	"fmt"
 	"sort"
 
@@ -25,7 +26,7 @@ func (op SortOperator) Signature() *operators.Signature {
 		ParamWithHelp("reverse", value.Types.Bool, true, true, value.Bool(false), "StaticKwargs: Set true to get descending sort order")
 }
 
-func (op SortOperator) Apply(staticKwargs value.Dict, in operators.InputIter, out *value.List) error {
+func (op SortOperator) Apply(_ context.Context, staticKwargs value.Dict, in operators.InputIter, out *value.List) error {
 	type sortableRow struct {
 		data value.Value
 		key  float64

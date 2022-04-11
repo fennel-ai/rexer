@@ -47,7 +47,7 @@ func (p profileOp) New(
 	return profileOp{tr, args, mockID, cache}, nil
 }
 
-func (p profileOp) Apply(staticKwargs value.Dict, in operators.InputIter, out *value.List) (err error) {
+func (p profileOp) Apply(_ context.Context, staticKwargs value.Dict, in operators.InputIter, out *value.List) (err error) {
 	var reqs []libprofile.ProfileItem
 	var rows []value.Value
 	for in.HasMore() {
