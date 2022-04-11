@@ -12,7 +12,9 @@ func init() {
 type grouper struct {
 }
 
-func (g grouper) New(args value.Dict, bootargs map[string]interface{}) (operators.Operator, error) {
+func (g grouper) New(
+	args value.Dict, bootargs map[string]interface{}, cache map[string]interface{},
+) (operators.Operator, error) {
 	return grouper{}, nil
 }
 

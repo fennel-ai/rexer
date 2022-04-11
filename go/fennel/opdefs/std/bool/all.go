@@ -11,7 +11,9 @@ func init() {
 
 type allop struct{}
 
-func (a allop) New(args value.Dict, bootargs map[string]interface{}) (operators.Operator, error) {
+func (a allop) New(
+	args value.Dict, bootargs map[string]interface{}, cache map[string]interface{},
+) (operators.Operator, error) {
 	return allop{}, nil
 }
 

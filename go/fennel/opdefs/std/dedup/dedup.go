@@ -11,7 +11,9 @@ func init() {
 
 type deduper struct{}
 
-func (d deduper) New(args value.Dict, bootargs map[string]interface{}) (operators.Operator, error) {
+func (d deduper) New(
+	args value.Dict, bootargs map[string]interface{}, cache map[string]interface{},
+) (operators.Operator, error) {
 	return deduper{}, nil
 }
 

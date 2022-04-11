@@ -3,6 +3,7 @@ package profile
 import (
 	"context"
 	"fmt"
+	"log"
 
 	"fennel/controller/mock"
 	"fennel/controller/profile"
@@ -22,10 +23,12 @@ type profileOp struct {
 	tier   tier.Tier
 	args   value.Dict
 	mockID int64
-	cached *[]libprofile.ProfileItem
+	cache  map[string]interface{}
 }
 
-func (p profileOp) New(args value.Dict, bootargs map[string]interface{}) (operators.Operator, error) {
+func (p profileOp) New(
+	args value.Dict, bootargs map[string]interface{}, cache map[string]interface{},
+) (operators.Operator, error) {
 	tr, err := bootarg.GetTier(bootargs)
 	if err != nil {
 		return nil, err
@@ -41,11 +44,7 @@ func (p profileOp) New(args value.Dict, bootargs map[string]interface{}) (operat
 		}
 		mockID = int64(asInt)
 	}
-	cached, err := bootarg.GetCachedProfiles(bootargs)
-	if err != nil {
-		return nil, err
-	}
-	return profileOp{tr, args, mockID, cached}, nil
+	return profileOp{tr, args, mockID, cache}, nil
 }
 
 func (p profileOp) Apply(staticKwargs value.Dict, in operators.InputIter, out *value.List) (err error) {
@@ -102,22 +101,32 @@ func (p profileOp) getProfiles(profiles []libprofile.ProfileItem) ([]value.Value
 	var uncached []libprofile.ProfileItem
 	var ptrs []int
 	// GetBatched returns nil for profiles that were not found
-	// store in cache as it is to avoid querying DB for profiles that we know do not exist
+	// store in cache as it is, to avoid querying DB for profiles that we know do not exist
 	// and for profile operator to set default correctly
 	for i, pi := range profiles {
-		found := false
-		for _, cpi := range *p.cached {
-			if pi.Oid == cpi.Oid && pi.OType == cpi.OType && pi.Key == cpi.Key && pi.Version == cpi.Version {
-				// found profile
-				res[i] = cpi.Value
-				found = true
-				break
-			}
-		}
-		if !found {
+		key := p.getKey(pi)
+		v, ok := p.cache[key]
+		if !ok {
 			// did not find profile, filter out
 			uncached = append(uncached, pi)
 			ptrs = append(ptrs, i)
+		} else {
+			// found profile
+			if v == nil {
+				// if nil, store as it is
+				res[i] = value.Value(nil)
+			} else {
+				val, ok := v.(value.Value)
+				if !ok {
+					// this should never happen, but if it happens
+					// we pretend it wasn't in cache and log error
+					log.Printf("unexpected error in profile op: expected v to be a value but found '%v' instead", v)
+					uncached = append(uncached, pi)
+					ptrs = append(ptrs, i)
+				} else {
+					res[i] = val
+				}
+			}
 		}
 	}
 	// now get uncached profiles
@@ -127,14 +136,18 @@ func (p profileOp) getProfiles(profiles []libprofile.ProfileItem) ([]value.Value
 	}
 	// add them to cache
 	for i, pi := range uncached {
-		pi.Value = vals[i]
-		*p.cached = append(*p.cached, pi)
+		key := p.getKey(pi)
+		p.cache[key] = vals[i]
 	}
 	// finally, return result
 	for i, v := range vals {
 		res[ptrs[i]] = v
 	}
 	return res, nil
+}
+
+func (p profileOp) getKey(pi libprofile.ProfileItem) string {
+	return fmt.Sprintf("profile:%s:%d:%s:%d", pi.OType, pi.Oid, pi.Key, pi.Version)
 }
 
 func (p profileOp) Signature() *operators.Signature {

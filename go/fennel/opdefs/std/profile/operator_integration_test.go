@@ -48,7 +48,7 @@ func TestProfileOpMultipleObjs(t *testing.T) {
 			// since version is an optional value, we don't pass it and still get the latest value back
 		}},
 	}
-	i := interpreter.NewInterpreter(bootarg.Create(tier))
+	i := interpreter.NewInterpreter(bootarg.Create(tier), map[string]interface{}{})
 	table := value.List{}
 	table.Append(value.NewDict(map[string]value.Value{"otype": value.String(otype1), "oid": value.Int(oid1), "key": value.String(key1), "ver": value.Int(ver1)}))
 	table.Append(value.NewDict(map[string]value.Value{"otype": value.String(otype2), "oid": value.Int(oid2), "key": value.String(key2), "ver": value.Int(ver2)}))
@@ -113,4 +113,127 @@ func TestNonDictProfile(t *testing.T) {
 		value.Int(15),
 		value.Int(10),
 	})
+}
+
+func TestProfileOpCacheMultiple(t *testing.T) {
+	tier, err := test.Tier()
+	assert.NoError(t, err)
+	defer test.Teardown(tier)
+	ctx := context.Background()
+
+	query := ast.OpCall{
+		Operands:  []ast.Ast{ast.Var{Name: "actions"}},
+		Vars:      []string{"a"},
+		Namespace: "std",
+		Name:      "profile",
+		Kwargs: ast.Dict{Values: map[string]ast.Ast{
+			"otype":   ast.Lookup{On: ast.Var{Name: "a"}, Property: "otype"},
+			"oid":     ast.Lookup{On: ast.Var{Name: "a"}, Property: "oid"},
+			"key":     ast.Lookup{On: ast.Var{Name: "a"}, Property: "key"},
+			"version": ast.Lookup{On: ast.Var{Name: "a"}, Property: "version"},
+			"field":   ast.MakeString("profile_value"),
+		}},
+	}
+	profiles := []profilelib.ProfileItem{
+		{"1", 2, "3", 4, value.Int(5)},
+		{"6", 7, "8", 9, value.Int(10)},
+		{"11", 12, "13", 14, value.Int(15)},
+	}
+	inTable := value.NewList()
+	for _, pi := range profiles {
+		inTable.Append(value.NewDict(map[string]value.Value{
+			"otype":   value.String(pi.OType),
+			"oid":     value.Int(pi.Oid),
+			"key":     value.String(pi.Key),
+			"version": value.Int(pi.Version),
+		}))
+	}
+	// to query for version = 0
+	inTable0 := value.NewList()
+	for _, pi := range profiles {
+		inTable0.Append(value.NewDict(map[string]value.Value{
+			"otype":   value.String(pi.OType),
+			"oid":     value.Int(pi.Oid),
+			"key":     value.String(pi.Key),
+			"version": value.Int(0),
+		}))
+	}
+
+	i := interpreter.NewInterpreter(bootarg.Create(tier), map[string]interface{}{})
+	var expected []value.Dict
+	for _, pi := range profiles {
+		expected = append(expected, value.NewDict(map[string]value.Value{
+			"otype":         value.String(pi.OType),
+			"oid":           value.Int(pi.Oid),
+			"key":           value.String(pi.Key),
+			"version":       value.Int(pi.Version),
+			"profile_value": value.Nil,
+		}))
+	}
+	verifyMultiple(t, &i, query, inTable, expected)
+
+	// test cache by setting profiles now
+	for _, pi := range profiles {
+		assert.NoError(t, profile.Set(ctx, tier, pi))
+	}
+	// we should still get back default value if it is cached properly
+	verifyMultiple(t, &i, query, inTable, expected)
+
+	// now use a new interpreter with fresh cache, should get back stored value now
+	i = interpreter.NewInterpreter(bootarg.Create(tier), map[string]interface{}{})
+	var expected2 []value.Dict
+	for _, pi := range profiles {
+		expected2 = append(expected2, value.NewDict(map[string]value.Value{
+			"otype":         value.String(pi.OType),
+			"oid":           value.Int(pi.Oid),
+			"key":           value.String(pi.Key),
+			"version":       value.Int(pi.Version),
+			"profile_value": pi.Value,
+		}))
+	}
+	verifyMultiple(t, &i, query, inTable, expected2)
+
+	// now store a newer version with new values for each profile
+	for _, pi := range profiles {
+		pi2 := pi
+		pi2.Version++
+		pi2.Value, err = pi2.Value.Op("+", value.Int(2))
+		assert.NoError(t, err)
+		assert.NoError(t, profile.Set(ctx, tier, pi2))
+	}
+	// now if we use version = 0, we should get back latest profile even though older version is cached
+	var expected3 []value.Dict
+	for _, pi := range profiles {
+		newval, err := pi.Value.Op("+", value.Int(2))
+		assert.NoError(t, err)
+		expected3 = append(expected3, value.NewDict(map[string]value.Value{
+			"otype":         value.String(pi.OType),
+			"oid":           value.Int(pi.Oid),
+			"key":           value.String(pi.Key),
+			"version":       value.Int(0),
+			"profile_value": newval,
+		}))
+	}
+	verifyMultiple(t, &i, query, inTable0, expected3)
+
+	// but once version = 0 is cached, we should not get any later versions
+	for _, pi := range profiles {
+		pi3 := pi
+		pi3.Version += 2
+		pi3.Value, err = pi3.Value.Op("+", value.Int(5))
+		assert.NoError(t, err)
+		assert.NoError(t, profile.Set(ctx, tier, pi3))
+	}
+	verifyMultiple(t, &i, query, inTable0, expected3)
+}
+
+func verifyMultiple(t *testing.T, i *interpreter.Interpreter, query ast.Ast, table value.List, expected []value.Dict) {
+	out, err := i.Eval(query, value.NewDict(map[string]value.Value{"actions": table}))
+	assert.NoError(t, err)
+	rows := out.(value.List)
+	assert.Equal(t, len(expected), rows.Len())
+	for i, exp := range expected {
+		found, _ := rows.At(i)
+		assert.True(t, exp.Equal(found))
+	}
 }

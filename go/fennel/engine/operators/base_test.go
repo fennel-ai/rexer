@@ -14,7 +14,9 @@ type testOp struct {
 
 var _ Operator = testOp{}
 
-func (top testOp) New(args value.Dict, bootargs map[string]interface{}) (Operator, error) {
+func (top testOp) New(
+	args value.Dict, bootargs map[string]interface{}, cache map[string]interface{},
+) (Operator, error) {
 	return top, nil
 }
 
@@ -34,7 +36,9 @@ type testOp2 struct{}
 
 var _ Operator = testOp2{}
 
-func (top testOp2) New(args value.Dict, bootargs map[string]interface{}) (Operator, error) {
+func (top testOp2) New(
+	args value.Dict, bootargs map[string]interface{}, cache map[string]interface{},
+) (Operator, error) {
 	return top, nil
 }
 
@@ -51,7 +55,9 @@ type testOp3 struct{}
 
 var _ Operator = testOp3{}
 
-func (top testOp3) New(args value.Dict, bootargs map[string]interface{}) (Operator, error) {
+func (top testOp3) New(
+	args value.Dict, bootargs map[string]interface{}, cache map[string]interface{},
+) (Operator, error) {
 	return top, nil
 }
 

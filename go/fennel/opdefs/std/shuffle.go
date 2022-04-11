@@ -12,7 +12,9 @@ type ShuffleOperator struct{}
 
 var _ operators.Operator = ShuffleOperator{}
 
-func (op ShuffleOperator) New(_ value.Dict, _ map[string]interface{}) (operators.Operator, error) {
+func (op ShuffleOperator) New(
+	args value.Dict, bootargs map[string]interface{}, cache map[string]interface{},
+) (operators.Operator, error) {
 	return ShuffleOperator{}, nil
 }
 

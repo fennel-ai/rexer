@@ -13,6 +13,7 @@ import (
 type Interpreter struct {
 	env      *Env
 	bootargs map[string]interface{}
+	cache    map[string]interface{}
 }
 
 func (i Interpreter) VisitFnCall(module, name string, kwargs map[string]ast.Ast) (value.Value, error) {
@@ -48,9 +49,9 @@ func (i Interpreter) VisitFnCall(module, name string, kwargs map[string]ast.Ast)
 
 var _ ast.VisitorValue = Interpreter{}
 
-func NewInterpreter(bootargs map[string]interface{}) Interpreter {
+func NewInterpreter(bootargs map[string]interface{}, cache map[string]interface{}) Interpreter {
 	env := NewEnv(nil)
-	ret := Interpreter{&env, bootargs}
+	ret := Interpreter{&env, bootargs, cache}
 	return ret
 }
 
@@ -78,7 +79,7 @@ func (i Interpreter) Eval(query ast.Ast, args value.Dict) (value.Value, error) {
 	resch := make(chan value.Value, 1)
 	errch := make(chan error, 1)
 	go func() {
-		ii := NewInterpreter(i.bootargs)
+		ii := NewInterpreter(i.bootargs, i.cache)
 		err := ii.env.Define("__args__", args)
 		if err != nil {
 			errch <- err
@@ -400,7 +401,7 @@ func (i Interpreter) getOperator(namespace, name string) (operators.Operator, er
 	if err != nil {
 		return op, err
 	}
-	ret, err := op.New(i.queryArgs(), i.bootargs)
+	ret, err := op.New(i.queryArgs(), i.bootargs, i.cache)
 	return ret, err
 }
 
