@@ -1,6 +1,7 @@
 package interpreter
 
 import (
+	"context"
 	"fmt"
 	"strconv"
 	"strings"
@@ -14,6 +15,29 @@ type Interpreter struct {
 	env      *Env
 	bootargs map[string]interface{}
 	cache    map[string]interface{}
+	ctx      context.Context
+}
+
+func NewInterpreter(ctx context.Context, bootargs map[string]interface{}, args value.Dict) (Interpreter, error) {
+	env := NewEnv(nil)
+	if err := env.Define("__args__", args); err != nil {
+		return Interpreter{}, err
+	}
+	for name, val := range args.Iter() {
+		if err := env.Define(name, val); err != nil {
+			return Interpreter{}, fmt.Errorf("could not define arg '%s' %v", name, err)
+		}
+	}
+	// Push a new environment on top of base environment.
+	// This way, user query can define variables with the
+	// same names as those in query args which they will now mask
+	env = NewEnv(env)
+	return Interpreter{
+		env:      env,
+		bootargs: bootargs,
+		cache:    make(map[string]interface{}),
+		ctx:      ctx,
+	}, nil
 }
 
 func (i Interpreter) VisitFnCall(module, name string, kwargs map[string]ast.Ast) (value.Value, error) {
@@ -49,12 +73,6 @@ func (i Interpreter) VisitFnCall(module, name string, kwargs map[string]ast.Ast)
 
 var _ ast.VisitorValue = Interpreter{}
 
-func NewInterpreter(bootargs map[string]interface{}, cache map[string]interface{}) Interpreter {
-	env := NewEnv(nil)
-	ret := Interpreter{&env, bootargs, cache}
-	return ret
-}
-
 func (i Interpreter) queryArgs() value.Dict {
 	// query args are present in the root Env (has no parent)
 	rootEnv := i.env
@@ -70,45 +88,6 @@ func (i Interpreter) queryArgs() value.Dict {
 		return value.NewDict(map[string]value.Value{})
 	}
 	return asDict
-}
-
-// Eval the given query in separate goroutine after unpacking args
-// args are set up in the base environment, which makes it possible for
-// user query to create own variables with names which may shadow variables in query args
-func (i Interpreter) Eval(query ast.Ast, args value.Dict) (value.Value, error) {
-	resch := make(chan value.Value, 1)
-	errch := make(chan error, 1)
-	go func() {
-		ii := NewInterpreter(i.bootargs, i.cache)
-		err := ii.env.Define("__args__", args)
-		if err != nil {
-			errch <- err
-			return
-		}
-		args := args.Iter()
-		for name, val := range args {
-			if err = ii.env.Define(name, val); err != nil {
-				errch <- err
-				return
-			}
-		}
-		// push a new environment on top of base environment
-		// this way, user query can define variables with the
-		// same names as those in query args which they will now mask
-		ii.env = ii.env.PushEnv()
-		res, err := query.AcceptValue(ii)
-		if err != nil {
-			errch <- err
-		} else {
-			resch <- res
-		}
-	}()
-	select {
-	case res := <-resch:
-		return res, nil
-	case err := <-errch:
-		return nil, err
-	}
 }
 
 func (i Interpreter) VisitLookup(on ast.Ast, property string) (value.Value, error) {

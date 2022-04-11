@@ -106,9 +106,9 @@ func TestInterpreter_VisitOpcall2(t *testing.T) {
 	base.Append(row1)
 	base.Append(row2)
 	base.Append(row3)
-	i := getInterpreter()
+	i := getInterpreter(nil, value.NewDict(map[string]value.Value{"table": base}))
 	query := getOpCallQuery()
-	res, err := i.Eval(query, value.NewDict(map[string]value.Value{"table": base}))
+	res, err := query.AcceptValue(i)
 	assert.NoError(t, err)
 	expected := value.List{}
 	expected.Append(value.NewDict(map[string]value.Value{"hi": value.Int(2), "bye": value.Double(2), "key": value.NewList(value.Double(2))}))
@@ -129,10 +129,16 @@ func TestInterpreter_VisitOpcall3(t *testing.T) {
 	table := value.List{}
 	table.Append(value.NewDict(map[string]value.Value{"x": value.Int(1)}))
 	nonhi := "hello"
-	i := NewInterpreter(map[string]interface{}{
-		"__teststruct__": testNonValue{hi: nonhi},
-	}, map[string]interface{}{})
-	out, err := i.Eval(query, value.NewDict(map[string]value.Value{"num": value.Int(41), "table": table}))
+	i := getInterpreter(
+		map[string]interface{}{
+			"__teststruct__": testNonValue{hi: nonhi},
+		},
+		value.NewDict(map[string]value.Value{
+			"num":   value.Int(41),
+			"table": table,
+		}),
+	)
+	out, err := query.AcceptValue(i)
 	assert.NoError(t, err)
 	rows := out.(value.List)
 	assert.Equal(t, 1, rows.Len())
@@ -150,8 +156,8 @@ func TestInterpreter_VisitOpcall4(t *testing.T) {
 	}
 	table := value.NewList()
 	table.Append(value.NewDict(map[string]value.Value{}))
-	i := getInterpreter()
-	out, err := i.Eval(query, value.NewDict(map[string]value.Value{"table": table}))
+	i := getInterpreter(nil, value.NewDict(map[string]value.Value{"table": table}))
+	out, err := query.AcceptValue(i)
 	assert.NoError(t, err)
 	rows := out.(value.List)
 	//assert.Len(t, rows, 1)
@@ -178,8 +184,8 @@ func TestInterpreter_VisitOpcall5(t *testing.T) {
 	input := value.List{}
 	input.Append(value.Int(10))
 	input.Append(value.Int(20))
-	i := getInterpreter()
-	out, err := i.Eval(query, value.NewDict(map[string]value.Value{"input": input}))
+	i := getInterpreter(nil, value.NewDict(map[string]value.Value{"input": input}))
+	out, err := query.AcceptValue(i)
 	assert.NoError(t, err)
 	rows := out.(value.List)
 	assert.Equal(t, 4, rows.Len())
@@ -217,8 +223,8 @@ func TestInterpreter_VisitFnCall(t *testing.T) {
 		},
 	}
 	for _, scene := range scenarios {
-		i := getInterpreter()
-		found, err := i.Eval(scene.query, value.Dict{})
+		i := getInterpreter(nil, value.Dict{})
+		found, err := scene.query.AcceptValue(i)
 		if scene.err {
 			assert.Error(t, err)
 		} else {
@@ -359,19 +365,6 @@ func (s squareFn) Signature() *operators.Signature {
 
 var _ operators.Operator = squareFn{}
 
-func benchmarkInterpreter_VisitOpcall(numRows int, b *testing.B) {
-	table := value.List{}
-	for i := 0; i < numRows; i++ {
-		row := value.NewDict(map[string]value.Value{"hi": value.Int(i), "bye": value.Double(i)})
-		table.Append(row)
-	}
-	evaler := getInterpreter()
-	query := getOpCallQuery()
-	for i := 0; i < b.N; i++ {
-		res, _ = evaler.Eval(query, value.NewDict(map[string]value.Value{"table": table}))
-	}
-}
-
 type zip struct{}
 
 func (e zip) New(
@@ -409,6 +402,19 @@ func (e zip) Signature() *operators.Signature {
 }
 
 var _ operators.Operator = zip{}
+
+func benchmarkInterpreter_VisitOpcall(numRows int, b *testing.B) {
+	table := value.List{}
+	for i := 0; i < numRows; i++ {
+		row := value.NewDict(map[string]value.Value{"hi": value.Int(i), "bye": value.Double(i)})
+		table.Append(row)
+	}
+	evaler := getInterpreter(nil, value.NewDict(map[string]value.Value{"table": table}))
+	query := getOpCallQuery()
+	for i := 0; i < b.N; i++ {
+		res, _ = query.AcceptValue(evaler)
+	}
+}
 
 func BenchmarkInterpreter_VisitOpcall100(b *testing.B) {
 	benchmarkInterpreter_VisitOpcall(100, b)

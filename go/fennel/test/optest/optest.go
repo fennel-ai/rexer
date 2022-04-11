@@ -1,6 +1,7 @@
 package optest
 
 import (
+	"context"
 	"fmt"
 	"testing"
 
@@ -47,7 +48,7 @@ func AssertError(t *testing.T, tr tier.Tier, op operators.Operator, static value
 
 // run takes some value properties and creates a real ast that represents that opcall and executes it with
 // an interpreter
-func run(tr tier.Tier, op operators.Operator, static value.Dict, inputs [][]value.Value, context []value.Dict) (value.Value, error) {
+func run(tr tier.Tier, op operators.Operator, static value.Dict, inputs [][]value.Value, queryContext []value.Dict) (value.Value, error) {
 	sig := op.Signature()
 	queryargs := value.NewDict(nil)
 	kwargs := make(map[string]ast.Ast)
@@ -72,8 +73,8 @@ func run(tr tier.Tier, op operators.Operator, static value.Dict, inputs [][]valu
 	}
 	field := "context"
 	// context kwarg k will be accessible Var("field")[str(@)].k
-	if len(context) > 0 {
-		for k, _ := range context[0].Iter() {
+	if len(queryContext) > 0 {
+		for k, _ := range queryContext[0].Iter() {
 			kwargs[k] = ast.Lookup{
 				On: ast.Binary{
 					Left: ast.Var{Name: field},
@@ -90,7 +91,7 @@ func run(tr tier.Tier, op operators.Operator, static value.Dict, inputs [][]valu
 	kwargs_data := value.NewDict(nil)
 	for i := range inputs[0] {
 		k := inputs[0][i].String()
-		kwargs_data.Set(k, context[i])
+		kwargs_data.Set(k, queryContext[i])
 	}
 	queryargs.Set(field, kwargs_data)
 
@@ -101,6 +102,9 @@ func run(tr tier.Tier, op operators.Operator, static value.Dict, inputs [][]valu
 		Name:      sig.Name,
 		Kwargs:    ast.Dict{Values: kwargs},
 	}
-	i := interpreter.NewInterpreter(bootarg.Create(tr), map[string]interface{}{})
-	return i.Eval(query, queryargs)
+	i, err := interpreter.NewInterpreter(context.Background(), bootarg.Create(tr), queryargs)
+	if err != nil {
+		return value.Nil, err
+	}
+	return query.AcceptValue(i)
 }

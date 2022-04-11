@@ -7,8 +7,8 @@ import (
 
 	"fennel/controller/action"
 	"fennel/controller/counter"
+	"fennel/engine"
 	"fennel/engine/ast"
-	"fennel/engine/interpreter"
 	"fennel/engine/interpreter/bootarg"
 	"fennel/kafka"
 	libaction "fennel/lib/action"
@@ -17,6 +17,7 @@ import (
 	"fennel/lib/value"
 	modelCounter "fennel/model/counter"
 	"fennel/tier"
+
 	"go.uber.org/zap"
 )
 
@@ -180,13 +181,13 @@ func Update(ctx context.Context, tier tier.Tier, consumer kafka.FConsumer, agg a
 
 func transformActions(tier tier.Tier, actions []libaction.Action, query ast.Ast) (value.List, error) {
 	bootargs := bootarg.Create(tier)
-	interpreter := interpreter.NewInterpreter(bootargs, map[string]interface{}{})
+	executor := engine.NewQueryExecutor(bootargs)
 	table, err := libaction.ToList(actions)
 	if err != nil {
 		return value.NewList(), err
 	}
 
-	result, err := interpreter.Eval(query, value.NewDict(map[string]value.Value{"actions": table}))
+	result, err := executor.Exec(context.Background(), query, value.NewDict(map[string]value.Value{"actions": table}))
 	if err != nil {
 		return value.NewList(), err
 	}
