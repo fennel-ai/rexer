@@ -124,13 +124,13 @@ class TestEndToEnd(unittest.TestCase):
         mock = {'profiles': [p1]}
         actions = [a1, a2, a3, a4]
         expected = [
-            {'action_id': 1, 'action_type': 'notif_send', 'actor_id': 12312, 'actor_type': 'user', 'category': 'sports',
+            {'action_type': 'notif_send', 'actor_id': 12312, 'actor_type': 'user', 'category': 'sports',
              'groupkey': [12312, 'sports'], 'metadata': {}, 'request_id': 1, 'target_id': 456,
              'target_type': 'content', 'timestamp': ts, 'value': [0, 1]},
-            {'action_id': 2, 'action_type': 'notif_send', 'actor_id': 12312, 'actor_type': 'user', 'category': 'sports',
+            {'action_type': 'notif_send', 'actor_id': 12312, 'actor_type': 'user', 'category': 'sports',
              'groupkey': [12312, 'sports'], 'metadata': {}, 'request_id': 1, 'target_id': 456,
              'target_type': 'content', 'timestamp': ts + 1, 'value': [0, 1]},
-            {'action_id': 3, 'action_type': 'notif_open', 'actor_id': 12312, 'actor_type': 'user', 'category': 'sports',
+            {'action_type': 'notif_open', 'actor_id': 12312, 'actor_type': 'user', 'category': 'sports',
              'groupkey': [12312, 'sports'], 'metadata': {}, 'request_id': 1, 'target_id': 456,
              'target_type': 'content', 'timestamp': ts + 2, 'value': [1, 0]}
         ]
