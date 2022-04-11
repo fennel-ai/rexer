@@ -10,12 +10,12 @@ import (
 
 func TestEnv_Define_Lookup(t *testing.T) {
 	env := NewEnv(nil)
-	ret, err := env.Lookup("var")
+	_, err := env.Lookup("var")
 	assert.Error(t, err)
 	var val value.Value = value.Int(1)
 	err = env.Define("var", val)
 	assert.NoError(t, err)
-	ret, err = env.Lookup("var")
+	ret, err := env.Lookup("var")
 	assert.Equal(t, val, ret)
 	assert.Error(t, env.Define("var", value.Bool(true)))
 	assert.Error(t, env.DefineReferencable("var", value.Bool(true)))
