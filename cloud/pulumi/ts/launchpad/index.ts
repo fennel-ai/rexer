@@ -221,7 +221,7 @@ const planeConfs: Record<number, PlaneConf> = {
         },
         controlPlaneConf: controlPlane,
         redisConf: {
-            numShards: 4,
+            numShards: 2,
             nodeType: "db.t4g.medium",
             numReplicasPerShard: 1,
         },
@@ -341,7 +341,7 @@ if (tierId !== 0) {
         kubeconfig: JSON.stringify(eksOutput.kubeconfig),
         namespace: `t-${tierId}`,
 
-        redisEndpoint: redisOutput.clusterEndPoints[0],
+        redisEndpoint: "clustercfg.p-4-redis-db-scaleup-testing.sumkzb.memorydb.ap-south-1.amazonaws.com:6379",
         cachePrimaryEndpoint: elasticacheOutput.endpoint,
         subnetIds: subnetIds,
         loadBalancerScheme: tierConf.ingressConf?.loadBalancerScheme || PRIVATE_LB_SCHEME,
