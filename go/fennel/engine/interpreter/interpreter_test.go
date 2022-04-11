@@ -1,6 +1,7 @@
 package interpreter
 
 import (
+	"context"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -11,19 +12,23 @@ import (
 	_ "fennel/opdefs/std/set"
 )
 
-func getInterpreter() Interpreter {
-	return NewInterpreter(map[string]interface{}{}, map[string]interface{}{})
+func getInterpreter(bootargs map[string]interface{}, args value.Dict) Interpreter {
+	if bootargs == nil {
+		bootargs = map[string]interface{}{}
+	}
+	i, _ := NewInterpreter(context.Background(), bootargs, args)
+	return i
 }
 
 func testValid(t *testing.T, node ast.Ast, expected value.Value) {
-	i := getInterpreter()
+	i := getInterpreter(nil, value.Dict{})
 	ret, err := node.AcceptValue(i)
 	assert.NoError(t, err)
 	assert.Equal(t, expected, ret)
 }
 
 func testError(t *testing.T, node ast.Ast) {
-	i := getInterpreter()
+	i := getInterpreter(nil, value.Dict{})
 	_, err := node.AcceptValue(i)
 	assert.Error(t, err)
 }
@@ -142,11 +147,12 @@ func TestInterpreter_VisitStatement(t *testing.T) {
 }
 
 func TestInterpreter_QueryArgs(t *testing.T) {
-	i := getInterpreter()
+	i := getInterpreter(nil, value.Dict{})
 	// initially nothing
 	assert.Equal(t, value.NewDict(map[string]value.Value{}), i.queryArgs())
 	// queryargs are found at the root env
 	args := value.NewDict(map[string]value.Value{"x": value.Int(0)})
+	i = getInterpreter(nil, args)
 	assert.NoError(t, i.env.Define("__args__", args))
 	assert.Equal(t, args, i.queryArgs())
 	// should work even if we create child envs
@@ -236,7 +242,7 @@ func TestInterpreter_VisitIfelse(t *testing.T) {
 
 // Test that only one of the then/else branches is evaluated
 func testDualBranchEvaluation(t *testing.T) {
-	i := getInterpreter()
+	i := getInterpreter(nil, value.Dict{})
 
 	// Only the then branch should be evaluated
 	ifelse1 := ast.IfElse{
@@ -277,60 +283,8 @@ func testDualBranchEvaluation(t *testing.T) {
 	assert.Equal(t, value.String("xyz"), ret)
 }
 
-func TestInterpreter_Eval(t *testing.T) {
-	i := getInterpreter()
-
-	// first, test some query
-	query1 := ast.IfElse{
-		Condition: ast.MakeBool(false),
-		ThenDo:    ast.MakeInt(+1),
-		ElseDo:    ast.MakeInt(-1),
-	}
-	args1 := value.NewDict(map[string]value.Value{})
-	expected1 := value.Int(-1)
-
-	found1, err := i.Eval(query1, args1)
-	assert.NoError(t, err)
-	assert.True(t, expected1.Equal(found1))
-
-	// now test a query which uses args
-	query2 := ast.IfElse{
-		Condition: ast.Var{Name: "x"},
-		ThenDo:    ast.MakeInt(+1),
-		ElseDo:    ast.MakeInt(-1),
-	}
-	args2 := value.NewDict(map[string]value.Value{"x": value.Bool(true)})
-	expected2 := value.Int(+1)
-
-	found2, err := i.Eval(query2, args2)
-	assert.NoError(t, err)
-	assert.True(t, expected2.Equal(found2))
-
-	// now test shadowing args
-	query3 := ast.Query{Statements: []ast.Statement{
-		{
-			Name: "x",
-			Body: ast.MakeBool(false),
-		},
-		{
-			Name: "",
-			Body: ast.IfElse{
-				Condition: ast.Var{Name: "x"},
-				ThenDo:    ast.MakeInt(+1),
-				ElseDo:    ast.MakeInt(-1),
-			},
-		},
-	}}
-	args3 := value.NewDict(map[string]value.Value{"x": value.Bool(true)})
-	expected3 := value.Int(-1)
-
-	found3, err := i.Eval(query3, args3)
-	assert.NoError(t, err)
-	assert.True(t, expected3.Equal(found3))
-}
-
 func TestInterpreter_VisitVarClone(t *testing.T) {
-	i := getInterpreter()
+	i := getInterpreter(nil, value.Dict{})
 	// checking if var actually clones
 	// define a variable and perform an opcall that changes the input
 	// check if output is as expected and original variable was not changed
