@@ -1,6 +1,7 @@
 package std
 
 import (
+	"context"
 	"fmt"
 
 	"fennel/engine/operators"
@@ -24,7 +25,7 @@ func (op FlattenOperator) Signature() *operators.Signature {
 			"StaticKwargs: Number of levels to flatten. At '0' flattens to a 1-dimensional list")
 }
 
-func (op FlattenOperator) Apply(staticKwargs value.Dict, in operators.InputIter, out *value.List) error {
+func (op FlattenOperator) Apply(_ context.Context, staticKwargs value.Dict, in operators.InputIter, out *value.List) error {
 	depth := int64(staticKwargs.GetUnsafe("depth").(value.Int))
 	if depth < 0 {
 		return fmt.Errorf("static kwarg 'depth' cannot be negative")

@@ -1,6 +1,7 @@
 package operators
 
 import (
+	"context"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -19,7 +20,7 @@ func (top testOpZip) New(
 	return nil, nil
 }
 
-func (top testOpZip) Apply(kwargs value.Dict, in InputIter, out *value.List) error {
+func (top testOpZip) Apply(_ context.Context, kwargs value.Dict, in InputIter, out *value.List) error {
 	return nil
 }
 

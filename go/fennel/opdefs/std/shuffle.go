@@ -1,6 +1,7 @@
 package std
 
 import (
+	"context"
 	"math/rand"
 	"reflect"
 
@@ -23,7 +24,7 @@ func (op ShuffleOperator) Signature() *operators.Signature {
 		Input([]value.Type{value.Types.Dict})
 }
 
-func (op ShuffleOperator) Apply(_ value.Dict, in operators.InputIter, out *value.List) error {
+func (op ShuffleOperator) Apply(_ context.Context, _ value.Dict, in operators.InputIter, out *value.List) error {
 	var rows []value.Value
 	for in.HasMore() {
 		heads, _, err := in.Next()

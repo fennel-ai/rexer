@@ -1,6 +1,7 @@
 package zip
 
 import (
+	"context"
 	"fennel/engine/operators"
 	"fennel/lib/value"
 )
@@ -19,7 +20,7 @@ func (z zipper) New(
 	return zipper{}, nil
 }
 
-func (z zipper) Apply(kwargs value.Dict, in operators.InputIter, out *value.List) error {
+func (z zipper) Apply(_ context.Context, kwargs value.Dict, in operators.InputIter, out *value.List) error {
 	for in.HasMore() {
 		v, _, err := in.Next()
 		if err != nil {

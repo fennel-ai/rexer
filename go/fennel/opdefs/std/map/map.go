@@ -1,6 +1,7 @@
 package _map
 
 import (
+	"context"
 	"fennel/engine/operators"
 	"fennel/lib/value"
 )
@@ -18,7 +19,7 @@ func (m mapper) New(
 	return mapper{}, nil
 }
 
-func (m mapper) Apply(kwargs value.Dict, in operators.InputIter, out *value.List) error {
+func (m mapper) Apply(_ context.Context, kwargs value.Dict, in operators.InputIter, out *value.List) error {
 	for in.HasMore() {
 		_, context, err := in.Next()
 		if err != nil {

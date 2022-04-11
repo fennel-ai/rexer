@@ -30,7 +30,7 @@ func (f featureLog) New(
 	return featureLog{tr}, nil
 }
 
-func (f featureLog) Apply(static value.Dict, in operators.InputIter, out *value.List) error {
+func (f featureLog) Apply(_ context.Context, static value.Dict, in operators.InputIter, out *value.List) error {
 	workflow := string(get(static, "workflow").(value.String))
 	modelName := ftypes.ModelName(get(static, "model_name").(value.String))
 	modelVersion := ftypes.ModelVersion(get(static, "model_version").(value.String))

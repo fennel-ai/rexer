@@ -1,6 +1,7 @@
 package repeat
 
 import (
+	"context"
 	"fmt"
 
 	"fennel/engine/operators"
@@ -21,7 +22,7 @@ func (r repeater) New(
 	return repeater{}, nil
 }
 
-func (r repeater) Apply(kwargs value.Dict, in operators.InputIter, out *value.List) error {
+func (r repeater) Apply(_ context.Context, kwargs value.Dict, in operators.InputIter, out *value.List) error {
 	for in.HasMore() {
 		heads, kwargs, err := in.Next()
 		if err != nil {
