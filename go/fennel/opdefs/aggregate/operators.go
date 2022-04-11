@@ -35,7 +35,7 @@ func (a AggValue) New(
 	return AggValue{tr}, nil
 }
 
-func (a AggValue) Apply(_ context.Context, kwargs value.Dict, in operators.InputIter, outs *value.List) error {
+func (a AggValue) Apply(ctx context.Context, kwargs value.Dict, in operators.InputIter, outs *value.List) error {
 	var reqs []aggregate2.GetAggValueRequest
 	var rows []value.Value
 	for in.HasMore() {
@@ -51,7 +51,7 @@ func (a AggValue) Apply(_ context.Context, kwargs value.Dict, in operators.Input
 		reqs = append(reqs, req)
 		rows = append(rows, heads[0])
 	}
-	res, err := aggregate.BatchValue(context.TODO(), a.tier, reqs)
+	res, err := aggregate.BatchValue(ctx, a.tier, reqs)
 	if err != nil {
 		return err
 	}

@@ -40,7 +40,7 @@ func (pop predictOperator) Signature() *operators.Signature {
 		Param("model_version", value.Types.String, true, false, value.Nil)
 }
 
-func (pop predictOperator) Apply(_ context.Context, staticKwargs value.Dict, in operators.InputIter, out *value.List) error {
+func (pop predictOperator) Apply(ctx context.Context, staticKwargs value.Dict, in operators.InputIter, out *value.List) error {
 	var featureVecs []value.List
 	for in.HasMore() {
 		_, contextKwargs, err := in.Next()
@@ -53,7 +53,7 @@ func (pop predictOperator) Apply(_ context.Context, staticKwargs value.Dict, in 
 	modelName := staticKwargs.GetUnsafe("model_name").(value.String)
 	modelVersion := staticKwargs.GetUnsafe("model_version").(value.String)
 	// TODO: Split into correctly sized requests instead of just 1.
-	res, err := pop.tier.SagemakerClient.Score(context.TODO(), &sagemaker.ScoreRequest{
+	res, err := pop.tier.SagemakerClient.Score(ctx, &sagemaker.ScoreRequest{
 		ModelName:    string(modelName),
 		ModelVersion: string(modelVersion),
 		FeatureLists: featureVecs,

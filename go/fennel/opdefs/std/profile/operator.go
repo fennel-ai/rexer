@@ -47,7 +47,7 @@ func (p profileOp) New(
 	return profileOp{tr, args, mockID, cache}, nil
 }
 
-func (p profileOp) Apply(_ context.Context, staticKwargs value.Dict, in operators.InputIter, out *value.List) (err error) {
+func (p profileOp) Apply(ctx context.Context, staticKwargs value.Dict, in operators.InputIter, out *value.List) (err error) {
 	var reqs []libprofile.ProfileItem
 	var rows []value.Value
 	for in.HasMore() {
@@ -69,7 +69,7 @@ func (p profileOp) Apply(_ context.Context, staticKwargs value.Dict, in operator
 	if p.mockID != 0 {
 		vals = mock.GetProfiles(reqs, p.mockID)
 	} else {
-		vals, err = p.getProfiles(reqs)
+		vals, err = p.getProfiles(ctx, reqs)
 		if err != nil {
 			return err
 		}
@@ -96,7 +96,7 @@ func (p profileOp) Apply(_ context.Context, staticKwargs value.Dict, in operator
 	return nil
 }
 
-func (p profileOp) getProfiles(profiles []libprofile.ProfileItem) ([]value.Value, error) {
+func (p profileOp) getProfiles(ctx context.Context, profiles []libprofile.ProfileItem) ([]value.Value, error) {
 	res := make([]value.Value, len(profiles))
 	var uncached []libprofile.ProfileItem
 	var ptrs []int
@@ -130,7 +130,7 @@ func (p profileOp) getProfiles(profiles []libprofile.ProfileItem) ([]value.Value
 		}
 	}
 	// now get uncached profiles
-	vals, err := profile.GetBatched(context.TODO(), p.tier, uncached)
+	vals, err := profile.GetBatched(ctx, p.tier, uncached)
 	if err != nil {
 		return nil, err
 	}
