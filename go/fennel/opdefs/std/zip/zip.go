@@ -13,7 +13,9 @@ func init() {
 
 type zipper struct{}
 
-func (z zipper) New(args value.Dict, bootargs map[string]interface{}) (operators.Operator, error) {
+func (z zipper) New(
+	args value.Dict, bootargs map[string]interface{}, cache map[string]interface{},
+) (operators.Operator, error) {
 	return zipper{}, nil
 }
 

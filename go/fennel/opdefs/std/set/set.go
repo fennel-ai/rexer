@@ -13,7 +13,9 @@ type setOperator struct{}
 
 var _ operators.Operator = setOperator{}
 
-func (op setOperator) New(args value.Dict, bootargs map[string]interface{}) (operators.Operator, error) {
+func (op setOperator) New(
+	args value.Dict, bootargs map[string]interface{}, cache map[string]interface{},
+) (operators.Operator, error) {
 	return setOperator{}, nil
 }
 

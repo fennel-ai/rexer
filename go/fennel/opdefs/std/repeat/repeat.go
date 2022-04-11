@@ -1,9 +1,10 @@
 package repeat
 
 import (
+	"fmt"
+
 	"fennel/engine/operators"
 	"fennel/lib/value"
-	"fmt"
 )
 
 func init() {
@@ -14,7 +15,9 @@ func init() {
 
 type repeater struct{}
 
-func (r repeater) New(args value.Dict, bootargs map[string]interface{}) (operators.Operator, error) {
+func (r repeater) New(
+	args value.Dict, bootargs map[string]interface{}, cache map[string]interface{},
+) (operators.Operator, error) {
 	return repeater{}, nil
 }
 

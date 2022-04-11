@@ -25,7 +25,9 @@ type AggValue struct {
 	tier tier.Tier
 }
 
-func (a AggValue) New(args value.Dict, bootargs map[string]interface{}) (operators.Operator, error) {
+func (a AggValue) New(
+	args value.Dict, bootargs map[string]interface{}, cache map[string]interface{},
+) (operators.Operator, error) {
 	tr, err := bootarg.GetTier(bootargs)
 	if err != nil {
 		return nil, err

@@ -131,7 +131,7 @@ func TestInterpreter_VisitOpcall3(t *testing.T) {
 	nonhi := "hello"
 	i := NewInterpreter(map[string]interface{}{
 		"__teststruct__": testNonValue{hi: nonhi},
-	})
+	}, map[string]interface{}{})
 	out, err := i.Eval(query, value.NewDict(map[string]value.Value{"num": value.Int(41), "table": table}))
 	assert.NoError(t, err)
 	rows := out.(value.List)
@@ -230,7 +230,9 @@ func TestInterpreter_VisitFnCall(t *testing.T) {
 
 type testOpDefault struct{}
 
-func (t testOpDefault) New(args value.Dict, bootargs map[string]interface{}) (operators.Operator, error) {
+func (t testOpDefault) New(
+	args value.Dict, bootargs map[string]interface{}, cache map[string]interface{},
+) (operators.Operator, error) {
 	return testOpDefault{}, nil
 }
 
@@ -269,7 +271,9 @@ type testNonValue struct {
 
 var _ operators.Operator = testOpInit{}
 
-func (top testOpInit) New(args value.Dict, bootargs map[string]interface{}) (operators.Operator, error) {
+func (top testOpInit) New(
+	args value.Dict, bootargs map[string]interface{}, cache map[string]interface{},
+) (operators.Operator, error) {
 	// take one arg from args and one from bootarg to verify that init is working
 	num, ok := args.Get("num")
 	if !ok {
@@ -302,7 +306,9 @@ type rowCount struct {
 	num int
 }
 
-func (r *rowCount) New(args value.Dict, bootargs map[string]interface{}) (operators.Operator, error) {
+func (r *rowCount) New(
+	args value.Dict, bootargs map[string]interface{}, cache map[string]interface{},
+) (operators.Operator, error) {
 	return &rowCount{}, nil
 }
 
@@ -325,7 +331,9 @@ var _ operators.Operator = &rowCount{}
 
 type squareFn struct{}
 
-func (s squareFn) New(args value.Dict, bootargs map[string]interface{}) (operators.Operator, error) {
+func (s squareFn) New(
+	args value.Dict, bootargs map[string]interface{}, cache map[string]interface{},
+) (operators.Operator, error) {
 	return squareFn{}, nil
 }
 
@@ -366,7 +374,9 @@ func benchmarkInterpreter_VisitOpcall(numRows int, b *testing.B) {
 
 type zip struct{}
 
-func (e zip) New(args value.Dict, bootargs map[string]interface{}) (operators.Operator, error) {
+func (e zip) New(
+	args value.Dict, bootargs map[string]interface{}, cache map[string]interface{},
+) (operators.Operator, error) {
 	return zip{}, nil
 }
 

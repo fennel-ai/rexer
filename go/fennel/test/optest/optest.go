@@ -101,6 +101,6 @@ func run(tr tier.Tier, op operators.Operator, static value.Dict, inputs [][]valu
 		Name:      sig.Name,
 		Kwargs:    ast.Dict{Values: kwargs},
 	}
-	i := interpreter.NewInterpreter(bootarg.Create(tr))
+	i := interpreter.NewInterpreter(bootarg.Create(tr), map[string]interface{}{})
 	return i.Eval(query, queryargs)
 }

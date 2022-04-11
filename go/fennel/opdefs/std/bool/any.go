@@ -11,7 +11,9 @@ func init() {
 
 type anyop struct{}
 
-func (a anyop) New(args value.Dict, bootargs map[string]interface{}) (operators.Operator, error) {
+func (a anyop) New(
+	args value.Dict, bootargs map[string]interface{}, cache map[string]interface{},
+) (operators.Operator, error) {
 	return anyop{}, nil
 }
 

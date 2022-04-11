@@ -22,7 +22,9 @@ type predictOperator struct {
 
 var _ operators.Operator = predictOperator{}
 
-func (pop predictOperator) New(args value.Dict, bootargs map[string]interface{}) (operators.Operator, error) {
+func (pop predictOperator) New(
+	args value.Dict, bootargs map[string]interface{}, cache map[string]interface{},
+) (operators.Operator, error) {
 	tr, err := bootarg.GetTier(bootargs)
 	if err != nil {
 		return nil, err

@@ -13,7 +13,9 @@ type testOpZip struct {
 
 var _ Operator = testOp{}
 
-func (top testOpZip) New(args value.Dict, bootargs map[string]interface{}) (Operator, error) {
+func (top testOpZip) New(
+	args value.Dict, bootargs map[string]interface{}, cache map[string]interface{},
+) (Operator, error) {
 	return nil, nil
 }
 

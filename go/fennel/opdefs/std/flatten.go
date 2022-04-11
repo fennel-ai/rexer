@@ -11,7 +11,9 @@ type FlattenOperator struct{}
 
 var _ operators.Operator = FlattenOperator{}
 
-func (op FlattenOperator) New(_ value.Dict, _ map[string]interface{}) (operators.Operator, error) {
+func (op FlattenOperator) New(
+	args value.Dict, bootargs map[string]interface{}, cache map[string]interface{},
+) (operators.Operator, error) {
 	return FlattenOperator{}, nil
 }
 
