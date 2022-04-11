@@ -73,7 +73,7 @@ func TestFeatureLog_Apply(t *testing.T) {
 	}
 	optest.AssertElementsMatch(t, tier, &featureLog{tier}, static, [][]value.Value{inputs}, kwargs, outputs)
 	for _, r := range rows {
-		rowptr, err := feature2.Read(context.TODO(), consumer)
+		rowptr, err := feature2.Read(context.Background(), consumer)
 		assert.NoError(t, err)
 		assert.Equal(t, r, *rowptr)
 	}
