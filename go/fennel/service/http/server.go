@@ -349,7 +349,7 @@ func (m server) Query(w http.ResponseWriter, req *http.Request) {
 		}()
 	}
 	// execute the tree
-	i := interpreter.NewInterpreter(bootarg.Create(m.tier))
+	i := interpreter.NewInterpreter(bootarg.Create(m.tier), map[string]interface{}{})
 	ret, err := i.Eval(tree, args)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)

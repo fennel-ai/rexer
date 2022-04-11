@@ -12,7 +12,7 @@ import (
 )
 
 func getInterpreter() Interpreter {
-	return NewInterpreter(map[string]interface{}{})
+	return NewInterpreter(map[string]interface{}{}, map[string]interface{}{})
 }
 
 func testValid(t *testing.T, node ast.Ast, expected value.Value) {

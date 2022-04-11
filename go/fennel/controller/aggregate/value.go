@@ -179,7 +179,7 @@ func Update(ctx context.Context, tier tier.Tier, consumer kafka.FConsumer, agg a
 
 func transformActions(tier tier.Tier, actions []libaction.Action, query ast.Ast) (value.List, error) {
 	bootargs := bootarg.Create(tier)
-	interpreter := interpreter.NewInterpreter(bootargs)
+	interpreter := interpreter.NewInterpreter(bootargs, map[string]interface{}{})
 	table, err := libaction.ToList(actions)
 	if err != nil {
 		return value.NewList(), err
