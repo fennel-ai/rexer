@@ -6,17 +6,20 @@ import (
 	"fennel/lib/value"
 )
 
+type envValue struct {
+	value  value.Value
+	useRef bool
+}
+
 type Env struct {
 	parent *Env
-	table  map[string]value.Value
-	useRef map[string]bool
+	table  map[string]envValue
 }
 
 func NewEnv(parent *Env) *Env {
 	return &Env{
 		parent: parent,
-		table:  make(map[string]value.Value),
-		useRef: make(map[string]bool),
+		table:  make(map[string]envValue),
 	}
 }
 
@@ -24,8 +27,7 @@ func (e *Env) define(name string, value value.Value, useRef bool) error {
 	if _, ok := e.table[name]; ok {
 		return fmt.Errorf("re-defining symbol: '%s'", name)
 	}
-	e.table[name] = value
-	e.useRef[name] = useRef
+	e.table[name] = envValue{value, useRef}
 	return nil
 }
 
@@ -38,20 +40,11 @@ func (e *Env) Define(name string, value value.Value) error {
 }
 
 func (e *Env) Lookup(name string) (value.Value, error) {
-	ret, ok := e.table[name]
-	if ok {
-		ref, ok := e.useRef[name]
-		if !ok {
-			return value.Nil, fmt.Errorf("variable defined, type unknown: '%s'", name)
-		}
-		if ref {
-			return ret, nil
-		}
-		return ret.Clone(), nil
-	} else {
-		// should not exist in the `useRef` map as well
-		if _, ok := e.useRef[name]; ok {
-			return value.Nil, fmt.Errorf("variable undefined, but type known: '%s'", name)
+	if ret, ok := e.table[name]; ok {
+		if ret.useRef {
+			return ret.value, nil
+		} else {
+			return ret.value.Clone(), nil
 		}
 	}
 
