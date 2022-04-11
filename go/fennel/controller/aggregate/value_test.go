@@ -154,6 +154,11 @@ func TestCachedValueAll(t *testing.T) {
 	assert.NoError(t, err)
 	assert.True(t, expected.Equal(found))
 
+	// test TTL set properly
+	ttl, ok := tier.PCache.GetTTL(makeCacheKey(agg.Name, key, kwargs))
+	assert.True(t, ok)
+	assert.LessOrEqual(t, ttl, 60*time.Second)
+
 	// test batch now
 	agg1, agg2, agg3 := agg, agg, agg
 	agg1.Name, agg2.Name, agg3.Name = "agg1", "agg2", "agg3"
@@ -192,6 +197,15 @@ func TestCachedValueAll(t *testing.T) {
 	assert.NoError(t, err)
 	for i, expval := range expectedVals {
 		assert.True(t, expval.Equal(foundVals[i]))
+	}
+
+	// wait for req2 value to be cached
+	time.Sleep(10 * time.Millisecond)
+	// test TTL set properly
+	for _, req := range reqs {
+		ttl, ok := tier.PCache.GetTTL(makeCacheKey(req.AggName, req.Key, req.Kwargs))
+		assert.True(t, ok)
+		assert.LessOrEqual(t, ttl, 60*time.Second)
 	}
 }
 

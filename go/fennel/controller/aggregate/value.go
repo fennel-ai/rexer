@@ -22,7 +22,8 @@ import (
 
 const cacheValueDuration = time.Minute
 
-var cacheVersion = 0 // increment this to invalidate all existing cache keys for aggregate
+// increment this to invalidate all existing cache keys for aggregate
+var cacheVersion = 0
 
 func InvalidateCache() {
 	cacheVersion++
