@@ -30,7 +30,7 @@ func (f featureLog) New(
 	return featureLog{tr}, nil
 }
 
-func (f featureLog) Apply(_ context.Context, static value.Dict, in operators.InputIter, out *value.List) error {
+func (f featureLog) Apply(ctx context.Context, static value.Dict, in operators.InputIter, out *value.List) error {
 	workflow := string(get(static, "workflow").(value.String))
 	modelName := ftypes.ModelName(get(static, "model_name").(value.String))
 	modelVersion := ftypes.ModelVersion(get(static, "model_version").(value.String))
@@ -58,7 +58,7 @@ func (f featureLog) Apply(_ context.Context, static value.Dict, in operators.Inp
 			ModelVersion:    modelVersion,
 			ModelPrediction: float64(get(kwargs, "model_prediction").(value.Double)),
 		}
-		if err = feature.Log(context.TODO(), f.tier, msg); err != nil {
+		if err = feature.Log(ctx, f.tier, msg); err != nil {
 			return err
 		}
 		out.Append(row)
