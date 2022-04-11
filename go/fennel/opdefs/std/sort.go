@@ -12,7 +12,9 @@ type SortOperator struct{}
 
 var _ operators.Operator = SortOperator{}
 
-func (op SortOperator) New(_ value.Dict, _ map[string]interface{}) (operators.Operator, error) {
+func (op SortOperator) New(
+	args value.Dict, bootargs map[string]interface{}, cache map[string]interface{},
+) (operators.Operator, error) {
 	return SortOperator{}, nil
 }
 

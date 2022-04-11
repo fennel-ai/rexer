@@ -1,9 +1,10 @@
 package rename
 
 import (
+	"fmt"
+
 	"fennel/engine/operators"
 	"fennel/lib/value"
-	"fmt"
 )
 
 func init() {
@@ -12,7 +13,9 @@ func init() {
 
 type renamer struct{}
 
-func (r renamer) New(args value.Dict, bootargs map[string]interface{}) (operators.Operator, error) {
+func (r renamer) New(
+	args value.Dict, bootargs map[string]interface{}, cache map[string]interface{},
+) (operators.Operator, error) {
 	return renamer{}, nil
 }
 

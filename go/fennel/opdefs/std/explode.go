@@ -11,7 +11,9 @@ type ExplodeOperator struct{}
 
 var _ operators.Operator = ExplodeOperator{}
 
-func (e ExplodeOperator) New(_ value.Dict, _ map[string]interface{}) (operators.Operator, error) {
+func (e ExplodeOperator) New(
+	args value.Dict, bootargs map[string]interface{}, cache map[string]interface{},
+) (operators.Operator, error) {
 	return ExplodeOperator{}, nil
 }
 

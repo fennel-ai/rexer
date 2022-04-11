@@ -11,7 +11,9 @@ func init() {
 
 type adder struct{}
 
-func (a adder) New(args value.Dict, bootargs map[string]interface{}) (operators.Operator, error) {
+func (a adder) New(
+	args value.Dict, bootargs map[string]interface{}, cache map[string]interface{},
+) (operators.Operator, error) {
 	return adder{}, nil
 }
 
