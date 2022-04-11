@@ -204,20 +204,23 @@ const setupResources = async () => {
     })
     configsOutput.apply(async () => {
         // setup api-server and countaggr after configs are setup.
-        await countaggr.setup({
-            roleArn: input.roleArn,
-            region: input.region,
-            kubeconfig: input.kubeconfig,
-            namespace: input.namespace,
-            tierId: input.tierId,
-        });
-        await httpserver.setup({
+        const httpServerOutput = await httpserver.setup({
             roleArn: input.roleArn,
             region: input.region,
             kubeconfig: input.kubeconfig,
             namespace: input.namespace,
             tierId: input.tierId,
             replicas: input?.httpServerReplicas,
+        });
+        // This there is an affinity requirement on http-server and countaggr pods, schedule the http-server pod first
+        // and let countaggr depend on it's output so that affinity requirements do not unexpected behavior
+        await countaggr.setup({
+            roleArn: input.roleArn,
+            region: input.region,
+            kubeconfig: input.kubeconfig,
+            namespace: input.namespace,
+            tierId: input.tierId,
+            httpServerAppLabels: httpServerOutput.appLabels,
         });
     })
     return {

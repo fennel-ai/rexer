@@ -313,8 +313,18 @@ export const setup = async (input: inputType): Promise<pulumi.Output<outputType>
         // up and running when nodes are running in private subnet.
         endpointPublicAccess: true,
         subnetIds: subnetIds.ids,
+        // TODO: Explore running different node groups, say one for countaggr service and one for http-service
+        // with different instance types.
         nodeGroupOptions: {
             instanceType: input.nodeType || DEFAULT_NODE_TYPE,
+            // NOTE: Desired number of nodes = 3. We have defined an affinity between the http-server and countaggr
+            // services to NOT be scheduled on the same node (i.e. host).
+            //
+            // We currently run 2 replicas of http-server and 1 replica of countaggr
+            //
+            // This essentially means that one instance of each would reside on different nodes.
+            //
+            // Change number of replicas and/or affinity b/w services accordingly if updating the node group size.
             desiredCapacity: nodeCapacity,
             minSize: nodeCapacity,
             maxSize: nodeCapacity,
