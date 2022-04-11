@@ -82,9 +82,9 @@ func (conf MySQLConfig) Materialize() (resource.Resource, error) {
 		return nil, err
 	}
 	// The default is 0 (unlimited)
-	DB.SetMaxOpenConns(400)
+	DB.SetMaxOpenConns(50)
 	// defaultMaxIdleConns = 2
-	DB.SetMaxIdleConns(100)
+	DB.SetMaxIdleConns(40)
 	// Use connections for an hour before expiry. This is especially useful in
 	// an elastic environment like Aurora where servers might be added or removed
 	// depending on load. Otherwise, connections can remain in a "broken" state and
