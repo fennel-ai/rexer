@@ -1,6 +1,7 @@
 package std
 
 import (
+	"context"
 	"fmt"
 
 	"fennel/engine/operators"
@@ -24,7 +25,7 @@ func (e ExplodeOperator) Signature() *operators.Signature {
 		Input([]value.Type{value.Types.Dict})
 }
 
-func (e ExplodeOperator) Apply(staticKwargs value.Dict, in operators.InputIter, out *value.List) error {
+func (e ExplodeOperator) Apply(_ context.Context, staticKwargs value.Dict, in operators.InputIter, out *value.List) error {
 	field, _ := staticKwargs.Get("field")
 	for in.HasMore() {
 		rows, _, err := in.Next()

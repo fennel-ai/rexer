@@ -62,7 +62,7 @@ func (i Interpreter) VisitFnCall(module, name string, kwargs map[string]ast.Ast)
 	// finally, call the function
 	// typing of input / context kwargs is verified element by element inside the iter
 	outtable := value.NewList()
-	if err = op.Apply(value.NewDict(map[string]value.Value{}), inputTable.Iter(), &outtable); err != nil {
+	if err = op.Apply(i.ctx, value.NewDict(map[string]value.Value{}), inputTable.Iter(), &outtable); err != nil {
 		return value.Nil, err
 	}
 	if outtable.Len() != 1 {
@@ -273,7 +273,7 @@ func (i Interpreter) VisitOpcall(operands []ast.Ast, vars []string, namespace, n
 	// finally, call the operator
 	// typing of input / context kwargs is verified element by element inside the iter
 	outtable := value.NewList()
-	if err = op.Apply(staticKwargs, inputTable.Iter(), &outtable); err != nil {
+	if err = op.Apply(i.ctx, staticKwargs, inputTable.Iter(), &outtable); err != nil {
 		return value.Nil, err
 	}
 	return outtable, nil

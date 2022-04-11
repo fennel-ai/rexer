@@ -35,7 +35,7 @@ func (a AggValue) New(
 	return AggValue{tr}, nil
 }
 
-func (a AggValue) Apply(kwargs value.Dict, in operators.InputIter, outs *value.List) error {
+func (a AggValue) Apply(_ context.Context, kwargs value.Dict, in operators.InputIter, outs *value.List) error {
 	var reqs []aggregate2.GetAggValueRequest
 	var rows []value.Value
 	for in.HasMore() {

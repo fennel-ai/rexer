@@ -1,6 +1,7 @@
 package number
 
 import (
+	"context"
 	"fennel/engine/operators"
 	"fennel/lib/value"
 )
@@ -17,7 +18,7 @@ func (a meanop) New(
 	return meanop{}, nil
 }
 
-func (a meanop) Apply(_ value.Dict, in operators.InputIter, out *value.List) error {
+func (a meanop) Apply(_ context.Context, _ value.Dict, in operators.InputIter, out *value.List) error {
 	sum, num := float64(0), int64(0)
 
 	for in.HasMore() {

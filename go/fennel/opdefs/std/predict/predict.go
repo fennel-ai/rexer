@@ -40,7 +40,7 @@ func (pop predictOperator) Signature() *operators.Signature {
 		Param("model_version", value.Types.String, true, false, value.Nil)
 }
 
-func (pop predictOperator) Apply(staticKwargs value.Dict, in operators.InputIter, out *value.List) error {
+func (pop predictOperator) Apply(_ context.Context, staticKwargs value.Dict, in operators.InputIter, out *value.List) error {
 	var featureVecs []value.List
 	for in.HasMore() {
 		_, contextKwargs, err := in.Next()

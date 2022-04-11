@@ -1,6 +1,7 @@
 package bool
 
 import (
+	"context"
 	"fennel/engine/operators"
 	"fennel/lib/value"
 )
@@ -17,7 +18,7 @@ func (a anyop) New(
 	return anyop{}, nil
 }
 
-func (a anyop) Apply(kwargs value.Dict, in operators.InputIter, out *value.List) error {
+func (a anyop) Apply(_ context.Context, kwargs value.Dict, in operators.InputIter, out *value.List) error {
 	for in.HasMore() {
 		heads, _, err := in.Next()
 		if err != nil {
