@@ -115,7 +115,7 @@ func GetHostedModels(tier tier.Tier, sagemakerModelName string) ([]lib.Sagemaker
 	return hostedModels, nil
 }
 
-// GetCoveringHosted model returns the hosted models that host all active models.
+// GetCoveringHostedModels returns the hosted models that host all active models.
 func GetCoveringHostedModels(tier tier.Tier) ([]string, error) {
 	var hostedModelNames []string
 	err := tier.DB.Select(&hostedModelNames, `
