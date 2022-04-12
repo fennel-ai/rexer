@@ -11,6 +11,7 @@ import (
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/awserr"
 	"github.com/aws/aws-sdk-go/aws/session"
+	"github.com/aws/aws-sdk-go/service/s3/s3manager"
 	"github.com/aws/aws-sdk-go/service/sagemaker"
 	"github.com/aws/aws-sdk-go/service/sagemakerruntime"
 
@@ -36,10 +37,12 @@ func NewClient(args SagemakerArgs) (SMClient, error) {
 	))
 	runtime := sagemakerruntime.New(sess)
 	metadata := sagemaker.New(sess)
+	s3Uploader := s3manager.NewUploader(sess)
 	return SMClient{
 		args:           args,
 		runtimeClient:  runtime,
 		metadataClient: metadata,
+		s3Uploader:     s3Uploader,
 	}, nil
 }
 
@@ -47,6 +50,7 @@ type SMClient struct {
 	args           SagemakerArgs
 	runtimeClient  *sagemakerruntime.SageMakerRuntime
 	metadataClient *sagemaker.SageMaker
+	s3Uploader     *s3manager.Uploader
 }
 
 var _ lib.SagemakerRegistry = SMClient{}
