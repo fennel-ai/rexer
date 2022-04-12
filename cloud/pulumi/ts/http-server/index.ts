@@ -138,6 +138,21 @@ export const setup = async (input: inputType) => {
                 // NOTE: If changing number replicas, please take `topologySpreadConstraints`
                 // into consideration which schedules replicas on different nodes.
                 replicas: input.replicas || DEFAULT_REPLICAS,
+                // TODO: eventually remove this.
+                //
+                // configure one of the existing pods to go down before k8s scheduler tries to schedule a new
+                // pod - this is required since with the current setup of:
+                //  1. X nodes
+                //  2. anti-affinity b/w countaggr and http-server pods
+                //  3. <= X-1 replicas, with the requirement that each replica is scheduled on different nodes
+                //
+                // might run into a scheduling problem if new pods are brought up before old pods are descheduled
+                strategy: {
+                    rollingUpdate: {
+                        maxSurge: 0,
+                        maxUnavailable: 1,
+                    }
+                },
                 template: {
                     metadata: {
                         labels: appLabels,
