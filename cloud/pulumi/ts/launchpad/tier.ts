@@ -53,6 +53,7 @@ type inputType = {
     glueTrainingDataBucket: string,
     // http server configuration
     httpServerReplicas?: number,
+    forceReplicaIsolation?: boolean,
 }
 
 const parseConfig = (): inputType => {
@@ -95,6 +96,7 @@ const parseConfig = (): inputType => {
         glueTrainingDataBucket: config.require(nameof<inputType>("glueTrainingDataBucket")),
 
         httpServerReplicas: config.getNumber(nameof<inputType>("httpServerReplicas")),
+        forceReplicaIsolation: config.getBoolean(nameof<inputType>("forceReplicaIsolation")),
     };
 };
 
@@ -211,6 +213,7 @@ const setupResources = async () => {
             namespace: input.namespace,
             tierId: input.tierId,
             replicas: input?.httpServerReplicas,
+            forceReplicaIsolation: input?.forceReplicaIsolation,
         });
         // This there is an affinity requirement on http-server and countaggr pods, schedule the http-server pod first
         // and let countaggr depend on it's output so that affinity requirements do not unexpected behavior
@@ -270,6 +273,7 @@ type TierConf = {
 
     // http server configuration
     httpServerReplicas?: number,
+    forceReplicaIsolation?: boolean,
 }
 
 const setupTier = async (args: TierConf, destroy?: boolean) => {
@@ -333,6 +337,10 @@ const setupTier = async (args: TierConf, destroy?: boolean) => {
 
     if (args.httpServerReplicas !== undefined) {
         await stack.setConfig(nameof<inputType>("httpServerReplicas"), {value: String(args.httpServerReplicas)})
+    }
+
+    if (args.forceReplicaIsolation !== undefined) {
+        await stack.setConfig(nameof<inputType>("forceReplicaIsolation"), {value: String(args.forceReplicaIsolation)})
     }
 
     console.info("config set");

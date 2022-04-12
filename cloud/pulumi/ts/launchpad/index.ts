@@ -135,6 +135,7 @@ const planeConfs: Record<number, PlaneConf> = {
         },
         httpServerConf: {
             replicas: 3,
+            forceReplicaIsolation: true,
         }
     },
     // Lokal's dev tier data plane
@@ -244,5 +245,6 @@ if (tierId !== 0) {
         glueTrainingDataBucket: connSinkOutput.bucketName,
 
         httpServerReplicas: planeConf.httpServerConf?.replicas,
+        forceReplicaIsolation: planeConf.httpServerConf?.forceReplicaIsolation,
     }, false).catch(err => console.log(err))
 }
