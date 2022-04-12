@@ -54,7 +54,7 @@ def tiered(wrapped):
 
 
 class TestEndToEnd(unittest.TestCase):
-    maxDiff = None
+
     @tiered
     def test_lokal(self):
         c = client.Client(URL)
