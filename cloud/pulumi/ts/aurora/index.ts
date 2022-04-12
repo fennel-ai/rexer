@@ -14,7 +14,7 @@ export const fennelStdTags = {
 }
 
 export const plugins = {
-    "aws": "v5.1.0",
+    "aws": "v4.38.1",
 }
 
 export type inputType = {
@@ -129,7 +129,7 @@ export const setup = async (input: inputType): Promise<pulumi.Output<outputType>
             maxCapacity: input.maxCapacity,
         },
         skipFinalSnapshot: input.skipFinalSnapshot,
-        finalSnapshotIdentifier: `p-${input.planeId}-${snapshotId}`, 
+        finalSnapshotIdentifier: `p-${input.planeId}-${snapshotId}`,
         tags: { ...fennelStdTags }
     }, { provider })
 

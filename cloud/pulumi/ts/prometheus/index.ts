@@ -14,7 +14,7 @@ export const fennelStdTags = {
 }
 
 export const plugins = {
-    "aws": "v5.1.0",
+    "aws": "v4.38.1",
     "kubernetes": "v3.18.0"
 }
 
@@ -36,7 +36,7 @@ export type outputType = {
 const prometheusScrapeConfigs = {
     "scrape_configs": [{
         "job_name": "kubernetes-pods",
-        "sample_limit": 10000, 
+        "sample_limit": 10000,
         "kubernetes_sd_configs": [{
             "role": "pod"
         }],
@@ -179,7 +179,7 @@ export const setupAMP = async (input: inputType): Promise<pulumi.Output<outputTy
     const prometheusWriteEndpoint = prom.prometheusEndpoint.apply(endpoint => {
         // endpoint ends with `/`.
         return `${endpoint}api/v1/remote_write`
-    }) 
+    })
     const prometheusQueryEndpoint = prom.prometheusEndpoint.apply(endpoint => {
         // endpoint ends with `/`.
         return `${endpoint}api/v1/query`

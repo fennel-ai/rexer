@@ -33,11 +33,11 @@ assert.ok(confluentPassword, "CONFLUENT_CLOUD_PASSWORD must be set");
 const tierConfs: Record<number, number> = {
     // Aditya's new dev tier.
     104: 3,
-    // Lokal prod tier.
+    // Lokal dev tier.
     105: 4,
     // Fennel staging tier using Fennel's staging data plane.
     106: 3,
-    // Lokal dev tier on their dev data plane.
+    // Lokal prod tier on their prod data plane.
     107: 5,
 }
 
@@ -97,6 +97,8 @@ const planeConfs: Record<number, PlaneConf> = {
             useAMP: true
         }
     },
+    // Lokal's dev tier data plane.
+    // TODO: Reduce size of resources once load-tests are done.
     4: {
         planeId: 4,
         region: "ap-south-1",
@@ -138,7 +140,7 @@ const planeConfs: Record<number, PlaneConf> = {
             forceReplicaIsolation: true,
         }
     },
-    // Lokal's dev tier data plane
+    // Lokal's prod tier data plane
     5: {
         planeId: 5,
         region: "ap-south-1",
@@ -147,8 +149,8 @@ const planeConfs: Record<number, PlaneConf> = {
             cidr: "10.105.0.0/16"
         },
         dbConf: {
-            minCapacity: 1,
-            maxCapacity: 8,
+            minCapacity: 8,
+            maxCapacity: 64,
             password: "password",
             skipFinalSnapshot: false,
         },
@@ -156,18 +158,23 @@ const planeConfs: Record<number, PlaneConf> = {
             username: confluentUsername,
             password: confluentPassword
         },
-        // since availability or performance is not a concern,
-        // use a small nodetype for elasticache, min configuration for shards and replicas
         cacheConf: {
-            nodeType: "cache.t4g.small",
-            numNodeGroups: 1,
-            replicasPerNodeGroup: 0,
+            nodeType: "cache.t4g.medium",
+            numNodeGroups: 2,
+            replicasPerNodeGroup: 1,
         },
         controlPlaneConf: controlPlane,
         redisConf: {
-            numShards: 1,
-            nodeType: "db.t4g.small",
-            numReplicasPerShard: 0,
+            numShards: 4,
+            nodeType: "db.r6g.large",
+            numReplicasPerShard: 1,
+        },
+        eksConf: {
+            nodeType: "c6i.4xlarge",
+            desiredCapacity: 4,
+        },
+        httpServerConf: {
+            replicas: 3,
         },
         prometheusConf: {
             useAMP: false

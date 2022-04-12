@@ -14,7 +14,7 @@ export const fennelStdTags = {
 }
 
 export const plugins = {
-    "aws": "v5.1.0"
+    "aws": "v4.38.1"
 }
 
 export type controlPlaneConfig = {

@@ -21,7 +21,7 @@ export const plugins = {
     "eks": "v0.37.1",
     "kubernetes": "v3.18.0",
     "command": "v0.0.3",
-    "aws": "v5.1.0",
+    "aws": "v4.38.1",
 }
 
 // NOTE: The AMI used should be an eks-worker AMI that can be searched
