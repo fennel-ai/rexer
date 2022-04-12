@@ -410,10 +410,10 @@ class TestEndToEnd(unittest.TestCase):
         slept = 0
         found = False
         while not found and slept < 120:
-            found_dict_q = rex.feature.extract(context, candidates, names=names)
-            found_vec = rex.feature.vectorize(found_dict_q,  names=names)
+            found_dict_query = rex.feature.extract(context, candidates, names=names)
+            found_vec = rex.feature.vectorize(found_dict_query,  names=names)
             found_vec = c.query(found_vec)
-            found_dict = c.query(found_dict_q)
+            found_dict = c.query(found_dict_query)
             if found_vec == expected_vec and found_dict == expcted_dict:
                 found = True
                 print('all checks passed...')
