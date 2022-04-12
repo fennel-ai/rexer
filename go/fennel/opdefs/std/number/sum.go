@@ -2,6 +2,8 @@ package number
 
 import (
 	"context"
+	"sync"
+
 	"fennel/engine/operators"
 	"fennel/lib/value"
 )
@@ -13,7 +15,7 @@ func init() {
 type adder struct{}
 
 func (a adder) New(
-	args value.Dict, bootargs map[string]interface{}, cache map[string]interface{},
+	args value.Dict, bootargs map[string]interface{}, cache *sync.Map,
 ) (operators.Operator, error) {
 	return adder{}, nil
 }

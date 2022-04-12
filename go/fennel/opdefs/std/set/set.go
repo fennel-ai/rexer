@@ -2,6 +2,8 @@ package set
 
 import (
 	"context"
+	"sync"
+
 	"fennel/engine/operators"
 	"fennel/lib/value"
 )
@@ -15,7 +17,7 @@ type setOperator struct{}
 var _ operators.Operator = setOperator{}
 
 func (op setOperator) New(
-	args value.Dict, bootargs map[string]interface{}, cache map[string]interface{},
+	args value.Dict, bootargs map[string]interface{}, cache *sync.Map,
 ) (operators.Operator, error) {
 	return setOperator{}, nil
 }

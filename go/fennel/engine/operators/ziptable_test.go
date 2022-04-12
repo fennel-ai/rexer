@@ -2,6 +2,7 @@ package operators
 
 import (
 	"context"
+	"sync"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -15,7 +16,7 @@ type testOpZip struct {
 var _ Operator = testOp{}
 
 func (top testOpZip) New(
-	args value.Dict, bootargs map[string]interface{}, cache map[string]interface{},
+	args value.Dict, bootargs map[string]interface{}, cache *sync.Map,
 ) (Operator, error) {
 	return nil, nil
 }
