@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"sync"
 
 	"fennel/controller/mock"
 	"fennel/controller/profile"
@@ -23,11 +24,11 @@ type profileOp struct {
 	tier   tier.Tier
 	args   value.Dict
 	mockID int64
-	cache  map[string]interface{}
+	cache  *sync.Map
 }
 
 func (p profileOp) New(
-	args value.Dict, bootargs map[string]interface{}, cache map[string]interface{},
+	args value.Dict, bootargs map[string]interface{}, cache *sync.Map,
 ) (operators.Operator, error) {
 	tr, err := bootarg.GetTier(bootargs)
 	if err != nil {
@@ -105,7 +106,7 @@ func (p profileOp) getProfiles(ctx context.Context, profiles []libprofile.Profil
 	// and for profile operator to set default correctly
 	for i, pi := range profiles {
 		key := p.getKey(pi)
-		v, ok := p.cache[key]
+		v, ok := p.cache.Load(key)
 		if !ok {
 			// did not find profile, filter out
 			uncached = append(uncached, pi)
@@ -137,7 +138,7 @@ func (p profileOp) getProfiles(ctx context.Context, profiles []libprofile.Profil
 	// add them to cache
 	for i, pi := range uncached {
 		key := p.getKey(pi)
-		p.cache[key] = vals[i]
+		p.cache.Store(key, vals[i])
 	}
 	// finally, return result
 	for i, v := range vals {

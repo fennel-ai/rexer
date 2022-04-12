@@ -3,6 +3,7 @@ package rename
 import (
 	"context"
 	"fmt"
+	"sync"
 
 	"fennel/engine/operators"
 	"fennel/lib/value"
@@ -15,7 +16,7 @@ func init() {
 type renamer struct{}
 
 func (r renamer) New(
-	args value.Dict, bootargs map[string]interface{}, cache map[string]interface{},
+	args value.Dict, bootargs map[string]interface{}, cache *sync.Map,
 ) (operators.Operator, error) {
 	return renamer{}, nil
 }

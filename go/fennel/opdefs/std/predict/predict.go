@@ -2,6 +2,7 @@ package predict
 
 import (
 	"context"
+	"sync"
 
 	"fennel/engine/interpreter/bootarg"
 	"fennel/engine/operators"
@@ -23,7 +24,7 @@ type predictOperator struct {
 var _ operators.Operator = predictOperator{}
 
 func (pop predictOperator) New(
-	args value.Dict, bootargs map[string]interface{}, cache map[string]interface{},
+	args value.Dict, bootargs map[string]interface{}, cache *sync.Map,
 ) (operators.Operator, error) {
 	tr, err := bootarg.GetTier(bootargs)
 	if err != nil {
