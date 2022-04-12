@@ -2,9 +2,10 @@ package set
 
 import (
 	"context"
+	"sync"
+
 	"fennel/engine/operators"
 	"fennel/lib/value"
-	"sync"
 )
 
 func init() {
