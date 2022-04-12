@@ -1,8 +1,0 @@
-config:
-  aws:profile: admin
-  aws:region: ap-south-1
-  eks:aes-token:
-    secure: AAABAFBD+5BGa9HWWBZ8F48p7unKl+bx+u/RA8iaG/2NlxrXRR5fC6Owz6uAyO3YL4+X8zP3NzkbzuuokpH67SwPyg1z82qSTC84gBsEQ56lLSpcMbAlNB1qJGEDOfyLTDll5GS+N5OPNvsmrtWPTP+bS22n2CEzz39nnXQ8meaOrHf+
-  eks:ami: ami-018410e7cefe1d15f
-  eks:loadBalancerScheme: internet-facing
-  eks:vpcId: vpc-0e6a5fb976f69b466
