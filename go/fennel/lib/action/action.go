@@ -130,7 +130,7 @@ func (a *Action) Validate() error {
 		return fmt.Errorf("target type too long: target types cannot be longer than 255 chars")
 	}
 	if a.Timestamp > 0 && int64(a.Timestamp)-time.Now().Unix() > 60 {
-		return fmt.Errorf("action timestamp in the future, ensure that timestamp is in seconds")
+		return fmt.Errorf("action timestamp in the future, ensure that timestamp is in seconds %d", a.Timestamp)
 	}
 	return nil
 }

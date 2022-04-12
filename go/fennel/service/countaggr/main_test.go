@@ -4,7 +4,6 @@ import (
 	"context"
 	"sync"
 	"testing"
-	"time"
 
 	"fennel/controller/action"
 	"fennel/controller/aggregate"
@@ -168,7 +167,7 @@ func TestEndToEnd(t *testing.T) {
 	}
 	clock := &test.FakeClock{}
 	tier.Clock = clock
-	t0 := ftypes.Timestamp(time.Hour * 24 * 15)
+	t0 := ftypes.Timestamp(3600 * 24 * 15)
 	clock.Set(int64(t0))
 
 	for _, scenario := range scenarios {
