@@ -153,8 +153,10 @@ export const setup = async (input: inputType) => {
                                 maxSkew: 1,
                                 // key of the node labels. we check by the host name.
                                 topologyKey: "kubernetes.io/hostname",
-                                // DO NOT schedule the pod when constraints are not satisfied.
-                                whenUnsatisfiable: "DoNotSchedule",
+                                // schedule anyway on the pod when constraints are not satisfied - to avoid potential
+                                // contention b/w pods. This is to avoid scheduling multiple http-server pods
+                                // from different namespaces on the same data plane.
+                                whenUnsatisfiable: "ScheduleAnyway",
                                 // find matching pods using the labels - `appLabels`
                                 //
                                 // this should schedule the replicas across different nodes
