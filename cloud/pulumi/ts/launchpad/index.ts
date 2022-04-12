@@ -39,6 +39,11 @@ const tierConfs: Record<number, number> = {
     106: 3,
     // Lokal prod tier on their prod data plane.
     107: 5,
+    // Demo testing tier 1, 2, 3, 4
+    108: 6,
+    109: 6,
+    110: 6,
+    111: 6,
 }
 
 // map from plane id to its configuration.
@@ -181,6 +186,52 @@ const planeConfs: Record<number, PlaneConf> = {
             useAMP: false
         }
     },
+    // Demo test plane
+    6: {
+        planeId: 6,
+        region: "eu-west-2",
+        roleArn: "arn:aws:iam::030813887342:role/admin",
+        ingressConf: {
+            // Demo planes, use public subnets so that anyone can have access through the LB targets
+            usePublicSubnets: true,
+        },
+        vpcConf: {
+            cidr: "10.106.0.0/16"
+        },
+        dbConf: {
+            minCapacity: 1,
+            maxCapacity: 8,
+            password: "password",
+            skipFinalSnapshot: true,
+        },
+        confluentConf: {
+            username: confluentUsername,
+            password: confluentPassword
+        },
+        cacheConf: {
+            nodeType: "cache.t4g.medium",
+            numNodeGroups: 1,
+            replicasPerNodeGroup: 0,
+        },
+        controlPlaneConf: controlPlane,
+        redisConf: {
+            numShards: 1,
+            nodeType: "db.t4g.medium",
+            numReplicasPerShard: 0,
+        },
+        eksConf: {
+            // vCPU=2, Memory=4GiB
+            nodeType: "c6i.large",
+            desiredCapacity: 3,
+        },
+        httpServerConf: {
+            replicas: 1,
+            forceReplicaIsolation: false,
+        },
+        prometheusConf: {
+            useAMP: false
+        }
+    },
 }
 
 //==============================================================================
@@ -215,6 +266,14 @@ const glueOutput = dataplane[nameof<PlaneOutput>("glue")].value as glueSource.ou
 // Create/update/delete the tier.
 if (tierId !== 0) {
     console.log("Updating tier: ", tierId);
+    // by default use private subnets
+    let subnetIds;
+    const usePublicSubnets = planeConf.ingressConf?.usePublicSubnets || false;
+    if (usePublicSubnets) {
+        subnetIds = vpcOutput.publicSubnets;
+    } else {
+        subnetIds = vpcOutput.privateSubnets;
+    }
     setupTier({
         tierId: Number(tierId),
         planeId: Number(planeId),
@@ -245,7 +304,7 @@ if (tierId !== 0) {
 
         redisEndpoint: redisOutput.clusterEndPoints[0],
         cachePrimaryEndpoint: elasticacheOutput.endpoint,
-        subnetIds: vpcOutput.privateSubnets,
+        subnetIds: subnetIds,
         loadBalancerScheme: "internal",
 
         glueSourceBucket: glueOutput.scriptSourceBucket,

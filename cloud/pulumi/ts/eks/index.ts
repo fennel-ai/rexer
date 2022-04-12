@@ -31,6 +31,7 @@ export const plugins = {
 const AMI_BY_REGION: Record<string, string> = {
     "ap-south-1": "ami-018410e7cefe1d15f",
     "us-west-2": "ami-047a7967ea0436232",
+    "eu-west-2": "ami-07e16e9e006cfbac5",
 }
 
 const DEFAULT_NODE_TYPE = "t3.medium"
