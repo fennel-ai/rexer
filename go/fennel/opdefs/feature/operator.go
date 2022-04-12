@@ -37,11 +37,10 @@ func (f featureLog) Apply(ctx context.Context, static value.Dict, in operators.I
 	modelVersion := ftypes.ModelVersion(get(static, "model_version").(value.String))
 
 	for in.HasMore() {
-		heads, kwargs, err := in.Next()
+		_, kwargs, err := in.Next()
 		if err != nil {
 			return err
 		}
-		row := heads[0]
 		ts := ftypes.Timestamp(get(kwargs, "timestamp").(value.Int))
 		if ts == 0 {
 			ts = ftypes.Timestamp(f.tier.Clock.Now())
@@ -62,14 +61,14 @@ func (f featureLog) Apply(ctx context.Context, static value.Dict, in operators.I
 		if err = feature.Log(ctx, f.tier, msg); err != nil {
 			return err
 		}
-		out.Append(row)
+		out.Append(msg.GetValue())
 	}
 	return nil
 }
 
 func (f featureLog) Signature() *operators.Signature {
 	return operators.NewSignature("feature", "log").
-		Input([]value.Type{value.Types.Dict}).
+		Input(nil).
 		Param("context_otype", value.Types.String, false, false, value.Nil).
 		Param("context_oid", value.Types.Int, false, false, value.Nil).
 		Param("candidate_otype", value.Types.String, false, false, value.Nil).
