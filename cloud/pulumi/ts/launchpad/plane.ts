@@ -58,6 +58,7 @@ type EksConf = {
 
 type HttpServerConf = {
     replicas: number,
+    forceReplicaIsolation: boolean,
 }
 
 export type PlaneConf = {
