@@ -175,6 +175,7 @@ const planeConfs: Record<number, PlaneConf> = {
         },
         httpServerConf: {
             replicas: 3,
+            forceReplicaIsolation: true,
         },
         prometheusConf: {
             useAMP: false
