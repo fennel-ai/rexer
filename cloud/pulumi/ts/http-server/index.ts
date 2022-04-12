@@ -26,6 +26,7 @@ export const plugins = {
 }
 
 const DEFAULT_REPLICAS = 2
+const DEFAULT_FORCE_REPLICA_ISOLATION = false
 
 export type inputType = {
     region: string,
@@ -34,6 +35,7 @@ export type inputType = {
     namespace: string,
     tierId: number,
     replicas?: number,
+    forceReplicaIsolation?: boolean,
 }
 
 export type outputType = {
@@ -50,6 +52,7 @@ const parseConfig = (): inputType => {
         namespace: config.require(nameof<inputType>("namespace")),
         tierId: config.requireNumber(nameof<inputType>("tierId")),
         replicas: config.requireNumber(nameof<inputType>("replicas")),
+        forceReplicaIsolation: config.requireBoolean(nameof<inputType>("forceReplicaIsolation")),
     }
 }
 
@@ -115,6 +118,13 @@ export const setup = async (input: inputType) => {
     // Create a load balanced Kubernetes service using this image, and export its IP.
     const appLabels = { app: name };
     const metricsPort = 2112;
+
+    const forceReplicaIsolation = input.forceReplicaIsolation || DEFAULT_FORCE_REPLICA_ISOLATION;
+    let whenUnsatisfiable = "ScheduleAnyway";
+    if (forceReplicaIsolation) {
+        whenUnsatisfiable = "DoNotSchedule";
+    }
+
     const appDep = image.imageName.apply(() => {
         return new k8s.apps.v1.Deployment("http-server-deployment", {
             metadata: {
@@ -156,7 +166,7 @@ export const setup = async (input: inputType) => {
                                 // schedule anyway on the pod when constraints are not satisfied - to avoid potential
                                 // contention b/w pods. This is to avoid scheduling multiple http-server pods
                                 // from different namespaces on the same data plane.
-                                whenUnsatisfiable: "ScheduleAnyway",
+                                whenUnsatisfiable: whenUnsatisfiable,
                                 // find matching pods using the labels - `appLabels`
                                 //
                                 // this should schedule the replicas across different nodes
