@@ -18,5 +18,7 @@ export MOTHERSHIP_MYSQL_PASSWORD="pscale_pw_iOqKp0qepUAER8E-_APgydji6Ajj7fNQD7pf
 
 export BADGER_DIR="/tmp"
 
+export SAGEMAKER_S3_BUCKET_NAME="my-xgboost-test-bucket-2"
+
 # in tests, we override this with a random tier ID but this is needed for prod
 export TIER_ID=103
