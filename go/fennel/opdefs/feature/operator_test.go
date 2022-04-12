@@ -67,9 +67,9 @@ func TestFeatureLog_Apply(t *testing.T) {
 			ModelPrediction: 0.79,
 		},
 	}
-	outputs := make([]value.Value, len(inputs))
-	for i, input := range inputs {
-		outputs[i] = input
+	outputs := make([]value.Value, len(rows))
+	for i, r := range rows {
+		outputs[i] = r.GetValue()
 	}
 	optest.AssertElementsMatch(t, tier, &featureLog{tier}, static, [][]value.Value{inputs}, kwargs, outputs)
 	for _, r := range rows {
