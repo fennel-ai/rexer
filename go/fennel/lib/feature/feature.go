@@ -116,7 +116,7 @@ func (r *Row) UnmarshalJSON(bytes []byte) error {
 	return nil
 }
 
-func (r Row) MarshalJSON() ([]byte, error) {
+func (r Row) GetValue() value.Value {
 	d := value.NewDict(map[string]value.Value{})
 	for k, v := range r.Features.Iter() {
 		pk := prefixed("feature", k)
@@ -132,6 +132,11 @@ func (r Row) MarshalJSON() ([]byte, error) {
 	d.Set("model_name", value.String(r.ModelName))
 	d.Set("model_version", value.String(r.ModelVersion))
 	d.Set("model_prediction", value.Double(r.ModelPrediction))
+	return d
+}
+
+func (r Row) MarshalJSON() ([]byte, error) {
+	d := r.GetValue()
 	return value.ToJSON(d), nil
 }
 
