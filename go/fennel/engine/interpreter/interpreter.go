@@ -390,18 +390,19 @@ func (i Interpreter) visitInParallel(trees []ast.Ast) ([]value.Value, error) {
 		value.Value
 		error
 	}
-	results := make([]chan res, len(trees))
+	results := make([]res, len(trees))
+	wg := sync.WaitGroup{}
+	wg.Add(len(trees))
 	for j := range trees {
-		ch := make(chan res)
-		go func(ch chan<- res, idx int) {
+		go func(idx int) {
+			defer wg.Done()
 			val, err := trees[idx].AcceptValue(i)
-			ch <- res{val, err}
-		}(ch, j)
-		results[j] = ch
+			results[idx] = res{val, err}
+		}(j)
 	}
+	wg.Wait()
 	ret := make([]value.Value, len(trees))
-	for j, result := range results {
-		r := <-result
+	for j, r := range results {
 		val, err := r.Value, r.error
 		if err != nil {
 			return nil, err
