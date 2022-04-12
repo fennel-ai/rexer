@@ -119,7 +119,7 @@ export const setup = async (input: inputType) => {
     const appLabels = { app: name };
     const metricsPort = 2112;
 
-    const forceReplicaIsolation = input.forceReplicaIsolation | DEFAULT_FORCE_REPLICA_ISOLATION;
+    const forceReplicaIsolation = input.forceReplicaIsolation || DEFAULT_FORCE_REPLICA_ISOLATION;
     let whenUnsatisfiable = "ScheduleAnyway";
     if (forceReplicaIsolation) {
         whenUnsatisfiable = "DoNotSchedule";
