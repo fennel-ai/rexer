@@ -2,6 +2,8 @@ package zip
 
 import (
 	"context"
+	"sync"
+
 	"fennel/engine/operators"
 	"fennel/lib/value"
 )
@@ -15,7 +17,7 @@ func init() {
 type zipper struct{}
 
 func (z zipper) New(
-	args value.Dict, bootargs map[string]interface{}, cache map[string]interface{},
+	args value.Dict, bootargs map[string]interface{}, cache *sync.Map,
 ) (operators.Operator, error) {
 	return zipper{}, nil
 }

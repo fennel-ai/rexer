@@ -4,6 +4,7 @@ import (
 	"context"
 	"math/rand"
 	"reflect"
+	"sync"
 
 	"fennel/engine/operators"
 	"fennel/lib/value"
@@ -14,7 +15,7 @@ type ShuffleOperator struct{}
 var _ operators.Operator = ShuffleOperator{}
 
 func (op ShuffleOperator) New(
-	args value.Dict, bootargs map[string]interface{}, cache map[string]interface{},
+	args value.Dict, bootargs map[string]interface{}, cache *sync.Map,
 ) (operators.Operator, error) {
 	return ShuffleOperator{}, nil
 }

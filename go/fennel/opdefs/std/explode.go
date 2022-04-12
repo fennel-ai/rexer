@@ -3,6 +3,7 @@ package std
 import (
 	"context"
 	"fmt"
+	"sync"
 
 	"fennel/engine/operators"
 	"fennel/lib/value"
@@ -13,7 +14,7 @@ type ExplodeOperator struct{}
 var _ operators.Operator = ExplodeOperator{}
 
 func (e ExplodeOperator) New(
-	args value.Dict, bootargs map[string]interface{}, cache map[string]interface{},
+	args value.Dict, bootargs map[string]interface{}, cache *sync.Map,
 ) (operators.Operator, error) {
 	return ExplodeOperator{}, nil
 }

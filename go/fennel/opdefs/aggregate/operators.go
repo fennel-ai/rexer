@@ -2,6 +2,7 @@ package aggregate
 
 import (
 	"context"
+	"sync"
 
 	"fennel/controller/aggregate"
 	"fennel/engine/interpreter/bootarg"
@@ -26,7 +27,7 @@ type AggValue struct {
 }
 
 func (a AggValue) New(
-	args value.Dict, bootargs map[string]interface{}, cache map[string]interface{},
+	args value.Dict, bootargs map[string]interface{}, cache *sync.Map,
 ) (operators.Operator, error) {
 	tr, err := bootarg.GetTier(bootargs)
 	if err != nil {

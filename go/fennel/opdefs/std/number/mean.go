@@ -2,6 +2,8 @@ package number
 
 import (
 	"context"
+	"sync"
+
 	"fennel/engine/operators"
 	"fennel/lib/value"
 )
@@ -13,7 +15,7 @@ func init() {
 type meanop struct{}
 
 func (a meanop) New(
-	args value.Dict, bootargs map[string]interface{}, cache map[string]interface{},
+	args value.Dict, bootargs map[string]interface{}, cache *sync.Map,
 ) (operators.Operator, error) {
 	return meanop{}, nil
 }
