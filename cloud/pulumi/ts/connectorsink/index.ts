@@ -14,7 +14,7 @@ export const fennelStdTags = {
 }
 
 export const plugins = {
-    "aws": "v5.1.0",
+    "aws": "v4.38.1",
 }
 
 export type inputType = {
@@ -58,7 +58,7 @@ export const setup = async (input: inputType): Promise<pulumi.Output<outputType>
         bucket: bucketName,
         // delete all the objects so that the bucket can be deleted without error.
         forceDestroy: true,
-    }, {provider});
+    }, { provider });
 
     // create an AWS user account to authenticate kafka connector to write to S3 bucket
     const user = new aws.iam.User("conn-sink-user", {
@@ -70,12 +70,12 @@ export const setup = async (input: inputType): Promise<pulumi.Output<outputType>
             "plane": `p-${input.planeId}`,
             "sink": `${bucketName}`,
         }
-    }, {provider, dependsOn: bucket});
+    }, { provider, dependsOn: bucket });
 
     // fetch access keys
     const userAccessKey = new aws.iam.AccessKey("conn-sink-access-key", {
         user: user.name
-    }, {provider});
+    }, { provider });
 
     // https://docs.confluent.io/cloud/current/connectors/cc-s3-sink.html
     const rawPolicyStr = `{
@@ -112,7 +112,7 @@ export const setup = async (input: inputType): Promise<pulumi.Output<outputType>
     const userPolicy = new aws.iam.UserPolicy("conn-sink-user-policy", {
         user: user.name,
         policy: rawPolicyStr,
-    }, {provider});
+    }, { provider });
 
     const output = pulumi.output({
         bucketName: bucketName,

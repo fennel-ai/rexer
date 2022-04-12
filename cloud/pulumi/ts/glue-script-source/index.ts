@@ -17,7 +17,7 @@ export const fennelStdTags = {
 }
 
 export const plugins = {
-    "aws": "v5.1.0",
+    "aws": "v4.38.1",
 }
 
 export type inputType = {
@@ -60,7 +60,7 @@ export const setup = async (input: inputType): Promise<pulumi.Output<outputType>
         bucket: bucketName,
         // delete all the objects so that the bucket can be deleted without error.
         forceDestroy: true,
-    }, {provider})
+    }, { provider })
 
     const root = process.env["FENNEL_ROOT"]!
     const scriptPath = path.join(root, "tools/aws_glue_parquet_transform.py");
@@ -73,7 +73,7 @@ export const setup = async (input: inputType): Promise<pulumi.Output<outputType>
         // in case of the file change, force an update
         etag: fileHash,
         sourceHash: fileHash,
-    }, {provider})
+    }, { provider })
 
     return pulumi.output({
         scriptSourceBucket: bucketName,

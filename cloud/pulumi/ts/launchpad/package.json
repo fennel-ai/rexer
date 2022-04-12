@@ -5,7 +5,7 @@
   "main": "./bin/index.js",
   "author": "FennelAI Developers",
   "dependencies": {
-    "@pulumi/aws": "^4.37.4",
+    "@pulumi/aws": "^4.38.1",
     "@pulumi/command": "0.0.3",
     "@pulumi/confluent": "^0.2.2",
     "@pulumi/docker": "^3.1.0",
@@ -13,7 +13,7 @@
     "@pulumi/kafka": "^3.1.2",
     "@pulumi/kubernetes": "^3.16.0",
     "@pulumi/mysql": "^3.1.0",
-    "@pulumi/pulumi": "^3.25.1",
+    "@pulumi/pulumi": "^3.28.0",
     "@types/node": "^17.0.18",
     "netmask": "^2.0.2",
     "process": "^0.11.10",

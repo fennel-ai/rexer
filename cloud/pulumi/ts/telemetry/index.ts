@@ -17,7 +17,7 @@ const fennelStdTags = {
 }
 
 export const plugins = {
-    "aws": "v5.1.0",
+    "aws": "v4.38.1",
     "kubernetes": "v3.18.0",
 }
 
@@ -118,7 +118,7 @@ function setupOtelPolicy(input: inputType, awsProvider: aws.Provider) {
 // and traces and forward them to cloudwatch.
 async function setupAdotCollector(input: inputType, k8sProvider: k8s.Provider) {
     const root = process.env.FENNEL_ROOT!;
-    // TODO: Consider refactoring this to avoid creating a config file inside the callback of `apply`. 
+    // TODO: Consider refactoring this to avoid creating a config file inside the callback of `apply`.
     // `.apply` should not have any side-effects, but in this case it seems unavoidable
     pulumi.all([input.eksClusterName, input.prometheusEndpoint]).apply(([eksClusterName, prometheusEndpoint])=> {
         // Generate a file hash so that any changes in the file, forces pod restart.
