@@ -54,6 +54,7 @@ def tiered(wrapped):
 
 
 class TestEndToEnd(unittest.TestCase):
+    maxDiff = None
     @tiered
     def test_lokal(self):
         c = client.Client(URL)
@@ -124,16 +125,17 @@ class TestEndToEnd(unittest.TestCase):
         mock = {'profiles': [p1]}
         actions = [a1, a2, a3, a4]
         expected = [
-            {'action_id': 1, 'action_type': 'notif_send', 'actor_id': 12312, 'actor_type': 'user', 'category': 'sports',
+            {'action_type': 'notif_send', 'actor_id': 12312, 'actor_type': 'user', 'category': 'sports',
              'groupkey': [12312, 'sports'], 'metadata': {}, 'request_id': 1, 'target_id': 456,
              'target_type': 'content', 'timestamp': ts, 'value': [0, 1]},
-            {'action_id': 2, 'action_type': 'notif_send', 'actor_id': 12312, 'actor_type': 'user', 'category': 'sports',
+            {'action_type': 'notif_send', 'actor_id': 12312, 'actor_type': 'user', 'category': 'sports',
              'groupkey': [12312, 'sports'], 'metadata': {}, 'request_id': 1, 'target_id': 456,
              'target_type': 'content', 'timestamp': ts + 1, 'value': [0, 1]},
-            {'action_id': 3, 'action_type': 'notif_open', 'actor_id': 12312, 'actor_type': 'user', 'category': 'sports',
+            {'action_type': 'notif_open', 'actor_id': 12312, 'actor_type': 'user', 'category': 'sports',
              'groupkey': [12312, 'sports'], 'metadata': {}, 'request_id': 1, 'target_id': 456,
              'target_type': 'content', 'timestamp': ts + 2, 'value': [1, 0]}
         ]
+
         self.assertEqual(expected, agg_user_notif_open_rate_by_category.test(actions, client=c, mock=mock))
 
         c.set_profile("content", content_id, "category", category)
@@ -408,8 +410,10 @@ class TestEndToEnd(unittest.TestCase):
         slept = 0
         found = False
         while not found and slept < 120:
-            found_vec = c.query(rex.feature.extract(context, candidates, names=names, vectorize=True))
-            found_dict = c.query(rex.feature.extract(context, candidates, vectorize=False))
+            found_dict_q = rex.feature.extract(context, candidates, names=names)
+            found_vec = rex.feature.vectorize(found_dict_q,  names=names)
+            found_vec = c.query(found_vec)
+            found_dict = c.query(found_dict_q)
             if found_vec == expected_vec and found_dict == expcted_dict:
                 found = True
                 print('all checks passed...')

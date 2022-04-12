@@ -61,7 +61,7 @@ func (zi *ZipIter) Next() ([]value.Value, value.Dict, error) {
 	if !ok {
 		return nil, value.Dict{}, fmt.Errorf("expected dict of operands but found: %s", first)
 	}
-	aslist, err := fromDict(asdict)
+	aslist, err := fromDictToList(asdict)
 	if err != nil {
 		return nil, value.Dict{}, err
 	}
@@ -85,7 +85,7 @@ func toDict(elems []value.Value) value.Value {
 	return value.NewDict(m)
 }
 
-func fromDict(d value.Dict) ([]value.Value, error) {
+func fromDictToList(d value.Dict) ([]value.Value, error) {
 	ret := make([]value.Value, d.Len())
 	for k, v := range d.Iter() {
 		n, err := strconv.Atoi(k)
