@@ -32,6 +32,11 @@ export type outputType = {
 }
 
 const REDIS_VERSION = "6.x";
+const REDIS_FAMILY = "redis6.x";
+// https://docs.aws.amazon.com/whitepapers/latest/database-caching-strategies-using-redis/evictions.html
+//
+// The cache evicts the least recently used (LRU) keys regardless of TTL set.
+const DEFAULT_EVICTION_POLICY = "allkeys-lru";
 const NODE_TYPE = "cache.t4g.medium";
 const DEFAULT_NODE_GROUPS = 2;
 const DEFAULT_REPLICAS_PER_NODE_GROUPS = 1;
@@ -94,6 +99,18 @@ export const setup = async (input: inputType): Promise<pulumi.Output<outputType>
         }, { provider }).id)
     }
 
+    const parameterGroup = new aws.elasticache.ParameterGroup(`p-${input.planeId}-cache-pg`, {
+        family: REDIS_FAMILY,
+        parameters: [{
+            name: "maxmemory-policy",
+            value: DEFAULT_EVICTION_POLICY,
+        }, {
+            name: "cluster-enabled",
+            value: "yes",
+        }],
+        tags: fennelStdTags,
+    }, {provider})
+
     const cluster = new aws.elasticache.ReplicationGroup(`p-${input.planeId}-cache-cluster`, {
         // Apply any changes proposed immediately instead of applying them during maintenance window
         applyImmediately: true,
@@ -113,6 +130,7 @@ export const setup = async (input: inputType): Promise<pulumi.Output<outputType>
         },
         automaticFailoverEnabled: true,
         tags: { ...fennelStdTags },
+        parameterGroupName: parameterGroup.name,
     }, { provider })
 
     const primaryAddress = cluster.primaryEndpointAddress
