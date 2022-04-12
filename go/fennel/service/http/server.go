@@ -99,6 +99,13 @@ func (m server) Log(w http.ResponseWriter, req *http.Request) {
 		log.Printf("Error: %v", err)
 		return
 	}
+	err = a.Validate()
+	if err != nil {
+		http.Error(w, fmt.Sprintf("Invalid action: %v", err), http.StatusBadRequest)
+		log.Printf("Error: %v", err)
+		return
+	}
+
 	dedupKey, err := jsonparser.GetString(data, "DedupKey")
 	if err != nil {
 		http.Error(w, fmt.Sprintf("invalid request: %v", err), http.StatusBadRequest)

@@ -43,10 +43,6 @@ func dbInsert(ctx context.Context, tier tier.Tier, actions []actionlib.Action) e
 
 func Insert(ctx context.Context, tier tier.Tier, a actionlib.Action) error {
 	defer timer.Start(ctx, tier.ID, "controller.action.insert").Stop()
-	err := a.Validate()
-	if err != nil {
-		return fmt.Errorf("invalid action: %v", err)
-	}
 	if a.Timestamp == 0 {
 		a.Timestamp = ftypes.Timestamp(tier.Clock.Now())
 	}
