@@ -78,6 +78,7 @@ func (smc SMClient) CreateModel(ctx context.Context, hostedModels []lib.Model, s
 			ContainerHostname: aws.String(lib.GetContainerName(model.Name, model.Version)),
 			Image:             aws.String(getImage(model.Framework, model.Version, smc.args.Region)),
 			ModelDataUrl:      aws.String(model.ArtifactPath),
+			Mode:              aws.String("MultiModel"),
 		})
 	}
 	// InferenceExecutionConfig can be set only when the model has more than one containers.
@@ -107,6 +108,21 @@ func (smc SMClient) ModelExists(ctx context.Context, modelName string) (bool, er
 		return false, fmt.Errorf("failed to check if model exists on sagemaker: %v", err)
 	}
 	return true, nil
+}
+
+func (smc SMClient) GetContainerNames(ctx context.Context, modelName string) ([]string, error) {
+	input := sagemaker.DescribeModelInput{
+		ModelName: aws.String(modelName),
+	}
+	model, err := smc.metadataClient.DescribeModelWithContext(ctx, &input)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get container names: %v", err)
+	}
+	var names []string
+	for _, container := range model.Containers {
+		names = append(names, *container.ContainerHostname)
+	}
+	return names, nil
 }
 
 func (smc SMClient) EndpointConfigExists(ctx context.Context, endpointConfigName string) (bool, error) {
