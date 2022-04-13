@@ -40,7 +40,7 @@ func (m map_lookup) Apply(_ context.Context, staticKwargs value.Dict, in operato
 			key_val, _ := keyiter.Next()
 			key_str, ok := key_val.(value.String)
 			if !ok {
-				return errors.New("keys in map lookup must be evaluate to strings")
+				return errors.New("keys in map lookup must be evaluate to a string")
 			}
 			values[index] = get(row, string(key_str))
 			index++
@@ -57,7 +57,7 @@ func (m map_lookup) Signature() *operators.Signature {
 		ParamWithHelp("keys", value.Types.List, false, false, value.Nil, "ContextKwarg: List of keys to lookup in the map")
 }
 
-var _ operators.Operator = mapper{}
+var _ operators.Operator = map_lookup{}
 
 func get(d value.Dict, k string) value.Value {
 	ret, _ := d.Get(k)
