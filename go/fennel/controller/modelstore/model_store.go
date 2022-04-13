@@ -3,6 +3,7 @@ package modelstore
 import (
 	"context"
 	"fmt"
+	"io"
 	"math/rand"
 	"time"
 
@@ -10,6 +11,29 @@ import (
 	db "fennel/model/sagemaker"
 	"fennel/tier"
 )
+
+const framework = "xgboost"
+const frameworkVersion = "1.3.1"
+
+func StoreModel(ctx context.Context, tier tier.Tier, name, version string, modelFile io.Reader, modelFileName string) error {
+	err := tier.SagemakerClient.UploadModelToS3(modelFile, modelFileName)
+	if err != nil {
+		return fmt.Errorf("failed to upload model to s3: %v", err)
+	}
+	artifactPath := tier.SagemakerClient.GetArtifactPath(modelFileName)
+	model := lib.Model{
+		Name:             name,
+		Version:          version,
+		Framework:        framework,
+		FrameworkVersion: frameworkVersion,
+		ArtifactPath:     artifactPath,
+	}
+	_, err = db.InsertModel(tier, model)
+	if err != nil {
+		return fmt.Errorf("failed to insert model in db: %v", err)
+	}
+	return EnsureEndpointExists(ctx, tier, "default_endpoint")
+}
 
 func EnsureEndpointExists(ctx context.Context, tier tier.Tier, endpointName string) error {
 	// Get all active models.
@@ -142,4 +166,16 @@ func EnsureEndpointExists(ctx context.Context, tier tier.Tier, endpointName stri
 		}
 	}
 	return nil
+}
+
+func verifyIdentical(a, b []string) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for i := range a {
+		if a[i] != b[i] {
+			return false
+		}
+	}
+	return true
 }
