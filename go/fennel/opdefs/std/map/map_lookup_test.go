@@ -20,46 +20,21 @@ func TestMapLookup_Apply(t *testing.T) {
 	}{
 		{
 			[]value.Value{
-				value.NewDict(map[string]value.Value{"x": value.Int(1)}),
-				value.NewDict(map[string]value.Value{"x": value.Int(2)}),
-				value.NewDict(map[string]value.Value{"x": value.Int(3)}),
+				value.NewDict(map[string]value.Value{"x": value.Int(1), "y": value.Int(2), "z": value.Int(3)}),
+				value.NewDict(map[string]value.Value{"x": value.Int(1), "y": value.Int(2), "z": value.Int(4)}),
+				value.NewDict(map[string]value.Value{"x": value.Int(1), "y": value.Int(3), "z": value.Int(3) + value.Int(4)}),
 			},
 			value.NewDict(nil),
 			[]value.Dict{
-				value.NewDict(map[string]value.Value{"keys": value.List(["k1", "k2", "k3"])}),
-				value.NewDict(map[string]value.Value{"to": value.String("2")}),
-				value.NewDict(map[string]value.Value{"to": value.Int(3)}),
+				value.NewDict(map[string]value.Value{"keys": value.NewList(value.String("x"), value.String("y"), value.String("z"))}),
+				value.NewDict(map[string]value.Value{"keys": value.NewList(value.String("x"), value.String("x"), value.String("x"))}),
+				value.NewDict(map[string]value.Value{"keys": value.NewList(value.String("z"), value.String("y"), value.String("z"))}),
 			},
 			false,
-			[]value.Value{value.String("1"), value.String("2"), value.Int(3)},
-		},
-		{
-			[]value.Value{
-				value.NewDict(map[string]value.Value{"x": value.Int(1)}),
-				value.NewDict(map[string]value.Value{"x": value.Int(3)}),
+			[]value.Value{value.NewList(value.Int(1), value.Int(2), value.Int(3)),
+				value.NewList(value.Int(1), value.Int(1), value.Int(1)),
+				value.NewList(value.Int(7), value.Int(3), value.Int(7)),
 			},
-			value.NewDict(nil),
-			[]value.Dict{
-				value.NewDict(map[string]value.Value{"to": value.String("1")}),
-				value.NewDict(map[string]value.Value{"from": value.String("2")}),
-			},
-			true,
-			nil,
-		},
-		{
-			[]value.Value{
-				value.Int(1), value.Int(2), value.Int(3),
-				value.String("1"), value.String("2"), value.String("3"),
-			},
-			value.NewDict(nil),
-
-			[]value.Dict{
-				value.NewDict(map[string]value.Value{"to": value.NewList(value.Int(1), value.String("1"))}),
-				value.NewDict(map[string]value.Value{"to": value.NewList(value.Int(2), value.String("2"))}),
-				value.NewDict(map[string]value.Value{"to": value.NewList(value.Int(3), value.String("3"))}),
-			},
-			false,
-			[]value.Value{value.NewList(value.Int(1), value.String("1")), value.NewList(value.Int(2), value.String("2")), value.NewList(value.Int(3), value.String("3"))},
 		},
 	}
 	for _, scene := range scenarios {

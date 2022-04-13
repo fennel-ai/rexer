@@ -21,10 +21,11 @@ func AssertEqual(t *testing.T, tr tier.Tier, op operators.Operator, static value
 	aslist, ok := found.(value.List)
 	assert.True(t, ok)
 	assert.Equal(t, len(expected), aslist.Len())
+
 	for i, exp := range expected {
 		e, err := aslist.At(i)
 		assert.NoError(t, err)
-		assert.True(t, exp.Equal(e), fmt.Sprintf("expected: %s, found: %s", expected, e))
+		assert.True(t, exp.Equal(e), fmt.Sprintf("expected: %s, found: %s", exp, e))
 	}
 }
 
