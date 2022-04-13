@@ -3,6 +3,7 @@ package modelstore
 import (
 	"context"
 	"fmt"
+	"math/rand"
 	"time"
 
 	lib "fennel/lib/sagemaker"
@@ -55,14 +56,37 @@ func EnsureEndpointExists(ctx context.Context, tier tier.Tier, endpointName stri
 		}
 	}
 
+	// Check if model is up-to-date otherwise update endpoint
+	modelNames, err := tier.SagemakerClient.GetContainerNames(ctx, sagemakerModelName)
+	if err != nil {
+		return fmt.Errorf("failed to get container names from sagemaker: %v", err)
+	}
+	var activeModelNames []string
+	for _, m := range activeModels {
+		activeModelNames = append(activeModelNames, lib.GetContainerName(m.Name, m.Version))
+	}
+	ok := verifyIdentical(modelNames, activeModelNames)
+	updateEndpoint := false
+	if !ok {
+		updateEndpoint = true
+		err = tier.SagemakerClient.CreateModel(ctx, activeModels, sagemakerModelName)
+		if err != nil {
+			return fmt.Errorf("failed to create model on sagemaker: %v", err)
+		}
+	}
+
 	// Ensure endpoint config exists in db and sagemaker.
 	endpointCfg, err := db.GetEndpointConfigWithModel(tier, sagemakerModelName)
 	if err != nil {
 		return fmt.Errorf("failed to get endpoint config with name [%s] from db: %v", sagemakerModelName, err)
 	}
-	if endpointCfg.Name == "" {
+	// If we are updating endpoint, make the current one inactive after we are finished updating
+	if updateEndpoint {
+		defer db.MakeEndpointInactive(tier, endpointCfg.Name)
+	}
+	if endpointCfg.Name == "" || updateEndpoint {
 		endpointCfg = lib.SagemakerEndpointConfig{
-			Name:          fmt.Sprintf("%s-config", sagemakerModelName),
+			Name:          fmt.Sprintf("%s-config-%d", sagemakerModelName, rand.Int63()),
 			ModelName:     sagemakerModelName,
 			VariantName:   sagemakerModelName,
 			InstanceType:  "ml.t2.medium",
