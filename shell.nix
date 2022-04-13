@@ -43,7 +43,6 @@ with pkgs; mkShell {
     pkgs.nodejs
 
     # Packages for deployment
-    unstable.pkgs.pulumi-bin
     pkgs.awscli
 
     pkgs.docker
