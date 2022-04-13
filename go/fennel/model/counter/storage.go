@@ -31,97 +31,6 @@ var metrics = promauto.NewSummaryVec(prometheus.SummaryOpts{
 	},
 }, []string{"metric"})
 
-type FlatRedisStorage struct{}
-
-func (f FlatRedisStorage) GetBucketStore() BucketStore {
-	return f
-}
-
-func (f FlatRedisStorage) Get(
-	ctx context.Context, tier tier.Tier, name ftypes.AggName, buckets []Bucket, default_ value.Value,
-) ([]value.Value, error) {
-	defer timer.Start(ctx, tier.ID, "flatredis.get").Stop()
-	rkeys := f.redisKeys(name, buckets)
-	defaults := make([]value.Value, len(rkeys))
-	for i := range defaults {
-		defaults[i] = default_
-	}
-	return readFromRedis(ctx, tier, rkeys, defaults)
-}
-
-func (f FlatRedisStorage) GetMulti(
-	ctx context.Context, tier tier.Tier, names []ftypes.AggName, buckets [][]Bucket, defaults_ []value.Value,
-) ([][]value.Value, error) {
-	defer timer.Start(ctx, tier.ID, "flatredis.get_multi").Stop()
-	var rkeys []string
-	var defaults []value.Value
-	for i := range buckets {
-		rkeys = append(rkeys, f.redisKeys(names[i], buckets[i])...)
-		for range buckets[i] {
-			defaults = append(defaults, defaults_[i])
-		}
-	}
-	rvals, err := readFromRedis(ctx, tier, rkeys, defaults)
-	if err != nil {
-		return nil, err
-	}
-	vals := make([][]value.Value, len(names))
-	cur := 0
-	for i := range buckets {
-		vals[i] = make([]value.Value, len(buckets[i]))
-		for j := range buckets[i] {
-			vals[i][j] = rvals[cur]
-			cur++
-		}
-	}
-	return vals, nil
-}
-
-func (f FlatRedisStorage) Set(ctx context.Context, tier tier.Tier, name ftypes.AggName, buckets []Bucket) error {
-	defer timer.Start(ctx, tier.ID, "flatredis.set").Stop()
-	rkeys := f.redisKeys(name, buckets)
-	vals := make([]value.Value, len(rkeys))
-	for i := range buckets {
-		vals[i] = buckets[i].Value
-	}
-	tier.Logger.Info(
-		"Updating redis keys for aggregate", zap.String("aggregate", string(name)), zap.Int("num_keys", len(rkeys)),
-	)
-	return setInRedis(ctx, tier, rkeys, vals, make([]time.Duration, len(rkeys)))
-}
-
-func (f FlatRedisStorage) SetMulti(
-	ctx context.Context, tier tier.Tier, names []ftypes.AggName, buckets [][]Bucket,
-) error {
-	defer timer.Start(ctx, tier.ID, "flatredis.set_multi").Stop()
-	var rkeys []string
-	var vals []value.Value
-	keyCount := make([]int, len(names))
-	for i := range buckets {
-		rkeys = append(rkeys, f.redisKeys(names[i], buckets[i])...)
-		for _, b := range buckets[i] {
-			vals = append(vals, b.Value)
-		}
-	}
-	for i, name := range names {
-		tier.Logger.Info("Updating redis keys for aggregate",
-			zap.String("aggregate", string(name)),
-			zap.Int("num_keys", keyCount[i]),
-		)
-	}
-	return setInRedis(ctx, tier, rkeys, vals, make([]time.Duration, len(rkeys)))
-}
-
-func (f FlatRedisStorage) redisKeys(name ftypes.AggName, buckets []Bucket) []string {
-	ret := make([]string, len(buckets))
-	for i, b := range buckets {
-		ret[i] = fmt.Sprintf("agg:%s:%s:%d:%d:%d", name, b.Key, b.Window, b.Width, b.Index)
-	}
-	return ret
-}
-
-var _ BucketStore = FlatRedisStorage{}
-
 /*
 	twoLevelRedisStore groups all keys that fall within a period and stores them as value.Dict in a single redis key
 	within that dictionary, the key is derived from the index of the key within that group
@@ -201,7 +110,7 @@ func (t twoLevelRedisStore) get(
 		ptr := seen[s.g]
 		slotDict, ok := groupVals[ptr].(value.Dict)
 		if !ok {
-			return nil, fmt.Errorf("could not read data: expected dict but found: %v\n", groupVals[ptr])
+			return nil, fmt.Errorf("could not read data: expected dict but found: %v", groupVals[ptr])
 		}
 		idxStr := t.slotKey(s)
 		ret[i], ok = slotDict.Get(idxStr)
@@ -234,13 +143,11 @@ func (t twoLevelRedisStore) GetMulti(
 	var names_ []ftypes.AggName
 	var buckets_ []Bucket
 	var defaults_ []value.Value
-	var indices []int
 	for i := range buckets {
 		for _, b := range buckets[i] {
 			names_ = append(names_, names[i])
 			buckets_ = append(buckets_, b)
 			defaults_ = append(defaults_, defaults[i])
-			indices = append(indices, i)
 		}
 	}
 	vals, err := t.get(ctx, tier, names_, buckets_, defaults_)
@@ -291,7 +198,7 @@ func (t twoLevelRedisStore) set(ctx context.Context, tier tier.Tier, names []fty
 		ptr := seen[s.g]
 		slotDict, ok := groupVals[ptr].(value.Dict)
 		if !ok {
-			return fmt.Errorf("could not read data: expected dict but found: %v\n", groupVals[ptr])
+			return fmt.Errorf("could not read data: expected dict but found: %v", groupVals[ptr])
 		}
 		idxStr := t.slotKey(s)
 		slotDict.Set(idxStr, s.val)
@@ -451,8 +358,6 @@ func interpretRedisResponse(v interface{}, default_ value.Value) (value.Value, e
 		return nil, fmt.Errorf("unexpected type from redis")
 	}
 }
-
-var logSizes = false
 
 func setInRedis(ctx context.Context, tier tier.Tier, rkeys []string, values []value.Value, ttls []time.Duration) error {
 	if len(rkeys) != len(values) || len(rkeys) != len(ttls) {

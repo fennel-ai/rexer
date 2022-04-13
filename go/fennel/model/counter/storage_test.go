@@ -13,19 +13,6 @@ import (
 	"fennel/test"
 )
 
-func TestFlatRedisStorage(t *testing.T) {
-	t.Parallel()
-	t.Run("test_basic", func(t *testing.T) {
-		testStorage(t, FlatRedisStorage{})
-	})
-	t.Run("test_multi", func(t *testing.T) {
-		testStorageMulti(t, FlatRedisStorage{})
-	})
-	t.Run("test_large", func(t *testing.T) {
-		testLarge(t, FlatRedisStorage{}, 20, 1000)
-	})
-}
-
 func TestTwoLevelRedisStore_Get(t *testing.T) {
 	t.Parallel()
 	t.Run("test_basic", func(t *testing.T) {
@@ -217,7 +204,6 @@ func testStorageMulti(t *testing.T, store BucketStore) {
 			assert.True(t, defaults[i].Equal(vals[i][j]))
 		}
 	}
-	// set values and check with FlatRedisStorage
 	expected := [][]value.Value{
 		{},
 		{value.Int(1), value.Int(2), value.Int(3), value.Int(4), value.Int(5)},
@@ -369,9 +355,6 @@ func benchmarkStorage(b *testing.B, store BucketStore) {
 }
 
 func BenchmarkStorage(b *testing.B) {
-	b.Run("flat_redis", func(b *testing.B) {
-		benchmarkStorage(b, FlatRedisStorage{})
-	})
 	b.Run("two_level_redis_storage", func(b *testing.B) {
 		benchmarkStorage(b, twoLevelRedisStore{period: 24 * 3600})
 	})
