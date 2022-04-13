@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"math/rand"
+	"sync"
 	"time"
 
 	lib "fennel/lib/sagemaker"
@@ -15,8 +16,20 @@ import (
 const framework = "xgboost"
 const frameworkVersion = "1.3.1"
 
+var storeMutex = sync.Mutex{}
+
 func StoreModel(ctx context.Context, tier tier.Tier, name, version string, modelFile io.Reader, modelFileName string) error {
-	err := tier.SagemakerClient.UploadModelToS3(modelFile, modelFileName)
+	storeMutex.Lock()
+	defer storeMutex.Unlock()
+	// check there are no more than 15 active models
+	activeModels, err := db.GetActiveModels(tier)
+	if err != nil {
+		return fmt.Errorf("failed to get active models from db: %v", err)
+	}
+	if len(activeModels) >= 15 {
+		return fmt.Errorf("cannot have more than 15 active models: %v", err)
+	}
+	err = tier.SagemakerClient.UploadModelToS3(modelFile, modelFileName)
 	if err != nil {
 		return fmt.Errorf("failed to upload model to s3: %v", err)
 	}
