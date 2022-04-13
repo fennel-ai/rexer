@@ -198,6 +198,80 @@ func TestLogFetchServerClient(t *testing.T) {
 	verifyFetch(t, c, action.ActionFetchRequest{ActionType: "dedup_mix"}, []action.Action{d5, d5, d5})
 }
 
+func TestActionDedupedPerActionType(t *testing.T) {
+	// create a service
+	tier, err := test.Tier()
+	assert.NoError(t, err)
+	defer test.Teardown(tier)
+	ctx := context.Background()
+
+	controller := server{tier: tier}
+	server := startTestServer(controller)
+	defer server.Close()
+	c, err := client.NewClient(server.URL, server.Client())
+	assert.NoError(t, err)
+
+	consumer, err := tier.NewKafkaConsumer(action.ACTIONLOG_KAFKA_TOPIC, "somegroup", kafka.DefaultOffsetPolicy)
+	assert.NoError(t, err)
+	defer consumer.Close()
+
+	// same dedup key with same action type should be deduped
+	f1 := action.Action{
+		ActorID:    10,
+		ActorType:  "2",
+		TargetID:   3,
+		TargetType: "4",
+		ActionType: "at1",
+		Timestamp:  5,
+		RequestID:  6,
+		Metadata:   value.Nil,
+	}
+	f2 := action.Action{
+		ActorID:    11,
+		ActorType:  "2",
+		TargetID:   3,
+		TargetType: "4",
+		ActionType: "at1",
+		Timestamp:  5,
+		RequestID:  6,
+		Metadata:   value.Nil,
+	}
+	err = c.LogAction(f1, "dedup_key")
+	assert.NoError(t, err)
+	err = c.LogAction(f2, "dedup_key")
+	assert.NoError(t, err)
+	// only the first action is logged
+	assert.NoError(t, action2.TransferToDB(ctx, tier, consumer))
+	verifyFetch(t, c, action.ActionFetchRequest{ActionType: "at1"}, []action.Action{f1})
+
+	// same dedup key but for different action type should log the actions
+	a1 := action.Action{
+		ActorID:    1,
+		ActorType:  "2",
+		TargetID:   3,
+		TargetType: "4",
+		ActionType: "at1",
+		Timestamp:  5,
+		RequestID:  6,
+		Metadata:   value.Nil,
+	}
+
+	a2 := action.Action{
+		ActorID:    1,
+		ActorType:  "2",
+		TargetID:   3,
+		TargetType: "4",
+		ActionType: "at2",
+		Timestamp:  5,
+		RequestID:  6,
+		Metadata:   value.Nil,
+	}
+
+	assert.NoError(t, c.LogActions([]action.Action{a1, a2}, []string{"same_key", "same_key"}))
+	assert.NoError(t, action2.TransferToDB(ctx, tier, consumer))
+	verifyFetch(t, c, action.ActionFetchRequest{ActorID: 1}, []action.Action{a1, a2})
+}
+
 // TODO: add more tests covering more error conditions
 func TestProfileServerClient(t *testing.T) {
 	// create a service
