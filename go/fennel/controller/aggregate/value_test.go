@@ -50,17 +50,20 @@ func TestValueAll(t *testing.T) {
 	assert.NoError(t, Store(ctx, tier, agg1))
 	assert.NoError(t, Store(ctx, tier, agg2))
 
+	agg1.Id = 1
+	agg2.Id = 2
+
 	// now create changes
 	t1 := t0 + 3600
 	key := value.Nil
 	keystr := key.String()
 
-	h1 := counter.NewSum(agg1.Name, agg1.Options.Durations)
+	h1 := counter.NewSum(agg1.Options.Durations)
 	buckets := h1.BucketizeMoment(keystr, t1, value.Int(1))
-	err = counter.Update(context.Background(), tier, agg1.Name, buckets, h1)
+	err = counter.Update(context.Background(), tier, agg1.Id, buckets, h1)
 	assert.NoError(t, err)
 	buckets = h1.BucketizeMoment(keystr, t1, value.Int(3))
-	err = counter.Update(context.Background(), tier, agg1.Name, buckets, h1)
+	err = counter.Update(context.Background(), tier, agg1.Id, buckets, h1)
 	assert.NoError(t, err)
 	req1 := aggregate.GetAggValueRequest{
 		AggName: agg1.Name,
@@ -69,12 +72,12 @@ func TestValueAll(t *testing.T) {
 	}
 	exp1 := value.Int(4)
 
-	h2 := counter.NewMin(agg2.Name, agg2.Options.Durations)
+	h2 := counter.NewMin(agg2.Options.Durations)
 	buckets = h2.BucketizeMoment(keystr, t1, value.NewList(value.Int(2), value.Bool(false)))
-	err = counter.Update(context.Background(), tier, agg2.Name, buckets, h2)
+	err = counter.Update(context.Background(), tier, agg2.Id, buckets, h2)
 	assert.NoError(t, err)
 	buckets = h2.BucketizeMoment(keystr, t1, value.NewList(value.Int(7), value.Bool(false)))
-	err = counter.Update(context.Background(), tier, agg2.Name, buckets, h2)
+	err = counter.Update(context.Background(), tier, agg2.Id, buckets, h2)
 
 	assert.NoError(t, err)
 	req2 := aggregate.GetAggValueRequest{
@@ -85,7 +88,7 @@ func TestValueAll(t *testing.T) {
 	exp2 := value.Int(2)
 	// Test kwargs with duration of an hour
 	buckets = h2.BucketizeMoment(keystr, t1+5400, value.NewList(value.Int(5), value.Bool(false)))
-	err = counter.Update(context.Background(), tier, agg2.Name, buckets, h2)
+	err = counter.Update(context.Background(), tier, agg2.Id, buckets, h2)
 	assert.NoError(t, err)
 	req3 := aggregate.GetAggValueRequest{
 		AggName: agg2.Name,
@@ -107,6 +110,7 @@ func TestValueAll(t *testing.T) {
 	assert.Equal(t, exp3, found3)
 	// Test BatchValue()
 	ret, err := BatchValue(ctx, tier, []aggregate.GetAggValueRequest{req1, req2, req3})
+	assert.NoError(t, err)
 	assert.Equal(t, []value.Value{exp1, exp2, exp3}, ret)
 }
 
@@ -132,8 +136,9 @@ func TestCachedValueAll(t *testing.T) {
 			AggType:   "sum",
 			Durations: []uint64{3600},
 		},
+		Id: 1,
 	}
-	h := counter.NewSum(agg.Name, agg.Options.Durations)
+	h := counter.NewSum(agg.Options.Durations)
 	key := value.String("key")
 	kwargs := value.NewDict(map[string]value.Value{"duration": value.Int(3600)})
 	assert.NoError(t, Store(ctx, tier, agg))
@@ -148,7 +153,7 @@ func TestCachedValueAll(t *testing.T) {
 	time.Sleep(10 * time.Millisecond)
 	// update buckets, we should still get back cached value
 	buckets := h.BucketizeMoment(key.String(), t0, value.Int(1))
-	assert.NoError(t, counter.Update(ctx, tier, agg.Name, buckets, h))
+	assert.NoError(t, counter.Update(ctx, tier, agg.Id, buckets, h))
 	expected = value.Int(0)
 	found, err = Value(ctx, tier, agg.Name, key, kwargs)
 	assert.NoError(t, err)
@@ -167,10 +172,11 @@ func TestCachedValueAll(t *testing.T) {
 		{AggName: agg2.Name, Key: key, Kwargs: kwargs},
 		{AggName: agg3.Name, Key: key, Kwargs: kwargs},
 	}
+	ids := []ftypes.AggId{2, 3, 4}
 	histograms := []counter.Histogram{
-		counter.NewSum(agg1.Name, agg1.Options.Durations),
-		counter.NewSum(agg2.Name, agg2.Options.Durations),
-		counter.NewSum(agg3.Name, agg3.Options.Durations),
+		counter.NewSum(agg1.Options.Durations),
+		counter.NewSum(agg2.Options.Durations),
+		counter.NewSum(agg3.Options.Durations),
 	}
 	assert.NoError(t, Store(ctx, tier, agg1))
 	assert.NoError(t, Store(ctx, tier, agg2))
@@ -190,7 +196,7 @@ func TestCachedValueAll(t *testing.T) {
 	// update buckets, we should get back cached value from req1 and req3 but ground truth from req2
 	for i, h := range histograms {
 		buckets := h.BucketizeMoment(key.String(), t0, value.Int(1))
-		assert.NoError(t, counter.Update(ctx, tier, reqs[i].AggName, buckets, h))
+		assert.NoError(t, counter.Update(ctx, tier, ids[i], buckets, h))
 	}
 	expectedVals = []value.Value{value.Int(0), value.Int(1), value.Int(0)}
 	foundVals, err = BatchValue(ctx, tier, reqs)

@@ -17,7 +17,7 @@ type rollingMin struct {
 	BucketStore
 }
 
-func NewMin(name ftypes.AggName, durations []uint64) Histogram {
+func NewMin(durations []uint64) Histogram {
 	maxDuration := getMaxDuration(durations)
 	return rollingMin{
 		Durations: durations,

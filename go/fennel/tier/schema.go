@@ -114,4 +114,5 @@ var Schema = db.Schema{
 	// TODO: Monitor if the size of the prefix should be increased. Document that updating versioned profiles is strongly discouraged in the system.
 	12: `ALTER TABLE profile DROP PRIMARY KEY, ADD PRIMARY KEY(otype, oid, zkey, version, value(1024));`,
 	// ======== END versioned profile uniqueness and idempotent inserts ========
+	13: `ALTER TABLE aggregate_config ADD COLUMN id INT UNSIGNED NOT NULL AUTO_INCREMENT UNIQUE;`,
 }

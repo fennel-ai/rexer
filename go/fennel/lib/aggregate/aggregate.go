@@ -28,6 +28,10 @@ type Aggregate struct {
 	Query     ast.Ast
 	Timestamp ftypes.Timestamp
 	Options   Options
+	// TODO: This is an internal only field and returning this back to the user
+	// might confuse them. Consider creating two different structs - one returned back to the
+	// user and another for internal use only
+	Id ftypes.AggId
 }
 
 func IsValid(s ftypes.AggType) bool {
@@ -136,6 +140,7 @@ type AggregateSer struct {
 	OptionSer []byte           `db:"options_ser"`
 	Active    bool             `db:"active"`
 	Normalize bool             `db:"normalize"`
+	Id        ftypes.AggId     `db:"id"`
 }
 
 func FromAggregateSer(ser AggregateSer) (Aggregate, error) {
@@ -150,6 +155,7 @@ func FromAggregateSer(ser AggregateSer) (Aggregate, error) {
 		return Aggregate{}, err
 	}
 	agg.Options = FromProtoOptions(&popt)
+	agg.Id = ser.Id
 	return agg, nil
 }
 

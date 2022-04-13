@@ -19,7 +19,7 @@ type rollingRate struct {
 	BucketStore
 }
 
-func NewRate(name ftypes.AggName, durations []uint64, normalize bool) Histogram {
+func NewRate(durations []uint64, normalize bool) Histogram {
 	maxDuration := getMaxDuration(durations)
 	return rollingRate{
 		Durations: durations,

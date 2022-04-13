@@ -91,10 +91,8 @@ func BatchValue(ctx context.Context, tier tier.Tier, batch []aggregate.GetAggVal
 	if err != nil {
 		return nil, err
 	}
-	var ucvalsSer []interface{}
 	for i, ucv := range ucvals {
 		ret[ptr[i]] = ucv
-		ucvalsSer = append(ucvalsSer, ucv.String())
 	}
 	// now set uncached values in cache
 	for i := range uckeys {
@@ -119,13 +117,13 @@ func unitValue(
 	if err != nil {
 		return nil, err
 	}
-	return counter.Value(ctx, tier, name, key, histogram, kwargs)
+	return counter.Value(ctx, tier, agg.Id, key, histogram, kwargs)
 }
 
 func batchValue(ctx context.Context, tier tier.Tier, batch []aggregate.GetAggValueRequest) ([]value.Value, error) {
 	n := len(batch)
 	histograms := make([]modelCounter.Histogram, n)
-	names := make([]ftypes.AggName, n)
+	ids := make([]ftypes.AggId, n)
 	keys := make([]value.Value, n)
 	kwargs := make([]value.Dict, n)
 	unique := make(map[ftypes.AggName]aggregate.Aggregate)
@@ -140,15 +138,16 @@ func batchValue(ctx context.Context, tier tier.Tier, batch []aggregate.GetAggVal
 		}
 	}
 	for i, req := range batch {
-		histograms[i], err = toHistogram(unique[req.AggName])
+		agg := unique[req.AggName]
+		histograms[i], err = toHistogram(agg)
 		if err != nil {
 			return nil, fmt.Errorf("failed to make histogram from aggregate at index %d of batch: %v", i, err)
 		}
-		names[i] = req.AggName
+		ids[i] = agg.Id
 		keys[i] = req.Key
 		kwargs[i] = req.Kwargs
 	}
-	return counter.BatchValue(ctx, tier, names, keys, histograms, kwargs)
+	return counter.BatchValue(ctx, tier, ids, keys, histograms, kwargs)
 }
 
 func Update(ctx context.Context, tier tier.Tier, consumer kafka.FConsumer, agg aggregate.Aggregate) error {
@@ -169,7 +168,7 @@ func Update(ctx context.Context, tier tier.Tier, consumer kafka.FConsumer, agg a
 	if err != nil {
 		return err
 	}
-	if err = counter.Update(ctx, tier, agg.Name, table, histogram); err != nil {
+	if err = counter.Update(ctx, tier, agg.Id, table, histogram); err != nil {
 		return err
 	}
 	return consumer.Commit()
@@ -201,28 +200,29 @@ func transformActions(tier tier.Tier, actions []libaction.Action, query ast.Ast)
 func toHistogram(agg aggregate.Aggregate) (modelCounter.Histogram, error) {
 	switch agg.Options.AggType {
 	case "sum":
-		return modelCounter.NewSum(agg.Name, agg.Options.Durations), nil
+		return modelCounter.NewSum(agg.Options.Durations), nil
 	case "timeseries_sum":
-		return modelCounter.NewTimeseriesSum(agg.Name, agg.Options.Window, agg.Options.Limit), nil
+		return modelCounter.NewTimeseriesSum(agg.Options.Window, agg.Options.Limit), nil
 	case "average":
-		return modelCounter.NewAverage(agg.Name, agg.Options.Durations), nil
+		return modelCounter.NewAverage(agg.Options.Durations), nil
 	case "list":
-		return modelCounter.NewList(agg.Name, agg.Options.Durations), nil
+		return modelCounter.NewList(agg.Options.Durations), nil
 	case "min":
-		return modelCounter.NewMin(agg.Name, agg.Options.Durations), nil
+		return modelCounter.NewMin(agg.Options.Durations), nil
 	case "max":
-		return modelCounter.NewMax(agg.Name, agg.Options.Durations), nil
+		return modelCounter.NewMax(agg.Options.Durations), nil
 	case "stddev":
-		return modelCounter.NewStdDev(agg.Name, agg.Options.Durations), nil
+		return modelCounter.NewStdDev(agg.Options.Durations), nil
 	case "rate":
-		return modelCounter.NewRate(agg.Name, agg.Options.Durations, agg.Options.Normalize), nil
+		return modelCounter.NewRate(agg.Options.Durations, agg.Options.Normalize), nil
 	case "topk":
-		return modelCounter.NewTopK(agg.Name, agg.Options.Durations), nil
+		return modelCounter.NewTopK(agg.Options.Durations), nil
 	default:
 		return nil, fmt.Errorf("invalid aggregate type: %v", agg.Options.AggType)
 	}
 }
 
+// TODO: Use AggId here as well to keep the formatting consistent with remote storage (MemoryDB)
 func makeCacheKey(name ftypes.AggName, key value.Value, kwargs value.Dict) string {
 	return fmt.Sprintf("%d:%s:%s:%s", cacheVersion, name, key.String(), kwargs.String())
 }

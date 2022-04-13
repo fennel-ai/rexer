@@ -3,6 +3,7 @@ package counter
 import (
 	"context"
 	"fmt"
+	"math/rand"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -45,12 +46,12 @@ func TestBadgerStorage(t *testing.T) {
 			{"hello", ftypes.Window_DAY, 1, 123, nil},
 		}
 		for _, b := range buckets {
-			name := ftypes.AggName(utils.RandString(5))
-			buf, err := badgerEncode(name, b)
+			aggId := ftypes.AggId(rand.Intn(1000000))
+			buf, err := badgerEncode(aggId, b)
 			assert.NoError(t, err)
 			found_name, found_bucket, err := badgerDecode(buf)
 			assert.NoError(t, err)
-			assert.Equal(t, name, found_name)
+			assert.Equal(t, aggId, found_name)
 			assert.Equal(t, b, found_bucket)
 		}
 	})
@@ -102,9 +103,9 @@ func testStorage(t *testing.T, store BucketStore) {
 	}
 	for _, scene := range scenarios {
 		// user random strings as names so that tests don't fail due to name collisions
-		name := ftypes.AggName(utils.RandString(10))
+		aggId := ftypes.AggId(rand.Intn(1000000))
 		// initially nothing is found
-		found, err := store.Get(ctx, tier, name, scene.buckets, scene.z)
+		found, err := store.Get(ctx, tier, aggId, scene.buckets, scene.z)
 		assert.NoError(t, err)
 		assert.Len(t, found, len(scene.buckets))
 		for _, v := range found {
@@ -114,10 +115,10 @@ func testStorage(t *testing.T, store BucketStore) {
 		for i := range scene.buckets {
 			scene.buckets[i].Value = scene.v1[i]
 		}
-		assert.NoError(t, store.Set(ctx, tier, name, scene.buckets))
+		assert.NoError(t, store.Set(ctx, tier, aggId, scene.buckets))
 
 		// check it went through
-		found, err = store.Get(ctx, tier, name, scene.buckets, scene.z)
+		found, err = store.Get(ctx, tier, aggId, scene.buckets, scene.z)
 		assert.NoError(t, err)
 		assert.Len(t, found, len(scene.buckets))
 		for i, v := range found {
@@ -133,8 +134,8 @@ func testStorage(t *testing.T, store BucketStore) {
 			scene.buckets[i].Value = scene.v2[i]
 			odd = append(odd, scene.buckets[i])
 		}
-		assert.NoError(t, store.Set(ctx, tier, name, odd))
-		found, err = store.Get(ctx, tier, name, scene.buckets, scene.z)
+		assert.NoError(t, store.Set(ctx, tier, aggId, odd))
+		found, err = store.Get(ctx, tier, aggId, scene.buckets, scene.z)
 		assert.NoError(t, err)
 		assert.Len(t, found, len(scene.buckets))
 		for i := range scene.buckets {
@@ -153,12 +154,12 @@ func testStorageMulti(t *testing.T, store BucketStore) {
 	defer test.Teardown(tier)
 	ctx := context.Background()
 
-	names := []ftypes.AggName{
-		"agg0",
-		"agg1",
-		"agg2",
-		"agg3",
-		"agg3",
+	ids := []ftypes.AggId{
+		1,
+		2,
+		3,
+		4,
+		5,
 	}
 	buckets := [][]Bucket{
 		{},
@@ -195,7 +196,7 @@ func testStorageMulti(t *testing.T, store BucketStore) {
 		value.String(""),
 	}
 	// initially nothing to be found
-	vals, err := store.GetMulti(ctx, tier, names, buckets, defaults)
+	vals, err := store.GetMulti(ctx, tier, ids, buckets, defaults)
 	assert.NoError(t, err)
 	assert.Equal(t, len(buckets), len(vals))
 	for i := range buckets {
@@ -216,14 +217,14 @@ func testStorageMulti(t *testing.T, store BucketStore) {
 			buckets[i][j].Value = expected[i][j]
 		}
 	}
-	err = store.SetMulti(ctx, tier, names, buckets)
+	err = store.SetMulti(ctx, tier, ids, buckets)
 	assert.NoError(t, err)
 	for i := range buckets {
 		for j := range buckets[i] {
 			buckets[i][j].Value = nil
 		}
 	}
-	found, err := store.GetMulti(ctx, tier, names, buckets, defaults)
+	found, err := store.GetMulti(ctx, tier, ids, buckets, defaults)
 	assert.NoError(t, err)
 	assert.Equal(t, len(expected), len(found))
 	for i := range found {
@@ -240,10 +241,10 @@ func testLarge(t *testing.T, store BucketStore, numAggs, numBuckets int) {
 	defer test.Teardown(tier)
 	ctx := context.Background()
 
-	names := make([]ftypes.AggName, numAggs)
+	ids := make([]ftypes.AggId, numAggs)
 	buckets := make([][]Bucket, numAggs)
-	for i := range names {
-		names[i] = ftypes.AggName(utils.RandString(20))
+	for i := range ids {
+		ids[i] = ftypes.AggId(rand.Intn(1000000))
 		buckets[i] = make([]Bucket, numBuckets)
 		for j := range buckets[i] {
 			buckets[i][j] = Bucket{
@@ -255,14 +256,14 @@ func testLarge(t *testing.T, store BucketStore, numAggs, numBuckets int) {
 			}
 		}
 	}
-	assert.NoError(t, store.SetMulti(ctx, tier, names, buckets))
-	defaults := make([]value.Value, len(names))
+	assert.NoError(t, store.SetMulti(ctx, tier, ids, buckets))
+	defaults := make([]value.Value, len(ids))
 	for i := range defaults {
 		defaults[i] = value.Nil
 	}
-	found, err := store.GetMulti(ctx, tier, names, buckets, defaults)
+	found, err := store.GetMulti(ctx, tier, ids, buckets, defaults)
 	assert.NoError(t, err)
-	for i := range names {
+	for i := range ids {
 		for j := range buckets[i] {
 			assert.Equal(t, buckets[i][j].Value, found[i][j])
 		}
@@ -270,57 +271,45 @@ func testLarge(t *testing.T, store BucketStore, numAggs, numBuckets int) {
 }
 
 func TestTwoLevelRedisStore(t *testing.T) {
-	var name ftypes.AggName = "something"
+	var aggId ftypes.AggId = 202
 	g := twoLevelRedisStore{
 		period:    8 * 3600,
 		retention: 3 * 24 * 3600,
 	}
 	k := "key"
 	scenarios := []struct {
-		b       Bucket
-		s       slot
-		slotkey string
-		rkey    string
-		err     bool
+		b   Bucket
+		s   slot
+		err bool
 	}{
 		{
 			Bucket{Key: k, Window: ftypes.Window_MINUTE, Width: 2, Index: 3, Value: value.Int(1)},
-			slot{g: group{aggname: name, key: k, id: 0}, window: ftypes.Window_MINUTE, width: 2, idx: 3, val: value.Int(1)},
-			fmt.Sprintf("%v%v", toBuf(2), toBuf(3)),
-			fmt.Sprintf("agg_l2:%s:%s:%v%v", name, k, toBuf(8*3600), toBuf(0)),
+			slot{g: group{aggId: aggId, key: k, id: 0}, window: ftypes.Window_MINUTE, width: 2, idx: 3, val: value.Int(1)},
 			false,
 		},
 		{
 			Bucket{Key: k, Window: ftypes.Window_DAY, Width: 2, Index: 3, Value: value.Int(1)},
 			slot{},
-			"",
-			"",
 			true,
 		},
 		{
 			Bucket{Key: k, Window: ftypes.Window_HOUR, Width: 2, Index: 30, Value: value.Int(1)},
-			slot{g: group{aggname: name, key: k, id: 7}, window: ftypes.Window_HOUR, width: 2, idx: 2, val: value.Int(1)},
-			fmt.Sprintf("%d:%v%v", ftypes.Window_HOUR, toBuf(2), toBuf(2)),
-			fmt.Sprintf("agg_l2:%s:%s:%v%v", name, k, toBuf(8*3600), toBuf(7)),
+			slot{g: group{aggId: aggId, key: k, id: 7}, window: ftypes.Window_HOUR, width: 2, idx: 2, val: value.Int(1)},
 			false,
 		},
 		{
 			Bucket{Key: k, Window: ftypes.Window_HOUR, Width: 2, Index: 24 * 30, Value: value.Int(1)},
-			slot{g: group{aggname: name, key: k, id: 180}, window: ftypes.Window_HOUR, width: 2, idx: 0, val: value.Int(1)},
-			fmt.Sprintf("%d:%v%v", ftypes.Window_HOUR, toBuf(2), toBuf(0)),
-			fmt.Sprintf("agg_l2:%s:%s:%v%v", name, k, toBuf(8*3600), toBuf(180)),
+			slot{g: group{aggId: aggId, key: k, id: 180}, window: ftypes.Window_HOUR, width: 2, idx: 0, val: value.Int(1)},
 			false,
 		},
 	}
 	for _, scene := range scenarios {
-		s, err := g.toSlot(name, &scene.b)
+		s, err := g.toSlot(aggId, &scene.b)
 		if scene.err {
 			assert.Error(t, err)
 		} else {
 			assert.NoError(t, err)
 			assert.Equal(t, scene.s, s)
-			assert.Equal(t, scene.slotkey, g.slotKey(s))
-			assert.Equal(t, scene.rkey, g.redisKey(name, s.g))
 		}
 	}
 }
@@ -344,12 +333,12 @@ func benchmarkStorage(b *testing.B, store BucketStore) {
 		}
 		buckets = append(buckets, b)
 	}
-	name := ftypes.AggName(utils.RandString(30))
-	store.Set(ctx, tier, name, buckets)
+	aggId := ftypes.AggId(rand.Intn(1000000))
+	store.Set(ctx, tier, aggId, buckets)
 	dummy := 0
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		vals, _ := store.Get(ctx, tier, name, buckets, value.Int(1))
+		vals, _ := store.Get(ctx, tier, aggId, buckets, value.Int(1))
 		dummy += len(vals)
 	}
 }
