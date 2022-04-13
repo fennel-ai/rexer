@@ -137,11 +137,6 @@ func TestKafkaBatchInsertRead(t *testing.T) {
 }
 
 func TestLongTypes(t *testing.T) {
-	tier, err := test.Tier()
-	assert.NoError(t, err)
-	defer test.Teardown(tier)
-
-	ctx := context.Background()
 	// valid action
 	a := actionlib.Action{
 		ActorID:    111,
@@ -156,19 +151,19 @@ func TestLongTypes(t *testing.T) {
 
 	// ActionType can't be longer than 255 chars
 	a.ActionType = ftypes.ActionType(utils.RandString(256))
-	err = Insert(ctx, tier, a)
+	err := a.Validate()
 	assert.Error(t, err)
 	a.ActionType = ftypes.ActionType(utils.RandString(255))
 
 	// ActorType can't be longer than 255 chars
 	a.ActorType = ftypes.OType(utils.RandString(256))
-	err = Insert(ctx, tier, a)
+	err = a.Validate()
 	assert.Error(t, err)
 	a.ActorType = ftypes.OType(utils.RandString(255))
 
 	// TargetType can't be longer than 255 charks
 	a.TargetType = ftypes.OType(utils.RandString(256))
-	err = Insert(ctx, tier, a)
+	err = a.Validate()
 	assert.Error(t, err)
 	a.TargetType = ftypes.OType(utils.RandString(255))
 }
