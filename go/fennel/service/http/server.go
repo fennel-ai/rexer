@@ -8,6 +8,7 @@ import (
 	"math/rand"
 	"net/http"
 	_ "net/http/pprof"
+	"strings"
 	"time"
 
 	"fennel/controller/action"
@@ -30,7 +31,6 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
-	"google.golang.org/protobuf/proto"
 )
 
 const dedupTTL = 6 * time.Hour
@@ -59,15 +59,6 @@ var totalDedupedActions = promauto.NewCounterVec(
 	[]string{"path", "action_type"},
 )
 
-func parse(req *http.Request, msg proto.Message) error {
-	defer req.Body.Close()
-	body, err := ioutil.ReadAll(req.Body)
-	if err != nil {
-		return err
-	}
-	return proto.Unmarshal(body, msg)
-}
-
 func readRequest(req *http.Request) ([]byte, error) {
 	defer req.Body.Close()
 	return ioutil.ReadAll(req.Body)
@@ -92,6 +83,19 @@ func (s server) setHandlers(router *mux.Router) {
 	router.HandleFunc("/aggregate_value", s.AggregateValue)
 	router.HandleFunc("/batch_aggregate_value", s.BatchAggregateValue)
 	router.HandleFunc("/get_operators", s.GetOperators)
+}
+
+func constructDedupKey(dedupKey string, actionType ftypes.ActionType) string {
+	// add action type to the `dedupKey`, so that the actions are deduplicated at the
+	// granularity of action type
+	//
+	// NOTE: It is possible that the incoming requests could have handled this explicitly,
+	// we add the action type as a sanity check
+	var b strings.Builder
+	b.WriteString(dedupKey)
+	b.WriteString(":")
+	b.WriteString(string(actionType))
+	return b.String()
 }
 
 func (m server) Log(w http.ResponseWriter, req *http.Request) {
@@ -125,7 +129,7 @@ func (m server) Log(w http.ResponseWriter, req *http.Request) {
 	// Try to set if it does not exist. If it succeeds, proceed normally.
 	// Otherwise, drop request.
 	if dedupKey != "" {
-		ok, err := m.tier.Redis.SetNX(req.Context(), dedupKey, 1, dedupTTL)
+		ok, err := m.tier.Redis.SetNX(req.Context(), constructDedupKey(dedupKey, a.ActionType), 1, dedupTTL)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			log.Printf("Error: %v", err)
@@ -181,7 +185,7 @@ func (m server) LogMulti(w http.ResponseWriter, req *http.Request) {
 			batch = append(batch, actions[i])
 		} else {
 			// otherwise, store them for duplication check
-			keys = append(keys, d.DedupKey)
+			keys = append(keys, constructDedupKey(d.DedupKey, actions[i].ActionType))
 			vals = append(vals, 1)
 			ttls = append(ttls, dedupTTL)
 			ids = append(ids, i)
