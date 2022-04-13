@@ -35,10 +35,18 @@ import (
 
 const dedupTTL = 6 * time.Hour
 
+var incomingActions = promauto.NewCounterVec(
+	prometheus.CounterOpts{
+		Name: "incoming_actions_total",
+		Help: "Total number of incoming actions.",
+	},
+	[]string{"path", "action_type"},
+)
+
 var totalActions = promauto.NewCounterVec(
 	prometheus.CounterOpts{
 		Name: "actions_total",
-		Help: "Total number of actions.",
+		Help: "Total number of logged actions.",
 	},
 	[]string{"path", "action_type"},
 )
@@ -46,7 +54,7 @@ var totalActions = promauto.NewCounterVec(
 var totalDedupedActions = promauto.NewCounterVec(
 	prometheus.CounterOpts{
 		Name: "deduped_actions_total",
-		Help: "Total numbe of actions deduped.",
+		Help: "Total number of deduped actions.",
 	},
 	[]string{"path", "action_type"},
 )
@@ -105,6 +113,7 @@ func (m server) Log(w http.ResponseWriter, req *http.Request) {
 		log.Printf("Error: %v", err)
 		return
 	}
+	incomingActions.WithLabelValues("log", string(a.ActionType)).Inc()
 
 	dedupKey, err := jsonparser.GetString(data, "DedupKey")
 	if err != nil {
@@ -152,6 +161,10 @@ func (m server) LogMulti(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
+	for _, a := range actions {
+		incomingActions.WithLabelValues("log_multi", string(a.ActionType)).Inc()
+	}
+
 	if err := json.Unmarshal(data, &dedupItems); err != nil {
 		http.Error(w, fmt.Sprintf("invalid request: %v; no action was logged", err), http.StatusBadRequest)
 		log.Printf("Error: %v", err)
@@ -178,6 +191,12 @@ func (m server) LogMulti(w http.ResponseWriter, req *http.Request) {
 	// Check for dedup with a pipeline
 	// TODO: Better variable name for ok
 	ok, err := m.tier.Redis.SetNXPipelined(req.Context(), keys, vals, ttls)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		log.Printf("Error: %v", err)
+		return
+	}
+
 	for i := range ok {
 		if ok[i] {
 			// If dedup key of an action was not set, add to batch
