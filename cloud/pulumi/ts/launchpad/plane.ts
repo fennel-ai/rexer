@@ -14,6 +14,11 @@ import * as glueSource from "../glue-script-source";
 
 import * as process from "process";
 
+// TODO: Replace this with Tier conf
+type IngressConfig = {
+    usePublicSubnets: boolean,
+}
+
 type VpcConfig = {
     cidr: string,
 }
@@ -65,6 +70,7 @@ export type PlaneConf = {
     planeId: number,
     region: string,
     roleArn: string,
+    ingressConf?: IngressConfig,
     vpcConf: VpcConfig,
     dbConf: DBConfig,
     confluentConf: ConfluentConfig,
