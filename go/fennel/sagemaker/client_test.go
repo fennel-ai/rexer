@@ -5,6 +5,7 @@ package sagemaker
 import (
 	"context"
 	"log"
+	"os"
 	"testing"
 
 	lib "fennel/lib/sagemaker"
@@ -14,10 +15,7 @@ import (
 )
 
 func TestCreateModel(t *testing.T) {
-	c, err := NewClient(SagemakerArgs{
-		Region:                 "ap-south-1",
-		SagemakerExecutionRole: "arn:aws:iam::030813887342:role/service-role/AmazonSageMaker-ExecutionRole-20220315T123828",
-	})
+	c, err := getTestClient()
 	assert.NoError(t, err)
 
 	err = c.CreateModel(context.Background(), []lib.Model{
@@ -33,10 +31,7 @@ func TestCreateModel(t *testing.T) {
 }
 
 func TestModelExists(t *testing.T) {
-	c, err := NewClient(SagemakerArgs{
-		Region:                 "ap-south-1",
-		SagemakerExecutionRole: "arn:aws:iam::030813887342:role/service-role/AmazonSageMaker-ExecutionRole-20220315T123828",
-	})
+	c, err := getTestClient()
 	assert.NoError(t, err)
 	exists, err := c.ModelExists(context.Background(), "my-non-existing-model")
 	assert.NoError(t, err)
@@ -44,10 +39,7 @@ func TestModelExists(t *testing.T) {
 }
 
 func TestEndpointConfigExists(t *testing.T) {
-	c, err := NewClient(SagemakerArgs{
-		Region:                 "ap-south-1",
-		SagemakerExecutionRole: "arn:aws:iam::030813887342:role/service-role/AmazonSageMaker-ExecutionRole-20220315T123828",
-	})
+	c, err := getTestClient()
 	assert.NoError(t, err)
 
 	configName := "my-endpoint-config"
@@ -78,10 +70,7 @@ func TestEndpointConfigExists(t *testing.T) {
 }
 
 func TestEndpointExists(t *testing.T) {
-	c, err := NewClient(SagemakerArgs{
-		Region:                 "ap-south-1",
-		SagemakerExecutionRole: "arn:aws:iam::030813887342:role/service-role/AmazonSageMaker-ExecutionRole-20220315T123828",
-	})
+	c, err := getTestClient()
 	assert.NoError(t, err)
 
 	endpointName := "my-non-existing-endpoint"
@@ -112,10 +101,7 @@ func TestEndpointExists(t *testing.T) {
 }
 
 func TestUpdateEndpoint(t *testing.T) {
-	c, err := NewClient(SagemakerArgs{
-		Region:                 "ap-south-1",
-		SagemakerExecutionRole: "arn:aws:iam::030813887342:role/service-role/AmazonSageMaker-ExecutionRole-20220315T123828",
-	})
+	c, err := getTestClient()
 	assert.NoError(t, err)
 
 	endpointName := "integration-test-endpoint"
@@ -129,10 +115,7 @@ func TestUpdateEndpoint(t *testing.T) {
 }
 
 func TestScoreSvm(t *testing.T) {
-	c, err := NewClient(SagemakerArgs{
-		Region:                 "ap-south-1",
-		SagemakerExecutionRole: "arn:aws:iam::030813887342:role/service-role/AmazonSageMaker-ExecutionRole-20220315T123828",
-	})
+	c, err := getTestClient()
 	assert.NoError(t, err)
 	featureVectors := []value.List{
 		value.NewList(value.String("1:1 9:1 19:1 21:1 24:1 34:1 36:1 39:1 42:1 53:1 56:1 65:1 69:1 77:1 86:1 88:1 92:1 95:1 102:1 106:1 117:1 122:1")),
@@ -166,10 +149,7 @@ func TestScoreSvm(t *testing.T) {
 }
 
 func TestScoreCsv(t *testing.T) {
-	c, err := NewClient(SagemakerArgs{
-		Region:                 "ap-south-1",
-		SagemakerExecutionRole: "arn:aws:iam::030813887342:role/service-role/AmazonSageMaker-ExecutionRole-20220315T123828",
-	})
+	c, err := getTestClient()
 	assert.NoError(t, err)
 	csv, err := value.FromJSON([]byte("[0,0,0,0,0,0,0,1,0,1,0,1,0,0,1,0,0,0,1,0,0,0,0,0,0,0,0,0,1,0,1,0,0,1,0,0,0,0,0,0,0,0,1,1,0,1,0,0,1,0,0,0,0,0,0,0,0,0,0,1,0,0,1,0,0,0,0,0,0,1,0,0,0,1,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,1,0,1,0,0,1,0,0,1,0,0,0,0,0,1,0,1,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,1,0,0,0,0]"))
 	assert.NoError(t, err)
@@ -183,4 +163,12 @@ func TestScoreCsv(t *testing.T) {
 	})
 	assert.NoError(t, err)
 	assert.Equal(t, len(featureVectors), len(response.Scores))
+}
+
+func getTestClient() (SMClient, error) {
+	return NewClient(SagemakerArgs{
+		Region:                 "ap-south-1",
+		SagemakerExecutionRole: "arn:aws:iam::030813887342:role/service-role/AmazonSageMaker-ExecutionRole-20220315T123828",
+		S3BucketName:           os.Getenv("SAGEMAKER_S3_BUCKET_NAME"),
+	})
 }
