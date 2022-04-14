@@ -10,6 +10,7 @@ import (
 
 	lib "fennel/lib/sagemaker"
 	db "fennel/model/sagemaker"
+	"fennel/modelstore"
 	"fennel/sagemaker"
 	"fennel/test"
 	"github.com/stretchr/testify/assert"
@@ -35,7 +36,7 @@ func TestEnsureEndpoint(t *testing.T) {
 		ArtifactPath:     "s3://my-xgboost-test-bucket-2/model.tar.gz",
 	}
 	endpointName := "unit-test-endpoint"
-	ms := NewModelStore("my-xgboost-test-bucket-2", endpointName)
+	tier.ModelStore = modelstore.NewModelStore("my-xgboost-test-bucket-2", endpointName)
 
 	// Insert an active model into db.
 	modelId, err := db.InsertModel(tier, model)
@@ -43,7 +44,7 @@ func TestEnsureEndpoint(t *testing.T) {
 	assert.Equal(t, uint32(1), modelId)
 
 	// Ensure model is served on sagemaker.
-	err = ms.EnsureEndpointExists(context.Background(), tier)
+	err = EnsureEndpointExists(context.Background(), tier)
 	assert.NoError(t, err)
 
 	// assert that registry resources are created in db.
