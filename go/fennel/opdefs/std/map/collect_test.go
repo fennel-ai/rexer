@@ -8,9 +8,9 @@ import (
 	"fennel/tier"
 )
 
-func TestGetp_Apply(t *testing.T) {
+func TestCollect_Apply(t *testing.T) {
 	t.Parallel()
-	op := get{}
+	op := collect{}
 	scenarios := []struct {
 		inputs   []value.Value
 		static   value.Dict

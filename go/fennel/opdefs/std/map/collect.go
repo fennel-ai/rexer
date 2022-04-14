@@ -10,19 +10,19 @@ import (
 )
 
 func init() {
-	operators.Register(get{})
+	operators.Register(collect{})
 }
 
-type get struct {
+type collect struct {
 }
 
-func (m get) New(
+func (m collect) New(
 	args value.Dict, bootargs map[string]interface{}, cache *sync.Map,
 ) (operators.Operator, error) {
-	return get{}, nil
+	return collect{}, nil
 }
 
-func (m get) Apply(_ context.Context, staticKwargs value.Dict, in operators.InputIter, out *value.List) error {
+func (m collect) Apply(_ context.Context, staticKwargs value.Dict, in operators.InputIter, out *value.List) error {
 	for in.HasMore() {
 		heads, kwargs, err := in.Next()
 		row := heads[0].(value.Dict)
@@ -51,10 +51,10 @@ func (m get) Apply(_ context.Context, staticKwargs value.Dict, in operators.Inpu
 	return nil
 }
 
-func (m get) Signature() *operators.Signature {
-	return operators.NewSignature("std", "get").
+func (m collect) Signature() *operators.Signature {
+	return operators.NewSignature("std", "collect").
 		Input([]value.Type{value.Types.Dict}).
 		ParamWithHelp("fields", value.Types.List, false, false, value.Nil, "ContextKwarg: List of keys to lookup in the map")
 }
 
-var _ operators.Operator = get{}
+var _ operators.Operator = collect{}
