@@ -327,7 +327,7 @@ func (t twoLevelRedisStore) slotKey(s slot) (string, error) {
 }
 
 func (t twoLevelRedisStore) redisKey(id ftypes.AggId, g group) (string, error) {
-	buf := make([]byte, 8+8+8+8+8) // codec + aggid + groupkey + period + groupid
+	buf := make([]byte, 8+8+len(g.key)+8+8) // codec + aggid + groupkey + period + groupid
 	curr := 0
 	if n, err := counterCodec.Write(buf[curr:]); err != nil {
 		return "", err
