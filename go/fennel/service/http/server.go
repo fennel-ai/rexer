@@ -6,6 +6,7 @@ import (
 	"io/ioutil"
 	"log"
 	"math/rand"
+	"mime/multipart"
 	"net/http"
 	_ "net/http/pprof"
 	"time"
@@ -13,6 +14,7 @@ import (
 	"fennel/controller/action"
 	aggregate2 "fennel/controller/aggregate"
 	"fennel/controller/mock"
+	"fennel/controller/modelstore"
 	profile2 "fennel/controller/profile"
 	"fennel/engine"
 	"fennel/engine/interpreter/bootarg"
@@ -22,6 +24,7 @@ import (
 	"fennel/lib/ftypes"
 	profilelib "fennel/lib/profile"
 	"fennel/lib/query"
+	"fennel/lib/sagemaker"
 	"fennel/lib/timer"
 	"fennel/lib/value"
 	"fennel/tier"
@@ -92,6 +95,7 @@ func (s server) setHandlers(router *mux.Router) {
 	router.HandleFunc("/aggregate_value", s.AggregateValue)
 	router.HandleFunc("/batch_aggregate_value", s.BatchAggregateValue)
 	router.HandleFunc("/get_operators", s.GetOperators)
+	router.HandleFunc("/upload_model", s.UploadModel)
 }
 
 func (m server) Log(w http.ResponseWriter, req *http.Request) {
@@ -467,6 +471,48 @@ func (m server) BatchAggregateValue(w http.ResponseWriter, req *http.Request) {
 	w.Write(value.ToJSON(value.NewList(ret...)))
 }
 
+func (m server) UploadModel(w http.ResponseWriter, req *http.Request) {
+	mr, err := req.MultipartReader()
+	if err != nil {
+		handleBadRequest(w, "", err)
+		return
+	}
+	// maxMemory: 1 GB (max memory to use in RAM, remaining data is stored in disk as temporary files)
+	form, err := mr.ReadForm(1 << 30)
+	if err != nil {
+		handleBadRequest(w, "", err)
+		return
+	}
+	formFile, err := getFileFromMultiPartForm(form, "file")
+	if err != nil {
+		handleBadRequest(w, "", err)
+	}
+	modelFile, err := formFile.Open()
+	if err != nil {
+		handleBadRequest(w, "", err)
+		return
+	}
+	modelFileName := formFile.Filename
+	values, err := getValuesFromMultiPartForm(form, []string{"name", "version", "framework", "framework_version"})
+	if err != nil {
+		handleBadRequest(w, "", err)
+		return
+	}
+	modelReq := sagemaker.ModelInsertRequest{
+		Name:             values["name"],
+		Version:          values["version"],
+		Framework:        values["framework"],
+		FrameworkVersion: values["framework_version"],
+		ModelFile:        modelFile,
+		ModelFileName:    modelFileName,
+	}
+	err = modelstore.StoreModel(req.Context(), m.tier, modelReq)
+	if err != nil {
+		handleBadRequest(w, "", err)
+		return
+	}
+}
+
 func (m server) GetOperators(w http.ResponseWriter, req *http.Request) {
 	_, err := readRequest(req)
 	if err != nil {
@@ -489,4 +535,38 @@ func handleBadRequest(w http.ResponseWriter, errorPrefix string, err error) {
 func handleInternalServerError(w http.ResponseWriter, errorPrefix string, err error) {
 	http.Error(w, fmt.Sprintf("%s%v", errorPrefix, err), http.StatusInternalServerError)
 	log.Printf("Error: %v", err)
+}
+
+func getValueFromMultiPartForm(form *multipart.Form, key string) (string, error) {
+	x, ok := form.Value[key]
+	if !ok {
+		return "", fmt.Errorf("'%s' not found in form's values", key)
+	}
+	if len(x) == 0 {
+		return "", fmt.Errorf("no values found at key '%s' in form", key)
+	}
+	return x[0], nil
+}
+
+func getValuesFromMultiPartForm(form *multipart.Form, keys []string) (map[string]string, error) {
+	res := make(map[string]string, len(keys))
+	for _, k := range keys {
+		v, err := getValueFromMultiPartForm(form, k)
+		if err != nil {
+			return nil, err
+		}
+		res[k] = v
+	}
+	return res, nil
+}
+
+func getFileFromMultiPartForm(form *multipart.Form, key string) (*multipart.FileHeader, error) {
+	x, ok := form.File[key]
+	if !ok {
+		return nil, fmt.Errorf("'%s' not found in form's files", key)
+	}
+	if len(x) == 0 {
+		return nil, fmt.Errorf("no files found at key '%s' in form", key)
+	}
+	return x[0], nil
 }
