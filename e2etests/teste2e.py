@@ -5,7 +5,7 @@ import string
 import unittest
 
 import time
-
+from datetime import datetime, timezone, timedelta
 import lib
 import rexerclient as rex
 from rexerclient import client
@@ -80,6 +80,7 @@ class TestEndToEnd(unittest.TestCase):
             config={'durations': [4 * 24 * 3600, 7 * 24 * 3600], 'normalize': True},
         )
         def agg_user_notif_open_rate_by_category(actions):
+            print('actions:', actions)
             q = op.std.profile(actions, field='category', otype='content', key='category', var='e',
                                oid=var('e').target_id)
             q = op.std.set(q, var='e', field='groupkey', value=[var('e').actor_id, var('e').category])
@@ -110,15 +111,15 @@ class TestEndToEnd(unittest.TestCase):
 
         p1 = profile.Profile(otype="content", oid=content_id, key="category", value=category)
 
-        ts = int(time.time())
+        ts = datetime.fromtimestamp(1326244364).astimezone(timezone.utc)
         a1 = action.Action(actor_type='user', actor_id=uid, target_type='content', target_id=content_id,
                            action_type='notif_send', request_id=1, timestamp=ts, dedup_key="a1")
         a2 = action.Action(actor_type='user', actor_id=uid, target_type='content', target_id=content_id,
-                           action_type='notif_send', request_id=1, timestamp=ts + 1, dedup_key="a2")
+                           action_type='notif_send', request_id=1, timestamp=ts + timedelta(0,1), dedup_key="a2")
         a3 = action.Action(actor_type='user', actor_id=uid, target_type='content', target_id=content_id,
-                           action_type='notif_open', request_id=1, timestamp=ts + 2, dedup_key="a3")
+                           action_type='notif_open', request_id=1, timestamp=ts + timedelta(0,2), dedup_key="a3")
         a4 = action.Action(actor_type='user', actor_id=uid, target_type='content', target_id=content_id,
-                           action_type='react', request_id=2, timestamp=ts + 3, dedup_key="a4")
+                           action_type='react', request_id=2, timestamp=ts + timedelta(0,3), dedup_key="a4")
 
         # verify that test of actions works well
         mock = {'profiles': [p1]}
@@ -129,10 +130,10 @@ class TestEndToEnd(unittest.TestCase):
              'target_type': 'content', 'timestamp': ts, 'value': [0, 1]},
             {'action_type': 'notif_send', 'actor_id': 12312, 'actor_type': 'user', 'category': 'sports',
              'groupkey': [12312, 'sports'], 'metadata': {}, 'request_id': 1, 'target_id': 456,
-             'target_type': 'content', 'timestamp': ts + 1, 'value': [0, 1]},
+             'target_type': 'content', 'timestamp': ts + timedelta(0,1), 'value': [0, 1]},
             {'action_type': 'notif_open', 'actor_id': 12312, 'actor_type': 'user', 'category': 'sports',
              'groupkey': [12312, 'sports'], 'metadata': {}, 'request_id': 1, 'target_id': 456,
-             'target_type': 'content', 'timestamp': ts + 2, 'value': [1, 0]}
+             'target_type': 'content', 'timestamp': ts + timedelta(0,2), 'value': [1, 0]}
         ]
         self.assertEqual(expected, agg_user_notif_open_rate_by_category.test(actions, client=c, mock=mock))
 
@@ -146,7 +147,7 @@ class TestEndToEnd(unittest.TestCase):
             c.log(a4)
         # this action was logged 8 days in history so should not apply towards any aggregate
         c.log(action.Action(actor_type='user', actor_id=uid, target_type='content', target_id=content_id,
-                            action_type='notif_send', request_id=7, timestamp=ts - 8 * 24 * 3600))
+                            action_type='notif_send', request_id=7, timestamp=ts - timedelta(days=8)))
 
         b = int((ts % (24 * 3600)) / 3600)
 
@@ -237,14 +238,15 @@ class TestEndToEnd(unittest.TestCase):
 
         agg2.store(client=c)
 
-        ts = int(time.time())
-        b = int((ts % (24 * 3600)) / (2 * 3600))
+        ts = datetime.fromtimestamp(1326244364).astimezone(timezone.utc)
+
+        b = int((ts.timestamp() % (24 * 3600)) / (2 * 3600))
         # send multiple times with dedup keys
         actions = [
             action.Action(actor_type='user', actor_id=uid, target_type='video', target_id=video_id, action_type='view',
                           request_id=1, timestamp=ts, metadata={'watch_time': 20}, dedup_key="action1"),
             action.Action(actor_type='user', actor_id=uid, target_type='video', target_id=video_id, action_type='view',
-                          request_id=1, timestamp=ts - 3 * 24 * 3600, metadata={'watch_time': 22}, dedup_key="action2"),
+                          request_id=1, timestamp=ts - timedelta(days=3), metadata={'watch_time': 22}, dedup_key="action2"),
         ]
         c.log_multi(actions)
         c.log_multi(actions)
@@ -343,14 +345,15 @@ class TestEndToEnd(unittest.TestCase):
             c.set_profile('post', p, 'topic', topics[p % 2])
             self.assertEqual(topics[p % 2], c.get_profile('post', p, 'topic'))
         # and log a few actions
-        now = int(time.time())
+        now = datetime.fromtimestamp(1326244364).astimezone(timezone.utc)
+
         for p in post_ids:
             # one action for 1 day ago (so applies to both 4 day and 7 day windows)
             c.log(action.Action(actor_type='user', actor_id=uid, target_type='post', target_id=p,
-                               action_type='click', request_id=1, timestamp=now-24*3600))
+                               action_type='click', request_id=1, timestamp=now-timedelta(days=1)))
             # one action for 6 day ago (so applies to only 7 day windows)
             c.log(action.Action(actor_type='user', actor_id=uid, target_type='post', target_id=p,
-                                action_type='click', request_id=1, timestamp=now-6*24*3600))
+                                action_type='click', request_id=1, timestamp=now-timedelta(days=6)))
 
         # now store some aggregates
         @rex.aggregate(
