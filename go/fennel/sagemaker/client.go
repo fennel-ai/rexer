@@ -78,7 +78,6 @@ func (smc SMClient) CreateModel(ctx context.Context, hostedModels []lib.Model, s
 			ContainerHostname: aws.String(lib.GetContainerName(model.Name, model.Version)),
 			Image:             aws.String(getImage(model.Framework, model.Version, smc.args.Region)),
 			ModelDataUrl:      aws.String(model.ArtifactPath),
-			Mode:              aws.String("MultiModel"),
 		})
 	}
 	// InferenceExecutionConfig can be set only when the model has more than one containers.
