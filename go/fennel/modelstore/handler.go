@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"math/rand"
-	"sort"
 	"sync"
 	"time"
 
@@ -111,31 +110,12 @@ func (ms *ModelStore) EnsureEndpointExists(ctx context.Context, tier tier.Tier) 
 		}
 	}
 
-	// Check if model is up-to-date otherwise update endpoint
-	modelNames, err := tier.SagemakerClient.GetContainerNames(ctx, sagemakerModelName)
-	if err != nil {
-		return fmt.Errorf("failed to get container names from sagemaker: %v", err)
-	}
-	var activeModelNames []string
-	for _, m := range activeModels {
-		activeModelNames = append(activeModelNames, lib.GetContainerName(m.Name, m.Version))
-	}
-	ok := verifyElementsMatch(modelNames, activeModelNames)
-	updateEndpoint := false
-	if !ok {
-		updateEndpoint = true
-		err = tier.SagemakerClient.CreateModel(ctx, activeModels, sagemakerModelName)
-		if err != nil {
-			return fmt.Errorf("failed to create model on sagemaker: %v", err)
-		}
-	}
-
 	// Ensure endpoint config exists in db and sagemaker.
 	endpointCfg, err := db.GetEndpointConfigWithModel(tier, sagemakerModelName)
 	if err != nil {
 		return fmt.Errorf("failed to get endpoint config with name [%s] from db: %v", sagemakerModelName, err)
 	}
-	if endpointCfg.Name == "" || updateEndpoint {
+	if endpointCfg.Name == "" {
 		endpointCfg = lib.SagemakerEndpointConfig{
 			Name:          fmt.Sprintf("%s-config-%d", sagemakerModelName, rand.Int63()),
 			ModelName:     sagemakerModelName,
@@ -197,24 +177,4 @@ func (ms *ModelStore) EnsureEndpointExists(ctx context.Context, tier tier.Tier) 
 
 func (ms *ModelStore) getArtifactPath(fileName string) string {
 	return fmt.Sprintf("s3://%s/%s", ms.s3Bucket, fileName)
-}
-
-func verifyElementsMatch(a, b []string) bool {
-	if len(a) != len(b) {
-		return false
-	}
-	// copy strings to not edit them
-	a2 := make([]string, len(a))
-	copy(a2, a)
-	b2 := make([]string, len(b))
-	copy(b2, b)
-	// sort and compare each element
-	sort.Strings(a2)
-	sort.Strings(b2)
-	for i := range a2 {
-		if a2[i] != b2[i] {
-			return false
-		}
-	}
-	return true
 }
