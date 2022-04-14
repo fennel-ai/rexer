@@ -1,3 +1,4 @@
+from cmath import exp
 import functools
 import os
 import random
@@ -54,6 +55,7 @@ def tiered(wrapped):
 
 
 class TestEndToEnd(unittest.TestCase):
+    
     @tiered
     def test_lokal(self):
         c = client.Client(URL)
@@ -110,15 +112,15 @@ class TestEndToEnd(unittest.TestCase):
 
         p1 = profile.Profile(otype="content", oid=content_id, key="category", value=category)
 
-        ts = datetime.fromtimestamp(1326244364).astimezone(timezone.utc)
+        ts = datetime.now().astimezone(timezone.utc)
         a1 = action.Action(actor_type='user', actor_id=uid, target_type='content', target_id=content_id,
                            action_type='notif_send', request_id=1, timestamp=ts, dedup_key="a1")
         a2 = action.Action(actor_type='user', actor_id=uid, target_type='content', target_id=content_id,
-                           action_type='notif_send', request_id=1, timestamp=ts + timedelta(0,1), dedup_key="a2")
+                           action_type='notif_send', request_id=1, timestamp=ts + timedelta(seconds=1), dedup_key="a2")
         a3 = action.Action(actor_type='user', actor_id=uid, target_type='content', target_id=content_id,
-                           action_type='notif_open', request_id=1, timestamp=ts + timedelta(0,2), dedup_key="a3")
+                           action_type='notif_open', request_id=1, timestamp=ts + timedelta(seconds=2), dedup_key="a3")
         a4 = action.Action(actor_type='user', actor_id=uid, target_type='content', target_id=content_id,
-                           action_type='react', request_id=2, timestamp=ts + timedelta(0,3), dedup_key="a4")
+                           action_type='react', request_id=2, timestamp=ts + timedelta(seconds=3), dedup_key="a4")
 
         # verify that test of actions works well
         mock = {'profiles': [p1]}
@@ -126,13 +128,13 @@ class TestEndToEnd(unittest.TestCase):
         expected = [
             {'action_type': 'notif_send', 'actor_id': 12312, 'actor_type': 'user', 'category': 'sports',
              'groupkey': [12312, 'sports'], 'metadata': {}, 'request_id': 1, 'target_id': 456,
-             'target_type': 'content', 'timestamp': ts.timestamp(), 'value': [0, 1]},
+             'target_type': 'content', 'timestamp': int(ts.timestamp()), 'value': [0, 1]},
             {'action_type': 'notif_send', 'actor_id': 12312, 'actor_type': 'user', 'category': 'sports',
              'groupkey': [12312, 'sports'], 'metadata': {}, 'request_id': 1, 'target_id': 456,
-             'target_type': 'content', 'timestamp': (ts + timedelta(0,1)).timestamp(), 'value': [0, 1]},
+             'target_type': 'content', 'timestamp': int((ts + timedelta(seconds=1)).timestamp()), 'value': [0, 1]},
             {'action_type': 'notif_open', 'actor_id': 12312, 'actor_type': 'user', 'category': 'sports',
              'groupkey': [12312, 'sports'], 'metadata': {}, 'request_id': 1, 'target_id': 456,
-             'target_type': 'content', 'timestamp': (ts + timedelta(0,2)).timestamp(), 'value': [1, 0]}
+             'target_type': 'content', 'timestamp': int((ts + timedelta(seconds=2)).timestamp()), 'value': [1, 0]}
         ]
         self.assertEqual(expected, agg_user_notif_open_rate_by_category.test(actions, client=c, mock=mock))
 
@@ -148,7 +150,8 @@ class TestEndToEnd(unittest.TestCase):
         c.log(action.Action(actor_type='user', actor_id=uid, target_type='content', target_id=content_id,
                             action_type='notif_send', request_id=7, timestamp=ts - timedelta(days=8)))
 
-        b = int((ts % (24 * 3600)) / 3600)
+        # Number of hours in the ts. 
+        b = int((ts.timestamp() % (24 * 3600)) / 3600)
 
         # now sleep for upto a minute and verify count processing worked
         # we could also just sleep for full minute but this rolling sleep
@@ -167,11 +170,12 @@ class TestEndToEnd(unittest.TestCase):
             if found1 == expected1 and found2 == expected2 and found3 == expected3 and found4 == expected4:
                 passed = True
                 break
+
             time.sleep(5)
             slept += 5
         self.assertTrue(passed)
         print('all checks passed...')
-
+    
     @tiered
     def test_end_to_end(self):
         c = client.Client(URL)
@@ -237,7 +241,7 @@ class TestEndToEnd(unittest.TestCase):
 
         agg2.store(client=c)
 
-        ts = datetime.fromtimestamp(1326244364).astimezone(timezone.utc)
+        ts = datetime.now().astimezone(timezone.utc)
 
         b = int((ts.timestamp() % (24 * 3600)) / (2 * 3600))
         # send multiple times with dedup keys
@@ -297,7 +301,7 @@ class TestEndToEnd(unittest.TestCase):
         self.assertEqual(expected3, found3)
 
         print('all checks passed...')
-
+    
     @tiered
     def test_queries(self):
         c = client.Client(URL)
@@ -344,7 +348,7 @@ class TestEndToEnd(unittest.TestCase):
             c.set_profile('post', p, 'topic', topics[p % 2])
             self.assertEqual(topics[p % 2], c.get_profile('post', p, 'topic'))
         # and log a few actions
-        now = datetime.fromtimestamp(1326244364).astimezone(timezone.utc)
+        now = datetime.now().astimezone(timezone.utc)
 
         for p in post_ids:
             # one action for 1 day ago (so applies to both 4 day and 7 day windows)
@@ -462,7 +466,7 @@ class TestLoad(unittest.TestCase):
             return op.std.set(q, field='value', var='e', value=var('e').metadata.watch_time)
 
         agg2.store(client=c)
-
+        
 
 if __name__ == '__main__':
     unittest.main()
