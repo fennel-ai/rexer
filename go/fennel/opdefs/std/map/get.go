@@ -52,7 +52,7 @@ func (m get) Apply(_ context.Context, staticKwargs value.Dict, in operators.Inpu
 }
 
 func (m get) Signature() *operators.Signature {
-	return operators.NewSignature("std", "map_lookup").
+	return operators.NewSignature("std", "get").
 		Input([]value.Type{value.Types.Dict}).
 		ParamWithHelp("fields", value.Types.List, false, false, value.Nil, "ContextKwarg: List of keys to lookup in the map")
 }

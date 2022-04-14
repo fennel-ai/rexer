@@ -243,6 +243,7 @@ class TestEndToEnd(unittest.TestCase):
         ts = datetime.now().astimezone(timezone.utc)
 
         b = int((ts.timestamp() % (24 * 3600)) / (2 * 3600))
+
         # send multiple times with dedup keys
         actions = [
             action.Action(actor_type='user', actor_id=uid, target_type='video', target_id=video_id, action_type='view',
