@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"fennel/lib/utils"
+
 	"github.com/stretchr/testify/assert"
 
 	"fennel/lib/ftypes"
@@ -16,7 +17,7 @@ import (
 
 func TestTopK_Reduce(t *testing.T) {
 	t.Parallel()
-	h := NewTopK("somename", []uint64{123})
+	h := NewTopK([]uint64{123})
 	numCases := 3
 	cases := make([]struct {
 		input  []value.Value
@@ -66,7 +67,7 @@ func TestTopK_Reduce(t *testing.T) {
 
 func TestTopK_Merge_Valid(t *testing.T) {
 	t.Parallel()
-	h := NewTopK("somename", []uint64{123})
+	h := NewTopK([]uint64{123})
 	validCases := make([][]value.Value, 2)
 
 	validCases[0] = append(validCases[0], value.NewDict(map[string]value.Value{}))
@@ -86,7 +87,7 @@ func TestTopK_Merge_Valid(t *testing.T) {
 
 func TestTopK_Merge_Invalid(t *testing.T) {
 	t.Parallel()
-	h := NewTopK("somename", []uint64{123})
+	h := NewTopK([]uint64{123})
 	keys := genKeys(1000)
 	validTopKVals := []value.Value{
 		genTopKDict(0, nil),
@@ -120,7 +121,7 @@ func TestTopK_Merge_Invalid(t *testing.T) {
 
 func TestTopK_Bucketize_Valid(t *testing.T) {
 	t.Parallel()
-	h := NewTopK("somename", []uint64{123})
+	h := NewTopK([]uint64{123})
 	actions := value.NewList()
 	expected := make([]Bucket, 0)
 	DAY := 3600 * 24
@@ -146,7 +147,7 @@ func TestTopK_Bucketize_Valid(t *testing.T) {
 
 func TestTopK_Bucketize_Invalid(t *testing.T) {
 	t.Parallel()
-	h := NewMax("somename", []uint64{123})
+	h := NewMax([]uint64{123})
 	cases := [][]value.Dict{
 		{value.NewDict(map[string]value.Value{})},
 		{value.NewDict(map[string]value.Value{"groupkey": value.Int(1), "timestamp": value.Int(2)})},

@@ -16,7 +16,7 @@ type topK struct {
 	BucketStore
 }
 
-func NewTopK(name ftypes.AggName, durations []uint64) Histogram {
+func NewTopK(durations []uint64) Histogram {
 	maxDuration := getMaxDuration(durations)
 	return topK{
 		Durations: durations,

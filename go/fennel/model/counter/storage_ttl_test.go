@@ -33,7 +33,7 @@ func TestTwoLevelRedisStore_TTL(t *testing.T) {
 
 	ctx := context.Background()
 
-	var name ftypes.AggName = "some name"
+	var aggId ftypes.AggId = 123
 	retention := 3 * 24 * 3600
 	store := twoLevelRedisStore{
 		period:    24 * 3600,
@@ -47,11 +47,11 @@ func TestTwoLevelRedisStore_TTL(t *testing.T) {
 		{Key: "k2", Window: ftypes.Window_HOUR, Width: 6, Index: 8, Value: value.Int(5)},
 	}
 	// set buckets
-	assert.NoError(t, store.Set(ctx, tier, name, buckets))
+	assert.NoError(t, store.Set(ctx, tier, aggId, buckets))
 
 	// check it went through
 	z := value.Int(0)
-	found, err := store.Get(ctx, tier, name, buckets, z)
+	found, err := store.Get(ctx, tier, aggId, buckets, z)
 	assert.NoError(t, err)
 	assert.Len(t, found, len(buckets))
 	for i, v := range found {
@@ -62,7 +62,7 @@ func TestTwoLevelRedisStore_TTL(t *testing.T) {
 	mr.FastForward(time.Second*time.Duration(retention) - 10)
 
 	// all values should be same for now
-	found, err = store.Get(ctx, tier, name, buckets, z)
+	found, err = store.Get(ctx, tier, aggId, buckets, z)
 	assert.NoError(t, err)
 	assert.Len(t, found, len(buckets))
 	for i, v := range found {
@@ -71,7 +71,7 @@ func TestTwoLevelRedisStore_TTL(t *testing.T) {
 	// now fast-forward barely beyond retention
 	mr.FastForward(11)
 	// and now all keys should be gone
-	found, err = store.Get(ctx, tier, name, buckets, z)
+	found, err = store.Get(ctx, tier, aggId, buckets, z)
 	assert.NoError(t, err)
 	assert.Len(t, found, len(buckets))
 	for _, v := range found {

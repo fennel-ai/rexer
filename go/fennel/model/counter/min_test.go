@@ -12,7 +12,7 @@ import (
 
 func TestMin_Reduce(t *testing.T) {
 	t.Parallel()
-	h := NewMin("agg", []uint64{123})
+	h := NewMin([]uint64{123})
 	cases := []struct {
 		input  []value.Value
 		output value.Value
@@ -46,7 +46,7 @@ func TestMin_Reduce(t *testing.T) {
 
 func TestMin_Merge_Valid(t *testing.T) {
 	t.Parallel()
-	h := NewMin("agg", []uint64{123})
+	h := NewMin([]uint64{123})
 	validCases := [][]value.Value{
 		makeMinVals([]int64{3, 6, 3}, []bool{false, false, false}),
 		makeMinVals([]int64{-2, -5, -5}, []bool{false, false, false}),
@@ -64,7 +64,7 @@ func TestMin_Merge_Valid(t *testing.T) {
 
 func TestMin_Merge_Invalid(t *testing.T) {
 	t.Parallel()
-	h := NewMin("agg", []uint64{123})
+	h := NewMin([]uint64{123})
 	validMinVals := makeMinVals(
 		[]int64{-8, -2, 0, 0, 5, 9},
 		[]bool{false, false, false, true, false, false},
@@ -93,7 +93,7 @@ func TestMin_Merge_Invalid(t *testing.T) {
 
 func TestMin_Bucketize_Valid(t *testing.T) {
 	t.Parallel()
-	h := NewMin("agg", []uint64{123})
+	h := NewMin([]uint64{123})
 	actions := value.List{}
 	expected := make([]Bucket, 0)
 	DAY := 3600 * 24
@@ -117,7 +117,7 @@ func TestMin_Bucketize_Valid(t *testing.T) {
 
 func TestMin_Bucketize_Invalid(t *testing.T) {
 	t.Parallel()
-	h := NewMin("agg", []uint64{123})
+	h := NewMin([]uint64{123})
 	cases := [][]value.Dict{
 		{value.Dict{}},
 		{value.NewDict(map[string]value.Value{"groupkey": value.Int(1), "timestamp": value.Int(2)})},

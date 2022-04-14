@@ -17,7 +17,7 @@ type average struct {
 	BucketStore
 }
 
-func NewAverage(name ftypes.AggName, durations []uint64) Histogram {
+func NewAverage(durations []uint64) Histogram {
 	maxDuration := getMaxDuration(durations)
 	return average{
 		Durations: durations,

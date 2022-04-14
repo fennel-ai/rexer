@@ -421,6 +421,7 @@ func TestServer_AggregateValue_Valid(t *testing.T) {
 			AggType:   "sum",
 			Durations: []uint64{3 * 3600, 6 * 3600, 120},
 		},
+		Id: 1,
 	}
 	key := value.Int(4)
 	keystr := key.String()
@@ -430,10 +431,10 @@ func TestServer_AggregateValue_Valid(t *testing.T) {
 	valueSendReceive(t, holder, agg, key, value.Int(0), value.NewDict(map[string]value.Value{"duration": value.Int(6 * 3600)}))
 
 	// now create an increment
-	h := counter.NewSum(agg.Name, agg.Options.Durations)
+	h := counter.NewSum(agg.Options.Durations)
 	t1 := t0 + 3600
 	buckets := h.BucketizeMoment(keystr, t1, value.Int(1))
-	err = counter.Update(context.Background(), tier, agg.Name, buckets, h)
+	err = counter.Update(context.Background(), tier, agg.Id, buckets, h)
 	assert.NoError(t, err)
 	clock.Set(int64(t1 + 60))
 	valueSendReceive(t, holder, agg, key, value.Int(1), value.NewDict(map[string]value.Value{"duration": value.Int(6 * 3600)}))
@@ -441,7 +442,7 @@ func TestServer_AggregateValue_Valid(t *testing.T) {
 	// create another increment at a later timestamp
 	t2 := t1 + 3600
 	buckets = h.BucketizeMoment(keystr, t2, value.Int(1))
-	err = counter.Update(context.Background(), tier, agg.Name, buckets, h)
+	err = counter.Update(context.Background(), tier, agg.Id, buckets, h)
 	assert.NoError(t, err)
 	clock.Set(int64(t2 + 60))
 	valueSendReceive(t, holder, agg, key, value.Int(2), value.NewDict(map[string]value.Value{"duration": value.Int(6 * 3600)}))
@@ -481,28 +482,32 @@ func TestServer_BatchAggregateValue(t *testing.T) {
 	assert.NoError(t, aggregate2.Store(ctx, tier, agg1))
 	assert.NoError(t, aggregate2.Store(ctx, tier, agg2))
 
+	// agg1 is assigned Id = 1 & agg2.Id = 2
+	agg1.Id = 1
+	agg2.Id = 2
+
 	// now create changes
 	t1 := t0 + 3600
 	key := value.Nil
 	keystr := key.String()
 
-	h1 := counter.NewSum(agg1.Name, agg1.Options.Durations)
+	h1 := counter.NewSum(agg1.Options.Durations)
 	buckets := h1.BucketizeMoment(keystr, t1, value.Int(1))
-	err = counter.Update(context.Background(), tier, agg1.Name, buckets, h1)
+	err = counter.Update(context.Background(), tier, agg1.Id, buckets, h1)
 	assert.NoError(t, err)
 	buckets = h1.BucketizeMoment(keystr, t1, value.Int(3))
-	err = counter.Update(context.Background(), tier, agg1.Name, buckets, h1)
+	err = counter.Update(context.Background(), tier, agg1.Id, buckets, h1)
 	assert.NoError(t, err)
 	req1 := aggregate.GetAggValueRequest{
 		AggName: agg1.Name, Key: key, Kwargs: value.NewDict(map[string]value.Value{"duration": value.Int(6 * 3600)}),
 	}
 
-	h2 := counter.NewMax(agg2.Name, agg2.Options.Durations)
+	h2 := counter.NewMax(agg2.Options.Durations)
 	buckets = h2.BucketizeMoment(keystr, t1, value.NewList(value.Int(2), value.Bool(false)))
-	err = counter.Update(context.Background(), tier, agg2.Name, buckets, h2)
+	err = counter.Update(context.Background(), tier, agg2.Id, buckets, h2)
 	assert.NoError(t, err)
 	buckets = h2.BucketizeMoment(keystr, t1, value.NewList(value.Int(7), value.Bool(false)))
-	err = counter.Update(context.Background(), tier, agg2.Name, buckets, h2)
+	err = counter.Update(context.Background(), tier, agg2.Id, buckets, h2)
 	assert.NoError(t, err)
 	req2 := aggregate.GetAggValueRequest{
 		AggName: agg2.Name, Key: key, Kwargs: value.NewDict(map[string]value.Value{"duration": value.Int(6 * 3600)}),
@@ -515,7 +520,7 @@ func TestServer_BatchAggregateValue(t *testing.T) {
 	// create some more changes at a later timestamp
 	t2 := t1 + 3600
 	buckets = h1.BucketizeMoment(keystr, t2, value.Int(9))
-	err = counter.Update(context.Background(), tier, agg1.Name, buckets, h1)
+	err = counter.Update(context.Background(), tier, agg1.Id, buckets, h1)
 	assert.NoError(t, err)
 	req3 := aggregate.GetAggValueRequest{
 		AggName: agg1.Name, Key: key, Kwargs: value.NewDict(map[string]value.Value{"duration": value.Int(1800)}),
@@ -556,7 +561,10 @@ func TestStoreRetrieveDeactivateAggregate(t *testing.T) {
 	assert.NoError(t, err)
 	found, err := c.RetrieveAggregate("mycounter")
 	assert.NoError(t, err)
-	assert.Equal(t, agg, found)
+	// Id is set when an entry is created in the DB
+	expected := agg
+	expected.Id = 1
+	assert.Equal(t, expected, found)
 	// trying to rewrite the same agg name throws an error even if query/options are different
 	agg2 := aggregate.Aggregate{
 		Name:  "mycounter",
@@ -576,7 +584,10 @@ func TestStoreRetrieveDeactivateAggregate(t *testing.T) {
 	assert.NoError(t, err)
 	found, err = c.RetrieveAggregate("another counter")
 	assert.NoError(t, err)
-	assert.Equal(t, agg2, found)
+	expected = agg2
+	// second row there
+	expected.Id = 2
+	assert.Equal(t, expected, found)
 
 	// cannot retrieve after deactivating
 	err = c.DeactivateAggregate(agg.Name)

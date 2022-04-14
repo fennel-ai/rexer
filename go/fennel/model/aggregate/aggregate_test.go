@@ -46,6 +46,9 @@ func TestRetrieveStore(t *testing.T) {
 
 	// store and retrieve again
 	err = Store(ctx, tier, agg.Name, agg.QuerySer, agg.Timestamp, agg.OptionSer)
+	// Id is set by the DB
+	agg.Id = 1
+
 	assert.NoError(t, err)
 	found, err = Retrieve(ctx, tier, agg.Name)
 	assert.NoError(t, err)
@@ -90,6 +93,7 @@ func TestRetrieveAll(t *testing.T) {
 		agg.QuerySer = []byte(fmt.Sprintf("some query: %d", i))
 		err = Store(ctx, tier, agg.Name, agg.QuerySer, agg.Timestamp, agg.OptionSer)
 		assert.NoError(t, err)
+		agg.Id = ftypes.AggId(i + 1)
 		expected = append(expected, agg)
 	}
 }
