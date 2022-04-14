@@ -110,9 +110,9 @@ func (smc SMClient) GetContainerNames(ctx context.Context, modelName string) ([]
 	if err != nil {
 		return nil, fmt.Errorf("failed to get container names: %v", err)
 	}
-	var names []string
-	for _, container := range model.Containers {
-		names = append(names, *container.ContainerHostname)
+	names := make([]string, len(model.Containers))
+	for i, container := range model.Containers {
+		names[i] = *container.ContainerHostname
 	}
 	return names, nil
 }
