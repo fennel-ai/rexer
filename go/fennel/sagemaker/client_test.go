@@ -5,7 +5,6 @@ package sagemaker
 import (
 	"context"
 	"log"
-	"os"
 	"testing"
 
 	lib "fennel/lib/sagemaker"
@@ -169,6 +168,5 @@ func getTestClient() (SMClient, error) {
 	return NewClient(SagemakerArgs{
 		Region:                 "ap-south-1",
 		SagemakerExecutionRole: "arn:aws:iam::030813887342:role/service-role/AmazonSageMaker-ExecutionRole-20220315T123828",
-		S3BucketName:           os.Getenv("SAGEMAKER_S3_BUCKET_NAME"),
 	})
 }

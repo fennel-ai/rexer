@@ -25,7 +25,6 @@ type SagemakerArgs struct {
 	SagemakerSecurityGroup string   `arg:"--sagemaker-security-group,env:SAGEMAKER_SECURITY_GROUP,help:SageMaker security group"`
 	SagemakerInstanceType  string   `arg:"--sagemaker-instance-type,env:SAGEMAKER_INSTANCE_TYPE,help:SageMaker instance type"`
 	SagemakerInstanceCount uint     `arg:"--sagemaker-instance-count,env:SAGEMAKER_INSTANCE_COUNT,help:SageMaker instance count"`
-	S3BucketName           string   `arg:"--sagemaker-s3-bucket-name,env:SAGEMAKER_S3_BUCKET_NAME,help:SageMaker S3 bucket name"`
 }
 
 func NewClient(args SagemakerArgs) (SMClient, error) {
