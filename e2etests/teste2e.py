@@ -243,6 +243,7 @@ class TestEndToEnd(unittest.TestCase):
         ts = datetime.now().astimezone(timezone.utc)
 
         b = int((ts.timestamp() % (24 * 3600)) / (2 * 3600))
+
         # send multiple times with dedup keys
         actions = [
             action.Action(actor_type='user', actor_id=uid, target_type='video', target_id=video_id, action_type='view',
@@ -335,7 +336,7 @@ class TestEndToEnd(unittest.TestCase):
         e2 = op.std.explode(q, field='b')
         self.assertEqual([{'a': 1, 'b': 'one'}, {'a': 2, 'b': 'two'}, {'a': 2, 'b': 'three'}, {'a': 3, 'b': 'four'}], c.query(e1))
         self.assertEqual([{'a': 1, 'b': 'one'}, {'a': 2, 'b': 'two'}, {'a': 2, 'b': 'three'}, {'a': 3, 'b': 'four'}], c.query(e2))
-
+    
     @tiered
     def test_features(self):
         c = client.Client(URL)
@@ -414,7 +415,7 @@ class TestEndToEnd(unittest.TestCase):
         found = False
         while not found and slept < 120:
             found_dict_query = rex.feature.extract(context, candidates, names=names)
-            found_vec = rex.feature.vectorize(found_dict_query,  names=names)
+            found_vec = op.std.collect(found_dict_query,  fields=names)
             found_vec = c.query(found_vec)
             found_dict = c.query(found_dict_query)
             if found_vec == expected_vec and found_dict == expcted_dict:
