@@ -29,11 +29,11 @@ func StoreModel(ctx context.Context, tier tier.Tier, name, version string, model
 	if len(activeModels) >= 15 {
 		return fmt.Errorf("cannot have more than 15 active models: %v", err)
 	}
-	err = tier.SagemakerClient.UploadModelToS3(modelFile, modelFileName)
+	err = tier.S3Client.UploadModelToS3(modelFile, modelFileName, bucketName)
 	if err != nil {
 		return fmt.Errorf("failed to upload model to s3: %v", err)
 	}
-	artifactPath := tier.SagemakerClient.GetArtifactPath(modelFileName)
+	artifactPath := getArtifactPath(modelFileName, bucketName)
 	model := lib.Model{
 		Name:             name,
 		Version:          version,
@@ -179,6 +179,10 @@ func EnsureEndpointExists(ctx context.Context, tier tier.Tier, endpointName stri
 		}
 	}
 	return nil
+}
+
+func getArtifactPath(fileName, bucketName string) string {
+	return fmt.Sprintf("s3://%s/%s", bucketName, fileName)
 }
 
 func verifyIdentical(a, b []string) bool {

@@ -1,7 +1,6 @@
 package s3
 
 import (
-	"fmt"
 	"io"
 
 	"github.com/aws/aws-sdk-go/aws"
@@ -33,10 +32,6 @@ func NewClient(args S3Args) Client {
 		uploader: uploader,
 		deleter:  deleter,
 	}
-}
-
-func (c Client) GetArtifactPath(fileName, bucketName string) string {
-	return fmt.Sprintf("s3://%s/%s", bucketName, fileName)
 }
 
 func (c Client) UploadModelToS3(file io.Reader, fileName, bucketName string) error {
