@@ -1,4 +1,4 @@
-import setupTier from "./tier";
+import setupTier, {TierConf} from "./tier";
 import setupDataPlane, { PlaneConf, PlaneOutput } from "./plane";
 import * as vpc from "../vpc";
 import * as eks from "../eks";
@@ -12,6 +12,7 @@ import { nameof } from "../lib/util";
 
 import * as process from "process";
 import * as assert from "assert";
+import tier from "./tier";
 
 const controlPlane: vpc.controlPlaneConfig = {
     region: "us-west-2",
@@ -30,20 +31,49 @@ const confluentPassword = process.env.CONFLUENT_CLOUD_PASSWORD;
 assert.ok(confluentPassword, "CONFLUENT_CLOUD_PASSWORD must be set");
 
 // map from tier id to plane id.
-const tierConfs: Record<number, number> = {
+const tierConfs: Record<number, TierConf> = {
     // Aditya's new dev tier.
-    104: 3,
+    104: {
+        planeId: 3,
+    },
     // Lokal dev tier.
-    105: 4,
+    105: {
+        planeId: 4,
+        httpServerConf: {
+            replicas: 3,
+            // each http-server should be in different nodes from each other
+            enforceReplicaIsolation: true,
+        },
+        // countaggr should be scheduled in a different node than http-server
+        countAggrConf: {
+            enforceServiceIsolation: true
+        }
+    },
     // Fennel staging tier using Fennel's staging data plane.
-    106: 3,
+    106: {
+        planeId: 3,
+    },
     // Lokal prod tier on their prod data plane.
-    107: 5,
-    // Demo testing tier 1, 2, 3, 4
-    108: 6,
-    109: 6,
-    110: 6,
-    111: 6,
+    107: {
+        planeId: 5,
+        httpServerConf: {
+            replicas: 3,
+            // each http-server should be in different nodes from each other
+            enforceReplicaIsolation: true,
+        },
+        // countaggr should be scheduled in a different node than http-server
+        countAggrConf: {
+            enforceServiceIsolation: true
+        }
+    },
+    // Convoy staging tier using Fennel's staging data plane.
+    108: {
+        planeId: 3,
+        // use public subnets for ingress to allow traffic from outside the assigned vpc
+        ingressConf: {
+            usePublicSubnets: true,
+        }
+    },
 }
 
 // map from plane id to its configuration.
@@ -140,10 +170,6 @@ const planeConfs: Record<number, PlaneConf> = {
             nodeType: "c6i.4xlarge",
             desiredCapacity: 4,
         },
-        httpServerConf: {
-            replicas: 3,
-            forceReplicaIsolation: true,
-        }
     },
     // Lokal's prod tier data plane
     5: {
@@ -178,56 +204,6 @@ const planeConfs: Record<number, PlaneConf> = {
             nodeType: "c6i.4xlarge",
             desiredCapacity: 4,
         },
-        httpServerConf: {
-            replicas: 3,
-            forceReplicaIsolation: true,
-        },
-        prometheusConf: {
-            useAMP: false
-        }
-    },
-    // Demo test plane
-    6: {
-        planeId: 6,
-        region: "eu-west-2",
-        roleArn: "arn:aws:iam::030813887342:role/admin",
-        ingressConf: {
-            // Demo planes, use public subnets so that anyone can have access through the LB targets
-            usePublicSubnets: true,
-        },
-        vpcConf: {
-            cidr: "10.106.0.0/16"
-        },
-        dbConf: {
-            minCapacity: 1,
-            maxCapacity: 8,
-            password: "password",
-            skipFinalSnapshot: true,
-        },
-        confluentConf: {
-            username: confluentUsername,
-            password: confluentPassword
-        },
-        cacheConf: {
-            nodeType: "cache.t4g.medium",
-            numNodeGroups: 1,
-            replicasPerNodeGroup: 0,
-        },
-        controlPlaneConf: controlPlane,
-        redisConf: {
-            numShards: 1,
-            nodeType: "db.t4g.medium",
-            numReplicasPerShard: 0,
-        },
-        eksConf: {
-            // vCPU=2, Memory=4GiB
-            nodeType: "c6i.large",
-            desiredCapacity: 3,
-        },
-        httpServerConf: {
-            replicas: 1,
-            forceReplicaIsolation: false,
-        },
         prometheusConf: {
             useAMP: false
         }
@@ -244,7 +220,7 @@ if (id in planeConfs) {
     planeId = id
 } else if (id in tierConfs) {
     tierId = id
-    planeId = tierConfs[tierId]
+    planeId = tierConfs[tierId].planeId
 } else {
     console.log(`${id} is neither a tier nor a plane`)
     process.exit(1)
@@ -266,9 +242,10 @@ const glueOutput = dataplane[nameof<PlaneOutput>("glue")].value as glueSource.ou
 // Create/update/delete the tier.
 if (tierId !== 0) {
     console.log("Updating tier: ", tierId);
+    const tierConf = tierConfs[tierId]
     // by default use private subnets
     let subnetIds;
-    const usePublicSubnets = planeConf.ingressConf?.usePublicSubnets || false;
+    const usePublicSubnets = tierConf.ingressConf?.usePublicSubnets || false;
     if (usePublicSubnets) {
         subnetIds = vpcOutput.publicSubnets;
     } else {
@@ -311,7 +288,8 @@ if (tierId !== 0) {
         glueSourceScript: glueOutput.scriptPath,
         glueTrainingDataBucket: connSinkOutput.bucketName,
 
-        httpServerReplicas: planeConf.httpServerConf?.replicas,
-        forceReplicaIsolation: planeConf.httpServerConf?.forceReplicaIsolation,
+        httpServerConf: tierConf.httpServerConf,
+
+        countAggrConf: tierConf.countAggrConf,
     }, false).catch(err => console.log(err))
 }

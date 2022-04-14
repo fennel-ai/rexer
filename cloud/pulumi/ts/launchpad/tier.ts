@@ -14,6 +14,26 @@ import * as glue from "../glue";
 
 import * as process from "process";
 
+export type HttpServerConf = {
+    replicas: number,
+    enforceReplicaIsolation: boolean,
+}
+
+export type CountAggrConf = {
+    enforceServiceIsolation: boolean,
+}
+
+export type IngressConf = {
+    usePublicSubnets: boolean,
+}
+
+export type TierConf = {
+    planeId: number,
+    httpServerConf?: HttpServerConf,
+    countAggrConf?: CountAggrConf,
+    ingressConf?: IngressConf,
+}
+
 type inputType = {
     tierId: number,
     planeId: number,
@@ -51,9 +71,8 @@ type inputType = {
     glueSourceBucket: string,
     glueSourceScript: string,
     glueTrainingDataBucket: string,
-    // http server configuration
-    httpServerReplicas?: number,
-    forceReplicaIsolation?: boolean,
+    httpServerConf?: HttpServerConf,
+    countAggrConf?: CountAggrConf,
 }
 
 const parseConfig = (): inputType => {
@@ -95,8 +114,8 @@ const parseConfig = (): inputType => {
         glueSourceScript: config.require(nameof<inputType>("glueSourceScript")),
         glueTrainingDataBucket: config.require(nameof<inputType>("glueTrainingDataBucket")),
 
-        httpServerReplicas: config.getNumber(nameof<inputType>("httpServerReplicas")),
-        forceReplicaIsolation: config.getBoolean(nameof<inputType>("forceReplicaIsolation")),
+        httpServerConf: config.getObject(nameof<inputType>("httpServerConf")),
+        countAggrConf: config.getObject(nameof<inputType>("countAggrConf")),
     };
 };
 
@@ -212,8 +231,8 @@ const setupResources = async () => {
             kubeconfig: input.kubeconfig,
             namespace: input.namespace,
             tierId: input.tierId,
-            replicas: input?.httpServerReplicas,
-            forceReplicaIsolation: input?.forceReplicaIsolation,
+            replicas: input.httpServerConf?.replicas,
+            enforceReplicaIsolation: input.httpServerConf?.enforceReplicaIsolation,
         });
         // This there is an affinity requirement on http-server and countaggr pods, schedule the http-server pod first
         // and let countaggr depend on it's output so that affinity requirements do not unexpected behavior
@@ -223,6 +242,7 @@ const setupResources = async () => {
             kubeconfig: input.kubeconfig,
             namespace: input.namespace,
             tierId: input.tierId,
+            enforceServiceIsolation: input.countAggrConf?.enforceServiceIsolation,
             httpServerAppLabels: httpServerOutput.appLabels,
         });
     })
@@ -231,7 +251,7 @@ const setupResources = async () => {
     }
 };
 
-type TierConf = {
+type TierInput = {
     tierId: number,
     planeId: number,
     // kafka configuration.
@@ -272,11 +292,11 @@ type TierConf = {
     glueTrainingDataBucket: string,
 
     // http server configuration
-    httpServerReplicas?: number,
-    forceReplicaIsolation?: boolean,
+    httpServerConf?: HttpServerConf,
+    countAggrConf?: CountAggrConf,
 }
 
-const setupTier = async (args: TierConf, destroy?: boolean) => {
+const setupTier = async (args: TierInput, destroy?: boolean) => {
     const projectName = `launchpad`
     const stackName = `fennel/${projectName}/tier-${args.tierId}`
 
@@ -335,12 +355,12 @@ const setupTier = async (args: TierConf, destroy?: boolean) => {
     await stack.setConfig(nameof<inputType>("glueSourceScript"), {value: args.glueSourceScript})
     await stack.setConfig(nameof<inputType>("glueTrainingDataBucket"), {value: args.glueTrainingDataBucket})
 
-    if (args.httpServerReplicas !== undefined) {
-        await stack.setConfig(nameof<inputType>("httpServerReplicas"), {value: String(args.httpServerReplicas)})
+    if (args.httpServerConf !== undefined) {
+        await stack.setConfig(nameof<inputType>("httpServerConf"), {value: JSON.stringify(args.httpServerConf)})
     }
 
-    if (args.forceReplicaIsolation !== undefined) {
-        await stack.setConfig(nameof<inputType>("forceReplicaIsolation"), {value: String(args.forceReplicaIsolation)})
+    if (args.countAggrConf !== undefined) {
+        await stack.setConfig(nameof<inputType>("countAggrConf"), {value: JSON.stringify(args.countAggrConf)})
     }
 
     console.info("config set");

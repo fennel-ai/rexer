@@ -35,7 +35,7 @@ export type inputType = {
     namespace: string,
     tierId: number,
     replicas?: number,
-    forceReplicaIsolation?: boolean,
+    enforceReplicaIsolation?: boolean,
 }
 
 export type outputType = {
@@ -52,7 +52,7 @@ const parseConfig = (): inputType => {
         namespace: config.require(nameof<inputType>("namespace")),
         tierId: config.requireNumber(nameof<inputType>("tierId")),
         replicas: config.requireNumber(nameof<inputType>("replicas")),
-        forceReplicaIsolation: config.requireBoolean(nameof<inputType>("forceReplicaIsolation")),
+        enforceReplicaIsolation: config.requireBoolean(nameof<inputType>("enforceReplicaIsolation")),
     }
 }
 
@@ -119,7 +119,7 @@ export const setup = async (input: inputType) => {
     const appLabels = { app: name };
     const metricsPort = 2112;
 
-    const forceReplicaIsolation = input.forceReplicaIsolation || DEFAULT_FORCE_REPLICA_ISOLATION;
+    const forceReplicaIsolation = input.enforceReplicaIsolation || DEFAULT_FORCE_REPLICA_ISOLATION;
     let whenUnsatisfiable = "ScheduleAnyway";
     if (forceReplicaIsolation) {
         whenUnsatisfiable = "DoNotSchedule";
