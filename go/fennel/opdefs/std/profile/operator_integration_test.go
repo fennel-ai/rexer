@@ -7,8 +7,8 @@ import (
 	"testing"
 
 	"fennel/controller/profile"
-	"fennel/engine"
 	"fennel/engine/ast"
+	"fennel/engine/interpreter"
 	"fennel/engine/interpreter/bootarg"
 	"fennel/lib/ftypes"
 	profilelib "fennel/lib/profile"
@@ -51,8 +51,11 @@ func TestProfileOpMultipleObjs(t *testing.T) {
 	table := value.List{}
 	table.Append(value.NewDict(map[string]value.Value{"otype": value.String(otype1), "oid": value.Int(oid1), "key": value.String(key1), "ver": value.Int(ver1)}))
 	table.Append(value.NewDict(map[string]value.Value{"otype": value.String(otype2), "oid": value.Int(oid2), "key": value.String(key2), "ver": value.Int(ver2)}))
-	executor := engine.NewQueryExecutor(bootarg.Create(tier))
-	out, err := executor.Exec(context.Background(), query, value.NewDict(map[string]value.Value{"actions": table}))
+
+	i, err := interpreter.NewInterpreter(context.Background(), bootarg.Create(tier),
+		value.NewDict(map[string]value.Value{"actions": table}))
+	assert.NoError(t, err)
+	out, err := query.AcceptValue(i)
 	assert.NoError(t, err)
 	rows := out.(value.List)
 	// assert.Len(t, rows, 2)
@@ -120,7 +123,6 @@ func TestProfileOpCacheMultiple(t *testing.T) {
 	assert.NoError(t, err)
 	defer test.Teardown(tier)
 	ctx := context.Background()
-	executor := engine.NewQueryExecutor(bootarg.Create(tier))
 
 	query := ast.OpCall{
 		Operands:  []ast.Ast{ast.Var{Name: "actions"}},
@@ -170,15 +172,22 @@ func TestProfileOpCacheMultiple(t *testing.T) {
 			"profile_value": value.Nil,
 		}))
 	}
-	verifyMultiple(t, executor, query, inTable, expected)
+	i, err := interpreter.NewInterpreter(context.Background(), bootarg.Create(tier),
+		value.NewDict(map[string]value.Value{"actions": inTable}))
+	assert.NoError(t, err)
+	verifyMultiple(t, &i, query, expected)
 
 	// test cache by setting profiles now
 	for _, pi := range profiles {
 		assert.NoError(t, profile.Set(ctx, tier, pi))
 	}
 	// we should still get back default value if it is cached properly
-	verifyMultiple(t, executor, query, inTable, expected)
+	verifyMultiple(t, &i, query, expected)
 
+	// now use a new interpreter with fresh cache, should get back stored value now
+	i, err = interpreter.NewInterpreter(context.Background(), bootarg.Create(tier),
+		value.NewDict(map[string]value.Value{"actions": inTable}))
+	assert.NoError(t, err)
 	var expected2 []value.Dict
 	for _, pi := range profiles {
 		expected2 = append(expected2, value.NewDict(map[string]value.Value{
@@ -189,7 +198,7 @@ func TestProfileOpCacheMultiple(t *testing.T) {
 			"profile_value": pi.Value,
 		}))
 	}
-	verifyMultiple(t, executor, query, inTable, expected2)
+	verifyMultiple(t, &i, query, expected2)
 
 	// now store a newer version with new values for each profile
 	for _, pi := range profiles {
@@ -212,7 +221,11 @@ func TestProfileOpCacheMultiple(t *testing.T) {
 			"profile_value": newval,
 		}))
 	}
-	verifyMultiple(t, executor, query, inTable0, expected3)
+	// now use a new interpreter with fresh cache, should get back stored value now
+	i, err = interpreter.NewInterpreter(context.Background(), bootarg.Create(tier),
+		value.NewDict(map[string]value.Value{"actions": inTable0}))
+	assert.NoError(t, err)
+	verifyMultiple(t, &i, query, expected3)
 
 	// but once version = 0 is cached, we should not get any later versions
 	for _, pi := range profiles {
@@ -222,11 +235,11 @@ func TestProfileOpCacheMultiple(t *testing.T) {
 		assert.NoError(t, err)
 		assert.NoError(t, profile.Set(ctx, tier, pi3))
 	}
-	verifyMultiple(t, executor, query, inTable0, expected3)
+	verifyMultiple(t, &i, query, expected3)
 }
 
-func verifyMultiple(t *testing.T, ex engine.QueryExecutor, query ast.Ast, table value.List, expected []value.Dict) {
-	out, err := ex.Exec(context.Background(), query, value.NewDict(map[string]value.Value{"actions": table}))
+func verifyMultiple(t *testing.T, i *interpreter.Interpreter, query ast.Ast, expected []value.Dict) {
+	out, err := query.AcceptValue(i)
 	assert.NoError(t, err)
 	rows := out.(value.List)
 	assert.Equal(t, len(expected), rows.Len())
