@@ -80,7 +80,6 @@ class TestEndToEnd(unittest.TestCase):
             config={'durations': [4 * 24 * 3600, 7 * 24 * 3600], 'normalize': True},
         )
         def agg_user_notif_open_rate_by_category(actions):
-            print('actions:', actions)
             q = op.std.profile(actions, field='category', otype='content', key='category', var='e',
                                oid=var('e').target_id)
             q = op.std.set(q, var='e', field='groupkey', value=[var('e').actor_id, var('e').category])
@@ -127,13 +126,13 @@ class TestEndToEnd(unittest.TestCase):
         expected = [
             {'action_type': 'notif_send', 'actor_id': 12312, 'actor_type': 'user', 'category': 'sports',
              'groupkey': [12312, 'sports'], 'metadata': {}, 'request_id': 1, 'target_id': 456,
-             'target_type': 'content', 'timestamp': ts, 'value': [0, 1]},
+             'target_type': 'content', 'timestamp': ts.timestamp(), 'value': [0, 1]},
             {'action_type': 'notif_send', 'actor_id': 12312, 'actor_type': 'user', 'category': 'sports',
              'groupkey': [12312, 'sports'], 'metadata': {}, 'request_id': 1, 'target_id': 456,
-             'target_type': 'content', 'timestamp': ts + timedelta(0,1), 'value': [0, 1]},
+             'target_type': 'content', 'timestamp': (ts + timedelta(0,1)).timestamp(), 'value': [0, 1]},
             {'action_type': 'notif_open', 'actor_id': 12312, 'actor_type': 'user', 'category': 'sports',
              'groupkey': [12312, 'sports'], 'metadata': {}, 'request_id': 1, 'target_id': 456,
-             'target_type': 'content', 'timestamp': ts + timedelta(0,2), 'value': [1, 0]}
+             'target_type': 'content', 'timestamp': (ts + timedelta(0,2)).timestamp(), 'value': [1, 0]}
         ]
         self.assertEqual(expected, agg_user_notif_open_rate_by_category.test(actions, client=c, mock=mock))
 
