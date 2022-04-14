@@ -13,7 +13,7 @@ type rollingSum struct {
 	BucketStore
 }
 
-func NewSum(name ftypes.AggName, durations []uint64) Histogram {
+func NewSum(durations []uint64) Histogram {
 	maxDuration := getMaxDuration(durations)
 	return rollingSum{
 		Durations: durations,

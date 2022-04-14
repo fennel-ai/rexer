@@ -30,30 +30,30 @@ func (b BadgerStorage) GetBucketStore() BucketStore {
 	panic("implement me")
 }
 
-func (b BadgerStorage) Get(ctx context.Context, tier tier.Tier, name ftypes.AggName, buckets []Bucket, default_ value.Value) ([]value.Value, error) {
-	ret, err := b.GetMulti(ctx, tier, []ftypes.AggName{name}, [][]Bucket{buckets}, []value.Value{default_})
+func (b BadgerStorage) Get(ctx context.Context, tier tier.Tier, aggId ftypes.AggId, buckets []Bucket, default_ value.Value) ([]value.Value, error) {
+	ret, err := b.GetMulti(ctx, tier, []ftypes.AggId{aggId}, [][]Bucket{buckets}, []value.Value{default_})
 	if err != nil {
 		return nil, err
 	}
 	return ret[0], nil
 }
 
-func (b BadgerStorage) GetMulti(ctx context.Context, tier tier.Tier, names []ftypes.AggName, buckets [][]Bucket, defaults_ []value.Value) ([][]value.Value, error) {
+func (b BadgerStorage) GetMulti(ctx context.Context, tier tier.Tier, aggIds []ftypes.AggId, buckets [][]Bucket, defaults_ []value.Value) ([][]value.Value, error) {
 	defer timer.Start(ctx, tier.ID, "badger_flat_storage.get_multi").Stop()
-	if len(names) != len(buckets) || len(names) != len(defaults_) {
+	if len(aggIds) != len(buckets) || len(aggIds) != len(defaults_) {
 		return nil, fmt.Errorf("badger_storage.GetMulti: names, buckets, and defaults must be the same length")
 	}
-	if len(names) == 0 {
+	if len(aggIds) == 0 {
 		return nil, nil
 	}
-	ret := make([][]value.Value, len(names))
+	ret := make([][]value.Value, len(aggIds))
 	for i := range buckets {
 		ret[i] = make([]value.Value, len(buckets[i]))
 	}
 	err := tier.Badger.View(func(txn *badger.Txn) error {
-		for i := range names {
+		for i := range aggIds {
 			for j := range buckets[i] {
-				key, err := badgerEncode(names[i], buckets[i][j])
+				key, err := badgerEncode(aggIds[i], buckets[i][j])
 				if err != nil {
 					return err
 				}
@@ -78,18 +78,18 @@ func (b BadgerStorage) GetMulti(ctx context.Context, tier tier.Tier, names []fty
 	return ret, err
 }
 
-func (b BadgerStorage) SetMulti(ctx context.Context, tier tier.Tier, names []ftypes.AggName, deltas [][]Bucket) error {
+func (b BadgerStorage) SetMulti(ctx context.Context, tier tier.Tier, aggIds []ftypes.AggId, deltas [][]Bucket) error {
 	defer timer.Start(ctx, tier.ID, "badger_flat_storage.set_multi").Stop()
-	if len(names) != len(deltas) {
-		return fmt.Errorf("badger_storage.SetMulti: names, deltas must be the same length")
+	if len(aggIds) != len(deltas) {
+		return fmt.Errorf("badger_storage.SetMulti: aggIds, deltas must be the same length")
 	}
-	if len(names) == 0 {
+	if len(aggIds) == 0 {
 		return nil
 	}
 	return tier.Badger.Update(func(txn *badger.Txn) error {
-		for i, name := range names {
+		for i, aggId := range aggIds {
 			for _, bucket := range deltas[i] {
-				k, err := badgerEncode(name, bucket)
+				k, err := badgerEncode(aggId, bucket)
 				if err != nil {
 					return err
 				}
@@ -104,9 +104,9 @@ func (b BadgerStorage) SetMulti(ctx context.Context, tier tier.Tier, names []fty
 		}
 		// no error so far, so transaction will be committed
 		// add logging just before this
-		for i, name := range names {
+		for i, aggId := range aggIds {
 			tier.Logger.Info("Updating badger keys for aggregate",
-				zap.String("aggregate", string(name)),
+				zap.Int("aggregate", int(aggId)),
 				zap.Int("num_keys", len(deltas[i])),
 			)
 		}
@@ -114,15 +114,15 @@ func (b BadgerStorage) SetMulti(ctx context.Context, tier tier.Tier, names []fty
 	})
 }
 
-func (b BadgerStorage) Set(ctx context.Context, tier tier.Tier, name ftypes.AggName, deltas []Bucket) error {
-	return b.SetMulti(ctx, tier, []ftypes.AggName{name}, [][]Bucket{deltas})
+func (b BadgerStorage) Set(ctx context.Context, tier tier.Tier, aggId ftypes.AggId, deltas []Bucket) error {
+	return b.SetMulti(ctx, tier, []ftypes.AggId{aggId}, [][]Bucket{deltas})
 }
 
 var _ BucketStore = BadgerStorage{}
 
 // defaultCodec key design is: tablet | codex | groupkey | window | width | index | aggregate_name
-func badgerEncode(name ftypes.AggName, bucket Bucket) ([]byte, error) {
-	buf := make([]byte, 2+8+len(bucket.Key)+8+8+8+8+len(name))
+func badgerEncode(aggId ftypes.AggId, bucket Bucket) ([]byte, error) {
+	buf := make([]byte, 2+8+len(bucket.Key)+8+8+8+8+8)
 	cur := 0
 	if n, err := tablet.Write(buf[cur:]); err != nil {
 		return nil, err
@@ -154,7 +154,7 @@ func badgerEncode(name ftypes.AggName, bucket Bucket) ([]byte, error) {
 	} else {
 		cur += n
 	}
-	if n, err := binary.PutString(buf[cur:], string(name)); err != nil {
+	if n, err := binary.PutUvarint(buf[cur:], uint64(aggId)); err != nil {
 		return nil, err
 	} else {
 		cur += n
@@ -162,55 +162,55 @@ func badgerEncode(name ftypes.AggName, bucket Bucket) ([]byte, error) {
 	return buf[:cur], nil
 }
 
-func badgerDecode(buf []byte) (ftypes.AggName, Bucket, error) {
+func badgerDecode(buf []byte) (ftypes.AggId, Bucket, error) {
 	cur := 0
 	tbl, n, err := fbadger.ReadTablet(buf)
 	if err != nil {
-		return "", Bucket{}, err
+		return 0, Bucket{}, err
 	}
 	if tbl != tablet {
-		return "", Bucket{}, fmt.Errorf("badgerDecode: invalid tablet: %v", tbl)
+		return 0, Bucket{}, fmt.Errorf("badgerDecode: invalid tablet: %v", tbl)
 	}
 	cur += n
 
 	codec, n, err := codex.Read(buf[cur:])
 	if err != nil {
-		return "", Bucket{}, err
+		return 0, Bucket{}, err
 	}
 	if codec != defaultCodec {
-		return "", Bucket{}, fmt.Errorf("badgerDecode: invalid codec: %v", codec)
+		return 0, Bucket{}, fmt.Errorf("badgerDecode: invalid codec: %v", codec)
 	}
 	cur += n
 
 	key, n, err := binary.ReadString(buf[cur:])
 	if err != nil {
-		return "", Bucket{}, err
+		return 0, Bucket{}, err
 	} else {
 		cur += n
 	}
 	window, n, err := binary.ReadUvarint(buf[cur:])
 	if err != nil {
-		return "", Bucket{}, err
+		return 0, Bucket{}, err
 	} else {
 		cur += n
 	}
 	width, n, err := binary.ReadUvarint(buf[cur:])
 	if err != nil {
-		return "", Bucket{}, err
+		return 0, Bucket{}, err
 	} else {
 		cur += n
 	}
 	index, n, err := binary.ReadUvarint(buf[cur:])
 	if err != nil {
-		return "", Bucket{}, err
+		return 0, Bucket{}, err
 	} else {
 		cur += n
 	}
-	name, n, err := binary.ReadString(buf[cur:])
+	aggId, n, err := binary.ReadUvarint(buf[cur:])
 	if err != nil {
-		return "", Bucket{}, err
+		return 0, Bucket{}, err
 	} else {
 		cur += n
 	}
-	return ftypes.AggName(name), Bucket{Key: key, Window: ftypes.Window(window), Width: width, Index: index}, nil
+	return ftypes.AggId(aggId), Bucket{Key: key, Window: ftypes.Window(window), Width: width, Index: index}, nil
 }

@@ -15,6 +15,7 @@ import (
 func (agg *Aggregate) UnmarshalJSON(data []byte) error {
 	var fields struct {
 		Name      ftypes.AggName   `json:"Name"`
+		Id        ftypes.AggId     `json:"Id"`
 		Query     string           `json:"Query"`
 		Timestamp ftypes.Timestamp `json:"Timestamp"`
 		Options   struct {
@@ -30,6 +31,7 @@ func (agg *Aggregate) UnmarshalJSON(data []byte) error {
 		return fmt.Errorf("error unmarshalling aggregate json: %v", err)
 	}
 	agg.Name = fields.Name
+	agg.Id = fields.Id
 	agg.Timestamp = fields.Timestamp
 	agg.Options.AggType = ftypes.AggType(fields.Options.AggType)
 	agg.Options.Durations = fields.Options.Durations
@@ -56,6 +58,7 @@ func (agg Aggregate) MarshalJSON() ([]byte, error) {
 	queryStr := base64.StdEncoding.EncodeToString(querySer)
 	var fields struct {
 		Name      ftypes.AggName   `json:"Name"`
+		Id        ftypes.AggId     `json:"Id"`
 		Query     string           `json:"Query"`
 		Timestamp ftypes.Timestamp `json:"Timestamp"`
 		Options   struct {
@@ -67,6 +70,7 @@ func (agg Aggregate) MarshalJSON() ([]byte, error) {
 		}
 	}
 	fields.Name = agg.Name
+	fields.Id = agg.Id
 	fields.Query = queryStr
 	fields.Timestamp = agg.Timestamp
 	fields.Options.AggType = string(agg.Options.AggType)

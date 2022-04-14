@@ -12,7 +12,7 @@ import (
 
 func Value(
 	ctx context.Context, tier tier.Tier,
-	name ftypes.AggName, key value.Value, histogram counter.Histogram, kwargs value.Dict,
+	aggId ftypes.AggId, key value.Value, histogram counter.Histogram, kwargs value.Dict,
 ) (value.Value, error) {
 	end := ftypes.Timestamp(tier.Clock.Now())
 	start, err := histogram.Start(end, kwargs)
@@ -20,7 +20,7 @@ func Value(
 		return nil, err
 	}
 	buckets := histogram.BucketizeDuration(key.String(), start, end, histogram.Zero())
-	counts, err := histogram.Get(ctx, tier, name, buckets, histogram.Zero())
+	counts, err := histogram.Get(ctx, tier, aggId, buckets, histogram.Zero())
 	if err != nil {
 		return nil, err
 	}
@@ -29,18 +29,18 @@ func Value(
 
 func BatchValue(
 	ctx context.Context, tier tier.Tier,
-	names []ftypes.AggName, keys []value.Value, histograms []counter.Histogram, kwargs []value.Dict,
+	aggIds []ftypes.AggId, keys []value.Value, histograms []counter.Histogram, kwargs []value.Dict,
 ) ([]value.Value, error) {
 	end := ftypes.Timestamp(tier.Clock.Now())
 	unique := make(map[counter.BucketStore][]int)
-	ret := make([]value.Value, len(names))
+	ret := make([]value.Value, len(aggIds))
 	for i, h := range histograms {
 		bs := h.GetBucketStore()
 		unique[bs] = append(unique[bs], i)
 	}
 	for bs, indices := range unique {
 		n := len(indices)
-		names_ := make([]ftypes.AggName, n)
+		ids_ := make([]ftypes.AggId, n)
 		buckets := make([][]counter.Bucket, n)
 		defaults := make([]value.Value, n)
 		for i, index := range indices {
@@ -49,11 +49,11 @@ func BatchValue(
 			if err != nil {
 				return nil, fmt.Errorf("failed to get start timestamp of aggregate at index %d of batch: %v", i, err)
 			}
-			names_[i] = names[index]
+			ids_[i] = aggIds[index]
 			buckets[i] = h.BucketizeDuration(keys[i].String(), start, end, h.Zero())
 			defaults[i] = h.Zero()
 		}
-		counts, err := bs.GetMulti(ctx, tier, names_, buckets, defaults)
+		counts, err := bs.GetMulti(ctx, tier, ids_, buckets, defaults)
 		if err != nil {
 			return nil, err
 		}
@@ -70,7 +70,7 @@ func BatchValue(
 }
 
 func Update(
-	ctx context.Context, tier tier.Tier, name ftypes.AggName, table value.List, histogram counter.Histogram,
+	ctx context.Context, tier tier.Tier, aggId ftypes.AggId, table value.List, histogram counter.Histogram,
 ) error {
 	buckets, err := counter.Bucketize(histogram, table)
 	if err != nil {
@@ -80,5 +80,5 @@ func Update(
 	if err != nil {
 		return err
 	}
-	return counter.Update(ctx, tier, name, buckets, histogram)
+	return counter.Update(ctx, tier, aggId, buckets, histogram)
 }

@@ -15,7 +15,7 @@ type timeseriesSum struct {
 	BucketStore
 }
 
-func NewTimeseriesSum(name ftypes.AggName, window ftypes.Window, limit uint64) Histogram {
+func NewTimeseriesSum(window ftypes.Window, limit uint64) Histogram {
 	d, err := utils.Duration(window)
 	if err != nil {
 		d = 0

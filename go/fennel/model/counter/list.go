@@ -17,7 +17,7 @@ func (s list) Transform(v value.Value) (value.Value, error) {
 	return value.NewList(v), nil
 }
 
-func NewList(name ftypes.AggName, durations []uint64) Histogram {
+func NewList(durations []uint64) Histogram {
 	maxDuration := getMaxDuration(durations)
 	return list{
 		Durations: durations,

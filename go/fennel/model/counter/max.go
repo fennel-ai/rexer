@@ -25,7 +25,7 @@ func (m rollingMax) Transform(v value.Value) (value.Value, error) {
 	return value.NewList(v_int, value.Bool(false)), nil
 }
 
-func NewMax(name ftypes.AggName, durations []uint64) Histogram {
+func NewMax(durations []uint64) Histogram {
 	maxDuration := getMaxDuration(durations)
 	return rollingMax{
 		Durations: durations,

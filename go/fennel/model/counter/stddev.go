@@ -14,7 +14,7 @@ type rollingStdDev struct {
 	BucketStore
 }
 
-func NewStdDev(name ftypes.AggName, durations []uint64) Histogram {
+func NewStdDev(durations []uint64) Histogram {
 	maxDuration := getMaxDuration(durations)
 	return rollingStdDev{
 		Durations: durations,

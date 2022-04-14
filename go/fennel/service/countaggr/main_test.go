@@ -40,6 +40,7 @@ func TestEndToEnd(t *testing.T) {
 			libaggregate.Aggregate{
 				Name: "agg_1", Query: getQuery(), Timestamp: 123,
 				Options: libaggregate.Options{AggType: "sum", Durations: []uint64{3 * 3600, 6 * 3600, 3600}},
+				Id:      1,
 			},
 			value.Int(0),
 			value.Int(uid),
@@ -53,6 +54,7 @@ func TestEndToEnd(t *testing.T) {
 			libaggregate.Aggregate{
 				Name: "agg_2", Query: getQuery(), Timestamp: 123,
 				Options: libaggregate.Options{AggType: "timeseries_sum", Window: ftypes.Window_HOUR, Limit: 4},
+				Id:      2,
 			},
 			value.NewList(value.Int(0), value.Int(0), value.Int(0), value.Int(0)),
 			value.Int(uid),
@@ -64,6 +66,7 @@ func TestEndToEnd(t *testing.T) {
 			libaggregate.Aggregate{
 				Name: "agg_3", Query: getQuery(), Timestamp: 123,
 				Options: libaggregate.Options{AggType: "list", Durations: []uint64{3 * 3600, 6 * 3600, 3600}},
+				Id:      3,
 			},
 			value.NewList(),
 			value.Int(uid),
@@ -78,6 +81,7 @@ func TestEndToEnd(t *testing.T) {
 			libaggregate.Aggregate{
 				Name: "agg_4", Query: getQuery(), Timestamp: 123,
 				Options: libaggregate.Options{AggType: "min", Durations: []uint64{3 * 3600, 6 * 3600, 3600}},
+				Id:      4,
 			},
 			value.Int(0),
 			value.Int(uid),
@@ -91,6 +95,7 @@ func TestEndToEnd(t *testing.T) {
 			libaggregate.Aggregate{
 				Name: "agg_5", Query: getQuery(), Timestamp: 123,
 				Options: libaggregate.Options{AggType: "max", Durations: []uint64{3 * 3600, 6 * 3600, 3600}},
+				Id:      5,
 			},
 			value.Int(0),
 			value.Int(uid),
@@ -104,6 +109,7 @@ func TestEndToEnd(t *testing.T) {
 			libaggregate.Aggregate{
 				Name: "agg_6", Query: getQuery(), Timestamp: 123,
 				Options: libaggregate.Options{AggType: "stddev", Durations: []uint64{3 * 3600, 6 * 3600, 3600}},
+				Id:      6,
 			},
 			value.Double(0),
 			value.Int(uid),
@@ -117,6 +123,7 @@ func TestEndToEnd(t *testing.T) {
 			libaggregate.Aggregate{
 				Name: "agg_7", Query: getQuery(), Timestamp: 123,
 				Options: libaggregate.Options{AggType: "average", Durations: []uint64{3 * 3600, 6 * 3600, 3600}},
+				Id:      7,
 			},
 			value.Double(0),
 			value.Int(uid),
@@ -134,6 +141,7 @@ func TestEndToEnd(t *testing.T) {
 					Durations: []uint64{3 * 3600, 6 * 3600, 3600},
 					Normalize: true,
 				},
+				Id: 8,
 			},
 			value.Double(0),
 			value.Int(uid),
@@ -147,6 +155,7 @@ func TestEndToEnd(t *testing.T) {
 			libaggregate.Aggregate{
 				Name: "agg_9", Query: getQueryTopK(), Timestamp: 123,
 				Options: libaggregate.Options{AggType: "topk", Durations: []uint64{3 * 3600, 6 * 3600, 3600}},
+				Id:      9,
 			},
 			value.NewList(),
 			value.Int(uid),

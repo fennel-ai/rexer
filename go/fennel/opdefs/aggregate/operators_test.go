@@ -32,6 +32,7 @@ func TestAggValue_Apply(t *testing.T) {
 			AggType:   "sum",
 			Durations: []uint64{6 * 3600, 3 * 3600, 2000},
 		},
+		Id: 1,
 	}
 	agg2 := libaggregate.Aggregate{
 		Name: "second_agg", Query: getQuery(), Timestamp: 123,
@@ -39,6 +40,7 @@ func TestAggValue_Apply(t *testing.T) {
 			AggType:   "max",
 			Durations: []uint64{6 * 3600},
 		},
+		Id: 2,
 	}
 	t0 := int64(24 * 3600)
 	clock := &test.FakeClock{}
