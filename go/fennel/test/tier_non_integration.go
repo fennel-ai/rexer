@@ -12,6 +12,7 @@ import (
 	"fennel/lib/ftypes"
 	"fennel/pcache"
 	"fennel/redis"
+	"fennel/s3"
 	"fennel/tier"
 
 	"go.uber.org/zap"
@@ -42,6 +43,9 @@ func Tier() (tier.Tier, error) {
 		return tier.Tier{}, err
 	}
 
+	// TODO - decide what region to use for test tier
+	s3Client := s3.NewClient(s3.S3Args{Region: "ap-south-1"})
+
 	logger, err := zap.NewDevelopment()
 	if err != nil {
 		return tier.Tier{}, fmt.Errorf("failed to construct logger: %v", err)
@@ -60,6 +64,7 @@ func Tier() (tier.Tier, error) {
 		Producers:        producers,
 		Clock:            clock.Unix{},
 		NewKafkaConsumer: consumerCreator,
+		S3Client:         s3Client,
 		Logger:           logger,
 		Badger:           badger,
 	}, err

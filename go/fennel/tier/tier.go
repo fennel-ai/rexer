@@ -16,6 +16,7 @@ import (
 	"fennel/pcache"
 	"fennel/redis"
 	"fennel/resource"
+	"fennel/s3"
 	"fennel/sagemaker"
 
 	"github.com/dgraph-io/badger/v3"
@@ -98,6 +99,7 @@ type Tier struct {
 	Clock            clock.Clock
 	Logger           *zap.Logger
 	NewKafkaConsumer KafkaConsumerCreator
+	S3Client         s3.Client
 	SagemakerClient  sagemaker.SMClient
 	Badger           fbadger.DB
 }
@@ -205,8 +207,12 @@ func CreateFromArgs(args *TierArgs) (tier Tier, err error) {
 	if err != nil {
 		return tier, fmt.Errorf("failed to create sagemaker client: %v", err)
 	}
-	log.Print("Creating badger")
 
+	// TODO - get region from own args
+	s3Args := s3.S3Args{Region: args.SagemakerArgs.Region}
+	s3client := s3.NewClient(s3Args)
+
+	log.Print("Creating badger")
 	opts := badger.DefaultOptions(args.BadgerDir)
 	// only log warnings and errors
 	opts = opts.WithLoggingLevel(badger.WARNING)
@@ -230,6 +236,7 @@ func CreateFromArgs(args *TierArgs) (tier Tier, err error) {
 		PCache:           pCache,
 		NewKafkaConsumer: consumerCreator,
 		SagemakerClient:  smclient,
+		S3Client:         s3client,
 		Badger:           bdb.(fbadger.DB),
 	}, nil
 }
