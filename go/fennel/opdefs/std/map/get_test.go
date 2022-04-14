@@ -8,9 +8,9 @@ import (
 	"fennel/tier"
 )
 
-func TestMapLookup_Apply(t *testing.T) {
+func TestGetp_Apply(t *testing.T) {
 	t.Parallel()
-	op := map_lookup{}
+	op := get{}
 	scenarios := []struct {
 		inputs   []value.Value
 		static   value.Dict
@@ -26,9 +26,9 @@ func TestMapLookup_Apply(t *testing.T) {
 			},
 			value.NewDict(nil),
 			[]value.Dict{
-				value.NewDict(map[string]value.Value{"keys": value.NewList(value.String("x"), value.String("y"), value.String("z"))}),
-				value.NewDict(map[string]value.Value{"keys": value.NewList(value.String("x"), value.String("x"), value.String("x"))}),
-				value.NewDict(map[string]value.Value{"keys": value.NewList(value.String("z"), value.String("y"), value.String("z"))}),
+				value.NewDict(map[string]value.Value{"fields": value.NewList(value.String("x"), value.String("y"), value.String("z"))}),
+				value.NewDict(map[string]value.Value{"fields": value.NewList(value.String("x"), value.String("x"), value.String("x"))}),
+				value.NewDict(map[string]value.Value{"fields": value.NewList(value.String("z"), value.String("y"), value.String("z"))}),
 			},
 			false,
 			[]value.Value{value.NewList(value.Int(1), value.Int(2), value.Int(3)),

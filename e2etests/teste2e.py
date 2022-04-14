@@ -409,7 +409,7 @@ class TestEndToEnd(unittest.TestCase):
         found = False
         while not found and slept < 120:
             found_dict_query = rex.feature.extract(context, candidates, names=names)
-            found_vec = rex.op.std.map_lookup(found_dict_query,  keys=names)
+            found_vec = rex.op.std.get(found_dict_query,  fields=names)
             found_vec = c.query(found_vec)
             found_dict = c.query(found_dict_query)
             if found_vec == expected_vec and found_dict == expcted_dict:

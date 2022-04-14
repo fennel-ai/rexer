@@ -10,19 +10,19 @@ import (
 )
 
 func init() {
-	operators.Register(map_lookup{})
+	operators.Register(get{})
 }
 
-type map_lookup struct {
+type get struct {
 }
 
-func (m map_lookup) New(
+func (m get) New(
 	args value.Dict, bootargs map[string]interface{}, cache *sync.Map,
 ) (operators.Operator, error) {
-	return map_lookup{}, nil
+	return get{}, nil
 }
 
-func (m map_lookup) Apply(_ context.Context, staticKwargs value.Dict, in operators.InputIter, out *value.List) error {
+func (m get) Apply(_ context.Context, staticKwargs value.Dict, in operators.InputIter, out *value.List) error {
 	for in.HasMore() {
 		heads, kwargs, err := in.Next()
 		row := heads[0].(value.Dict)
@@ -31,7 +31,7 @@ func (m map_lookup) Apply(_ context.Context, staticKwargs value.Dict, in operato
 			return err
 		}
 
-		key_list, _ := kwargs.Get("keys")
+		key_list, _ := kwargs.Get("fields")
 		keys := key_list.(value.List)
 		keyiter := keys.Iter()
 		values := make([]value.Value, keys.Len())
@@ -42,7 +42,7 @@ func (m map_lookup) Apply(_ context.Context, staticKwargs value.Dict, in operato
 			if !ok {
 				return errors.New("keys in map lookup must be evaluate to a string")
 			}
-			values[index] = get(row, string(key_str))
+			values[index], _ = row.Get(string(key_str))
 			index++
 		}
 
@@ -51,15 +51,10 @@ func (m map_lookup) Apply(_ context.Context, staticKwargs value.Dict, in operato
 	return nil
 }
 
-func (m map_lookup) Signature() *operators.Signature {
+func (m get) Signature() *operators.Signature {
 	return operators.NewSignature("std", "map_lookup").
 		Input([]value.Type{value.Types.Dict}).
-		ParamWithHelp("keys", value.Types.List, false, false, value.Nil, "ContextKwarg: List of keys to lookup in the map")
+		ParamWithHelp("fields", value.Types.List, false, false, value.Nil, "ContextKwarg: List of keys to lookup in the map")
 }
 
-var _ operators.Operator = map_lookup{}
-
-func get(d value.Dict, k string) value.Value {
-	ret, _ := d.Get(k)
-	return ret
-}
+var _ operators.Operator = get{}
