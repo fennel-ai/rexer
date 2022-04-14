@@ -10,6 +10,7 @@ import (
 
 	"fennel/lib/clock"
 	"fennel/lib/ftypes"
+	"fennel/modelstore"
 	"fennel/pcache"
 	"fennel/redis"
 	"fennel/s3"
@@ -46,6 +47,11 @@ func Tier() (tier.Tier, error) {
 	// TODO - decide what region to use for test tier
 	s3Client := s3.NewClient(s3.S3Args{Region: "ap-south-1"})
 
+	modelStore := modelstore.NewModelStore(
+		os.Getenv("MODEL_STORE_S3_BUCKET"),
+		os.Getenv("MODEL_STORE_ENDPOINT"),
+	)
+
 	logger, err := zap.NewDevelopment()
 	if err != nil {
 		return tier.Tier{}, fmt.Errorf("failed to construct logger: %v", err)
@@ -65,6 +71,7 @@ func Tier() (tier.Tier, error) {
 		Clock:            clock.Unix{},
 		NewKafkaConsumer: consumerCreator,
 		S3Client:         s3Client,
+		ModelStore:       modelStore,
 		Logger:           logger,
 		Badger:           badger,
 	}, err

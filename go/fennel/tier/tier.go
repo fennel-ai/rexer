@@ -13,6 +13,7 @@ import (
 	"fennel/lib/cache"
 	"fennel/lib/clock"
 	"fennel/lib/ftypes"
+	"fennel/modelstore"
 	"fennel/pcache"
 	"fennel/redis"
 	"fennel/resource"
@@ -26,6 +27,8 @@ import (
 
 type TierArgs struct {
 	sagemaker.SagemakerArgs `json:"sagemaker_._sagemaker_args"`
+	ModelStoreS3Bucket      string `arg:"--model-store-s3-bucket,env:MODEL_STORE_S3_BUCKET,help:Model Store S3 bucket name"`
+	ModelStoreEndpointName  string `arg:"--model-store-endpoint,env:MODEL_STORE_ENDPOINT,help:Model Store endpoint name"`
 
 	KafkaServer   string         `arg:"--kafka-server,env:KAFKA_SERVER_ADDRESS" json:"kafka_server,omitempty"`
 	KafkaUsername string         `arg:"--kafka-user,env:KAFKA_USERNAME" json:"kafka_username,omitempty"`
@@ -79,6 +82,12 @@ func (args TierArgs) Valid() error {
 	if args.BadgerDir == "" {
 		missingFields = append(missingFields, "BADGER_DIR")
 	}
+	if args.ModelStoreS3Bucket == "" {
+		missingFields = append(missingFields, "MODEL_STORE_S3_BUCKET")
+	}
+	if args.ModelStoreEndpointName == "" {
+		missingFields = append(missingFields, "MODEL_STORE_ENDPOINT")
+	}
 	if len(missingFields) > 0 {
 		return fmt.Errorf("missing fields: %s", strings.Join(missingFields, ", "))
 	}
@@ -101,6 +110,7 @@ type Tier struct {
 	NewKafkaConsumer KafkaConsumerCreator
 	S3Client         s3.Client
 	SagemakerClient  sagemaker.SMClient
+	ModelStore       *modelstore.ModelStore
 	Badger           fbadger.DB
 }
 
@@ -212,6 +222,8 @@ func CreateFromArgs(args *TierArgs) (tier Tier, err error) {
 	s3Args := s3.S3Args{Region: args.SagemakerArgs.Region}
 	s3client := s3.NewClient(s3Args)
 
+	modelStore := modelstore.NewModelStore(args.ModelStoreS3Bucket, args.ModelStoreEndpointName)
+
 	log.Print("Creating badger")
 	opts := badger.DefaultOptions(args.BadgerDir)
 	// only log warnings and errors
@@ -237,6 +249,7 @@ func CreateFromArgs(args *TierArgs) (tier Tier, err error) {
 		NewKafkaConsumer: consumerCreator,
 		SagemakerClient:  smclient,
 		S3Client:         s3client,
+		ModelStore:       modelStore,
 		Badger:           bdb.(fbadger.DB),
 	}, nil
 }
