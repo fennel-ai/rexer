@@ -96,6 +96,7 @@ func (s server) setHandlers(router *mux.Router) {
 	router.HandleFunc("/batch_aggregate_value", s.BatchAggregateValue)
 	router.HandleFunc("/get_operators", s.GetOperators)
 	router.HandleFunc("/upload_model", s.UploadModel)
+	router.HandleFunc("/delete_model", s.DeleteModel)
 }
 
 func (m server) Log(w http.ResponseWriter, req *http.Request) {
@@ -511,6 +512,24 @@ func (m server) UploadModel(w http.ResponseWriter, req *http.Request) {
 		handleBadRequest(w, "", err)
 		return
 	}
+}
+
+func (m server) DeleteModel(w http.ResponseWriter, req *http.Request) {
+	data, err := readRequest(req)
+	if err != nil {
+		handleBadRequest(w, "", err)
+		return
+	}
+	var delReq struct {
+		Name     string
+		Version  string
+		FileName string
+	}
+	if err := json.Unmarshal(data, &delReq); err != nil {
+		handleBadRequest(w, "invalid request: ", err)
+		return
+	}
+	err = modelstore.RemoveModel(req.Context(), m.tier, delReq.Name, delReq.Version, delReq.FileName)
 }
 
 func (m server) GetOperators(w http.ResponseWriter, req *http.Request) {

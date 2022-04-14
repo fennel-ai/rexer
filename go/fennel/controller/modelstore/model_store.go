@@ -48,6 +48,23 @@ func StoreModel(ctx context.Context, tier tier.Tier, req lib.ModelInsertRequest)
 	return EnsureEndpointExists(ctx, tier)
 }
 
+func RemoveModel(ctx context.Context, tier tier.Tier, name, version, filename string) error {
+	tier.ModelStore.Lock()
+	defer tier.ModelStore.Unlock()
+
+	// delete from s3
+	err := tier.S3Client.DeleteModelFromS3(filename, tier.ModelStore.S3Bucket())
+	if err != nil {
+		return fmt.Errorf("failed to delete model from s3: %v", err)
+	}
+
+	err = db.MakeModelInactive(tier, name, version)
+	if err != nil {
+		return fmt.Errorf("failed to deactivate model in db: %v", err)
+	}
+	return EnsureEndpointExists(ctx, tier)
+}
+
 func EnsureEndpointExists(ctx context.Context, tier tier.Tier) error {
 	// Get all active models.
 	activeModels, err := db.GetActiveModels(tier)
