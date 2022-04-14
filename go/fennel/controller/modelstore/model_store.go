@@ -117,10 +117,6 @@ func EnsureEndpointExists(ctx context.Context, tier tier.Tier, endpointName stri
 	if err != nil {
 		return fmt.Errorf("failed to get endpoint config with name [%s] from db: %v", sagemakerModelName, err)
 	}
-	// If we are updating endpoint, make the current one inactive after we are finished updating
-	if updateEndpoint {
-		defer db.MakeEndpointInactive(tier, endpointCfg.Name)
-	}
 	if endpointCfg.Name == "" || updateEndpoint {
 		endpointCfg = lib.SagemakerEndpointConfig{
 			Name:          fmt.Sprintf("%s-config-%d", sagemakerModelName, rand.Int63()),
