@@ -3,7 +3,6 @@ package modelstore
 import (
 	"context"
 	"fmt"
-	"io"
 	"math/rand"
 	"sync"
 	"time"
@@ -13,15 +12,29 @@ import (
 	"fennel/tier"
 )
 
-const framework = "xgboost"
-const frameworkVersion = "1.3.1"
+type ModelStore struct {
+	s3Bucket     string
+	storeMutex   sync.Mutex
+	endpointName string
+}
 
-var storeMutex = sync.Mutex{}
+// NewModelStore creates a new ModelStore. There should not be more than one ModelStore.
+func NewModelStore(s3Bucket string, endpointName string) *ModelStore {
+	ms := ModelStore{
+		s3Bucket:     s3Bucket,
+		storeMutex:   sync.Mutex{},
+		endpointName: endpointName,
+	}
+	return &ms
+}
 
-func StoreModel(ctx context.Context, tier tier.Tier, name, version string, modelFile io.Reader, modelFileName string) error {
-	storeMutex.Lock()
-	defer storeMutex.Unlock()
+func (ms *ModelStore) StoreModel(ctx context.Context, tier tier.Tier, req lib.ModelInsertRequest) error {
+	// lock to avoid race condition when two models are being attempted to stored with room only for one more model
+	ms.storeMutex.Lock()
+	defer ms.storeMutex.Unlock()
+
 	// check there are no more than 15 active models
+	// sagemaker does not allow more than 15 models with different containers on one endpoint
 	activeModels, err := db.GetActiveModels(tier)
 	if err != nil {
 		return fmt.Errorf("failed to get active models from db: %v", err)
@@ -29,26 +42,30 @@ func StoreModel(ctx context.Context, tier tier.Tier, name, version string, model
 	if len(activeModels) >= 15 {
 		return fmt.Errorf("cannot have more than 15 active models: %v", err)
 	}
-	err = tier.S3Client.UploadModelToS3(modelFile, modelFileName, bucketName)
+
+	// upload to s3
+	err = tier.S3Client.UploadModelToS3(req.ModelFile, req.ModelFileName, ms.s3Bucket)
 	if err != nil {
 		return fmt.Errorf("failed to upload model to s3: %v", err)
 	}
-	artifactPath := getArtifactPath(modelFileName, bucketName)
+
+	// now insert into db
+	artifactPath := ms.getArtifactPath(req.ModelFileName)
 	model := lib.Model{
-		Name:             name,
-		Version:          version,
-		Framework:        framework,
-		FrameworkVersion: frameworkVersion,
+		Name:             req.Name,
+		Version:          req.Version,
+		Framework:        req.Framework,
+		FrameworkVersion: req.FrameworkVersion,
 		ArtifactPath:     artifactPath,
 	}
 	_, err = db.InsertModel(tier, model)
 	if err != nil {
 		return fmt.Errorf("failed to insert model in db: %v", err)
 	}
-	return EnsureEndpointExists(ctx, tier, "default_endpoint")
+	return ms.EnsureEndpointExists(ctx, tier)
 }
 
-func EnsureEndpointExists(ctx context.Context, tier tier.Tier, endpointName string) error {
+func (ms *ModelStore) EnsureEndpointExists(ctx context.Context, tier tier.Tier) error {
 	// Get all active models.
 	activeModels, err := db.GetActiveModels(tier)
 	if err != nil {
@@ -142,18 +159,18 @@ func EnsureEndpointExists(ctx context.Context, tier tier.Tier, endpointName stri
 	}
 
 	// Ensure endpoint exists in db and sagemaker.
-	endpoint, err := db.GetEndpoint(tier, endpointName)
+	endpoint, err := db.GetEndpoint(tier, ms.endpointName)
 	if err != nil {
-		return fmt.Errorf("failed to get endpoint with name [%s] from db: %v", endpointName, err)
+		return fmt.Errorf("failed to get endpoint with name [%s] from db: %v", ms.endpointName, err)
 	}
 	if endpoint.Name == "" || endpoint.EndpointConfigName != endpointCfg.Name {
 		endpoint = lib.SagemakerEndpoint{
-			Name:               endpointName,
+			Name:               ms.endpointName,
 			EndpointConfigName: endpointCfg.Name,
 		}
 		err = db.InsertEndpoint(tier, endpoint)
 		if err != nil {
-			return fmt.Errorf("failed to insert endpoint with name [%s] into db: %v", endpointName, err)
+			return fmt.Errorf("failed to insert endpoint with name [%s] into db: %v", ms.endpointName, err)
 		}
 	}
 	exists, err = tier.SagemakerClient.EndpointExists(ctx, endpoint.Name)
@@ -167,7 +184,7 @@ func EnsureEndpointExists(ctx context.Context, tier tier.Tier, endpointName stri
 		}
 	} else if endpoint.EndpointConfigName != endpointCfg.Name {
 		err = tier.SagemakerClient.UpdateEndpoint(ctx, lib.SagemakerEndpoint{
-			Name:               endpointName,
+			Name:               ms.endpointName,
 			EndpointConfigName: endpointCfg.Name,
 		})
 		if err != nil {
@@ -177,8 +194,8 @@ func EnsureEndpointExists(ctx context.Context, tier tier.Tier, endpointName stri
 	return nil
 }
 
-func getArtifactPath(fileName, bucketName string) string {
-	return fmt.Sprintf("s3://%s/%s", bucketName, fileName)
+func (ms *ModelStore) getArtifactPath(fileName string) string {
+	return fmt.Sprintf("s3://%s/%s", ms.s3Bucket, fileName)
 }
 
 func verifyIdentical(a, b []string) bool {
