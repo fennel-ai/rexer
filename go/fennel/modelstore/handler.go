@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"math/rand"
+	"sort"
 	"sync"
 	"time"
 
@@ -119,7 +120,7 @@ func (ms *ModelStore) EnsureEndpointExists(ctx context.Context, tier tier.Tier) 
 	for _, m := range activeModels {
 		activeModelNames = append(activeModelNames, lib.GetContainerName(m.Name, m.Version))
 	}
-	ok := verifyIdentical(modelNames, activeModelNames)
+	ok := verifyElementsMatch(modelNames, activeModelNames)
 	updateEndpoint := false
 	if !ok {
 		updateEndpoint = true
@@ -198,12 +199,20 @@ func (ms *ModelStore) getArtifactPath(fileName string) string {
 	return fmt.Sprintf("s3://%s/%s", ms.s3Bucket, fileName)
 }
 
-func verifyIdentical(a, b []string) bool {
+func verifyElementsMatch(a, b []string) bool {
 	if len(a) != len(b) {
 		return false
 	}
-	for i := range a {
-		if a[i] != b[i] {
+	// copy strings to not edit them
+	a2 := make([]string, len(a))
+	copy(a2, a)
+	b2 := make([]string, len(b))
+	copy(b2, b)
+	// sort and compare each element
+	sort.Strings(a2)
+	sort.Strings(b2)
+	for i := range a2 {
+		if a2[i] != b2[i] {
 			return false
 		}
 	}
