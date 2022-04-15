@@ -119,24 +119,33 @@ func GetHostedModels(tier tier.Tier, sagemakerModelName string) ([]lib.Sagemaker
 func GetCoveringHostedModels(tier tier.Tier) ([]string, error) {
 	var hostedModelNames []string
 	err := tier.DB.Select(&hostedModelNames, `
-		SELECT sagemaker_model_name FROM
+		SELECT name FROM
 		(
-			SELECT sagemaker_model_name, COUNT(model_id) as model_count
-			FROM
-				sagemaker_hosted_model
-			WHERE
-				model_id IN (
-					SELECT id
+			SELECT sagemaker_model_name as name, model_count FROM
+			(
+				SELECT sagemaker_model_name, COUNT(model_id) as model_count
+				FROM
+					sagemaker_hosted_model
+				WHERE
+					model_id IN (
+						SELECT id
+						FROM model
+						WHERE active=true
+					)
+				GROUP BY sagemaker_model_name
+			) covering_models
+			WHERE	
+				model_count = (
+					SELECT COUNT(*)
 					FROM model
 					WHERE active=true
 				)
-			GROUP BY sagemaker_model_name
-		) covering_models
-		WHERE	
+		) covering_models_2
+		WHERE
 			model_count = (
-				SELECT COUNT(*)
-				FROM model
-				WHERE active=true
+			    SELECT COUNT(*)
+			    FROM sagemaker_hosted_model
+			    WHERE sagemaker_model_name=name
 			)
 	`)
 	if err == sql.ErrNoRows {
