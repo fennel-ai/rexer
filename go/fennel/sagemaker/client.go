@@ -101,21 +101,6 @@ func (smc SMClient) ModelExists(ctx context.Context, modelName string) (bool, er
 	return true, nil
 }
 
-func (smc SMClient) GetContainerNames(ctx context.Context, modelName string) ([]string, error) {
-	input := sagemaker.DescribeModelInput{
-		ModelName: aws.String(modelName),
-	}
-	model, err := smc.metadataClient.DescribeModelWithContext(ctx, &input)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get container names: %v", err)
-	}
-	names := make([]string, len(model.Containers))
-	for i, container := range model.Containers {
-		names[i] = *container.ContainerHostname
-	}
-	return names, nil
-}
-
 func (smc SMClient) EndpointConfigExists(ctx context.Context, endpointConfigName string) (bool, error) {
 	input := sagemaker.DescribeEndpointConfigInput{
 		EndpointConfigName: aws.String(endpointConfigName),
