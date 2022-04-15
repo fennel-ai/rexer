@@ -168,6 +168,7 @@ func (c cachedProvider) getBatch(ctx context.Context, tier tier.Tier, profileKey
 		keyToProfileKey[key] = pk
 	}
 
+<<<<<<< HEAD
 	keys := make([]string, 0)
 	for k, _ := range keyToProfileKey {
 		keys = append(keys, k)
@@ -217,6 +218,16 @@ func (c cachedProvider) getBatch(ctx context.Context, tier tier.Tier, profileKey
 		return rets, nil
 	}
 
+=======
+	keys := make([]string, len(keyMap))
+	ind := 0
+	for k := range keyMap {
+		keys[ind] = k
+		ind++
+	}
+
+	keyToVal := new(sync.Map)
+>>>>>>> 6ca8ae0b (go: fix bug in pr/637 (#639))
 	// run the logic as part of a txn
 	//
 	// NOTE: the logic here should assume that it could be retried if one of the provided keys
