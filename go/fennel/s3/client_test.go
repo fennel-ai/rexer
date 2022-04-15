@@ -10,13 +10,18 @@ import (
 
 func TestClient_UploadDelete(t *testing.T) {
 	c := NewClient(S3Args{Region: "ap-south-1"})
-	file := strings.NewReader("some random text")
+	contents := "some random text"
+	file := strings.NewReader(contents)
 	fileName := "some_file.txt"
 	bucketName := os.Getenv("MODEL_STORE_S3_BUCKET")
 
-	err := c.UploadModelToS3(file, fileName, bucketName)
+	err := c.Upload(file, fileName, bucketName)
 	assert.NoError(t, err)
 
-	err = c.DeleteModelFromS3(fileName, bucketName)
+	found, err := c.Download(fileName, bucketName)
+	assert.NoError(t, err)
+	assert.Equal(t, string(found), contents)
+
+	err = c.Delete(fileName, bucketName)
 	assert.NoError(t, err)
 }

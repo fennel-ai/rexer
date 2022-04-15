@@ -27,7 +27,7 @@ func StoreModel(ctx context.Context, tier tier.Tier, req lib.ModelInsertRequest)
 	}
 
 	// upload to s3
-	err = tier.S3Client.UploadModelToS3(req.ModelFile, req.ModelFileName, tier.ModelStore.S3Bucket())
+	err = tier.S3Client.Upload(req.ModelFile, req.ModelFileName, tier.ModelStore.S3Bucket())
 	if err != nil {
 		return fmt.Errorf("failed to upload model to s3: %v", err)
 	}
@@ -51,13 +51,11 @@ func StoreModel(ctx context.Context, tier tier.Tier, req lib.ModelInsertRequest)
 func RemoveModel(ctx context.Context, tier tier.Tier, name, version, filename string) error {
 	tier.ModelStore.Lock()
 	defer tier.ModelStore.Unlock()
-
 	// delete from s3
-	err := tier.S3Client.DeleteModelFromS3(filename, tier.ModelStore.S3Bucket())
+	err := tier.S3Client.Delete(filename, tier.ModelStore.S3Bucket())
 	if err != nil {
 		return fmt.Errorf("failed to delete model from s3: %v", err)
 	}
-
 	err = db.MakeModelInactive(tier, name, version)
 	if err != nil {
 		return fmt.Errorf("failed to deactivate model in db: %v", err)
