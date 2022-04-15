@@ -25,6 +25,7 @@ export type CountAggrConf = {
 
 export type IngressConf = {
     usePublicSubnets: boolean,
+    loadBalancerScheme: string,
 }
 
 export type TierConf = {

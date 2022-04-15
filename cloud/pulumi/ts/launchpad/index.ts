@@ -30,6 +30,10 @@ assert.ok(confluentUsername, "CONFLUENT_CLOUD_USERNAME must be set");
 const confluentPassword = process.env.CONFLUENT_CLOUD_PASSWORD;
 assert.ok(confluentPassword, "CONFLUENT_CLOUD_PASSWORD must be set");
 
+// https://kubernetes-sigs.github.io/aws-load-balancer-controller/v2.2/guide/service/annotations/#resource-attributes
+const PUBLIC_LB_SCHEME = "internet-facing";
+const PRIVATE_LB_SCHEME = "internal";
+
 // map from tier id to plane id.
 const tierConfs: Record<number, TierConf> = {
     // Aditya's new dev tier.
@@ -72,6 +76,7 @@ const tierConfs: Record<number, TierConf> = {
         // use public subnets for ingress to allow traffic from outside the assigned vpc
         ingressConf: {
             usePublicSubnets: true,
+            loadBalancerScheme: PUBLIC_LB_SCHEME,
         }
     },
 }
@@ -282,7 +287,7 @@ if (tierId !== 0) {
         redisEndpoint: redisOutput.clusterEndPoints[0],
         cachePrimaryEndpoint: elasticacheOutput.endpoint,
         subnetIds: subnetIds,
-        loadBalancerScheme: "internal",
+        loadBalancerScheme: tierConf.ingressConf?.loadBalancerScheme || PRIVATE_LB_SCHEME,
 
         glueSourceBucket: glueOutput.scriptSourceBucket,
         glueSourceScript: glueOutput.scriptPath,
