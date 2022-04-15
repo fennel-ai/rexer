@@ -53,5 +53,7 @@ func ConfigMap(server, username, password string) *kafka.ConfigMap {
 		"sasl.password":     password,
 		"security.protocol": SecurityProtocol,
 		"sasl.mechanisms":   SaslMechanism,
+		// gather statistics every 1s
+		"statistics.interval.ms": 1 * 1000,
 	}
 }
