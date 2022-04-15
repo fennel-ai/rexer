@@ -14,11 +14,6 @@ import * as glueSource from "../glue-script-source";
 
 import * as process from "process";
 
-// TODO: Replace this with Tier conf
-type IngressConfig = {
-    usePublicSubnets: boolean,
-}
-
 type VpcConfig = {
     cidr: string,
 }
@@ -61,16 +56,10 @@ type EksConf = {
     desiredCapacity: number,
 }
 
-type HttpServerConf = {
-    replicas: number,
-    forceReplicaIsolation: boolean,
-}
-
 export type PlaneConf = {
     planeId: number,
     region: string,
     roleArn: string,
-    ingressConf?: IngressConfig,
     vpcConf: VpcConfig,
     dbConf: DBConfig,
     confluentConf: ConfluentConfig,
@@ -79,8 +68,6 @@ export type PlaneConf = {
     cacheConf?: CacheConfg,
     prometheusConf: PrometheusConf,
     eksConf?: EksConf,
-    // TODO: Create tier specific configurations and move this there
-    httpServerConf?: HttpServerConf,
 }
 
 export type PlaneOutput = {

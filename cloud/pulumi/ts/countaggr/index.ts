@@ -24,12 +24,15 @@ export const plugins = {
     "aws": "v5.1.0"
 }
 
+const DEFAULT_ENFORCE_SEPARATION = false;
+
 export type inputType = {
     region: string,
     roleArn: string,
     kubeconfig: string,
     namespace: string,
     tierId: number,
+    enforceServiceIsolation?: boolean,
     httpServerAppLabels: {[key: string]: string},
 }
 
@@ -45,6 +48,7 @@ const parseConfig = (): inputType => {
         kubeconfig: config.require(nameof<inputType>("kubeconfig")),
         namespace: config.require(nameof<inputType>("namespace")),
         tierId: config.requireNumber(nameof<inputType>("tierId")),
+        enforceServiceIsolation: config.getBoolean(nameof<inputType>("enforceServiceIsolation")),
         httpServerAppLabels: config.requireObject(nameof<inputType>("httpServerAppLabels")),
     }
 }
@@ -112,6 +116,33 @@ export const setup = async (input: inputType) => {
     // Create a load balanced Kubernetes service using this image, and export its IP.
     const appLabels = { app: name };
     const metricsPort = 2113;
+
+    // define affinity for countaggr service based on input configuration
+    let affinity: k8s.types.input.core.v1.Affinity;
+    if (input.enforceServiceIsolation || DEFAULT_ENFORCE_SEPARATION) {
+        affinity = {
+            podAntiAffinity: {
+                // NOTE: On scheduling, if the following requires are not met by the node, pod is
+                // not going to be scheduled in it. However, if the requirements specified by this
+                // field cease to be met at some point during pod execution (e.g. update), this
+                // pod may or may not get eventually evicted.
+                requiredDuringSchedulingIgnoredDuringExecution: [
+                    // the following requirements MUST match i.e. intersection of the nodes qualified
+                    // is a potential node
+
+                    // Avoid scheduling the pod onto a node that is in the same host as one
+                    // or more pods with the label `app:http-server`.
+                    {
+                        topologyKey: "kubernetes.io/hostname",
+                        labelSelector: {
+                            matchLabels: input.httpServerAppLabels,
+                        }
+                        // namespaces: [] -> default, just search in this pod's namespace
+                    },
+                ],
+            }
+        };
+    }
     const appDep = image.imageName.apply(() => {
         return new k8s.apps.v1.Deployment("countaggr-deployment", {
             metadata: {
@@ -133,28 +164,7 @@ export const setup = async (input: inputType) => {
                         }
                     },
                     spec: {
-                        affinity: {
-                            podAntiAffinity: {
-                                // NOTE: On scheduling, if the following requires are not met by the node, pod is
-                                // not going to be scheduled in it. However, if the requirements specified by this
-                                // field cease to be met at some point during pod execution (e.g. update), this
-                                // pod may or may not get eventually evicted.
-                                requiredDuringSchedulingIgnoredDuringExecution: [
-                                    // the following requirements MUST match i.e. intersection of the nodes qualified
-                                    // is a potential node
-
-                                    // Avoid scheduling the pod onto a node that is in the same host as one
-                                    // or more pods with the label `app:http-server`.
-                                    {
-                                        topologyKey: "kubernetes.io/hostname",
-                                        labelSelector: {
-                                            matchLabels: input.httpServerAppLabels,
-                                        }
-                                        // namespaces: [] -> default, just search in this pod's namespace
-                                    },
-                                ],
-                            }
-                        },
+                        affinity: affinity,
                         containers: [{
                             name: name,
                             image: image.imageName,
