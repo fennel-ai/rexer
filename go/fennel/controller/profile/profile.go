@@ -105,7 +105,7 @@ func dbInsert(ctx context.Context, tier tier.Tier, profiles []profilelib.Profile
 	return profile.SetBatch(ctx, tier, profileSers)
 }
 
-func ReadBatch(ctx context.Context, consumer kafka.FConsumer, count int, timeout time.Duration) ([]profilelib.ProfileItem, error) {
+func readBatch(ctx context.Context, consumer kafka.FConsumer, count int, timeout time.Duration) ([]profilelib.ProfileItem, error) {
 	msgs, err := consumer.ReadBatch(ctx, count, timeout)
 	if err != nil {
 		return nil, err
@@ -124,7 +124,7 @@ func ReadBatch(ctx context.Context, consumer kafka.FConsumer, count int, timeout
 }
 
 func TransferToDB(ctx context.Context, tr tier.Tier, consumer kafka.FConsumer) error {
-	profiles, err := ReadBatch(ctx, consumer, 950, time.Second*10)
+	profiles, err := readBatch(ctx, consumer, 950, time.Second*10)
 	if err != nil {
 		return err
 	}
