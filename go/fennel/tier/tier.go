@@ -41,7 +41,7 @@ type TierArgs struct {
 	BadgerDir     string         `arg:"--badger_dir,env:BADGER_DIR" json:"badger_dir,omitempty"`
 }
 
-type KafkaConsumerCreator func(string, string, string) (kafka.FConsumer, error)
+type KafkaConsumerCreator func(topic, groupId, offsetPolicy string) (kafka.FConsumer, error)
 
 func (args TierArgs) Valid() error {
 	missingFields := make([]string, 0)
