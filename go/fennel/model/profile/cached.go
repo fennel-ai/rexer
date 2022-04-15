@@ -190,17 +190,18 @@ func (c cachedProvider) getBatched(ctx context.Context, tier tier.Tier, reqs []p
 	defer timer.Start(ctx, tier.ID, "model.profile.cached.get_batched").Stop()
 
 	// Dedup keys to avoid I/O from cache and DB.
-	keyMap := make(map[string]struct{})
-	keyToReq := make(map[string]profile.ProfileItem)
+	keyMap := make(map[string]struct{}, len(reqs))
+	keyToReq := make(map[string]profile.ProfileItem, len(reqs))
 	for _, req := range reqs {
 		key := makeKey(req.OType, req.Oid, req.Key, req.Version)
 		keyMap[key] = struct{}{}
 		keyToReq[key] = req
 	}
 
-	keys := make([]string, 0)
+	keys := make([]string, len(keyMap))
+	ind := 0
 	for k := range keyMap {
-		keys = append(keys, k)
+		keys[ind] = k
 	}
 
 	var keyToVal sync.Map
@@ -212,7 +213,7 @@ func (c cachedProvider) getBatched(ctx context.Context, tier tier.Tier, reqs []p
 		vals, err := tx.MGet(ctx, ks...)
 		if err != nil {
 			// if we got an error from cache, no need to panic - we just pretend nothing was found in cache
-			for i := range vals {
+			for i := range ks {
 				vals[i] = tier.Cache.Nil()
 			}
 		}
