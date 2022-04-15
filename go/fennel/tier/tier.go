@@ -249,7 +249,6 @@ func CreateKafka(scope resource.Scope, server, username, password string) (map[s
 			return nil, fmt.Errorf("failed to crate kafka producer: %v", err)
 		}
 		producers[topic] = kafkaProducer.(kafka.FProducer)
-
 	}
 	return producers, nil
 }

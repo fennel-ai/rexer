@@ -3,7 +3,6 @@ package kafka
 import (
 	"context"
 	"fmt"
-	"log"
 	"time"
 
 	"fennel/lib/timer"
@@ -80,16 +79,8 @@ func (conf RemoteProducerConfig) Materialize() (resource.Resource, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to initialize kafka producer for Topic [%s]: %v", conf.Topic, err)
 	}
-	// Delivery report handler for produced messages
-	// This starts a go-routine that goes through all "delivery reports" for sends
-	// as they arrive and logs if any of those are failing
-	go func() {
-		for e := range producer.Events() {
-			if m, ok := e.(*kafka.Message); ok && m.TopicPartition.Error != nil {
-				log.Printf("[ERROR] Kafka send failed. Event: %v", e.String())
-			}
-		}
-	}()
+	// record events
+	go RecordEvents(producer.Events())
 	return RemoteProducer{conf.Topic, producer, conf.Scope}, err
 }
 
