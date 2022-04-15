@@ -54,7 +54,7 @@ func TestProfileController(t *testing.T) {
 	// test that the profile was written to kafka queue as well
 	consumer, err := tier.NewKafkaConsumer(profilelib.PROFILELOG_KAFKA_TOPIC, utils.RandString(6), kafka.DefaultOffsetPolicy)
 	assert.NoError(t, err)
-	found, err := ReadBatch(ctx, consumer, 1, time.Second*2)
+	found, err := readBatch(ctx, consumer, 1, time.Second*2)
 	assert.NoError(t, err)
 	assert.Equal(t, profiles, found)
 
@@ -126,7 +126,7 @@ func TestProfileSetMultiWritesToKafka(t *testing.T) {
 	// Read kafka to check that profiles have been written
 	consumer, err := tier.NewKafkaConsumer(profilelib.PROFILELOG_KAFKA_TOPIC, utils.RandString(6), kafka.DefaultOffsetPolicy)
 	assert.NoError(t, err)
-	found, err := ReadBatch(ctx, consumer, 4, time.Second*10)
+	found, err := readBatch(ctx, consumer, 4, time.Second*10)
 	assert.NoError(t, err)
 	assert.Equal(t, profiles, found)
 }
