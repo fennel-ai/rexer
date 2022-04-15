@@ -143,9 +143,12 @@ func (t twoLevelRedisStore) get(
 ) ([]value.Value, error) {
 	// track seen groups, so we do not send duplicate groups to redis
 	// 'seen' maps group to index in the array of groups sent to redis
-	seen := make(map[group]int)
+	seen := make(map[group]int, len(buckets))
 	var rkeys []string
 	slots := make([]slot, len(buckets))
+
+	// TODO: Consider creating a large enough buffer and construct slotKey and redisKey using partitions of the buffer
+	// to save some CPU cycles
 	for i, b := range buckets {
 		s, err := t.toSlot(aggIds[i], &b)
 		if err != nil {
@@ -208,14 +211,21 @@ func (t twoLevelRedisStore) GetMulti(
 	ctx context.Context, tier tier.Tier, aggIds []ftypes.AggId, buckets [][]Bucket, defaults []value.Value,
 ) ([][]value.Value, error) {
 	defer timer.Start(ctx, tier.ID, "twolevelredis.get_multi").Stop()
-	var ids_ []ftypes.AggId
-	var buckets_ []Bucket
-	var defaults_ []value.Value
+	sz := 0
+	for i := range buckets {
+		sz += len(buckets[i])
+	}
+	ids_ := make([]ftypes.AggId, sz)
+	buckets_ := make([]Bucket, sz)
+	defaults_ := make([]value.Value, sz)
+
+	curr := 0
 	for i := range buckets {
 		for _, b := range buckets[i] {
-			ids_ = append(ids_, aggIds[i])
-			buckets_ = append(buckets_, b)
-			defaults_ = append(defaults_, defaults[i])
+			ids_[curr] = aggIds[i]
+			buckets_[curr] = b
+			defaults_[curr] = defaults[i]
+			curr++
 		}
 	}
 	vals, err := t.get(ctx, tier, ids_, buckets_, defaults_)
@@ -237,10 +247,13 @@ func (t twoLevelRedisStore) GetMulti(
 func (t twoLevelRedisStore) set(ctx context.Context, tier tier.Tier, aggIds []ftypes.AggId, buckets []Bucket) error {
 	// track seen groups, so we do not send duplicate groups to redis
 	// 'seen' maps group to index in the array of groups sent to redis
-	seen := make(map[group]int)
+	seen := make(map[group]int, len(buckets))
 	var rkeys []string
 	slots := make([]slot, len(buckets))
-	keyCount := make(map[ftypes.AggId]int)
+	keyCount := make(map[ftypes.AggId]int, len(buckets))
+
+	// TODO: Consider creating a large enough buffer and construct slotKey and redisKey using partitions of the buffer
+	// to save some CPU cycles
 	for i, b := range buckets {
 		s, err := t.toSlot(aggIds[i], &b)
 		if err != nil {
