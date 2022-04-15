@@ -202,9 +202,10 @@ func (c cachedProvider) getBatched(ctx context.Context, tier tier.Tier, reqs []p
 	ind := 0
 	for k := range keyMap {
 		keys[ind] = k
+		ind++
 	}
 
-	var keyToVal sync.Map
+	keyToVal := new(sync.Map)
 	// run the logic as part of a txn
 	//
 	// NOTE: the logic here should assume that it could be retried if one of the provided keys
