@@ -171,6 +171,7 @@ func (c cachedProvider) getBatch(ctx context.Context, tier tier.Tier, profileKey
 	keys := make([]string, 0)
 	for k, _ := range keyToProfileKey {
 		keys = append(keys, k)
+
 	}
 
 	vals, err := tier.Cache.MGet(ctx, keys...)
@@ -224,6 +225,12 @@ func (c cachedProvider) getBatch(ctx context.Context, tier tier.Tier, profileKey
 		profileBatchRequest := make([]profile.ProfileItemKey, 0)
 		for _, key := range ks {
 			profileBatchRequest = append(profileBatchRequest, keyToProfileKey[key])
+		vals, err := tx.MGet(ctx, ks...)
+		if err != nil {
+			// if we got an error from cache, no need to panic - we just pretend nothing was found in cache
+			for i := range ks {
+				vals[i] = tier.Cache.Nil()
+			}
 		}
 
 		tosetKeys := make([]string, 0)
