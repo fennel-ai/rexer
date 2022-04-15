@@ -13,6 +13,7 @@ import (
 
 func StoreModel(ctx context.Context, tier tier.Tier, req lib.ModelInsertRequest) error {
 	// lock to avoid race condition when two models are being attempted to stored with room only for one more model
+	// TODO - does not work across servers, so should use distributed lock
 	tier.ModelStore.Lock()
 	defer tier.ModelStore.Unlock()
 
