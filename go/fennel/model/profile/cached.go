@@ -238,6 +238,11 @@ func (c cachedProvider) getBatch(ctx context.Context, tier tier.Tier, profileKey
 			profileBatchRequest = append(profileBatchRequest, keyToProfileKey[key])
 		vals, err := tx.MGet(ctx, ks...)
 		if err != nil {
+			// It is possible that upon getting the error (e.g. context cancelled), vals == nil or the length
+			// does not match `ks`
+			if vals == nil || len(vals) != len(ks) {
+				vals = make([]interface{}, len(ks))
+			}
 			// if we got an error from cache, no need to panic - we just pretend nothing was found in cache
 			for i := range ks {
 				vals[i] = tier.Cache.Nil()
