@@ -3,6 +3,7 @@
 package modelstore
 
 import (
+	"bytes"
 	"context"
 	"log"
 	"testing"
@@ -15,6 +16,34 @@ import (
 	"fennel/test"
 	"github.com/stretchr/testify/assert"
 )
+
+func TestStoreRemoveModel(t *testing.T) {
+	tier, err := test.Tier()
+	assert.NoError(t, err)
+	defer test.Teardown(tier)
+
+	c, err := sagemaker.NewClient(sagemaker.SagemakerArgs{
+		Region:                 "ap-south-1",
+		SagemakerExecutionRole: "arn:aws:iam::030813887342:role/service-role/AmazonSageMaker-ExecutionRole-20220315T123828",
+	})
+	assert.NoError(t, err)
+	tier.SagemakerClient = c
+
+	data, err := tier.S3Client.Download("model.tar.gz", "my-xgboost-test-bucket-2")
+	assert.NoError(t, err)
+	req := lib.ModelInsertRequest{
+		Name:             "some-model",
+		Version:          "v1",
+		Framework:        "xgboost",
+		FrameworkVersion: "1.3.1",
+		ModelFile:        bytes.NewReader(data),
+	}
+	req2 := req
+	req2.Name = "some-other-model"
+	assert.NoError(t, StoreModel(context.Background(), tier, req))
+	assert.NoError(t, StoreModel(context.Background(), tier, req2))
+	assert.NoError(t, RemoveModel(context.Background(), tier, req.Name, req.Version))
+}
 
 func TestEnsureEndpoint(t *testing.T) {
 	tier, err := test.Tier()
