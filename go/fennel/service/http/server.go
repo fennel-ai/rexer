@@ -493,7 +493,6 @@ func (m server) UploadModel(w http.ResponseWriter, req *http.Request) {
 		handleBadRequest(w, "", err)
 		return
 	}
-	modelFileName := formFile.Filename
 	values, err := getValuesFromMultiPartForm(form, []string{"name", "version", "framework", "framework_version"})
 	if err != nil {
 		handleBadRequest(w, "", err)
@@ -505,7 +504,6 @@ func (m server) UploadModel(w http.ResponseWriter, req *http.Request) {
 		Framework:        values["framework"],
 		FrameworkVersion: values["framework_version"],
 		ModelFile:        modelFile,
-		ModelFileName:    modelFileName,
 	}
 	err = modelstore.StoreModel(req.Context(), m.tier, modelReq)
 	if err != nil {
@@ -521,15 +519,14 @@ func (m server) DeleteModel(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 	var delReq struct {
-		Name     string
-		Version  string
-		FileName string
+		Name    string
+		Version string
 	}
 	if err := json.Unmarshal(data, &delReq); err != nil {
 		handleBadRequest(w, "invalid request: ", err)
 		return
 	}
-	err = modelstore.RemoveModel(req.Context(), m.tier, delReq.Name, delReq.Version, delReq.FileName)
+	err = modelstore.RemoveModel(req.Context(), m.tier, delReq.Name, delReq.Version)
 }
 
 func (m server) GetOperators(w http.ResponseWriter, req *http.Request) {

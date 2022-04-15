@@ -27,13 +27,14 @@ func StoreModel(ctx context.Context, tier tier.Tier, req lib.ModelInsertRequest)
 	}
 
 	// upload to s3
-	err = tier.S3Client.Upload(req.ModelFile, req.ModelFileName, tier.ModelStore.S3Bucket())
+	fileName := lib.GetContainerName(req.Name, req.Version)
+	err = tier.S3Client.Upload(req.ModelFile, fileName, tier.ModelStore.S3Bucket())
 	if err != nil {
 		return fmt.Errorf("failed to upload model to s3: %v", err)
 	}
 
 	// now insert into db
-	artifactPath := tier.ModelStore.GetArtifactPath(req.ModelFileName)
+	artifactPath := tier.ModelStore.GetArtifactPath(fileName)
 	model := lib.Model{
 		Name:             req.Name,
 		Version:          req.Version,
@@ -48,11 +49,11 @@ func StoreModel(ctx context.Context, tier tier.Tier, req lib.ModelInsertRequest)
 	return EnsureEndpointExists(ctx, tier)
 }
 
-func RemoveModel(ctx context.Context, tier tier.Tier, name, version, filename string) error {
+func RemoveModel(ctx context.Context, tier tier.Tier, name, version string) error {
 	tier.ModelStore.Lock()
 	defer tier.ModelStore.Unlock()
 	// delete from s3
-	err := tier.S3Client.Delete(filename, tier.ModelStore.S3Bucket())
+	err := tier.S3Client.Delete(lib.GetContainerName(name, version), tier.ModelStore.S3Bucket())
 	if err != nil {
 		return fmt.Errorf("failed to delete model from s3: %v", err)
 	}

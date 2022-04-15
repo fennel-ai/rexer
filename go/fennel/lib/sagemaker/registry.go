@@ -19,7 +19,6 @@ type ModelInsertRequest struct {
 	Framework        string
 	FrameworkVersion string
 	ModelFile        io.Reader
-	ModelFileName    string
 }
 
 type SagemakerHostedModel struct {
