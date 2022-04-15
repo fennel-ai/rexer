@@ -77,7 +77,7 @@ func (c Cache) RunAsTxn(ctx context.Context, txnLogic func(c cache.Txn, keys []s
 		slotToKeys[slot] = append(slotToKeys[slot], key)
 	}
 
-	var slotToResult sync.Map
+	slotToResult := new(sync.Map)
 	// NOTE: it is possible that the txnLogic successfully executes for a subset of keys
 	// and fails for the rest e.g.
 	//  i) a certain subset of keys are retried more than the rest (in which case increasing `r` should help)
