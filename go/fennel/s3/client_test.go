@@ -8,7 +8,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestClient_UploadDelete(t *testing.T) {
+func TestClient(t *testing.T) {
 	c := NewClient(S3Args{Region: "ap-south-1"})
 	contents := "some random text"
 	file := strings.NewReader(contents)
