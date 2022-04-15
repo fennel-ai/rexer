@@ -10,7 +10,6 @@ import (
 	"github.com/mtraver/base91"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
-	"go.uber.org/zap"
 
 	"fennel/lib/codex"
 	"fennel/lib/ftypes"
@@ -285,11 +284,11 @@ func (t twoLevelRedisStore) set(ctx context.Context, tier tier.Tier, aggIds []ft
 		ttls[i] = time.Second * time.Duration(t.retention)
 	}
 	t.logStats(groupVals, "set")
-	for name, numKeys := range keyCount {
-		tier.Logger.Info(
-			"Updating redis keys for aggregate", zap.Int("aggregate", int(name)), zap.Int("num_keys", numKeys),
-		)
-	}
+	// for name, numKeys := range keyCount {
+	// 	tier.Logger.Info(
+	// 	// "Updating redis keys for aggregate", zap.Int("aggregate", int(name)), zap.Int("num_keys", numKeys),
+	// 	)
+	// }
 	return setInRedis(ctx, tier, rkeys, groupVals, ttls)
 }
 
@@ -461,17 +460,26 @@ func setInRedis(ctx context.Context, tier tier.Tier, rkeys []string, values []va
 	if len(rkeys) != len(values) || len(rkeys) != len(ttls) {
 		return fmt.Errorf("can not set in redis: keys, values, ttls should be of equal length")
 	}
-	keySize, valSize := 0, 0
+	keySize, valSize, jsonValSize := 0, 0, 0
 	vals := make([]interface{}, len(rkeys))
 	for i := range rkeys {
 		s, err := value.Marshal(values[i])
 		if err != nil {
 			return err
 		}
+		j, err := values[i].MarshalJSON()
+		if err != nil {
+			return err
+		}
 		vals[i] = s
 		keySize += len(rkeys[i])
 		valSize += len(s)
+		jsonValSize += len(j)
 	}
+
+	// TODO: Add quantile like metric here!
+	fmt.Printf("==================== avg_key_size: %+v, avg_proto_val_size: %+v, avg_json_val_size: %+v\n", (keySize / len(rkeys)), (valSize / len(rkeys)), (jsonValSize / len(rkeys)))
+
 	metrics.WithLabelValues("redis_key_size_bytes").Observe(float64(keySize))
 	metrics.WithLabelValues("redis_value_size_bytes").Observe(float64(valSize))
 	return tier.Redis.MSet(ctx, rkeys, vals, ttls)

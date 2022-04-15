@@ -235,6 +235,83 @@ func testStorageMulti(t *testing.T, store BucketStore) {
 	}
 }
 
+func TestTwoLevelRedisStore_Format(t *testing.T) {
+	t.Parallel()
+	normalize := []float64{0.3, 0.7, 0.7, 0.7, 1.0, 1.0}
+	fmt.Printf("(int, double, bool, list, dict, nil) => : %+v\n", normalize)
+	t.Run("test_multi", func(t *testing.T) {
+		testStorageTypes(t, twoLevelRedisStore{period: 24 * 3600, retention: 0}, normalize)
+	})
+}
+
+func randomValue(n int, ratio []float64) value.Value {
+	var v value.Value
+	x := rand.Float64()
+	switch true {
+	case (0.0 <= x && x <= ratio[0]):
+		v = value.Int(rand.Intn(1000000))
+	case (ratio[0] <= x && x <= ratio[1]):
+		v = value.Double(rand.Float64() * 100)
+	case (ratio[1] <= x && x <= ratio[2]):
+		v = value.Bool(false)
+	case (ratio[2] <= x && x <= ratio[3]):
+		if n <= 0 {
+			return value.NewList([]value.Value{}...)
+		}
+		l := make([]value.Value, rand.Intn(10))
+		for i := range l {
+			l[i] = randomValue(n-1, ratio)
+		}
+		v = value.NewList(l...)
+	case (ratio[3] <= x && x <= ratio[4]):
+		if n <= 0 {
+			return value.NewDict(make(map[string]value.Value))
+		}
+		cnt := 0
+		m := make(map[string]value.Value, rand.Intn(10))
+		for {
+			m["foobar2"] = randomValue(n-1, ratio)
+			cnt++
+			if cnt >= len(m) {
+				break
+			}
+		}
+		v = value.NewDict(m)
+	case (ratio[4] <= x && x <= ratio[5]):
+		v = value.Nil
+	}
+	return v
+}
+
+func testStorageTypes(t *testing.T, store BucketStore, normalize []float64) {
+	tier, err := test.Tier()
+	assert.NoError(t, err)
+	defer test.Teardown(tier)
+	ctx := context.Background()
+
+	ids := make([]ftypes.AggId, 100)
+	for i := range ids {
+		ids[i] = ftypes.AggId(i + 1)
+	}
+
+	buckets := make([][]Bucket, len(ids))
+	for i := range ids {
+		ibuckets := make([]Bucket, rand.Intn(200))
+		for j := range ibuckets {
+			if rand.Intn(2) < 1 {
+				ibuckets[j] = Bucket{
+					Key: "foobar", Window: ftypes.Window_DAY, Width: 1, Index: uint64(rand.Intn(100000000)), Value: randomValue(3, normalize)}
+			} else {
+				ibuckets[j] = Bucket{
+					Key: "foobar", Window: ftypes.Window_MINUTE, Width: 6, Index: uint64(rand.Intn(100000000)), Value: randomValue(3, normalize)}
+			}
+		}
+		buckets[i] = ibuckets
+	}
+	err = store.SetMulti(ctx, tier, ids, buckets)
+	assert.NoError(t, err)
+}
+
 func testLarge(t *testing.T, store BucketStore, numAggs, numBuckets int) {
 	tier, err := test.Tier()
 	assert.NoError(t, err)
