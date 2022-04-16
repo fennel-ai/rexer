@@ -1,3 +1,5 @@
+//go:build sagemaker
+
 package s3
 
 import (
