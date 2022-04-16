@@ -43,6 +43,7 @@ func TestStoreRemoveModel(t *testing.T) {
 	assert.NoError(t, StoreModel(context.Background(), tier, req))
 	assert.NoError(t, StoreModel(context.Background(), tier, req2))
 	assert.NoError(t, RemoveModel(context.Background(), tier, req.Name, req.Version))
+	assert.NoError(t, RemoveModel(context.Background(), tier, req2.Name, req2.Version))
 }
 
 func TestEnsureEndpoint(t *testing.T) {
