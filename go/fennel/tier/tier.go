@@ -82,12 +82,14 @@ func (args TierArgs) Valid() error {
 	if args.BadgerDir == "" {
 		missingFields = append(missingFields, "BADGER_DIR")
 	}
-	if args.ModelStoreS3Bucket == "" {
-		missingFields = append(missingFields, "MODEL_STORE_S3_BUCKET")
-	}
-	if args.ModelStoreEndpointName == "" {
-		missingFields = append(missingFields, "MODEL_STORE_ENDPOINT")
-	}
+	/*
+		if args.ModelStoreS3Bucket == "" {
+			missingFields = append(missingFields, "MODEL_STORE_S3_BUCKET")
+		}
+		if args.ModelStoreEndpointName == "" {
+			missingFields = append(missingFields, "MODEL_STORE_ENDPOINT")
+		}
+	*/
 	if len(missingFields) > 0 {
 		return fmt.Errorf("missing fields: %s", strings.Join(missingFields, ", "))
 	}
