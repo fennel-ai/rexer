@@ -239,11 +239,11 @@ func (smc SMClient) UpdateEndpoint(ctx context.Context, endpoint lib.SagemakerEn
 	return nil
 }
 
-func (smc SMClient) Score(ctx context.Context, in *lib.ScoreRequest) (*lib.ScoreResponse, error) {
+func (smc SMClient) Score(ctx context.Context, endpointName string, in *lib.ScoreRequest) (*lib.ScoreResponse, error) {
 	// TODO: Find the correct adapter to use given the model framework.
 	adapter := XgboostAdapter{
 		client:            smc.runtimeClient,
-		endpointName:      "integration-test-endpoint",
+		endpointName:      endpointName,
 		containerHostname: lib.GetContainerName(in.ModelName, in.ModelVersion),
 	}
 	return adapter.Score(ctx, in)

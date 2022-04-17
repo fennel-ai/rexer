@@ -25,7 +25,7 @@ type SagemakerRegistry interface {
 }
 
 type InferenceServer interface {
-	Score(ctx context.Context, req *ScoreRequest) (*ScoreResponse, error)
+	Score(ctx context.Context, endpointName string, req *ScoreRequest) (*ScoreResponse, error)
 }
 
 type ScoreRequest struct {

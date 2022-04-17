@@ -138,7 +138,7 @@ func TestScoreSvm(t *testing.T) {
 		value.NewList(value.String("6:1 7:1 11:1 22:1 29:1 34:1 36:1 40:1 42:1 53:1 58:1 65:1 69:1 77:1 86:1 88:1 92:1 95:1 102:1 106:1 118:1 124:1")),
 		value.NewList(value.String("3:1 10:1 20:1 21:1 23:1 34:1 36:1 39:1 42:1 53:1 56:1 65:1 69:1 77:1 86:1 88:1 92:1 95:1 102:1 105:1 116:1 120:1")),
 	}
-	response, err := c.Score(context.Background(), &lib.ScoreRequest{
+	response, err := c.Score(context.Background(), "integration-test-endpoint", &lib.ScoreRequest{
 		ModelName:    "integration-test-xgboost-model",
 		ModelVersion: "v1",
 		FeatureLists: featureVectors,
@@ -155,7 +155,7 @@ func TestScoreCsv(t *testing.T) {
 	featureVectors := []value.List{
 		csv.(value.List),
 	}
-	response, err := c.Score(context.Background(), &lib.ScoreRequest{
+	response, err := c.Score(context.Background(), "integration-test-endpoint", &lib.ScoreRequest{
 		ModelName:    "integration-test-xgboost-model",
 		ModelVersion: "v1",
 		FeatureLists: featureVectors,

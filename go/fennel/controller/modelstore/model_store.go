@@ -7,11 +7,12 @@ import (
 	"time"
 
 	lib "fennel/lib/sagemaker"
+	"fennel/lib/value"
 	db "fennel/model/sagemaker"
 	"fennel/tier"
 )
 
-func StoreModel(ctx context.Context, tier tier.Tier, req lib.ModelInsertRequest) error {
+func Store(ctx context.Context, tier tier.Tier, req lib.ModelInsertRequest) error {
 	// lock to avoid race condition when two models are being attempted to stored with room only for one more model
 	// TODO - does not work across servers, so should use distributed lock
 	tier.ModelStore.Lock()
@@ -23,7 +24,7 @@ func StoreModel(ctx context.Context, tier tier.Tier, req lib.ModelInsertRequest)
 	if err != nil {
 		return fmt.Errorf("failed to get active models from db: %v", err)
 	}
-	if len(activeModels) >= 15 {
+	if len(activeModels) >= 25 {
 		return fmt.Errorf("cannot have more than 15 active models: %v", err)
 	}
 
@@ -50,7 +51,7 @@ func StoreModel(ctx context.Context, tier tier.Tier, req lib.ModelInsertRequest)
 	return EnsureEndpointExists(ctx, tier)
 }
 
-func RemoveModel(ctx context.Context, tier tier.Tier, name, version string) error {
+func Remove(ctx context.Context, tier tier.Tier, name, version string) error {
 	tier.ModelStore.Lock()
 	defer tier.ModelStore.Unlock()
 	// delete from s3
@@ -63,6 +64,16 @@ func RemoveModel(ctx context.Context, tier tier.Tier, name, version string) erro
 		return fmt.Errorf("failed to deactivate model in db: %v", err)
 	}
 	return EnsureEndpointExists(ctx, tier)
+}
+
+func Score(ctx context.Context, tier tier.Tier, req lib.ScoreRequest) ([]value.Value, error) {
+	tier.ModelStore.Lock()
+	defer tier.ModelStore.Unlock()
+	response, err := tier.SagemakerClient.Score(ctx, tier.ModelStore.EndpointName(), &req)
+	if err != nil {
+		return nil, fmt.Errorf("failed to score model: %v", err)
+	}
+	return response.Scores, nil
 }
 
 func EnsureEndpointExists(ctx context.Context, tier tier.Tier) error {
