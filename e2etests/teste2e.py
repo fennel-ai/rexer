@@ -1,7 +1,6 @@
 import functools
 import os
 import random
-import string
 import unittest
 
 import time
@@ -10,7 +9,7 @@ import lib
 import rexerclient as rex
 from rexerclient import client
 from rexerclient.models import action, profile
-from rexerclient.rql import var, cond, in_, len_, op
+from rexerclient.rql import var, op, cond, in_, len_, op
 
 URL = 'http://localhost:2425'
 
@@ -419,6 +418,22 @@ class TestEndToEnd(unittest.TestCase):
                 time.sleep(5)
 
         self.assertTrue(found)
+
+    @unittest.skip
+    @tiered
+    def test_something(self):
+        c = client.Client(URL)
+        c.upload_model('name', 'v2', 'xgboost', '1.31.0', 'model.tar.gz')
+        c.delete_model('name', 'v2')
+
+        # test scoring a prepared model
+        res = c.score_model('integration-test-xgboost-model', 'v1', [[
+            0, 0, 0, 0, 0, 0, 0, 1, 0, 1, 0, 1, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1, 0,
+            0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 1, 0,
+            0, 0, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1, 0, 0, 1,
+            0, 0, 1, 0, 0, 0, 0, 0, 1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0,
+        ]])
+        self.assertEqual(len(res), 1)
 
 
 @unittest.skip
