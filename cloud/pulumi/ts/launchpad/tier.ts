@@ -11,7 +11,7 @@ import * as configs from "../configs";
 import * as ingress from "../ingress";
 import * as ns from "../k8s-ns";
 import * as glue from "../glue";
-import setupModelStore, * as modelStore from "../model-store/tier";
+import * as modelStore from "../model-store";
 
 import * as process from "process";
 
@@ -76,7 +76,6 @@ type inputType = {
     httpServerConf?: HttpServerConf,
     countAggrConf?: CountAggrConf,
     nodeInstanceRole: string,
-    modelStoreBucket: string,
 }
 
 const parseConfig = (): inputType => {
@@ -122,7 +121,6 @@ const parseConfig = (): inputType => {
         countAggrConf: config.getObject(nameof<inputType>("countAggrConf")),
 
         nodeInstanceRole: config.require(nameof<inputType>("nodeInstanceRole")),
-        modelStoreBucket: config.require(nameof<inputType>("modelStoreBucket")),
     };
 };
 
@@ -232,12 +230,11 @@ const setupResources = async () => {
         script: input.glueSourceScript,
     })
     // setup model store for this tier
-    const modelStoreOutput = await setupModelStore({
+    const modelStoreOutput = await modelStore.setup({
         region: input.region,
         roleArn: input.roleArn,
         tierId: input.tierId,
         nodeInstanceRole: input.nodeInstanceRole,
-        planeModelStoreBucket: input.modelStoreBucket,
     })
     configsOutput.apply(async () => {
         // setup api-server and countaggr after configs are setup.
@@ -263,7 +260,8 @@ const setupResources = async () => {
         });
     })
     return {
-        "ingress": ingressOutput
+        "ingress": ingressOutput,
+        "modelStore": modelStoreOutput,
     }
 };
 
@@ -315,7 +313,6 @@ type TierInput = {
 
     // model store configuration
     nodeInstanceRole: string,
-    modelStoreBucket: string,
 }
 
 const setupTier = async (args: TierInput, destroy?: boolean) => {
@@ -386,7 +383,6 @@ const setupTier = async (args: TierInput, destroy?: boolean) => {
     }
 
     await stack.setConfig(nameof<inputType>("nodeInstanceRole"), {value: args.nodeInstanceRole})
-    await stack.setConfig(nameof<inputType>("modelStoreBucket"), {value: args.modelStoreBucket})
 
     console.info("config set");
 

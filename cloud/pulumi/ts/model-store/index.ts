@@ -15,17 +15,15 @@ export type inputType = {
     roleArn: string,
     tierId: number,
     nodeInstanceRole: string,
-    planeModelStoreBucket: string,
 }
 
 // should not contain any pulumi.Output<> types.
 export type outputType = {
-    tierModelStoreDir: string
+    modelStoreBucket: string
 }
 
-function setupModelStoreAccess(provider: aws.Provider, input: inputType, folderName: pulumi.Output<string>) {
-    const policyStr = folderName.apply(folder => {
-        return `{
+function setupModelStoreAccess(provider: aws.Provider, input: inputType, bucketName: string) {
+    const policyStr = `{
           "Version": "2012-10-17",
           "Statement": [
             {
@@ -34,7 +32,7 @@ function setupModelStoreAccess(provider: aws.Provider, input: inputType, folderN
                 "s3:ListBucket",
                 "s3:ListBucket2"
               ],
-              "Resource": "arn:aws:s3:::${input.planeModelStoreBucket}"
+              "Resource": "arn:aws:s3:::${bucketName}"
             },
             {
               "Effect": "Allow",
@@ -43,12 +41,11 @@ function setupModelStoreAccess(provider: aws.Provider, input: inputType, folderN
                 "s3:GetObject",
                 "s3:DeleteObject"
               ],
-              "Resource": "arn:aws:s3:::${input.planeModelStoreBucket}/${folder}/*"
+              "Resource": "arn:aws:s3:::${bucketName}/*"
             }
           ]
         }
         `
-    });
 
     const policy = new aws.iam.Policy(`t-${input.tierId}-node-model-storage-policy`, {
         namePrefix: `t-${input.tierId}-NodeModelStoragePolicy-`,
@@ -61,8 +58,8 @@ function setupModelStoreAccess(provider: aws.Provider, input: inputType, folderN
     }, { provider: provider });
 }
 
-const setupModelStore = async (input: inputType): Promise<pulumi.Output<outputType>> => {
-    // create s3 bucket for the plane
+export const setup = async (input: inputType): Promise<pulumi.Output<outputType>> => {
+    // create s3 bucket for the tier
     const provider = new aws.Provider("tier-model-store-dir-provider", {
         region: <aws.Region>input.region,
         assumeRole: {
@@ -72,21 +69,18 @@ const setupModelStore = async (input: inputType): Promise<pulumi.Output<outputTy
         }
     });
 
-    // The object being created here is a "folder", under which the models will be saved
-    const object = new aws.s3.BucketObject("tier-model-store-dir", {
-        bucket: input.planeModelStoreBucket,
+    const bucketName = `t-${input.tierId}-model-store`
+    const bucket = new aws.s3.Bucket("tier-model-store-bucket", {
         acl: "private",
-        key: `t-${input.tierId}/`,
-        // Destroy the folder and all the objects (models in this case) underneath it
+        bucket: bucketName,
+        // delete all the objects so that the bucket can be deleted without error
         forceDestroy: true,
     }, {provider});
 
     // setup EKS worker node have access to the S3 bucket and the folder
-    setupModelStoreAccess(provider, input, object.key);
+    setupModelStoreAccess(provider, input, bucketName);
 
     return pulumi.output({
-        tierModelStoreDir: object.key,
+        modelStoreBucket: bucketName,
     })
 }
-
-export default setupModelStore;
