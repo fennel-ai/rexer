@@ -239,7 +239,6 @@ func (c cachedProvider) getBatch(ctx context.Context, tier tier.Tier, profileKey
 				vals[i] = tier.Cache.Nil()
 			}
 
-
 		}
 
 		tosetKeys := make([]string, 0)

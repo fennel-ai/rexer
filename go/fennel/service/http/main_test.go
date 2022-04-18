@@ -297,8 +297,6 @@ func TestProfileServerClient(t *testing.T) {
 	// we can also GetProfile it without using the specific version number
 	checkGetSet(t, c, true, "1", 1, 0, "age", expected)
 
-	// SetProfile few more key/value pairs and verify it works
-
 	profileList = append(profileList, checkGetSet(t, c, false, "1", 2, 2, "age", value.Nil))
 	profileList = append(profileList, checkGetSet(t, c, false, "1", 3, 2, "age", value.Int(1)))
 

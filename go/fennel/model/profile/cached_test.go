@@ -57,7 +57,6 @@ func TestCachedDBBasic(t *testing.T) {
 	t.Run("cache_db_set_again", func(t *testing.T) {
 		testSetAgain(t, provider)
 	})
-
 	// t.Run("cache_db_set_get_batch", func(t *testing.T) {
 	// 	testSetGetBatch(t, provider)
 	// })
