@@ -239,6 +239,7 @@ func (c cachedProvider) getBatch(ctx context.Context, tier tier.Tier, profileKey
 			for i := range ks {
 				vals[i] = tier.Cache.Nil()
 			}
+
 		}
 
 		tosetKeys := make([]string, 0)
@@ -294,24 +295,3 @@ func makeKey(pk profile.ProfileItemKey) string {
 	prefix := fmt.Sprintf("%s:%d", cacheName(), cacheVersion)
 	return fmt.Sprintf("%s:{%s:%d:%s}", prefix, pk.OType, pk.Oid, pk.Key)
 }
-<<<<<<< HEAD
-=======
-
-// func parseKey(key string) (profileKey, error) {
-// 	re, err := regexp.Compile(":{(.+):(\\d+):(.+)}:")
-// 	if err != nil {
-// 		return profileKey{}, err
-// 	}
-// 	match := re.FindStringSubmatch(key)
-// 	if match != nil {
-// 		// match[0] is the string matched
-// 		vid := profileKey{otype: ftypes.OType(match[1]), key: match[3]}
-// 		vid.oid, err = strconv.ParseUint(match[2], 10, 64)
-// 		if err != nil {
-// 			return profileKey{}, err
-// 		}
-// 		return vid, nil
-// 	}
-// 	return profileKey{}, fmt.Errorf("failed to parse key: %s", key)
-// }
->>>>>>> fa72b940 (rebase)

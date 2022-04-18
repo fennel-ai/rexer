@@ -26,10 +26,14 @@ func TestServer_ProfileHandler(t *testing.T) {
 	valSer := value.ToJSON(val)
 	// Prepare the expected ProfileItem
 <<<<<<< HEAD
+<<<<<<< HEAD
 	expected := profile.NewProfileItemKey("abc", math.MaxUint64, "xyz")
 =======
 	expected := profile.NewProfileItem("abc", math.MaxUint64, "xyz", val, 0)
 >>>>>>> fa72b940 (rebase)
+=======
+	expected := profile.NewProfileItemKey("abc", math.MaxUint64, "xyz")
+>>>>>>> abfe445a (rebase)
 
 	// Set up the endpoint server
 	es := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
