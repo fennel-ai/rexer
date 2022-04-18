@@ -48,43 +48,6 @@ func NewProfileItem(otype string, oid uint64, k string, v value.Value, updateTim
 	}
 }
 
-// func NewProfileItemSer(otype string, oid uint64, key string, version uint64, val []byte) ProfileItemSer {
-// 	return ProfileItemSer{
-// 		ftypes.OType(otype), oid, key, version, val,
-// 	}
-// }
-
-// // ToProfileItem converts a ProfileItemSer to ProfileItem
-// func (ser *ProfileItemSer) ToProfileItem() (*ProfileItem, error) {
-// 	pr := ProfileItem{ser.OType, ser.Oid, ser.Key, ser.UpdateTime, value.Nil}
-// 	val, err := value.FromJSON(ser.Value)
-// 	if err != nil {
-// 		return nil, err
-// 	}
-// 	pr.Value = val
-// 	return &pr, nil
-// }
-
-// func FromProfileItemSerList(plSer []ProfileItemSer) ([]ProfileItem, error) {
-// 	pl := make([]ProfileItem, len(plSer))
-// 	for i, prSer := range plSer {
-// 		pr, err := prSer.ToProfileItem()
-// 		if err != nil {
-// 			return nil, err
-// 		}
-// 		pl[i] = *pr
-// 	}
-// 	return pl, nil
-// }
-
-// type ProfileItemKey struct {
-// 	OType      ftypes.OType `db:"otype" json:"OType"`
-// 	Oid        uint64       `db:"oid" json:"Oid"`
-// 	Key        string       `db:"zkey" json:"Key"`
-// 	Value      []byte       `db:"value" json:"Value"`
-// 	UpdateTime uint64       `db:"version" json:"Version"`
-// }
-
 func (pi *ProfileItemKey) Validate() error {
 	if len(pi.OType) == 0 {
 		return fmt.Errorf("otype can not be empty")

@@ -42,13 +42,3 @@ func makeProfileItem(otype string, oid uint64, k string, ver uint64, val value.V
 		Value:      val,
 	}
 }
-
-// func editProfile(p profile.ProfileItem, updateTime uint64) profile.ProfileItem {
-// 	return profile.ProfileItem{
-// 		OType:      p.OType,
-// 		Oid:        p.Oid,
-// 		Key:        p.Key,
-// 		UpdateTime: updateTime,
-// 		Value:      nil,
-// 	}
-// }

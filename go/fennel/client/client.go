@@ -205,23 +205,6 @@ func (c *Client) SetProfiles(request []profileLib.ProfileItem) error {
 	return err
 }
 
-// func (c *Client) GetProfileMulti(request profileLib.ProfileItemKey) ([]profileLib.ProfileItem, error) {
-// 	req, err := json.Marshal(request)
-// 	if err != nil {
-// 		return nil, err
-// 	}
-// 	response, err := c.postJSON(req, c.getProfileMultiURL())
-// 	if err != nil {
-// 		return nil, err
-// 	}
-// 	// now read all profiles
-// 	var profiles []profileLib.ProfileItem
-// 	if err = json.Unmarshal(response, &profiles); err != nil {
-// 		return nil, fmt.Errorf("unmarshal error: %v", err)
-// 	}
-// 	return profiles, nil
-// }
-
 func (c *Client) FetchActions(request action.ActionFetchRequest) ([]action.Action, error) {
 	req, err := json.Marshal(request)
 	if err != nil {

@@ -147,41 +147,6 @@ func (D dbProvider) get(ctx context.Context, tier tier.Tier, profileKey profile.
 	}
 
 	return profiles[0], nil
-	//var err error
-
-	// profilereqs := make([]profileItemSer, 0)
-	// fmt.Println("Here")
-
-	// // if version isn't given, just pick the highest version
-	// fmt.Println("Going to query")
-
-	// emptyProfile1 := profile.NewProfileItem(string(profileKey.OType), profileKey.Oid, profileKey.Key, value.Nil, 0)
-
-	// return emptyProfile1, nil
-	// err = tier.DB.SelectContext(ctx, &profilereqs, `
-	// SELECT otype, oid, zkey, value, version
-	// FROM profile
-	// WHERE
-	// 	otype = ?
-	// 	AND oid = ?
-	// 	AND zkey = ?
-	// LIMIT 1
-	// `, profileKey.OType, profileKey.Oid, profileKey.Key,
-	// )
-
-	// emptyProfile := profile.NewProfileItem(string(profileKey.OType), profileKey.Oid, profileKey.Key, value.Nil, 0)
-	// if err != nil {
-	// 	return emptyProfile, err
-	// } else if len(profilereqs) == 0 {
-	// 	// i.e no valid value is found, so we return nil
-	// 	return emptyProfile, nil
-	// } else {
-	// 	if len(profilereqs) >= 1 {
-	// 		// Check how errors should be handled
-	// 		tier.Logger.Error("Found more than one profile in DB Get")
-	// 	}
-	// 	return profilereqs[0].toProfileItem()
-	// }
 }
 
 // getBatched returns the version for (otype, oid, key)
@@ -248,38 +213,3 @@ func (D dbProvider) getBatch(ctx context.Context, tier tier.Tier, profileKeys []
 }
 
 var _ provider = dbProvider{}
-
-// // Whatever properties of 'request' are non-zero are used to filter eligible profiles
-// func GetMulti(ctx context.Context, tier tier.Tier, request profile.ProfileItemKey) ([]profile.ProfileItemSer, error) {
-// 	query := "SELECT * FROM profile"
-// 	clauses := make([]string, 0)
-
-// 	if len(request.OType) != 0 {
-// 		clauses = append(clauses, "otype = :otype")
-// 	}
-// 	if request.Oid != 0 {
-// 		clauses = append(clauses, "oid = :oid")
-// 	}
-// 	if len(request.Key) != 0 {
-// 		clauses = append(clauses, "zkey = :zkey")
-// 	}
-// 	if request.UpdateTime != 0 {
-// 		clauses = append(clauses, "version = :version")
-// 	}
-
-// 	if len(clauses) > 0 {
-// 		query = fmt.Sprintf("%s WHERE %s", query, strings.Join(clauses, " AND "))
-// 	}
-// 	query = fmt.Sprintf("%s LIMIT 1000;", query)
-// 	profiles := make([]profile.ProfileItemSer, 0)
-// 	statement, err := tier.DB.PrepareNamedContext(ctx, query)
-// 	if err != nil {
-// 		return nil, err
-// 	}
-// 	err = statement.Select(&profiles, request)
-// 	if err != nil {
-// 		return nil, err
-// 	} else {
-// 		return profiles, nil
-// 	}
-// }

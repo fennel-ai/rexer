@@ -33,24 +33,6 @@ func ToProtoProfileItem(pi *ProfileItem) (ProtoProfileItem, error) {
 	}, nil
 }
 
-// func FromProtoProfileItemKey(ppfr *ProtoProfileItemKey) ProfileItemKey {
-// 	return ProfileItemKey{
-// 		ftypes.OType(ppfr.OType),
-// 		ppfr.Oid,
-// 		ppfr.Key,
-// 		ppfr.Value,
-// 		ppfr.UpdateTime,
-// 	}
-// }
-
-// func ToProtoProfileItemKey(pfr *ProfileItemKey) ProtoProfileItemKey {
-// 	return ProtoProfileItemKey{
-// 		OType: string(pfr.OType),
-// 		Oid:   pfr.Oid,
-// 		Key:   pfr.Key,
-// 	}
-// }
-
 func FromProtoProfileList(profileList *ProtoProfileList) ([]ProfileItem, error) {
 	profiles := make([]ProfileItem, len(profileList.Profiles))
 	for i, ppr := range profileList.Profiles {
