@@ -128,7 +128,7 @@ func (c Client) postJSON(data []byte, url string) ([]byte, error) {
 // GetProfile if no matching value is found, a nil pointer is returned with no error
 // If a matching value is found, a valid Value pointer is returned with no error
 // If an error occurs, a nil pointer is returned with a non-nil error
-func (c *Client) GetProfile(request *profileLib.ProfileItem) (*value.Value, error) {
+func (c *Client) GetProfile(request *profileLib.ProfileItemKey) (*profile.ProfileItem, error) {
 	// validate and convert to json
 	if err := request.Validate(); err != nil {
 		return nil, fmt.Errorf("invalid request: %v", err)
@@ -151,7 +151,8 @@ func (c *Client) GetProfile(request *profileLib.ProfileItem) (*value.Value, erro
 	if err != nil {
 		return nil, err
 	} else {
-		return &v, nil
+		prof := profile.NewProfileItem(string(request.OType), request.Oid, request.Key, v, 0)
+		return &prof, nil
 	}
 }
 
@@ -204,22 +205,22 @@ func (c *Client) SetProfiles(request []profileLib.ProfileItem) error {
 	return err
 }
 
-func (c *Client) GetProfileMulti(request profileLib.ProfileFetchRequest) ([]profileLib.ProfileItem, error) {
-	req, err := json.Marshal(request)
-	if err != nil {
-		return nil, err
-	}
-	response, err := c.postJSON(req, c.getProfileMultiURL())
-	if err != nil {
-		return nil, err
-	}
-	// now read all profiles
-	var profiles []profileLib.ProfileItem
-	if err = json.Unmarshal(response, &profiles); err != nil {
-		return nil, fmt.Errorf("unmarshal error: %v", err)
-	}
-	return profiles, nil
-}
+// func (c *Client) GetProfileMulti(request profileLib.ProfileItemKey) ([]profileLib.ProfileItem, error) {
+// 	req, err := json.Marshal(request)
+// 	if err != nil {
+// 		return nil, err
+// 	}
+// 	response, err := c.postJSON(req, c.getProfileMultiURL())
+// 	if err != nil {
+// 		return nil, err
+// 	}
+// 	// now read all profiles
+// 	var profiles []profileLib.ProfileItem
+// 	if err = json.Unmarshal(response, &profiles); err != nil {
+// 		return nil, fmt.Errorf("unmarshal error: %v", err)
+// 	}
+// 	return profiles, nil
+// }
 
 func (c *Client) FetchActions(request action.ActionFetchRequest) ([]action.Action, error) {
 	req, err := json.Marshal(request)

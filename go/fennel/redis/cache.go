@@ -65,6 +65,7 @@ func (c Cache) RunAsTxn(ctx context.Context, txnLogic func(c cache.Txn, keys []s
 	if _, ok := c.client.client.(*redis.Tx); ok {
 		return fmt.Errorf("can't run txns on redis.Tx object")
 	}
+
 	// `Watch` on a multi-node setup requires all the keys being watched be on the same "slot". We distribute
 	// the keys here per slot and run watch on each key set of a slot
 	rc := c.client.client.(*redis.ClusterClient)

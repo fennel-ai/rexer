@@ -12,19 +12,21 @@ import (
 	"fennel/lib/action"
 	"fennel/lib/profile"
 	"fennel/lib/value"
+
 	"github.com/stretchr/testify/assert"
 )
 
 func TestServer_ProfileHandler(t *testing.T) {
 	// Prepare only valid request that will be sent
-	reqStr := fmt.Sprintf("/profile/?otype=%s&oid=%d&key=%s&version=%d",
-		"abc", uint64(math.MaxUint64), "xyz", uint64(math.MaxUint64-1))
+	reqStr := fmt.Sprintf("/profile/?otype=%s&oid=%d&key=%s",
+		"abc", uint64(math.MaxUint64), "xyz")
 	req := httptest.NewRequest("GET", reqStr, nil)
-	// Prepare the expected ProfileItem
-	expected := profile.NewProfileItem("abc", math.MaxUint64, "xyz", math.MaxUint64-1)
 	// Prepare value that will be returned by the server
 	val := value.Double(3.14)
 	valSer := value.ToJSON(val)
+	// Prepare the expected ProfileItem
+	expected := profile.NewProfileItem("abc", math.MaxUint64, "xyz", val, 0)
+
 	// Set up the endpoint server
 	es := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// Read request
@@ -35,7 +37,7 @@ func TestServer_ProfileHandler(t *testing.T) {
 		var pi profile.ProfileItem
 		err = json.Unmarshal(data, &pi)
 		assert.NoError(t, err)
-		assert.True(t, expected.Equals(&pi))
+		assert.Equal(t, expected, pi)
 		// Write back prepared value
 		w.Write(valSer)
 	}))
@@ -71,16 +73,16 @@ func TestServer_ProfileHandler(t *testing.T) {
 
 func TestServer_ProfileMultiHandler(t *testing.T) {
 	// Prepare only valid request that will be sent
-	reqStr := fmt.Sprintf("/profile_multi/?otype=%s&oid=%d&key=%s&version=%d",
-		"abc", uint64(math.MaxUint64), "xyz", uint64(math.MaxUint64-1))
+	reqStr := fmt.Sprintf("/profile_multi/?otype=%s&oid=%d&key=%s",
+		"abc", uint64(math.MaxUint64), "xyz")
 	req := httptest.NewRequest("GET", reqStr, nil)
-	// Prepare the expected ProfileFetchRequest
-	expected := profile.ProfileFetchRequest{OType: "abc", Oid: math.MaxUint64, Key: "xyz", Version: math.MaxUint64 - 1}
+	// Prepare the expected ProfileItemKey
+	expected := profile.ProfileItemKey{OType: "abc", Oid: math.MaxUint64, Key: "xyz"}
 	// Prepare profiles that will be returned by the server
 	profiles := make([]profile.ProfileItem, 0)
 	profiles = append(profiles, profile.ProfileItem{OType: "1", Oid: math.MaxUint64 - 2, Key: "3",
-		Version: math.MaxUint64 - 4, Value: value.Int(5)})
-	profiles = append(profiles, profile.ProfileItem{OType: "5", Oid: 4, Key: "3", Version: 2, Value: value.Int(1)})
+		UpdateTime: math.MaxUint64 - 4, Value: value.Int(5)})
+	profiles = append(profiles, profile.ProfileItem{OType: "5", Oid: 4, Key: "3", UpdateTime: 2, Value: value.Int(1)})
 	profilesSer, err := json.Marshal(profiles)
 	assert.NoError(t, err)
 	// Set up the endpoint server
@@ -89,8 +91,8 @@ func TestServer_ProfileMultiHandler(t *testing.T) {
 		data, err := ioutil.ReadAll(r.Body)
 		assert.NoError(t, err)
 		r.Body.Close()
-		// Verify request unmarshals properly into a ProfileFetchRequest
-		var pfr profile.ProfileFetchRequest
+		// Verify request unmarshals properly into a ProfileItemKey
+		var pfr profile.ProfileItemKey
 		err = json.Unmarshal(data, &pfr)
 		assert.NoError(t, err)
 		assert.Equal(t, expected, pfr)

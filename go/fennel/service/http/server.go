@@ -258,7 +258,7 @@ func (m server) GetProfile(w http.ResponseWriter, req *http.Request) {
 		log.Printf("Error: %v", err)
 		return
 	}
-	var request profilelib.ProfileItem
+	var request profilelib.ProfileItemKey
 	if err := json.Unmarshal(data, &request); err != nil {
 		http.Error(w, fmt.Sprintf("invalid request: %v", err), http.StatusBadRequest)
 		log.Printf("Error: %v", err)
@@ -271,14 +271,14 @@ func (m server) GetProfile(w http.ResponseWriter, req *http.Request) {
 		log.Printf("Error: %v", err)
 		return
 	}
-	if val == nil {
+	if val.Value == nil {
 		// no error but no value to return either, so we just write nothing and client knows that
 		// empty response means no value
 		fmt.Fprintf(w, "")
 		return
 	}
 	// now serialize value to JSON and write
-	w.Write(value.ToJSON(val))
+	w.Write(value.ToJSON(val.Value))
 }
 
 // TODO: add some locking etc to ensure that if two requests try to modify
@@ -332,14 +332,14 @@ func (m server) GetProfileMulti(w http.ResponseWriter, req *http.Request) {
 		log.Printf("Error: %v", err)
 		return
 	}
-	var request profilelib.ProfileFetchRequest
+	var request []profilelib.ProfileItemKey
 	if err := json.Unmarshal(data, &request); err != nil {
 		http.Error(w, fmt.Sprintf("invalid request: %v", err), http.StatusBadRequest)
 		log.Printf("Error: %v", err)
 		return
 	}
 	// send to controller
-	profiles, err := profile2.GetMulti(req.Context(), m.tier, request)
+	profiles, err := profile2.GetBatch(req.Context(), m.tier, request)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		log.Printf("Error: %v", err)
