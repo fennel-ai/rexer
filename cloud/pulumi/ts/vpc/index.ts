@@ -1,6 +1,5 @@
 import * as pulumi from "@pulumi/pulumi";
 import * as aws from "@pulumi/aws"
-import * as process from "process";
 import * as netmask from "netmask";
 
 // TODO: use version from common library.
@@ -43,17 +42,6 @@ export type outputType = {
     publicNacl: string,
     privateNacl: string,
     azs: string[]
-}
-
-const parseConfig = (): inputType => {
-    const config = new pulumi.Config();
-    return {
-        cidr: config.require(nameof<inputType>("cidr")),
-        region: config.require(nameof<inputType>("region")),
-        roleArn: config.require(nameof<inputType>("roleArn")),
-        controlPlane: config.requireObject(nameof<inputType>("controlPlane")),
-        planeId: config.requireNumber(nameof<inputType>("planeId")),
-    }
 }
 
 // TODO: Tighten rules for more security.
@@ -362,19 +350,3 @@ export const setup = async (input: inputType): Promise<pulumi.Output<outputType>
 
     return output
 }
-
-async function run() {
-    let output: pulumi.Output<outputType> | undefined;
-    // Run the main function only if this program is run through the pulumi CLI.
-    // Unfortunately, in that case the argv0 itself is not "pulumi", but the full
-    // path of node: e.g. /nix/store/7q04aq0sq6im9a0k09gzfa1xfncc0xgm-nodejs-14.18.1/bin/node
-    if (process.argv0 !== 'node') {
-        pulumi.log.info("Running...")
-        const input: inputType = parseConfig();
-        output = await setup(input)
-    }
-    return output
-}
-
-
-export const output = await run();

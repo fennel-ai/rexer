@@ -1,6 +1,5 @@
 import * as pulumi from "@pulumi/pulumi";
 import * as aws from "@pulumi/aws";
-import * as process from "process";
 
 // TODO: use version from common library.
 // operator for type-safety for string key access:
@@ -40,20 +39,6 @@ const DEFAULT_EVICTION_POLICY = "allkeys-lru";
 const NODE_TYPE = "cache.t4g.medium";
 const DEFAULT_NODE_GROUPS = 2;
 const DEFAULT_REPLICAS_PER_NODE_GROUPS = 1;
-
-const parseConfig = (): inputType => {
-    const config = new pulumi.Config();
-    return {
-        region: config.require(nameof<inputType>("region")),
-        roleArn: config.require(nameof<inputType>("roleArn")),
-        vpcId: pulumi.output(config.require(nameof<inputType>("vpcId"))),
-        connectedSecurityGroups: config.requireObject(nameof<inputType>("connectedSecurityGroups")),
-        planeId: config.requireNumber(nameof<inputType>("planeId")),
-        nodeType: config.require(nameof<inputType>("nodeType")),
-        numNodeGroups: config.requireNumber(nameof<inputType>("numNodeGroups")),
-        replicasPerNodeGroup: config.requireNumber(nameof<inputType>("replicasPerNodeGroup"))
-    }
-}
 
 export const setup = async (input: inputType): Promise<pulumi.Output<outputType>> => {
 
@@ -146,19 +131,3 @@ export const setup = async (input: inputType): Promise<pulumi.Output<outputType>
 
     return output
 }
-
-async function run() {
-    let output: pulumi.Output<outputType> | undefined;
-    // Run the main function only if this program is run through the pulumi CLI.
-    // Unfortunately, in that case the argv0 itself is not "pulumi", but the full
-    // path of node: e.g. /nix/store/7q04aq0sq6im9a0k09gzfa1xfncc0xgm-nodejs-14.18.1/bin/node
-    if (process.argv0 !== 'node') {
-        pulumi.log.info("Running...")
-        const input: inputType = parseConfig();
-        output = await setup(input)
-    }
-    return output
-}
-
-
-export const output = await run();

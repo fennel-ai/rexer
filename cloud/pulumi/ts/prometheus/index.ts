@@ -149,17 +149,6 @@ const prometheusScrapeConfigs = {
     }],
 }
 
-const parseConfig = (): inputType => {
-    const config = new pulumi.Config();
-    return {
-        useAMP: config.requireBoolean(nameof<inputType>("useAMP")),
-        kubeconfig: config.require(nameof<inputType>("kubeconfig")),
-        region: config.require(nameof<inputType>("region")),
-        roleArn: config.require(nameof<inputType>("roleArn")),
-        planeId: config.requireNumber(nameof<inputType>("planeId")),
-    }
-}
-
 export const setupAMP = async (input: inputType): Promise<pulumi.Output<outputType>> => {
     const awsProvider = new aws.Provider("prom-aws-provider", {
         region: <aws.Region>input.region,
@@ -262,19 +251,3 @@ export const setup = async (input: inputType): Promise<pulumi.Output<outputType>
     }
     return setupPrometheus(input)
 }
-
-async function run() {
-    let output: pulumi.Output<outputType> | undefined;
-    // Run the main function only if this program is run through the pulumi CLI.
-    // Unfortunately, in that case the argv0 itself is not "pulumi", but the full
-    // path of node: e.g. /nix/store/7q04aq0sq6im9a0k09gzfa1xfncc0xgm-nodejs-14.18.1/bin/node
-    if (process.argv0 !== 'node') {
-        pulumi.log.info("Running...")
-        const input: inputType = parseConfig();
-        output = await setup(input)
-    }
-    return output
-}
-
-
-export const output = await run();

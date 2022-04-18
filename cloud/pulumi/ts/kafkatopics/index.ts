@@ -1,6 +1,5 @@
 import * as pulumi from "@pulumi/pulumi";
 import * as kafka from "@pulumi/kafka";
-import * as process from "process";
 
 // TODO: use version from common library.
 // operator for type-safety for string key access:
@@ -25,16 +24,6 @@ export type inputType = {
 
 export type outputType = {
     topics: kafka.Topic[]
-}
-
-const parseConfig = (): inputType => {
-    const config = new pulumi.Config();
-    return {
-        apiKey: config.require(nameof<inputType>("apiKey")),
-        apiSecret: config.requireSecret(nameof<inputType>("apiSecret")),
-        topicNames: config.requireObject(nameof<inputType>("topicNames")),
-        bootstrapServer: config.require(nameof<inputType>("bootstrapServer"))
-    }
 }
 
 export const setup = async (input: inputType) => {
@@ -62,19 +51,3 @@ export const setup = async (input: inputType) => {
     }
     return output
 }
-
-async function run() {
-    let output: outputType | undefined;
-    // Run the main function only if this program is run through the pulumi CLI.
-    // Unfortunately, in that case the argv0 itself is not "pulumi", but the full
-    // path of node: e.g. /nix/store/7q04aq0sq6im9a0k09gzfa1xfncc0xgm-nodejs-14.18.1/bin/node
-    if (process.argv0 !== 'node') {
-        pulumi.log.info("Running...")
-        const input: inputType = parseConfig();
-        output = await setup(input)
-    }
-    return output
-}
-
-
-export const output = await run();

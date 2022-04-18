@@ -33,19 +33,6 @@ export type inputType = {
 
 export type outputType = {}
 
-const parseConfig = (): inputType => {
-    const config = new pulumi.Config();
-    return {
-        planeId: config.requireNumber(nameof<inputType>("planeId")),
-        roleArn: config.require(nameof<inputType>("roleArn")),
-        region: config.require(nameof<inputType>("region")),
-        kubeconfig: pulumi.output(config.require(nameof<inputType>("kubeconfig"))),
-        eksClusterName: pulumi.output(config.require(nameof<inputType>("eksClusterName"))),
-        nodeInstanceRole: pulumi.output(config.require(nameof<inputType>("nodeInstanceRole"))),
-        prometheusEndpoint: config.require(nameof<inputType>("prometheusEndpoint")),
-    }
-}
-
 // TODO: move to library.
 class MonitoredDeployment extends k8s.apps.v1.Deployment {
     constructor(name: string,
@@ -228,19 +215,3 @@ export const setup = async (input: inputType) => {
     const output: outputType = {}
     return output
 }
-
-async function run() {
-    let output: outputType | undefined;
-    // Run the main function only if this program is run through the pulumi CLI.
-    // Unfortunately, in that case the argv0 itself is not "pulumi", but the full
-    // path of node: e.g. /nix/store/7q04aq0sq6im9a0k09gzfa1xfncc0xgm-nodejs-14.18.1/bin/node
-    if (process.argv0 !== 'node') {
-        pulumi.log.info("Running...")
-        const input: inputType = parseConfig();
-        output = await setup(input)
-    }
-    return output
-}
-
-
-export const output = await run();

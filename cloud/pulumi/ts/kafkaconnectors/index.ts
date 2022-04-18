@@ -1,8 +1,6 @@
 import * as pulumi from "@pulumi/pulumi";
 import * as confluent from "@pulumi/confluent";
 
-import * as process from "process";
-
 // TODO: use version from common library.
 // operator for type-safety for string key access:
 // https://schneidenbach.gitbooks.io/typescript-cookbook/content/nameof-operator.html
@@ -35,22 +33,6 @@ export type inputType = {
 
 // should not contain any pulumi.Output<> types.
 export type outputType = {}
-
-const parseConfig = (): inputType => {
-    const config = new pulumi.Config();
-    return {
-        tierId: config.requireNumber(nameof<inputType>("tierId")),
-        username: config.require(nameof<inputType>("username")),
-        password: config.require(nameof<inputType>("password")),
-        clusterId: config.require(nameof<inputType>("clusterId")),
-        environmentId: config.require(nameof<inputType>("environmentId")),
-        kafkaApiKey: config.require(nameof<inputType>("kafkaApiKey")),
-        kafkaApiSecret: config.require(nameof<inputType>("kafkaApiSecret")),
-        awsAccessKeyId: config.require(nameof<inputType>("awsAccessKeyId")),
-        awsSecretAccessKey: config.require(nameof<inputType>("awsSecretAccessKey")),
-        s3BucketName: config.require(nameof<inputType>("s3BucketName")),
-    }
-}
 
 export const setup = async (input: inputType): Promise<pulumi.Output<outputType>> => {
     // create AWS buckets for each of the connectors
@@ -92,19 +74,3 @@ export const setup = async (input: inputType): Promise<pulumi.Output<outputType>
     const output = pulumi.output({})
     return output
 }
-
-async function run() {
-    let output: pulumi.Output<outputType> | undefined;
-    // Run the main function only if this program is run through the pulumi CLI.
-    // Unfortunately, in that case the argv0 itself is not "pulumi", but the full
-    // path of node: e.g. /nix/store/7q04aq0sq6im9a0k09gzfa1xfncc0xgm-nodejs-14.18.1/bin/node
-    if (process.argv0 !== 'node') {
-        pulumi.log.info("Running...")
-        const input: inputType = parseConfig();
-        output = await setup(input)
-    }
-    return output
-}
-
-
-export const output = await run();
