@@ -224,7 +224,6 @@ func (c cachedProvider) getBatch(ctx context.Context, tier tier.Tier, profileKey
 		profileBatchRequest := make([]profile.ProfileItemKey, 0)
 		for _, key := range ks {
 			profileBatchRequest = append(profileBatchRequest, keyToProfileKey[key])
-
 		}
 
 		tosetKeys := make([]string, 0)
