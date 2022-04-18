@@ -17,7 +17,7 @@ func TestSetGet(t *testing.T) {
 	defer test.Teardown(tier)
 
 	txn := tier.Badger.NewTransaction(true)
-	defer txn.Discard()
+	defer txn.Commit()
 
 	store := badger.NewTransactionalStore(tier, 0, txn)
 
