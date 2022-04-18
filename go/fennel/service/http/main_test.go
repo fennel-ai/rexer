@@ -294,14 +294,27 @@ func TestProfileServerClient(t *testing.T) {
 
 	var expected value.Value = value.NewList(value.Int(1), value.Bool(false), value.Nil)
 	profileList = append(profileList, checkGetSet(t, c, false, "1", 1, 1, "age", expected))
+<<<<<<< HEAD
+=======
+	//checkGetProfileMulti(t, c, pfr, profileList)
+>>>>>>> fa72b940 (rebase)
 
 	// we can also GetProfile it without using the specific version number
 	checkGetSet(t, c, true, "1", 1, 0, "age", expected)
 
 	// SetProfile few more key/value pairs and verify it works
+<<<<<<< HEAD
 	profileList = append(profileList, checkGetSet(t, c, false, "1", 2, 2, "age", value.Nil))
 	profileList = append(profileList, checkGetSet(t, c, false, "1", 3, 2, "age", value.Int(1)))
 
+=======
+	profileList = append(profileList, checkGetSet(t, c, false, "1", 1, 2, "age", value.Nil))
+	//checkGetProfileMulti(t, c, pfr, profileList)
+	profileList = append(profileList, checkGetSet(t, c, false, "1", 3, 2, "age", value.Int(1)))
+	//checkGetProfileMulti(t, c, pfr, profileList)
+	checkGetSet(t, c, true, "1", 1, 2, "age", value.Nil)
+	checkGetSet(t, c, true, "1", 1, 0, "age", value.Nil)
+>>>>>>> fa72b940 (rebase)
 	checkGetSet(t, c, false, "10", 3131, 0, "summary", value.Int(1))
 
 	// these profiles are also written to kafka queue
@@ -608,7 +621,15 @@ func checkGetSet(t *testing.T, c *client.Client, get bool, otype string, oid uin
 		found, err := c.GetProfile(&req)
 		foundVal := found.Value
 		assert.NoError(t, err)
+<<<<<<< HEAD
 		assert.Equal(t, val, foundVal)
+=======
+		if found == nil {
+			assert.Equal(t, nil, val)
+		} else {
+			assert.Equal(t, val, *found)
+		}
+>>>>>>> fa72b940 (rebase)
 		return *found
 	} else {
 		profile := profilelib.ProfileItem{OType: ftypes.OType(otype), Oid: oid, Key: key, UpdateTime: updateTime, Value: val}
@@ -623,6 +644,19 @@ func checkGetSet(t *testing.T, c *client.Client, get bool, otype string, oid uin
 	}
 }
 
+<<<<<<< HEAD
+=======
+// func checkGetProfileMulti(t *testing.T, c *client.Client, request profilelib.ProfileItemKey, expected []profilelib.ProfileItem) {
+// 	found, err := c.GetProfile(request)
+// 	assert.NoError(t, err)
+
+// 	assert.Equal(t, len(expected), len(found))
+// 	for i := range expected {
+// 		assert.Equal(t, expected[i], found[i])
+// 	}
+// }
+
+>>>>>>> fa72b940 (rebase)
 func valueSendReceive(t *testing.T, controller server, agg aggregate.Aggregate, key, expected value.Value, kwargs value.Dict) {
 	aggregate2.InvalidateCache() // invalidate cache, as it is not being tested here
 	gavr := aggregate.GetAggValueRequest{AggName: agg.Name, Key: key, Kwargs: kwargs}

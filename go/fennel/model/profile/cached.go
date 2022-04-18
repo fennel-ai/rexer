@@ -111,6 +111,7 @@ func (c cachedProvider) setBatch(ctx context.Context, tier tier.Tier, profiles [
 		// cache for the latest profiles will be invalidated which leaves the cache in a consistent state
 		profiles, err := c.base.getBatch(ctx, tier, profileKeys)
 		if err != nil {
+			fmt.Println("Raised here", err)
 			return err
 		}
 		tosetKeys := make([]string, 0)
@@ -168,12 +169,12 @@ func (c cachedProvider) getBatch(ctx context.Context, tier tier.Tier, profileKey
 		keyToProfileKey[key] = pk
 	}
 
-<<<<<<< HEAD
 	keys := make([]string, 0)
 	for k, _ := range keyToProfileKey {
 		keys = append(keys, k)
 
 	}
+
 
 	vals, err := tier.Cache.MGet(ctx, keys...)
 	unavailableKeys := make([]string, 0)
@@ -186,6 +187,7 @@ func (c cachedProvider) getBatch(ctx context.Context, tier tier.Tier, profileKey
 		if len(vals) == 0 {
 			vals = make([]interface{}, len(keys))
 		}
+
 		for i := range vals {
 			vals[i] = tier.Cache.Nil()
 			unavailableKeys = keys
@@ -218,16 +220,6 @@ func (c cachedProvider) getBatch(ctx context.Context, tier tier.Tier, profileKey
 		return rets, nil
 	}
 
-=======
-	keys := make([]string, len(keyMap))
-	ind := 0
-	for k := range keyMap {
-		keys[ind] = k
-		ind++
-	}
-
-	keyToVal := new(sync.Map)
->>>>>>> 6ca8ae0b (go: fix bug in pr/637 (#639))
 	// run the logic as part of a txn
 	//
 	// NOTE: the logic here should assume that it could be retried if one of the provided keys
@@ -302,3 +294,24 @@ func makeKey(pk profile.ProfileItemKey) string {
 	prefix := fmt.Sprintf("%s:%d", cacheName(), cacheVersion)
 	return fmt.Sprintf("%s:{%s:%d:%s}", prefix, pk.OType, pk.Oid, pk.Key)
 }
+<<<<<<< HEAD
+=======
+
+// func parseKey(key string) (profileKey, error) {
+// 	re, err := regexp.Compile(":{(.+):(\\d+):(.+)}:")
+// 	if err != nil {
+// 		return profileKey{}, err
+// 	}
+// 	match := re.FindStringSubmatch(key)
+// 	if match != nil {
+// 		// match[0] is the string matched
+// 		vid := profileKey{otype: ftypes.OType(match[1]), key: match[3]}
+// 		vid.oid, err = strconv.ParseUint(match[2], 10, 64)
+// 		if err != nil {
+// 			return profileKey{}, err
+// 		}
+// 		return vid, nil
+// 	}
+// 	return profileKey{}, fmt.Errorf("failed to parse key: %s", key)
+// }
+>>>>>>> fa72b940 (rebase)
