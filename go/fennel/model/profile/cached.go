@@ -187,7 +187,6 @@ func (c cachedProvider) getBatch(ctx context.Context, tier tier.Tier, profileKey
 		if len(vals) == 0 {
 			vals = make([]interface{}, len(keys))
 		}
-
 		for i := range vals {
 			vals[i] = tier.Cache.Nil()
 			unavailableKeys = keys
@@ -239,6 +238,7 @@ func (c cachedProvider) getBatch(ctx context.Context, tier tier.Tier, profileKey
 			for i := range ks {
 				vals[i] = tier.Cache.Nil()
 			}
+
 
 		}
 
