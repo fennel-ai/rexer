@@ -11,6 +11,7 @@ import * as telemetry from "../telemetry";
 import * as prometheus from "../prometheus";
 import * as connectorSink from "../connectorsink";
 import * as glueSource from "../glue-script-source";
+import setupModelStore, * as modelStore from "../model-store/plane";
 
 import * as process from "process";
 
@@ -80,6 +81,7 @@ export type PlaneOutput = {
     prometheus: prometheus.outputType,
     connSink: connectorSink.outputType,
     glue: glueSource.outputType,
+    modelStore: modelStore.outputType,
 }
 
 const parseConfig = (): PlaneConf => {
@@ -100,6 +102,7 @@ const setupPlugins = async (stack: pulumi.automation.Stack) => {
         ...telemetry.plugins,
         ...connectorSink.plugins,
         ...glueSource.plugins,
+        ...modelStore.plugins,
     }
     console.info("installing plugins...");
     for (var key in plugins) {
@@ -202,6 +205,13 @@ const setupResources = async () => {
         roleArn: input.roleArn,
         planeId: input.planeId,
     })
+
+    const modelStoreOutput = await setupModelStore({
+        region: input.region,
+        roleArn: input.roleArn,
+        planeId: input.planeId
+    })
+
     return {
         eks: eksOutput,
         vpc: vpcOutput,
@@ -212,6 +222,7 @@ const setupResources = async () => {
         prometheus: prometheusOutput,
         connSink: connectorSinkOutput,
         glue: glueOutput,
+        modelStore: modelStoreOutput,
     }
 };
 
