@@ -55,19 +55,6 @@ export type outputType = {
     workerSg: string,
 }
 
-const parseConfig = (): inputType => {
-    const config = new pulumi.Config();
-    return {
-        roleArn: config.require(nameof<inputType>("roleArn")),
-        region: config.require(nameof<inputType>("region")),
-        vpcId: pulumi.output(config.require(nameof<inputType>("vpcId"))),
-        connectedVpcCidrs: config.requireObject(nameof<inputType>("connectedVpcCidrs")),
-        planeId: config.requireNumber(nameof<inputType>("planeId")),
-        nodeType: config.require(nameof<inputType>("nodeType")),
-        desiredCapacity: config.requireNumber(nameof<inputType>("desiredCapacity")),
-    }
-}
-
 function setupLinkerd(cluster: k8s.Provider) {
     // Setup root and issuer CA as per https://linkerd.io/2.11/tasks/generate-certificates/.
     const rootCA = new local.Command("root-ca", {
@@ -386,19 +373,3 @@ export const setup = async (input: inputType): Promise<pulumi.Output<outputType>
 
     return output
 }
-
-async function run() {
-    let output: pulumi.Output<outputType> | undefined;
-    // Run the main function only if this program is run through the pulumi CLI.
-    // Unfortunately, in that case the argv0 itself is not "pulumi", but the full
-    // path of node: e.g. /nix/store/7q04aq0sq6im9a0k09gzfa1xfncc0xgm-nodejs-14.18.1/bin/node
-    if (process.argv0 !== 'node') {
-        pulumi.log.info("Running...")
-        const input: inputType = parseConfig();
-        output = await setup(input)
-    }
-    return output
-}
-
-
-export const output = await run();

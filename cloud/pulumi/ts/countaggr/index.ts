@@ -40,19 +40,6 @@ export type outputType = {
     deployment: pulumi.Output<k8s.apps.v1.Deployment>,
 }
 
-const parseConfig = (): inputType => {
-    const config = new pulumi.Config();
-    return {
-        region: config.require(nameof<inputType>("region")),
-        roleArn: config.require(nameof<inputType>("roleArn")),
-        kubeconfig: config.require(nameof<inputType>("kubeconfig")),
-        namespace: config.require(nameof<inputType>("namespace")),
-        tierId: config.requireNumber(nameof<inputType>("tierId")),
-        enforceServiceIsolation: config.getBoolean(nameof<inputType>("enforceServiceIsolation")),
-        httpServerAppLabels: config.requireObject(nameof<inputType>("httpServerAppLabels")),
-    }
-}
-
 export const setup = async (input: inputType) => {
     const awsProvider = new aws.Provider("aggr-aws-provider", {
         region: <aws.Region>input.region,
@@ -285,18 +272,3 @@ export const setup = async (input: inputType) => {
     }
     return output
 }
-
-async function run() {
-    let output: outputType | undefined;
-    // Run the main function only if this program is run through the pulumi CLI.
-    // Unfortunately, in that case the argv0 itself is not "pulumi", but the full
-    // path of node: e.g. /nix/store/7q04aq0sq6im9a0k09gzfa1xfncc0xgm-nodejs-14.18.1/bin/node
-    if (process.argv0 !== 'node') {
-        pulumi.log.info("Running...")
-        const input: inputType = parseConfig();
-        output = await setup(input)
-    }
-    return output
-}
-
-export const output = await run();

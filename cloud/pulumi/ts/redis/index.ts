@@ -1,6 +1,5 @@
 import * as pulumi from "@pulumi/pulumi";
 import * as aws from "@pulumi/aws";
-import * as process from "process";
 
 // TODO: use version from common library.
 // operator for type-safety for string key access:
@@ -38,21 +37,6 @@ const DEFAULT_REDIS_VERSION = "6.2";
 const DEFAULT_NODE_TYPE = "db.t4g.small";
 const DEFAULT_NUM_SHARDS = 1;
 const DEFAULT_NUM_REPLICAS_PER_SHARD = 0;
-
-const parseConfig = (): inputType => {
-    const config = new pulumi.Config();
-    return {
-        region: config.require(nameof<inputType>("region")),
-        roleArn: config.require(nameof<inputType>("roleArn")),
-        vpcId: pulumi.output(config.require(nameof<inputType>("vpcId"))),
-        azs: pulumi.output(config.requireObject(nameof<inputType>("azs"))),
-        connectedSecurityGroups: config.requireObject(nameof<inputType>("connectedSecurityGroups")),
-        numShards: config.getNumber(nameof<inputType>("numShards")),
-        numReplicasPerShard: config.getNumber(nameof<inputType>("numReplicasPerShard")),
-        nodeType: config.get(nameof<inputType>("nodeType")),
-        planeId: config.requireNumber(nameof<inputType>("planeId")),
-    }
-}
 
 export const setup = async (input: inputType): Promise<pulumi.Output<outputType>> => {
     const provider = new aws.Provider("redis-aws-provider", {
@@ -119,19 +103,3 @@ export const setup = async (input: inputType): Promise<pulumi.Output<outputType>
 
     return output
 }
-
-async function run() {
-    let output: pulumi.Output<outputType> | undefined;
-    // Run the main function only if this program is run through the pulumi CLI.
-    // Unfortunately, in that case the argv0 itself is not "pulumi", but the full
-    // path of node: e.g. /nix/store/7q04aq0sq6im9a0k09gzfa1xfncc0xgm-nodejs-14.18.1/bin/node
-    if (process.argv0 !== 'node') {
-        pulumi.log.info("Running...")
-        const input: inputType = parseConfig();
-        output = await setup(input)
-    }
-    return output
-}
-
-
-export const output = await run();
