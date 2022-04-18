@@ -3,9 +3,6 @@ import * as aws from "@pulumi/aws";
 import * as k8s from "@pulumi/kubernetes";
 import { local } from "@pulumi/command";
 
-import * as process from "process";
-import { VpcEndpointService } from "@pulumi/aws/ec2";
-
 // TODO: use version from common library.
 // operator for type-safety for string key access:
 // https://schneidenbach.gitbooks.io/typescript-cookbook/content/nameof-operator.html
@@ -37,19 +34,6 @@ export type outputType = {
     endpontServiceName: string,
     tlsCert: string,
     tlsKey: string,
-}
-
-const parseConfig = (): inputType => {
-    const config = new pulumi.Config();
-    return {
-        roleArn: config.require(nameof<inputType>("roleArn")),
-        region: config.require(nameof<inputType>("region")),
-        kubeconfig: config.require(nameof<inputType>("kubeconfig")),
-        namespace: config.require(nameof<inputType>("namespace")),
-        loadBalancerScheme: config.get(nameof<inputType>("loadBalancerScheme")) || "internal",
-        subnetIds: config.requireObject(nameof<inputType>("subnetIds")),
-        tierId: config.requireNumber(nameof<inputType>("tierId")),
-    }
 }
 
 function getLoadBalancerName(url: string) {
@@ -253,18 +237,3 @@ export const setup = async (input: inputType) => {
 
     return output
 }
-
-async function run() {
-    let output: pulumi.Output<outputType> | undefined;
-    // Run the main function only if this program is run through the pulumi CLI.
-    // Unfortunately, in that case the argv0 itself is not "pulumi", but the full
-    // path of node: e.g. /nix/store/7q04aq0sq6im9a0k09gzfa1xfncc0xgm-nodejs-14.18.1/bin/node
-    if (process.argv0 !== 'node') {
-        pulumi.log.info("Running...")
-        const input: inputType = parseConfig();
-        output = await setup(input)
-    }
-    return output
-}
-
-export const output = await run();
