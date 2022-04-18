@@ -75,6 +75,7 @@ type inputType = {
     glueTrainingDataBucket: string,
     httpServerConf?: HttpServerConf,
     countAggrConf?: CountAggrConf,
+    nodeInstanceRole: string,
     modelStoreBucket: string,
 }
 
@@ -119,6 +120,8 @@ const parseConfig = (): inputType => {
 
         httpServerConf: config.getObject(nameof<inputType>("httpServerConf")),
         countAggrConf: config.getObject(nameof<inputType>("countAggrConf")),
+
+        nodeInstanceRole: config.require(nameof<inputType>("nodeInstanceRole")),
         modelStoreBucket: config.require(nameof<inputType>("modelStoreBucket")),
     };
 };
@@ -233,6 +236,7 @@ const setupResources = async () => {
         region: input.region,
         roleArn: input.roleArn,
         tierId: input.tierId,
+        nodeInstanceRole: input.nodeInstanceRole,
         planeModelStoreBucket: input.modelStoreBucket,
     })
     configsOutput.apply(async () => {
@@ -310,6 +314,7 @@ type TierInput = {
     countAggrConf?: CountAggrConf,
 
     // model store configuration
+    nodeInstanceRole: string,
     modelStoreBucket: string,
 }
 
@@ -380,6 +385,7 @@ const setupTier = async (args: TierInput, destroy?: boolean) => {
         await stack.setConfig(nameof<inputType>("countAggrConf"), {value: JSON.stringify(args.countAggrConf)})
     }
 
+    await stack.setConfig(nameof<inputType>("nodeInstanceRole"), {value: args.nodeInstanceRole})
     await stack.setConfig(nameof<inputType>("modelStoreBucket"), {value: args.modelStoreBucket})
 
     console.info("config set");
