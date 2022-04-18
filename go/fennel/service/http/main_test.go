@@ -623,16 +623,6 @@ func checkGetSet(t *testing.T, c *client.Client, get bool, otype string, oid uin
 	}
 }
 
-// func checkGetProfileMulti(t *testing.T, c *client.Client, request profilelib.ProfileItemKey, expected []profilelib.ProfileItem) {
-// 	found, err := c.GetProfile(request)
-// 	assert.NoError(t, err)
-
-// 	assert.Equal(t, len(expected), len(found))
-// 	for i := range expected {
-// 		assert.Equal(t, expected[i], found[i])
-// 	}
-// }
-
 func valueSendReceive(t *testing.T, controller server, agg aggregate.Aggregate, key, expected value.Value, kwargs value.Dict) {
 	aggregate2.InvalidateCache() // invalidate cache, as it is not being tested here
 	gavr := aggregate.GetAggValueRequest{AggName: agg.Name, Key: key, Kwargs: kwargs}

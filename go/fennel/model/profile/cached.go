@@ -111,6 +111,7 @@ func (c cachedProvider) setBatch(ctx context.Context, tier tier.Tier, profiles [
 		// cache for the latest profiles will be invalidated which leaves the cache in a consistent state
 		profiles, err := c.base.getBatch(ctx, tier, profileKeys)
 		if err != nil {
+			fmt.Println("Raised here", err)
 			return err
 		}
 		tosetKeys := make([]string, 0)

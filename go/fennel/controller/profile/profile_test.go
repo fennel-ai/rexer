@@ -60,7 +60,6 @@ func TestProfileController(t *testing.T) {
 	profileTmp := profiles[0]
 	profileTmp.UpdateTime = 0
 	checkGet(t, ctx, tier, profileTmp.GetProfileKey(), vals[0])
-
 	// set a few more profiles and verify it works
 	profiles = append(profiles, profilelib.NewProfileItem("User", 1, "age", value.Int(2), 0))
 	profiles[1].Value = vals[1]
@@ -68,6 +67,7 @@ func TestProfileController(t *testing.T) {
 	profiles = append(profiles, profilelib.NewProfileItem("User", 3, "age", value.Int(2), 0))
 	profiles[2].Value = vals[2]
 	checkSet(t, ctx, tier, profiles[2])
+
 	checkGet(t, ctx, tier, profiles[1].GetProfileKey(), vals[1])
 	checkGet(t, ctx, tier, profiles[2].GetProfileKey(), vals[2])
 }
