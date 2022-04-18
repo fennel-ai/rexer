@@ -216,6 +216,11 @@ func CreateFromArgs(args *TierArgs) (tier Tier, err error) {
 	logger = logger.With(zap.Uint32("tier_id", args.TierID.Value()))
 
 	smclient, err := sagemaker.NewClient(args.SagemakerArgs)
+	// use below instead for sagemaker e2e test to run
+	// smclient, err := sagemaker.NewClient(sagemaker.SagemakerArgs{
+	//     Region:                 "ap-south-1",
+	//     SagemakerExecutionRole: "arn:aws:iam::030813887342:role/service-role/AmazonSageMaker-ExecutionRole-20220315T123828",
+	// })
 	if err != nil {
 		return tier, fmt.Errorf("failed to create sagemaker client: %v", err)
 	}
@@ -223,6 +228,9 @@ func CreateFromArgs(args *TierArgs) (tier Tier, err error) {
 	// TODO - get region from own args
 	s3Args := s3.S3Args{Region: args.SagemakerArgs.Region}
 	s3client := s3.NewClient(s3Args)
+	// use below instead for sagemaker e2e test to run
+	// s3Args := s3.S3Args{Region: "ap-south-1"}
+	// s3client := s3.NewClient(s3Args)
 
 	modelStore := modelstore.NewModelStore(args.ModelStoreS3Bucket, args.ModelStoreEndpointName)
 
