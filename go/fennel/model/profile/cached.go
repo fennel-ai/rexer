@@ -157,6 +157,7 @@ func getValueFromCache(v interface{}) (value.Value, error) {
 		return nil, fmt.Errorf("value not of type []byte or string: %v", v)
 	}
 }
+
 func (c cachedProvider) getBatch(ctx context.Context, tier tier.Tier, profileKeys []profile.ProfileItemKey) ([]profile.ProfileItem, error) {
 	defer timer.Start(ctx, tier.ID, "model.profile.cached.get_batched").Stop()
 
@@ -174,7 +175,6 @@ func (c cachedProvider) getBatch(ctx context.Context, tier tier.Tier, profileKey
 		keys = append(keys, k)
 
 	}
-
 
 	vals, err := tier.Cache.MGet(ctx, keys...)
 	unavailableKeys := make([]string, 0)
@@ -224,27 +224,14 @@ func (c cachedProvider) getBatch(ctx context.Context, tier tier.Tier, profileKey
 	// NOTE: the logic here should assume that it could be retried if one of the provided keys
 	// are updated during it's execution
 	txnLogic := func(tx cache.Txn, ks []string) error {
-		profileBatchRequest := make([]profile.ProfileItemKey, 0)
+		profileKeys := make([]profile.ProfileItemKey, 0)
 		for _, key := range ks {
-			profileBatchRequest = append(profileBatchRequest, keyToProfileKey[key])
-		vals, err := tx.MGet(ctx, ks...)
-		if err != nil {
-			// It is possible that upon getting the error (e.g. context cancelled), vals == nil or the length
-			// does not match `ks`
-			if vals == nil || len(vals) != len(ks) {
-				vals = make([]interface{}, len(ks))
-			}
-			// if we got an error from cache, no need to panic - we just pretend nothing was found in cache
-			for i := range ks {
-				vals[i] = tier.Cache.Nil()
-			}
-
-
+			profileKeys = append(profileKeys, keyToProfileKey[key])
 		}
 
 		tosetKeys := make([]string, 0)
 		tosetVals := make([]interface{}, 0)
-		dbProfiles, err := c.base.getBatch(ctx, tier, profileBatchRequest)
+		dbProfiles, err := c.base.getBatch(ctx, tier, profileKeys)
 
 		if err != nil {
 			return err
