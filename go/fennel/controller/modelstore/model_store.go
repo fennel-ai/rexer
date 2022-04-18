@@ -17,6 +17,10 @@ func Store(ctx context.Context, tier tier.Tier, req lib.ModelInsertRequest) erro
 	// TODO - does not work across servers, so should use distributed lock
 	tier.ModelStore.Lock()
 	defer tier.ModelStore.Unlock()
+	err := EnsureEndpointInService(ctx, tier)
+	if err != nil {
+		return err
+	}
 
 	// check there are no more than 15 active models
 	// sagemaker does not allow more than 15 models with different containers on one endpoint
@@ -54,8 +58,13 @@ func Store(ctx context.Context, tier tier.Tier, req lib.ModelInsertRequest) erro
 func Remove(ctx context.Context, tier tier.Tier, name, version string) error {
 	tier.ModelStore.Lock()
 	defer tier.ModelStore.Unlock()
+	err := EnsureEndpointInService(ctx, tier)
+	if err != nil {
+		return err
+	}
+
 	// delete from s3
-	err := tier.S3Client.Delete(lib.GetContainerName(name, version), tier.ModelStore.S3Bucket())
+	err = tier.S3Client.Delete(lib.GetContainerName(name, version), tier.ModelStore.S3Bucket())
 	if err != nil {
 		return fmt.Errorf("failed to delete model from s3: %v", err)
 	}
@@ -69,6 +78,11 @@ func Remove(ctx context.Context, tier tier.Tier, name, version string) error {
 func Score(ctx context.Context, tier tier.Tier, req lib.ScoreRequest) ([]value.Value, error) {
 	tier.ModelStore.Lock()
 	defer tier.ModelStore.Unlock()
+	err := EnsureEndpointInService(ctx, tier)
+	if err != nil {
+		return nil, err
+	}
+
 	response, err := tier.SagemakerClient.Score(ctx, tier.ModelStore.EndpointName(), &req)
 	if err != nil {
 		return nil, fmt.Errorf("failed to score model: %v", err)
@@ -151,18 +165,19 @@ func EnsureEndpointExists(ctx context.Context, tier tier.Tier) error {
 	}
 
 	// Ensure endpoint exists in db and sagemaker.
-	endpoint, err := db.GetEndpoint(tier, tier.ModelStore.EndpointName())
+	endpointName := tier.ModelStore.EndpointName()
+	endpoint, err := db.GetEndpoint(tier, endpointName)
 	if err != nil {
-		return fmt.Errorf("failed to get endpoint with name [%s] from db: %v", tier.ModelStore.EndpointName(), err)
+		return fmt.Errorf("failed to get endpoint with name [%s] from db: %v", endpointName, err)
 	}
 	if endpoint.Name == "" || endpoint.EndpointConfigName != endpointCfg.Name {
 		endpoint = lib.SagemakerEndpoint{
-			Name:               tier.ModelStore.EndpointName(),
+			Name:               endpointName,
 			EndpointConfigName: endpointCfg.Name,
 		}
 		err = db.InsertEndpoint(tier, endpoint)
 		if err != nil {
-			return fmt.Errorf("failed to insert endpoint with name [%s] into db: %v", tier.ModelStore.EndpointName(), err)
+			return fmt.Errorf("failed to insert endpoint with name [%s] into db: %v", endpointName, err)
 		}
 	}
 	exists, err = tier.SagemakerClient.EndpointExists(ctx, endpoint.Name)
@@ -174,14 +189,32 @@ func EnsureEndpointExists(ctx context.Context, tier tier.Tier) error {
 		if err != nil {
 			return fmt.Errorf("failed to create endpoint on sagemaker: %v", err)
 		}
-	} else if endpoint.EndpointConfigName != endpointCfg.Name {
-		err = tier.SagemakerClient.UpdateEndpoint(ctx, lib.SagemakerEndpoint{
-			Name:               tier.ModelStore.EndpointName(),
-			EndpointConfigName: endpointCfg.Name,
-		})
+	} else {
+		curEndpointCfgName, err := tier.SagemakerClient.GetCurrentEndpointConfigName(ctx, endpointName)
 		if err != nil {
-			return fmt.Errorf("failed to update endpoint on sagemaker: %v", err)
+			return fmt.Errorf("couldn't get current endpoint config's name from sagemaker: %v", err)
 		}
+		if curEndpointCfgName != endpointCfg.Name {
+			err = tier.SagemakerClient.UpdateEndpoint(ctx, lib.SagemakerEndpoint{
+				Name:               endpointName,
+				EndpointConfigName: endpointCfg.Name,
+			})
+			if err != nil {
+				return fmt.Errorf("failed to update endpoint on sagemaker: %v", err)
+			}
+		}
+	}
+	return nil
+}
+
+func EnsureEndpointInService(ctx context.Context, tier tier.Tier) error {
+	endpointName := tier.ModelStore.EndpointName()
+	status, err := tier.SagemakerClient.GetEndpointStatus(ctx, endpointName)
+	if err != nil {
+		return fmt.Errorf("failed to get endpoint status: %v", err)
+	}
+	if status != "InService" {
+		return fmt.Errorf("endpoint not in service; current endpoint status: %s", status)
 	}
 	return nil
 }

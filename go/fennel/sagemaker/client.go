@@ -133,6 +133,17 @@ func (smc SMClient) EndpointExists(ctx context.Context, endpointName string) (bo
 	return true, nil
 }
 
+func (smc SMClient) GetCurrentEndpointConfigName(ctx context.Context, endpointName string) (string, error) {
+	input := sagemaker.DescribeEndpointInput{
+		EndpointName: aws.String(endpointName),
+	}
+	res, err := smc.metadataClient.DescribeEndpointWithContext(ctx, &input)
+	if err != nil {
+		return "", fmt.Errorf("failed to get config name of endpoint '%s': %v", endpointName, err)
+	}
+	return *res.EndpointConfigName, nil
+}
+
 func (smc SMClient) GetEndpointStatus(ctx context.Context, endpointName string) (string, error) {
 	input := sagemaker.DescribeEndpointInput{
 		EndpointName: aws.String(endpointName),
