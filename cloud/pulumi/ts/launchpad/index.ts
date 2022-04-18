@@ -8,11 +8,11 @@ import * as redis from "../redis";
 import * as confluentenv from "../confluentenv";
 import * as connsink from "../connectorsink";
 import * as glueSource from "../glue-script-source";
+import * as modelStore from "../model-store/plane";
 import { nameof } from "../lib/util";
 
 import * as process from "process";
 import * as assert from "assert";
-import tier from "./tier";
 
 const controlPlane: vpc.controlPlaneConfig = {
     region: "us-west-2",
@@ -243,6 +243,7 @@ const elasticacheOutput = dataplane[nameof<PlaneOutput>("elasticache")].value as
 const vpcOutput = dataplane[nameof<PlaneOutput>("vpc")].value as vpc.outputType
 const connSinkOutput = dataplane[nameof<PlaneOutput>("connSink")].value as connsink.outputType
 const glueOutput = dataplane[nameof<PlaneOutput>("glue")].value as glueSource.outputType
+const modelStoreOutput = dataplane[nameof<PlaneOutput>("modelStore")].value as modelStore.outputType
 
 // Create/update/delete the tier.
 if (tierId !== 0) {
@@ -296,5 +297,7 @@ if (tierId !== 0) {
         httpServerConf: tierConf.httpServerConf,
 
         countAggrConf: tierConf.countAggrConf,
+
+        modelStoreBucket: modelStoreOutput.modelStorePlaneBucket,
     }, false).catch(err => console.log(err))
 }

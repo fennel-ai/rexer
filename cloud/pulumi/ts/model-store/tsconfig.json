@@ -13,6 +13,7 @@
         "forceConsistentCasingInFileNames": true
     },
     "files": [
-        "index.ts"
+        "plane.ts",
+        "tier.ts",
     ]
 }
