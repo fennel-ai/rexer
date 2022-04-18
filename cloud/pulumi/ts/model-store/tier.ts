@@ -14,12 +14,51 @@ export type inputType = {
     region: string,
     roleArn: string,
     tierId: number,
+    nodeInstanceRole: string,
     planeModelStoreBucket: string,
 }
 
 // should not contain any pulumi.Output<> types.
 export type outputType = {
     tierModelStoreDir: string
+}
+
+function setupModelStoreAccess(provider: aws.Provider, input: inputType, folderName: pulumi.Output<string>) {
+    const policyStr = folderName.apply(folder => {
+        return `{
+          "Version": "2012-10-17",
+          "Statement": [
+            {
+              "Effect": "Allow",
+              "Action": [
+                "s3:ListBucket",
+                "s3:ListBucket2"
+              ],
+              "Resource": "arn:aws:s3:::${input.planeModelStoreBucket}"
+            },
+            {
+              "Effect": "Allow",
+              "Action": [
+                "s3:PutObject",
+                "s3:GetObject",
+                "s3:DeleteObject"
+              ],
+              "Resource": "arn:aws:s3:::${input.planeModelStoreBucket}/${folder}/*"
+            }
+          ]
+        }
+        `
+    });
+
+    const policy = new aws.iam.Policy(`t-${input.tierId}-node-model-storage-policy`, {
+        namePrefix: `t-${input.tierId}-NodeModelStoragePolicy-`,
+        policy: policyStr,
+    }, { provider: provider });
+
+    const attachNodeModelStoragePolicy = new aws.iam.RolePolicyAttachment(`t-${input.tierId}-node-model-storage-policy-attach`, {
+        policyArn: policy.arn,
+        role: input.nodeInstanceRole,
+    }, { provider: provider });
 }
 
 const setupModelStore = async (input: inputType): Promise<pulumi.Output<outputType>> => {
@@ -41,6 +80,9 @@ const setupModelStore = async (input: inputType): Promise<pulumi.Output<outputTy
         // Destroy the folder and all the objects (models in this case) underneath it
         forceDestroy: true,
     }, {provider});
+
+    // setup EKS worker node have access to the S3 bucket and the folder
+    setupModelStoreAccess(provider, input, object.key);
 
     return pulumi.output({
         tierModelStoreDir: object.key,

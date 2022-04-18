@@ -298,6 +298,7 @@ if (tierId !== 0) {
 
         countAggrConf: tierConf.countAggrConf,
 
+        nodeInstanceRole: eksOutput.instanceRole,
         modelStoreBucket: modelStoreOutput.modelStorePlaneBucket,
     }, false).catch(err => console.log(err))
 }
