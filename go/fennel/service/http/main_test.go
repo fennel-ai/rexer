@@ -609,8 +609,19 @@ func checkGetSet(t *testing.T, c *client.Client, get bool, otype string, oid uin
 		found, err := c.GetProfile(&req)
 		foundVal := found.Value
 		assert.NoError(t, err)
+<<<<<<< HEAD
 		assert.Equal(t, val, foundVal)
+<<<<<<< HEAD
 
+=======
+=======
+		if found == nil {
+			assert.Equal(t, nil, val)
+		} else {
+			assert.Equal(t, val, *found)
+		}
+>>>>>>> 90643c76 (rebase)
+>>>>>>> 1c293468 (rebase)
 		return *found
 	} else {
 		profile := profilelib.ProfileItem{OType: ftypes.OType(otype), Oid: oid, Key: key, UpdateTime: updateTime, Value: val}
