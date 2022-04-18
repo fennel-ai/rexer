@@ -294,7 +294,6 @@ func TestProfileServerClient(t *testing.T) {
 
 	var expected value.Value = value.NewList(value.Int(1), value.Bool(false), value.Nil)
 	profileList = append(profileList, checkGetSet(t, c, false, "1", 1, 1, "age", expected))
-
 	// we can also GetProfile it without using the specific version number
 	checkGetSet(t, c, true, "1", 1, 0, "age", expected)
 

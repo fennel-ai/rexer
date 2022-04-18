@@ -227,7 +227,6 @@ func (c cachedProvider) getBatch(ctx context.Context, tier tier.Tier, profileKey
 		profileBatchRequest := make([]profile.ProfileItemKey, 0)
 		for _, key := range ks {
 			profileBatchRequest = append(profileBatchRequest, keyToProfileKey[key])
-<<<<<<< HEAD
 		vals, err := tx.MGet(ctx, ks...)
 		if err != nil {
 			// It is possible that upon getting the error (e.g. context cancelled), vals == nil or the length
@@ -241,8 +240,6 @@ func (c cachedProvider) getBatch(ctx context.Context, tier tier.Tier, profileKey
 			}
 
 
-=======
->>>>>>> 95514689 (merge)
 		}
 
 		tosetKeys := make([]string, 0)

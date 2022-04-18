@@ -147,6 +147,7 @@ func (D dbProvider) get(ctx context.Context, tier tier.Tier, profileKey profile.
 	}
 
 	return profiles[0], nil
+
 }
 
 // getBatched returns the version for (otype, oid, key)
