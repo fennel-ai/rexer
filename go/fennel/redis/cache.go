@@ -100,7 +100,6 @@ func (c Cache) RunAsTxn(ctx context.Context, txnLogic func(c cache.Txn, keys []s
 				err := rc.Watch(ctx, func(t *redis.Tx) error {
 					return txnLogic(NewCache(Client{client: t, Scope: c.client.Scope, conf: c.client.conf}), keys)
 				}, c.client.mTieredKey(keys)...)
-
 				// txnLogic was executed successfully
 				if err == nil {
 					slotToResult.Store(slot, struct{}{})

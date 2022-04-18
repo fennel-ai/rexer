@@ -2,7 +2,6 @@ package profile
 
 import (
 	"context"
-	"fmt"
 	"math/rand"
 	"sync"
 	"testing"
@@ -58,6 +57,8 @@ func TestCachedDBBasic(t *testing.T) {
 	t.Run("cache_db_set_again", func(t *testing.T) {
 		testSetAgain(t, provider)
 	})
+	// Commenting this test out, since mini redis ( redis we use for testing) expects the keys to be the same.
+	// If the keys are the same the test is pointless.
 	// t.Run("cache_db_set_get_batch", func(t *testing.T) {
 	// 	testSetGetBatch(t, provider)
 	// })
@@ -192,7 +193,6 @@ func TestCachedDBConcurrentSet(t *testing.T) {
 	vs, err := tier.Cache.MGet(ctx, cacheKeys...)
 	assert.NoError(t, err)
 	for i, v := range vs {
-		fmt.Println(value.NewList(value.Int(i)), "VS :", v.(string))
 		var expectedv []byte
 		if i%2 == 0 {
 			expectedv = value.ToJSON(value.NewList(value.Int(8)))

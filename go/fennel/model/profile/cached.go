@@ -98,7 +98,6 @@ func (c cachedProvider) setBatch(ctx context.Context, tier tier.Tier, profiles [
 
 	// Write to DB
 	if err := c.base.setBatch(ctx, tier, latestProfiles); err != nil {
-		fmt.Println("Found error while trying to set profiles in DB: ", string(err.Error()))
 		return err
 	}
 
@@ -112,7 +111,6 @@ func (c cachedProvider) setBatch(ctx context.Context, tier tier.Tier, profiles [
 		// cache for the latest profiles will be invalidated which leaves the cache in a consistent state
 		profiles, err := c.base.getBatch(ctx, tier, profileKeys)
 		if err != nil {
-			fmt.Println("Raised here", err)
 			return err
 		}
 		tosetKeys := make([]string, 0)
@@ -220,7 +218,6 @@ func (c cachedProvider) getBatch(ctx context.Context, tier tier.Tier, profileKey
 	// NOTE: the logic here should assume that it could be retried if one of the provided keys
 	// are updated during it's execution
 	txnLogic := func(tx cache.Txn, ks []string) error {
-		fmt.Println("In txn")
 		profileBatchRequest := make([]profile.ProfileItemKey, 0)
 		for _, key := range ks {
 			profileBatchRequest = append(profileBatchRequest, keyToProfileKey[key])
@@ -228,7 +225,6 @@ func (c cachedProvider) getBatch(ctx context.Context, tier tier.Tier, profileKey
 
 		tosetKeys := make([]string, 0)
 		tosetVals := make([]interface{}, 0)
-		fmt.Println("Reading from DB", profileBatchRequest)
 		dbProfiles, err := c.base.getBatch(ctx, tier, profileBatchRequest)
 
 		if err != nil {

@@ -290,22 +290,18 @@ func TestProfileServerClient(t *testing.T) {
 	//pfr := profilelib.ProfileItemKey{}
 
 	// in the beginning, with no value set, we set nil pointer back but with no error
-	checkGetSet(t, c, true, "1", 1, 0, "age", value.Value(nil))
+	checkGetSet(t, c, true, "1", 1, 0, "age", value.Nil)
 
 	var expected value.Value = value.NewList(value.Int(1), value.Bool(false), value.Nil)
 	profileList = append(profileList, checkGetSet(t, c, false, "1", 1, 1, "age", expected))
-	//checkGetProfileMulti(t, c, pfr, profileList)
 
 	// we can also GetProfile it without using the specific version number
 	checkGetSet(t, c, true, "1", 1, 0, "age", expected)
 
 	// SetProfile few more key/value pairs and verify it works
-	profileList = append(profileList, checkGetSet(t, c, false, "1", 1, 2, "age", value.Nil))
-	//checkGetProfileMulti(t, c, pfr, profileList)
+	profileList = append(profileList, checkGetSet(t, c, false, "1", 2, 2, "age", value.Nil))
 	profileList = append(profileList, checkGetSet(t, c, false, "1", 3, 2, "age", value.Int(1)))
-	//checkGetProfileMulti(t, c, pfr, profileList)
-	checkGetSet(t, c, true, "1", 1, 2, "age", value.Nil)
-	checkGetSet(t, c, true, "1", 1, 0, "age", value.Nil)
+
 	checkGetSet(t, c, false, "10", 3131, 0, "summary", value.Int(1))
 
 	// these profiles are also written to kafka queue
@@ -610,12 +606,9 @@ func checkGetSet(t *testing.T, c *client.Client, get bool, otype string, oid uin
 	if get {
 		req := profilelib.NewProfileItemKey(otype, oid, key)
 		found, err := c.GetProfile(&req)
+		foundVal := found.Value
 		assert.NoError(t, err)
-		if found == nil {
-			assert.Equal(t, nil, val)
-		} else {
-			assert.Equal(t, val, *found)
-		}
+		assert.Equal(t, val, foundVal)
 		return *found
 	} else {
 		profile := profilelib.ProfileItem{OType: ftypes.OType(otype), Oid: oid, Key: key, UpdateTime: updateTime, Value: val}
@@ -623,12 +616,9 @@ func checkGetSet(t *testing.T, c *client.Client, get bool, otype string, oid uin
 		assert.NoError(t, err)
 		request := profilelib.NewProfileItemKey(otype, oid, key)
 		found, err := c.GetProfile(&request)
+		foundVal := found.Value
 		assert.NoError(t, err)
-		if found == nil {
-			assert.Equal(t, nil, val)
-		} else {
-			assert.Equal(t, val, *found)
-		}
+		assert.Equal(t, val, foundVal)
 		return profile
 	}
 }
