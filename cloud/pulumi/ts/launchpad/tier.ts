@@ -11,6 +11,7 @@ import * as configs from "../configs";
 import * as ingress from "../ingress";
 import * as ns from "../k8s-ns";
 import * as glue from "../glue";
+import setupModelStore, * as modelStore from "../model-store/tier";
 
 import * as process from "process";
 
@@ -74,6 +75,7 @@ type inputType = {
     glueTrainingDataBucket: string,
     httpServerConf?: HttpServerConf,
     countAggrConf?: CountAggrConf,
+    modelStoreBucket: string,
 }
 
 const parseConfig = (): inputType => {
@@ -117,6 +119,7 @@ const parseConfig = (): inputType => {
 
         httpServerConf: config.getObject(nameof<inputType>("httpServerConf")),
         countAggrConf: config.getObject(nameof<inputType>("countAggrConf")),
+        modelStoreBucket: config.require(nameof<inputType>("modelStoreBucket")),
     };
 };
 
@@ -133,6 +136,7 @@ const setupPlugins = async (stack: pulumi.automation.Stack) => {
         ...ns.plugins,
         ...kafkaconnectors.plugins,
         ...glue.plugins,
+        ...modelStore.plugins,
     }
     console.info("installing plugins...");
     for (var key in plugins) {
@@ -224,6 +228,13 @@ const setupResources = async () => {
         trainingDataBucket: input.glueTrainingDataBucket,
         script: input.glueSourceScript,
     })
+    // setup model store for this tier
+    const modelStoreOutput = await setupModelStore({
+        region: input.region,
+        roleArn: input.roleArn,
+        tierId: input.tierId,
+        planeModelStoreBucket: input.modelStoreBucket,
+    })
     configsOutput.apply(async () => {
         // setup api-server and countaggr after configs are setup.
         const httpServerOutput = await httpserver.setup({
@@ -294,7 +305,12 @@ type TierInput = {
 
     // http server configuration
     httpServerConf?: HttpServerConf,
+
+    // countaggr configuration
     countAggrConf?: CountAggrConf,
+
+    // model store configuration
+    modelStoreBucket: string,
 }
 
 const setupTier = async (args: TierInput, destroy?: boolean) => {
@@ -363,6 +379,8 @@ const setupTier = async (args: TierInput, destroy?: boolean) => {
     if (args.countAggrConf !== undefined) {
         await stack.setConfig(nameof<inputType>("countAggrConf"), {value: JSON.stringify(args.countAggrConf)})
     }
+
+    await stack.setConfig(nameof<inputType>("modelStoreBucket"), {value: args.modelStoreBucket})
 
     console.info("config set");
 
