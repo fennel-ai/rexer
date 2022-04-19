@@ -242,7 +242,7 @@ const setupResources = async () => {
                 "modelStoreBucket": modelStoreOutput.modelStoreBucket,
                 // randomly generate a consistent suffix for the model store endpoint
                 "modelStoreEndpoint": `t-${input.tierId}-${rng()}`,
-            })
+            } as Record<string, string>)
         })
     })
     // setup ingress.
