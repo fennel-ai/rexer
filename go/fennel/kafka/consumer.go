@@ -182,6 +182,7 @@ type RemoteConsumerConfig struct {
 	GroupID         string
 	OffsetPolicy    string
 	Topic           string
+	Partitions      kafka.TopicPartitions
 	Scope           resource.Scope
 }
 
@@ -194,16 +195,31 @@ func (conf RemoteConsumerConfig) Materialize() (resource.Resource, error) {
 	if err := configmap.SetKey("auto.offset.reset", conf.OffsetPolicy); err != nil {
 		return nil, err
 	}
-	// disable auto committing so we can have tighter control over it
+
+	// Disable auto committing so we can have tighter control over it
 	if err := configmap.SetKey("enable.auto.commit", false); err != nil {
 		return nil, err
 	}
+
+	// Enable application to receive rebalance event notifications.
+	// This is required for the consumer to be able to assign specific topic
+	// partitions to itself instead of the ones assigned by the broker(s).
+	if err := configmap.SetKey("go.application.rebalance.enable", true); err != nil {
+		return nil, err
+	}
+
 	consumer, err := kafka.NewConsumer(configmap)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create kafka consumer: %v", err)
 	}
 	rebalanceCb := func(c *kafka.Consumer, e kafka.Event) error {
 		log.Printf("[%s:%s:%s]Got kafka partition rebalance event: %v", conf.Topic, conf.GroupID, c.String(), e.String())
+		if len(conf.Partitions) > 0 {
+			err := c.Assign(conf.Partitions)
+			if err != nil {
+				log.Fatalf("Failed to assign partitions: %v", err)
+			}
+		}
 		return nil
 	}
 	err = consumer.Subscribe(conf.Topic, rebalanceCb)
