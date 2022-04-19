@@ -65,13 +65,13 @@ func Fetch(ctx context.Context, tier tier.Tier, request action.ActionFetchReques
 	if len(request.ActorType) != 0 {
 		clauses = append(clauses, "actor_type = :actor_type")
 	}
-	if request.ActorID != 0 {
+	if len(request.ActorID) != 0 {
 		clauses = append(clauses, "actor_id = :actor_id")
 	}
 	if len(request.TargetType) != 0 {
 		clauses = append(clauses, "target_type = :target_type")
 	}
-	if request.TargetID != 0 {
+	if len(request.TargetID) != 0 {
 		clauses = append(clauses, "target_id = :target_id")
 	}
 	if len(request.ActionType) != 0 {

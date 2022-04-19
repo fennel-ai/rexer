@@ -6,7 +6,8 @@ func (t RealmID) Value() uint32 {
 	return uint32(t)
 }
 
-type OidType uint64
+type IDType uint64
+type OidType string
 type OType string
 
 type ActionType string

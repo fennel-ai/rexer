@@ -8,7 +8,7 @@ import (
 	"fennel/tier"
 )
 
-func Get(ctx context.Context, tier tier.Tier, aggtype ftypes.AggType, aggname ftypes.AggName) (ftypes.OidType, error) {
+func Get(ctx context.Context, tier tier.Tier, aggtype ftypes.AggType, aggname ftypes.AggName) (ftypes.IDType, error) {
 	row := tier.DB.QueryRowContext(ctx, `
 		SELECT checkpoint
 		FROM checkpoint 
@@ -24,11 +24,11 @@ func Get(ctx context.Context, tier tier.Tier, aggtype ftypes.AggType, aggname ft
 		// this happens when no matching row was found. By default, checkpoint is zero
 		return 0, nil
 	} else {
-		return ftypes.OidType(checkpoint), nil
+		return ftypes.IDType(checkpoint), nil
 	}
 }
 
-func Set(ctx context.Context, tier tier.Tier, aggtype ftypes.AggType, aggname ftypes.AggName, checkpoint ftypes.OidType) error {
+func Set(ctx context.Context, tier tier.Tier, aggtype ftypes.AggType, aggname ftypes.AggName, checkpoint ftypes.IDType) error {
 	_, err := tier.DB.ExecContext(ctx, `
 		INSERT INTO checkpoint (aggtype, aggname, checkpoint)
         VALUES (?, ?, ?)

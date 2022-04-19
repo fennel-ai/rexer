@@ -4,14 +4,16 @@ package profile
 
 import (
 	"context"
+	"math/rand"
+	"strconv"
+	"sync"
+	"testing"
+	"time"
+
 	"fennel/db"
 	"fennel/lib/profile"
 	"fennel/lib/value"
 	"fennel/test"
-	"math/rand"
-	"sync"
-	"testing"
-	"time"
 
 	"github.com/stretchr/testify/assert"
 )
@@ -23,21 +25,21 @@ func TestCachedGetBatchMultipleObjs(t *testing.T) {
 	ctx := context.Background()
 	p := cachedProvider{base: dbProvider{}}
 
-	profile1 := profile.NewProfileItem("1", 1232, "summary", value.Int(1), 1)
+	profile1 := profile.NewProfileItem("1", "1232", "summary", value.Int(1), 1)
 
 	// same as one but with different version
-	profile2 := profile.NewProfileItem("2", 1232, "something else ", value.Int(3), 0)
+	profile2 := profile.NewProfileItem("2", "1232", "something else ", value.Int(3), 0)
 	// same as one but version set to zero
-	profile3 := profile.NewProfileItem("1", 1232, "summary", value.Int(5), 2)
+	profile3 := profile.NewProfileItem("1", "1232", "summary", value.Int(5), 2)
 
 	// different object
-	profile4 := profile.NewProfileItem("1", 1232, "summary", value.Int(7), 3)
+	profile4 := profile.NewProfileItem("1", "1232", "summary", value.Int(7), 3)
 	// initially all are empty
 	keys := []profile.ProfileItemKey{profile1.GetProfileKey(), profile2.GetProfileKey(), profile3.GetProfileKey(), profile4.GetProfileKey()}
 	found, err := p.getBatch(ctx, tier, keys)
 	assert.NoError(t, err)
-	emptyProf := profile.NewProfileItem("1", 1232, "summary", value.Nil, 0)
-	emptyProf2 := profile.NewProfileItem("2", 1232, "something else ", value.Nil, 0)
+	emptyProf := profile.NewProfileItem("1", "1232", "summary", value.Nil, 0)
+	emptyProf2 := profile.NewProfileItem("2", "1232", "something else ", value.Nil, 0)
 
 	assert.Equal(t, []profile.ProfileItem{emptyProf, emptyProf2, emptyProf, emptyProf}, found)
 
@@ -71,7 +73,7 @@ func TestCachedDBConcurrentMultiSet(t *testing.T) {
 	for i := uint64(0); i < 10; i++ {
 		p := profile.ProfileItem{
 			OType:      "user",
-			Oid:        i%2 + 1,
+			Oid:        strconv.FormatUint(i%2+1, 10),
 			Key:        "age",
 			UpdateTime: i + 1,
 			Value:      value.NewList(value.Int(i)),
@@ -110,7 +112,7 @@ func TestCachedDBConcurrentMultiSet(t *testing.T) {
 	}
 
 	// ("user", 0, "age", 9) would be the lastest profile
-	pk := profile.NewProfileItemKey("user", 1, "age")
+	pk := profile.NewProfileItemKey("user", "1", "age")
 	v, err := tier.Cache.Get(ctx, makeKey(pk))
 	assert.NoError(t, err)
 	// ("user", 1, "age", 10) would be the lastest profile
@@ -135,14 +137,14 @@ func TestCachedDBEventuallyConsistentMultipleObjs(t *testing.T) {
 	p := make([]profile.ProfileItem, 0)
 	for i := uint64(1); i <= 10; i++ {
 		v := value.NewList(value.Int(i))
-		p = append(p, profile.ProfileItem{OType: "user", Oid: i%2 + 1, Key: "age", UpdateTime: i, Value: v})
+		p = append(p, profile.ProfileItem{OType: "user", Oid: strconv.FormatUint(i%2+1, 10), Key: "age", UpdateTime: i, Value: v})
 	}
 	assert.NoError(t, c.setBatch(ctx, tier, p))
 
 	// remove few entries from the cache - eviction
 	// these could be random, for the sake of testing, picking few numbers..
 	tier.Cache.Delete(ctx, []string{
-		makeKey(profile.NewProfileItemKey("user", 1, "age")),
+		makeKey(profile.NewProfileItemKey("user", "1", "age")),
 	}...)
 
 	wg := sync.WaitGroup{}
@@ -162,14 +164,14 @@ func TestCachedDBEventuallyConsistentMultipleObjs(t *testing.T) {
 				if rand.Intn(2) == 1 {
 					pbatch = append(pbatch, profile.ProfileItemKey{
 						OType: "user",
-						Oid:   1,
+						Oid:   "1",
 						Key:   "age",
 					})
 				}
 				if rand.Intn(2) == 1 {
 					pbatch = append(pbatch, profile.ProfileItemKey{
 						OType: "user",
-						Oid:   2,
+						Oid:   "2",
 						Key:   "age",
 					})
 				}
@@ -186,7 +188,7 @@ func TestCachedDBEventuallyConsistentMultipleObjs(t *testing.T) {
 		for i := uint64(1); i <= 3; i++ {
 			defer wg.Done()
 			v := value.NewList(value.Int(i * 20))
-			p = append(p, profile.ProfileItem{OType: "user", Oid: 1, Key: "age", UpdateTime: i * 20, Value: v})
+			p = append(p, profile.ProfileItem{OType: "user", Oid: "1", Key: "age", UpdateTime: i * 20, Value: v})
 		}
 		assert.NoError(t, c.setBatch(ctx, tier, p))
 	}()
@@ -195,7 +197,7 @@ func TestCachedDBEventuallyConsistentMultipleObjs(t *testing.T) {
 		for i := uint64(3); i >= 1; i-- {
 			defer wg.Done()
 			v := value.NewList(value.Int(i * 20))
-			p = append(p, profile.ProfileItem{OType: "user", Oid: 2, Key: "age", UpdateTime: i * 20, Value: v})
+			p = append(p, profile.ProfileItem{OType: "user", Oid: "2", Key: "age", UpdateTime: i * 20, Value: v})
 		}
 		assert.NoError(t, c.setBatch(ctx, tier, p))
 	}()
@@ -203,13 +205,13 @@ func TestCachedDBEventuallyConsistentMultipleObjs(t *testing.T) {
 
 	// check that the latest profile can be accessed by provided version = 0
 	// these should return values set as part of the second go routine above
-	v, err := tier.Cache.Get(ctx, makeKey(profile.NewProfileItemKey("user", 1, "age")))
+	v, err := tier.Cache.Get(ctx, makeKey(profile.NewProfileItemKey("user", "1", "age")))
 	assert.NoError(t, err)
 	// ("user", 0, "age", 60) would be the lastest profile
 	expectedv := value.ToJSON(value.NewList(value.Int(60)))
 	assert.Equal(t, expectedv, []byte(v.(string)))
 
-	v, err = tier.Cache.Get(ctx, makeKey(profile.NewProfileItemKey("user", 2, "age")))
+	v, err = tier.Cache.Get(ctx, makeKey(profile.NewProfileItemKey("user", "2", "age")))
 	assert.NoError(t, err)
 	// ("user", 1, "age", 60) would be the lastest profile
 	assert.Equal(t, expectedv, []byte(v.(string)))

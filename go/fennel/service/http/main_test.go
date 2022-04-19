@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"io/ioutil"
 	"net/http/httptest"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -85,7 +86,7 @@ func TestLogFetchServerClient(t *testing.T) {
 	verifyFetch(t, c, action.ActionFetchRequest{}, []action.Action{})
 
 	// now we add a couple of actions
-	a := action.Action{ActorType: "1", ActorID: 2, ActionType: "3", TargetType: "4", TargetID: 5}
+	a := action.Action{ActorType: "1", ActorID: "2", ActionType: "3", TargetType: "4", TargetID: "5"}
 	// logging this should fail because some fields (e.g. requestID aren't specified)
 	err = c.LogAction(a, "")
 	assert.Error(t, err)
@@ -93,7 +94,7 @@ func TestLogFetchServerClient(t *testing.T) {
 	verifyFetch(t, c, action.ActionFetchRequest{}, []action.Action{})
 
 	// but this error disappears when we pass all values
-	a1 := action.Action{ActorType: "1", ActorID: 2, ActionType: "3", TargetType: "4", TargetID: 5, RequestID: 6, Timestamp: 7, Metadata: value.Nil}
+	a1 := action.Action{ActorType: "1", ActorID: "2", ActionType: "3", TargetType: "4", TargetID: "5", RequestID: 6, Timestamp: 7, Metadata: value.Nil}
 	add(t, c, a1)
 	// and this action should show up in requests (after we transfer it to DB)
 	assert.NoError(t, action2.TransferToDB(ctx, tier, consumer))
@@ -101,18 +102,18 @@ func TestLogFetchServerClient(t *testing.T) {
 
 	// add a couple of actions as a batch
 	a2 := action.Action{
-		ActorType: "11", ActorID: 12, ActionType: "13", TargetType: "14", TargetID: 15, RequestID: 16, Timestamp: 17, Metadata: value.Nil}
+		ActorType: "11", ActorID: "12", ActionType: "13", TargetType: "14", TargetID: "15", RequestID: 16, Timestamp: 17, Metadata: value.Nil}
 	a3 := action.Action{
-		ActorType: "22", ActorID: 23, ActionType: "23", TargetType: "24", TargetID: 25, RequestID: 26, Timestamp: 27, Metadata: value.Nil}
+		ActorType: "22", ActorID: "23", ActionType: "23", TargetType: "24", TargetID: "25", RequestID: 26, Timestamp: 27, Metadata: value.Nil}
 	addBatch(t, c, []action.Action{a2, a3})
 	assert.NoError(t, action2.TransferToDB(ctx, tier, consumer))
 	verifyFetch(t, c, action.ActionFetchRequest{}, []action.Action{a1, a2, a3})
 
 	// test duplicate behaviour without dedup_key
 	d1 := action.Action{
-		ActorID:    1,
+		ActorID:    "1",
 		ActorType:  "2",
-		TargetID:   3,
+		TargetID:   "3",
 		TargetType: "4",
 		ActionType: "no_dedup",
 		Timestamp:  5,
@@ -129,9 +130,9 @@ func TestLogFetchServerClient(t *testing.T) {
 
 	// test duplicate behaviour with dedup_key
 	d2 := action.Action{
-		ActorID:    1,
+		ActorID:    "1",
 		ActorType:  "2",
-		TargetID:   3,
+		TargetID:   "3",
 		TargetType: "4",
 		ActionType: "dedup",
 		Timestamp:  5,
@@ -148,9 +149,9 @@ func TestLogFetchServerClient(t *testing.T) {
 
 	// now test duplicates with log_multi
 	d3 := action.Action{
-		ActorID:    1,
+		ActorID:    "1",
 		ActorType:  "2",
-		TargetID:   3,
+		TargetID:   "3",
 		TargetType: "4",
 		ActionType: "no_dedup_multi",
 		Timestamp:  5,
@@ -164,9 +165,9 @@ func TestLogFetchServerClient(t *testing.T) {
 	verifyFetch(t, c, action.ActionFetchRequest{ActionType: "no_dedup_multi"}, []action.Action{d3, d3, d3})
 
 	d4 := action.Action{
-		ActorID:    1,
+		ActorID:    "1",
 		ActorType:  "2",
-		TargetID:   3,
+		TargetID:   "3",
 		TargetType: "4",
 		ActionType: "dedup_multi",
 		Timestamp:  5,
@@ -181,9 +182,9 @@ func TestLogFetchServerClient(t *testing.T) {
 
 	// now test with a mix of dedup keys
 	d5 := action.Action{
-		ActorID:    1,
+		ActorID:    "1",
 		ActorType:  "2",
-		TargetID:   3,
+		TargetID:   "3",
 		TargetType: "4",
 		ActionType: "dedup_mix",
 		Timestamp:  5,
@@ -217,9 +218,9 @@ func TestActionDedupedPerActionType(t *testing.T) {
 
 	// same dedup key with same action type should be deduped
 	f1 := action.Action{
-		ActorID:    10,
+		ActorID:    "10",
 		ActorType:  "2",
-		TargetID:   3,
+		TargetID:   "3",
 		TargetType: "4",
 		ActionType: "at1",
 		Timestamp:  5,
@@ -227,9 +228,9 @@ func TestActionDedupedPerActionType(t *testing.T) {
 		Metadata:   value.Nil,
 	}
 	f2 := action.Action{
-		ActorID:    11,
+		ActorID:    "11",
 		ActorType:  "2",
-		TargetID:   3,
+		TargetID:   "3",
 		TargetType: "4",
 		ActionType: "at1",
 		Timestamp:  5,
@@ -246,9 +247,9 @@ func TestActionDedupedPerActionType(t *testing.T) {
 
 	// same dedup key but for different action type should log the actions
 	a1 := action.Action{
-		ActorID:    1,
+		ActorID:    "1",
 		ActorType:  "2",
-		TargetID:   3,
+		TargetID:   "3",
 		TargetType: "4",
 		ActionType: "at1",
 		Timestamp:  5,
@@ -257,9 +258,9 @@ func TestActionDedupedPerActionType(t *testing.T) {
 	}
 
 	a2 := action.Action{
-		ActorID:    1,
+		ActorID:    "1",
 		ActorType:  "2",
-		TargetID:   3,
+		TargetID:   "3",
 		TargetType: "4",
 		ActionType: "at2",
 		Timestamp:  5,
@@ -269,7 +270,7 @@ func TestActionDedupedPerActionType(t *testing.T) {
 
 	assert.NoError(t, c.LogActions([]action.Action{a1, a2}, []string{"same_key", "same_key"}))
 	assert.NoError(t, action2.TransferToDB(ctx, tier, consumer))
-	verifyFetch(t, c, action.ActionFetchRequest{ActorID: 1}, []action.Action{a1, a2})
+	verifyFetch(t, c, action.ActionFetchRequest{ActorID: "1"}, []action.Action{a1, a2})
 }
 
 // TODO: add more tests covering more error conditions
@@ -290,17 +291,17 @@ func TestProfileServerClient(t *testing.T) {
 	//pfr := profilelib.ProfileItemKey{}
 
 	// in the beginning, with no value set, we set nil pointer back but with no error
-	checkGetSet(t, c, true, "1", 1, 0, "age", value.Nil)
+	checkGetSet(t, c, true, "1", "1", 0, "age", value.Nil)
 
 	var expected value.Value = value.NewList(value.Int(1), value.Bool(false), value.Nil)
-	profileList = append(profileList, checkGetSet(t, c, false, "1", 1, 1, "age", expected))
+	profileList = append(profileList, checkGetSet(t, c, false, "1", "1", 1, "age", expected))
 	// we can also GetProfile it without using the specific version number
-	checkGetSet(t, c, true, "1", 1, 0, "age", expected)
+	checkGetSet(t, c, true, "1", "1", 0, "age", expected)
 
-	profileList = append(profileList, checkGetSet(t, c, false, "1", 2, 2, "age", value.Nil))
-	profileList = append(profileList, checkGetSet(t, c, false, "1", 3, 2, "age", value.Int(1)))
+	profileList = append(profileList, checkGetSet(t, c, false, "1", "2", 2, "age", value.Nil))
+	profileList = append(profileList, checkGetSet(t, c, false, "1", "3", 2, "age", value.Int(1)))
 
-	checkGetSet(t, c, false, "10", 3131, 0, "summary", value.Int(1))
+	checkGetSet(t, c, false, "10", "3131", 0, "summary", value.Int(1))
 
 	// these profiles are also written to kafka queue
 	consumer, err := tier.NewKafkaConsumer(profilelib.PROFILELOG_KAFKA_TOPIC, "someprofilegroup", kafka.DefaultOffsetPolicy)
@@ -325,7 +326,7 @@ func TestSetProfilesQueuesToKafka(t *testing.T) {
 	// Write another batch, previous entries should still be there
 	profileList2 := make([]profilelib.ProfileItem, 0)
 	for i := uint64(1); i <= 3; i++ {
-		p := profilelib.ProfileItem{OType: ftypes.OType("2"), Oid: i, Key: "foo", UpdateTime: i, Value: value.Int(i * 10)}
+		p := profilelib.ProfileItem{OType: ftypes.OType("2"), Oid: strconv.FormatUint(i, 10), Key: "foo", UpdateTime: i, Value: value.Int(i * 10)}
 		profileList2 = append(profileList2, p)
 	}
 
@@ -599,7 +600,7 @@ func TestStoreRetrieveDeactivateAggregate(t *testing.T) {
 	assert.Error(t, err)
 }
 
-func checkGetSet(t *testing.T, c *client.Client, get bool, otype string, oid uint64,
+func checkGetSet(t *testing.T, c *client.Client, get bool, otype string, oid string,
 	updateTime uint64, key string, val value.Value) profilelib.ProfileItem {
 	if get {
 		req := profilelib.NewProfileItemKey(otype, oid, key)

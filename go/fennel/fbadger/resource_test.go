@@ -1,15 +1,16 @@
 package fbadger
 
 import (
-	"fennel/lib/ftypes"
-	"fennel/lib/utils"
-	"fennel/resource"
 	"fmt"
 	"io/ioutil"
 	"math/rand"
 	"os"
 	"testing"
 	"time"
+
+	"fennel/lib/ftypes"
+	"fennel/lib/utils"
+	"fennel/resource"
 
 	"github.com/dgraph-io/badger/v3"
 	"github.com/stretchr/testify/assert"

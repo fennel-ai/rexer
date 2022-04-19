@@ -15,9 +15,9 @@ const (
 
 type Row struct {
 	ContextOType    ftypes.OType        `json:"context_otype"`
-	ContextOid      ftypes.OidType      `json:"context_oid"`
+	ContextOid      ftypes.IDType       `json:"context_oid"`
 	CandidateOType  ftypes.OType        `json:"candidate_otype"`
-	CandidateOid    ftypes.OidType      `json:"candidate_oid"`
+	CandidateOid    ftypes.IDType       `json:"candidate_oid"`
 	Features        value.Dict          `json:"data"`
 	Workflow        string              `json:"workflow"`
 	RequestID       ftypes.RequestID    `json:"request_id"`
@@ -77,7 +77,7 @@ func (r *Row) UnmarshalJSON(bytes []byte) error {
 			if !ok {
 				return fmt.Errorf("can not unmarshal feature row, expected integer for context_oid but found: %v", v)
 			}
-			r.ContextOid = ftypes.OidType(n)
+			r.ContextOid = ftypes.IDType(n)
 		case "candidate_otype":
 			s, ok := v.(value.String)
 			if !ok {
@@ -89,7 +89,7 @@ func (r *Row) UnmarshalJSON(bytes []byte) error {
 			if !ok {
 				return fmt.Errorf("can not unmarshal feature row, expected integer for candidate_id but found: %v", v)
 			}
-			r.CandidateOid = ftypes.OidType(n)
+			r.CandidateOid = ftypes.IDType(n)
 		case "timestamp":
 			n, ok := v.(value.Int)
 			if !ok {
@@ -158,9 +158,9 @@ func FromProtoRow(pr *ProtoRow) (*Row, error) {
 	}
 	return &Row{
 		ContextOType:    ftypes.OType(pr.ContextOType),
-		ContextOid:      ftypes.OidType(pr.ContextOid),
+		ContextOid:      ftypes.IDType(pr.ContextOid),
 		CandidateOType:  ftypes.OType(pr.CandidateOType),
-		CandidateOid:    ftypes.OidType(pr.CandidateOid),
+		CandidateOid:    ftypes.IDType(pr.CandidateOid),
 		Features:        asdict,
 		Workflow:        pr.Workflow,
 		RequestID:       ftypes.RequestID(pr.RequestID),

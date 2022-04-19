@@ -11,6 +11,7 @@ import (
 	libaction "fennel/lib/action"
 	"fennel/lib/ftypes"
 	libprofile "fennel/lib/profile"
+	"fennel/lib/utils"
 	"fennel/lib/value"
 
 	"github.com/alexflint/go-arg"
@@ -23,7 +24,7 @@ type LoadTestArg struct {
 	NumCreators int    `arg:"--num_creators" default:"100"`
 	Qps         int    `arg:"--qps" default:"10000"`
 	Dryrun      bool   `arg:"--dry_run" default:"false"`
-	Uid         int    `arg:"--uid" default:"-1"` // If NumUids == 1 and Uid is set, use it
+	Uid         string `arg:"--uid" default:""` // If NumUids == 1 and Uid is set, use it
 	NumProcs    int    `arg:"--num_procs" default:"400"`
 }
 
@@ -35,12 +36,12 @@ const (
 	METADATA_FIELD = "watch_time"
 )
 
-func logActions(c *client.Client, numproc, total, qps int, uids, video_ids []uint64, dryrun bool) error {
+func logActions(c *client.Client, numproc, total, qps int, uids, video_ids []string, dryrun bool) error {
 	errs := make(chan error, numproc)
 	per_proc := total / numproc
 	qps_per_proc := qps / numproc
 	for i := 0; i < numproc; i++ {
-		go func(procid int, uids, video_ids []uint64, num, qps int) {
+		go func(procid int, uids, video_ids []string, num, qps int) {
 			for num > 0 {
 				start := time.Now().UnixMilli()
 				for i := 0; i < qps; i++ {
@@ -82,7 +83,7 @@ func logActions(c *client.Client, numproc, total, qps int, uids, video_ids []uin
 	return nil
 }
 
-func setProfileInner(numprocs, procid int, c *client.Client, otype ftypes.OType, oids []uint64, fields map[string][]value.Value, dryrun bool, errs chan error) {
+func setProfileInner(numprocs, procid int, c *client.Client, otype ftypes.OType, oids []string, fields map[string][]value.Value, dryrun bool, errs chan error) {
 	for i, oid := range oids {
 		if i%numprocs != procid {
 			continue
@@ -96,7 +97,7 @@ func setProfileInner(numprocs, procid int, c *client.Client, otype ftypes.OType,
 				Value: v,
 			}
 			if dryrun {
-				fmt.Printf("Set profile: (%s, %d, %s) -> %v\n", otype, oid, k, v)
+				fmt.Printf("Set profile: (%s, %s, %s) -> %v\n", otype, oid, k, v)
 			} else {
 				if err := c.SetProfile(&pi); err != nil {
 					log.Printf("loadtest error profile: %v", err)
@@ -110,7 +111,7 @@ func setProfileInner(numprocs, procid int, c *client.Client, otype ftypes.OType,
 	errs <- nil
 }
 
-func setProfile(c *client.Client, otype ftypes.OType, oids []uint64, fields map[string][]value.Value, dryrun bool) error {
+func setProfile(c *client.Client, otype ftypes.OType, oids []string, fields map[string][]value.Value, dryrun bool) error {
 	numprocs := 200
 	errs := make(chan error, numprocs)
 	for i := 0; i < numprocs; i++ {
@@ -133,14 +134,14 @@ func main() {
 
 	rand.Seed(time.Now().Unix()) // initialize global pseudo random generator
 	total := 1 * 60 * flags.Qps
-	uids := make([]uint64, 0, flags.NumUids)
+	uids := make([]string, 0, flags.NumUids)
 
 	// if the NumUids == 1, use the Uid passed by the caller.
-	if flags.NumUids == 1 && flags.Uid > 0 {
-		uids = append(uids, uint64(flags.Uid))
+	if flags.NumUids == 1 && flags.Uid != "" {
+		uids = append(uids, flags.Uid)
 	} else {
 		for i := 0; i < flags.NumUids; i++ {
-			uids = append(uids, rand.Uint64())
+			uids = append(uids, utils.RandString(64))
 		}
 	}
 	userFields := map[string][]value.Value{
@@ -155,9 +156,9 @@ func main() {
 	for i := 0; i < flags.NumCreators; i++ {
 		creatorIDs = append(creatorIDs, value.Int(rand.Uint32()))
 	}
-	videoIds := make([]uint64, 0, flags.NumVideos)
+	videoIds := make([]string, 0, flags.NumVideos)
 	for i := 0; i < flags.NumVideos; i++ {
-		videoIds = append(videoIds, rand.Uint64())
+		videoIds = append(videoIds, utils.RandString(64))
 	}
 	videoFields := map[string][]value.Value{
 		"creator_id": creatorIDs,

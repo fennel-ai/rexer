@@ -1,17 +1,18 @@
 package v1
 
 import (
-	"fennel/lib/value"
 	"testing"
+
+	"fennel/lib/value"
 
 	"github.com/stretchr/testify/require"
 )
 
 func TestEncodeKey(t *testing.T) {
 	codec := V1Codec{}
-	e1, err := codec.EncodeKey("otype", 1024, "mykey")
+	e1, err := codec.EncodeKey("otype", "1024", "mykey")
 	require.NoError(t, err)
-	e2, err := codec.EncodeKey("otype", 1024, "mykey")
+	e2, err := codec.EncodeKey("otype", "1024", "mykey")
 	require.NoError(t, err)
 	require.Equal(t, e1, e2)
 }

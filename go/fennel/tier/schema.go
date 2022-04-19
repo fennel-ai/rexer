@@ -10,9 +10,9 @@ import "fennel/db"
 var Schema = db.Schema{
 	1: `CREATE TABLE IF NOT EXISTS actionlog (
 			action_id BIGINT UNSIGNED not null primary key auto_increment,
-			actor_id BIGINT UNSIGNED NOT NULL,
+			actor_id VARCHAR(64) NOT NULL,
 			actor_type varchar(255) NOT NULL,
-			target_id BIGINT UNSIGNED NOT NULL,
+			target_id VARCHAR(64) NOT NULL,
 			target_type varchar(255) NOT NULL,
 			action_type varchar(255) NOT NULL,
 			timestamp BIGINT UNSIGNED NOT NULL,
@@ -28,7 +28,7 @@ var Schema = db.Schema{
 		);`,
 	3: `CREATE TABLE IF NOT EXISTS profile (
 			otype varchar(255) not null,
-			oid BIGINT UNSIGNED not null,
+			oid VARCHAR(64) not null,
 			zkey varchar(255) not null,
 			version BIGINT UNSIGNED not null,
 			value blob not null,

@@ -1,9 +1,10 @@
 package fbadger
 
 import (
-	"fennel/resource"
 	"fmt"
 	"path/filepath"
+
+	"fennel/resource"
 
 	"github.com/dgraph-io/badger/v3"
 )

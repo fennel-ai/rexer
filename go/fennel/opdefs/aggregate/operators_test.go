@@ -49,14 +49,14 @@ func TestAggValue_Apply(t *testing.T) {
 	assert.NoError(t, aggregate.Store(ctx, tier, agg))
 	assert.NoError(t, aggregate.Store(ctx, tier, agg2))
 
-	uids := []ftypes.OidType{1, 2, 1}
+	uids := []ftypes.OidType{"1", "2", "1"}
 	for i := 0; i < 3; i++ {
 		a := getAction(uids[i], ftypes.Timestamp(t0), "like")
 		err = controller_action.Insert(ctx, tier, a)
 		assert.NoError(t, err)
 	}
 	// Insert one action at a later timestamp
-	a := getAction(2, ftypes.Timestamp(t0+1800), "like")
+	a := getAction("2", ftypes.Timestamp(t0+1800), "like")
 	err = controller_action.Insert(ctx, tier, a)
 	assert.NoError(t, err)
 	clock.Set(t0 + 3600)
@@ -67,13 +67,13 @@ func TestAggValue_Apply(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NoError(t, aggregate.Update(ctx, tier, consumer, agg))
 	assert.NoError(t, aggregate.Update(ctx, tier, consumer2, agg2))
-	found, err := aggregate.Value(ctx, tier, agg.Name, value.Int(1), value.NewDict(map[string]value.Value{"duration": value.Int(6 * 3600)}))
+	found, err := aggregate.Value(ctx, tier, agg.Name, value.String("1"), value.NewDict(map[string]value.Value{"duration": value.Int(6 * 3600)}))
 	assert.NoError(t, err)
 	assert.Equal(t, value.Int(2), found)
-	found, err = aggregate.Value(ctx, tier, agg.Name, value.Int(2), value.NewDict(map[string]value.Value{"duration": value.Int(6 * 3600)}))
+	found, err = aggregate.Value(ctx, tier, agg.Name, value.String("2"), value.NewDict(map[string]value.Value{"duration": value.Int(6 * 3600)}))
 	assert.NoError(t, err)
 	assert.Equal(t, value.Int(2), found)
-	found, err = aggregate.Value(ctx, tier, agg.Name, value.Int(2), value.NewDict(map[string]value.Value{"duration": value.Int(2000)}))
+	found, err = aggregate.Value(ctx, tier, agg.Name, value.String("2"), value.NewDict(map[string]value.Value{"duration": value.Int(2000)}))
 	assert.NoError(t, err)
 	assert.Equal(t, value.Int(1), found)
 
@@ -86,11 +86,11 @@ func TestAggValue_Apply(t *testing.T) {
 		value.NewDict(map[string]value.Value{"a": value.String("def")}),
 	}
 	contextKwargs := []value.Dict{
-		value.NewDict(map[string]value.Value{"name": value.String(agg.Name), "groupkey": value.Int(1), "kwargs": value.NewDict(map[string]value.Value{"duration": value.Int(6 * 3600)})}),
-		value.NewDict(map[string]value.Value{"name": value.String(agg.Name), "groupkey": value.Int(2), "kwargs": value.NewDict(map[string]value.Value{"duration": value.Int(6 * 3600)})}),
-		value.NewDict(map[string]value.Value{"name": value.String(agg.Name), "groupkey": value.Int(3), "kwargs": value.NewDict(map[string]value.Value{"duration": value.Int(6 * 3600)})}),
-		value.NewDict(map[string]value.Value{"name": value.String(agg.Name), "groupkey": value.Int(2), "kwargs": value.NewDict(map[string]value.Value{"duration": value.Int(2000)})}),
-		value.NewDict(map[string]value.Value{"name": value.String(agg2.Name), "groupkey": value.Int(1), "kwargs": value.NewDict(map[string]value.Value{"duration": value.Int(6 * 3600)})}),
+		value.NewDict(map[string]value.Value{"name": value.String(agg.Name), "groupkey": value.String("1"), "kwargs": value.NewDict(map[string]value.Value{"duration": value.Int(6 * 3600)})}),
+		value.NewDict(map[string]value.Value{"name": value.String(agg.Name), "groupkey": value.String("2"), "kwargs": value.NewDict(map[string]value.Value{"duration": value.Int(6 * 3600)})}),
+		value.NewDict(map[string]value.Value{"name": value.String(agg.Name), "groupkey": value.String("3"), "kwargs": value.NewDict(map[string]value.Value{"duration": value.Int(6 * 3600)})}),
+		value.NewDict(map[string]value.Value{"name": value.String(agg.Name), "groupkey": value.String("2"), "kwargs": value.NewDict(map[string]value.Value{"duration": value.Int(2000)})}),
+		value.NewDict(map[string]value.Value{"name": value.String(agg2.Name), "groupkey": value.String("1"), "kwargs": value.NewDict(map[string]value.Value{"duration": value.Int(6 * 3600)})}),
 	}
 	outputs := []value.Value{
 		value.NewDict(map[string]value.Value{"a": value.String("hi"), "myaggresults": value.Int(2)}),
@@ -140,7 +140,7 @@ func getAction(uid ftypes.OidType, ts ftypes.Timestamp, actionType ftypes.Action
 	return action.Action{
 		ActorID:    uid,
 		ActorType:  "user",
-		TargetID:   3,
+		TargetID:   "3",
 		TargetType: "video",
 		ActionType: actionType,
 		Metadata:   value.Int(6),

@@ -25,20 +25,20 @@ func TestActionDBBasic(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Empty(t, found)
 	// let's add an action
-	action1 := action.Action{ActorID: 111, ActorType: "11", TargetType: "12", TargetID: 121, ActionType: "13", Metadata: value.Int(14), Timestamp: 15, RequestID: 16}
+	action1 := action.Action{ActorID: "111", ActorType: "11", TargetType: "12", TargetID: "121", ActionType: "13", Metadata: value.Int(14), Timestamp: 15, RequestID: 16}
 	action1ser := action1.ToActionSer()
 	aid1, err := Insert(ctx, tier, action1ser)
 	assert.NoError(t, err)
 
-	action2 := action.Action{ActorID: 211, ActorType: "21", TargetType: "22", TargetID: 221, ActionType: "23", Metadata: value.Int(24), Timestamp: 25, RequestID: 26}
+	action2 := action.Action{ActorID: "211", ActorType: "21", TargetType: "22", TargetID: "221", ActionType: "23", Metadata: value.Int(24), Timestamp: 25, RequestID: 26}
 	action2ser := action2.ToActionSer()
 	aid2, err := Insert(ctx, tier, action2ser)
 	assert.NoError(t, err)
 
 	// assign these ids to actions so we can verify we get them back
-	action1.ActionID = ftypes.OidType(aid1)
+	action1.ActionID = ftypes.IDType(aid1)
 	action1ser.ActionID = action1.ActionID
-	action2.ActionID = ftypes.OidType(aid2)
+	action2.ActionID = ftypes.IDType(aid2)
 	action2ser.ActionID = action2.ActionID
 
 	// now we should have total two actions
@@ -82,9 +82,9 @@ func TestInsertBatch(t *testing.T) {
 	assert.Empty(t, found)
 
 	// now insert a few actions
-	action1 := action.Action{ActorID: 111, ActorType: "11", TargetType: "12", TargetID: 121, ActionType: "13", Metadata: value.Int(14), Timestamp: 15, RequestID: 16}
+	action1 := action.Action{ActorID: "111", ActorType: "11", TargetType: "12", TargetID: "121", ActionType: "13", Metadata: value.Int(14), Timestamp: 15, RequestID: 16}
 	action1ser := action1.ToActionSer()
-	action2 := action.Action{ActorID: 211, ActorType: "21", TargetType: "22", TargetID: 221, ActionType: "23", Metadata: value.Int(24), Timestamp: 25, RequestID: 26}
+	action2 := action.Action{ActorID: "211", ActorType: "21", TargetType: "22", TargetID: "221", ActionType: "23", Metadata: value.Int(24), Timestamp: 25, RequestID: 26}
 	action2ser := action2.ToActionSer()
 	assert.NoError(t, InsertBatch(ctx, tier, []action.ActionSer{*action1ser, *action2ser}))
 

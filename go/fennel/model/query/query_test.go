@@ -1,11 +1,12 @@
 package query
 
 import (
+	"testing"
+
 	"fennel/lib/ftypes"
 	"fennel/lib/query"
 	"fennel/test"
 	"fennel/tier"
-	"testing"
 
 	"github.com/stretchr/testify/assert"
 )

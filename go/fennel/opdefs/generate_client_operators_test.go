@@ -2,10 +2,11 @@ package opdefs
 
 import (
 	"encoding/json"
-	"fennel/engine/operators"
 	"log"
 	"os"
 	"testing"
+
+	"fennel/engine/operators"
 
 	"github.com/stretchr/testify/assert"
 )

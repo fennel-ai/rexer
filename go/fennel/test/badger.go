@@ -1,10 +1,11 @@
 package test
 
 import (
+	"os"
+
 	"fennel/fbadger"
 	"fennel/lib/ftypes"
 	"fennel/resource"
-	"os"
 
 	"github.com/dgraph-io/badger/v3"
 )

@@ -44,11 +44,11 @@ func TestLongKey(t *testing.T) {
 	val := value.Int(2)
 
 	// can not set value on a makeKey that is greater than 255 chars
-	err = p.set(ctx, tier, profile.NewProfileItem("1", 1232, utils.RandString(256), val, 1))
+	err = p.set(ctx, tier, profile.NewProfileItem("1", "1232", utils.RandString(256), val, 1))
 	assert.Error(t, err)
 
 	// but works for a makeKey of size upto 255
-	err = p.set(ctx, tier, profile.NewProfileItem("1", 1232, utils.RandString(255), val, 1))
+	err = p.set(ctx, tier, profile.NewProfileItem("1", "1232", utils.RandString(255), val, 1))
 	assert.NoError(t, err)
 }
 
@@ -62,10 +62,10 @@ func TestLongOType(t *testing.T) {
 	val := value.Int(5)
 
 	// otype cannot be longer than 255 chars
-	err = p.set(ctx, tier, profile.NewProfileItem(utils.RandString(256), 23, "key", val, 1))
+	err = p.set(ctx, tier, profile.NewProfileItem(utils.RandString(256), "23", "key", val, 1))
 	assert.Error(t, err)
 
 	// but works for otype of length 255 chars
-	err = p.set(ctx, tier, profile.NewProfileItem(utils.RandString(255), 23, "key", val, 1))
+	err = p.set(ctx, tier, profile.NewProfileItem(utils.RandString(255), "23", "key", val, 1))
 	assert.NoError(t, err)
 }

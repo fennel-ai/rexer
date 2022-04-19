@@ -47,9 +47,9 @@ func (f featureLog) Apply(ctx context.Context, static value.Dict, in operators.I
 		}
 		msg := libfeature.Row{
 			ContextOType:    ftypes.OType(get(kwargs, "context_otype").(value.String)),
-			ContextOid:      ftypes.OidType(get(kwargs, "context_oid").(value.Int)),
+			ContextOid:      ftypes.IDType(get(kwargs, "context_oid").(value.Int)),
 			CandidateOType:  ftypes.OType(get(kwargs, "candidate_otype").(value.String)),
-			CandidateOid:    ftypes.OidType(get(kwargs, "candidate_oid").(value.Int)),
+			CandidateOid:    ftypes.IDType(get(kwargs, "candidate_oid").(value.Int)),
 			Features:        get(kwargs, "features").(value.Dict),
 			Workflow:        workflow,
 			RequestID:       ftypes.RequestID(get(kwargs, "request_id").(value.Int)),

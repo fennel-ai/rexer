@@ -23,9 +23,9 @@ func TestLogMulti_Kafka(t *testing.T) {
 	for i := 0; i < 10; i++ {
 		rows = append(rows, feature.Row{
 			ContextOType:    "user",
-			ContextOid:      ftypes.OidType(i),
+			ContextOid:      ftypes.IDType(i),
 			CandidateOType:  "video",
-			CandidateOid:    ftypes.OidType(i + 1),
+			CandidateOid:    ftypes.IDType(i + 1),
 			Features:        value.NewDict(map[string]value.Value{"x": value.Int(i)}),
 			Workflow:        "something",
 			RequestID:       12,
