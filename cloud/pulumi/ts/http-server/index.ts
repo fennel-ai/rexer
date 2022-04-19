@@ -6,18 +6,7 @@ import * as path from "path";
 import * as process from "process";
 import * as childProcess from "child_process";
 
-
 const name = "http-server"
-
-// TODO: use version from common library.
-// operator for type-safety for string key access:
-// https://schneidenbach.gitbooks.io/typescript-cookbook/content/nameof-operator.html
-export const nameof = <T>(name: keyof T) => name;
-
-// TODO: move to common library module.
-export const fennelStdTags = {
-    "managed-by": "fennel.ai",
-}
 
 export const plugins = {
     "kubernetes": "v3.18.0",

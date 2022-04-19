@@ -1,11 +1,6 @@
 import * as pulumi from "@pulumi/pulumi";
 import * as aws from "@pulumi/aws";
 
-// TODO: use version from common library.
-// operator for type-safety for string key access:
-// https://schneidenbach.gitbooks.io/typescript-cookbook/content/nameof-operator.html
-export const nameof = <T>(name: keyof T) => name;
-
 export const plugins = {
     "aws": "v4.38.1",
 }
