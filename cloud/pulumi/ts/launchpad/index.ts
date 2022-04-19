@@ -78,6 +78,24 @@ const tierConfs: Record<number, TierConf> = {
             loadBalancerScheme: PUBLIC_LB_SCHEME,
         }
     },
+    // Demo tier using Fennel's staging data plane.
+    109: {
+        planeId: 3,
+        // use public subnets for ingress to allow traffic from outside the assigned vpc
+        ingressConf: {
+            usePublicSubnets: true,
+            loadBalancerScheme: PUBLIC_LB_SCHEME,
+        }
+    },
+    // Demo tier using Fennel's staging data plane.
+    110: {
+        planeId: 3,
+        // use public subnets for ingress to allow traffic from outside the assigned vpc
+        ingressConf: {
+            usePublicSubnets: true,
+            loadBalancerScheme: PUBLIC_LB_SCHEME,
+        }
+    },
 }
 
 // map from plane id to its configuration.
