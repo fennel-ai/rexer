@@ -32,7 +32,7 @@ var Schema = db.Schema{
 			zkey varchar(255) not null,
 			version BIGINT UNSIGNED not null,
 			value blob not null,
-			PRIMARY KEY(otype, oid, zkey, version)
+			PRIMARY KEY(otype, oid, zkey)
 		);`,
 	4: `CREATE TABLE IF NOT EXISTS counter_bucket (
 			counter_type INT NOT NULL,
@@ -115,4 +115,6 @@ var Schema = db.Schema{
 	12: `ALTER TABLE profile DROP PRIMARY KEY, ADD PRIMARY KEY(otype, oid, zkey, version, value(1024));`,
 	// ======== END versioned profile uniqueness and idempotent inserts ========
 	13: `ALTER TABLE aggregate_config ADD COLUMN id INT UNSIGNED NOT NULL AUTO_INCREMENT UNIQUE;`,
+	// Alter the profile primary key to only include otype, oid, zkey.
+	14: `ALTER TABLE profile ADD CONSTRAINT latest_only UNIQUE (otype, oid, zkey);`,
 }

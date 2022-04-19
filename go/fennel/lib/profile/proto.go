@@ -14,10 +14,11 @@ func FromProtoProfileItem(ppr *ProtoProfileItem) (ProfileItem, error) {
 		ftypes.OType(ppr.OType),
 		ppr.Oid,
 		ppr.Key,
-		ppr.Version,
 		v,
+		ppr.Version,
 	}, nil
 }
+
 func ToProtoProfileItem(pi *ProfileItem) (ProtoProfileItem, error) {
 	pv, err := value.ToProtoValue(pi.Value)
 	if err != nil {
@@ -27,27 +28,9 @@ func ToProtoProfileItem(pi *ProfileItem) (ProtoProfileItem, error) {
 		OType:   string(pi.OType),
 		Oid:     pi.Oid,
 		Key:     pi.Key,
-		Version: pi.Version,
+		Version: pi.UpdateTime,
 		Value:   &pv,
 	}, nil
-}
-
-func FromProtoProfileFetchRequest(ppfr *ProtoProfileFetchRequest) ProfileFetchRequest {
-	return ProfileFetchRequest{
-		ftypes.OType(ppfr.OType),
-		ppfr.Oid,
-		ppfr.Key,
-		ppfr.Version,
-	}
-}
-
-func ToProtoProfileFetchRequest(pfr *ProfileFetchRequest) ProtoProfileFetchRequest {
-	return ProtoProfileFetchRequest{
-		OType:   string(pfr.OType),
-		Oid:     pfr.Oid,
-		Key:     pfr.Key,
-		Version: pfr.Version,
-	}
 }
 
 func FromProtoProfileList(profileList *ProtoProfileList) ([]ProfileItem, error) {

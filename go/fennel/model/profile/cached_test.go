@@ -11,7 +11,6 @@ import (
 	"fennel/lib/profile"
 	"fennel/lib/value"
 
-	"fennel/lib/ftypes"
 	"fennel/test"
 	"fennel/tier"
 
@@ -19,24 +18,29 @@ import (
 )
 
 type mockProvider struct {
-	ret []byte
+	ret profile.ProfileItem
 }
 
-func (m *mockProvider) change(n []byte) {
+func (m *mockProvider) change(n profile.ProfileItem) {
 	m.ret = n
 }
-func (m *mockProvider) set(ctx context.Context, tier tier.Tier, otype ftypes.OType, oid uint64, key string, version uint64, valueSer []byte) error {
+
+func (m *mockProvider) set(ctx context.Context, tier tier.Tier, profile profile.ProfileItem) error {
 	return nil
 }
-func (m *mockProvider) setBatch(ctx context.Context, tier tier.Tier, profiles []profile.ProfileItemSer) error {
+
+func (m *mockProvider) setBatch(ctx context.Context, tier tier.Tier, profiles []profile.ProfileItem) error {
+	m.change(profiles[0])
 	return nil
 }
-func (m *mockProvider) get(ctx context.Context, tier tier.Tier, otype ftypes.OType, oid uint64, key string, version uint64) ([]byte, error) {
+
+func (m *mockProvider) get(ctx context.Context, tier tier.Tier, profileKey profile.ProfileItemKey) (profile.ProfileItem, error) {
 	return m.ret, nil
 }
-func (m *mockProvider) getVersionBatched(ctx context.Context, tier tier.Tier, vids []versionIdentifier) (map[versionIdentifier]uint64, error) {
-	mp := make(map[versionIdentifier]uint64)
-	mp[vids[0]] = 1
+
+func (m *mockProvider) getBatch(ctx context.Context, tier tier.Tier, profileKeys []profile.ProfileItemKey) ([]profile.ProfileItem, error) {
+	mp := make([]profile.ProfileItem, 1)
+	mp[0] = m.ret
 	return mp, nil
 }
 
@@ -49,22 +53,15 @@ func TestCachedDBBasic(t *testing.T) {
 	t.Run("cache_db_basic", func(t *testing.T) {
 		testProviderBasic(t, provider)
 	})
-	t.Run("cache_db_version", func(t *testing.T) {
-		testProviderVersion(t, provider)
+
+	t.Run("cache_db_set_again", func(t *testing.T) {
+		testSetAgain(t, provider)
 	})
-	// this doesn't work because the underlying DB call works and so cache assumes it worked
-	// and sets the updated value in cache
-	// t.Run("cache_db_set_again", func(t *testing.T) {
-	// 	testSetAgain(t, provider)
+	// t.Run("cache_db_set_get_batch", func(t *testing.T) {
+	// 	testSetGetBatch(t, provider)
 	// })
-	t.Run("cache_db_set_batch", func(t *testing.T) {
-		testSetBatch(t, provider)
-	})
 	t.Run("cache_db_get_multi", func(t *testing.T) {
 		testSQLGetMulti(t, provider)
-	})
-	t.Run("cache_db_get_version_batch", func(t *testing.T) {
-		testGetVersionBatched(t, provider)
 	})
 }
 
@@ -75,35 +72,36 @@ func TestCaching(t *testing.T) {
 	defer test.Teardown(tier)
 	ctx := context.Background()
 
-	origmock := []byte{1, 2, 3}
+	origmock := profile.NewProfileItem("users", 1232, "gender", value.String("male"), 1)
+	expected := profile.NewProfileItem("users", 1232, "gender", value.String("male"), 0)
 	gt := mockProvider{origmock}
 	p := cachedProvider{base: &gt}
-	// p := CachedDB{cache: redis.NewCache(client.(redis.Client)), groundTruth: &gt}
-	// err = p.Init()
-	// assert.NoError(t, err)
 
 	// initially we should get the mocked origmock value back
-	found, err := p.get(ctx, tier, "1", 1232, "summary", 1)
+	found, err := p.get(ctx, tier, origmock.GetProfileKey())
 	assert.NoError(t, err)
 	assert.Equal(t, origmock, found)
 
 	// now change the mocked value
-	newmock := []byte{4, 5}
+	newmock := profile.NewProfileItem("users", 1232, "gender", value.String("female"), 1)
 	gt.change(newmock)
 
 	// we should still get origmock back because it's in cache
-	found, err = p.get(ctx, tier, "1", 1232, "summary", 1)
+	found, err = p.get(ctx, tier, origmock.GetProfileKey())
 	assert.NoError(t, err)
-	assert.Equal(t, origmock, found)
+	assert.Equal(t, expected, found)
 
 	// but if we set a new value, we update the cache as well.
-	err = p.set(ctx, tier, "1", 1232, "summary", 1, []byte{7, 8, 9})
+	origmock.Value = value.String("unknown")
+	origmock.UpdateTime = 2
+	err = p.set(ctx, tier, origmock)
 	assert.NoError(t, err)
 
 	// so subsequent gets should get the new updated mock back
-	found, err = p.get(ctx, tier, "1", 1232, "summary", 1)
+	found, err = p.get(ctx, tier, origmock.GetProfileKey())
 	assert.NoError(t, err)
-	assert.Equal(t, []byte{7, 8, 9}, found)
+	expected.Value = value.String("unknown")
+	assert.Equal(t, expected, found)
 }
 
 func TestCachedGetBatch(t *testing.T) {
@@ -113,38 +111,43 @@ func TestCachedGetBatch(t *testing.T) {
 	ctx := context.Background()
 	p := cachedProvider{base: dbProvider{}}
 
-	expected1 := value.ToJSON(value.Int(1))
-	expected2 := value.ToJSON(value.Int(3))
-	expected3 := expected2
-
 	// mini-redis does not play well with cache keys in different "slots" (in the same txn),
 	// currently it is determined using (otype, oid, key). We test behavior across
 	// different objects in `_integration_test`
-	profile1 := profile.NewProfileItem("1", 1232, "summary", 1)
-
-	// same as one but with different version
-	profile2 := profile.NewProfileItem("1", 1232, "summary", 5)
-	// same as three but version set to zero
-	profile3 := profile.NewProfileItem("1", 1232, "summary", 0)
+	pk := profile.NewProfileItemKey("user", 1, "age")
+	prof := profile.NewProfileItem("user", 1, "age", value.Nil, 0)
 	// initially all are empty
-	found, err := p.getBatched(ctx, tier, []profile.ProfileItem{profile1, profile2, profile3})
+	found, err := p.getBatch(ctx, tier, []profile.ProfileItemKey{pk, pk, pk})
 	assert.NoError(t, err)
-	assert.Equal(t, [][]byte{nil, nil, nil}, found)
+	assert.Equal(t, []profile.ProfileItem{prof, prof, prof}, found)
+
+	p1 := profile.NewProfileItem("user", 1, "age", value.Int(234), 0)
+	p2 := profile.NewProfileItem("user", 2, "age", value.Int(3244), 123)
+	// p2 but latest
+	p3 := profile.NewProfileItem("user", 2, "age", value.Int(757), 156)
+
+	// Reads without writes should return empty
+	pks := []profile.ProfileItemKey{p1.GetProfileKey(), p2.GetProfileKey(), p3.GetProfileKey()}
+	found, err = p.getBatch(ctx, tier, pks)
+	assert.NoError(t, err)
+	assert.Equal(t, []profile.ProfileItem{profile.NewProfileItem("user", 1, "age", value.Nil, 0), profile.NewProfileItem("user", 2, "age", value.Nil, 0), profile.NewProfileItem("user", 2, "age", value.Nil, 0)}, found)
 
 	// do a bunch of sets
-	assert.NoError(t, p.set(ctx, tier, profile1.OType, profile1.Oid, profile1.Key, profile1.Version, expected1))
-	assert.NoError(t, p.set(ctx, tier, profile2.OType, profile2.Oid, profile2.Key, profile2.Version, expected2))
+	assert.NoError(t, p.set(ctx, tier, p1))
+	assert.NoError(t, p.set(ctx, tier, p2))
+	assert.NoError(t, p.set(ctx, tier, p3))
 
-	// Ask for duplicate profiles
-	found, err = p.getBatched(ctx, tier, []profile.ProfileItem{profile1, profile2, profile3, profile3})
+	// Ask for profiles
+	found, err = p.getBatch(ctx, tier, pks)
 	assert.NoError(t, err)
-	assert.Equal(t, [][]byte{expected1, expected2, expected3, expected3}, found)
+	expectedProf3 := profile.NewProfileItem("user", 2, "age", value.Int(757), 0)
+	assert.Equal(t, []profile.ProfileItem{p1, expectedProf3, expectedProf3}, found)
 
 	// now that everything should be in cache, we will "disable" db and verify that it still works
 	tier.DB = db.Connection{}
-	found, err = p.getBatched(ctx, tier, []profile.ProfileItem{profile1, profile2, profile3, profile3})
+	found, err = p.getBatch(ctx, tier, pks)
 	assert.NoError(t, err)
-	assert.Equal(t, [][]byte{expected1, expected2, expected3, expected3}, found)
+	assert.Equal(t, []profile.ProfileItem{p1, expectedProf3, expectedProf3}, found)
 }
 
 func TestCachedDBConcurrentSet(t *testing.T) {
@@ -161,14 +164,14 @@ func TestCachedDBConcurrentSet(t *testing.T) {
 	cacheKeys := make([]string, 0)
 	for i := uint64(0); i < 10; i++ {
 		p := profile.ProfileItem{
-			OType:   "user",
-			Oid:     i % 2,
-			Key:     "age",
-			Version: i + 1,
-			Value:   value.NewList(value.Int(i)),
+			OType:      "user",
+			Oid:        i%2 + 1,
+			Key:        "age",
+			UpdateTime: i + 1,
+			Value:      value.NewList(value.Int(i)),
 		}
 		profiles = append(profiles, p)
-		cacheKeys = append(cacheKeys, makeKey(p.OType, p.Oid, p.Key, p.Version))
+		cacheKeys = append(cacheKeys, makeKey(p.GetProfileKey()))
 	}
 
 	wg := sync.WaitGroup{}
@@ -178,8 +181,7 @@ func TestCachedDBConcurrentSet(t *testing.T) {
 		for _, p := range profiles {
 			go func(p profile.ProfileItem) {
 				defer wg.Done()
-				v := value.ToJSON(p.Value)
-				assert.NoError(t, c.set(ctx, tier, p.OType, p.Oid, p.Key, p.Version, v))
+				assert.NoError(t, c.set(ctx, tier, p))
 			}(p)
 		}
 	}()
@@ -189,18 +191,23 @@ func TestCachedDBConcurrentSet(t *testing.T) {
 	vs, err := tier.Cache.MGet(ctx, cacheKeys...)
 	assert.NoError(t, err)
 	for i, v := range vs {
-		expectedv := value.ToJSON(value.NewList(value.Int(i)))
+		var expectedv []byte
+		if i%2 == 0 {
+			expectedv = value.ToJSON(value.NewList(value.Int(8)))
+		} else {
+			expectedv = value.ToJSON(value.NewList(value.Int(9)))
+		}
 		assert.Equal(t, expectedv, []byte(v.(string)))
 	}
 
 	// check that the latest profile can be accessed by provided version = 0
-	v, err := tier.Cache.Get(ctx, makeKey("user", 0, "age", 0))
+	v, err := tier.Cache.Get(ctx, makeKey(profile.NewProfileItemKey("user", 1, "age")))
 	assert.NoError(t, err)
 	// ("user", 0, "age", 9) would be the lastest profile
 	expectedv := value.ToJSON(value.NewList(value.Int(8)))
 	assert.Equal(t, expectedv, []byte(v.(string)))
 
-	v, err = tier.Cache.Get(ctx, makeKey("user", 1, "age", 0))
+	v, err = tier.Cache.Get(ctx, makeKey(profile.NewProfileItemKey("user", 2, "age")))
 	assert.NoError(t, err)
 	// ("user", 1, "age", 10) would be the lastest profile
 	expectedv = value.ToJSON(value.NewList(value.Int(9)))
@@ -214,19 +221,21 @@ func TestCachedDBCacheMissOnReadSets(t *testing.T) {
 	ctx := context.Background()
 	c := cachedProvider{base: dbProvider{}}
 
-	assert.NoError(t, c.set(ctx, tier, "user", 1, "age", 4, []byte{2}))
+	prof := profile.NewProfileItem("user", 1, "age", value.Int(2), 4)
+	assert.NoError(t, c.set(ctx, tier, prof))
 
 	// explicitly delete the cache entry - eviction
-	assert.NoError(t, tier.Cache.Delete(ctx, makeKey("user", 1, "age", 4)))
-
-	v, err := c.get(ctx, tier, "user", 1, "age", 4)
+	assert.NoError(t, tier.Cache.Delete(ctx, makeKey(profile.NewProfileItemKey("user", 1, "age"))))
+	pk := prof.GetProfileKey()
+	v, err := c.get(ctx, tier, pk)
 	assert.NoError(t, err)
-	assert.Equal(t, []byte{2}, v)
+	prof.UpdateTime = 0
+	assert.Equal(t, prof, v)
 
 	// check that the cache was updated
-	vinf, err := tier.Cache.Get(ctx, makeKey("user", 1, "age", 4))
+	vinf, err := tier.Cache.Get(ctx, makeKey(pk))
 	assert.NoError(t, err)
-	assert.Equal(t, []byte{2}, []byte(vinf.(string)))
+	assert.Equal(t, "2", vinf.(string))
 }
 
 // tests that the cache is atleast eventually consistent (it is not easy to test intermediate states)
@@ -246,17 +255,17 @@ func TestCachedDBEventuallyConsistent(t *testing.T) {
 	// currently it is determined using (otype, oid, key). We test `setBatch` behavior across
 	// different objects in `_integration_test`
 
-	// creates versioned profiles for ("user", 1, "age")
+	// creates versioned profiles for ("user", i, "age")
 	for i := uint64(1); i <= 5; i++ {
-		v := value.ToJSON(value.NewList(value.Int(i)))
-		assert.NoError(t, c.set(ctx, tier, "user", 1, "age", i, v))
+		assert.NoError(t, c.set(ctx, tier, profile.NewProfileItem("user", i, "age", value.NewList(value.Int(i-1)), i-1)))
+		assert.NoError(t, c.set(ctx, tier, profile.NewProfileItem("user", i, "age", value.NewList(value.Int(i)), i)))
 	}
 
 	// remove few entries from the cache - eviction
 	// these could be random, for the sake of testing, picking few numbers..
 	tier.Cache.Delete(ctx, []string{
-		makeKey("user", 1, "age", 4),
-		makeKey("user", 1, "age", 0), // removes latest
+		makeKey(profile.NewProfileItemKey("user", 2, "age")),
+		makeKey(profile.NewProfileItemKey("user", 3, "age")),
 	}...)
 
 	wg := sync.WaitGroup{}
@@ -271,17 +280,12 @@ func TestCachedDBEventuallyConsistent(t *testing.T) {
 		for i := 0; i < 5; i++ {
 			go func() {
 				defer wg.Done()
-				pbatch := make([]profile.ProfileItem, 0)
+				pbatch := make([]profile.ProfileItemKey, 0)
 				// randomly sample profiles
 				if rand.Intn(2) == 1 {
-					pbatch = append(pbatch, profile.ProfileItem{
-						OType:   "user",
-						Oid:     1,
-						Key:     "age",
-						Version: 0,
-					})
+					pbatch = append(pbatch, profile.NewProfileItemKey("user", uint64(i), "age"))
 				}
-				_, err := c.getBatched(ctx, tier, pbatch)
+				_, err := c.getBatch(ctx, tier, pbatch)
 				// we do not assert on the read values because it is not deterministic
 				assert.NoError(t, err)
 			}()
@@ -293,14 +297,13 @@ func TestCachedDBEventuallyConsistent(t *testing.T) {
 		for i := uint64(1); i <= 3; i++ {
 			go func(i uint64) {
 				defer wg.Done()
-				v := value.ToJSON(value.NewList(value.Int(i * 20)))
-				assert.NoError(t, c.set(ctx, tier, "user", 1, "age", i*20, v))
+				assert.NoError(t, c.set(ctx, tier, profile.NewProfileItem("user", i, "age", value.NewList(value.Int(i*20)), 0)))
 			}(i)
 		}
 	}()
 	wg.Wait()
 
-	v, err := tier.Cache.Get(ctx, makeKey("user", 1, "age", 0))
+	v, err := tier.Cache.Get(ctx, makeKey(profile.NewProfileItemKey("user", 3, "age")))
 	assert.NoError(t, err)
 	// ("user", 1, "age", 60) would be the lastest profile
 	expectedv := value.ToJSON(value.NewList(value.Int(60)))

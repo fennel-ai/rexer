@@ -49,7 +49,7 @@ func (p profileOp) New(
 }
 
 func (p profileOp) Apply(ctx context.Context, staticKwargs value.Dict, in operators.InputIter, out *value.List) (err error) {
-	var reqs []libprofile.ProfileItem
+	var reqs []libprofile.ProfileItemKey
 	var rows []value.Value
 	for in.HasMore() {
 		heads, kwargs, err := in.Next()
@@ -57,11 +57,10 @@ func (p profileOp) Apply(ctx context.Context, staticKwargs value.Dict, in operat
 			return err
 		}
 		rowVal := heads[0]
-		req := libprofile.ProfileItem{
-			OType:   ftypes.OType(kwargs.GetUnsafe("otype").(value.String)),
-			Oid:     uint64(kwargs.GetUnsafe("oid").(value.Int)),
-			Key:     string(kwargs.GetUnsafe("key").(value.String)),
-			Version: uint64(kwargs.GetUnsafe("version").(value.Int)),
+		req := libprofile.ProfileItemKey{
+			OType: ftypes.OType(kwargs.GetUnsafe("otype").(value.String)),
+			Oid:   uint64(kwargs.GetUnsafe("oid").(value.Int)),
+			Key:   string(kwargs.GetUnsafe("key").(value.String)),
 		}
 		reqs = append(reqs, req)
 		rows = append(rows, rowVal)
@@ -78,7 +77,7 @@ func (p profileOp) Apply(ctx context.Context, staticKwargs value.Dict, in operat
 	field := string(staticKwargs.GetUnsafe("field").(value.String))
 	defaultValue := staticKwargs.GetUnsafe("default")
 	for i, v := range vals {
-		if v == nil {
+		if v == value.Nil {
 			v = defaultValue
 		}
 		var outRow value.Value
@@ -97,14 +96,14 @@ func (p profileOp) Apply(ctx context.Context, staticKwargs value.Dict, in operat
 	return nil
 }
 
-func (p profileOp) getProfiles(ctx context.Context, profiles []libprofile.ProfileItem) ([]value.Value, error) {
-	res := make([]value.Value, len(profiles))
-	var uncached []libprofile.ProfileItem
+func (p profileOp) getProfiles(ctx context.Context, profileKeys []libprofile.ProfileItemKey) ([]value.Value, error) {
+	res := make([]value.Value, len(profileKeys))
+	var uncached []libprofile.ProfileItemKey
 	var ptrs []int
 	// GetBatched returns nil for profiles that were not found
 	// store in cache as it is, to avoid querying DB for profiles that we know do not exist
 	// and for profile operator to set default correctly
-	for i, pi := range profiles {
+	for i, pi := range profileKeys {
 		key := p.getKey(pi)
 		v, ok := p.cache.Load(key)
 		if !ok {
@@ -131,24 +130,25 @@ func (p profileOp) getProfiles(ctx context.Context, profiles []libprofile.Profil
 		}
 	}
 	// now get uncached profiles
-	vals, err := profile.GetBatched(ctx, p.tier, uncached)
+	vals, err := profile.GetBatch(ctx, p.tier, uncached)
 	if err != nil {
 		return nil, err
 	}
 	// add them to cache
 	for i, pi := range uncached {
 		key := p.getKey(pi)
-		p.cache.Store(key, vals[i])
+		p.cache.Store(key, vals[i].Value)
 	}
+
 	// finally, return result
 	for i, v := range vals {
-		res[ptrs[i]] = v
+		res[ptrs[i]] = v.Value
 	}
 	return res, nil
 }
 
-func (p profileOp) getKey(pi libprofile.ProfileItem) string {
-	return fmt.Sprintf("profile:%s:%d:%s:%d", pi.OType, pi.Oid, pi.Key, pi.Version)
+func (p profileOp) getKey(pi libprofile.ProfileItemKey) string {
+	return fmt.Sprintf("profile:%s:%d:%s", pi.OType, pi.Oid, pi.Key)
 }
 
 func (p profileOp) Signature() *operators.Signature {

@@ -11,13 +11,6 @@ message ProtoProfileItem {
   PValue Value = 5;
 }
 
-message ProtoProfileFetchRequest {
-  string OType = 1;
-  uint64 Oid = 2;
-  string Key = 3;
-  uint64 Version = 4;
-}
-
 message ProtoProfileList {
   repeated ProtoProfileItem profiles = 1;
 }

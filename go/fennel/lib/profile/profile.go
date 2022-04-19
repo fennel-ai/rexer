@@ -14,76 +14,41 @@ const (
 	PROFILELOG_KAFKA_TOPIC = "profilelog"
 )
 
+type ProfileItemKey struct {
+	OType ftypes.OType `db:"otype" json:"OType"`
+	Oid   uint64       `db:"oid" json:"Oid"`
+	Key   string       `db:"zkey" json:"Key"`
+}
+
+func NewProfileItemKey(otype string, oid uint64, k string) ProfileItemKey {
+	return ProfileItemKey{
+		ftypes.OType(otype), oid, k,
+	}
+}
+
 type ProfileItem struct {
-	OType   ftypes.OType `db:"otype"`
-	Oid     uint64       `db:"oid"`
-	Key     string       `db:"zkey"`
-	Version uint64       `db:"version"`
-	Value   value.Value  `db:"value"`
+	OType      ftypes.OType `json:"OType"`
+	Oid        uint64       `json:"Oid"`
+	Key        string       `json:"Key"`
+	Value      value.Value  `json:"Value"`
+	UpdateTime uint64       `json:"UpdateTime"`
 }
 
-func (pi *ProfileItem) ToProfileItemSer() *ProfileItemSer {
-	return &ProfileItemSer{
-		OType:   pi.OType,
-		Oid:     pi.Oid,
-		Key:     pi.Key,
-		Version: pi.Version,
-		Value:   value.ToJSON(pi.Value),
+func (pi *ProfileItem) GetProfileKey() ProfileItemKey {
+	return ProfileItemKey{
+		OType: pi.OType,
+		Oid:   pi.Oid,
+		Key:   pi.Key,
 	}
 }
 
-func NewProfileItem(otype string, oid uint64, k string, version uint64) ProfileItem {
+func NewProfileItem(otype string, oid uint64, k string, v value.Value, updateTime uint64) ProfileItem {
 	return ProfileItem{
-		ftypes.OType(otype), oid, k, version, value.Nil,
+		ftypes.OType(otype), oid, k, v, updateTime,
 	}
 }
 
-type ProfileItemSer struct {
-	OType   ftypes.OType `db:"otype"`
-	Oid     uint64       `db:"oid"`
-	Key     string       `db:"zkey"`
-	Version uint64       `db:"version"`
-	Value   []byte       `db:"value"`
-}
-
-func NewProfileItemSer(otype string, oid uint64, key string, version uint64, val []byte) ProfileItemSer {
-	return ProfileItemSer{
-		ftypes.OType(otype), oid, key, version, val,
-	}
-}
-
-// ToProfileItem converts a ProfileItemSer to ProfileItem
-func (ser *ProfileItemSer) ToProfileItem() (*ProfileItem, error) {
-	pr := ProfileItem{ser.OType, ser.Oid, ser.Key, ser.Version, value.Nil}
-	val, err := value.FromJSON(ser.Value)
-	if err != nil {
-		return nil, err
-	}
-	pr.Value = val
-	return &pr, nil
-}
-
-func FromProfileItemSerList(plSer []ProfileItemSer) ([]ProfileItem, error) {
-	pl := make([]ProfileItem, len(plSer))
-	for i, prSer := range plSer {
-		pr, err := prSer.ToProfileItem()
-		if err != nil {
-			return nil, err
-		}
-		pl[i] = *pr
-	}
-	return pl, nil
-}
-
-type ProfileFetchRequest struct {
-	OType   ftypes.OType `db:"otype" json:"OType"`
-	Oid     uint64       `db:"oid" json:"Oid"`
-	Key     string       `db:"zkey" json:"Key"`
-	Version uint64       `db:"version" json:"Version"`
-}
-
-// Validate validates the profile item
-func (pi *ProfileItem) Validate() error {
+func (pi *ProfileItemKey) Validate() error {
 	if len(pi.OType) == 0 {
 		return fmt.Errorf("otype can not be empty")
 	}
@@ -94,6 +59,12 @@ func (pi *ProfileItem) Validate() error {
 		return fmt.Errorf("key can not be empty")
 	}
 	return nil
+}
+
+// Validate validates the profile item
+func (pi *ProfileItem) Validate() error {
+	pk := pi.GetProfileKey()
+	return pk.Validate()
 }
 
 func (pi *ProfileItem) Equals(other *ProfileItem) bool {
@@ -113,7 +84,7 @@ func (pi *ProfileItem) Equals(other *ProfileItem) bool {
 	} else if !pi.Value.Equal(other.Value) {
 		return false
 	}
-	if pi.Version != other.Version {
+	if pi.UpdateTime != other.UpdateTime {
 		return false
 	}
 	return true
@@ -128,10 +99,10 @@ func (pi ProfileItem) MarshalJSON() ([]byte, error) {
 
 func (pi *ProfileItem) UnmarshalJSON(data []byte) error {
 	var fields struct {
-		OType   ftypes.OType `json:"OType"`
-		Oid     uint64       `json:"Oid"`
-		Key     string       `json:"Key"`
-		Version uint64       `json:"Version"`
+		OType      ftypes.OType `json:"OType"`
+		Oid        uint64       `json:"Oid"`
+		Key        string       `json:"Key"`
+		UpdateTime uint64       `json:"UpdateTime"`
 	}
 	err := json.Unmarshal(data, &fields)
 	if err != nil {
@@ -140,7 +111,7 @@ func (pi *ProfileItem) UnmarshalJSON(data []byte) error {
 	pi.OType = fields.OType
 	pi.Oid = fields.Oid
 	pi.Key = fields.Key
-	pi.Version = fields.Version
+	pi.UpdateTime = fields.UpdateTime
 	vdata, vtype, _, err := jsonparser.Get(data, "Value")
 	if err != nil {
 		return fmt.Errorf("error getting value from profile json: %v", err)

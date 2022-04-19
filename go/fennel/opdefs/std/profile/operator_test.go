@@ -59,10 +59,10 @@ func TestProfileOp(t *testing.T) {
 	// we run a trimmed version of the test with different versions of the same profile as unit test
 	// and add cases where the keys are stored in different slots in `_integration_test`
 	otype1, oid1, key1, val1, ver1 := ftypes.OType("user"), uint64(223), "age", value.Int(7), uint64(4)
-	req1a := profilelib.ProfileItem{OType: otype1, Oid: oid1, Key: key1, Version: ver1 - 1, Value: value.Int(1121)}
+	req1a := profilelib.ProfileItem{OType: otype1, Oid: oid1, Key: key1, UpdateTime: ver1 - 1, Value: value.Int(1121)}
 	assert.NoError(t, profile.Set(ctx, tier, req1a))
 	// this key has multiple versions but we should pick up the latest one if not provided explicitly
-	req1b := profilelib.ProfileItem{OType: otype1, Oid: oid1, Key: key1, Version: ver1, Value: val1}
+	req1b := profilelib.ProfileItem{OType: otype1, Oid: oid1, Key: key1, UpdateTime: ver1, Value: val1}
 	assert.NoError(t, profile.Set(ctx, tier, req1b))
 
 	query := ast.OpCall{
@@ -93,7 +93,7 @@ func TestProfileOp(t *testing.T) {
 		"key":           value.String(key1),
 		"profile_value": val1,
 	})
-	verify(t, &i, query, table, expected)
+	verify(t, &i, query, expected)
 }
 
 func TestProfileOpCache(t *testing.T) {
@@ -109,38 +109,35 @@ func TestProfileOpCache(t *testing.T) {
 		Namespace: "std",
 		Name:      "profile",
 		Kwargs: ast.Dict{Values: map[string]ast.Ast{
-			"otype":   ast.Lookup{On: ast.Var{Name: "a"}, Property: "otype"},
-			"oid":     ast.Lookup{On: ast.Var{Name: "a"}, Property: "oid"},
-			"key":     ast.Lookup{On: ast.Var{Name: "a"}, Property: "key"},
-			"version": ast.Lookup{On: ast.Var{Name: "a"}, Property: "version"},
-			"field":   ast.MakeString("profile_value"),
+			"otype": ast.Lookup{On: ast.Var{Name: "a"}, Property: "otype"},
+			"oid":   ast.Lookup{On: ast.Var{Name: "a"}, Property: "oid"},
+			"key":   ast.Lookup{On: ast.Var{Name: "a"}, Property: "key"},
+			"field": ast.MakeString("profile_value"),
 		}},
 	}
 
 	inTable := value.NewList()
 	inTable.Append(value.NewDict(map[string]value.Value{
-		"otype":   value.String(otype),
-		"oid":     value.Int(oid),
-		"key":     value.String(key),
-		"version": value.Int(ver),
+		"otype": value.String(otype),
+		"oid":   value.Int(oid),
+		"key":   value.String(key),
 	}))
 	expected := value.NewDict(map[string]value.Value{
 		"otype":         value.String(otype),
 		"oid":           value.Int(oid),
 		"key":           value.String(key),
-		"version":       value.Int(ver),
 		"profile_value": value.Nil,
 	})
 	i, err := interpreter.NewInterpreter(context.Background(), bootarg.Create(tier),
 		value.NewDict(map[string]value.Value{"actions": inTable}))
 	assert.NoError(t, err)
-	verify(t, &i, query, inTable, expected)
+	verify(t, &i, query, expected)
 
 	// test cache by setting a profile now
-	req1 := profilelib.ProfileItem{OType: otype, Oid: oid, Key: key, Version: ver, Value: val}
+	req1 := profilelib.ProfileItem{OType: otype, Oid: oid, Key: key, UpdateTime: ver, Value: val}
 	assert.NoError(t, profile.Set(ctx, tier, req1))
 	// we should still get back default value if it is cached properly
-	verify(t, &i, query, inTable, expected)
+	verify(t, &i, query, expected)
 
 	// use a new interpreter now, should get back stored value now
 	i, err = interpreter.NewInterpreter(context.Background(), bootarg.Create(tier),
@@ -148,27 +145,10 @@ func TestProfileOpCache(t *testing.T) {
 	assert.NoError(t, err)
 	expected2 := expected.Clone().(value.Dict)
 	expected2.Set("profile_value", val)
-	verify(t, &i, query, inTable, expected2)
-
-	// now store a newer version
-	val2 := value.Int(9)
-	req2 := profilelib.ProfileItem{OType: otype, Oid: oid, Key: key, Version: ver + 1, Value: val2}
-	assert.NoError(t, profile.Set(ctx, tier, req2))
-	// now if we use version = 0, we should get back latest profile even though older version is cached
-	inTable.Values()[0].(value.Dict).Iter()["version"] = value.Int(0)
-	expected3 := expected.Clone().(value.Dict)
-	expected3.Set("version", value.Int(0))
-	expected3.Set("profile_value", val2)
-	verify(t, &i, query, inTable, expected3)
-
-	// but once version = 0 is cached, we should not get any later versions
-	val3 := value.Int(11)
-	req3 := profilelib.ProfileItem{OType: otype, Oid: oid, Key: key, Version: ver + 2, Value: val3}
-	assert.NoError(t, profile.Set(ctx, tier, req3))
-	verify(t, &i, query, inTable, expected3)
+	verify(t, &i, query, expected2)
 }
 
-func verify(t *testing.T, i *interpreter.Interpreter, query ast.Ast, table value.List, expected value.Dict) {
+func verify(t *testing.T, i *interpreter.Interpreter, query ast.Ast, expected value.Dict) {
 	out, err := query.AcceptValue(i)
 	assert.NoError(t, err)
 	rows := out.(value.List)

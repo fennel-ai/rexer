@@ -2,36 +2,20 @@ package profile
 
 import (
 	"context"
-	"fmt"
 	"time"
 
 	"fennel/kafka"
 	profilelib "fennel/lib/profile"
 	"fennel/lib/timer"
-	"fennel/lib/value"
 	"fennel/model/profile"
 	"fennel/tier"
 
 	"google.golang.org/protobuf/proto"
 )
 
-func Get(ctx context.Context, tier tier.Tier, request profilelib.ProfileItem) (value.Value, error) {
+func Get(ctx context.Context, tier tier.Tier, pk profilelib.ProfileItemKey) (profilelib.ProfileItem, error) {
 	defer timer.Start(ctx, tier.ID, "controller.profile.get").Stop()
-	if err := request.Validate(); err != nil {
-		return nil, err
-	}
-	valueSer, err := profile.Get(ctx, tier, request.OType, request.Oid, request.Key, request.Version)
-	if err != nil {
-		return nil, err
-	} else if valueSer == nil {
-		// i.e. no error but also value found
-		return nil, nil
-	}
-	val, err := value.FromJSON(valueSer)
-	if err != nil {
-		return nil, err
-	}
-	return val, nil
+	return profile.Get(ctx, tier, pk)
 }
 
 func Set(ctx context.Context, tier tier.Tier, request profilelib.ProfileItem) error {
@@ -39,8 +23,8 @@ func Set(ctx context.Context, tier tier.Tier, request profilelib.ProfileItem) er
 	if err := request.Validate(); err != nil {
 		return err
 	}
-	if request.Version == 0 {
-		request.Version = uint64(time.Now().UnixMicro())
+	if request.UpdateTime == 0 {
+		request.UpdateTime = uint64(time.Now().UnixMicro())
 	}
 
 	// write to Kafka to ensure that profile will be written eventually even if the set call here fails;
@@ -56,8 +40,7 @@ func Set(ctx context.Context, tier tier.Tier, request profilelib.ProfileItem) er
 		return err
 	}
 
-	valSer := value.ToJSON(request.Value)
-	if err := profile.Set(ctx, tier, request.OType, request.Oid, request.Key, request.Version, valSer); err != nil {
+	if err := profile.Set(ctx, tier, profilelib.NewProfileItem(string(request.OType), request.Oid, request.Key, request.Value, request.UpdateTime)); err != nil {
 		return err
 	}
 	return nil
@@ -70,8 +53,8 @@ func SetMulti(ctx context.Context, tier tier.Tier, request []profilelib.ProfileI
 		if err := profile.Validate(); err != nil {
 			return err
 		}
-		if profile.Version == 0 {
-			profile.Version = uint64(time.Now().UnixMicro())
+		if profile.UpdateTime == 0 {
+			profile.UpdateTime = uint64(time.Now().UnixMicro())
 		}
 		protoVal, err := profilelib.ToProtoProfileItem(&profile)
 		if err != nil {
@@ -88,21 +71,6 @@ func SetMulti(ctx context.Context, tier tier.Tier, request []profilelib.ProfileI
 		}
 	}
 	return nil
-}
-
-func dbInsert(ctx context.Context, tier tier.Tier, profiles []profilelib.ProfileItem) error {
-	profileSers := make([]profilelib.ProfileItemSer, len(profiles))
-	for i, p := range profiles {
-		if err := p.Validate(); err != nil {
-			return fmt.Errorf("invalid action: %v", err)
-		}
-		if p.Version == 0 {
-			p.Version = uint64(time.Now().UnixMicro())
-		}
-		pSer := p.ToProfileItemSer()
-		profileSers[i] = *pSer
-	}
-	return profile.SetBatch(ctx, tier, profileSers)
 }
 
 func readBatch(ctx context.Context, consumer kafka.FConsumer, count int, timeout time.Duration) ([]profilelib.ProfileItem, error) {
@@ -131,44 +99,13 @@ func TransferToDB(ctx context.Context, tr tier.Tier, consumer kafka.FConsumer) e
 	if len(profiles) == 0 {
 		return nil
 	}
-	if err = dbInsert(ctx, tr, profiles); err != nil {
+	if err = profile.SetBatch(ctx, tr, profiles); err != nil {
 		return err
 	}
 	return consumer.Commit()
 }
 
-// GetBatched takes a list of profile items (value field is ignored) and returns a list of values
-// corresponding to the value of each profile item. If profile item doesn't exist and hence the value
-// is not found, nil is returned instead
-func GetBatched(ctx context.Context, tier tier.Tier, requests []profilelib.ProfileItem) ([]value.Value, error) {
-	sers, err := profile.GetBatched(ctx, tier, requests)
-	if err != nil {
-		return nil, err
-	}
-	ret := make([]value.Value, len(sers))
-	for i := range sers {
-		// if we don't have this data stored, well just return a nil
-		if sers[i] == nil {
-			ret[i] = nil
-		} else {
-			ret[i], err = value.FromJSON(sers[i])
-			if err != nil {
-				return nil, err
-			}
-		}
-	}
-	return ret, nil
-}
-
-func GetMulti(ctx context.Context, tier tier.Tier, request profilelib.ProfileFetchRequest) ([]profilelib.ProfileItem, error) {
-	profilesSer, err := profile.GetMulti(ctx, tier, request)
-	if err != nil {
-		return nil, err
-	}
-
-	profiles, err := profilelib.FromProfileItemSerList(profilesSer)
-	if err != nil {
-		return nil, err
-	}
-	return profiles, nil
+// If profile item doesn't exist and hence the value, is not found, profileItem with value nil is returned.
+func GetBatch(ctx context.Context, tier tier.Tier, requests []profilelib.ProfileItemKey) ([]profilelib.ProfileItem, error) {
+	return profile.GetBatch(ctx, tier, requests)
 }

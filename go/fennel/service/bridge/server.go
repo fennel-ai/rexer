@@ -13,6 +13,7 @@ import (
 	"fennel/lib/action"
 	"fennel/lib/ftypes"
 	"fennel/lib/profile"
+
 	"github.com/gorilla/mux"
 )
 
@@ -72,7 +73,7 @@ func getUint64(vals url.Values, key string, optional bool) (uint64, error) {
 	return 0, nil
 }
 
-func loadProfileQueryValues(vals url.Values, otype *string, oid *uint64, key *string, version *uint64) error {
+func loadProfileQueryValues(vals url.Values, otype *string, oid *uint64, key *string) error {
 	var err error
 	if *otype, err = getString(vals, "otype", false); err != nil {
 		return err
@@ -83,9 +84,7 @@ func loadProfileQueryValues(vals url.Values, otype *string, oid *uint64, key *st
 	if *key, err = getString(vals, "key", false); err != nil {
 		return err
 	}
-	if *version, err = getUint64(vals, "version", true); err != nil {
-		return err
-	}
+
 	return nil
 }
 
@@ -94,19 +93,19 @@ func (s server) ProfileHandler(w http.ResponseWriter, req *http.Request) {
 	case "GET":
 		// Process the request
 		var otype, key string
-		var oid, version uint64
-		err := loadProfileQueryValues(req.URL.Query(), &otype, &oid, &key, &version)
+		var oid uint64
+		err := loadProfileQueryValues(req.URL.Query(), &otype, &oid, &key)
 		if err != nil {
 			handleInvalidRequest(w, err)
 			return
 		}
-		p := profile.NewProfileItem(otype, oid, key, version)
-		if err := p.Validate(); err != nil {
+		pk := profile.NewProfileItemKey(otype, oid, key)
+		if err := pk.Validate(); err != nil {
 			handleInvalidRequest(w, err)
 			return
 		}
 		// Call the server and write back the response
-		ser, err := json.Marshal(p)
+		ser, err := json.Marshal(pk)
 		if err != nil {
 			handleInternalServerError(w, err)
 			return
@@ -150,14 +149,14 @@ func (s server) ProfileMultiHandler(w http.ResponseWriter, req *http.Request) {
 			handleInvalidRequest(w, err)
 			return
 		}
-		pfr := profile.ProfileFetchRequest{OType: ftypes.OType(otype), Oid: oid, Key: key, Version: version}
+		pfr := profile.ProfileItemKey{OType: ftypes.OType(otype), Oid: oid, Key: key}
 		// Call the server and write back the response
-		ser, err := json.Marshal(pfr)
+		pk, err := json.Marshal(pfr)
 		if err != nil {
 			handleInternalServerError(w, err)
 			return
 		}
-		response, err := postJSON(ser, s.endpoint+pathGetProfileMulti)
+		response, err := postJSON(pk, s.endpoint+pathGetProfileMulti)
 		if err != nil {
 			handleInternalServerError(w, err)
 			return

@@ -9,6 +9,7 @@ import (
 	profilelib "fennel/lib/profile"
 	"fennel/lib/utils"
 	"fennel/lib/value"
+	"fennel/model/profile"
 	"fennel/test"
 	"fennel/tier"
 
@@ -27,30 +28,27 @@ func TestProfileController(t *testing.T) {
 		vals = append(vals, value.Int(i+1))
 	}
 
-	request := profilelib.ProfileFetchRequest{}
+	//request := profilelib.ProfileItemKey{}
 	profiles := []profilelib.ProfileItem{}
-	profiles = append(profiles, profilelib.NewProfileItem("User", 1232, "summary", 1))
+	profiles = append(profiles, profilelib.NewProfileItem("User", 1232, "summary", value.Int(1), 1))
 	profiles[0].Value = vals[0]
 
 	// initially before setting, value isn't there so we get nil back
 	// and calling get on a row that doesn't exist is not an error
-	checkGet(t, ctx, tier, profiles[0], value.Nil)
-
-	// no profiles exist initially
-	checkGetMulti(t, ctx, tier, request, []profilelib.ProfileItem{})
+	checkGet(t, ctx, tier, profiles[0].GetProfileKey(), value.Nil)
 
 	// cannot set an invalid profile
-	err = Set(ctx, tier, profilelib.NewProfileItem("", 1, "key", 1))
+	err = Set(ctx, tier, profilelib.NewProfileItem("", 1, "key", value.Int(1), 1))
 	assert.Error(t, err)
-	err = Set(ctx, tier, profilelib.NewProfileItem("User", 0, "key", 1))
+	err = Set(ctx, tier, profilelib.NewProfileItem("User", 0, "key", value.Int(1), 1))
 	assert.Error(t, err)
-	err = Set(ctx, tier, profilelib.NewProfileItem("User", 1, "", 1))
+	err = Set(ctx, tier, profilelib.NewProfileItem("User", 1, "", value.Int(1), 1))
 	assert.Error(t, err)
 
 	// set a profile
 	checkSet(t, ctx, tier, profiles[0])
 	// test getting back the profile
-	checkGet(t, ctx, tier, profiles[0], vals[0])
+	checkGet(t, ctx, tier, profiles[0].GetProfileKey(), vals[0])
 	// test that the profile was written to kafka queue as well
 	consumer, err := tier.NewKafkaConsumer(profilelib.PROFILELOG_KAFKA_TOPIC, utils.RandString(6), kafka.DefaultOffsetPolicy)
 	assert.NoError(t, err)
@@ -60,21 +58,18 @@ func TestProfileController(t *testing.T) {
 
 	// can get without using the specific version number
 	profileTmp := profiles[0]
-	profileTmp.Version = 0
-	checkGet(t, ctx, tier, profileTmp, vals[0])
-	checkGetMulti(t, ctx, tier, request, profiles)
-
+	profileTmp.UpdateTime = 0
+	checkGet(t, ctx, tier, profileTmp.GetProfileKey(), vals[0])
 	// set a few more profiles and verify it works
-	profiles = append(profiles, profilelib.NewProfileItem("User", 1, "age", 2))
+	profiles = append(profiles, profilelib.NewProfileItem("User", 1, "age", value.Int(2), 0))
 	profiles[1].Value = vals[1]
 	checkSet(t, ctx, tier, profiles[1])
-	checkGetMulti(t, ctx, tier, request, profiles)
-	profiles = append(profiles, profilelib.NewProfileItem("User", 3, "age", 2))
+	profiles = append(profiles, profilelib.NewProfileItem("User", 3, "age", value.Int(2), 0))
 	profiles[2].Value = vals[2]
 	checkSet(t, ctx, tier, profiles[2])
-	checkGetMulti(t, ctx, tier, request, profiles)
-	checkGet(t, ctx, tier, profiles[1], vals[1])
-	checkGet(t, ctx, tier, profiles[2], vals[2])
+
+	checkGet(t, ctx, tier, profiles[1].GetProfileKey(), vals[1])
+	checkGet(t, ctx, tier, profiles[2].GetProfileKey(), vals[2])
 }
 
 func TestProfileDBInsert(t *testing.T) {
@@ -89,24 +84,30 @@ func TestProfileDBInsert(t *testing.T) {
 
 	vals := []value.Value{value.Int(1), value.Int(2), value.Int(3), value.Int(4)}
 	profiles := []profilelib.ProfileItem{
-		{OType: "User", Oid: 1222, Key: "summary", Version: 1, Value: vals[0]},
-		{OType: "User", Oid: 1222, Key: "summary", Version: 10, Value: vals[1]},
-		{OType: "User", Oid: 1222, Key: "summary", Version: 12, Value: vals[2]},
-		{OType: "User", Oid: 1222, Key: "summary", Version: 11, Value: vals[3]},
+		{OType: "User", Oid: 1222, Key: "summary", UpdateTime: 1, Value: vals[0]},
+		{OType: "User", Oid: 1222, Key: "summary", UpdateTime: 10, Value: vals[1]},
+		{OType: "User", Oid: 1222, Key: "summary", UpdateTime: 12, Value: vals[2]},
+		{OType: "User", Oid: 1222, Key: "summary", UpdateTime: 11, Value: vals[3]},
 	}
-	assert.NoError(t, dbInsert(ctx, tier, profiles))
 
+	assert.NoError(t, profile.SetBatch(ctx, tier, profiles))
+
+	pks := []profilelib.ProfileItemKey{}
+	for _, p := range profiles {
+		pks = append(pks, p.GetProfileKey())
+	}
+	exp := profilelib.NewProfileItem("User", 1222, "summary", vals[2], 0)
 	// check that the entries were written
-	actual, err := GetBatched(ctx, tier, profiles)
+	actual, err := GetBatch(ctx, tier, pks)
 	assert.NoError(t, err)
-	assert.ElementsMatch(t, actual, vals)
+	assert.ElementsMatch(t, []profilelib.ProfileItem{exp, exp, exp, exp}, actual)
 
-	v, err := GetBatched(ctx, tier, []profilelib.ProfileItem{
-		{OType: "User", Oid: 1222, Key: "summary", Version: 0},
-		{OType: "User", Oid: 1222, Key: "summary", Version: 11},
+	v, err := GetBatch(ctx, tier, []profilelib.ProfileItemKey{
+		{OType: "User", Oid: 1222, Key: "summary"},
+		{OType: "User", Oid: 1222, Key: "summary"},
 	})
 	assert.NoError(t, err)
-	assert.ElementsMatch(t, []value.Value{vals[2], vals[3]}, v)
+	assert.ElementsMatch(t, []profilelib.ProfileItem{exp, exp}, v)
 }
 
 func TestProfileSetMultiWritesToKafka(t *testing.T) {
@@ -116,10 +117,10 @@ func TestProfileSetMultiWritesToKafka(t *testing.T) {
 	ctx := context.Background()
 
 	profiles := []profilelib.ProfileItem{}
-	profiles = append(profiles, profilelib.NewProfileItem("User", 1232, "summary", 1))
-	profiles = append(profiles, profilelib.NewProfileItem("User", 1233, "summary foo", 10))
-	profiles = append(profiles, profilelib.NewProfileItem("User", 1234, "summary", 12))
-	profiles = append(profiles, profilelib.NewProfileItem("User", 1232, "summary2", 11))
+	profiles = append(profiles, profilelib.NewProfileItem("User", 1232, "summary", value.Int(1), 2))
+	profiles = append(profiles, profilelib.NewProfileItem("User", 1233, "summary foo", value.Int(10), 2))
+	profiles = append(profiles, profilelib.NewProfileItem("User", 1234, "summary", value.Int(12), 2))
+	profiles = append(profiles, profilelib.NewProfileItem("User", 1232, "summary2", value.Int(11), 2))
 
 	assert.NoError(t, SetMulti(ctx, tier, profiles))
 
@@ -136,19 +137,13 @@ func checkSet(t *testing.T, ctx context.Context, tier tier.Tier, request profile
 	assert.NoError(t, err)
 }
 
-func checkGet(t *testing.T, ctx context.Context, tier tier.Tier, request profilelib.ProfileItem, expected value.Value) {
+func checkGet(t *testing.T, ctx context.Context, tier tier.Tier, request profilelib.ProfileItemKey, expected value.Value) {
 	found, err := Get(ctx, tier, request)
 	assert.NoError(t, err)
 	// any test necessary for found == nil?
-	if found != nil {
-		assert.Equal(t, expected, found)
+	if found.Value != value.Nil {
+		assert.Equal(t, expected, found.Value)
 	}
-}
-
-func checkGetMulti(t *testing.T, ctx context.Context, tier tier.Tier, request profilelib.ProfileFetchRequest, expected []profilelib.ProfileItem) {
-	found, err := GetMulti(ctx, tier, request)
-	assert.NoError(t, err)
-	assert.ElementsMatch(t, expected, found)
 }
 
 func TestGetBatched(t *testing.T) {
@@ -162,22 +157,29 @@ func TestGetBatched(t *testing.T) {
 	// different objects in `_integration_test`
 	vals := []value.Value{value.Int(1), value.Int(2), value.Int(3)}
 	profiles := []profilelib.ProfileItem{
-		{OType: "User", Oid: uint64(1), Key: "summary", Version: 1, Value: vals[0]},
-		{OType: "User", Oid: uint64(1), Key: "summary", Version: 2, Value: vals[1]},
-		{OType: "User", Oid: uint64(1), Key: "summary", Version: 3, Value: vals[2]},
+		{OType: "User", Oid: uint64(1), Key: "summary", UpdateTime: 1, Value: vals[0]},
+		{OType: "User", Oid: uint64(1), Key: "summary", UpdateTime: 2, Value: vals[1]},
+		{OType: "User", Oid: uint64(1), Key: "summary", UpdateTime: 3, Value: vals[2]},
 	}
 
+	pks := make([]profilelib.ProfileItemKey, len(profiles))
+	for i, p := range profiles {
+		pks[i] = profilelib.ProfileItemKey{OType: p.OType, Oid: p.Oid, Key: p.Key}
+	}
+
+	nilProfile := profilelib.ProfileItem{OType: "User", Oid: uint64(1), Key: "summary", UpdateTime: 0, Value: value.Nil}
 	// initially nothing exists
-	found, err := GetBatched(ctx, tier, profiles)
+	found, err := GetBatch(ctx, tier, pks)
 	assert.NoError(t, err)
-	assert.Equal(t, []value.Value{nil, nil, nil}, found)
+	assert.Equal(t, []profilelib.ProfileItem{nilProfile, nilProfile, nilProfile}, found)
 
 	// set a few
 	checkSet(t, ctx, tier, profiles[0])
 	checkSet(t, ctx, tier, profiles[1])
 	checkSet(t, ctx, tier, profiles[2])
 
-	found, err = GetBatched(ctx, tier, profiles)
+	found, err = GetBatch(ctx, tier, pks)
 	assert.NoError(t, err)
-	assert.Equal(t, vals, found)
+	expectedProfile := profilelib.ProfileItem{OType: "User", Oid: uint64(1), Key: "summary", UpdateTime: 0, Value: vals[2]}
+	assert.Equal(t, []profilelib.ProfileItem{expectedProfile, expectedProfile, expectedProfile}, found)
 }
