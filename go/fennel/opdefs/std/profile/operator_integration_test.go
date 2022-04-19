@@ -27,12 +27,12 @@ func TestProfileOpMultipleObjs(t *testing.T) {
 
 	otype1, oid1, key1, val1, ver1 := ftypes.OType("user"), uint64(123), "summary", value.Int(5), uint64(1)
 	otype2, oid2, key2, val2, ver2 := ftypes.OType("user"), uint64(223), "age", value.Int(7), uint64(4)
-	req1 := profilelib.ProfileItem{OType: otype1, Oid: oid1, Key: key1, Version: ver1, Value: val1}
+	req1 := profilelib.ProfileItem{OType: otype1, Oid: oid1, Key: key1, UpdateTime: ver1, Value: val1}
 	assert.NoError(t, profile.Set(ctx, tier, req1))
-	req2a := profilelib.ProfileItem{OType: otype2, Oid: oid2, Key: key2, Version: ver2 - 1, Value: value.Int(1121)}
+	req2a := profilelib.ProfileItem{OType: otype2, Oid: oid2, Key: key2, UpdateTime: ver2 - 1, Value: value.Int(1121)}
 	assert.NoError(t, profile.Set(ctx, tier, req2a))
-	// this key has multiple versions but we should pick up the latest one if not provided explicitly
-	req2b := profilelib.ProfileItem{OType: otype2, Oid: oid2, Key: key2, Version: ver2, Value: val2}
+	// this key has multiple UpdateTimes but we should pick up the latest one if not provided explicitly
+	req2b := profilelib.ProfileItem{OType: otype2, Oid: oid2, Key: key2, UpdateTime: ver2, Value: val2}
 	assert.NoError(t, profile.Set(ctx, tier, req2b))
 
 	query := ast.OpCall{
@@ -45,7 +45,7 @@ func TestProfileOpMultipleObjs(t *testing.T) {
 			"oid":   ast.Lookup{On: ast.Var{Name: "at"}, Property: "oid"},
 			"key":   ast.Lookup{On: ast.Var{Name: "at"}, Property: "key"},
 			"field": ast.MakeString("profile_value"),
-			// since version is an optional value, we don't pass it and still get the latest value back
+			// since UpdateTime is an optional value, we don't pass it and still get the latest value back
 		}},
 	}
 	table := value.List{}
@@ -138,17 +138,17 @@ func TestProfileOpCacheMultiple(t *testing.T) {
 		}},
 	}
 	profiles := []profilelib.ProfileItem{
-		{"1", 2, "3", 4, value.Int(5)},
-		{"6", 7, "8", 9, value.Int(10)},
-		{"11", 12, "13", 14, value.Int(15)},
+		{"1", "2", "3", value.Int(5), 4},
+		{"6", "7", "8", value.Int(10), 9},
+		{"11", "12", "13", value.Int(15), 14},
 	}
 	inTable := value.NewList()
 	for _, pi := range profiles {
 		inTable.Append(value.NewDict(map[string]value.Value{
 			"otype":   value.String(pi.OType),
-			"oid":     value.Int(pi.Oid),
+			"oid":     value.String(pi.Oid),
 			"key":     value.String(pi.Key),
-			"version": value.Int(pi.Version),
+			"version": value.Int(pi.UpdateTime),
 		}))
 	}
 	// to query for version = 0
@@ -156,7 +156,7 @@ func TestProfileOpCacheMultiple(t *testing.T) {
 	for _, pi := range profiles {
 		inTable0.Append(value.NewDict(map[string]value.Value{
 			"otype":   value.String(pi.OType),
-			"oid":     value.Int(pi.Oid),
+			"oid":     value.String(pi.Oid),
 			"key":     value.String(pi.Key),
 			"version": value.Int(0),
 		}))
@@ -166,9 +166,9 @@ func TestProfileOpCacheMultiple(t *testing.T) {
 	for _, pi := range profiles {
 		expected = append(expected, value.NewDict(map[string]value.Value{
 			"otype":         value.String(pi.OType),
-			"oid":           value.Int(pi.Oid),
+			"oid":           value.String(pi.Oid),
 			"key":           value.String(pi.Key),
-			"version":       value.Int(pi.Version),
+			"version":       value.Int(pi.UpdateTime),
 			"profile_value": value.Nil,
 		}))
 	}
@@ -192,9 +192,9 @@ func TestProfileOpCacheMultiple(t *testing.T) {
 	for _, pi := range profiles {
 		expected2 = append(expected2, value.NewDict(map[string]value.Value{
 			"otype":         value.String(pi.OType),
-			"oid":           value.Int(pi.Oid),
+			"oid":           value.String(pi.Oid),
 			"key":           value.String(pi.Key),
-			"version":       value.Int(pi.Version),
+			"version":       value.Int(pi.UpdateTime),
 			"profile_value": pi.Value,
 		}))
 	}
@@ -203,7 +203,7 @@ func TestProfileOpCacheMultiple(t *testing.T) {
 	// now store a newer version with new values for each profile
 	for _, pi := range profiles {
 		pi2 := pi
-		pi2.Version++
+		pi2.UpdateTime++
 		pi2.Value, err = pi2.Value.Op("+", value.Int(2))
 		assert.NoError(t, err)
 		assert.NoError(t, profile.Set(ctx, tier, pi2))
@@ -215,7 +215,7 @@ func TestProfileOpCacheMultiple(t *testing.T) {
 		assert.NoError(t, err)
 		expected3 = append(expected3, value.NewDict(map[string]value.Value{
 			"otype":         value.String(pi.OType),
-			"oid":           value.Int(pi.Oid),
+			"oid":           value.String(pi.Oid),
 			"key":           value.String(pi.Key),
 			"version":       value.Int(0),
 			"profile_value": newval,
@@ -230,7 +230,7 @@ func TestProfileOpCacheMultiple(t *testing.T) {
 	// but once version = 0 is cached, we should not get any later versions
 	for _, pi := range profiles {
 		pi3 := pi
-		pi3.Version += 2
+		pi3.UpdateTime += 2
 		pi3.Value, err = pi3.Value.Op("+", value.Int(5))
 		assert.NoError(t, err)
 		assert.NoError(t, profile.Set(ctx, tier, pi3))

@@ -84,8 +84,7 @@ func (c cachedProvider) setBatch(ctx context.Context, tier tier.Tier, profiles [
 		}
 	}
 
-	num_unique_profiles := len(latestProfileByKey)
-	latestProfiles := make([]profile.ProfileItem, 0, num_unique_profiles)
+	latestProfiles := make([]profile.ProfileItem, 0, len(latestProfileByKey))
 	latestKeys := make([]string, 0)
 
 	keyToProfileKey := make(map[string]profile.ProfileItemKey)
@@ -120,8 +119,7 @@ func (c cachedProvider) setBatch(ctx context.Context, tier tier.Tier, profiles [
 				tier.Logger.Error("Found nil value in setBatch for profile", zap.String("key", profileItem.Key), zap.String("profile_id", profileItem.Oid))
 				continue
 			}
-			key := ks[i]
-			tosetKeys = append(tosetKeys, key)
+			tosetKeys = append(tosetKeys, ks[i])
 			tosetVals = append(tosetVals, value.ToJSON(profileItem.Value))
 		}
 		// Set them on cache

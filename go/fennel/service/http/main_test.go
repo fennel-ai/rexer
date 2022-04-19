@@ -3,9 +3,9 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"io/ioutil"
 	"net/http/httptest"
-	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -326,7 +326,7 @@ func TestSetProfilesQueuesToKafka(t *testing.T) {
 	// Write another batch, previous entries should still be there
 	profileList2 := make([]profilelib.ProfileItem, 0)
 	for i := uint64(1); i <= 3; i++ {
-		p := profilelib.ProfileItem{OType: ftypes.OType("2"), Oid: strconv.FormatUint(i, 10), Key: "foo", UpdateTime: i, Value: value.Int(i * 10)}
+		p := profilelib.ProfileItem{OType: ftypes.OType("2"), Oid: fmt.Sprint(i), Key: "foo", UpdateTime: i, Value: value.Int(i * 10)}
 		profileList2 = append(profileList2, p)
 	}
 
