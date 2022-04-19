@@ -12,6 +12,7 @@ import * as ingress from "../ingress";
 import * as ns from "../k8s-ns";
 import * as glue from "../glue";
 import * as modelStore from "../model-store";
+import * as sagemaker from "../sagemaker";
 
 import * as process from "process";
 
@@ -76,6 +77,8 @@ type inputType = {
     httpServerConf?: HttpServerConf,
     countAggrConf?: CountAggrConf,
     nodeInstanceRole: string,
+    vpcId: string,
+    connectedSecurityGroups: Record<string, string>,
 }
 
 const parseConfig = (): inputType => {
@@ -121,6 +124,9 @@ const parseConfig = (): inputType => {
         countAggrConf: config.getObject(nameof<inputType>("countAggrConf")),
 
         nodeInstanceRole: config.require(nameof<inputType>("nodeInstanceRole")),
+
+        vpcId: config.require(nameof<inputType>("vpcId")),
+        connectedSecurityGroups: config.requireObject(nameof<inputType>("connectedSecurityGroups")),
     };
 };
 
@@ -138,6 +144,7 @@ const setupPlugins = async (stack: pulumi.automation.Stack) => {
         ...kafkaconnectors.plugins,
         ...glue.plugins,
         ...modelStore.plugins,
+        ...sagemaker.plugins,
     }
     console.info("installing plugins...");
     for (var key in plugins) {
@@ -236,6 +243,16 @@ const setupResources = async () => {
         tierId: input.tierId,
         nodeInstanceRole: input.nodeInstanceRole,
     })
+    // setup sagemaker endpoint related resources
+    const sagemakerOutput = await sagemaker.setup({
+        region: input.region,
+        roleArn: input.roleArn,
+        tierId: input.tierId,
+        planeId: input.planeId,
+        vpcId: input.vpcId,
+        connectedSecurityGroups: input.connectedSecurityGroups,
+        modelStoreBucket: modelStoreOutput.modelStoreBucket,
+    })
     configsOutput.apply(async () => {
         // setup api-server and countaggr after configs are setup.
         const httpServerOutput = await httpserver.setup({
@@ -313,6 +330,10 @@ type TierInput = {
 
     // model store configuration
     nodeInstanceRole: string,
+
+    // sagemaker configuration
+    vpcId: string,
+    connectedSecurityGroups: Record<string, string>,
 }
 
 const setupTier = async (args: TierInput, destroy?: boolean) => {
@@ -383,6 +404,9 @@ const setupTier = async (args: TierInput, destroy?: boolean) => {
     }
 
     await stack.setConfig(nameof<inputType>("nodeInstanceRole"), {value: args.nodeInstanceRole})
+
+    await stack.setConfig(nameof<inputType>("vpcId"), {value: args.vpcId})
+    await stack.setConfig(nameof<inputType>("connectedSecurityGroups"), {value: JSON.stringify(args.connectedSecurityGroups)})
 
     console.info("config set");
 

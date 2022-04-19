@@ -58,7 +58,7 @@ function setupModelStoreAccess(provider: aws.Provider, input: inputType, bucketN
     }, { provider: provider });
 }
 
-export const setup = async (input: inputType): Promise<pulumi.Output<outputType>> => {
+export const setup = async (input: inputType): Promise<outputType> => {
     // create s3 bucket for the tier
     const provider = new aws.Provider("tier-model-store-dir-provider", {
         region: <aws.Region>input.region,
@@ -80,7 +80,8 @@ export const setup = async (input: inputType): Promise<pulumi.Output<outputType>
     // setup EKS worker node have access to the S3 bucket and the folder
     setupModelStoreAccess(provider, input, bucketName);
 
-    return pulumi.output({
+    const output: outputType = {
         modelStoreBucket: bucketName,
-    })
+    }
+    return output;
 }
