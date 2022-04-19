@@ -3,6 +3,7 @@ package v1
 import (
 	"testing"
 
+	"fennel/lib/utils/binary"
 	"fennel/lib/value"
 
 	"github.com/stretchr/testify/require"
@@ -10,11 +11,27 @@ import (
 
 func TestEncodeKey(t *testing.T) {
 	codec := V1Codec{}
-	e1, err := codec.EncodeKey("otype", "1024", "mykey")
+	encoded, err := codec.EncodeKey("otype", "1024", "mykey")
 	require.NoError(t, err)
-	e2, err := codec.EncodeKey("otype", "1024", "mykey")
-	require.NoError(t, err)
-	require.Equal(t, e1, e2)
+
+	isNext := func(encoded []byte, s string) int {
+		buf := make([]byte, 32)
+		otypelen, err := binary.PutString(buf, s)
+		require.NoError(t, err)
+		got, n, err := binary.ReadString(encoded[:otypelen])
+		require.NoError(t, err)
+		require.Equal(t, s, got)
+		return n
+	}
+
+	// Check that the first byte is the codec identifier.
+	curr := 0
+	require.Equal(t, codec.Identifier(), encoded[curr])
+	curr++
+	// Next should be the otype, oid, and key.
+	curr += isNext(encoded[curr:], "otype")
+	curr += isNext(encoded[curr:], "1024")
+	curr += isNext(encoded[curr:], "mykey") // nolint
 }
 
 func TestValueEagerDecode(t *testing.T) {

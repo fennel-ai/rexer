@@ -23,9 +23,14 @@ func (c V1Codec) Identifier() uint8 {
 }
 
 func (c V1Codec) EncodeKey(otype ftypes.OType, oid string, key string) ([]byte, error) {
-	keybuf := make([]byte, 8+len(otype)+8+len(oid)+8+len(key))
+	keybuf := make([]byte, 1+8+len(otype)+8+len(oid)+8+len(key))
 
 	cur := 0
+
+	// Add a 1 byte prefix to indicate the codec used to encode the key.
+	keybuf[cur] = id
+	cur++
+
 	if n, err := binary.PutString(keybuf[cur:], string(otype)); err != nil {
 		return nil, err
 	} else {
