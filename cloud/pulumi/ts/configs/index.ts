@@ -64,7 +64,7 @@ export const setup = async (input: inputType) => {
     }, { provider, deleteBeforeReplace: true })
 
     const sagemakerConf = new k8s.core.v1.Secret("model-serving-config", {
-        data: input.modelServingConfig,
+        stringData: input.modelServingConfig,
         metadata: {
             name: "model-serving-conf",
         }
