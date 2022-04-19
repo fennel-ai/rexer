@@ -171,7 +171,8 @@ func Update(ctx context.Context, tier tier.Tier, consumer kafka.FConsumer, agg a
 	if err = counter.Update(ctx, tier, agg.Id, table, histogram); err != nil {
 		return err
 	}
-	return consumer.Commit()
+	_, err = consumer.Commit()
+	return err
 }
 
 //============================

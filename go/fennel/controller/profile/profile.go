@@ -102,7 +102,8 @@ func TransferToDB(ctx context.Context, tr tier.Tier, consumer kafka.FConsumer) e
 	if err = profile.SetBatch(ctx, tr, profiles); err != nil {
 		return err
 	}
-	return consumer.Commit()
+	_, err = consumer.Commit()
+	return err
 }
 
 // If profile item doesn't exist and hence the value, is not found, profileItem with value nil is returned.
