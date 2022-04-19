@@ -250,6 +250,7 @@ const setupResources = async () => {
         tierId: input.tierId,
         planeId: input.planeId,
         vpcId: input.vpcId,
+        nodeInstanceRole: input.nodeInstanceRole,
         connectedSecurityGroups: input.connectedSecurityGroups,
         modelStoreBucket: modelStoreOutput.modelStoreBucket,
     })
