@@ -84,8 +84,7 @@ func (c cachedProvider) setBatch(ctx context.Context, tier tier.Tier, profiles [
 		}
 	}
 
-	num_unique_profiles := len(latestProfileByKey)
-	latestProfiles := make([]profile.ProfileItem, 0, num_unique_profiles)
+	latestProfiles := make([]profile.ProfileItem, 0, len(latestProfileByKey))
 	latestKeys := make([]string, 0)
 
 	keyToProfileKey := make(map[string]profile.ProfileItemKey)
@@ -120,8 +119,7 @@ func (c cachedProvider) setBatch(ctx context.Context, tier tier.Tier, profiles [
 				tier.Logger.Error("Found nil value in setBatch for profile", zap.String("key", profileItem.Key), zap.String("profile_id", profileItem.Oid))
 				continue
 			}
-			key := ks[i]
-			tosetKeys = append(tosetKeys, key)
+			tosetKeys = append(tosetKeys, ks[i])
 			tosetVals = append(tosetVals, value.ToJSON(profileItem.Value))
 		}
 		// Set them on cache
@@ -162,21 +160,18 @@ func (c cachedProvider) getBatch(ctx context.Context, tier tier.Tier, profileKey
 
 	// Dedup keys to avoid I/O from cache and DB.
 	keyToProfileKey := make(map[string]profile.ProfileItemKey)
-	allKeys := make([]string, 0)
 	for _, pk := range profileKeys {
 		key := makeKey(pk)
-		allKeys = append(allKeys, key)
 		keyToProfileKey[key] = pk
 	}
 
-	keys := make([]string, 0)
+	keys := make([]string, 0, len(keyToProfileKey))
 	for k, _ := range keyToProfileKey {
 		keys = append(keys, k)
-
 	}
 
 	vals, err := tier.Cache.MGet(ctx, keys...)
-	unavailableKeys := make([]string, 0)
+	unavailableKeys := make([]string, 0, len(profileKeys))
 
 	// profile key to profile map
 	var keyToVal sync.Map
@@ -213,6 +208,7 @@ func (c cachedProvider) getBatch(ctx context.Context, tier tier.Tier, profileKey
 			}
 		}
 	}
+
 	// Could read from cache, return.
 	if len(unavailableKeys) == 0 {
 		return rets, nil
