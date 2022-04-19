@@ -122,17 +122,6 @@ func (k RemoteConsumer) Commit() error {
 	return err
 }
 
-// AsyncCommit commits the offsets but does so in an async manner without blocking
-// and returns a channel of errors which the caller can use to check the error status
-func (k RemoteConsumer) AsyncCommit() chan error {
-	ret := make(chan error)
-	go func() {
-		defer close(ret)
-		ret <- k.Commit()
-	}()
-	return ret
-}
-
 // Backlog returns the combined total of "lag" all topic partitions have that
 // this consumer consumes from. For example, if this consumer is consuming from
 // topic "foo" and is assigned to partitions 0, 2, and 3, then the backlog will

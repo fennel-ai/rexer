@@ -27,7 +27,6 @@ type FConsumer interface {
 	ReadBatch(ctx context.Context, upto int, timeout time.Duration) ([][]byte, error)
 	Backlog() (int, error)
 	Commit() error
-	AsyncCommit() chan error
 	GroupID() string
 }
 

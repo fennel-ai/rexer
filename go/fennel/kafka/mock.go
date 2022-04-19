@@ -137,13 +137,6 @@ func (l mockConsumer) Commit() error {
 	return nil
 }
 
-func (l mockConsumer) AsyncCommit() chan error {
-	ret := make(chan error)
-	ret <- nil
-	close(ret)
-	return ret
-}
-
 func (l mockConsumer) GroupID() string {
 	return l.groupid
 }
