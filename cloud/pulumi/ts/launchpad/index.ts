@@ -152,7 +152,12 @@ const planeConfs: Record<number, PlaneConf> = {
         },
         prometheusConf: {
             useAMP: true
-        }
+        },
+        // increase the desired capacity to occupy more pods
+        eksConf: {
+            nodeType: "t3.medium",
+            desiredCapacity: 4,
+        },
     },
     // Lokal's dev tier data plane.
     // TODO: Reduce size of resources once load-tests are done.
