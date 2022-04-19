@@ -241,7 +241,7 @@ const setupResources = async () => {
                 "securityGroup": sagemakerOutput.securityGroup,
                 "modelStoreBucket": modelStoreOutput.modelStoreBucket,
                 // randomly generate a consistent suffix for the model store endpoint
-                "modelStoreEndpoint": `t-106-${rng()}`,
+                "modelStoreEndpoint": `t-${input.tierId}-${rng()}`,
             })
         })
     })
