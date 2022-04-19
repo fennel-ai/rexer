@@ -111,7 +111,6 @@ func (c cachedProvider) setBatch(ctx context.Context, tier tier.Tier, profiles [
 		// cache for the latest profiles will be invalidated which leaves the cache in a consistent state
 		profiles, err := c.base.getBatch(ctx, tier, profileKeys)
 		if err != nil {
-			fmt.Println("Raised here", err)
 			return err
 		}
 		tosetKeys := make([]string, 0)
@@ -126,7 +125,7 @@ func (c cachedProvider) setBatch(ctx context.Context, tier tier.Tier, profiles [
 			tosetVals = append(tosetVals, value.ToJSON(profileItem.Value))
 		}
 		// Set them on cache
-		return txn.MSet(ctx, tosetKeys, tosetVals, make([]time.Duration, len(latestKeys)))
+		return txn.MSet(ctx, tosetKeys, tosetVals, make([]time.Duration, len(tosetKeys)))
 	}
 	// we retry atmost 3 times before we give up. Above logic should not fail on concurrent writes, but
 	// it is possible that there could be a conflict with "get".

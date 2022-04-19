@@ -121,7 +121,7 @@ func (s server) ProfileHandler(w http.ResponseWriter, req *http.Request) {
 	}
 }
 
-func loadProfileMultiQueryValues(vals url.Values, otype *string, oid *uint64, key *string, version *uint64) error {
+func loadProfileMultiQueryValues(vals url.Values, otype *string, oid *uint64, key *string, updateTime *uint64) error {
 	var err error
 	if *otype, err = getString(vals, "otype", true); err != nil {
 		return err
@@ -132,7 +132,7 @@ func loadProfileMultiQueryValues(vals url.Values, otype *string, oid *uint64, ke
 	if *key, err = getString(vals, "key", true); err != nil {
 		return err
 	}
-	if *version, err = getUint64(vals, "version", true); err != nil {
+	if *updateTime, err = getUint64(vals, "updateTime", true); err != nil {
 		return err
 	}
 	return nil
@@ -143,8 +143,8 @@ func (s server) ProfileMultiHandler(w http.ResponseWriter, req *http.Request) {
 	case "GET":
 		// Process the request
 		var otype, key string
-		var oid, version uint64
-		err := loadProfileMultiQueryValues(req.URL.Query(), &otype, &oid, &key, &version)
+		var oid, updateTime uint64
+		err := loadProfileMultiQueryValues(req.URL.Query(), &otype, &oid, &key, &updateTime)
 		if err != nil {
 			handleInvalidRequest(w, err)
 			return
