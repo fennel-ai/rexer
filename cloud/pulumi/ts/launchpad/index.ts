@@ -320,5 +320,10 @@ if (tierId !== 0) {
         countAggrConf: tierConf.countAggrConf,
 
         nodeInstanceRole: eksOutput.instanceRole,
+
+        vpcId: vpcOutput.vpcId,
+        connectedSecurityGroups: {
+            "eks": eksOutput.workerSg,
+        },
     }, false).catch(err => console.log(err))
 }
