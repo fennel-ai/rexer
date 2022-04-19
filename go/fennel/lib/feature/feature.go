@@ -15,9 +15,9 @@ const (
 
 type Row struct {
 	ContextOType    ftypes.OType        `json:"context_otype"`
-	ContextOid      ftypes.IDType       `json:"context_oid"`
+	ContextOid      ftypes.OidType      `json:"context_oid"`
 	CandidateOType  ftypes.OType        `json:"candidate_otype"`
-	CandidateOid    ftypes.IDType       `json:"candidate_oid"`
+	CandidateOid    ftypes.OidType      `json:"candidate_oid"`
 	Features        value.Dict          `json:"data"`
 	Workflow        string              `json:"workflow"`
 	RequestID       ftypes.RequestID    `json:"request_id"`
@@ -73,11 +73,11 @@ func (r *Row) UnmarshalJSON(bytes []byte) error {
 			}
 			r.ContextOType = ftypes.OType(s)
 		case "context_oid":
-			n, ok := v.(value.Int)
+			s, ok := v.(value.String)
 			if !ok {
-				return fmt.Errorf("can not unmarshal feature row, expected integer for context_oid but found: %v", v)
+				return fmt.Errorf("can not unmarshal feature row, expected string for context_oid but found: %v", v)
 			}
-			r.ContextOid = ftypes.IDType(n)
+			r.ContextOid = ftypes.OidType(s)
 		case "candidate_otype":
 			s, ok := v.(value.String)
 			if !ok {
@@ -85,11 +85,11 @@ func (r *Row) UnmarshalJSON(bytes []byte) error {
 			}
 			r.CandidateOType = ftypes.OType(s)
 		case "candidate_oid":
-			n, ok := v.(value.Int)
+			s, ok := v.(value.String)
 			if !ok {
-				return fmt.Errorf("can not unmarshal feature row, expected integer for candidate_id but found: %v", v)
+				return fmt.Errorf("can not unmarshal feature row, expected string for candidate_id but found: %v", v)
 			}
-			r.CandidateOid = ftypes.IDType(n)
+			r.CandidateOid = ftypes.OidType(s)
 		case "timestamp":
 			n, ok := v.(value.Int)
 			if !ok {
@@ -123,9 +123,9 @@ func (r Row) GetValue() value.Value {
 		d.Set(pk, v)
 	}
 	d.Set("context_otype", value.String(r.ContextOType))
-	d.Set("context_oid", value.Int(r.ContextOid))
+	d.Set("context_oid", value.String(r.ContextOid))
 	d.Set("candidate_otype", value.String(r.CandidateOType))
-	d.Set("candidate_oid", value.Int(r.CandidateOid))
+	d.Set("candidate_oid", value.String(r.CandidateOid))
 	d.Set("timestamp", value.Int(r.Timestamp))
 	d.Set("workflow", value.String(r.Workflow))
 	d.Set("request_id", value.Int(r.RequestID))
@@ -158,9 +158,9 @@ func FromProtoRow(pr *ProtoRow) (*Row, error) {
 	}
 	return &Row{
 		ContextOType:    ftypes.OType(pr.ContextOType),
-		ContextOid:      ftypes.IDType(pr.ContextOid),
+		ContextOid:      ftypes.OidType(pr.ContextOid),
 		CandidateOType:  ftypes.OType(pr.CandidateOType),
-		CandidateOid:    ftypes.IDType(pr.CandidateOid),
+		CandidateOid:    ftypes.OidType(pr.CandidateOid),
 		Features:        asdict,
 		Workflow:        pr.Workflow,
 		RequestID:       ftypes.RequestID(pr.RequestID),
@@ -178,9 +178,9 @@ func ToProto(r Row) (*ProtoRow, error) {
 	}
 	return &ProtoRow{
 		ContextOType:    string(r.ContextOType),
-		ContextOid:      uint64(r.ContextOid),
+		ContextOid:      string(r.ContextOid),
 		CandidateOType:  string(r.CandidateOType),
-		CandidateOid:    uint64(r.CandidateOid),
+		CandidateOid:    string(r.CandidateOid),
 		Features:        &pv,
 		Workflow:        r.Workflow,
 		RequestID:       uint64(r.RequestID),

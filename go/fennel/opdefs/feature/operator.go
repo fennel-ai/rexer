@@ -47,9 +47,9 @@ func (f featureLog) Apply(ctx context.Context, static value.Dict, in operators.I
 		}
 		msg := libfeature.Row{
 			ContextOType:    ftypes.OType(get(kwargs, "context_otype").(value.String)),
-			ContextOid:      ftypes.IDType(get(kwargs, "context_oid").(value.Int)),
+			ContextOid:      ftypes.OidType(get(kwargs, "context_oid").(value.String)),
 			CandidateOType:  ftypes.OType(get(kwargs, "candidate_otype").(value.String)),
-			CandidateOid:    ftypes.IDType(get(kwargs, "candidate_oid").(value.Int)),
+			CandidateOid:    ftypes.OidType(get(kwargs, "candidate_oid").(value.String)),
 			Features:        get(kwargs, "features").(value.Dict),
 			Workflow:        workflow,
 			RequestID:       ftypes.RequestID(get(kwargs, "request_id").(value.Int)),
@@ -70,9 +70,9 @@ func (f featureLog) Signature() *operators.Signature {
 	return operators.NewSignature("feature", "log").
 		Input(nil).
 		Param("context_otype", value.Types.String, false, false, value.Nil).
-		Param("context_oid", value.Types.Int, false, false, value.Nil).
+		Param("context_oid", value.Types.String, false, false, value.Nil).
 		Param("candidate_otype", value.Types.String, false, false, value.Nil).
-		Param("candidate_oid", value.Types.Int, false, false, value.Nil).
+		Param("candidate_oid", value.Types.String, false, false, value.Nil).
 		Param("features", value.Types.Dict, false, false, value.Nil).
 		Param("workflow", value.Types.String, true, false, value.Nil).
 		Param("request_id", value.Types.Int, false, false, value.Nil).
