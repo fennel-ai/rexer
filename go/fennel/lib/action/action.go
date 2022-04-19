@@ -116,8 +116,8 @@ func (a *Action) Validate() error {
 	if len(a.ActionType) == 0 {
 		return fmt.Errorf("action type can not be empty")
 	}
-	if a.RequestID == 0 {
-		return fmt.Errorf("action request ID can not be zero")
+	if len(a.RequestID) == 0 {
+		return fmt.Errorf("action request ID can not be empty")
 	}
 	if len(a.ActionType) > 255 {
 		return fmt.Errorf("action type too long: action types cannot be longer than 255 chars")
@@ -178,7 +178,7 @@ func (a Action) ToValueDict() value.Dict {
 		"target_id":   value.String(a.TargetID),
 		"action_type": value.String(a.ActionType),
 		"timestamp":   value.Int(a.Timestamp),
-		"request_id":  value.Int(a.RequestID),
+		"request_id":  value.String(a.RequestID),
 		"metadata":    a.Metadata,
 	})
 }

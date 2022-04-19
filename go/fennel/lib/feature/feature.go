@@ -61,11 +61,11 @@ func (r *Row) UnmarshalJSON(bytes []byte) error {
 			}
 			r.ModelVersion = ftypes.ModelVersion(s)
 		case "request_id":
-			n, ok := v.(value.Int)
+			s, ok := v.(value.String)
 			if !ok {
-				return fmt.Errorf("can not unmarshal feature row, expected integer for request_id but found: %v", v)
+				return fmt.Errorf("can not unmarshal feature row, expected string for request_id but found: %v", v)
 			}
-			r.RequestID = ftypes.RequestID(n)
+			r.RequestID = ftypes.RequestID(s)
 		case "context_otype":
 			s, ok := v.(value.String)
 			if !ok {
@@ -128,7 +128,7 @@ func (r Row) GetValue() value.Value {
 	d.Set("candidate_oid", value.String(r.CandidateOid))
 	d.Set("timestamp", value.Int(r.Timestamp))
 	d.Set("workflow", value.String(r.Workflow))
-	d.Set("request_id", value.Int(r.RequestID))
+	d.Set("request_id", value.String(r.RequestID))
 	d.Set("model_name", value.String(r.ModelName))
 	d.Set("model_version", value.String(r.ModelVersion))
 	d.Set("model_prediction", value.Double(r.ModelPrediction))
@@ -183,7 +183,7 @@ func ToProto(r Row) (*ProtoRow, error) {
 		CandidateOid:    string(r.CandidateOid),
 		Features:        &pv,
 		Workflow:        r.Workflow,
-		RequestID:       uint64(r.RequestID),
+		RequestID:       string(r.RequestID),
 		Timestamp:       uint64(r.Timestamp),
 		ModelName:       string(r.ModelName),
 		ModelVersion:    string(r.ModelVersion),

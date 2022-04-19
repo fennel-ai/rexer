@@ -265,7 +265,7 @@ func logAction(t *testing.T, tier tier.Tier, uid ftypes.OidType, ts ftypes.Times
 		ActionType: "like",
 		Metadata:   metadata,
 		Timestamp:  ts,
-		RequestID:  12,
+		RequestID:  "12",
 	}
 	a2 := a1
 	a2.ActionType = "share"

@@ -124,8 +124,8 @@ func TestServer_ActionsHandler(t *testing.T) {
 	var max uint64 = math.MaxUint64
 	// Prepare only valid request that will be sent
 	reqStr := fmt.Sprintf("/actions/?actor_id=%s&actor_type=%s&target_id=%s&target_type=%s&action_type=%s&"+
-		"request_id=%d&min_timestamp=%d&max_timestamp=%d&min_action_id=%d&max_action_id=%d",
-		"a", "b", "c", "d", "e", max, max-1, max-2, max-3, max-4)
+		"request_id=%s&min_timestamp=%d&max_timestamp=%d&min_action_id=%d&max_action_id=%d",
+		"a", "b", "c", "d", "e", "f", max, max-1, max-2, max-3)
 	req := httptest.NewRequest("GET", reqStr, nil)
 	// Prepare the expected ActionFetchRequest
 	expected := action.ActionFetchRequest{
@@ -134,19 +134,19 @@ func TestServer_ActionsHandler(t *testing.T) {
 		TargetID:     "c",
 		TargetType:   "d",
 		ActionType:   "e",
-		RequestID:    math.MaxUint64,
-		MinTimestamp: math.MaxUint64 - 1,
-		MaxTimestamp: math.MaxUint64 - 2,
-		MinActionID:  math.MaxUint64 - 3,
-		MaxActionID:  math.MaxUint64 - 4,
+		RequestID:    "f",
+		MinTimestamp: math.MaxUint64,
+		MaxTimestamp: math.MaxUint64 - 1,
+		MinActionID:  math.MaxUint64 - 2,
+		MaxActionID:  math.MaxUint64 - 3,
 	}
 	// Prepare actions that will be returned by the server
 	actions := make([]action.Action, 0)
 	actions = append(actions, action.Action{ActionID: math.MaxUint64 - 1, ActorID: "2", ActorType: "3",
 		TargetID: "4", TargetType: "5", ActionType: "6", Timestamp: math.MaxUint64 - 7,
-		RequestID: math.MaxUint64 - 8, Metadata: value.Int(9)})
+		RequestID: "8", Metadata: value.Int(9)})
 	actions = append(actions, action.Action{ActionID: 8, ActorID: "7", ActorType: "6", TargetID: "5", TargetType: "4",
-		ActionType: "3", Timestamp: 2, RequestID: 1, Metadata: value.String("abc")})
+		ActionType: "3", Timestamp: 2, RequestID: "1", Metadata: value.String("abc")})
 	actionsSer, err := json.Marshal(actions)
 	assert.NoError(t, err)
 	// Set up the endpoint server
@@ -173,8 +173,6 @@ func TestServer_ActionsHandler(t *testing.T) {
 	assert.Equal(t, string(actionsSer), rr.Body.String())
 	// Now test for invalid requests
 	badReqStrs := []string{
-		"request_id=-1",
-		"request_id=abc",
 		"min_timestamp=-1",
 		"min_timestamp=abc",
 		"max_timestamp=-1",

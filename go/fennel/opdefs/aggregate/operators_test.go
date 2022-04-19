@@ -145,6 +145,6 @@ func getAction(uid ftypes.OidType, ts ftypes.Timestamp, actionType ftypes.Action
 		ActionType: actionType,
 		Metadata:   value.Int(6),
 		Timestamp:  ts,
-		RequestID:  7,
+		RequestID:  "7",
 	}
 }

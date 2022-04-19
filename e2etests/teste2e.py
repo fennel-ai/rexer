@@ -113,26 +113,26 @@ class TestEndToEnd(unittest.TestCase):
 
         ts = datetime.now().astimezone(timezone.utc)
         a1 = action.Action(actor_type='user', actor_id=uid, target_type='content', target_id=content_id,
-                           action_type='notif_send', request_id=1, timestamp=ts, dedup_key="a1")
+                           action_type='notif_send', request_id="1", timestamp=ts, dedup_key="a1")
         a2 = action.Action(actor_type='user', actor_id=uid, target_type='content', target_id=content_id,
-                           action_type='notif_send', request_id=1, timestamp=ts + timedelta(seconds=1), dedup_key="a2")
+                           action_type='notif_send', request_id="1", timestamp=ts + timedelta(seconds=1), dedup_key="a2")
         a3 = action.Action(actor_type='user', actor_id=uid, target_type='content', target_id=content_id,
-                           action_type='notif_open', request_id=1, timestamp=ts + timedelta(seconds=2), dedup_key="a3")
+                           action_type='notif_open', request_id="1", timestamp=ts + timedelta(seconds=2), dedup_key="a3")
         a4 = action.Action(actor_type='user', actor_id=uid, target_type='content', target_id=content_id,
-                           action_type='react', request_id=2, timestamp=ts + timedelta(seconds=3), dedup_key="a4")
+                           action_type='react', request_id="2", timestamp=ts + timedelta(seconds=3), dedup_key="a4")
 
         # verify that test of actions works well
         mock = {'profiles': [p1]}
         actions = [a1, a2, a3, a4]
         expected = [
             {'action_type': 'notif_send', 'actor_id': '12312', 'actor_type': 'user', 'category': 'sports',
-             'groupkey': ['12312', 'sports'], 'metadata': {}, 'request_id': 1, 'target_id': '456',
+             'groupkey': ['12312', 'sports'], 'metadata': {}, 'request_id': "1", 'target_id': '456',
              'target_type': 'content', 'timestamp': int(ts.timestamp()), 'value': [0, 1]},
             {'action_type': 'notif_send', 'actor_id': '12312', 'actor_type': 'user', 'category': 'sports',
-             'groupkey': ['12312', 'sports'], 'metadata': {}, 'request_id': 1, 'target_id': '456',
+             'groupkey': ['12312', 'sports'], 'metadata': {}, 'request_id': "1", 'target_id': '456',
              'target_type': 'content', 'timestamp': int((ts + timedelta(seconds=1)).timestamp()), 'value': [0, 1]},
             {'action_type': 'notif_open', 'actor_id': '12312', 'actor_type': 'user', 'category': 'sports',
-             'groupkey': ['12312', 'sports'], 'metadata': {}, 'request_id': 1, 'target_id': '456',
+             'groupkey': ['12312', 'sports'], 'metadata': {}, 'request_id': "1", 'target_id': '456',
              'target_type': 'content', 'timestamp': int((ts + timedelta(seconds=2)).timestamp()), 'value': [1, 0]}
         ]
         self.assertEqual(expected, agg_user_notif_open_rate_by_category.test(actions, client=c, mock=mock))
@@ -147,7 +147,7 @@ class TestEndToEnd(unittest.TestCase):
             c.log(a4)
         # this action was logged 8 days in history so should not apply towards any aggregate
         c.log(action.Action(actor_type='user', actor_id=uid, target_type='content', target_id=content_id,
-                            action_type='notif_send', request_id=7, timestamp=ts - timedelta(days=8)))
+                            action_type='notif_send', request_id="7", timestamp=ts - timedelta(days=8)))
 
         # Number of hours in the ts. 
         b = int((ts.timestamp() % (24 * 3600)) / 3600)
@@ -247,9 +247,9 @@ class TestEndToEnd(unittest.TestCase):
         # send multiple times with dedup keys
         actions = [
             action.Action(actor_type='user', actor_id=uid, target_type='video', target_id=video_id, action_type='view',
-                          request_id=1, timestamp=ts, metadata={'watch_time': 20}, dedup_key="action1"),
+                          request_id="1", timestamp=ts, metadata={'watch_time': 20}, dedup_key="action1"),
             action.Action(actor_type='user', actor_id=uid, target_type='video', target_id=video_id, action_type='view',
-                          request_id=1, timestamp=ts - timedelta(days=3), metadata={'watch_time': 22},
+                          request_id="1", timestamp=ts - timedelta(days=3), metadata={'watch_time': 22},
                           dedup_key="action2"),
         ]
         c.log_multi(actions)
@@ -356,10 +356,10 @@ class TestEndToEnd(unittest.TestCase):
         for p in post_ids:
             # one action for 1 day ago (so applies to both 4 day and 7 day windows)
             c.log(action.Action(actor_type='user', actor_id=uid, target_type='post', target_id=str(p),
-                                action_type='click', request_id=1, timestamp=now - timedelta(days=1)))
+                                action_type='click', request_id="1", timestamp=now - timedelta(days=1)))
             # one action for 6 day ago (so applies to only 7 day windows)
             c.log(action.Action(actor_type='user', actor_id=uid, target_type='post', target_id=str(p),
-                                action_type='click', request_id=1, timestamp=now - timedelta(days=6)))
+                                action_type='click', request_id="1", timestamp=now - timedelta(days=6)))
 
         # now store some aggregates
         @rex.aggregate(

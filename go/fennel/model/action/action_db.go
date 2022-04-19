@@ -83,7 +83,7 @@ func Fetch(ctx context.Context, tier tier.Tier, request action.ActionFetchReques
 	if request.MaxTimestamp != 0 {
 		clauses = append(clauses, "timestamp <= :max_timestamp")
 	}
-	if request.RequestID != 0 {
+	if len(request.RequestID) != 0 {
 		clauses = append(clauses, "request_id = :request_id")
 	}
 	if request.MinActionID != 0 {

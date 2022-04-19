@@ -168,7 +168,7 @@ func (s server) ProfileMultiHandler(w http.ResponseWriter, req *http.Request) {
 
 func loadActionsQueryValues(
 	vals url.Values, actorID *string, actorType *string, targetID *string, targetType *string, actionType *string,
-	minTimestamp *uint64, maxTimestamp *uint64, minActionID *uint64, maxActionID *uint64, requestID *uint64) error {
+	minTimestamp *uint64, maxTimestamp *uint64, minActionID *uint64, maxActionID *uint64, requestID *string) error {
 	var err error
 	if *actorID, err = getString(vals, "actor_id", true); err != nil {
 		return err
@@ -197,7 +197,7 @@ func loadActionsQueryValues(
 	if *maxActionID, err = getUint64(vals, "max_action_id", true); err != nil {
 		return err
 	}
-	if *requestID, err = getUint64(vals, "request_id", true); err != nil {
+	if *requestID, err = getString(vals, "request_id", true); err != nil {
 		return err
 	}
 	return nil
@@ -207,8 +207,8 @@ func (s server) ActionsHandler(w http.ResponseWriter, req *http.Request) {
 	switch req.Method {
 	case "GET":
 		// Process the request
-		var actorID, actorType, targetID, targetType, actionType string
-		var minTimestamp, maxTimestamp, minActionID, maxActionID, requestID uint64
+		var actorID, actorType, targetID, targetType, actionType, requestID string
+		var minTimestamp, maxTimestamp, minActionID, maxActionID uint64
 		err := loadActionsQueryValues(req.URL.Query(), &actorID, &actorType, &targetID, &targetType, &actionType,
 			&minTimestamp, &maxTimestamp, &minActionID, &maxActionID, &requestID)
 		if err != nil {

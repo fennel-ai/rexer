@@ -146,7 +146,7 @@ func TestLongTypes(t *testing.T) {
 		ActionType: "13",
 		Metadata:   value.Int(14),
 		Timestamp:  15,
-		RequestID:  16,
+		RequestID:  "16",
 	}
 
 	// ActionType can't be longer than 255 chars
@@ -210,6 +210,6 @@ func getAction(i int, uid ftypes.OidType, ts ftypes.Timestamp, actionType ftypes
 		ActionType: actionType,
 		Metadata:   value.Int(6),
 		Timestamp:  ts,
-		RequestID:  7,
+		RequestID:  "7",
 	}
 }

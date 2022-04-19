@@ -10,9 +10,9 @@ import "fennel/db"
 var Schema = db.Schema{
 	1: `CREATE TABLE IF NOT EXISTS actionlog (
 			action_id BIGINT UNSIGNED not null primary key auto_increment,
-			actor_id VARCHAR(64) NOT NULL,
+			actor_id BIGINT UNSIGNED NOT NULL,
 			actor_type varchar(255) NOT NULL,
-			target_id VARCHAR(64) NOT NULL,
+			target_id BIGINT UNSIGNED NOT NULL,
 			target_type varchar(255) NOT NULL,
 			action_type varchar(255) NOT NULL,
 			timestamp BIGINT UNSIGNED NOT NULL,
@@ -28,7 +28,7 @@ var Schema = db.Schema{
 		);`,
 	3: `CREATE TABLE IF NOT EXISTS profile (
 			otype varchar(255) not null,
-			oid VARCHAR(64) not null,
+			oid BIGINT UNSIGNED not null,
 			zkey varchar(255) not null,
 			version BIGINT UNSIGNED not null,
 			value blob not null,
@@ -117,4 +117,9 @@ var Schema = db.Schema{
 	13: `ALTER TABLE aggregate_config ADD COLUMN id INT UNSIGNED NOT NULL AUTO_INCREMENT UNIQUE;`,
 	// Alter the profile primary key to only include otype, oid, zkey.
 	14: `ALTER TABLE profile ADD CONSTRAINT latest_only UNIQUE (otype, oid, zkey);`,
+	15: `ALTER TABLE profile CHANGE oid oid VARCHAR(64) NOT NULL;`,
+	16: `ALTER TABLE actionlog
+			CHANGE actor_id actor_id VARCHAR(64) NOT NULL,
+			CHANGE target_id target_id VARCHAR(64) NOT NULL,
+			CHANGE request_id request_id VARCHAR(64) NOT NULL;`,
 }

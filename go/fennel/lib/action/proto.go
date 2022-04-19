@@ -36,7 +36,7 @@ func ToProtoAction(a Action) (ProtoAction, error) {
 		TargetType: string(a.TargetType),
 		ActionType: string(a.ActionType),
 		Timestamp:  uint64(a.Timestamp),
-		RequestID:  uint64(a.RequestID),
+		RequestID:  string(a.RequestID),
 		Metadata:   &pv,
 	}, nil
 }
@@ -68,7 +68,7 @@ func ToProtoActionFetchRequest(a ActionFetchRequest) ProtoActionFetchRequest {
 		ActionType:   string(a.ActionType),
 		MinTimestamp: uint64(a.MinTimestamp),
 		MaxTimestamp: uint64(a.MaxTimestamp),
-		RequestID:    uint64(a.RequestID),
+		RequestID:    string(a.RequestID),
 	}
 }
 
