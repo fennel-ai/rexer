@@ -11,10 +11,6 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
-const (
-	AGGREGATE_DELTA_TOPIC_NAME = "aggr_delta"
-)
-
 var ValidTypes = []ftypes.AggType{
 	"sum",
 	"timeseries_sum",

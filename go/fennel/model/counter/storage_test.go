@@ -8,6 +8,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
+	"fennel/lib/counter"
 	"fennel/lib/ftypes"
 	"fennel/lib/utils"
 	"fennel/lib/value"
@@ -40,7 +41,7 @@ func TestBadgerStorage(t *testing.T) {
 	})
 
 	t.Run("test_encode_decode", func(t *testing.T) {
-		buckets := []Bucket{
+		buckets := []counter.Bucket{
 			{"hello", ftypes.Window_HOUR, 11, 123, nil},
 			{"hello", ftypes.Window_MINUTE, 11, 12323, nil},
 			{"hello", ftypes.Window_DAY, 1, 123, nil},
@@ -64,13 +65,13 @@ func testStorage(t *testing.T, store BucketStore) {
 	ctx := context.Background()
 
 	scenarios := []struct {
-		buckets []Bucket
+		buckets []counter.Bucket
 		z       value.Value
 		v1      []value.Value
 		v2      []value.Value
 	}{
 		{
-			[]Bucket{
+			[]counter.Bucket{
 				{Key: "k1", Window: ftypes.Window_DAY, Width: 1, Index: 5, Value: nil},
 				{Key: "k2", Window: ftypes.Window_HOUR, Width: 4, Index: 8, Value: nil},
 			},
@@ -79,7 +80,7 @@ func testStorage(t *testing.T, store BucketStore) {
 			[]value.Value{value.Nil, value.Int(4)},
 		},
 		{
-			[]Bucket{
+			[]counter.Bucket{
 				{Key: "k1", Window: ftypes.Window_DAY, Width: 1, Index: 5, Value: nil},
 				{Key: "k2", Window: ftypes.Window_HOUR, Width: 6, Index: 7, Value: nil},
 				{Key: "k3", Window: ftypes.Window_HOUR, Width: 6, Index: 8, Value: nil},
@@ -89,7 +90,7 @@ func testStorage(t *testing.T, store BucketStore) {
 			[]value.Value{value.Nil, value.Int(4), value.Int(1)},
 		},
 		{
-			[]Bucket{
+			[]counter.Bucket{
 				{Key: "k1", Window: ftypes.Window_DAY, Width: 1, Index: 5, Value: nil},
 				{Key: "k1", Window: ftypes.Window_HOUR, Width: 6, Index: 9, Value: nil},
 				{Key: "k1", Window: ftypes.Window_HOUR, Width: 6, Index: 8, Value: nil},
@@ -126,7 +127,7 @@ func testStorage(t *testing.T, store BucketStore) {
 		}
 
 		// now only update odd buckets
-		odd := make([]Bucket, 0)
+		odd := make([]counter.Bucket, 0)
 		for i := range scene.buckets {
 			if i%2 == 0 {
 				continue
@@ -161,7 +162,7 @@ func testStorageMulti(t *testing.T, store BucketStore) {
 		4,
 		5,
 	}
-	buckets := [][]Bucket{
+	buckets := [][]counter.Bucket{
 		{},
 		{
 			{Key: "k1", Window: ftypes.Window_DAY, Width: 1, Index: 5, Value: nil},
@@ -242,12 +243,12 @@ func testLarge(t *testing.T, store BucketStore, numAggs, numBuckets int) {
 	ctx := context.Background()
 
 	ids := make([]ftypes.AggId, numAggs)
-	buckets := make([][]Bucket, numAggs)
+	buckets := make([][]counter.Bucket, numAggs)
 	for i := range ids {
 		ids[i] = ftypes.AggId(rand.Intn(1000000))
-		buckets[i] = make([]Bucket, numBuckets)
+		buckets[i] = make([]counter.Bucket, numBuckets)
 		for j := range buckets[i] {
-			buckets[i][j] = Bucket{
+			buckets[i][j] = counter.Bucket{
 				Key:    utils.RandString(30),
 				Window: ftypes.Window_HOUR,
 				Width:  3,
@@ -278,27 +279,27 @@ func TestTwoLevelRedisStore(t *testing.T) {
 	}
 	k := "key"
 	scenarios := []struct {
-		b   Bucket
+		b   counter.Bucket
 		s   slot
 		err bool
 	}{
 		{
-			Bucket{Key: k, Window: ftypes.Window_MINUTE, Width: 2, Index: 3, Value: value.Int(1)},
+			counter.Bucket{Key: k, Window: ftypes.Window_MINUTE, Width: 2, Index: 3, Value: value.Int(1)},
 			slot{g: group{aggId: aggId, key: k, id: 0}, window: ftypes.Window_MINUTE, width: 2, idx: 3, val: value.Int(1)},
 			false,
 		},
 		{
-			Bucket{Key: k, Window: ftypes.Window_DAY, Width: 2, Index: 3, Value: value.Int(1)},
+			counter.Bucket{Key: k, Window: ftypes.Window_DAY, Width: 2, Index: 3, Value: value.Int(1)},
 			slot{},
 			true,
 		},
 		{
-			Bucket{Key: k, Window: ftypes.Window_HOUR, Width: 2, Index: 30, Value: value.Int(1)},
+			counter.Bucket{Key: k, Window: ftypes.Window_HOUR, Width: 2, Index: 30, Value: value.Int(1)},
 			slot{g: group{aggId: aggId, key: k, id: 7}, window: ftypes.Window_HOUR, width: 2, idx: 2, val: value.Int(1)},
 			false,
 		},
 		{
-			Bucket{Key: k, Window: ftypes.Window_HOUR, Width: 2, Index: 24 * 30, Value: value.Int(1)},
+			counter.Bucket{Key: k, Window: ftypes.Window_HOUR, Width: 2, Index: 24 * 30, Value: value.Int(1)},
 			slot{g: group{aggId: aggId, key: k, id: 180}, window: ftypes.Window_HOUR, width: 2, idx: 0, val: value.Int(1)},
 			false,
 		},
@@ -321,10 +322,10 @@ func benchmarkStorage(b *testing.B, store BucketStore) {
 	defer test.Teardown(tier)
 	ctx := context.Background()
 
-	buckets := make([]Bucket, 0)
+	buckets := make([]counter.Bucket, 0)
 	groupKey := utils.RandString(30)
 	for i := 0; i < 10000; i++ {
-		b := Bucket{
+		b := counter.Bucket{
 			Key:    fmt.Sprintf("%s:%d", groupKey, i/50),
 			Window: ftypes.Window_MINUTE,
 			Width:  6,

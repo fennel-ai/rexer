@@ -1,6 +1,7 @@
 package counter
 
 import (
+	"fennel/lib/counter"
 	"fennel/lib/ftypes"
 	"fennel/lib/value"
 )
@@ -10,27 +11,27 @@ type fixedWidthBucketizer struct {
 	includeTrailingPartial bool
 }
 
-func (f fixedWidthBucketizer) BucketizeMoment(key string, ts ftypes.Timestamp, v value.Value) []Bucket {
-	ret := make([]Bucket, 0, len(f.sizes))
+func (f fixedWidthBucketizer) BucketizeMoment(key string, ts ftypes.Timestamp, v value.Value) []counter.Bucket {
+	ret := make([]counter.Bucket, 0, len(f.sizes))
 	for window, width := range f.sizes {
 		if width == 0 {
 			continue
 		}
 		switch window {
 		case ftypes.Window_MINUTE:
-			ret = append(ret, Bucket{Key: key, Window: ftypes.Window_MINUTE, Index: uint64(ts) / 60 / width, Width: width, Value: v})
+			ret = append(ret, counter.Bucket{Key: key, Window: ftypes.Window_MINUTE, Index: uint64(ts) / 60 / width, Width: width, Value: v})
 		case ftypes.Window_HOUR:
-			ret = append(ret, Bucket{Key: key, Window: ftypes.Window_HOUR, Index: uint64(ts) / 3600 / width, Width: width, Value: v})
+			ret = append(ret, counter.Bucket{Key: key, Window: ftypes.Window_HOUR, Index: uint64(ts) / 3600 / width, Width: width, Value: v})
 		case ftypes.Window_DAY:
-			ret = append(ret, Bucket{Key: key, Window: ftypes.Window_DAY, Index: uint64(ts) / (24 * 3600) / width, Width: width, Value: v})
+			ret = append(ret, counter.Bucket{Key: key, Window: ftypes.Window_DAY, Index: uint64(ts) / (24 * 3600) / width, Width: width, Value: v})
 		}
 	}
 	return ret
 }
 
-func (f fixedWidthBucketizer) BucketizeDuration(key string, start, end ftypes.Timestamp, v value.Value) []Bucket {
+func (f fixedWidthBucketizer) BucketizeDuration(key string, start, end ftypes.Timestamp, v value.Value) []counter.Bucket {
 	periods := []period{{start, end}}
-	ret := make([]Bucket, 0)
+	ret := make([]counter.Bucket, 0)
 	// iterate through in the right order - first day, then hour, then minute
 	for _, w := range []ftypes.Window{ftypes.Window_DAY, ftypes.Window_HOUR, ftypes.Window_MINUTE} {
 		width, ok := f.sizes[w]

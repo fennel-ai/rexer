@@ -5,7 +5,7 @@ import (
 	"time"
 
 	"fennel/lib/action"
-	"fennel/lib/aggregate"
+	"fennel/lib/counter"
 	"fennel/lib/feature"
 	"fennel/lib/profile"
 	"fennel/resource"
@@ -44,7 +44,7 @@ var ALL_TOPICS = []string{
 	action.ACTIONLOG_JSON_KAFKA_TOPIC,
 	feature.KAFKA_TOPIC_NAME,
 	profile.PROFILELOG_KAFKA_TOPIC,
-	aggregate.AGGREGATE_DELTA_TOPIC_NAME,
+	counter.AGGREGATE_DELTA_TOPIC_NAME,
 }
 
 func ConfigMap(server, username, password string) *kafka.ConfigMap {

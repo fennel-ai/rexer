@@ -3,13 +3,14 @@ package counter
 import (
 	"fmt"
 
+	"fennel/lib/counter"
 	"fennel/lib/ftypes"
 	"fennel/lib/utils"
 	"fennel/lib/value"
 )
 
-func Bucketize(histogram Histogram, actions value.List) ([]Bucket, error) {
-	buckets := make([]Bucket, 0, actions.Len())
+func Bucketize(histogram Histogram, actions value.List) ([]counter.Bucket, error) {
+	buckets := make([]counter.Bucket, 0, actions.Len())
 	for i := 0; i < actions.Len(); i++ {
 		rowVal, _ := actions.At(i)
 		row, ok := rowVal.(value.Dict)
@@ -42,8 +43,8 @@ func Bucketize(histogram Histogram, actions value.List) ([]Bucket, error) {
 
 // MergeBuckets takes a list of buckets and "merges" their counts if rest of their properties
 // are identical this reduces the number of keys to touch in storage
-func MergeBuckets(histogram Histogram, buckets []Bucket) ([]Bucket, error) {
-	seen := make(map[Bucket]value.Value, 0)
+func MergeBuckets(histogram Histogram, buckets []counter.Bucket) ([]counter.Bucket, error) {
+	seen := make(map[counter.Bucket]value.Value, 0)
 	var err error
 	for i := range buckets {
 		mapkey := buckets[i]
@@ -57,7 +58,7 @@ func MergeBuckets(histogram Histogram, buckets []Bucket) ([]Bucket, error) {
 			return nil, err
 		}
 	}
-	ret := make([]Bucket, 0, len(seen))
+	ret := make([]counter.Bucket, 0, len(seen))
 	for b, c := range seen {
 		b.Value = c
 		ret = append(ret, b)
@@ -78,7 +79,7 @@ func boundary(start, end ftypes.Timestamp, period uint64) (uint64, uint64) {
 
 // bucketizeTimeseries returns a list of buckets of size 'Window' that begin at or after 'start'
 // and go until at or before 'end'. Each bucket's count is left at 0
-func bucketizeTimeseries(key string, start, end ftypes.Timestamp, window ftypes.Window, width uint64, zero value.Value) ([]Bucket, ftypes.Timestamp, ftypes.Timestamp) {
+func bucketizeTimeseries(key string, start, end ftypes.Timestamp, window ftypes.Window, width uint64, zero value.Value) ([]counter.Bucket, ftypes.Timestamp, ftypes.Timestamp) {
 	var period uint64
 	switch window {
 	case ftypes.Window_MINUTE:
@@ -92,34 +93,34 @@ func bucketizeTimeseries(key string, start, end ftypes.Timestamp, window ftypes.
 	}
 	startBoundary, endBoundary := boundary(start, end, period)
 	if endBoundary <= startBoundary {
-		return []Bucket{}, start, start
+		return []counter.Bucket{}, start, start
 	}
 	bucketStart := ftypes.Timestamp(startBoundary * period)
 	bucketEnd := ftypes.Timestamp(endBoundary * period)
-	ret := make([]Bucket, endBoundary-startBoundary)
+	ret := make([]counter.Bucket, endBoundary-startBoundary)
 	for i := startBoundary; i < endBoundary; i++ {
-		ret[i-startBoundary] = Bucket{Key: key, Window: window, Index: i, Width: width, Value: zero}
+		ret[i-startBoundary] = counter.Bucket{Key: key, Window: window, Index: i, Width: width, Value: zero}
 	}
 	return ret, bucketStart, bucketEnd
 }
 
 // trailingPartial returns the partial bucket that started within [start, end] but didn't fully finish before end
 // if there is no such bucket, ok (2nd return value) is false
-func trailingPartial(key string, start, end ftypes.Timestamp, window ftypes.Window, width uint64, zero value.Value) (Bucket, bool) {
+func trailingPartial(key string, start, end ftypes.Timestamp, window ftypes.Window, width uint64, zero value.Value) (counter.Bucket, bool) {
 	d, err := utils.Duration(window)
 	if err != nil {
-		return Bucket{}, false
+		return counter.Bucket{}, false
 	}
 	period := d * width
 	startBoundary, endBoundary := boundary(start, end, period)
 	if endBoundary < startBoundary {
-		return Bucket{}, false
+		return counter.Bucket{}, false
 	}
 	if endBoundary*period == uint64(end) {
 		// last bucket perfectly lines up with the end so there is no trailing partial bucket
-		return Bucket{}, false
+		return counter.Bucket{}, false
 	}
-	return Bucket{
+	return counter.Bucket{
 		Key:    key,
 		Window: window,
 		Width:  width,

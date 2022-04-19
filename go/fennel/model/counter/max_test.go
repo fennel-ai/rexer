@@ -6,6 +6,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
+	"fennel/lib/counter"
 	"fennel/lib/ftypes"
 	"fennel/lib/value"
 )
@@ -95,7 +96,7 @@ func TestMax_Bucketize_Valid(t *testing.T) {
 	t.Parallel()
 	h := NewMax([]uint64{123})
 	actions := value.List{}
-	expected := make([]Bucket, 0)
+	expected := make([]counter.Bucket, 0)
 	DAY := 3600 * 24
 	for i := 0; i < 5; i++ {
 		v := value.NewList(value.Int(i), value.String("hi"))
@@ -105,9 +106,9 @@ func TestMax_Bucketize_Valid(t *testing.T) {
 			"value":     value.Int(i),
 		})
 		actions.Append(d)
-		expected = append(expected, Bucket{Key: v.String(), Window: ftypes.Window_DAY,
+		expected = append(expected, counter.Bucket{Key: v.String(), Window: ftypes.Window_DAY,
 			Index: 1, Width: 1, Value: value.NewList(value.Int(i), value.Bool(false))})
-		expected = append(expected, Bucket{Key: v.String(), Window: ftypes.Window_MINUTE,
+		expected = append(expected, counter.Bucket{Key: v.String(), Window: ftypes.Window_MINUTE,
 			Index: uint64(24*10 + i*10), Width: 6, Value: value.NewList(value.Int(i), value.Bool(false))})
 	}
 	buckets, err := Bucketize(h, actions)

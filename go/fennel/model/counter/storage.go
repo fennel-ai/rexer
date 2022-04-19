@@ -13,6 +13,7 @@ import (
 	"go.uber.org/zap"
 
 	"fennel/lib/codex"
+	"fennel/lib/counter"
 	"fennel/lib/ftypes"
 	"fennel/lib/timer"
 	"fennel/lib/utils/binary"
@@ -139,7 +140,7 @@ func (t twoLevelRedisStore) GetBucketStore() BucketStore {
 }
 
 func (t twoLevelRedisStore) get(
-	ctx context.Context, tier tier.Tier, aggIds []ftypes.AggId, buckets []Bucket, defaults []value.Value,
+	ctx context.Context, tier tier.Tier, aggIds []ftypes.AggId, buckets []counter.Bucket, defaults []value.Value,
 ) ([]value.Value, error) {
 	// track seen groups, so we do not send duplicate groups to redis
 	// 'seen' maps group to index in the array of groups sent to redis
@@ -194,7 +195,7 @@ func (t twoLevelRedisStore) get(
 }
 
 func (t twoLevelRedisStore) Get(
-	ctx context.Context, tier tier.Tier, aggId ftypes.AggId, buckets []Bucket, default_ value.Value,
+	ctx context.Context, tier tier.Tier, aggId ftypes.AggId, buckets []counter.Bucket, default_ value.Value,
 ) ([]value.Value, error) {
 	defer timer.Start(ctx, tier.ID, "twolevelredis.get").Stop()
 	n := len(buckets)
@@ -208,7 +209,7 @@ func (t twoLevelRedisStore) Get(
 }
 
 func (t twoLevelRedisStore) GetMulti(
-	ctx context.Context, tier tier.Tier, aggIds []ftypes.AggId, buckets [][]Bucket, defaults []value.Value,
+	ctx context.Context, tier tier.Tier, aggIds []ftypes.AggId, buckets [][]counter.Bucket, defaults []value.Value,
 ) ([][]value.Value, error) {
 	defer timer.Start(ctx, tier.ID, "twolevelredis.get_multi").Stop()
 	sz := 0
@@ -216,7 +217,7 @@ func (t twoLevelRedisStore) GetMulti(
 		sz += len(buckets[i])
 	}
 	ids_ := make([]ftypes.AggId, sz)
-	buckets_ := make([]Bucket, sz)
+	buckets_ := make([]counter.Bucket, sz)
 	defaults_ := make([]value.Value, sz)
 
 	curr := 0
@@ -244,7 +245,7 @@ func (t twoLevelRedisStore) GetMulti(
 	return ret, nil
 }
 
-func (t twoLevelRedisStore) set(ctx context.Context, tier tier.Tier, aggIds []ftypes.AggId, buckets []Bucket) error {
+func (t twoLevelRedisStore) set(ctx context.Context, tier tier.Tier, aggIds []ftypes.AggId, buckets []counter.Bucket) error {
 	// track seen groups, so we do not send duplicate groups to redis
 	// 'seen' maps group to index in the array of groups sent to redis
 	seen := make(map[group]int, len(buckets))
@@ -306,7 +307,7 @@ func (t twoLevelRedisStore) set(ctx context.Context, tier tier.Tier, aggIds []ft
 	return setInRedis(ctx, tier, rkeys, groupVals, ttls)
 }
 
-func (t twoLevelRedisStore) Set(ctx context.Context, tier tier.Tier, aggId ftypes.AggId, buckets []Bucket) error {
+func (t twoLevelRedisStore) Set(ctx context.Context, tier tier.Tier, aggId ftypes.AggId, buckets []counter.Bucket) error {
 	defer timer.Start(ctx, tier.ID, "twolevelredis.set").Stop()
 	ids := make([]ftypes.AggId, len(buckets))
 	for i := range ids {
@@ -316,10 +317,10 @@ func (t twoLevelRedisStore) Set(ctx context.Context, tier tier.Tier, aggId ftype
 }
 
 func (t twoLevelRedisStore) SetMulti(
-	ctx context.Context, tier tier.Tier, aggIds []ftypes.AggId, buckets [][]Bucket) error {
+	ctx context.Context, tier tier.Tier, aggIds []ftypes.AggId, buckets [][]counter.Bucket) error {
 	defer timer.Start(ctx, tier.ID, "twolevelredis.set_multi").Stop()
 	var ids_ []ftypes.AggId
-	var buckets_ []Bucket
+	var buckets_ []counter.Bucket
 	for i := range buckets {
 		for _, b := range buckets[i] {
 			ids_ = append(ids_, aggIds[i])
@@ -370,7 +371,7 @@ func (t twoLevelRedisStore) redisKey(id ftypes.AggId, g group) (string, error) {
 	return base91.StdEncoding.EncodeToString(buf[:curr]), nil
 }
 
-func (t twoLevelRedisStore) toSlot(id ftypes.AggId, b *Bucket) (slot, error) {
+func (t twoLevelRedisStore) toSlot(id ftypes.AggId, b *counter.Bucket) (slot, error) {
 	d := toDuration(b.Window) * b.Width
 	if t.period%d != 0 {
 		return slot{}, fmt.Errorf("can only store buckets with width that can fully fit in period of: '%d'sec", t.period)
@@ -417,7 +418,7 @@ func (t twoLevelRedisStore) logStats(groupVals []value.Value, mode string) {
 
 var _ BucketStore = twoLevelRedisStore{}
 
-func Update(ctx context.Context, tier tier.Tier, aggId ftypes.AggId, buckets []Bucket, h Histogram) error {
+func Update(ctx context.Context, tier tier.Tier, aggId ftypes.AggId, buckets []counter.Bucket, h Histogram) error {
 	defer timer.Start(ctx, tier.ID, "counter.update").Stop()
 	cur, err := h.Get(ctx, tier, aggId, buckets, h.Zero())
 	if err != nil {

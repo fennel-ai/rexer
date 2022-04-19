@@ -10,6 +10,7 @@ import (
 	"github.com/alicebob/miniredis/v2"
 	"github.com/stretchr/testify/assert"
 
+	libcounter "fennel/lib/counter"
 	"fennel/lib/ftypes"
 	"fennel/lib/value"
 	"fennel/redis"
@@ -39,7 +40,7 @@ func TestTwoLevelRedisStore_TTL(t *testing.T) {
 		period:    24 * 3600,
 		retention: uint64(retention),
 	}
-	buckets := []Bucket{
+	buckets := []libcounter.Bucket{
 		{Key: "k1", Window: ftypes.Window_DAY, Width: 1, Index: 5, Value: value.Int(1)},
 		{Key: "k1", Window: ftypes.Window_HOUR, Width: 6, Index: 9, Value: value.Int(2)},
 		{Key: "k1", Window: ftypes.Window_HOUR, Width: 6, Index: 8, Value: value.Int(3)},
