@@ -78,6 +78,24 @@ const tierConfs: Record<number, TierConf> = {
             loadBalancerScheme: PUBLIC_LB_SCHEME,
         }
     },
+    // Demo tier using Fennel's staging data plane.
+    109: {
+        planeId: 3,
+        // use public subnets for ingress to allow traffic from outside the assigned vpc
+        ingressConf: {
+            usePublicSubnets: true,
+            loadBalancerScheme: PUBLIC_LB_SCHEME,
+        }
+    },
+    // Demo tier using Fennel's staging data plane.
+    110: {
+        planeId: 3,
+        // use public subnets for ingress to allow traffic from outside the assigned vpc
+        ingressConf: {
+            usePublicSubnets: true,
+            loadBalancerScheme: PUBLIC_LB_SCHEME,
+        }
+    },
 }
 
 // map from plane id to its configuration.
@@ -134,7 +152,12 @@ const planeConfs: Record<number, PlaneConf> = {
         },
         prometheusConf: {
             useAMP: true
-        }
+        },
+        // increase the desired capacity to occupy more pods
+        eksConf: {
+            nodeType: "t3.medium",
+            desiredCapacity: 4,
+        },
     },
     // Lokal's dev tier data plane.
     // TODO: Reduce size of resources once load-tests are done.
