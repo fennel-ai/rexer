@@ -10,13 +10,13 @@ import "fennel/db"
 var Schema = db.Schema{
 	1: `CREATE TABLE IF NOT EXISTS actionlog (
 			action_id BIGINT UNSIGNED not null primary key auto_increment,
-			actor_id BIGINT UNSIGNED NOT NULL,
+			actor_id VARCHAR(64) NOT NULL,
 			actor_type varchar(255) NOT NULL,
-			target_id BIGINT UNSIGNED NOT NULL,
+			target_id VARCHAR(64) NOT NULL,
 			target_type varchar(255) NOT NULL,
 			action_type varchar(255) NOT NULL,
 			timestamp BIGINT UNSIGNED NOT NULL,
-			request_id BIGINT UNSIGNED not null,
+			request_id VARCHAR(64) NOT NULL,
 			metadata BLOB NOT NULL,
 			INDEX (timestamp)
 		);`,
@@ -28,7 +28,7 @@ var Schema = db.Schema{
 		);`,
 	3: `CREATE TABLE IF NOT EXISTS profile (
 			otype varchar(255) not null,
-			oid BIGINT UNSIGNED not null,
+			oid VARCHAR(64) NOT NULL,
 			zkey varchar(255) not null,
 			version BIGINT UNSIGNED not null,
 			value blob not null,
@@ -94,32 +94,5 @@ var Schema = db.Schema{
 		);`,
 	// ==================== END Schema for model registry ======================
 
-	// ======= BEGIN versioned profile uniqueness and idempotent inserts =======
-	// The following altering of the profile table schema is to support the following use case:
-	// 	1. We want the DB inserts for profiles to be idempotent
-	//  2. We want to disallow user updating the value of a versioned profile - they should use a different version instead
-	//
-	// Since it is difficult to differentiate 1. initiated by the system/user to 2. in a batch setting,
-	// we add value to the primary key definition (in case of idempotent inserts, we could have a no-op in `ON DUPLICATE KEY UPDATE section`)
-	// and introduce a unique constraint on the versioned-profile key (to avoid different value insert for a versioned-profile).
-	11: `ALTER TABLE profile ADD CONSTRAINT versioned_profile UNIQUE (otype, oid, zkey, version);`,
-
-	// SQL enforces that fields of BLOB type must specify an index prefix length.
-	// See: https://dev.mysql.com/doc/refman/8.0/en/column-indexes.html
-	//
-	// BLOB type supports a max of 64KB. We use a prefix of 1KB (or less if the value stored in it is lesser than that)
-	// for primary key definition. The only failure mode here is user stored a value for a versioned profile and tries updating
-	// it with a value with the same first 1024 bytes -> in this case we would not update the value but also we won't fail the request.
-	//
-	// TODO: Monitor if the size of the prefix should be increased. Document that updating versioned profiles is strongly discouraged in the system.
-	12: `ALTER TABLE profile DROP PRIMARY KEY, ADD PRIMARY KEY(otype, oid, zkey, version, value(1024));`,
-	// ======== END versioned profile uniqueness and idempotent inserts ========
-	13: `ALTER TABLE aggregate_config ADD COLUMN id INT UNSIGNED NOT NULL AUTO_INCREMENT UNIQUE;`,
-	// Alter the profile primary key to only include otype, oid, zkey.
-	14: `ALTER TABLE profile ADD CONSTRAINT latest_only UNIQUE (otype, oid, zkey);`,
-	15: `ALTER TABLE profile CHANGE oid oid VARCHAR(64) NOT NULL;`,
-	16: `ALTER TABLE actionlog
-			CHANGE actor_id actor_id VARCHAR(64) NOT NULL,
-			CHANGE target_id target_id VARCHAR(64) NOT NULL,
-			CHANGE request_id request_id VARCHAR(64) NOT NULL;`,
+	11: `ALTER TABLE aggregate_config ADD COLUMN id INT UNSIGNED NOT NULL AUTO_INCREMENT UNIQUE;`,
 }
