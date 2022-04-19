@@ -117,7 +117,7 @@ func (c cachedProvider) setBatch(ctx context.Context, tier tier.Tier, profiles [
 		tosetVals := make([]interface{}, 0)
 		for i, profileItem := range profiles {
 			if profileItem.Value == value.Nil {
-				tier.Logger.Error("Found nil value in setBatch for profile", zap.String("key", profileItem.Key), zap.Uint64("profile_id", profileItem.Oid))
+				tier.Logger.Error("Found nil value in setBatch for profile", zap.String("key", profileItem.Key), zap.String("profile_id", profileItem.Oid))
 				continue
 			}
 			key := ks[i]
@@ -279,5 +279,5 @@ func cacheName() string {
 
 func makeKey(pk profile.ProfileItemKey) string {
 	prefix := fmt.Sprintf("%s:%d", cacheName(), cacheVersion)
-	return fmt.Sprintf("%s:{%s:%d:%s}", prefix, pk.OType, pk.Oid, pk.Key)
+	return fmt.Sprintf("%s:{%s:%s:%s}", prefix, pk.OType, pk.Oid, pk.Key)
 }

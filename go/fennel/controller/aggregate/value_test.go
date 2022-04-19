@@ -222,7 +222,7 @@ func TestTransformActions(t *testing.T) {
 	defer test.Teardown(tier)
 
 	actions := make([]action.Action, 0)
-	uid := ftypes.OidType(41)
+	uid := ftypes.OidType("41")
 	for i := 0; i < 100; i++ {
 		// our query only looks at Like action, not share
 		a1 := getAction(i, uid, ftypes.Timestamp(i+1000), "like")
@@ -238,7 +238,7 @@ func TestTransformActions(t *testing.T) {
 		row, ok := r.(value.Dict)
 		assert.True(t, ok)
 		assert.Equal(t, value.Int(i+1000), get(row, "timestamp"))
-		assert.Equal(t, value.NewList(value.Int(uid)), get(row, "groupkey"))
+		assert.Equal(t, value.NewList(value.String(uid)), get(row, "groupkey"))
 	}
 }
 
@@ -277,14 +277,14 @@ func getQuery() ast.Ast {
 
 func getAction(i int, uid ftypes.OidType, ts ftypes.Timestamp, actionType ftypes.ActionType) action.Action {
 	return action.Action{
-		ActionID:   ftypes.OidType(1 + i),
+		ActionID:   ftypes.IDType(1 + i),
 		ActorID:    uid,
 		ActorType:  "user",
-		TargetID:   3,
+		TargetID:   "3",
 		TargetType: "video",
 		ActionType: actionType,
 		Metadata:   value.Int(6),
 		Timestamp:  ts,
-		RequestID:  7,
+		RequestID:  "7",
 	}
 }

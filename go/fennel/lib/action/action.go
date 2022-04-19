@@ -17,7 +17,7 @@ const (
 )
 
 type Action struct {
-	ActionID   ftypes.OidType    `db:"action_id"`
+	ActionID   ftypes.IDType     `db:"action_id"`
 	ActorID    ftypes.OidType    `db:"actor_id"`
 	ActorType  ftypes.OType      `db:"actor_type"`
 	TargetID   ftypes.OidType    `db:"target_id"`
@@ -29,7 +29,7 @@ type Action struct {
 }
 
 type ActionSer struct {
-	ActionID   ftypes.OidType    `db:"action_id"`
+	ActionID   ftypes.IDType     `db:"action_id"`
 	ActorID    ftypes.OidType    `db:"actor_id"`
 	ActorType  ftypes.OType      `db:"actor_type"`
 	TargetID   ftypes.OidType    `db:"target_id"`
@@ -87,8 +87,8 @@ func FromActionSerList(alSer []ActionSer) ([]Action, error) {
 }
 
 type ActionFetchRequest struct {
-	MinActionID  ftypes.OidType    `db:"min_action_id" json:"MinActionID"`
-	MaxActionID  ftypes.OidType    `db:"max_action_id" json:"MaxActionID"`
+	MinActionID  ftypes.IDType     `db:"min_action_id" json:"MinActionID"`
+	MaxActionID  ftypes.IDType     `db:"max_action_id" json:"MaxActionID"`
 	ActorID      ftypes.OidType    `db:"actor_id" json:"ActorID"`
 	ActorType    ftypes.OType      `db:"actor_type" json:"ActorType"`
 	TargetID     ftypes.OidType    `db:"target_id" json:"TargetID"`
@@ -101,14 +101,14 @@ type ActionFetchRequest struct {
 
 // Validate validates that all fields (except action ID) are appropriately specified
 func (a *Action) Validate() error {
-	if a.ActorID == 0 {
-		return fmt.Errorf("actor ID can not be zero")
+	if len(a.ActorID) == 0 {
+		return fmt.Errorf("actor ID can not be empty")
 	}
 	if len(a.ActorType) == 0 {
 		return fmt.Errorf("actor type can not be empty")
 	}
-	if a.TargetID == 0 {
-		return fmt.Errorf("target ID can not be zero")
+	if len(a.TargetID) == 0 {
+		return fmt.Errorf("target ID can not be empty")
 	}
 	if len(a.TargetType) == 0 {
 		return fmt.Errorf("target type can not be empty")
@@ -116,8 +116,8 @@ func (a *Action) Validate() error {
 	if len(a.ActionType) == 0 {
 		return fmt.Errorf("action type can not be empty")
 	}
-	if a.RequestID == 0 {
-		return fmt.Errorf("action request ID can not be zero")
+	if len(a.RequestID) == 0 {
+		return fmt.Errorf("action request ID can not be empty")
 	}
 	if len(a.ActionType) > 255 {
 		return fmt.Errorf("action type too long: action types cannot be longer than 255 chars")
@@ -172,13 +172,13 @@ func (a Action) Equals(other Action, ignoreID bool) bool {
 func (a Action) ToValueDict() value.Dict {
 	return value.NewDict(map[string]value.Value{
 		"action_id":   value.Int(a.ActionID),
-		"actor_id":    value.Int(a.ActorID),
+		"actor_id":    value.String(a.ActorID),
 		"actor_type":  value.String(a.ActorType),
 		"target_type": value.String(a.TargetType),
-		"target_id":   value.Int(a.TargetID),
+		"target_id":   value.String(a.TargetID),
 		"action_type": value.String(a.ActionType),
 		"timestamp":   value.Int(a.Timestamp),
-		"request_id":  value.Int(a.RequestID),
+		"request_id":  value.String(a.RequestID),
 		"metadata":    a.Metadata,
 	})
 }
@@ -203,7 +203,7 @@ func (a Action) MarshalJSON() ([]byte, error) {
 
 func (a *Action) UnmarshalJSON(data []byte) error {
 	var fields struct {
-		ActionID   ftypes.OidType    `json:"ActionID"`
+		ActionID   ftypes.IDType     `json:"ActionID"`
 		ActorID    ftypes.OidType    `json:"ActorID"`
 		ActorType  ftypes.OType      `json:"ActorType"`
 		TargetID   ftypes.OidType    `json:"TargetID"`

@@ -59,7 +59,7 @@ func (p profileOp) Apply(ctx context.Context, staticKwargs value.Dict, in operat
 		rowVal := heads[0]
 		req := libprofile.ProfileItemKey{
 			OType: ftypes.OType(kwargs.GetUnsafe("otype").(value.String)),
-			Oid:   uint64(kwargs.GetUnsafe("oid").(value.Int)),
+			Oid:   string(kwargs.GetUnsafe("oid").(value.String)),
 			Key:   string(kwargs.GetUnsafe("key").(value.String)),
 		}
 		reqs = append(reqs, req)
@@ -148,14 +148,14 @@ func (p profileOp) getProfiles(ctx context.Context, profileKeys []libprofile.Pro
 }
 
 func (p profileOp) getKey(pi libprofile.ProfileItemKey) string {
-	return fmt.Sprintf("profile:%s:%d:%s", pi.OType, pi.Oid, pi.Key)
+	return fmt.Sprintf("profile:%s:%s:%s", pi.OType, pi.Oid, pi.Key)
 }
 
 func (p profileOp) Signature() *operators.Signature {
 	return operators.NewSignature("std", "profile").
 		Input([]value.Type{value.Types.Any}).
 		Param("otype", value.Types.String, false, false, value.Nil).
-		Param("oid", value.Types.Int, false, false, value.Nil).
+		Param("oid", value.Types.String, false, false, value.Nil).
 		Param("key", value.Types.String, false, false, value.Nil).
 		Param("version", value.Types.Int, false, true, value.Int(0)).
 		Param("field", value.Types.String, true, true, value.String("")).

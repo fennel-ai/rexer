@@ -5,12 +5,12 @@ option go_package = "fennel/lib/feature";
 
 message ProtoRow {
   string ContextOType = 1;
-  uint64  ContextOid = 2;
+  string  ContextOid = 2;
   string CandidateOType = 3;
-  uint64  CandidateOid = 4;
+  string  CandidateOid = 4;
   PValue Features = 5;
   string Workflow = 6;
-  uint64  RequestID = 7;
+  string  RequestID = 7;
   uint64  Timestamp = 8;
   string ModelName = 9;
   string ModelVersion = 10;

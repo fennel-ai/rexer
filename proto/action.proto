@@ -5,27 +5,27 @@ option go_package = "fennel/lib/action";
 
 message ProtoAction {
   uint64 ActionID = 1 [json_name = "action_id"];
-  uint64 ActorID = 2[json_name = "actor_id"];
+  string ActorID = 2[json_name = "actor_id"];
   string ActorType = 3[json_name = "actor_type"];
-  uint64 TargetID = 4[json_name = "target_id"];
+  string TargetID = 4[json_name = "target_id"];
   string TargetType = 5[json_name = "target_type"];
   string ActionType = 6[json_name = "action_type"];
   uint64 Timestamp = 7[json_name = "timestamp"];
-  uint64 RequestID = 8[json_name = "request_id"];
+  string RequestID = 8[json_name = "request_id"];
   PValue Metadata = 9[json_name = "metadata"];
 }
 
 message ProtoActionFetchRequest {
   uint64 MinActionID = 1[json_name = "min_action_id"];
   uint64 MaxActionID = 2[json_name = "max_action_id"];
-  uint64 ActorID = 3[json_name = "actor_id"];
+  string ActorID = 3[json_name = "actor_id"];
   string ActorType = 4[json_name = "actor_type"];
-  uint64 TargetID = 5[json_name = "target_id"];
+  string TargetID = 5[json_name = "target_id"];
   string TargetType = 6[json_name = "target_type"];
   string ActionType = 7[json_name = "action_type"];
   uint64 MinTimestamp = 8[json_name = "min_timestamp"];
   uint64 MaxTimestamp = 9[json_name = "max_timestamp"];
-  uint64 RequestID = 10[json_name = "request_id"];
+  string RequestID = 10[json_name = "request_id"];
 }
 
 message ProtoActionList {

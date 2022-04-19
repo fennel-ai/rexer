@@ -20,9 +20,9 @@ func testProviderBasic(t *testing.T, p provider) {
 
 	// initially before setting, value isn't there so we get nil back
 	// and calling get on a row that doesn't exist is not an error
-	profile1 := profile.NewProfileItem("users", 1232, "gender", value.String("male"), 1)
+	profile1 := profile.NewProfileItem("users", "1232", "gender", value.String("male"), 1)
 	profileKey := profile1.GetProfileKey()
-	expctedProf := profile.NewProfileItem("users", 1232, "gender", value.Nil, 0)
+	expctedProf := profile.NewProfileItem("users", "1232", "gender", value.Nil, 0)
 	checkGet(t, ctx, p, tier, profileKey, expctedProf)
 
 	// and repeating this should be same (vs any cache issues)
@@ -45,8 +45,8 @@ func testSQLGetMulti(t *testing.T, p provider) {
 	defer test.Teardown(tier)
 	ctx := context.Background()
 
-	profile1 := profile.NewProfileItem("users", 1232, "gender", value.String("male"), 1)
-	profile2 := profile.NewProfileItem("users", 3456, "gender", value.String("male"), 1)
+	profile1 := profile.NewProfileItem("users", "1232", "gender", value.String("male"), 1)
+	profile2 := profile.NewProfileItem("users", "3456", "gender", value.String("male"), 1)
 
 	// initially before setting, value isn't there so we get nothing back
 	checkGetBatch(t, ctx, p, tier, []profile.ProfileItemKey{}, []profile.ProfileItem{})
@@ -89,8 +89,8 @@ func testSetAgain(t *testing.T, p provider) {
 
 	val1 := value.Int(2)
 	val2 := value.Int(5)
-	p1 := profile.NewProfileItem("12", 1, "attr", val1, 1)
-	expP1 := profile.NewProfileItem("12", 1, "attr", val1, 0)
+	p1 := profile.NewProfileItem("12", "1", "attr", val1, 1)
+	expP1 := profile.NewProfileItem("12", "1", "attr", val1, 0)
 
 	assert.NoError(t, p.set(ctx, tier, p1))
 
@@ -100,14 +100,14 @@ func testSetAgain(t *testing.T, p provider) {
 	checkGet(t, ctx, p, tier, p1.GetProfileKey(), expP1)
 
 	// but if we try to set the same profile to different value, it will go through but not update
-	p2 := profile.NewProfileItem("12", 1, "attr", val2, 1)
+	p2 := profile.NewProfileItem("12", "1", "attr", val2, 1)
 	assert.NoError(t, p.set(ctx, tier, p2))
 
 	// and in all of this, value is not changed
 	checkGet(t, ctx, p, tier, p1.GetProfileKey(), expP1)
 
 	// We need to update the timestamp to make it different
-	p3 := profile.NewProfileItem("12", 1, "attr", val2, 22)
+	p3 := profile.NewProfileItem("12", "1", "attr", val2, 22)
 	assert.NoError(t, p.set(ctx, tier, p3))
 
 	// the value should now change to p3
@@ -126,11 +126,11 @@ func testSetGetBatch(t *testing.T, p provider) {
 	val3 := value.Int(15)
 
 	profiles := []profile.ProfileItem{
-		profile.NewProfileItem("12", 1, "score", val1, 1),
-		profile.NewProfileItem("12", 1, "score", val2, 15),
-		profile.NewProfileItem("12", 1, "score", val3, 20),
-		profile.NewProfileItem("12", 2, "score", val1, 15),
-		profile.NewProfileItem("12", 3, "score", val3, 15),
+		profile.NewProfileItem("12", "1", "score", val1, 1),
+		profile.NewProfileItem("12", "1", "score", val2, 15),
+		profile.NewProfileItem("12", "1", "score", val3, 20),
+		profile.NewProfileItem("12", "2", "score", val1, 15),
+		profile.NewProfileItem("12", "3", "score", val3, 15),
 	}
 
 	assert.NoError(t, p.setBatch(ctx, tier, profiles))
@@ -147,9 +147,9 @@ func testSetGetBatch(t *testing.T, p provider) {
 	val2 = value.Int(59)
 	val3 = value.Int(159)
 	profiles2 := []profile.ProfileItem{
-		profile.NewProfileItem("12", 1, "score", val1, 200),
-		profile.NewProfileItem("12", 2, "score", val2, 9),
-		profile.NewProfileItem("12", 3, "score", val3, 150),
+		profile.NewProfileItem("12", "1", "score", val1, 200),
+		profile.NewProfileItem("12", "2", "score", val2, 9),
+		profile.NewProfileItem("12", "3", "score", val3, 150),
 	}
 
 	assert.NoError(t, p.setBatch(ctx, tier, profiles2))
@@ -161,5 +161,4 @@ func testSetGetBatch(t *testing.T, p provider) {
 	profiles[3].UpdateTime = 0
 	profiles2[2].UpdateTime = 0
 	assert.Equal(t, []profile.ProfileItem{profiles2[0], profiles[3], profiles2[2]}, actual)
-
 }

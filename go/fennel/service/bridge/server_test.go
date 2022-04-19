@@ -20,11 +20,11 @@ import (
 /*
 func TestServer_ProfileHandler(t *testing.T) {
 	// Prepare only valid request that will be sent
-	reqStr := fmt.Sprintf("/profile/?otype=%s&oid=%d&key=%s&version=%d",
-		"abc", uint64(math.MaxUint64), "xyz", uint64(math.MaxUint64-1))
+	reqStr := fmt.Sprintf("/profile/?otype=%s&oid=%s&key=%s&version=%d",
+		"abc", "pqrs", "xyz", uint64(math.MaxUint64-1))
 	req := httptest.NewRequest("GET", reqStr, nil)
 	// Prepare the expected ProfileItem
-	expected := profile.NewProfileItem("abc", math.MaxUint64, "xyz", math.MaxUint64-1)
+	expected := profile.NewProfileItem("abc", "pqrs", "xyz", math.MaxUint64-1)
 	// Prepare value that will be returned by the server
 	val := value.Double(3.14)
 	valSer := value.ToJSON(val)
@@ -59,8 +59,6 @@ func TestServer_ProfileHandler(t *testing.T) {
 		"otype=type1&oid=&key=abc",
 		"otype=type1&oid=1",
 		"otype=type1&oid=1&key=",
-		"otype=type1&oid=-1&key=abc",
-		"otype=type1&oid=abc&key=abc",
 		"otype=type1&oid=1&key=abc&version=-2",
 		"otype=type1&oid=1&key=abc&version=abc",
 	}
@@ -74,16 +72,16 @@ func TestServer_ProfileHandler(t *testing.T) {
 
 func TestServer_ProfileMultiHandler(t *testing.T) {
 	// Prepare only valid request that will be sent
-	reqStr := fmt.Sprintf("/profile_multi/?otype=%s&oid=%d&key=%s&version=%d",
-		"abc", uint64(math.MaxUint64), "xyz", uint64(math.MaxUint64-1))
+	reqStr := fmt.Sprintf("/profile_multi/?otype=%s&oid=%s&key=%s&version=%d",
+		"abc", "pqrs", "xyz", uint64(math.MaxUint64-1))
 	req := httptest.NewRequest("GET", reqStr, nil)
 	// Prepare the expected ProfileFetchRequest
-	expected := profile.ProfileFetchRequest{OType: "abc", Oid: math.MaxUint64, Key: "xyz", Version: math.MaxUint64 - 1}
+	expected := profile.ProfileFetchRequest{OType: "abc", Oid: "pqrs", Key: "xyz", Version: math.MaxUint64 - 1}
 	// Prepare profiles that will be returned by the server
 	profiles := make([]profile.ProfileItem, 0)
-	profiles = append(profiles, profile.ProfileItem{OType: "1", Oid: math.MaxUint64 - 2, Key: "3",
+	profiles = append(profiles, profile.ProfileItem{OType: "1", Oid: "2", Key: "3",
 		Version: math.MaxUint64 - 4, Value: value.Int(5)})
-	profiles = append(profiles, profile.ProfileItem{OType: "5", Oid: 4, Key: "3", Version: 2, Value: value.Int(1)})
+	profiles = append(profiles, profile.ProfileItem{OType: "5", Oid: "4", Key: "3", Version: 2, Value: value.Int(1)})
 	profilesSer, err := json.Marshal(profiles)
 	assert.NoError(t, err)
 	// Set up the endpoint server
@@ -110,8 +108,6 @@ func TestServer_ProfileMultiHandler(t *testing.T) {
 	assert.Equal(t, string(profilesSer), rr.Body.String())
 	// Now test for invalid requests
 	badReqStrs := []string{
-		"oid=-1",
-		"oid=abc",
 		"version=-2",
 		"version=abc",
 	}
@@ -127,30 +123,30 @@ func TestServer_ProfileMultiHandler(t *testing.T) {
 func TestServer_ActionsHandler(t *testing.T) {
 	var max uint64 = math.MaxUint64
 	// Prepare only valid request that will be sent
-	reqStr := fmt.Sprintf("/actions/?actor_id=%d&actor_type=%s&target_id=%d&target_type=%s&action_type=%s&"+
-		"request_id=%d&min_timestamp=%d&max_timestamp=%d&min_action_id=%d&max_action_id=%d",
-		max, "a", max-1, "b", "c", max-2, max-3, max-4, max-5, max-6)
+	reqStr := fmt.Sprintf("/actions/?actor_id=%s&actor_type=%s&target_id=%s&target_type=%s&action_type=%s&"+
+		"request_id=%s&min_timestamp=%d&max_timestamp=%d&min_action_id=%d&max_action_id=%d",
+		"a", "b", "c", "d", "e", "f", max, max-1, max-2, max-3)
 	req := httptest.NewRequest("GET", reqStr, nil)
 	// Prepare the expected ActionFetchRequest
 	expected := action.ActionFetchRequest{
-		ActorID:      math.MaxUint64,
-		ActorType:    "a",
-		TargetID:     math.MaxUint64 - 1,
-		TargetType:   "b",
-		ActionType:   "c",
-		RequestID:    math.MaxUint64 - 2,
-		MinTimestamp: math.MaxUint64 - 3,
-		MaxTimestamp: math.MaxUint64 - 4,
-		MinActionID:  math.MaxUint64 - 5,
-		MaxActionID:  math.MaxUint64 - 6,
+		ActorID:      "a",
+		ActorType:    "b",
+		TargetID:     "c",
+		TargetType:   "d",
+		ActionType:   "e",
+		RequestID:    "f",
+		MinTimestamp: math.MaxUint64,
+		MaxTimestamp: math.MaxUint64 - 1,
+		MinActionID:  math.MaxUint64 - 2,
+		MaxActionID:  math.MaxUint64 - 3,
 	}
 	// Prepare actions that will be returned by the server
 	actions := make([]action.Action, 0)
-	actions = append(actions, action.Action{ActionID: math.MaxUint64 - 1, ActorID: math.MaxUint64 - 2, ActorType: "3",
-		TargetID: math.MaxUint64 - 4, TargetType: "5", ActionType: "6", Timestamp: math.MaxUint64 - 7,
-		RequestID: math.MaxUint64 - 8, Metadata: value.Int(9)})
-	actions = append(actions, action.Action{ActionID: 8, ActorID: 7, ActorType: "6", TargetID: 5, TargetType: "4",
-		ActionType: "3", Timestamp: 2, RequestID: 1, Metadata: value.String("abc")})
+	actions = append(actions, action.Action{ActionID: math.MaxUint64 - 1, ActorID: "2", ActorType: "3",
+		TargetID: "4", TargetType: "5", ActionType: "6", Timestamp: math.MaxUint64 - 7,
+		RequestID: "8", Metadata: value.Int(9)})
+	actions = append(actions, action.Action{ActionID: 8, ActorID: "7", ActorType: "6", TargetID: "5", TargetType: "4",
+		ActionType: "3", Timestamp: 2, RequestID: "1", Metadata: value.String("abc")})
 	actionsSer, err := json.Marshal(actions)
 	assert.NoError(t, err)
 	// Set up the endpoint server
@@ -177,12 +173,6 @@ func TestServer_ActionsHandler(t *testing.T) {
 	assert.Equal(t, string(actionsSer), rr.Body.String())
 	// Now test for invalid requests
 	badReqStrs := []string{
-		"actor_id=-1",
-		"actor_id=abc",
-		"target_id=-1",
-		"target_id=abc",
-		"request_id=-1",
-		"request_id=abc",
 		"min_timestamp=-1",
 		"min_timestamp=abc",
 		"max_timestamp=-1",

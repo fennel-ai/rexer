@@ -2,6 +2,7 @@ package feature
 
 import (
 	"context"
+	"strconv"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -23,12 +24,12 @@ func TestLogMulti_Kafka(t *testing.T) {
 	for i := 0; i < 10; i++ {
 		rows = append(rows, feature.Row{
 			ContextOType:    "user",
-			ContextOid:      ftypes.OidType(i),
+			ContextOid:      ftypes.OidType(strconv.Itoa(i)),
 			CandidateOType:  "video",
-			CandidateOid:    ftypes.OidType(i + 1),
+			CandidateOid:    ftypes.OidType(strconv.Itoa(i + 1)),
 			Features:        value.NewDict(map[string]value.Value{"x": value.Int(i)}),
 			Workflow:        "something",
-			RequestID:       12,
+			RequestID:       "12",
 			Timestamp:       12312,
 			ModelName:       "some model",
 			ModelVersion:    "0.1.0",
@@ -55,12 +56,12 @@ func TestLog_Read(t *testing.T) {
 	ctx := context.Background()
 
 	row := feature.Row{ContextOType: "user",
-		ContextOid:      1,
+		ContextOid:      "1",
 		CandidateOType:  "video",
-		CandidateOid:    2,
+		CandidateOid:    "2",
 		Features:        value.NewDict(map[string]value.Value{"x": value.Int(3)}),
 		Workflow:        "something",
-		RequestID:       12,
+		RequestID:       "12",
 		Timestamp:       12312,
 		ModelName:       "some model",
 		ModelVersion:    "0.1.0",

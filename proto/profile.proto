@@ -5,7 +5,7 @@ option go_package = "fennel/lib/profile";
 
 message ProtoProfileItem {
   string OType = 1;
-  uint64 Oid = 2;
+  string Oid = 2;
   string Key = 3;
   uint64 Version = 4;
   PValue Value = 5;

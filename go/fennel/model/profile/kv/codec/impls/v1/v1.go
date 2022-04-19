@@ -22,8 +22,8 @@ func (c V1Codec) Identifier() uint8 {
 	return id
 }
 
-func (c V1Codec) EncodeKey(otype ftypes.OType, oid uint64, key string) ([]byte, error) {
-	keybuf := make([]byte, 8+len(otype)+8+8+len(key))
+func (c V1Codec) EncodeKey(otype ftypes.OType, oid string, key string) ([]byte, error) {
+	keybuf := make([]byte, 8+len(otype)+8+len(oid)+8+len(key))
 
 	cur := 0
 	if n, err := binary.PutString(keybuf[cur:], string(otype)); err != nil {
@@ -32,7 +32,7 @@ func (c V1Codec) EncodeKey(otype ftypes.OType, oid uint64, key string) ([]byte, 
 		cur += n
 	}
 
-	if n, err := binary.PutUvarint(keybuf[cur:], oid); err != nil {
+	if n, err := binary.PutString(keybuf[cur:], oid); err != nil {
 		return nil, err
 	} else {
 		cur += n

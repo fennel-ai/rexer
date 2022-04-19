@@ -16,11 +16,11 @@ const (
 
 type ProfileItemKey struct {
 	OType ftypes.OType `db:"otype" json:"OType"`
-	Oid   uint64       `db:"oid" json:"Oid"`
+	Oid   string       `db:"oid" json:"Oid"`
 	Key   string       `db:"zkey" json:"Key"`
 }
 
-func NewProfileItemKey(otype string, oid uint64, k string) ProfileItemKey {
+func NewProfileItemKey(otype string, oid string, k string) ProfileItemKey {
 	return ProfileItemKey{
 		ftypes.OType(otype), oid, k,
 	}
@@ -28,7 +28,7 @@ func NewProfileItemKey(otype string, oid uint64, k string) ProfileItemKey {
 
 type ProfileItem struct {
 	OType      ftypes.OType `json:"OType"`
-	Oid        uint64       `json:"Oid"`
+	Oid        string       `json:"Oid"`
 	Key        string       `json:"Key"`
 	Value      value.Value  `json:"Value"`
 	UpdateTime uint64       `json:"UpdateTime"`
@@ -42,7 +42,7 @@ func (pi *ProfileItem) GetProfileKey() ProfileItemKey {
 	}
 }
 
-func NewProfileItem(otype string, oid uint64, k string, v value.Value, updateTime uint64) ProfileItem {
+func NewProfileItem(otype string, oid string, k string, v value.Value, updateTime uint64) ProfileItem {
 	return ProfileItem{
 		ftypes.OType(otype), oid, k, v, updateTime,
 	}
@@ -52,7 +52,7 @@ func (pi *ProfileItemKey) Validate() error {
 	if len(pi.OType) == 0 {
 		return fmt.Errorf("otype can not be empty")
 	}
-	if pi.Oid == 0 {
+	if len(pi.Oid) == 0 {
 		return fmt.Errorf("oid can not be zero")
 	}
 	if len(pi.Key) == 0 {
@@ -100,7 +100,7 @@ func (pi ProfileItem) MarshalJSON() ([]byte, error) {
 func (pi *ProfileItem) UnmarshalJSON(data []byte) error {
 	var fields struct {
 		OType      ftypes.OType `json:"OType"`
-		Oid        uint64       `json:"Oid"`
+		Oid        string       `json:"Oid"`
 		Key        string       `json:"Key"`
 		UpdateTime uint64       `json:"UpdateTime"`
 	}

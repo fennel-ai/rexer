@@ -6,12 +6,13 @@ func (t RealmID) Value() uint32 {
 	return uint32(t)
 }
 
-type OidType uint64
+type IDType uint64
+type OidType string
 type OType string
 
 type ActionType string
 type Timestamp uint64
-type RequestID uint64
+type RequestID string
 
 type AggType string
 type AggName string

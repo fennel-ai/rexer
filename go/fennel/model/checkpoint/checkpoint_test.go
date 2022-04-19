@@ -18,14 +18,14 @@ func TestCheckpoint2(t *testing.T) {
 	ctx := context.Background()
 	aggtype := ftypes.AggType("rolling_counter")
 	aggname := ftypes.AggName("mycounter")
-	zero := ftypes.OidType(0)
+	zero := ftypes.IDType(0)
 	// initially no checkpoint is setup, so we should get 0
 	checkpoint, err := Get(ctx, tier, aggtype, aggname)
 	assert.NoError(t, err)
 	assert.Equal(t, zero, checkpoint)
 
 	// now set a checkpoint
-	expected1 := ftypes.OidType(1)
+	expected1 := ftypes.IDType(1)
 	err = Set(ctx, tier, aggtype, aggname, expected1)
 	assert.NoError(t, err)
 	// and reading it now, we get new value
@@ -34,7 +34,7 @@ func TestCheckpoint2(t *testing.T) {
 	assert.Equal(t, expected1, checkpoint)
 
 	//can reset it again
-	expected2 := ftypes.OidType(2)
+	expected2 := ftypes.IDType(2)
 	err = Set(ctx, tier, aggtype, aggname, expected2)
 	assert.NoError(t, err)
 	checkpoint, err = Get(ctx, tier, aggtype, aggname)
@@ -48,7 +48,7 @@ func TestCheckpoint2(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, zero, checkpoint)
 
-	expected3 := ftypes.OidType(51)
+	expected3 := ftypes.IDType(51)
 	err = Set(ctx, tier, aggtype, aggname2, expected3)
 	assert.NoError(t, err)
 

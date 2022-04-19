@@ -117,4 +117,9 @@ var Schema = db.Schema{
 	13: `ALTER TABLE aggregate_config ADD COLUMN id INT UNSIGNED NOT NULL AUTO_INCREMENT UNIQUE;`,
 	// Alter the profile primary key to only include otype, oid, zkey.
 	14: `ALTER TABLE profile ADD CONSTRAINT latest_only UNIQUE (otype, oid, zkey);`,
+	15: `ALTER TABLE profile CHANGE oid oid VARCHAR(64) NOT NULL;`,
+	16: `ALTER TABLE actionlog
+			CHANGE actor_id actor_id VARCHAR(64) NOT NULL,
+			CHANGE target_id target_id VARCHAR(64) NOT NULL,
+			CHANGE request_id request_id VARCHAR(64) NOT NULL;`,
 }

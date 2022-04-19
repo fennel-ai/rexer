@@ -1,11 +1,12 @@
 package query
 
 import (
+	"fmt"
+	"strings"
+
 	"fennel/lib/ftypes"
 	"fennel/lib/query"
 	"fennel/tier"
-	"fmt"
-	"strings"
 )
 
 func Insert(tier tier.Tier, timestamp ftypes.Timestamp, querySer string) (uint64, error) {

@@ -2,8 +2,9 @@ package db
 
 import (
 	"database/sql"
-	"fennel/lib/utils"
 	"fmt"
+
+	"fennel/lib/utils"
 
 	"github.com/jmoiron/sqlx"
 )

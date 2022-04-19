@@ -33,7 +33,7 @@ var _ provider = dbProvider{}
 // DONOT use this for anything else.
 type profileItemSer struct {
 	OType      ftypes.OType `db:"otype"`
-	Oid        uint64       `db:"oid"`
+	Oid        string       `db:"oid"`
 	Key        string       `db:"zkey"`
 	UpdateTime uint64       `db:"version"`
 	Value      []byte       `db:"value"`

@@ -1,8 +1,9 @@
 package binary
 
 import (
-	"fennel/lib/utils"
 	"testing"
+
+	"fennel/lib/utils"
 
 	"github.com/stretchr/testify/assert"
 )

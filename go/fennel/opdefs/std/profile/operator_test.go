@@ -26,7 +26,7 @@ func TestDefault(t *testing.T) {
 		Name:      "profile",
 		Kwargs: ast.Dict{Values: map[string]ast.Ast{
 			"otype":   ast.MakeString("user"),
-			"oid":     ast.MakeInt(123),
+			"oid":     ast.MakeString("123"),
 			"key":     ast.MakeString("some key"),
 			"field":   ast.MakeString("some name"),
 			"default": ast.MakeDouble(3.4),
@@ -58,7 +58,7 @@ func TestProfileOp(t *testing.T) {
 	// mini-redis does not work well with cache keys being in different slots
 	// we run a trimmed version of the test with different versions of the same profile as unit test
 	// and add cases where the keys are stored in different slots in `_integration_test`
-	otype1, oid1, key1, val1, ver1 := ftypes.OType("user"), uint64(223), "age", value.Int(7), uint64(4)
+	otype1, oid1, key1, val1, ver1 := ftypes.OType("user"), "223", "age", value.Int(7), uint64(4)
 	req1a := profilelib.ProfileItem{OType: otype1, Oid: oid1, Key: key1, UpdateTime: ver1 - 1, Value: value.Int(1121)}
 	assert.NoError(t, profile.Set(ctx, tier, req1a))
 	// this key has multiple versions but we should pick up the latest one if not provided explicitly
@@ -81,7 +81,7 @@ func TestProfileOp(t *testing.T) {
 	table := value.NewList()
 	table.Append(value.NewDict(map[string]value.Value{
 		"otype": value.String(otype1),
-		"oid":   value.Int(oid1),
+		"oid":   value.String(oid1),
 		"key":   value.String(key1),
 	}))
 	i, err := interpreter.NewInterpreter(context.Background(), bootarg.Create(tier),
@@ -89,7 +89,7 @@ func TestProfileOp(t *testing.T) {
 	assert.NoError(t, err)
 	expected := value.NewDict(map[string]value.Value{
 		"otype":         value.String(otype1),
-		"oid":           value.Int(oid1),
+		"oid":           value.String(oid1),
 		"key":           value.String(key1),
 		"profile_value": val1,
 	})
@@ -102,7 +102,7 @@ func TestProfileOpCache(t *testing.T) {
 	defer test.Teardown(tier)
 	ctx := context.Background()
 
-	otype, oid, key, val, ver := ftypes.OType("user"), uint64(223), "age", value.Int(7), uint64(4)
+	otype, oid, key, val, ver := ftypes.OType("user"), "223", "age", value.Int(7), uint64(4)
 	query := ast.OpCall{
 		Operands:  []ast.Ast{ast.Var{Name: "actions"}},
 		Vars:      []string{"a"},
@@ -119,12 +119,12 @@ func TestProfileOpCache(t *testing.T) {
 	inTable := value.NewList()
 	inTable.Append(value.NewDict(map[string]value.Value{
 		"otype": value.String(otype),
-		"oid":   value.Int(oid),
+		"oid":   value.String(oid),
 		"key":   value.String(key),
 	}))
 	expected := value.NewDict(map[string]value.Value{
 		"otype":         value.String(otype),
-		"oid":           value.Int(oid),
+		"oid":           value.String(oid),
 		"key":           value.String(key),
 		"profile_value": value.Nil,
 	})

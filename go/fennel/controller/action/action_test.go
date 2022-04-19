@@ -32,8 +32,8 @@ func TestDBInsertFetch(t *testing.T) {
 	t1 := ftypes.Timestamp(456)
 	clock.Set(int64(t1))
 
-	a1 := getAction(1, 12, 0, "like")
-	a2 := getAction(2, 22, t1+1, "like")
+	a1 := getAction(1, "12", 0, "like")
+	a2 := getAction(2, "22", t1+1, "like")
 	assert.NoError(t, dbInsert(ctx, tier, []actionlib.Action{a1, a2}))
 
 	// and when time is not specified we use the current time to populate it
@@ -45,8 +45,8 @@ func TestDBInsertFetch(t *testing.T) {
 	assert.True(t, a2.Equals(found[1], true))
 
 	// insert couple more
-	a3 := getAction(1, 12, t1+5, "like")
-	a4 := getAction(2, 22, t1+7, "like")
+	a3 := getAction(1, "12", t1+5, "like")
+	a4 := getAction(2, "22", t1+7, "like")
 	assert.NoError(t, dbInsert(ctx, tier, []actionlib.Action{a3, a4}))
 
 	found, err = Fetch(ctx, tier, actionlib.ActionFetchRequest{})
@@ -69,8 +69,8 @@ func testKafkaInsertRead(t *testing.T, batch bool) {
 	t1 := ftypes.Timestamp(456)
 	clock.Set(int64(t1))
 
-	a1 := getAction(1, 12, 0, "like")
-	a2 := getAction(2, 22, t1, "like")
+	a1 := getAction(1, "12", 0, "like")
+	a2 := getAction(2, "22", t1, "like")
 	if batch {
 		assert.NoError(t, BatchInsert(ctx, tier, []actionlib.Action{a1, a2}))
 	} else {
@@ -139,14 +139,14 @@ func TestKafkaBatchInsertRead(t *testing.T) {
 func TestLongTypes(t *testing.T) {
 	// valid action
 	a := actionlib.Action{
-		ActorID:    111,
+		ActorID:    "111",
 		ActorType:  "11",
 		TargetType: "12",
-		TargetID:   121,
+		TargetID:   "121",
 		ActionType: "13",
 		Metadata:   value.Int(14),
 		Timestamp:  15,
-		RequestID:  16,
+		RequestID:  "16",
 	}
 
 	// ActionType can't be longer than 255 chars
@@ -175,7 +175,7 @@ func Test_ReadActions(t *testing.T) {
 	ctx := context.Background()
 
 	actions := make([]actionlib.Action, 0)
-	uid := ftypes.OidType(41)
+	uid := ftypes.OidType("41")
 	for i := 0; i < 100; i++ {
 		a1 := getAction(i, uid, ftypes.Timestamp(i+1000), "like")
 		a2 := getAction(i, uid, ftypes.Timestamp(i+1005), "share")
@@ -202,14 +202,14 @@ func Test_ReadActions(t *testing.T) {
 
 func getAction(i int, uid ftypes.OidType, ts ftypes.Timestamp, actionType ftypes.ActionType) actionlib.Action {
 	return actionlib.Action{
-		ActionID:   ftypes.OidType(1 + i),
+		ActionID:   ftypes.IDType(1 + i),
 		ActorID:    uid,
 		ActorType:  "user",
-		TargetID:   3,
+		TargetID:   "3",
 		TargetType: "video",
 		ActionType: actionType,
 		Metadata:   value.Int(6),
 		Timestamp:  ts,
-		RequestID:  7,
+		RequestID:  "7",
 	}
 }

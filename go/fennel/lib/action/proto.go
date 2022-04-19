@@ -11,7 +11,7 @@ func FromProtoAction(pa *ProtoAction) (Action, error) {
 		return Action{}, err
 	}
 	return Action{
-		ActionID:   ftypes.OidType(pa.GetActionID()),
+		ActionID:   ftypes.IDType(pa.GetActionID()),
 		ActorID:    ftypes.OidType(pa.GetActorID()),
 		ActorType:  ftypes.OType(pa.GetActorType()),
 		TargetID:   ftypes.OidType(pa.GetTargetID()),
@@ -30,22 +30,21 @@ func ToProtoAction(a Action) (ProtoAction, error) {
 	}
 	return ProtoAction{
 		ActionID:   uint64(a.ActionID),
-		ActorID:    uint64(a.ActorID),
+		ActorID:    string(a.ActorID),
 		ActorType:  string(a.ActorType),
-		TargetID:   uint64(a.TargetID),
+		TargetID:   string(a.TargetID),
 		TargetType: string(a.TargetType),
 		ActionType: string(a.ActionType),
 		Timestamp:  uint64(a.Timestamp),
-		RequestID:  uint64(a.RequestID),
+		RequestID:  string(a.RequestID),
 		Metadata:   &pv,
 	}, nil
 }
 
 func FromProtoActionFetchRequest(pa *ProtoActionFetchRequest) ActionFetchRequest {
 	return ActionFetchRequest{
-
-		MinActionID:  ftypes.OidType(pa.GetMinActionID()),
-		MaxActionID:  ftypes.OidType(pa.GetMaxActionID()),
+		MinActionID:  ftypes.IDType(pa.GetMinActionID()),
+		MaxActionID:  ftypes.IDType(pa.GetMaxActionID()),
 		ActorID:      ftypes.OidType(pa.GetActorID()),
 		ActorType:    ftypes.OType(pa.GetActorType()),
 		TargetID:     ftypes.OidType(pa.GetTargetID()),
@@ -62,14 +61,14 @@ func ToProtoActionFetchRequest(a ActionFetchRequest) ProtoActionFetchRequest {
 
 		MinActionID:  uint64(a.MinActionID),
 		MaxActionID:  uint64(a.MaxActionID),
-		ActorID:      uint64(a.ActorID),
+		ActorID:      string(a.ActorID),
 		ActorType:    string(a.ActorType),
-		TargetID:     uint64(a.TargetID),
+		TargetID:     string(a.TargetID),
 		TargetType:   string(a.TargetType),
 		ActionType:   string(a.ActionType),
 		MinTimestamp: uint64(a.MinTimestamp),
 		MaxTimestamp: uint64(a.MaxTimestamp),
-		RequestID:    uint64(a.RequestID),
+		RequestID:    string(a.RequestID),
 	}
 }
 

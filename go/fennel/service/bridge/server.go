@@ -73,12 +73,12 @@ func getUint64(vals url.Values, key string, optional bool) (uint64, error) {
 	return 0, nil
 }
 
-func loadProfileQueryValues(vals url.Values, otype *string, oid *uint64, key *string) error {
+func loadProfileQueryValues(vals url.Values, otype *string, oid *string, key *string) error {
 	var err error
 	if *otype, err = getString(vals, "otype", false); err != nil {
 		return err
 	}
-	if *oid, err = getUint64(vals, "oid", false); err != nil {
+	if *oid, err = getString(vals, "oid", false); err != nil {
 		return err
 	}
 	if *key, err = getString(vals, "key", false); err != nil {
@@ -92,8 +92,7 @@ func (s server) ProfileHandler(w http.ResponseWriter, req *http.Request) {
 	switch req.Method {
 	case "GET":
 		// Process the request
-		var otype, key string
-		var oid uint64
+		var otype, oid, key string
 		err := loadProfileQueryValues(req.URL.Query(), &otype, &oid, &key)
 		if err != nil {
 			handleInvalidRequest(w, err)
@@ -121,12 +120,12 @@ func (s server) ProfileHandler(w http.ResponseWriter, req *http.Request) {
 	}
 }
 
-func loadProfileMultiQueryValues(vals url.Values, otype *string, oid *uint64, key *string, updateTime *uint64) error {
+func loadProfileMultiQueryValues(vals url.Values, otype *string, oid *string, key *string, updateTime *uint64) error {
 	var err error
 	if *otype, err = getString(vals, "otype", true); err != nil {
 		return err
 	}
-	if *oid, err = getUint64(vals, "oid", true); err != nil {
+	if *oid, err = getString(vals, "oid", true); err != nil {
 		return err
 	}
 	if *key, err = getString(vals, "key", true); err != nil {
@@ -142,8 +141,8 @@ func (s server) ProfileMultiHandler(w http.ResponseWriter, req *http.Request) {
 	switch req.Method {
 	case "GET":
 		// Process the request
-		var otype, key string
-		var oid, updateTime uint64
+		var otype, oid, key string
+		var updateTime uint64
 		err := loadProfileMultiQueryValues(req.URL.Query(), &otype, &oid, &key, &updateTime)
 		if err != nil {
 			handleInvalidRequest(w, err)
@@ -168,16 +167,16 @@ func (s server) ProfileMultiHandler(w http.ResponseWriter, req *http.Request) {
 }
 
 func loadActionsQueryValues(
-	vals url.Values, actorID *uint64, actorType *string, targetID *uint64, targetType *string, actionType *string,
-	minTimestamp *uint64, maxTimestamp *uint64, minActionID *uint64, maxActionID *uint64, requestID *uint64) error {
+	vals url.Values, actorID *string, actorType *string, targetID *string, targetType *string, actionType *string,
+	minTimestamp *uint64, maxTimestamp *uint64, minActionID *uint64, maxActionID *uint64, requestID *string) error {
 	var err error
-	if *actorID, err = getUint64(vals, "actor_id", true); err != nil {
+	if *actorID, err = getString(vals, "actor_id", true); err != nil {
 		return err
 	}
 	if *actorType, err = getString(vals, "actor_type", true); err != nil {
 		return err
 	}
-	if *targetID, err = getUint64(vals, "target_id", true); err != nil {
+	if *targetID, err = getString(vals, "target_id", true); err != nil {
 		return err
 	}
 	if *targetType, err = getString(vals, "target_type", true); err != nil {
@@ -198,7 +197,7 @@ func loadActionsQueryValues(
 	if *maxActionID, err = getUint64(vals, "max_action_id", true); err != nil {
 		return err
 	}
-	if *requestID, err = getUint64(vals, "request_id", true); err != nil {
+	if *requestID, err = getString(vals, "request_id", true); err != nil {
 		return err
 	}
 	return nil
@@ -208,8 +207,8 @@ func (s server) ActionsHandler(w http.ResponseWriter, req *http.Request) {
 	switch req.Method {
 	case "GET":
 		// Process the request
-		var actorType, targetType, actionType string
-		var actorID, targetID, minTimestamp, maxTimestamp, minActionID, maxActionID, requestID uint64
+		var actorID, actorType, targetID, targetType, actionType, requestID string
+		var minTimestamp, maxTimestamp, minActionID, maxActionID uint64
 		err := loadActionsQueryValues(req.URL.Query(), &actorID, &actorType, &targetID, &targetType, &actionType,
 			&minTimestamp, &maxTimestamp, &minActionID, &maxActionID, &requestID)
 		if err != nil {
@@ -224,8 +223,8 @@ func (s server) ActionsHandler(w http.ResponseWriter, req *http.Request) {
 			ActionType:   ftypes.ActionType(actionType),
 			MinTimestamp: ftypes.Timestamp(minTimestamp),
 			MaxTimestamp: ftypes.Timestamp(maxTimestamp),
-			MinActionID:  ftypes.OidType(minActionID),
-			MaxActionID:  ftypes.OidType(maxActionID),
+			MinActionID:  ftypes.IDType(minActionID),
+			MaxActionID:  ftypes.IDType(maxActionID),
 			RequestID:    ftypes.RequestID(requestID),
 		}
 		// Call the server and write back the response

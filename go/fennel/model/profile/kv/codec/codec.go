@@ -1,9 +1,10 @@
 package codec
 
 import (
+	"fmt"
+
 	"fennel/lib/ftypes"
 	"fennel/lib/value"
-	"fmt"
 )
 
 var (
@@ -13,7 +14,7 @@ var (
 
 type ProfileCodec interface {
 	Identifier() uint8
-	EncodeKey(otype ftypes.OType, oid uint64, key string) ([]byte, error)
+	EncodeKey(otype ftypes.OType, oid string, key string) ([]byte, error)
 	EncodeValue(version uint64, value value.Value) ([]byte, error)
 	EagerDecode(buf []byte) (DecodedValue, error)
 	LazyDecode(buf []byte) (DecodedValue, error)
