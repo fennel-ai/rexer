@@ -28,7 +28,6 @@ func TestProfileController(t *testing.T) {
 		vals = append(vals, value.Int(i+1))
 	}
 
-	//request := profilelib.ProfileItemKey{}
 	profiles := []profilelib.ProfileItem{}
 	profiles = append(profiles, profilelib.NewProfileItem("User", 1232, "summary", value.Int(1), 1))
 	profiles[0].Value = vals[0]

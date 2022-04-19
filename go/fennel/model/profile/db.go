@@ -27,6 +27,8 @@ type provider interface {
 
 type dbProvider struct{}
 
+var _ provider = dbProvider{}
+
 // This struct is internal to db.go and is only used for reading values b/w server and DB.
 // DONOT use this for anything else.
 type profileItemSer struct {
@@ -65,7 +67,7 @@ func (D dbProvider) setBatch(ctx context.Context, tier tier.Tier, profiles []pro
 
 	latestProfileByKey := make(map[profile.ProfileItemKey]profile.ProfileItem)
 	for _, p := range profiles {
-		pk := profile.NewProfileItemKey(string(p.OType), p.Oid, p.Key)
+		pk := p.GetProfileKey()
 		if err := p.Validate(); err != nil {
 			return fmt.Errorf("invalid profile: %v", err)
 		}
@@ -152,14 +154,14 @@ func (D dbProvider) get(ctx context.Context, tier tier.Tier, profileKey profile.
 
 // getBatched returns the version for (otype, oid, key)
 func (D dbProvider) getBatch(ctx context.Context, tier tier.Tier, profileKeys []profile.ProfileItemKey) ([]profile.ProfileItem, error) {
-	defer timer.Start(ctx, tier.ID, "model.profile.db.getUpdateTimestampBatched").Stop()
+	defer timer.Start(ctx, tier.ID, "model.profile.db.getBatch").Stop()
 
 	if len(profileKeys) == 0 {
 		return []profile.ProfileItem{}, nil
 	}
 
 	// deduplicate profiles on (otype, oid, key)
-	profileKeyUnqiue := make(map[profile.ProfileItemKey]struct{})
+	profileKeyUnqiue := make(map[profile.ProfileItemKey]struct{}, len(profileKeys))
 	for _, vid := range profileKeys {
 		if _, ok := profileKeyUnqiue[vid]; !ok {
 			profileKeyUnqiue[vid] = struct{}{}
@@ -172,7 +174,7 @@ func (D dbProvider) getBatch(ctx context.Context, tier tier.Tier, profileKeys []
 		FROM profile
 		WHERE (otype, oid, zkey) in 
 	`
-	v := make([]interface{}, 0)
+	v := make([]interface{}, 0, len(profileKeyUnqiue))
 	inval := "("
 	for pk := range profileKeyUnqiue {
 		inval += "(?, ?, ?),"
@@ -212,5 +214,3 @@ func (D dbProvider) getBatch(ctx context.Context, tier tier.Tier, profileKeys []
 
 	return ret, nil
 }
-
-var _ provider = dbProvider{}

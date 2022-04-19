@@ -15,6 +15,8 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+// Disabled these tests, because mothership is currently not in development.
+// These tests need to be re-enabled when work on mothership starts.
 /*
 func TestServer_ProfileHandler(t *testing.T) {
 	// Prepare only valid request that will be sent

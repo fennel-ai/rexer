@@ -11,6 +11,7 @@ type Data struct {
 
 var Store = make(map[int64]*Data)
 
+// TODO: Function should return []profile.ProfileItem
 func GetProfiles(reqs []profile.ProfileItemKey, id int64) []value.Value {
 	var vals []value.Value
 	mockedProfiles := Store[id].Profiles
