@@ -109,3 +109,7 @@ func TransferToDB(ctx context.Context, tr tier.Tier, consumer kafka.FConsumer) e
 func GetBatch(ctx context.Context, tier tier.Tier, requests []profilelib.ProfileItemKey) ([]profilelib.ProfileItem, error) {
 	return profile.GetBatch(ctx, tier, requests)
 }
+
+func SetBatch(ctx context.Context, tier tier.Tier, requests []profilelib.ProfileItem) error {
+	return profile.SetBatch(ctx, tier, requests)
+}

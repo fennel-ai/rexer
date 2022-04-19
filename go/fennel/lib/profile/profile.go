@@ -77,8 +77,8 @@ func (pi *ProfileItem) Equals(other *ProfileItem) bool {
 	if pi.Key != other.Key {
 		return false
 	}
-	if pi.Value == nil {
-		if other.Value != nil {
+	if pi.Value == value.Nil {
+		if other.Value != value.Nil {
 			return false
 		}
 	} else if !pi.Value.Equal(other.Value) {
