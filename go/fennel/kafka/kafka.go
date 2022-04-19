@@ -26,7 +26,7 @@ type FConsumer interface {
 	ReadProto(ctx context.Context, message proto.Message, timeout time.Duration) error
 	ReadBatch(ctx context.Context, upto int, timeout time.Duration) ([][]byte, error)
 	Backlog() (int, error)
-	Commit() error
+	Commit() (kafka.TopicPartitions, error)
 	GroupID() string
 }
 

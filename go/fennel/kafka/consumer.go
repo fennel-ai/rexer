@@ -117,9 +117,8 @@ func (k RemoteConsumer) ReadBatch(ctx context.Context, upto int, timeout time.Du
 }
 
 // Commit commits the offsets (in a blocking manner)
-func (k RemoteConsumer) Commit() error {
-	_, err := k.Consumer.Commit()
-	return err
+func (k RemoteConsumer) Commit() (kafka.TopicPartitions, error) {
+	return k.Consumer.Commit()
 }
 
 // Backlog returns the combined total of "lag" all topic partitions have that

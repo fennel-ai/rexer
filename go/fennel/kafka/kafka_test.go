@@ -13,6 +13,7 @@ import (
 	"fennel/lib/ftypes"
 	"fennel/lib/value"
 	"fennel/resource"
+
 	"github.com/stretchr/testify/assert"
 	"google.golang.org/protobuf/proto"
 )
@@ -161,7 +162,7 @@ func testBacklog(t *testing.T, producer FProducer, consumer FConsumer) {
 		assert.NoError(t, err)
 		assert.ElementsMatch(t, [][]byte{message, message}, found)
 		// Commit the read offset.
-		err = consumer.Commit()
+		_, err = consumer.Commit()
 		assert.NoError(t, err)
 		// Now calculate the backlog.
 		backlog, err := consumer.Backlog()
@@ -227,7 +228,8 @@ func testSameConsumerGroup(t *testing.T, producer FProducer, consumer1, consumer
 		var err error
 		found1, err = consumer1.ReadBatch(ctx, 5, time.Second*30)
 		assert.NoError(t, err)
-		assert.NoError(t, consumer1.Commit())
+		_, err = consumer1.Commit()
+		assert.NoError(t, err)
 	}()
 	go func() {
 		defer wg.Done()
@@ -235,7 +237,8 @@ func testSameConsumerGroup(t *testing.T, producer FProducer, consumer1, consumer
 		var err error
 		found2, err = consumer2.ReadBatch(ctx, 5, time.Second*30)
 		assert.NoError(t, err)
-		assert.NoError(t, consumer2.Commit())
+		_, err = consumer2.Commit()
+		assert.NoError(t, err)
 	}()
 	wg.Wait()
 	found := append(found1, found2...)
@@ -274,7 +277,8 @@ func testNoAutoCommit(t *testing.T, producer FProducer, consumer1, consumer2 FCo
 	defer consumer2.Close()
 	found, err := consumer2.ReadBatch(ctx, 10, time.Second*30)
 	assert.NoError(t, err)
-	assert.NoError(t, consumer2.Commit())
+	_, err = consumer2.Commit()
+	assert.NoError(t, err)
 	assert.ElementsMatch(t, found, expected)
 }
 

@@ -6,6 +6,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/confluentinc/confluent-kafka-go/kafka"
 	"google.golang.org/protobuf/proto"
 
 	"fennel/lib/utils"
@@ -133,8 +134,8 @@ func (l mockConsumer) ReadBatch(ctx context.Context, upto int, timeout time.Dura
 	return ret, nil
 }
 
-func (l mockConsumer) Commit() error {
-	return nil
+func (l mockConsumer) Commit() (kafka.TopicPartitions, error) {
+	return nil, nil
 }
 
 func (l mockConsumer) GroupID() string {

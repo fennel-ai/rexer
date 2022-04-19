@@ -163,5 +163,6 @@ func TransferToDB(ctx context.Context, tr tier.Tier, consumer kafka.FConsumer) e
 	if err = dbInsert(ctx, tr, actions); err != nil {
 		return err
 	}
-	return consumer.Commit()
+	_, err = consumer.Commit()
+	return err
 }
