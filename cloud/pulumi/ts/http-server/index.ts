@@ -288,6 +288,60 @@ export const setup = async (input: inputType) => {
                                         }
                                     }
                                 },
+                                {
+                                    name: "AWS_REGION",
+                                    valueFrom: {
+                                        secretKeyRef: {
+                                            name: "model-serving-conf",
+                                            key: "region",
+                                        }
+                                    }
+                                },
+                                {
+                                    name: "SAGEMAKER_EXECUTION_ROLE",
+                                    valueFrom: {
+                                        secretKeyRef: {
+                                            name: "model-serving-conf",
+                                            key: "executionRole",
+                                        }
+                                    }
+                                },
+                                {
+                                    name: "PRIVATE_SUBNETS",
+                                    valueFrom: {
+                                        secretKeyRef: {
+                                            name: "model-serving-conf",
+                                            key: "privateSubnets",
+                                        }
+                                    }
+                                },
+                                {
+                                    name: "SAGEMAKER_SECURITY_GROUP",
+                                    valueFrom: {
+                                        secretKeyRef: {
+                                            name: "model-serving-conf",
+                                            key: "securityGroup",
+                                        }
+                                    }
+                                },
+                                {
+                                    name: "MODEL_STORE_S3_BUCKET",
+                                    valueFrom: {
+                                        secretKeyRef: {
+                                            name: "model-serving-conf",
+                                            key: "modelStoreBucket",
+                                        }
+                                    }
+                                },
+                                {
+                                    name: "MODEL_STORE_ENDPOINT",
+                                    valueFrom: {
+                                        secretKeyRef: {
+                                            name: "model-serving-conf",
+                                            key: "modelStoreEndpoint",
+                                        }
+                                    }
+                                }
                             ]
                         },],
                     },

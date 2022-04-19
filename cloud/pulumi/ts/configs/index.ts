@@ -24,6 +24,7 @@ export type inputType = {
     cacheConfig: pulumi.Output<Record<string, string>>,
     dbConfig: pulumi.Output<Record<string, string>>,
     kafkaConfig: pulumi.Output<Record<string, string>>,
+    modelServingConfig: pulumi.Output<Record<string, string>>
 }
 
 export type outputType = {}
@@ -61,6 +62,13 @@ export const setup = async (input: inputType) => {
             name: "mysql-conf",
         }
     }, { provider, deleteBeforeReplace: true })
+
+    const sagemakerConf = new k8s.core.v1.Secret("model-serving-config", {
+        data: input.modelServingConfig,
+        metadata: {
+            name: "model-serving-conf",
+        }
+    }, { provider, deleteBeforeReplace: true });
 
     const tierConf = new k8s.core.v1.ConfigMap("tier-conf", {
         data: input.tierConfig,
