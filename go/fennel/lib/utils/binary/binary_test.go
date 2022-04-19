@@ -92,3 +92,32 @@ func TestPut_ReadUvarint(t *testing.T) {
 		}
 	}
 }
+
+func TestPut_ReadBytes(t *testing.T) {
+	scenarios := []struct {
+		buf   []byte
+		input []byte
+		err   bool
+		n     int
+	}{
+		{make([]byte, 0), []byte{'a'}, true, 0},
+		{make([]byte, 1), []byte{'a', 'b'}, true, 0},
+		// Extra byte needed for writing length.
+		{make([]byte, 10), []byte{'a'}, false, 2},
+		{make([]byte, 3), []byte{'a', 'b'}, false, 3},
+	}
+	for _, scene := range scenarios {
+		n, err := PutBytes(scene.buf, scene.input)
+		if scene.err {
+			assert.Error(t, err)
+		} else {
+			assert.NoError(t, err)
+			assert.Equal(t, scene.n, n)
+
+			found, n1, err := ReadBytes(scene.buf)
+			assert.NoError(t, err)
+			assert.Equal(t, scene.input, found)
+			assert.Equal(t, scene.n, n1)
+		}
+	}
+}

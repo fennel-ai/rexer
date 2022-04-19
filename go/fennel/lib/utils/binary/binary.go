@@ -3,7 +3,23 @@ package binary
 import (
 	"encoding/binary"
 	"fmt"
+	"unsafe"
 )
+
+func PutBytes(b []byte, in []byte) (int, error) {
+	return PutString(b, *(*string)(unsafe.Pointer(&in)))
+}
+
+func ReadBytes(b []byte) ([]byte, int, error) {
+	len_, n := binary.Uvarint(b)
+	if n <= 0 {
+		return nil, 0, fmt.Errorf("invalid string")
+	}
+	if len(b) < n+int(len_) {
+		return nil, 0, fmt.Errorf("buffer too small")
+	}
+	return b[n : n+int(len_)], n + int(len_), nil
+}
 
 func PutString(b []byte, s string) (int, error) {
 	len_ := len(s)
@@ -18,14 +34,11 @@ func PutString(b []byte, s string) (int, error) {
 }
 
 func ReadString(b []byte) (string, int, error) {
-	len_, n := binary.Uvarint(b)
-	if n <= 0 {
-		return "", 0, fmt.Errorf("invalid string")
+	bytes, n, err := ReadBytes(b)
+	if err != nil {
+		return "", n, err
 	}
-	if len(b) < n+int(len_) {
-		return "", 0, fmt.Errorf("buffer too small")
-	}
-	return string(b[n : n+int(len_)]), n + int(len_), nil
+	return *(*string)(unsafe.Pointer(&bytes)), n, err
 }
 
 func PutUvarint(b []byte, n uint64) (int, error) {
