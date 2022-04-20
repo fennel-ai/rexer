@@ -65,7 +65,7 @@ func TestProfileDBInsertDiffObjs(t *testing.T) {
 		{OType: "User1", Oid: "1229", Key: "summary 3", UpdateTime: 12, Value: vals[2]},
 		{OType: "User", Oid: "122", Key: "summary", UpdateTime: 11, Value: vals[3]},
 	}
-	assert.NoError(t, SetBatch(ctx, tier, profiles))
+	assert.NoError(t, setBatch(ctx, tier, profiles))
 	pks := make([]profilelib.ProfileItemKey, 0, 3)
 	for _, p := range profiles {
 		pks = append(pks, p.GetProfileKey())
