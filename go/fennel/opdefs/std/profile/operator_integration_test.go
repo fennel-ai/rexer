@@ -97,17 +97,17 @@ func TestNonDictProfile(t *testing.T) {
 		value.NewDict(map[string]value.Value{
 			"otype": value.String(otype),
 			"key":   value.String(key),
-			"oid":   value.Int(1),
+			"oid":   value.String("1"),
 		}),
 		value.NewDict(map[string]value.Value{
 			"otype": value.String(otype),
 			"key":   value.String(key),
-			"oid":   value.Int(2),
+			"oid":   value.String("2"),
 		}),
 		value.NewDict(map[string]value.Value{
 			"otype": value.String(otype),
 			"key":   value.String(key),
-			"oid":   value.Int(5),
+			"oid":   value.String("5"),
 		}),
 	}
 
