@@ -2,9 +2,9 @@ package counter
 
 import (
 	"context"
-	"fennel/fbadger"
 	"fennel/lib/codex"
 	"fennel/lib/counter"
+	"fennel/lib/kvstore"
 	"fennel/lib/timer"
 	"fmt"
 
@@ -18,7 +18,7 @@ import (
 )
 
 const (
-	tablet = fbadger.Aggregate
+	tablet = kvstore.Aggregate
 	// defaultCodec key design is: groupkey | width | index | aggregate_name, where window is one of the standard windows
 	// value is json encoded value
 	defaultCodec codex.Codex = 1
@@ -121,15 +121,10 @@ func (b BadgerStorage) Set(ctx context.Context, tier tier.Tier, aggId ftypes.Agg
 
 var _ BucketStore = BadgerStorage{}
 
-// defaultCodec key design is: tablet | codex | groupkey | window | width | index | aggregate_name
+// defaultCodec key design is: codex | groupkey | window | width | index | aggregate_name
 func badgerEncode(aggId ftypes.AggId, bucket counter.Bucket) ([]byte, error) {
-	buf := make([]byte, 2+8+len(bucket.Key)+8+8+8+8+8)
+	buf := make([]byte, 1+8+len(bucket.Key)+8+8+8+8+8)
 	cur := 0
-	if n, err := tablet.Write(buf[cur:]); err != nil {
-		return nil, err
-	} else {
-		cur += n
-	}
 	if n, err := defaultCodec.Write(buf[cur:]); err != nil {
 		return nil, err
 	} else {
@@ -165,14 +160,6 @@ func badgerEncode(aggId ftypes.AggId, bucket counter.Bucket) ([]byte, error) {
 
 func badgerDecode(buf []byte) (ftypes.AggId, counter.Bucket, error) {
 	cur := 0
-	tbl, n, err := fbadger.ReadTablet(buf)
-	if err != nil {
-		return 0, counter.Bucket{}, err
-	}
-	if tbl != tablet {
-		return 0, counter.Bucket{}, fmt.Errorf("badgerDecode: invalid tablet: %v", tbl)
-	}
-	cur += n
 
 	codec, n, err := codex.Read(buf[cur:])
 	if err != nil {
