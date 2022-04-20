@@ -27,6 +27,8 @@ type Reader interface {
 	// Get returns the value associated with the given key.
 	// ErrKeyNotFound is returned if the key is not found in the store.
 	Get(ctx context.Context, tablet TabletType, key []byte) (*SerializedValue, error)
+	// GetAll returns all the keys and values in the store where the key starts with the given prefix.
+	GetAll(ctx context.Context, tablet TabletType, prefix []byte) ([][]byte, []SerializedValue, error)
 }
 
 type Writer interface {
