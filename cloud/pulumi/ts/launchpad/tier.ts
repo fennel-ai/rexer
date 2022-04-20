@@ -15,7 +15,6 @@ import * as modelStore from "../model-store";
 import * as sagemaker from "../sagemaker";
 
 import * as process from "process";
-import seedrandom from "seedrandom";
 
 export type HttpServerConf = {
     replicas: number,
@@ -210,7 +209,6 @@ const setupResources = async () => {
         connectedSecurityGroups: input.connectedSecurityGroups,
         modelStoreBucket: modelStoreOutput.modelStoreBucket,
     })
-    const rng = seedrandom(`t-${input.tierId}`);
     // setup configs after resources are setup.
     const configsOutput = pulumi.all(
         [input.dbPassword, input.kafkaApiSecret, sagemakerOutput.roleArn, sagemakerOutput.subnetIds,
@@ -242,8 +240,8 @@ const setupResources = async () => {
                 "privateSubnets": subnetIds.join(","),
                 "securityGroup": sagemakerSg,
                 "modelStoreBucket": modelStoreOutput.modelStoreBucket,
-                // randomly generate a consistent suffix for the model store endpoint
-                "modelStoreEndpoint": `t-${input.tierId}-${rng()}`,
+                // pass tierId as the endpoint name
+                "modelStoreEndpoint": `t-${input.tierId}`,
             } as Record<string, string>)
         })
     })
