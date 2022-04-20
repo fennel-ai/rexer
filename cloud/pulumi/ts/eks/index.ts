@@ -19,9 +19,8 @@ export const plugins = {
 // amazon-eks-node / amazon-eks-gpu-node / amazon-eks-arm64-node,
 // depending on the type of machine provisioned.
 const AMI_BY_REGION: Record<string, string> = {
-    "ap-south-1": "ami-018410e7cefe1d15f",
-    "us-west-2": "ami-047a7967ea0436232",
-    "eu-west-2": "ami-07e16e9e006cfbac5",
+    "ap-south-1": "ami-093fbc66b666c0da8",
+    "us-west-2": "ami-0e1e876e558c727f4",
 }
 
 const DEFAULT_NODE_TYPE = "t3.medium"
@@ -310,6 +309,8 @@ export const setup = async (input: inputType): Promise<pulumi.Output<outputType>
             amiId: AMI_BY_REGION[region],
             nodeAssociatePublicIpAddress: false,
         },
+        // setup version for k8s control plane
+        version: "1.22",
         providerCredentialOpts: {
             roleArn,
         },
