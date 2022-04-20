@@ -38,6 +38,11 @@ const tierConfs: Record<number, TierConf> = {
     // Aditya's new dev tier.
     104: {
         planeId: 3,
+        httpServerConf: {
+            replicas: 1,
+            // each http-server should be in different nodes from each other
+            enforceReplicaIsolation: false,
+        },
     },
     // Lokal dev tier.
     105: {
@@ -55,6 +60,11 @@ const tierConfs: Record<number, TierConf> = {
     // Fennel staging tier using Fennel's staging data plane.
     106: {
         planeId: 3,
+        httpServerConf: {
+            replicas: 1,
+            // each http-server should be in different nodes from each other
+            enforceReplicaIsolation: false,
+        },
     },
     // Lokal prod tier on their prod data plane.
     107: {
@@ -76,7 +86,12 @@ const tierConfs: Record<number, TierConf> = {
         ingressConf: {
             usePublicSubnets: true,
             loadBalancerScheme: PUBLIC_LB_SCHEME,
-        }
+        },
+        httpServerConf: {
+            replicas: 1,
+            // each http-server should be in different nodes from each other
+            enforceReplicaIsolation: false,
+        },
     },
     // Demo tier using Fennel's staging data plane.
     109: {
@@ -85,7 +100,12 @@ const tierConfs: Record<number, TierConf> = {
         ingressConf: {
             usePublicSubnets: true,
             loadBalancerScheme: PUBLIC_LB_SCHEME,
-        }
+        },
+        httpServerConf: {
+            replicas: 1,
+            // each http-server should be in different nodes from each other
+            enforceReplicaIsolation: false,
+        },
     },
     // Demo tier using Fennel's staging data plane.
     110: {
@@ -94,7 +114,12 @@ const tierConfs: Record<number, TierConf> = {
         ingressConf: {
             usePublicSubnets: true,
             loadBalancerScheme: PUBLIC_LB_SCHEME,
-        }
+        },
+        httpServerConf: {
+            replicas: 1,
+            // each http-server should be in different nodes from each other
+            enforceReplicaIsolation: false,
+        },
     },
     // Lokal's staging tier
     111: {
@@ -162,9 +187,11 @@ const planeConfs: Record<number, PlaneConf> = {
         prometheusConf: {
             useAMP: true
         },
-        // increase the desired capacity to occupy more pods
+        // increase the desired capacity and scale up to occupy more pods
+        //
+        // https://github.com/awslabs/amazon-eks-ami/blob/master/files/eni-max-pods.txt
         eksConf: {
-            nodeType: "t3.medium",
+            nodeType: "t3.large",
             desiredCapacity: 4,
         },
     },
