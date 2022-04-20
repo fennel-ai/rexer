@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 
+	"fennel/lib/aggregate"
+	libcounter "fennel/lib/counter"
 	"fennel/lib/ftypes"
 	"fennel/lib/value"
 	"fennel/model/counter"
@@ -41,7 +43,7 @@ func BatchValue(
 	for bs, indices := range unique {
 		n := len(indices)
 		ids_ := make([]ftypes.AggId, n)
-		buckets := make([][]counter.Bucket, n)
+		buckets := make([][]libcounter.Bucket, n)
 		defaults := make([]value.Value, n)
 		for i, index := range indices {
 			h := histograms[index]
@@ -70,7 +72,7 @@ func BatchValue(
 }
 
 func Update(
-	ctx context.Context, tier tier.Tier, aggId ftypes.AggId, table value.List, histogram counter.Histogram,
+	ctx context.Context, tier tier.Tier, agg aggregate.Aggregate, table value.List, histogram counter.Histogram,
 ) error {
 	buckets, err := counter.Bucketize(histogram, table)
 	if err != nil {
@@ -80,5 +82,15 @@ func Update(
 	if err != nil {
 		return err
 	}
-	return counter.Update(ctx, tier, aggId, buckets, histogram)
+	// log the deltas to be consumed by the tailer
+	ad, err := libcounter.ToProtoAggregateDelta(agg.Id, agg.Options, buckets)
+	if err != nil {
+		return err
+	}
+	deltaProducer := tier.Producers[libcounter.AGGREGATE_DELTA_TOPIC_NAME]
+	err = deltaProducer.LogProto(ctx, &ad, nil)
+	if err != nil {
+		return err
+	}
+	return counter.Update(ctx, tier, agg.Id, buckets, histogram)
 }

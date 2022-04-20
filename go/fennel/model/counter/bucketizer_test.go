@@ -6,6 +6,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
+	"fennel/lib/counter"
 	"fennel/lib/ftypes"
 	"fennel/lib/value"
 )
@@ -21,21 +22,21 @@ func TestBucketizeMoment(t *testing.T) {
 	}, false}
 	found := f.BucketizeMoment(key, 3601, count)
 	assert.Len(t, found, 3)
-	assert.Contains(t, found, Bucket{
+	assert.Contains(t, found, counter.Bucket{
 		Key:    key,
 		Window: ftypes.Window_MINUTE,
 		Index:  60,
 		Width:  1,
 		Value:  count,
 	})
-	assert.Contains(t, found, Bucket{
+	assert.Contains(t, found, counter.Bucket{
 		Key:    key,
 		Window: ftypes.Window_HOUR,
 		Index:  1,
 		Width:  1,
 		Value:  count,
 	})
-	assert.Contains(t, found, Bucket{
+	assert.Contains(t, found, counter.Bucket{
 		Key:    key,
 		Window: ftypes.Window_DAY,
 		Index:  0,
@@ -61,7 +62,7 @@ func TestFixedWidthBucketizer_BucketizeMoment_Widths(t *testing.T) {
 		key        string
 		ts         ftypes.Timestamp
 		v          value.Value
-		expected   []Bucket
+		expected   []counter.Bucket
 	}{
 		{
 			fixedWidthBucketizer{map[ftypes.Window]uint64{
@@ -70,7 +71,7 @@ func TestFixedWidthBucketizer_BucketizeMoment_Widths(t *testing.T) {
 			key,
 			3601,
 			value.Int(1),
-			[]Bucket{{key, ftypes.Window_MINUTE, 5, 12, value.Int(1)}},
+			[]counter.Bucket{{key, ftypes.Window_MINUTE, 5, 12, value.Int(1)}},
 		},
 		{
 			fixedWidthBucketizer{map[ftypes.Window]uint64{
@@ -79,7 +80,7 @@ func TestFixedWidthBucketizer_BucketizeMoment_Widths(t *testing.T) {
 			key,
 			47*3600 + 1,
 			value.Int(1),
-			[]Bucket{
+			[]counter.Bucket{
 				{key, ftypes.Window_HOUR, 5, 9, value.Int(1)},
 				{key, ftypes.Window_DAY, 2, 0, value.Int(1)},
 			},
@@ -100,7 +101,7 @@ func TestFixedWidthBucketizer_BucketizeDuration(t *testing.T) {
 		start      ftypes.Timestamp
 		end        ftypes.Timestamp
 		v          value.Value
-		expected   []Bucket
+		expected   []counter.Bucket
 	}{
 		{
 			fixedWidthBucketizer{map[ftypes.Window]uint64{
@@ -110,7 +111,7 @@ func TestFixedWidthBucketizer_BucketizeDuration(t *testing.T) {
 			3601,
 			4459,
 			value.Int(1),
-			[]Bucket{{key, ftypes.Window_MINUTE, 5, 13, value.Int(1)}},
+			[]counter.Bucket{{key, ftypes.Window_MINUTE, 5, 13, value.Int(1)}},
 		},
 	}
 
@@ -133,7 +134,7 @@ func TestBucketizeDuration_SingleWindow2(t *testing.T) {
 
 	assert.Len(t, found, 47)
 	for i := 0; i < 47; i++ {
-		assert.Contains(t, found, Bucket{
+		assert.Contains(t, found, counter.Bucket{
 			Key:    key,
 			Window: ftypes.Window_HOUR,
 			Index:  uint64(2 + i),
@@ -147,7 +148,7 @@ func TestBucketizeDuration_SingleWindow2(t *testing.T) {
 	found = f.BucketizeDuration(key, start, end, v)
 	//found = BucketizeDuration(key, start, end, []ftypes.Window{ftypes.Window_DAY}, v)
 	assert.Len(t, found, 1)
-	assert.Contains(t, found, Bucket{
+	assert.Contains(t, found, counter.Bucket{
 		Key:    key,
 		Window: ftypes.Window_DAY,
 		Index:  1,
@@ -167,14 +168,14 @@ func TestBucketizeDuration_All(t *testing.T) {
 	}, false}
 	buckets := f.BucketizeDuration(key, 0, 24*3600+3601, v)
 	assert.Equal(t, 2, len(buckets))
-	assert.Equal(t, Bucket{
+	assert.Equal(t, counter.Bucket{
 		Key:    key,
 		Window: ftypes.Window_DAY,
 		Index:  0,
 		Width:  1,
 		Value:  v,
 	}, buckets[0])
-	assert.Equal(t, Bucket{
+	assert.Equal(t, counter.Bucket{
 		Key:    key,
 		Window: ftypes.Window_HOUR,
 		Index:  24,
@@ -187,9 +188,9 @@ func TestBucketizeDuration_All(t *testing.T) {
 	end := ftypes.Timestamp(2*24*3600 + 3665) // i.e. 2 days + 1 minute + few seconds later
 	buckets = f.BucketizeDuration(key, start, end, v)
 	// we expect 1 day, 23 hours, 59 minutes?
-	expected := make([]Bucket, 0)
+	expected := make([]counter.Bucket, 0)
 	for i := 0; i < 59; i++ {
-		expected = append(expected, Bucket{
+		expected = append(expected, counter.Bucket{
 			Key:    key,
 			Window: ftypes.Window_MINUTE,
 			Index:  uint64(61 + i),
@@ -198,7 +199,7 @@ func TestBucketizeDuration_All(t *testing.T) {
 		})
 	}
 	for i := 0; i < 22; i++ {
-		expected = append(expected, Bucket{
+		expected = append(expected, counter.Bucket{
 			Key:    key,
 			Window: ftypes.Window_HOUR,
 			Width:  1,
@@ -206,7 +207,7 @@ func TestBucketizeDuration_All(t *testing.T) {
 			Value:  v,
 		})
 	}
-	expected = append(expected, Bucket{
+	expected = append(expected, counter.Bucket{
 		Key:    key,
 		Window: ftypes.Window_DAY,
 		Width:  1,
@@ -214,14 +215,14 @@ func TestBucketizeDuration_All(t *testing.T) {
 		Value:  v,
 	})
 
-	expected = append(expected, Bucket{
+	expected = append(expected, counter.Bucket{
 		Key:    key,
 		Window: ftypes.Window_HOUR,
 		Width:  1,
 		Index:  48,
 		Value:  v,
 	})
-	expected = append(expected, Bucket{
+	expected = append(expected, counter.Bucket{
 		Key:    key,
 		Window: ftypes.Window_MINUTE,
 		Width:  1,
@@ -240,19 +241,19 @@ func TestMergeBuckets(t *testing.T) {
 	three := value.Int(3)
 	window1 := ftypes.Window_HOUR
 	window2 := ftypes.Window_DAY
-	b1 := Bucket{Key: key1, Window: window1, Index: idx1, Value: one}
-	b1b := Bucket{Key: key1, Window: window1, Index: idx1, Value: three}
-	b2 := Bucket{Key: key2, Window: window2, Index: idx1, Value: one}
-	b3 := Bucket{Key: key1, Window: window2, Index: idx1, Value: one}
-	b4 := Bucket{Key: key1, Window: window2, Index: idx2, Value: one}
-	b4b := Bucket{Key: key1, Window: window2, Index: idx2, Value: value.Int(2)}
-	buckets, err := MergeBuckets(rollingSum{}, []Bucket{b1, b1b, b2, b3, b4, b4b})
+	b1 := counter.Bucket{Key: key1, Window: window1, Index: idx1, Value: one}
+	b1b := counter.Bucket{Key: key1, Window: window1, Index: idx1, Value: three}
+	b2 := counter.Bucket{Key: key2, Window: window2, Index: idx1, Value: one}
+	b3 := counter.Bucket{Key: key1, Window: window2, Index: idx1, Value: one}
+	b4 := counter.Bucket{Key: key1, Window: window2, Index: idx2, Value: one}
+	b4b := counter.Bucket{Key: key1, Window: window2, Index: idx2, Value: value.Int(2)}
+	buckets, err := MergeBuckets(rollingSum{}, []counter.Bucket{b1, b1b, b2, b3, b4, b4b})
 	assert.NoError(t, err)
 	assert.Len(t, buckets, 4)
-	assert.Contains(t, buckets, Bucket{Key: key1, Window: window1, Index: idx1, Value: value.Int(4)})
-	assert.Contains(t, buckets, Bucket{Key: key2, Window: window2, Index: idx1, Value: one})
-	assert.Contains(t, buckets, Bucket{Key: key1, Window: window2, Index: idx1, Value: one})
-	assert.Contains(t, buckets, Bucket{Key: key1, Window: window2, Index: idx2, Value: three})
+	assert.Contains(t, buckets, counter.Bucket{Key: key1, Window: window1, Index: idx1, Value: value.Int(4)})
+	assert.Contains(t, buckets, counter.Bucket{Key: key2, Window: window2, Index: idx1, Value: one})
+	assert.Contains(t, buckets, counter.Bucket{Key: key1, Window: window2, Index: idx1, Value: one})
+	assert.Contains(t, buckets, counter.Bucket{Key: key1, Window: window2, Index: idx2, Value: three})
 }
 
 func TestBucketizeHistogram_Invalid(t *testing.T) {
@@ -280,7 +281,7 @@ func TestBucketizeHistogram_Valid(t *testing.T) {
 	t.Parallel()
 	h := NewSum([]uint64{100})
 	actions := value.NewList()
-	expected := make([]Bucket, 0)
+	expected := make([]counter.Bucket, 0)
 	DAY := 3600 * 24
 	for i := 0; i < 5; i++ {
 		v := value.Int(1)
@@ -291,8 +292,8 @@ func TestBucketizeHistogram_Valid(t *testing.T) {
 			"value":     e,
 		})
 		actions.Append(d)
-		expected = append(expected, Bucket{Value: e, Window: ftypes.Window_DAY, Index: 1, Width: 1, Key: v.String()})
-		expected = append(expected, Bucket{Key: v.String(), Window: ftypes.Window_MINUTE, Width: 6, Index: uint64(24*10 + i*10), Value: e})
+		expected = append(expected, counter.Bucket{Value: e, Window: ftypes.Window_DAY, Index: 1, Width: 1, Key: v.String()})
+		expected = append(expected, counter.Bucket{Key: v.String(), Window: ftypes.Window_MINUTE, Width: 6, Index: uint64(24*10 + i*10), Value: e})
 	}
 	buckets, err := Bucketize(h, actions)
 	assert.NoError(t, err)
@@ -323,7 +324,7 @@ func TestTrailingPartial(t *testing.T) {
 		found, ok := trailingPartial(scene.key, scene.start, scene.end, scene.w, scene.width, value.Int(4))
 		assert.Equal(t, scene.ok, ok)
 		if scene.ok {
-			assert.Equal(t, Bucket{
+			assert.Equal(t, counter.Bucket{
 				Key:    scene.key,
 				Window: scene.w,
 				Width:  scene.width,

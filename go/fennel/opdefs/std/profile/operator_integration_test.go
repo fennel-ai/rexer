@@ -25,8 +25,8 @@ func TestProfileOpMultipleObjs(t *testing.T) {
 	defer test.Teardown(tier)
 	ctx := context.Background()
 
-	otype1, oid1, key1, val1, ver1 := ftypes.OType("user"), uint64(123), "summary", value.Int(5), uint64(1)
-	otype2, oid2, key2, val2, ver2 := ftypes.OType("user"), uint64(223), "age", value.Int(7), uint64(4)
+	otype1, oid1, key1, val1, ver1 := ftypes.OType("user"), "123", "summary", value.Int(5), uint64(1)
+	otype2, oid2, key2, val2, ver2 := ftypes.OType("user"), "223", "age", value.Int(7), uint64(4)
 	req1 := profilelib.ProfileItem{OType: otype1, Oid: oid1, Key: key1, UpdateTime: ver1, Value: val1}
 	assert.NoError(t, profile.Set(ctx, tier, req1))
 	req2a := profilelib.ProfileItem{OType: otype2, Oid: oid2, Key: key2, UpdateTime: ver2 - 1, Value: value.Int(1121)}
@@ -49,8 +49,8 @@ func TestProfileOpMultipleObjs(t *testing.T) {
 		}},
 	}
 	table := value.List{}
-	table.Append(value.NewDict(map[string]value.Value{"otype": value.String(otype1), "oid": value.Int(oid1), "key": value.String(key1), "ver": value.Int(ver1)}))
-	table.Append(value.NewDict(map[string]value.Value{"otype": value.String(otype2), "oid": value.Int(oid2), "key": value.String(key2), "ver": value.Int(ver2)}))
+	table.Append(value.NewDict(map[string]value.Value{"otype": value.String(otype1), "oid": value.String(oid1), "key": value.String(key1), "ver": value.Int(ver1)}))
+	table.Append(value.NewDict(map[string]value.Value{"otype": value.String(otype2), "oid": value.String(oid2), "key": value.String(key2), "ver": value.Int(ver2)}))
 
 	i, err := interpreter.NewInterpreter(context.Background(), bootarg.Create(tier),
 		value.NewDict(map[string]value.Value{"actions": table}))
@@ -61,9 +61,9 @@ func TestProfileOpMultipleObjs(t *testing.T) {
 	// assert.Len(t, rows, 2)
 	assert.Equal(t, 2, rows.Len())
 	r, _ := rows.At(0)
-	assert.Equal(t, value.NewDict(map[string]value.Value{"otype": value.String(otype1), "oid": value.Int(oid1), "key": value.String(key1), "ver": value.Int(ver1), "profile_value": val1}), r)
+	assert.Equal(t, value.NewDict(map[string]value.Value{"otype": value.String(otype1), "oid": value.String(oid1), "key": value.String(key1), "ver": value.Int(ver1), "profile_value": val1}), r)
 	r, _ = rows.At(1)
-	assert.Equal(t, value.NewDict(map[string]value.Value{"otype": value.String(otype2), "oid": value.Int(oid2), "key": value.String(key2), "ver": value.Int(ver2), "profile_value": val2}), r)
+	assert.Equal(t, value.NewDict(map[string]value.Value{"otype": value.String(otype2), "oid": value.String(oid2), "key": value.String(key2), "ver": value.Int(ver2), "profile_value": val2}), r)
 }
 
 func TestNonDictProfile(t *testing.T) {
@@ -74,9 +74,9 @@ func TestNonDictProfile(t *testing.T) {
 	// Set some profiles.
 	ctx := context.Background()
 	otype, key := ftypes.OType("user"), "age"
-	req1a := profilelib.ProfileItem{OType: otype, Oid: 1, Key: key, Value: value.Int(13)}
+	req1a := profilelib.ProfileItem{OType: otype, Oid: "1", Key: key, Value: value.Int(13)}
 	assert.NoError(t, profile.Set(ctx, tier, req1a))
-	req1b := profilelib.ProfileItem{OType: otype, Oid: 2, Key: key, Value: value.Int(15)}
+	req1b := profilelib.ProfileItem{OType: otype, Oid: "2", Key: key, Value: value.Int(15)}
 	assert.NoError(t, profile.Set(ctx, tier, req1b))
 
 	intable := []value.Value{
@@ -97,17 +97,17 @@ func TestNonDictProfile(t *testing.T) {
 		value.NewDict(map[string]value.Value{
 			"otype": value.String(otype),
 			"key":   value.String(key),
-			"oid":   value.Int(1),
+			"oid":   value.String("1"),
 		}),
 		value.NewDict(map[string]value.Value{
 			"otype": value.String(otype),
 			"key":   value.String(key),
-			"oid":   value.Int(2),
+			"oid":   value.String("2"),
 		}),
 		value.NewDict(map[string]value.Value{
 			"otype": value.String(otype),
 			"key":   value.String(key),
-			"oid":   value.Int(5),
+			"oid":   value.String("5"),
 		}),
 	}
 

@@ -7,6 +7,7 @@ import (
 	"strconv"
 	"testing"
 
+	"fennel/lib/counter"
 	"fennel/lib/utils"
 
 	"github.com/stretchr/testify/assert"
@@ -123,7 +124,7 @@ func TestTopK_Bucketize_Valid(t *testing.T) {
 	t.Parallel()
 	h := NewTopK([]uint64{123})
 	actions := value.NewList()
-	expected := make([]Bucket, 0)
+	expected := make([]counter.Bucket, 0)
 	DAY := 3600 * 24
 	for i := 0; i < 5; i++ {
 		v := value.NewList(value.Int(i), value.String("hi"))
@@ -135,9 +136,9 @@ func TestTopK_Bucketize_Valid(t *testing.T) {
 				"score": value.Int(i)}),
 		})
 		actions.Append(d)
-		expected = append(expected, Bucket{Key: v.String(), Window: ftypes.Window_DAY, Index: 1, Width: 1,
+		expected = append(expected, counter.Bucket{Key: v.String(), Window: ftypes.Window_DAY, Index: 1, Width: 1,
 			Value: value.NewDict(map[string]value.Value{strconv.Itoa(i): value.Double(i)})})
-		expected = append(expected, Bucket{Key: v.String(), Window: ftypes.Window_MINUTE, Index: uint64(24*10 + i*10),
+		expected = append(expected, counter.Bucket{Key: v.String(), Window: ftypes.Window_MINUTE, Index: uint64(24*10 + i*10),
 			Width: 6, Value: value.NewDict(map[string]value.Value{strconv.Itoa(i): value.Double(i)})})
 	}
 	buckets, err := Bucketize(h, actions)

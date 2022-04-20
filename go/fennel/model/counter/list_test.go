@@ -6,6 +6,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
+	"fennel/lib/counter"
 	"fennel/lib/ftypes"
 	"fennel/lib/value"
 )
@@ -128,7 +129,7 @@ func TestList_Bucketize_Valid(t *testing.T) {
 	t.Parallel()
 	h := NewList([]uint64{123})
 	actions := value.NewList()
-	expected := make([]Bucket, 0)
+	expected := make([]counter.Bucket, 0)
 	DAY := 3600 * 24
 	for i := 0; i < 5; i++ {
 		v := value.Int(1)
@@ -139,8 +140,8 @@ func TestList_Bucketize_Valid(t *testing.T) {
 			"value":     e,
 		})
 		actions.Append(d)
-		expected = append(expected, Bucket{Value: value.NewList(e), Window: ftypes.Window_DAY, Index: 1, Width: 1, Key: v.String()})
-		expected = append(expected, Bucket{Key: v.String(), Window: ftypes.Window_MINUTE, Index: uint64(24*10 + i*10), Width: 6, Value: value.NewList(e)})
+		expected = append(expected, counter.Bucket{Value: value.NewList(e), Window: ftypes.Window_DAY, Index: 1, Width: 1, Key: v.String()})
+		expected = append(expected, counter.Bucket{Key: v.String(), Window: ftypes.Window_MINUTE, Index: uint64(24*10 + i*10), Width: 6, Value: value.NewList(e)})
 	}
 	buckets, err := Bucketize(h, actions)
 	assert.NoError(t, err)
