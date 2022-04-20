@@ -2,7 +2,6 @@ package counter
 
 import (
 	"context"
-	"fmt"
 	"math/rand"
 	"testing"
 
@@ -25,36 +24,6 @@ func TestTwoLevelRedisStore_Get(t *testing.T) {
 	})
 	t.Run("test_large", func(t *testing.T) {
 		testLarge(t, twoLevelRedisStore{period: 24 * 3600, retention: 30 * 3600}, 20, 1000)
-	})
-}
-
-func TestBadgerStorage(t *testing.T) {
-	t.Parallel()
-	t.Run("test_basic", func(t *testing.T) {
-		testStorage(t, BadgerStorage{})
-	})
-	t.Run("test_multi", func(t *testing.T) {
-		testStorageMulti(t, BadgerStorage{})
-	})
-	t.Run("test_large", func(t *testing.T) {
-		testLarge(t, BadgerStorage{}, 20, 1000)
-	})
-
-	t.Run("test_encode_decode", func(t *testing.T) {
-		buckets := []counter.Bucket{
-			{"hello", ftypes.Window_HOUR, 11, 123, nil},
-			{"hello", ftypes.Window_MINUTE, 11, 12323, nil},
-			{"hello", ftypes.Window_DAY, 1, 123, nil},
-		}
-		for _, b := range buckets {
-			aggId := ftypes.AggId(rand.Intn(1000000))
-			buf, err := badgerEncode(aggId, b)
-			assert.NoError(t, err)
-			found_name, found_bucket, err := badgerDecode(buf)
-			assert.NoError(t, err)
-			assert.Equal(t, aggId, found_name)
-			assert.Equal(t, b, found_bucket)
-		}
 	})
 }
 
@@ -313,42 +282,4 @@ func TestTwoLevelRedisStore(t *testing.T) {
 			assert.Equal(t, scene.s, s)
 		}
 	}
-}
-
-func benchmarkStorage(b *testing.B, store BucketStore) {
-	fmt.Printf("inside benchmark...\n")
-	tier, err := test.Tier()
-	assert.NoError(b, err)
-	defer test.Teardown(tier)
-	ctx := context.Background()
-
-	buckets := make([]counter.Bucket, 0)
-	groupKey := utils.RandString(30)
-	for i := 0; i < 10000; i++ {
-		b := counter.Bucket{
-			Key:    fmt.Sprintf("%s:%d", groupKey, i/50),
-			Window: ftypes.Window_MINUTE,
-			Width:  6,
-			Index:  uint64(i),
-			Value:  value.Int(i),
-		}
-		buckets = append(buckets, b)
-	}
-	aggId := ftypes.AggId(rand.Intn(1000000))
-	store.Set(ctx, tier, aggId, buckets)
-	dummy := 0
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
-		vals, _ := store.Get(ctx, tier, aggId, buckets, value.Int(1))
-		dummy += len(vals)
-	}
-}
-
-func BenchmarkStorage(b *testing.B) {
-	b.Run("two_level_redis_storage", func(b *testing.B) {
-		benchmarkStorage(b, twoLevelRedisStore{period: 24 * 3600})
-	})
-	b.Run("badger_flat_storage", func(b *testing.B) {
-		benchmarkStorage(b, BadgerStorage{})
-	})
 }
