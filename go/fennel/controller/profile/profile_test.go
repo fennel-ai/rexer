@@ -9,7 +9,6 @@ import (
 	profilelib "fennel/lib/profile"
 	"fennel/lib/utils"
 	"fennel/lib/value"
-	"fennel/model/profile"
 	"fennel/test"
 	"fennel/tier"
 
@@ -77,10 +76,6 @@ func TestProfileDBInsert(t *testing.T) {
 	defer test.Teardown(tier)
 	ctx := context.Background()
 
-	// mini-redis does not play well with cache keys in different "slots" (in the same txn),
-	// currently it is determined using (otype, oid, key). We test behavior across
-	// different objects in `_integration_test`
-
 	vals := []value.Value{value.Int(1), value.Int(2), value.Int(3), value.Int(4)}
 	profiles := []profilelib.ProfileItem{
 		{OType: "User", Oid: "1222", Key: "summary", UpdateTime: 1, Value: vals[0]},
@@ -89,24 +84,19 @@ func TestProfileDBInsert(t *testing.T) {
 		{OType: "User", Oid: "1222", Key: "summary", UpdateTime: 11, Value: vals[3]},
 	}
 
-	assert.NoError(t, profile.SetBatch(ctx, tier, profiles))
+	assert.NoError(t, setBatch(ctx, tier, profiles))
 
 	pks := []profilelib.ProfileItemKey{}
 	for _, p := range profiles {
 		pks = append(pks, p.GetProfileKey())
 	}
-	exp := profilelib.NewProfileItem("User", "1222", "summary", vals[2], 0)
+	exp := profiles[2]
+	// TODO(abhay: Remove once we can return update time in gets from all models.
+	exp.UpdateTime = 0
 	// check that the entries were written
 	actual, err := GetBatch(ctx, tier, pks)
 	assert.NoError(t, err)
 	assert.ElementsMatch(t, []profilelib.ProfileItem{exp, exp, exp, exp}, actual)
-
-	v, err := GetBatch(ctx, tier, []profilelib.ProfileItemKey{
-		{OType: "User", Oid: "1222", Key: "summary"},
-		{OType: "User", Oid: "1222", Key: "summary"},
-	})
-	assert.NoError(t, err)
-	assert.ElementsMatch(t, []profilelib.ProfileItem{exp, exp}, v)
 }
 
 func TestProfileSetMultiWritesToKafka(t *testing.T) {
@@ -179,6 +169,8 @@ func TestGetBatched(t *testing.T) {
 
 	found, err = GetBatch(ctx, tier, pks)
 	assert.NoError(t, err)
-	expectedProfile := profilelib.ProfileItem{OType: "User", Oid: "1", Key: "summary", UpdateTime: 0, Value: vals[2]}
+	expectedProfile := profiles[2]
+	// TODO(abhay: Remove once we can return update time in gets from all models.
+	expectedProfile.UpdateTime = 0
 	assert.Equal(t, []profilelib.ProfileItem{expectedProfile, expectedProfile, expectedProfile}, found)
 }

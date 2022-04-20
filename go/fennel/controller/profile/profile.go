@@ -111,6 +111,6 @@ func GetBatch(ctx context.Context, tier tier.Tier, requests []profilelib.Profile
 	return profile.GetBatch(ctx, tier, requests)
 }
 
-func SetBatch(ctx context.Context, tier tier.Tier, requests []profilelib.ProfileItem) error {
+func setBatch(ctx context.Context, tier tier.Tier, requests []profilelib.ProfileItem) error {
 	return profile.SetBatch(ctx, tier, requests)
 }
