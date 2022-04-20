@@ -1,4 +1,4 @@
-package fbadger
+package kvstore
 
 import "fmt"
 
