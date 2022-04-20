@@ -19,7 +19,7 @@ func TestSetGet(t *testing.T) {
 	ctx := context.Background()
 
 	txn := tier.Badger.NewTransaction(true)
-	store := badger.NewTransactionalStore(tier, 0, txn)
+	store := badger.NewTransactionalStore(tier, txn)
 
 	p := profile.NewProfileItem("mytype", "13", "mykey", value.Int(42), 25)
 	err = Set(ctx, []profile.ProfileItem{p}, store)
@@ -36,7 +36,7 @@ func TestGetWithoutSet(t *testing.T) {
 	ctx := context.Background()
 
 	txn := tier.Badger.NewTransaction(true)
-	store := badger.NewTransactionalStore(tier, 0, txn)
+	store := badger.NewTransactionalStore(tier, txn)
 
 	p := profile.NewProfileItem("mytype", "13", "mykey", value.Int(42), 25)
 	// Getting a key that has not been set should return a nil value.
@@ -60,7 +60,7 @@ func TestSetOlderValue(t *testing.T) {
 	ctx := context.Background()
 
 	txn := tier.Badger.NewTransaction(true)
-	store := badger.NewTransactionalStore(tier, 0, txn)
+	store := badger.NewTransactionalStore(tier, txn)
 
 	p := profile.NewProfileItem("mytype", "13", "mykey", value.Int(42), 25)
 	err = Set(ctx, []profile.ProfileItem{p}, store)

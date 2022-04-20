@@ -18,6 +18,10 @@ var (
 	KeyEncoder = impls.Current
 )
 
+const (
+	tablet = kvstore.Profile
+)
+
 func Set(ctx context.Context, profiles []profile.ProfileItem, kv kvstore.ReaderWriter) error {
 	for _, p := range profiles {
 		k, err := KeyEncoder.EncodeKey(p.OType, p.Oid, p.Key)
@@ -26,7 +30,7 @@ func Set(ctx context.Context, profiles []profile.ProfileItem, kv kvstore.ReaderW
 		}
 		// Get version of current value (if present) and compare with version
 		// of incoming value.
-		curr, err := kv.Get(ctx, k)
+		curr, err := kv.Get(ctx, tablet, k)
 		if err != nil && err != kvstore.ErrKeyNotFound {
 			return fmt.Errorf("failed to get current value: %v", err)
 		}
@@ -55,7 +59,7 @@ func Set(ctx context.Context, profiles []profile.ProfileItem, kv kvstore.ReaderW
 		if err != nil {
 			return fmt.Errorf("failed to encode value: %v", err)
 		}
-		err = kv.Set(ctx, k, kvstore.SerializedValue{
+		err = kv.Set(ctx, tablet, k, kvstore.SerializedValue{
 			Codec: codec.Identifier(),
 			Raw:   v,
 		})
@@ -76,7 +80,7 @@ func Get(ctx context.Context, profileKeys []profile.ProfileItemKey, kv kvstore.R
 		if err != nil {
 			return nil, fmt.Errorf("failed to encode key: %v", err)
 		}
-		v, err := kv.Get(ctx, k)
+		v, err := kv.Get(ctx, tablet, k)
 		if err == kvstore.ErrKeyNotFound {
 			values[i].UpdateTime = 0
 			values[i].Value = value.Nil

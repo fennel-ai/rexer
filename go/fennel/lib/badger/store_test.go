@@ -1,10 +1,9 @@
-package badger_test
+package badger
 
 import (
 	"context"
 	"testing"
 
-	"fennel/lib/badger"
 	"fennel/lib/kvstore"
 	"fennel/test"
 
@@ -19,43 +18,67 @@ func TestSetGet(t *testing.T) {
 	txn := tier.Badger.NewTransaction(true)
 	defer txn.Commit()
 
-	store := badger.NewTransactionalStore(tier, 0, txn)
+	store := NewTransactionalStore(tier, txn)
 
 	ctx := context.Background()
 
 	// Simple set and get operation.
-	err = store.Set(ctx, []byte("key"), kvstore.SerializedValue{
+	err = store.Set(ctx, kvstore.Profile, []byte("key"), kvstore.SerializedValue{
 		Codec: 1,
 		Raw:   []byte("value"),
 	})
 	require.NoError(t, err)
 
-	value, err := store.Get(ctx, []byte("key"))
+	value, err := store.Get(ctx, kvstore.Profile, []byte("key"))
 	require.NoError(t, err)
 	require.Equal(t, []byte("value"), value.Raw)
 	require.Equal(t, uint8(1), value.Codec)
 
 	// Get value for key that has not been set.
-	_, err = store.Get(ctx, []byte("key2"))
+	_, err = store.Get(ctx, kvstore.Profile, []byte("key2"))
 	require.Equal(t, err, kvstore.ErrKeyNotFound)
 	// Now set the key in the db.
-	err = store.Set(ctx, []byte("key2"), kvstore.SerializedValue{
+	err = store.Set(ctx, kvstore.Profile, []byte("key2"), kvstore.SerializedValue{
 		Codec: 1,
 		Raw:   []byte("value2"),
 	})
 	require.NoError(t, err)
 	// Get value for key that has been set.
-	value, err = store.Get(ctx, []byte("key2"))
+	value, err = store.Get(ctx, kvstore.Profile, []byte("key2"))
 	require.NoError(t, err)
 	require.Equal(t, []byte("value2"), value.Raw)
 
 	// Test errors on empty keys.
-	_, err = store.Get(ctx, []byte(""))
+	_, err = store.Get(ctx, kvstore.Profile, []byte(""))
 	require.Equal(t, err, kvstore.ErrEmptyKey)
 
-	err = store.Set(ctx, []byte(""), kvstore.SerializedValue{
+	err = store.Set(ctx, kvstore.Profile, []byte(""), kvstore.SerializedValue{
 		Codec: 1,
 		Raw:   []byte("value"),
 	})
 	require.Equal(t, err, kvstore.ErrEmptyKey)
+}
+
+func TestReadWrongTablet(t *testing.T) {
+	tier, err := test.Tier()
+	require.NoError(t, err)
+	defer test.Teardown(tier)
+
+	txn := tier.Badger.NewTransaction(true)
+	defer txn.Commit()
+
+	store := NewTransactionalStore(tier, txn)
+
+	ctx := context.Background()
+
+	// Simple set and get operation.
+	err = store.Set(ctx, kvstore.Profile, []byte("key"), kvstore.SerializedValue{
+		Codec: 1,
+		Raw:   []byte("value"),
+	})
+	require.NoError(t, err)
+
+	// Read from a different tablet should give an error.
+	_, err = store.Get(ctx, kvstore.Aggregate, []byte("key"))
+	require.Error(t, err)
 }

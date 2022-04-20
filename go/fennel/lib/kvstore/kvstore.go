@@ -2,7 +2,9 @@ package kvstore
 
 import (
 	"context"
+	"encoding/base64"
 	"errors"
+	"fmt"
 )
 
 var (
@@ -17,15 +19,19 @@ type SerializedValue struct {
 	Raw   []byte
 }
 
+func (v SerializedValue) String() string {
+	return fmt.Sprintf("%d:%s", v.Codec, base64.StdEncoding.EncodeToString(v.Raw))
+}
+
 type Reader interface {
 	// Get returns the value associated with the given key.
 	// ErrKeyNotFound is returned if the key is not found in the store.
-	Get(ctx context.Context, key []byte) (*SerializedValue, error)
+	Get(ctx context.Context, tablet TabletType, key []byte) (*SerializedValue, error)
 }
 
 type Writer interface {
 	// Set sets the value associated with the given key to the given value.
-	Set(ctx context.Context, key []byte, value SerializedValue) error
+	Set(ctx context.Context, tablet TabletType, key []byte, value SerializedValue) error
 }
 
 type ReaderWriter interface {
