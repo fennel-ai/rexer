@@ -29,6 +29,35 @@ func NewTransactionalStore(tier tier.Tier, txn *badger.Txn) *BadgerTransactional
 	}
 }
 
+func (bs *BadgerTransactionalStore) GetAll(ctx context.Context, tablet kvstore.TabletType, prefix []byte) ([][]byte, []kvstore.SerializedValue, error) {
+	prefix, err := makeKey(tablet, prefix)
+	if err != nil {
+		return nil, nil, err
+	}
+	var keys [][]byte
+	var values []kvstore.SerializedValue
+	it := bs.txn.NewIterator(badger.IteratorOptions{
+		PrefetchValues: true,
+		PrefetchSize:   10,
+		Prefix:         prefix,
+	})
+	defer it.Close()
+	for it.Rewind(); it.Valid(); it.Next() {
+		item := it.Item()
+		// remove tablet prefix inserted by this package from key.
+		key := item.Key()[1:]
+		keys = append(keys, key)
+		var value kvstore.SerializedValue
+		value.Codec = item.UserMeta()
+		item.Value(func(val []byte) error {
+			value.Raw = val
+			return nil
+		})
+		values = append(values, value)
+	}
+	return keys, values, nil
+}
+
 func (bs *BadgerTransactionalStore) Get(ctx context.Context, tablet kvstore.TabletType, key []byte) (*kvstore.SerializedValue, error) {
 	if len(key) == 0 {
 		return nil, kvstore.ErrEmptyKey

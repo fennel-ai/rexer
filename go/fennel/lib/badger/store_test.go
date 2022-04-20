@@ -82,3 +82,42 @@ func TestReadWrongTablet(t *testing.T) {
 	_, err = store.Get(ctx, kvstore.Aggregate, []byte("key"))
 	require.Error(t, err)
 }
+
+func TestGetAll(t *testing.T) {
+	tier, err := test.Tier()
+	require.NoError(t, err)
+	defer test.Teardown(tier)
+
+	txn := tier.Badger.NewTransaction(true)
+	defer txn.Commit()
+
+	store := NewTransactionalStore(tier, txn)
+
+	ctx := context.Background()
+
+	// Set 3 keys, 2 with the same prefix.
+	err = store.Set(ctx, kvstore.Profile, []byte("key"), kvstore.SerializedValue{
+		Codec: 1,
+		Raw:   []byte("value"),
+	})
+	require.NoError(t, err)
+	err = store.Set(ctx, kvstore.Profile, []byte("key2"), kvstore.SerializedValue{
+		Codec: 1,
+		Raw:   []byte("value2"),
+	})
+	require.NoError(t, err)
+	err = store.Set(ctx, kvstore.Profile, []byte("mykey"), kvstore.SerializedValue{
+		Codec: 1,
+		Raw:   []byte("myvalue"),
+	})
+	require.NoError(t, err)
+	ks, vs, err := store.GetAll(ctx, kvstore.Profile, []byte("key"))
+	require.NoError(t, err)
+	require.ElementsMatch(t, [][]byte{[]byte("key"), []byte("key2")}, ks)
+	require.Equal(t, len(ks), len(vs))
+
+	ks, vs, err = store.GetAll(ctx, kvstore.Profile, []byte("my"))
+	require.NoError(t, err)
+	require.ElementsMatch(t, [][]byte{[]byte("mykey")}, ks)
+	require.Equal(t, len(ks), len(vs))
+}
