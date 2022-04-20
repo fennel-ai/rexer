@@ -7,6 +7,7 @@ type TabletType uint8
 const (
 	Profile   TabletType = 1
 	Aggregate TabletType = 2
+	Offset    TabletType = 3
 )
 
 func (t TabletType) String() string {
@@ -15,6 +16,8 @@ func (t TabletType) String() string {
 		return "Profile"
 	case Aggregate:
 		return "Aggregate"
+	case Offset:
+		return "Offset"
 	default:
 		return "Unknown"
 	}
