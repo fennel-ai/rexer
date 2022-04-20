@@ -191,8 +191,28 @@ const setupResources = async () => {
         namespace: input.namespace,
         kubeconfig: input.kubeconfig,
     });
+    // setup model store for this tier
+    const modelStoreOutput = await modelStore.setup({
+        region: input.region,
+        roleArn: input.roleArn,
+        tierId: input.tierId,
+        nodeInstanceRole: input.nodeInstanceRole,
+    })
+    // setup sagemaker endpoint related resources
+    const sagemakerOutput = await sagemaker.setup({
+        region: input.region,
+        roleArn: input.roleArn,
+        tierId: input.tierId,
+        planeId: input.planeId,
+        vpcId: input.vpcId,
+        nodeInstanceRole: input.nodeInstanceRole,
+        connectedSecurityGroups: input.connectedSecurityGroups,
+        modelStoreBucket: modelStoreOutput.modelStoreBucket,
+    })
     // setup configs after resources are setup.
-    const configsOutput = pulumi.all([input.dbPassword, input.kafkaApiSecret]).apply(async ([dbPassword, kafkaPassword]) => {
+    const configsOutput = pulumi.all(
+        [input.dbPassword, input.kafkaApiSecret, sagemakerOutput.roleArn, sagemakerOutput.subnetIds,
+            sagemakerOutput.securityGroup]).apply(async ([dbPassword, kafkaPassword, sagemakerRole, subnetIds, sagemakerSg]) => {
         return await configs.setup({
             kubeconfig: input.kubeconfig,
             namespace: input.namespace,
@@ -214,6 +234,15 @@ const setupResources = async () => {
                 "username": input.kafkaApiKey,
                 "password": kafkaPassword,
             } as Record<string, string>),
+            modelServingConfig: pulumi.output({
+                "region": input.region,
+                "executionRole": sagemakerRole,
+                "privateSubnets": subnetIds.join(","),
+                "securityGroup": sagemakerSg,
+                "modelStoreBucket": modelStoreOutput.modelStoreBucket,
+                // pass tierId as the endpoint name
+                "modelStoreEndpoint": `t-${input.tierId}`,
+            } as Record<string, string>)
         })
     })
     // setup ingress.
@@ -235,24 +264,6 @@ const setupResources = async () => {
         sourceBucket: input.glueSourceBucket,
         trainingDataBucket: input.glueTrainingDataBucket,
         script: input.glueSourceScript,
-    })
-    // setup model store for this tier
-    const modelStoreOutput = await modelStore.setup({
-        region: input.region,
-        roleArn: input.roleArn,
-        tierId: input.tierId,
-        nodeInstanceRole: input.nodeInstanceRole,
-    })
-    // setup sagemaker endpoint related resources
-    const sagemakerOutput = await sagemaker.setup({
-        region: input.region,
-        roleArn: input.roleArn,
-        tierId: input.tierId,
-        planeId: input.planeId,
-        vpcId: input.vpcId,
-        nodeInstanceRole: input.nodeInstanceRole,
-        connectedSecurityGroups: input.connectedSecurityGroups,
-        modelStoreBucket: modelStoreOutput.modelStoreBucket,
     })
     configsOutput.apply(async () => {
         // setup api-server and countaggr after configs are setup.
