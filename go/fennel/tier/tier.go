@@ -9,7 +9,7 @@ import (
 
 	"fennel/db"
 	"fennel/fbadger"
-	"fennel/kafka"
+	libkafka "fennel/kafka"
 	"fennel/lib/cache"
 	"fennel/lib/clock"
 	"fennel/lib/ftypes"
@@ -41,7 +41,7 @@ type TierArgs struct {
 	BadgerDir     string         `arg:"--badger_dir,env:BADGER_DIR" json:"badger_dir,omitempty"`
 }
 
-type KafkaConsumerCreator func(topic, groupId, offsetPolicy string) (kafka.FConsumer, error)
+type KafkaConsumerCreator func(topic, groupId, offsetPolicy string) (libkafka.FConsumer, error)
 
 func (args TierArgs) Valid() error {
 	missingFields := make([]string, 0)
@@ -94,7 +94,7 @@ type Tier struct {
 	Redis            redis.Client
 	Cache            cache.Cache
 	PCache           pcache.PCache
-	Producers        map[string]kafka.FProducer
+	Producers        map[string]libkafka.FProducer
 	Clock            clock.Clock
 	Logger           *zap.Logger
 	NewKafkaConsumer KafkaConsumerCreator
@@ -167,8 +167,8 @@ func CreateFromArgs(args *TierArgs) (tier Tier, err error) {
 	}
 
 	log.Print("Creating kafka consumer")
-	consumerCreator := func(topic, groupID, offsetPolicy string) (kafka.FConsumer, error) {
-		kafkaConsumerConfig := kafka.RemoteConsumerConfig{
+	consumerCreator := func(topic, groupID, offsetPolicy string) (libkafka.FConsumer, error) {
+		kafkaConsumerConfig := libkafka.RemoteConsumerConfig{
 			BootstrapServer: args.KafkaServer,
 			Username:        args.KafkaUsername,
 			Password:        args.KafkaPassword,
@@ -181,7 +181,7 @@ func CreateFromArgs(args *TierArgs) (tier Tier, err error) {
 		if err != nil {
 			return nil, fmt.Errorf("failed to create kafka consumer: %v", err)
 		}
-		return kafkaConsumer.(kafka.FConsumer), nil
+		return kafkaConsumer.(libkafka.FConsumer), nil
 	}
 
 	log.Print("Creating logger")
@@ -234,10 +234,10 @@ func CreateFromArgs(args *TierArgs) (tier Tier, err error) {
 	}, nil
 }
 
-func CreateKafka(scope resource.Scope, server, username, password string) (map[string]kafka.FProducer, error) {
-	producers := make(map[string]kafka.FProducer)
-	for _, topic := range kafka.ALL_TOPICS {
-		kafkaProducerConfig := kafka.RemoteProducerConfig{
+func CreateKafka(scope resource.Scope, server, username, password string) (map[string]libkafka.FProducer, error) {
+	producers := make(map[string]libkafka.FProducer)
+	for _, topic := range libkafka.ALL_TOPICS {
+		kafkaProducerConfig := libkafka.RemoteProducerConfig{
 			BootstrapServer: server,
 			Username:        username,
 			Password:        password,
@@ -248,7 +248,7 @@ func CreateKafka(scope resource.Scope, server, username, password string) (map[s
 		if err != nil {
 			return nil, fmt.Errorf("failed to crate kafka producer: %v", err)
 		}
-		producers[topic] = kafkaProducer.(kafka.FProducer)
+		producers[topic] = kafkaProducer.(libkafka.FProducer)
 	}
 	return producers, nil
 }
