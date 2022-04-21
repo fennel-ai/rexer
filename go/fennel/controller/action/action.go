@@ -112,7 +112,6 @@ func BatchInsert(ctx context.Context, tier tier.Tier, actions []actionlib.Action
 	producer := tier.Producers[actionlib.ACTIONLOG_KAFKA_TOPIC]
 	// TODO: Define and implement batch logging once the downstream API moves out of experimental
 	for _, p := range protos {
-		fmt.Println("Logged this proto: ", p)
 		err := producer.LogProto(ctx, p, nil)
 		if err != nil {
 			return err
