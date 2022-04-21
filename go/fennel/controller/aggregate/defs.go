@@ -39,6 +39,8 @@ func Store(ctx context.Context, tier tier.Tier, agg aggregate.Aggregate) error {
 	if err != nil {
 		return fmt.Errorf("can not marshal aggregate query: %v", err)
 	}
+	fmt.Println("Storing Aggregate: ", agg.Name)
+	fmt.Println("Options: ", agg.Options)
 	optionSer, err := proto.Marshal(aggregate.ToProtoOptions(agg.Options))
 	if err != nil {
 		return fmt.Errorf("can not marshal aggregate options: %v", err)
@@ -46,6 +48,9 @@ func Store(ctx context.Context, tier tier.Tier, agg aggregate.Aggregate) error {
 	if agg.Timestamp == 0 {
 		agg.Timestamp = ftypes.Timestamp(time.Now().Unix())
 	}
+
+	fmt.Println(optionSer)
+	fmt.Println("THIS :", aggregate.ToProtoOptions(agg.Options))
 
 	return modelAgg.Store(ctx, tier, agg.Name, querySer, agg.Timestamp, optionSer)
 }

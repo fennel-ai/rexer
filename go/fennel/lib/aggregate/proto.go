@@ -60,11 +60,12 @@ func FromProtoAggregate(pagg *ProtoAggregate) (Aggregate, error) {
 
 func FromProtoOptions(popt *AggOptions) Options {
 	return Options{
-		AggType:   ftypes.AggType(popt.AggType),
-		Durations: popt.Durations,
-		Window:    popt.Window,
-		Limit:     popt.Limit,
-		Normalize: popt.Normalize,
+		AggType:      ftypes.AggType(popt.AggType),
+		Durations:    popt.Durations,
+		Window:       popt.Window,
+		Limit:        popt.Limit,
+		Normalize:    popt.Normalize,
+		CronSchedule: popt.CronSchedule,
 	}
 }
 

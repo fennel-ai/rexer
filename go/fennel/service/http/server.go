@@ -398,12 +398,16 @@ func (m server) StoreAggregate(w http.ResponseWriter, req *http.Request) {
 		log.Printf("Error: %v", err)
 		return
 	}
+	fmt.Println(string(data))
+
 	var agg aggregate.Aggregate
 	if err := json.Unmarshal(data, &agg); err != nil {
 		http.Error(w, fmt.Sprintf("invalid request: %v", err), http.StatusBadRequest)
 		log.Printf("Error: %v", err)
 		return
 	}
+	fmt.Println(agg.Options)
+	fmt.Println(agg.Options.CronSchedule)
 	// call controller
 	if err = aggregate2.Store(req.Context(), m.tier, agg); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
