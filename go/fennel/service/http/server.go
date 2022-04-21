@@ -368,11 +368,13 @@ func (m server) Query(w http.ResponseWriter, req *http.Request) {
 		log.Printf("Error: %v", err)
 		return
 	}
+	fmt.Println("Wohooo I am here", mockData.Profiles)
 	if len(mockData.Profiles) > 0 {
 		// set mock data
 		mockID := rand.Int63()
 		args.Set("__mock_id__", value.Int(mockID))
 		mock.Store[mockID] = &mockData
+		fmt.Println("Wohooo I am here", mock.Store)
 		// unset mock data
 		defer func() {
 			if mockData.Profiles != nil {
