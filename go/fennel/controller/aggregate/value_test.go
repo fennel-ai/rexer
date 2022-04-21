@@ -157,7 +157,11 @@ func TestOfflineAggregates(t *testing.T) {
 	wg.Add(2)
 	go func() {
 		defer wg.Done()
-		consumer, err := tier.NewKafkaConsumer(action.ACTIONLOG_KAFKA_TOPIC, string(agg.Name), kafka.DefaultOffsetPolicy)
+		consumer, err := tier.NewKafkaConsumer(kafka.ConsumerConfig{
+			Topic:        action.ACTIONLOG_KAFKA_TOPIC,
+			GroupID:      string(agg.Name),
+			OffsetPolicy: kafka.DefaultOffsetPolicy,
+		})
 		assert.NoError(t, err)
 		defer consumer.Close()
 		err = Update(ctx, tier, consumer, agg)
@@ -171,7 +175,11 @@ func TestOfflineAggregates(t *testing.T) {
 	// test that actions were written as JSON as well
 	go func() {
 		defer wg.Done()
-		consumer, err := tier.NewKafkaConsumer(libcounter.AGGREGATE_OFFLINE_TRANSFORM_TOPIC_NAME, utils.RandString(6), kafka.DefaultOffsetPolicy)
+		consumer, err := tier.NewKafkaConsumer(kafka.ConsumerConfig{
+			Topic:        libcounter.AGGREGATE_OFFLINE_TRANSFORM_TOPIC_NAME,
+			GroupID:      utils.RandString(6),
+			OffsetPolicy: kafka.DefaultOffsetPolicy,
+		})
 		assert.NoError(t, err)
 		defer consumer.Close()
 		data, err := consumer.ReadBatch(ctx, 2, 15*time.Second)
