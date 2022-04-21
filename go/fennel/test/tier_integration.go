@@ -22,6 +22,7 @@ func Tier() (tier.Tier, error) {
 	var flags tier.TierArgs
 	// Parse flags / environment variables.
 	arg.Parse(&flags)
+	flags.Dev = true
 	flags.TierID = tierID
 	if err := flags.Valid(); err != nil {
 		return tier.Tier{}, err
