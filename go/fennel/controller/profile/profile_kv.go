@@ -16,6 +16,7 @@ import (
 	"fennel/tier"
 
 	db "github.com/dgraph-io/badger/v3"
+	"go.uber.org/zap"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -51,9 +52,7 @@ func Set(ctx context.Context, tier tier.Tier, request profilelib.ProfileItem) er
 	if err := producer.LogProto(ctx, &p, nil); err != nil {
 		return err
 	}
-
-	// TODO(abhay): Remove this.
-	return setBatch(ctx, tier, []profilelib.ProfileItem{request})
+	return nil
 }
 
 func SetMulti(ctx context.Context, tier tier.Tier, request []profilelib.ProfileItem) error {
@@ -102,7 +101,7 @@ func readBatch(ctx context.Context, consumer libkafka.FConsumer, count int, time
 }
 
 func TransferToDB(ctx context.Context, tr tier.Tier, consumer libkafka.FConsumer) error {
-	profiles, err := readBatch(ctx, consumer, 950, time.Second*10)
+	profiles, err := readBatch(ctx, consumer, 950, time.Second*5)
 	if err != nil {
 		return err
 	}
@@ -110,18 +109,23 @@ func TransferToDB(ctx context.Context, tr tier.Tier, consumer libkafka.FConsumer
 		return nil
 	}
 	return tr.Badger.Update(func(txn *db.Txn) error {
-		partitions, err := consumer.Commit()
-		if err != nil {
-			return fmt.Errorf("failed to commit kafka offsets")
-		}
 		writer := badger.NewTransactionalStore(tr, txn)
 		err = profilekv.Set(ctx, profiles, writer)
 		if err != nil {
 			return fmt.Errorf("failed to set profile items: %v", err)
 		}
+		partitions, err := consumer.Offsets()
+		if err != nil {
+			return fmt.Errorf("failed to commit kafka offsets")
+		}
+		tr.Logger.Debug("Committing offsets", zap.Any("partitions", partitions))
 		err = offsets.Set(ctx, partitions, writer)
 		if err != nil {
 			return fmt.Errorf("failed to set offsets: %v", err)
+		}
+		_, err = consumer.CommitOffsets(partitions)
+		if err != nil {
+			return fmt.Errorf("failed to commit offsets in kafka: %v", err)
 		}
 		return nil
 	})
@@ -141,11 +145,4 @@ func GetBatch(ctx context.Context, tier tier.Tier, requests []profilelib.Profile
 		}
 	})
 	return ret, err
-}
-
-func setBatch(ctx context.Context, tier tier.Tier, requests []profilelib.ProfileItem) error {
-	return tier.Badger.Update(func(txn *db.Txn) error {
-		writer := badger.NewTransactionalStore(tier, txn)
-		return profilekv.Set(ctx, requests, writer)
-	})
 }
