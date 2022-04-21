@@ -15,6 +15,7 @@ import (
 	profilekv "fennel/model/profile/kv"
 	"fennel/tier"
 
+	"github.com/confluentinc/confluent-kafka-go/kafka"
 	db "github.com/dgraph-io/badger/v3"
 	"go.uber.org/zap"
 	"google.golang.org/protobuf/proto"
@@ -108,27 +109,32 @@ func TransferToDB(ctx context.Context, tr tier.Tier, consumer libkafka.FConsumer
 	if len(profiles) == 0 {
 		return nil
 	}
-	return tr.Badger.Update(func(txn *db.Txn) error {
+	var partitions kafka.TopicPartitions
+	err = tr.Badger.Update(func(txn *db.Txn) error {
 		writer := badger.NewTransactionalStore(tr, txn)
 		err = profilekv.Set(ctx, profiles, writer)
 		if err != nil {
 			return fmt.Errorf("failed to set profile items: %v", err)
 		}
-		partitions, err := consumer.Offsets()
+		partitions, err = consumer.Offsets()
 		if err != nil {
-			return fmt.Errorf("failed to commit kafka offsets")
+			return fmt.Errorf("failed to read current kafka offsets")
 		}
 		tr.Logger.Debug("Committing offsets", zap.Any("partitions", partitions))
 		err = offsets.Set(ctx, partitions, writer)
 		if err != nil {
 			return fmt.Errorf("failed to set offsets: %v", err)
 		}
-		_, err = consumer.CommitOffsets(partitions)
-		if err != nil {
-			return fmt.Errorf("failed to commit offsets in kafka: %v", err)
-		}
 		return nil
 	})
+	if err != nil {
+		return fmt.Errorf("failed to write to badger: %v", err)
+	}
+	_, err = consumer.CommitOffsets(partitions)
+	if err != nil {
+		return fmt.Errorf("failed to commit offsets in kafka: %v", err)
+	}
+	return nil
 }
 
 // If profile item doesn't exist and hence the value, is not found, profileItem with value nil is returned.
