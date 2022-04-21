@@ -45,6 +45,7 @@ var ALL_TOPICS = []string{
 	feature.KAFKA_TOPIC_NAME,
 	profile.PROFILELOG_KAFKA_TOPIC,
 	counter.AGGREGATE_DELTA_TOPIC_NAME,
+	counter.AGGREGATE_OFFLINE_TRANSFORM_TOPIC_NAME,
 }
 
 func ConfigMap(server, username, password string) *kafka.ConfigMap {
