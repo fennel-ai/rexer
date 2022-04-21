@@ -138,6 +138,14 @@ func (l mockConsumer) Commit() (kafka.TopicPartitions, error) {
 	return nil, nil
 }
 
+func (l mockConsumer) CommitOffsets(kafka.TopicPartitions) (kafka.TopicPartitions, error) {
+	return nil, nil
+}
+
+func (l mockConsumer) Offsets() (kafka.TopicPartitions, error) {
+	return nil, nil
+}
+
 func (l mockConsumer) GroupID() string {
 	return l.groupid
 }

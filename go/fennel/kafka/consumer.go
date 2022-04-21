@@ -121,6 +121,19 @@ func (k RemoteConsumer) Commit() (kafka.TopicPartitions, error) {
 	return k.Consumer.Commit()
 }
 
+// Commit commits the given offsets (in a blocking manner)
+func (k RemoteConsumer) CommitOffsets(offsets kafka.TopicPartitions) (kafka.TopicPartitions, error) {
+	return k.Consumer.CommitOffsets(offsets)
+}
+
+func (k RemoteConsumer) Offsets() (kafka.TopicPartitions, error) {
+	toppars, err := k.Consumer.Assignment()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get topic assignment: %v", err)
+	}
+	return k.Consumer.Position(toppars)
+}
+
 // Backlog returns the combined total of "lag" all topic partitions have that
 // this consumer consumes from. For example, if this consumer is consuming from
 // topic "foo" and is assigned to partitions 0, 2, and 3, then the backlog will
@@ -183,6 +196,8 @@ type RemoteConsumerConfig struct {
 func (conf RemoteConsumerConfig) Materialize() (resource.Resource, error) {
 	configmap := ConfigMap(conf.BootstrapServer, conf.Username, conf.Password)
 
+	topic := conf.Scope.PrefixedName(conf.Topic)
+
 	if err := configmap.SetKey("group.id", conf.GroupID); err != nil {
 		return nil, err
 	}
@@ -207,20 +222,24 @@ func (conf RemoteConsumerConfig) Materialize() (resource.Resource, error) {
 		return nil, fmt.Errorf("failed to create kafka consumer: %v", err)
 	}
 	rebalanceCb := func(c *kafka.Consumer, e kafka.Event) error {
-		log.Printf("[%s:%s:%s]Got kafka partition rebalance event: %v", conf.Topic, conf.GroupID, c.String(), e.String())
-		if len(conf.Partitions) > 0 {
-			err := c.Assign(conf.Partitions)
-			if err != nil {
-				log.Fatalf("Failed to assign partitions: %v", err)
+		log.Printf("[%s:%s:%s]Got kafka partition rebalance event: %v", topic, conf.GroupID, c.String(), e.String())
+		switch event := e.(type) {
+		case kafka.AssignedPartitions:
+			if len(conf.Partitions) > 0 && len(event.Partitions) > 0 {
+				log.Printf("Assigning partitions to self[%s]: %v", c.String(), conf.Partitions)
+				err := c.Assign(conf.Partitions)
+				if err != nil {
+					log.Fatalf("Failed to assign partitions: %v", err)
+				}
 			}
 		}
 		return nil
 	}
-	err = consumer.Subscribe(conf.Topic, rebalanceCb)
+	err = consumer.Subscribe(topic, rebalanceCb)
 	if err != nil {
-		return nil, fmt.Errorf("failed to subscribe to topic [%s]: %v", conf.Topic, err)
+		return nil, fmt.Errorf("failed to subscribe to topic [%s]: %v", topic, err)
 	}
-	return RemoteConsumer{consumer, conf.Scope, conf.Topic, conf.GroupID, nil}, nil
+	return RemoteConsumer{consumer, conf.Scope, topic, conf.GroupID, nil}, nil
 }
 
 var _ resource.Config = RemoteConsumerConfig{}
