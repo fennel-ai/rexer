@@ -1,3 +1,5 @@
+//go:build badger
+
 package tailer
 
 import (
@@ -68,7 +70,7 @@ func writeProfilesToLocalKvStore(tr tier.Tier, cancel <-chan struct{}) error {
 			case <-cancel:
 				return
 			default:
-				t := timer.Start(ctx, tr.ID, "countaggr.TransferProfilesToDB")
+				t := timer.Start(ctx, tr.ID, "tailer.TransferProfilesToDB")
 				if err := profile.TransferToDB(ctx, tr, consumer); err != nil {
 					tr.Logger.Error("error while reading/writing actions to insert in db:", zap.Error(err))
 				}

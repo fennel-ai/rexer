@@ -1,3 +1,5 @@
+//go:build badger
+
 package tailer
 
 import (
