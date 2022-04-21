@@ -163,10 +163,8 @@ func Update(ctx context.Context, tier tier.Tier, consumer kafka.FConsumer, agg a
 	table, err := transformActions(tier, actions, agg.Query)
 
 	// Offline Aggregates
-	fmt.Println(agg.Options)
 	if agg.Options.CronSchedule != "" {
 		offlineTransformProducer := tier.Producers[libcounter.AGGREGATE_OFFLINE_TRANSFORM_TOPIC_NAME]
-		fmt.Println("offlineTransformProducer")
 		for i := 0; i < table.Len(); i++ {
 			rowVal, _ := table.At(i)
 			dict, _ := rowVal.(value.Dict)
