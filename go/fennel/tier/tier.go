@@ -41,7 +41,7 @@ type TierArgs struct {
 	BadgerDir     string         `arg:"--badger_dir,env:BADGER_DIR" json:"badger_dir,omitempty"`
 }
 
-type KafkaConsumerCreator func(topic, groupId, offsetPolicy string) (libkafka.FConsumer, error)
+type KafkaConsumerCreator func(libkafka.ConsumerConfig) (libkafka.FConsumer, error)
 
 func (args TierArgs) Valid() error {
 	missingFields := make([]string, 0)
@@ -167,15 +167,13 @@ func CreateFromArgs(args *TierArgs) (tier Tier, err error) {
 	}
 
 	log.Print("Creating kafka consumer")
-	consumerCreator := func(topic, groupID, offsetPolicy string) (libkafka.FConsumer, error) {
+	consumerCreator := func(config libkafka.ConsumerConfig) (libkafka.FConsumer, error) {
 		kafkaConsumerConfig := libkafka.RemoteConsumerConfig{
+			Scope:           scope,
 			BootstrapServer: args.KafkaServer,
 			Username:        args.KafkaUsername,
 			Password:        args.KafkaPassword,
-			GroupID:         groupID,
-			Topic:           scope.PrefixedName(topic),
-			OffsetPolicy:    offsetPolicy,
-			Scope:           scope,
+			ConsumerConfig:  config,
 		}
 		kafkaConsumer, err := kafkaConsumerConfig.Materialize()
 		if err != nil {

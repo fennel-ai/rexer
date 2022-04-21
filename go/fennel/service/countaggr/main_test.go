@@ -188,7 +188,11 @@ func TestEndToEnd(t *testing.T) {
 		}
 
 		// next create kafka consumers for each
-		scenario.consumer, err = tier.NewKafkaConsumer(actionlib.ACTIONLOG_KAFKA_TOPIC, string(scenario.agg.Name), kafka.DefaultOffsetPolicy)
+		scenario.consumer, err = tier.NewKafkaConsumer(kafka.ConsumerConfig{
+			Topic:        actionlib.ACTIONLOG_KAFKA_TOPIC,
+			GroupID:      string(scenario.agg.Name),
+			OffsetPolicy: kafka.DefaultOffsetPolicy,
+		})
 		assert.NoError(t, err)
 		defer scenario.consumer.Close()
 	}
@@ -218,7 +222,11 @@ func TestEndToEnd(t *testing.T) {
 	found, err := action.Fetch(ctx, tier, actionlib.ActionFetchRequest{})
 	assert.NoError(t, err)
 	assert.Empty(t, found)
-	consumer, err := tier.NewKafkaConsumer(actionlib.ACTIONLOG_KAFKA_TOPIC, "insert_in_db", kafka.DefaultOffsetPolicy)
+	consumer, err := tier.NewKafkaConsumer(kafka.ConsumerConfig{
+		Topic:        actionlib.ACTIONLOG_KAFKA_TOPIC,
+		GroupID:      "insert_in_db",
+		OffsetPolicy: kafka.DefaultOffsetPolicy,
+	})
 	assert.NoError(t, err)
 	defer consumer.Close()
 	assert.NoError(t, action.TransferToDB(ctx, tier, consumer))

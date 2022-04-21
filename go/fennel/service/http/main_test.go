@@ -78,7 +78,11 @@ func TestLogFetchServerClient(t *testing.T) {
 	c, err := client.NewClient(server.URL, server.Client())
 	assert.NoError(t, err)
 
-	consumer, err := tier.NewKafkaConsumer(action.ACTIONLOG_KAFKA_TOPIC, "somegroup", kafka.DefaultOffsetPolicy)
+	consumer, err := tier.NewKafkaConsumer(kafka.ConsumerConfig{
+		Topic:        action.ACTIONLOG_KAFKA_TOPIC,
+		GroupID:      "somegroup",
+		OffsetPolicy: kafka.DefaultOffsetPolicy,
+	})
 	assert.NoError(t, err)
 	defer consumer.Close()
 
@@ -212,7 +216,11 @@ func TestActionDedupedPerActionType(t *testing.T) {
 	c, err := client.NewClient(server.URL, server.Client())
 	assert.NoError(t, err)
 
-	consumer, err := tier.NewKafkaConsumer(action.ACTIONLOG_KAFKA_TOPIC, "somegroup", kafka.DefaultOffsetPolicy)
+	consumer, err := tier.NewKafkaConsumer(kafka.ConsumerConfig{
+		Topic:        action.ACTIONLOG_KAFKA_TOPIC,
+		GroupID:      "somegroup",
+		OffsetPolicy: kafka.DefaultOffsetPolicy,
+	})
 	assert.NoError(t, err)
 	defer consumer.Close()
 
@@ -304,7 +312,11 @@ func TestProfileServerClient(t *testing.T) {
 	checkGetSet(t, c, false, "10", "3131", 0, "summary", value.Int(1))
 
 	// these profiles are also written to kafka queue
-	consumer, err := tier.NewKafkaConsumer(profilelib.PROFILELOG_KAFKA_TOPIC, "someprofilegroup", kafka.DefaultOffsetPolicy)
+	consumer, err := tier.NewKafkaConsumer(kafka.ConsumerConfig{
+		Topic:        profilelib.PROFILELOG_KAFKA_TOPIC,
+		GroupID:      "someprofilegroup",
+		OffsetPolicy: kafka.DefaultOffsetPolicy,
+	})
 	assert.NoError(t, err)
 	actual, err := batchReadProfilesFromConsumer(t, context.Background(), consumer, 3)
 	assert.NoError(t, err)
@@ -332,7 +344,11 @@ func TestSetProfilesQueuesToKafka(t *testing.T) {
 
 	assert.NoError(t, c.SetProfiles(profileList2))
 
-	consumer, err := tier.NewKafkaConsumer(profilelib.PROFILELOG_KAFKA_TOPIC, "someprofilegroup2", kafka.DefaultOffsetPolicy)
+	consumer, err := tier.NewKafkaConsumer(kafka.ConsumerConfig{
+		Topic:        profilelib.PROFILELOG_KAFKA_TOPIC,
+		GroupID:      "someprofilegroup2",
+		OffsetPolicy: kafka.DefaultOffsetPolicy,
+	})
 	assert.NoError(t, err)
 	actual, err := batchReadProfilesFromConsumer(t, context.Background(), consumer, 6)
 	assert.NoError(t, err)

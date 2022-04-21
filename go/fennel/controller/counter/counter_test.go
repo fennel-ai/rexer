@@ -560,7 +560,11 @@ func assertDeltaLogged(t *testing.T, ctx context.Context, tr tier.Tier, aggs []l
 }
 
 func readAggregateDelta(t *testing.T, ctx context.Context, tr tier.Tier, count int) ([]libcounter.AggregateDelta, error) {
-	consumer, err := tr.NewKafkaConsumer(libcounter.AGGREGATE_DELTA_TOPIC_NAME, utils.RandString(6), kafka.DefaultOffsetPolicy)
+	consumer, err := tr.NewKafkaConsumer(kafka.ConsumerConfig{
+		Topic:        libcounter.AGGREGATE_DELTA_TOPIC_NAME,
+		GroupID:      utils.RandString(6),
+		OffsetPolicy: kafka.DefaultOffsetPolicy,
+	})
 	if err != nil {
 		return nil, err
 	}

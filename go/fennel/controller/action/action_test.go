@@ -86,7 +86,11 @@ func testKafkaInsertRead(t *testing.T, batch bool) {
 	wg.Add(2)
 	go func() {
 		defer wg.Done()
-		consumer1, err := tier.NewKafkaConsumer(actionlib.ACTIONLOG_KAFKA_TOPIC, utils.RandString(6), kafka.DefaultOffsetPolicy)
+		consumer1, err := tier.NewKafkaConsumer(kafka.ConsumerConfig{
+			Topic:        actionlib.ACTIONLOG_KAFKA_TOPIC,
+			GroupID:      utils.RandString(6),
+			OffsetPolicy: kafka.DefaultOffsetPolicy,
+		})
 		assert.NoError(t, err)
 		defer consumer1.Close()
 		found, err := ReadBatch(ctx, consumer1, 2, time.Second*30)
@@ -96,7 +100,11 @@ func testKafkaInsertRead(t *testing.T, batch bool) {
 
 	// test that actions were written as JSON as well
 	go func() {
-		consumer, err := tier.NewKafkaConsumer(actionlib.ACTIONLOG_JSON_KAFKA_TOPIC, utils.RandString(6), kafka.DefaultOffsetPolicy)
+		consumer, err := tier.NewKafkaConsumer(kafka.ConsumerConfig{
+			Topic:        actionlib.ACTIONLOG_JSON_KAFKA_TOPIC,
+			GroupID:      utils.RandString(6),
+			OffsetPolicy: kafka.DefaultOffsetPolicy,
+		})
 		assert.NoError(t, err)
 		defer consumer.Close()
 		data, err := consumer.ReadBatch(ctx, 2, 30*time.Second)
@@ -114,7 +122,11 @@ func testKafkaInsertRead(t *testing.T, batch bool) {
 	// finally, transferring these from kafka to DB also works
 	go func() {
 		defer wg.Done()
-		consumer2, err := tier.NewKafkaConsumer(actionlib.ACTIONLOG_KAFKA_TOPIC, utils.RandString(6), kafka.DefaultOffsetPolicy)
+		consumer2, err := tier.NewKafkaConsumer(kafka.ConsumerConfig{
+			Topic:        actionlib.ACTIONLOG_KAFKA_TOPIC,
+			GroupID:      utils.RandString(6),
+			OffsetPolicy: kafka.DefaultOffsetPolicy,
+		})
 		assert.NoError(t, err)
 		defer consumer2.Close()
 		assert.NoError(t, TransferToDB(ctx, tier, consumer2))
@@ -183,10 +195,18 @@ func Test_ReadActions(t *testing.T) {
 		assert.NoError(t, Insert(ctx, tier, a2))
 		actions = append(actions, a1, a2)
 	}
-	c1, err := tier.NewKafkaConsumer(actionlib.ACTIONLOG_KAFKA_TOPIC, "one", kafka.DefaultOffsetPolicy)
+	c1, err := tier.NewKafkaConsumer(kafka.ConsumerConfig{
+		Topic:        actionlib.ACTIONLOG_KAFKA_TOPIC,
+		GroupID:      "one",
+		OffsetPolicy: kafka.DefaultOffsetPolicy,
+	})
 	defer c1.Close()
 	assert.NoError(t, err)
-	c2, err := tier.NewKafkaConsumer(actionlib.ACTIONLOG_KAFKA_TOPIC, "two", kafka.DefaultOffsetPolicy)
+	c2, err := tier.NewKafkaConsumer(kafka.ConsumerConfig{
+		Topic:        actionlib.ACTIONLOG_KAFKA_TOPIC,
+		GroupID:      "two",
+		OffsetPolicy: kafka.DefaultOffsetPolicy,
+	})
 	assert.NoError(t, err)
 	defer c2.Close()
 

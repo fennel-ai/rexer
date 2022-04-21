@@ -15,9 +15,11 @@ import (
 )
 
 const (
-	SecurityProtocol    = "SASL_SSL"
-	SaslMechanism       = "PLAIN"
-	DefaultOffsetPolicy = "earliest"
+	SecurityProtocol     = "SASL_SSL"
+	SaslMechanism        = "PLAIN"
+	DefaultOffsetPolicy  = "earliest"
+	EarliestOffsetPolicy = "earliest"
+	LatestOffsetPolicy   = "latest"
 )
 
 type FConsumer interface {

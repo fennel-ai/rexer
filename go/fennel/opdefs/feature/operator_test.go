@@ -23,7 +23,11 @@ func TestFeatureLog_Apply(t *testing.T) {
 	tier.Clock = clock
 	t0 := int64(1231231)
 	clock.Set(t0)
-	consumer, err := tier.NewKafkaConsumer(feature.KAFKA_TOPIC_NAME, "testgroup", kafka.DefaultOffsetPolicy)
+	consumer, err := tier.NewKafkaConsumer(kafka.ConsumerConfig{
+		Topic:        feature.KAFKA_TOPIC_NAME,
+		GroupID:      "testgroup",
+		OffsetPolicy: kafka.DefaultOffsetPolicy,
+	})
 	assert.NoError(t, err)
 	defer consumer.Close()
 
