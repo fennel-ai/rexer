@@ -19,11 +19,12 @@ func (agg *Aggregate) UnmarshalJSON(data []byte) error {
 		Query     string           `json:"Query"`
 		Timestamp ftypes.Timestamp `json:"Timestamp"`
 		Options   struct {
-			AggType   string        `json:"Type"`
-			Durations []uint64      `json:"Durations"`
-			Window    ftypes.Window `json:"Window"`
-			Limit     uint64        `json:"Limit"`
-			Normalize bool          `json:"Normalize"`
+			AggType      string        `json:"Type"`
+			Durations    []uint64      `json:"Durations"`
+			Window       ftypes.Window `json:"Window"`
+			Limit        uint64        `json:"Limit"`
+			Normalize    bool          `json:"Normalize"`
+			CronSchedule string        `json:"CronSchedule"`
 		} `json:"Options"`
 	}
 	err := json.Unmarshal(data, &fields)
@@ -38,6 +39,7 @@ func (agg *Aggregate) UnmarshalJSON(data []byte) error {
 	agg.Options.Window = fields.Options.Window
 	agg.Options.Limit = fields.Options.Limit
 	agg.Options.Normalize = fields.Options.Normalize
+	agg.Options.CronSchedule = fields.Options.CronSchedule
 	// Extract query now
 	querySer, err := base64.StdEncoding.DecodeString(fields.Query)
 	if err != nil {
@@ -62,11 +64,12 @@ func (agg Aggregate) MarshalJSON() ([]byte, error) {
 		Query     string           `json:"Query"`
 		Timestamp ftypes.Timestamp `json:"Timestamp"`
 		Options   struct {
-			AggType   string        `json:"Type"`
-			Durations []uint64      `json:"Durations"`
-			Window    ftypes.Window `json:"Window"`
-			Limit     uint64        `json:"Limit"`
-			Normalize bool          `json:"Normalize"`
+			AggType      string        `json:"Type"`
+			Durations    []uint64      `json:"Durations"`
+			Window       ftypes.Window `json:"Window"`
+			Limit        uint64        `json:"Limit"`
+			Normalize    bool          `json:"Normalize"`
+			CronSchedule string        `json:"CronSchedule"`
 		}
 	}
 	fields.Name = agg.Name
@@ -78,6 +81,7 @@ func (agg Aggregate) MarshalJSON() ([]byte, error) {
 	fields.Options.Window = agg.Options.Window
 	fields.Options.Limit = agg.Options.Limit
 	fields.Options.Normalize = agg.Options.Normalize
+	fields.Options.CronSchedule = agg.Options.CronSchedule
 	return json.Marshal(fields)
 }
 

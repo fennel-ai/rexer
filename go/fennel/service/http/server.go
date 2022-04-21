@@ -398,6 +398,7 @@ func (m server) StoreAggregate(w http.ResponseWriter, req *http.Request) {
 		log.Printf("Error: %v", err)
 		return
 	}
+
 	var agg aggregate.Aggregate
 	if err := json.Unmarshal(data, &agg); err != nil {
 		http.Error(w, fmt.Sprintf("invalid request: %v", err), http.StatusBadRequest)

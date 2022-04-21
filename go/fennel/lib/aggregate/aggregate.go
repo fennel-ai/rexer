@@ -135,13 +135,14 @@ func (o Options) Equals(other Options) bool {
 }
 
 type AggregateSer struct {
-	Name      ftypes.AggName   `db:"name"`
-	QuerySer  []byte           `db:"query_ser"`
-	Timestamp ftypes.Timestamp `db:"timestamp"`
-	OptionSer []byte           `db:"options_ser"`
-	Active    bool             `db:"active"`
-	Normalize bool             `db:"normalize"`
-	Id        ftypes.AggId     `db:"id"`
+	Name         ftypes.AggName   `db:"name"`
+	QuerySer     []byte           `db:"query_ser"`
+	Timestamp    ftypes.Timestamp `db:"timestamp"`
+	OptionSer    []byte           `db:"options_ser"`
+	Active       bool             `db:"active"`
+	Normalize    bool             `db:"normalize"`
+	CronSchedule string           `db:"cron_schedule"`
+	Id           ftypes.AggId     `db:"id"`
 }
 
 func FromAggregateSer(ser AggregateSer) (Aggregate, error) {
