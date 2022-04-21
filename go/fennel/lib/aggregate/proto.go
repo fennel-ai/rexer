@@ -70,10 +70,11 @@ func FromProtoOptions(popt *AggOptions) Options {
 
 func ToProtoOptions(opt Options) *AggOptions {
 	return &AggOptions{
-		AggType:   string(opt.AggType),
-		Durations: opt.Durations,
-		Window:    opt.Window,
-		Limit:     opt.Limit,
-		Normalize: opt.Normalize,
+		AggType:      string(opt.AggType),
+		Durations:    opt.Durations,
+		Window:       opt.Window,
+		Limit:        opt.Limit,
+		Normalize:    opt.Normalize,
+		CronSchedule: opt.CronSchedule,
 	}
 }

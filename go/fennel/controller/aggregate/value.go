@@ -13,6 +13,7 @@ import (
 	"fennel/kafka"
 	libaction "fennel/lib/action"
 	"fennel/lib/aggregate"
+	libcounter "fennel/lib/counter"
 	"fennel/lib/ftypes"
 	"fennel/lib/value"
 	modelCounter "fennel/model/counter"
@@ -150,6 +151,27 @@ func batchValue(ctx context.Context, tier tier.Tier, batch []aggregate.GetAggVal
 	return counter.BatchValue(ctx, tier, ids, keys, histograms, kwargs)
 }
 
+func verifyActions(actions value.List) error {
+	for i := 0; i < actions.Len(); i++ {
+		rowVal, _ := actions.At(i)
+		row, ok := rowVal.(value.Dict)
+		if !ok {
+			return fmt.Errorf("action expected to be dict but found: '%v'", rowVal)
+		}
+		if _, ok := row.Get("groupkey"); !ok {
+			return fmt.Errorf("action '%v' does not have a field called 'groupkey'", rowVal)
+		}
+		ts, ok := row.Get("timestamp")
+		if !ok || value.Types.Int.Validate(ts) != nil {
+			return fmt.Errorf("action '%v' does not have a field called 'timestamp' with datatype of 'int'", row)
+		}
+		if _, ok := row.Get("value"); !ok {
+			return fmt.Errorf("action '%v' does not have a field called 'value'", row)
+		}
+	}
+	return nil
+}
+
 func Update(ctx context.Context, tier tier.Tier, consumer kafka.FConsumer, agg aggregate.Aggregate) error {
 	actions, err := action.ReadBatch(ctx, consumer, 20000, time.Second*10)
 	if err != nil {
@@ -160,6 +182,26 @@ func Update(ctx context.Context, tier tier.Tier, consumer kafka.FConsumer, agg a
 		return nil
 	}
 	table, err := transformActions(tier, actions, agg.Query)
+
+	// Offline Aggregates
+	if agg.Options.CronSchedule != "" {
+		err := verifyActions(table)
+		if err != nil {
+			return err
+		}
+		offlineTransformProducer := tier.Producers[libcounter.AGGREGATE_OFFLINE_TRANSFORM_TOPIC_NAME]
+		for i := 0; i < table.Len(); i++ {
+			rowVal, _ := table.At(i)
+			dict, _ := rowVal.(value.Dict)
+			dict.Set("aggregate", value.String(agg.Name))
+			err = offlineTransformProducer.Log(ctx, value.ToJSON(dict), nil)
+			if err != nil {
+				tier.Logger.Error(fmt.Sprintf("failed to log action proto: %v", err))
+			}
+		}
+		_, err = consumer.Commit()
+		return err
+	}
 
 	if err != nil {
 		return err
