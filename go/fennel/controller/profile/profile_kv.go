@@ -17,6 +17,7 @@ import (
 
 	"github.com/confluentinc/confluent-kafka-go/kafka"
 	db "github.com/dgraph-io/badger/v3"
+	"github.com/pkg/errors"
 	"go.uber.org/zap"
 	"google.golang.org/protobuf/proto"
 )
@@ -104,7 +105,7 @@ func readBatch(ctx context.Context, consumer libkafka.FConsumer, count int, time
 func TransferToDB(ctx context.Context, tr tier.Tier, consumer libkafka.FConsumer) error {
 	profiles, err := readBatch(ctx, consumer, 950, time.Second*5)
 	if err != nil {
-		return err
+		return errors.Wrap(err, "failed to read batch from kafka")
 	}
 	if len(profiles) == 0 {
 		return nil
@@ -114,25 +115,30 @@ func TransferToDB(ctx context.Context, tr tier.Tier, consumer libkafka.FConsumer
 		writer := badger.NewTransactionalStore(tr, txn)
 		err = profilekv.Set(ctx, profiles, writer)
 		if err != nil {
-			return fmt.Errorf("failed to set profile items: %v", err)
+			return errors.Wrap(err, "failed to set profile items")
 		}
 		partitions, err = consumer.Offsets()
 		if err != nil {
-			return fmt.Errorf("failed to read current kafka offsets")
+			return errors.Wrap(err, "failed to read current kafka offsets")
 		}
 		tr.Logger.Debug("Committing offsets", zap.Any("partitions", partitions))
 		err = offsets.Set(ctx, partitions, writer)
 		if err != nil {
-			return fmt.Errorf("failed to set offsets: %v", err)
+			return errors.Wrap(err, "failed to write offsets")
 		}
 		return nil
 	})
 	if err != nil {
-		return fmt.Errorf("failed to write to badger: %v", err)
+		return errors.Wrap(err, "failed to write badger transaction")
+	}
+	// Sync contents to disk, just to be safe.
+	err = tr.Badger.Sync()
+	if err != nil {
+		return errors.Wrap(err, "failed to sync badger to disk")
 	}
 	_, err = consumer.CommitOffsets(partitions)
 	if err != nil {
-		return fmt.Errorf("failed to commit offsets in kafka: %v", err)
+		return errors.Wrap(err, "failed to commit offsets")
 	}
 	return nil
 }
