@@ -8,6 +8,7 @@ import boto3
 import datetime
 import dateutil.parser as dp 
 import pandas as pd
+import pytz
 from tqdm import tqdm
 
 from rexerclient import client as rexclient
@@ -40,7 +41,7 @@ parser.add_argument("--post_states_path",
     "If the file is being read from S3 bucket, this is the path to the object in the bucket."
     "Assumes this file exists.")
 parser.add_argument("--post_updated_on_path",
-    help="path to the csv file to load post updated_at from."
+    help="path to the csv file to load post updated_on from."
     "If the file is being read from S3 bucket, this is the path to the object in the bucket."
     "Assumes this file exists.")
 parser.add_argument("--post_tags_path",
@@ -72,8 +73,12 @@ _POST_CONSTITUENCIES = "constituencies"
 _POST_DISTRICTS = "districts"
 _POST_STATES = "states"
 _POST_TAGS = "tags"
-_POST_UPDATED_AT = "updated_on"
-_POST_CREATED_AT = "created_on"
+_POST_UPDATED_ON = "updated_on"
+_POST_CREATED_ON = "created_on"
+
+
+# We just set a constant update time for every profile to backfill - this is set to a few days earlier than the live traffic to avoid any potential overwrites
+_UPDATE_TIME = datetime.datetime(year=2022, month=4, day=18, tzinfo=pytz.UTC)
 
 _URL = "http://k8s-t105-aest105e-d6f321c2f7-d4f810982b96255d.elb.ap-south-1.amazonaws.com/data"
 
@@ -104,15 +109,15 @@ def users(s3_client: boto3.client, batch_size: int = 10000) -> List[profile.Prof
 
             district = getattr(row, 'location_id')
             if not pd.isnull(district):
-                profiles.append(profile.Profile(otype=_USER_OTYPE, oid=oid, key=_USER_DISTRICT, value=district))
+                profiles.append(profile.Profile(otype=_USER_OTYPE, oid=str(oid), key=_USER_DISTRICT, value=district, update_time=_UPDATE_TIME))
 
             constituency = getattr(row, 'microlocation_id')
             if not pd.isnull(constituency):
-                profiles.append(profile.Profile(otype=_USER_OTYPE, oid=oid, key=_USER_CONSTITUENCY, value=constituency))
+                profiles.append(profile.Profile(otype=_USER_OTYPE, oid=str(oid), key=_USER_CONSTITUENCY, value=constituency, update_time=_UPDATE_TIME))
 
             created_on = getattr(row, 'created_on')
             if not pd.isnull(created_on):
-                profiles.append(profile.Profile(otype=_USER_OTYPE, oid=oid, key=_USER_CREATED_ON, value=dp.parse(created_on).timestamp()))
+                profiles.append(profile.Profile(otype=_USER_OTYPE, oid=str(oid), key=_USER_CREATED_ON, value=dp.parse(created_on).timestamp(), update_time=_UPDATE_TIME))
 
             if len(profiles) > batch_size:
                 yield profiles
@@ -131,7 +136,7 @@ def posts_categories(s3_client: boto3.client, batch_size: int = 10000) -> List[p
             oid = getattr(row, 'post_id')
             categories = getattr(row, 'categories')
             if not pd.isnull(categories):
-                profiles.append(profile.Profile(otype=_POST_OTYPE, oid=oid, key=_POST_CATEGORIES, value=categories))
+                profiles.append(profile.Profile(otype=_POST_OTYPE, oid=str(oid), key=_POST_CATEGORIES, value=categories, update_time=_UPDATE_TIME))
 
             if len(profiles) > batch_size:
                 yield profiles
@@ -150,7 +155,7 @@ def posts_constituencies(s3_client: boto3.client, batch_size: int = 10000) -> Li
             oid = getattr(row, 'post_id')
             constituencies = getattr(row, 'constituencies')
             if not pd.isnull(constituencies):
-                profiles.append(profile.Profile(otype=_POST_OTYPE, oid=oid, key=_POST_CONSTITUENCIES, value=constituencies))
+                profiles.append(profile.Profile(otype=_POST_OTYPE, oid=str(oid), key=_POST_CONSTITUENCIES, value=constituencies, update_time=_UPDATE_TIME))
 
             if len(profiles) > batch_size:
                 yield profiles
@@ -169,7 +174,7 @@ def posts_locations(s3_client: boto3.client, key: str, file_path: str, batch_siz
             oid = getattr(row, 'post_id')
             locations = getattr(row, 'locations')
             if not pd.isnull(locations):
-                profiles.append(profile.Profile(otype=_POST_OTYPE, oid=oid, key=key, value=locations))
+                profiles.append(profile.Profile(otype=_POST_OTYPE, oid=str(oid), key=key, value=locations, update_time=_UPDATE_TIME))
 
             if len(profiles) > batch_size:
                 yield profiles
@@ -188,7 +193,7 @@ def posts_tags(s3_client: boto3.client, batch_size: int = 10000) -> List[profile
             oid = getattr(row, 'post_id')
             tags = getattr(row, 'tags')
             if not pd.isnull(tags):
-                profiles.append(profile.Profile(otype=_POST_OTYPE, oid=oid, key=_POST_TAGS, value=tags))
+                profiles.append(profile.Profile(otype=_POST_OTYPE, oid=str(oid), key=_POST_TAGS, value=tags, update_time=_UPDATE_TIME))
 
             if len(profiles) > batch_size:
                 yield profiles
@@ -207,7 +212,7 @@ def posts_updated_on(s3_client: boto3.client, batch_size: int = 10000) -> List[p
             oid = getattr(row, 'id')
             updated_on = getattr(row, 'updated_on')
             if not pd.isnull(updated_on):
-                profiles.append(profile.Profile(otype=_POST_OTYPE, oid=oid, key=_POST_UPDATED_AT, value=dp.parse(updated_on).timestamp()))
+                profiles.append(profile.Profile(otype=_POST_OTYPE, oid=str(oid), key=_POST_UPDATED_ON, value=dp.parse(updated_on).timestamp(), update_time=_UPDATE_TIME))
 
             if len(profiles) > batch_size:
                 yield profiles
@@ -226,7 +231,7 @@ def posts_created_on(s3_client: boto3.client, batch_size: int = 10000) -> List[p
             oid = getattr(row, 'post_id')
             created_on = getattr(row, 'created_on')
             if not pd.isnull(created_on):
-                profiles.append(profile.Profile(otype=_POST_OTYPE, oid=oid, key=_POST_CREATED_AT, value=dp.parse(created_on).timestamp()))
+                profiles.append(profile.Profile(otype=_POST_OTYPE, oid=str(oid), key=_POST_CREATED_ON, value=dp.parse(created_on).timestamp(), update_time=_UPDATE_TIME))
 
             if len(profiles) > batch_size:
                 yield profiles
