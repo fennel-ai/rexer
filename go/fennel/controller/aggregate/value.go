@@ -13,6 +13,7 @@ import (
 	"fennel/kafka"
 	libaction "fennel/lib/action"
 	"fennel/lib/aggregate"
+	libcounter "fennel/lib/counter"
 	"fennel/lib/ftypes"
 	"fennel/lib/value"
 	modelCounter "fennel/model/counter"
@@ -160,6 +161,22 @@ func Update(ctx context.Context, tier tier.Tier, consumer kafka.FConsumer, agg a
 		return nil
 	}
 	table, err := transformActions(tier, actions, agg.Query)
+
+	// Offline Aggregates
+	if agg.Options.CronSchedule != "" {
+		offlineTransformProducer := tier.Producers[libcounter.AGGREGATE_OFFLINE_TRANSFORM_TOPIC_NAME]
+		for i := 0; i < table.Len(); i++ {
+			rowVal, _ := table.At(i)
+			dict, _ := rowVal.(value.Dict)
+			dict.Set("aggregate", value.String(agg.Name))
+			err = offlineTransformProducer.Log(ctx, value.ToJSON(dict), nil)
+			if err != nil {
+				tier.Logger.Error(fmt.Sprintf("failed to log action proto: %v", err))
+			}
+		}
+		_, err = consumer.Commit()
+		return err
+	}
 
 	if err != nil {
 		return err
