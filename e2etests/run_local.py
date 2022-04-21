@@ -14,19 +14,8 @@ import signal
 import sys
 from threading import Event
 
+# Url of the local server
 URL = 'http://localhost:2425'
-
-# env = os.environ.copy()
-
-# def signal_handler(sig, frame):
-#     print('You pressed Ctrl+C!')
-#     lib.gorun('fennel/test/cmds/tiergod', 'dynamic,integration', env, flags=['--mode', 'destroy'],
-#                        wait=True)
-#     sys.exit(0)
-
-
-
-
 class LocalTier():
     def __init__(self, flags=None):
         self.http_process = lib.Process(None, None, None, None)
@@ -67,5 +56,3 @@ class LocalTier():
 if __name__ == '__main__':
     local_tier = LocalTier()
     local_tier.run_local_server()
-
-    #local_tier.run_local_server()
