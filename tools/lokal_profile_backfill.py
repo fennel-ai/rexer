@@ -80,7 +80,7 @@ _POST_CREATED_ON = "created_on"
 # We just set a constant update time for every profile to backfill - this is set to a few days earlier than the live traffic to avoid any potential overwrites
 _UPDATE_TIME = datetime.datetime(year=2022, month=4, day=18, tzinfo=pytz.UTC)
 
-_URL = "http://k8s-t105-aest105e-d6f321c2f7-d4f810982b96255d.elb.ap-south-1.amazonaws.com/data"
+_URL = "http://k8s-t111-aest111e-945d1e9e8a-a97655548a1a3dce.elb.ap-south-1.amazonaws.com/data"
 
 _CSV_EXTENSION = ".csv"
 
