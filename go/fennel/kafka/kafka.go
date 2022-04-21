@@ -29,6 +29,8 @@ type FConsumer interface {
 	ReadBatch(ctx context.Context, upto int, timeout time.Duration) ([][]byte, error)
 	Backlog() (int, error)
 	Commit() (kafka.TopicPartitions, error)
+	CommitOffsets(kafka.TopicPartitions) (kafka.TopicPartitions, error)
+	Offsets() (kafka.TopicPartitions, error)
 	GroupID() string
 }
 
