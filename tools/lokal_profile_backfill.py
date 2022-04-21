@@ -3,6 +3,7 @@ import sys
 from typing import List
 
 import argparse
+import ast
 from venv import create
 import boto3
 import datetime
@@ -113,7 +114,8 @@ def users(s3_client: boto3.client, batch_size: int = 10000) -> List[profile.Prof
 
             constituency = getattr(row, 'microlocation_id')
             if not pd.isnull(constituency):
-                profiles.append(profile.Profile(otype=_USER_OTYPE, oid=str(oid), key=_USER_CONSTITUENCY, value=constituency, update_time=_UPDATE_TIME))
+                # Few of the columns (potentially from the test data or so) has constituency value as `float`. However their live traffic sends us ints, hence explicitly type casting this to int
+                profiles.append(profile.Profile(otype=_USER_OTYPE, oid=str(oid), key=_USER_CONSTITUENCY, value=int(constituency), update_time=_UPDATE_TIME))
 
             created_on = getattr(row, 'created_on')
             if not pd.isnull(created_on):
@@ -136,7 +138,7 @@ def posts_categories(s3_client: boto3.client, batch_size: int = 10000) -> List[p
             oid = getattr(row, 'post_id')
             categories = getattr(row, 'categories')
             if not pd.isnull(categories):
-                profiles.append(profile.Profile(otype=_POST_OTYPE, oid=str(oid), key=_POST_CATEGORIES, value=categories, update_time=_UPDATE_TIME))
+                profiles.append(profile.Profile(otype=_POST_OTYPE, oid=str(oid), key=_POST_CATEGORIES, value=ast.literal_eval(categories), update_time=_UPDATE_TIME))
 
             if len(profiles) > batch_size:
                 yield profiles
@@ -155,7 +157,7 @@ def posts_constituencies(s3_client: boto3.client, batch_size: int = 10000) -> Li
             oid = getattr(row, 'post_id')
             constituencies = getattr(row, 'constituencies')
             if not pd.isnull(constituencies):
-                profiles.append(profile.Profile(otype=_POST_OTYPE, oid=str(oid), key=_POST_CONSTITUENCIES, value=constituencies, update_time=_UPDATE_TIME))
+                profiles.append(profile.Profile(otype=_POST_OTYPE, oid=str(oid), key=_POST_CONSTITUENCIES, value=ast.literal_eval(constituencies), update_time=_UPDATE_TIME))
 
             if len(profiles) > batch_size:
                 yield profiles
@@ -174,7 +176,7 @@ def posts_locations(s3_client: boto3.client, key: str, file_path: str, batch_siz
             oid = getattr(row, 'post_id')
             locations = getattr(row, 'locations')
             if not pd.isnull(locations):
-                profiles.append(profile.Profile(otype=_POST_OTYPE, oid=str(oid), key=key, value=locations, update_time=_UPDATE_TIME))
+                profiles.append(profile.Profile(otype=_POST_OTYPE, oid=str(oid), key=key, value=ast.literal_eval(locations), update_time=_UPDATE_TIME))
 
             if len(profiles) > batch_size:
                 yield profiles
