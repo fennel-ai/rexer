@@ -19,16 +19,15 @@ import (
 	"fennel/resource"
 	"fennel/s3"
 	"fennel/sagemaker"
-
 	"github.com/dgraph-io/badger/v3"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 )
 
 type TierArgs struct {
-	sagemaker.SagemakerArgs `json:"sagemaker_._sagemaker_args"`
-	ModelStoreS3Bucket      string `arg:"--model-store-s3-bucket,env:MODEL_STORE_S3_BUCKET,help:Model Store S3 bucket name"`
-	ModelStoreEndpointName  string `arg:"--model-store-endpoint,env:MODEL_STORE_ENDPOINT,help:Model Store endpoint name"`
+	s3.S3Args                 `json:"s3_._s3_args"`
+	sagemaker.SagemakerArgs   `json:"sagemaker_._sagemaker_args"`
+	modelstore.ModelStoreArgs `json:"modelstore_._model_store_args"`
 
 	KafkaServer   string         `arg:"--kafka-server,env:KAFKA_SERVER_ADDRESS" json:"kafka_server,omitempty"`
 	KafkaUsername string         `arg:"--kafka-user,env:KAFKA_USERNAME" json:"kafka_username,omitempty"`
@@ -82,14 +81,7 @@ func (args TierArgs) Valid() error {
 	if args.BadgerDir == "" {
 		missingFields = append(missingFields, "BADGER_DIR")
 	}
-	/*
-		if args.ModelStoreS3Bucket == "" {
-			missingFields = append(missingFields, "MODEL_STORE_S3_BUCKET")
-		}
-		if args.ModelStoreEndpointName == "" {
-			missingFields = append(missingFields, "MODEL_STORE_ENDPOINT")
-		}
-	*/
+	// TODO: require args when ready for s3, modelStore, sagemaker
 	if len(missingFields) > 0 {
 		return fmt.Errorf("missing fields: %s", strings.Join(missingFields, ", "))
 	}
@@ -216,23 +208,11 @@ func CreateFromArgs(args *TierArgs) (tier Tier, err error) {
 	logger = logger.With(zap.Uint32("tier_id", args.TierID.Value()))
 
 	smclient, err := sagemaker.NewClient(args.SagemakerArgs)
-	// use below instead for sagemaker e2e test to run
-	// smclient, err := sagemaker.NewClient(sagemaker.SagemakerArgs{
-	//     Region:                 "ap-south-1",
-	//     SagemakerExecutionRole: "arn:aws:iam::030813887342:role/service-role/AmazonSageMaker-ExecutionRole-20220315T123828",
-	// })
 	if err != nil {
 		return tier, fmt.Errorf("failed to create sagemaker client: %v", err)
 	}
-
-	// TODO - get region from own args
-	s3Args := s3.S3Args{Region: args.SagemakerArgs.Region}
-	s3client := s3.NewClient(s3Args)
-	// use below instead for sagemaker e2e test to run
-	// s3Args := s3.S3Args{Region: "ap-south-1"}
-	// s3client := s3.NewClient(s3Args)
-
-	modelStore := modelstore.NewModelStore(args.ModelStoreS3Bucket, args.ModelStoreEndpointName)
+	s3client := s3.NewClient(args.S3Args, tierID)
+	modelStore := modelstore.NewModelStore(args.ModelStoreArgs, tierID)
 
 	log.Print("Creating badger")
 	opts := badger.DefaultOptions(args.BadgerDir)

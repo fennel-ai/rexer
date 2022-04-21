@@ -12,31 +12,31 @@ import (
 	"fennel/tier"
 )
 
-func Store(ctx context.Context, tier tier.Tier, req lib.ModelInsertRequest) error {
+func Store(ctx context.Context, tier tier.Tier, req lib.ModelUploadRequest) (error, bool) {
 	// lock to avoid race condition when two models are being attempted to stored with room only for one more model
 	// TODO - does not work across servers, so should use distributed lock
 	tier.ModelStore.Lock()
 	defer tier.ModelStore.Unlock()
-	err := EnsureEndpointInService(ctx, tier)
+	err, retry := EnsureEndpointInService(ctx, tier)
 	if err != nil {
-		return err
+		return err, retry
 	}
 
 	// check there are no more than 15 active models
 	// sagemaker does not allow more than 15 models with different containers on one endpoint
 	activeModels, err := db.GetActiveModels(tier)
 	if err != nil {
-		return fmt.Errorf("failed to get active models from db: %v", err)
+		return fmt.Errorf("failed to get active models from db: %v", err), false
 	}
-	if len(activeModels) >= 25 {
-		return fmt.Errorf("cannot have more than 15 active models: %v", err)
+	if len(activeModels) >= 15 {
+		return fmt.Errorf("cannot have more than 15 active models: %v", err), false
 	}
 
 	// upload to s3
 	fileName := lib.GetContainerName(req.Name, req.Version)
 	err = tier.S3Client.Upload(req.ModelFile, fileName, tier.ModelStore.S3Bucket())
 	if err != nil {
-		return fmt.Errorf("failed to upload model to s3: %v", err)
+		return fmt.Errorf("failed to upload model to s3: %v", err), false
 	}
 
 	// now insert into db
@@ -50,44 +50,63 @@ func Store(ctx context.Context, tier tier.Tier, req lib.ModelInsertRequest) erro
 	}
 	_, err = db.InsertModel(tier, model)
 	if err != nil {
-		return fmt.Errorf("failed to insert model in db: %v", err)
+		return fmt.Errorf("failed to insert model in db: %v", err), false
 	}
-	return EnsureEndpointExists(ctx, tier)
+	return EnsureEndpointExists(ctx, tier), false
 }
 
-func Remove(ctx context.Context, tier tier.Tier, name, version string) error {
+func Remove(ctx context.Context, tier tier.Tier, name, version string) (error, bool) {
 	tier.ModelStore.Lock()
 	defer tier.ModelStore.Unlock()
-	err := EnsureEndpointInService(ctx, tier)
+	err, retry := EnsureEndpointInService(ctx, tier)
 	if err != nil {
-		return err
+		return err, retry
 	}
 
 	// delete from s3
 	err = tier.S3Client.Delete(lib.GetContainerName(name, version), tier.ModelStore.S3Bucket())
 	if err != nil {
-		return fmt.Errorf("failed to delete model from s3: %v", err)
+		return fmt.Errorf("failed to delete model from s3: %v", err), false
 	}
 	err = db.MakeModelInactive(tier, name, version)
 	if err != nil {
-		return fmt.Errorf("failed to deactivate model in db: %v", err)
+		return fmt.Errorf("failed to deactivate model in db: %v", err), false
 	}
-	return EnsureEndpointExists(ctx, tier)
+	return EnsureEndpointExists(ctx, tier), false
 }
 
-func Score(ctx context.Context, tier tier.Tier, req lib.ScoreRequest) ([]value.Value, error) {
+func Score(ctx context.Context, tier tier.Tier, name, version string, featureVecs []value.List) ([]value.Value, error, bool) {
 	tier.ModelStore.Lock()
 	defer tier.ModelStore.Unlock()
-	err := EnsureEndpointInService(ctx, tier)
-	if err != nil {
-		return nil, err
-	}
 
-	response, err := tier.SagemakerClient.Score(ctx, tier.ModelStore.EndpointName(), &req)
-	if err != nil {
-		return nil, fmt.Errorf("failed to score model: %v", err)
+	req := lib.ScoreRequest{
+		EndpointName: tier.ModelStore.EndpointName(),
+		ModelName:    name,
+		ModelVersion: version,
+		FeatureLists: featureVecs,
 	}
-	return response.Scores, nil
+	response, err := tier.SagemakerClient.Score(ctx, &req)
+	if err != nil {
+		status, err2 := tier.SagemakerClient.GetEndpointStatus(ctx, tier.ModelStore.EndpointName())
+		if err2 != nil {
+			return nil, fmt.Errorf("failed to score the model: %v; %v", err, err2), false
+		}
+		if status == "Updating" {
+			cover, err2 := db.GetCoveringHostedModels(tier)
+			if err2 != nil {
+				return nil, fmt.Errorf("failed to score the model: %v; %v", err, err2), false
+			}
+			ok, err2 := tier.SagemakerClient.ModelExists(ctx, cover[0])
+			if err2 != nil {
+				return nil, fmt.Errorf("failed to score the model: %v; %v", err, err2), false
+			}
+			if ok {
+				return nil, fmt.Errorf("failed to score the model: endpoint not updated with new model yet"), true
+			}
+		}
+		return nil, fmt.Errorf("failed to score the model: %v", err), false
+	}
+	return response.Scores, nil, false
 }
 
 func EnsureEndpointExists(ctx context.Context, tier tier.Tier) error {
@@ -207,14 +226,14 @@ func EnsureEndpointExists(ctx context.Context, tier tier.Tier) error {
 	return nil
 }
 
-func EnsureEndpointInService(ctx context.Context, tier tier.Tier) error {
+func EnsureEndpointInService(ctx context.Context, tier tier.Tier) (error, bool) {
 	endpointName := tier.ModelStore.EndpointName()
 	status, err := tier.SagemakerClient.GetEndpointStatus(ctx, endpointName)
 	if err != nil {
-		return fmt.Errorf("failed to get endpoint status: %v", err)
+		return fmt.Errorf("failed to get endpoint status: %v", err), false
 	}
-	if status != "InService" {
-		return fmt.Errorf("endpoint not in service; current endpoint status: %s", status)
+	if status == "Updating" || status == "SystemUpdating" {
+		return fmt.Errorf("endpoint is updating, please wait for a few minutes"), true
 	}
-	return nil
+	return nil, false
 }

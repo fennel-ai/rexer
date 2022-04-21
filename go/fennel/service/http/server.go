@@ -28,7 +28,6 @@ import (
 	"fennel/lib/timer"
 	"fennel/lib/value"
 	"fennel/tier"
-
 	"github.com/buger/jsonparser"
 	"github.com/gorilla/mux"
 	"github.com/prometheus/client_golang/prometheus"
@@ -97,7 +96,6 @@ func (s server) setHandlers(router *mux.Router) {
 	router.HandleFunc("/get_operators", s.GetOperators)
 	router.HandleFunc("/upload_model", s.UploadModel)
 	router.HandleFunc("/delete_model", s.DeleteModel)
-	router.HandleFunc("/score_model", s.ScoreModel)
 }
 
 func (m server) Log(w http.ResponseWriter, req *http.Request) {
@@ -499,16 +497,20 @@ func (m server) UploadModel(w http.ResponseWriter, req *http.Request) {
 		handleBadRequest(w, "", err)
 		return
 	}
-	modelReq := sagemaker.ModelInsertRequest{
+	modelReq := sagemaker.ModelUploadRequest{
 		Name:             values["name"],
 		Version:          values["version"],
 		Framework:        values["framework"],
 		FrameworkVersion: values["framework_version"],
 		ModelFile:        modelFile,
 	}
-	err = modelstore.Store(req.Context(), m.tier, modelReq)
+	err, retry := modelstore.Store(req.Context(), m.tier, modelReq)
 	if err != nil {
-		handleBadRequest(w, "", err)
+		if retry {
+			handleServiceUnavailable(w, "", err)
+		} else {
+			handleInternalServerError(w, "", err)
+		}
 		return
 	}
 }
@@ -527,58 +529,15 @@ func (m server) DeleteModel(w http.ResponseWriter, req *http.Request) {
 		handleBadRequest(w, "invalid request: ", err)
 		return
 	}
-	err = modelstore.Remove(req.Context(), m.tier, delReq.Name, delReq.Version)
-}
-
-func (m server) ScoreModel(w http.ResponseWriter, req *http.Request) {
-	data, err := readRequest(req)
+	err, retry := modelstore.Remove(req.Context(), m.tier, delReq.Name, delReq.Version)
 	if err != nil {
-		handleBadRequest(w, "", err)
-		return
-	}
-	var scoreReq struct {
-		ModelName    string
-		ModelVersion string
-	}
-	if err := json.Unmarshal(data, &scoreReq); err != nil {
-		handleBadRequest(w, "invalid request: ", err)
-		return
-	}
-	vdata, vtype, _, err := jsonparser.Get(data, "FeatureLists")
-	if vtype != jsonparser.Array {
-		handleBadRequest(w, "", fmt.Errorf("expected feature lists to be a JSON array but found JSON type: %v", vtype))
-		return
-	}
-	val, err := value.FromJSON(vdata)
-	if err != nil {
-		handleBadRequest(w, "", err)
-		return
-	}
-	vList, ok := val.(value.List)
-	if !ok {
-		handleBadRequest(w, "", fmt.Errorf("expected feature lists Value to be of type list but found: %v", val))
-		return
-	}
-	fLists := make([]value.List, vList.Len())
-	for i := 0; i < vList.Len(); i++ {
-		v, _ := vList.At(i)
-		l, ok := v.(value.List)
-		if !ok {
-			handleBadRequest(w, "", fmt.Errorf("expected each feature list to be a list but found: %v", v))
-			return
+		if retry {
+			handleServiceUnavailable(w, "", err)
+		} else {
+			handleInternalServerError(w, "", err)
 		}
-		fLists[i] = l
-	}
-	res, err := modelstore.Score(req.Context(), m.tier, sagemaker.ScoreRequest{
-		ModelName:    scoreReq.ModelName,
-		ModelVersion: scoreReq.ModelVersion,
-		FeatureLists: fLists,
-	})
-	if err != nil {
-		handleInternalServerError(w, "", err)
 		return
 	}
-	w.Write(value.ToJSON(value.NewList(res...)))
 }
 
 func (m server) GetOperators(w http.ResponseWriter, req *http.Request) {
@@ -602,6 +561,11 @@ func handleBadRequest(w http.ResponseWriter, errorPrefix string, err error) {
 
 func handleInternalServerError(w http.ResponseWriter, errorPrefix string, err error) {
 	http.Error(w, fmt.Sprintf("%s%v", errorPrefix, err), http.StatusInternalServerError)
+	log.Printf("Error: %v", err)
+}
+
+func handleServiceUnavailable(w http.ResponseWriter, errorPrefix string, err error) {
+	http.Error(w, fmt.Sprintf("%s%v", errorPrefix, err), http.StatusServiceUnavailable)
 	log.Printf("Error: %v", err)
 }
 

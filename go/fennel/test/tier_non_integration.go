@@ -45,12 +45,12 @@ func Tier() (tier.Tier, error) {
 	}
 
 	// TODO - decide what region to use for test tier
-	s3Client := s3.NewClient(s3.S3Args{Region: "ap-south-1"})
+	s3Client := s3.NewClient(s3.S3Args{Region: "ap-south-1"}, tierID)
 
-	modelStore := modelstore.NewModelStore(
-		os.Getenv("MODEL_STORE_S3_BUCKET"),
-		os.Getenv("MODEL_STORE_ENDPOINT"),
-	)
+	modelStore := modelstore.NewModelStore(modelstore.ModelStoreArgs{
+		ModelStoreS3Bucket:     os.Getenv("MODEL_STORE_S3_BUCKET"),
+		ModelStoreEndpointName: os.Getenv("MODEL_STORE_ENDPOINT"),
+	}, tierID)
 
 	logger, err := zap.NewDevelopment()
 	if err != nil {
@@ -74,7 +74,7 @@ func Tier() (tier.Tier, error) {
 		ModelStore:       modelStore,
 		Logger:           logger,
 		Badger:           badger,
-	}, err
+	}, nil
 }
 
 func Teardown(tier tier.Tier) error {

@@ -13,7 +13,7 @@ type Model struct {
 	LastModified     int64  `db:"last_modified"`
 }
 
-type ModelInsertRequest struct {
+type ModelUploadRequest struct {
 	Name             string
 	Version          string
 	Framework        string

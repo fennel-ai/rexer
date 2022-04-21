@@ -109,6 +109,11 @@ func main() {
 	if err != nil {
 		panic(fmt.Sprintf("Failed to setup tier connectors: %v", err))
 	}
+	// uncomment below for e2e test to run
+	//err = sagemaker.AddSagemakerDataToTier(&tier)
+	//if err != nil {
+	//	panic(fmt.Sprintf("Failed to setup for e2e test: %v", err))
+	//}
 
 	router := mux.NewRouter()
 

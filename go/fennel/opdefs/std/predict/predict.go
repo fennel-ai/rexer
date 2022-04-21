@@ -7,7 +7,6 @@ import (
 	"fennel/controller/modelstore"
 	"fennel/engine/interpreter/bootarg"
 	"fennel/engine/operators"
-	"fennel/lib/sagemaker"
 	"fennel/lib/value"
 	"fennel/tier"
 )
@@ -55,11 +54,7 @@ func (pop predictOperator) Apply(ctx context.Context, staticKwargs value.Dict, i
 	modelName := staticKwargs.GetUnsafe("model_name").(value.String)
 	modelVersion := staticKwargs.GetUnsafe("model_version").(value.String)
 	// TODO: Split into correctly sized requests instead of just 1.
-	scores, err := modelstore.Score(ctx, pop.tier, sagemaker.ScoreRequest{
-		ModelName:    string(modelName),
-		ModelVersion: string(modelVersion),
-		FeatureLists: featureVecs,
-	})
+	scores, err, _ := modelstore.Score(ctx, pop.tier, string(modelName), string(modelVersion), featureVecs)
 	if err != nil {
 		return err
 	}
