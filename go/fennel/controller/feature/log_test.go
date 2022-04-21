@@ -38,7 +38,11 @@ func TestLogMulti_Kafka(t *testing.T) {
 	}
 	err = LogMulti(ctx, tier, rows)
 	assert.NoError(t, err)
-	consumer, err := tier.NewKafkaConsumer(feature.KAFKA_TOPIC_NAME, "somegroup", "earliest")
+	consumer, err := tier.NewKafkaConsumer(kafka.ConsumerConfig{
+		Topic:        feature.KAFKA_TOPIC_NAME,
+		GroupID:      "somegroup",
+		OffsetPolicy: kafka.DefaultOffsetPolicy,
+	})
 	for i := 0; i < 10; i++ {
 		data, err := consumer.Read(ctx, -1)
 		assert.NoError(t, err)
@@ -70,7 +74,11 @@ func TestLog_Read(t *testing.T) {
 
 	err = Log(ctx, tier, row)
 	assert.NoError(t, err)
-	consumer, err := tier.NewKafkaConsumer(feature.KAFKA_TOPIC_NAME, "testgroup", kafka.DefaultOffsetPolicy)
+	consumer, err := tier.NewKafkaConsumer(kafka.ConsumerConfig{
+		Topic:        feature.KAFKA_TOPIC_NAME,
+		GroupID:      "testgroup",
+		OffsetPolicy: kafka.DefaultOffsetPolicy,
+	})
 	assert.NoError(t, err)
 	defer consumer.Close()
 	rowptr, err := Read(ctx, consumer)

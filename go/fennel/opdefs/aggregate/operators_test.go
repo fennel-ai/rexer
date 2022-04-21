@@ -9,6 +9,7 @@ import (
 	controller_action "fennel/controller/action"
 	"fennel/controller/aggregate"
 	"fennel/engine/ast"
+	"fennel/kafka"
 	"fennel/lib/action"
 	libaggregate "fennel/lib/aggregate"
 	"fennel/lib/ftypes"
@@ -60,9 +61,18 @@ func TestAggValue_Apply(t *testing.T) {
 	err = controller_action.Insert(ctx, tier, a)
 	assert.NoError(t, err)
 	clock.Set(t0 + 3600)
-	consumer, err := tier.NewKafkaConsumer(action.ACTIONLOG_KAFKA_TOPIC, string(agg.Name), "earliest")
+	consumer, err := tier.NewKafkaConsumer(kafka.ConsumerConfig{
+		Topic:        action.ACTIONLOG_KAFKA_TOPIC,
+		GroupID:      string(agg.Name),
+		OffsetPolicy: kafka.DefaultOffsetPolicy,
+	})
+	assert.NoError(t, err)
 	defer consumer.Close()
-	consumer2, err := tier.NewKafkaConsumer(action.ACTIONLOG_KAFKA_TOPIC, string(agg2.Name), "earliest")
+	consumer2, err := tier.NewKafkaConsumer(kafka.ConsumerConfig{
+		Topic:        action.ACTIONLOG_KAFKA_TOPIC,
+		GroupID:      string(agg2.Name),
+		OffsetPolicy: kafka.DefaultOffsetPolicy,
+	})
 	defer consumer2.Close()
 	assert.NoError(t, err)
 	assert.NoError(t, aggregate.Update(ctx, tier, consumer, agg))

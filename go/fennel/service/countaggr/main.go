@@ -41,7 +41,11 @@ func logKafkaLag(t tier.Tier, consumer kafka.FConsumer) {
 }
 
 func processAggregate(tr tier.Tier, agg libaggregate.Aggregate) error {
-	consumer, err := tr.NewKafkaConsumer(action.ACTIONLOG_KAFKA_TOPIC, string(agg.Name), kafka.DefaultOffsetPolicy)
+	consumer, err := tr.NewKafkaConsumer(kafka.ConsumerConfig{
+		Topic:        action.ACTIONLOG_KAFKA_TOPIC,
+		GroupID:      string(agg.Name),
+		OffsetPolicy: kafka.DefaultOffsetPolicy,
+	})
 	if err != nil {
 		return fmt.Errorf("unable to start consumer for aggregate: %s. Error: %v", agg.Name, err)
 	}
@@ -64,7 +68,11 @@ func processAggregate(tr tier.Tier, agg libaggregate.Aggregate) error {
 }
 
 func startActionDBInsertion(tr tier.Tier) error {
-	consumer, err := tr.NewKafkaConsumer(action.ACTIONLOG_KAFKA_TOPIC, "_put_actions_in_db", kafka.DefaultOffsetPolicy)
+	consumer, err := tr.NewKafkaConsumer(kafka.ConsumerConfig{
+		Topic:        action.ACTIONLOG_KAFKA_TOPIC,
+		GroupID:      "_put_actions_in_db",
+		OffsetPolicy: kafka.DefaultOffsetPolicy,
+	})
 	if err != nil {
 		return fmt.Errorf("unable to start consumer for inserting actions in DB: %v", err)
 	}
@@ -83,7 +91,11 @@ func startActionDBInsertion(tr tier.Tier) error {
 }
 
 func startProfileDBInsertion(tr tier.Tier) error {
-	consumer, err := tr.NewKafkaConsumer(profile.PROFILELOG_KAFKA_TOPIC, "_put_profiles_in_db", kafka.DefaultOffsetPolicy)
+	consumer, err := tr.NewKafkaConsumer(kafka.ConsumerConfig{
+		Topic:        profile.PROFILELOG_KAFKA_TOPIC,
+		GroupID:      "_put_profiles_in_db",
+		OffsetPolicy: kafka.DefaultOffsetPolicy,
+	})
 	if err != nil {
 		return fmt.Errorf("unable to start consumer for inserting profiles in DB: %v", err)
 	}

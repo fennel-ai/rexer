@@ -163,15 +163,21 @@ func (k RemoteConsumer) Backlog() (int, error) {
 	return n, nil
 }
 
+type ConsumerConfig struct {
+	GroupID      string
+	OffsetPolicy string
+	Topic        string
+	// List of topic partitions to consume from. If empty, consume from broker
+	// assigned partitions.
+	Partitions kafka.TopicPartitions
+}
+
 type RemoteConsumerConfig struct {
+	ConsumerConfig
+	Scope           resource.Scope
 	BootstrapServer string
 	Username        string
 	Password        string
-	GroupID         string
-	OffsetPolicy    string
-	Topic           string
-	Partitions      kafka.TopicPartitions
-	Scope           resource.Scope
 }
 
 func (conf RemoteConsumerConfig) Materialize() (resource.Resource, error) {

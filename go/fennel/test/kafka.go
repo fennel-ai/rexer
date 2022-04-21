@@ -30,15 +30,15 @@ func createMockKafka(tierID ftypes.RealmID) (map[string]fkafka.FProducer, tier.K
 		}
 		producers[topic] = kProducer.(fkafka.FProducer)
 	}
-	consumerCreator := func(topic, groupID, offsetPolicy string) (fkafka.FConsumer, error) {
-		broker, ok := brokerMap[topic]
+	consumerCreator := func(config fkafka.ConsumerConfig) (fkafka.FConsumer, error) {
+		broker, ok := brokerMap[config.Topic]
 		if !ok {
-			return nil, fmt.Errorf("unrecognized topic: %v", topic)
+			return nil, fmt.Errorf("unrecognized topic: %v", config.Topic)
 		}
 		kConsumer, err := fkafka.MockConsumerConfig{
 			Broker:  broker,
-			Topic:   scope.PrefixedName(topic),
-			GroupID: groupID,
+			Topic:   scope.PrefixedName(config.Topic),
+			GroupID: config.GroupID,
 		}.Materialize()
 		if err != nil {
 			return nil, err
