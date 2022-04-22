@@ -20,11 +20,19 @@ func Store(ctx context.Context, tier tier.Tier, req lib.ModelUploadRequest) (err
 	// TODO - does not work across servers, so should use distributed lock
 	tier.ModelStore.Lock()
 	defer tier.ModelStore.Unlock()
-	// Wait for endpoint to be in service as we cannot make changes to the endpoint when it is not in service.
-	err, retry = EnsureEndpointInService(ctx, tier)
+	ok, err := tier.SagemakerClient.EndpointExists(ctx, tier.ModelStore.EndpointName())
 	if err != nil {
-		return err, retry
+		return fmt.Errorf("failed to store model: %v", err), false
 	}
+	if ok {
+		// If endpoint exists, wait for it to be in service as we cannot make changes to the endpoint
+		// when it is not in service.
+		err, retry = EnsureEndpointInService(ctx, tier)
+		if err != nil {
+			return err, retry
+		}
+	}
+	// If it does not exist, it will be created later
 
 	// check there are no more than 15 active models
 	// sagemaker does not allow more than 15 models with different containers on one endpoint
@@ -64,11 +72,19 @@ func Store(ctx context.Context, tier tier.Tier, req lib.ModelUploadRequest) (err
 func Remove(ctx context.Context, tier tier.Tier, name, version string) (err error, retry bool) {
 	tier.ModelStore.Lock()
 	defer tier.ModelStore.Unlock()
-	// Wait for endpoint to be in service as we cannot make changes to the endpoint when it is not in service.
-	err, retry = EnsureEndpointInService(ctx, tier)
+	ok, err := tier.SagemakerClient.EndpointExists(ctx, tier.ModelStore.EndpointName())
 	if err != nil {
-		return err, retry
+		return fmt.Errorf("failed to delete model: %v", err), false
 	}
+	if ok {
+		// If endpoint exists, wait for it to be in service as we cannot make changes to the endpoint
+		// when it is not in service.
+		err, retry = EnsureEndpointInService(ctx, tier)
+		if err != nil {
+			return err, retry
+		}
+	}
+	// If it does not exist, it will be created later
 
 	// delete from s3
 	err = tier.S3Client.Delete(getPath(tier.ID, lib.GetContainerName(name, version)), tier.ModelStore.S3Bucket())
