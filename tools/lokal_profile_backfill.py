@@ -49,6 +49,7 @@ parser.add_argument("--post_tags_path",
     help="path to the csv file to load post tags from."
     "If the file is being read from S3 bucket, this is the path to the object in the bucket."
     "Assumes this file exists.")
+parser.add_argument("--post_reporter_path", help="path to the csv file to load post reporters from.")
 
 args = parser.parse_args()
 
@@ -62,6 +63,7 @@ _POST_DISTRICTS_PATH: os.PathLike = args.post_districts_path
 _POST_STATES_PATH: os.PathLike = args.post_states_path
 _POST_UPDATED_ON_PATH: os.PathLike = args.post_updated_on_path
 _POST_TAGS_PATH: os.PathLike = args.post_tags_path
+_POST_REPORTER_PATH: os.PathLike = args.post_reporter_path
 
 _USER_OTYPE = "users"
 _USER_DISTRICT = "district"
@@ -76,6 +78,7 @@ _POST_STATES = "states"
 _POST_TAGS = "tags"
 _POST_UPDATED_ON = "updated_on"
 _POST_CREATED_ON = "created_on"
+_POST_REPORTER = "reporter"
 
 
 # We just set a constant update time for every profile to backfill - this is set to a few days earlier than the live traffic to avoid any potential overwrites
@@ -244,42 +247,73 @@ def posts_created_on(s3_client: boto3.client, batch_size: int = 10000) -> List[p
     yield profiles
 
 
+def post_reporters(s3_client: boto3.client, batch_size: int = 10000) -> List[profile.Profile]:
+    posts_df = get_csv(s3_client=s3_client, file_path=_POST_REPORTER_PATH)
+    total_entries = len(posts_df)
+    profiles = []
+    with tqdm(total = total_entries, file = sys.stdout) as pbar:
+        for row in posts_df.itertuples(index=False):
+            oid = getattr(row, 'id')
+            reported_id = getattr(row, 'reporter_id')
+            if not pd.isnull(reported_id):
+                profiles.append(profile.Profile(otype=_POST_OTYPE, oid=str(oid), key=_POST_REPORTER, value=int(reported_id), update_time=_UPDATE_TIME))
+
+            if len(profiles) > batch_size:
+                yield profiles
+                del profiles[:]
+            pbar.update(1)
+
+    yield profiles
+
+
 def main():
     start = datetime.datetime.now().timestamp()
     s3_client = boto3.client("s3")
     rexer_client = rexclient.Client(_URL)
 
-    print('========== processing user profiles ==========\n')
-    for batch in users(s3_client=s3_client):
-        rexer_client.set_profiles(batch)
+    if _USERS_PATH:
+        print('========== processing user profiles ==========\n')
+        for batch in users(s3_client=s3_client):
+            rexer_client.set_profiles(batch)
 
-    print('========== processing posts_categories ==========\n')
-    for batch in posts_categories(s3_client):
-        rexer_client.set_profiles(batch)
+    if _POST_CATEGORIES_PATH:
+        print('========== processing posts_categories ==========\n')
+        for batch in posts_categories(s3_client):
+            rexer_client.set_profiles(batch)
 
-    print('========== processing posts_constituencies ==========\n')
-    for batch in posts_constituencies(s3_client):
-        rexer_client.set_profiles(batch)
+    if _POST_CONSTITUENCIES_PATH:
+        print('========== processing posts_constituencies ==========\n')
+        for batch in posts_constituencies(s3_client):
+            rexer_client.set_profiles(batch)
 
-    print('========== processing posts_states ==========\n')
-    for batch in posts_locations(s3_client, key=_POST_STATES, file_path=_POST_STATES_PATH):
-        rexer_client.set_profiles(batch)
+    if _POST_STATES_PATH:
+        print('========== processing posts_states ==========\n')
+        for batch in posts_locations(s3_client, key=_POST_STATES, file_path=_POST_STATES_PATH):
+            rexer_client.set_profiles(batch)
 
-    print('========== processing posts_districts ==========\n')
-    for batch in posts_locations(s3_client, key=_POST_DISTRICTS, file_path=_POST_DISTRICTS_PATH):
-        rexer_client.set_profiles(batch)
+    if _POST_DISTRICTS_PATH:
+        print('========== processing posts_districts ==========\n')
+        for batch in posts_locations(s3_client, key=_POST_DISTRICTS, file_path=_POST_DISTRICTS_PATH):
+            rexer_client.set_profiles(batch)
 
     # print('========== processing posts_tags ==========\n')
     # for batch in posts_tags(s3_client):
     #     rexer_client.set_profiles(batch)
 
-    print('========== processing posts_updated_on ==========\n')
-    for batch in posts_updated_on(s3_client):
-        rexer_client.set_profiles(batch)
+    if _POST_UPDATED_ON_PATH:
+        print('========== processing posts_updated_on ==========\n')
+        for batch in posts_updated_on(s3_client):
+            rexer_client.set_profiles(batch)
 
-    print('========== processing posts_created_on ==========\n')
-    for batch in posts_created_on(s3_client):
-        rexer_client.set_profiles(batch)
+    if _POST_TAGS_PATH:
+        print('========== processing posts_created_on ==========\n')
+        for batch in posts_created_on(s3_client):
+            rexer_client.set_profiles(batch)
+
+    if _POST_REPORTER_PATH:
+        print('========== processing post_reporter_path ==========\n')
+        for batch in post_reporters(s3_client):
+            rexer_client.set_profiles(batch)
 
     print(f'========== took: {datetime.datetime.now().timestamp() - start} seconds ==========\n')
 
