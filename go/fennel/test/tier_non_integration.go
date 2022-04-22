@@ -10,8 +10,10 @@ import (
 
 	"fennel/lib/clock"
 	"fennel/lib/ftypes"
+	"fennel/modelstore"
 	"fennel/pcache"
 	"fennel/redis"
+	"fennel/s3"
 	"fennel/tier"
 
 	"go.uber.org/zap"
@@ -42,6 +44,14 @@ func Tier() (tier.Tier, error) {
 		return tier.Tier{}, err
 	}
 
+	// TODO - decide what region to use for test tier
+	s3Client := s3.NewClient(s3.S3Args{Region: "ap-south-1"})
+
+	modelStore := modelstore.NewModelStore(modelstore.ModelStoreArgs{
+		ModelStoreS3Bucket:     os.Getenv("MODEL_STORE_S3_BUCKET"),
+		ModelStoreEndpointName: os.Getenv("MODEL_STORE_ENDPOINT"),
+	}, tierID)
+
 	logger, err := zap.NewDevelopment()
 	if err != nil {
 		return tier.Tier{}, fmt.Errorf("failed to construct logger: %v", err)
@@ -60,9 +70,11 @@ func Tier() (tier.Tier, error) {
 		Producers:        producers,
 		Clock:            clock.Unix{},
 		NewKafkaConsumer: consumerCreator,
+		S3Client:         s3Client,
+		ModelStore:       modelStore,
 		Logger:           logger,
 		Badger:           badger,
-	}, err
+	}, nil
 }
 
 func Teardown(tier tier.Tier) error {

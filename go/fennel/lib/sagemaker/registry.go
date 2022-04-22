@@ -1,5 +1,7 @@
 package sagemaker
 
+import "io"
+
 type Model struct {
 	Id               uint32 `db:"id"`
 	Name             string `db:"name"`
@@ -9,6 +11,14 @@ type Model struct {
 	ArtifactPath     string `db:"artifact_path"`
 	Active           bool   `db:"active"`
 	LastModified     int64  `db:"last_modified"`
+}
+
+type ModelUploadRequest struct {
+	Name             string
+	Version          string
+	Framework        string
+	FrameworkVersion string
+	ModelFile        io.Reader
 }
 
 type SagemakerHostedModel struct {

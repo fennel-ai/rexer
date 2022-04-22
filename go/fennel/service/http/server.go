@@ -6,6 +6,7 @@ import (
 	"io/ioutil"
 	"log"
 	"math/rand"
+	"mime/multipart"
 	"net/http"
 	_ "net/http/pprof"
 	"strings"
@@ -14,6 +15,7 @@ import (
 	"fennel/controller/action"
 	aggregate2 "fennel/controller/aggregate"
 	"fennel/controller/mock"
+	"fennel/controller/modelstore"
 	profile2 "fennel/controller/profile"
 	"fennel/engine"
 	"fennel/engine/interpreter/bootarg"
@@ -23,10 +25,10 @@ import (
 	"fennel/lib/ftypes"
 	profilelib "fennel/lib/profile"
 	"fennel/lib/query"
+	"fennel/lib/sagemaker"
 	"fennel/lib/timer"
 	"fennel/lib/value"
 	"fennel/tier"
-
 	"github.com/buger/jsonparser"
 	"github.com/gorilla/mux"
 	"github.com/prometheus/client_golang/prometheus"
@@ -83,6 +85,8 @@ func (s server) setHandlers(router *mux.Router) {
 	router.HandleFunc("/aggregate_value", s.AggregateValue)
 	router.HandleFunc("/batch_aggregate_value", s.BatchAggregateValue)
 	router.HandleFunc("/get_operators", s.GetOperators)
+	router.HandleFunc("/upload_model", s.UploadModel)
+	router.HandleFunc("/delete_model", s.DeleteModel)
 }
 
 func constructDedupKey(dedupKey string, actionType ftypes.ActionType) string {
@@ -101,28 +105,24 @@ func constructDedupKey(dedupKey string, actionType ftypes.ActionType) string {
 func (m server) Log(w http.ResponseWriter, req *http.Request) {
 	data, err := readRequest(req)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		log.Printf("Error: %v", err)
+		handleBadRequest(w, "", err)
 		return
 	}
 	var a actionlib.Action
 	if err := json.Unmarshal(data, &a); err != nil {
-		http.Error(w, fmt.Sprintf("invalid request: %v", err), http.StatusBadRequest)
-		log.Printf("Error: %v", err)
+		handleBadRequest(w, "invalid request: ", err)
 		return
 	}
 	err = a.Validate()
 	if err != nil {
-		http.Error(w, fmt.Sprintf("Invalid action: %v", err), http.StatusBadRequest)
-		log.Printf("Error: %v", err)
+		handleBadRequest(w, "invalid action: ", err)
 		return
 	}
 	incomingActions.WithLabelValues("log", string(a.ActionType)).Inc()
 
 	dedupKey, err := jsonparser.GetString(data, "DedupKey")
 	if err != nil {
-		http.Error(w, fmt.Sprintf("invalid request: %v", err), http.StatusBadRequest)
-		log.Printf("Error: %v", err)
+		handleBadRequest(w, "invalid request: ", err)
 		return
 	}
 	// If dedupKey is non-empty, request is ignored if dedupKey is already present in redis.
@@ -131,8 +131,7 @@ func (m server) Log(w http.ResponseWriter, req *http.Request) {
 	if dedupKey != "" {
 		ok, err := m.tier.Redis.SetNX(req.Context(), constructDedupKey(dedupKey, a.ActionType), 1, dedupTTL)
 		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			log.Printf("Error: %v", err)
+			handleInternalServerError(w, "", err)
 			return
 		}
 		if !ok {
@@ -142,8 +141,7 @@ func (m server) Log(w http.ResponseWriter, req *http.Request) {
 	}
 	// fwd to controller
 	if err = action.Insert(req.Context(), m.tier, a); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		log.Printf("Error: %v", err)
+		handleInternalServerError(w, "", err)
 		return
 	}
 	totalActions.WithLabelValues("log", string(a.ActionType)).Inc()
@@ -153,8 +151,7 @@ func (m server) Log(w http.ResponseWriter, req *http.Request) {
 func (m server) LogMulti(w http.ResponseWriter, req *http.Request) {
 	data, err := readRequest(req)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		log.Printf("error: %v; no action was logged", err)
+		handleBadRequest(w, "", err)
 		return
 	}
 	var actions []actionlib.Action
@@ -196,8 +193,7 @@ func (m server) LogMulti(w http.ResponseWriter, req *http.Request) {
 	// TODO: Better variable name for ok
 	ok, err := m.tier.Redis.SetNXPipelined(req.Context(), keys, vals, ttls)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		log.Printf("Error: %v", err)
+		handleInternalServerError(w, "", err)
 		return
 	}
 
@@ -211,8 +207,7 @@ func (m server) LogMulti(w http.ResponseWriter, req *http.Request) {
 	}
 	// fwd to controller
 	if err = action.BatchInsert(req.Context(), m.tier, batch); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		log.Printf("Error: %v", err)
+		handleInternalServerError(w, "", err)
 		return
 	}
 	// increment metrics after successfully writing to the system
@@ -225,27 +220,23 @@ func (m server) LogMulti(w http.ResponseWriter, req *http.Request) {
 func (m server) Fetch(w http.ResponseWriter, req *http.Request) {
 	data, err := readRequest(req)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		log.Printf("Error: %v", err)
+		handleBadRequest(w, "", err)
 		return
 	}
 	var request actionlib.ActionFetchRequest
 	if err := json.Unmarshal(data, &request); err != nil {
-		http.Error(w, fmt.Sprintf("invalid request: %v", err), http.StatusBadRequest)
-		log.Printf("Error: %v", err)
+		handleBadRequest(w, "invalid request: ", err)
 		return
 	}
 	// send to controller
 	actions, err := action.Fetch(req.Context(), m.tier, request)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		log.Printf("Error: %v", err)
+		handleInternalServerError(w, "", err)
 		return
 	}
 	ser, err := json.Marshal(actions)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		log.Printf("Error: %v", err)
+		handleInternalServerError(w, "", err)
 		return
 	}
 	w.Write(ser)
@@ -254,21 +245,18 @@ func (m server) Fetch(w http.ResponseWriter, req *http.Request) {
 func (m server) GetProfile(w http.ResponseWriter, req *http.Request) {
 	data, err := readRequest(req)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		log.Printf("Error: %v", err)
+		handleBadRequest(w, "", err)
 		return
 	}
 	var request profilelib.ProfileItemKey
 	if err := json.Unmarshal(data, &request); err != nil {
-		http.Error(w, fmt.Sprintf("invalid request: %v", err), http.StatusBadRequest)
-		log.Printf("Error: %v", err)
+		handleBadRequest(w, "invalid request: ", err)
 		return
 	}
 	// send to controller
 	val, err := profile2.Get(req.Context(), m.tier, request)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		log.Printf("Error: %v", err)
+		handleInternalServerError(w, "", err)
 		return
 	}
 	if val.Value == nil {
@@ -286,20 +274,17 @@ func (m server) GetProfile(w http.ResponseWriter, req *http.Request) {
 func (m server) SetProfile(w http.ResponseWriter, req *http.Request) {
 	data, err := readRequest(req)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		log.Printf("Error: %v", err)
+		handleBadRequest(w, "", err)
 		return
 	}
 	var request profilelib.ProfileItem
 	if err := json.Unmarshal(data, &request); err != nil {
-		http.Error(w, fmt.Sprintf("invalid request: %v", err), http.StatusBadRequest)
-		log.Printf("Error: %v", err)
+		handleBadRequest(w, "invalid request: ", err)
 		return
 	}
 	// send to controller
 	if err = profile2.Set(req.Context(), m.tier, request); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		log.Printf("Error: %v", err)
+		handleInternalServerError(w, "", err)
 		return
 	}
 }
@@ -307,20 +292,17 @@ func (m server) SetProfile(w http.ResponseWriter, req *http.Request) {
 func (m server) SetProfiles(w http.ResponseWriter, req *http.Request) {
 	data, err := readRequest(req)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		log.Printf("Error: %v", err)
+		handleBadRequest(w, "", err)
 		return
 	}
 	var request []profilelib.ProfileItem
 	if err := json.Unmarshal(data, &request); err != nil {
-		http.Error(w, fmt.Sprintf("invalid request: %v", err), http.StatusBadRequest)
-		log.Printf("Error: %v", err)
+		handleBadRequest(w, "invalid request: ", err)
 		return
 	}
 	// send to controller
 	if err = profile2.SetMulti(req.Context(), m.tier, request); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		log.Printf("Error: %v", err)
+		handleInternalServerError(w, "", err)
 		return
 	}
 }
@@ -328,27 +310,23 @@ func (m server) SetProfiles(w http.ResponseWriter, req *http.Request) {
 func (m server) GetProfileMulti(w http.ResponseWriter, req *http.Request) {
 	data, err := readRequest(req)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		log.Printf("Error: %v", err)
+		handleBadRequest(w, "", err)
 		return
 	}
 	var request []profilelib.ProfileItemKey
 	if err := json.Unmarshal(data, &request); err != nil {
-		http.Error(w, fmt.Sprintf("invalid request: %v", err), http.StatusBadRequest)
-		log.Printf("Error: %v", err)
+		handleBadRequest(w, "invalid request: ", err)
 		return
 	}
 	// send to controller
 	profiles, err := profile2.GetBatch(req.Context(), m.tier, request)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		log.Printf("Error: %v", err)
+		handleInternalServerError(w, "", err)
 		return
 	}
 	ser, err := json.Marshal(profiles)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		log.Printf("Error: %v", err)
+		handleInternalServerError(w, "", err)
 		return
 	}
 	w.Write(ser)
@@ -358,14 +336,12 @@ func (m server) Query(w http.ResponseWriter, req *http.Request) {
 	defer timer.Start(req.Context(), m.tier.ID, "query").Stop()
 	data, err := readRequest(req)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		log.Printf("Error: %v", err)
+		handleBadRequest(w, "", err)
 		return
 	}
 	tree, args, mockData, err := query.FromBoundQueryJSON(data)
 	if err != nil {
-		http.Error(w, fmt.Sprintf("invalid request: %v", err), http.StatusBadRequest)
-		log.Printf("Error: %v", err)
+		handleBadRequest(w, "invalid request: ", err)
 		return
 	}
 	if len(mockData.Profiles) > 0 {
@@ -384,8 +360,7 @@ func (m server) Query(w http.ResponseWriter, req *http.Request) {
 	executor := engine.NewQueryExecutor(bootarg.Create(m.tier))
 	ret, err := executor.Exec(req.Context(), tree, args)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		log.Printf("Error: %v", err)
+		handleInternalServerError(w, "", err)
 		return
 	}
 	w.Write(value.ToJSON(ret))
@@ -394,21 +369,18 @@ func (m server) Query(w http.ResponseWriter, req *http.Request) {
 func (m server) StoreAggregate(w http.ResponseWriter, req *http.Request) {
 	data, err := readRequest(req)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		log.Printf("Error: %v", err)
+		handleBadRequest(w, "", err)
 		return
 	}
 
 	var agg aggregate.Aggregate
 	if err := json.Unmarshal(data, &agg); err != nil {
-		http.Error(w, fmt.Sprintf("invalid request: %v", err), http.StatusBadRequest)
-		log.Printf("Error: %v", err)
+		handleBadRequest(w, "invalid request: ", err)
 		return
 	}
 	// call controller
 	if err = aggregate2.Store(req.Context(), m.tier, agg); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		log.Printf("Error: %v", err)
+		handleInternalServerError(w, "", err)
 		return
 	}
 }
@@ -416,16 +388,14 @@ func (m server) StoreAggregate(w http.ResponseWriter, req *http.Request) {
 func (m server) RetrieveAggregate(w http.ResponseWriter, req *http.Request) {
 	data, err := readRequest(req)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		log.Printf("Error: %v", err)
+		handleBadRequest(w, "", err)
 		return
 	}
 	var aggReq struct {
 		Name string `json:"Name"`
 	}
 	if err := json.Unmarshal(data, &aggReq); err != nil {
-		http.Error(w, fmt.Sprintf("invalid request: %v", err), http.StatusBadRequest)
-		log.Printf("Error: %v", err)
+		handleBadRequest(w, "invalid request: ", err)
 		return
 	}
 	// call controller
@@ -434,15 +404,13 @@ func (m server) RetrieveAggregate(w http.ResponseWriter, req *http.Request) {
 		// we don't throw an error, just return empty response
 		return
 	} else if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		log.Printf("Error: %v", err)
+		handleInternalServerError(w, "", err)
 		return
 	}
 	// to send ret back, marshal to json and then write it back
 	ser, err := json.Marshal(&ret)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		log.Printf("Error: %v", err)
+		handleInternalServerError(w, "", err)
 		return
 	}
 	w.Write(ser)
@@ -451,22 +419,19 @@ func (m server) RetrieveAggregate(w http.ResponseWriter, req *http.Request) {
 func (m server) DeactivateAggregate(w http.ResponseWriter, req *http.Request) {
 	data, err := readRequest(req)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		log.Printf("Error: %v", err)
+		handleBadRequest(w, "", err)
 		return
 	}
 	var aggReq struct {
 		Name string `json:"Name"`
 	}
 	if err := json.Unmarshal(data, &aggReq); err != nil {
-		http.Error(w, fmt.Sprintf("invalid request: %v", err), http.StatusBadRequest)
-		log.Printf("Error: %v", err)
+		handleBadRequest(w, "invalid request: ", err)
 		return
 	}
 	err = aggregate2.Deactivate(req.Context(), m.tier, ftypes.AggName(aggReq.Name))
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		log.Printf("Error: %v", err)
+		handleInternalServerError(w, "", err)
 		return
 	}
 }
@@ -474,21 +439,18 @@ func (m server) DeactivateAggregate(w http.ResponseWriter, req *http.Request) {
 func (m server) AggregateValue(w http.ResponseWriter, req *http.Request) {
 	data, err := readRequest(req)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		log.Printf("Error: %v", err)
+		handleBadRequest(w, "", err)
 		return
 	}
 	var getAggValue aggregate.GetAggValueRequest
 	if err := json.Unmarshal(data, &getAggValue); err != nil {
-		http.Error(w, fmt.Sprintf("invalid request: %v", err), http.StatusBadRequest)
-		log.Printf("Error: %v", err)
+		handleBadRequest(w, "invalid request: ", err)
 		return
 	}
 	// call controller
 	ret, err := aggregate2.Value(req.Context(), m.tier, getAggValue.AggName, getAggValue.Key, getAggValue.Kwargs)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		log.Printf("Error: %v", err)
+		handleInternalServerError(w, "", err)
 		return
 	}
 	// marshal ret and then write it back
@@ -498,37 +460,150 @@ func (m server) AggregateValue(w http.ResponseWriter, req *http.Request) {
 func (m server) BatchAggregateValue(w http.ResponseWriter, req *http.Request) {
 	data, err := readRequest(req)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		log.Printf("Error: %v", err)
+		handleBadRequest(w, "", err)
 		return
 	}
 	var getAggValueList []aggregate.GetAggValueRequest
 	if err := json.Unmarshal(data, &getAggValueList); err != nil {
-		http.Error(w, fmt.Sprintf("invalid request: %v", err), http.StatusBadRequest)
-		log.Printf("Error: %v", err)
+		handleBadRequest(w, "invalid request: ", err)
 		return
 	}
 	ret, err := aggregate2.BatchValue(req.Context(), m.tier, getAggValueList)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		log.Printf("Error: %v", err)
+		handleInternalServerError(w, "", err)
 		return
 	}
 	w.Write(value.ToJSON(value.NewList(ret...)))
 }
 
+func (m server) UploadModel(w http.ResponseWriter, req *http.Request) {
+	mr, err := req.MultipartReader()
+	if err != nil {
+		handleBadRequest(w, "", err)
+		return
+	}
+	// maxMemory: 1 GB (max memory to use in RAM, remaining data is stored in disk as temporary files)
+	form, err := mr.ReadForm(1 << 30)
+	if err != nil {
+		handleBadRequest(w, "", err)
+		return
+	}
+	formFile, err := getFileFromMultiPartForm(form, "file")
+	if err != nil {
+		handleBadRequest(w, "", err)
+	}
+	modelFile, err := formFile.Open()
+	if err != nil {
+		handleBadRequest(w, "", err)
+		return
+	}
+	values, err := getValuesFromMultiPartForm(form, []string{"name", "version", "framework", "framework_version"})
+	if err != nil {
+		handleBadRequest(w, "", err)
+		return
+	}
+	modelReq := sagemaker.ModelUploadRequest{
+		Name:             values["name"],
+		Version:          values["version"],
+		Framework:        values["framework"],
+		FrameworkVersion: values["framework_version"],
+		ModelFile:        modelFile,
+	}
+	err, retry := modelstore.Store(req.Context(), m.tier, modelReq)
+	if err != nil {
+		if retry {
+			handleServiceUnavailable(w, "", err)
+		} else {
+			handleInternalServerError(w, "", err)
+		}
+		return
+	}
+}
+
+func (m server) DeleteModel(w http.ResponseWriter, req *http.Request) {
+	data, err := readRequest(req)
+	if err != nil {
+		handleBadRequest(w, "", err)
+		return
+	}
+	var delReq struct {
+		Name    string
+		Version string
+	}
+	if err := json.Unmarshal(data, &delReq); err != nil {
+		handleBadRequest(w, "invalid request: ", err)
+		return
+	}
+	err, retry := modelstore.Remove(req.Context(), m.tier, delReq.Name, delReq.Version)
+	if err != nil {
+		if retry {
+			handleServiceUnavailable(w, "", err)
+		} else {
+			handleInternalServerError(w, "", err)
+		}
+		return
+	}
+}
+
 func (m server) GetOperators(w http.ResponseWriter, req *http.Request) {
 	_, err := readRequest(req)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		log.Printf("Error: %v", err)
+		handleBadRequest(w, "", err)
 		return
 	}
 	data, err := operators.GetOperatorsJSON()
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		log.Printf("Error: %v", err)
+		handleBadRequest(w, "", err)
 		return
 	}
 	w.Write(data)
+}
+
+func handleBadRequest(w http.ResponseWriter, errorPrefix string, err error) {
+	http.Error(w, fmt.Sprintf("%s%v", errorPrefix, err), http.StatusBadRequest)
+	log.Printf("Error: %v", err)
+}
+
+func handleInternalServerError(w http.ResponseWriter, errorPrefix string, err error) {
+	http.Error(w, fmt.Sprintf("%s%v", errorPrefix, err), http.StatusInternalServerError)
+	log.Printf("Error: %v", err)
+}
+
+func handleServiceUnavailable(w http.ResponseWriter, errorPrefix string, err error) {
+	http.Error(w, fmt.Sprintf("%s%v", errorPrefix, err), http.StatusServiceUnavailable)
+	log.Printf("Error: %v", err)
+}
+
+func getValueFromMultiPartForm(form *multipart.Form, key string) (string, error) {
+	x, ok := form.Value[key]
+	if !ok {
+		return "", fmt.Errorf("'%s' not found in form's values", key)
+	}
+	if len(x) == 0 {
+		return "", fmt.Errorf("no values found at key '%s' in form", key)
+	}
+	return x[0], nil
+}
+
+func getValuesFromMultiPartForm(form *multipart.Form, keys []string) (map[string]string, error) {
+	res := make(map[string]string, len(keys))
+	for _, k := range keys {
+		v, err := getValueFromMultiPartForm(form, k)
+		if err != nil {
+			return nil, err
+		}
+		res[k] = v
+	}
+	return res, nil
+}
+
+func getFileFromMultiPartForm(form *multipart.Form, key string) (*multipart.FileHeader, error) {
+	x, ok := form.File[key]
+	if !ok {
+		return nil, fmt.Errorf("'%s' not found in form's files", key)
+	}
+	if len(x) == 0 {
+		return nil, fmt.Errorf("no files found at key '%s' in form", key)
+	}
+	return x[0], nil
 }

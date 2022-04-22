@@ -13,18 +13,21 @@ import (
 	"fennel/lib/cache"
 	"fennel/lib/clock"
 	"fennel/lib/ftypes"
+	"fennel/modelstore"
 	"fennel/pcache"
 	"fennel/redis"
 	"fennel/resource"
+	"fennel/s3"
 	"fennel/sagemaker"
-
 	"github.com/dgraph-io/badger/v3"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 )
 
 type TierArgs struct {
-	sagemaker.SagemakerArgs `json:"sagemaker_._sagemaker_args"`
+	s3.S3Args                 `json:"s3_._s3_args"`
+	sagemaker.SagemakerArgs   `json:"sagemaker_._sagemaker_args"`
+	modelstore.ModelStoreArgs `json:"modelstore_._model_store_args"`
 
 	KafkaServer   string         `arg:"--kafka-server,env:KAFKA_SERVER_ADDRESS" json:"kafka_server,omitempty"`
 	KafkaUsername string         `arg:"--kafka-user,env:KAFKA_USERNAME" json:"kafka_username,omitempty"`
@@ -78,6 +81,7 @@ func (args TierArgs) Valid() error {
 	if args.BadgerDir == "" {
 		missingFields = append(missingFields, "BADGER_DIR")
 	}
+	// TODO: require args when ready for s3, modelStore, sagemaker
 	if len(missingFields) > 0 {
 		return fmt.Errorf("missing fields: %s", strings.Join(missingFields, ", "))
 	}
@@ -98,7 +102,9 @@ type Tier struct {
 	Clock            clock.Clock
 	Logger           *zap.Logger
 	NewKafkaConsumer KafkaConsumerCreator
+	S3Client         s3.Client
 	SagemakerClient  sagemaker.SMClient
+	ModelStore       *modelstore.ModelStore
 	Badger           fbadger.DB
 }
 
@@ -203,8 +209,10 @@ func CreateFromArgs(args *TierArgs) (tier Tier, err error) {
 	if err != nil {
 		return tier, fmt.Errorf("failed to create sagemaker client: %v", err)
 	}
-	log.Print("Creating badger")
+	s3client := s3.NewClient(args.S3Args)
+	modelStore := modelstore.NewModelStore(args.ModelStoreArgs, tierID)
 
+	log.Print("Creating badger")
 	opts := badger.DefaultOptions(args.BadgerDir)
 	// only log warnings and errors
 	opts = opts.WithLoggingLevel(badger.WARNING)
@@ -228,6 +236,8 @@ func CreateFromArgs(args *TierArgs) (tier Tier, err error) {
 		PCache:           pCache,
 		NewKafkaConsumer: consumerCreator,
 		SagemakerClient:  smclient,
+		S3Client:         s3client,
+		ModelStore:       modelStore,
 		Badger:           bdb.(fbadger.DB),
 	}, nil
 }

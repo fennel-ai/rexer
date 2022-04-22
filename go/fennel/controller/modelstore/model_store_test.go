@@ -10,11 +10,70 @@ import (
 
 	lib "fennel/lib/sagemaker"
 	db "fennel/model/sagemaker"
+	"fennel/modelstore"
 	"fennel/sagemaker"
 	"fennel/test"
-
 	"github.com/stretchr/testify/assert"
 )
+
+/* TODO - fix test (doesn't work due to 10 min timeout)
+func TestStoreScoreRemoveModel(t *testing.T) {
+	tier, err := test.Tier()
+	assert.NoError(t, err)
+	defer test.Teardown(tier)
+
+	err = testsagemaker.AddSagemakerDataAndClientToTier(&tier)
+	assert.NoError(t, err)
+
+	data, err := tier.S3Client.Download("model.tar.gz", "my-xgboost-test-bucket-2")
+	assert.NoError(t, err)
+	req := lib.ModelUploadRequest{
+		Name:             "some-model",
+		Version:          "v1",
+		Framework:        "xgboost",
+		FrameworkVersion: "1.3.1",
+		ModelFile:        bytes.NewReader(data),
+	}
+
+	var retry bool
+	for {
+		err, retry = Store(context.Background(), tier, req)
+		log.Print(err, retry)
+		if !retry {
+			break
+		}
+		log.Print("Waiting two minutes before retrying to store")
+		time.Sleep(2 * time.Minute)
+	}
+	assert.NoError(t, err)
+
+	csv, err := value.FromJSON([]byte("[0,0,0,0,0,0,0,1,0,1,0,1,0,0,1,0,0,0,1,0,0,0,0,0,0,0,0,0,1,0,1,0,0,1,0,0,0,0,0,0,0,0,1,1,0,1,0,0,1,0,0,0,0,0,0,0,0,0,0,1,0,0,1,0,0,0,0,0,0,1,0,0,0,1,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,1,0,1,0,0,1,0,0,1,0,0,0,0,0,1,0,1,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,1,0,0,0,0]"))
+	assert.NoError(t, err)
+	featureVecs := []value.List{csv.(value.List)}
+	var scores []value.Value
+	for {
+		scores, err, retry = Score(context.Background(), tier, "some-model", "v1", featureVecs)
+		log.Print(err, retry)
+		if !retry {
+			break
+		}
+		log.Print("Waiting two minutes before retrying to score")
+		time.Sleep(2 * time.Minute)
+	}
+	assert.Equal(t, len(featureVecs), len(scores))
+
+	for {
+		err, retry = Remove(context.Background(), tier, req.Name, req.Version)
+		log.Print(err, retry)
+		if !retry {
+			break
+		}
+		log.Print("Waiting two minutes before retrying to remove")
+		time.Sleep(2 * time.Minute)
+	}
+	assert.NoError(t, err)
+}
+*/
 
 func TestEnsureEndpoint(t *testing.T) {
 	tier, err := test.Tier()
@@ -35,8 +94,11 @@ func TestEnsureEndpoint(t *testing.T) {
 		FrameworkVersion: "1.3.1",
 		ArtifactPath:     "s3://my-xgboost-test-bucket-2/model.tar.gz",
 	}
-
 	endpointName := "unit-test-endpoint"
+	tier.ModelStore = modelstore.NewModelStore(modelstore.ModelStoreArgs{
+		ModelStoreS3Bucket:     "my-xgboost-test-bucket-2",
+		ModelStoreEndpointName: endpointName,
+	}, tier.ID)
 
 	// Insert an active model into db.
 	modelId, err := db.InsertModel(tier, model)
@@ -44,7 +106,7 @@ func TestEnsureEndpoint(t *testing.T) {
 	assert.Equal(t, uint32(1), modelId)
 
 	// Ensure model is served on sagemaker.
-	err = EnsureEndpointExists(context.Background(), tier, endpointName)
+	err = EnsureEndpointExists(context.Background(), tier)
 	assert.NoError(t, err)
 
 	// assert that registry resources are created in db.

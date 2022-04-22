@@ -1,16 +1,16 @@
 import functools
 import os
 import random
-import string
 import unittest
 
 import time
 from datetime import datetime, timezone, timedelta
 import lib
+import rexerclient
 import rexerclient as rex
 from rexerclient import client
 from rexerclient.models import action, profile
-from rexerclient.rql import var, cond, in_, len_, op
+from rexerclient.rql import var, op, cond, in_, len_, op
 
 URL = 'http://localhost:2425'
 
@@ -431,6 +431,27 @@ class TestEndToEnd(unittest.TestCase):
 
         self.assertTrue(found)
 
+    @unittest.skip
+    @tiered
+    def test_model_upload_delete(self):
+        c = client.Client(URL)
+        while True:
+            try:
+                c.upload_model('name', 'v2', 'xgboost', '1.31.0', 'model.tar.gz')
+            except client.RetryError as err:
+                print(f"Retrying in 60s due to error: {err}")
+                time.sleep(60)
+                continue
+            break
+        while True:
+            try:
+                c.delete_model('name', 'v2')
+            except client.RetryError as err:
+                print(f"Retrying in 60s due to error: {err}")
+                time.sleep(60)
+                continue
+            break
+
 
 @unittest.skip
 class TestLoad(unittest.TestCase):
@@ -459,7 +480,7 @@ class TestLoad(unittest.TestCase):
         agg1.store(client=c)
 
         @rex.aggregate(
-            name='user_creator_avg_watchtime_by_2hour_windows',
+            name='user_creator_avg_watchtixme_by_2hour_windows',
             aggregate_type='average', action_types=['view'], config={'durations': [30 * 24 * 3600]},
         )
         def agg2(actions):
