@@ -110,7 +110,7 @@ func TestAggregateDeltaSet(t *testing.T) {
 	clock.Set(int64(start + 3600))
 
 	ctx := context.Background()
-	// Start a consumer to read the profile log and write to kv store.
+	// Start a consumer to read the aggr delta log and write to kv store.
 	closeCh := make(chan struct{})
 	writeAggrDeltasToLocalKvStore(tier, closeCh)
 
@@ -172,7 +172,7 @@ func TestAggregateDeltaSet(t *testing.T) {
 	err = p.LogProto(ctx, &newDelta, nil)
 	require.NoError(t, err)
 
-	// Now start a new consumer to read the new profile from kafka and write to kv store.
+	// Now start a new consumer to read the new delta from kafka and write to kv store.
 	closeCh = make(chan struct{})
 	writeAggrDeltasToLocalKvStore(tier, closeCh)
 
@@ -190,8 +190,8 @@ func TestAggregateDeltaSet(t *testing.T) {
 	// Close the channel to stop the consumer.
 	close(closeCh)
 
-	// Now, read the first profile from the kv store. It should be same as p2
-	// and not p, which validates that the consumer did not process the earlier
+	// Now, read the first update from the kv store. It should be same as `bnew` + `badd`
+	// and not `bnew` + `badd` + `b`, which validates that the consumer did not process the earlier
 	// message in kafka.
 	got, err := counter.Value(ctx, tier, 1, value.String("user"), histogram, value.NewDict(map[string]value.Value{"duration": value.Int(3600)}))
 	require.NoError(t, err)
