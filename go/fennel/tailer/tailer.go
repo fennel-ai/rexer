@@ -34,8 +34,7 @@ func Run(t tier.Tier) error {
 	return nil
 }
 
-func writeProfilesToLocalKvStore(tr tier.Tier, cancel <-chan struct{}) error {
-	topic := profilelib.PROFILELOG_KAFKA_TOPIC
+func getOffsetsFromKvStore(tr tier.Tier, topic string) (kafka.TopicPartitions, error) {
 	var partitions kafka.TopicPartitions
 	err := tr.Badger.View(func(txn *db.Txn) error {
 		reader := badger.NewTransactionalStore(tr, txn)
@@ -49,6 +48,12 @@ func writeProfilesToLocalKvStore(tr tier.Tier, cancel <-chan struct{}) error {
 		partitions = append(partitions, offs...)
 		return nil
 	})
+	return partitions, err
+}
+
+func writeProfilesToLocalKvStore(tr tier.Tier, cancel <-chan struct{}) error {
+	topic := profilelib.PROFILELOG_KAFKA_TOPIC
+	partitions, err := getOffsetsFromKvStore(tr, topic)
 	if err != nil {
 		return err
 	}
@@ -85,17 +90,7 @@ func writeProfilesToLocalKvStore(tr tier.Tier, cancel <-chan struct{}) error {
 
 func writeAggrDeltasToLocalKvStore(tr tier.Tier, cancel <-chan struct{}) error {
 	topic := counterlib.AGGREGATE_DELTA_TOPIC_NAME
-	var partitions kafka.TopicPartitions
-	err := tr.Badger.View(func(txn *db.Txn) error {
-		reader := badger.NewTransactionalStore(tr, txn)
-		topicName := tr.Badger.Scope.PrefixedName(topic)
-		offs, err := offsets.Get(context.Background(), topicName, reader)
-		if err != nil {
-			return fmt.Errorf("failed to get ckpt offsets from badger: %v", err)
-		}
-		partitions = append(partitions, offs...)
-		return nil
-	})
+	partitions, err := getOffsetsFromKvStore(tr, topic)
 	if err != nil {
 		return err
 	}

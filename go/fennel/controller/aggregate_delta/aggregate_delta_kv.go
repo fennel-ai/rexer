@@ -80,7 +80,7 @@ func TransferAggrDeltasToDB(ctx context.Context, tr tier.Tier, consumer libkafka
 	}
 
 	// reduce the values
-	aggrBuckets := make(map[ftypes.AggId][]counter.Bucket, len(bucketVals))
+	aggrBuckets := make(map[ftypes.AggId][]counter.Bucket, len(aggrHist))
 	for b, vals := range bucketVals {
 		val, err := aggrHist[b.AggId].Reduce(vals)
 		if err != nil {

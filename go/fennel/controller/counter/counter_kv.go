@@ -48,7 +48,7 @@ func BatchValue(
 	aggIds []ftypes.AggId, keys []value.Value, histograms []counter.Histogram, kwargs []value.Dict,
 ) ([]value.Value, error) {
 	end := ftypes.Timestamp(tr.Clock.Now())
-	buckets := make([][]libcounter.Bucket, len(aggIds))
+	var buckets [][]libcounter.Bucket
 	defaults_ := make([]value.Value, len(aggIds))
 	for i := range aggIds {
 		h := histograms[i]
@@ -59,8 +59,7 @@ func BatchValue(
 		}
 		buckets[i] = append(buckets[i], h.BucketizeDuration(keys[i].String(), start, end, h.Zero())...)
 	}
-	ret := make([]value.Value, len(aggIds))
-	counts := make([][]value.Value, len(aggIds))
+	var counts [][]value.Value
 	err := tr.Badger.View(func(txn *db.Txn) error {
 		kvstore := badger.NewTransactionalStore(tr, txn)
 		var err error
@@ -70,6 +69,7 @@ func BatchValue(
 	if err != nil {
 		return nil, err
 	}
+	ret := make([]value.Value, len(aggIds))
 	for i := range counts {
 		ret[i], err = histograms[i].Reduce(counts[i])
 		if err != nil {
