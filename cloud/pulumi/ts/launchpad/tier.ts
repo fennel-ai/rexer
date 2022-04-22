@@ -7,6 +7,7 @@ import * as kafkaconnectors from "../kafkaconnectors";
 import * as mysql from "../mysql"
 import * as httpserver from "../http-server";
 import * as countaggr from "../countaggr";
+import * as apiserver from "../apiserver";
 import * as configs from "../configs";
 import * as ingress from "../ingress";
 import * as ns from "../k8s-ns";
@@ -19,6 +20,12 @@ import * as process from "process";
 export type HttpServerConf = {
     replicas: number,
     enforceReplicaIsolation: boolean,
+}
+
+export type ApiServerConf = {
+    replicas: number,
+    enforceReplicaIsolation: boolean,
+    storageclass?: string,
 }
 
 export type CountAggrConf = {
@@ -34,6 +41,7 @@ export type TierConf = {
     planeId: number,
     httpServerConf?: HttpServerConf,
     countAggrConf?: CountAggrConf,
+    apiServerConf?: ApiServerConf,
     ingressConf?: IngressConf,
 }
 
@@ -76,6 +84,7 @@ type inputType = {
     glueTrainingDataBucket: string,
     httpServerConf?: HttpServerConf,
     countAggrConf?: CountAggrConf,
+    apiServerConf?: ApiServerConf,
     nodeInstanceRole: string,
     vpcId: string,
     connectedSecurityGroups: Record<string, string>,
@@ -139,6 +148,7 @@ const setupPlugins = async (stack: pulumi.automation.Stack) => {
         ...configs.plugins,
         ...httpserver.plugins,
         ...countaggr.plugins,
+        ...apiserver.plugins,
         ...ingress.plugins,
         ...ns.plugins,
         ...kafkaconnectors.plugins,
@@ -212,39 +222,39 @@ const setupResources = async () => {
     // setup configs after resources are setup.
     const configsOutput = pulumi.all(
         [input.dbPassword, input.kafkaApiSecret, sagemakerOutput.roleArn, sagemakerOutput.subnetIds,
-            sagemakerOutput.securityGroup]).apply(async ([dbPassword, kafkaPassword, sagemakerRole, subnetIds, sagemakerSg]) => {
-        return await configs.setup({
-            kubeconfig: input.kubeconfig,
-            namespace: input.namespace,
-            tierConfig: { "tier_id": String(input.tierId) },
-            redisConfig: pulumi.output({
-                "addr": input.redisEndpoint,
-            } as Record<string, string>),
-            cacheConfig: pulumi.output({
-                "primary": input.cachePrimaryEndpoint,
-            } as Record<string, string>),
-            dbConfig: pulumi.output({
-                "host": input.dbEndpoint,
-                "db": input.db,
-                "username": input.dbUsername,
-                "password": dbPassword,
-            } as Record<string, string>),
-            kafkaConfig: pulumi.output({
-                "server": input.bootstrapServer,
-                "username": input.kafkaApiKey,
-                "password": kafkaPassword,
-            } as Record<string, string>),
-            modelServingConfig: pulumi.output({
-                "region": input.region,
-                "executionRole": sagemakerRole,
-                "privateSubnets": subnetIds.join(","),
-                "securityGroup": sagemakerSg,
-                "modelStoreBucket": modelStoreOutput.modelStoreBucket,
-                // pass tierId as the endpoint name
-                "modelStoreEndpoint": `t-${input.tierId}`,
-            } as Record<string, string>)
+        sagemakerOutput.securityGroup]).apply(async ([dbPassword, kafkaPassword, sagemakerRole, subnetIds, sagemakerSg]) => {
+            return await configs.setup({
+                kubeconfig: input.kubeconfig,
+                namespace: input.namespace,
+                tierConfig: { "tier_id": String(input.tierId) },
+                redisConfig: pulumi.output({
+                    "addr": input.redisEndpoint,
+                } as Record<string, string>),
+                cacheConfig: pulumi.output({
+                    "primary": input.cachePrimaryEndpoint,
+                } as Record<string, string>),
+                dbConfig: pulumi.output({
+                    "host": input.dbEndpoint,
+                    "db": input.db,
+                    "username": input.dbUsername,
+                    "password": dbPassword,
+                } as Record<string, string>),
+                kafkaConfig: pulumi.output({
+                    "server": input.bootstrapServer,
+                    "username": input.kafkaApiKey,
+                    "password": kafkaPassword,
+                } as Record<string, string>),
+                modelServingConfig: pulumi.output({
+                    "region": input.region,
+                    "executionRole": sagemakerRole,
+                    "privateSubnets": subnetIds.join(","),
+                    "securityGroup": sagemakerSg,
+                    "modelStoreBucket": modelStoreOutput.modelStoreBucket,
+                    // pass tierId as the endpoint name
+                    "modelStoreEndpoint": `t-${input.tierId}`,
+                } as Record<string, string>)
+            })
         })
-    })
     // setup ingress.
     const ingressOutput = await ingress.setup({
         roleArn: input.roleArn,
@@ -266,7 +276,7 @@ const setupResources = async () => {
         script: input.glueSourceScript,
     })
     configsOutput.apply(async () => {
-        // setup api-server and countaggr after configs are setup.
+        // setup http-server and countaggr after configs are setup.
         const httpServerOutput = await httpserver.setup({
             roleArn: input.roleArn,
             region: input.region,
@@ -287,6 +297,17 @@ const setupResources = async () => {
             enforceServiceIsolation: input.countAggrConf?.enforceServiceIsolation,
             httpServerAppLabels: httpServerOutput.appLabels,
         });
+        // set api-server.
+        await apiserver.setup({
+            roleArn: input.roleArn,
+            region: input.region,
+            kubeconfig: input.kubeconfig,
+            namespace: input.namespace,
+            tierId: input.tierId,
+            replicas: input.httpServerConf?.replicas,
+            enforceReplicaIsolation: input.httpServerConf?.enforceReplicaIsolation,
+            storageclass: input.apiServerConf?.storageclass!,
+        })
     })
     return {
         "ingress": ingressOutput,
@@ -339,6 +360,9 @@ type TierInput = {
 
     // countaggr configuration
     countAggrConf?: CountAggrConf,
+
+    // api-server configuration
+    apiServerConf?: ApiServerConf,
 
     // model store configuration
     nodeInstanceRole: string,
@@ -403,22 +427,26 @@ const setupTier = async (args: TierInput, destroy?: boolean) => {
     await stack.setConfig(nameof<inputType>("subnetIds"), { value: JSON.stringify(args.subnetIds) })
     await stack.setConfig(nameof<inputType>("loadBalancerScheme"), { value: args.loadBalancerScheme })
 
-    await stack.setConfig(nameof<inputType>("glueSourceBucket"), {value: args.glueSourceBucket})
-    await stack.setConfig(nameof<inputType>("glueSourceScript"), {value: args.glueSourceScript})
-    await stack.setConfig(nameof<inputType>("glueTrainingDataBucket"), {value: args.glueTrainingDataBucket})
+    await stack.setConfig(nameof<inputType>("glueSourceBucket"), { value: args.glueSourceBucket })
+    await stack.setConfig(nameof<inputType>("glueSourceScript"), { value: args.glueSourceScript })
+    await stack.setConfig(nameof<inputType>("glueTrainingDataBucket"), { value: args.glueTrainingDataBucket })
 
     if (args.httpServerConf !== undefined) {
-        await stack.setConfig(nameof<inputType>("httpServerConf"), {value: JSON.stringify(args.httpServerConf)})
+        await stack.setConfig(nameof<inputType>("httpServerConf"), { value: JSON.stringify(args.httpServerConf) })
     }
 
     if (args.countAggrConf !== undefined) {
-        await stack.setConfig(nameof<inputType>("countAggrConf"), {value: JSON.stringify(args.countAggrConf)})
+        await stack.setConfig(nameof<inputType>("countAggrConf"), { value: JSON.stringify(args.countAggrConf) })
     }
 
-    await stack.setConfig(nameof<inputType>("nodeInstanceRole"), {value: args.nodeInstanceRole})
+    if (args.apiServerConf !== undefined) {
+        await stack.setConfig(nameof<inputType>("apiServerConf"), { value: JSON.stringify(args.apiServerConf) })
+    }
 
-    await stack.setConfig(nameof<inputType>("vpcId"), {value: args.vpcId})
-    await stack.setConfig(nameof<inputType>("connectedSecurityGroups"), {value: JSON.stringify(args.connectedSecurityGroups)})
+    await stack.setConfig(nameof<inputType>("nodeInstanceRole"), { value: args.nodeInstanceRole })
+
+    await stack.setConfig(nameof<inputType>("vpcId"), { value: args.vpcId })
+    await stack.setConfig(nameof<inputType>("connectedSecurityGroups"), { value: JSON.stringify(args.connectedSecurityGroups) })
 
     console.info("config set");
 
