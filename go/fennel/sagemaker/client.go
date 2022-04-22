@@ -204,7 +204,14 @@ func (smc SMClient) DeleteEndpoint(ctx context.Context, endpointName string) err
 
 // TODO: Implement.
 func getImage(framework, version, region string) string {
-	return "720646828776.dkr.ecr." + region + ".amazonaws.com/sagemaker-xgboost:1.3-1"
+	var prefix string
+	switch region {
+	case "ap-south-1":
+		prefix = "720646828776.dkr.ecr."
+	case "us-west-2":
+		prefix = "246618743249.dkr.ecr."
+	}
+	return prefix + region + ".amazonaws.com/sagemaker-xgboost:1.3-1"
 }
 
 func (smc SMClient) CreateEndpointConfig(ctx context.Context, endpointCfg lib.SagemakerEndpointConfig) error {
