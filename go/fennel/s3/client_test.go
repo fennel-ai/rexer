@@ -3,7 +3,6 @@
 package s3
 
 import (
-	"os"
 	"strings"
 	"testing"
 
@@ -15,7 +14,7 @@ func TestClient(t *testing.T) {
 	contents := "some random text"
 	file := strings.NewReader(contents)
 	fileName := "some_file.txt"
-	bucketName := os.Getenv("my-xgboost-test-bucket-2")
+	bucketName := "my-xgboost-test-bucket-2"
 
 	err := c.Upload(file, fileName, bucketName)
 	assert.NoError(t, err)

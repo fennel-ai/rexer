@@ -166,7 +166,7 @@ func TestScoreCsv(t *testing.T) {
 	}
 	response, err := c.Score(context.Background(), &lib.ScoreRequest{
 		EndpointName:  "integration-test-endpoint",
-		ContainerName: lib.GetContainerName("my-test-model", "v1"),
+		ContainerName: lib.GetContainerName("integration-test-xgboost-model", "v1"),
 		FeatureLists:  featureVectors,
 	})
 	assert.NoError(t, err)
