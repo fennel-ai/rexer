@@ -2,7 +2,9 @@ package counter
 
 import (
 	"context"
+	"fmt"
 
+	"fennel/lib/aggregate"
 	"fennel/lib/counter"
 	"fennel/lib/ftypes"
 	"fennel/lib/value"
@@ -34,4 +36,29 @@ type Histogram interface {
 	Bucketizer
 	MergeReduce
 	BucketStore
+}
+
+func ToHistogram(opts aggregate.Options) (Histogram, error) {
+	switch opts.AggType {
+	case "sum":
+		return NewSum(opts.Durations), nil
+	case "timeseries_sum":
+		return NewTimeseriesSum(opts.Window, opts.Limit), nil
+	case "average":
+		return NewAverage(opts.Durations), nil
+	case "list":
+		return NewList(opts.Durations), nil
+	case "min":
+		return NewMin(opts.Durations), nil
+	case "max":
+		return NewMax(opts.Durations), nil
+	case "stddev":
+		return NewStdDev(opts.Durations), nil
+	case "rate":
+		return NewRate(opts.Durations, opts.Normalize), nil
+	case "topk":
+		return NewTopK(opts.Durations), nil
+	default:
+		return nil, fmt.Errorf("invalid aggregate type: %v", opts.AggType)
+	}
 }
