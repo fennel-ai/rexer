@@ -14,29 +14,21 @@ type ModelStoreArgs struct {
 
 type ModelStore struct {
 	s3Bucket     string
-	storeMutex   sync.Mutex
 	endpointName string
 	tierID       ftypes.RealmID
+	// Mutex to avoid race condition when there are two models upload requests with room only for one more model
+	sync.Mutex
 }
 
 // NewModelStore creates a new ModelStore. There should not be more than one ModelStore.
 func NewModelStore(args ModelStoreArgs, tierID ftypes.RealmID) *ModelStore {
 	ms := ModelStore{
 		s3Bucket:     args.ModelStoreS3Bucket,
-		storeMutex:   sync.Mutex{},
+		Mutex:        sync.Mutex{},
 		endpointName: args.ModelStoreEndpointName,
 		tierID:       tierID,
 	}
 	return &ms
-}
-
-// Lock to avoid race condition when there are two models upload requests with room only for one more model
-func (ms *ModelStore) Lock() {
-	ms.storeMutex.Lock()
-}
-
-func (ms *ModelStore) Unlock() {
-	ms.storeMutex.Unlock()
 }
 
 func (ms *ModelStore) EndpointName() string {

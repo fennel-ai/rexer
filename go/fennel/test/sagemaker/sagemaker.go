@@ -27,7 +27,7 @@ func AddSagemakerClientToTier(tier *tier.Tier) error {
 
 func AddSagemakerDataAndClientToTier(tier *tier.Tier) error {
 	s3Args := s3.S3Args{Region: "ap-south-1"}
-	tier.S3Client = s3.NewClient(s3Args, tier.ID)
+	tier.S3Client = s3.NewClient(s3Args)
 
 	err := AddSagemakerClientToTier(tier)
 	if err != nil {

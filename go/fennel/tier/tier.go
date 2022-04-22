@@ -211,7 +211,7 @@ func CreateFromArgs(args *TierArgs) (tier Tier, err error) {
 	if err != nil {
 		return tier, fmt.Errorf("failed to create sagemaker client: %v", err)
 	}
-	s3client := s3.NewClient(args.S3Args, tierID)
+	s3client := s3.NewClient(args.S3Args)
 	modelStore := modelstore.NewModelStore(args.ModelStoreArgs, tierID)
 
 	log.Print("Creating badger")

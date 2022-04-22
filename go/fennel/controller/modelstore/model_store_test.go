@@ -25,7 +25,7 @@ func TestStoreScoreRemoveModel(t *testing.T) {
 	err = testsagemaker.AddSagemakerDataAndClientToTier(&tier)
 	assert.NoError(t, err)
 
-	data, err := tier.S3Client.DownloadFromRoot("model.tar.gz", "my-xgboost-test-bucket-2")
+	data, err := tier.S3Client.Download("model.tar.gz", "my-xgboost-test-bucket-2")
 	assert.NoError(t, err)
 	req := lib.ModelUploadRequest{
 		Name:             "some-model",

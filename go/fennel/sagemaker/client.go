@@ -253,17 +253,13 @@ func (smc SMClient) UpdateEndpoint(ctx context.Context, endpoint lib.SagemakerEn
 func (smc SMClient) Score(ctx context.Context, in *lib.ScoreRequest) (*lib.ScoreResponse, error) {
 	// TODO: Find the correct adapter to use given the model framework.
 	adapter := XgboostAdapter{
-		client:            smc.runtimeClient,
-		endpointName:      in.EndpointName,
-		containerHostname: lib.GetContainerName(in.ModelName, in.ModelVersion),
+		client: smc.runtimeClient,
 	}
 	return adapter.Score(ctx, in)
 }
 
 type XgboostAdapter struct {
-	client            *sagemakerruntime.SageMakerRuntime
-	endpointName      string
-	containerHostname string
+	client *sagemakerruntime.SageMakerRuntime
 }
 
 func (xga XgboostAdapter) Score(ctx context.Context, in *lib.ScoreRequest) (*lib.ScoreResponse, error) {
@@ -301,16 +297,15 @@ func (xga XgboostAdapter) Score(ctx context.Context, in *lib.ScoreRequest) (*lib
 		} else {
 			contentType = "text/libsvm"
 		}
-
 	}
 	out, err := xga.client.InvokeEndpointWithContext(ctx, &sagemakerruntime.InvokeEndpointInput{
 		Body:                    payload.Bytes(),
 		ContentType:             aws.String(contentType),
-		EndpointName:            aws.String(xga.endpointName),
-		TargetContainerHostname: aws.String(xga.containerHostname),
+		EndpointName:            aws.String(in.EndpointName),
+		TargetContainerHostname: aws.String(in.ContainerName),
 	})
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to invoke sagemaker endpoint: %v", err)
 	}
 	r := "[" + string(out.Body) + "]"
 	v, err := value.FromJSON([]byte(r))

@@ -45,7 +45,7 @@ func Tier() (tier.Tier, error) {
 	}
 
 	// TODO - decide what region to use for test tier
-	s3Client := s3.NewClient(s3.S3Args{Region: "ap-south-1"}, tierID)
+	s3Client := s3.NewClient(s3.S3Args{Region: "ap-south-1"})
 
 	modelStore := modelstore.NewModelStore(modelstore.ModelStoreArgs{
 		ModelStoreS3Bucket:     os.Getenv("MODEL_STORE_S3_BUCKET"),

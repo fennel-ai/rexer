@@ -148,10 +148,9 @@ func TestScoreSvm(t *testing.T) {
 		value.NewList(value.String("3:1 10:1 20:1 21:1 23:1 34:1 36:1 39:1 42:1 53:1 56:1 65:1 69:1 77:1 86:1 88:1 92:1 95:1 102:1 105:1 116:1 120:1")),
 	}
 	response, err := c.Score(context.Background(), &lib.ScoreRequest{
-		EndpointName: "integration-test-endpoint",
-		ModelName:    "integration-test-xgboost-model",
-		ModelVersion: "v1",
-		FeatureLists: featureVectors,
+		EndpointName:  "integration-test-endpoint",
+		ContainerName: lib.GetContainerName("integration-test-xgboost-model", "v1"),
+		FeatureLists:  featureVectors,
 	})
 	assert.NoError(t, err)
 	assert.Equal(t, len(featureVectors), len(response.Scores))
@@ -166,10 +165,9 @@ func TestScoreCsv(t *testing.T) {
 		csv.(value.List),
 	}
 	response, err := c.Score(context.Background(), &lib.ScoreRequest{
-		EndpointName: "integration-test-endpoint",
-		ModelName:    "my-test-model",
-		ModelVersion: "v1",
-		FeatureLists: featureVectors,
+		EndpointName:  "integration-test-endpoint",
+		ContainerName: lib.GetContainerName("my-test-model", "v1"),
+		FeatureLists:  featureVectors,
 	})
 	assert.NoError(t, err)
 	assert.Equal(t, len(featureVectors), len(response.Scores))
@@ -180,4 +178,8 @@ func getTestClient() (SMClient, error) {
 		Region:                 "ap-south-1",
 		SagemakerExecutionRole: "arn:aws:iam::030813887342:role/service-role/AmazonSageMaker-ExecutionRole-20220315T123828",
 	})
+}
+
+func BenchmarkNewClient(b *testing.B) {
+
 }

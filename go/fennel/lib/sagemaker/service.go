@@ -29,10 +29,9 @@ type InferenceServer interface {
 }
 
 type ScoreRequest struct {
-	EndpointName string
-	ModelName    string
-	ModelVersion string
-	FeatureLists []value.List
+	EndpointName  string
+	ContainerName string
+	FeatureLists  []value.List
 }
 
 type ScoreResponse struct {

@@ -1,10 +1,8 @@
 package s3
 
 import (
-	"fmt"
 	"io"
 
-	"fennel/lib/ftypes"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/s3"
@@ -19,10 +17,9 @@ type Client struct {
 	uploader   *s3manager.Uploader
 	downloader *s3manager.Downloader
 	deleter    *s3manager.BatchDelete
-	tierID     ftypes.RealmID
 }
 
-func NewClient(args S3Args, tierID ftypes.RealmID) Client {
+func NewClient(args S3Args) Client {
 	sess := session.Must(session.NewSession(
 		&aws.Config{
 			Region:                        aws.String(args.Region),
@@ -36,24 +33,23 @@ func NewClient(args S3Args, tierID ftypes.RealmID) Client {
 		uploader:   uploader,
 		downloader: downloader,
 		deleter:    deleter,
-		tierID:     tierID,
 	}
 }
 
-func (c Client) Upload(file io.Reader, fileName, bucketName string) error {
+func (c Client) Upload(file io.Reader, path, bucketName string) error {
 	input := s3manager.UploadInput{
 		Body:   file,
 		Bucket: aws.String(bucketName),
-		Key:    aws.String(c.getKey(fileName)),
+		Key:    aws.String(path),
 	}
 	_, err := c.uploader.Upload(&input)
 	return err
 }
 
-func (c Client) Download(fileName, bucketName string) ([]byte, error) {
+func (c Client) Download(path, bucketName string) ([]byte, error) {
 	input := s3.GetObjectInput{
 		Bucket: aws.String(bucketName),
-		Key:    aws.String(c.getKey(fileName)),
+		Key:    aws.String(path),
 	}
 	buf := aws.WriteAtBuffer{}
 	_, err := c.downloader.Download(&buf, &input)
@@ -63,30 +59,12 @@ func (c Client) Download(fileName, bucketName string) ([]byte, error) {
 	return buf.Bytes(), nil
 }
 
-func (c Client) DownloadFromRoot(fileName, bucketName string) ([]byte, error) {
-	input := s3.GetObjectInput{
-		Bucket: aws.String(bucketName),
-		Key:    aws.String(fileName),
-	}
-	buf := aws.WriteAtBuffer{}
-	_, err := c.downloader.Download(&buf, &input)
-	if err != nil {
-		return nil, err
-	}
-	return buf.Bytes(), nil
-
-}
-
-func (c Client) Delete(fileName string, bucketName string) error {
+func (c Client) Delete(path string, bucketName string) error {
 	input := s3.DeleteObjectInput{
 		Bucket: aws.String(bucketName),
-		Key:    aws.String(c.getKey(fileName)),
+		Key:    aws.String(path),
 	}
 	objects := []s3manager.BatchDeleteObject{{Object: &input}}
 	iterator := s3manager.DeleteObjectsIterator{Objects: objects}
 	return c.deleter.Delete(aws.BackgroundContext(), &iterator)
-}
-
-func (c Client) getKey(fileName string) string {
-	return fmt.Sprintf("t-%d/%s", c.tierID, fileName)
 }

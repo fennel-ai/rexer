@@ -11,11 +11,11 @@ import (
 )
 
 func TestClient(t *testing.T) {
-	c := NewClient(S3Args{Region: "ap-south-1"}, 1)
+	c := NewClient(S3Args{Region: "ap-south-1"})
 	contents := "some random text"
 	file := strings.NewReader(contents)
 	fileName := "some_file.txt"
-	bucketName := os.Getenv("MODEL_STORE_S3_BUCKET")
+	bucketName := os.Getenv("my-xgboost-test-bucket-2")
 
 	err := c.Upload(file, fileName, bucketName)
 	assert.NoError(t, err)
