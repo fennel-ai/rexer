@@ -19,17 +19,14 @@ import (
 	"go.uber.org/zap"
 )
 
-type Tailer struct{}
-
-func (tr Tailer) Run(t tier.Tier) error {
+func Run(t tier.Tier) error {
 	closeCh := make(chan struct{})
 	t.Logger.Info("Tailer started")
 	err := writeProfilesToLocalKvStore(t, closeCh)
 	if err != nil {
 		return err
 	}
-	// block forever.
-	select {}
+	return nil
 }
 
 func writeProfilesToLocalKvStore(tr tier.Tier, cancel <-chan struct{}) error {

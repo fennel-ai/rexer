@@ -12,6 +12,7 @@ import (
 	httplib "fennel/lib/http"
 	_ "fennel/opdefs"
 	"fennel/service/common"
+	"fennel/tailer"
 	"fennel/tier"
 
 	"github.com/alexflint/go-arg"
@@ -127,6 +128,9 @@ func main() {
 
 	controller := server{tier}
 	controller.setHandlers(router)
+
+	// Start tailer module.
+	tailer.Run(tier)
 
 	addr := fmt.Sprintf(":%d", httplib.PORT)
 	log.Printf("starting http service on %s...", addr)
