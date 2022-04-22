@@ -62,9 +62,9 @@ func (bs *BadgerTransactionalStore) Get(ctx context.Context, tablet kvstore.Tabl
 	if len(key) == 0 {
 		return nil, kvstore.ErrEmptyKey
 	}
-	bs.tier.Logger.Debug("BadgerTransactionalStore.Get",
-		zap.String("key", b64.StdEncoding.EncodeToString(key)),
-	)
+	// bs.tier.Logger.Debug("BadgerTransactionalStore.Get",
+	// 	zap.String("key", b64.StdEncoding.EncodeToString(key)),
+	// )
 	key, err := makeKey(tablet, key)
 	if err != nil {
 		return nil, err

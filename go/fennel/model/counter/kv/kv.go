@@ -8,6 +8,7 @@ import (
 	"fennel/lib/ftypes"
 	"fennel/lib/kvstore"
 	"fennel/lib/value"
+	modelCounter "fennel/model/counter"
 	"fennel/model/counter/kv/codec"
 	"fennel/model/counter/kv/codec/impls"
 	"fennel/tier"
@@ -25,9 +26,37 @@ const (
 	tablet = kvstore.Aggregate
 )
 
+func Update(ctx context.Context, tr tier.Tier, aggIds []ftypes.AggId, histograms []modelCounter.Histogram, deltas [][]counter.Bucket, kv kvstore.ReaderWriter) error {
+	// check that the inputs are of same size
+	if len(aggIds) != len(histograms) || len(aggIds) != len(deltas) {
+		return fmt.Errorf("counter.kv.Update: aggIds, histogram and deltas must be of the same length")
+	}
+
+	defaults_ := make([]value.Value, len(aggIds))
+	for i, h := range histograms {
+		defaults_[i] = h.Zero()
+	}
+
+	vals, err := Get(ctx, tr, aggIds, deltas, defaults_, kv)
+	if err != nil {
+		return nil
+	}
+	for i := range deltas {
+		h := histograms[i]
+		for j := range deltas[i] {
+			merged, err := h.Merge(vals[i][j], deltas[i][j].Value)
+			if err != nil {
+				return err
+			}
+			deltas[i][j].Value = merged
+		}
+	}
+	return Set(ctx, tr, aggIds, deltas, kv)
+}
+
 func Set(ctx context.Context, tr tier.Tier, aggIds []ftypes.AggId, deltas [][]counter.Bucket, kv kvstore.ReaderWriter) error {
 	if len(aggIds) != len(deltas) {
-		return fmt.Errorf("counter.kv.Set: aggIds, deltas must be the same length")
+		return fmt.Errorf("counter.kv.Set: aggIds, deltas must be of the same length")
 	}
 	if len(aggIds) == 0 {
 		return nil
@@ -68,6 +97,7 @@ func Get(ctx context.Context, tr tier.Tier, aggIds []ftypes.AggId, buckets [][]c
 	if len(aggIds) == 0 {
 		return nil, nil
 	}
+	// TODO(mohit): For each aggrId, dedup Buckets to minimize roundtrips
 	values := make([][]value.Value, len(aggIds))
 	for i := range buckets {
 		values[i] = make([]value.Value, len(buckets[i]))

@@ -8,12 +8,13 @@ import (
 	"fennel/lib/counter"
 	"fennel/lib/ftypes"
 	"fennel/lib/value"
+	modelCounter "fennel/model/counter"
 	"fennel/test"
 
 	"github.com/stretchr/testify/require"
 )
 
-func TestSetGetLenMustMatch(t *testing.T) {
+func TestLenMustMatch(t *testing.T) {
 	tier, err := test.Tier()
 	require.NoError(t, err)
 	defer test.Teardown(tier)
@@ -26,17 +27,23 @@ func TestSetGetLenMustMatch(t *testing.T) {
 	_, err = Get(ctx, tier, []ftypes.AggId{12}, [][]counter.Bucket{}, []value.Value{value.Nil}, store)
 	require.Error(t, err)
 
+	b := counter.Bucket{
+		Key:    "12",
+		Window: 11,
+		Width:  6,
+		Index:  123,
+		Value:  value.String("foo"),
+	}
 	// default has diff length
-	_, err = Get(ctx, tier, []ftypes.AggId{12}, [][]counter.Bucket{
-		{
-			counter.Bucket{
-				Key:    "12",
-				Window: 11,
-				Width:  6,
-				Index:  123,
-				Value:  value.String("foo"),
-			},
-		}}, []value.Value{}, store)
+	_, err = Get(ctx, tier, []ftypes.AggId{12}, [][]counter.Bucket{{b}}, []value.Value{}, store)
+	require.Error(t, err)
+
+	// deltas has diff length
+	err = Update(ctx, tier, []ftypes.AggId{12}, []modelCounter.Histogram{modelCounter.NewSum([]uint64{3600 * 24})}, [][]counter.Bucket{}, store)
+	require.Error(t, err)
+
+	// histogram has diff length
+	err = Update(ctx, tier, []ftypes.AggId{12}, []modelCounter.Histogram{}, [][]counter.Bucket{{b}}, store)
 	require.Error(t, err)
 }
 
@@ -90,6 +97,59 @@ func TestSetGet(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, [][]value.Value{{value.String("foo"), value.String("bar")}, {value.String("foo2")}}, got)
 	}
+}
+
+func TestUpdate(t *testing.T) {
+	tier, err := test.Tier()
+	require.NoError(t, err)
+	defer test.Teardown(tier)
+	ctx := context.Background()
+
+	txn := tier.Badger.NewTransaction(true)
+	store := badger.NewTransactionalStore(tier, txn)
+
+	// Set a value for aggregate so that it gets updated
+	err = Set(ctx, tier, []ftypes.AggId{12}, [][]counter.Bucket{{{
+		Key:    "12",
+		Window: 11,
+		Width:  6,
+		Index:  123,
+		Value:  value.Int(2),
+	}}}, store)
+	require.NoError(t, err)
+
+	deltas := make([][]counter.Bucket, 2)
+	deltas[0] = []counter.Bucket{
+		{
+			Key:    "12",
+			Window: 11,
+			Width:  6,
+			Index:  123,
+			Value:  value.Int(6),
+		},
+		{
+			Key:    "11",
+			Window: 10,
+			Width:  12,
+			Index:  1234,
+			Value:  value.Int(10),
+		},
+	}
+	deltas[1] = []counter.Bucket{
+		{
+			Key:    "21",
+			Window: 21,
+			Width:  18,
+			Index:  21,
+			Value:  value.NewList(value.String("foo2")),
+		},
+	}
+	err = Update(ctx, tier, []ftypes.AggId{12, 23}, []modelCounter.Histogram{modelCounter.NewSum([]uint64{3600 * 24}), modelCounter.NewList([]uint64{3600 * 24})}, deltas, store)
+	require.NoError(t, err)
+	got, err := Get(ctx, tier, []ftypes.AggId{12, 23}, deltas, []value.Value{value.Nil, value.Nil}, store)
+	require.NoError(t, err)
+	// assert that value was added
+	require.Equal(t, [][]value.Value{{value.Int(8), value.Int(10)}, {value.NewList(value.String("foo2"))}}, got)
 }
 
 func TestGetWithoutSetReturnsDefault(t *testing.T) {

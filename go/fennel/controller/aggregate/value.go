@@ -114,7 +114,7 @@ func unitValue(
 	if err != nil {
 		return value.Nil, err
 	}
-	histogram, err := toHistogram(agg)
+	histogram, err := modelCounter.ToHistogram(agg.Options)
 	if err != nil {
 		return nil, err
 	}
@@ -140,7 +140,7 @@ func batchValue(ctx context.Context, tier tier.Tier, batch []aggregate.GetAggVal
 	}
 	for i, req := range batch {
 		agg := unique[req.AggName]
-		histograms[i], err = toHistogram(agg)
+		histograms[i], err = modelCounter.ToHistogram(agg.Options)
 		if err != nil {
 			return nil, fmt.Errorf("failed to make histogram from aggregate at index %d of batch: %v", i, err)
 		}
@@ -181,7 +181,7 @@ func Update(ctx context.Context, tier tier.Tier, consumer kafka.FConsumer, agg a
 	if err != nil {
 		return err
 	}
-	histogram, err := toHistogram(agg)
+	histogram, err := modelCounter.ToHistogram(agg.Options)
 	if err != nil {
 		return err
 	}
@@ -213,31 +213,6 @@ func transformActions(tier tier.Tier, actions []libaction.Action, query ast.Ast)
 		return value.NewList(), fmt.Errorf("query did not transform actions into a list")
 	}
 	return table, nil
-}
-
-func toHistogram(agg aggregate.Aggregate) (modelCounter.Histogram, error) {
-	switch agg.Options.AggType {
-	case "sum":
-		return modelCounter.NewSum(agg.Options.Durations), nil
-	case "timeseries_sum":
-		return modelCounter.NewTimeseriesSum(agg.Options.Window, agg.Options.Limit), nil
-	case "average":
-		return modelCounter.NewAverage(agg.Options.Durations), nil
-	case "list":
-		return modelCounter.NewList(agg.Options.Durations), nil
-	case "min":
-		return modelCounter.NewMin(agg.Options.Durations), nil
-	case "max":
-		return modelCounter.NewMax(agg.Options.Durations), nil
-	case "stddev":
-		return modelCounter.NewStdDev(agg.Options.Durations), nil
-	case "rate":
-		return modelCounter.NewRate(agg.Options.Durations, agg.Options.Normalize), nil
-	case "topk":
-		return modelCounter.NewTopK(agg.Options.Durations), nil
-	default:
-		return nil, fmt.Errorf("invalid aggregate type: %v", agg.Options.AggType)
-	}
 }
 
 // TODO: Use AggId here as well to keep the formatting consistent with remote storage (MemoryDB)

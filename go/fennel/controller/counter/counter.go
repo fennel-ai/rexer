@@ -1,3 +1,5 @@
+//go:build !badger
+
 package counter
 
 import (
@@ -29,6 +31,8 @@ func Value(
 	return histogram.Reduce(counts)
 }
 
+// TODO(Mohit): Fix this code if we decide to still use BucketStore
+// BucketStore instances are created per histogram - the list `indices` created is always a single element list
 func BatchValue(
 	ctx context.Context, tier tier.Tier,
 	aggIds []ftypes.AggId, keys []value.Value, histograms []counter.Histogram, kwargs []value.Dict,
@@ -52,7 +56,7 @@ func BatchValue(
 				return nil, fmt.Errorf("failed to get start timestamp of aggregate at index %d of batch: %v", i, err)
 			}
 			ids_[i] = aggIds[index]
-			buckets[i] = h.BucketizeDuration(keys[i].String(), start, end, h.Zero())
+			buckets[i] = h.BucketizeDuration(keys[index].String(), start, end, h.Zero())
 			defaults[i] = h.Zero()
 		}
 		counts, err := bs.GetMulti(ctx, tier, ids_, buckets, defaults)
