@@ -1,4 +1,4 @@
-import setupTier, {TierConf} from "./tier";
+import setupTier, { TierConf } from "./tier";
 import setupDataPlane, { PlaneConf, PlaneOutput } from "./plane";
 import * as vpc from "../vpc";
 import * as eks from "../eks";
@@ -64,6 +64,13 @@ const tierConfs: Record<number, TierConf> = {
             replicas: 1,
             // each http-server should be in different nodes from each other
             enforceReplicaIsolation: false,
+        },
+        apiServerConf: {
+            replicas: 1,
+            enforceReplicaIsolation: false,
+            // This will be replaced with the actual storageclass
+            // of the type io1.
+            storageclass: "io1",
         },
     },
     // Lokal prod tier on their prod data plane.
@@ -314,6 +321,10 @@ if (tierId !== 0) {
     } else {
         subnetIds = vpcOutput.privateSubnets;
     }
+    if (tierConf.apiServerConf?.storageclass !== undefined) {
+        tierConf.apiServerConf.storageclass =
+            eksOutput.storageclasses[tierConf.apiServerConf.storageclass]
+    }
     setupTier({
         tierId: Number(tierId),
         planeId: Number(planeId),
@@ -354,6 +365,8 @@ if (tierId !== 0) {
         httpServerConf: tierConf.httpServerConf,
 
         countAggrConf: tierConf.countAggrConf,
+
+        apiServerConf: tierConf.apiServerConf,
 
         nodeInstanceRole: eksOutput.instanceRole,
 
