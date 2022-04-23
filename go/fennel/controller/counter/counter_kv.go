@@ -9,6 +9,7 @@ import (
 	"fennel/lib/badger"
 	libcounter "fennel/lib/counter"
 	"fennel/lib/ftypes"
+	"fennel/lib/timer"
 	"fennel/lib/value"
 	"fennel/model/counter"
 	"fennel/model/counter/kv"
@@ -21,6 +22,7 @@ func Value(
 	ctx context.Context, tr tier.Tier,
 	aggId ftypes.AggId, key value.Value, histogram counter.Histogram, kwargs value.Dict,
 ) (value.Value, error) {
+	defer timer.Start(ctx, tr.ID, "controller.counter_kv.value").Stop()
 	end := ftypes.Timestamp(tr.Clock.Now())
 	start, err := histogram.Start(end, kwargs)
 	if err != nil {
@@ -47,6 +49,7 @@ func BatchValue(
 	ctx context.Context, tr tier.Tier,
 	aggIds []ftypes.AggId, keys []value.Value, histograms []counter.Histogram, kwargs []value.Dict,
 ) ([]value.Value, error) {
+	defer timer.Start(ctx, tr.ID, "controller.counter_kv.batch_value").Stop()
 	end := ftypes.Timestamp(tr.Clock.Now())
 	buckets := make([][]libcounter.Bucket, len(aggIds))
 	defaults_ := make([]value.Value, len(aggIds))

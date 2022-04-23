@@ -7,6 +7,7 @@ import (
 	"fennel/lib/counter"
 	"fennel/lib/ftypes"
 	"fennel/lib/kvstore"
+	"fennel/lib/timer"
 	"fennel/lib/value"
 	modelCounter "fennel/model/counter"
 	"fennel/model/counter/kv/codec"
@@ -28,6 +29,7 @@ const (
 
 func Update(ctx context.Context, tr tier.Tier, aggIds []ftypes.AggId, histograms []modelCounter.Histogram, deltas [][]counter.Bucket, kv kvstore.ReaderWriter) error {
 	// check that the inputs are of same size
+	defer timer.Start(ctx, tr.ID, "counter_kv.update").Stop()
 	if len(aggIds) != len(histograms) || len(aggIds) != len(deltas) {
 		return fmt.Errorf("counter.kv.Update: aggIds, histogram and deltas must be of the same length")
 	}
@@ -55,6 +57,7 @@ func Update(ctx context.Context, tr tier.Tier, aggIds []ftypes.AggId, histograms
 }
 
 func Set(ctx context.Context, tr tier.Tier, aggIds []ftypes.AggId, deltas [][]counter.Bucket, kv kvstore.ReaderWriter) error {
+	defer timer.Start(ctx, tr.ID, "counter_kv.set").Stop()
 	if len(aggIds) != len(deltas) {
 		return fmt.Errorf("counter.kv.Set: aggIds, deltas must be of the same length")
 	}
@@ -91,6 +94,7 @@ func Set(ctx context.Context, tr tier.Tier, aggIds []ftypes.AggId, deltas [][]co
 }
 
 func Get(ctx context.Context, tr tier.Tier, aggIds []ftypes.AggId, buckets [][]counter.Bucket, defaults_ []value.Value, kv kvstore.Reader) ([][]value.Value, error) {
+	defer timer.Start(ctx, tr.ID, "counter_kv.get").Stop()
 	if len(aggIds) != len(buckets) || len(aggIds) != len(defaults_) {
 		return nil, fmt.Errorf("counter.kv.Get: names, buckets, and defaults must be the same length")
 	}

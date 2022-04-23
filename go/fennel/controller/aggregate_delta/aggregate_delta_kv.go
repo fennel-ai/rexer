@@ -11,6 +11,7 @@ import (
 	"fennel/lib/badger"
 	"fennel/lib/counter"
 	"fennel/lib/ftypes"
+	"fennel/lib/timer"
 	modelCounter "fennel/model/counter"
 	"fennel/model/counter/kv"
 	"fennel/model/offsets"
@@ -50,6 +51,7 @@ func readBatch(ctx context.Context, consumer libkafka.FConsumer, count int, time
 }
 
 func TransferAggrDeltasToDB(ctx context.Context, tr tier.Tier, consumer libkafka.FConsumer) error {
+	defer timer.Start(ctx, tr.ID, "aggregate_delta.TransferToDB").Stop()
 	// read from kafka
 	ads, err := readBatch(ctx, consumer, 1000 /*count=*/, 10*time.Second /*timeout=*/)
 	if err != nil {

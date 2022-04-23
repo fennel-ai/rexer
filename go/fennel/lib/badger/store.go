@@ -5,6 +5,7 @@ import (
 	b64 "encoding/base64"
 
 	"fennel/lib/kvstore"
+	"fennel/lib/timer"
 	"fennel/tier"
 
 	"github.com/dgraph-io/badger/v3"
@@ -30,6 +31,7 @@ func NewTransactionalStore(tier tier.Tier, txn *badger.Txn) *BadgerTransactional
 }
 
 func (bs *BadgerTransactionalStore) GetAll(ctx context.Context, tablet kvstore.TabletType, prefix []byte) ([][]byte, []kvstore.SerializedValue, error) {
+	defer timer.Start(ctx, bs.tier.ID, "badger.store.getall").Stop()
 	prefix, err := makeKey(tablet, prefix)
 	if err != nil {
 		return nil, nil, err
@@ -59,6 +61,7 @@ func (bs *BadgerTransactionalStore) GetAll(ctx context.Context, tablet kvstore.T
 }
 
 func (bs *BadgerTransactionalStore) Get(ctx context.Context, tablet kvstore.TabletType, key []byte) (*kvstore.SerializedValue, error) {
+	defer timer.Start(ctx, bs.tier.ID, "badger.store.get").Stop()
 	if len(key) == 0 {
 		return nil, kvstore.ErrEmptyKey
 	}
@@ -90,6 +93,7 @@ func (bs *BadgerTransactionalStore) Get(ctx context.Context, tablet kvstore.Tabl
 }
 
 func (bs *BadgerTransactionalStore) Set(ctx context.Context, tablet kvstore.TabletType, key []byte, value kvstore.SerializedValue) error {
+	defer timer.Start(ctx, bs.tier.ID, "badger.store.set").Stop()
 	if len(key) == 0 {
 		return kvstore.ErrEmptyKey
 	}
