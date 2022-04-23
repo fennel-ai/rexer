@@ -4,13 +4,13 @@ package aggregate_delta
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	libkafka "fennel/kafka"
 	"fennel/lib/badger"
 	"fennel/lib/counter"
 	"fennel/lib/ftypes"
-	"fennel/lib/value"
 	modelCounter "fennel/model/counter"
 	"fennel/model/counter/kv"
 	"fennel/model/offsets"
@@ -51,48 +51,35 @@ func readBatch(ctx context.Context, consumer libkafka.FConsumer, count int, time
 
 func TransferAggrDeltasToDB(ctx context.Context, tr tier.Tier, consumer libkafka.FConsumer) error {
 	// read from kafka
-	ads, err := readBatch(ctx, consumer, 1000 /*count=*/, 1*time.Second /*timeout=*/)
+	ads, err := readBatch(ctx, consumer, 1000 /*count=*/, 10*time.Second /*timeout=*/)
 	if err != nil {
 		return err
 	}
 
-	// compute bucket values offline to avoid additional roundtrips
-	aggrHist := make(map[ftypes.AggId]modelCounter.Histogram)
-	bucketVals := make(map[bucketKey][]value.Value, len(ads))
+	// merge buckets and send an accumulated update, this should help save few round trips
+	aggHist := make(map[ftypes.AggId]modelCounter.Histogram, len(ads))
+	aggBuckets := make(map[ftypes.AggId][]counter.Bucket, len(ads))
 	for _, ad := range ads {
-		for _, b := range ad.Buckets {
-			bk := bucketKey{
-				AggId:  ad.AggId,
-				Key:    b.Key,
-				Window: b.Window,
-				Width:  b.Width,
-				Index:  b.Index,
-			}
-			bucketVals[bk] = append(bucketVals[bk], b.Value)
-		}
-		if _, ok := aggrHist[ad.AggId]; !ok {
+		aggBuckets[ad.AggId] = append(aggBuckets[ad.AggId], ad.Buckets...)
+		if _, ok := aggHist[ad.AggId]; !ok {
 			hist, err := modelCounter.ToHistogram(ad.Options)
 			if err != nil {
 				return err
 			}
-			aggrHist[ad.AggId] = hist
+			aggHist[ad.AggId] = hist
 		}
 	}
 
-	// reduce the values
-	aggrBuckets := make(map[ftypes.AggId][]counter.Bucket, len(aggrHist))
-	for b, vals := range bucketVals {
-		val, err := aggrHist[b.AggId].Reduce(vals)
-		if err != nil {
-			return err
+	aggrBuckets := make(map[ftypes.AggId][]counter.Bucket, len(aggHist))
+	for aggId, buckets := range aggBuckets {
+		h, ok := aggHist[aggId]
+		if !ok {
+			return fmt.Errorf("histogram not found for aggId: %v", aggId)
 		}
-		aggrBuckets[b.AggId] = append(aggrBuckets[b.AggId], counter.Bucket{
-			Key:    b.Key,
-			Window: b.Window,
-			Width:  b.Width,
-			Index:  b.Index,
-			Value:  val,
-		})
+		aggrBuckets[aggId], err = modelCounter.MergeBuckets(h, buckets)
+		if err != nil {
+			return errors.Wrap(err, fmt.Sprintf("failed to merge buckets for aggId: %v", aggId))
+		}
 	}
 
 	aggIds := make([]ftypes.AggId, len(aggrBuckets))
@@ -102,7 +89,7 @@ func TransferAggrDeltasToDB(ctx context.Context, tr tier.Tier, consumer libkafka
 	for aggId, bs := range aggrBuckets {
 		aggIds[curr] = aggId
 		buckets[curr] = bs
-		histograms[curr] = aggrHist[aggId]
+		histograms[curr] = aggHist[aggId]
 		curr++
 	}
 	var partitions kafka.TopicPartitions
