@@ -48,7 +48,7 @@ func BatchValue(
 	aggIds []ftypes.AggId, keys []value.Value, histograms []counter.Histogram, kwargs []value.Dict,
 ) ([]value.Value, error) {
 	end := ftypes.Timestamp(tr.Clock.Now())
-	var buckets [][]libcounter.Bucket
+	buckets := make([][]libcounter.Bucket, len(aggIds))
 	defaults_ := make([]value.Value, len(aggIds))
 	for i := range aggIds {
 		h := histograms[i]
