@@ -35,6 +35,10 @@ func Store(ctx context.Context, tier tier.Tier, agg aggregate.Aggregate) error {
 		}
 	}
 
+	if agg.Options.CronSchedule != "" {
+		// If offline aggregate, write to AWS Glue
+	}
+
 	querySer, err := ast.Marshal(agg.Query)
 	if err != nil {
 		return fmt.Errorf("can not marshal aggregate query: %v", err)
