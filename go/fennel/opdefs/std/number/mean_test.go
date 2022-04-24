@@ -16,31 +16,18 @@ func TestMeanop_Apply(t *testing.T) {
 		expected []value.Value
 	}{
 		{
-			[]value.Value{value.Int(1), value.Int(2), value.Int(-1)},
+			[]value.Value{
+				value.NewList(value.Int(1), value.Int(2), value.Int(-1)),
+				value.NewList(value.Int(1), value.Int(2), value.Int(0)),
+				value.NewList(value.Double(1), value.Int(2), value.Int(-1)),
+				value.NewList(value.Int(1e15), value.Int(2e15), value.Int(-1e15)),
+			},
 			false,
-			[]value.Value{value.Double(2.0 / 3.0)},
-		},
-		{
-			// output is double even if only start is double
-			[]value.Value{value.Int(1), value.Int(2), value.Double(-1)},
-			false,
-			[]value.Value{value.Double(2. / 3.)},
-		},
-		{
-			// output is double even if one element is double
-			[]value.Value{value.Double(1), value.Int(2), value.Int(-1)},
-			false,
-			[]value.Value{value.Double(2. / 3.)},
-		},
-		{
-			// works on big numbers
-			[]value.Value{value.Int(1e15), value.Int(2e15), value.Int(-1e15)},
-			false,
-			[]value.Value{value.Double((2e15) / 3.)},
+			[]value.Value{value.Double(2.0 / 3.0), value.Double(1.0), value.Double(2.0 / 3.0), value.Double(2e15 / 3.0)},
 		},
 		{
 			// only numbers allowed
-			[]value.Value{value.String("hi"), value.Int(2), value.Int(3)},
+			[]value.Value{value.NewList(value.String("hi"), value.Int(2), value.Int(3))},
 			true,
 			nil,
 		},

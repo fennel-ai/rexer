@@ -20,41 +20,29 @@ func (a adder) New(
 	return adder{}, nil
 }
 
-func (a adder) Apply(_ context.Context, kwargs value.Dict, in operators.InputIter, out *value.List) error {
-	sum, float := extract(kwargs.GetUnsafe("start"))
-
+func (a adder) Apply(_ context.Context, _ value.Dict, in operators.InputIter, out *value.List) error {
 	for in.HasMore() {
-		heads, _, err := in.Next()
+		heads, kwargs, err := in.Next()
 		if err != nil {
 			return err
 		}
-		thisNum, thisFloat := extract(heads[0])
-		sum += thisNum
-		float = float || thisFloat
+		elems := heads[0].(value.List)
+		sum := kwargs.GetUnsafe("start")
+		for _, elem := range elems.Values() {
+			sum, err = sum.Op("+", elem)
+			if err != nil {
+				return err
+			}
+		}
+		out.Append(sum)
 	}
-	var ret value.Value = value.Double(sum)
-	if !float {
-		ret = value.Int(sum)
-	}
-	out.Append(ret)
 	return nil
-}
-
-func extract(n value.Value) (float64, bool) {
-	switch t := n.(type) {
-	case value.Int:
-		return float64(t), false
-	case value.Double:
-		return float64(t), true
-	default:
-		panic("this should not happen")
-	}
 }
 
 func (a adder) Signature() *operators.Signature {
 	return operators.NewSignature("std", "sum").
-		Input([]value.Type{value.Types.Number}).
-		Param("start", value.Types.Number, true, true, value.Int(0))
+		Input([]value.Type{value.Types.ListOfNumbers}).
+		Param("start", value.Types.Number, false, true, value.Int(0))
 }
 
 var _ operators.Operator = adder{}
