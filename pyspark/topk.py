@@ -1,3 +1,6 @@
+# This file is meant for being uploading into S3 as a script and create a job out of it. 
+# CreateTrigger will then schedule these jobs according to the cron schedule specified by the user. 
+
 from datetime import datetime, timedelta, timezone
 
 import sys
@@ -12,7 +15,7 @@ from pyspark.sql import functions as F
 from pyspark.sql.functions import col, collect_list, array_join
 
 ## @params: [JOB_NAME]
-args = getResolvedOptions(sys.argv, ['JOB_NAME', 'PLANE_ID', 'TIER_ID', 'AGGREGATE_NAME', 'DURATION', 'AGGREGATE_TYPE', 'PARAMS'])
+args = getResolvedOptions(sys.argv, ['JOB_NAME', 'TIER_ID', 'AGGREGATE_NAME', 'DURATION', 'AGGREGATE_TYPE', 'LIMIT'])
 print("All args", args)
 sc = SparkContext()
 glueContext = GlueContext(sc)
@@ -26,10 +29,7 @@ year = utc_past.strftime("%Y")
 month = utc_past.strftime("%m")
 day = utc_past.strftime("%d")
 
-params = json.loads(args['PARAMS'])
-
 print(f'======== Reading data from date: year={year}/month={month}/day={day}\n')
-# the format of the s3 objects: `s3://p-{PLANE_ID}-training-data/daily/t_{TIER_ID}_featurelog/year=2022/month=04/day=05/hour=18/xyz.json`
 # read JSON files using wildcard to fetch all the files
 
 # use default credentials which in this case would be derived from GLUE job IAM role which has access to the S3 buckets 
@@ -61,10 +61,11 @@ from (
 )
 where rank < {}
 group by groupkey
-""".format(params["k"])
+""".format(args["LIMIT"])
 
 topk = spark.sql(sql_str)
-topk_aggregate_path = f's3://offline-aggregate-output/t_{args["TIER_ID"]}/{args["AGGREGATE_NAME"]}/{args["AGGREGATE_TYPE"]}.json'
+
+topk_aggregate_path = f's3://offline-aggregate-output/t_{args["TIER_ID"]}/{args["AGGREGATE_NAME"]}/day={day}/{now_utc.strftime("%H:%M")}/{args["AGGREGATE_TYPE"]}.json'
 topk.write.mode('overwrite').parquet(topk_aggregate_path)
 
 job.commit()
