@@ -60,7 +60,7 @@ func TestEndToEnd(t *testing.T) {
 			},
 			value.NewList(value.Int(0), value.Int(0), value.Int(0), value.Int(0)),
 			value.String(uid),
-			[]value.Dict{value.NewDict(map[string]value.Value{})},
+			[]value.Dict{value.NewDict(nil)},
 			[]value.Value{value.NewList(value.Int(0), value.Int(0), value.Int(1), value.Int(2))},
 			nil,
 		},

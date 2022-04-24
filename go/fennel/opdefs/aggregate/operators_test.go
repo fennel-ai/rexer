@@ -113,7 +113,7 @@ func TestAggValue_Apply(t *testing.T) {
 	}
 	optest.AssertEqual(t, tier, &AggValue{tier}, static, [][]value.Value{inputs}, contextKwargs, outputs)
 
-	static = value.NewDict(map[string]value.Value{})
+	static = value.NewDict(nil)
 	outputs = []value.Value{
 		value.Int(2),
 		value.Int(2),

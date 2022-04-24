@@ -63,7 +63,7 @@ func (i Interpreter) VisitFnCall(module, name string, kwargs map[string]ast.Ast)
 	// finally, call the function
 	// typing of input / context kwargs is verified element by element inside the iter
 	outtable := value.NewList()
-	if err = op.Apply(i.ctx, value.NewDict(map[string]value.Value{}), inputTable.Iter(), &outtable); err != nil {
+	if err = op.Apply(i.ctx, value.NewDict(nil), inputTable.Iter(), &outtable); err != nil {
 		return value.Nil, err
 	}
 	if outtable.Len() != 1 {
@@ -82,11 +82,11 @@ func (i Interpreter) queryArgs() value.Dict {
 	}
 	args, err := rootEnv.Lookup("__args__")
 	if err != nil {
-		return value.NewDict(map[string]value.Value{})
+		return value.NewDict(nil)
 	}
 	asDict, ok := args.(value.Dict)
 	if !ok {
-		return value.NewDict(map[string]value.Value{})
+		return value.NewDict(nil)
 	}
 	return asDict
 }
@@ -307,7 +307,7 @@ func (i Interpreter) VisitIfelse(condition ast.Ast, thenDo ast.Ast, elseDo ast.A
 }
 
 func (i Interpreter) getStaticKwargs(op operators.Operator, kwargs ast.Dict) (value.Dict, error) {
-	ret := value.NewDict(map[string]value.Value{})
+	ret := value.NewDict(nil)
 	sig := op.Signature()
 	for k, p := range sig.StaticKwargs {
 		tree, ok := kwargs.Values[k]

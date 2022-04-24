@@ -118,7 +118,8 @@ type typeIndex struct {
 	Dict   Type
 	Any    Type
 	// Other types
-	Number Type
+	Number        Type
+	ListOfNumbers Type
 }
 
 var Types typeIndex
@@ -135,4 +136,5 @@ func init() {
 	Types.Dict = baseType{"Dict", reflect.TypeOf(Dict{})}
 	// Set other types (ensure subtypes are set before using them)
 	Types.Number = compoundType{"Number", []Type{Types.Int, Types.Double}}
+	Types.ListOfNumbers = listType{name: "List of Numbers", elemType: Types.Number}
 }

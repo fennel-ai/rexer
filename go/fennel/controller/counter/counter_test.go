@@ -127,7 +127,7 @@ func TestTimeseries(t *testing.T) {
 	tier.Clock = clock
 	clock.Set(int64(start + 24*3600*2))
 	// at the end of 2 days, we should get one data point each for 9 days
-	f, err := Value(ctx, tier, agg.Id, key, histogram, value.NewDict(map[string]value.Value{}))
+	f, err := Value(ctx, tier, agg.Id, key, histogram, value.NewDict(nil))
 	assert.NoError(t, err)
 	found, ok := f.(value.List)
 	assert.True(t, ok)
@@ -143,7 +143,7 @@ func TestTimeseries(t *testing.T) {
 	// but if we set time to just at 6 hours from start, we will still 9 entries, but few will be zero padded
 	// and since our start time is 1 min delayed, the 4th entry will be one short of 60
 	clock.Set(int64(start + 6*3600))
-	f, err = Value(ctx, tier, agg.Id, key, histogram, value.NewDict(map[string]value.Value{}))
+	f, err = Value(ctx, tier, agg.Id, key, histogram, value.NewDict(nil))
 	assert.NoError(t, err)
 	found, ok = f.(value.List)
 	assert.True(t, ok)
@@ -443,7 +443,7 @@ func TestBatchValue(t *testing.T) {
 	assert.True(t, exp2.Equal(found[1]))
 
 	// not specifying a duration in kwargs should return an error
-	kwargs[1] = value.NewDict(map[string]value.Value{})
+	kwargs[1] = value.NewDict(nil)
 	_, err = BatchValue(ctx, tier, aggIds, keys, []counter2.Histogram{h1, h2}, kwargs)
 	assert.Error(t, err)
 
@@ -464,7 +464,7 @@ func TestDurations(t *testing.T) {
 	h := counter2.NewSum(durations)
 
 	// not specifying a duration in kwargs should return an error
-	_, err = Value(ctx, tier, aggId, value.Int(0), h, value.NewDict(map[string]value.Value{}))
+	_, err = Value(ctx, tier, aggId, value.Int(0), h, value.NewDict(nil))
 	assert.Error(t, err)
 	// specifying a duration that wasn't registered should also return an error
 	_, err = Value(ctx, tier, aggId, value.Int(0), h, value.NewDict(map[string]value.Value{"duration": value.Int(10 * 24 * 3600)}))

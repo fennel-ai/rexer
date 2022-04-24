@@ -110,13 +110,13 @@ func (t topK) Merge(a, b value.Value) (value.Value, error) {
 }
 
 func (t topK) Zero() value.Value {
-	return value.NewDict(map[string]value.Value{})
+	return value.NewDict(nil)
 }
 
 func (t topK) extract(v value.Value) (value.Dict, error) {
 	d, ok := v.(value.Dict)
 	if !ok {
-		return value.NewDict(map[string]value.Value{}), fmt.Errorf("expected dict but got: %v", v)
+		return value.NewDict(nil), fmt.Errorf("expected dict but got: %v", v)
 	}
 	// must typecheck for sorting in Reduce to not panic
 	for _, v := range d.Iter() {
@@ -130,7 +130,7 @@ func (t topK) extract(v value.Value) (value.Dict, error) {
 }
 
 func (t topK) merge(ds []value.Dict) (value.Dict, error) {
-	ret := value.NewDict(map[string]value.Value{})
+	ret := value.NewDict(nil)
 	for _, d := range ds {
 		for k, v := range d.Iter() {
 			vOld, ok := ret.Get(k)

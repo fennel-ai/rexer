@@ -44,9 +44,9 @@ func TestDeduper_Apply(t *testing.T) {
 			},
 			value.NewDict(nil),
 			[]value.Dict{
-				value.NewDict(map[string]value.Value{}),
-				value.NewDict(map[string]value.Value{}),
-				value.NewDict(map[string]value.Value{}),
+				value.NewDict(nil),
+				value.NewDict(nil),
+				value.NewDict(nil),
 			},
 			false,
 			[]value.Value{

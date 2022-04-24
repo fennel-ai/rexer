@@ -79,7 +79,7 @@ func TestRollingAverage_Merge_Invalid(t *testing.T) {
 		{value.NewList(value.Int(0), value.Int(-1)), value.NewList(value.Int(2))},
 		{value.NewList(value.Double(0), value.Int(-1)), value.NewList(value.Int(2), value.Double(3))},
 		{value.NewList(), value.NewList(value.Int(2), value.Double(3))},
-		{value.NewDict(map[string]value.Value{}), value.NewList(value.Int(2), value.Double(3))},
+		{value.NewDict(nil), value.NewList(value.Int(2), value.Double(3))},
 		{value.Nil, value.NewList(value.Int(2), value.Double(3))},
 	}
 	for _, n := range invalidCases {

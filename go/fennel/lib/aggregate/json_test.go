@@ -80,7 +80,7 @@ func TestGetAggValueRequestJSON(t *testing.T) {
 		gavr: GetAggValueRequest{AggName: "some name", Key: value.Bool(true), Kwargs: value.NewDict(map[string]value.Value{"something": value.NewDict(nil)})},
 	}, {
 		str:  `{"Name":"some name","Key":-12.9,"Kwargs":{}}`,
-		gavr: GetAggValueRequest{AggName: "some name", Key: value.Double(-12.9), Kwargs: value.NewDict(map[string]value.Value{})},
+		gavr: GetAggValueRequest{AggName: "some name", Key: value.Double(-12.9), Kwargs: value.NewDict(nil)},
 	}, {
 		str:  `{"Name":"some name","Key":"pqrs","Kwargs":{}}`,
 		gavr: GetAggValueRequest{AggName: "some name", Key: value.String("pqrs")},

@@ -79,7 +79,7 @@ func TestStddev_Merge_Invalid(t *testing.T) {
 		value.NewList(value.Int(-4), value.Int(16)),
 		value.NewList(value.Int(0)),
 		value.NewList(),
-		value.NewDict(map[string]value.Value{}),
+		value.NewDict(nil),
 		value.Nil,
 	}
 	var allStddevVals []value.Value
@@ -125,7 +125,7 @@ func TestStddev_Bucketize_Invalid(t *testing.T) {
 	t.Parallel()
 	h := NewStdDev([]uint64{123})
 	cases := [][]value.Dict{
-		{value.NewDict(map[string]value.Value{})},
+		{value.NewDict(nil)},
 		{value.NewDict(map[string]value.Value{"groupkey": value.Int(1), "timestamp": value.Int(2)})},
 		{value.NewDict(map[string]value.Value{"groupkey": value.Int(1), "timestamp": value.Int(2), "value": value.Nil})},
 		{value.NewDict(map[string]value.Value{"groupkey": value.Int(1), "timestamp": value.Bool(true), "value": value.Int(4)})},

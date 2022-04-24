@@ -75,7 +75,7 @@ func TestMin_Merge_Invalid(t *testing.T) {
 		value.NewList(value.Int(2), value.Int(1)),
 		value.NewList(value.Int(7), value.Bool(false), value.Int(2)),
 		value.NewList(),
-		value.NewDict(map[string]value.Value{}),
+		value.NewDict(nil),
 		value.Nil,
 	}
 	var allMinVals []value.Value

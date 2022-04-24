@@ -117,7 +117,7 @@ func (r *Row) UnmarshalJSON(bytes []byte) error {
 }
 
 func (r Row) GetValue() value.Value {
-	d := value.NewDict(map[string]value.Value{})
+	d := value.NewDict(nil)
 	for k, v := range r.Features.Iter() {
 		pk := prefixed("feature", k)
 		d.Set(pk, v)
