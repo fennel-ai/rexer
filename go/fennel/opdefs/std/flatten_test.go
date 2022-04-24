@@ -15,7 +15,7 @@ func TestFlattenOperator_Apply(t *testing.T) {
 		context  []value.Dict
 		expected []value.Value
 	}
-	zDict := value.NewDict(map[string]value.Value{})
+	zDict := value.NewDict(nil)
 	vInt := value.Int(-3)
 	vDouble := value.Double(2.5)
 	vString := value.String("abc")
@@ -52,7 +52,7 @@ func TestFlattenOperator_Apply(t *testing.T) {
 		},
 		{
 			[]value.Value{l2, l2},
-			value.NewDict(map[string]value.Value{}),
+			value.NewDict(nil),
 			[]value.Dict{zDict, zDict},
 			[]value.Value{vDouble, vInt, vInt, vDouble, vDict, vDouble, vInt, vInt, vDouble, vDict},
 		},

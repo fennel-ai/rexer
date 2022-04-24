@@ -109,7 +109,7 @@ func TestList_Merge_Invalid(t *testing.T) {
 		},
 		{
 			value.NewList(),
-			value.NewDict(map[string]value.Value{}),
+			value.NewDict(nil),
 		},
 		{
 			value.Double(0.0),
@@ -152,7 +152,7 @@ func TestList_Bucketize_Invalid(t *testing.T) {
 	t.Parallel()
 	h := NewList([]uint64{123})
 	cases := [][]value.Dict{
-		{value.NewDict(map[string]value.Value{})},
+		{value.NewDict(nil)},
 		{value.NewDict(map[string]value.Value{"groupkey": value.Int(1), "timestamp": value.Int(2)})},
 		{value.NewDict(map[string]value.Value{"groupkey": value.Int(1), "timestamp": value.Bool(true), "value": value.Int(4)})},
 		{value.NewDict(map[string]value.Value{"groupkey": value.Int(1), "timestamp": value.Double(1.0), "value": value.Int(3)})},

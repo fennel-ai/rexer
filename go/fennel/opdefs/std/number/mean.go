@@ -21,30 +21,37 @@ func (a meanop) New(
 }
 
 func (a meanop) Apply(_ context.Context, _ value.Dict, in operators.InputIter, out *value.List) error {
-	sum, num := float64(0), int64(0)
-
 	for in.HasMore() {
 		heads, _, err := in.Next()
 		if err != nil {
 			return err
 		}
-		this, _ := extract(heads[0])
-		sum += this
-		num += 1
+		elems := heads[0].(value.List)
+		var sum value.Value = value.Int(0)
+		num := 0
+		for _, elem := range elems.Values() {
+			sum, err = sum.Op("+", elem)
+			if err != nil {
+				return nil
+			}
+			num++
+		}
+		if num == 0 {
+			out.Append(value.Int(0))
+		} else {
+			mean, err := sum.Op("/", value.Int(num))
+			if err != nil {
+				return err
+			}
+			out.Append(mean)
+		}
 	}
-	var ret float64
-	if num == 0 {
-		ret = 0
-	} else {
-		ret = sum / float64(num)
-	}
-	out.Append(value.Double(ret))
 	return nil
 }
 
 func (a meanop) Signature() *operators.Signature {
 	return operators.NewSignature("std", "mean").
-		Input([]value.Type{value.Types.Number})
+		Input([]value.Type{value.Types.ListOfNumbers})
 }
 
 var _ operators.Operator = meanop{}

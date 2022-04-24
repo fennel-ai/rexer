@@ -114,7 +114,7 @@ func TestInterpreter_VisitList(t *testing.T) {
 
 func TestInterpreter_VisitDict(t *testing.T) {
 	// Empty dict works
-	testValid(t, ast.Dict{Values: map[string]ast.Ast{}}, value.NewDict(map[string]value.Value{}))
+	testValid(t, ast.Dict{Values: map[string]ast.Ast{}}, value.NewDict(nil))
 
 	// dict with just one element works
 	d := value.NewDict(map[string]value.Value{"hi": value.Double(3.4)})
@@ -149,7 +149,7 @@ func TestInterpreter_VisitStatement(t *testing.T) {
 func TestInterpreter_QueryArgs(t *testing.T) {
 	i := getInterpreter(nil, value.Dict{})
 	// initially nothing
-	assert.Equal(t, value.NewDict(map[string]value.Value{}), i.queryArgs())
+	assert.Equal(t, value.NewDict(nil), i.queryArgs())
 	// queryargs are found at the root env
 	args := value.NewDict(map[string]value.Value{"x": value.Int(0)})
 	i = getInterpreter(nil, args)

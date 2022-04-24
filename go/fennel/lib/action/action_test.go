@@ -76,7 +76,7 @@ func TestActionJSON(t *testing.T) {
 		a:   Action{Metadata: value.NewList()},
 	}, {
 		str: makeActionJSON(0, "", "", "", "", "", 0, "", "[1,{}]"),
-		a:   Action{Metadata: value.NewList(value.Int(1), value.NewDict(map[string]value.Value{}))},
+		a:   Action{Metadata: value.NewList(value.Int(1), value.NewDict(nil))},
 	}, {
 		str: makeActionJSON(0, "", "", "", "", "", 0, "", `{}`),
 		a:   Action{Metadata: value.NewDict(nil)},

@@ -155,7 +155,7 @@ func TestRate_Merge_Invalid(t *testing.T) {
 		},
 		{
 			value.NewList(),
-			value.NewDict(map[string]value.Value{}),
+			value.NewDict(nil),
 		},
 		{
 			value.Double(0.0),

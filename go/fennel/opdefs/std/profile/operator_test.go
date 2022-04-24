@@ -35,8 +35,8 @@ func TestDefault(t *testing.T) {
 		}},
 	}
 	table := value.List{}
-	table.Append(value.NewDict(map[string]value.Value{}))
-	table.Append(value.NewDict(map[string]value.Value{}))
+	table.Append(value.NewDict(nil))
+	table.Append(value.NewDict(nil))
 	i, err := interpreter.NewInterpreter(context.Background(), bootarg.Create(tier),
 		value.NewDict(map[string]value.Value{"actions": table}))
 	assert.NoError(t, err)

@@ -401,7 +401,7 @@ func TestQuery(t *testing.T) {
 		ThenDo:    ast.MakeString("abc"),
 		ElseDo:    ast.MakeString("xyz"),
 	}
-	found, err = c.Query(e2, value.NewDict(map[string]value.Value{}), mock.Data{})
+	found, err = c.Query(e2, value.NewDict(nil), mock.Data{})
 	assert.NoError(t, err)
 	assert.True(t, value.String("xyz").Equal(found))
 

@@ -157,7 +157,7 @@ func TestInterpreter_VisitOpcall4(t *testing.T) {
 		Kwargs:    ast.Dict{},
 	}
 	table := value.NewList()
-	table.Append(value.NewDict(map[string]value.Value{}))
+	table.Append(value.NewDict(nil))
 	i := getInterpreter(nil, value.NewDict(map[string]value.Value{"table": table}))
 	out, err := query.AcceptValue(i)
 	assert.NoError(t, err)

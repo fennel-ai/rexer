@@ -21,7 +21,6 @@ func TestBoundQueryJSON(t *testing.T) {
 	var tests []test
 	vals := []value.Dict{
 		value.NewDict(nil),
-		value.NewDict(map[string]value.Value{}),
 		value.NewDict(map[string]value.Value{"k1": value.Nil}),
 		value.NewDict(map[string]value.Value{"k1": value.Double(3.14), "k2": value.Int(128), "k3": value.String("abc"), "k4": value.Bool(false)}),
 		value.NewDict(map[string]value.Value{"k1": value.NewList(value.List{}, value.Dict{}), "k2": value.NewDict(map[string]value.Value{"x": value.List{}})}),

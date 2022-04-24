@@ -23,7 +23,7 @@ func TestQueryExecution(t *testing.T) {
 		ThenDo:    ast.MakeInt(+1),
 		ElseDo:    ast.MakeInt(-1),
 	}
-	args1 := value.NewDict(map[string]value.Value{})
+	args1 := value.NewDict(nil)
 	expected1 := value.Int(-1)
 
 	found1, err := executor.Exec(context.Background(), query1, args1)

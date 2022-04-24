@@ -168,7 +168,7 @@ func (t twoLevelRedisStore) get(
 	// now load all groups from redis and get values from relevant slots
 	defaults_ := make([]value.Value, len(rkeys))
 	for i := range defaults_ {
-		defaults_[i] = value.NewDict(map[string]value.Value{})
+		defaults_[i] = value.NewDict(nil)
 	}
 	groupVals, err := readFromRedis(ctx, tier, rkeys, defaults_)
 	if err != nil {
@@ -274,7 +274,7 @@ func (t twoLevelRedisStore) set(ctx context.Context, tier tier.Tier, aggIds []ft
 	// now load all groups from redis first and update relevant slots
 	defaults := make([]value.Value, len(rkeys))
 	for i := range defaults {
-		defaults[i] = value.NewDict(map[string]value.Value{})
+		defaults[i] = value.NewDict(nil)
 	}
 	groupVals, err := readFromRedis(ctx, tier, rkeys, defaults)
 	if err != nil {

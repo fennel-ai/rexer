@@ -71,9 +71,9 @@ func TestTopK_Merge_Valid(t *testing.T) {
 	h := NewTopK([]uint64{123})
 	validCases := make([][]value.Value, 2)
 
-	validCases[0] = append(validCases[0], value.NewDict(map[string]value.Value{}))
-	validCases[0] = append(validCases[0], value.NewDict(map[string]value.Value{}))
-	validCases[0] = append(validCases[0], value.NewDict(map[string]value.Value{}))
+	validCases[0] = append(validCases[0], value.NewDict(nil))
+	validCases[0] = append(validCases[0], value.NewDict(nil))
+	validCases[0] = append(validCases[0], value.NewDict(nil))
 
 	validCases[1] = append(validCases[1], value.NewDict(map[string]value.Value{"x": value.Double(5.5), "y": value.Int(-8)}))
 	validCases[1] = append(validCases[1], value.NewDict(map[string]value.Value{"x": value.Int(-1), "y": value.Double(19.7)}))
@@ -150,7 +150,7 @@ func TestTopK_Bucketize_Invalid(t *testing.T) {
 	t.Parallel()
 	h := NewMax([]uint64{123})
 	cases := [][]value.Dict{
-		{value.NewDict(map[string]value.Value{})},
+		{value.NewDict(nil)},
 		{value.NewDict(map[string]value.Value{"groupkey": value.Int(1), "timestamp": value.Int(2)})},
 		{value.NewDict(map[string]value.Value{"groupkey": value.Int(1), "timestamp": value.Int(2), "value": value.Nil})},
 		{value.NewDict(map[string]value.Value{"groupkey": value.Int(1), "timestamp": value.Bool(true), "value": value.Int(4)})},
@@ -169,7 +169,7 @@ func TestTopK_Bucketize_Invalid(t *testing.T) {
 }
 
 func genTopKDict(n int, keys []string) value.Dict {
-	d := value.NewDict(map[string]value.Value{})
+	d := value.NewDict(nil)
 	for i := 0; i < n; i++ {
 		if i%2 == 0 {
 			d.Set(keys[i], value.Double(1e6*rand.Float64()))
