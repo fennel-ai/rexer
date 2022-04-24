@@ -42,10 +42,8 @@ func TestGlueClient(t *testing.T) {
 		Id: 1,
 	}
 
-	for _, duration := range agg.Options.Durations {
-		err := glueClient.ScheduleOfflineAggregate(string(agg.Name), string(agg.Options.AggType), agg.Options.CronSchedule, duration)
-		assert.NoError(t, err)
-	}
+	err := glueClient.ScheduleOfflineAggregate(107, agg)
+	assert.NoError(t, err)
 
 	aggs, err := glueClient.getAllOfflineAggregates()
 	assert.NoError(t, err)

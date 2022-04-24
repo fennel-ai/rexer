@@ -38,11 +38,9 @@ func Store(ctx context.Context, tier tier.Tier, agg aggregate.Aggregate) error {
 
 	if agg.Options.CronSchedule != "" {
 		// If offline aggregate, write to AWS Glue
-		for _, duration := range agg.Options.Durations {
-			err := tier.GlueClient.ScheduleOfflineAggregate(string(agg.Name), string(agg.Options.AggType), agg.Options.CronSchedule, duration)
-			if err != nil {
-				return err
-			}
+		err := tier.GlueClient.ScheduleOfflineAggregate(tier.ID, agg)
+		if err != nil {
+			return err
 		}
 	}
 

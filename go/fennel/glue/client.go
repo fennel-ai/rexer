@@ -1,7 +1,8 @@
 package glue
 
 import (
-	"encoding/json"
+	"fennel/lib/aggregate"
+	"fennel/lib/ftypes"
 	"fmt"
 	"strings"
 
@@ -81,24 +82,28 @@ func (c GlueClient) CreateTrigger(aggregateName, aggregateType, cronSchedule str
 	return err
 }
 
-func (c GlueClient) ScheduleOfflineAggregate(aggregateName string, aggregateType string, cronSchedule string, duration uint64) error {
-	aggregateType = strings.ToLower(string(aggregateType))
+func (c GlueClient) ScheduleOfflineAggregate(tierID ftypes.RealmID, agg aggregate.Aggregate) error {
+	aggregateType := strings.ToLower(string(agg.Options.AggType))
 	if _, ok := aggToJobName[aggregateType]; !ok {
 		return fmt.Errorf("unknown offline aggregate type: %v", aggregateType)
 	}
 
-	params := map[string]string{"k": "1000"}
-	jsonParams, _ := json.Marshal(params)
-	jobArguments := map[string]*string{
-		"--DURATION":       aws.String(fmt.Sprintf("%d", duration)),
-		"--PLANE_ID":       aws.String(fmt.Sprintf("%d", 5)),
-		"--TIER_ID":        aws.String(fmt.Sprintf("%d", 107)),
-		"--AGGREGATE_NAME": aws.String(aggregateName),
-		"--AGGREGATE_TYPE": aws.String(aggregateType),
-		"--PARAMS":         aws.String(string(jsonParams)),
-	}
+	// Create a trigger for every duration.
+	for _, duration := range agg.Options.Durations {
+		jobArguments := map[string]*string{
+			"--DURATION":       aws.String(fmt.Sprintf("%d", duration)),
+			"--TIER_ID":        aws.String(fmt.Sprintf("%d", tierID)),
+			"--AGGREGATE_NAME": aws.String(string(agg.Name)),
+			"--AGGREGATE_TYPE": aws.String(aggregateType),
+			"--LIMIT":          aws.String(fmt.Sprintf("%d", agg.Options.Limit)),
+		}
 
-	return c.CreateTrigger(aggregateName, aggregateType, cronSchedule, jobArguments)
+		err := c.CreateTrigger(string(agg.Name), aggregateType, agg.Options.CronSchedule, jobArguments)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func (c GlueClient) getAllOfflineAggregates() ([]string, error) {
