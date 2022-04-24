@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"fennel/engine/ast"
+	"fennel/glue"
 	"fennel/lib/aggregate"
 	"fennel/lib/ftypes"
 	modelAgg "fennel/model/aggregate"
@@ -37,6 +38,12 @@ func Store(ctx context.Context, tier tier.Tier, agg aggregate.Aggregate) error {
 
 	if agg.Options.CronSchedule != "" {
 		// If offline aggregate, write to AWS Glue
+		for _, duration := range agg.Options.Durations {
+			err := tier.GlueClient.ScheduleOfflineAggregate(string(agg.Name), string(agg.Options.AggType), agg.Options.CronSchedule, duration)
+			if err != nil {
+				return err
+			}
+		}
 	}
 
 	querySer, err := ast.Marshal(agg.Query)
@@ -98,7 +105,17 @@ func Deactivate(ctx context.Context, tier tier.Tier, aggname ftypes.AggName) err
 	if !aggser.Active {
 		return nil
 	} else {
-		err := modelAgg.Deactivate(ctx, tier, aggname)
+		// In case the aggregate is an offline trigger disable the offline job.
+		// If its an online trigger, no err/exception is thrown.
+		glueArgs := glue.GlueArgs{Region: "ap-south-1"}
+		glueClient := glue.NewGlueClient(glueArgs)
+		err := glueClient.DeactivateOfflineAggregate(string(aggname))
+		if err != nil {
+			return err
+		}
+
+		// Disable online & offline triggers
+		err = modelAgg.Deactivate(ctx, tier, aggname)
 		return err
 	}
 }

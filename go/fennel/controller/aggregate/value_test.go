@@ -10,6 +10,7 @@ import (
 
 	actionlib "fennel/controller/action"
 	"fennel/engine/ast"
+	"fennel/glue"
 	"fennel/kafka"
 	"fennel/lib/action"
 	"fennel/lib/aggregate"
@@ -134,13 +135,13 @@ func TestOfflineAggregates(t *testing.T) {
 	t0 := ftypes.Timestamp(0)
 
 	agg := aggregate.Aggregate{
-		Name:      "agg",
+		Name:      "aggTest",
 		Query:     getQuery(),
 		Timestamp: t0,
 		Options: aggregate.Options{
 			AggType:      "topk",
-			Durations:    []uint64{3600},
-			CronSchedule: "*/1 * * * *",
+			Durations:    []uint64{259200},
+			CronSchedule: "37 1 * * ?",
 		},
 		Id: 1,
 	}
@@ -171,8 +172,8 @@ func TestOfflineAggregates(t *testing.T) {
 	}()
 
 	expectedJsonTable := []string{
-		`{"action_id":2,"action_type":"like","actor_id":"3434","actor_type":"user","aggregate":"agg","groupkey":["3434"],"metadata":6,"request_id":"7","target_id":"3","target_type":"video","timestamp":1000}`,
-		`{"action_id":2,"action_type":"like","actor_id":"325235","actor_type":"user","aggregate":"agg","groupkey":["325235"],"metadata":6,"request_id":"7","target_id":"3","target_type":"video","timestamp":1000}`,
+		`{"action_id":2,"action_type":"like","actor_id":"3434","actor_type":"user","aggregate":"aggTest","groupkey":["3434"],"metadata":6,"request_id":"7","target_id":"3","target_type":"video","timestamp":1000}`,
+		`{"action_id":2,"action_type":"like","actor_id":"325235","actor_type":"user","aggregate":"aggTest","groupkey":["325235"],"metadata":6,"request_id":"7","target_id":"3","target_type":"video","timestamp":1000}`,
 	}
 	// test that actions were written as JSON as well
 	go func() {
@@ -195,6 +196,11 @@ func TestOfflineAggregates(t *testing.T) {
 	}()
 
 	wg.Wait()
+
+	glueArgs := glue.GlueArgs{Region: "ap-south-1"}
+	glueClient := glue.NewGlueClient(glueArgs)
+	err = glueClient.DeactivateOfflineAggregate(string(agg.Name))
+	assert.NoError(t, err)
 }
 
 func TestCachedValueAll(t *testing.T) {

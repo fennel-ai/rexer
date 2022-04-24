@@ -9,6 +9,7 @@ import (
 
 	"fennel/db"
 	"fennel/fbadger"
+	"fennel/glue"
 	libkafka "fennel/kafka"
 	"fennel/lib/cache"
 	"fennel/lib/clock"
@@ -19,6 +20,7 @@ import (
 	"fennel/resource"
 	"fennel/s3"
 	"fennel/sagemaker"
+
 	"github.com/dgraph-io/badger/v3"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
@@ -26,6 +28,7 @@ import (
 
 type TierArgs struct {
 	s3.S3Args                 `json:"s3_._s3_args"`
+	glue.GlueArgs             `json:"glue_._glue_args"`
 	sagemaker.SagemakerArgs   `json:"sagemaker_._sagemaker_args"`
 	modelstore.ModelStoreArgs `json:"modelstore_._model_store_args"`
 
@@ -81,7 +84,8 @@ func (args TierArgs) Valid() error {
 	if args.BadgerDir == "" {
 		missingFields = append(missingFields, "BADGER_DIR")
 	}
-	// TODO: require args when ready for s3, modelStore, sagemaker
+
+	// TODO: require args when ready for s3, glue, modelStore, sagemaker
 	if len(missingFields) > 0 {
 		return fmt.Errorf("missing fields: %s", strings.Join(missingFields, ", "))
 	}
@@ -103,6 +107,7 @@ type Tier struct {
 	Logger           *zap.Logger
 	NewKafkaConsumer KafkaConsumerCreator
 	S3Client         s3.Client
+	GlueClient       glue.GlueClient
 	SagemakerClient  sagemaker.SMClient
 	ModelStore       *modelstore.ModelStore
 	Badger           fbadger.DB
@@ -209,7 +214,10 @@ func CreateFromArgs(args *TierArgs) (tier Tier, err error) {
 	if err != nil {
 		return tier, fmt.Errorf("failed to create sagemaker client: %v", err)
 	}
+
+	log.Print("Creating AWS clients for S3, Glue, and ModelStore")
 	s3client := s3.NewClient(args.S3Args)
+	glueclient := glue.NewGlueClient(args.GlueArgs)
 	modelStore := modelstore.NewModelStore(args.ModelStoreArgs, tierID)
 
 	log.Print("Creating badger")
@@ -237,6 +245,7 @@ func CreateFromArgs(args *TierArgs) (tier Tier, err error) {
 		NewKafkaConsumer: consumerCreator,
 		SagemakerClient:  smclient,
 		S3Client:         s3client,
+		GlueClient:       glueclient,
 		ModelStore:       modelStore,
 		Badger:           bdb.(fbadger.DB),
 	}, nil
