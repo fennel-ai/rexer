@@ -56,7 +56,7 @@ jobs:
           BADGER_DIR: ${{ secrets.BADGER_DIR }}
         run: |
           cd go/fennel
-          go test -v -p 5 -tags integration ./... -count 1
+          go test -v -tags integration ./... -count 1
 
      # Remove the client directory. Github actions removes the one installed using `actions/checkout@v2` which is now empty since we moved the content
       - name: Remove rexer-client dir
