@@ -18,28 +18,16 @@ func TestBool(t *testing.T) {
 		expected_all []value.Value
 	}{
 		{
-			[]value.Value{value.Bool(true), value.Bool(false), value.Bool(true)},
+			[]value.Value{
+				value.NewList(value.Bool(true), value.Bool(false), value.Bool(true)),
+				value.NewList(value.Bool(true), value.Bool(true), value.Bool(true)),
+				value.NewList(value.Bool(false), value.Bool(false), value.Bool(false)),
+			},
 			value.NewDict(nil),
 			[]value.Dict{value.NewDict(nil), value.NewDict(nil), value.NewDict(nil)},
 			false,
-			[]value.Value{value.Bool(true)},
-			[]value.Value{value.Bool(false)},
-		},
-		{
-			[]value.Value{value.Bool(true), value.Bool(true), value.Bool(true)},
-			value.NewDict(nil),
-			[]value.Dict{value.NewDict(nil), value.NewDict(nil), value.NewDict(nil)},
-			false,
-			[]value.Value{value.Bool(true)},
-			[]value.Value{value.Bool(true)},
-		},
-		{
-			[]value.Value{value.Bool(false), value.Bool(false), value.Bool(false)},
-			value.NewDict(nil),
-			[]value.Dict{value.NewDict(nil), value.NewDict(nil), value.NewDict(nil)},
-			false,
-			[]value.Value{value.Bool(false)},
-			[]value.Value{value.Bool(false)},
+			[]value.Value{value.Bool(true), value.Bool(true), value.Bool(false)},
+			[]value.Value{value.Bool(false), value.Bool(true), value.Bool(false)},
 		},
 	}
 	for _, scene := range scenarios {

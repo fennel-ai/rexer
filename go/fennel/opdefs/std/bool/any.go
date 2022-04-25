@@ -26,17 +26,21 @@ func (a anyop) Apply(_ context.Context, kwargs value.Dict, in operators.InputIte
 		if err != nil {
 			return err
 		}
-		if heads[0].(value.Bool) {
-			out.Append(value.Bool(true))
-			return nil
+		res := false
+		vList := heads[0].(value.List)
+		for _, v := range vList.Values() {
+			if v.(value.Bool) {
+				res = true
+				break
+			}
 		}
+		out.Append(value.Bool(res))
 	}
-	out.Append(value.Bool(false))
 	return nil
 }
 
 func (a anyop) Signature() *operators.Signature {
-	return operators.NewSignature("std", "any").Input([]value.Type{value.Types.Bool})
+	return operators.NewSignature("std", "any").Input([]value.Type{value.Types.ListOfBools})
 }
 
 var _ operators.Operator = anyop{}
