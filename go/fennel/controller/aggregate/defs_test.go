@@ -140,6 +140,7 @@ func TestDeactivateOffline(t *testing.T) {
 			AggType:      "topk",
 			Durations:    []uint64{3600 * 24 * 7},
 			CronSchedule: "20 1 * * ?",
+			Limit:        10,
 		},
 	}
 

@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"fennel/engine/ast"
-	"fennel/glue"
 	"fennel/lib/aggregate"
 	"fennel/lib/ftypes"
 	modelAgg "fennel/model/aggregate"
@@ -105,9 +104,7 @@ func Deactivate(ctx context.Context, tier tier.Tier, aggname ftypes.AggName) err
 	} else {
 		// In case the aggregate is an offline trigger disable the offline job.
 		// If its an online trigger, no err/exception is thrown.
-		glueArgs := glue.GlueArgs{Region: "ap-south-1"}
-		glueClient := glue.NewGlueClient(glueArgs)
-		err := glueClient.DeactivateOfflineAggregate(string(aggname))
+		err := tier.GlueClient.DeactivateOfflineAggregate(string(aggname))
 		if err != nil {
 			return err
 		}

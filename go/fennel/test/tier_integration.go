@@ -31,6 +31,7 @@ func Tier() (tier.Tier, error) {
 	if err := Setup(flags); err != nil {
 		return tier.Tier{}, err
 	}
+
 	// finally, instantiate and return the tier
 	return tier.CreateFromArgs(&flags)
 }

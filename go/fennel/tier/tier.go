@@ -215,9 +215,11 @@ func CreateFromArgs(args *TierArgs) (tier Tier, err error) {
 		return tier, fmt.Errorf("failed to create sagemaker client: %v", err)
 	}
 
-	log.Print("Creating AWS clients for S3, Glue, and ModelStore")
+	fmt.Println("Creating AWS clients for S3, Glue, and ModelStore")
 	s3client := s3.NewClient(args.S3Args)
-	glueclient := glue.NewGlueClient(args.GlueArgs)
+	glueArgs := glue.GlueArgs{Region: "us-west-2"}
+	glueclient := glue.NewGlueClient(glueArgs)
+	// glueclient := glue.NewGlueClient(args.GlueArgs)
 	modelStore := modelstore.NewModelStore(args.ModelStoreArgs, tierID)
 
 	log.Print("Creating badger")

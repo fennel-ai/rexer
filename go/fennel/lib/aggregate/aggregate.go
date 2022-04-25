@@ -54,7 +54,7 @@ func (agg Aggregate) Validate() error {
 	options := agg.Options
 	aggtype := agg.Options.AggType
 	switch strings.ToLower(string(aggtype)) {
-	case "sum", "average", "min", "max", "stddev", "list", "topk":
+	case "sum", "average", "min", "max", "stddev", "list":
 		if len(options.Durations) < 1 {
 			return fmt.Errorf("at least one duration must be provided for %s", aggtype)
 		}
@@ -65,6 +65,21 @@ func (agg Aggregate) Validate() error {
 		}
 		if options.Window != 0 || options.Limit != 0 || options.Normalize {
 			return fmt.Errorf("window, limit, normalize should all be zero for %v", aggtype)
+		}
+	case "topk":
+		if len(options.Durations) < 1 {
+			return fmt.Errorf("at least one duration must be provided for %s", aggtype)
+		}
+		for _, d := range options.Durations {
+			if d == 0 {
+				return fmt.Errorf("duration can not be zero for %s", aggtype)
+			}
+		}
+		if options.Window != 0 || options.Normalize {
+			return fmt.Errorf("window, normalize should all be zero for %v", aggtype)
+		}
+		if options.Limit == 0 {
+			return fmt.Errorf("limit should be non-zero for %v", aggtype)
 		}
 	case "rate":
 		for _, d := range options.Durations {
@@ -135,14 +150,12 @@ func (o Options) Equals(other Options) bool {
 }
 
 type AggregateSer struct {
-	Name         ftypes.AggName   `db:"name"`
-	QuerySer     []byte           `db:"query_ser"`
-	Timestamp    ftypes.Timestamp `db:"timestamp"`
-	OptionSer    []byte           `db:"options_ser"`
-	Active       bool             `db:"active"`
-	Normalize    bool             `db:"normalize"`
-	CronSchedule string           `db:"cron_schedule"`
-	Id           ftypes.AggId     `db:"id"`
+	Name      ftypes.AggName   `db:"name"`
+	QuerySer  []byte           `db:"query_ser"`
+	Timestamp ftypes.Timestamp `db:"timestamp"`
+	OptionSer []byte           `db:"options_ser"`
+	Active    bool             `db:"active"`
+	Id        ftypes.AggId     `db:"id"`
 }
 
 func FromAggregateSer(ser AggregateSer) (Aggregate, error) {
