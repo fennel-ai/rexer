@@ -59,7 +59,7 @@ func (p profileOp) Apply(ctx context.Context, staticKwargs value.Dict, in operat
 		rowVal := heads[0]
 		req := libprofile.ProfileItemKey{
 			OType: ftypes.OType(kwargs.GetUnsafe("otype").(value.String)),
-			Oid:   kwargs.GetUnsafe("oid").String(),
+			Oid:   string(kwargs.GetUnsafe("oid").(value.String)),
 			Key:   string(kwargs.GetUnsafe("key").(value.String)),
 		}
 		reqs = append(reqs, req)
@@ -155,7 +155,7 @@ func (p profileOp) Signature() *operators.Signature {
 	return operators.NewSignature("std", "profile").
 		Input([]value.Type{value.Types.Any}).
 		Param("otype", value.Types.String, false, false, value.Nil).
-		Param("oid", value.Types.ID, false, false, value.Nil).
+		Param("oid", value.Types.String, false, false, value.Nil).
 		Param("key", value.Types.String, false, false, value.Nil).
 		Param("version", value.Types.Int, false, true, value.Int(0)).
 		Param("field", value.Types.String, true, true, value.String("")).

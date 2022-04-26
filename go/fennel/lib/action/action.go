@@ -169,30 +169,18 @@ func (a Action) Equals(other Action, ignoreID bool) bool {
 	return true
 }
 
-func (a Action) ToValueDict() (value.Dict, error) {
-	actorID, err := value.FromJSON([]byte(a.ActorID))
-	if err != nil {
-		return value.Dict{}, err
-	}
-	targetID, err := value.FromJSON([]byte(a.TargetID))
-	if err != nil {
-		return value.Dict{}, err
-	}
-	requestID, err := value.FromJSON([]byte(a.RequestID))
-	if err != nil {
-		return value.Dict{}, err
-	}
+func (a Action) ToValueDict() value.Dict {
 	return value.NewDict(map[string]value.Value{
 		"action_id":   value.Int(a.ActionID),
-		"actor_id":    actorID,
+		"actor_id":    value.String(a.ActorID),
 		"actor_type":  value.String(a.ActorType),
 		"target_type": value.String(a.TargetType),
-		"target_id":   targetID,
+		"target_id":   value.String(a.TargetID),
 		"action_type": value.String(a.ActionType),
 		"timestamp":   value.Int(a.Timestamp),
-		"request_id":  requestID,
+		"request_id":  value.String(a.RequestID),
 		"metadata":    a.Metadata,
-	}), nil
+	})
 }
 
 // ToList takes a list of actions and arranges that in a value.List
@@ -200,10 +188,7 @@ func (a Action) ToValueDict() (value.Dict, error) {
 func ToList(actions []Action) (value.List, error) {
 	table := value.List{}
 	for i := range actions {
-		d, err := actions[i].ToValueDict()
-		if err != nil {
-			return value.List{}, err
-		}
+		d := actions[i].ToValueDict()
 		table.Append(d)
 	}
 	return table, nil

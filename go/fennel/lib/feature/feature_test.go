@@ -13,7 +13,7 @@ import (
 
 func TestRow_Marshal(t *testing.T) {
 	row := Row{"user", "1", "video", "31", value.NewDict(map[string]value.Value{"f1": value.Int(1), "f2": value.Nil}), "myworkflow", "123", 423, "modelname", "0.1.0", 0.123}
-	expected := `{"candidate_oid":31,"candidate_otype":"video","context_oid":1,"context_otype":"user","feature__f1":1,"feature__f2":null,"model_name":"modelname","model_prediction":0.123,"model_version":"0.1.0","request_id":123,"timestamp":423,"workflow":"myworkflow"}`
+	expected := `{"candidate_oid":"31","candidate_otype":"video","context_oid":"1","context_otype":"user","feature__f1":1,"feature__f2":null,"model_name":"modelname","model_prediction":0.123,"model_version":"0.1.0","request_id":"123","timestamp":423,"workflow":"myworkflow"}`
 	found, err := json.Marshal(row)
 	assert.NoError(t, err)
 	assert.Equal(t, expected, string(found))
