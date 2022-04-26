@@ -136,8 +136,5 @@ func Get(ctx context.Context, tr tier.Tier, aggIds []ftypes.AggId, buckets [][]c
 			})
 		}
 	}
-	if err := errs.Wait(); err != nil {
-		return nil, err
-	}
-	return values, nil
+	return values, errs.Wait()
 }
