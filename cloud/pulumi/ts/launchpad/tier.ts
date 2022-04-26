@@ -25,7 +25,7 @@ export type HttpServerConf = {
 export type ApiServerConf = {
     replicas: number,
     enforceReplicaIsolation: boolean,
-    storageclass?: string,
+    storageclass: string,
 }
 
 export type CountAggrConf = {
@@ -131,6 +131,7 @@ const parseConfig = (): inputType => {
 
         httpServerConf: config.getObject(nameof<inputType>("httpServerConf")),
         countAggrConf: config.getObject(nameof<inputType>("countAggrConf")),
+        apiServerConf: config.getObject(nameof<inputType>("apiServerConf")),
 
         nodeInstanceRole: config.require(nameof<inputType>("nodeInstanceRole")),
 
@@ -304,9 +305,9 @@ const setupResources = async () => {
             kubeconfig: input.kubeconfig,
             namespace: input.namespace,
             tierId: input.tierId,
-            replicas: input.httpServerConf?.replicas,
-            enforceReplicaIsolation: input.httpServerConf?.enforceReplicaIsolation,
-            storageclass: input.apiServerConf?.storageclass!,
+            replicas: input.apiServerConf?.replicas,
+            enforceReplicaIsolation: input.apiServerConf?.enforceReplicaIsolation,
+            storageclass: input.apiServerConf?.storageclass,
         })
     })
     return {

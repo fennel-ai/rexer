@@ -84,7 +84,14 @@ const tierConfs: Record<number, TierConf> = {
         // countaggr should be scheduled in a different node than http-server
         countAggrConf: {
             enforceServiceIsolation: true
-        }
+        },
+        apiServerConf: {
+            replicas: 3,
+            enforceReplicaIsolation: true,
+            // This will be replaced with the actual storageclass
+            // of the type io1.
+            storageclass: "io1",
+        },
     },
     // Convoy staging tier using Fennel's staging data plane.
     108: {
