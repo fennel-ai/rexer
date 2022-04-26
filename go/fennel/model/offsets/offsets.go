@@ -8,6 +8,7 @@ import (
 	"fennel/lib/utils/binary"
 
 	"github.com/confluentinc/confluent-kafka-go/kafka"
+	"go.uber.org/zap"
 )
 
 const (
@@ -19,7 +20,7 @@ const (
 // topic offsets. These are encoded as:
 // key=<topic><partition>, value=<offset>.
 
-func Set(ctx context.Context, toppars kafka.TopicPartitions, kv kvstore.Writer) error {
+func Set(ctx context.Context, logger *zap.Logger, toppars kafka.TopicPartitions, kv kvstore.Writer) error {
 	for _, toppar := range toppars {
 		topic := *toppar.Topic
 		partition := toppar.Partition
@@ -31,6 +32,7 @@ func Set(ctx context.Context, toppars kafka.TopicPartitions, kv kvstore.Writer) 
 		if err != nil {
 			return fmt.Errorf("failed to encode offset [%d]: %v", toppar.Offset, err)
 		}
+		logger.Info(fmt.Sprintf("[offset.set] topic: %v, partition: %v, offset: %v", topic, partition, int64(toppar.Offset)))
 		err = kv.Set(ctx, tablet, k, kvstore.SerializedValue{
 			Codec: codec,
 			Raw:   v,
@@ -42,7 +44,7 @@ func Set(ctx context.Context, toppars kafka.TopicPartitions, kv kvstore.Writer) 
 	return nil
 }
 
-func Get(ctx context.Context, topic string, kv kvstore.Reader) (kafka.TopicPartitions, error) {
+func Get(ctx context.Context, logger *zap.Logger, topic string, kv kvstore.Reader) (kafka.TopicPartitions, error) {
 	keyPrefix, err := getTopicPrefix(topic)
 	if err != nil {
 		return nil, err
@@ -61,6 +63,7 @@ func Get(ctx context.Context, topic string, kv kvstore.Reader) (kafka.TopicParti
 		if err != nil {
 			return nil, fmt.Errorf("failed to decode value: %v", err)
 		}
+		logger.Info(fmt.Sprintf("[offset.get] topic: %v, partition: %v, offset: %v", topic, partition, offset))
 		tp := kafka.TopicPartition{
 			Topic:     &topic,
 			Partition: partition,

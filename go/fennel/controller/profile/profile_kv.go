@@ -122,7 +122,7 @@ func TransferToDB(ctx context.Context, tr tier.Tier, consumer libkafka.FConsumer
 			return errors.Wrap(err, "failed to read current kafka offsets")
 		}
 		tr.Logger.Debug("Committing offsets", zap.Any("partitions", partitions))
-		err = offsets.Set(ctx, partitions, writer)
+		err = offsets.Set(ctx, tr.Logger, partitions, writer)
 		if err != nil {
 			return errors.Wrap(err, "failed to write offsets")
 		}

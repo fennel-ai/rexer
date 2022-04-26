@@ -106,7 +106,7 @@ func TransferAggrDeltasToDB(ctx context.Context, tr tier.Tier, consumer libkafka
 			return errors.Wrap(err, "failed to read current kafka offsets")
 		}
 		tr.Logger.Debug("Committing offsets", zap.Any("partitions", partitions))
-		err = offsets.Set(ctx, partitions, kvstore)
+		err = offsets.Set(ctx, tr.Logger, partitions, kvstore)
 		if err != nil {
 			return errors.Wrap(err, "failed to write offsets")
 		}
