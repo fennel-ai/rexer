@@ -39,8 +39,8 @@ func TestFeatureLog_Apply(t *testing.T) {
 		value.NewDict(map[string]value.Value{"something": value.Bool(false), "b": value.Int(4)}),
 	}
 	kwargs := []value.Dict{
-		value.NewDict(map[string]value.Value{"context_otype": value.String("user"), "context_oid": value.Int(1), "candidate_otype": value.String("video"), "candidate_oid": value.Int(723), "request_id": value.Int(1232), "features": f1, "model_prediction": value.Double(0.59), "timestamp": value.Int(0)}),
-		value.NewDict(map[string]value.Value{"context_otype": value.String("user"), "context_oid": value.Int(2), "candidate_otype": value.String("video"), "candidate_oid": value.Int(823), "request_id": value.Int(1233), "features": f2, "model_prediction": value.Double(0.79), "timestamp": value.Int(12312)}),
+		value.NewDict(map[string]value.Value{"context_otype": value.String("user"), "context_oid": value.String("1"), "candidate_otype": value.String("video"), "candidate_oid": value.String("723"), "request_id": value.String("1232"), "features": f1, "model_prediction": value.Double(0.59), "timestamp": value.Int(0)}),
+		value.NewDict(map[string]value.Value{"context_otype": value.String("user"), "context_oid": value.String("2"), "candidate_otype": value.String("video"), "candidate_oid": value.String("823"), "request_id": value.String("1233"), "features": f2, "model_prediction": value.Double(0.79), "timestamp": value.Int(12312)}),
 	}
 
 	rows := []feature.Row{
@@ -73,8 +73,7 @@ func TestFeatureLog_Apply(t *testing.T) {
 	}
 	outputs := make([]value.Value, len(rows))
 	for i, r := range rows {
-		outputs[i], err = r.GetValue()
-		assert.NoError(t, err)
+		outputs[i] = r.GetValue()
 	}
 	optest.AssertElementsMatch(t, tier, &featureLog{tier}, static, [][]value.Value{inputs}, kwargs, outputs)
 	for _, r := range rows {
