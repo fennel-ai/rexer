@@ -96,7 +96,6 @@ func readBatch(ctx context.Context, consumer kafka.FConsumer, count int, timeout
 
 func TransferToDB(ctx context.Context, tr tier.Tier, consumer kafka.FConsumer) error {
 	profiles, err := readBatch(ctx, consumer, 950, time.Second*10)
-	tr.Logger.Info(fmt.Sprintf("writing %d profiles to DB", len(profiles)))
 	if err != nil {
 		return err
 	}
@@ -104,6 +103,9 @@ func TransferToDB(ctx context.Context, tr tier.Tier, consumer kafka.FConsumer) e
 	if len(profiles) == 0 {
 		return nil
 	}
+
+	tr.Logger.Info(fmt.Sprintf("writing %d profiles to DB", len(profiles)))
+
 	if err = profile.SetBatch(ctx, tr, profiles); err != nil {
 		return err
 	}
