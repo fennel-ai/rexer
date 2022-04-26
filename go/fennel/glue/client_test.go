@@ -26,7 +26,7 @@ func listIntersectionCount(a, b []string) int {
 }
 
 func TestGlueClient(t *testing.T) {
-	glueArgs := GlueArgs{Region: "ap-south-1"}
+	glueArgs := GlueArgs{Region: "us-west-2"}
 	glueClient := NewGlueClient(glueArgs)
 	t0 := ftypes.Timestamp(0)
 

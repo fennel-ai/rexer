@@ -59,10 +59,10 @@ func (c GlueClient) CreateJob(jobName, aggregateType string) error {
 	return err
 }
 
-func getGlueTriggerActions(aggregateName string, arguments map[string]*string) []*glue.Action {
+func getGlueTriggerActions(jobName string, arguments map[string]*string) []*glue.Action {
 	actions := []*glue.Action{
 		{
-			JobName:   aws.String(aggregateName),
+			JobName:   aws.String(jobName),
 			Arguments: arguments,
 		},
 	}
@@ -135,6 +135,5 @@ func (c GlueClient) DeactivateOfflineAggregate(aggregateName string) error {
 			}
 		}
 	}
-
 	return nil
 }

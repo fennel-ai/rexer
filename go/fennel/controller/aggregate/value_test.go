@@ -197,6 +197,7 @@ func TestOfflineAggregates(t *testing.T) {
 
 	wg.Wait()
 
+	// TODO: Mock Glue Client
 	err = tier.GlueClient.DeactivateOfflineAggregate(string(agg.Name))
 	assert.NoError(t, err)
 }
