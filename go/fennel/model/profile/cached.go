@@ -132,9 +132,9 @@ func (c cachedProvider) setBatch(ctx context.Context, tier tier.Tier, profiles [
 	// say, `set` is called with version v1 > v0 (latest version) but the entry for the latest profile
 	// (version = 0) was evicted. A concurrent `get` call could update the cache with the value corresponding
 	// to v0 and the above logic aborting due to lack of retries.
-	// return tier.Cache.RunAsTxn(ctx, txnLogic, latestKeys, 3)
-	// Use this for local tier
-	return txnLogic(tier.Cache, latestKeys)
+	return tier.Cache.RunAsTxn(ctx, txnLogic, latestKeys, 3)
+	// Use this for locally run tier
+	// return txnLogic(tier.Cache, latestKeys)
 }
 
 func (c cachedProvider) get(ctx context.Context, tier tier.Tier, profileKey profile.ProfileItemKey) (profile.ProfileItem, error) {

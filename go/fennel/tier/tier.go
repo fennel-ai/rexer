@@ -28,10 +28,10 @@ import (
 
 type TierArgs struct {
 	s3.S3Args                 `json:"s3_._s3_args"`
-	glue.GlueArgs             `json:"glue_._glue_args"`
 	sagemaker.SagemakerArgs   `json:"sagemaker_._sagemaker_args"`
 	modelstore.ModelStoreArgs `json:"modelstore_._model_store_args"`
 
+	Region        string         `json:"region"`
 	KafkaServer   string         `arg:"--kafka-server,env:KAFKA_SERVER_ADDRESS" json:"kafka_server,omitempty"`
 	KafkaUsername string         `arg:"--kafka-user,env:KAFKA_USERNAME" json:"kafka_username,omitempty"`
 	KafkaPassword string         `arg:"--kafka-password,env:KAFKA_PASSWORD" json:"kafka_password,omitempty"`
@@ -217,9 +217,7 @@ func CreateFromArgs(args *TierArgs) (tier Tier, err error) {
 
 	fmt.Println("Creating AWS clients for S3, Glue, and ModelStore")
 	s3client := s3.NewClient(args.S3Args)
-	glueArgs := glue.GlueArgs{Region: "us-west-2"}
-	glueclient := glue.NewGlueClient(glueArgs)
-	// glueclient := glue.NewGlueClient(args.GlueArgs)
+	glueclient := glue.NewGlueClient(glue.GlueArgs{Region: args.Region})
 	modelStore := modelstore.NewModelStore(args.ModelStoreArgs, tierID)
 
 	log.Print("Creating badger")
