@@ -41,7 +41,7 @@ func getOffsetsFromKvStore(tr tier.Tier, topic string) (kafka.TopicPartitions, e
 		// TODO: This is *very* tightly coupled to topic prefixing.
 		// Figure out a way of cleaning this up.
 		topicName := tr.Badger.Scope.PrefixedName(topic)
-		offs, err := offsets.Get(context.Background(), topicName, reader)
+		offs, err := offsets.Get(context.Background(), tr.Logger, topicName, reader)
 		if err != nil {
 			return fmt.Errorf("failed to get ckpt offsets from badger: %v", err)
 		}

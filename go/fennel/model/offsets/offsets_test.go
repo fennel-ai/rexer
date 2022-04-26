@@ -62,9 +62,9 @@ func TestPartitionSetGet(t *testing.T) {
 		Partition: int32(75),
 		Offset:    kafka.Offset(1294),
 	}
-	err = Set(context.Background(), []kafka.TopicPartition{p1, p2}, store)
+	err = Set(context.Background(), tier.Logger, []kafka.TopicPartition{p1, p2}, store)
 	require.NoError(t, err)
-	got, err := Get(context.Background(), "topic1", store)
+	got, err := Get(context.Background(), tier.Logger, "topic1", store)
 	require.NoError(t, err)
 	require.ElementsMatch(t, []kafka.TopicPartition{p1, p2}, got)
 }
