@@ -121,12 +121,6 @@ export const setup = async (input: inputType) => {
                 // NOTE: If changing number replicas, please take `topologySpreadConstraints`
                 // into consideration which schedules replicas on different nodes.
                 replicas: input.replicas || DEFAULT_REPLICAS,
-                strategy: {
-                    rollingUpdate: {
-                        maxSurge: 0,
-                        maxUnavailable: 1,
-                    }
-                },
                 template: {
                     metadata: {
                         labels: appLabels,
