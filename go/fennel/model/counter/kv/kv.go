@@ -3,6 +3,7 @@ package kv
 import (
 	"context"
 	"fmt"
+	"sync"
 
 	"fennel/lib/counter"
 	"fennel/lib/ftypes"
@@ -106,27 +107,45 @@ func Get(ctx context.Context, tr tier.Tier, aggIds []ftypes.AggId, buckets [][]c
 	for i := range buckets {
 		values[i] = make([]value.Value, len(buckets[i]))
 	}
+	errChan := make(chan error, len(aggIds))
+	wg := sync.WaitGroup{}
+	wg.Add(len(aggIds))
 	for i := range aggIds {
-		for j := range buckets[i] {
-			k, err := LatestEncoder.EncodeKey(aggIds[i], buckets[i][j])
-			if err != nil {
-				return nil, fmt.Errorf("failed to encode key: %v", err)
-			}
-			v, err := kv.Get(ctx, tablet, k)
-			if err == kvstore.ErrKeyNotFound {
-				values[i][j] = defaults_[i]
-			} else if err != nil {
-				return nil, fmt.Errorf("failed to get value: %v", err)
-			} else {
-				codec, err := codec.GetCodec(v.Codec)
+		go func(idx int) {
+			defer wg.Done()
+			for j := range buckets[idx] {
+				k, err := LatestEncoder.EncodeKey(aggIds[idx], buckets[idx][j])
 				if err != nil {
-					return nil, fmt.Errorf("failed to get codec: %v", err)
+					errChan <- fmt.Errorf("failed to encode key: %v", err)
+					return
 				}
-				values[i][j], err = codec.DecodeValue(v.Raw)
-				if err != nil {
-					return nil, fmt.Errorf("failed to decode value: %v", err)
+				v, err := kv.Get(ctx, tablet, k)
+				if err == kvstore.ErrKeyNotFound {
+					values[idx][j] = defaults_[idx]
+				} else if err != nil {
+					errChan <- fmt.Errorf("failed to get value: %v", err)
+					return
+				} else {
+					codec, err := codec.GetCodec(v.Codec)
+					if err != nil {
+						errChan <- fmt.Errorf("failed to get codec: %v", err)
+						return
+					}
+					values[idx][j], err = codec.DecodeValue(v.Raw)
+					if err != nil {
+						errChan <- fmt.Errorf("failed to decode value: %v", err)
+						return
+					}
 				}
 			}
+			errChan <- nil
+		}(i)
+	}
+	wg.Wait()
+	close(errChan)
+	for err := range errChan {
+		if err != nil {
+			return nil, err
 		}
 	}
 	return values, nil
