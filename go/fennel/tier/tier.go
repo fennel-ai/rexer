@@ -19,6 +19,7 @@ import (
 	"fennel/resource"
 	"fennel/s3"
 	"fennel/sagemaker"
+
 	"github.com/dgraph-io/badger/v3"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
@@ -216,6 +217,17 @@ func CreateFromArgs(args *TierArgs) (tier Tier, err error) {
 	opts := badger.DefaultOptions(args.BadgerDir)
 	// only log warnings and errors
 	opts = opts.WithLoggingLevel(badger.WARNING)
+	// TODO(Mohit): Configure the larger block cache size only for API server.
+	// allocate 10GB of memory to Badger; this is recommended when using compression or encryption
+	// which is enabled by default in `DefaultOptions`
+	opts = opts.WithBlockCacheSize(10 * 1 << 30)
+	// TODO(Mohit): Explore `BlockSize`; EBS has a block size of 16KB but the I/O ops with size < 16KB,
+	// they are merged together into a single I/O op
+
+	// TODO(Mohit): Explore `MemTableSize` and `NumMemtables`; LSM trees write all the updates in memory
+	// first in memtables and once they are filled up, they are swapped with immutable memtables
+	// and eventually written to level zero on disk - https://dgraph.io/blog/post/badger/
+	// Understand how this plays around with `BlockCacheSize`
 	badgerConf := fbadger.Config{
 		Opts:  opts,
 		Scope: scope,

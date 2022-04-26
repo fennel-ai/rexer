@@ -134,6 +134,30 @@ export const setup = async (input: inputType) => {
                         }
                     },
                     spec: {
+                        // https://kubernetes.io/docs/concepts/workloads/pods/pod-topology-spread-constraints/
+                        topologySpreadConstraints: [
+                            // describes how a group of pods ought to spread across topology domains.
+                            // Scheduler will schedule pods in a way which abides by the constraints.
+                            // All the constraints are ANDed
+                            {
+                                // describes the degree to which pods may be unevenly distributed.
+                                // it is the maximum permitted difference between the number of matching pods in the
+                                // target topology and the global minimum.
+                                maxSkew: 1,
+                                // key of the node labels. we check by the host name.
+                                topologyKey: "kubernetes.io/hostname",
+                                // schedule anyway on the pod when constraints are not satisfied - to avoid potential
+                                // contention b/w pods. This is to avoid scheduling multiple http-server pods
+                                // from different namespaces on the same data plane.
+                                whenUnsatisfiable: whenUnsatisfiable,
+                                // find matching pods using the labels - `appLabels`
+                                //
+                                // this should schedule the replicas across different nodes
+                                labelSelector: {
+                                    matchLabels: appLabels,
+                                },
+                            }
+                        ],
                         containers: [
                             {
                                 command: [
@@ -330,7 +354,7 @@ export const setup = async (input: inputType) => {
                     }
                 ]
             },
-        }, { provider: k8sProvider, deleteBeforeReplace: true, replaceOnChanges: ["*"] });
+        }, { provider: k8sProvider, deleteBeforeReplace: true });
     })
 
     const appSvc = appStatefulset.apply(() => {
@@ -344,7 +368,7 @@ export const setup = async (input: inputType) => {
                 ports: [{ port: 2425, targetPort: 2425, protocol: "TCP" }],
                 selector: appLabels,
             },
-        }, { provider: k8sProvider, deleteBeforeReplace: true, replaceOnChanges: ["*"] })
+        }, { provider: k8sProvider, deleteBeforeReplace: true })
     })
 
     // Setup ingress resources for api-server
