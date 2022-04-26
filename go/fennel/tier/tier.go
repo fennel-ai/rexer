@@ -217,6 +217,7 @@ func CreateFromArgs(args *TierArgs) (tier Tier, err error) {
 	opts := badger.DefaultOptions(args.BadgerDir)
 	// only log warnings and errors
 	opts = opts.WithLoggingLevel(badger.WARNING)
+	// TODO(Mohit): Configure the larger block cache size only for API server.
 	// allocate 10GB of memory to Badger; this is recommended when using compression or encryption
 	// which is enabled by default in `DefaultOptions`
 	opts = opts.WithBlockCacheSize(10 * 1 << 30)
