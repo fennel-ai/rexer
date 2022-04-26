@@ -61,11 +61,12 @@ func (r *Row) UnmarshalJSON(bytes []byte) error {
 			}
 			r.ModelVersion = ftypes.ModelVersion(s)
 		case "request_id":
-			s, ok := v.(value.String)
-			if !ok {
-				return fmt.Errorf("can not unmarshal feature row, expected string for request_id but found: %v", v)
+			switch v := v.(type) {
+			case value.Int, value.String:
+			default:
+				return fmt.Errorf("can not unmarshal feature row, expected int or string for request_id but found: %v", v)
 			}
-			r.RequestID = ftypes.RequestID(s)
+			r.RequestID = ftypes.RequestID(value.ToJSON(v))
 		case "context_otype":
 			s, ok := v.(value.String)
 			if !ok {
@@ -73,11 +74,12 @@ func (r *Row) UnmarshalJSON(bytes []byte) error {
 			}
 			r.ContextOType = ftypes.OType(s)
 		case "context_oid":
-			s, ok := v.(value.String)
-			if !ok {
-				return fmt.Errorf("can not unmarshal feature row, expected string for context_oid but found: %v", v)
+			switch v := v.(type) {
+			case value.Int, value.String:
+			default:
+				return fmt.Errorf("can not unmarshal feature row, expected int or string for context_oid but found: %v", v)
 			}
-			r.ContextOid = ftypes.OidType(s)
+			r.ContextOid = ftypes.OidType(value.ToJSON(v))
 		case "candidate_otype":
 			s, ok := v.(value.String)
 			if !ok {
@@ -85,11 +87,12 @@ func (r *Row) UnmarshalJSON(bytes []byte) error {
 			}
 			r.CandidateOType = ftypes.OType(s)
 		case "candidate_oid":
-			s, ok := v.(value.String)
-			if !ok {
-				return fmt.Errorf("can not unmarshal feature row, expected string for candidate_id but found: %v", v)
+			switch v := v.(type) {
+			case value.Int, value.String:
+			default:
+				return fmt.Errorf("can not unmarshal feature row, expected int or string for candidate_oid but found: %v", v)
 			}
-			r.CandidateOid = ftypes.OidType(s)
+			r.CandidateOid = ftypes.OidType(value.ToJSON(v))
 		case "timestamp":
 			n, ok := v.(value.Int)
 			if !ok {
@@ -116,27 +119,42 @@ func (r *Row) UnmarshalJSON(bytes []byte) error {
 	return nil
 }
 
-func (r Row) GetValue() value.Value {
+func (r Row) GetValue() (value.Value, error) {
 	d := value.NewDict(nil)
 	for k, v := range r.Features.Iter() {
 		pk := prefixed("feature", k)
 		d.Set(pk, v)
 	}
+	contextOid, err := value.FromJSON([]byte(r.ContextOid))
+	if err != nil {
+		return nil, err
+	}
+	candidateOid, err := value.FromJSON([]byte(r.CandidateOid))
+	if err != nil {
+		return nil, err
+	}
+	requestID, err := value.FromJSON([]byte(r.RequestID))
+	if err != nil {
+		return nil, err
+	}
 	d.Set("context_otype", value.String(r.ContextOType))
-	d.Set("context_oid", value.String(r.ContextOid))
+	d.Set("context_oid", contextOid)
 	d.Set("candidate_otype", value.String(r.CandidateOType))
-	d.Set("candidate_oid", value.String(r.CandidateOid))
+	d.Set("candidate_oid", candidateOid)
 	d.Set("timestamp", value.Int(r.Timestamp))
 	d.Set("workflow", value.String(r.Workflow))
-	d.Set("request_id", value.String(r.RequestID))
+	d.Set("request_id", requestID)
 	d.Set("model_name", value.String(r.ModelName))
 	d.Set("model_version", value.String(r.ModelVersion))
 	d.Set("model_prediction", value.Double(r.ModelPrediction))
-	return d
+	return d, nil
 }
 
 func (r Row) MarshalJSON() ([]byte, error) {
-	d := r.GetValue()
+	d, err := r.GetValue()
+	if err != nil {
+		return nil, err
+	}
 	return value.ToJSON(d), nil
 }
 

@@ -172,8 +172,8 @@ func TestOfflineAggregates(t *testing.T) {
 	}()
 
 	expectedJsonTable := []string{
-		`{"aggregate":"aggTest","groupkey":["3434"],"timestamp":1000,"value":null}`,
-		`{"aggregate":"aggTest","groupkey":["325235"],"timestamp":1000,"value":null}`,
+		`{"action_id":2,"action_type":"like","actor_id":3434,"actor_type":"user","aggregate":"agg","groupkey":[3434],"metadata":6,"request_id":7,"target_id":3,"target_type":"video","timestamp":1000}`,
+		`{"action_id":2,"action_type":"like","actor_id":325235,"actor_type":"user","aggregate":"agg","groupkey":[325235],"metadata":6,"request_id":7,"target_id":3,"target_type":"video","timestamp":1000}`,
 	}
 	// test that actions were written as JSON as well
 	go func() {
@@ -326,7 +326,7 @@ func TestTransformActions(t *testing.T) {
 		row, ok := r.(value.Dict)
 		assert.True(t, ok)
 		assert.Equal(t, value.Int(i+1000), get(row, "timestamp"))
-		assert.Equal(t, value.NewList(value.String(uid)), get(row, "groupkey"))
+		assert.Equal(t, value.NewList(value.Int(41)), get(row, "groupkey"))
 	}
 }
 

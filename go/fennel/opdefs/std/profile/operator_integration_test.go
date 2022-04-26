@@ -4,6 +4,7 @@ package profile
 
 import (
 	"context"
+	"strconv"
 	"testing"
 
 	"fennel/controller/profile"
@@ -25,14 +26,14 @@ func TestProfileOpMultipleObjs(t *testing.T) {
 	defer test.Teardown(tier)
 	ctx := context.Background()
 
-	otype1, oid1, key1, val1, ver1 := ftypes.OType("user"), "123", "summary", value.Int(5), uint64(1)
-	otype2, oid2, key2, val2, ver2 := ftypes.OType("user"), "223", "age", value.Int(7), uint64(4)
-	req1 := profilelib.ProfileItem{OType: otype1, Oid: oid1, Key: key1, UpdateTime: ver1, Value: val1}
+	otype1, oid1, key1, val1, ver1 := ftypes.OType("user"), 123, "summary", value.Int(5), uint64(1)
+	otype2, oid2, key2, val2, ver2 := ftypes.OType("user"), 223, "age", value.Int(7), uint64(4)
+	req1 := profilelib.ProfileItem{OType: otype1, Oid: strconv.Itoa(oid1), Key: key1, UpdateTime: ver1, Value: val1}
 	assert.NoError(t, profile.Set(ctx, tier, req1))
-	req2a := profilelib.ProfileItem{OType: otype2, Oid: oid2, Key: key2, UpdateTime: ver2 - 1, Value: value.Int(1121)}
+	req2a := profilelib.ProfileItem{OType: otype2, Oid: strconv.Itoa(oid2), Key: key2, UpdateTime: ver2 - 1, Value: value.Int(1121)}
 	assert.NoError(t, profile.Set(ctx, tier, req2a))
 	// this key has multiple UpdateTimes but we should pick up the latest one if not provided explicitly
-	req2b := profilelib.ProfileItem{OType: otype2, Oid: oid2, Key: key2, UpdateTime: ver2, Value: val2}
+	req2b := profilelib.ProfileItem{OType: otype2, Oid: strconv.Itoa(oid2), Key: key2, UpdateTime: ver2, Value: val2}
 	assert.NoError(t, profile.Set(ctx, tier, req2b))
 
 	query := ast.OpCall{
@@ -49,8 +50,8 @@ func TestProfileOpMultipleObjs(t *testing.T) {
 		}},
 	}
 	table := value.List{}
-	table.Append(value.NewDict(map[string]value.Value{"otype": value.String(otype1), "oid": value.String(oid1), "key": value.String(key1), "ver": value.Int(ver1)}))
-	table.Append(value.NewDict(map[string]value.Value{"otype": value.String(otype2), "oid": value.String(oid2), "key": value.String(key2), "ver": value.Int(ver2)}))
+	table.Append(value.NewDict(map[string]value.Value{"otype": value.String(otype1), "oid": value.Int(oid1), "key": value.String(key1), "ver": value.Int(ver1)}))
+	table.Append(value.NewDict(map[string]value.Value{"otype": value.String(otype2), "oid": value.Int(oid2), "key": value.String(key2), "ver": value.Int(ver2)}))
 
 	i, err := interpreter.NewInterpreter(context.Background(), bootarg.Create(tier),
 		value.NewDict(map[string]value.Value{"actions": table}))
@@ -61,9 +62,9 @@ func TestProfileOpMultipleObjs(t *testing.T) {
 	// assert.Len(t, rows, 2)
 	assert.Equal(t, 2, rows.Len())
 	r, _ := rows.At(0)
-	assert.Equal(t, value.NewDict(map[string]value.Value{"otype": value.String(otype1), "oid": value.String(oid1), "key": value.String(key1), "ver": value.Int(ver1), "profile_value": val1}), r)
+	assert.Equal(t, value.NewDict(map[string]value.Value{"otype": value.String(otype1), "oid": value.Int(oid1), "key": value.String(key1), "ver": value.Int(ver1), "profile_value": val1}), r)
 	r, _ = rows.At(1)
-	assert.Equal(t, value.NewDict(map[string]value.Value{"otype": value.String(otype2), "oid": value.String(oid2), "key": value.String(key2), "ver": value.Int(ver2), "profile_value": val2}), r)
+	assert.Equal(t, value.NewDict(map[string]value.Value{"otype": value.String(otype2), "oid": value.Int(oid2), "key": value.String(key2), "ver": value.Int(ver2), "profile_value": val2}), r)
 }
 
 func TestNonDictProfile(t *testing.T) {
@@ -97,17 +98,17 @@ func TestNonDictProfile(t *testing.T) {
 		value.NewDict(map[string]value.Value{
 			"otype": value.String(otype),
 			"key":   value.String(key),
-			"oid":   value.String("1"),
+			"oid":   value.Int(1),
 		}),
 		value.NewDict(map[string]value.Value{
 			"otype": value.String(otype),
 			"key":   value.String(key),
-			"oid":   value.String("2"),
+			"oid":   value.Int(2),
 		}),
 		value.NewDict(map[string]value.Value{
 			"otype": value.String(otype),
 			"key":   value.String(key),
-			"oid":   value.String("5"),
+			"oid":   value.Int(5),
 		}),
 	}
 
@@ -144,9 +145,11 @@ func TestProfileOpCacheMultiple(t *testing.T) {
 	}
 	inTable := value.NewList()
 	for _, pi := range profiles {
+		oid, err := value.FromJSON([]byte(pi.Oid))
+		assert.NoError(t, err)
 		inTable.Append(value.NewDict(map[string]value.Value{
 			"otype":   value.String(pi.OType),
-			"oid":     value.String(pi.Oid),
+			"oid":     oid,
 			"key":     value.String(pi.Key),
 			"version": value.Int(pi.UpdateTime),
 		}))
@@ -154,9 +157,11 @@ func TestProfileOpCacheMultiple(t *testing.T) {
 	// to query for version = 0
 	inTable0 := value.NewList()
 	for _, pi := range profiles {
+		oid, err := value.FromJSON([]byte(pi.Oid))
+		assert.NoError(t, err)
 		inTable0.Append(value.NewDict(map[string]value.Value{
 			"otype":   value.String(pi.OType),
-			"oid":     value.String(pi.Oid),
+			"oid":     oid,
 			"key":     value.String(pi.Key),
 			"version": value.Int(0),
 		}))
@@ -164,9 +169,11 @@ func TestProfileOpCacheMultiple(t *testing.T) {
 
 	var expected []value.Dict
 	for _, pi := range profiles {
+		oid, err := value.FromJSON([]byte(pi.Oid))
+		assert.NoError(t, err)
 		expected = append(expected, value.NewDict(map[string]value.Value{
 			"otype":         value.String(pi.OType),
-			"oid":           value.String(pi.Oid),
+			"oid":           oid,
 			"key":           value.String(pi.Key),
 			"version":       value.Int(pi.UpdateTime),
 			"profile_value": value.Nil,
@@ -190,9 +197,11 @@ func TestProfileOpCacheMultiple(t *testing.T) {
 	assert.NoError(t, err)
 	var expected2 []value.Dict
 	for _, pi := range profiles {
+		oid, err := value.FromJSON([]byte(pi.Oid))
+		assert.NoError(t, err)
 		expected2 = append(expected2, value.NewDict(map[string]value.Value{
 			"otype":         value.String(pi.OType),
-			"oid":           value.String(pi.Oid),
+			"oid":           oid,
 			"key":           value.String(pi.Key),
 			"version":       value.Int(pi.UpdateTime),
 			"profile_value": pi.Value,
@@ -211,11 +220,13 @@ func TestProfileOpCacheMultiple(t *testing.T) {
 	// now if we use version = 0, we should get back latest profile even though older version is cached
 	var expected3 []value.Dict
 	for _, pi := range profiles {
+		oid, err := value.FromJSON([]byte(pi.Oid))
+		assert.NoError(t, err)
 		newval, err := pi.Value.Op("+", value.Int(2))
 		assert.NoError(t, err)
 		expected3 = append(expected3, value.NewDict(map[string]value.Value{
 			"otype":         value.String(pi.OType),
-			"oid":           value.String(pi.Oid),
+			"oid":           oid,
 			"key":           value.String(pi.Key),
 			"version":       value.Int(0),
 			"profile_value": newval,
