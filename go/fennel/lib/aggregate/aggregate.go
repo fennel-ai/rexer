@@ -21,6 +21,7 @@ var ValidTypes = []ftypes.AggType{
 	"stddev",
 	"rate",
 	"topk",
+	"cf",
 }
 
 type Aggregate struct {
@@ -66,7 +67,7 @@ func (agg Aggregate) Validate() error {
 		if options.Window != 0 || options.Limit != 0 || options.Normalize {
 			return fmt.Errorf("window, limit, normalize should all be zero for %v", aggtype)
 		}
-	case "topk":
+	case "topk", "cf":
 		if len(options.Durations) < 1 {
 			return fmt.Errorf("at least one duration must be provided for %s", aggtype)
 		}
