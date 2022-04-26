@@ -25,7 +25,7 @@ export type inputType = {
     tierId: number,
     replicas?: number,
     enforceReplicaIsolation?: boolean,
-    storageclass: string
+    storageclass?: string
 }
 
 export type outputType = {
@@ -100,6 +100,10 @@ export const setup = async (input: inputType) => {
     let whenUnsatisfiable = "ScheduleAnyway";
     if (forceReplicaIsolation) {
         whenUnsatisfiable = "DoNotSchedule";
+    }
+
+    if (input.storageclass === undefined) {
+        console.log('storageClass is undefined for API server, will use default storage class for persistent volume.')
     }
 
     const appStatefulset = image.imageName.apply(() => {
@@ -315,6 +319,7 @@ export const setup = async (input: inputType) => {
                         },
                         spec: {
                             accessModes: ["ReadWriteOnce"],
+                            // if the storage class is undefined, default storage class is used by the PVC.
                             storageClassName: input.storageclass,
                             resources: {
                                 requests: {
@@ -325,7 +330,7 @@ export const setup = async (input: inputType) => {
                     }
                 ]
             },
-        }, { provider: k8sProvider, deleteBeforeReplace: true });
+        }, { provider: k8sProvider, deleteBeforeReplace: true, replaceOnChanges: ["*"] });
     })
 
     const appSvc = appStatefulset.apply(() => {
@@ -339,7 +344,7 @@ export const setup = async (input: inputType) => {
                 ports: [{ port: 2425, targetPort: 2425, protocol: "TCP" }],
                 selector: appLabels,
             },
-        }, { provider: k8sProvider, deleteBeforeReplace: true })
+        }, { provider: k8sProvider, deleteBeforeReplace: true, replaceOnChanges: ["*"] })
     })
 
     // Setup ingress resources for api-server
