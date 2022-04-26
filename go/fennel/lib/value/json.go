@@ -6,17 +6,15 @@ import (
 	"github.com/buger/jsonparser"
 )
 
-// TODO: this is not needed any more, clean/deelete
-// Clean takes a value, and returns a value with nil list/dict replaced by empty list/dict
 func Clean(v Value) Value {
 	switch v := v.(type) {
 	case List:
 		if v.values == nil {
-			return List{}
+			return NewList()
 		}
 	case Dict:
 		if v.values == nil {
-			return Dict{}
+			return NewDict(nil)
 		}
 	}
 	return v
