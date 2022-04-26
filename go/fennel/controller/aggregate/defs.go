@@ -35,6 +35,14 @@ func Store(ctx context.Context, tier tier.Tier, agg aggregate.Aggregate) error {
 		}
 	}
 
+	if agg.Options.CronSchedule != "" {
+		// If offline aggregate, write to AWS Glue
+		err := tier.GlueClient.ScheduleOfflineAggregate(tier.ID, agg)
+		if err != nil {
+			return err
+		}
+	}
+
 	querySer, err := ast.Marshal(agg.Query)
 	if err != nil {
 		return fmt.Errorf("can not marshal aggregate query: %v", err)
@@ -94,7 +102,15 @@ func Deactivate(ctx context.Context, tier tier.Tier, aggname ftypes.AggName) err
 	if !aggser.Active {
 		return nil
 	} else {
-		err := modelAgg.Deactivate(ctx, tier, aggname)
+		// In case the aggregate is an offline trigger disable the offline job.
+		// If its an online trigger, no err/exception is thrown.
+		err := tier.GlueClient.DeactivateOfflineAggregate(string(aggname))
+		if err != nil {
+			return err
+		}
+
+		// Disable online & offline triggers
+		err = modelAgg.Deactivate(ctx, tier, aggname)
 		return err
 	}
 }

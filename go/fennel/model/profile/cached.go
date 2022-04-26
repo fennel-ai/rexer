@@ -122,6 +122,7 @@ func (c cachedProvider) setBatch(ctx context.Context, tier tier.Tier, profiles [
 			tosetKeys = append(tosetKeys, ks[i])
 			tosetVals = append(tosetVals, value.ToJSON(profileItem.Value))
 		}
+
 		// Set them on cache
 		return txn.MSet(ctx, tosetKeys, tosetVals, make([]time.Duration, len(tosetKeys)))
 	}
@@ -132,6 +133,8 @@ func (c cachedProvider) setBatch(ctx context.Context, tier tier.Tier, profiles [
 	// (version = 0) was evicted. A concurrent `get` call could update the cache with the value corresponding
 	// to v0 and the above logic aborting due to lack of retries.
 	return tier.Cache.RunAsTxn(ctx, txnLogic, latestKeys, 3)
+	// Use this for locally run tier
+	// return txnLogic(tier.Cache, latestKeys)
 }
 
 func (c cachedProvider) get(ctx context.Context, tier tier.Tier, profileKey profile.ProfileItemKey) (profile.ProfileItem, error) {

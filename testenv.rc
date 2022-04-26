@@ -21,5 +21,6 @@ export BADGER_DIR="/tmp"
 export MODEL_STORE_S3_BUCKET="my-xgboost-test-bucket-2"
 export MODEL_STORE_ENDPOINT="integration-test-endpoint"
 
+export REGION="us-west-2"
 # in tests, we override this with a random tier ID but this is needed for prod
 export TIER_ID=103

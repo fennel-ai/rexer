@@ -8,6 +8,7 @@ import (
 	"os"
 	"time"
 
+	"fennel/glue"
 	"fennel/lib/clock"
 	"fennel/lib/ftypes"
 	"fennel/modelstore"
@@ -46,6 +47,7 @@ func Tier() (tier.Tier, error) {
 
 	// TODO - decide what region to use for test tier
 	s3Client := s3.NewClient(s3.S3Args{Region: "ap-south-1"})
+	glueClient := glue.NewGlueClient(glue.GlueArgs{Region: "ap-south-1"})
 
 	modelStore := modelstore.NewModelStore(modelstore.ModelStoreArgs{
 		ModelStoreS3Bucket:     os.Getenv("MODEL_STORE_S3_BUCKET"),
@@ -71,6 +73,7 @@ func Tier() (tier.Tier, error) {
 		Clock:            clock.Unix{},
 		NewKafkaConsumer: consumerCreator,
 		S3Client:         s3Client,
+		GlueClient:       glueClient,
 		ModelStore:       modelStore,
 		Logger:           logger,
 		Badger:           badger,

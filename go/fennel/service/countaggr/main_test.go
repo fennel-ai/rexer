@@ -156,7 +156,7 @@ func TestEndToEnd(t *testing.T) {
 		{
 			libaggregate.Aggregate{
 				Name: "agg_9", Query: getQueryTopK(), Timestamp: 123,
-				Options: libaggregate.Options{AggType: "topk", Durations: []uint64{3 * 3600, 6 * 3600, 3600}},
+				Options: libaggregate.Options{AggType: "topk", Durations: []uint64{3 * 3600, 6 * 3600, 3600}, Limit: 1},
 				Id:      9,
 			},
 			value.NewList(),

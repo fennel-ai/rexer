@@ -156,19 +156,29 @@ func Update(ctx context.Context, tier tier.Tier, consumer kafka.FConsumer, agg a
 	if err != nil {
 		return err
 	}
-	tier.Logger.Info(fmt.Sprintf("found %d new actions for aggregate: %s", len(actions), agg.Name))
 	if len(actions) == 0 {
 		return nil
 	}
 	table, err := transformActions(tier, actions, agg.Query)
 
+	if err != nil {
+		return err
+	}
+
 	// Offline Aggregates
 	if agg.Options.CronSchedule != "" {
+		tier.Logger.Info(fmt.Sprintf("found %d new actions, %d transformed actions for offline aggregate: %s", len(actions), table.Len(), agg.Name))
+
 		offlineTransformProducer := tier.Producers[libcounter.AGGREGATE_OFFLINE_TRANSFORM_TOPIC_NAME]
 		for i := 0; i < table.Len(); i++ {
 			rowVal, _ := table.At(i)
-			dict, _ := rowVal.(value.Dict)
-			dict.Set("aggregate", value.String(agg.Name))
+			rowDict, _ := rowVal.(value.Dict)
+			dict := value.NewDict(map[string]value.Value{
+				"aggregate": value.String(agg.Name),
+				"groupkey":  rowDict.GetUnsafe("groupkey"),
+				"value":     rowDict.GetUnsafe("value"),
+				"timestamp": rowDict.GetUnsafe("timestamp"),
+			})
 			err = offlineTransformProducer.Log(ctx, value.ToJSON(dict), nil)
 			if err != nil {
 				tier.Logger.Error(fmt.Sprintf("failed to log action proto: %v", err))
@@ -177,10 +187,8 @@ func Update(ctx context.Context, tier tier.Tier, consumer kafka.FConsumer, agg a
 		_, err = consumer.Commit()
 		return err
 	}
+	tier.Logger.Info(fmt.Sprintf("found %d new actions for online aggregate: %s", len(actions), agg.Name))
 
-	if err != nil {
-		return err
-	}
 	histogram, err := modelCounter.ToHistogram(agg.Options)
 	if err != nil {
 		return err

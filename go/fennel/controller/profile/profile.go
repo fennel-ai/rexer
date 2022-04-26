@@ -4,6 +4,7 @@ package profile
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"fennel/kafka"
@@ -98,9 +99,13 @@ func TransferToDB(ctx context.Context, tr tier.Tier, consumer kafka.FConsumer) e
 	if err != nil {
 		return err
 	}
+
 	if len(profiles) == 0 {
 		return nil
 	}
+
+	tr.Logger.Info(fmt.Sprintf("writing %d profiles to DB", len(profiles)))
+
 	if err = profile.SetBatch(ctx, tr, profiles); err != nil {
 		return err
 	}

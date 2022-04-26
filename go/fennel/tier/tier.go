@@ -9,6 +9,7 @@ import (
 
 	"fennel/db"
 	"fennel/fbadger"
+	"fennel/glue"
 	libkafka "fennel/kafka"
 	"fennel/lib/cache"
 	"fennel/lib/clock"
@@ -30,6 +31,7 @@ type TierArgs struct {
 	sagemaker.SagemakerArgs   `json:"sagemaker_._sagemaker_args"`
 	modelstore.ModelStoreArgs `json:"modelstore_._model_store_args"`
 
+	Region        string         `json:"region"`
 	KafkaServer   string         `arg:"--kafka-server,env:KAFKA_SERVER_ADDRESS" json:"kafka_server,omitempty"`
 	KafkaUsername string         `arg:"--kafka-user,env:KAFKA_USERNAME" json:"kafka_username,omitempty"`
 	KafkaPassword string         `arg:"--kafka-password,env:KAFKA_PASSWORD" json:"kafka_password,omitempty"`
@@ -82,7 +84,8 @@ func (args TierArgs) Valid() error {
 	if args.BadgerDir == "" {
 		missingFields = append(missingFields, "BADGER_DIR")
 	}
-	// TODO: require args when ready for s3, modelStore, sagemaker
+
+	// TODO: require args when ready for s3, glue, modelStore, sagemaker
 	if len(missingFields) > 0 {
 		return fmt.Errorf("missing fields: %s", strings.Join(missingFields, ", "))
 	}
@@ -104,6 +107,7 @@ type Tier struct {
 	Logger           *zap.Logger
 	NewKafkaConsumer KafkaConsumerCreator
 	S3Client         s3.Client
+	GlueClient       glue.GlueClient
 	SagemakerClient  sagemaker.SMClient
 	ModelStore       *modelstore.ModelStore
 	Badger           fbadger.DB
@@ -210,7 +214,10 @@ func CreateFromArgs(args *TierArgs) (tier Tier, err error) {
 	if err != nil {
 		return tier, fmt.Errorf("failed to create sagemaker client: %v", err)
 	}
+
+	fmt.Println("Creating AWS clients for S3, Glue, and ModelStore")
 	s3client := s3.NewClient(args.S3Args)
+	glueclient := glue.NewGlueClient(glue.GlueArgs{Region: args.Region})
 	modelStore := modelstore.NewModelStore(args.ModelStoreArgs, tierID)
 
 	log.Print("Creating badger")
@@ -249,6 +256,7 @@ func CreateFromArgs(args *TierArgs) (tier Tier, err error) {
 		NewKafkaConsumer: consumerCreator,
 		SagemakerClient:  smclient,
 		S3Client:         s3client,
+		GlueClient:       glueclient,
 		ModelStore:       modelStore,
 		Badger:           bdb.(fbadger.DB),
 	}, nil
