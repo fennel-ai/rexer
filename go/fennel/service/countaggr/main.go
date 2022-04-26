@@ -40,6 +40,14 @@ func logKafkaLag(t tier.Tier, consumer kafka.FConsumer) {
 	backlog_stats.WithLabelValues(consumer.GroupID()).Set(float64(backlog))
 }
 
+// TODO(Mohit): Deprecate this in-favor of using a log management solution, where alerts will be created on error event
+// and will have better visibility into the error
+var aggregate_errors = promauto.NewCounterVec(
+	prometheus.CounterOpts{
+		Name: "aggregate_errors",
+		Help: "Stats on aggregate failures",
+	}, []string{"aggregate"})
+
 func processAggregate(tr tier.Tier, agg libaggregate.Aggregate) error {
 	consumer, err := tr.NewKafkaConsumer(kafka.ConsumerConfig{
 		Topic:        action.ACTIONLOG_KAFKA_TOPIC,
@@ -57,6 +65,7 @@ func processAggregate(tr tier.Tier, agg libaggregate.Aggregate) error {
 			ctx := context.TODO()
 			err := aggregate.Update(ctx, tr, consumer, agg)
 			if err != nil {
+				aggregate_errors.WithLabelValues(string(agg.Name)).Add(1)
 				log.Printf("Error found in aggregate: %s. Err: %v", agg.Name, err)
 			}
 			logKafkaLag(tr, consumer)
