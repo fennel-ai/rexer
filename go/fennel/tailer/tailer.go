@@ -60,7 +60,11 @@ func writeProfilesToLocalKvStore(tr tier.Tier, cancel <-chan struct{}) error {
 	consumer, err := tr.NewKafkaConsumer(libkakfa.ConsumerConfig{
 		Topic: topic,
 		// TODO(abhay): Use a group id that is unique to this instance of tailer.
-		GroupID:    "_put_profiles_in_kv_store",
+		//
+		// TODO(mohit): Remove the hack to rename the group id
+		// `2` was appended as a hack to allow writing all the data from kafka topics
+		// from offset ZERO into badger
+		GroupID:    "_put_profiles_in_kv_store2",
 		Partitions: partitions,
 		// If offsets are not specified, use default offset policy of reading from
 		// earliest offset in partitions assigned by the broker.
@@ -95,8 +99,11 @@ func writeAggrDeltasToLocalKvStore(tr tier.Tier, cancel <-chan struct{}) error {
 		return err
 	}
 	consumer, err := tr.NewKafkaConsumer(libkakfa.ConsumerConfig{
-		Topic:        topic,
-		GroupID:      "_put_aggr_deltas_in_kv_store",
+		Topic: topic,
+		// TODO(mohit): Remove the hack to rename the group id
+		// `2` was appended as a hack to allow writing all the data from kafka topics
+		// from offset ZERO into badger
+		GroupID:      "_put_aggr_deltas_in_kv_store2",
 		Partitions:   partitions,
 		OffsetPolicy: libkakfa.DefaultOffsetPolicy,
 	})
