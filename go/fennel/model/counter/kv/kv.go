@@ -102,6 +102,15 @@ func Get(ctx context.Context, tr tier.Tier, aggIds []ftypes.AggId, buckets [][]c
 	if len(aggIds) == 0 {
 		return nil, nil
 	}
+
+	// add logging just before reading values for these buckets
+	for i, aggId := range aggIds {
+		tr.Logger.Info("reading badger keys for aggregate",
+			zap.Int("aggregate", int(aggId)),
+			zap.Int("num_keys", len(buckets[i])),
+		)
+	}
+
 	// TODO(mohit): For each aggrId, dedup Buckets to minimize roundtrips
 	values := make([][]value.Value, len(aggIds))
 	for i := range buckets {
