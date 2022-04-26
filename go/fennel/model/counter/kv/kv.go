@@ -3,7 +3,6 @@ package kv
 import (
 	"context"
 	"fmt"
-	"sync"
 
 	"fennel/lib/counter"
 	"fennel/lib/ftypes"
@@ -16,6 +15,7 @@ import (
 	"fennel/tier"
 
 	"go.uber.org/zap"
+	"golang.org/x/sync/errgroup"
 )
 
 var (
@@ -107,46 +107,37 @@ func Get(ctx context.Context, tr tier.Tier, aggIds []ftypes.AggId, buckets [][]c
 	for i := range buckets {
 		values[i] = make([]value.Value, len(buckets[i]))
 	}
-	errChan := make(chan error, len(aggIds))
-	wg := sync.WaitGroup{}
-	wg.Add(len(aggIds))
+	errs, ctx := errgroup.WithContext(ctx)
 	for i := range aggIds {
-		go func(idx int) {
-			defer wg.Done()
-			for j := range buckets[idx] {
-				k, err := LatestEncoder.EncodeKey(aggIds[idx], buckets[idx][j])
+		for j := range buckets[i] {
+			iIdx := i
+			jIdx := j
+			errs.Go(func() error {
+				k, err := LatestEncoder.EncodeKey(aggIds[iIdx], buckets[iIdx][jIdx])
 				if err != nil {
-					errChan <- fmt.Errorf("failed to encode key: %v", err)
-					return
+					return fmt.Errorf("failed to encode key: %v", err)
 				}
 				v, err := kv.Get(ctx, tablet, k)
 				if err == kvstore.ErrKeyNotFound {
-					values[idx][j] = defaults_[idx]
+					values[iIdx][jIdx] = defaults_[iIdx]
 				} else if err != nil {
-					errChan <- fmt.Errorf("failed to get value: %v", err)
-					return
+					return fmt.Errorf("failed to get value: %v", err)
 				} else {
 					codec, err := codec.GetCodec(v.Codec)
 					if err != nil {
-						errChan <- fmt.Errorf("failed to get codec: %v", err)
-						return
+						return fmt.Errorf("failed to get codec: %v", err)
 					}
-					values[idx][j], err = codec.DecodeValue(v.Raw)
+					values[iIdx][jIdx], err = codec.DecodeValue(v.Raw)
 					if err != nil {
-						errChan <- fmt.Errorf("failed to decode value: %v", err)
-						return
+						return fmt.Errorf("failed to decode value: %v", err)
 					}
 				}
-			}
-			errChan <- nil
-		}(i)
-	}
-	wg.Wait()
-	close(errChan)
-	for err := range errChan {
-		if err != nil {
-			return nil, err
+				return nil
+			})
 		}
+	}
+	if err := errs.Wait(); err != nil {
+		return nil, err
 	}
 	return values, nil
 }

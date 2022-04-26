@@ -15,36 +15,22 @@ require (
 	github.com/prometheus/client_golang v1.12.1
 	github.com/stretchr/testify v1.7.0
 	go.uber.org/zap v1.21.0
+	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c
 	google.golang.org/protobuf v1.27.1
 )
 
-require (
-	github.com/aws/aws-sdk-go-v2 v1.16.2 // indirect
-	github.com/aws/aws-sdk-go-v2/config v1.15.3 // indirect
-	github.com/aws/aws-sdk-go-v2/credentials v1.11.2 // indirect
-	github.com/aws/aws-sdk-go-v2/feature/ec2/imds v1.12.3 // indirect
-	github.com/aws/aws-sdk-go-v2/internal/configsources v1.1.9 // indirect
-	github.com/aws/aws-sdk-go-v2/internal/endpoints/v2 v2.4.3 // indirect
-	github.com/aws/aws-sdk-go-v2/internal/ini v1.3.10 // indirect
-	github.com/aws/aws-sdk-go-v2/service/dynamodb v1.15.3 // indirect
-	github.com/aws/aws-sdk-go-v2/service/internal/accept-encoding v1.9.1 // indirect
-	github.com/aws/aws-sdk-go-v2/service/internal/endpoint-discovery v1.7.3 // indirect
-	github.com/aws/aws-sdk-go-v2/service/internal/presigned-url v1.9.3 // indirect
-	github.com/aws/aws-sdk-go-v2/service/sso v1.11.3 // indirect
-	github.com/aws/aws-sdk-go-v2/service/sts v1.16.3 // indirect
-	github.com/aws/smithy-go v1.11.2 // indirect
-)
+require github.com/google/go-cmp v0.5.7 // indirect
 
 require (
 	github.com/alexflint/go-scalar v1.0.0 // indirect
 	github.com/alicebob/gopher-json v0.0.0-20200520072559-a9ecdc9d1d3a // indirect
-	github.com/aws/aws-sdk-go v1.43.45 // indirect
+	github.com/aws/aws-sdk-go v1.43.45
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/cespare/xxhash v1.1.0 // indirect
 	github.com/cespare/xxhash/v2 v2.1.2 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
-	github.com/dgraph-io/badger/v3 v3.2103.2 // indirect
-	github.com/dgraph-io/ristretto v0.1.0 // indirect
+	github.com/dgraph-io/badger/v3 v3.2103.2
+	github.com/dgraph-io/ristretto v0.1.0
 	github.com/dgryski/go-rendezvous v0.0.0-20200823014737-9f7001d12a5f // indirect
 	github.com/dustin/go-humanize v1.0.0 // indirect
 	github.com/gogo/protobuf v1.3.2 // indirect
@@ -57,7 +43,7 @@ require (
 	github.com/klauspost/compress v1.12.3 // indirect
 	github.com/matttproud/golang_protobuf_extensions v1.0.1 // indirect
 	github.com/mtraver/base91 v1.0.0
-	github.com/pkg/errors v0.9.1 // indirect
+	github.com/pkg/errors v0.9.1
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/prometheus/client_model v0.2.0 // indirect
 	github.com/prometheus/common v0.32.1 // indirect
@@ -68,6 +54,5 @@ require (
 	go.uber.org/multierr v1.7.0 // indirect
 	golang.org/x/net v0.0.0-20220225172249-27dd8689420f // indirect
 	golang.org/x/sys v0.0.0-20220114195835-da31bd327af9 // indirect
-	golang.org/x/text v0.3.7 // indirect
 	gopkg.in/yaml.v3 v3.0.0-20210107192922-496545a6307b // indirect
 )
