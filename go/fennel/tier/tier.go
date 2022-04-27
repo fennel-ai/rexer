@@ -210,6 +210,7 @@ func CreateFromArgs(args *TierArgs) (tier Tier, err error) {
 	}
 	logger = logger.With(zap.Uint32("tier_id", args.TierID.Value()))
 
+	log.Print("Connecting to sagemaker")
 	smclient, err := sagemaker.NewClient(args.SagemakerArgs)
 	if err != nil {
 		return tier, fmt.Errorf("failed to create sagemaker client: %v", err)
@@ -218,6 +219,8 @@ func CreateFromArgs(args *TierArgs) (tier Tier, err error) {
 	fmt.Println("Creating AWS clients for S3, Glue, and ModelStore")
 	s3client := s3.NewClient(args.S3Args)
 	glueclient := glue.NewGlueClient(glue.GlueArgs{Region: args.Region})
+
+	args.ModelStoreArgs.ModelStoreEndpointName += fmt.Sprintf("-%d", tierID)
 	modelStore := modelstore.NewModelStore(args.ModelStoreArgs, tierID)
 
 	log.Print("Creating badger")
