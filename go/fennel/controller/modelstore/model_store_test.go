@@ -3,47 +3,48 @@
 package modelstore
 
 import (
+	"bytes"
 	"context"
 	"log"
 	"testing"
 	"time"
 
 	lib "fennel/lib/sagemaker"
+	"fennel/lib/value"
 	db "fennel/model/sagemaker"
 	"fennel/modelstore"
 	"fennel/sagemaker"
 	"fennel/test"
+	"fennel/tier"
 	"github.com/stretchr/testify/assert"
 )
 
-/* TODO - fix test (doesn't work due to 10 min timeout)
 func TestStoreScoreRemoveModel(t *testing.T) {
 	tier, err := test.Tier()
 	assert.NoError(t, err)
 	defer test.Teardown(tier)
 
-	err = testsagemaker.AddSagemakerDataAndClientToTier(&tier)
+	err = test.AddSagemakerClientToTier(&tier)
 	assert.NoError(t, err)
 
 	data, err := tier.S3Client.Download("model.tar.gz", "my-xgboost-test-bucket-2")
 	assert.NoError(t, err)
 	req := lib.ModelUploadRequest{
-		Name:             "some-model",
+		Name:             "name",
 		Version:          "v1",
 		Framework:        "xgboost",
-		FrameworkVersion: "1.3.1",
+		FrameworkVersion: "1.3-1",
 		ModelFile:        bytes.NewReader(data),
 	}
 
 	var retry bool
 	for {
 		err, retry = Store(context.Background(), tier, req)
-		log.Print(err, retry)
 		if !retry {
 			break
 		}
-		log.Print("Waiting two minutes before retrying to store")
-		time.Sleep(2 * time.Minute)
+		log.Print("Waiting one minute before retrying to store")
+		time.Sleep(time.Minute)
 	}
 	assert.NoError(t, err)
 
@@ -52,28 +53,28 @@ func TestStoreScoreRemoveModel(t *testing.T) {
 	featureVecs := []value.List{csv.(value.List)}
 	var scores []value.Value
 	for {
-		scores, err, retry = Score(context.Background(), tier, "some-model", "v1", featureVecs)
-		log.Print(err, retry)
+		scores, err, retry = Score(context.Background(), tier, "name", "v1", featureVecs)
 		if !retry {
 			break
 		}
-		log.Print("Waiting two minutes before retrying to score")
-		time.Sleep(2 * time.Minute)
+		log.Print("Waiting one minute before retrying to score")
+		time.Sleep(time.Minute)
 	}
+	assert.NoError(t, err)
 	assert.Equal(t, len(featureVecs), len(scores))
 
 	for {
 		err, retry = Remove(context.Background(), tier, req.Name, req.Version)
-		log.Print(err, retry)
 		if !retry {
 			break
 		}
-		log.Print("Waiting two minutes before retrying to remove")
-		time.Sleep(2 * time.Minute)
+		log.Print("Waiting one minute before retrying to remove")
+		time.Sleep(time.Minute)
 	}
 	assert.NoError(t, err)
+
+	cleanup(t, tier)
 }
-*/
 
 func TestEnsureEndpoint(t *testing.T) {
 	tier, err := test.Tier()
@@ -91,7 +92,7 @@ func TestEnsureEndpoint(t *testing.T) {
 		Name:             "my-test-model",
 		Version:          "v1",
 		Framework:        "xgboost",
-		FrameworkVersion: "1.3.1",
+		FrameworkVersion: "1.3-1",
 		ArtifactPath:     "s3://my-xgboost-test-bucket-2/model.tar.gz",
 	}
 	endpointName := "unit-test-endpoint"
@@ -153,4 +154,17 @@ func TestEnsureEndpoint(t *testing.T) {
 		err := tier.SagemakerClient.DeleteModel(context.Background(), sagemakerModels[0])
 		assert.NoError(t, err)
 	}()
+}
+
+func cleanup(t *testing.T, tier tier.Tier) {
+	hostedModels, err := db.GetAllHostedModels(tier)
+	assert.NoError(t, err)
+	for _, m := range hostedModels {
+		endpointCfg, err := db.GetEndpointConfigWithModel(tier, m.SagemakerModelName)
+		assert.NoError(t, err)
+		err = tier.SagemakerClient.DeleteModel(context.Background(), m.SagemakerModelName)
+		assert.NoError(t, err)
+		err = tier.SagemakerClient.DeleteEndpointConfig(context.Background(), endpointCfg.Name)
+		assert.NoError(t, err)
+	}
 }

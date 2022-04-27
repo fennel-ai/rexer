@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"math/rand"
+	"strconv"
 	"time"
 
 	"fennel/lib/ftypes"
@@ -11,6 +12,7 @@ import (
 	"fennel/lib/value"
 	db "fennel/model/sagemaker"
 	"fennel/tier"
+	"github.com/pkg/errors"
 )
 
 // Store attempts to store a model in the DB and SageMaker. When it fails, returns an error along with a bool
@@ -22,7 +24,7 @@ func Store(ctx context.Context, tier tier.Tier, req lib.ModelUploadRequest) (err
 	defer tier.ModelStore.Unlock()
 	ok, err := tier.SagemakerClient.EndpointExists(ctx, tier.ModelStore.EndpointName())
 	if err != nil {
-		return fmt.Errorf("failed to store model: %v", err), false
+		return errors.Wrapf(err, "failed to check if endpoint [%s] exists", tier.ModelStore.EndpointName()), false
 	}
 	if ok {
 		// If endpoint exists, wait for it to be in service as we cannot make changes to the endpoint
@@ -122,7 +124,7 @@ func Score(
 		if err2 != nil {
 			return nil, fmt.Errorf("failed to score the model: %v; %v", err, err2), false
 		}
-		if status == "Updating" {
+		if status == "Creating" || status == "Updating" || status == "Deleting" || status == "RollingBack" {
 			activeModels, err := db.GetActiveModels(tier)
 			if err2 != nil {
 				return nil, fmt.Errorf("failed to score the model: %v; %v", err, err2), false
@@ -163,6 +165,17 @@ func EnsureEndpointExists(ctx context.Context, tier tier.Tier) error {
 		return fmt.Errorf("failed to get active models from db: %v", err)
 	}
 	if len(activeModels) == 0 {
+		// if there are no active models, delete endpoint if it exists to clean up
+		ok, err := tier.SagemakerClient.EndpointExists(ctx, tier.ModelStore.EndpointName())
+		if err != nil {
+			return fmt.Errorf("failed to check endpoint exists: %v", err)
+		}
+		if ok {
+			err := tier.SagemakerClient.DeleteEndpoint(ctx, tier.ModelStore.EndpointName())
+			if err != nil {
+				return fmt.Errorf("failed to delete endpoint '%s': %v", tier.ModelStore.EndpointName(), err)
+			}
+		}
 		return nil
 	}
 	coveringModels, err := db.GetCoveringHostedModels(tier)
@@ -195,6 +208,9 @@ func EnsureEndpointExists(ctx context.Context, tier tier.Tier) error {
 		return fmt.Errorf("failed to check if model exists on sagemaker: %v", err)
 	}
 	if !exists {
+		if len(activeModels) == 1 {
+			activeModels = append(activeModels, getDummyModel(activeModels[0]))
+		}
 		err = tier.SagemakerClient.CreateModel(ctx, activeModels, sagemakerModelName)
 		if err != nil {
 			return fmt.Errorf("failed to create model on sagemaker: %v", err)
@@ -256,7 +272,7 @@ func EnsureEndpointExists(ctx context.Context, tier tier.Tier) error {
 			return fmt.Errorf("failed to create endpoint on sagemaker: %v", err)
 		}
 	} else {
-		curEndpointCfgName, err := tier.SagemakerClient.GetCurrentEndpointConfigName(ctx, endpointName)
+		curEndpointCfgName, err := tier.SagemakerClient.GetEndpointConfigName(ctx, endpointName)
 		if err != nil {
 			return fmt.Errorf("couldn't get current endpoint config's name from sagemaker: %v", err)
 		}
@@ -281,12 +297,34 @@ func EnsureEndpointInService(ctx context.Context, tier tier.Tier) (err error, tm
 	if err != nil {
 		return fmt.Errorf("failed to get endpoint status: %v", err), false
 	}
-	if status == "Updating" || status == "SystemUpdating" {
+	switch status {
+	case "InService":
+		return nil, false
+	case "Updating", "SystemUpdating", "RollingBack":
 		return fmt.Errorf("endpoint is updating, please wait for a few minutes"), true
+	case "Creating":
+		return fmt.Errorf("endpoint is being created, please wait for a few minutes"), true
+	case "Deleting":
+		return fmt.Errorf("endpoint is being deleted, please wait for a few minutes"), true
+	case "OutOfService":
+		return fmt.Errorf("endpoint out of service and not available to take incoming requests"), false
+	case "Failed":
+		return fmt.Errorf("endpoint failed and must be deleted"), false
+	default:
+		return fmt.Errorf("endpoint in unknown status"), false
 	}
-	return nil, false
 }
 
 func getPath(tierID ftypes.RealmID, fileName string) string {
 	return fmt.Sprintf("t-%d/%s", tierID, fileName)
+}
+
+func getDummyModel(model lib.Model) lib.Model {
+	return lib.Model{
+		Name:             model.Name,
+		Version:          strconv.Itoa(rand.Int()),
+		Framework:        model.Framework,
+		FrameworkVersion: model.FrameworkVersion,
+		ArtifactPath:     model.ArtifactPath,
+	}
 }
