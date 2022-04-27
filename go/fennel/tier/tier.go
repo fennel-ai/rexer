@@ -159,7 +159,31 @@ func CreateFromArgs(args *TierArgs) (tier Tier, err error) {
 		return tier, fmt.Errorf("failed to create process-level cache: %v", err)
 	}
 
-	// Start a goroutine to periodically record various connection stats.
+	log.Print("Creating badger")
+	opts := badger.DefaultOptions(args.BadgerDir)
+	// only log warnings and errors
+	opts = opts.WithLoggingLevel(badger.WARNING)
+	// TODO(Mohit): Configure the larger block cache size only for API server.
+	// allocate 10GB of memory to Badger; this is recommended when using compression or encryption
+	// which is enabled by default in `DefaultOptions`
+	opts = opts.WithBlockCacheSize(10 * 1 << 30)
+	// TODO(Mohit): Explore `BlockSize`; EBS has a block size of 16KB but the I/O ops with size < 16KB,
+	// they are merged together into a single I/O op
+
+	// TODO(Mohit): Explore `MemTableSize` and `NumMemtables`; LSM trees write all the updates in memory
+	// first in memtables and once they are filled up, they are swapped with immutable memtables
+	// and eventually written to level zero on disk - https://dgraph.io/blog/post/badger/
+	// Understand how this plays around with `BlockCacheSize`
+	badgerConf := fbadger.Config{
+		Opts:  opts,
+		Scope: scope,
+	}
+	bdb, err := badgerConf.Materialize()
+	if err != nil {
+		return tier, fmt.Errorf("failed to create badger: %v", err)
+	}
+
+	// Start a goroutine to periodically record various resource level stats.
 	go func() {
 		ticker := time.NewTicker(30 * time.Second)
 		defer ticker.Stop()
@@ -168,6 +192,7 @@ func CreateFromArgs(args *TierArgs) (tier Tier, err error) {
 			redis.RecordConnectionStats("redis", redisClient.(redis.Client))
 			redis.RecordConnectionStats("elasticache", cacheClient.(redis.Client))
 			pcache.RecordStats("pcache", pCache)
+			fbadger.RecordBadgerCacheStats(bdb.(fbadger.DB))
 		}
 	}()
 
@@ -222,30 +247,6 @@ func CreateFromArgs(args *TierArgs) (tier Tier, err error) {
 
 	args.ModelStoreArgs.ModelStoreEndpointName += fmt.Sprintf("-%d", tierID)
 	modelStore := modelstore.NewModelStore(args.ModelStoreArgs, tierID)
-
-	log.Print("Creating badger")
-	opts := badger.DefaultOptions(args.BadgerDir)
-	// only log warnings and errors
-	opts = opts.WithLoggingLevel(badger.WARNING)
-	// TODO(Mohit): Configure the larger block cache size only for API server.
-	// allocate 10GB of memory to Badger; this is recommended when using compression or encryption
-	// which is enabled by default in `DefaultOptions`
-	opts = opts.WithBlockCacheSize(10 * 1 << 30)
-	// TODO(Mohit): Explore `BlockSize`; EBS has a block size of 16KB but the I/O ops with size < 16KB,
-	// they are merged together into a single I/O op
-
-	// TODO(Mohit): Explore `MemTableSize` and `NumMemtables`; LSM trees write all the updates in memory
-	// first in memtables and once they are filled up, they are swapped with immutable memtables
-	// and eventually written to level zero on disk - https://dgraph.io/blog/post/badger/
-	// Understand how this plays around with `BlockCacheSize`
-	badgerConf := fbadger.Config{
-		Opts:  opts,
-		Scope: scope,
-	}
-	bdb, err := badgerConf.Materialize()
-	if err != nil {
-		return tier, fmt.Errorf("failed to create badger: %v", err)
-	}
 
 	return Tier{
 		DB:               sqlConn.(db.Connection),
