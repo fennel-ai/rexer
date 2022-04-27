@@ -27,25 +27,13 @@ func TestInsertModel(t *testing.T) {
 
 	id, err = InsertModel(tier, lib.Model{
 		Name:             "test-model",
-		Version:          "v1",
-		Framework:        "xgboost",
-		FrameworkVersion: "another-version",
-		ArtifactPath:     "another-path",
-	})
-	assert.Error(t, err)
-	assert.Equal(t, uint32(0), id)
-
-	id, err = InsertModel(tier, lib.Model{
-		Name:             "test-model",
 		Version:          "v2",
 		Framework:        "xgboost",
 		FrameworkVersion: "another-version",
 		ArtifactPath:     "another-path",
 	})
 	assert.NoError(t, err)
-	// Expect 3 instead of 2 since mysql will auto increment the id	even on a
-	// failed insert.
-	assert.Equal(t, uint32(3), id)
+	assert.Equal(t, uint32(2), id)
 
 	id, err = InsertModel(tier, lib.Model{
 		Name:             "test-model-2",
@@ -55,7 +43,7 @@ func TestInsertModel(t *testing.T) {
 		ArtifactPath:     "s3://fennel-test-bucket/test-model/model.tar.gz",
 	})
 	assert.NoError(t, err)
-	assert.Equal(t, uint32(4), id)
+	assert.Equal(t, uint32(3), id)
 }
 
 func TestGetActiveModels(t *testing.T) {
