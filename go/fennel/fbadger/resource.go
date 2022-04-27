@@ -33,7 +33,10 @@ type Config struct {
 func (c Config) Materialize() (resource.Resource, error) {
 	if !c.Opts.InMemory {
 		dir := filepath.Join(c.Opts.Dir, fmt.Sprintf("/t_%d/", c.Scope.ID()))
-		c.Opts = c.Opts.WithDir(dir).WithValueDir(dir)
+		c.Opts = c.Opts.
+			WithDir(dir).
+			WithValueDir(dir).
+			WithMetricsEnabled(false)
 	}
 	db, err := badger.Open(c.Opts)
 	if err != nil {

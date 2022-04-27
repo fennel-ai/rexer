@@ -61,35 +61,40 @@ func (bs *BadgerTransactionalStore) GetAll(ctx context.Context, tablet kvstore.T
 }
 
 func (bs *BadgerTransactionalStore) Get(ctx context.Context, tablet kvstore.TabletType, key []byte) (*kvstore.SerializedValue, error) {
-	defer timer.Start(ctx, bs.tier.ID, "badger.store.get").Stop()
 	if len(key) == 0 {
 		return nil, kvstore.ErrEmptyKey
 	}
-	bs.tier.Logger.Debug("BadgerTransactionalStore.Get",
-		zap.String("key", b64.StdEncoding.EncodeToString(key)),
-	)
-	key, err := makeKey(tablet, key)
-	if err != nil {
-		return nil, err
-	}
-	item, err := bs.txn.Get(key)
-	switch err {
-	case badger.ErrKeyNotFound:
-		return nil, kvstore.ErrKeyNotFound
-	case nil:
-		var value kvstore.SerializedValue
-		err = item.Value(func(v []byte) error {
-			value.Codec = item.UserMeta()
-			value.Raw = v
-			return nil
-		})
+	select {
+	case <-ctx.Done():
+		return nil, nil
+	default:
+		bs.tier.Logger.Debug("BadgerTransactionalStore.Get",
+			zap.String("key", b64.StdEncoding.EncodeToString(key)),
+		)
+		key, err := makeKey(tablet, key)
 		if err != nil {
 			return nil, err
 		}
-		return &value, nil
-	default:
-		return nil, err
+		item, err := bs.txn.Get(key)
+		switch err {
+		case badger.ErrKeyNotFound:
+			return nil, kvstore.ErrKeyNotFound
+		case nil:
+			var value kvstore.SerializedValue
+			err = item.Value(func(v []byte) error {
+				value.Codec = item.UserMeta()
+				value.Raw = v
+				return nil
+			})
+			if err != nil {
+				return nil, err
+			}
+			return &value, nil
+		default:
+			return nil, err
+		}
 	}
+
 }
 
 func (bs *BadgerTransactionalStore) Set(ctx context.Context, tablet kvstore.TabletType, key []byte, value kvstore.SerializedValue) error {
