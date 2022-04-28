@@ -106,7 +106,7 @@ func (c GlueClient) ScheduleOfflineAggregate(tierID ftypes.RealmID, agg aggregat
 	// Check aggregate tuning params
 	if agg.Options.AggTuningParams != "" {
 		supportedParams := aggToParamsSupported[aggregateType]
-		var aggParams map[string]string
+		var aggParams map[string]interface{}
 		err := json.Unmarshal([]byte(agg.Options.AggTuningParams), &aggParams)
 		if err != nil {
 			return fmt.Errorf("failed to parse aggregate tuning params: %v", err)

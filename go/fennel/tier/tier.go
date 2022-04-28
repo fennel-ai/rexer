@@ -243,6 +243,7 @@ func CreateFromArgs(args *TierArgs) (tier Tier, err error) {
 
 	log.Println("Creating AWS clients for S3, Glue, and ModelStore")
 	s3client := s3.NewClient(args.S3Args)
+	fmt.Println("Region:", args.Region)
 	glueclient := glue.NewGlueClient(glue.GlueArgs{Region: args.Region})
 
 	args.ModelStoreArgs.ModelStoreEndpointName += fmt.Sprintf("-%d", tierID)

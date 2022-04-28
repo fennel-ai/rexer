@@ -55,3 +55,45 @@ func TestGlueClient(t *testing.T) {
 	err = glueClient.DeactivateOfflineAggregate(string(agg.Name))
 	assert.NoError(t, err)
 }
+
+func TestAggTuningParams(t *testing.T) {
+	glueArgs := GlueArgs{Region: "us-west-2"}
+	glueClient := NewGlueClient(glueArgs)
+	t0 := ftypes.Timestamp(0)
+
+	agg := aggregate.Aggregate{
+		Name:      "OfflineAggregateTest",
+		Query:     ast.MakeInt(0),
+		Timestamp: t0,
+		Options: aggregate.Options{
+			AggType:         "cf",
+			Durations:       []uint64{7 * 24 * 3600, 3 * 24 * 3600},
+			CronSchedule:    "37 1 * * ?",
+			AggTuningParams: `{"rand": 123}`,
+		},
+		Id: 1,
+	}
+
+	err := glueClient.ScheduleOfflineAggregate(107, agg)
+	assert.Error(t, err)
+	assert.Equal(t, "unknown aggregate tuning param: rand", err.Error())
+
+	agg = aggregate.Aggregate{
+		Name:      "OfflineAggregateTest",
+		Query:     ast.MakeInt(0),
+		Timestamp: t0,
+		Options: aggregate.Options{
+			AggType:         "cf",
+			Durations:       []uint64{7 * 24 * 3600, 3 * 24 * 3600},
+			CronSchedule:    "37 1 * * ?",
+			AggTuningParams: `{"min_co_occurence": 123}`,
+		},
+		Id: 1,
+	}
+
+	err = glueClient.ScheduleOfflineAggregate(107, agg)
+	assert.NoError(t, err)
+
+	err = glueClient.DeactivateOfflineAggregate(string(agg.Name))
+	assert.NoError(t, err)
+}
