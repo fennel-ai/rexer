@@ -379,6 +379,9 @@ func (m server) StoreAggregate(w http.ResponseWriter, req *http.Request) {
 		handleBadRequest(w, "invalid request: ", err)
 		return
 	}
+	fmt.Println("Storing", agg)
+	fmt.Println(agg.Options)
+
 	// call controller
 	if err = aggregate2.Store(req.Context(), m.tier, agg); err != nil {
 		handleInternalServerError(w, "", err)

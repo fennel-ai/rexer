@@ -128,7 +128,7 @@ type Options struct {
 	Limit           uint64
 	Normalize       bool
 	CronSchedule    string
-	AggTuningParams string
+	HyperParameters string
 }
 
 func (o Options) Equals(other Options) bool {

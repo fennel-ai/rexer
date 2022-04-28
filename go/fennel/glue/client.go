@@ -104,10 +104,10 @@ func (c GlueClient) ScheduleOfflineAggregate(tierID ftypes.RealmID, agg aggregat
 	}
 
 	// Check aggregate tuning params
-	if agg.Options.AggTuningParams != "" {
+	if agg.Options.HyperParameters != "" {
 		supportedParams := aggToParamsSupported[aggregateType]
 		var aggParams map[string]interface{}
-		err := json.Unmarshal([]byte(agg.Options.AggTuningParams), &aggParams)
+		err := json.Unmarshal([]byte(agg.Options.HyperParameters), &aggParams)
 		if err != nil {
 			return fmt.Errorf("failed to parse aggregate tuning params: %v", err)
 		}
@@ -121,12 +121,12 @@ func (c GlueClient) ScheduleOfflineAggregate(tierID ftypes.RealmID, agg aggregat
 	// Create a trigger for every duration.
 	for _, duration := range agg.Options.Durations {
 		jobArguments := map[string]*string{
-			"--DURATION":       aws.String(fmt.Sprintf("%d", duration)),
-			"--TIER_ID":        aws.String(fmt.Sprintf("%d", tierID)),
-			"--AGGREGATE_NAME": aws.String(string(agg.Name)),
-			"--AGGREGATE_TYPE": aws.String(aggregateType),
-			"--LIMIT":          aws.String(fmt.Sprintf("%d", agg.Options.Limit)),
-			"--PARAMS":         aws.String(agg.Options.AggTuningParams),
+			"--DURATION":        aws.String(fmt.Sprintf("%d", duration)),
+			"--TIER_ID":         aws.String(fmt.Sprintf("%d", tierID)),
+			"--AGGREGATE_NAME":  aws.String(string(agg.Name)),
+			"--AGGREGATE_TYPE":  aws.String(aggregateType),
+			"--LIMIT":           aws.String(fmt.Sprintf("%d", agg.Options.Limit)),
+			"--HYPERPARAMETERS": aws.String(agg.Options.HyperParameters),
 		}
 
 		err := c.CreateTrigger(string(agg.Name), aggregateType, agg.Options.CronSchedule, jobArguments)

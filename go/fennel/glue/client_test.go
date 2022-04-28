@@ -56,7 +56,7 @@ func TestGlueClient(t *testing.T) {
 	assert.NoError(t, err)
 }
 
-func TestAggTuningParams(t *testing.T) {
+func TestHyperParameters(t *testing.T) {
 	glueArgs := GlueArgs{Region: "us-west-2"}
 	glueClient := NewGlueClient(glueArgs)
 	t0 := ftypes.Timestamp(0)
@@ -69,7 +69,7 @@ func TestAggTuningParams(t *testing.T) {
 			AggType:         "cf",
 			Durations:       []uint64{7 * 24 * 3600, 3 * 24 * 3600},
 			CronSchedule:    "37 1 * * ?",
-			AggTuningParams: `{"rand": 123}`,
+			HyperParameters: `{"rand": 123}`,
 		},
 		Id: 1,
 	}
@@ -86,7 +86,7 @@ func TestAggTuningParams(t *testing.T) {
 			AggType:         "cf",
 			Durations:       []uint64{7 * 24 * 3600, 3 * 24 * 3600},
 			CronSchedule:    "37 1 * * ?",
-			AggTuningParams: `{"min_co_occurence": 123}`,
+			HyperParameters: `{"min_co_occurence": 123}`,
 		},
 		Id: 1,
 	}
