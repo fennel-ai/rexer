@@ -241,12 +241,28 @@ func CreateFromArgs(args *TierArgs) (tier Tier, err error) {
 		return tier, fmt.Errorf("failed to create sagemaker client: %v", err)
 	}
 
-	fmt.Println("Creating AWS clients for S3, Glue, and ModelStore")
+	log.Println("Creating AWS clients for S3, Glue, and ModelStore")
 	s3client := s3.NewClient(args.S3Args)
 	glueclient := glue.NewGlueClient(glue.GlueArgs{Region: args.Region})
 
 	args.ModelStoreArgs.ModelStoreEndpointName += fmt.Sprintf("-%d", tierID)
 	modelStore := modelstore.NewModelStore(args.ModelStoreArgs, tierID)
+
+	// Uncomment to make e2e test work
+	// Set the environment variables to enable access the test sagemaker endpoint.
+	/*
+		os.Setenv("AWS_PROFILE", "admin")
+		os.Setenv("AWS_SDK_LOAD_CONFIG", "1")
+		c, err := sagemaker.NewClient(sagemaker.SagemakerArgs{
+			Region:                 "ap-south-1",
+			SagemakerExecutionRole: "arn:aws:iam::030813887342:role/service-role/AmazonSageMaker-ExecutionRole-20220315T123828",
+		})
+		if err != nil {
+			return tier, err
+		}
+		smclient = c
+		s3client = s3.NewClient(s3.S3Args{Region: "ap-south-1"})
+	*/
 
 	return Tier{
 		DB:               sqlConn.(db.Connection),

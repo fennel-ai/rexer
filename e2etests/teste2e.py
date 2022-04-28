@@ -435,22 +435,52 @@ class TestEndToEnd(unittest.TestCase):
     @tiered
     def test_model_upload_delete(self):
         c = client.Client(URL)
-        while True:
+
+        uploaded = False
+        for i in range(20):
             try:
-                c.upload_model('name', 'v2', 'xgboost', '1.31.0', 'model.tar.gz')
+                c.upload_model('name', 'v2', 'xgboost', '1.3-1', 'model.tar.gz')
+                uploaded = True
             except client.RetryError as err:
                 print(f"Retrying in 60s due to error: {err}")
                 time.sleep(60)
                 continue
             break
-        while True:
+        self.assertTrue(uploaded)
+
+        found = None
+        for i in range(20):
+            try:
+                q = op.std.predict([1], features=[
+                    0, 0, 0, 0, 0, 0, 0, 1, 0, 1, 0, 1, 0, 0, 1, 0,
+                    0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1, 0,
+                    0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 1, 0, 0,
+                    1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 1, 0,
+                    0, 0, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0,
+                    0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1, 0, 0, 1,
+                    0, 0, 1, 0, 0, 0, 0, 0, 1, 0, 1, 0, 0, 0, 0, 0,
+                    0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0,
+                ], model_name='name', model_version='v2')
+                found = c.query(q)
+                self.assertEqual(1, len(found))
+            except client.HTTPError:
+                print("Retrying to score the model in 60s")
+                time.sleep(60)
+                continue
+            break
+        self.assertEqual(1, len(found))
+
+        deleted = False
+        for i in range(20):
             try:
                 c.delete_model('name', 'v2')
+                deleted = True
             except client.RetryError as err:
                 print(f"Retrying in 60s due to error: {err}")
                 time.sleep(60)
                 continue
             break
+        self.assertTrue(deleted)
 
 
 @unittest.skip
