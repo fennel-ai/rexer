@@ -169,24 +169,24 @@ func (c cachedProvider) getBatch(ctx context.Context, tier tier.Tier, profileKey
 	}
 
 	keys := make([]string, 0, len(keyToProfileKey))
-	for k, _ := range keyToProfileKey {
+	for k := range keyToProfileKey {
 		keys = append(keys, k)
 	}
 
 	vals, err := tier.Cache.MGet(ctx, keys...)
-	unavailableKeys := make([]string, 0, len(profileKeys))
+	unavailableKeys := make([]string, 0, len(keys))
 
 	// profile key to profile map
 	var keyToVal sync.Map
-	rets := make([]profile.ProfileItem, 0, len(profileKeys))
+	rets := make([]profile.ProfileItem, len(profileKeys))
 	if err != nil {
 		// if we got an error from cache, no need to panic - we just pretend nothing was found in cache
 		if len(vals) == 0 {
 			vals = make([]interface{}, len(keys))
 		}
+		unavailableKeys = keys
 		for i := range vals {
 			vals[i] = tier.Cache.Nil()
-			unavailableKeys = keys
 		}
 	} else {
 		for i, v := range vals {
@@ -194,20 +194,21 @@ func (c cachedProvider) getBatch(ctx context.Context, tier tier.Tier, profileKey
 				unavailableKeys = append(unavailableKeys, keys[i])
 			} else {
 				vc, err := getValueFromCache(v)
-				if err == nil {
-					pk := keyToProfileKey[keys[i]]
-					profile := profile.NewProfileItem(string(pk.OType), pk.Oid, pk.Key, value.Nil, 0)
-					profile.Value = vc.(value.Value)
-					keyToVal.Store(keyToProfileKey[keys[i]], profile)
+				if err != nil {
+					return nil, err
 				}
+				pk := keyToProfileKey[keys[i]]
+				profile := profile.NewProfileItem(string(pk.OType), pk.Oid, pk.Key, value.Nil, 0)
+				profile.Value = vc.(value.Value)
+				keyToVal.Store(keyToProfileKey[keys[i]], profile)
 			}
 		}
 
 		for i, pk := range profileKeys {
 			if p, ok := keyToVal.Load(profileKeys[i]); !ok {
-				rets = append(rets, profile.NewProfileItem(string(pk.OType), pk.Oid, pk.Key, value.Nil, 0))
+				rets[i] = profile.NewProfileItem(string(pk.OType), pk.Oid, pk.Key, value.Nil, 0)
 			} else {
-				rets = append(rets, p.(profile.ProfileItem))
+				rets[i] = p.(profile.ProfileItem)
 			}
 		}
 	}
@@ -222,13 +223,13 @@ func (c cachedProvider) getBatch(ctx context.Context, tier tier.Tier, profileKey
 	// NOTE: the logic here should assume that it could be retried if one of the provided keys
 	// are updated during it's execution
 	txnLogic := func(tx cache.Txn, ks []string) error {
-		profileKeys := make([]profile.ProfileItemKey, 0)
+		profileKeys := make([]profile.ProfileItemKey, 0, len(ks))
 		for _, key := range ks {
 			profileKeys = append(profileKeys, keyToProfileKey[key])
 		}
 
-		tosetKeys := make([]string, 0)
-		tosetVals := make([]interface{}, 0)
+		tosetKeys := make([]string, 0, len(ks))
+		tosetVals := make([]interface{}, 0, len(ks))
 		dbProfiles, err := c.base.getBatch(ctx, tier, profileKeys)
 
 		if err != nil {
