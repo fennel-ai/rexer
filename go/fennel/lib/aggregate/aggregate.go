@@ -118,12 +118,13 @@ func (agg Aggregate) Equals(other Aggregate) bool {
 }
 
 type Options struct {
-	AggType      ftypes.AggType
-	Durations    []uint64
-	Window       ftypes.Window
-	Limit        uint64
-	Normalize    bool
-	CronSchedule string
+	AggType         ftypes.AggType
+	Durations       []uint64
+	Window          ftypes.Window
+	Limit           uint64
+	Normalize       bool
+	CronSchedule    string
+	AggTuningParams string
 }
 
 func (o Options) Equals(other Options) bool {

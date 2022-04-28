@@ -1,6 +1,7 @@
 package glue
 
 import (
+	"encoding/json"
 	"fennel/lib/aggregate"
 	"fennel/lib/ftypes"
 	"fmt"
@@ -17,6 +18,11 @@ var aggToScriptLocation = map[string]string{
 
 var aggToJobName = map[string]string{
 	"topk": "TopK",
+	"cf":   "CF",
+}
+
+var aggToParamsSupported = map[string][]string{
+	"cf": {"min_co_occurence", "object_normalization_func"},
 }
 
 type GlueArgs struct {
@@ -82,10 +88,34 @@ func (c GlueClient) CreateTrigger(aggregateName, aggregateType, cronSchedule str
 	return err
 }
 
+func Contains(sl []string, name string) bool {
+	for _, value := range sl {
+		if value == name {
+			return true
+		}
+	}
+	return false
+}
+
 func (c GlueClient) ScheduleOfflineAggregate(tierID ftypes.RealmID, agg aggregate.Aggregate) error {
 	aggregateType := strings.ToLower(string(agg.Options.AggType))
 	if _, ok := aggToJobName[aggregateType]; !ok {
 		return fmt.Errorf("unknown offline aggregate type: %v", aggregateType)
+	}
+
+	// Check aggregate tuning params
+	if agg.Options.AggTuningParams != "" {
+		supportedParams := aggToParamsSupported[aggregateType]
+		var aggParams map[string]string
+		err := json.Unmarshal([]byte(agg.Options.AggTuningParams), &aggParams)
+		if err != nil {
+			return fmt.Errorf("failed to parse aggregate tuning params: %v", err)
+		}
+		for param := range aggParams {
+			if !Contains(supportedParams, param) {
+				return fmt.Errorf("unknown aggregate tuning param: %v", param)
+			}
+		}
 	}
 
 	// Create a trigger for every duration.
@@ -96,6 +126,7 @@ func (c GlueClient) ScheduleOfflineAggregate(tierID ftypes.RealmID, agg aggregat
 			"--AGGREGATE_NAME": aws.String(string(agg.Name)),
 			"--AGGREGATE_TYPE": aws.String(aggregateType),
 			"--LIMIT":          aws.String(fmt.Sprintf("%d", agg.Options.Limit)),
+			"--PARAMS":         aws.String(agg.Options.AggTuningParams),
 		}
 
 		err := c.CreateTrigger(string(agg.Name), aggregateType, agg.Options.CronSchedule, jobArguments)

@@ -20,6 +20,7 @@ message AggOptions {
   uint64 limit = 4;
   bool normalize = 5;
   string cron_schedule = 6;
+  string agg_tuning_params = 7;
 }
 
 message AggRequest {

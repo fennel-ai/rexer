@@ -64,12 +64,13 @@ func (agg Aggregate) MarshalJSON() ([]byte, error) {
 		Query     string           `json:"Query"`
 		Timestamp ftypes.Timestamp `json:"Timestamp"`
 		Options   struct {
-			AggType      string        `json:"Type"`
-			Durations    []uint64      `json:"Durations"`
-			Window       ftypes.Window `json:"Window"`
-			Limit        uint64        `json:"Limit"`
-			Normalize    bool          `json:"Normalize"`
-			CronSchedule string        `json:"CronSchedule"`
+			AggType         string        `json:"Type"`
+			Durations       []uint64      `json:"Durations"`
+			Window          ftypes.Window `json:"Window"`
+			Limit           uint64        `json:"Limit"`
+			Normalize       bool          `json:"Normalize"`
+			CronSchedule    string        `json:"CronSchedule"`
+			AggTuningParams string        `json:"AggTuningParams"`
 		}
 	}
 	fields.Name = agg.Name
@@ -82,6 +83,7 @@ func (agg Aggregate) MarshalJSON() ([]byte, error) {
 	fields.Options.Limit = agg.Options.Limit
 	fields.Options.Normalize = agg.Options.Normalize
 	fields.Options.CronSchedule = agg.Options.CronSchedule
+	fields.Options.AggTuningParams = agg.Options.AggTuningParams
 	return json.Marshal(fields)
 }
 
