@@ -9,8 +9,6 @@ import (
 	"fennel/lib/value"
 	"fennel/test"
 	"fennel/test/optest"
-	"fennel/test/sagemaker"
-
 	"github.com/stretchr/testify/assert"
 )
 
@@ -35,7 +33,7 @@ func TestPredict(t *testing.T) {
 	tier, err := test.Tier()
 	assert.NoError(t, err)
 	defer test.Teardown(tier)
-	err = sagemaker.AddSagemakerClientToTier(&tier)
+	err = test.AddSagemakerClientToTier(&tier)
 	assert.NoError(t, err)
 	optest.AssertEqual(t, tier, &predictOperator{}, value.NewDict(map[string]value.Value{
 		"model_name":    value.String("integration-test-xgboost-model"),
@@ -56,7 +54,7 @@ func TestPredictError(t *testing.T) {
 	tier, err := test.Tier()
 	assert.NoError(t, err)
 	defer test.Teardown(tier)
-	err = sagemaker.AddSagemakerClientToTier(&tier)
+	err = test.AddSagemakerClientToTier(&tier)
 	assert.NoError(t, err)
 	optest.AssertError(t, tier, &predictOperator{}, value.NewDict(map[string]value.Value{
 		"model_name":    value.String("integration-test-xgboost-model"),
@@ -77,7 +75,7 @@ func TestPredictErrorNoModel(t *testing.T) {
 	tier, err := test.Tier()
 	assert.NoError(t, err)
 	defer test.Teardown(tier)
-	err = sagemaker.AddSagemakerClientToTier(&tier)
+	err = test.AddSagemakerClientToTier(&tier)
 	assert.NoError(t, err)
 	optest.AssertError(t, tier, &predictOperator{}, value.Dict{} /* no static kwargs */, [][]value.Value{intable}, contextKwargTable)
 }

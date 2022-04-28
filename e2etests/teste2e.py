@@ -58,8 +58,8 @@ class TestEndToEnd(unittest.TestCase):
     @tiered
     def test_lokal(self):
         c = client.Client(URL)
-        uid = '12312'
-        content_id = '456'
+        uid = 12312
+        content_id = 456
         category = 'sports'
 
         @rex.aggregate(
@@ -113,26 +113,26 @@ class TestEndToEnd(unittest.TestCase):
 
         ts = datetime.now().astimezone(timezone.utc)
         a1 = action.Action(actor_type='user', actor_id=uid, target_type='content', target_id=content_id,
-                           action_type='notif_send', request_id="1", timestamp=ts, dedup_key="a1")
+                           action_type='notif_send', request_id=1, timestamp=ts, dedup_key="a1")
         a2 = action.Action(actor_type='user', actor_id=uid, target_type='content', target_id=content_id,
-                           action_type='notif_send', request_id="1", timestamp=ts + timedelta(seconds=1), dedup_key="a2")
+                           action_type='notif_send', request_id=1, timestamp=ts + timedelta(seconds=1), dedup_key="a2")
         a3 = action.Action(actor_type='user', actor_id=uid, target_type='content', target_id=content_id,
-                           action_type='notif_open', request_id="1", timestamp=ts + timedelta(seconds=2), dedup_key="a3")
+                           action_type='notif_open', request_id=1, timestamp=ts + timedelta(seconds=2), dedup_key="a3")
         a4 = action.Action(actor_type='user', actor_id=uid, target_type='content', target_id=content_id,
-                           action_type='react', request_id="2", timestamp=ts + timedelta(seconds=3), dedup_key="a4")
+                           action_type='react', request_id=2, timestamp=ts + timedelta(seconds=3), dedup_key="a4")
 
         # verify that test of actions works well
         mock = {'profiles': [p1]}
         actions = [a1, a2, a3, a4]
         expected = [
-            {'action_type': 'notif_send', 'actor_id': '12312', 'actor_type': 'user', 'category': 'sports',
-             'groupkey': ['12312', 'sports'], 'metadata': {}, 'request_id': "1", 'target_id': '456',
+            {'action_type': 'notif_send', 'actor_id': 12312, 'actor_type': 'user', 'category': 'sports',
+             'groupkey': [12312, 'sports'], 'metadata': {}, 'request_id': 1, 'target_id': 456,
              'target_type': 'content', 'timestamp': int(ts.timestamp()), 'value': [0, 1]},
-            {'action_type': 'notif_send', 'actor_id': '12312', 'actor_type': 'user', 'category': 'sports',
-             'groupkey': ['12312', 'sports'], 'metadata': {}, 'request_id': "1", 'target_id': '456',
+            {'action_type': 'notif_send', 'actor_id': 12312, 'actor_type': 'user', 'category': 'sports',
+             'groupkey': [12312, 'sports'], 'metadata': {}, 'request_id': 1, 'target_id': 456,
              'target_type': 'content', 'timestamp': int((ts + timedelta(seconds=1)).timestamp()), 'value': [0, 1]},
-            {'action_type': 'notif_open', 'actor_id': '12312', 'actor_type': 'user', 'category': 'sports',
-             'groupkey': ['12312', 'sports'], 'metadata': {}, 'request_id': "1", 'target_id': '456',
+            {'action_type': 'notif_open', 'actor_id': 12312, 'actor_type': 'user', 'category': 'sports',
+             'groupkey': [12312, 'sports'], 'metadata': {}, 'request_id': 1, 'target_id': 456,
              'target_type': 'content', 'timestamp': int((ts + timedelta(seconds=2)).timestamp()), 'value': [1, 0]}
         ]
         self.assertEqual(expected, agg_user_notif_open_rate_by_category.test(actions, client=c, mock=mock))
@@ -147,7 +147,7 @@ class TestEndToEnd(unittest.TestCase):
             c.log(a4)
         # this action was logged 8 days in history so should not apply towards any aggregate
         c.log(action.Action(actor_type='user', actor_id=uid, target_type='content', target_id=content_id,
-                            action_type='notif_send', request_id="7", timestamp=ts - timedelta(days=8)))
+                            action_type='notif_send', request_id=7, timestamp=ts - timedelta(days=8)))
 
         # Number of hours in the ts. 
         b = int((ts.timestamp() % (24 * 3600)) / 3600)
@@ -178,8 +178,8 @@ class TestEndToEnd(unittest.TestCase):
     @tiered
     def test_end_to_end(self):
         c = client.Client(URL)
-        uid = '12312'
-        video_id = '456'
+        uid = 12312
+        video_id = 456
         city = 'delhi'
         gender = 1
         age_group = 3
@@ -247,9 +247,9 @@ class TestEndToEnd(unittest.TestCase):
         # send multiple times with dedup keys
         actions = [
             action.Action(actor_type='user', actor_id=uid, target_type='video', target_id=video_id, action_type='view',
-                          request_id="1", timestamp=ts, metadata={'watch_time': 20}, dedup_key="action1"),
+                          request_id=1, timestamp=ts, metadata={'watch_time': 20}, dedup_key="action1"),
             action.Action(actor_type='user', actor_id=uid, target_type='video', target_id=video_id, action_type='view',
-                          request_id="1", timestamp=ts - timedelta(days=3), metadata={'watch_time': 22},
+                          request_id=1, timestamp=ts - timedelta(days=3), metadata={'watch_time': 22},
                           dedup_key="action2"),
         ]
         c.log_multi(actions)
@@ -344,22 +344,22 @@ class TestEndToEnd(unittest.TestCase):
     def test_features(self):
         c = client.Client(URL)
         # first set some data
-        uid = '1'
+        uid = 1
         post_ids = [100 + i for i in range(10)]
         topics = ['topic1', 'topic2']
         for p in post_ids:
-            c.set_profile('post', str(p), 'topic', topics[p % 2])
-            self.assertEqual(topics[p % 2], c.get_profile('post', str(p), 'topic'))
+            c.set_profile('post', p, 'topic', topics[p % 2])
+            self.assertEqual(topics[p % 2], c.get_profile('post', p, 'topic'))
         # and log a few actions
         now = datetime.now().astimezone(timezone.utc)
 
         for p in post_ids:
             # one action for 1 day ago (so applies to both 4 day and 7 day windows)
-            c.log(action.Action(actor_type='user', actor_id=uid, target_type='post', target_id=str(p),
-                                action_type='click', request_id="1", timestamp=now - timedelta(days=1)))
+            c.log(action.Action(actor_type='user', actor_id=uid, target_type='post', target_id=p,
+                                action_type='click', request_id=1, timestamp=now - timedelta(days=1)))
             # one action for 6 day ago (so applies to only 7 day windows)
-            c.log(action.Action(actor_type='user', actor_id=uid, target_type='post', target_id=str(p),
-                                action_type='click', request_id="1", timestamp=now - timedelta(days=6)))
+            c.log(action.Action(actor_type='user', actor_id=uid, target_type='post', target_id=p,
+                                action_type='click', request_id=1, timestamp=now - timedelta(days=6)))
 
         # now store some aggregates
         @rex.aggregate(
@@ -411,7 +411,7 @@ class TestEndToEnd(unittest.TestCase):
             return op.std.profile(candidates, otype='post', var='e', oid=var('e').post_id, key='topic')
 
         context = {'uid': uid}
-        candidates = [{'post_id': str(p)} for p in post_ids]
+        candidates = [{'post_id': p} for p in post_ids]
         names = [f3.name, f4.name, f5.name, f1.name, f2.name]
         expected_vec = [[5, 10, topics[p % 2], 10, 20] for p in post_ids]
         expcted_dict = [{f3.name: 5, f4.name: 10, f5.name: topics[p % 2], f1.name: 10, f2.name: 20} for p in post_ids]
@@ -435,22 +435,52 @@ class TestEndToEnd(unittest.TestCase):
     @tiered
     def test_model_upload_delete(self):
         c = client.Client(URL)
-        while True:
+
+        uploaded = False
+        for i in range(20):
             try:
-                c.upload_model('name', 'v2', 'xgboost', '1.31.0', 'model.tar.gz')
+                c.upload_model('name', 'v2', 'xgboost', '1.3-1', 'model.tar.gz')
+                uploaded = True
             except client.RetryError as err:
                 print(f"Retrying in 60s due to error: {err}")
                 time.sleep(60)
                 continue
             break
-        while True:
+        self.assertTrue(uploaded)
+
+        found = None
+        for i in range(20):
+            try:
+                q = op.std.predict([1], features=[
+                    0, 0, 0, 0, 0, 0, 0, 1, 0, 1, 0, 1, 0, 0, 1, 0,
+                    0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1, 0,
+                    0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 1, 0, 0,
+                    1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 1, 0,
+                    0, 0, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0,
+                    0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1, 0, 0, 1,
+                    0, 0, 1, 0, 0, 0, 0, 0, 1, 0, 1, 0, 0, 0, 0, 0,
+                    0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0,
+                ], model_name='name', model_version='v2')
+                found = c.query(q)
+                self.assertEqual(1, len(found))
+            except client.HTTPError:
+                print("Retrying to score the model in 60s")
+                time.sleep(60)
+                continue
+            break
+        self.assertEqual(1, len(found))
+
+        deleted = False
+        for i in range(20):
             try:
                 c.delete_model('name', 'v2')
+                deleted = True
             except client.RetryError as err:
                 print(f"Retrying in 60s due to error: {err}")
                 time.sleep(60)
                 continue
             break
+        self.assertTrue(deleted)
 
 
 @unittest.skip

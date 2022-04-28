@@ -51,7 +51,7 @@ func Tier() (tier.Tier, error) {
 
 	modelStore := modelstore.NewModelStore(modelstore.ModelStoreArgs{
 		ModelStoreS3Bucket:     os.Getenv("MODEL_STORE_S3_BUCKET"),
-		ModelStoreEndpointName: os.Getenv("MODEL_STORE_ENDPOINT"),
+		ModelStoreEndpointName: os.Getenv("MODEL_STORE_ENDPOINT") + fmt.Sprintf("-%d", tierID),
 	}, tierID)
 
 	logger, err := zap.NewDevelopment()

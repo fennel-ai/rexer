@@ -166,7 +166,7 @@ func Update(ctx context.Context, tier tier.Tier, consumer kafka.FConsumer, agg a
 	}
 
 	// Offline Aggregates
-	if agg.Options.CronSchedule != "" {
+	if agg.IsOffline() {
 		tier.Logger.Info(fmt.Sprintf("found %d new actions, %d transformed actions for offline aggregate: %s", len(actions), table.Len(), agg.Name))
 
 		offlineTransformProducer := tier.Producers[libcounter.AGGREGATE_OFFLINE_TRANSFORM_TOPIC_NAME]

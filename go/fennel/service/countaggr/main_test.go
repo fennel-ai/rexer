@@ -4,6 +4,7 @@ package main
 
 import (
 	"context"
+	"strconv"
 	"sync"
 	"testing"
 
@@ -36,7 +37,7 @@ func TestEndToEnd(t *testing.T) {
 	defer test.Teardown(tier)
 
 	ctx := context.Background()
-	uid := ftypes.OidType("1312")
+	uid := 1312
 	scenarios := []*scenario{
 		{
 			libaggregate.Aggregate{
@@ -45,7 +46,7 @@ func TestEndToEnd(t *testing.T) {
 				Id:      1,
 			},
 			value.Int(0),
-			value.String(uid),
+			value.Int(uid),
 			[]value.Dict{
 				value.NewDict(map[string]value.Value{"duration": value.Int(6 * 3600)}),
 				value.NewDict(map[string]value.Value{"duration": value.Int(3600)})},
@@ -59,7 +60,7 @@ func TestEndToEnd(t *testing.T) {
 				Id:      2,
 			},
 			value.NewList(value.Int(0), value.Int(0), value.Int(0), value.Int(0)),
-			value.String(uid),
+			value.Int(uid),
 			[]value.Dict{value.NewDict(nil)},
 			[]value.Value{value.NewList(value.Int(0), value.Int(0), value.Int(1), value.Int(2))},
 			nil,
@@ -71,7 +72,7 @@ func TestEndToEnd(t *testing.T) {
 				Id:      3,
 			},
 			value.NewList(),
-			value.String(uid),
+			value.Int(uid),
 			[]value.Dict{
 				value.NewDict(map[string]value.Value{"duration": value.Int(6 * 3600)}),
 				value.NewDict(map[string]value.Value{"duration": value.Int(3600)}),
@@ -86,7 +87,7 @@ func TestEndToEnd(t *testing.T) {
 				Id:      4,
 			},
 			value.Int(0),
-			value.String(uid),
+			value.Int(uid),
 			[]value.Dict{
 				value.NewDict(map[string]value.Value{"duration": value.Int(6 * 3600)}),
 				value.NewDict(map[string]value.Value{"duration": value.Int(3600)})},
@@ -100,7 +101,7 @@ func TestEndToEnd(t *testing.T) {
 				Id:      5,
 			},
 			value.Int(0),
-			value.String(uid),
+			value.Int(uid),
 			[]value.Dict{
 				value.NewDict(map[string]value.Value{"duration": value.Int(6 * 3600)}),
 				value.NewDict(map[string]value.Value{"duration": value.Int(3600)})},
@@ -114,7 +115,7 @@ func TestEndToEnd(t *testing.T) {
 				Id:      6,
 			},
 			value.Double(0),
-			value.String(uid),
+			value.Int(uid),
 			[]value.Dict{
 				value.NewDict(map[string]value.Value{"duration": value.Int(6 * 3600)}),
 				value.NewDict(map[string]value.Value{"duration": value.Int(3600)})},
@@ -128,7 +129,7 @@ func TestEndToEnd(t *testing.T) {
 				Id:      7,
 			},
 			value.Double(0),
-			value.String(uid),
+			value.Int(uid),
 			[]value.Dict{
 				value.NewDict(map[string]value.Value{"duration": value.Int(6 * 3600)}),
 				value.NewDict(map[string]value.Value{"duration": value.Int(3600)})},
@@ -146,7 +147,7 @@ func TestEndToEnd(t *testing.T) {
 				Id: 8,
 			},
 			value.Double(0),
-			value.String(uid),
+			value.Int(uid),
 			[]value.Dict{
 				value.NewDict(map[string]value.Value{"duration": value.Int(6 * 3600)}),
 				value.NewDict(map[string]value.Value{"duration": value.Int(3600)})},
@@ -160,7 +161,7 @@ func TestEndToEnd(t *testing.T) {
 				Id:      9,
 			},
 			value.NewList(),
-			value.String(uid),
+			value.Int(uid),
 			[]value.Dict{
 				value.NewDict(map[string]value.Value{"duration": value.Int(6 * 3600)}),
 				value.NewDict(map[string]value.Value{"duration": value.Int(3600)})},
@@ -200,8 +201,8 @@ func TestEndToEnd(t *testing.T) {
 	}
 
 	// now fire a few actions
-	actions1 := logAction(t, tier, uid, t0+ftypes.Timestamp(1), value.NewDict(map[string]value.Value{"value": value.Int(1)}))
-	actions2 := logAction(t, tier, uid, t0+ftypes.Timestamp(4000), value.NewDict(map[string]value.Value{"value": value.Int(2)}))
+	actions1 := logAction(t, tier, ftypes.OidType(strconv.Itoa(uid)), t0+ftypes.Timestamp(1), value.NewDict(map[string]value.Value{"value": value.Int(1)}))
+	actions2 := logAction(t, tier, ftypes.OidType(strconv.Itoa(uid)), t0+ftypes.Timestamp(4000), value.NewDict(map[string]value.Value{"value": value.Int(2)}))
 	actions := append(actions1, actions2...)
 
 	t1 := t0 + 7200

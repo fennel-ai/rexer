@@ -117,6 +117,10 @@ func (agg Aggregate) Equals(other Aggregate) bool {
 	return agg.Query.Equals(other.Query) && agg.Options.Equals(other.Options)
 }
 
+func (agg Aggregate) IsOffline() bool {
+	return agg.Options.CronSchedule != ""
+}
+
 type Options struct {
 	AggType         ftypes.AggType
 	Durations       []uint64

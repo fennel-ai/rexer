@@ -44,19 +44,6 @@ const tierConfs: Record<number, TierConf> = {
             enforceReplicaIsolation: false,
         },
     },
-    // Lokal dev tier.
-    105: {
-        planeId: 4,
-        httpServerConf: {
-            replicas: 3,
-            // each http-server should be in different nodes from each other
-            enforceReplicaIsolation: true,
-        },
-        // countaggr should be scheduled in a different node than http-server
-        countAggrConf: {
-            enforceServiceIsolation: true
-        }
-    },
     // Fennel staging tier using Fennel's staging data plane.
     106: {
         planeId: 3,
@@ -210,7 +197,6 @@ const planeConfs: Record<number, PlaneConf> = {
         },
     },
     // Lokal's dev tier data plane.
-    // TODO: Reduce size of resources once load-tests are done.
     4: {
         planeId: 4,
         region: "ap-south-1",
@@ -219,7 +205,7 @@ const planeConfs: Record<number, PlaneConf> = {
             cidr: "10.104.0.0/16"
         },
         dbConf: {
-            minCapacity: 8,
+            minCapacity: 1,
             maxCapacity: 64,
             password: "password",
             skipFinalSnapshot: false,
@@ -228,7 +214,6 @@ const planeConfs: Record<number, PlaneConf> = {
             username: confluentUsername,
             password: confluentPassword
         },
-        // See: https://coda.io/d/_drT3IgChqqL/Elasticache-diagnosis_su1nA#_luLc1
         cacheConf: {
             nodeType: "cache.t4g.medium",
             numNodeGroups: 2,
@@ -242,10 +227,6 @@ const planeConfs: Record<number, PlaneConf> = {
         },
         prometheusConf: {
             useAMP: false
-        },
-        eksConf: {
-            nodeType: "c6i.4xlarge",
-            desiredCapacity: 4,
         },
     },
     // Lokal's prod tier data plane

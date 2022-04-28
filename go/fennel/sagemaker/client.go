@@ -133,7 +133,7 @@ func (smc SMClient) EndpointExists(ctx context.Context, endpointName string) (bo
 	return true, nil
 }
 
-func (smc SMClient) GetCurrentEndpointConfigName(ctx context.Context, endpointName string) (string, error) {
+func (smc SMClient) GetEndpointConfigName(ctx context.Context, endpointName string) (string, error) {
 	input := sagemaker.DescribeEndpointInput{
 		EndpointName: aws.String(endpointName),
 	}
@@ -314,7 +314,11 @@ func (xga XgboostAdapter) Score(ctx context.Context, in *lib.ScoreRequest) (*lib
 	if err != nil {
 		return nil, fmt.Errorf("failed to invoke sagemaker endpoint: %v", err)
 	}
-	r := "[" + string(out.Body) + "]"
+	tmp := strings.ReplaceAll(string(out.Body), "\n", ",")
+	if tmp[len(tmp)-1] == ',' {
+		tmp = tmp[:len(tmp)-1]
+	}
+	r := "[" + tmp + "]"
 	v, err := value.FromJSON([]byte(r))
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse response [%s] into value: %v", string(out.Body), err)

@@ -159,7 +159,31 @@ func CreateFromArgs(args *TierArgs) (tier Tier, err error) {
 		return tier, fmt.Errorf("failed to create process-level cache: %v", err)
 	}
 
-	// Start a goroutine to periodically record various connection stats.
+	log.Print("Creating badger")
+	opts := badger.DefaultOptions(args.BadgerDir)
+	// only log warnings and errors
+	opts = opts.WithLoggingLevel(badger.WARNING)
+	// TODO(Mohit): Configure the larger block cache size only for API server.
+	// allocate 10GB of memory to Badger; this is recommended when using compression or encryption
+	// which is enabled by default in `DefaultOptions`
+	opts = opts.WithBlockCacheSize(10 * 1 << 30)
+	// TODO(Mohit): Explore `BlockSize`; EBS has a block size of 16KB but the I/O ops with size < 16KB,
+	// they are merged together into a single I/O op
+
+	// TODO(Mohit): Explore `MemTableSize` and `NumMemtables`; LSM trees write all the updates in memory
+	// first in memtables and once they are filled up, they are swapped with immutable memtables
+	// and eventually written to level zero on disk - https://dgraph.io/blog/post/badger/
+	// Understand how this plays around with `BlockCacheSize`
+	badgerConf := fbadger.Config{
+		Opts:  opts,
+		Scope: scope,
+	}
+	bdb, err := badgerConf.Materialize()
+	if err != nil {
+		return tier, fmt.Errorf("failed to create badger: %v", err)
+	}
+
+	// Start a goroutine to periodically record various resource level stats.
 	go func() {
 		ticker := time.NewTicker(30 * time.Second)
 		defer ticker.Stop()
@@ -168,6 +192,7 @@ func CreateFromArgs(args *TierArgs) (tier Tier, err error) {
 			redis.RecordConnectionStats("redis", redisClient.(redis.Client))
 			redis.RecordConnectionStats("elasticache", cacheClient.(redis.Client))
 			pcache.RecordStats("pcache", pCache)
+			fbadger.RecordBadgerCacheStats(bdb.(fbadger.DB))
 		}
 	}()
 
@@ -210,39 +235,34 @@ func CreateFromArgs(args *TierArgs) (tier Tier, err error) {
 	}
 	logger = logger.With(zap.Uint32("tier_id", args.TierID.Value()))
 
+	log.Print("Connecting to sagemaker")
 	smclient, err := sagemaker.NewClient(args.SagemakerArgs)
 	if err != nil {
 		return tier, fmt.Errorf("failed to create sagemaker client: %v", err)
 	}
 
-	fmt.Println("Creating AWS clients for S3, Glue, and ModelStore")
+	log.Println("Creating AWS clients for S3, Glue, and ModelStore")
 	s3client := s3.NewClient(args.S3Args)
 	glueclient := glue.NewGlueClient(glue.GlueArgs{Region: args.Region})
+
+	args.ModelStoreArgs.ModelStoreEndpointName += fmt.Sprintf("-%d", tierID)
 	modelStore := modelstore.NewModelStore(args.ModelStoreArgs, tierID)
 
-	log.Print("Creating badger")
-	opts := badger.DefaultOptions(args.BadgerDir)
-	// only log warnings and errors
-	opts = opts.WithLoggingLevel(badger.WARNING)
-	// TODO(Mohit): Configure the larger block cache size only for API server.
-	// allocate 10GB of memory to Badger; this is recommended when using compression or encryption
-	// which is enabled by default in `DefaultOptions`
-	opts = opts.WithBlockCacheSize(10 * 1 << 30)
-	// TODO(Mohit): Explore `BlockSize`; EBS has a block size of 16KB but the I/O ops with size < 16KB,
-	// they are merged together into a single I/O op
-
-	// TODO(Mohit): Explore `MemTableSize` and `NumMemtables`; LSM trees write all the updates in memory
-	// first in memtables and once they are filled up, they are swapped with immutable memtables
-	// and eventually written to level zero on disk - https://dgraph.io/blog/post/badger/
-	// Understand how this plays around with `BlockCacheSize`
-	badgerConf := fbadger.Config{
-		Opts:  opts,
-		Scope: scope,
-	}
-	bdb, err := badgerConf.Materialize()
-	if err != nil {
-		return tier, fmt.Errorf("failed to create badger: %v", err)
-	}
+	// Uncomment to make e2e test work
+	// Set the environment variables to enable access the test sagemaker endpoint.
+	/*
+		os.Setenv("AWS_PROFILE", "admin")
+		os.Setenv("AWS_SDK_LOAD_CONFIG", "1")
+		c, err := sagemaker.NewClient(sagemaker.SagemakerArgs{
+			Region:                 "ap-south-1",
+			SagemakerExecutionRole: "arn:aws:iam::030813887342:role/service-role/AmazonSageMaker-ExecutionRole-20220315T123828",
+		})
+		if err != nil {
+			return tier, err
+		}
+		smclient = c
+		s3client = s3.NewClient(s3.S3Args{Region: "ap-south-1"})
+	*/
 
 	return Tier{
 		DB:               sqlConn.(db.Connection),

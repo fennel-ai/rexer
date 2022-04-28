@@ -10,6 +10,8 @@ import (
 	"fennel/lib/value"
 	"fennel/model/profile/kv/codec"
 	"fennel/model/profile/kv/codec/impls"
+
+	"golang.org/x/sync/errgroup"
 )
 
 var (
@@ -72,32 +74,38 @@ func Set(ctx context.Context, profiles []profile.ProfileItem, kv kvstore.ReaderW
 
 func Get(ctx context.Context, profileKeys []profile.ProfileItemKey, kv kvstore.Reader) ([]profile.ProfileItem, error) {
 	values := make([]profile.ProfileItem, len(profileKeys))
+	errs, ctx := errgroup.WithContext(ctx)
 	for i, p := range profileKeys {
-		values[i].OType = ftypes.OType(p.OType)
-		values[i].Oid = p.Oid
-		values[i].Key = p.Key
-		k, err := KeyEncoder.EncodeKey(p.OType, p.Oid, p.Key)
-		if err != nil {
-			return nil, fmt.Errorf("failed to encode key: %v", err)
-		}
-		v, err := kv.Get(ctx, tablet, k)
-		if err == kvstore.ErrKeyNotFound {
-			values[i].UpdateTime = 0
-			values[i].Value = value.Nil
-		} else if err != nil {
-			return nil, fmt.Errorf("failed to get value: %v", err)
-		} else {
-			codec, err := codec.GetCodec(v.Codec)
+		idx := i
+		prof := p
+		errs.Go(func() error {
+			values[idx].OType = ftypes.OType(prof.OType)
+			values[idx].Oid = prof.Oid
+			values[idx].Key = prof.Key
+			k, err := KeyEncoder.EncodeKey(prof.OType, prof.Oid, prof.Key)
 			if err != nil {
-				return nil, fmt.Errorf("failed to get codec: %v", err)
+				return fmt.Errorf("failed to encode key: %v", err)
 			}
-			decodedValue, err := codec.EagerDecode(v.Raw)
-			if err != nil {
-				return nil, fmt.Errorf("failed to decode value: %v", err)
+			v, err := kv.Get(ctx, tablet, k)
+			if err == kvstore.ErrKeyNotFound {
+				values[idx].UpdateTime = 0
+				values[idx].Value = value.Nil
+			} else if err != nil {
+				return fmt.Errorf("failed to get value: %v", err)
+			} else {
+				codec, err := codec.GetCodec(v.Codec)
+				if err != nil {
+					return fmt.Errorf("failed to get codec: %v", err)
+				}
+				decodedValue, err := codec.EagerDecode(v.Raw)
+				if err != nil {
+					return fmt.Errorf("failed to decode value: %v", err)
+				}
+				values[idx].UpdateTime, _ = decodedValue.UpdateTime()
+				values[idx].Value, _ = decodedValue.Value()
 			}
-			values[i].UpdateTime, _ = decodedValue.UpdateTime()
-			values[i].Value, _ = decodedValue.Value()
-		}
+			return nil
+		})
 	}
-	return values, nil
+	return values, errs.Wait()
 }

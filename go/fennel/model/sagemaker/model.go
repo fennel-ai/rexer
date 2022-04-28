@@ -12,7 +12,7 @@ import (
 func InsertModel(tier tier.Tier, model lib.Model) (uint32, error) {
 	ts := time.Now().Unix()
 	stmt := `
-		INSERT INTO model (
+		INSERT IGNORE INTO model (
 			name,
 			version,
 			framework,
@@ -150,6 +150,21 @@ func GetCoveringHostedModels(tier tier.Tier) ([]string, error) {
 		return nil, fmt.Errorf("failed to get covering hosted model: %v", err)
 	}
 	return hostedModelNames, nil
+}
+
+func GetAllHostedModels(tier tier.Tier) ([]lib.SagemakerHostedModel, error) {
+	var hostedModels []lib.SagemakerHostedModel
+	err := tier.DB.Select(&hostedModels, `
+		SELECT *
+		FROM sagemaker_hosted_model
+	`)
+	if err == sql.ErrNoRows {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, fmt.Errorf("failed to get hosted models: %v", err)
+	}
+	return hostedModels, nil
 }
 
 func InsertEndpointConfig(tier tier.Tier, cfg lib.SagemakerEndpointConfig) error {

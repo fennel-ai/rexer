@@ -298,17 +298,19 @@ const setupResources = async () => {
             enforceServiceIsolation: input.countAggrConf?.enforceServiceIsolation,
             httpServerAppLabels: httpServerOutput.appLabels,
         });
-        // set api-server.
-        await apiserver.setup({
-            roleArn: input.roleArn,
-            region: input.region,
-            kubeconfig: input.kubeconfig,
-            namespace: input.namespace,
-            tierId: input.tierId,
-            replicas: input.apiServerConf?.replicas,
-            enforceReplicaIsolation: input.apiServerConf?.enforceReplicaIsolation,
-            storageclass: input.apiServerConf?.storageclass,
-        })
+        // set api-server only if the API Server configuration is defined
+        if (input.apiServerConf !== undefined) {
+            await apiserver.setup({
+                roleArn: input.roleArn,
+                region: input.region,
+                kubeconfig: input.kubeconfig,
+                namespace: input.namespace,
+                tierId: input.tierId,
+                replicas: input.apiServerConf?.replicas,
+                enforceReplicaIsolation: input.apiServerConf?.enforceReplicaIsolation,
+                storageclass: input.apiServerConf?.storageclass,
+            })
+        }
     })
     return {
         "ingress": ingressOutput,

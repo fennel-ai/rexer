@@ -35,7 +35,7 @@ func Store(ctx context.Context, tier tier.Tier, agg aggregate.Aggregate) error {
 		}
 	}
 
-	if agg.Options.CronSchedule != "" {
+	if agg.IsOffline() {
 		// If offline aggregate, write to AWS Glue
 		err := tier.GlueClient.ScheduleOfflineAggregate(tier.ID, agg)
 		if err != nil {
@@ -102,11 +102,15 @@ func Deactivate(ctx context.Context, tier tier.Tier, aggname ftypes.AggName) err
 	if !aggser.Active {
 		return nil
 	} else {
-		// In case the aggregate is an offline trigger disable the offline job.
-		// If its an online trigger, no err/exception is thrown.
-		err := tier.GlueClient.DeactivateOfflineAggregate(string(aggname))
+		// deactive trigger only if the aggregate if offline
+		agg, err := aggregate.FromAggregateSer(aggser)
 		if err != nil {
 			return err
+		}
+		if agg.IsOffline() {
+			if err := tier.GlueClient.DeactivateOfflineAggregate(string(aggname)); err != nil {
+				return err
+			}
 		}
 
 		// Disable online & offline aggregates

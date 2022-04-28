@@ -5,6 +5,7 @@ package sagemaker
 import (
 	"context"
 	"log"
+	"os"
 	"testing"
 
 	lib "fennel/lib/sagemaker"
@@ -13,9 +14,15 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestCreateModel(t *testing.T) {
+func TestCreateDeleteExists(t *testing.T) {
 	c, err := getTestClient()
 	assert.NoError(t, err)
+
+	sagemakerModelName := "integration-test-model"
+
+	exists, err := c.ModelExists(context.Background(), "my-test-model")
+	assert.NoError(t, err)
+	assert.False(t, exists)
 
 	err = c.CreateModel(context.Background(), []lib.Model{
 		{
@@ -25,14 +32,17 @@ func TestCreateModel(t *testing.T) {
 			FrameworkVersion: "1.3.1",
 			ArtifactPath:     "s3://my-xgboost-test-bucket-2/model.tar.gz",
 		},
-	}, "integration-test-xgboost-model-2")
+	}, sagemakerModelName)
 	assert.NoError(t, err)
-}
 
-func TestModelExists(t *testing.T) {
-	c, err := getTestClient()
+	exists, err = c.ModelExists(context.Background(), sagemakerModelName)
 	assert.NoError(t, err)
-	exists, err := c.ModelExists(context.Background(), "my-non-existing-model")
+	assert.True(t, exists)
+
+	err = c.DeleteModel(context.Background(), sagemakerModelName)
+	assert.NoError(t, err)
+
+	exists, err = c.ModelExists(context.Background(), sagemakerModelName)
 	assert.NoError(t, err)
 	assert.False(t, exists)
 }
@@ -46,11 +56,13 @@ func TestEndpointConfigExists(t *testing.T) {
 	assert.NoError(t, err)
 	assert.False(t, exists)
 
+	sagemakerModelName := "smclient-test-model"
+
 	// Create endpoint configuration.
 	endpointCfg := lib.SagemakerEndpointConfig{
 		Name:          configName,
-		ModelName:     "integration-test-model",
-		VariantName:   "integration-test-model",
+		ModelName:     sagemakerModelName,
+		VariantName:   sagemakerModelName,
 		InstanceType:  "ml.t2.medium",
 		InstanceCount: 1,
 	}
@@ -90,7 +102,7 @@ func TestEndpointExists(t *testing.T) {
 	} else {
 		err = c.CreateEndpoint(context.Background(), lib.SagemakerEndpoint{
 			Name:               endpointName,
-			EndpointConfigName: "integration-test-endpoint-config",
+			EndpointConfigName: "smclient-test-endpoint-config",
 		})
 		assert.NoError(t, err)
 		exists, err = c.EndpointExists(context.Background(), endpointName)
@@ -99,21 +111,21 @@ func TestEndpointExists(t *testing.T) {
 	}
 }
 
-func TestGetCurrentEndpointConfigName(t *testing.T) {
+func TestGetEndpointConfigName(t *testing.T) {
 	c, err := getTestClient()
 	assert.NoError(t, err)
 
-	name, err := c.GetCurrentEndpointConfigName(context.Background(), "integration-test-endpoint")
+	name, err := c.GetEndpointConfigName(context.Background(), "smclient-test-endpoint")
 	assert.NoError(t, err)
-	assert.Equal(t, "integration-test-endpoint-config", name)
+	assert.Equal(t, "smclient-test-endpoint-config", name)
 }
 
 func TestUpdateEndpoint(t *testing.T) {
 	c, err := getTestClient()
 	assert.NoError(t, err)
 
-	endpointName := "integration-test-endpoint"
-	endpointCfgName := "integration-test-endpoint-config"
+	endpointName := "smclient-test-endpoint"
+	endpointCfgName := "smclient-test-endpoint-config"
 	// Updating endpoint with the same endpoint configuration should fail.
 	err = c.UpdateEndpoint(context.Background(), lib.SagemakerEndpoint{
 		Name:               endpointName,
@@ -148,8 +160,8 @@ func TestScoreSvm(t *testing.T) {
 		value.NewList(value.String("3:1 10:1 20:1 21:1 23:1 34:1 36:1 39:1 42:1 53:1 56:1 65:1 69:1 77:1 86:1 88:1 92:1 95:1 102:1 105:1 116:1 120:1")),
 	}
 	response, err := c.Score(context.Background(), &lib.ScoreRequest{
-		EndpointName:  "integration-test-endpoint",
-		ContainerName: lib.GetContainerName("integration-test-xgboost-model", "v1"),
+		EndpointName:  "smclient-test-endpoint",
+		ContainerName: lib.GetContainerName("smclient-test-xgboost-model", "v1"),
 		FeatureLists:  featureVectors,
 	})
 	assert.NoError(t, err)
@@ -165,8 +177,8 @@ func TestScoreCsv(t *testing.T) {
 		csv.(value.List),
 	}
 	response, err := c.Score(context.Background(), &lib.ScoreRequest{
-		EndpointName:  "integration-test-endpoint",
-		ContainerName: lib.GetContainerName("integration-test-xgboost-model", "v1"),
+		EndpointName:  "smclient-test-endpoint",
+		ContainerName: lib.GetContainerName("smclient-test-xgboost-model", "v1"),
 		FeatureLists:  featureVectors,
 	})
 	assert.NoError(t, err)
@@ -174,12 +186,12 @@ func TestScoreCsv(t *testing.T) {
 }
 
 func getTestClient() (SMClient, error) {
+	// Set the environment variables to enable access the test sagemaker endpoint.
+	os.Setenv("AWS_PROFILE", "admin")
+	os.Setenv("AWS_SDK_LOAD_CONFIG", "1")
+
 	return NewClient(SagemakerArgs{
 		Region:                 "ap-south-1",
 		SagemakerExecutionRole: "arn:aws:iam::030813887342:role/service-role/AmazonSageMaker-ExecutionRole-20220315T123828",
 	})
-}
-
-func BenchmarkNewClient(b *testing.B) {
-
 }

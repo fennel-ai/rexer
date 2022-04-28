@@ -15,6 +15,7 @@ import (
 	"fennel/tier"
 
 	"go.uber.org/zap"
+	"golang.org/x/sync/errgroup"
 )
 
 var (
@@ -101,33 +102,48 @@ func Get(ctx context.Context, tr tier.Tier, aggIds []ftypes.AggId, buckets [][]c
 	if len(aggIds) == 0 {
 		return nil, nil
 	}
+
+	// add logging just before reading values for these buckets
+	for i, aggId := range aggIds {
+		tr.Logger.Info("reading badger keys for aggregate",
+			zap.Int("aggregate", int(aggId)),
+			zap.Int("num_keys", len(buckets[i])),
+		)
+	}
+
 	// TODO(mohit): For each aggrId, dedup Buckets to minimize roundtrips
 	values := make([][]value.Value, len(aggIds))
 	for i := range buckets {
 		values[i] = make([]value.Value, len(buckets[i]))
 	}
+	errs, ctx := errgroup.WithContext(ctx)
 	for i := range aggIds {
 		for j := range buckets[i] {
-			k, err := LatestEncoder.EncodeKey(aggIds[i], buckets[i][j])
-			if err != nil {
-				return nil, fmt.Errorf("failed to encode key: %v", err)
-			}
-			v, err := kv.Get(ctx, tablet, k)
-			if err == kvstore.ErrKeyNotFound {
-				values[i][j] = defaults_[i]
-			} else if err != nil {
-				return nil, fmt.Errorf("failed to get value: %v", err)
-			} else {
-				codec, err := codec.GetCodec(v.Codec)
+			iIdx := i
+			jIdx := j
+			errs.Go(func() error {
+				k, err := LatestEncoder.EncodeKey(aggIds[iIdx], buckets[iIdx][jIdx])
 				if err != nil {
-					return nil, fmt.Errorf("failed to get codec: %v", err)
+					return fmt.Errorf("failed to encode key: %v", err)
 				}
-				values[i][j], err = codec.DecodeValue(v.Raw)
-				if err != nil {
-					return nil, fmt.Errorf("failed to decode value: %v", err)
+				v, err := kv.Get(ctx, tablet, k)
+				if err == kvstore.ErrKeyNotFound {
+					values[iIdx][jIdx] = defaults_[iIdx]
+				} else if err != nil {
+					return fmt.Errorf("failed to get value: %v", err)
+				} else {
+					codec, err := codec.GetCodec(v.Codec)
+					if err != nil {
+						return fmt.Errorf("failed to get codec: %v", err)
+					}
+					values[iIdx][jIdx], err = codec.DecodeValue(v.Raw)
+					if err != nil {
+						return fmt.Errorf("failed to decode value: %v", err)
+					}
 				}
-			}
+				return nil
+			})
 		}
 	}
-	return values, nil
+	return values, errs.Wait()
 }
