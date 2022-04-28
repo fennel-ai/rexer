@@ -3,6 +3,7 @@ package timer
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
 
 	"fennel/lib/ftypes"
@@ -33,10 +34,18 @@ type Timer struct {
 	id      string
 }
 
+func joinStr(s ...string) string {
+	var sb strings.Builder
+	for _, str := range s {
+		sb.WriteString(str)
+	}
+	return sb.String()
+}
+
 func (t Timer) Stop() {
 	t.timer.ObserveDuration()
 	if t.trace != nil {
-		t.trace.record(fmt.Sprintf("exit:%s:%s", t.id, t.span), time.Now())
+		t.trace.record(joinStr("exit:", t.id, ":", t.span), time.Now())
 	}
 }
 
@@ -46,7 +55,7 @@ func Start(ctx context.Context, realmID ftypes.RealmID, funcName string) Timer {
 	var tr *trace = nil
 	if ctxval != nil {
 		tr = ctxval.(*trace)
-		tr.record(fmt.Sprintf("enter:%s:%s", id, funcName), time.Now())
+		tr.record(joinStr("enter:", id, ":", funcName), time.Now())
 	}
 	return Timer{
 		span:    funcName,
