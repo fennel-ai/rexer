@@ -66,11 +66,11 @@ func (bs *BadgerTransactionalStore) Get(ctx context.Context, tablet kvstore.Tabl
 	}
 	select {
 	case <-ctx.Done():
-		return nil, nil
+		return nil, kvstore.ErrCancelled
 	default:
-		bs.tier.Logger.Debug("BadgerTransactionalStore.Get",
-			zap.String("key", b64.StdEncoding.EncodeToString(key)),
-		)
+		// bs.tier.Logger.Debug("BadgerTransactionalStore.Get",
+		// 	zap.String("key", b64.StdEncoding.EncodeToString(key)),
+		// )
 		key, err := makeKey(tablet, key)
 		if err != nil {
 			return nil, err

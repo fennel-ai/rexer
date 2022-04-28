@@ -10,6 +10,7 @@ import (
 var (
 	ErrKeyNotFound = errors.New("Key not found")
 	ErrEmptyKey    = errors.New("Key cannot be empty")
+	ErrCancelled   = errors.New("Operation cancelled")
 )
 
 // Value stored in the KV store, alongwith metadata about the codec version used
