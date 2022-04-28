@@ -114,7 +114,7 @@ func (p profileOp) getProfiles(ctx context.Context, profileKeys []libprofile.Pro
 			// found profile
 			if v == nil {
 				// if nil, store as it is
-				res[i] = value.Value(nil)
+				res[i] = value.Nil
 			} else {
 				val, ok := v.(value.Value)
 				if !ok {

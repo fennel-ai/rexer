@@ -203,13 +203,14 @@ func (c cachedProvider) getBatch(ctx context.Context, tier tier.Tier, profileKey
 				keyToVal.Store(keyToProfileKey[keys[i]], profile)
 			}
 		}
+	}
 
-		for i, pk := range profileKeys {
-			if p, ok := keyToVal.Load(profileKeys[i]); !ok {
-				rets[i] = profile.NewProfileItem(string(pk.OType), pk.Oid, pk.Key, value.Nil, 0)
-			} else {
-				rets[i] = p.(profile.ProfileItem)
-			}
+	// if profiles were found in the cache, use them; else fill the default value of `Nil`
+	for i, pk := range profileKeys {
+		if p, ok := keyToVal.Load(profileKeys[i]); !ok {
+			rets[i] = profile.NewProfileItem(string(pk.OType), pk.Oid, pk.Key, value.Nil, 0)
+		} else {
+			rets[i] = p.(profile.ProfileItem)
 		}
 	}
 
