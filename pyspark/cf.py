@@ -34,7 +34,7 @@ day = utc_past.strftime("%d")
 print(f'======== Reading data from date: year={year}/month={month}/day={day}\n')
 # read JSON files using wildcard to fetch all the files
 
-params = json.loads(args[""])
+params = json.loads(args["HYPERPARAMETERS"])
 print("Hyperparameters used - ", params)
 
 # use default credentials which in this case would be derived from GLUE job IAM role which has access to the S3 buckets 
@@ -54,7 +54,7 @@ actions = actions.filter("aggregate='{}'".format(args["AGGREGATE_NAME"]))
 actions = actions.filter(time_filter)
 
 
-actions = actions.withColumn("vlist", F.col("value.via")).withColumn("weight", F.col("value.weight")).withColumn("context", concat_ws("::", "vlist")).select("groupkey", "context", "weight")
+actions = actions.withColumn("vlist", F.col("value.context")).withColumn("weight", F.col("value.weight")).withColumn("context", concat_ws("::", "vlist")).select("groupkey", "context", "weight")
 actions.createOrReplaceTempView("ACTIONS")
 
 # Condense actions
@@ -78,7 +78,7 @@ select groupkey, count(context) as obj_cnt, LOG(DOUBLE(sum(weight))) as p_obj
 from ACTIONS
 group by groupkey
 ) where obj_cnt > {}
-""".format(params["min_co_occurence"], args["object_normalization_func"])
+""".format(params["min_co_occurence"], params["object_normalization_func"])
 p_obj = spark.sql(sql_str)
 p_obj.createOrReplaceTempView("P_OBJ")
 
@@ -160,5 +160,5 @@ cf.createOrReplaceTempView("CF")
 zip_cf = cf.withColumn("related_objects", arrays_zip("o2_list","score")).select("object","related_objects")
 folder_name = f'{args["AGGREGATE_NAME"]}-{args["DURATION"]}'
 
-aggregate_path = f's3://p-2-offline-aggregate-output/t_{args["TIER_ID"]}/{folder_name}/day={day}/{now_utc.strftime("%H:%M")}/log/{args["AGGREGATE_TYPE"]}.json'
+aggregate_path = f's3://p-2-offline-aggregate-output/t_{args["TIER_ID"]}/{folder_name}/day={day}/{now_utc.strftime("%H:%M")}/{args["AGGREGATE_TYPE"]}.json'
 zip_cf.write.mode('overwrite').parquet(aggregate_path)
