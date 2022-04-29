@@ -14,10 +14,6 @@ import (
 	"github.com/aws/aws-sdk-go/service/glue"
 )
 
-var aggToScriptLocation = map[string]string{
-	"topk": "s3://offline-aggregate-scripts/topk.py",
-}
-
 var aggToJobName = map[string]string{
 	"topk": "TopK",
 	"cf":   "CF",
@@ -57,25 +53,6 @@ func NewGlueClient(args GlueArgs) GlueClient {
 	return GlueClient{
 		client: client,
 	}
-}
-
-func getGlueJobCommand(scriptLocation string) *glue.JobCommand {
-	jobCommand := &glue.JobCommand{
-		Name:           aws.String("glueetl"),
-		ScriptLocation: aws.String(scriptLocation),
-		PythonVersion:  aws.String("3"),
-	}
-
-	return jobCommand
-}
-
-func (c GlueClient) CreateJob(jobName, aggregateType string) error {
-	input := glue.CreateJobInput{
-		Name:    aws.String(jobName),
-		Command: getGlueJobCommand(aggToScriptLocation[aggregateType]),
-	}
-	_, err := c.client.CreateJob(&input)
-	return err
 }
 
 func getGlueTriggerActions(jobName string, arguments map[string]*string) []*glue.Action {
@@ -181,7 +158,6 @@ func (c GlueClient) ScheduleOfflineAggregate(tierID ftypes.RealmID, agg aggregat
 	}
 
 	jobArguments := map[string]*string{
-		"--TIER_ID":        aws.String(fmt.Sprintf("%d", tierID)),
 		"--AGGREGATE_NAME": aws.String(string(agg.Name)),
 		"--AGGREGATE_TYPE": aws.String(aggregateType),
 		"--LIMIT":          aws.String(fmt.Sprintf("%d", agg.Options.Limit)),
