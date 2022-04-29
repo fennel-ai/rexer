@@ -148,6 +148,8 @@ export const setup = async (input: inputType): Promise<pulumi.Output<outputType>
         roleArn: role.arn,
         defaultArguments: {
             '--TIER_ID': `${input.tierId}`,
+            '--INPUT_BUCKET': `${input.storageBucket}`,
+            '--OUTPUT_BUCKET': `${input.outputBucket}`,
         },
         description: "GLUE job to transform multiple features and labels files in JSON format to a single Parquet file",
         glueVersion: "3.0",
