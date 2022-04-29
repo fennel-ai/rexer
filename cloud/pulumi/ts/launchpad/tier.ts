@@ -227,6 +227,7 @@ const setupResources = async () => {
         storageBucket: input.offlineAggregateStorageBucket,
         outputBucket: offlineAggregateOutputBucket.bucketName,
         sourceFiles: input.offlineAggregateSourceFiles,
+        nodeInstanceRole: input.nodeInstanceRole,
     })
 
     // setup mysql db.
