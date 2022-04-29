@@ -69,8 +69,13 @@ actions = spark.sql(sql_str)
 ## P(O1, O2) = Sum across Movies P(O1 | C) * P(C | O2 ) = P(C, O)/P(C) * P(O2,C) / P(O2)
 
 
+
 ## Sum of weight for objects -> P(O)
 
+if params["object_normalization_func"] == "none":
+    normalization_func = ""
+else:
+    normalization_func = params["object_normalization_func"]
 sql_str = """
 select groupkey, p_obj from
 (
@@ -78,7 +83,7 @@ select groupkey, count(context) as obj_cnt, {}(DOUBLE(sum(weight))) as p_obj
 from ACTIONS
 group by groupkey
 ) where obj_cnt > {}
-""".format(params["min_co_occurence"], params["object_normalization_func"])
+""".format(normalization_func, params["min_co_occurence"])
 p_obj = spark.sql(sql_str)
 p_obj.createOrReplaceTempView("P_OBJ")
 
