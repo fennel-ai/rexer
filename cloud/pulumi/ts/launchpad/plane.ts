@@ -11,6 +11,7 @@ import * as telemetry from "../telemetry";
 import * as prometheus from "../prometheus";
 import * as connectorSink from "../connectorsink";
 import * as glueSource from "../glue-script-source";
+import * as offlineAggregateStorage from "../offline-aggregate-storage";
 
 import * as process from "process";
 
@@ -100,6 +101,7 @@ const setupPlugins = async (stack: pulumi.automation.Stack) => {
         ...telemetry.plugins,
         ...connectorSink.plugins,
         ...glueSource.plugins,
+        ...offlineAggregateStorage.plugins,
     }
     console.info("installing plugins...");
     for (var key in plugins) {
@@ -174,6 +176,11 @@ const setupResources = async () => {
         envName: `plane-${input.planeId}`,
     })
     const connectorSinkOutput = await connectorSink.setup({
+        region: input.region,
+        roleArn: input.roleArn,
+        planeId: input.planeId
+    })
+    const offlineAggregateOutput = await offlineAggregateStorage.setup({
         region: input.region,
         roleArn: input.roleArn,
         planeId: input.planeId
