@@ -3,9 +3,11 @@ package timer
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
 
 	"fennel/lib/ftypes"
+	"fennel/lib/utils"
 
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
@@ -29,26 +31,37 @@ type Timer struct {
 	realmID ftypes.RealmID
 	timer   *prometheus.Timer
 	trace   *trace
+	id      string
+}
+
+func joinStr(s ...string) string {
+	var sb strings.Builder
+	for _, str := range s {
+		sb.WriteString(str)
+	}
+	return sb.String()
 }
 
 func (t Timer) Stop() {
 	t.timer.ObserveDuration()
 	if t.trace != nil {
-		t.trace.record(fmt.Sprintf("exit:%s", t.span), time.Now())
+		t.trace.record(joinStr("exit:", t.id, ":", t.span), time.Now())
 	}
 }
 
 func Start(ctx context.Context, realmID ftypes.RealmID, funcName string) Timer {
 	ctxval := ctx.Value(traceKey{})
+	id := utils.RandString(6)
 	var tr *trace = nil
 	if ctxval != nil {
 		tr = ctxval.(*trace)
-		tr.record(fmt.Sprintf("enter:%s", funcName), time.Now())
+		tr.record(joinStr("enter:", id, ":", funcName), time.Now())
 	}
 	return Timer{
 		span:    funcName,
 		realmID: realmID,
 		timer:   prometheus.NewTimer(fnDuration.WithLabelValues(fmt.Sprintf("%d", realmID), funcName)),
 		trace:   tr,
+		id:      id,
 	}
 }
