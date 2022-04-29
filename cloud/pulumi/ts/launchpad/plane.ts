@@ -12,6 +12,7 @@ import * as prometheus from "../prometheus";
 import * as connectorSink from "../connectorsink";
 import * as glueSource from "../glue-script-source";
 import * as offlineAggregateStorage from "../offline-aggregate-storage";
+import * as offlineAggregateSources from "../offline-aggregate-script-source";
 
 import * as process from "process";
 
@@ -202,6 +203,12 @@ const setupResources = async () => {
         kubeconfig: eksOutput.kubeconfig,
         nodeInstanceRole: eksOutput.instanceRole,
         prometheusEndpoint: prometheusOutput.prometheusWriteEndpoint,
+    })
+
+    const offlineAggregateSourceFiles = await offlineAggregateSources.setup({
+        region: input.region,
+        roleArn: input.roleArn,
+        planeId: input.planeId,
     })
 
     const glueOutput = await glueSource.setup({
