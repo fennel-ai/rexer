@@ -143,6 +143,10 @@ func TestHyperParameters(t *testing.T) {
 	assert.Error(t, err)
 	assert.Equal(t, `aggregate type: test, hyperparameter a must be type : int`, err.Error())
 
+	_, err = getHyperParameters("test", `{"c": 12.5}`)
+	assert.Error(t, err)
+	assert.Equal(t, `aggregate type: test, hyperparameter c must be one of [none log sqrt]`, err.Error())
+
 	agg = aggregate.Aggregate{
 		Name:      "OfflineAggregateTest",
 		Query:     ast.MakeInt(0),

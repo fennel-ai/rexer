@@ -21,7 +21,6 @@ func Store(ctx context.Context, tier tier.Tier, agg aggregate.Aggregate) error {
 
 	// Check if agg already exists in db
 	agg2, err := Retrieve(ctx, tier, agg.Name)
-	fmt.Println(agg.Options.HyperParameters)
 	// Only error that should happen is when agg is not present
 	if err != nil && err != aggregate.ErrNotFound {
 		return err
