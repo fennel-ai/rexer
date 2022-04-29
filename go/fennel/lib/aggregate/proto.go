@@ -60,22 +60,24 @@ func FromProtoAggregate(pagg *ProtoAggregate) (Aggregate, error) {
 
 func FromProtoOptions(popt *AggOptions) Options {
 	return Options{
-		AggType:      ftypes.AggType(popt.AggType),
-		Durations:    popt.Durations,
-		Window:       popt.Window,
-		Limit:        popt.Limit,
-		Normalize:    popt.Normalize,
-		CronSchedule: popt.CronSchedule,
+		AggType:         ftypes.AggType(popt.AggType),
+		Durations:       popt.Durations,
+		Window:          popt.Window,
+		Limit:           popt.Limit,
+		Normalize:       popt.Normalize,
+		CronSchedule:    popt.CronSchedule,
+		HyperParameters: popt.HyperParameters,
 	}
 }
 
 func ToProtoOptions(opt Options) *AggOptions {
 	return &AggOptions{
-		AggType:      string(opt.AggType),
-		Durations:    opt.Durations,
-		Window:       opt.Window,
-		Limit:        opt.Limit,
-		Normalize:    opt.Normalize,
-		CronSchedule: opt.CronSchedule,
+		AggType:         string(opt.AggType),
+		Durations:       opt.Durations,
+		Window:          opt.Window,
+		Limit:           opt.Limit,
+		Normalize:       opt.Normalize,
+		CronSchedule:    opt.CronSchedule,
+		HyperParameters: opt.HyperParameters,
 	}
 }

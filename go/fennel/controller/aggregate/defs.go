@@ -113,7 +113,7 @@ func Deactivate(ctx context.Context, tier tier.Tier, aggname ftypes.AggName) err
 			}
 		}
 
-		// deactive aggregate
+		// Disable online & offline aggregates
 		err = modelAgg.Deactivate(ctx, tier, aggname)
 		return err
 	}
