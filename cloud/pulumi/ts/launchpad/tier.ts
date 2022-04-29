@@ -14,6 +14,7 @@ import * as ns from "../k8s-ns";
 import * as glue from "../glue";
 import * as modelStore from "../model-store";
 import * as sagemaker from "../sagemaker";
+import * as offlineAggregateOutput from "../offline-aggregate-output";
 
 import * as process from "process";
 
@@ -264,6 +265,12 @@ const setupResources = async () => {
         namespace: input.namespace,
         subnetIds: input.subnetIds,
         loadBalancerScheme: input.loadBalancerScheme,
+        tierId: input.tierId,
+    })
+    // setup offline aggregate output bucket
+    const offlineAggregateOutputBucket = await offlineAggregateOutput.setup({
+        region: input.region,
+        roleArn: input.roleArn,
         tierId: input.tierId,
     })
     // setup glue

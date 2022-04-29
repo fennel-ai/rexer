@@ -180,7 +180,7 @@ const setupResources = async () => {
         roleArn: input.roleArn,
         planeId: input.planeId
     })
-    const offlineAggregateOutput = await offlineAggregateStorage.setup({
+    const offlineAggregateStorageBucket = await offlineAggregateStorage.setup({
         region: input.region,
         roleArn: input.roleArn,
         planeId: input.planeId
