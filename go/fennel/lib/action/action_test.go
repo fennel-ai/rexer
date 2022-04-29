@@ -4,10 +4,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"math"
-	"strconv"
 	"testing"
 
-	"fennel/lib/ftypes"
 	"fennel/lib/value"
 
 	"github.com/stretchr/testify/assert"
@@ -139,31 +137,6 @@ func TestActionFetchRequestJSON(t *testing.T) {
 	}
 }
 
-func TestAction_ToActionSer(t *testing.T) {
-	a := makeTestAction(1)
-	aSer := a.ToActionSer()
-	assert.Equal(t, makeTestActionSer(1), *aSer)
-}
-
-func TestActionSer_ToAction(t *testing.T) {
-	aSer := makeTestActionSer(2)
-	a, err := aSer.ToAction()
-	assert.NoError(t, err)
-	assert.Equal(t, makeTestAction(2), *a)
-}
-
-func TestFromActionSerList(t *testing.T) {
-	alSer := make([]ActionSer, 10)
-	expected := make([]Action, 10)
-	for i := 0; i < 10; i++ {
-		alSer[i] = makeTestActionSer(i)
-		expected[i] = makeTestAction(i)
-	}
-	al, err := FromActionSerList(alSer)
-	assert.NoError(t, err)
-	assert.Equal(t, expected, al)
-}
-
 func makeActionJSON(actionID uint64, actorID string, actorType string, targetID string, targetType string,
 	actionType string, timestamp uint64, requestID string, metadata string) string {
 	return fmt.Sprintf(`{"ActionID":%d,"ActorID":"%s","ActorType":"%s","TargetID":"%s","TargetType":"%s",`+
@@ -179,34 +152,4 @@ func makeActionFetchRequestJSON(
 			`"ActionType":"%s","MinTimestamp":%d,"MaxTimestamp":%d,"RequestID":"%s"}`,
 		minActionID, maxActionID, actorID, actorType, targetID, targetType,
 		actionType, minTimestamp, maxTimestamp, requestID)
-}
-
-func makeTestAction(k int) Action {
-	k *= 20
-	return Action{
-		ActionID:   ftypes.IDType(k),
-		ActorID:    ftypes.OidType(strconv.Itoa(k + 1)),
-		ActorType:  ftypes.OType(strconv.Itoa(k + 2)),
-		TargetID:   ftypes.OidType(strconv.Itoa(k + 3)),
-		TargetType: ftypes.OType(strconv.Itoa(k + 4)),
-		ActionType: ftypes.ActionType(strconv.Itoa(k + 5)),
-		Timestamp:  ftypes.Timestamp(k + 6),
-		RequestID:  ftypes.RequestID(strconv.Itoa(k + 7)),
-		Metadata:   value.Double(k + 8),
-	}
-}
-
-func makeTestActionSer(k int) ActionSer {
-	k *= 20
-	return ActionSer{
-		ActionID:   ftypes.IDType(k),
-		ActorID:    ftypes.OidType(strconv.Itoa(k + 1)),
-		ActorType:  ftypes.OType(strconv.Itoa(k + 2)),
-		TargetID:   ftypes.OidType(strconv.Itoa(k + 3)),
-		TargetType: ftypes.OType(strconv.Itoa(k + 4)),
-		ActionType: ftypes.ActionType(strconv.Itoa(k + 5)),
-		Timestamp:  ftypes.Timestamp(k + 6),
-		RequestID:  ftypes.RequestID(strconv.Itoa(k + 7)),
-		Metadata:   []byte(strconv.Itoa(k+8) + ".0"),
-	}
 }

@@ -11,6 +11,7 @@ import (
 	"fennel/lib/ftypes"
 	"fennel/lib/utils"
 	"fennel/lib/value"
+	"fennel/model/action"
 	"fennel/test"
 
 	"github.com/stretchr/testify/assert"
@@ -34,7 +35,7 @@ func TestDBInsertFetch(t *testing.T) {
 
 	a1 := getAction(1, "12", 0, "like")
 	a2 := getAction(2, "22", t1+1, "like")
-	assert.NoError(t, dbInsert(ctx, tier, []actionlib.Action{a1, a2}))
+	assert.NoError(t, action.InsertBatch(ctx, tier, []actionlib.Action{a1, a2}))
 
 	// and when time is not specified we use the current time to populate it
 	a1.Timestamp = t1
@@ -47,7 +48,7 @@ func TestDBInsertFetch(t *testing.T) {
 	// insert couple more
 	a3 := getAction(1, "12", t1+5, "like")
 	a4 := getAction(2, "22", t1+7, "like")
-	assert.NoError(t, dbInsert(ctx, tier, []actionlib.Action{a3, a4}))
+	assert.NoError(t, action.InsertBatch(ctx, tier, []actionlib.Action{a3, a4}))
 
 	found, err = Fetch(ctx, tier, actionlib.ActionFetchRequest{})
 	assert.NoError(t, err)
