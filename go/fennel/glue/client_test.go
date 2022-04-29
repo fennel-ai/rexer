@@ -97,11 +97,12 @@ func TestHyperParameters(t *testing.T) {
 	assert.Equal(t, "aggregate type: cf, hyperparameter min_co_occurence must be type : int", err.Error())
 
 	var registry = &supportedHyperParameters
-	(*registry)["test"] = map[string]HyperParameterInfo{}
-	(*registry)["test"]["a"] = HyperParameterInfo{3, reflect.Int, []string{}}
-	(*registry)["test"]["b"] = HyperParameterInfo{4.5, reflect.Float64, []string{}}
-	(*registry)["test"]["c"] = HyperParameterInfo{"sqrt", reflect.String, []string{"none", "log", "sqrt"}}
-	(*registry)["test"]["d"] = HyperParameterInfo{"blah", reflect.String, []string{}}
+	(*registry)["test"] = map[string]HyperParameterInfo{
+		"a": HyperParameterInfo{3, reflect.Int, []string{}},
+		"b": HyperParameterInfo{4.5, reflect.Float64, []string{}},
+		"c": HyperParameterInfo{"sqrt", reflect.String, []string{"none", "log", "sqrt"}},
+		"d": HyperParameterInfo{"blah", reflect.String, []string{}},
+	}
 
 	_, err = getHyperParameters("test", `{"min_co_occurence": 123.5}`)
 	assert.Error(t, err)
@@ -146,6 +147,14 @@ func TestHyperParameters(t *testing.T) {
 	_, err = getHyperParameters("test", `{"c": 12.5}`)
 	assert.Error(t, err)
 	assert.Equal(t, `aggregate type: test, hyperparameter c must be one of [none log sqrt]`, err.Error())
+
+	_, err = getHyperParameters("test", `{"c": "sqrt", "a": "sqrt"}`)
+	assert.Error(t, err)
+	assert.Equal(t, `aggregate type: test, hyperparameter a must be type : int`, err.Error())
+
+	h, err = getHyperParameters("test", `{"d" : "qwe", "c": "sqrt", "a": 1, "b": 2.5}`)
+	assert.NoError(t, err)
+	assert.Equal(t, `{"a":1,"b":2.5,"c":"sqrt","d":"qwe"}`, h)
 
 	agg = aggregate.Aggregate{
 		Name:      "OfflineAggregateTest",

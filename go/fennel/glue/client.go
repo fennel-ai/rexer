@@ -134,27 +134,23 @@ func getHyperParameters(aggregateType string, hyperparamters string) (string, er
 			if !contains(hyperparamtersMap[param].Options, s) {
 				return "", fmt.Errorf("aggregate type: %v, hyperparameter %v must be one of %v", aggregateType, param, hyperparamtersMap[param].Options)
 			}
-			break
+			continue
 		}
 
 		s := string(value)
 
-		_, err := strconv.ParseInt(s, 10, 64)
-		if err == nil {
-			if hyperparamtersMap[param].Type == reflect.Int {
-				continue
-			} else {
+		if _, err := strconv.ParseInt(s, 10, 64); err == nil {
+			if hyperparamtersMap[param].Type != reflect.Int {
 				return "", fmt.Errorf("aggregate type: %v, hyperparameter %v must be type : %v", aggregateType, param, hyperparamtersMap[param].Type)
 			}
+			continue
 		}
 
-		_, err = strconv.ParseFloat(s, 64)
-		if err == nil {
-			if hyperparamtersMap[param].Type == reflect.Float64 {
-				continue
-			} else {
+		if _, err = strconv.ParseFloat(s, 64); err == nil {
+			if hyperparamtersMap[param].Type != reflect.Float64 {
 				return "", fmt.Errorf("aggregate type: %v, hyperparameter %v must be type : %v", aggregateType, param, hyperparamtersMap[param].Type)
 			}
+			continue
 		}
 
 		if hyperparamtersMap[param].Type == reflect.Int || hyperparamtersMap[param].Type == reflect.Float64 {
