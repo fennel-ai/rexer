@@ -74,7 +74,7 @@ actions = spark.sql(sql_str)
 sql_str = """
 select groupkey, p_obj from
 (
-select groupkey, count(context) as obj_cnt, LOG(DOUBLE(sum(weight))) as p_obj
+select groupkey, count(context) as obj_cnt, {}(DOUBLE(sum(weight))) as p_obj
 from ACTIONS
 group by groupkey
 ) where obj_cnt > {}
