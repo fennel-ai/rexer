@@ -14,7 +14,8 @@ export type inputType = {
     cacheConfig: pulumi.Output<Record<string, string>>,
     dbConfig: pulumi.Output<Record<string, string>>,
     kafkaConfig: pulumi.Output<Record<string, string>>,
-    modelServingConfig: pulumi.Output<Record<string, string>>
+    modelServingConfig: pulumi.Output<Record<string, string>>,
+    glueConfig: pulumi.Output<Record<string, string>>,
 }
 
 export type outputType = {}
@@ -59,6 +60,13 @@ export const setup = async (input: inputType) => {
             name: "model-serving-conf",
         }
     }, { provider, deleteBeforeReplace: true });
+
+    const glueConf = new k8s.core.v1.Secret("glue-config", {
+        stringData: input.glueConfig,
+        metadata: {
+            name: "glue-conf",
+        }
+    })
 
     const tierConf = new k8s.core.v1.ConfigMap("tier-conf", {
         data: input.tierConfig,

@@ -266,7 +266,12 @@ const setupResources = async () => {
     // setup configs after resources are setup.
     const configsOutput = pulumi.all(
         [input.dbPassword, input.kafkaApiSecret, sagemakerOutput.roleArn, sagemakerOutput.subnetIds,
-        sagemakerOutput.securityGroup]).apply(async ([dbPassword, kafkaPassword, sagemakerRole, subnetIds, sagemakerSg]) => {
+        sagemakerOutput.securityGroup, offlineAggregateGlueJobOutput.jobNames]).apply(async ([dbPassword, kafkaPassword, sagemakerRole, subnetIds, sagemakerSg, jobNames]) => {
+            // transform jobname map to string with the format `key1=val1 key2=val2`
+            let jobNamesStr = "";
+            for (let [agg, jobName] of jobNames) {
+                jobNamesStr += `${agg}=${jobName} `
+            }
             return await configs.setup({
                 kubeconfig: input.kubeconfig,
                 namespace: input.namespace,
@@ -296,7 +301,11 @@ const setupResources = async () => {
                     "modelStoreBucket": modelStoreOutput.modelStoreBucket,
                     // pass tierId as the endpoint name
                     "modelStoreEndpoint": `t-${input.tierId}`,
-                } as Record<string, string>)
+                } as Record<string, string>),
+                glueConfig: pulumi.output({
+                    "region": input.region,
+                    "jobNameByAgg": jobNamesStr,
+                })
             })
         })
     // setup ingress.

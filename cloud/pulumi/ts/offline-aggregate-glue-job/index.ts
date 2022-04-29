@@ -18,7 +18,8 @@ export type inputType = {
 
 // should not contain any pulumi.Output<> types.
 export type outputType = {
-    jobNames: Record<string, string>,
+    // using a map to easily transform to a string later when this is passed as job arguments
+    jobNames: Map<string, string>,
 }
 
 function setupNodeTriggerAccess(provider: aws.Provider, input: inputType) {
@@ -139,8 +140,9 @@ export const setup = async (input: inputType): Promise<pulumi.Output<outputType>
 
     // create the glue job for topk
     const topkSource = input.sourceFiles["topk"]
+    const topkJobName = `t-${input.tierId}-topk`
     const topkJob = new aws.glue.Job(`t-${input.tierId}-gluejob`, {
-        name: `t-${input.tierId}-topk`,
+        name: topkJobName,
         command: {
             scriptLocation: topkSource,
             pythonVersion: "3",
@@ -159,7 +161,10 @@ export const setup = async (input: inputType): Promise<pulumi.Output<outputType>
         timeout: 60,  // it should not take more than 60 minutes to transform the json files
     }, {provider});
 
+    let jobNames = new Map<string, string>;
+    jobNames.set("topk", topkJobName)
+
     return pulumi.output({
-        jobNames: {"topk": topkJob.name},
+        jobNames: jobNames,
     })
 }
