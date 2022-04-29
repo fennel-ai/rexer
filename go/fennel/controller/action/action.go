@@ -26,21 +26,6 @@ var jsonLogErrs = promauto.NewCounterVec(
 	[]string{"err"},
 )
 
-func dbInsert(ctx context.Context, tier tier.Tier, actions []actionlib.Action) error {
-	actionSers := make([]actionlib.ActionSer, len(actions))
-	for i, a := range actions {
-		if err := a.Validate(); err != nil {
-			return fmt.Errorf("invalid action: %v", err)
-		}
-		if a.Timestamp == 0 {
-			a.Timestamp = ftypes.Timestamp(tier.Clock.Now())
-		}
-		aSer := a.ToActionSer()
-		actionSers[i] = *aSer
-	}
-	return action.InsertBatch(ctx, tier, actionSers)
-}
-
 func Insert(ctx context.Context, tier tier.Tier, a actionlib.Action) error {
 	defer timer.Start(ctx, tier.ID, "controller.action.insert").Stop()
 	if a.Timestamp == 0 {
@@ -122,16 +107,7 @@ func BatchInsert(ctx context.Context, tier tier.Tier, actions []actionlib.Action
 
 func Fetch(ctx context.Context, this tier.Tier, request actionlib.ActionFetchRequest) ([]actionlib.Action, error) {
 	defer timer.Start(ctx, this.ID, "controller.action.fetch").Stop()
-	actionsSer, err := action.Fetch(ctx, this, request)
-	if err != nil {
-		return nil, err
-	}
-
-	actions, err := actionlib.FromActionSerList(actionsSer)
-	if err != nil {
-		return nil, err
-	}
-	return actions, nil
+	return action.Fetch(ctx, this, request)
 }
 
 func ReadBatch(ctx context.Context, consumer kafka.FConsumer, count int, timeout time.Duration) ([]actionlib.Action, error) {
@@ -160,7 +136,7 @@ func TransferToDB(ctx context.Context, tr tier.Tier, consumer kafka.FConsumer) e
 	if len(actions) == 0 {
 		return nil
 	}
-	if err = dbInsert(ctx, tr, actions); err != nil {
+	if err = action.InsertBatch(ctx, tr, actions); err != nil {
 		return err
 	}
 	_, err = consumer.Commit()

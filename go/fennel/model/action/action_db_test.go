@@ -2,6 +2,7 @@ package action
 
 import (
 	"context"
+	"strconv"
 	"testing"
 
 	"fennel/lib/action"
@@ -24,49 +25,41 @@ func TestActionDBBasic(t *testing.T) {
 	found, err := Fetch(ctx, tier, request)
 	assert.NoError(t, err)
 	assert.Empty(t, found)
-	// let's add an action
+	// let's add some actions.
 	action1 := action.Action{ActorID: "111", ActorType: "11", TargetType: "12", TargetID: "121", ActionType: "13", Metadata: value.Int(14), Timestamp: 15, RequestID: "16"}
-	action1ser := action1.ToActionSer()
-	aid1, err := Insert(ctx, tier, action1ser)
-	assert.NoError(t, err)
-
 	action2 := action.Action{ActorID: "211", ActorType: "21", TargetType: "22", TargetID: "221", ActionType: "23", Metadata: value.Int(24), Timestamp: 25, RequestID: "26"}
-	action2ser := action2.ToActionSer()
-	aid2, err := Insert(ctx, tier, action2ser)
+	err = InsertBatch(ctx, tier, []action.Action{action1, action2})
 	assert.NoError(t, err)
-
-	// assign these ids to actions so we can verify we get them back
-	action1.ActionID = ftypes.IDType(aid1)
-	action1ser.ActionID = action1.ActionID
-	action2.ActionID = ftypes.IDType(aid2)
-	action2ser.ActionID = action2.ActionID
 
 	// now we should have total two actions
 	found, err = Fetch(ctx, tier, request)
 	assert.NoError(t, err)
-	assert.ElementsMatch(t, []action.ActionSer{*action1ser, *action2ser}, found)
+	// Just copy the action ids since those are only assigned after insert.
+	action1.ActionID = found[0].ActionID
+	action2.ActionID = found[1].ActionID
+	assert.ElementsMatch(t, []action.Action{action1, action2}, found)
 
 	// and each of the following queries should work
 	request = action.ActionFetchRequest{ActorID: action1.ActorID}
 	found, err = Fetch(ctx, tier, request)
 	assert.NoError(t, err)
-	assert.ElementsMatch(t, []action.ActionSer{*action1ser}, found)
+	assert.ElementsMatch(t, []action.Action{action1}, found)
 
 	request = action.ActionFetchRequest{ActorID: action2.ActorID}
 	found, err = Fetch(ctx, tier, request)
 	assert.NoError(t, err)
-	assert.ElementsMatch(t, []action.ActionSer{*action2ser}, found)
+	assert.ElementsMatch(t, []action.Action{action2}, found)
 
 	request = action.ActionFetchRequest{TargetType: action2.TargetType, ActionType: action1.ActionType}
 	found, err = Fetch(ctx, tier, request)
 	assert.NoError(t, err)
-	assert.ElementsMatch(t, []action.ActionSer{}, found)
+	assert.Empty(t, found)
 
 	// and this works for actionIDs too (though now min is exclusive and max is inclusive)
 	request = action.ActionFetchRequest{MinActionID: action1.ActionID}
 	found, err = Fetch(ctx, tier, request)
 	assert.NoError(t, err)
-	assert.ElementsMatch(t, []action.ActionSer{*action2ser}, found)
+	assert.ElementsMatch(t, []action.Action{action2}, found)
 }
 
 func TestInsertBatch(t *testing.T) {
@@ -83,20 +76,68 @@ func TestInsertBatch(t *testing.T) {
 
 	// now insert a few actions
 	action1 := action.Action{ActorID: "111", ActorType: "11", TargetType: "12", TargetID: "121", ActionType: "13", Metadata: value.Int(14), Timestamp: 15, RequestID: "16"}
-	action1ser := action1.ToActionSer()
 	action2 := action.Action{ActorID: "211", ActorType: "21", TargetType: "22", TargetID: "221", ActionType: "23", Metadata: value.Int(24), Timestamp: 25, RequestID: "26"}
-	action2ser := action2.ToActionSer()
-	assert.NoError(t, InsertBatch(ctx, tier, []action.ActionSer{*action1ser, *action2ser}))
+	assert.NoError(t, InsertBatch(ctx, tier, []action.Action{action1, action2}))
 
 	found, err = Fetch(ctx, tier, request)
+	// Just copy the action ids since those are only assigned after insert.
+	action1.ActionID = found[0].ActionID
+	action2.ActionID = found[1].ActionID
 	assert.NoError(t, err)
 	assert.Len(t, found, 2)
+	assert.Equal(t, []action.Action{action1, action2}, found)
+}
 
-	f1ptr, err := found[0].ToAction()
-	assert.NoError(t, err)
-	assert.True(t, f1ptr.Equals(action1, true))
+func TestAction_ToActionSer(t *testing.T) {
+	a := makeTestAction(1)
+	aSer := serializeAction(a)
+	assert.Equal(t, makeTestActionSer(1), aSer)
+}
 
-	f2ptr, err := found[1].ToAction()
+func TestActionSer_ToAction(t *testing.T) {
+	aSer := makeTestActionSer(2)
+	a, err := deserialize(aSer)
 	assert.NoError(t, err)
-	assert.True(t, f2ptr.Equals(action2, true))
+	assert.Equal(t, []action.Action{makeTestAction(2)}, a)
+}
+
+func TestFromActionSerList(t *testing.T) {
+	alSer := make([]actionSer, 10)
+	expected := make([]action.Action, 10)
+	for i := 0; i < 10; i++ {
+		alSer[i] = makeTestActionSer(i)
+		expected[i] = makeTestAction(i)
+	}
+	al, err := deserialize(alSer...)
+	assert.NoError(t, err)
+	assert.Equal(t, expected, al)
+}
+
+func makeTestAction(k int) action.Action {
+	k *= 20
+	return action.Action{
+		ActionID:   ftypes.IDType(k),
+		ActorID:    ftypes.OidType(strconv.Itoa(k + 1)),
+		ActorType:  ftypes.OType(strconv.Itoa(k + 2)),
+		TargetID:   ftypes.OidType(strconv.Itoa(k + 3)),
+		TargetType: ftypes.OType(strconv.Itoa(k + 4)),
+		ActionType: ftypes.ActionType(strconv.Itoa(k + 5)),
+		Timestamp:  ftypes.Timestamp(k + 6),
+		RequestID:  ftypes.RequestID(strconv.Itoa(k + 7)),
+		Metadata:   value.Double(k + 8),
+	}
+}
+func makeTestActionSer(k int) actionSer {
+	k *= 20
+	return actionSer{
+		ActionID:   ftypes.IDType(k),
+		ActorID:    ftypes.OidType(strconv.Itoa(k + 1)),
+		ActorType:  ftypes.OType(strconv.Itoa(k + 2)),
+		TargetID:   ftypes.OidType(strconv.Itoa(k + 3)),
+		TargetType: ftypes.OType(strconv.Itoa(k + 4)),
+		ActionType: ftypes.ActionType(strconv.Itoa(k + 5)),
+		Timestamp:  ftypes.Timestamp(k + 6),
+		RequestID:  ftypes.RequestID(strconv.Itoa(k + 7)),
+		Metadata:   []byte(strconv.Itoa(k+8) + ".0"),
+	}
 }

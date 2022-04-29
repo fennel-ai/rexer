@@ -6,35 +6,39 @@ import (
 	"strings"
 
 	"fennel/lib/action"
+	"fennel/lib/ftypes"
 	"fennel/lib/timer"
+	"fennel/lib/value"
 	"fennel/tier"
 )
 
-// Insert inserts the action in DB. If successful, returns the actionID
-func Insert(ctx context.Context, tier tier.Tier, action *action.ActionSer) (uint64, error) {
-	defer timer.Start(ctx, tier.ID, "model.action.insert").Stop()
-	result, err := tier.DB.NamedExecContext(ctx, `
-		INSERT INTO actionlog (
-			actor_id, actor_type, target_id, target_type, action_type, timestamp, request_id, metadata
-	    )
-        VALUES (
-			:actor_id, :actor_type, :target_id, :target_type, :action_type, :timestamp, :request_id, :metadata
-		);`,
-		action)
-	if err != nil {
-		return 0, err
-	}
-	actionID, err := result.LastInsertId()
-	if err != nil {
-		return 0, err
-	}
-	return uint64(actionID), nil
+type actionSer struct {
+	ActionID   ftypes.IDType     `db:"action_id"`
+	ActorID    ftypes.OidType    `db:"actor_id"`
+	ActorType  ftypes.OType      `db:"actor_type"`
+	TargetID   ftypes.OidType    `db:"target_id"`
+	TargetType ftypes.OType      `db:"target_type"`
+	ActionType ftypes.ActionType `db:"action_type"`
+	Timestamp  ftypes.Timestamp  `db:"timestamp"`
+	RequestID  ftypes.RequestID  `db:"request_id"`
+	Metadata   []byte            `db:"metadata"`
 }
 
 // InsertBatch Inserts a batch of actions in the database and returns an error if there is a
 // failure. All actions are inserted at once and so either the whole insertion works or none
 // of it does
-func InsertBatch(ctx context.Context, tier tier.Tier, actions []action.ActionSer) error {
+func InsertBatch(ctx context.Context, tier tier.Tier, actions []action.Action) error {
+	defer timer.Start(ctx, tier.ID, "model.action.insert_batch").Stop()
+	actionSers := make([]actionSer, len(actions))
+	for i, a := range actions {
+		if err := a.Validate(); err != nil {
+			return fmt.Errorf("invalid action: %v", err)
+		}
+		if a.Timestamp == 0 {
+			a.Timestamp = ftypes.Timestamp(tier.Clock.Now())
+		}
+		actionSers[i] = serializeAction(a)
+	}
 	defer timer.Start(ctx, tier.ID, "model.action.insert_batch").Stop()
 	if len(actions) == 0 {
 		return nil
@@ -43,9 +47,8 @@ func InsertBatch(ctx context.Context, tier tier.Tier, actions []action.ActionSer
 				 actor_id, actor_type, target_id, target_type, action_type, timestamp, request_id, metadata
 			)
 			VALUES `
-	vals := make([]interface{}, 0)
-	for i := range actions {
-		a := actions[i]
+	var vals []interface{}
+	for _, a := range actionSers {
 		sql += "(?, ?, ?, ?, ?, ?, ?, ?),"
 		vals = append(vals, a.ActorID, a.ActorType, a.TargetID, a.TargetType, a.ActionType, a.Timestamp, a.RequestID, a.Metadata)
 	}
@@ -58,7 +61,7 @@ func InsertBatch(ctx context.Context, tier tier.Tier, actions []action.ActionSer
 // For actionID and timestamp ranges, min is exclusive and max is inclusive
 // For actionValue range, both min/max are inclusive
 // TODO: add limit support?
-func Fetch(ctx context.Context, tier tier.Tier, request action.ActionFetchRequest) ([]action.ActionSer, error) {
+func Fetch(ctx context.Context, tier tier.Tier, request action.ActionFetchRequest) ([]action.Action, error) {
 	defer timer.Start(ctx, tier.ID, "model.action.fetch").Stop()
 	query := "SELECT * FROM actionlog"
 	clauses := make([]string, 0)
@@ -97,7 +100,7 @@ func Fetch(ctx context.Context, tier tier.Tier, request action.ActionFetchReques
 		query = fmt.Sprintf("%s WHERE %s", query, strings.Join(clauses, " AND "))
 	}
 	query = fmt.Sprintf("%s ORDER BY timestamp LIMIT 1000;", query)
-	actions := make([]action.ActionSer, 0)
+	actions := make([]actionSer, 0)
 	statement, err := tier.DB.PrepareNamedContext(ctx, query)
 	if err != nil {
 		return nil, err
@@ -106,6 +109,51 @@ func Fetch(ctx context.Context, tier tier.Tier, request action.ActionFetchReques
 	if err != nil {
 		return nil, err
 	} else {
+		actions, err := deserialize(actions...)
+		if err != nil {
+			return nil, err
+		}
 		return actions, nil
 	}
+}
+
+func serializeAction(a action.Action) actionSer {
+	return actionSer{
+		ActionID:   a.ActionID,
+		ActorID:    a.ActorID,
+		ActorType:  a.ActorType,
+		TargetID:   a.TargetID,
+		TargetType: a.TargetType,
+		ActionType: a.ActionType,
+		Timestamp:  a.Timestamp,
+		RequestID:  a.RequestID,
+		Metadata:   value.ToJSON(a.Metadata),
+	}
+}
+
+func deserialize(alSer ...actionSer) ([]action.Action, error) {
+	al := make([]action.Action, len(alSer))
+	for i, ser := range alSer {
+		a := action.Action{
+			ActionID:   ser.ActionID,
+			ActorID:    ser.ActorID,
+			ActorType:  ser.ActorType,
+			TargetID:   ser.TargetID,
+			TargetType: ser.TargetType,
+			ActionType: ser.ActionType,
+			Timestamp:  ser.Timestamp,
+			RequestID:  ser.RequestID,
+		}
+		var val value.Value
+		val, err := value.FromJSON(ser.Metadata)
+		if err != nil {
+			return nil, err
+		}
+		a.Metadata = val
+		if err != nil {
+			return nil, err
+		}
+		al[i] = a
+	}
+	return al, nil
 }

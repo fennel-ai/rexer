@@ -28,64 +28,6 @@ type Action struct {
 	Metadata   value.Value       `db:"metadata"`
 }
 
-type ActionSer struct {
-	ActionID   ftypes.IDType     `db:"action_id"`
-	ActorID    ftypes.OidType    `db:"actor_id"`
-	ActorType  ftypes.OType      `db:"actor_type"`
-	TargetID   ftypes.OidType    `db:"target_id"`
-	TargetType ftypes.OType      `db:"target_type"`
-	ActionType ftypes.ActionType `db:"action_type"`
-	Timestamp  ftypes.Timestamp  `db:"timestamp"`
-	RequestID  ftypes.RequestID  `db:"request_id"`
-	Metadata   []byte            `db:"metadata"`
-}
-
-func (a *Action) ToActionSer() *ActionSer {
-	return &ActionSer{
-		ActionID:   a.ActionID,
-		ActorID:    a.ActorID,
-		ActorType:  a.ActorType,
-		TargetID:   a.TargetID,
-		TargetType: a.TargetType,
-		ActionType: a.ActionType,
-		Timestamp:  a.Timestamp,
-		RequestID:  a.RequestID,
-		Metadata:   value.ToJSON(a.Metadata),
-	}
-}
-
-func (ser *ActionSer) ToAction() (*Action, error) {
-	a := Action{
-		ActionID:   ser.ActionID,
-		ActorID:    ser.ActorID,
-		ActorType:  ser.ActorType,
-		TargetID:   ser.TargetID,
-		TargetType: ser.TargetType,
-		ActionType: ser.ActionType,
-		Timestamp:  ser.Timestamp,
-		RequestID:  ser.RequestID,
-	}
-	var val value.Value
-	val, err := value.FromJSON(ser.Metadata)
-	if err != nil {
-		return nil, err
-	}
-	a.Metadata = val
-	return &a, nil
-}
-
-func FromActionSerList(alSer []ActionSer) ([]Action, error) {
-	al := make([]Action, len(alSer))
-	for i, aSer := range alSer {
-		a, err := aSer.ToAction()
-		if err != nil {
-			return nil, err
-		}
-		al[i] = *a
-	}
-	return al, nil
-}
-
 type ActionFetchRequest struct {
 	MinActionID  ftypes.IDType     `db:"min_action_id" json:"MinActionID"`
 	MaxActionID  ftypes.IDType     `db:"max_action_id" json:"MaxActionID"`
