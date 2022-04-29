@@ -15,6 +15,7 @@ import * as glue from "../glue";
 import * as modelStore from "../model-store";
 import * as sagemaker from "../sagemaker";
 import * as offlineAggregateOutput from "../offline-aggregate-output";
+import * as offlineAggregateKafkaConnector from "../offline-aggregate-kafka-connector";
 
 import * as process from "process";
 
@@ -46,6 +47,16 @@ export type TierConf = {
     ingressConf?: IngressConf,
 }
 
+export type KafkaConnectorConf = {
+    confUsername: string,
+    confPassword: string,
+    clusterId: string,
+    environmentId: string,
+    connUserAccessKey: string,
+    connUserSecret: string,
+    connBucketName: string,
+}
+
 type inputType = {
     tierId: number,
     planeId: number,
@@ -60,13 +71,8 @@ type inputType = {
     kafkaApiKey: string,
     kafkaApiSecret: pulumi.Output<string>,
     // kafka connectors configuration
-    confUsername: string,
-    confPassword: string,
-    clusterId: string,
-    environmentId: string,
-    connUserAccessKey: string,
-    connUserSecret: string,
-    connBucketName: string,
+    trainingDataConnectorConf: KafkaConnectorConf,
+    offlineAggregateConnectorConf: KafkaConnectorConf,
     // db configuration.
     db: string,
     dbUsername: string,
@@ -102,13 +108,8 @@ const parseConfig = (): inputType => {
         kafkaApiKey: config.require(nameof<inputType>("kafkaApiKey")),
         kafkaApiSecret: config.requireSecret(nameof<inputType>("kafkaApiSecret")),
 
-        confUsername: config.require(nameof<inputType>("confUsername")),
-        confPassword: config.require(nameof<inputType>("confPassword")),
-        clusterId: config.require(nameof<inputType>("clusterId")),
-        environmentId: config.require(nameof<inputType>("environmentId")),
-        connUserAccessKey: config.require(nameof<inputType>("connUserAccessKey")),
-        connUserSecret: config.require(nameof<inputType>("connUserSecret")),
-        connBucketName: config.require(nameof<inputType>("connBucketName")),
+        trainingDataConnectorConf: config.requireObject(nameof<inputType>("trainingDataConnectorConf")),
+        offlineAggregateConnectorConf: config.requireObject(nameof<inputType>("offlineAggregateConnectorConf")),
 
         db: config.require(nameof<inputType>("db")),
         dbUsername: config.require(nameof<inputType>("dbUsername")),
@@ -178,15 +179,28 @@ const setupResources = async () => {
     // setup kafka connector to s3 bucket for the action and feature log topics.
     const kafkaConnectors = await kafkaconnectors.setup({
         tierId: input.tierId,
-        username: input.confUsername,
-        password: input.confPassword,
-        clusterId: input.clusterId,
-        environmentId: input.environmentId,
+        username: input.trainingDataConnectorConf.confUsername,
+        password: input.trainingDataConnectorConf.confPassword,
+        clusterId: input.trainingDataConnectorConf.clusterId,
+        environmentId: input.trainingDataConnectorConf.environmentId,
         kafkaApiKey: input.kafkaApiKey,
         kafkaApiSecret: input.kafkaApiSecret,
-        awsAccessKeyId: input.connUserAccessKey,
-        awsSecretAccessKey: input.connUserSecret,
-        s3BucketName: input.connBucketName,
+        awsAccessKeyId: input.trainingDataConnectorConf.connUserAccessKey,
+        awsSecretAccessKey: input.trainingDataConnectorConf.connUserSecret,
+        s3BucketName: input.trainingDataConnectorConf.connBucketName,
+    })
+    // setup kafka connectors to s3 bucket for offline aggregate data
+    const offlineAggregateConnector = await offlineAggregateKafkaConnector.setup({
+        tierId: input.tierId,
+        username: input.trainingDataConnectorConf.confUsername,
+        password: input.trainingDataConnectorConf.confPassword,
+        clusterId: input.trainingDataConnectorConf.clusterId,
+        environmentId: input.trainingDataConnectorConf.environmentId,
+        kafkaApiKey: input.kafkaApiKey,
+        kafkaApiSecret: input.kafkaApiSecret,
+        awsAccessKeyId: input.offlineAggregateConnectorConf.connUserAccessKey,
+        awsSecretAccessKey: input.offlineAggregateConnectorConf.connUserSecret,
+        s3BucketName: input.offlineAggregateConnectorConf.connBucketName,
     })
     // setup mysql db.
     // Comment this when direct connection to the db instance is not possible.
@@ -335,13 +349,8 @@ type TierInput = {
     kafkaApiSecret: string,
 
     // connector configuration
-    confUsername: string,
-    confPassword: string,
-    clusterId: string,
-    environmentId: string,
-    connUserAccessKey: string,
-    connUserSecret: string,
-    connBucketName: string,
+    trainingDataConnectorConf: KafkaConnectorConf,
+    offlineAggregateConnectorConf: KafkaConnectorConf,
 
     // db configuration.
     db: string,
@@ -413,13 +422,8 @@ const setupTier = async (args: TierInput, destroy?: boolean) => {
     await stack.setConfig(nameof<inputType>("kafkaApiKey"), { value: args.kafkaApiKey })
     await stack.setConfig(nameof<inputType>("kafkaApiSecret"), { value: args.kafkaApiSecret, secret: true })
 
-    await stack.setConfig(nameof<inputType>("confUsername"), { value: args.confUsername })
-    await stack.setConfig(nameof<inputType>("confPassword"), { value: args.confPassword })
-    await stack.setConfig(nameof<inputType>("clusterId"), { value: args.clusterId })
-    await stack.setConfig(nameof<inputType>("environmentId"), { value: args.environmentId })
-    await stack.setConfig(nameof<inputType>("connUserAccessKey"), { value: args.connUserAccessKey })
-    await stack.setConfig(nameof<inputType>("connUserSecret"), { value: args.connUserSecret })
-    await stack.setConfig(nameof<inputType>("connBucketName"), { value: args.connBucketName })
+    await stack.setConfig(nameof<inputType>("trainingDataConnectorConf"), { value: JSON.stringify(args.trainingDataConnectorConf) })
+    await stack.setConfig(nameof<inputType>("offlineAggregateConnectorConf"), { value: JSON.stringify(args.offlineAggregateConnectorConf) })
 
     await stack.setConfig(nameof<inputType>("db"), { value: args.db })
     await stack.setConfig(nameof<inputType>("dbUsername"), { value: args.dbUsername })

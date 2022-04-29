@@ -80,7 +80,8 @@ export type PlaneOutput = {
     confluent: confluentenv.outputType,
     db: aurora.outputType,
     prometheus: prometheus.outputType,
-    connSink: connectorSink.outputType,
+    trainingData: connectorSink.outputType,
+    offlineAggregate: offlineAggregateStorage.outputType,
     glue: glueSource.outputType,
 }
 
@@ -103,6 +104,7 @@ const setupPlugins = async (stack: pulumi.automation.Stack) => {
         ...connectorSink.plugins,
         ...glueSource.plugins,
         ...offlineAggregateStorage.plugins,
+        ...offlineAggregateSources.plugins,
     }
     console.info("installing plugins...");
     for (var key in plugins) {
@@ -225,7 +227,8 @@ const setupResources = async () => {
         confluent: confluentOutput,
         db: auroraOutput,
         prometheus: prometheusOutput,
-        connSink: connectorSinkOutput,
+        trainingData: connectorSinkOutput,
+        offlineAggregate: offlineAggregateStorageBucket,
         glue: glueOutput,
     }
 };
