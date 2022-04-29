@@ -16,7 +16,7 @@ export type outputType = {
     bucketName: string
 }
 
-export const setup = async (input: inputType): Promise<pulumi.Output<outputType>> => {
+export const setup = async (input: inputType): Promise<outputType> => {
     const provider = new aws.Provider("offline-aggregate-output-provider", {
         region: <aws.Region>input.region,
         assumeRole: {
@@ -34,9 +34,5 @@ export const setup = async (input: inputType): Promise<pulumi.Output<outputType>
         forceDestroy: true,
     }, {provider});
 
-    // TODO(mohit): setup permissions for glue job to read this bucket
-
-    return pulumi.output({
-        bucketName: bucketName
-    })
+    return { bucketName: bucketName }
 }

@@ -16,6 +16,7 @@ import * as modelStore from "../model-store";
 import * as sagemaker from "../sagemaker";
 import * as offlineAggregateOutput from "../offline-aggregate-output";
 import * as offlineAggregateKafkaConnector from "../offline-aggregate-kafka-connector";
+import * as offlineAggregateGlueJob from "../offline-aggregate-glue-job";
 
 import * as process from "process";
 
@@ -89,6 +90,10 @@ type inputType = {
     glueSourceBucket: string,
     glueSourceScript: string,
     glueTrainingDataBucket: string,
+    // offline aggregate glue job configuration
+    offlineAggregateStorageBucket: string,
+    offlineAggregateSourceBucket: string,
+    offlineAggregateSourceFiles: Record<string, string>,
     httpServerConf?: HttpServerConf,
     countAggrConf?: CountAggrConf,
     apiServerConf?: ApiServerConf,
@@ -130,6 +135,10 @@ const parseConfig = (): inputType => {
         glueSourceBucket: config.require(nameof<inputType>("glueSourceBucket")),
         glueSourceScript: config.require(nameof<inputType>("glueSourceScript")),
         glueTrainingDataBucket: config.require(nameof<inputType>("glueTrainingDataBucket")),
+
+        offlineAggregateStorageBucket: config.require(nameof<inputType>("offlineAggregateStorageBucket")),
+        offlineAggregateSourceBucket: config.require(nameof<inputType>("offlineAggregateSourceBucket")),
+        offlineAggregateSourceFiles: config.requireObject(nameof<inputType>("offlineAggregateSourceFiles")),
 
         httpServerConf: config.getObject(nameof<inputType>("httpServerConf")),
         countAggrConf: config.getObject(nameof<inputType>("countAggrConf")),
@@ -202,6 +211,24 @@ const setupResources = async () => {
         awsSecretAccessKey: input.offlineAggregateConnectorConf.connUserSecret,
         s3BucketName: input.offlineAggregateConnectorConf.connBucketName,
     })
+    // setup offline aggregate output bucket
+    const offlineAggregateOutputBucket = await offlineAggregateOutput.setup({
+        region: input.region,
+        roleArn: input.roleArn,
+        tierId: input.tierId,
+    })
+
+    // setup offline aggregate glue job
+    const offlineAggregateGlueJobOutput = await offlineAggregateGlueJob.setup({
+        tierId: input.tierId,
+        region: input.region,
+        roleArn: input.roleArn,
+        sourceBucket: input.offlineAggregateSourceBucket,
+        storageBucket: input.offlineAggregateStorageBucket,
+        outputBucket: offlineAggregateOutputBucket.bucketName,
+        sourceFiles: input.offlineAggregateSourceFiles,
+    })
+
     // setup mysql db.
     // Comment this when direct connection to the db instance is not possible.
     // This will usually be when trying to setup a tier in a customer vpc, which
@@ -279,12 +306,6 @@ const setupResources = async () => {
         namespace: input.namespace,
         subnetIds: input.subnetIds,
         loadBalancerScheme: input.loadBalancerScheme,
-        tierId: input.tierId,
-    })
-    // setup offline aggregate output bucket
-    const offlineAggregateOutputBucket = await offlineAggregateOutput.setup({
-        region: input.region,
-        roleArn: input.roleArn,
         tierId: input.tierId,
     })
     // setup glue
@@ -373,6 +394,11 @@ type TierInput = {
     glueSourceBucket: string,
     glueSourceScript: string,
     glueTrainingDataBucket: string,
+
+    // offline aggregate glue job configuration
+    offlineAggregateStorageBucket: string,
+    offlineAggregateSourceBucket: string,
+    offlineAggregateSourceFiles: Record<string, string>,
 
     // http server configuration
     httpServerConf?: HttpServerConf,

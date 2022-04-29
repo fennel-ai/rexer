@@ -19,6 +19,7 @@ export type inputType = {
 
 // should not contain any pulumi.Output<> types.
 export type outputType = {
+    bucket: string,
     sources: Record<string, string>
 }
 
@@ -56,6 +57,7 @@ export const setup = async (input: inputType): Promise<pulumi.Output<outputType>
     }, { provider })
 
     const output = pulumi.output({
+        bucket: bucketName,
         sources: {
             "topk": `s3://${bucketName}/${topk.key}`
         }

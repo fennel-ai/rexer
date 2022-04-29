@@ -93,8 +93,6 @@ export const setup = async (input: inputType): Promise<pulumi.Output<outputType>
         policy: rawPolicyStr,
     }, { provider });
 
-    // TODO(mohit): setup permissions for glue job to read this bucket
-
     return pulumi.output({
         bucketName: bucketName,
         userAccessKeyId: userAccessKey.id,

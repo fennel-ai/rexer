@@ -82,6 +82,7 @@ export type PlaneOutput = {
     prometheus: prometheus.outputType,
     trainingData: connectorSink.outputType,
     offlineAggregate: offlineAggregateStorage.outputType,
+    offlineAggregateSourceFiles: offlineAggregateSources.outputType,
     glue: glueSource.outputType,
 }
 
@@ -229,6 +230,7 @@ const setupResources = async () => {
         prometheus: prometheusOutput,
         trainingData: connectorSinkOutput,
         offlineAggregate: offlineAggregateStorageBucket,
+        offlineAggregateSourceFiles: offlineAggregateSourceFiles,
         glue: glueOutput,
     }
 };

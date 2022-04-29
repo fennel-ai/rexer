@@ -8,6 +8,7 @@ import * as redis from "../redis";
 import * as confluentenv from "../confluentenv";
 import * as connsink from "../connectorsink";
 import * as offlineAggregateStorage from "../offline-aggregate-storage";
+import * as offlineAggregateSource from "../offline-aggregate-script-source";
 import * as glueSource from "../glue-script-source";
 import { nameof } from "../lib/util";
 
@@ -297,6 +298,7 @@ const elasticacheOutput = dataplane[nameof<PlaneOutput>("elasticache")].value as
 const vpcOutput = dataplane[nameof<PlaneOutput>("vpc")].value as vpc.outputType
 const trainingDataOutput = dataplane[nameof<PlaneOutput>("trainingData")].value as connsink.outputType
 const offlineAggregateOutput = dataplane[nameof<PlaneOutput>("offlineAggregate")].value as offlineAggregateStorage.outputType
+const offlineAggregateSourceFiles = dataplane[nameof<PlaneOutput>("offlineAggregate")].value as offlineAggregateSource.outputType
 const glueOutput = dataplane[nameof<PlaneOutput>("glue")].value as glueSource.outputType
 
 // Create/update/delete the tier.
@@ -362,6 +364,10 @@ if (tierId !== 0) {
         glueSourceBucket: glueOutput.scriptSourceBucket,
         glueSourceScript: glueOutput.scriptPath,
         glueTrainingDataBucket: trainingDataOutput.bucketName,
+
+        offlineAggregateStorageBucket: offlineAggregateOutput.bucketName,
+        offlineAggregateSourceBucket: offlineAggregateSourceFiles.bucket,
+        offlineAggregateSourceFiles: offlineAggregateSourceFiles.sources,
 
         httpServerConf: tierConf.httpServerConf,
 
