@@ -59,9 +59,9 @@ func RecordEvents(eventCh chan kafka.Event) {
 			// https://github.com/edenhill/librdkafka/blob/master/STATISTICS.md
 			// Current number of messages in producer queues
 			producerGauge.WithLabelValues(extractString(raw["name"]), "msg_cnt").Set(extractValue(raw["msg_cnt"]))
-			// Current total size of messages in producer queues
+			// Threshold: maximum number of messages allowed on the producer queues
 			producerGauge.WithLabelValues(extractString(raw["name"]), "msg_max").Set(extractValue(raw["msg_max"]))
-			// Threshold: maximum number of messages allowed allowed on the producer queues
+			// Current total size of messages in producer queues
 			producerGauge.WithLabelValues(extractString(raw["name"]), "msg_size").Set(extractValue(raw["msg_size"]))
 			// Threshold: maximum total size of messages allowed on the producer queues
 			producerGauge.WithLabelValues(extractString(raw["name"]), "msg_size_max").Set(extractValue(raw["msg_size_max"]))
