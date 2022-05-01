@@ -66,7 +66,7 @@ export const setup = async (input: inputType) => {
         metadata: {
             name: "glue-conf",
         }
-    })
+    }, { provider, deleteBeforeReplace: true });
 
     const tierConf = new k8s.core.v1.ConfigMap("tier-conf", {
         data: input.tierConfig,

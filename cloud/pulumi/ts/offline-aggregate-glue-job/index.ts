@@ -10,7 +10,7 @@ export type inputType = {
     roleArn: string,
     tierId: number,
     sourceBucket: string,
-    storageBucket: pulumi.Input<string>,
+    storageBucket: pulumi.Output<string>,
     outputBucket: string,
     sourceFiles: Record<string, string>,
     nodeInstanceRole: string,
@@ -19,7 +19,7 @@ export type inputType = {
 // should not contain any pulumi.Output<> types.
 export type outputType = {
     // using a map to easily transform to a string later when this is passed as job arguments
-    jobNames: Map<string, string>,
+    jobNames: Record<string, string>,
 }
 
 function setupNodeTriggerAccess(provider: aws.Provider, input: inputType) {
@@ -83,10 +83,11 @@ export const setup = async (input: inputType): Promise<pulumi.Output<outputType>
     }, {provider});
 
     // create inline role policy
-    const policy = new aws.iam.RolePolicy(`t-${input.tierId}-offline-aggr-glue-rolepolicy`, {
-        name: `t-${input.tierId}-offline-aggr-glue-rolepolicy`,
-        role: role,
-        policy: `{
+    const policy = input.storageBucket.apply(storageBucket => {
+        return new aws.iam.RolePolicy(`t-${input.tierId}-offline-aggr-glue-rolepolicy`, {
+            name: `t-${input.tierId}-offline-aggr-glue-rolepolicy`,
+            role: role,
+            policy: `{
             "Version": "2012-10-17",
             "Statement": [
                 {
@@ -103,7 +104,7 @@ export const setup = async (input: inputType): Promise<pulumi.Output<outputType>
                         "s3:GetBucketLocation"
                     ],
                     "Resource": [
-                        "arn:aws:s3:::${input.storageBucket}",
+                        "arn:aws:s3:::${storageBucket}",
                         "arn:aws:s3:::${input.sourceBucket}"
                     ]
                 },
@@ -114,7 +115,7 @@ export const setup = async (input: inputType): Promise<pulumi.Output<outputType>
                     ],
                     "Resource": [
                         "arn:aws:s3:::${input.sourceBucket}/*",
-                        "arn:aws:s3:::${input.storageBucket}/*"
+                        "arn:aws:s3:::${storageBucket}/*"
                     ]
                 },
                 {
@@ -132,7 +133,8 @@ export const setup = async (input: inputType): Promise<pulumi.Output<outputType>
                 }
             ]
         }`,
-    }, {provider});
+        }, {provider});
+    });
 
     // setup EKS worker node have access to CRUD GLUE triggers
     setupNodeTriggerAccess(provider, input);
@@ -140,7 +142,7 @@ export const setup = async (input: inputType): Promise<pulumi.Output<outputType>
     // create the glue job for topk
     const topkSource = input.sourceFiles["topk"]
     const topkJobName = `t-${input.tierId}-topk`
-    const topkJob = new aws.glue.Job(`t-${input.tierId}-gluejob`, {
+    const topkJob = new aws.glue.Job(`t-${input.tierId}-topk-gluejob`, {
         name: topkJobName,
         command: {
             scriptLocation: topkSource,
@@ -160,8 +162,9 @@ export const setup = async (input: inputType): Promise<pulumi.Output<outputType>
         timeout: 60,  // it should not take more than 60 minutes to transform the json files
     }, {provider});
 
-    let jobNames = new Map<string, string>;
-    jobNames.set("topk", topkJobName)
+    const jobNames = topkJob.name.apply(topk => {
+        return { "topk": topk } as Record<string, string>
+    })
 
     return pulumi.output({
         jobNames: jobNames,

@@ -19,7 +19,7 @@ export type inputType = {
 
 // should not contain any pulumi.Output<> types.
 export type outputType = {
-    bucket: string,
+    bucketName: string,
     sources: Record<string, string>
 }
 
@@ -47,20 +47,20 @@ export const setup = async (input: inputType): Promise<pulumi.Output<outputType>
     const scriptPath = path.join(root, "pyspark/topk.py");
     const fileHash = md5.Md5.hashStr(fs.readFileSync(scriptPath).toString())
 
+    const fileName = "topk.py";
     const topk = new aws.s3.BucketObject(`p-${input.planeId}-topk-source-object`, {
         bucket: bucket.id,
-        key: "topk.py",
+        key: fileName,
         source: new pulumi.asset.FileAsset(scriptPath),
         // in case of the file change, force an update
         etag: fileHash,
         sourceHash: fileHash,
     }, { provider })
-
-    const output = pulumi.output({
-        bucket: bucketName,
-        sources: {
-            "topk": `s3://${bucketName}/${topk.key}`
-        }
+    const sources: Record<string, pulumi.Output<string>> = {
+        "topk": topk.key.apply(key => { return `s3://${bucketName}/${key}` })
+    }
+    return pulumi.output({
+        bucketName: bucketName,
+        sources: sources,
     })
-    return output
 }

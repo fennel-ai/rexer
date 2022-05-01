@@ -274,9 +274,10 @@ const setupResources = async () => {
         sagemakerOutput.securityGroup, offlineAggregateGlueJobOutput.jobNames]).apply(async ([dbPassword, kafkaPassword, sagemakerRole, subnetIds, sagemakerSg, jobNames]) => {
             // transform jobname map to string with the format `key1=val1 key2=val2`
             let jobNamesStr = "";
-            for (let [agg, jobName] of jobNames) {
-                jobNamesStr += `${agg}=${jobName} `
-            }
+            Object.entries(jobNames).forEach(([agg, jobName]) => jobNamesStr += `${agg}=${jobName} `);
+            // remove the last trailing space
+            jobNamesStr = jobNamesStr.substring(0, jobNamesStr.length - 1);
+            console.log(jobNamesStr);
             return await configs.setup({
                 kubeconfig: input.kubeconfig,
                 namespace: input.namespace,
@@ -310,7 +311,7 @@ const setupResources = async () => {
                 glueConfig: pulumi.output({
                     "region": input.region,
                     "jobNameByAgg": jobNamesStr,
-                })
+                } as Record<string, string>),
             })
         })
     // setup ingress.

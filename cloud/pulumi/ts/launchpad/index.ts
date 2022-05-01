@@ -352,7 +352,7 @@ if (tierId !== 0) {
         glueSourceScript: glueOutput.scriptPath,
         glueTrainingDataBucket: trainingDataOutput.bucketName,
 
-        offlineAggregateSourceBucket: offlineAggregateSourceFiles.bucket,
+        offlineAggregateSourceBucket: offlineAggregateSourceFiles.bucketName,
         offlineAggregateSourceFiles: offlineAggregateSourceFiles.sources,
 
         httpServerConf: tierConf.httpServerConf,
