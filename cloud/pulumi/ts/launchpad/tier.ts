@@ -14,6 +14,7 @@ import * as ns from "../k8s-ns";
 import * as glue from "../glue";
 import * as modelStore from "../model-store";
 import * as sagemaker from "../sagemaker";
+import * as offlineAggregateStorage from "../offline-aggregate-storage";
 import * as offlineAggregateOutput from "../offline-aggregate-output";
 import * as offlineAggregateKafkaConnector from "../offline-aggregate-kafka-connector";
 import * as offlineAggregateGlueJob from "../offline-aggregate-glue-job";
@@ -48,16 +49,6 @@ export type TierConf = {
     ingressConf?: IngressConf,
 }
 
-export type KafkaConnectorConf = {
-    confUsername: string,
-    confPassword: string,
-    clusterId: string,
-    environmentId: string,
-    connUserAccessKey: string,
-    connUserSecret: string,
-    connBucketName: string,
-}
-
 type inputType = {
     tierId: number,
     planeId: number,
@@ -72,8 +63,13 @@ type inputType = {
     kafkaApiKey: string,
     kafkaApiSecret: pulumi.Output<string>,
     // kafka connectors configuration
-    trainingDataConnectorConf: KafkaConnectorConf,
-    offlineAggregateConnectorConf: KafkaConnectorConf,
+    confUsername: string,
+    confPassword: string,
+    clusterId: string,
+    environmentId: string,
+    connUserAccessKey: string,
+    connUserSecret: string,
+    connBucketName: string,
     // db configuration.
     db: string,
     dbUsername: string,
@@ -91,7 +87,6 @@ type inputType = {
     glueSourceScript: string,
     glueTrainingDataBucket: string,
     // offline aggregate glue job configuration
-    offlineAggregateStorageBucket: string,
     offlineAggregateSourceBucket: string,
     offlineAggregateSourceFiles: Record<string, string>,
     httpServerConf?: HttpServerConf,
@@ -113,8 +108,13 @@ const parseConfig = (): inputType => {
         kafkaApiKey: config.require(nameof<inputType>("kafkaApiKey")),
         kafkaApiSecret: config.requireSecret(nameof<inputType>("kafkaApiSecret")),
 
-        trainingDataConnectorConf: config.requireObject(nameof<inputType>("trainingDataConnectorConf")),
-        offlineAggregateConnectorConf: config.requireObject(nameof<inputType>("offlineAggregateConnectorConf")),
+        confUsername: config.require(nameof<inputType>("confUsername")),
+        confPassword: config.require(nameof<inputType>("confPassword")),
+        clusterId: config.require(nameof<inputType>("clusterId")),
+        environmentId: config.require(nameof<inputType>("environmentId")),
+        connUserAccessKey: config.require(nameof<inputType>("connUserAccessKey")),
+        connUserSecret: config.require(nameof<inputType>("connUserSecret")),
+        connBucketName: config.require(nameof<inputType>("connBucketName")),
 
         db: config.require(nameof<inputType>("db")),
         dbUsername: config.require(nameof<inputType>("dbUsername")),
@@ -136,7 +136,6 @@ const parseConfig = (): inputType => {
         glueSourceScript: config.require(nameof<inputType>("glueSourceScript")),
         glueTrainingDataBucket: config.require(nameof<inputType>("glueTrainingDataBucket")),
 
-        offlineAggregateStorageBucket: config.require(nameof<inputType>("offlineAggregateStorageBucket")),
         offlineAggregateSourceBucket: config.require(nameof<inputType>("offlineAggregateSourceBucket")),
         offlineAggregateSourceFiles: config.requireObject(nameof<inputType>("offlineAggregateSourceFiles")),
 
@@ -167,6 +166,7 @@ const setupPlugins = async (stack: pulumi.automation.Stack) => {
         ...glue.plugins,
         ...modelStore.plugins,
         ...sagemaker.plugins,
+        ...offlineAggregateStorage.plugins,
     }
     console.info("installing plugins...");
     for (var key in plugins) {
@@ -185,31 +185,36 @@ const setupResources = async () => {
         topicNames: input.topicNames,
         bootstrapServer: input.bootstrapServer,
     })
+    const offlineAggregateStorageBucket = await offlineAggregateStorage.setup({
+        region: input.region,
+        roleArn: input.roleArn,
+        tierId: input.tierId,
+    })
     // setup kafka connector to s3 bucket for the action and feature log topics.
     const kafkaConnectors = await kafkaconnectors.setup({
         tierId: input.tierId,
-        username: input.trainingDataConnectorConf.confUsername,
-        password: input.trainingDataConnectorConf.confPassword,
-        clusterId: input.trainingDataConnectorConf.clusterId,
-        environmentId: input.trainingDataConnectorConf.environmentId,
+        username: input.confUsername,
+        password: input.confPassword,
+        clusterId: input.clusterId,
+        environmentId: input.environmentId,
         kafkaApiKey: input.kafkaApiKey,
         kafkaApiSecret: input.kafkaApiSecret,
-        awsAccessKeyId: input.trainingDataConnectorConf.connUserAccessKey,
-        awsSecretAccessKey: input.trainingDataConnectorConf.connUserSecret,
-        s3BucketName: input.trainingDataConnectorConf.connBucketName,
+        awsAccessKeyId: input.connUserAccessKey,
+        awsSecretAccessKey: input.connUserSecret,
+        s3BucketName: input.connBucketName,
     })
     // setup kafka connectors to s3 bucket for offline aggregate data
     const offlineAggregateConnector = await offlineAggregateKafkaConnector.setup({
         tierId: input.tierId,
-        username: input.trainingDataConnectorConf.confUsername,
-        password: input.trainingDataConnectorConf.confPassword,
-        clusterId: input.trainingDataConnectorConf.clusterId,
-        environmentId: input.trainingDataConnectorConf.environmentId,
+        username: input.confUsername,
+        password: input.confPassword,
+        clusterId: input.clusterId,
+        environmentId: input.environmentId,
         kafkaApiKey: input.kafkaApiKey,
         kafkaApiSecret: input.kafkaApiSecret,
-        awsAccessKeyId: input.offlineAggregateConnectorConf.connUserAccessKey,
-        awsSecretAccessKey: input.offlineAggregateConnectorConf.connUserSecret,
-        s3BucketName: input.offlineAggregateConnectorConf.connBucketName,
+        awsAccessKeyId: offlineAggregateStorageBucket.userAccessKeyId,
+        awsSecretAccessKey: offlineAggregateStorageBucket.userSecretAccessKey,
+        s3BucketName: offlineAggregateStorageBucket.bucketName,
     })
     // setup offline aggregate output bucket
     const offlineAggregateOutputBucket = await offlineAggregateOutput.setup({
@@ -224,7 +229,7 @@ const setupResources = async () => {
         region: input.region,
         roleArn: input.roleArn,
         sourceBucket: input.offlineAggregateSourceBucket,
-        storageBucket: input.offlineAggregateStorageBucket,
+        storageBucket: offlineAggregateStorageBucket.bucketName,
         outputBucket: offlineAggregateOutputBucket.bucketName,
         sourceFiles: input.offlineAggregateSourceFiles,
         nodeInstanceRole: input.nodeInstanceRole,
@@ -380,8 +385,13 @@ type TierInput = {
     kafkaApiSecret: string,
 
     // connector configuration
-    trainingDataConnectorConf: KafkaConnectorConf,
-    offlineAggregateConnectorConf: KafkaConnectorConf,
+    confUsername: string,
+    confPassword: string,
+    clusterId: string,
+    environmentId: string,
+    connUserAccessKey: string,
+    connUserSecret: string,
+    connBucketName: string,
 
     // db configuration.
     db: string,
@@ -406,7 +416,6 @@ type TierInput = {
     glueTrainingDataBucket: string,
 
     // offline aggregate glue job configuration
-    offlineAggregateStorageBucket: string,
     offlineAggregateSourceBucket: string,
     offlineAggregateSourceFiles: Record<string, string>,
 
@@ -458,8 +467,13 @@ const setupTier = async (args: TierInput, destroy?: boolean) => {
     await stack.setConfig(nameof<inputType>("kafkaApiKey"), { value: args.kafkaApiKey })
     await stack.setConfig(nameof<inputType>("kafkaApiSecret"), { value: args.kafkaApiSecret, secret: true })
 
-    await stack.setConfig(nameof<inputType>("trainingDataConnectorConf"), { value: JSON.stringify(args.trainingDataConnectorConf) })
-    await stack.setConfig(nameof<inputType>("offlineAggregateConnectorConf"), { value: JSON.stringify(args.offlineAggregateConnectorConf) })
+    await stack.setConfig(nameof<inputType>("confUsername"), { value: args.confUsername })
+    await stack.setConfig(nameof<inputType>("confPassword"), { value: args.confPassword })
+    await stack.setConfig(nameof<inputType>("clusterId"), { value: args.clusterId })
+    await stack.setConfig(nameof<inputType>("environmentId"), { value: args.environmentId })
+    await stack.setConfig(nameof<inputType>("connUserAccessKey"), { value: args.connUserAccessKey })
+    await stack.setConfig(nameof<inputType>("connUserSecret"), { value: args.connUserSecret })
+    await stack.setConfig(nameof<inputType>("connBucketName"), { value: args.connBucketName })
 
     await stack.setConfig(nameof<inputType>("db"), { value: args.db })
     await stack.setConfig(nameof<inputType>("dbUsername"), { value: args.dbUsername })
@@ -480,6 +494,9 @@ const setupTier = async (args: TierInput, destroy?: boolean) => {
     await stack.setConfig(nameof<inputType>("glueSourceBucket"), { value: args.glueSourceBucket })
     await stack.setConfig(nameof<inputType>("glueSourceScript"), { value: args.glueSourceScript })
     await stack.setConfig(nameof<inputType>("glueTrainingDataBucket"), { value: args.glueTrainingDataBucket })
+
+    await stack.setConfig(nameof<inputType>("offlineAggregateSourceBucket"), { value: args.offlineAggregateSourceBucket })
+    await stack.setConfig(nameof<inputType>("offlineAggregateSourceFiles"), { value: JSON.stringify(args.offlineAggregateSourceFiles) })
 
     if (args.httpServerConf !== undefined) {
         await stack.setConfig(nameof<inputType>("httpServerConf"), { value: JSON.stringify(args.httpServerConf) })

@@ -10,7 +10,7 @@ export type inputType = {
     roleArn: string,
     tierId: number,
     sourceBucket: string,
-    storageBucket: string,
+    storageBucket: pulumi.Input<string>,
     outputBucket: string,
     sourceFiles: Record<string, string>,
     nodeInstanceRole: string,
@@ -86,7 +86,6 @@ export const setup = async (input: inputType): Promise<pulumi.Output<outputType>
     const policy = new aws.iam.RolePolicy(`t-${input.tierId}-offline-aggr-glue-rolepolicy`, {
         name: `t-${input.tierId}-offline-aggr-glue-rolepolicy`,
         role: role,
-        // TODO(mohit): Make access to storageBucket a bit more granular
         policy: `{
             "Version": "2012-10-17",
             "Statement": [

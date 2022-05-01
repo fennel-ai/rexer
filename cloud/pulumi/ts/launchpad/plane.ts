@@ -11,7 +11,6 @@ import * as telemetry from "../telemetry";
 import * as prometheus from "../prometheus";
 import * as connectorSink from "../connectorsink";
 import * as glueSource from "../glue-script-source";
-import * as offlineAggregateStorage from "../offline-aggregate-storage";
 import * as offlineAggregateSources from "../offline-aggregate-script-source";
 
 import * as process from "process";
@@ -81,7 +80,6 @@ export type PlaneOutput = {
     db: aurora.outputType,
     prometheus: prometheus.outputType,
     trainingData: connectorSink.outputType,
-    offlineAggregate: offlineAggregateStorage.outputType,
     offlineAggregateSourceFiles: offlineAggregateSources.outputType,
     glue: glueSource.outputType,
 }
@@ -104,7 +102,6 @@ const setupPlugins = async (stack: pulumi.automation.Stack) => {
         ...telemetry.plugins,
         ...connectorSink.plugins,
         ...glueSource.plugins,
-        ...offlineAggregateStorage.plugins,
         ...offlineAggregateSources.plugins,
     }
     console.info("installing plugins...");
@@ -184,11 +181,6 @@ const setupResources = async () => {
         roleArn: input.roleArn,
         planeId: input.planeId
     })
-    const offlineAggregateStorageBucket = await offlineAggregateStorage.setup({
-        region: input.region,
-        roleArn: input.roleArn,
-        planeId: input.planeId
-    })
 
     const prometheusOutput = await prometheus.setup({
         useAMP: input.prometheusConf.useAMP,
@@ -229,7 +221,6 @@ const setupResources = async () => {
         db: auroraOutput,
         prometheus: prometheusOutput,
         trainingData: connectorSinkOutput,
-        offlineAggregate: offlineAggregateStorageBucket,
         offlineAggregateSourceFiles: offlineAggregateSourceFiles,
         glue: glueOutput,
     }

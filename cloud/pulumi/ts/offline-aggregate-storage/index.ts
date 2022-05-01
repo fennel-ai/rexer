@@ -11,7 +11,7 @@ export const plugins = {
 export type inputType = {
     region: string,
     roleArn: string,
-    planeId: number,
+    tierId: number,
 }
 
 // should not contain any pulumi.Output<> types.
@@ -31,8 +31,8 @@ export const setup = async (input: inputType): Promise<pulumi.Output<outputType>
         }
     });
 
-    const bucketName = `p-${input.planeId}-offline-aggregate-storage`
-    const bucket = new aws.s3.Bucket(`p-${input.planeId}-offline-aggregate-storage`, {
+    const bucketName = `t-${input.tierId}-offline-aggregate-storage`
+    const bucket = new aws.s3.Bucket(`t-${input.tierId}-offline-aggregate-storage`, {
         acl: "private",
         bucket: bucketName,
         // delete all the objects so that the bucket can be deleted without error
@@ -40,19 +40,19 @@ export const setup = async (input: inputType): Promise<pulumi.Output<outputType>
     }, {provider});
 
     // setup AWS user account with access to this bucket. This user access is used by kafka connector
-    const user = new aws.iam.User(`p-${input.planeId}-offline-aggr-user`, {
-        name: `p-${input.planeId}-offline-aggr-user`,
+    const user = new aws.iam.User(`t-${input.tierId}-offline-aggr-user`, {
+        name: `t-${input.tierId}-offline-aggr-user`,
         // set path to differentiate this user from the rest of human users
         path: "/conf_conn_user/",
         tags: {
             "managed_by": "fennel.ai",
-            "plane": `p-${input.planeId}`,
+            "plane": `t-${input.tierId}`,
             "sink": `${bucketName}`,
         }
     }, { provider, dependsOn: bucket });
 
     // fetch access keys
-    const userAccessKey = new aws.iam.AccessKey(`p-${input.planeId}-offline-aggr-access-key`, {
+    const userAccessKey = new aws.iam.AccessKey(`t-${input.tierId}-offline-aggr-access-key`, {
         user: user.name
     }, { provider });
 
@@ -88,7 +88,7 @@ export const setup = async (input: inputType): Promise<pulumi.Output<outputType>
             }
         ]
     }`;
-    const userPolicy = new aws.iam.UserPolicy(`p-${input.planeId}-offline-aggr-user-policy`, {
+    const userPolicy = new aws.iam.UserPolicy(`t-${input.tierId}-offline-aggr-user-policy`, {
         user: user.name,
         policy: rawPolicyStr,
     }, { provider });

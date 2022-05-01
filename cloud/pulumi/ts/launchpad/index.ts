@@ -7,7 +7,6 @@ import * as elasticache from "../elasticache";
 import * as redis from "../redis";
 import * as confluentenv from "../confluentenv";
 import * as connsink from "../connectorsink";
-import * as offlineAggregateStorage from "../offline-aggregate-storage";
 import * as offlineAggregateSource from "../offline-aggregate-script-source";
 import * as glueSource from "../glue-script-source";
 import { nameof } from "../lib/util";
@@ -297,8 +296,7 @@ const redisOutput = dataplane[nameof<PlaneOutput>("redis")].value as redis.outpu
 const elasticacheOutput = dataplane[nameof<PlaneOutput>("elasticache")].value as elasticache.outputType
 const vpcOutput = dataplane[nameof<PlaneOutput>("vpc")].value as vpc.outputType
 const trainingDataOutput = dataplane[nameof<PlaneOutput>("trainingData")].value as connsink.outputType
-const offlineAggregateOutput = dataplane[nameof<PlaneOutput>("offlineAggregate")].value as offlineAggregateStorage.outputType
-const offlineAggregateSourceFiles = dataplane[nameof<PlaneOutput>("offlineAggregate")].value as offlineAggregateSource.outputType
+const offlineAggregateSourceFiles = dataplane[nameof<PlaneOutput>("offlineAggregateSourceFiles")].value as offlineAggregateSource.outputType
 const glueOutput = dataplane[nameof<PlaneOutput>("glue")].value as glueSource.outputType
 
 // Create/update/delete the tier.
@@ -326,24 +324,13 @@ if (tierId !== 0) {
         kafkaApiKey: confluentOutput.apiKey,
         kafkaApiSecret: confluentOutput.apiSecret,
 
-        trainingDataConnectorConf: {
-            confUsername: confluentUsername,
-            confPassword: confluentPassword,
-            clusterId: confluentOutput.clusterId,
-            environmentId: confluentOutput.environmentId,
-            connUserAccessKey: trainingDataOutput.userAccessKeyId,
-            connUserSecret: trainingDataOutput.userSecretAccessKey,
-            connBucketName: trainingDataOutput.bucketName,
-        },
-        offlineAggregateConnectorConf: {
-            confUsername: confluentUsername,
-            confPassword: confluentPassword,
-            clusterId: confluentOutput.clusterId,
-            environmentId: confluentOutput.environmentId,
-            connUserAccessKey: offlineAggregateOutput.userAccessKeyId,
-            connUserSecret: offlineAggregateOutput.userSecretAccessKey,
-            connBucketName: offlineAggregateOutput.bucketName,
-        },
+        confUsername: confluentUsername,
+        confPassword: confluentPassword,
+        clusterId: confluentOutput.clusterId,
+        environmentId: confluentOutput.environmentId,
+        connUserAccessKey: trainingDataOutput.userAccessKeyId,
+        connUserSecret: trainingDataOutput.userSecretAccessKey,
+        connBucketName: trainingDataOutput.bucketName,
 
         db: "db",
         dbEndpoint: dbOutput.host,
@@ -365,7 +352,6 @@ if (tierId !== 0) {
         glueSourceScript: glueOutput.scriptPath,
         glueTrainingDataBucket: trainingDataOutput.bucketName,
 
-        offlineAggregateStorageBucket: offlineAggregateOutput.bucketName,
         offlineAggregateSourceBucket: offlineAggregateSourceFiles.bucket,
         offlineAggregateSourceFiles: offlineAggregateSourceFiles.sources,
 

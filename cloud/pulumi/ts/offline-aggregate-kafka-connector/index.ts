@@ -19,9 +19,9 @@ export type inputType = {
     kafkaApiKey: string,
     kafkaApiSecret: pulumi.Input<string>,
     // AWS and S3 configurations
-    awsAccessKeyId: string,
-    awsSecretAccessKey: string,
-    s3BucketName: string,
+    awsAccessKeyId: pulumi.Input<string>,
+    awsSecretAccessKey: pulumi.Input<string>,
+    s3BucketName: pulumi.Input<string>,
 }
 
 // should not contain any pulumi.Output<> types.
