@@ -14,6 +14,10 @@ import * as ns from "../k8s-ns";
 import * as glue from "../glue";
 import * as modelStore from "../model-store";
 import * as sagemaker from "../sagemaker";
+import * as offlineAggregateStorage from "../offline-aggregate-storage";
+import * as offlineAggregateOutput from "../offline-aggregate-output";
+import * as offlineAggregateKafkaConnector from "../offline-aggregate-kafka-connector";
+import * as offlineAggregateGlueJob from "../offline-aggregate-glue-job";
 
 import * as process from "process";
 
@@ -82,6 +86,9 @@ type inputType = {
     glueSourceBucket: string,
     glueSourceScript: string,
     glueTrainingDataBucket: string,
+    // offline aggregate glue job configuration
+    offlineAggregateSourceBucket: string,
+    offlineAggregateSourceFiles: Record<string, string>,
     httpServerConf?: HttpServerConf,
     countAggrConf?: CountAggrConf,
     apiServerConf?: ApiServerConf,
@@ -129,6 +136,9 @@ const parseConfig = (): inputType => {
         glueSourceScript: config.require(nameof<inputType>("glueSourceScript")),
         glueTrainingDataBucket: config.require(nameof<inputType>("glueTrainingDataBucket")),
 
+        offlineAggregateSourceBucket: config.require(nameof<inputType>("offlineAggregateSourceBucket")),
+        offlineAggregateSourceFiles: config.requireObject(nameof<inputType>("offlineAggregateSourceFiles")),
+
         httpServerConf: config.getObject(nameof<inputType>("httpServerConf")),
         countAggrConf: config.getObject(nameof<inputType>("countAggrConf")),
         apiServerConf: config.getObject(nameof<inputType>("apiServerConf")),
@@ -156,6 +166,7 @@ const setupPlugins = async (stack: pulumi.automation.Stack) => {
         ...glue.plugins,
         ...modelStore.plugins,
         ...sagemaker.plugins,
+        ...offlineAggregateStorage.plugins,
     }
     console.info("installing plugins...");
     for (var key in plugins) {
@@ -174,6 +185,11 @@ const setupResources = async () => {
         topicNames: input.topicNames,
         bootstrapServer: input.bootstrapServer,
     })
+    const offlineAggregateStorageBucket = await offlineAggregateStorage.setup({
+        region: input.region,
+        roleArn: input.roleArn,
+        tierId: input.tierId,
+    })
     // setup kafka connector to s3 bucket for the action and feature log topics.
     const kafkaConnectors = await kafkaconnectors.setup({
         tierId: input.tierId,
@@ -187,6 +203,38 @@ const setupResources = async () => {
         awsSecretAccessKey: input.connUserSecret,
         s3BucketName: input.connBucketName,
     })
+    // setup kafka connectors to s3 bucket for offline aggregate data
+    const offlineAggregateConnector = await offlineAggregateKafkaConnector.setup({
+        tierId: input.tierId,
+        username: input.confUsername,
+        password: input.confPassword,
+        clusterId: input.clusterId,
+        environmentId: input.environmentId,
+        kafkaApiKey: input.kafkaApiKey,
+        kafkaApiSecret: input.kafkaApiSecret,
+        awsAccessKeyId: offlineAggregateStorageBucket.userAccessKeyId,
+        awsSecretAccessKey: offlineAggregateStorageBucket.userSecretAccessKey,
+        s3BucketName: offlineAggregateStorageBucket.bucketName,
+    })
+    // setup offline aggregate output bucket
+    const offlineAggregateOutputBucket = await offlineAggregateOutput.setup({
+        region: input.region,
+        roleArn: input.roleArn,
+        tierId: input.tierId,
+    })
+
+    // setup offline aggregate glue job
+    const offlineAggregateGlueJobOutput = await offlineAggregateGlueJob.setup({
+        tierId: input.tierId,
+        region: input.region,
+        roleArn: input.roleArn,
+        sourceBucket: input.offlineAggregateSourceBucket,
+        storageBucket: offlineAggregateStorageBucket.bucketName,
+        outputBucket: offlineAggregateOutputBucket.bucketName,
+        sourceFiles: input.offlineAggregateSourceFiles,
+        nodeInstanceRole: input.nodeInstanceRole,
+    })
+
     // setup mysql db.
     // Comment this when direct connection to the db instance is not possible.
     // This will usually be when trying to setup a tier in a customer vpc, which
@@ -223,7 +271,13 @@ const setupResources = async () => {
     // setup configs after resources are setup.
     const configsOutput = pulumi.all(
         [input.dbPassword, input.kafkaApiSecret, sagemakerOutput.roleArn, sagemakerOutput.subnetIds,
-        sagemakerOutput.securityGroup]).apply(async ([dbPassword, kafkaPassword, sagemakerRole, subnetIds, sagemakerSg]) => {
+        sagemakerOutput.securityGroup, offlineAggregateGlueJobOutput.jobNames]).apply(async ([dbPassword, kafkaPassword, sagemakerRole, subnetIds, sagemakerSg, jobNames]) => {
+            // transform jobname map to string with the format `key1=val1 key2=val2`
+            let jobNamesStr = "";
+            Object.entries(jobNames).forEach(([agg, jobName]) => jobNamesStr += `${agg}=${jobName} `);
+            // remove the last trailing space
+            jobNamesStr = jobNamesStr.substring(0, jobNamesStr.length - 1);
+            console.log(jobNamesStr);
             return await configs.setup({
                 kubeconfig: input.kubeconfig,
                 namespace: input.namespace,
@@ -253,7 +307,11 @@ const setupResources = async () => {
                     "modelStoreBucket": modelStoreOutput.modelStoreBucket,
                     // pass tierId as the endpoint name
                     "modelStoreEndpoint": `t-${input.tierId}`,
-                } as Record<string, string>)
+                } as Record<string, string>),
+                glueConfig: pulumi.output({
+                    "region": input.region,
+                    "jobNameByAgg": jobNamesStr,
+                } as Record<string, string>),
             })
         })
     // setup ingress.
@@ -358,6 +416,10 @@ type TierInput = {
     glueSourceScript: string,
     glueTrainingDataBucket: string,
 
+    // offline aggregate glue job configuration
+    offlineAggregateSourceBucket: string,
+    offlineAggregateSourceFiles: Record<string, string>,
+
     // http server configuration
     httpServerConf?: HttpServerConf,
 
@@ -433,6 +495,9 @@ const setupTier = async (args: TierInput, destroy?: boolean) => {
     await stack.setConfig(nameof<inputType>("glueSourceBucket"), { value: args.glueSourceBucket })
     await stack.setConfig(nameof<inputType>("glueSourceScript"), { value: args.glueSourceScript })
     await stack.setConfig(nameof<inputType>("glueTrainingDataBucket"), { value: args.glueTrainingDataBucket })
+
+    await stack.setConfig(nameof<inputType>("offlineAggregateSourceBucket"), { value: args.offlineAggregateSourceBucket })
+    await stack.setConfig(nameof<inputType>("offlineAggregateSourceFiles"), { value: JSON.stringify(args.offlineAggregateSourceFiles) })
 
     if (args.httpServerConf !== undefined) {
         await stack.setConfig(nameof<inputType>("httpServerConf"), { value: JSON.stringify(args.httpServerConf) })

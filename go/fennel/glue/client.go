@@ -14,15 +14,6 @@ import (
 	"github.com/aws/aws-sdk-go/service/glue"
 )
 
-var aggToScriptLocation = map[string]string{
-	"topk": "s3://offline-aggregate-scripts/topk.py",
-}
-
-var aggToJobName = map[string]string{
-	"topk": "TopK",
-	"cf":   "CF",
-}
-
 type HyperParameterInfo struct {
 	Default interface{}  `json:"default"`
 	Type    reflect.Kind `json:"type"`
@@ -40,10 +31,13 @@ var supportedHyperParameters = HyperParamRegistry{
 
 type GlueArgs struct {
 	Region string `arg:"--region,env:AWS_REGION,help:AWS region"`
+	// these are passed as key1=value1 key2=value2
+	JobNameByAgg map[string]string `arg:"--job-name-by-agg,env:JOB_NAME_BY_AGG,help:GLUE Job name by Agg name" json:"job_name_by_agg,omitempty"`
 }
 
 type GlueClient struct {
-	client *glue.Glue
+	client       *glue.Glue
+	jobNameByAgg map[string]string
 }
 
 func NewGlueClient(args GlueArgs) GlueClient {
@@ -55,27 +49,9 @@ func NewGlueClient(args GlueArgs) GlueClient {
 	))
 	client := glue.New(sess)
 	return GlueClient{
-		client: client,
+		client:       client,
+		jobNameByAgg: args.JobNameByAgg,
 	}
-}
-
-func getGlueJobCommand(scriptLocation string) *glue.JobCommand {
-	jobCommand := &glue.JobCommand{
-		Name:           aws.String("glueetl"),
-		ScriptLocation: aws.String(scriptLocation),
-		PythonVersion:  aws.String("3"),
-	}
-
-	return jobCommand
-}
-
-func (c GlueClient) CreateJob(jobName, aggregateType string) error {
-	input := glue.CreateJobInput{
-		Name:    aws.String(jobName),
-		Command: getGlueJobCommand(aggToScriptLocation[aggregateType]),
-	}
-	_, err := c.client.CreateJob(&input)
-	return err
 }
 
 func getGlueTriggerActions(jobName string, arguments map[string]*string) []*glue.Action {
@@ -88,11 +64,11 @@ func getGlueTriggerActions(jobName string, arguments map[string]*string) []*glue
 	return actions
 }
 
-func (c GlueClient) CreateTrigger(aggregateName, aggregateType, cronSchedule string, jobArguments map[string]*string) error {
+func (c GlueClient) createTrigger(aggregateName, aggregateType, cronSchedule, jobName string, jobArguments map[string]*string) error {
 	triggerName := fmt.Sprintf("%s::%s", aggregateName, *jobArguments["--DURATION"])
 	input := glue.CreateTriggerInput{
 		Name:            aws.String(triggerName),
-		Actions:         getGlueTriggerActions(aggToJobName[aggregateType], jobArguments),
+		Actions:         getGlueTriggerActions(jobName, jobArguments),
 		Type:            aws.String(glue.TriggerTypeScheduled),
 		Schedule:        aws.String("cron(" + cronSchedule + " *)"),
 		StartOnCreation: aws.Bool(true),
@@ -176,12 +152,12 @@ func getHyperParameters(aggregateType string, hyperparamters string) (string, er
 
 func (c GlueClient) ScheduleOfflineAggregate(tierID ftypes.RealmID, agg aggregate.Aggregate) error {
 	aggregateType := strings.ToLower(string(agg.Options.AggType))
-	if _, ok := aggToJobName[aggregateType]; !ok {
+	jobName, ok := c.jobNameByAgg[aggregateType]
+	if !ok {
 		return fmt.Errorf("unknown offline aggregate type: %v", aggregateType)
 	}
 
 	jobArguments := map[string]*string{
-		"--TIER_ID":        aws.String(fmt.Sprintf("%d", tierID)),
 		"--AGGREGATE_NAME": aws.String(string(agg.Name)),
 		"--AGGREGATE_TYPE": aws.String(aggregateType),
 		"--LIMIT":          aws.String(fmt.Sprintf("%d", agg.Options.Limit)),
@@ -199,7 +175,7 @@ func (c GlueClient) ScheduleOfflineAggregate(tierID ftypes.RealmID, agg aggregat
 	for _, duration := range agg.Options.Durations {
 		jobArguments["--DURATION"] = aws.String(fmt.Sprintf("%d", duration))
 
-		err := c.CreateTrigger(string(agg.Name), aggregateType, agg.Options.CronSchedule, jobArguments)
+		err := c.createTrigger(string(agg.Name), aggregateType, agg.Options.CronSchedule, jobName, jobArguments)
 		if err != nil {
 			return err
 		}

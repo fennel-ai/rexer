@@ -11,6 +11,7 @@ import * as telemetry from "../telemetry";
 import * as prometheus from "../prometheus";
 import * as connectorSink from "../connectorsink";
 import * as glueSource from "../glue-script-source";
+import * as offlineAggregateSources from "../offline-aggregate-script-source";
 
 import * as process from "process";
 
@@ -78,7 +79,8 @@ export type PlaneOutput = {
     confluent: confluentenv.outputType,
     db: aurora.outputType,
     prometheus: prometheus.outputType,
-    connSink: connectorSink.outputType,
+    trainingData: connectorSink.outputType,
+    offlineAggregateSourceFiles: offlineAggregateSources.outputType,
     glue: glueSource.outputType,
 }
 
@@ -100,6 +102,7 @@ const setupPlugins = async (stack: pulumi.automation.Stack) => {
         ...telemetry.plugins,
         ...connectorSink.plugins,
         ...glueSource.plugins,
+        ...offlineAggregateSources.plugins,
     }
     console.info("installing plugins...");
     for (var key in plugins) {
@@ -197,6 +200,12 @@ const setupResources = async () => {
         prometheusEndpoint: prometheusOutput.prometheusWriteEndpoint,
     })
 
+    const offlineAggregateSourceFiles = await offlineAggregateSources.setup({
+        region: input.region,
+        roleArn: input.roleArn,
+        planeId: input.planeId,
+    })
+
     const glueOutput = await glueSource.setup({
         region: input.region,
         roleArn: input.roleArn,
@@ -211,7 +220,8 @@ const setupResources = async () => {
         confluent: confluentOutput,
         db: auroraOutput,
         prometheus: prometheusOutput,
-        connSink: connectorSinkOutput,
+        trainingData: connectorSinkOutput,
+        offlineAggregateSourceFiles: offlineAggregateSourceFiles,
         glue: glueOutput,
     }
 };

@@ -330,6 +330,15 @@ export const setup = async (input: inputType) => {
                                             key: "modelStoreEndpoint",
                                         }
                                     }
+                                },
+                                {
+                                    name: "JOB_NAME_BY_AGG",
+                                    valueFrom: {
+                                        secretKeyRef: {
+                                            name: "glue-conf",
+                                            key: "jobNameByAgg",
+                                        }
+                                    }
                                 }
                             ]
                         },],

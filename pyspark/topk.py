@@ -16,7 +16,7 @@ from pyspark.sql.functions import col, collect_list, array_join
 from pyspark.sql.functions import arrays_zip
 
 ## @params: [JOB_NAME]
-args = getResolvedOptions(sys.argv, ['JOB_NAME', 'TIER_ID', 'AGGREGATE_NAME', 'DURATION', 'AGGREGATE_TYPE', 'LIMIT'])
+args = getResolvedOptions(sys.argv, ['JOB_NAME', 'INPUT_BUCKET', 'OUTPUT_BUCKET', 'TIER_ID', 'AGGREGATE_NAME', 'DURATION', 'AGGREGATE_TYPE', 'LIMIT'])
 print("All args", args)
 sc = SparkContext()
 glueContext = GlueContext(sc)
@@ -36,7 +36,7 @@ print(f'======== Reading data from date: year={year}/month={month}/day={day}\n')
 
 # use default credentials which in this case would be derived from GLUE job IAM role which has access to the S3 buckets 
 fs = s3fs.S3FileSystem(anon=False)
-transformed_actions_path = f's3://p-2-offline-aggregate-storage/topics/t_{args["TIER_ID"]}_aggr_offline_transform/year={year}/month={month}/*/*/*.json'
+transformed_actions_path = f's3://{args["INPUT_BUCKET"]}/topics/t_{args["TIER_ID"]}_aggr_offline_transform/year={year}/month={month}/*/*/*.json'
 if not fs.glob(transformed_actions_path):
     print("No data found for the given date")
 
@@ -70,6 +70,6 @@ zip_topk = topk.withColumn("topk", arrays_zip("topk_keys","topk_score")).drop("t
 
 folder_name = f'{args["AGGREGATE_NAME"]}-{args["DURATION"]}'
 
-topk_aggregate_path = f's3://p-2-offline-aggregate-output/t_{args["TIER_ID"]}/{folder_name}/day={day}/{now_utc.strftime("%H:%M")}/{args["AGGREGATE_TYPE"]}.json'
+topk_aggregate_path = f's3://{args["OUTPUT_BUCKET"]}/t_{args["TIER_ID"]}/{folder_name}/day={day}/{now_utc.strftime("%H:%M")}/{args["AGGREGATE_TYPE"]}.json'
 zip_topk.write.mode('overwrite').parquet(topk_aggregate_path)
 

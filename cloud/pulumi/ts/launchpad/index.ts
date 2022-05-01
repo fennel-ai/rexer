@@ -7,6 +7,7 @@ import * as elasticache from "../elasticache";
 import * as redis from "../redis";
 import * as confluentenv from "../confluentenv";
 import * as connsink from "../connectorsink";
+import * as offlineAggregateSource from "../offline-aggregate-script-source";
 import * as glueSource from "../glue-script-source";
 import { nameof } from "../lib/util";
 
@@ -294,7 +295,8 @@ const eksOutput = dataplane[nameof<PlaneOutput>("eks")].value as eks.outputType
 const redisOutput = dataplane[nameof<PlaneOutput>("redis")].value as redis.outputType
 const elasticacheOutput = dataplane[nameof<PlaneOutput>("elasticache")].value as elasticache.outputType
 const vpcOutput = dataplane[nameof<PlaneOutput>("vpc")].value as vpc.outputType
-const connSinkOutput = dataplane[nameof<PlaneOutput>("connSink")].value as connsink.outputType
+const trainingDataOutput = dataplane[nameof<PlaneOutput>("trainingData")].value as connsink.outputType
+const offlineAggregateSourceFiles = dataplane[nameof<PlaneOutput>("offlineAggregateSourceFiles")].value as offlineAggregateSource.outputType
 const glueOutput = dataplane[nameof<PlaneOutput>("glue")].value as glueSource.outputType
 
 // Create/update/delete the tier.
@@ -326,9 +328,9 @@ if (tierId !== 0) {
         confPassword: confluentPassword,
         clusterId: confluentOutput.clusterId,
         environmentId: confluentOutput.environmentId,
-        connUserAccessKey: connSinkOutput.userAccessKeyId,
-        connUserSecret: connSinkOutput.userSecretAccessKey,
-        connBucketName: connSinkOutput.bucketName,
+        connUserAccessKey: trainingDataOutput.userAccessKeyId,
+        connUserSecret: trainingDataOutput.userSecretAccessKey,
+        connBucketName: trainingDataOutput.bucketName,
 
         db: "db",
         dbEndpoint: dbOutput.host,
@@ -348,7 +350,10 @@ if (tierId !== 0) {
 
         glueSourceBucket: glueOutput.scriptSourceBucket,
         glueSourceScript: glueOutput.scriptPath,
-        glueTrainingDataBucket: connSinkOutput.bucketName,
+        glueTrainingDataBucket: trainingDataOutput.bucketName,
+
+        offlineAggregateSourceBucket: offlineAggregateSourceFiles.bucketName,
+        offlineAggregateSourceFiles: offlineAggregateSourceFiles.sources,
 
         httpServerConf: tierConf.httpServerConf,
 
