@@ -142,25 +142,27 @@ export const setup = async (input: inputType): Promise<pulumi.Output<outputType>
     // create the glue job for topk
     const topkSource = input.sourceFiles["topk"]
     const topkJobName = `t-${input.tierId}-topk`
-    const topkJob = new aws.glue.Job(`t-${input.tierId}-topk-gluejob`, {
-        name: topkJobName,
-        command: {
-            scriptLocation: topkSource,
-            pythonVersion: "3",
-        },
-        roleArn: role.arn,
-        defaultArguments: {
-            '--TIER_ID': `${input.tierId}`,
-            '--INPUT_BUCKET': `${input.storageBucket}`,
-            '--OUTPUT_BUCKET': `${input.outputBucket}`,
-        },
-        description: "GLUE job to transform multiple features and labels files in JSON format to a single Parquet file",
-        glueVersion: "3.0",
-        workerType: "G.2X",
-        maxRetries: 5,
-        numberOfWorkers: 2,  // Has to be >= 2
-        timeout: 60,  // it should not take more than 60 minutes to transform the json files
-    }, {provider});
+    const topkJob = input.storageBucket.apply(storageBucket => {
+        return new aws.glue.Job(`t-${input.tierId}-topk-gluejob`, {
+            name: topkJobName,
+            command: {
+                scriptLocation: topkSource,
+                pythonVersion: "3",
+            },
+            roleArn: role.arn,
+            defaultArguments: {
+                '--TIER_ID': `${input.tierId}`,
+                '--INPUT_BUCKET': `${storageBucket}`,
+                '--OUTPUT_BUCKET': `${input.outputBucket}`,
+            },
+            description: "GLUE job to transform multiple features and labels files in JSON format to a single Parquet file",
+            glueVersion: "3.0",
+            workerType: "G.2X",
+            maxRetries: 5,
+            numberOfWorkers: 2,  // Has to be >= 2
+            timeout: 60,  // it should not take more than 60 minutes to transform the json files
+        }, {provider});
+    });
 
     const jobNames = topkJob.name.apply(topk => {
         return { "topk": topk } as Record<string, string>
