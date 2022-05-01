@@ -44,20 +44,38 @@ export const setup = async (input: inputType): Promise<pulumi.Output<outputType>
     }, { provider })
 
     const root = process.env["FENNEL_ROOT"]!
-    const scriptPath = path.join(root, "pyspark/topk.py");
-    const fileHash = md5.Md5.hashStr(fs.readFileSync(scriptPath).toString())
 
-    const fileName = "topk.py";
+    // topk source file
+    const topkScriptPath = path.join(root, "pyspark/topk.py");
+    const topkFileHash = md5.Md5.hashStr(fs.readFileSync(topkScriptPath).toString())
+
+    const topkFileName = "topk.py";
     const topk = new aws.s3.BucketObject(`p-${input.planeId}-topk-source-object`, {
         bucket: bucket.id,
-        key: fileName,
-        source: new pulumi.asset.FileAsset(scriptPath),
+        key: topkFileName,
+        source: new pulumi.asset.FileAsset(topkScriptPath),
         // in case of the file change, force an update
-        etag: fileHash,
-        sourceHash: fileHash,
-    }, { provider })
+        etag: topkFileHash,
+        sourceHash: topkFileHash,
+    }, { provider });
+
+    // cf source file
+    const cfScriptPath = path.join(root, "pyspark/cf.py");
+    const cfFileHash = md5.Md5.hashStr(fs.readFileSync(cfScriptPath).toString())
+
+    const cfFileName = "cf.py";
+    const cf = new aws.s3.BucketObject(`p-${input.planeId}-cf-source-object`, {
+        bucket: bucket.id,
+        key: cfFileName,
+        source: new pulumi.asset.FileAsset(cfScriptPath),
+        // in case of the file change, force an update
+        etag: cfFileHash,
+        sourceHash: cfFileHash,
+    }, { provider });
+
     const sources: Record<string, pulumi.Output<string>> = {
-        "topk": topk.key.apply(key => { return `s3://${bucketName}/${key}` })
+        "topk": topk.key.apply(key => { return `s3://${bucketName}/${key}` }),
+        "cf": cf.key.apply(key => { return `s3://${bucketName}/${key}` }),
     }
     return pulumi.output({
         bucketName: bucketName,

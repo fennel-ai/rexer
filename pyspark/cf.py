@@ -16,7 +16,7 @@ from pyspark.sql.functions import col, collect_list, array_join
 from pyspark.sql.functions import arrays_zip, concat_ws
 
 ## @params: [JOB_NAME]
-args = getResolvedOptions(sys.argv, ['JOB_NAME', 'TIER_ID', 'AGGREGATE_NAME', 'DURATION', 'AGGREGATE_TYPE', 'LIMIT', 'HYPERPARAMETERS'])
+args = getResolvedOptions(sys.argv, ['JOB_NAME', 'INPUT_BUCKET', 'OUTPUT_BUCKET', 'TIER_ID', 'AGGREGATE_NAME', 'DURATION', 'AGGREGATE_TYPE', 'LIMIT', 'HYPERPARAMETERS'])
 print("All args", args)
 sc = SparkContext()
 glueContext = GlueContext(sc)
@@ -39,7 +39,7 @@ print("Hyperparameters used - ", params)
 
 # use default credentials which in this case would be derived from GLUE job IAM role which has access to the S3 buckets 
 fs = s3fs.S3FileSystem(anon=False)
-transformed_actions_path = f's3://p-2-offline-aggregate-storage/topics/t_{args["TIER_ID"]}_aggr_offline_transform/year={year}/month={month}/*/*/*.json'
+transformed_actions_path = f's3://{args["INPUT_BUCKET"]}/topics/t_{args["TIER_ID"]}_aggr_offline_transform/year={year}/month={month}/*/*/*.json'
 
 if not fs.glob(transformed_actions_path):
     print("No data found for the given date")
@@ -165,5 +165,5 @@ cf.createOrReplaceTempView("CF")
 zip_cf = cf.withColumn("related_objects", arrays_zip("o2_list","score")).select("object","related_objects")
 folder_name = f'{args["AGGREGATE_NAME"]}-{args["DURATION"]}'
 
-aggregate_path = f's3://p-2-offline-aggregate-output/t_{args["TIER_ID"]}/{folder_name}/day={day}/{now_utc.strftime("%H:%M")}/{args["AGGREGATE_TYPE"]}.json'
+aggregate_path = f's3://{args["OUTPUT_BUCKET"]}/t_{args["TIER_ID"]}/{folder_name}/day={day}/{now_utc.strftime("%H:%M")}/{args["AGGREGATE_TYPE"]}.json'
 zip_cf.write.mode('overwrite').parquet(aggregate_path)

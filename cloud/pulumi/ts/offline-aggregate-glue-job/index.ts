@@ -155,7 +155,7 @@ export const setup = async (input: inputType): Promise<pulumi.Output<outputType>
                 '--INPUT_BUCKET': `${storageBucket}`,
                 '--OUTPUT_BUCKET': `${input.outputBucket}`,
             },
-            description: "GLUE job to transform multiple features and labels files in JSON format to a single Parquet file",
+            description: "GLUE job for TopK offline Aggregate",
             glueVersion: "3.0",
             workerType: "G.2X",
             maxRetries: 5,
@@ -164,9 +164,34 @@ export const setup = async (input: inputType): Promise<pulumi.Output<outputType>
         }, {provider});
     });
 
-    const jobNames = topkJob.name.apply(topk => {
-        return { "topk": topk } as Record<string, string>
-    })
+    // create glue job for cf
+    const cfSource = input.sourceFiles["cf"]
+    const cfJobName = `t-${input.tierId}-cf`
+    const cfJob = input.storageBucket.apply(storageBucket => {
+        return new aws.glue.Job(`t-${input.tierId}-cf-gluejob`, {
+            name: cfJobName,
+            command: {
+                scriptLocation: cfSource,
+                pythonVersion: "3",
+            },
+            roleArn: role.arn,
+            defaultArguments: {
+                '--TIER_ID': `${input.tierId}`,
+                '--INPUT_BUCKET': `${storageBucket}`,
+                '--OUTPUT_BUCKET': `${input.outputBucket}`,
+            },
+            description: "GLUE job for Collaborative Filtering offline Aggregate",
+            glueVersion: "3.0",
+            workerType: "G.2X",
+            maxRetries: 5,
+            numberOfWorkers: 2,  // Has to be >= 2
+            timeout: 60,  // it should not take more than 60 minutes to transform the json files
+        }, {provider});
+    });
+
+    const jobNames = pulumi.all([topkJob.name, cfJob.name]).apply(([topkName, cfName]) => {
+        return { "topk": topkName, "cf": cfName } as Record<string, string>
+    });
 
     return pulumi.output({
         jobNames: jobNames,
