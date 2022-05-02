@@ -185,7 +185,7 @@ export const setup = async (input: inputType): Promise<pulumi.Output<outputType>
             glueVersion: "3.0",
             workerType: "G.2X",
             maxRetries: 5,
-            numberOfWorkers: 5,  // Has to be >= 2
+            numberOfWorkers: 8,  // Has to be >= 2
             timeout: 600,
             maxConcurrentRuns: 20,
         }, {provider});
