@@ -161,7 +161,9 @@ export const setup = async (input: inputType): Promise<pulumi.Output<outputType>
             maxRetries: 5,
             numberOfWorkers: 3,  // Has to be >= 2
             timeout: 120,
-            maxConcurrentRuns: 50,
+            executionProperty: {
+                maxConcurrentRuns: 50,
+            },
         }, {provider});
     });
 
@@ -187,7 +189,9 @@ export const setup = async (input: inputType): Promise<pulumi.Output<outputType>
             maxRetries: 5,
             numberOfWorkers: 8,  // Has to be >= 2
             timeout: 600,
-            maxConcurrentRuns: 20,
+            executionProperty: {
+                maxConcurrentRuns: 20,
+            },
         }, {provider});
     });
 
