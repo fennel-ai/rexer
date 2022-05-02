@@ -65,25 +65,24 @@ var _ FProducer = RemoteProducer{}
 // Config for remoteProducer
 //=================================
 
+type ProducerConfigs []string
+
 type RemoteProducerConfig struct {
 	Topic           string
 	BootstrapServer string
 	Username        string
 	Password        string
 	Scope           resource.Scope
+	Configs         ProducerConfigs
 }
 
 func (conf RemoteProducerConfig) Materialize() (resource.Resource, error) {
 	configmap := ConfigMap(conf.BootstrapServer, conf.Username, conf.Password)
-	// controls how many records are batched together and sent as a single request to the broker (one for each partition)
-	// size in bytes; default=16384
-	configmap.Set("batch.size=327680")
-	// upper bound on the delay for batching of records
-	// if the local queue has records of size `batch.size`, this delay is respected (sent ASAP), but in the absense
-	// of load, this is the artifical delay introduced before sending batch of records; default=0 (sent immediately)
-	configmap.Set("linger.ms=10")
-	// change debug context
-	configmap.Set("debug=broker,topic,queue,msg")
+	for _, config := range conf.Configs {
+		if err := configmap.Set(config); err != nil {
+			return nil, err
+		}
+	}
 	producer, err := kafka.NewProducer(configmap)
 	if err != nil {
 		return nil, fmt.Errorf("failed to initialize kafka producer for Topic [%s]: %v", conf.Topic, err)

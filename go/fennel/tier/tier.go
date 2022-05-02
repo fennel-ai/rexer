@@ -290,14 +290,15 @@ func CreateKafka(scope resource.Scope, server, username, password string) (map[s
 			BootstrapServer: server,
 			Username:        username,
 			Password:        password,
-			Topic:           scope.PrefixedName(topic),
+			Topic:           scope.PrefixedName(topic.Topic),
 			Scope:           scope,
+			Configs:         topic.PConfigs,
 		}
 		kafkaProducer, err := kafkaProducerConfig.Materialize()
 		if err != nil {
 			return nil, fmt.Errorf("failed to crate kafka producer: %v", err)
 		}
-		producers[topic] = kafkaProducer.(libkafka.FProducer)
+		producers[topic.Topic] = kafkaProducer.(libkafka.FProducer)
 	}
 	return producers, nil
 }
