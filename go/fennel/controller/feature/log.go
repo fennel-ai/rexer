@@ -2,6 +2,7 @@ package feature
 
 import (
 	"context"
+	"time"
 
 	"fennel/kafka"
 	"fennel/lib/feature"
@@ -28,6 +29,11 @@ func LogMulti(ctx context.Context, tr tier.Tier, rows []feature.Row) error {
 
 func Log(ctx context.Context, tr tier.Tier, row feature.Row) error {
 	return LogMulti(ctx, tr, []feature.Row{row})
+}
+
+func Flush(tr tier.Tier, timeout time.Duration) error {
+	producer := tr.Producers[feature.KAFKA_TOPIC_NAME]
+	return producer.Flush(timeout)
 }
 
 func Read(ctx context.Context, consumer kafka.FConsumer) (*feature.Row, error) {
