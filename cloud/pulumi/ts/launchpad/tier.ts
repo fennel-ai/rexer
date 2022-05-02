@@ -274,8 +274,8 @@ const setupResources = async () => {
         sagemakerOutput.securityGroup, offlineAggregateGlueJobOutput.jobNames]).apply(async ([dbPassword, kafkaPassword, sagemakerRole, subnetIds, sagemakerSg, jobNames]) => {
             // transform jobname map to string with the format `key1=val1 key2=val2`
             let jobNamesStr = "";
-            Object.entries(jobNames).forEach(([agg, jobName]) => jobNamesStr += `${agg}=${jobName} `);
-            // remove the last trailing space
+            Object.entries(jobNames).forEach(([agg, jobName]) => jobNamesStr += `${agg}=${jobName},`);
+            // remove the last `,`
             jobNamesStr = jobNamesStr.substring(0, jobNamesStr.length - 1);
             console.log(jobNamesStr);
             return await configs.setup({
