@@ -122,6 +122,51 @@ func startProfileDBInsertion(tr tier.Tier) error {
 	return nil
 }
 
+func startPhaserDataUploader(tr tier.Tier) error {
+
+	for {
+		aggs, err := aggregate.RetrieveAll(context.Background(), tr)
+		if err != nil {
+			panic(err)
+		}
+		for _, agg := range aggs {
+			if _, ok := processedAggregates[agg.Name]; !ok {
+				log.Printf("Retrieved a new aggregate: %v", aggs)
+				err := processAggregate(tr, agg)
+				if err != nil {
+					tr.Logger.Error("Could not start aggregate processing", zap.String("aggregateName", string(agg.Name)), zap.Error(err))
+				}
+				processedAggregates[agg.Name] = struct{}{}
+			}
+		}
+		<-ticker.C
+	}
+
+	return nil
+}
+
+func startAggregateProcessing(tr tier.Tier) error {
+	processedAggregates := make(map[ftypes.AggName]struct{})
+	ticker := time.NewTicker(time.Second * 15)
+	for {
+		aggs, err := aggregate.RetrieveAll(context.Background(), tr)
+		if err != nil {
+			panic(err)
+		}
+		for _, agg := range aggs {
+			if _, ok := processedAggregates[agg.Name]; !ok {
+				log.Printf("Retrieved a new aggregate: %v", aggs)
+				err := processAggregate(tr, agg)
+				if err != nil {
+					tr.Logger.Error("Could not start aggregate processing", zap.String("aggregateName", string(agg.Name)), zap.Error(err))
+				}
+				processedAggregates[agg.Name] = struct{}{}
+			}
+		}
+		<-ticker.C
+	}
+}
+
 func main() {
 	// seed random number generator so that all uses of rand work well
 	rand.Seed(time.Now().UnixNano())
@@ -157,24 +202,7 @@ func main() {
 		panic(err)
 	}
 
-	// Set of aggregates that are currently being processed by the system.
-	processedAggregates := make(map[ftypes.AggName]struct{})
-	ticker := time.NewTicker(time.Second * 15)
-	for {
-		aggs, err := aggregate.RetrieveActive(context.Background(), tr)
-		if err != nil {
-			panic(err)
-		}
-		for _, agg := range aggs {
-			if _, ok := processedAggregates[agg.Name]; !ok {
-				log.Printf("Retrieved a new aggregate: %v", aggs)
-				err := processAggregate(tr, agg)
-				if err != nil {
-					tr.Logger.Error("Could not start aggregate processing", zap.String("aggregateName", string(agg.Name)), zap.Error(err))
-				}
-				processedAggregates[agg.Name] = struct{}{}
-			}
-		}
-		<-ticker.C
+	if err = startAggregateProcessing(tr); err != nil {
+		panic(err)
 	}
 }
