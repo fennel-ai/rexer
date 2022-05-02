@@ -82,6 +82,8 @@ func (conf RemoteProducerConfig) Materialize() (resource.Resource, error) {
 	// if the local queue has records of size `batch.size`, this delay is respected (sent ASAP), but in the absense
 	// of load, this is the artifical delay introduced before sending batch of records; default=0 (sent immediately)
 	configmap.Set("linger.ms=10")
+	// change debug context
+	configmap.Set("debug=broker,topic,queue,msg")
 	producer, err := kafka.NewProducer(configmap)
 	if err != nil {
 		return nil, fmt.Errorf("failed to initialize kafka producer for Topic [%s]: %v", conf.Topic, err)
