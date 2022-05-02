@@ -46,7 +46,10 @@ var ALL_TOPICS = []string{
 	// TODO: Deprecate `ACTIONLOG_JSON_KAFKA_TOPIC` once confluent go supports
 	// producing and consuming schema versioned messages
 	action.ACTIONLOG_JSON_KAFKA_TOPIC,
+
+	// NOTE: features kafka topic has multiple partitions.
 	feature.KAFKA_TOPIC_NAME,
+
 	profile.PROFILELOG_KAFKA_TOPIC,
 	counter.AGGREGATE_DELTA_TOPIC_NAME,
 	counter.AGGREGATE_OFFLINE_TRANSFORM_TOPIC_NAME,
