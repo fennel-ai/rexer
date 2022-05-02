@@ -161,6 +161,7 @@ export const setup = async (input: inputType): Promise<pulumi.Output<outputType>
             maxRetries: 5,
             numberOfWorkers: 2,  // Has to be >= 2
             timeout: 60,  // it should not take more than 60 minutes to transform the json files
+            maxConcurrentRuns: 50,
         }, {provider});
     });
 
@@ -184,8 +185,9 @@ export const setup = async (input: inputType): Promise<pulumi.Output<outputType>
             glueVersion: "3.0",
             workerType: "G.2X",
             maxRetries: 5,
-            numberOfWorkers: 2,  // Has to be >= 2
+            numberOfWorkers: 5,  // Has to be >= 2
             timeout: 60,  // it should not take more than 60 minutes to transform the json files
+            maxConcurrentRuns: 20,
         }, {provider});
     });
 
