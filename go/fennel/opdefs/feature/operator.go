@@ -3,6 +3,7 @@ package feature
 import (
 	"context"
 	"sync"
+	"time"
 
 	"fennel/controller/feature"
 	"fennel/engine/interpreter/bootarg"
@@ -67,6 +68,7 @@ func (f featureLog) Apply(ctx context.Context, static value.Dict, in operators.I
 		}
 		out.Append(row)
 	}
+	feature.Flush(f.tier, 5*time.Second)
 	return nil
 }
 
