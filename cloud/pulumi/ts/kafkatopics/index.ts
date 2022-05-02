@@ -5,10 +5,19 @@ export const plugins = {
     "kafka": "v3.1.2",
 }
 
+export type topicConf = {
+    name: string,
+    partitions?: number,
+    replicationFactor?: number,
+}
+
+const DEFAULT_PARTITIONS = 1;
+const DEFAULT_REPLICATION_FACTOR = 3;
+
 export type inputType = {
     apiKey: string,
     apiSecret: pulumi.Output<string>
-    topicNames: string[],
+    topics: topicConf[],
     bootstrapServer: string,
 }
 
@@ -25,14 +34,14 @@ export const setup = async (input: inputType) => {
         tlsEnabled: true,
     })
 
-    const topics = input.topicNames.map((topicName) => {
-        return new kafka.Topic(`topic-${topicName}`, {
-            name: topicName,
-            partitions: 1,
+    const topics = input.topics.map((topic) => {
+        return new kafka.Topic(`topic-${topic.name}`, {
+            name: topic.name,
+            partitions: topic.partitions || DEFAULT_PARTITIONS,
             // We set replication factor to 3 regardless of the cluster availability
             // since that's the minimum required by confluent cloud:
             // https://github.com/Mongey/terraform-provider-kafka/issues/40#issuecomment-456897983
-            replicationFactor: 3,
+            replicationFactor: topic.replicationFactor || DEFAULT_REPLICATION_FACTOR,
         }, { provider: kafkaProvider })
     })
 

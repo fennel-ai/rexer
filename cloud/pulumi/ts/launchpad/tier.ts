@@ -58,7 +58,7 @@ type inputType = {
     kubeconfig: string,
     namespace: string,
     // kafka configuration.
-    topicNames: string[],
+    topics: kafkatopics.topicConf[],
     bootstrapServer: string,
     kafkaApiKey: string,
     kafkaApiSecret: pulumi.Output<string>,
@@ -104,7 +104,7 @@ const parseConfig = (): inputType => {
         planeId: config.requireNumber(nameof<inputType>("planeId")),
 
         bootstrapServer: config.require(nameof<inputType>("bootstrapServer")),
-        topicNames: config.requireObject(nameof<inputType>("topicNames")),
+        topics: config.requireObject(nameof<inputType>("topics")),
         kafkaApiKey: config.require(nameof<inputType>("kafkaApiKey")),
         kafkaApiSecret: config.requireSecret(nameof<inputType>("kafkaApiSecret")),
 
@@ -182,7 +182,7 @@ const setupResources = async () => {
     const kafkaTopic = await kafkatopics.setup({
         apiKey: input.kafkaApiKey,
         apiSecret: input.kafkaApiSecret,
-        topicNames: input.topicNames,
+        topics: input.topics,
         bootstrapServer: input.bootstrapServer,
     })
     const offlineAggregateStorageBucket = await offlineAggregateStorage.setup({
@@ -380,7 +380,7 @@ type TierInput = {
     tierId: number,
     planeId: number,
     // kafka configuration.
-    topicNames: string[],
+    topics: kafkatopics.topicConf[],
     bootstrapServer: string,
     kafkaApiKey: string,
     kafkaApiSecret: string,
@@ -462,7 +462,7 @@ const setupTier = async (args: TierInput, destroy?: boolean) => {
     await stack.setConfig(nameof<inputType>("bootstrapServer"), { value: args.bootstrapServer })
     await stack.setConfig(nameof<inputType>("kafkaApiKey"), { value: args.kafkaApiKey })
     await stack.setConfig(nameof<inputType>("kafkaApiSecret"), { value: args.kafkaApiSecret, secret: true })
-    await stack.setConfig(nameof<inputType>("topicNames"), { value: JSON.stringify(args.topicNames) })
+    await stack.setConfig(nameof<inputType>("topics"), { value: JSON.stringify(args.topics) })
 
     await stack.setConfig(nameof<inputType>("bootstrapServer"), { value: args.bootstrapServer })
     await stack.setConfig(nameof<inputType>("kafkaApiKey"), { value: args.kafkaApiKey })

@@ -9,6 +9,7 @@ import * as confluentenv from "../confluentenv";
 import * as connsink from "../connectorsink";
 import * as offlineAggregateSource from "../offline-aggregate-script-source";
 import * as glueSource from "../glue-script-source";
+import * as kafkatopics from "../kafkatopics";
 import { nameof } from "../lib/util";
 
 import * as process from "process";
@@ -315,12 +316,20 @@ if (tierId !== 0) {
         tierConf.apiServerConf.storageclass =
             eksOutput.storageclasses[tierConf.apiServerConf.storageclass]
     }
+    const topics: kafkatopics.topicConf[] = [
+        {name: `t_${tierId}_actionlog`},
+        {name: `t_${tierId}_featurelog`, partitions: 10},
+        {name: `t_${tierId}_profilelog`},
+        {name: `t_${tierId}_actionlog_json`},
+        {name: `t_${tierId}_aggr_delta`},
+        {name: `t_${tierId}_aggr_offline_transform`},
+    ];
     setupTier({
         tierId: Number(tierId),
         planeId: Number(planeId),
 
         bootstrapServer: confluentOutput.bootstrapServer,
-        topicNames: [`t_${tierId}_actionlog`, `t_${tierId}_featurelog`, `t_${tierId}_profilelog`, `t_${tierId}_actionlog_json`, `t_${tierId}_aggr_delta`, `t_${tierId}_aggr_offline_transform`],
+        topics: topics,
         kafkaApiKey: confluentOutput.apiKey,
         kafkaApiSecret: confluentOutput.apiSecret,
 
