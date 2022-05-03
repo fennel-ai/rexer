@@ -105,7 +105,8 @@ export const setup = async (input: inputType): Promise<pulumi.Output<outputType>
                     ],
                     "Resource": [
                         "arn:aws:s3:::${storageBucket}",
-                        "arn:aws:s3:::${input.sourceBucket}"
+                        "arn:aws:s3:::${input.sourceBucket}",
+                        "arn:aws:s3:::${input.outputBucket}"
                     ]
                 },
                 {
