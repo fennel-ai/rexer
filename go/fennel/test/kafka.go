@@ -19,16 +19,16 @@ func createMockKafka(tierID ftypes.RealmID) (map[string]fkafka.FProducer, tier.K
 	producers := make(map[string]fkafka.FProducer)
 	for _, topic := range fkafka.ALL_TOPICS {
 		broker := fkafka.NewMockTopicBroker()
-		brokerMap[topic] = &broker
+		brokerMap[topic.Topic] = &broker
 		prodConfig := fkafka.MockProducerConfig{
 			Broker: &broker,
-			Topic:  scope.PrefixedName(topic),
+			Topic:  scope.PrefixedName(topic.Topic),
 		}
 		kProducer, err := prodConfig.Materialize()
 		if err != nil {
 			return nil, nil, err
 		}
-		producers[topic] = kProducer.(fkafka.FProducer)
+		producers[topic.Topic] = kProducer.(fkafka.FProducer)
 	}
 	consumerCreator := func(config fkafka.ConsumerConfig) (fkafka.FConsumer, error) {
 		broker, ok := brokerMap[config.Topic]
@@ -48,11 +48,11 @@ func createMockKafka(tierID ftypes.RealmID) (map[string]fkafka.FProducer, tier.K
 	return producers, consumerCreator, nil
 }
 
-func setupKafkaTopics(tierID ftypes.RealmID, host, username, password string, topics []string) error {
+func setupKafkaTopics(tierID ftypes.RealmID, host, username, password string, topics []fkafka.TopicConf) error {
 	scope := resource.NewTierScope(tierID)
 	names := make([]string, len(topics))
 	for i, topic := range topics {
-		names[i] = scope.PrefixedName(topic)
+		names[i] = scope.PrefixedName(topic.Topic)
 	}
 	// Create admin client
 	c, err := kafka.NewAdminClient(fkafka.ConfigMap(host, username, password))
@@ -85,11 +85,11 @@ func setupKafkaTopics(tierID ftypes.RealmID, host, username, password string, to
 	return nil
 }
 
-func teardownKafkaTopics(tierID ftypes.RealmID, host, username, password string, topics []string) error {
+func teardownKafkaTopics(tierID ftypes.RealmID, host, username, password string, topics []fkafka.TopicConf) error {
 	scope := resource.NewTierScope(tierID)
 	names := make([]string, len(topics))
 	for i, topic := range topics {
-		names[i] = scope.PrefixedName(topic)
+		names[i] = scope.PrefixedName(topic.Topic)
 	}
 	// Create admin client.
 	c, err := kafka.NewAdminClient(fkafka.ConfigMap(host, username, password))

@@ -156,13 +156,15 @@ func integrationProducer(t *testing.T, scope resource.Scope, topic string) FProd
 
 func integrationConsumer(t *testing.T, scope resource.Scope, topic, groupid, offsetpolicy string) FConsumer {
 	resource, err := RemoteConsumerConfig{
-		Topic:           scope.PrefixedName(topic),
 		BootstrapServer: test_kafka_servers,
 		Username:        kafka_username,
 		Password:        kafka_password,
-		GroupID:         groupid,
-		OffsetPolicy:    offsetpolicy,
 		Scope:           scope,
+		ConsumerConfig: ConsumerConfig{
+			Topic:        topic,
+			GroupID:      groupid,
+			OffsetPolicy: offsetpolicy,
+		},
 	}.Materialize()
 	assert.NoError(t, err)
 	consumer := resource.(FConsumer)
