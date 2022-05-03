@@ -70,6 +70,6 @@ zip_topk = topk.withColumn("topk", arrays_zip("topk_keys","topk_score")).drop("t
 
 folder_name = f'{args["AGGREGATE_NAME"]}-{args["DURATION"]}'
 
-topk_aggregate_path = f's3://{args["OUTPUT_BUCKET"]}/t_{args["TIER_ID"]}/{folder_name}/day={day}/{now_utc.strftime("%H:%M")}/{args["AGGREGATE_TYPE"]}.json'
+topk_aggregate_path = f's3://{args["OUTPUT_BUCKET"]}/t_{args["TIER_ID"]}/{folder_name}/day={day}/{now_utc.strftime("%H:%M")}/{args["AGGREGATE_TYPE"]}'
 zip_topk.write.mode('overwrite').parquet(topk_aggregate_path)
 

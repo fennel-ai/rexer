@@ -19,7 +19,14 @@ require (
 	google.golang.org/protobuf v1.27.1
 )
 
-require github.com/google/go-cmp v0.5.7 // indirect
+require (
+	github.com/apache/arrow/go/arrow v0.0.0-20200730104253-651201b0f516 // indirect
+	github.com/apache/thrift v0.14.2 // indirect
+	github.com/google/go-cmp v0.5.7 // indirect
+	github.com/pierrec/lz4/v4 v4.1.8 // indirect
+	github.com/xitongsys/parquet-go v1.6.2 // indirect
+	golang.org/x/xerrors v0.0.0-20200804184101-5ec99f83aff1 // indirect
+)
 
 require (
 	github.com/alexflint/go-scalar v1.0.0 // indirect
@@ -40,7 +47,7 @@ require (
 	github.com/golang/snappy v0.0.3 // indirect
 	github.com/google/flatbuffers v1.12.1 // indirect
 	github.com/jmespath/go-jmespath v0.4.0 // indirect
-	github.com/klauspost/compress v1.12.3 // indirect
+	github.com/klauspost/compress v1.13.1 // indirect
 	github.com/matttproud/golang_protobuf_extensions v1.0.1 // indirect
 	github.com/mtraver/base91 v1.0.0
 	github.com/pkg/errors v0.9.1
@@ -48,6 +55,7 @@ require (
 	github.com/prometheus/client_model v0.2.0 // indirect
 	github.com/prometheus/common v0.32.1 // indirect
 	github.com/prometheus/procfs v0.7.3 // indirect
+	github.com/xitongsys/parquet-go-source v0.0.0-20220315005136-aec0fe3e777c
 	github.com/yuin/gopher-lua v0.0.0-20200816102855-ee81675732da // indirect
 	go.opencensus.io v0.22.5 // indirect
 	go.uber.org/atomic v1.9.0 // indirect

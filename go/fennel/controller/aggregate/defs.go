@@ -52,11 +52,12 @@ func Store(ctx context.Context, tier tier.Tier, agg aggregate.Aggregate) error {
 	if err != nil {
 		return fmt.Errorf("can not marshal aggregate options: %v", err)
 	}
+	servingDataSer, err := proto.Marshal(aggregate.ToProtoServingData(agg.ServingData))
 	if agg.Timestamp == 0 {
 		agg.Timestamp = ftypes.Timestamp(time.Now().Unix())
 	}
 
-	return modelAgg.Store(ctx, tier, agg.Name, querySer, agg.Timestamp, optionSer)
+	return modelAgg.Store(ctx, tier, agg.Name, querySer, agg.Timestamp, optionSer, servingDataSer)
 }
 
 func Retrieve(ctx context.Context, tier tier.Tier, aggname ftypes.AggName) (aggregate.Aggregate, error) {

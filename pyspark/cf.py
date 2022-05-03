@@ -15,6 +15,7 @@ from pyspark.sql import functions as F
 from pyspark.sql.functions import col, collect_list, array_join
 from pyspark.sql.functions import arrays_zip, concat_ws
 
+success_file_name = "_SUCCESS-"
 ## @params: [JOB_NAME]
 args = getResolvedOptions(sys.argv, ['JOB_NAME', 'INPUT_BUCKET', 'OUTPUT_BUCKET', 'TIER_ID', 'AGGREGATE_NAME', 'DURATION', 'AGGREGATE_TYPE', 'LIMIT', 'HYPERPARAMETERS'])
 print("All args", args)
@@ -165,5 +166,8 @@ cf.createOrReplaceTempView("CF")
 zip_cf = cf.withColumn("related_objects", arrays_zip("o2_list","score")).select("object","related_objects")
 folder_name = f'{args["AGGREGATE_NAME"]}-{args["DURATION"]}'
 
-aggregate_path = f's3://{args["OUTPUT_BUCKET"]}/t_{args["TIER_ID"]}/{folder_name}/day={day}/{now_utc.strftime("%H:%M")}/{args["AGGREGATE_TYPE"]}.json'
+aggregate_path = f's3://{args["OUTPUT_BUCKET"]}/t_{args["TIER_ID"]}/{folder_name}/day={day}/{now_utc.strftime("%H:%M")}/{args["AGGREGATE_TYPE"]}'
 zip_cf.write.mode('overwrite').parquet(aggregate_path)
+
+cur_timestamp =  datetime.utcnow().timestamp()
+zip_cf.saveAsTextFile(f"{aggregate_path}/{success_file_name}{cur_timestamp}")

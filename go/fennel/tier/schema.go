@@ -95,5 +95,5 @@ var Schema = db.Schema{
 	// ==================== END Schema for model registry ======================
 
 	11: `ALTER TABLE aggregate_config ADD COLUMN id INT UNSIGNED NOT NULL AUTO_INCREMENT UNIQUE;`,
-	12: `ALTER TABLE aggregate_config ADD COLUMN update_version BIGINT UNSIGNED NOT NULL;`,
+	12: `ALTER TABLE aggregate_config ADD COLUMN serving_data_ser BLOB NULL;`,
 }

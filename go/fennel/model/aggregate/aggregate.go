@@ -10,12 +10,12 @@ import (
 	"fennel/tier"
 )
 
-func Store(ctx context.Context, tier tier.Tier, name ftypes.AggName, querySer []byte, ts ftypes.Timestamp, optionSer []byte) error {
+func Store(ctx context.Context, tier tier.Tier, name ftypes.AggName, querySer []byte, ts ftypes.Timestamp, optionSer []byte, servingDataSer []byte) error {
 	if len(name) > 255 {
 		return fmt.Errorf("aggregate name can not be longer than 255 chars")
 	}
-	sql := `INSERT INTO aggregate_config (name, query_ser, timestamp, options_ser) VALUES (?, ?, ?, ?)`
-	_, err := tier.DB.QueryContext(ctx, sql, name, querySer, ts, optionSer)
+	sql := `INSERT INTO aggregate_config (name, query_ser, timestamp, options_ser, serving_data_ser) VALUES (?, ?, ?, ?, ?)`
+	_, err := tier.DB.QueryContext(ctx, sql, name, querySer, ts, optionSer, servingDataSer)
 	return err
 }
 

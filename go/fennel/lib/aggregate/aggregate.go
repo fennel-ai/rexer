@@ -35,7 +35,8 @@ type Aggregate struct {
 	// TODO: This is an internal only field and returning this back to the user
 	// might confuse them. Consider creating two different structs - one returned back to the
 	// user and another for internal use only
-	Id ftypes.AggId
+	Id          ftypes.AggId
+	ServingData ServingData
 }
 
 func IsValid(s ftypes.AggType) bool {
@@ -124,6 +125,9 @@ func (agg Aggregate) IsOffline() bool {
 	return agg.Options.CronSchedule != ""
 }
 
+type ServingData struct {
+	UpdateVersion map[uint64]uint64
+}
 type Options struct {
 	AggType         ftypes.AggType
 	Durations       []uint64
@@ -159,12 +163,13 @@ func (o Options) Equals(other Options) bool {
 }
 
 type AggregateSer struct {
-	Name      ftypes.AggName   `db:"name"`
-	QuerySer  []byte           `db:"query_ser"`
-	Timestamp ftypes.Timestamp `db:"timestamp"`
-	OptionSer []byte           `db:"options_ser"`
-	Active    bool             `db:"active"`
-	Id        ftypes.AggId     `db:"id"`
+	Name           ftypes.AggName   `db:"name"`
+	QuerySer       []byte           `db:"query_ser"`
+	Timestamp      ftypes.Timestamp `db:"timestamp"`
+	OptionSer      []byte           `db:"options_ser"`
+	Active         bool             `db:"active"`
+	Id             ftypes.AggId     `db:"id"`
+	ServingDataSer []byte           `db:"serving_data_ser"`
 }
 
 func FromAggregateSer(ser AggregateSer) (Aggregate, error) {
@@ -179,6 +184,11 @@ func FromAggregateSer(ser AggregateSer) (Aggregate, error) {
 		return Aggregate{}, err
 	}
 	agg.Options = FromProtoOptions(&popt)
+	var servingData ProtoAggServingData
+	if err := proto.Unmarshal(ser.ServingDataSer, &servingData); err != nil {
+		return Aggregate{}, err
+	}
+	agg.ServingData = FromProtoServingData(&servingData)
 	agg.Id = ser.Id
 	return agg, nil
 }

@@ -12,6 +12,9 @@ import (
 	"fennel/lib/value"
 )
 
+// We dont include Update Version in the marshalled json because it is not
+// needed for the client to know the version of the aggregate.
+
 func (agg *Aggregate) UnmarshalJSON(data []byte) error {
 	var fields struct {
 		Name      ftypes.AggName   `json:"Name"`
