@@ -18,7 +18,7 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
-func testProducerConsumer(t *testing.T, producer FProducer, consumer FConsumer) {
+func testProducerConsumer(t *testing.T, producer FProducer, consumer FConsumer, ordered bool) {
 	// spin up two goroutines that produce/consume 10 messages each asyncrhonously
 	wg := sync.WaitGroup{}
 	wg.Add(2)
@@ -37,18 +37,25 @@ func testProducerConsumer(t *testing.T, producer FProducer, consumer FConsumer) 
 	go func() {
 		defer wg.Done()
 		defer consumer.Close()
+		expected := make([][]byte, 10)
+		actual := make([][]byte, 10)
 		for i := 0; i < 10; i++ {
 			v := value.Int(i)
-			expected := value.ToJSON(v)
-			found, err := consumer.Read(ctx, time.Second*30)
+			expected[i] = value.ToJSON(v)
+			var err error
+			actual[i], err = consumer.Read(ctx, time.Second*30)
 			assert.NoError(t, err)
-			assert.Equal(t, expected, found)
+		}
+		if ordered {
+			assert.Equal(t, expected, actual)
+		} else {
+			assert.ElementsMatch(t, expected, actual)
 		}
 	}()
 	wg.Wait()
 }
 
-func testProducerConsumerProto(t *testing.T, producer FProducer, consumer FConsumer) {
+func testProducerConsumerProto(t *testing.T, producer FProducer, consumer FConsumer, ordered bool) {
 	// spin up two goroutines that produce/consume 10 messages each asyncrhonously
 	wg := sync.WaitGroup{}
 	wg.Add(2)
@@ -67,19 +74,33 @@ func testProducerConsumerProto(t *testing.T, producer FProducer, consumer FConsu
 	go func() {
 		defer wg.Done()
 		defer consumer.Close()
+		expected := make([]aggregate.AggRequest, 10)
+		actual := make([]aggregate.AggRequest, 10)
 		for i := 0; i < 10; i++ {
 			aggname := strconv.Itoa(i)
-			expected := aggregate.AggRequest{AggName: aggname}
-			var found aggregate.AggRequest
-			err := consumer.ReadProto(ctx, &found, time.Second*30)
+			expected[i] = aggregate.AggRequest{AggName: aggname}
+			err := consumer.ReadProto(ctx, &actual[i], time.Second*30)
 			assert.NoError(t, err)
-			assert.True(t, proto.Equal(&expected, &found))
+		}
+		if ordered {
+			for i := 0; i < 10; i++ {
+				assert.True(t, proto.Equal(&expected[i], &actual[i]))
+			}
+		} else {
+			// if they are unordered, it is difficult to match the equality across protos,
+			// so for now, we will match the agg names
+			e := make([]string, 10)
+			a := make([]string, 10)
+			for i := 0; i < 10; i++ {
+				e[i], a[i] = expected[i].AggName, actual[i].AggName
+			}
+			assert.ElementsMatch(t, e, a)
 		}
 	}()
 	wg.Wait()
 }
 
-func testReadBatch(t *testing.T, producer FProducer, consumer FConsumer) {
+func testReadBatch(t *testing.T, producer FProducer, consumer FConsumer, ordered bool) {
 	expected := make([][]byte, 0)
 	for i := 0; i < 10; i++ {
 		msg := []byte(fmt.Sprintf("%d", i))
@@ -113,9 +134,68 @@ func testReadBatch(t *testing.T, producer FProducer, consumer FConsumer) {
 		found := append(batch1, batch2...)
 		found = append(found, batch3...)
 
-		assert.ElementsMatch(t, expected, found)
+		if ordered {
+			assert.Equal(t, expected, found)
+		} else {
+			assert.ElementsMatch(t, expected, found)
+		}
 	}()
 	wg.Wait()
+}
+
+func testSameKeyReadBySameConsumer(t *testing.T, producer FProducer, consumer1, consumer2 FConsumer, ordered bool) {
+	wg := sync.WaitGroup{}
+	wg.Add(3)
+	ctx := context.Background()
+	found1 := make([][]byte, 0)
+	found2 := make([][]byte, 0)
+	go func() {
+		defer wg.Done()
+		defer producer.Close()
+		for i := 0; i < 10; i++ {
+			msg, e := value.Int(i).MarshalJSON()
+			assert.NoError(t, e)
+			// same key for two consecutive messages
+			key := []byte(fmt.Sprintf("%d", (i/2)*10))
+			assert.NoError(t, producer.Log(ctx, msg, key))
+		}
+	}()
+	go func() {
+		defer wg.Done()
+		defer consumer1.Close()
+		var err error
+		found1, err = consumer1.ReadBatch(ctx, 10, time.Second*10)
+		assert.NoError(t, err)
+		consumer1.Commit()
+		// it is possible that a consumer has nothing to commit in case of a multi-partition setup
+	}()
+	go func() {
+		defer wg.Done()
+		defer consumer2.Close()
+		var err error
+		found2, err = consumer2.ReadBatch(ctx, 10, time.Second*10)
+		assert.NoError(t, err)
+		consumer2.Commit()
+		// it is possible that a consumer has nothing to commit in case of a multi-partition setup
+	}()
+	wg.Wait()
+	// in the multi-partition setup, one consumer would have been assigned to one partition, hence should read
+	// messages in even number (we have the same key for two messages); and since each consumer will read them in order,
+	// every next message should have +1 value than itself
+	for i := 0; i < len(found1)/2; i++ {
+		v1, e := value.FromJSON(found1[i*2])
+		assert.NoError(t, e)
+		v2, e := value.FromJSON(found1[i*2+1])
+		assert.NoError(t, e)
+		assert.Equal(t, int64(v1.(value.Int))+1, int64(v2.(value.Int)))
+	}
+	for i := 0; i < len(found2)/2; i++ {
+		v1, e := value.FromJSON(found2[i*2])
+		assert.NoError(t, e)
+		v2, e := value.FromJSON(found2[i*2+1])
+		assert.NoError(t, e)
+		assert.Equal(t, int64(v1.(value.Int))+1, int64(v2.(value.Int)))
+	}
 }
 
 func getMockProducer(t *testing.T, scope resource.Scope, topic string, broker *MockBroker) FProducer {
@@ -172,7 +252,7 @@ func testBacklog(t *testing.T, producer FProducer, consumer FConsumer) {
 	wg.Wait()
 }
 
-func testDifferentConsumerGroups(t *testing.T, producer FProducer, consumer1, consumer2 FConsumer) {
+func testDifferentConsumerGroups(t *testing.T, producer FProducer, consumer1, consumer2 FConsumer, ordered bool) {
 	// this test verifies that consumers of different groups are independent and dont' affect
 	// each other's commits/messages
 	ctx := context.Background()
@@ -195,11 +275,20 @@ func testDifferentConsumerGroups(t *testing.T, producer FProducer, consumer1, co
 		defer consumer2.Close()
 		found, err := consumer1.ReadBatch(ctx, 5, time.Second*30)
 		assert.NoError(t, err)
-		assert.Equal(t, expected, found)
+		if ordered {
+			assert.Equal(t, expected, found)
+		} else {
+			assert.ElementsMatch(t, expected, found)
+		}
 		consumer1.Commit()
 		found, err = consumer2.ReadBatch(ctx, 5, time.Second*30)
 		assert.NoError(t, err)
-		assert.Equal(t, expected, found)
+		if ordered {
+			assert.Equal(t, expected, found)
+		} else {
+			assert.ElementsMatch(t, expected, found)
+		}
+		consumer2.Commit()
 	}()
 	wg.Wait()
 }
@@ -222,30 +311,32 @@ func testSameConsumerGroup(t *testing.T, producer FProducer, consumer1, consumer
 			assert.NoError(t, producer.Log(ctx, msg, nil))
 		}
 	}()
+	// in the scenario where topic has multiple partitions, it is not required that messages are
+	// equally distributed across the partitions. Try reading 10 elements from each with a timeout.
 	go func() {
 		defer wg.Done()
 		defer consumer1.Close()
 		var err error
-		found1, err = consumer1.ReadBatch(ctx, 5, time.Second*30)
+		found1, err = consumer1.ReadBatch(ctx, 10, time.Second*10)
 		assert.NoError(t, err)
-		_, err = consumer1.Commit()
-		assert.NoError(t, err)
+		consumer1.Commit()
+		// it is possible that a consumer has nothing to commit in case of a multi-partition setup
 	}()
 	go func() {
 		defer wg.Done()
 		defer consumer2.Close()
 		var err error
-		found2, err = consumer2.ReadBatch(ctx, 5, time.Second*30)
+		found2, err = consumer2.ReadBatch(ctx, 10, time.Second*10)
 		assert.NoError(t, err)
-		_, err = consumer2.Commit()
-		assert.NoError(t, err)
+		consumer2.Commit()
+		// it is possible that a consumer has nothing to commit in case of a multi-partition setup
 	}()
 	wg.Wait()
 	found := append(found1, found2...)
 	assert.ElementsMatch(t, expected, found)
 }
 
-func testNoAutoCommit(t *testing.T, producer FProducer, consumer1, consumer2 FConsumer) {
+func testNoAutoCommit(t *testing.T, producer FProducer, consumer1, consumer2 FConsumer, ordered bool) {
 	// verify that if a consumer closes before committing, its messages
 	// get assigned to another consumer
 	// NOTE: current local / mock kafka implementation doesn't support commits so this
@@ -275,11 +366,15 @@ func testNoAutoCommit(t *testing.T, producer FProducer, consumer1, consumer2 FCo
 	wg.Wait()
 	// now consumer 2 is kicked off, which should be able to read all messages
 	defer consumer2.Close()
-	found, err := consumer2.ReadBatch(ctx, 10, time.Second*30)
+	found, err := consumer2.ReadBatch(ctx, 20, time.Second*10)
 	assert.NoError(t, err)
-	_, err = consumer2.Commit()
-	assert.NoError(t, err)
-	assert.ElementsMatch(t, found, expected)
+	// it is possible that a consumer has nothing to commit in case of a multi-partition setup
+	consumer2.Commit()
+	if ordered {
+		assert.Equal(t, found, expected)
+	} else {
+		assert.ElementsMatch(t, found, expected)
+	}
 }
 
 func TestLocal(t *testing.T) {
@@ -292,19 +387,19 @@ func TestLocal(t *testing.T) {
 		broker := NewMockTopicBroker()
 		producer := getMockProducer(t, scope, topic, &broker)
 		consumer := getMockConsumer(t, scope, topic, "group", &broker)
-		testProducerConsumer(t, producer, consumer)
+		testProducerConsumer(t, producer, consumer, true /*ordered=*/)
 	})
 	t.Run("local_producer_consumer_proto", func(t *testing.T) {
 		broker := NewMockTopicBroker()
 		producer := getMockProducer(t, scope, topic, &broker)
 		consumer := getMockConsumer(t, scope, topic, "group", &broker)
-		testProducerConsumerProto(t, producer, consumer)
+		testProducerConsumerProto(t, producer, consumer, true /*ordered=*/)
 	})
 	t.Run("local_read_batch", func(t *testing.T) {
 		broker := NewMockTopicBroker()
 		producer := getMockProducer(t, scope, topic, &broker)
 		consumer := getMockConsumer(t, scope, topic, "group", &broker)
-		testReadBatch(t, producer, consumer)
+		testReadBatch(t, producer, consumer, true /*ordered=*/)
 	})
 	t.Run("local_flush_commit_backlog", func(t *testing.T) {
 		broker := NewMockTopicBroker()
@@ -317,7 +412,7 @@ func TestLocal(t *testing.T) {
 		producer := getMockProducer(t, scope, topic, &broker)
 		consumer1 := getMockConsumer(t, scope, topic, "group1", &broker)
 		consumer2 := getMockConsumer(t, scope, topic, "group2", &broker)
-		testDifferentConsumerGroups(t, producer, consumer1, consumer2)
+		testDifferentConsumerGroups(t, producer, consumer1, consumer2, true /*ordered=*/)
 	})
 	t.Run("local_same_consumer_group", func(t *testing.T) {
 		broker := NewMockTopicBroker()

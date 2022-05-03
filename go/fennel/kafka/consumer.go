@@ -93,6 +93,7 @@ func (k RemoteConsumer) ReadBatch(ctx context.Context, upto int, timeout time.Du
 	timer := time.NewTimer(timeout).C
 	var ret [][]byte
 	start := time.Now()
+	seen := make(map[string]struct{})
 	for len(ret) < upto {
 		select {
 		case <-timer:
@@ -107,7 +108,11 @@ func (k RemoteConsumer) ReadBatch(ctx context.Context, upto int, timeout time.Du
 			}
 			msg, err := k.ReadMessage(t)
 			if err == nil {
-				ret = append(ret, msg.Value)
+				par := msg.TopicPartition.String()
+				if _, ok := seen[par]; !ok {
+					seen[par] = struct{}{}
+					ret = append(ret, msg.Value)
+				}
 			} else if kerr, ok := err.(kafka.Error); ok && kerr.Code() != kafka.ErrTimedOut {
 				return nil, err
 			}
