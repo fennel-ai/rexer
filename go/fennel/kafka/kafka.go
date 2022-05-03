@@ -63,10 +63,6 @@ var ALL_TOPICS = []TopicConf{
 			// if the local queue has records of size `batch.size`, this delay is respected (sent ASAP), but in the absense
 			// of load, this is the artifical delay introduced before sending batch of records; default=0 (sent immediately)
 			"linger.ms=10",
-			// TODO(mohit): REMOVE ME
-			"debug=msg",
-			// NOTE: This might lead to uneven distribution; see: https://issues.apache.org/jira/browse/KAFKA-9965
-			"partitioner.class=org.apache.kafka.clients.producer.RoundRobinPartitioner",
 		},
 	},
 
@@ -84,5 +80,11 @@ func ConfigMap(server, username, password string) *kafka.ConfigMap {
 		"sasl.mechanisms":   SaslMechanism,
 		// gather statistics every 1s
 		"statistics.interval.ms": 1 * 1000,
+		// https://github.com/edenhill/librdkafka/blob/master/CONFIGURATION.md
+		// default: 100000
+		"queue.buffering.max.messages": 2000000,
+		// default: 1048576
+		// this has a higher priority than `queue.buffering.max.messages`
+		"queue.buffering.max.kbytes": 2097152,
 	}
 }
