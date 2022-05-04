@@ -58,18 +58,6 @@ func FromProtoAggregate(pagg *ProtoAggregate) (Aggregate, error) {
 	return agg, nil
 }
 
-func FromProtoServingData(pdata *ProtoAggServingData) ServingData {
-	return ServingData{
-		UpdateVersion: pdata.UpdateVersions,
-	}
-}
-
-func ToProtoServingData(data ServingData) *ProtoAggServingData {
-	return &ProtoAggServingData{
-		UpdateVersions: data.UpdateVersion,
-	}
-}
-
 func FromProtoOptions(popt *AggOptions) Options {
 	return Options{
 		AggType:         ftypes.AggType(popt.AggType),

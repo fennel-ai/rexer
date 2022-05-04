@@ -95,5 +95,10 @@ var Schema = db.Schema{
 	// ==================== END Schema for model registry ======================
 
 	11: `ALTER TABLE aggregate_config ADD COLUMN id INT UNSIGNED NOT NULL AUTO_INCREMENT UNIQUE;`,
-	12: `ALTER TABLE aggregate_config ADD COLUMN serving_data_ser BLOB NULL;`,
+	12: `CREATE TABLE IF NOT EXISTS aggregate_serving_data (
+			name VARCHAR(255) NOT NULL,
+			duration BIGINT UNSIGNED NOT NULL,
+			update_version BIGINT UNSIGNED DEFAULT 0,
+			PRIMARY KEY (name, duration)
+		);`,
 }

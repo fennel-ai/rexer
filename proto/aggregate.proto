@@ -11,12 +11,6 @@ message ProtoAggregate {
   Ast query = 2;
   uint64 timestamp = 3;
   AggOptions options = 4;
-  ProtoAggServingData serving_data = 5;
-}
-
-message ProtoAggServingData {
-  // For every duration, we need a seperate version.
-  map<uint64, uint64> update_versions = 1;
 }
 
 message AggOptions {

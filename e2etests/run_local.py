@@ -24,11 +24,9 @@ class LocalTier():
         signal.signal(signal.SIGINT, self.kill_process)
 
     def run_local_server(self):
-        tier_id = random.randint(0, 1e8)
-        self.env['TIER_ID'] = str(tier_id)
         with lib.gorun('fennel/test/cmds/tiergod', 'dynamic,integration', self.env, flags=['--mode', 'create'], wait=True):
             pass
-        print("Tier id", tier_id)
+        print("Tier id", 106)
         self.env['METRICS_PORT'] = str(2436)
         self.env['PPROF_PORT'] = str(2437)
         self.env['BADGER_DIR'] = '/tmp/badger/' + lib.randname(5)

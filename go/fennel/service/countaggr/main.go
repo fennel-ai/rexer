@@ -9,6 +9,7 @@ import (
 	_ "net/http/pprof"
 	"os"
 	"os/exec"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -23,6 +24,7 @@ import (
 	"fennel/lib/profile"
 	"fennel/lib/timer"
 	"fennel/lib/value"
+	modelAgg "fennel/model/aggregate"
 	_ "fennel/opdefs" // ensure that all operators are present in the binary
 	"fennel/service/common"
 	"fennel/tier"
@@ -36,7 +38,10 @@ import (
 )
 
 var SUCCESS_PREFIX = "_SUCCESS-"
+
+// parquet file is read in batches of BATCH_SIZE from disk.
 var BATCH_SIZE = 1000
+var REDIS_BULK_UPLOAD_FILE_SUFFIX = "-redis-bulk-upload.txt"
 
 var backlog_stats = promauto.NewGaugeVec(prometheus.GaugeOpts{
 	Name: "aggregator_backlog",
@@ -87,18 +92,64 @@ func processAggregate(tr tier.Tier, agg libaggregate.Aggregate) error {
 	return nil
 }
 
-// func getLatestVersion(files []string) (int, error) {
-
-// }
-
 type ItemScore struct {
-	ItemName *string  `parquet:"name=topk_keys, type=BYTE_ARRAY, convertedtype=UTF8"`
-	Score    *float64 `parquet:"name=topk_score, type=FLOAT"`
+	ItemName *string  `parquet:"name=item, type=BYTE_ARRAY, convertedtype=UTF8"`
+	Score    *float64 `parquet:"name=score, type=FLOAT"`
 }
 
 type Example struct {
-	Key      *string     `parquet:"name=groupkey, type=BYTE_ARRAY"`
-	ItemName []ItemScore `parquet:"name=topk, type=LIST"`
+	Key      *string     `parquet:"name=groupkey, type=BYTE_ARRAY, convertedtype=UTF8"`
+	ItemName []ItemScore `parquet:"name=item_list, type=LIST"`
+}
+
+func bulkUploadToRedis(tr tier.Tier, file string, numRows int) bool {
+	redisAddress := tr.Args.RedisServer[:strings.IndexByte(tr.Args.RedisServer, ':')]
+	fetchClusterNodes := "redis-cli -c -h " + redisAddress + " --tls  cluster nodes | cut -f2 -d' '"
+	fmt.Println(fetchClusterNodes)
+	out, err := exec.Command("bash", "-c", fetchClusterNodes).Output()
+	fmt.Println(string(out))
+
+	if err != nil {
+		tr.Logger.Error("failed to fetch redis cluster nodes", zap.Error(err))
+		return false
+	}
+	fmt.Println(string(out))
+
+	nodes := strings.Split(string(out), "\n")
+	if len(nodes) == 0 {
+		tr.Logger.Error("no redis cluster nodes found")
+		return false
+	}
+
+	successfulRequests := 0
+	for _, node := range nodes {
+		fmt.Println("node: ", node)
+		node = strings.TrimSpace(node)
+		if !strings.Contains(node, ":") {
+			continue
+		}
+		nodeAddress := node[:strings.IndexByte(node, ':')]
+		bulkUploadCmd := "cat " + tr.Args.OfflineAggDir + "/" + file + REDIS_BULK_UPLOAD_FILE_SUFFIX + " | redis-cli -h " + nodeAddress + " --pipe --tls"
+		// We know it will error, so dont check the error
+		out, _ = exec.Command("bash", "-c", bulkUploadCmd).Output()
+		fmt.Println(string(out))
+		fmt.Println("Command to run ", bulkUploadCmd)
+		re := regexp.MustCompile(".*errors\\:\\s([0-9]+),\\sreplies\\:\\s([0-9]+)")
+		match := re.FindStringSubmatch(string(out))
+		if len(match) < 3 {
+			tr.Logger.Error("failed to bulk upload to redis", zap.String("node", nodeAddress))
+			return false
+		}
+
+		sentRequest, _ := strconv.Atoi(match[2])
+		failedRequests, _ := strconv.Atoi(match[1])
+		successfulRequests += (sentRequest - failedRequests)
+		fmt.Println("sent: ", sentRequest, " failed: ", failedRequests, " successful: ", successfulRequests)
+
+		fmt.Println("-------------------------------")
+	}
+
+	return successfulRequests == numRows
 }
 
 func pollOfflineAggregateOutputs(tr tier.Tier, agg libaggregate.Aggregate, duration uint64) error {
@@ -107,14 +158,18 @@ func pollOfflineAggregateOutputs(tr tier.Tier, agg libaggregate.Aggregate, durat
 		ticker := time.NewTicker(time.Minute * 1)
 		for {
 			<-ticker.C
-			aggRetrieved, err := aggregate.Retrieve(context.Background(), tr, agg.Name)
+			_, err := aggregate.Retrieve(context.Background(), tr, agg.Name)
 			if err != nil && err != libaggregate.ErrNotFound {
 				break
 			}
-			currUpdateVersion := aggRetrieved.ServingData.UpdateVersion[duration]
-			_, _, day := time.Now().Date()
+			currUpdateVersion, err := modelAgg.GetLatestUpdatedVersion(context.Background(), tr, agg.Name, duration)
+			if err != nil {
+				tr.Logger.Error("failed to get latest updated version", zap.Error(err))
+				break
+			}
+
 			//prefix := "p-2-offline-aggregate-output/t_107/similar_movies-604800/"
-			prefix := fmt.Sprintf("%s/t_%d/%s-%d/day=%d", tr.Args.OfflineAggBucket, int(tr.ID), agg.Name, duration, day)
+			prefix := fmt.Sprintf("t_%d/%s-%d", int(tr.ID), agg.Name, duration)
 
 			// Check for any new updates to the aggregate ------------------
 
@@ -126,13 +181,15 @@ func pollOfflineAggregateOutputs(tr tier.Tier, agg libaggregate.Aggregate, durat
 			}
 
 			var prefixToUpdate string
-
+			fmt.Println("Going through all files in s3 bucket", len(files))
 			for _, file := range files {
 				pathArray := strings.Split(file, "/")
+				//fmt.Println("PathArray :: ", pathArray)
 				if len(pathArray) > 0 && strings.HasPrefix(pathArray[len(pathArray)-1], SUCCESS_PREFIX) {
 					updateVersion := strings.Replace(pathArray[len(pathArray)-1], SUCCESS_PREFIX, "", 1)
 					fmt.Println(file, "::", updateVersion)
 					UpdateVersionInt, err := strconv.ParseUint(updateVersion, 10, 64)
+					fmt.Println("Found success")
 					if err != nil {
 						tr.Logger.Error("error while converting update version to int:", zap.Error(err))
 						return
@@ -155,14 +212,13 @@ func pollOfflineAggregateOutputs(tr tier.Tier, agg libaggregate.Aggregate, durat
 			var fileNames []string
 
 			for _, file := range files {
-				if strings.HasPrefix(file, prefixToUpdate) && !strings.HasSuffix(file, fmt.Sprintf("%s%s", SUCCESS_PREFIX, updateVersion)) {
+				if strings.HasPrefix(file, prefixToUpdate) && !strings.HasSuffix(file, fmt.Sprintf("%s%d", SUCCESS_PREFIX, currUpdateVersion)) {
 					filesToDownload = append(filesToDownload, file)
 					fileNames = append(fileNames, strings.Replace(file, prefixToUpdate, "", 1))
 				}
 			}
 
-			folder := "/tmp"
-			err = tr.S3Client.BatchDiskDownload(filesToDownload, tr.Args.OfflineAggBucket, folder)
+			err = tr.S3Client.BatchDiskDownload(filesToDownload, tr.Args.OfflineAggBucket, tr.Args.OfflineAggDir)
 			if err != nil {
 				fmt.Println(err)
 			}
@@ -170,8 +226,9 @@ func pollOfflineAggregateOutputs(tr tier.Tier, agg libaggregate.Aggregate, durat
 			// Read the files from disk and prepare the data ------------------
 
 			redisWriteSuccess := true
+			// TODO: Write these file in parallel
 			for _, file := range fileNames {
-				fr, err := local.NewLocalFileReader(folder + "/" + file)
+				fr, err := local.NewLocalFileReader(tr.Args.OfflineAggDir + "/" + file)
 
 				pr, err := reader.NewParquetReader(fr, new(Example), 4)
 				if err != nil {
@@ -182,9 +239,12 @@ func pollOfflineAggregateOutputs(tr tier.Tier, agg libaggregate.Aggregate, durat
 				fmt.Println("Number of rows", numRows)
 
 				// Create temp file to write to Redis
-				f, err := os.Create("/tmp/" + file + "-redis.txt")
+				f, err := os.Create(tr.Args.OfflineAggDir + file + REDIS_BULK_UPLOAD_FILE_SUFFIX)
 				if err != nil {
 					log.Fatal(err)
+					tr.Logger.Error("error while creating file for redis bulk upload:", zap.Error(err))
+					redisWriteSuccess = false
+					break
 				}
 
 				for i := 0; i < numRows; i++ {
@@ -197,6 +257,9 @@ func pollOfflineAggregateOutputs(tr tier.Tier, agg libaggregate.Aggregate, durat
 
 					if err = pr.Read(&examples); err != nil {
 						log.Println("Read error ::", err)
+						tr.Logger.Error("error while reading parquet file:", zap.Error(err))
+						redisWriteSuccess = false
+						break
 					}
 
 					for _, example := range examples {
@@ -209,6 +272,9 @@ func pollOfflineAggregateOutputs(tr tier.Tier, agg libaggregate.Aggregate, durat
 								}))
 							}
 						}
+						if rand.Intn(100) < 2 {
+							fmt.Println("Writing to redis :: ", *example.Key)
+						}
 						encodedString := base64.StdEncoding.EncodeToString(value.ToJSON(v))
 						f.WriteString("SET " + string(*example.Key) + " " + encodedString + "\n")
 					}
@@ -216,23 +282,22 @@ func pollOfflineAggregateOutputs(tr tier.Tier, agg libaggregate.Aggregate, durat
 				f.Close()
 				pr.ReadStop()
 				fr.Close()
-				cmd := "cat /tmp/" + file + "-redis.txt" + " | redis-cli --pipe"
-				out, err := exec.Command("bash", "-c", cmd).Output()
-				fmt.Println(string(out))
 
-				if !strings.Contains(string(out), "errors: 0, replies: "+fmt.Sprintf("%d", numRows)) {
-					// Write to Redis failed
-					redisWriteSuccess = false
-					break
-				}
+				// Bulk Upload to Redis ------------------
+
+				redisWriteSuccess = bulkUploadToRedis(tr, file, numRows)
 			}
 
 			if redisWriteSuccess {
 				// Update DB with the new version
 				//err = aggregate.UpdateAggregateVersion(agg.Name, updateVersion)
+				err = modelAgg.UpdateAggregateVersion(context.Background(), tr, agg.Name, duration, currUpdateVersion)
+				if err != nil {
+					tr.Logger.Error("error while updating aggregate version:", zap.Error(err))
+					return
+				}
 				fmt.Println("Update aggregate version")
 			}
-
 		}
 	}(tr, agg, duration)
 	return nil

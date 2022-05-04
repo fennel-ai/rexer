@@ -6,6 +6,8 @@ from datetime import datetime, timedelta, timezone
 import sys
 import json
 import s3fs
+import boto3
+
 from awsglue.transforms import *
 from awsglue.utils import getResolvedOptions
 from pyspark.context import SparkContext
@@ -36,7 +38,7 @@ print(f'======== Reading data from date: year={year}/month={month}/day={day}\n')
 
 # use default credentials which in this case would be derived from GLUE job IAM role which has access to the S3 buckets 
 fs = s3fs.S3FileSystem(anon=False)
-transformed_actions_path = f's3://{args["INPUT_BUCKET"]}/topics/t_{args["TIER_ID"]}_aggr_offline_transform/year={year}/month={month}/*/*/*.json'
+transformed_actions_path = f's3://{args["INPUT_BUCKET"]}/daily/t_{args["TIER_ID"]}_aggr_offline_transform/year={year}/month={month}/*/*/*.json'
 if not fs.glob(transformed_actions_path):
     print("No data found for the given date")
 
@@ -51,10 +53,10 @@ ca_df = actions.withColumn("key", F.col("value.item")).withColumn("score", F.col
 ca_df.createOrReplaceTempView("ACTIONS")
 
 sql_str = """
-select groupkey, collect_list(key) as topk_keys, collect_list(total_score) as topk_score
+select groupkey, collect_list(key) as item, collect_list(total_score) as score
 from (
-  select groupkey, key, total_score,
-  rank() over (PARTITION by groupkey order by total_score desc) as rank
+  select cast(groupkey AS string), cast(key as string), cast(total_score as double),
+  rank() over (partition by groupkey order by total_score desc) as rank
   from (
       select groupkey, key, sum(score) as total_score
       from ACTIONS
@@ -66,10 +68,15 @@ group by groupkey
 """.format(args["LIMIT"])
 
 topk = spark.sql(sql_str)
-zip_topk = topk.withColumn("topk", arrays_zip("topk_keys","topk_score")).drop("topk_keys").drop("topk_score")
+zip_topk = topk.withColumn("item_list", arrays_zip("item","score")).select("groupkey","item_list")
 
 folder_name = f'{args["AGGREGATE_NAME"]}-{args["DURATION"]}'
 
 topk_aggregate_path = f's3://{args["OUTPUT_BUCKET"]}/t_{args["TIER_ID"]}/{folder_name}/day={day}/{now_utc.strftime("%H:%M")}/{args["AGGREGATE_TYPE"]}'
 zip_topk.write.mode('overwrite').parquet(topk_aggregate_path)
 
+# Write SUCCESS file to S3
+client = boto3.client('s3')
+some_binary_data = b'Here we have some data'
+cur_timestamp = int(datetime.utcnow().timestamp())
+client.put_object(Body=some_binary_data, Bucket=args["OUTPUT_BUCKET"], Key=f't_{args["TIER_ID"]}/{folder_name}/day={day}/{now_utc.strftime("%H:%M")}/{args["AGGREGATE_TYPE"]}/_SUCCESS-{cur_timestamp}')

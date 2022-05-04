@@ -6,6 +6,8 @@ from datetime import datetime, timedelta, timezone
 import sys
 import json
 import s3fs
+import boto3
+
 from awsglue.transforms import *
 from awsglue.utils import getResolvedOptions
 from pyspark.context import SparkContext
@@ -40,7 +42,7 @@ print("Hyperparameters used - ", params)
 
 # use default credentials which in this case would be derived from GLUE job IAM role which has access to the S3 buckets 
 fs = s3fs.S3FileSystem(anon=False)
-transformed_actions_path = f's3://{args["INPUT_BUCKET"]}/topics/t_{args["TIER_ID"]}_aggr_offline_transform/year={year}/month={month}/*/*/*.json'
+transformed_actions_path = f's3://{args["INPUT_BUCKET"]}/daily/t_{args["TIER_ID"]}_aggr_offline_transform/year={year}/month={month}/*/*/*.json'
 
 if not fs.glob(transformed_actions_path):
     print("No data found for the given date")
@@ -150,9 +152,9 @@ cross_join.createOrReplaceTempView("CROSS_JOIN_CONTEXT")
 
 sql_str = """
 
-select o1 as object, collect_list(o2) as o2_list, collect_list(score) as score
+select o1 as groupkey, collect_list(o2) as item, collect_list(score) as score
 from(
-    select o1, o2, score,
+    select cast(o1 as string), casta(o2 as string), cast(score as double),
     rank() over (PARTITION by o1 order by score desc) as rank
     from CROSS_JOIN_CONTEXT
 )
@@ -163,11 +165,19 @@ group by o1
 cf = spark.sql(sql_str)
 cf.createOrReplaceTempView("CF")
 
-zip_cf = cf.withColumn("related_objects", arrays_zip("o2_list","score")).select("object","related_objects")
+zip_cf = cf.withColumn("item_list", arrays_zip("item","score")).select("groupkey","item_list")
 folder_name = f'{args["AGGREGATE_NAME"]}-{args["DURATION"]}'
 
 aggregate_path = f's3://{args["OUTPUT_BUCKET"]}/t_{args["TIER_ID"]}/{folder_name}/day={day}/{now_utc.strftime("%H:%M")}/{args["AGGREGATE_TYPE"]}'
 zip_cf.write.mode('overwrite').parquet(aggregate_path)
 
-cur_timestamp =  datetime.utcnow().timestamp()
-zip_cf.saveAsTextFile(f"{aggregate_path}/{success_file_name}{cur_timestamp}")
+s3 = boto3.resource('s3')
+cur_timestamp = int(datetime.utcnow().timestamp())
+object = s3.Object({args["OUTPUT_BUCKET"]}, f't_{args["TIER_ID"]}/{folder_name}/day={day}/{now_utc.strftime("%H:%M")}/{args["AGGREGATE_TYPE"]}/_SUCCESS-'+str(cur_timestamp))
+object.put(Body=str(cur_timestamp))
+
+# Write SUCCESS file to S3
+client = boto3.client('s3')
+some_binary_data = b'Here we have some data'
+cur_timestamp = int(datetime.utcnow().timestamp())
+client.put_object(Body=some_binary_data, Bucket=args["OUTPUT_BUCKET"], Key=f't_{args["TIER_ID"]}/{folder_name}/day={day}/{now_utc.strftime("%H:%M")}/{args["AGGREGATE_TYPE"]}/_SUCCESS-{cur_timestamp}')

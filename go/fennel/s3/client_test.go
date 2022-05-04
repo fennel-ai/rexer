@@ -36,19 +36,19 @@ func TestClient(t *testing.T) {
 }
 
 type ItemScore struct {
-	ItemName *string  `parquet:"name=topk_keys, type=BYTE_ARRAY, convertedtype=UTF8"`
-	Score    *float64 `parquet:"name=topk_score, type=FLOAT"`
+	ItemName *string  `parquet:"name=item, type=BYTE_ARRAY, convertedtype=UTF8"`
+	Score    *float64 `parquet:"name=score, type=FLOAT"`
 }
 
 type Example struct {
-	Key      *string     `parquet:"name=groupkey, type=BYTE_ARRAY"`
-	ItemName []ItemScore `parquet:"name=topk, type=LIST"`
+	Key      *string     `parquet:"name=groupkey, type=BYTE_ARRAY, convertedtype=UTF8"`
+	ItemName []ItemScore `parquet:"name=item_list, type=LIST"`
 }
 
 func TestListObjectsClient(t *testing.T) {
 	c := NewClient(S3Args{Region: "us-west-2"})
 	bucketName := "p-2-offline-aggregate-output"
-	x, err := c.ListFiles(bucketName, "t_95215418/topk_movies_name-604800/day=25")
+	x, err := c.ListFiles(bucketName, "t-106-offline-aggregate-output/t_106/movie_topk_tags_4-604800")
 	//x, err := c.ListFiles("p-2-offline-aggregate-output", "")
 
 	if err != nil {
@@ -134,10 +134,13 @@ func readParquetFiles(filePaths []string, folder string) {
 		// if err != nil {
 		// 	log.Fatal(err)
 		// }
-		fr, err := local.NewLocalFileReader("/Users/adityanambiar/Documents/part-00011-9793ea0d-0a9f-4ece-9438-b3cc1900b866-c000.snappy.parquet")
-
+		fr, err := local.NewLocalFileReader("/Users/adityanambiar/Downloads/part-00000-2af002bd-ea51-4a15-b743-59092dfbd03a-c000.snappy.parquet")
+		if err != nil {
+			log.Fatal(err)
+		}
 		pr, err := reader.NewParquetReader(fr, new(Example), 4)
 		if err != nil {
+			fmt.Println("Error", err)
 			log.Fatal(err)
 		}
 		numRows := int(pr.GetNumRows())

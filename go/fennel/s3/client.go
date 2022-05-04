@@ -44,8 +44,9 @@ func NewClient(args S3Args) Client {
 
 func (c Client) ListFiles(bucketName, pathPrefix string) ([]string, error) {
 	input := s3.ListObjectsV2Input{
-		Bucket: aws.String(bucketName),
-		Prefix: aws.String(pathPrefix),
+		Bucket:  aws.String(bucketName),
+		Prefix:  aws.String(pathPrefix),
+		MaxKeys: aws.Int64(10000),
 	}
 	output, err := c.client.ListObjectsV2(&input)
 	if err != nil {

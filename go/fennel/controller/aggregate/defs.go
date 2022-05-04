@@ -42,6 +42,9 @@ func Store(ctx context.Context, tier tier.Tier, agg aggregate.Aggregate) error {
 		if err != nil {
 			return err
 		}
+		for _, duration := range agg.Options.Durations {
+			modelAgg.InitializeAggUpdateVersion(ctx, tier, agg.Name, duration)
+		}
 	}
 
 	querySer, err := ast.Marshal(agg.Query)
@@ -52,12 +55,11 @@ func Store(ctx context.Context, tier tier.Tier, agg aggregate.Aggregate) error {
 	if err != nil {
 		return fmt.Errorf("can not marshal aggregate options: %v", err)
 	}
-	servingDataSer, err := proto.Marshal(aggregate.ToProtoServingData(agg.ServingData))
 	if agg.Timestamp == 0 {
 		agg.Timestamp = ftypes.Timestamp(time.Now().Unix())
 	}
 
-	return modelAgg.Store(ctx, tier, agg.Name, querySer, agg.Timestamp, optionSer, servingDataSer)
+	return modelAgg.Store(ctx, tier, agg.Name, querySer, agg.Timestamp, optionSer)
 }
 
 func Retrieve(ctx context.Context, tier tier.Tier, aggname ftypes.AggName) (aggregate.Aggregate, error) {

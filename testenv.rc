@@ -23,6 +23,6 @@ export MODEL_STORE_ENDPOINT="integration-test-endpoint"
 
 export JOB_NAME_BY_AGG="topk=TopK,cf=CF"
 export AWS_REGION="us-west-2"
-export OFFLINE_AGG_BUCKET="p-2-offline-aggregate-output"
+export OFFLINE_AGG_DIR="/tmp"
 # in tests, we override this with a random tier ID but this is needed for prod
 export TIER_ID=103
