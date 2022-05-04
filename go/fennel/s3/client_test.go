@@ -3,12 +3,8 @@
 package s3
 
 import (
-	"encoding/base64"
-	"fennel/lib/value"
 	"fmt"
 	"log"
-	"os"
-	"os/exec"
 	"strings"
 	"testing"
 
@@ -117,89 +113,5 @@ func TestListObjectsClient(t *testing.T) {
 
 		pr.ReadStop()
 		fr.Close()
-	}
-}
-
-func TestReadObjectss(t *testing.T) {
-	readParquetFiles([]string{"asd"}, "ASd")
-	assert.Equal(t, "asd", "asd1")
-}
-
-func readParquetFiles(filePaths []string, folder string) {
-
-	for fileIndex, file := range filePaths {
-		fmt.Println("File to read", file)
-		// pathArray := strings.Split(file, "/")
-		// fr, err := local.NewLocalFileReader(fmt.Sprintf("%s/%s", folder, pathArray[len(pathArray)-1]))
-		// if err != nil {
-		// 	log.Fatal(err)
-		// }
-		fr, err := local.NewLocalFileReader("/Users/adityanambiar/Downloads/part-00000-2af002bd-ea51-4a15-b743-59092dfbd03a-c000.snappy.parquet")
-		if err != nil {
-			log.Fatal(err)
-		}
-		pr, err := reader.NewParquetReader(fr, new(Example), 4)
-		if err != nil {
-			fmt.Println("Error", err)
-			log.Fatal(err)
-		}
-		numRows := int(pr.GetNumRows())
-
-		fmt.Println("Number of rows", numRows)
-
-		f, err := os.Create("/tmp/" + fmt.Sprintf("%d", fileIndex) + ".txt")
-		if err != nil {
-			log.Fatal(err)
-		}
-
-		for i := 0; i < numRows; i++ {
-			examples := make([]Example, 10)
-			if i+10 < numRows {
-				i += 10
-			} else {
-				i = numRows
-			}
-
-			if err = pr.Read(&examples); err != nil {
-				log.Println("Read error ::", err)
-			}
-
-			fmt.Println("key :", string(*examples[0].Key))
-
-			for _, example := range examples {
-				v := value.NewList()
-				for _, item := range example.ItemName {
-					if item.ItemName != nil {
-						v.Append(value.NewDict(map[string]value.Value{
-							"item":  value.String(*item.ItemName),
-							"score": value.Double(*item.Score),
-						}))
-					}
-				}
-				encodedString := base64.StdEncoding.EncodeToString(value.ToJSON(v))
-				f.WriteString("SET " + string(*example.Key) + " " + encodedString + "\n")
-			}
-		}
-		f.Close()
-		pr.ReadStop()
-		fr.Close()
-		cmd := "cat /tmp/" + fmt.Sprintf("%d", fileIndex) + ".txt" + " | redis-cli --pipe"
-		out, err := exec.Command("bash", "-c", cmd).Output()
-		fmt.Println(string(out))
-
-		if strings.Contains(string(out), "errors: 0, replies: "+fmt.Sprintf("%d", numRows)) {
-			fmt.Println("Success")
-		} else {
-			fmt.Println("Failed")
-		}
-
-		if err != nil {
-			fmt.Println(err)
-			log.Fatal(err)
-		}
-		// err = os.Remove("GeeksforGeeks.txt")
-		// if err != nil {
-		// 	log.Fatal(err)
-		// }
 	}
 }

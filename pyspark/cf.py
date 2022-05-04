@@ -152,7 +152,7 @@ cross_join.createOrReplaceTempView("CROSS_JOIN_CONTEXT")
 
 sql_str = """
 
-select o1 as groupkey, collect_list(o2) as item, collect_list(score) as score
+select o1 as key, collect_list(o2) as item, collect_list(score) as score
 from(
     select cast(o1 as string), casta(o2 as string), cast(score as double),
     rank() over (PARTITION by o1 order by score desc) as rank
@@ -165,7 +165,7 @@ group by o1
 cf = spark.sql(sql_str)
 cf.createOrReplaceTempView("CF")
 
-zip_cf = cf.withColumn("item_list", arrays_zip("item","score")).select("groupkey","item_list")
+zip_cf = cf.withColumn("item_list", arrays_zip("item","score")).select("key","item_list")
 folder_name = f'{args["AGGREGATE_NAME"]}-{args["DURATION"]}'
 
 aggregate_path = f's3://{args["OUTPUT_BUCKET"]}/t_{args["TIER_ID"]}/{folder_name}/day={day}/{now_utc.strftime("%H:%M")}/{args["AGGREGATE_TYPE"]}'

@@ -9,6 +9,7 @@ import (
 	"fennel/engine/ast"
 	"fennel/lib/aggregate"
 	"fennel/lib/ftypes"
+	"fennel/lib/phaser"
 	modelAgg "fennel/model/aggregate"
 	"fennel/tier"
 
@@ -43,8 +44,14 @@ func Store(ctx context.Context, tier tier.Tier, agg aggregate.Aggregate) error {
 			return err
 		}
 		for _, duration := range agg.Options.Durations {
-			modelAgg.InitializeAggUpdateVersion(ctx, tier, agg.Name, duration)
+			prefix := fmt.Sprintf("t_%d/%s-%d", int(tier.ID), agg.Name, duration)
+			aggPhaserIdentifier := fmt.Sprintf("%s-%d", agg.Name, duration)
+			err = phaser.NewPhaser(tier.Args.OfflineAggBucket, prefix, "agg", aggPhaserIdentifier, phaser.ITEM_SCORE_LIST, tier)
+			if err != nil {
+				return err
+			}
 		}
+
 	}
 
 	querySer, err := ast.Marshal(agg.Query)
