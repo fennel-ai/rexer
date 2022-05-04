@@ -1,4 +1,4 @@
-package number
+package math
 
 import (
 	"testing"
@@ -21,9 +21,17 @@ func TestMeanop_Apply(t *testing.T) {
 				value.NewList(value.Int(1), value.Int(2), value.Int(0)),
 				value.NewList(value.Double(1), value.Int(2), value.Int(-1)),
 				value.NewList(value.Int(1e15), value.Int(2e15), value.Int(-1e15)),
+				value.NewList(),
 			},
 			false,
-			[]value.Value{value.Double(2.0 / 3.0), value.Double(1.0), value.Double(2.0 / 3.0), value.Double(2e15 / 3.0)},
+			[]value.Value{
+				value.Double(2.0 / 3.0),
+				value.Double(1.0),
+				value.Double(2.0 / 3.0),
+				value.Double(2e15 / 3.0),
+				// Empty list should give a "null" mean.
+				value.Nil,
+			},
 		},
 		{
 			// only numbers allowed

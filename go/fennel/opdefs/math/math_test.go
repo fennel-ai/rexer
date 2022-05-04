@@ -38,8 +38,8 @@ func TestMath(t *testing.T) {
 			value.NewDict(nil),
 			[]value.Dict{value.NewDict(nil), value.NewDict(nil)},
 			false,
-			[]value.Value{value.Int(0), value.Int(math.MaxInt64)},
-			[]value.Value{value.Int(0), value.Int(math.MinInt64)},
+			[]value.Value{value.Nil, value.Int(math.MaxInt64)},
+			[]value.Value{value.Nil, value.Int(math.MinInt64)},
 		},
 		{
 			[]value.Value{

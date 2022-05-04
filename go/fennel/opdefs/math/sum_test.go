@@ -1,4 +1,4 @@
-package number
+package math
 
 import (
 	"testing"
@@ -24,13 +24,14 @@ func TestAdder_Apply(t *testing.T) {
 			},
 			value.NewDict(nil),
 			[]value.Dict{
-				value.NewDict(map[string]value.Value{"start": value.Int(3)}),
-				value.NewDict(map[string]value.Value{"start": value.Int(0)})},
+				value.NewDict(map[string]value.Value{"zero": value.Int(3)}),
+				value.NewDict(map[string]value.Value{"zero": value.Int(0)}),
+			},
 			false,
 			[]value.Value{value.Int(5), value.Int(0)},
 		},
 		{
-			// output is double even if only start is double
+			// output is double even if only zero is double
 			// and even if only one element is double
 			[]value.Value{
 				value.NewList(value.Int(1), value.Int(2), value.Int(-1)),
@@ -38,8 +39,8 @@ func TestAdder_Apply(t *testing.T) {
 			},
 			value.NewDict(nil),
 			[]value.Dict{
-				value.NewDict(map[string]value.Value{"start": value.Double(3)}),
-				value.NewDict(map[string]value.Value{"start": value.Int(0)}),
+				value.NewDict(map[string]value.Value{"zero": value.Double(3)}),
+				value.NewDict(map[string]value.Value{"zero": value.Int(0)}),
 			},
 			false,
 			[]value.Value{value.Double(5), value.Double(2)},
@@ -56,7 +57,7 @@ func TestAdder_Apply(t *testing.T) {
 			// only numbers allowed
 			[]value.Value{value.NewList(value.String("hi"), value.Int(2), value.Int(3))},
 			value.NewDict(nil),
-			[]value.Dict{value.NewDict(map[string]value.Value{"start": value.Double(0)})},
+			[]value.Dict{value.NewDict(map[string]value.Value{"zero": value.Double(0)})},
 			true,
 			nil,
 		},
