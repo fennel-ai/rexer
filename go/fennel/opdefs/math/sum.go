@@ -1,4 +1,4 @@
-package number
+package math
 
 import (
 	"context"
@@ -27,7 +27,8 @@ func (a adder) Apply(_ context.Context, _ value.Dict, in operators.InputIter, ou
 			return err
 		}
 		elems := heads[0].(value.List)
-		sum := kwargs.GetUnsafe("start")
+		var sum value.Value
+		sum = kwargs.GetUnsafe("zero")
 		for _, elem := range elems.Values() {
 			sum, err = sum.Op("+", elem)
 			if err != nil {
@@ -40,9 +41,9 @@ func (a adder) Apply(_ context.Context, _ value.Dict, in operators.InputIter, ou
 }
 
 func (a adder) Signature() *operators.Signature {
-	return operators.NewSignature("std", "sum").
+	return operators.NewSignature("math", "sum").
 		Input([]value.Type{value.Types.ListOfNumbers}).
-		Param("start", value.Types.Number, false, true, value.Int(0))
+		ParamWithHelp("zero", value.Types.Number, false, true, value.Int(0), "The zero value for the sum")
 }
 
 var _ operators.Operator = adder{}

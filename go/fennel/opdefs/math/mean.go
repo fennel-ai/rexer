@@ -1,4 +1,4 @@
-package number
+package math
 
 import (
 	"context"
@@ -27,19 +27,23 @@ func (a meanop) Apply(_ context.Context, _ value.Dict, in operators.InputIter, o
 			return err
 		}
 		elems := heads[0].(value.List)
-		var sum value.Value = value.Int(0)
-		num := 0
-		for _, elem := range elems.Values() {
-			sum, err = sum.Op("+", elem)
-			if err != nil {
-				return nil
+		var sum value.Value
+		count := 0
+		for i, elem := range elems.Values() {
+			if i == 0 {
+				sum = elem
+			} else {
+				sum, err = sum.Op("+", elem)
+				if err != nil {
+					return nil
+				}
 			}
-			num++
+			count++
 		}
-		if num == 0 {
-			out.Append(value.Int(0))
+		if count == 0 {
+			out.Append(value.Nil)
 		} else {
-			mean, err := sum.Op("/", value.Int(num))
+			mean, err := sum.Op("/", value.Int(count))
 			if err != nil {
 				return err
 			}
@@ -50,7 +54,7 @@ func (a meanop) Apply(_ context.Context, _ value.Dict, in operators.InputIter, o
 }
 
 func (a meanop) Signature() *operators.Signature {
-	return operators.NewSignature("std", "mean").
+	return operators.NewSignature("math", "mean").
 		Input([]value.Type{value.Types.ListOfNumbers})
 }
 
