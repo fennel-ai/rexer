@@ -25,7 +25,7 @@ type RemoteProducer struct {
 func (k RemoteProducer) Log(_ context.Context, message []byte, partitionKey []byte) error {
 	kafkaMsg := kafka.Message{
 		Key:            partitionKey,
-		TopicPartition: kafka.TopicPartition{Topic: &k.topic},
+		TopicPartition: kafka.TopicPartition{Topic: &k.topic, Partition: kafka.PartitionAny},
 		Value:          message,
 	}
 	return k.Produce(&kafkaMsg, nil)

@@ -30,34 +30,34 @@ func TestIntegration(t *testing.T) {
 		tierID := ftypes.RealmID(rand.Uint32())
 		scope := resource.NewTierScope(tierID)
 		t.Parallel()
-		producer := integrationProducer(t, scope, topic)
+		producer := singlePartitionProducer(t, scope, topic)
 		consumer := integrationConsumer(t, scope, topic, utils.RandString(5), DefaultOffsetPolicy)
 		defer teardownKafkaTopics(scope, topic)
-		testProducerConsumer(t, producer, consumer)
+		testProducerConsumer(t, producer, consumer, true /*ordered=*/)
 	})
 	t.Run("integration_producer_consumer_proto", func(t *testing.T) {
 		tierID := ftypes.RealmID(rand.Uint32())
 		scope := resource.NewTierScope(tierID)
 		t.Parallel()
-		producer := integrationProducer(t, scope, topic)
+		producer := singlePartitionProducer(t, scope, topic)
 		consumer := integrationConsumer(t, scope, topic, utils.RandString(5), DefaultOffsetPolicy)
 		defer teardownKafkaTopics(scope, topic)
-		testProducerConsumerProto(t, producer, consumer)
+		testProducerConsumerProto(t, producer, consumer, true /*ordered=*/)
 	})
 	t.Run("integration_read_batch", func(t *testing.T) {
 		tierID := ftypes.RealmID(rand.Uint32())
 		scope := resource.NewTierScope(tierID)
 		t.Parallel()
-		producer := integrationProducer(t, scope, topic)
+		producer := singlePartitionProducer(t, scope, topic)
 		consumer := integrationConsumer(t, scope, topic, utils.RandString(5), DefaultOffsetPolicy)
 		defer teardownKafkaTopics(scope, topic)
-		testReadBatch(t, producer, consumer)
+		testReadBatch(t, producer, consumer, true /*ordered=*/)
 	})
 	t.Run("integration_flush_commit_backlog", func(t *testing.T) {
 		tierID := ftypes.RealmID(rand.Uint32())
 		scope := resource.NewTierScope(tierID)
 		t.Parallel()
-		producer := integrationProducer(t, scope, topic)
+		producer := singlePartitionProducer(t, scope, topic)
 		consumer := integrationConsumer(t, scope, topic, utils.RandString(5), DefaultOffsetPolicy)
 		defer teardownKafkaTopics(scope, topic)
 		testBacklog(t, producer, consumer)
@@ -66,18 +66,18 @@ func TestIntegration(t *testing.T) {
 		tierID := ftypes.RealmID(rand.Uint32())
 		scope := resource.NewTierScope(tierID)
 		t.Parallel()
-		producer := integrationProducer(t, scope, topic)
+		producer := singlePartitionProducer(t, scope, topic)
 		consumer1 := integrationConsumer(t, scope, topic, utils.RandString(5), DefaultOffsetPolicy)
 		consumer2 := integrationConsumer(t, scope, topic, utils.RandString(5), DefaultOffsetPolicy)
 		defer teardownKafkaTopics(scope, topic)
-		testDifferentConsumerGroups(t, producer, consumer1, consumer2)
+		testDifferentConsumerGroups(t, producer, consumer1, consumer2, true /*ordered=*/)
 	})
 	t.Run("integration_same_consumer_groups", func(t *testing.T) {
 		tierID := ftypes.RealmID(rand.Uint32())
 		scope := resource.NewTierScope(tierID)
 		t.Parallel()
 		group := utils.RandString(5)
-		producer := integrationProducer(t, scope, topic)
+		producer := singlePartitionProducer(t, scope, topic)
 		consumer1 := integrationConsumer(t, scope, topic, group, DefaultOffsetPolicy)
 		consumer2 := integrationConsumer(t, scope, topic, group, DefaultOffsetPolicy)
 		defer teardownKafkaTopics(scope, topic)
@@ -88,15 +88,111 @@ func TestIntegration(t *testing.T) {
 		scope := resource.NewTierScope(tierID)
 		t.Parallel()
 		group := utils.RandString(5)
-		producer := integrationProducer(t, scope, topic)
+		producer := singlePartitionProducer(t, scope, topic)
 		consumer1 := integrationConsumer(t, scope, topic, group, DefaultOffsetPolicy)
 		consumer2 := integrationConsumer(t, scope, topic, group, DefaultOffsetPolicy)
 		defer teardownKafkaTopics(scope, topic)
-		testNoAutoCommit(t, producer, consumer1, consumer2)
+		testNoAutoCommit(t, producer, consumer1, consumer2, true /*ordered=*/)
+	})
+	t.Run("integration_same_key_read_by_same_consumer", func(t *testing.T) {
+		tierID := ftypes.RealmID(rand.Uint32())
+		scope := resource.NewTierScope(tierID)
+		t.Parallel()
+		group := utils.RandString(5)
+		producer := multiPartitionProducer(t, scope, topic)
+		consumer1 := integrationConsumer(t, scope, topic, group, DefaultOffsetPolicy)
+		consumer2 := integrationConsumer(t, scope, topic, group, DefaultOffsetPolicy)
+		defer teardownKafkaTopics(scope, topic)
+		testSameKeyReadBySameConsumer(t, producer, consumer1, consumer2, false /*ordered=*/)
 	})
 }
 
-func setupKafkaTopics(scope resource.Scope, topic string) error {
+func TestIntegrationMultiplePartitions(t *testing.T) {
+	// here, there is a guarantee on the ordering of the messages in the partition, but no guarantees on ordering across partitions
+	rand.Seed(time.Now().UnixNano())
+	topic := "testtopic-multipars"
+	t.Run("integration_producer_consumer", func(t *testing.T) {
+		tierID := ftypes.RealmID(rand.Uint32())
+		scope := resource.NewTierScope(tierID)
+		t.Parallel()
+		producer := multiPartitionProducer(t, scope, topic)
+		consumer := integrationConsumer(t, scope, topic, utils.RandString(5), DefaultOffsetPolicy)
+		defer teardownKafkaTopics(scope, topic)
+		testProducerConsumer(t, producer, consumer, false /*ordered=*/)
+	})
+	t.Run("integration_producer_consumer_proto", func(t *testing.T) {
+		tierID := ftypes.RealmID(rand.Uint32())
+		scope := resource.NewTierScope(tierID)
+		t.Parallel()
+		producer := multiPartitionProducer(t, scope, topic)
+		consumer := integrationConsumer(t, scope, topic, utils.RandString(5), DefaultOffsetPolicy)
+		defer teardownKafkaTopics(scope, topic)
+		testProducerConsumerProto(t, producer, consumer, false /*ordered=*/)
+	})
+	t.Run("integration_read_batch", func(t *testing.T) {
+		tierID := ftypes.RealmID(rand.Uint32())
+		scope := resource.NewTierScope(tierID)
+		t.Parallel()
+		producer := multiPartitionProducer(t, scope, topic)
+		consumer := integrationConsumer(t, scope, topic, utils.RandString(5), DefaultOffsetPolicy)
+		defer teardownKafkaTopics(scope, topic)
+		testReadBatch(t, producer, consumer, false /*ordered=*/)
+	})
+	t.Run("integration_flush_commit_backlog", func(t *testing.T) {
+		tierID := ftypes.RealmID(rand.Uint32())
+		scope := resource.NewTierScope(tierID)
+		t.Parallel()
+		producer := multiPartitionProducer(t, scope, topic)
+		consumer := integrationConsumer(t, scope, topic, utils.RandString(5), DefaultOffsetPolicy)
+		defer teardownKafkaTopics(scope, topic)
+		testBacklog(t, producer, consumer)
+	})
+	t.Run("integration_different_consumer_groups", func(t *testing.T) {
+		tierID := ftypes.RealmID(rand.Uint32())
+		scope := resource.NewTierScope(tierID)
+		t.Parallel()
+		producer := multiPartitionProducer(t, scope, topic)
+		consumer1 := integrationConsumer(t, scope, topic, utils.RandString(5), DefaultOffsetPolicy)
+		consumer2 := integrationConsumer(t, scope, topic, utils.RandString(5), DefaultOffsetPolicy)
+		defer teardownKafkaTopics(scope, topic)
+		testDifferentConsumerGroups(t, producer, consumer1, consumer2, false /*ordered=*/)
+	})
+	t.Run("integration_same_consumer_groups", func(t *testing.T) {
+		tierID := ftypes.RealmID(rand.Uint32())
+		scope := resource.NewTierScope(tierID)
+		t.Parallel()
+		group := utils.RandString(5)
+		producer := multiPartitionProducer(t, scope, topic)
+		consumer1 := integrationConsumer(t, scope, topic, group, DefaultOffsetPolicy)
+		consumer2 := integrationConsumer(t, scope, topic, group, DefaultOffsetPolicy)
+		defer teardownKafkaTopics(scope, topic)
+		testSameConsumerGroup(t, producer, consumer1, consumer2)
+	})
+	t.Run("integration_no_auto_commit", func(t *testing.T) {
+		tierID := ftypes.RealmID(rand.Uint32())
+		scope := resource.NewTierScope(tierID)
+		t.Parallel()
+		group := utils.RandString(5)
+		producer := multiPartitionProducer(t, scope, topic)
+		consumer1 := integrationConsumer(t, scope, topic, group, DefaultOffsetPolicy)
+		consumer2 := integrationConsumer(t, scope, topic, group, DefaultOffsetPolicy)
+		defer teardownKafkaTopics(scope, topic)
+		testNoAutoCommit(t, producer, consumer1, consumer2, false /*ordered=*/)
+	})
+	t.Run("integration_same_key_read_by_same_consumer", func(t *testing.T) {
+		tierID := ftypes.RealmID(rand.Uint32())
+		scope := resource.NewTierScope(tierID)
+		t.Parallel()
+		group := utils.RandString(5)
+		producer := multiPartitionProducer(t, scope, topic)
+		consumer1 := integrationConsumer(t, scope, topic, group, DefaultOffsetPolicy)
+		consumer2 := integrationConsumer(t, scope, topic, group, DefaultOffsetPolicy)
+		defer teardownKafkaTopics(scope, topic)
+		testSameKeyReadBySameConsumer(t, producer, consumer1, consumer2, false /*ordered=*/)
+	})
+}
+
+func setupKafkaTopics(scope resource.Scope, topic string, partitions int) error {
 	name := scope.PrefixedName(topic)
 	// Create admin client
 	c, err := kafka.NewAdminClient(ConfigMap(test_kafka_servers, kafka_username, kafka_password))
@@ -109,7 +205,7 @@ func setupKafkaTopics(scope resource.Scope, topic string) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
-	results, err := c.CreateTopics(ctx, []kafka.TopicSpecification{{Topic: name, NumPartitions: 2}})
+	results, err := c.CreateTopics(ctx, []kafka.TopicSpecification{{Topic: name, NumPartitions: partitions}})
 	if err != nil {
 		return fmt.Errorf("failed to create topics: %v", err)
 	}
@@ -137,9 +233,17 @@ func teardownKafkaTopics(scope resource.Scope, topic string) error {
 	return err
 }
 
-func integrationProducer(t *testing.T, scope resource.Scope, topic string) FProducer {
+func singlePartitionProducer(t *testing.T, scope resource.Scope, topic string) FProducer {
+	return integrationProducer(t, scope, topic, 1)
+}
+
+func multiPartitionProducer(t *testing.T, scope resource.Scope, topic string) FProducer {
+	return integrationProducer(t, scope, topic, 2)
+}
+
+func integrationProducer(t *testing.T, scope resource.Scope, topic string, partitions int) FProducer {
 	// first create the topics
-	assert.NoError(t, setupKafkaTopics(scope, topic))
+	assert.NoError(t, setupKafkaTopics(scope, topic, partitions))
 
 	// then create producer
 	resource, err := RemoteProducerConfig{

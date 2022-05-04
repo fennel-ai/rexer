@@ -93,6 +93,19 @@ func (k RemoteConsumer) ReadBatch(ctx context.Context, upto int, timeout time.Du
 	timer := time.NewTimer(timeout).C
 	var ret [][]byte
 	start := time.Now()
+	// `seen`` map is used to deduplicate messages read from the same partition.
+	//
+	// following scenario is possible:
+	// 	1. c1 gets assigned par1(with say offset=0)
+	//  2. c2 reads 5 messages from par1 and adds it to `ret`
+	//  3. broker initiates partition rebalance event
+	// 	4. c1 now gets assigned par1, par2
+	//  5. c1 will now start reading the partitions from their earliest offset - which for par1 is 0
+	//  6. c1 will buffer the first 5 messages from par1 again
+	//
+	// TODO: Fix the possibility that a partition which was partially read by a consumer gets assigned to another
+	// consumer. This might lead to multiple consumers reading the same subset of data from a particular partition.
+	seen := make(map[string]struct{})
 	for len(ret) < upto {
 		select {
 		case <-timer:
@@ -107,7 +120,11 @@ func (k RemoteConsumer) ReadBatch(ctx context.Context, upto int, timeout time.Du
 			}
 			msg, err := k.ReadMessage(t)
 			if err == nil {
-				ret = append(ret, msg.Value)
+				toppar := msg.TopicPartition.String()
+				if _, ok := seen[toppar]; !ok {
+					seen[toppar] = struct{}{}
+					ret = append(ret, msg.Value)
+				}
 			} else if kerr, ok := err.(kafka.Error); ok && kerr.Code() != kafka.ErrTimedOut {
 				return nil, err
 			}
