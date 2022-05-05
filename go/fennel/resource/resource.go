@@ -17,7 +17,6 @@ const (
 	RedisClient        = 2
 	KafkaConsumer      = 3
 	KafkaProducer      = 4
-	Badger             = 5
 )
 
 type Config interface {
