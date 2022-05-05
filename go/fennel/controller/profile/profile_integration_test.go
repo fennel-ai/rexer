@@ -1,4 +1,4 @@
-//go:build integration && !badger
+//go:build integration
 
 package profile
 

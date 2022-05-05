@@ -7,11 +7,9 @@ import (
 	"fmt"
 
 	"fennel/controller/aggregate_delta"
-	"fennel/controller/profile"
 	libkakfa "fennel/kafka"
 	"fennel/lib/badger"
 	counterlib "fennel/lib/counter"
-	profilelib "fennel/lib/profile"
 	"fennel/lib/timer"
 	"fennel/model/offsets"
 	"fennel/tier"
@@ -22,12 +20,8 @@ import (
 )
 
 func Run(t tier.Tier) error {
-	pCloseCh := make(chan struct{})
 	aCloseCh := make(chan struct{})
 	t.Logger.Info("Tailer started")
-	if err := writeProfilesToLocalKvStore(t, pCloseCh); err != nil {
-		return err
-	}
 	if err := writeAggrDeltasToLocalKvStore(t, aCloseCh); err != nil {
 		return err
 	}
@@ -49,47 +43,6 @@ func getOffsetsFromKvStore(tr tier.Tier, topic string) (kafka.TopicPartitions, e
 		return nil
 	})
 	return partitions, err
-}
-
-func writeProfilesToLocalKvStore(tr tier.Tier, cancel <-chan struct{}) error {
-	topic := profilelib.PROFILELOG_KAFKA_TOPIC
-	partitions, err := getOffsetsFromKvStore(tr, topic)
-	if err != nil {
-		return err
-	}
-	consumer, err := tr.NewKafkaConsumer(libkakfa.ConsumerConfig{
-		Topic: topic,
-		// TODO(abhay): Use a group id that is unique to this instance of tailer.
-		//
-		// TODO(mohit): Remove the hack to rename the group id
-		// `4` was appended as a hack to allow writing all the data from kafka topics
-		// from offset ZERO into badger
-		GroupID:    "_put_profiles_in_kv_store4",
-		Partitions: partitions,
-		// If offsets are not specified, use default offset policy of reading from
-		// earliest offset in partitions assigned by the broker.
-		OffsetPolicy: libkakfa.EarliestOffsetPolicy,
-	})
-	if err != nil {
-		return fmt.Errorf("unable to start consumer for inserting profiles in DB: %v", err)
-	}
-	go func(tr tier.Tier, consumer libkakfa.FConsumer) {
-		defer consumer.Close()
-		ctx := context.Background()
-		for {
-			select {
-			case <-cancel:
-				return
-			default:
-				t := timer.Start(ctx, tr.ID, "tailer.TransferProfilesToDB")
-				if err := profile.TransferToDB(ctx, tr, consumer); err != nil {
-					tr.Logger.Error("error while reading/writing profiles to insert in db:", zap.Error(err))
-				}
-				t.Stop()
-			}
-		}
-	}(tr, consumer)
-	return nil
 }
 
 func writeAggrDeltasToLocalKvStore(tr tier.Tier, cancel <-chan struct{}) error {
