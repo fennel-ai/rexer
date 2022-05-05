@@ -54,13 +54,6 @@ const tierConfs: Record<number, TierConf> = {
             // each http-server should be in different nodes from each other
             enforceReplicaIsolation: false,
         },
-        apiServerConf: {
-            replicas: 1,
-            enforceReplicaIsolation: false,
-            // This will be replaced with the actual storageclass
-            // of the type io1.
-            storageclass: "io1",
-        },
     },
     // Lokal prod tier on their prod data plane.
     107: {
@@ -73,13 +66,6 @@ const tierConfs: Record<number, TierConf> = {
         // countaggr should be scheduled in a different node than http-server
         countAggrConf: {
             enforceServiceIsolation: true
-        },
-        apiServerConf: {
-            replicas: 3,
-            enforceReplicaIsolation: true,
-            // This will be replaced with the actual storageclass
-            // of the type io1.
-            storageclass: "io1",
         },
     },
     // Convoy staging tier using Fennel's staging data plane.
@@ -312,10 +298,6 @@ if (tierId !== 0) {
     } else {
         subnetIds = vpcOutput.privateSubnets;
     }
-    if (tierConf.apiServerConf?.storageclass !== undefined) {
-        tierConf.apiServerConf.storageclass =
-            eksOutput.storageclasses[tierConf.apiServerConf.storageclass]
-    }
     const topics: kafkatopics.topicConf[] = [
         {name: `t_${tierId}_actionlog`},
         {name: `t_${tierId}_featurelog`, partitions: 10},
@@ -367,8 +349,6 @@ if (tierId !== 0) {
         httpServerConf: tierConf.httpServerConf,
 
         countAggrConf: tierConf.countAggrConf,
-
-        apiServerConf: tierConf.apiServerConf,
 
         nodeInstanceRole: eksOutput.instanceRole,
 
