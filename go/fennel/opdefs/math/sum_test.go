@@ -30,6 +30,23 @@ func TestAdder_Apply(t *testing.T) {
 			false,
 			[]value.Value{value.Int(5), value.Int(0)},
 		},
+		// Sum of values coming from "of" context kwarg.
+		{
+			[]value.Value{value.Int(1), value.Int(2)},
+			value.NewDict(nil),
+			[]value.Dict{
+				value.NewDict(map[string]value.Value{
+					"zero": value.Int(3),
+					"of":   value.NewList(value.Int(1), value.Int(2), value.Int(1)),
+				}),
+				value.NewDict(map[string]value.Value{
+					"zero": value.Int(0),
+					"of":   value.NewList(value.Int(-1), value.Int(0), value.Int(1)),
+				}),
+			},
+			false,
+			[]value.Value{value.Int(7), value.Int(0)},
+		},
 		{
 			// output is double even if only zero is double
 			// and even if only one element is double

@@ -2,6 +2,7 @@ package math
 
 import (
 	"context"
+	"fmt"
 	"sync"
 
 	"fennel/engine/operators"
@@ -20,14 +21,22 @@ func (m minOp) New(args value.Dict, bootargs map[string]interface{}, cache *sync
 
 func (m minOp) Apply(_ context.Context, _ value.Dict, in operators.InputIter, out *value.List) error {
 	for in.HasMore() {
-		heads, _, err := in.Next()
+		heads, kwargs, err := in.Next()
 		if err != nil {
 			return err
 		}
-		elems := heads[0].(value.List)
-		var minVal value.Value
-		minVal = value.Nil
+		of, _ := kwargs.Get("of")
+		var elems value.List
+		if of == nil {
+			elems = heads[0].(value.List)
+		} else {
+			elems = of.(value.List)
+		}
+		var minVal value.Value = value.Nil
 		for i, elem := range elems.Values() {
+			if err = value.Types.Number.Validate(elem); err != nil {
+				return fmt.Errorf("value [%s] is not a number", elem.String())
+			}
 			if i == 0 {
 				minVal = elem
 			} else {
@@ -47,7 +56,7 @@ func (m minOp) Apply(_ context.Context, _ value.Dict, in operators.InputIter, ou
 
 func (m minOp) Signature() *operators.Signature {
 	return operators.NewSignature("math", "min").
-		Input([]value.Type{value.Types.ListOfNumbers})
+		ParamWithHelp("of", value.Types.Any, false, true, nil, "Take min of values in this field of input")
 }
 
 var _ operators.Operator = minOp{}

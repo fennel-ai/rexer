@@ -32,6 +32,28 @@ func TestMath(t *testing.T) {
 		},
 		{
 			[]value.Value{
+				value.Int(1),
+				value.Int(2),
+				value.Int(3),
+			},
+			value.NewDict(nil),
+			[]value.Dict{
+				value.NewDict(map[string]value.Value{
+					"of": value.NewList(value.Int(-1), value.Int(2), value.Int(0)),
+				}),
+				value.NewDict(map[string]value.Value{
+					"of": value.NewList(value.Int(-25), value.Double(0), value.Int(5)),
+				}),
+				value.NewDict(map[string]value.Value{
+					"of": value.NewList(value.Double(-4), value.Int(2), value.Double(3)),
+				}),
+			},
+			false,
+			[]value.Value{value.Int(2), value.Int(5), value.Double(3)},
+			[]value.Value{value.Int(-1), value.Int(-25), value.Double(-4)},
+		},
+		{
+			[]value.Value{
 				value.NewList(),
 				value.NewList(value.Int(math.MaxInt64), value.Int(math.MinInt64), value.Int(0)),
 			},

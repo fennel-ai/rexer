@@ -2,6 +2,7 @@ package math
 
 import (
 	"context"
+	"fmt"
 	"sync"
 
 	"fennel/engine/operators"
@@ -22,20 +23,29 @@ func (a meanop) New(
 
 func (a meanop) Apply(_ context.Context, _ value.Dict, in operators.InputIter, out *value.List) error {
 	for in.HasMore() {
-		heads, _, err := in.Next()
+		heads, kwargs, err := in.Next()
 		if err != nil {
 			return err
 		}
-		elems := heads[0].(value.List)
+		of, _ := kwargs.Get("of")
+		var elems value.List
+		if of == nil {
+			elems = heads[0].(value.List)
+		} else {
+			elems = of.(value.List)
+		}
 		var sum value.Value
 		count := 0
 		for i, elem := range elems.Values() {
+			if err = value.Types.Number.Validate(elem); err != nil {
+				return fmt.Errorf("value [%s] is not a number", elem.String())
+			}
 			if i == 0 {
 				sum = elem
 			} else {
 				sum, err = sum.Op("+", elem)
 				if err != nil {
-					return nil
+					return err
 				}
 			}
 			count++
@@ -55,7 +65,7 @@ func (a meanop) Apply(_ context.Context, _ value.Dict, in operators.InputIter, o
 
 func (a meanop) Signature() *operators.Signature {
 	return operators.NewSignature("math", "mean").
-		Input([]value.Type{value.Types.ListOfNumbers})
+		ParamWithHelp("of", value.Types.Any, false, true, nil, "Take mean of values in this field of input")
 }
 
 var _ operators.Operator = meanop{}
