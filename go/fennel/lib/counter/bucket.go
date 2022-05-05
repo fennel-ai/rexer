@@ -7,7 +7,6 @@ import (
 )
 
 const (
-	AGGREGATE_DELTA_TOPIC_NAME             = "aggr_delta"
 	AGGREGATE_OFFLINE_TRANSFORM_TOPIC_NAME = "aggr_offline_transform"
 )
 

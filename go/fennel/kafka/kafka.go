@@ -67,7 +67,6 @@ var ALL_TOPICS = []TopicConf{
 	},
 
 	{Topic: profile.PROFILELOG_KAFKA_TOPIC},
-	{Topic: counter.AGGREGATE_DELTA_TOPIC_NAME},
 	{Topic: counter.AGGREGATE_OFFLINE_TRANSFORM_TOPIC_NAME},
 }
 

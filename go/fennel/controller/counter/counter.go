@@ -1,5 +1,3 @@
-//go:build !badger
-
 package counter
 
 import (
@@ -83,16 +81,6 @@ func Update(
 		return err
 	}
 	buckets, err = counter.MergeBuckets(histogram, buckets)
-	if err != nil {
-		return err
-	}
-	// log the deltas to be consumed by the tailer
-	ad, err := libcounter.ToProtoAggregateDelta(agg.Id, agg.Options, buckets)
-	if err != nil {
-		return err
-	}
-	deltaProducer := tier.Producers[libcounter.AGGREGATE_DELTA_TOPIC_NAME]
-	err = deltaProducer.LogProto(ctx, &ad, nil)
 	if err != nil {
 		return err
 	}
