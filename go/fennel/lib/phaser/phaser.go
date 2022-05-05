@@ -127,7 +127,7 @@ type ExampleItemList struct {
 
 type ExampleItem struct {
 	Key  *string `parquet:"name=key, type=BYTE_ARRAY, convertedtype=UTF8"`
-	Item *string `parquet:"name=item, type=BYTE_ARRAY, convertedtype=UTF8"`
+	Item string  `parquet:"name=item, type=BYTE_ARRAY, convertedtype=UTF8"`
 }
 
 func bulkUploadToRedis(tr tier.Tier, file string, numRows int) error {
@@ -155,7 +155,8 @@ func bulkUploadToRedis(tr tier.Tier, file string, numRows int) error {
 			continue
 		}
 		nodeAddress := node[:strings.IndexByte(node, ':')]
-		bulkUploadCmd := "cat " + tr.Args.OfflineAggDir + "/" + file + REDIS_BULK_UPLOAD_FILE_SUFFIX + " | redis-cli -h " + nodeAddress + " --pipe --tls"
+
+		bulkUploadCmd := "cat " + PHASER_TMP_DIR + "/" + file + REDIS_BULK_UPLOAD_FILE_SUFFIX + " | redis-cli -h " + nodeAddress + " --pipe --tls"
 		// We know it will error, so dont check the error
 		out, _ = exec.Command("bash", "-c", bulkUploadCmd).Output()
 		fmt.Println(string(out))
@@ -270,7 +271,7 @@ func (p Phaser) createItemFile(localFileReader source.ParquetFile, redisWriter *
 		}
 
 		for _, example := range examples {
-			encodedString := base64.StdEncoding.EncodeToString(value.ToJSON(value.String(*example.Item)))
+			encodedString := base64.StdEncoding.EncodeToString(value.ToJSON(value.String(example.Item)))
 			redisWriter.WriteString("SET " + p.getRedisKey(tierId, *example.Key) + " " + encodedString + "\n")
 		}
 	}
@@ -284,7 +285,7 @@ func (p Phaser) prepareFileForBulkUpload(tr tier.Tier, file string) (int, error)
 	if err != nil {
 		return 0, nil
 	}
-	redisWriter, err := os.Create(PHASER_TMP_DIR + file + REDIS_BULK_UPLOAD_FILE_SUFFIX)
+	redisWriter, err := os.Create(PHASER_TMP_DIR + "/" + file + REDIS_BULK_UPLOAD_FILE_SUFFIX)
 	if err != nil {
 		return 0, nil
 	}
@@ -347,7 +348,6 @@ func findLatestVersion(files []string, currUpdateVersion uint64) (uint64, string
 
 func (p Phaser) pollS3Bucket(tr tier.Tier) error {
 	go func(tr tier.Tier, p Phaser) {
-		// var lastKnowVersion string
 		ticker := time.NewTicker(time.Minute * time.Duration(POLL_FREQUENCY_MIN))
 		for {
 			<-ticker.C
@@ -363,10 +363,16 @@ func (p Phaser) pollS3Bucket(tr tier.Tier) error {
 				tr.Logger.Error("error while listing files in s3 bucket:", zap.Error(err))
 				continue
 			}
-			currUpdateVersion, prefixToUpdate, err := findLatestVersion(files, currUpdateVersion)
+
+			newUpdateVersion, prefixToUpdate, err := findLatestVersion(files, currUpdateVersion)
 
 			if err != nil {
 				tr.Logger.Error("error while findLatestVersion ", zap.Error(err))
+				continue
+			}
+
+			if newUpdateVersion <= currUpdateVersion {
+				tr.Logger.Info("No new updates found for ", zap.String("ID", p.GetId()))
 				continue
 			}
 
@@ -374,9 +380,9 @@ func (p Phaser) pollS3Bucket(tr tier.Tier) error {
 			var fileNames []string
 
 			for _, file := range files {
-				if strings.HasPrefix(file, prefixToUpdate) && !strings.HasSuffix(file, fmt.Sprintf("%s%d", SUCCESS_PREFIX, currUpdateVersion)) {
+				if strings.HasPrefix(file, prefixToUpdate) && !strings.HasSuffix(file, fmt.Sprintf("%s%d", SUCCESS_PREFIX, newUpdateVersion)) {
 					filesToDownload = append(filesToDownload, file)
-					fileNames = append(fileNames, strings.Replace(file, prefixToUpdate, "", 1))
+					fileNames = append(fileNames, strings.Replace(file, prefixToUpdate+"/", "", 1))
 				}
 			}
 
@@ -392,7 +398,7 @@ func (p Phaser) pollS3Bucket(tr tier.Tier) error {
 			}
 
 			// Update DB with the new version
-			err = UpdateVersion(context.Background(), tr, p.Namespace, p.Identifier, currUpdateVersion)
+			err = UpdateVersion(context.Background(), tr, p.Namespace, p.Identifier, newUpdateVersion)
 			if err != nil {
 				tr.Logger.Error("error while updating aggregate version:", zap.Error(err))
 				return
