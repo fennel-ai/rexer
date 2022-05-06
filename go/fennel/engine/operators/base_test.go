@@ -187,7 +187,7 @@ func TestTypeCheck(t *testing.T) {
 		},
 	}
 	for _, scenario := range scenarios {
-		err := Typecheck(scenario.op, scenario.input, scenario.context)
+		err := Typecheck(scenario.op.Signature(), scenario.input, scenario.context)
 		if scenario.matches {
 			assert.NoError(t, err)
 		} else {

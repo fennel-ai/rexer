@@ -11,13 +11,14 @@ import (
 type ZipTable struct {
 	first  value.List
 	second value.List
-	op     Operator
+	sig    *Signature
 }
 
 func NewZipTable(op Operator) ZipTable {
 	first := value.NewList()
 	second := value.NewList()
-	return ZipTable{first, second, op}
+	sig := op.Signature()
+	return ZipTable{first, second, sig}
 }
 
 // TODO: this almost certainly has weird race conditions if run in paralle. Fix
@@ -38,14 +39,14 @@ func (zt *ZipTable) Iter() ZipIter {
 	return ZipIter{
 		first:  &first,
 		second: &second,
-		op:     zt.op,
+		sig:    zt.sig,
 	}
 }
 
 type ZipIter struct {
 	first  *value.Iter
 	second *value.Iter
-	op     Operator
+	sig    *Signature
 }
 
 func (zi *ZipIter) HasMore() bool {
@@ -70,7 +71,7 @@ func (zi *ZipIter) Next() ([]value.Value, value.Dict, error) {
 		return nil, value.Dict{}, err
 	}
 	second := second_val.(value.Dict)
-	if err = Typecheck(zi.op, aslist, second); err != nil {
+	if err = Typecheck(zi.sig, aslist, second); err != nil {
 		return nil, value.Dict{}, err
 	}
 	return aslist, second, nil

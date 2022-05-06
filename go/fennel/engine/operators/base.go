@@ -152,8 +152,7 @@ func TypeCheckStaticKwargs(op Operator, staticKwargs value.Dict) error {
 	return nil
 }
 
-func Typecheck(op Operator, inputVal []value.Value, contextKwargs value.Dict) error {
-	sig := op.Signature()
+func Typecheck(sig *Signature, inputVal []value.Value, contextKwargs value.Dict) error {
 	// let's look at contextual kwargs first
 	if len(sig.ContextKwargs) != contextKwargs.Len() {
 		return fmt.Errorf("[%s.%s] incorrect number of contextual kwargs passed - expected: %d but got: %d",
