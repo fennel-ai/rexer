@@ -57,6 +57,7 @@ func (a AggValue) Apply(ctx context.Context, kwargs value.Dict, in operators.Inp
 		return err
 	}
 	field := string(get(kwargs, "field").(value.String))
+	outs.Grow(len(rows))
 	for i, row := range rows {
 		var out value.Value
 		if len(field) > 0 {

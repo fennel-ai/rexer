@@ -55,6 +55,7 @@ func (e ExplodeOperator) Apply(_ context.Context, staticKwargs value.Dict, in op
 					newRow.Set(kstr, value.Nil)
 					out.Append(newRow)
 				} else {
+					out.Grow(vs.Len())
 					for i := 0; i < vs.Len(); i++ {
 						v, _ := vs.At(i)
 						newRow := rowVal.Clone().(value.Dict)
@@ -113,6 +114,7 @@ func (e ExplodeOperator) Apply(_ context.Context, staticKwargs value.Dict, in op
 				out.Append(newRow)
 			} else {
 				// explode each key
+				out.Grow(expectedLength)
 				for i := 0; i < expectedLength; i++ {
 					newRow := rowVal.Clone().(value.Dict)
 					for ki := 0; ki < keys.Len(); ki++ {

@@ -60,6 +60,7 @@ func (op SortOperator) Apply(_ context.Context, staticKwargs value.Dict, in oper
 			return rows[i].key > rows[j].key
 		}
 	})
+	out.Grow(len(rows))
 	for _, row := range rows {
 		out.Append(row.data)
 	}

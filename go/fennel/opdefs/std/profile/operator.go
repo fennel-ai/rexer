@@ -76,6 +76,7 @@ func (p profileOp) Apply(ctx context.Context, staticKwargs value.Dict, in operat
 	}
 	field := string(staticKwargs.GetUnsafe("field").(value.String))
 	defaultValue := staticKwargs.GetUnsafe("default")
+	out.Grow(len(vals))
 	for i, v := range vals {
 		if v == value.Nil {
 			v = defaultValue
