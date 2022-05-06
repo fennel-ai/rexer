@@ -154,7 +154,7 @@ func batchValue(ctx context.Context, tier tier.Tier, batch []aggregate.GetAggVal
 func Update(ctx context.Context, tier tier.Tier, consumer kafka.FConsumer, agg aggregate.Aggregate) error {
 	actions, err := action.ReadBatch(ctx, consumer, 20000, time.Second*10)
 	if err != nil {
-		return fmt.Errorf("failed to read actions (batch=20000), err: %v", err)
+		return err
 	}
 	if len(actions) == 0 {
 		return nil
@@ -162,7 +162,7 @@ func Update(ctx context.Context, tier tier.Tier, consumer kafka.FConsumer, agg a
 	table, err := transformActions(tier, actions, agg.Query)
 
 	if err != nil {
-		return fmt.Errorf("failed to transform actions, err: %v", err)
+		return err
 	}
 
 	// Offline Aggregates
@@ -181,7 +181,7 @@ func Update(ctx context.Context, tier tier.Tier, consumer kafka.FConsumer, agg a
 			})
 			err = offlineTransformProducer.Log(ctx, value.ToJSON(dict), nil)
 			if err != nil {
-				tier.Logger.Error(fmt.Sprintf("failed to log transformed actions: %v", err))
+				tier.Logger.Error(fmt.Sprintf("failed to log action proto: %v", err))
 			}
 		}
 		_, err = consumer.Commit()
@@ -197,9 +197,6 @@ func Update(ctx context.Context, tier tier.Tier, consumer kafka.FConsumer, agg a
 		return err
 	}
 	_, err = consumer.Commit()
-	if err != nil {
-		tier.Logger.Info(fmt.Sprintf("consumer.Commit failed: %v", err))
-	}
 	return err
 }
 
