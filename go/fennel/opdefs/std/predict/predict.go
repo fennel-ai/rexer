@@ -58,6 +58,7 @@ func (pop predictOperator) Apply(ctx context.Context, staticKwargs value.Dict, i
 	if err != nil {
 		return err
 	}
+	out.Grow(len(scores))
 	for _, score := range scores {
 		out.Append(score)
 	}
