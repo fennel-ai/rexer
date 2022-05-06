@@ -1,9 +1,12 @@
 package value
 
 import (
+	"reflect"
 	"testing"
+	"unsafe"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestNewIntList(t *testing.T) {
@@ -103,4 +106,29 @@ func TestFuture_Await(t *testing.T) {
 	v := Int(5)
 	f := getFuture(v)
 	assert.Equal(t, v.String(), f.String())
+}
+
+// Test that calling Grow() on a list before appending can save allocations.
+func TestListGrow(t *testing.T) {
+	l := NewList()
+	v1 := l.Values()
+	// Insert elements without growing first.
+	l.Append(Int(1), Int(2))
+	v2 := l.Values()
+	assert.True(t, (*reflect.SliceHeader)(unsafe.Pointer(&v1)).Data != (*reflect.SliceHeader)(unsafe.Pointer(&v2)).Data)
+
+	l = NewList()
+	// Growing the list should not allocate.
+	l.Grow(2)
+	require.Equal(t, 0, l.Len())
+	v1 = l.Values()
+	l.Append(Int(1), Int(2))
+	require.Equal(t, 2, l.Len())
+	v2 = l.Values()
+	assert.True(t, (*reflect.SliceHeader)(unsafe.Pointer(&v1)).Data == (*reflect.SliceHeader)(unsafe.Pointer(&v2)).Data)
+	// Inserting without allocating more capacity will still allocate.
+	l.Append(Int(1), Int(2))
+	v3 := l.Values()
+	assert.True(t, (*reflect.SliceHeader)(unsafe.Pointer(&v3)).Data != (*reflect.SliceHeader)(unsafe.Pointer(&v2)).Data)
+	assert.Equal(t, 4, l.Len())
 }

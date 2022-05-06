@@ -260,6 +260,15 @@ func (l *List) Append(vals ...Value) {
 	l.values = append(l.values, vals...)
 }
 
+func (l *List) Grow(n int) {
+	if cap(l.values) >= len(l.values)+n {
+		return
+	}
+	values := make([]Value, len(l.values), len(l.values)+n)
+	copy(values, l.values)
+	l.values = values
+}
+
 func (l *List) Iter() Iter {
 	return Iter{0, *l}
 }
