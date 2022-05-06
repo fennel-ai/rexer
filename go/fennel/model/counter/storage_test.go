@@ -3,13 +3,18 @@ package counter
 import (
 	"context"
 	"math/rand"
+	"strings"
 	"testing"
 
+	"github.com/mtraver/base91"
 	"github.com/stretchr/testify/assert"
 
+	"fennel/lib/codex"
 	"fennel/lib/counter"
 	"fennel/lib/ftypes"
 	"fennel/lib/utils"
+	"fennel/lib/utils/binary"
+
 	"fennel/lib/value"
 	"fennel/test"
 )
@@ -25,6 +30,36 @@ func TestTwoLevelRedisStore_Get(t *testing.T) {
 	t.Run("test_large", func(t *testing.T) {
 		testLarge(t, twoLevelRedisStore{period: 24 * 3600, retention: 30 * 3600}, 20, 1000)
 	})
+}
+
+func TestRedisKeyEncodeDecode(t *testing.T) {
+	g := twoLevelRedisStore{
+		period:    8 * 3600,
+		retention: 3 * 24 * 3600,
+	}
+	rKey, err := g.redisKey(group{aggId: ftypes.AggId(12), key: "foobar", id: 12345})
+	assert.NoError(t, err)
+
+	// TODO(mohit): Potentially move this to a library which could be helpful for tools which can use this functionality
+
+	// decode aggId
+	s := strings.Split(rKey, redisKeyDelimiter)
+	assert.True(t, len(s) == 3)
+	{
+		b, err := base91.StdEncoding.DecodeString(s[0])
+		assert.NoError(t, err)
+		aggId, _, err := binary.ReadUvarint(b)
+		assert.NoError(t, err)
+		assert.Equal(t, aggId, uint64(ftypes.AggId(12)))
+	}
+	// decode codec
+	{
+		b, err := base91.StdEncoding.DecodeString(s[1])
+		assert.NoError(t, err)
+		codec, _, err := codex.Read(b)
+		assert.NoError(t, err)
+		assert.Equal(t, codec, counterCodec)
+	}
 }
 
 func testStorage(t *testing.T, store BucketStore) {

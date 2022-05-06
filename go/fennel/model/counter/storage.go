@@ -3,6 +3,7 @@ package counter
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
 
 	// TODO: consider implementing own library in the future since the repository is old
@@ -30,6 +31,9 @@ const (
 	// slotCodec is used to differentiate keys in potentially different schemas
 	// with slotCodec = 1, the schema is: <width>:<index> for `Window_MINUTE` and <window>:<width>:<index> for rest.
 	slotCodec codex.Codex = 1
+
+	// redisKey delimiter
+	redisKeyDelimiter string = "-"
 )
 
 var metrics = promauto.NewSummaryVec(prometheus.SummaryOpts{
@@ -157,7 +161,7 @@ func (t twoLevelRedisStore) get(
 		}
 		slots[i] = s
 		if _, ok := seen[s.g]; !ok {
-			rkey, err := t.redisKey(aggIds[i], s.g)
+			rkey, err := t.redisKey(s.g)
 			if err != nil {
 				return nil, err
 			}
@@ -262,7 +266,7 @@ func (t twoLevelRedisStore) set(ctx context.Context, tier tier.Tier, aggIds []ft
 		}
 		slots[i] = s
 		if _, ok := seen[s.g]; !ok {
-			rkey, err := t.redisKey(aggIds[i], s.g)
+			rkey, err := t.redisKey(s.g)
 			if err != nil {
 				return err
 			}
@@ -340,35 +344,68 @@ func (t twoLevelRedisStore) slotKey(s slot) (string, error) {
 	}
 }
 
-func (t twoLevelRedisStore) redisKey(id ftypes.AggId, g group) (string, error) {
-	buf := make([]byte, 8+8+8+len(g.key)+8+8) // codec + aggid + (length of groupkey) + groupkey + period + groupid
-	curr := 0
-	if n, err := counterCodec.Write(buf[curr:]); err != nil {
-		return "", err
-	} else {
-		curr += n
+// redisKey returns key for an redis entry corresponding to the given aggregate id and group
+//
+// encoding is as follows:
+// 	{AggrId}-{Codec}-{GroupIdentifier}
+//
+// where:
+// 	AggrId -> base91 encoded, UvarInt serialized AggId
+//	Codec  -> base91 encoded, UvarInt serialized codec; codec refers to the encoding mechanism of the group identifier
+//  GroupIdentifier -> base91 encoded (NOTE: this is determined with Codec), serialization of group key + storage period + group id
+//
+// we use `-` (omitted from base91 character set) as the delimiter b/w different parts of the key to prefix search for a particular
+// AggId or (AggId, Codec) pair on redis
+func (t twoLevelRedisStore) redisKey(g group) (string, error) {
+	var aggStr, codecStr, groupIdStr string
+	// aggId
+	{
+		aggBuf := make([]byte, 8) // aggId
+		curr, err := binary.PutUvarint(aggBuf, uint64(g.aggId))
+		if err != nil {
+			return "", err
+		}
+		aggStr = base91.StdEncoding.EncodeToString(aggBuf[:curr])
 	}
-	if n, err := binary.PutUvarint(buf[curr:], uint64(id)); err != nil {
-		return "", err
-	} else {
-		curr += n
+	// codec
+	{
+		codecBuf := make([]byte, 8) // codec
+		curr, err := counterCodec.Write(codecBuf)
+		if err != nil {
+			return "", err
+		}
+		codecStr = base91.StdEncoding.EncodeToString(codecBuf[:curr])
 	}
-	if n, err := binary.PutString(buf[curr:], g.key); err != nil {
-		return "", err
-	} else {
-		curr += n
+	// groupid
+	{
+		groupIdBuf := make([]byte, 8+len(g.key)+8+8) // (length of groupkey) + groupkey + period + groupid
+		curr := 0
+		if n, err := binary.PutString(groupIdBuf[curr:], g.key); err != nil {
+			return "", err
+		} else {
+			curr += n
+		}
+		if n, err := binary.PutUvarint(groupIdBuf[curr:], t.period); err != nil {
+			return "", err
+		} else {
+			curr += n
+		}
+		if n, err := binary.PutUvarint(groupIdBuf[curr:], g.id); err != nil {
+			return "", err
+		} else {
+			curr += n
+		}
+		groupIdStr = base91.StdEncoding.EncodeToString(groupIdBuf[:curr])
 	}
-	if n, err := binary.PutUvarint(buf[curr:], t.period); err != nil {
-		return "", err
-	} else {
-		curr += n
-	}
-	if n, err := binary.PutUvarint(buf[curr:], g.id); err != nil {
-		return "", err
-	} else {
-		curr += n
-	}
-	return base91.StdEncoding.EncodeToString(buf[:curr]), nil
+
+	// concatenate the base91 encoded strings with `-` as the delimiter
+	sb := strings.Builder{}
+	sb.WriteString(aggStr)
+	sb.WriteString(redisKeyDelimiter)
+	sb.WriteString(codecStr)
+	sb.WriteString(redisKeyDelimiter)
+	sb.WriteString(groupIdStr)
+	return sb.String(), nil
 }
 
 func (t twoLevelRedisStore) toSlot(id ftypes.AggId, b *counter.Bucket) (slot, error) {
