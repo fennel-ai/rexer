@@ -246,7 +246,6 @@ func CreateFromArgs(args *TierArgs) (tier Tier, err error) {
 	s3client := s3.NewClient(args.S3Args)
 	glueclient := glue.NewGlueClient(args.GlueArgs)
 
-	args.ModelStoreArgs.ModelStoreEndpointName += fmt.Sprintf("-%d", tierID)
 	modelStore := modelstore.NewModelStore(args.ModelStoreArgs, tierID)
 
 	// Uncomment to make e2e test work

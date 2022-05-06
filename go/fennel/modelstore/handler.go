@@ -31,6 +31,10 @@ func NewModelStore(args ModelStoreArgs, tierID ftypes.RealmID) *ModelStore {
 	return &ms
 }
 
+func (ms *ModelStore) SetEndpointName(endpointName string) {
+	ms.endpointName = endpointName
+}
+
 func (ms *ModelStore) EndpointName() string {
 	return ms.endpointName
 }

@@ -26,6 +26,7 @@ func TestStoreScoreRemoveModel(t *testing.T) {
 
 	err = test.AddSagemakerClientToTier(&tier)
 	assert.NoError(t, err)
+	defer cleanup(t, tier)
 
 	data, err := tier.S3Client.Download("model.tar.gz", "my-xgboost-test-bucket-2")
 	assert.NoError(t, err)
@@ -72,8 +73,6 @@ func TestStoreScoreRemoveModel(t *testing.T) {
 		time.Sleep(time.Minute)
 	}
 	assert.NoError(t, err)
-
-	cleanup(t, tier)
 }
 
 func TestEnsureEndpoint(t *testing.T) {

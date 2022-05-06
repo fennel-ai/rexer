@@ -29,7 +29,7 @@ func TestCreateDeleteExists(t *testing.T) {
 			Name:             "my-test-model",
 			Version:          "v1",
 			Framework:        "xgboost",
-			FrameworkVersion: "1.3.1",
+			FrameworkVersion: "1.3-1",
 			ArtifactPath:     "s3://my-xgboost-test-bucket-2/model.tar.gz",
 		},
 	}, sagemakerModelName)
@@ -160,6 +160,7 @@ func TestScoreSvm(t *testing.T) {
 		value.NewList(value.String("3:1 10:1 20:1 21:1 23:1 34:1 36:1 39:1 42:1 53:1 56:1 65:1 69:1 77:1 86:1 88:1 92:1 95:1 102:1 105:1 116:1 120:1")),
 	}
 	response, err := c.Score(context.Background(), &lib.ScoreRequest{
+		Framework:     "xgboost",
 		EndpointName:  "smclient-test-endpoint",
 		ContainerName: lib.GetContainerName("smclient-test-xgboost-model", "v1"),
 		FeatureLists:  featureVectors,
@@ -177,6 +178,7 @@ func TestScoreCsv(t *testing.T) {
 		csv.(value.List),
 	}
 	response, err := c.Score(context.Background(), &lib.ScoreRequest{
+		Framework:     "xgboost",
 		EndpointName:  "smclient-test-endpoint",
 		ContainerName: lib.GetContainerName("smclient-test-xgboost-model", "v1"),
 		FeatureLists:  featureVectors,

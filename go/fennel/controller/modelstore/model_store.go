@@ -106,7 +106,12 @@ func Remove(ctx context.Context, tier tier.Tier, name, version string) (err erro
 func Score(
 	ctx context.Context, tier tier.Tier, name, version string, featureVecs []value.List,
 ) (res []value.Value, err error, retry bool) {
+	framework, err := db.GetFramework(tier, name, version)
+	if err != nil {
+		return nil, fmt.Errorf("could not get framework from db: %v", err), false
+	}
 	req := lib.ScoreRequest{
+		Framework:     framework,
 		EndpointName:  tier.ModelStore.EndpointName(),
 		ContainerName: lib.GetContainerName(name, version),
 		FeatureLists:  featureVecs,
@@ -125,7 +130,7 @@ func Score(
 			return nil, fmt.Errorf("failed to score the model: %v; %v", err, err2), false
 		}
 		if status == "Creating" || status == "Updating" || status == "Deleting" || status == "RollingBack" {
-			activeModels, err := db.GetActiveModels(tier)
+			activeModels, err2 := db.GetActiveModels(tier)
 			if err2 != nil {
 				return nil, fmt.Errorf("failed to score the model: %v; %v", err, err2), false
 			}
@@ -208,6 +213,8 @@ func EnsureEndpointExists(ctx context.Context, tier tier.Tier) error {
 		return fmt.Errorf("failed to check if model exists on sagemaker: %v", err)
 	}
 	if !exists {
+		// The type of endpoint we use requires at least two models.
+		// So, we add a dummy model when there is only one model.
 		if len(activeModels) == 1 {
 			activeModels = append(activeModels, getDummyModel(activeModels[0]))
 		}

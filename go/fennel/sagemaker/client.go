@@ -1,7 +1,6 @@
 package sagemaker
 
 import (
-	"bytes"
 	"context"
 	"fmt"
 	"log"
@@ -15,7 +14,6 @@ import (
 	"github.com/aws/aws-sdk-go/service/sagemakerruntime"
 
 	lib "fennel/lib/sagemaker"
-	"fennel/lib/value"
 )
 
 type SagemakerArgs struct {
@@ -66,10 +64,20 @@ func (smc SMClient) CreateModel(ctx context.Context, hostedModels []lib.Model, s
 		ModelName:        aws.String(sagemakerModelName),
 	}
 	for _, model := range hostedModels {
+		env := map[string]*string{}
+		if model.Framework == "sklearn" {
+			env["SAGEMAKER_SUBMIT_DIRECTORY"] = aws.String("opt/ml/model")
+			env["SAGEMAKER_PROGRAM"] = aws.String("inference.py")
+		}
+		image, err := getImage(model.Framework, model.FrameworkVersion, smc.args.Region)
+		if err != nil {
+			return fmt.Errorf("failed to get image: %v", err)
+		}
 		modelInput.Containers = append(modelInput.Containers, &sagemaker.ContainerDefinition{
 			ContainerHostname: aws.String(lib.GetContainerName(model.Name, model.Version)),
-			Image:             aws.String(getImage(model.Framework, model.Version, smc.args.Region)),
+			Image:             aws.String(image),
 			ModelDataUrl:      aws.String(model.ArtifactPath),
+			Environment:       env,
 		})
 	}
 	// InferenceExecutionConfig can be set only when the model has more than one containers.
@@ -202,16 +210,12 @@ func (smc SMClient) DeleteEndpoint(ctx context.Context, endpointName string) err
 	return nil
 }
 
-// TODO: Implement.
-func getImage(framework, version, region string) string {
-	var prefix string
-	switch region {
-	case "ap-south-1":
-		prefix = "720646828776.dkr.ecr."
-	case "us-west-2":
-		prefix = "246618743249.dkr.ecr."
+func getImage(framework, version, region string) (string, error) {
+	url, ok := imageURIs[region][framework][version]
+	if !ok {
+		return "", fmt.Errorf("could not find image")
 	}
-	return prefix + region + ".amazonaws.com/sagemaker-xgboost:1.3-1"
+	return url, nil
 }
 
 func (smc SMClient) CreateEndpointConfig(ctx context.Context, endpointCfg lib.SagemakerEndpointConfig) error {
@@ -258,79 +262,9 @@ func (smc SMClient) UpdateEndpoint(ctx context.Context, endpoint lib.SagemakerEn
 }
 
 func (smc SMClient) Score(ctx context.Context, in *lib.ScoreRequest) (*lib.ScoreResponse, error) {
-	// TODO: Find the correct adapter to use given the model framework.
-	adapter := XgboostAdapter{
-		client: smc.runtimeClient,
+	adapter, err := smc.getAdapter(in.Framework)
+	if err != nil {
+		return nil, fmt.Errorf("could not get adapter: %v", err)
 	}
 	return adapter.Score(ctx, in)
-}
-
-type XgboostAdapter struct {
-	client *sagemakerruntime.SageMakerRuntime
-}
-
-func (xga XgboostAdapter) Score(ctx context.Context, in *lib.ScoreRequest) (*lib.ScoreResponse, error) {
-	if len(in.FeatureLists) == 0 {
-		return &lib.ScoreResponse{}, nil
-	}
-	payload := bytes.Buffer{}
-	for _, fl := range in.FeatureLists {
-		sf := make([]string, 0, fl.Len())
-		for i := 0; i < fl.Len(); i++ {
-			f, _ := fl.At(i)
-			raw, err := f.MarshalJSON()
-			if err != nil {
-				return nil, fmt.Errorf("failed to marshal feaures: %v: %v", f, err)
-			}
-			sf = append(sf, string(raw))
-		}
-		line := strings.Join(sf, ",")
-		payload.Write([]byte(line[1 : len(line)-1]))
-		_, err := payload.WriteRune('\n')
-		if err != nil {
-			return nil, fmt.Errorf("failed to write newline: %v", err)
-		}
-	}
-	var contentType string
-	// If features list if empty, assume input is csv.
-	if in.FeatureLists[0].Len() == 0 {
-		contentType = "text/csv"
-	} else {
-		feature, _ := in.FeatureLists[0].At(0)
-		if _, ok := feature.(value.Double); ok {
-			contentType = "text/csv"
-		} else if _, ok := feature.(value.Int); ok {
-			contentType = "text/csv"
-		} else {
-			contentType = "text/libsvm"
-		}
-	}
-	out, err := xga.client.InvokeEndpointWithContext(ctx, &sagemakerruntime.InvokeEndpointInput{
-		Body:                    payload.Bytes(),
-		ContentType:             aws.String(contentType),
-		EndpointName:            aws.String(in.EndpointName),
-		TargetContainerHostname: aws.String(in.ContainerName),
-	})
-	if err != nil {
-		return nil, fmt.Errorf("failed to invoke sagemaker endpoint: %v", err)
-	}
-	tmp := strings.ReplaceAll(string(out.Body), "\n", ",")
-	if tmp[len(tmp)-1] == ',' {
-		tmp = tmp[:len(tmp)-1]
-	}
-	r := "[" + tmp + "]"
-	v, err := value.FromJSON([]byte(r))
-	if err != nil {
-		return nil, fmt.Errorf("failed to parse response [%s] into value: %v", string(out.Body), err)
-	}
-	scores := make([]value.Value, 0, v.(value.List).Len())
-	valuelist := v.(value.List)
-	scoreiter := valuelist.Iter()
-	for scoreiter.HasMore() {
-		next, _ := scoreiter.Next()
-		scores = append(scores, next)
-	}
-	return &lib.ScoreResponse{
-		Scores: scores,
-	}, nil
 }

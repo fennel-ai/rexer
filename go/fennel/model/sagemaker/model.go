@@ -292,3 +292,16 @@ func MakeEndpointInactive(tier tier.Tier, endpointName string) error {
 	}
 	return nil
 }
+
+func GetFramework(tier tier.Tier, name, version string) (string, error) {
+	var framework string
+	err := tier.DB.Get(&framework, `
+		SELECT (framework)
+		FROM model
+		WHERE name=? AND version=?
+	`, name, version)
+	if err != nil {
+		return framework, fmt.Errorf("failed to get framework: %v", err)
+	}
+	return framework, nil
+}
