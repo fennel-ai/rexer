@@ -146,15 +146,10 @@ func startAggregateProcessing(tr tier.Tier) error {
 }
 
 func startPhaserProcessing(tr tier.Tier) error {
-	fmt.Println("Starting phaser processing")
-
 	processedPhasers := make(map[string]struct{})
 	ticker := time.NewTicker(time.Second * 15)
-	fmt.Println("Starting phaser processing")
 	for {
-		fmt.Println("Retrieving phasers")
 		phasers, err := phaser.RetrieveAll(context.Background(), tr)
-		fmt.Println("phasers: ", phasers)
 		if err != nil {
 			panic(err)
 		}
@@ -203,12 +198,10 @@ func main() {
 	if err = startProfileDBInsertion(tr); err != nil {
 		panic(err)
 	}
-	fmt.Println("Starting phaser processing1")
 
 	if err = startPhaserProcessing(tr); err != nil {
 		panic(err)
 	}
-	fmt.Println("Starting phaser processi2ng")
 
 	if err = startAggregateProcessing(tr); err != nil {
 		panic(err)

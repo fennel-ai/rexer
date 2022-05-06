@@ -126,7 +126,6 @@ type Tier struct {
 func CreateFromArgs(args *TierArgs) (tier Tier, err error) {
 	tierID := args.TierID
 	scope := resource.NewTierScope(tierID)
-
 	log.Print("Connecting to mysql")
 	mysqlConfig := db.MySQLConfig{
 		Host:     args.MysqlHost,

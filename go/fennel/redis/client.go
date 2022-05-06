@@ -74,6 +74,38 @@ func (c Client) MGet(ctx context.Context, ks ...string) ([]interface{}, error) {
 	return vs, nil
 }
 
+// Same as MGet without transforming the keys
+func (c Client) MRawGet(ctx context.Context, ks ...string) ([]interface{}, error) {
+	defer timer.Start(ctx, c.ID(), "redis.mget").Stop()
+	// this check is to handle a bug, likely related to https://github.com/redis/node-redis/issues/125
+	if len(ks) == 0 {
+		return []interface{}{}, nil
+	}
+
+	pipe := c.client.Pipeline()
+	results := make([]*redis.StringCmd, len(ks))
+	for i := range ks {
+		results[i] = pipe.Get(ctx, ks[i])
+	}
+	_, err := pipe.Exec(ctx)
+	if err != nil && err != redis.Nil {
+		return nil, err
+	}
+	vs := make([]interface{}, len(ks))
+	for i := range results {
+		res, err := results[i].Result()
+		switch err {
+		case nil:
+			vs[i] = res
+		case redis.Nil:
+			vs[i] = redis.Nil
+		default:
+			return nil, err
+		}
+	}
+	return vs, nil
+}
+
 func (c Client) MSet(ctx context.Context, keys []string, values []interface{}, ttls []time.Duration) error {
 	defer timer.Start(ctx, c.ID(), "redis.mset").Stop()
 	// nothing to write if there are no keys.

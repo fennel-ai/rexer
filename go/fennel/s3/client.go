@@ -1,7 +1,6 @@
 package s3
 
 import (
-	"fmt"
 	"io"
 	"os"
 	"strings"
@@ -53,9 +52,6 @@ func (c Client) ListFiles(bucketName, pathPrefix string) ([]string, error) {
 		return nil, err
 	}
 	var files []string
-	// fmt.Println("Listing files in bucket", bucketName, "with prefix", pathPrefix)
-	// fmt.Println(output)
-	// fmt.Println(output.Contents)
 	for _, obj := range output.Contents {
 		files = append(files, *obj.Key)
 	}
@@ -103,7 +99,6 @@ func (c Client) BatchDiskDownload(paths []string, bucketName string, folderName 
 		pathArray := strings.Split(path, "/")
 		fileWriters[i], err = os.Create(folderName + "/" + pathArray[len(pathArray)-1])
 		if err != nil {
-			fmt.Println("Error creating file", err)
 			return err
 		}
 	}

@@ -104,6 +104,7 @@ var Schema = db.Schema{
 			s3_prefix VARCHAR(255) NOT NULL,
 			phaser_schema ENUM('ITEM_SCORE_LIST', 'ITEM_LIST', 'STRING') NOT NULL,
 			update_version BIGINT UNSIGNED DEFAULT 0,
+			ttl BIGINT UNSIGNED DEFAULT 0,
 			PRIMARY KEY (namespace, identifier)
 		);`,
 	// ==================== END Schema for Phaser ======================

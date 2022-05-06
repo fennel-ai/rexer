@@ -16,6 +16,18 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
+func getUpdateFrequency(cron string) time.Duration {
+	parts := strings.Split(cron, " ")
+	if strings.Contains(parts[1], "/") {
+		x, _ := strconv.Atoi(strings.Replace(parts[1], "*/", "", 1))
+		return time.Duration(x) * time.Hour
+	} else if strings.Contains(parts[2], "/") {
+		x, _ := strconv.Atoi(strings.Replace(parts[2], "*/", "", 1))
+		return time.Duration(x) * time.Hour * 24
+	}
+	return 0
+}
+
 func Store(ctx context.Context, tier tier.Tier, agg aggregate.Aggregate) error {
 	if err := agg.Validate(); err != nil {
 		return err
@@ -46,7 +58,8 @@ func Store(ctx context.Context, tier tier.Tier, agg aggregate.Aggregate) error {
 		for _, duration := range agg.Options.Durations {
 			prefix := fmt.Sprintf("t_%d/%s-%d", int(tier.ID), agg.Name, duration)
 			aggPhaserIdentifier := fmt.Sprintf("%s-%d", agg.Name, duration)
-			err = phaser.NewPhaser(tier.Args.OfflineAggBucket, prefix, "agg", aggPhaserIdentifier, phaser.ITEM_SCORE_LIST, tier)
+			ttl := getUpdateFrequency(agg.Options.CronSchedule) * 3
+			err = phaser.NewPhaser("agg", aggPhaserIdentifier, tier.Args.OfflineAggBucket, prefix, , ttl, phaser.ITEM_SCORE_LIST, tier)
 			if err != nil {
 				return err
 			}
