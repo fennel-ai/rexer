@@ -18,6 +18,18 @@ type PhaserSer struct {
 	TTL           uint64 `db:"ttl"`
 }
 
+func getPhaser(p PhaserSer) Phaser {
+	var p2 Phaser
+	p2.Namespace = p.Namespace
+	p2.Identifier = p.Identifier
+	p2.S3Bucket = p.S3Bucket
+	p2.S3Prefix = p.S3Prefix
+	p2.Schema, _ = FromPhaserSchema(p.Schema)
+	p2.TTL = time.Duration(p.TTL) * time.Second
+	p2.UpdateVersion = p.UpdateVersion
+	return p2
+}
+
 func RetrieveAll(ctx context.Context, tier tier.Tier) ([]Phaser, error) {
 	ret := make([]PhaserSer, 0)
 	err := tier.DB.SelectContext(ctx, &ret, `SELECT * FROM phaser`)
@@ -26,15 +38,7 @@ func RetrieveAll(ctx context.Context, tier tier.Tier) ([]Phaser, error) {
 	}
 	phasers := make([]Phaser, 0, len(ret))
 	for _, pSer := range ret {
-		var p Phaser
-		p.Namespace = pSer.Namespace
-		p.Identifier = pSer.Identifier
-		p.S3Bucket = pSer.S3Bucket
-		p.S3Prefix = pSer.S3Prefix
-		p.Schema, err = FromPhaserSchema(pSer.Schema)
-		p.TTL = time.Duration(pSer.TTL) * time.Second
-		p.UpdateVersion = pSer.UpdateVersion
-		phasers = append(phasers, p)
+		phasers = append(phasers, getPhaser(pSer))
 	}
 	return phasers, nil
 }
@@ -45,15 +49,7 @@ func RetrievePhaser(ctx context.Context, tier tier.Tier, namespace, identifier s
 	if err != nil {
 		return Phaser{}, err
 	}
-	var p2 Phaser
-	p2.Namespace = p.Namespace
-	p2.Identifier = p.Identifier
-	p2.S3Bucket = p.S3Bucket
-	p2.S3Prefix = p.S3Prefix
-	p2.Schema, err = FromPhaserSchema(p.Schema)
-	p2.TTL = time.Duration(p.TTL) * time.Second
-	p2.UpdateVersion = p.UpdateVersion
-	return p2, nil
+	return getPhaser(p), nil
 }
 
 func GetLatestUpdatedVersion(ctx context.Context, tier tier.Tier, namespace, identifier string) (uint64, error) {

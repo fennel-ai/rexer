@@ -59,12 +59,11 @@ func Store(ctx context.Context, tier tier.Tier, agg aggregate.Aggregate) error {
 			prefix := fmt.Sprintf("t_%d/%s-%d", int(tier.ID), agg.Name, duration)
 			aggPhaserIdentifier := fmt.Sprintf("%s-%d", agg.Name, duration)
 			ttl := getUpdateFrequency(agg.Options.CronSchedule) * 3
-			err = phaser.NewPhaser("agg", aggPhaserIdentifier, tier.Args.OfflineAggBucket, prefix, , ttl, phaser.ITEM_SCORE_LIST, tier)
+			err = phaser.NewPhaser("agg", aggPhaserIdentifier, tier.Args.OfflineAggBucket, prefix, ttl, phaser.ITEM_SCORE_LIST, tier)
 			if err != nil {
 				return err
 			}
 		}
-
 	}
 
 	querySer, err := ast.Marshal(agg.Query)

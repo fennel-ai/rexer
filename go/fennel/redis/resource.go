@@ -3,7 +3,6 @@ package redis
 import (
 	"context"
 	"crypto/tls"
-	"fmt"
 
 	"fennel/resource"
 
@@ -59,7 +58,6 @@ type ClientConfig struct {
 var _ resource.Config = ClientConfig{}
 
 func (conf ClientConfig) Materialize() (resource.Resource, error) {
-	fmt.Println("Seting up redis client", conf.Addr)
 	client := Client{
 		conf: conf,
 		client: redis.NewClusterClient(&redis.ClusterOptions{

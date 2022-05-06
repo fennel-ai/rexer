@@ -48,7 +48,6 @@ type TierArgs struct {
 	Dev              bool           `arg:"--dev" default:"true" json:"dev,omitempty"`
 	BadgerDir        string         `arg:"--badger_dir,env:BADGER_DIR" json:"badger_dir,omitempty"`
 	OfflineAggBucket string         `arg:"--offline-agg-bucket,env:OFFLINE_AGG_BUCKET" json:"offline_agg_bucket,omitempty"`
-	OfflineAggDir    string         `arg:"--offline-agg-dir,env:OFFLINE_AGG_DIR" json:"offline_agg_dir,omitempty"`
 }
 
 type KafkaConsumerCreator func(libkafka.ConsumerConfig) (libkafka.FConsumer, error)
