@@ -400,6 +400,7 @@ func (t twoLevelRedisStore) redisKey(g group) (string, error) {
 
 	// concatenate the base91 encoded strings with `-` as the delimiter
 	sb := strings.Builder{}
+	sb.Grow(len(aggStr) + len(codecStr) + len(groupIdStr) + 2) // allocate 2 bytes for delimiter
 	sb.WriteString(aggStr)
 	sb.WriteString(redisKeyDelimiter)
 	sb.WriteString(codecStr)
