@@ -1,10 +1,8 @@
 package operators
 
 import (
-	"fmt"
-	"strconv"
-
 	"fennel/lib/value"
+	"fmt"
 )
 
 // ZipTable represents a list of values (inputs) and list of dicts (contextual kwargs)
@@ -23,7 +21,7 @@ func NewZipTable(op Operator) ZipTable {
 
 // TODO: this almost certainly has weird race conditions if run in paralle. Fix
 func (zt *ZipTable) Append(first []value.Value, second value.Dict) error {
-	d := toDict(first)
+	d := value.NewList(first...)
 	zt.first.Append(d)
 	zt.second.Append(second)
 	return nil
@@ -58,45 +56,21 @@ func (zi *ZipIter) Next() ([]value.Value, value.Dict, error) {
 	if err != nil {
 		return nil, value.Dict{}, err
 	}
-	asdict, ok := first.(value.Dict)
+	aslist, ok := first.(value.List)
 	if !ok {
-		return nil, value.Dict{}, fmt.Errorf("expected dict of operands but found: %s", first)
+		return nil, value.Dict{}, fmt.Errorf("expected list of operands but found: %s", first)
 	}
-	aslist, err := fromDict(asdict)
-	if err != nil {
-		return nil, value.Dict{}, err
+	elems := make([]value.Value, aslist.Len())
+	for i := 0; i < aslist.Len(); i++ {
+		elems[i], _ = aslist.At(i)
 	}
 	second_val, err := zi.second.Next()
 	if err != nil {
 		return nil, value.Dict{}, err
 	}
 	second := second_val.(value.Dict)
-	if err = Typecheck(zi.sig, aslist, second); err != nil {
+	if err = Typecheck(zi.sig, elems, second); err != nil {
 		return nil, value.Dict{}, err
 	}
-	return aslist, second, nil
-}
-
-func toDict(elems []value.Value) value.Value {
-	m := make(map[string]value.Value, len(elems))
-	for i := range elems {
-		k := fmt.Sprintf("%d", i)
-		m[k] = elems[i]
-	}
-	return value.NewDict(m)
-}
-
-func fromDict(d value.Dict) ([]value.Value, error) {
-	ret := make([]value.Value, d.Len())
-	for k, v := range d.Iter() {
-		n, err := strconv.Atoi(k)
-		if err != nil {
-			return nil, err
-		}
-		if n < 0 || n >= len(ret) {
-			return nil, fmt.Errorf("unexpected index in dictionary: %d", n)
-		}
-		ret[n] = v
-	}
-	return ret, nil
+	return elems, second, nil
 }
