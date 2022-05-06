@@ -147,6 +147,7 @@ func Deactivate(ctx context.Context, tier tier.Tier, aggname ftypes.AggName) err
 	// Remove if present in cache
 	tier.AggregateDefs.Delete(aggname)
 	// Check if agg already exists in db
+
 	aggser, err := modelAgg.RetrieveNoFilter(ctx, tier, aggname)
 	// If it is absent, it returns aggregate.ErrNotFound
 	// If any other error, return it as well

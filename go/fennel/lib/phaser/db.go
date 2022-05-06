@@ -5,7 +5,10 @@ import (
 	"fennel/tier"
 	"fmt"
 	"strconv"
+<<<<<<< HEAD
 	"strings"
+=======
+>>>>>>> 9de3ff6b (Added unit tests and integration tests)
 	"time"
 )
 
@@ -17,6 +20,7 @@ type PhaserSer struct {
 	Schema        string `db:"phaser_schema"`
 	UpdateVersion uint64 `db:"update_version"`
 	TTL           uint64 `db:"ttl"`
+<<<<<<< HEAD
 }
 
 func getPhaser(p PhaserSer) Phaser {
@@ -29,6 +33,8 @@ func getPhaser(p PhaserSer) Phaser {
 	p2.TTL = time.Duration(p.TTL) * time.Second
 	p2.UpdateVersion = p.UpdateVersion
 	return p2
+=======
+>>>>>>> 9de3ff6b (Added unit tests and integration tests)
 }
 
 func RetrieveAll(ctx context.Context, tier tier.Tier) ([]Phaser, error) {
@@ -39,6 +45,7 @@ func RetrieveAll(ctx context.Context, tier tier.Tier) ([]Phaser, error) {
 	}
 	phasers := make([]Phaser, 0, len(ret))
 	for _, pSer := range ret {
+<<<<<<< HEAD
 		phasers = append(phasers, getPhaser(pSer))
 	}
 	return phasers, nil
@@ -100,7 +107,36 @@ func RetrievePhasers(ctx context.Context, tier tier.Tier, namespace, identifier 
 		phasers = append(phasers, namespaceIdentifiers[namespace[i]+":"+identifier[i]])
 	}
 
+=======
+		var p Phaser
+		p.Namespace = pSer.Namespace
+		p.Identifier = pSer.Identifier
+		p.S3Bucket = pSer.S3Bucket
+		p.S3Prefix = pSer.S3Prefix
+		p.Schema, err = FromPhaserSchema(pSer.Schema)
+		p.TTL = time.Duration(pSer.TTL) * time.Second
+		p.UpdateVersion = pSer.UpdateVersion
+		phasers = append(phasers, p)
+	}
+>>>>>>> 9de3ff6b (Added unit tests and integration tests)
 	return phasers, nil
+}
+
+func RetrievePhaser(ctx context.Context, tier tier.Tier, namespace, identifier string) (Phaser, error) {
+	var p PhaserSer
+	err := tier.DB.GetContext(ctx, &p, `SELECT * FROM phaser WHERE namespace = ? AND identifier = ? LIMIT 1`, namespace, identifier)
+	if err != nil {
+		return Phaser{}, err
+	}
+	var p2 Phaser
+	p2.Namespace = p.Namespace
+	p2.Identifier = p.Identifier
+	p2.S3Bucket = p.S3Bucket
+	p2.S3Prefix = p.S3Prefix
+	p2.Schema, err = FromPhaserSchema(p.Schema)
+	p2.TTL = time.Duration(p.TTL) * time.Second
+	p2.UpdateVersion = p.UpdateVersion
+	return p2, nil
 }
 
 func GetLatestUpdatedVersion(ctx context.Context, tier tier.Tier, namespace, identifier string) (uint64, error) {
