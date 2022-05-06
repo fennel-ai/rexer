@@ -331,6 +331,7 @@ func (i Interpreter) getStaticKwargs(op operators.Operator, kwargs ast.Dict) (va
 func (i Interpreter) getContextKwargs(op operators.Operator, trees ast.Dict, inputs []value.List, vars []string) (operators.ZipTable, error) {
 	ret := operators.NewZipTable(op)
 	sig := op.Signature()
+	varmap := make(map[string]value.Value, len(vars))
 	// TODO: relax to potentially having zero inputs?
 	for j := 0; j < inputs[0].Len(); j++ {
 		v := make([]value.Value, len(inputs))
@@ -340,17 +341,10 @@ func (i Interpreter) getContextKwargs(op operators.Operator, trees ast.Dict, inp
 				return operators.ZipTable{}, fmt.Errorf("unequal length of operands")
 			}
 			v[idx] = val
-		}
-
-		// set all the lambda variables as needed
-		varmap := make(map[string]value.Value)
-		for idx := range vars {
-			varname := vars[idx]
-			varval, err := inputs[idx].At(j)
-			if err != nil {
-				return operators.ZipTable{}, fmt.Errorf("unequal length of operands")
+			// set all the lambda variables as needed
+			if len(vars) > idx {
+				varmap[vars[idx]] = val
 			}
-			varmap[varname] = varval
 		}
 		// now using these lambda variables, evaluate kwargs variables
 		kwargs := value.NewDict(nil)
