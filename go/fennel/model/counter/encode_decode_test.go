@@ -42,10 +42,26 @@ func TestRedisKeyPrefix(t *testing.T) {
 	n, err := codec.Write(buf[curr:])
 	assert.NoError(t, err)
 	curr += n
-	n, err = binary.PutUvarint(buf[curr:], uint64(16))
+
+	actualId := 31
+	n, err = binary.PutUvarint(buf[curr:], uint64(actualId))
 	assert.NoError(t, err)
 	curr += n
-	fmt.Printf("str: %s\n", base91.StdEncoding.EncodeToString(buf[:curr]))
+
+	s := base91.StdEncoding.EncodeToString(buf[:curr])
+	fmt.Printf("str: %s\n", s)
+
+	b, err := base91.StdEncoding.DecodeString(s)
+	assert.NoError(t, err)
+	expected, n, err := codex.Read(b)
+	assert.NoError(t, err)
+	assert.Equal(t, codec, expected)
+	b = b[n:]
+
+	expectedn, x, err := binary.ReadUvarint(b)
+	assert.NoError(t, err)
+	b = b[x:]
+	fmt.Printf("aggId: %d, actual: %d\n", expectedn, actualId)
 }
 
 func TestRedisKeyPrefixString(t *testing.T) {
@@ -55,11 +71,32 @@ func TestRedisKeyPrefixString(t *testing.T) {
 	n, err := codec.Write(buf[curr:])
 	assert.NoError(t, err)
 	curr += n
-	n, err = binary.PutUvarint(buf[curr:], uint64(16))
+	actualId := 31
+	n, err = binary.PutUvarint(buf[curr:], uint64(actualId))
 	assert.NoError(t, err)
 	curr += n
-	n, err = binary.PutString(buf[curr:], "foobar")
+	actuals := "coobar"
+	n, err = binary.PutString(buf[curr:], "coobar")
 	assert.NoError(t, err)
 	curr += n
-	fmt.Printf("str: %s\n", base91.StdEncoding.EncodeToString(buf[:curr]))
+
+	s := base91.StdEncoding.EncodeToString(buf[:curr])
+	fmt.Printf("str: %s\n", s)
+
+	b, err := base91.StdEncoding.DecodeString(s)
+	assert.NoError(t, err)
+	expected, n, err := codex.Read(b)
+	assert.NoError(t, err)
+	assert.Equal(t, codec, expected)
+	b = b[n:]
+
+	expectedn, x, err := binary.ReadUvarint(b)
+	assert.NoError(t, err)
+	b = b[x:]
+	fmt.Printf("aggId: %d, actual: %d\n", expectedn, actualId)
+
+	expecteds, y, err := binary.ReadString(b)
+	assert.NoError(t, err)
+	b = b[y:]
+	fmt.Printf("groupkey: %s, expected: %s\n", expecteds, actuals)
 }
