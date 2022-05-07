@@ -20,6 +20,25 @@ func TestRedisKeyPrefixCodec(t *testing.T) {
 	fmt.Printf("str: %s\n", base91.StdEncoding.EncodeToString(buf[:curr]))
 }
 
+func TestRedisKeyPrefixAggId(t *testing.T) {
+	buf := make([]byte, 8)
+	curr := 0
+	n, err := binary.PutUvarint(buf[curr:], uint64(21))
+	assert.NoError(t, err)
+	curr += n
+	fmt.Printf("str: %s\n", base91.StdEncoding.EncodeToString(buf[:curr]))
+}
+
+func TestRedisKeyPrefixAggIdDecode(t *testing.T) {
+	s := "LA"
+	b, err := base91.StdEncoding.DecodeString(s)
+	assert.NoError(t, err)
+	expected, n, err := binary.ReadUvarint(b)
+	assert.NoError(t, err)
+	b = b[n:]
+	fmt.Printf("str: %s, aggId: %d\n", s, expected)
+}
+
 func TestRedisKeyPrefixDecode(t *testing.T) {
 	b, err := base91.StdEncoding.DecodeString("CtA")
 	assert.NoError(t, err)
