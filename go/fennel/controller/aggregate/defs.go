@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+
 	"strconv"
 	"strings"
 	"time"
@@ -29,6 +30,10 @@ func getUpdateFrequency(cron string) time.Duration {
 	}
 	return 0
 }
+
+// local cache of aggregate name to aggregate definition.
+// key type is string, value type is aggregate.Aggregate.
+var aggregates = sync.Map{}
 
 func Store(ctx context.Context, tier tier.Tier, agg aggregate.Aggregate) error {
 	if err := agg.Validate(); err != nil {
