@@ -115,12 +115,11 @@ func TestDeactivate(t *testing.T) {
 	err = Deactivate(ctx, tier, "my_counter")
 	assert.NoError(t, err)
 
-	// But cannot after deactivating
+	// Can retrieve after deactivating, because the aggregate is cached.
 	_, err = Retrieve(ctx, tier, "my_counter")
-	assert.Error(t, err)
-	assert.ErrorIs(t, err, aggregate.ErrNotFound)
+	assert.NoError(t, err)
 
-	// And can deactivate multiple times
+	// Can deactivate multiple times
 	err = Deactivate(ctx, tier, "my_counter")
 	assert.NoError(t, err)
 
