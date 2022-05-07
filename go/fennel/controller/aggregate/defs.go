@@ -2,7 +2,9 @@ package aggregate
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"sync"
 	"time"
 
 	"fennel/engine/ast"
@@ -14,6 +16,10 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
+// local cache of aggregate name to aggregate definition.
+// key type is string, value type is aggregate.Aggregate.
+var aggregates = sync.Map{}
+
 func Store(ctx context.Context, tier tier.Tier, agg aggregate.Aggregate) error {
 	if err := agg.Validate(); err != nil {
 		return err
@@ -22,7 +28,7 @@ func Store(ctx context.Context, tier tier.Tier, agg aggregate.Aggregate) error {
 	// Check if agg already exists in db
 	agg2, err := Retrieve(ctx, tier, agg.Name)
 	// Only error that should happen is when agg is not present
-	if err != nil && err != aggregate.ErrNotFound {
+	if err != nil && !errors.Is(err, aggregate.ErrNotFound) {
 		return err
 	} else if err == nil {
 		// if already present, check if query and options are the same
@@ -63,11 +69,21 @@ func Retrieve(ctx context.Context, tier tier.Tier, aggname ftypes.AggName) (aggr
 	if len(aggname) == 0 {
 		return empty, fmt.Errorf("aggregate name can not be of length zero")
 	}
-	aggser, err := modelAgg.Retrieve(ctx, tier, aggname)
-	if err != nil {
-		return empty, err
+	var agg aggregate.Aggregate
+	if def, ok := aggregates.Load(aggname); !ok {
+		aggser, err := modelAgg.Retrieve(ctx, tier, aggname)
+		if err != nil {
+			return empty, fmt.Errorf("failed to get aggregate: %w", err)
+		}
+		agg, err = aggregate.FromAggregateSer(aggser)
+		if err != nil {
+			return empty, fmt.Errorf("failed to deserialize aggregate: %w", err)
+		}
+		aggregates.Store(aggname, agg)
+	} else {
+		agg = def.(aggregate.Aggregate)
 	}
-	return aggregate.FromAggregateSer(aggser)
+	return agg, nil
 }
 
 // RetrieveAll returns all aggregates
