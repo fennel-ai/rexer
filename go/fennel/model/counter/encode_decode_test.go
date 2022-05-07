@@ -23,7 +23,7 @@ func TestRedisKeyPrefixCodec(t *testing.T) {
 func TestRedisKeyPrefixAggId(t *testing.T) {
 	buf := make([]byte, 8)
 	curr := 0
-	n, err := binary.PutUvarint(buf[curr:], uint64(21))
+	n, err := binary.PutUvarint(buf[curr:], uint64(11))
 	assert.NoError(t, err)
 	curr += n
 	fmt.Printf("str: %s\n", base91.StdEncoding.EncodeToString(buf[:curr]))
