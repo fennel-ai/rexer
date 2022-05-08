@@ -118,7 +118,7 @@ func (sa SklearnAdapter) Score(ctx context.Context, in *lib.ScoreRequest) (*lib.
 	}
 	rList, ok := response.(value.List)
 	if !ok {
-		return nil, fmt.Errorf("expected response to be a value list but found: '%v'", response)
+		return nil, fmt.Errorf("expected response to be a value list but found: '%s'", response.String())
 	}
 	return &lib.ScoreResponse{Scores: rList.Values()}, nil
 }
@@ -147,7 +147,7 @@ func (pta PyTorchAdapter) Score(ctx context.Context, in *lib.ScoreRequest) (*lib
 	}
 	rList, ok := response.(value.List)
 	if !ok {
-		return nil, fmt.Errorf("expected response to be a value list but found: '%v'", response)
+		return nil, fmt.Errorf("expected response to be a value list but found: '%v'", response.String())
 	}
 	return &lib.ScoreResponse{Scores: rList.Values()}, nil
 }
@@ -176,21 +176,22 @@ func (tfa TensorFlowAdapter) Score(ctx context.Context, in *lib.ScoreRequest) (*
 	}
 	rDict, ok := response.(value.Dict)
 	if !ok {
-		return nil, fmt.Errorf("expected response to be a value dict but found: '%v'", response)
+		return nil, fmt.Errorf("expected response to be a value dict but found: '%v'", response.String())
 	}
 	predictions, ok := rDict.Get("predictions")
 	if !ok {
-		return nil, fmt.Errorf("failed to find key 'predictions' in response dictionary")
+		return nil, fmt.Errorf("failed to find key 'predictions' in response dictionary: '%v'", rDict.String())
 	}
 	pList, ok := predictions.(value.List)
 	if !ok {
-		return nil, fmt.Errorf("expected predictions to be a value list but found: '%v'", predictions)
+		return nil, fmt.Errorf("expected predictions to be a value list but found: '%v'", predictions.String())
 	}
 	return &lib.ScoreResponse{Scores: pList.Values()}, nil
 }
 
 func toJSON(featureLists []value.List) []byte {
 	fLists := value.NewList()
+	fLists.Grow(len(featureLists))
 	for _, fl := range featureLists {
 		fLists.Append(fl)
 	}
