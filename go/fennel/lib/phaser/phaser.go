@@ -85,14 +85,51 @@ func NewPhaser(namespace, identifier, s3Bucket, s3Prefix string, ttl time.Durati
 	}
 }
 
-// func Get(namespace, identifier, key string) (interface{}, error) {
-// }
+func Get(namespace, identifier, key string) (interface{}, error) {
+	return BatchGet(tier.Tier{}, []string{namespace}, []string{identifier}, []string{key})
+}
 
-// func BatchGet(tr tier.Tier, namespaces, identifiers, keys []string) ([]interface{}, error) {
+func BatchGet(tr tier.Tier, namespaces, identifiers, keys []string) ([]value.Value, error) {
+	phasers, err := RetrievePhasers(context.Background(), tr, namespaces, identifiers)
+	if err != nil {
+		return nil, err
+	}
 
-// }
+	// construct keys
+	keysToGet := make([]string, 0, len(namespaces))
+	for i := 0; i < len(namespaces); i++ {
+		key := phasers[i].getRedisKey(tr.ID, keys[i])
+		keysToGet = append(keysToGet, key)
+	}
 
-// func (p Phaser) DeletePhaser() {}
+	res, err := tr.Redis.MRawGet(context.Background(), keysToGet...)
+	if err != nil {
+		return nil, err
+	}
+
+	// decode results
+	results := make([]value.Value, 0, len(namespaces))
+	for i := 0; i < len(namespaces); i++ {
+		if res[i] == nil {
+			results = append(results, nil)
+		} else {
+			deser, err := base64.StdEncoding.DecodeString(res[i].(string))
+			if err != nil {
+				return nil, err
+			}
+			val, err := value.FromJSON(deser)
+			if err != nil {
+				return nil, err
+			}
+			results = append(results, val)
+		}
+	}
+	return results, nil
+}
+
+func DeletePhaser(tr tier.Tier, namespace, identifier string) error {
+	return DelPhaser(context.Background(), tr, namespace, identifier)
+}
 
 func ServeData(tr tier.Tier, p Phaser) {
 	pollS3Bucket(p.Namespace, p.Identifier, tr)
@@ -153,7 +190,10 @@ func bulkUploadToRedis(tr tier.Tier, file string, numRows int) error {
 
 		bulkUploadCmd := "cat " + PHASER_TMP_DIR + "/" + file + REDIS_BULK_UPLOAD_FILE_SUFFIX + " | redis-cli -h " + nodeAddress + " --pipe --tls"
 		// We know it will error, so dont check the error
-		out, _ = exec.Command("bash", "-c", bulkUploadCmd).Output()
+		out, err = exec.Command("bash", "-c", bulkUploadCmd).Output()
+		if err != nil {
+			return err
+		}
 		re := regexp.MustCompile(".*errors\\:\\s([0-9]+),\\sreplies\\:\\s([0-9]+)")
 		match := re.FindStringSubmatch(string(out))
 		if len(match) < 3 {
@@ -248,10 +288,10 @@ func (p Phaser) createItemListFile(localFileReader source.ParquetFile, redisWrit
 
 func (p Phaser) createItemFile(localFileReader source.ParquetFile, redisWriter *os.File, tierId ftypes.RealmID) (int, error) {
 	pr, err := reader.NewParquetReader(localFileReader, new(ExampleItem), 4)
-	defer pr.ReadStop()
 	if err != nil {
 		return 0, err
 	}
+	defer pr.ReadStop()
 
 	numRows := int(pr.GetNumRows())
 	for i := 0; i < numRows; i += BATCH_SIZE {
@@ -279,11 +319,11 @@ func (p Phaser) prepareFileForBulkUpload(tr tier.Tier, file string) (int, error)
 	if err != nil {
 		return 0, err
 	}
+	defer localFileReader.Close()
 	redisWriter, err := os.Create(PHASER_TMP_DIR + "/" + file + REDIS_BULK_UPLOAD_FILE_SUFFIX)
 	if err != nil {
-		return 0, nil
+		return 0, err
 	}
-	defer localFileReader.Close()
 	defer redisWriter.Close()
 
 	if p.Schema == ITEM_SCORE_LIST {

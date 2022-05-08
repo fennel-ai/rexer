@@ -5,6 +5,7 @@ import (
 	"fennel/tier"
 	"fmt"
 	"strconv"
+	"strings"
 	"time"
 )
 
@@ -43,6 +44,11 @@ func RetrieveAll(ctx context.Context, tier tier.Tier) ([]Phaser, error) {
 	return phasers, nil
 }
 
+func DelPhaser(ctx context.Context, tier tier.Tier, namespace, identifier string) error {
+	_, err := tier.DB.ExecContext(ctx, `DELETE FROM phaser WHERE namespace = ? AND identifier = ?`, namespace, identifier)
+	return err
+}
+
 func RetrievePhaser(ctx context.Context, tier tier.Tier, namespace, identifier string) (Phaser, error) {
 	var p PhaserSer
 	err := tier.DB.GetContext(ctx, &p, `SELECT * FROM phaser WHERE namespace = ? AND identifier = ? LIMIT 1`, namespace, identifier)
@@ -50,6 +56,51 @@ func RetrievePhaser(ctx context.Context, tier tier.Tier, namespace, identifier s
 		return Phaser{}, err
 	}
 	return getPhaser(p), nil
+}
+
+func RetrievePhasers(ctx context.Context, tier tier.Tier, namespace, identifier []string) ([]Phaser, error) {
+	if len(identifier) != len(namespace) {
+		return []Phaser{}, fmt.Errorf("identifier and namespace must be the same length")
+	}
+
+	// Dedupe all namespaces and identifiers
+	namespaceIdentifiers := make(map[string]Phaser)
+	for i := 0; i < len(identifier); i++ {
+		namespaceIdentifiers[namespace[i]+":"+identifier[i]] = Phaser{}
+	}
+
+	sql := `
+		SELECT *
+		FROM phaser
+		WHERE (namespace, identifier) in 
+	`
+	v := make([]interface{}, 0, len(namespaceIdentifiers))
+	inval := "("
+	for key, _ := range namespaceIdentifiers {
+		split := strings.Split(key, ":")
+		inval += "(?, ?),"
+		v = append(v, split[0], split[1])
+	}
+	inval = strings.TrimSuffix(inval, ",") // remove the last trailing comma
+	inval += ")"
+	sql += inval
+	phaserReqs := make([]PhaserSer, 0)
+	err := tier.DB.SelectContext(ctx, &phaserReqs, sql, v...)
+	if err != nil {
+		return []Phaser{}, err
+	}
+	if len(phaserReqs) == 0 {
+		return []Phaser{}, PhaserNotFound
+	}
+	for _, p := range phaserReqs {
+		namespaceIdentifiers[p.Namespace+":"+p.Identifier] = getPhaser(p)
+	}
+	phasers := make([]Phaser, 0, len(namespace))
+	for i := 0; i < len(namespace); i++ {
+		phasers = append(phasers, namespaceIdentifiers[namespace[i]+":"+identifier[i]])
+	}
+
+	return phasers, nil
 }
 
 func GetLatestUpdatedVersion(ctx context.Context, tier tier.Tier, namespace, identifier string) (uint64, error) {
