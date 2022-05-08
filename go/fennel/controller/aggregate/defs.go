@@ -36,6 +36,7 @@ func getUpdateFrequency(cron string) time.Duration {
 // key type is string, value type is aggregate.Aggregate.
 var aggregates = sync.Map{}
 
+// Get the update frequency in hours from the cron schedule
 func getUpdateFrequency(cron string) time.Duration {
 	parts := strings.Split(cron, " ")
 	if strings.Contains(parts[1], "/") {
