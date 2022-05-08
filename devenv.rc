@@ -19,7 +19,6 @@ export MOTHERSHIP_MYSQL_PASSWORD="pscale_pw_iOqKp0qepUAER8E-_APgydji6Ajj7fNQD7pf
 export BADGER_DIR="/tmp"
 
 export JOB_NAME_BY_AGG="topk=t-106-topk,cf=t-106-cf"
-export OFFLINE_AGG_DIR="/tmp"
 export OFFLINE_AGG_BUCKET="t-106-offline-aggregate-output"
 
 # TODO: Configure these for tier 106 correctly
