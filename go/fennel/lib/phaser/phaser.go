@@ -289,10 +289,10 @@ func (p Phaser) createItemListFile(localFileReader source.ParquetFile, redisWrit
 
 func (p Phaser) createItemFile(localFileReader source.ParquetFile, redisWriter *os.File, tierId ftypes.RealmID) (int, error) {
 	pr, err := reader.NewParquetReader(localFileReader, new(ExampleItem), 4)
+	defer pr.ReadStop()
 	if err != nil {
 		return 0, err
 	}
-	defer pr.ReadStop()
 
 	numRows := int(pr.GetNumRows())
 	for i := 0; i < numRows; i += BATCH_SIZE {
