@@ -5,6 +5,7 @@ package modelstore
 import (
 	"bytes"
 	"context"
+	"errors"
 	"log"
 	"testing"
 	"time"
@@ -38,10 +39,10 @@ func TestStoreScoreRemoveModel(t *testing.T) {
 		ModelFile:        bytes.NewReader(data),
 	}
 
-	var retry bool
 	for {
-		err, retry = Store(context.Background(), tier, req)
-		if !retry {
+		err = Store(context.Background(), tier, req)
+		var retry RetryError
+		if errors.As(err, &retry) {
 			break
 		}
 		log.Print("Waiting one minute before retrying to store")
@@ -54,8 +55,9 @@ func TestStoreScoreRemoveModel(t *testing.T) {
 	featureVecs := []value.List{csv.(value.List)}
 	var scores []value.Value
 	for {
-		scores, err, retry = Score(context.Background(), tier, "name", "v1", featureVecs)
-		if !retry {
+		scores, err = Score(context.Background(), tier, "name", "v1", featureVecs)
+		var retry RetryError
+		if errors.As(err, &retry) {
 			break
 		}
 		log.Print("Waiting one minute before retrying to score")
@@ -65,8 +67,9 @@ func TestStoreScoreRemoveModel(t *testing.T) {
 	assert.Equal(t, len(featureVecs), len(scores))
 
 	for {
-		err, retry = Remove(context.Background(), tier, req.Name, req.Version)
-		if !retry {
+		err = Remove(context.Background(), tier, req.Name, req.Version)
+		var retry RetryError
+		if errors.As(err, &retry) {
 			break
 		}
 		log.Print("Waiting one minute before retrying to remove")

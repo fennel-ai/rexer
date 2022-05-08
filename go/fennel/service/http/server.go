@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"log"
@@ -494,6 +495,7 @@ func (m server) UploadModel(w http.ResponseWriter, req *http.Request) {
 	if err != nil {
 		handleBadRequest(w, "", err)
 	}
+	log.Print(formFile)
 	modelFile, err := formFile.Open()
 	if err != nil {
 		handleBadRequest(w, "", err)
@@ -511,10 +513,11 @@ func (m server) UploadModel(w http.ResponseWriter, req *http.Request) {
 		FrameworkVersion: values["framework_version"],
 		ModelFile:        modelFile,
 	}
-	err, retry := modelstore.Store(req.Context(), m.tier, modelReq)
+	err = modelstore.Store(req.Context(), m.tier, modelReq)
 	if err != nil {
-		if retry {
-			handleServiceUnavailable(w, "", err)
+		var retry modelstore.RetryError
+		if errors.As(err, &retry) {
+			handleServiceUnavailable(w, "", retry)
 		} else {
 			handleInternalServerError(w, "", err)
 		}
@@ -536,9 +539,10 @@ func (m server) DeleteModel(w http.ResponseWriter, req *http.Request) {
 		handleBadRequest(w, "invalid request: ", err)
 		return
 	}
-	err, retry := modelstore.Remove(req.Context(), m.tier, delReq.Name, delReq.Version)
+	err = modelstore.Remove(req.Context(), m.tier, delReq.Name, delReq.Version)
 	if err != nil {
-		if retry {
+		var retry modelstore.RetryError
+		if errors.As(err, &retry) {
 			handleServiceUnavailable(w, "", err)
 		} else {
 			handleInternalServerError(w, "", err)

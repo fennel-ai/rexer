@@ -54,7 +54,7 @@ func (pop predictOperator) Apply(ctx context.Context, staticKwargs value.Dict, i
 	modelName := staticKwargs.GetUnsafe("model_name").(value.String)
 	modelVersion := staticKwargs.GetUnsafe("model_version").(value.String)
 	// TODO: Split into correctly sized requests instead of just 1.
-	scores, err, _ := modelstore.Score(ctx, pop.tier, string(modelName), string(modelVersion), featureVecs)
+	scores, err := modelstore.Score(ctx, pop.tier, string(modelName), string(modelVersion), featureVecs)
 	if err != nil {
 		return err
 	}

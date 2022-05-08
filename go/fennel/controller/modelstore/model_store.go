@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"math/rand"
 	"strconv"
+	"sync"
 	"time"
 
 	"fennel/lib/ftypes"
@@ -12,26 +13,31 @@ import (
 	"fennel/lib/value"
 	db "fennel/model/sagemaker"
 	"fennel/tier"
-	"github.com/pkg/errors"
 )
 
-// Store attempts to store a model in the DB and SageMaker. When it fails, returns an error along with a bool
-// which is true when retrying after a few minutes is recommended.
-func Store(ctx context.Context, tier tier.Tier, req lib.ModelUploadRequest) (err error, retry bool) {
+type RetryError error
+
+// local cache of model container name to framework.
+// key type is string, value type is string.
+var frameworkCache = sync.Map{}
+
+// Store attempts to store a model in the DB and SageMaker. Returns an error
+// of type modelstore.RetryError when retrying after a few minutes is recommended.
+func Store(ctx context.Context, tier tier.Tier, req lib.ModelUploadRequest) error {
 	// lock to avoid race condition when two models are being attempted to stored with room only for one more model
 	// TODO - does not work across servers, so should use distributed lock
 	tier.ModelStore.Lock()
 	defer tier.ModelStore.Unlock()
 	ok, err := tier.SagemakerClient.EndpointExists(ctx, tier.ModelStore.EndpointName())
 	if err != nil {
-		return errors.Wrapf(err, "failed to check if endpoint [%s] exists", tier.ModelStore.EndpointName()), false
+		return fmt.Errorf("failed to check if endpoint [%v] exists: %w", tier.ModelStore.EndpointName(), err)
 	}
 	if ok {
 		// If endpoint exists, wait for it to be in service as we cannot make changes to the endpoint
 		// when it is not in service.
-		err, retry = EnsureEndpointInService(ctx, tier)
+		err = EnsureEndpointInService(ctx, tier)
 		if err != nil {
-			return err, retry
+			return fmt.Errorf("failed to store model; endpoint not in service: %w", err)
 		}
 	}
 	// If it does not exist, it will be created later
@@ -40,17 +46,17 @@ func Store(ctx context.Context, tier tier.Tier, req lib.ModelUploadRequest) (err
 	// sagemaker does not allow more than 15 models with different containers on one endpoint
 	activeModels, err := db.GetActiveModels(tier)
 	if err != nil {
-		return fmt.Errorf("failed to get active models from db: %v", err), false
+		return fmt.Errorf("failed to get active models from db: %v", err)
 	}
 	if len(activeModels) >= 15 {
-		return fmt.Errorf("cannot have more than 15 active models: %v", err), false
+		return fmt.Errorf("cannot have more than 15 active models: %v", err)
 	}
 
 	// upload to s3
 	fileName := lib.GetContainerName(req.Name, req.Version)
 	err = tier.S3Client.Upload(req.ModelFile, getPath(tier.ID, fileName), tier.ModelStore.S3Bucket())
 	if err != nil {
-		return fmt.Errorf("failed to upload model to s3: %v", err), false
+		return fmt.Errorf("failed to upload model to s3: %v", err)
 	}
 
 	// now insert into db
@@ -64,26 +70,26 @@ func Store(ctx context.Context, tier tier.Tier, req lib.ModelUploadRequest) (err
 	}
 	_, err = db.InsertModel(tier, model)
 	if err != nil {
-		return fmt.Errorf("failed to insert model in db: %v", err), false
+		return fmt.Errorf("failed to insert model in db: %v", err)
 	}
-	return EnsureEndpointExists(ctx, tier), false
+	return EnsureEndpointExists(ctx, tier)
 }
 
-// Remove attempts to remove a model from the DB and SageMaker. When it fails, returns an error along with a bool
-// which is true when retrying after a few minutes is recommended.
-func Remove(ctx context.Context, tier tier.Tier, name, version string) (err error, retry bool) {
+// Remove attempts to remove a model from the DB and SageMaker. Returns an error
+// of type modelstore.RetryError when retrying after a few minutes is recommended.
+func Remove(ctx context.Context, tier tier.Tier, name, version string) error {
 	tier.ModelStore.Lock()
 	defer tier.ModelStore.Unlock()
 	ok, err := tier.SagemakerClient.EndpointExists(ctx, tier.ModelStore.EndpointName())
 	if err != nil {
-		return fmt.Errorf("failed to delete model: %v", err), false
+		return fmt.Errorf("failed to delete model: %v", err)
 	}
 	if ok {
 		// If endpoint exists, wait for it to be in service as we cannot make changes to the endpoint
 		// when it is not in service.
-		err, retry = EnsureEndpointInService(ctx, tier)
+		err = EnsureEndpointInService(ctx, tier)
 		if err != nil {
-			return err, retry
+			return fmt.Errorf("failed to remove model; endpoint not in service: %w", err)
 		}
 	}
 	// If it does not exist, it will be created later
@@ -91,24 +97,33 @@ func Remove(ctx context.Context, tier tier.Tier, name, version string) (err erro
 	// delete from s3
 	err = tier.S3Client.Delete(getPath(tier.ID, lib.GetContainerName(name, version)), tier.ModelStore.S3Bucket())
 	if err != nil {
-		return fmt.Errorf("failed to delete model from s3: %v", err), false
+		return fmt.Errorf("failed to delete model from s3: %v", err)
 	}
 	err = db.MakeModelInactive(tier, name, version)
 	if err != nil {
-		return fmt.Errorf("failed to deactivate model in db: %v", err), false
+		return fmt.Errorf("failed to deactivate model in db: %v", err)
 	}
-	return EnsureEndpointExists(ctx, tier), false
+	return EnsureEndpointExists(ctx, tier)
 }
 
 // Score calls SageMaker to score the model with provided list of inputs and returns a corresponding list of outputs
-// on a successful run. When there is an error, it returns the error and a bool which is true when the error is only
+// on a successful run. Returns an error of type modelstore.RetryError when the error is only
 // temporary and sending the request again after a few minutes is recommended.
 func Score(
 	ctx context.Context, tier tier.Tier, name, version string, featureVecs []value.List,
-) (res []value.Value, err error, retry bool) {
-	framework, err := db.GetFramework(tier, name, version)
-	if err != nil {
-		return nil, fmt.Errorf("could not get framework from db: %v", err), false
+) (res []value.Value, err error) {
+	containerName := lib.GetContainerName(name, version)
+	var framework string
+	val, ok := frameworkCache.Load(containerName)
+	if ok {
+		framework, ok = val.(string)
+	}
+	if !ok {
+		framework, err = db.GetFramework(tier, name, version)
+		if err != nil {
+			return nil, fmt.Errorf("could not get framework from db: %w", err)
+		}
+		frameworkCache.Store(containerName, framework)
 	}
 	req := lib.ScoreRequest{
 		Framework:     framework,
@@ -127,12 +142,12 @@ func Score(
 		*/
 		status, err2 := tier.SagemakerClient.GetEndpointStatus(ctx, tier.ModelStore.EndpointName())
 		if err2 != nil {
-			return nil, fmt.Errorf("failed to score the model: %v; %v", err, err2), false
+			return nil, fmt.Errorf("failed to score the model: %v; %v", err, err2)
 		}
 		if status == "Creating" || status == "Updating" || status == "Deleting" || status == "RollingBack" {
 			activeModels, err2 := db.GetActiveModels(tier)
 			if err2 != nil {
-				return nil, fmt.Errorf("failed to score the model: %v; %v", err, err2), false
+				return nil, fmt.Errorf("failed to score the model: %v; %v", err, err2)
 			}
 			found := false
 			for _, m := range activeModels {
@@ -142,25 +157,25 @@ func Score(
 				}
 			}
 			if !found {
-				return nil, fmt.Errorf("failed to score the model: model is absent/inactive"), false
+				return nil, fmt.Errorf("failed to score the model: model is absent/inactive")
 			}
 			cover, err2 := db.GetCoveringHostedModels(tier)
 			if err2 != nil {
-				return nil, fmt.Errorf("failed to score the model: %v; %v", err, err2), false
+				return nil, fmt.Errorf("failed to score the model: %v; %v", err, err2)
 			}
 			ok, err2 := tier.SagemakerClient.ModelExists(ctx, cover[0])
 			if err2 != nil {
-				return nil, fmt.Errorf("failed to score the model: %v; %v", err, err2), false
+				return nil, fmt.Errorf("failed to score the model: %v; %v", err, err2)
 			}
 			if ok {
-				return nil, fmt.Errorf("failed to score the model: endpoint not updated with new model yet"), true
+				return nil, RetryError(fmt.Errorf("failed to score the model: endpoint not updated with new model yet"))
 			} else {
-				return nil, fmt.Errorf("failed to score the model: covering model not hosted"), false
+				return nil, fmt.Errorf("failed to score the model: covering model not hosted")
 			}
 		}
-		return nil, fmt.Errorf("failed to score the model: %v", err), false
+		return nil, fmt.Errorf("failed to score the model: %v", err)
 	}
-	return response.Scores, nil, false
+	return response.Scores, nil
 }
 
 func EnsureEndpointExists(ctx context.Context, tier tier.Tier) error {
@@ -298,27 +313,27 @@ func EnsureEndpointExists(ctx context.Context, tier tier.Tier) error {
 
 // EnsureEndpointInService checks if the endpoint is in service. Returns an error if it is not in service and a bool
 // which is true when the endpoint is only temporarily out of service and will soon be available again.
-func EnsureEndpointInService(ctx context.Context, tier tier.Tier) (err error, tmp bool) {
+func EnsureEndpointInService(ctx context.Context, tier tier.Tier) (err error) {
 	endpointName := tier.ModelStore.EndpointName()
 	status, err := tier.SagemakerClient.GetEndpointStatus(ctx, endpointName)
 	if err != nil {
-		return fmt.Errorf("failed to get endpoint status: %v", err), false
+		return fmt.Errorf("failed to get endpoint status: %v", err)
 	}
 	switch status {
 	case "InService":
-		return nil, false
+		return nil
 	case "Updating", "SystemUpdating", "RollingBack":
-		return fmt.Errorf("endpoint is updating, please wait for a few minutes"), true
+		return RetryError(fmt.Errorf("endpoint is updating, please wait for a few minutes"))
 	case "Creating":
-		return fmt.Errorf("endpoint is being created, please wait for a few minutes"), true
+		return RetryError(fmt.Errorf("endpoint is being created, please wait for a few minutes"))
 	case "Deleting":
-		return fmt.Errorf("endpoint is being deleted, please wait for a few minutes"), true
+		return RetryError(fmt.Errorf("endpoint is being deleted, please wait for a few minutes"))
 	case "OutOfService":
-		return fmt.Errorf("endpoint out of service and not available to take incoming requests"), false
+		return fmt.Errorf("endpoint out of service and not available to take incoming requests")
 	case "Failed":
-		return fmt.Errorf("endpoint failed and must be deleted"), false
+		return fmt.Errorf("endpoint failed and must be deleted")
 	default:
-		return fmt.Errorf("endpoint in unknown status"), false
+		return fmt.Errorf("endpoint in unknown status")
 	}
 }
 
