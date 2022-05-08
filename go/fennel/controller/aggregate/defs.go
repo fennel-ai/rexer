@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"sync"
 
 	"strconv"
 	"strings"
@@ -34,6 +35,18 @@ func getUpdateFrequency(cron string) time.Duration {
 // local cache of aggregate name to aggregate definition.
 // key type is string, value type is aggregate.Aggregate.
 var aggregates = sync.Map{}
+
+func getUpdateFrequency(cron string) time.Duration {
+	parts := strings.Split(cron, " ")
+	if strings.Contains(parts[1], "/") {
+		x, _ := strconv.Atoi(strings.Replace(parts[1], "*/", "", 1))
+		return time.Duration(x) * time.Hour
+	} else if strings.Contains(parts[2], "/") {
+		x, _ := strconv.Atoi(strings.Replace(parts[2], "*/", "", 1))
+		return time.Duration(x) * time.Hour * 24
+	}
+	return 0
+}
 
 func Store(ctx context.Context, tier tier.Tier, agg aggregate.Aggregate) error {
 	if err := agg.Validate(); err != nil {
