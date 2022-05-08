@@ -35,6 +35,18 @@ func getUpdateFrequency(cron string) time.Duration {
 // local cache of aggregate name to aggregate definition.
 // key type is string, value type is aggregate.Aggregate.
 var aggregates = sync.Map{}
+// Get the update frequency in hours from the cron schedule
+func getUpdateFrequency(cron string) time.Duration {
+	parts := strings.Split(cron, " ")
+	if strings.Contains(parts[1], "/") {
+		x, _ := strconv.Atoi(strings.Replace(parts[1], "*/", "", 1))
+		return time.Duration(x) * time.Hour
+	} else if strings.Contains(parts[2], "/") {
+		x, _ := strconv.Atoi(strings.Replace(parts[2], "*/", "", 1))
+		return time.Duration(x) * time.Hour * 24
+	}
+	return 0
+}
 
 // Get the update frequency in hours from the cron schedule
 func getUpdateFrequency(cron string) time.Duration {

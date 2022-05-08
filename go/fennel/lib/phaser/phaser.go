@@ -190,14 +190,11 @@ func bulkUploadToRedis(tr tier.Tier, file string, numRows int) error {
 
 		bulkUploadCmd := "cat " + PHASER_TMP_DIR + "/" + file + REDIS_BULK_UPLOAD_FILE_SUFFIX + " | redis-cli -h " + nodeAddress + " --pipe --tls"
 		// We know it will error, so dont check the error
-<<<<<<< HEAD
+
 		out, err = exec.Command("bash", "-c", bulkUploadCmd).Output()
 		if err != nil {
 			return err
 		}
-=======
-		out, _ = exec.Command("bash", "-c", bulkUploadCmd).Output()
->>>>>>> 9de3ff6b (Added unit tests and integration tests)
 		re := regexp.MustCompile(".*errors\\:\\s([0-9]+),\\sreplies\\:\\s([0-9]+)")
 		match := re.FindStringSubmatch(string(out))
 		if len(match) < 3 {
@@ -292,10 +289,10 @@ func (p Phaser) createItemListFile(localFileReader source.ParquetFile, redisWrit
 
 func (p Phaser) createItemFile(localFileReader source.ParquetFile, redisWriter *os.File, tierId ftypes.RealmID) (int, error) {
 	pr, err := reader.NewParquetReader(localFileReader, new(ExampleItem), 4)
-	defer pr.ReadStop()
 	if err != nil {
 		return 0, err
 	}
+	defer pr.ReadStop()
 
 	numRows := int(pr.GetNumRows())
 	for i := 0; i < numRows; i += BATCH_SIZE {
