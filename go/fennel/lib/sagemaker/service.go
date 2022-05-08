@@ -31,6 +31,7 @@ type InferenceServer interface {
 type ScoreRequest struct {
 	EndpointName  string
 	ContainerName string
+	Framework     string
 	FeatureLists  []value.List
 }
 

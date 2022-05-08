@@ -6,7 +6,9 @@ package predict
 import (
 	"testing"
 
+	lib "fennel/lib/sagemaker"
 	"fennel/lib/value"
+	"fennel/model/sagemaker"
 	"fennel/test"
 	"fennel/test/optest"
 	"github.com/stretchr/testify/assert"
@@ -26,8 +28,8 @@ func TestPredict(t *testing.T) {
 		}),
 	}
 	expected := []value.Value{
-		value.Double(0.28583016991615295),
-		value.Double(0.923923909664154),
+		value.NewList(value.Double(0.28583016991615295)),
+		value.NewList(value.Double(0.923923909664154)),
 	}
 
 	tier, err := test.Tier()
@@ -35,8 +37,17 @@ func TestPredict(t *testing.T) {
 	defer test.Teardown(tier)
 	err = test.AddSagemakerClientToTier(&tier)
 	assert.NoError(t, err)
+	_, err = sagemaker.InsertModel(tier, lib.Model{
+		Name:             "smclient-test-xgboost-model",
+		Version:          "v1",
+		Framework:        "xgboost",
+		FrameworkVersion: "1.3-1",
+		ArtifactPath:     "s3://",
+	})
+	assert.NoError(t, err)
+	tier.ModelStore.SetEndpointName("smclient-test-endpoint")
 	optest.AssertEqual(t, tier, &predictOperator{}, value.NewDict(map[string]value.Value{
-		"model_name":    value.String("integration-test-xgboost-model"),
+		"model_name":    value.String("smclient-test-xgboost-model"),
 		"model_version": value.String("v1"),
 	}), [][]value.Value{intable}, contextKwargTable, expected)
 }
@@ -56,8 +67,9 @@ func TestPredictError(t *testing.T) {
 	defer test.Teardown(tier)
 	err = test.AddSagemakerClientToTier(&tier)
 	assert.NoError(t, err)
+	tier.ModelStore.SetEndpointName("smclient-test-endpoint")
 	optest.AssertError(t, tier, &predictOperator{}, value.NewDict(map[string]value.Value{
-		"model_name":    value.String("integration-test-xgboost-model"),
+		"model_name":    value.String("smclient-test-xgboost-model"),
 		"model_version": value.String("v1"),
 	}), [][]value.Value{intable}, contextKwargTable)
 }

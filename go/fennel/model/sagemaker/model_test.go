@@ -213,3 +213,23 @@ func TestInsertEndpoint(t *testing.T) {
 	assert.Equal(t, 1, len(inactive))
 	assert.Equal(t, "test-endpoint", inactive[0])
 }
+
+func TestGetFramework(t *testing.T) {
+	tier, err := test.Tier()
+	assert.NoError(t, err)
+	defer test.Teardown(tier)
+
+	id, err := InsertModel(tier, lib.Model{
+		Name:             "test-model",
+		Version:          "v1",
+		Framework:        "xgboost",
+		FrameworkVersion: "1.31.0",
+		ArtifactPath:     "s3://fennel-test-bucket/test-model/model.tar.gz",
+	})
+	assert.NoError(t, err)
+	assert.Equal(t, uint32(1), id)
+
+	framework, err := GetFramework(tier, "test-model", "v1")
+	assert.NoError(t, err)
+	assert.Equal(t, "xgboost", framework)
+}

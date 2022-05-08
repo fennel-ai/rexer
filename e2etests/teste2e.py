@@ -9,7 +9,7 @@ import lib
 import rexerclient
 import rexerclient as rex
 from rexerclient import client
-from rexerclient.models import action, profile
+from rexerclient.models import action, profile, model
 from rexerclient.rql import var, op, cond, in_, len_, op
 
 URL = 'http://localhost:2425'
@@ -435,11 +435,12 @@ class TestEndToEnd(unittest.TestCase):
     @tiered
     def test_model_upload_delete(self):
         c = client.Client(URL)
+        m = model.XGBoostModel('model', '1.3-1')
 
         uploaded = False
         for i in range(20):
             try:
-                c.upload_model('name', 'v2', 'xgboost', '1.3-1', 'model.tar.gz')
+                c.upload_model('name', 'v2', m)
                 uploaded = True
             except client.RetryError as err:
                 print(f"Retrying in 60s due to error: {err}")
