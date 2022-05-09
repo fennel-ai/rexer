@@ -30,9 +30,18 @@ func Retrieve(ctx context.Context, tier tier.Tier, name ftypes.AggName) (aggrega
 	return ret, nil
 }
 
-func RetrieveAll(ctx context.Context, tier tier.Tier) ([]aggregate.AggregateSer, error) {
+func RetrieveActive(ctx context.Context, tier tier.Tier) ([]aggregate.AggregateSer, error) {
 	ret := make([]aggregate.AggregateSer, 0)
 	err := tier.DB.SelectContext(ctx, &ret, `SELECT * FROM aggregate_config WHERE active = TRUE`)
+	if err != nil {
+		return nil, err
+	}
+	return ret, nil
+}
+
+func RetrieveAll(ctx context.Context, tier tier.Tier) ([]aggregate.AggregateSer, error) {
+	ret := make([]aggregate.AggregateSer, 0)
+	err := tier.DB.SelectContext(ctx, &ret, `SELECT * FROM aggregate_config`)
 	if err != nil {
 		return nil, err
 	}

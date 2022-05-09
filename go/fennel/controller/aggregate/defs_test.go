@@ -13,7 +13,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestRetrieveAll(t *testing.T) {
+func TestRetrieveActive(t *testing.T) {
 	tier, err := test.Tier()
 	assert.NoError(t, err)
 	defer test.Teardown(tier)
@@ -27,7 +27,7 @@ func TestRetrieveAll(t *testing.T) {
 		},
 	}
 	// initially retrieve all is empty
-	found, err := RetrieveAll(ctx, tier)
+	found, err := RetrieveActive(ctx, tier)
 	assert.NoError(t, err)
 	assert.Empty(t, found)
 
@@ -38,7 +38,7 @@ func TestRetrieveAll(t *testing.T) {
 		err = Store(ctx, tier, agg)
 		assert.NoError(t, err)
 		expected = append(expected, agg)
-		found, err = RetrieveAll(ctx, tier)
+		found, err = RetrieveActive(ctx, tier)
 		assert.NoError(t, err)
 		assert.Equal(t, len(expected), len(found))
 		for j, ag1 := range found {

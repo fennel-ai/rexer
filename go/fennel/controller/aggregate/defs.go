@@ -86,9 +86,9 @@ func Retrieve(ctx context.Context, tier tier.Tier, aggname ftypes.AggName) (aggr
 	return agg, nil
 }
 
-// RetrieveAll returns all aggregates
-func RetrieveAll(ctx context.Context, tier tier.Tier) ([]aggregate.Aggregate, error) {
-	retSer, err := modelAgg.RetrieveAll(ctx, tier)
+// RetrieveActive returns all active aggregates
+func RetrieveActive(ctx context.Context, tier tier.Tier) ([]aggregate.Aggregate, error) {
+	retSer, err := modelAgg.RetrieveActive(ctx, tier)
 	if err != nil {
 		return nil, err
 	}

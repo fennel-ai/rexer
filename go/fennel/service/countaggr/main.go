@@ -161,7 +161,7 @@ func main() {
 	processedAggregates := make(map[ftypes.AggName]struct{})
 	ticker := time.NewTicker(time.Second * 15)
 	for {
-		aggs, err := aggregate.RetrieveAll(context.Background(), tr)
+		aggs, err := aggregate.RetrieveActive(context.Background(), tr)
 		if err != nil {
 			panic(err)
 		}

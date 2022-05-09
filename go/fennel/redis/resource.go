@@ -20,6 +20,10 @@ type Client struct {
 
 var Nil = redis.Nil
 
+func (c Client) Client() redis.Cmdable {
+	return c.client
+}
+
 func (c Client) Type() resource.Type { return resource.RedisClient }
 
 func (c Client) Close() error {
