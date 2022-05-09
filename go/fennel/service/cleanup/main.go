@@ -40,7 +40,7 @@ func deleteKeys(tr tier.Tier, aggId ftypes.AggId, rdb *redis.ClusterClient, batc
 	if err != nil {
 		return err
 	}
-	fmt.Printf("[%d] deleting keys with prefix: %s\n", aggId, keyPrefix)
+	tr.Logger.Info(fmt.Sprintf("[%d] deleting keys with prefix: %s\n", aggId, keyPrefix))
 
 	var cursor uint64
 	var n int
@@ -58,6 +58,8 @@ func deleteKeys(tr tier.Tier, aggId ftypes.AggId, rdb *redis.ClusterClient, batc
 		// delete the keys found in the scan above
 		p := rdb.Pipeline()
 		for _, k := range keys {
+			// using `Unlink`` here instead of Del to avoid a blocking call to redis
+			// Unlink removes the key from the keyspace but the memory is reclaimed by redis in the background
 			if err := p.Unlink(ctx, k).Err(); err != nil {
 				return err
 			}
@@ -68,7 +70,7 @@ func deleteKeys(tr tier.Tier, aggId ftypes.AggId, rdb *redis.ClusterClient, batc
 
 		// log basic stats
 		n += len(keys)
-		fmt.Printf("[%d] [cursor] %d -> %d; [keys] found: %d, total so far: %d\n", aggId, oldC, cursor, len(keys), n)
+		tr.Logger.Info(fmt.Sprintf("[%d] [cursor] %d -> %d; [keys] found: %d, total so far: %d\n", aggId, oldC, cursor, len(keys), n))
 		if cursor == 0 {
 			break
 		}
@@ -100,13 +102,13 @@ func main() {
 			go func(aggId uint32) {
 				defer wg.Done()
 				if err := deleteKeys(tier, ftypes.AggId(aggId), rdb, flags.BatchSize); err != nil {
-					fmt.Printf("redis key deletion for aggId: %d, failed with: %v", aggId, err)
+					tier.Logger.Info(fmt.Sprintf("redis key deletion for aggId: %d, failed with: %v", aggId, err))
 				}
 			}(aggId)
 		}
 		wg.Wait()
 	} else {
-		fmt.Printf("--aggregates is not set, will delete keys for all inactive aggregates\n")
+		tier.Logger.Info(fmt.Sprint("--aggregates is not set, will delete keys for all inactive aggregates\n"))
 		aggs, err := aggregate.RetrieveAll(context.Background(), tier)
 		if err != nil {
 			panic(err)
@@ -118,7 +120,7 @@ func main() {
 				go func(aggId ftypes.AggId) {
 					defer wg.Done()
 					if err := deleteKeys(tier, aggId, rdb, flags.BatchSize); err != nil {
-						fmt.Printf("redis key deletion for aggId: %d, failed with: %v", aggId, err)
+						tier.Logger.Info(fmt.Sprintf("redis key deletion for aggId: %d, failed with: %v", aggId, err))
 					}
 				}(agg.Id)
 			}
