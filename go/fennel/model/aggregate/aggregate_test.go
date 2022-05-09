@@ -67,7 +67,7 @@ func TestRetrieveStore(t *testing.T) {
 	assert.Error(t, err)
 }
 
-func TestRetrieveAll(t *testing.T) {
+func TestRetrieveActive(t *testing.T) {
 	tier, err := test.Tier()
 	assert.NoError(t, err)
 	defer test.Teardown(tier)
@@ -86,7 +86,7 @@ func TestRetrieveAll(t *testing.T) {
 	}
 	expected := make([]aggregate.AggregateSer, 0)
 	for i := 0; i < 5; i++ {
-		found, err := RetrieveAll(ctx, tier)
+		found, err := RetrieveActive(ctx, tier)
 		assert.NoError(t, err)
 		assert.ElementsMatch(t, expected, found)
 		agg.Name = ftypes.AggName(fmt.Sprintf("name:%d", i))
@@ -96,6 +96,38 @@ func TestRetrieveAll(t *testing.T) {
 		agg.Id = ftypes.AggId(i + 1)
 		expected = append(expected, agg)
 	}
+}
+
+func TestRetrieveAll(t *testing.T) {
+	tier, err := test.Tier()
+	assert.NoError(t, err)
+	defer test.Teardown(tier)
+
+	options := aggregate.AggOptions{
+		AggType: "rolling_counter",
+	}
+	optionSer, err := proto.Marshal(&options)
+	assert.NoError(t, err)
+	ctx := context.Background()
+
+	aggs := make([]aggregate.AggregateSer, 0)
+	// store few aggregates with mixed Active status
+	for i := 0; i < 5; i++ {
+		agg := aggregate.AggregateSer{
+			Name:      ftypes.AggName(fmt.Sprintf("name:%d", i)),
+			Timestamp: 1,
+			OptionSer: optionSer,
+			Active:    true,
+			QuerySer:  []byte(fmt.Sprintf("some query: %d", i)),
+			Id:        ftypes.AggId(i + 1),
+		}
+		aggs = append(aggs, agg)
+		Store(ctx, tier, agg.Name, agg.QuerySer, agg.Timestamp, agg.OptionSer)
+	}
+
+	actual, err := RetrieveAll(ctx, tier)
+	assert.NoError(t, err)
+	assert.Equal(t, actual, aggs)
 }
 
 func TestLongStrings(t *testing.T) {
