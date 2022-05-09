@@ -403,7 +403,7 @@ func (m server) RetrieveAggregate(w http.ResponseWriter, req *http.Request) {
 	}
 	// call controller
 	ret, err := aggregate2.Retrieve(req.Context(), m.tier, ftypes.AggName(aggReq.Name))
-	if err == aggregate.ErrNotFound {
+	if errors.Is(err, aggregate.ErrNotFound) {
 		// we don't throw an error, just return empty response
 		return
 	} else if err != nil {

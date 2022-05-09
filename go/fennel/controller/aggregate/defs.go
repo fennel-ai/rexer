@@ -106,6 +106,8 @@ func Deactivate(ctx context.Context, tier tier.Tier, aggname ftypes.AggName) err
 	if len(aggname) == 0 {
 		return fmt.Errorf("aggregate name can not be of length zero")
 	}
+	// Remove if present in cache
+	aggregates.Delete(aggname)
 	// Check if agg already exists in db
 	aggser, err := modelAgg.RetrieveNoFilter(ctx, tier, aggname)
 	// If it is absent, it returns aggregate.ErrNotFound
