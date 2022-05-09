@@ -4,6 +4,7 @@ package aggregate
 
 import (
 	"context"
+	"fmt"
 	"testing"
 	"time"
 
@@ -200,11 +201,14 @@ func TestCachedValueAll(t *testing.T) {
 		buckets := h.BucketizeMoment(key.String(), t0, value.Int(1))
 		assert.NoError(t, counter.Update(ctx, tier, ids[i], buckets, h))
 	}
-	expectedVals = []value.Value{value.Int(0), value.Int(1), value.Int(0)}
-	foundVals, err = BatchValue(ctx, tier, reqs)
+	// and this works even with repeated requests
+	req2 := []aggregate.GetAggValueRequest{reqs[0], reqs[2], reqs[1], reqs[1], reqs[2]}
+	expectedVals = []value.Value{value.Int(0), value.Int(0), value.Int(1), value.Int(1), value.Int(0)}
+	// expectedVals = []value.Value{value.Int(0), value.Int(1), value.Int(0)}
+	foundVals, err = BatchValue(ctx, tier, req2)
 	assert.NoError(t, err)
 	for i, expval := range expectedVals {
-		assert.True(t, expval.Equal(foundVals[i]))
+		assert.True(t, expval.Equal(foundVals[i]), fmt.Sprintf("%d: %s != %s", i, expval, foundVals[i]))
 	}
 
 	// wait for req2 value to be cached

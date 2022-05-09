@@ -57,48 +57,48 @@ func Value(
 }
 
 func BatchValue(ctx context.Context, tier tier.Tier, batch []aggregate.GetAggValueRequest) ([]value.Value, error) {
-	ckeys := make([]string, 0, len(batch))
-	for _, req := range batch {
-		k := makeCacheKey(req.AggName, req.Key, req.Kwargs)
-		ckeys = append(ckeys, k)
-	}
-	vals := make([]value.Value, len(batch))
-	found := make([]bool, len(batch))
-	for i, ckey := range ckeys {
-		var v interface{}
-		v, ok := tier.PCache.Get(ckey)
-		if ok {
-			val, ok := fromCacheValue(tier, v)
-			vals[i] = val
-			found[i] = ok
-		}
-	}
 	ret := make([]value.Value, len(batch))
-	var ptr []int
-	var uckeys []string
-	var uncachedReqs []aggregate.GetAggValueRequest
-	// filter out requests not present in cache
-	for i, v := range vals {
-		if !found[i] {
-			// couldn't get from cache so filter it out
-			uckeys = append(uckeys, ckeys[i])
-			uncachedReqs = append(uncachedReqs, batch[i])
-			ptr = append(ptr, i)
-		} else {
-			ret[i] = v
+	uckeys := make([]string, len(batch))
+	uncachedReqs := make([]aggregate.GetAggValueRequest, len(batch))
+	ptr := make([]int, len(batch))
+	seen := make(map[string]int, len(batch))
+
+	j := 0
+	for i, req := range batch {
+		ckey := makeCacheKey(req.AggName, req.Key, req.Kwargs)
+		if v, ok := tier.PCache.Get(ckey); ok {
+			if val, found := fromCacheValue(tier, v); found {
+				ret[i] = val
+				ptr[i] = -1
+			}
+		}
+		// check if we could get it from cache or not
+		if ptr[i] != -1 {
+			// not in cache, so we may do a ground truth pull
+			// but first check if this is a duplicate request
+			if idx, repeat := seen[ckey]; repeat {
+				ptr[i] = idx // duplicate, so use the same index
+			} else {
+				// if not duplicate, add to uncached requests
+				seen[ckey] = j
+				uckeys[j] = ckey
+				uncachedReqs[j] = req
+				ptr[i] = j
+				j += 1
+			}
 		}
 	}
-	ucvals, err := batchValue(ctx, tier, uncachedReqs)
+	ucvals, err := batchValue(ctx, tier, uncachedReqs[:j])
 	if err != nil {
 		return nil, err
 	}
-	for i, ucv := range ucvals {
-		ret[ptr[i]] = ucv
-	}
-	// now set uncached values in cache
-	for i := range uckeys {
-		ok := tier.PCache.SetWithTTL(uckeys[i], ucvals[i], cacheValueDuration)
-		if !ok {
+	for i := range batch {
+		idx := ptr[i]
+		if idx < 0 {
+			continue
+		}
+		ret[i] = ucvals[idx]
+		if ok := tier.PCache.SetWithTTL(uckeys[idx], ucvals[idx], cacheValueDuration); !ok {
 			tier.Logger.Info(fmt.Sprintf(
 				"failed to set aggregate value in cache: key: '%s' value: '%s'", uckeys[i], ucvals[i].String(),
 			))
@@ -200,9 +200,9 @@ func Update(ctx context.Context, tier tier.Tier, consumer kafka.FConsumer, agg a
 	return err
 }
 
-//============================
+// ============================
 // Private helpers below
-//============================
+// ============================
 
 func transformActions(tier tier.Tier, actions []libaction.Action, query ast.Ast) (value.List, error) {
 	bootargs := bootarg.Create(tier)
