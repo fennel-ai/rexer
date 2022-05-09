@@ -232,6 +232,9 @@ func (i Interpreter) VisitDict(values map[string]ast.Ast) (value.Value, error) {
 }
 
 func (i Interpreter) VisitOpcall(operands []ast.Ast, vars []string, namespace, name string, kwargs ast.Dict) (value.Value, error) {
+	if len(operands) == 0 {
+		return value.Nil, fmt.Errorf("operator '%s.%s' can not be applied: no operands", namespace, name)
+	}
 	// either vars should be not defined at all or if they are defined, number should match that of operands
 	if len(vars) > 0 && len(operands) != len(vars) {
 		return nil, fmt.Errorf("operator '%s.%s' can not be applied: different number of operands and variables", namespace, name)

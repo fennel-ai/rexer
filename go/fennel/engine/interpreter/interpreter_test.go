@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"fennel/engine/ast"
 	"fennel/lib/value"
@@ -189,6 +190,12 @@ func TestInterpreter_VisitLookup(t *testing.T) {
 	}}
 	testValid(t, ast.Lookup{On: ast.Lookup{On: nested, Property: "nested"}, Property: "hi"}, value.Double(3.4))
 	testValid(t, ast.Lookup{On: nested, Property: "hi"}, value.Double(4.4))
+}
+
+func TestFailEmptyOperand(t *testing.T) {
+	i := getInterpreter(nil, value.Dict{})
+	_, err := i.VisitOpcall([]ast.Ast{}, []string{}, "std", "set", ast.Dict{})
+	require.Error(t, err)
 }
 
 func getOpCallQuery() ast.Ast {
