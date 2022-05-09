@@ -1,6 +1,7 @@
 package aggregate
 
 import (
+	"errors"
 	"fmt"
 	"strings"
 
@@ -23,6 +24,8 @@ var ValidTypes = []ftypes.AggType{
 	"topk",
 	"cf",
 }
+
+var ErrNotFound = errors.New("aggregate not found")
 
 type Aggregate struct {
 	Name      ftypes.AggName
@@ -185,12 +188,3 @@ type GetAggValueRequest struct {
 	Key     value.Value    `json:"Key"`
 	Kwargs  value.Dict     `json:"Kwargs"`
 }
-
-type notFound int
-
-func (_ notFound) Error() string {
-	return "aggregate not found"
-}
-
-var ErrNotFound = notFound(1)
-var _ error = ErrNotFound
