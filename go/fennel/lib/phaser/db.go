@@ -9,7 +9,7 @@ import (
 	"time"
 )
 
-type PhaserSer struct {
+type phaserSer struct {
 	Namespace     string `db:"namespace"`
 	Identifier    string `db:"identifier"`
 	S3Bucket      string `db:"s3_bucket"`
@@ -19,27 +19,36 @@ type PhaserSer struct {
 	TTL           uint64 `db:"ttl"`
 }
 
-func getPhaser(p PhaserSer) Phaser {
+func getPhaser(p phaserSer) (Phaser, error) {
 	var p2 Phaser
 	p2.Namespace = p.Namespace
 	p2.Identifier = p.Identifier
 	p2.S3Bucket = p.S3Bucket
 	p2.S3Prefix = p.S3Prefix
-	p2.Schema, _ = FromPhaserSchema(p.Schema)
+	var err error
+	p2.Schema, err = FromPhaserSchema(p.Schema)
+	if err != nil {
+		return Phaser{}, err
+	}
+
 	p2.TTL = time.Duration(p.TTL) * time.Second
 	p2.UpdateVersion = p.UpdateVersion
-	return p2
+	return p2, nil
 }
 
 func RetrieveAll(ctx context.Context, tier tier.Tier) ([]Phaser, error) {
-	ret := make([]PhaserSer, 0)
+	ret := make([]phaserSer, 0)
 	err := tier.DB.SelectContext(ctx, &ret, `SELECT * FROM phaser`)
 	if err != nil {
 		return nil, err
 	}
 	phasers := make([]Phaser, 0, len(ret))
 	for _, pSer := range ret {
-		phasers = append(phasers, getPhaser(pSer))
+		p, err := getPhaser(pSer)
+		if err != nil {
+			return nil, err
+		}
+		phasers = append(phasers, p)
 	}
 	return phasers, nil
 }
@@ -50,12 +59,12 @@ func DelPhaser(ctx context.Context, tier tier.Tier, namespace, identifier string
 }
 
 func RetrievePhaser(ctx context.Context, tier tier.Tier, namespace, identifier string) (Phaser, error) {
-	var p PhaserSer
+	var p phaserSer
 	err := tier.DB.GetContext(ctx, &p, `SELECT * FROM phaser WHERE namespace = ? AND identifier = ? LIMIT 1`, namespace, identifier)
 	if err != nil {
 		return Phaser{}, err
 	}
-	return getPhaser(p), nil
+	return getPhaser(p)
 }
 
 func RetrievePhasers(ctx context.Context, tier tier.Tier, namespace, identifier []string) ([]Phaser, error) {
@@ -84,7 +93,7 @@ func RetrievePhasers(ctx context.Context, tier tier.Tier, namespace, identifier 
 	inval = strings.TrimSuffix(inval, ",") // remove the last trailing comma
 	inval += ")"
 	sql += inval
-	phaserReqs := make([]PhaserSer, 0)
+	phaserReqs := make([]phaserSer, 0)
 	err := tier.DB.SelectContext(ctx, &phaserReqs, sql, v...)
 	if err != nil {
 		return []Phaser{}, err

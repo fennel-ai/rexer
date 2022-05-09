@@ -134,6 +134,38 @@ func getDuration(kwargs value.Dict) (int, error) {
 	return int(duration), nil
 }
 
+/*
+func batchValue(ctx context.Context, tier tier.Tier, batch []aggregate.GetAggValueRequest) ([]value.Value, error) {
+	n := len(batch)
+	histograms := make([]modelCounter.Histogram, n)
+	ids := make([]ftypes.AggId, n)
+	keys := make([]value.Value, n)
+	kwargs := make([]value.Dict, n)
+	unique := make(map[ftypes.AggName]aggregate.Aggregate)
+	for _, req := range batch {
+		unique[req.AggName] = aggregate.Aggregate{}
+	}
+	var err error
+	for name := range unique {
+		unique[name], err = Retrieve(ctx, tier, name)
+		if err != nil {
+			return nil, fmt.Errorf("failed to retrieve aggregate %s ", name)
+		}
+	}
+	for i, req := range batch {
+		agg := unique[req.AggName]
+		histograms[i], err = modelCounter.ToHistogram(agg.Options)
+		if err != nil {
+			return nil, fmt.Errorf("failed to make histogram from aggregate at index %d of batch: %v", i, err)
+		}
+		ids[i] = agg.Id
+		keys[i] = req.Key
+		kwargs[i] = req.Kwargs
+	}
+	return counter.BatchValue(ctx, tier, ids, keys, histograms, kwargs)
+}
+*/
+
 func batchValue(ctx context.Context, tier tier.Tier, batch []aggregate.GetAggValueRequest) ([]value.Value, error) {
 	n := len(batch)
 
@@ -170,13 +202,16 @@ func batchValue(ctx context.Context, tier tier.Tier, batch []aggregate.GetAggVal
 	}
 
 	ret := make([]value.Value, n)
-	offlineValues, err := phaser.BatchGet(tier, namespaces, identifier, offlineKeys)
-	if err != nil {
-		return nil, err
-	}
 
-	for i, v := range offlineValues {
-		ret[offlinePtr[i]] = v
+	if len(offlinePtr) > 0 {
+		offlineValues, err := phaser.BatchGet(tier, namespaces, identifier, offlineKeys)
+		if err != nil {
+			return nil, err
+		}
+
+		for i, v := range offlineValues {
+			ret[offlinePtr[i]] = v
+		}
 	}
 
 	numOnline := n - len(offlinePtr)
@@ -202,13 +237,16 @@ func batchValue(ctx context.Context, tier tier.Tier, batch []aggregate.GetAggVal
 		keys[i] = req.Key
 		kwargs[i] = req.Kwargs
 	}
-	onlineValues, err := counter.BatchValue(ctx, tier, ids, keys, histograms, kwargs)
-	if err != nil {
-		return nil, err
-	}
 
-	for i, v := range onlineValues {
-		ret[onlinePtr[i]] = v
+	if len(onlinePtr) > 0 {
+		onlineValues, err := counter.BatchValue(ctx, tier, ids, keys, histograms, kwargs)
+		if err != nil {
+			return nil, err
+		}
+
+		for i, v := range onlineValues {
+			ret[onlinePtr[i]] = v
+		}
 	}
 	return ret, nil
 }

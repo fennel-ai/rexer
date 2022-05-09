@@ -20,17 +20,25 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
-// Get the update frequency in hours from the cron schedule
-func getUpdateFrequency(cron string) time.Duration {
+// Data is kept in redis OFFLINE_AGG_TTL_MULTIPLIER times the update frequency
+var OFFLINE_AGG_TTL_MULTIPLIER = 3
+
+// getUpdateFrequency returns the update frequency in hours from the cron schedule
+func getUpdateFrequency(cron string) (time.Duration, error) {
+	// parts refers to the parts ( min, hour, day(month), month, day(week)) of the cron schedule
 	parts := strings.Split(cron, " ")
+	if len(parts) != 5 {
+		return 0, fmt.Errorf("invalid cron schedule: %s", cron)
+	}
+
 	if strings.Contains(parts[1], "/") {
 		x, _ := strconv.Atoi(strings.Replace(parts[1], "*/", "", 1))
-		return time.Duration(x) * time.Hour
+		return time.Duration(x) * time.Hour, nil
 	} else if strings.Contains(parts[2], "/") {
 		x, _ := strconv.Atoi(strings.Replace(parts[2], "*/", "", 1))
-		return time.Duration(x) * time.Hour * 24
+		return time.Duration(x) * time.Hour * 24, nil
 	}
-	return 0
+	return 0, fmt.Errorf("cron schedule is not valid, reached end of function")
 }
 
 func Store(ctx context.Context, tier tier.Tier, agg aggregate.Aggregate) error {
@@ -63,7 +71,11 @@ func Store(ctx context.Context, tier tier.Tier, agg aggregate.Aggregate) error {
 		for _, duration := range agg.Options.Durations {
 			prefix := fmt.Sprintf("t_%d/%s-%d", int(tier.ID), agg.Name, duration)
 			aggPhaserIdentifier := fmt.Sprintf("%s-%d", agg.Name, duration)
-			ttl := getUpdateFrequency(agg.Options.CronSchedule) * 3
+			ttl, err := getUpdateFrequency(agg.Options.CronSchedule)
+			if err != nil {
+				return err
+			}
+			ttl *= time.Duration(OFFLINE_AGG_TTL_MULTIPLIER)
 			err = phaser.NewPhaser("agg", aggPhaserIdentifier, tier.Args.OfflineAggBucket, prefix, ttl, phaser.ITEM_SCORE_LIST, tier)
 			if err != nil {
 				return err
@@ -131,7 +143,6 @@ func Deactivate(ctx context.Context, tier tier.Tier, aggname ftypes.AggName) err
 	// Remove if present in cache
 	tier.AggregateDefs.Delete(aggname)
 	// Check if agg already exists in db
-
 	aggser, err := modelAgg.RetrieveNoFilter(ctx, tier, aggname)
 	// If it is absent, it returns aggregate.ErrNotFound
 	// If any other error, return it as well

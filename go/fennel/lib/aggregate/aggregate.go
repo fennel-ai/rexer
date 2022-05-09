@@ -179,7 +179,6 @@ func FromAggregateSer(ser AggregateSer) (Aggregate, error) {
 		return Aggregate{}, err
 	}
 	agg.Options = FromProtoOptions(&popt)
-
 	agg.Id = ser.Id
 	return agg, nil
 }
