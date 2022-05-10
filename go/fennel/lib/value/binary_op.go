@@ -74,11 +74,11 @@ func contains(e Value, iter Value) (Value, error) {
 func modulo(left Value, right Value) (Value, error) {
 	lint, ok := left.(Int)
 	if !ok {
-		return Nil, fmt.Errorf("'%%' only supported between ints but got: '%v'", left)
+		return Nil, fmt.Errorf("'%%' only supported between ints but got: '%s'", left.String())
 	}
 	rint, ok := right.(Int)
 	if !ok {
-		return Nil, fmt.Errorf("'%%' only supported between ints but got: '%v'", right)
+		return Nil, fmt.Errorf("'%%' only supported between ints but got: '%s'", right.String())
 	}
 	if rint == 0 {
 		return Nil, fmt.Errorf("division by zero while using '%%'")
@@ -121,7 +121,7 @@ func add(left Value, right Value) (Value, error) {
 			return List{values: v}, nil
 		}
 	}
-	return nil, fmt.Errorf("'+' only supported between numbers, strings and lists")
+	return nil, fmt.Errorf("'+' only supported between numbers, strings and lists. Got '%s' and '%s'", left.String(), right.String())
 }
 
 func sub(left Value, right Value) (Value, error) {
@@ -141,7 +141,7 @@ func sub(left Value, right Value) (Value, error) {
 			return Double(float64(left) - float64(right)), nil
 		}
 	}
-	return nil, fmt.Errorf("'-' only supported between numbers")
+	return nil, fmt.Errorf("'-' only supported between numbers. Got '%s' and '%s'", left.String(), right.String())
 }
 
 func div(left Value, right Value) (Value, error) {
@@ -165,7 +165,7 @@ func div(left Value, right Value) (Value, error) {
 			return Double(float64(left) / float64(right)), nil
 		}
 	}
-	return nil, fmt.Errorf("'/' only supported between numbers")
+	return nil, fmt.Errorf("'/' only supported between numbers. Got '%s' and '%s'", left.String(), right.String())
 }
 
 func fdiv(left Value, right Value) (Value, error) {
@@ -189,7 +189,7 @@ func fdiv(left Value, right Value) (Value, error) {
 			return Double(math.Floor(float64(left) / float64(right))), nil
 		}
 	}
-	return nil, fmt.Errorf("'//' only supported between numbers")
+	return nil, fmt.Errorf("'//' only supported between numbers. Got '%s' and '%s'", left.String(), right.String())
 
 }
 
@@ -210,7 +210,7 @@ func mul(left Value, right Value) (Value, error) {
 			return Double(float64(left) * float64(right)), nil
 		}
 	}
-	return nil, fmt.Errorf("'*' only supported between numbers")
+	return nil, fmt.Errorf("'*' only supported between numbers. Got '%s' and '%s'", left.String(), right.String())
 }
 
 func eq(left Value, right Value) (Value, error) {
@@ -229,7 +229,7 @@ func or(left Value, right Value) (Value, error) {
 			return Bool(bool(left) || bool(right)), nil
 		}
 	}
-	return nil, fmt.Errorf("'or' only supported between numbers")
+	return nil, fmt.Errorf("'or' only supported between booleans. Got '%s' and '%s'", left.String(), right.String())
 }
 
 func and(left Value, right Value) (Value, error) {
@@ -240,7 +240,7 @@ func and(left Value, right Value) (Value, error) {
 			return Bool(bool(left) && bool(right)), nil
 		}
 	}
-	return nil, fmt.Errorf("'and' only supported between numbers")
+	return nil, fmt.Errorf("'and' only supported between booleans. Got '%s' and '%s'", left.String(), right.String())
 }
 
 func lt(left Value, right Value) (Value, error) {
@@ -260,7 +260,7 @@ func lt(left Value, right Value) (Value, error) {
 			return Bool(float64(left) < float64(right)), nil
 		}
 	}
-	return nil, fmt.Errorf("'<' only supported between numbers")
+	return nil, fmt.Errorf("'<' only supported between numbers. Got '%s' and '%s'", left.String(), right.String())
 }
 
 func lte(left Value, right Value) (Value, error) {
@@ -280,7 +280,7 @@ func lte(left Value, right Value) (Value, error) {
 			return Bool(float64(left) <= float64(right)), nil
 		}
 	}
-	return nil, fmt.Errorf("'<=' only supported between numbers")
+	return nil, fmt.Errorf("'<=' only supported between numbers. Got '%s' and '%s'", left.String(), right.String())
 }
 
 func gt(left Value, right Value) (Value, error) {
@@ -300,7 +300,7 @@ func gt(left Value, right Value) (Value, error) {
 			return Bool(float64(left) > float64(right)), nil
 		}
 	}
-	return nil, fmt.Errorf("'>' only supported between numbers")
+	return nil, fmt.Errorf("'>' only supported between numbers. Got '%s' and '%s'", left.String(), right.String())
 }
 
 func gte(left Value, right Value) (Value, error) {
@@ -320,7 +320,7 @@ func gte(left Value, right Value) (Value, error) {
 			return Bool(float64(left) >= float64(right)), nil
 		}
 	}
-	return nil, fmt.Errorf("'>=' only supported between numbers")
+	return nil, fmt.Errorf("'>=' only supported between numbers. Got '%s' and '%s'", left.String(), right.String())
 }
 
 func index(left Value, right Value) (Value, error) {
