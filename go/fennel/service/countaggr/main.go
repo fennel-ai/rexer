@@ -146,21 +146,24 @@ func startAggregateProcessing(tr tier.Tier) error {
 }
 
 func startPhaserProcessing(tr tier.Tier) error {
-	processedPhasers := make(map[string]struct{})
-	ticker := time.NewTicker(time.Second * 30)
-	for ; true; <-ticker.C {
-		phasers, err := phaser.RetrieveAll(context.Background(), tr)
-		if err != nil {
-			return err
-		}
-		for _, p := range phasers {
-			if _, ok := processedPhasers[p.GetId()]; !ok {
-				log.Printf("Retrieved a new phaser: %v", p.GetId())
-				phaser.ServeData(tr, p)
-				processedPhasers[p.GetId()] = struct{}{}
+	go func(tr tier.Tier) {
+		processedPhasers := make(map[string]struct{})
+		ticker := time.NewTicker(time.Second * 30)
+		for ; true; <-ticker.C {
+			phasers, err := phaser.RetrieveAll(context.Background(), tr)
+			if err != nil {
+				tr.Logger.Error("Could not retrieve phasers", zap.Error(err))
+				continue
+			}
+			for _, p := range phasers {
+				if _, ok := processedPhasers[p.GetId()]; !ok {
+					log.Printf("Retrieved a new phaser: %v", p.GetId())
+					phaser.ServeData(tr, p)
+					processedPhasers[p.GetId()] = struct{}{}
+				}
 			}
 		}
-	}
+	}(tr)
 	return nil
 }
 

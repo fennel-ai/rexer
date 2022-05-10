@@ -57,7 +57,6 @@ class TestEndToEnd(unittest.TestCase):
 
     @tiered
     def test_lokal(self):
-        print("Test lokal ---------------------")
         c = client.Client(URL)
         uid = 12312
         content_id = 456
@@ -178,7 +177,6 @@ class TestEndToEnd(unittest.TestCase):
 
     @tiered
     def test_end_to_end(self):
-        print("Test End2End ---------------------")
         c = client.Client(URL)
         uid = 12312
         video_id = 456
@@ -307,7 +305,6 @@ class TestEndToEnd(unittest.TestCase):
 
     @tiered
     def test_queries(self):
-        print("Test Queries ---------------------")
         c = client.Client(URL)
         cond_ = cond(var('x') <= 5, "correct", "incorrect")
         found = c.query(cond_, {'x': 5})
@@ -345,7 +342,6 @@ class TestEndToEnd(unittest.TestCase):
 
     @tiered
     def test_features(self):
-        print("Test Features ---------------------")
         c = client.Client(URL)
         # first set some data
         uid = 1
