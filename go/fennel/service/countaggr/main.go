@@ -127,7 +127,7 @@ func startAggregateProcessing(tr tier.Tier) error {
 	processedAggregates := make(map[ftypes.AggName]struct{})
 	ticker := time.NewTicker(time.Second * 15)
 	for ; true; <-ticker.C {
-		aggs, err := aggregate.RetrieveAll(context.Background(), tr)
+		aggs, err := aggregate.RetrieveActive(context.Background(), tr)
 		if err != nil {
 			return err
 		}

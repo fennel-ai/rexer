@@ -113,7 +113,7 @@ type Tier struct {
 	SagemakerClient  sagemaker.SMClient
 	ModelStore       *modelstore.ModelStore
 	Badger           fbadger.DB
-
+	Args             TierArgs
 	// In-process caches for aggregate values.
 	PCache pcache.PCache
 	// Cache of aggregate name to aggregate definitions - key type is string,
