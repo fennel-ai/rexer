@@ -141,7 +141,7 @@ func sub(left Value, right Value) (Value, error) {
 			return Double(float64(left) - float64(right)), nil
 		}
 	}
-	return nil, fmt.Errorf("'+' only supported between numbers")
+	return nil, fmt.Errorf("'-' only supported between numbers")
 }
 
 func div(left Value, right Value) (Value, error) {
