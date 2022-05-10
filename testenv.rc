@@ -22,6 +22,7 @@ export MODEL_STORE_S3_BUCKET="my-xgboost-test-bucket-2"
 export MODEL_STORE_ENDPOINT="integration-test-endpoint"
 
 export JOB_NAME_BY_AGG="topk=TopK,cf=CF"
+export OFFLINE_AGG_BUCKET="t-103-offline-aggregate-output"
 export AWS_REGION="us-west-2"
 # in tests, we override this with a random tier ID but this is needed for prod
 export TIER_ID=103

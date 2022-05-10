@@ -9,3 +9,4 @@ FROM --platform=linux/amd64 golang:1.17.6-bullseye
 WORKDIR /root/
 COPY --from=builder /app/go/fennel/countaggr ./
 CMD ["./countaggr"]
+RUN apt update && apt install redis-cli

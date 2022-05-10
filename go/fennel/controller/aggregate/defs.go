@@ -22,6 +22,7 @@ import (
 
 // Data is kept in redis OFFLINE_AGG_TTL_MULTIPLIER times the update frequency
 var OFFLINE_AGG_TTL_MULTIPLIER = 3
+var OFFLINE_AGG_NAMESPACE = "agg"
 
 // getUpdateFrequency returns the update frequency in hours from the cron schedule
 func getUpdateFrequency(cron string) (time.Duration, error) {
@@ -76,7 +77,7 @@ func Store(ctx context.Context, tier tier.Tier, agg aggregate.Aggregate) error {
 				return err
 			}
 			ttl *= time.Duration(OFFLINE_AGG_TTL_MULTIPLIER)
-			err = phaser.NewPhaser("agg", aggPhaserIdentifier, tier.Args.OfflineAggBucket, prefix, ttl, phaser.ITEM_SCORE_LIST, tier)
+			err = phaser.NewPhaser(OFFLINE_AGG_NAMESPACE, aggPhaserIdentifier, tier.Args.OfflineAggBucket, prefix, ttl, phaser.ITEM_SCORE_LIST, tier)
 			if err != nil {
 				return err
 			}

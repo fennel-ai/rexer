@@ -24,6 +24,7 @@ class LocalTier():
         signal.signal(signal.SIGINT, self.kill_process)
 
     def run_local_server(self):
+        
         with lib.gorun('fennel/test/cmds/tiergod', 'dynamic,integration', self.env, flags=['--mode', 'create'], wait=True):
             pass
         print("Tier id", 106)

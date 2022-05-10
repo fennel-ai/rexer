@@ -171,11 +171,6 @@ folder_name = f'{args["AGGREGATE_NAME"]}-{args["DURATION"]}'
 aggregate_path = f's3://{args["OUTPUT_BUCKET"]}/t_{args["TIER_ID"]}/{folder_name}/day={day}/{now_utc.strftime("%H:%M")}/{args["AGGREGATE_TYPE"]}'
 zip_cf.write.mode('overwrite').parquet(aggregate_path)
 
-s3 = boto3.resource('s3')
-cur_timestamp = int(datetime.utcnow().timestamp())
-object = s3.Object({args["OUTPUT_BUCKET"]}, f't_{args["TIER_ID"]}/{folder_name}/day={day}/{now_utc.strftime("%H:%M")}/{args["AGGREGATE_TYPE"]}/_SUCCESS-'+str(cur_timestamp))
-object.put(Body=str(cur_timestamp))
-
 # Write SUCCESS file to S3
 client = boto3.client('s3')
 some_binary_data = b'Here we have some data'

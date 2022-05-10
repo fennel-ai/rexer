@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"fennel/s3"
 	"fmt"
+	"io/ioutil"
 	"log"
 	"math/rand"
 	"os"
@@ -19,13 +20,16 @@ var S3Bucket = "phaser-test-data"
 func TestCreateItemScoreListFile(t *testing.T) {
 	itemListPq := "item_score_list.parquet"
 	s3Client := s3.NewClient(s3.S3Args{Region: "us-west-2"})
-	err := s3Client.BatchDiskDownload([]string{"unit-tests/" + itemListPq}, S3Bucket, PHASER_TMP_DIR)
+	tempDir, err := ioutil.TempDir("", "phaser")
+	defer os.RemoveAll(tempDir)
 	assert.NoError(t, err)
-	localFileReader, err := local.NewLocalFileReader(PHASER_TMP_DIR + "/" + itemListPq)
+	err = s3Client.BatchDiskDownload([]string{"unit-tests/" + itemListPq}, S3Bucket, tempDir)
+	assert.NoError(t, err)
+	localFileReader, err := local.NewLocalFileReader(tempDir + "/" + itemListPq)
 	defer localFileReader.Close()
 	assert.NoError(t, err)
 	writeFile := fmt.Sprint(rand.Uint64()) + ".txt"
-	cmdWriter, err := os.Create(PHASER_TMP_DIR + "/" + writeFile)
+	cmdWriter, err := os.Create(tempDir + "/" + writeFile)
 	defer cmdWriter.Close()
 
 	assert.NoError(t, err)
@@ -35,7 +39,7 @@ func TestCreateItemScoreListFile(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, 3, numRows)
 
-	file, err := os.Open(PHASER_TMP_DIR + "/" + writeFile)
+	file, err := os.Open(tempDir + "/" + writeFile)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -55,13 +59,16 @@ func TestCreateItemScoreListFile(t *testing.T) {
 func TestCreateItemListFile(t *testing.T) {
 	itemListPq := "item_list.parquet"
 	s3Client := s3.NewClient(s3.S3Args{Region: "us-west-2"})
-	err := s3Client.BatchDiskDownload([]string{"unit-tests/" + itemListPq}, S3Bucket, PHASER_TMP_DIR)
+	tempDir, err := ioutil.TempDir("", "phaser")
+	defer os.RemoveAll(tempDir)
 	assert.NoError(t, err)
-	localFileReader, err := local.NewLocalFileReader(PHASER_TMP_DIR + "/" + itemListPq)
+	err = s3Client.BatchDiskDownload([]string{"unit-tests/" + itemListPq}, S3Bucket, tempDir)
+	assert.NoError(t, err)
+	localFileReader, err := local.NewLocalFileReader(tempDir + "/" + itemListPq)
 	defer localFileReader.Close()
 	assert.NoError(t, err)
 	writeFile := fmt.Sprint(rand.Uint64()) + ".txt"
-	cmdWriter, err := os.Create(PHASER_TMP_DIR + "/" + writeFile)
+	cmdWriter, err := os.Create(tempDir + "/" + writeFile)
 	defer cmdWriter.Close()
 
 	assert.NoError(t, err)
@@ -71,7 +78,7 @@ func TestCreateItemListFile(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, 3, numRows)
 
-	file, err := os.Open(PHASER_TMP_DIR + "/" + writeFile)
+	file, err := os.Open(tempDir + "/" + writeFile)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -92,13 +99,15 @@ func TestCreateItemListFile(t *testing.T) {
 func TestCreateItemFile(t *testing.T) {
 	itemListPq := "item.parquet"
 	s3Client := s3.NewClient(s3.S3Args{Region: "us-west-2"})
-	err := s3Client.BatchDiskDownload([]string{"unit-tests/" + itemListPq}, S3Bucket, PHASER_TMP_DIR)
+	tempDir, err := ioutil.TempDir("", "phaser")
+	defer os.RemoveAll(tempDir)
+	err = s3Client.BatchDiskDownload([]string{"unit-tests/" + itemListPq}, S3Bucket, tempDir)
 	assert.NoError(t, err)
-	localPqReader, err := local.NewLocalFileReader(PHASER_TMP_DIR + "/" + itemListPq)
+	localPqReader, err := local.NewLocalFileReader(tempDir + "/" + itemListPq)
 	assert.NoError(t, err)
 	defer localPqReader.Close()
 	writeFile := fmt.Sprint(rand.Uint64()) + ".txt"
-	cmdWriter, err := os.Create(PHASER_TMP_DIR + "/" + writeFile)
+	cmdWriter, err := os.Create(tempDir + "/" + writeFile)
 	defer cmdWriter.Close()
 
 	assert.NoError(t, err)
@@ -108,7 +117,7 @@ func TestCreateItemFile(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, 3, numRows)
 
-	file, err := os.Open(PHASER_TMP_DIR + "/" + writeFile)
+	file, err := os.Open(tempDir + "/" + writeFile)
 	if err != nil {
 		log.Fatal(err)
 	}

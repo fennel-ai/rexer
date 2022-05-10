@@ -4,6 +4,7 @@ package phaser
 
 import (
 	"context"
+	"io/ioutil"
 
 	"fennel/lib/value"
 	"fennel/test"
@@ -22,7 +23,10 @@ func TestBulkUploadToRedis(t *testing.T) {
 	ctx := context.Background()
 
 	filename := "phaser_test.txt"
-	tempFile, err := os.Create(PHASER_TMP_DIR + "/" + filename + REDIS_BULK_UPLOAD_FILE_SUFFIX)
+	tempDir, err := ioutil.TempDir("", "phaser")
+	assert.NoError(t, err)
+	defer os.RemoveAll(tempDir)
+	tempFile, err := os.Create(tempDir + "/" + filename + REDIS_BULK_UPLOAD_FILE_SUFFIX)
 	defer assert.NoError(t, err)
 
 	rkeys := make([]string, 100000)
@@ -31,7 +35,7 @@ func TestBulkUploadToRedis(t *testing.T) {
 		rkeys[i] = "key" + fmt.Sprint(i)
 	}
 	tempFile.Close()
-	err = bulkUploadToRedis(tier, filename, 100000)
+	err = bulkUploadToRedis(tier, filename, 100000, tempDir)
 	assert.NoError(t, err)
 
 	res, err := tier.Redis.MRawGet(ctx, rkeys...)
@@ -47,14 +51,16 @@ func TestPrepareAndBulkUpload(t *testing.T) {
 	assert.NoError(t, err)
 	defer test.Teardown(tier)
 
-	PHASER_TMP_DIR = "/tmp/aditya"
+	tempDir, err := ioutil.TempDir("", "phaser")
+	assert.NoError(t, err)
+	defer os.RemoveAll(tempDir)
 
-	err = tier.S3Client.BatchDiskDownload([]string{"integration-tests/item.parquet", "integration-tests/item2.parquet"}, S3Bucket, PHASER_TMP_DIR)
+	err = tier.S3Client.BatchDiskDownload([]string{"integration-tests/item.parquet", "integration-tests/item2.parquet"}, S3Bucket, tempDir)
 	assert.NoError(t, err)
 
 	files := []string{"item.parquet", "item2.parquet"}
 	p := Phaser{"testNamespace2", "testIdentifier2", "testBucket", "testPrefix", STRING, 1, time.Hour}
-	err = p.prepareAndBulkUpload(tier, files)
+	err = p.prepareAndBulkUpload(tier, files, tempDir)
 	assert.NoError(t, err)
 
 	// check that the files are in redis

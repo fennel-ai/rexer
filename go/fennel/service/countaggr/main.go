@@ -126,10 +126,10 @@ func startProfileDBInsertion(tr tier.Tier) error {
 func startAggregateProcessing(tr tier.Tier) error {
 	processedAggregates := make(map[ftypes.AggName]struct{})
 	ticker := time.NewTicker(time.Second * 15)
-	for {
+	for ; true; <-ticker.C {
 		aggs, err := aggregate.RetrieveAll(context.Background(), tr)
 		if err != nil {
-			panic(err)
+			return err
 		}
 		for _, agg := range aggs {
 			if _, ok := processedAggregates[agg.Name]; !ok {
@@ -141,18 +141,17 @@ func startAggregateProcessing(tr tier.Tier) error {
 				processedAggregates[agg.Name] = struct{}{}
 			}
 		}
-		<-ticker.C
 	}
+	return nil
 }
 
 func startPhaserProcessing(tr tier.Tier) error {
 	processedPhasers := make(map[string]struct{})
 	ticker := time.NewTicker(time.Second * 30)
-
-	for {
+	for ; true; <-ticker.C {
 		phasers, err := phaser.RetrieveAll(context.Background(), tr)
 		if err != nil {
-			panic(err)
+			return err
 		}
 		for _, p := range phasers {
 			if _, ok := processedPhasers[p.GetId()]; !ok {
@@ -161,8 +160,8 @@ func startPhaserProcessing(tr tier.Tier) error {
 				processedPhasers[p.GetId()] = struct{}{}
 			}
 		}
-		<-ticker.C
 	}
+	return nil
 }
 
 func main() {

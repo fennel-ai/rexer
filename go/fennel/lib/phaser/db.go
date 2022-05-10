@@ -2,6 +2,7 @@ package phaser
 
 import (
 	"context"
+	"errors"
 	"fennel/tier"
 	"fmt"
 	"strconv"
@@ -58,7 +59,7 @@ func DelPhaser(ctx context.Context, tier tier.Tier, namespace, identifier string
 	return err
 }
 
-func RetrievePhaser(ctx context.Context, tier tier.Tier, namespace, identifier string) (Phaser, error) {
+func Retrieve(ctx context.Context, tier tier.Tier, namespace, identifier string) (Phaser, error) {
 	var p phaserSer
 	err := tier.DB.GetContext(ctx, &p, `SELECT * FROM phaser WHERE namespace = ? AND identifier = ? LIMIT 1`, namespace, identifier)
 	if err != nil {
@@ -67,15 +68,21 @@ func RetrievePhaser(ctx context.Context, tier tier.Tier, namespace, identifier s
 	return getPhaser(p)
 }
 
-func RetrievePhasers(ctx context.Context, tier tier.Tier, namespace, identifier []string) ([]Phaser, error) {
+// phaser Id
+type id struct {
+	Namespace  string
+	Identifier string
+}
+
+func RetrieveBatch(ctx context.Context, tier tier.Tier, namespace, identifier []string) ([]Phaser, error) {
 	if len(identifier) != len(namespace) {
-		return []Phaser{}, fmt.Errorf("identifier and namespace must be the same length")
+		return nil, fmt.Errorf("identifier and namespace must be the same length")
 	}
 
 	// Dedupe all namespaces and identifiers
-	namespaceIdentifiers := make(map[string]Phaser)
+	namespaceIdentifiers := make(map[id]Phaser)
 	for i := 0; i < len(identifier); i++ {
-		namespaceIdentifiers[namespace[i]+":"+identifier[i]] = Phaser{}
+		namespaceIdentifiers[id{namespace[i], identifier[i]}] = Phaser{}
 	}
 
 	sql := `
@@ -86,9 +93,8 @@ func RetrievePhasers(ctx context.Context, tier tier.Tier, namespace, identifier 
 	v := make([]interface{}, 0, len(namespaceIdentifiers))
 	inval := "("
 	for key, _ := range namespaceIdentifiers {
-		split := strings.Split(key, ":")
 		inval += "(?, ?),"
-		v = append(v, split[0], split[1])
+		v = append(v, key.Namespace, key.Identifier)
 	}
 	inval = strings.TrimSuffix(inval, ",") // remove the last trailing comma
 	inval += ")"
@@ -96,17 +102,22 @@ func RetrievePhasers(ctx context.Context, tier tier.Tier, namespace, identifier 
 	phaserReqs := make([]phaserSer, 0)
 	err := tier.DB.SelectContext(ctx, &phaserReqs, sql, v...)
 	if err != nil {
-		return []Phaser{}, err
+		return nil, err
 	}
 	if len(phaserReqs) == 0 {
-		return []Phaser{}, PhaserNotFound
+		return nil, PhaserNotFound
 	}
 	for _, p := range phaserReqs {
-		namespaceIdentifiers[p.Namespace+":"+p.Identifier] = getPhaser(p)
+		namespaceIdentifiers[id{p.Namespace, p.Identifier}], err = getPhaser(p)
+		if err != nil {
+			return nil, err
+		}
 	}
 	phasers := make([]Phaser, 0, len(namespace))
+
+	// Return the phasers in the same order as the namespaces and identifiers
 	for i := 0; i < len(namespace); i++ {
-		phasers = append(phasers, namespaceIdentifiers[namespace[i]+":"+identifier[i]])
+		phasers = append(phasers, namespaceIdentifiers[id{namespace[i], identifier[i]}])
 	}
 
 	return phasers, nil
@@ -140,11 +151,4 @@ func UpdateVersion(ctx context.Context, tier tier.Tier, namespace, identifier st
 	return err
 }
 
-type notFound int
-
-func (_ notFound) Error() string {
-	return "phaser not found"
-}
-
-var PhaserNotFound = notFound(1)
-var _ error = PhaserNotFound
+var PhaserNotFound error = errors.New("Phaser not found")

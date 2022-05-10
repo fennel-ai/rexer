@@ -7,6 +7,7 @@ import (
 	"fennel/lib/value"
 	"fennel/tier"
 	"fmt"
+	"io/ioutil"
 	"os"
 	"os/exec"
 	"regexp"
@@ -18,6 +19,7 @@ import (
 	"github.com/xitongsys/parquet-go/reader"
 	"github.com/xitongsys/parquet-go/source"
 	"go.uber.org/zap"
+	"golang.org/x/sync/errgroup"
 )
 
 var SUCCESS_PREFIX = "_SUCCESS-"
@@ -26,7 +28,6 @@ var SUCCESS_PREFIX = "_SUCCESS-"
 var BATCH_SIZE = 1000
 var REDIS_BULK_UPLOAD_FILE_SUFFIX = "-redis-bulk-upload.txt"
 var POLL_FREQUENCY_SEC = 60
-var PHASER_TMP_DIR = "/tmp"
 
 type PhaserSchema int
 
@@ -65,10 +66,16 @@ func (schema PhaserSchema) String() (string, error) {
 //================================================
 
 type Phaser struct {
-	Namespace     string
-	Identifier    string
-	S3Bucket      string
-	S3Prefix      string
+	// Namespace is used to group a bunch of phasers that logically belong together.
+	// For eg. OFFLINE_AGG_NAMESPACE is the namespace for the phasers that are used for offline aggregate serving.
+	Namespace string
+	// Identifier is used to uniquely identify a phaser within a namespace.
+	Identifier string
+	// The S3 bucket where the data is stored
+	S3Bucket string
+	// Prefix withing the s3 bucket which is polled by Phaser.
+	S3Prefix string
+	// Schema of the data stored.
 	Schema        PhaserSchema
 	UpdateVersion uint64
 	TTL           time.Duration
@@ -90,7 +97,7 @@ func Get(namespace, identifier, key string) (interface{}, error) {
 }
 
 func BatchGet(tr tier.Tier, namespaces, identifiers, keys []string) ([]value.Value, error) {
-	phasers, err := RetrievePhasers(context.Background(), tr, namespaces, identifiers)
+	phasers, err := RetrieveBatch(context.Background(), tr, namespaces, identifiers)
 	if err != nil {
 		return nil, err
 	}
@@ -152,22 +159,22 @@ type ItemScore struct {
 	Score    *float64 `parquet:"name=score, type=FLOAT"`
 }
 
-type ExampleItemScoreList struct {
+type ItemScoreList struct {
 	Key           *string     `parquet:"name=key, type=BYTE_ARRAY, convertedtype=UTF8"`
 	ItemScoreList []ItemScore `parquet:"name=item_list, type=LIST"`
 }
 
-type ExampleItemList struct {
+type ItemList struct {
 	Key      *string  `parquet:"name=key, type=BYTE_ARRAY, convertedtype=UTF8"`
 	ItemList []string `parquet:"name=item_list, type=MAP, convertedtype=LIST, valuetype=BYTE_ARRAY, valueconvertedtype=UTF8"`
 }
 
-type ExampleItem struct {
+type Item struct {
 	Key  *string `parquet:"name=key, type=BYTE_ARRAY, convertedtype=UTF8"`
 	Item string  `parquet:"name=item, type=BYTE_ARRAY, convertedtype=UTF8"`
 }
 
-func bulkUploadToRedis(tr tier.Tier, file string, numRows int) error {
+func bulkUploadToRedis(tr tier.Tier, file string, numRows int, tempDir string) error {
 	redisAddress := tr.Args.RedisServer[:strings.IndexByte(tr.Args.RedisServer, ':')]
 	fetchClusterNodes := "redis-cli -c -h " + redisAddress + " --tls  cluster nodes | cut -f2 -d' '"
 	out, err := exec.Command("bash", "-c", fetchClusterNodes).Output()
@@ -180,30 +187,43 @@ func bulkUploadToRedis(tr tier.Tier, file string, numRows int) error {
 		return fmt.Errorf("no redis cluster nodes found")
 	}
 
+	g, _ := errgroup.WithContext(context.Background())
+	results := make([]int, len(nodes))
+	for i, n := range nodes {
+		idx := i
+		nodeAddress := strings.TrimSpace(n)
+		g.Go(func() error {
+			node := strings.TrimSpace(nodeAddress)
+			if !strings.Contains(node, ":") {
+				return nil
+			}
+			nodeAddress := node[:strings.IndexByte(node, ':')]
+
+			bulkUploadCmd := "cat " + tempDir + "/" + file + REDIS_BULK_UPLOAD_FILE_SUFFIX + " | redis-cli -h " + nodeAddress + " --pipe --tls"
+			// We know it will error, so dont check the error
+
+			out, err = exec.Command("bash", "-c", bulkUploadCmd).Output()
+			if err != nil {
+				return err
+			}
+			re := regexp.MustCompile(".*errors\\:\\s([0-9]+),\\sreplies\\:\\s([0-9]+)")
+			match := re.FindStringSubmatch(string(out))
+			if len(match) < 3 {
+				return fmt.Errorf("could not identify number of successfull phaser writes to redis :- %s", string(out))
+			}
+
+			sentRequest, _ := strconv.Atoi(match[2])
+			failedRequests, _ := strconv.Atoi(match[1])
+			results[idx] = sentRequest - failedRequests
+			return nil
+		})
+	}
+	if err := g.Wait(); err != nil {
+		return err
+	}
 	successfulRequests := 0
-	for _, node := range nodes {
-		node = strings.TrimSpace(node)
-		if !strings.Contains(node, ":") {
-			continue
-		}
-		nodeAddress := node[:strings.IndexByte(node, ':')]
-
-		bulkUploadCmd := "cat " + PHASER_TMP_DIR + "/" + file + REDIS_BULK_UPLOAD_FILE_SUFFIX + " | redis-cli -h " + nodeAddress + " --pipe --tls"
-		// We know it will error, so dont check the error
-
-		out, err = exec.Command("bash", "-c", bulkUploadCmd).Output()
-		if err != nil {
-			return err
-		}
-		re := regexp.MustCompile(".*errors\\:\\s([0-9]+),\\sreplies\\:\\s([0-9]+)")
-		match := re.FindStringSubmatch(string(out))
-		if len(match) < 3 {
-			return fmt.Errorf("could not identify number of successfull phaser writes to redis")
-		}
-
-		sentRequest, _ := strconv.Atoi(match[2])
-		failedRequests, _ := strconv.Atoi(match[1])
-		successfulRequests += (sentRequest - failedRequests)
+	for _, r := range results {
+		successfulRequests += r
 	}
 
 	if successfulRequests != numRows {
@@ -221,7 +241,7 @@ func (p Phaser) getRedisCommand(tierId ftypes.RealmID, key, encodedString string
 }
 
 func (p Phaser) createItemScoreListFile(localFileReader source.ParquetFile, redisWriter *os.File, tierId ftypes.RealmID) (int, error) {
-	pr, err := reader.NewParquetReader(localFileReader, new(ExampleItemScoreList), 4)
+	pr, err := reader.NewParquetReader(localFileReader, new(ItemScoreList), 4)
 	defer pr.ReadStop()
 	if err != nil {
 		return 0, nil
@@ -233,9 +253,9 @@ func (p Phaser) createItemScoreListFile(localFileReader source.ParquetFile, redi
 		if i+BATCH_SIZE > numRows {
 			sz = numRows - i
 		}
-		examples := make([]ExampleItemScoreList, sz)
+		examples := make([]ItemScoreList, sz)
 		if err = pr.Read(&examples); err != nil {
-			return 0, err
+			return 0, fmt.Errorf("%w", err)
 		}
 
 		for _, example := range examples {
@@ -256,7 +276,7 @@ func (p Phaser) createItemScoreListFile(localFileReader source.ParquetFile, redi
 }
 
 func (p Phaser) createItemListFile(localFileReader source.ParquetFile, redisWriter *os.File, tierId ftypes.RealmID) (int, error) {
-	pr, err := reader.NewParquetReader(localFileReader, new(ExampleItemList), 4)
+	pr, err := reader.NewParquetReader(localFileReader, new(ItemList), 4)
 	defer pr.ReadStop()
 	if err != nil {
 		return 0, err
@@ -268,9 +288,9 @@ func (p Phaser) createItemListFile(localFileReader source.ParquetFile, redisWrit
 		if i+BATCH_SIZE > numRows {
 			sz = numRows - i
 		}
-		examples := make([]ExampleItemList, sz)
+		examples := make([]ItemList, sz)
 		if err = pr.Read(&examples); err != nil {
-			return 0, err
+			return 0, fmt.Errorf("%w", err)
 		}
 
 		for _, example := range examples {
@@ -288,7 +308,7 @@ func (p Phaser) createItemListFile(localFileReader source.ParquetFile, redisWrit
 }
 
 func (p Phaser) createItemFile(localFileReader source.ParquetFile, redisWriter *os.File, tierId ftypes.RealmID) (int, error) {
-	pr, err := reader.NewParquetReader(localFileReader, new(ExampleItem), 4)
+	pr, err := reader.NewParquetReader(localFileReader, new(Item), 4)
 	defer pr.ReadStop()
 	if err != nil {
 		return 0, err
@@ -300,9 +320,9 @@ func (p Phaser) createItemFile(localFileReader source.ParquetFile, redisWriter *
 		if i+BATCH_SIZE > numRows {
 			sz = numRows - i
 		}
-		examples := make([]ExampleItem, sz)
+		examples := make([]Item, sz)
 		if err = pr.Read(&examples); err != nil {
-			return 0, err
+			return 0, fmt.Errorf("%w", err)
 		}
 
 		for _, example := range examples {
@@ -314,42 +334,50 @@ func (p Phaser) createItemFile(localFileReader source.ParquetFile, redisWriter *
 }
 
 // This function is responsible for reading the parquet file from
-// PHASER_TMP_DIR and creating the appropriate redis file for uploading.
-func (p Phaser) prepareFileForBulkUpload(tr tier.Tier, file string) (int, error) {
-	localFileReader, err := local.NewLocalFileReader(PHASER_TMP_DIR + "/" + file)
+// tempDir and creating the appropriate redis file for uploading.
+func (p Phaser) prepareFileForBulkUpload(tr tier.Tier, file string, tempDir string) (int, error) {
+	localFileReader, err := local.NewLocalFileReader(tempDir + "/" + file)
 	if err != nil {
 		return 0, err
 	}
 	defer localFileReader.Close()
-	redisWriter, err := os.Create(PHASER_TMP_DIR + "/" + file + REDIS_BULK_UPLOAD_FILE_SUFFIX)
+	redisWriter, err := os.Create(tempDir + "/" + file + REDIS_BULK_UPLOAD_FILE_SUFFIX)
 	if err != nil {
 		return 0, err
 	}
 	defer redisWriter.Close()
 
-	if p.Schema == ITEM_SCORE_LIST {
+	switch p.Schema {
+	case ITEM_SCORE_LIST:
 		return p.createItemScoreListFile(localFileReader, redisWriter, tr.ID)
-	} else if p.Schema == ITEM_LIST {
+	case ITEM_LIST:
 		return p.createItemListFile(localFileReader, redisWriter, tr.ID)
-	} else {
+	case STRING:
 		return p.createItemFile(localFileReader, redisWriter, tr.ID)
+	default:
+		return 0, fmt.Errorf("unknown schema type: %d", p.Schema)
 	}
 }
 
-func (p Phaser) prepareAndBulkUpload(tr tier.Tier, fileNames []string) error {
-	// TODO: Write these file in parallel
-	for _, file := range fileNames {
-		numRows, err := p.prepareFileForBulkUpload(tr, file)
-		if err != nil {
-			return err
-		}
+func (p Phaser) prepareAndBulkUpload(tr tier.Tier, fileNames []string, tempDir string) error {
+	g, _ := errgroup.WithContext(context.Background())
 
-		err = bulkUploadToRedis(tr, file, numRows)
-		if err != nil {
-			return err
-		}
+	for _, f := range fileNames {
+		file := f
+		g.Go(func() error {
+			numRows, err := p.prepareFileForBulkUpload(tr, file, tempDir)
+			if err != nil {
+				return err
+			}
+
+			err = bulkUploadToRedis(tr, file, numRows, tempDir)
+			if err != nil {
+				return err
+			}
+			return nil
+		})
 	}
-	return nil
+	return g.Wait()
 }
 
 func findLatestVersion(files []string, currUpdateVersion uint64) (uint64, string, error) {
@@ -377,12 +405,41 @@ func findLatestVersion(files []string, currUpdateVersion uint64) (uint64, string
 	return currUpdateVersion, prefixToUpdate + "/", nil
 }
 
+func (p Phaser) updateServing(tr tier.Tier, fileNames, filesToDownload []string, newUpdateVersion uint64) error {
+	tempDir, err := ioutil.TempDir("", "phaser")
+	if err != nil {
+		return err
+	}
+
+	defer os.RemoveAll(tempDir)
+
+	err = tr.S3Client.BatchDiskDownload(filesToDownload, p.S3Bucket, tempDir)
+	if err != nil {
+		tr.Logger.Error("error while downloading files from s3 bucket:", zap.Error(err))
+		return err
+	}
+
+	err = p.prepareAndBulkUpload(tr, fileNames, tempDir)
+	if err != nil {
+		tr.Logger.Error("error during bulk upload phaser data to redis", zap.Error(err))
+		return err
+	}
+
+	// Update DB with the new version
+	err = UpdateVersion(context.Background(), tr, p.Namespace, p.Identifier, newUpdateVersion)
+	if err != nil {
+		tr.Logger.Error("error while updating aggregate version:", zap.Error(err))
+		return err
+	}
+	return nil
+}
+
 func pollS3Bucket(namespace, identifier string, tr tier.Tier) error {
 	go func(tr tier.Tier, namespace, identifier string) {
 		ticker := time.NewTicker(time.Second * time.Duration(POLL_FREQUENCY_SEC))
 		for {
 			<-ticker.C
-			p, err := RetrievePhaser(context.Background(), tr, namespace, identifier)
+			p, err := Retrieve(context.Background(), tr, namespace, identifier)
 			if err != nil {
 				tr.Logger.Error("Error retrieving phaser", zap.Error(err))
 				continue
@@ -424,23 +481,9 @@ func pollS3Bucket(namespace, identifier string, tr tier.Tier) error {
 				}
 			}
 
-			err = tr.S3Client.BatchDiskDownload(filesToDownload, p.S3Bucket, PHASER_TMP_DIR)
+			err = p.updateServing(tr, fileNames, filesToDownload, newUpdateVersion)
 			if err != nil {
-				tr.Logger.Error("error while downloading files from s3 bucket:", zap.Error(err))
-				continue
-			}
-
-			err = p.prepareAndBulkUpload(tr, fileNames)
-			if err != nil {
-				tr.Logger.Error("error during bulk upload phaser data to redis", zap.Error(err))
-				continue
-			}
-
-			// Update DB with the new version
-			err = UpdateVersion(context.Background(), tr, p.Namespace, p.Identifier, newUpdateVersion)
-			if err != nil {
-				tr.Logger.Error("error while updating aggregate version:", zap.Error(err))
-				return
+				tr.Logger.Error("error while updating serving", zap.Error(err))
 			}
 		}
 	}(tr, namespace, identifier)
