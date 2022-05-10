@@ -129,7 +129,7 @@ def users(s3_client: boto3.client, batch_size: int = 10000) -> List[profile.Prof
 
             district = getattr(row, 'location_id')
             if not pd.isnull(district):
-                profiles.append(profile.Profile(otype=_USER_OTYPE, oid=int(oid), key=_USER_DISTRICT, value=district, update_time=_UPDATE_TIME))
+                profiles.append(profile.Profile(otype=_USER_OTYPE, oid=int(oid), key=_USER_DISTRICT, value=int(district), update_time=_UPDATE_TIME))
 
             constituency = getattr(row, 'microlocation_id')
             if not pd.isnull(constituency):
@@ -138,7 +138,7 @@ def users(s3_client: boto3.client, batch_size: int = 10000) -> List[profile.Prof
 
             created_on = getattr(row, 'created_on')
             if not pd.isnull(created_on):
-                profiles.append(profile.Profile(otype=_USER_OTYPE, oid=int(oid), key=_USER_CREATED_ON, value=dp.parse(created_on).timestamp(), update_time=_UPDATE_TIME))
+                profiles.append(profile.Profile(otype=_USER_OTYPE, oid=int(oid), key=_USER_CREATED_ON, value=int(dp.parse(created_on).timestamp()), update_time=_UPDATE_TIME))
 
             if len(profiles) > batch_size:
                 yield profiles
@@ -234,7 +234,7 @@ def posts_updated_on(s3_client: boto3.client, batch_size: int = 10000) -> List[p
             oid = getattr(row, 'id')
             updated_on = getattr(row, 'updated_on')
             if not pd.isnull(updated_on):
-                profiles.append(profile.Profile(otype=_POST_OTYPE, oid=int(oid), key=_POST_UPDATED_ON, value=dp.parse(updated_on).timestamp(), update_time=_UPDATE_TIME))
+                profiles.append(profile.Profile(otype=_POST_OTYPE, oid=int(oid), key=_POST_UPDATED_ON, value=int(dp.parse(updated_on).timestamp()), update_time=_UPDATE_TIME))
 
             if len(profiles) > batch_size:
                 yield profiles
@@ -253,7 +253,7 @@ def posts_created_on(s3_client: boto3.client, batch_size: int = 10000) -> List[p
             oid = getattr(row, 'post_id')
             created_on = getattr(row, 'created_on')
             if not pd.isnull(created_on):
-                profiles.append(profile.Profile(otype=_POST_OTYPE, oid=int(oid), key=_POST_CREATED_ON, value=dp.parse(created_on).timestamp(), update_time=_UPDATE_TIME))
+                profiles.append(profile.Profile(otype=_POST_OTYPE, oid=int(oid), key=_POST_CREATED_ON, value=int(dp.parse(created_on).timestamp()), update_time=_UPDATE_TIME))
 
             if len(profiles) > batch_size:
                 yield profiles
