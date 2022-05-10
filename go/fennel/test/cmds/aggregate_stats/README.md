@@ -93,3 +93,11 @@ The output expected is of the format:
 ```
 
 NOTE: AggId = 0 is not defined. We store an entry in MemoryDB for deduplication. Those keys are represented as `0` here.
+
+## Future Work
+
+1. Automatically capture snapshots everyday with a retention limit of 1 day
+2. Automatically export the latest snapshot to a s3 bucket
+3. Add more aggregations if necessary. RDB tool exposes the following information from memory profiles - `database, type, key, size_in_bytes, encoding, num_elements, len_largest_element`
+
+This should leave us just download the snapshots locally and running the script.
