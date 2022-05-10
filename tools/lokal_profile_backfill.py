@@ -49,6 +49,10 @@ parser.add_argument("--post_tags_path",
     help="path to the csv file to load post tags from."
     "If the file is being read from S3 bucket, this is the path to the object in the bucket."
     "Assumes this file exists.")
+parser.add_argument("--post_created_on_path",
+    help="path to the csv file to load post created on from."
+    "If the file is being read from S3 bucket, this is the path to the object in the bucket."
+    "Assumes this file exists.")
 parser.add_argument("--post_reporter_path", help="path to the csv file to load post reporters from.")
 
 args = parser.parse_args()
@@ -63,6 +67,7 @@ _POST_DISTRICTS_PATH: os.PathLike = args.post_districts_path
 _POST_STATES_PATH: os.PathLike = args.post_states_path
 _POST_UPDATED_ON_PATH: os.PathLike = args.post_updated_on_path
 _POST_TAGS_PATH: os.PathLike = args.post_tags_path
+_POST_CREATED_ON_PATH: os.PathLike = args.post_created_on_path
 _POST_REPORTER_PATH: os.PathLike = args.post_reporter_path
 
 _USER_OTYPE = "users"
@@ -113,16 +118,16 @@ def users(s3_client: boto3.client, batch_size: int = 10000) -> List[profile.Prof
 
             district = getattr(row, 'location_id')
             if not pd.isnull(district):
-                profiles.append(profile.Profile(otype=_USER_OTYPE, oid=str(oid), key=_USER_DISTRICT, value=district, update_time=_UPDATE_TIME))
+                profiles.append(profile.Profile(otype=_USER_OTYPE, oid=int(oid), key=_USER_DISTRICT, value=district, update_time=_UPDATE_TIME))
 
             constituency = getattr(row, 'microlocation_id')
             if not pd.isnull(constituency):
                 # Few of the columns (potentially from the test data or so) has constituency value as `float`. However their live traffic sends us ints, hence explicitly type casting this to int
-                profiles.append(profile.Profile(otype=_USER_OTYPE, oid=str(oid), key=_USER_CONSTITUENCY, value=int(constituency), update_time=_UPDATE_TIME))
+                profiles.append(profile.Profile(otype=_USER_OTYPE, oid=int(oid), key=_USER_CONSTITUENCY, value=int(constituency), update_time=_UPDATE_TIME))
 
             created_on = getattr(row, 'created_on')
             if not pd.isnull(created_on):
-                profiles.append(profile.Profile(otype=_USER_OTYPE, oid=str(oid), key=_USER_CREATED_ON, value=dp.parse(created_on).timestamp(), update_time=_UPDATE_TIME))
+                profiles.append(profile.Profile(otype=_USER_OTYPE, oid=int(oid), key=_USER_CREATED_ON, value=dp.parse(created_on).timestamp(), update_time=_UPDATE_TIME))
 
             if len(profiles) > batch_size:
                 yield profiles
@@ -142,7 +147,7 @@ def posts_categories(s3_client: boto3.client, batch_size: int = 10000) -> List[p
             categories = getattr(row, 'categories')
             if not pd.isnull(categories):
                 # set is not JSON serializable, we convert it to list
-                profiles.append(profile.Profile(otype=_POST_OTYPE, oid=str(oid), key=_POST_CATEGORIES, value=list(ast.literal_eval(categories)), update_time=_UPDATE_TIME))
+                profiles.append(profile.Profile(otype=_POST_OTYPE, oid=int(oid), key=_POST_CATEGORIES, value=list(ast.literal_eval(categories)), update_time=_UPDATE_TIME))
 
             if len(profiles) > batch_size:
                 yield profiles
@@ -161,7 +166,7 @@ def posts_constituencies(s3_client: boto3.client, batch_size: int = 10000) -> Li
             oid = getattr(row, 'post_id')
             constituencies = getattr(row, 'constituencies')
             if not pd.isnull(constituencies):
-                profiles.append(profile.Profile(otype=_POST_OTYPE, oid=str(oid), key=_POST_CONSTITUENCIES, value=list(ast.literal_eval(constituencies)), update_time=_UPDATE_TIME))
+                profiles.append(profile.Profile(otype=_POST_OTYPE, oid=int(oid), key=_POST_CONSTITUENCIES, value=list(ast.literal_eval(constituencies)), update_time=_UPDATE_TIME))
 
             if len(profiles) > batch_size:
                 yield profiles
@@ -180,7 +185,7 @@ def posts_locations(s3_client: boto3.client, key: str, file_path: str, batch_siz
             oid = getattr(row, 'post_id')
             locations = getattr(row, 'locations')
             if not pd.isnull(locations):
-                profiles.append(profile.Profile(otype=_POST_OTYPE, oid=str(oid), key=key, value=list(ast.literal_eval(locations)), update_time=_UPDATE_TIME))
+                profiles.append(profile.Profile(otype=_POST_OTYPE, oid=int(oid), key=key, value=list(ast.literal_eval(locations)), update_time=_UPDATE_TIME))
 
             if len(profiles) > batch_size:
                 yield profiles
@@ -199,7 +204,7 @@ def posts_tags(s3_client: boto3.client, batch_size: int = 10000) -> List[profile
             oid = getattr(row, 'post_id')
             tags = getattr(row, 'tags')
             if not pd.isnull(tags):
-                profiles.append(profile.Profile(otype=_POST_OTYPE, oid=str(oid), key=_POST_TAGS, value=tags, update_time=_UPDATE_TIME))
+                profiles.append(profile.Profile(otype=_POST_OTYPE, oid=int(oid), key=_POST_TAGS, value=list(ast.literal_eval(tags)), update_time=_UPDATE_TIME))
 
             if len(profiles) > batch_size:
                 yield profiles
@@ -218,7 +223,7 @@ def posts_updated_on(s3_client: boto3.client, batch_size: int = 10000) -> List[p
             oid = getattr(row, 'id')
             updated_on = getattr(row, 'updated_on')
             if not pd.isnull(updated_on):
-                profiles.append(profile.Profile(otype=_POST_OTYPE, oid=str(oid), key=_POST_UPDATED_ON, value=dp.parse(updated_on).timestamp(), update_time=_UPDATE_TIME))
+                profiles.append(profile.Profile(otype=_POST_OTYPE, oid=int(oid), key=_POST_UPDATED_ON, value=dp.parse(updated_on).timestamp(), update_time=_UPDATE_TIME))
 
             if len(profiles) > batch_size:
                 yield profiles
@@ -229,7 +234,7 @@ def posts_updated_on(s3_client: boto3.client, batch_size: int = 10000) -> List[p
 
 
 def posts_created_on(s3_client: boto3.client, batch_size: int = 10000) -> List[profile.Profile]:
-    posts_df = get_csv(s3_client=s3_client, file_path=_POST_TAGS_PATH)
+    posts_df = get_csv(s3_client=s3_client, file_path=_POST_CREATED_ON_PATH)
     total_entries = len(posts_df)
     profiles = []
     with tqdm(total = total_entries, file = sys.stdout) as pbar:
@@ -237,7 +242,7 @@ def posts_created_on(s3_client: boto3.client, batch_size: int = 10000) -> List[p
             oid = getattr(row, 'post_id')
             created_on = getattr(row, 'created_on')
             if not pd.isnull(created_on):
-                profiles.append(profile.Profile(otype=_POST_OTYPE, oid=str(oid), key=_POST_CREATED_ON, value=dp.parse(created_on).timestamp(), update_time=_UPDATE_TIME))
+                profiles.append(profile.Profile(otype=_POST_OTYPE, oid=int(oid), key=_POST_CREATED_ON, value=dp.parse(created_on).timestamp(), update_time=_UPDATE_TIME))
 
             if len(profiles) > batch_size:
                 yield profiles
@@ -256,7 +261,7 @@ def post_reporters(s3_client: boto3.client, batch_size: int = 10000) -> List[pro
             oid = getattr(row, 'id')
             reported_id = getattr(row, 'reporter_id')
             if not pd.isnull(reported_id):
-                profiles.append(profile.Profile(otype=_POST_OTYPE, oid=str(oid), key=_POST_REPORTER, value=int(reported_id), update_time=_UPDATE_TIME))
+                profiles.append(profile.Profile(otype=_POST_OTYPE, oid=int(oid), key=_POST_REPORTER, value=int(reported_id), update_time=_UPDATE_TIME))
 
             if len(profiles) > batch_size:
                 yield profiles
@@ -296,16 +301,17 @@ def main():
         for batch in posts_locations(s3_client, key=_POST_DISTRICTS, file_path=_POST_DISTRICTS_PATH):
             rexer_client.set_profiles(batch)
 
-    # print('========== processing posts_tags ==========\n')
-    # for batch in posts_tags(s3_client):
-    #     rexer_client.set_profiles(batch)
+    if _POST_TAGS_PATH:
+        print('========== processing posts_tags ==========\n')
+        for batch in posts_tags(s3_client):
+            rexer_client.set_profiles(batch)
 
     if _POST_UPDATED_ON_PATH:
         print('========== processing posts_updated_on ==========\n')
         for batch in posts_updated_on(s3_client):
             rexer_client.set_profiles(batch)
 
-    if _POST_TAGS_PATH:
+    if _POST_CREATED_ON_PATH:
         print('========== processing posts_created_on ==========\n')
         for batch in posts_created_on(s3_client):
             rexer_client.set_profiles(batch)
