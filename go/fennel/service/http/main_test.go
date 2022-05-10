@@ -1,4 +1,4 @@
-//go:build random_string
+//go:build !badger
 
 package main
 

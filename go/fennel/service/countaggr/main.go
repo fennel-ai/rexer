@@ -148,7 +148,7 @@ func startAggregateProcessing(tr tier.Tier) error {
 func startPhaserProcessing(tr tier.Tier) error {
 	go func(tr tier.Tier) {
 		processedPhasers := make(map[string]struct{})
-		ticker := time.NewTicker(time.Second * 30)
+		ticker := time.NewTicker(time.Second * 60)
 		for ; true; <-ticker.C {
 			phasers, err := phaser.RetrieveAll(context.Background(), tr)
 			if err != nil {

@@ -3,19 +3,16 @@ package aggregate
 import (
 	"context"
 	"errors"
-	"fmt"
-
-	"strconv"
-	"strings"
-
-	"time"
-
 	"fennel/engine/ast"
 	"fennel/lib/aggregate"
 	"fennel/lib/ftypes"
 	"fennel/lib/phaser"
 	modelAgg "fennel/model/aggregate"
 	"fennel/tier"
+	"fmt"
+	"strconv"
+	"strings"
+	"time"
 
 	"google.golang.org/protobuf/proto"
 )
