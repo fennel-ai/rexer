@@ -95,4 +95,18 @@ var Schema = db.Schema{
 	// ==================== END Schema for model registry ======================
 
 	11: `ALTER TABLE aggregate_config ADD COLUMN id INT UNSIGNED NOT NULL AUTO_INCREMENT UNIQUE;`,
+
+	// ================== BEGIN Schema for Phaser  ======================
+	12: `CREATE TABLE IF NOT EXISTS phaser (
+			namespace VARCHAR(64) NOT NULL,
+			identifier VARCHAR(255) NOT NULL,
+			s3_bucket VARCHAR(255) NOT NULL,
+			s3_prefix VARCHAR(255) NOT NULL,
+			phaser_schema ENUM('ITEM_SCORE_LIST', 'ITEM_LIST', 'STRING') NOT NULL,
+			update_version BIGINT UNSIGNED DEFAULT 0,
+			ttl BIGINT UNSIGNED DEFAULT 0,
+			PRIMARY KEY (namespace, identifier)
+		);`,
+	// ==================== END Schema for Phaser ======================
+
 }

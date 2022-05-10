@@ -4,7 +4,7 @@ export KAFKA_PASSWORD="fXy4iNu+x0SY0Qmiwm60YFl+BV5LzXqPPVdy1NoK+xeffGEggv77MXxCG
 export MYSQL_SERVER_ADDRESS="p-3-db-20220322025721191200000002.cluster-c00d7gkxaysk.us-west-2.rds.amazonaws.com"
 export MYSQL_DATABASE_NAME="db"
 export MYSQL_USERNAME="admin"
-export MYSQL_PASSWORD="password"
+export MYSQL_PASSWORD="foundationdb"
 export REDIS_SERVER_ADDRESS="clustercfg.p-3-redis-db-57b5586.fbjfph.memorydb.us-west-2.amazonaws.com:6379"
 export CACHE_PRIMARY="clustercfg.p-3-cache-cluster-b20c9a6.fbjfph.usw2.cache.amazonaws.com:6379"
 export KUBECONFIG="$FENNEL_ROOT/cloud/pulumi/ts/eks/kubeconfig-plane-3.json"
@@ -19,6 +19,7 @@ export MOTHERSHIP_MYSQL_PASSWORD="pscale_pw_iOqKp0qepUAER8E-_APgydji6Ajj7fNQD7pf
 export BADGER_DIR="/tmp"
 
 export JOB_NAME_BY_AGG="topk=t-106-topk,cf=t-106-cf"
+export OFFLINE_AGG_BUCKET="t-106-offline-aggregate-output"
 
 # TODO: Configure these for tier 106 correctly
 export MODEL_STORE_S3_BUCKET="my-xgboost-test-bucket-2"

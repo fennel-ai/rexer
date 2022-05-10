@@ -15,6 +15,7 @@ import (
 	"fennel/lib/aggregate"
 	libcounter "fennel/lib/counter"
 	"fennel/lib/ftypes"
+	"fennel/lib/phaser"
 	"fennel/lib/value"
 	modelCounter "fennel/model/counter"
 	"fennel/tier"
@@ -121,12 +122,21 @@ func unitValue(
 	return counter.Value(ctx, tier, agg.Id, key, histogram, kwargs)
 }
 
+func getDuration(kwargs value.Dict) (int, error) {
+	d, ok := kwargs.Get("duration")
+	if !ok {
+		return 0, fmt.Errorf("error: no duration specified")
+	}
+	duration, ok := d.(value.Int)
+	if !ok {
+		return 0, fmt.Errorf("error: expected kwarg 'duration' to be an int but found: '%v'", d)
+	}
+	return int(duration), nil
+}
+
 func batchValue(ctx context.Context, tier tier.Tier, batch []aggregate.GetAggValueRequest) ([]value.Value, error) {
 	n := len(batch)
-	histograms := make([]modelCounter.Histogram, n)
-	ids := make([]ftypes.AggId, n)
-	keys := make([]value.Value, n)
-	kwargs := make([]value.Dict, n)
+
 	unique := make(map[ftypes.AggName]aggregate.Aggregate)
 	for _, req := range batch {
 		unique[req.AggName] = aggregate.Aggregate{}
@@ -138,8 +148,60 @@ func batchValue(ctx context.Context, tier tier.Tier, batch []aggregate.GetAggVal
 			return nil, fmt.Errorf("failed to retrieve aggregate %s ", name)
 		}
 	}
+	var offlinePtr []int
+	var namespaces []string
+	var identifier []string
+	var offlineKeys []value.String
+	// Fetch offline aggregate values
 	for i, req := range batch {
 		agg := unique[req.AggName]
+		if agg.Options.CronSchedule == "" {
+			continue
+		}
+		offlinePtr = append(offlinePtr, i)
+		duration, err := getDuration(req.Kwargs)
+		if err != nil {
+			return nil, err
+		}
+		aggPhaserIdentifier := fmt.Sprintf("%s-%d", agg.Name, duration)
+		namespaces = append(namespaces, OFFLINE_AGG_NAMESPACE)
+		identifier = append(identifier, aggPhaserIdentifier)
+		// Convert all keys to value.String
+		if s, ok := req.Key.(value.String); ok {
+			offlineKeys = append(offlineKeys, s)
+		} else {
+			offlineKeys = append(offlineKeys, value.String(req.Key.String()))
+		}
+	}
+
+	ret := make([]value.Value, n)
+
+	if len(offlinePtr) > 0 {
+		offlineValues, err := phaser.BatchGet(tier, namespaces, identifier, offlineKeys)
+		if err != nil {
+			return nil, err
+		}
+
+		for i, v := range offlineValues {
+			ret[offlinePtr[i]] = v
+		}
+	}
+
+	numOnline := n - len(offlinePtr)
+	histograms := make([]modelCounter.Histogram, numOnline)
+	ids := make([]ftypes.AggId, numOnline)
+	keys := make([]value.Value, numOnline)
+	kwargs := make([]value.Dict, numOnline)
+
+	var onlinePtr []int
+
+	// Fetch online aggregate values
+	for i, req := range batch {
+		agg := unique[req.AggName]
+		if agg.Options.CronSchedule != "" {
+			continue
+		}
+		onlinePtr = append(onlinePtr, i)
 		histograms[i], err = modelCounter.ToHistogram(agg.Options)
 		if err != nil {
 			return nil, fmt.Errorf("failed to make histogram from aggregate at index %d of batch: %v", i, err)
@@ -148,7 +210,18 @@ func batchValue(ctx context.Context, tier tier.Tier, batch []aggregate.GetAggVal
 		keys[i] = req.Key
 		kwargs[i] = req.Kwargs
 	}
-	return counter.BatchValue(ctx, tier, ids, keys, histograms, kwargs)
+
+	if len(onlinePtr) > 0 {
+		onlineValues, err := counter.BatchValue(ctx, tier, ids, keys, histograms, kwargs)
+		if err != nil {
+			return nil, err
+		}
+
+		for i, v := range onlineValues {
+			ret[onlinePtr[i]] = v
+		}
+	}
+	return ret, nil
 }
 
 func Update(ctx context.Context, tier tier.Tier, consumer kafka.FConsumer, agg aggregate.Aggregate) error {

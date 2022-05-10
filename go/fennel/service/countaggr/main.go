@@ -15,6 +15,7 @@ import (
 	"fennel/lib/action"
 	libaggregate "fennel/lib/aggregate"
 	"fennel/lib/ftypes"
+	"fennel/lib/phaser"
 	"fennel/lib/profile"
 	"fennel/lib/timer"
 	_ "fennel/opdefs" // ensure that all operators are present in the binary
@@ -122,6 +123,50 @@ func startProfileDBInsertion(tr tier.Tier) error {
 	return nil
 }
 
+func startAggregateProcessing(tr tier.Tier) error {
+	processedAggregates := make(map[ftypes.AggName]struct{})
+	ticker := time.NewTicker(time.Second * 15)
+	for ; true; <-ticker.C {
+		aggs, err := aggregate.RetrieveActive(context.Background(), tr)
+		if err != nil {
+			return err
+		}
+		for _, agg := range aggs {
+			if _, ok := processedAggregates[agg.Name]; !ok {
+				log.Printf("Retrieved a new aggregate: %v", aggs)
+				err := processAggregate(tr, agg)
+				if err != nil {
+					tr.Logger.Error("Could not start aggregate processing", zap.String("aggregateName", string(agg.Name)), zap.Error(err))
+				}
+				processedAggregates[agg.Name] = struct{}{}
+			}
+		}
+	}
+	return nil
+}
+
+func startPhaserProcessing(tr tier.Tier) error {
+	go func(tr tier.Tier) {
+		processedPhasers := make(map[string]struct{})
+		ticker := time.NewTicker(time.Second * 60)
+		for ; true; <-ticker.C {
+			phasers, err := phaser.RetrieveAll(context.Background(), tr)
+			if err != nil {
+				tr.Logger.Error("Could not retrieve phasers", zap.Error(err))
+				continue
+			}
+			for _, p := range phasers {
+				if _, ok := processedPhasers[p.GetId()]; !ok {
+					log.Printf("Retrieved a new phaser: %v", p.GetId())
+					phaser.ServeData(tr, p)
+					processedPhasers[p.GetId()] = struct{}{}
+				}
+			}
+		}
+	}(tr)
+	return nil
+}
+
 func main() {
 	// seed random number generator so that all uses of rand work well
 	rand.Seed(time.Now().UnixNano())
@@ -157,24 +202,12 @@ func main() {
 		panic(err)
 	}
 
-	// Set of aggregates that are currently being processed by the system.
-	processedAggregates := make(map[ftypes.AggName]struct{})
-	ticker := time.NewTicker(time.Second * 15)
-	for {
-		aggs, err := aggregate.RetrieveActive(context.Background(), tr)
-		if err != nil {
-			panic(err)
-		}
-		for _, agg := range aggs {
-			if _, ok := processedAggregates[agg.Name]; !ok {
-				log.Printf("Retrieved a new aggregate: %v", aggs)
-				err := processAggregate(tr, agg)
-				if err != nil {
-					tr.Logger.Error("Could not start aggregate processing", zap.String("aggregateName", string(agg.Name)), zap.Error(err))
-				}
-				processedAggregates[agg.Name] = struct{}{}
-			}
-		}
-		<-ticker.C
+	if err = startPhaserProcessing(tr); err != nil {
+		panic(err)
 	}
+
+	if err = startAggregateProcessing(tr); err != nil {
+		panic(err)
+	}
+
 }

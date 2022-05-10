@@ -33,20 +33,21 @@ type TierArgs struct {
 	modelstore.ModelStoreArgs `json:"modelstore_._model_store_args"`
 	glue.GlueArgs             `json:"glue_._glue_args"`
 
-	Region        string         `arg:"--aws-region,env:AWS_REGION" json:"aws_region,omitempty"`
-	KafkaServer   string         `arg:"--kafka-server,env:KAFKA_SERVER_ADDRESS" json:"kafka_server,omitempty"`
-	KafkaUsername string         `arg:"--kafka-user,env:KAFKA_USERNAME" json:"kafka_username,omitempty"`
-	KafkaPassword string         `arg:"--kafka-password,env:KAFKA_PASSWORD" json:"kafka_password,omitempty"`
-	MysqlHost     string         `arg:"--mysql-host,env:MYSQL_SERVER_ADDRESS" json:"mysql_host,omitempty"`
-	MysqlDB       string         `arg:"--mysql-db,env:MYSQL_DATABASE_NAME" json:"mysql_db,omitempty"`
-	MysqlUsername string         `arg:"--mysql-user,env:MYSQL_USERNAME" json:"mysql_username,omitempty"`
-	MysqlPassword string         `arg:"--mysql-password,env:MYSQL_PASSWORD" json:"mysql_password,omitempty"`
-	TierID        ftypes.RealmID `arg:"--tier-id,env:TIER_ID" json:"tier_id,omitempty"`
-	RedisServer   string         `arg:"--redis-server,env:REDIS_SERVER_ADDRESS" json:"redis_server,omitempty"`
-	CachePrimary  string         `arg:"--cache-primary,env:CACHE_PRIMARY" json:"cache_primary,omitempty"`
-	CacheReplica  string         `arg:"--cache-replica,env:CACHE_REPLICA" json:"cache_replica,omitempty"`
-	Dev           bool           `arg:"--dev" default:"true" json:"dev,omitempty"`
-	BadgerDir     string         `arg:"--badger_dir,env:BADGER_DIR" json:"badger_dir,omitempty"`
+	Region           string         `arg:"--aws-region,env:AWS_REGION" json:"aws_region,omitempty"`
+	KafkaServer      string         `arg:"--kafka-server,env:KAFKA_SERVER_ADDRESS" json:"kafka_server,omitempty"`
+	KafkaUsername    string         `arg:"--kafka-user,env:KAFKA_USERNAME" json:"kafka_username,omitempty"`
+	KafkaPassword    string         `arg:"--kafka-password,env:KAFKA_PASSWORD" json:"kafka_password,omitempty"`
+	MysqlHost        string         `arg:"--mysql-host,env:MYSQL_SERVER_ADDRESS" json:"mysql_host,omitempty"`
+	MysqlDB          string         `arg:"--mysql-db,env:MYSQL_DATABASE_NAME" json:"mysql_db,omitempty"`
+	MysqlUsername    string         `arg:"--mysql-user,env:MYSQL_USERNAME" json:"mysql_username,omitempty"`
+	MysqlPassword    string         `arg:"--mysql-password,env:MYSQL_PASSWORD" json:"mysql_password,omitempty"`
+	TierID           ftypes.RealmID `arg:"--tier-id,env:TIER_ID" json:"tier_id,omitempty"`
+	RedisServer      string         `arg:"--redis-server,env:REDIS_SERVER_ADDRESS" json:"redis_server,omitempty"`
+	CachePrimary     string         `arg:"--cache-primary,env:CACHE_PRIMARY" json:"cache_primary,omitempty"`
+	CacheReplica     string         `arg:"--cache-replica,env:CACHE_REPLICA" json:"cache_replica,omitempty"`
+	Dev              bool           `arg:"--dev" default:"true" json:"dev,omitempty"`
+	BadgerDir        string         `arg:"--badger_dir,env:BADGER_DIR" json:"badger_dir,omitempty"`
+	OfflineAggBucket string         `arg:"--offline-agg-bucket,env:OFFLINE_AGG_BUCKET" json:"offline_agg_bucket,omitempty"`
 }
 
 type KafkaConsumerCreator func(libkafka.ConsumerConfig) (libkafka.FConsumer, error)
@@ -112,7 +113,7 @@ type Tier struct {
 	SagemakerClient  sagemaker.SMClient
 	ModelStore       *modelstore.ModelStore
 	Badger           fbadger.DB
-
+	Args             TierArgs
 	// In-process caches for aggregate values.
 	PCache pcache.PCache
 	// Cache of aggregate name to aggregate definitions - key type is string,
@@ -124,7 +125,6 @@ type Tier struct {
 func CreateFromArgs(args *TierArgs) (tier Tier, err error) {
 	tierID := args.TierID
 	scope := resource.NewTierScope(tierID)
-
 	log.Print("Connecting to mysql")
 	mysqlConfig := db.MySQLConfig{
 		Host:     args.MysqlHost,
@@ -253,6 +253,7 @@ func CreateFromArgs(args *TierArgs) (tier Tier, err error) {
 	s3client := s3.NewClient(args.S3Args)
 	glueclient := glue.NewGlueClient(args.GlueArgs)
 
+	args.ModelStoreArgs.ModelStoreEndpointName += fmt.Sprintf("-%d", tierID)
 	modelStore := modelstore.NewModelStore(args.ModelStoreArgs, tierID)
 
 	// Uncomment to make e2e test work
@@ -286,6 +287,7 @@ func CreateFromArgs(args *TierArgs) (tier Tier, err error) {
 		GlueClient:       glueclient,
 		ModelStore:       modelStore,
 		Badger:           bdb.(fbadger.DB),
+		Args:             *args,
 	}, nil
 }
 

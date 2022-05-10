@@ -3,14 +3,42 @@ package aggregate
 import (
 	"context"
 	"errors"
-	"fmt"
-	"time"
-
+	"fennel/engine/ast"
 	"fennel/lib/aggregate"
 	"fennel/lib/ftypes"
+	"fennel/lib/phaser"
 	modelAgg "fennel/model/aggregate"
 	"fennel/tier"
+	"fmt"
+	"strconv"
+	"strings"
+	"time"
+
+	"google.golang.org/protobuf/proto"
+
 )
+
+// Data is kept in redis OFFLINE_AGG_TTL_MULTIPLIER times the update frequency
+var OFFLINE_AGG_TTL_MULTIPLIER = 3
+var OFFLINE_AGG_NAMESPACE = "agg"
+
+// getUpdateFrequency returns the update frequency in hours from the cron schedule
+func getUpdateFrequency(cron string) (time.Duration, error) {
+	// parts refers to the parts ( min, hour, day(month), month, day(week)) of the cron schedule
+	parts := strings.Split(cron, " ")
+	if len(parts) != 5 {
+		return 0, fmt.Errorf("invalid cron schedule: %s", cron)
+	}
+
+	if strings.Contains(parts[1], "/") {
+		x, _ := strconv.Atoi(strings.Replace(parts[1], "*/", "", 1))
+		return time.Duration(x) * time.Hour, nil
+	} else if strings.Contains(parts[2], "/") {
+		x, _ := strconv.Atoi(strings.Replace(parts[2], "*/", "", 1))
+		return time.Duration(x) * time.Hour * 24, nil
+	}
+	return 0, fmt.Errorf("cron schedule is not valid, reached end of function")
+}
 
 func Store(ctx context.Context, tier tier.Tier, agg aggregate.Aggregate) error {
 	if err := agg.Validate(); err != nil {
@@ -37,6 +65,19 @@ func Store(ctx context.Context, tier tier.Tier, agg aggregate.Aggregate) error {
 		err := tier.GlueClient.ScheduleOfflineAggregate(tier.ID, agg)
 		if err != nil {
 			return err
+		}
+		for _, duration := range agg.Options.Durations {
+			prefix := fmt.Sprintf("t_%d/%s-%d", int(tier.ID), agg.Name, duration)
+			aggPhaserIdentifier := fmt.Sprintf("%s-%d", agg.Name, duration)
+			ttl, err := getUpdateFrequency(agg.Options.CronSchedule)
+			if err != nil {
+				return err
+			}
+			ttl *= time.Duration(OFFLINE_AGG_TTL_MULTIPLIER)
+			err = phaser.NewPhaser(OFFLINE_AGG_NAMESPACE, aggPhaserIdentifier, tier.Args.OfflineAggBucket, prefix, ttl, phaser.ITEM_SCORE_LIST, tier)
+			if err != nil {
+				return err
+			}
 		}
 	}
 	if agg.Timestamp == 0 {
@@ -92,6 +133,13 @@ func Deactivate(ctx context.Context, tier tier.Tier, aggname ftypes.AggName) err
 		if agg.IsOffline() {
 			if err := tier.GlueClient.DeactivateOfflineAggregate(string(aggname)); err != nil {
 				return err
+			}
+			for _, duration := range agg.Options.Durations {
+				aggPhaserIdentifier := fmt.Sprintf("%s-%d", agg.Name, duration)
+				err = phaser.DeletePhaser(tier, OFFLINE_AGG_NAMESPACE, aggPhaserIdentifier)
+				if err != nil {
+					return err
+				}
 			}
 		}
 		// Disable online & offline aggregates
