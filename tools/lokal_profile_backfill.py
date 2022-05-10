@@ -86,8 +86,19 @@ _POST_CREATED_ON = "created_on"
 _POST_REPORTER = "reporter"
 
 
-# We just set a constant update time for every profile to backfill - this is set to a few days earlier than the live traffic to avoid any potential overwrites
-_UPDATE_TIME = datetime.datetime(year=2022, month=4, day=18, second=1, tzinfo=pytz.UTC)
+# We set the update time to be around the time when Lokal's backfill data was generated
+# This helps avoid overwriting data from their live traffic with older data
+# 
+# However there is a scenario where the data held by Fennel is not consistent with Lokal
+# Say, the backfill data was created at `T` timestamp and say we backfill by setting the
+# update timestamp as `T-2`, given how profiles are updated in Fennel (the update time of the incoming
+# request has to be greater than existing update time); it is possible that we continue with 
+# stale data - since we set the update time of a profile actually modified at `T` as `T-2`, any transition
+# which happened at `T-1` will be considered the latest
+# 
+# NOTE: As of last backfill, this is not an issue - profiles were backfilled to fill in missing data, while
+# live data was being sent to the system. Backfill data was sent to us at `May 10, 2022, ~20:40`
+_UPDATE_TIME = datetime.datetime(year=2022, month=5, day=10, hour=20, second=1, tzinfo=pytz.UTC)
 
 _URL = "http://k8s-t107-aest107e-c969e2b35d-e2cc681d58e1e1ca.elb.ap-south-1.amazonaws.com/data"
 
@@ -118,7 +129,7 @@ def users(s3_client: boto3.client, batch_size: int = 10000) -> List[profile.Prof
 
             district = getattr(row, 'location_id')
             if not pd.isnull(district):
-                profiles.append(profile.Profile(otype=_USER_OTYPE, oid=int(oid), key=_USER_DISTRICT, value=district, update_time=_UPDATE_TIME))
+                profiles.append(profile.Profile(otype=_USER_OTYPE, oid=int(oid), key=_USER_DISTRICT, value=int(district), update_time=_UPDATE_TIME))
 
             constituency = getattr(row, 'microlocation_id')
             if not pd.isnull(constituency):
@@ -127,7 +138,7 @@ def users(s3_client: boto3.client, batch_size: int = 10000) -> List[profile.Prof
 
             created_on = getattr(row, 'created_on')
             if not pd.isnull(created_on):
-                profiles.append(profile.Profile(otype=_USER_OTYPE, oid=int(oid), key=_USER_CREATED_ON, value=dp.parse(created_on).timestamp(), update_time=_UPDATE_TIME))
+                profiles.append(profile.Profile(otype=_USER_OTYPE, oid=int(oid), key=_USER_CREATED_ON, value=int(dp.parse(created_on).timestamp()), update_time=_UPDATE_TIME))
 
             if len(profiles) > batch_size:
                 yield profiles
@@ -223,7 +234,7 @@ def posts_updated_on(s3_client: boto3.client, batch_size: int = 10000) -> List[p
             oid = getattr(row, 'id')
             updated_on = getattr(row, 'updated_on')
             if not pd.isnull(updated_on):
-                profiles.append(profile.Profile(otype=_POST_OTYPE, oid=int(oid), key=_POST_UPDATED_ON, value=dp.parse(updated_on).timestamp(), update_time=_UPDATE_TIME))
+                profiles.append(profile.Profile(otype=_POST_OTYPE, oid=int(oid), key=_POST_UPDATED_ON, value=int(dp.parse(updated_on).timestamp()), update_time=_UPDATE_TIME))
 
             if len(profiles) > batch_size:
                 yield profiles
@@ -242,7 +253,7 @@ def posts_created_on(s3_client: boto3.client, batch_size: int = 10000) -> List[p
             oid = getattr(row, 'post_id')
             created_on = getattr(row, 'created_on')
             if not pd.isnull(created_on):
-                profiles.append(profile.Profile(otype=_POST_OTYPE, oid=int(oid), key=_POST_CREATED_ON, value=dp.parse(created_on).timestamp(), update_time=_UPDATE_TIME))
+                profiles.append(profile.Profile(otype=_POST_OTYPE, oid=int(oid), key=_POST_CREATED_ON, value=int(dp.parse(created_on).timestamp()), update_time=_UPDATE_TIME))
 
             if len(profiles) > batch_size:
                 yield profiles
