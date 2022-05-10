@@ -256,7 +256,7 @@ const planeConfs: Record<number, PlaneConf> = {
         },
         controlPlaneConf: controlPlane,
         redisConf: {
-            numShards: 7,
+            numShards: 20,
             nodeType: "db.r6g.large",
             numReplicasPerShard: 1,
         },
