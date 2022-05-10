@@ -164,6 +164,13 @@ func Deactivate(ctx context.Context, tier tier.Tier, aggname ftypes.AggName) err
 			if err := tier.GlueClient.DeactivateOfflineAggregate(string(aggname)); err != nil {
 				return err
 			}
+			for _, duration := range agg.Options.Durations {
+				aggPhaserIdentifier := fmt.Sprintf("%s-%d", agg.Name, duration)
+				err = phaser.DeletePhaser(tier, OFFLINE_AGG_NAMESPACE, aggPhaserIdentifier)
+				if err != nil {
+					return err
+				}
+			}
 		}
 
 		// Disable online & offline aggregates

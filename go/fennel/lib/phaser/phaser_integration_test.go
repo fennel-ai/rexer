@@ -55,22 +55,22 @@ func TestPrepareAndBulkUpload(t *testing.T) {
 	assert.NoError(t, err)
 	defer os.RemoveAll(tempDir)
 
-	err = tier.S3Client.BatchDiskDownload([]string{"integration-tests/item.parquet", "integration-tests/item2.parquet"}, S3Bucket, tempDir)
+	err = tier.S3Client.BatchDiskDownload([]string{"integration-tests/item.parquet"}, S3Bucket, tempDir)
 	assert.NoError(t, err)
 
-	files := []string{"item.parquet", "item2.parquet"}
+	files := []string{"item.parquet"}
 	p := Phaser{"testNamespace2", "testIdentifier2", "testBucket", "testPrefix", STRING, 1, time.Hour}
 	err = p.prepareAndBulkUpload(tier, files, tempDir)
 	assert.NoError(t, err)
 
 	// check that the files are in redis
 	id := fmt.Sprint(tier.ID)
-	rkeys := []string{id + ":testNamespace2:testIdentifier2:1:india", id + ":testNamespace2:testIdentifier2:1:russia", id + ":testNamespace2:testIdentifier2:1:usa"}
+	rkeys := []string{id + ":testNamespace2:testIdentifier2:1:ImluZGlhIg==", id + ":testNamespace2:testIdentifier2:1:InJ1c3NpYSI=", id + ":testNamespace2:testIdentifier2:1:InVzYSI="}
 	res, err := tier.Redis.MRawGet(context.Background(), rkeys...)
 	assert.NoError(t, err)
-	assert.Equal(t, "ImFyanVufHNod2V0aGF8cmFodWx8YWRpdHlhfGFiaGF5fG1vaGl0fG5pa2hpbHxhcmF5YSI=", res[0])
-	assert.Equal(t, "Im5hdGFzaGF8b2xlZ3x2b2xvZHlteXIi", res[1])
-	assert.Equal(t, "ImpvaG58dGltfGJldHR5fGNsYWlyZXxwaGlsIg==", res[2])
+	assert.Equal(t, "ImFyanVuOjpzaHdldGhhOjpyYWh1bDo6YWRpdHlhOjphYmhheTo6bW9oaXQ6Om5pa2hpbDo6YXJheWEi", res[0])
+	assert.Equal(t, "Im5hdGFzaGE6Om9sZWc6OnZvbG9keW15ciI=", res[1])
+	assert.Equal(t, "ImpvaG46OnRpbTo6YmV0dHk6OmNsYWlyZTo6cGhpbCI=", res[2])
 }
 
 func TestPollS3Bucket(t *testing.T) {
@@ -90,16 +90,16 @@ func TestPollS3Bucket(t *testing.T) {
 	POLL_FREQUENCY_SEC = 5
 	time.Sleep(10 * time.Second)
 
-	keys := []string{"india", "russia", "usa"}
+	keys := []value.String{value.String("india"), value.String("russia"), value.String("usa")}
 	namespaces := []string{"testNamespace", "testNamespace", "testNamespace"}
 	identifiers := []string{"testIdentifier", "testIdentifier", "testIdentifier"}
 
 	vals, err := BatchGet(tier, namespaces, identifiers, keys)
 	assert.NoError(t, err)
 	assert.Equal(t, 3, len(vals))
-	assert.Equal(t, value.String("arjun|shwetha|rahul|aditya|abhay|mohit|nikhil|araya"), vals[0])
-	assert.Equal(t, value.String("natasha|oleg|volodymyr"), vals[1])
-	assert.Equal(t, value.String("john|tim|betty|claire|phil"), vals[2])
+	assert.Equal(t, value.String("arjun::shwetha::rahul::aditya::abhay::mohit::nikhil::araya"), vals[0])
+	assert.Equal(t, value.String("natasha::oleg::volodymyr"), vals[1])
+	assert.Equal(t, value.String("john::tim::betty::claire::phil"), vals[2])
 
 	currUpdateVersion, err := GetLatestUpdatedVersion(ctx, tier, "testNamespace", "testIdentifier")
 	assert.NoError(t, err)

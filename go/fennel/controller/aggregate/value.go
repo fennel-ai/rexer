@@ -151,7 +151,7 @@ func batchValue(ctx context.Context, tier tier.Tier, batch []aggregate.GetAggVal
 	var offlinePtr []int
 	var namespaces []string
 	var identifier []string
-	var offlineKeys []string
+	var offlineKeys []value.String
 	// Fetch offline aggregate values
 	for i, req := range batch {
 		agg := unique[req.AggName]
@@ -159,14 +159,19 @@ func batchValue(ctx context.Context, tier tier.Tier, batch []aggregate.GetAggVal
 			continue
 		}
 		offlinePtr = append(offlinePtr, i)
-		namespaces = append(namespaces, OFFLINE_AGG_NAMESPACE)
 		duration, err := getDuration(req.Kwargs)
 		if err != nil {
 			return nil, err
 		}
 		aggPhaserIdentifier := fmt.Sprintf("%s-%d", agg.Name, duration)
+		namespaces = append(namespaces, OFFLINE_AGG_NAMESPACE)
 		identifier = append(identifier, aggPhaserIdentifier)
-		offlineKeys = append(offlineKeys, req.Key.String())
+		// Convert all keys to value.String
+		if s, ok := req.Key.(value.String); ok {
+			offlineKeys = append(offlineKeys, s)
+		} else {
+			offlineKeys = append(offlineKeys, value.String(req.Key.String()))
+		}
 	}
 
 	ret := make([]value.Value, n)

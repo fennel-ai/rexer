@@ -5,6 +5,7 @@ import (
 	"encoding/base64"
 	"fennel/lib/ftypes"
 	"fennel/lib/value"
+	"fennel/redis"
 	"fennel/tier"
 	"fmt"
 	"io/ioutil"
@@ -27,7 +28,7 @@ var SUCCESS_PREFIX = "_SUCCESS-"
 // parquet file is read in batches of BATCH_SIZE from disk.
 var BATCH_SIZE = 1000
 var REDIS_BULK_UPLOAD_FILE_SUFFIX = "-redis-bulk-upload.txt"
-var POLL_FREQUENCY_SEC = 60
+var POLL_FREQUENCY_SEC = 30
 
 type PhaserSchema int
 
@@ -92,11 +93,11 @@ func NewPhaser(namespace, identifier, s3Bucket, s3Prefix string, ttl time.Durati
 	}
 }
 
-func Get(namespace, identifier, key string) (interface{}, error) {
-	return BatchGet(tier.Tier{}, []string{namespace}, []string{identifier}, []string{key})
+func Get(namespace, identifier string, key value.String) (interface{}, error) {
+	return BatchGet(tier.Tier{}, []string{namespace}, []string{identifier}, []value.String{key})
 }
 
-func BatchGet(tr tier.Tier, namespaces, identifiers, keys []string) ([]value.Value, error) {
+func BatchGet(tr tier.Tier, namespaces, identifiers []string, keys []value.String) ([]value.Value, error) {
 	phasers, err := RetrieveBatch(context.Background(), tr, namespaces, identifiers)
 	if err != nil {
 		return nil, err
@@ -117,10 +118,14 @@ func BatchGet(tr tier.Tier, namespaces, identifiers, keys []string) ([]value.Val
 	// decode results
 	results := make([]value.Value, 0, len(namespaces))
 	for i := 0; i < len(namespaces); i++ {
-		if res[i] == nil {
-			results = append(results, nil)
+		if res[i] == nil || res[i] == redis.Nil {
+			results = append(results, value.Nil)
 		} else {
-			deser, err := base64.StdEncoding.DecodeString(res[i].(string))
+			resStr, ok := res[i].(string)
+			if !ok {
+				return nil, fmt.Errorf("Unexpected type for redis result: %T", res[i])
+			}
+			deser, err := base64.StdEncoding.DecodeString(resStr)
 			if err != nil {
 				return nil, err
 			}
@@ -179,6 +184,7 @@ func bulkUploadToRedis(tr tier.Tier, file string, numRows int, tempDir string) e
 	fetchClusterNodes := "redis-cli -c -h " + redisAddress + " --tls  cluster nodes | cut -f2 -d' '"
 	out, err := exec.Command("bash", "-c", fetchClusterNodes).Output()
 	if err != nil {
+		tr.Logger.Error("error while getting cluster node address", zap.Error(err))
 		return err
 	}
 
@@ -200,12 +206,8 @@ func bulkUploadToRedis(tr tier.Tier, file string, numRows int, tempDir string) e
 			nodeAddress := node[:strings.IndexByte(node, ':')]
 
 			bulkUploadCmd := "cat " + tempDir + "/" + file + REDIS_BULK_UPLOAD_FILE_SUFFIX + " | redis-cli -h " + nodeAddress + " --pipe --tls"
-			// We know it will error, so dont check the error
-
-			out, err = exec.Command("bash", "-c", bulkUploadCmd).Output()
-			if err != nil {
-				return err
-			}
+			// Ignore the error, since we know there will be errors when there are multiple nodes in the cluster
+			out, _ = exec.Command("bash", "-c", bulkUploadCmd).Output()
 			re := regexp.MustCompile(".*errors\\:\\s([0-9]+),\\sreplies\\:\\s([0-9]+)")
 			match := re.FindStringSubmatch(string(out))
 			if len(match) < 3 {
@@ -219,6 +221,7 @@ func bulkUploadToRedis(tr tier.Tier, file string, numRows int, tempDir string) e
 		})
 	}
 	if err := g.Wait(); err != nil {
+		tr.Logger.Error("uploading data to each cluster node failed :", zap.Error(err))
 		return err
 	}
 	successfulRequests := 0
@@ -232,12 +235,13 @@ func bulkUploadToRedis(tr tier.Tier, file string, numRows int, tempDir string) e
 	return nil
 }
 
-func (p Phaser) getRedisKey(tierId ftypes.RealmID, key string) string {
-	return fmt.Sprintf("%d:%s:%s:%d:%s", int(tierId), p.Namespace, p.Identifier, p.UpdateVersion, key)
+func (p Phaser) getRedisKey(tierId ftypes.RealmID, key value.String) string {
+	encodedKey := base64.StdEncoding.EncodeToString(value.ToJSON(key))
+	return fmt.Sprintf("%d:%s:%s:%d:%s", int(tierId), p.Namespace, p.Identifier, p.UpdateVersion, encodedKey)
 }
 
 func (p Phaser) getRedisCommand(tierId ftypes.RealmID, key, encodedString string) string {
-	return "SET " + p.getRedisKey(tierId, key) + " " + encodedString + " EX " + fmt.Sprint(int(p.TTL.Seconds())) + "\n"
+	return "SET " + p.getRedisKey(tierId, value.String(key)) + " " + encodedString + " EX " + fmt.Sprint(int(p.TTL.Seconds())) + "\n"
 }
 
 func (p Phaser) createItemScoreListFile(localFileReader source.ParquetFile, redisWriter *os.File, tierId ftypes.RealmID) (int, error) {
@@ -248,6 +252,7 @@ func (p Phaser) createItemScoreListFile(localFileReader source.ParquetFile, redi
 	}
 
 	numRows := int(pr.GetNumRows())
+	numRowsWritten := 0
 	for i := 0; i < numRows; i += BATCH_SIZE {
 		sz := BATCH_SIZE
 		if i+BATCH_SIZE > numRows {
@@ -268,11 +273,14 @@ func (p Phaser) createItemScoreListFile(localFileReader source.ParquetFile, redi
 					}))
 				}
 			}
-			encodedString := base64.StdEncoding.EncodeToString(value.ToJSON(v))
-			redisWriter.WriteString(p.getRedisCommand(tierId, *example.Key, encodedString))
+			if example.Key != nil {
+				numRowsWritten += 1
+				encodedString := base64.StdEncoding.EncodeToString(value.ToJSON(v))
+				redisWriter.WriteString(p.getRedisCommand(tierId, *example.Key, encodedString))
+			}
 		}
 	}
-	return numRows, nil
+	return numRowsWritten, nil
 }
 
 func (p Phaser) createItemListFile(localFileReader source.ParquetFile, redisWriter *os.File, tierId ftypes.RealmID) (int, error) {
@@ -283,6 +291,7 @@ func (p Phaser) createItemListFile(localFileReader source.ParquetFile, redisWrit
 	}
 
 	numRows := int(pr.GetNumRows())
+	numRowsWritten := 0
 	for i := 0; i < numRows; i += BATCH_SIZE {
 		sz := BATCH_SIZE
 		if i+BATCH_SIZE > numRows {
@@ -300,11 +309,14 @@ func (p Phaser) createItemListFile(localFileReader source.ParquetFile, redisWrit
 					v.Append(value.String(item))
 				}
 			}
-			encodedString := base64.StdEncoding.EncodeToString(value.ToJSON(v))
-			redisWriter.WriteString(p.getRedisCommand(tierId, *example.Key, encodedString))
+			if example.Key != nil {
+				numRowsWritten += 1
+				encodedString := base64.StdEncoding.EncodeToString(value.ToJSON(v))
+				redisWriter.WriteString(p.getRedisCommand(tierId, *example.Key, encodedString))
+			}
 		}
 	}
-	return numRows, nil
+	return numRowsWritten, nil
 }
 
 func (p Phaser) createItemFile(localFileReader source.ParquetFile, redisWriter *os.File, tierId ftypes.RealmID) (int, error) {
@@ -315,6 +327,7 @@ func (p Phaser) createItemFile(localFileReader source.ParquetFile, redisWriter *
 	}
 
 	numRows := int(pr.GetNumRows())
+	numRowsWritten := 0
 	for i := 0; i < numRows; i += BATCH_SIZE {
 		sz := BATCH_SIZE
 		if i+BATCH_SIZE > numRows {
@@ -326,11 +339,14 @@ func (p Phaser) createItemFile(localFileReader source.ParquetFile, redisWriter *
 		}
 
 		for _, example := range examples {
-			encodedString := base64.StdEncoding.EncodeToString(value.ToJSON(value.String(example.Item)))
-			redisWriter.WriteString(p.getRedisCommand(tierId, *example.Key, encodedString))
+			if example.Key != nil {
+				numRowsWritten += 1
+				encodedString := base64.StdEncoding.EncodeToString(value.ToJSON(value.String(example.Item)))
+				redisWriter.WriteString(p.getRedisCommand(tierId, *example.Key, encodedString))
+			}
 		}
 	}
-	return numRows, nil
+	return numRowsWritten, nil
 }
 
 // This function is responsible for reading the parquet file from
@@ -367,11 +383,13 @@ func (p Phaser) prepareAndBulkUpload(tr tier.Tier, fileNames []string, tempDir s
 		g.Go(func() error {
 			numRows, err := p.prepareFileForBulkUpload(tr, file, tempDir)
 			if err != nil {
+				tr.Logger.Error("error while preparing files for bulk upload:", zap.Error(err))
 				return err
 			}
 
 			err = bulkUploadToRedis(tr, file, numRows, tempDir)
 			if err != nil {
+				tr.Logger.Error("error while uploading the data to Redis:", zap.Error(err))
 				return err
 			}
 			return nil
@@ -428,9 +446,10 @@ func (p Phaser) updateServing(tr tier.Tier, fileNames, filesToDownload []string,
 	// Update DB with the new version
 	err = UpdateVersion(context.Background(), tr, p.Namespace, p.Identifier, newUpdateVersion)
 	if err != nil {
-		tr.Logger.Error("error while updating aggregate version:", zap.Error(err))
+		tr.Logger.Error("error while updating phaser", zap.String("namespace", p.Namespace), zap.String("identifier", p.Identifier), zap.Uint64("version", newUpdateVersion), zap.Error(err))
 		return err
 	}
+	tr.Logger.Info("Completed update for ", zap.String("ID", p.GetId()), zap.Uint64("newUpdateVersion", newUpdateVersion))
 	return nil
 }
 
@@ -446,6 +465,7 @@ func pollS3Bucket(namespace, identifier string, tr tier.Tier) error {
 			}
 
 			tr.Logger.Info("Processing phaser ", zap.String("ID", p.GetId()))
+
 			if err != nil {
 				tr.Logger.Error("failed to get latest updated version", zap.Error(err))
 				continue
@@ -468,6 +488,7 @@ func pollS3Bucket(namespace, identifier string, tr tier.Tier) error {
 				tr.Logger.Info("No new updates found for ", zap.String("ID", p.GetId()))
 				continue
 			}
+			tr.Logger.Info("Found update for ", zap.String("ID", p.GetId()), zap.Uint64("newUpdateVersion", newUpdateVersion))
 
 			p.UpdateVersion = newUpdateVersion
 

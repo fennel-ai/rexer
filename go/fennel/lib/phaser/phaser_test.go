@@ -47,9 +47,9 @@ func TestCreateItemScoreListFile(t *testing.T) {
 
 	scanner := bufio.NewScanner(file)
 	// optionally, resize scanner's capacity for lines over 64K, see next example
-	expected := []string{"SET 123:testNamespace:testIdentifier:1:india W3siaXRlbSI6Im1vaGl0Iiwic2NvcmUiOjAuNTc3NTkyNTU3NjU4OTAxOH0seyJpdGVtIjoiYWJoYXkiLCJzY29yZSI6MC45NDc2MDQ3ODY5ODgwOTI1fSx7Iml0ZW0iOiJhZGl0eWEiLCJzY29yZSI6MC4zNjY2NDIyMjYxNzk0NzgxN30seyJpdGVtIjoiYXJheWEiLCJzY29yZSI6MC44MDc4Njg4MTc4MzcxODgyfSx7Iml0ZW0iOiJzaHdldGhhIiwic2NvcmUiOjAuNzEzNTE0MzQzMzQ1MjQ2MX0seyJpdGVtIjoiYXJqdW4iLCJzY29yZSI6MC44MDYyNTAzNzEyMDI1NzI2fSx7Iml0ZW0iOiJuaWtoaWwiLCJzY29yZSI6MC44MTMzMzA0ODAzODM3NjY3fSx7Iml0ZW0iOiJyYWh1bCIsInNjb3JlIjowLjUyNDcyODA5NjI5Mzg2NX1d EX 3600",
-		"SET 123:testNamespace:testIdentifier:1:russia W3siaXRlbSI6Im9sZWciLCJzY29yZSI6MC4xNzA5NDk3MTM3OTU1NTY4fSx7Iml0ZW0iOiJ2b2xvZHlteXIiLCJzY29yZSI6MC44MDUxMTQzOTU4MDA1NDU5fSx7Iml0ZW0iOiJuYXRhc2hhIiwic2NvcmUiOjAuNzE5NTMyNTU2NjMwNjA1M31d EX 3600",
-		"SET 123:testNamespace:testIdentifier:1:usa W3siaXRlbSI6ImJldHR5Iiwic2NvcmUiOjAuMjA5MzcwNDk3NzU3N30seyJpdGVtIjoidGltIiwic2NvcmUiOjAuMzEzMzUyOTIzMTExNzU0NTZ9LHsiaXRlbSI6ImNsYWlyZSIsInNjb3JlIjowLjEwODE0OTE0NjQ2MTc2NjU0fSx7Iml0ZW0iOiJqb2huIiwic2NvcmUiOjAuMzM2MjIzMjk4MDcwMTE3Mn0seyJpdGVtIjoicGhpbCIsInNjb3JlIjowLjQ3NjQ5NDI4NzM4MTcwODk2fV0= EX 3600"}
+	expected := []string{"SET 123:testNamespace:testIdentifier:1:ImluZGlhIg== W3siaXRlbSI6Im1vaGl0Iiwic2NvcmUiOjAuNTc3NTkyNTU3NjU4OTAxOH0seyJpdGVtIjoiYWJoYXkiLCJzY29yZSI6MC45NDc2MDQ3ODY5ODgwOTI1fSx7Iml0ZW0iOiJhZGl0eWEiLCJzY29yZSI6MC4zNjY2NDIyMjYxNzk0NzgxN30seyJpdGVtIjoiYXJheWEiLCJzY29yZSI6MC44MDc4Njg4MTc4MzcxODgyfSx7Iml0ZW0iOiJzaHdldGhhIiwic2NvcmUiOjAuNzEzNTE0MzQzMzQ1MjQ2MX0seyJpdGVtIjoiYXJqdW4iLCJzY29yZSI6MC44MDYyNTAzNzEyMDI1NzI2fSx7Iml0ZW0iOiJuaWtoaWwiLCJzY29yZSI6MC44MTMzMzA0ODAzODM3NjY3fSx7Iml0ZW0iOiJyYWh1bCIsInNjb3JlIjowLjUyNDcyODA5NjI5Mzg2NX1d EX 3600",
+		"SET 123:testNamespace:testIdentifier:1:InJ1c3NpYSI= W3siaXRlbSI6Im9sZWciLCJzY29yZSI6MC4xNzA5NDk3MTM3OTU1NTY4fSx7Iml0ZW0iOiJ2b2xvZHlteXIiLCJzY29yZSI6MC44MDUxMTQzOTU4MDA1NDU5fSx7Iml0ZW0iOiJuYXRhc2hhIiwic2NvcmUiOjAuNzE5NTMyNTU2NjMwNjA1M31d EX 3600",
+		"SET 123:testNamespace:testIdentifier:1:InVzYSI= W3siaXRlbSI6ImJldHR5Iiwic2NvcmUiOjAuMjA5MzcwNDk3NzU3N30seyJpdGVtIjoidGltIiwic2NvcmUiOjAuMzEzMzUyOTIzMTExNzU0NTZ9LHsiaXRlbSI6ImNsYWlyZSIsInNjb3JlIjowLjEwODE0OTE0NjQ2MTc2NjU0fSx7Iml0ZW0iOiJqb2huIiwic2NvcmUiOjAuMzM2MjIzMjk4MDcwMTE3Mn0seyJpdGVtIjoicGhpbCIsInNjb3JlIjowLjQ3NjQ5NDI4NzM4MTcwODk2fV0= EX 3600"}
 	i := 0
 	for scanner.Scan() {
 		assert.Equal(t, expected[i], scanner.Text())
@@ -86,9 +86,9 @@ func TestCreateItemListFile(t *testing.T) {
 
 	scanner := bufio.NewScanner(file)
 	// optionally, resize scanner's capacity for lines over 64K, see next example
-	expected := []string{"SET 123:testNamespace:testIdentifier:1:india WyJhcmp1biIsInNod2V0aGEiLCJyYWh1bCIsImFkaXR5YSIsImFiaGF5IiwibW9oaXQiLCJuaWtoaWwiLCJhcmF5YSJd EX 3600",
-		"SET 123:testNamespace:testIdentifier:1:russia WyJuYXRhc2hhIiwib2xlZyIsInZvbG9keW15ciJd EX 3600",
-		"SET 123:testNamespace:testIdentifier:1:usa WyJqb2huIiwidGltIiwiYmV0dHkiLCJjbGFpcmUiLCJwaGlsIl0= EX 3600"}
+	expected := []string{"SET 123:testNamespace:testIdentifier:1:ImluZGlhIg== WyJhcmp1biIsInNod2V0aGEiLCJyYWh1bCIsImFkaXR5YSIsImFiaGF5IiwibW9oaXQiLCJuaWtoaWwiLCJhcmF5YSJd EX 3600",
+		"SET 123:testNamespace:testIdentifier:1:InJ1c3NpYSI= WyJuYXRhc2hhIiwib2xlZyIsInZvbG9keW15ciJd EX 3600",
+		"SET 123:testNamespace:testIdentifier:1:InVzYSI= WyJqb2huIiwidGltIiwiYmV0dHkiLCJjbGFpcmUiLCJwaGlsIl0= EX 3600"}
 	i := 0
 	for scanner.Scan() {
 		assert.Equal(t, expected[i], scanner.Text())
@@ -125,9 +125,9 @@ func TestCreateItemFile(t *testing.T) {
 
 	scanner := bufio.NewScanner(file)
 	// optionally, resize scanner's capacity for lines over 64K, see next example
-	expected := []string{"SET 123:testNamespace:testIdentifier:1:india ImFyanVuOjpzaHdldGhhOjpyYWh1bDo6YWRpdHlhOjphYmhheTo6bW9oaXQ6Om5pa2hpbDo6YXJheWEi EX 3600",
-		"SET 123:testNamespace:testIdentifier:1:russia Im5hdGFzaGE6Om9sZWc6OnZvbG9keW15ciI= EX 3600",
-		"SET 123:testNamespace:testIdentifier:1:usa ImpvaG46OnRpbTo6YmV0dHk6OmNsYWlyZTo6cGhpbCI= EX 3600"}
+	expected := []string{"SET 123:testNamespace:testIdentifier:1:ImluZGlhIg== ImFyanVuOjpzaHdldGhhOjpyYWh1bDo6YWRpdHlhOjphYmhheTo6bW9oaXQ6Om5pa2hpbDo6YXJheWEi EX 3600",
+		"SET 123:testNamespace:testIdentifier:1:InJ1c3NpYSI= Im5hdGFzaGE6Om9sZWc6OnZvbG9keW15ciI= EX 3600",
+		"SET 123:testNamespace:testIdentifier:1:InVzYSI= ImpvaG46OnRpbTo6YmV0dHk6OmNsYWlyZTo6cGhpbCI= EX 3600"}
 	i := 0
 	for scanner.Scan() {
 		assert.Equal(t, expected[i], scanner.Text())
