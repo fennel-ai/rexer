@@ -131,7 +131,7 @@ func computeStatsFromCsvs(aggId ftypes.AggId, csvDir string) error {
 	}
 
 	fmt.Println("==========")
-	fmt.Printf("[%d] total keys: %d, size (mb): %d\n", aggId, totalKeys, totalSize>>20)
+	fmt.Printf("[%d] total keys: %d, size (MB): %d\n", aggId, totalKeys, totalSize>>20)
 	fmt.Println("==========")
 
 	return nil
@@ -407,7 +407,7 @@ func main() {
 			}
 		}
 		for aggId, s := range stats {
-			fmt.Printf("[%d] total keys: %d, size (mb): %d\n", aggId, s.NumKeys, s.SizeBytes>>20)
+			fmt.Printf("[%d] total keys: %d, size (MB): %d\n", aggId, s.NumKeys, s.SizeBytes>>20)
 		}
 	}
 }
