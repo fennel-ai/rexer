@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"sync"
 	"time"
 
 	"fennel/engine/ast"
@@ -15,10 +14,6 @@ import (
 
 	"google.golang.org/protobuf/proto"
 )
-
-// local cache of aggregate name to aggregate definition.
-// key type is string, value type is aggregate.Aggregate.
-var aggregates = sync.Map{}
 
 func Store(ctx context.Context, tier tier.Tier, agg aggregate.Aggregate) error {
 	if err := agg.Validate(); err != nil {
@@ -70,7 +65,7 @@ func Retrieve(ctx context.Context, tier tier.Tier, aggname ftypes.AggName) (aggr
 		return empty, fmt.Errorf("aggregate name can not be of length zero")
 	}
 	var agg aggregate.Aggregate
-	if def, ok := aggregates.Load(aggname); !ok {
+	if def, ok := tier.AggregateDefs.Load(aggname); !ok {
 		aggser, err := modelAgg.Retrieve(ctx, tier, aggname)
 		if err != nil {
 			return empty, fmt.Errorf("failed to get aggregate: %w", err)
@@ -79,7 +74,7 @@ func Retrieve(ctx context.Context, tier tier.Tier, aggname ftypes.AggName) (aggr
 		if err != nil {
 			return empty, fmt.Errorf("failed to deserialize aggregate: %w", err)
 		}
-		aggregates.Store(aggname, agg)
+		tier.AggregateDefs.Store(aggname, agg)
 	} else {
 		agg = def.(aggregate.Aggregate)
 	}
@@ -107,7 +102,7 @@ func Deactivate(ctx context.Context, tier tier.Tier, aggname ftypes.AggName) err
 		return fmt.Errorf("aggregate name can not be of length zero")
 	}
 	// Remove if present in cache
-	aggregates.Delete(aggname)
+	tier.AggregateDefs.Delete(aggname)
 	// Check if agg already exists in db
 	aggser, err := modelAgg.RetrieveNoFilter(ctx, tier, aggname)
 	// If it is absent, it returns aggregate.ErrNotFound

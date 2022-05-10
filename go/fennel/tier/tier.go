@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"strings"
+	"sync"
 	"time"
 
 	"fennel/db"
@@ -102,7 +103,6 @@ type Tier struct {
 	DB               db.Connection
 	Redis            redis.Client
 	Cache            cache.Cache
-	PCache           pcache.PCache
 	Producers        map[string]libkafka.FProducer
 	Clock            clock.Clock
 	Logger           *zap.Logger
@@ -112,6 +112,13 @@ type Tier struct {
 	SagemakerClient  sagemaker.SMClient
 	ModelStore       *modelstore.ModelStore
 	Badger           fbadger.DB
+
+	// In-process caches for aggregate values.
+	PCache pcache.PCache
+	// Cache of aggregate name to aggregate definitions - key type is string,
+	// value type is aggregate.Aggregate. Consider change this to something
+	// that wrap sync.Map and exposes a nicer API.
+	AggregateDefs sync.Map
 }
 
 func CreateFromArgs(args *TierArgs) (tier Tier, err error) {
