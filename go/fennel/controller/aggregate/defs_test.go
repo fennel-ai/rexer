@@ -11,6 +11,7 @@ import (
 	"fennel/test"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestRetrieveActive(t *testing.T) {
@@ -105,23 +106,63 @@ func TestDeactivate(t *testing.T) {
 	assert.Error(t, err)
 	assert.ErrorIs(t, err, aggregate.ErrNotFound)
 
+	// Can retrieve before deactivating
 	err = Store(ctx, tier, agg)
 	assert.NoError(t, err)
 
-	// Can retrieve before deactivating
 	_, err = Retrieve(ctx, tier, "my_counter")
 	assert.NoError(t, err)
 
+	// Retrieve after deactivating should return ErrNotActive.
 	err = Deactivate(ctx, tier, "my_counter")
 	assert.NoError(t, err)
-
-	// But cannot after deactivating
 	_, err = Retrieve(ctx, tier, "my_counter")
-	assert.Error(t, err)
-	assert.ErrorIs(t, err, aggregate.ErrNotFound)
+	assert.ErrorIs(t, err, aggregate.ErrNotActive)
 
 	// Can deactivate multiple times
 	err = Deactivate(ctx, tier, "my_counter")
 	assert.NoError(t, err)
+}
 
+func TestReactivate(t *testing.T) {
+	tier, err := test.Tier()
+	assert.NoError(t, err)
+	defer test.Teardown(tier)
+
+	ctx := context.Background()
+	agg := aggregate.Aggregate{
+		Name:      "my-aggregate",
+		Timestamp: 1,
+		Query:     ast.MakeInt(1),
+		Options: aggregate.Options{
+			AggType:   "sum",
+			Durations: []uint64{3600 * 24, 3600 * 24 * 2},
+		},
+	}
+
+	// initially retrieve all is empty
+	_, err = Retrieve(ctx, tier, agg.Name)
+	require.ErrorIs(t, err, aggregate.ErrNotFound)
+
+	err = Store(ctx, tier, agg)
+	require.NoError(t, err)
+	agg.Id = 1
+	agg.Active = true
+
+	got, err := Retrieve(ctx, tier, agg.Name)
+	require.NoError(t, err)
+	require.Equal(t, agg, got)
+
+	err = Deactivate(ctx, tier, agg.Name)
+	require.NoError(t, err)
+
+	// Remove aggregate definition from cache.
+	tier.AggregateDefs.Delete(agg.Name)
+
+	err = Store(ctx, tier, agg)
+	require.NoError(t, err)
+
+	got, err = Retrieve(ctx, tier, agg.Name)
+	require.NoError(t, err)
+	require.Equal(t, agg, got)
 }

@@ -24,6 +24,7 @@ var ValidTypes = []ftypes.AggType{
 }
 
 var ErrNotFound = errors.New("aggregate not found")
+var ErrNotActive = errors.New("aggregate is not active")
 
 type Aggregate struct {
 	Name      ftypes.AggName

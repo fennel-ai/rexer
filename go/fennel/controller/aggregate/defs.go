@@ -3,7 +3,6 @@ package aggregate
 import (
 	"context"
 	"errors"
-	"fennel/engine/ast"
 	"fennel/lib/aggregate"
 	"fennel/lib/ftypes"
 	"fennel/lib/phaser"
@@ -13,9 +12,6 @@ import (
 	"strconv"
 	"strings"
 	"time"
-
-	"google.golang.org/protobuf/proto"
-
 )
 
 // Data is kept in redis OFFLINE_AGG_TTL_MULTIPLIER times the update frequency
@@ -44,47 +40,54 @@ func Store(ctx context.Context, tier tier.Tier, agg aggregate.Aggregate) error {
 	if err := agg.Validate(); err != nil {
 		return err
 	}
-
 	// Check if agg already exists in db
-	agg2, err := Retrieve(ctx, tier, agg.Name)
-	// Only error that should happen is when agg is not present
-	if err != nil && !errors.Is(err, aggregate.ErrNotFound) {
-		return err
-	} else if err == nil {
+	agg2, err := modelAgg.Retrieve(ctx, tier, agg.Name)
+	if err != nil {
+		if errors.Is(err, aggregate.ErrNotFound) {
+			if agg.IsOffline() {
+				// If offline aggregate, write to AWS Glue
+				err := tier.GlueClient.ScheduleOfflineAggregate(tier.ID, agg)
+				if err != nil {
+					return err
+				}
+				for _, duration := range agg.Options.Durations {
+					prefix := fmt.Sprintf("t_%d/%s-%d", int(tier.ID), agg.Name, duration)
+					aggPhaserIdentifier := fmt.Sprintf("%s-%d", agg.Name, duration)
+					ttl, err := getUpdateFrequency(agg.Options.CronSchedule)
+					if err != nil {
+						return err
+					}
+					ttl *= time.Duration(OFFLINE_AGG_TTL_MULTIPLIER)
+					err = phaser.NewPhaser(OFFLINE_AGG_NAMESPACE, aggPhaserIdentifier, tier.Args.OfflineAggBucket, prefix, ttl, phaser.ITEM_SCORE_LIST, tier)
+					if err != nil {
+						return err
+					}
+				}
+			}
+			if agg.Timestamp == 0 {
+				agg.Timestamp = ftypes.Timestamp(time.Now().Unix())
+			}
+			agg.Active = true
+			return modelAgg.Store(ctx, tier, agg)
+		} else {
+			return fmt.Errorf("failed to retrieve aggregate: %w", err)
+		}
+	} else {
 		// if already present, check if query and options are the same
-		// if they are the same, do nothing
+		// if they are the same, activate the aggregate in case it was deactivated.
 		// if they are different, return error
 		if agg.Query.Equals(agg2.Query) && agg.Options.Equals(agg2.Options) {
+			if !agg2.Active {
+				err := modelAgg.Activate(ctx, tier, agg.Name)
+				if err != nil {
+					return fmt.Errorf("failed to reactivate aggregate '%s': %w", agg.Name, err)
+				}
+			}
 			return nil
 		} else {
 			return fmt.Errorf("already present but with different query/options")
 		}
 	}
-	if agg.IsOffline() {
-		// If offline aggregate, write to AWS Glue
-		err := tier.GlueClient.ScheduleOfflineAggregate(tier.ID, agg)
-		if err != nil {
-			return err
-		}
-		for _, duration := range agg.Options.Durations {
-			prefix := fmt.Sprintf("t_%d/%s-%d", int(tier.ID), agg.Name, duration)
-			aggPhaserIdentifier := fmt.Sprintf("%s-%d", agg.Name, duration)
-			ttl, err := getUpdateFrequency(agg.Options.CronSchedule)
-			if err != nil {
-				return err
-			}
-			ttl *= time.Duration(OFFLINE_AGG_TTL_MULTIPLIER)
-			err = phaser.NewPhaser(OFFLINE_AGG_NAMESPACE, aggPhaserIdentifier, tier.Args.OfflineAggBucket, prefix, ttl, phaser.ITEM_SCORE_LIST, tier)
-			if err != nil {
-				return err
-			}
-		}
-	}
-	if agg.Timestamp == 0 {
-		agg.Timestamp = ftypes.Timestamp(time.Now().Unix())
-	}
-	agg.Active = true
-	return modelAgg.Store(ctx, tier, agg)
 }
 
 func Retrieve(ctx context.Context, tier tier.Tier, aggname ftypes.AggName) (aggregate.Aggregate, error) {
@@ -98,6 +101,9 @@ func Retrieve(ctx context.Context, tier tier.Tier, aggname ftypes.AggName) (aggr
 		agg, err = modelAgg.Retrieve(ctx, tier, aggname)
 		if err != nil {
 			return empty, fmt.Errorf("failed to get aggregate: %w", err)
+		}
+		if !agg.Active {
+			return agg, aggregate.ErrNotActive
 		}
 		tier.AggregateDefs.Store(aggname, agg)
 	} else {
@@ -118,7 +124,7 @@ func Deactivate(ctx context.Context, tier tier.Tier, aggname ftypes.AggName) err
 	// Remove if present in cache
 	tier.AggregateDefs.Delete(aggname)
 	// Check if agg already exists in db
-	agg, err := modelAgg.RetrieveNoFilter(ctx, tier, aggname)
+	agg, err := modelAgg.Retrieve(ctx, tier, aggname)
 	// If it is absent, it returns aggregate.ErrNotFound
 	// If any other error, return it as well
 	if err != nil {

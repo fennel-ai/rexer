@@ -406,7 +406,7 @@ func (m server) RetrieveAggregate(w http.ResponseWriter, req *http.Request) {
 	if errors.Is(err, aggregate.ErrNotFound) {
 		// we don't throw an error, just return empty response
 		return
-	} else if err != nil {
+	} else if err != nil && !errors.Is(err, aggregate.ErrNotActive) {
 		handleInternalServerError(w, "", err)
 		return
 	}
