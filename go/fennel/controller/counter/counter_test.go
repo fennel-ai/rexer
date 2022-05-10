@@ -43,13 +43,8 @@ func TestRolling(t *testing.T) {
 		},
 		Id: 1,
 	}
-	querySer, err := ast.Marshal(agg.Query)
-	assert.NoError(t, err)
-	optionSer, err := proto.Marshal(libaggregate.ToProtoOptions(agg.Options))
-	assert.NoError(t, err)
-
 	key := value.NewList(value.Int(1), value.Int(2))
-	assert.NoError(t, aggregate.Store(ctx, tier, agg.Name, querySer, agg.Timestamp, optionSer))
+	assert.NoError(t, aggregate.Store(ctx, tier, agg))
 	table := value.NewList()
 	// create an event every minute for 2 days
 	for i := 0; i < 60*24*2; i++ {
@@ -101,12 +96,8 @@ func TestTimeseries(t *testing.T) {
 		Id: 1,
 	}
 	histogram := counter2.NewTimeseriesSum(ftypes.Window_HOUR, 9)
-	querySer, err := ast.Marshal(agg.Query)
-	assert.NoError(t, err)
-	optionSer, err := proto.Marshal(libaggregate.ToProtoOptions(agg.Options))
-	assert.NoError(t, err)
 
-	assert.NoError(t, aggregate.Store(ctx, tier, agg.Name, querySer, agg.Timestamp, optionSer))
+	assert.NoError(t, aggregate.Store(ctx, tier, agg))
 	key := value.NewList(value.Int(1), value.Int(2))
 	table := value.NewList()
 	// create an event every minute for 2 days
@@ -182,7 +173,6 @@ func TestRollingAverage(t *testing.T) {
 	}
 
 	key := value.NewList(value.Int(1), value.Int(2))
-	//assert.NoError(t, aggregate.Store(tier, agg.Name, querySer, agg.Timestamp, optionSer))
 	table := value.NewList()
 	// create an event every minute for 2 days
 	for i := 0; i < 60*24*2; i++ {

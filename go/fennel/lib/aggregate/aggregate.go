@@ -8,8 +8,6 @@ import (
 	"fennel/engine/ast"
 	"fennel/lib/ftypes"
 	"fennel/lib/value"
-
-	"google.golang.org/protobuf/proto"
 )
 
 var ValidTypes = []ftypes.AggType{
@@ -32,10 +30,8 @@ type Aggregate struct {
 	Query     ast.Ast
 	Timestamp ftypes.Timestamp
 	Options   Options
-	// TODO: This is an internal only field and returning this back to the user
-	// might confuse them. Consider creating two different structs - one returned back to the
-	// user and another for internal use only
-	Id ftypes.AggId
+	Id        ftypes.AggId
+	Active    bool
 }
 
 func IsValid(s ftypes.AggType) bool {
@@ -156,31 +152,6 @@ func (o Options) Equals(other Options) bool {
 		return false
 	}
 	return true
-}
-
-type AggregateSer struct {
-	Name      ftypes.AggName   `db:"name"`
-	QuerySer  []byte           `db:"query_ser"`
-	Timestamp ftypes.Timestamp `db:"timestamp"`
-	OptionSer []byte           `db:"options_ser"`
-	Active    bool             `db:"active"`
-	Id        ftypes.AggId     `db:"id"`
-}
-
-func FromAggregateSer(ser AggregateSer) (Aggregate, error) {
-	var agg Aggregate
-	agg.Timestamp = ser.Timestamp
-	agg.Name = ser.Name
-	if err := ast.Unmarshal(ser.QuerySer, &agg.Query); err != nil {
-		return Aggregate{}, err
-	}
-	var popt AggOptions
-	if err := proto.Unmarshal(ser.OptionSer, &popt); err != nil {
-		return Aggregate{}, err
-	}
-	agg.Options = FromProtoOptions(&popt)
-	agg.Id = ser.Id
-	return agg, nil
 }
 
 type GetAggValueRequest struct {

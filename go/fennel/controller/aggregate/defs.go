@@ -6,13 +6,10 @@ import (
 	"fmt"
 	"time"
 
-	"fennel/engine/ast"
 	"fennel/lib/aggregate"
 	"fennel/lib/ftypes"
 	modelAgg "fennel/model/aggregate"
 	"fennel/tier"
-
-	"google.golang.org/protobuf/proto"
 )
 
 func Store(ctx context.Context, tier tier.Tier, agg aggregate.Aggregate) error {
@@ -35,7 +32,6 @@ func Store(ctx context.Context, tier tier.Tier, agg aggregate.Aggregate) error {
 			return fmt.Errorf("already present but with different query/options")
 		}
 	}
-
 	if agg.IsOffline() {
 		// If offline aggregate, write to AWS Glue
 		err := tier.GlueClient.ScheduleOfflineAggregate(tier.ID, agg)
@@ -43,20 +39,11 @@ func Store(ctx context.Context, tier tier.Tier, agg aggregate.Aggregate) error {
 			return err
 		}
 	}
-
-	querySer, err := ast.Marshal(agg.Query)
-	if err != nil {
-		return fmt.Errorf("can not marshal aggregate query: %v", err)
-	}
-	optionSer, err := proto.Marshal(aggregate.ToProtoOptions(agg.Options))
-	if err != nil {
-		return fmt.Errorf("can not marshal aggregate options: %v", err)
-	}
 	if agg.Timestamp == 0 {
 		agg.Timestamp = ftypes.Timestamp(time.Now().Unix())
 	}
-
-	return modelAgg.Store(ctx, tier, agg.Name, querySer, agg.Timestamp, optionSer)
+	agg.Active = true
+	return modelAgg.Store(ctx, tier, agg)
 }
 
 func Retrieve(ctx context.Context, tier tier.Tier, aggname ftypes.AggName) (aggregate.Aggregate, error) {
@@ -66,13 +53,10 @@ func Retrieve(ctx context.Context, tier tier.Tier, aggname ftypes.AggName) (aggr
 	}
 	var agg aggregate.Aggregate
 	if def, ok := tier.AggregateDefs.Load(aggname); !ok {
-		aggser, err := modelAgg.Retrieve(ctx, tier, aggname)
+		var err error
+		agg, err = modelAgg.Retrieve(ctx, tier, aggname)
 		if err != nil {
 			return empty, fmt.Errorf("failed to get aggregate: %w", err)
-		}
-		agg, err = aggregate.FromAggregateSer(aggser)
-		if err != nil {
-			return empty, fmt.Errorf("failed to deserialize aggregate: %w", err)
 		}
 		tier.AggregateDefs.Store(aggname, agg)
 	} else {
@@ -83,18 +67,7 @@ func Retrieve(ctx context.Context, tier tier.Tier, aggname ftypes.AggName) (aggr
 
 // RetrieveActive returns all active aggregates
 func RetrieveActive(ctx context.Context, tier tier.Tier) ([]aggregate.Aggregate, error) {
-	retSer, err := modelAgg.RetrieveActive(ctx, tier)
-	if err != nil {
-		return nil, err
-	}
-	ret := make([]aggregate.Aggregate, len(retSer))
-	for i, ser := range retSer {
-		ret[i], err = aggregate.FromAggregateSer(ser)
-		if err != nil {
-			return nil, err
-		}
-	}
-	return ret, nil
+	return modelAgg.RetrieveActive(ctx, tier)
 }
 
 func Deactivate(ctx context.Context, tier tier.Tier, aggname ftypes.AggName) error {
@@ -104,7 +77,7 @@ func Deactivate(ctx context.Context, tier tier.Tier, aggname ftypes.AggName) err
 	// Remove if present in cache
 	tier.AggregateDefs.Delete(aggname)
 	// Check if agg already exists in db
-	aggser, err := modelAgg.RetrieveNoFilter(ctx, tier, aggname)
+	agg, err := modelAgg.RetrieveNoFilter(ctx, tier, aggname)
 	// If it is absent, it returns aggregate.ErrNotFound
 	// If any other error, return it as well
 	if err != nil {
@@ -112,20 +85,15 @@ func Deactivate(ctx context.Context, tier tier.Tier, aggname ftypes.AggName) err
 	}
 	// If it is present and inactive, do nothing
 	// otherwise, deactivate
-	if !aggser.Active {
+	if !agg.Active {
 		return nil
 	} else {
 		// deactive trigger only if the aggregate if offline
-		agg, err := aggregate.FromAggregateSer(aggser)
-		if err != nil {
-			return err
-		}
 		if agg.IsOffline() {
 			if err := tier.GlueClient.DeactivateOfflineAggregate(string(aggname)); err != nil {
 				return err
 			}
 		}
-
 		// Disable online & offline aggregates
 		err = modelAgg.Deactivate(ctx, tier, aggname)
 		return err
