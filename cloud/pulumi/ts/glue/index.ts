@@ -95,6 +95,23 @@ export const setup = async (input: inputType): Promise<pulumi.Output<outputType>
                     "Resource": [
                         "arn:aws:s3:::${input.trainingDataBucket}/*"
                     ]
+                },
+                {
+                    "Effect": "Allow",
+                    "Action": "cloudwatch:PutMetricData",
+                    "Resource": [
+                        "*"
+                    ]
+                },
+                {
+                    "Effect": "Allow",
+                    "Action": [
+                        "logs:CreateLogStream",
+                        "logs:PutLogEvents"
+                    ],
+                    "Resource": [
+                        "arn:aws:logs:*:*:/aws-glue/*"
+                    ]
                 }
             ]
         }`,
