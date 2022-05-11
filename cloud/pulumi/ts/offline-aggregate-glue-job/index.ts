@@ -155,6 +155,10 @@ export const setup = async (input: inputType): Promise<pulumi.Output<outputType>
                 '--TIER_ID': `${input.tierId}`,
                 '--INPUT_BUCKET': `${storageBucket}`,
                 '--OUTPUT_BUCKET': `${input.outputBucket}`,
+                '--enable-continuous-cloudwatch-log': 'true',
+                '--enable-continuous-log-filter': 'false',
+                // this is to easily filter out logs from a particular GLUE job
+                '--continuous-log-logStreamPrefix': `${topkJobName}`,
             },
             description: "GLUE job for TopK offline Aggregate",
             glueVersion: "3.0",
@@ -183,6 +187,10 @@ export const setup = async (input: inputType): Promise<pulumi.Output<outputType>
                 '--TIER_ID': `${input.tierId}`,
                 '--INPUT_BUCKET': `${storageBucket}`,
                 '--OUTPUT_BUCKET': `${input.outputBucket}`,
+                '--enable-continuous-cloudwatch-log': 'true',
+                '--enable-continuous-log-filter': 'false',
+                // this is to easily filter out logs from a particular GLUE job
+                '--continuous-log-logStreamPrefix': `${cfJobName}`,
             },
             description: "GLUE job for Collaborative Filtering offline Aggregate",
             glueVersion: "3.0",

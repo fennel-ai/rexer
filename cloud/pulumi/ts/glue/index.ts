@@ -101,8 +101,9 @@ export const setup = async (input: inputType): Promise<pulumi.Output<outputType>
     }, {provider});
 
     // create the glue job
+    const jobName = `t-${input.tierId}-training-data-gen`;
     const job = new aws.glue.Job(`t-${input.tierId}-gluejob`, {
-        name: `t-${input.tierId}-training-data-gen`,
+        name: jobName,
         command: {
             scriptLocation: `s3://${input.sourceBucket}/${input.script}`,
             pythonVersion: "3",
@@ -111,6 +112,10 @@ export const setup = async (input: inputType): Promise<pulumi.Output<outputType>
         defaultArguments: {
             '--TIER_ID': `${input.tierId}`,
             '--PLANE_ID': `${input.planeId}`,
+            '--enable-continuous-cloudwatch-log': 'true',
+            '--enable-continuous-log-filter': 'false',
+            // this is to easily filter out logs from a particular GLUE job
+            '--continuous-log-logStreamPrefix': `${jobName}`,
         },
         description: "GLUE job to transform multiple features and labels files in JSON format to a single Parquet file",
         glueVersion: "3.0",
