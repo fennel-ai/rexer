@@ -88,9 +88,11 @@ func contains(sl []string, name string) bool {
 
 func getHyperParameters(aggregateType string, hyperparamters string) (string, error) {
 	var aggParams map[string]json.RawMessage
-	err := json.Unmarshal([]byte(hyperparamters), &aggParams)
-	if err != nil {
-		return "", fmt.Errorf("aggregate type: %v, failed to parse aggregate tuning params: %v", aggregateType, err)
+	if len(hyperparamters) != 0 {
+		err := json.Unmarshal([]byte(hyperparamters), &aggParams)
+		if err != nil {
+			return "", fmt.Errorf("aggregate type: %v, failed to parse aggregate tuning params: %v", aggregateType, err)
+		}
 	}
 
 	if _, ok := supportedHyperParameters[aggregateType]; !ok {
@@ -122,7 +124,7 @@ func getHyperParameters(aggregateType string, hyperparamters string) (string, er
 			continue
 		}
 
-		if _, err = strconv.ParseFloat(s, 64); err == nil {
+		if _, err := strconv.ParseFloat(s, 64); err == nil {
 			if hyperparamtersMap[param].Type != reflect.Float64 {
 				return "", fmt.Errorf("aggregate type: %v, hyperparameter %v must be type : %v", aggregateType, param, hyperparamtersMap[param].Type)
 			}
@@ -135,7 +137,11 @@ func getHyperParameters(aggregateType string, hyperparamters string) (string, er
 	}
 
 	var retParams map[string]interface{}
-	_ = json.Unmarshal([]byte(hyperparamters), &retParams)
+	if len(hyperparamters) != 0 {
+		_ = json.Unmarshal([]byte(hyperparamters), &retParams)
+	} else {
+		retParams = make(map[string]interface{})
+	}
 
 	for param := range hyperparamtersMap {
 		if _, ok := retParams[param]; !ok {
@@ -163,7 +169,7 @@ func (c GlueClient) ScheduleOfflineAggregate(tierID ftypes.RealmID, agg aggregat
 		"--LIMIT":          aws.String(fmt.Sprintf("%d", agg.Options.Limit)),
 	}
 
-	if agg.Options.HyperParameters != "" {
+	if _, ok := supportedHyperParameters[aggregateType]; ok {
 		hyperparameters, err := getHyperParameters(aggregateType, agg.Options.HyperParameters)
 		if err != nil {
 			return err

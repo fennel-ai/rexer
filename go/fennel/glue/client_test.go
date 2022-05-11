@@ -27,12 +27,12 @@ func listIntersectionCount(a, b []string) int {
 }
 
 func TestGlueClient(t *testing.T) {
-	glueArgs := GlueArgs{Region: "us-west-2"}
+	glueArgs := GlueArgs{Region: "us-west-2", JobNameByAgg: map[string]string{"cf": "CF", "topk": "TopK"}}
 	glueClient := NewGlueClient(glueArgs)
 	t0 := ftypes.Timestamp(0)
 
 	agg := aggregate.Aggregate{
-		Name:      "OfflineAggregateTest",
+		Name:      "OfflineAggTest",
 		Query:     ast.MakeInt(0),
 		Timestamp: t0,
 		Options: aggregate.Options{
@@ -49,7 +49,7 @@ func TestGlueClient(t *testing.T) {
 	aggs, err := glueClient.getAllOfflineAggregates()
 	assert.NoError(t, err)
 
-	expectedAggregates := []string{"OfflineAggregateTest::604800", "OfflineAggregateTest::259200"}
+	expectedAggregates := []string{"OfflineAggTest::604800", "OfflineAggTest::259200"}
 	// Could find both aggregates
 	assert.Equal(t, 2, listIntersectionCount(expectedAggregates, aggs))
 
@@ -58,7 +58,7 @@ func TestGlueClient(t *testing.T) {
 }
 
 func TestHyperParameters(t *testing.T) {
-	glueArgs := GlueArgs{Region: "us-west-2"}
+	glueArgs := GlueArgs{Region: "us-west-2", JobNameByAgg: map[string]string{"cf": "CF", "topk": "TopK"}}
 	glueClient := NewGlueClient(glueArgs)
 	t0 := ftypes.Timestamp(0)
 
@@ -155,6 +155,10 @@ func TestHyperParameters(t *testing.T) {
 	h, err = getHyperParameters("test", `{"d" : "qwe", "c": "sqrt", "a": 1, "b": 2.5}`)
 	assert.NoError(t, err)
 	assert.Equal(t, `{"a":1,"b":2.5,"c":"sqrt","d":"qwe"}`, h)
+
+	h, err = getHyperParameters("test", ``)
+	assert.NoError(t, err)
+	assert.Equal(t, `{"a":3,"b":4.5,"c":"sqrt","d":"blah"}`, h)
 
 	agg = aggregate.Aggregate{
 		Name:      "OfflineAggregateTest",

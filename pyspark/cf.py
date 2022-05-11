@@ -154,7 +154,7 @@ sql_str = """
 
 select o1 as key, collect_list(o2) as item, collect_list(score) as score
 from(
-    select cast(o1 as string), casta(o2 as string), cast(score as double),
+    select cast(o1 as string), cast(o2 as string), cast(score as double),
     rank() over (PARTITION by o1 order by score desc) as rank
     from CROSS_JOIN_CONTEXT
 )
