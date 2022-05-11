@@ -3,7 +3,6 @@ package aggregate
 import (
 	"context"
 	"errors"
-	"fennel/engine/ast"
 	"fennel/lib/aggregate"
 	"fennel/lib/ftypes"
 	"fennel/lib/phaser"
@@ -13,9 +12,6 @@ import (
 	"strconv"
 	"strings"
 	"time"
-
-	"google.golang.org/protobuf/proto"
-
 )
 
 // Data is kept in redis OFFLINE_AGG_TTL_MULTIPLIER times the update frequency
