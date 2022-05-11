@@ -127,14 +127,14 @@ def users(s3_client: boto3.client, batch_size: int = 10000) -> List[profile.Prof
         for row in users_df.itertuples(index=False):
             oid = getattr(row, 'id')
 
-            district = getattr(row, 'location_id')
-            if not pd.isnull(district):
-                profiles.append(profile.Profile(otype=_USER_OTYPE, oid=int(oid), key=_USER_DISTRICT, value=int(district), update_time=_UPDATE_TIME))
+            # district = getattr(row, 'location_id')
+            # if not pd.isnull(district):
+            #     profiles.append(profile.Profile(otype=_USER_OTYPE, oid=int(oid), key=_USER_DISTRICT, value=int(district), update_time=_UPDATE_TIME))
 
-            constituency = getattr(row, 'microlocation_id')
-            if not pd.isnull(constituency):
-                # Few of the columns (potentially from the test data or so) has constituency value as `float`. However their live traffic sends us ints, hence explicitly type casting this to int
-                profiles.append(profile.Profile(otype=_USER_OTYPE, oid=int(oid), key=_USER_CONSTITUENCY, value=int(constituency), update_time=_UPDATE_TIME))
+            # constituency = getattr(row, 'microlocation_id')
+            # if not pd.isnull(constituency):
+            #     # Few of the columns (potentially from the test data or so) has constituency value as `float`. However their live traffic sends us ints, hence explicitly type casting this to int
+            #     profiles.append(profile.Profile(otype=_USER_OTYPE, oid=int(oid), key=_USER_CONSTITUENCY, value=int(constituency), update_time=_UPDATE_TIME))
 
             created_on = getattr(row, 'created_on')
             if not pd.isnull(created_on):
