@@ -166,18 +166,24 @@ func TestDeactivate(t *testing.T) {
 		Query:     ast.MakeString("query"),
 	}
 
+	// Store and retrieve - active should be "true"
 	err = Store(ctx, tier, agg)
 	assert.NoError(t, err)
-
-	// Can retrieve before deactivating
-	_, err = Retrieve(ctx, tier, "my_counter")
+	got, err := Retrieve(ctx, tier, "my_counter")
 	assert.NoError(t, err)
+	assert.True(t, got.Active)
 
+	// Deactivate and retrieve - active should be "false"
 	err = Deactivate(ctx, tier, "my_counter")
 	assert.NoError(t, err)
+	got, err = Retrieve(ctx, tier, "my_counter")
+	assert.NoError(t, err)
+	assert.False(t, got.Active)
 
-	// But cannot after deactivating
-	_, err = Retrieve(ctx, tier, "my_counter")
-	assert.Error(t, err)
-	assert.ErrorIs(t, err, aggregate.ErrNotFound)
+	// Reactivate and retrieve - active should be "true"
+	err = Activate(ctx, tier, "my_counter")
+	assert.NoError(t, err)
+	got, err = Retrieve(ctx, tier, "my_counter")
+	assert.NoError(t, err)
+	assert.True(t, got.Active)
 }

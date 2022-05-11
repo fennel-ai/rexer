@@ -56,17 +56,6 @@ func Store(ctx context.Context, tier tier.Tier, agg aggregate.Aggregate) error {
 	return err
 }
 
-func Retrieve(ctx context.Context, tier tier.Tier, name ftypes.AggName) (aggregate.Aggregate, error) {
-	var agg AggregateSer
-	err := tier.DB.GetContext(ctx, &agg, `SELECT * FROM aggregate_config WHERE name = ? AND active = TRUE`, name)
-	if err != nil && err == sql.ErrNoRows {
-		return aggregate.Aggregate{}, aggregate.ErrNotFound
-	} else if err != nil {
-		return aggregate.Aggregate{}, err
-	}
-	return agg.ToAggregate()
-}
-
 func RetrieveActive(ctx context.Context, tier tier.Tier) ([]aggregate.Aggregate, error) {
 	var aggregates []AggregateSer
 	err := tier.DB.SelectContext(ctx, &aggregates, `SELECT * FROM aggregate_config WHERE active = TRUE`)
@@ -99,7 +88,7 @@ func RetrieveAll(ctx context.Context, tier tier.Tier) ([]aggregate.Aggregate, er
 	return ret, nil
 }
 
-func RetrieveNoFilter(ctx context.Context, tier tier.Tier, name ftypes.AggName) (aggregate.Aggregate, error) {
+func Retrieve(ctx context.Context, tier tier.Tier, name ftypes.AggName) (aggregate.Aggregate, error) {
 	var agg AggregateSer
 	err := tier.DB.GetContext(ctx, &agg, `SELECT * FROM aggregate_config WHERE name = ?`, name)
 	if err != nil && err == sql.ErrNoRows {
@@ -112,5 +101,10 @@ func RetrieveNoFilter(ctx context.Context, tier tier.Tier, name ftypes.AggName) 
 
 func Deactivate(ctx context.Context, tier tier.Tier, name ftypes.AggName) error {
 	_, err := tier.DB.ExecContext(ctx, `UPDATE aggregate_config SET active = FALSE WHERE name = ?`, name)
+	return err
+}
+
+func Activate(ctx context.Context, tier tier.Tier, name ftypes.AggName) error {
+	_, err := tier.DB.ExecContext(ctx, `UPDATE aggregate_config SET active = TRUE WHERE name = ?`, name)
 	return err
 }

@@ -577,6 +577,7 @@ func TestStoreRetrieveDeactivateAggregate(t *testing.T) {
 	// Id is set when an entry is created in the DB
 	expected := agg
 	expected.Id = 1
+	expected.Active = true
 	assert.Equal(t, expected, found)
 	// trying to rewrite the same agg name throws an error even if query/options are different
 	agg2 := aggregate.Aggregate{
@@ -600,14 +601,15 @@ func TestStoreRetrieveDeactivateAggregate(t *testing.T) {
 	expected = agg2
 	// second row there
 	expected.Id = 2
+	expected.Active = true
 	assert.Equal(t, expected, found)
 
-	// cannot retrieve after deactivating
+	// can retrieve after deactivating, but "active" is not set.
 	err = c.DeactivateAggregate(agg.Name)
 	assert.NoError(t, err)
-	_, err = c.RetrieveAggregate(agg.Name)
-	assert.Error(t, err)
-	assert.ErrorIs(t, err, aggregate.ErrNotFound)
+	found, err = c.RetrieveAggregate(agg.Name)
+	assert.NoError(t, err)
+	assert.False(t, found.Active)
 
 	// but can deactivate again without error
 	err = c.DeactivateAggregate(agg.Name)
