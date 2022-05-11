@@ -133,7 +133,7 @@ func startAggregateProcessing(tr tier.Tier) error {
 		}
 		for _, agg := range aggs {
 			if _, ok := processedAggregates[agg.Name]; !ok {
-				log.Printf("Retrieved a new aggregate: %v", aggs)
+				log.Printf("Retrieved a new aggregate: %s", agg.Name)
 				err := processAggregate(tr, agg)
 				if err != nil {
 					tr.Logger.Error("Could not start aggregate processing", zap.String("aggregateName", string(agg.Name)), zap.Error(err))
