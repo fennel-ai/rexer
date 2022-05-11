@@ -110,7 +110,7 @@ export const setup = async (input: inputType): Promise<pulumi.Output<outputType>
                         "logs:PutLogEvents"
                     ],
                     "Resource": [
-                        "arn:aws:logs:*:*:/aws-glue/*",
+                        "arn:aws:logs:*:*:/aws-glue/*"
                     ]
                 }
             ]
