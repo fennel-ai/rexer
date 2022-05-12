@@ -53,7 +53,7 @@ func BatchValue(
 			h := histograms[index]
 			start, err := h.Start(end, kwargs[index])
 			if err != nil {
-				return nil, fmt.Errorf("failed to get start timestamp of aggregate at index %d of batch: %v", i, err)
+				return nil, fmt.Errorf("failed to get start timestamp of aggregate (id): %d, err: %v", aggIds[index], err)
 			}
 			ids_[i] = aggIds[index]
 			buckets[i] = h.BucketizeDuration(keys[index].String(), start, end, h.Zero())
@@ -64,10 +64,10 @@ func BatchValue(
 			return nil, err
 		}
 		cur := 0
-		for i, index := range indices {
+		for _, index := range indices {
 			ret[index], err = histograms[index].Reduce(counts[cur])
 			if err != nil {
-				return nil, fmt.Errorf("failed to reduce aggregate at index %d of batch: %v", i, err)
+				return nil, fmt.Errorf("failed to reduce aggregate (id): %d, err: %v", aggIds[index], err)
 			}
 			cur++
 		}
