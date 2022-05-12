@@ -86,7 +86,7 @@ func TestEndToEnd(t *testing.T) {
 				Options: libaggregate.Options{AggType: "min", Durations: []uint64{3 * 3600, 6 * 3600, 3600}},
 				Id:      4,
 			},
-			value.Int(0),
+			value.Double(0),
 			value.Int(uid),
 			[]value.Dict{
 				value.NewDict(map[string]value.Value{"duration": value.Int(6 * 3600)}),
@@ -100,7 +100,7 @@ func TestEndToEnd(t *testing.T) {
 				Options: libaggregate.Options{AggType: "max", Durations: []uint64{3 * 3600, 6 * 3600, 3600}},
 				Id:      5,
 			},
-			value.Int(0),
+			value.Double(0),
 			value.Int(uid),
 			[]value.Dict{
 				value.NewDict(map[string]value.Value{"duration": value.Int(6 * 3600)}),

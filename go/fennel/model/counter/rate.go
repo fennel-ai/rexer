@@ -38,7 +38,7 @@ func (r rollingRate) Transform(v value.Value) (value.Value, error) {
 	if err != nil {
 		return nil, err
 	}
-	return value.NewList(value.Int(a), value.Int(b)), nil
+	return value.NewList(value.Double(a), value.Double(b)), nil
 }
 
 func (r rollingRate) Start(end ftypes.Timestamp, kwargs value.Dict) (ftypes.Timestamp, error) {
@@ -49,29 +49,30 @@ func (r rollingRate) Start(end ftypes.Timestamp, kwargs value.Dict) (ftypes.Time
 	return start(end, d), nil
 }
 
-func (r rollingRate) extract(v value.Value) (int64, int64, error) {
+func (r rollingRate) extract(v value.Value) (float64, float64, error) {
 	l, ok := v.(value.List)
 	if !ok || l.Len() != 2 {
 		return 0, 0, fmt.Errorf("expected list of two elements but got: %v", v)
 	}
 	e, _ := l.At(0)
-	first, ok := e.(value.Int)
-	if !ok {
-		return 0, 0, fmt.Errorf("expected int but found: %v", e)
+	first, err := getDouble(e)
+	if err != nil {
+		return 0, 0, err
 	}
 	e, _ = l.At(1)
-	second, ok := e.(value.Int)
-	if !ok {
-		return 0, 0, fmt.Errorf("expected int but found: %v", e)
+	second, err := getDouble(e)
+	if err != nil {
+		return 0, 0, err
 	}
+
 	if first < 0 || second < 0 {
-		return 0, 0, fmt.Errorf("numerator & denominator should be non-negative but found: '%s', '%s' instead", first, second)
+		return 0, 0, fmt.Errorf("numerator & denominator should be non-negative but found: '%f', '%f' instead", first, second)
 	}
-	return int64(first), int64(second), nil
+	return first, second, nil
 }
 
 func (r rollingRate) Reduce(values []value.Value) (value.Value, error) {
-	var num, den int64 = 0, 0
+	var num, den float64 = 0, 0
 	for _, v := range values {
 		n, d, err := r.extract(v)
 		if err != nil {
@@ -84,18 +85,19 @@ func (r rollingRate) Reduce(values []value.Value) (value.Value, error) {
 		return value.Double(0), nil
 	}
 	if r.Normalize && num > den {
-		return nil, fmt.Errorf("normalized rate requires numerator to be <= denominator but found '%d', '%d'", num, den)
+		return nil, fmt.Errorf("normalized rate requires numerator to be <= denominator but found '%f', '%f'", num, den)
 	}
 	var ratio float64
 	var err error
 	if r.Normalize {
-		ratio, err = math.Wilson(uint64(num), uint64(den), true)
+		ratio, err = math.Wilson(num, den, true)
 		if err != nil {
 			return nil, err
 		}
 	} else {
-		ratio = float64(num) / float64(den)
+		ratio = num / den
 	}
+
 	return value.Double(ratio), nil
 }
 
@@ -108,11 +110,11 @@ func (r rollingRate) Merge(a, b value.Value) (value.Value, error) {
 	if err != nil {
 		return nil, err
 	}
-	return value.NewList(value.Int(n1+n2), value.Int(d1+d2)), nil
+	return value.NewList(value.Double(n1+n2), value.Double(d1+d2)), nil
 }
 
 func (r rollingRate) Zero() value.Value {
-	return value.NewList(value.Int(0), value.Int(0))
+	return value.NewList(value.Double(0), value.Double(0))
 }
 
 var _ Histogram = rollingRate{}

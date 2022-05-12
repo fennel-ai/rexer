@@ -19,14 +19,14 @@ func TestStddev_Reduce(t *testing.T) {
 		input  []value.Value
 		output value.Value
 	}{{
-		makeStddevVals([][]int64{{1, 2, 3}, {4, 5, 6, 7}, {0}}),
-		value.Double(stddev([]int64{1, 2, 3, 4, 5, 6, 7, 0})),
+		makeStddevVals([][]float64{{1, 2, 3}, {4, 5, 6, 7}, {0}}),
+		value.Double(stddev([]float64{1, 2, 3, 4, 5, 6, 7, 0})),
 	}, {
-		makeStddevVals([][]int64{}),
-		value.Double(stddev([]int64{})),
+		makeStddevVals([][]float64{}),
+		value.Double(stddev([]float64{})),
 	}, {
-		makeStddevVals([][]int64{{-7, 2, -9}, {4, -6, -3}, {2, 0, -1}}),
-		value.Double(stddev([]int64{-7, 2, -9, 4, -6, -3, 2, 0, -1})),
+		makeStddevVals([][]float64{{-7, 2, -9}, {4, -6, -3}, {2, 0, -1}}),
+		value.Double(stddev([]float64{-7, 2, -9, 4, -6, -3, 2, 0, -1})),
 	}}
 	for _, c := range cases {
 		found, err := h.Reduce(c.input)
@@ -43,7 +43,7 @@ func TestStddev_Reduce(t *testing.T) {
 func TestStddev_Merge_Valid(t *testing.T) {
 	t.Parallel()
 	h := NewStdDev([]uint64{123})
-	validCases := [][]int64{
+	validCases := [][]float64{
 		{4, -2, 9, -11, 3},
 		{2, -7, 6, 0},
 		{4254, -9823, 8792},
@@ -54,7 +54,7 @@ func TestStddev_Merge_Valid(t *testing.T) {
 	}
 	for _, c1 := range validCases {
 		for _, c2 := range validCases {
-			var r []int64
+			var r []float64
 			r = append(r, c1...)
 			r = append(r, c2...)
 			found, err := h.Merge(makeStddevVal(c1), makeStddevVal(c2))
@@ -68,12 +68,10 @@ func TestStddev_Merge_Valid(t *testing.T) {
 func TestStddev_Merge_Invalid(t *testing.T) {
 	t.Parallel()
 	h := NewStdDev([]uint64{123})
-	validStddevVals := makeStddevVals([][]int64{
+	validStddevVals := makeStddevVals([][]float64{
 		{-9, -8, -7}, {-6, -5}, {-4, -3, -2, -1, 0}, {}, {0, 1, 2, 3, 4}, {5, 6}, {7, 8, 9},
 	})
 	invalidStddevVals := []value.Value{
-		value.NewList(value.Double(1.0), value.Int(4), value.Int(7)),
-		value.NewList(value.Int(2), value.Double(2.0), value.Int(3)),
 		value.NewList(value.Int(4), value.Int(16), value.Double(0.0)),
 		value.NewList(value.Int(1), value.Int(2), value.Int(3), value.Int(4)),
 		value.NewList(value.Int(-4), value.Int(16)),
@@ -109,7 +107,7 @@ func TestStddev_Bucketize_Valid(t *testing.T) {
 			"timestamp": value.Int(DAY + i*3600 + 1),
 			"value":     value.Int(i),
 		})
-		count := value.NewList(value.Int(i), value.Int(i*i), value.Int(1))
+		count := value.NewList(value.Double(i), value.Double(i*i), value.Int(1))
 		actions.Append(d)
 		expected = append(expected, counter.Bucket{Key: v.String(), Window: ftypes.Window_DAY,
 			Index: 1, Width: 1, Value: count})
@@ -143,12 +141,12 @@ func TestStddev_Bucketize_Invalid(t *testing.T) {
 	}
 }
 
-func extractFromStddev(vals []int64) (int64, int64, int64) {
+func extractFromStddev(vals []float64) (float64, float64, int64) {
 	num := int64(len(vals))
 	if num == 0 {
 		return 0, 0, 0
 	}
-	var sum, sumsq int64 = 0, 0
+	var sum, sumsq float64 = 0, 0
 	for _, v := range vals {
 		sum += v
 		sumsq += v * v
@@ -156,7 +154,7 @@ func extractFromStddev(vals []int64) (int64, int64, int64) {
 	return sum, sumsq, num
 }
 
-func stddev(vals []int64) float64 {
+func stddev(vals []float64) float64 {
 	sum, sumsq, num := extractFromStddev(vals)
 	if num == 0 {
 		return 0
@@ -166,12 +164,12 @@ func stddev(vals []int64) float64 {
 	return math.Sqrt(a - b*b)
 }
 
-func makeStddevVal(vals []int64) value.Value {
+func makeStddevVal(vals []float64) value.Value {
 	sum, sumsq, num := extractFromStddev(vals)
-	return value.NewList(value.Int(sum), value.Int(sumsq), value.Int(num))
+	return value.NewList(value.Double(sum), value.Double(sumsq), value.Int(num))
 }
 
-func makeStddevVals(cases [][]int64) []value.Value {
+func makeStddevVals(cases [][]float64) []value.Value {
 	ret := make([]value.Value, 0, len(cases))
 	for _, c := range cases {
 		ret = append(ret, makeStddevVal(c))

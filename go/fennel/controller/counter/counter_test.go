@@ -323,13 +323,13 @@ func TestRate(t *testing.T) {
 	// at the end of 2 days, rate should only be worth 28 hours, not full 48 hours
 	found, err := Value(ctx, tier, agg.Id, key, histogram, value.NewDict(map[string]value.Value{"duration": value.Int(28 * 3600)}))
 	assert.NoError(t, err)
-	expected, err := math.Wilson(uint64(num), uint64(den), true)
+	expected, err := math.Wilson(float64(num), float64(den), true)
 	assert.NoError(t, err)
 	assert.Equal(t, value.Double(expected), found)
 	// with a duration of 1 day, rate should only be worth 24 hours
 	found, err = Value(ctx, tier, agg.Id, key, histogram, value.NewDict(map[string]value.Value{"duration": value.Int(24 * 3600)}))
 	assert.NoError(t, err)
-	expected, err = math.Wilson(uint64(num2), uint64(den2), true)
+	expected, err = math.Wilson(float64(num2), float64(den2), true)
 	assert.NoError(t, err)
 	assert.Equal(t, value.Double(expected), found)
 }
