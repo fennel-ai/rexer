@@ -62,7 +62,7 @@ func processAggregate(tr tier.Tier, agg libaggregate.Aggregate) error {
 		defer consumer.Close()
 		run := 0
 		for {
-			tr.Logger.Info("Processing aggregate", zap.String("aggregate_name", string(agg.Name)), zap.Int("run", run))
+			// tr.Logger.Info("Processing aggregate", zap.String("aggregate_name", string(agg.Name)), zap.Int("run", run))
 			ctx := context.TODO()
 			err := aggregate.Update(ctx, tr, consumer, agg)
 			if err != nil {
@@ -70,7 +70,7 @@ func processAggregate(tr tier.Tier, agg libaggregate.Aggregate) error {
 				log.Printf("Error found in aggregate: %s. Err: %v", agg.Name, err)
 			}
 			logKafkaLag(tr, consumer)
-			tr.Logger.Info("Processed aggregate", zap.String("aggregate_name", string(agg.Name)), zap.Int("run", run))
+			// tr.Logger.Info("Processed aggregate", zap.String("aggregate_name", string(agg.Name)), zap.Int("run", run))
 			run += 1
 		}
 	}(tr, consumer, agg)

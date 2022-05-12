@@ -38,7 +38,7 @@ func (r rollingRate) Transform(v value.Value) (value.Value, error) {
 	if err != nil {
 		return nil, err
 	}
-	return value.NewList(value.Int(a), value.Int(b)), nil
+	return value.NewList(value.Double(a), value.Double(b)), nil
 }
 
 func (r rollingRate) Start(end ftypes.Timestamp, kwargs value.Dict) (ftypes.Timestamp, error) {
@@ -97,6 +97,7 @@ func (r rollingRate) Reduce(values []value.Value) (value.Value, error) {
 	} else {
 		ratio = num / den
 	}
+
 	return value.Double(ratio), nil
 }
 

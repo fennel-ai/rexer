@@ -13,5 +13,5 @@ func getDouble(v value.Value) (float64, error) {
 	if i, ok := v.(value.Int); ok {
 		return float64(i), nil
 	}
-	return 0, fmt.Errorf("value [%s] is not a number", v.String())
+	return 0, fmt.Errorf("value [%s] is not a $$ number", v.String())
 }

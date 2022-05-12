@@ -47,9 +47,13 @@ func (r rollingSum) Reduce(values []value.Value) (value.Value, error) {
 }
 
 func (r rollingSum) Merge(a, b value.Value) (value.Value, error) {
-	if _, ok := a.(value.Int); !ok {
-		return nil, fmt.Errorf("expected int but got: %v", a)
+	if err := value.Types.Number.Validate(a); err != nil {
+		return nil, fmt.Errorf("value [%s] is not a number", a.String())
 	}
+	if err := value.Types.Number.Validate(b); err != nil {
+		return nil, fmt.Errorf("value [%s] is not a number", b.String())
+	}
+
 	return a.Op("+", b)
 }
 
@@ -58,8 +62,8 @@ func (r rollingSum) Zero() value.Value {
 }
 
 func (r rollingSum) Transform(v value.Value) (value.Value, error) {
-	if _, ok := v.(value.Int); !ok {
-		return nil, fmt.Errorf("expected value to be an int but got: '%s' instead", v)
+	if err := value.Types.Number.Validate(v); err != nil {
+		return nil, fmt.Errorf("value [%s] is not a number", v.String())
 	}
 	return v, nil
 }

@@ -110,15 +110,15 @@ func (m rollingMin) Merge(a, b value.Value) (value.Value, error) {
 }
 
 func (m rollingMin) Zero() value.Value {
-	return value.NewList(value.Int(0), value.Bool(true))
+	return value.NewList(value.Double(0), value.Bool(true))
 }
 
 func (m rollingMin) Transform(v value.Value) (value.Value, error) {
-	v_int, ok := v.(value.Int)
-	if !ok {
-		return nil, fmt.Errorf("expected value to be an int but got: '%s' instead", v)
+	if err := value.Types.Number.Validate(v); err != nil {
+		return nil, fmt.Errorf("value [%s] is not a number", v.String())
 	}
-	return value.NewList(v_int, value.Bool(false)), nil
+
+	return value.NewList(v, value.Bool(false)), nil
 }
 
 var _ Histogram = rollingMin{}

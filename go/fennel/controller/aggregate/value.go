@@ -232,6 +232,7 @@ func Update(ctx context.Context, tier tier.Tier, consumer kafka.FConsumer, agg a
 	if len(actions) == 0 {
 		return nil
 	}
+
 	table, err := transformActions(tier, actions, agg.Query)
 
 	if err != nil {
@@ -260,6 +261,7 @@ func Update(ctx context.Context, tier tier.Tier, consumer kafka.FConsumer, agg a
 		_, err = consumer.Commit()
 		return err
 	}
+
 	tier.Logger.Info(fmt.Sprintf("found %d new actions for online aggregate: %s", len(actions), agg.Name))
 
 	histogram, err := modelCounter.ToHistogram(agg.Options)

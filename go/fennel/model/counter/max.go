@@ -18,11 +18,11 @@ type rollingMax struct {
 }
 
 func (m rollingMax) Transform(v value.Value) (value.Value, error) {
-	v_int, ok := v.(value.Int)
-	if !ok {
-		return nil, fmt.Errorf("expected value to be an int but got: '%s' instead", v)
+	if err := value.Types.Number.Validate(v); err != nil {
+		return nil, fmt.Errorf("value [%s] is not a number", v.String())
 	}
-	return value.NewList(v_int, value.Bool(false)), nil
+
+	return value.NewList(v, value.Bool(false)), nil
 }
 
 func NewMax(durations []uint64) Histogram {
