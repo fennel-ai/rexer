@@ -118,17 +118,17 @@ func TestRate_Merge_Valid(t *testing.T) {
 		{
 			value.NewList(value.Int(0), value.Int(1)),
 			value.NewList(value.Int(1), value.Int(3)),
-			value.NewList(value.Int(1), value.Int(4)),
+			value.NewList(value.Double(1), value.Double(4)),
 		},
 		{
 			value.NewList(value.Int(0), value.Int(0)),
 			value.NewList(value.Int(7), value.Int(11)),
-			value.NewList(value.Int(7), value.Int(11)),
+			value.NewList(value.Double(7), value.Double(11)),
 		},
 		{
 			value.NewList(value.Int(1e17), value.Int(1e17)),
 			value.NewList(value.Int(1), value.Int(1)),
-			value.NewList(value.Int(1+1e17), value.Int(1+1e17)),
+			value.NewList(value.Double(1+1e17), value.Double(1+1e17)),
 		},
 	}
 	for _, n := range validCases {
@@ -212,7 +212,6 @@ func TestRate_Bucketize_Invalid(t *testing.T) {
 		{value.NewDict(map[string]value.Value{"groupkey": value.Int(1), "timestamp": value.Int(2), "value": value.Double(1)})},
 		{value.NewDict(map[string]value.Value{"groupkey": value.Int(1), "timestamp": value.Int(2), "value": value.NewList(value.Int(1))})},
 		{value.NewDict(map[string]value.Value{"groupkey": value.Int(1), "timestamp": value.Int(2), "value": value.NewList(value.Int(1), value.Int(2), value.Int(3))})},
-		{value.NewDict(map[string]value.Value{"groupkey": value.Int(1), "timestamp": value.Int(2), "value": value.NewList(value.Double(1), value.Double(2))})},
 	}
 	for _, test := range cases {
 		table := value.List{}

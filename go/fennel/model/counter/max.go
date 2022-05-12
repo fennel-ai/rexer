@@ -38,14 +38,6 @@ func NewMax(durations []uint64) Histogram {
 	}
 }
 
-func max(a int64, b int64) int64 {
-	if a < b {
-		return b
-	} else {
-		return a
-	}
-}
-
 func (m rollingMax) Start(end ftypes.Timestamp, kwargs value.Dict) (ftypes.Timestamp, error) {
 	d, err := extractDuration(kwargs, m.Durations)
 	if err != nil {
@@ -54,48 +46,63 @@ func (m rollingMax) Start(end ftypes.Timestamp, kwargs value.Dict) (ftypes.Times
 	return start(end, d), nil
 }
 
-func (m rollingMax) extract(v value.Value) (int64, bool, error) {
+func (m rollingMax) extract(v value.Value) (value.Value, bool, error) {
 	l, ok := v.(value.List)
 	if !ok || l.Len() != 2 {
-		return 0, false, fmt.Errorf("expected list of two elements but got: %v", v)
+		return value.Double(0), false, fmt.Errorf("expected list of two elements but got: %v", v)
 	}
 	e, _ := l.At(1)
 	empty, ok := e.(value.Bool)
 	if !ok {
-		return 0, false, fmt.Errorf("expected boolean but found: %v", e)
+		return value.Double(0), false, fmt.Errorf("expected boolean but found: %v", e)
 	}
 	if empty {
-		return 0, true, nil
+		return value.Double(0), true, nil
 	}
 	e, _ = l.At(0)
-	maxv, ok := e.(value.Int)
-	if !ok {
-		return 0, false, fmt.Errorf("expected integer but found: %v", maxv)
-	}
-	return int64(maxv), false, nil
+	return e, false, nil
 }
 
-func (m rollingMax) merge(v1 int64, e1 bool, v2 int64, e2 bool) (int64, bool) {
+func max(a value.Value, b value.Value) (value.Value, error) {
+	lt, err := a.Op("<", b)
+	if err != nil {
+		return value.Double(0), err
+	}
+	if lt.(value.Bool) {
+		return b, nil
+	}
+	return a, nil
+}
+
+func (m rollingMax) merge(v1 value.Value, e1 bool, v2 value.Value, e2 bool) (value.Value, bool, error) {
 	if e1 {
-		return v2, e2
+		return v2, e2, nil
 	}
 	if e2 {
-		return v1, e1
+		return v1, e1, nil
 	}
-	return max(v1, v2), false
+	maxVal, err := max(v1, v2)
+	return maxVal, false, err
 }
 
 func (m rollingMax) Reduce(values []value.Value) (value.Value, error) {
-	var maxv int64 = 0
+	var maxv value.Value
 	empty := true
 	for _, v := range values {
 		v, e, err := m.extract(v)
 		if err != nil {
 			return nil, err
 		}
-		maxv, empty = m.merge(maxv, empty, v, e)
+		maxv, empty, err = m.merge(maxv, empty, v, e)
+
+		if err != nil {
+			return value.Double(0), nil
+		}
 	}
-	return value.Int(maxv), nil
+	if maxv == nil {
+		return value.Double(0), nil
+	}
+	return maxv, nil
 }
 
 func (m rollingMax) Merge(a, b value.Value) (value.Value, error) {
@@ -107,12 +114,12 @@ func (m rollingMax) Merge(a, b value.Value) (value.Value, error) {
 	if err != nil {
 		return nil, err
 	}
-	v, e := m.merge(v1, e1, v2, e2)
-	return value.NewList(value.Int(v), value.Bool(e)), nil
+	v, e, err := m.merge(v1, e1, v2, e2)
+	return value.NewList(v, value.Bool(e)), err
 }
 
 func (m rollingMax) Zero() value.Value {
-	return value.NewList(value.Int(0), value.Bool(true))
+	return value.NewList(value.Double(0), value.Bool(true))
 }
 
 var _ Histogram = rollingMax{}

@@ -7,7 +7,7 @@ import (
 
 const Z_95 = 1.96
 
-func Wilson(num uint64, den uint64, lower bool) (float64, error) {
+func Wilson(num, den float64, lower bool) (float64, error) {
 	if num > den {
 		return 0, fmt.Errorf("numerator can not be greater than denominator for rates")
 	}
@@ -17,11 +17,10 @@ func Wilson(num uint64, den uint64, lower bool) (float64, error) {
 		return 0, nil
 	}
 
-	p := float64(num) / float64(den)
-	n := float64(den)
-	base := p + (Z_95*Z_95)/(2*n)
-	plusminus := Z_95 * math.Sqrt(p*(1-p)/n+(Z_95*Z_95)/(4*n*n))
-	normalize := 1 + (Z_95*Z_95)/n
+	p := num / den
+	base := p + (Z_95*Z_95)/(2*den)
+	plusminus := Z_95 * math.Sqrt(p*(1-p)/den+(Z_95*Z_95)/(4*den*den))
+	normalize := 1 + (Z_95*Z_95)/den
 	if lower {
 		return (base - plusminus) / normalize, nil
 	} else {

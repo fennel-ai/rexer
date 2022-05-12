@@ -30,12 +30,15 @@ func NewMin(durations []uint64) Histogram {
 	}
 }
 
-func min(a int64, b int64) int64 {
-	if a < b {
-		return a
-	} else {
-		return b
+func min(a value.Value, b value.Value) (value.Value, error) {
+	lt, err := a.Op("<", b)
+	if err != nil {
+		return value.Double(0), err
 	}
+	if lt.(value.Bool) {
+		return a, nil
+	}
+	return b, nil
 }
 
 func (m rollingMin) Start(end ftypes.Timestamp, kwargs value.Dict) (ftypes.Timestamp, error) {
@@ -46,48 +49,51 @@ func (m rollingMin) Start(end ftypes.Timestamp, kwargs value.Dict) (ftypes.Times
 	return start(end, d), nil
 }
 
-func (m rollingMin) extract(v value.Value) (int64, bool, error) {
+func (m rollingMin) extract(v value.Value) (value.Value, bool, error) {
 	l, ok := v.(value.List)
 	if !ok || l.Len() != 2 {
-		return 0, false, fmt.Errorf("expected list of two elements but got: %v", v)
+		return value.Double(0), false, fmt.Errorf("expected list of two elements but got: %v", v)
 	}
 	e, _ := l.At(1)
 	empty, ok := e.(value.Bool)
 	if !ok {
-		return 0, false, fmt.Errorf("expected boolean but found: %v", e)
+		return value.Double(0), false, fmt.Errorf("expected boolean but found: %v", e)
 	}
 	if empty {
-		return 0, true, nil
+		return value.Double(0), true, nil
 	}
 	e, _ = l.At(0)
-	minv, ok := e.(value.Int)
-	if !ok {
-		return 0, false, fmt.Errorf("expected integer but found: %v", minv)
-	}
-	return int64(minv), false, nil
+	return e, false, nil
 }
 
-func (m rollingMin) merge(v1 int64, e1 bool, v2 int64, e2 bool) (int64, bool) {
+func (m rollingMin) merge(v1 value.Value, e1 bool, v2 value.Value, e2 bool) (value.Value, bool, error) {
 	if e1 {
-		return v2, e2
+		return v2, e2, nil
 	}
 	if e2 {
-		return v1, e1
+		return v1, e1, nil
 	}
-	return min(v1, v2), false
+	minVal, err := min(v1, v2)
+	return minVal, false, err
 }
 
 func (m rollingMin) Reduce(values []value.Value) (value.Value, error) {
-	var minv int64 = 0
+	var minv value.Value
 	empty := true
 	for _, v := range values {
 		v, e, err := m.extract(v)
 		if err != nil {
 			return nil, err
 		}
-		minv, empty = m.merge(minv, empty, v, e)
+		minv, empty, err = m.merge(minv, empty, v, e)
+		if err != nil {
+			return value.Double(0), nil
+		}
 	}
-	return value.Int(minv), nil
+	if minv == nil {
+		return value.Double(0), nil
+	}
+	return minv, nil
 }
 
 func (m rollingMin) Merge(a, b value.Value) (value.Value, error) {
@@ -99,8 +105,8 @@ func (m rollingMin) Merge(a, b value.Value) (value.Value, error) {
 	if err != nil {
 		return nil, err
 	}
-	v, e := m.merge(v1, e1, v2, e2)
-	return value.NewList(value.Int(v), value.Bool(e)), nil
+	v, e, err := m.merge(v1, e1, v2, e2)
+	return value.NewList(v, value.Bool(e)), err
 }
 
 func (m rollingMin) Zero() value.Value {
