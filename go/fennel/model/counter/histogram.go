@@ -38,7 +38,7 @@ type Histogram interface {
 	BucketStore
 }
 
-func ToHistogram(opts aggregate.Options) (Histogram, error) {
+func ToHistogram(tr tier.Tier, aggId ftypes.AggId, opts aggregate.Options) (Histogram, error) {
 	switch opts.AggType {
 	case "sum":
 		return NewSum(opts.Durations), nil
@@ -55,7 +55,7 @@ func ToHistogram(opts aggregate.Options) (Histogram, error) {
 	case "stddev":
 		return NewStdDev(opts.Durations), nil
 	case "rate":
-		return NewRate(opts.Durations, opts.Normalize), nil
+		return NewRate(tr, aggId, opts.Durations, opts.Normalize), nil
 	case "topk":
 		return NewTopK(opts.Durations), nil
 	default:

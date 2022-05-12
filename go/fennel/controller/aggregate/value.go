@@ -115,7 +115,7 @@ func unitValue(
 	if err != nil {
 		return value.Nil, err
 	}
-	histogram, err := modelCounter.ToHistogram(agg.Options)
+	histogram, err := modelCounter.ToHistogram(tier, agg.Id, agg.Options)
 	if err != nil {
 		return nil, err
 	}
@@ -202,7 +202,7 @@ func batchValue(ctx context.Context, tier tier.Tier, batch []aggregate.GetAggVal
 			continue
 		}
 		onlinePtr = append(onlinePtr, i)
-		histograms[i], err = modelCounter.ToHistogram(agg.Options)
+		histograms[i], err = modelCounter.ToHistogram(tier, agg.Id, agg.Options)
 		if err != nil {
 			return nil, fmt.Errorf("failed to make histogram from aggregate at index %d of batch: %v", i, err)
 		}
@@ -262,7 +262,7 @@ func Update(ctx context.Context, tier tier.Tier, consumer kafka.FConsumer, agg a
 	}
 	tier.Logger.Info(fmt.Sprintf("found %d new actions for online aggregate: %s", len(actions), agg.Name))
 
-	histogram, err := modelCounter.ToHistogram(agg.Options)
+	histogram, err := modelCounter.ToHistogram(tier, agg.Id, agg.Options)
 	if err != nil {
 		return err
 	}
