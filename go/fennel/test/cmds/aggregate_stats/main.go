@@ -30,6 +30,8 @@ type StatsArgs struct {
 type ShardStat struct {
 	NumKeys   uint64
 	SizeBytes uint64
+	ValLen    uint64
+	KeyLen    uint64
 	NumErrors uint32
 }
 
@@ -57,6 +59,29 @@ func dirExists(path string) (bool, error) {
 		return false, nil
 	}
 	return false, err
+}
+
+func createDir(dir string) error {
+	ok, err := dirExists(dir)
+	if err != nil {
+		return err
+	}
+	if !ok {
+		if err := os.Mkdir(dir, os.ModePerm); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func printStat(aggId ftypes.AggId, stat ShardStat) {
+	fmt.Println("==========")
+	fmt.Printf("AggId: %d\n", aggId)
+	fmt.Printf("number of keys: %d\n", stat.NumKeys)
+	fmt.Printf("memory usage (MB): %d\n", stat.SizeBytes>>20)
+	fmt.Printf("avg key length (NOTE: key is a string): %.2f\n", float64(stat.KeyLen)/float64(stat.NumKeys))
+	fmt.Printf("avg value length (NOTE: value is a string): %.2f\n", float64(stat.ValLen)/float64(stat.NumKeys))
+	fmt.Println("==========")
 }
 
 func computeStatsFromCsvs(aggId ftypes.AggId, csvDir string) error {
@@ -95,58 +120,60 @@ func computeStatsFromCsvs(aggId ftypes.AggId, csvDir string) error {
 			// size_in_bytes - includes the key, the value and any other overheads
 			//
 			// since the key here could be have `,`, we will fetch size_in_bytes from the end
-			numEntries := 0
-			totalSize := 0
-			entryErrors := 0
+			stat := ShardStat{}
 
 			// skip the header so we start from 1:
 			for _, d := range data[1:] {
 				index := len(d) - 5
+				valLenIndex := len(d) - 3
+				keyStartIndex := 2
 				if index <= 0 {
 					fmt.Printf("error parsing size_in_bytes in %v\n", d)
-					entryErrors += 1
+					stat.NumErrors += 1
 					continue
 				}
+				k := strings.Join(d[keyStartIndex:index], ",")
 				size, err := strconv.Atoi(d[index])
 				if err != nil {
-					fmt.Printf("could not convert to int: %v\n", err)
-					entryErrors += 1
+					fmt.Printf("could not convert (d[index]: %v) to int: %v\n", d[index], err)
+					stat.NumErrors += 1
 					continue
 				}
-				numEntries++
-				totalSize += size
+				valLen, err := strconv.Atoi(d[valLenIndex])
+				if err != nil {
+					fmt.Printf("could not convert (d[valLenIndex]: %v) to int: %v\n", d[valLenIndex], err)
+				}
+
+				stat.NumKeys++
+				stat.KeyLen += uint64(len(k))
+				stat.SizeBytes += uint64(size)
+				stat.ValLen += uint64(valLen)
 			}
 			// pipe these results back for aggregation
-			stats <- ShardStat{NumKeys: uint64(numEntries), SizeBytes: uint64(totalSize), NumErrors: uint32(entryErrors)}
+			stats <- stat
 		}(csvF.Name())
 	}
 	wg.Wait()
 	close(stats)
 
-	totalKeys := 0
-	totalSize := 0
-	for stat := range stats {
-		totalKeys += int(stat.NumKeys)
-		totalSize += int(stat.SizeBytes)
+	stat := ShardStat{}
+	for s := range stats {
+		stat.NumKeys += s.NumKeys
+		stat.KeyLen += s.KeyLen
+		stat.NumErrors += s.NumErrors
+		stat.ValLen += s.ValLen
+		stat.SizeBytes += s.SizeBytes
 	}
 
-	fmt.Println("==========")
-	fmt.Printf("[%d] total keys: %d, size (MB): %d\n", aggId, totalKeys, totalSize>>20)
-	fmt.Println("==========")
+	printStat(aggId, stat)
 
 	return nil
 }
 
 func createMemProfileForAgg(tr tier.Tier, aggId ftypes.AggId, snapshotDir string) error {
 	csvDir := filepath.Join(snapshotDir, fmt.Sprintf("%d-csv", aggId))
-	ok, err := dirExists(csvDir)
-	if err != nil {
-		panic(err)
-	}
-	if !ok {
-		if err := os.Mkdir(csvDir, os.ModePerm); err != nil {
-			panic(err)
-		}
+	if err := createDir(csvDir); err != nil {
+		return err
 	}
 
 	prefix, err := redisKeyPrefix(tr, aggId)
@@ -251,14 +278,22 @@ func computeStatsForAggs(csvDir, fileName string, tierId int) (map[ftypes.AggId]
 		//
 		// since the key here could be have `,`, we will fetch size_in_bytes from the end
 		sizeIndex := len(d) - 5
-		keyIndex := 2 // keyIndex could be spread across more indices but we are only interested in the prefix
+		valLenIndex := len(d) - 3
+		// keyIndex could be spread across more indices but we are only interested in the prefix
+		//
+		// the key will therefore be distributed in the range of indices - [2, len(d) - size_in_bytes), with each of them
+		// concatenated by `,`
+		keyStartIndex := 2
 		if sizeIndex <= 0 {
 			fmt.Printf("error parsing size_in_bytes in %v\n", d)
 			continue
 		}
-		aggId, err := getAggId(d[keyIndex], tierId)
+
+		// construct key from [keyStartIndex, sizeIndex)
+		key := strings.Join(d[keyStartIndex:sizeIndex], ",")
+		aggId, err := getAggId(key, tierId)
 		if err != nil {
-			fmt.Printf("failed to parse aggId from the redisKey: %v\n", err)
+			fmt.Printf("failed to parse aggId from the redisKey: %v, err: %v\n", key, err)
 			continue
 		}
 
@@ -267,22 +302,116 @@ func computeStatsForAggs(csvDir, fileName string, tierId int) (map[ftypes.AggId]
 			aggToStats[aggId] = ShardStat{}
 		}
 
+		// try converting the total memory usage to int
 		size, err := strconv.Atoi(d[sizeIndex])
 		if err != nil {
 			v, _ := aggToStats[aggId]
 			v.NumErrors++
 			aggToStats[aggId] = v
-			fmt.Printf("could not convert to int: %v\n", err)
+			fmt.Printf("could not convert (v[sizeIndex]: %v) to int: %v\n", d[sizeIndex], err)
+			continue
+		}
+
+		// try converting value length to int
+		valLen, err := strconv.Atoi(d[valLenIndex])
+		if err != nil {
+			fmt.Printf("could not convert (v[valLenIdx]: %v) to int: %v\n", d[valLenIndex], err)
 			continue
 		}
 
 		v, _ = aggToStats[aggId]
 		v.NumKeys++
 		v.SizeBytes += uint64(size)
+		v.ValLen += uint64(valLen)
+		v.KeyLen += uint64(len(key))
 		aggToStats[aggId] = v
 	}
 
 	return aggToStats, nil
+}
+
+func createMemProfileForAggs(tr tier.Tier, snapshotDir string) error {
+	// create directory for csv files to be written to
+	csvDir := filepath.Join(snapshotDir, fmt.Sprintf("all-csvs"))
+	if err := createDir(csvDir); err != nil {
+		return err
+	}
+
+	files, err := os.ReadDir(snapshotDir)
+	if err != nil {
+		panic(err)
+	}
+
+	wg := sync.WaitGroup{}
+	// create csv file for each of the snapshot file concurrently
+	for _, f := range files {
+		// there could be directories with csv files
+		if !f.IsDir() && isRdbFile(f.Name()) {
+			wg.Add(1)
+			go func(fileName string) {
+				defer wg.Done()
+				snapshotFile := filepath.Join(snapshotDir, fileName)
+				csvFile := filepath.Join(csvDir, strings.Trim(fileName, ".rdb")+".csv")
+				// check if the memory profile already exists
+				if _, err := os.Stat(csvFile); !os.IsNotExist(err) {
+					fmt.Printf("memory profile for snapshot: %s already exists, reusing it..\n", snapshotFile)
+					return
+				}
+
+				// compute stats
+				if err := createMemProfileForSnapshot(tr, snapshotFile, csvFile); err != nil {
+					fmt.Printf("createMemProfileForSnapshot failed with: %v", err)
+				}
+			}(f.Name())
+		}
+	}
+	wg.Wait()
+
+	fmt.Print("memory profile generation completed, performing aggregation..\n")
+
+	// read the csv files and compute per aggregate statistic
+	csvFiles, err := os.ReadDir(csvDir)
+	if err != nil {
+		panic(err)
+	}
+
+	// for each csv file, compute statistics in a different goroutine
+	chStats := make(chan map[ftypes.AggId]ShardStat, len(csvFiles))
+	for _, f := range csvFiles {
+		wg.Add(1)
+		go func(fileName string) {
+			defer wg.Done()
+			stats, err := computeStatsForAggs(csvDir, fileName, int(tr.ID))
+			if err != nil {
+				fmt.Printf("computeStatsForAggs failed with: %v", err)
+			}
+			chStats <- stats
+		}(f.Name())
+	}
+	wg.Wait()
+	close(chStats)
+
+	// aggregate over stats
+	stats := make(map[ftypes.AggId]ShardStat, 100)
+	for stat := range chStats {
+		for aggId, s := range stat {
+			v, ok := stats[aggId]
+			if !ok {
+				stats[aggId] = s
+			} else {
+				v.NumKeys += s.NumKeys
+				v.SizeBytes += s.SizeBytes
+				v.NumErrors += s.NumErrors
+				v.KeyLen += s.KeyLen
+				v.ValLen += s.ValLen
+				stats[aggId] = v
+			}
+		}
+	}
+	for aggId, s := range stats {
+		printStat(aggId, s)
+	}
+	return nil
 }
 
 func main() {
@@ -300,12 +429,11 @@ func main() {
 		panic(fmt.Sprintf("--snapshot_dir is empty"))
 	}
 
-	// check if the file structure is correct
+	// check if the file structure is correct and snapshot files do exist
 	files, err := os.ReadDir(flags.SnapshotDir)
 	if err != nil {
 		panic(err)
 	}
-
 	// check that the list of files returned is not empty
 	if len(files) == 0 {
 		panic("no snapshot files found in the given directory")
@@ -324,90 +452,14 @@ func main() {
 			go func(aggId uint32) {
 				defer wg.Done()
 				if err := createMemProfileForAgg(tier, ftypes.AggId(aggId), flags.SnapshotDir); err != nil {
-					tier.Logger.Info(fmt.Sprintf("createMemProfileForAgg failed for aggId: %d, failed with: %v", aggId, err))
+					fmt.Printf("createMemProfileForAgg failed for aggId: %d, failed with: %v", aggId, err)
 				}
 			}(aggId)
 		}
 		wg.Wait()
 	} else {
-		// create directory for csv files to be written to
-		csvDir := filepath.Join(flags.SnapshotDir, fmt.Sprintf("all-csvs"))
-		ok, err := dirExists(csvDir)
-		if err != nil {
-			panic(err)
-		}
-		if !ok {
-			if err := os.Mkdir(csvDir, os.ModePerm); err != nil {
-				panic(err)
-			}
-		}
-
-		wg := sync.WaitGroup{}
-		// create csv file for each of the snapshot file concurrently
-		for _, f := range files {
-			// there could be directories with csv files
-			if !f.IsDir() && isRdbFile(f.Name()) {
-				wg.Add(1)
-				go func(fileName string) {
-					defer wg.Done()
-					snapshotFile := filepath.Join(flags.SnapshotDir, fileName)
-					csvFile := filepath.Join(csvDir, strings.Trim(fileName, ".rdb")+".csv")
-					// check if the memory profile already exists
-					if _, err := os.Stat(csvFile); !os.IsNotExist(err) {
-						fmt.Printf("memory profile for snapshot: %s already exists, reusing it..\n", snapshotFile)
-						return
-					}
-
-					// compute stats
-					if err := createMemProfileForSnapshot(tier, snapshotFile, csvFile); err != nil {
-						tier.Logger.Info(fmt.Sprintf("createMemProfileForSnapshot failed with: %v", err))
-					}
-				}(f.Name())
-			}
-		}
-		wg.Wait()
-
-		fmt.Print("memory profile generation completed, performing aggregation..\n")
-
-		// read the csv files and compute per aggregate statistic
-		csvFiles, err := os.ReadDir(csvDir)
-		if err != nil {
-			panic(err)
-		}
-
-		// for each csv file, compute statistics in a different goroutine
-		chStats := make(chan map[ftypes.AggId]ShardStat, len(csvFiles))
-		for _, f := range csvFiles {
-			wg.Add(1)
-			go func(fileName string) {
-				defer wg.Done()
-				stats, err := computeStatsForAggs(csvDir, fileName, int(tier.ID))
-				if err != nil {
-					tier.Logger.Info(fmt.Sprintf("computeStatsForAggs failed with: %v", err))
-				}
-				chStats <- stats
-			}(f.Name())
-		}
-		wg.Wait()
-		close(chStats)
-
-		// aggregate over stats
-		stats := make(map[ftypes.AggId]ShardStat, 100)
-		for stat := range chStats {
-			for aggId, s := range stat {
-				v, ok := stats[aggId]
-				if !ok {
-					stats[aggId] = s
-				} else {
-					v.NumKeys += s.NumKeys
-					v.SizeBytes += s.SizeBytes
-					v.NumErrors += s.NumErrors
-					stats[aggId] = v
-				}
-			}
-		}
-		for aggId, s := range stats {
-			fmt.Printf("[%d] total keys: %d, size (MB): %d\n", aggId, s.NumKeys, s.SizeBytes>>20)
+		if err := createMemProfileForAggs(tier, flags.SnapshotDir); err != nil {
+			fmt.Printf("createMemProfileForAggs failed with: %v", err)
 		}
 	}
 }
