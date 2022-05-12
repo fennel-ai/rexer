@@ -8,5 +8,5 @@ RUN go build fennel/service/countaggr
 FROM --platform=linux/amd64 golang:1.17.6-bullseye
 WORKDIR /root/
 COPY --from=builder /app/go/fennel/countaggr ./
+RUN apt update && apt install -y redis-tools
 CMD ["./countaggr"]
-RUN apt update && apt install redis-cli
