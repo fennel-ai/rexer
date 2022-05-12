@@ -2,6 +2,13 @@
 
 Script computes statistics (total number of keys, total memory-footprint) of a list of aggregates for a specific tier.
 
+## Important notes
+
+1. The script makes use of `rdbtool` and specifically, memory profiling - https://github.com/sripathikrishnan/redis-rdb-tools#generate-memory-report. As the document says, the memory usage here is approximate and the actual usage generally will be higher than reported usage
+2. Memory usage includes memory usage of the key, value and overhead. Overhead might include TTL, hashtable entry, value reference storage etc. For more details see: https://github.com/sripathikrishnan/redis-rdb-tools/blob/548b11ec3c81a603f5b321228d07a61a0b940159/rdbtools/memprofiler.py#L438
+3. Setting empty strings as key and value in redis still consume bytes purely due to overhead (~50 bytes). See: https://redis.io/commands/memory-usage/#examples
+4. The tool reports the length of keys and values (since both of them are currently stored as strings). We could instead report the approx bytes used by each (using - https://github.com/sripathikrishnan/redis-rdb-tools/blob/548b11ec3c81a603f5b321228d07a61a0b940159/rdbtools/memprofiler.py#L422), but we can assume the memory usage can be further approximated (or use it relatively) with length
+
 ## Pre-requisites
 
 ### MemoryDB snapshots
@@ -44,13 +51,11 @@ The output expected is of the format:
 # [AggId] total keys: [# RedisKeys], size (MB): [Total size for that redis entry in MBs]
 
 ==========
-[12] total keys: 1439, size (MB): 0
-==========
-==========
-[14] total keys: 4697, size (MB): 1
-==========
-==========
-[13] total keys: 11773, size (MB): 1
+AggId: 23
+number of keys: 11281434
+memory usage (MB): 3082
+avg key length (NOTE: key is a string): 41.86
+avg value length (NOTE: value is a string): 146.92
 ==========
 ```
 
@@ -69,27 +74,153 @@ The output expected is of the format:
 ```
 # [AggId] total keys: [# RedisKeys], size (MB): [Total size for that redis entry in MBs]
 
-[20] total keys: 1307853, size (MB): 186
-[17] total keys: 15, size (MB): 0
-[12] total keys: 1439, size (MB): 0
-[8] total keys: 47574, size (MB): 6
-[29] total keys: 13710438, size (MB): 3465
-[13] total keys: 11773, size (MB): 1
-[16] total keys: 46, size (MB): 0
-[9] total keys: 48011, size (MB): 8
-[10] total keys: 11518, size (MB): 1
-[33] total keys: 11281434, size (MB): 3082
-[11] total keys: 17483, size (MB): 2
-[23] total keys: 11281434, size (MB): 3082
-[30] total keys: 1307853, size (MB): 186
-[24] total keys: 21373, size (MB): 8
-[34] total keys: 21813, size (MB): 8
-[19] total keys: 13643388, size (MB): 3447
-[15] total keys: 4548, size (MB): 1
-[0] total keys: 12658664, size (MB): 1448
-[18] total keys: 51314538, size (MB): 8659
-[28] total keys: 51314538, size (MB): 8659
-[14] total keys: 4697, size (MB): 1
+==========
+AggId: 33
+number of keys: 11281434
+memory usage (MB): 3082
+avg key length (NOTE: key is a string): 41.86
+avg value length (NOTE: value is a string): 146.92
+==========
+==========
+AggId: 10
+number of keys: 11518
+memory usage (MB): 1
+avg key length (NOTE: key is a string): 29.86
+avg value length (NOTE: value is a string): 47.06
+==========
+==========
+AggId: 13
+number of keys: 11773
+memory usage (MB): 1
+avg key length (NOTE: key is a string): 30.07
+avg value length (NOTE: value is a string): 54.67
+==========
+==========
+AggId: 30
+number of keys: 1307853
+memory usage (MB): 186
+avg key length (NOTE: key is a string): 32.85
+avg value length (NOTE: value is a string): 32.30
+==========
+==========
+AggId: 18
+number of keys: 51314538
+memory usage (MB): 8659
+avg key length (NOTE: key is a string): 38.57
+avg value length (NOTE: value is a string): 50.15
+==========
+==========
+AggId: 12
+number of keys: 1439
+memory usage (MB): 0
+avg key length (NOTE: key is a string): 25.88
+avg value length (NOTE: value is a string): 177.88
+==========
+==========
+AggId: 20
+number of keys: 1307853
+memory usage (MB): 186
+avg key length (NOTE: key is a string): 32.85
+avg value length (NOTE: value is a string): 32.30
+==========
+==========
+AggId: 17
+number of keys: 15
+memory usage (MB): 0
+avg key length (NOTE: key is a string): 26.00
+avg value length (NOTE: value is a string): 279.60
+==========
+==========
+AggId: 11
+number of keys: 17483
+memory usage (MB): 2
+avg key length (NOTE: key is a string): 30.81
+avg value length (NOTE: value is a string): 30.78
+==========
+==========
+AggId: 16
+number of keys: 46
+memory usage (MB): 0
+avg key length (NOTE: key is a string): 25.83
+avg value length (NOTE: value is a string): 79.96
+==========
+==========
+AggId: 8
+number of keys: 47574
+memory usage (MB): 6
+avg key length (NOTE: key is a string): 36.70
+avg value length (NOTE: value is a string): 29.53
+==========
+==========
+AggId: 28
+number of keys: 51314538
+memory usage (MB): 8659
+avg key length (NOTE: key is a string): 38.57
+avg value length (NOTE: value is a string): 50.15
+==========
+==========
+AggId: 24
+number of keys: 21373
+memory usage (MB): 8
+avg key length (NOTE: key is a string): 31.14
+avg value length (NOTE: value is a string): 270.21
+==========
+==========
+AggId: 14
+number of keys: 4697
+memory usage (MB): 1
+avg key length (NOTE: key is a string): 32.00
+avg value length (NOTE: value is a string): 115.09
+==========
+==========
+AggId: 15
+number of keys: 4548
+memory usage (MB): 1
+avg key length (NOTE: key is a string): 32.00
+avg value length (NOTE: value is a string): 196.17
+==========
+==========
+AggId: 29
+number of keys: 13710438
+memory usage (MB): 3465
+avg key length (NOTE: key is a string): 41.26
+avg value length (NOTE: value is a string): 128.14
+==========
+==========
+AggId: 0
+number of keys: 12658664
+memory usage (MB): 1448
+avg key length (NOTE: key is a string): 39.86
+avg value length (NOTE: value is a string): 8.00
+==========
+==========
+AggId: 19
+number of keys: 13643388
+memory usage (MB): 3447
+avg key length (NOTE: key is a string): 41.26
+avg value length (NOTE: value is a string): 128.07
+==========
+==========
+AggId: 9
+number of keys: 48011
+memory usage (MB): 8
+avg key length (NOTE: key is a string): 30.76
+avg value length (NOTE: value is a string): 59.76
+==========
+==========
+AggId: 23
+number of keys: 11281434
+memory usage (MB): 3082
+avg key length (NOTE: key is a string): 41.86
+avg value length (NOTE: value is a string): 146.92
+==========
+==========
+AggId: 34
+number of keys: 21813
+memory usage (MB): 8
+avg key length (NOTE: key is a string): 31.14
+avg value length (NOTE: value is a string): 270.31
+==========
 ```
 
 NOTE: AggId = 0 is not defined. We store an entry in MemoryDB for deduplication. Those keys are represented as `0` here.
@@ -98,6 +229,6 @@ NOTE: AggId = 0 is not defined. We store an entry in MemoryDB for deduplication.
 
 1. Automatically capture snapshots everyday with a retention limit of 1 day
 2. Automatically export the latest snapshot to a s3 bucket
-3. Add more aggregations if necessary. RDB tool exposes the following information from memory profiles - `database, type, key, size_in_bytes, encoding, num_elements, len_largest_element`
+3. Compute the memory usage of the key and value, instead of just the length of them. This should be doable, using ref - https://github.com/sripathikrishnan/redis-rdb-tools/blob/548b11ec3c81a603f5b321228d07a61a0b940159/rdbtools/memprofiler.py#L196. Since both key and values are string, this should be as simple as implementing hereon - https://github.com/sripathikrishnan/redis-rdb-tools/blob/548b11ec3c81a603f5b321228d07a61a0b940159/rdbtools/memprofiler.py#L422
 
 This should leave us just download the snapshots locally and running the script.
