@@ -64,7 +64,7 @@ func TransferAggrDeltasToDB(ctx context.Context, tr tier.Tier, consumer libkafka
 	for _, ad := range ads {
 		aggBuckets[ad.AggId] = append(aggBuckets[ad.AggId], ad.Buckets...)
 		if _, ok := aggHist[ad.AggId]; !ok {
-			hist, err := modelCounter.ToHistogram(ad.Options)
+			hist, err := modelCounter.ToHistogram(tr, ad.AggId, ad.Options)
 			if err != nil {
 				return err
 			}
