@@ -312,7 +312,7 @@ func TestRate(t *testing.T) {
 			den2 += int64(i + 1)
 		}
 	}
-	histogram := counter2.NewRate([]uint64{28 * 3600, 24 * 3600}, true)
+	histogram := counter2.NewRate(tier, agg.Id, []uint64{28 * 3600, 24 * 3600}, true)
 	err = Update(ctx, tier, agg, table, histogram)
 	assert.NoError(t, err)
 	assertDeltaLogged(t, ctx, tier, []libaggregate.Aggregate{agg}, 1 /*count=*/)

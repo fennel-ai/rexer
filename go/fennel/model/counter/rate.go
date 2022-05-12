@@ -2,10 +2,23 @@ package counter
 
 import (
 	"fmt"
+	"strconv"
 
 	"fennel/lib/ftypes"
 	"fennel/lib/utils/math"
 	"fennel/lib/value"
+	"fennel/tier"
+
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promauto"
+)
+
+var rateNumGTDen = promauto.NewCounterVec(
+	prometheus.CounterOpts{
+		Name: "rolling_rate_num_gt_den",
+		Help: "Total number of normalized rate counter reductions with numerator > denominator",
+	},
+	[]string{"aggId"},
 )
 
 /*
@@ -13,15 +26,19 @@ import (
 	It stores two numbers - num (numerator) and den (denominator)
 */
 type rollingRate struct {
+	tr        tier.Tier
+	aggId     ftypes.AggId
 	Durations []uint64
 	Normalize bool
 	Bucketizer
 	BucketStore
 }
 
-func NewRate(durations []uint64, normalize bool) Histogram {
+func NewRate(tr tier.Tier, aggId ftypes.AggId, durations []uint64, normalize bool) Histogram {
 	maxDuration := getMaxDuration(durations)
 	return rollingRate{
+		tr:        tr,
+		aggId:     aggId,
 		Durations: durations,
 		Normalize: normalize,
 		Bucketizer: fixedWidthBucketizer{map[ftypes.Window]uint64{
@@ -84,15 +101,21 @@ func (r rollingRate) Reduce(values []value.Value) (value.Value, error) {
 	if den == 0 {
 		return value.Double(0), nil
 	}
-	if r.Normalize && num > den {
-		return nil, fmt.Errorf("normalized rate requires numerator to be <= denominator but found '%f', '%f'", num, den)
-	}
 	var ratio float64
 	var err error
 	if r.Normalize {
-		ratio, err = math.Wilson(num, den, true)
-		if err != nil {
-			return nil, err
+		// TODO(Mohit): Consider making this an error in the future once Lokal's counters data has been evicted
+		if num > den {
+			r.tr.Logger.Error(fmt.Sprintf("normalized rate requires numerator to be <= denominator but found '%f', '%f' for aggId: %d", num, den, r.aggId))
+			// report metrics for this case
+			rateNumGTDen.WithLabelValues(strconv.Itoa(int(r.aggId))).Inc()
+			// set the ratio as 1.0
+			ratio = 1.0
+		} else {
+			ratio, err = math.Wilson(num, den, true)
+			if err != nil {
+				return nil, err
+			}
 		}
 	} else {
 		ratio = num / den
