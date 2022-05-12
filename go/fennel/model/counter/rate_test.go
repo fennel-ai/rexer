@@ -183,7 +183,7 @@ func TestRate_Bucketize_Valid(t *testing.T) {
 	DAY := 3600 * 24
 	for i := 0; i < 5; i++ {
 		v := value.Int(1)
-		e := value.NewList(value.Int(i), value.Int(i))
+		e := value.NewList(value.Double(i), value.Double(i))
 		d := value.NewDict(map[string]value.Value{
 			"groupkey":  v,
 			"timestamp": value.Int(DAY + i*3600 + 1),
