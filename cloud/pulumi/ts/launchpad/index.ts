@@ -169,6 +169,7 @@ const planeConfs: Record<number, PlaneConf> = {
             nodeType: "c6i.2xlarge",
             desiredCapacity: 4,
         },
+        milvusConf: {},
     },
     // Lokal's dev tier data plane.
     4: {
