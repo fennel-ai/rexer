@@ -125,8 +125,9 @@ func (c Client) MSet(ctx context.Context, keys []string, values []interface{}, t
 
 // SetNXPipelined pipelines and executes multiple SetNX commands and returns their result as a list of bools
 // Returns any error before execution but ignores errors that happen during execution
-func (c Client) SetNXPipelined(ctx context.Context, keys []string, values []interface{}, ttls []time.Duration) (
-	ok []bool, err error) {
+func (c Client) SetNXPipelined(
+	ctx context.Context, keys []string, values []interface{}, ttls []time.Duration,
+) (ok []bool, err error) {
 	defer timer.Start(ctx, c.ID(), "redis.setnx_pipelined").Stop()
 	// nothing to write if there are no keys.
 	if len(keys) == 0 {
@@ -153,6 +154,79 @@ func (c Client) SetNXPipelined(ctx context.Context, keys []string, values []inte
 		}
 	}
 	return ok, nil
+}
+
+func (c Client) HGetAllPipelined(ctx context.Context, keys ...string) (hmaps []map[string]string, err error) {
+	defer timer.Start(ctx, c.ID(), "redis.hgetall_pipelined").Stop()
+	// nothing to get if there are no keys
+	if len(keys) == 0 {
+		return nil, nil
+	}
+	pipe := c.client.Pipeline()
+	for _, key := range keys {
+		_, err := pipe.HGetAll(ctx, key).Result()
+		// Return errors that happen before execution
+		if err != nil {
+			return nil, err
+		}
+	}
+	cmds, _ := pipe.Exec(ctx)
+	hmaps = make([]map[string]string, len(keys))
+	for i, cmd := range cmds {
+		hmaps[i], err = cmd.(*redis.StringStringMapCmd).Result()
+		// Log errors that happened during execution
+		if err != nil {
+			log.Printf("Redis Error: HGetAllPipelined(): %v", err)
+		}
+	}
+	return hmaps, nil
+}
+
+func (c Client) HSetPipelined(
+	ctx context.Context, keys []string, values []map[string]interface{}, ttls []time.Duration,
+) (err error) {
+	defer timer.Start(ctx, c.ID(), "redis.hset_pipelined").Stop()
+	// nothing to set if there are no keys
+	if len(keys) == 0 {
+		return nil
+	}
+	if len(keys) != len(values) {
+		return fmt.Errorf("keys and values should have the same length")
+	}
+	pipe := c.client.Pipeline()
+	for i, key := range keys {
+		// redis gives an error sometimes when trying to set an empty map
+		// so we skip it
+		if len(values[i]) == 0 {
+			continue
+		}
+		err = pipe.HSet(ctx, key, values[i]).Err()
+		if err != nil {
+			// Return errors that happen before execution
+			return err
+		}
+		if ttls[i] != 0 {
+			// Note - If the hashmap with the key already has a finite TTL, its TTL is stll set (ExpireNX doesn't work)
+			err = pipe.Expire(ctx, key, ttls[i]).Err()
+			if err != nil {
+				return err
+			}
+		}
+	}
+	cmds, _ := pipe.Exec(ctx)
+	for i, cmd := range cmds {
+		err = cmd.Err()
+		// Log errors that happened during execution
+		if err != nil {
+			log.Printf("Redis Error: HSetPipelined()[%d]: %v", i, err)
+		}
+		return err
+	}
+	return nil
+}
+
+func (c Client) TTL(ctx context.Context, key string) (time.Duration, error) {
+	return c.client.TTL(ctx, key).Result()
 }
 
 func (c Client) tieredKey(k string) string {
