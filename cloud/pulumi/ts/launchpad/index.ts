@@ -194,7 +194,7 @@ const planeConfs: Record<number, PlaneConf> = {
         //
         // https://github.com/awslabs/amazon-eks-ami/blob/master/files/eni-max-pods.txt
         eksConf: {
-            nodeType: "t3.large",
+            nodeType: "c6i.2xlarge",
             desiredCapacity: 4,
         },
     },
@@ -317,12 +317,12 @@ if (tierId !== 0) {
             eksOutput.storageclasses[tierConf.apiServerConf.storageclass]
     }
     const topics: kafkatopics.topicConf[] = [
-        {name: `t_${tierId}_actionlog`},
-        {name: `t_${tierId}_featurelog`, partitions: 10},
-        {name: `t_${tierId}_profilelog`},
-        {name: `t_${tierId}_actionlog_json`},
-        {name: `t_${tierId}_aggr_delta`},
-        {name: `t_${tierId}_aggr_offline_transform`},
+        { name: `t_${tierId}_actionlog` },
+        { name: `t_${tierId}_featurelog`, partitions: 10 },
+        { name: `t_${tierId}_profilelog` },
+        { name: `t_${tierId}_actionlog_json` },
+        { name: `t_${tierId}_aggr_delta` },
+        { name: `t_${tierId}_aggr_offline_transform` },
     ];
     setupTier({
         tierId: Number(tierId),
