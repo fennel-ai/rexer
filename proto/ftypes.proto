@@ -7,4 +7,5 @@ enum Window {
   HOUR = 1;
   DAY = 2;
   MINUTE = 3;
+  FOREVER = 4;
 }
