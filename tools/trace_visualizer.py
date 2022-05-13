@@ -43,29 +43,19 @@ def main():
     events = []
     frames = []
     frame_cache = {}
-    types = set()
-    stack = []
     for e in formatted_events:
         attrs = e.split(':')
         timestamp = int(attrs[0][:-2])
         a = attrs[1].strip()
         id = attrs[2]
         name = attrs[3]
-        types.add(a)
         type = "C" if a == "exit" else "O"
-        if a == "enter":
-            stack.append((id, name))
-        else:
-            id_, name_ = stack.pop()
-            if id_ != id or name_ != name:
-                print(f'found an unmatched exit: {id_} v/s {id}, {name_} v/s {name}, current stack: {stack} \n')
         if id not in frame_cache:
             frame_cache[id] = len(frames)
             frames.append({"name": name})
         idx = frame_cache[id]
         events.append({"type": type, "at": timestamp, "frame": idx})
 
-    print(f'unique types: {types}\n')
     # export the formatted json and ask to upload to `https://www.speedscope.app/`
     data = {
         "$schema": "https://www.speedscope.app/file-format-schema.json",
