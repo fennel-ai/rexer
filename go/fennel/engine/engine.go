@@ -24,7 +24,7 @@ func (ex QueryExecutor) Exec(ctx context.Context, query ast.Ast, args value.Dict
 	if err != nil {
 		return value.Nil, fmt.Errorf("could not get tier: %v", err)
 	}
-	defer timer.Start(context.Background(), tier.ID, "interpreter.eval").Stop()
+	defer timer.Start(ctx, tier.ID, "interpreter.eval").Stop()
 	ip, err := interpreter.NewInterpreter(ctx, ex.bootargs, args)
 	if err != nil {
 		return value.Nil, fmt.Errorf("could not create interpreter: %v", err)
