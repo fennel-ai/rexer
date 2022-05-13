@@ -3,6 +3,7 @@ import * as pulumi from "@pulumi/pulumi"
 
 import * as vpc from "../vpc";
 import * as eks from "../eks";
+import * as milvus from "../milvus";
 import * as aurora from "../aurora";
 import * as elasticache from "../elasticache";
 import * as redis from "../redis";
@@ -57,6 +58,8 @@ type EksConf = {
     desiredCapacity: number,
 }
 
+type MilvusConf = {}
+
 export type PlaneConf = {
     planeId: number,
     region: string,
@@ -69,6 +72,7 @@ export type PlaneConf = {
     cacheConf?: CacheConfg,
     prometheusConf: PrometheusConf,
     eksConf?: EksConf,
+    milvusConf?: MilvusConf,
 }
 
 export type PlaneOutput = {
@@ -103,6 +107,7 @@ const setupPlugins = async (stack: pulumi.automation.Stack) => {
         ...connectorSink.plugins,
         ...glueSource.plugins,
         ...offlineAggregateSources.plugins,
+        ...milvus.plugins,
     }
     console.info("installing plugins...");
     for (var key in plugins) {
@@ -170,6 +175,14 @@ const setupResources = async () => {
         numNodeGroups: input.cacheConf?.numNodeGroups,
         replicasPerNodeGroup: input.cacheConf?.replicasPerNodeGroup,
     })
+    if (input.milvusConf !== undefined) {
+        const milvusOutput = await milvus.setup({
+            region: input.region,
+            roleArn: input.roleArn,
+            planeId: input.planeId,
+            kubeconfig: eksOutput.kubeconfig,
+        })
+    }
     const confluentOutput = await confluentenv.setup({
         region: input.region,
         username: input.confluentConf.username,
