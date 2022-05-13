@@ -271,3 +271,71 @@ func TestSetNXPipelined(t *testing.T) {
 	// number of set keys should be the number of unique keys
 	assert.Equal(t, 2, count)
 }
+
+func TestHashmap(t *testing.T) {
+	rand.Seed(time.Now().UnixNano())
+	tierID := ftypes.RealmID(rand.Uint32())
+	scope := resource.NewTierScope(tierID)
+	conf := ClientConfig{Addr: hostAddr, TLSConfig: &tls.Config{}, Scope: scope}
+	rdb, err := conf.Materialize()
+	assert.NoError(t, err)
+
+	ctx := context.Background()
+	c := rdb.(Client)
+
+	n := 10
+	keys := make([]string, n)
+	values := make([]map[string]interface{}, n)
+	expected0 := make([]map[string]string, n)
+	expected := make([]map[string]string, n)
+	ttls := make([]time.Duration, n)
+
+	for i := 0; i < 10; i++ {
+		keys[i] = strconv.Itoa(i)
+		ttls[i] = 10 * time.Second
+		values[i] = make(map[string]interface{}, 10)
+		expected0[i] = map[string]string{}
+		expected[i] = make(map[string]string, 10)
+		for j := 0; j < 10; j++ {
+			values[i][strconv.Itoa(j)] = strconv.Itoa(i*10 + j)
+			expected[i][strconv.Itoa(j)] = strconv.Itoa(i*10 + j)
+		}
+	}
+
+	// no error if no keys are given
+	err = c.HSetPipelined(ctx, nil, nil, nil)
+	found, err := c.HGetAllPipelined(ctx)
+	assert.NoError(t, err)
+	assert.Empty(t, found)
+
+	// should get nothing initially
+	found, err = c.HGetAllPipelined(ctx, keys...)
+	assert.NoError(t, err)
+	assert.Equal(t, expected0, found)
+
+	// set some keys
+	err = c.HSetPipelined(ctx, keys, values, ttls)
+	assert.NoError(t, err)
+
+	// should get them
+	found, err = c.HGetAllPipelined(ctx, keys...)
+	assert.NoError(t, err)
+	assert.Equal(t, expected, found)
+
+	// now test TTL
+	//log.Print(c.TTL(ctx, keys[0]))
+	time.Sleep(5 * time.Second)
+
+	// resetting keys should not change ttl but it does because ExpireNX doesn't work
+	//err = c.HSetPipelined(ctx, keys, values, ttls)
+	//assert.NoError(t, err)
+	//log.Print(c.TTL(ctx, keys[0]))
+
+	time.Sleep(6 * time.Second)
+	//log.Print(c.TTL(ctx, keys[0]))
+
+	// keys should have expired now
+	found, err = c.HGetAllPipelined(ctx, keys...)
+	assert.NoError(t, err)
+	assert.Equal(t, expected0, found)
+}

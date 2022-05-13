@@ -334,3 +334,75 @@ func TestTrailingPartial(t *testing.T) {
 		}
 	}
 }
+
+func TestFixedSplitBucketizer_BucketizeDuration(t *testing.T) {
+	f, _ := newFixedSplitBucketizer([]uint64{3, 2, 1}, []uint64{3600, 7200, 0})
+
+	found1 := f.BucketizeDuration("key", 0, 3600, value.Int(0))
+	var expected1 []counter.Bucket
+	for i := 0; i < 3; i++ {
+		expected1 = append(expected1, counter.Bucket{
+			Key:    "key",
+			Window: ftypes.Window_FOREVER,
+			Width:  1200,
+			Index:  uint64(i),
+			Value:  value.Int(0),
+		})
+	}
+	assert.Equal(t, expected1, found1)
+
+	found2 := f.BucketizeDuration("key", 0, 7200, value.Int(5))
+	var expected2 []counter.Bucket
+	for i := 0; i < 2; i++ {
+		expected2 = append(expected2, counter.Bucket{
+			Key:    "key",
+			Window: ftypes.Window_FOREVER,
+			Width:  3600,
+			Index:  uint64(i),
+			Value:  value.Int(5),
+		})
+	}
+	assert.Equal(t, expected2, found2)
+
+	found3 := f.BucketizeDuration("key", 10800, 10800, value.Int(-5))
+	expected3 := []counter.Bucket{
+		{
+			Key:    "key",
+			Window: ftypes.Window_FOREVER,
+			Width:  0,
+			Index:  0,
+			Value:  value.Int(-5),
+		},
+	}
+	assert.Equal(t, expected3, found3)
+}
+
+func TestFixedSplitBucketizer_BucketizeMoment(t *testing.T) {
+	f, _ := newFixedSplitBucketizer([]uint64{3, 2, 1}, []uint64{3600, 7200, 0})
+
+	found := f.BucketizeMoment("key", 9000, value.Double(0.0))
+	expected := []counter.Bucket{
+		{
+			Key:    "key",
+			Window: ftypes.Window_FOREVER,
+			Width:  1200,
+			Index:  7,
+			Value:  value.Double(0),
+		},
+		{
+			Key:    "key",
+			Window: ftypes.Window_FOREVER,
+			Width:  3600,
+			Index:  2,
+			Value:  value.Double(0),
+		},
+		{
+			Key:    "key",
+			Window: ftypes.Window_FOREVER,
+			Width:  0,
+			Index:  0,
+			Value:  value.Double(0),
+		},
+	}
+	assert.Equal(t, expected, found)
+}

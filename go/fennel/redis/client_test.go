@@ -169,6 +169,49 @@ func testSetNXPipelined(t *testing.T, c Client) {
 	assert.Equal(t, 2, count)
 }
 
+func testHashmap(t *testing.T, c Client) {
+	ctx := context.Background()
+
+	n := 10
+	keys := make([]string, n)
+	values := make([]map[string]interface{}, n)
+	expected0 := make([]map[string]string, n)
+	expected := make([]map[string]string, n)
+	ttls := make([]time.Duration, n)
+
+	for i := 0; i < 10; i++ {
+		keys[i] = strconv.Itoa(i)
+		ttls[i] = 10 * time.Second
+		values[i] = make(map[string]interface{}, 10)
+		expected0[i] = map[string]string{}
+		expected[i] = make(map[string]string, 10)
+		for j := 0; j < 10; j++ {
+			values[i][strconv.Itoa(j)] = strconv.Itoa(i*10 + j)
+			expected[i][strconv.Itoa(j)] = strconv.Itoa(i*10 + j)
+		}
+	}
+
+	// no error if no keys are given
+	err := c.HSetPipelined(ctx, nil, nil, nil)
+	found, err := c.HGetAllPipelined(ctx)
+	assert.NoError(t, err)
+	assert.Empty(t, found)
+
+	// should get nothing initially
+	found, err = c.HGetAllPipelined(ctx, keys...)
+	assert.NoError(t, err)
+	assert.Equal(t, expected0, found)
+
+	// set some keys
+	err = c.HSetPipelined(ctx, keys, values, ttls)
+	assert.NoError(t, err)
+
+	// should get them
+	found, err = c.HGetAllPipelined(ctx, keys...)
+	assert.NoError(t, err)
+	assert.Equal(t, expected, found)
+}
+
 func TestRedisClientLocal(t *testing.T) {
 	rand.Seed(time.Now().UnixNano())
 	tierID := ftypes.RealmID(rand.Uint32())
@@ -184,4 +227,5 @@ func TestRedisClientLocal(t *testing.T) {
 	t.Run("local_mset", func(t *testing.T) { testMSet(t, client.(Client)) })
 	t.Run("local_setnx", func(t *testing.T) { testSetNX(t, client.(Client)) })
 	t.Run("local_setnx_pipelined", func(t *testing.T) { testSetNXPipelined(t, client.(Client)) })
+	t.Run("local_hashmap", func(t *testing.T) { testHashmap(t, client.(Client)) })
 }
