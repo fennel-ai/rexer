@@ -1,4 +1,15 @@
-""" Parse trace data and plot a graph with elapsed time"""
+""" Parse trace data and plot a graph with elapsed time
+
+To run:
+
+1. Copy and paste the trace data (the entire log message).
+2. Run:
+    `poetry run python matplotlib_viz.py`
+
+Or
+
+you can pass a JSON file with the trace data.
+"""
 
 import argparse
 import json
