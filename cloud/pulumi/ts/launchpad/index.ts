@@ -96,34 +96,6 @@ const tierConfs: Record<number, TierConf> = {
             enforceReplicaIsolation: false,
         },
     },
-    // Demo tier using Fennel's staging data plane.
-    109: {
-        planeId: 3,
-        // use public subnets for ingress to allow traffic from outside the assigned vpc
-        ingressConf: {
-            usePublicSubnets: true,
-            loadBalancerScheme: PUBLIC_LB_SCHEME,
-        },
-        httpServerConf: {
-            replicas: 1,
-            // each http-server should be in different nodes from each other
-            enforceReplicaIsolation: false,
-        },
-    },
-    // Demo tier using Fennel's staging data plane.
-    110: {
-        planeId: 3,
-        // use public subnets for ingress to allow traffic from outside the assigned vpc
-        ingressConf: {
-            usePublicSubnets: true,
-            loadBalancerScheme: PUBLIC_LB_SCHEME,
-        },
-        httpServerConf: {
-            replicas: 1,
-            // each http-server should be in different nodes from each other
-            enforceReplicaIsolation: false,
-        },
-    },
     // Lokal's staging tier
     111: {
         planeId: 4,
