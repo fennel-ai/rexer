@@ -161,8 +161,8 @@ func CreateFromArgs(args *TierArgs) (tier Tier, err error) {
 
 	log.Print("Creating process-level cache")
 	// Capacity: 2 GB
-	// Expected size of item: 64 bytes
-	pCache, err := pcache.NewPCache(1<<31, 1<<6)
+	// Expected size of item: 128 bytes
+	pCache, err := pcache.NewPCache(1<<31, 1<<7)
 	if err != nil {
 		return tier, fmt.Errorf("failed to create process-level cache: %v", err)
 	}
