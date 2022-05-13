@@ -16,4 +16,8 @@ func RecordStats(name string, p PCache) {
 	cacheStatsGauge.WithLabelValues(fmt.Sprintf("%s:hits", name)).Set(float64(p.Cache.Metrics.Hits()))
 	cacheStatsGauge.WithLabelValues(fmt.Sprintf("%s:misses", name)).Set(float64(p.Cache.Metrics.Misses()))
 	cacheStatsGauge.WithLabelValues(fmt.Sprintf("%s:ratio", name)).Set(p.Cache.Metrics.Ratio())
+
+	cacheStatsGauge.WithLabelValues(fmt.Sprintf("%s:sets_dropped", name)).Set(float64(p.Cache.Metrics.SetsDropped()))
+	cacheStatsGauge.WithLabelValues(fmt.Sprintf("%s:sets_rejected", name)).Set(float64(p.Cache.Metrics.SetsRejected()))
+	cacheStatsGauge.WithLabelValues(fmt.Sprintf("%s:gets_dropped", name)).Set(float64(p.Cache.Metrics.GetsDropped()))
 }

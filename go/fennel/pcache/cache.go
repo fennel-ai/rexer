@@ -17,7 +17,10 @@ func NewPCache(maxCost int64, averageItemCost int64) (PCache, error) {
 	cache, err := ristretto.NewCache(&ristretto.Config{
 		NumCounters: 10 * expectedMaxItems,
 		MaxCost:     maxCost,
-		BufferItems: 64,
+		// Ristretto recommends BufferItems as `64`, but we have noticed a large number of sets being dropped,
+		// therefore we set this value as `1024`; The exact value is TBD and should be tuned using the help
+		// of the metrics reported to Prometheus
+		BufferItems: 1 << 10,
 		Metrics:     true,
 	})
 	if err != nil {
