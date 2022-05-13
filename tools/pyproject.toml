@@ -13,6 +13,7 @@ tqdm = "^4.63.1"
 # If this fails, you might need to setup ssh access to github.
 # See: https://docs.github.com/en/authentication/connecting-to-github-with-ssh
 rexerclient = { git = "ssh://git@github.com/fennel-ai/rexer-pyclient-alpha.git", branch = "main" }
+matplotlib = "^3.5.2"
 
 [tool.poetry.dev-dependencies]
 
