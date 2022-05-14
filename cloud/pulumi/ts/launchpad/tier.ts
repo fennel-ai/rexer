@@ -18,6 +18,7 @@ import * as offlineAggregateStorage from "../offline-aggregate-storage";
 import * as offlineAggregateOutput from "../offline-aggregate-output";
 import * as offlineAggregateKafkaConnector from "../offline-aggregate-kafka-connector";
 import * as offlineAggregateGlueJob from "../offline-aggregate-glue-job";
+import * as countersCleanup from "../counters-cleanup";
 
 import * as process from "process";
 
@@ -167,6 +168,7 @@ const setupPlugins = async (stack: pulumi.automation.Stack) => {
         ...modelStore.plugins,
         ...sagemaker.plugins,
         ...offlineAggregateStorage.plugins,
+        ...countersCleanup.plugins,
     }
     console.info("installing plugins...");
     for (var key in plugins) {
@@ -355,6 +357,13 @@ const setupResources = async () => {
             tierId: input.tierId,
             enforceServiceIsolation: input.countAggrConf?.enforceServiceIsolation,
             httpServerAppLabels: httpServerOutput.appLabels,
+        });
+        await countersCleanup.setup({
+            region: input.region,
+            roleArn: input.roleArn,
+            kubeconfig: input.kubeconfig,
+            namespace: input.namespace,
+            tierId: input.tierId,
         });
         // set api-server only if the API Server configuration is defined
         if (input.apiServerConf !== undefined) {
