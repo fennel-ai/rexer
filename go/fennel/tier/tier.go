@@ -119,7 +119,7 @@ type Tier struct {
 	// Cache of aggregate name to aggregate definitions - key type is string,
 	// value type is aggregate.Aggregate. Consider change this to something
 	// that wrap sync.Map and exposes a nicer API.
-	AggregateDefs sync.Map
+	AggregateDefs *sync.Map
 }
 
 func CreateFromArgs(args *TierArgs) (tier Tier, err error) {
@@ -288,6 +288,7 @@ func CreateFromArgs(args *TierArgs) (tier Tier, err error) {
 		ModelStore:       modelStore,
 		Badger:           bdb.(fbadger.DB),
 		Args:             *args,
+		AggregateDefs:    new(sync.Map),
 	}, nil
 }
 
