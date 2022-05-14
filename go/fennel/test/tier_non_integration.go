@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"math/rand"
 	"os"
+	"sync"
 	"time"
 
 	"fennel/glue"
@@ -77,6 +78,7 @@ func Tier() (tier.Tier, error) {
 		ModelStore:       modelStore,
 		Logger:           logger,
 		Badger:           badger,
+		AggregateDefs:    new(sync.Map),
 	}, nil
 }
 
