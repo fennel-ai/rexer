@@ -13,6 +13,7 @@ import (
 	httplib "fennel/lib/http"
 	_ "fennel/opdefs"
 	"fennel/service/common"
+	inspector "fennel/service/inspector/server"
 	"fennel/tailer"
 	"fennel/tier"
 
@@ -104,6 +105,7 @@ func main() {
 		tier.TierArgs
 		common.PrometheusArgs
 		common.PprofArgs
+		inspector.InspectorArgs
 	}
 	arg.MustParse(&flags)
 	log.SetFlags(log.LstdFlags | log.Lshortfile)
@@ -129,6 +131,9 @@ func main() {
 
 	controller := server{tier}
 	controller.setHandlers(router)
+	// Set handlers for the log inspector.
+	inspector := inspector.NewInspector(tier, flags.InspectorArgs)
+	inspector.SetHandlers(router)
 
 	// Start tailer module.
 	tailer.Run(tier)
