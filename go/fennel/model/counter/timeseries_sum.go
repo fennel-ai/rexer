@@ -23,7 +23,7 @@ func NewTimeseriesSum(window ftypes.Window, limit uint64) Histogram {
 	retention := uint64(0)
 	if d > 0 {
 		// retain all keys for 1.5days + duration
-		retention = limit*d + 24*3600*1.5
+		retention = limit*d + 24*3600*1.1
 	}
 	return timeseriesSum{
 		Window: window,

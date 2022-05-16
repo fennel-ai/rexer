@@ -46,7 +46,7 @@ func NewRate(tr tier.Tier, aggId ftypes.AggId, durations []uint64, normalize boo
 			ftypes.Window_DAY:    1,
 		}, true},
 		// retain all keys for 1.5days + duration
-		BucketStore: NewTwoLevelStorage(24*3600, maxDuration+24*3600*1.5),
+		BucketStore: NewTwoLevelStorage(24*3600, maxDuration+24*3600*1.1),
 	}
 }
 
