@@ -102,6 +102,13 @@ export const setup = async (input: inputType): Promise<pulumi.Output<outputType>
                     spec: {
                         template: {
                             metadata: {
+                                annotations: {
+                                    // disable inject linkerd proxy for the cleanup service
+                                    //
+                                    // cleanup-service is a background job and does not accept open traffic, hence
+                                    // does not need linkerd-proxy to be running along side it
+                                    "linkerd.io/inject": "disabled",
+                                },
                                 labels: appLabels,
                             },
                             spec: {
