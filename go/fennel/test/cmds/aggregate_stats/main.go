@@ -84,7 +84,7 @@ func printStat(aggId ftypes.AggId, stat ShardStat) {
 	fmt.Println("==========")
 }
 
-func computeStatsFromCsvs(aggId ftypes.AggId, csvDir string) error {
+func computeStatsFromCsvs(aggId ftypes.AggId, csvDir string, csvWriter *csv.Writer) error {
 	// read the files again, rdb could have created new files from the snapshot
 	csvs, err := os.ReadDir(csvDir)
 	if err != nil {
@@ -166,11 +166,13 @@ func computeStatsFromCsvs(aggId ftypes.AggId, csvDir string) error {
 	}
 
 	printStat(aggId, stat)
+	row := []string{strconv.Itoa(int(aggId)), strconv.Itoa(int(stat.NumKeys)), strconv.Itoa(int(stat.KeyLen)), strconv.Itoa(int(stat.NumErrors)), strconv.Itoa(int(stat.ValLen)), strconv.Itoa(int(stat.SizeBytes >> 20))}
+	csvWriter.Write(row)
 
 	return nil
 }
 
-func createMemProfileForAgg(tr tier.Tier, aggId ftypes.AggId, snapshotDir string) error {
+func createMemProfileForAgg(tr tier.Tier, aggId ftypes.AggId, snapshotDir string, csvWriter *csv.Writer) error {
 	csvDir := filepath.Join(snapshotDir, fmt.Sprintf("%d-csv", aggId))
 	if err := createDir(csvDir); err != nil {
 		return err
@@ -218,7 +220,7 @@ func createMemProfileForAgg(tr tier.Tier, aggId ftypes.AggId, snapshotDir string
 	}
 	wg.Wait()
 
-	return computeStatsFromCsvs(aggId, csvDir)
+	return computeStatsFromCsvs(aggId, csvDir, csvWriter)
 }
 
 func createMemProfileForSnapshot(tr tier.Tier, snapshotFile, csvFilePath string) error {
@@ -330,9 +332,9 @@ func computeStatsForAggs(csvDir, fileName string, tierId int) (map[ftypes.AggId]
 	return aggToStats, nil
 }
 
-func createMemProfileForAggs(tr tier.Tier, snapshotDir string) error {
+func createMemProfileForAggs(tr tier.Tier, snapshotDir string, csvWriter *csv.Writer) error {
 	// create directory for csv files to be written to
-	csvDir := filepath.Join(snapshotDir, fmt.Sprintf("all-csvs"))
+	csvDir := filepath.Join(snapshotDir, "all-csvs")
 	if err := createDir(csvDir); err != nil {
 		return err
 	}
@@ -410,6 +412,8 @@ func createMemProfileForAggs(tr tier.Tier, snapshotDir string) error {
 	}
 	for aggId, s := range stats {
 		printStat(aggId, s)
+		row := []string{strconv.Itoa(int(aggId)), strconv.Itoa(int(s.NumKeys)), strconv.Itoa(int(s.KeyLen)), strconv.Itoa(int(s.NumErrors)), strconv.Itoa(int(s.ValLen)), strconv.Itoa(int(s.SizeBytes >> 20))}
+		csvWriter.Write(row)
 	}
 	return nil
 }
@@ -426,7 +430,7 @@ func main() {
 	log.SetFlags(log.LstdFlags | log.Lshortfile)
 
 	if len(flags.SnapshotDir) == 0 {
-		panic(fmt.Sprintf("--snapshot_dir is empty"))
+		panic("--snapshot_dir is empty")
 	}
 
 	// check if the file structure is correct and snapshot files do exist
@@ -444,6 +448,18 @@ func main() {
 		panic(err)
 	}
 
+	// write output to csv file
+	csvFile, err := os.Create(filepath.Join(flags.SnapshotDir, "stats.csv"))
+	if err != nil {
+		panic(err)
+	}
+	defer csvFile.Close()
+
+	csvWriter := csv.NewWriter(csvFile)
+	defer csvWriter.Flush()
+
+	csvWriter.Write([]string{"AggId", "NumKeys", "Avg KeyLen", "NumErrors", "Avg ValLen", "Total size MB"})
+
 	// compute statistics from the snapshot files
 	if len(flags.Aggregates) > 0 {
 		wg := sync.WaitGroup{}
@@ -451,14 +467,14 @@ func main() {
 		for _, aggId := range flags.Aggregates {
 			go func(aggId uint32) {
 				defer wg.Done()
-				if err := createMemProfileForAgg(tier, ftypes.AggId(aggId), flags.SnapshotDir); err != nil {
+				if err := createMemProfileForAgg(tier, ftypes.AggId(aggId), flags.SnapshotDir, csvWriter); err != nil {
 					fmt.Printf("createMemProfileForAgg failed for aggId: %d, failed with: %v", aggId, err)
 				}
 			}(aggId)
 		}
 		wg.Wait()
 	} else {
-		if err := createMemProfileForAggs(tier, flags.SnapshotDir); err != nil {
+		if err := createMemProfileForAggs(tier, flags.SnapshotDir, csvWriter); err != nil {
 			fmt.Printf("createMemProfileForAggs failed with: %v", err)
 		}
 	}
