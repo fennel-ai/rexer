@@ -182,6 +182,10 @@ func (c Client) HGetAllPipelined(ctx context.Context, keys ...string) (hmaps []m
 	return hmaps, nil
 }
 
+// HSetPipelined sets the hashes with the provided values. TTL is set only if it is non-zero.
+// Since ExpireNX does not work, when it is not desired to update the TTL, it should be zero
+// and provide a TTL when first setting the hashmap instead. When a hashmap has no associated
+// TTL then it does not expire.
 func (c Client) HSetPipelined(
 	ctx context.Context, keys []string, values []map[string]interface{}, ttls []time.Duration,
 ) (err error) {
@@ -206,7 +210,7 @@ func (c Client) HSetPipelined(
 			return err
 		}
 		if ttls[i] != 0 {
-			// Note - If the hashmap with the key already has a finite TTL, its TTL is stll set (ExpireNX doesn't work)
+			// does not set TTL when it is 0
 			err = pipe.Expire(ctx, key, ttls[i]).Err()
 			if err != nil {
 				return err

@@ -141,16 +141,18 @@ func TestSplitStore_TTL(t *testing.T) {
 	assert.Len(t, found2, 1)
 	assert.Len(t, found2[0], 1)
 	assert.Equal(t, value.Int(0), found2[0][0])
-	// now push time forward to just before retention
-	mr.FastForward(time.Second*time.Duration(retention) - 10)
+	// now push time forward to somewhere in the middle
+	mr.FastForward(time.Second * time.Duration(retention/2))
 	// value should be same for now
 	found2, err = store.GetMulti(ctx, tier, aggIDs, lbuckets, defaults)
 	assert.NoError(t, err)
 	assert.Len(t, found2, 1)
 	assert.Len(t, found2[0], 1)
 	assert.Equal(t, value.Int(0), found2[0][0])
+	// resetting it should not change any TTL
+	assert.NoError(t, store.SetMulti(ctx, tier, aggIDs, lbuckets))
 	// now fast-forward barely beyond retention
-	mr.FastForward(11)
+	mr.FastForward(time.Second * time.Duration(5+retention/2))
 	// and now key should be gone
 	found2, err = store.GetMulti(ctx, tier, aggIDs, lbuckets, defaults)
 	assert.NoError(t, err)
