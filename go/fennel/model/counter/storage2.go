@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"strconv"
 	"time"
+	"unsafe"
 
 	"fennel/lib/counter"
 	"fennel/lib/ftypes"
@@ -184,7 +185,8 @@ func (s splitStore) getFromRedis(
 		if err != nil {
 			return nil, err
 		}
-		rkeys[itr] = string(keyBuf[start : start+n])
+		bkey := keyBuf[start : start+n]
+		rkeys[itr] = *(*string)(unsafe.Pointer(&bkey))
 		start += n
 		ptrs[itr] = g
 		itr++
@@ -231,7 +233,8 @@ func (s splitStore) setInRedis(
 		if err != nil {
 			return err
 		}
-		rkeys[itr] = string(keyBuf[start : start+n])
+		bkey := keyBuf[start : start+n]
+		rkeys[itr] = *(*string)(unsafe.Pointer(&bkey))
 		start += n
 		rvals[itr] = v
 		keysSize += len(rkeys[itr])
