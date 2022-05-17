@@ -74,13 +74,18 @@ func createDir(dir string) error {
 	return nil
 }
 
-func printStat(aggId ftypes.AggId, stat ShardStat) {
+func printAndLogStat(aggId ftypes.AggId, s ShardStat, csvWriter *csv.Writer) {
+	avgKeyLen := float64(s.KeyLen) / float64(s.NumKeys)
+	avgValLen := float64(s.ValLen) / float64(s.NumKeys)
+	row := []string{strconv.Itoa(int(aggId)), strconv.Itoa(int(s.NumKeys)), fmt.Sprintf("%.2f", avgKeyLen), fmt.Sprintf("%.2f", avgValLen), strconv.Itoa(int(s.SizeBytes >> 20))}
+	csvWriter.Write(row)
+
 	fmt.Println("==========")
 	fmt.Printf("AggId: %d\n", aggId)
-	fmt.Printf("number of keys: %d\n", stat.NumKeys)
-	fmt.Printf("memory usage (MB): %d\n", stat.SizeBytes>>20)
-	fmt.Printf("avg key length (NOTE: key is a string): %.2f\n", float64(stat.KeyLen)/float64(stat.NumKeys))
-	fmt.Printf("avg value length (NOTE: value is a string): %.2f\n", float64(stat.ValLen)/float64(stat.NumKeys))
+	fmt.Printf("number of keys: %d\n", s.NumKeys)
+	fmt.Printf("avg key length (NOTE: key is a string): %.2f\n", avgKeyLen)
+	fmt.Printf("avg value length (NOTE: value is a string): %.2f\n", avgValLen)
+	fmt.Printf("memory usage (MB): %d\n", s.SizeBytes>>20)
 	fmt.Println("==========")
 }
 
@@ -165,10 +170,7 @@ func computeStatsFromCsvs(aggId ftypes.AggId, csvDir string, csvWriter *csv.Writ
 		stat.SizeBytes += s.SizeBytes
 	}
 
-	printStat(aggId, stat)
-	row := []string{strconv.Itoa(int(aggId)), strconv.Itoa(int(stat.NumKeys)), strconv.Itoa(int(stat.KeyLen)), strconv.Itoa(int(stat.NumErrors)), strconv.Itoa(int(stat.ValLen)), strconv.Itoa(int(stat.SizeBytes >> 20))}
-	csvWriter.Write(row)
-
+	printAndLogStat(aggId, stat, csvWriter)
 	return nil
 }
 
@@ -411,9 +413,7 @@ func createMemProfileForAggs(tr tier.Tier, snapshotDir string, csvWriter *csv.Wr
 		}
 	}
 	for aggId, s := range stats {
-		printStat(aggId, s)
-		row := []string{strconv.Itoa(int(aggId)), strconv.Itoa(int(s.NumKeys)), strconv.Itoa(int(s.KeyLen)), strconv.Itoa(int(s.NumErrors)), strconv.Itoa(int(s.ValLen)), strconv.Itoa(int(s.SizeBytes >> 20))}
-		csvWriter.Write(row)
+		printAndLogStat(aggId, s, csvWriter)
 	}
 	return nil
 }
@@ -458,7 +458,7 @@ func main() {
 	csvWriter := csv.NewWriter(csvFile)
 	defer csvWriter.Flush()
 
-	csvWriter.Write([]string{"AggId", "NumKeys", "Avg KeyLen", "NumErrors", "Avg ValLen", "Total size MB"})
+	csvWriter.Write([]string{"AggId", "NumKeys", "Avg KeyLen", "Avg ValLen", "Total size MB"})
 
 	// compute statistics from the snapshot files
 	if len(flags.Aggregates) > 0 {
