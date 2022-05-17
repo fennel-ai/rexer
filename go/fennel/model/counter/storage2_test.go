@@ -21,7 +21,7 @@ func TestSplitStore(t *testing.T) {
 
 	s := splitStore{
 		bucketsPerGroup: 10,
-		retention:       0,
+		retention:       30,
 	}
 
 	// prepare some buckets
