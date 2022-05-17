@@ -323,16 +323,13 @@ func TestHashmap(t *testing.T) {
 	assert.Equal(t, expected, found)
 
 	// now test TTL
-	//log.Print(c.TTL(ctx, keys[0]))
 	time.Sleep(5 * time.Second)
 
-	// resetting keys should not change ttl but it does because ExpireNX doesn't work
-	//err = c.HSetPipelined(ctx, keys, values, ttls)
-	//assert.NoError(t, err)
-	//log.Print(c.TTL(ctx, keys[0]))
+	// resetting keys should not change ttl if ttl is 0
+	err = c.HSetPipelined(ctx, keys, values, make([]time.Duration, n))
+	assert.NoError(t, err)
 
 	time.Sleep(6 * time.Second)
-	//log.Print(c.TTL(ctx, keys[0]))
 
 	// keys should have expired now
 	found, err = c.HGetAllPipelined(ctx, keys...)
