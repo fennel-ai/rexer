@@ -83,9 +83,9 @@ func printAndLogStat(aggId ftypes.AggId, s ShardStat, csvWriter *csv.Writer) {
 	fmt.Println("==========")
 	fmt.Printf("AggId: %d\n", aggId)
 	fmt.Printf("number of keys: %d\n", s.NumKeys)
-	fmt.Printf("memory usage (MB): %d\n", s.SizeBytes>>20)
 	fmt.Printf("avg key length (NOTE: key is a string): %.2f\n", avgKeyLen)
 	fmt.Printf("avg value length (NOTE: value is a string): %.2f\n", avgValLen)
+	fmt.Printf("memory usage (MB): %d\n", s.SizeBytes>>20)
 	fmt.Println("==========")
 }
 
