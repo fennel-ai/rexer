@@ -65,6 +65,10 @@ func (f fixedWidthBucketizer) BucketizeDuration(key string, start, end ftypes.Ti
 	return ret
 }
 
+// fixedSplitBucketizer splits each duration into numBuckets buckets
+// when duration is 0, it provides an infinite bucket instead
+// unlike fixedWidthBucketizer, where each duration is split into a variable number of constant sized buckets
+// fixedSplitBucketizer splits each duration equally into a constant number of buckets
 type fixedSplitBucketizer struct {
 	numBuckets []uint64
 	durations  []uint64
@@ -73,6 +77,7 @@ type fixedSplitBucketizer struct {
 
 // numBuckets must always be > 0;
 // set duration = 0 for infinite bucket
+// 0 width is interpreted as infinite bucket
 func newFixedSplitBucketizer(numBuckets []uint64, durations []uint64) (f fixedSplitBucketizer, err error) {
 	if len(numBuckets) != len(durations) {
 		return f, fmt.Errorf("error: length of arrays 'numBuckets' and 'durations' not equal")
@@ -86,7 +91,17 @@ func newFixedSplitBucketizer(numBuckets []uint64, durations []uint64) (f fixedSp
 		if numBuckets[i] == 0 {
 			return f, fmt.Errorf("error: numBuckets[%d] is 0; numBuckets must be a postive integer", i)
 		}
-		f.widths[i] = durations[i] / numBuckets[i]
+		if durations[i] == 0 {
+			// if duration = 0, bucket should be of infinite width so 0
+			f.widths[i] = 0
+		} else {
+			if durations[i] < numBuckets[i] {
+				// if duration is less than number of buckets, reduce number of buckets to match duration otherwise,
+				// width will be zero, which is interpreted as an infinite bucket and is not correct in any case
+				numBuckets[i] = durations[i]
+			}
+			f.widths[i] = durations[i] / numBuckets[i]
+		}
 	}
 	return f, nil
 }

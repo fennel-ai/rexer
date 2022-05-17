@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"strconv"
-	"strings"
 	"time"
 
 	"fennel/lib/counter"
@@ -17,6 +16,20 @@ import (
 	"go.uber.org/zap"
 )
 
+/*
+	fixedSplitBucketizer creates buckets by splitting the duration equally among a fixed number of buckets.
+	It first computes width = duration / numBuckets. Then it divides the entire time range (not just the duration)
+	with buckets that cover a time range equal to width. Each bucket has an index which covers the time from
+	(index * width) to ((index+1)*width). Every point in time is covered by some bucket whose index is given by
+	(curTimeInSeconds / width).
+
+	splitStore divides the entire time range with groups that cover a time range of width bucketsPerGroup * bucketWidth.
+	The first group contains buckets with indices in range [0, bucketsPerGroup) and so on. A group is stored as a
+	redis hashmap. When the number of keys in a redis hashmap is small, it is stored very efficiently. So,
+	bucketsPerGroup should not be too large. Redis configuration should be set accordingly.
+
+	Ref: https://redis.io/docs/reference/optimization/memory-optimization/
+*/
 type splitStore struct {
 	bucketsPerGroup uint64
 	retention       uint64
@@ -35,12 +48,16 @@ type splitGroup struct {
 	width uint64
 }
 
-func (s splitStore) logStats(vals map[splitGroup]map[string]value.Value, mode string) {
+func (s splitStore) logStats(groups map[splitGroup][]string, mode string) {
 	valsPerKey := 0
 	count := 0
-	for _, v := range vals {
-		valsPerKey += len(v)
-		count += 1
+	for _, l := range groups {
+		for i := range l {
+			if len(l[i]) != 0 {
+				valsPerKey++
+			}
+		}
+		count++
 	}
 	metrics.WithLabelValues(fmt.Sprintf("l2_num_vals_per_key_in%s", mode)).Observe(float64(valsPerKey) / float64(count))
 }
@@ -73,10 +90,14 @@ func (s splitStore) GetMulti(
 		for j := range buckets[i] {
 			g := s.getGroup(aggIDs[i], buckets[i][j])
 			index := s.getGroupIndex(buckets[i][j].Index)
-			var ok bool
-			res[i][j], ok = vals[g][index]
-			if !ok {
+			if len(vals[g][index]) == 0 {
 				res[i][j] = defaults[i]
+			} else {
+				v, err := value.FromJSON([]byte(vals[g][index]))
+				if err != nil {
+					return nil, fmt.Errorf("failed to parse '%s' as value.Value", vals[g][index])
+				}
+				res[i][j] = v
 			}
 		}
 	}
@@ -99,14 +120,25 @@ func (s splitStore) SetMulti(
 	if err != nil {
 		return err
 	}
+	// we want to set TTL only when the hashmap was empty to begin with
+	setTTL := make(map[splitGroup]bool, len(vals))
+	for g, l := range vals {
+		setTTL[g] = true
+		for i := range l {
+			if len(l[i]) != 0 {
+				setTTL[g] = false
+				break
+			}
+		}
+	}
 	for i := range buckets {
 		for j := range buckets[i] {
 			g := s.getGroup(aggIDs[i], buckets[i][j])
 			index := s.getGroupIndex(buckets[i][j].Index)
 			if _, ok := vals[g]; !ok {
-				vals[g] = make(map[string]value.Value)
+				vals[g] = make([]string, s.bucketsPerGroup)
 			}
-			vals[g][index] = buckets[i][j].Value
+			vals[g][index] = buckets[i][j].Value.String()
 		}
 	}
 	s.logStats(vals, "set")
@@ -121,31 +153,39 @@ func (s splitStore) SetMulti(
 			zap.Int("num_keys", keyCount[aggIDs[i]]),
 		)
 	}
-	return s.setInRedis(ctx, &tier, vals)
+	return s.setInRedis(ctx, &tier, vals, setTTL)
 }
 
 func (s splitStore) getFromRedis(
 	ctx context.Context, tier *tier.Tier, aggIDs []ftypes.AggId, buckets [][]counter.Bucket,
-) (groups map[splitGroup]map[string]value.Value, err error) {
-	groups = make(map[splitGroup]map[string]value.Value, len(aggIDs))
+) (groups map[splitGroup][]string, err error) {
+	groups = make(map[splitGroup][]string, len(aggIDs))
 	keyCount := 0
+	largestKeySize := 0
 	for i := range buckets {
 		for j := range buckets[i] {
 			g := s.getGroup(aggIDs[i], buckets[i][j])
 			if _, ok := groups[g]; !ok {
-				groups[g] = make(map[string]value.Value)
+				groups[g] = make([]string, s.bucketsPerGroup)
 				keyCount++
+			}
+			if len(g.key)+50 > largestKeySize {
+				largestKeySize = len(g.key) + 50
 			}
 		}
 	}
+	keyBuf := make([]byte, largestKeySize*keyCount)
+	start := 0
 	rkeys := make([]string, keyCount)
 	ptrs := make([]splitGroup, keyCount)
 	itr := 0
 	for g := range groups {
-		rkeys[itr], err = g.getRedisKey()
+		n, err := g.getRedisKey(keyBuf, start)
 		if err != nil {
 			return nil, err
 		}
+		rkeys[itr] = string(keyBuf[start : start+n])
+		start += n
 		ptrs[itr] = g
 		itr++
 	}
@@ -155,46 +195,58 @@ func (s splitStore) getFromRedis(
 	}
 	for i := range res {
 		g := ptrs[i]
-		v := make(map[string]value.Value, len(res[i]))
-		for j := range res[i] {
-			v[j], err = value.FromJSON([]byte(res[i][j]))
+		for k, v := range res[i] {
+			j, err := strconv.ParseUint(k, 10, 64)
 			if err != nil {
-				return nil, fmt.Errorf("failed to parse value at field '%s' of key '%s': %w", j, rkeys[i], err)
+				return nil, fmt.Errorf("failed to parse bucket hashmap key '%s' as int", k)
 			}
+			groups[g][j] = v
 		}
-		groups[g] = v
 	}
 	return groups, nil
 }
 
 func (s splitStore) setInRedis(
-	ctx context.Context, tier *tier.Tier, vals map[splitGroup]map[string]value.Value,
+	ctx context.Context, tier *tier.Tier, vals map[splitGroup][]string, setTTL map[splitGroup]bool,
 ) error {
-	var rkeys []string
-	var rvals []map[string]interface{}
-	keySize := 0
+	rkeys := make([]string, len(vals))
+	rvals := make([]map[string]interface{}, len(vals))
+	ttls := make([]time.Duration, len(vals))
+	itr := 0
+	keysSize := 0
+	largestKeySize := 0
+	for g := range vals {
+		if len(g.key)+50 > largestKeySize {
+			largestKeySize = len(g.key) + 50
+		}
+	}
+	keyBuf := make([]byte, largestKeySize*len(vals))
+	start := 0
 	for g := range vals {
 		v := make(map[string]interface{}, len(vals[g]))
 		for j := range vals[g] {
-			v[j] = vals[g][j].String()
+			v[strconv.Itoa(j)] = vals[g][j]
 		}
-		k, err := g.getRedisKey()
+		n, err := g.getRedisKey(keyBuf, start)
 		if err != nil {
 			return err
 		}
-		rkeys = append(rkeys, k)
-		rvals = append(rvals, v)
-		keySize += len(k)
+		rkeys[itr] = string(keyBuf[start : start+n])
+		start += n
+		rvals[itr] = v
+		keysSize += len(rkeys[itr])
+		if setTTL[g] {
+			ttls[itr] = time.Second * time.Duration(s.retention)
+		}
+		itr++
 	}
-	ttls := make([]time.Duration, len(rkeys))
-	for i := range ttls {
-		ttls[i] = time.Second * time.Duration(s.retention)
-	}
-	metrics.WithLabelValues("redis_key_size_bytes").Observe(float64(keySize))
+	metrics.WithLabelValues("redis_key_size_bytes").Observe(float64(keysSize))
 	return tier.Redis.HSetPipelined(ctx, rkeys, rvals, ttls)
 }
 
-// getRedisKey returns key for an redis entry corresponding to the given aggregate id and group
+// getRedisKey writes the redis key corresponding to the given aggregate id and group
+// in the provided buffer at index start and returns the number of bytes written.
+// This uses a buffer to avoid CPU inefficiency working with heap memory.
 //
 // encoding is as follows:
 // 	{AggID}-{Codec}-{GroupIdentifier}
@@ -206,13 +258,13 @@ func (s splitStore) setInRedis(
 //
 // we use `-` (omitted from base91 character set) as the delimiter b/w different parts of the key to prefix search for a particular
 // AggId or (AggId, Codec) pair on redis
-func (g splitGroup) getRedisKey() (string, error) {
+func (g splitGroup) getRedisKey(buffer []byte, start int) (int, error) {
 	var aggStr, codecStr, groupStr string
 	{
 		aggBuf := make([]byte, 8)
 		cur, err := binary.PutUvarint(aggBuf, uint64(g.aggID))
 		if err != nil {
-			return "", err
+			return 0, err
 		}
 		aggStr = base91.StdEncoding.EncodeToString(aggBuf[:cur])
 	}
@@ -220,7 +272,7 @@ func (g splitGroup) getRedisKey() (string, error) {
 		codecBuf := make([]byte, 8)
 		cur, err := counterCodec2.Write(codecBuf)
 		if err != nil {
-			return "", err
+			return 0, err
 		}
 		codecStr = base91.StdEncoding.EncodeToString(codecBuf[:cur])
 	}
@@ -228,17 +280,17 @@ func (g splitGroup) getRedisKey() (string, error) {
 		groupBuf := make([]byte, 8+len(g.key)+8+8)
 		cur := 0
 		if n, err := binary.PutString(groupBuf, g.key); err != nil {
-			return "", err
+			return 0, err
 		} else {
 			cur += n
 		}
 		if n, err := binary.PutUvarint(groupBuf[cur:], g.pos); err != nil {
-			return "", err
+			return 0, err
 		} else {
 			cur += n
 		}
 		if n, err := binary.PutUvarint(groupBuf[cur:], g.width); err != nil {
-			return "", err
+			return 0, err
 		} else {
 			cur += n
 		}
@@ -246,14 +298,21 @@ func (g splitGroup) getRedisKey() (string, error) {
 	}
 
 	// concatenate the base91 encoded strings with `-` as the delimiter
-	sb := strings.Builder{}
-	sb.Grow(len(aggStr) + len(codecStr) + len(groupStr) + 2) // allocate 2 bytes for delimiter
-	sb.WriteString(aggStr)
-	sb.WriteString(redisKeyDelimiter)
-	sb.WriteString(codecStr)
-	sb.WriteString(redisKeyDelimiter)
-	sb.WriteString(groupStr)
-	return sb.String(), nil
+	i := 0
+	for _, c := range aggStr {
+		buffer[start+i] = byte(c)
+		i++
+	}
+	n := len(aggStr) + len(codecStr) + len(groupStr) + 2 // 2 bytes for delimiter
+	if start+n > len(buffer) {
+		return 0, fmt.Errorf("key buffer out of space")
+	}
+	start = writeStringToBuf(buffer, aggStr, start)
+	start = writeStringToBuf(buffer, redisKeyDelimiter, start)
+	start = writeStringToBuf(buffer, codecStr, start)
+	start = writeStringToBuf(buffer, redisKeyDelimiter, start)
+	start = writeStringToBuf(buffer, groupStr, start)
+	return n, nil
 }
 
 func (s splitStore) getGroup(aggID ftypes.AggId, bucket counter.Bucket) splitGroup {
@@ -265,6 +324,13 @@ func (s splitStore) getGroup(aggID ftypes.AggId, bucket counter.Bucket) splitGro
 	}
 }
 
-func (s splitStore) getGroupIndex(index uint64) string {
-	return strconv.FormatUint(index%s.bucketsPerGroup, 10)
+func (s splitStore) getGroupIndex(index uint64) uint64 {
+	return index % s.bucketsPerGroup
+}
+
+func writeStringToBuf(buffer []byte, str string, start int) int {
+	for i := range str {
+		buffer[start+i] = str[i]
+	}
+	return start + len(str)
 }
