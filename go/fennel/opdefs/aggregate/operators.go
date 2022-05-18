@@ -44,9 +44,15 @@ func (a AggValue) Apply(ctx context.Context, kwargs value.Dict, in operators.Inp
 		if err != nil {
 			return err
 		}
+
+		gk, ok := contextKwargs.Get("groupkey")
+		if !ok || gk == value.Nil {
+			gk = heads[0]
+		}
+
 		req := aggregate2.GetAggValueRequest{
 			AggName: ftypes.AggName(get(contextKwargs, "name").(value.String)),
-			Key:     get(contextKwargs, "groupkey"),
+			Key:     gk,
 			Kwargs:  get(contextKwargs, "kwargs").(value.Dict),
 		}
 		reqs = append(reqs, req)
@@ -82,7 +88,7 @@ func (a AggValue) Signature() *operators.Signature {
 		Input([]value.Type{value.Types.Any}).
 		ParamWithHelp("field", value.Types.String, true, true, value.String(""), "StaticKwarg: String param that is used as key post evaluation of this operator").
 		ParamWithHelp("name", value.Types.String, false, false, value.Nil, "ContextKwarg: Expr of type string when evaluated provides the name of the aggregate to be used.").
-		ParamWithHelp("groupkey", value.Types.Any, false, false, value.Nil, "ContextKwarg: Expr that is evaluated to provide the lookup/groupkey in the aggregate.").
+		ParamWithHelp("groupkey", value.Types.Any, false, true, value.Nil, "ContextKwarg: Expr that is evaluated to provide the lookup/groupkey in the aggregate.").
 		ParamWithHelp("kwargs", value.Types.Dict, false, false, value.Dict{}, "ContextKwarg: Dict of key/value pairs that are passed to the aggregate.")
 }
 
