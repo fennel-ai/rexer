@@ -155,5 +155,43 @@ func (f fixedSplitBucketizer) getIndex(ts ftypes.Timestamp, w uint64) uint64 {
 	return uint64(ts) / w
 }
 
+type thirdBucketizer struct {
+	l1Size uint64
+	l2Size uint64
+}
+
+func (t thirdBucketizer) BucketizeMoment(key string, ts ftypes.Timestamp, v value.Value) []counter.Bucket {
+	l1Index := uint64(ts) / t.l1Size
+	l2Index := (uint64(ts) % t.l1Size) / t.l2Size
+
+	return []counter.Bucket{
+		{
+			Key:    key,
+			Window: ftypes.Window_FOREVER,
+			Width:  t.l2Size,
+			Index:  t.l2Size*l1Index + l2Index,
+		},
+	}
+}
+
+func (t thirdBucketizer) BucketizeDuration(
+	key string, start, finish ftypes.Timestamp, v value.Value,
+) []counter.Bucket {
+	beg := uint64(start) / t.l2Size
+	end := uint64(finish-1) / t.l2Size
+	buckets := make([]counter.Bucket, end-beg+1)
+	for i := beg; i <= end; i++ {
+		buckets[i] = counter.Bucket{
+			Key:    key,
+			Window: ftypes.Window_FOREVER,
+			Width:  t.l2Size,
+			Index:  i,
+			Value:  v,
+		}
+	}
+	return buckets
+}
+
 var _ Bucketizer = fixedWidthBucketizer{}
 var _ Bucketizer = fixedSplitBucketizer{}
+var _ Bucketizer = thirdBucketizer{}
