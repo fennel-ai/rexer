@@ -6,6 +6,9 @@ import unittest
 import lib
 
 import rexerclient as rex
+from rexerclient import client
+from rexerclient.models import model
+from rexerclient.rql import op
 
 
 # URL to the staging tier LB
@@ -72,3 +75,50 @@ class TestStagingEndToEnd(unittest.TestCase):
                 time.sleep(5.0)
 
             self.assertEqual(val_now, init_val + _NEW_ACTIONS)
+
+
+    # TODO(mohit): Allow running this test once CI is setup with necessary permissions and keys
+    @unittest.skip
+    def test_model_upload_predict(self):
+        c = rex.Client(_URL)
+        dir_path = os.path.dirname(os.path.realpath(__file__))
+        m = model.XGBoostModel(os.path.join(dir_path, 'model'), '1.3-1')
+
+        uploaded = False
+        for _ in range(20):
+            try:
+                c.upload_model('name', 'v2', m)
+                uploaded = True
+            except client.RetryError as err:
+                print(f"Retrying in 60s due to error: {err}")
+                time.sleep(60)
+                continue
+            break
+        self.assertTrue(uploaded)
+
+        found = None
+        for _ in range(20):
+            try:
+                q = op.std.predict([1], features=[
+                    0, 0, 0, 0, 0, 0, 0, 1, 0, 1, 0, 1, 0, 0, 1, 0,
+                    0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1, 0,
+                    0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 1, 0, 0,
+                    1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 1, 0,
+                    0, 0, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0,
+                    0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1, 0, 0, 1,
+                    0, 0, 1, 0, 0, 0, 0, 0, 1, 0, 1, 0, 0, 0, 0, 0,
+                    0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0,
+                ], model_name='name', model_version='v2')
+                found = c.query(q)
+                self.assertEqual(1, len(found))
+            except client.HTTPError:
+                print("Retrying to score the model in 60s")
+                time.sleep(60)
+                continue
+            break
+        self.assertEqual(1, len(found))
+
+        # TODO(mohit): Consider adding back model deletion.
+        # Currently upload and deleting a model takes ~10-15 mins for creating sagemaker endpoint
+        # for the e2e testing purpose, we just upload the model (which is an idempotent operation)
+        # and run predictions against it 

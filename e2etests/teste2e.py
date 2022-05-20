@@ -6,10 +6,9 @@ import unittest
 import time
 from datetime import datetime, timezone, timedelta
 import lib
-import rexerclient
 import rexerclient as rex
 from rexerclient import client
-from rexerclient.models import action, profile, model
+from rexerclient.models import action, profile
 from rexerclient.rql import var, op, cond, in_, len_, op
 
 URL = 'http://localhost:2425'
@@ -430,58 +429,6 @@ class TestEndToEnd(unittest.TestCase):
                 time.sleep(5)
 
         self.assertTrue(found)
-
-    @unittest.skip
-    @tiered
-    def test_model_upload_delete(self):
-        c = client.Client(URL)
-        m = model.XGBoostModel('model', '1.3-1')
-
-        uploaded = False
-        for i in range(20):
-            try:
-                c.upload_model('name', 'v2', m)
-                uploaded = True
-            except client.RetryError as err:
-                print(f"Retrying in 60s due to error: {err}")
-                time.sleep(60)
-                continue
-            break
-        self.assertTrue(uploaded)
-
-        found = None
-        for i in range(20):
-            try:
-                q = op.std.predict([1], features=[
-                    0, 0, 0, 0, 0, 0, 0, 1, 0, 1, 0, 1, 0, 0, 1, 0,
-                    0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1, 0,
-                    0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 1, 0, 0,
-                    1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 1, 0,
-                    0, 0, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0,
-                    0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1, 0, 0, 1,
-                    0, 0, 1, 0, 0, 0, 0, 0, 1, 0, 1, 0, 0, 0, 0, 0,
-                    0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0,
-                ], model_name='name', model_version='v2')
-                found = c.query(q)
-                self.assertEqual(1, len(found))
-            except client.HTTPError:
-                print("Retrying to score the model in 60s")
-                time.sleep(60)
-                continue
-            break
-        self.assertEqual(1, len(found))
-
-        deleted = False
-        for i in range(20):
-            try:
-                c.delete_model('name', 'v2')
-                deleted = True
-            except client.RetryError as err:
-                print(f"Retrying in 60s due to error: {err}")
-                time.sleep(60)
-                continue
-            break
-        self.assertTrue(deleted)
 
 
 @unittest.skip
