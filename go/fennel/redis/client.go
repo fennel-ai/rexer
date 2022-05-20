@@ -164,7 +164,7 @@ func (c Client) HGetAllPipelined(ctx context.Context, keys ...string) (hmaps []m
 	}
 	pipe := c.client.Pipeline()
 	for _, key := range keys {
-		_, err := pipe.HGetAll(ctx, key).Result()
+		_, err := pipe.HGetAll(ctx, c.tieredKey(key)).Result()
 		// Return errors that happen before execution
 		if err != nil {
 			return nil, err
@@ -204,14 +204,14 @@ func (c Client) HSetPipelined(
 		if len(values[i]) == 0 {
 			continue
 		}
-		err = pipe.HSet(ctx, key, values[i]).Err()
+		err = pipe.HSet(ctx, c.tieredKey(key), values[i]).Err()
 		if err != nil {
 			// Return errors that happen before execution
 			return err
 		}
 		if ttls[i] != 0 {
 			// does not set TTL when it is 0
-			err = pipe.Expire(ctx, key, ttls[i]).Err()
+			err = pipe.Expire(ctx, c.tieredKey(key), ttls[i]).Err()
 			if err != nil {
 				return err
 			}
