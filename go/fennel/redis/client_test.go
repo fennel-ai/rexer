@@ -180,7 +180,7 @@ func testHashmap(t *testing.T, c Client) {
 	ttls := make([]time.Duration, n)
 
 	for i := 0; i < 10; i++ {
-		keys[i] = strconv.Itoa(i)
+		keys[i] = "h" + strconv.Itoa(i)
 		ttls[i] = 10 * time.Second
 		values[i] = make(map[string]interface{}, 10)
 		expected0[i] = map[string]string{}
