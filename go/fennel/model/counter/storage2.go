@@ -301,11 +301,6 @@ func (g splitGroup) getRedisKey(buffer []byte, start int) (int, error) {
 	}
 
 	// concatenate the base91 encoded strings with `-` as the delimiter
-	i := 0
-	for _, c := range aggStr {
-		buffer[start+i] = byte(c)
-		i++
-	}
 	n := len(aggStr) + len(codecStr) + len(groupStr) + 2 // 2 bytes for delimiter
 	if start+n > len(buffer) {
 		return 0, fmt.Errorf("key buffer out of space")

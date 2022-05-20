@@ -406,3 +406,67 @@ func TestFixedSplitBucketizer_BucketizeMoment(t *testing.T) {
 	}
 	assert.Equal(t, expected, found)
 }
+
+func TestThirdBucketizer_BucketizeDuration(t *testing.T) {
+	scenarios := []struct {
+		size               uint64
+		start              ftypes.Timestamp
+		finish             ftypes.Timestamp
+		expectedStartIndex int
+		expectedNumBuckets int
+	}{
+		{60, 0, 120, 0, 2},
+		{60, 30, 120, 0, 2},
+		{60, 30, 90, 0, 2},
+		{60, 60, 90, 1, 1},
+		{60, 60, 120, 1, 1},
+		{60, 60, 121, 1, 2},
+		{0, 0, 0, 0, 1},
+		{0, 9143, 1942131, 0, 1},
+	}
+
+	for _, scenario := range scenarios {
+		bzer := thirdBucketizer{size: scenario.size}
+		found := bzer.BucketizeDuration("key", scenario.start, scenario.finish, value.Int(0))
+		assert.Len(t, found, scenario.expectedNumBuckets)
+		for i := range found {
+			expected := counter.Bucket{
+				Key:    "key",
+				Window: ftypes.Window_FOREVER,
+				Width:  scenario.size,
+				Index:  uint64(i + scenario.expectedStartIndex),
+				Value:  value.Int(0),
+			}
+			assert.Equal(t, expected, found[i])
+		}
+	}
+}
+
+func TestThirdBucketizer_BucketizeMoment(t *testing.T) {
+	scenarios := []struct {
+		size          uint64
+		ts            ftypes.Timestamp
+		expectedIndex uint64
+	}{
+		{60, 0, 0},
+		{60, 30, 0},
+		{60, 59, 0},
+		{60, 60, 1},
+		{60, 120, 2},
+		{0, 0, 0},
+		{0, 38140, 0},
+	}
+
+	for _, scenario := range scenarios {
+		bzer := thirdBucketizer{size: scenario.size}
+		found := bzer.BucketizeMoment("key", scenario.ts, value.Int(0))
+		assert.Len(t, found, 1)
+		assert.Equal(t, counter.Bucket{
+			Key:    "key",
+			Window: ftypes.Window_FOREVER,
+			Width:  scenario.size,
+			Index:  scenario.expectedIndex,
+			Value:  value.Int(0),
+		}, found[0])
+	}
+}

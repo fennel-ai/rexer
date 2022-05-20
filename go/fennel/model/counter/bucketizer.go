@@ -136,7 +136,7 @@ func (f fixedSplitBucketizer) BucketizeDuration(
 	end := f.getIndex(finish-1, w)
 	buckets := make([]counter.Bucket, end-beg+1)
 	for i := beg; i <= end; i++ {
-		buckets[i] = counter.Bucket{
+		buckets[i-beg] = counter.Bucket{
 			Key:    key,
 			Window: ftypes.Window_FOREVER,
 			Width:  w,
@@ -155,5 +155,51 @@ func (f fixedSplitBucketizer) getIndex(ts ftypes.Timestamp, w uint64) uint64 {
 	return uint64(ts) / w
 }
 
+// thirdBucketizer splits the entire time space into buckets of size each.
+// Bucket 0, covers the time range [0, size) and so on.
+// When size = 0, there is one infinite bucket which covers the entire time space.
+type thirdBucketizer struct {
+	size uint64
+}
+
+func (t thirdBucketizer) BucketizeMoment(key string, ts ftypes.Timestamp, v value.Value) []counter.Bucket {
+	return []counter.Bucket{
+		{
+			Key:    key,
+			Window: ftypes.Window_FOREVER,
+			Width:  t.size,
+			Index:  t.getIndex(ts),
+			Value:  v,
+		},
+	}
+}
+
+func (t thirdBucketizer) BucketizeDuration(
+	key string, start, finish ftypes.Timestamp, v value.Value,
+) []counter.Bucket {
+	beg := t.getIndex(start)
+	end := t.getIndex(finish - 1)
+	buckets := make([]counter.Bucket, end-beg+1)
+	for i := beg; i <= end; i++ {
+		buckets[i-beg] = counter.Bucket{
+			Key:    key,
+			Window: ftypes.Window_FOREVER,
+			Width:  t.size,
+			Index:  i,
+			Value:  v,
+		}
+	}
+	return buckets
+}
+
+func (t thirdBucketizer) getIndex(ts ftypes.Timestamp) uint64 {
+	// If size is 0, width is infinite so we return 0
+	if t.size == 0 {
+		return 0
+	}
+	return uint64(ts) / t.size
+}
+
 var _ Bucketizer = fixedWidthBucketizer{}
 var _ Bucketizer = fixedSplitBucketizer{}
+var _ Bucketizer = thirdBucketizer{}

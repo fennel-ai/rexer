@@ -29,6 +29,7 @@ const (
 	counterCodec codex.Codex = 1
 	// with counterCodec = 2 the schema is : <agg_id>:<group_key>:<group_id>
 	counterCodec2 codex.Codex = 2
+	counterCodec3 codex.Codex = 3
 
 	// slotCodec is used to differentiate keys in potentially different schemas
 	// with slotCodec = 1, the schema is: <width>:<index> for `Window_MINUTE` and <window>:<width>:<index> for rest.
