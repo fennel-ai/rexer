@@ -41,4 +41,11 @@ func TestSortOperator_Apply(t *testing.T) {
 	tr := tier.Tier{}
 	optest.AssertEqual(t, tr, &SortOperator{}, orders[0], [][]value.Value{intable}, contextKwargs, expected[0])
 	optest.AssertEqual(t, tr, &SortOperator{}, orders[1], [][]value.Value{intable}, contextKwargs, expected[1])
+
+	// Sort a list of numbers.
+	optest.AssertEqual(t, tr, &SortOperator{}, value.NewDict(nil),
+		[][]value.Value{{value.Int(2), value.Int(1), value.Double(3.0)}},
+		[]value.Dict{value.NewDict(nil), value.NewDict(nil), value.NewDict(nil)},
+		[]value.Value{value.Int(1), value.Int(2), value.Double(3.0)},
+	)
 }
