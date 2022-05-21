@@ -22,39 +22,43 @@ func (op SortOperator) New(
 
 func (op SortOperator) Signature() *operators.Signature {
 	return operators.NewSignature("std", "sort").
-		Input([]value.Type{value.Types.Dict}).
-		ParamWithHelp("by", value.Types.Number, false, false, value.Nil, "ContextKwargs: The value to be sorted on").
+		ParamWithHelp("by", value.Types.Any, false, true, nil, "The value to be sorted on").
 		ParamWithHelp("reverse", value.Types.Bool, true, true, value.Bool(false), "StaticKwargs: Set true to get descending sort order")
 }
 
 func (op SortOperator) Apply(_ context.Context, staticKwargs value.Dict, in operators.InputIter, out *value.List) error {
 	type sortableRow struct {
-		data value.Value
 		key  float64
+		data value.Value
 	}
 	var rows []sortableRow
 	for in.HasMore() {
-		heads, contextKwargs, err := in.Next()
+		heads, kwargs, err := in.Next()
 		if err != nil {
 			return err
 		}
-		row := heads[0]
+		var key value.Value
+		by, _ := kwargs.Get("by")
+		if by == nil {
+			key = heads[0]
+		} else {
+			key = by
+		}
 		var v float64
-		key, _ := contextKwargs.Get("by")
 		switch key := key.(type) {
 		case value.Int:
 			v = float64(key)
 		case value.Double:
 			v = float64(key)
 		default:
-			expType := op.Signature().ContextKwargs["by"].Type
-			return fmt.Errorf("value of context kwarg 'by' is not of type '%s': %s", expType, expType.Validate(key))
+			return fmt.Errorf("sort key should be a number. Got [%s]", key.String())
 		}
-		rows = append(rows, sortableRow{data: row, key: v})
+		rows = append(rows, sortableRow{data: heads[0], key: v})
 	}
+	rk, _ := staticKwargs.Get("reverse")
+	reverse := rk.(value.Bool)
 	sort.SliceStable(rows, func(i, j int) bool {
-		v, _ := staticKwargs.Get("reverse")
-		if !v.(value.Bool) {
+		if !reverse {
 			return rows[i].key < rows[j].key
 		} else {
 			return rows[i].key > rows[j].key
