@@ -24,6 +24,10 @@ import (
 )
 
 func TestStoreScoreRemoveModel(t *testing.T) {
+	if os.Getenv("long") == "" {
+		t.Skip("Skipping long test")
+	}
+
 	tier, err := test.Tier()
 	assert.NoError(t, err)
 	defer test.Teardown(tier)
@@ -49,7 +53,7 @@ func TestStoreScoreRemoveModel(t *testing.T) {
 			break
 		}
 		log.Print("Waiting one minute before retrying to store")
-		time.Sleep(3 * time.Minute)
+		time.Sleep(time.Minute)
 	}
 	assert.NoError(t, err)
 
@@ -64,7 +68,7 @@ func TestStoreScoreRemoveModel(t *testing.T) {
 			break
 		}
 		log.Print("Waiting one minute before retrying to score")
-		time.Sleep(3 * time.Minute)
+		time.Sleep(time.Minute)
 	}
 	assert.NoError(t, err)
 	assert.Equal(t, len(featureVecs), len(scores))
@@ -76,7 +80,7 @@ func TestStoreScoreRemoveModel(t *testing.T) {
 			break
 		}
 		log.Print("Waiting one minute before retrying to remove")
-		time.Sleep(3 * time.Minute)
+		time.Sleep(time.Minute)
 	}
 	assert.NoError(t, err)
 }
@@ -134,6 +138,9 @@ func cleanupPreTrainedModelTest(t *testing.T, tier tier.Tier, model string) {
 }
 
 func TestEnsureEndpoint(t *testing.T) {
+	if os.Getenv("long") == "" {
+		t.Skip("Skipping long test")
+	}
 	tier, err := test.Tier()
 	assert.NoError(t, err)
 	defer test.Teardown(tier)
