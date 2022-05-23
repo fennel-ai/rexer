@@ -232,12 +232,6 @@ func Remove(ctx context.Context, tier tier.Tier, name, version string) error {
 	return EnsureEndpointExists(ctx, tier)
 }
 
-// FetchEmbeddings attempts to call the approriate sagemaker endpoint to fetch the embeddings for all inputs in one call.
-// func FetchEmbeddings(ctx context.Context, tier tier.Tier, name, version string, embeddingType string, embeddingSize int) ([]float64, error) {
-
-// 	// get model
-// }
-
 // Score calls SageMaker to score the model with provided list of inputs and returns a corresponding list of outputs
 // on a successful run. Returns an error of type modelstore.RetryError when the error is only
 // temporary and sending the request again after a few minutes is recommended.

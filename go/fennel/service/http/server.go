@@ -565,7 +565,7 @@ func (m server) EnableModel(w http.ResponseWriter, req *http.Request) {
 		handleBadRequest(w, "invalid request: ", err)
 		return
 	}
-	err = modelstore.Remove(req.Context(), m.tier, delReq.Name, delReq.Version)
+	err = modelstore.EnableModel(req.Context(), m.tier, modelName.Model)
 	if err != nil {
 		var retry modelstore.RetryError
 		if errors.As(err, &retry) {
