@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/aws/awserr"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/aws/aws-sdk-go/service/s3/s3manager"
@@ -48,9 +49,16 @@ func (c Client) ListFiles(bucketName, pathPrefix string) ([]string, error) {
 		MaxKeys: aws.Int64(10000),
 	}
 	output, err := c.client.ListObjectsV2(&input)
+
 	if err != nil {
+		if aerr, ok := err.(awserr.Error); ok {
+			if aerr.Code() == s3.ErrCodeNoSuchBucket {
+				return []string{}, nil
+			}
+		}
 		return nil, err
 	}
+
 	var files []string
 	for _, obj := range output.Contents {
 		files = append(files, *obj.Key)
@@ -89,6 +97,41 @@ func (c Client) Delete(path string, bucketName string) error {
 	objects := []s3manager.BatchDeleteObject{{Object: &input}}
 	iterator := s3manager.DeleteObjectsIterator{Objects: objects}
 	return c.deleter.Delete(aws.BackgroundContext(), &iterator)
+}
+
+// srcPath is the entire path include the bucket name eg s3://bucket/path/to/file ->b srcPath = bucket/path/to/file
+// dstPath is the suffix of the path (excluding the bucket name) eg s3://bucket/path/to/file -> dstPath = path/to/file
+func (c Client) CopyFile(srcPath, dstPath, dstBucketName string) error {
+	// Check if bucket exists
+	input := s3.HeadBucketInput{
+		Bucket: aws.String(dstBucketName),
+	}
+	_, err := c.client.HeadBucket(&input)
+
+	// If bucket does not exist, create it
+	if err != nil {
+		if aerr, ok := err.(awserr.Error); ok {
+			if aerr.Code() != "NotFound" {
+				return err
+			}
+		}
+		// Create S3 bucket
+		input := s3.CreateBucketInput{
+			Bucket: aws.String(dstBucketName),
+		}
+		_, err = c.client.CreateBucket(&input)
+		if err != nil {
+			return err
+		}
+	}
+
+	copyInput := s3.CopyObjectInput{
+		Bucket:     aws.String(dstBucketName),
+		CopySource: aws.String(srcPath),
+		Key:        aws.String(dstPath),
+	}
+	_, err = c.client.CopyObject(&copyInput)
+	return err
 }
 
 // Downloads the s3 files to the folder specified with the same file names as in the s3 bucket

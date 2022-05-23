@@ -12,6 +12,15 @@ type ModelStoreArgs struct {
 	ModelStoreEndpointName string `arg:"--model-store-endpoint,env:MODEL_STORE_ENDPOINT,help:Model Store endpoint name"`
 }
 
+// Model Stores are kept seperate from Pretrained model stores. This is because
+// the pretrained models have shared S3 artifacts across all planes and have one endpoint per model ( check model_store.go ),
+// rather than all models sharing an endpoint ( Harder since these models are more heavy).
+// Pretrained models use serverless config for now ( can be changed later)
+type PreTrainedModelStore struct {
+	endpointName string
+	model        string
+}
+
 type ModelStore struct {
 	s3Bucket     string
 	endpointName string

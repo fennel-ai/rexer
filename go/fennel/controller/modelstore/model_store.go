@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"math/rand"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 
@@ -20,6 +21,131 @@ type RetryError error
 // local cache of model container name to framework.
 // key type is string, value type is string.
 var frameworkCache = sync.Map{}
+
+type ModelRegistry = map[string]map[string]string
+
+var SupportedPretrainedModels = ModelRegistry{
+	"sbert": {
+		"model_storage":     "s3://sagemaker-us-west-2-030813887342/custom_inference/all-MiniLM-L6-v2/model.tar.gz",
+		"info":              "https://huggingface.co/sentence-transformers/all-MiniLM-L6-v2",
+		"framework":         "huggingface",
+		"framework_version": "4.12",
+	},
+}
+
+func GetSupportedModels() string {
+	keys := ""
+	for k := range SupportedPretrainedModels {
+		keys += k + " ,"
+	}
+	return keys
+}
+
+// For pretrained models we will use this Id for everthing (model, endpoint, endpoint config)
+// This enables us to directly check if end point exists and call it, without havings to maintain info in the db.
+func PreTrainedModelId(model string, tierId ftypes.RealmID) string {
+	return fmt.Sprintf("Model-%s-%d", model, tierId)
+}
+
+// The model file and the sagemaker region should be in the same region.
+func ensureModelFileInRegion(tier tier.Tier, modelFile string) (string, error) {
+	region := tier.SagemakerClient.GetSMCRegion()
+	parts := strings.Split(modelFile, "/")
+
+	s3Bucket := "sagemaker-" + region + "-030813887342"
+	// parts is broken in [s3, "", <region_specific_prefix>, custom_inference, <model_name>, model.tar.gz]
+
+	prefix := parts[3] + parts[4]
+	files, err := tier.S3Client.ListFiles(s3Bucket, prefix)
+	if err != nil {
+		return "", err
+	}
+
+	if len(files) != 0 {
+		for _, f := range files {
+			if f == "model.tar.gz" {
+				return "s3://" + s3Bucket + "/" + strings.Join(parts[3:], "/"), nil
+			}
+		}
+	}
+	err = tier.S3Client.CopyFile(strings.Join(parts[2:], "/"), strings.Join(parts[3:], "/"), s3Bucket)
+	if err != nil {
+		return "", err
+	}
+	return "s3://" + s3Bucket + "/" + strings.Join(parts[3:], "/"), nil
+}
+
+// Creates an endpoint if it does not exist.
+func EnableModel(ctx context.Context, tier tier.Tier, model string) error {
+	modelConfig, ok := SupportedPretrainedModels[model]
+	if !ok {
+		return fmt.Errorf("model %s is not supported, currently supported models are: %s", model, GetSupportedModels())
+	}
+	sagemakerModelId := PreTrainedModelId(model, tier.ID)
+
+	// Check if endpoint exists
+	exists, err := tier.SagemakerClient.EndpointExists(ctx, sagemakerModelId)
+	if err != nil {
+		return fmt.Errorf("failed to check if endpoint exists on sagemaker: %v", err)
+	}
+	if exists {
+		return nil
+	}
+
+	// If not, create endpoint, which consists of 3 steps.
+
+	// 1. Create SageMaker model.
+	exists, err = tier.SagemakerClient.ModelExists(ctx, sagemakerModelId)
+	if err != nil {
+		return fmt.Errorf("failed to check if model exists on sagemaker: %v", err)
+	}
+	if !exists {
+		modelStorage, err := ensureModelFileInRegion(tier, modelConfig["model_storage"])
+		if err != nil {
+			return fmt.Errorf("failed to ensure if model file exists in region: %w", err)
+		}
+
+		model := lib.Model{
+			Name:             model,
+			Version:          "1",
+			Framework:        modelConfig["framework"],
+			FrameworkVersion: modelConfig["framework_version"],
+			ArtifactPath:     modelStorage,
+		}
+		err = tier.SagemakerClient.CreateModel(ctx, []lib.Model{model}, sagemakerModelId)
+		if err != nil {
+			return fmt.Errorf("failed to create model on sagemaker: %v", err)
+		}
+	}
+
+	// 2. Create SageMaker endpoint config
+
+	exists, err = tier.SagemakerClient.EndpointConfigExists(ctx, sagemakerModelId)
+	if err != nil {
+		return fmt.Errorf("failed to check if endpoint config exists on sagemaker: %v", err)
+	}
+	if !exists {
+		endpointCfg := lib.SagemakerEndpointConfig{
+			Name:                     sagemakerModelId,
+			ModelName:                sagemakerModelId,
+			VariantName:              sagemakerModelId,
+			ServerlessMaxConcurrency: 50,
+			ServerlessMemory:         2048,
+		}
+		err = tier.SagemakerClient.CreateEndpointConfig(ctx, endpointCfg)
+		if err != nil {
+			return fmt.Errorf("failed to create endpoint config on sagemaker: %v", err)
+		}
+	}
+
+	// 3. Create SageMaker endpoint
+
+	endpoint := lib.SagemakerEndpoint{
+		Name:               sagemakerModelId,
+		EndpointConfigName: sagemakerModelId,
+	}
+	return tier.SagemakerClient.CreateEndpoint(ctx, endpoint)
+}
 
 // Store attempts to store a model in the DB and SageMaker. Returns an error
 // of type modelstore.RetryError when retrying after a few minutes is recommended.
@@ -105,6 +231,12 @@ func Remove(ctx context.Context, tier tier.Tier, name, version string) error {
 	}
 	return EnsureEndpointExists(ctx, tier)
 }
+
+// FetchEmbeddings attempts to call the approriate sagemaker endpoint to fetch the embeddings for all inputs in one call.
+// func FetchEmbeddings(ctx context.Context, tier tier.Tier, name, version string, embeddingType string, embeddingSize int) ([]float64, error) {
+
+// 	// get model
+// }
 
 // Score calls SageMaker to score the model with provided list of inputs and returns a corresponding list of outputs
 // on a successful run. Returns an error of type modelstore.RetryError when the error is only

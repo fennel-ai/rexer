@@ -50,6 +50,10 @@ type SMClient struct {
 var _ lib.SagemakerRegistry = SMClient{}
 var _ lib.InferenceServer = SMClient{}
 
+func (smc SMClient) GetSMCRegion() string {
+	return smc.args.Region
+}
+
 func (smc SMClient) CreateModel(ctx context.Context, hostedModels []lib.Model, sagemakerModelName string) error {
 	if len(hostedModels) == 0 {
 		return nil
@@ -219,16 +223,33 @@ func getImage(framework, version, region string) (string, error) {
 }
 
 func (smc SMClient) CreateEndpointConfig(ctx context.Context, endpointCfg lib.SagemakerEndpointConfig) error {
-	endpointCfgInput := sagemaker.CreateEndpointConfigInput{
-		EndpointConfigName: aws.String(endpointCfg.Name),
-		ProductionVariants: []*sagemaker.ProductionVariant{
-			{
-				ModelName:            aws.String(endpointCfg.ModelName),
-				VariantName:          aws.String(endpointCfg.VariantName),
-				InstanceType:         aws.String(endpointCfg.InstanceType),
-				InitialInstanceCount: aws.Int64(int64(endpointCfg.InstanceCount)),
+	var endpointCfgInput sagemaker.CreateEndpointConfigInput
+	if endpointCfg.InstanceCount > 0 {
+		endpointCfgInput = sagemaker.CreateEndpointConfigInput{
+			EndpointConfigName: aws.String(endpointCfg.Name),
+			ProductionVariants: []*sagemaker.ProductionVariant{
+				{
+					ModelName:            aws.String(endpointCfg.ModelName),
+					VariantName:          aws.String(endpointCfg.VariantName),
+					InstanceType:         aws.String(endpointCfg.InstanceType),
+					InitialInstanceCount: aws.Int64(int64(endpointCfg.InstanceCount)),
+				},
 			},
-		},
+		}
+	} else {
+		endpointCfgInput = sagemaker.CreateEndpointConfigInput{
+			EndpointConfigName: aws.String(endpointCfg.Name),
+			ProductionVariants: []*sagemaker.ProductionVariant{
+				{
+					ModelName:   aws.String(endpointCfg.ModelName),
+					VariantName: aws.String(endpointCfg.VariantName),
+					ServerlessConfig: &sagemaker.ProductionVariantServerlessConfig{
+						MaxConcurrency: aws.Int64(int64(endpointCfg.ServerlessMaxConcurrency)),
+						MemorySizeInMB: aws.Int64(int64(endpointCfg.ServerlessMemory)),
+					},
+				},
+			},
+		}
 	}
 	_, err := smc.metadataClient.CreateEndpointConfigWithContext(ctx, &endpointCfgInput)
 	if err != nil {
@@ -238,6 +259,18 @@ func (smc SMClient) CreateEndpointConfig(ctx context.Context, endpointCfg lib.Sa
 }
 
 func (smc SMClient) CreateEndpoint(ctx context.Context, endpoint lib.SagemakerEndpoint) error {
+	endpointInput := sagemaker.CreateEndpointInput{
+		EndpointName:       aws.String(endpoint.Name),
+		EndpointConfigName: aws.String(endpoint.EndpointConfigName),
+	}
+	_, err := smc.metadataClient.CreateEndpointWithContext(ctx, &endpointInput)
+	if err != nil {
+		return fmt.Errorf("failed to create endpoint on sagemaker: %v", err)
+	}
+	return nil
+}
+
+func (smc SMClient) CreateServerlessEndpoint(ctx context.Context, endpoint lib.SagemakerEndpoint) error {
 	endpointInput := sagemaker.CreateEndpointInput{
 		EndpointName:       aws.String(endpoint.Name),
 		EndpointConfigName: aws.String(endpoint.EndpointConfigName),

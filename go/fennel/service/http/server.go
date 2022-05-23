@@ -89,6 +89,7 @@ func (s server) setHandlers(router *mux.Router) {
 	router.HandleFunc("/get_operators", s.GetOperators)
 	router.HandleFunc("/upload_model", s.UploadModel)
 	router.HandleFunc("/delete_model", s.DeleteModel)
+	router.HandleFunc("/enable_model", s.EnableModel)
 }
 
 func constructDedupKey(dedupKey string, actionType ftypes.ActionType) string {
@@ -536,6 +537,31 @@ func (m server) DeleteModel(w http.ResponseWriter, req *http.Request) {
 		Version string
 	}
 	if err := json.Unmarshal(data, &delReq); err != nil {
+		handleBadRequest(w, "invalid request: ", err)
+		return
+	}
+	err = modelstore.Remove(req.Context(), m.tier, delReq.Name, delReq.Version)
+	if err != nil {
+		var retry modelstore.RetryError
+		if errors.As(err, &retry) {
+			handleServiceUnavailable(w, "", err)
+		} else {
+			handleInternalServerError(w, "", err)
+		}
+		return
+	}
+}
+
+func (m server) EnableModel(w http.ResponseWriter, req *http.Request) {
+	data, err := readRequest(req)
+	if err != nil {
+		handleBadRequest(w, "", err)
+		return
+	}
+	var modelName struct {
+		Model string `json:"Model"`
+	}
+	if err := json.Unmarshal(data, &modelName); err != nil {
 		handleBadRequest(w, "invalid request: ", err)
 		return
 	}
