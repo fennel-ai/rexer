@@ -15,6 +15,7 @@ import (
 	"fennel/lib/value"
 	db "fennel/model/sagemaker"
 	"fennel/modelstore"
+	"fennel/s3"
 	"fennel/sagemaker"
 	"fennel/test"
 	"fennel/tier"
@@ -48,7 +49,7 @@ func TestStoreScoreRemoveModel(t *testing.T) {
 			break
 		}
 		log.Print("Waiting one minute before retrying to store")
-		time.Sleep(time.Minute)
+		time.Sleep(3 * time.Minute)
 	}
 	assert.NoError(t, err)
 
@@ -63,7 +64,7 @@ func TestStoreScoreRemoveModel(t *testing.T) {
 			break
 		}
 		log.Print("Waiting one minute before retrying to score")
-		time.Sleep(time.Minute)
+		time.Sleep(3 * time.Minute)
 	}
 	assert.NoError(t, err)
 	assert.Equal(t, len(featureVecs), len(scores))
@@ -75,7 +76,7 @@ func TestStoreScoreRemoveModel(t *testing.T) {
 			break
 		}
 		log.Print("Waiting one minute before retrying to remove")
-		time.Sleep(time.Minute)
+		time.Sleep(3 * time.Minute)
 	}
 	assert.NoError(t, err)
 }
@@ -92,7 +93,7 @@ func TestPretrainedModelEndPoint(t *testing.T) {
 	})
 	assert.NoError(t, err)
 	tier.SagemakerClient = c
-
+	tier.S3Client = s3.NewClient(s3.S3Args{Region: "us-west-2"})
 	model := "sbert"
 	defer cleanupPreTrainedModelTest(t, tier, model)
 

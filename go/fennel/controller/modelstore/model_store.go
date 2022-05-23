@@ -55,15 +55,16 @@ func ensureModelFileInRegion(tier tier.Tier, modelFile string) (string, error) {
 	s3Bucket := "sagemaker-" + region + "-030813887342"
 	// parts is broken in [s3, "", <region_specific_prefix>, custom_inference, <model_name>, model.tar.gz]
 
-	prefix := parts[3] + parts[4]
+	prefix := parts[3] + "/" + parts[4]
 	files, err := tier.S3Client.ListFiles(s3Bucket, prefix)
 	if err != nil {
 		return "", err
 	}
-
 	if len(files) != 0 {
 		for _, f := range files {
-			if f == "model.tar.gz" {
+			fileNameParts := strings.Split(f, "/")
+			fileName := fileNameParts[len(fileNameParts)-1]
+			if fileName == "model.tar.gz" {
 				return "s3://" + s3Bucket + "/" + strings.Join(parts[3:], "/"), nil
 			}
 		}
