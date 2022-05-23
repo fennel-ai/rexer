@@ -90,8 +90,8 @@ var Schema = db.Schema{
 			instance_type VARCHAR(255) NOT NULL,
 			instance_count INT NOT NULL DEFAULT 1,
 			-- The following fields are optional and are only used for SageMaker Serverless Configs.
-			serverless_max_conccurency INT NULL,
-			serverless_memory INT NULL,
+			serverless_max_concurrency INT NOT NULL DEFAULT 0,
+			serverless_memory INT NOT NULL DEFAULT 0,
 			PRIMARY KEY (name, variant_name)
 		);`,
 
