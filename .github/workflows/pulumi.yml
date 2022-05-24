@@ -39,5 +39,7 @@ jobs:
           echo "install and setup pulumi"
           curl -fsSL https://get.pulumi.com | sh
           pulumi login
+          echo "adding pulumi to PATH"
+          export PATH=$PATH:/home/ubuntu/.pulumi/bin
           echo "running launchpad for plane: 3"
           npm run preview 3
