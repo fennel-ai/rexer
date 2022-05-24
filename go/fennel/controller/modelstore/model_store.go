@@ -63,6 +63,9 @@ func ensureModelFileInRegion(tier tier.Tier, modelFile string) (string, error) {
 
 	s3Bucket := "sagemaker-" + region + "-030813887342"
 	// parts is broken in [s3, "", <region_specific_prefix>, custom_inference, <model_name>, model.tar.gz]
+	if len(parts) != 6 {
+		return "", fmt.Errorf("model file path is not in the expected format: %v", modelFile)
+	}
 
 	prefix := parts[3] + "/" + parts[4]
 	files, err := tier.S3Client.ListFiles(s3Bucket, prefix)

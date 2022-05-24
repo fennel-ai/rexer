@@ -80,7 +80,7 @@ func (p pretrainedModel) Apply(ctx context.Context, kwargs value.Dict, in operat
 }
 
 func (p pretrainedModel) Signature() *operators.Signature {
-	return operators.NewSignature("feature", "log").
+	return operators.NewSignature("embedding", "model").
 		Input([]value.Type{value.Types.Dict}).
 		ParamWithHelp("field", value.Types.String, true, true, value.String(""), "StaticKwarg: String param that is used as key post evaluation of this operator").
 		ParamWithHelp("model", value.Types.String, true, false, nil, "model name that should be called for eg sbert").

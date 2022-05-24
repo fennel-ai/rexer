@@ -86,6 +86,9 @@ func TestStoreScoreRemoveModel(t *testing.T) {
 }
 
 func TestPretrainedModelEndPoint(t *testing.T) {
+	if os.Getenv("long") == "" {
+		t.Skip("Skipping long test")
+	}
 	tier, err := test.Tier()
 	assert.NoError(t, err)
 	defer test.Teardown(tier)
