@@ -28,7 +28,7 @@ jobs:
           sudo apt install unzip
           curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
           unzip awscliv2.zip
-          sudo ./aws/install
+          sudo ./aws/install --update
 
       - name: Install dependencies
         working-directory: cloud/pulumi/ts
@@ -63,7 +63,7 @@ jobs:
           notification_title: '{workflow} has {status_message}'
           message_format: '{emoji} *{workflow}* {status_message} in <{repo_url}|{repo}>'
           footer: 'Linked Repo <{repo_url}|{repo}> | <{workflow_url}|View Workflow>'
-          mention_users: 'U02T7D98ZP1,U02NC94JJ68'  # Mohit, Abhay
+          mention_users: 'U02T7D98ZP1'  # Mohit, Abhay (U02NC94JJ68)
           mention_users_when: 'failure,warnings'
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.RELEASES_SLACK_CHANNEL_WEBHOOK_URL }}
