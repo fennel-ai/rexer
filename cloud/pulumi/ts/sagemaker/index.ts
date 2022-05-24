@@ -107,7 +107,6 @@ export const setup = async (input: inputType): Promise<pulumi.Output<outputType>
                         "s3:PutObject",
                         "s3:GetObject",
                         "s3:DeleteObject"
-                        "s3:CreateBucket"
                     ],
                     "Resource": "arn:aws:s3:::${input.modelStoreBucket}/*"
                 }
