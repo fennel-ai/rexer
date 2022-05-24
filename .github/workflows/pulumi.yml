@@ -6,7 +6,9 @@ on:
 jobs:
   preview:
     name: Preview
-    runs-on: ubuntu-latest
+
+    runs-on: [linux-x64-cd]
+
     steps:
       - uses: actions/checkout@v2
       
