@@ -22,21 +22,30 @@ type RetryError error
 // key type is string, value type is string.
 var frameworkCache = sync.Map{}
 
-type ModelRegistry = map[string]map[string]string
+type ModelInfo struct {
+	ModelName        string
+	ModelStorage     string
+	Framework        string
+	FrameworkVersion string
+	Info             string
+}
+
+type ModelRegistry = map[string]ModelInfo
 
 var SupportedPretrainedModels = ModelRegistry{
-	"sbert": {
-		"model_storage":     "s3://sagemaker-us-west-2-030813887342/custom_inference/all-MiniLM-L6-v2/model.tar.gz",
-		"info":              "https://huggingface.co/sentence-transformers/all-MiniLM-L6-v2",
-		"framework":         "huggingface",
-		"framework_version": "4.12",
+	"sbert": ModelInfo{
+		ModelName:        "sbert",
+		ModelStorage:     "s3://sagemaker-us-west-2-030813887342/custom_inference/all-MiniLM-L6-v2/model.tar.gz",
+		Framework:        "huggingface",
+		FrameworkVersion: "4.12",
+		Info:             "https://huggingface.co/sentence-transformers/all-MiniLM-L6-v2",
 	},
 }
 
-func GetSupportedModels() string {
-	keys := ""
+func GetSupportedModels() []string {
+	keys := make([]string, 0, len(SupportedPretrainedModels))
 	for k := range SupportedPretrainedModels {
-		keys += k + " ,"
+		keys = append(keys, k)
 	}
 	return keys
 }
@@ -58,7 +67,7 @@ func ensureModelFileInRegion(tier tier.Tier, modelFile string) (string, error) {
 	prefix := parts[3] + "/" + parts[4]
 	files, err := tier.S3Client.ListFiles(s3Bucket, prefix)
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("failed to list files in s3: %w", err)
 	}
 	if len(files) != 0 {
 		for _, f := range files {
@@ -71,7 +80,7 @@ func ensureModelFileInRegion(tier tier.Tier, modelFile string) (string, error) {
 	}
 	err = tier.S3Client.CopyFile(strings.Join(parts[2:], "/"), strings.Join(parts[3:], "/"), s3Bucket)
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("failed to copy files in s3: %w", err)
 	}
 	return "s3://" + s3Bucket + "/" + strings.Join(parts[3:], "/"), nil
 }
@@ -80,7 +89,7 @@ func ensureModelFileInRegion(tier tier.Tier, modelFile string) (string, error) {
 func EnableModel(ctx context.Context, tier tier.Tier, model string) error {
 	modelConfig, ok := SupportedPretrainedModels[model]
 	if !ok {
-		return fmt.Errorf("model %s is not supported, currently supported models are: %s", model, GetSupportedModels())
+		return fmt.Errorf("model %s is not supported, currently supported models are: %s", model, strings.Join(GetSupportedModels(), ", "))
 	}
 	sagemakerModelId := PreTrainedModelId(model, tier.ID)
 
@@ -101,7 +110,7 @@ func EnableModel(ctx context.Context, tier tier.Tier, model string) error {
 		return fmt.Errorf("failed to check if model exists on sagemaker: %v", err)
 	}
 	if !exists {
-		modelStorage, err := ensureModelFileInRegion(tier, modelConfig["model_storage"])
+		modelStorage, err := ensureModelFileInRegion(tier, modelConfig.ModelStorage)
 		if err != nil {
 			return fmt.Errorf("failed to ensure if model file exists in region: %w", err)
 		}
@@ -109,8 +118,8 @@ func EnableModel(ctx context.Context, tier tier.Tier, model string) error {
 		model := lib.Model{
 			Name:             model,
 			Version:          "1",
-			Framework:        modelConfig["framework"],
-			FrameworkVersion: modelConfig["framework_version"],
+			Framework:        modelConfig.Framework,
+			FrameworkVersion: modelConfig.FrameworkVersion,
 			ArtifactPath:     modelStorage,
 		}
 		err = tier.SagemakerClient.CreateModel(ctx, []lib.Model{model}, sagemakerModelId)

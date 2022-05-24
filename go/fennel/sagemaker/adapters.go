@@ -160,12 +160,13 @@ type HuggingFaceAdapter struct {
 	client *sagemakerruntime.SageMakerRuntime
 }
 
-func (pta HuggingFaceAdapter) Score(ctx context.Context, in *lib.ScoreRequest) (*lib.ScoreResponse, error) {
+func (hfa HuggingFaceAdapter) Score(ctx context.Context, in *lib.ScoreRequest) (*lib.ScoreResponse, error) {
 	if len(in.FeatureLists) == 0 {
 		return &lib.ScoreResponse{}, nil
 	}
 	inputs := value.NewList()
 	inputs.Grow(len(in.FeatureLists))
+	// It is expected that every feature list only contains one feature, a string, which is the input to the model.
 	for _, v := range in.FeatureLists {
 		inp, err := v.At(0)
 		if err != nil {
@@ -176,7 +177,7 @@ func (pta HuggingFaceAdapter) Score(ctx context.Context, in *lib.ScoreRequest) (
 
 	payload := value.ToJSON(value.NewDict(map[string]value.Value{"inputs": inputs}))
 
-	out, err := pta.client.InvokeEndpointWithContext(ctx, &sagemakerruntime.InvokeEndpointInput{
+	out, err := hfa.client.InvokeEndpointWithContext(ctx, &sagemakerruntime.InvokeEndpointInput{
 		Body:         []byte(payload),
 		ContentType:  aws.String("application/json"),
 		EndpointName: aws.String(in.EndpointName),

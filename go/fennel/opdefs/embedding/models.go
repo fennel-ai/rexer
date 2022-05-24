@@ -4,6 +4,7 @@ import (
 	"context"
 	lib "fennel/lib/sagemaker"
 	"fmt"
+	"strings"
 	"sync"
 
 	modelstore "fennel/controller/modelstore"
@@ -48,11 +49,11 @@ func (p pretrainedModel) Apply(ctx context.Context, kwargs value.Dict, in operat
 	model_type := string(get(kwargs, "model").(value.String))
 	modelConfig, ok := modelstore.SupportedPretrainedModels[model_type]
 	if !ok {
-		return fmt.Errorf("Pretrained model %s is not supported, currently supported models are : %s", model_type, modelstore.GetSupportedModels())
+		return fmt.Errorf("Pretrained model %s is not supported, currently supported models are : %s", model_type, strings.Join(modelstore.GetSupportedModels(), ", "))
 	}
 
 	req := lib.ScoreRequest{
-		Framework:    modelConfig["framework"],
+		Framework:    modelConfig.Framework,
 		EndpointName: modelstore.PreTrainedModelId(model_type, p.tier.ID),
 		FeatureLists: inputs,
 	}
