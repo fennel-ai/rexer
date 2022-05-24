@@ -264,8 +264,8 @@ const setupDataPlane = async (args: PlaneConf, preview?: boolean, destroy?: bool
 
     if (preview) {
         console.info("previewing stack...");
-        await stack.preview({ onOutput: console.info });
-        console.info("stack previewed");
+        const previewRes = await stack.preview({ onOutput: console.info });
+        console.info(previewRes);
         process.exit(0);
     }
 

@@ -446,7 +446,7 @@ type TierInput = {
     connectedSecurityGroups: Record<string, string>,
 }
 
-const setupTier = async (args: TierInput, destroy?: boolean) => {
+const setupTier = async (args: TierInput, preview?: boolean, destroy?: boolean) => {
     const projectName = `launchpad`
     const stackName = `fennel/${projectName}/tier-${args.tierId}`
 
@@ -526,6 +526,13 @@ const setupTier = async (args: TierInput, destroy?: boolean) => {
     await stack.setConfig(nameof<inputType>("connectedSecurityGroups"), { value: JSON.stringify(args.connectedSecurityGroups) })
 
     console.info("config set");
+
+    if (preview) {
+        console.info("previewing stack...");
+        const previewRes = await stack.preview({ onOutput: console.info });
+        console.info(previewRes);
+        process.exit(0);
+    }
 
     if (destroy) {
         console.info("destroying stack...");
