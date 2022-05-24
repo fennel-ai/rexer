@@ -248,6 +248,25 @@ const planeConfs: Record<number, PlaneConf> = {
 var tierId = 0;
 var planeId = 0;
 
+var preview = false;
+var destroy = false;
+
+// process.argv contains the whole command-line invocation.
+
+// first 2 are meant for the shell that invoked the script.
+
+// We assume that if 4 arguments are passed, 3rd signifies the action to perform and 4th argument signifies
+// the "ID" (or stack) to act on. We support `preview` right now.
+if (process.argv.length == 4) {
+    const action = process.argv[process.argv.length - 2];
+    if (action === "preview") {
+        preview = true;
+    } else {
+        console.log(`${action} is not a supported action`)
+        process.exit(1)
+    }
+}
+
 const id = Number.parseInt(process.argv[process.argv.length - 1])
 if (id in planeConfs) {
     planeId = id
@@ -261,7 +280,7 @@ if (id in planeConfs) {
 
 console.log("Updating plane: ", planeId)
 const planeConf = planeConfs[planeId]
-const dataplane = await setupDataPlane(planeConf);
+const dataplane = await setupDataPlane(planeConf, preview, destroy);
 
 const confluentOutput = dataplane[nameof<PlaneOutput>("confluent")].value as confluentenv.outputType
 const dbOutput = dataplane[nameof<PlaneOutput>("db")].value as aurora.outputType
@@ -349,5 +368,5 @@ if (tierId !== 0) {
         connectedSecurityGroups: {
             "eks": eksOutput.workerSg,
         },
-    }, false).catch(err => console.log(err))
+    }, preview, destroy).catch(err => console.log(err))
 }

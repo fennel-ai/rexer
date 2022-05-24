@@ -24,6 +24,7 @@
   },
   "scripts": {
     "build": "tsc",
+    "preview": "tsc && node --experimental-specifier-resolution=node --unhandled-rejections=strict --loader ts-node/esm --no-warnings ./bin/launchpad/index.js preview",
     "start": "tsc && node --experimental-specifier-resolution=node --unhandled-rejections=strict --loader ts-node/esm --no-warnings ./bin/launchpad/index.js"
   },
   "devDependencies": {
