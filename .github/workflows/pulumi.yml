@@ -36,10 +36,10 @@ jobs:
           AWS_REGION: ${{ secrets.AWS_REGION }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
         run: |
-          echo "install and setup pulumi"
+          echo "install pulumi"
           curl -fsSL https://get.pulumi.com | sh
-          pulumi login
-          echo "adding pulumi to PATH"
+          echo "setup pulumi; Adding to PATH and logging in using ACCESS TOKEN"
           export PATH=$PATH:/home/ubuntu/.pulumi/bin
+          pulumi login
           echo "running launchpad for plane: 3"
           npm run preview 3
