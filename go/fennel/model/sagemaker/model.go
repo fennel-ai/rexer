@@ -269,11 +269,7 @@ func GetInactiveEndpoints(tier tier.Tier) ([]string, error) {
 	err := tier.DB.Select(&endpoints, `
 		SELECT DISTINCT name
 		FROM sagemaker_endpoint
-		WHERE name NOT IN (
-			SELECT name
-			FROM sagemaker_endpoint
-			WHERE active=true
-		)
+		WHERE active=false
 	`)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get inactive endpoints: %v", err)

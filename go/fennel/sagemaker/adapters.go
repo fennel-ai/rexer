@@ -8,6 +8,7 @@ import (
 
 	lib "fennel/lib/sagemaker"
 	"fennel/lib/value"
+
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/sagemakerruntime"
 )
@@ -20,6 +21,7 @@ var _ Adapter = XGBoostAdapter{}
 var _ Adapter = SklearnAdapter{}
 var _ Adapter = TensorFlowAdapter{}
 var _ Adapter = PyTorchAdapter{}
+var _ Adapter = HuggingFaceAdapter{}
 
 func (smc SMClient) getAdapter(framework string) (Adapter, error) {
 	switch framework {
@@ -31,6 +33,8 @@ func (smc SMClient) getAdapter(framework string) (Adapter, error) {
 		return TensorFlowAdapter{client: smc.runtimeClient}, nil
 	case "pytorch":
 		return PyTorchAdapter{client: smc.runtimeClient}, nil
+	case "huggingface":
+		return HuggingFaceAdapter{client: smc.runtimeClient}, nil
 	default:
 		return nil, fmt.Errorf("unsupported framework")
 	}
@@ -133,7 +137,7 @@ func (pta PyTorchAdapter) Score(ctx context.Context, in *lib.ScoreRequest) (*lib
 	}
 	payload := toJSON(in.FeatureLists)
 	out, err := pta.client.InvokeEndpointWithContext(ctx, &sagemakerruntime.InvokeEndpointInput{
-		Body:                    payload,
+		Body:                    []byte(payload),
 		ContentType:             aws.String("application/json"),
 		EndpointName:            aws.String(in.EndpointName),
 		TargetContainerHostname: aws.String(in.ContainerName),
@@ -146,6 +150,51 @@ func (pta PyTorchAdapter) Score(ctx context.Context, in *lib.ScoreRequest) (*lib
 		return nil, fmt.Errorf("failed to parse reponse as JSON: %v", err)
 	}
 	rList, ok := response.(value.List)
+	if !ok {
+		return nil, fmt.Errorf("expected response to be a value list but found: '%v'", response.String())
+	}
+	return &lib.ScoreResponse{Scores: rList.Values()}, nil
+}
+
+type HuggingFaceAdapter struct {
+	client *sagemakerruntime.SageMakerRuntime
+}
+
+func (hfa HuggingFaceAdapter) Score(ctx context.Context, in *lib.ScoreRequest) (*lib.ScoreResponse, error) {
+	if len(in.FeatureLists) == 0 {
+		return &lib.ScoreResponse{}, nil
+	}
+	inputs := value.NewList()
+	inputs.Grow(len(in.FeatureLists))
+	// It is expected that every feature list only contains one feature, a string, which is the input to the model.
+	for _, v := range in.FeatureLists {
+		inp, err := v.At(0)
+		if err != nil {
+			return nil, fmt.Errorf("failed to get input: %v", err)
+		}
+		inputs.Append(inp)
+	}
+
+	payload := value.ToJSON(value.NewDict(map[string]value.Value{"inputs": inputs}))
+
+	out, err := hfa.client.InvokeEndpointWithContext(ctx, &sagemakerruntime.InvokeEndpointInput{
+		Body:         []byte(payload),
+		ContentType:  aws.String("application/json"),
+		EndpointName: aws.String(in.EndpointName),
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to invoke sagemaker endpoint: %v", err)
+	}
+	response, err := value.FromJSON(out.Body)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse reponse as JSON: %v", err)
+	}
+	rDict, ok := response.(value.Dict)
+	if !ok {
+		return nil, fmt.Errorf("expected response to be a value list but found: '%v'", response.String())
+	}
+	vectors, _ := rDict.Get("vectors")
+	rList, ok := vectors.(value.List)
 	if !ok {
 		return nil, fmt.Errorf("expected response to be a value list but found: '%v'", response.String())
 	}

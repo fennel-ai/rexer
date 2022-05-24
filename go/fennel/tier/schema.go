@@ -58,6 +58,12 @@ var Schema = db.Schema{
 			INDEX (active)
 		);`,
 	// ================== BEGIN Schema for model registry ======================
+	// The relation b/w the tables are as follows.
+	// A sagemaker_hosted_model will have several models associated with it.
+	// model < sagemaker_hosted_model.
+	// The model_id is the foreign key ( mapping to id ) in the model table.
+	// The sagemaker_model_name refers to model_name in sagemaker_endpoint_config.
+	// The name in the sagemaker_endpoint_config is the same as endpoint_config_name in sagemaker_endpoint.
 	7: `CREATE TABLE IF NOT EXISTS model (
 			id BIGINT UNSIGNED NOT NULL PRIMARY KEY AUTO_INCREMENT,
 			name VARCHAR(255) NOT NULL,
@@ -83,6 +89,9 @@ var Schema = db.Schema{
 			model_name VARCHAR(255) NOT NULL,
 			instance_type VARCHAR(255) NOT NULL,
 			instance_count INT NOT NULL DEFAULT 1,
+			-- The following fields are optional and are only used for SageMaker Serverless Configs.
+			serverless_max_concurrency INT NOT NULL DEFAULT 0,
+			serverless_memory INT NOT NULL DEFAULT 0,
 			PRIMARY KEY (name, variant_name)
 		);`,
 

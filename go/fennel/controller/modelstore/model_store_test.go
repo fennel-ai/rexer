@@ -7,6 +7,7 @@ import (
 	"context"
 	"errors"
 	"log"
+	"os"
 	"testing"
 	"time"
 
@@ -14,13 +15,19 @@ import (
 	"fennel/lib/value"
 	db "fennel/model/sagemaker"
 	"fennel/modelstore"
+	"fennel/s3"
 	"fennel/sagemaker"
 	"fennel/test"
 	"fennel/tier"
+
 	"github.com/stretchr/testify/assert"
 )
 
 func TestStoreScoreRemoveModel(t *testing.T) {
+	if os.Getenv("long") == "" {
+		t.Skip("Skipping long test")
+	}
+
 	tier, err := test.Tier()
 	assert.NoError(t, err)
 	defer test.Teardown(tier)
@@ -78,7 +85,65 @@ func TestStoreScoreRemoveModel(t *testing.T) {
 	assert.NoError(t, err)
 }
 
+func TestPretrainedModelEndPoint(t *testing.T) {
+	if os.Getenv("long") == "" {
+		t.Skip("Skipping long test")
+	}
+	tier, err := test.Tier()
+	assert.NoError(t, err)
+	defer test.Teardown(tier)
+	os.Setenv("AWS_PROFILE", "admin")
+	os.Setenv("AWS_SDK_LOAD_CONFIG", "1")
+	c, err := sagemaker.NewClient(sagemaker.SagemakerArgs{
+		Region:                 "us-west-2",
+		SagemakerExecutionRole: "arn:aws:iam::030813887342:role/service-role/AmazonSageMaker-ExecutionRole-20220315T123828",
+	})
+	assert.NoError(t, err)
+	tier.SagemakerClient = c
+	tier.S3Client = s3.NewClient(s3.S3Args{Region: "us-west-2"})
+	model := "sbert"
+	defer cleanupPreTrainedModelTest(t, tier, model)
+
+	err = EnableModel(context.Background(), tier, model)
+	assert.NoError(t, err)
+
+	// It takes a couple of minutes for the model to be ready
+	time.Sleep(3 * time.Minute)
+
+	endpointName := PreTrainedModelId(model, tier.ID)
+
+	// assert that resources are created in sagemaker.
+	exists, err := tier.SagemakerClient.EndpointExists(context.Background(), endpointName)
+	assert.NoError(t, err)
+	assert.True(t, exists)
+
+	featureInput := value.NewList(value.String("Recommendation systems is the way to go"))
+
+	req := lib.ScoreRequest{
+		Framework:    "huggingface",
+		EndpointName: endpointName,
+		FeatureLists: []value.List{featureInput, featureInput, featureInput},
+	}
+	response, err := tier.SagemakerClient.Score(context.Background(), &req)
+
+	assert.NoError(t, err)
+	assert.Equal(t, 3, len(response.Scores))
+}
+
+func cleanupPreTrainedModelTest(t *testing.T, tier tier.Tier, model string) {
+	pretrainedId := PreTrainedModelId(model, tier.ID)
+	err := tier.SagemakerClient.DeleteModel(context.Background(), pretrainedId)
+	assert.NoError(t, err)
+	err = tier.SagemakerClient.DeleteEndpointConfig(context.Background(), pretrainedId)
+	assert.NoError(t, err)
+	err = tier.SagemakerClient.DeleteEndpoint(context.Background(), pretrainedId)
+	assert.NoError(t, err)
+}
+
 func TestEnsureEndpoint(t *testing.T) {
+	if os.Getenv("long") == "" {
+		t.Skip("Skipping long test")
+	}
 	tier, err := test.Tier()
 	assert.NoError(t, err)
 	defer test.Teardown(tier)

@@ -28,11 +28,13 @@ type SagemakerHostedModel struct {
 }
 
 type SagemakerEndpointConfig struct {
-	Name          string `db:"name"`
-	VariantName   string `db:"variant_name"`
-	ModelName     string `db:"model_name"`
-	InstanceType  string `db:"instance_type"`
-	InstanceCount uint   `db:"instance_count"`
+	Name                     string `db:"name"`
+	VariantName              string `db:"variant_name"`
+	ModelName                string `db:"model_name"`
+	InstanceType             string `db:"instance_type"`
+	InstanceCount            uint   `db:"instance_count"`
+	ServerlessMaxConcurrency uint   `db:"serverless_max_concurrency"`
+	ServerlessMemory         uint   `db:"serverless_memory"`
 }
 
 type SagemakerEndpoint struct {
