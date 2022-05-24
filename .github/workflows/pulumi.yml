@@ -53,3 +53,17 @@ jobs:
           pulumi login
           echo "running launchpad for plane: 3"
           npm run preview 3
+
+      - name: Notify slack channel
+        uses: ravsamhq/notify-slack-action@v1
+        if: always()
+        with:
+          status: ${{ job.status }}
+          token: ${{ secrets.ACCESS_TOKEN }}
+          notification_title: '{workflow} has {status_message}'
+          message_format: '{emoji} *{workflow}* {status_message} in <{repo_url}|{repo}>'
+          footer: 'Linked Repo <{repo_url}|{repo}> | <{workflow_url}|View Workflow>'
+          mention_users: 'U02T7D98ZP1,U02NC94JJ68'  # Mohit, Abhay
+          mention_users_when: 'failure,warnings'
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.RELEASES_SLACK_CHANNEL_WEBHOOK_URL }}
