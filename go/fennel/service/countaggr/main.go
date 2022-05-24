@@ -36,7 +36,7 @@ var backlog_stats = promauto.NewGaugeVec(prometheus.GaugeOpts{
 func logKafkaLag(t tier.Tier, consumer kafka.FConsumer) {
 	backlog, err := consumer.Backlog()
 	if err != nil {
-		t.Logger.Error("failed to read kafka backlog", zap.Error(err))
+		t.Logger.Error("Failed to read kafka backlog", zap.Error(err))
 	}
 	backlog_stats.WithLabelValues(consumer.GroupID()).Set(float64(backlog))
 }
@@ -49,7 +49,7 @@ var aggregate_errors = promauto.NewCounterVec(
 		Help: "Stats on aggregate failures",
 	}, []string{"aggregate"})
 
-func processAggregate(tr tier.Tier, agg libaggregate.Aggregate) error {
+func processAggregate(tr tier.Tier, agg libaggregate.Aggregate, stopCh <-chan struct{}) error {
 	consumer, err := tr.NewKafkaConsumer(kafka.ConsumerConfig{
 		Topic:        action.ACTIONLOG_KAFKA_TOPIC,
 		GroupID:      string(agg.Name),
@@ -58,22 +58,30 @@ func processAggregate(tr tier.Tier, agg libaggregate.Aggregate) error {
 	if err != nil {
 		return fmt.Errorf("unable to start consumer for aggregate: %s. Error: %v", agg.Name, err)
 	}
-	go func(tr tier.Tier, consumer kafka.FConsumer, agg libaggregate.Aggregate) {
+	go func(tr tier.Tier, consumer kafka.FConsumer, agg libaggregate.Aggregate, stopCh <-chan struct{}) {
 		defer consumer.Close()
-		run := 0
-		for {
-			// tr.Logger.Info("Processing aggregate", zap.String("aggregate_name", string(agg.Name)), zap.Int("run", run))
-			ctx := context.TODO()
-			err := aggregate.Update(ctx, tr, consumer, agg)
-			if err != nil {
-				aggregate_errors.WithLabelValues(string(agg.Name)).Add(1)
-				log.Printf("Error found in aggregate: %s. Err: %v", agg.Name, err)
+		// Ticker to log kafka lag every 1 minute.
+		kt := time.NewTicker(1 * time.Minute)
+		defer kt.Stop()
+		for run := 0; true; {
+			select {
+			case <-stopCh:
+				return
+			case <-kt.C:
+				logKafkaLag(tr, consumer)
+			default:
+				run++
+				tr.Logger.Debug("Processing aggregate", zap.String("name", string(agg.Name)), zap.Int("run", run))
+				ctx := context.Background()
+				err := aggregate.Update(ctx, tr, consumer, agg)
+				if err != nil {
+					aggregate_errors.WithLabelValues(string(agg.Name)).Add(1)
+					tr.Logger.Warn("Error found in aggregate", zap.String("name", string(agg.Name)), zap.Error(err))
+				}
+				tr.Logger.Debug("Processed aggregate", zap.String("name", string(agg.Name)), zap.Int("run", run))
 			}
-			logKafkaLag(tr, consumer)
-			// tr.Logger.Info("Processed aggregate", zap.String("aggregate_name", string(agg.Name)), zap.Int("run", run))
-			run += 1
 		}
-	}(tr, consumer, agg)
+	}(tr, consumer, agg, stopCh)
 	return nil
 }
 
@@ -124,21 +132,31 @@ func startProfileDBInsertion(tr tier.Tier) error {
 }
 
 func startAggregateProcessing(tr tier.Tier) error {
-	processedAggregates := make(map[ftypes.AggName]struct{})
+	// Map from aggregate name to channel to stop the aggregate processing.
+	processedAggregates := make(map[ftypes.AggName]chan<- struct{})
 	ticker := time.NewTicker(time.Second * 15)
 	for ; true; <-ticker.C {
 		aggs, err := aggregate.RetrieveActive(context.Background(), tr)
 		if err != nil {
 			return err
 		}
+		aggNames := make(map[ftypes.AggName]struct{}, len(aggs))
 		for _, agg := range aggs {
+			aggNames[agg.Name] = struct{}{}
 			if _, ok := processedAggregates[agg.Name]; !ok {
 				log.Printf("Retrieved a new aggregate: %s", agg.Name)
-				err := processAggregate(tr, agg)
+				ch := make(chan struct{})
+				err := processAggregate(tr, agg, ch)
 				if err != nil {
 					tr.Logger.Error("Could not start aggregate processing", zap.String("aggregateName", string(agg.Name)), zap.Error(err))
 				}
-				processedAggregates[agg.Name] = struct{}{}
+				processedAggregates[agg.Name] = ch
+			}
+		}
+		// Stop processing any aggregates that are no longer active.
+		for a := range processedAggregates {
+			if _, ok := aggNames[a]; !ok {
+				close(processedAggregates[a])
 			}
 		}
 	}
