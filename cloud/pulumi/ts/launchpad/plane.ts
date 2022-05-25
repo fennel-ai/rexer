@@ -15,6 +15,7 @@ import * as glueSource from "../glue-script-source";
 import * as offlineAggregateSources from "../offline-aggregate-script-source";
 
 import * as process from "process";
+import {NodeGroupConf} from "../eks";
 
 type VpcConfig = {
     cidr: string,
@@ -54,8 +55,8 @@ type PrometheusConf = {
 }
 
 type EksConf = {
-    nodeType: string,
-    desiredCapacity: number,
+    // EKS cluster can have more than one Node Group
+    nodeGroups: NodeGroupConf[]
 }
 
 type MilvusConf = {}
@@ -132,8 +133,7 @@ const setupResources = async () => {
         vpcId: vpcOutput.vpcId,
         connectedVpcCidrs: [input.controlPlaneConf.cidrBlock],
         planeId: input.planeId,
-        nodeType: input.eksConf?.nodeType,
-        desiredCapacity: input.eksConf?.desiredCapacity,
+        nodeGroups: input.eksConf?.nodeGroups,
     })
     const auroraOutput = await aurora.setup({
         roleArn: input.roleArn,

@@ -26,14 +26,23 @@ const AMI_BY_REGION: Record<string, string> = {
 const DEFAULT_NODE_TYPE = "t3.medium"
 const DEFAULT_DESIRED_CAPACITY = 3
 
+// Node Group configuration for the EKS cluster
+export type NodeGroupConf = {
+    // Must be unique across node groups defined in the same region
+    name: string,
+    nodeType: string,
+    desiredCapacity: number,
+    // labels to be attached to the node group
+    labels?: Record<string, string>,
+}
+
 export type inputType = {
     roleArn: string,
     region: string,
     vpcId: pulumi.Output<string>,
     connectedVpcCidrs: string[],
     planeId: number,
-    nodeType?: string,
-    desiredCapacity?: number,
+    nodeGroups?: NodeGroupConf[],
 }
 
 export type outputType = {
@@ -309,36 +318,46 @@ export const setup = async (input: inputType): Promise<pulumi.Output<outputType>
         // up and running when nodes are running in private subnet.
         endpointPublicAccess: true,
         subnetIds: subnetIds.ids,
-        // TODO: Explore running different node groups, say one for countaggr service and one for http-service
-        // with different instance types.
-        nodeGroupOptions: {
-            instanceType: input.nodeType || DEFAULT_NODE_TYPE,
-            // NOTE: Desired number of nodes = 3. We have defined an affinity between the http-server and countaggr
-            // services to NOT be scheduled on the same node (i.e. host).
-            //
-            // We currently run 2 replicas of http-server and 1 replica of countaggr
-            //
-            // This essentially means that one instance of each would reside on different nodes.
-            //
-            // Change number of replicas and/or affinity b/w services accordingly if updating the node group size.
-            desiredCapacity: nodeCapacity,
-            minSize: nodeCapacity,
-            maxSize: nodeCapacity,
-            // Make AMI a config parameter since AMI-ids are unique to region.
-            amiId: AMI_BY_REGION[region],
-            nodeAssociatePublicIpAddress: false,
-        },
         // setup version for k8s control plane
         version: "1.22",
         providerCredentialOpts: {
             roleArn,
         },
+        // Make AMI a config parameter since AMI-ids are unique to region.
+        nodeAmiId: AMI_BY_REGION[region],
         nodeAssociatePublicIpAddress: false,
         createOidcProvider: true
     }, { provider: awsProvider });
 
+    let nodeGroups: NodeGroupConf[] = input.nodeGroups;
+    // if no nodeGroups were specified, use default configuration
+    if (nodeGroups === undefined || nodeGroups.length === 0) {
+        nodeGroups = [{
+            name: `p-${input.planeId}-default-nodegroup`,
+            nodeType: DEFAULT_NODE_TYPE,
+            desiredCapacity: DEFAULT_DESIRED_CAPACITY,
+        }]
+    }
+
+    // Setup managed node groups
+    for (let nodeGroup: NodeGroupConf in nodeGroups) {
+        const nodeGroupSize = nodeGroup.desiredCapacity;
+        const n = new eks.ManagedNodeGroup(nodeGroup.name, {
+            cluster: cluster,
+            scalingConfig: {
+                desiredSize: nodeGroupSize,
+                minSize: nodeGroupSize,
+                maxSize: nodeGroupSize,
+            },
+            // accepts multiple strings but the EKS API accepts only a single string
+            instanceTypes: [nodeGroup.nodeType],
+            nodeGroupNamePrefix: nodeGroup.name,
+            labels: nodeGroup.labels,
+        }, {provider: awsProvider});
+    }
+
     // Install descheduler.
-    setupDescheduler(cluster)
+    setupDescheduler(cluster);
 
     // Connect cluster node security group to connected vpcs.
     const sgRules = new aws.ec2.SecurityGroupRule(`p-${input.planeId}-eks-sg-rule`, {

@@ -26,6 +26,7 @@ export type inputType = {
     tierId: number,
     replicas?: number,
     enforceReplicaIsolation?: boolean,
+    nodeLabels?: Record<string, string>,
 }
 
 export type outputType = {
@@ -96,6 +97,28 @@ export const setup = async (input: inputType) => {
     const appLabels = { app: name };
     const metricsPort = 2112;
 
+    // if node labels are specified, create an affinity for the pod towards that node (or set of nodes)
+    let affinity: k8s.types.input.core.v1.Affinity = {};
+    if (input.nodeLabels !== undefined) {
+        let terms: k8s.types.input.core.v1.NodeSelectorTerm[] = [];
+
+        // Terms are ORed i.e. if there are 2 node labels mentioned, if there is a node with either (or both) the
+        // nodes, the pod is scheduled on it.
+        Object.entries(input.nodeLabels).forEach(([labelKey, labelValue]) => terms.push({
+            matchExpressions: [{
+                key: labelKey,
+                operator: "In",
+                values: [labelValue],
+            }],
+        }));
+
+        affinity.nodeAffinity = {
+            requiredDuringSchedulingIgnoredDuringExecution: {
+                nodeSelectorTerms: terms,
+            },
+        }
+    }
+
     const forceReplicaIsolation = input.enforceReplicaIsolation || DEFAULT_FORCE_REPLICA_ISOLATION;
     let whenUnsatisfiable = "ScheduleAnyway";
     if (forceReplicaIsolation) {
@@ -143,6 +166,7 @@ export const setup = async (input: inputType) => {
                         }
                     },
                     spec: {
+                        affinity: affinity,
                         // https://kubernetes.io/docs/concepts/workloads/pods/pod-topology-spread-constraints/
                         topologySpreadConstraints: [
                             // describes how a group of pods ought to spread across topology domains.

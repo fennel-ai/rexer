@@ -22,19 +22,35 @@ import * as countersCleanup from "../counters-cleanup";
 
 import * as process from "process";
 
+// All the attributes here are optional, which gives each service a choice to apply service-specific defaults
+export type PodConf = {
+    // Number of pods to launch for a service
+    replicas?: number,
+    // Whether replicas scheduled should be on the same node or not
+    // this determines intra-pod affinity (or anti-affinity)
+    enforceReplicaIsolation?: boolean,
+    // Node where this pod should be scheduled on MUST have at least one of these label - this determines node selection.
+    //
+    // NOTE: if specified, this must be a subset of the labels of at least one NodeGroup defined in EksConf
+    //
+    // This is optional, in which case, pods are scheduled on any random node
+    //
+    // This is primarily being introduced to allow scheduling certain pods on specific nodes (which are part of a node group)
+    nodeLabels?: Record<string, string>,
+}
+
 export type HttpServerConf = {
-    replicas: number,
-    enforceReplicaIsolation: boolean,
+    podConf?: PodConf
 }
 
 export type ApiServerConf = {
-    replicas: number,
-    enforceReplicaIsolation: boolean,
+    podConf?: PodConf,
     storageclass: string,
 }
 
 export type CountAggrConf = {
-    enforceServiceIsolation: boolean,
+    // replicas are currently not set, but in the future they might be configured
+    podConf?: PodConf
 }
 
 export type IngressConf = {
@@ -344,8 +360,9 @@ const setupResources = async () => {
             kubeconfig: input.kubeconfig,
             namespace: input.namespace,
             tierId: input.tierId,
-            replicas: input.httpServerConf?.replicas,
-            enforceReplicaIsolation: input.httpServerConf?.enforceReplicaIsolation,
+            replicas: input.httpServerConf?.podConf?.replicas,
+            enforceReplicaIsolation: input.httpServerConf?.podConf?.enforceReplicaIsolation,
+            nodeLabels: input.httpServerConf?.podConf?.nodeLabels,
         });
         // This there is an affinity requirement on http-server and countaggr pods, schedule the http-server pod first
         // and let countaggr depend on it's output so that affinity requirements do not unexpected behavior
@@ -355,7 +372,8 @@ const setupResources = async () => {
             kubeconfig: input.kubeconfig,
             namespace: input.namespace,
             tierId: input.tierId,
-            enforceServiceIsolation: input.countAggrConf?.enforceServiceIsolation,
+            enforceServiceIsolation: input.countAggrConf?.podConf?.enforceServiceIsolation,
+            nodeLabels: input.countAggrConf?.podConf?.nodeLabels,
             httpServerAppLabels: httpServerOutput.appLabels,
         });
         await countersCleanup.setup({
@@ -373,8 +391,8 @@ const setupResources = async () => {
                 kubeconfig: input.kubeconfig,
                 namespace: input.namespace,
                 tierId: input.tierId,
-                replicas: input.apiServerConf?.replicas,
-                enforceReplicaIsolation: input.apiServerConf?.enforceReplicaIsolation,
+                replicas: input.apiServerConf?.podConf?.replicas,
+                enforceReplicaIsolation: input.apiServerConf?.podConf?.enforceReplicaIsolation,
                 storageclass: input.apiServerConf?.storageclass,
             })
         }

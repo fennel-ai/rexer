@@ -41,22 +41,28 @@ const tierConfs: Record<number, TierConf> = {
     104: {
         planeId: 3,
         httpServerConf: {
-            replicas: 1,
-            // each http-server should be in different nodes from each other
-            enforceReplicaIsolation: false,
+            podConf: {
+                replicas: 1,
+                // each http-server should be in different nodes from each other
+                enforceReplicaIsolation: false,
+            }
         },
     },
     // Fennel staging tier using Fennel's staging data plane.
     106: {
         planeId: 3,
         httpServerConf: {
-            replicas: 1,
-            // each http-server should be in different nodes from each other
-            enforceReplicaIsolation: false,
+            podConf: {
+                replicas: 1,
+                // each http-server should be in different nodes from each other
+                enforceReplicaIsolation: false,
+            }
         },
         apiServerConf: {
-            replicas: 1,
-            enforceReplicaIsolation: false,
+            podConf: {
+                replicas: 1,
+                enforceReplicaIsolation: false,
+            },
             // This will be replaced with the actual storageclass
             // of the type io1.
             storageclass: "io1",
@@ -66,17 +72,29 @@ const tierConfs: Record<number, TierConf> = {
     107: {
         planeId: 5,
         httpServerConf: {
-            replicas: 3,
-            // each http-server should be in different nodes from each other
-            enforceReplicaIsolation: true,
+            podConf: {
+                replicas: 3,
+                // each http-server should be in different nodes from each other
+                enforceReplicaIsolation: true,
+                nodeLabels: {
+                    "node-group": "p-5-httpserver-ng"
+                }
+            }
         },
         // countaggr should be scheduled in a different node than http-server
         countAggrConf: {
-            enforceServiceIsolation: true
+            podConf: {
+                enforceServiceIsolation: true,
+                nodeLabels: {
+                    "node-group": "p-5-countaggr-ng"
+                }
+            }
         },
         apiServerConf: {
-            replicas: 3,
-            enforceReplicaIsolation: true,
+            podConf: {
+                replicas: 3,
+                enforceReplicaIsolation: true,
+            },
             // This will be replaced with the actual storageclass
             // of the type io1.
             storageclass: "io1",
@@ -91,9 +109,11 @@ const tierConfs: Record<number, TierConf> = {
             loadBalancerScheme: PUBLIC_LB_SCHEME,
         },
         httpServerConf: {
-            replicas: 1,
-            // each http-server should be in different nodes from each other
-            enforceReplicaIsolation: false,
+            podConf: {
+                replicas: 1,
+                // each http-server should be in different nodes from each other
+                enforceReplicaIsolation: false,
+            },
         },
     },
     // Lokal's staging tier
@@ -166,8 +186,13 @@ const planeConfs: Record<number, PlaneConf> = {
         //
         // https://github.com/awslabs/amazon-eks-ami/blob/master/files/eni-max-pods.txt
         eksConf: {
-            nodeType: "c6i.2xlarge",
-            desiredCapacity: 4,
+            nodeGroups: [
+                {
+                    name: "p-3-common-ng",
+                    nodeType: "c6i.2xlarge",
+                    desiredCapacity: 4,
+                },
+            ],
         },
         milvusConf: {},
     },
@@ -234,8 +259,26 @@ const planeConfs: Record<number, PlaneConf> = {
             numReplicasPerShard: 1,
         },
         eksConf: {
-            nodeType: "c6i.4xlarge",
-            desiredCapacity: 4,
+            nodeGroups: [
+                // HTTP server node group
+                {
+                    name: "p-5-httpserver-ng",
+                    nodeType: "c6i.4xlarge",
+                    desiredCapacity: 3,
+                    labels: {
+                        "node-group": "p-5-httpserver-ng"
+                    }
+                },
+                // Countaggr server node group
+                {
+                    name: "p-5-countaggr-ng",
+                    nodeType: "c6i.8xlarge",
+                    desiredCapacity: 1,
+                    labels: {
+                        "node-group": "p-5-countaggr-ng"
+                    }
+                }
+            ],
         },
         prometheusConf: {
             useAMP: false
@@ -308,6 +351,10 @@ if (tierId !== 0) {
         tierConf.apiServerConf.storageclass =
             eksOutput.storageclasses[tierConf.apiServerConf.storageclass]
     }
+
+    // TODO(mohit): Validate that the nodeLabel specified in `PodConf` have at least one label match across labels
+    // defined in all node groups.
+
     const topics: kafkatopics.topicConf[] = [
         { name: `t_${tierId}_actionlog` },
         { name: `t_${tierId}_featurelog`, partitions: 10 },
