@@ -4,7 +4,7 @@ import (
 	"context"
 	"sync"
 
-	"fennel/controller/modelstore"
+	modelstore "fennel/controller/modelstore"
 	"fennel/engine/interpreter/bootarg"
 	"fennel/engine/operators"
 	"fennel/lib/value"
@@ -12,20 +12,14 @@ import (
 )
 
 func init() {
-	if err := operators.Register(predictOperator{}); err != nil {
-		panic(err)
-	}
+	operators.Register(predictOperator{})
 }
 
 type predictOperator struct {
 	tier tier.Tier
 }
 
-var _ operators.Operator = predictOperator{}
-
-func (pop predictOperator) New(
-	args value.Dict, bootargs map[string]interface{}, cache *sync.Map,
-) (operators.Operator, error) {
+func (p predictOperator) New(args value.Dict, bootargs map[string]interface{}, cache *sync.Map) (operators.Operator, error) {
 	tr, err := bootarg.GetTier(bootargs)
 	if err != nil {
 		return nil, err
@@ -33,34 +27,68 @@ func (pop predictOperator) New(
 	return predictOperator{tr}, nil
 }
 
-func (pop predictOperator) Signature() *operators.Signature {
-	return operators.NewSignature("model", "predict").
-		Input([]value.Type{value.Types.Any}).
-		Param("features", value.Types.List, false, false, value.Nil).
-		Param("model_name", value.Types.String, true, false, value.Nil).
-		Param("model_version", value.Types.String, true, false, value.Nil)
-}
+func (p predictOperator) Apply(ctx context.Context, staticKwargs value.Dict, in operators.InputIter, outs *value.List) error {
+	var rows []value.Value
+	var inputs []value.List
+	modelName := string(get(staticKwargs, "model").(value.String))
+	_, isPretrainedModel := modelstore.SupportedPretrainedModels[modelName]
 
-func (pop predictOperator) Apply(ctx context.Context, staticKwargs value.Dict, in operators.InputIter, out *value.List) error {
-	var featureVecs []value.List
 	for in.HasMore() {
-		_, contextKwargs, err := in.Next()
+		heads, contextKwargs, err := in.Next()
 		if err != nil {
 			return err
 		}
-		features, _ := contextKwargs.Get("features")
-		featureVecs = append(featureVecs, features.(value.List))
+
+		input, ok := contextKwargs.Get("input")
+		if !ok || input == value.Nil {
+			input = heads[0]
+		}
+		inputs = append(inputs, input.(value.List))
+		rows = append(rows, heads[0])
 	}
-	modelName := staticKwargs.GetUnsafe("model_name").(value.String)
-	modelVersion := staticKwargs.GetUnsafe("model_version").(value.String)
-	// TODO: Split into correctly sized requests instead of just 1.
-	scores, err := modelstore.Score(ctx, pop.tier, string(modelName), string(modelVersion), featureVecs)
+	var outputs []value.Value
+	var err error
+
+	if isPretrainedModel {
+		outputs, err = modelstore.PreTrainedScore(ctx, p.tier, modelName, inputs)
+	} else {
+		modelVersion := staticKwargs.GetUnsafe("version").(value.String)
+		// TODO: Split into correctly sized requests instead of just 1.
+		outputs, err = modelstore.Score(ctx, p.tier, string(modelName), string(modelVersion), inputs)
+	}
+
 	if err != nil {
 		return err
 	}
-	out.Grow(len(scores))
-	for _, score := range scores {
-		out.Append(score)
+	field := string(get(staticKwargs, "field").(value.String))
+	outs.Grow(len(rows))
+	for i, row := range rows {
+		var out value.Value
+		result := outputs[i]
+		if len(field) > 0 {
+			d := row.(value.Dict)
+			d.Set(field, result)
+			out = d
+		} else {
+			out = result
+		}
+		outs.Append(out)
 	}
 	return nil
+}
+
+func (p predictOperator) Signature() *operators.Signature {
+	return operators.NewSignature("model", "pretrained").
+		Input([]value.Type{value.Types.Dict}).
+		ParamWithHelp("field", value.Types.String, true, true, value.String(""), "StaticKwarg: String param that is used as key post evaluation of this operator").
+		ParamWithHelp("model", value.Types.String, true, false, value.Nil, "model name that should be called for eg sbert").
+		ParamWithHelp("input", value.Types.String, false, false, value.Nil, "ContextKwarg: Expr that is evaluated to provide input to the model.").
+		ParamWithHelp("version", value.Types.String, true, true, value.Nil, "StaticKwarg: Model version that should be called for a given model. Not applicable for pretrained models.")
+}
+
+var _ operators.Operator = &predictOperator{}
+
+func get(d value.Dict, k string) value.Value {
+	ret, _ := d.Get(k)
+	return ret
 }
