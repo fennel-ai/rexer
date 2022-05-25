@@ -45,5 +45,5 @@ func (ms *ModelStore) S3Bucket() string {
 }
 
 func (ms *ModelStore) GetArtifactPath(fileName string) string {
-	return fmt.Sprintf("s3://%s/t-%d/%s", ms.s3Bucket, ms.tierID, fileName)
+	return fmt.Sprintf("s3://%s/%s", ms.s3Bucket, fileName)
 }

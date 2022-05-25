@@ -9,7 +9,6 @@ import (
 	"sync"
 	"time"
 
-	"fennel/lib/ftypes"
 	lib "fennel/lib/sagemaker"
 	"fennel/lib/value"
 	db "fennel/model/sagemaker"
@@ -193,7 +192,7 @@ func Store(ctx context.Context, tier tier.Tier, req lib.ModelUploadRequest) erro
 
 	// upload to s3
 	fileName := lib.GetContainerName(req.Name, req.Version)
-	err = tier.S3Client.Upload(req.ModelFile, getPath(tier.ID, fileName), tier.ModelStore.S3Bucket())
+	err = tier.S3Client.Upload(req.ModelFile, fileName, tier.ModelStore.S3Bucket())
 	if err != nil {
 		return fmt.Errorf("failed to upload model to s3: %v", err)
 	}
@@ -234,7 +233,7 @@ func Remove(ctx context.Context, tier tier.Tier, name, version string) error {
 	// If it does not exist, it will be created later
 
 	// delete from s3
-	err = tier.S3Client.Delete(getPath(tier.ID, lib.GetContainerName(name, version)), tier.ModelStore.S3Bucket())
+	err = tier.S3Client.Delete(lib.GetContainerName(name, version), tier.ModelStore.S3Bucket())
 	if err != nil {
 		return fmt.Errorf("failed to delete model from s3: %v", err)
 	}
@@ -474,10 +473,6 @@ func EnsureEndpointInService(ctx context.Context, tier tier.Tier) (err error) {
 	default:
 		return fmt.Errorf("endpoint in unknown status")
 	}
-}
-
-func getPath(tierID ftypes.RealmID, fileName string) string {
-	return fmt.Sprintf("t-%d/%s", tierID, fileName)
 }
 
 func getDummyModel(model lib.Model) lib.Model {
