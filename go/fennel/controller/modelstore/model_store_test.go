@@ -27,6 +27,9 @@ func TestStoreScoreRemoveModel(t *testing.T) {
 	if os.Getenv("long") == "" {
 		t.Skip("Skipping long test")
 	}
+	if os.Getenv("broken") == "" {
+		t.Skip("Skipping broken test")
+	}
 
 	tier, err := test.Tier()
 	assert.NoError(t, err)
@@ -117,7 +120,8 @@ func TestPretrainedModelEndPoint(t *testing.T) {
 	assert.NoError(t, err)
 	assert.True(t, exists)
 
-	featureInput := []value.List{value.NewList(value.String("Recommendation systems is the way to go"))}
+	inp := value.NewList(value.String("Recommendation systems is the way to go"))
+	featureInput := []value.List{inp, inp, inp}
 
 	response, err := PreTrainedScore(context.Background(), tier, model, featureInput)
 

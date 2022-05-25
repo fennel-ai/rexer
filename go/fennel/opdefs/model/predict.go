@@ -78,7 +78,7 @@ func (p predictOperator) Apply(ctx context.Context, staticKwargs value.Dict, in 
 }
 
 func (p predictOperator) Signature() *operators.Signature {
-	return operators.NewSignature("model", "pretrained").
+	return operators.NewSignature("model", "predict").
 		Input([]value.Type{value.Types.Dict}).
 		ParamWithHelp("field", value.Types.String, true, true, value.String(""), "StaticKwarg: String param that is used as key post evaluation of this operator").
 		ParamWithHelp("model", value.Types.String, true, false, value.Nil, "model name that should be called for eg sbert").
