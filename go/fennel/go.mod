@@ -22,6 +22,7 @@ require (
 )
 
 require (
+	capnproto.org/go/capnp/v3 v3.0.0-alpha.3 // indirect
 	github.com/apache/arrow/go/arrow v0.0.0-20200730104253-651201b0f516 // indirect
 	github.com/apache/thrift v0.14.2 // indirect
 	github.com/google/go-cmp v0.5.7 // indirect
