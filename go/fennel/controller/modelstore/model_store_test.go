@@ -27,6 +27,9 @@ func TestStoreScoreRemoveModel(t *testing.T) {
 	if os.Getenv("long") == "" {
 		t.Skip("Skipping long test")
 	}
+	if os.Getenv("broken") == "" {
+		t.Skip("Skipping broken test")
+	}
 
 	tier, err := test.Tier()
 	assert.NoError(t, err)
@@ -117,17 +120,13 @@ func TestPretrainedModelEndPoint(t *testing.T) {
 	assert.NoError(t, err)
 	assert.True(t, exists)
 
-	featureInput := value.NewList(value.String("Recommendation systems is the way to go"))
+	inp := value.NewList(value.String("Recommendation systems is the way to go"))
+	featureInput := []value.List{inp, inp, inp}
 
-	req := lib.ScoreRequest{
-		Framework:    "huggingface",
-		EndpointName: endpointName,
-		FeatureLists: []value.List{featureInput, featureInput, featureInput},
-	}
-	response, err := tier.SagemakerClient.Score(context.Background(), &req)
+	response, err := PreTrainedScore(context.Background(), tier, model, featureInput)
 
 	assert.NoError(t, err)
-	assert.Equal(t, 3, len(response.Scores))
+	assert.Equal(t, 3, len(response))
 }
 
 func cleanupPreTrainedModelTest(t *testing.T, tier tier.Tier, model string) {

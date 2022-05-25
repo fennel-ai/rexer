@@ -35,7 +35,7 @@ type ModelRegistry = map[string]ModelInfo
 var SupportedPretrainedModels = ModelRegistry{
 	"sbert": ModelInfo{
 		ModelName:        "sbert",
-		ModelStorage:     "s3://sagemaker-us-west-2-030813887342/custom_inference/all-MiniLM-L6-v2/model.tar.gz",
+		ModelStorage:     "s3://sagemaker-us-west-2-pretrained/custom_inference/all-MiniLM-L6-v2/model.tar.gz",
 		Framework:        "huggingface",
 		FrameworkVersion: "4.12",
 		Info:             "https://huggingface.co/sentence-transformers/all-MiniLM-L6-v2",
@@ -61,7 +61,7 @@ func ensureModelFileInRegion(tier tier.Tier, modelFile string) (string, error) {
 	region := tier.SagemakerClient.GetSMCRegion()
 	parts := strings.Split(modelFile, "/")
 
-	s3Bucket := "sagemaker-" + region + "-030813887342"
+	s3Bucket := "sagemaker-" + region + "-pretrained"
 	// parts is broken in [s3, "", <region_specific_prefix>, custom_inference, <model_name>, model.tar.gz]
 	if len(parts) != 6 {
 		return "", fmt.Errorf("model file path is not in the expected format: %v", modelFile)
@@ -245,6 +245,20 @@ func Remove(ctx context.Context, tier tier.Tier, name, version string) error {
 	return EnsureEndpointExists(ctx, tier)
 }
 
+func PreTrainedScore(ctx context.Context, tier tier.Tier, modelName string, inputs []value.List) ([]value.Value, error) {
+	modelConfig, ok := SupportedPretrainedModels[modelName]
+	if !ok {
+		return nil, fmt.Errorf("model %s is not supported, currently supported models are: %s", modelName, strings.Join(GetSupportedModels(), ", "))
+	}
+	req := lib.ScoreRequest{
+		Framework:    modelConfig.Framework,
+		EndpointName: PreTrainedModelId(modelName, tier.ID),
+		FeatureLists: inputs,
+	}
+	res, err := tier.SagemakerClient.Score(ctx, &req)
+	return res.Scores, err
+}
+
 // Score calls SageMaker to score the model with provided list of inputs and returns a corresponding list of outputs
 // on a successful run. Returns an error of type modelstore.RetryError when the error is only
 // temporary and sending the request again after a few minutes is recommended.
@@ -271,50 +285,52 @@ func Score(
 		FeatureLists:  featureVecs,
 	}
 	response, err := tier.SagemakerClient.Score(ctx, &req)
-	if err != nil {
-		/*
-			Updating the endpoint on sagemaker takes about 11 minutes during which it works with the
-			previous endpoint configuration. Attempting to score a newly uploaded model would return
-			a not found error. We check if the endpoint is updating, and if the model to be scored
-			is active, and if the corresponding covering model is hosted. In that case, we return
-			an error asking to wait for the endpoint to be updated.
-		*/
-		status, err2 := tier.SagemakerClient.GetEndpointStatus(ctx, tier.ModelStore.EndpointName())
+
+	if err == nil {
+		return response.Scores, nil
+	}
+
+	/*
+		Updating the endpoint on sagemaker takes about 11 minutes during which it works with the
+		previous endpoint configuration. Attempting to score a newly uploaded model would return
+		a not found error. We check if the endpoint is updating, and if the model to be scored
+		is active, and if the corresponding covering model is hosted. In that case, we return
+		an error asking to wait for the endpoint to be updated.
+	*/
+	status, err2 := tier.SagemakerClient.GetEndpointStatus(ctx, tier.ModelStore.EndpointName())
+	if err2 != nil {
+		return nil, fmt.Errorf("failed to score the model: %v; %v", err, err2)
+	}
+	if status == "Creating" || status == "Updating" || status == "Deleting" || status == "RollingBack" {
+		activeModels, err2 := db.GetActiveModels(tier)
 		if err2 != nil {
 			return nil, fmt.Errorf("failed to score the model: %v; %v", err, err2)
 		}
-		if status == "Creating" || status == "Updating" || status == "Deleting" || status == "RollingBack" {
-			activeModels, err2 := db.GetActiveModels(tier)
-			if err2 != nil {
-				return nil, fmt.Errorf("failed to score the model: %v; %v", err, err2)
-			}
-			found := false
-			for _, m := range activeModels {
-				if name == m.Name && version == m.Version {
-					found = true
-					break
-				}
-			}
-			if !found {
-				return nil, fmt.Errorf("failed to score the model: model is absent/inactive")
-			}
-			cover, err2 := db.GetCoveringHostedModels(tier)
-			if err2 != nil {
-				return nil, fmt.Errorf("failed to score the model: %v; %v", err, err2)
-			}
-			ok, err2 := tier.SagemakerClient.ModelExists(ctx, cover[0])
-			if err2 != nil {
-				return nil, fmt.Errorf("failed to score the model: %v; %v", err, err2)
-			}
-			if ok {
-				return nil, RetryError(fmt.Errorf("failed to score the model: endpoint not updated with new model yet"))
-			} else {
-				return nil, fmt.Errorf("failed to score the model: covering model not hosted")
+		found := false
+		for _, m := range activeModels {
+			if name == m.Name && version == m.Version {
+				found = true
+				break
 			}
 		}
-		return nil, fmt.Errorf("failed to score the model: %v", err)
+		if !found {
+			return nil, fmt.Errorf("failed to score the model: model is absent/inactive")
+		}
+		cover, err2 := db.GetCoveringHostedModels(tier)
+		if err2 != nil {
+			return nil, fmt.Errorf("failed to score the model: %v; %v", err, err2)
+		}
+		ok, err2 := tier.SagemakerClient.ModelExists(ctx, cover[0])
+		if err2 != nil {
+			return nil, fmt.Errorf("failed to score the model: %v; %v", err, err2)
+		}
+		if ok {
+			return nil, RetryError(fmt.Errorf("failed to score the model: endpoint not updated with new model yet"))
+		} else {
+			return nil, fmt.Errorf("failed to score the model: covering model not hosted")
+		}
 	}
-	return response.Scores, nil
+	return nil, fmt.Errorf("failed to score the model: %v", err)
 }
 
 func EnsureEndpointExists(ctx context.Context, tier tier.Tier) error {
