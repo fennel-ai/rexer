@@ -188,18 +188,22 @@ func TestRate_Bucketize_Valid(t *testing.T) {
 	h := NewRate(tr, 1, []uint64{100}, false)
 	actions := value.List{}
 	expected := make([]counter.Bucket, 0)
-	DAY := 3600 * 24
 	for i := 0; i < 5; i++ {
 		v := value.Int(1)
 		e := value.NewList(value.Double(i), value.Double(i))
 		d := value.NewDict(map[string]value.Value{
 			"groupkey":  v,
-			"timestamp": value.Int(DAY + i*3600 + 1),
+			"timestamp": value.Int(i*360 + 50),
 			"value":     e,
 		})
 		actions.Append(d)
-		expected = append(expected, counter.Bucket{Value: e, Window: ftypes.Window_DAY, Index: 1, Width: 1, Key: v.String()})
-		expected = append(expected, counter.Bucket{Key: v.String(), Window: ftypes.Window_MINUTE, Width: 6, Index: uint64(24*10 + i*10), Value: e})
+		expected = append(expected, counter.Bucket{
+			Key:    v.String(),
+			Window: ftypes.Window_FOREVER,
+			Index:  uint64(i),
+			Width:  360,
+			Value:  e,
+		})
 	}
 	buckets, err := Bucketize(h, actions)
 	assert.NoError(t, err)

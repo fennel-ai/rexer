@@ -4,6 +4,8 @@ package aggregate_delta
 
 import (
 	"context"
+	"testing"
+
 	"fennel/controller/counter"
 	"fennel/engine/ast"
 	"fennel/kafka"
@@ -15,7 +17,6 @@ import (
 	"fennel/model/aggregate"
 	counter2 "fennel/model/counter"
 	"fennel/test"
-	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"google.golang.org/protobuf/proto"
@@ -77,7 +78,7 @@ func TestTransferToDB(t *testing.T) {
 	tier.Clock = clock
 	clock.Set(int64(start + 24*3600*2))
 	// at the end of 2 days, rolling average should only be worth 28 hours, not full 48 hours
-	found, err := counter.Value(ctx, tier, agg.Id, key, histogram, value.NewDict(map[string]value.Value{"duration": value.Int(28 * 3600)}))
+	found, err := counter.Value(ctx, tier, agg.Id, key, histogram, nil, value.NewDict(map[string]value.Value{"duration": value.Int(28 * 3600)}))
 	assert.NoError(t, err)
 	assert.Equal(t, value.Int(28*60), found)
 }
