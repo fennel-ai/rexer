@@ -17,7 +17,7 @@ func (s list) Transform(v value.Value) (value.Value, error) {
 	return value.NewList(v), nil
 }
 
-func NewList(durations []uint64) Histogram {
+func OldList(durations []uint64) Histogram {
 	maxDuration := getMaxDuration(durations)
 	return list{
 		Durations: durations,
@@ -27,6 +27,16 @@ func NewList(durations []uint64) Histogram {
 		}, true},
 		// retain all keys for 1.5days + duration
 		BucketStore: NewTwoLevelStorage(24*3600, maxDuration+24*3600*1.1),
+	}
+}
+
+func NewList(durations []uint64) Histogram {
+	maxDuration := getMaxDuration(durations)
+	return list{
+		Durations:  durations,
+		Bucketizer: thirdBucketizer{360, true},
+		// retain all keys for 1.1days + duration
+		BucketStore: NewThirdStore(240, 2, 1.1*60*60*24+maxDuration),
 	}
 }
 

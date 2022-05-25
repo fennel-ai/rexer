@@ -14,7 +14,7 @@ type rollingStdDev struct {
 	BucketStore
 }
 
-func NewStdDev(durations []uint64) Histogram {
+func OldStdDev(durations []uint64) Histogram {
 	maxDuration := getMaxDuration(durations)
 	return rollingStdDev{
 		Durations: durations,
@@ -24,6 +24,16 @@ func NewStdDev(durations []uint64) Histogram {
 		}, true},
 		// retain all keys for 1.5days + duration
 		BucketStore: NewTwoLevelStorage(24*3600, maxDuration+24*3600*1.1),
+	}
+}
+
+func NewStdDev(durations []uint64) Histogram {
+	maxDuration := getMaxDuration(durations)
+	return rollingStdDev{
+		Durations:  durations,
+		Bucketizer: thirdBucketizer{360, true},
+		// retain all keys for 1.1days + duration
+		BucketStore: NewThirdStore(240, 2, 1.1*60*60*24+maxDuration),
 	}
 }
 

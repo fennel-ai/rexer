@@ -158,8 +158,10 @@ func (f fixedSplitBucketizer) getIndex(ts ftypes.Timestamp, w uint64) uint64 {
 // thirdBucketizer splits the entire time space into buckets of size each.
 // Bucket 0, covers the time range [0, size) and so on.
 // When size = 0, there is one infinite bucket which covers the entire time space.
+// Ignores buckets only partially covered by the duration unless includePartial is set to true.
 type thirdBucketizer struct {
-	size uint64
+	size           uint64
+	includePartial bool
 }
 
 func (t thirdBucketizer) BucketizeMoment(key string, ts ftypes.Timestamp, v value.Value) []counter.Bucket {
@@ -178,7 +180,18 @@ func (t thirdBucketizer) BucketizeDuration(
 	key string, start, finish ftypes.Timestamp, v value.Value,
 ) []counter.Bucket {
 	beg := t.getIndex(start)
-	end := t.getIndex(finish - 1)
+	end := t.getIndex(finish)
+	if !t.includePartial && t.size != 0 {
+		// remove partially covered buckets
+		if uint64(start)%t.size != 0 {
+			// beg bucket is only partially covered
+			beg++
+		}
+		if uint64(finish)%t.size != t.size-1 {
+			// end bucket is only partially covered
+			end--
+		}
+	}
 	buckets := make([]counter.Bucket, end-beg+1)
 	for i := beg; i <= end; i++ {
 		buckets[i-beg] = counter.Bucket{
