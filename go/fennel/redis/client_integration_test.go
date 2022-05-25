@@ -25,11 +25,17 @@ var (
 	hostAddr = os.Getenv("REDIS_SERVER_ADDRESS")
 )
 
+func tlsConfig() *tls.Config {
+	return &tls.Config{
+		InsecureSkipVerify: true,
+	}
+}
+
 func TestRedisClientIntegration(t *testing.T) {
 	rand.Seed(time.Now().UnixNano())
 	tierID := ftypes.RealmID(rand.Uint32())
 	scope := resource.NewTierScope(tierID)
-	conf := ClientConfig{Addr: hostAddr, TLSConfig: &tls.Config{}, Scope: scope}
+	conf := ClientConfig{Addr: hostAddr, TLSConfig: tlsConfig(), Scope: scope}
 	rdb, err := conf.Materialize()
 	assert.NoError(t, err)
 	t.Run("integration_get_set_del", func(t *testing.T) { testClient(t, rdb.(Client)) })
@@ -40,7 +46,7 @@ func TestMultiSetTTL(t *testing.T) {
 	rand.Seed(time.Now().UnixNano())
 	tierID := ftypes.RealmID(rand.Uint32())
 	scope := resource.NewTierScope(tierID)
-	conf := ClientConfig{Addr: hostAddr, TLSConfig: &tls.Config{}, Scope: scope}
+	conf := ClientConfig{Addr: hostAddr, TLSConfig: tlsConfig(), Scope: scope}
 	rdb, err := conf.Materialize()
 	assert.NoError(t, err)
 	ctx := context.Background()
@@ -81,7 +87,7 @@ func TestMultiGetSet(t *testing.T) {
 	rand.Seed(time.Now().UnixNano())
 	tierID := ftypes.RealmID(rand.Uint32())
 	scope := resource.NewTierScope(tierID)
-	conf := ClientConfig{Addr: hostAddr, TLSConfig: &tls.Config{}, Scope: scope}
+	conf := ClientConfig{Addr: hostAddr, TLSConfig: tlsConfig(), Scope: scope}
 	rdb, err := conf.Materialize()
 	assert.NoError(t, err)
 	ctx := context.Background()
@@ -126,9 +132,9 @@ func TestClientConfig_Materialize_Invalid(t *testing.T) {
 		name string
 		conf ClientConfig
 	}{
-		{"invalid_url", ClientConfig{"some_random.aws.com:6379", &tls.Config{}, scope}},
+		{"invalid_url", ClientConfig{"some_random.aws.com:6379", tlsConfig(), scope}},
 		// i.e. include the url without the port
-		{"no_port", ClientConfig{strings.Split(hostAddr, ":6379")[0], &tls.Config{}, scope}},
+		{"no_port", ClientConfig{strings.Split(hostAddr, ":6379")[0], tlsConfig(), scope}},
 		// i.e. valid url but without tls config
 		{"no_tls", ClientConfig{hostAddr, nil, scope}},
 	}
@@ -146,7 +152,7 @@ func TestDeleteCrossSlot(t *testing.T) {
 	rand.Seed(time.Now().UnixNano())
 	tierID := ftypes.RealmID(rand.Uint32())
 	scope := resource.NewTierScope(tierID)
-	conf := ClientConfig{Addr: hostAddr, TLSConfig: &tls.Config{}, Scope: scope}
+	conf := ClientConfig{Addr: hostAddr, TLSConfig: tlsConfig(), Scope: scope}
 	rdb, err := conf.Materialize()
 	assert.NoError(t, err)
 
@@ -177,7 +183,7 @@ func TestSetNX(t *testing.T) {
 	rand.Seed(time.Now().UnixNano())
 	tierID := ftypes.RealmID(rand.Uint32())
 	scope := resource.NewTierScope(tierID)
-	conf := ClientConfig{Addr: hostAddr, TLSConfig: &tls.Config{}, Scope: scope}
+	conf := ClientConfig{Addr: hostAddr, TLSConfig: tlsConfig(), Scope: scope}
 	rdb, err := conf.Materialize()
 	assert.NoError(t, err)
 
@@ -206,7 +212,7 @@ func TestSetNXPipelined(t *testing.T) {
 	rand.Seed(time.Now().UnixNano())
 	tierID := ftypes.RealmID(rand.Uint32())
 	scope := resource.NewTierScope(tierID)
-	conf := ClientConfig{Addr: hostAddr, TLSConfig: &tls.Config{}, Scope: scope}
+	conf := ClientConfig{Addr: hostAddr, TLSConfig: tlsConfig(), Scope: scope}
 	rdb, err := conf.Materialize()
 	assert.NoError(t, err)
 
@@ -276,7 +282,7 @@ func TestHashmap(t *testing.T) {
 	rand.Seed(time.Now().UnixNano())
 	tierID := ftypes.RealmID(rand.Uint32())
 	scope := resource.NewTierScope(tierID)
-	conf := ClientConfig{Addr: hostAddr, TLSConfig: &tls.Config{}, Scope: scope}
+	conf := ClientConfig{Addr: hostAddr, TLSConfig: tlsConfig(), Scope: scope}
 	rdb, err := conf.Materialize()
 	assert.NoError(t, err)
 

@@ -139,9 +139,11 @@ func CreateFromArgs(args *TierArgs) (tier Tier, err error) {
 	}
 	log.Print("Connecting to redis")
 	redisConfig := redis.ClientConfig{
-		Addr:      args.RedisServer,
-		TLSConfig: &tls.Config{},
-		Scope:     scope,
+		Addr: args.RedisServer,
+		TLSConfig: &tls.Config{
+			InsecureSkipVerify: true,
+		},
+		Scope: scope,
 	}
 	redisClient, err := redisConfig.Materialize()
 	if err != nil {
@@ -150,9 +152,11 @@ func CreateFromArgs(args *TierArgs) (tier Tier, err error) {
 
 	log.Print("Connecting to cache")
 	cacheClientConfig := redis.ClientConfig{
-		Addr:      args.CachePrimary,
-		TLSConfig: &tls.Config{},
-		Scope:     scope,
+		Addr: args.CachePrimary,
+		TLSConfig: &tls.Config{
+			InsecureSkipVerify: true,
+		},
+		Scope: scope,
 	}
 	cacheClient, err := cacheClientConfig.Materialize()
 	if err != nil {
