@@ -32,3 +32,6 @@ Cargo.lock
 
 # intellij IDEA project
 *.iml
+
+**/go/bin/**
+**/go/pkg/**
