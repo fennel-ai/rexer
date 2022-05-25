@@ -1,6 +1,6 @@
 //go:build sagemaker
 
-package embedding
+package model
 
 import (
 	"context"

@@ -1,7 +1,7 @@
 //go:build sagemaker
 
 // TODO: remove the sagemaker build tag once we have enabled AWS Sagemaker access from CI.
-package predict
+package model
 
 import (
 	"testing"

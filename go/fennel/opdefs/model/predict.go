@@ -1,4 +1,4 @@
-package predict
+package model
 
 import (
 	"context"
@@ -34,7 +34,7 @@ func (pop predictOperator) New(
 }
 
 func (pop predictOperator) Signature() *operators.Signature {
-	return operators.NewSignature("std", "predict").
+	return operators.NewSignature("model", "predict").
 		Input([]value.Type{value.Types.Any}).
 		Param("features", value.Types.List, false, false, value.Nil).
 		Param("model_name", value.Types.String, true, false, value.Nil).

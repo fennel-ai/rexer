@@ -11,12 +11,13 @@ import (
 
 	_ "fennel/opdefs/embedding"
 
+	_ "fennel/opdefs/model"
+
 	_ "fennel/opdefs/std"
 	_ "fennel/opdefs/std/bool"
 	_ "fennel/opdefs/std/dedup"
 	_ "fennel/opdefs/std/group"
 	_ "fennel/opdefs/std/map"
-	_ "fennel/opdefs/std/predict"
 	_ "fennel/opdefs/std/profile"
 	_ "fennel/opdefs/std/rename"
 	_ "fennel/opdefs/std/repeat"
