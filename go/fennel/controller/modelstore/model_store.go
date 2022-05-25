@@ -9,6 +9,7 @@ import (
 	"sync"
 	"time"
 
+	"fennel/lib/ftypes"
 	lib "fennel/lib/sagemaker"
 	"fennel/lib/value"
 	db "fennel/model/sagemaker"
