@@ -35,7 +35,7 @@ type ModelRegistry = map[string]ModelInfo
 var SupportedPretrainedModels = ModelRegistry{
 	"sbert": ModelInfo{
 		ModelName:        "sbert",
-		ModelStorage:     "s3://sagemaker-us-west-2-030813887342/custom_inference/all-MiniLM-L6-v2/model.tar.gz",
+		ModelStorage:     "s3://sagemaker-us-west-2-pretrained/custom_inference/all-MiniLM-L6-v2/model.tar.gz",
 		Framework:        "huggingface",
 		FrameworkVersion: "4.12",
 		Info:             "https://huggingface.co/sentence-transformers/all-MiniLM-L6-v2",
@@ -61,7 +61,7 @@ func ensureModelFileInRegion(tier tier.Tier, modelFile string) (string, error) {
 	region := tier.SagemakerClient.GetSMCRegion()
 	parts := strings.Split(modelFile, "/")
 
-	s3Bucket := "sagemaker-" + region + "-030813887342"
+	s3Bucket := "sagemaker-" + region + "-pretrained"
 	// parts is broken in [s3, "", <region_specific_prefix>, custom_inference, <model_name>, model.tar.gz]
 	if len(parts) != 6 {
 		return "", fmt.Errorf("model file path is not in the expected format: %v", modelFile)
