@@ -17,14 +17,18 @@ from threading import Event
 # Url of the local server
 URL = 'http://localhost:2425'
 class LocalTier():
-    def __init__(self, flags=None):
+    def __init__(self, is_dev_tier=False):
         self.http_process = lib.Process(None, None, None, None)
         self.countaggr_process = lib.Process(None, None, None, None)
         self.env = os.environ.copy()
+        self.is_dev_tier = is_dev_tier
         signal.signal(signal.SIGINT, self.kill_process)
 
     def run_local_server(self):
-        tier_id = random.randint(0, 1e8)
+        if self.is_dev_tier:
+            tier_id = 106
+        else:
+            tier_id = random.randint(0, 1e8)
         self.env['TIER_ID'] = str(tier_id)
         with lib.gorun('fennel/test/cmds/tiergod', 'dynamic,integration', self.env, flags=['--mode', 'create'], wait=True):
             pass
@@ -46,13 +50,20 @@ class LocalTier():
         print('You pressed Ctrl+C!')
         self.countaggr_process.kill()
         self.http_process.kill()
-        with lib.gorun('fennel/test/cmds/tiergod', 'dynamic,integration', self.env, flags=['--mode', 'destroy'],
-                       wait=True):
-            pass
+        if not self.is_dev_tier:
+            with lib.gorun('fennel/test/cmds/tiergod', 'dynamic,integration', self.env, flags=['--mode', 'destroy'],
+                        wait=True):
+                pass
 
         sys.exit(0)
 
 
 if __name__ == '__main__':
-    local_tier = LocalTier()
-    local_tier.run_local_server()
+    if len(sys.argv) == 1 or sys.argv[1] == 'local_test':
+        local_tier = LocalTier(is_dev_tier=False)
+        local_tier.run_local_server()
+    elif sys.argv[1] == 'dev':
+        local_tier = LocalTier(is_dev_tier=True)
+        local_tier.run_local_server()
+    else:
+        print("Unknown argument")
