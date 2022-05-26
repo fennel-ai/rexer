@@ -126,10 +126,10 @@ func (pi *ProfileItem) UnmarshalJSON(data []byte) error {
 
 func (pi ProfileItem) ToValueDict() (value.Dict, error) {
 	if pi.UpdateTime == 0 {
-		pi.UpdateTime = uint64(time.Now().UnixMilli())
-	} else if pi.UpdateTime > uint64(time.Now().UnixMilli())+uint64(time.Hour.Milliseconds()) {
-		//  Convert microseconds to milliseconds
-		pi.UpdateTime = uint64(pi.UpdateTime / 1000)
+		pi.UpdateTime = uint64(time.Now().Unix())
+	} else if pi.UpdateTime > uint64(time.Now().Unix())+uint64(time.Hour.Seconds()) {
+		//  Convert microseconds to seconds
+		pi.UpdateTime = uint64(pi.UpdateTime / 1000000)
 	}
 
 	oid, err := value.FromJSON([]byte(pi.Oid))

@@ -393,7 +393,6 @@ func (t twoLevelRedisStore) redisKey(g group) (string, error) {
 		} else {
 			curr += n
 		}
-		fmt.Println("group : ", g)
 		if n, err := binary.PutUvarint(groupIdBuf[curr:], g.id); err != nil {
 			return "", err
 		} else {
@@ -473,7 +472,6 @@ func Update(ctx context.Context, tier tier.Tier, aggId ftypes.AggId, buckets []c
 		}
 		buckets[i].Value = merged
 	}
-	fmt.Println("merged :", len(buckets))
 	return h.Set(ctx, tier, aggId, buckets)
 }
 
@@ -486,7 +484,6 @@ func readFromRedis(ctx context.Context, tier tier.Tier, rkeys []string, defaults
 	if err != nil {
 		return nil, err
 	}
-	fmt.Println("read from redis :", len(res))
 	ret := make([]value.Value, len(rkeys))
 	for i, v := range res {
 		if ret[i], err = interpretRedisResponse(v, defaults[i].Clone()); err != nil {
@@ -507,7 +504,6 @@ func interpretRedisResponse(v interface{}, default_ value.Value) (value.Value, e
 			return default_, nil
 		}
 	case string:
-		fmt.Println("string :", t)
 		var val value.Value
 		err := value.Unmarshal([]byte(t), &val)
 		return val, err

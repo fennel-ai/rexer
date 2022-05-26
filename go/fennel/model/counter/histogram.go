@@ -40,7 +40,7 @@ type Histogram interface {
 
 // TODO: implement aggregations that can support forever aggregations.
 // https://linear.app/fennel-ai/issue/REX-1053/support-forever-aggregates
-func ToHistogram(tr tier.Tier, aggId ftypes.AggId, opts aggregate.Options) (Histogram, error) {
+func ToNewHistogram(tr tier.Tier, aggId ftypes.AggId, opts aggregate.Options) (Histogram, error) {
 	switch opts.AggType {
 	case "sum":
 		return NewSum(opts.Durations), nil
@@ -60,6 +60,31 @@ func ToHistogram(tr tier.Tier, aggId ftypes.AggId, opts aggregate.Options) (Hist
 		return NewRate(tr, aggId, opts.Durations, opts.Normalize), nil
 	case "topk":
 		return NewTopK(opts.Durations), nil
+	default:
+		return nil, fmt.Errorf("invalid aggregate type: %v", opts.AggType)
+	}
+}
+
+func ToHistogram(tr tier.Tier, aggID ftypes.AggId, opts aggregate.Options) (Histogram, error) {
+	switch opts.AggType {
+	case "sum":
+		return OldSum(opts.Durations), nil
+	case "timeseries_sum":
+		return OldTimeseriesSum(opts.Window, opts.Limit), nil
+	case "average":
+		return OldAverage(opts.Durations), nil
+	case "list":
+		return OldList(opts.Durations), nil
+	case "min":
+		return OldMin(opts.Durations), nil
+	case "max":
+		return OldMax(opts.Durations), nil
+	case "stddev":
+		return OldStdDev(opts.Durations), nil
+	case "rate":
+		return OldRate(tr, aggID, opts.Durations, opts.Normalize), nil
+	case "topk":
+		return OldTopK(opts.Durations), nil
 	default:
 		return nil, fmt.Errorf("invalid aggregate type: %v", opts.AggType)
 	}
