@@ -136,6 +136,11 @@ func checkSet(t *testing.T, ctx context.Context, tier tier.Tier, request profile
 	assert.NoError(t, err)
 }
 
+func checkTestSet(t *testing.T, ctx context.Context, tier tier.Tier, request profilelib.ProfileItem) {
+	err := TestSet(ctx, tier, request)
+	assert.NoError(t, err)
+}
+
 func checkGet(t *testing.T, ctx context.Context, tier tier.Tier, request profilelib.ProfileItemKey, expected value.Value) {
 	found, err := Get(ctx, tier, request)
 	assert.NoError(t, err)
@@ -185,11 +190,6 @@ func TestGetBatched(t *testing.T) {
 	assert.NoError(t, err)
 	found, err = readBatch(ctx, consumer, 3, time.Second*2)
 	assert.Equal(t, profiles, found)
-}
-
-func checkTestSet(t *testing.T, ctx context.Context, tier tier.Tier, request profilelib.ProfileItem) {
-	err := TestSet(ctx, tier, request)
-	assert.NoError(t, err)
 }
 
 func TestGetBatchedWithTestSet(t *testing.T) {
