@@ -63,10 +63,10 @@ func TestProfileOp(t *testing.T) {
 	// and add cases where the keys are stored in different slots in `_integration_test`
 	otype1, oid1, key1, val1, ver1 := ftypes.OType("user"), 223, "age", value.Int(7), uint64(4)
 	req1a := profilelib.ProfileItem{OType: otype1, Oid: strconv.Itoa(oid1), Key: key1, UpdateTime: ver1 - 1, Value: value.Int(1121)}
-	assert.NoError(t, profile.Set(ctx, tier, req1a))
+	assert.NoError(t, profile.TestSet(ctx, tier, req1a))
 	// this key has multiple versions but we should pick up the latest one if not provided explicitly
 	req1b := profilelib.ProfileItem{OType: otype1, Oid: strconv.Itoa(oid1), Key: key1, UpdateTime: ver1, Value: val1}
-	assert.NoError(t, profile.Set(ctx, tier, req1b))
+	assert.NoError(t, profile.TestSet(ctx, tier, req1b))
 
 	query := ast.OpCall{
 		Operands:  []ast.Ast{ast.Var{Name: "actions"}},
@@ -138,7 +138,7 @@ func TestProfileOpCache(t *testing.T) {
 
 	// test cache by setting a profile now
 	req1 := profilelib.ProfileItem{OType: otype, Oid: strconv.Itoa(oid), Key: key, UpdateTime: ver, Value: val}
-	assert.NoError(t, profile.Set(ctx, tier, req1))
+	assert.NoError(t, profile.TestSet(ctx, tier, req1))
 	// we should still get back default value if it is cached properly
 	verify(t, &i, query, expected)
 

@@ -40,9 +40,9 @@ func TestGetBatchDiffObjs(t *testing.T) {
 	assert.Equal(t, []profilelib.ProfileItem{p1, p2, p3}, found)
 
 	// set a few
-	checkSet(t, ctx, tier, profiles[0])
-	checkSet(t, ctx, tier, profiles[1])
-	checkSet(t, ctx, tier, profiles[2])
+	checkTestSet(t, ctx, tier, profiles[0])
+	checkTestSet(t, ctx, tier, profiles[1])
+	checkTestSet(t, ctx, tier, profiles[2])
 
 	profiles[0].UpdateTime = 0
 	profiles[1].UpdateTime = 0

@@ -136,6 +136,11 @@ func checkSet(t *testing.T, ctx context.Context, tier tier.Tier, request profile
 	assert.NoError(t, err)
 }
 
+func checkTestSet(t *testing.T, ctx context.Context, tier tier.Tier, request profilelib.ProfileItem) {
+	err := TestSet(ctx, tier, request)
+	assert.NoError(t, err)
+}
+
 func checkGet(t *testing.T, ctx context.Context, tier tier.Tier, request profilelib.ProfileItemKey, expected value.Value) {
 	found, err := Get(ctx, tier, request)
 	assert.NoError(t, err)
@@ -176,6 +181,48 @@ func TestGetBatched(t *testing.T) {
 	checkSet(t, ctx, tier, profiles[0])
 	checkSet(t, ctx, tier, profiles[1])
 	checkSet(t, ctx, tier, profiles[2])
+
+	consumer, err := tier.NewKafkaConsumer(kafka.ConsumerConfig{
+		Topic:        profilelib.PROFILELOG_KAFKA_TOPIC,
+		GroupID:      utils.RandString(6),
+		OffsetPolicy: kafka.DefaultOffsetPolicy,
+	})
+	assert.NoError(t, err)
+	found, err = readBatch(ctx, consumer, 3, time.Second*2)
+	assert.Equal(t, profiles, found)
+}
+
+func TestGetBatchedWithTestSet(t *testing.T) {
+	tier, err := test.Tier()
+	assert.NoError(t, err)
+	defer test.Teardown(tier)
+	ctx := context.Background()
+
+	// mini-redis does not play well with cache keys in different "slots" (in the same txn),
+	// currently it is determined using (otype, oid, key). We test behavior across
+	// different objects in `_integration_test`
+	vals := []value.Value{value.Int(1), value.Int(2), value.Int(3)}
+	profiles := []profilelib.ProfileItem{
+		{OType: "User", Oid: "1", Key: "summary", UpdateTime: 1, Value: vals[0]},
+		{OType: "User", Oid: "1", Key: "summary", UpdateTime: 2, Value: vals[1]},
+		{OType: "User", Oid: "1", Key: "summary", UpdateTime: 3, Value: vals[2]},
+	}
+
+	pks := make([]profilelib.ProfileItemKey, len(profiles))
+	for i, p := range profiles {
+		pks[i] = profilelib.ProfileItemKey{OType: p.OType, Oid: p.Oid, Key: p.Key}
+	}
+
+	nilProfile := profilelib.ProfileItem{OType: "User", Oid: "1", Key: "summary", UpdateTime: 0, Value: value.Nil}
+	// initially nothing exists
+	found, err := GetBatch(ctx, tier, pks)
+	assert.NoError(t, err)
+	assert.Equal(t, []profilelib.ProfileItem{nilProfile, nilProfile, nilProfile}, found)
+
+	// set a few
+	checkTestSet(t, ctx, tier, profiles[0])
+	checkTestSet(t, ctx, tier, profiles[1])
+	checkTestSet(t, ctx, tier, profiles[2])
 
 	found, err = GetBatch(ctx, tier, pks)
 	assert.NoError(t, err)

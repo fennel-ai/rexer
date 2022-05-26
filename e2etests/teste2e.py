@@ -137,7 +137,16 @@ class TestEndToEnd(unittest.TestCase):
         self.assertEqual(expected, agg_user_notif_open_rate_by_category.test(actions, client=c, mock=mock))
 
         c.set_profile("content", content_id, "category", category)
-        self.assertEqual(category, c.get_profile("content", content_id, "category"))
+        slept = 0
+        passed = False
+        while slept < 120:
+            if category == c.get_profile("content", content_id, "category"):
+                passed = True
+                break
+            time.sleep(2)
+            slept += 2
+        self.assertTrue(passed)
+
         # log multiple times with dedup
         for i in range(5):
             c.log(a1)
@@ -338,6 +347,7 @@ class TestEndToEnd(unittest.TestCase):
                          c.query(e1))
         self.assertEqual([{'a': 1, 'b': 'one'}, {'a': 2, 'b': 'two'}, {'a': 2, 'b': 'three'}, {'a': 3, 'b': 'four'}],
                          c.query(e2))
+    
 
     @tiered
     def test_features(self):
@@ -348,7 +358,20 @@ class TestEndToEnd(unittest.TestCase):
         topics = ['topic1', 'topic2']
         for p in post_ids:
             c.set_profile('post', p, 'topic', topics[p % 2])
-            self.assertEqual(topics[p % 2], c.get_profile('post', p, 'topic'))
+        
+        slept = 0
+        while slept < 60:
+            passed = True
+            time.sleep(2)
+            slept += 2
+            for p in post_ids:
+                if topics[p % 2] != c.get_profile('post', p, 'topic'):
+                    passed = False
+                    break
+            if passed:
+                break
+        self.assertTrue(passed)
+
         # and log a few actions
         now = datetime.now().astimezone(timezone.utc)
 

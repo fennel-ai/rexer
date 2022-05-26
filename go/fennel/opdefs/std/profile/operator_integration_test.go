@@ -29,12 +29,12 @@ func TestProfileOpMultipleObjs(t *testing.T) {
 	otype1, oid1, key1, val1, ver1 := ftypes.OType("user"), 123, "summary", value.Int(5), uint64(1)
 	otype2, oid2, key2, val2, ver2 := ftypes.OType("user"), 223, "age", value.Int(7), uint64(4)
 	req1 := profilelib.ProfileItem{OType: otype1, Oid: strconv.Itoa(oid1), Key: key1, UpdateTime: ver1, Value: val1}
-	assert.NoError(t, profile.Set(ctx, tier, req1))
+	assert.NoError(t, profile.TestSet(ctx, tier, req1))
 	req2a := profilelib.ProfileItem{OType: otype2, Oid: strconv.Itoa(oid2), Key: key2, UpdateTime: ver2 - 1, Value: value.Int(1121)}
-	assert.NoError(t, profile.Set(ctx, tier, req2a))
+	assert.NoError(t, profile.TestSet(ctx, tier, req2a))
 	// this key has multiple UpdateTimes but we should pick up the latest one if not provided explicitly
 	req2b := profilelib.ProfileItem{OType: otype2, Oid: strconv.Itoa(oid2), Key: key2, UpdateTime: ver2, Value: val2}
-	assert.NoError(t, profile.Set(ctx, tier, req2b))
+	assert.NoError(t, profile.TestSet(ctx, tier, req2b))
 
 	query := ast.OpCall{
 		Operands:  []ast.Ast{ast.Var{Name: "actions"}},
@@ -76,9 +76,9 @@ func TestNonDictProfile(t *testing.T) {
 	ctx := context.Background()
 	otype, key := ftypes.OType("user"), "age"
 	req1a := profilelib.ProfileItem{OType: otype, Oid: "1", Key: key, Value: value.Int(13)}
-	assert.NoError(t, profile.Set(ctx, tier, req1a))
+	assert.NoError(t, profile.TestSet(ctx, tier, req1a))
 	req1b := profilelib.ProfileItem{OType: otype, Oid: "2", Key: key, Value: value.Int(15)}
-	assert.NoError(t, profile.Set(ctx, tier, req1b))
+	assert.NoError(t, profile.TestSet(ctx, tier, req1b))
 
 	intable := []value.Value{
 		value.NewDict(map[string]value.Value{

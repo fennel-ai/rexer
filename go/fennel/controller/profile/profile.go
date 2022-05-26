@@ -39,14 +39,7 @@ func Set(ctx context.Context, tier tier.Tier, request profilelib.ProfileItem) er
 		return err
 	}
 	producer := tier.Producers[profilelib.PROFILELOG_KAFKA_TOPIC]
-	if err := producer.LogProto(ctx, &p, nil); err != nil {
-		return err
-	}
-
-	if err := profile.Set(ctx, tier, profilelib.NewProfileItem(string(request.OType), request.Oid, request.Key, request.Value, request.UpdateTime)); err != nil {
-		return err
-	}
-	return nil
+	return producer.LogProto(ctx, &p, nil)
 }
 
 func SetMulti(ctx context.Context, tier tier.Tier, request []profilelib.ProfileItem) error {
@@ -120,4 +113,13 @@ func GetBatch(ctx context.Context, tier tier.Tier, requests []profilelib.Profile
 
 func setBatch(ctx context.Context, tier tier.Tier, requests []profilelib.ProfileItem) error {
 	return profile.SetBatch(ctx, tier, requests)
+}
+
+// Only use for tests
+func TestSet(ctx context.Context, tier tier.Tier, request profilelib.ProfileItem) error {
+	Set(ctx, tier, request)
+	if err := profile.Set(ctx, tier, profilelib.NewProfileItem(string(request.OType), request.Oid, request.Key, request.Value, request.UpdateTime)); err != nil {
+		return err
+	}
+	return nil
 }
