@@ -23,7 +23,7 @@ import (
 	"go.uber.org/zap"
 )
 
-const cacheValueDuration = time.Minute
+const cacheValueDuration = 2 * time.Minute
 
 // increment this to invalidate all existing cache keys for aggregate
 var cacheVersion = 0
