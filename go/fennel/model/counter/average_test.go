@@ -96,21 +96,17 @@ func TestRollingAverage_Bucketize_Valid(t *testing.T) {
 	h := NewAverage([]uint64{123})
 	actions := value.List{}
 	expected := make([]counter.Bucket, 0)
+	DAY := 3600 * 24
 	for i := 0; i < 5; i++ {
 		v := value.NewList(value.Int(i), value.String("hi"))
 		d := value.NewDict(map[string]value.Value{
 			"groupkey":  v,
-			"timestamp": value.Int(i*360 + 50),
+			"timestamp": value.Int(DAY + i*3600 + 1),
 			"value":     value.Int(i),
 		})
 		actions.Append(d)
-		expected = append(expected, counter.Bucket{
-			Key:    v.String(),
-			Window: ftypes.Window_FOREVER,
-			Index:  uint64(i),
-			Width:  360,
-			Value:  value.NewList(value.Int(i), value.Int(1)),
-		})
+		expected = append(expected, counter.Bucket{Key: v.String(), Window: ftypes.Window_DAY, Index: 1, Width: 1, Value: value.NewList(value.Int(i), value.Int(1))})
+		expected = append(expected, counter.Bucket{Key: v.String(), Window: ftypes.Window_MINUTE, Index: uint64(24*10 + i*10), Width: 6, Value: value.NewList(value.Int(i), value.Int(1))})
 	}
 	buckets, err := Bucketize(h, actions)
 	assert.NoError(t, err)

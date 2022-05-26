@@ -144,7 +144,7 @@ func TestAggregateDeltaSet(t *testing.T) {
 	var v value.Value
 	for {
 		time.Sleep(time.Second * 1)
-		v, err = counter.Value(ctx, tier, 1, value.String("user"), histogram, nil, value.NewDict(map[string]value.Value{"duration": value.Int(3600)}))
+		v, err = counter.Value(ctx, tier, 1, value.String("user"), histogram, value.NewDict(map[string]value.Value{"duration": value.Int(3600)}))
 		require.NoError(t, err)
 		if v != histogram.Zero() {
 			break
@@ -179,7 +179,7 @@ func TestAggregateDeltaSet(t *testing.T) {
 	// Wait till `badd`` is written to kv store.
 	for {
 		time.Sleep(time.Second * 1)
-		v, err = counter.Value(ctx, tier, 1, value.String("user"), histogram, nil, value.NewDict(map[string]value.Value{"duration": value.Int(3600)}))
+		v, err = counter.Value(ctx, tier, 1, value.String("user"), histogram, value.NewDict(map[string]value.Value{"duration": value.Int(3600)}))
 		require.NoError(t, err)
 		if v != value.Int(20) {
 			break
@@ -193,7 +193,7 @@ func TestAggregateDeltaSet(t *testing.T) {
 	// Now, read the first update from the kv store. It should be same as `bnew` + `badd`
 	// and not `bnew` + `badd` + `b`, which validates that the consumer did not process the earlier
 	// message in kafka.
-	got, err := counter.Value(ctx, tier, 1, value.String("user"), histogram, nil, value.NewDict(map[string]value.Value{"duration": value.Int(3600)}))
+	got, err := counter.Value(ctx, tier, 1, value.String("user"), histogram, value.NewDict(map[string]value.Value{"duration": value.Int(3600)}))
 	require.NoError(t, err)
 	require.Equal(t, got, value.Int(23))
 }

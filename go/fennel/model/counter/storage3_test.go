@@ -20,7 +20,7 @@ func TestThirdStore(t *testing.T) {
 	ctx := context.Background()
 
 	s := thirdStore{
-		bucketsPerSlot: 10,
+		bucketsPerSlot: 240,
 		prefixSize:     2,
 		retention:      30,
 	}

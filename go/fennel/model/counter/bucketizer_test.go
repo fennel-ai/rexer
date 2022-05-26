@@ -282,22 +282,18 @@ func TestBucketizeHistogram_Valid(t *testing.T) {
 	h := NewSum([]uint64{100})
 	actions := value.NewList()
 	expected := make([]counter.Bucket, 0)
+	DAY := 3600 * 24
 	for i := 0; i < 5; i++ {
 		v := value.Int(1)
 		e := value.Int(i)
 		d := value.NewDict(map[string]value.Value{
 			"groupkey":  v,
-			"timestamp": value.Int(i*360 + 50),
+			"timestamp": value.Int(DAY + i*3600 + 1),
 			"value":     e,
 		})
 		actions.Append(d)
-		expected = append(expected, counter.Bucket{
-			Key:    v.String(),
-			Window: ftypes.Window_FOREVER,
-			Index:  uint64(i),
-			Width:  360,
-			Value:  e,
-		})
+		expected = append(expected, counter.Bucket{Value: e, Window: ftypes.Window_DAY, Index: 1, Width: 1, Key: v.String()})
+		expected = append(expected, counter.Bucket{Key: v.String(), Window: ftypes.Window_MINUTE, Width: 6, Index: uint64(24*10 + i*10), Value: e})
 	}
 	buckets, err := Bucketize(h, actions)
 	assert.NoError(t, err)
@@ -414,34 +410,23 @@ func TestFixedSplitBucketizer_BucketizeMoment(t *testing.T) {
 func TestThirdBucketizer_BucketizeDuration(t *testing.T) {
 	scenarios := []struct {
 		size               uint64
-		includePartial     bool
 		start              ftypes.Timestamp
 		finish             ftypes.Timestamp
 		expectedStartIndex int
 		expectedNumBuckets int
 	}{
-		{60, false, 0, 120, 0, 2},
-		{60, false, 30, 120, 1, 1},
-		{60, false, 30, 90, 0, 0},
-		{60, false, 60, 90, 0, 0},
-		{60, false, 60, 119, 1, 1},
-		{60, false, 60, 120, 1, 1},
-		{60, false, 60, 121, 1, 1},
-		{0, false, 0, 0, 0, 1},
-		{0, false, 9143, 1942131, 0, 1},
-		{60, true, 0, 120, 0, 3},
-		{60, true, 30, 120, 0, 3},
-		{60, true, 30, 90, 0, 2},
-		{60, true, 60, 90, 1, 1},
-		{60, true, 60, 119, 1, 1},
-		{60, true, 60, 120, 1, 2},
-		{60, true, 60, 121, 1, 2},
-		{0, true, 0, 0, 0, 1},
-		{0, true, 9143, 1942131, 0, 1},
+		{60, 0, 120, 0, 2},
+		{60, 30, 120, 0, 2},
+		{60, 30, 90, 0, 2},
+		{60, 60, 90, 1, 1},
+		{60, 60, 120, 1, 1},
+		{60, 60, 121, 1, 2},
+		{0, 0, 0, 0, 1},
+		{0, 9143, 1942131, 0, 1},
 	}
 
 	for _, scenario := range scenarios {
-		bzer := thirdBucketizer{size: scenario.size, includePartial: scenario.includePartial}
+		bzer := thirdBucketizer{size: scenario.size}
 		found := bzer.BucketizeDuration("key", scenario.start, scenario.finish, value.Int(0))
 		assert.Len(t, found, scenario.expectedNumBuckets)
 		for i := range found {

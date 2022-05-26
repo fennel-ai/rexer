@@ -25,7 +25,7 @@ func (m rollingMax) Transform(v value.Value) (value.Value, error) {
 	return value.NewList(v, value.Bool(false)), nil
 }
 
-func OldMax(durations []uint64) Histogram {
+func NewMax(durations []uint64) Histogram {
 	maxDuration := getMaxDuration(durations)
 	return rollingMax{
 		Durations: durations,
@@ -35,16 +35,6 @@ func OldMax(durations []uint64) Histogram {
 		}, true},
 		// retain all keys for 1.1days + duration
 		BucketStore: NewTwoLevelStorage(24*3600, maxDuration+24*3600*1.1),
-	}
-}
-
-func NewMax(durations []uint64) Histogram {
-	maxDuration := getMaxDuration(durations)
-	return rollingMax{
-		Durations:  durations,
-		Bucketizer: thirdBucketizer{360, true},
-		// retain all keys for 1.1days + duration
-		BucketStore: NewThirdStore(240, 2, 1.1*60*60*24+maxDuration),
 	}
 }
 

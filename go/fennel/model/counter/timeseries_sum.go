@@ -15,7 +15,7 @@ type timeseriesSum struct {
 	BucketStore
 }
 
-func OldTimeseriesSum(window ftypes.Window, limit uint64) Histogram {
+func NewTimeseriesSum(window ftypes.Window, limit uint64) Histogram {
 	d, err := utils.Duration(window)
 	if err != nil {
 		d = 0
@@ -33,25 +33,6 @@ func OldTimeseriesSum(window ftypes.Window, limit uint64) Histogram {
 		}, false},
 		// retain all keys for 1.5days + duration
 		BucketStore: NewTwoLevelStorage(24*3600, retention),
-	}
-}
-
-func NewTimeseriesSum(window ftypes.Window, limit uint64) Histogram {
-	d, err := utils.Duration(window)
-	if err != nil {
-		d = 0
-	}
-	retention := uint64(0)
-	if d > 0 {
-		// retain all keys for 1.1days + duration
-		retention = limit*d + 1.1*60*60*24
-	}
-	return timeseriesSum{
-		Window:     window,
-		Limit:      limit,
-		Bucketizer: thirdBucketizer{d, false},
-		// retain all keys for 1.1days + duration
-		BucketStore: NewThirdStore(24*3600/d, 2, retention),
 	}
 }
 

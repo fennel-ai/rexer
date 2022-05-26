@@ -62,28 +62,3 @@ func ToHistogram(tr tier.Tier, aggId ftypes.AggId, opts aggregate.Options) (Hist
 		return nil, fmt.Errorf("invalid aggregate type: %v", opts.AggType)
 	}
 }
-
-func ToOldHistogram(tr tier.Tier, aggID ftypes.AggId, opts aggregate.Options) (Histogram, error) {
-	switch opts.AggType {
-	case "sum":
-		return OldSum(opts.Durations), nil
-	case "timeseries_sum":
-		return OldTimeseriesSum(opts.Window, opts.Limit), nil
-	case "average":
-		return OldAverage(opts.Durations), nil
-	case "list":
-		return OldList(opts.Durations), nil
-	case "min":
-		return OldMin(opts.Durations), nil
-	case "max":
-		return OldMax(opts.Durations), nil
-	case "stddev":
-		return OldStdDev(opts.Durations), nil
-	case "rate":
-		return OldRate(tr, aggID, opts.Durations, opts.Normalize), nil
-	case "topk":
-		return OldTopK(opts.Durations), nil
-	default:
-		return nil, fmt.Errorf("invalid aggregate type: %v", opts.AggType)
-	}
-}
