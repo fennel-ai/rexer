@@ -73,7 +73,7 @@ const tierConfs: Record<number, TierConf> = {
         planeId: 5,
         httpServerConf: {
             podConf: {
-                replicas: 3,
+                replicas: 4,
                 // each http-server should be in different nodes from each other
                 enforceReplicaIsolation: true,
                 nodeLabels: {
@@ -89,15 +89,6 @@ const tierConfs: Record<number, TierConf> = {
                     "node-group": "p-5-countaggr-ng"
                 }
             }
-        },
-        apiServerConf: {
-            podConf: {
-                replicas: 3,
-                enforceReplicaIsolation: true,
-            },
-            // This will be replaced with the actual storageclass
-            // of the type io1.
-            storageclass: "io1",
         },
     },
     // Convoy staging tier using Fennel's staging data plane.
@@ -264,7 +255,7 @@ const planeConfs: Record<number, PlaneConf> = {
                 {
                     name: "p-5-httpserver-ng",
                     nodeType: "c6i.4xlarge",
-                    desiredCapacity: 3,
+                    desiredCapacity: 4,
                     labels: {
                         "node-group": "p-5-httpserver-ng"
                     }
