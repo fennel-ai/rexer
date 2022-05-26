@@ -378,7 +378,7 @@ func (i Interpreter) getOperator(namespace, name string) (operators.Operator, er
 	if err != nil {
 		return op, err
 	}
-	ret, err := op.New(i.queryArgs(), i.bootargs, i.cache)
+	ret, err := op.New(i.queryArgs(), i.bootargs)
 	return ret, err
 }
 

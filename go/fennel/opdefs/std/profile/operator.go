@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log"
-	"sync"
+	"time"
 
 	"fennel/controller/mock"
 	"fennel/controller/profile"
@@ -16,6 +16,8 @@ import (
 	"fennel/tier"
 )
 
+const cacheValueDuration = 2 * time.Minute
+
 func init() {
 	operators.Register(profileOp{})
 }
@@ -24,11 +26,10 @@ type profileOp struct {
 	tier   tier.Tier
 	args   value.Dict
 	mockID int64
-	cache  *sync.Map
 }
 
 func (p profileOp) New(
-	args value.Dict, bootargs map[string]interface{}, cache *sync.Map,
+	args value.Dict, bootargs map[string]interface{},
 ) (operators.Operator, error) {
 	tr, err := bootarg.GetTier(bootargs)
 	if err != nil {
@@ -45,7 +46,7 @@ func (p profileOp) New(
 		}
 		mockID = int64(asInt)
 	}
-	return profileOp{tr, args, mockID, cache}, nil
+	return profileOp{tr, args, mockID}, nil
 }
 
 func (p profileOp) Apply(ctx context.Context, staticKwargs value.Dict, in operators.InputIter, out *value.List) (err error) {
@@ -106,7 +107,8 @@ func (p profileOp) getProfiles(ctx context.Context, profileKeys []libprofile.Pro
 	// and for profile operator to set default correctly
 	for i, pi := range profileKeys {
 		key := p.getKey(pi)
-		v, ok := p.cache.Load(key)
+		v, ok := p.tier.PCache.Get(key)
+
 		if !ok {
 			// did not find profile, filter out
 			uncached = append(uncached, pi)
@@ -138,7 +140,7 @@ func (p profileOp) getProfiles(ctx context.Context, profileKeys []libprofile.Pro
 	// add them to cache
 	for i, pi := range uncached {
 		key := p.getKey(pi)
-		p.cache.Store(key, vals[i].Value)
+		p.tier.PCache.SetWithTTL(key, vals[i].Value, cacheValueDuration)
 	}
 
 	// finally, return result

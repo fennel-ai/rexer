@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"sort"
-	"sync"
 
 	"fennel/engine/operators"
 	"fennel/lib/value"
@@ -15,7 +14,7 @@ type SortOperator struct{}
 var _ operators.Operator = SortOperator{}
 
 func (op SortOperator) New(
-	args value.Dict, bootargs map[string]interface{}, cache *sync.Map,
+	args value.Dict, bootargs map[string]interface{},
 ) (operators.Operator, error) {
 	return SortOperator{}, nil
 }

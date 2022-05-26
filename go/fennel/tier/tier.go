@@ -100,9 +100,10 @@ func (args TierArgs) Valid() error {
 */
 
 type Tier struct {
-	ID               ftypes.RealmID
-	DB               db.Connection
-	Redis            redis.Client
+	ID    ftypes.RealmID
+	DB    db.Connection
+	Redis redis.Client
+	// Elastic Cache ( external service & higher level cache with more capacity with LRU eviction )
 	Cache            cache.Cache
 	Producers        map[string]libkafka.FProducer
 	Clock            clock.Clock
@@ -114,7 +115,7 @@ type Tier struct {
 	ModelStore       *modelstore.ModelStore
 	Badger           fbadger.DB
 	Args             TierArgs
-	// In-process caches for aggregate values.
+	// In-process caches for the tier, has very short TTL ( order of minutes )
 	PCache pcache.PCache
 	// Cache of aggregate name to aggregate definitions - key type is string,
 	// value type is aggregate.Aggregate. Consider change this to something

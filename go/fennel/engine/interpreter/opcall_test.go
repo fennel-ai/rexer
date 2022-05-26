@@ -3,7 +3,6 @@ package interpreter
 import (
 	"context"
 	"fmt"
-	"sync"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -239,7 +238,7 @@ func TestInterpreter_VisitFnCall(t *testing.T) {
 type testOpDefault struct{}
 
 func (t testOpDefault) New(
-	args value.Dict, bootargs map[string]interface{}, cache *sync.Map,
+	args value.Dict, bootargs map[string]interface{},
 ) (operators.Operator, error) {
 	return testOpDefault{}, nil
 }
@@ -280,7 +279,7 @@ type testNonValue struct {
 var _ operators.Operator = testOpInit{}
 
 func (top testOpInit) New(
-	args value.Dict, bootargs map[string]interface{}, cache *sync.Map,
+	args value.Dict, bootargs map[string]interface{},
 ) (operators.Operator, error) {
 	// take one arg from args and one from bootarg to verify that init is working
 	num, ok := args.Get("num")
@@ -315,7 +314,7 @@ type rowCount struct {
 }
 
 func (r *rowCount) New(
-	args value.Dict, bootargs map[string]interface{}, cache *sync.Map,
+	args value.Dict, bootargs map[string]interface{},
 ) (operators.Operator, error) {
 	return &rowCount{}, nil
 }
@@ -340,7 +339,7 @@ var _ operators.Operator = &rowCount{}
 type squareFn struct{}
 
 func (s squareFn) New(
-	args value.Dict, bootargs map[string]interface{}, cache *sync.Map,
+	args value.Dict, bootargs map[string]interface{},
 ) (operators.Operator, error) {
 	return squareFn{}, nil
 }
@@ -370,7 +369,7 @@ var _ operators.Operator = squareFn{}
 type zip struct{}
 
 func (e zip) New(
-	args value.Dict, bootargs map[string]interface{}, cache *sync.Map,
+	args value.Dict, bootargs map[string]interface{},
 ) (operators.Operator, error) {
 	return zip{}, nil
 }

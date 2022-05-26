@@ -3,7 +3,6 @@ package _map
 import (
 	"context"
 	"errors"
-	"sync"
 
 	"fennel/engine/operators"
 	"fennel/lib/value"
@@ -17,7 +16,7 @@ type collect struct {
 }
 
 func (m collect) New(
-	args value.Dict, bootargs map[string]interface{}, cache *sync.Map,
+	args value.Dict, bootargs map[string]interface{},
 ) (operators.Operator, error) {
 	return collect{}, nil
 }

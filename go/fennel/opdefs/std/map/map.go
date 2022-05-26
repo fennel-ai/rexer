@@ -2,7 +2,6 @@ package _map
 
 import (
 	"context"
-	"sync"
 
 	"fennel/engine/operators"
 	"fennel/lib/value"
@@ -16,7 +15,7 @@ type mapper struct {
 }
 
 func (m mapper) New(
-	args value.Dict, bootargs map[string]interface{}, cache *sync.Map,
+	args value.Dict, bootargs map[string]interface{},
 ) (operators.Operator, error) {
 	return mapper{}, nil
 }

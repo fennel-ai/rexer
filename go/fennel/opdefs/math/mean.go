@@ -3,7 +3,6 @@ package math
 import (
 	"context"
 	"fmt"
-	"sync"
 
 	"fennel/engine/operators"
 	"fennel/lib/value"
@@ -16,7 +15,7 @@ func init() {
 type meanop struct{}
 
 func (a meanop) New(
-	args value.Dict, bootargs map[string]interface{}, cache *sync.Map,
+	args value.Dict, bootargs map[string]interface{},
 ) (operators.Operator, error) {
 	return meanop{}, nil
 }

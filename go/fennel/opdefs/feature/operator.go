@@ -2,7 +2,6 @@ package feature
 
 import (
 	"context"
-	"sync"
 
 	"fennel/controller/feature"
 	"fennel/engine/interpreter/bootarg"
@@ -22,7 +21,7 @@ type featureLog struct {
 }
 
 func (f featureLog) New(
-	args value.Dict, bootargs map[string]interface{}, cache *sync.Map,
+	args value.Dict, bootargs map[string]interface{},
 ) (operators.Operator, error) {
 	tr, err := bootarg.GetTier(bootargs)
 	if err != nil {

@@ -2,7 +2,6 @@ package model
 
 import (
 	"context"
-	"sync"
 
 	modelstore "fennel/controller/modelstore"
 	"fennel/engine/interpreter/bootarg"
@@ -19,7 +18,7 @@ type predictOperator struct {
 	tier tier.Tier
 }
 
-func (p predictOperator) New(args value.Dict, bootargs map[string]interface{}, cache *sync.Map) (operators.Operator, error) {
+func (p predictOperator) New(args value.Dict, bootargs map[string]interface{}) (operators.Operator, error) {
 	tr, err := bootarg.GetTier(bootargs)
 	if err != nil {
 		return nil, err
