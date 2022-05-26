@@ -2,7 +2,140 @@ package value
 
 import (
 	"fmt"
+	"sort"
+
+	capnp "capnproto.org/go/capnp/v3"
 )
+
+func ToCapnValue(v Value) (CapnValue, error) {
+	// Make a brand new empty message. A Message allocates Cap'n Proto structs.
+	_, seg, err := capnp.NewMessage(capnp.SingleSegment(nil))
+	if err != nil {
+		return CapnValue{}, err
+	}
+	cv, err := NewRootCapnValue(seg)
+	switch t := v.(type) {
+	case Int:
+		cv.SetInt(int64(t))
+	case Double:
+		cv.SetDouble(float64(t))
+	case Bool:
+		cv.SetBool(bool(t))
+	case String:
+		cv.SetStr(string(t))
+	case List:
+		l, err := cv.NewList(int32(t.Len()))
+		if err != nil {
+			return CapnValue{}, err
+		}
+		for i, v := range t.values {
+			cv, err := ToCapnValue(v)
+			if err != nil {
+				return CapnValue{}, err
+			}
+			l.Set(i, cv)
+		}
+	case Dict:
+		m, err := cv.NewDict()
+		if err != nil {
+			return cv, err
+		}
+		entries := t.Iter()
+		es, err := m.NewEntries(int32(len(entries)))
+		if err != nil {
+			return cv, err
+		}
+		// Collect keys in dict and sort to get canonical order.
+		keys := make([]string, 0, len(entries))
+		for k := range entries {
+			keys = append(keys, k)
+		}
+		sort.Strings(keys)
+		for i, k := range keys {
+			key, err := capnp.NewText(seg, k)
+			if err != nil {
+				return CapnValue{}, fmt.Errorf("failed to convert map key to string: %w", err)
+			}
+			es.At(i).SetKey(key.ToPtr())
+			value, err := ToCapnValue(entries[k])
+			if err != nil {
+				return CapnValue{}, err
+			}
+			es.At(i).SetValue(value.ToPtr())
+		}
+	case nil_:
+		cv.SetNil()
+	case *Future:
+		return ToCapnValue(t.await())
+	default:
+		return CapnValue{}, fmt.Errorf("invalid value: %s", v.String())
+	}
+	return cv, nil
+}
+
+func FromCapnValue(cv CapnValue) (Value, error) {
+	switch cv.Which() {
+	case CapnValue_Which_nil:
+		return Nil, nil
+	case CapnValue_Which_int:
+		return Int(cv.Int()), nil
+	case CapnValue_Which_double:
+		return Double(cv.Double()), nil
+	case CapnValue_Which_bool:
+		return Bool(cv.Bool()), nil
+	case CapnValue_Which_str:
+		s, err := cv.Str()
+		if err != nil {
+			return Nil, fmt.Errorf("capnvalue is not string: %v", cv.String())
+		}
+		return String(s), nil
+	case CapnValue_Which_list:
+		l, err := cv.List()
+		if err != nil {
+			return Nil, fmt.Errorf("capnvalue is not list: %v", cv.String())
+		}
+		v := NewList()
+		v.Grow(l.Len())
+		for i := 0; i < l.Len(); i++ {
+			e := l.At(i)
+			ve, err := FromCapnValue(e)
+			if err != nil {
+				return Nil, err
+			}
+			v.Append(ve)
+		}
+		return v, nil
+	case CapnValue_Which_dict:
+		d, err := cv.Dict()
+		if err != nil {
+			return Nil, fmt.Errorf("capnvalue is not dict: %v", cv.String())
+		}
+		v := NewDict(make(map[string]Value))
+		entries, err := d.Entries()
+		if err != nil {
+			return Nil, fmt.Errorf("failed to get dict entries from capnvalue: %w", err)
+		}
+		for i := 0; i < entries.Len(); i++ {
+			entry := entries.At(i)
+			ek, err := entry.Key()
+			if err != nil {
+				return Nil, fmt.Errorf("failed to get dict key from capnvalue: %w", err)
+			}
+			ev, err := entry.Value()
+			if err != nil {
+				return Nil, fmt.Errorf("failed to get dict value from capnvalue: %w", err)
+			}
+			val, err := FromCapnValue(CapnValue{ev.Struct()})
+			if err != nil {
+				return Nil, fmt.Errorf("failed to convert dict value from capnvalue to Value: %w", err)
+			}
+			v.Set(ek.Text(), val)
+		}
+		return v, nil
+	default:
+		return Nil, fmt.Errorf("invalid value: %v", cv.String())
+	}
+}
 
 func ToProtoValue(v Value) (PValue, error) {
 	switch t := v.(type) {
