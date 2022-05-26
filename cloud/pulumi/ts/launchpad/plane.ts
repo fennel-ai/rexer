@@ -146,7 +146,7 @@ const setupResources = async () => {
         username: "admin",
         password: pulumi.output(input.dbConf.password),
         connectedSecurityGroups: {
-            "eks": eksOutput.workerSg,
+            "eks": eksOutput.clusterSg,
         },
         connectedCidrBlocks: [input.controlPlaneConf.cidrBlock],
         planeId: input.planeId,
@@ -157,7 +157,7 @@ const setupResources = async () => {
         region: input.region,
         vpcId: vpcOutput.vpcId,
         connectedSecurityGroups: {
-            "eks": eksOutput.workerSg,
+            "eks": eksOutput.clusterSg,
         },
         numShards: input.redisConf?.numShards,
         numReplicasPerShard: input.redisConf?.numReplicasPerShard,
@@ -170,7 +170,7 @@ const setupResources = async () => {
         region: input.region,
         vpcId: vpcOutput.vpcId,
         connectedSecurityGroups: {
-            "eks": eksOutput.workerSg,
+            "eks": eksOutput.clusterSg,
         },
         planeId: input.planeId,
         nodeType: input.cacheConf?.nodeType,

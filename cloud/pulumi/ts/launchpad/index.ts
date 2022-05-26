@@ -413,7 +413,7 @@ if (tierId !== 0) {
 
         vpcId: vpcOutput.vpcId,
         connectedSecurityGroups: {
-            "eks": eksOutput.workerSg,
+            "eks": eksOutput.clusterSg,
         },
     }, preview, destroy).catch(err => console.log(err))
 }

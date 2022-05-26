@@ -52,7 +52,7 @@ export type outputType = {
     kubeconfig: any,
     oidcUrl: string,
     instanceRole: string,
-    workerSg: string,
+    clusterSg: string,
     storageclasses: Record<string, string>
 }
 
@@ -341,7 +341,7 @@ export const setup = async (input: inputType): Promise<pulumi.Output<outputType>
     for (let nodeGroup of nodeGroups) {
         const nodeGroupSize = nodeGroup.desiredCapacity;
         const n = new eks.ManagedNodeGroup(nodeGroup.name, {
-            cluster: cluster.core,
+            cluster: cluster,
             scalingConfig: {
                 desiredSize: nodeGroupSize,
                 minSize: nodeGroupSize,
@@ -359,6 +359,15 @@ export const setup = async (input: inputType): Promise<pulumi.Output<outputType>
     // Install descheduler.
     setupDescheduler(cluster);
 
+    // Use cluster's security group
+    //
+    // NOTE: Amazon EKS managed node groups are automatically configured to use the cluster security group
+    // source: https://docs.aws.amazon.com/eks/latest/userguide/sec-group-reqs.html
+    //
+    // Allow both Kubernetes control plane and worker nodes (in node groups) have access to the AWS services used by
+    // the process deployed on them (our services).
+    const clusterSg = cluster.clusterSecurityGroup.id
+
     // Connect cluster node security group to connected vpcs.
     const sgRules = new aws.ec2.SecurityGroupRule(`p-${input.planeId}-eks-sg-rule`, {
         type: "ingress",
@@ -366,7 +375,7 @@ export const setup = async (input: inputType): Promise<pulumi.Output<outputType>
         toPort: 65535,
         protocol: "tcp",
         cidrBlocks: input.connectedVpcCidrs,
-        securityGroupId: cluster.nodeSecurityGroup.id
+        securityGroupId: clusterSg,
     }, { provider: awsProvider })
 
     const policy = new aws.iam.RolePolicy(`t-${input.planeId}-s3-createbucket-rolepolicy`, {
@@ -407,13 +416,10 @@ export const setup = async (input: inputType): Promise<pulumi.Output<outputType>
 
     // Setup storageclasses to be used by stateful sets.
     const storageclasses = setupStorageClasses(cluster)
-
-    const workerSg = cluster.nodeSecurityGroup.id
-
     const clusterName = cluster.core.cluster.name
 
     const output = pulumi.output({
-        kubeconfig, oidcUrl, instanceRole, workerSg, clusterName, storageclasses,
+        kubeconfig, oidcUrl, instanceRole, clusterSg, clusterName, storageclasses,
     })
 
     return output
