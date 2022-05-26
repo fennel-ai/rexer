@@ -1,13 +1,10 @@
 package counter
 
 import (
-	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 
-	"fennel/lib/counter"
-	"fennel/lib/ftypes"
 	"fennel/lib/value"
 )
 
@@ -135,53 +132,5 @@ func TestList_Merge_Invalid(t *testing.T) {
 
 		_, err = h.Merge(n.input2, n.input1)
 		assert.Error(t, err)
-	}
-}
-
-func TestList_Bucketize_Valid(t *testing.T) {
-	t.Parallel()
-	h := NewList([]uint64{123})
-	actions := value.NewList()
-	expected := make([]counter.Bucket, 0)
-	expVals := make([]value.Value, 0)
-	DAY := 3600 * 24
-	for i := 0; i < 5; i++ {
-		v := value.Int(1)
-		e := value.Int(i)
-		d := value.NewDict(map[string]value.Value{
-			"groupkey":  v,
-			"timestamp": value.Int(DAY + i*3600 + 1),
-			"value":     e,
-		})
-		actions.Append(d)
-		expected = append(expected, counter.Bucket{Window: ftypes.Window_DAY, Index: 1, Width: 1, Key: v.String()})
-		expVals = append(expVals, value.NewList(e))
-		expected = append(expected, counter.Bucket{Key: v.String(), Window: ftypes.Window_MINUTE, Index: uint32(24*10 + i*10), Width: 6})
-		expVals = append(expVals, value.NewList(e))
-	}
-	buckets, vals, err := Bucketize(h, actions)
-	assert.NoError(t, err)
-	assert.ElementsMatch(t, expected, buckets)
-	assert.ElementsMatch(t, expVals, vals)
-}
-
-func TestList_Bucketize_Invalid(t *testing.T) {
-	t.Parallel()
-	h := NewList([]uint64{123})
-	cases := [][]value.Dict{
-		{value.NewDict(nil)},
-		{value.NewDict(map[string]value.Value{"groupkey": value.Int(1), "timestamp": value.Int(2)})},
-		{value.NewDict(map[string]value.Value{"groupkey": value.Int(1), "timestamp": value.Bool(true), "value": value.Int(4)})},
-		{value.NewDict(map[string]value.Value{"groupkey": value.Int(1), "timestamp": value.Double(1.0), "value": value.Int(3)})},
-		{value.NewDict(map[string]value.Value{"groupkey": value.Int(1), "value": value.Int(3)})},
-		{value.NewDict(map[string]value.Value{"timestamp": value.Int(1), "value": value.Int(3)})},
-	}
-	for _, test := range cases {
-		table := value.NewList()
-		for _, d := range test {
-			table.Append(d)
-		}
-		_, _, err := Bucketize(h, table)
-		assert.Error(t, err, fmt.Sprintf("case was: %v", table))
 	}
 }
