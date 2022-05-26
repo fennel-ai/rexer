@@ -90,6 +90,14 @@ const tierConfs: Record<number, TierConf> = {
                 }
             }
         },
+        queryServerConf: {
+            podConf: {
+                enforceReplicaIsolation: true,
+                nodeLabels: {
+                    "node-group": "p-5-queryserver-ng"
+                }
+            }
+        }
     },
     // Convoy staging tier using Fennel's staging data plane.
     108: {
@@ -267,6 +275,15 @@ const planeConfs: Record<number, PlaneConf> = {
                     desiredCapacity: 1,
                     labels: {
                         "node-group": "p-5-countaggr-ng"
+                    }
+                },
+                // Query server node group
+                {
+                    name: "p-5-queryserver-ng",
+                    nodeType: "c6i.4xlarge",
+                    desiredCapacity: 4,
+                    labels: {
+                        "node-group": "p-5-queryserver-ng"
                     }
                 }
             ],
