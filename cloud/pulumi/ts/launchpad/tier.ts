@@ -55,6 +55,7 @@ export type ApiServerConf = {
 
 export type CountAggrConf = {
     // replicas are currently not set, but in the future they might be configured
+    // hence setting enforceReplicaIsolation does not make sense
     podConf?: PodConf
 }
 

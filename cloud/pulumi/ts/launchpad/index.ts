@@ -73,7 +73,7 @@ const tierConfs: Record<number, TierConf> = {
         planeId: 5,
         httpServerConf: {
             podConf: {
-                replicas: 4,
+                replicas: 2,
                 // each http-server should be in different nodes from each other
                 enforceReplicaIsolation: true,
                 nodeLabels: {
@@ -84,7 +84,6 @@ const tierConfs: Record<number, TierConf> = {
         // countaggr should be scheduled in a different node than http-server
         countAggrConf: {
             podConf: {
-                enforceReplicaIsolation: true,
                 nodeLabels: {
                     "node-group": "p-5-countaggr-ng"
                 }
@@ -92,6 +91,7 @@ const tierConfs: Record<number, TierConf> = {
         },
         queryServerConf: {
             podConf: {
+                replicas: 4,
                 enforceReplicaIsolation: true,
                 nodeLabels: {
                     "node-group": "p-5-queryserver-ng"
@@ -263,7 +263,7 @@ const planeConfs: Record<number, PlaneConf> = {
                 {
                     name: "p-5-httpserver-ng",
                     nodeType: "c6i.4xlarge",
-                    desiredCapacity: 4,
+                    desiredCapacity: 2,
                     labels: {
                         "node-group": "p-5-httpserver-ng"
                     }
