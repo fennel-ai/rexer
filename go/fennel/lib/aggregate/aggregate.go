@@ -28,6 +28,7 @@ var ErrNotActive = errors.New("aggregate is not active")
 
 type Aggregate struct {
 	Name      ftypes.AggName
+	Source    ftypes.Source
 	Query     ast.Ast
 	Timestamp ftypes.Timestamp
 	Options   Options

@@ -28,6 +28,9 @@ import (
 	"go.uber.org/zap"
 )
 
+var SOURCE_ACTION = ftypes.Source("action")
+var SOURCE_PROFILE = ftypes.Source("profile")
+
 var backlog_stats = promauto.NewGaugeVec(prometheus.GaugeOpts{
 	Name: "aggregator_backlog",
 	Help: "Stats about kafka consumer group backlog",
@@ -50,11 +53,22 @@ var aggregate_errors = promauto.NewCounterVec(
 	}, []string{"aggregate"})
 
 func processAggregate(tr tier.Tier, agg libaggregate.Aggregate, stopCh <-chan struct{}) error {
-	consumer, err := tr.NewKafkaConsumer(kafka.ConsumerConfig{
-		Topic:        action.ACTIONLOG_KAFKA_TOPIC,
-		GroupID:      string(agg.Name),
-		OffsetPolicy: kafka.DefaultOffsetPolicy,
-	})
+	var consumer kafka.FConsumer
+	var err error
+	if agg.Source == SOURCE_ACTION {
+		consumer, err = tr.NewKafkaConsumer(kafka.ConsumerConfig{
+			Topic:        action.ACTIONLOG_KAFKA_TOPIC,
+			GroupID:      string(agg.Name),
+			OffsetPolicy: kafka.DefaultOffsetPolicy,
+		})
+	} else if agg.Source == SOURCE_PROFILE {
+		consumer, err = tr.NewKafkaConsumer(kafka.ConsumerConfig{
+			Topic:        profile.PROFILELOG_KAFKA_TOPIC,
+			GroupID:      string(agg.Name),
+			OffsetPolicy: kafka.DefaultOffsetPolicy,
+		})
+	}
+
 	if err != nil {
 		return fmt.Errorf("unable to start consumer for aggregate: %s. Error: %v", agg.Name, err)
 	}

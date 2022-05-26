@@ -234,14 +234,14 @@ func batchValue(ctx context.Context, tier tier.Tier, batch []aggregate.GetAggVal
 }
 
 func Update(ctx context.Context, tier tier.Tier, consumer kafka.FConsumer, agg aggregate.Aggregate) error {
-	actions, err := action.ReadBatch(ctx, consumer, 20000, time.Second*10)
+	stream, err := action.ReadBatch(ctx, consumer, 20000, time.Second*10)
 	if err != nil {
 		return err
 	}
-	if len(actions) == 0 {
+	if len(stream) == 0 {
 		return nil
 	}
-	table, err := transformActions(tier, actions, agg.Query)
+	table, err := transformStream(tier, stream, agg.Query)
 
 	if err != nil {
 		return err
@@ -249,7 +249,7 @@ func Update(ctx context.Context, tier tier.Tier, consumer kafka.FConsumer, agg a
 
 	// Offline Aggregates
 	if agg.IsOffline() {
-		tier.Logger.Info(fmt.Sprintf("found %d new actions, %d transformed actions for offline aggregate: %s", len(actions), table.Len(), agg.Name))
+		tier.Logger.Info(fmt.Sprintf("found %d new actions, %d transformed actions for offline aggregate: %s", len(stream), table.Len(), agg.Name))
 
 		offlineTransformProducer := tier.Producers[libcounter.AGGREGATE_OFFLINE_TRANSFORM_TOPIC_NAME]
 		for i := 0; i < table.Len(); i++ {
@@ -269,7 +269,7 @@ func Update(ctx context.Context, tier tier.Tier, consumer kafka.FConsumer, agg a
 		_, err = consumer.Commit()
 		return err
 	}
-	tier.Logger.Info(fmt.Sprintf("found %d new actions for online aggregate: %s", len(actions), agg.Name))
+	tier.Logger.Info(fmt.Sprintf("found %d new actions for online aggregate: %s", len(stream), agg.Name))
 
 	histogram, err := modelCounter.ToHistogram(tier, agg.Id, agg.Options)
 	if err != nil {
@@ -286,7 +286,7 @@ func Update(ctx context.Context, tier tier.Tier, consumer kafka.FConsumer, agg a
 // Private helpers below
 // ============================
 
-func transformActions(tier tier.Tier, actions []libaction.Action, query ast.Ast) (value.List, error) {
+func transformStream(tier tier.Tier, actions []libaction.Action, query ast.Ast) (value.List, error) {
 	bootargs := bootarg.Create(tier)
 	executor := engine.NewQueryExecutor(bootargs)
 	table, err := libaction.ToList(actions)
