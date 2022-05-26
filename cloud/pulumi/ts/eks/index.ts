@@ -321,7 +321,10 @@ export const setup = async (input: inputType): Promise<pulumi.Output<outputType>
         // Make AMI a config parameter since AMI-ids are unique to region.
         nodeAmiId: AMI_BY_REGION[region],
         nodeAssociatePublicIpAddress: false,
-        createOidcProvider: true
+        createOidcProvider: true,
+        // Skip creating default node group since we explicitly create a managed node group (default one even if
+        // not specified in the configuration).
+        skipDefaultNodeGroup: true,
     }, { provider: awsProvider });
 
     const instanceRole = cluster.core.instanceRoles.apply((roles) => { return roles[0].name })
