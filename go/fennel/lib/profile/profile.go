@@ -3,6 +3,7 @@ package profile
 import (
 	"encoding/json"
 	"fmt"
+	"time"
 
 	"fennel/lib/ftypes"
 	"fennel/lib/value"
@@ -121,4 +122,39 @@ func (pi *ProfileItem) UnmarshalJSON(data []byte) error {
 		return fmt.Errorf("error parsing value from profile json: %v", err)
 	}
 	return nil
+}
+
+func (pi ProfileItem) ToValueDict() (value.Dict, error) {
+	if pi.UpdateTime == 0 {
+		pi.UpdateTime = uint64(time.Now().UnixMilli())
+	} else if pi.UpdateTime > uint64(time.Now().UnixMilli())+uint64(time.Hour.Milliseconds()) {
+		//  Convert microseconds to milliseconds
+		pi.UpdateTime = uint64(pi.UpdateTime / 1000)
+	}
+
+	oid, err := value.FromJSON([]byte(pi.Oid))
+	if err != nil {
+		return value.Dict{}, err
+	}
+	return value.NewDict(map[string]value.Value{
+		"oid":       oid,
+		"otype":     value.String(pi.OType),
+		"key":       value.String(pi.Key),
+		"timestamp": value.Int(pi.UpdateTime),
+		"value":     pi.Value,
+	}), nil
+}
+
+// ToList takes a list of profiles and arranges that in a value.List
+// else returns errors
+func ToList(profiles []ProfileItem) (value.List, error) {
+	table := value.List{}
+	for i := range profiles {
+		d, err := profiles[i].ToValueDict()
+		if err != nil {
+			return value.List{}, err
+		}
+		table.Append(d)
+	}
+	return table, nil
 }

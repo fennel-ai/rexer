@@ -14,12 +14,12 @@ import (
 
 func (agg *Aggregate) UnmarshalJSON(data []byte) error {
 	var fields struct {
-		Name      ftypes.AggName    `json:"Name"`
-		Id        ftypes.AggId      `json:"Id"`
-		Active    bool              `json:"Active"`
-		Query     string            `json:"Query"`
-		Timestamp ftypes.Timestamp  `json:"Timestamp"`
-		Source    ftypes.SourceType `json:"Source"`
+		Name      ftypes.AggName   `json:"Name"`
+		Id        ftypes.AggId     `json:"Id"`
+		Active    bool             `json:"Active"`
+		Query     string           `json:"Query"`
+		Timestamp ftypes.Timestamp `json:"Timestamp"`
+		Source    ftypes.Source    `json:"Source"`
 		Options   struct {
 			AggType         string        `json:"Type"`
 			Durations       []uint64      `json:"Durations"`

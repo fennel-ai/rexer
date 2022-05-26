@@ -85,6 +85,10 @@ func Store(ctx context.Context, tier tier.Tier, agg aggregate.Aggregate) error {
 			}
 			return nil
 		} else {
+			fmt.Println(agg.Query.Equals(agg2.Query))
+			fmt.Println(agg.Options.Equals(agg2.Options))
+			fmt.Println(agg.Source == agg2.Source)
+
 			return fmt.Errorf("already present but with different query/options")
 		}
 	}
