@@ -1,11 +1,14 @@
 package counter
 
 import (
+	"fmt"
 	"math"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 
+	"fennel/lib/counter"
+	"fennel/lib/ftypes"
 	"fennel/lib/value"
 )
 
@@ -88,6 +91,55 @@ func TestStddev_Merge_Invalid(t *testing.T) {
 			_, err = h.Merge(nv, v)
 			assert.Error(t, err)
 		}
+	}
+}
+
+func TestStddev_Bucketize_Valid(t *testing.T) {
+	t.Parallel()
+	h := NewStdDev([]uint64{123})
+	actions := value.NewList()
+	expected := make([]counter.Bucket, 0)
+	for i := 0; i < 5; i++ {
+		v := value.NewList(value.Int(i), value.String("hi"))
+		d := value.NewDict(map[string]value.Value{
+			"groupkey":  v,
+			"timestamp": value.Int(i*360 + 50),
+			"value":     value.Int(i),
+		})
+		count := value.NewList(value.Double(i), value.Double(i*i), value.Int(1))
+		actions.Append(d)
+		expected = append(expected, counter.Bucket{
+			Key:    v.String(),
+			Window: ftypes.Window_FOREVER,
+			Index:  uint64(i),
+			Width:  360,
+			Value:  count,
+		})
+	}
+	buckets, err := Bucketize(h, actions)
+	assert.NoError(t, err)
+	assert.ElementsMatch(t, expected, buckets)
+}
+
+func TestStddev_Bucketize_Invalid(t *testing.T) {
+	t.Parallel()
+	h := NewStdDev([]uint64{123})
+	cases := [][]value.Dict{
+		{value.NewDict(nil)},
+		{value.NewDict(map[string]value.Value{"groupkey": value.Int(1), "timestamp": value.Int(2)})},
+		{value.NewDict(map[string]value.Value{"groupkey": value.Int(1), "timestamp": value.Int(2), "value": value.Nil})},
+		{value.NewDict(map[string]value.Value{"groupkey": value.Int(1), "timestamp": value.Bool(true), "value": value.Int(4)})},
+		{value.NewDict(map[string]value.Value{"groupkey": value.Int(1), "timestamp": value.Double(1.0), "value": value.Int(3)})},
+		{value.NewDict(map[string]value.Value{"groupkey": value.Int(1), "value": value.Int(3)})},
+		{value.NewDict(map[string]value.Value{"timestamp": value.Int(1), "value": value.Int(3)})},
+	}
+	for _, test := range cases {
+		table := value.NewList()
+		for _, d := range test {
+			table.Append(d)
+		}
+		_, err := Bucketize(h, table)
+		assert.Error(t, err, fmt.Sprintf("case was: %v", table))
 	}
 }
 
