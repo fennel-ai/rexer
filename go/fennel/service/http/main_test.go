@@ -298,20 +298,14 @@ func TestProfileServerClient(t *testing.T) {
 
 	// Track profiles that were set to test multi-get
 	profileList := make([]profilelib.ProfileItem, 0)
-	//pfr := profilelib.ProfileItemKey{}
-
-	// in the beginning, with no value set, we set nil pointer back but with no error
-	checkGetSet(t, c, true, "1", "1", 0, "age", value.Nil)
 
 	var expected value.Value = value.NewList(value.Int(1), value.Bool(false), value.Nil)
-	profileList = append(profileList, checkGetSet(t, c, false, "1", "1", 1, "age", expected))
-	// we can also GetProfile it without using the specific version number
-	checkGetSet(t, c, true, "1", "1", 0, "age", expected)
+	profileList = append(profileList, checkSet(t, c, "1", "1", 1, "age", expected))
 
-	profileList = append(profileList, checkGetSet(t, c, false, "1", "2", 2, "age", value.Nil))
-	profileList = append(profileList, checkGetSet(t, c, false, "1", "3", 2, "age", value.Int(1)))
+	profileList = append(profileList, checkSet(t, c, "1", "2", 2, "age", value.Nil))
+	profileList = append(profileList, checkSet(t, c, "1", "3", 3, "age", value.Int(1)))
 
-	checkGetSet(t, c, false, "10", "3131", 0, "summary", value.Int(1))
+	checkSet(t, c, "10", "3131", 4, "summary", value.Int(1))
 
 	// these profiles are also written to kafka queue
 	consumer, err := tier.NewKafkaConsumer(kafka.ConsumerConfig{
@@ -620,26 +614,12 @@ func TestStoreRetrieveDeactivateAggregate(t *testing.T) {
 	assert.Error(t, err)
 }
 
-func checkGetSet(t *testing.T, c *client.Client, get bool, otype string, oid string,
+func checkSet(t *testing.T, c *client.Client, otype string, oid string,
 	updateTime uint64, key string, val value.Value) profilelib.ProfileItem {
-	if get {
-		req := profilelib.NewProfileItemKey(otype, oid, key)
-		found, err := c.GetProfile(&req)
-		foundVal := found.Value
-		assert.NoError(t, err)
-		assert.Equal(t, val, foundVal)
-		return *found
-	} else {
-		profile := profilelib.ProfileItem{OType: ftypes.OType(otype), Oid: oid, Key: key, UpdateTime: updateTime, Value: val}
-		err := c.SetProfile(&profile)
-		assert.NoError(t, err)
-		request := profilelib.NewProfileItemKey(otype, oid, key)
-		found, err := c.GetProfile(&request)
-		foundVal := found.Value
-		assert.NoError(t, err)
-		assert.Equal(t, val, foundVal)
-		return profile
-	}
+	profile := profilelib.ProfileItem{OType: ftypes.OType(otype), Oid: oid, Key: key, UpdateTime: updateTime, Value: val}
+	err := c.SetProfile(&profile)
+	assert.NoError(t, err)
+	return profile
 }
 
 func valueSendReceive(t *testing.T, controller server, agg aggregate.Aggregate, key, expected value.Value, kwargs value.Dict) {
