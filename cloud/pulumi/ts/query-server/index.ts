@@ -79,7 +79,8 @@ export const setup = async (input: inputType) => {
     const image = new docker.Image("query-server-img", {
         build: {
             context: root,
-            dockerfile: path.join(root, "dockerfiles/query.dockerfile"),
+            // We use HTTP server's dockerfile to spin up the query servers
+            dockerfile: path.join(root, "dockerfiles/http.dockerfile"),
             args: {
                 "platform": "linux/amd64",
             },
@@ -236,7 +237,7 @@ export const setup = async (input: inputType) => {
         apiVersion: "getambassador.io/v3alpha1",
         kind: "Mapping",
         metadata: {
-            name: "data-server-mapping",
+            name: "query-server-mapping",
             labels: {
                 "svc": "go-query",
             }
@@ -244,6 +245,7 @@ export const setup = async (input: inputType) => {
         spec: {
             "hostname": "*",
             "prefix": "/data/query",
+           "rewrite": "/query",
             "service": "query-server:2425",
             "timeout_ms": 30000,
         }

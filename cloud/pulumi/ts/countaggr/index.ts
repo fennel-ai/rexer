@@ -93,6 +93,7 @@ export const setup = async (input: inputType) => {
     const metricsPort = 2113;
 
     // if node labels are specified, create an affinity for the pod towards that node (or set of nodes)
+    let affinity: k8s.types.input.core.v1.Affinity = {};
     if (input.nodeLabels !== undefined) {
         let terms: k8s.types.input.core.v1.NodeSelectorTerm[] = [];
 

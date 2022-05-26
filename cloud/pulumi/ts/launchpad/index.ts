@@ -413,6 +413,8 @@ if (tierId !== 0) {
 
         httpServerConf: tierConf.httpServerConf,
 
+        queryServerConf: tierConf.queryServerConf,
+
         countAggrConf: tierConf.countAggrConf,
 
         apiServerConf: tierConf.apiServerConf,

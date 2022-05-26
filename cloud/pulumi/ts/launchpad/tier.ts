@@ -419,7 +419,6 @@ const setupResources = async () => {
             kubeconfig: input.kubeconfig,
             namespace: input.namespace,
             tierId: input.tierId,
-            enforceReplicaIsolation: input.countAggrConf?.podConf?.enforceReplicaIsolation,
             nodeLabels: input.countAggrConf?.podConf?.nodeLabels,
         });
         await countersCleanup.setup({
@@ -497,7 +496,7 @@ type TierInput = {
     httpServerConf?: HttpServerConf,
 
     // query server configuration
-    queryServerConf: QueryServerConf,
+    queryServerConf?: QueryServerConf,
 
     // countaggr configuration
     countAggrConf?: CountAggrConf,
