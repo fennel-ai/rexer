@@ -131,6 +131,8 @@ const setupResources = async () => {
         roleArn: input.roleArn,
         region: input.region,
         vpcId: vpcOutput.vpcId,
+        publicSubnets: vpcOutput.publicSubnets,
+        privateSubnets: vpcOutput.privateSubnets,
         connectedVpcCidrs: [input.controlPlaneConf.cidrBlock],
         planeId: input.planeId,
         nodeGroups: input.eksConf?.nodeGroups,

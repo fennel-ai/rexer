@@ -28,7 +28,7 @@ const DEFAULT_DESIRED_CAPACITY = 3
 
 // Node Group configuration for the EKS cluster
 export type NodeGroupConf = {
-    // Must be unique across node groups defined in the same region
+    // Must be unique across node groups defined in the same plane
     name: string,
     nodeType: string,
     desiredCapacity: number,
@@ -41,6 +41,8 @@ export type inputType = {
     region: string,
     vpcId: pulumi.Output<string>,
     connectedVpcCidrs: string[],
+    publicSubnets: pulumi.Output<string[]>,
+    privateSubnets: pulumi.Output<string[]>,
     planeId: number,
     nodeGroups?: NodeGroupConf[],
 }
@@ -291,7 +293,7 @@ function setupStorageClasses(cluster: eks.Cluster): Record<string, pulumi.Output
 }
 
 export const setup = async (input: inputType): Promise<pulumi.Output<outputType>> => {
-    const { vpcId, region, roleArn } = input
+    const { vpcId, publicSubnets, privateSubnets, region, roleArn } = input
 
     const awsProvider = new aws.Provider("eks-aws-provider", {
         region: <aws.Region>region,
@@ -302,14 +304,6 @@ export const setup = async (input: inputType): Promise<pulumi.Output<outputType>
         }
     })
 
-    const subnetIds = vpcId.apply(async vpcId => {
-        return await aws.ec2.getSubnetIds({
-            vpcId
-        }, { provider: awsProvider })
-    })
-
-    const nodeCapacity = input.desiredCapacity || DEFAULT_DESIRED_CAPACITY
-
     // Create an EKS cluster with the default configuration.
     const cluster = new eks.Cluster(`p-${input.planeId}-eks-cluster`, {
         vpcId,
@@ -317,7 +311,8 @@ export const setup = async (input: inputType): Promise<pulumi.Output<outputType>
         // TODO: disable public access once we figure out how to get the cluster
         // up and running when nodes are running in private subnet.
         endpointPublicAccess: true,
-        subnetIds: subnetIds.ids,
+        publicSubnetIds: publicSubnets,
+        privateSubnetIds: privateSubnets,
         // setup version for k8s control plane
         version: "1.22",
         providerCredentialOpts: {
@@ -329,21 +324,21 @@ export const setup = async (input: inputType): Promise<pulumi.Output<outputType>
         createOidcProvider: true
     }, { provider: awsProvider });
 
-    let nodeGroups: NodeGroupConf[] = input.nodeGroups;
-    // if no nodeGroups were specified, use default configuration
-    if (nodeGroups === undefined || nodeGroups.length === 0) {
-        nodeGroups = [{
-            name: `p-${input.planeId}-default-nodegroup`,
-            nodeType: DEFAULT_NODE_TYPE,
-            desiredCapacity: DEFAULT_DESIRED_CAPACITY,
-        }]
-    }
+    const instanceRole = cluster.core.instanceRoles.apply((roles) => { return roles[0].name })
+    const instanceRoleArn = cluster.core.instanceRoles.apply((roles) => { return roles[0].arn })
+
+    const defaultNodeGroup = {
+        name: `p-${input.planeId}-default-nodegroup`,
+        nodeType: DEFAULT_NODE_TYPE,
+        desiredCapacity: DEFAULT_DESIRED_CAPACITY,
+    };
+    let nodeGroups: NodeGroupConf[] = input.nodeGroups !== undefined ? input.nodeGroups : [defaultNodeGroup];
 
     // Setup managed node groups
-    for (let nodeGroup: NodeGroupConf in nodeGroups) {
+    for (let nodeGroup of nodeGroups) {
         const nodeGroupSize = nodeGroup.desiredCapacity;
         const n = new eks.ManagedNodeGroup(nodeGroup.name, {
-            cluster: cluster,
+            cluster: cluster.core,
             scalingConfig: {
                 desiredSize: nodeGroupSize,
                 minSize: nodeGroupSize,
@@ -353,6 +348,8 @@ export const setup = async (input: inputType): Promise<pulumi.Output<outputType>
             instanceTypes: [nodeGroup.nodeType],
             nodeGroupNamePrefix: nodeGroup.name,
             labels: nodeGroup.labels,
+            nodeRoleArn: instanceRoleArn,
+            subnetIds: privateSubnets,
         }, {provider: awsProvider});
     }
 
@@ -369,8 +366,6 @@ export const setup = async (input: inputType): Promise<pulumi.Output<outputType>
         securityGroupId: cluster.nodeSecurityGroup.id
     }, { provider: awsProvider })
 
-    const instanceRole = cluster.core.instanceRoles.apply((roles) => { return roles[0].name })
-
     const policy = new aws.iam.RolePolicy(`t-${input.planeId}-s3-createbucket-rolepolicy`, {
         name: `t-${input.planeId}-s3-createbucket-rolepolicy`,
         role: instanceRole,
@@ -381,10 +376,10 @@ export const setup = async (input: inputType): Promise<pulumi.Output<outputType>
                     "Effect":"Allow",
                     "Action": "s3:CreateBucket",
                     "Resource": "*"
-                },
+                }
             ]
         }`,
-    }, { awsProvider });
+    }, { provider: awsProvider });
 
     // Export the cluster's kubeconfig.
     const kubeconfig = cluster.kubeconfig;

@@ -84,7 +84,7 @@ const tierConfs: Record<number, TierConf> = {
         // countaggr should be scheduled in a different node than http-server
         countAggrConf: {
             podConf: {
-                enforceServiceIsolation: true,
+                enforceReplicaIsolation: true,
                 nodeLabels: {
                     "node-group": "p-5-countaggr-ng"
                 }

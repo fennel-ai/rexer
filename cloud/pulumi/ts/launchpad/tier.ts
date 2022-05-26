@@ -372,7 +372,7 @@ const setupResources = async () => {
             kubeconfig: input.kubeconfig,
             namespace: input.namespace,
             tierId: input.tierId,
-            enforceServiceIsolation: input.countAggrConf?.podConf?.enforceServiceIsolation,
+            enforceServiceIsolation: input.countAggrConf?.podConf?.enforceReplicaIsolation,
             nodeLabels: input.countAggrConf?.podConf?.nodeLabels,
             httpServerAppLabels: httpServerOutput.appLabels,
         });
