@@ -240,7 +240,7 @@ const planeConfs: Record<number, PlaneConf> = {
         },
         cacheConf: {
             nodeType: "cache.t4g.medium",
-            numNodeGroups: 2,
+            numNodeGroups: 4,
             replicasPerNodeGroup: 1,
         },
         controlPlaneConf: controlPlane,
