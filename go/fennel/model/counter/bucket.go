@@ -9,7 +9,7 @@ import (
 	"fennel/lib/value"
 )
 
-func Bucketize(bz Bucketizer, actions value.List) ([]counter.Bucket, error) {
+func Bucketize(histogram Histogram, actions value.List) ([]counter.Bucket, error) {
 	buckets := make([]counter.Bucket, 0, actions.Len())
 	for i := 0; i < actions.Len(); i++ {
 		rowVal, _ := actions.At(i)
@@ -30,7 +30,12 @@ func Bucketize(bz Bucketizer, actions value.List) ([]counter.Bucket, error) {
 			return nil, fmt.Errorf("action '%v' does not have a field called 'value'", row)
 		}
 		ts_int := ts.(value.Int)
-		b := bz.BucketizeMoment(groupkey.String(), ftypes.Timestamp(ts_int), v)
+		key := groupkey.String()
+		v, err := histogram.Transform(v)
+		if err != nil {
+			return nil, err
+		}
+		b := histogram.BucketizeMoment(key, ftypes.Timestamp(ts_int), v)
 		buckets = append(buckets, b...)
 	}
 	return buckets, nil
@@ -38,20 +43,17 @@ func Bucketize(bz Bucketizer, actions value.List) ([]counter.Bucket, error) {
 
 // MergeBuckets takes a list of buckets and "merges" their counts if rest of their properties
 // are identical this reduces the number of keys to touch in storage
-func MergeBuckets(mr MergeReduce, buckets []counter.Bucket) ([]counter.Bucket, error) {
+func MergeBuckets(histogram Histogram, buckets []counter.Bucket) ([]counter.Bucket, error) {
 	seen := make(map[counter.Bucket]value.Value, 0)
+	var err error
 	for i := range buckets {
 		mapkey := buckets[i]
 		mapkey.Value = value.Nil // note, for hashmap to be hashable, this needs to be hashable as well
 		current, ok := seen[mapkey]
 		if !ok {
-			current = mr.Zero()
+			current = histogram.Zero()
 		}
-		v, err := mr.Transform(buckets[i].Value)
-		if err != nil {
-			return nil, err
-		}
-		seen[mapkey], err = mr.Merge(current, v)
+		seen[mapkey], err = histogram.Merge(current, buckets[i].Value)
 		if err != nil {
 			return nil, err
 		}
