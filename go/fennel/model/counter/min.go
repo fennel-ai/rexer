@@ -17,7 +17,7 @@ type rollingMin struct {
 	BucketStore
 }
 
-func OldMin(durations []uint64) Histogram {
+func NewMin(durations []uint64) Histogram {
 	maxDuration := getMaxDuration(durations)
 	return rollingMin{
 		Durations: durations,
@@ -27,16 +27,6 @@ func OldMin(durations []uint64) Histogram {
 		}, true},
 		// retain all keys for 1.5days + duration
 		BucketStore: NewTwoLevelStorage(24*3600, maxDuration+24*3600*1.1),
-	}
-}
-
-func NewMin(durations []uint64) Histogram {
-	maxDuration := getMaxDuration(durations)
-	return rollingMin{
-		Durations:  durations,
-		Bucketizer: thirdBucketizer{360, true},
-		// retain all keys for 1.1days + duration
-		BucketStore: NewThirdStore(240, 2, 1.1*60*60*24+maxDuration),
 	}
 }
 

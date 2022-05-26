@@ -21,68 +21,6 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestSwitch(t *testing.T) {
-	tier, err := test.Tier()
-	assert.NoError(t, err)
-	defer test.Teardown(tier)
-
-	ctx := context.Background()
-	clock := &test.FakeClock{}
-	tier.Clock = clock
-	t0 := ftypes.Timestamp(0)
-	assert.Equal(t, int64(t0), tier.Clock.Now())
-
-	agg := aggregate.Aggregate{
-		Name:      "mycounter",
-		Query:     ast.MakeInt(0),
-		Timestamp: t0,
-		Options: aggregate.Options{
-			AggType:   "sum",
-			Durations: []uint64{6 * 3600, 3 * 3600},
-		},
-	}
-	assert.NoError(t, Store(ctx, tier, agg))
-	agg.Id = 1
-	t1 := t0 + 3600
-	key := value.Nil
-	keystr := key.String()
-
-	hOld := counter.OldSum(agg.Options.Durations)
-	buckets := hOld.BucketizeMoment(keystr, t1, value.Int(1))
-	err = counter.Update(context.Background(), tier, agg.Id, buckets, hOld)
-	assert.NoError(t, err)
-	buckets = hOld.BucketizeMoment(keystr, t1, value.Int(3))
-	err = counter.Update(context.Background(), tier, agg.Id, buckets, hOld)
-	assert.NoError(t, err)
-	req := aggregate.GetAggValueRequest{
-		AggName: agg.Name,
-		Key:     key,
-		Kwargs:  value.NewDict(map[string]value.Value{"duration": value.Int(6 * 3600)}),
-	}
-	exp1 := value.Int(4)
-
-	clock.Set(int64(t1 + 3600))
-
-	found1, err := Value(ctx, tier, req.AggName, req.Key, req.Kwargs)
-	assert.NoError(t, err)
-	assert.Equal(t, exp1, found1)
-
-	t2 := t1 + 3600
-	hNew := counter.NewSum(agg.Options.Durations)
-	buckets = hNew.BucketizeMoment(keystr, t2, value.Int(10))
-	err = counter.Update(context.Background(), tier, agg.Id, buckets, hNew)
-	assert.NoError(t, err)
-	exp2 := value.Int(14)
-
-	clock.Set(int64(t2 + 3600))
-	InvalidateCache()
-
-	found2, err := Value(ctx, tier, req.AggName, req.Key, req.Kwargs)
-	assert.NoError(t, err)
-	assert.Equal(t, exp2, found2)
-
-}
-
 func TestValueAll(t *testing.T) {
 	tier, err := test.Tier()
 	assert.NoError(t, err)

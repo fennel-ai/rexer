@@ -119,11 +119,7 @@ func unitValue(
 	if err != nil {
 		return nil, err
 	}
-	hOld, err := modelCounter.ToOldHistogram(tier, agg.Id, agg.Options)
-	if err != nil {
-		return nil, err
-	}
-	return counter.Value(ctx, tier, agg.Id, key, histogram, hOld, kwargs)
+	return counter.Value(ctx, tier, agg.Id, key, histogram, kwargs)
 }
 
 func getDuration(kwargs value.Dict) (int, error) {
@@ -193,7 +189,6 @@ func batchValue(ctx context.Context, tier tier.Tier, batch []aggregate.GetAggVal
 
 	numOnline := n - len(offlinePtr)
 	histograms := make([]modelCounter.Histogram, numOnline)
-	hsOld := make([]modelCounter.Histogram, numOnline)
 	ids := make([]ftypes.AggId, numOnline)
 	keys := make([]value.Value, numOnline)
 	kwargs := make([]value.Dict, numOnline)
@@ -211,17 +206,13 @@ func batchValue(ctx context.Context, tier tier.Tier, batch []aggregate.GetAggVal
 		if err != nil {
 			return nil, fmt.Errorf("failed to make histogram from aggregate at index %d of batch: %v", i, err)
 		}
-		hsOld[i], err = modelCounter.ToOldHistogram(tier, agg.Id, agg.Options)
-		if err != nil {
-			return nil, fmt.Errorf("failed to make old histogram from aggregate at index %d of batch: %v", i, err)
-		}
 		ids[i] = agg.Id
 		keys[i] = req.Key
 		kwargs[i] = req.Kwargs
 	}
 
 	if len(onlinePtr) > 0 {
-		onlineValues, err := counter.BatchValue(ctx, tier, ids, keys, histograms, hsOld, kwargs)
+		onlineValues, err := counter.BatchValue(ctx, tier, ids, keys, histograms, kwargs)
 		if err != nil {
 			return nil, err
 		}

@@ -34,7 +34,7 @@ type rollingRate struct {
 	BucketStore
 }
 
-func OldRate(tr tier.Tier, aggId ftypes.AggId, durations []uint64, normalize bool) Histogram {
+func NewRate(tr tier.Tier, aggId ftypes.AggId, durations []uint64, normalize bool) Histogram {
 	maxDuration := getMaxDuration(durations)
 	return rollingRate{
 		tr:        tr,
@@ -47,19 +47,6 @@ func OldRate(tr tier.Tier, aggId ftypes.AggId, durations []uint64, normalize boo
 		}, true},
 		// retain all keys for 1.5days + duration
 		BucketStore: NewTwoLevelStorage(24*3600, maxDuration+24*3600*1.1),
-	}
-}
-
-func NewRate(tr tier.Tier, aggId ftypes.AggId, durations []uint64, normalize bool) Histogram {
-	maxDuration := getMaxDuration(durations)
-	return rollingRate{
-		tr:         tr,
-		aggId:      aggId,
-		Durations:  durations,
-		Normalize:  normalize,
-		Bucketizer: thirdBucketizer{360, true},
-		// retain all keys for 1.1days + duration
-		BucketStore: NewThirdStore(240, 2, 1.1*60*60*24+maxDuration),
 	}
 }
 

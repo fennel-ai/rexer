@@ -16,7 +16,6 @@ import (
 	"fennel/tier"
 	"github.com/mtraver/base91"
 	"github.com/zeebo/xxh3"
-	"go.uber.org/zap"
 )
 
 var _ BucketStore = thirdStore{}
@@ -31,27 +30,12 @@ var _ BucketStore = thirdStore{}
 	hashes (that is ignoring the prefix which is common). The value of the hashmap contains all the bucket values
 	in the form of a value.Dict. The key for a bucket is obtained with (bucket.Index % bucketsPerSlot).
 
-	NOTE: prefixSize should always be greater than 0 and less than 16. We hash groupkeys to 16 bytes.
+	NOTE: prefixSize should always be greater than 0 and less than 16.
 */
 type thirdStore struct {
 	bucketsPerSlot uint64
 	prefixSize     int
 	retention      uint64
-}
-
-// NewThirdStore creates a new thirdStore. prefixSize is clipped to [1, 15]
-func NewThirdStore(bucketsPerSlot uint64, prefixSize int, retention uint64) BucketStore {
-	if prefixSize < 1 {
-		prefixSize = 1
-	}
-	if prefixSize > 15 {
-		prefixSize = 15
-	}
-	return thirdStore{
-		bucketsPerSlot: bucketsPerSlot,
-		prefixSize:     prefixSize,
-		retention:      retention,
-	}
 }
 
 func (t thirdStore) GetBucketStore() BucketStore {
@@ -77,7 +61,7 @@ func (t thirdStore) GetMulti(
 ) ([][]value.Value, error) {
 	defer timer.Start(ctx, tier.ID, "thirdstore.get_multi").Stop()
 	slots, ptrs, hashes := t.toSlots(aggIDs, buckets)
-	view, err := newThirdStoreView(slots, hashes, ptrs, t)
+	view, err := newThirdStoreView(slots, hashes, t)
 	if err != nil {
 		return nil, err
 	}
@@ -99,7 +83,6 @@ func (t thirdStore) GetMulti(
 			}
 		}
 	}
-	view.Stats("get")
 	return res, nil
 }
 
@@ -115,7 +98,7 @@ func (t thirdStore) SetMulti(
 ) error {
 	defer timer.Start(ctx, tier.ID, "thirdstore.set_multi").Stop()
 	slots, ptrs, hashes := t.toSlots(aggIDs, buckets)
-	view, err := newThirdStoreView(slots, hashes, ptrs, t)
+	view, err := newThirdStoreView(slots, hashes, t)
 	if err != nil {
 		return err
 	}
@@ -123,11 +106,7 @@ func (t thirdStore) SetMulti(
 	if err != nil {
 		return err
 	}
-	keyCount := make(map[ftypes.AggId]int, len(aggIDs))
-	for _, slot := range view.slots {
-		keyCount[slot.aggID]++
-	}
-	for i := range aggIDs {
+	for i := range buckets {
 		for j, b := range buckets[i] {
 			suffixBytes := hashes[i][j][t.prefixSize:]
 			suffix := *(*string)(unsafe.Pointer(&suffixBytes))
@@ -137,12 +116,6 @@ func (t thirdStore) SetMulti(
 			dict.Set(key, b.Value)
 			view.view[slot][suffix] = dict
 		}
-	}
-	view.Stats("set")
-	for name, numKeys := range keyCount {
-		tier.Logger.Info(
-			"Updating redis keys for aggregate", zap.Int("aggregate", int(name)), zap.Int("num_keys", numKeys),
-		)
 	}
 	return view.Save(ctx, &tier, time.Second*time.Duration(t.retention))
 }
@@ -193,16 +166,12 @@ type thirdStoreView struct {
 	isNew []bool
 }
 
-func newThirdStoreView(slots []thirdSlot, hashes [][][16]byte, ptrs [][]int, t thirdStore) (v thirdStoreView, err error) {
+func newThirdStoreView(slots []thirdSlot, hashes [][][16]byte, t thirdStore) (v thirdStoreView, err error) {
 	v.view = make(map[thirdSlot]map[string]value.Dict, len(slots))
-	for i := range ptrs {
-		for j := range ptrs[i] {
-			slot := slots[ptrs[i][j]]
-			if _, ok := v.view[slot]; !ok {
-				v.view[slot] = make(map[string]value.Dict)
-			}
-			suffixBytes := hashes[i][j][t.prefixSize:]
-			suffix := *(*string)(unsafe.Pointer(&suffixBytes))
+	for i, slot := range slots {
+		v.view[slot] = make(map[string]value.Dict, len(hashes[i]))
+		for _, h := range hashes[i] {
+			suffix := string(h[t.prefixSize:])
 			v.view[slot][suffix] = value.NewDict(nil)
 		}
 	}
@@ -257,7 +226,6 @@ func (v *thirdStoreView) Load(ctx context.Context, tier *tier.Tier) error {
 func (v *thirdStoreView) Save(ctx context.Context, tier *tier.Tier, ttl time.Duration) error {
 	vals := make([]map[string]interface{}, len(v.keys))
 	ttls := make([]time.Duration, len(v.keys))
-	keySize, valSize := 0, 0
 	for i := range v.keys {
 		slot := v.slots[i]
 		vals[i] = make(map[string]interface{}, len(v.view[slot]))
@@ -267,25 +235,12 @@ func (v *thirdStoreView) Save(ctx context.Context, tier *tier.Tier, ttl time.Dur
 				return err
 			}
 			vals[i][k] = *(*string)(unsafe.Pointer(&vser))
-			valSize += len(k) + len(vser)
 		}
 		if v.isNew[i] {
 			ttls[i] = ttl
 		}
-		keySize += len(v.keys[i])
 	}
-	metrics.WithLabelValues("redis_key_size_bytes").Observe(float64(keySize))
-	metrics.WithLabelValues("redis_value_size_bytes").Observe(float64(valSize))
 	return tier.Redis.HSetPipelined(ctx, v.keys, vals, ttls)
-}
-
-func (v *thirdStoreView) Stats(mode string) {
-	valsPerKey := 0
-	for _, hmap := range v.view {
-		valsPerKey += len(hmap)
-	}
-	metrics.WithLabelValues(fmt.Sprintf("l2_num_vals_per_key_in_%s", mode)).
-		Observe(float64(valsPerKey) / float64(len(v.view)))
 }
 
 func (s thirdSlot) redisKey(buffer []byte, start int, bucketsPerSlot uint64, suffixSize int) (int, error) {
@@ -297,7 +252,7 @@ func (s thirdSlot) redisKey(buffer []byte, start int, bucketsPerSlot uint64, suf
 	}
 	length += len(codecStr) + 1 // 1 extra byte for delimiter
 
-	nums := []uint64{uint64(s.aggID), bucketsPerSlot, uint64(suffixSize), s.index}
+	nums := []uint64{uint64(s.aggID), bucketsPerSlot, uint64(suffixSize)}
 	words := make([]string, len(nums))
 	for i := range nums {
 		words[i], err = encodeUint64(nums[i])
