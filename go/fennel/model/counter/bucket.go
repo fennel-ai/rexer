@@ -10,7 +10,7 @@ import (
 	"fennel/lib/value"
 )
 
-func Bucketize(histogram Histogram, actions value.List) ([]counter.Bucket, []value.Value, error) {
+func Bucketize(bz Bucketizer, actions value.List) ([]counter.Bucket, []value.Value, error) {
 	buckets := make([]counter.Bucket, 0, actions.Len())
 	values := make([]value.Value, 0, actions.Len())
 	for i := 0; i < actions.Len(); i++ {
@@ -32,15 +32,10 @@ func Bucketize(histogram Histogram, actions value.List) ([]counter.Bucket, []val
 			return nil, nil, fmt.Errorf("action '%v' does not have a field called 'value'", row)
 		}
 		ts_int := ts.(value.Int)
-		key := groupkey.String()
-		v, err := histogram.Transform(v)
-		if err != nil {
-			return nil, nil, err
-		}
-		b := histogram.BucketizeMoment(key, ftypes.Timestamp(ts_int))
+		b := bz.BucketizeMoment(groupkey.String(), ftypes.Timestamp(ts_int))
+		buckets = append(buckets, b...)
 		vals := make([]value.Value, len(b))
 		slice.Fill(vals, v)
-		buckets = append(buckets, b...)
 		values = append(values, vals...)
 	}
 	return buckets, values, nil
@@ -48,16 +43,19 @@ func Bucketize(histogram Histogram, actions value.List) ([]counter.Bucket, []val
 
 // MergeBuckets takes a list of buckets and "merges" their counts if rest of their properties
 // are identical this reduces the number of keys to touch in storage
-func MergeBuckets(histogram Histogram, buckets []counter.Bucket, values []value.Value) ([]counter.Bucket, []value.Value, error) {
+func MergeBuckets(mr MergeReduce, buckets []counter.Bucket, values []value.Value) ([]counter.Bucket, []value.Value, error) {
 	seen := make(map[counter.Bucket]value.Value, 0)
-	var err error
 	for i := range buckets {
 		mapkey := buckets[i]
 		current, ok := seen[mapkey]
 		if !ok {
-			current = histogram.Zero()
+			current = mr.Zero()
 		}
-		seen[mapkey], err = histogram.Merge(current, values[i])
+		v, err := mr.Transform(values[i])
+		if err != nil {
+			return nil, nil, err
+		}
+		seen[mapkey], err = mr.Merge(current, v)
 		if err != nil {
 			return nil, nil, err
 		}
