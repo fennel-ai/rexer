@@ -1,0 +1,61 @@
+syntax = "proto3";
+
+option go_package = "fennel/nitrous/rpc";
+
+service Nitrous {
+  rpc GetMany (GetManyRequest) returns (GetManyResponse) {}
+  rpc Init(InitReq) returns (InitResp) {}
+  rpc Lag(LagReq) returns (LagResp) {}
+}
+
+message InitReq {
+  uint64 tierID = 1;
+}
+
+message InitResp {
+}
+message LagReq {
+  uint64 tierID = 1;
+}
+
+message LagResp {
+  uint64 lag = 1;
+}
+
+message Key {
+  string key = 1;
+  repeated string indices = 2;
+}
+
+message Entry {
+  string key = 1;
+  map<string, string> values = 2;
+}
+
+message SetRequest {
+  uint64 tierID = 1;
+  Entry entry = 2;
+  uint64 expires = 3;
+}
+
+message DelRequest {
+  uint64 tierID = 1;
+  Key key = 2;
+}
+
+message Update {
+  oneof type {
+    SetRequest set_update = 1;
+    DelRequest del_update = 2;
+  }
+}
+
+message GetManyRequest {
+  uint64 tierID = 1;
+  repeated Key keys = 2;
+}
+
+message GetManyResponse {
+  uint64 tierID = 1;
+  repeated Entry entries = 2;
+}

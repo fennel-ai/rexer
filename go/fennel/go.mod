@@ -3,6 +3,7 @@ module fennel
 go 1.18
 
 require (
+	capnproto.org/go/capnp/v3 v3.0.0-alpha.3
 	github.com/alexflint/go-arg v1.4.2
 	github.com/alicebob/miniredis/v2 v2.17.0
 	github.com/buger/jsonparser v1.1.1
@@ -18,17 +19,19 @@ require (
 	github.com/zeebo/xxh3 v1.0.2
 	go.uber.org/zap v1.21.0
 	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c
+	google.golang.org/grpc v1.32.0
 	google.golang.org/protobuf v1.27.1
 )
 
 require (
-	capnproto.org/go/capnp/v3 v3.0.0-alpha.3 // indirect
 	github.com/apache/arrow/go/arrow v0.0.0-20200730104253-651201b0f516 // indirect
 	github.com/apache/thrift v0.14.2 // indirect
 	github.com/google/go-cmp v0.5.7 // indirect
 	github.com/klauspost/cpuid/v2 v2.0.9 // indirect
 	github.com/pierrec/lz4/v4 v4.1.8 // indirect
+	golang.org/x/text v0.3.7 // indirect
 	golang.org/x/xerrors v0.0.0-20200804184101-5ec99f83aff1 // indirect
+	google.golang.org/genproto v0.0.0-20200825200019-8632dd797987 // indirect
 )
 
 require (

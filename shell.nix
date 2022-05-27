@@ -21,6 +21,7 @@ with pkgs; mkShell {
     # Packages for go development.
     unstable.go_1_18
     pkgs.protoc-gen-go
+    pkgs.protoc-gen-go-grpc
     unstable.capnproto
 
     # Packages to build kafka go client

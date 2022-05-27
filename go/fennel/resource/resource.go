@@ -18,6 +18,7 @@ const (
 	KafkaConsumer      = 3
 	KafkaProducer      = 4
 	Badger             = 5
+	NitrousClient      = 6
 )
 
 type Config interface {
