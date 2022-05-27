@@ -107,12 +107,12 @@ func (i Interpreter) VisitLookup(on ast.Ast, property string) (value.Value, erro
 	return ret, nil
 }
 
-func (i Interpreter) visitInContext(tree ast.Ast, varmap map[string]value.Value) (value.Value, error) {
+func (i Interpreter) visitInContext(tree ast.Ast, vars []string, varvals []value.Value) (value.Value, error) {
 	i.env = i.env.PushEnv()
 	defer func() { i.env, _ = i.env.PopEnv() }()
 
-	for k, v := range varmap {
-		if err := i.env.DefineReferencable(k, v); err != nil {
+	for idx, k := range vars {
+		if err := i.env.DefineReferencable(k, varvals[idx]); err != nil {
 			return value.Nil, err
 		}
 	}
@@ -342,8 +342,7 @@ func (i Interpreter) getStaticKwargs(op operators.Operator, kwargs ast.Dict) (va
 func (i Interpreter) getContextKwargs(op operators.Operator, trees ast.Dict, inputs []value.List, vars []string) (operators.ZipTable, error) {
 	ret := operators.NewZipTable(op)
 	sig := op.Signature()
-	varmap := make(map[string]value.Value, len(vars))
-	// TODO: relax to potentially having zero inputs?
+	varvals := make([]value.Value, len(vars))
 	for j := 0; j < inputs[0].Len(); j++ {
 		v := make([]value.Value, len(inputs))
 		for idx := range inputs {
@@ -354,7 +353,7 @@ func (i Interpreter) getContextKwargs(op operators.Operator, trees ast.Dict, inp
 			v[idx] = val
 			// set all the lambda variables as needed
 			if len(vars) > idx {
-				varmap[vars[idx]] = val
+				varvals[idx] = val
 			}
 		}
 		// now using these lambda variables, evaluate kwargs variables
@@ -367,7 +366,7 @@ func (i Interpreter) getContextKwargs(op operators.Operator, trees ast.Dict, inp
 			case !ok && p.Optional:
 				kwargs.Set(k, p.Default)
 			case ok:
-				val, err := i.visitInContext(tree, varmap)
+				val, err := i.visitInContext(tree, vars, varvals)
 				if err != nil {
 					return operators.ZipTable{}, fmt.Errorf("error: %s while evaluating kwarg '%s' for operator '%s.%s'", err, k, sig.Module, sig.Name)
 				}
