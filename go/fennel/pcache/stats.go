@@ -22,6 +22,5 @@ func RecordStats(name string, p PCache) {
 	cacheStatsGauge.WithLabelValues(fmt.Sprintf("%s:gets_dropped", name)).Set(float64(p.Cache.Metrics.GetsDropped()))
 
 	// Calculated stats
-	cacheStatsGauge.WithLabelValues(fmt.Sprintf("%s:sets_fails", name)).Set(float64(p.Cache.Metrics.SetsDropped()) + float64(p.Cache.Metrics.SetsRejected()))
 	cacheStatsGauge.WithLabelValues(fmt.Sprintf("%s:actual_hitratio", name)).Set(float64(p.Cache.Metrics.Hits())/float64(p.Cache.Metrics.Hits()) + float64(p.Cache.Metrics.Misses()) + float64(p.Cache.Metrics.GetsDropped()))
 }
