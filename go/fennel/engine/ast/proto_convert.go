@@ -38,16 +38,14 @@ func FromProtoAst(past *proto.Ast) (Ast, error) {
 		return fromProtoLookup(n)
 	case *proto.Ast_Ifelse:
 		return fromProtoIfelse(n)
-	case *proto.Ast_Fncall:
-		return fromProtoFnCall(n)
 	default:
 		return null, fmt.Errorf("invalid proto ast: %v", past)
 	}
 }
 
-//=====================================
+// =====================================
 // Satisfy ast interface requirements
-//=====================================
+// =====================================
 
 func (l Lookup) toProto() (proto.Ast, error) {
 	pon, err := ToProtoAst(l.On)
@@ -213,25 +211,9 @@ func (ifelse IfElse) toProto() (proto.Ast, error) {
 	}}}, nil
 }
 
-func (f FnCall) toProto() (proto.Ast, error) {
-	protoDict := make(map[string]*proto.Ast, len(f.Kwargs))
-	for k, v := range f.Kwargs {
-		ast, err := ToProtoAst(v)
-		if err != nil {
-			return pnull(), err
-		}
-		protoDict[k] = &ast
-	}
-	return proto.Ast{Node: &proto.Ast_Fncall{Fncall: &proto.FnCall{
-		Module: f.Module,
-		Name:   f.Name,
-		Kwargs: protoDict,
-	}}}, nil
-}
-
-//=============================
+// =============================
 // More private helpers below
-//=============================
+// =============================
 
 var null = Atom{}
 
@@ -388,21 +370,5 @@ func fromProtoIfelse(pifelse *proto.Ast_Ifelse) (Ast, error) {
 		Condition: condition,
 		ThenDo:    thenDo,
 		ElseDo:    elseDo,
-	}, nil
-}
-
-func fromProtoFnCall(pfncall *proto.Ast_Fncall) (Ast, error) {
-	kwargs := make(map[string]Ast, len(pfncall.Fncall.Kwargs))
-	for k, pv := range pfncall.Fncall.Kwargs {
-		v, err := FromProtoAst(pv)
-		if err != nil {
-			return null, err
-		}
-		kwargs[k] = v
-	}
-	return FnCall{
-		Module: pfncall.Fncall.Module,
-		Name:   pfncall.Fncall.Name,
-		Kwargs: kwargs,
 	}, nil
 }

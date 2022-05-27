@@ -16,7 +16,7 @@ message Ast {
     // At at = 10; [deprecated now]
     Lookup lookup = 11;
     IfElse ifelse = 12;
-    FnCall fncall = 13;
+    // FnCall fncall = 13; [deprecated now]
     // HighFnCall hfncall = 14; [deprecated now]
     Unary unary = 15;
     // Tuple tuple = 16; [deprecated now]
@@ -86,6 +86,7 @@ message IfElse {
 }
 
 
+// this isn't used anymore
 message FnCall {
   string module = 1;
   string name = 2;

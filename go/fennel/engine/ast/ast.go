@@ -17,7 +17,6 @@ type VisitorString interface {
 	VisitQuery(statements []Statement) string
 	VisitLookup(on Ast, property string) string
 	VisitIfelse(condition Ast, thenDo Ast, elseDo Ast) string
-	VisitFnCall(module, name string, kwargs map[string]Ast) string
 }
 
 type VisitorValue interface {
@@ -32,7 +31,6 @@ type VisitorValue interface {
 	VisitQuery(statements []Statement) (value.Value, error)
 	VisitLookup(on Ast, property string) (value.Value, error)
 	VisitIfelse(condition Ast, thenDo Ast, elseDo Ast) (value.Value, error)
-	VisitFnCall(module, name string, kwargs map[string]Ast) (value.Value, error)
 }
 
 type Ast interface {
@@ -53,7 +51,6 @@ var _ Ast = Statement{}
 var _ Ast = Query{}
 var _ Ast = Lookup{}
 var _ Ast = IfElse{}
-var _ Ast = FnCall{}
 
 type Lookup struct {
 	On       Ast
@@ -344,25 +341,4 @@ func (ifelse IfElse) Equals(ast Ast) bool {
 	default:
 		return false
 	}
-}
-
-type FnCall struct {
-	Module string
-	Name   string
-	Kwargs map[string]Ast
-}
-
-func (f FnCall) AcceptValue(v VisitorValue) (value.Value, error) {
-	return v.VisitFnCall(f.Module, f.Name, f.Kwargs)
-}
-
-func (f FnCall) AcceptString(v VisitorString) string {
-	return v.VisitFnCall(f.Module, f.Name, f.Kwargs)
-}
-
-func (f FnCall) Equals(ast Ast) bool {
-	if fncall, ok := ast.(FnCall); ok {
-		return f.Module == fncall.Module && f.Name == fncall.Name && Dict{f.Kwargs}.Equals(Dict{fncall.Kwargs})
-	}
-	return false
 }

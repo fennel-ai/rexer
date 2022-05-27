@@ -161,7 +161,7 @@ func TestInterpreter_VisitOpcall4(t *testing.T) {
 	out, err := query.AcceptValue(i)
 	assert.NoError(t, err)
 	rows := out.(value.List)
-	//assert.Len(t, rows, 1)
+	// assert.Len(t, rows, 1)
 	assert.Equal(t, 1, rows.Len())
 	row, _ := rows.At(0)
 	assert.Equal(t, value.NewDict(map[string]value.Value{"contextual": value.Int(41), "static": value.Int(7)}), row)
@@ -193,48 +193,6 @@ func TestInterpreter_VisitOpcall5(t *testing.T) {
 	assert.Equal(t, value.NewList(value.Int(10), value.Int(20), value.Int(2), value.Int(3)), rows)
 }
 
-func TestInterpreter_VisitFnCall(t *testing.T) {
-	operators.Register(zip{})
-	operators.Register(squareFn{})
-	scenarios := []struct {
-		query    ast.Ast
-		err      bool
-		expected value.Value
-	}{
-		{
-			ast.FnCall{
-				Module: "test",
-				Name:   "zip",
-				Kwargs: map[string]ast.Ast{"left": ast.MakeInt(3)},
-			}, true, nil,
-		},
-		{
-			query: ast.FnCall{
-				Module: "test",
-				Name:   "zip",
-				Kwargs: map[string]ast.Ast{"left": ast.MakeInt(3), "right": ast.List{Values: []ast.Ast{ast.MakeInt(1)}}},
-			}, err: true, expected: nil,
-		},
-		{
-			ast.FnCall{
-				Module: "test",
-				Name:   "square",
-				Kwargs: map[string]ast.Ast{"x": ast.MakeInt(3)},
-			}, false, value.Int(9),
-		},
-	}
-	for _, scene := range scenarios {
-		i := getInterpreter(nil, value.Dict{})
-		found, err := scene.query.AcceptValue(i)
-		if scene.err {
-			assert.Error(t, err)
-		} else {
-			assert.NoError(t, err, scene.query)
-			assert.Equal(t, scene.expected, found)
-		}
-	}
-}
-
 type testOpDefault struct{}
 
 func (t testOpDefault) New(
@@ -247,12 +205,12 @@ func (t testOpDefault) Apply(_ context.Context, kwargs value.Dict, in operators.
 	for in.HasMore() {
 		heads, context, _ := in.Next()
 		rowVal := heads[0]
-		//rowVal, _ := heads.Get("0")
+		// rowVal, _ := heads.Get("0")
 		row := rowVal.(value.Dict)
 		c, _ := context.Get("contextual")
 		row.Set("contextual", c)
 		s, _ := kwargs.Get("static")
-		//row["static"] = kwargs["static"]
+		// row["static"] = kwargs["static"]
 		row.Set("static", s)
 		out.Append(row)
 	}
@@ -296,7 +254,7 @@ func (top testOpInit) Apply(_ context.Context, kwargs value.Dict, in operators.I
 	for in.HasMore() {
 		heads, _, _ := in.Next()
 		rowVal := heads[0]
-		//rowVal, _ := heads.Get("0")
+		// rowVal, _ := heads.Get("0")
 		row := rowVal.(value.Dict)
 		row.Set("num", top.num)
 		row.Set("nonhi", value.String(top.non.hi))
@@ -386,7 +344,7 @@ func (e zip) Apply(_ context.Context, kwargs value.Dict, in operators.InputIter,
 		return fmt.Errorf("unequal lengths")
 	}
 	ret := value.List{}
-	//for i := range left {
+	// for i := range left {
 	for i := 0; i < left.Len(); i++ {
 		l, _ := left.At(i)
 		r, _ := right.At(i)

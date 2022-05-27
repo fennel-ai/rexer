@@ -41,37 +41,6 @@ func NewInterpreter(ctx context.Context, bootargs map[string]interface{}, args v
 	}, nil
 }
 
-func (i Interpreter) VisitFnCall(module, name string, kwargs map[string]ast.Ast) (value.Value, error) {
-	// find & init the operator
-	op, err := i.getOperator(module, name)
-	if err != nil {
-		return value.Nil, err
-	}
-	// now eval kwargs and verify they are of the right type
-	vKwargs := make(map[string]value.Value, len(kwargs))
-	for k, ast := range kwargs {
-		if v, err := ast.AcceptValue(i); err != nil {
-			return nil, err
-		} else {
-			vKwargs[k] = v
-		}
-	}
-	inputTable := operators.NewZipTable(op)
-	if err := inputTable.Append([]value.Value{nil}, value.NewDict(vKwargs)); err != nil {
-		return nil, err
-	}
-	// finally, call the function
-	// typing of input / context kwargs is verified element by element inside the iter
-	outtable := value.NewList()
-	if err = op.Apply(i.ctx, value.NewDict(nil), inputTable.Iter(), &outtable); err != nil {
-		return value.Nil, err
-	}
-	if outtable.Len() != 1 {
-		return nil, fmt.Errorf("function did not return the value: %v", outtable)
-	}
-	return outtable.At(0)
-}
-
 var _ ast.VisitorValue = Interpreter{}
 
 func (i Interpreter) queryArgs() value.Dict {
