@@ -289,7 +289,8 @@ func (i Interpreter) VisitIfelse(condition ast.Ast, thenDo ast.Ast, elseDo ast.A
 func (i Interpreter) getStaticKwargs(op operators.Operator, kwargs ast.Dict) (value.Dict, error) {
 	ret := value.NewDict(nil)
 	sig := op.Signature()
-	for k, p := range sig.StaticKwargs {
+	for _, p := range sig.StaticKwargs {
+		k := p.Name
 		tree, ok := kwargs.Values[k]
 		switch {
 		case !ok && !p.Optional:
@@ -331,7 +332,8 @@ func (i Interpreter) getContextKwargs(op operators.Operator, trees ast.Dict, inp
 		}
 		// now using these lambda variables, evaluate kwargs variables
 		kwargs := value.NewDict(nil)
-		for k, p := range sig.ContextKwargs {
+		for _, p := range sig.ContextKwargs {
+			k := p.Name
 			tree, ok := trees.Values[k]
 			switch {
 			case !ok && !p.Optional:

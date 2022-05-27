@@ -44,16 +44,16 @@ type Signature struct {
 	// a zero length list means any number of inputs with any types are allowed
 	// default value is a single element list with type of 'Any'
 	InputTypes    []value.Type
-	StaticKwargs  map[string]Param
-	ContextKwargs map[string]Param
+	StaticKwargs  []Param
+	ContextKwargs []Param
 }
 
 func NewSignature(module, name string) *Signature {
 	return &Signature{
 		module, name,
 		[]value.Type{value.Types.Any},
-		make(map[string]Param, 0),
-		make(map[string]Param, 0),
+		[]Param{},
+		[]Param{},
 	}
 }
 
@@ -64,10 +64,12 @@ func (s *Signature) Param(name string, t value.Type, static bool, optional bool,
 func (s *Signature) ParamWithHelp(name string, t value.Type, static bool, optional bool, default_ value.Value, help string) *Signature {
 	p := Param{name, static, t, optional, default_, help}
 	if static {
-		s.StaticKwargs[name] = p
+		s.StaticKwargs = append(s.StaticKwargs, p)
+		// s.StaticKwargs[name] = p
 
 	} else {
-		s.ContextKwargs[name] = p
+		s.ContextKwargs = append(s.ContextKwargs, p)
+		// s.ContextKwargs[name] = p
 	}
 	return s
 }
@@ -139,7 +141,8 @@ func TypeCheckStaticKwargs(op Operator, staticKwargs value.Dict) error {
 		return fmt.Errorf("[%s.%s] incorrect number of static kwargs passed - expected: %d but got: %d",
 			sig.Module, sig.Name, len(sig.StaticKwargs), staticKwargs.Len())
 	}
-	for k, p := range sig.StaticKwargs {
+	for _, p := range sig.StaticKwargs {
+		k := p.Name
 		v, ok := staticKwargs.Get(k)
 		if !ok {
 			return fmt.Errorf("operator '%s' expects kwarg '%s' but not found", op, k)
@@ -157,7 +160,8 @@ func Typecheck(sig *Signature, inputVal []value.Value, contextKwargs value.Dict)
 		return fmt.Errorf("[%s.%s] incorrect number of contextual kwargs passed - expected: %d but got: %d",
 			sig.Module, sig.Name, len(sig.ContextKwargs), contextKwargs.Len())
 	}
-	for k, p := range sig.ContextKwargs {
+	for _, p := range sig.ContextKwargs {
+		k := p.Name
 		v, ok := contextKwargs.Get(k)
 		if !ok {
 			return fmt.Errorf("operator '%s.%s' expects kwarg '%s' but not found", sig.Module, sig.Name, k)
