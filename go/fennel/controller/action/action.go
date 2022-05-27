@@ -59,8 +59,8 @@ func Insert(ctx context.Context, tier tier.Tier, a actionlib.Action) error {
 func BatchInsert(ctx context.Context, tier tier.Tier, actions []actionlib.Action) error {
 	defer timer.Start(ctx, tier.ID, "controller.action.batchinsert").Stop()
 	// validate all the actions first so that there are no partial entries due to invalid inputs.
-	protos := make([]*actionlib.ProtoAction, 0)
-	jsons := make([][]byte, 0)
+	protos := make([]*actionlib.ProtoAction, 0, len(actions))
+	jsons := make([][]byte, 0, len(actions))
 	for _, a := range actions {
 		err := a.Validate()
 		if err != nil {
