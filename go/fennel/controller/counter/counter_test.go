@@ -1,5 +1,3 @@
-//go:build !badger
-
 package counter
 
 import (
