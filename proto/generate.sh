@@ -5,3 +5,6 @@ protoc -I=. --python_out=../../rexer-pyclient-alpha/rexerclient/gen ftypes.proto
 
 # Generate go bindings
 protoc -I=. --go_out=../go/ ./*.proto
+
+# Generate grpc go bindings
+protoc -I=. --go-grpc_out=../go/ ./*.proto

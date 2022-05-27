@@ -2,6 +2,7 @@ package kafka
 
 import (
 	"context"
+	"fennel/nitrous"
 	"time"
 
 	"fennel/lib/action"
@@ -75,6 +76,7 @@ var ALL_TOPICS = []TopicConf{
 		},
 	},
 	{Topic: counter.AGGREGATE_OFFLINE_TRANSFORM_TOPIC_NAME},
+	{Topic: nitrous.BINLOG_KAFKA_TOPIC},
 }
 
 func ConfigMap(server, username, password string) *kafka.ConfigMap {
