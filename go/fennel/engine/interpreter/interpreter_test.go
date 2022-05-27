@@ -10,6 +10,7 @@ import (
 	"fennel/engine/ast"
 	"fennel/lib/value"
 	_ "fennel/opdefs/std"
+	_ "fennel/opdefs/std/map"
 	_ "fennel/opdefs/std/set"
 )
 
@@ -196,6 +197,39 @@ func TestFailEmptyOperand(t *testing.T) {
 	i := getInterpreter(nil, value.Dict{})
 	_, err := i.VisitOpcall([]ast.Ast{}, []string{}, "std", "set", ast.Dict{})
 	require.Error(t, err)
+}
+
+func TestVisitOpCallMultiop(t *testing.T) {
+	i := getInterpreter(nil, value.Dict{})
+	q := ast.OpCall{
+		Operands: []ast.Ast{
+			ast.List{
+				Values: []ast.Ast{
+					ast.MakeInt(5),
+					ast.MakeInt(9),
+				},
+			},
+			ast.List{
+				Values: []ast.Ast{
+					ast.MakeInt(3),
+					ast.MakeInt(4),
+				},
+			},
+		},
+		Vars:      []string{"a", "b"},
+		Namespace: "std",
+		Name:      "map",
+		Kwargs: ast.Dict{Values: map[string]ast.Ast{
+			"to": ast.Binary{
+				Op:    "+",
+				Left:  ast.Var{Name: "a"},
+				Right: ast.Var{Name: "b"},
+			},
+		}},
+	}
+	out, err := q.AcceptValue(i)
+	require.NoError(t, err)
+	assert.Equal(t, value.NewList(value.Int(8), value.Int(13)), out)
 }
 
 func getOpCallQuery() ast.Ast {
