@@ -240,7 +240,15 @@ func (i Interpreter) VisitOpcall(operands []ast.Ast, vars []string, namespace, n
 		return nil, fmt.Errorf("operator '%s.%s' can not be applied: different number of operands and variables", namespace, name)
 	}
 	// eval operands, potentially in parallel
-	vals, err := i.visitInParallel(operands)
+	var vals []value.Value
+	var err error
+	var first value.Value
+	if len(operands) > 1 {
+		vals, err = i.visitInParallel(operands)
+	} else {
+		first, err = operands[0].AcceptValue(i)
+		vals = []value.Value{first}
+	}
 	if err != nil {
 		return value.Nil, err
 	}
