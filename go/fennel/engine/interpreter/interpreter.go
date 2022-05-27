@@ -343,14 +343,18 @@ func (i Interpreter) getContextKwargs(op operators.Operator, trees ast.Dict, inp
 	ret := operators.NewZipTable(op)
 	sig := op.Signature()
 	varvals := make([]value.Value, len(vars))
+	// allocate all the values of all operands together
+	data := make([]value.Value, len(inputs)*inputs[0].Len())
+	ptr := 0
 	for j := 0; j < inputs[0].Len(); j++ {
-		v := make([]value.Value, len(inputs))
+		begin := ptr
 		for idx := range inputs {
 			val, err := inputs[idx].At(j)
 			if err != nil {
 				return operators.ZipTable{}, fmt.Errorf("unequal length of operands")
 			}
-			v[idx] = val
+			data[ptr] = val
+			ptr++
 			// set all the lambda variables as needed
 			if len(vars) > idx {
 				varvals[idx] = val
@@ -365,15 +369,27 @@ func (i Interpreter) getContextKwargs(op operators.Operator, trees ast.Dict, inp
 				return operators.ZipTable{}, fmt.Errorf("kwarg '%s' not provided for operator '%s.%s'", k, sig.Module, sig.Name)
 			case !ok && p.Optional:
 				kwargs.Set(k, p.Default)
+				continue
 			case ok:
-				val, err := i.visitInContext(tree, vars, varvals)
-				if err != nil {
-					return operators.ZipTable{}, fmt.Errorf("error: %s while evaluating kwarg '%s' for operator '%s.%s'", err, k, sig.Module, sig.Name)
+				// we have to evaluate the tree with the current values of the lambda variables
+				// a common scenario is to evaluate an atom (e.g. user writing "user" as otype in profile)
+				// in that case, we can avoid setting the lambda variables, which also saves function call
+				if atom, ok := tree.(ast.Atom); ok {
+					val, err := atom.AcceptValue(i)
+					if err != nil {
+						return operators.ZipTable{}, fmt.Errorf("error: %s while evaluating kwarg: %s for operator '%s.%s'", err, k, sig.Module, sig.Name)
+					}
+					kwargs.Set(k, val)
+				} else {
+					val, err := i.visitInContext(tree, vars, varvals)
+					if err != nil {
+						return operators.ZipTable{}, fmt.Errorf("error: %s while evaluating kwarg '%s' for operator '%s.%s'", err, k, sig.Module, sig.Name)
+					}
+					kwargs.Set(k, val)
 				}
-				kwargs.Set(k, val)
 			}
 		}
-		if err := ret.Append(v, kwargs); err != nil {
+		if err := ret.Append(data[begin:ptr], kwargs); err != nil {
 			return operators.ZipTable{}, err
 		}
 	}
