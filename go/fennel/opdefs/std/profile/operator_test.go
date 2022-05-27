@@ -6,6 +6,7 @@ import (
 	"context"
 	"strconv"
 	"testing"
+	"time"
 
 	"fennel/controller/profile"
 	"fennel/engine/ast"
@@ -104,6 +105,7 @@ func TestProfileOpCache(t *testing.T) {
 	assert.NoError(t, err)
 	defer test.Teardown(tier)
 	ctx := context.Background()
+	cacheValueDuration = time.Second * 10
 
 	otype, oid, key, val, ver := ftypes.OType("user"), 223, "age", value.Int(7), uint64(4)
 	query := ast.OpCall{
@@ -142,13 +144,13 @@ func TestProfileOpCache(t *testing.T) {
 	// we should still get back default value if it is cached properly
 	verify(t, &i, query, expected)
 
-	// use a new interpreter now, should get back stored value now
-	i, err = interpreter.NewInterpreter(context.Background(), bootarg.Create(tier),
-		value.NewDict(map[string]value.Value{"actions": inTable}))
-	assert.NoError(t, err)
+	// After two minutes, the profile value should expire
+	time.Sleep(cacheValueDuration + time.Second)
+
 	expected2 := expected.Clone().(value.Dict)
 	expected2.Set("profile_value", val)
 	verify(t, &i, query, expected2)
+	cacheValueDuration = 2 * time.Minute
 }
 
 func verify(t *testing.T, i *interpreter.Interpreter, query ast.Ast, expected value.Dict) {

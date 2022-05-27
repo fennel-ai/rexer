@@ -2,7 +2,6 @@ package std
 
 import (
 	"context"
-	"sync"
 
 	"fennel/engine/operators"
 	"fennel/lib/value"
@@ -27,7 +26,7 @@ func init() {
 type FilterOperator struct{}
 
 func (f FilterOperator) New(
-	args value.Dict, bootargs map[string]interface{}, cache *sync.Map,
+	args value.Dict, bootargs map[string]interface{},
 ) (operators.Operator, error) {
 	return FilterOperator{}, nil
 }
@@ -56,7 +55,7 @@ func (f FilterOperator) Apply(_ context.Context, _ value.Dict, in operators.Inpu
 type TakeOperator struct{}
 
 func (f TakeOperator) New(
-	args value.Dict, bootargs map[string]interface{}, cache *sync.Map,
+	args value.Dict, bootargs map[string]interface{},
 ) (operators.Operator, error) {
 	return TakeOperator{}, nil
 }

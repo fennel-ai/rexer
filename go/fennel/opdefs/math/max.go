@@ -3,7 +3,6 @@ package math
 import (
 	"context"
 	"fmt"
-	"sync"
 
 	"fennel/engine/operators"
 	"fennel/lib/value"
@@ -15,7 +14,7 @@ func init() {
 
 type maxOp struct{}
 
-func (m maxOp) New(args value.Dict, bootargs map[string]interface{}, cache *sync.Map) (operators.Operator, error) {
+func (m maxOp) New(args value.Dict, bootargs map[string]interface{}) (operators.Operator, error) {
 	return maxOp{}, nil
 }
 

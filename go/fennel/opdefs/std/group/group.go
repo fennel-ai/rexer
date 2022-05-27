@@ -2,7 +2,6 @@ package group
 
 import (
 	"context"
-	"sync"
 
 	"fennel/engine/operators"
 	"fennel/lib/value"
@@ -16,7 +15,7 @@ type grouper struct {
 }
 
 func (g grouper) New(
-	args value.Dict, bootargs map[string]interface{}, cache *sync.Map,
+	args value.Dict, bootargs map[string]interface{},
 ) (operators.Operator, error) {
 	return grouper{}, nil
 }

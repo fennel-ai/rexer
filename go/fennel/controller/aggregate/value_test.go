@@ -165,7 +165,7 @@ func TestCachedValueAll(t *testing.T) {
 	// test TTL set properly
 	ttl, ok := tier.PCache.GetTTL(makeCacheKey(agg.Name, key, kwargs))
 	assert.True(t, ok)
-	assert.LessOrEqual(t, ttl, 60*time.Second)
+	assert.LessOrEqual(t, ttl, cacheValueDuration)
 
 	// test batch now
 	agg1, agg2, agg3 := agg, agg, agg
@@ -217,7 +217,7 @@ func TestCachedValueAll(t *testing.T) {
 	for _, req := range reqs {
 		ttl, ok := tier.PCache.GetTTL(makeCacheKey(req.AggName, req.Key, req.Kwargs))
 		assert.True(t, ok)
-		assert.LessOrEqual(t, ttl, 60*time.Second)
+		assert.LessOrEqual(t, ttl, cacheValueDuration)
 	}
 }
 

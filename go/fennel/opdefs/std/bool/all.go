@@ -2,7 +2,6 @@ package bool
 
 import (
 	"context"
-	"sync"
 
 	"fennel/engine/operators"
 	"fennel/lib/value"
@@ -15,7 +14,7 @@ func init() {
 type allop struct{}
 
 func (a allop) New(
-	args value.Dict, bootargs map[string]interface{}, cache *sync.Map,
+	args value.Dict, bootargs map[string]interface{},
 ) (operators.Operator, error) {
 	return allop{}, nil
 }

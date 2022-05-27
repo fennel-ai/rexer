@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"sync"
 
 	"fennel/lib/value"
 )
@@ -80,7 +79,7 @@ func (s *Signature) Input(types []value.Type) *Signature {
 }
 
 type Operator interface {
-	New(args value.Dict, bootargs map[string]interface{}, cache *sync.Map) (Operator, error)
+	New(args value.Dict, bootargs map[string]interface{}) (Operator, error)
 	Apply(ctx context.Context, kwargs value.Dict, in InputIter, out *value.List) error
 	Signature() *Signature
 }
