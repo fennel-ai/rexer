@@ -196,7 +196,6 @@ func batchValue(ctx context.Context, tier tier.Tier, batch []aggregate.GetAggVal
 	kwargs := make([]value.Dict, numOnline)
 
 	var onlinePtr []int
-	fmt.Println("numOnline fetches : ", numOnline)
 	// Fetch online aggregate values
 	for i, req := range batch {
 		agg := unique[req.AggName]
@@ -286,7 +285,6 @@ func Update(ctx context.Context, tier tier.Tier, consumer kafka.FConsumer, agg a
 		return err
 	}
 	tier.Logger.Info(fmt.Sprintf("found %d new %s, %d transformed %s for online aggregate: %s", streamLen, agg.Source, table.Len(), agg.Source, agg.Name))
-	fmt.Println("table : ", table)
 	histogram, err := modelCounter.ToHistogram(tier, agg.Id, agg.Options)
 	if err != nil {
 		return err
