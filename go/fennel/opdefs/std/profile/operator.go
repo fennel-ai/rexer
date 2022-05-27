@@ -140,7 +140,7 @@ func (p profileOp) getProfiles(ctx context.Context, profileKeys []libprofile.Pro
 	// add them to cache
 	for i, pi := range uncached {
 		key := p.getKey(pi)
-		p.tier.PCache.SetWithTTL(key, vals[i].Value, cacheValueDuration)
+		p.tier.PCache.SetWithTTL(key, vals[i].Value, int64(len(key)+len(vals[i].Value.String())) /* cost */, cacheValueDuration)
 	}
 
 	// finally, return result
