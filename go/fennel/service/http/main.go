@@ -14,7 +14,6 @@ import (
 	_ "fennel/opdefs"
 	"fennel/service/common"
 	inspector "fennel/service/inspector/server"
-	"fennel/tailer"
 	"fennel/tier"
 
 	"github.com/alexflint/go-arg"
@@ -134,9 +133,6 @@ func main() {
 	// Set handlers for the log inspector.
 	inspector := inspector.NewInspector(tier, flags.InspectorArgs)
 	inspector.SetHandlers(router)
-
-	// Start tailer module.
-	tailer.Run(tier)
 
 	addr := fmt.Sprintf(":%d", httplib.PORT)
 	log.Printf("starting http service on %s...", addr)
