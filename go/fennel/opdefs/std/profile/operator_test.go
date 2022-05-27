@@ -105,6 +105,7 @@ func TestProfileOpCache(t *testing.T) {
 	assert.NoError(t, err)
 	defer test.Teardown(tier)
 	ctx := context.Background()
+	cacheValueDuration = time.Second * 10
 
 	otype, oid, key, val, ver := ftypes.OType("user"), 223, "age", value.Int(7), uint64(4)
 	query := ast.OpCall{
@@ -144,11 +145,12 @@ func TestProfileOpCache(t *testing.T) {
 	verify(t, &i, query, expected)
 
 	// After two minutes, the profile value should expire
-	time.Sleep(2 * time.Minute)
+	time.Sleep(cacheValueDuration + time.Second)
 
 	expected2 := expected.Clone().(value.Dict)
 	expected2.Set("profile_value", val)
 	verify(t, &i, query, expected2)
+	cacheValueDuration = 2 * time.Minute
 }
 
 func verify(t *testing.T, i *interpreter.Interpreter, query ast.Ast, expected value.Dict) {

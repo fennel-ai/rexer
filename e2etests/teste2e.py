@@ -160,7 +160,7 @@ class TestEndToEnd(unittest.TestCase):
         # Number of hours in the ts. 
         b = int((ts.timestamp() % (24 * 3600)) / 3600)
 
-        # now sleep for upto a minute and verify count processing worked
+        # now sleep for upto 3 minutes and verify count processing worked
         # we could also just sleep for full minute but this rolling sleep
         # allows test to end earlier in happy cases
         slept = 0
@@ -169,7 +169,8 @@ class TestEndToEnd(unittest.TestCase):
         expected2 = 0.09452865480086611  # normalized for 1 in 2
         expected3 = 1
         expected4 = 1
-        while slept < 120:
+        time.sleep(10)
+        while slept < 180:
             found1 = c.aggregate_value('user_notif_open_rate_by_hour', [uid, b], {'duration': 7 * 24 * 3600})
             found2 = c.aggregate_value('user_notif_open_rate_by_category', [uid, category], {'duration': 7 * 24 * 3600})
             found3 = c.aggregate_value('content_num_reactions', content_id, {'duration': 7 * 24 * 3600})
@@ -178,11 +179,13 @@ class TestEndToEnd(unittest.TestCase):
                 passed = True
                 break
 
+
             time.sleep(5)
             slept += 5
         self.assertTrue(passed)
         print('all checks passed...')
 
+    
     @tiered
     def test_end_to_end(self):
         c = client.Client(URL)
@@ -203,7 +206,7 @@ class TestEndToEnd(unittest.TestCase):
 
         slept = 0
         passed = False
-        while slept < 120:
+        while slept < 60:
             passed = (
                     city == c.get_profile("user", uid, "city") and
                     gender == c.get_profile("user", uid, "gender") and
@@ -273,7 +276,8 @@ class TestEndToEnd(unittest.TestCase):
         expected2 = 21
         expected3 = expected4 = 20
         kwargs = {"duration": 1200}
-        while slept < 120:
+        time.sleep(10)
+        while slept < 180:
             found1 = c.aggregate_value(
                 'video_view_by_city_gender_agegroup',
                 [video_id, city, gender, age_group],
@@ -440,7 +444,8 @@ class TestEndToEnd(unittest.TestCase):
 
         slept = 0
         found = False
-        while not found and slept < 120:
+        time.sleep(10)
+        while not found and slept < 180:
             found_dict_query = rex.feature.extract(context, candidates, names=names)
             found_vec = op.std.collect(found_dict_query, fields=names)
             found_vec = c.query(found_vec)
@@ -452,7 +457,7 @@ class TestEndToEnd(unittest.TestCase):
                 time.sleep(5)
 
         self.assertTrue(found)
-
+    
 
 @unittest.skip
 class TestLoad(unittest.TestCase):

@@ -16,7 +16,7 @@ import (
 	"fennel/tier"
 )
 
-const cacheValueDuration = 2 * time.Minute
+var cacheValueDuration = 2 * time.Minute
 
 func init() {
 	operators.Register(profileOp{})

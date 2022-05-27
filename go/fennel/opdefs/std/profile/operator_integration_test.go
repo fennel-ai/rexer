@@ -6,6 +6,7 @@ import (
 	"context"
 	"strconv"
 	"testing"
+	"time"
 
 	"fennel/controller/profile"
 	"fennel/engine/ast"
@@ -125,17 +126,17 @@ func TestProfileOpCacheMultiple(t *testing.T) {
 	defer test.Teardown(tier)
 	ctx := context.Background()
 
+	cacheValueDuration = time.Second * 10
 	query := ast.OpCall{
 		Operands:  []ast.Ast{ast.Var{Name: "actions"}},
 		Vars:      []string{"a"},
 		Namespace: "std",
 		Name:      "profile",
 		Kwargs: ast.Dict{Values: map[string]ast.Ast{
-			"otype":   ast.Lookup{On: ast.Var{Name: "a"}, Property: "otype"},
-			"oid":     ast.Lookup{On: ast.Var{Name: "a"}, Property: "oid"},
-			"key":     ast.Lookup{On: ast.Var{Name: "a"}, Property: "key"},
-			"version": ast.Lookup{On: ast.Var{Name: "a"}, Property: "version"},
-			"field":   ast.MakeString("profile_value"),
+			"otype": ast.Lookup{On: ast.Var{Name: "a"}, Property: "otype"},
+			"oid":   ast.Lookup{On: ast.Var{Name: "a"}, Property: "oid"},
+			"key":   ast.Lookup{On: ast.Var{Name: "a"}, Property: "key"},
+			"field": ast.MakeString("profile_value"),
 		}},
 	}
 	profiles := []profilelib.ProfileItem{
@@ -148,10 +149,9 @@ func TestProfileOpCacheMultiple(t *testing.T) {
 		oid, err := value.FromJSON([]byte(pi.Oid))
 		assert.NoError(t, err)
 		inTable.Append(value.NewDict(map[string]value.Value{
-			"otype":   value.String(pi.OType),
-			"oid":     oid,
-			"key":     value.String(pi.Key),
-			"version": value.Int(pi.UpdateTime),
+			"otype": value.String(pi.OType),
+			"oid":   oid,
+			"key":   value.String(pi.Key),
 		}))
 	}
 	// to query for version = 0
@@ -160,10 +160,9 @@ func TestProfileOpCacheMultiple(t *testing.T) {
 		oid, err := value.FromJSON([]byte(pi.Oid))
 		assert.NoError(t, err)
 		inTable0.Append(value.NewDict(map[string]value.Value{
-			"otype":   value.String(pi.OType),
-			"oid":     oid,
-			"key":     value.String(pi.Key),
-			"version": value.Int(0),
+			"otype": value.String(pi.OType),
+			"oid":   oid,
+			"key":   value.String(pi.Key),
 		}))
 	}
 
@@ -175,7 +174,6 @@ func TestProfileOpCacheMultiple(t *testing.T) {
 			"otype":         value.String(pi.OType),
 			"oid":           oid,
 			"key":           value.String(pi.Key),
-			"version":       value.Int(pi.UpdateTime),
 			"profile_value": value.Nil,
 		}))
 	}
@@ -186,15 +184,11 @@ func TestProfileOpCacheMultiple(t *testing.T) {
 
 	// test cache by setting profiles now
 	for _, pi := range profiles {
-		assert.NoError(t, profile.Set(ctx, tier, pi))
+		assert.NoError(t, profile.TestSet(ctx, tier, pi))
 	}
-	// we should still get back default value if it is cached properly
-	verifyMultiple(t, &i, query, expected)
 
-	// now use a new interpreter with fresh cache, should get back stored value now
-	i, err = interpreter.NewInterpreter(context.Background(), bootarg.Create(tier),
-		value.NewDict(map[string]value.Value{"actions": inTable}))
-	assert.NoError(t, err)
+	// time.Sleep(cacheValueDuration + time.Second)
+
 	var expected2 []value.Dict
 	for _, pi := range profiles {
 		oid, err := value.FromJSON([]byte(pi.Oid))
@@ -203,10 +197,14 @@ func TestProfileOpCacheMultiple(t *testing.T) {
 			"otype":         value.String(pi.OType),
 			"oid":           oid,
 			"key":           value.String(pi.Key),
-			"version":       value.Int(pi.UpdateTime),
 			"profile_value": pi.Value,
 		}))
 	}
+	// we should still get back default value if it is cached properly
+	verifyMultiple(t, &i, query, expected)
+
+	time.Sleep(cacheValueDuration + time.Second)
+	// Get new values since old values have expired
 	verifyMultiple(t, &i, query, expected2)
 
 	// now store a newer version with new values for each profile
@@ -215,9 +213,11 @@ func TestProfileOpCacheMultiple(t *testing.T) {
 		pi2.UpdateTime++
 		pi2.Value, err = pi2.Value.Op("+", value.Int(2))
 		assert.NoError(t, err)
-		assert.NoError(t, profile.Set(ctx, tier, pi2))
+		assert.NoError(t, profile.TestSet(ctx, tier, pi2))
 	}
-	// now if we use version = 0, we should get back latest profile even though older version is cached
+	// Still get old values since they are cached
+	verifyMultiple(t, &i, query, expected2)
+
 	var expected3 []value.Dict
 	for _, pi := range profiles {
 		oid, err := value.FromJSON([]byte(pi.Oid))
@@ -228,25 +228,14 @@ func TestProfileOpCacheMultiple(t *testing.T) {
 			"otype":         value.String(pi.OType),
 			"oid":           oid,
 			"key":           value.String(pi.Key),
-			"version":       value.Int(0),
 			"profile_value": newval,
 		}))
 	}
-	// now use a new interpreter with fresh cache, should get back stored value now
-	i, err = interpreter.NewInterpreter(context.Background(), bootarg.Create(tier),
-		value.NewDict(map[string]value.Value{"actions": inTable0}))
-	assert.NoError(t, err)
+	time.Sleep(cacheValueDuration + 3*time.Second)
+
 	verifyMultiple(t, &i, query, expected3)
 
-	// but once version = 0 is cached, we should not get any later versions
-	for _, pi := range profiles {
-		pi3 := pi
-		pi3.UpdateTime += 2
-		pi3.Value, err = pi3.Value.Op("+", value.Int(5))
-		assert.NoError(t, err)
-		assert.NoError(t, profile.Set(ctx, tier, pi3))
-	}
-	verifyMultiple(t, &i, query, expected3)
+	cacheValueDuration = 2 * time.Minute
 }
 
 func verifyMultiple(t *testing.T, i *interpreter.Interpreter, query ast.Ast, expected []value.Dict) {
