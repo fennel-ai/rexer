@@ -15,6 +15,7 @@ import * as glueSource from "../glue-script-source";
 import * as offlineAggregateSources from "../offline-aggregate-script-source";
 
 import * as process from "process";
+import {NodeGroupConf} from "../eks";
 
 type VpcConfig = {
     cidr: string,
@@ -54,8 +55,8 @@ type PrometheusConf = {
 }
 
 type EksConf = {
-    nodeType: string,
-    desiredCapacity: number,
+    // EKS cluster can have more than one Node Group
+    nodeGroups: NodeGroupConf[]
 }
 
 type MilvusConf = {}
@@ -130,10 +131,11 @@ const setupResources = async () => {
         roleArn: input.roleArn,
         region: input.region,
         vpcId: vpcOutput.vpcId,
+        publicSubnets: vpcOutput.publicSubnets,
+        privateSubnets: vpcOutput.privateSubnets,
         connectedVpcCidrs: [input.controlPlaneConf.cidrBlock],
         planeId: input.planeId,
-        nodeType: input.eksConf?.nodeType,
-        desiredCapacity: input.eksConf?.desiredCapacity,
+        nodeGroups: input.eksConf?.nodeGroups,
     })
     const auroraOutput = await aurora.setup({
         roleArn: input.roleArn,
@@ -144,7 +146,7 @@ const setupResources = async () => {
         username: "admin",
         password: pulumi.output(input.dbConf.password),
         connectedSecurityGroups: {
-            "eks": eksOutput.workerSg,
+            "eks": eksOutput.clusterSg,
         },
         connectedCidrBlocks: [input.controlPlaneConf.cidrBlock],
         planeId: input.planeId,
@@ -155,7 +157,7 @@ const setupResources = async () => {
         region: input.region,
         vpcId: vpcOutput.vpcId,
         connectedSecurityGroups: {
-            "eks": eksOutput.workerSg,
+            "eks": eksOutput.clusterSg,
         },
         numShards: input.redisConf?.numShards,
         numReplicasPerShard: input.redisConf?.numReplicasPerShard,
@@ -168,7 +170,7 @@ const setupResources = async () => {
         region: input.region,
         vpcId: vpcOutput.vpcId,
         connectedSecurityGroups: {
-            "eks": eksOutput.workerSg,
+            "eks": eksOutput.clusterSg,
         },
         planeId: input.planeId,
         nodeType: input.cacheConf?.nodeType,

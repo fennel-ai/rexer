@@ -26,14 +26,25 @@ const AMI_BY_REGION: Record<string, string> = {
 const DEFAULT_NODE_TYPE = "t3.medium"
 const DEFAULT_DESIRED_CAPACITY = 3
 
+// Node Group configuration for the EKS cluster
+export type NodeGroupConf = {
+    // Must be unique across node groups defined in the same plane
+    name: string,
+    nodeType: string,
+    desiredCapacity: number,
+    // labels to be attached to the node group
+    labels?: Record<string, string>,
+}
+
 export type inputType = {
     roleArn: string,
     region: string,
     vpcId: pulumi.Output<string>,
     connectedVpcCidrs: string[],
+    publicSubnets: pulumi.Output<string[]>,
+    privateSubnets: pulumi.Output<string[]>,
     planeId: number,
-    nodeType?: string,
-    desiredCapacity?: number,
+    nodeGroups?: NodeGroupConf[],
 }
 
 export type outputType = {
@@ -41,7 +52,7 @@ export type outputType = {
     kubeconfig: any,
     oidcUrl: string,
     instanceRole: string,
-    workerSg: string,
+    clusterSg: string,
     storageclasses: Record<string, string>
 }
 
@@ -282,7 +293,7 @@ function setupStorageClasses(cluster: eks.Cluster): Record<string, pulumi.Output
 }
 
 export const setup = async (input: inputType): Promise<pulumi.Output<outputType>> => {
-    const { vpcId, region, roleArn } = input
+    const { vpcId, publicSubnets, privateSubnets, region, roleArn } = input
 
     const awsProvider = new aws.Provider("eks-aws-provider", {
         region: <aws.Region>region,
@@ -293,14 +304,6 @@ export const setup = async (input: inputType): Promise<pulumi.Output<outputType>
         }
     })
 
-    const subnetIds = vpcId.apply(async vpcId => {
-        return await aws.ec2.getSubnetIds({
-            vpcId
-        }, { provider: awsProvider })
-    })
-
-    const nodeCapacity = input.desiredCapacity || DEFAULT_DESIRED_CAPACITY
-
     // Create an EKS cluster with the default configuration.
     const cluster = new eks.Cluster(`p-${input.planeId}-eks-cluster`, {
         vpcId,
@@ -308,37 +311,62 @@ export const setup = async (input: inputType): Promise<pulumi.Output<outputType>
         // TODO: disable public access once we figure out how to get the cluster
         // up and running when nodes are running in private subnet.
         endpointPublicAccess: true,
-        subnetIds: subnetIds.ids,
-        // TODO: Explore running different node groups, say one for countaggr service and one for http-service
-        // with different instance types.
-        nodeGroupOptions: {
-            instanceType: input.nodeType || DEFAULT_NODE_TYPE,
-            // NOTE: Desired number of nodes = 3. We have defined an affinity between the http-server and countaggr
-            // services to NOT be scheduled on the same node (i.e. host).
-            //
-            // We currently run 2 replicas of http-server and 1 replica of countaggr
-            //
-            // This essentially means that one instance of each would reside on different nodes.
-            //
-            // Change number of replicas and/or affinity b/w services accordingly if updating the node group size.
-            desiredCapacity: nodeCapacity,
-            minSize: nodeCapacity,
-            maxSize: nodeCapacity,
-            // Make AMI a config parameter since AMI-ids are unique to region.
-            amiId: AMI_BY_REGION[region],
-            nodeAssociatePublicIpAddress: false,
-        },
+        publicSubnetIds: publicSubnets,
+        privateSubnetIds: privateSubnets,
         // setup version for k8s control plane
         version: "1.22",
         providerCredentialOpts: {
             roleArn,
         },
+        // Make AMI a config parameter since AMI-ids are unique to region.
+        nodeAmiId: AMI_BY_REGION[region],
         nodeAssociatePublicIpAddress: false,
-        createOidcProvider: true
+        createOidcProvider: true,
+        // Skip creating default node group since we explicitly create a managed node group (default one even if
+        // not specified in the configuration).
+        skipDefaultNodeGroup: true,
     }, { provider: awsProvider });
 
+    const instanceRole = cluster.core.instanceRoles.apply((roles) => { return roles[0].name })
+    const instanceRoleArn = cluster.core.instanceRoles.apply((roles) => { return roles[0].arn })
+
+    const defaultNodeGroup = {
+        name: `p-${input.planeId}-default-nodegroup`,
+        nodeType: DEFAULT_NODE_TYPE,
+        desiredCapacity: DEFAULT_DESIRED_CAPACITY,
+    };
+    let nodeGroups: NodeGroupConf[] = input.nodeGroups !== undefined ? input.nodeGroups : [defaultNodeGroup];
+
+    // Setup managed node groups
+    for (let nodeGroup of nodeGroups) {
+        const nodeGroupSize = nodeGroup.desiredCapacity;
+        const n = new eks.ManagedNodeGroup(nodeGroup.name, {
+            cluster: cluster,
+            scalingConfig: {
+                desiredSize: nodeGroupSize,
+                minSize: nodeGroupSize,
+                maxSize: nodeGroupSize,
+            },
+            // accepts multiple strings but the EKS API accepts only a single string
+            instanceTypes: [nodeGroup.nodeType],
+            nodeGroupNamePrefix: nodeGroup.name,
+            labels: nodeGroup.labels,
+            nodeRoleArn: instanceRoleArn,
+            subnetIds: privateSubnets,
+        }, {provider: awsProvider});
+    }
+
     // Install descheduler.
-    setupDescheduler(cluster)
+    setupDescheduler(cluster);
+
+    // Use cluster's security group
+    //
+    // NOTE: Amazon EKS managed node groups are automatically configured to use the cluster security group
+    // source: https://docs.aws.amazon.com/eks/latest/userguide/sec-group-reqs.html
+    //
+    // Allow both Kubernetes control plane and worker nodes (in node groups) have access to the AWS services used by
+    // the process deployed on them (our services).
+    const clusterSg = cluster.clusterSecurityGroup.id
 
     // Connect cluster node security group to connected vpcs.
     const sgRules = new aws.ec2.SecurityGroupRule(`p-${input.planeId}-eks-sg-rule`, {
@@ -347,10 +375,8 @@ export const setup = async (input: inputType): Promise<pulumi.Output<outputType>
         toPort: 65535,
         protocol: "tcp",
         cidrBlocks: input.connectedVpcCidrs,
-        securityGroupId: cluster.nodeSecurityGroup.id
+        securityGroupId: clusterSg,
     }, { provider: awsProvider })
-
-    const instanceRole = cluster.core.instanceRoles.apply((roles) => { return roles[0].name })
 
     const policy = new aws.iam.RolePolicy(`t-${input.planeId}-s3-createbucket-rolepolicy`, {
         name: `p-${input.planeId}-s3-createbucket-rolepolicy`,
@@ -390,13 +416,10 @@ export const setup = async (input: inputType): Promise<pulumi.Output<outputType>
 
     // Setup storageclasses to be used by stateful sets.
     const storageclasses = setupStorageClasses(cluster)
-
-    const workerSg = cluster.nodeSecurityGroup.id
-
     const clusterName = cluster.core.cluster.name
 
     const output = pulumi.output({
-        kubeconfig, oidcUrl, instanceRole, workerSg, clusterName, storageclasses,
+        kubeconfig, oidcUrl, instanceRole, clusterSg, clusterName, storageclasses,
     })
 
     return output

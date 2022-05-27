@@ -6,6 +6,7 @@ import * as kafkatopics from "../kafkatopics";
 import * as kafkaconnectors from "../kafkaconnectors";
 import * as mysql from "../mysql"
 import * as httpserver from "../http-server";
+import * as queryserver from "../query-server";
 import * as countaggr from "../countaggr";
 import * as apiserver from "../apiserver";
 import * as configs from "../configs";
@@ -22,19 +23,40 @@ import * as countersCleanup from "../counters-cleanup";
 
 import * as process from "process";
 
+// All the attributes here are optional, which gives each service a choice to apply service-specific defaults
+export type PodConf = {
+    // Number of pods to launch for a service
+    replicas?: number,
+    // Whether replicas scheduled should be on the same node or not
+    // this determines intra-pod affinity (or anti-affinity)
+    enforceReplicaIsolation?: boolean,
+    // Node where this pod should be scheduled on MUST have at least one of these label - this determines node selection.
+    //
+    // NOTE: if specified, this must be a subset of the labels of at least one NodeGroup defined in EksConf
+    //
+    // This is optional, in which case, pods are scheduled on any random node
+    //
+    // This is primarily being introduced to allow scheduling certain pods on specific nodes (which are part of a node group)
+    nodeLabels?: Record<string, string>,
+}
+
 export type HttpServerConf = {
-    replicas: number,
-    enforceReplicaIsolation: boolean,
+    podConf?: PodConf
+}
+
+export type QueryServerConf = {
+    podConf?: PodConf
 }
 
 export type ApiServerConf = {
-    replicas: number,
-    enforceReplicaIsolation: boolean,
+    podConf?: PodConf,
     storageclass: string,
 }
 
 export type CountAggrConf = {
-    enforceServiceIsolation: boolean,
+    // replicas are currently not set, but in the future they might be configured
+    // hence setting enforceReplicaIsolation does not make sense
+    podConf?: PodConf
 }
 
 export type IngressConf = {
@@ -45,6 +67,7 @@ export type IngressConf = {
 export type TierConf = {
     planeId: number,
     httpServerConf?: HttpServerConf,
+    queryServerConf?: QueryServerConf,
     countAggrConf?: CountAggrConf,
     apiServerConf?: ApiServerConf,
     ingressConf?: IngressConf,
@@ -91,6 +114,7 @@ type inputType = {
     offlineAggregateSourceBucket: string,
     offlineAggregateSourceFiles: Record<string, string>,
     httpServerConf?: HttpServerConf,
+    queryServerConf?: QueryServerConf,
     countAggrConf?: CountAggrConf,
     apiServerConf?: ApiServerConf,
     nodeInstanceRole: string,
@@ -141,6 +165,7 @@ const parseConfig = (): inputType => {
         offlineAggregateSourceFiles: config.requireObject(nameof<inputType>("offlineAggregateSourceFiles")),
 
         httpServerConf: config.getObject(nameof<inputType>("httpServerConf")),
+        queryServerConf: config.getObject(nameof<inputType>("queryServerConf")),
         countAggrConf: config.getObject(nameof<inputType>("countAggrConf")),
         apiServerConf: config.getObject(nameof<inputType>("apiServerConf")),
 
@@ -169,6 +194,7 @@ const setupPlugins = async (stack: pulumi.automation.Stack) => {
         ...sagemaker.plugins,
         ...offlineAggregateStorage.plugins,
         ...countersCleanup.plugins,
+        ...queryserver.plugins,
     }
     console.info("installing plugins...");
     for (var key in plugins) {
@@ -337,16 +363,54 @@ const setupResources = async () => {
         script: input.glueSourceScript,
     })
     configsOutput.apply(async () => {
-        // setup http-server and countaggr after configs are setup.
-        const httpServerOutput = await httpserver.setup({
+        // setup services after configs are setup.
+
+        // NOTE: We remove the concept of pod anti-affinity -> this was initially introduced to schedule
+        // two pods of different services on different nodes always.
+        //
+        // This should, currently should be supported using managed node groups i.e. each pod it has to be independently
+        // scheduled from a pod(s) of another service should it's dedicated node group and internally
+        // replica isolation is still supported
+        //
+        // Going forward, we should ideally have each service/pod specify the resource expectations/limits
+        // which kube scheduler uses to schedule them on nodes without us explicitly specifying node <-> pod
+        // relationship
+
+        // NOTE: HTTP and Query servers currently host the same binary. Query server only handles `/data/query` calls
+        // whereas HTTP Server is still capable of hosting all APIs.
+        //
+        // We use Ambassador ingress to handle mappings. By-default Ambassador does a longest prefix match to choose
+        // the backend/service to send the requests to. If Query server is configured, Ambassador will forward all
+        // queries to it, else the calls are by-default sent to HTTP server since it allows all calls matching path
+        // `/data/`
+        await httpserver.setup({
             roleArn: input.roleArn,
             region: input.region,
             kubeconfig: input.kubeconfig,
             namespace: input.namespace,
             tierId: input.tierId,
-            replicas: input.httpServerConf?.replicas,
-            enforceReplicaIsolation: input.httpServerConf?.enforceReplicaIsolation,
+            replicas: input.httpServerConf?.podConf?.replicas,
+            enforceReplicaIsolation: input.httpServerConf?.podConf?.enforceReplicaIsolation,
+            nodeLabels: input.httpServerConf?.podConf?.nodeLabels,
         });
+
+        // this sets up query server which is responsible for handling `/data/query` REST calls
+        //
+        // define this service only if the query server configuration is provided. If not, HTTP Server
+        // creates a mapping
+        if (input.queryServerConf !== undefined) {
+            await queryserver.setup({
+                roleArn: input.roleArn,
+                region: input.region,
+                kubeconfig: input.kubeconfig,
+                namespace: input.namespace,
+                tierId: input.tierId,
+                replicas: input.queryServerConf?.podConf?.replicas,
+                enforceReplicaIsolation: input.queryServerConf?.podConf?.enforceReplicaIsolation,
+                nodeLabels: input.queryServerConf?.podConf?.nodeLabels,
+            });
+        }
+
         // This there is an affinity requirement on http-server and countaggr pods, schedule the http-server pod first
         // and let countaggr depend on it's output so that affinity requirements do not unexpected behavior
         await countaggr.setup({
@@ -355,8 +419,7 @@ const setupResources = async () => {
             kubeconfig: input.kubeconfig,
             namespace: input.namespace,
             tierId: input.tierId,
-            enforceServiceIsolation: input.countAggrConf?.enforceServiceIsolation,
-            httpServerAppLabels: httpServerOutput.appLabels,
+            nodeLabels: input.countAggrConf?.podConf?.nodeLabels,
         });
         await countersCleanup.setup({
             region: input.region,
@@ -373,8 +436,8 @@ const setupResources = async () => {
                 kubeconfig: input.kubeconfig,
                 namespace: input.namespace,
                 tierId: input.tierId,
-                replicas: input.apiServerConf?.replicas,
-                enforceReplicaIsolation: input.apiServerConf?.enforceReplicaIsolation,
+                replicas: input.apiServerConf?.podConf?.replicas,
+                enforceReplicaIsolation: input.apiServerConf?.podConf?.enforceReplicaIsolation,
                 storageclass: input.apiServerConf?.storageclass,
             })
         }
@@ -431,6 +494,9 @@ type TierInput = {
 
     // http server configuration
     httpServerConf?: HttpServerConf,
+
+    // query server configuration
+    queryServerConf?: QueryServerConf,
 
     // countaggr configuration
     countAggrConf?: CountAggrConf,
@@ -510,6 +576,10 @@ const setupTier = async (args: TierInput, preview?: boolean, destroy?: boolean) 
 
     if (args.httpServerConf !== undefined) {
         await stack.setConfig(nameof<inputType>("httpServerConf"), { value: JSON.stringify(args.httpServerConf) })
+    }
+
+    if (args.queryServerConf !== undefined) {
+        await stack.setConfig(nameof<inputType>("queryServerConf"), { value: JSON.stringify(args.queryServerConf) })
     }
 
     if (args.countAggrConf !== undefined) {

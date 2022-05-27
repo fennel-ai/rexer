@@ -7,7 +7,7 @@ import * as process from "process";
 import * as childProcess from "child_process";
 import {serviceEnvs} from "../tier-consts/consts";
 
-const name = "http-server"
+const name = "query-server"
 
 export const plugins = {
     "kubernetes": "v3.18.0",
@@ -35,7 +35,7 @@ export type outputType = {
 }
 
 export const setup = async (input: inputType) => {
-    const awsProvider = new aws.Provider("http-aws-provider", {
+    const awsProvider = new aws.Provider("query-aws-provider", {
         region: <aws.Region>input.region,
         assumeRole: {
             roleArn: input.roleArn,
@@ -45,7 +45,7 @@ export const setup = async (input: inputType) => {
     })
 
     // Create a private ECR repository.
-    const repo = new aws.ecr.Repository(`t-${input.tierId}-http-server-repo`, {
+    const repo = new aws.ecr.Repository(`t-${input.tierId}-query-server-repo`, {
         imageScanningConfiguration: {
             scanOnPush: true
         },
@@ -76,9 +76,10 @@ export const setup = async (input: inputType) => {
     })
 
     // Build and publish the container image.
-    const image = new docker.Image("http-server-img", {
+    const image = new docker.Image("query-server-img", {
         build: {
             context: root,
+            // We use HTTP server's dockerfile to spin up the query servers
             dockerfile: path.join(root, "dockerfiles/http.dockerfile"),
             args: {
                 "platform": "linux/amd64",
@@ -88,7 +89,7 @@ export const setup = async (input: inputType) => {
         registry: registryInfo,
     });
 
-    const k8sProvider = new k8s.Provider("httpserver-k8s-provider", {
+    const k8sProvider = new k8s.Provider("queryserver-k8s-provider", {
         kubeconfig: input.kubeconfig,
         namespace: input.namespace,
     })
@@ -126,13 +127,13 @@ export const setup = async (input: inputType) => {
     }
 
     const appDep = image.imageName.apply(() => {
-        return new k8s.apps.v1.Deployment("http-server-deployment", {
+        return new k8s.apps.v1.Deployment("query-server-deployment", {
             metadata: {
-                name: "http-server",
+                name: "query-server",
             },
             spec: {
                 selector: { matchLabels: appLabels },
-                // NOTE: If changing number replicas, please take: size and desired capacity of the nodegroup,
+                // NOTE: If changing number replicas, please take: size and desired capacity of the nodegroup.
                 //
                 // NOTE: If changing number replicas, please take `topologySpreadConstraints`
                 // into consideration which schedules replicas on different nodes.
@@ -178,7 +179,7 @@ export const setup = async (input: inputType) => {
                                 // key of the node labels. we check by the host name.
                                 topologyKey: "kubernetes.io/hostname",
                                 // schedule anyway on the pod when constraints are not satisfied - to avoid potential
-                                // contention b/w pods. This is to avoid scheduling multiple http-server pods
+                                // contention b/w pods. This is to avoid scheduling multiple query-server pods
                                 // from different namespaces on the same data plane.
                                 whenUnsatisfiable: whenUnsatisfiable,
                                 // find matching pods using the labels - `appLabels`
@@ -218,7 +219,7 @@ export const setup = async (input: inputType) => {
     })
 
     const appSvc = appDep.apply(() => {
-        return new k8s.core.v1.Service("http-svc", {
+        return new k8s.core.v1.Service("query-svc", {
             metadata: {
                 labels: appLabels,
                 name: name,
@@ -231,31 +232,32 @@ export const setup = async (input: inputType) => {
         }, { provider: k8sProvider, deleteBeforeReplace: true })
     })
 
-    // Setup ingress resources for http-server.
-    const mapping = new k8s.apiextensions.CustomResource("api-server-mapping", {
+    // Setup ingress resources for query-server.
+    const mapping = new k8s.apiextensions.CustomResource("query-server-mapping", {
         apiVersion: "getambassador.io/v3alpha1",
         kind: "Mapping",
         metadata: {
-            name: "data-server-mapping",
+            name: "query-server-mapping",
             labels: {
-                "svc": "go-http",
+                "svc": "go-query",
             }
         },
         spec: {
             "hostname": "*",
-            "prefix": "/data/",
-            "service": "http-server:2425",
+            "prefix": "/data/query",
+           "rewrite": "/query",
+            "service": "query-server:2425",
             "timeout_ms": 30000,
         }
     }, { provider: k8sProvider, deleteBeforeReplace: true })
 
-    const host = new k8s.apiextensions.CustomResource("api-server-host", {
+    const host = new k8s.apiextensions.CustomResource("query-server-host", {
         apiVersion: "getambassador.io/v3alpha1",
         kind: "Host",
         metadata: {
-            name: "api-server-host",
+            name: "query-server-host",
             labels: {
-                "svc": "go-http",
+                "svc": "go-query",
             }
         },
         spec: {
@@ -272,7 +274,7 @@ export const setup = async (input: inputType) => {
             },
             "mappingSelector": {
                 "matchLabels": {
-                    "svc": "go-http",
+                    "svc": "go-query",
                 }
             },
             "requestPolicy": {
