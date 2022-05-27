@@ -3,6 +3,9 @@ package feature
 import (
 	"context"
 
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promauto"
+
 	"fennel/controller/feature"
 	"fennel/engine/interpreter/bootarg"
 	"fennel/engine/operators"
@@ -11,6 +14,11 @@ import (
 	"fennel/lib/value"
 	"fennel/tier"
 )
+
+var featurelog_stats = promauto.NewGaugeVec(prometheus.GaugeOpts{
+	Name: "featurelog_stats",
+	Help: "Stats about features being logged",
+}, []string{"workflow"})
 
 func init() {
 	operators.Register(featureLog{})
@@ -34,7 +42,7 @@ func (f featureLog) Apply(ctx context.Context, static value.Dict, in operators.I
 	workflow := string(get(static, "workflow").(value.String))
 	modelName := ftypes.ModelName(get(static, "model_name").(value.String))
 	modelVersion := ftypes.ModelVersion(get(static, "model_version").(value.String))
-
+	featurelog_entries := 0
 	for in.HasMore() {
 		_, kwargs, err := in.Next()
 		if err != nil {
@@ -64,8 +72,10 @@ func (f featureLog) Apply(ctx context.Context, static value.Dict, in operators.I
 		if err != nil {
 			return err
 		}
+		featurelog_entries++
 		out.Append(row)
 	}
+	featurelog_stats.WithLabelValues(workflow).Set(float64(featurelog_entries))
 	return nil
 }
 
