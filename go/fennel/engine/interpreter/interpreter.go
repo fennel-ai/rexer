@@ -10,6 +10,8 @@ import (
 	"fennel/engine/ast"
 	"fennel/engine/operators"
 	"fennel/lib/value"
+
+	"golang.org/x/sync/errgroup"
 )
 
 type Interpreter struct {
@@ -208,16 +210,8 @@ func (i Interpreter) VisitOpcall(operands []ast.Ast, vars []string, namespace, n
 	if len(vars) > 0 && len(operands) != len(vars) {
 		return nil, fmt.Errorf("operator '%s.%s' can not be applied: different number of operands and variables", namespace, name)
 	}
-	// eval operands, potentially in parallel
-	var vals []value.Value
-	var err error
-	var first value.Value
-	if len(operands) > 1 {
-		vals, err = i.visitInParallel(operands)
-	} else {
-		first, err = operands[0].AcceptValue(i)
-		vals = []value.Value{first}
-	}
+	// eval all operands
+	vals, err := i.visitAll(operands)
 	if err != nil {
 		return value.Nil, err
 	}
@@ -376,30 +370,23 @@ func (i Interpreter) getOperator(namespace, name string) (operators.Operator, er
 	return ret, err
 }
 
-func (i Interpreter) visitInParallel(trees []ast.Ast) ([]value.Value, error) {
-	type res struct {
-		value.Value
-		error
-	}
-	results := make([]res, len(trees))
-	wg := sync.WaitGroup{}
-	wg.Add(len(trees))
-	for j := range trees {
-		go func(idx int) {
-			defer wg.Done()
-			val, err := trees[idx].AcceptValue(i)
-			results[idx] = res{val, err}
-		}(j)
-	}
-	wg.Wait()
-	ret := make([]value.Value, len(trees))
-	for j, r := range results {
-		val, err := r.Value, r.error
-		if err != nil {
-			return nil, err
-		} else {
-			ret[j] = val
+func (i Interpreter) visitAll(trees []ast.Ast) ([]value.Value, error) {
+	vals := make([]value.Value, len(trees))
+	var err error
+	if len(trees) == 1 {
+		vals[0], err = trees[0].AcceptValue(i)
+	} else {
+		// Eval trees in parallel if more than 1.
+		eg := errgroup.Group{}
+		for j := range trees {
+			idx := j
+			eg.Go(func() error {
+				var err error
+				vals[idx], err = trees[idx].AcceptValue(i)
+				return err
+			})
 		}
+		err = eg.Wait()
 	}
-	return ret, nil
+	return vals, err
 }
