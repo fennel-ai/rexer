@@ -353,7 +353,7 @@ export const setup = async (input: inputType): Promise<pulumi.Output<outputType>
     const instanceRole = cluster.core.instanceRoles.apply((roles) => { return roles[0].name })
 
     const policy = new aws.iam.RolePolicy(`t-${input.planeId}-s3-createbucket-rolepolicy`, {
-        name: `t-${input.planeId}-s3-createbucket-rolepolicy`,
+        name: `p-${input.planeId}-s3-createbucket-rolepolicy`,
         role: instanceRole,
         policy: `{
             "Version": "2012-10-17",
@@ -362,10 +362,10 @@ export const setup = async (input: inputType): Promise<pulumi.Output<outputType>
                     "Effect":"Allow",
                     "Action": "s3:CreateBucket",
                     "Resource": "*"
-                },
+                }
             ]
         }`,
-    }, { awsProvider });
+    }, { provider: awsProvider });
 
     // Export the cluster's kubeconfig.
     const kubeconfig = cluster.kubeconfig;
