@@ -325,6 +325,11 @@ export const setup = async (input: inputType): Promise<pulumi.Output<outputType>
         // Skip creating default node group since we explicitly create a managed node group (default one even if
         // not specified in the configuration).
         skipDefaultNodeGroup: true,
+        // Enable EKS control plane logging - this will start sending logs to cloudwatch.
+        //
+        // Allow values - ["api", "audit", "authenticator", "controllerManager", "scheduler"]
+        // See: https://docs.aws.amazon.com/eks/latest/userguide/control-plane-logs.html
+        enabledClusterLogTypes: ["api", "authenticator", "controllerManager", "scheduler"],
     }, { provider: awsProvider });
 
     const instanceRole = cluster.core.instanceRoles.apply((roles) => { return roles[0].name })
