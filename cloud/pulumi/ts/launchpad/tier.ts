@@ -8,7 +8,6 @@ import * as mysql from "../mysql"
 import * as httpserver from "../http-server";
 import * as queryserver from "../query-server";
 import * as countaggr from "../countaggr";
-import * as apiserver from "../apiserver";
 import * as configs from "../configs";
 import * as ingress from "../ingress";
 import * as ns from "../k8s-ns";
@@ -48,11 +47,6 @@ export type QueryServerConf = {
     podConf?: PodConf
 }
 
-export type ApiServerConf = {
-    podConf?: PodConf,
-    storageclass: string,
-}
-
 export type CountAggrConf = {
     // replicas are currently not set, but in the future they might be configured
     // hence setting enforceReplicaIsolation does not make sense
@@ -69,7 +63,6 @@ export type TierConf = {
     httpServerConf?: HttpServerConf,
     queryServerConf?: QueryServerConf,
     countAggrConf?: CountAggrConf,
-    apiServerConf?: ApiServerConf,
     ingressConf?: IngressConf,
 }
 
@@ -116,7 +109,6 @@ type inputType = {
     httpServerConf?: HttpServerConf,
     queryServerConf?: QueryServerConf,
     countAggrConf?: CountAggrConf,
-    apiServerConf?: ApiServerConf,
     nodeInstanceRole: string,
     vpcId: string,
     connectedSecurityGroups: Record<string, string>,
@@ -167,7 +159,6 @@ const parseConfig = (): inputType => {
         httpServerConf: config.getObject(nameof<inputType>("httpServerConf")),
         queryServerConf: config.getObject(nameof<inputType>("queryServerConf")),
         countAggrConf: config.getObject(nameof<inputType>("countAggrConf")),
-        apiServerConf: config.getObject(nameof<inputType>("apiServerConf")),
 
         nodeInstanceRole: config.require(nameof<inputType>("nodeInstanceRole")),
 
@@ -185,7 +176,6 @@ const setupPlugins = async (stack: pulumi.automation.Stack) => {
         ...configs.plugins,
         ...httpserver.plugins,
         ...countaggr.plugins,
-        ...apiserver.plugins,
         ...ingress.plugins,
         ...ns.plugins,
         ...kafkaconnectors.plugins,
@@ -428,19 +418,6 @@ const setupResources = async () => {
             namespace: input.namespace,
             tierId: input.tierId,
         });
-        // set api-server only if the API Server configuration is defined
-        if (input.apiServerConf !== undefined) {
-            await apiserver.setup({
-                roleArn: input.roleArn,
-                region: input.region,
-                kubeconfig: input.kubeconfig,
-                namespace: input.namespace,
-                tierId: input.tierId,
-                replicas: input.apiServerConf?.podConf?.replicas,
-                enforceReplicaIsolation: input.apiServerConf?.podConf?.enforceReplicaIsolation,
-                storageclass: input.apiServerConf?.storageclass,
-            })
-        }
     })
     return {
         "ingress": ingressOutput,
@@ -500,9 +477,6 @@ type TierInput = {
 
     // countaggr configuration
     countAggrConf?: CountAggrConf,
-
-    // api-server configuration
-    apiServerConf?: ApiServerConf,
 
     // model store configuration
     nodeInstanceRole: string,
@@ -584,10 +558,6 @@ const setupTier = async (args: TierInput, preview?: boolean, destroy?: boolean) 
 
     if (args.countAggrConf !== undefined) {
         await stack.setConfig(nameof<inputType>("countAggrConf"), { value: JSON.stringify(args.countAggrConf) })
-    }
-
-    if (args.apiServerConf !== undefined) {
-        await stack.setConfig(nameof<inputType>("apiServerConf"), { value: JSON.stringify(args.apiServerConf) })
     }
 
     await stack.setConfig(nameof<inputType>("nodeInstanceRole"), { value: args.nodeInstanceRole })

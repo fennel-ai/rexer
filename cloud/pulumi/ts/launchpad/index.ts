@@ -58,15 +58,6 @@ const tierConfs: Record<number, TierConf> = {
                 enforceReplicaIsolation: false,
             }
         },
-        apiServerConf: {
-            podConf: {
-                replicas: 1,
-                enforceReplicaIsolation: false,
-            },
-            // This will be replaced with the actual storageclass
-            // of the type io1.
-            storageclass: "io1",
-        },
     },
     // Lokal prod tier on their prod data plane.
     107: {
@@ -355,10 +346,6 @@ if (tierId !== 0) {
     } else {
         subnetIds = vpcOutput.privateSubnets;
     }
-    if (tierConf.apiServerConf?.storageclass !== undefined) {
-        tierConf.apiServerConf.storageclass =
-            eksOutput.storageclasses[tierConf.apiServerConf.storageclass]
-    }
 
     // TODO(mohit): Validate that the nodeLabel specified in `PodConf` have at least one label match across labels
     // defined in all node groups.
@@ -416,8 +403,6 @@ if (tierId !== 0) {
         queryServerConf: tierConf.queryServerConf,
 
         countAggrConf: tierConf.countAggrConf,
-
-        apiServerConf: tierConf.apiServerConf,
 
         nodeInstanceRole: eksOutput.instanceRole,
 
