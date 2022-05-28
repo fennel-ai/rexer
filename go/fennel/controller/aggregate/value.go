@@ -240,8 +240,9 @@ func Update(ctx context.Context, tier tier.Tier, consumer kafka.FConsumer, agg a
 
 		table, err = transformActions(tier, actions, agg.Query)
 		streamLen = len(actions)
-	} else {
+	} else if agg.Source == aggregate.SOURCE_PROFILE {
 		profiles, err := profile.ReadBatch(ctx, consumer, 20000, time.Second*10)
+
 		if err != nil {
 			return err
 		}
@@ -251,6 +252,8 @@ func Update(ctx context.Context, tier tier.Tier, consumer kafka.FConsumer, agg a
 
 		table, err = transformProfiles(tier, profiles, agg.Query)
 		streamLen = len(profiles)
+	} else {
+		return fmt.Errorf("aggregate source %s not defined", agg.Source)
 	}
 
 	if err != nil {

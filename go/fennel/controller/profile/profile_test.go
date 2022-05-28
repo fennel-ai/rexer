@@ -186,7 +186,7 @@ func TestGetBatched(t *testing.T) {
 		OffsetPolicy: kafka.DefaultOffsetPolicy,
 	})
 	assert.NoError(t, err)
-	found, err = readBatch(ctx, consumer, 3, time.Second*2)
+	found, err = ReadBatch(ctx, consumer, 3, time.Second*2)
 	assert.Equal(t, profiles, found)
 }
 
