@@ -3,6 +3,7 @@ import setupDataPlane, { PlaneConf, PlaneOutput } from "./plane";
 import * as vpc from "../vpc";
 import * as eks from "../eks";
 import * as aurora from "../aurora";
+import * as unleashDb from "../unleash-postgres";
 import * as elasticache from "../elasticache";
 import * as redis from "../redis";
 import * as confluentenv from "../confluentenv";
@@ -326,6 +327,7 @@ const dataplane = await setupDataPlane(planeConf, preview, destroy);
 
 const confluentOutput = dataplane[nameof<PlaneOutput>("confluent")].value as confluentenv.outputType
 const dbOutput = dataplane[nameof<PlaneOutput>("db")].value as aurora.outputType
+const unleashDbOutput = dataplane[nameof<PlaneOutput>("unleashDb")].value as unleashDb.outputType
 const eksOutput = dataplane[nameof<PlaneOutput>("eks")].value as eks.outputType
 const redisOutput = dataplane[nameof<PlaneOutput>("redis")].value as redis.outputType
 const elasticacheOutput = dataplane[nameof<PlaneOutput>("elasticache")].value as elasticache.outputType
@@ -379,6 +381,9 @@ if (tierId !== 0) {
         dbEndpoint: dbOutput.host,
         dbUsername: "admin",
         dbPassword: planeConf.dbConf.password,
+
+        unleashDbEndpoint: unleashDbOutput.host,
+        unleashDbPort: unleashDbOutput.port,
 
         roleArn: planeConf.roleArn,
         region: planeConf.region,
