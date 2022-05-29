@@ -185,6 +185,22 @@ func batchValue(ctx context.Context, tier tier.Tier, batch []aggregate.GetAggVal
 		}
 	}
 
+	// Fetch forever aggregates, ( these dont need histograms )
+	for i, req := range batch {
+		agg := unique[req.AggName]
+		if agg.Options.CronSchedule != "" {
+			continue
+		}
+		onlinePtr = append(onlinePtr, i)
+		histograms[i], err = modelCounter.ToHistogram(tier, agg.Id, agg.Options)
+		if err != nil {
+			return nil, fmt.Errorf("failed to make histogram from aggregate at index %d of batch: %v", i, err)
+		}
+		ids[i] = agg.Id
+		keys[i] = req.Key
+		kwargs[i] = req.Kwargs
+	}
+
 	numOnline := n - len(offlinePtr)
 	histograms := make([]modelCounter.Histogram, numOnline)
 	ids := make([]ftypes.AggId, numOnline)
@@ -221,6 +237,7 @@ func batchValue(ctx context.Context, tier tier.Tier, batch []aggregate.GetAggVal
 	return ret, nil
 }
 
+// Update the aggregates given a kafka consumer responsible for reading any stream
 func Update(ctx context.Context, tier tier.Tier, consumer kafka.FConsumer, agg aggregate.Aggregate) error {
 	var table value.List
 	var err error
@@ -261,6 +278,8 @@ func Update(ctx context.Context, tier tier.Tier, consumer kafka.FConsumer, agg a
 		return err
 	}
 
+	// Update the aggregate according to the type
+
 	// Offline Aggregates
 	if agg.IsOffline() {
 		tier.Logger.Info(fmt.Sprintf("found %d new %s, %d transformed %s for offline aggregate: %s", streamLen, agg.Source, table.Len(), agg.Source, agg.Name))
@@ -283,6 +302,24 @@ func Update(ctx context.Context, tier tier.Tier, consumer kafka.FConsumer, agg a
 		_, err = consumer.Commit()
 		return err
 	}
+
+	// Forever Aggregates dont user histograms
+	if agg.Options.Durations == nil || len(agg.Options.Durations) == 0 {
+		// Current support for only KNN, add support for other aggregates
+		// https://linear.app/fennel-ai/issue/REX-1053/support-forever-aggregates
+		if agg.Name != "knn" {
+			return fmt.Errorf("forever aggregates are not supported for aggregate %s", agg.Name)
+		}
+
+		// Update the aggregate
+		// Use milvus library to update the index with all actions
+
+		tier.Logger.Info(fmt.Sprintf("found %d new %s, %d transformed %s for forever aggregate: %s", streamLen, agg.Source, table.Len(), agg.Source, agg.Name))
+		return counter.Batch(ctx, tier, agg.Id, table)
+	}
+
+	// Online duration based aggregates
+
 	tier.Logger.Info(fmt.Sprintf("found %d new %s, %d transformed %s for online aggregate: %s", streamLen, agg.Source, table.Len(), agg.Source, agg.Name))
 	histogram, err := modelCounter.ToHistogram(tier, agg.Id, agg.Options)
 	if err != nil {

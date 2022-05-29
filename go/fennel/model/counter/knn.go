@@ -23,7 +23,7 @@ func (s knn) Transform(v value.Value) (value.Value, error) {
 	return value.NewList(v), nil
 }
 
-func NewList(durations []uint64) Histogram {
+func NewKnn() Histogram {
 	maxDuration := getMaxDuration(durations)
 	return list{
 		Durations: durations,

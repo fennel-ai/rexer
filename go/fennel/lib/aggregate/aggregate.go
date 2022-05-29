@@ -97,6 +97,16 @@ func (agg Aggregate) Validate() error {
 		if options.Window != 0 || options.Limit != 0 {
 			return fmt.Errorf("window, limit should all be zero for %v", aggtype)
 		}
+	case "knn":
+		if len(options.Durations) > 0 {
+			return fmt.Errorf("no durations should be provided for %s", aggtype)
+		}
+		if options.Window != 0 || options.Limit != 0 {
+			return fmt.Errorf("window, limit should all be zero for %v", aggtype)
+		}
+		if agg.Options.Dim <= 0 {
+			return fmt.Errorf("dim must be greater than zero for %v", aggtype)
+		}
 	case "timeseries_sum":
 		if options.Window != ftypes.Window_HOUR && options.Window != ftypes.Window_DAY {
 			return fmt.Errorf("valid windows for time series are 'HOUR' or 'DAY' but got: '%v' instead", options.Window)
@@ -120,6 +130,9 @@ func (agg Aggregate) Equals(other Aggregate) bool {
 	if agg.Options.AggType != other.Options.AggType || agg.Name != other.Name || agg.Timestamp != other.Timestamp {
 		return false
 	}
+	if agg.Source != other.Source {
+		return false
+	}
 	return agg.Query.Equals(other.Query) && agg.Options.Equals(other.Options)
 }
 
@@ -134,6 +147,7 @@ type Options struct {
 	Limit           uint64
 	Normalize       bool
 	CronSchedule    string
+	Dim             uint32
 	HyperParameters string
 }
 
@@ -156,6 +170,15 @@ func (o Options) Equals(other Options) bool {
 		return false
 	}
 	if o.Normalize != other.Normalize {
+		return false
+	}
+	if o.CronSchedule != other.CronSchedule {
+		return false
+	}
+	if o.Dim != other.Dim {
+		return false
+	}
+	if o.HyperParameters != other.HyperParameters {
 		return false
 	}
 	return true
