@@ -7,7 +7,6 @@ import (
 	"fennel/lib/aggregate"
 	"fennel/lib/ftypes"
 	"github.com/stretchr/testify/assert"
-	"reflect"
 	"testing"
 )
 
@@ -95,70 +94,6 @@ func TestHyperParameters(t *testing.T) {
 	err = glueClient.ScheduleOfflineAggregate(107, agg)
 	assert.Error(t, err)
 	assert.Equal(t, "aggregate type: cf, hyperparameter min_co_occurence must be type : int", err.Error())
-
-	var registry = &supportedHyperParameters
-	(*registry)["test"] = map[string]HyperParameterInfo{
-		"a": HyperParameterInfo{3, reflect.Int, []string{}},
-		"b": HyperParameterInfo{4.5, reflect.Float64, []string{}},
-		"c": HyperParameterInfo{"sqrt", reflect.String, []string{"none", "log", "sqrt"}},
-		"d": HyperParameterInfo{"blah", reflect.String, []string{}},
-	}
-
-	_, err = getHyperParameters("test", `{"min_co_occurence": 123.5}`)
-	assert.Error(t, err)
-	assert.Equal(t, "aggregate type: test, doesnt support hyperparameter min_co_occurence", err.Error())
-
-	_, err = getHyperParameters("test", `{"a": 123.5}`)
-	assert.Error(t, err)
-	assert.Equal(t, "aggregate type: test, hyperparameter a must be type : int", err.Error())
-
-	h, err := getHyperParameters("test", `{"a": 123}`)
-	assert.NoError(t, err)
-	assert.Equal(t, `{"a":123,"b":4.5,"c":"sqrt","d":"blah"}`, h)
-
-	_, err = getHyperParameters("test", `{"c": "fasdf"}`)
-	assert.Error(t, err)
-	assert.Equal(t, "aggregate type: test, hyperparameter c must be one of [none log sqrt]", err.Error())
-
-	_, err = getHyperParameters("test", `{"d": 123.5}`)
-	assert.Error(t, err)
-	assert.Equal(t, "aggregate type: test, hyperparameter d must be type : string", err.Error())
-
-	h, err = getHyperParameters("test", `{"c": "none", "d": "xyz"}`)
-	assert.NoError(t, err)
-	assert.Equal(t, `{"a":3,"b":4.5,"c":"none","d":"xyz"}`, h)
-
-	_, err = getHyperParameters("test", `{"a":43, "b": "sqrt"}`)
-	assert.Error(t, err)
-	assert.Equal(t, "aggregate type: test, hyperparameter b must be type : float64", err.Error())
-
-	_, err = getHyperParameters("test", `{"a":43, "b": "sqrt"}`)
-	assert.Error(t, err)
-	assert.Equal(t, "aggregate type: test, hyperparameter b must be type : float64", err.Error())
-
-	h, err = getHyperParameters("test", `{"a":43, "b": 12.5}`)
-	assert.NoError(t, err)
-	assert.Equal(t, `{"a":43,"b":12.5,"c":"sqrt","d":"blah"}`, h)
-
-	_, err = getHyperParameters("test", `{"a":"qrt", "b": 12.5}`)
-	assert.Error(t, err)
-	assert.Equal(t, `aggregate type: test, hyperparameter a must be type : int`, err.Error())
-
-	_, err = getHyperParameters("test", `{"c": 12.5}`)
-	assert.Error(t, err)
-	assert.Equal(t, `aggregate type: test, hyperparameter c must be one of [none log sqrt]`, err.Error())
-
-	_, err = getHyperParameters("test", `{"c": "sqrt", "a": "sqrt"}`)
-	assert.Error(t, err)
-	assert.Equal(t, `aggregate type: test, hyperparameter a must be type : int`, err.Error())
-
-	h, err = getHyperParameters("test", `{"d" : "qwe", "c": "sqrt", "a": 1, "b": 2.5}`)
-	assert.NoError(t, err)
-	assert.Equal(t, `{"a":1,"b":2.5,"c":"sqrt","d":"qwe"}`, h)
-
-	h, err = getHyperParameters("test", ``)
-	assert.NoError(t, err)
-	assert.Equal(t, `{"a":3,"b":4.5,"c":"sqrt","d":"blah"}`, h)
 
 	agg = aggregate.Aggregate{
 		Name:      "OfflineAggregateTest",
