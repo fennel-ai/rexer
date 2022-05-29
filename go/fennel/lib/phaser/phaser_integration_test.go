@@ -17,10 +17,6 @@ import (
 )
 
 func TestBulkUploadToRedis(t *testing.T) {
-	if os.Getenv("broken") == "" {
-		// This test works locally but doesnt work on github, needs to be debugged.
-		t.Skip("Skipping broken test")
-	}
 	tier, err := test.Tier()
 	assert.NoError(t, err)
 	defer test.Teardown(tier)

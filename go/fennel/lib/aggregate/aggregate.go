@@ -23,17 +23,11 @@ var ValidTypes = []ftypes.AggType{
 	"cf",
 }
 
-const (
-	SOURCE_ACTION  = ftypes.Source("action")
-	SOURCE_PROFILE = ftypes.Source("profile")
-)
-
 var ErrNotFound = errors.New("aggregate not found")
 var ErrNotActive = errors.New("aggregate is not active")
 
 type Aggregate struct {
 	Name      ftypes.AggName
-	Source    ftypes.Source
 	Query     ast.Ast
 	Timestamp ftypes.Timestamp
 	Options   Options

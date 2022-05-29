@@ -29,7 +29,6 @@ func TestAggValue_Apply(t *testing.T) {
 	// create an aggregate, store it, create some actions, update aggregate and ensure its value returns some result
 	agg := libaggregate.Aggregate{
 		Name: "counter1", Query: getQuery(), Timestamp: 123,
-		Source: libaggregate.SOURCE_ACTION,
 		Options: libaggregate.Options{
 			AggType:   "sum",
 			Durations: []uint64{6 * 3600, 3 * 3600, 2000},
@@ -38,7 +37,6 @@ func TestAggValue_Apply(t *testing.T) {
 	}
 	agg2 := libaggregate.Aggregate{
 		Name: "second_agg", Query: getQuery(), Timestamp: 123,
-		Source: libaggregate.SOURCE_ACTION,
 		Options: libaggregate.Options{
 			AggType:   "max",
 			Durations: []uint64{6 * 3600},

@@ -38,8 +38,6 @@ type Histogram interface {
 	BucketStore
 }
 
-// TODO: implement aggregations that can support forever aggregations.
-// https://linear.app/fennel-ai/issue/REX-1053/support-forever-aggregates
 func ToHistogram(tr tier.Tier, aggId ftypes.AggId, opts aggregate.Options) (Histogram, error) {
 	switch opts.AggType {
 	case "sum":
