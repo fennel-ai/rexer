@@ -1,7 +1,6 @@
 import * as k8s from "@pulumi/kubernetes";
 import * as aws from "@pulumi/aws";
 import * as postgresql from "@pulumi/postgresql";
-import * as pulumi from "@pulumi/pulumi";
 import {UNLEASH_PASSWORD, UNLEASH_USERNAME} from "../tier-consts/consts";
 
 export const plugins = {
@@ -13,6 +12,7 @@ export type inputType = {
     roleArn: string,
     region: string,
     tierId: number,
+    namespace: string,
     unleashDbEndpoint: string,
     unleashDbPort: number,
     kubeconfig: string,
@@ -23,7 +23,7 @@ export type outputType = {
     unleashEndpoint: string,
 }
 
-export const setup = async (input: inputType): Promise<pulumi.Output<outputType>> => {
+export const setup = async (input: inputType): Promise<outputType> => {
     const provider = new aws.Provider(`t-${input.tierId}-unleash-db-provider`, {
         region: <aws.Region>input.region,
         assumeRole: {
@@ -33,10 +33,9 @@ export const setup = async (input: inputType): Promise<pulumi.Output<outputType>
         }
     });
 
-    const namespace = "unleash";
     const k8sProvider = new k8s.Provider(`t-${input.tierId}-unleash-k8s-provider`, {
         kubeconfig: input.kubeconfig,
-        namespace: namespace,
+        namespace: input.namespace,
     })
 
     const databaseName = `t_${input.tierId}_unleashdb`;
@@ -100,11 +99,10 @@ export const setup = async (input: inputType): Promise<pulumi.Output<outputType>
             },
             "containerPort": containerPort,
         }
-    }, { provider: k8sProvider, deleteBeforeReplace: true });
+    // replace on any changes. The features are persisted in the postgres DB so this should be work as intended
+    }, { provider: k8sProvider, replaceOnChanges: ["*"], deleteBeforeReplace: true });
 
-    // TODO(mohit): send endpoint which needs to be set in the services.
-    const output = pulumi.output({
-        unleashEndpoint: `https://${releaseName}.${namespace}:${containerPort}`,
-    });
-    return output
+    return {
+        unleashEndpoint: `http://${releaseName}.${input.namespace}:${containerPort}/api/`,
+    }
 }

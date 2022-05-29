@@ -16,7 +16,7 @@ export type inputType = {
     kafkaConfig: pulumi.Output<Record<string, string>>,
     modelServingConfig: pulumi.Output<Record<string, string>>,
     glueConfig: pulumi.Output<Record<string, string>>,
-    unleashConfig: Record<string, string>,
+    unleashConfig: pulumi.Output<Record<string, string>>,
 }
 
 export type outputType = {}
@@ -81,7 +81,7 @@ export const setup = async (input: inputType) => {
         metadata: {
             name: "unleash-conf",
         }
-    });
+    }, { provider, deleteBeforeReplace: true });
 
     const output: outputType = {}
     return output

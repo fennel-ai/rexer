@@ -300,6 +300,7 @@ const setupResources = async () => {
         region: input.region,
         roleArn: input.roleArn,
         tierId: input.tierId,
+        namespace: input.namespace,
         unleashDbEndpoint: input.unleashDbEndpoint,
         unleashDbPort: input.unleashDbPort,
         kubeconfig: input.kubeconfig,
