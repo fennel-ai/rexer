@@ -14,7 +14,7 @@ type HyperParameterInfo struct {
 }
 
 //================================================
-// Public API for Phaser
+// Public API
 //================================================
 
 type HyperParamRegistry = map[string]map[string]HyperParameterInfo
