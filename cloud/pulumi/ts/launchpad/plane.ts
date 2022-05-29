@@ -13,6 +13,7 @@ import * as prometheus from "../prometheus";
 import * as connectorSink from "../connectorsink";
 import * as glueSource from "../glue-script-source";
 import * as offlineAggregateSources from "../offline-aggregate-script-source";
+import * as unleashAurora from "../unleash-postgres";
 
 import * as process from "process";
 import {NodeGroupConf} from "../eks";
@@ -83,6 +84,7 @@ export type PlaneOutput = {
     elasticache: elasticache.outputType,
     confluent: confluentenv.outputType,
     db: aurora.outputType,
+    unleashDb: unleashAurora.outputType,
     prometheus: prometheus.outputType,
     trainingData: connectorSink.outputType,
     offlineAggregateSourceFiles: offlineAggregateSources.outputType,
@@ -109,6 +111,7 @@ const setupPlugins = async (stack: pulumi.automation.Stack) => {
         ...glueSource.plugins,
         ...offlineAggregateSources.plugins,
         ...milvus.plugins,
+        ...unleashAurora.plugins,
     }
     console.info("installing plugins...");
     for (var key in plugins) {
@@ -136,7 +139,18 @@ const setupResources = async () => {
         connectedVpcCidrs: [input.controlPlaneConf.cidrBlock],
         planeId: input.planeId,
         nodeGroups: input.eksConf?.nodeGroups,
-    })
+    });
+    const auroraUnleashOutput = await unleashAurora.setup({
+        roleArn: input.roleArn,
+        region: input.region,
+        vpcId: vpcOutput.vpcId,
+        minCapacity: 2,
+        maxCapacity: 2,
+        connectedSecurityGroups: {
+            "eks": eksOutput.clusterSg,
+        },
+        planeId: input.planeId,
+    });
     const auroraOutput = await aurora.setup({
         roleArn: input.roleArn,
         region: input.region,
@@ -234,6 +248,7 @@ const setupResources = async () => {
         elasticache: elasticacheOutput,
         confluent: confluentOutput,
         db: auroraOutput,
+        unleashDb: auroraUnleashOutput,
         prometheus: prometheusOutput,
         trainingData: connectorSinkOutput,
         offlineAggregateSourceFiles: offlineAggregateSourceFiles,

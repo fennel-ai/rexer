@@ -153,3 +153,7 @@ export const serviceEnvs = [
         }
     }
 ];
+
+export const UNLEASH_USERNAME = "unleash";
+// needs to be at least 8 characters
+export const UNLEASH_PASSWORD = "unleash1";

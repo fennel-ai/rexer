@@ -19,6 +19,7 @@ import * as offlineAggregateOutput from "../offline-aggregate-output";
 import * as offlineAggregateKafkaConnector from "../offline-aggregate-kafka-connector";
 import * as offlineAggregateGlueJob from "../offline-aggregate-glue-job";
 import * as countersCleanup from "../counters-cleanup";
+import * as unleash from "../unleash";
 
 import * as process from "process";
 
@@ -92,6 +93,9 @@ type inputType = {
     dbUsername: string,
     dbPassword: pulumi.Output<string>,
     dbEndpoint: string,
+    // unleash db configuration.
+    unleashDbEndpoint: string,
+    unleashDbPort: number,
     // redis configuration.
     redisEndpoint: string,
     // elasticache configuration.
@@ -137,6 +141,9 @@ const parseConfig = (): inputType => {
         dbUsername: config.require(nameof<inputType>("dbUsername")),
         dbPassword: config.requireSecret(nameof<inputType>("dbPassword")),
         dbEndpoint: config.require(nameof<inputType>("dbEndpoint")),
+
+        unleashDbEndpoint: config.require(nameof<inputType>("unleashDbEndpoint")),
+        unleashDbPort: config.requireNumber(nameof<inputType>("unleashDbPort")),
 
         roleArn: config.require(nameof<inputType>("roleArn")),
         region: config.require(nameof<inputType>("region")),
@@ -185,6 +192,7 @@ const setupPlugins = async (stack: pulumi.automation.Stack) => {
         ...offlineAggregateStorage.plugins,
         ...countersCleanup.plugins,
         ...queryserver.plugins,
+        ...unleash.plugins,
     }
     console.info("installing plugins...");
     for (var key in plugins) {
@@ -285,7 +293,18 @@ const setupResources = async () => {
         nodeInstanceRole: input.nodeInstanceRole,
         connectedSecurityGroups: input.connectedSecurityGroups,
         modelStoreBucket: modelStoreOutput.modelStoreBucket,
-    })
+    });
+
+    // setup unleash
+    const unleashOutput = await unleash.setup({
+        region: input.region,
+        roleArn: input.roleArn,
+        tierId: input.tierId,
+        unleashDbEndpoint: input.unleashDbEndpoint,
+        unleashDbPort: input.unleashDbPort,
+        kubeconfig: input.kubeconfig,
+    });
+
     // setup configs after resources are setup.
     const configsOutput = pulumi.all(
         [input.dbPassword, input.kafkaApiSecret, sagemakerOutput.roleArn, sagemakerOutput.subnetIds,
@@ -448,6 +467,11 @@ type TierInput = {
     dbUsername: string,
     dbPassword: string,
     dbEndpoint: string,
+
+    // unleash db configuration
+    unleashDbEndpoint: string,
+    unleashDbPort: number,
+
     // aws and k8s configuration.
     roleArn: string,
     region: string,
@@ -529,6 +553,9 @@ const setupTier = async (args: TierInput, preview?: boolean, destroy?: boolean) 
     await stack.setConfig(nameof<inputType>("dbUsername"), { value: args.dbUsername })
     await stack.setConfig(nameof<inputType>("dbPassword"), { value: args.dbPassword, secret: true })
     await stack.setConfig(nameof<inputType>("dbEndpoint"), { value: args.dbEndpoint })
+
+    await stack.setConfig(nameof<inputType>("unleashDbEndpoint"), { value: args.unleashDbEndpoint })
+    await stack.setConfig(nameof<inputType>("unleashDbPort"), { value: String(args.unleashDbPort) })
 
     await stack.setConfig(nameof<inputType>("roleArn"), { value: args.roleArn })
     await stack.setConfig(nameof<inputType>("region"), { value: args.region })
