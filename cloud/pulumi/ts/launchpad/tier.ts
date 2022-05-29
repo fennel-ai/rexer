@@ -349,6 +349,9 @@ const setupResources = async () => {
                     "region": input.region,
                     "jobNameByAgg": jobNamesStr,
                 } as Record<string, string>),
+                unleashConfig: pulumi.output({
+                    "endpoint": unleashOutput.unleashEndpoint,
+                } as Record<string, string>),
             })
         })
     // setup ingress.

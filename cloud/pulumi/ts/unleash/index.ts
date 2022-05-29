@@ -33,8 +33,10 @@ export const setup = async (input: inputType): Promise<pulumi.Output<outputType>
         }
     });
 
+    const namespace = "unleash";
     const k8sProvider = new k8s.Provider(`t-${input.tierId}-unleash-k8s-provider`, {
         kubeconfig: input.kubeconfig,
+        namespace: namespace,
     })
 
     const databaseName = `t_${input.tierId}_unleashdb`;
@@ -59,7 +61,10 @@ export const setup = async (input: inputType): Promise<pulumi.Output<outputType>
     //      node).
     //  3. disable authentication - this service is deployed in the EKS cluster which is already behind private
     //      subnets and have coarser security groups defined.
-    const unleash = new k8s.helm.v3.Release(`t-${input.tierId}-unleash`, {
+    const releaseName = `t-${input.tierId}-unleash`;
+    const containerPort = 4242;
+    const unleash = new k8s.helm.v3.Release(releaseName, {
+        name: releaseName,
         repositoryOpts: {
             "repo": "https://docs.getunleash.io/helm-charts",
         },
@@ -92,13 +97,14 @@ export const setup = async (input: inputType): Promise<pulumi.Output<outputType>
                 "port": input.unleashDbPort,
                 "user": UNLEASH_USERNAME,
                 "pass": UNLEASH_PASSWORD,
-            }
+            },
+            "containerPort": containerPort,
         }
     }, { provider: k8sProvider, deleteBeforeReplace: true });
 
     // TODO(mohit): send endpoint which needs to be set in the services.
     const output = pulumi.output({
-        unleashEndpoint: "",
-    })
+        unleashEndpoint: `https://${releaseName}.${namespace}:${containerPort}`,
+    });
     return output
 }
