@@ -14,8 +14,8 @@ func TestShuffleOperator_Apply(t *testing.T) {
 		value.NewDict(map[string]value.Value{"name": value.String("second")}),
 		value.NewDict(map[string]value.Value{"name": value.String("third")}),
 	}
-	staticKwargs := value.Dict{}
-	contextKwargs := []value.Dict{{}, {}, {}}
+	staticKwargs := value.NewDict(nil)
+	contextKwargs := []*value.Dict{{}, {}, {}}
 
 	tr := tier.Tier{}
 	outTable := make([]value.Value, len(intable))

@@ -41,7 +41,7 @@ func min(a value.Value, b value.Value) (value.Value, error) {
 	return b, nil
 }
 
-func (m rollingMin) Start(end ftypes.Timestamp, kwargs value.Dict) (ftypes.Timestamp, error) {
+func (m rollingMin) Start(end ftypes.Timestamp, kwargs *value.Dict) (ftypes.Timestamp, error) {
 	d, err := extractDuration(kwargs, m.Durations)
 	if err != nil {
 		return 0, err

@@ -14,12 +14,12 @@ func init() {
 type allop struct{}
 
 func (a allop) New(
-	args value.Dict, bootargs map[string]interface{},
+	args *value.Dict, bootargs map[string]interface{},
 ) (operators.Operator, error) {
 	return allop{}, nil
 }
 
-func (a allop) Apply(_ context.Context, kwargs value.Dict, in operators.InputIter, out *value.List) error {
+func (a allop) Apply(_ context.Context, kwargs *value.Dict, in operators.InputIter, out *value.List) error {
 	for in.HasMore() {
 		heads, _, err := in.Next()
 		if err != nil {

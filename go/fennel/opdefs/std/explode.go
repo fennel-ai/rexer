@@ -13,7 +13,7 @@ type ExplodeOperator struct{}
 var _ operators.Operator = ExplodeOperator{}
 
 func (e ExplodeOperator) New(
-	args value.Dict, bootargs map[string]interface{},
+	args *value.Dict, bootargs map[string]interface{},
 ) (operators.Operator, error) {
 	return ExplodeOperator{}, nil
 }
@@ -25,7 +25,7 @@ func (e ExplodeOperator) Signature() *operators.Signature {
 		Input([]value.Type{value.Types.Dict})
 }
 
-func (e ExplodeOperator) Apply(_ context.Context, staticKwargs value.Dict, in operators.InputIter, out *value.List) error {
+func (e ExplodeOperator) Apply(_ context.Context, staticKwargs *value.Dict, in operators.InputIter, out *value.List) error {
 	field, _ := staticKwargs.Get("field")
 	for in.HasMore() {
 		rows, _, err := in.Next()
@@ -33,7 +33,7 @@ func (e ExplodeOperator) Apply(_ context.Context, staticKwargs value.Dict, in op
 			return err
 		}
 		row := rows[0]
-		rowVal := row.(value.Dict)
+		rowVal := row.(*value.Dict)
 
 		// `field` are either a string (e.g. `field='foo'``) or list of strings (e.g. `field=['foo', 'bar']`)
 		switch keys := field.(type) {
@@ -50,14 +50,14 @@ func (e ExplodeOperator) Apply(_ context.Context, staticKwargs value.Dict, in op
 			} else {
 				// if the list is empty, write `Nil`
 				if vs.Len() == 0 {
-					newRow := rowVal.Clone().(value.Dict)
+					newRow := rowVal.Clone().(*value.Dict)
 					newRow.Set(kstr, value.Nil)
 					out.Append(newRow)
 				} else {
 					out.Grow(vs.Len())
 					for i := 0; i < vs.Len(); i++ {
 						v, _ := vs.At(i)
-						newRow := rowVal.Clone().(value.Dict)
+						newRow := rowVal.Clone().(*value.Dict)
 						newRow.Set(kstr, v)
 						out.Append(newRow)
 					}
@@ -104,7 +104,7 @@ func (e ExplodeOperator) Apply(_ context.Context, staticKwargs value.Dict, in op
 				// write as-is
 				out.Append(rowVal)
 			} else if expectedLength == 0 {
-				newRow := rowVal.Clone().(value.Dict)
+				newRow := rowVal.Clone().(*value.Dict)
 				for ki := 0; ki < keys.Len(); ki++ {
 					k, _ := keys.At(ki)
 					kstr := string(k.(value.String))
@@ -115,7 +115,7 @@ func (e ExplodeOperator) Apply(_ context.Context, staticKwargs value.Dict, in op
 				// explode each key
 				out.Grow(expectedLength)
 				for i := 0; i < expectedLength; i++ {
-					newRow := rowVal.Clone().(value.Dict)
+					newRow := rowVal.Clone().(*value.Dict)
 					for ki := 0; ki < keys.Len(); ki++ {
 						k, _ := keys.At(ki)
 						kstr := string(k.(value.String))
@@ -135,7 +135,7 @@ func (e ExplodeOperator) Apply(_ context.Context, staticKwargs value.Dict, in op
 	return nil
 }
 
-func validateKey(key value.Value, rowVal value.Dict) (string, error) {
+func validateKey(key value.Value, rowVal *value.Dict) (string, error) {
 	k, ok := key.(value.String)
 	if !ok {
 		return "", fmt.Errorf("key must be a string, given: %+v", key)

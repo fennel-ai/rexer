@@ -38,7 +38,7 @@ func TestFeatureLog_Apply(t *testing.T) {
 		value.NewDict(map[string]value.Value{"something": value.Bool(true), "b": value.Int(1)}),
 		value.NewDict(map[string]value.Value{"something": value.Bool(false), "b": value.Int(4)}),
 	}
-	kwargs := []value.Dict{
+	kwargs := []*value.Dict{
 		value.NewDict(map[string]value.Value{"context_otype": value.String("user"), "context_oid": value.Int(1), "candidate_otype": value.String("video"), "candidate_oid": value.Int(723), "request_id": value.Int(1232), "features": f1, "model_prediction": value.Double(0.59), "timestamp": value.Int(0)}),
 		value.NewDict(map[string]value.Value{"context_otype": value.String("user"), "context_oid": value.Int(2), "candidate_otype": value.String("video"), "candidate_oid": value.Int(823), "request_id": value.Int(1233), "features": f2, "model_prediction": value.Double(0.79), "timestamp": value.Int(12312)}),
 	}
@@ -80,6 +80,10 @@ func TestFeatureLog_Apply(t *testing.T) {
 	for _, r := range rows {
 		rowptr, err := feature2.Read(context.Background(), consumer)
 		assert.NoError(t, err)
-		assert.Equal(t, r, *rowptr)
+		expected, err := r.GetValue()
+		assert.NoError(t, err)
+		actual, err := rowptr.GetValue()
+		assert.NoError(t, err)
+		assert.Equal(t, expected, actual)
 	}
 }

@@ -14,11 +14,11 @@ func init() {
 
 type maxOp struct{}
 
-func (m maxOp) New(args value.Dict, bootargs map[string]interface{}) (operators.Operator, error) {
+func (m maxOp) New(args *value.Dict, bootargs map[string]interface{}) (operators.Operator, error) {
 	return maxOp{}, nil
 }
 
-func (m maxOp) Apply(_ context.Context, _ value.Dict, in operators.InputIter, out *value.List) error {
+func (m maxOp) Apply(_ context.Context, _ *value.Dict, in operators.InputIter, out *value.List) error {
 	for in.HasMore() {
 		heads, kwargs, err := in.Next()
 		if err != nil {

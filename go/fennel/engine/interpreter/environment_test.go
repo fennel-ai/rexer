@@ -30,7 +30,7 @@ func TestEnv_DefineReferencable_Lookup(t *testing.T) {
 	ret, err := env.Lookup("var")
 	assert.Equal(t, val, ret)
 
-	retd := ret.(value.Dict)
+	retd := ret.(*value.Dict)
 	val.Set("y", value.Int(1))
 	found, ok := retd.Get("y")
 	assert.True(t, ok)

@@ -90,7 +90,7 @@ type dictType struct {
 }
 
 func (dt dictType) Validate(v Value) error {
-	d, ok := v.(Dict)
+	d, ok := v.(*Dict)
 	if !ok {
 		return fmt.Errorf("expected a dict but found '%s'", v)
 	}
@@ -135,7 +135,7 @@ func init() {
 	Types.Double = baseType{"Double", reflect.TypeOf(Double(1.0))}
 	Types.String = baseType{"String", reflect.TypeOf(String("hi"))}
 	Types.List = baseType{"List", reflect.TypeOf(NewList(Int(1), Double(3.4)))}
-	Types.Dict = baseType{"Dict", reflect.TypeOf(Dict{})}
+	Types.Dict = baseType{"Dict", reflect.TypeOf(NewDict(nil))}
 	// Set other types (ensure subtypes are set before using them)
 	Types.ID = compoundType{"Int or String", []Type{Types.Int, Types.String}}
 	Types.Number = compoundType{"Number", []Type{Types.Int, Types.Double}}

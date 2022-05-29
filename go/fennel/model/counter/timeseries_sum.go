@@ -36,7 +36,7 @@ func NewTimeseriesSum(window ftypes.Window, limit uint64) Histogram {
 	}
 }
 
-func (r timeseriesSum) Start(end ftypes.Timestamp, _ value.Dict) (ftypes.Timestamp, error) {
+func (r timeseriesSum) Start(end ftypes.Timestamp, _ *value.Dict) (ftypes.Timestamp, error) {
 	var d uint64
 	switch r.Window {
 	case ftypes.Window_HOUR:

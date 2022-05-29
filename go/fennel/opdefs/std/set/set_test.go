@@ -12,7 +12,7 @@ func TestSet(t *testing.T) {
 	intable := []value.Value{
 		value.NewDict(map[string]value.Value{"orig": value.Int(1)}),
 	}
-	contextKwargTable := []value.Dict{
+	contextKwargTable := []*value.Dict{
 		value.NewDict(map[string]value.Value{
 			"value": value.Int(42),
 		}),
@@ -31,7 +31,7 @@ func TestSetNameContextual(t *testing.T) {
 		value.NewDict(map[string]value.Value{"orig": value.Int(1)}),
 		value.NewDict(map[string]value.Value{"orig": value.Int(2)}),
 	}
-	contextKwargTable := []value.Dict{
+	contextKwargTable := []*value.Dict{
 		value.NewDict(map[string]value.Value{
 			"field": value.String("new_field_first"),
 			"value": value.Int(42),
@@ -46,28 +46,28 @@ func TestSetNameContextual(t *testing.T) {
 		value.NewDict(map[string]value.Value{"orig": value.Int(2), "new_field_second": value.Int(21)}),
 	}
 	tr := tier.Tier{}
-	optest.AssertEqual(t, tr, &setOperator{}, value.Dict{}, [][]value.Value{intable}, contextKwargTable, expected)
+	optest.AssertEqual(t, tr, &setOperator{}, value.NewDict(nil), [][]value.Value{intable}, contextKwargTable, expected)
 }
 
 func TestSetError(t *testing.T) {
 	intable := []value.Value{
 		value.NewDict(map[string]value.Value{"orig": value.Int(1)}),
 	}
-	contextKwargTable := []value.Dict{
+	contextKwargTable := []*value.Dict{
 		value.NewDict(map[string]value.Value{
 			"value": value.Int(42),
 		}),
 	}
 	tr := tier.Tier{}
 	// "name" kwarg is not provided.
-	optest.AssertError(t, tr, &setOperator{}, value.Dict{}, [][]value.Value{intable}, contextKwargTable)
+	optest.AssertError(t, tr, &setOperator{}, value.NewDict(nil), [][]value.Value{intable}, contextKwargTable)
 }
 
 func TestSignatureError(t *testing.T) {
 	intable := []value.Value{
 		value.NewDict(map[string]value.Value{"orig": value.Int(1)}),
 	}
-	contextKwargTable := []value.Dict{
+	contextKwargTable := []*value.Dict{
 		value.NewDict(map[string]value.Value{
 			"field": value.Int(2),
 			"value": value.Int(42),
@@ -75,5 +75,5 @@ func TestSignatureError(t *testing.T) {
 	}
 	tr := tier.Tier{}
 	// "name" is int instead of string.
-	optest.AssertError(t, tr, &setOperator{}, value.Dict{}, [][]value.Value{intable}, contextKwargTable)
+	optest.AssertError(t, tr, &setOperator{}, value.NewDict(nil), [][]value.Value{intable}, contextKwargTable)
 }

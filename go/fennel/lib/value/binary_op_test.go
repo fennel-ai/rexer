@@ -268,7 +268,7 @@ func TestIndexList(t *testing.T) {
 	testIndexList(t, getFuture(l), l)
 }
 
-func testIndexDict(t *testing.T, v Value, di Dict) {
+func testIndexDict(t *testing.T, v Value, di *Dict) {
 	for k, expected := range di.Iter() {
 		found, err := v.Op("[]", String(k))
 		assert.NoError(t, err)

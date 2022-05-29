@@ -10,7 +10,7 @@ import (
 func TestRenamer_Apply(t *testing.T) {
 	scenarios := []struct {
 		input   []value.Value
-		context []value.Dict
+		context []*value.Dict
 		err     bool
 		output  []value.Value
 	}{
@@ -23,7 +23,7 @@ func TestRenamer_Apply(t *testing.T) {
 					"x": value.Int(4), "y": value.Int(5), "z": value.Int(6),
 				}),
 			},
-			[]value.Dict{
+			[]*value.Dict{
 				value.NewDict(map[string]value.Value{
 					"field": value.String("x"), "to": value.String("a"),
 				}),
@@ -43,12 +43,12 @@ func TestRenamer_Apply(t *testing.T) {
 		},
 		{
 			[]value.Value{value.NewDict(map[string]value.Value{"x": value.Int(1), "y": value.Int(2), "z": value.Int(3)})},
-			[]value.Dict{value.NewDict(map[string]value.Value{"from": value.NewList(value.String("x")), "to": value.String("a")})},
+			[]*value.Dict{value.NewDict(map[string]value.Value{"from": value.NewList(value.String("x")), "to": value.String("a")})},
 			true, nil,
 		},
 		{
 			[]value.Value{value.NewDict(map[string]value.Value{"x": value.Int(1), "y": value.Int(2), "z": value.Int(3)})},
-			[]value.Dict{value.NewDict(map[string]value.Value{"to": value.String("a")})},
+			[]*value.Dict{value.NewDict(map[string]value.Value{"to": value.String("a")})},
 			true, nil,
 		},
 	}

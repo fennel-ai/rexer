@@ -132,3 +132,12 @@ func TestListGrow(t *testing.T) {
 	assert.True(t, (*reflect.SliceHeader)(unsafe.Pointer(&v3)).Data != (*reflect.SliceHeader)(unsafe.Pointer(&v2)).Data)
 	assert.Equal(t, 4, l.Len())
 }
+
+func TestDictClone(t *testing.T) {
+	d := NewDict(nil)
+	d.Set("a", Int(1))
+	c := d.Clone().(*Dict)
+	d.Set("b", Int(2))
+	_, ok := c.Get("b")
+	assert.False(t, ok)
+}

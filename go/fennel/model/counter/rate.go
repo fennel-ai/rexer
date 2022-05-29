@@ -58,7 +58,7 @@ func (r rollingRate) Transform(v value.Value) (value.Value, error) {
 	return value.NewList(value.Double(a), value.Double(b)), nil
 }
 
-func (r rollingRate) Start(end ftypes.Timestamp, kwargs value.Dict) (ftypes.Timestamp, error) {
+func (r rollingRate) Start(end ftypes.Timestamp, kwargs *value.Dict) (ftypes.Timestamp, error) {
 	d, err := extractDuration(kwargs, r.Durations)
 	if err != nil {
 		return 0, err

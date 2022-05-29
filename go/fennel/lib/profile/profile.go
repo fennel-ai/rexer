@@ -124,7 +124,7 @@ func (pi *ProfileItem) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
-func (pi ProfileItem) ToValueDict() (value.Dict, error) {
+func (pi ProfileItem) ToValueDict() (*value.Dict, error) {
 	if pi.UpdateTime == 0 {
 		pi.UpdateTime = uint64(time.Now().Unix())
 	} else if pi.UpdateTime > uint64(time.Now().Unix())+uint64(time.Hour.Seconds()) {
@@ -134,7 +134,7 @@ func (pi ProfileItem) ToValueDict() (value.Dict, error) {
 
 	oid, err := value.FromJSON([]byte(pi.Oid))
 	if err != nil {
-		return value.Dict{}, err
+		return nil, err
 	}
 	return value.NewDict(map[string]value.Value{
 		"oid":       oid,

@@ -35,7 +35,7 @@ func InvalidateCache() {
 }
 
 func Value(
-	ctx context.Context, tier tier.Tier, name ftypes.AggName, key value.Value, kwargs value.Dict,
+	ctx context.Context, tier tier.Tier, name ftypes.AggName, key value.Value, kwargs *value.Dict,
 ) (value.Value, error) {
 	ckey := makeCacheKey(name, key, kwargs)
 	v, ok := tier.PCache.Get(ckey)
@@ -111,7 +111,7 @@ func BatchValue(ctx context.Context, tier tier.Tier, batch []aggregate.GetAggVal
 }
 
 func unitValue(
-	ctx context.Context, tier tier.Tier, name ftypes.AggName, key value.Value, kwargs value.Dict,
+	ctx context.Context, tier tier.Tier, name ftypes.AggName, key value.Value, kwargs *value.Dict,
 ) (value.Value, error) {
 	agg, err := Retrieve(ctx, tier, name)
 	if err != nil {
@@ -124,7 +124,7 @@ func unitValue(
 	return counter.Value(ctx, tier, agg.Id, key, histogram, kwargs)
 }
 
-func getDuration(kwargs value.Dict) (int, error) {
+func getDuration(kwargs *value.Dict) (int, error) {
 	d, ok := kwargs.Get("duration")
 	if !ok {
 		return 0, fmt.Errorf("error: no duration specified")
@@ -193,7 +193,7 @@ func batchValue(ctx context.Context, tier tier.Tier, batch []aggregate.GetAggVal
 	histograms := make([]modelCounter.Histogram, numOnline)
 	ids := make([]ftypes.AggId, numOnline)
 	keys := make([]value.Value, numOnline)
-	kwargs := make([]value.Dict, numOnline)
+	kwargs := make([]*value.Dict, numOnline)
 
 	var onlinePtr []int
 	// Fetch online aggregate values
@@ -271,7 +271,7 @@ func Update(ctx context.Context, tier tier.Tier, consumer kafka.FConsumer, agg a
 		offlineTransformProducer := tier.Producers[libcounter.AGGREGATE_OFFLINE_TRANSFORM_TOPIC_NAME]
 		for i := 0; i < table.Len(); i++ {
 			rowVal, _ := table.At(i)
-			rowDict, _ := rowVal.(value.Dict)
+			rowDict, _ := rowVal.(*value.Dict)
 			dict := value.NewDict(map[string]value.Value{
 				"aggregate": value.String(agg.Name),
 				"groupkey":  rowDict.GetUnsafe("groupkey"),
@@ -341,7 +341,7 @@ func transformActions(tier tier.Tier, actions []libaction.Action, query ast.Ast)
 }
 
 // TODO: Use AggId here as well to keep the formatting consistent with remote storage (MemoryDB)
-func makeCacheKey(name ftypes.AggName, key value.Value, kwargs value.Dict) string {
+func makeCacheKey(name ftypes.AggName, key value.Value, kwargs *value.Dict) string {
 	return fmt.Sprintf("%d:%s:%s:%s", cacheVersion, name, key.String(), kwargs.String())
 }
 

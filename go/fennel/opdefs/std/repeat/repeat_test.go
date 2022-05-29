@@ -10,35 +10,35 @@ import (
 func TestRepeater_Apply(t *testing.T) {
 	scenarios := []struct {
 		input    []value.Value
-		context  []value.Dict
+		context  []*value.Dict
 		err      bool
 		expected []value.Value
 	}{
 		{
 			[]value.Value{value.Int(1), value.Int(2)},
-			[]value.Dict{value.NewDict(map[string]value.Value{"count": value.Int(3)}), value.NewDict(map[string]value.Value{"count": value.Int(2)})},
+			[]*value.Dict{value.NewDict(map[string]value.Value{"count": value.Int(3)}), value.NewDict(map[string]value.Value{"count": value.Int(2)})},
 			false,
 			[]value.Value{value.Int(1), value.Int(1), value.Int(1), value.Int(2), value.Int(2)},
 		},
 		{
 			[]value.Value{value.Int(1), value.Int(2)},
-			[]value.Dict{value.NewDict(map[string]value.Value{"count": value.Int(0)}), value.NewDict(map[string]value.Value{"count": value.Int(2)})},
+			[]*value.Dict{value.NewDict(map[string]value.Value{"count": value.Int(0)}), value.NewDict(map[string]value.Value{"count": value.Int(2)})},
 			false,
 			[]value.Value{value.Int(2), value.Int(2)},
 		},
 		{
 			[]value.Value{value.Int(1), value.Int(2)},
-			[]value.Dict{value.NewDict(map[string]value.Value{"count": value.Int(2)}), value.NewDict(map[string]value.Value{"count": value.Int(-1)})},
+			[]*value.Dict{value.NewDict(map[string]value.Value{"count": value.Int(2)}), value.NewDict(map[string]value.Value{"count": value.Int(-1)})},
 			true, nil,
 		},
 		{
 			[]value.Value{value.Int(1), value.Int(2)},
-			[]value.Dict{value.NewDict(map[string]value.Value{"count": value.Double(2)}), value.NewDict(map[string]value.Value{"count": value.Int(1)})},
+			[]*value.Dict{value.NewDict(map[string]value.Value{"count": value.Double(2)}), value.NewDict(map[string]value.Value{"count": value.Int(1)})},
 			true, nil,
 		},
 		{
 			[]value.Value{value.Int(1), value.Int(2)},
-			[]value.Dict{value.NewDict(map[string]value.Value{"not_count": value.Double(2)}), value.NewDict(map[string]value.Value{"count": value.Int(1)})},
+			[]*value.Dict{value.NewDict(map[string]value.Value{"not_count": value.Double(2)}), value.NewDict(map[string]value.Value{"count": value.Int(1)})},
 			true, nil,
 		},
 	}

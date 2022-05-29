@@ -164,5 +164,5 @@ func (o Options) Equals(other Options) bool {
 type GetAggValueRequest struct {
 	AggName ftypes.AggName `json:"Name"`
 	Key     value.Value    `json:"Key"`
-	Kwargs  value.Dict     `json:"Kwargs"`
+	Kwargs  *value.Dict    `json:"Kwargs"`
 }

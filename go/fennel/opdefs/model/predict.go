@@ -18,7 +18,7 @@ type predictOperator struct {
 	tier tier.Tier
 }
 
-func (p predictOperator) New(args value.Dict, bootargs map[string]interface{}) (operators.Operator, error) {
+func (p predictOperator) New(args *value.Dict, bootargs map[string]interface{}) (operators.Operator, error) {
 	tr, err := bootarg.GetTier(bootargs)
 	if err != nil {
 		return nil, err
@@ -26,7 +26,7 @@ func (p predictOperator) New(args value.Dict, bootargs map[string]interface{}) (
 	return predictOperator{tr}, nil
 }
 
-func (p predictOperator) Apply(ctx context.Context, staticKwargs value.Dict, in operators.InputIter, outs *value.List) error {
+func (p predictOperator) Apply(ctx context.Context, staticKwargs *value.Dict, in operators.InputIter, outs *value.List) error {
 	var rows []value.Value
 	var inputs []value.List
 	modelName := string(get(staticKwargs, "model").(value.String))
@@ -65,7 +65,7 @@ func (p predictOperator) Apply(ctx context.Context, staticKwargs value.Dict, in 
 		var out value.Value
 		result := outputs[i]
 		if len(field) > 0 {
-			d := row.(value.Dict)
+			d := row.(*value.Dict)
 			d.Set(field, result)
 			out = d
 		} else {
@@ -87,7 +87,7 @@ func (p predictOperator) Signature() *operators.Signature {
 
 var _ operators.Operator = &predictOperator{}
 
-func get(d value.Dict, k string) value.Value {
+func get(d *value.Dict, k string) value.Value {
 	ret, _ := d.Get(k)
 	return ret
 }

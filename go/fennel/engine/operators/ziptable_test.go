@@ -15,12 +15,12 @@ type testOpZip struct {
 var _ Operator = testOp{}
 
 func (top testOpZip) New(
-	args value.Dict, bootargs map[string]interface{},
+	args *value.Dict, bootargs map[string]interface{},
 ) (Operator, error) {
 	return nil, nil
 }
 
-func (top testOpZip) Apply(_ context.Context, kwargs value.Dict, in InputIter, out *value.List) error {
+func (top testOpZip) Apply(_ context.Context, kwargs *value.Dict, in InputIter, out *value.List) error {
 	return nil
 }
 
@@ -66,27 +66,27 @@ func TestIterTypeCheck(t *testing.T) {
 	op := testOpZip{}
 	scenarios := []struct {
 		rows   value.List
-		kwargs []value.Dict
+		kwargs []*value.Dict
 		errs   []bool
 		name   string
 	}{
 		{value.NewList(value.String("hello"), value.String("again")),
-			[]value.Dict{value.NewDict(map[string]value.Value{"p2": value.Double(3.0), "p3": value.Nil}), value.NewDict(map[string]value.Value{"p2": value.Double(12.1), "p3": value.Int(2)})},
+			[]*value.Dict{value.NewDict(map[string]value.Value{"p2": value.Double(3.0), "p3": value.Nil}), value.NewDict(map[string]value.Value{"p2": value.Double(12.1), "p3": value.Int(2)})},
 			[]bool{false, false},
 			"basic",
 		},
 		{value.NewList(value.String("hello"), value.Int(3)),
-			[]value.Dict{value.NewDict(map[string]value.Value{"p2": value.Double(3.0), "p3": value.Nil}), value.NewDict(map[string]value.Value{"p2": value.Double(12.1), "p3": value.Int(2)})},
+			[]*value.Dict{value.NewDict(map[string]value.Value{"p2": value.Double(3.0), "p3": value.Nil}), value.NewDict(map[string]value.Value{"p2": value.Double(12.1), "p3": value.Int(2)})},
 			[]bool{false, true},
 			"basic_input_mistyping",
 		},
 		{value.NewList(value.Nil, value.Int(3)),
-			[]value.Dict{value.NewDict(map[string]value.Value{"p2": value.Double(3.0), "p3": value.Nil}), value.NewDict(map[string]value.Value{"p2": value.Double(12.1), "p3": value.Int(2)})},
+			[]*value.Dict{value.NewDict(map[string]value.Value{"p2": value.Double(3.0), "p3": value.Nil}), value.NewDict(map[string]value.Value{"p2": value.Double(12.1), "p3": value.Int(2)})},
 			[]bool{true, true},
 			"basic_input_mistyping_2",
 		},
 		{value.NewList(value.String("hello"), value.String("again")),
-			[]value.Dict{value.NewDict(map[string]value.Value{"p2": value.Int(3.0), "p3": value.Nil}), value.NewDict(map[string]value.Value{"p2": value.Double(12.1), "p3": value.Int(2)})},
+			[]*value.Dict{value.NewDict(map[string]value.Value{"p2": value.Int(3.0), "p3": value.Nil}), value.NewDict(map[string]value.Value{"p2": value.Double(12.1), "p3": value.Int(2)})},
 			[]bool{true, false},
 			"basic_kwarg_mistyping",
 		},

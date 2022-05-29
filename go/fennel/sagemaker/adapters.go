@@ -189,7 +189,7 @@ func (hfa HuggingFaceAdapter) Score(ctx context.Context, in *lib.ScoreRequest) (
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse reponse as JSON: %v", err)
 	}
-	rDict, ok := response.(value.Dict)
+	rDict, ok := response.(*value.Dict)
 	if !ok {
 		return nil, fmt.Errorf("expected response to be a value list but found: '%v'", response.String())
 	}
@@ -223,7 +223,7 @@ func (tfa TensorFlowAdapter) Score(ctx context.Context, in *lib.ScoreRequest) (*
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse reponse as JSON: %v", err)
 	}
-	rDict, ok := response.(value.Dict)
+	rDict, ok := response.(*value.Dict)
 	if !ok {
 		return nil, fmt.Errorf("expected response to be a value dict but found: '%v'", response.String())
 	}

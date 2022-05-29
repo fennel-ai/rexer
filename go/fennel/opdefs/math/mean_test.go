@@ -12,7 +12,7 @@ func TestMeanop_Apply(t *testing.T) {
 	t.Parallel()
 	scenarios := []struct {
 		inputs   []value.Value
-		kwargs   []value.Dict
+		kwargs   []*value.Dict
 		err      bool
 		expected []value.Value
 	}{
@@ -24,7 +24,7 @@ func TestMeanop_Apply(t *testing.T) {
 				value.NewList(value.Int(1e15), value.Int(2e15), value.Int(-1e15)),
 				value.NewList(),
 			},
-			[]value.Dict{value.NewDict(nil), value.NewDict(nil), value.NewDict(nil), value.NewDict(nil), value.NewDict(nil)},
+			[]*value.Dict{value.NewDict(nil), value.NewDict(nil), value.NewDict(nil), value.NewDict(nil), value.NewDict(nil)},
 			false,
 			[]value.Value{
 				value.Double(2.0 / 3.0),
@@ -42,7 +42,7 @@ func TestMeanop_Apply(t *testing.T) {
 				value.Int(2),
 				value.Int(3),
 			},
-			[]value.Dict{
+			[]*value.Dict{
 				value.NewDict(map[string]value.Value{
 					"of": value.NewList(value.Int(1), value.Int(2), value.Int(-1)),
 				}),
@@ -63,7 +63,7 @@ func TestMeanop_Apply(t *testing.T) {
 		{
 			// only numbers allowed
 			[]value.Value{value.NewList(value.String("hi"), value.Int(2), value.Int(3))},
-			[]value.Dict{value.NewDict(nil), value.NewDict(nil), value.NewDict(nil)},
+			[]*value.Dict{value.NewDict(nil), value.NewDict(nil), value.NewDict(nil)},
 			true,
 			nil,
 		},

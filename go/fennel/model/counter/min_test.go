@@ -118,8 +118,8 @@ func TestMin_Bucketize_Valid(t *testing.T) {
 func TestMin_Bucketize_Invalid(t *testing.T) {
 	t.Parallel()
 	h := NewMin([]uint64{123})
-	cases := [][]value.Dict{
-		{value.Dict{}},
+	cases := [][]*value.Dict{
+		{value.NewDict(nil)},
 		{value.NewDict(map[string]value.Value{"groupkey": value.Int(1), "timestamp": value.Int(2)})},
 		{value.NewDict(map[string]value.Value{"groupkey": value.Int(1), "timestamp": value.Int(2), "value": value.Nil})},
 		{value.NewDict(map[string]value.Value{"groupkey": value.Int(1), "timestamp": value.Bool(true), "value": value.Int(4)})},

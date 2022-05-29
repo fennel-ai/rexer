@@ -13,7 +13,7 @@ func Bucketize(histogram Histogram, actions value.List) ([]counter.Bucket, error
 	buckets := make([]counter.Bucket, 0, actions.Len())
 	for i := 0; i < actions.Len(); i++ {
 		rowVal, _ := actions.At(i)
-		row, ok := rowVal.(value.Dict)
+		row, ok := rowVal.(*value.Dict)
 		if !ok {
 			return nil, fmt.Errorf("action expected to be dict but found: '%v'", rowVal)
 		}
@@ -142,7 +142,7 @@ func start(end ftypes.Timestamp, duration uint64) ftypes.Timestamp {
 	return 0
 }
 
-func extractDuration(kwargs value.Dict, durations []uint64) (uint64, error) {
+func extractDuration(kwargs *value.Dict, durations []uint64) (uint64, error) {
 	v, ok := kwargs.Get("duration")
 	if !ok {
 		return 0, fmt.Errorf("error: no duration specified")

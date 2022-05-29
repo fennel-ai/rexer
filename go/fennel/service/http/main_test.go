@@ -620,7 +620,7 @@ func checkSet(t *testing.T, c *client.Client, otype string, oid string,
 	return profile
 }
 
-func valueSendReceive(t *testing.T, controller server, agg aggregate.Aggregate, key, expected value.Value, kwargs value.Dict) {
+func valueSendReceive(t *testing.T, controller server, agg aggregate.Aggregate, key, expected value.Value, kwargs *value.Dict) {
 	aggregate2.InvalidateCache() // invalidate cache, as it is not being tested here
 	gavr := aggregate.GetAggValueRequest{AggName: agg.Name, Key: key, Kwargs: kwargs}
 	ser, err := json.Marshal(gavr)

@@ -19,7 +19,7 @@ func NewQueryExecutor(bootargs map[string]interface{}) QueryExecutor {
 	return QueryExecutor{bootargs: bootargs}
 }
 
-func (ex QueryExecutor) Exec(ctx context.Context, query ast.Ast, args value.Dict) (value.Value, error) {
+func (ex QueryExecutor) Exec(ctx context.Context, query ast.Ast, args *value.Dict) (value.Value, error) {
 	tier, err := bootarg.GetTier(ex.bootargs)
 	if err != nil {
 		return value.Nil, fmt.Errorf("could not get tier: %v", err)

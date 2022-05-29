@@ -18,7 +18,7 @@ type Row struct {
 	ContextOid      ftypes.OidType      `json:"context_oid"`
 	CandidateOType  ftypes.OType        `json:"candidate_otype"`
 	CandidateOid    ftypes.OidType      `json:"candidate_oid"`
-	Features        value.Dict          `json:"data"`
+	Features        *value.Dict         `json:"data"`
 	Workflow        string              `json:"workflow"`
 	RequestID       ftypes.RequestID    `json:"request_id"`
 	Timestamp       ftypes.Timestamp    `json:"timestamp"`
@@ -32,7 +32,7 @@ func (r *Row) UnmarshalJSON(bytes []byte) error {
 	if err != nil {
 		return err
 	}
-	asdict, ok := d.(value.Dict)
+	asdict, ok := d.(*value.Dict)
 	if !ok {
 		return fmt.Errorf("can not unmarshal feature row - expected dict but found: %v", d)
 	}
@@ -170,7 +170,7 @@ func FromProtoRow(pr *ProtoRow) (*Row, error) {
 	if err != nil {
 		return nil, err
 	}
-	asdict, ok := pdata.(value.Dict)
+	asdict, ok := pdata.(*value.Dict)
 	if !ok {
 		return nil, fmt.Errorf("invalid value, expected dictionary but found: %v", pdata)
 	}

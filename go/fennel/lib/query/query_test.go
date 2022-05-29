@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"fennel/controller/mock"
+
 	"github.com/stretchr/testify/assert"
 
 	"fennel/engine/ast"
@@ -16,14 +17,14 @@ func TestBoundQueryJSON(t *testing.T) {
 	type test struct {
 		str  string
 		tree ast.Ast
-		args value.Dict
+		args *value.Dict
 	}
 	var tests []test
-	vals := []value.Dict{
+	vals := []*value.Dict{
 		value.NewDict(nil),
 		value.NewDict(map[string]value.Value{"k1": value.Nil}),
 		value.NewDict(map[string]value.Value{"k1": value.Double(3.14), "k2": value.Int(128), "k3": value.String("abc"), "k4": value.Bool(false)}),
-		value.NewDict(map[string]value.Value{"k1": value.NewList(value.List{}, value.Dict{}), "k2": value.NewDict(map[string]value.Value{"x": value.List{}})}),
+		value.NewDict(map[string]value.Value{"k1": value.NewList(value.List{}, value.NewDict(nil)), "k2": value.NewDict(map[string]value.Value{"x": value.List{}})}),
 	}
 	for i, tr := range ast.TestExamples {
 		v := vals[i%len(vals)]
@@ -52,7 +53,7 @@ func TestBoundQueryJSON(t *testing.T) {
 	}
 }
 
-func makeBoundQueryJSON(tree ast.Ast, args value.Dict) (string, error) {
+func makeBoundQueryJSON(tree ast.Ast, args *value.Dict) (string, error) {
 	astSer, err := ast.Marshal(tree)
 	if err != nil {
 		return "", err

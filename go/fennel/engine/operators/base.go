@@ -81,8 +81,8 @@ func (s *Signature) Input(types []value.Type) *Signature {
 }
 
 type Operator interface {
-	New(args value.Dict, bootargs map[string]interface{}) (Operator, error)
-	Apply(ctx context.Context, kwargs value.Dict, in InputIter, out *value.List) error
+	New(args *value.Dict, bootargs map[string]interface{}) (Operator, error)
+	Apply(ctx context.Context, kwargs *value.Dict, in InputIter, out *value.List) error
 	Signature() *Signature
 }
 
@@ -135,7 +135,7 @@ func GetOperators() map[string]map[string]map[string]param {
 	return opdata
 }
 
-func TypeCheckStaticKwargs(op Operator, staticKwargs value.Dict) error {
+func TypeCheckStaticKwargs(op Operator, staticKwargs *value.Dict) error {
 	sig := op.Signature()
 	if len(sig.StaticKwargs) != staticKwargs.Len() {
 		return fmt.Errorf("[%s.%s] incorrect number of static kwargs passed - expected: %d but got: %d",
@@ -154,7 +154,7 @@ func TypeCheckStaticKwargs(op Operator, staticKwargs value.Dict) error {
 	return nil
 }
 
-func Typecheck(sig *Signature, inputVal []value.Value, contextKwargs value.Dict) error {
+func Typecheck(sig *Signature, inputVal []value.Value, contextKwargs *value.Dict) error {
 	// let's look at contextual kwargs first
 	if len(sig.ContextKwargs) != contextKwargs.Len() {
 		return fmt.Errorf("[%s.%s] incorrect number of contextual kwargs passed - expected: %d but got: %d",

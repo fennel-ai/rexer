@@ -14,11 +14,11 @@ func init() {
 
 type minOp struct{}
 
-func (m minOp) New(args value.Dict, bootargs map[string]interface{}) (operators.Operator, error) {
+func (m minOp) New(args *value.Dict, bootargs map[string]interface{}) (operators.Operator, error) {
 	return minOp{}, nil
 }
 
-func (m minOp) Apply(_ context.Context, _ value.Dict, in operators.InputIter, out *value.List) error {
+func (m minOp) Apply(_ context.Context, _ *value.Dict, in operators.InputIter, out *value.List) error {
 	for in.HasMore() {
 		heads, kwargs, err := in.Next()
 		if err != nil {

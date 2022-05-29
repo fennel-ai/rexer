@@ -12,8 +12,8 @@ import (
 func TestMath(t *testing.T) {
 	scenarios := []struct {
 		inputs      []value.Value
-		static      value.Dict
-		kwargs      []value.Dict
+		static      *value.Dict
+		kwargs      []*value.Dict
 		err         bool
 		expectedMax []value.Value
 		expectedMin []value.Value
@@ -25,7 +25,7 @@ func TestMath(t *testing.T) {
 				value.NewList(value.Double(-4), value.Int(2), value.Double(3)),
 			},
 			value.NewDict(nil),
-			[]value.Dict{value.NewDict(nil), value.NewDict(nil), value.NewDict(nil)},
+			[]*value.Dict{value.NewDict(nil), value.NewDict(nil), value.NewDict(nil)},
 			false,
 			[]value.Value{value.Int(2), value.Int(5), value.Double(3)},
 			[]value.Value{value.Int(-1), value.Int(-25), value.Double(-4)},
@@ -37,7 +37,7 @@ func TestMath(t *testing.T) {
 				value.Int(3),
 			},
 			value.NewDict(nil),
-			[]value.Dict{
+			[]*value.Dict{
 				value.NewDict(map[string]value.Value{
 					"of": value.NewList(value.Int(-1), value.Int(2), value.Int(0)),
 				}),
@@ -58,7 +58,7 @@ func TestMath(t *testing.T) {
 				value.NewList(value.Int(math.MaxInt64), value.Int(math.MinInt64), value.Int(0)),
 			},
 			value.NewDict(nil),
-			[]value.Dict{value.NewDict(nil), value.NewDict(nil)},
+			[]*value.Dict{value.NewDict(nil), value.NewDict(nil)},
 			false,
 			[]value.Value{value.Nil, value.Int(math.MaxInt64)},
 			[]value.Value{value.Nil, value.Int(math.MinInt64)},
@@ -68,7 +68,7 @@ func TestMath(t *testing.T) {
 				value.NewList(value.String("x")),
 			},
 			value.NewDict(nil),
-			[]value.Dict{value.NewDict(nil)},
+			[]*value.Dict{value.NewDict(nil)},
 			true,
 			nil,
 			nil,

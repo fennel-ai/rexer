@@ -19,7 +19,7 @@ func TestFilterOperator_Apply(t *testing.T) {
 	whereTrue := value.NewDict(map[string]value.Value{"where": value.Bool(true)})
 	whereFalse := value.NewDict(map[string]value.Value{"where": value.Bool(false)})
 
-	contextKwargTable := []value.Dict{whereTrue, whereFalse, whereTrue}
+	contextKwargTable := []*value.Dict{whereTrue, whereFalse, whereTrue}
 	expected := []value.Value{
 		value.NewDict(map[string]value.Value{"a.inner": value.Int(1), "b": value.String("hi")}),
 		value.NewDict(map[string]value.Value{"a.inner": value.Int(7), "b": value.String("hello")}),
@@ -29,7 +29,7 @@ func TestFilterOperator_Apply(t *testing.T) {
 	optest.AssertElementsMatch(t, tr, &FilterOperator{}, whereTrue, [][]value.Value{intable}, contextKwargTable, expected)
 
 	// and when we filter everything, we should get empty table
-	contextKwargTable = []value.Dict{whereFalse, whereFalse, whereFalse}
+	contextKwargTable = []*value.Dict{whereFalse, whereFalse, whereFalse}
 	optest.AssertElementsMatch(t, tr, &FilterOperator{}, whereTrue, [][]value.Value{intable}, contextKwargTable, []value.Value{})
 }
 
@@ -50,7 +50,7 @@ func TestTakeOperator_Apply(t *testing.T) {
 		value.NewDict(map[string]value.Value{"a.inner": value.Int(1), "b": value.String("hi")}),
 		value.NewDict(map[string]value.Value{"a.inner": value.Int(1), "b": value.String("bye")}),
 	}
-	contextKwargTable := []value.Dict{{}, {}, {}}
+	contextKwargTable := []*value.Dict{{}, {}, {}}
 	tr := tier.Tier{}
 	optest.AssertElementsMatch(t, tr, &TakeOperator{}, value.NewDict(map[string]value.Value{"limit": value.Int(2)}), [][]value.Value{intable}, contextKwargTable, expected)
 

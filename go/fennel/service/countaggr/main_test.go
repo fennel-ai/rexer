@@ -26,7 +26,7 @@ type scenario struct {
 	agg      libaggregate.Aggregate
 	initial  value.Value
 	key      value.Value
-	kwargs   []value.Dict
+	kwargs   []*value.Dict
 	expected []value.Value
 	consumer kafka.FConsumer
 }
@@ -48,7 +48,7 @@ func TestEndToEndActionAggregates(t *testing.T) {
 			},
 			value.Int(0),
 			value.Int(uid),
-			[]value.Dict{
+			[]*value.Dict{
 				value.NewDict(map[string]value.Value{"duration": value.Int(6 * 3600)}),
 				value.NewDict(map[string]value.Value{"duration": value.Int(3600)})},
 			[]value.Value{value.Int(3), value.Int(2)},
@@ -63,7 +63,7 @@ func TestEndToEndActionAggregates(t *testing.T) {
 			},
 			value.NewList(value.Int(0), value.Int(0), value.Int(0), value.Int(0)),
 			value.Int(uid),
-			[]value.Dict{value.NewDict(nil)},
+			[]*value.Dict{value.NewDict(nil)},
 			[]value.Value{value.NewList(value.Int(0), value.Int(0), value.Int(1), value.Int(2))},
 			nil,
 		},
@@ -76,7 +76,7 @@ func TestEndToEndActionAggregates(t *testing.T) {
 			},
 			value.NewList(),
 			value.Int(uid),
-			[]value.Dict{
+			[]*value.Dict{
 				value.NewDict(map[string]value.Value{"duration": value.Int(6 * 3600)}),
 				value.NewDict(map[string]value.Value{"duration": value.Int(3600)}),
 			},
@@ -92,7 +92,7 @@ func TestEndToEndActionAggregates(t *testing.T) {
 			},
 			value.Double(0),
 			value.Int(uid),
-			[]value.Dict{
+			[]*value.Dict{
 				value.NewDict(map[string]value.Value{"duration": value.Int(6 * 3600)}),
 				value.NewDict(map[string]value.Value{"duration": value.Int(3600)})},
 			[]value.Value{value.Int(1), value.Int(2)},
@@ -107,7 +107,7 @@ func TestEndToEndActionAggregates(t *testing.T) {
 			},
 			value.Double(0),
 			value.Int(uid),
-			[]value.Dict{
+			[]*value.Dict{
 				value.NewDict(map[string]value.Value{"duration": value.Int(6 * 3600)}),
 				value.NewDict(map[string]value.Value{"duration": value.Int(3600)})},
 			[]value.Value{value.Int(2), value.Int(2)},
@@ -122,7 +122,7 @@ func TestEndToEndActionAggregates(t *testing.T) {
 			},
 			value.Double(0),
 			value.Int(uid),
-			[]value.Dict{
+			[]*value.Dict{
 				value.NewDict(map[string]value.Value{"duration": value.Int(6 * 3600)}),
 				value.NewDict(map[string]value.Value{"duration": value.Int(3600)})},
 			[]value.Value{value.Double(0.5), value.Double(0)},
@@ -137,7 +137,7 @@ func TestEndToEndActionAggregates(t *testing.T) {
 			},
 			value.Double(0),
 			value.Int(uid),
-			[]value.Dict{
+			[]*value.Dict{
 				value.NewDict(map[string]value.Value{"duration": value.Int(6 * 3600)}),
 				value.NewDict(map[string]value.Value{"duration": value.Int(3600)})},
 			[]value.Value{value.Double(1.5), value.Double(2)},
@@ -156,7 +156,7 @@ func TestEndToEndActionAggregates(t *testing.T) {
 			},
 			value.Double(0),
 			value.Int(uid),
-			[]value.Dict{
+			[]*value.Dict{
 				value.NewDict(map[string]value.Value{"duration": value.Int(6 * 3600)}),
 				value.NewDict(map[string]value.Value{"duration": value.Int(3600)})},
 			[]value.Value{value.Double(0.15003570882017145), value.Double(0.09452865480086611)},
@@ -171,7 +171,7 @@ func TestEndToEndActionAggregates(t *testing.T) {
 			},
 			value.NewList(),
 			value.Int(uid),
-			[]value.Dict{
+			[]*value.Dict{
 				value.NewDict(map[string]value.Value{"duration": value.Int(6 * 3600)}),
 				value.NewDict(map[string]value.Value{"duration": value.Int(3600)})},
 			[]value.Value{
@@ -266,7 +266,7 @@ func TestEndToEndProfileAggregates(t *testing.T) {
 			},
 			value.Int(0),
 			value.Int(uid),
-			[]value.Dict{
+			[]*value.Dict{
 				value.NewDict(map[string]value.Value{"duration": value.Int(6 * 3600)}),
 				value.NewDict(map[string]value.Value{"duration": value.Int(3600)})},
 			[]value.Value{value.Int(3), value.Int(2)},
@@ -281,7 +281,7 @@ func TestEndToEndProfileAggregates(t *testing.T) {
 			},
 			value.Double(0),
 			value.Int(uid),
-			[]value.Dict{
+			[]*value.Dict{
 				value.NewDict(map[string]value.Value{"duration": value.Int(6 * 3600)}),
 				value.NewDict(map[string]value.Value{"duration": value.Int(3600)})},
 			[]value.Value{value.Int(1), value.Int(2)},
@@ -369,7 +369,7 @@ func processInParallel(t *testing.T, tier tier.Tier, scenarios []*scenario) {
 	wg.Wait()
 }
 
-func verify(t *testing.T, tier tier.Tier, agg libaggregate.Aggregate, k value.Value, kwargs value.Dict, expected interface{}) {
+func verify(t *testing.T, tier tier.Tier, agg libaggregate.Aggregate, k value.Value, kwargs *value.Dict, expected interface{}) {
 	aggregate.InvalidateCache() // invalidate cache, as it is not being tested here
 	found, err := aggregate.Value(context.Background(), tier, agg.Name, k, kwargs)
 	assert.NoError(t, err)

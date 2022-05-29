@@ -97,7 +97,7 @@ func TestAggValue_Apply(t *testing.T) {
 		value.NewDict(map[string]value.Value{"a": value.String("abc")}),
 		value.NewDict(map[string]value.Value{"a": value.String("def")}),
 	}
-	contextKwargs := []value.Dict{
+	contextKwargs := []*value.Dict{
 		value.NewDict(map[string]value.Value{"name": value.String(agg.Name), "groupkey": value.Int(1), "kwargs": value.NewDict(map[string]value.Value{"duration": value.Int(6 * 3600)})}),
 		value.NewDict(map[string]value.Value{"name": value.String(agg.Name), "groupkey": value.Int(2), "kwargs": value.NewDict(map[string]value.Value{"duration": value.Int(6 * 3600)})}),
 		value.NewDict(map[string]value.Value{"name": value.String(agg.Name), "groupkey": value.Int(3), "kwargs": value.NewDict(map[string]value.Value{"duration": value.Int(6 * 3600)})}),

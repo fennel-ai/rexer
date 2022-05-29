@@ -184,7 +184,7 @@ func (t twoLevelRedisStore) get(
 	ret := make([]value.Value, len(buckets))
 	for i, s := range slots {
 		ptr := seen[s.g]
-		slotDict, ok := groupVals[ptr].(value.Dict)
+		slotDict, ok := groupVals[ptr].(*value.Dict)
 		if !ok {
 			return nil, fmt.Errorf("could not read data: expected dict but found: %v", groupVals[ptr])
 		}
@@ -291,7 +291,7 @@ func (t twoLevelRedisStore) set(ctx context.Context, tier tier.Tier, aggIds []ft
 	}
 	for _, s := range slots {
 		ptr := seen[s.g]
-		slotDict, ok := groupVals[ptr].(value.Dict)
+		slotDict, ok := groupVals[ptr].(*value.Dict)
 		if !ok {
 			return fmt.Errorf("could not read data: expected dict but found: %v", groupVals[ptr])
 		}
@@ -452,7 +452,7 @@ func (t twoLevelRedisStore) logStats(groupVals []value.Value, mode string) {
 	valsPerKey := 0
 	count := 0
 	for i := range groupVals {
-		if asdict, ok := groupVals[i].(value.Dict); ok {
+		if asdict, ok := groupVals[i].(*value.Dict); ok {
 			valsPerKey += asdict.Len()
 			count += 1
 		}

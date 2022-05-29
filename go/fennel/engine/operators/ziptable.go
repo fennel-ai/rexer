@@ -20,7 +20,7 @@ func NewZipTable(op Operator) ZipTable {
 }
 
 // TODO: this almost certainly has weird race conditions if run in paralle. Fix
-func (zt *ZipTable) Append(first []value.Value, second value.Dict) error {
+func (zt *ZipTable) Append(first []value.Value, second *value.Dict) error {
 	d := value.NewList(first...)
 	zt.first.Append(d)
 	zt.second.Append(second)
@@ -51,14 +51,14 @@ func (zi *ZipIter) HasMore() bool {
 	return zi.first.HasMore() && zi.second.HasMore()
 }
 
-func (zi *ZipIter) Next() ([]value.Value, value.Dict, error) {
+func (zi *ZipIter) Next() ([]value.Value, *value.Dict, error) {
 	first, err := zi.first.Next()
 	if err != nil {
-		return nil, value.Dict{}, err
+		return nil, nil, err
 	}
 	aslist, ok := first.(value.List)
 	if !ok {
-		return nil, value.Dict{}, fmt.Errorf("expected list of operands but found: %s", first)
+		return nil, nil, fmt.Errorf("expected list of operands but found: %s", first)
 	}
 	elems := make([]value.Value, aslist.Len())
 	for i := 0; i < aslist.Len(); i++ {
@@ -66,11 +66,11 @@ func (zi *ZipIter) Next() ([]value.Value, value.Dict, error) {
 	}
 	second_val, err := zi.second.Next()
 	if err != nil {
-		return nil, value.Dict{}, err
+		return nil, nil, err
 	}
-	second := second_val.(value.Dict)
+	second := second_val.(*value.Dict)
 	if err = Typecheck(zi.sig, elems, second); err != nil {
-		return nil, value.Dict{}, err
+		return nil, nil, err
 	}
 	return elems, second, nil
 }

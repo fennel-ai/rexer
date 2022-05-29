@@ -16,12 +16,12 @@ func init() {
 type zipper struct{}
 
 func (z zipper) New(
-	args value.Dict, bootargs map[string]interface{},
+	args *value.Dict, bootargs map[string]interface{},
 ) (operators.Operator, error) {
 	return zipper{}, nil
 }
 
-func (z zipper) Apply(_ context.Context, kwargs value.Dict, in operators.InputIter, out *value.List) error {
+func (z zipper) Apply(_ context.Context, kwargs *value.Dict, in operators.InputIter, out *value.List) error {
 	for in.HasMore() {
 		v, _, err := in.Next()
 		if err != nil {

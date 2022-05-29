@@ -196,17 +196,17 @@ func TestInterpreter_VisitOpcall5(t *testing.T) {
 type testOpDefault struct{}
 
 func (t testOpDefault) New(
-	args value.Dict, bootargs map[string]interface{},
+	args *value.Dict, bootargs map[string]interface{},
 ) (operators.Operator, error) {
 	return testOpDefault{}, nil
 }
 
-func (t testOpDefault) Apply(_ context.Context, kwargs value.Dict, in operators.InputIter, out *value.List) error {
+func (t testOpDefault) Apply(_ context.Context, kwargs *value.Dict, in operators.InputIter, out *value.List) error {
 	for in.HasMore() {
 		heads, context, _ := in.Next()
 		rowVal := heads[0]
 		// rowVal, _ := heads.Get("0")
-		row := rowVal.(value.Dict)
+		row := rowVal.(*value.Dict)
 		c, _ := context.Get("contextual")
 		row.Set("contextual", c)
 		s, _ := kwargs.Get("static")
@@ -237,7 +237,7 @@ type testNonValue struct {
 var _ operators.Operator = testOpInit{}
 
 func (top testOpInit) New(
-	args value.Dict, bootargs map[string]interface{},
+	args *value.Dict, bootargs map[string]interface{},
 ) (operators.Operator, error) {
 	// take one arg from args and one from bootarg to verify that init is working
 	num, ok := args.Get("num")
@@ -250,12 +250,12 @@ func (top testOpInit) New(
 	}, nil
 }
 
-func (top testOpInit) Apply(_ context.Context, kwargs value.Dict, in operators.InputIter, out *value.List) error {
+func (top testOpInit) Apply(_ context.Context, kwargs *value.Dict, in operators.InputIter, out *value.List) error {
 	for in.HasMore() {
 		heads, _, _ := in.Next()
 		rowVal := heads[0]
 		// rowVal, _ := heads.Get("0")
-		row := rowVal.(value.Dict)
+		row := rowVal.(*value.Dict)
 		row.Set("num", top.num)
 		row.Set("nonhi", value.String(top.non.hi))
 		out.Append(row)
@@ -272,12 +272,12 @@ type rowCount struct {
 }
 
 func (r *rowCount) New(
-	args value.Dict, bootargs map[string]interface{},
+	args *value.Dict, bootargs map[string]interface{},
 ) (operators.Operator, error) {
 	return &rowCount{}, nil
 }
 
-func (r *rowCount) Apply(_ context.Context, kwargs value.Dict, in operators.InputIter, out *value.List) error {
+func (r *rowCount) Apply(_ context.Context, kwargs *value.Dict, in operators.InputIter, out *value.List) error {
 	for in.HasMore() {
 		heads, _, _ := in.Next()
 		v := heads[0]
@@ -297,12 +297,12 @@ var _ operators.Operator = &rowCount{}
 type squareFn struct{}
 
 func (s squareFn) New(
-	args value.Dict, bootargs map[string]interface{},
+	args *value.Dict, bootargs map[string]interface{},
 ) (operators.Operator, error) {
 	return squareFn{}, nil
 }
 
-func (s squareFn) Apply(_ context.Context, kwargs value.Dict, in operators.InputIter, out *value.List) error {
+func (s squareFn) Apply(_ context.Context, kwargs *value.Dict, in operators.InputIter, out *value.List) error {
 	_, kwargs, err := in.Next()
 	if err != nil {
 		return err
@@ -327,12 +327,12 @@ var _ operators.Operator = squareFn{}
 type zip struct{}
 
 func (e zip) New(
-	args value.Dict, bootargs map[string]interface{},
+	args *value.Dict, bootargs map[string]interface{},
 ) (operators.Operator, error) {
 	return zip{}, nil
 }
 
-func (e zip) Apply(_ context.Context, kwargs value.Dict, in operators.InputIter, out *value.List) error {
+func (e zip) Apply(_ context.Context, kwargs *value.Dict, in operators.InputIter, out *value.List) error {
 	_, kwargs, err := in.Next()
 	if err != nil {
 		return err

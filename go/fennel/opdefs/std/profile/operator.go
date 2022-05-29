@@ -24,12 +24,12 @@ func init() {
 
 type profileOp struct {
 	tier   tier.Tier
-	args   value.Dict
+	args   *value.Dict
 	mockID int64
 }
 
 func (p profileOp) New(
-	args value.Dict, bootargs map[string]interface{},
+	args *value.Dict, bootargs map[string]interface{},
 ) (operators.Operator, error) {
 	tr, err := bootarg.GetTier(bootargs)
 	if err != nil {
@@ -49,7 +49,7 @@ func (p profileOp) New(
 	return profileOp{tr, args, mockID}, nil
 }
 
-func (p profileOp) Apply(ctx context.Context, staticKwargs value.Dict, in operators.InputIter, out *value.List) (err error) {
+func (p profileOp) Apply(ctx context.Context, staticKwargs *value.Dict, in operators.InputIter, out *value.List) (err error) {
 	var reqs []libprofile.ProfileItemKey
 	var rows []value.Value
 	for in.HasMore() {
@@ -84,7 +84,7 @@ func (p profileOp) Apply(ctx context.Context, staticKwargs value.Dict, in operat
 		}
 		var outRow value.Value
 		if len(field) > 0 {
-			if d, ok := rows[i].(value.Dict); !ok {
+			if d, ok := rows[i].(*value.Dict); !ok {
 				return fmt.Errorf("input values expected to be dict for profile operator")
 			} else {
 				d.Set(field, v)

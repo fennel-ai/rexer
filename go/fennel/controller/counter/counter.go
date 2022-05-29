@@ -14,7 +14,7 @@ import (
 
 func Value(
 	ctx context.Context, tier tier.Tier,
-	aggId ftypes.AggId, key value.Value, histogram counter.Histogram, kwargs value.Dict,
+	aggId ftypes.AggId, key value.Value, histogram counter.Histogram, kwargs *value.Dict,
 ) (value.Value, error) {
 	end := ftypes.Timestamp(tier.Clock.Now())
 	start, err := histogram.Start(end, kwargs)
@@ -33,7 +33,7 @@ func Value(
 // BucketStore instances are created per histogram - the list `indices` created is always a single element list
 func BatchValue(
 	ctx context.Context, tier tier.Tier,
-	aggIds []ftypes.AggId, keys []value.Value, histograms []counter.Histogram, kwargs []value.Dict,
+	aggIds []ftypes.AggId, keys []value.Value, histograms []counter.Histogram, kwargs []*value.Dict,
 ) ([]value.Value, error) {
 	end := ftypes.Timestamp(tier.Clock.Now())
 	unique := make(map[counter.BucketStore][]int)

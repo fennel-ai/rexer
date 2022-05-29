@@ -13,8 +13,8 @@ func TestMapper_Apply(t *testing.T) {
 	op := mapper{}
 	scenarios := []struct {
 		inputs   [][]value.Value
-		static   value.Dict
-		context  []value.Dict
+		static   *value.Dict
+		context  []*value.Dict
 		err      bool
 		expected []value.Value
 	}{
@@ -25,7 +25,7 @@ func TestMapper_Apply(t *testing.T) {
 				value.NewDict(map[string]value.Value{"x": value.Int(3)}),
 			}},
 			value.NewDict(nil),
-			[]value.Dict{
+			[]*value.Dict{
 				value.NewDict(map[string]value.Value{"to": value.String("1")}),
 				value.NewDict(map[string]value.Value{"to": value.String("2")}),
 				value.NewDict(map[string]value.Value{"to": value.Int(3)}),
@@ -39,7 +39,7 @@ func TestMapper_Apply(t *testing.T) {
 				value.NewDict(map[string]value.Value{"x": value.Int(3)}),
 			}},
 			value.NewDict(nil),
-			[]value.Dict{
+			[]*value.Dict{
 				value.NewDict(map[string]value.Value{"to": value.String("1")}),
 				value.NewDict(map[string]value.Value{"from": value.String("2")}),
 			},
@@ -53,7 +53,7 @@ func TestMapper_Apply(t *testing.T) {
 			},
 			value.NewDict(nil),
 
-			[]value.Dict{
+			[]*value.Dict{
 				value.NewDict(map[string]value.Value{"to": value.NewList(value.Int(1), value.String("1"))}),
 				value.NewDict(map[string]value.Value{"to": value.NewList(value.Int(2), value.String("2"))}),
 				value.NewDict(map[string]value.Value{"to": value.NewList(value.Int(3), value.String("3"))}),

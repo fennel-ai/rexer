@@ -16,12 +16,12 @@ type testOp struct {
 var _ Operator = testOp{}
 
 func (top testOp) New(
-	args value.Dict, bootargs map[string]interface{},
+	args *value.Dict, bootargs map[string]interface{},
 ) (Operator, error) {
 	return top, nil
 }
 
-func (top testOp) Apply(_ context.Context, kwargs value.Dict, in InputIter, out *value.List) error {
+func (top testOp) Apply(_ context.Context, kwargs *value.Dict, in InputIter, out *value.List) error {
 	return nil
 }
 
@@ -38,12 +38,12 @@ type testOp2 struct{}
 var _ Operator = testOp2{}
 
 func (top testOp2) New(
-	args value.Dict, bootargs map[string]interface{},
+	args *value.Dict, bootargs map[string]interface{},
 ) (Operator, error) {
 	return top, nil
 }
 
-func (top testOp2) Apply(_ context.Context, _ value.Dict, _ InputIter, _ *value.List) error {
+func (top testOp2) Apply(_ context.Context, _ *value.Dict, _ InputIter, _ *value.List) error {
 	return nil
 }
 
@@ -57,12 +57,12 @@ type testOp3 struct{}
 var _ Operator = testOp3{}
 
 func (top testOp3) New(
-	args value.Dict, bootargs map[string]interface{},
+	args *value.Dict, bootargs map[string]interface{},
 ) (Operator, error) {
 	return top, nil
 }
 
-func (top testOp3) Apply(_ context.Context, _ value.Dict, _ InputIter, _ *value.List) error {
+func (top testOp3) Apply(_ context.Context, _ *value.Dict, _ InputIter, _ *value.List) error {
 	return nil
 }
 
@@ -74,7 +74,7 @@ func TestTypeCheckStaticKwargs(t *testing.T) {
 	t.Parallel()
 	op := testOp{}
 	scenarios := []struct {
-		given   value.Dict
+		given   *value.Dict
 		matches bool
 	}{
 		{
@@ -86,7 +86,7 @@ func TestTypeCheckStaticKwargs(t *testing.T) {
 			false,
 		},
 		{
-			value.Dict{},
+			&value.Dict{},
 			false,
 		},
 	}
@@ -109,7 +109,7 @@ func TestTypeCheck(t *testing.T) {
 	scenarios := []struct {
 		op      Operator
 		input   []value.Value
-		context value.Dict
+		context *value.Dict
 		matches bool
 	}{
 		{
@@ -139,49 +139,49 @@ func TestTypeCheck(t *testing.T) {
 		{
 			op1,
 			[]value.Value{value.String("ijk")},
-			value.Dict{},
+			value.NewDict(nil),
 			false,
 		},
 		{
 			op2,
 			[]value.Value{value.String("ijk")},
-			value.Dict{},
+			value.NewDict(nil),
 			false,
 		},
 		{
 			op2,
 			[]value.Value{},
-			value.Dict{},
+			value.NewDict(nil),
 			false,
 		},
 		{
 			op2,
 			[]value.Value{value.String("jhi"), value.Int(4), value.Int(5)},
-			value.Dict{},
+			value.NewDict(nil),
 			true,
 		},
 		{
 			op2,
 			[]value.Value{value.String("jhi"), value.Int(4), value.Nil},
-			value.Dict{},
+			value.NewDict(nil),
 			true,
 		},
 		{
 			op3,
 			[]value.Value{value.String("jhi"), value.Int(4), value.Nil},
-			value.Dict{},
+			value.NewDict(nil),
 			true,
 		},
 		{
 			op3,
 			[]value.Value{value.String("jhi")},
-			value.Dict{},
+			value.NewDict(nil),
 			true,
 		},
 		{
 			op3,
 			[]value.Value{value.NewDict(map[string]value.Value{"jhi": value.Int(3)})},
-			value.Dict{},
+			value.NewDict(nil),
 			true,
 		},
 	}

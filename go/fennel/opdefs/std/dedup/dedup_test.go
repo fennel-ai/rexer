@@ -13,8 +13,8 @@ func TestDeduper_Apply(t *testing.T) {
 	op := deduper{}
 	scenarios := []struct {
 		inputs   []value.Value
-		static   value.Dict
-		context  []value.Dict
+		static   *value.Dict
+		context  []*value.Dict
 		err      bool
 		expected []value.Value
 	}{
@@ -25,7 +25,7 @@ func TestDeduper_Apply(t *testing.T) {
 				value.NewDict(map[string]value.Value{"x": value.Int(3)}),
 			},
 			value.NewDict(nil),
-			[]value.Dict{
+			[]*value.Dict{
 				value.NewDict(map[string]value.Value{"by": value.String("1")}),
 				value.NewDict(map[string]value.Value{"by": value.String("1")}),
 				value.NewDict(map[string]value.Value{"by": value.Int(3)}),
@@ -43,7 +43,7 @@ func TestDeduper_Apply(t *testing.T) {
 				value.NewDict(map[string]value.Value{"x": value.Int(1)}),
 			},
 			value.NewDict(nil),
-			[]value.Dict{
+			[]*value.Dict{
 				value.NewDict(nil),
 				value.NewDict(nil),
 				value.NewDict(nil),

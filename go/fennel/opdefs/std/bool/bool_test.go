@@ -11,8 +11,8 @@ import (
 func TestBool(t *testing.T) {
 	scenarios := []struct {
 		inputs       []value.Value
-		static       value.Dict
-		kwargs       []value.Dict
+		static       *value.Dict
+		kwargs       []*value.Dict
 		err          bool
 		expected_any []value.Value
 		expected_all []value.Value
@@ -24,7 +24,7 @@ func TestBool(t *testing.T) {
 				value.NewList(value.Bool(false), value.Bool(false), value.Bool(false)),
 			},
 			value.NewDict(nil),
-			[]value.Dict{value.NewDict(nil), value.NewDict(nil), value.NewDict(nil)},
+			[]*value.Dict{value.NewDict(nil), value.NewDict(nil), value.NewDict(nil)},
 			false,
 			[]value.Value{value.Bool(true), value.Bool(true), value.Bool(false)},
 			[]value.Value{value.Bool(false), value.Bool(true), value.Bool(false)},

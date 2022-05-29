@@ -111,18 +111,18 @@ func (a Action) Equals(other Action, ignoreID bool) bool {
 	return true
 }
 
-func (a Action) ToValueDict() (value.Dict, error) {
+func (a Action) ToValueDict() (*value.Dict, error) {
 	actorID, err := value.FromJSON([]byte(a.ActorID))
 	if err != nil {
-		return value.Dict{}, err
+		return nil, err
 	}
 	targetID, err := value.FromJSON([]byte(a.TargetID))
 	if err != nil {
-		return value.Dict{}, err
+		return nil, err
 	}
 	requestID, err := value.FromJSON([]byte(a.RequestID))
 	if err != nil {
-		return value.Dict{}, err
+		return nil, err
 	}
 	return value.NewDict(map[string]value.Value{
 		"action_id":   value.Int(a.ActionID),

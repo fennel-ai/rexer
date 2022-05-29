@@ -55,7 +55,7 @@ func contains(e Value, iter Value) (Value, error) {
 				return Bool(true), nil
 			}
 		}
-	case Dict:
+	case *Dict:
 		asstr, ok := e.(String)
 		if !ok {
 			return nil, fmt.Errorf("'in' operation on dicts can only be done using strings, but given: '%s'", e)
@@ -332,7 +332,7 @@ func index(left Value, right Value) (Value, error) {
 		idx := int(asInt)
 		return asList.At(idx)
 	}
-	if asDict, ok := left.(Dict); ok {
+	if asDict, ok := left.(*Dict); ok {
 		asStr, ok := right.(String)
 		if !ok {
 			return Nil, fmt.Errorf("can only index a dict with string but got: '%s' instead", right)

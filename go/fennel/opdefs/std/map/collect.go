@@ -16,15 +16,15 @@ type collect struct {
 }
 
 func (m collect) New(
-	args value.Dict, bootargs map[string]interface{},
+	args *value.Dict, bootargs map[string]interface{},
 ) (operators.Operator, error) {
 	return collect{}, nil
 }
 
-func (m collect) Apply(_ context.Context, staticKwargs value.Dict, in operators.InputIter, out *value.List) error {
+func (m collect) Apply(_ context.Context, staticKwargs *value.Dict, in operators.InputIter, out *value.List) error {
 	for in.HasMore() {
 		heads, kwargs, err := in.Next()
-		row := heads[0].(value.Dict)
+		row := heads[0].(*value.Dict)
 
 		if err != nil {
 			return err

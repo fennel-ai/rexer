@@ -239,14 +239,14 @@ func TestTransformActions(t *testing.T) {
 	assert.Equal(t, 100, table.Len())
 	for i := 0; i < table.Len(); i++ {
 		r, _ := table.At(i)
-		row, ok := r.(value.Dict)
+		row, ok := r.(*value.Dict)
 		assert.True(t, ok)
 		assert.Equal(t, value.Int(i+1000), get(row, "timestamp"))
 		assert.Equal(t, value.NewList(value.Int(41)), get(row, "groupkey"))
 	}
 }
 
-func get(d value.Dict, k string) value.Value {
+func get(d *value.Dict, k string) value.Value {
 	ret, _ := d.Get(k)
 	return ret
 }

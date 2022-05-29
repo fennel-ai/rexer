@@ -127,7 +127,7 @@ func testStorage(t *testing.T, store BucketStore) {
 		assert.NoError(t, err)
 		assert.Len(t, found, len(scene.buckets))
 		for i, v := range found {
-			assert.Equal(t, scene.v1[i], v)
+			assert.True(t, scene.v1[i].Equal(v))
 		}
 
 		// now only update odd buckets
@@ -145,9 +145,9 @@ func testStorage(t *testing.T, store BucketStore) {
 		assert.Len(t, found, len(scene.buckets))
 		for i := range scene.buckets {
 			if i%2 == 0 {
-				assert.Equal(t, scene.v1[i], found[i])
+				assert.True(t, scene.v1[i].Equal(found[i]))
 			} else {
-				assert.Equal(t, scene.v2[i], found[i])
+				assert.True(t, scene.v2[i].Equal(found[i]))
 			}
 		}
 	}

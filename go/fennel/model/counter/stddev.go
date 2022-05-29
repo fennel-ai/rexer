@@ -27,7 +27,7 @@ func NewStdDev(durations []uint64) Histogram {
 	}
 }
 
-func (s rollingStdDev) Start(end ftypes.Timestamp, kwargs value.Dict) (ftypes.Timestamp, error) {
+func (s rollingStdDev) Start(end ftypes.Timestamp, kwargs *value.Dict) (ftypes.Timestamp, error) {
 	d, err := extractDuration(kwargs, s.Durations)
 	if err != nil {
 		return 0, err

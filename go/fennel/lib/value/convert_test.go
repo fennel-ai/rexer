@@ -31,7 +31,7 @@ func TestConvertToCapnValue(t *testing.T) {
 		assert.NoError(t, err)
 		v2, err := FromCapnValue(cv)
 		assert.NoError(t, err)
-		assert.Equal(t, v, v2)
+		assert.True(t, v.Equal(v2))
 
 		// also verify futures
 		f := getFuture(v)

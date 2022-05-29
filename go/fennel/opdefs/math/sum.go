@@ -15,12 +15,12 @@ func init() {
 type adder struct{}
 
 func (a adder) New(
-	args value.Dict, bootargs map[string]interface{},
+	args *value.Dict, bootargs map[string]interface{},
 ) (operators.Operator, error) {
 	return adder{}, nil
 }
 
-func (a adder) Apply(_ context.Context, _ value.Dict, in operators.InputIter, out *value.List) error {
+func (a adder) Apply(_ context.Context, _ *value.Dict, in operators.InputIter, out *value.List) error {
 	for in.HasMore() {
 		heads, kwargs, err := in.Next()
 		if err != nil {

@@ -15,12 +15,12 @@ func init() {
 type meanop struct{}
 
 func (a meanop) New(
-	args value.Dict, bootargs map[string]interface{},
+	args *value.Dict, bootargs map[string]interface{},
 ) (operators.Operator, error) {
 	return meanop{}, nil
 }
 
-func (a meanop) Apply(_ context.Context, _ value.Dict, in operators.InputIter, out *value.List) error {
+func (a meanop) Apply(_ context.Context, _ *value.Dict, in operators.InputIter, out *value.List) error {
 	for in.HasMore() {
 		heads, kwargs, err := in.Next()
 		if err != nil {

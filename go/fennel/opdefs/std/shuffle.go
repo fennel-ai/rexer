@@ -14,7 +14,7 @@ type ShuffleOperator struct{}
 var _ operators.Operator = ShuffleOperator{}
 
 func (op ShuffleOperator) New(
-	args value.Dict, bootargs map[string]interface{},
+	args *value.Dict, bootargs map[string]interface{},
 ) (operators.Operator, error) {
 	return ShuffleOperator{}, nil
 }
@@ -24,7 +24,7 @@ func (op ShuffleOperator) Signature() *operators.Signature {
 		Input([]value.Type{value.Types.Dict})
 }
 
-func (op ShuffleOperator) Apply(_ context.Context, _ value.Dict, in operators.InputIter, out *value.List) error {
+func (op ShuffleOperator) Apply(_ context.Context, _ *value.Dict, in operators.InputIter, out *value.List) error {
 	var rows []value.Value
 	for in.HasMore() {
 		heads, _, err := in.Next()

@@ -38,7 +38,7 @@ func (s list) extract(v value.Value) (value.List, error) {
 	return l, nil
 }
 
-func (s list) Start(end ftypes.Timestamp, kwargs value.Dict) (ftypes.Timestamp, error) {
+func (s list) Start(end ftypes.Timestamp, kwargs *value.Dict) (ftypes.Timestamp, error) {
 	d, err := extractDuration(kwargs, s.Durations)
 	if err != nil {
 		return 0, err

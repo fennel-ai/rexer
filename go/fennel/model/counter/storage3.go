@@ -165,16 +165,16 @@ type thirdSlot struct {
 }
 
 type thirdStoreView struct {
-	view  map[thirdSlot]map[string]value.Dict
+	view  map[thirdSlot]map[string]*value.Dict
 	keys  []string
 	slots []thirdSlot
 	isNew []bool
 }
 
 func newThirdStoreView(slots []thirdSlot, hashes [][][16]byte, t thirdStore) (v thirdStoreView, err error) {
-	v.view = make(map[thirdSlot]map[string]value.Dict, len(slots))
+	v.view = make(map[thirdSlot]map[string]*value.Dict, len(slots))
 	for i, slot := range slots {
-		v.view[slot] = make(map[string]value.Dict, len(hashes[i]))
+		v.view[slot] = make(map[string]*value.Dict, len(hashes[i]))
 		for _, h := range hashes[i] {
 			suffix := string(h[t.prefixSize:])
 			v.view[slot][suffix] = value.NewDict(nil)
@@ -216,7 +216,7 @@ func (v *thirdStoreView) Load(ctx context.Context, tier *tier.Tier) error {
 				if err := value.Unmarshal([]byte(valStr), &val); err != nil {
 					return fmt.Errorf("failed to unmarshal '%s' into value", valStr)
 				}
-				if v.view[slot][k], ok = val.(value.Dict); !ok {
+				if v.view[slot][k], ok = val.(*value.Dict); !ok {
 					return fmt.Errorf("expected value to be dict but found: '%s'", val.String())
 				}
 			}

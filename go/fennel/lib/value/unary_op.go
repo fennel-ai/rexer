@@ -26,7 +26,7 @@ func len_(v Value) (Value, error) {
 	switch v := v.(type) {
 	case List:
 		return Int(v.Len()), nil
-	case Dict:
+	case *Dict:
 		return Int(v.Len()), nil
 	}
 	return nil, fmt.Errorf("'len' only supported on booleans")

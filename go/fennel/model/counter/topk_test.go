@@ -149,7 +149,7 @@ func TestTopK_Bucketize_Valid(t *testing.T) {
 func TestTopK_Bucketize_Invalid(t *testing.T) {
 	t.Parallel()
 	h := NewMax([]uint64{123})
-	cases := [][]value.Dict{
+	cases := [][]*value.Dict{
 		{value.NewDict(nil)},
 		{value.NewDict(map[string]value.Value{"groupkey": value.Int(1), "timestamp": value.Int(2)})},
 		{value.NewDict(map[string]value.Value{"groupkey": value.Int(1), "timestamp": value.Int(2), "value": value.Nil})},
@@ -168,7 +168,7 @@ func TestTopK_Bucketize_Invalid(t *testing.T) {
 	}
 }
 
-func genTopKDict(n int, keys []string) value.Dict {
+func genTopKDict(n int, keys []string) *value.Dict {
 	d := value.NewDict(nil)
 	for i := 0; i < n; i++ {
 		if i%2 == 0 {
@@ -181,9 +181,9 @@ func genTopKDict(n int, keys []string) value.Dict {
 }
 
 func findTopK(t *testing.T, vals []value.Value) value.Value {
-	dictVals := make([]value.Dict, len(vals))
+	dictVals := make([]*value.Dict, len(vals))
 	for i, v := range vals {
-		dictVals[i] = v.(value.Dict)
+		dictVals[i] = v.(*value.Dict)
 	}
 	d, err := topK{}.merge(dictVals)
 	assert.NoError(t, err)

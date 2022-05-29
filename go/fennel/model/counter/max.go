@@ -38,7 +38,7 @@ func NewMax(durations []uint64) Histogram {
 	}
 }
 
-func (m rollingMax) Start(end ftypes.Timestamp, kwargs value.Dict) (ftypes.Timestamp, error) {
+func (m rollingMax) Start(end ftypes.Timestamp, kwargs *value.Dict) (ftypes.Timestamp, error) {
 	d, err := extractDuration(kwargs, m.Durations)
 	if err != nil {
 		return 0, err

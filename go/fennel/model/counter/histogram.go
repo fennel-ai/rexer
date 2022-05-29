@@ -32,7 +32,7 @@ type MergeReduce interface {
 }
 
 type Histogram interface {
-	Start(end ftypes.Timestamp, kwargs value.Dict) (ftypes.Timestamp, error)
+	Start(end ftypes.Timestamp, kwargs *value.Dict) (ftypes.Timestamp, error)
 	Bucketizer
 	MergeReduce
 	BucketStore

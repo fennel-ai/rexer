@@ -14,13 +14,13 @@ func TestSortOperator_Apply(t *testing.T) {
 		value.NewDict(map[string]value.Value{"name": value.String("second")}),
 		value.NewDict(map[string]value.Value{"name": value.String("third")}),
 	}
-	contextKwargs := []value.Dict{
+	contextKwargs := []*value.Dict{
 		value.NewDict(map[string]value.Value{"by": value.Int(2)}),
 		value.NewDict(map[string]value.Value{"by": value.Double(1.0)}),
 		value.NewDict(map[string]value.Value{"by": value.Double(3.0)}),
 	}
 
-	orders := []value.Dict{
+	orders := []*value.Dict{
 		value.NewDict(map[string]value.Value{"reverse": value.Bool(false)}),
 		value.NewDict(map[string]value.Value{"reverse": value.Bool(true)}),
 	}
@@ -45,7 +45,7 @@ func TestSortOperator_Apply(t *testing.T) {
 	// Sort a list of numbers.
 	optest.AssertEqual(t, tr, &SortOperator{}, value.NewDict(nil),
 		[][]value.Value{{value.Int(2), value.Int(1), value.Double(3.0)}},
-		[]value.Dict{value.NewDict(nil), value.NewDict(nil), value.NewDict(nil)},
+		[]*value.Dict{value.NewDict(nil), value.NewDict(nil), value.NewDict(nil)},
 		[]value.Value{value.Int(1), value.Int(2), value.Double(3.0)},
 	)
 }

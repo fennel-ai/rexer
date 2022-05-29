@@ -12,8 +12,8 @@ func Clean(v Value) Value {
 		if v.values == nil {
 			return NewList()
 		}
-	case Dict:
-		if v.values == nil {
+	case *Dict:
+		if v == nil || v.values == nil {
 			return NewDict(nil)
 		}
 	}

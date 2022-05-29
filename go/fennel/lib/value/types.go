@@ -27,7 +27,7 @@ var _ Value = Double(0)
 var _ Value = Bool(true)
 var _ Value = String("")
 var _ Value = List{}
-var _ Value = Dict{}
+var _ Value = &Dict{}
 var _ Value = nil_{}
 var _ Value = &Future{}
 
@@ -292,52 +292,63 @@ type Dict struct {
 	values map[string]Value
 }
 
-func (d Dict) Op(opt string, other Value) (Value, error) {
+func (d *Dict) Op(opt string, other Value) (Value, error) {
 	return route(d, opt, other)
 }
-func (d Dict) OpUnary(opt string) (Value, error) {
+func (d *Dict) OpUnary(opt string) (Value, error) {
 	return routeUnary(opt, d)
 }
 
-func NewDict(values map[string]Value) Dict {
-	ret := make(map[string]Value, len(values))
-	for k, v := range values {
-		ret[k] = v
+func NewDict(values map[string]Value) *Dict {
+	return &Dict{
+		values: clone(values),
 	}
-	return Dict{ret}
 }
 
-func (d Dict) Len() int {
+func (d *Dict) Len() int {
+	if d == nil {
+		return 0
+	}
 	return len(d.values)
 }
 
-func (d Dict) Get(k string) (Value, bool) {
+func (d *Dict) Get(k string) (Value, bool) {
 	v, ok := d.values[k]
 	return v, ok
 }
 
-func (d Dict) GetUnsafe(k string) Value {
+func (d *Dict) GetUnsafe(k string) Value {
 	if v, ok := d.values[k]; ok {
 		return v
 	}
 	return nil
 }
 
+func clone(values map[string]Value) map[string]Value {
+	ret := make(map[string]Value, len(values))
+	for k, v := range values {
+		ret[k] = v.Clone()
+	}
+	return ret
+}
+
 func (d *Dict) Set(k string, value Value) {
 	d.values[k] = value
 }
 
-func (d Dict) Iter() map[string]Value {
+func (d *Dict) Iter() map[string]Value {
+	if d == nil {
+		return nil
+	}
 	return d.values
 }
 func (d *Dict) Del(k string) {
 	delete(d.values, k)
 }
-
-func (d Dict) isValue() {}
-func (d Dict) Equal(v Value) bool {
+func (d *Dict) isValue() {}
+func (d *Dict) Equal(v Value) bool {
 	switch right := v.(type) {
-	case Dict:
+	case *Dict:
 		if right.Len() != d.Len() {
 			return false
 		}
@@ -351,7 +362,7 @@ func (d Dict) Equal(v Value) bool {
 		return false
 	}
 }
-func (d Dict) String() string {
+func (d *Dict) String() string {
 	s := make([]string, 0, d.Len())
 	for k, v := range d.Iter() {
 		sb := strings.Builder{}
@@ -374,18 +385,16 @@ func (d Dict) String() string {
 	sb.WriteString("}")
 	return sb.String()
 }
-func (d Dict) Clone() Value {
-	clone := make(map[string]Value, d.Len())
-	for k, v := range d.Iter() {
-		clone[k] = v.Clone()
+func (d *Dict) Clone() Value {
+	return &Dict{
+		values: clone(d.values),
 	}
-	return NewDict(clone)
 }
-func (d Dict) MarshalJSON() ([]byte, error) {
+func (d *Dict) MarshalJSON() ([]byte, error) {
 	return []byte(d.String()), nil
 }
 
-func (d Dict) Schema() map[string]reflect.Type {
+func (d *Dict) Schema() map[string]reflect.Type {
 	ret := make(map[string]reflect.Type, d.Len())
 	for k, v := range d.Iter() {
 		ret[k] = reflect.TypeOf(v)

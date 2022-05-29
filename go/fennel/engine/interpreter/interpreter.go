@@ -21,7 +21,7 @@ type Interpreter struct {
 	ctx      context.Context
 }
 
-func NewInterpreter(ctx context.Context, bootargs map[string]interface{}, args value.Dict) (Interpreter, error) {
+func NewInterpreter(ctx context.Context, bootargs map[string]interface{}, args *value.Dict) (Interpreter, error) {
 	env := NewEnv(nil)
 	if err := env.Define("__args__", args); err != nil {
 		return Interpreter{}, err
@@ -45,7 +45,7 @@ func NewInterpreter(ctx context.Context, bootargs map[string]interface{}, args v
 
 var _ ast.VisitorValue = Interpreter{}
 
-func (i Interpreter) queryArgs() value.Dict {
+func (i Interpreter) queryArgs() *value.Dict {
 	// query args are present in the root Env (has no parent)
 	rootEnv := i.env
 	for rootEnv.parent != nil {
@@ -55,7 +55,7 @@ func (i Interpreter) queryArgs() value.Dict {
 	if err != nil {
 		return value.NewDict(nil)
 	}
-	asDict, ok := args.(value.Dict)
+	asDict, ok := args.(*value.Dict)
 	if !ok {
 		return value.NewDict(nil)
 	}
@@ -67,7 +67,7 @@ func (i Interpreter) VisitLookup(on ast.Ast, property string) (value.Value, erro
 	if err != nil {
 		return value.Nil, err
 	}
-	asdict, ok := val.(value.Dict)
+	asdict, ok := val.(*value.Dict)
 	if !ok {
 		return value.Nil, fmt.Errorf("can only do property lookup: %s on non-dict value: '%s'", property, on)
 	}
@@ -280,7 +280,7 @@ func (i Interpreter) VisitIfelse(condition ast.Ast, thenDo ast.Ast, elseDo ast.A
 	}
 }
 
-func (i Interpreter) getStaticKwargs(op operators.Operator, kwargs ast.Dict) (value.Dict, error) {
+func (i Interpreter) getStaticKwargs(op operators.Operator, kwargs ast.Dict) (*value.Dict, error) {
 	ret := value.NewDict(nil)
 	sig := op.Signature()
 	for _, p := range sig.StaticKwargs {
@@ -288,14 +288,14 @@ func (i Interpreter) getStaticKwargs(op operators.Operator, kwargs ast.Dict) (va
 		tree, ok := kwargs.Values[k]
 		switch {
 		case !ok && !p.Optional:
-			return value.Dict{}, fmt.Errorf("kwarg '%s' not provided for operator '%s.%s'", k, sig.Module, sig.Name)
+			return nil, fmt.Errorf("kwarg '%s' not provided for operator '%s.%s'", k, sig.Module, sig.Name)
 		case !ok && p.Optional:
 			ret.Set(k, p.Default)
 			// ret[k] = p.Default
 		case ok:
 			val, err := tree.AcceptValue(i)
 			if err != nil {
-				return value.Dict{}, fmt.Errorf("error: %s while evaluating kwarg: %s for operator '%s.%s'", err, k, sig.Module, sig.Name)
+				return nil, fmt.Errorf("error: %s while evaluating kwarg: %s for operator '%s.%s'", err, k, sig.Module, sig.Name)
 			}
 			ret.Set(k, val)
 		}

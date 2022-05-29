@@ -29,7 +29,7 @@ type featureLog struct {
 }
 
 func (f featureLog) New(
-	args value.Dict, bootargs map[string]interface{},
+	args *value.Dict, bootargs map[string]interface{},
 ) (operators.Operator, error) {
 	tr, err := bootarg.GetTier(bootargs)
 	if err != nil {
@@ -38,7 +38,7 @@ func (f featureLog) New(
 	return featureLog{tr}, nil
 }
 
-func (f featureLog) Apply(ctx context.Context, static value.Dict, in operators.InputIter, out *value.List) error {
+func (f featureLog) Apply(ctx context.Context, static *value.Dict, in operators.InputIter, out *value.List) error {
 	workflow := string(get(static, "workflow").(value.String))
 	modelName := ftypes.ModelName(get(static, "model_name").(value.String))
 	modelVersion := ftypes.ModelVersion(get(static, "model_version").(value.String))
@@ -57,7 +57,7 @@ func (f featureLog) Apply(ctx context.Context, static value.Dict, in operators.I
 			ContextOid:      ftypes.OidType(get(kwargs, "context_oid").String()),
 			CandidateOType:  ftypes.OType(get(kwargs, "candidate_otype").(value.String)),
 			CandidateOid:    ftypes.OidType(get(kwargs, "candidate_oid").String()),
-			Features:        get(kwargs, "features").(value.Dict),
+			Features:        get(kwargs, "features").(*value.Dict),
 			Workflow:        workflow,
 			RequestID:       ftypes.RequestID(get(kwargs, "request_id").String()),
 			Timestamp:       ts,
@@ -97,7 +97,7 @@ func (f featureLog) Signature() *operators.Signature {
 
 var _ operators.Operator = &featureLog{}
 
-func get(d value.Dict, k string) value.Value {
+func get(d *value.Dict, k string) value.Value {
 	ret, _ := d.Get(k)
 	return ret
 }

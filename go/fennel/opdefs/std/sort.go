@@ -14,7 +14,7 @@ type SortOperator struct{}
 var _ operators.Operator = SortOperator{}
 
 func (op SortOperator) New(
-	args value.Dict, bootargs map[string]interface{},
+	args *value.Dict, bootargs map[string]interface{},
 ) (operators.Operator, error) {
 	return SortOperator{}, nil
 }
@@ -25,7 +25,7 @@ func (op SortOperator) Signature() *operators.Signature {
 		ParamWithHelp("reverse", value.Types.Bool, true, true, value.Bool(false), "StaticKwargs: Set true to get descending sort order")
 }
 
-func (op SortOperator) Apply(_ context.Context, staticKwargs value.Dict, in operators.InputIter, out *value.List) error {
+func (op SortOperator) Apply(_ context.Context, staticKwargs *value.Dict, in operators.InputIter, out *value.List) error {
 	type sortableRow struct {
 		key  float64
 		data value.Value

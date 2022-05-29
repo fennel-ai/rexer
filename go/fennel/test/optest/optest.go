@@ -15,7 +15,7 @@ import (
 	"fennel/tier"
 )
 
-func AssertEqual(t *testing.T, tr tier.Tier, op operators.Operator, static value.Dict, inputs [][]value.Value, context []value.Dict, expected []value.Value) {
+func AssertEqual(t *testing.T, tr tier.Tier, op operators.Operator, static *value.Dict, inputs [][]value.Value, context []*value.Dict, expected []value.Value) {
 	found, err := run(tr, op, static, inputs, context)
 	assert.NoError(t, err)
 	aslist, ok := found.(value.List)
@@ -29,27 +29,32 @@ func AssertEqual(t *testing.T, tr tier.Tier, op operators.Operator, static value
 	}
 }
 
-func AssertElementsMatch(t *testing.T, tr tier.Tier, op operators.Operator, static value.Dict, inputs [][]value.Value, context []value.Dict, expected []value.Value) {
+func AssertElementsMatch(t *testing.T, tr tier.Tier, op operators.Operator, static *value.Dict, inputs [][]value.Value, context []*value.Dict, expected []value.Value) {
 	found, err := run(tr, op, static, inputs, context)
 	assert.NoError(t, err)
 	aslist, ok := found.(value.List)
 	assert.True(t, ok)
 	assert.Equal(t, len(expected), aslist.Len())
-	foundlist := make([]value.Value, aslist.Len())
+	// Convert actuals and expected values to strings before comparison since
+	// their internal representations might differ on occassion (e.g. Dict).
+	actuals := make([]string, aslist.Len())
+	expectedStr := make([]string, len(expected))
 	for i := 0; i < aslist.Len(); i++ {
-		foundlist[i], _ = aslist.At(i)
+		actual, _ := aslist.At(i)
+		actuals[i] = actual.String()
+		expectedStr[i] = expected[i].String()
 	}
-	assert.ElementsMatch(t, expected, foundlist)
+	assert.ElementsMatch(t, expectedStr, actuals)
 }
 
-func AssertError(t *testing.T, tr tier.Tier, op operators.Operator, static value.Dict, inputs [][]value.Value, context []value.Dict) {
+func AssertError(t *testing.T, tr tier.Tier, op operators.Operator, static *value.Dict, inputs [][]value.Value, context []*value.Dict) {
 	_, err := run(tr, op, static, inputs, context)
 	assert.Error(t, err)
 }
 
 // run takes some value properties and creates a real ast that represents that opcall and executes it with
 // an interpreter
-func run(tr tier.Tier, op operators.Operator, static value.Dict, inputs [][]value.Value, queryContext []value.Dict) (value.Value, error) {
+func run(tr tier.Tier, op operators.Operator, static *value.Dict, inputs [][]value.Value, queryContext []*value.Dict) (value.Value, error) {
 	sig := op.Signature()
 	queryargs := value.NewDict(nil)
 	kwargs := make(map[string]ast.Ast)

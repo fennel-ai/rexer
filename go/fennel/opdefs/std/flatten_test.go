@@ -11,8 +11,8 @@ import (
 func TestFlattenOperator_Apply(t *testing.T) {
 	type scenario struct {
 		inputs   []value.Value
-		static   value.Dict
-		context  []value.Dict
+		static   *value.Dict
+		context  []*value.Dict
 		expected []value.Value
 	}
 	zDict := value.NewDict(nil)
@@ -29,31 +29,31 @@ func TestFlattenOperator_Apply(t *testing.T) {
 		{
 			[]value.Value{l2, l2},
 			value.NewDict(map[string]value.Value{"depth": value.Int(0)}),
-			[]value.Dict{zDict, zDict},
+			[]*value.Dict{zDict, zDict},
 			[]value.Value{vDouble, vInt, vInt, vDouble, vDict, vDouble, vInt, vInt, vDouble, vDict},
 		},
 		{
 			[]value.Value{l2, l2},
 			value.NewDict(map[string]value.Value{"depth": value.Int(1)}),
-			[]value.Dict{zDict, zDict},
+			[]*value.Dict{zDict, zDict},
 			[]value.Value{vDouble, vInt, l0, vDouble, vInt, l0},
 		},
 		{
 			[]value.Value{l2, l2},
 			value.NewDict(map[string]value.Value{"depth": value.Int(2)}),
-			[]value.Dict{zDict, zDict},
+			[]*value.Dict{zDict, zDict},
 			[]value.Value{vDouble, vInt, vInt, vDouble, vDict, vDouble, vInt, vInt, vDouble, vDict},
 		},
 		{
 			[]value.Value{l2, l2},
 			value.NewDict(map[string]value.Value{"depth": value.Int(3)}),
-			[]value.Dict{zDict, zDict},
+			[]*value.Dict{zDict, zDict},
 			[]value.Value{vDouble, vInt, vInt, vDouble, vDict, vDouble, vInt, vInt, vDouble, vDict},
 		},
 		{
 			[]value.Value{l2, l2},
 			value.NewDict(nil),
-			[]value.Dict{zDict, zDict},
+			[]*value.Dict{zDict, zDict},
 			[]value.Value{vDouble, vInt, vInt, vDouble, vDict, vDouble, vInt, vInt, vDouble, vDict},
 		},
 	}

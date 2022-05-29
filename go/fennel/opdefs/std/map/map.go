@@ -15,12 +15,12 @@ type mapper struct {
 }
 
 func (m mapper) New(
-	args value.Dict, bootargs map[string]interface{},
+	args *value.Dict, bootargs map[string]interface{},
 ) (operators.Operator, error) {
 	return mapper{}, nil
 }
 
-func (m mapper) Apply(_ context.Context, kwargs value.Dict, in operators.InputIter, out *value.List) error {
+func (m mapper) Apply(_ context.Context, kwargs *value.Dict, in operators.InputIter, out *value.List) error {
 	for in.HasMore() {
 		_, context, err := in.Next()
 		if err != nil {

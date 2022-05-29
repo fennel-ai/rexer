@@ -145,13 +145,13 @@ func TestProfileOpCache(t *testing.T) {
 	// After two minutes, the profile value should expire
 	time.Sleep(cacheValueDuration + time.Second)
 
-	expected2 := expected.Clone().(value.Dict)
+	expected2 := expected.Clone().(*value.Dict)
 	expected2.Set("profile_value", val)
 	verify(t, &i, query, expected2)
 	cacheValueDuration = 2 * time.Minute
 }
 
-func verify(t *testing.T, i *interpreter.Interpreter, query ast.Ast, expected value.Dict) {
+func verify(t *testing.T, i *interpreter.Interpreter, query ast.Ast, expected *value.Dict) {
 	out, err := query.AcceptValue(i)
 	assert.NoError(t, err)
 	rows := out.(value.List)

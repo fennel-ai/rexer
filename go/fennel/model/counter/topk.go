@@ -30,7 +30,7 @@ func NewTopK(durations []uint64) Histogram {
 }
 
 func (t topK) Transform(v value.Value) (value.Value, error) {
-	elem, ok := v.(value.Dict)
+	elem, ok := v.(*value.Dict)
 	if !ok {
 		return nil, fmt.Errorf("expected value to be a dict but got: '%s' instead", v)
 	}
@@ -58,7 +58,7 @@ func (t topK) Transform(v value.Value) (value.Value, error) {
 	return value.NewDict(map[string]value.Value{string(keystr): score}), nil
 }
 
-func (t topK) Start(end ftypes.Timestamp, kwargs value.Dict) (ftypes.Timestamp, error) {
+func (t topK) Start(end ftypes.Timestamp, kwargs *value.Dict) (ftypes.Timestamp, error) {
 	d, err := extractDuration(kwargs, t.Durations)
 	if err != nil {
 		return 0, err
@@ -67,7 +67,7 @@ func (t topK) Start(end ftypes.Timestamp, kwargs value.Dict) (ftypes.Timestamp, 
 }
 
 func (t topK) Reduce(values []value.Value) (value.Value, error) {
-	all := make([]value.Dict, len(values))
+	all := make([]*value.Dict, len(values))
 	var err error
 	for i, v := range values {
 		all[i], err = t.extract(v)
@@ -106,15 +106,15 @@ func (t topK) Merge(a, b value.Value) (value.Value, error) {
 	if err != nil {
 		return nil, err
 	}
-	return t.merge([]value.Dict{da, db})
+	return t.merge([]*value.Dict{da, db})
 }
 
 func (t topK) Zero() value.Value {
 	return value.NewDict(nil)
 }
 
-func (t topK) extract(v value.Value) (value.Dict, error) {
-	d, ok := v.(value.Dict)
+func (t topK) extract(v value.Value) (*value.Dict, error) {
+	d, ok := v.(*value.Dict)
 	if !ok {
 		return value.NewDict(nil), fmt.Errorf("expected dict but got: %v", v)
 	}
@@ -123,13 +123,13 @@ func (t topK) extract(v value.Value) (value.Dict, error) {
 		switch v.(type) {
 		case value.Int, value.Double:
 		default:
-			return value.Dict{}, fmt.Errorf("expected value in dict to be int/float but found: '%v'", v)
+			return nil, fmt.Errorf("expected value in dict to be int/float but found: '%v'", v)
 		}
 	}
 	return d, nil
 }
 
-func (t topK) merge(ds []value.Dict) (value.Dict, error) {
+func (t topK) merge(ds []*value.Dict) (*value.Dict, error) {
 	ret := value.NewDict(nil)
 	for _, d := range ds {
 		for k, v := range d.Iter() {
@@ -139,7 +139,7 @@ func (t topK) merge(ds []value.Dict) (value.Dict, error) {
 			} else {
 				vNew, err := v.Op("+", vOld)
 				if err != nil {
-					return value.Dict{}, nil
+					return nil, nil
 				}
 				ret.Set(k, vNew)
 			}

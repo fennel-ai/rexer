@@ -116,8 +116,8 @@ func TestRollingAverage_Bucketize_Valid(t *testing.T) {
 func TestRollingAverage_Bucketize_Invalid(t *testing.T) {
 	t.Parallel()
 	h := NewAverage([]uint64{123})
-	cases := [][]value.Dict{
-		{value.Dict{}},
+	cases := [][]*value.Dict{
+		{value.NewDict(nil)},
 		{value.NewDict(map[string]value.Value{"groupkey": value.Int(1), "timestamp": value.Int(2)})},
 		{value.NewDict(map[string]value.Value{"groupkey": value.Int(1), "timestamp": value.Int(2), "value": value.Nil})},
 		{value.NewDict(map[string]value.Value{"groupkey": value.Int(1), "timestamp": value.Bool(true), "value": value.Int(4)})},

@@ -391,7 +391,7 @@ func TestBatchValue(t *testing.T) {
 	keys := []value.Value{value.Int(0), value.Int(0)}
 	h1 := counter2.NewSum([]uint64{14 * 3600 * 24, 3600 * 24})
 	h2 := counter2.NewAverage([]uint64{14 * 3600 * 24, 3600 * 24})
-	kwargs := []value.Dict{
+	kwargs := []*value.Dict{
 		value.NewDict(map[string]value.Value{"duration": value.Int(14 * 3600 * 24)}),
 		value.NewDict(map[string]value.Value{"duration": value.Int(14 * 3600 * 24)})}
 	// initially should find nothing
@@ -521,7 +521,7 @@ func TestDeltaLogged(t *testing.T) {
 	assert.Equal(t, found, found2)
 }
 
-func assertInvalid(tier tier.Tier, ctx context.Context, t *testing.T, ds ...value.Dict) {
+func assertInvalid(tier tier.Tier, ctx context.Context, t *testing.T, ds ...*value.Dict) {
 	table := value.List{}
 	for _, d := range ds {
 		table.Append(d)

@@ -35,7 +35,7 @@ func ToCapnValue(v Value) (CapnValue, error) {
 			}
 			l.Set(i, cv)
 		}
-	case Dict:
+	case *Dict:
 		m, err := cv.NewDict()
 		if err != nil {
 			return cv, err
@@ -158,7 +158,7 @@ func ToProtoValue(v Value) (PValue, error) {
 		}
 		pvl := &PVList{Values: list}
 		return PValue{Node: &PValue_List{List: pvl}}, nil
-	case Dict:
+	case *Dict:
 		pvd, err := ToProtoDict(t)
 		if err != nil {
 			return PValue{Node: &PValue_Nil{}}, err
@@ -214,19 +214,19 @@ func FromProtoValue(pv *PValue) (Value, error) {
 	return Nil, fmt.Errorf("unrecognized proto value type: %v", pv.Node)
 }
 
-func FromProtoDict(pd *PVDict) (Dict, error) {
+func FromProtoDict(pd *PVDict) (*Dict, error) {
 	ret := make(map[string]Value, 0)
 	for k, pv := range pd.Values {
 		v, err := FromProtoValue(pv)
 		if err != nil {
-			return Dict{}, fmt.Errorf("can not convert element of dict to value: %v", pv)
+			return nil, fmt.Errorf("can not convert element of dict to value: %v", pv)
 		}
 		ret[k] = v
 	}
 	return NewDict(ret), nil
 }
 
-func ToProtoDict(d Dict) (PVDict, error) {
+func ToProtoDict(d *Dict) (PVDict, error) {
 	dict := make(map[string]*PValue, d.Len())
 	for k, v := range d.Iter() {
 		pv, err := ToProtoValue(v)

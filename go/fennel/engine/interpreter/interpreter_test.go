@@ -14,7 +14,7 @@ import (
 	_ "fennel/opdefs/std/set"
 )
 
-func getInterpreter(bootargs map[string]interface{}, args value.Dict) Interpreter {
+func getInterpreter(bootargs map[string]interface{}, args *value.Dict) Interpreter {
 	if bootargs == nil {
 		bootargs = map[string]interface{}{}
 	}
@@ -23,14 +23,14 @@ func getInterpreter(bootargs map[string]interface{}, args value.Dict) Interprete
 }
 
 func testValid(t *testing.T, node ast.Ast, expected value.Value) {
-	i := getInterpreter(nil, value.Dict{})
+	i := getInterpreter(nil, value.NewDict(nil))
 	ret, err := node.AcceptValue(i)
 	assert.NoError(t, err)
 	assert.Equal(t, expected, ret)
 }
 
 func testError(t *testing.T, node ast.Ast) {
-	i := getInterpreter(nil, value.Dict{})
+	i := getInterpreter(nil, value.NewDict(nil))
 	_, err := node.AcceptValue(i)
 	assert.Error(t, err)
 }
@@ -149,21 +149,21 @@ func TestInterpreter_VisitStatement(t *testing.T) {
 }
 
 func TestInterpreter_QueryArgs(t *testing.T) {
-	i := getInterpreter(nil, value.Dict{})
+	i := getInterpreter(nil, value.NewDict(nil))
 	// initially nothing
-	assert.Equal(t, value.NewDict(nil), i.queryArgs())
+	assert.True(t, value.NewDict(nil).Equal(i.queryArgs()))
 	// queryargs are found at the root env
 	args := value.NewDict(map[string]value.Value{"x": value.Int(0)})
 	i = getInterpreter(nil, args)
 	assert.NoError(t, i.env.Define("__args__", args))
-	assert.Equal(t, args, i.queryArgs())
+	assert.True(t, args.Equal(i.queryArgs()))
 	// should work even if we create child envs
 	i.env = i.env.PushEnv()
 	i.env = i.env.PushEnv()
-	assert.Equal(t, args, i.queryArgs())
+	assert.True(t, args.Equal(i.queryArgs()))
 	// or even if we shadow query args
 	assert.NoError(t, i.env.Define("__args__", value.String("ijk")))
-	assert.Equal(t, args, i.queryArgs())
+	assert.True(t, args.Equal(i.queryArgs()))
 }
 
 var res value.Value
@@ -194,13 +194,13 @@ func TestInterpreter_VisitLookup(t *testing.T) {
 }
 
 func TestFailEmptyOperand(t *testing.T) {
-	i := getInterpreter(nil, value.Dict{})
+	i := getInterpreter(nil, value.NewDict(nil))
 	_, err := i.VisitOpcall([]ast.Ast{}, []string{}, "std", "set", ast.Dict{})
 	require.Error(t, err)
 }
 
 func TestVisitOpCallMultiop(t *testing.T) {
-	i := getInterpreter(nil, value.Dict{})
+	i := getInterpreter(nil, value.NewDict(nil))
 	q := ast.OpCall{
 		Operands: []ast.Ast{
 			ast.List{
@@ -283,7 +283,7 @@ func TestInterpreter_VisitIfelse(t *testing.T) {
 
 // Test that only one of the then/else branches is evaluated
 func testDualBranchEvaluation(t *testing.T) {
-	i := getInterpreter(nil, value.Dict{})
+	i := getInterpreter(nil, value.NewDict(nil))
 
 	// Only the then branch should be evaluated
 	ifelse1 := ast.IfElse{
@@ -325,7 +325,7 @@ func testDualBranchEvaluation(t *testing.T) {
 }
 
 func TestInterpreter_VisitVarClone(t *testing.T) {
-	i := getInterpreter(nil, value.Dict{})
+	i := getInterpreter(nil, value.NewDict(nil))
 	// checking if var actually clones
 	// define a variable and perform an opcall that changes the input
 	// check if output is as expected and original variable was not changed
@@ -363,7 +363,7 @@ func TestInterpreter_VisitVarClone(t *testing.T) {
 
 	found, err := query.AcceptValue(i)
 	assert.NoError(t, err)
-	asDict, ok := found.(value.Dict)
+	asDict, ok := found.(*value.Dict)
 	assert.True(t, ok)
 	assert.True(t, expectedX.Equal(asDict.GetUnsafe("x")))
 	assert.True(t, expectedY.Equal(asDict.GetUnsafe("y")))
