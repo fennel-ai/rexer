@@ -2,8 +2,24 @@ package interpreter
 
 import (
 	"fmt"
+	"sync"
 
 	"fennel/lib/value"
+)
+
+var (
+	evPool = sync.Pool{
+		New: func() interface{} {
+			return &envValue{}
+		},
+	}
+	envPool = sync.Pool{
+		New: func() interface{} {
+			return &Env{
+				table: make(map[string]*envValue),
+			}
+		},
+	}
 )
 
 type envValue struct {
@@ -13,21 +29,23 @@ type envValue struct {
 
 type Env struct {
 	parent *Env
-	table  map[string]envValue
+	table  map[string]*envValue
 }
 
 func NewEnv(parent *Env) *Env {
-	return &Env{
-		parent: parent,
-		table:  make(map[string]envValue),
-	}
+	e := envPool.Get().(*Env)
+	e.parent = parent
+	return e
 }
 
 func (e *Env) define(name string, value value.Value, useRef bool) error {
 	if _, ok := e.table[name]; ok {
 		return fmt.Errorf("re-defining symbol: '%s'", name)
 	}
-	e.table[name] = envValue{value, useRef}
+	ev := evPool.Get().(*envValue)
+	ev.useRef = useRef
+	ev.value = value
+	e.table[name] = ev
 	return nil
 }
 
@@ -57,7 +75,8 @@ func (e *Env) Lookup(name string) (value.Value, error) {
 
 // PushEnv creates an environment that is child of the caller
 func (e *Env) PushEnv() *Env {
-	return NewEnv(e)
+	re := NewEnv(e)
+	return re
 }
 
 // PopEnv removes the outermost environment to return the parent environment
@@ -65,5 +84,12 @@ func (e *Env) PopEnv() (*Env, error) {
 	if e == nil {
 		return nil, fmt.Errorf("can not pop nil environment")
 	}
-	return e.parent, nil
+	p := e.parent
+	for k, ev := range e.table {
+		delete(e.table, k)
+		evPool.Put(ev)
+	}
+	e.parent = nil
+	envPool.Put(e)
+	return p, nil
 }
