@@ -290,6 +290,7 @@ func (l List) Values() []Value {
 
 type Dict struct {
 	values map[string]Value
+	cow    bool // Flag to indicate if the dictionary values should be copied on write.
 }
 
 func (d Dict) Op(opt string, other Value) (Value, error) {
@@ -304,7 +305,10 @@ func NewDict(values map[string]Value) Dict {
 	for k, v := range values {
 		ret[k] = v
 	}
-	return Dict{ret}
+	return Dict{
+		values: ret,
+		cow:    false,
+	}
 }
 
 func (d Dict) Len() int {
@@ -323,7 +327,19 @@ func (d Dict) GetUnsafe(k string) Value {
 	return nil
 }
 
+func clone(values map[string]Value) map[string]Value {
+	ret := make(map[string]Value, len(values))
+	for k, v := range values {
+		ret[k] = v.Clone()
+	}
+	return ret
+}
+
 func (d *Dict) Set(k string, value Value) {
+	if d.cow {
+		d.values = clone(d.values)
+		d.cow = false
+	}
 	d.values[k] = value
 }
 
@@ -331,9 +347,12 @@ func (d Dict) Iter() map[string]Value {
 	return d.values
 }
 func (d *Dict) Del(k string) {
+	if d.cow {
+		d.values = clone(d.values)
+		d.cow = false
+	}
 	delete(d.values, k)
 }
-
 func (d Dict) isValue() {}
 func (d Dict) Equal(v Value) bool {
 	switch right := v.(type) {
@@ -375,11 +394,10 @@ func (d Dict) String() string {
 	return sb.String()
 }
 func (d Dict) Clone() Value {
-	clone := make(map[string]Value, d.Len())
-	for k, v := range d.Iter() {
-		clone[k] = v.Clone()
+	return Dict{
+		values: d.values,
+		cow:    true,
 	}
-	return NewDict(clone)
 }
 func (d Dict) MarshalJSON() ([]byte, error) {
 	return []byte(d.String()), nil

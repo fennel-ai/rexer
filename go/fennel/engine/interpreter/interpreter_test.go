@@ -151,19 +151,19 @@ func TestInterpreter_VisitStatement(t *testing.T) {
 func TestInterpreter_QueryArgs(t *testing.T) {
 	i := getInterpreter(nil, value.Dict{})
 	// initially nothing
-	assert.Equal(t, value.NewDict(nil), i.queryArgs())
+	assert.True(t, value.NewDict(nil).Equal(i.queryArgs()))
 	// queryargs are found at the root env
 	args := value.NewDict(map[string]value.Value{"x": value.Int(0)})
 	i = getInterpreter(nil, args)
 	assert.NoError(t, i.env.Define("__args__", args))
-	assert.Equal(t, args, i.queryArgs())
+	assert.True(t, args.Equal(i.queryArgs()))
 	// should work even if we create child envs
 	i.env = i.env.PushEnv()
 	i.env = i.env.PushEnv()
-	assert.Equal(t, args, i.queryArgs())
+	assert.True(t, args.Equal(i.queryArgs()))
 	// or even if we shadow query args
 	assert.NoError(t, i.env.Define("__args__", value.String("ijk")))
-	assert.Equal(t, args, i.queryArgs())
+	assert.True(t, args.Equal(i.queryArgs()))
 }
 
 var res value.Value
