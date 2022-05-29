@@ -50,22 +50,11 @@ var aggregate_errors = promauto.NewCounterVec(
 	}, []string{"aggregate"})
 
 func processAggregate(tr tier.Tier, agg libaggregate.Aggregate, stopCh <-chan struct{}) error {
-	var consumer kafka.FConsumer
-	var err error
-	if agg.Source == ftypes.Source("action") {
-		consumer, err = tr.NewKafkaConsumer(kafka.ConsumerConfig{
-			Topic:        action.ACTIONLOG_KAFKA_TOPIC,
-			GroupID:      string(agg.Name),
-			OffsetPolicy: kafka.DefaultOffsetPolicy,
-		})
-	} else if agg.Source == ftypes.Source("profile") {
-		consumer, err = tr.NewKafkaConsumer(kafka.ConsumerConfig{
-			Topic:        profile.PROFILELOG_KAFKA_TOPIC,
-			GroupID:      string(agg.Name),
-			OffsetPolicy: kafka.DefaultOffsetPolicy,
-		})
-	}
-
+	consumer, err := tr.NewKafkaConsumer(kafka.ConsumerConfig{
+		Topic:        action.ACTIONLOG_KAFKA_TOPIC,
+		GroupID:      string(agg.Name),
+		OffsetPolicy: kafka.DefaultOffsetPolicy,
+	})
 	if err != nil {
 		return fmt.Errorf("unable to start consumer for aggregate: %s. Error: %v", agg.Name, err)
 	}
@@ -168,7 +157,6 @@ func startAggregateProcessing(tr tier.Tier) error {
 		for a := range processedAggregates {
 			if _, ok := aggNames[a]; !ok {
 				close(processedAggregates[a])
-				delete(processedAggregates, a)
 			}
 		}
 	}

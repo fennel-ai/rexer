@@ -7,7 +7,6 @@ import (
 
 	"fennel/controller/action"
 	"fennel/controller/counter"
-	"fennel/controller/profile"
 	"fennel/engine"
 	"fennel/engine/ast"
 	"fennel/engine/interpreter/bootarg"
@@ -17,7 +16,6 @@ import (
 	libcounter "fennel/lib/counter"
 	"fennel/lib/ftypes"
 	"fennel/lib/phaser"
-	profilelib "fennel/lib/profile"
 	"fennel/lib/value"
 	modelCounter "fennel/model/counter"
 	"fennel/tier"
@@ -196,6 +194,7 @@ func batchValue(ctx context.Context, tier tier.Tier, batch []aggregate.GetAggVal
 	kwargs := make([]value.Dict, numOnline)
 
 	var onlinePtr []int
+
 	// Fetch online aggregate values
 	for i, req := range batch {
 		agg := unique[req.AggName]
@@ -226,48 +225,22 @@ func batchValue(ctx context.Context, tier tier.Tier, batch []aggregate.GetAggVal
 }
 
 func Update(ctx context.Context, tier tier.Tier, consumer kafka.FConsumer, agg aggregate.Aggregate) error {
-	var table value.List
-	var err error
-	var streamLen int
-	if agg.Source == aggregate.SOURCE_ACTION {
-		actions, err := action.ReadBatch(ctx, consumer, 20000, time.Second*10)
-		if err != nil {
-			return err
-		}
-		if len(actions) == 0 {
-			return nil
-		}
-
-		table, err = transformActions(tier, actions, agg.Query)
-		streamLen = len(actions)
-	} else if agg.Source == aggregate.SOURCE_PROFILE {
-		profiles, err := profile.ReadBatch(ctx, consumer, 20000, time.Second*10)
-
-		if err != nil {
-			return err
-		}
-		if len(profiles) == 0 {
-			return nil
-		}
-
-		table, err = transformProfiles(tier, profiles, agg.Query)
-		streamLen = len(profiles)
-	} else {
-		return fmt.Errorf("aggregate source %s not defined", agg.Source)
+	actions, err := action.ReadBatch(ctx, consumer, 20000, time.Second*10)
+	if err != nil {
+		return err
 	}
+	if len(actions) == 0 {
+		return nil
+	}
+	table, err := transformActions(tier, actions, agg.Query)
 
 	if err != nil {
 		return err
 	}
 
-	if table.Len() == 0 {
-		tier.Logger.Info(fmt.Sprintf("no data to update aggregate %s", agg.Name))
-		return nil
-	}
-
 	// Offline Aggregates
 	if agg.IsOffline() {
-		tier.Logger.Info(fmt.Sprintf("found %d new %s, %d transformed %s for offline aggregate: %s", streamLen, agg.Source, table.Len(), agg.Source, agg.Name))
+		tier.Logger.Info(fmt.Sprintf("found %d new actions, %d transformed actions for offline aggregate: %s", len(actions), table.Len(), agg.Name))
 
 		offlineTransformProducer := tier.Producers[libcounter.AGGREGATE_OFFLINE_TRANSFORM_TOPIC_NAME]
 		for i := 0; i < table.Len(); i++ {
@@ -287,7 +260,8 @@ func Update(ctx context.Context, tier tier.Tier, consumer kafka.FConsumer, agg a
 		_, err = consumer.Commit()
 		return err
 	}
-	tier.Logger.Info(fmt.Sprintf("found %d new %s, %d transformed %s for online aggregate: %s", streamLen, agg.Source, table.Len(), agg.Source, agg.Name))
+	tier.Logger.Info(fmt.Sprintf("found %d new actions for online aggregate: %s", len(actions), agg.Name))
+
 	histogram, err := modelCounter.ToHistogram(tier, agg.Id, agg.Options)
 	if err != nil {
 		return err
@@ -302,25 +276,6 @@ func Update(ctx context.Context, tier tier.Tier, consumer kafka.FConsumer, agg a
 // ============================
 // Private helpers below
 // ============================
-
-func transformProfiles(tier tier.Tier, profiles []profilelib.ProfileItem, query ast.Ast) (value.List, error) {
-	bootargs := bootarg.Create(tier)
-	executor := engine.NewQueryExecutor(bootargs)
-	table, err := profilelib.ToList(profiles)
-	if err != nil {
-		return value.NewList(), err
-	}
-
-	result, err := executor.Exec(context.Background(), query, value.NewDict(map[string]value.Value{"profiles": table}))
-	if err != nil {
-		return value.NewList(), err
-	}
-	table, ok := result.(value.List)
-	if !ok {
-		return value.NewList(), fmt.Errorf("query did not transform profiles into a list")
-	}
-	return table, nil
-}
 
 func transformActions(tier tier.Tier, actions []libaction.Action, query ast.Ast) (value.List, error) {
 	bootargs := bootarg.Create(tier)

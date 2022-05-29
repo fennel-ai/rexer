@@ -54,7 +54,7 @@ func TestProfileController(t *testing.T) {
 		OffsetPolicy: kafka.DefaultOffsetPolicy,
 	})
 	assert.NoError(t, err)
-	found, err := ReadBatch(ctx, consumer, 1, time.Second*2)
+	found, err := readBatch(ctx, consumer, 1, time.Second*2)
 	assert.NoError(t, err)
 	assert.Equal(t, profiles, found)
 
@@ -124,7 +124,7 @@ func TestProfileSetMultiWritesToKafka(t *testing.T) {
 		OffsetPolicy: kafka.DefaultOffsetPolicy,
 	})
 	assert.NoError(t, err)
-	found, err := ReadBatch(ctx, consumer, 4, time.Second*10)
+	found, err := readBatch(ctx, consumer, 4, time.Second*10)
 	assert.NoError(t, err)
 	assert.Equal(t, profiles, found)
 }
@@ -186,7 +186,7 @@ func TestGetBatched(t *testing.T) {
 		OffsetPolicy: kafka.DefaultOffsetPolicy,
 	})
 	assert.NoError(t, err)
-	found, err = ReadBatch(ctx, consumer, 3, time.Second*2)
+	found, err = readBatch(ctx, consumer, 3, time.Second*2)
 	assert.Equal(t, profiles, found)
 }
 

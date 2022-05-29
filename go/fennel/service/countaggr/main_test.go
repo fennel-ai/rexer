@@ -2,8 +2,6 @@ package main
 
 import (
 	"context"
-	profile2 "fennel/controller/profile"
-	profilelib "fennel/lib/profile"
 	"strconv"
 	"sync"
 	"testing"
@@ -31,7 +29,7 @@ type scenario struct {
 	consumer kafka.FConsumer
 }
 
-func TestEndToEndActionAggregates(t *testing.T) {
+func TestEndToEnd(t *testing.T) {
 	tier, err := test.Tier()
 	assert.NoError(t, err)
 	defer test.Teardown(tier)
@@ -42,7 +40,6 @@ func TestEndToEndActionAggregates(t *testing.T) {
 		{
 			libaggregate.Aggregate{
 				Name: "agg_1", Query: getQuery(), Timestamp: 123,
-				Source:  libaggregate.SOURCE_ACTION,
 				Options: libaggregate.Options{AggType: "sum", Durations: []uint64{3 * 3600, 6 * 3600, 3600}},
 				Id:      1,
 			},
@@ -57,7 +54,6 @@ func TestEndToEndActionAggregates(t *testing.T) {
 		{
 			libaggregate.Aggregate{
 				Name: "agg_2", Query: getQuery(), Timestamp: 123,
-				Source:  libaggregate.SOURCE_ACTION,
 				Options: libaggregate.Options{AggType: "timeseries_sum", Window: ftypes.Window_HOUR, Limit: 4},
 				Id:      2,
 			},
@@ -70,7 +66,6 @@ func TestEndToEndActionAggregates(t *testing.T) {
 		{
 			libaggregate.Aggregate{
 				Name: "agg_3", Query: getQuery(), Timestamp: 123,
-				Source:  libaggregate.SOURCE_ACTION,
 				Options: libaggregate.Options{AggType: "list", Durations: []uint64{3 * 3600, 6 * 3600, 3600}},
 				Id:      3,
 			},
@@ -86,7 +81,6 @@ func TestEndToEndActionAggregates(t *testing.T) {
 		{
 			libaggregate.Aggregate{
 				Name: "agg_4", Query: getQuery(), Timestamp: 123,
-				Source:  libaggregate.SOURCE_ACTION,
 				Options: libaggregate.Options{AggType: "min", Durations: []uint64{3 * 3600, 6 * 3600, 3600}},
 				Id:      4,
 			},
@@ -101,7 +95,6 @@ func TestEndToEndActionAggregates(t *testing.T) {
 		{
 			libaggregate.Aggregate{
 				Name: "agg_5", Query: getQuery(), Timestamp: 123,
-				Source:  libaggregate.SOURCE_ACTION,
 				Options: libaggregate.Options{AggType: "max", Durations: []uint64{3 * 3600, 6 * 3600, 3600}},
 				Id:      5,
 			},
@@ -116,7 +109,6 @@ func TestEndToEndActionAggregates(t *testing.T) {
 		{
 			libaggregate.Aggregate{
 				Name: "agg_6", Query: getQuery(), Timestamp: 123,
-				Source:  libaggregate.SOURCE_ACTION,
 				Options: libaggregate.Options{AggType: "stddev", Durations: []uint64{3 * 3600, 6 * 3600, 3600}},
 				Id:      6,
 			},
@@ -131,7 +123,6 @@ func TestEndToEndActionAggregates(t *testing.T) {
 		{
 			libaggregate.Aggregate{
 				Name: "agg_7", Query: getQuery(), Timestamp: 123,
-				Source:  libaggregate.SOURCE_ACTION,
 				Options: libaggregate.Options{AggType: "average", Durations: []uint64{3 * 3600, 6 * 3600, 3600}},
 				Id:      7,
 			},
@@ -146,7 +137,6 @@ func TestEndToEndActionAggregates(t *testing.T) {
 		{
 			libaggregate.Aggregate{
 				Name: "agg_8", Query: getQueryRate(), Timestamp: 123,
-				Source: libaggregate.SOURCE_ACTION,
 				Options: libaggregate.Options{
 					AggType:   "rate",
 					Durations: []uint64{3 * 3600, 6 * 3600, 3600},
@@ -165,7 +155,6 @@ func TestEndToEndActionAggregates(t *testing.T) {
 		{
 			libaggregate.Aggregate{
 				Name: "agg_9", Query: getQueryTopK(), Timestamp: 123,
-				Source:  libaggregate.SOURCE_ACTION,
 				Options: libaggregate.Options{AggType: "topk", Durations: []uint64{3 * 3600, 6 * 3600, 3600}, Limit: 1},
 				Id:      9,
 			},
@@ -249,113 +238,6 @@ func TestEndToEndActionAggregates(t *testing.T) {
 	}
 }
 
-func TestEndToEndProfileAggregates(t *testing.T) {
-	tier, err := test.Tier()
-	assert.NoError(t, err)
-	defer test.Teardown(tier)
-
-	ctx := context.Background()
-	uid := 1312
-	scenarios := []*scenario{
-		{
-			libaggregate.Aggregate{
-				Name: "agg_prof_1", Query: getProfileQuery(), Timestamp: 123,
-				Source:  libaggregate.SOURCE_PROFILE,
-				Options: libaggregate.Options{AggType: "sum", Durations: []uint64{3 * 3600, 6 * 3600, 3600}},
-				Id:      1,
-			},
-			value.Int(0),
-			value.Int(uid),
-			[]value.Dict{
-				value.NewDict(map[string]value.Value{"duration": value.Int(6 * 3600)}),
-				value.NewDict(map[string]value.Value{"duration": value.Int(3600)})},
-			[]value.Value{value.Int(3), value.Int(2)},
-			nil,
-		},
-		{
-			libaggregate.Aggregate{
-				Name: "agg_prof_2", Query: getProfileQuery(), Timestamp: 123,
-				Source:  libaggregate.SOURCE_PROFILE,
-				Options: libaggregate.Options{AggType: "min", Durations: []uint64{3 * 3600, 6 * 3600, 3600}},
-				Id:      2,
-			},
-			value.Double(0),
-			value.Int(uid),
-			[]value.Dict{
-				value.NewDict(map[string]value.Value{"duration": value.Int(6 * 3600)}),
-				value.NewDict(map[string]value.Value{"duration": value.Int(3600)})},
-			[]value.Value{value.Int(1), value.Int(2)},
-			nil,
-		},
-	}
-	clock := &test.FakeClock{}
-	tier.Clock = clock
-	t0 := ftypes.Timestamp(3600 * 24 * 15)
-	clock.Set(int64(t0))
-
-	for _, scenario := range scenarios {
-		// first store all aggregates
-		assert.NoError(t, aggregate.Store(ctx, tier, scenario.agg))
-		// and verify initial value is right
-		for i := range scenario.kwargs {
-			verify(t, tier, scenario.agg, scenario.key, scenario.kwargs[i], scenario.initial)
-		}
-
-		// next create kafka consumers for each
-		scenario.consumer, err = tier.NewKafkaConsumer(kafka.ConsumerConfig{
-			Topic:        profilelib.PROFILELOG_KAFKA_TOPIC,
-			GroupID:      string(scenario.agg.Name),
-			OffsetPolicy: kafka.DefaultOffsetPolicy,
-		})
-		assert.NoError(t, err)
-		defer scenario.consumer.Close()
-	}
-
-	// now fire a few profiles
-	p1 := logProfile(t, tier, strconv.Itoa(uid), uint64(t0+ftypes.Timestamp(1)), value.NewDict(map[string]value.Value{"value": value.Int(1)}))
-	p2 := logProfile(t, tier, strconv.Itoa(uid), uint64(t0+ftypes.Timestamp(4000)), value.NewDict(map[string]value.Value{"value": value.Int(2)}))
-	profiles := append(p1, p2...)
-
-	t1 := t0 + 7200
-	clock.Set(int64(t1))
-	// counts don't change until we run process, after which, they do
-	for _, scenario := range scenarios {
-		for i := range scenario.kwargs {
-			verify(t, tier, scenario.agg, scenario.key, scenario.kwargs[i], scenario.initial)
-		}
-	}
-	processInParallel(t, tier, scenarios)
-	// now the counts should have updated
-	for _, scenario := range scenarios {
-		for i := range scenario.kwargs {
-			verify(t, tier, scenario.agg, scenario.key, scenario.kwargs[i], scenario.expected[i])
-		}
-	}
-
-	profRequest := []profilelib.ProfileItemKey{profiles[0].GetProfileKey(), profiles[1].GetProfileKey()}
-	found, err := profile2.GetBatch(ctx, tier, profRequest)
-	assert.NoError(t, err)
-	assert.Empty(t, found[0].Value)
-	assert.Empty(t, found[1].Value)
-
-	consumer, err := tier.NewKafkaConsumer(kafka.ConsumerConfig{
-		Topic:        profilelib.PROFILELOG_KAFKA_TOPIC,
-		GroupID:      "insert_in_db",
-		OffsetPolicy: kafka.DefaultOffsetPolicy,
-	})
-	assert.NoError(t, err)
-	defer consumer.Close()
-	assert.NoError(t, profile2.TransferToDB(ctx, tier, consumer))
-
-	found, err = profile2.GetBatch(ctx, tier, profRequest)
-	assert.NoError(t, err)
-	expectedProfile := profiles[1]
-	expectedProfile.UpdateTime = 0
-	assert.Equal(t, expectedProfile, found[0])
-	assert.Equal(t, expectedProfile, found[1])
-
-}
-
 func processInParallel(t *testing.T, tier tier.Tier, scenarios []*scenario) {
 	wg := sync.WaitGroup{}
 	wg.Add(len(scenarios))
@@ -373,7 +255,7 @@ func verify(t *testing.T, tier tier.Tier, agg libaggregate.Aggregate, k value.Va
 	aggregate.InvalidateCache() // invalidate cache, as it is not being tested here
 	found, err := aggregate.Value(context.Background(), tier, agg.Name, k, kwargs)
 	assert.NoError(t, err)
-	// for floats, it's best to not do direct equality comparison but verify their difference is small
+	// for floats, it's best to not do direct equality comparison but verify their differnce is small
 	if _, ok := expected.(value.Double); ok {
 		asfloat, ok := found.(value.Double)
 		assert.True(t, ok)
@@ -402,18 +284,6 @@ func logAction(t *testing.T, tier tier.Tier, uid ftypes.OidType, ts ftypes.Times
 	err = action.Insert(context.Background(), tier, a2)
 	assert.NoError(t, err)
 	return []actionlib.Action{a1, a2}
-}
-
-func logProfile(t *testing.T, tier tier.Tier, oid string, ts uint64, val value.Value) []profilelib.ProfileItem {
-	p := profilelib.ProfileItem{
-		OType:      "user",
-		Oid:        oid,
-		Key:        "visited",
-		Value:      val,
-		UpdateTime: ts,
-	}
-	profile2.Set(context.Background(), tier, p)
-	return []profilelib.ProfileItem{p}
 }
 
 func getQueryRate() ast.Ast {
@@ -488,49 +358,6 @@ func getQuery() ast.Ast {
 				On: ast.Lookup{
 					On:       ast.Var{Name: "it"},
 					Property: "metadata",
-				},
-				Property: "value",
-			},
-		}},
-	}
-}
-
-func getProfileQuery() ast.Ast {
-	return ast.OpCall{
-		Namespace: "std",
-		Name:      "set",
-		Operands: []ast.Ast{ast.OpCall{
-			Namespace: "std",
-			Name:      "set",
-			Operands: []ast.Ast{ast.OpCall{
-				Namespace: "std",
-				Name:      "filter",
-				Operands:  []ast.Ast{ast.Var{Name: "profiles"}},
-				Vars:      []string{"v"},
-				Kwargs: ast.Dict{Values: map[string]ast.Ast{
-					"where": ast.Binary{
-						Left:  ast.Lookup{On: ast.Var{Name: "v"}, Property: "otype"},
-						Op:    "==",
-						Right: ast.MakeString("user"),
-					},
-				}},
-			}},
-			Vars: []string{"at"},
-			Kwargs: ast.Dict{Values: map[string]ast.Ast{
-				"field": ast.MakeString("groupkey"),
-				"value": ast.Lookup{
-					On:       ast.Var{Name: "at"},
-					Property: "oid",
-				}},
-			},
-		}},
-		Vars: []string{"it"},
-		Kwargs: ast.Dict{Values: map[string]ast.Ast{
-			"field": ast.MakeString("value"),
-			"value": ast.Lookup{
-				On: ast.Lookup{
-					On:       ast.Var{Name: "it"},
-					Property: "value",
 				},
 				Property: "value",
 			},

@@ -15,7 +15,6 @@ import (
 
 type AggregateSer struct {
 	Name      ftypes.AggName   `db:"name"`
-	Source    ftypes.Source    `db:"source"`
 	QuerySer  []byte           `db:"query_ser"`
 	Timestamp ftypes.Timestamp `db:"timestamp"`
 	OptionSer []byte           `db:"options_ser"`
@@ -37,7 +36,6 @@ func (ser AggregateSer) ToAggregate() (aggregate.Aggregate, error) {
 	agg.Options = aggregate.FromProtoOptions(&popt)
 	agg.Active = ser.Active
 	agg.Id = ser.Id
-	agg.Source = ser.Source
 	return agg, nil
 }
 
@@ -53,8 +51,8 @@ func Store(ctx context.Context, tier tier.Tier, agg aggregate.Aggregate) error {
 	if len(agg.Name) > 255 {
 		return fmt.Errorf("aggregate name can not be longer than 255 chars")
 	}
-	sql := `INSERT INTO aggregate_config (name, query_ser, timestamp, source, options_ser) VALUES (?, ?, ?, ?, ?)`
-	_, err = tier.DB.QueryContext(ctx, sql, agg.Name, querySer, agg.Timestamp, agg.Source, optionSer)
+	sql := `INSERT INTO aggregate_config (name, query_ser, timestamp, options_ser) VALUES (?, ?, ?, ?)`
+	_, err = tier.DB.QueryContext(ctx, sql, agg.Name, querySer, agg.Timestamp, optionSer)
 	return err
 }
 
