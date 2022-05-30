@@ -16,6 +16,7 @@ export type inputType = {
     kafkaConfig: pulumi.Output<Record<string, string>>,
     modelServingConfig: pulumi.Output<Record<string, string>>,
     glueConfig: pulumi.Output<Record<string, string>>,
+    unleashConfig: pulumi.Output<Record<string, string>>,
 }
 
 export type outputType = {}
@@ -73,7 +74,15 @@ export const setup = async (input: inputType) => {
         metadata: {
             name: "tier-conf",
         }
-    }, { provider, deleteBeforeReplace: true })
+    }, { provider, deleteBeforeReplace: true });
+
+    const unleashConf = new k8s.core.v1.ConfigMap("unleash-conf", {
+        data: input.unleashConfig,
+        metadata: {
+            name: "unleash-conf",
+        }
+    }, { provider, deleteBeforeReplace: true });
+
     const output: outputType = {}
     return output
 }

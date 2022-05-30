@@ -300,6 +300,7 @@ const setupResources = async () => {
         region: input.region,
         roleArn: input.roleArn,
         tierId: input.tierId,
+        namespace: input.namespace,
         unleashDbEndpoint: input.unleashDbEndpoint,
         unleashDbPort: input.unleashDbPort,
         kubeconfig: input.kubeconfig,
@@ -348,6 +349,9 @@ const setupResources = async () => {
                 glueConfig: pulumi.output({
                     "region": input.region,
                     "jobNameByAgg": jobNamesStr,
+                } as Record<string, string>),
+                unleashConfig: pulumi.output({
+                    "endpoint": unleashOutput.unleashEndpoint,
                 } as Record<string, string>),
             })
         })

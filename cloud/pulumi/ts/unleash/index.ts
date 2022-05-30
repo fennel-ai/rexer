@@ -1,7 +1,6 @@
 import * as k8s from "@pulumi/kubernetes";
 import * as aws from "@pulumi/aws";
 import * as postgresql from "@pulumi/postgresql";
-import * as pulumi from "@pulumi/pulumi";
 import {UNLEASH_PASSWORD, UNLEASH_USERNAME} from "../tier-consts/consts";
 
 export const plugins = {
@@ -13,6 +12,7 @@ export type inputType = {
     roleArn: string,
     region: string,
     tierId: number,
+    namespace: string,
     unleashDbEndpoint: string,
     unleashDbPort: number,
     kubeconfig: string,
@@ -23,7 +23,7 @@ export type outputType = {
     unleashEndpoint: string,
 }
 
-export const setup = async (input: inputType): Promise<pulumi.Output<outputType>> => {
+export const setup = async (input: inputType): Promise<outputType> => {
     const provider = new aws.Provider(`t-${input.tierId}-unleash-db-provider`, {
         region: <aws.Region>input.region,
         assumeRole: {
@@ -35,6 +35,7 @@ export const setup = async (input: inputType): Promise<pulumi.Output<outputType>
 
     const k8sProvider = new k8s.Provider(`t-${input.tierId}-unleash-k8s-provider`, {
         kubeconfig: input.kubeconfig,
+        namespace: input.namespace,
     })
 
     const databaseName = `t_${input.tierId}_unleashdb`;
@@ -59,7 +60,10 @@ export const setup = async (input: inputType): Promise<pulumi.Output<outputType>
     //      node).
     //  3. disable authentication - this service is deployed in the EKS cluster which is already behind private
     //      subnets and have coarser security groups defined.
-    const unleash = new k8s.helm.v3.Release(`t-${input.tierId}-unleash`, {
+    const releaseName = `t-${input.tierId}-unleash`;
+    const containerPort = 4242;
+    const unleash = new k8s.helm.v3.Release(releaseName, {
+        name: releaseName,
         repositoryOpts: {
             "repo": "https://docs.getunleash.io/helm-charts",
         },
@@ -92,13 +96,13 @@ export const setup = async (input: inputType): Promise<pulumi.Output<outputType>
                 "port": input.unleashDbPort,
                 "user": UNLEASH_USERNAME,
                 "pass": UNLEASH_PASSWORD,
-            }
+            },
+            "containerPort": containerPort,
         }
-    }, { provider: k8sProvider, deleteBeforeReplace: true });
+    // replace on any changes. The features are persisted in the postgres DB so this should be work as intended
+    }, { provider: k8sProvider, replaceOnChanges: ["*"], deleteBeforeReplace: true });
 
-    // TODO(mohit): send endpoint which needs to be set in the services.
-    const output = pulumi.output({
-        unleashEndpoint: "",
-    })
-    return output
+    return {
+        unleashEndpoint: `http://${releaseName}.${input.namespace}:${containerPort}/api/`,
+    }
 }

@@ -151,7 +151,16 @@ export const serviceEnvs = [
                 key: "jobNameByAgg",
             }
         }
-    }
+    },
+    {
+        name: "UNLEASH_ENDPOINT",
+        valueFrom: {
+            configMapKeyRef: {
+                name: "unleash-conf",
+                key: "endpoint",
+            }
+        }
+    },
 ];
 
 export const UNLEASH_USERNAME = "unleash";

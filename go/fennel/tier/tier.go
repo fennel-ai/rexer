@@ -21,6 +21,7 @@ import (
 	"fennel/s3"
 	"fennel/sagemaker"
 
+	"github.com/Unleash/unleash-client-go/v3"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 )
@@ -45,6 +46,7 @@ type TierArgs struct {
 	CacheReplica     string         `arg:"--cache-replica,env:CACHE_REPLICA" json:"cache_replica,omitempty"`
 	Dev              bool           `arg:"--dev" default:"true" json:"dev,omitempty"`
 	OfflineAggBucket string         `arg:"--offline-agg-bucket,env:OFFLINE_AGG_BUCKET" json:"offline_agg_bucket,omitempty"`
+	UnleashEndpoint  string 		`arg:"--unleash-endpoint,env:UNLEASH_ENDPOINT" json:"unleash_endpoint,omitempty"`
 }
 
 type KafkaConsumerCreator func(libkafka.ConsumerConfig) (libkafka.FConsumer, error)
@@ -82,7 +84,7 @@ func (args TierArgs) Valid() error {
 		missingFields = append(missingFields, "TIER_ID")
 	}
 
-	// TODO: require args when ready for s3, glue, modelStore, sagemaker
+	// TODO: require args when ready for s3, glue, modelStore, sagemaker, UnleashEndpoint
 	if len(missingFields) > 0 {
 		return fmt.Errorf("missing fields: %s", strings.Join(missingFields, ", "))
 	}
@@ -243,6 +245,31 @@ func CreateFromArgs(args *TierArgs) (tier Tier, err error) {
 		smclient = c
 		s3client = s3.NewClient(s3.S3Args{Region: "ap-south-1"})
 	*/
+
+	// initialize unleash endpoint
+	//
+	// currently make the initialization optional, we should setup local developer infrastructure for this to work
+	// (e.g. for UT and integration tests, this could be a mock).
+	//
+	// otherwise, the behavior is similar to as-if the feature was disabled
+	if len(args.UnleashEndpoint) > 0 {
+		if err := unleash.Initialize(
+			unleash.WithListener(&unleash.DebugListener{}),
+			// project name for unpaid self-hosted instances is `default` by-default
+			unleash.WithProjectName("default"),
+			// TODO: Consider passing this name as EnvVar to have different services different names for granular
+			// request logging
+			unleash.WithAppName("fennel-servers"),
+			// disable reporting metrics, they are currently of no use right now
+			unleash.WithDisableMetrics(true),
+			// TODO: Consider setting environment (default v/s staging v/s prod) for testing out behaviors on
+			// staging first and prod later
+			unleash.WithEnvironment("production"),
+			unleash.WithUrl(args.UnleashEndpoint),
+		); err != nil {
+			return tier, fmt.Errorf("creating tier ")
+		}
+	}
 
 	return Tier{
 		DB:               sqlConn.(db.Connection),
