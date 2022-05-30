@@ -10,6 +10,7 @@ func PutBytes(b []byte, in []byte) (int, error) {
 	return PutString(b, *(*string)(unsafe.Pointer(&in)))
 }
 
+// ReadBytes doesn't allocate the underlying data, but only creates the slice header
 func ReadBytes(b []byte) ([]byte, int, error) {
 	len_, n := binary.Uvarint(b)
 	if n <= 0 {
@@ -23,7 +24,7 @@ func ReadBytes(b []byte) ([]byte, int, error) {
 
 func PutString(b []byte, s string) (int, error) {
 	len_ := len(s)
-	lenbuf := [8]byte{}
+	lenbuf := [10]byte{}
 	n := binary.PutUvarint(lenbuf[:], uint64(len_))
 	if len(b) < n+len(s) {
 		return 0, fmt.Errorf("buffer too small")
@@ -42,7 +43,7 @@ func ReadString(b []byte) (string, int, error) {
 }
 
 func PutUvarint(b []byte, n uint64) (int, error) {
-	lenbuf := [8]byte{}
+	lenbuf := [10]byte{}
 	sz := binary.PutUvarint(lenbuf[:], n)
 	if len(b) < sz {
 		return 0, fmt.Errorf("buffer too small")
@@ -68,7 +69,7 @@ func ReadVarint(b []byte) (int64, int, error) {
 }
 
 func PutVarint(b []byte, n int64) (int, error) {
-	lenbuf := [8]byte{}
+	lenbuf := [10]byte{}
 	sz := binary.PutVarint(lenbuf[:], n)
 	if len(b) < sz {
 		return 0, fmt.Errorf("buffer too small")
