@@ -8,7 +8,7 @@ import * as process from "process";
 import * as path from 'path';
 
 export const plugins = {
-    "eks": "v0.37.1",
+    "eks": "0.39.0",
     "kubernetes": "v3.18.0",
     "command": "v0.0.3",
     "aws": "v4.38.1",
