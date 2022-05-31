@@ -332,14 +332,9 @@ export const setup = async (input: inputType): Promise<pulumi.Output<outputType>
         enabledClusterLogTypes: ["api", "authenticator", "controllerManager", "scheduler"],
     }, { provider: awsProvider });
 
-    const ekscluster = cluster.core.cluster.name.apply(async (name) => {
-        return await aws.eks.getCluster({
-            name: name,
-        }, { provider: awsProvider })
-    })
     // Get the cluster security group created by EKS for managed node groups and fargate.
     // Source: https://docs.aws.amazon.com/eks/latest/userguide/sec-group-reqs.html
-    const clusterSg = ekscluster.vpcConfig.clusterSecurityGroupId
+    const clusterSg = cluster.eksCluster.vpcConfig.clusterSecurityGroupId;
 
     const instanceRole = cluster.core.instanceRoles.apply((roles) => { return roles[0].name })
     const instanceRoleArn = cluster.core.instanceRoles.apply((roles) => { return roles[0].arn })
