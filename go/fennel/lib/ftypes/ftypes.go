@@ -17,6 +17,7 @@ type RequestID string
 type AggType string
 type AggName string
 type AggId uint32
+type Source string
 
 type ModelName string
 type ModelVersion string
