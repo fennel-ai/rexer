@@ -52,7 +52,6 @@ var Schema = db.Schema{
 			name VARCHAR(255) NOT NULL,
 			query_ser BLOB NOT NULL,
 			timestamp BIGINT UNSIGNED NOT NULL,
-			source VARCHAR(64) NOT NULL DEFAULT 'action',
 			options_ser BLOB NOT NULL,
 			active BOOL NOT NULL DEFAULT TRUE,
 			PRIMARY KEY(name),
@@ -118,5 +117,5 @@ var Schema = db.Schema{
 			PRIMARY KEY (namespace, identifier)
 		);`,
 	// ==================== END Schema for Phaser ======================
-
+	13: `ALTER TABLE aggregate_config ADD COLUMN source VARCHAR(64) NOT NULL DEFAULT 'action';`,
 }
