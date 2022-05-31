@@ -14,7 +14,7 @@ import (
 	_ "fennel/opdefs/std/set"
 )
 
-func getInterpreter(bootargs map[string]interface{}, args value.Dict) Interpreter {
+func getInterpreter(bootargs map[string]interface{}, args value.Dict) *Interpreter {
 	if bootargs == nil {
 		bootargs = map[string]interface{}{}
 	}

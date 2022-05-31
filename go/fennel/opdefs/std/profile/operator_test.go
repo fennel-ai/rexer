@@ -95,7 +95,7 @@ func TestProfileOp(t *testing.T) {
 		"key":           value.String(key1),
 		"profile_value": val1,
 	})
-	verify(t, &i, query, expected)
+	verify(t, i, query, expected)
 }
 
 func TestProfileOpCache(t *testing.T) {
@@ -134,20 +134,20 @@ func TestProfileOpCache(t *testing.T) {
 	i, err := interpreter.NewInterpreter(context.Background(), bootarg.Create(tier),
 		value.NewDict(map[string]value.Value{"actions": inTable}))
 	assert.NoError(t, err)
-	verify(t, &i, query, expected)
+	verify(t, i, query, expected)
 
 	// test cache by setting a profile now
 	req1 := profilelib.ProfileItem{OType: otype, Oid: strconv.Itoa(oid), Key: key, UpdateTime: ver, Value: val}
 	assert.NoError(t, profile.TestSet(ctx, tier, req1))
 	// we should still get back default value if it is cached properly
-	verify(t, &i, query, expected)
+	verify(t, i, query, expected)
 
 	// After two minutes, the profile value should expire
 	time.Sleep(cacheValueDuration + time.Second)
 
 	expected2 := expected.Clone().(value.Dict)
 	expected2.Set("profile_value", val)
-	verify(t, &i, query, expected2)
+	verify(t, i, query, expected2)
 	cacheValueDuration = 2 * time.Minute
 }
 

@@ -21,21 +21,21 @@ type Interpreter struct {
 	ctx      context.Context
 }
 
-func NewInterpreter(ctx context.Context, bootargs map[string]interface{}, args value.Dict) (Interpreter, error) {
+func NewInterpreter(ctx context.Context, bootargs map[string]interface{}, args value.Dict) (*Interpreter, error) {
 	env := NewEnv(nil)
 	if err := env.Define("__args__", args); err != nil {
-		return Interpreter{}, err
+		return nil, err
 	}
 	for name, val := range args.Iter() {
 		if err := env.Define(name, val); err != nil {
-			return Interpreter{}, fmt.Errorf("could not define arg '%s' %v", name, err)
+			return nil, fmt.Errorf("could not define arg '%s' %v", name, err)
 		}
 	}
 	// Push a new environment on top of base environment.
 	// This way, user query can define variables with the
 	// same names as those in query args which they will now mask
 	env = NewEnv(env)
-	return Interpreter{
+	return &Interpreter{
 		env:      env,
 		bootargs: bootargs,
 		cache:    new(sync.Map),
@@ -43,9 +43,9 @@ func NewInterpreter(ctx context.Context, bootargs map[string]interface{}, args v
 	}, nil
 }
 
-var _ ast.VisitorValue = Interpreter{}
+var _ ast.VisitorValue = (*Interpreter)(nil)
 
-func (i Interpreter) queryArgs() value.Dict {
+func (i *Interpreter) queryArgs() value.Dict {
 	// query args are present in the root Env (has no parent)
 	rootEnv := i.env
 	for rootEnv.parent != nil {
@@ -62,7 +62,7 @@ func (i Interpreter) queryArgs() value.Dict {
 	return asDict
 }
 
-func (i Interpreter) VisitLookup(on ast.Ast, property string) (value.Value, error) {
+func (i *Interpreter) VisitLookup(on ast.Ast, property string) (value.Value, error) {
 	val, err := on.AcceptValue(i)
 	if err != nil {
 		return value.Nil, err
@@ -78,7 +78,7 @@ func (i Interpreter) VisitLookup(on ast.Ast, property string) (value.Value, erro
 	return ret, nil
 }
 
-func (i Interpreter) visitInContext(tree ast.Ast, vars []string, varvals []value.Value) (value.Value, error) {
+func (i *Interpreter) visitInContext(tree ast.Ast, vars []string, varvals []value.Value) (value.Value, error) {
 	i.env = i.env.PushEnv()
 	defer func() { i.env, _ = i.env.PopEnv() }()
 
@@ -90,7 +90,7 @@ func (i Interpreter) visitInContext(tree ast.Ast, vars []string, varvals []value
 	return tree.AcceptValue(i)
 }
 
-func (i Interpreter) VisitStatement(name string, body ast.Ast) (value.Value, error) {
+func (i *Interpreter) VisitStatement(name string, body ast.Ast) (value.Value, error) {
 	val, err := body.AcceptValue(i)
 	if err != nil {
 		return value.Nil, err
@@ -107,7 +107,7 @@ func (i Interpreter) VisitStatement(name string, body ast.Ast) (value.Value, err
 	return val, nil
 }
 
-func (i Interpreter) VisitQuery(statements []ast.Statement) (value.Value, error) {
+func (i *Interpreter) VisitQuery(statements []ast.Statement) (value.Value, error) {
 	if len(statements) == 0 {
 		return value.Nil, fmt.Errorf("query can not be empty")
 	}
@@ -122,7 +122,7 @@ func (i Interpreter) VisitQuery(statements []ast.Statement) (value.Value, error)
 	return exp, nil
 }
 
-func (i Interpreter) VisitAtom(at ast.AtomType, lexeme string) (value.Value, error) {
+func (i *Interpreter) VisitAtom(at ast.AtomType, lexeme string) (value.Value, error) {
 	switch at {
 	case ast.Int:
 		n, err := strconv.Atoi(lexeme)
@@ -152,7 +152,7 @@ func (i Interpreter) VisitAtom(at ast.AtomType, lexeme string) (value.Value, err
 	}
 }
 
-func (i Interpreter) VisitUnary(op string, operand ast.Ast) (value.Value, error) {
+func (i *Interpreter) VisitUnary(op string, operand ast.Ast) (value.Value, error) {
 	v, err := operand.AcceptValue(i)
 	if err != nil {
 		return value.Nil, err
@@ -160,7 +160,7 @@ func (i Interpreter) VisitUnary(op string, operand ast.Ast) (value.Value, error)
 	return v.OpUnary(op)
 }
 
-func (i Interpreter) VisitBinary(left ast.Ast, op string, right ast.Ast) (value.Value, error) {
+func (i *Interpreter) VisitBinary(left ast.Ast, op string, right ast.Ast) (value.Value, error) {
 	l, err := left.AcceptValue(i)
 	if err != nil {
 		return value.Nil, err
@@ -178,7 +178,7 @@ func (i Interpreter) VisitBinary(left ast.Ast, op string, right ast.Ast) (value.
 	return l.Op(op, r)
 }
 
-func (i Interpreter) VisitList(values []ast.Ast) (value.Value, error) {
+func (i *Interpreter) VisitList(values []ast.Ast) (value.Value, error) {
 	ret := make([]value.Value, 0, len(values))
 	for _, v := range values {
 		val, err := v.AcceptValue(i)
@@ -190,7 +190,7 @@ func (i Interpreter) VisitList(values []ast.Ast) (value.Value, error) {
 	return value.NewList(ret...), nil
 }
 
-func (i Interpreter) VisitDict(values map[string]ast.Ast) (value.Value, error) {
+func (i *Interpreter) VisitDict(values map[string]ast.Ast) (value.Value, error) {
 	ret := make(map[string]value.Value, len(values))
 	for k, v := range values {
 		val, err := v.AcceptValue(i)
@@ -202,7 +202,7 @@ func (i Interpreter) VisitDict(values map[string]ast.Ast) (value.Value, error) {
 	return value.NewDict(ret), nil
 }
 
-func (i Interpreter) VisitOpcall(operands []ast.Ast, vars []string, namespace, name string, kwargs ast.Dict) (value.Value, error) {
+func (i *Interpreter) VisitOpcall(operands []ast.Ast, vars []string, namespace, name string, kwargs ast.Dict) (value.Value, error) {
 	if len(operands) == 0 {
 		return value.Nil, fmt.Errorf("operator '%s.%s' can not be applied: no operands", namespace, name)
 	}
@@ -254,11 +254,11 @@ func (i Interpreter) VisitOpcall(operands []ast.Ast, vars []string, namespace, n
 	return outtable, nil
 }
 
-func (i Interpreter) VisitVar(name string) (value.Value, error) {
+func (i *Interpreter) VisitVar(name string) (value.Value, error) {
 	return i.env.Lookup(name)
 }
 
-func (i Interpreter) VisitIfelse(condition ast.Ast, thenDo ast.Ast, elseDo ast.Ast) (value.Value, error) {
+func (i *Interpreter) VisitIfelse(condition ast.Ast, thenDo ast.Ast, elseDo ast.Ast) (value.Value, error) {
 	cond, err := condition.AcceptValue(i)
 	if err != nil {
 		return value.Nil, err
@@ -280,7 +280,7 @@ func (i Interpreter) VisitIfelse(condition ast.Ast, thenDo ast.Ast, elseDo ast.A
 	}
 }
 
-func (i Interpreter) getStaticKwargs(op operators.Operator, kwargs ast.Dict) (value.Dict, error) {
+func (i *Interpreter) getStaticKwargs(op operators.Operator, kwargs ast.Dict) (value.Dict, error) {
 	ret := value.NewDict(nil)
 	sig := op.Signature()
 	for _, p := range sig.StaticKwargs {
@@ -303,7 +303,7 @@ func (i Interpreter) getStaticKwargs(op operators.Operator, kwargs ast.Dict) (va
 	return ret, nil
 }
 
-func (i Interpreter) getContextKwargs(op operators.Operator, trees ast.Dict, inputs []value.List, vars []string) (operators.ZipTable, error) {
+func (i *Interpreter) getContextKwargs(op operators.Operator, trees ast.Dict, inputs []value.List, vars []string) (operators.ZipTable, error) {
 	ret := operators.NewZipTable(op)
 	sig := op.Signature()
 	varvals := make([]value.Value, len(vars))
@@ -361,7 +361,7 @@ func (i Interpreter) getContextKwargs(op operators.Operator, trees ast.Dict, inp
 	return ret, nil
 }
 
-func (i Interpreter) getOperator(namespace, name string) (operators.Operator, error) {
+func (i *Interpreter) getOperator(namespace, name string) (operators.Operator, error) {
 	op, err := operators.Locate(namespace, name)
 	if err != nil {
 		return op, err
@@ -370,7 +370,7 @@ func (i Interpreter) getOperator(namespace, name string) (operators.Operator, er
 	return ret, err
 }
 
-func (i Interpreter) visitAll(trees []ast.Ast) ([]value.Value, error) {
+func (i *Interpreter) visitAll(trees []ast.Ast) ([]value.Value, error) {
 	vals := make([]value.Value, len(trees))
 	var err error
 	if len(trees) == 1 {
@@ -381,8 +381,11 @@ func (i Interpreter) visitAll(trees []ast.Ast) ([]value.Value, error) {
 		for j := range trees {
 			idx := j
 			eg.Go(func() error {
+				// Copy interpreter here, so the go-routines don't share the
+				// same Env except the current one.
+				subtreeInterpreter := Interpreter(*i)
 				var err error
-				vals[idx], err = trees[idx].AcceptValue(i)
+				vals[idx], err = trees[idx].AcceptValue(&subtreeInterpreter)
 				return err
 			})
 		}
