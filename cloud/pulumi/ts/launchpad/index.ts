@@ -108,15 +108,6 @@ const tierConfs: Record<number, TierConf> = {
             },
         },
     },
-    // Lokal's staging tier
-    111: {
-        planeId: 4,
-        // use public subnets for ingress to allow traffic from outside the assigned vpc
-        ingressConf: {
-            usePublicSubnets: true,
-            loadBalancerScheme: PUBLIC_LB_SCHEME,
-        }
-    }
 }
 
 // map from plane id to its configuration.
