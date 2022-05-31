@@ -300,11 +300,11 @@ func (d Dict) OpUnary(opt string) (Value, error) {
 }
 
 func NewDict(values map[string]Value) Dict {
-	ret := make(map[string]Value, len(values))
-	for k, v := range values {
-		ret[k] = v
+	if len(values) == 0 {
+		return Dict{values: map[string]Value{}}
+	} else {
+		return Dict{values: values}
 	}
-	return Dict{ret}
 }
 
 func (d Dict) Len() int {
