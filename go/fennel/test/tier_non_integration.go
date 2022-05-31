@@ -81,5 +81,5 @@ func Teardown(tier tier.Tier) error {
 	if err := drop(tier.ID, "testdb" /*logicalname*/, os.Getenv("MYSQL_USERNAME"), os.Getenv("MYSQL_PASSWORD"), os.Getenv("MYSQL_SERVER_ADDRESS")); err != nil {
 		panic(fmt.Sprintf("error in db teardown: %v\n", err))
 	}
-	return tier.MilvusClient.Close()
+	return nil
 }

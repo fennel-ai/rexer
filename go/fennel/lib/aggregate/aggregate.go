@@ -21,6 +21,7 @@ var ValidTypes = []ftypes.AggType{
 	"rate",
 	"topk",
 	"cf",
+	"knn",
 }
 
 const (

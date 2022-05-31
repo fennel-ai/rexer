@@ -26,7 +26,7 @@ func TestHyperParameters(t *testing.T) {
 
 	h, err := getHyperParameters("test", `{"a": 123}`, supportedHyperParameters)
 	assert.NoError(t, err)
-	assert.Equal(t, `{"a":123,"b":4.5,"c":"sqrt","d":"blah"}`, h)
+	assert.Equal(t, map[string]interface{}{"a": 123, "b": 4.5, "c": "sqrt", "d": "blah"}, h)
 
 	_, err = getHyperParameters("test", `{"c": "fasdf"}`, supportedHyperParameters)
 	assert.Error(t, err)
@@ -38,7 +38,7 @@ func TestHyperParameters(t *testing.T) {
 
 	h, err = getHyperParameters("test", `{"c": "none", "d": "xyz"}`, supportedHyperParameters)
 	assert.NoError(t, err)
-	assert.Equal(t, `{"a":3,"b":4.5,"c":"none","d":"xyz"}`, h)
+	assert.Equal(t, map[string]interface{}{"a": 3, "b": 4.5, "c": "none", "d": "xyz"}, h)
 
 	_, err = getHyperParameters("test", `{"a":43, "b": "sqrt"}`, supportedHyperParameters)
 	assert.Error(t, err)
@@ -50,7 +50,7 @@ func TestHyperParameters(t *testing.T) {
 
 	h, err = getHyperParameters("test", `{"a":43, "b": 12.5}`, supportedHyperParameters)
 	assert.NoError(t, err)
-	assert.Equal(t, `{"a":43,"b":12.5,"c":"sqrt","d":"blah"}`, h)
+	assert.Equal(t, map[string]interface{}{"a": 43, "b": 12.5, "c": "sqrt", "d": "blah"}, h)
 
 	_, err = getHyperParameters("test", `{"a":"qrt", "b": 12.5}`, supportedHyperParameters)
 	assert.Error(t, err)
@@ -66,9 +66,9 @@ func TestHyperParameters(t *testing.T) {
 
 	h, err = getHyperParameters("test", `{"d" : "qwe", "c": "sqrt", "a": 1, "b": 2.5}`, supportedHyperParameters)
 	assert.NoError(t, err)
-	assert.Equal(t, `{"a":1,"b":2.5,"c":"sqrt","d":"qwe"}`, h)
+	assert.Equal(t, map[string]interface{}{"a": 1, "b": 2.5, "c": "sqrt", "d": "qwe"}, h)
 
 	h, err = getHyperParameters("test", ``, supportedHyperParameters)
 	assert.NoError(t, err)
-	assert.Equal(t, `{"a":3,"b":4.5,"c":"sqrt","d":"blah"}`, h)
+	assert.Equal(t, map[string]interface{}{"a": 3, "b": 4.5, "c": "sqrt", "d": "blah"}, h)
 }

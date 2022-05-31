@@ -70,8 +70,10 @@ func Store(ctx context.Context, tier tier.Tier, agg aggregate.Aggregate) error {
 			agg.Active = true
 			if agg.Name == "knn" {
 				// Call into Milvus to create the knn index
-				tier.MilvusClient.CreateKNNIndex(agg)
-
+				err = tier.MilvusClient.CreateKNNIndex(agg)
+				if err != nil {
+					return err
+				}
 			}
 			return modelAgg.Store(ctx, tier, agg)
 		} else {

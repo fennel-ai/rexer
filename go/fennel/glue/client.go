@@ -1,6 +1,7 @@
 package glue
 
 import (
+	"encoding/json"
 	"fennel/lib/aggregate"
 	"fennel/lib/ftypes"
 	hp "fennel/lib/hyperparam"
@@ -85,7 +86,16 @@ func (c GlueClient) ScheduleOfflineAggregate(tierID ftypes.RealmID, agg aggregat
 		if err != nil {
 			return err
 		}
-		jobArguments["--HYPERPARAMETERS"] = aws.String(hyperparameters)
+
+		hyperparametersStr, err := json.Marshal(hyperparameters)
+		if err != nil {
+			return fmt.Errorf("failed to marshal hyper params: %v", err)
+		}
+
+		if err != nil {
+			return err
+		}
+		jobArguments["--HYPERPARAMETERS"] = aws.String(string(hyperparametersStr))
 	}
 
 	// Create a trigger for every duration.

@@ -150,6 +150,7 @@ func batchValue(ctx context.Context, tier tier.Tier, batch []aggregate.GetAggVal
 	var namespaces []string
 	var identifier []string
 	var offlineKeys []value.String
+
 	// Fetch offline aggregate values
 	for i, req := range batch {
 		agg := unique[req.AggName]
@@ -185,27 +186,42 @@ func batchValue(ctx context.Context, tier tier.Tier, batch []aggregate.GetAggVal
 		}
 	}
 
+	var foreverPtr []int
+	foreverKeys := make([]value.Value, 0, len(batch))
+	var foreverAgg aggregate.Aggregate
+	var foreverKwarags value.Dict
+
 	// Fetch forever aggregates, ( these dont need histograms )
 	for i, req := range batch {
 		agg := unique[req.AggName]
-		if agg.Options.CronSchedule != "" {
+		if agg.Options.Durations != nil && len(agg.Options.Durations) > 0 && agg.Options.AggType != "timeseries_sum" {
 			continue
 		}
-		onlinePtr = append(onlinePtr, i)
-		histograms[i], err = modelCounter.ToHistogram(tier, agg.Id, agg.Options)
-		if err != nil {
-			return nil, fmt.Errorf("failed to make histogram from aggregate at index %d of batch: %v", i, err)
+		// Current code only supports knn, need to extend this to support other aggregates
+		if agg.Options.AggType != "knn" {
+			return nil, fmt.Errorf("error: Only KNN supports forever aggregates")
 		}
-		ids[i] = agg.Id
-		keys[i] = req.Key
-		kwargs[i] = req.Kwargs
+		foreverPtr = append(foreverPtr, i)
+		// Currently we assume the aggregate and kwarg is the same for all knn requests.
+		foreverAgg = agg
+		foreverKwarags = req.Kwargs
 	}
 
-	numOnline := n - len(offlinePtr)
-	histograms := make([]modelCounter.Histogram, numOnline)
-	ids := make([]ftypes.AggId, numOnline)
-	keys := make([]value.Value, numOnline)
-	kwargs := make([]value.Dict, numOnline)
+	if len(foreverPtr) > 0 {
+		nn, err := tier.MilvusClient.GetNeighbors(foreverAgg, foreverKeys, foreverKwarags)
+		if err != nil {
+			return nil, err
+		}
+		for j, v := range nn {
+			ret[foreverPtr[j]] = v
+		}
+	}
+
+	numOnline := n - len(offlinePtr) - len(foreverPtr)
+	histograms := make([]modelCounter.Histogram, 0, numOnline)
+	ids := make([]ftypes.AggId, 0, numOnline)
+	keys := make([]value.Value, 0, numOnline)
+	kwargs := make([]value.Dict, 0, numOnline)
 
 	var onlinePtr []int
 	// Fetch online aggregate values
@@ -215,13 +231,14 @@ func batchValue(ctx context.Context, tier tier.Tier, batch []aggregate.GetAggVal
 			continue
 		}
 		onlinePtr = append(onlinePtr, i)
-		histograms[i], err = modelCounter.ToHistogram(tier, agg.Id, agg.Options)
+		h, err := modelCounter.ToHistogram(tier, agg.Id, agg.Options)
 		if err != nil {
 			return nil, fmt.Errorf("failed to make histogram from aggregate at index %d of batch: %v", i, err)
 		}
-		ids[i] = agg.Id
-		keys[i] = req.Key
-		kwargs[i] = req.Kwargs
+		histograms = append(histograms, h)
+		ids = append(ids, agg.Id)
+		keys = append(keys, req.Key)
+		kwargs = append(kwargs, req.Kwargs)
 	}
 
 	if len(onlinePtr) > 0 {
@@ -303,19 +320,22 @@ func Update(ctx context.Context, tier tier.Tier, consumer kafka.FConsumer, agg a
 		return err
 	}
 
-	// Forever Aggregates dont user histograms
-	if agg.Options.Durations == nil || len(agg.Options.Durations) == 0 {
+	// Forever Aggregates dont use histograms
+	if (agg.Options.Durations == nil || len(agg.Options.Durations) == 0) && agg.Options.AggType != "timeseries_sum" {
 		// Current support for only KNN, add support for other aggregates
 		// https://linear.app/fennel-ai/issue/REX-1053/support-forever-aggregates
 		if agg.Name != "knn" {
 			return fmt.Errorf("forever aggregates are not supported for aggregate %s", agg.Name)
 		}
-
+		tier.Logger.Info(fmt.Sprintf("found %d new %s, %d transformed %s for forever aggregate: %s", streamLen, agg.Source, table.Len(), agg.Source, agg.Name))
 		// Update the aggregate
 		// Use milvus library to update the index with all actions
-
-		tier.Logger.Info(fmt.Sprintf("found %d new %s, %d transformed %s for forever aggregate: %s", streamLen, agg.Source, table.Len(), agg.Source, agg.Name))
-		return counter.Batch(ctx, tier, agg.Id, table)
+		err = tier.MilvusClient.InsertStream(agg, table)
+		if err != nil {
+			return err
+		}
+		_, err = consumer.Commit()
+		return err
 	}
 
 	// Online duration based aggregates
