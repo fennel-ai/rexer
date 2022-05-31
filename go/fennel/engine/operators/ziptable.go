@@ -27,6 +27,14 @@ func (zt *ZipTable) Append(first []value.Value, second value.Dict) error {
 	return nil
 }
 
+func (zt *ZipTable) Grow(n int) {
+	if cap(zt.first.Values()) >= zt.first.Len()+n {
+		return
+	}
+	zt.first.Grow(n)
+	zt.second.Grow(n)
+}
+
 func (zt *ZipTable) Len() int {
 	return zt.first.Len()
 }

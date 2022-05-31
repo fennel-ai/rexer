@@ -248,6 +248,7 @@ func (i *Interpreter) VisitOpcall(operands []ast.Ast, vars []string, namespace, 
 	// finally, call the operator
 	// typing of input / context kwargs is verified element by element inside the iter
 	outtable := value.NewList()
+	outtable.Grow(inputTable.Len())
 	if err = op.Apply(i.ctx, staticKwargs, inputTable.Iter(), &outtable); err != nil {
 		return value.Nil, err
 	}
@@ -310,6 +311,7 @@ func (i *Interpreter) getContextKwargs(op operators.Operator, trees *ast.Dict, i
 	// allocate all the values of all operands together
 	data := make([]value.Value, len(inputs)*inputs[0].Len())
 	ptr := 0
+	ret.Grow(inputs[0].Len())
 	for j := 0; j < inputs[0].Len(); j++ {
 		begin := ptr
 		for idx := range inputs {
@@ -325,7 +327,7 @@ func (i *Interpreter) getContextKwargs(op operators.Operator, trees *ast.Dict, i
 			}
 		}
 		// now using these lambda variables, evaluate kwargs variables
-		kwargs := value.NewDict(nil)
+		kwargs := value.NewDict(make(map[string]value.Value, len(sig.ContextKwargs)))
 		for _, p := range sig.ContextKwargs {
 			k := p.Name
 			tree, ok := trees.Values[k]
