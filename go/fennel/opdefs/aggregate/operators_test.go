@@ -125,23 +125,23 @@ func TestAggValue_Apply(t *testing.T) {
 }
 
 func getQuery() ast.Ast {
-	return ast.OpCall{
+	return &ast.OpCall{
 		Namespace: "std",
 		Name:      "set",
-		Operands: []ast.Ast{ast.OpCall{
+		Operands: []ast.Ast{&ast.OpCall{
 			Namespace: "std",
 			Name:      "set",
-			Operands:  []ast.Ast{ast.Var{Name: "actions"}},
+			Operands:  []ast.Ast{&ast.Var{Name: "actions"}},
 			Vars:      []string{"a"},
-			Kwargs: ast.Dict{Values: map[string]ast.Ast{
+			Kwargs: &ast.Dict{Values: map[string]ast.Ast{
 				"field": ast.MakeString("groupkey"),
-				"value": ast.Lookup{
-					On:       ast.Var{Name: "a"},
+				"value": &ast.Lookup{
+					On:       &ast.Var{Name: "a"},
 					Property: "actor_id",
 				}},
 			},
 		}},
-		Kwargs: ast.Dict{Values: map[string]ast.Ast{
+		Kwargs: &ast.Dict{Values: map[string]ast.Ast{
 			"field": ast.MakeString("value"),
 			"value": ast.MakeInt(1),
 		}},

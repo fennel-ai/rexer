@@ -14,25 +14,20 @@ import (
 )
 
 func TestInterpreter_VisitOpcall(t *testing.T) {
-	astrow1 := ast.Dict{
-		Values: map[string]ast.Ast{
-			"a.inner": ast.MakeInt(3),
-			"b":       ast.MakeString("hi"),
-		},
-	}
-	astrow2 := ast.Dict{
-		Values: map[string]ast.Ast{
-			"a.inner": ast.MakeInt(5),
-			"b":       ast.MakeString("bye"),
-		},
-	}
-	astrow3 := ast.Dict{
-		Values: map[string]ast.Ast{
-			"b":       ast.MakeString("hello"),
-			"a.inner": ast.MakeInt(3),
-		},
-	}
-	astTable := &ast.List{Values: []ast.Ast{astrow1, astrow2, astrow3}}
+	astrow1 := ast.MakeDict(map[string]ast.Ast{
+		"a.inner": ast.MakeInt(3),
+		"b":       ast.MakeString("hi"),
+	})
+	astrow2 := ast.MakeDict(map[string]ast.Ast{
+		"a.inner": ast.MakeInt(5),
+		"b":       ast.MakeString("bye"),
+	},
+	)
+	astrow3 := ast.MakeDict(map[string]ast.Ast{
+		"b":       ast.MakeString("hello"),
+		"a.inner": ast.MakeInt(3),
+	})
+	astTable := ast.MakeList(astrow1, astrow2, astrow3)
 	row1 := value.NewDict(map[string]value.Value{
 		"a.inner": value.Int(3),
 		"b":       value.String("hi"),
@@ -51,12 +46,10 @@ func TestInterpreter_VisitOpcall(t *testing.T) {
 	table.Append(row3)
 
 	// we get all values back if where is true
-	kwargs := ast.Dict{
-		Values: map[string]ast.Ast{
-			"where": ast.MakeBool(true),
-		},
-	}
-	testValid(t, ast.OpCall{
+	kwargs := ast.MakeDict(map[string]ast.Ast{
+		"where": ast.MakeBool(true),
+	})
+	testValid(t, &ast.OpCall{
 		Namespace: "std",
 		Name:      "filter",
 		Operands:  []ast.Ast{astTable},
@@ -64,12 +57,11 @@ func TestInterpreter_VisitOpcall(t *testing.T) {
 	}, table)
 
 	// and we get nothing when filter is passed as "false"
-	kwargs = ast.Dict{
-		Values: map[string]ast.Ast{
-			"where": ast.MakeBool(false),
-		},
-	}
-	testValid(t, ast.OpCall{
+	kwargs = ast.MakeDict(map[string]ast.Ast{
+		"where": ast.MakeBool(false),
+	},
+	)
+	testValid(t, &ast.OpCall{
 		Namespace: "std",
 		Name:      "filter",
 		Operands:  []ast.Ast{astTable},
@@ -77,19 +69,17 @@ func TestInterpreter_VisitOpcall(t *testing.T) {
 	}, value.NewList())
 
 	// and if where is more specific, that works too
-	kwargs = ast.Dict{
-		Values: map[string]ast.Ast{
-			"where": ast.Binary{
-				Left:  ast.Lookup{On: ast.Var{Name: "myvar"}, Property: "a.inner"},
-				Right: ast.MakeInt(3),
-				Op:    "==",
-			},
+	kwargs = ast.MakeDict(map[string]ast.Ast{
+		"where": &ast.Binary{
+			Left:  &ast.Lookup{On: &ast.Var{Name: "myvar"}, Property: "a.inner"},
+			Right: ast.MakeInt(3),
+			Op:    "==",
 		},
-	}
+	})
 	expected := value.List{}
 	expected.Append(row1)
 	expected.Append(row3)
-	testValid(t, ast.OpCall{
+	testValid(t, &ast.OpCall{
 		Namespace: "std",
 		Name:      "filter",
 		Operands:  []ast.Ast{astTable},
@@ -124,8 +114,8 @@ func TestInterpreter_VisitOpcall3(t *testing.T) {
 	query := ast.OpCall{
 		Namespace: "test",
 		Name:      "op",
-		Operands:  []ast.Ast{ast.Var{Name: "table"}},
-		Kwargs:    ast.Dict{},
+		Operands:  []ast.Ast{&ast.Var{Name: "table"}},
+		Kwargs:    ast.MakeDict(nil),
 	}
 	table := value.List{}
 	table.Append(value.NewDict(map[string]value.Value{"x": value.Int(1)}))
@@ -152,8 +142,8 @@ func TestInterpreter_VisitOpcall4(t *testing.T) {
 	query := ast.OpCall{
 		Namespace: "test",
 		Name:      "testop",
-		Operands:  []ast.Ast{ast.Var{Name: "table"}},
-		Kwargs:    ast.Dict{},
+		Operands:  []ast.Ast{&ast.Var{Name: "table"}},
+		Kwargs:    ast.MakeDict(nil),
 	}
 	table := value.NewList()
 	table.Append(value.NewDict(nil))
@@ -172,15 +162,15 @@ func TestInterpreter_VisitOpcall5(t *testing.T) {
 	// it works, even when the operator has some internal state
 	operators.Register(&rowCount{})
 	query := ast.OpCall{
-		Operands: []ast.Ast{ast.OpCall{
+		Operands: []ast.Ast{&ast.OpCall{
 			Namespace: "test",
 			Name:      "row_count",
-			Operands:  []ast.Ast{ast.Var{Name: "input"}},
-			Kwargs:    ast.Dict{},
+			Operands:  []ast.Ast{&ast.Var{Name: "input"}},
+			Kwargs:    ast.MakeDict(nil),
 		}},
 		Namespace: "test",
 		Name:      "row_count",
-		Kwargs:    ast.Dict{},
+		Kwargs:    ast.MakeDict(nil),
 	}
 	input := value.List{}
 	input.Append(value.Int(10))
@@ -370,9 +360,11 @@ func benchmarkInterpreter_VisitOpcall(numRows int, b *testing.B) {
 	}
 	evaler := getInterpreter(nil, value.NewDict(map[string]value.Value{"table": table}))
 	query := getOpCallQuery()
+	var res value.Value
 	for i := 0; i < b.N; i++ {
 		res, _ = query.AcceptValue(evaler)
 	}
+	_ = res
 }
 
 func BenchmarkInterpreter_VisitOpcall100(b *testing.B) {

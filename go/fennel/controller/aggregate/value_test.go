@@ -252,30 +252,30 @@ func get(d value.Dict, k string) value.Value {
 }
 
 func getQuery() ast.Ast {
-	return ast.OpCall{
+	return &ast.OpCall{
 		Namespace: "std",
 		Name:      "set",
-		Operands: []ast.Ast{ast.OpCall{
+		Operands: []ast.Ast{&ast.OpCall{
 			Namespace: "std",
 			Name:      "filter",
-			Operands:  []ast.Ast{ast.Var{Name: "actions"}},
+			Operands:  []ast.Ast{&ast.Var{Name: "actions"}},
 			Vars:      []string{"e"},
-			Kwargs: ast.Dict{Values: map[string]ast.Ast{
-				"where": ast.Binary{
-					Left:  ast.Lookup{On: ast.Var{Name: "e"}, Property: "action_type"},
+			Kwargs: ast.MakeDict(map[string]ast.Ast{
+				"where": &ast.Binary{
+					Left:  &ast.Lookup{On: &ast.Var{Name: "e"}, Property: "action_type"},
 					Op:    "==",
 					Right: ast.MakeString("like"),
 				},
-			}},
+			}),
 		}},
 		Vars: []string{"var"},
-		Kwargs: ast.Dict{Values: map[string]ast.Ast{
+		Kwargs: ast.MakeDict(map[string]ast.Ast{
 			"field": ast.MakeString("groupkey"),
-			"value": ast.List{Values: []ast.Ast{ast.Lookup{
-				On:       ast.Var{Name: "var"},
+			"value": &ast.List{Values: []ast.Ast{&ast.Lookup{
+				On:       &ast.Var{Name: "var"},
 				Property: "actor_id",
 			}}},
-		}},
+		}),
 	}
 }
 

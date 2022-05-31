@@ -18,7 +18,7 @@ func TestQueryExecution(t *testing.T) {
 	}
 	executor := NewQueryExecutor(bootarg.Create(tr))
 	// first, test some query
-	query1 := ast.IfElse{
+	query1 := &ast.IfElse{
 		Condition: ast.MakeBool(false),
 		ThenDo:    ast.MakeInt(+1),
 		ElseDo:    ast.MakeInt(-1),
@@ -31,8 +31,8 @@ func TestQueryExecution(t *testing.T) {
 	assert.True(t, expected1.Equal(found1))
 
 	// now test a query which uses args
-	query2 := ast.IfElse{
-		Condition: ast.Var{Name: "x"},
+	query2 := &ast.IfElse{
+		Condition: &ast.Var{Name: "x"},
 		ThenDo:    ast.MakeInt(+1),
 		ElseDo:    ast.MakeInt(-1),
 	}
@@ -44,15 +44,15 @@ func TestQueryExecution(t *testing.T) {
 	assert.True(t, expected2.Equal(found2))
 
 	// now test shadowing args
-	query3 := ast.Query{Statements: []ast.Statement{
+	query3 := &ast.Query{Statements: []*ast.Statement{
 		{
 			Name: "x",
 			Body: ast.MakeBool(false),
 		},
 		{
 			Name: "",
-			Body: ast.IfElse{
-				Condition: ast.Var{Name: "x"},
+			Body: &ast.IfElse{
+				Condition: &ast.Var{Name: "x"},
 				ThenDo:    ast.MakeInt(+1),
 				ElseDo:    ast.MakeInt(-1),
 			},

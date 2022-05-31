@@ -362,25 +362,24 @@ func TestQuery(t *testing.T) {
 	c, err := client.NewClient(server.URL, server.Client())
 	assert.NoError(t, err)
 
-	d1 := ast.Dict{Values: map[string]ast.Ast{"x": ast.MakeInt(1), "y": ast.MakeInt(3)}}
-	d2 := ast.Dict{Values: map[string]ast.Ast{"x": ast.MakeInt(3), "y": ast.MakeInt(4)}}
-	d3 := ast.Dict{Values: map[string]ast.Ast{"x": ast.MakeInt(1), "y": ast.MakeInt(7)}}
-	table := ast.List{Values: []ast.Ast{d1, d2, d3}}
-	e := ast.OpCall{
+	d1 := ast.MakeDict(map[string]ast.Ast{"x": ast.MakeInt(1), "y": ast.MakeInt(3)})
+	d2 := ast.MakeDict(map[string]ast.Ast{"x": ast.MakeInt(3), "y": ast.MakeInt(4)})
+	d3 := ast.MakeDict(map[string]ast.Ast{"x": ast.MakeInt(1), "y": ast.MakeInt(7)})
+	table := ast.MakeList(d1, d2, d3)
+	e := &ast.OpCall{
 		Operands:  []ast.Ast{table},
 		Vars:      []string{"at"},
 		Namespace: "std",
 		Name:      "filter",
-		Kwargs: ast.Dict{Values: map[string]ast.Ast{"where": ast.Binary{
-			Left: ast.Lookup{On: ast.Var{Name: "at"}, Property: "x"},
+		Kwargs: ast.MakeDict(map[string]ast.Ast{"where": &ast.Binary{
+			Left: &ast.Lookup{On: &ast.Var{Name: "at"}, Property: "x"},
 			Op:   "<",
-			Right: ast.Binary{
-				Left:  ast.Lookup{On: ast.Var{Name: "at"}, Property: "y"},
+			Right: &ast.Binary{
+				Left:  &ast.Lookup{On: &ast.Var{Name: "at"}, Property: "y"},
 				Op:    "-",
-				Right: ast.Var{Name: "c"},
+				Right: &ast.Var{Name: "c"},
 			},
-		}},
-		},
+		}}),
 	}
 	found, err := c.Query(e, value.NewDict(map[string]value.Value{"c": value.Int(1)}), mock.Data{})
 	assert.NoError(t, err)
@@ -388,8 +387,8 @@ func TestQuery(t *testing.T) {
 	expected.Append(value.NewDict(map[string]value.Value{"x": value.Int(1), "y": value.Int(3)}))
 	expected.Append(value.NewDict(map[string]value.Value{"x": value.Int(1), "y": value.Int(7)}))
 	assert.Equal(t, expected, found)
-	e2 := ast.IfElse{
-		Condition: ast.Binary{Left: ast.MakeInt(4), Op: ">", Right: ast.MakeInt(7)},
+	e2 := &ast.IfElse{
+		Condition: &ast.Binary{Left: ast.MakeInt(4), Op: ">", Right: ast.MakeInt(7)},
 		ThenDo:    ast.MakeString("abc"),
 		ElseDo:    ast.MakeString("xyz"),
 	}
@@ -398,7 +397,7 @@ func TestQuery(t *testing.T) {
 	assert.True(t, value.String("xyz").Equal(found))
 
 	// Test if dict values are set
-	ast1 := ast.Var{Name: "key1"}
+	ast1 := &ast.Var{Name: "key1"}
 	args1 := value.NewDict(map[string]value.Value{"key1": value.Int(4)})
 	exp1 := value.Int(4)
 

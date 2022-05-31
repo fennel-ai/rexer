@@ -107,7 +107,7 @@ func (i *Interpreter) VisitStatement(name string, body ast.Ast) (value.Value, er
 	return val, nil
 }
 
-func (i *Interpreter) VisitQuery(statements []ast.Statement) (value.Value, error) {
+func (i *Interpreter) VisitQuery(statements []*ast.Statement) (value.Value, error) {
 	if len(statements) == 0 {
 		return value.Nil, fmt.Errorf("query can not be empty")
 	}
@@ -202,7 +202,7 @@ func (i *Interpreter) VisitDict(values map[string]ast.Ast) (value.Value, error) 
 	return value.NewDict(ret), nil
 }
 
-func (i *Interpreter) VisitOpcall(operands []ast.Ast, vars []string, namespace, name string, kwargs ast.Dict) (value.Value, error) {
+func (i *Interpreter) VisitOpcall(operands []ast.Ast, vars []string, namespace, name string, kwargs *ast.Dict) (value.Value, error) {
 	if len(operands) == 0 {
 		return value.Nil, fmt.Errorf("operator '%s.%s' can not be applied: no operands", namespace, name)
 	}
@@ -280,7 +280,7 @@ func (i *Interpreter) VisitIfelse(condition ast.Ast, thenDo ast.Ast, elseDo ast.
 	}
 }
 
-func (i *Interpreter) getStaticKwargs(op operators.Operator, kwargs ast.Dict) (value.Dict, error) {
+func (i *Interpreter) getStaticKwargs(op operators.Operator, kwargs *ast.Dict) (value.Dict, error) {
 	ret := value.NewDict(nil)
 	sig := op.Signature()
 	for _, p := range sig.StaticKwargs {
@@ -303,7 +303,7 @@ func (i *Interpreter) getStaticKwargs(op operators.Operator, kwargs ast.Dict) (v
 	return ret, nil
 }
 
-func (i *Interpreter) getContextKwargs(op operators.Operator, trees ast.Dict, inputs []value.List, vars []string) (operators.ZipTable, error) {
+func (i *Interpreter) getContextKwargs(op operators.Operator, trees *ast.Dict, inputs []value.List, vars []string) (operators.ZipTable, error) {
 	ret := operators.NewZipTable(op)
 	sig := op.Signature()
 	varvals := make([]value.Value, len(vars))
@@ -339,7 +339,7 @@ func (i *Interpreter) getContextKwargs(op operators.Operator, trees ast.Dict, in
 				// we have to evaluate the tree with the current values of the lambda variables
 				// a common scenario is to evaluate an atom (e.g. user writing "user" as otype in profile)
 				// in that case, we can avoid setting the lambda variables, which also saves function call
-				if atom, ok := tree.(ast.Atom); ok {
+				if atom, ok := tree.(*ast.Atom); ok {
 					val, err := atom.AcceptValue(i)
 					if err != nil {
 						return operators.ZipTable{}, fmt.Errorf("error: %s while evaluating kwarg: %s for operator '%s.%s'", err, k, sig.Module, sig.Name)

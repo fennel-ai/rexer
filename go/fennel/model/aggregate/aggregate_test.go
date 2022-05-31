@@ -21,7 +21,7 @@ func TestRetrieveStore(t *testing.T) {
 
 	agg := aggregate.Aggregate{
 		Name:      "test_counter",
-		Query:     ast.Atom{Type: ast.Int, Lexeme: "4"},
+		Query:     &ast.Atom{Type: ast.Int, Lexeme: "4"},
 		Timestamp: 1,
 		Options: aggregate.Options{
 			AggType:   "rolling_counter",
@@ -52,7 +52,7 @@ func TestRetrieveStore(t *testing.T) {
 	assert.ErrorIs(t, err, aggregate.ErrNotFound)
 
 	// finally, storing for same name doesn't work
-	agg.Query = ast.Atom{Type: ast.Int, Lexeme: "7"}
+	agg.Query = &ast.Atom{Type: ast.Int, Lexeme: "7"}
 	err = Store(ctx, tier, agg)
 	assert.Error(t, err)
 }
