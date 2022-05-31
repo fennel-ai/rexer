@@ -180,7 +180,7 @@ func TestProfileOpCacheMultiple(t *testing.T) {
 	i, err := interpreter.NewInterpreter(context.Background(), bootarg.Create(tier),
 		value.NewDict(map[string]value.Value{"actions": inTable}))
 	assert.NoError(t, err)
-	verifyMultiple(t, &i, query, expected)
+	verifyMultiple(t, i, query, expected)
 
 	// test cache by setting profiles now
 	for _, pi := range profiles {
@@ -201,11 +201,11 @@ func TestProfileOpCacheMultiple(t *testing.T) {
 		}))
 	}
 	// we should still get back default value if it is cached properly
-	verifyMultiple(t, &i, query, expected)
+	verifyMultiple(t, i, query, expected)
 
 	time.Sleep(cacheValueDuration + time.Second)
 	// Get new values since old values have expired
-	verifyMultiple(t, &i, query, expected2)
+	verifyMultiple(t, i, query, expected2)
 
 	// now store a newer version with new values for each profile
 	for _, pi := range profiles {
@@ -216,7 +216,7 @@ func TestProfileOpCacheMultiple(t *testing.T) {
 		assert.NoError(t, profile.TestSet(ctx, tier, pi2))
 	}
 	// Still get old values since they are cached
-	verifyMultiple(t, &i, query, expected2)
+	verifyMultiple(t, i, query, expected2)
 
 	var expected3 []value.Dict
 	for _, pi := range profiles {
@@ -233,7 +233,7 @@ func TestProfileOpCacheMultiple(t *testing.T) {
 	}
 	time.Sleep(cacheValueDuration + 3*time.Second)
 
-	verifyMultiple(t, &i, query, expected3)
+	verifyMultiple(t, i, query, expected3)
 
 	cacheValueDuration = 2 * time.Minute
 }
