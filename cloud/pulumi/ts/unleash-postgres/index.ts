@@ -14,6 +14,7 @@ export type inputType = {
     minCapacity: number,
     maxCapacity: number,
     connectedSecurityGroups: Record<string, pulumi.Output<string>>,
+    connectedCidrBlocks?: string[],
     planeId: number,
 }
 
@@ -61,6 +62,16 @@ export const setup = async (input: inputType): Promise<pulumi.Output<outputType>
         sgRules.push(new aws.ec2.SecurityGroupRule(`p-${input.planeId}-unleash-allow-${key}`, {
             securityGroupId: securityGroup.id,
             sourceSecurityGroupId: input.connectedSecurityGroups[key],
+            fromPort: 0,
+            toPort: 65535,
+            type: "ingress",
+            protocol: "tcp",
+        }, { provider }).id)
+    }
+    if (input.connectedCidrBlocks !== undefined) {
+        sgRules.push(new aws.ec2.SecurityGroupRule(`p-${input.planeId}-unleash-aurora-allow-connected-cidr`, {
+            securityGroupId: securityGroup.id,
+            cidrBlocks: input.connectedCidrBlocks,
             fromPort: 0,
             toPort: 65535,
             type: "ingress",

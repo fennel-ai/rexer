@@ -12,6 +12,7 @@ export type inputType = {
     region: string,
     vpcId: pulumi.Output<string>,
     connectedSecurityGroups: Record<string, pulumi.Output<string>>,
+    connectedCidrBlocks?: string[],
     planeId: number,
     nodeType?: string,
     numNodeGroups?: number,
@@ -69,6 +70,16 @@ export const setup = async (input: inputType): Promise<pulumi.Output<outputType>
         sgRules.push(new aws.ec2.SecurityGroupRule(`p-${input.planeId}-ec-allow-${key}`, {
             securityGroupId: cacheSg.id,
             sourceSecurityGroupId: input.connectedSecurityGroups[key],
+            fromPort: 0,
+            toPort: 65535,
+            type: "ingress",
+            protocol: "tcp",
+        }, { provider }).id)
+    }
+    if (input.connectedCidrBlocks !== undefined) {
+        sgRules.push(new aws.ec2.SecurityGroupRule(`p-${input.planeId}-cache-allow-connected-cidr`, {
+            securityGroupId: cacheSg.id,
+            cidrBlocks: input.connectedCidrBlocks,
             fromPort: 0,
             toPort: 65535,
             type: "ingress",
