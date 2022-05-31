@@ -2,9 +2,12 @@ package interpreter
 
 import (
 	"context"
+	"testing"
+
 	"fennel/engine/ast"
 	"fennel/lib/value"
-	"testing"
+	_ "fennel/opdefs/std/map"
+	_ "fennel/opdefs/std/set"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
