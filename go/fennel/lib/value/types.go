@@ -290,6 +290,7 @@ func (l List) Values() []Value {
 
 type Dict struct {
 	values map[string]Value
+	cow    bool // Flag to indicate if the dictionary values should be copied on write.
 }
 
 func (d *Dict) Op(opt string, other Value) (Value, error) {
@@ -302,6 +303,7 @@ func (d *Dict) OpUnary(opt string) (Value, error) {
 func NewDict(values map[string]Value) *Dict {
 	return &Dict{
 		values: clone(values),
+		cow:    false,
 	}
 }
 
@@ -333,6 +335,10 @@ func clone(values map[string]Value) map[string]Value {
 }
 
 func (d *Dict) Set(k string, value Value) {
+	if d.cow {
+		d.values = clone(d.values)
+		d.cow = false
+	}
 	d.values[k] = value
 }
 
@@ -343,7 +349,13 @@ func (d *Dict) Iter() map[string]Value {
 	return d.values
 }
 func (d *Dict) Del(k string) {
-	delete(d.values, k)
+	if _, ok := d.values[k]; ok {
+		if d.cow {
+			d.values = clone(d.values)
+			d.cow = false
+		}
+		delete(d.values, k)
+	}
 }
 func (d *Dict) isValue() {}
 func (d *Dict) Equal(v Value) bool {
@@ -386,8 +398,10 @@ func (d *Dict) String() string {
 	return sb.String()
 }
 func (d *Dict) Clone() Value {
+	d.cow = true
 	return &Dict{
-		values: clone(d.values),
+		values: d.values,
+		cow:    true,
 	}
 }
 func (d *Dict) MarshalJSON() ([]byte, error) {
