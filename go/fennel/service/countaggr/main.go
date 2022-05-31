@@ -52,15 +52,16 @@ var aggregate_errors = promauto.NewCounterVec(
 func processAggregate(tr tier.Tier, agg libaggregate.Aggregate, stopCh <-chan struct{}) error {
 	var consumer kafka.FConsumer
 	var err error
-	if agg.Source == ftypes.Source("action") {
+
+	if agg.Source == libaggregate.SOURCE_PROFILE {
 		consumer, err = tr.NewKafkaConsumer(kafka.ConsumerConfig{
-			Topic:        action.ACTIONLOG_KAFKA_TOPIC,
+			Topic:        profile.PROFILELOG_KAFKA_TOPIC,
 			GroupID:      string(agg.Name),
 			OffsetPolicy: kafka.DefaultOffsetPolicy,
 		})
-	} else if agg.Source == ftypes.Source("profile") {
+	} else {
 		consumer, err = tr.NewKafkaConsumer(kafka.ConsumerConfig{
-			Topic:        profile.PROFILELOG_KAFKA_TOPIC,
+			Topic:        action.ACTIONLOG_KAFKA_TOPIC,
 			GroupID:      string(agg.Name),
 			OffsetPolicy: kafka.DefaultOffsetPolicy,
 		})
