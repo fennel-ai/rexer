@@ -38,14 +38,14 @@ func TestProfileOpMultipleObjs(t *testing.T) {
 	assert.NoError(t, profile.TestSet(ctx, tier, req2b))
 
 	query := ast.OpCall{
-		Operands:  []ast.Ast{ast.Var{Name: "actions"}},
+		Operands:  []ast.Ast{&ast.Var{Name: "actions"}},
 		Vars:      []string{"at"},
 		Namespace: "std",
 		Name:      "profile",
-		Kwargs: ast.Dict{Values: map[string]ast.Ast{
-			"otype": ast.Lookup{On: ast.Var{Name: "at"}, Property: "otype"},
-			"oid":   ast.Lookup{On: ast.Var{Name: "at"}, Property: "oid"},
-			"key":   ast.Lookup{On: ast.Var{Name: "at"}, Property: "key"},
+		Kwargs: &ast.Dict{Values: map[string]ast.Ast{
+			"otype": &ast.Lookup{On: &ast.Var{Name: "at"}, Property: "otype"},
+			"oid":   &ast.Lookup{On: &ast.Var{Name: "at"}, Property: "oid"},
+			"key":   &ast.Lookup{On: &ast.Var{Name: "at"}, Property: "key"},
 			"field": ast.MakeString("profile_value"),
 			// since UpdateTime is an optional value, we don't pass it and still get the latest value back
 		}},
@@ -127,15 +127,15 @@ func TestProfileOpCacheMultiple(t *testing.T) {
 	ctx := context.Background()
 
 	cacheValueDuration = time.Second * 10
-	query := ast.OpCall{
-		Operands:  []ast.Ast{ast.Var{Name: "actions"}},
+	query := &ast.OpCall{
+		Operands:  []ast.Ast{&ast.Var{Name: "actions"}},
 		Vars:      []string{"a"},
 		Namespace: "std",
 		Name:      "profile",
-		Kwargs: ast.Dict{Values: map[string]ast.Ast{
-			"otype": ast.Lookup{On: ast.Var{Name: "a"}, Property: "otype"},
-			"oid":   ast.Lookup{On: ast.Var{Name: "a"}, Property: "oid"},
-			"key":   ast.Lookup{On: ast.Var{Name: "a"}, Property: "key"},
+		Kwargs: &ast.Dict{Values: map[string]ast.Ast{
+			"otype": &ast.Lookup{On: &ast.Var{Name: "a"}, Property: "otype"},
+			"oid":   &ast.Lookup{On: &ast.Var{Name: "a"}, Property: "oid"},
+			"key":   &ast.Lookup{On: &ast.Var{Name: "a"}, Property: "key"},
 			"field": ast.MakeString("profile_value"),
 		}},
 	}

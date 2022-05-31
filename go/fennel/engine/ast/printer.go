@@ -63,7 +63,7 @@ func (p Printer) VisitTable(inner Ast) string {
 	return fmt.Sprintf("table(%s)", inner.AcceptString(p))
 }
 
-func (p Printer) VisitOpcall(operands []Ast, vars []string, namespace, name string, kwargs Dict) string {
+func (p Printer) VisitOpcall(operands []Ast, vars []string, namespace, name string, kwargs *Dict) string {
 	inputs := make([]string, len(operands))
 	for i := range operands {
 		inputs[i] = operands[i].AcceptString(p)
@@ -95,7 +95,7 @@ func (p Printer) VisitStatement(name string, body Ast) string {
 	}
 }
 
-func (p Printer) VisitQuery(statements []Statement) string {
+func (p Printer) VisitQuery(statements []*Statement) string {
 	var sb strings.Builder
 	for _, s := range statements {
 		sb.WriteString(s.AcceptString(p))

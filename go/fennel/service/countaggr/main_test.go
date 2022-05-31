@@ -417,76 +417,76 @@ func logProfile(t *testing.T, tier tier.Tier, oid string, ts uint64, val value.V
 }
 
 func getQueryRate() ast.Ast {
-	return ast.OpCall{
-		Operands: []ast.Ast{ast.OpCall{
-			Operands: []ast.Ast{ast.OpCall{
-				Operands:  []ast.Ast{ast.Var{Name: "actions"}},
+	return &ast.OpCall{
+		Operands: []ast.Ast{&ast.OpCall{
+			Operands: []ast.Ast{&ast.OpCall{
+				Operands:  []ast.Ast{&ast.Var{Name: "actions"}},
 				Vars:      []string{"hi"},
 				Namespace: "std",
 				Name:      "filter",
-				Kwargs: ast.Dict{Values: map[string]ast.Ast{
-					"where": ast.Binary{
-						Left:  ast.Lookup{On: ast.Var{Name: "hi"}, Property: "action_type"},
+				Kwargs: ast.MakeDict(map[string]ast.Ast{
+					"where": &ast.Binary{
+						Left:  &ast.Lookup{On: &ast.Var{Name: "hi"}, Property: "action_type"},
 						Op:    "==",
 						Right: ast.MakeString("like"),
 					},
-				}},
+				}),
 			}},
 			Vars:      []string{"okay"},
 			Namespace: "std",
 			Name:      "set",
-			Kwargs: ast.Dict{Values: map[string]ast.Ast{
+			Kwargs: ast.MakeDict(map[string]ast.Ast{
 				"field": ast.MakeString("groupkey"),
-				"value": ast.Lookup{
-					On:       ast.Var{Name: "okay"},
+				"value": &ast.Lookup{
+					On:       &ast.Var{Name: "okay"},
 					Property: "actor_id",
 				}},
-			},
+			),
 		}},
 		Namespace: "std",
 		Name:      "set",
-		Kwargs: ast.Dict{Values: map[string]ast.Ast{
+		Kwargs: &ast.Dict{Values: map[string]ast.Ast{
 			"field": ast.MakeString("value"),
-			"value": ast.List{Values: []ast.Ast{ast.MakeInt(1), ast.MakeInt(2)}},
+			"value": ast.MakeList(ast.MakeInt(1), ast.MakeInt(2)),
 		}},
 	}
 }
 
 func getQuery() ast.Ast {
-	return ast.OpCall{
+	return &ast.OpCall{
 		Namespace: "std",
 		Name:      "set",
-		Operands: []ast.Ast{ast.OpCall{
+		Operands: []ast.Ast{&ast.OpCall{
 			Namespace: "std",
 			Name:      "set",
-			Operands: []ast.Ast{ast.OpCall{
+			Operands: []ast.Ast{&ast.OpCall{
 				Namespace: "std",
 				Name:      "filter",
-				Operands:  []ast.Ast{ast.Var{Name: "actions"}},
+				Operands:  []ast.Ast{&ast.Var{Name: "actions"}},
 				Vars:      []string{"v"},
-				Kwargs: ast.Dict{Values: map[string]ast.Ast{
-					"where": ast.Binary{
-						Left:  ast.Lookup{On: ast.Var{Name: "v"}, Property: "action_type"},
+				Kwargs: &ast.Dict{Values: map[string]ast.Ast{
+					"where": &ast.Binary{
+						Left:  &ast.Lookup{On: &ast.Var{Name: "v"}, Property: "action_type"},
 						Op:    "==",
 						Right: ast.MakeString("like"),
 					},
 				}},
 			}},
 			Vars: []string{"at"},
-			Kwargs: ast.Dict{Values: map[string]ast.Ast{
+			Kwargs: &ast.Dict{Values: map[string]ast.Ast{
 				"field": ast.MakeString("groupkey"),
-				"value": ast.Lookup{
-					On:       ast.Var{Name: "at"},
+				"value": &ast.Lookup{
+					On:       &ast.Var{Name: "at"},
 					Property: "actor_id",
 				}},
 			},
 		}},
 		Vars: []string{"it"},
-		Kwargs: ast.Dict{Values: map[string]ast.Ast{
+		Kwargs: &ast.Dict{Values: map[string]ast.Ast{
 			"field": ast.MakeString("value"),
-			"value": ast.Lookup{
-				On: ast.Lookup{
-					On:       ast.Var{Name: "it"},
+			"value": &ast.Lookup{
+				On: &ast.Lookup{
+					On:       &ast.Var{Name: "it"},
 					Property: "metadata",
 				},
 				Property: "value",
@@ -496,40 +496,40 @@ func getQuery() ast.Ast {
 }
 
 func getProfileQuery() ast.Ast {
-	return ast.OpCall{
+	return &ast.OpCall{
 		Namespace: "std",
 		Name:      "set",
-		Operands: []ast.Ast{ast.OpCall{
+		Operands: []ast.Ast{&ast.OpCall{
 			Namespace: "std",
 			Name:      "set",
-			Operands: []ast.Ast{ast.OpCall{
+			Operands: []ast.Ast{&ast.OpCall{
 				Namespace: "std",
 				Name:      "filter",
-				Operands:  []ast.Ast{ast.Var{Name: "profiles"}},
+				Operands:  []ast.Ast{&ast.Var{Name: "profiles"}},
 				Vars:      []string{"v"},
-				Kwargs: ast.Dict{Values: map[string]ast.Ast{
-					"where": ast.Binary{
-						Left:  ast.Lookup{On: ast.Var{Name: "v"}, Property: "otype"},
+				Kwargs: &ast.Dict{Values: map[string]ast.Ast{
+					"where": &ast.Binary{
+						Left:  &ast.Lookup{On: &ast.Var{Name: "v"}, Property: "otype"},
 						Op:    "==",
 						Right: ast.MakeString("user"),
 					},
 				}},
 			}},
 			Vars: []string{"at"},
-			Kwargs: ast.Dict{Values: map[string]ast.Ast{
+			Kwargs: &ast.Dict{Values: map[string]ast.Ast{
 				"field": ast.MakeString("groupkey"),
-				"value": ast.Lookup{
-					On:       ast.Var{Name: "at"},
+				"value": &ast.Lookup{
+					On:       &ast.Var{Name: "at"},
 					Property: "oid",
 				}},
 			},
 		}},
 		Vars: []string{"it"},
-		Kwargs: ast.Dict{Values: map[string]ast.Ast{
+		Kwargs: &ast.Dict{Values: map[string]ast.Ast{
 			"field": ast.MakeString("value"),
-			"value": ast.Lookup{
-				On: ast.Lookup{
-					On:       ast.Var{Name: "it"},
+			"value": &ast.Lookup{
+				On: &ast.Lookup{
+					On:       &ast.Var{Name: "it"},
 					Property: "value",
 				},
 				Property: "value",
@@ -539,16 +539,16 @@ func getProfileQuery() ast.Ast {
 }
 
 func getQueryTopK() ast.Ast {
-	return ast.OpCall{
-		Operands: []ast.Ast{ast.OpCall{
-			Operands:  []ast.Ast{ast.Var{Name: "actions"}},
+	return &ast.OpCall{
+		Operands: []ast.Ast{&ast.OpCall{
+			Operands:  []ast.Ast{&ast.Var{Name: "actions"}},
 			Vars:      []string{"at"},
 			Namespace: "std",
 			Name:      "set",
-			Kwargs: ast.Dict{Values: map[string]ast.Ast{
+			Kwargs: &ast.Dict{Values: map[string]ast.Ast{
 				"field": ast.MakeString("groupkey"),
-				"value": ast.Lookup{
-					On:       ast.Var{Name: "at"},
+				"value": &ast.Lookup{
+					On:       &ast.Var{Name: "at"},
 					Property: "actor_id",
 				}},
 			},
@@ -556,16 +556,16 @@ func getQueryTopK() ast.Ast {
 		Vars:      []string{"at"},
 		Namespace: "std",
 		Name:      "set",
-		Kwargs: ast.Dict{Values: map[string]ast.Ast{
+		Kwargs: &ast.Dict{Values: map[string]ast.Ast{
 			"field": ast.MakeString("value"),
-			"value": ast.Dict{Values: map[string]ast.Ast{
-				"key": ast.Lookup{
-					On:       ast.Var{Name: "at"},
+			"value": &ast.Dict{Values: map[string]ast.Ast{
+				"key": &ast.Lookup{
+					On:       &ast.Var{Name: "at"},
 					Property: "action_type",
 				},
-				"score": ast.Lookup{
-					On: ast.Lookup{
-						On:       ast.Var{Name: "at"},
+				"score": &ast.Lookup{
+					On: &ast.Lookup{
+						On:       &ast.Var{Name: "at"},
 						Property: "metadata",
 					},
 					Property: "value",

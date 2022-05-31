@@ -13,6 +13,6 @@ func TestMarshal(t *testing.T) {
 		var found Ast
 		err = Unmarshal(data, &found)
 		assert.NoError(t, err)
-		assert.Equal(t, test, found, test)
+		assert.True(t, test.Equals(found))
 	}
 }

@@ -47,7 +47,7 @@ func FromProtoAst(past *proto.Ast) (Ast, error) {
 // Satisfy ast interface requirements
 // =====================================
 
-func (l Lookup) toProto() (proto.Ast, error) {
+func (l *Lookup) toProto() (proto.Ast, error) {
 	pon, err := ToProtoAst(l.On)
 	if err != nil {
 		return pnull(), err
@@ -58,7 +58,7 @@ func (l Lookup) toProto() (proto.Ast, error) {
 	}}}, nil
 }
 
-func (a Atom) toProto() (proto.Ast, error) {
+func (a *Atom) toProto() (proto.Ast, error) {
 	switch a.Type {
 	case Int:
 		n, err := strconv.ParseInt(a.Lexeme, 10, 64)
@@ -90,7 +90,7 @@ func (a Atom) toProto() (proto.Ast, error) {
 
 }
 
-func (u Unary) toProto() (proto.Ast, error) {
+func (u *Unary) toProto() (proto.Ast, error) {
 	protoOperand, err := ToProtoAst(u.Operand)
 	if err != nil {
 		return pnull(), err
@@ -101,7 +101,7 @@ func (u Unary) toProto() (proto.Ast, error) {
 	}}}, nil
 }
 
-func (b Binary) toProto() (proto.Ast, error) {
+func (b *Binary) toProto() (proto.Ast, error) {
 	protoLeft, err := ToProtoAst(b.Left)
 	if err != nil {
 		return pnull(), err
@@ -117,7 +117,7 @@ func (b Binary) toProto() (proto.Ast, error) {
 	}}}, nil
 }
 
-func (l List) toProto() (proto.Ast, error) {
+func (l *List) toProto() (proto.Ast, error) {
 	ret := make([]*proto.Ast, len(l.Values))
 	for i, ast := range l.Values {
 		past, err := ToProtoAst(ast)
@@ -129,7 +129,7 @@ func (l List) toProto() (proto.Ast, error) {
 	return proto.Ast{Node: &proto.Ast_List{List: &proto.List{Values: ret}}}, nil
 }
 
-func (s Statement) toProto() (proto.Ast, error) {
+func (s *Statement) toProto() (proto.Ast, error) {
 	pbody, err := ToProtoAst(s.Body)
 	if err != nil {
 		return pnull(), err
@@ -140,7 +140,7 @@ func (s Statement) toProto() (proto.Ast, error) {
 	}}}, nil
 }
 
-func (q Query) toProto() (proto.Ast, error) {
+func (q *Query) toProto() (proto.Ast, error) {
 	ret := make([]*proto.Statement, len(q.Statements))
 	for i, s := range q.Statements {
 		ps, err := ToProtoAst(s)
@@ -152,7 +152,7 @@ func (q Query) toProto() (proto.Ast, error) {
 	return proto.Ast{Node: &proto.Ast_Query{Query: &proto.Query{Statements: ret}}}, nil
 }
 
-func (d Dict) toProto() (proto.Ast, error) {
+func (d *Dict) toProto() (proto.Ast, error) {
 	ret := make(map[string]*proto.Ast, len(d.Values))
 	for k, ast := range d.Values {
 		past, err := ToProtoAst(ast)
@@ -164,7 +164,7 @@ func (d Dict) toProto() (proto.Ast, error) {
 	return proto.Ast{Node: &proto.Ast_Dict{Dict: &proto.Dict{Values: ret}}}, nil
 }
 
-func (opcall OpCall) toProto() (proto.Ast, error) {
+func (opcall *OpCall) toProto() (proto.Ast, error) {
 	poperands := make([]*proto.Ast, len(opcall.Operands))
 	for i, operand := range opcall.Operands {
 		poperand, err := ToProtoAst(operand)
@@ -187,11 +187,11 @@ func (opcall OpCall) toProto() (proto.Ast, error) {
 	}}}, nil
 }
 
-func (va Var) toProto() (proto.Ast, error) {
+func (va *Var) toProto() (proto.Ast, error) {
 	return proto.Ast{Node: &proto.Ast_Var{Var: &proto.Var{Name: va.Name}}}, nil
 }
 
-func (ifelse IfElse) toProto() (proto.Ast, error) {
+func (ifelse *IfElse) toProto() (proto.Ast, error) {
 	protoCondition, err := ToProtoAst(ifelse.Condition)
 	if err != nil {
 		return pnull(), err
@@ -215,7 +215,7 @@ func (ifelse IfElse) toProto() (proto.Ast, error) {
 // More private helpers below
 // =============================
 
-var null = Atom{}
+var null = &Atom{}
 
 func pnull() proto.Ast {
 	return proto.Ast{}
@@ -226,15 +226,15 @@ func fromProtoLookup(plookup *proto.Ast_Lookup) (Ast, error) {
 	if err != nil {
 		return null, err
 	}
-	return Lookup{On: on, Property: plookup.Lookup.Property}, nil
+	return &Lookup{On: on, Property: plookup.Lookup.Property}, nil
 }
 
 func fromProtoVar(pvar *proto.Ast_Var) (Ast, error) {
-	return Var{Name: pvar.Var.Name}, nil
+	return &Var{Name: pvar.Var.Name}, nil
 }
 
 func fromProtoOpcall(popcall *proto.Ast_Opcall) (Ast, error) {
-	ret := OpCall{
+	ret := &OpCall{
 		Name:      popcall.Opcall.Name,
 		Namespace: popcall.Opcall.Namespace,
 		Vars:      popcall.Opcall.Vars,
@@ -250,20 +250,20 @@ func fromProtoOpcall(popcall *proto.Ast_Opcall) (Ast, error) {
 	if err != nil {
 		return null, err
 	}
-	ret.Kwargs = dict.(Dict)
+	ret.Kwargs = dict.(*Dict)
 	return ret, nil
 }
 
 func fromProtoQuery(pquery *proto.Ast_Query) (Ast, error) {
-	statements := make([]Statement, len(pquery.Query.Statements))
+	statements := make([]*Statement, len(pquery.Query.Statements))
 	for i, ps := range pquery.Query.Statements {
 		s, err := FromProtoAst(&proto.Ast{Node: &proto.Ast_Statement{Statement: ps}})
 		if err != nil {
 			return null, err
 		}
-		statements[i] = s.(Statement)
+		statements[i] = s.(*Statement)
 	}
-	return Query{Statements: statements}, nil
+	return &Query{Statements: statements}, nil
 }
 
 func fromProtoStatement(pstatement *proto.Ast_Statement) (Ast, error) {
@@ -271,7 +271,7 @@ func fromProtoStatement(pstatement *proto.Ast_Statement) (Ast, error) {
 	if err != nil {
 		return null, err
 	}
-	return Statement{
+	return &Statement{
 		Name: pstatement.Statement.Name,
 		Body: body,
 	}, nil
@@ -279,11 +279,11 @@ func fromProtoStatement(pstatement *proto.Ast_Statement) (Ast, error) {
 
 func fromProtoAtom(patom *proto.Ast_Atom) (Ast, error) {
 	if pint, ok := patom.Atom.Inner.(*proto.Atom_Int); ok {
-		return Atom{Type: Int, Lexeme: fmt.Sprintf("%d", pint.Int)}, nil
+		return &Atom{Type: Int, Lexeme: fmt.Sprintf("%d", pint.Int)}, nil
 	}
 	if pdouble, ok := patom.Atom.Inner.(*proto.Atom_Double); ok {
 		// when printing back to float, don't add trailing zeros
-		return Atom{Type: Double, Lexeme: strconv.FormatFloat(pdouble.Double, 'f', -1, 64)}, nil
+		return &Atom{Type: Double, Lexeme: strconv.FormatFloat(pdouble.Double, 'f', -1, 64)}, nil
 	}
 	if pbool, ok := patom.Atom.Inner.(*proto.Atom_Bool); ok {
 		var str string
@@ -292,10 +292,10 @@ func fromProtoAtom(patom *proto.Ast_Atom) (Ast, error) {
 		} else {
 			str = "false"
 		}
-		return Atom{Type: Bool, Lexeme: str}, nil
+		return &Atom{Type: Bool, Lexeme: str}, nil
 	}
 	if pstr, ok := patom.Atom.Inner.(*proto.Atom_String_); ok {
-		return Atom{Type: String, Lexeme: pstr.String_}, nil
+		return &Atom{Type: String, Lexeme: pstr.String_}, nil
 	}
 	return null, fmt.Errorf("invalid proto atom: %v", patom)
 }
@@ -310,7 +310,7 @@ func fromProtoList(plist *proto.Ast_List) (Ast, error) {
 		}
 		values[i] = v
 	}
-	return List{Values: values}, nil
+	return MakeList(values...), nil
 }
 
 func fromProtoDict(plist *proto.Ast_Dict) (Ast, error) {
@@ -323,7 +323,7 @@ func fromProtoDict(plist *proto.Ast_Dict) (Ast, error) {
 		}
 		values[i] = v
 	}
-	return Dict{Values: values}, nil
+	return MakeDict(values), nil
 }
 
 func fromProtoUnary(pun *proto.Ast_Unary) (Ast, error) {
@@ -331,7 +331,7 @@ func fromProtoUnary(pun *proto.Ast_Unary) (Ast, error) {
 	if err != nil {
 		return nil, err
 	}
-	return Unary{
+	return &Unary{
 		Op:      pun.Unary.Op,
 		Operand: operand,
 	}, nil
@@ -346,7 +346,7 @@ func fromProtoBinary(pbin *proto.Ast_Binary) (Ast, error) {
 	if err != nil {
 		return null, err
 	}
-	return Binary{
+	return &Binary{
 		Left:  left,
 		Op:    pbin.Binary.Op,
 		Right: right,
@@ -366,7 +366,7 @@ func fromProtoIfelse(pifelse *proto.Ast_Ifelse) (Ast, error) {
 	if err != nil {
 		return null, err
 	}
-	return IfElse{
+	return &IfElse{
 		Condition: condition,
 		ThenDo:    thenDo,
 		ElseDo:    elseDo,

@@ -56,7 +56,7 @@ func TestDuplicate(t *testing.T) {
 	ctx := context.Background()
 	agg := aggregate.Aggregate{
 		Name:      "test_counter",
-		Query:     ast.Query{},
+		Query:     &ast.Query{},
 		Timestamp: 1,
 		Options: aggregate.Options{
 			AggType:   "sum",
@@ -77,7 +77,7 @@ func TestDuplicate(t *testing.T) {
 	agg.Query = ast.MakeInt(4)
 	err = Store(ctx, tier, agg)
 	assert.Error(t, err)
-	agg.Query = ast.Query{}
+	agg.Query = &ast.Query{}
 
 	// Error if different options
 	agg.Options.Durations = []uint64{3600 * 24 * 6}

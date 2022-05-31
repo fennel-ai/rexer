@@ -23,16 +23,16 @@ func TestDefault(t *testing.T) {
 	assert.NoError(t, err)
 	defer test.Teardown(tier)
 	query := ast.OpCall{
-		Operands:  []ast.Ast{ast.Var{Name: "actions"}},
+		Operands:  []ast.Ast{&ast.Var{Name: "actions"}},
 		Namespace: "std",
 		Name:      "profile",
-		Kwargs: ast.Dict{Values: map[string]ast.Ast{
+		Kwargs: ast.MakeDict(map[string]ast.Ast{
 			"otype":   ast.MakeString("user"),
 			"oid":     ast.MakeString("123"),
 			"key":     ast.MakeString("some key"),
 			"field":   ast.MakeString("some name"),
 			"default": ast.MakeDouble(3.4),
-		}},
+		}),
 	}
 	table := value.List{}
 	table.Append(value.NewDict(nil))
@@ -67,18 +67,18 @@ func TestProfileOp(t *testing.T) {
 	req1b := profilelib.ProfileItem{OType: otype1, Oid: strconv.Itoa(oid1), Key: key1, UpdateTime: ver1, Value: val1}
 	assert.NoError(t, profile.TestSet(ctx, tier, req1b))
 
-	query := ast.OpCall{
-		Operands:  []ast.Ast{ast.Var{Name: "actions"}},
+	query := &ast.OpCall{
+		Operands:  []ast.Ast{&ast.Var{Name: "actions"}},
 		Vars:      []string{"a"},
 		Namespace: "std",
 		Name:      "profile",
-		Kwargs: ast.Dict{Values: map[string]ast.Ast{
-			"otype": ast.Lookup{On: ast.Var{Name: "a"}, Property: "otype"},
-			"oid":   ast.Lookup{On: ast.Var{Name: "a"}, Property: "oid"},
-			"key":   ast.Lookup{On: ast.Var{Name: "a"}, Property: "key"},
+		Kwargs: ast.MakeDict(map[string]ast.Ast{
+			"otype": &ast.Lookup{On: &ast.Var{Name: "a"}, Property: "otype"},
+			"oid":   &ast.Lookup{On: &ast.Var{Name: "a"}, Property: "oid"},
+			"key":   &ast.Lookup{On: &ast.Var{Name: "a"}, Property: "key"},
 			"field": ast.MakeString("profile_value"),
 			// since version is an optional value, we don't pass it and still get the latest value back
-		}},
+		}),
 	}
 	table := value.NewList()
 	table.Append(value.NewDict(map[string]value.Value{
@@ -106,17 +106,17 @@ func TestProfileOpCache(t *testing.T) {
 	cacheValueDuration = time.Second * 10
 
 	otype, oid, key, val, ver := ftypes.OType("user"), 223, "age", value.Int(7), uint64(4)
-	query := ast.OpCall{
-		Operands:  []ast.Ast{ast.Var{Name: "actions"}},
+	query := &ast.OpCall{
+		Operands:  []ast.Ast{&ast.Var{Name: "actions"}},
 		Vars:      []string{"a"},
 		Namespace: "std",
 		Name:      "profile",
-		Kwargs: ast.Dict{Values: map[string]ast.Ast{
-			"otype": ast.Lookup{On: ast.Var{Name: "a"}, Property: "otype"},
-			"oid":   ast.Lookup{On: ast.Var{Name: "a"}, Property: "oid"},
-			"key":   ast.Lookup{On: ast.Var{Name: "a"}, Property: "key"},
+		Kwargs: ast.MakeDict(map[string]ast.Ast{
+			"otype": &ast.Lookup{On: &ast.Var{Name: "a"}, Property: "otype"},
+			"oid":   &ast.Lookup{On: &ast.Var{Name: "a"}, Property: "oid"},
+			"key":   &ast.Lookup{On: &ast.Var{Name: "a"}, Property: "key"},
 			"field": ast.MakeString("profile_value"),
-		}},
+		}),
 	}
 
 	inTable := value.NewList()

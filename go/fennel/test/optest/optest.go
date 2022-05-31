@@ -56,8 +56,8 @@ func run(tr tier.Tier, op operators.Operator, static value.Dict, inputs [][]valu
 
 	// all static kwargs will be based on Var("static")
 	for k, _ := range static.Iter() {
-		kwargs[k] = ast.Lookup{
-			On:       ast.Var{Name: "static"},
+		kwargs[k] = &ast.Lookup{
+			On:       &ast.Var{Name: "static"},
 			Property: k,
 		}
 	}
@@ -69,20 +69,20 @@ func run(tr tier.Tier, op operators.Operator, static value.Dict, inputs [][]valu
 	}
 	asts := make([]ast.Ast, len(inputs))
 	for i, input := range inputs {
-		asts[i] = ast.Var{Name: varnames[i]}
+		asts[i] = &ast.Var{Name: varnames[i]}
 		queryargs.Set(varnames[i], value.NewList(input...))
 	}
 	field := "context"
 	// context kwarg k will be accessible Var("field")[str(@)].k
 	if len(queryContext) > 0 {
 		for k, _ := range queryContext[0].Iter() {
-			kwargs[k] = ast.Lookup{
-				On: ast.Binary{
-					Left: ast.Var{Name: field},
+			kwargs[k] = &ast.Lookup{
+				On: &ast.Binary{
+					Left: &ast.Var{Name: field},
 					Op:   "[]",
-					Right: ast.Unary{
+					Right: &ast.Unary{
 						Op:      "str",
-						Operand: ast.Var{Name: "its"},
+						Operand: &ast.Var{Name: "its"},
 					},
 				},
 				Property: k,
@@ -101,7 +101,7 @@ func run(tr tier.Tier, op operators.Operator, static value.Dict, inputs [][]valu
 		Vars:      varnames,
 		Namespace: sig.Module,
 		Name:      sig.Name,
-		Kwargs:    ast.Dict{Values: kwargs},
+		Kwargs:    ast.MakeDict(kwargs),
 	}
 	i, err := interpreter.NewInterpreter(context.Background(), bootarg.Create(tr), queryargs)
 	if err != nil {
