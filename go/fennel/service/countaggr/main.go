@@ -17,7 +17,6 @@ import (
 	"fennel/lib/ftypes"
 	"fennel/lib/phaser"
 	"fennel/lib/profile"
-	"fennel/lib/timer"
 	_ "fennel/opdefs" // ensure that all operators are present in the binary
 	"fennel/service/common"
 	"fennel/tier"
@@ -109,12 +108,13 @@ func startActionDBInsertion(tr tier.Tier) error {
 	go func(tr tier.Tier, consumer kafka.FConsumer) {
 		defer consumer.Close()
 		ctx := context.Background()
+		// TODO(mohit): The tracing here should be at the span level, which is currently not implemented at a
+		// library level
+		// The metric exported from here is not an important - hasn't given us much of a signal yet
 		for {
-			t := timer.Start(ctx, tr.ID, "countaggr.TransferToDB")
 			if err := action2.TransferToDB(ctx, tr, consumer); err != nil {
 				tr.Logger.Error("error while reading/writing actions to insert in db:", zap.Error(err))
 			}
-			t.Stop()
 		}
 	}(tr, consumer)
 	return nil
@@ -132,12 +132,13 @@ func startProfileDBInsertion(tr tier.Tier) error {
 	go func(tr tier.Tier, consumer kafka.FConsumer) {
 		defer consumer.Close()
 		ctx := context.Background()
+		// TODO(mohit): The tracing here should be at the span level, which is currently not implemented at a
+		// library level
+		// The metric exported from here is not an important - hasn't given us much of a signal yet
 		for {
-			t := timer.Start(ctx, tr.ID, "countaggr.TransferProfilesToDB")
 			if err := profile2.TransferToDB(ctx, tr, consumer); err != nil {
 				tr.Logger.Error("error while reading/writing actions to insert in db:", zap.Error(err))
 			}
-			t.Stop()
 		}
 	}(tr, consumer)
 	return nil

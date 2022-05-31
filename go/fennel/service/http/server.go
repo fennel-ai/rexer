@@ -27,7 +27,6 @@ import (
 	profilelib "fennel/lib/profile"
 	"fennel/lib/query"
 	"fennel/lib/sagemaker"
-	"fennel/lib/timer"
 	"fennel/lib/value"
 	"fennel/tier"
 
@@ -336,7 +335,6 @@ func (m server) GetProfileMulti(w http.ResponseWriter, req *http.Request) {
 }
 
 func (m server) Query(w http.ResponseWriter, req *http.Request) {
-	defer timer.Start(req.Context(), m.tier.ID, "query").Stop()
 	data, err := readRequest(req)
 	if err != nil {
 		handleBadRequest(w, "", err)

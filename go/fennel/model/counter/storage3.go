@@ -14,6 +14,7 @@ import (
 	"fennel/lib/utils/binary"
 	"fennel/lib/value"
 	"fennel/tier"
+
 	"github.com/mtraver/base91"
 	"github.com/zeebo/xxh3"
 )
@@ -45,7 +46,8 @@ func (t thirdStore) GetBucketStore() BucketStore {
 func (t thirdStore) Get(
 	ctx context.Context, tier tier.Tier, aggID ftypes.AggId, buckets []counter.Bucket, default_ value.Value,
 ) ([]value.Value, error) {
-	defer timer.Start(ctx, tier.ID, "thirdstore.get").Stop()
+	ctx, tmr := timer.Start(ctx, tier.ID, "thirdstore.get")
+	defer tmr.Stop()
 	res, err := t.GetMulti(ctx, tier, []ftypes.AggId{aggID}, [][]counter.Bucket{buckets}, []value.Value{default_})
 	if err != nil {
 		return nil, err
@@ -59,7 +61,8 @@ func (t thirdStore) Get(
 func (t thirdStore) GetMulti(
 	ctx context.Context, tier tier.Tier, aggIDs []ftypes.AggId, buckets [][]counter.Bucket, defaults []value.Value,
 ) ([][]value.Value, error) {
-	defer timer.Start(ctx, tier.ID, "thirdstore.get_multi").Stop()
+	ctx, tmr := timer.Start(ctx, tier.ID, "thirdstore.get_multi")
+	defer tmr.Stop()
 	slots, ptrs, hashes := t.toSlots(aggIDs, buckets)
 	view, err := newThirdStoreView(slots, hashes, t)
 	if err != nil {
@@ -89,14 +92,16 @@ func (t thirdStore) GetMulti(
 func (t thirdStore) Set(
 	ctx context.Context, tier tier.Tier, aggID ftypes.AggId, buckets []counter.Bucket,
 ) error {
-	defer timer.Start(ctx, tier.ID, "thirdstore.set").Stop()
+	ctx, tmr := timer.Start(ctx, tier.ID, "thirdstore.set")
+	defer tmr.Stop()
 	return t.SetMulti(ctx, tier, []ftypes.AggId{aggID}, [][]counter.Bucket{buckets})
 }
 
 func (t thirdStore) SetMulti(
 	ctx context.Context, tier tier.Tier, aggIDs []ftypes.AggId, buckets [][]counter.Bucket,
 ) error {
-	defer timer.Start(ctx, tier.ID, "thirdstore.set_multi").Stop()
+	ctx, tmr := timer.Start(ctx, tier.ID, "thirdstore.set_multi")
+	defer tmr.Stop()
 	slots, ptrs, hashes := t.toSlots(aggIDs, buckets)
 	view, err := newThirdStoreView(slots, hashes, t)
 	if err != nil {

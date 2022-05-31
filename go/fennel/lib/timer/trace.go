@@ -8,8 +8,17 @@ import (
 	"sync"
 	"time"
 
+	"go.opentelemetry.io/contrib/propagators/aws/xray"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc"
+	sdktrace "go.opentelemetry.io/otel/sdk/trace"
+	oteltrace "go.opentelemetry.io/otel/trace"
 	"go.uber.org/zap"
 )
+
+type TracerArgs struct {
+	OtlpEndpoint string `arg:"--otlp-endpoint,env:OTLP_ENDPOINT" default:""`
+}
 
 type traceKey struct{}
 
@@ -21,6 +30,7 @@ type traceEvent struct {
 type trace struct {
 	lock   sync.Mutex
 	start  time.Time
+	xrayId string
 	events []traceEvent
 }
 
@@ -33,10 +43,11 @@ func (t *trace) record(key string, ts time.Time) {
 	})
 }
 
-func WithTracing(ctx context.Context) context.Context {
+func WithTracing(ctx context.Context, xrayId string) context.Context {
 	return context.WithValue(ctx, traceKey{}, &trace{
 		lock:  sync.Mutex{},
 		start: time.Now(),
+		xrayId: xrayId,
 	})
 }
 
@@ -50,13 +61,60 @@ func LogTracingInfo(ctx context.Context, log *zap.Logger) error {
 		return fmt.Errorf("expected trace but got: %v", ctxval)
 	}
 	sb := strings.Builder{}
-	sb.WriteString(fmt.Sprintf("====Trace====\n"))
+	sb.WriteString("====Trace====\n")
 	sort.Slice(trace.events, func(i, j int) bool {
 		return trace.events[i].elapsed < trace.events[j].elapsed
 	})
 	for _, e := range trace.events {
 		sb.WriteString(fmt.Sprintf("\t%5dms: %s\n", e.elapsed.Milliseconds(), e.event))
 	}
+	sb.WriteString("==== X-Ray Trace =====\n")
+	sb.WriteString(fmt.Sprintf("x-ray traceid: %s\n", trace.xrayId))
 	log.Info(sb.String())
 	return nil
+}
+
+func InitProvider(endpoint string) error {
+	ctx := context.Background()
+
+	// create and start new OTLP trace exporter
+	traceExporter, err := otlptracegrpc.New(
+		ctx, otlptracegrpc.WithInsecure(), otlptracegrpc.WithEndpoint(endpoint))
+	if err != nil {
+		return fmt.Errorf("failed to create trace exporter, err: %v", err)
+	}
+
+	idg := xray.NewIDGenerator()
+
+	// TODO(mohit): Currently fails with a permission but should probably add this back
+	// See: https://github.com/open-telemetry/opentelemetry-go-contrib/issues/1856
+	//
+	// Also see on how to grant service account permission to have access:
+	// https://github.com/awsdocs/amazon-eks-user-guide/blob/master/doc_source/iam-roles-for-service-accounts-technical-overview.md
+	//
+	// Without this information, it will be difficult to map a trace to the origin pod
+	//
+	//eksResourceDetector := eks.NewResourceDetector()
+	//resource, err := eksResourceDetector.Detect(ctx)
+	//if err != nil {
+	//	return fmt.Errorf("failed to detect eks resource, err: %v", err)
+	//}
+
+	// sample only 1% of the traces at the root node. By default, if the parent is sampled, the children nodes
+	// are sampled as well (local or remote trace)
+	tp := sdktrace.NewTracerProvider(
+		sdktrace.WithSampler(sdktrace.ParentBased(/*root*/ sdktrace.TraceIDRatioBased(0.01))),
+		sdktrace.WithBatcher(traceExporter),
+		sdktrace.WithIDGenerator(idg))
+
+	otel.SetTracerProvider(tp)
+	otel.SetTextMapPropagator(xray.Propagator{})
+	// TODO(mohit): Consider returning the shutdown callback
+	return nil
+}
+
+func GetXrayTraceID(span oteltrace.Span) string {
+	xrayTraceID := span.SpanContext().TraceID().String()
+	result := fmt.Sprintf("1-%s-%s", xrayTraceID[0:8], xrayTraceID[8:])
+	return result
 }

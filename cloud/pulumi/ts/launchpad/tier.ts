@@ -110,6 +110,9 @@ type inputType = {
     // offline aggregate glue job configuration
     offlineAggregateSourceBucket: string,
     offlineAggregateSourceFiles: Record<string, string>,
+    // otel collector endpoints
+    otelCollectorEndpoint: string,
+    otelCollectorHttpEndpoint: string,
     httpServerConf?: HttpServerConf,
     queryServerConf?: QueryServerConf,
     countAggrConf?: CountAggrConf,
@@ -162,6 +165,9 @@ const parseConfig = (): inputType => {
 
         offlineAggregateSourceBucket: config.require(nameof<inputType>("offlineAggregateSourceBucket")),
         offlineAggregateSourceFiles: config.requireObject(nameof<inputType>("offlineAggregateSourceFiles")),
+
+        otelCollectorEndpoint: config.require(nameof<inputType>("otelCollectorEndpoint")),
+        otelCollectorHttpEndpoint: config.require(nameof<inputType>("otelCollectorHttpEndpoint")),
 
         httpServerConf: config.getObject(nameof<inputType>("httpServerConf")),
         queryServerConf: config.getObject(nameof<inputType>("queryServerConf")),
@@ -353,6 +359,10 @@ const setupResources = async () => {
                 unleashConfig: pulumi.output({
                     "endpoint": unleashOutput.unleashEndpoint,
                 } as Record<string, string>),
+                otelCollectorConfig: pulumi.output({
+                    "endpoint": input.otelCollectorEndpoint,
+                    "httpEndpoint": input.otelCollectorHttpEndpoint,
+                } as Record<string, string>),
             })
         })
     // setup ingress.
@@ -497,6 +507,10 @@ type TierInput = {
     offlineAggregateSourceBucket: string,
     offlineAggregateSourceFiles: Record<string, string>,
 
+    // otel collector configuration
+    otelCollectorEndpoint: string,
+    otelCollectorHttpEndpoint: string,
+
     // http server configuration
     httpServerConf?: HttpServerConf,
 
@@ -578,6 +592,9 @@ const setupTier = async (args: TierInput, preview?: boolean, destroy?: boolean) 
 
     await stack.setConfig(nameof<inputType>("offlineAggregateSourceBucket"), { value: args.offlineAggregateSourceBucket })
     await stack.setConfig(nameof<inputType>("offlineAggregateSourceFiles"), { value: JSON.stringify(args.offlineAggregateSourceFiles) })
+
+    await stack.setConfig(nameof<inputType>("otelCollectorEndpoint"), { value: args.otelCollectorEndpoint })
+    await stack.setConfig(nameof<inputType>("otelCollectorHttpEndpoint"), { value: args.otelCollectorHttpEndpoint })
 
     if (args.httpServerConf !== undefined) {
         await stack.setConfig(nameof<inputType>("httpServerConf"), { value: JSON.stringify(args.httpServerConf) })

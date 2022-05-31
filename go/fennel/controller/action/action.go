@@ -27,7 +27,8 @@ var jsonLogErrs = promauto.NewCounterVec(
 )
 
 func Insert(ctx context.Context, tier tier.Tier, a actionlib.Action) error {
-	defer timer.Start(ctx, tier.ID, "controller.action.insert").Stop()
+	ctx, t := timer.Start(ctx, tier.ID, "controller.action.insert")
+	defer t.Stop()
 	if a.Timestamp == 0 {
 		a.Timestamp = ftypes.Timestamp(tier.Clock.Now())
 	}
@@ -57,7 +58,8 @@ func Insert(ctx context.Context, tier tier.Tier, a actionlib.Action) error {
 }
 
 func BatchInsert(ctx context.Context, tier tier.Tier, actions []actionlib.Action) error {
-	defer timer.Start(ctx, tier.ID, "controller.action.batchinsert").Stop()
+	ctx, t := timer.Start(ctx, tier.ID, "controller.action.batchinsert")
+	defer t.Stop()
 	// validate all the actions first so that there are no partial entries due to invalid inputs.
 	protos := make([]*actionlib.ProtoAction, 0, len(actions))
 	jsons := make([][]byte, 0, len(actions))
@@ -106,7 +108,8 @@ func BatchInsert(ctx context.Context, tier tier.Tier, actions []actionlib.Action
 }
 
 func Fetch(ctx context.Context, this tier.Tier, request actionlib.ActionFetchRequest) ([]actionlib.Action, error) {
-	defer timer.Start(ctx, this.ID, "controller.action.fetch").Stop()
+	ctx, t := timer.Start(ctx, this.ID, "controller.action.fetch")
+	defer t.Stop()
 	return action.Fetch(ctx, this, request)
 }
 

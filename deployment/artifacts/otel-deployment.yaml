@@ -235,6 +235,7 @@ data:
 
     exporters:
       awsxray:
+        region: "%%AWS_REGION%%"
       awsemf/containerinsights:
         namespace: ContainerInsights
         log_group_name: '/aws/containerinsights/%%PLANE_ID%%/{ClusterName}/performance'
@@ -344,7 +345,7 @@ data:
             - awsprometheusremotewrite
 
 ---
-# create Daemonset
+# create standalone deployment
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -382,6 +383,13 @@ spec:
                 fieldRef:
                   fieldPath: metadata.namespace
           imagePullPolicy: Always
+          ports:
+            - name: otlp
+              containerPort: 4317
+              protocol: TCP
+            - name: otlp-http
+              containerPort: 4318
+              protocol: TCP
           command:
             - "/otelcontribcol"
             - "--config=/conf/otel-agent-config.yaml"
@@ -433,4 +441,23 @@ spec:
           hostPath:
             path: /dev/disk/
 ---
-
+# Source: opentelemetry-collector/templates/service.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: otel-collector
+  namespace: otel-eks
+spec:
+  type: ClusterIP
+  ports:
+    - name: otlp
+      port: 4317
+      targetPort: otlp
+      protocol: TCP
+    - name: otlp-http
+      port: 4318
+      targetPort: otlp-http
+      protocol: TCP
+  selector:
+    name: otel-collector
+---

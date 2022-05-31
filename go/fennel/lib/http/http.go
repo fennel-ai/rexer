@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/gorilla/mux"
+	"go.opentelemetry.io/otel"
 	"go.uber.org/zap"
 
 	"fennel/lib/timer"
@@ -44,9 +45,13 @@ func RateLimitingMiddleware(maxConcurrentRequests int) mux.MiddlewareFunc {
 func Tracer(log *zap.Logger, slowThreshold time.Duration, sampleRate float64) mux.MiddlewareFunc {
 	return func(h http.Handler) http.Handler {
 		return http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
+			route := mux.CurrentRoute(r)
+			path, _ := route.GetPathTemplate()
 			start := time.Now()
-			ctx := timer.WithTracing(r.Context())
+			ctx, span := otel.Tracer("fennel").Start(r.Context(), path)
+			ctx = timer.WithTracing(ctx, timer.GetXrayTraceID(span))
 			h.ServeHTTP(rw, r.WithContext(ctx))
+			span.End()
 			if time.Since(start) > slowThreshold || rand.Float64() < sampleRate {
 				timer.LogTracingInfo(ctx, log)
 			}

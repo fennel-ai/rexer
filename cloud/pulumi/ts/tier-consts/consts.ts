@@ -161,6 +161,24 @@ export const serviceEnvs = [
             }
         }
     },
+    {
+        name: "OTLP_ENDPOINT",
+        valueFrom: {
+            configMapKeyRef: {
+                name: "otel-collector-conf",
+                key: "endpoint"
+            }
+        }
+    },
+    {
+        name: "OTLP_HTTP_ENDPOINT",
+        valueFrom: {
+            configMapKeyRef: {
+                name: "otel-collector-conf",
+                key: "httpEndpoint"
+            }
+        }
+    },
 ];
 
 export const UNLEASH_USERNAME = "unleash";

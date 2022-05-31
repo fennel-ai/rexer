@@ -20,7 +20,7 @@ _NUM_ACTIONS = 20
 _NEW_ACTIONS = 1200
 _NUM_PROCS = 5
 
-_FLAGS = ['--url', _URL, '--num_uids', "1", '--uid', f'{_USER_ID}', '--qps', f'{_NUM_ACTIONS}', '--num_procs', f'{_NUM_PROCS}']
+_FLAGS = ['--url', _URL, '--num_uids', "200", '--uid', f'{_USER_ID}', '--qps', f'{_NUM_ACTIONS}', '--num_procs', f'{_NUM_PROCS}']
 
 
 class _Status(Enum):
@@ -30,7 +30,6 @@ class _Status(Enum):
 
 
 class TestStagingEndToEnd(unittest.TestCase):
-    @unittest.skip
     def test_viewtime(self):
         c = rex.Client(_URL)  
 

@@ -54,13 +54,14 @@ type cachedProvider struct {
 }
 
 func (c cachedProvider) set(ctx context.Context, tier tier.Tier, profileItem profile.ProfileItem) error {
-	defer timer.Start(ctx, tier.ID, "model.profile.cached.set").Stop()
+	ctx, t := timer.Start(ctx, tier.ID, "model.profile.cached.set")
+	defer t.Stop()
 	return c.setBatch(ctx, tier, []profile.ProfileItem{profileItem})
 }
 
 func (c cachedProvider) setBatch(ctx context.Context, tier tier.Tier, profiles []profile.ProfileItem) error {
-	defer timer.Start(ctx, tier.ID, "model.profile.cached.setBatch").Stop()
-
+	ctx, t := timer.Start(ctx, tier.ID, "model.profile.cached.setBatch")
+	defer t.Stop()
 	// NOTE: the implementation assumes that in scenarios where the cache could be inconsistent with the DB, the caller would retry
 	// which should lead to eventually consistency of the cache
 	//
@@ -138,7 +139,8 @@ func (c cachedProvider) setBatch(ctx context.Context, tier tier.Tier, profiles [
 }
 
 func (c cachedProvider) get(ctx context.Context, tier tier.Tier, profileKey profile.ProfileItemKey) (profile.ProfileItem, error) {
-	defer timer.Start(ctx, tier.ID, "model.profile.cached.get").Stop()
+	ctx, t := timer.Start(ctx, tier.ID, "model.profile.cached.get")
+	defer t.Stop()
 	ret, err := c.getBatch(ctx, tier, []profile.ProfileItemKey{profileKey})
 	if err != nil || len(ret) == 0 {
 		return profile.NewProfileItem(string(profileKey.OType), profileKey.Oid, profileKey.Key, value.Nil, 0), err
@@ -159,8 +161,8 @@ func getValueFromCache(v interface{}) (value.Value, error) {
 }
 
 func (c cachedProvider) getBatch(ctx context.Context, tier tier.Tier, profileKeys []profile.ProfileItemKey) ([]profile.ProfileItem, error) {
-	defer timer.Start(ctx, tier.ID, "model.profile.cached.get_batched").Stop()
-
+	ctx, t := timer.Start(ctx, tier.ID, "model.profile.cached.get_batched")
+	defer t.Stop()
 	// Dedup keys to avoid I/O from cache and DB.
 	keyToProfileKey := make(map[string]profile.ProfileItemKey)
 	for _, pk := range profileKeys {
