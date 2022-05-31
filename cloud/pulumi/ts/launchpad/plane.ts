@@ -150,6 +150,7 @@ const setupResources = async () => {
         connectedSecurityGroups: {
             "eks": eksOutput.clusterSg,
         },
+        connectedCidrBlocks: [input.controlPlaneConf.cidrBlock],
         planeId: input.planeId,
     });
     const auroraOutput = await aurora.setup({
@@ -177,6 +178,7 @@ const setupResources = async () => {
         numShards: input.redisConf?.numShards,
         numReplicasPerShard: input.redisConf?.numReplicasPerShard,
         nodeType: input.redisConf?.nodeType,
+        connectedCidrBlocks: [input.controlPlaneConf.cidrBlock],
         azs: vpcOutput.azs,
         planeId: input.planeId,
     })
@@ -187,6 +189,7 @@ const setupResources = async () => {
         connectedSecurityGroups: {
             "eks": eksOutput.clusterSg,
         },
+        connectedCidrBlocks: [input.controlPlaneConf.cidrBlock],
         planeId: input.planeId,
         nodeType: input.cacheConf?.nodeType,
         numNodeGroups: input.cacheConf?.numNodeGroups,

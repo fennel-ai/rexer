@@ -16,6 +16,7 @@ export type inputType = {
     nodeType?: string,
     azs: pulumi.Output<string[]>,
     connectedSecurityGroups: Record<string, pulumi.Output<string>>,
+    connectedCidrBlocks?: string[],
     planeId: number,
 }
 
@@ -67,6 +68,16 @@ export const setup = async (input: inputType): Promise<pulumi.Output<outputType>
         sgRules.push(new aws.ec2.SecurityGroupRule(`p-${input.planeId}-redis-allow-${key}`, {
             securityGroupId: redisSg.id,
             sourceSecurityGroupId: input.connectedSecurityGroups[key],
+            fromPort: 0,
+            toPort: 65535,
+            type: "ingress",
+            protocol: "tcp",
+        }, { provider }).id)
+    }
+    if (input.connectedCidrBlocks !== undefined) {
+        sgRules.push(new aws.ec2.SecurityGroupRule(`p-${input.planeId}-redis-allow-connected-cidr`, {
+            securityGroupId: redisSg.id,
+            cidrBlocks: input.connectedCidrBlocks,
             fromPort: 0,
             toPort: 65535,
             type: "ingress",
