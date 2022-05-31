@@ -45,7 +45,6 @@ const tierConfs: Record<number, TierConf> = {
         httpServerConf: {
             podConf: {
                 replicas: 1,
-                // each http-server should be in different nodes from each other
                 enforceReplicaIsolation: false,
             }
         },
@@ -56,7 +55,6 @@ const tierConfs: Record<number, TierConf> = {
         httpServerConf: {
             podConf: {
                 replicas: 1,
-                // each http-server should be in different nodes from each other
                 enforceReplicaIsolation: false,
             }
         },
@@ -103,20 +101,25 @@ const tierConfs: Record<number, TierConf> = {
         httpServerConf: {
             podConf: {
                 replicas: 1,
-                // each http-server should be in different nodes from each other
                 enforceReplicaIsolation: false,
             },
         },
     },
     // Lokal's staging tier
-    111: {
-        planeId: 4,
+    109: {
+        planeId: 6,
         // use public subnets for ingress to allow traffic from outside the assigned vpc
         ingressConf: {
             usePublicSubnets: true,
             loadBalancerScheme: PUBLIC_LB_SCHEME,
-        }
-    }
+        },
+        httpServerConf: {
+            podConf: {
+                replicas: 1,
+                enforceReplicaIsolation: false,
+            },
+        },
+    },
 }
 
 // map from plane id to its configuration.
@@ -188,39 +191,6 @@ const planeConfs: Record<number, PlaneConf> = {
         },
         milvusConf: {},
     },
-    // Lokal's dev tier data plane.
-    4: {
-        planeId: 4,
-        region: "ap-south-1",
-        roleArn: "arn:aws:iam::030813887342:role/admin",
-        vpcConf: {
-            cidr: "10.104.0.0/16"
-        },
-        dbConf: {
-            minCapacity: 1,
-            maxCapacity: 64,
-            password: "password",
-            skipFinalSnapshot: false,
-        },
-        confluentConf: {
-            username: confluentUsername,
-            password: confluentPassword
-        },
-        cacheConf: {
-            nodeType: "cache.t4g.medium",
-            numNodeGroups: 2,
-            replicasPerNodeGroup: 1,
-        },
-        controlPlaneConf: controlPlane,
-        redisConf: {
-            numShards: 4,
-            nodeType: "db.t4g.medium",
-            numReplicasPerShard: 1,
-        },
-        prometheusConf: {
-            useAMP: false
-        },
-    },
     // Lokal's prod tier data plane
     5: {
         planeId: 5,
@@ -284,6 +254,39 @@ const planeConfs: Record<number, PlaneConf> = {
         prometheusConf: {
             useAMP: false
         }
+    },
+    // Lokal's staging data plane
+    6: {
+        planeId: 6,
+        region: "ap-south-1",
+        roleArn: "arn:aws:iam::030813887342:role/admin",
+        vpcConf: {
+            cidr: "10.106.0.0/16"
+        },
+        dbConf: {
+            minCapacity: 1,
+            maxCapacity: 4,
+            password: "password",
+            skipFinalSnapshot: true,
+        },
+        confluentConf: {
+            username: confluentUsername,
+            password: confluentPassword
+        },
+        controlPlaneConf: controlPlane,
+        redisConf: {
+            numShards: 1,
+            nodeType: "db.t4g.medium",
+            numReplicasPerShard: 0,
+        },
+        cacheConf: {
+            nodeType: "cache.t4g.medium",
+            numNodeGroups: 1,
+            replicasPerNodeGroup: 0,
+        },
+        prometheusConf: {
+            useAMP: false
+        },
     },
 }
 

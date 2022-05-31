@@ -82,6 +82,7 @@ export const setup = async (input: inputType): Promise<pulumi.Output<outputType>
             minCapacity: input.minCapacity,
             maxCapacity: input.maxCapacity,
         },
+        skipFinalSnapshot: true,
         tags: { ...fennelStdTags }
     }, { provider });
 
