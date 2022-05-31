@@ -96,7 +96,7 @@ func (c Client) CreateKNNIndex(agg aggregate.Aggregate) error {
 			},
 		},
 	}
-
+	fmt.Println("Going to create collection")
 	err := c.client.CreateCollection(
 		context.Background(), // ctx
 		schema,
@@ -115,7 +115,7 @@ func (c Client) CreateKNNIndex(agg aggregate.Aggregate) error {
 	if err != nil {
 		return err
 	}
-
+	fmt.Println("Going to create index")
 	err = c.client.CreateIndex(
 		context.Background(), // ctx
 		string(agg.Name),     // CollectionName
@@ -123,6 +123,7 @@ func (c Client) CreateKNNIndex(agg aggregate.Aggregate) error {
 		idx,                  // index
 		false,                // async
 	)
+	fmt.Println("Going to load data")
 	if err != nil {
 		return err
 	}
