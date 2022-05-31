@@ -2,10 +2,10 @@ package aggregate
 
 import (
 	"context"
+	"fennel/controller/action"
 	"fmt"
 	"time"
 
-	"fennel/controller/action"
 	"fennel/controller/counter"
 	"fennel/controller/profile"
 	"fennel/engine"
@@ -229,18 +229,8 @@ func Update(ctx context.Context, tier tier.Tier, consumer kafka.FConsumer, agg a
 	var table value.List
 	var err error
 	var streamLen int
-	if agg.Source == aggregate.SOURCE_ACTION {
-		actions, err := action.ReadBatch(ctx, consumer, 20000, time.Second*10)
-		if err != nil {
-			return err
-		}
-		if len(actions) == 0 {
-			return nil
-		}
 
-		table, err = transformActions(tier, actions, agg.Query)
-		streamLen = len(actions)
-	} else if agg.Source == aggregate.SOURCE_PROFILE {
+	if agg.Source == aggregate.SOURCE_PROFILE {
 		profiles, err := profile.ReadBatch(ctx, consumer, 20000, time.Second*10)
 
 		if err != nil {
@@ -253,7 +243,16 @@ func Update(ctx context.Context, tier tier.Tier, consumer kafka.FConsumer, agg a
 		table, err = transformProfiles(tier, profiles, agg.Query)
 		streamLen = len(profiles)
 	} else {
-		return fmt.Errorf("aggregate source %s not defined", agg.Source)
+		actions, err := action.ReadBatch(ctx, consumer, 20000, time.Second*10)
+		if err != nil {
+			return err
+		}
+		if len(actions) == 0 {
+			return nil
+		}
+
+		table, err = transformActions(tier, actions, agg.Query)
+		streamLen = len(actions)
 	}
 
 	if err != nil {
