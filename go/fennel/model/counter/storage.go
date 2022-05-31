@@ -204,7 +204,8 @@ func (t twoLevelRedisStore) get(
 func (t twoLevelRedisStore) Get(
 	ctx context.Context, tier tier.Tier, aggId ftypes.AggId, buckets []counter.Bucket, default_ value.Value,
 ) ([]value.Value, error) {
-	defer timer.Start(ctx, tier.ID, "twolevelredis.get").Stop()
+	ctx, tmr := timer.Start(ctx, tier.ID, "twolevelredis.get")
+	defer tmr.Stop()
 	n := len(buckets)
 	ids := make([]ftypes.AggId, n)
 	defaults := make([]value.Value, n)
@@ -218,7 +219,8 @@ func (t twoLevelRedisStore) Get(
 func (t twoLevelRedisStore) GetMulti(
 	ctx context.Context, tier tier.Tier, aggIds []ftypes.AggId, buckets [][]counter.Bucket, defaults []value.Value,
 ) ([][]value.Value, error) {
-	defer timer.Start(ctx, tier.ID, "twolevelredis.get_multi").Stop()
+	ctx, tmr := timer.Start(ctx, tier.ID, "twolevelredis.get_multi")
+	defer tmr.Stop()
 	sz := 0
 	for i := range buckets {
 		sz += len(buckets[i])
@@ -315,7 +317,8 @@ func (t twoLevelRedisStore) set(ctx context.Context, tier tier.Tier, aggIds []ft
 }
 
 func (t twoLevelRedisStore) Set(ctx context.Context, tier tier.Tier, aggId ftypes.AggId, buckets []counter.Bucket) error {
-	defer timer.Start(ctx, tier.ID, "twolevelredis.set").Stop()
+	ctx, tmr := timer.Start(ctx, tier.ID, "twolevelredis.set")
+	defer tmr.Stop()
 	ids := make([]ftypes.AggId, len(buckets))
 	for i := range ids {
 		ids[i] = aggId
@@ -325,7 +328,8 @@ func (t twoLevelRedisStore) Set(ctx context.Context, tier tier.Tier, aggId ftype
 
 func (t twoLevelRedisStore) SetMulti(
 	ctx context.Context, tier tier.Tier, aggIds []ftypes.AggId, buckets [][]counter.Bucket) error {
-	defer timer.Start(ctx, tier.ID, "twolevelredis.set_multi").Stop()
+	ctx, tmr := timer.Start(ctx, tier.ID, "twolevelredis.set_multi")
+	defer tmr.Stop()
 	var ids_ []ftypes.AggId
 	var buckets_ []counter.Bucket
 	for i := range buckets {
@@ -460,7 +464,8 @@ func (t twoLevelRedisStore) logStats(groupVals []value.Value, mode string) {
 var _ BucketStore = twoLevelRedisStore{}
 
 func Update(ctx context.Context, tier tier.Tier, aggId ftypes.AggId, buckets []counter.Bucket, h Histogram) error {
-	defer timer.Start(ctx, tier.ID, "counter.update").Stop()
+	ctx, tmr := timer.Start(ctx, tier.ID, "counter.update")
+	defer tmr.Stop()
 	cur, err := h.Get(ctx, tier, aggId, buckets, h.Zero())
 	if err != nil {
 		return err

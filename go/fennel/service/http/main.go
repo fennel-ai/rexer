@@ -11,6 +11,7 @@ import (
 	"time"
 
 	httplib "fennel/lib/http"
+	"fennel/lib/timer"
 	_ "fennel/opdefs"
 	"fennel/service/common"
 	inspector "fennel/service/inspector/server"
@@ -105,6 +106,7 @@ func main() {
 		common.PrometheusArgs
 		common.PprofArgs
 		inspector.InspectorArgs
+		timer.TracerArgs
 	}
 	arg.MustParse(&flags)
 	log.SetFlags(log.LstdFlags | log.Lshortfile)

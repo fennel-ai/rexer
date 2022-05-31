@@ -14,6 +14,7 @@ import (
 	"fennel/lib/cache"
 	"fennel/lib/clock"
 	"fennel/lib/ftypes"
+	"fennel/lib/timer"
 	"fennel/modelstore"
 	"fennel/pcache"
 	"fennel/redis"
@@ -31,6 +32,7 @@ type TierArgs struct {
 	sagemaker.SagemakerArgs   `json:"sagemaker_._sagemaker_args"`
 	modelstore.ModelStoreArgs `json:"modelstore_._model_store_args"`
 	glue.GlueArgs             `json:"glue_._glue_args"`
+	timer.TracerArgs		  `json:"tracer_._tracer_args"`
 
 	Region           string         `arg:"--aws-region,env:AWS_REGION" json:"aws_region,omitempty"`
 	KafkaServer      string         `arg:"--kafka-server,env:KAFKA_SERVER_ADDRESS" json:"kafka_server,omitempty"`
@@ -268,6 +270,14 @@ func CreateFromArgs(args *TierArgs) (tier Tier, err error) {
 			unleash.WithUrl(args.UnleashEndpoint),
 		); err != nil {
 			return tier, fmt.Errorf("creating tier ")
+		}
+	}
+
+	// Setup tracer provider (which exports remotely) if an endpoint is defined. Otherwise a default tracer is used.
+	if len(args.OtlpEndpoint) > 0 {
+		err = timer.InitProvider(args.OtlpEndpoint)
+		if err != nil {
+			panic(err)
 		}
 	}
 

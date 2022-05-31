@@ -17,6 +17,7 @@ export type inputType = {
     modelServingConfig: pulumi.Output<Record<string, string>>,
     glueConfig: pulumi.Output<Record<string, string>>,
     unleashConfig: pulumi.Output<Record<string, string>>,
+    otelCollectorConfig: pulumi.Output<Record<string, string>>,
 }
 
 export type outputType = {}
@@ -80,6 +81,13 @@ export const setup = async (input: inputType) => {
         data: input.unleashConfig,
         metadata: {
             name: "unleash-conf",
+        }
+    }, { provider, deleteBeforeReplace: true });
+
+    const otelCollectorConf = new k8s.core.v1.ConfigMap("otel-collector-conf", {
+        data: input.otelCollectorConfig,
+        metadata: {
+            name: "otel-collector-conf",
         }
     }, { provider, deleteBeforeReplace: true });
 

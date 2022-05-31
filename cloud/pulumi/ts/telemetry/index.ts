@@ -21,7 +21,10 @@ export type inputType = {
     prometheusEndpoint: pulumi.Input<string>,
 }
 
-export type outputType = {}
+export type outputType = {
+    otelCollectorEndpoint: string,
+    otelCollectorHttpEndpoint: string,
+}
 
 // TODO: move to library.
 class MonitoredDeployment extends k8s.apps.v1.Deployment {
@@ -93,6 +96,8 @@ function setupOtelPolicy(input: inputType, awsProvider: aws.Provider) {
 
 // Setup the ADOT (AWS Distro for OpenTelemetry) Collector to collect metrics
 // and traces and forward them to cloudwatch.
+//
+// TODO: consider using HELM charts - https://github.com/open-telemetry/opentelemetry-helm-charts
 async function setupAdotCollector(input: inputType, k8sProvider: k8s.Provider) {
     const root = process.env.FENNEL_ROOT!;
     // TODO: Consider refactoring this to avoid creating a config file inside the callback of `apply`.
@@ -202,6 +207,11 @@ export const setup = async (input: inputType) => {
     setupOtelPolicy(input, awsProvider);
     await setupAdotCollector(input, k8sProvider);
     await setupFluentBit(input, k8sProvider);
-    const output: outputType = {}
+    const output: outputType = {
+        // <serviceName>.<namespace>:port - NOTE: only the ipv4 or ipv6 configurations should be provided not URL
+        // namespace and port are defined in: rexer/deployment/artifacts/otel-deployment.yaml
+        otelCollectorEndpoint: "otel-collector.otel-eks:4317",
+        otelCollectorHttpEndpoint: "otel-collector.otel-eks:4318",
+    }
     return output
 }

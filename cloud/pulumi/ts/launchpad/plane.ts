@@ -89,6 +89,7 @@ export type PlaneOutput = {
     trainingData: connectorSink.outputType,
     offlineAggregateSourceFiles: offlineAggregateSources.outputType,
     glue: glueSource.outputType,
+    telemetry: telemetry.outputType,
 }
 
 const parseConfig = (): PlaneConf => {
@@ -253,6 +254,7 @@ const setupResources = async () => {
         trainingData: connectorSinkOutput,
         offlineAggregateSourceFiles: offlineAggregateSourceFiles,
         glue: glueOutput,
+        telemetry: telemetryOutput,
     }
 };
 

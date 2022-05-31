@@ -13,6 +13,7 @@ import (
 	"fennel/lib/utils/binary"
 	"fennel/lib/value"
 	"fennel/tier"
+
 	"github.com/mtraver/base91"
 	"go.uber.org/zap"
 )
@@ -66,7 +67,8 @@ func (s splitStore) logStats(groups map[splitGroup][]string, mode string) {
 func (s splitStore) Get(
 	ctx context.Context, tier tier.Tier, aggID ftypes.AggId, buckets []counter.Bucket, default_ value.Value,
 ) ([]value.Value, error) {
-	defer timer.Start(ctx, tier.ID, "splitstore.get").Stop()
+	ctx, t := timer.Start(ctx, tier.ID, "splitstore.get")
+	defer t.Stop()
 	res, err := s.GetMulti(ctx, tier, []ftypes.AggId{aggID}, [][]counter.Bucket{buckets}, []value.Value{default_})
 	if err != nil {
 		return nil, err
@@ -80,7 +82,8 @@ func (s splitStore) Get(
 func (s splitStore) GetMulti(
 	ctx context.Context, tier tier.Tier, aggIDs []ftypes.AggId, buckets [][]counter.Bucket, defaults []value.Value,
 ) ([][]value.Value, error) {
-	defer timer.Start(ctx, tier.ID, "splitstore.get_multi").Stop()
+	ctx, t := timer.Start(ctx, tier.ID, "splitstore.get_multi")
+	defer t.Stop()
 	vals, err := s.getFromRedis(ctx, &tier, aggIDs, buckets)
 	if err != nil {
 		return nil, err
@@ -109,14 +112,16 @@ func (s splitStore) GetMulti(
 func (s splitStore) Set(
 	ctx context.Context, tier tier.Tier, aggID ftypes.AggId, buckets []counter.Bucket,
 ) error {
-	defer timer.Start(ctx, tier.ID, "splitstore.set").Stop()
+	ctx, t := timer.Start(ctx, tier.ID, "splitstore.set")
+	defer t.Stop()
 	return s.SetMulti(ctx, tier, []ftypes.AggId{aggID}, [][]counter.Bucket{buckets})
 }
 
 func (s splitStore) SetMulti(
 	ctx context.Context, tier tier.Tier, aggIDs []ftypes.AggId, buckets [][]counter.Bucket,
 ) error {
-	defer timer.Start(ctx, tier.ID, "splitstore.set_multi").Stop()
+	ctx, t := timer.Start(ctx, tier.ID, "splitstore.set_multi")
+	defer t.Stop()
 	vals, err := s.getFromRedis(ctx, &tier, aggIDs, buckets)
 	if err != nil {
 		return err

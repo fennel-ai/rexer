@@ -11,6 +11,7 @@ import * as connsink from "../connectorsink";
 import * as offlineAggregateSource from "../offline-aggregate-script-source";
 import * as glueSource from "../glue-script-source";
 import * as kafkatopics from "../kafkatopics";
+import * as telemetry from "../telemetry";
 import { nameof } from "../lib/util";
 
 import * as process from "process";
@@ -335,6 +336,7 @@ const vpcOutput = dataplane[nameof<PlaneOutput>("vpc")].value as vpc.outputType
 const trainingDataOutput = dataplane[nameof<PlaneOutput>("trainingData")].value as connsink.outputType
 const offlineAggregateSourceFiles = dataplane[nameof<PlaneOutput>("offlineAggregateSourceFiles")].value as offlineAggregateSource.outputType
 const glueOutput = dataplane[nameof<PlaneOutput>("glue")].value as glueSource.outputType
+const telemetryOutput = dataplane[nameof<PlaneOutput>("telemetry")].value as telemetry.outputType
 
 // Create/update/delete the tier.
 if (tierId !== 0) {
@@ -402,6 +404,9 @@ if (tierId !== 0) {
 
         offlineAggregateSourceBucket: offlineAggregateSourceFiles.bucketName,
         offlineAggregateSourceFiles: offlineAggregateSourceFiles.sources,
+
+        otelCollectorEndpoint: telemetryOutput.otelCollectorEndpoint,
+        otelCollectorHttpEndpoint: telemetryOutput.otelCollectorHttpEndpoint,
 
         httpServerConf: tierConf.httpServerConf,
 

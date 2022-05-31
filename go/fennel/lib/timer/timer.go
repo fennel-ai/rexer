@@ -11,6 +11,8 @@ import (
 
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
+	"go.opentelemetry.io/otel"
+	oteltrace "go.opentelemetry.io/otel/trace"
 )
 
 var fnDuration = promauto.NewSummaryVec(prometheus.SummaryOpts{
@@ -27,11 +29,12 @@ var fnDuration = promauto.NewSummaryVec(prometheus.SummaryOpts{
 }, []string{"realm_id", "function_name"})
 
 type Timer struct {
-	span    string
-	realmID ftypes.RealmID
-	timer   *prometheus.Timer
-	trace   *trace
-	id      string
+	span       string
+	realmID    ftypes.RealmID
+	timer      *prometheus.Timer
+	trace      *trace
+	id         string
+	tracerSpan oteltrace.Span
 }
 
 func joinStr(s ...string) string {
@@ -47,21 +50,25 @@ func (t Timer) Stop() {
 	if t.trace != nil {
 		t.trace.record(joinStr("exit:", t.id, ":", t.span), time.Now())
 	}
+	t.tracerSpan.End()
 }
 
-func Start(ctx context.Context, realmID ftypes.RealmID, funcName string) Timer {
-	ctxval := ctx.Value(traceKey{})
+func Start(ctx context.Context, realmID ftypes.RealmID, funcName string) (context.Context, Timer) {
+	tracer := otel.Tracer("fennel")
+	cCtx, span := tracer.Start(ctx, funcName)
+	ctxval := cCtx.Value(traceKey{})
 	id := utils.RandString(6)
 	var tr *trace = nil
 	if ctxval != nil {
 		tr = ctxval.(*trace)
 		tr.record(joinStr("enter:", id, ":", funcName), time.Now())
 	}
-	return Timer{
-		span:    funcName,
-		realmID: realmID,
-		timer:   prometheus.NewTimer(fnDuration.WithLabelValues(fmt.Sprintf("%d", realmID), funcName)),
-		trace:   tr,
-		id:      id,
+	return cCtx, Timer{
+		span:       funcName,
+		realmID:    realmID,
+		timer:      prometheus.NewTimer(fnDuration.WithLabelValues(fmt.Sprintf("%d", realmID), funcName)),
+		trace:      tr,
+		id:         id,
+		tracerSpan: span,
 	}
 }
