@@ -141,6 +141,10 @@ func (agg Aggregate) IsOffline() bool {
 	return agg.Options.CronSchedule != ""
 }
 
+func (agg Aggregate) IsForever() bool {
+	return (agg.Options.Durations == nil || len(agg.Options.Durations) == 0) && agg.Options.AggType != "timeseries_sum"
+}
+
 type Options struct {
 	AggType         ftypes.AggType
 	Durations       []uint64

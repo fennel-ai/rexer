@@ -2,8 +2,6 @@ package set
 
 import (
 	"context"
-	"fmt"
-
 	"fennel/engine/operators"
 	"fennel/lib/value"
 )
@@ -30,7 +28,6 @@ func (op setOperator) Signature() *operators.Signature {
 }
 
 func (op setOperator) Apply(_ context.Context, staticKwargs value.Dict, in operators.InputIter, out *value.List) error {
-	fmt.Println("setOperator.Apply")
 	for in.HasMore() {
 		heads, contextKwargs, err := in.Next()
 		if err != nil {
@@ -42,6 +39,5 @@ func (op setOperator) Apply(_ context.Context, staticKwargs value.Dict, in opera
 		row.Set(string(k.(value.String)), v)
 		out.Append(row)
 	}
-	fmt.Println("setOperator.Apply done", out.Len())
 	return nil
 }

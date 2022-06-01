@@ -154,7 +154,7 @@ func batchValue(ctx context.Context, tier tier.Tier, batch []aggregate.GetAggVal
 	// Fetch offline aggregate values
 	for i, req := range batch {
 		agg := unique[req.AggName]
-		if agg.Options.CronSchedule == "" {
+		if !agg.IsOffline() {
 			continue
 		}
 		offlinePtr = append(offlinePtr, i)
@@ -194,7 +194,7 @@ func batchValue(ctx context.Context, tier tier.Tier, batch []aggregate.GetAggVal
 	// Fetch forever aggregates, ( these dont need histograms )
 	for i, req := range batch {
 		agg := unique[req.AggName]
-		if agg.Options.Durations != nil && len(agg.Options.Durations) > 0 && agg.Options.AggType != "timeseries_sum" {
+		if !agg.IsForever() {
 			continue
 		}
 		// Current code only supports knn, need to extend this to support other aggregates
@@ -202,6 +202,8 @@ func batchValue(ctx context.Context, tier tier.Tier, batch []aggregate.GetAggVal
 			return nil, fmt.Errorf("error: Only KNN supports forever aggregates")
 		}
 		foreverPtr = append(foreverPtr, i)
+		fmt.Println("foreverKey ", req.Key)
+		foreverKeys = append(foreverKeys, req.Key)
 		// Currently we assume the aggregate and kwarg is the same for all knn requests.
 		foreverAgg = agg
 		foreverKwarags = req.Kwargs
@@ -209,6 +211,7 @@ func batchValue(ctx context.Context, tier tier.Tier, batch []aggregate.GetAggVal
 
 	if len(foreverPtr) > 0 {
 		nn, err := tier.MilvusClient.GetNeighbors(foreverAgg, foreverKeys, foreverKwarags)
+		fmt.Println("forever nn ", nn)
 		if err != nil {
 			return nil, err
 		}
@@ -227,7 +230,7 @@ func batchValue(ctx context.Context, tier tier.Tier, batch []aggregate.GetAggVal
 	// Fetch online aggregate values
 	for i, req := range batch {
 		agg := unique[req.AggName]
-		if agg.Options.CronSchedule != "" {
+		if agg.IsForever() || agg.IsOffline() {
 			continue
 		}
 		onlinePtr = append(onlinePtr, i)
@@ -262,7 +265,7 @@ func Update(ctx context.Context, tier tier.Tier, consumer kafka.FConsumer, agg a
 
 	fmt.Println("Updating aggregate: ", agg.Name, agg.Source)
 	if agg.Source == aggregate.SOURCE_PROFILE {
-		profiles, err := profile.ReadBatch(ctx, consumer, 1000, time.Second*10)
+		profiles, err := profile.ReadBatch(ctx, consumer, 500, time.Second*10)
 
 		if err != nil {
 			return err
@@ -279,7 +282,7 @@ func Update(ctx context.Context, tier tier.Tier, consumer kafka.FConsumer, agg a
 		}
 		streamLen = len(profiles)
 	} else {
-		actions, err := action.ReadBatch(ctx, consumer, 1000, time.Second*10)
+		actions, err := action.ReadBatch(ctx, consumer, 10000, time.Second*10)
 		if err != nil {
 			return err
 		}

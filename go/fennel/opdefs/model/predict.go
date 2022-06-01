@@ -48,7 +48,7 @@ func (p predictOperator) Apply(ctx context.Context, staticKwargs value.Dict, in 
 	}
 	var outputs []value.Value
 	var err error
-
+	fmt.Println("Calling model", modelName, "  with ", len(inputs), " inputs")
 	if isPretrainedModel {
 		outputs, err = modelstore.PreTrainedScore(ctx, p.tier, modelName, inputs)
 	} else {

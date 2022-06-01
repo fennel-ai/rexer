@@ -174,6 +174,7 @@ func (c Client) InsertStream(agg aggregate.Aggregate, table value.List) error {
 	idColumn := entity.NewColumnInt64(PrimaryField, ids)
 	timestampColumn := entity.NewColumnInt64("Timestamp", timestamps)
 	vectorColumn := entity.NewColumnFloatVector(VectorField, int(agg.Options.Dim), vectors)
+	fmt.Println("Going to insert data")
 	_, err := c.client.Insert(
 		context.Background(), // ctx
 		string(agg.Name),     // CollectionName
@@ -182,6 +183,7 @@ func (c Client) InsertStream(agg aggregate.Aggregate, table value.List) error {
 		timestampColumn,      // columnarData
 		vectorColumn,         // columnarData
 	)
+	fmt.Println("Going to flush data", len(ids), " : ", agg.Name)
 	return err
 }
 
@@ -245,6 +247,7 @@ func (c Client) GetNeighbors(agg aggregate.Aggregate, vectors []value.Value, kwa
 		topK,                   // topK
 		sp,                     // sp
 	)
+
 	if err != nil {
 		log.Fatal("fail to search collection:", err.Error())
 	}
@@ -337,7 +340,7 @@ func getIndex(hyperparameters map[string]interface{}, metric entity.MetricType) 
 	case "annoy":
 		return entity.NewIndexANNOY(
 			metric,
-			int(hyperparameters["nTrees"].(int)),
+			hyperparameters["nTrees"].(int),
 		)
 	default:
 		return nil, fmt.Errorf("unsupported index %s", hyperparameters["index"])
@@ -348,24 +351,25 @@ func getSearchParams(indexType string, searchParameters map[string]interface{}) 
 	switch indexType {
 	case "flat":
 		return entity.NewIndexFlatSearchParam(
-			int(searchParameters["nprobe"].(float64)),
+			searchParameters["nprobe"].(int),
 		)
 	case "ivf_flat":
 		return entity.NewIndexIvfFlatSearchParam(
-			int(searchParameters["nprobe"].(float64)),
+			searchParameters["nprobe"].(int),
 		)
 	case "hnsw":
 		return entity.NewIndexHNSWSearchParam(
-			int(searchParameters["ef"].(float64)),
+			searchParameters["ef"].(int),
 		)
 	case "annoy":
 		return entity.NewIndexANNOYSearchParam(
-			int(searchParameters["searchK"].(float64)),
+			searchParameters["searchK"].(int),
 		)
 	default:
 		return nil, fmt.Errorf("unsupported index %s", indexType)
 	}
 }
+
 func getMetric(metric string) (entity.MetricType, error) {
 	switch metric {
 	case "ip":
