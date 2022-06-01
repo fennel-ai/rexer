@@ -261,7 +261,8 @@ func Update(ctx context.Context, tier tier.Tier, consumer kafka.FConsumer, agg a
 
 	if table.Len() == 0 {
 		tier.Logger.Info(fmt.Sprintf("no data to update aggregate %s", agg.Name))
-		return nil
+		_, err = consumer.Commit()
+		return err
 	}
 
 	// Offline Aggregates
