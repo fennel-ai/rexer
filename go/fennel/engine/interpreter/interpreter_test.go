@@ -222,30 +222,36 @@ func TestVisitOpCallMultiop(t *testing.T) {
 }
 
 func getOpCallQuery() ast.Ast {
-	return &ast.OpCall{
-		Operands: []ast.Ast{&ast.OpCall{
-			Operands:  []ast.Ast{&ast.Var{Name: "table"}},
-			Vars:      []string{"at"},
-			Namespace: "std",
-			Name:      "filter",
-			Kwargs: ast.MakeDict(map[string]ast.Ast{
-				"where": &ast.Binary{
-					Left:  &ast.Lookup{On: &ast.Var{Name: "at"}, Property: "hi"},
-					Op:    ">=",
-					Right: ast.MakeInt(2),
+	return &ast.Query{
+		Statements: []*ast.Statement{
+			{
+				Body: &ast.OpCall{
+					Operands: []ast.Ast{&ast.OpCall{
+						Operands:  []ast.Ast{&ast.Var{Name: "table"}},
+						Vars:      []string{"at"},
+						Namespace: "std",
+						Name:      "filter",
+						Kwargs: ast.MakeDict(map[string]ast.Ast{
+							"where": &ast.Binary{
+								Left:  &ast.Lookup{On: &ast.Var{Name: "at"}, Property: "hi"},
+								Op:    ">=",
+								Right: ast.MakeInt(2),
+							},
+						}),
+					}},
+					Vars:      []string{"at"},
+					Namespace: "std",
+					Name:      "set",
+					Kwargs: ast.MakeDict(map[string]ast.Ast{
+						"field": ast.MakeString("key"),
+						"value": ast.MakeList(&ast.Lookup{
+							On:       &ast.Var{Name: "at"},
+							Property: "bye",
+						}),
+					}),
 				},
-			}),
-		}},
-		Vars:      []string{"at"},
-		Namespace: "std",
-		Name:      "set",
-		Kwargs: ast.MakeDict(map[string]ast.Ast{
-			"field": ast.MakeString("key"),
-			"value": ast.MakeList(&ast.Lookup{
-				On:       &ast.Var{Name: "at"},
-				Property: "bye",
-			}),
-		}),
+			},
+		},
 	}
 }
 
