@@ -133,6 +133,8 @@ export const setup = async (input: inputType): Promise<pulumi.Output<outputType>
             '--enable-continuous-log-filter': 'false',
             // this is to easily filter out logs from a particular GLUE job
             '--continuous-log-logStreamPrefix': `${jobName}`,
+            // enable metrics to be reported to CloudWatch
+            '--enable-metrics': 'true',
         },
         description: "GLUE job to transform multiple features and labels files in JSON format to a single Parquet file",
         glueVersion: "3.0",
