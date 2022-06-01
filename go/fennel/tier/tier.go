@@ -3,6 +3,7 @@ package tier
 import (
 	"crypto/tls"
 	"fmt"
+	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 	"log"
 	"strings"
 	"sync"
@@ -118,6 +119,8 @@ type Tier struct {
 	// value type is aggregate.Aggregate. Consider change this to something
 	// that wrap sync.Map and exposes a nicer API.
 	AggregateDefs *sync.Map
+	// SpanExporter exports trace spans remotely if configured
+	SpanExporter sdktrace.SpanExporter
 }
 
 func CreateFromArgs(args *TierArgs) (tier Tier, err error) {
@@ -273,12 +276,15 @@ func CreateFromArgs(args *TierArgs) (tier Tier, err error) {
 		}
 	}
 
+	var spanExporter sdktrace.SpanExporter
 	// Setup tracer provider (which exports remotely) if an endpoint is defined. Otherwise a default tracer is used.
 	if len(args.OtlpEndpoint) > 0 {
-		err = timer.InitProvider(args.OtlpEndpoint)
+		spanExporter, err = timer.InitProvider(args.OtlpEndpoint)
 		if err != nil {
 			panic(err)
 		}
+	} else {
+		spanExporter = timer.NewNoopExporter()
 	}
 
 	return Tier{
@@ -297,6 +303,7 @@ func CreateFromArgs(args *TierArgs) (tier Tier, err error) {
 		ModelStore:       modelStore,
 		Args:             *args,
 		AggregateDefs:    new(sync.Map),
+		SpanExporter: 	  spanExporter,
 	}, nil
 }
 

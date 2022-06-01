@@ -11,6 +11,7 @@ import (
 	"go.opentelemetry.io/contrib/propagators/aws/xray"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc"
+
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 	oteltrace "go.opentelemetry.io/otel/trace"
 	"go.uber.org/zap"
@@ -32,9 +33,20 @@ type trace struct {
 	start  time.Time
 	xrayId string
 	events []traceEvent
+	spans []oteltrace.Span
 }
 
-func (t *trace) record(key string, ts time.Time) {
+func (t *trace) recordStart(key string, ts time.Time, span oteltrace.Span) {
+	t.lock.Lock()
+	defer t.lock.Unlock()
+	t.events = append(t.events, traceEvent{
+		event:   key,
+		elapsed: ts.Sub(t.start),
+	})
+	t.spans = append(t.spans, span)
+}
+
+func (t *trace) recordStop(key string, ts time.Time) {
 	t.lock.Lock()
 	defer t.lock.Unlock()
 	t.events = append(t.events, traceEvent{
@@ -51,7 +63,7 @@ func WithTracing(ctx context.Context, xrayId string) context.Context {
 	})
 }
 
-func LogTracingInfo(ctx context.Context, log *zap.Logger) error {
+func LogTracingInfo(ctx context.Context, log *zap.Logger, spanExporter sdktrace.SpanExporter) error {
 	ctxval := ctx.Value(traceKey{})
 	if ctxval == nil {
 		return nil
@@ -71,17 +83,25 @@ func LogTracingInfo(ctx context.Context, log *zap.Logger) error {
 	sb.WriteString("==== X-Ray Trace =====\n")
 	sb.WriteString(fmt.Sprintf("x-ray traceid: %s\n", trace.xrayId))
 	log.Info(sb.String())
-	return nil
+
+	// cast span into ReadOnlySpan which is required for exporting the spans
+	spans := make([]sdktrace.ReadOnlySpan, len(trace.spans))
+	for i, s := range trace.spans {
+		log.Info(fmt.Sprintf("about to type cast span: %s", s.SpanContext().SpanID()))
+		spans[i] = s.(sdktrace.ReadOnlySpan)
+		log.Info(fmt.Sprintf("type casting span: %s\n", spans[i].SpanContext().SpanID()))
+	}
+	return spanExporter.ExportSpans(ctx, spans)
 }
 
-func InitProvider(endpoint string) error {
+func InitProvider(endpoint string) (sdktrace.SpanExporter, error) {
 	ctx := context.Background()
 
 	// create and start new OTLP trace exporter
 	traceExporter, err := otlptracegrpc.New(
 		ctx, otlptracegrpc.WithInsecure(), otlptracegrpc.WithEndpoint(endpoint))
 	if err != nil {
-		return fmt.Errorf("failed to create trace exporter, err: %v", err)
+		return nil, fmt.Errorf("failed to create trace exporter, err: %v", err)
 	}
 
 	idg := xray.NewIDGenerator()
@@ -110,8 +130,25 @@ func InitProvider(endpoint string) error {
 	otel.SetTracerProvider(tp)
 	otel.SetTextMapPropagator(xray.Propagator{})
 	// TODO(mohit): Consider returning the shutdown callback
-	return nil
+	return traceExporter, nil
 }
+
+var _ sdktrace.SpanExporter = (*NoopExporter)(nil)
+
+// NewNoopExporter returns a new no-op exporter.
+func NewNoopExporter() *NoopExporter {
+	return new(NoopExporter)
+}
+
+// NoopExporter is an exporter that drops all received spans and performs no
+// action.
+type NoopExporter struct{}
+
+// ExportSpans handles export of spans by dropping them.
+func (nsb *NoopExporter) ExportSpans(context.Context, []sdktrace.ReadOnlySpan) error { return nil }
+
+// Shutdown stops the exporter by doing nothing.
+func (nsb *NoopExporter) Shutdown(context.Context) error { return nil }
 
 func GetXrayTraceID(span oteltrace.Span) string {
 	xrayTraceID := span.SpanContext().TraceID().String()

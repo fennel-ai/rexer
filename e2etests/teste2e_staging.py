@@ -13,7 +13,7 @@ from rexerclient.rql import op
 
 # URL to the staging tier LB
 _URL = "http://k8s-t106-aest106e-8954308bfc-65423d0e968f5435.elb.us-west-2.amazonaws.com/data"
-_AGGREGATE_NAME = "views_per_user_aggr"
+_AGGREGATE_NAME = "views_per_user_aggr2"
 _USER_ID = 245771976
 _NUM_ACTIONS = 20
 # Load test log these many actions in a second for a minute

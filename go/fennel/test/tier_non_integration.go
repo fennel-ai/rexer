@@ -12,6 +12,7 @@ import (
 	"fennel/glue"
 	"fennel/lib/clock"
 	"fennel/lib/ftypes"
+	"fennel/lib/timer"
 	"fennel/modelstore"
 	"fennel/pcache"
 	"fennel/redis"
@@ -74,6 +75,7 @@ func Tier() (tier.Tier, error) {
 		ModelStore:       modelStore,
 		Logger:           logger,
 		AggregateDefs:    new(sync.Map),
+		SpanExporter:     timer.NewNoopExporter(),
 	}, nil
 }
 

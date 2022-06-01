@@ -48,7 +48,7 @@ func joinStr(s ...string) string {
 func (t Timer) Stop() {
 	t.timer.ObserveDuration()
 	if t.trace != nil {
-		t.trace.record(joinStr("exit:", t.id, ":", t.span), time.Now())
+		t.trace.recordStop(joinStr("exit:", t.id, ":", t.span), time.Now())
 	}
 	t.tracerSpan.End()
 }
@@ -61,7 +61,7 @@ func Start(ctx context.Context, realmID ftypes.RealmID, funcName string) (contex
 	var tr *trace = nil
 	if ctxval != nil {
 		tr = ctxval.(*trace)
-		tr.record(joinStr("enter:", id, ":", funcName), time.Now())
+		tr.recordStart(joinStr("enter:", id, ":", funcName), time.Now(), span)
 	}
 	return cCtx, Timer{
 		span:       funcName,

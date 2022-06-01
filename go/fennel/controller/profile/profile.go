@@ -23,6 +23,8 @@ func Get(ctx context.Context, tier tier.Tier, pk profilelib.ProfileItemKey) (pro
 func Set(ctx context.Context, tier tier.Tier, request profilelib.ProfileItem) error {
 	ctx, t := timer.Start(ctx, tier.ID, "controller.profile.set")
 	defer t.Stop()
+	// introduce sleep so that a span is produced from here - hopefully!
+	time.Sleep(time.Second)
 	if err := request.Validate(); err != nil {
 		return err
 	}
