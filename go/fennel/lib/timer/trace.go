@@ -101,9 +101,9 @@ func InitProvider(endpoint string) error {
 	//}
 
 	tp := sdktrace.NewTracerProvider(
-		sdktrace.WithSampler(sdktrace.AlwaysSample()),
 		// Ideally we should be sampling the traces (say at 1%) of the traces at the root node.
 		// e.g. sdktrace.ParentBased(/*root*/ sdktrace.TraceIDRatioBased(0.01))
+		sdktrace.WithSampler(sdktrace.AlwaysSample()),
 		sdktrace.WithBatcher(traceExporter),
 		sdktrace.WithIDGenerator(idg))
 
