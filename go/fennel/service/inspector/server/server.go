@@ -76,7 +76,7 @@ func (s *server) startFeatureLogTailer() error {
 				continue
 			}
 			if len(msgs) > 0 {
-				s.tier.Logger.Info("Got featurelog messages", zap.Int("count", len(msgs)))
+				s.tier.Logger.Debug("Got featurelog messages", zap.Int("count", len(msgs)))
 				s.processMessages(msgs)
 			}
 		}

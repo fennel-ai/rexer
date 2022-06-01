@@ -52,9 +52,7 @@ func Value(
 	}
 	ok = tier.PCache.SetWithTTL(ckey, val, int64(len(ckey)+len(val.String())), cacheValueDuration)
 	if !ok {
-		tier.Logger.Info(
-			fmt.Sprintf("failed to set aggregate value in cache: key: '%s' value: '%s'", ckey, val.String()),
-		)
+		tier.Logger.Debug(fmt.Sprintf("failed to set aggregate value in cache: key: '%s' value: '%s'", ckey, val.String()))
 	}
 	return val, nil
 }
