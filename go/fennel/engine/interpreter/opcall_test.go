@@ -358,10 +358,10 @@ func benchmarkInterpreter_VisitOpcall(numRows int, b *testing.B) {
 		row := value.NewDict(map[string]value.Value{"hi": value.Int(i), "bye": value.Double(i)})
 		table.Append(row)
 	}
-	evaler := getInterpreter(nil, value.NewDict(map[string]value.Value{"table": table}))
 	query := getOpCallQuery()
 	var res value.Value
 	for i := 0; i < b.N; i++ {
+		evaler := getInterpreter(nil, value.NewDict(map[string]value.Value{"table": table}))
 		res, _ = query.AcceptValue(evaler)
 	}
 	_ = res
