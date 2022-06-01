@@ -27,6 +27,7 @@ import (
 	profilelib "fennel/lib/profile"
 	"fennel/lib/query"
 	"fennel/lib/sagemaker"
+	"fennel/lib/timer"
 	"fennel/lib/value"
 	"fennel/tier"
 
@@ -336,11 +337,15 @@ func (m server) GetProfileMulti(w http.ResponseWriter, req *http.Request) {
 
 func (m server) Query(w http.ResponseWriter, req *http.Request) {
 	data, err := readRequest(req)
+	cCtx, span := timer.Start(req.Context(), m.tier.ID, "server.Query")
+	defer span.Stop()
 	if err != nil {
 		handleBadRequest(w, "", err)
 		return
 	}
+	_, querySpan := timer.Start(cCtx, m.tier.ID, "query.FromBoundQueryJSON")
 	tree, args, mockData, err := query.FromBoundQueryJSON(data)
+	querySpan.Stop()
 	if err != nil {
 		handleBadRequest(w, "invalid request: ", err)
 		return
@@ -359,7 +364,7 @@ func (m server) Query(w http.ResponseWriter, req *http.Request) {
 	}
 	// execute the tree
 	executor := engine.NewQueryExecutor(bootarg.Create(m.tier))
-	ret, err := executor.Exec(req.Context(), tree, args)
+	ret, err := executor.Exec(cCtx, tree, args)
 	if err != nil {
 		handleInternalServerError(w, "", err)
 		return
