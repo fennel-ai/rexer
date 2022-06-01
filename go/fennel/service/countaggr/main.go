@@ -87,7 +87,6 @@ func processAggregate(tr tier.Tier, agg libaggregate.Aggregate, stopCh <-chan st
 				err := aggregate.Update(ctx, tr, consumer, agg)
 				if err != nil {
 					aggregate_errors.WithLabelValues(string(agg.Name)).Add(1)
-					fmt.Printf("Error while processing aggregate %s: %v\n", agg.Name, err)
 					tr.Logger.Warn("Error found in aggregate", zap.String("name", string(agg.Name)), zap.Error(err))
 				}
 				tr.Logger.Debug("Processed aggregate", zap.String("name", string(agg.Name)), zap.Int("run", run))

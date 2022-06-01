@@ -35,7 +35,6 @@ func (p predictOperator) Apply(ctx context.Context, staticKwargs value.Dict, in 
 	for in.HasMore() {
 		heads, contextKwargs, err := in.Next()
 		if err != nil {
-			fmt.Println("err", err)
 			return err
 		}
 
@@ -62,7 +61,6 @@ func (p predictOperator) Apply(ctx context.Context, staticKwargs value.Dict, in 
 	}
 	field := string(get(staticKwargs, "field").(value.String))
 	outs.Grow(len(rows))
-	fmt.Println("grow done", len(rows))
 	for i, row := range rows {
 		var out value.Value
 		result := outputs[i]

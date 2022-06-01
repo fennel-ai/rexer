@@ -38,7 +38,6 @@ func (f FilterOperator) Signature() *operators.Signature {
 }
 
 func (f FilterOperator) Apply(_ context.Context, _ value.Dict, in operators.InputIter, out *value.List) error {
-	fmt.Println("FilterOperator.Apply")
 	for in.HasMore() {
 		heads, contextKwargs, err := in.Next()
 		if err != nil {

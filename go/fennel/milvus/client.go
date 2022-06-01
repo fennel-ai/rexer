@@ -96,9 +96,7 @@ func (c Client) CreateKNNIndex(agg aggregate.Aggregate) error {
 			},
 		},
 	}
-	fmt.Println(schema)
-	fmt.Println(c.client)
-	fmt.Println("Going to create collection")
+
 	err := c.client.CreateCollection(
 		context.Background(), // ctx
 		schema,
@@ -125,7 +123,6 @@ func (c Client) CreateKNNIndex(agg aggregate.Aggregate) error {
 		idx,                  // index
 		false,                // async
 	)
-	fmt.Println("Going to load data")
 	if err != nil {
 		return err
 	}
@@ -183,7 +180,6 @@ func (c Client) InsertStream(agg aggregate.Aggregate, table value.List) error {
 		timestampColumn,      // columnarData
 		vectorColumn,         // columnarData
 	)
-	fmt.Println("Going to flush data", len(ids), " : ", agg.Name)
 	return err
 }
 

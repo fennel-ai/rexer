@@ -31,7 +31,6 @@ func main() {
 	if err != nil {
 		log.Fatal("failed to check collection schema:", err.Error())
 	}
-	fmt.Printf("%v\n", collDesc)
 
 	collStat, err := milvusClient.GetCollectionStatistics( // Return the statistics information of the collection.
 		context.Background(), // ctx

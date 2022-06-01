@@ -226,7 +226,6 @@ func CreateFromArgs(args *TierArgs) (tier Tier, err error) {
 	var milvusClient milvus.Client
 	if args.MilvusArgs.Url != "" {
 		log.Print("Connecting to milvus")
-		fmt.Println("Milvus url: ", args.MilvusArgs.Url)
 		milvusClient, err = milvus.NewClient(args.MilvusArgs)
 		if err != nil {
 			return tier, fmt.Errorf("failed to create milvus client: %v", err)

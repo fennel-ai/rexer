@@ -23,8 +23,6 @@ func Clean(v Value) Value {
 func FromJSON(data []byte) (Value, error) {
 	vdata, vtype, _, err := jsonparser.Get(data)
 	if err != nil {
-		fmt.Println(string(data))
-		fmt.Println("DAMN ", err)
 		return nil, err
 	}
 	return ParseJSON(vdata, vtype)

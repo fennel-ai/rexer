@@ -60,7 +60,6 @@ func testClient(t *testing.T, tier tier.Tier, c nitrous.Client) {
 	assert.NoError(t, catchup(ctx, time.Second*5, c))
 	// get the values
 	resps, err = c.GetMany(ctx, getreqs)
-	fmt.Printf("get after set: %+v\n", resps)
 	assert.NoError(t, err)
 	assert.Len(t, resps, 3)
 	for i := range resps {

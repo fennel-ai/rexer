@@ -202,7 +202,6 @@ func batchValue(ctx context.Context, tier tier.Tier, batch []aggregate.GetAggVal
 			return nil, fmt.Errorf("error: Only KNN supports forever aggregates")
 		}
 		foreverPtr = append(foreverPtr, i)
-		fmt.Println("foreverKey ", req.Key)
 		foreverKeys = append(foreverKeys, req.Key)
 		// Currently we assume the aggregate and kwarg is the same for all knn requests.
 		foreverAgg = agg
@@ -263,7 +262,6 @@ func Update(ctx context.Context, tier tier.Tier, consumer kafka.FConsumer, agg a
 	var err error
 	var streamLen int
 
-	fmt.Println("Updating aggregate: ", agg.Name, agg.Source)
 	if agg.Source == aggregate.SOURCE_PROFILE {
 		profiles, err := profile.ReadBatch(ctx, consumer, 500, time.Second*10)
 
@@ -277,7 +275,6 @@ func Update(ctx context.Context, tier tier.Tier, consumer kafka.FConsumer, agg a
 
 		table, err = transformProfiles(tier, profiles, agg.Query)
 		if err != nil {
-			fmt.Println("Failed to transform profiles: ", err)
 			return err
 		}
 		streamLen = len(profiles)
@@ -376,13 +373,8 @@ func transformProfiles(tier tier.Tier, profiles []profilelib.ProfileItem, query 
 		return value.NewList(), err
 	}
 
-	fmt.Println("Transforming profiles: ", len(profiles))
-	fmt.Println("Transforming profiles: ", table.Len())
-	fmt.Println("Query: ", query)
-
 	result, err := executor.Exec(context.Background(), query, value.NewDict(map[string]value.Value{"profiles": table}))
 	if err != nil {
-		fmt.Println("Failed to execute profiles: ", err)
 		return value.NewList(), err
 	}
 	table, ok := result.(value.List)
