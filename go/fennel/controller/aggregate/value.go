@@ -260,8 +260,9 @@ func Update(ctx context.Context, tier tier.Tier, consumer kafka.FConsumer, agg a
 	var err error
 	var streamLen int
 
+	fmt.Println("Updating aggregate: ", agg.Name, agg.Source)
 	if agg.Source == aggregate.SOURCE_PROFILE {
-		profiles, err := profile.ReadBatch(ctx, consumer, 20000, time.Second*10)
+		profiles, err := profile.ReadBatch(ctx, consumer, 1000, time.Second*10)
 
 		if err != nil {
 			return err
@@ -269,11 +270,16 @@ func Update(ctx context.Context, tier tier.Tier, consumer kafka.FConsumer, agg a
 		if len(profiles) == 0 {
 			return nil
 		}
+		fmt.Println("Total profiles: ", len(profiles))
 
 		table, err = transformProfiles(tier, profiles, agg.Query)
+		if err != nil {
+			fmt.Println("Failed to transform profiles: ", err)
+			return err
+		}
 		streamLen = len(profiles)
 	} else {
-		actions, err := action.ReadBatch(ctx, consumer, 20000, time.Second*10)
+		actions, err := action.ReadBatch(ctx, consumer, 1000, time.Second*10)
 		if err != nil {
 			return err
 		}
@@ -282,6 +288,9 @@ func Update(ctx context.Context, tier tier.Tier, consumer kafka.FConsumer, agg a
 		}
 
 		table, err = transformActions(tier, actions, agg.Query)
+		if err != nil {
+			return err
+		}
 		streamLen = len(actions)
 	}
 
@@ -324,7 +333,7 @@ func Update(ctx context.Context, tier tier.Tier, consumer kafka.FConsumer, agg a
 	if (agg.Options.Durations == nil || len(agg.Options.Durations) == 0) && agg.Options.AggType != "timeseries_sum" {
 		// Current support for only KNN, add support for other aggregates
 		// https://linear.app/fennel-ai/issue/REX-1053/support-forever-aggregates
-		if agg.Name != "knn" {
+		if agg.Options.AggType != "knn" {
 			return fmt.Errorf("forever aggregates are not supported for aggregate %s", agg.Name)
 		}
 		tier.Logger.Info(fmt.Sprintf("found %d new %s, %d transformed %s for forever aggregate: %s", streamLen, agg.Source, table.Len(), agg.Source, agg.Name))
@@ -364,8 +373,13 @@ func transformProfiles(tier tier.Tier, profiles []profilelib.ProfileItem, query 
 		return value.NewList(), err
 	}
 
+	fmt.Println("Transforming profiles: ", len(profiles))
+	fmt.Println("Transforming profiles: ", table.Len())
+	fmt.Println("Query: ", query)
+
 	result, err := executor.Exec(context.Background(), query, value.NewDict(map[string]value.Value{"profiles": table}))
 	if err != nil {
+		fmt.Println("Failed to execute profiles: ", err)
 		return value.NewList(), err
 	}
 	table, ok := result.(value.List)

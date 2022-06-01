@@ -23,6 +23,7 @@ import (
 	"fennel/s3"
 	"fennel/sagemaker"
 
+	"github.com/Unleash/unleash-client-go/v3"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 )
@@ -222,9 +223,14 @@ func CreateFromArgs(args *TierArgs) (tier Tier, err error) {
 	}
 	logger = logger.With(zap.Uint32("tier_id", args.TierID.Value()))
 
+	var milvusClient milvus.Client
 	if args.MilvusArgs.Url != "" {
 		log.Print("Connecting to milvus")
-		tier.MilvusClient, err = milvus.NewClient(args.MilvusArgs)
+		fmt.Println("Milvus url: ", args.MilvusArgs.Url)
+		milvusClient, err = milvus.NewClient(args.MilvusArgs)
+		if err != nil {
+			return tier, fmt.Errorf("failed to create milvus client: %v", err)
+		}
 	}
 
 	log.Print("Connecting to sagemaker")
@@ -301,6 +307,7 @@ func CreateFromArgs(args *TierArgs) (tier Tier, err error) {
 		SagemakerClient:  smclient,
 		S3Client:         s3client,
 		GlueClient:       glueclient,
+		MilvusClient:     milvusClient,
 		ModelStore:       modelStore,
 		Args:             *args,
 		AggregateDefs:    new(sync.Map),

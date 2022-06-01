@@ -32,15 +32,15 @@ var _ provider = dbProvider{}
 // This struct is internal to db.go and is only used for reading values b/w server and DB.
 // DONOT use this for anything else.
 type profileItemSer struct {
-	OType      ftypes.OType `db:"otype"`
-	Oid        string       `db:"oid"`
-	Key        string       `db:"zkey"`
-	UpdateTime uint64       `db:"version"`
-	Value      []byte       `db:"value"`
+	OType      ftypes.OType   `db:"otype"`
+	Oid        ftypes.OidType `db:"oid"`
+	Key        string         `db:"zkey"`
+	UpdateTime uint64         `db:"version"`
+	Value      []byte         `db:"value"`
 }
 
 func (ser *profileItemSer) toProfileItem() (profile.ProfileItem, error) {
-	pr := profile.NewProfileItem(string(ser.OType), ser.Oid, ser.Key, value.Nil, ser.UpdateTime)
+	pr := profile.NewProfileItem(ser.OType, ser.Oid, ser.Key, value.Nil, ser.UpdateTime)
 	val, err := value.FromJSON(ser.Value)
 	if err != nil {
 		return pr, err
@@ -147,7 +147,7 @@ func (D dbProvider) get(ctx context.Context, tier tier.Tier, profileKey profile.
 	defer t.Stop()
 	profiles, err := D.getBatch(ctx, tier, []profile.ProfileItemKey{profileKey})
 	if err != nil || len(profiles) == 0 {
-		p := profile.NewProfileItem(string(profileKey.OType), profileKey.Oid, profileKey.Key, value.Nil, 0)
+		p := profile.NewProfileItem(profileKey.OType, profileKey.Oid, profileKey.Key, value.Nil, 0)
 		return p, err
 	}
 
@@ -212,7 +212,7 @@ func (D dbProvider) getBatch(ctx context.Context, tier tier.Tier, profileKeys []
 		if val, ok := mapKeyToVal[pk]; ok {
 			ret = append(ret, val)
 		} else {
-			ret = append(ret, profile.NewProfileItem(string(pk.OType), pk.Oid, pk.Key, value.Nil, 0))
+			ret = append(ret, profile.NewProfileItem(pk.OType, pk.Oid, pk.Key, value.Nil, 0))
 		}
 	}
 

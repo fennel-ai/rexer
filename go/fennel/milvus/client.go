@@ -96,6 +96,8 @@ func (c Client) CreateKNNIndex(agg aggregate.Aggregate) error {
 			},
 		},
 	}
+	fmt.Println(schema)
+	fmt.Println(c.client)
 	fmt.Println("Going to create collection")
 	err := c.client.CreateCollection(
 		context.Background(), // ctx
@@ -319,23 +321,23 @@ func getIndex(hyperparameters map[string]interface{}, metric entity.MetricType) 
 	case "flat":
 		return entity.NewIndexFlat(
 			metric,
-			int(hyperparameters["nList"].(float64)),
+			hyperparameters["nList"].(int),
 		)
 	case "ivf_flat":
 		return entity.NewIndexFlat(
 			metric,
-			int(hyperparameters["nList"].(float64)),
+			int(hyperparameters["nList"].(int)),
 		)
 	case "hnsw":
 		return entity.NewIndexHNSW(
 			metric,
-			int(hyperparameters["M"].(float64)),
-			int(hyperparameters["efConstruction"].(float64)),
+			hyperparameters["M"].(int),
+			hyperparameters["efConstruction"].(int),
 		)
 	case "annoy":
 		return entity.NewIndexANNOY(
 			metric,
-			int(hyperparameters["nTrees"].(float64)),
+			int(hyperparameters["nTrees"].(int)),
 		)
 	default:
 		return nil, fmt.Errorf("unsupported index %s", hyperparameters["index"])

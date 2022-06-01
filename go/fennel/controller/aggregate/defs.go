@@ -41,6 +41,7 @@ func Store(ctx context.Context, tier tier.Tier, agg aggregate.Aggregate) error {
 		return err
 	}
 	// Check if agg already exists in db
+	fmt.Println("Storing aggregate####: ", agg.Name)
 	agg2, err := modelAgg.Retrieve(ctx, tier, agg.Name)
 	if err != nil {
 		if errors.Is(err, aggregate.ErrNotFound) {
@@ -64,11 +65,13 @@ func Store(ctx context.Context, tier tier.Tier, agg aggregate.Aggregate) error {
 					}
 				}
 			}
+			tier.Logger.Debug("Storing new aggregate")
+			fmt.Println("Storing new aggregate")
 			if agg.Timestamp == 0 {
 				agg.Timestamp = ftypes.Timestamp(time.Now().Unix())
 			}
 			agg.Active = true
-			if agg.Name == "knn" {
+			if agg.Options.AggType == "knn" {
 				fmt.Println("Goign to store knn")
 				// Call into Milvus to create the knn index
 				err = tier.MilvusClient.CreateKNNIndex(agg)

@@ -74,7 +74,7 @@ func (c cachedProvider) setBatch(ctx context.Context, tier tier.Tier, profiles [
 	latestProfileByKey := make(map[profile.ProfileItemKey]profile.ProfileItem)
 
 	for _, p := range profiles {
-		pk := profile.NewProfileItemKey(string(p.OType), p.Oid, p.Key)
+		pk := profile.NewProfileItemKey(p.OType, p.Oid, p.Key)
 		val, ok := latestProfileByKey[pk]
 		if !ok {
 			latestProfileByKey[pk] = p
@@ -117,7 +117,7 @@ func (c cachedProvider) setBatch(ctx context.Context, tier tier.Tier, profiles [
 		tosetVals := make([]interface{}, 0)
 		for i, profileItem := range profiles {
 			if profileItem.Value == value.Nil {
-				tier.Logger.Error("Found nil value in setBatch for profile", zap.String("key", profileItem.Key), zap.String("profile_id", profileItem.Oid))
+				tier.Logger.Error("Found nil value in setBatch for profile", zap.String("key", profileItem.Key), zap.String("profile_id", string(profileItem.Oid)))
 				continue
 			}
 			tosetKeys = append(tosetKeys, ks[i])
@@ -143,7 +143,7 @@ func (c cachedProvider) get(ctx context.Context, tier tier.Tier, profileKey prof
 	defer t.Stop()
 	ret, err := c.getBatch(ctx, tier, []profile.ProfileItemKey{profileKey})
 	if err != nil || len(ret) == 0 {
-		return profile.NewProfileItem(string(profileKey.OType), profileKey.Oid, profileKey.Key, value.Nil, 0), err
+		return profile.NewProfileItem(profileKey.OType, profileKey.Oid, profileKey.Key, value.Nil, 0), err
 	}
 
 	return ret[0], nil
@@ -200,7 +200,7 @@ func (c cachedProvider) getBatch(ctx context.Context, tier tier.Tier, profileKey
 					return nil, err
 				}
 				pk := keyToProfileKey[keys[i]]
-				profile := profile.NewProfileItem(string(pk.OType), pk.Oid, pk.Key, value.Nil, 0)
+				profile := profile.NewProfileItem(pk.OType, pk.Oid, pk.Key, value.Nil, 0)
 				profile.Value = vc.(value.Value)
 				keyToVal.Store(keyToProfileKey[keys[i]], profile)
 			}
@@ -210,7 +210,7 @@ func (c cachedProvider) getBatch(ctx context.Context, tier tier.Tier, profileKey
 	// if profiles were found in the cache, use them; else fill the default value of `Nil`
 	for i, pk := range profileKeys {
 		if p, ok := keyToVal.Load(profileKeys[i]); !ok {
-			rets[i] = profile.NewProfileItem(string(pk.OType), pk.Oid, pk.Key, value.Nil, 0)
+			rets[i] = profile.NewProfileItem(pk.OType, pk.Oid, pk.Key, value.Nil, 0)
 		} else {
 			rets[i] = p.(profile.ProfileItem)
 		}

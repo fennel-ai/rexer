@@ -25,7 +25,7 @@ func main() {
 	defer milvusClient.Close()
 
 	var (
-		collectionName = "book"
+		collectionName = "book2"
 	)
 	schema := &entity.Schema{
 		CollectionName: collectionName,
@@ -80,7 +80,7 @@ func main() {
 
 	_, err = milvusClient.Insert(
 		context.Background(), // ctx
-		"book",               // CollectionName
+		"book2",              // CollectionName
 		"",                   // partitionName
 		idColumn,             // columnarData
 		wordColumn,           // columnarData
@@ -98,7 +98,7 @@ func main() {
 	}
 	err = milvusClient.CreateIndex(
 		context.Background(), // ctx
-		"book",               // CollectionName
+		"book2",              // CollectionName
 		"book_intro",         // fieldName
 		idx,                  // entity.Index
 		false,                // async
@@ -108,7 +108,7 @@ func main() {
 	}
 	err = milvusClient.LoadCollection(
 		context.Background(), // ctx
-		"book",               // CollectionName
+		"book2",              // CollectionName
 		false,                // async
 	)
 	if err != nil {
@@ -120,7 +120,7 @@ func main() {
 	)
 	searchResult, err := milvusClient.Search(
 		context.Background(), // ctx
-		"book",               // CollectionName
+		"book2",              // CollectionName
 		[]string{},           // partitionNames
 		"",                   // expr
 		[]string{"book_id"},  // outputFields
@@ -168,7 +168,7 @@ func main() {
 	}
 	err = milvusClient.ReleaseCollection(
 		context.Background(), // ctx
-		"book",               // CollectionName
+		"book2",              // CollectionName
 	)
 	if err != nil {
 		log.Fatal("failed to release collection:", err.Error())

@@ -2,6 +2,7 @@ package std
 
 import (
 	"context"
+	"fmt"
 
 	"fennel/engine/operators"
 	"fennel/lib/value"
@@ -37,6 +38,7 @@ func (f FilterOperator) Signature() *operators.Signature {
 }
 
 func (f FilterOperator) Apply(_ context.Context, _ value.Dict, in operators.InputIter, out *value.List) error {
+	fmt.Println("FilterOperator.Apply")
 	for in.HasMore() {
 		heads, contextKwargs, err := in.Next()
 		if err != nil {
@@ -49,6 +51,8 @@ func (f FilterOperator) Apply(_ context.Context, _ value.Dict, in operators.Inpu
 			out.Append(row)
 		}
 	}
+	fmt.Println("FilterOperator.Apply", out.Len())
+
 	return nil
 }
 

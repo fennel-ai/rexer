@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"strings"
+	"unicode"
 
 	lib "fennel/lib/sagemaker"
 	"fennel/lib/value"
@@ -160,6 +161,15 @@ type HuggingFaceAdapter struct {
 	client *sagemakerruntime.SageMakerRuntime
 }
 
+func removeSpecialCharacters(s string) string {
+	return strings.Map(func(r rune) rune {
+		if unicode.IsDigit(r) || unicode.IsLetter(r) || unicode.IsSpace(r) || r == ',' || r == '.' {
+			return r
+		}
+		return -1
+	}, s)
+}
+
 func (hfa HuggingFaceAdapter) Score(ctx context.Context, in *lib.ScoreRequest) (*lib.ScoreResponse, error) {
 	if len(in.FeatureLists) == 0 {
 		return &lib.ScoreResponse{}, nil
@@ -172,7 +182,7 @@ func (hfa HuggingFaceAdapter) Score(ctx context.Context, in *lib.ScoreRequest) (
 		if err != nil {
 			return nil, fmt.Errorf("failed to get input: %v", err)
 		}
-		inputs.Append(inp)
+		inputs.Append(value.String(removeSpecialCharacters(inp.String())))
 	}
 
 	payload := value.ToJSON(value.NewDict(map[string]value.Value{"inputs": inputs}))

@@ -119,7 +119,7 @@ func setBatch(ctx context.Context, tier tier.Tier, requests []profilelib.Profile
 // Only use for tests
 func TestSet(ctx context.Context, tier tier.Tier, request profilelib.ProfileItem) error {
 	Set(ctx, tier, request)
-	if err := profile.Set(ctx, tier, profilelib.NewProfileItem(string(request.OType), request.Oid, request.Key, request.Value, request.UpdateTime)); err != nil {
+	if err := profile.Set(ctx, tier, profilelib.NewProfileItem(request.OType, request.Oid, request.Key, request.Value, request.UpdateTime)); err != nil {
 		return err
 	}
 	return nil

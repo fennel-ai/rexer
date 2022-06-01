@@ -7,6 +7,7 @@
 package profile
 
 import (
+	"fennel/lib/ftypes"
 	value "fennel/lib/value"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
@@ -26,8 +27,8 @@ type ProtoProfileItem struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	OType   string        `protobuf:"bytes,1,opt,name=OType,proto3" json:"OType,omitempty"`
-	Oid     string        `protobuf:"bytes,2,opt,name=Oid,proto3" json:"Oid,omitempty"`
+	OType   ftypes.OType        `protobuf:"bytes,1,opt,name=OType,proto3" json:"OType,omitempty"`
+	Oid     ftypes.OidType        `protobuf:"bytes,2,opt,name=Oid,proto3" json:"Oid,omitempty"`
 	Key     string        `protobuf:"bytes,3,opt,name=Key,proto3" json:"Key,omitempty"`
 	Version uint64        `protobuf:"varint,4,opt,name=Version,proto3" json:"Version,omitempty"`
 	Value   *value.PValue `protobuf:"bytes,5,opt,name=Value,proto3" json:"Value,omitempty"`
@@ -65,14 +66,14 @@ func (*ProtoProfileItem) Descriptor() ([]byte, []int) {
 	return file_profile_proto_rawDescGZIP(), []int{0}
 }
 
-func (x *ProtoProfileItem) GetOType() string {
+func (x *ProtoProfileItem) GetOType() ftypes.OType {
 	if x != nil {
 		return x.OType
 	}
 	return ""
 }
 
-func (x *ProtoProfileItem) GetOid() string {
+func (x *ProtoProfileItem) GetOid() ftypes.OidType {
 	if x != nil {
 		return x.Oid
 	}

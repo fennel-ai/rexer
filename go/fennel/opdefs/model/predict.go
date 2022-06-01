@@ -2,6 +2,7 @@ package model
 
 import (
 	"context"
+	"fmt"
 
 	modelstore "fennel/controller/modelstore"
 	"fennel/engine/interpreter/bootarg"
@@ -31,10 +32,10 @@ func (p predictOperator) Apply(ctx context.Context, staticKwargs value.Dict, in 
 	var inputs []value.List
 	modelName := string(get(staticKwargs, "model").(value.String))
 	_, isPretrainedModel := modelstore.SupportedPretrainedModels[modelName]
-
 	for in.HasMore() {
 		heads, contextKwargs, err := in.Next()
 		if err != nil {
+			fmt.Println("err", err)
 			return err
 		}
 
@@ -53,7 +54,7 @@ func (p predictOperator) Apply(ctx context.Context, staticKwargs value.Dict, in 
 	} else {
 		modelVersion := staticKwargs.GetUnsafe("version").(value.String)
 		// TODO: Split into correctly sized requests instead of just 1.
-		outputs, err = modelstore.Score(ctx, p.tier, string(modelName), string(modelVersion), inputs)
+		outputs, err = modelstore.Score(ctx, p.tier, modelName, string(modelVersion), inputs)
 	}
 
 	if err != nil {
@@ -61,6 +62,7 @@ func (p predictOperator) Apply(ctx context.Context, staticKwargs value.Dict, in 
 	}
 	field := string(get(staticKwargs, "field").(value.String))
 	outs.Grow(len(rows))
+	fmt.Println("grow done", len(rows))
 	for i, row := range rows {
 		var out value.Value
 		result := outputs[i]
@@ -73,6 +75,7 @@ func (p predictOperator) Apply(ctx context.Context, staticKwargs value.Dict, in 
 		}
 		outs.Append(out)
 	}
+	fmt.Println("Predict model done", len(rows))
 	return nil
 }
 
