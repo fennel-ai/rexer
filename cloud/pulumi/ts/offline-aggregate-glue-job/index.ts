@@ -176,6 +176,8 @@ export const setup = async (input: inputType): Promise<pulumi.Output<outputType>
                 '--enable-continuous-log-filter': 'false',
                 // this is to easily filter out logs from a particular GLUE job
                 '--continuous-log-logStreamPrefix': `${topkJobName}`,
+                // enable metrics to be reported to CloudWatch
+                '--enable-metrics': 'true',
             },
             description: "GLUE job for TopK offline Aggregate",
             glueVersion: "3.0",
