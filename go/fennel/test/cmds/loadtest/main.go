@@ -141,7 +141,7 @@ func main() {
 		uids = append(uids, flags.Uid)
 	} else {
 		for i := 0; i < flags.NumUids; i++ {
-			uids = append(uids, utils.RandString(64))
+			uids = append(uids, fmt.Sprintf("\"%s\"", utils.RandString(64)))
 		}
 	}
 	userFields := map[string][]value.Value{
@@ -158,7 +158,7 @@ func main() {
 	}
 	videoIds := make([]string, 0, flags.NumVideos)
 	for i := 0; i < flags.NumVideos; i++ {
-		videoIds = append(videoIds, utils.RandString(64))
+		videoIds = append(videoIds, fmt.Sprintf("\"%s\"", utils.RandString(64)))
 	}
 	videoFields := map[string][]value.Value{
 		"creator_id": creatorIDs,
