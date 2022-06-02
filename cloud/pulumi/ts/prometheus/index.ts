@@ -226,7 +226,7 @@ export const setupPrometheus = async (input: inputType): Promise<pulumi.Output<o
                 "prometheus.yml": prometheusScrapeConfigs,
             }
         },
-    }, {provider: k8sProvider})
+    }, {provider: k8sProvider, replaceOnChanges: ["*"]});
 
     const output = pulumi.output({
         arn: "",  // ARN for a K8S pod does not exist
