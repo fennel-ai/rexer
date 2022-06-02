@@ -53,7 +53,6 @@ export type outputType = {
     oidcUrl: string,
     instanceRole: string,
     clusterSg: string,
-    storageclasses: Record<string, string>
 }
 
 function setupLinkerd(cluster: k8s.Provider) {
@@ -274,24 +273,6 @@ function setupDescheduler(cluster: eks.Cluster) {
     }, { provider: cluster.provider })
 }
 
-function setupStorageClasses(cluster: eks.Cluster): Record<string, pulumi.Output<string>> {
-    // Setup storage classes for EBS io1 volumes.
-    const io1 = new k8s.storage.v1.StorageClass("ebs-io1-50ops", {
-        allowVolumeExpansion: true,
-        reclaimPolicy: "Delete",
-        provisioner: "kubernetes.io/aws-ebs",
-        volumeBindingMode: "WaitForFirstConsumer",
-        parameters: {
-            "type": "io1",
-            "iopsPerGB": "50",
-            "encrypted": "true",
-            "fsType": "ext4",
-        }
-    }, { provider: cluster.provider })
-
-    return { "io1": io1.metadata.name }
-}
-
 export const setup = async (input: inputType): Promise<pulumi.Output<outputType>> => {
     const { vpcId, publicSubnets, privateSubnets, region, roleArn } = input
 
@@ -414,12 +395,10 @@ export const setup = async (input: inputType): Promise<pulumi.Output<outputType>
         }
     }, { provider: cluster.provider })
 
-    // Setup storageclasses to be used by stateful sets.
-    const storageclasses = setupStorageClasses(cluster)
     const clusterName = cluster.core.cluster.name
 
     const output = pulumi.output({
-        kubeconfig, oidcUrl, instanceRole, clusterSg, clusterName, storageclasses,
+        kubeconfig, oidcUrl, instanceRole, clusterSg, clusterName
     })
 
     return output
