@@ -141,7 +141,7 @@ export const setup = async (input: inputType): Promise<pulumi.Output<outputType>
         workerType: "G.2X",
         maxRetries: 5,
         numberOfWorkers: 2,  // Has to be >= 2
-        timeout: 60,  // it should not take more than 60 minutes to transform the json files
+        timeout: 180,  // set a higher timeout for this job since it is run only once in a day
     }, {provider});
 
     // create a trigger to run this job every day
