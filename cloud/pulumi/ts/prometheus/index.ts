@@ -212,7 +212,9 @@ export const setupPrometheus = async (input: inputType): Promise<pulumi.Output<o
             "server": {
                 "service": {
                     "type": "LoadBalancer"
-                }
+                },
+                // https://github.com/prometheus-community/helm-charts/blob/main/charts/prometheus/values.yaml#L1124
+                "retention": "60d",
             },
             // Server configmap entries.
             //
