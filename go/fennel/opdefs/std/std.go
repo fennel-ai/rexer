@@ -2,8 +2,6 @@ package std
 
 import (
 	"context"
-	"fmt"
-
 	"fennel/engine/operators"
 	"fennel/lib/value"
 )
@@ -50,8 +48,6 @@ func (f FilterOperator) Apply(_ context.Context, _ value.Dict, in operators.Inpu
 			out.Append(row)
 		}
 	}
-	fmt.Println("FilterOperator.Apply", out.Len())
-
 	return nil
 }
 

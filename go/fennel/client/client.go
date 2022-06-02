@@ -151,7 +151,7 @@ func (c *Client) GetProfile(request *profileLib.ProfileItemKey) (*profile.Profil
 	if err != nil {
 		return nil, err
 	} else {
-		prof := profile.NewProfileItem(string(request.OType), request.Oid, request.Key, v, 0)
+		prof := profile.NewProfileItem(request.OType, request.Oid, request.Key, v, 0)
 		return &prof, nil
 	}
 }

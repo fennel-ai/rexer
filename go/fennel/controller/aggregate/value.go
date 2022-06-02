@@ -209,8 +209,7 @@ func batchValue(ctx context.Context, tier tier.Tier, batch []aggregate.GetAggVal
 	}
 
 	if len(foreverPtr) > 0 {
-		nn, err := tier.MilvusClient.GetNeighbors(foreverAgg, foreverKeys, foreverKwarags)
-		fmt.Println("forever nn ", nn)
+		nn, err := tier.MilvusClient.GetNeighbors(ctx, foreverAgg, foreverKeys, foreverKwarags)
 		if err != nil {
 			return nil, err
 		}
@@ -271,7 +270,6 @@ func Update(ctx context.Context, tier tier.Tier, consumer kafka.FConsumer, agg a
 		if len(profiles) == 0 {
 			return nil
 		}
-		fmt.Println("Total profiles: ", len(profiles))
 
 		table, err = transformProfiles(tier, profiles, agg.Query)
 		if err != nil {
@@ -339,7 +337,7 @@ func Update(ctx context.Context, tier tier.Tier, consumer kafka.FConsumer, agg a
 		tier.Logger.Info(fmt.Sprintf("found %d new %s, %d transformed %s for forever aggregate: %s", streamLen, agg.Source, table.Len(), agg.Source, agg.Name))
 		// Update the aggregate
 		// Use milvus library to update the index with all actions
-		err = tier.MilvusClient.InsertStream(agg, table)
+		err = tier.MilvusClient.InsertStream(ctx, agg, table)
 		if err != nil {
 			return err
 		}

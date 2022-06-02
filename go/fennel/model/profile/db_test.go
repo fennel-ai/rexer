@@ -2,6 +2,7 @@ package profile
 
 import (
 	"context"
+	"fennel/lib/ftypes"
 	"testing"
 
 	"fennel/lib/profile"
@@ -62,10 +63,10 @@ func TestLongOType(t *testing.T) {
 	val := value.Int(5)
 
 	// otype cannot be longer than 255 chars
-	err = p.set(ctx, tier, profile.NewProfileItem(utils.RandString(256), "23", "key", val, 1))
+	err = p.set(ctx, tier, profile.NewProfileItem(ftypes.OType(utils.RandString(256)), "23", "key", val, 1))
 	assert.Error(t, err)
 
 	// but works for otype of length 255 chars
-	err = p.set(ctx, tier, profile.NewProfileItem(utils.RandString(255), "23", "key", val, 1))
+	err = p.set(ctx, tier, profile.NewProfileItem(ftypes.OType(utils.RandString(255)), "23", "key", val, 1))
 	assert.NoError(t, err)
 }

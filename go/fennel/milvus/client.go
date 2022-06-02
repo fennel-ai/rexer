@@ -3,6 +3,7 @@ package milvus
 import (
 	"context"
 	"fennel/lib/aggregate"
+	"fennel/lib/ftypes"
 	hp "fennel/lib/hyperparam"
 	"fennel/lib/value"
 	"fmt"
@@ -23,6 +24,7 @@ type Client struct {
 const (
 	PrimaryField = `ID`
 	VectorField  = `Vector`
+	ScoreField   = `Score`
 )
 
 var supportedHyperParameters = hp.HyperParamRegistry{
@@ -69,7 +71,7 @@ func (c Client) Close() error {
 	return c.client.Close()
 }
 
-func (c Client) CreateKNNIndex(agg aggregate.Aggregate) error {
+func (c Client) CreateKNNIndex(ctx context.Context, agg aggregate.Aggregate) error {
 	// get fields from the aggregate and set them in schema
 	schema := &entity.Schema{
 		CollectionName: string(agg.Name),
@@ -98,7 +100,7 @@ func (c Client) CreateKNNIndex(agg aggregate.Aggregate) error {
 	}
 
 	err := c.client.CreateCollection(
-		context.Background(), // ctx
+		ctx, // ctx
 		schema,
 		2, // shardNum
 	)
@@ -106,6 +108,9 @@ func (c Client) CreateKNNIndex(agg aggregate.Aggregate) error {
 		return err
 	}
 	hyperparameters, err := hp.GetHyperParameters("knn", agg.Options.HyperParameters, supportedHyperParameters)
+	if err != nil {
+		return err
+	}
 	metric, err := getMetric(hyperparameters["metric"].(string))
 	if err != nil {
 		return err
@@ -115,25 +120,24 @@ func (c Client) CreateKNNIndex(agg aggregate.Aggregate) error {
 	if err != nil {
 		return err
 	}
-	fmt.Println("Going to create index")
 	err = c.client.CreateIndex(
-		context.Background(), // ctx
-		string(agg.Name),     // CollectionName
-		VectorField,          // fieldName
-		idx,                  // index
-		false,                // async
+		ctx,              // ctx
+		string(agg.Name), // CollectionName
+		VectorField,      // fieldName
+		idx,              // index
+		false,            // async
 	)
 	if err != nil {
 		return err
 	}
 	return c.client.LoadCollection(
-		context.Background(), // ctx
-		string(agg.Name),     // CollectionName
-		false,                // async
+		ctx,              // ctx
+		string(agg.Name), // CollectionName
+		false,            // async
 	)
 }
 
-func (c Client) InsertStream(agg aggregate.Aggregate, table value.List) error {
+func (c Client) InsertStream(ctx context.Context, agg aggregate.Aggregate, table value.List) error {
 	// Change this to string once Milvus 2.1 is released.
 	ids := make([]int64, 0, table.Len())
 	timestamps := make([]int64, 0, table.Len())
@@ -171,19 +175,18 @@ func (c Client) InsertStream(agg aggregate.Aggregate, table value.List) error {
 	idColumn := entity.NewColumnInt64(PrimaryField, ids)
 	timestampColumn := entity.NewColumnInt64("Timestamp", timestamps)
 	vectorColumn := entity.NewColumnFloatVector(VectorField, int(agg.Options.Dim), vectors)
-	fmt.Println("Going to insert data")
 	_, err := c.client.Insert(
-		context.Background(), // ctx
-		string(agg.Name),     // CollectionName
-		"",                   // partitionName
-		idColumn,             // columnarData
-		timestampColumn,      // columnarData
-		vectorColumn,         // columnarData
+		ctx,              // ctx
+		string(agg.Name), // CollectionName
+		"",               // partitionName
+		idColumn,         // columnarData
+		timestampColumn,  // columnarData
+		vectorColumn,     // columnarData
 	)
 	return err
 }
 
-func (c Client) GetNeighbors(agg aggregate.Aggregate, vectors []value.Value, kwarg value.Dict) ([]value.Value, error) {
+func (c Client) GetNeighbors(ctx context.Context, agg aggregate.Aggregate, vectors []value.Value, kwarg value.Dict) ([]value.Value, error) {
 	hyperparameters, err := hp.GetHyperParameters("knn", agg.Options.HyperParameters, supportedHyperParameters)
 
 	if err != nil {
@@ -232,7 +235,7 @@ func (c Client) GetNeighbors(agg aggregate.Aggregate, vectors []value.Value, kwa
 	}
 
 	searchResult, err := c.client.Search(
-		context.Background(),   // ctx
+		ctx,                    // ctx
 		string(agg.Name),       // CollectionName
 		[]string{},             // partitionNames
 		"",                     // expr
@@ -270,14 +273,14 @@ func (c Client) GetNeighbors(agg aggregate.Aggregate, vectors []value.Value, kwa
 			if err != nil {
 				return nil, err
 			}
-			knnResult.Append(value.NewDict(map[string]value.Value{PrimaryField: value.Int(id), "Score": value.Double(result.Scores[i])}))
+			knnResult.Append(value.NewDict(map[string]value.Value{PrimaryField: value.Int(id), ScoreField: value.Double(result.Scores[i])}))
 		}
 		allResults[sInd] = knnResult
 	}
 	return allResults, nil
 }
 
-func (c Client) GetEmbedding(agg aggregate.Aggregate, keys value.List) ([]value.Value, error) {
+func (c Client) GetEmbedding(ctx context.Context, agg aggregate.Aggregate, keys value.List) ([]value.Value, error) {
 	ids := make([]int64, keys.Len())
 	for i := 0; i < keys.Len(); i++ {
 		idVal, _ := keys.At(i)
@@ -290,7 +293,7 @@ func (c Client) GetEmbedding(agg aggregate.Aggregate, keys value.List) ([]value.
 	idColumn := entity.NewColumnInt64(PrimaryField, ids)
 
 	queryResult, err := c.client.QueryByPks(
-		context.Background(),  // ctx
+		ctx,                   // ctx
 		string(agg.Name),      // CollectionName
 		[]string{},            // partitionNames
 		idColumn,              // expr
@@ -301,14 +304,30 @@ func (c Client) GetEmbedding(agg aggregate.Aggregate, keys value.List) ([]value.
 		return nil, err
 	}
 
-	allResults := make([]value.Value, queryResult[0].Len())
-	vectorColumn := queryResult[0].(*entity.ColumnFloatVector)
-	vectorArr := vectorColumn.Data()
-	for i := 0; i < len(vectorArr); i++ {
-		floatVector := vectorArr[i]
-		allResults[i] = FromList(floatVector)
+	if len(queryResult) == 0 {
+		return []value.Value{}, nil
 	}
+
+	allResults := make([]value.Value, queryResult[0].Len())
+	for _, field := range queryResult {
+		if field.Name() == VectorField {
+			if c, ok := field.(*entity.ColumnFloatVector); !ok {
+				return nil, fmt.Errorf("embeddings returned are not of type float vector")
+			} else {
+				floatVectors := c.Data()
+				for i := 0; i < len(floatVectors); i++ {
+					allResults[i] = FromList(floatVectors[i])
+				}
+			}
+			break
+		}
+	}
+
 	return allResults, nil
+}
+
+func (c Client) DeleteCollection(ctx context.Context, aggName ftypes.AggName) error {
+	return c.client.DropCollection(context.Background(), string(aggName))
 }
 
 //================================================
@@ -325,7 +344,7 @@ func getIndex(hyperparameters map[string]interface{}, metric entity.MetricType) 
 	case "ivf_flat":
 		return entity.NewIndexFlat(
 			metric,
-			int(hyperparameters["nList"].(int)),
+			hyperparameters["nList"].(int),
 		)
 	case "hnsw":
 		return entity.NewIndexHNSW(

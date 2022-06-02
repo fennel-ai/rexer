@@ -65,14 +65,13 @@ func Store(ctx context.Context, tier tier.Tier, agg aggregate.Aggregate) error {
 				}
 			}
 			tier.Logger.Debug("Storing new aggregate")
-			fmt.Println("Storing new aggregate")
 			if agg.Timestamp == 0 {
 				agg.Timestamp = ftypes.Timestamp(time.Now().Unix())
 			}
 			agg.Active = true
 			if agg.Options.AggType == "knn" {
 				// Call into Milvus to create the knn index
-				err = tier.MilvusClient.CreateKNNIndex(agg)
+				err = tier.MilvusClient.CreateKNNIndex(ctx, agg)
 				if err != nil {
 					return err
 				}

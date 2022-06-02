@@ -2,6 +2,7 @@ package profile
 
 import (
 	"context"
+	"fennel/lib/ftypes"
 	"math/rand"
 	"strconv"
 	"sync"
@@ -171,7 +172,7 @@ func TestCachedDBConcurrentSet(t *testing.T) {
 	for i := uint64(0); i < 10; i++ {
 		p := profile.ProfileItem{
 			OType:      "user",
-			Oid:        strconv.FormatUint(i%2+1, 10),
+			Oid:        ftypes.OidType(strconv.FormatUint(i%2+1, 10)),
 			Key:        "age",
 			UpdateTime: i + 1,
 			Value:      value.NewList(value.Int(i)),
@@ -263,8 +264,8 @@ func TestCachedDBEventuallyConsistent(t *testing.T) {
 
 	// creates versioned profiles for ("user", i, "age")
 	for i := uint64(1); i <= 5; i++ {
-		assert.NoError(t, c.set(ctx, tier, profile.NewProfileItem("user", strconv.FormatUint(i, 10), "age", value.NewList(value.Int(i-1)), i-1)))
-		assert.NoError(t, c.set(ctx, tier, profile.NewProfileItem("user", strconv.FormatUint(i, 10), "age", value.NewList(value.Int(i)), i)))
+		assert.NoError(t, c.set(ctx, tier, profile.NewProfileItem("user", ftypes.OidType(strconv.FormatUint(i, 10)), "age", value.NewList(value.Int(i-1)), i-1)))
+		assert.NoError(t, c.set(ctx, tier, profile.NewProfileItem("user", ftypes.OidType(strconv.FormatUint(i, 10)), "age", value.NewList(value.Int(i)), i)))
 	}
 
 	// remove few entries from the cache - eviction
@@ -289,7 +290,7 @@ func TestCachedDBEventuallyConsistent(t *testing.T) {
 				pbatch := make([]profile.ProfileItemKey, 0)
 				// randomly sample profiles
 				if rand.Intn(2) == 1 {
-					pbatch = append(pbatch, profile.NewProfileItemKey("user", strconv.Itoa(i), "age"))
+					pbatch = append(pbatch, profile.NewProfileItemKey("user", ftypes.OidType(strconv.Itoa(i)), "age"))
 				}
 				_, err := c.getBatch(ctx, tier, pbatch)
 				// we do not assert on the read values because it is not deterministic
@@ -303,7 +304,7 @@ func TestCachedDBEventuallyConsistent(t *testing.T) {
 		for i := uint64(1); i <= 3; i++ {
 			go func(i uint64) {
 				defer wg.Done()
-				assert.NoError(t, c.set(ctx, tier, profile.NewProfileItem("user", strconv.FormatUint(i, 10), "age", value.NewList(value.Int(i*20)), 0)))
+				assert.NoError(t, c.set(ctx, tier, profile.NewProfileItem("user", ftypes.OidType(strconv.FormatUint(i, 10)), "age", value.NewList(value.Int(i*20)), 0)))
 			}(i)
 		}
 	}()

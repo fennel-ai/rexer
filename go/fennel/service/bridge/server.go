@@ -98,7 +98,7 @@ func (s server) ProfileHandler(w http.ResponseWriter, req *http.Request) {
 			handleInvalidRequest(w, err)
 			return
 		}
-		pk := profile.NewProfileItemKey(otype, oid, key)
+		pk := profile.NewProfileItemKey(ftypes.OType(otype), ftypes.OidType(oid), key)
 		if err := pk.Validate(); err != nil {
 			handleInvalidRequest(w, err)
 			return
@@ -148,7 +148,7 @@ func (s server) ProfileMultiHandler(w http.ResponseWriter, req *http.Request) {
 			handleInvalidRequest(w, err)
 			return
 		}
-		pfr := profile.ProfileItemKey{OType: ftypes.OType(otype), Oid: oid, Key: key}
+		pfr := profile.ProfileItemKey{OType: ftypes.OType(otype), Oid: ftypes.OidType(oid), Key: key}
 		// Call the server and write back the response
 		pk, err := json.Marshal(pfr)
 		if err != nil {

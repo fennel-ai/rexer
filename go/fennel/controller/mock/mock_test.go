@@ -34,7 +34,7 @@ func TestGetProfiles(t *testing.T) {
 func makeProfileItem(otype string, oid string, k string, updTime uint64, val value.Value) profile.ProfileItem {
 	return profile.ProfileItem{
 		OType:      ftypes.OType(otype),
-		Oid:        oid,
+		Oid:        ftypes.OidType(oid),
 		Key:        k,
 		UpdateTime: updTime,
 		Value:      val,

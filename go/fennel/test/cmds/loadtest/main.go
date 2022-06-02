@@ -18,14 +18,14 @@ import (
 )
 
 type LoadTestArg struct {
-	Url         string `arg:"--url" default:"http://localhost:2425"`
-	NumUids     int    `arg:"--num_uids" default:"1000"`
-	NumVideos   int    `arg:"--num_videos" default:"1000"`
-	NumCreators int    `arg:"--num_creators" default:"100"`
-	Qps         int    `arg:"--qps" default:"10000"`
-	Dryrun      bool   `arg:"--dry_run" default:"false"`
-	Uid         string `arg:"--uid" default:""` // If NumUids == 1 and Uid is set, use it
-	NumProcs    int    `arg:"--num_procs" default:"400"`
+	Url         string         `arg:"--url" default:"http://localhost:2425"`
+	NumUids     int            `arg:"--num_uids" default:"1000"`
+	NumVideos   int            `arg:"--num_videos" default:"1000"`
+	NumCreators int            `arg:"--num_creators" default:"100"`
+	Qps         int            `arg:"--qps" default:"10000"`
+	Dryrun      bool           `arg:"--dry_run" default:"false"`
+	Uid         ftypes.OidType `arg:"--uid" default:""` // If NumUids == 1 and Uid is set, use it
+	NumProcs    int            `arg:"--num_procs" default:"400"`
 }
 
 const (
@@ -36,19 +36,19 @@ const (
 	METADATA_FIELD = "watch_time"
 )
 
-func logActions(c *client.Client, numproc, total, qps int, uids, video_ids []string, dryrun bool) error {
+func logActions(c *client.Client, numproc, total, qps int, uids, video_ids []ftypes.OidType, dryrun bool) error {
 	errs := make(chan error, numproc)
 	per_proc := total / numproc
 	qps_per_proc := qps / numproc
 	for i := 0; i < numproc; i++ {
-		go func(procid int, uids, video_ids []string, num, qps int) {
+		go func(procid int, uids, video_ids []ftypes.OidType, num, qps int) {
 			for num > 0 {
 				start := time.Now().UnixMilli()
 				for i := 0; i < qps; i++ {
 					a := libaction.Action{
-						ActorID:    ftypes.OidType(uids[rand.Intn(len(uids))]),
+						ActorID:    uids[rand.Intn(len(uids))],
 						ActorType:  ACTOR_TYPE,
-						TargetID:   ftypes.OidType(video_ids[rand.Intn(len(video_ids))]),
+						TargetID:   video_ids[rand.Intn(len(video_ids))],
 						TargetType: TARGET_TYPE,
 						ActionType: ACTION_TYPE,
 						Timestamp:  ftypes.Timestamp(time.Now().Unix()),
@@ -83,7 +83,7 @@ func logActions(c *client.Client, numproc, total, qps int, uids, video_ids []str
 	return nil
 }
 
-func setProfileInner(numprocs, procid int, c *client.Client, otype ftypes.OType, oids []string, fields map[string][]value.Value, dryrun bool, errs chan error) {
+func setProfileInner(numprocs, procid int, c *client.Client, otype ftypes.OType, oids []ftypes.OidType, fields map[string][]value.Value, dryrun bool, errs chan error) {
 	for i, oid := range oids {
 		if i%numprocs != procid {
 			continue
@@ -111,7 +111,7 @@ func setProfileInner(numprocs, procid int, c *client.Client, otype ftypes.OType,
 	errs <- nil
 }
 
-func setProfile(c *client.Client, otype ftypes.OType, oids []string, fields map[string][]value.Value, dryrun bool) error {
+func setProfile(c *client.Client, otype ftypes.OType, oids []ftypes.OidType, fields map[string][]value.Value, dryrun bool) error {
 	numprocs := 200
 	errs := make(chan error, numprocs)
 	for i := 0; i < numprocs; i++ {
@@ -134,14 +134,14 @@ func main() {
 
 	rand.Seed(time.Now().Unix()) // initialize global pseudo random generator
 	total := 1 * 60 * flags.Qps
-	uids := make([]string, 0, flags.NumUids)
+	uids := make([]ftypes.OidType, 0, flags.NumUids)
 
 	// if the NumUids == 1, use the Uid passed by the caller.
 	if flags.NumUids == 1 && flags.Uid != "" {
 		uids = append(uids, flags.Uid)
 	} else {
 		for i := 0; i < flags.NumUids; i++ {
-			uids = append(uids, fmt.Sprintf("\"%s\"", utils.RandString(64)))
+			uids = append(uids, ftypes.OidType(fmt.Sprintf("\"%s\"", utils.RandString(64))))
 		}
 	}
 	userFields := map[string][]value.Value{
@@ -156,9 +156,9 @@ func main() {
 	for i := 0; i < flags.NumCreators; i++ {
 		creatorIDs = append(creatorIDs, value.Int(rand.Uint32()))
 	}
-	videoIds := make([]string, 0, flags.NumVideos)
+	videoIds := make([]ftypes.OidType, 0, flags.NumVideos)
 	for i := 0; i < flags.NumVideos; i++ {
-		videoIds = append(videoIds, fmt.Sprintf("\"%s\"", utils.RandString(64)))
+		videoIds = append(videoIds, ftypes.OidType(fmt.Sprintf("\"%s\"", utils.RandString(64))))
 	}
 	videoFields := map[string][]value.Value{
 		"creator_id": creatorIDs,
