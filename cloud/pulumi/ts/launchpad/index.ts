@@ -149,7 +149,19 @@ const planeConfs: Record<number, PlaneConf> = {
         },
         prometheusConf: {
             useAMP: true
-        }
+        },
+        eksConf: {
+            nodeGroups: [
+                // Plane 2 does not run any tier-specific services, but needs to run
+                // plane-level services like nitrous and milvus.
+                {
+                    name: "p-2-common-ng",
+                    nodeType: "c6i.xlarge",
+                    desiredCapacity: 3,
+                },
+            ],
+        },
+        milvusConf: {},
     },
     // Fennel's staging data plane to run dev tiers
     3: {
