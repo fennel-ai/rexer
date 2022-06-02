@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
-	"sync"
 
 	"fennel/engine/ast"
 	"fennel/engine/operators"
@@ -17,7 +16,6 @@ import (
 type Interpreter struct {
 	env      *Env
 	bootargs map[string]interface{}
-	cache    *sync.Map
 	ctx      context.Context
 }
 
@@ -38,7 +36,6 @@ func NewInterpreter(ctx context.Context, bootargs map[string]interface{}, args v
 	return &Interpreter{
 		env:      env,
 		bootargs: bootargs,
-		cache:    new(sync.Map),
 		ctx:      ctx,
 	}, nil
 }
