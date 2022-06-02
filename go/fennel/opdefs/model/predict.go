@@ -2,8 +2,6 @@ package model
 
 import (
 	"context"
-	"fmt"
-
 	modelstore "fennel/controller/modelstore"
 	"fennel/engine/interpreter/bootarg"
 	"fennel/engine/operators"
@@ -72,7 +70,6 @@ func (p predictOperator) Apply(ctx context.Context, staticKwargs value.Dict, in 
 		}
 		outs.Append(out)
 	}
-	fmt.Println("Predict model done", len(rows))
 	return nil
 }
 
