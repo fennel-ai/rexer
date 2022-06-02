@@ -27,6 +27,7 @@ func (agg *Aggregate) UnmarshalJSON(data []byte) error {
 			Limit           uint64        `json:"Limit"`
 			Normalize       bool          `json:"Normalize"`
 			CronSchedule    string        `json:"CronSchedule"`
+			Dim             uint32        `json:"Dim"`
 			HyperParameters string        `json:"HyperParameters"`
 		} `json:"Options"`
 	}
@@ -45,6 +46,7 @@ func (agg *Aggregate) UnmarshalJSON(data []byte) error {
 	agg.Options.Limit = fields.Options.Limit
 	agg.Options.Normalize = fields.Options.Normalize
 	agg.Options.CronSchedule = fields.Options.CronSchedule
+	agg.Options.Dim = fields.Options.Dim
 	agg.Options.HyperParameters = fields.Options.HyperParameters
 	// Extract query now
 	querySer, err := base64.StdEncoding.DecodeString(fields.Query)
@@ -78,6 +80,7 @@ func (agg Aggregate) MarshalJSON() ([]byte, error) {
 			Limit           uint64        `json:"Limit"`
 			Normalize       bool          `json:"Normalize"`
 			CronSchedule    string        `json:"CronSchedule"`
+			Dim             uint32        `json:"Dim"`
 			HyperParameters string        `json:"HyperParameters"`
 		}
 	}
@@ -93,6 +96,7 @@ func (agg Aggregate) MarshalJSON() ([]byte, error) {
 	fields.Options.Limit = agg.Options.Limit
 	fields.Options.Normalize = agg.Options.Normalize
 	fields.Options.CronSchedule = agg.Options.CronSchedule
+	fields.Options.Dim = agg.Options.Dim
 	fields.Options.HyperParameters = agg.Options.HyperParameters
 	return json.Marshal(fields)
 }

@@ -2,7 +2,6 @@ package set
 
 import (
 	"context"
-
 	"fennel/engine/operators"
 	"fennel/lib/value"
 )

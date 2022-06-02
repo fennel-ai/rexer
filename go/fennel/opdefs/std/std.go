@@ -2,7 +2,6 @@ package std
 
 import (
 	"context"
-
 	"fennel/engine/operators"
 	"fennel/lib/value"
 )

@@ -35,7 +35,7 @@ func (a AggValue) New(
 	return AggValue{tr}, nil
 }
 
-func (a AggValue) Apply(ctx context.Context, kwargs value.Dict, in operators.InputIter, outs *value.List) error {
+func (a AggValue) Apply(ctx context.Context, staticKwargs value.Dict, in operators.InputIter, outs *value.List) error {
 	var reqs []aggregate2.GetAggValueRequest
 	var rows []value.Value
 	for in.HasMore() {
@@ -61,7 +61,7 @@ func (a AggValue) Apply(ctx context.Context, kwargs value.Dict, in operators.Inp
 	if err != nil {
 		return err
 	}
-	field := string(get(kwargs, "field").(value.String))
+	field := string(get(staticKwargs, "field").(value.String))
 	outs.Grow(len(rows))
 	for i, row := range rows {
 		var out value.Value

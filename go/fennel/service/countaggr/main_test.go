@@ -312,8 +312,8 @@ func TestEndToEndProfileAggregates(t *testing.T) {
 	}
 
 	// now fire a few profiles
-	p1 := logProfile(t, tier, strconv.Itoa(uid), uint64(t0+ftypes.Timestamp(1)), value.NewDict(map[string]value.Value{"value": value.Int(1)}))
-	p2 := logProfile(t, tier, strconv.Itoa(uid), uint64(t0+ftypes.Timestamp(4000)), value.NewDict(map[string]value.Value{"value": value.Int(2)}))
+	p1 := logProfile(t, tier, ftypes.OidType(strconv.Itoa(uid)), uint64(t0+ftypes.Timestamp(1)), value.NewDict(map[string]value.Value{"value": value.Int(1)}))
+	p2 := logProfile(t, tier, ftypes.OidType(strconv.Itoa(uid)), uint64(t0+ftypes.Timestamp(4000)), value.NewDict(map[string]value.Value{"value": value.Int(2)}))
 	profiles := append(p1, p2...)
 
 	t1 := t0 + 7200
@@ -404,7 +404,7 @@ func logAction(t *testing.T, tier tier.Tier, uid ftypes.OidType, ts ftypes.Times
 	return []actionlib.Action{a1, a2}
 }
 
-func logProfile(t *testing.T, tier tier.Tier, oid string, ts uint64, val value.Value) []profilelib.ProfileItem {
+func logProfile(t *testing.T, tier tier.Tier, oid ftypes.OidType, ts uint64, val value.Value) []profilelib.ProfileItem {
 	p := profilelib.ProfileItem{
 		OType:      "user",
 		Oid:        oid,

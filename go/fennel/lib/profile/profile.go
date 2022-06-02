@@ -16,23 +16,23 @@ const (
 )
 
 type ProfileItemKey struct {
-	OType ftypes.OType `db:"otype" json:"OType"`
-	Oid   string       `db:"oid" json:"Oid"`
-	Key   string       `db:"zkey" json:"Key"`
+	OType ftypes.OType   `db:"otype" json:"OType"`
+	Oid   ftypes.OidType `db:"oid" json:"Oid"`
+	Key   string         `db:"zkey" json:"Key"`
 }
 
-func NewProfileItemKey(otype string, oid string, k string) ProfileItemKey {
+func NewProfileItemKey(otype ftypes.OType, oid ftypes.OidType, k string) ProfileItemKey {
 	return ProfileItemKey{
-		ftypes.OType(otype), oid, k,
+		otype, oid, k,
 	}
 }
 
 type ProfileItem struct {
-	OType      ftypes.OType `json:"OType"`
-	Oid        string       `json:"Oid"`
-	Key        string       `json:"Key"`
-	Value      value.Value  `json:"Value"`
-	UpdateTime uint64       `json:"UpdateTime"`
+	OType      ftypes.OType   `json:"OType"`
+	Oid        ftypes.OidType `json:"Oid"`
+	Key        string         `json:"Key"`
+	Value      value.Value    `json:"Value"`
+	UpdateTime uint64         `json:"UpdateTime"`
 }
 
 func (pi *ProfileItem) GetProfileKey() ProfileItemKey {
@@ -43,7 +43,7 @@ func (pi *ProfileItem) GetProfileKey() ProfileItemKey {
 	}
 }
 
-func NewProfileItem(otype string, oid string, k string, v value.Value, updateTime uint64) ProfileItem {
+func NewProfileItem(otype ftypes.OType, oid ftypes.OidType, k string, v value.Value, updateTime uint64) ProfileItem {
 	return ProfileItem{
 		ftypes.OType(otype), oid, k, v, updateTime,
 	}
@@ -100,10 +100,10 @@ func (pi ProfileItem) MarshalJSON() ([]byte, error) {
 
 func (pi *ProfileItem) UnmarshalJSON(data []byte) error {
 	var fields struct {
-		OType      ftypes.OType `json:"OType"`
-		Oid        string       `json:"Oid"`
-		Key        string       `json:"Key"`
-		UpdateTime uint64       `json:"UpdateTime"`
+		OType      ftypes.OType   `json:"OType"`
+		Oid        ftypes.OidType `json:"Oid"`
+		Key        string         `json:"Key"`
+		UpdateTime uint64         `json:"UpdateTime"`
 	}
 	err := json.Unmarshal(data, &fields)
 	if err != nil {

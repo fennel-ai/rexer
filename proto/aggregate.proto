@@ -21,6 +21,7 @@ message AggOptions {
   bool normalize = 5;
   string cron_schedule = 6;
   string hyper_parameters = 7;
+  uint32 dim = 8;
 }
 
 message AggRequest {

@@ -25,5 +25,8 @@ export SAGEMAKER_EXECUTION_ROLE="arn:aws:iam::030813887342:role/p-2-sagemaker-ex
 export JOB_NAME_BY_AGG="topk=TopK,cf=CF"
 export OFFLINE_AGG_BUCKET="t-103-offline-aggregate-output"
 export AWS_REGION="us-west-2"
+export MILVUS_URL="a30b44469bb91442ca880b1611e00ab5-1934733413.us-west-2.elb.amazonaws.com:19530"
+
 # in tests, we override this with a random tier ID but this is needed for prod
 export TIER_ID=103
+

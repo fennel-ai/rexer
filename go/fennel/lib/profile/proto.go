@@ -1,7 +1,6 @@
 package profile
 
 import (
-	"fennel/lib/ftypes"
 	"fennel/lib/value"
 )
 
@@ -11,7 +10,7 @@ func FromProtoProfileItem(ppr *ProtoProfileItem) (ProfileItem, error) {
 		return ProfileItem{}, err
 	}
 	return ProfileItem{
-		ftypes.OType(ppr.OType),
+		ppr.OType,
 		ppr.Oid,
 		ppr.Key,
 		v,
@@ -25,7 +24,7 @@ func ToProtoProfileItem(pi *ProfileItem) (ProtoProfileItem, error) {
 		return ProtoProfileItem{}, err
 	}
 	return ProtoProfileItem{
-		OType:   string(pi.OType),
+		OType:   pi.OType,
 		Oid:     pi.Oid,
 		Key:     pi.Key,
 		Version: pi.UpdateTime,

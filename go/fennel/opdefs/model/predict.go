@@ -2,7 +2,6 @@ package model
 
 import (
 	"context"
-
 	modelstore "fennel/controller/modelstore"
 	"fennel/engine/interpreter/bootarg"
 	"fennel/engine/operators"
@@ -31,7 +30,6 @@ func (p predictOperator) Apply(ctx context.Context, staticKwargs value.Dict, in 
 	var inputs []value.List
 	modelName := string(get(staticKwargs, "model").(value.String))
 	_, isPretrainedModel := modelstore.SupportedPretrainedModels[modelName]
-
 	for in.HasMore() {
 		heads, contextKwargs, err := in.Next()
 		if err != nil {
@@ -47,13 +45,12 @@ func (p predictOperator) Apply(ctx context.Context, staticKwargs value.Dict, in 
 	}
 	var outputs []value.Value
 	var err error
-
 	if isPretrainedModel {
 		outputs, err = modelstore.PreTrainedScore(ctx, p.tier, modelName, inputs)
 	} else {
 		modelVersion := staticKwargs.GetUnsafe("version").(value.String)
 		// TODO: Split into correctly sized requests instead of just 1.
-		outputs, err = modelstore.Score(ctx, p.tier, string(modelName), string(modelVersion), inputs)
+		outputs, err = modelstore.Score(ctx, p.tier, modelName, string(modelVersion), inputs)
 	}
 
 	if err != nil {

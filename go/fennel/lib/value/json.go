@@ -50,6 +50,7 @@ func ParseJSON(vdata []byte, vtype jsonparser.ValueType) (Value, error) {
 	case jsonparser.Null:
 		return Nil, nil
 	default:
+		return nil, fmt.Errorf("unsupported json type %v", vtype)
 		return nil, fmt.Errorf("unknown type")
 	}
 }

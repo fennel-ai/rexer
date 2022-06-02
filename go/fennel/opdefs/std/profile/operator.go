@@ -60,7 +60,7 @@ func (p profileOp) Apply(ctx context.Context, staticKwargs value.Dict, in operat
 		rowVal := heads[0]
 		req := libprofile.ProfileItemKey{
 			OType: ftypes.OType(kwargs.GetUnsafe("otype").(value.String)),
-			Oid:   kwargs.GetUnsafe("oid").String(),
+			Oid:   ftypes.OidType(kwargs.GetUnsafe("oid").String()),
 			Key:   string(kwargs.GetUnsafe("key").(value.String)),
 		}
 		reqs = append(reqs, req)

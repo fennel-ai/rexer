@@ -332,7 +332,7 @@ func TestSetProfilesQueuesToKafka(t *testing.T) {
 	// Write another batch, previous entries should still be there
 	profileList2 := make([]profilelib.ProfileItem, 0)
 	for i := uint64(1); i <= 3; i++ {
-		p := profilelib.ProfileItem{OType: ftypes.OType("2"), Oid: fmt.Sprint(i), Key: "foo", UpdateTime: i, Value: value.Int(i * 10)}
+		p := profilelib.ProfileItem{OType: ftypes.OType("2"), Oid: ftypes.OidType(fmt.Sprint(i)), Key: "foo", UpdateTime: i, Value: value.Int(i * 10)}
 		profileList2 = append(profileList2, p)
 	}
 
@@ -613,7 +613,7 @@ func TestStoreRetrieveDeactivateAggregate(t *testing.T) {
 
 func checkSet(t *testing.T, c *client.Client, otype string, oid string,
 	updateTime uint64, key string, val value.Value) profilelib.ProfileItem {
-	profile := profilelib.ProfileItem{OType: ftypes.OType(otype), Oid: oid, Key: key, UpdateTime: updateTime, Value: val}
+	profile := profilelib.ProfileItem{OType: ftypes.OType(otype), Oid: ftypes.OidType(oid), Key: key, UpdateTime: updateTime, Value: val}
 	err := c.SetProfile(&profile)
 	assert.NoError(t, err)
 	return profile

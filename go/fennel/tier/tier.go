@@ -15,6 +15,7 @@ import (
 	"fennel/lib/clock"
 	"fennel/lib/ftypes"
 	"fennel/lib/timer"
+	"fennel/milvus"
 	"fennel/modelstore"
 	"fennel/pcache"
 	"fennel/redis"
@@ -32,7 +33,8 @@ type TierArgs struct {
 	sagemaker.SagemakerArgs   `json:"sagemaker_._sagemaker_args"`
 	modelstore.ModelStoreArgs `json:"modelstore_._model_store_args"`
 	glue.GlueArgs             `json:"glue_._glue_args"`
-	timer.TracerArgs		  `json:"tracer_._tracer_args"`
+	timer.TracerArgs          `json:"tracer_._tracer_args"`
+	milvus.MilvusArgs         `json:"milvus_._milvus_args"`
 
 	Region           string         `arg:"--aws-region,env:AWS_REGION" json:"aws_region,omitempty"`
 	KafkaServer      string         `arg:"--kafka-server,env:KAFKA_SERVER_ADDRESS" json:"kafka_server,omitempty"`
@@ -48,7 +50,7 @@ type TierArgs struct {
 	CacheReplica     string         `arg:"--cache-replica,env:CACHE_REPLICA" json:"cache_replica,omitempty"`
 	Dev              bool           `arg:"--dev" default:"true" json:"dev,omitempty"`
 	OfflineAggBucket string         `arg:"--offline-agg-bucket,env:OFFLINE_AGG_BUCKET" json:"offline_agg_bucket,omitempty"`
-	UnleashEndpoint  string 		`arg:"--unleash-endpoint,env:UNLEASH_ENDPOINT" json:"unleash_endpoint,omitempty"`
+	UnleashEndpoint  string         `arg:"--unleash-endpoint,env:UNLEASH_ENDPOINT" json:"unleash_endpoint,omitempty"`
 }
 
 type KafkaConsumerCreator func(libkafka.ConsumerConfig) (libkafka.FConsumer, error)
@@ -110,6 +112,7 @@ type Tier struct {
 	S3Client         s3.Client
 	GlueClient       glue.GlueClient
 	SagemakerClient  sagemaker.SMClient
+	MilvusClient     milvus.Client
 	ModelStore       *modelstore.ModelStore
 	Args             TierArgs
 	// In-process caches for the tier, has very short TTL ( order of minutes )
@@ -220,6 +223,15 @@ func CreateFromArgs(args *TierArgs) (tier Tier, err error) {
 	}
 	logger = logger.With(zap.Uint32("tier_id", args.TierID.Value()))
 
+	var milvusClient milvus.Client
+	if args.MilvusArgs.Url != "" {
+		log.Print("Connecting to milvus")
+		milvusClient, err = milvus.NewClient(args.MilvusArgs)
+		if err != nil {
+			return tier, fmt.Errorf("failed to create milvus client: %v", err)
+		}
+	}
+
 	log.Print("Connecting to sagemaker")
 	smclient, err := sagemaker.NewClient(args.SagemakerArgs)
 	if err != nil {
@@ -294,6 +306,7 @@ func CreateFromArgs(args *TierArgs) (tier Tier, err error) {
 		SagemakerClient:  smclient,
 		S3Client:         s3client,
 		GlueClient:       glueclient,
+		MilvusClient:     milvusClient,
 		ModelStore:       modelStore,
 		Args:             *args,
 		AggregateDefs:    new(sync.Map),

@@ -142,8 +142,8 @@ func EnableModel(ctx context.Context, tier tier.Tier, model string) error {
 			Name:                     sagemakerModelId,
 			ModelName:                sagemakerModelId,
 			VariantName:              sagemakerModelId,
-			ServerlessMaxConcurrency: 50,
-			ServerlessMemory:         2048,
+			ServerlessMaxConcurrency: 75,
+			ServerlessMemory:         4096,
 		}
 		err = tier.SagemakerClient.CreateEndpointConfig(ctx, endpointCfg)
 		if err != nil {
@@ -256,6 +256,9 @@ func PreTrainedScore(ctx context.Context, tier tier.Tier, modelName string, inpu
 		FeatureLists: inputs,
 	}
 	res, err := tier.SagemakerClient.Score(ctx, &req)
+	if err != nil {
+		return nil, err
+	}
 	return res.Scores, err
 }
 

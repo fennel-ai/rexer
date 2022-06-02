@@ -66,6 +66,7 @@ func FromProtoOptions(popt *AggOptions) Options {
 		Limit:           popt.Limit,
 		Normalize:       popt.Normalize,
 		CronSchedule:    popt.CronSchedule,
+		Dim:             popt.Dim,
 		HyperParameters: popt.HyperParameters,
 	}
 }
@@ -78,6 +79,7 @@ func ToProtoOptions(opt Options) *AggOptions {
 		Limit:           opt.Limit,
 		Normalize:       opt.Normalize,
 		CronSchedule:    opt.CronSchedule,
+		Dim:             opt.Dim,
 		HyperParameters: opt.HyperParameters,
 	}
 }

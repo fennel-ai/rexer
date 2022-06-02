@@ -64,10 +64,18 @@ func Store(ctx context.Context, tier tier.Tier, agg aggregate.Aggregate) error {
 					}
 				}
 			}
+			tier.Logger.Debug("Storing new aggregate")
 			if agg.Timestamp == 0 {
 				agg.Timestamp = ftypes.Timestamp(time.Now().Unix())
 			}
 			agg.Active = true
+			if agg.Options.AggType == "knn" {
+				// Call into Milvus to create the knn index
+				err = tier.MilvusClient.CreateKNNIndex(ctx, agg)
+				if err != nil {
+					return err
+				}
+			}
 			return modelAgg.Store(ctx, tier, agg)
 		} else {
 			return fmt.Errorf("failed to retrieve aggregate: %w", err)

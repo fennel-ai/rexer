@@ -59,5 +59,5 @@ func Teardown(tr tier.Tier) error {
 	if err := teardownKafkaTopics(tr.ID, flags.KafkaServer, flags.KafkaUsername, flags.KafkaPassword, fkafka.ALL_TOPICS); err != nil {
 		panic(fmt.Sprintf("unable to teardown kafka topics: %v", err))
 	}
-	return nil
+	return tr.MilvusClient.Close()
 }

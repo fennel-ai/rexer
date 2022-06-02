@@ -146,20 +146,42 @@ func batchValue(ctx context.Context, tier tier.Tier, batch []aggregate.GetAggVal
 			return nil, fmt.Errorf("failed to retrieve aggregate %s ", name)
 		}
 	}
-	var offlinePtr []int
-	var namespaces []string
-	var identifier []string
-	var offlineKeys []value.String
+
+	ret := make([]value.Value, n)
+	numSlotsLeft, err := fetchOfflineAggregates(tier, unique, batch, ret)
+	if err != nil {
+		return nil, err
+	}
+
+	numSlotsLeft, err = fetchForeverAggregates(ctx, tier, unique, batch, ret, numSlotsLeft)
+	if err != nil {
+		return nil, err
+	}
+
+	err = fetchOnlineAggregates(ctx, tier, unique, batch, ret, numSlotsLeft)
+	if err != nil {
+		return nil, err
+	}
+	return ret, nil
+}
+
+func fetchOfflineAggregates(tier tier.Tier, aggMap map[ftypes.AggName]aggregate.Aggregate, batch []aggregate.GetAggValueRequest, ret []value.Value) (int, error) {
+	offlinePtr := make([]int, 0, len(batch))
+	namespaces := make([]string, 0, len(batch))
+	identifier := make([]string, 0, len(batch))
+	offlineKeys := make([]value.String, 0, len(batch))
+	numSlotsLeft := len(batch)
+
 	// Fetch offline aggregate values
 	for i, req := range batch {
-		agg := unique[req.AggName]
-		if agg.Options.CronSchedule == "" {
+		agg := aggMap[req.AggName]
+		if !agg.IsOffline() {
 			continue
 		}
 		offlinePtr = append(offlinePtr, i)
 		duration, err := getDuration(req.Kwargs)
 		if err != nil {
-			return nil, err
+			return numSlotsLeft, err
 		}
 		aggPhaserIdentifier := fmt.Sprintf("%s-%d", agg.Name, duration)
 		namespaces = append(namespaces, OFFLINE_AGG_NAMESPACE)
@@ -172,62 +194,105 @@ func batchValue(ctx context.Context, tier tier.Tier, batch []aggregate.GetAggVal
 		}
 	}
 
-	ret := make([]value.Value, n)
-
 	if len(offlinePtr) > 0 {
 		offlineValues, err := phaser.BatchGet(tier, namespaces, identifier, offlineKeys)
 		if err != nil {
-			return nil, err
+			return numSlotsLeft, err
 		}
 
 		for i, v := range offlineValues {
 			ret[offlinePtr[i]] = v
+			numSlotsLeft -= 1
 		}
 	}
 
-	numOnline := n - len(offlinePtr)
-	histograms := make([]modelCounter.Histogram, numOnline)
-	ids := make([]ftypes.AggId, numOnline)
-	keys := make([]value.Value, numOnline)
-	kwargs := make([]value.Dict, numOnline)
+	return numSlotsLeft, nil
+}
+
+func fetchForeverAggregates(ctx context.Context, tier tier.Tier, aggMap map[ftypes.AggName]aggregate.Aggregate, batch []aggregate.GetAggValueRequest, ret []value.Value, numSlotsLeft int) (int, error) {
+	foreverPtr := make([]int, 0, numSlotsLeft)
+	foreverKeys := make([]value.Value, 0, numSlotsLeft)
+	var foreverAgg aggregate.Aggregate
+	var foreverKwarags value.Dict
+
+	// Fetch forever aggregates, ( these dont need histograms )
+	for i, req := range batch {
+		agg := aggMap[req.AggName]
+		if !agg.IsForever() {
+			continue
+		}
+		// Current code only supports knn, need to extend this to support other aggregates
+		if agg.Options.AggType != "knn" {
+			return numSlotsLeft, fmt.Errorf("error: Only KNN supports forever aggregates")
+		}
+		foreverPtr = append(foreverPtr, i)
+		foreverKeys = append(foreverKeys, req.Key)
+		// Currently we assume the aggregate and kwarg is the same for all knn requests.
+		foreverAgg = agg
+		foreverKwarags = req.Kwargs
+	}
+
+	if len(foreverPtr) > 0 {
+		nn, err := tier.MilvusClient.GetNeighbors(ctx, foreverAgg, foreverKeys, foreverKwarags)
+		if err != nil {
+			return numSlotsLeft, err
+		}
+		for j, v := range nn {
+			ret[foreverPtr[j]] = v
+			numSlotsLeft -= 1
+		}
+	}
+
+	return numSlotsLeft, nil
+}
+
+func fetchOnlineAggregates(ctx context.Context, tier tier.Tier, aggMap map[ftypes.AggName]aggregate.Aggregate, batch []aggregate.GetAggValueRequest, ret []value.Value, numSlotsLeft int) error {
+	histograms := make([]modelCounter.Histogram, 0, numSlotsLeft)
+	ids := make([]ftypes.AggId, 0, numSlotsLeft)
+	keys := make([]value.Value, 0, numSlotsLeft)
+	kwargs := make([]value.Dict, 0, numSlotsLeft)
 
 	var onlinePtr []int
 	// Fetch online aggregate values
 	for i, req := range batch {
-		agg := unique[req.AggName]
-		if agg.Options.CronSchedule != "" {
+		agg := aggMap[req.AggName]
+		if agg.IsForever() || agg.IsOffline() {
 			continue
 		}
 		onlinePtr = append(onlinePtr, i)
-		histograms[i], err = modelCounter.ToHistogram(tier, agg.Id, agg.Options)
+		h, err := modelCounter.ToHistogram(tier, agg.Id, agg.Options)
 		if err != nil {
-			return nil, fmt.Errorf("failed to make histogram from aggregate at index %d of batch: %v", i, err)
+			return fmt.Errorf("failed to make histogram from aggregate at index %d of batch: %v", i, err)
 		}
-		ids[i] = agg.Id
-		keys[i] = req.Key
-		kwargs[i] = req.Kwargs
+		histograms = append(histograms, h)
+		ids = append(ids, agg.Id)
+		keys = append(keys, req.Key)
+		kwargs = append(kwargs, req.Kwargs)
 	}
 
 	if len(onlinePtr) > 0 {
 		onlineValues, err := counter.BatchValue(ctx, tier, ids, keys, histograms, kwargs)
 		if err != nil {
-			return nil, err
+			return err
 		}
 
 		for i, v := range onlineValues {
 			ret[onlinePtr[i]] = v
 		}
 	}
-	return ret, nil
+	return nil
 }
 
+// Update the aggregates given a kafka consumer responsible for reading any stream
 func Update(ctx context.Context, tier tier.Tier, consumer kafka.FConsumer, agg aggregate.Aggregate) error {
 	var table value.List
 	var err error
 	var streamLen int
 
+	// The number of actions and profiles need to be tuned.
+	// They should not be too many such that operations like op.model.predict cant handle them.
 	if agg.Source == aggregate.SOURCE_PROFILE {
-		profiles, err := profile.ReadBatch(ctx, consumer, 20000, time.Second*10)
+		profiles, err := profile.ReadBatch(ctx, consumer, 500, time.Second*10)
 
 		if err != nil {
 			return err
@@ -237,9 +302,12 @@ func Update(ctx context.Context, tier tier.Tier, consumer kafka.FConsumer, agg a
 		}
 
 		table, err = transformProfiles(tier, profiles, agg.Query)
+		if err != nil {
+			return err
+		}
 		streamLen = len(profiles)
 	} else {
-		actions, err := action.ReadBatch(ctx, consumer, 20000, time.Second*10)
+		actions, err := action.ReadBatch(ctx, consumer, 10000, time.Second*10)
 		if err != nil {
 			return err
 		}
@@ -248,6 +316,9 @@ func Update(ctx context.Context, tier tier.Tier, consumer kafka.FConsumer, agg a
 		}
 
 		table, err = transformActions(tier, actions, agg.Query)
+		if err != nil {
+			return err
+		}
 		streamLen = len(actions)
 	}
 
@@ -260,6 +331,8 @@ func Update(ctx context.Context, tier tier.Tier, consumer kafka.FConsumer, agg a
 		_, err = consumer.Commit()
 		return err
 	}
+
+	// Update the aggregate according to the type
 
 	// Offline Aggregates
 	if agg.IsOffline() {
@@ -283,6 +356,27 @@ func Update(ctx context.Context, tier tier.Tier, consumer kafka.FConsumer, agg a
 		_, err = consumer.Commit()
 		return err
 	}
+
+	// Forever Aggregates dont use histograms
+	if agg.IsForever() {
+		// Current support for only KNN, add support for other aggregates
+		// https://linear.app/fennel-ai/issue/REX-1053/support-forever-aggregates
+		if agg.Options.AggType != "knn" {
+			return fmt.Errorf("forever aggregates are not supported for aggregate %s", agg.Name)
+		}
+		tier.Logger.Info(fmt.Sprintf("found %d new %s, %d transformed %s for forever aggregate: %s", streamLen, agg.Source, table.Len(), agg.Source, agg.Name))
+		// Update the aggregate
+		// Use milvus library to update the index with all actions
+		err = tier.MilvusClient.InsertStream(ctx, agg, table)
+		if err != nil {
+			return err
+		}
+		_, err = consumer.Commit()
+		return err
+	}
+
+	// Online duration based aggregates
+
 	tier.Logger.Info(fmt.Sprintf("found %d new %s, %d transformed %s for online aggregate: %s", streamLen, agg.Source, table.Len(), agg.Source, agg.Name))
 	histogram, err := modelCounter.ToHistogram(tier, agg.Id, agg.Options)
 	if err != nil {
