@@ -79,9 +79,9 @@ func (agg Aggregate) MarshalJSON() ([]byte, error) {
 			Window          ftypes.Window `json:"Window"`
 			Limit           uint64        `json:"Limit"`
 			Normalize       bool          `json:"Normalize"`
-			CronSchedule    string
-			Dim             uint32 `json:"Dim"`
-			HyperParameters string `json:"HyperParameters"`
+			CronSchedule    string        `json:"CronSchedule"`
+			Dim             uint32        `json:"Dim"`
+			HyperParameters string        `json:"HyperParameters"`
 		}
 	}
 	fields.Name = agg.Name

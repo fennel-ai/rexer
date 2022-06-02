@@ -255,6 +255,117 @@ func batchValue(ctx context.Context, tier tier.Tier, batch []aggregate.GetAggVal
 	return ret, nil
 }
 
+/*
+func fetchOfflineAggregates(ctx context.Context, tier tier.Tier, aggs []aggregate.Aggregate) ([]value.Value, error) {
+	var offlinePtr []int
+	var namespaces []string
+	var identifier []string
+	var offlineKeys []value.String
+
+	// Fetch offline aggregate values
+	for i, agg := range aggs {
+		if !agg.IsOffline() {
+			continue
+		}
+		offlinePtr = append(offlinePtr, i)
+		duration, err := getDuration(agg.Kwargs)
+		if err != nil {
+			return nil, err
+		}
+		aggPhaserIdentifier := fmt.Sprintf("%s-%d", agg.Name, duration)
+		namespaces = append(namespaces, OFFLINE_AGG_NAMESPACE)
+		identifier = append(identifier, aggPhaserIdentifier)
+		// Convert all keys to value.String
+		offlineKeys = append(offlineKeys, value.String(agg.Key.String()))
+	}
+
+	ret := make([]value.Value, len(offlinePtr))
+
+	if len(offlinePtr) > 0 {
+		offlineValues, err := phaser.BatchGet(tier, namespaces, identifier, offlineKeys)
+		if err != nil {
+			return nil, err
+		}
+
+		for i, v := range offlineValues {
+			ret[offlinePtr[i]] = v
+		}
+	}
+
+	return ret, nil
+}
+
+func fetchForeverAggregates(ctx context.Context, tier tier.Tier, aggs []aggregate.Aggregate) ([]value.Value, error) {
+	var foreverPtr []int
+	foreverKeys := make([]value.Value, 0, len(aggs))
+	var foreverAgg aggregate.Aggregate
+	var foreverKwarags value.Dict
+
+	// Fetch forever aggregates, ( these dont need histograms )
+	for i, agg := range aggs {
+		if !agg.IsForever() {
+			continue
+		}
+		// Current code only supports knn, need to extend this to support other aggregates
+		if agg.Options.AggType != "knn" {
+			return nil, fmt.Errorf("error: Only KNN supports forever aggregates")
+		}
+		foreverPtr = append(foreverPtr, i)
+		foreverKeys = append(foreverKeys, agg.Key)
+		// Currently we assume the aggregate and kwarg is the same for all knn requests.
+		foreverAgg = agg
+		foreverKwarags = agg.Kwargs
+	}
+
+	if len(foreverPtr) > 0 {
+		nn, err := tier.MilvusClient.GetNeighbors(ctx, foreverAgg, foreverKeys, foreverKwarags)
+		if err != nil {
+			return nil, err
+		}
+		for j, v := range nn {
+			ret[foreverPtr[j]] = v
+		}
+	}
+
+	return ret, nil
+}
+
+func fetchOnlineAggregates(ctx context.Context, tier tier.Tier, aggs []aggregate.Aggregate) ([]value.Value, error) {
+	var onlinePtr []int
+	var namespaces []string
+	var identifier []string
+	var onlineKeys []value.String
+
+	// Fetch online aggregate values
+	for i, agg := range aggs {
+		if agg.IsForever() || agg.IsOffline() {
+			continue
+		}
+		onlinePtr = append(onlinePtr, i)
+		namespaces = append(namespaces, ONLINE_AGG_NAMESPACE)
+		identifier = append(identifier, agg.Name)
+		// Convert all keys to value.String
+		onlineKeys = append(onlineKeys, value.String(agg.Key.String()))
+	}
+
+	ret := make([]value.Value, len(onlinePtr))
+
+	if len(onlinePtr) > 0 {
+		onlineValues, err := phaser.BatchGet(tier, namespaces, identifier, onlineKeys)
+		if err != nil {
+			return nil, err
+		}
+
+		for i, v := range onlineValues {
+			ret[onlinePtr[i]] = v
+		}
+	}
+
+	return ret, nil
+
+}
+*/
+
 // Update the aggregates given a kafka consumer responsible for reading any stream
 func Update(ctx context.Context, tier tier.Tier, consumer kafka.FConsumer, agg aggregate.Aggregate) error {
 	var table value.List
@@ -328,7 +439,7 @@ func Update(ctx context.Context, tier tier.Tier, consumer kafka.FConsumer, agg a
 	}
 
 	// Forever Aggregates dont use histograms
-	if (agg.Options.Durations == nil || len(agg.Options.Durations) == 0) && agg.Options.AggType != "timeseries_sum" {
+	if agg.IsForever() {
 		// Current support for only KNN, add support for other aggregates
 		// https://linear.app/fennel-ai/issue/REX-1053/support-forever-aggregates
 		if agg.Options.AggType != "knn" {

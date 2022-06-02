@@ -88,9 +88,6 @@ func (c GlueClient) ScheduleOfflineAggregate(tierID ftypes.RealmID, agg aggregat
 		}
 
 		hyperparametersStr, err := json.Marshal(hyperparameters)
-		if err != nil {
-			return fmt.Errorf("failed to marshal hyper params: %v", err)
-		}
 
 		if err != nil {
 			return err

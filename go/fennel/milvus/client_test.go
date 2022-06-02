@@ -10,15 +10,15 @@ import (
 	"fennel/lib/value"
 	"github.com/milvus-io/milvus-sdk-go/v2/entity"
 	"github.com/stretchr/testify/assert"
+	"os"
 	"strings"
 	"testing"
 	"time"
 )
 
-const MILVUS_URL = "a30b44469bb91442ca880b1611e00ab5-1934733413.us-west-2.elb.amazonaws.com:19530"
-
 func TestClient_CreateKNNIndex(t *testing.T) {
-	milvusClient, err := NewClient(MilvusArgs{Url: MILVUS_URL})
+	milvusUrl := os.Getenv("MILVUS_URL")
+	milvusClient, err := NewClient(MilvusArgs{Url: milvusUrl})
 	assert.NoError(t, err)
 	ctx := context.Background()
 	defer cleanUpCollections(milvusClient, ctx)
@@ -91,7 +91,8 @@ func TestClient_CreateKNNIndex(t *testing.T) {
 }
 
 func TestClient_InsertStream_GetNeighbors(t *testing.T) {
-	milvusClient, err := NewClient(MilvusArgs{Url: MILVUS_URL})
+	milvusUrl := os.Getenv("MILVUS_URL")
+	milvusClient, err := NewClient(MilvusArgs{Url: milvusUrl})
 	ctx := context.Background()
 	defer cleanUpCollections(milvusClient, ctx)
 
@@ -148,7 +149,8 @@ func TestClient_InsertStream_GetNeighbors(t *testing.T) {
 }
 
 func TestClient_InsertStream_GetEmbedding(t *testing.T) {
-	milvusClient, err := NewClient(MilvusArgs{Url: MILVUS_URL})
+	milvusUrl := os.Getenv("MILVUS_URL")
+	milvusClient, err := NewClient(MilvusArgs{Url: milvusUrl})
 	ctx := context.Background()
 	defer cleanUpCollections(milvusClient, ctx)
 
