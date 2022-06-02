@@ -9,6 +9,7 @@ export REDIS_SERVER_ADDRESS="clustercfg.p-3-redis-db-57b5586.fbjfph.memorydb.us-
 export CACHE_PRIMARY="clustercfg.p-3-cache-cluster-b20c9a6.fbjfph.usw2.cache.amazonaws.com:6379"
 export KUBECONFIG="$FENNEL_ROOT/cloud/pulumi/ts/eks/kubeconfig-plane-3.json"
 export AWS_ROLE_ARN="arn:aws:iam::030813887342:role/admin"
+export MILVUS_URL="a30b44469bb91442ca880b1611e00ab5-1934733413.us-west-2.elb.amazonaws.com"
 
 export MOTHERSHIP_ID=1
 export MOTHERSHIP_MYSQL_ADDRESS="dw48w7ntx844.us-west-2.psdb.cloud"
