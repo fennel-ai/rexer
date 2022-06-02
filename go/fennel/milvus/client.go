@@ -7,10 +7,11 @@ import (
 	hp "fennel/lib/hyperparam"
 	"fennel/lib/value"
 	"fmt"
-	"github.com/milvus-io/milvus-sdk-go/v2/client"
-	"github.com/milvus-io/milvus-sdk-go/v2/entity"
 	"log"
 	"reflect"
+
+	"github.com/milvus-io/milvus-sdk-go/v2/client"
+	"github.com/milvus-io/milvus-sdk-go/v2/entity"
 )
 
 type MilvusArgs struct {
@@ -68,7 +69,11 @@ func NewClient(args MilvusArgs) (Client, error) {
 //================================================
 
 func (c Client) Close() error {
-	return c.client.Close()
+	if c.client == nil {
+		return nil
+	} else {
+		return c.client.Close()
+	}
 }
 
 func (c Client) CreateKNNIndex(ctx context.Context, agg aggregate.Aggregate) error {
