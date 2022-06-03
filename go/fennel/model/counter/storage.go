@@ -205,11 +205,7 @@ func (t twoLevelRedisStore) get(
 		}
 	}
 	// now load all groups from redis and get values from relevant slots
-	defaults_ := make([]value.Value, len(rkeys))
-	for i := range defaults_ {
-		defaults_[i] = value.NewDict(nil)
-	}
-	groupVals, err := readFromRedis(ctx, tier, rkeys, defaults_)
+	groupVals, err := readFromRedis(ctx, tier, rkeys)
 	if err != nil {
 		return nil, err
 	}
@@ -312,11 +308,7 @@ func (t twoLevelRedisStore) set(ctx context.Context, tier tier.Tier, aggIds []ft
 		}
 	}
 	// now load all groups from redis first and update relevant slots
-	defaults := make([]value.Value, len(rkeys))
-	for i := range defaults {
-		defaults[i] = value.NewDict(nil)
-	}
-	groupVals, err := readFromRedis(ctx, tier, rkeys, defaults)
+	groupVals, err := readFromRedis(ctx, tier, rkeys)
 	if err != nil {
 		return err
 	}
@@ -515,29 +507,29 @@ func Update(ctx context.Context, tier tier.Tier, aggId ftypes.AggId, buckets []c
 // Private helpers for talking to redis
 // ==========================================================
 
-func readFromRedis(ctx context.Context, tier tier.Tier, rkeys []string, defaults []value.Value) ([]value.Value, error) {
+func readFromRedis(ctx context.Context, tier tier.Tier, rkeys []string) ([]value.Value, error) {
 	res, err := tier.Redis.MGet(ctx, rkeys...)
 	if err != nil {
 		return nil, err
 	}
 	ret := make([]value.Value, len(rkeys))
 	for i, v := range res {
-		if ret[i], err = interpretRedisResponse(v, defaults[i].Clone()); err != nil {
+		if ret[i], err = interpretRedisResponse(v); err != nil {
 			return nil, err
 		}
 	}
 	return ret, nil
 }
 
-func interpretRedisResponse(v interface{}, default_ value.Value) (value.Value, error) {
+func interpretRedisResponse(v interface{}) (value.Value, error) {
 	switch t := v.(type) {
 	case nil:
-		return default_, nil
+		return value.NewDict(nil), nil
 	case error:
 		if t != redis.Nil {
 			return nil, t
 		} else {
-			return default_, nil
+			return value.NewDict(nil), nil
 		}
 	case string:
 		var val value.Value
