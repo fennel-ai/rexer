@@ -66,42 +66,15 @@ func MergeBuckets(histogram Histogram, buckets []counter.Bucket) ([]counter.Buck
 	return ret, nil
 }
 
-//===========================
+// ===========================
 // Private helpers below
-//===========================
+// ===========================
 
 // given start, end, returns indices of [startIdx, endIdx) periods that are fully enclosed within [start, end]
 func boundary(start, end ftypes.Timestamp, period uint64) (uint64, uint64) {
 	startBoundary := (uint64(start) + period - 1) / period
 	endBoundary := uint64(end) / period
 	return startBoundary, endBoundary
-}
-
-// bucketizeTimeseries returns a list of buckets of size 'Window' that begin at or after 'start'
-// and go until at or before 'end'. Each bucket's count is left at 0
-func bucketizeTimeseries(key string, start, end ftypes.Timestamp, window ftypes.Window, width uint64, zero value.Value) ([]counter.Bucket, ftypes.Timestamp, ftypes.Timestamp) {
-	var period uint64
-	switch window {
-	case ftypes.Window_MINUTE:
-		period = 60 * width
-	case ftypes.Window_HOUR:
-		period = 3600 * width
-	case ftypes.Window_DAY:
-		period = 24 * 3600 * width
-	default:
-		panic("this should never happen")
-	}
-	startBoundary, endBoundary := boundary(start, end, period)
-	if endBoundary <= startBoundary {
-		return []counter.Bucket{}, start, start
-	}
-	bucketStart := ftypes.Timestamp(startBoundary * period)
-	bucketEnd := ftypes.Timestamp(endBoundary * period)
-	ret := make([]counter.Bucket, endBoundary-startBoundary)
-	for i := startBoundary; i < endBoundary; i++ {
-		ret[i-startBoundary] = counter.Bucket{Key: key, Window: window, Index: i, Width: width, Value: zero}
-	}
-	return ret, bucketStart, bucketEnd
 }
 
 // trailingPartial returns the partial bucket that started within [start, end] but didn't fully finish before end
