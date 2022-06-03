@@ -276,9 +276,9 @@ func (t twoLevelRedisStore) GetMulti(
 
 	ids_ := aggIDArena.Alloc(batchSize, batchSize)
 	defer aggIDArena.Free(ids_)
-	buckets_ := bucketArena.Alloc(batchSize, batchSize)
-	defer bucketArena.Free(buckets_)
-	defaults_ := arena.BigValues.Alloc(batchSize, batchSize)
+	buckets_ := arena.Buckets.Alloc(batchSize, batchSize)
+	defer arena.Buckets.Free(buckets_)
+	defaults_ := arena.Values.Alloc(batchSize, batchSize)
 	defer arena.Values.Free(defaults_)
 
 	numBatches := 0
