@@ -20,6 +20,7 @@ import (
 	"fennel/lib/ftypes"
 	"fennel/lib/timer"
 	"fennel/lib/utils/binary"
+	"fennel/lib/utils/slice"
 	"fennel/lib/value"
 	"fennel/redis"
 	"fennel/tier"
@@ -280,28 +281,35 @@ func (t twoLevelRedisStore) GetMulti(
 	defaults_ := arena.Values.Alloc(batchSize, batchSize)
 	defer arena.Values.Free(defaults_)
 
-	numBatches := 0
-	for i := 0; i < len(buckets); {
-		begin := i // begin tracks the beginning of this batch
-		idx := 0   // idx tracks the number of items in this batch
-		for i < len(buckets) && idx+len(buckets[i]) <= batchSize {
-			for _, b := range buckets[i] {
-				ids_[idx] = aggIds[i]
-				buckets_[idx] = b
-				defaults_[idx] = defaults[i]
-				idx++
+	i := 0      // i tracks the index of the next aggId whose buckets we will attempt to insert into the batch
+	putIdx := 0 // putIdx tracks the index of the next aggId for which values received from redis need to be filled
+	bsz := 0    // bsz tracks the number of buckets in the current batch
+	for putIdx < len(aggIds) {
+		// Insert the buckets for the next aggId into the batch only if there's room for all of them.
+		if i < len(aggIds) && len(buckets[i]) <= len(buckets_)-bsz {
+			copy(buckets_[bsz:], buckets[i])
+			slice.Fill(ids_[bsz:bsz+len(buckets[i])], aggIds[i])
+			slice.Fill(defaults_[bsz:bsz+len(buckets[i])], defaults[i])
+			bsz += len(buckets[i])
+			i++
+		} else {
+			vals, err := t.get(ctx, tier, ids_[:bsz], buckets_[:bsz], defaults_[:bsz])
+			if err != nil {
+				return nil, err
 			}
-			i += 1
-		}
-		numBatches += 1
-		vals, err := t.get(ctx, tier, ids_[:idx], buckets_[:idx], defaults_[:idx])
-		if err != nil {
-			return nil, err
-		}
-		// start is analogous to idx and tracks how much data has been transferred to ret
-		for start := 0; begin < i; begin += 1 {
-			ret[begin] = vals[start : start+len(buckets[begin])]
-			start += len(buckets[begin])
+			j := putIdx
+			for ; len(vals) > 0 && j < len(aggIds); j++ {
+				l := len(buckets[j])
+				// We copy the values into ret[j] instead of just assigning them to
+				// ret[j] since the returned slices would otherwise share the same
+				// underlying array and changes (e.g. append) to one would be
+				// reflected in the other.
+				ret[j] = make([]value.Value, l)
+				copy(ret[j], vals[:l])
+				vals = vals[l:]
+			}
+			putIdx = j
+			bsz = 0
 		}
 	}
 	metrics.WithLabelValues("l2_num_batches_per_get_multi").Observe(float64(batchSize))
