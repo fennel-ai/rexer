@@ -116,7 +116,7 @@ func BatchValue(
 			return nil, err
 		}
 		// fill in the cache with the fetched buckets in a seperate goroutine.
-		go fillPCache(tier, ids_, buckets, counts)
+		fillPCache(tier, ids_, buckets, counts)
 
 		for i, index := range indices {
 			counts[i] = append(counts[i], cachedBuckets[i]...)
