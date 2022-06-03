@@ -280,6 +280,7 @@ func (t twoLevelRedisStore) GetMulti(
 	defaults_ := arena.BigValues.Alloc(batchSize, batchSize)
 	defer arena.Values.Free(defaults_)
 
+	numBatches := 0
 	for i := 0; i < len(buckets); {
 		begin := i // begin tracks the beginning of this batch
 		idx := 0   // idx tracks the number of items in this batch
@@ -292,6 +293,7 @@ func (t twoLevelRedisStore) GetMulti(
 			}
 			i += 1
 		}
+		numBatches += 1
 		vals, err := t.get(ctx, tier, ids_[:idx], buckets_[:idx], defaults_[:idx])
 		if err != nil {
 			return nil, err
@@ -302,6 +304,9 @@ func (t twoLevelRedisStore) GetMulti(
 			start += len(buckets[begin])
 		}
 	}
+	metrics.WithLabelValues(fmt.Sprintf("l2_num_batches_per_get_multi")).Observe(
+		float64(batchSize),
+	)
 	return ret, nil
 }
 
@@ -508,8 +513,15 @@ func (t twoLevelRedisStore) logStats(groupVals []value.Value, mode string) {
 			count += 1
 		}
 	}
-	metrics.WithLabelValues(
-		fmt.Sprintf("l2_num_vals_per_key_in_%s", mode)).Observe(float64(valsPerKey) / float64(count))
+	metrics.WithLabelValues(fmt.Sprintf("l2_num_vals_per_key_in_%s", mode)).Observe(
+		float64(valsPerKey) / float64(count),
+	)
+	metrics.WithLabelValues(fmt.Sprintf("l2_num_vals_per_batch_in_%s", mode)).Observe(
+		float64(valsPerKey),
+	)
+	metrics.WithLabelValues(fmt.Sprintf("l2_num_key_per_batch_in_%s", mode)).Observe(
+		float64(count),
+	)
 }
 
 var _ BucketStore = twoLevelRedisStore{}
@@ -583,7 +595,7 @@ func setInRedis(ctx context.Context, tier tier.Tier, rkeys []string, values []va
 		keySize += len(rkeys[i])
 		valSize += len(s)
 	}
-	metrics.WithLabelValues("redis_key_size_bytes").Observe(float64(keySize))
-	metrics.WithLabelValues("redis_value_size_bytes").Observe(float64(valSize))
+	metrics.WithLabelValues("l2_redis_key_size_bytes").Observe(float64(keySize))
+	metrics.WithLabelValues("l2_redis_value_size_bytes").Observe(float64(valSize))
 	return tier.Redis.MSet(ctx, rkeys, vals, ttls)
 }
