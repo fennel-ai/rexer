@@ -21,6 +21,7 @@ import (
 	"fennel/service/common"
 	"fennel/tier"
 
+	"github.com/Unleash/unleash-client-go/v3"
 	"github.com/alexflint/go-arg"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
@@ -31,6 +32,11 @@ var backlog_stats = promauto.NewGaugeVec(prometheus.GaugeOpts{
 	Name: "aggregator_backlog",
 	Help: "Stats about kafka consumer group backlog",
 }, []string{"consumer_group"})
+
+var aggregates_disabled = promauto.NewGauge(prometheus.GaugeOpts{
+	Name: "aggregates_disabled",
+	Help: "Whether aggregates are disabled",
+})
 
 func logKafkaLag(t tier.Tier, consumer kafka.FConsumer) {
 	backlog, err := consumer.Backlog()
@@ -152,6 +158,10 @@ func startAggregateProcessing(tr tier.Tier) error {
 		aggs, err := aggregate.RetrieveActive(context.Background(), tr)
 		if err != nil {
 			return err
+		}
+		if unleash.IsEnabled("disable-aggregates") {
+			aggregates_disabled.Set(float64(1))
+			continue
 		}
 		aggNames := make(map[ftypes.AggName]struct{}, len(aggs))
 		for _, agg := range aggs {
