@@ -255,25 +255,24 @@ func (t twoLevelRedisStore) GetMulti(
 
 	// to ensure that we don't allocate crazy large memory, we iterate through all
 	// data in batches - we prefer to use a batch size up to MAX_BATCH_SZ but if
-	// some bucket[aggId] itself has more buckets than this, we are forced to use a batch
+	// some bucket[i] itself has more buckets than this, we are forced to use a batch
 	// size that can at least accommodate that
-	totalBuckets := 0
-	maxBuckets := 0
+	sz := 0
+	maxSz := 0
 	for i := range buckets {
-		totalBuckets += len(buckets[i])
-		if len(buckets[i]) > maxBuckets {
-			maxBuckets = len(buckets[i])
+		sz += len(buckets[i])
+		if len(buckets[i]) > maxSz {
+			maxSz = len(buckets[i])
 		}
 	}
 	ret := make([][]value.Value, len(aggIds))
-	batchSize := totalBuckets
+	batchSize := sz
 	if batchSize > MAX_BATCH_SZ {
 		batchSize = MAX_BATCH_SZ
 	}
-	if batchSize < maxBuckets {
-		batchSize = maxBuckets
+	if batchSize < maxSz {
+		batchSize = maxSz
 	}
-
 	ids_ := aggIDArena.Alloc(batchSize, batchSize)
 	defer aggIDArena.Free(ids_)
 	buckets_ := arena.Buckets.Alloc(batchSize, batchSize)
@@ -282,18 +281,17 @@ func (t twoLevelRedisStore) GetMulti(
 	defer arena.Values.Free(defaults_)
 
 	numBatches := 0
-	for aggId := 0; aggId < len(aggIds); {
-		begin := aggId // begin tracks the beginning of this batch
-		idx := 0       // idx tracks the number of items in this batch
-
-		for aggId < len(aggIds) && idx+len(buckets[aggId]) <= batchSize {
-			for _, b := range buckets[aggId] {
-				ids_[idx] = aggIds[aggId]
+	for i := 0; i < len(buckets); {
+		begin := i // begin tracks the beginning of this batch
+		idx := 0   // idx tracks the number of items in this batch
+		for i < len(buckets) && idx+len(buckets[i]) <= batchSize {
+			for _, b := range buckets[i] {
+				ids_[idx] = aggIds[i]
 				buckets_[idx] = b
-				defaults_[idx] = defaults[aggId]
+				defaults_[idx] = defaults[i]
 				idx++
 			}
-			aggId += 1
+			i += 1
 		}
 		numBatches += 1
 		vals, err := t.get(ctx, tier, ids_[:idx], buckets_[:idx], defaults_[:idx])
@@ -301,10 +299,8 @@ func (t twoLevelRedisStore) GetMulti(
 			return nil, err
 		}
 		// start is analogous to idx and tracks how much data has been transferred to ret
-		start := 0
-		for ; begin < aggId; begin += 1 {
-			ret[begin] = make([]value.Value, len(buckets[begin]))
-			copy(ret[begin], vals[start:start+len(buckets[begin])])
+		for start := 0; begin < i; begin += 1 {
+			ret[begin] = vals[start : start+len(buckets[begin])]
 			start += len(buckets[begin])
 		}
 	}

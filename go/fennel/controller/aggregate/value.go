@@ -38,10 +38,10 @@ func Value(
 	ctx context.Context, tier tier.Tier, name ftypes.AggName, key value.Value, kwargs value.Dict,
 ) (value.Value, error) {
 	ckey := makeCacheKey(name, key, kwargs)
-
+	v, ok := tier.PCache.Get(ckey)
 	// If already present in cache and no failure interpreting it, return directly
-	if v, ok := tier.PCache.Get(ckey); ok {
-		if val, ok2 := fromCacheValue(tier, v); ok2 {
+	if ok {
+		if val, ok := fromCacheValue(tier, v); ok {
 			return val, nil
 		}
 	}
@@ -50,8 +50,8 @@ func Value(
 	if err != nil {
 		return nil, err
 	}
-
-	if !tier.PCache.SetWithTTL(ckey, val, int64(len(ckey)+len(val.String())), cacheValueDuration) {
+	ok = tier.PCache.SetWithTTL(ckey, val, int64(len(ckey)+len(val.String())), cacheValueDuration)
+	if !ok {
 		tier.Logger.Debug(fmt.Sprintf("failed to set aggregate value in cache: key: '%s' value: '%s'", ckey, val.String()))
 	}
 	return val, nil
