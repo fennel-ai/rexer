@@ -123,8 +123,8 @@ type group struct {
 }
 
 func minSlotKey(width uint64, idx int) (string, error) {
-	buf := arena.Bytes.Alloc(24, 24) // 8 + 8 + 8 for code, width, idx
-	defer arena.Bytes.Free(buf)
+	arr := [24]byte{}
+	buf := arr[:] // 8 + 8 + 8 for code, width, idx
 	curr := 0
 	if n, err := slotCodec.Write(buf[curr:]); err != nil {
 		return "", err
@@ -145,8 +145,8 @@ func minSlotKey(width uint64, idx int) (string, error) {
 }
 
 func slotKey(window ftypes.Window, width uint64, idx int) (string, error) {
-	buf := arena.Bytes.Alloc(32, 32) // 8+8+8+8 for codec, window, width, idx
-	defer arena.Bytes.Free(buf)
+	arr := [32]byte{}
+	buf := arr[:] // 8+8+8+8 for codec, window, width, idx
 	curr := 0
 	if n, err := slotCodec.Write(buf[curr:]); err != nil {
 		return "", err
@@ -393,7 +393,8 @@ func (t twoLevelRedisStore) redisKey(g group) (string, error) {
 	var aggStr, codecStr, groupIdStr string
 	// aggId
 	{
-		aggBuf := make([]byte, 8) // aggId
+		arr := [8]byte{}
+		aggBuf := arr[:] // aggId
 		curr, err := binary.PutUvarint(aggBuf, uint64(g.aggId))
 		if err != nil {
 			return "", err
@@ -402,7 +403,8 @@ func (t twoLevelRedisStore) redisKey(g group) (string, error) {
 	}
 	// codec
 	{
-		codecBuf := make([]byte, 8) // codec
+		arr := [8]byte{}
+		codecBuf := arr[:] // codec
 		curr, err := counterCodec.Write(codecBuf)
 		if err != nil {
 			return "", err
@@ -411,7 +413,9 @@ func (t twoLevelRedisStore) redisKey(g group) (string, error) {
 	}
 	// groupid
 	{
-		groupIdBuf := make([]byte, 8+len(g.key)+8+8) // (length of groupkey) + groupkey + period + groupid
+		sz := 24 + len(g.key)
+		groupIdBuf := arena.Bytes.Alloc(sz, sz) // (length of groupkey) + groupkey + period + groupid
+		defer arena.Bytes.Free(groupIdBuf)
 		curr := 0
 		if n, err := binary.PutString(groupIdBuf[curr:], g.key); err != nil {
 			return "", err
