@@ -279,11 +279,8 @@ func (t twoLevelRedisStore) GetMulti(
 	ret := make([][]value.Value, len(aggIds))
 	cur := 0
 	for i := range buckets {
-		ret[i] = make([]value.Value, len(buckets[i]))
-		for j := range buckets[i] {
-			ret[i][j] = vals[cur]
-			cur++
-		}
+		ret[i] = vals[cur : cur+len(buckets[i])]
+		cur += len(buckets[i])
 	}
 	return ret, nil
 }
