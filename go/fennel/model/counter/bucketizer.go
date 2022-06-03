@@ -9,11 +9,6 @@ import (
 	"fennel/lib/value"
 )
 
-// bucketArena is an arena of []Bucket
-// cap of any allocation is upto 32K and total cap across all arena is ~4M
-// since each bucket is 60 bytes, the total size of this arena is upto ~256MB
-var bucketArena = arena.New[counter.Bucket](1<<15, 1<<22)
-
 type fixedWidthBucketizer struct {
 	sizes                  map[ftypes.Window]uint64
 	includeTrailingPartial bool
@@ -39,7 +34,7 @@ func (f fixedWidthBucketizer) BucketizeMoment(key string, ts ftypes.Timestamp, v
 
 func (f fixedWidthBucketizer) BucketizeDuration(key string, start, end ftypes.Timestamp, v value.Value) []counter.Bucket {
 	periods := []period{{start, end}}
-	ret := make([]counter.Bucket, 0)
+	ret := []counter.Bucket(arena.Buckets.Alloc(0, 512))
 	// iterate through in the right order - first day, then hour, then minute
 	for _, w := range []ftypes.Window{ftypes.Window_DAY, ftypes.Window_HOUR, ftypes.Window_MINUTE} {
 		width, ok := f.sizes[w]
@@ -50,7 +45,7 @@ func (f fixedWidthBucketizer) BucketizeDuration(key string, start, end ftypes.Ti
 		for _, p := range periods {
 			buckets, bucketStart, bucketEnd := f.bucketizeTimeseries(key, p.start, p.end, w, width, v)
 			ret = append(ret, buckets...)
-			bucketArena.Free(buckets)
+			arena.Buckets.Free(buckets)
 			nextPeriods = append(nextPeriods, period{p.start, bucketStart}, period{bucketEnd, p.end})
 		}
 		periods = nextPeriods
@@ -93,7 +88,7 @@ func (b fixedWidthBucketizer) bucketizeTimeseries(key string, start, end ftypes.
 	bucketStart := ftypes.Timestamp(startBoundary * period)
 	bucketEnd := ftypes.Timestamp(endBoundary * period)
 	sz := int(endBoundary - startBoundary)
-	ret := bucketArena.Alloc(sz, sz)
+	ret := arena.Buckets.Alloc(sz, sz)
 	for i := startBoundary; i < endBoundary; i++ {
 		ret[i-startBoundary] = counter.Bucket{Key: key, Window: window, Index: i, Width: width, Value: zero}
 	}
