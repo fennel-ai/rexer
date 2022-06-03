@@ -60,6 +60,9 @@ var metrics = promauto.NewSummaryVec(prometheus.SummaryOpts{
 // arena's total size is at most 4M * 64B = 256MB
 var slotArena = arena.New[slot](1<<12, 1<<24)
 
+// byteArena is used to create byte slices. Max memory footprint is 1MB
+var byteArena = arena.New[byte](1<<10, 1<<20)
+
 // seenMapPool is a pool of maps from group -> int
 var seenMapPool = sync.Pool{
 	New: func() interface{} {
@@ -123,7 +126,8 @@ type group struct {
 }
 
 func minSlotKey(width uint64, idx int) (string, error) {
-	buf := make([]byte, 8+8+8) // codec + width + idx
+	buf := byteArena.Alloc(24, 24) // 8 + 8 + 8 for code, width, idx
+	defer byteArena.Free(buf)
 	curr := 0
 	if n, err := slotCodec.Write(buf[curr:]); err != nil {
 		return "", err
@@ -144,7 +148,8 @@ func minSlotKey(width uint64, idx int) (string, error) {
 }
 
 func slotKey(window ftypes.Window, width uint64, idx int) (string, error) {
-	buf := make([]byte, 8+8+8+8) // codec + window + width + idx
+	buf := byteArena.Alloc(32, 32) // 8+8+8+8 for codec, window, width, idx
+	defer byteArena.Free(buf)
 	curr := 0
 	if n, err := slotCodec.Write(buf[curr:]); err != nil {
 		return "", err
