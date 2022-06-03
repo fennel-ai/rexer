@@ -67,11 +67,12 @@ func fillPCache(tier tier.Tier, aggIds []ftypes.AggId, buckets [][]libcounter.Bu
 	for i := range buckets {
 		aggId := aggIds[i]
 		for j := range buckets[i] {
-			if buckets[i][j].Window == ftypes.Window_DAY {
-				ckey := makeCacheKey(aggId, buckets[i][j])
-				if ok := tier.PCache.SetWithTTL(ckey, bucketVal[i][j], int64(len(ckey)+len(bucketVal[i][j].String())), cacheValueDuration); !ok {
-					tier.Logger.Debug(fmt.Sprintf("failed to set bucket aggregate value in cache: key: '%s' value: '%s'", ckey, bucketVal[i][j].String()))
-				}
+			if buckets[i][j].Window != ftypes.Window_DAY {
+				continue
+			}
+			ckey := makeCacheKey(aggId, buckets[i][j])
+			if ok := tier.PCache.SetWithTTL(ckey, bucketVal[i][j], int64(len(ckey)+len(bucketVal[i][j].String())), cacheValueDuration); !ok {
+				tier.Logger.Debug(fmt.Sprintf("failed to set bucket aggregate value in cache: key: '%s' value: '%s'", ckey, bucketVal[i][j].String()))
 			}
 		}
 	}
@@ -101,7 +102,7 @@ func BatchValue(
 
 			start, err := h.Start(end, kwargs[index])
 			if err != nil {
-				return nil, fmt.Errorf("failed to get start timestamp of aggregate (id): %d, err: %v", aggIds[index], err)
+				return nil, fmt.Errorf("failed to get start timestamp of aggregate (id): %d, err: %w", aggIds[index], err)
 			}
 			ids_[i] = aggIds[index]
 			bucketsForAggKey := h.BucketizeDuration(keys[index].String(), start, end, h.Zero())
@@ -117,15 +118,11 @@ func BatchValue(
 		// fill in the cache with the fetched buckets in a seperate goroutine.
 		go fillPCache(tier, ids_, buckets, counts)
 
-		if err != nil {
-			return nil, err
-		}
-
 		for i, index := range indices {
 			counts[i] = append(counts[i], cachedBuckets[i]...)
 			ret[index], err = histograms[index].Reduce(counts[i])
 			if err != nil {
-				return nil, err
+				return nil, fmt.Errorf("failed to reduce aggregate (id): %d, err: %w", aggIds[index], err)
 			}
 		}
 	}
