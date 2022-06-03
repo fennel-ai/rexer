@@ -61,7 +61,7 @@ func (s splitStore) logStats(groups map[splitGroup][]string, mode string) {
 		}
 		count++
 	}
-	metrics.WithLabelValues(fmt.Sprintf("l2_num_vals_per_key_in%s", mode)).Observe(float64(valsPerKey) / float64(count))
+	metrics.WithLabelValues(fmt.Sprintf("split_store_num_vals_per_key_in%s", mode)).Observe(float64(valsPerKey) / float64(count))
 }
 
 func (s splitStore) Get(
@@ -248,7 +248,7 @@ func (s splitStore) setInRedis(
 		}
 		itr++
 	}
-	metrics.WithLabelValues("redis_key_size_bytes").Observe(float64(keysSize))
+	metrics.WithLabelValues("split_store_redis_key_size_bytes").Observe(float64(keysSize))
 	return tier.Redis.HSetPipelined(ctx, rkeys, rvals, ttls)
 }
 
