@@ -212,8 +212,8 @@ const planeConfs: Record<number, PlaneConf> = {
             cidr: "10.105.0.0/16"
         },
         dbConf: {
-            minCapacity: 8,
-            maxCapacity: 64,
+            minCapacity: 2,
+            maxCapacity: 16,
             password: "password",
             skipFinalSnapshot: false,
         },
