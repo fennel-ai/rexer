@@ -1,12 +1,18 @@
 package counter
 
 import (
+	"fennel/lib/arena"
 	"fmt"
 
 	"fennel/lib/counter"
 	"fennel/lib/ftypes"
 	"fennel/lib/value"
 )
+
+// bucketArena is an arena of []Bucket
+// cap of any allocation is upto 4096 and total cap across all arena is ~4M
+// since each bucket is 60 bytes, the total size of this arena is upto ~256MB
+var bucketArena = arena.New[counter.Bucket](1<<12, 1<<24)
 
 type fixedWidthBucketizer struct {
 	sizes                  map[ftypes.Window]uint64
@@ -42,8 +48,9 @@ func (f fixedWidthBucketizer) BucketizeDuration(key string, start, end ftypes.Ti
 		}
 		nextPeriods := make([]period, 0)
 		for _, p := range periods {
-			buckets, bucketStart, bucketEnd := bucketizeTimeseries(key, p.start, p.end, w, width, v)
+			buckets, bucketStart, bucketEnd := f.bucketizeTimeseries(key, p.start, p.end, w, width, v)
 			ret = append(ret, buckets...)
+			bucketArena.Free(buckets)
 			nextPeriods = append(nextPeriods, period{p.start, bucketStart}, period{bucketEnd, p.end})
 		}
 		periods = nextPeriods
@@ -63,6 +70,34 @@ func (f fixedWidthBucketizer) BucketizeDuration(key string, start, end ftypes.Ti
 		}
 	}
 	return ret
+}
+
+// bucketizeTimeseries returns a list of buckets of size 'Window' that begin at or after 'start'
+// and go until at or before 'end'. Each bucket's count is left at 0
+func (b fixedWidthBucketizer) bucketizeTimeseries(key string, start, end ftypes.Timestamp, window ftypes.Window, width uint64, zero value.Value) ([]counter.Bucket, ftypes.Timestamp, ftypes.Timestamp) {
+	var period uint64
+	switch window {
+	case ftypes.Window_MINUTE:
+		period = 60 * width
+	case ftypes.Window_HOUR:
+		period = 3600 * width
+	case ftypes.Window_DAY:
+		period = 24 * 3600 * width
+	default:
+		panic("this should never happen")
+	}
+	startBoundary, endBoundary := boundary(start, end, period)
+	if endBoundary <= startBoundary {
+		return []counter.Bucket{}, start, start
+	}
+	bucketStart := ftypes.Timestamp(startBoundary * period)
+	bucketEnd := ftypes.Timestamp(endBoundary * period)
+	sz := int(endBoundary - startBoundary)
+	ret := bucketArena.Alloc(sz, sz)
+	for i := startBoundary; i < endBoundary; i++ {
+		ret[i-startBoundary] = counter.Bucket{Key: key, Window: window, Index: i, Width: width, Value: zero}
+	}
+	return ret, bucketStart, bucketEnd
 }
 
 // fixedSplitBucketizer splits each duration into numBuckets buckets
