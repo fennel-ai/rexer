@@ -15,6 +15,7 @@ import (
 	"fennel/lib/clock"
 	"fennel/lib/ftypes"
 	"fennel/lib/timer"
+	unleashlib "fennel/lib/unleash"
 	"fennel/milvus"
 	"fennel/modelstore"
 	"fennel/pcache"
@@ -265,7 +266,10 @@ func CreateFromArgs(args *TierArgs) (tier Tier, err error) {
 	// currently make the initialization optional, we should setup local developer infrastructure for this to work
 	// (e.g. for UT and integration tests, this could be a mock).
 	//
-	// otherwise, the behavior is similar to as-if the feature was disabled
+	// otherwise, we inject a fake unleash which returns false by default.
+	//
+	// TODO(mohit): Create application infra for unleash which would just inject the fake for testing and
+	// use the real instance in production.
 	if len(args.UnleashEndpoint) > 0 {
 		if err := unleash.Initialize(
 			unleash.WithListener(&unleash.DebugListener{}),
@@ -282,6 +286,13 @@ func CreateFromArgs(args *TierArgs) (tier Tier, err error) {
 			unleash.WithUrl(args.UnleashEndpoint),
 		); err != nil {
 			return tier, fmt.Errorf("creating tier ")
+		}
+	} else {
+		faker := unleashlib.NewFakeUnleash()
+		if err := unleash.Initialize(unleash.WithListener(&unleash.DebugListener{}),
+			unleash.WithAppName("local-tier"),
+			unleash.WithUrl(faker.Url())); err != nil {
+			return tier, fmt.Errorf("failed created fake unleash")
 		}
 	}
 
