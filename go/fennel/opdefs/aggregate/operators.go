@@ -2,6 +2,7 @@ package aggregate
 
 import (
 	"context"
+	"fennel/lib/arena"
 
 	"fennel/controller/aggregate"
 	"fennel/engine/interpreter/bootarg"
@@ -37,7 +38,9 @@ func (a AggValue) New(
 
 func (a AggValue) Apply(ctx context.Context, staticKwargs value.Dict, in operators.InputIter, outs *value.List) error {
 	var reqs []aggregate2.GetAggValueRequest
-	var rows []value.Value
+	var rows []value.Value = arena.Values.Alloc(0, 256)
+	defer arena.Values.Free(rows)
+
 	for in.HasMore() {
 		heads, contextKwargs, err := in.Next()
 		if err != nil {
