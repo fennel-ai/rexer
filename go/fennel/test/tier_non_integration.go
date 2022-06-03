@@ -3,7 +3,9 @@
 package test
 
 import (
+	unleashlib "fennel/lib/unleash"
 	"fmt"
+	"github.com/Unleash/unleash-client-go/v3"
 	"math/rand"
 	"os"
 	"sync"
@@ -60,6 +62,14 @@ func Tier() (tier.Tier, error) {
 		return tier.Tier{}, fmt.Errorf("failed to construct logger: %v", err)
 	}
 	logger = logger.With(zap.Uint32("tier_id", uint32(tierID)))
+
+	faker := unleashlib.NewFakeUnleash()
+	if err := unleash.Initialize(unleash.WithListener(&unleash.DebugListener{}),
+		unleash.WithAppName("local-tier"),
+		unleash.WithUrl(faker.Url())); err != nil {
+		return tier.Tier{}, fmt.Errorf("failed created fake unleash")
+	}
+
 	return tier.Tier{
 		ID:               tierID,
 		DB:               db,
