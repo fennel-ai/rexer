@@ -2,8 +2,10 @@ package counter
 
 import (
 	"context"
+	"fennel/lib/arena"
 	"fmt"
 	"strings"
+	"sync"
 	"time"
 
 	// TODO: consider implementing own library in the future since the repository is old
@@ -53,6 +55,29 @@ var metrics = promauto.NewSummaryVec(prometheus.SummaryOpts{
 	},
 }, []string{"metric"})
 
+// slotArena is a pool of slices of type slot such that max cap of any slice is upto 1 << 12 (i.e. 4096)
+// and total cap of all slices in pools is upto 1 << 24 i.e. ~4M. Since each slot is 64 bytes, this
+// arena's total size is at most 4M * 64B = 256MB
+var slotArena = arena.New[slot](1<<12, 1<<24)
+
+// seenMapPool is a pool of maps from group -> int
+var seenMapPool = sync.Pool{
+	New: func() interface{} {
+		return make(map[group]int)
+	},
+}
+
+func allocSeenMap() map[group]int {
+	return seenMapPool.Get().(map[group]int)
+}
+
+func freeSeenMap(s map[group]int) {
+	for k := range s {
+		delete(s, k)
+	}
+	seenMapPool.Put(s)
+}
+
 /*
 	twoLevelRedisStore groups all keys that fall within a period and stores them as value.Dict in a single redis key
 	within that dictionary, the key is derived from the index of the key within that group
@@ -81,18 +106,20 @@ func NewTwoLevelStorage(period, retention uint64) BucketStore {
 	}
 }
 
+// 68 bytes
 type slot struct {
-	g      group
-	window ftypes.Window
-	width  uint64
-	idx    int
-	val    value.Value
+	window ftypes.Window // 4 bytes
+	idx    int           // 4 bytes
+	width  uint64        // 8 bytes
+	val    value.Value   // 16 bytes
+	g      group         // 36 bytes
 }
 
+// 36 bytes
 type group struct {
-	aggId ftypes.AggId
-	key   string
-	id    uint64
+	key   string       // 24 bytes
+	id    uint64       // 8 bytes
+	aggId ftypes.AggId // 4 bytes
 }
 
 func minSlotKey(width uint64, idx int) (string, error) {
@@ -151,9 +178,12 @@ func (t twoLevelRedisStore) get(
 ) ([]value.Value, error) {
 	// track seen groups, so we do not send duplicate groups to redis
 	// 'seen' maps group to index in the array of groups sent to redis
-	seen := make(map[group]int, len(buckets))
+	seen := allocSeenMap()
+	defer freeSeenMap(seen)
 	var rkeys []string
-	slots := make([]slot, len(buckets))
+	var slots []slot
+	slots = slotArena.Alloc(len(buckets), len(buckets)) // slots is a slice with length/cap of len(buckets)
+	defer slotArena.Free(slots)
 
 	// TODO: Consider creating a large enough buffer and construct slotKey and redisKey using partitions of the buffer
 	// to save some CPU cycles
@@ -480,9 +510,9 @@ func Update(ctx context.Context, tier tier.Tier, aggId ftypes.AggId, buckets []c
 	return h.Set(ctx, tier, aggId, buckets)
 }
 
-//==========================================================
+// ==========================================================
 // Private helpers for talking to redis
-//==========================================================
+// ==========================================================
 
 func readFromRedis(ctx context.Context, tier tier.Tier, rkeys []string, defaults []value.Value) ([]value.Value, error) {
 	res, err := tier.Redis.MGet(ctx, rkeys...)
