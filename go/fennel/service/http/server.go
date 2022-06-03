@@ -31,11 +31,11 @@ import (
 	"fennel/lib/value"
 	"fennel/tier"
 
+	"github.com/Unleash/unleash-client-go/v3"
 	"github.com/buger/jsonparser"
 	"github.com/gorilla/mux"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
-	"github.com/Unleash/unleash-client-go/v3"
 )
 
 const dedupTTL = 6 * time.Hour
@@ -62,6 +62,13 @@ var totalDedupedActions = promauto.NewCounterVec(
 		Help: "Total number of deduped actions.",
 	},
 	[]string{"path", "action_type"},
+)
+
+var totalUnleashQueryRequestsDropped = promauto.NewCounter(
+	prometheus.CounterOpts{
+		Name: "unleash_query_request_dropped",
+		Help: "Total number of query requests dropped by unleash",
+	},
 )
 
 func readRequest(req *http.Request) ([]byte, error) {
@@ -340,7 +347,7 @@ func (m server) Query(w http.ResponseWriter, req *http.Request) {
 	// disable-query-calls is configured with random stickiness, which returns random true/false based on the
 	// percentage configured.
 	if unleash.IsEnabled("disable-query-calls") {
-		m.tier.Logger.Info("Dropping query since `disable-query-calls` is configured.")
+		totalUnleashQueryRequestsDropped.Inc()
 		return
 	}
 
