@@ -10,9 +10,9 @@ import (
 )
 
 // bucketArena is an arena of []Bucket
-// cap of any allocation is upto 4096 and total cap across all arena is ~4M
+// cap of any allocation is upto 32K and total cap across all arena is ~4M
 // since each bucket is 60 bytes, the total size of this arena is upto ~256MB
-var bucketArena = arena.New[counter.Bucket](1<<12, 1<<22)
+var bucketArena = arena.New[counter.Bucket](1<<15, 1<<22)
 
 type fixedWidthBucketizer struct {
 	sizes                  map[ftypes.Window]uint64

@@ -55,10 +55,10 @@ var metrics = promauto.NewSummaryVec(prometheus.SummaryOpts{
 	},
 }, []string{"metric"})
 
-// slotArena is a pool of slices of type slot such that max cap of any slice is upto 1 << 12 (i.e. 4096)
+// slotArena is a pool of slices of type slot such that max cap of any slice is upto 1 << 15 (i.e. 32K)
 // and total cap of all slices in pools is upto 1 << 24 i.e. ~4M. Since each slot is 64 bytes, this
 // arena's total size is at most 4M * 64B = 256MB
-var slotArena = arena.New[slot](1<<12, 1<<22)
+var slotArena = arena.New[slot](1<<15, 1<<22)
 
 // seenMapPool is a pool of maps from group -> int
 var seenMapPool = sync.Pool{
@@ -183,8 +183,7 @@ func (t twoLevelRedisStore) get(
 	seen := allocSeenMap()
 	defer freeSeenMap(seen)
 	var rkeys []string
-	var slots []slot
-	slots = slotArena.Alloc(len(buckets), len(buckets)) // slots is a slice with length/cap of len(buckets)
+	var slots []slot = slotArena.Alloc(len(buckets), len(buckets)) // slots is a slice with length/cap of len(buckets)
 	defer slotArena.Free(slots)
 
 	// TODO: Consider creating a large enough buffer and construct slotKey and redisKey using partitions of the buffer
@@ -244,6 +243,9 @@ func (t twoLevelRedisStore) Get(
 	return t.get(ctx, tier, ids, buckets, defaults)
 }
 
+// upto 32K size of each slice, total capacity of 4M * 4 = 16MB
+var aggIDArena = arena.New[ftypes.AggId](1<<15, 1<<22)
+
 func (t twoLevelRedisStore) GetMulti(
 	ctx context.Context, tier tier.Tier, aggIds []ftypes.AggId, buckets [][]counter.Bucket, defaults []value.Value,
 ) ([][]value.Value, error) {
@@ -253,10 +255,11 @@ func (t twoLevelRedisStore) GetMulti(
 	for i := range buckets {
 		sz += len(buckets[i])
 	}
-	ids_ := make([]ftypes.AggId, sz)
+	ids_ := aggIDArena.Alloc(sz, sz)
+	defer aggIDArena.Free(ids_)
 	buckets_ := bucketArena.Alloc(sz, sz)
 	defer bucketArena.Free(buckets_)
-	defaults_ := arena.Values.Alloc(sz, sz)
+	defaults_ := arena.BigValues.Alloc(sz, sz)
 	defer arena.Values.Free(defaults_)
 
 	curr := 0
