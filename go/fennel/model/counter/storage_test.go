@@ -2,6 +2,7 @@ package counter
 
 import (
 	"context"
+	"fmt"
 	"math/rand"
 	"strings"
 	"testing"
@@ -28,7 +29,7 @@ func TestTwoLevelRedisStore_Get(t *testing.T) {
 		testStorageMulti(t, twoLevelRedisStore{period: 24 * 3600, retention: 0})
 	})
 	t.Run("test_large", func(t *testing.T) {
-		testLarge(t, twoLevelRedisStore{period: 24 * 3600, retention: 30 * 3600}, 20, 1000)
+		testLarge(t, twoLevelRedisStore{period: 24 * 3600, retention: 30 * 3600}, 30, 1000)
 	})
 }
 
@@ -207,6 +208,7 @@ func testStorageMulti(t *testing.T, store BucketStore) {
 	for i := range buckets {
 		assert.Equal(t, len(vals[i]), len(buckets[i]))
 		for j := range buckets[i] {
+			assert.Len(t, vals[i], len(buckets[i]), fmt.Sprintf("i: %d, expected: %d, found: %d", i, len(buckets[i]), len(vals[i])))
 			assert.True(t, defaults[i].Equal(vals[i][j]))
 		}
 	}

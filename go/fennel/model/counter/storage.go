@@ -39,6 +39,7 @@ const (
 
 	// redisKey delimiter
 	redisKeyDelimiter string = "-"
+	MAX_BATCH_SZ             = 1 << 14
 )
 
 var metrics = promauto.NewSummaryVec(prometheus.SummaryOpts{
@@ -251,35 +252,55 @@ func (t twoLevelRedisStore) GetMulti(
 ) ([][]value.Value, error) {
 	ctx, tmr := timer.Start(ctx, tier.ID, "twolevelredis.get_multi")
 	defer tmr.Stop()
+
+	// to ensure that we don't allocate crazy large memory, we iterate through all
+	// data in batches - we prefer to use a batch size up to MAX_BATCH_SZ but if
+	// some bucket[i] itself has more buckets than this, we are forced to use a batch
+	// size that can at least accommodate that
 	sz := 0
+	maxSz := 0
 	for i := range buckets {
 		sz += len(buckets[i])
-	}
-	ids_ := aggIDArena.Alloc(sz, sz)
-	defer aggIDArena.Free(ids_)
-	buckets_ := bucketArena.Alloc(sz, sz)
-	defer bucketArena.Free(buckets_)
-	defaults_ := arena.BigValues.Alloc(sz, sz)
-	defer arena.Values.Free(defaults_)
-
-	curr := 0
-	for i := range buckets {
-		for _, b := range buckets[i] {
-			ids_[curr] = aggIds[i]
-			buckets_[curr] = b
-			defaults_[curr] = defaults[i]
-			curr++
+		if len(buckets[i]) > maxSz {
+			maxSz = len(buckets[i])
 		}
 	}
-	vals, err := t.get(ctx, tier, ids_, buckets_, defaults_)
-	if err != nil {
-		return nil, err
-	}
 	ret := make([][]value.Value, len(aggIds))
-	cur := 0
-	for i := range buckets {
-		ret[i] = vals[cur : cur+len(buckets[i])]
-		cur += len(buckets[i])
+	batchSize := sz
+	if batchSize > MAX_BATCH_SZ {
+		batchSize = MAX_BATCH_SZ
+	}
+	if batchSize < maxSz {
+		batchSize = maxSz
+	}
+	ids_ := aggIDArena.Alloc(batchSize, batchSize)
+	defer aggIDArena.Free(ids_)
+	buckets_ := bucketArena.Alloc(batchSize, batchSize)
+	defer bucketArena.Free(buckets_)
+	defaults_ := arena.BigValues.Alloc(batchSize, batchSize)
+	defer arena.Values.Free(defaults_)
+
+	for i := 0; i < len(buckets); {
+		begin := i // begin tracks the beginning of this batch
+		idx := 0   // idx tracks the number of items in this batch
+		for i < len(buckets) && idx+len(buckets[i]) <= batchSize {
+			for _, b := range buckets[i] {
+				ids_[idx] = aggIds[i]
+				buckets_[idx] = b
+				defaults_[idx] = defaults[i]
+				idx++
+			}
+			i += 1
+		}
+		vals, err := t.get(ctx, tier, ids_[:idx], buckets_[:idx], defaults_[:idx])
+		if err != nil {
+			return nil, err
+		}
+		// start is analogous to idx and tracks how much data has been transferred to ret
+		for start := 0; begin < i; begin += 1 {
+			ret[begin] = vals[start : start+len(buckets[begin])]
+			start += len(buckets[begin])
+		}
 	}
 	return ret, nil
 }
