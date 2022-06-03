@@ -308,9 +308,7 @@ func (t twoLevelRedisStore) GetMulti(
 			start += len(buckets[begin])
 		}
 	}
-	metrics.WithLabelValues(fmt.Sprintf("l2_num_batches_per_get_multi")).Observe(
-		float64(batchSize),
-	)
+	metrics.WithLabelValues("l2_num_batches_per_get_multi").Observe(float64(batchSize))
 	return ret, nil
 }
 
