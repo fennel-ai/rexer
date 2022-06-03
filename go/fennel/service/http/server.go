@@ -348,6 +348,7 @@ func (m server) Query(w http.ResponseWriter, req *http.Request) {
 	// percentage configured.
 	if unleash.IsEnabled("disable-query-calls") {
 		totalUnleashQueryRequestsDropped.Inc()
+		w.Write([]byte("{}"))
 		return
 	}
 
