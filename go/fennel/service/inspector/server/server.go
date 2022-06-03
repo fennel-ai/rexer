@@ -61,7 +61,7 @@ func (s *server) startFeatureLogTailer() error {
 	consumer, err := s.tier.NewKafkaConsumer(libkakfa.ConsumerConfig{
 		Topic:        topic,
 		GroupID:      "featurelog_inspector",
-		OffsetPolicy: libkakfa.EarliestOffsetPolicy,
+		OffsetPolicy: libkakfa.LatestOffsetPolicy,
 	})
 	if err != nil {
 		return fmt.Errorf("failed to start kafka consumer: %w", err)
@@ -78,6 +78,9 @@ func (s *server) startFeatureLogTailer() error {
 			if len(msgs) > 0 {
 				s.tier.Logger.Debug("Got featurelog messages", zap.Int("count", len(msgs)))
 				s.processMessages(msgs)
+			}
+			if _, err := consumer.Commit(); err != nil {
+				s.tier.Logger.Error("failed to commit feature log consumer: ", zap.Error(err))
 			}
 		}
 	}(s, consumer)
