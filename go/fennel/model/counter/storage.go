@@ -258,8 +258,10 @@ func (t twoLevelRedisStore) GetMulti(
 		sz += len(buckets[i])
 	}
 	ids_ := make([]ftypes.AggId, sz)
-	buckets_ := make([]counter.Bucket, sz)
-	defaults_ := make([]value.Value, sz)
+	buckets_ := bucketArena.Alloc(sz, sz)
+	defer bucketArena.Free(buckets_)
+	defaults_ := arena.Values.Alloc(sz, sz)
+	defer arena.Values.Free(defaults_)
 
 	curr := 0
 	for i := range buckets {
