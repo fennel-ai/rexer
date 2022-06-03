@@ -244,10 +244,10 @@ func getOpCallQuery() ast.Ast {
 					Name:      "set",
 					Kwargs: ast.MakeDict(map[string]ast.Ast{
 						"field": ast.MakeString("key"),
-						"value": ast.MakeList(&ast.Lookup{
+						"value": &ast.Lookup{
 							On:       &ast.Var{Name: "at"},
 							Property: "bye",
-						}),
+						},
 					}),
 				},
 			},
