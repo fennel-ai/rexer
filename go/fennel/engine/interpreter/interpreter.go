@@ -336,10 +336,8 @@ func (i *Interpreter) getContextKwargs(op operators.Operator, trees *ast.Dict, i
 				continue
 			case ok:
 				// we have to evaluate the tree with the current values of the lambda variables
-				// a common scenario is to evaluate an atom (e.g. user writing "user" as otype in profile)
-				// in that case, we can avoid setting the lambda variables, which also saves function call
-				if atom, ok := tree.(*ast.Atom); ok {
-					val, err := atom.AcceptValue(i)
+				val, done, err := i.fastKwargEval(tree, vars, varvals)
+				if done {
 					if err != nil {
 						return operators.ZipTable{}, fmt.Errorf("error: %s while evaluating kwarg: %s for operator '%s.%s'", err, k, sig.Module, sig.Name)
 					}
@@ -358,6 +356,31 @@ func (i *Interpreter) getContextKwargs(op operators.Operator, trees *ast.Dict, i
 		}
 	}
 	return ret, nil
+}
+
+func (i *Interpreter) fastKwargEval(tree ast.Ast, vars []string, varvals []value.Value) (value.Value, bool, error) {
+	// a common scenario is to evaluate an atom (e.g. user writing "user" as otype in profile)
+	// in that case, we can avoid setting the lambda variables, which also saves function call
+	if atom, ok := tree.(*ast.Atom); ok {
+		val, err := atom.AcceptValue(i)
+		return val, true, err
+	}
+	// another common case is a property lookup on the first variable
+	if lookup, ok := tree.(*ast.Lookup); ok && len(vars) > 0 {
+		if var_, ok := lookup.On.(*ast.Var); ok && var_.Name == vars[0] {
+			asdict, ok := varvals[0].(value.Dict)
+			if !ok {
+				return nil, true, fmt.Errorf("property %s does not exist on dictionary", lookup.Property)
+			}
+			val, found := asdict.Get(lookup.Property)
+			if found {
+				return val, true, nil
+			} else {
+				return nil, true, fmt.Errorf("property %s does not exist on dictionary", lookup.Property)
+			}
+		}
+	}
+	return nil, false, nil
 }
 
 func (i *Interpreter) getOperator(namespace, name string) (operators.Operator, error) {

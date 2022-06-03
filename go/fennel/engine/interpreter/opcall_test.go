@@ -102,8 +102,8 @@ func TestInterpreter_VisitOpcall2(t *testing.T) {
 	res, err := query.AcceptValue(i)
 	assert.NoError(t, err)
 	expected := value.List{}
-	expected.Append(value.NewDict(map[string]value.Value{"hi": value.Int(2), "bye": value.Double(2), "key": value.NewList(value.Double(2))}))
-	expected.Append(value.NewDict(map[string]value.Value{"hi": value.Int(3), "bye": value.Double(3), "key": value.NewList(value.Double(3))}))
+	expected.Append(value.NewDict(map[string]value.Value{"hi": value.Int(2), "bye": value.Double(2), "key": value.Double(2)}))
+	expected.Append(value.NewDict(map[string]value.Value{"hi": value.Int(3), "bye": value.Double(3), "key": value.Double(3)}))
 	assert.Equal(t, expected, res)
 }
 
