@@ -11,7 +11,7 @@ export type inputType = {
     kubeconfig: pulumi.Input<any>,
     region: string,
     roleArn: pulumi.Input<string>,
-    planeId: number,
+    planeId: number
 }
 
 // should not contain any pulumi.Output<> types.
@@ -61,7 +61,7 @@ export const setup = async (input: inputType): Promise<outputType> => {
         user: milvusUser.name,
     }, { provider: awsProvider })
 
-    const k8sProvider = new k8s.Provider("prom-k8s-provider", {
+    const k8sProvider = new k8s.Provider("milvus-k8s-provider", {
         kubeconfig: input.kubeconfig,
     })
 
@@ -82,6 +82,13 @@ export const setup = async (input: inputType): Promise<outputType> => {
                 "image": {
                     "tag": "3.5.1",
                     "pullPolicy": "IfNotPresent"
+                },
+                // Set node selector (affinity) explicitly for etcd as this is installed as a dependency to milvus
+                // and setting a global configuration on milvus does not apply here.
+                //
+                // https://github.com/kubernetes/kubernetes/issues/57838
+                "nodeSelector": {
+                    "kubernetes.io/arch": "amd64",
                 }
             },
             "externalS3": {
@@ -116,7 +123,46 @@ export const setup = async (input: inputType): Promise<outputType> => {
             // see: https://github.com/milvus-io/milvus-helm/issues/339
             "metrics": {
                 "enabled": false,
-            }
+            },
+            // Milvus services are not arm64 compatible. Set this at the global level.
+            "nodeSelector": {
+                "kubernetes.io/arch": "amd64",
+            },
+            // Set node selector (affinity) explicitly for pulsar as this is installed as a dependency to milvus
+            // and setting a global configuration on milvus does not apply here.
+            //
+            // Pulsar does not allow configuring a global node selector, instead we set this on every component
+            // which is enabled by milvus. Filed here - https://github.com/apache/pulsar-helm-chart/issues/275
+            //
+            // List of enabled components - https://github.com/milvus-io/milvus-helm/blob/master/charts/milvus/values.yaml#L468
+            "pulsar": {
+                "enabled": true,
+                "zookeeper": {
+                    "nodeSelector": {
+                        "kubernetes.io/arch": "amd64",
+                    },
+                },
+                "bookkeeper": {
+                    "nodeSelector": {
+                        "kubernetes.io/arch": "amd64",
+                    },
+                },
+                "autorecovery": {
+                    "nodeSelector": {
+                        "kubernetes.io/arch": "amd64",
+                    },
+                },
+                "broker": {
+                    "nodeSelector": {
+                        "kubernetes.io/arch": "amd64",
+                    },
+                },
+                "proxy": {
+                    "nodeSelector": {
+                        "kubernetes.io/arch": "amd64",
+                    },
+                },
+            },
         }
     }, { provider: k8sProvider, deleteBeforeReplace: true })
 

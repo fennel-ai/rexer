@@ -6,7 +6,6 @@ import * as aws from "@pulumi/aws";
 import * as fs from 'fs';
 import * as process from "process";
 import * as path from 'path';
-import {provider} from "@pulumi/pulumi";
 
 export const plugins = {
     "eks": "0.39.0",
@@ -14,19 +13,6 @@ export const plugins = {
     "command": "v0.0.3",
     "aws": "v4.38.1",
 }
-
-// NOTE: The AMI used should be an eks-worker AMI that can be searched
-// on the AWS AMI catalog with one of the following prefixes:
-// amazon-eks-node / amazon-eks-gpu-node / amazon-eks-arm64-node,
-// depending on the type of machine provisioned.
-const AMI_BY_REGION: Record<string, string> = {
-    "ap-south-1": "ami-093fbc66b666c0da8",
-    "us-west-2": "ami-0e1e876e558c727f4",
-}
-
-const DEFAULT_NODE_TYPE = "t3.medium"
-const DEFAULT_MIN_SIZE = 1
-const DEFAULT_MAX_SIZE = 3
 
 // Node Group configuration for the EKS cluster
 export type NodeGroupConf = {
@@ -44,6 +30,7 @@ export type NodeGroupConf = {
     // NOTE: Take quota limits into consideration before setting this value -
     //  https://docs.aws.amazon.com/eks/latest/userguide/service-quotas.html
     maxSize: number,
+    amiType: string,
     // labels to be attached to the node group
     labels?: Record<string, string>,
 }
@@ -56,7 +43,7 @@ export type inputType = {
     publicSubnets: pulumi.Output<string[]>,
     privateSubnets: pulumi.Output<string[]>,
     planeId: number,
-    nodeGroups?: NodeGroupConf[],
+    nodeGroups: NodeGroupConf[],
 }
 
 export type outputType = {
@@ -463,8 +450,6 @@ export const setup = async (input: inputType): Promise<pulumi.Output<outputType>
         providerCredentialOpts: {
             roleArn,
         },
-        // Make AMI a config parameter since AMI-ids are unique to region.
-        nodeAmiId: AMI_BY_REGION[region],
         nodeAssociatePublicIpAddress: false,
         createOidcProvider: true,
         // Skip creating default node group since we explicitly create a managed node group (default one even if
@@ -490,16 +475,8 @@ export const setup = async (input: inputType): Promise<pulumi.Output<outputType>
     const instanceRole = cluster.core.instanceRoles.apply((roles) => { return roles[0].name })
     const instanceRoleArn = cluster.core.instanceRoles.apply((roles) => { return roles[0].arn })
 
-    const defaultNodeGroup = {
-        name: `p-${input.planeId}-default-nodegroup`,
-        nodeType: DEFAULT_NODE_TYPE,
-        minSize: DEFAULT_MIN_SIZE,
-        maxSize: DEFAULT_MAX_SIZE,
-    };
-    let nodeGroups: NodeGroupConf[] = input.nodeGroups !== undefined ? input.nodeGroups : [defaultNodeGroup];
-
     // Setup managed node groups
-    for (let nodeGroup of nodeGroups) {
+    for (let nodeGroup of input.nodeGroups) {
         const n = new eks.ManagedNodeGroup(nodeGroup.name, {
             cluster: cluster,
             scalingConfig: {
@@ -521,6 +498,7 @@ export const setup = async (input: inputType): Promise<pulumi.Output<outputType>
             labels: nodeGroup.labels,
             nodeRoleArn: instanceRoleArn,
             subnetIds: privateSubnets,
+            amiType: nodeGroup.amiType,
         }, { provider: awsProvider });
     }
 

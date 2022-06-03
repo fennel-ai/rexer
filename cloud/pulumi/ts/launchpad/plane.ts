@@ -108,7 +108,7 @@ export type PlaneConf = {
     redisConf?: RedisConfig,
     cacheConf?: CacheConfg,
     prometheusConf: PrometheusConf,
-    eksConf?: EksConf,
+    eksConf: EksConf,
     milvusConf?: MilvusConf,
 }
 
@@ -192,7 +192,7 @@ const setupResources = async () => {
         privateSubnets: vpcOutput.privateSubnets,
         connectedVpcCidrs: [input.controlPlaneConf.cidrBlock],
         planeId: input.planeId,
-        nodeGroups: input.eksConf?.nodeGroups,
+        nodeGroups: input.eksConf.nodeGroups,
     });
     const auroraUnleashOutput = await unleashAurora.setup({
         roleArn: roleArn,
@@ -260,7 +260,7 @@ const setupResources = async () => {
             region: input.region,
             roleArn: roleArn,
             planeId: input.planeId,
-            kubeconfig: eksOutput.kubeconfig,
+            kubeconfig: eksOutput.kubeconfig
         })
     }
     const confluentOutput = await confluentenv.setup({
