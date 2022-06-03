@@ -484,7 +484,7 @@ func TestBucketCaching(t *testing.T) {
 	aggIds := []ftypes.AggId{aggs[0].Id, aggs[1].Id}
 	keys := []value.Value{value.Int(0), value.Int(0)}
 	h1 := counter2.NewSum([]uint64{14 * 3600 * 24, 3600 * 24})
-	h2 := counter2.NewAverage([]uint64{14 * 3600 * 24, 3600 * 24})
+	h2 := counter2.NewAverage([]uint64{14 * 3600 * 24, 7 * 3600 * 24, 3600 * 24})
 	kwargs := []value.Dict{
 		value.NewDict(map[string]value.Value{"duration": value.Int(14 * 3600 * 24)}),
 		value.NewDict(map[string]value.Value{"duration": value.Int(14 * 3600 * 24)})}
@@ -511,7 +511,7 @@ func TestBucketCaching(t *testing.T) {
 	// Call batch again, but this time should be from the cache
 	_, ok := tier.PCache.Get(makeCacheKey(aggIds[0], libcounter.Bucket{Key: key.String(), Window: ftypes.Window_DAY, Index: 1, Width: 1, Value: value.Int(0)}))
 	assert.True(t, ok)
-
+	kwargs[1] = value.NewDict(map[string]value.Value{"duration": value.Int(7 * 3600 * 24)})
 	found, err = BatchValue(ctx, tier, aggIds, keys, []counter2.Histogram{h1, h2}, kwargs)
 	assert.NoError(t, err)
 	assert.True(t, exp1.Equal(found[0]))
