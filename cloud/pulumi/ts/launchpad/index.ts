@@ -237,7 +237,7 @@ const planeConfs: Record<number, PlaneConf> = {
                 // HTTP server node group
                 {
                     name: "p-5-httpserver-ng",
-                    nodeType: "c6i.4xlarge",
+                    nodeType: "t3.large",
                     desiredCapacity: 2,
                     labels: {
                         "node-group": "p-5-httpserver-ng"
