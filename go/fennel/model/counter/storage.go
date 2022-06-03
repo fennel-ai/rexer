@@ -58,7 +58,7 @@ var metrics = promauto.NewSummaryVec(prometheus.SummaryOpts{
 // slotArena is a pool of slices of type slot such that max cap of any slice is upto 1 << 12 (i.e. 4096)
 // and total cap of all slices in pools is upto 1 << 24 i.e. ~4M. Since each slot is 64 bytes, this
 // arena's total size is at most 4M * 64B = 256MB
-var slotArena = arena.New[slot](1<<12, 1<<24)
+var slotArena = arena.New[slot](1<<12, 1<<22)
 
 // seenMapPool is a pool of maps from group -> int
 var seenMapPool = sync.Pool{
