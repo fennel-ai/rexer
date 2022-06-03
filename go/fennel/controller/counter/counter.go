@@ -117,13 +117,14 @@ func BatchValue(
 		}
 		// fill in the cache with the fetched buckets in a seperate goroutine.
 		fillPCache(tier, ids_, buckets, counts)
-
-		for i, index := range indices {
-			counts[i] = append(counts[i], cachedBuckets[i]...)
-			ret[index], err = histograms[index].Reduce(counts[i])
+		cur := 0
+		for _, index := range indices {
+			counts[cur] = append(counts[cur], cachedBuckets[cur]...)
+			ret[index], err = histograms[index].Reduce(counts[cur])
 			if err != nil {
 				return nil, fmt.Errorf("failed to reduce aggregate (id): %d, err: %w", aggIds[index], err)
 			}
+			cur++
 		}
 	}
 	return ret, nil
