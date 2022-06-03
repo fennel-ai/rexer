@@ -35,6 +35,7 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
+	"github.com/Unleash/unleash-client-go/v3"
 )
 
 const dedupTTL = 6 * time.Hour
@@ -336,6 +337,13 @@ func (m server) GetProfileMulti(w http.ResponseWriter, req *http.Request) {
 }
 
 func (m server) Query(w http.ResponseWriter, req *http.Request) {
+	// disable-query-calls is configured with random stickiness, which returns random true/false based on the
+	// percentage configured.
+	if unleash.IsEnabled("disable-query-calls") {
+		m.tier.Logger.Info("Dropping query since `disable-query-calls` is configured.")
+		return
+	}
+
 	data, err := readRequest(req)
 	cCtx, span := timer.Start(req.Context(), m.tier.ID, "server.Query")
 	defer span.Stop()
