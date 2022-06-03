@@ -3,6 +3,8 @@ package counter
 import (
 	"context"
 	"fmt"
+	"go.uber.org/zap"
+	"time"
 
 	"fennel/lib/aggregate"
 	libcounter "fennel/lib/counter"
@@ -11,6 +13,8 @@ import (
 	"fennel/model/counter"
 	"fennel/tier"
 )
+
+var cacheValueDuration = 30 * time.Minute
 
 func Value(
 	ctx context.Context, tier tier.Tier,
@@ -27,6 +31,51 @@ func Value(
 		return nil, err
 	}
 	return histogram.Reduce(counts)
+}
+
+func makeCacheKey(aggId ftypes.AggId, b libcounter.Bucket) string {
+	return fmt.Sprintf("%d:%s:%d:%d:%d", aggId, b.Key, b.Window, b.Width, b.Index)
+}
+
+func fetchFromPCache(tier tier.Tier, aggId ftypes.AggId, buckets []libcounter.Bucket) ([]value.Value, []libcounter.Bucket) {
+	unfilledBuckets := make([]libcounter.Bucket, 0, len(buckets))
+	cachedVals := make([]value.Value, 0, len(buckets))
+
+	for _, b := range buckets {
+		if b.Window != ftypes.Window_DAY {
+			unfilledBuckets = append(unfilledBuckets, b)
+			continue
+		}
+
+		found := false
+		ckey := makeCacheKey(aggId, b)
+		if v, ok := tier.PCache.Get(ckey); ok {
+			if val, ok2 := fromCacheValue(tier, v); ok2 {
+				cachedVals = append(cachedVals, val)
+				found = true
+			}
+		}
+
+		if !found {
+			unfilledBuckets = append(unfilledBuckets, b)
+		}
+	}
+	return cachedVals, unfilledBuckets
+}
+
+func fillPCache(tier tier.Tier, aggIds []ftypes.AggId, buckets [][]libcounter.Bucket, bucketVal [][]value.Value) {
+	for i := range buckets {
+		aggId := aggIds[i]
+		for j := range buckets[i] {
+			if buckets[i][j].Window != ftypes.Window_DAY {
+				continue
+			}
+			ckey := makeCacheKey(aggId, buckets[i][j])
+			if ok := tier.PCache.SetWithTTL(ckey, bucketVal[i][j], int64(len(ckey)+len(bucketVal[i][j].String())), cacheValueDuration); !ok {
+				tier.Logger.Debug(fmt.Sprintf("failed to set bucket aggregate value in cache: key: '%s' value: '%s'", ckey, bucketVal[i][j].String()))
+			}
+		}
+	}
 }
 
 // TODO(Mohit): Fix this code if we decide to still use BucketStore
@@ -47,27 +96,34 @@ func BatchValue(
 		ids_ := make([]ftypes.AggId, n)
 		buckets := make([][]libcounter.Bucket, n)
 		defaults := make([]value.Value, n)
+		cachedBuckets := make([][]value.Value, n)
 		for i, index := range indices {
 			h := histograms[index]
+
 			start, err := h.Start(end, kwargs[index])
 			if err != nil {
-				return nil, fmt.Errorf("failed to get start timestamp of aggregate (id): %d, err: %v", aggIds[index], err)
+				return nil, fmt.Errorf("failed to get start timestamp of aggregate (id): %d, err: %w", aggIds[index], err)
 			}
 			ids_[i] = aggIds[index]
-			buckets[i] = h.BucketizeDuration(keys[index].String(), start, end, h.Zero())
+			bucketsForAggKey := h.BucketizeDuration(keys[index].String(), start, end, h.Zero())
+			// Find buckets in a cache, if not found, fetch from the bucket store
+			cachedBuckets[i], buckets[i] = fetchFromPCache(tier, ids_[i], bucketsForAggKey)
 			defaults[i] = h.Zero()
 		}
+
 		counts, err := bs.GetMulti(ctx, tier, ids_, buckets, defaults)
 		if err != nil {
 			return nil, err
 		}
-		cur := 0
-		for _, index := range indices {
+		// fill in the cache with the fetched buckets in a seperate goroutine.
+		fillPCache(tier, ids_, buckets, counts)
+
+		for cur, index := range indices {
+			counts[cur] = append(counts[cur], cachedBuckets[cur]...)
 			ret[index], err = histograms[index].Reduce(counts[cur])
 			if err != nil {
-				return nil, fmt.Errorf("failed to reduce aggregate (id): %d, err: %v", aggIds[index], err)
+				return nil, fmt.Errorf("failed to reduce aggregate (id): %d, err: %w", aggIds[index], err)
 			}
-			cur++
 		}
 	}
 	return ret, nil
@@ -95,4 +151,16 @@ func Update(
 		return err
 	}
 	return counter.Update(ctx, tier, agg.Id, buckets, histogram)
+}
+
+func fromCacheValue(tier tier.Tier, v interface{}) (value.Value, bool) {
+	switch v := v.(type) {
+	case value.Value:
+		return v, true
+	default:
+		// log unexpected error
+		err := fmt.Errorf("value not of type value.Value: %v", v)
+		tier.Logger.Error("aggregate value cache error: ", zap.Error(err))
+		return nil, false
+	}
 }

@@ -2,6 +2,7 @@ package counter
 
 import (
 	"context"
+	"fennel/lib/ftypes"
 	"testing"
 	"time"
 
@@ -9,7 +10,6 @@ import (
 	"fennel/kafka"
 	libaggregate "fennel/lib/aggregate"
 	libcounter "fennel/lib/counter"
-	"fennel/lib/ftypes"
 	"fennel/lib/utils"
 	"fennel/lib/utils/math"
 	"fennel/lib/value"
@@ -439,6 +439,98 @@ func TestBatchValue(t *testing.T) {
 	kwargs[1] = value.NewDict(map[string]value.Value{"duration": value.Int(7 * 24 * 3600)})
 	_, err = BatchValue(ctx, tier, aggIds, keys, []counter2.Histogram{h1, h2}, kwargs)
 	assert.Error(t, err)
+}
+
+func TestBucketCaching(t *testing.T) {
+	tier, err := test.Tier()
+	assert.NoError(t, err)
+	defer test.Teardown(tier)
+	ctx := context.Background()
+	cacheValueDuration = 5 * time.Second
+	start := 0
+	key := value.Int(0)
+	table := value.NewList()
+	// create an event every minute for 2.5 days
+	for i := 0; i < 60*24*2+60*12; i++ {
+		// Add an offset of 1 hour to the timestamp
+		ts := ftypes.Timestamp(start + 12*24*3600 + i*60 + 60*60)
+		row := value.NewDict(map[string]value.Value{
+			"timestamp": value.Int(ts),
+			"groupkey":  key,
+			"value":     value.Int(3),
+		})
+		table.Append(row)
+	}
+
+	aggs := []libaggregate.Aggregate{{
+		Name:      "mycounter",
+		Query:     ast.MakeInt(1),
+		Timestamp: 0,
+		Options: libaggregate.Options{
+			AggType:   "sum",
+			Durations: []uint64{3600 * 14, 3600 * 28},
+		},
+		Id: 1,
+	}, {
+		Name:      "mycounter2",
+		Query:     ast.MakeInt(1),
+		Timestamp: 0,
+		Options: libaggregate.Options{
+			AggType:   "sum",
+			Durations: []uint64{3600 * 14, 3600 * 28},
+		},
+		Id: 2,
+	}}
+	aggIds := []ftypes.AggId{aggs[0].Id, aggs[1].Id}
+	keys := []value.Value{value.Int(0), value.Int(0)}
+	h1 := counter2.NewSum([]uint64{14 * 3600 * 24, 3600 * 24})
+	h2 := counter2.NewAverage([]uint64{14 * 3600 * 24, 7 * 3600 * 24, 3600 * 24})
+	kwargs := []value.Dict{
+		value.NewDict(map[string]value.Value{"duration": value.Int(14 * 3600 * 24)}),
+		value.NewDict(map[string]value.Value{"duration": value.Int(14 * 3600 * 24)})}
+
+	// now update with actions
+	err = Update(ctx, tier, aggs[0], table, h1)
+	assert.NoError(t, err)
+	err = Update(ctx, tier, aggs[1], table, h2)
+	assert.NoError(t, err)
+	assertDeltaLogged(t, ctx, tier, aggs, 2 /*count=*/)
+
+	// should find this time
+	clock := &test.FakeClock{}
+	tier.Clock = clock
+	clock.Set(int64(start + 24*3600*14 + 60*18))
+	exp1, exp2 := value.Int(8514), value.Double(1.0*3)
+	found, err := BatchValue(ctx, tier, aggIds, keys, []counter2.Histogram{h1, h2}, kwargs)
+	assert.NoError(t, err)
+	assert.True(t, exp1.Equal(found[0]))
+	assert.True(t, exp2.Equal(found[1]))
+	// Wait for values to be cached
+	time.Sleep(20 * time.Millisecond)
+
+	// Call batch again, but this time should be from the cache
+	_, ok := tier.PCache.Get(makeCacheKey(aggIds[0], libcounter.Bucket{Key: key.String(), Window: ftypes.Window_DAY, Index: 1, Width: 1, Value: value.Int(0)}))
+	assert.True(t, ok)
+	kwargs[1] = value.NewDict(map[string]value.Value{"duration": value.Int(7 * 3600 * 24)})
+	found, err = BatchValue(ctx, tier, aggIds, keys, []counter2.Histogram{h1, h2}, kwargs)
+	assert.NoError(t, err)
+	assert.True(t, exp1.Equal(found[0]))
+	assert.True(t, exp2.Equal(found[1]))
+
+	time.Sleep(8 * time.Second)
+	_, ok = tier.PCache.Get(makeCacheKey(aggIds[0], libcounter.Bucket{Key: key.String(), Window: ftypes.Window_DAY, Index: 1, Width: 1, Value: value.Int(0)}))
+	assert.False(t, ok)
+
+	// now go forward 2 more days and check with duration of 1 day
+	// should find nothing
+	clock.Set(int64(start + 24*3600*4))
+	kwargs[0] = value.NewDict(map[string]value.Value{"duration": value.Int(24 * 3600)})
+	kwargs[1] = value.NewDict(map[string]value.Value{"duration": value.Int(24 * 3600)})
+	exp1, exp2 = value.Int(0), value.Double(0.0)
+	found, err = BatchValue(ctx, tier, aggIds, keys, []counter2.Histogram{h1, h2}, kwargs)
+	assert.NoError(t, err)
+	assert.True(t, exp1.Equal(found[0]))
+	assert.True(t, exp2.Equal(found[1]))
 }
 
 func TestDurations(t *testing.T) {
