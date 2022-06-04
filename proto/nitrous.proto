@@ -1,0 +1,74 @@
+syntax = "proto3";
+import "ftypes.proto";
+import "value.proto";
+package nitrous;
+
+option go_package = "fennel/nitrous/rpc/v2";
+
+service Nitrous {
+  rpc Start(Table) returns (Void) {}
+  rpc Stop(Table) returns (Void) {}
+  rpc GetMany(GetManyReq) returns (GetManyResp) {}
+  rpc Lag(Table) returns (LagResp) {}
+}
+
+message Table {
+  uint64 tierID = 1;
+  string binlog = 2;
+  TableType type = 3;
+  oneof schema {
+    AggTable aggTable = 4;
+    ProfileTable profileTable = 5;
+  }
+}
+
+enum TableType {
+  None = 0;
+  Profile = 1;
+  Aggregate = 2;
+}
+
+message ProfileTable {
+
+}
+
+message AggTable {
+  uint32 aggID = 1;
+  uint32 codec = 2;
+}
+
+message Void { }
+
+message LagResp {
+  uint64 lag = 1;
+
+}
+
+message GetManyReq {
+  repeated Req requests = 1;
+}
+
+message Req {
+  Table table = 1;
+  oneof Request {
+      AggRow aggReq = 2;
+      ProfileRow profileReq = 3;
+  }
+}
+
+message GetManyResp {
+  repeated PValue results = 1;
+}
+
+message AggRow {
+    string groupkey = 1;
+    uint64 duration = 2;
+    Window window = 3; // specific to timeseries
+    uint64 limit = 4; // specific to timeseries
+}
+
+message ProfileRow {
+    string otype = 1;
+    string oid = 2;
+    string key = 3;
+}

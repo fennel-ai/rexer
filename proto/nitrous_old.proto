@@ -1,4 +1,5 @@
 syntax = "proto3";
+package nitrous_old;
 
 option go_package = "fennel/nitrous/rpc/v1";
 
