@@ -119,7 +119,6 @@ func (p profileOp) getProfiles(ctx context.Context, profileKeys []libprofile.Pro
 	for i, pi := range profileKeys {
 		key := p.getKey(pi)
 		v, ok := p.tier.PCache.Get(key, "Profile")
-
 		if !ok {
 			// did not find profile, filter out
 			uncached = append(uncached, pi)
