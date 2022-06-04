@@ -30,7 +30,10 @@ type getRequest struct {
 	resch     chan<- []store.Result
 }
 
-func NewStore(planeID ftypes.RealmID, opts badger.Options, enc store.Encoder) (DB, error) {
+func NewStore(planeID ftypes.RealmID, dirname string, blockCacheBytes int64, enc store.Encoder) (DB, error) {
+	opts := badger.DefaultOptions(dirname)
+	opts = opts.WithLoggingLevel(badger.WARNING)
+	opts = opts.WithBlockCacheSize(blockCacheBytes)
 	reqchan := make(chan getRequest)
 	db, err := badger.Open(opts)
 	if err != nil {
