@@ -120,7 +120,7 @@ func (l *layered) GetMany(kgs []store.KeyGroup) ([]store.ValGroup, error) {
 	for i, cval := range results {
 		if len(cval.Fields) != len(kgs[i].Fields) {
 			found := make(map[string]struct{}, len(kgs[i].Fields))
-			for _, field := range kgs[i].Fields {
+			for _, field := range cval.Fields {
 				found[string(field)] = struct{}{}
 			}
 			var kg store.KeyGroup
