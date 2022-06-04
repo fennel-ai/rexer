@@ -37,7 +37,7 @@ func NewNitrousClient(cc grpc.ClientConnInterface) NitrousClient {
 
 func (c *nitrousClient) GetMany(ctx context.Context, in *GetManyRequest, opts ...grpc.CallOption) (*GetManyResponse, error) {
 	out := new(GetManyResponse)
-	err := c.cc.Invoke(ctx, "/Nitrous/GetMany", in, out, opts...)
+	err := c.cc.Invoke(ctx, "/nitrous_old.Nitrous/GetMany", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -46,7 +46,7 @@ func (c *nitrousClient) GetMany(ctx context.Context, in *GetManyRequest, opts ..
 
 func (c *nitrousClient) Init(ctx context.Context, in *InitReq, opts ...grpc.CallOption) (*InitResp, error) {
 	out := new(InitResp)
-	err := c.cc.Invoke(ctx, "/Nitrous/Init", in, out, opts...)
+	err := c.cc.Invoke(ctx, "/nitrous_old.Nitrous/Init", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -55,7 +55,7 @@ func (c *nitrousClient) Init(ctx context.Context, in *InitReq, opts ...grpc.Call
 
 func (c *nitrousClient) Lag(ctx context.Context, in *LagReq, opts ...grpc.CallOption) (*LagResp, error) {
 	out := new(LagResp)
-	err := c.cc.Invoke(ctx, "/Nitrous/Lag", in, out, opts...)
+	err := c.cc.Invoke(ctx, "/nitrous_old.Nitrous/Lag", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -108,7 +108,7 @@ func _Nitrous_GetMany_Handler(srv interface{}, ctx context.Context, dec func(int
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/Nitrous/GetMany",
+		FullMethod: "/nitrous_old.Nitrous/GetMany",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(NitrousServer).GetMany(ctx, req.(*GetManyRequest))
@@ -126,7 +126,7 @@ func _Nitrous_Init_Handler(srv interface{}, ctx context.Context, dec func(interf
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/Nitrous/Init",
+		FullMethod: "/nitrous_old.Nitrous/Init",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(NitrousServer).Init(ctx, req.(*InitReq))
@@ -144,7 +144,7 @@ func _Nitrous_Lag_Handler(srv interface{}, ctx context.Context, dec func(interfa
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/Nitrous/Lag",
+		FullMethod: "/nitrous_old.Nitrous/Lag",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(NitrousServer).Lag(ctx, req.(*LagReq))
@@ -156,7 +156,7 @@ func _Nitrous_Lag_Handler(srv interface{}, ctx context.Context, dec func(interfa
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
 var Nitrous_ServiceDesc = grpc.ServiceDesc{
-	ServiceName: "Nitrous",
+	ServiceName: "nitrous_old.Nitrous",
 	HandlerType: (*NitrousServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{
