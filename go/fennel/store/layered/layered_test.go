@@ -15,12 +15,12 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestLayered_Cache_DB(t *testing.T) {
+func TestLayered_Store(t *testing.T) {
 	rand.Seed(time.Now().UnixNano())
-	planeID := ftypes.RealmID(rand.Uint32())
 	maker := func(t *testing.T) store.Store {
-		dirname := fmt.Sprintf("/tmp/badger_%d", planeID)
-		dbstore, err := db.NewStore(planeID, dirname, 10*1<<24, encoders.Default())
+		planeID := ftypes.RealmID(rand.Uint32())
+		dirname := fmt.Sprintf("/tmp/badger/%d", planeID)
+		dbstore, err := db.NewStore(planeID, dirname, 64*1<<20, encoders.Default())
 		assert.NoError(t, err)
 
 		// 80 MB cache with avg size of 100 bytes
@@ -30,6 +30,22 @@ func TestLayered_Cache_DB(t *testing.T) {
 		return NewStore(planeID, cache, dbstore)
 	}
 	store.TestStore(t, maker)
+}
+
+func BenchmarkLayered_GetMany(b *testing.B) {
+	rand.Seed(time.Now().UnixNano())
+	maker := func(t *testing.B) store.Store {
+		planeID := ftypes.RealmID(rand.Uint32())
+		dirname := fmt.Sprintf("/tmp/badger/%d", planeID)
+		// 160MB block cache
+		dbstore, err := db.NewStore(planeID, dirname, 64*1<<20, encoders.Default())
+		assert.NoError(t, err)
+		// 80 MB cache with avg size of 100 bytes
+		cache, err := cache.NewStore(planeID, 1<<23, 1000, encoders.Default())
+		assert.NoError(t, err)
+		return NewStore(planeID, cache, dbstore)
+	}
+	store.BenchmarkStore(b, maker)
 }
 
 func TestCaching(t *testing.T) {
@@ -42,6 +58,7 @@ func TestCaching(t *testing.T) {
 	assert.NoError(t, err)
 
 	s := NewStore(planeID, cache, gt)
+	defer s.Teardown()
 
 	// first setup some keys
 	key := store.Key{Data: []byte("key")}
