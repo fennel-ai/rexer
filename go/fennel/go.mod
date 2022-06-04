@@ -9,6 +9,8 @@ require (
 	github.com/alicebob/miniredis/v2 v2.17.0
 	github.com/buger/jsonparser v1.1.1
 	github.com/confluentinc/confluent-kafka-go v1.8.2
+	github.com/detailyang/fastrand-go v0.0.0-20191106153122-53093851e761
+	github.com/dgraph-io/badger/v3 v3.2103.2
 	github.com/go-redis/redis/v8 v8.11.5
 	github.com/go-sql-driver/mysql v1.5.0
 	github.com/gorilla/mux v1.8.0
@@ -35,14 +37,17 @@ require (
 	github.com/apache/arrow/go/arrow v0.0.0-20200730104253-651201b0f516 // indirect
 	github.com/apache/thrift v0.14.2 // indirect
 	github.com/cenkalti/backoff/v4 v4.1.3 // indirect
-	github.com/detailyang/fastrand-go v0.0.0-20191106153122-53093851e761 // indirect
+	github.com/cespare/xxhash v1.1.0 // indirect
 	github.com/go-logr/logr v1.2.3 // indirect
 	github.com/go-logr/stdr v1.2.2 // indirect
+	github.com/gogo/protobuf v1.3.2 // indirect
+	github.com/golang/groupcache v0.0.0-20200121045136-8c9f03a8e57e // indirect
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.7.0 // indirect
 	github.com/klauspost/cpuid/v2 v2.0.9 // indirect
 	github.com/kr/text v0.2.0 // indirect
 	github.com/pierrec/lz4/v4 v4.1.8 // indirect
 	github.com/twmb/murmur3 v1.1.5 // indirect
+	go.opencensus.io v0.22.5 // indirect
 	go.opentelemetry.io/otel/exporters/otlp/internal/retry v1.7.0 // indirect
 	go.opentelemetry.io/otel/exporters/otlp/otlptrace v1.7.0 // indirect
 	go.opentelemetry.io/proto/otlp v0.16.0 // indirect
