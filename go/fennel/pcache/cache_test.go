@@ -16,7 +16,7 @@ func TestPCache_Get(t *testing.T) {
 	key2 := "other key"
 
 	// initially, should get nothing as this key was not set
-	_, ok := cache.Get(key1)
+	_, ok := cache.Get(key1, "Test")
 	assert.False(t, ok)
 
 	// set it now
@@ -25,7 +25,7 @@ func TestPCache_Get(t *testing.T) {
 	time.Sleep(10 * time.Millisecond)
 
 	// should get it
-	v, ok := cache.Get(key1)
+	v, ok := cache.Get(key1, "Test")
 	assert.True(t, ok)
 	assert.Equal(t, 27, v)
 
@@ -35,17 +35,17 @@ func TestPCache_Get(t *testing.T) {
 	time.Sleep(10 * time.Millisecond)
 
 	// should get it
-	v, ok = cache.Get(key2)
+	v, ok = cache.Get(key2, "Test")
 	assert.True(t, ok)
 	assert.Equal(t, 64, v)
 
 	// can get its ttl, should be less or equal to initial ttl
-	ttl, ok := cache.GetTTL(key2)
+	ttl, ok := cache.GetTTL(key2, "Test")
 	assert.True(t, ok)
 	assert.LessOrEqual(t, ttl, 5*time.Second)
 
 	// should expire after 5 seconds
 	time.Sleep(5 * time.Second)
-	v, ok = cache.Get(key2)
+	v, ok = cache.Get(key2, "Test")
 	assert.False(t, ok)
 }

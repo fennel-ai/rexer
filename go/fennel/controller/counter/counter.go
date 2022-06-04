@@ -51,7 +51,7 @@ func fetchFromPCache(tier tier.Tier, aggId ftypes.AggId, buckets []libcounter.Bu
 		found := false
 		ckey := makeCacheKey(aggId, b)
 
-		if v, ok := tier.PCache.Get(ckey); ok {
+		if v, ok := tier.PCache.Get(ckey, "BucketValue"); ok {
 			if val, ok2 := fromCacheValue(tier, v); ok2 {
 				cachedVals = append(cachedVals, val)
 				found = true

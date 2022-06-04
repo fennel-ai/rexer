@@ -509,7 +509,7 @@ func TestBucketCaching(t *testing.T) {
 	time.Sleep(20 * time.Millisecond)
 
 	// Call batch again, but this time should be from the cache
-	_, ok := tier.PCache.Get(makeCacheKey(aggIds[0], libcounter.Bucket{Key: key.String(), Window: ftypes.Window_DAY, Index: 1, Width: 1, Value: value.Int(0)}))
+	_, ok := tier.PCache.Get(makeCacheKey(aggIds[0], libcounter.Bucket{Key: key.String(), Window: ftypes.Window_DAY, Index: 1, Width: 1, Value: value.Int(0)}), "Test")
 	assert.True(t, ok)
 	kwargs[1] = value.NewDict(map[string]value.Value{"duration": value.Int(7 * 3600 * 24)})
 	found, err = BatchValue(ctx, tier, aggIds, keys, []counter2.Histogram{h1, h2}, kwargs)
@@ -518,7 +518,7 @@ func TestBucketCaching(t *testing.T) {
 	assert.True(t, exp2.Equal(found[1]))
 
 	time.Sleep(8 * time.Second)
-	_, ok = tier.PCache.Get(makeCacheKey(aggIds[0], libcounter.Bucket{Key: key.String(), Window: ftypes.Window_DAY, Index: 1, Width: 1, Value: value.Int(0)}))
+	_, ok = tier.PCache.Get(makeCacheKey(aggIds[0], libcounter.Bucket{Key: key.String(), Window: ftypes.Window_DAY, Index: 1, Width: 1, Value: value.Int(0)}), "Test")
 	assert.False(t, ok)
 
 	// now go forward 2 more days and check with duration of 1 day
