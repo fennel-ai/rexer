@@ -52,11 +52,11 @@ type layered struct {
 	fillReqChan chan []store.KeyGroup
 }
 
-func (l layered) Restore(source io.Reader) error {
+func (l *layered) Restore(source io.Reader) error {
 	panic("implement me")
 }
 
-func (l layered) Teardown() error {
+func (l *layered) Teardown() error {
 	if !test.IsInTest() {
 		return fmt.Errorf("can not teardown a store outside of test mode")
 	}
@@ -66,11 +66,11 @@ func (l layered) Teardown() error {
 	return l.db.Teardown()
 }
 
-func (l layered) Backup(sink io.Writer, since uint64) (uint64, error) {
+func (l *layered) Backup(sink io.Writer, since uint64) (uint64, error) {
 	return l.db.Backup(sink, since)
 }
 
-func (l layered) Close() error {
+func (l *layered) Close() error {
 	if err := l.cache.Close(); err != nil {
 		return err
 	}
@@ -89,7 +89,7 @@ func NewStore(planeID ftypes.RealmID, cache, db store.Store) store.Store {
 	return ret
 }
 
-func (l layered) DelMany(keys []store.KeyGroup) error {
+func (l *layered) DelMany(keys []store.KeyGroup) error {
 	err := l.cache.DelMany(keys)
 	if err != nil {
 		return err
@@ -101,15 +101,15 @@ func (l layered) DelMany(keys []store.KeyGroup) error {
 	return nil
 }
 
-func (l layered) PlaneID() ftypes.RealmID {
+func (l *layered) PlaneID() ftypes.RealmID {
 	return l.planeID
 }
 
-func (l layered) Encoder() store.Encoder {
+func (l *layered) Encoder() store.Encoder {
 	return l.cache.Encoder()
 }
 
-func (l layered) GetMany(kgs []store.KeyGroup) ([]store.ValGroup, error) {
+func (l *layered) GetMany(kgs []store.KeyGroup) ([]store.ValGroup, error) {
 	results, err := l.cache.GetMany(kgs)
 	if err != nil {
 		return nil, err
@@ -159,7 +159,7 @@ func (l layered) GetMany(kgs []store.KeyGroup) ([]store.ValGroup, error) {
 	return results, nil
 }
 
-func (l layered) SetMany(keys []store.Key, vgs []store.ValGroup) error {
+func (l *layered) SetMany(keys []store.Key, vgs []store.ValGroup) error {
 	kgs := make([]store.KeyGroup, len(keys))
 	for i, key := range keys {
 		kgs[i].Prefix = key
@@ -174,7 +174,7 @@ func (l layered) SetMany(keys []store.Key, vgs []store.ValGroup) error {
 	return l.fill(kgs)
 }
 
-func (l layered) fill(kgs []store.KeyGroup) error {
+func (l *layered) fill(kgs []store.KeyGroup) error {
 	for i := 0; i < len(kgs); i += FILL_BATCH_SIZE {
 		end := i + FILL_BATCH_SIZE
 		if end > len(kgs) {
@@ -185,7 +185,7 @@ func (l layered) fill(kgs []store.KeyGroup) error {
 	return nil
 }
 
-func (l layered) processFillReqs() {
+func (l *layered) processFillReqs() {
 	arr := [2 * FILL_BATCH_SIZE]store.KeyGroup{}
 	for {
 		batch := arr[:0]
