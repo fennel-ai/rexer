@@ -17,7 +17,7 @@ var cacheHits = promauto.NewCounterVec(
 		Name: "pcache_hits_namespace",
 		Help: "Number of P Cache hits per namespace.",
 	},
-	[]string{"AggValue", "Profile", "BucketValue"},
+	[]string{"namespace"},
 )
 
 var cacheMisses = promauto.NewCounterVec(
@@ -25,7 +25,7 @@ var cacheMisses = promauto.NewCounterVec(
 		Name: "pcache_misses_namespace",
 		Help: "Number of P Cache misses per namespace.",
 	},
-	[]string{"AggValue", "Profile", "BucketValue"},
+	[]string{"namespace"},
 )
 
 // NewPCache creates a new instance of PCache

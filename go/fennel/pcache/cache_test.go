@@ -40,7 +40,7 @@ func TestPCache_Get(t *testing.T) {
 	assert.Equal(t, 64, v)
 
 	// can get its ttl, should be less or equal to initial ttl
-	ttl, ok := cache.GetTTL(key2, "Test")
+	ttl, ok := cache.GetTTL(key2)
 	assert.True(t, ok)
 	assert.LessOrEqual(t, ttl, 5*time.Second)
 
