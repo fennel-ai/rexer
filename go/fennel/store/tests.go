@@ -146,7 +146,7 @@ func getData(numKey, numIndex int) ([]Key, []KeyGroup, []ValGroup) {
 		fields[i] = []byte(fmt.Sprintf("field%d", i))
 	}
 	for i := range keys {
-		keys[i] = Key{12, 12312, []byte(utils.RandString(10))}
+		keys[i] = Key{Data: []byte(utils.RandString(10))}
 		kgs[i] = KeyGroup{
 			Prefix: keys[i],
 			Fields: fields,
@@ -172,7 +172,6 @@ func benchmarkGetSet(b *testing.B, store Store, numKeys, numFields, szKey, szVal
 	vgs := make([]ValGroup, numKeys)
 	for i := range keys {
 		keys[i].Data = []byte(utils.RandString(szKey))
-		keys[i].LShard = byte(rand.Intn(256))
 		for j := 0; j < numFields; j++ {
 			fields[i] = append(fields[i], []byte(fmt.Sprintf("%d", j)))
 			vals[i] = append(vals[i], []byte(utils.RandString(szVal)))

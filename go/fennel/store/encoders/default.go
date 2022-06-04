@@ -1,7 +1,6 @@
 package encoders
 
 import (
-	"fennel/lib/ftypes"
 	"fennel/lib/utils/binary"
 	"fennel/store"
 	"fmt"
@@ -18,42 +17,18 @@ func (d defaultEncoder) Codec() store.Codec {
 }
 
 func (d defaultEncoder) EncodeKey(dest []byte, key store.Key) (int, error) {
-	off := 0
-	if len(dest) == 0 {
-		return 0, fmt.Errorf("destination buffer is empty")
-	}
-	dest[off] = key.LShard
-	off++
-	n, err := binary.PutUvarint(dest[off:], uint64(key.TierID))
+	n, err := binary.PutBytes(dest, key.Data)
 	if err != nil {
 		return 0, err
 	}
-	off += n
-	n, err = binary.PutBytes(dest[off:], key.Data)
-	if err != nil {
-		return 0, err
-	}
-	off += n
-	return off, nil
+	return n, nil
 }
 
 func (d defaultEncoder) DecodeKey(src []byte, key *store.Key) (int, error) {
-	if len(src) == 0 {
-		return 0, fmt.Errorf("source buffer is empty")
-	}
-	key.LShard = src[0]
-	off := 1
-	tierID, n, err := binary.ReadUvarint(src[off:])
+	data, n, err := binary.ReadBytes(src)
 	if err != nil {
 		return 0, err
 	}
-	off += n
-	key.TierID = ftypes.RealmID(tierID)
-	data, n, err := binary.ReadBytes(src[off:])
-	if err != nil {
-		return 0, err
-	}
-	off += n
 	key.Data = data
 	return n, err
 }
