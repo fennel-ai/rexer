@@ -56,6 +56,7 @@ func (l *layered) Restore(source io.Reader) error {
 	panic("implement me")
 }
 
+// TODO: close all goroutines as part of teardown
 func (l *layered) Teardown() error {
 	if !test.IsInTest() {
 		return fmt.Errorf("can not teardown a store outside of test mode")

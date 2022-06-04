@@ -23,7 +23,7 @@ func TestStore(t *testing.T, maker func(t *testing.T) Store) {
 	for _, scenario := range scenarios {
 		t.Run(scenario.name, func(t *testing.T) {
 			store := maker(t)
-			defer store.Close()
+			defer store.Teardown()
 			scenario.test(t, store)
 		})
 	}
@@ -32,7 +32,7 @@ func TestStore(t *testing.T, maker func(t *testing.T) Store) {
 func BenchmarkStore(b *testing.B, maker func(b *testing.B) Store) {
 	b.Run("basic:keys_num_10000_sz_100:fields_num_100:vals_sz_100:gets_1000", func(b *testing.B) {
 		store := maker(b)
-		defer store.Close()
+		defer store.Teardown()
 		benchmarkGetSet(b, store, 10000, 100, 100, 100, 1000)
 	})
 }
