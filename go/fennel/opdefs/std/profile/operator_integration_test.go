@@ -29,12 +29,12 @@ func TestProfileOpMultipleObjs(t *testing.T) {
 
 	otype1, oid1, key1, val1, ver1 := ftypes.OType("user"), 123, "summary", value.Int(5), uint64(1)
 	otype2, oid2, key2, val2, ver2 := ftypes.OType("user"), 223, "age", value.Int(7), uint64(4)
-	req1 := profilelib.ProfileItem{OType: otype1, Oid: strconv.Itoa(oid1), Key: key1, UpdateTime: ver1, Value: val1}
+	req1 := profilelib.ProfileItem{OType: otype1, Oid: ftypes.OidType(strconv.Itoa(oid1)), Key: key1, UpdateTime: ver1, Value: val1}
 	assert.NoError(t, profile.TestSet(ctx, tier, req1))
-	req2a := profilelib.ProfileItem{OType: otype2, Oid: strconv.Itoa(oid2), Key: key2, UpdateTime: ver2 - 1, Value: value.Int(1121)}
+	req2a := profilelib.ProfileItem{OType: otype2, Oid: ftypes.OidType(strconv.Itoa(oid2)), Key: key2, UpdateTime: ver2 - 1, Value: value.Int(1121)}
 	assert.NoError(t, profile.TestSet(ctx, tier, req2a))
 	// this key has multiple UpdateTimes but we should pick up the latest one if not provided explicitly
-	req2b := profilelib.ProfileItem{OType: otype2, Oid: strconv.Itoa(oid2), Key: key2, UpdateTime: ver2, Value: val2}
+	req2b := profilelib.ProfileItem{OType: otype2, Oid: ftypes.OidType(strconv.Itoa(oid2)), Key: key2, UpdateTime: ver2, Value: val2}
 	assert.NoError(t, profile.TestSet(ctx, tier, req2b))
 
 	query := ast.OpCall{

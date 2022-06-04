@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"fennel/db"
+	"fennel/lib/ftypes"
 	"fennel/lib/profile"
 	"fennel/lib/value"
 	"fennel/test"
@@ -73,7 +74,7 @@ func TestCachedDBConcurrentMultiSet(t *testing.T) {
 	for i := uint64(0); i < 10; i++ {
 		p := profile.ProfileItem{
 			OType:      "user",
-			Oid:        strconv.FormatUint(i%2+1, 10),
+			Oid:        ftypes.OidType(strconv.FormatUint(i%2+1, 10)),
 			Key:        "age",
 			UpdateTime: i + 1,
 			Value:      value.NewList(value.Int(i)),
@@ -137,7 +138,7 @@ func TestCachedDBEventuallyConsistentMultipleObjs(t *testing.T) {
 	p := make([]profile.ProfileItem, 0)
 	for i := uint64(1); i <= 10; i++ {
 		v := value.NewList(value.Int(i))
-		p = append(p, profile.ProfileItem{OType: "user", Oid: strconv.FormatUint(i%2+1, 10), Key: "age", UpdateTime: i, Value: v})
+		p = append(p, profile.ProfileItem{OType: "user", Oid: ftypes.OidType(strconv.FormatUint(i%2+1, 10)), Key: "age", UpdateTime: i, Value: v})
 	}
 	assert.NoError(t, c.setBatch(ctx, tier, p))
 
