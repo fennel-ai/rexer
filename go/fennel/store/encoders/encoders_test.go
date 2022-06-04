@@ -1,7 +1,6 @@
 package encoders
 
 import (
-	"fennel/lib/ftypes"
 	"fennel/lib/utils"
 	"fennel/store"
 	"math/rand"
@@ -15,10 +14,10 @@ func testEncodeKey(t *testing.T, enc store.Encoder) {
 		keys []store.Key
 	}{
 		{[]store.Key{
-			{LShard: 0, TierID: 1231, Data: []byte("hello")},
-			{LShard: 234, TierID: 0, Data: []byte("great")},
-			{LShard: 255, TierID: 123, Data: []byte{}},
-			{LShard: 13, TierID: 12341, Data: []byte(utils.RandString(10000))},
+			{Data: []byte("hello")},
+			{Data: []byte("great")},
+			{Data: []byte{}},
+			{Data: []byte(utils.RandString(10000))},
 		}},
 		{[]store.Key{}},
 	}
@@ -118,8 +117,6 @@ func benchmarkEncodeKey(b *testing.B, enc store.Encoder) {
 	keys := make([]store.Key, 10_000)
 	b.ReportAllocs()
 	for i := range keys {
-		keys[i].LShard = byte(rand.Intn(256))
-		keys[i].TierID = ftypes.RealmID(rand.Int63())
 		keys[i].Data = []byte(utils.RandString(100))
 	}
 	b.ResetTimer()

@@ -5,9 +5,7 @@ import (
 )
 
 type Key struct {
-	LShard byte
-	TierID ftypes.RealmID
-	Data   []byte
+	Data []byte
 }
 
 type Fields [][]byte
