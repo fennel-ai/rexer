@@ -43,10 +43,9 @@ func Value(
 	}
 
 	ckey := makeCacheKey(name, key, kwargs)
-	v, ok := tier.PCache.Get(ckey)
 	// If already present in cache and no failure interpreting it, return directly
-	if ok {
-		if val, ok := fromCacheValue(tier, v); ok {
+	if v, ok := tier.PCache.Get(ckey, "AggValue"); ok {
+		if val, ok2 := fromCacheValue(tier, v); ok2 {
 			return val, nil
 		}
 	}
@@ -56,8 +55,7 @@ func Value(
 		return nil, err
 	}
 
-	ok = tier.PCache.SetWithTTL(ckey, val, int64(len(ckey)+len(val.String())), cacheValueDuration)
-	if !ok {
+	if !tier.PCache.SetWithTTL(ckey, val, int64(len(ckey)+len(val.String())), cacheValueDuration) {
 		tier.Logger.Debug(fmt.Sprintf("failed to set aggregate value in cache: key: '%s' value: '%s'", ckey, val.String()))
 	}
 	return val, nil
@@ -77,7 +75,7 @@ func BatchValue(ctx context.Context, tier tier.Tier, batch []aggregate.GetAggVal
 	j := 0
 	for i, req := range batch {
 		ckey := makeCacheKey(req.AggName, req.Key, req.Kwargs)
-		if v, ok := tier.PCache.Get(ckey); ok {
+		if v, ok := tier.PCache.Get(ckey, "AggValue"); ok {
 			if val, found := fromCacheValue(tier, v); found {
 				ret[i] = val
 				ptr[i] = -1

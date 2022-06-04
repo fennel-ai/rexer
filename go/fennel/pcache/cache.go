@@ -1,6 +1,8 @@
 package pcache
 
 import (
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promauto"
 	"time"
 
 	"github.com/dgraph-io/ristretto"
@@ -9,6 +11,22 @@ import (
 type PCache struct {
 	Cache *ristretto.Cache
 }
+
+var cacheHits = promauto.NewCounterVec(
+	prometheus.CounterOpts{
+		Name: "pcache_hits_namespace",
+		Help: "Number of P Cache hits per namespace.",
+	},
+	[]string{"namespace"},
+)
+
+var cacheMisses = promauto.NewCounterVec(
+	prometheus.CounterOpts{
+		Name: "pcache_misses_namespace",
+		Help: "Number of P Cache misses per namespace.",
+	},
+	[]string{"namespace"},
+)
 
 // NewPCache creates a new instance of PCache
 // https://pkg.go.dev/github.com/dgraph-io/ristretto#Config
@@ -39,8 +57,14 @@ func (pc *PCache) SetWithTTL(key, value interface{}, cost int64, ttl time.Durati
 	return pc.Cache.SetWithTTL(key, value, cost, ttl)
 }
 
-func (pc *PCache) Get(key interface{}) (interface{}, bool) {
-	return pc.Cache.Get(key)
+func (pc *PCache) Get(key interface{}, namespace string) (interface{}, bool) {
+	val, ok := pc.Cache.Get(key)
+	if ok {
+		cacheHits.WithLabelValues(namespace).Inc()
+	} else {
+		cacheMisses.WithLabelValues(namespace).Inc()
+	}
+	return val, ok
 }
 
 func (pc *PCache) GetTTL(key interface{}) (time.Duration, bool) {
