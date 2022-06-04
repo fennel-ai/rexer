@@ -6,7 +6,7 @@ import (
 	"fennel/lib/ftypes"
 	"fennel/lib/utils/binary"
 	"fennel/nitrous"
-	"fennel/nitrous/rpc"
+	rpc "fennel/nitrous/rpc/v1"
 	"fennel/resource"
 	"fmt"
 

@@ -2,7 +2,7 @@ package nitrous
 
 import (
 	"fennel/lib/ftypes"
-	"fennel/nitrous/rpc"
+	rpc "fennel/nitrous/rpc/v1"
 	"fmt"
 )
 
