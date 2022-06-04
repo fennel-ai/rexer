@@ -351,7 +351,7 @@ func (m server) Query(w http.ResponseWriter, req *http.Request) {
 		w.Write([]byte("{}"))
 		return
 	}
-
+	
 	data, err := readRequest(req)
 	cCtx, span := timer.Start(req.Context(), m.tier.ID, "server.Query")
 	defer span.Stop()

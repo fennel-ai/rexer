@@ -4,6 +4,7 @@ import (
 	"context"
 	"fennel/controller/action"
 	"fmt"
+	"os"
 	"time"
 
 	"fennel/controller/counter"
@@ -37,6 +38,10 @@ func InvalidateCache() {
 func Value(
 	ctx context.Context, tier tier.Tier, name ftypes.AggName, key value.Value, kwargs value.Dict,
 ) (value.Value, error) {
+	if disableCache, present := os.LookupEnv("DISABLE_CACHE"); present && disableCache == "1" {
+		return unitValue(ctx, tier, name, key, kwargs)
+	}
+
 	ckey := makeCacheKey(name, key, kwargs)
 	v, ok := tier.PCache.Get(ckey)
 	// If already present in cache and no failure interpreting it, return directly
@@ -50,6 +55,7 @@ func Value(
 	if err != nil {
 		return nil, err
 	}
+
 	ok = tier.PCache.SetWithTTL(ckey, val, int64(len(ckey)+len(val.String())), cacheValueDuration)
 	if !ok {
 		tier.Logger.Debug(fmt.Sprintf("failed to set aggregate value in cache: key: '%s' value: '%s'", ckey, val.String()))
@@ -58,6 +64,10 @@ func Value(
 }
 
 func BatchValue(ctx context.Context, tier tier.Tier, batch []aggregate.GetAggValueRequest) ([]value.Value, error) {
+	if disableCache, present := os.LookupEnv("DISABLE_CACHE"); present && disableCache == "1" {
+		return batchValue(ctx, tier, batch)
+	}
+
 	ret := make([]value.Value, len(batch))
 	uckeys := make([]string, len(batch))
 	uncachedReqs := make([]aggregate.GetAggValueRequest, len(batch))
