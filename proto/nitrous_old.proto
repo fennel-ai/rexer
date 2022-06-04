@@ -1,6 +1,6 @@
 syntax = "proto3";
 
-option go_package = "fennel/nitrous/rpc";
+option go_package = "fennel/nitrous/rpc/v1";
 
 service Nitrous {
   rpc GetMany (GetManyRequest) returns (GetManyResponse) {}
