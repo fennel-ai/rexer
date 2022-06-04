@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"os"
 	"time"
 
 	"fennel/controller/mock"
@@ -100,6 +101,16 @@ func (p profileOp) Apply(ctx context.Context, staticKwargs value.Dict, in operat
 
 func (p profileOp) getProfiles(ctx context.Context, profileKeys []libprofile.ProfileItemKey) ([]value.Value, error) {
 	res := make([]value.Value, len(profileKeys))
+	if disableCache, present := os.LookupEnv("DISABLE_CACHE"); present && disableCache == "1" {
+		vals, err := profile.GetBatch(ctx, p.tier, profileKeys)
+		if err != nil {
+			return nil, err
+		}
+		for i, v := range vals {
+			res[i] = v.Value
+		}
+	}
+
 	var uncached []libprofile.ProfileItemKey
 	var ptrs []int
 	// GetBatched returns nil for profiles that were not found

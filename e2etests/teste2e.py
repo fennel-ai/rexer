@@ -36,6 +36,7 @@ def tiered(wrapped):
         tier_id = random.randint(0, 1e8)
         env = os.environ.copy()
         env['TIER_ID'] = str(tier_id)
+        env['DISABLE_CACHE'] = '1'
         with TestTier(tier_id):
             env['METRICS_PORT'] = str(2436)
             env['PPROF_PORT'] = str(2437)
@@ -168,7 +169,7 @@ class TestEndToEnd(unittest.TestCase):
         expected3 = 1
         expected4 = 1
         time.sleep(10)
-        while slept < 180:
+        while slept < 120:
             found1 = c.aggregate_value('user_notif_open_rate_by_hour', [uid, b], {'duration': 7 * 24 * 3600})
             found2 = c.aggregate_value('user_notif_open_rate_by_category', [uid, category], {'duration': 7 * 24 * 3600})
             found3 = c.aggregate_value('content_num_reactions', content_id, {'duration': 7 * 24 * 3600})
@@ -183,7 +184,7 @@ class TestEndToEnd(unittest.TestCase):
         self.assertTrue(passed)
         print('all checks passed...')
 
-    
+
     @tiered
     def test_end_to_end(self):
         c = client.Client(URL)
@@ -273,9 +274,8 @@ class TestEndToEnd(unittest.TestCase):
         expected1 = 1
         expected2 = 21
         expected3 = expected4 = 20
-        kwargs = {"duration": 1200}
-        time.sleep(10)
-        while slept < 180:
+        while slept < 120:
+            print("sleeping for {} seconds".format(slept))
             found1 = c.aggregate_value(
                 'video_view_by_city_gender_agegroup',
                 [video_id, city, gender, age_group],
@@ -442,8 +442,7 @@ class TestEndToEnd(unittest.TestCase):
 
         slept = 0
         found = False
-        time.sleep(10)
-        while not found and slept < 180:
+        while not found and slept < 120:
             found_dict_query = rex.feature.extract(context, candidates, names=names)
             found_vec = op.std.collect(found_dict_query, fields=names)
             found_vec = c.query(found_vec)
@@ -455,7 +454,7 @@ class TestEndToEnd(unittest.TestCase):
                 time.sleep(5)
 
         self.assertTrue(found)
-    
+
 
 @unittest.skip
 class TestLoad(unittest.TestCase):
