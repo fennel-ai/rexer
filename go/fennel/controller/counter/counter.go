@@ -15,8 +15,7 @@ import (
 	"fennel/tier"
 )
 
-//var cacheValueDuration = 30 * time.Minute
-var cacheValueDuration = 15 * time.Second
+var cacheValueDuration = 30 * time.Minute
 
 func Value(
 	ctx context.Context, tier tier.Tier,

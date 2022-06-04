@@ -1,7 +1,6 @@
 package main
 
 import (
-	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -352,6 +351,7 @@ func (m server) Query(w http.ResponseWriter, req *http.Request) {
 		w.Write([]byte("{}"))
 		return
 	}
+	
 	data, err := readRequest(req)
 	cCtx, span := timer.Start(req.Context(), m.tier.ID, "server.Query")
 	defer span.Stop()
@@ -380,8 +380,6 @@ func (m server) Query(w http.ResponseWriter, req *http.Request) {
 	}
 	// execute the tree
 	executor := engine.NewQueryExecutor(bootarg.Create(m.tier))
-	cCtx = context.WithValue(cCtx, "disableCache",
-		false)
 	ret, err := executor.Exec(cCtx, tree, args)
 	if err != nil {
 		handleInternalServerError(w, "", err)

@@ -275,7 +275,6 @@ class TestEndToEnd(unittest.TestCase):
         expected2 = 21
         expected3 = expected4 = 20
         while slept < 120:
-            print("sleeping for {} seconds".format(slept))
             found1 = c.aggregate_value(
                 'video_view_by_city_gender_agegroup',
                 [video_id, city, gender, age_group],
