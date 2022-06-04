@@ -3,6 +3,9 @@ package layered
 import (
 	"fennel/lib/ftypes"
 	"fennel/store"
+	"fennel/test"
+	"fmt"
+	"io"
 	"time"
 )
 
@@ -49,6 +52,24 @@ type layered struct {
 	fillReqChan chan []store.KeyGroup
 }
 
+func (l layered) Restore(source io.Reader) error {
+	panic("implement me")
+}
+
+func (l layered) Teardown() error {
+	if !test.IsInTest() {
+		return fmt.Errorf("can not teardown a store outside of test mode")
+	}
+	if err := l.cache.Teardown(); err != nil {
+		return fmt.Errorf("could not tear down cache of store: %v", err)
+	}
+	return l.db.Teardown()
+}
+
+func (l layered) Backup(sink io.Writer, since uint64) (uint64, error) {
+	return l.db.Backup(sink, since)
+}
+
 func (l layered) Close() error {
 	if err := l.cache.Close(); err != nil {
 		return err
@@ -56,7 +77,7 @@ func (l layered) Close() error {
 	return l.db.Close()
 }
 
-func NewLayered(planeID ftypes.RealmID, cache, db store.Store) store.Store {
+func NewStore(planeID ftypes.RealmID, cache, db store.Store) store.Store {
 	ret := &layered{
 		planeID:     planeID,
 		cache:       cache,

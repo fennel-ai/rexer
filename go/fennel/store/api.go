@@ -2,6 +2,7 @@ package store
 
 import (
 	"fennel/lib/ftypes"
+	"io"
 )
 
 type Key struct {
@@ -44,6 +45,9 @@ type Store interface {
 	SetMany(keys []Key, vgs []ValGroup) error
 	DelMany(keys []KeyGroup) error
 	Close() error
+	Teardown() error
+	Backup(sink io.Writer, since uint64) (uint64, error)
+	Restore(source io.Reader) error
 }
 
 type Codec uint8

@@ -26,7 +26,7 @@ func TestLayered_Cache_DB(t *testing.T) {
 		cache, err := cache.NewStore(planeID, 1<<23, 1000, encoders.Default())
 		assert.NoError(t, err)
 
-		return NewLayered(planeID, cache, dbstore)
+		return NewStore(planeID, cache, dbstore)
 	}
 	store.TestStore(t, maker)
 }

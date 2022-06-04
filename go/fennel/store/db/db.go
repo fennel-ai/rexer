@@ -3,7 +3,10 @@ package db
 import (
 	"fennel/lib/ftypes"
 	"fennel/store"
+	"fennel/test"
 	"fmt"
+	"io"
+	"os"
 
 	"github.com/dgraph-io/badger/v3"
 )
@@ -13,7 +16,7 @@ const (
 	DB_BATCH_SIZE = 64
 )
 
-type DB struct {
+type badgerDB struct {
 	planeID  ftypes.RealmID
 	baseOpts badger.Options
 	enc      store.Encoder
@@ -21,7 +24,25 @@ type DB struct {
 	reqchan  chan getRequest
 }
 
-func (b DB) Close() error {
+func (b badgerDB) Restore(source io.Reader) error {
+	panic("implement me")
+}
+
+func (b badgerDB) Teardown() error {
+	if !test.IsInTest() {
+		return fmt.Errorf("can not teardown a store outside of tests")
+	}
+	if err := b.Close(); err != nil {
+		return err
+	}
+	return os.Remove(b.baseOpts.Dir)
+}
+
+func (b badgerDB) Backup(sink io.Writer, since uint64) (uint64, error) {
+	return b.db.Backup(sink, since)
+}
+
+func (b badgerDB) Close() error {
 	return b.db.Close()
 }
 
@@ -30,16 +51,16 @@ type getRequest struct {
 	resch     chan<- []store.Result
 }
 
-func NewStore(planeID ftypes.RealmID, dirname string, blockCacheBytes int64, enc store.Encoder) (DB, error) {
+func NewStore(planeID ftypes.RealmID, dirname string, blockCacheBytes int64, enc store.Encoder) (badgerDB, error) {
 	opts := badger.DefaultOptions(dirname)
 	opts = opts.WithLoggingLevel(badger.WARNING)
 	opts = opts.WithBlockCacheSize(blockCacheBytes)
 	reqchan := make(chan getRequest)
 	db, err := badger.Open(opts)
 	if err != nil {
-		return DB{}, err
+		return badgerDB{}, err
 	}
-	bs := DB{
+	bs := badgerDB{
 		planeID:  planeID,
 		baseOpts: opts,
 		db:       db,
@@ -53,17 +74,17 @@ func NewStore(planeID ftypes.RealmID, dirname string, blockCacheBytes int64, enc
 	return bs, nil
 }
 
-func (b DB) PlaneID() ftypes.RealmID {
+func (b badgerDB) PlaneID() ftypes.RealmID {
 	return b.planeID
 }
 
-func (b DB) Encoder() store.Encoder {
+func (b badgerDB) Encoder() store.Encoder {
 	return b.enc
 }
 
 // GetMany returns the values for the given keyGroups.
 // It parallelizes the requests to the underlying DB upto a degree of PARALLELISM
-func (b DB) GetMany(kgs []store.KeyGroup) ([]store.ValGroup, error) {
+func (b badgerDB) GetMany(kgs []store.KeyGroup) ([]store.ValGroup, error) {
 	// we try to spread across available workers while giving each worker
 	// a minimum of DB_BATCH_SIZE keyGroups to work on
 	batch := len(kgs) / PARALLELISM
@@ -101,7 +122,7 @@ func (b DB) GetMany(kgs []store.KeyGroup) ([]store.ValGroup, error) {
 // keyGroups and call SetMany on each batch.
 // NOTE: the calculation of "deltas" isn't done as part of write transaction and so this
 // assumes that the same keyGroups are not being written to in a separate goroutine.
-func (b DB) SetMany(keys []store.Key, deltas []store.ValGroup) error {
+func (b badgerDB) SetMany(keys []store.Key, deltas []store.ValGroup) error {
 	if len(keys) != len(deltas) {
 		return fmt.Errorf("key, value lengths do not match")
 	}
@@ -143,7 +164,7 @@ func (b DB) SetMany(keys []store.Key, deltas []store.ValGroup) error {
 	return b.commit(eks, deltas, nil)
 }
 
-func (b DB) DelMany(keyGroups []store.KeyGroup) error {
+func (b badgerDB) DelMany(keyGroups []store.KeyGroup) error {
 	eks, err := store.EncodeKeyManyKG(keyGroups, b.enc)
 	if err != nil {
 		return err
@@ -187,7 +208,7 @@ func (b DB) DelMany(keyGroups []store.KeyGroup) error {
 	return b.commit(setKeys, vgs, delKeys)
 }
 
-func (b DB) respond(reqchan chan getRequest) {
+func (b badgerDB) respond(reqchan chan getRequest) {
 	for {
 		req := <-reqchan
 		res := make([]store.Result, len(req.keyGroups))
@@ -224,7 +245,7 @@ func (b DB) respond(reqchan chan getRequest) {
 	}
 }
 
-func (b DB) commit(eks [][]byte, vgs []store.ValGroup, delks [][]byte) error {
+func (b badgerDB) commit(eks [][]byte, vgs []store.ValGroup, delks [][]byte) error {
 	evs, err := store.EncodeValMany(vgs, b.enc)
 	if err != nil {
 		return err
@@ -257,4 +278,4 @@ func (b DB) commit(eks [][]byte, vgs []store.ValGroup, delks [][]byte) error {
 	return wb.Flush()
 }
 
-var _ store.Store = DB{}
+var _ store.Store = badgerDB{}
