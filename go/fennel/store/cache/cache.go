@@ -19,7 +19,7 @@ const (
 	parallelism = 64
 )
 
-func NewStore(planeId ftypes.RealmID, maxSize, avgSize uint64, enc store.Encoder) (rcache, error) {
+func NewStore(planeId ftypes.RealmID, maxSize, avgSize uint64, enc store.Encoder) (*rcache, error) {
 	config := &ristretto.Config{
 		BufferItems: 64,
 		NumCounters: 10 * int64(maxSize/avgSize),
@@ -28,7 +28,7 @@ func NewStore(planeId ftypes.RealmID, maxSize, avgSize uint64, enc store.Encoder
 	}
 	cache, err := ristretto.NewCache(config)
 	if err != nil {
-		return rcache{}, err
+		return nil, err
 	}
 	reqchan := make(chan getRequest, db.PARALLELISM)
 	ret := rcache{
@@ -41,7 +41,7 @@ func NewStore(planeId ftypes.RealmID, maxSize, avgSize uint64, enc store.Encoder
 	for i := 0; i < db.PARALLELISM; i++ {
 		go ret.respond(reqchan)
 	}
-	return ret, nil
+	return &ret, nil
 }
 
 type rcache struct {
@@ -51,37 +51,37 @@ type rcache struct {
 	reqchan chan getRequest
 }
 
-func (c rcache) Restore(source io.Reader) error {
+func (c *rcache) Restore(source io.Reader) error {
 	panic("implement me")
 }
 
-func (c rcache) Teardown() error {
+func (c *rcache) Teardown() error {
 	if !test.IsInTest() {
 		return fmt.Errorf("can not teardown a store outside of test mode")
 	}
 	return c.Close()
 }
 
-func (c rcache) Backup(sink io.Writer, since uint64) (uint64, error) {
+func (c *rcache) Backup(sink io.Writer, since uint64) (uint64, error) {
 	return 0, fmt.Errorf("can not backup a cache store")
 }
 
-func (c rcache) Encoder() store.Encoder {
+func (c *rcache) Encoder() store.Encoder {
 	return c.enc
 }
 
-func (c rcache) Close() error {
+func (c *rcache) Close() error {
 	c.cache.Close()
 	return nil
 }
 
-func (c rcache) PlaneID() ftypes.RealmID {
+func (c *rcache) PlaneID() ftypes.RealmID {
 	return c.planeID
 }
 
 // GetMany returns the values for the given keyGroups.
 // It parallelizes the requests to the underlying cache upto a degree of parallelism
-func (c rcache) GetMany(keys []store.KeyGroup) ([]store.ValGroup, error) {
+func (c *rcache) GetMany(keys []store.KeyGroup) ([]store.ValGroup, error) {
 	// we try to spread across available workers while giving each worker
 	// a minimum of DB_BATCH_SIZE keyGroups to work on
 	batch := len(keys) / parallelism
@@ -117,7 +117,7 @@ func (c rcache) GetMany(keys []store.KeyGroup) ([]store.ValGroup, error) {
 // SetMany sets many keyGroups in a single transaction. Since these are all set in a single
 // transaction, there is no parallelism. If parallelism is desired, create batches of
 // keyGroups and call SetMany on each batch.
-func (c rcache) SetMany(keys []store.Key, deltas []store.ValGroup) error {
+func (c *rcache) SetMany(keys []store.Key, deltas []store.ValGroup) error {
 	if len(keys) != len(deltas) {
 		return fmt.Errorf("key, value lengths do not match")
 	}
@@ -147,7 +147,7 @@ func (c rcache) SetMany(keys []store.Key, deltas []store.ValGroup) error {
 	return c.commit(eks, deltas, nil)
 }
 
-func (c rcache) DelMany(keyGroups []store.KeyGroup) error {
+func (c *rcache) DelMany(keyGroups []store.KeyGroup) error {
 	eks, err := store.EncodeKeyManyKG(keyGroups, c.enc)
 	if err != nil {
 		return err
@@ -184,7 +184,7 @@ func (c rcache) DelMany(keyGroups []store.KeyGroup) error {
 	return c.commit(setKeys, vgs, delKeys)
 }
 
-func (c rcache) commit(eks [][]byte, vgs []store.ValGroup, delks [][]byte) error {
+func (c *rcache) commit(eks [][]byte, vgs []store.ValGroup, delks [][]byte) error {
 	evs, err := store.EncodeValMany(vgs, c.enc)
 	if err != nil {
 		return err
@@ -211,7 +211,7 @@ type getRequest struct {
 	resch     chan<- []store.Result
 }
 
-func (c rcache) respond(reqchan chan getRequest) {
+func (c *rcache) respond(reqchan chan getRequest) {
 	for {
 		req := <-reqchan
 		res := make([]store.Result, len(req.keyGroups))
