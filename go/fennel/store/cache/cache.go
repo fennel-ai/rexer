@@ -17,7 +17,7 @@ const (
 	parallelism = 64
 )
 
-func NewCache(planeId ftypes.RealmID, maxSize, avgSize uint64, enc store.Encoder) (Cache, error) {
+func NewStore(planeId ftypes.RealmID, maxSize, avgSize uint64, enc store.Encoder) (Cache, error) {
 	config := &ristretto.Config{
 		BufferItems: 64,
 		NumCounters: 10 * int64(maxSize/avgSize),
