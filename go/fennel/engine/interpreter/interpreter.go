@@ -3,6 +3,7 @@ package interpreter
 import (
 	"context"
 	"fmt"
+	"go.opentelemetry.io/otel/attribute"
 	"strconv"
 	"strings"
 
@@ -208,8 +209,11 @@ func (i *Interpreter) VisitOpcall(operands []ast.Ast, vars []string, namespace, 
 	if len(vars) > 0 && len(operands) != len(vars) {
 		return nil, fmt.Errorf("operator '%s.%s' can not be applied: different number of operands and variables", namespace, name)
 	}
+	cCtx, span := otel.Tracer("fennel").Start(i.ctx, fmt.Sprintf("%s.%s", namespace, name))
+	defer span.End()
+
 	// eval all operands
-	vals, err := i.visitAll(operands)
+	vals, err := i.visitAll(operands, cCtx)
 	if err != nil {
 		return value.Nil, err
 	}
@@ -247,8 +251,6 @@ func (i *Interpreter) VisitOpcall(operands []ast.Ast, vars []string, namespace, 
 	// typing of input / context kwargs is verified element by element inside the iter
 	outtable := value.NewList()
 	outtable.Grow(inputTable.Len())
-	cCtx, span := otel.Tracer("fennel").Start(i.ctx, fmt.Sprintf("%s.%s", namespace, name))
-	defer span.End()
 	if err = op.Apply(cCtx, staticKwargs, inputTable.Iter(), &outtable); err != nil {
 		return value.Nil, err
 	}
@@ -395,24 +397,31 @@ func (i *Interpreter) getOperator(namespace, name string) (operators.Operator, e
 	return ret, err
 }
 
-func (i *Interpreter) visitAll(trees []ast.Ast) ([]value.Value, error) {
-	vals := make([]value.Value, len(trees))
+func (i *Interpreter) visitAll(operands []ast.Ast, ctx context.Context) ([]value.Value, error) {
+	cCtx, span := otel.Tracer("fennel").Start(ctx, "operandsVisit")
+	defer span.End()
+	span.SetAttributes(attribute.Int("numSubTrees", len(operands)))
+
+	vals := make([]value.Value, len(operands))
 	var err error
-	if len(trees) == 1 {
-		vals[0], err = trees[0].AcceptValue(i)
+	if len(operands) == 1 {
+		// Create a new interpreter to pass the new context used in the trace
+		subtreeInterpreter := Interpreter{i.env, i.bootargs, cCtx}
+		vals[0], err = operands[0].AcceptValue(&subtreeInterpreter)
 	} else {
 		// Eval trees in parallel if more than 1.
 		eg := errgroup.Group{}
-		for j := range trees {
+		for j := range operands {
 			idx := j
+			c := cCtx
 			eg.Go(func() error {
 				// Copy interpreter here, so the go-routines don't share the
 				// same Env except the current one.
-				c, span := otel.Tracer("fennel").Start(i.ctx, fmt.Sprintf("subtree_%d", idx))
-				defer span.End()
-				subtreeInterpreter := Interpreter{i.env, i.bootargs, c}
+				subtreeCtx, subtreeSpan := otel.Tracer("fennel").Start(c, fmt.Sprintf("subtree_%d", idx))
+				defer subtreeSpan.End()
+				subtreeInterpreter := Interpreter{i.env, i.bootargs, subtreeCtx}
 				var err error
-				vals[idx], err = trees[idx].AcceptValue(&subtreeInterpreter)
+				vals[idx], err = operands[idx].AcceptValue(&subtreeInterpreter)
 				return err
 			})
 		}
