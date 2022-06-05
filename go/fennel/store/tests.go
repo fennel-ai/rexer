@@ -35,6 +35,11 @@ func BenchmarkStore(b *testing.B, maker func(b *testing.B) Store) {
 		defer store.Teardown()
 		benchmarkGetSet(b, store, 10000, 100, 100, 100, 1000)
 	})
+	b.Run("basic:keys_num_10000_sz_100:fields_num_100:vals_sz_100:gets_1000", func(b *testing.B) {
+		store := maker(b)
+		defer store.Teardown()
+		benchmarkGetSet(b, store, 10000, 10, 100, 100, 1000)
+	})
 }
 
 func testBasic(t *testing.T, store Store) {
