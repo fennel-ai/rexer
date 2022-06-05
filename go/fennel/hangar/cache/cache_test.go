@@ -1,9 +1,9 @@
 package cache
 
 import (
+	"fennel/hangar"
+	"fennel/hangar/encoders"
 	"fennel/lib/ftypes"
-	"fennel/store"
-	"fennel/store/encoders"
 	"math/rand"
 	"testing"
 	"time"
@@ -14,21 +14,21 @@ import (
 func TestCache(t *testing.T) {
 	rand.Seed(time.Now().UnixNano())
 	planeID := ftypes.RealmID(rand.Uint32())
-	maker := func(t *testing.T) store.Store {
+	maker := func(t *testing.T) hangar.Hangar {
 		// 80 MB cache with avg size of 100 bytes
-		cache, err := NewStore(planeID, 1<<23, 1000, encoders.Default())
+		cache, err := NewHangar(planeID, 1<<23, 1000, encoders.Default())
 		assert.NoError(t, err)
 		return cache
 	}
-	store.TestStore(t, maker)
+	hangar.TestStore(t, maker)
 }
 func BenchmarkCacheStore(b *testing.B) {
 	rand.Seed(time.Now().UnixNano())
-	maker := func(t *testing.B) store.Store {
+	maker := func(t *testing.B) hangar.Hangar {
 		planeID := ftypes.RealmID(rand.Uint32())
-		cache, err := NewStore(planeID, 1<<23, 1000, encoders.Default())
+		cache, err := NewHangar(planeID, 1<<23, 1000, encoders.Default())
 		assert.NoError(t, err)
 		return cache
 	}
-	store.BenchmarkStore(b, maker)
+	hangar.BenchmarkStore(b, maker)
 }

@@ -1,4 +1,4 @@
-package store
+package hangar
 
 import (
 	"fennel/lib/ftypes"
@@ -38,7 +38,7 @@ type Encoder interface {
 	ValLenHint(vg ValGroup) int
 }
 
-type Store interface {
+type Hangar interface {
 	PlaneID() ftypes.RealmID
 	Encoder() Encoder
 	GetMany(kgs []KeyGroup) ([]ValGroup, error)

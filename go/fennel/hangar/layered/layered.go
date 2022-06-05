@@ -1,8 +1,8 @@
 package layered
 
 import (
+	"fennel/hangar"
 	"fennel/lib/ftypes"
-	"fennel/store"
 	"fennel/test"
 	"fmt"
 	"io"
@@ -47,9 +47,9 @@ const (
 
 type layered struct {
 	planeID     ftypes.RealmID
-	cache       store.Store
-	db          store.Store
-	fillReqChan chan []store.KeyGroup
+	cache       hangar.Hangar
+	db          hangar.Hangar
+	fillReqChan chan []hangar.KeyGroup
 }
 
 func (l *layered) Restore(source io.Reader) error {
@@ -78,19 +78,19 @@ func (l *layered) Close() error {
 	return l.db.Close()
 }
 
-func NewStore(planeID ftypes.RealmID, cache, db store.Store) store.Store {
+func NewHangar(planeID ftypes.RealmID, cache, db hangar.Hangar) hangar.Hangar {
 	ret := &layered{
 		planeID:     planeID,
 		cache:       cache,
 		db:          db,
-		fillReqChan: make(chan []store.KeyGroup, 10*FILL_BATCH_SIZE),
+		fillReqChan: make(chan []hangar.KeyGroup, 10*FILL_BATCH_SIZE),
 	}
 	// TODO: if needed, shard the filling process
 	go ret.processFillReqs()
 	return ret
 }
 
-func (l *layered) DelMany(keys []store.KeyGroup) error {
+func (l *layered) DelMany(keys []hangar.KeyGroup) error {
 	err := l.cache.DelMany(keys)
 	if err != nil {
 		return err
@@ -106,16 +106,16 @@ func (l *layered) PlaneID() ftypes.RealmID {
 	return l.planeID
 }
 
-func (l *layered) Encoder() store.Encoder {
+func (l *layered) Encoder() hangar.Encoder {
 	return l.cache.Encoder()
 }
 
-func (l *layered) GetMany(kgs []store.KeyGroup) ([]store.ValGroup, error) {
+func (l *layered) GetMany(kgs []hangar.KeyGroup) ([]hangar.ValGroup, error) {
 	results, err := l.cache.GetMany(kgs)
 	if err != nil {
 		return nil, err
 	}
-	notfound := make([]store.KeyGroup, 0, len(kgs))
+	notfound := make([]hangar.KeyGroup, 0, len(kgs))
 	ptr := make([]int, len(kgs))
 
 	for i, cval := range results {
@@ -124,8 +124,8 @@ func (l *layered) GetMany(kgs []store.KeyGroup) ([]store.ValGroup, error) {
 			for _, field := range cval.Fields {
 				found[string(field)] = struct{}{}
 			}
-			var kg store.KeyGroup
-			kg.Fields = make(store.Fields, 0, len(kgs[i].Fields)-len(cval.Fields))
+			var kg hangar.KeyGroup
+			kg.Fields = make(hangar.Fields, 0, len(kgs[i].Fields)-len(cval.Fields))
 			for _, field := range kgs[i].Fields {
 				if _, ok := found[string(field)]; !ok {
 					kg.Fields = append(kg.Fields, field)
@@ -146,7 +146,7 @@ func (l *layered) GetMany(kgs []store.KeyGroup) ([]store.ValGroup, error) {
 	if err != nil {
 		return results, err
 	}
-	tofill := make([]store.KeyGroup, 0, len(notfound))
+	tofill := make([]hangar.KeyGroup, 0, len(notfound))
 	for i, dbval := range dbvals {
 		if len(dbval.Fields) > 0 {
 			results[i].Update(dbval)
@@ -161,8 +161,8 @@ func (l *layered) GetMany(kgs []store.KeyGroup) ([]store.ValGroup, error) {
 	return results, nil
 }
 
-func (l *layered) SetMany(keys []store.Key, vgs []store.ValGroup) error {
-	kgs := make([]store.KeyGroup, len(keys))
+func (l *layered) SetMany(keys []hangar.Key, vgs []hangar.ValGroup) error {
+	kgs := make([]hangar.KeyGroup, len(keys))
 	for i, key := range keys {
 		kgs[i].Prefix = key
 		kgs[i].Fields = vgs[i].Fields
@@ -176,7 +176,7 @@ func (l *layered) SetMany(keys []store.Key, vgs []store.ValGroup) error {
 	return l.fill(kgs)
 }
 
-func (l *layered) fill(kgs []store.KeyGroup) error {
+func (l *layered) fill(kgs []hangar.KeyGroup) error {
 	for i := 0; i < len(kgs); i += FILL_BATCH_SIZE {
 		end := i + FILL_BATCH_SIZE
 		if end > len(kgs) {
@@ -188,7 +188,7 @@ func (l *layered) fill(kgs []store.KeyGroup) error {
 }
 
 func (l *layered) processFillReqs() {
-	arr := [2 * FILL_BATCH_SIZE]store.KeyGroup{}
+	arr := [2 * FILL_BATCH_SIZE]hangar.KeyGroup{}
 	for {
 		batch := arr[:0]
 		batch = append(batch, <-l.fillReqChan...)
@@ -206,8 +206,8 @@ func (l *layered) processFillReqs() {
 		if err != nil {
 			continue
 		}
-		keys := make([]store.Key, 0, len(batch))
-		valgroups := make([]store.ValGroup, 0, len(batch))
+		keys := make([]hangar.Key, 0, len(batch))
+		valgroups := make([]hangar.ValGroup, 0, len(batch))
 
 		for i, dbval := range dbvals {
 			if len(dbval.Fields) == 0 {
@@ -221,4 +221,4 @@ func (l *layered) processFillReqs() {
 	}
 }
 
-var _ store.Store = (*layered)(nil)
+var _ hangar.Hangar = (*layered)(nil)

@@ -1,31 +1,31 @@
 package encoders
 
 import (
+	"fennel/hangar"
 	"fennel/lib/utils"
-	"fennel/store"
 	"math/rand"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 )
 
-func testEncodeKey(t *testing.T, enc store.Encoder) {
+func testEncodeKey(t *testing.T, enc hangar.Encoder) {
 	scenarios := []struct {
-		keys []store.Key
+		keys []hangar.Key
 	}{
-		{[]store.Key{
+		{[]hangar.Key{
 			{Data: []byte("hello")},
 			{Data: []byte("great")},
 			{Data: []byte{}},
 			{Data: []byte(utils.RandString(10000))},
 		}},
-		{[]store.Key{}},
+		{[]hangar.Key{}},
 	}
 	for _, scene := range scenarios {
-		buf, err := store.EncodeKeyMany(scene.keys, enc)
+		buf, err := hangar.EncodeKeyMany(scene.keys, enc)
 		assert.NoError(t, err)
 		for i := range scene.keys {
-			var k store.Key
+			var k hangar.Key
 			_, err := enc.DecodeKey(buf[i], &k)
 			assert.NoError(t, err)
 			assert.Equal(t, scene.keys[i], k)
@@ -41,15 +41,15 @@ func testEncodeKey(t *testing.T, enc store.Encoder) {
 	}
 }
 
-func testEncodeVal(t *testing.T, enc store.Encoder) {
+func testEncodeVal(t *testing.T, enc hangar.Encoder) {
 	scenarios := []struct {
-		vals  []store.ValGroup
+		vals  []hangar.ValGroup
 		reuse bool
 		err   bool
 	}{
-		{[]store.ValGroup{}, false, false},
-		{[]store.ValGroup{}, true, false},
-		{[]store.ValGroup{
+		{[]hangar.ValGroup{}, false, false},
+		{[]hangar.ValGroup{}, true, false},
+		{[]hangar.ValGroup{
 			{
 				Expiry: 1232,
 				Fields: [][]byte{[]byte("foo"), []byte("bar"), []byte("foo"), []byte("baz"), []byte("foo"), []byte("qux")},
@@ -62,7 +62,7 @@ func testEncodeVal(t *testing.T, enc store.Encoder) {
 			},
 		}, true, false,
 		},
-		{[]store.ValGroup{
+		{[]hangar.ValGroup{
 			{
 				Expiry: 0,
 				Fields: [][]byte{},
@@ -75,7 +75,7 @@ func testEncodeVal(t *testing.T, enc store.Encoder) {
 			},
 		}, true, true,
 		},
-		{[]store.ValGroup{
+		{[]hangar.ValGroup{
 			{
 				Expiry: 0,
 				Fields: [][]byte{},
@@ -90,13 +90,13 @@ func testEncodeVal(t *testing.T, enc store.Encoder) {
 		},
 	}
 	for _, scene := range scenarios {
-		buf, err := store.EncodeValMany(scene.vals, enc)
+		buf, err := hangar.EncodeValMany(scene.vals, enc)
 		if scene.err {
 			assert.Error(t, err)
 		} else {
 			assert.NoError(t, err)
 			for i := range scene.vals {
-				var v store.ValGroup
+				var v hangar.ValGroup
 				_, err := enc.DecodeVal(buf[i], &v, scene.reuse)
 				assert.NoError(t, err)
 				assert.Equal(t, scene.vals[i], v)
@@ -113,23 +113,23 @@ func testEncodeVal(t *testing.T, enc store.Encoder) {
 	}
 }
 
-func benchmarkEncodeKey(b *testing.B, enc store.Encoder) {
-	keys := make([]store.Key, 10_000)
+func benchmarkEncodeKey(b *testing.B, enc hangar.Encoder) {
+	keys := make([]hangar.Key, 10_000)
 	b.ReportAllocs()
 	for i := range keys {
 		keys[i].Data = []byte(utils.RandString(100))
 	}
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		_, err := store.EncodeKeyMany(keys, enc)
+		_, err := hangar.EncodeKeyMany(keys, enc)
 		if err != nil {
 			panic(err)
 		}
 	}
 }
 
-func benchmarkEncodeVals(b *testing.B, enc store.Encoder, numVG, numFields, szFields, szValues int) {
-	vgs := make([]store.ValGroup, numVG)
+func benchmarkEncodeVals(b *testing.B, enc hangar.Encoder, numVG, numFields, szFields, szValues int) {
+	vgs := make([]hangar.ValGroup, numVG)
 	b.ReportAllocs()
 	for i := range vgs {
 		vgs[i].Expiry = int64(rand.Intn(30 * 24 * 3600))
@@ -144,7 +144,7 @@ func benchmarkEncodeVals(b *testing.B, enc store.Encoder, numVG, numFields, szFi
 	}
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		_, err := store.EncodeValMany(vgs, enc)
+		_, err := hangar.EncodeValMany(vgs, enc)
 		if err != nil {
 			panic(err)
 		}

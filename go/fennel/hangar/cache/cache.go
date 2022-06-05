@@ -1,9 +1,8 @@
 package cache
 
 import (
+	"fennel/hangar"
 	"fennel/lib/ftypes"
-	"fennel/store"
-	"fennel/store/db"
 	"fennel/test"
 	"fmt"
 	"io"
@@ -19,7 +18,7 @@ const (
 	parallelism = 64
 )
 
-func NewStore(planeId ftypes.RealmID, maxSize, avgSize uint64, enc store.Encoder) (*rcache, error) {
+func NewHangar(planeId ftypes.RealmID, maxSize, avgSize uint64, enc hangar.Encoder) (*rcache, error) {
 	config := &ristretto.Config{
 		BufferItems: 64,
 		NumCounters: 10 * int64(maxSize/avgSize),
@@ -30,7 +29,7 @@ func NewStore(planeId ftypes.RealmID, maxSize, avgSize uint64, enc store.Encoder
 	if err != nil {
 		return nil, err
 	}
-	reqchan := make(chan getRequest, db.PARALLELISM)
+	reqchan := make(chan getRequest, parallelism)
 	ret := rcache{
 		planeID: planeId,
 		cache:   cache,
@@ -38,14 +37,14 @@ func NewStore(planeId ftypes.RealmID, maxSize, avgSize uint64, enc store.Encoder
 		enc:     enc,
 	}
 	// spin up lots of goroutines to handle requests in parallel
-	for i := 0; i < db.PARALLELISM; i++ {
+	for i := 0; i < parallelism; i++ {
 		go ret.respond(reqchan)
 	}
 	return &ret, nil
 }
 
 type rcache struct {
-	enc     store.Encoder
+	enc     hangar.Encoder
 	planeID ftypes.RealmID
 	cache   *ristretto.Cache
 	reqchan chan getRequest
@@ -66,7 +65,7 @@ func (c *rcache) Backup(sink io.Writer, since uint64) (uint64, error) {
 	return 0, fmt.Errorf("can not backup a cache store")
 }
 
-func (c *rcache) Encoder() store.Encoder {
+func (c *rcache) Encoder() hangar.Encoder {
 	return c.enc
 }
 
@@ -81,27 +80,27 @@ func (c *rcache) PlaneID() ftypes.RealmID {
 
 // GetMany returns the values for the given keyGroups.
 // It parallelizes the requests to the underlying cache upto a degree of parallelism
-func (c *rcache) GetMany(keys []store.KeyGroup) ([]store.ValGroup, error) {
+func (c *rcache) GetMany(keys []hangar.KeyGroup) ([]hangar.ValGroup, error) {
 	// we try to spread across available workers while giving each worker
 	// a minimum of DB_BATCH_SIZE keyGroups to work on
 	batch := len(keys) / parallelism
 	if batch < batchSize {
 		batch = batchSize
 	}
-	chans := make([]chan []store.Result, 0, len(keys)/batch)
+	chans := make([]chan []hangar.Result, 0, len(keys)/batch)
 	for i := 0; i < len(keys); i += batch {
 		end := i + batch
 		if end > len(keys) {
 			end = len(keys)
 		}
-		resch := make(chan []store.Result, 1)
+		resch := make(chan []hangar.Result, 1)
 		chans = append(chans, resch)
 		c.reqchan <- getRequest{
 			keyGroups: keys[i:end],
 			resch:     resch,
 		}
 	}
-	results := make([]store.ValGroup, 0, len(keys))
+	results := make([]hangar.ValGroup, 0, len(keys))
 	for _, ch := range chans {
 		subresults := <-ch
 		for _, res := range subresults {
@@ -117,18 +116,18 @@ func (c *rcache) GetMany(keys []store.KeyGroup) ([]store.ValGroup, error) {
 // SetMany sets many keyGroups in a single transaction. Since these are all set in a single
 // transaction, there is no parallelism. If parallelism is desired, create batches of
 // keyGroups and call SetMany on each batch.
-func (c *rcache) SetMany(keys []store.Key, deltas []store.ValGroup) error {
+func (c *rcache) SetMany(keys []hangar.Key, deltas []hangar.ValGroup) error {
 	if len(keys) != len(deltas) {
 		return fmt.Errorf("key, value lengths do not match")
 	}
 	// since we may only be setting some indices of the keyGroups, we need to
 	// read existing deltas, merge them, and get the full deltas to be written
-	eks, err := store.EncodeKeyMany(keys, c.enc)
+	eks, err := hangar.EncodeKeyMany(keys, c.enc)
 	if err != nil {
 		return nil
 	}
 	for i, ek := range eks {
-		var oldvg store.ValGroup
+		var oldvg hangar.ValGroup
 		val, found := c.cache.Get(ek)
 		if found {
 			asbytes, ok := val.([]byte)
@@ -147,13 +146,13 @@ func (c *rcache) SetMany(keys []store.Key, deltas []store.ValGroup) error {
 	return c.commit(eks, deltas, nil)
 }
 
-func (c *rcache) DelMany(keyGroups []store.KeyGroup) error {
-	eks, err := store.EncodeKeyManyKG(keyGroups, c.enc)
+func (c *rcache) DelMany(keyGroups []hangar.KeyGroup) error {
+	eks, err := hangar.EncodeKeyManyKG(keyGroups, c.enc)
 	if err != nil {
 		return err
 	}
 	setKeys := make([][]byte, 0, len(keyGroups))
-	vgs := make([]store.ValGroup, 0, len(keyGroups))
+	vgs := make([]hangar.ValGroup, 0, len(keyGroups))
 	delKeys := make([][]byte, 0, len(keyGroups))
 	for i, ek := range eks {
 		cval, found := c.cache.Get(ek)
@@ -169,7 +168,7 @@ func (c *rcache) DelMany(keyGroups []store.KeyGroup) error {
 			c.cache.Del(ek)
 			continue
 		}
-		var asvg store.ValGroup
+		var asvg hangar.ValGroup
 		if _, err := c.enc.DecodeVal(asbytes, &asvg, true); err != nil {
 			return err
 		}
@@ -184,14 +183,14 @@ func (c *rcache) DelMany(keyGroups []store.KeyGroup) error {
 	return c.commit(setKeys, vgs, delKeys)
 }
 
-func (c *rcache) commit(eks [][]byte, vgs []store.ValGroup, delks [][]byte) error {
-	evs, err := store.EncodeValMany(vgs, c.enc)
+func (c *rcache) commit(eks [][]byte, vgs []hangar.ValGroup, delks [][]byte) error {
+	evs, err := hangar.EncodeValMany(vgs, c.enc)
 	if err != nil {
 		return err
 	}
 	// now we have all the deltas, we can set them
 	for i, ek := range eks {
-		ttl, alive := store.ExpiryToTTL(vgs[i].Expiry)
+		ttl, alive := hangar.ExpiryToTTL(vgs[i].Expiry)
 		if !alive {
 			c.cache.Del(ek)
 		} else {
@@ -204,21 +203,21 @@ func (c *rcache) commit(eks [][]byte, vgs []store.ValGroup, delks [][]byte) erro
 	return nil
 }
 
-var _ store.Store = &rcache{}
+var _ hangar.Hangar = &rcache{}
 
 type getRequest struct {
-	keyGroups []store.KeyGroup
-	resch     chan<- []store.Result
+	keyGroups []hangar.KeyGroup
+	resch     chan<- []hangar.Result
 }
 
 func (c *rcache) respond(reqchan chan getRequest) {
 	for {
 		req := <-reqchan
-		res := make([]store.Result, len(req.keyGroups))
-		eks, err := store.EncodeKeyManyKG(req.keyGroups, c.enc)
+		res := make([]hangar.Result, len(req.keyGroups))
+		eks, err := hangar.EncodeKeyManyKG(req.keyGroups, c.enc)
 		if err != nil {
 			for i := range res {
-				res[i] = store.Result{
+				res[i] = hangar.Result{
 					Err: fmt.Errorf("error encoding key: %v", err),
 				}
 			}
