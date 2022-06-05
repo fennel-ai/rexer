@@ -141,14 +141,14 @@ func (l *layered) GetMany(kgs []store.KeyGroup) ([]store.ValGroup, error) {
 	if len(notfound) == 0 {
 		return results, nil
 	}
-	tofill := make([]store.KeyGroup, 0, len(notfound))
 	dbvals, err := l.db.GetMany(notfound)
 	if err != nil {
 		return results, err
 	}
+	tofill := make([]store.KeyGroup, 0, len(notfound))
 	for i, dbval := range dbvals {
-		results[i].Update(dbval)
-		if len(results[i].Fields) > 0 {
+		if len(dbval.Fields) > 0 {
+			results[i].Update(dbval)
 			tofill = append(tofill, notfound[i])
 		}
 	}
