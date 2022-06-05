@@ -47,10 +47,18 @@ func (vg *ValGroup) Update(other ValGroup) error {
 			vg.Values[i] = nv
 		}
 	}
-	for _, field := range other.Fields {
-		if _, ok := written[string(field)]; !ok {
-			vg.Fields = append(vg.Fields, field)
-			vg.Values = append(vg.Values, newData[string(field)])
+	// extend the size of fields/values by the needed amount
+	tobeWritten := len(other.Fields) - len(written)
+	if tobeWritten > 0 {
+		idx := len(vg.Fields)
+		vg.Fields = append(vg.Fields, make(Fields, tobeWritten)...)
+		vg.Values = append(vg.Values, make(Values, tobeWritten)...)
+		for i, field := range other.Fields {
+			if _, ok := written[string(field)]; !ok {
+				vg.Fields[idx] = field
+				vg.Values[idx] = other.Values[i]
+				idx += 1
+			}
 		}
 	}
 	// update the expires unless other's expires is negative, in which case
