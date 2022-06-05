@@ -10,6 +10,7 @@ import (
 	"fennel/engine/operators"
 	"fennel/lib/value"
 
+	"go.opentelemetry.io/otel"
 	"golang.org/x/sync/errgroup"
 )
 
@@ -246,7 +247,9 @@ func (i *Interpreter) VisitOpcall(operands []ast.Ast, vars []string, namespace, 
 	// typing of input / context kwargs is verified element by element inside the iter
 	outtable := value.NewList()
 	outtable.Grow(inputTable.Len())
-	if err = op.Apply(i.ctx, staticKwargs, inputTable.Iter(), &outtable); err != nil {
+	cCtx, span := otel.Tracer("fennel").Start(i.ctx, fmt.Sprintf("%s.%s", namespace, name))
+	defer span.End()
+	if err = op.Apply(cCtx, staticKwargs, inputTable.Iter(), &outtable); err != nil {
 		return value.Nil, err
 	}
 	return outtable, nil
@@ -405,7 +408,9 @@ func (i *Interpreter) visitAll(trees []ast.Ast) ([]value.Value, error) {
 			eg.Go(func() error {
 				// Copy interpreter here, so the go-routines don't share the
 				// same Env except the current one.
-				subtreeInterpreter := Interpreter(*i)
+				c, span := otel.Tracer("fennel").Start(i.ctx, fmt.Sprintf("subtree_%d", idx))
+				defer span.End()
+				subtreeInterpreter := Interpreter{i.env, i.bootargs, c}
 				var err error
 				vals[idx], err = trees[idx].AcceptValue(&subtreeInterpreter)
 				return err
