@@ -38,7 +38,7 @@ func BenchmarkLayered_GetMany(b *testing.B) {
 		planeID := ftypes.RealmID(rand.Uint32())
 		dirname := fmt.Sprintf("/tmp/badger/%d", planeID)
 		// 160MB block cache
-		dbstore, err := db.NewStore(planeID, dirname, 64*1<<20, encoders.Default())
+		dbstore, err := db.NewStore(planeID, dirname, 1<<20, encoders.Default())
 		assert.NoError(t, err)
 		// 80 MB cache with avg size of 100 bytes
 		cache, err := cache.NewStore(planeID, 1<<23, 1000, encoders.Default())
