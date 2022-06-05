@@ -307,6 +307,8 @@ func (i *Interpreter) getContextKwargs(op operators.Operator, trees *ast.Dict, i
 	varvals := make([]value.Value, len(vars))
 	// allocate all the values of all operands together
 	data := make([]value.Value, len(inputs)*inputs[0].Len())
+	// allocate dictionary for holding kwarg values.
+	kwargs := value.NewDict(make(map[string]value.Value, len(sig.ContextKwargs)))
 	ptr := 0
 	ret.Grow(inputs[0].Len())
 	for j := 0; j < inputs[0].Len(); j++ {
@@ -319,12 +321,10 @@ func (i *Interpreter) getContextKwargs(op operators.Operator, trees *ast.Dict, i
 			data[ptr] = val
 			ptr++
 			// set all the lambda variables as needed
-			if len(vars) > idx {
+			if idx < len(vars) {
 				varvals[idx] = val
 			}
 		}
-		// now using these lambda variables, evaluate kwargs variables
-		kwargs := value.NewDict(make(map[string]value.Value, len(sig.ContextKwargs)))
 		for _, p := range sig.ContextKwargs {
 			k := p.Name
 			tree, ok := trees.Values[k]
