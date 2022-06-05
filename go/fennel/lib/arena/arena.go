@@ -159,9 +159,6 @@ func (a *Arena[T]) Free(b []T) {
 }
 
 // report publishes stats about this arena every 1 min
-// this doesn't take lock, and so hits/misses etc may not be in sync
-// but that's okay -for any reasonably long-running server, the numbers
-// should be roughly correct
 func (a *Arena[T]) report() {
 	var zero T
 	sz := int(unsafe.Sizeof(zero))
@@ -169,12 +166,16 @@ func (a *Arena[T]) report() {
 	ticker := time.NewTicker(time.Minute)
 	defer ticker.Stop()
 	for ; true; <-ticker.C {
-		stats.WithLabelValues("hits", name).Set(float64(a.hits))
-		stats.WithLabelValues("misses", name).Set(float64(a.misses))
-		stats.WithLabelValues("frees", name).Set(float64(a.frees))
-		stats.WithLabelValues("drops", name).Set(float64(a.drops))
-		stats.WithLabelValues("rejects", name).Set(float64(a.rejects))
-		stats.WithLabelValues("size_bytes", name).Set(float64(sz * a.cursz))
+		func() {
+			a.lock.Lock()
+			defer a.lock.Unlock()
+			stats.WithLabelValues("hits", name).Set(float64(a.hits))
+			stats.WithLabelValues("misses", name).Set(float64(a.misses))
+			stats.WithLabelValues("frees", name).Set(float64(a.frees))
+			stats.WithLabelValues("drops", name).Set(float64(a.drops))
+			stats.WithLabelValues("rejects", name).Set(float64(a.rejects))
+			stats.WithLabelValues("size_bytes", name).Set(float64(sz * a.cursz))
+		}()
 	}
 }
 
