@@ -98,9 +98,8 @@ func (d defaultEncoder) DecodeVal(src []byte, vg *store.ValGroup, reuse bool) (i
 }
 
 func (d defaultEncoder) KeyLenHint(key store.Key) int {
-	// 1 byte for the lshard, upto 10 for the tierid, upto 4 for the length of the data
-	// and the data itself
-	return 1 + 10 + 4 + len(key.Data)
+	// upto 4 for the length of the data and the data itself
+	return 4 + len(key.Data)
 }
 
 func (d defaultEncoder) ValLenHint(vg store.ValGroup) int {
