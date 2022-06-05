@@ -1,74 +1,99 @@
 syntax = "proto3";
-import "ftypes.proto";
-import "value.proto";
-package nitrous;
 
+package nitrous;
 option go_package = "fennel/nitrous/rpc/v2";
 
+import "value.proto";
+import "aggregate.proto";
+
+// RPC interface for the Nitrous service.
+// Nitrous service exposes a read-only RPC interface. All write operations
+// are performed using the Nitrous binlog that consists of binary-encoded
+// NitrousOp messages.
 service Nitrous {
-  rpc Start(Table) returns (Void) {}
-  rpc Stop(Table) returns (Void) {}
-  rpc GetMany(GetManyReq) returns (GetManyResp) {}
-  rpc Lag(Table) returns (LagResp) {}
+  // APIs to read data.
+  rpc GetProfiles(ProfilesRequest) returns (ProfilesResponse);
+  rpc GetAggregateValues(AggregateValuesRequest)
+      returns (AggregateValuesResponse);
+  // API to get processing lag. This is especially useful in tests.
+  rpc GetProfileLag(ProfileLagRequest) returns (LagResponse);
+  rpc GetAggregateLag(AggregateLagRequest) returns (LagResponse);
 }
 
-message Table {
-  uint64 tierID = 1;
-  string binlog = 2;
-  TableType type = 3;
-  oneof schema {
-    AggTable aggTable = 4;
-    ProfileTable profileTable = 5;
+enum OpType {
+  AGG_EVENT = 0;
+  PROFILE_UPDATE = 1;
+  CREATE_AGGREGATE = 2;
+  DELETE_AGGREGATE = 3;
+}
+
+message NitrousOp {
+  uint32 tier_id = 1;
+  OpType type = 2;
+  oneof op {
+    // Define a new aggregate in nitrous.
+    CreateAggregate create_aggregate = 3;
+    // Delete an aggregate from nitrous.
+    DeleteAggregate delete_aggregate = 4;
+    // Log an aggregate event.
+    AggEvent agg_event = 5;
+    // Log a profile update.
+    ProfileUpdate profile = 6;
   }
 }
 
-enum TableType {
-  None = 0;
-  Profile = 1;
-  Aggregate = 2;
+message CreateAggregate {
+  uint32 agg_id = 1;
+  AggOptions options = 2;
 }
 
-message ProfileTable {
+message DeleteAggregate { uint32 agg_id = 1; }
 
+message AggEvent {
+  uint32 agg_id = 1;
+  string groupkey = 2;
+  uint32 timestamp = 3;
+  PValue value = 4;
 }
 
-message AggTable {
-  uint32 aggID = 1;
-  uint32 codec = 2;
+message ProfileKey {
+  string otype = 1;
+  string oid = 2;
+  string zkey = 3;
 }
 
-message Void { }
-
-message LagResp {
-  uint64 lag = 1;
-
+message ProfileUpdate {
+  ProfileKey key = 1;
+  PValue value = 2;
+  uint32 timestamp = 3;
 }
 
-message GetManyReq {
-  repeated Req requests = 1;
+message ProfileLagRequest { uint32 tier_id = 1; }
+
+// For now, we report a single lag for all aggregates in a tier. At some point,
+// we may want to catch up new codecs by having them read through the entire
+// binlog via separate consumers. At that point, we should add agg_id and
+// codec fields to this message.
+// Note that the actual backfill of new aggregates is the responsiblity of the
+// aggregator. When a new aggregate is defined, the aggregator should parse
+// through the entire action/profile log and create ops for nitrous to process.
+message AggregateLagRequest { uint32 tier_id = 1; }
+
+message LagResponse { uint64 lag = 1; }
+
+message AggregateValuesRequest {
+  uint32 tier_id = 1;
+  uint32 agg_id = 2;
+  uint32 codec = 3;
+  uint32 duration = 4;
+  repeated string groupkey = 5;
 }
 
-message Req {
-  Table table = 1;
-  oneof Request {
-      AggRow aggReq = 2;
-      ProfileRow profileReq = 3;
-  }
+message AggregateValuesResponse { repeated PValue results = 1; }
+
+message ProfilesRequest {
+  uint32 tier_id = 1;
+  repeated ProfileKey rows = 2;
 }
 
-message GetManyResp {
-  repeated PValue results = 1;
-}
-
-message AggRow {
-    string groupkey = 1;
-    uint64 duration = 2;
-    Window window = 3; // specific to timeseries
-    uint64 limit = 4; // specific to timeseries
-}
-
-message ProfileRow {
-    string otype = 1;
-    string oid = 2;
-    string key = 3;
-}
+message ProfilesResponse { repeated PValue results = 1; }

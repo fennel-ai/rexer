@@ -24,11 +24,9 @@ message AggOptions {
   uint32 dim = 8;
 }
 
-message AggRequest {
-  string agg_name = 1;
-}
+message AggRequest { string agg_name = 1; }
 
 message ProtoGetAggValueRequest {
-  string  agg_name = 1;
+  string agg_name = 1;
   PValue key = 2;
 }
