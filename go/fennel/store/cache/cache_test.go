@@ -22,3 +22,13 @@ func TestCache(t *testing.T) {
 	}
 	store.TestStore(t, maker)
 }
+func BenchmarkCacheStore(b *testing.B) {
+	rand.Seed(time.Now().UnixNano())
+	maker := func(t *testing.B) store.Store {
+		planeID := ftypes.RealmID(rand.Uint32())
+		cache, err := NewStore(planeID, 1<<23, 1000, encoders.Default())
+		assert.NoError(t, err)
+		return cache
+	}
+	store.BenchmarkStore(b, maker)
+}
