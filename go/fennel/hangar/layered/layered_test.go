@@ -1,11 +1,11 @@
 package layered
 
 import (
+	"fennel/hangar"
+	"fennel/hangar/cache"
+	"fennel/hangar/db"
+	"fennel/hangar/encoders"
 	"fennel/lib/ftypes"
-	"fennel/store"
-	"fennel/store/cache"
-	"fennel/store/db"
-	"fennel/store/encoders"
 	"fmt"
 	"io"
 	"math/rand"
@@ -17,35 +17,35 @@ import (
 
 func TestLayered_Store(t *testing.T) {
 	rand.Seed(time.Now().UnixNano())
-	maker := func(t *testing.T) store.Store {
+	maker := func(t *testing.T) hangar.Hangar {
 		planeID := ftypes.RealmID(rand.Uint32())
 		dirname := fmt.Sprintf("/tmp/badger/%d", planeID)
-		dbstore, err := db.NewStore(planeID, dirname, 64*1<<20, encoders.Default())
+		dbstore, err := db.NewHangar(planeID, dirname, 64*1<<20, encoders.Default())
 		assert.NoError(t, err)
 
 		// 80 MB cache with avg size of 100 bytes
-		cache, err := cache.NewStore(planeID, 1<<23, 1000, encoders.Default())
+		cache, err := cache.NewHangar(planeID, 1<<23, 1000, encoders.Default())
 		assert.NoError(t, err)
 
-		return NewStore(planeID, cache, dbstore)
+		return NewHangar(planeID, cache, dbstore)
 	}
-	store.TestStore(t, maker)
+	hangar.TestStore(t, maker)
 }
 
 func BenchmarkLayered_GetMany(b *testing.B) {
 	rand.Seed(time.Now().UnixNano())
-	maker := func(t *testing.B) store.Store {
+	maker := func(t *testing.B) hangar.Hangar {
 		planeID := ftypes.RealmID(rand.Uint32())
 		dirname := fmt.Sprintf("/tmp/badger/%d", planeID)
 		// 160MB block cache
-		dbstore, err := db.NewStore(planeID, dirname, 1<<20, encoders.Default())
+		dbstore, err := db.NewHangar(planeID, dirname, 1<<20, encoders.Default())
 		assert.NoError(t, err)
 		// 80 MB cache with avg size of 100 bytes
-		cache, err := cache.NewStore(planeID, 1<<23, 1000, encoders.Default())
+		cache, err := cache.NewHangar(planeID, 1<<23, 1000, encoders.Default())
 		assert.NoError(t, err)
-		return NewStore(planeID, cache, dbstore)
+		return NewHangar(planeID, cache, dbstore)
 	}
-	store.BenchmarkStore(b, maker)
+	hangar.BenchmarkStore(b, maker)
 }
 
 func TestCaching(t *testing.T) {
@@ -54,14 +54,14 @@ func TestCaching(t *testing.T) {
 	gt := mockStore{data: make(map[string]map[string]string)}
 
 	// 80 MB cache with avg size of 100 bytes
-	cache, err := cache.NewStore(planeID, 1<<23, 1000, encoders.Default())
+	cache, err := cache.NewHangar(planeID, 1<<23, 1000, encoders.Default())
 	assert.NoError(t, err)
 
-	s := NewStore(planeID, cache, gt)
+	s := NewHangar(planeID, cache, gt)
 	defer s.Teardown()
 
 	// first setup some keys
-	key := store.Key{Data: []byte("key")}
+	key := hangar.Key{Data: []byte("key")}
 	field1 := []byte("field1")
 	field2 := []byte("field2")
 	val1 := []byte("val1")
@@ -71,7 +71,7 @@ func TestCaching(t *testing.T) {
 
 	gt.set(key.Data, field1, val1)
 	gt.set(key.Data, field2, val2)
-	ret, err := s.GetMany([]store.KeyGroup{{Prefix: key, Fields: [][]byte{field1, field2}}})
+	ret, err := s.GetMany([]hangar.KeyGroup{{Prefix: key, Fields: [][]byte{field1, field2}}})
 	time.Sleep(100 * time.Millisecond) // sleep a bit for writes to propagate
 	assert.NoError(t, err)
 	assert.Len(t, ret, 1)
@@ -83,17 +83,17 @@ func TestCaching(t *testing.T) {
 	gt.set(key.Data, field2, val4)
 
 	// since data is cached, doing gets from store should be same as before
-	ret, err = s.GetMany([]store.KeyGroup{{Prefix: key, Fields: [][]byte{field1, field2}}})
+	ret, err = s.GetMany([]hangar.KeyGroup{{Prefix: key, Fields: [][]byte{field1, field2}}})
 	assert.NoError(t, err)
 	assert.ElementsMatch(t, [][]byte{field1, field2}, ret[0].Fields)
 	assert.ElementsMatch(t, [][]byte{val1, val2}, ret[0].Values)
 
 	// now delete just one field
-	assert.NoError(t, s.DelMany([]store.KeyGroup{{Prefix: key, Fields: [][]byte{field1}}}))
+	assert.NoError(t, s.DelMany([]hangar.KeyGroup{{Prefix: key, Fields: [][]byte{field1}}}))
 	time.Sleep(100 * time.Millisecond) // sleep a bit for writes to propagate
 
 	// for that key alone the value should have changed
-	ret, err = s.GetMany([]store.KeyGroup{{Prefix: key, Fields: [][]byte{field1, field2}}})
+	ret, err = s.GetMany([]hangar.KeyGroup{{Prefix: key, Fields: [][]byte{field1, field2}}})
 	assert.NoError(t, err)
 	assert.ElementsMatch(t, [][]byte{field1, field2}, ret[0].Fields)
 	assert.ElementsMatch(t, [][]byte{val3, val2}, ret[0].Values)
@@ -108,7 +108,7 @@ func (m mockStore) PlaneID() ftypes.RealmID {
 	return m.planeID
 }
 
-func (m mockStore) Encoder() store.Encoder { return nil }
+func (m mockStore) Encoder() hangar.Encoder { return nil }
 
 func (m *mockStore) set(key, field, value []byte) {
 	k := string(key)
@@ -118,11 +118,12 @@ func (m *mockStore) set(key, field, value []byte) {
 	m.data[k][string(field)] = string(value)
 }
 
-func (m mockStore) GetMany(kgs []store.KeyGroup) ([]store.ValGroup, error) {
-	ret := make([]store.ValGroup, len(kgs))
+func (m mockStore) GetMany(kgs []hangar.KeyGroup) ([]hangar.ValGroup, error) {
+
+	ret := make([]hangar.ValGroup, len(kgs))
 	for i, kg := range kgs {
 		prefix := string(kg.Prefix.Data)
-		vg := &store.ValGroup{}
+		vg := &hangar.ValGroup{}
 		if map_, ok := m.data[prefix]; ok {
 			for _, f := range kg.Fields {
 				if v, ok := map_[string(f)]; ok {
@@ -136,9 +137,9 @@ func (m mockStore) GetMany(kgs []store.KeyGroup) ([]store.ValGroup, error) {
 	return ret, nil
 }
 
-func (m mockStore) SetMany(keys []store.Key, vgs []store.ValGroup) error { return nil }
+func (m mockStore) SetMany(keys []hangar.Key, vgs []hangar.ValGroup) error { return nil }
 
-func (m mockStore) DelMany(keys []store.KeyGroup) error { return nil }
+func (m mockStore) DelMany(keys []hangar.KeyGroup) error { return nil }
 
 func (m mockStore) Close() error { return nil }
 
@@ -148,4 +149,4 @@ func (m mockStore) Backup(sink io.Writer, since uint64) (uint64, error) { return
 
 func (m mockStore) Restore(source io.Reader) error { return nil }
 
-var _ store.Store = mockStore{}
+var _ hangar.Hangar = mockStore{}

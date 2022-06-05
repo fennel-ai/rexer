@@ -1,22 +1,22 @@
 package encoders
 
 import (
+	"fennel/hangar"
 	"fennel/lib/utils/binary"
-	"fennel/store"
 	"fmt"
 )
 
 type defaultEncoder struct{}
 
-func Default() store.Encoder {
+func Default() hangar.Encoder {
 	return &defaultEncoder{}
 }
 
-func (d defaultEncoder) Codec() store.Codec {
-	return store.Default
+func (d defaultEncoder) Codec() hangar.Codec {
+	return hangar.Default
 }
 
-func (d defaultEncoder) EncodeKey(dest []byte, key store.Key) (int, error) {
+func (d defaultEncoder) EncodeKey(dest []byte, key hangar.Key) (int, error) {
 	n, err := binary.PutBytes(dest, key.Data)
 	if err != nil {
 		return 0, err
@@ -24,7 +24,7 @@ func (d defaultEncoder) EncodeKey(dest []byte, key store.Key) (int, error) {
 	return n, nil
 }
 
-func (d defaultEncoder) DecodeKey(src []byte, key *store.Key) (int, error) {
+func (d defaultEncoder) DecodeKey(src []byte, key *hangar.Key) (int, error) {
 	data, n, err := binary.ReadBytes(src)
 	if err != nil {
 		return 0, err
@@ -33,7 +33,7 @@ func (d defaultEncoder) DecodeKey(src []byte, key *store.Key) (int, error) {
 	return n, err
 }
 
-func (d defaultEncoder) EncodeVal(dest []byte, vg store.ValGroup) (int, error) {
+func (d defaultEncoder) EncodeVal(dest []byte, vg hangar.ValGroup) (int, error) {
 	if !vg.Valid() {
 		return 0, fmt.Errorf("invalid valgroup")
 	}
@@ -65,7 +65,7 @@ func (d defaultEncoder) EncodeVal(dest []byte, vg store.ValGroup) (int, error) {
 	return off, nil
 }
 
-func (d defaultEncoder) DecodeVal(src []byte, vg *store.ValGroup, reuse bool) (int, error) {
+func (d defaultEncoder) DecodeVal(src []byte, vg *hangar.ValGroup, reuse bool) (int, error) {
 	off := 0
 	numIndex, n, err := binary.ReadUvarint(src[off:])
 	if err != nil {
@@ -77,8 +77,8 @@ func (d defaultEncoder) DecodeVal(src []byte, vg *store.ValGroup, reuse bool) (i
 		copy(dest, src)
 		src = dest
 	}
-	vg.Fields = make(store.Fields, numIndex)
-	vg.Values = make(store.Values, numIndex)
+	vg.Fields = make(hangar.Fields, numIndex)
+	vg.Values = make(hangar.Values, numIndex)
 
 	for i := 0; i < int(numIndex); i++ {
 		if vg.Fields[i], n, err = binary.ReadBytes(src[off:]); err != nil {
@@ -97,12 +97,12 @@ func (d defaultEncoder) DecodeVal(src []byte, vg *store.ValGroup, reuse bool) (i
 	return off, nil
 }
 
-func (d defaultEncoder) KeyLenHint(key store.Key) int {
+func (d defaultEncoder) KeyLenHint(key hangar.Key) int {
 	// upto 4 for the length of the data and the data itself
 	return 4 + len(key.Data)
 }
 
-func (d defaultEncoder) ValLenHint(vg store.ValGroup) int {
+func (d defaultEncoder) ValLenHint(vg hangar.ValGroup) int {
 	sz := 0
 	for i := range vg.Fields {
 		sz += 4 + len(vg.Fields[i]) // 4 bytes for length, plus length of field
@@ -112,4 +112,4 @@ func (d defaultEncoder) ValLenHint(vg store.ValGroup) int {
 	return sz
 }
 
-var _ store.Encoder = (*defaultEncoder)(nil)
+var _ hangar.Encoder = (*defaultEncoder)(nil)

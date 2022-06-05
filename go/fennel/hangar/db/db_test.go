@@ -1,9 +1,9 @@
 package db
 
 import (
+	"fennel/hangar"
+	"fennel/hangar/encoders"
 	"fennel/lib/ftypes"
-	"fennel/store"
-	"fennel/store/encoders"
 	"fmt"
 	"math/rand"
 	"testing"
@@ -14,26 +14,26 @@ import (
 
 func TestDBStore(t *testing.T) {
 	rand.Seed(time.Now().UnixNano())
-	maker := func(t *testing.T) store.Store {
+	maker := func(t *testing.T) hangar.Hangar {
 		planeID := ftypes.RealmID(rand.Uint32())
 		dirname := fmt.Sprintf("/tmp/badger_%d", planeID)
-		db, err := NewStore(planeID, dirname, 10*1<<24, encoders.Default())
+		db, err := NewHangar(planeID, dirname, 10*1<<24, encoders.Default())
 		assert.NoError(t, err)
 		return db
 	}
-	store.TestStore(t, maker)
+	hangar.TestStore(t, maker)
 }
 
 var dummy int
 
 func BenchmarkDBStore(b *testing.B) {
 	rand.Seed(time.Now().UnixNano())
-	maker := func(t *testing.B) store.Store {
+	maker := func(t *testing.B) hangar.Hangar {
 		planeID := ftypes.RealmID(rand.Uint32())
 		dirname := fmt.Sprintf("/tmp/badger_%d", planeID)
-		db, err := NewStore(planeID, dirname, 10*1<<24, encoders.Default())
+		db, err := NewHangar(planeID, dirname, 10*1<<24, encoders.Default())
 		assert.NoError(t, err)
 		return db
 	}
-	store.BenchmarkStore(b, maker)
+	hangar.BenchmarkStore(b, maker)
 }

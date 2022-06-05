@@ -1,8 +1,8 @@
 package db
 
 import (
+	"fennel/hangar"
 	"fennel/lib/ftypes"
-	"fennel/store"
 	"fennel/test"
 	"fmt"
 	"io"
@@ -19,7 +19,7 @@ const (
 type badgerDB struct {
 	planeID  ftypes.RealmID
 	baseOpts badger.Options
-	enc      store.Encoder
+	enc      hangar.Encoder
 	db       *badger.DB
 	reqchan  chan getRequest
 }
@@ -47,11 +47,11 @@ func (b *badgerDB) Close() error {
 }
 
 type getRequest struct {
-	keyGroups []store.KeyGroup
-	resch     chan<- []store.Result
+	keyGroups []hangar.KeyGroup
+	resch     chan<- []hangar.Result
 }
 
-func NewStore(planeID ftypes.RealmID, dirname string, blockCacheBytes int64, enc store.Encoder) (*badgerDB, error) {
+func NewHangar(planeID ftypes.RealmID, dirname string, blockCacheBytes int64, enc hangar.Encoder) (*badgerDB, error) {
 	opts := badger.DefaultOptions(dirname)
 	opts = opts.WithLoggingLevel(badger.WARNING)
 	opts = opts.WithBlockCacheSize(blockCacheBytes)
@@ -78,33 +78,33 @@ func (b *badgerDB) PlaneID() ftypes.RealmID {
 	return b.planeID
 }
 
-func (b *badgerDB) Encoder() store.Encoder {
+func (b *badgerDB) Encoder() hangar.Encoder {
 	return b.enc
 }
 
 // GetMany returns the values for the given keyGroups.
 // It parallelizes the requests to the underlying DB upto a degree of PARALLELISM
-func (b *badgerDB) GetMany(kgs []store.KeyGroup) ([]store.ValGroup, error) {
+func (b *badgerDB) GetMany(kgs []hangar.KeyGroup) ([]hangar.ValGroup, error) {
 	// we try to spread across available workers while giving each worker
 	// a minimum of DB_BATCH_SIZE keyGroups to work on
 	batch := len(kgs) / PARALLELISM
 	if batch < DB_BATCH_SIZE {
 		batch = DB_BATCH_SIZE
 	}
-	chans := make([]chan []store.Result, 0, len(kgs)/batch)
+	chans := make([]chan []hangar.Result, 0, len(kgs)/batch)
 	for i := 0; i < len(kgs); i += batch {
 		end := i + batch
 		if end > len(kgs) {
 			end = len(kgs)
 		}
-		resch := make(chan []store.Result, 1)
+		resch := make(chan []hangar.Result, 1)
 		chans = append(chans, resch)
 		b.reqchan <- getRequest{
 			keyGroups: kgs[i:end],
 			resch:     resch,
 		}
 	}
-	results := make([]store.ValGroup, 0, len(kgs))
+	results := make([]hangar.ValGroup, 0, len(kgs))
 	for _, ch := range chans {
 		subresults := <-ch
 		for _, res := range subresults {
@@ -122,11 +122,11 @@ func (b *badgerDB) GetMany(kgs []store.KeyGroup) ([]store.ValGroup, error) {
 // keyGroups and call SetMany on each batch.
 // NOTE: the calculation of "deltas" isn't done as part of write transaction and so this
 // assumes that the same keyGroups are not being written to in a separate goroutine.
-func (b *badgerDB) SetMany(keys []store.Key, deltas []store.ValGroup) error {
+func (b *badgerDB) SetMany(keys []hangar.Key, deltas []hangar.ValGroup) error {
 	if len(keys) != len(deltas) {
 		return fmt.Errorf("key, value lengths do not match")
 	}
-	eks, err := store.EncodeKeyMany(keys, b.enc)
+	eks, err := hangar.EncodeKeyMany(keys, b.enc)
 	if err != nil {
 		return err
 	}
@@ -134,7 +134,7 @@ func (b *badgerDB) SetMany(keys []store.Key, deltas []store.ValGroup) error {
 	// read existing deltas, merge them, and get the full deltas to be written
 	err = b.db.View(func(txn *badger.Txn) error {
 		for i, ek := range eks {
-			var old store.ValGroup
+			var old hangar.ValGroup
 			olditem, err := txn.Get(ek)
 			switch err {
 			case badger.ErrKeyNotFound:
@@ -164,17 +164,17 @@ func (b *badgerDB) SetMany(keys []store.Key, deltas []store.ValGroup) error {
 	return b.commit(eks, deltas, nil)
 }
 
-func (b *badgerDB) DelMany(keyGroups []store.KeyGroup) error {
-	eks, err := store.EncodeKeyManyKG(keyGroups, b.enc)
+func (b *badgerDB) DelMany(keyGroups []hangar.KeyGroup) error {
+	eks, err := hangar.EncodeKeyManyKG(keyGroups, b.enc)
 	if err != nil {
 		return err
 	}
 	setKeys := make([][]byte, 0, len(keyGroups))
-	vgs := make([]store.ValGroup, 0, len(keyGroups))
+	vgs := make([]hangar.ValGroup, 0, len(keyGroups))
 	delKeys := make([][]byte, 0, len(keyGroups))
 	err = b.db.View(func(txn *badger.Txn) error {
 		for i, ek := range eks {
-			var old store.ValGroup
+			var old hangar.ValGroup
 			olditem, err := txn.Get(ek)
 			switch err {
 			case badger.ErrKeyNotFound:
@@ -211,8 +211,8 @@ func (b *badgerDB) DelMany(keyGroups []store.KeyGroup) error {
 func (b *badgerDB) respond(reqchan chan getRequest) {
 	for {
 		req := <-reqchan
-		res := make([]store.Result, len(req.keyGroups))
-		eks, err := store.EncodeKeyManyKG(req.keyGroups, b.enc)
+		res := make([]hangar.Result, len(req.keyGroups))
+		eks, err := hangar.EncodeKeyManyKG(req.keyGroups, b.enc)
 		if err != nil {
 			for i := range res {
 				res[i].Err = err
@@ -245,8 +245,8 @@ func (b *badgerDB) respond(reqchan chan getRequest) {
 	}
 }
 
-func (b *badgerDB) commit(eks [][]byte, vgs []store.ValGroup, delks [][]byte) error {
-	evs, err := store.EncodeValMany(vgs, b.enc)
+func (b *badgerDB) commit(eks [][]byte, vgs []hangar.ValGroup, delks [][]byte) error {
+	evs, err := hangar.EncodeValMany(vgs, b.enc)
 	if err != nil {
 		return err
 	}
@@ -255,7 +255,7 @@ func (b *badgerDB) commit(eks [][]byte, vgs []store.ValGroup, delks [][]byte) er
 	for i, ek := range eks {
 		e := badger.NewEntry(ek, evs[i])
 		// if ttl is 0, we set the key to never expire, else we set it to expire in ttl duration from now
-		ttl, alive := store.ExpiryToTTL(vgs[i].Expiry)
+		ttl, alive := hangar.ExpiryToTTL(vgs[i].Expiry)
 		if !alive {
 			// if key is not alive, we delete it for good, just to be safe
 			if err := wb.Delete(ek); err != nil {
@@ -278,4 +278,4 @@ func (b *badgerDB) commit(eks [][]byte, vgs []store.ValGroup, delks [][]byte) er
 	return wb.Flush()
 }
 
-var _ store.Store = &badgerDB{}
+var _ hangar.Hangar = &badgerDB{}

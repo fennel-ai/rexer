@@ -1,4 +1,4 @@
-package store
+package hangar
 
 import (
 	"time"

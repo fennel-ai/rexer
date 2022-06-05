@@ -1,4 +1,4 @@
-package store
+package hangar
 
 import (
 	"fennel/lib/utils"
@@ -10,10 +10,10 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestStore(t *testing.T, maker func(t *testing.T) Store) {
+func TestStore(t *testing.T, maker func(t *testing.T) Hangar) {
 	scenarios := []struct {
 		name string
-		test func(t *testing.T, store Store)
+		test func(t *testing.T, store Hangar)
 	}{
 		{name: "test_basic", test: testBasic},
 		{name: "test_set_ttl", test: testTTL},
@@ -29,7 +29,7 @@ func TestStore(t *testing.T, maker func(t *testing.T) Store) {
 	}
 }
 
-func BenchmarkStore(b *testing.B, maker func(b *testing.B) Store) {
+func BenchmarkStore(b *testing.B, maker func(b *testing.B) Hangar) {
 	b.Run("basic:keys_num_10000_sz_100:fields_num_100:vals_sz_100:gets_1000", func(b *testing.B) {
 		store := maker(b)
 		defer store.Teardown()
@@ -42,7 +42,7 @@ func BenchmarkStore(b *testing.B, maker func(b *testing.B) Store) {
 	})
 }
 
-func testBasic(t *testing.T, store Store) {
+func testBasic(t *testing.T, store Hangar) {
 	keys, kgs, vgs := getData(3, 5)
 	// initially all empty
 	verifyMissing(t, store, kgs)
@@ -58,7 +58,7 @@ func testBasic(t *testing.T, store Store) {
 	verifyMissing(t, store, kgs)
 }
 
-func testTTL(t *testing.T, store Store) {
+func testTTL(t *testing.T, store Hangar) {
 	keys, kgs, vgs := getData(3, 5)
 	// initially all empty
 	verifyMissing(t, store, kgs)
@@ -76,7 +76,7 @@ func testTTL(t *testing.T, store Store) {
 	verifyMissing(t, store, kgs)
 }
 
-func testPartialMissing(t *testing.T, store Store) {
+func testPartialMissing(t *testing.T, store Hangar) {
 	keys, kgs, vgs := getData(10, 10)
 
 	// set all and verify can get
@@ -109,7 +109,7 @@ func testPartialMissing(t *testing.T, store Store) {
 	verifyValues(t, store, evenKg, evenVg)
 }
 
-func testLargeBatch(t *testing.T, store Store) {
+func testLargeBatch(t *testing.T, store Hangar) {
 	keys, kgs, vgs := getData(65, 3)
 	verifyMissing(t, store, kgs)
 	err := store.SetMany(keys, vgs)
@@ -119,7 +119,7 @@ func testLargeBatch(t *testing.T, store Store) {
 	verifyMissing(t, store, kgs)
 }
 
-func verifyValues(t *testing.T, store Store, kgs []KeyGroup, vgs []ValGroup) {
+func verifyValues(t *testing.T, store Hangar, kgs []KeyGroup, vgs []ValGroup) {
 	// sleep for a bit to ensure all writes are flushed
 	time.Sleep(100 * time.Millisecond)
 	found, err := store.GetMany(kgs)
@@ -130,7 +130,7 @@ func verifyValues(t *testing.T, store Store, kgs []KeyGroup, vgs []ValGroup) {
 	}
 }
 
-func verifyMissing(t *testing.T, store Store, kgs []KeyGroup) {
+func verifyMissing(t *testing.T, store Hangar, kgs []KeyGroup) {
 	time.Sleep(100 * time.Millisecond)
 	found, err := store.GetMany(kgs)
 	assert.NoError(t, err)
@@ -168,7 +168,7 @@ func getData(numKey, numIndex int) ([]Key, []KeyGroup, []ValGroup) {
 
 var dummy int
 
-func benchmarkGetSet(b *testing.B, store Store, numKeys, numFields, szKey, szVal, szGets int) {
+func benchmarkGetSet(b *testing.B, store Hangar, numKeys, numFields, szKey, szVal, szGets int) {
 	b.ReportAllocs()
 	// first create all the key/field/value data
 	keys := make([]Key, numKeys)
