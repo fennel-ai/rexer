@@ -410,10 +410,9 @@ func (i *Interpreter) visitAll(operands []ast.Ast, ctx context.Context) ([]value
 		vals[0], err = operands[0].AcceptValue(&subtreeInterpreter)
 	} else {
 		// Eval trees in parallel if more than 1.
-		eg := errgroup.Group{}
+		eg, c := errgroup.WithContext(cCtx)
 		for j := range operands {
 			idx := j
-			c := cCtx
 			eg.Go(func() error {
 				// Copy interpreter here, so the go-routines don't share the
 				// same Env except the current one.
