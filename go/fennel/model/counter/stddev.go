@@ -14,6 +14,8 @@ type rollingStdDev struct {
 	BucketStore
 }
 
+var zeroStddev value.Value = value.NewList(value.Double(0), value.Double(0), value.Int(0))
+
 func NewStdDev(durations []uint64) Histogram {
 	maxDuration := getMaxDuration(durations)
 	return rollingStdDev{
@@ -99,7 +101,7 @@ func (s rollingStdDev) Merge(a, b value.Value) (value.Value, error) {
 }
 
 func (s rollingStdDev) Zero() value.Value {
-	return value.NewList(value.Double(0), value.Double(0), value.Int(0))
+	return zeroStddev
 }
 
 func (s rollingStdDev) Transform(v value.Value) (value.Value, error) {

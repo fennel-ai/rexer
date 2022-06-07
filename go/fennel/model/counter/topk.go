@@ -10,6 +10,8 @@ import (
 
 const numK = 100
 
+var zeroTopK value.Value = value.NewDict(nil)
+
 type topK struct {
 	Durations []uint64
 	Bucketizer
@@ -110,7 +112,7 @@ func (t topK) Merge(a, b value.Value) (value.Value, error) {
 }
 
 func (t topK) Zero() value.Value {
-	return value.NewDict(nil)
+	return zeroTopK
 }
 
 func (t topK) extract(v value.Value) (value.Dict, error) {

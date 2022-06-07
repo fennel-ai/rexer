@@ -7,6 +7,8 @@ import (
 	"fennel/lib/value"
 )
 
+var zeroList value.Value = value.NewList()
+
 type list struct {
 	Durations []uint64
 	Bucketizer
@@ -93,7 +95,7 @@ func (s list) Merge(a, b value.Value) (value.Value, error) {
 }
 
 func (s list) Zero() value.Value {
-	return value.NewList()
+	return zeroList
 }
 
 var _ Histogram = list{}

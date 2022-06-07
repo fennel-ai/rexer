@@ -8,6 +8,8 @@ import (
 	"fennel/lib/value"
 )
 
+var zeroTsSum value.Value = value.Int(0)
+
 type timeseriesSum struct {
 	Window ftypes.Window
 	Limit  uint64
@@ -71,7 +73,7 @@ func (r timeseriesSum) Merge(a, b value.Value) (value.Value, error) {
 }
 
 func (r timeseriesSum) Zero() value.Value {
-	return value.Int(0)
+	return zeroTsSum
 }
 
 func (r timeseriesSum) Transform(v value.Value) (value.Value, error) {

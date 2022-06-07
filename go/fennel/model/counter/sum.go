@@ -7,6 +7,8 @@ import (
 	"fennel/lib/value"
 )
 
+var zeroSum value.Value = value.Int(0)
+
 type rollingSum struct {
 	Durations []uint64
 	Bucketizer
@@ -58,7 +60,7 @@ func (r rollingSum) Merge(a, b value.Value) (value.Value, error) {
 }
 
 func (r rollingSum) Zero() value.Value {
-	return value.Int(0)
+	return zeroSum
 }
 
 func (r rollingSum) Transform(v value.Value) (value.Value, error) {
