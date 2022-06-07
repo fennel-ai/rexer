@@ -398,7 +398,8 @@ func (i *Interpreter) getOperator(namespace, name string) (operators.Operator, e
 }
 
 func (i *Interpreter) visitAll(operands []ast.Ast, ctx context.Context) ([]value.Value, error) {
-	cCtx, span := otel.Tracer("fennel").Start(ctx, "operandsVisit")
+	tracer := otel.Tracer("fennel")
+	cCtx, span := tracer.Start(ctx, "operandsVisit")
 	defer span.End()
 	span.SetAttributes(attribute.Int("numSubTrees", len(operands)))
 
@@ -410,13 +411,13 @@ func (i *Interpreter) visitAll(operands []ast.Ast, ctx context.Context) ([]value
 		vals[0], err = operands[0].AcceptValue(&subtreeInterpreter)
 	} else {
 		// Eval trees in parallel if more than 1.
-		eg, c := errgroup.WithContext(cCtx)
+		eg := errgroup.Group{}
 		for j := range operands {
 			idx := j
 			eg.Go(func() error {
 				// Copy interpreter here, so the go-routines don't share the
 				// same Env except the current one.
-				subtreeCtx, subtreeSpan := otel.Tracer("fennel").Start(c, fmt.Sprintf("subtree_%d", idx))
+				subtreeCtx, subtreeSpan := tracer.Start(cCtx, fmt.Sprintf("subtree_%d", idx))
 				defer subtreeSpan.End()
 				subtreeInterpreter := Interpreter{i.env, i.bootargs, subtreeCtx}
 				var err error
