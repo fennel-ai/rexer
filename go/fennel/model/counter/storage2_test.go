@@ -40,7 +40,7 @@ func TestSplitStore(t *testing.T) {
 				Key:    "key",
 				Window: ftypes.Window_FOREVER,
 				Width:  120,
-				Index:  uint64(j),
+				Index:  uint32(j),
 			}
 			vals[i][j] = value.Int(i * j)
 		}

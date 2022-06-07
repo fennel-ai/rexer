@@ -22,7 +22,7 @@ func NewTopK(durations []uint64) Histogram {
 	maxDuration := getMaxDuration(durations)
 	return topK{
 		Durations: durations,
-		Bucketizer: fixedWidthBucketizer{map[ftypes.Window]uint64{
+		Bucketizer: fixedWidthBucketizer{map[ftypes.Window]uint32{
 			ftypes.Window_MINUTE: 6,
 			ftypes.Window_DAY:    1,
 		}, true},

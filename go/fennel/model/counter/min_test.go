@@ -110,7 +110,7 @@ func TestMin_Bucketize_Valid(t *testing.T) {
 			Index: 1, Width: 1})
 		expVals = append(expVals, value.NewList(value.Int(i), value.Bool(false)))
 		expected = append(expected, counter.Bucket{Key: v.String(), Window: ftypes.Window_MINUTE,
-			Index: uint64(24*10 + i*10), Width: 6})
+			Index: uint32(24*10 + i*10), Width: 6})
 		expVals = append(expVals, value.NewList(value.Int(i), value.Bool(false)))
 	}
 	buckets, vals, err := Bucketize(h, actions)

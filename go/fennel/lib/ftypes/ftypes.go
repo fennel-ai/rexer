@@ -11,7 +11,8 @@ type OidType string
 type OType string
 
 type ActionType string
-type Timestamp uint64
+// TODO(REX-1157): Consider moving back to uint64
+type Timestamp uint32
 type RequestID string
 
 type AggType string

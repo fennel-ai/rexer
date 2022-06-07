@@ -30,7 +30,7 @@ func NewTimeseriesSum(window ftypes.Window, limit uint64) Histogram {
 	return timeseriesSum{
 		Window: window,
 		Limit:  limit,
-		Bucketizer: fixedWidthBucketizer{map[ftypes.Window]uint64{
+		Bucketizer: fixedWidthBucketizer{map[ftypes.Window]uint32{
 			window: 1,
 		}, false},
 		// retain all keys for 1.5days + duration

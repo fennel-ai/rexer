@@ -97,34 +97,34 @@ func freeSeenMap(s map[group]int) {
 
 */
 type twoLevelRedisStore struct {
-	period    uint64
+	period    uint32
 	retention uint64
 }
 
-func NewTwoLevelStorage(period, retention uint64) BucketStore {
+func NewTwoLevelStorage(period uint32, retention uint64) BucketStore {
 	return twoLevelRedisStore{
 		period:    period,
 		retention: retention,
 	}
 }
 
-// 68 bytes
+// 60 bytes
 type slot struct {
 	window ftypes.Window // 4 bytes
 	idx    int           // 4 bytes
-	width  uint64        // 8 bytes
+	width  uint32        // 4 bytes
 	val    value.Value   // 16 bytes
-	g      group         // 36 bytes
+	g      group         // 32 bytes
 }
 
-// 36 bytes
+// 32 bytes
 type group struct {
 	key   string       // 24 bytes
-	id    uint64       // 8 bytes
+	id    uint32       // 4 bytes
 	aggId ftypes.AggId // 4 bytes
 }
 
-func minSlotKey(width uint64, idx int) (string, error) {
+func minSlotKey(width uint32, idx int) (string, error) {
 	arr := [24]byte{}
 	buf := arr[:] // 8 + 8 + 8 for code, width, idx
 	curr := 0
@@ -133,7 +133,7 @@ func minSlotKey(width uint64, idx int) (string, error) {
 	} else {
 		curr += n
 	}
-	if n, err := binary.PutUvarint(buf[curr:], width); err != nil {
+	if n, err := binary.PutUvarint(buf[curr:], uint64(width)); err != nil {
 		return "", err
 	} else {
 		curr += n
@@ -146,7 +146,7 @@ func minSlotKey(width uint64, idx int) (string, error) {
 	return base91.StdEncoding.EncodeToString(buf[:curr]), nil
 }
 
-func slotKey(window ftypes.Window, width uint64, idx int) (string, error) {
+func slotKey(window ftypes.Window, width uint32, idx int) (string, error) {
 	arr := [32]byte{}
 	buf := arr[:] // 8+8+8+8 for codec, window, width, idx
 	curr := 0
@@ -160,7 +160,7 @@ func slotKey(window ftypes.Window, width uint64, idx int) (string, error) {
 	} else {
 		curr += n
 	}
-	if n, err := binary.PutUvarint(buf[curr:], width); err != nil {
+	if n, err := binary.PutUvarint(buf[curr:], uint64(width)); err != nil {
 		return "", err
 	} else {
 		curr += n
@@ -485,7 +485,7 @@ func (t twoLevelRedisStore) toSlot(id ftypes.AggId, v value.Value, b *counter.Bu
 	}, nil
 }
 
-func toDuration(w ftypes.Window) uint64 {
+func toDuration(w ftypes.Window) uint32 {
 	switch w {
 	case ftypes.Window_DAY:
 		return 24 * 3600

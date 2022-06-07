@@ -252,7 +252,7 @@ func testLarge(t *testing.T, store BucketStore, numAggs, numBuckets int) {
 				Key:    utils.RandString(30),
 				Window: ftypes.Window_HOUR,
 				Width:  3,
-				Index:  uint64(j),
+				Index:  uint32(j),
 			}
 			vals[i][j] = value.NewList(value.Int(1), value.Int(2))
 		}

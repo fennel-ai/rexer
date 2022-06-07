@@ -33,7 +33,7 @@ import (
 	Ref: https://redis.io/docs/reference/optimization/memory-optimization/
 */
 type splitStore struct {
-	bucketsPerGroup uint64
+	bucketsPerGroup uint32
 	retention       uint64
 }
 
@@ -46,8 +46,8 @@ var _ BucketStore = splitStore{}
 type splitGroup struct {
 	aggID ftypes.AggId
 	key   string
-	pos   uint64
-	width uint64
+	pos   uint32
+	width uint32
 }
 
 func (s splitStore) logStats(groups map[splitGroup][]string, mode string) {
@@ -269,12 +269,12 @@ func (g splitGroup) getRedisKey(buffer []byte, start int) (int, error) {
 		} else {
 			cur += n
 		}
-		if n, err := binary.PutUvarint(groupBuf[cur:], g.pos); err != nil {
+		if n, err := binary.PutUvarint(groupBuf[cur:], uint64(g.pos)); err != nil {
 			return 0, err
 		} else {
 			cur += n
 		}
-		if n, err := binary.PutUvarint(groupBuf[cur:], g.width); err != nil {
+		if n, err := binary.PutUvarint(groupBuf[cur:], uint64(g.width)); err != nil {
 			return 0, err
 		} else {
 			cur += n
@@ -304,7 +304,7 @@ func (s splitStore) getGroup(aggID ftypes.AggId, bucket counter.Bucket) splitGro
 	}
 }
 
-func (s splitStore) getGroupIndex(index uint64) uint64 {
+func (s splitStore) getGroupIndex(index uint32) uint32 {
 	return index % s.bucketsPerGroup
 }
 

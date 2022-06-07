@@ -12,7 +12,7 @@ func TestDuration(t *testing.T) {
 	t.Parallel()
 	scenarios := []struct {
 		w   ftypes.Window
-		d   uint64
+		d   uint32
 		err bool
 	}{
 		{ftypes.Window_MINUTE, 60, false},
