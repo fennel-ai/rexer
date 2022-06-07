@@ -3,9 +3,6 @@ package feature
 import (
 	"context"
 
-	"github.com/prometheus/client_golang/prometheus"
-	"github.com/prometheus/client_golang/prometheus/promauto"
-
 	"fennel/controller/feature"
 	"fennel/engine/interpreter/bootarg"
 	"fennel/engine/operators"
@@ -13,6 +10,9 @@ import (
 	"fennel/lib/ftypes"
 	"fennel/lib/value"
 	"fennel/tier"
+
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promauto"
 )
 
 var featurelog_stats = promauto.NewGaugeVec(prometheus.GaugeOpts{

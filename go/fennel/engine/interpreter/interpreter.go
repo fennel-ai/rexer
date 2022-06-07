@@ -3,6 +3,7 @@ package interpreter
 import (
 	"context"
 	"fmt"
+	"go.opentelemetry.io/otel/attribute"
 	"strconv"
 	"strings"
 
@@ -10,6 +11,7 @@ import (
 	"fennel/engine/operators"
 	"fennel/lib/value"
 
+	"go.opentelemetry.io/otel"
 	"golang.org/x/sync/errgroup"
 )
 
@@ -207,8 +209,11 @@ func (i *Interpreter) VisitOpcall(operands []ast.Ast, vars []string, namespace, 
 	if len(vars) > 0 && len(operands) != len(vars) {
 		return nil, fmt.Errorf("operator '%s.%s' can not be applied: different number of operands and variables", namespace, name)
 	}
+	cCtx, span := otel.Tracer("fennel").Start(i.ctx, fmt.Sprintf("%s.%s", namespace, name))
+	defer span.End()
+
 	// eval all operands
-	vals, err := i.visitAll(operands)
+	vals, err := i.visitAll(operands, cCtx)
 	if err != nil {
 		return value.Nil, err
 	}
@@ -246,7 +251,7 @@ func (i *Interpreter) VisitOpcall(operands []ast.Ast, vars []string, namespace, 
 	// typing of input / context kwargs is verified element by element inside the iter
 	outtable := value.NewList()
 	outtable.Grow(inputTable.Len())
-	if err = op.Apply(i.ctx, staticKwargs, inputTable.Iter(), &outtable); err != nil {
+	if err = op.Apply(cCtx, staticKwargs, inputTable.Iter(), &outtable); err != nil {
 		return value.Nil, err
 	}
 	return outtable, nil
@@ -392,11 +397,18 @@ func (i *Interpreter) getOperator(namespace, name string) (operators.Operator, e
 	return ret, err
 }
 
-func (i *Interpreter) visitAll(trees []ast.Ast) ([]value.Value, error) {
+func (i *Interpreter) visitAll(trees []ast.Ast, ctx context.Context) ([]value.Value, error) {
+	tracer := otel.Tracer("fennel")
+	cCtx, span := tracer.Start(ctx, "operandsVisit")
+	defer span.End()
+	span.SetAttributes(attribute.Int("numSubTrees", len(trees)))
+
 	vals := make([]value.Value, len(trees))
 	var err error
 	if len(trees) == 1 {
-		vals[0], err = trees[0].AcceptValue(i)
+		// Create a new interpreter to pass the new context used in the trace
+		subtreeInterpreter := Interpreter{i.env, i.bootargs, cCtx}
+		vals[0], err = trees[0].AcceptValue(&subtreeInterpreter)
 	} else {
 		// Eval trees in parallel if more than 1.
 		eg := errgroup.Group{}
@@ -405,7 +417,9 @@ func (i *Interpreter) visitAll(trees []ast.Ast) ([]value.Value, error) {
 			eg.Go(func() error {
 				// Copy interpreter here, so the go-routines don't share the
 				// same Env except the current one.
-				subtreeInterpreter := Interpreter(*i)
+				subtreeCtx, subtreeSpan := tracer.Start(cCtx, fmt.Sprintf("subtree_%d", idx))
+				defer subtreeSpan.End()
+				subtreeInterpreter := Interpreter{i.env, i.bootargs, subtreeCtx}
 				var err error
 				vals[idx], err = trees[idx].AcceptValue(&subtreeInterpreter)
 				return err
