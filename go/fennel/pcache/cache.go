@@ -50,7 +50,7 @@ func NewPCache(maxCost int64, averageItemCost int64) (PCache, error) {
 	expectedMaxItems := maxCost / averageItemCost
 	cache, err := ristretto.NewCache(&ristretto.Config{
 		NumCounters: 10 * expectedMaxItems,
-		MaxCost:     maxCost,
+		MaxCost:     maxCost * 10,
 		// Ristretto recommends BufferItems as `64`, but we have noticed a large number of sets being dropped,
 		// therefore we set this value as `1024`; The exact value is TBD and should be tuned using the help
 		// of the metrics reported to Prometheus
@@ -62,6 +62,14 @@ func NewPCache(maxCost int64, averageItemCost int64) (PCache, error) {
 				cacheEvicts.WithLabelValues("expired").Inc()
 			} else {
 				cacheEvicts.WithLabelValues("kickedout").Inc()
+			}
+
+			if item.Cost%10 == 0 {
+				cacheEvicts.WithLabelValues("Profile").Inc()
+			} else if item.Cost%10 == 1 {
+				cacheEvicts.WithLabelValues("AggValue").Inc()
+			} else if item.Cost%10 == 2 {
+				cacheEvicts.WithLabelValues("BucketValue").Inc()
 			}
 		},
 	})
@@ -78,6 +86,14 @@ func (pc *PCache) Set(key, value interface{}, cost int64) bool {
 }
 
 func (pc *PCache) SetWithTTL(key, value interface{}, cost int64, ttl time.Duration, namespace string) bool {
+	if namespace == "Profile" {
+		cost = cost * 10
+	} else if namespace == "AggValue" {
+		cost = cost*10 + 1
+	} else if namespace == "BucketValue" {
+		cost = cost*10 + 2
+	}
+
 	ok := pc.Cache.SetWithTTL(key, value, cost, ttl)
 	if ok {
 		cacheSets.WithLabelValues(namespace).Inc()
