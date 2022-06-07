@@ -48,13 +48,20 @@ func (s list) Start(end ftypes.Timestamp, kwargs value.Dict) (ftypes.Timestamp, 
 
 // Reduce just appends all the lists to an empty list
 func (s list) Reduce(values []value.Value) (value.Value, error) {
-	z := s.Zero().(value.List)
+	m := make(map[string]value.Value)
 	for i := range values {
 		l, err := s.extract(values[i])
 		if err != nil {
 			return nil, err
 		}
-		z.Append(l.Values()...)
+		for j := 0; j < l.Len(); j++ {
+			val, _ := l.At(j)
+			m[val.String()] = val
+		}
+	}
+	z := s.Zero().(value.List)
+	for _, v := range m {
+		z.Append(v)
 	}
 	return z, nil
 }
@@ -68,9 +75,20 @@ func (s list) Merge(a, b value.Value) (value.Value, error) {
 	if err != nil {
 		return nil, err
 	}
+	m := make(map[string]value.Value, la.Len())
+	for j := 0; j < la.Len(); j++ {
+		val, _ := la.At(j)
+		m[val.String()] = val
+	}
+	for j := 0; j < lb.Len(); j++ {
+		val, _ := lb.At(j)
+		m[val.String()] = val
+	}
 	ret := value.NewList()
-	ret.Append(la.Values()...)
-	ret.Append(lb.Values()...)
+	ret.Grow(len(m))
+	for _, v := range m {
+		ret.Append(v)
+	}
 	return ret, nil
 }
 
