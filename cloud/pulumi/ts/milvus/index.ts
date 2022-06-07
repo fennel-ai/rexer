@@ -72,6 +72,7 @@ export const setup = async (input: inputType): Promise<pulumi.Output<outputType>
         name: "milvus",
         createNamespace: true,
         namespace: "milvus",
+        // See: https://github.com/milvus-io/milvus-helm/blob/master/charts/milvus/values.yaml
         values: {
             "cluster": {
                 "enabled": true,
@@ -89,6 +90,13 @@ export const setup = async (input: inputType): Promise<pulumi.Output<outputType>
             },
             "service": {
                 "type": "LoadBalancer",
+                // See "ingress" project to see why we configure the load balancer
+                // with the following params.
+                "annotations": {
+                    "service.beta.kubernetes.io/aws-load-balancer-type": "external",
+                    "service.beta.kubernetes.io/aws-load-balancer-nlb-target-type": "instance",
+                    "service.beta.kubernetes.io/aws-load-balancer-scheme": "internal",
+                }
             },
             // Run attu in port-forward mode.
             "attu": {
@@ -98,7 +106,7 @@ export const setup = async (input: inputType): Promise<pulumi.Output<outputType>
                 },
             },
         }
-    }, { provider: k8sProvider })
+    }, { provider: k8sProvider, deleteBeforeReplace: true })
 
     const output = pulumi.output({})
 
