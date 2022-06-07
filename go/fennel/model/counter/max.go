@@ -17,6 +17,8 @@ type rollingMax struct {
 	BucketStore
 }
 
+var zeroMax value.Value = value.NewList(value.Double(0), value.Bool(true))
+
 func (m rollingMax) Transform(v value.Value) (value.Value, error) {
 	if err := value.Types.Number.Validate(v); err != nil {
 		return nil, fmt.Errorf("value [%s] is not a number", v.String())
@@ -119,7 +121,7 @@ func (m rollingMax) Merge(a, b value.Value) (value.Value, error) {
 }
 
 func (m rollingMax) Zero() value.Value {
-	return value.NewList(value.Double(0), value.Bool(true))
+	return zeroMax
 }
 
 var _ Histogram = rollingMax{}

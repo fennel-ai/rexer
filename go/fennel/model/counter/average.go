@@ -17,6 +17,8 @@ type average struct {
 	BucketStore
 }
 
+var zeroAvg value.Value = value.NewList(value.Int(0), value.Int(0))
+
 func NewAverage(durations []uint64) Histogram {
 	maxDuration := getMaxDuration(durations)
 	return average{
@@ -101,5 +103,5 @@ func (r average) Merge(a, b value.Value) (value.Value, error) {
 }
 
 func (r average) Zero() value.Value {
-	return value.NewList(value.Int(0), value.Int(0))
+	return zeroAvg
 }

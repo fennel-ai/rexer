@@ -21,6 +21,8 @@ var rateNumGTDen = promauto.NewCounterVec(
 	[]string{"aggId"},
 )
 
+var zeroRate value.Value = value.NewList(value.Double(0), value.Double(0))
+
 /*
 	rollingRate maintains a rate (say actions per click)
 	It stores two numbers - num (numerator) and den (denominator)
@@ -137,7 +139,7 @@ func (r rollingRate) Merge(a, b value.Value) (value.Value, error) {
 }
 
 func (r rollingRate) Zero() value.Value {
-	return value.NewList(value.Double(0), value.Double(0))
+	return zeroRate
 }
 
 var _ Histogram = rollingRate{}

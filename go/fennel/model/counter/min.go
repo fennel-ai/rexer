@@ -17,6 +17,8 @@ type rollingMin struct {
 	BucketStore
 }
 
+var zeroMin value.Value = value.NewList(value.Double(0), value.Bool(true))
+
 func NewMin(durations []uint64) Histogram {
 	maxDuration := getMaxDuration(durations)
 	return rollingMin{
@@ -110,7 +112,7 @@ func (m rollingMin) Merge(a, b value.Value) (value.Value, error) {
 }
 
 func (m rollingMin) Zero() value.Value {
-	return value.NewList(value.Double(0), value.Bool(true))
+	return zeroMin
 }
 
 func (m rollingMin) Transform(v value.Value) (value.Value, error) {

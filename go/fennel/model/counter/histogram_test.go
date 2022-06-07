@@ -21,6 +21,18 @@ func TestStart(t *testing.T) {
 	testHistogramStart(t, topK{Durations: durations}, durations, badDurations)
 }
 
+func TestMergeReduceZeroNotMutated(t *testing.T) {
+	durations := []uint64{100, 200}
+	testHistogramZeroNotMutated(t, average{Durations: durations}, value.NewList(value.Int(2), value.Int(3)), value.NewList(value.Int(0), value.Int(0)))
+	testHistogramZeroNotMutated(t, list{Durations: durations}, value.NewList(value.Int(1), value.Int(2)), value.NewList())
+	testHistogramZeroNotMutated(t, rollingMax{Durations: durations}, value.NewList(value.Double(1.0), value.Bool(true)), value.NewList(value.Double(0), value.Bool(true)))
+	testHistogramZeroNotMutated(t, rollingMin{Durations: durations}, value.NewList(value.Double(-1.0), value.Bool(true)), value.NewList(value.Double(0), value.Bool(true)))
+	testHistogramZeroNotMutated(t, rollingRate{Durations: durations}, value.NewList(value.Double(1.0), value.Double(2.0)), value.NewList(value.Double(0), value.Double(0)))
+	testHistogramZeroNotMutated(t, rollingStdDev{Durations: durations}, value.NewList(value.Double(1.0), value.Double(2.0), value.Int(1)), value.NewList(value.Double(0), value.Double(0), value.Int(0)))
+	testHistogramZeroNotMutated(t, rollingSum{Durations: durations}, value.Int(2), value.Int(0))
+	testHistogramZeroNotMutated(t, topK{Durations: durations}, value.NewDict(map[string]value.Value{"foo": value.Double(2.0)}), value.NewDict(nil))
+}
+
 func testHistogramStart(t *testing.T, h Histogram, durations []uint64, badDurations []uint64) {
 	for _, d := range durations {
 		kwargs := value.NewDict(map[string]value.Value{"duration": value.Int(d)})
@@ -37,4 +49,13 @@ func testHistogramStart(t *testing.T, h Histogram, durations []uint64, badDurati
 		_, err := h.Start(200, kwargs)
 		assert.Error(t, err)
 	}
+}
+
+func testHistogramZeroNotMutated(t *testing.T, h Histogram, v value.Value, zero value.Value) {
+	d := h.Zero()
+	m, err := h.Merge(d, v)
+	assert.NoError(t, err)
+	_, err = h.Reduce([]value.Value{v, m})
+	assert.NoError(t, err)
+	assert.Equal(t, h.Zero(), zero)
 }
