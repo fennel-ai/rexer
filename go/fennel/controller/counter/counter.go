@@ -39,34 +39,40 @@ func makeCacheKey(aggId ftypes.AggId, b libcounter.Bucket) string {
 }
 
 func fetchFromPCache(tier tier.Tier, aggId ftypes.AggId, buckets []libcounter.Bucket) ([]value.Value, []libcounter.Bucket) {
-	unfilledBuckets := make([]libcounter.Bucket, 0, len(buckets))
-	cachedVals := make([]value.Value, 0, len(buckets))
+	// We expect number of day buckets to not be more than 28.
+	cachedVals := make([]value.Value, 0, 28)
+	cachedIndexes := make([]int, 0, 28)
 
-	for _, b := range buckets {
+	for i, b := range buckets {
 		if b.Window != ftypes.Window_DAY {
-			unfilledBuckets = append(unfilledBuckets, b)
 			continue
 		}
-
-		found := false
 		ckey := makeCacheKey(aggId, b)
 
 		if v, ok := tier.PCache.Get(ckey, "BucketValue"); ok {
 			if val, ok2 := fromCacheValue(tier, v); ok2 {
 				cachedVals = append(cachedVals, val)
-				found = true
+				cachedIndexes = append(cachedIndexes, i)
 			}
 		}
-
-		if disableCache, present := os.LookupEnv("DISABLE_CACHE"); present && disableCache == "1" {
-			found = false
-		}
-
-		if !found {
-			unfilledBuckets = append(unfilledBuckets, b)
-		}
 	}
-	return cachedVals, unfilledBuckets
+
+	if disableCache, present := os.LookupEnv("DISABLE_CACHE"); present && disableCache == "1" {
+		cachedIndexes = make([]int, 0)
+	}
+
+	// remove all buckets for which we found the value in the cache
+	lastElemIndex := len(buckets) - 1
+	for j := 0; j < len(cachedIndexes); j++ {
+		if cachedIndexes[j] < lastElemIndex {
+			buckets[cachedIndexes[j]] = buckets[lastElemIndex]
+		}
+		lastElemIndex--
+	}
+
+	// Chop off the last elements.
+	buckets = buckets[:len(buckets)-len(cachedIndexes)]
+	return cachedVals, buckets
 }
 
 func fillPCache(tier tier.Tier, aggIds []ftypes.AggId, buckets [][]libcounter.Bucket, bucketVal [][]value.Value) {
