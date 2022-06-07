@@ -36,14 +36,6 @@ var cacheSets = promauto.NewCounterVec(
 	[]string{"namespace"},
 )
 
-var cacheEvicts = promauto.NewCounterVec(
-	prometheus.CounterOpts{
-		Name: "pcache_evicts_namespace",
-		Help: "Number of P Cache evicts per namespace.",
-	},
-	[]string{"namespace"},
-)
-
 // NewPCache creates a new instance of PCache
 // https://pkg.go.dev/github.com/dgraph-io/ristretto#Config
 func NewPCache(maxCost int64, averageItemCost int64) (PCache, error) {
