@@ -59,6 +59,7 @@ func fetchFromPCache(tier tier.Tier, aggId ftypes.AggId, buckets []libcounter.Bu
 	}
 
 	if disableCache, present := os.LookupEnv("DISABLE_CACHE"); present && disableCache == "1" {
+		arena.Ints.Free(cachedIndexes)
 		cachedIndexes = make([]int, 0)
 	}
 
