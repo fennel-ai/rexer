@@ -6,7 +6,7 @@ import (
 	"fennel/lib/ftypes"
 )
 
-func Duration(w ftypes.Window) (uint64, error) {
+func Duration(w ftypes.Window) (uint32, error) {
 	switch w {
 	case ftypes.Window_MINUTE:
 		return 60, nil

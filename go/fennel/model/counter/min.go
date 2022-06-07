@@ -23,7 +23,7 @@ func NewMin(durations []uint64) Histogram {
 	maxDuration := getMaxDuration(durations)
 	return rollingMin{
 		Durations: durations,
-		Bucketizer: fixedWidthBucketizer{map[ftypes.Window]uint64{
+		Bucketizer: fixedWidthBucketizer{map[ftypes.Window]uint32{
 			ftypes.Window_MINUTE: 6,
 			ftypes.Window_DAY:    1,
 		}, true},

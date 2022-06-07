@@ -53,7 +53,7 @@ func TestRolling(t *testing.T) {
 
 	clock := &test.FakeClock{}
 	tier.Clock = clock
-	clock.Set(int64(start + 24*3600*2))
+	clock.Set(uint32(start + 24*3600*2))
 	// at the end of 2 days, rolling counter should only be worth 28 hours, not full 48 hours
 	found, err := Value(ctx, tier, agg.Id, key, histogram, value.NewDict(map[string]value.Value{"duration": value.Int(28 * 3600)}))
 	assert.NoError(t, err)
@@ -105,7 +105,7 @@ func TestTimeseries(t *testing.T) {
 
 	clock := &test.FakeClock{}
 	tier.Clock = clock
-	clock.Set(int64(start + 24*3600*2))
+	clock.Set(uint32(start + 24*3600*2))
 	// at the end of 2 days, we should get one data point each for 9 days
 	f, err := Value(ctx, tier, agg.Id, key, histogram, value.NewDict(nil))
 	assert.NoError(t, err)
@@ -122,7 +122,7 @@ func TestTimeseries(t *testing.T) {
 
 	// but if we set time to just at 6 hours from start, we will still 9 entries, but few will be zero padded
 	// and since our start time is 1 min delayed, the 4th entry will be one short of 60
-	clock.Set(int64(start + 6*3600))
+	clock.Set(uint32(start + 6*3600))
 	f, err = Value(ctx, tier, agg.Id, key, histogram, value.NewDict(nil))
 	assert.NoError(t, err)
 	found, ok = f.(value.List)
@@ -179,7 +179,7 @@ func TestRollingAverage(t *testing.T) {
 
 	clock := &test.FakeClock{}
 	tier.Clock = clock
-	clock.Set(int64(start + 24*3600*2))
+	clock.Set(uint32(start + 24*3600*2))
 	// at the end of 2 days, rolling average should only be worth 28 hours, not full 48 hours
 	found, err := Value(ctx, tier, agg.Id, key, histogram, value.NewDict(map[string]value.Value{"duration": value.Int(28 * 3600)}))
 	assert.NoError(t, err)
@@ -238,7 +238,7 @@ func TestStream(t *testing.T) {
 
 	clock := &test.FakeClock{}
 	tier.Clock = clock
-	clock.Set(int64(start + 24*3600*2))
+	clock.Set(uint32(start + 24*3600*2))
 	// at the end of 2 days, stream should only be worth 28 hours, not full 48 hours
 	found, err := Value(ctx, tier, agg.Id, key, histogram, value.NewDict(map[string]value.Value{"duration": value.Int(28 * 3600)}))
 	assert.NoError(t, err)
@@ -305,7 +305,7 @@ func TestRate(t *testing.T) {
 
 	clock := &test.FakeClock{}
 	tier.Clock = clock
-	clock.Set(int64(start + 24*3600*2))
+	clock.Set(uint32(start + 24*3600*2))
 	// at the end of 2 days, rate should only be worth 28 hours, not full 48 hours
 	found, err := Value(ctx, tier, agg.Id, key, histogram, value.NewDict(map[string]value.Value{"duration": value.Int(28 * 3600)}))
 	assert.NoError(t, err)
@@ -398,7 +398,7 @@ func TestBatchValue(t *testing.T) {
 	// should find this time
 	clock := &test.FakeClock{}
 	tier.Clock = clock
-	clock.Set(int64(start + 24*3600*2))
+	clock.Set(uint32(start + 24*3600*2))
 
 	exp1, exp2 = value.Int(60*48), value.Double(1.0)
 	found, err = BatchValue(ctx, tier, aggIds, keys, []counter2.Histogram{h1, h2}, kwargs)
@@ -408,7 +408,7 @@ func TestBatchValue(t *testing.T) {
 
 	// now go forward 2 more days and check with duration of 1 day
 	// should find nothing
-	clock.Set(int64(start + 24*3600*4))
+	clock.Set(uint32(start + 24*3600*4))
 	kwargs[0] = value.NewDict(map[string]value.Value{"duration": value.Int(24 * 3600)})
 	kwargs[1] = value.NewDict(map[string]value.Value{"duration": value.Int(24 * 3600)})
 	exp1, exp2 = value.Int(0), value.Double(0.0)

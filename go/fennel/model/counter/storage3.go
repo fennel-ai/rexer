@@ -34,7 +34,7 @@ var _ BucketStore = thirdStore{}
 	NOTE: prefixSize should always be greater than 0 and less than 16.
 */
 type thirdStore struct {
-	bucketsPerSlot uint64
+	bucketsPerSlot uint32
 	prefixSize     int
 	retention      uint64
 }
@@ -102,8 +102,8 @@ func (t thirdStore) SetMulti(
 	return view.Save(ctx, &tier, time.Second*time.Duration(t.retention))
 }
 
-func (t thirdStore) l2Index(bucketIndex uint64) string {
-	return strconv.FormatUint(bucketIndex%t.bucketsPerSlot, 10)
+func (t thirdStore) l2Index(bucketIndex uint32) string {
+	return strconv.FormatUint(uint64(bucketIndex%t.bucketsPerSlot), 10)
 }
 
 func (t thirdStore) toSlots(aggIDs []ftypes.AggId, buckets [][]counter.Bucket) ([]thirdSlot, [][]int, [][][16]byte) {
@@ -137,7 +137,7 @@ func (t thirdStore) toSlots(aggIDs []ftypes.AggId, buckets [][]counter.Bucket) (
 
 type thirdSlot struct {
 	aggID  ftypes.AggId
-	index  uint64
+	index  uint32
 	prefix string
 }
 
@@ -225,7 +225,7 @@ func (v *thirdStoreView) Save(ctx context.Context, tier *tier.Tier, ttl time.Dur
 	return tier.Redis.HSetPipelined(ctx, v.keys, vals, ttls)
 }
 
-func (s thirdSlot) redisKey(buffer []byte, start int, bucketsPerSlot uint64, suffixSize int) (int, error) {
+func (s thirdSlot) redisKey(buffer []byte, start int, bucketsPerSlot uint32, suffixSize int) (int, error) {
 	length := 0
 
 	codecStr, err := encodeCodex(counterCodec3)
@@ -234,7 +234,7 @@ func (s thirdSlot) redisKey(buffer []byte, start int, bucketsPerSlot uint64, suf
 	}
 	length += len(codecStr) + 1 // 1 extra byte for delimiter
 
-	nums := []uint64{uint64(s.aggID), bucketsPerSlot, uint64(suffixSize)}
+	nums := []uint64{uint64(s.aggID), uint64(bucketsPerSlot), uint64(suffixSize)}
 	words := make([]string, len(nums))
 	for i := range nums {
 		words[i], err = encodeUint64(nums[i])

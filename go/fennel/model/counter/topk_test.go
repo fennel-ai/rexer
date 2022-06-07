@@ -140,7 +140,7 @@ func TestTopK_Bucketize_Valid(t *testing.T) {
 		actions.Append(d)
 		expected = append(expected, counter.Bucket{Key: v.String(), Window: ftypes.Window_DAY, Index: 1, Width: 1})
 		expVals = append(expVals, c)
-		expected = append(expected, counter.Bucket{Key: v.String(), Window: ftypes.Window_MINUTE, Index: uint64(24*10 + i*10), Width: 6})
+		expected = append(expected, counter.Bucket{Key: v.String(), Window: ftypes.Window_MINUTE, Index: uint32(24*10 + i*10), Width: 6})
 		expVals = append(expVals, c)
 	}
 	buckets, vals, err := Bucketize(h, actions)

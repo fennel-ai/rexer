@@ -3,13 +3,13 @@ package test
 import "fennel/lib/clock"
 
 type FakeClock struct {
-	now int64
+	now uint32
 }
 
-func (f *FakeClock) Now() int64 {
+func (f *FakeClock) Now() uint32 {
 	return f.now
 }
-func (f *FakeClock) Set(now int64) {
+func (f *FakeClock) Set(now uint32) {
 	f.now = now
 }
 

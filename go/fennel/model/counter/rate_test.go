@@ -201,7 +201,7 @@ func TestRate_Bucketize_Valid(t *testing.T) {
 		actions.Append(d)
 		expected = append(expected, counter.Bucket{Window: ftypes.Window_DAY, Index: 1, Width: 1, Key: v.String()})
 		expVals = append(expVals, e)
-		expected = append(expected, counter.Bucket{Key: v.String(), Window: ftypes.Window_MINUTE, Width: 6, Index: uint64(24*10 + i*10)})
+		expected = append(expected, counter.Bucket{Key: v.String(), Window: ftypes.Window_MINUTE, Width: 6, Index: uint32(24*10 + i*10)})
 		expVals = append(expVals, e)
 	}
 	buckets, vals, err := Bucketize(h, actions)

@@ -14,7 +14,7 @@ import (
 func TestBucketizeMoment(t *testing.T) {
 	key := "hello"
 	all := []ftypes.Window{ftypes.Window_MINUTE, ftypes.Window_HOUR, ftypes.Window_DAY}
-	f := fixedWidthBucketizer{map[ftypes.Window]uint64{
+	f := fixedWidthBucketizer{map[ftypes.Window]uint32{
 		ftypes.Window_MINUTE: 1,
 		ftypes.Window_HOUR:   1,
 		ftypes.Window_DAY:    1,
@@ -42,7 +42,7 @@ func TestBucketizeMoment(t *testing.T) {
 
 	// also test one window at a time
 	for _, w := range all {
-		f := fixedWidthBucketizer{map[ftypes.Window]uint64{
+		f := fixedWidthBucketizer{map[ftypes.Window]uint32{
 			w: 1,
 		}, false}
 		found = f.BucketizeMoment(key, 3601)
@@ -61,7 +61,7 @@ func TestFixedWidthBucketizer_BucketizeMoment_Widths(t *testing.T) {
 		expected   []counter.Bucket
 	}{
 		{
-			fixedWidthBucketizer{map[ftypes.Window]uint64{
+			fixedWidthBucketizer{map[ftypes.Window]uint32{
 				ftypes.Window_MINUTE: 5,
 			}, false},
 			key,
@@ -70,7 +70,7 @@ func TestFixedWidthBucketizer_BucketizeMoment_Widths(t *testing.T) {
 			[]counter.Bucket{{key, ftypes.Window_MINUTE, 5, 12}},
 		},
 		{
-			fixedWidthBucketizer{map[ftypes.Window]uint64{
+			fixedWidthBucketizer{map[ftypes.Window]uint32{
 				ftypes.Window_MINUTE: 0, ftypes.Window_HOUR: 5, ftypes.Window_DAY: 2,
 			}, false},
 			key,
@@ -100,7 +100,7 @@ func TestFixedWidthBucketizer_BucketizeDuration(t *testing.T) {
 		expected   []counter.Bucket
 	}{
 		{
-			fixedWidthBucketizer{map[ftypes.Window]uint64{
+			fixedWidthBucketizer{map[ftypes.Window]uint32{
 				ftypes.Window_MINUTE: 5, ftypes.Window_HOUR: 0, ftypes.Window_DAY: 1,
 			}, false},
 			key,
@@ -122,7 +122,7 @@ func TestBucketizeDuration_SingleWindow2(t *testing.T) {
 	key := "hello"
 	start := ftypes.Timestamp(3601)
 	end := ftypes.Timestamp(2*24*3600 + 3665) // i.e. 2 days + 1 minute + few seconds later
-	f := fixedWidthBucketizer{map[ftypes.Window]uint64{
+	f := fixedWidthBucketizer{map[ftypes.Window]uint32{
 		ftypes.Window_HOUR: 1,
 	}, false}
 	found := f.BucketizeDuration(key, start, end)
@@ -132,11 +132,11 @@ func TestBucketizeDuration_SingleWindow2(t *testing.T) {
 		assert.Contains(t, found, counter.Bucket{
 			Key:    key,
 			Window: ftypes.Window_HOUR,
-			Index:  uint64(2 + i),
+			Index:  uint32(2 + i),
 			Width:  1,
 		}, i)
 	}
-	f = fixedWidthBucketizer{map[ftypes.Window]uint64{
+	f = fixedWidthBucketizer{map[ftypes.Window]uint32{
 		ftypes.Window_DAY: 1,
 	}, false}
 	found = f.BucketizeDuration(key, start, end)
@@ -152,7 +152,7 @@ func TestBucketizeDuration_SingleWindow2(t *testing.T) {
 func TestBucketizeDuration_All(t *testing.T) {
 	key := "hello"
 	// something basic
-	f := fixedWidthBucketizer{map[ftypes.Window]uint64{
+	f := fixedWidthBucketizer{map[ftypes.Window]uint32{
 		ftypes.Window_MINUTE: 1,
 		ftypes.Window_HOUR:   1,
 		ftypes.Window_DAY:    1,
@@ -182,7 +182,7 @@ func TestBucketizeDuration_All(t *testing.T) {
 		expected = append(expected, counter.Bucket{
 			Key:    key,
 			Window: ftypes.Window_MINUTE,
-			Index:  uint64(61 + i),
+			Index:  uint32(61 + i),
 			Width:  1,
 		})
 	}
@@ -191,7 +191,7 @@ func TestBucketizeDuration_All(t *testing.T) {
 			Key:    key,
 			Window: ftypes.Window_HOUR,
 			Width:  1,
-			Index:  uint64(2 + i),
+			Index:  uint32(2 + i),
 		})
 	}
 	expected = append(expected, counter.Bucket{
@@ -219,8 +219,8 @@ func TestBucketizeDuration_All(t *testing.T) {
 func TestMergeBuckets(t *testing.T) {
 	key1 := "hello"
 	key2 := "hi"
-	idx1 := uint64(1)
-	idx2 := uint64(2)
+	idx1 := uint32(1)
+	idx2 := uint32(2)
 	one := value.Int(1)
 	three := value.Int(3)
 	window1 := ftypes.Window_HOUR
@@ -278,7 +278,7 @@ func TestBucketizeHistogram_Valid(t *testing.T) {
 		actions.Append(d)
 		expected = append(expected, counter.Bucket{Window: ftypes.Window_DAY, Index: 1, Width: 1, Key: v.String()})
 		expVals = append(expVals, e)
-		expected = append(expected, counter.Bucket{Key: v.String(), Window: ftypes.Window_MINUTE, Width: 6, Index: uint64(24*10 + i*10)})
+		expected = append(expected, counter.Bucket{Key: v.String(), Window: ftypes.Window_MINUTE, Width: 6, Index: uint32(24*10 + i*10)})
 		expVals = append(expVals, e)
 	}
 	buckets, vals, err := Bucketize(h, actions)
@@ -294,8 +294,8 @@ func TestTrailingPartial(t *testing.T) {
 		start ftypes.Timestamp
 		end   ftypes.Timestamp
 		w     ftypes.Window
-		width uint64
-		idx   uint64
+		width uint32
+		idx   uint32
 		ok    bool
 	}{
 		{"k", 24 * 3600, 2 * 24 * 3600, ftypes.Window_HOUR, 7, 6, true},
@@ -331,7 +331,7 @@ func TestFixedSplitBucketizer_BucketizeDuration(t *testing.T) {
 			Key:    "key",
 			Window: ftypes.Window_FOREVER,
 			Width:  1200,
-			Index:  uint64(i),
+			Index:  uint32(i),
 		})
 	}
 	assert.Equal(t, expected1, found1)
@@ -343,7 +343,7 @@ func TestFixedSplitBucketizer_BucketizeDuration(t *testing.T) {
 			Key:    "key",
 			Window: ftypes.Window_FOREVER,
 			Width:  3600,
-			Index:  uint64(i),
+			Index:  uint32(i),
 		})
 	}
 	assert.Equal(t, expected2, found2)
@@ -389,7 +389,7 @@ func TestFixedSplitBucketizer_BucketizeMoment(t *testing.T) {
 
 func TestThirdBucketizer_BucketizeDuration(t *testing.T) {
 	scenarios := []struct {
-		size               uint64
+		size               uint32
 		start              ftypes.Timestamp
 		finish             ftypes.Timestamp
 		expectedStartIndex int
@@ -414,7 +414,7 @@ func TestThirdBucketizer_BucketizeDuration(t *testing.T) {
 				Key:    "key",
 				Window: ftypes.Window_FOREVER,
 				Width:  scenario.size,
-				Index:  uint64(i + scenario.expectedStartIndex),
+				Index:  uint32(i + scenario.expectedStartIndex),
 			}
 			assert.Equal(t, expected, found[i])
 		}
@@ -423,9 +423,9 @@ func TestThirdBucketizer_BucketizeDuration(t *testing.T) {
 
 func TestThirdBucketizer_BucketizeMoment(t *testing.T) {
 	scenarios := []struct {
-		size          uint64
+		size          uint32
 		ts            ftypes.Timestamp
-		expectedIndex uint64
+		expectedIndex uint32
 	}{
 		{60, 0, 0},
 		{60, 30, 0},

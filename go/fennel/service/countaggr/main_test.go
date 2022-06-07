@@ -189,7 +189,7 @@ func TestEndToEndActionAggregates(t *testing.T) {
 	clock := &test.FakeClock{}
 	tier.Clock = clock
 	t0 := ftypes.Timestamp(3600 * 24 * 15)
-	clock.Set(int64(t0))
+	clock.Set(uint32(t0))
 
 	for _, scenario := range scenarios {
 		// first store all aggregates
@@ -215,7 +215,7 @@ func TestEndToEndActionAggregates(t *testing.T) {
 	actions := append(actions1, actions2...)
 
 	t1 := t0 + 7200
-	clock.Set(int64(t1))
+	clock.Set(uint32(t1))
 	// counts don't change until we run process, after which, they do
 	for _, scenario := range scenarios {
 		for i := range scenario.kwargs {
@@ -291,7 +291,7 @@ func TestEndToEndProfileAggregates(t *testing.T) {
 	clock := &test.FakeClock{}
 	tier.Clock = clock
 	t0 := ftypes.Timestamp(3600 * 24 * 15)
-	clock.Set(int64(t0))
+	clock.Set(uint32(t0))
 
 	for _, scenario := range scenarios {
 		// first store all aggregates
@@ -317,7 +317,7 @@ func TestEndToEndProfileAggregates(t *testing.T) {
 	profiles := append(p1, p2...)
 
 	t1 := t0 + 7200
-	clock.Set(int64(t1))
+	clock.Set(uint32(t1))
 	// counts don't change until we run process, after which, they do
 	for _, scenario := range scenarios {
 		for i := range scenario.kwargs {

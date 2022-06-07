@@ -9,7 +9,7 @@ import (
 )
 
 type fixedWidthBucketizer struct {
-	sizes                  map[ftypes.Window]uint64
+	sizes                  map[ftypes.Window]uint32
 	includeTrailingPartial bool
 }
 
@@ -19,13 +19,14 @@ func (f fixedWidthBucketizer) BucketizeMoment(key string, ts ftypes.Timestamp) [
 		if width == 0 {
 			continue
 		}
+		// ts is measured in seconds since epoch which should work with `uint32` datatype
 		switch window {
 		case ftypes.Window_MINUTE:
-			ret = append(ret, counter.Bucket{Key: key, Window: ftypes.Window_MINUTE, Index: uint64(ts) / 60 / uint64(width), Width: width})
+			ret = append(ret, counter.Bucket{Key: key, Window: ftypes.Window_MINUTE, Index: uint32(ts) / 60 / width, Width: width})
 		case ftypes.Window_HOUR:
-			ret = append(ret, counter.Bucket{Key: key, Window: ftypes.Window_HOUR, Index: uint64(ts) / 3600 / uint64(width), Width: width})
+			ret = append(ret, counter.Bucket{Key: key, Window: ftypes.Window_HOUR, Index: uint32(ts) / 3600 / width, Width: width})
 		case ftypes.Window_DAY:
-			ret = append(ret, counter.Bucket{Key: key, Window: ftypes.Window_DAY, Index: uint64(ts) / (24 * 3600) / uint64(width), Width: width})
+			ret = append(ret, counter.Bucket{Key: key, Window: ftypes.Window_DAY, Index: uint32(ts) / (24 * 3600) / width, Width: width})
 		}
 	}
 	return ret
@@ -68,8 +69,8 @@ func (f fixedWidthBucketizer) BucketizeDuration(key string, start, end ftypes.Ti
 
 // bucketizeTimeseries returns a list of buckets of size 'Window' that begin at or after 'start'
 // and go until at or before 'end'. Each bucket's count is left at 0
-func (b fixedWidthBucketizer) bucketizeTimeseries(key string, start, end ftypes.Timestamp, window ftypes.Window, width uint64) ([]counter.Bucket, ftypes.Timestamp, ftypes.Timestamp) {
-	var period uint64
+func (b fixedWidthBucketizer) bucketizeTimeseries(key string, start, end ftypes.Timestamp, window ftypes.Window, width uint32) ([]counter.Bucket, ftypes.Timestamp, ftypes.Timestamp) {
+	var period uint32
 	switch window {
 	case ftypes.Window_MINUTE:
 		period = 60 * width
@@ -84,8 +85,8 @@ func (b fixedWidthBucketizer) bucketizeTimeseries(key string, start, end ftypes.
 	if endBoundary <= startBoundary {
 		return []counter.Bucket{}, start, start
 	}
-	bucketStart := ftypes.Timestamp(startBoundary * uint64(period))
-	bucketEnd := ftypes.Timestamp(endBoundary * uint64(period))
+	bucketStart := ftypes.Timestamp(startBoundary * period)
+	bucketEnd := ftypes.Timestamp(endBoundary * period)
 	sz := int(endBoundary - startBoundary)
 	ret := arena.Buckets.Alloc(sz, sz)
 	for i := startBoundary; i < endBoundary; i++ {
@@ -101,7 +102,7 @@ func (b fixedWidthBucketizer) bucketizeTimeseries(key string, start, end ftypes.
 type fixedSplitBucketizer struct {
 	numBuckets []uint64
 	durations  []uint64
-	widths     []uint64
+	widths     []uint32
 }
 
 // numBuckets must always be > 0;
@@ -115,7 +116,7 @@ func newFixedSplitBucketizer(numBuckets []uint64, durations []uint64) (f fixedSp
 		numBuckets: numBuckets,
 		durations:  durations,
 	}
-	f.widths = make([]uint64, len(durations))
+	f.widths = make([]uint32, len(durations))
 	for i := range numBuckets {
 		if numBuckets[i] == 0 {
 			return f, fmt.Errorf("error: numBuckets[%d] is 0; numBuckets must be a postive integer", i)
@@ -129,7 +130,7 @@ func newFixedSplitBucketizer(numBuckets []uint64, durations []uint64) (f fixedSp
 				// width will be zero, which is interpreted as an infinite bucket and is not correct in any case
 				numBuckets[i] = durations[i]
 			}
-			f.widths[i] = durations[i] / numBuckets[i]
+			f.widths[i] = uint32(durations[i]) / uint32(numBuckets[i])
 		}
 	}
 	return f, nil
@@ -151,7 +152,7 @@ func (f fixedSplitBucketizer) BucketizeMoment(key string, ts ftypes.Timestamp) [
 func (f fixedSplitBucketizer) BucketizeDuration(key string, start, finish ftypes.Timestamp) []counter.Bucket {
 	// Find which width, duration of the Bucketizer we are working with
 	d := finish - start
-	var w uint64
+	var w uint32
 	for i := range f.durations {
 		if f.durations[i] == uint64(d) {
 			w = f.widths[i]
@@ -172,19 +173,20 @@ func (f fixedSplitBucketizer) BucketizeDuration(key string, start, finish ftypes
 	return buckets
 }
 
-func (f fixedSplitBucketizer) getIndex(ts ftypes.Timestamp, w uint64) uint64 {
+func (f fixedSplitBucketizer) getIndex(ts ftypes.Timestamp, w uint32) uint32 {
 	// If w is 0, width is infinite so we return 0
 	if w == 0 {
 		return 0
 	}
-	return uint64(ts) / w
+	return uint32(ts) / w
 }
 
 // thirdBucketizer splits the entire time space into buckets of size each.
 // Bucket 0, covers the time range [0, size) and so on.
 // When size = 0, there is one infinite bucket which covers the entire time space.
 type thirdBucketizer struct {
-	size uint64
+	// since we are dealing with timestamp in seconds since epoch, uint32 should work
+	size uint32
 }
 
 func (t thirdBucketizer) BucketizeMoment(key string, ts ftypes.Timestamp) []counter.Bucket {
@@ -213,12 +215,12 @@ func (t thirdBucketizer) BucketizeDuration(key string, start, finish ftypes.Time
 	return buckets
 }
 
-func (t thirdBucketizer) getIndex(ts ftypes.Timestamp) uint64 {
+func (t thirdBucketizer) getIndex(ts ftypes.Timestamp) uint32 {
 	// If size is 0, width is infinite so we return 0
 	if t.size == 0 {
 		return 0
 	}
-	return uint64(ts) / uint64(t.size)
+	return uint32(ts) / t.size
 }
 
 var _ Bucketizer = fixedWidthBucketizer{}

@@ -29,7 +29,7 @@ func TestValueAll(t *testing.T) {
 	clock := &test.FakeClock{}
 	tier.Clock = clock
 	t0 := ftypes.Timestamp(0)
-	assert.Equal(t, int64(t0), tier.Clock.Now())
+	assert.Equal(t, uint32(t0), tier.Clock.Now())
 
 	agg1 := aggregate.Aggregate{
 		Name:      "mycounter",
@@ -111,7 +111,7 @@ func TestValueAll(t *testing.T) {
 	}
 	exp3 := value.Int(5)
 
-	clock.Set(int64(t1 + 48*3600))
+	clock.Set(uint32(t1 + 48*3600))
 
 	req4 := aggregate.GetAggValueRequest{
 		AggName: agg1.Name,
@@ -122,7 +122,7 @@ func TestValueAll(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, value.Int(4), found4)
 
-	clock.Set(int64(t1 + 2*3600))
+	clock.Set(uint32(t1 + 2*3600))
 	// Test Value()
 	found1, err := Value(ctx, tier, req1.AggName, req1.Key, req1.Kwargs)
 	assert.NoError(t, err)
@@ -149,10 +149,10 @@ func TestCachedValueAll(t *testing.T) {
 	clock := &test.FakeClock{}
 	tier.Clock = clock
 	t0 := ftypes.Timestamp(0)
-	assert.Equal(t, int64(t0), tier.Clock.Now())
+	assert.Equal(t, uint32(t0), tier.Clock.Now())
 	t1 := t0 + 1800
-	clock.Set(int64(t1))
-	assert.Equal(t, int64(t1), tier.Clock.Now())
+	clock.Set(uint32(t1))
+	assert.Equal(t, uint32(t1), tier.Clock.Now())
 
 	agg := aggregate.Aggregate{
 		Name:      "agg",
