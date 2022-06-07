@@ -37,7 +37,7 @@ func TestValueAll(t *testing.T) {
 		Timestamp: t0,
 		Options: aggregate.Options{
 			AggType:   "sum",
-			Durations: []uint64{6 * 3600, 3 * 3600},
+			Durations: []uint64{6 * 3600, 3 * 3600, 48 * 3600},
 		},
 	}
 	agg2 := aggregate.Aggregate{
@@ -64,6 +64,7 @@ func TestValueAll(t *testing.T) {
 	buckets := h1.BucketizeMoment(keystr, t1)
 	v1 := make([]value.Value, len(buckets))
 	slice.Fill[value.Value](v1, value.Int(1))
+
 	err = counter.Update(context.Background(), tier, agg1.Id, buckets, v1, h1)
 	assert.NoError(t, err)
 	buckets = h1.BucketizeMoment(keystr, t1)
@@ -110,11 +111,23 @@ func TestValueAll(t *testing.T) {
 	}
 	exp3 := value.Int(5)
 
+	clock.Set(int64(t1 + 48*3600))
+
+	req4 := aggregate.GetAggValueRequest{
+		AggName: agg1.Name,
+		Key:     key,
+		Kwargs:  value.NewDict(map[string]value.Value{"duration": value.Int(48 * 3600)}),
+	}
+	found4, err := Value(ctx, tier, req4.AggName, req4.Key, req4.Kwargs)
+	assert.NoError(t, err)
+	assert.Equal(t, value.Int(4), found4)
+
 	clock.Set(int64(t1 + 2*3600))
 	// Test Value()
 	found1, err := Value(ctx, tier, req1.AggName, req1.Key, req1.Kwargs)
 	assert.NoError(t, err)
 	assert.Equal(t, exp1, found1)
+
 	found2, err := Value(ctx, tier, req2.AggName, req2.Key, req2.Kwargs)
 	assert.NoError(t, err)
 	assert.Equal(t, exp2, found2)

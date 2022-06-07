@@ -238,6 +238,9 @@ func (t twoLevelRedisStore) GetMulti(
 ) ([][]value.Value, error) {
 	ctx, tmr := timer.Start(ctx, tier.ID, "twolevelredis.get_multi")
 	defer tmr.Stop()
+	if len(buckets) == 0 {
+		return [][]value.Value{}, nil
+	}
 
 	// to ensure that we don't allocate crazy large memory, we iterate through all
 	// data in batches - we prefer to use a batch size up to MAX_BATCH_SZ but if
@@ -259,13 +262,17 @@ func (t twoLevelRedisStore) GetMulti(
 	if batchSize < maxSz {
 		batchSize = maxSz
 	}
+
+	if batchSize == 0 {
+		return [][]value.Value{}, nil
+	}
+
 	ids_ := aggIDArena.Alloc(batchSize, batchSize)
 	defer aggIDArena.Free(ids_)
 	buckets_ := arena.Buckets.Alloc(batchSize, batchSize)
 	defer arena.Buckets.Free(buckets_)
 	defaults_ := arena.Values.Alloc(batchSize, batchSize)
 	defer arena.Values.Free(defaults_)
-
 	i := 0      // i tracks the index of the next aggId whose buckets we will attempt to insert into the batch
 	putIdx := 0 // putIdx tracks the index of the next aggId for which values received from redis need to be filled
 	bsz := 0    // bsz tracks the number of buckets in the current batch
@@ -283,6 +290,7 @@ func (t twoLevelRedisStore) GetMulti(
 				return nil, err
 			}
 			j := putIdx
+
 			for ; len(vals) > 0 && j < len(aggIds); j++ {
 				l := len(buckets[j])
 				// We copy the values into ret[j] instead of just assigning them to
@@ -518,7 +526,9 @@ func Update(ctx context.Context, tier tier.Tier, aggId ftypes.AggId, buckets []c
 	if err != nil {
 		return err
 	}
-	for i := range cur {
+
+	// We fetch for only 1 aggregate, hence its a 2d array of 1 element
+	for i := range cur[0] {
 		values[i], err = h.Merge(cur[0][i], values[i])
 		if err != nil {
 			return err
