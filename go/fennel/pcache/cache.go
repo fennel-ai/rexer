@@ -54,8 +54,9 @@ func NewPCache(maxCost int64, averageItemCost int64) (PCache, error) {
 		// Ristretto recommends BufferItems as `64`, but we have noticed a large number of sets being dropped,
 		// therefore we set this value as `1024`; The exact value is TBD and should be tuned using the help
 		// of the metrics reported to Prometheus
-		BufferItems: 1 << 10,
-		Metrics:     true,
+		BufferItems:        1 << 10,
+		Metrics:            true,
+		IgnoreInternalCost: true,
 		OnEvict: func(item *ristretto.Item) {
 			itemGap := item.Expiration.Sub(time.Now())
 			if itemGap.Seconds() <= 3 {
