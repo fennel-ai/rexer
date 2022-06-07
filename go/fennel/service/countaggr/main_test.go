@@ -379,7 +379,14 @@ func verify(t *testing.T, tier tier.Tier, agg libaggregate.Aggregate, k value.Va
 		assert.True(t, ok)
 		assert.True(t, float64(expected.(value.Double)-asfloat) < 1e-6)
 	} else {
-		assert.Equal(t, expected, found, agg)
+		// list aggregate type behaves like a set, the ordering there is not deterministic
+		if string(agg.Options.AggType) == "list" {
+			e := expected.(value.Value).(value.List)
+			f := found.(value.List)
+			assert.ElementsMatch(t, e.Values(), f.Values(), agg)
+		} else {
+			assert.Equal(t, expected, found, agg)
+		}
 	}
 }
 
