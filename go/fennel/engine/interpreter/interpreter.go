@@ -397,22 +397,22 @@ func (i *Interpreter) getOperator(namespace, name string) (operators.Operator, e
 	return ret, err
 }
 
-func (i *Interpreter) visitAll(operands []ast.Ast, ctx context.Context) ([]value.Value, error) {
+func (i *Interpreter) visitAll(trees []ast.Ast, ctx context.Context) ([]value.Value, error) {
 	tracer := otel.Tracer("fennel")
 	cCtx, span := tracer.Start(ctx, "operandsVisit")
 	defer span.End()
-	span.SetAttributes(attribute.Int("numSubTrees", len(operands)))
+	span.SetAttributes(attribute.Int("numSubTrees", len(trees)))
 
-	vals := make([]value.Value, len(operands))
+	vals := make([]value.Value, len(trees))
 	var err error
-	if len(operands) == 1 {
+	if len(trees) == 1 {
 		// Create a new interpreter to pass the new context used in the trace
 		subtreeInterpreter := Interpreter{i.env, i.bootargs, cCtx}
-		vals[0], err = operands[0].AcceptValue(&subtreeInterpreter)
+		vals[0], err = trees[0].AcceptValue(&subtreeInterpreter)
 	} else {
 		// Eval trees in parallel if more than 1.
 		eg := errgroup.Group{}
-		for j := range operands {
+		for j := range trees {
 			idx := j
 			eg.Go(func() error {
 				// Copy interpreter here, so the go-routines don't share the
@@ -421,7 +421,7 @@ func (i *Interpreter) visitAll(operands []ast.Ast, ctx context.Context) ([]value
 				defer subtreeSpan.End()
 				subtreeInterpreter := Interpreter{i.env, i.bootargs, subtreeCtx}
 				var err error
-				vals[idx], err = operands[idx].AcceptValue(&subtreeInterpreter)
+				vals[idx], err = trees[idx].AcceptValue(&subtreeInterpreter)
 				return err
 			})
 		}
