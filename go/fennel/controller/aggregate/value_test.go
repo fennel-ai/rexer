@@ -67,9 +67,9 @@ func TestValueAll(t *testing.T) {
 	err = counter.Update(context.Background(), tier, agg1.Id, buckets, v1, h1)
 	assert.NoError(t, err)
 	buckets = h1.BucketizeMoment(keystr, t1)
-	v2 := make([]value.Value, len(buckets))
-	slice.Fill[value.Value](v2, value.Int(3))
-	err = counter.Update(context.Background(), tier, agg1.Id, buckets, v2, h1)
+	v1 = make([]value.Value, len(buckets))
+	slice.Fill[value.Value](v1, value.Int(3))
+	err = counter.Update(context.Background(), tier, agg1.Id, buckets, v1, h1)
 	assert.NoError(t, err)
 	req1 := aggregate.GetAggValueRequest{
 		AggName: agg1.Name,
@@ -80,9 +80,9 @@ func TestValueAll(t *testing.T) {
 
 	h2 := counter.NewMin(agg2.Options.Durations)
 	buckets = h2.BucketizeMoment(keystr, t1)
-	v1 = make([]value.Value, len(buckets))
-	slice.Fill[value.Value](v1, value.NewList(value.Int(2), value.Bool(false)))
-	err = counter.Update(context.Background(), tier, agg2.Id, buckets, v1, h2)
+	v2 := make([]value.Value, len(buckets))
+	slice.Fill[value.Value](v2, value.NewList(value.Int(2), value.Bool(false)))
+	err = counter.Update(context.Background(), tier, agg2.Id, buckets, v2, h2)
 	assert.NoError(t, err)
 	buckets = h2.BucketizeMoment(keystr, t1)
 	v2 = make([]value.Value, len(buckets))
