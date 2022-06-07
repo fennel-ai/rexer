@@ -2,6 +2,7 @@ package counter
 
 import (
 	"context"
+	"fennel/lib/arena"
 	"fmt"
 	"go.uber.org/zap"
 	"os"
@@ -115,6 +116,7 @@ func BatchValue(
 			}
 			ids_[i] = aggIds[index]
 			bucketsForAggKey := h.BucketizeDuration(keys[index].String(), start, end, h.Zero())
+			defer arena.Buckets.Free(bucketsForAggKey)
 			// Find buckets in a cache, if not found, fetch from the bucket store
 			cachedBuckets[i], buckets[i] = fetchFromPCache(tier, ids_[i], bucketsForAggKey)
 			defaults[i] = h.Zero()
