@@ -68,10 +68,7 @@ func (zi *ZipIter) Next() ([]value.Value, value.Dict, error) {
 	if !ok {
 		return nil, value.Dict{}, fmt.Errorf("expected list of operands but found: %s", first)
 	}
-	elems := make([]value.Value, aslist.Len())
-	for i := 0; i < aslist.Len(); i++ {
-		elems[i], _ = aslist.At(i)
-	}
+	elems := aslist.Values()
 	second_val, err := zi.second.Next()
 	if err != nil {
 		return nil, value.Dict{}, err
