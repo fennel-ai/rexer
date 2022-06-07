@@ -64,17 +64,13 @@ export const setup = async (input: inputType): Promise<pulumi.Output<outputType>
         kubeconfig: input.kubeconfig,
     })
 
-    const milvusNs = new k8s.core.v1.Namespace("milvus-ns", {
-        metadata: {
-            name: "milvus",
-        }
-    }, { provider: k8sProvider })
-
     const milvus = new k8s.helm.v3.Release("milvus", {
         repositoryOpts: {
             "repo": "https://milvus-io.github.io/milvus-helm/",
         },
         chart: "milvus",
+        name: "milvus",
+        createNamespace: true,
         namespace: "milvus",
         values: {
             "cluster": {
