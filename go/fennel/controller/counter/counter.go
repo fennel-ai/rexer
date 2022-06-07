@@ -28,6 +28,7 @@ func Value(
 		return nil, err
 	}
 	buckets := histogram.BucketizeDuration(key.String(), start, end, histogram.Zero())
+	defer arena.Buckets.Free(buckets)
 	counts, err := histogram.Get(ctx, tier, aggId, buckets, histogram.Zero())
 	if err != nil {
 		return nil, err
