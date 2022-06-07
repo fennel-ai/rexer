@@ -30,7 +30,7 @@ func TestPCache_Get(t *testing.T) {
 	assert.Equal(t, 27, v)
 
 	// set a key with TTL
-	ok = cache.SetWithTTL(key2, 64, 0, 5*time.Second)
+	ok = cache.SetWithTTL(key2, 64, 0, 5*time.Second, "Test")
 	assert.True(t, ok)
 	time.Sleep(10 * time.Millisecond)
 

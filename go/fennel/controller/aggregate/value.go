@@ -55,7 +55,7 @@ func Value(
 		return nil, err
 	}
 
-	if !tier.PCache.SetWithTTL(ckey, val, int64(len(ckey)+len(val.String())), cacheValueDuration) {
+	if !tier.PCache.SetWithTTL(ckey, val, int64(len(ckey)+len(val.String())), cacheValueDuration, "AggValue") {
 		tier.Logger.Debug(fmt.Sprintf("failed to set aggregate value in cache: key: '%s' value: '%s'", ckey, val.String()))
 	}
 	return val, nil
@@ -107,7 +107,7 @@ func BatchValue(ctx context.Context, tier tier.Tier, batch []aggregate.GetAggVal
 			continue
 		}
 		ret[i] = ucvals[idx]
-		if ok := tier.PCache.SetWithTTL(uckeys[idx], ucvals[idx], int64(len(uckeys[idx])+len(ucvals[idx].String())), cacheValueDuration); !ok {
+		if ok := tier.PCache.SetWithTTL(uckeys[idx], ucvals[idx], int64(len(uckeys[idx])+len(ucvals[idx].String())), cacheValueDuration, "AggValue"); !ok {
 			tier.Logger.Debug(fmt.Sprintf("failed to set aggregate value in cache: key: '%s' value: '%s'", uckeys[idx], ucvals[idx].String()))
 		}
 	}
