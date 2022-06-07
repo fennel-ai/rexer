@@ -12,8 +12,8 @@ import (
 )
 
 const (
-	// Drop one free call in every 16 calls. This needs to be a power of 2
-	dropRate = 16
+	// Drop one free call in every 32 calls. This needs to be a power of 2
+	dropRate = 32
 )
 
 /*
