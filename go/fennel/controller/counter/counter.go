@@ -28,6 +28,7 @@ func Value(
 		return nil, err
 	}
 	buckets := histogram.BucketizeDuration(key.String(), start, end, histogram.Zero())
+	defer arena.Buckets.Free(buckets)
 	counts, err := histogram.Get(ctx, tier, aggId, buckets, histogram.Zero())
 	if err != nil {
 		return nil, err
@@ -123,6 +124,7 @@ func BatchValue(
 			}
 			ids_[i] = aggIds[index]
 			bucketsForAggKey := h.BucketizeDuration(keys[index].String(), start, end, h.Zero())
+			defer arena.Buckets.Free(bucketsForAggKey)
 			// Find buckets in a cache, if not found, fetch from the bucket store
 			cachedBuckets[i], buckets[i] = fetchFromPCache(tier, ids_[i], bucketsForAggKey)
 			defaults[i] = h.Zero()
