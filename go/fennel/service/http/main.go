@@ -21,6 +21,7 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
+	"github.com/raulk/go-watchdog"
 )
 
 // ------------------------ START metric definitions ----------------------------
@@ -142,6 +143,16 @@ func main() {
 	if err != nil {
 		log.Fatalf("Listen(): %v", err)
 	}
+
+	// Set 90% memory utilization as the threshold for capturing heap profiles.
+	watchdog.HeapProfileThreshold = 0.9
+	// Start a watchdog to wake up every 1 minute and run gc if the service has
+	// used more than 50% of the memory available at the previous check.
+	// For a max memory limit of 24 GiB, this will approximately trigger GC at
+	// 12 GiB, 18 GiB, 21 GiB, 22.5 GiB, and so on, if the memory usage continues
+	// to increase.
+	const memoryLimit uint64 = 24 * (2 << 30) // 24 GiB
+	watchdog.SystemDriven(memoryLimit, 1*time.Minute, watchdog.NewAdaptivePolicy(0.50))
 
 	// Signal that server is open for business.
 	// Note: don't delete this log line - e2e tests rely on this to be printed
