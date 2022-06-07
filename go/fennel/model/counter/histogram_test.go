@@ -57,5 +57,5 @@ func testHistogramZeroNotMutated(t *testing.T, h Histogram, v value.Value, zero 
 	assert.NoError(t, err)
 	_, err = h.Reduce([]value.Value{v, m})
 	assert.NoError(t, err)
-	assert.Equal(t, h.Zero(), zero)
+	assert.True(t, h.Zero().Equal(zero))
 }

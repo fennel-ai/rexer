@@ -61,7 +61,7 @@ func (s list) Reduce(values []value.Value) (value.Value, error) {
 			m[val.String()] = val
 		}
 	}
-	z := s.Zero().(value.List)
+	z := s.Zero().Clone().(value.List)
 	for _, v := range m {
 		z.Append(v)
 	}
