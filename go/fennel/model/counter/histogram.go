@@ -12,16 +12,14 @@ import (
 )
 
 type Bucketizer interface {
-	BucketizeMoment(key string, ts ftypes.Timestamp, v value.Value) []counter.Bucket
-	BucketizeDuration(key string, start, end ftypes.Timestamp, v value.Value) []counter.Bucket
+	BucketizeMoment(key string, ts ftypes.Timestamp) []counter.Bucket
+	BucketizeDuration(key string, start, end ftypes.Timestamp) []counter.Bucket
 }
 
 type BucketStore interface {
 	GetBucketStore() BucketStore
-	Get(ctx context.Context, tr tier.Tier, aggId ftypes.AggId, buckets []counter.Bucket, default_ value.Value) ([]value.Value, error)
 	GetMulti(ctx context.Context, tr tier.Tier, aggIds []ftypes.AggId, buckets [][]counter.Bucket, defaults_ []value.Value) ([][]value.Value, error)
-	Set(ctx context.Context, tr tier.Tier, aggId ftypes.AggId, deltas []counter.Bucket) error
-	SetMulti(ctx context.Context, tr tier.Tier, aggIds []ftypes.AggId, deltas [][]counter.Bucket) error
+	SetMulti(ctx context.Context, tr tier.Tier, aggIds []ftypes.AggId, deltas [][]counter.Bucket, values [][]value.Value) error
 }
 
 type MergeReduce interface {

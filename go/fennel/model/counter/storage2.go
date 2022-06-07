@@ -64,21 +64,6 @@ func (s splitStore) logStats(groups map[splitGroup][]string, mode string) {
 	metrics.WithLabelValues(fmt.Sprintf("split_store_num_vals_per_key_in%s", mode)).Observe(float64(valsPerKey) / float64(count))
 }
 
-func (s splitStore) Get(
-	ctx context.Context, tier tier.Tier, aggID ftypes.AggId, buckets []counter.Bucket, default_ value.Value,
-) ([]value.Value, error) {
-	ctx, t := timer.Start(ctx, tier.ID, "splitstore.get")
-	defer t.Stop()
-	res, err := s.GetMulti(ctx, tier, []ftypes.AggId{aggID}, [][]counter.Bucket{buckets}, []value.Value{default_})
-	if err != nil {
-		return nil, err
-	}
-	if len(res) == 0 {
-		return nil, fmt.Errorf("failed to get anything")
-	}
-	return res[0], err
-}
-
 func (s splitStore) GetMulti(
 	ctx context.Context, tier tier.Tier, aggIDs []ftypes.AggId, buckets [][]counter.Bucket, defaults []value.Value,
 ) ([][]value.Value, error) {
@@ -109,16 +94,8 @@ func (s splitStore) GetMulti(
 	return res, nil
 }
 
-func (s splitStore) Set(
-	ctx context.Context, tier tier.Tier, aggID ftypes.AggId, buckets []counter.Bucket,
-) error {
-	ctx, t := timer.Start(ctx, tier.ID, "splitstore.set")
-	defer t.Stop()
-	return s.SetMulti(ctx, tier, []ftypes.AggId{aggID}, [][]counter.Bucket{buckets})
-}
-
 func (s splitStore) SetMulti(
-	ctx context.Context, tier tier.Tier, aggIDs []ftypes.AggId, buckets [][]counter.Bucket,
+	ctx context.Context, tier tier.Tier, aggIDs []ftypes.AggId, buckets [][]counter.Bucket, values [][]value.Value,
 ) error {
 	ctx, t := timer.Start(ctx, tier.ID, "splitstore.set_multi")
 	defer t.Stop()
@@ -144,7 +121,7 @@ func (s splitStore) SetMulti(
 			if _, ok := vals[g]; !ok {
 				vals[g] = make([]string, s.bucketsPerGroup)
 			}
-			vals[g][index] = buckets[i][j].Value.String()
+			vals[g][index] = values[i][j].String()
 		}
 	}
 	s.logStats(vals, "set")

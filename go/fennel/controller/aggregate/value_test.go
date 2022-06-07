@@ -2,6 +2,7 @@ package aggregate
 
 import (
 	"context"
+	"fennel/lib/utils/slice"
 	"fmt"
 	"testing"
 	"time"
@@ -60,11 +61,15 @@ func TestValueAll(t *testing.T) {
 	keystr := key.String()
 
 	h1 := counter.NewSum(agg1.Options.Durations)
-	buckets := h1.BucketizeMoment(keystr, t1, value.Int(1))
-	err = counter.Update(context.Background(), tier, agg1.Id, buckets, h1)
+	buckets := h1.BucketizeMoment(keystr, t1)
+	v1 := make([]value.Value, len(buckets))
+	slice.Fill[value.Value](v1, value.Int(1))
+	err = counter.Update(context.Background(), tier, agg1.Id, buckets, v1, h1)
 	assert.NoError(t, err)
-	buckets = h1.BucketizeMoment(keystr, t1, value.Int(3))
-	err = counter.Update(context.Background(), tier, agg1.Id, buckets, h1)
+	buckets = h1.BucketizeMoment(keystr, t1)
+	v1 = make([]value.Value, len(buckets))
+	slice.Fill[value.Value](v1, value.Int(3))
+	err = counter.Update(context.Background(), tier, agg1.Id, buckets, v1, h1)
 	assert.NoError(t, err)
 	req1 := aggregate.GetAggValueRequest{
 		AggName: agg1.Name,
@@ -74,11 +79,15 @@ func TestValueAll(t *testing.T) {
 	exp1 := value.Int(4)
 
 	h2 := counter.NewMin(agg2.Options.Durations)
-	buckets = h2.BucketizeMoment(keystr, t1, value.NewList(value.Int(2), value.Bool(false)))
-	err = counter.Update(context.Background(), tier, agg2.Id, buckets, h2)
+	buckets = h2.BucketizeMoment(keystr, t1)
+	v2 := make([]value.Value, len(buckets))
+	slice.Fill[value.Value](v2, value.NewList(value.Int(2), value.Bool(false)))
+	err = counter.Update(context.Background(), tier, agg2.Id, buckets, v2, h2)
 	assert.NoError(t, err)
-	buckets = h2.BucketizeMoment(keystr, t1, value.NewList(value.Int(7), value.Bool(false)))
-	err = counter.Update(context.Background(), tier, agg2.Id, buckets, h2)
+	buckets = h2.BucketizeMoment(keystr, t1)
+	v2 = make([]value.Value, len(buckets))
+	slice.Fill[value.Value](v2, value.NewList(value.Int(7), value.Bool(false)))
+	err = counter.Update(context.Background(), tier, agg2.Id, buckets, v2, h2)
 
 	assert.NoError(t, err)
 	req2 := aggregate.GetAggValueRequest{
@@ -88,8 +97,11 @@ func TestValueAll(t *testing.T) {
 	}
 	exp2 := value.Int(2)
 	// Test kwargs with duration of an hour
-	buckets = h2.BucketizeMoment(keystr, t1+5400, value.NewList(value.Int(5), value.Bool(false)))
-	err = counter.Update(context.Background(), tier, agg2.Id, buckets, h2)
+	buckets = h2.BucketizeMoment(keystr, t1+5400)
+	v3 := make([]value.Value, len(buckets))
+	slice.Fill[value.Value](v3, value.NewList(value.Int(5), value.Bool(false)))
+
+	err = counter.Update(context.Background(), tier, agg2.Id, buckets, v3, h2)
 	assert.NoError(t, err)
 	req3 := aggregate.GetAggValueRequest{
 		AggName: agg2.Name,
@@ -153,8 +165,10 @@ func TestCachedValueAll(t *testing.T) {
 	// wait for value to be cached
 	time.Sleep(10 * time.Millisecond)
 	// update buckets, we should still get back cached value
-	buckets := h.BucketizeMoment(key.String(), t0, value.Int(1))
-	assert.NoError(t, counter.Update(ctx, tier, agg.Id, buckets, h))
+	buckets := h.BucketizeMoment(key.String(), t0)
+	v1 := make([]value.Value, len(buckets))
+	slice.Fill[value.Value](v1, value.Int(1))
+	assert.NoError(t, counter.Update(ctx, tier, agg.Id, buckets, v1, h))
 	expected = value.Int(0)
 	found, err = Value(ctx, tier, agg.Name, key, kwargs)
 	assert.NoError(t, err)
@@ -196,8 +210,10 @@ func TestCachedValueAll(t *testing.T) {
 	time.Sleep(10 * time.Millisecond)
 	// update buckets, we should get back cached value from req1 and req3 but ground truth from req2
 	for i, h := range histograms {
-		buckets := h.BucketizeMoment(key.String(), t0, value.Int(1))
-		assert.NoError(t, counter.Update(ctx, tier, ids[i], buckets, h))
+		buckets := h.BucketizeMoment(key.String(), t0)
+		v := make([]value.Value, len(buckets))
+		slice.Fill[value.Value](v, value.Int(1))
+		assert.NoError(t, counter.Update(ctx, tier, ids[i], buckets, v1, h))
 	}
 	// and this works even with repeated requests
 	req2 := []aggregate.GetAggValueRequest{reqs[0], reqs[2], reqs[1], reqs[1], reqs[2]}

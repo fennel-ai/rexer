@@ -6,64 +6,69 @@ import (
 	"fennel/lib/counter"
 	"fennel/lib/ftypes"
 	"fennel/lib/utils"
+	"fennel/lib/utils/slice"
 	"fennel/lib/value"
 )
 
-func Bucketize(histogram Histogram, actions value.List) ([]counter.Bucket, error) {
+func Bucketize(histogram Histogram, actions value.List) ([]counter.Bucket, []value.Value, error) {
 	buckets := make([]counter.Bucket, 0, actions.Len())
+	values := make([]value.Value, 0, actions.Len())
 	for i := 0; i < actions.Len(); i++ {
 		rowVal, _ := actions.At(i)
 		row, ok := rowVal.(value.Dict)
 		if !ok {
-			return nil, fmt.Errorf("action expected to be dict but found: '%v'", rowVal)
+			return nil, nil, fmt.Errorf("action expected to be dict but found: '%v'", rowVal)
 		}
 		groupkey, ok := row.Get("groupkey")
 		if !ok {
-			return nil, fmt.Errorf("action '%v' does not have a field called 'groupkey'", rowVal)
+			return nil, nil, fmt.Errorf("action '%v' does not have a field called 'groupkey'", rowVal)
 		}
 		ts, ok := row.Get("timestamp")
 		if !ok || value.Types.Int.Validate(ts) != nil {
-			return nil, fmt.Errorf("action '%v' does not have a field called 'timestamp' with datatype of 'int'", row)
+			return nil, nil, fmt.Errorf("action '%v' does not have a field called 'timestamp' with datatype of 'int'", row)
 		}
 		v, ok := row.Get("value")
 		if !ok {
-			return nil, fmt.Errorf("action '%v' does not have a field called 'value'", row)
+			return nil, nil, fmt.Errorf("action '%v' does not have a field called 'value'", row)
 		}
 		ts_int := ts.(value.Int)
 		key := groupkey.String()
 		v, err := histogram.Transform(v)
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
-		b := histogram.BucketizeMoment(key, ftypes.Timestamp(ts_int), v)
+		b := histogram.BucketizeMoment(key, ftypes.Timestamp(ts_int))
+		vals := make([]value.Value, len(b))
+		slice.Fill(vals, v)
 		buckets = append(buckets, b...)
+		values = append(values, vals...)
 	}
-	return buckets, nil
+	return buckets, values, nil
 }
 
 // MergeBuckets takes a list of buckets and "merges" their counts if rest of their properties
 // are identical this reduces the number of keys to touch in storage
-func MergeBuckets(histogram Histogram, buckets []counter.Bucket) ([]counter.Bucket, error) {
+func MergeBuckets(histogram Histogram, buckets []counter.Bucket, values []value.Value) ([]counter.Bucket, []value.Value, error) {
 	seen := make(map[counter.Bucket]value.Value, 0)
 	var err error
 	for i := range buckets {
 		mapkey := buckets[i]
-		mapkey.Value = value.Nil // note, for hashmap to be hashable, this needs to be hashable as well
 		current, ok := seen[mapkey]
 		if !ok {
 			current = histogram.Zero()
 		}
-		seen[mapkey], err = histogram.Merge(current, buckets[i].Value)
+		seen[mapkey], err = histogram.Merge(current, values[i])
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 	}
 	ret := make([]counter.Bucket, 0, len(seen))
+	retVal := make([]value.Value, 0, len(seen))
 	for b, c := range seen {
-		b.Value = c
 		ret = append(ret, b)
+		retVal = append(retVal, c)
 	}
-	return ret, nil
+	return ret, retVal, nil
 }
 
 // ===========================
@@ -79,7 +84,7 @@ func boundary(start, end ftypes.Timestamp, period uint64) (uint64, uint64) {
 
 // trailingPartial returns the partial bucket that started within [start, end] but didn't fully finish before end
 // if there is no such bucket, ok (2nd return value) is false
-func trailingPartial(key string, start, end ftypes.Timestamp, window ftypes.Window, width uint64, zero value.Value) (counter.Bucket, bool) {
+func trailingPartial(key string, start, end ftypes.Timestamp, window ftypes.Window, width uint64) (counter.Bucket, bool) {
 	d, err := utils.Duration(window)
 	if err != nil {
 		return counter.Bucket{}, false
@@ -89,7 +94,7 @@ func trailingPartial(key string, start, end ftypes.Timestamp, window ftypes.Wind
 	if endBoundary < startBoundary {
 		return counter.Bucket{}, false
 	}
-	if endBoundary*period == uint64(end) {
+	if endBoundary*uint64(period) == uint64(end) {
 		// last bucket perfectly lines up with the end so there is no trailing partial bucket
 		return counter.Bucket{}, false
 	}
@@ -98,7 +103,6 @@ func trailingPartial(key string, start, end ftypes.Timestamp, window ftypes.Wind
 		Window: window,
 		Width:  width,
 		Index:  endBoundary,
-		Value:  zero,
 	}, true
 }
 

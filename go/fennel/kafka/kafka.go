@@ -68,13 +68,6 @@ var ALL_TOPICS = []TopicConf{
 	},
 
 	{Topic: profile.PROFILELOG_KAFKA_TOPIC},
-	{
-		Topic: counter.AGGREGATE_DELTA_TOPIC_NAME,
-		PConfigs: ProducerConfigs{
-			// Maximum size of one message; default=1000000
-			"message.max.bytes=10000000",
-		},
-	},
 	{Topic: counter.AGGREGATE_OFFLINE_TRANSFORM_TOPIC_NAME},
 	{Topic: nitrous.BINLOG_KAFKA_TOPIC},
 }

@@ -4,9 +4,10 @@ import (
 	"context"
 	"fennel/lib/arena"
 	"fmt"
-	"go.uber.org/zap"
 	"os"
 	"time"
+
+	"go.uber.org/zap"
 
 	"fennel/lib/aggregate"
 	libcounter "fennel/lib/counter"
@@ -27,13 +28,13 @@ func Value(
 	if err != nil {
 		return nil, err
 	}
-	buckets := histogram.BucketizeDuration(key.String(), start, end, histogram.Zero())
+	buckets := histogram.BucketizeDuration(key.String(), start, end)
 	defer arena.Buckets.Free(buckets)
-	counts, err := histogram.Get(ctx, tier, aggId, buckets, histogram.Zero())
+	counts, err := histogram.GetMulti(ctx, tier, []ftypes.AggId{aggId}, [][]libcounter.Bucket{buckets}, []value.Value{histogram.Zero()})
 	if err != nil {
 		return nil, err
 	}
-	return histogram.Reduce(counts)
+	return histogram.Reduce(counts[0])
 }
 
 func makeCacheKey(aggId ftypes.AggId, b libcounter.Bucket) string {
@@ -123,7 +124,7 @@ func BatchValue(
 				return nil, fmt.Errorf("failed to get start timestamp of aggregate (id): %d, err: %v", aggIds[index], err)
 			}
 			ids_[i] = aggIds[index]
-			bucketsForAggKey := h.BucketizeDuration(keys[index].String(), start, end, h.Zero())
+			bucketsForAggKey := h.BucketizeDuration(keys[index].String(), start, end)
 			defer arena.Buckets.Free(bucketsForAggKey)
 			// Find buckets in a cache, if not found, fetch from the bucket store
 			cachedBuckets[i], buckets[i] = fetchFromPCache(tier, ids_[i], bucketsForAggKey)
@@ -150,25 +151,15 @@ func BatchValue(
 func Update(
 	ctx context.Context, tier tier.Tier, agg aggregate.Aggregate, table value.List, histogram counter.Histogram,
 ) error {
-	buckets, err := counter.Bucketize(histogram, table)
+	buckets, values, err := counter.Bucketize(histogram, table)
 	if err != nil {
 		return err
 	}
-	buckets, err = counter.MergeBuckets(histogram, buckets)
+	buckets, values, err = counter.MergeBuckets(histogram, buckets, values)
 	if err != nil {
 		return err
 	}
-	// log the deltas to be consumed by the tailer
-	ad, err := libcounter.ToProtoAggregateDelta(agg.Id, agg.Options, buckets)
-	if err != nil {
-		return err
-	}
-	deltaProducer := tier.Producers[libcounter.AGGREGATE_DELTA_TOPIC_NAME]
-	err = deltaProducer.LogProto(ctx, &ad, nil)
-	if err != nil {
-		return err
-	}
-	return counter.Update(ctx, tier, agg.Id, buckets, histogram)
+	return counter.Update(ctx, tier, agg.Id, buckets, values, histogram)
 }
 
 func fromCacheValue(tier tier.Tier, v interface{}) (value.Value, bool) {

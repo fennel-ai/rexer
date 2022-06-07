@@ -77,8 +77,8 @@ func testStorage(t *testing.T, store BucketStore) {
 	}{
 		{
 			[]counter.Bucket{
-				{Key: "k1", Window: ftypes.Window_DAY, Width: 1, Index: 5, Value: nil},
-				{Key: "k2", Window: ftypes.Window_HOUR, Width: 4, Index: 8, Value: nil},
+				{Key: "k1", Window: ftypes.Window_DAY, Width: 1, Index: 5},
+				{Key: "k2", Window: ftypes.Window_HOUR, Width: 4, Index: 8},
 			},
 			value.Int(0),
 			[]value.Value{value.String("hi"), value.Int(5)},
@@ -86,9 +86,9 @@ func testStorage(t *testing.T, store BucketStore) {
 		},
 		{
 			[]counter.Bucket{
-				{Key: "k1", Window: ftypes.Window_DAY, Width: 1, Index: 5, Value: nil},
-				{Key: "k2", Window: ftypes.Window_HOUR, Width: 6, Index: 7, Value: nil},
-				{Key: "k3", Window: ftypes.Window_HOUR, Width: 6, Index: 8, Value: nil},
+				{Key: "k1", Window: ftypes.Window_DAY, Width: 1, Index: 5},
+				{Key: "k2", Window: ftypes.Window_HOUR, Width: 6, Index: 7},
+				{Key: "k3", Window: ftypes.Window_HOUR, Width: 6, Index: 8},
 			},
 			value.Int(0),
 			[]value.Value{value.String("hi"), value.Nil, value.Int(51)},
@@ -96,11 +96,11 @@ func testStorage(t *testing.T, store BucketStore) {
 		},
 		{
 			[]counter.Bucket{
-				{Key: "k1", Window: ftypes.Window_DAY, Width: 1, Index: 5, Value: nil},
-				{Key: "k1", Window: ftypes.Window_HOUR, Width: 6, Index: 9, Value: nil},
-				{Key: "k1", Window: ftypes.Window_HOUR, Width: 6, Index: 8, Value: nil},
-				{Key: "k1", Window: ftypes.Window_MINUTE, Width: 6, Index: 480, Value: nil},
-				{Key: "k2", Window: ftypes.Window_HOUR, Width: 6, Index: 8, Value: nil},
+				{Key: "k1", Window: ftypes.Window_DAY, Width: 1, Index: 5},
+				{Key: "k1", Window: ftypes.Window_HOUR, Width: 6, Index: 9},
+				{Key: "k1", Window: ftypes.Window_HOUR, Width: 6, Index: 8},
+				{Key: "k1", Window: ftypes.Window_MINUTE, Width: 6, Index: 480},
+				{Key: "k2", Window: ftypes.Window_HOUR, Width: 6, Index: 8},
 			},
 			value.Int(0),
 			[]value.Value{value.String("hi"), value.Nil, value.Int(51), value.NewList(value.Int(1)), value.NewDict(map[string]value.Value{"hi": value.Nil})},
@@ -111,44 +111,46 @@ func testStorage(t *testing.T, store BucketStore) {
 		// user random strings as names so that tests don't fail due to name collisions
 		aggId := ftypes.AggId(rand.Intn(1000000))
 		// initially nothing is found
-		found, err := store.Get(ctx, tier, aggId, scene.buckets, scene.z)
+		found, err := store.GetMulti(ctx, tier, []ftypes.AggId{aggId}, [][]counter.Bucket{scene.buckets}, []value.Value{scene.z})
 		assert.NoError(t, err)
-		assert.Len(t, found, len(scene.buckets))
-		for _, v := range found {
+		assert.Len(t, found[0], len(scene.buckets))
+		for _, v := range found[0] {
 			assert.Equal(t, scene.z, v)
 		}
 		// set values
+		var vals []value.Value
 		for i := range scene.buckets {
-			scene.buckets[i].Value = scene.v1[i]
+			vals = append(vals, scene.v1[i])
 		}
-		assert.NoError(t, store.Set(ctx, tier, aggId, scene.buckets))
+		assert.NoError(t, store.SetMulti(ctx, tier, []ftypes.AggId{aggId}, [][]counter.Bucket{scene.buckets}, [][]value.Value{vals}))
 
 		// check it went through
-		found, err = store.Get(ctx, tier, aggId, scene.buckets, scene.z)
+		found, err = store.GetMulti(ctx, tier, []ftypes.AggId{aggId}, [][]counter.Bucket{scene.buckets}, []value.Value{scene.z})
 		assert.NoError(t, err)
-		assert.Len(t, found, len(scene.buckets))
-		for i, v := range found {
-			assert.Equal(t, scene.v1[i], v)
+		assert.Len(t, found[0], len(scene.buckets))
+		for i, v := range found[0] {
+			assert.Equal(t, vals[i], v)
 		}
 
 		// now only update odd buckets
 		odd := make([]counter.Bucket, 0)
+		vals2 := make([]value.Value, 0)
 		for i := range scene.buckets {
 			if i%2 == 0 {
 				continue
 			}
-			scene.buckets[i].Value = scene.v2[i]
+			vals2 = append(vals2, scene.v2[i])
 			odd = append(odd, scene.buckets[i])
 		}
-		assert.NoError(t, store.Set(ctx, tier, aggId, odd))
-		found, err = store.Get(ctx, tier, aggId, scene.buckets, scene.z)
+		assert.NoError(t, store.SetMulti(ctx, tier, []ftypes.AggId{aggId}, [][]counter.Bucket{odd}, [][]value.Value{vals2}))
+		found, err = store.GetMulti(ctx, tier, []ftypes.AggId{aggId}, [][]counter.Bucket{scene.buckets}, []value.Value{scene.z})
 		assert.NoError(t, err)
-		assert.Len(t, found, len(scene.buckets))
+		assert.Len(t, found[0], len(scene.buckets))
 		for i := range scene.buckets {
 			if i%2 == 0 {
-				assert.Equal(t, scene.v1[i], found[i])
+				assert.Equal(t, scene.v1[i], found[0][i])
 			} else {
-				assert.Equal(t, scene.v2[i], found[i])
+				assert.Equal(t, scene.v2[i], found[0][i])
 			}
 		}
 	}
@@ -170,28 +172,28 @@ func testStorageMulti(t *testing.T, store BucketStore) {
 	buckets := [][]counter.Bucket{
 		{},
 		{
-			{Key: "k1", Window: ftypes.Window_DAY, Width: 1, Index: 5, Value: nil},
-			{Key: "k1", Window: ftypes.Window_HOUR, Width: 6, Index: 7, Value: nil},
-			{Key: "k2", Window: ftypes.Window_HOUR, Width: 6, Index: 8, Value: nil},
-			{Key: "k2", Window: ftypes.Window_HOUR, Width: 6, Index: 9, Value: nil},
-			{Key: "k3", Window: ftypes.Window_HOUR, Width: 6, Index: 406, Value: nil},
+			{Key: "k1", Window: ftypes.Window_DAY, Width: 1, Index: 5},
+			{Key: "k1", Window: ftypes.Window_HOUR, Width: 6, Index: 7},
+			{Key: "k2", Window: ftypes.Window_HOUR, Width: 6, Index: 8},
+			{Key: "k2", Window: ftypes.Window_HOUR, Width: 6, Index: 9},
+			{Key: "k3", Window: ftypes.Window_HOUR, Width: 6, Index: 406},
 		},
 		{
-			{Key: "k2", Window: ftypes.Window_HOUR, Width: 6, Index: 8, Value: nil},
-			{Key: "k2", Window: ftypes.Window_HOUR, Width: 6, Index: 9, Value: nil},
-			{Key: "k3", Window: ftypes.Window_HOUR, Width: 6, Index: 406, Value: nil},
+			{Key: "k2", Window: ftypes.Window_HOUR, Width: 6, Index: 8},
+			{Key: "k2", Window: ftypes.Window_HOUR, Width: 6, Index: 9},
+			{Key: "k3", Window: ftypes.Window_HOUR, Width: 6, Index: 406},
 		},
 		{
-			{Key: "k1", Window: ftypes.Window_HOUR, Width: 6, Index: 7, Value: nil},
-			{Key: "k2", Window: ftypes.Window_HOUR, Width: 6, Index: 8, Value: nil},
-			{Key: "k2", Window: ftypes.Window_HOUR, Width: 6, Index: 9, Value: nil},
-			{Key: "k3", Window: ftypes.Window_HOUR, Width: 6, Index: 406, Value: nil},
+			{Key: "k1", Window: ftypes.Window_HOUR, Width: 6, Index: 7},
+			{Key: "k2", Window: ftypes.Window_HOUR, Width: 6, Index: 8},
+			{Key: "k2", Window: ftypes.Window_HOUR, Width: 6, Index: 9},
+			{Key: "k3", Window: ftypes.Window_HOUR, Width: 6, Index: 406},
 		},
 		{
-			{Key: "k1", Window: ftypes.Window_HOUR, Width: 6, Index: 0, Value: nil},
-			{Key: "k2", Window: ftypes.Window_HOUR, Width: 6, Index: 8, Value: nil},
-			{Key: "k2", Window: ftypes.Window_HOUR, Width: 6, Index: 9, Value: nil},
-			{Key: "k3", Window: ftypes.Window_HOUR, Width: 6, Index: 406, Value: nil},
+			{Key: "k1", Window: ftypes.Window_HOUR, Width: 6, Index: 0},
+			{Key: "k2", Window: ftypes.Window_HOUR, Width: 6, Index: 8},
+			{Key: "k2", Window: ftypes.Window_HOUR, Width: 6, Index: 9},
+			{Key: "k3", Window: ftypes.Window_HOUR, Width: 6, Index: 406},
 		},
 	}
 	defaults := []value.Value{
@@ -219,18 +221,8 @@ func testStorageMulti(t *testing.T, store BucketStore) {
 		{value.String("a"), value.String("b"), value.String("c"), value.String("d")},
 		{value.String("z"), value.String("b"), value.String("c"), value.String("d")},
 	}
-	for i := range buckets {
-		for j := range buckets[i] {
-			buckets[i][j].Value = expected[i][j]
-		}
-	}
-	err = store.SetMulti(ctx, tier, ids, buckets)
+	err = store.SetMulti(ctx, tier, ids, buckets, expected)
 	assert.NoError(t, err)
-	for i := range buckets {
-		for j := range buckets[i] {
-			buckets[i][j].Value = nil
-		}
-	}
 	found, err := store.GetMulti(ctx, tier, ids, buckets, defaults)
 	assert.NoError(t, err)
 	assert.Equal(t, len(expected), len(found))
@@ -250,20 +242,22 @@ func testLarge(t *testing.T, store BucketStore, numAggs, numBuckets int) {
 
 	ids := make([]ftypes.AggId, numAggs)
 	buckets := make([][]counter.Bucket, numAggs)
+	vals := make([][]value.Value, numAggs)
 	for i := range ids {
 		ids[i] = ftypes.AggId(rand.Intn(1000000))
 		buckets[i] = make([]counter.Bucket, numBuckets)
+		vals[i] = make([]value.Value, numBuckets)
 		for j := range buckets[i] {
 			buckets[i][j] = counter.Bucket{
 				Key:    utils.RandString(30),
 				Window: ftypes.Window_HOUR,
 				Width:  3,
 				Index:  uint64(j),
-				Value:  value.NewList(value.Int(1), value.Int(2)),
 			}
+			vals[i][j] = value.NewList(value.Int(1), value.Int(2))
 		}
 	}
-	assert.NoError(t, store.SetMulti(ctx, tier, ids, buckets))
+	assert.NoError(t, store.SetMulti(ctx, tier, ids, buckets, vals))
 	defaults := make([]value.Value, len(ids))
 	for i := range defaults {
 		defaults[i] = value.Nil
@@ -272,7 +266,7 @@ func testLarge(t *testing.T, store BucketStore, numAggs, numBuckets int) {
 	assert.NoError(t, err)
 	for i := range ids {
 		for j := range buckets[i] {
-			assert.Equal(t, buckets[i][j].Value, found[i][j])
+			assert.Equal(t, vals[i][j], found[i][j])
 		}
 	}
 }
@@ -290,28 +284,28 @@ func TestTwoLevelRedisStore(t *testing.T) {
 		err bool
 	}{
 		{
-			counter.Bucket{Key: k, Window: ftypes.Window_MINUTE, Width: 2, Index: 3, Value: value.Int(1)},
+			counter.Bucket{Key: k, Window: ftypes.Window_MINUTE, Width: 2, Index: 3},
 			slot{g: group{aggId: aggId, key: k, id: 0}, window: ftypes.Window_MINUTE, width: 2, idx: 3, val: value.Int(1)},
 			false,
 		},
 		{
-			counter.Bucket{Key: k, Window: ftypes.Window_DAY, Width: 2, Index: 3, Value: value.Int(1)},
+			counter.Bucket{Key: k, Window: ftypes.Window_DAY, Width: 2, Index: 3},
 			slot{},
 			true,
 		},
 		{
-			counter.Bucket{Key: k, Window: ftypes.Window_HOUR, Width: 2, Index: 30, Value: value.Int(1)},
+			counter.Bucket{Key: k, Window: ftypes.Window_HOUR, Width: 2, Index: 30},
 			slot{g: group{aggId: aggId, key: k, id: 7}, window: ftypes.Window_HOUR, width: 2, idx: 2, val: value.Int(1)},
 			false,
 		},
 		{
-			counter.Bucket{Key: k, Window: ftypes.Window_HOUR, Width: 2, Index: 24 * 30, Value: value.Int(1)},
+			counter.Bucket{Key: k, Window: ftypes.Window_HOUR, Width: 2, Index: 24 * 30},
 			slot{g: group{aggId: aggId, key: k, id: 180}, window: ftypes.Window_HOUR, width: 2, idx: 0, val: value.Int(1)},
 			false,
 		},
 	}
 	for _, scene := range scenarios {
-		s, err := g.toSlot(aggId, &scene.b)
+		s, err := g.toSlot(aggId, scene.s.val, &scene.b)
 		if scene.err {
 			assert.Error(t, err)
 		} else {
