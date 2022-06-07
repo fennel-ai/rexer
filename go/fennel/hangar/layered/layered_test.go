@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"io"
 	"math/rand"
+	"sync"
 	"testing"
 	"time"
 
@@ -51,7 +52,7 @@ func BenchmarkLayered_GetMany(b *testing.B) {
 func TestCaching(t *testing.T) {
 	rand.Seed(time.Now().UnixNano())
 	planeID := ftypes.RealmID(rand.Uint32())
-	gt := mockStore{data: make(map[string]map[string]string)}
+	gt := &mockStore{data: make(map[string]map[string]string)}
 
 	// 80 MB cache with avg size of 100 bytes
 	cache, err := cache.NewHangar(planeID, 1<<23, 1000, encoders.Default())
@@ -102,15 +103,18 @@ func TestCaching(t *testing.T) {
 type mockStore struct {
 	planeID ftypes.RealmID
 	data    map[string]map[string]string
+	sync.Mutex
 }
 
-func (m mockStore) PlaneID() ftypes.RealmID {
+func (m *mockStore) PlaneID() ftypes.RealmID {
 	return m.planeID
 }
 
-func (m mockStore) Encoder() hangar.Encoder { return nil }
+func (m *mockStore) Encoder() hangar.Encoder { return nil }
 
 func (m *mockStore) set(key, field, value []byte) {
+	m.Lock()
+	defer m.Unlock()
 	k := string(key)
 	if _, ok := m.data[k]; !ok {
 		m.data[k] = make(map[string]string)
@@ -118,8 +122,9 @@ func (m *mockStore) set(key, field, value []byte) {
 	m.data[k][string(field)] = string(value)
 }
 
-func (m mockStore) GetMany(kgs []hangar.KeyGroup) ([]hangar.ValGroup, error) {
-
+func (m *mockStore) GetMany(kgs []hangar.KeyGroup) ([]hangar.ValGroup, error) {
+	m.Lock()
+	defer m.Unlock()
 	ret := make([]hangar.ValGroup, len(kgs))
 	for i, kg := range kgs {
 		prefix := string(kg.Prefix.Data)
@@ -137,16 +142,16 @@ func (m mockStore) GetMany(kgs []hangar.KeyGroup) ([]hangar.ValGroup, error) {
 	return ret, nil
 }
 
-func (m mockStore) SetMany(keys []hangar.Key, vgs []hangar.ValGroup) error { return nil }
+func (m *mockStore) SetMany(keys []hangar.Key, vgs []hangar.ValGroup) error { return nil }
 
-func (m mockStore) DelMany(keys []hangar.KeyGroup) error { return nil }
+func (m *mockStore) DelMany(keys []hangar.KeyGroup) error { return nil }
 
-func (m mockStore) Close() error { return nil }
+func (m *mockStore) Close() error { return nil }
 
-func (m mockStore) Teardown() error { return nil }
+func (m *mockStore) Teardown() error { return nil }
 
-func (m mockStore) Backup(sink io.Writer, since uint64) (uint64, error) { return 0, nil }
+func (m *mockStore) Backup(sink io.Writer, since uint64) (uint64, error) { return 0, nil }
 
-func (m mockStore) Restore(source io.Reader) error { return nil }
+func (m *mockStore) Restore(source io.Reader) error { return nil }
 
-var _ hangar.Hangar = mockStore{}
+var _ hangar.Hangar = &mockStore{}
