@@ -21,7 +21,7 @@ func TestFeatureLog_Apply(t *testing.T) {
 	defer test.Teardown(tier)
 	clock := &test.FakeClock{}
 	tier.Clock = clock
-	t0 := int64(1231231)
+	t0 := uint32(1231231)
 	clock.Set(t0)
 	consumer, err := tier.NewKafkaConsumer(kafka.ConsumerConfig{
 		Topic:        feature.KAFKA_TOPIC_NAME,

@@ -45,7 +45,7 @@ func TestAggValue_Apply(t *testing.T) {
 		},
 		Id: 2,
 	}
-	t0 := int64(24 * 3600)
+	t0 := uint32(24 * 3600)
 	clock := &test.FakeClock{}
 	tier.Clock = clock
 	clock.Set(t0)

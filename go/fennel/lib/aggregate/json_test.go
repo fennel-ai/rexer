@@ -30,7 +30,7 @@ func TestAggregateJSON(t *testing.T) {
 				Window:    1,
 				Limit:     10},
 		},
-		{Timestamp: math.MaxUint64,
+		{Timestamp: math.MaxUint32,
 			Options: Options{
 				Durations: []uint64{math.MaxUint64},
 				Limit:     math.MaxUint64,

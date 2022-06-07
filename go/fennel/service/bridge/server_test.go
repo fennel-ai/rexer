@@ -125,7 +125,7 @@ func TestServer_ActionsHandler(t *testing.T) {
 	// Prepare only valid request that will be sent
 	reqStr := fmt.Sprintf("/actions/?actor_id=%s&actor_type=%s&target_id=%s&target_type=%s&action_type=%s&"+
 		"request_id=%s&min_timestamp=%d&max_timestamp=%d&min_action_id=%d&max_action_id=%d",
-		"a", "b", "c", "d", "e", "f", max, max-1, max-2, max-3)
+		"a", "b", "c", "d", "e", "f", math.MaxUint32, math.MaxUint32-1, max-2, max-3)
 	req := httptest.NewRequest("GET", reqStr, nil)
 	// Prepare the expected ActionFetchRequest
 	expected := action.ActionFetchRequest{
@@ -135,15 +135,15 @@ func TestServer_ActionsHandler(t *testing.T) {
 		TargetType:   "d",
 		ActionType:   "e",
 		RequestID:    "f",
-		MinTimestamp: math.MaxUint64,
-		MaxTimestamp: math.MaxUint64 - 1,
+		MinTimestamp: math.MaxUint32,
+		MaxTimestamp: math.MaxUint32 - 1,
 		MinActionID:  math.MaxUint64 - 2,
 		MaxActionID:  math.MaxUint64 - 3,
 	}
 	// Prepare actions that will be returned by the server
 	actions := make([]action.Action, 0)
 	actions = append(actions, action.Action{ActionID: math.MaxUint64 - 1, ActorID: "2", ActorType: "3",
-		TargetID: "4", TargetType: "5", ActionType: "6", Timestamp: math.MaxUint64 - 7,
+		TargetID: "4", TargetType: "5", ActionType: "6", Timestamp: math.MaxUint32 - 7,
 		RequestID: "8", Metadata: value.Int(9)})
 	actions = append(actions, action.Action{ActionID: 8, ActorID: "7", ActorType: "6", TargetID: "5", TargetType: "4",
 		ActionType: "3", Timestamp: 2, RequestID: "1", Metadata: value.String("abc")})

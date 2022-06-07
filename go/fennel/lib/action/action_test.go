@@ -88,8 +88,8 @@ func TestActionJSON(t *testing.T) {
 		str: makeActionJSON(0, "", "", "", "", "", 0, "", `{"key":"123"}`),
 		a:   Action{Metadata: value.NewDict(map[string]value.Value{"key": value.String("123")})},
 	}, {
-		str: makeActionJSON(math.MaxUint64, "", "", "", "", "", math.MaxUint64, "", "null"),
-		a:   Action{ActionID: math.MaxUint64, Timestamp: math.MaxUint64, Metadata: value.Nil},
+		str: makeActionJSON(math.MaxUint64, "", "", "", "", "", math.MaxUint32, "", "null"),
+		a:   Action{ActionID: math.MaxUint64, Timestamp: math.MaxUint32, Metadata: value.Nil},
 	}}
 	// Test unmarshal
 	for _, tst := range tests {
@@ -118,9 +118,9 @@ func TestActionFetchRequestJSON(t *testing.T) {
 		afr: ActionFetchRequest{1, 2, "3", "4", "5", "6", "7", 8, 9, "10"},
 	}, {
 		str: makeActionFetchRequestJSON(math.MaxUint64, math.MaxUint64, "", "", "", "", "",
-			math.MaxUint64, math.MaxUint64, ""),
+			math.MaxUint32, math.MaxUint32, ""),
 		afr: ActionFetchRequest{math.MaxUint64, math.MaxUint64, "", "", "", "", "",
-			math.MaxUint64, math.MaxUint64, ""},
+			math.MaxUint32, math.MaxUint32, ""},
 	}}
 	// Test unmarshal
 	for _, tst := range tests {
@@ -138,7 +138,7 @@ func TestActionFetchRequestJSON(t *testing.T) {
 }
 
 func makeActionJSON(actionID uint64, actorID string, actorType string, targetID string, targetType string,
-	actionType string, timestamp uint64, requestID string, metadata string) string {
+	actionType string, timestamp uint32, requestID string, metadata string) string {
 	return fmt.Sprintf(`{"ActionID":%d,"ActorID":"%s","ActorType":"%s","TargetID":"%s","TargetType":"%s",`+
 		`"ActionType":"%s","Timestamp":%d,"RequestID":"%s","Metadata":%s}`,
 		actionID, actorID, actorType, targetID, targetType, actionType, timestamp, requestID, metadata)
@@ -146,7 +146,7 @@ func makeActionJSON(actionID uint64, actorID string, actorType string, targetID 
 
 func makeActionFetchRequestJSON(
 	minActionID uint64, maxActionID uint64, actorID string, actorType string, targetID string, targetType string,
-	actionType string, minTimestamp uint64, maxTimestamp uint64, requestID string) string {
+	actionType string, minTimestamp uint32, maxTimestamp uint32, requestID string) string {
 	return fmt.Sprintf(
 		`{"MinActionID":%d,"MaxActionID":%d,"ActorID":"%s","ActorType":"%s","TargetID":"%s","TargetType":"%s",`+
 			`"ActionType":"%s","MinTimestamp":%d,"MaxTimestamp":%d,"RequestID":"%s"}`,

@@ -31,7 +31,7 @@ func TestDBInsertFetch(t *testing.T) {
 	clock := test.FakeClock{}
 	tier.Clock = &clock
 	t1 := ftypes.Timestamp(456)
-	clock.Set(int64(t1))
+	clock.Set(uint32(t1))
 
 	a1 := getAction(1, "12", 0, "like")
 	a2 := getAction(2, "22", t1+1, "like")
@@ -68,7 +68,7 @@ func testKafkaInsertRead(t *testing.T, batch bool) {
 	clock := test.FakeClock{}
 	tier.Clock = &clock
 	t1 := ftypes.Timestamp(456)
-	clock.Set(int64(t1))
+	clock.Set(uint32(t1))
 
 	a1 := getAction(1, "12", 0, "like")
 	a2 := getAction(2, "22", t1, "like")
