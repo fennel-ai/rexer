@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"fennel/lib/utils/slice"
 	"fmt"
 	"io/ioutil"
 	"net/http/httptest"
@@ -437,16 +438,20 @@ func TestServer_AggregateValue_Valid(t *testing.T) {
 	// now create an increment
 	h := counter.NewSum(agg.Options.Durations)
 	t1 := t0 + 3600
-	buckets := h.BucketizeMoment(keystr, t1, value.Int(1))
-	err = counter.Update(context.Background(), tier, agg.Id, buckets, h)
+	buckets := h.BucketizeMoment(keystr, t1)
+	v := make([]value.Value, len(buckets))
+	slice.Fill[value.Value](v, value.Int(1))
+	err = counter.Update(context.Background(), tier, agg.Id, buckets, v, h)
 	assert.NoError(t, err)
 	clock.Set(int64(t1 + 60))
 	valueSendReceive(t, holder, agg, key, value.Int(1), value.NewDict(map[string]value.Value{"duration": value.Int(6 * 3600)}))
 
 	// create another increment at a later timestamp
 	t2 := t1 + 3600
-	buckets = h.BucketizeMoment(keystr, t2, value.Int(1))
-	err = counter.Update(context.Background(), tier, agg.Id, buckets, h)
+	buckets = h.BucketizeMoment(keystr, t2)
+	v = make([]value.Value, len(buckets))
+	slice.Fill[value.Value](v, value.Int(1))
+	err = counter.Update(context.Background(), tier, agg.Id, buckets, v, h)
 	assert.NoError(t, err)
 	clock.Set(int64(t2 + 60))
 	valueSendReceive(t, holder, agg, key, value.Int(2), value.NewDict(map[string]value.Value{"duration": value.Int(6 * 3600)}))
@@ -496,22 +501,30 @@ func TestServer_BatchAggregateValue(t *testing.T) {
 	keystr := key.String()
 
 	h1 := counter.NewSum(agg1.Options.Durations)
-	buckets := h1.BucketizeMoment(keystr, t1, value.Int(1))
-	err = counter.Update(context.Background(), tier, agg1.Id, buckets, h1)
+	buckets := h1.BucketizeMoment(keystr, t1)
+	v1 := make([]value.Value, len(buckets))
+	slice.Fill[value.Value](v1, value.Int(1))
+	err = counter.Update(context.Background(), tier, agg1.Id, buckets, v1, h1)
 	assert.NoError(t, err)
-	buckets = h1.BucketizeMoment(keystr, t1, value.Int(3))
-	err = counter.Update(context.Background(), tier, agg1.Id, buckets, h1)
+	buckets = h1.BucketizeMoment(keystr, t1)
+	v1 = make([]value.Value, len(buckets))
+	slice.Fill[value.Value](v1, value.Int(3))
+	err = counter.Update(context.Background(), tier, agg1.Id, buckets, v1, h1)
 	assert.NoError(t, err)
 	req1 := aggregate.GetAggValueRequest{
 		AggName: agg1.Name, Key: key, Kwargs: value.NewDict(map[string]value.Value{"duration": value.Int(6 * 3600)}),
 	}
 
 	h2 := counter.NewMax(agg2.Options.Durations)
-	buckets = h2.BucketizeMoment(keystr, t1, value.NewList(value.Int(2), value.Bool(false)))
-	err = counter.Update(context.Background(), tier, agg2.Id, buckets, h2)
+	buckets = h2.BucketizeMoment(keystr, t1)
+	v2 := make([]value.Value, len(buckets))
+	slice.Fill[value.Value](v2, value.NewList(value.Int(2), value.Bool(false)))
+	err = counter.Update(context.Background(), tier, agg2.Id, buckets, v2, h2)
 	assert.NoError(t, err)
-	buckets = h2.BucketizeMoment(keystr, t1, value.NewList(value.Int(7), value.Bool(false)))
-	err = counter.Update(context.Background(), tier, agg2.Id, buckets, h2)
+	buckets = h2.BucketizeMoment(keystr, t1)
+	v2 = make([]value.Value, len(buckets))
+	slice.Fill[value.Value](v2, value.NewList(value.Int(7), value.Bool(false)))
+	err = counter.Update(context.Background(), tier, agg2.Id, buckets, v2, h2)
 	assert.NoError(t, err)
 	req2 := aggregate.GetAggValueRequest{
 		AggName: agg2.Name, Key: key, Kwargs: value.NewDict(map[string]value.Value{"duration": value.Int(6 * 3600)}),
@@ -523,8 +536,10 @@ func TestServer_BatchAggregateValue(t *testing.T) {
 
 	// create some more changes at a later timestamp
 	t2 := t1 + 3600
-	buckets = h1.BucketizeMoment(keystr, t2, value.Int(9))
-	err = counter.Update(context.Background(), tier, agg1.Id, buckets, h1)
+	buckets = h1.BucketizeMoment(keystr, t2)
+	v3 := make([]value.Value, len(buckets))
+	slice.Fill[value.Value](v3, value.Int(9))
+	err = counter.Update(context.Background(), tier, agg1.Id, buckets, v3, h1)
 	assert.NoError(t, err)
 	req3 := aggregate.GetAggValueRequest{
 		AggName: agg1.Name, Key: key, Kwargs: value.NewDict(map[string]value.Value{"duration": value.Int(1800)}),

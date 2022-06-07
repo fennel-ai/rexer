@@ -97,6 +97,7 @@ func TestMax_Bucketize_Valid(t *testing.T) {
 	h := NewMax([]uint64{123})
 	actions := value.List{}
 	expected := make([]counter.Bucket, 0)
+	expVals := make([]value.Value, 0)
 	DAY := 3600 * 24
 	for i := 0; i < 5; i++ {
 		v := value.NewList(value.Int(i), value.String("hi"))
@@ -107,13 +108,16 @@ func TestMax_Bucketize_Valid(t *testing.T) {
 		})
 		actions.Append(d)
 		expected = append(expected, counter.Bucket{Key: v.String(), Window: ftypes.Window_DAY,
-			Index: 1, Width: 1, Value: value.NewList(value.Int(i), value.Bool(false))})
+			Index: 1, Width: 1})
+		expVals = append(expVals, value.NewList(value.Int(i), value.Bool(false)))
 		expected = append(expected, counter.Bucket{Key: v.String(), Window: ftypes.Window_MINUTE,
-			Index: uint64(24*10 + i*10), Width: 6, Value: value.NewList(value.Int(i), value.Bool(false))})
+			Index: uint64(24*10 + i*10), Width: 6})
+		expVals = append(expVals, value.NewList(value.Int(i), value.Bool(false)))
 	}
-	buckets, err := Bucketize(h, actions)
+	buckets, vals, err := Bucketize(h, actions)
 	assert.NoError(t, err)
 	assert.ElementsMatch(t, expected, buckets)
+	assert.ElementsMatch(t, expVals, vals)
 }
 
 func TestMax_Bucketize_Invalid(t *testing.T) {
@@ -133,7 +137,7 @@ func TestMax_Bucketize_Invalid(t *testing.T) {
 		for _, d := range test {
 			table.Append(d)
 		}
-		_, err := Bucketize(h, table)
+		_, _, err := Bucketize(h, table)
 		assert.Error(t, err, fmt.Sprintf("case was: %v", table))
 	}
 }

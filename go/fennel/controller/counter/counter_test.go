@@ -6,21 +6,17 @@ import (
 	"time"
 
 	"fennel/engine/ast"
-	"fennel/kafka"
 	libaggregate "fennel/lib/aggregate"
 	libcounter "fennel/lib/counter"
 	"fennel/lib/ftypes"
-	"fennel/lib/utils"
 	"fennel/lib/utils/math"
 	"fennel/lib/value"
 	"fennel/model/aggregate"
-	"fennel/model/counter"
 	counter2 "fennel/model/counter"
 	"fennel/test"
 	"fennel/tier"
 
 	"github.com/stretchr/testify/assert"
-	"google.golang.org/protobuf/proto"
 )
 
 // verifies that given a table created from a query, we do correct inserts/queries
@@ -57,7 +53,6 @@ func TestRolling(t *testing.T) {
 	histogram := counter2.NewSum([]uint64{3600 * 28, 3600 * 24})
 	err = Update(ctx, tier, agg, table, histogram)
 	assert.NoError(t, err)
-	assertDeltaLogged(t, ctx, tier, []libaggregate.Aggregate{agg}, 1 /*count=*/)
 
 	clock := &test.FakeClock{}
 	tier.Clock = clock
@@ -110,7 +105,6 @@ func TestTimeseries(t *testing.T) {
 	}
 	err = Update(ctx, tier, agg, table, histogram)
 	assert.NoError(t, err)
-	assertDeltaLogged(t, ctx, tier, []libaggregate.Aggregate{agg}, 1 /*count=*/)
 
 	clock := &test.FakeClock{}
 	tier.Clock = clock
@@ -185,7 +179,6 @@ func TestRollingAverage(t *testing.T) {
 	histogram := counter2.NewAverage([]uint64{28 * 3600, 24 * 3600})
 	err = Update(ctx, tier, agg, table, histogram)
 	assert.NoError(t, err)
-	assertDeltaLogged(t, ctx, tier, []libaggregate.Aggregate{agg}, 1 /*count=*/)
 
 	clock := &test.FakeClock{}
 	tier.Clock = clock
@@ -245,7 +238,6 @@ func TestStream(t *testing.T) {
 	histogram := counter2.NewList([]uint64{28 * 3600, 24 * 3600})
 	err = Update(ctx, tier, agg, table, histogram)
 	assert.NoError(t, err)
-	assertDeltaLogged(t, ctx, tier, []libaggregate.Aggregate{agg}, 1 /*count=*/)
 
 	clock := &test.FakeClock{}
 	tier.Clock = clock
@@ -313,7 +305,6 @@ func TestRate(t *testing.T) {
 	histogram := counter2.NewRate(tier, agg.Id, []uint64{28 * 3600, 24 * 3600}, true)
 	err = Update(ctx, tier, agg, table, histogram)
 	assert.NoError(t, err)
-	assertDeltaLogged(t, ctx, tier, []libaggregate.Aggregate{agg}, 1 /*count=*/)
 
 	clock := &test.FakeClock{}
 	tier.Clock = clock
@@ -406,7 +397,6 @@ func TestBatchValue(t *testing.T) {
 	assert.NoError(t, err)
 	err = Update(ctx, tier, aggs[1], table, h2)
 	assert.NoError(t, err)
-	assertDeltaLogged(t, ctx, tier, aggs, 2 /*count=*/)
 
 	// should find this time
 	clock := &test.FakeClock{}
@@ -494,7 +484,6 @@ func TestBucketCaching(t *testing.T) {
 	assert.NoError(t, err)
 	err = Update(ctx, tier, aggs[1], table, h2)
 	assert.NoError(t, err)
-	assertDeltaLogged(t, ctx, tier, aggs, 2 /*count=*/)
 
 	// should find this time
 	clock := &test.FakeClock{}
@@ -509,7 +498,7 @@ func TestBucketCaching(t *testing.T) {
 	time.Sleep(20 * time.Millisecond)
 
 	// Call batch again, but this time should be from the cache
-	_, ok := tier.PCache.Get(makeCacheKey(aggIds[0], libcounter.Bucket{Key: key.String(), Window: ftypes.Window_DAY, Index: 1, Width: 1, Value: value.Int(0)}), "Test")
+	_, ok := tier.PCache.Get(makeCacheKey(aggIds[0], libcounter.Bucket{Key: key.String(), Window: ftypes.Window_DAY, Index: 1, Width: 1}), "Test")
 	assert.True(t, ok)
 	kwargs[1] = value.NewDict(map[string]value.Value{"duration": value.Int(7 * 3600 * 24)})
 	found, err = BatchValue(ctx, tier, aggIds, keys, []counter2.Histogram{h1, h2}, kwargs)
@@ -518,7 +507,7 @@ func TestBucketCaching(t *testing.T) {
 	assert.True(t, exp2.Equal(found[1]))
 
 	time.Sleep(8 * time.Second)
-	_, ok = tier.PCache.Get(makeCacheKey(aggIds[0], libcounter.Bucket{Key: key.String(), Window: ftypes.Window_DAY, Index: 1, Width: 1, Value: value.Int(0)}), "Test")
+	_, ok = tier.PCache.Get(makeCacheKey(aggIds[0], libcounter.Bucket{Key: key.String(), Window: ftypes.Window_DAY, Index: 1, Width: 1}), "Test")
 	assert.False(t, ok)
 
 	// now go forward 2 more days and check with duration of 1 day
@@ -554,65 +543,6 @@ func TestDurations(t *testing.T) {
 	assert.NoError(t, err)
 }
 
-func TestDeltaLogged(t *testing.T) {
-	tier, err := test.Tier()
-	assert.NoError(t, err)
-	tier2, err := test.Tier()
-	assert.NoError(t, err)
-	defer test.Teardown(tier)
-	defer test.Teardown(tier2)
-	ctx := context.Background()
-
-	start := 24*3600*12 + 60*30
-	agg := libaggregate.Aggregate{
-		Name:      "mycounter",
-		Query:     ast.MakeInt(1),
-		Timestamp: 0,
-		Options: libaggregate.Options{
-			AggType:   "sum",
-			Durations: []uint64{3600 * 14, 3600 * 28},
-		},
-		Id: 1,
-	}
-
-	key := value.NewList(value.Int(1), value.Int(2))
-	table := value.NewList()
-	// create an event every minute for 2 days
-	for i := 0; i < 60*24*2; i++ {
-		ts := ftypes.Timestamp(start + i*60 + 30)
-		row := value.NewDict(map[string]value.Value{
-			"timestamp": value.Int(ts),
-			"groupkey":  key,
-			"value":     value.Int(i / (24 * 60)), // amount is zero for first day and one for the next day
-		})
-		table.Append(row)
-	}
-	histogram := counter2.NewAverage([]uint64{28 * 3600, 24 * 3600})
-	err = Update(ctx, tier, agg, table, histogram)
-	assert.NoError(t, err)
-	a, err := readAggregateDelta(t, ctx, tier, 1 /*count=*/)
-	assert.NoError(t, err)
-	assert.Equal(t, a[0].AggId, agg.Id)
-
-	// Assert that the buckets were written to the tier by querying for the value of the aggregate
-	clock := &test.FakeClock{}
-	tier.Clock = clock
-	clock.Set(int64(start + 24*3600*2))
-	// at the end of 2 days, rolling average should only be worth 28 hours, not full 48 hours
-	found, err := Value(ctx, tier, agg.Id, key, histogram, value.NewDict(map[string]value.Value{"duration": value.Int(28 * 3600)}))
-	assert.NoError(t, err)
-	expected := float64(24*60) / float64(28*60)
-	assert.Equal(t, value.Double(expected), found)
-
-	// Simulate applying deltas written in the kafka topic by applying them on a new tier and asserting the value of the aggregate at the end is the same
-	tier2.Clock = clock
-	assert.NoError(t, counter.Update(ctx, tier2, agg.Id, a[0].Buckets, histogram))
-	// at the end of 2 days, rolling average should only be worth 28 hours, not full 48 hours
-	found2, err := Value(ctx, tier2, agg.Id, key, histogram, value.NewDict(map[string]value.Value{"duration": value.Int(28 * 3600)}))
-	assert.NoError(t, err)
-	assert.Equal(t, found, found2)
-}
-
 func assertInvalid(tier tier.Tier, ctx context.Context, t *testing.T, ds ...value.Dict) {
 	table := value.List{}
 	for _, d := range ds {
@@ -629,43 +559,4 @@ func assertInvalid(tier tier.Tier, ctx context.Context, t *testing.T, ds ...valu
 		Id: 1,
 	}
 	assert.Error(t, Update(ctx, tier, agg, table, counter2.NewSum([]uint64{123})))
-}
-
-// assertDeltaLogged asserts that aggregate delta was logged to the kafka queue
-func assertDeltaLogged(t *testing.T, ctx context.Context, tr tier.Tier, aggs []libaggregate.Aggregate, count int) {
-	actual, err := readAggregateDelta(t, ctx, tr, count)
-	assert.NoError(t, err)
-	for i, agg := range actual {
-		assert.Equal(t, actual[i].AggId, agg.AggId)
-		assert.Equal(t, actual[i].Options, agg.Options)
-	}
-}
-
-func readAggregateDelta(t *testing.T, ctx context.Context, tr tier.Tier, count int) ([]libcounter.AggregateDelta, error) {
-	consumer, err := tr.NewKafkaConsumer(kafka.ConsumerConfig{
-		Topic:        libcounter.AGGREGATE_DELTA_TOPIC_NAME,
-		GroupID:      utils.RandString(6),
-		OffsetPolicy: kafka.DefaultOffsetPolicy,
-	})
-	if err != nil {
-		return nil, err
-	}
-	msg, err := consumer.ReadBatch(ctx, count, 5*time.Second)
-	if err != nil {
-		return nil, err
-	}
-	aggs := make([]libcounter.AggregateDelta, count)
-	for i := 0; i < count; i++ {
-		pa := msg[0]
-		var p libcounter.ProtoAggregateDelta
-		err = proto.Unmarshal(pa, &p)
-		if err != nil {
-			return nil, err
-		}
-		aggs[i], err = libcounter.FromProtoAggregateDelta(&p)
-		if err != nil {
-			return nil, err
-		}
-	}
-	return aggs, nil
 }

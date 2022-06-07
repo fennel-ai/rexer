@@ -191,7 +191,7 @@ func (t twoLevelRedisStore) get(
 	// TODO: Consider creating a large enough buffer and construct slotKey and redisKey using partitions of the buffer
 	// to save some CPU cycles
 	for i, b := range buckets {
-		s, err := t.toSlot(aggIds[i], &b)
+		s, err := t.toSlot(aggIds[i], defaults[i], &b)
 		if err != nil {
 			return nil, err
 		}
@@ -228,21 +228,6 @@ func (t twoLevelRedisStore) get(
 	}
 	t.logStats(groupVals, "get")
 	return ret, nil
-}
-
-func (t twoLevelRedisStore) Get(
-	ctx context.Context, tier tier.Tier, aggId ftypes.AggId, buckets []counter.Bucket, default_ value.Value,
-) ([]value.Value, error) {
-	ctx, tmr := timer.Start(ctx, tier.ID, "twolevelredis.get")
-	defer tmr.Stop()
-	n := len(buckets)
-	ids := make([]ftypes.AggId, n)
-	defaults := make([]value.Value, n)
-	for i := range ids {
-		ids[i] = aggId
-		defaults[i] = default_
-	}
-	return t.get(ctx, tier, ids, buckets, defaults)
 }
 
 // upto 32K size of each slice, total capacity of 4M * 4 = 16MB
@@ -318,7 +303,7 @@ func (t twoLevelRedisStore) GetMulti(
 	return ret, nil
 }
 
-func (t twoLevelRedisStore) set(ctx context.Context, tier tier.Tier, aggIds []ftypes.AggId, buckets []counter.Bucket) error {
+func (t twoLevelRedisStore) set(ctx context.Context, tier tier.Tier, aggIds []ftypes.AggId, buckets []counter.Bucket, values []value.Value) error {
 	// track seen groups, so we do not send duplicate groups to redis
 	// 'seen' maps group to index in the array of groups sent to redis
 	seen := make(map[group]int, len(buckets))
@@ -329,7 +314,7 @@ func (t twoLevelRedisStore) set(ctx context.Context, tier tier.Tier, aggIds []ft
 	// TODO: Consider creating a large enough buffer and construct slotKey and redisKey using partitions of the buffer
 	// to save some CPU cycles
 	for i, b := range buckets {
-		s, err := t.toSlot(aggIds[i], &b)
+		s, err := t.toSlot(aggIds[i], values[i], &b)
 		if err != nil {
 			return err
 		}
@@ -376,29 +361,21 @@ func (t twoLevelRedisStore) set(ctx context.Context, tier tier.Tier, aggIds []ft
 	return setInRedis(ctx, tier, rkeys, groupVals, ttls)
 }
 
-func (t twoLevelRedisStore) Set(ctx context.Context, tier tier.Tier, aggId ftypes.AggId, buckets []counter.Bucket) error {
-	ctx, tmr := timer.Start(ctx, tier.ID, "twolevelredis.set")
-	defer tmr.Stop()
-	ids := make([]ftypes.AggId, len(buckets))
-	for i := range ids {
-		ids[i] = aggId
-	}
-	return t.set(ctx, tier, ids, buckets)
-}
-
 func (t twoLevelRedisStore) SetMulti(
-	ctx context.Context, tier tier.Tier, aggIds []ftypes.AggId, buckets [][]counter.Bucket) error {
+	ctx context.Context, tier tier.Tier, aggIds []ftypes.AggId, buckets [][]counter.Bucket, values [][]value.Value) error {
 	ctx, tmr := timer.Start(ctx, tier.ID, "twolevelredis.set_multi")
 	defer tmr.Stop()
 	var ids_ []ftypes.AggId
 	var buckets_ []counter.Bucket
+	var values_ []value.Value
 	for i := range buckets {
-		for _, b := range buckets[i] {
+		for j, b := range buckets[i] {
 			ids_ = append(ids_, aggIds[i])
 			buckets_ = append(buckets_, b)
+			values_ = append(values_, values[i][j])
 		}
 	}
-	return t.set(ctx, tier, ids_, buckets_)
+	return t.set(ctx, tier, ids_, buckets_, values_)
 }
 
 func (t twoLevelRedisStore) slotKey(s slot) (string, error) {
@@ -456,12 +433,12 @@ func (t twoLevelRedisStore) redisKey(g group) (string, error) {
 		} else {
 			curr += n
 		}
-		if n, err := binary.PutUvarint(groupIdBuf[curr:], t.period); err != nil {
+		if n, err := binary.PutUvarint(groupIdBuf[curr:], uint64(t.period)); err != nil {
 			return "", err
 		} else {
 			curr += n
 		}
-		if n, err := binary.PutUvarint(groupIdBuf[curr:], g.id); err != nil {
+		if n, err := binary.PutUvarint(groupIdBuf[curr:], uint64(g.id)); err != nil {
 			return "", err
 		} else {
 			curr += n
@@ -480,7 +457,7 @@ func (t twoLevelRedisStore) redisKey(g group) (string, error) {
 	return sb.String(), nil
 }
 
-func (t twoLevelRedisStore) toSlot(id ftypes.AggId, b *counter.Bucket) (slot, error) {
+func (t twoLevelRedisStore) toSlot(id ftypes.AggId, v value.Value, b *counter.Bucket) (slot, error) {
 	d := toDuration(b.Window) * b.Width
 	if t.period%d != 0 {
 		return slot{}, fmt.Errorf("can only store buckets with width that can fully fit in period of: '%d'sec", t.period)
@@ -496,7 +473,7 @@ func (t twoLevelRedisStore) toSlot(id ftypes.AggId, b *counter.Bucket) (slot, er
 		window: b.Window,
 		width:  b.Width,
 		idx:    int(gap / d),
-		val:    b.Value,
+		val:    v,
 	}, nil
 }
 
@@ -534,21 +511,20 @@ func (t twoLevelRedisStore) logStats(groupVals []value.Value, mode string) {
 
 var _ BucketStore = twoLevelRedisStore{}
 
-func Update(ctx context.Context, tier tier.Tier, aggId ftypes.AggId, buckets []counter.Bucket, h Histogram) error {
+func Update(ctx context.Context, tier tier.Tier, aggId ftypes.AggId, buckets []counter.Bucket, values []value.Value, h Histogram) error {
 	ctx, tmr := timer.Start(ctx, tier.ID, "counter.update")
 	defer tmr.Stop()
-	cur, err := h.Get(ctx, tier, aggId, buckets, h.Zero())
+	cur, err := h.GetMulti(ctx, tier, []ftypes.AggId{aggId}, [][]counter.Bucket{buckets}, []value.Value{h.Zero()})
 	if err != nil {
 		return err
 	}
 	for i := range cur {
-		merged, err := h.Merge(cur[i], buckets[i].Value)
+		values[i], err = h.Merge(cur[0][i], values[i])
 		if err != nil {
 			return err
 		}
-		buckets[i].Value = merged
 	}
-	return h.Set(ctx, tier, aggId, buckets)
+	return h.SetMulti(ctx, tier, []ftypes.AggId{aggId}, [][]counter.Bucket{buckets}, [][]value.Value{values})
 }
 
 // ==========================================================

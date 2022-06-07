@@ -43,21 +43,6 @@ func (t thirdStore) GetBucketStore() BucketStore {
 	return t
 }
 
-func (t thirdStore) Get(
-	ctx context.Context, tier tier.Tier, aggID ftypes.AggId, buckets []counter.Bucket, default_ value.Value,
-) ([]value.Value, error) {
-	ctx, tmr := timer.Start(ctx, tier.ID, "thirdstore.get")
-	defer tmr.Stop()
-	res, err := t.GetMulti(ctx, tier, []ftypes.AggId{aggID}, [][]counter.Bucket{buckets}, []value.Value{default_})
-	if err != nil {
-		return nil, err
-	}
-	if len(res) == 0 {
-		return nil, fmt.Errorf("failed to get anything")
-	}
-	return res[0], err
-}
-
 func (t thirdStore) GetMulti(
 	ctx context.Context, tier tier.Tier, aggIDs []ftypes.AggId, buckets [][]counter.Bucket, defaults []value.Value,
 ) ([][]value.Value, error) {
@@ -89,16 +74,8 @@ func (t thirdStore) GetMulti(
 	return res, nil
 }
 
-func (t thirdStore) Set(
-	ctx context.Context, tier tier.Tier, aggID ftypes.AggId, buckets []counter.Bucket,
-) error {
-	ctx, tmr := timer.Start(ctx, tier.ID, "thirdstore.set")
-	defer tmr.Stop()
-	return t.SetMulti(ctx, tier, []ftypes.AggId{aggID}, [][]counter.Bucket{buckets})
-}
-
 func (t thirdStore) SetMulti(
-	ctx context.Context, tier tier.Tier, aggIDs []ftypes.AggId, buckets [][]counter.Bucket,
+	ctx context.Context, tier tier.Tier, aggIDs []ftypes.AggId, buckets [][]counter.Bucket, values [][]value.Value,
 ) error {
 	ctx, tmr := timer.Start(ctx, tier.ID, "thirdstore.set_multi")
 	defer tmr.Stop()
@@ -118,7 +95,7 @@ func (t thirdStore) SetMulti(
 			slot := slots[ptrs[i][j]]
 			dict := view.view[slot][suffix]
 			key := t.l2Index(b.Index)
-			dict.Set(key, b.Value)
+			dict.Set(key, values[i][j])
 			view.view[slot][suffix] = dict
 		}
 	}

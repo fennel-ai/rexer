@@ -21,8 +21,8 @@ func NewSum(durations []uint64) Histogram {
 			ftypes.Window_MINUTE: 6,
 			ftypes.Window_DAY:    1,
 		}, true},
-		// retain all keys for 1.5days + duration
-		BucketStore: NewTwoLevelStorage(24*3600, maxDuration+24*3600*1.1),
+		// retain all keys for 1.1days(95040) + duration
+		BucketStore: NewTwoLevelStorage(24*3600, maxDuration+95040),
 	}
 }
 

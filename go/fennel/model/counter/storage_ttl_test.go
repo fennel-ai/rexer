@@ -41,41 +41,44 @@ func TestTwoLevelRedisStore_TTL(t *testing.T) {
 		retention: uint64(retention),
 	}
 	buckets := []libcounter.Bucket{
-		{Key: "k1", Window: ftypes.Window_DAY, Width: 1, Index: 5, Value: value.Int(1)},
-		{Key: "k1", Window: ftypes.Window_HOUR, Width: 6, Index: 9, Value: value.Int(2)},
-		{Key: "k1", Window: ftypes.Window_HOUR, Width: 6, Index: 8, Value: value.Int(3)},
-		{Key: "k1", Window: ftypes.Window_MINUTE, Width: 6, Index: 480, Value: value.Int(4)},
-		{Key: "k2", Window: ftypes.Window_HOUR, Width: 6, Index: 8, Value: value.Int(5)},
+		{Key: "k1", Window: ftypes.Window_DAY, Width: 1, Index: 5},
+		{Key: "k1", Window: ftypes.Window_HOUR, Width: 6, Index: 9},
+		{Key: "k1", Window: ftypes.Window_HOUR, Width: 6, Index: 8},
+		{Key: "k1", Window: ftypes.Window_MINUTE, Width: 6, Index: 480},
+		{Key: "k2", Window: ftypes.Window_HOUR, Width: 6, Index: 8},
+	}
+	vals := []value.Value{
+		value.Int(1), value.Int(2), value.Int(3), value.Int(4), value.Int(5),
 	}
 	// set buckets
-	assert.NoError(t, store.Set(ctx, tier, aggId, buckets))
+	assert.NoError(t, store.SetMulti(ctx, tier, []ftypes.AggId{aggId}, [][]libcounter.Bucket{buckets}, [][]value.Value{vals}))
 
 	// check it went through
 	z := value.Int(0)
-	found, err := store.Get(ctx, tier, aggId, buckets, z)
+	found, err := store.GetMulti(ctx, tier, []ftypes.AggId{aggId}, [][]libcounter.Bucket{buckets}, []value.Value{z})
 	assert.NoError(t, err)
-	assert.Len(t, found, len(buckets))
-	for i, v := range found {
-		assert.Equal(t, buckets[i].Value, v)
+	assert.Len(t, found[0], len(buckets))
+	for i, v := range vals {
+		assert.Equal(t, found[0][i], v)
 	}
 
 	// now push time forward to just before retention
 	mr.FastForward(time.Second*time.Duration(retention) - 10)
 
 	// all values should be same for now
-	found, err = store.Get(ctx, tier, aggId, buckets, z)
+	found, err = store.GetMulti(ctx, tier, []ftypes.AggId{aggId}, [][]libcounter.Bucket{buckets}, []value.Value{z})
 	assert.NoError(t, err)
-	assert.Len(t, found, len(buckets))
-	for i, v := range found {
-		assert.Equal(t, buckets[i].Value, v)
+	assert.Len(t, found[0], len(buckets))
+	for i, v := range vals {
+		assert.Equal(t, found[0][i], v)
 	}
 	// now fast-forward barely beyond retention
 	mr.FastForward(11)
 	// and now all keys should be gone
-	found, err = store.Get(ctx, tier, aggId, buckets, z)
+	found, err = store.GetMulti(ctx, tier, []ftypes.AggId{aggId}, [][]libcounter.Bucket{buckets}, []value.Value{z})
 	assert.NoError(t, err)
-	assert.Len(t, found, len(buckets))
-	for _, v := range found {
+	assert.Len(t, found[0], len(buckets))
+	for _, v := range found[0] {
 		assert.Equal(t, z, v)
 	}
 }
@@ -103,60 +106,32 @@ func TestSplitStore_TTL(t *testing.T) {
 	}
 	aggID := ftypes.AggId(1)
 	buckets := []libcounter.Bucket{
-		{Key: "k1", Window: ftypes.Window_FOREVER, Width: 0, Index: 0, Value: value.Int(0)},
+		{Key: "k1", Window: ftypes.Window_FOREVER, Width: 0, Index: 0},
+	}
+	vals := []value.Value{
+		value.Int(0),
 	}
 	// set bucket
-	assert.NoError(t, store.Set(ctx, tier, aggID, buckets))
+	assert.NoError(t, store.SetMulti(ctx, tier, []ftypes.AggId{aggID}, [][]libcounter.Bucket{buckets}, [][]value.Value{vals}))
 	// check it went through
-	found, err := store.Get(ctx, tier, aggID, buckets, value.Nil)
+	found, err := store.GetMulti(ctx, tier, []ftypes.AggId{aggID}, [][]libcounter.Bucket{buckets}, []value.Value{value.Nil})
 	assert.NoError(t, err)
 	assert.Len(t, found, 1)
-	assert.Equal(t, value.Int(0), found[0])
+	assert.ElementsMatch(t, []value.Value{value.Int(0)}, found[0])
 
 	// now push time forward to just before retention
 	mr.FastForward(time.Second*time.Duration(retention) - 10)
 
 	// value should be same for now
-	found, err = store.Get(ctx, tier, aggID, buckets, value.Nil)
+	found, err = store.GetMulti(ctx, tier, []ftypes.AggId{aggID}, [][]libcounter.Bucket{buckets}, []value.Value{value.Nil})
 	assert.NoError(t, err)
 	assert.Len(t, found, 1)
-	assert.Equal(t, value.Int(0), found[0])
+	assert.ElementsMatch(t, []value.Value{value.Int(0)}, found[0])
 	// now fast-forward barely beyond retention
 	mr.FastForward(11)
 	// and now key should be gone
-	found, err = store.Get(ctx, tier, aggID, buckets, value.Nil)
+	found, err = store.GetMulti(ctx, tier, []ftypes.AggId{aggID}, [][]libcounter.Bucket{buckets}, []value.Value{value.Nil})
 	assert.NoError(t, err)
 	assert.Len(t, found, 1)
-	assert.Equal(t, value.Nil, found[0])
-
-	// now test for multiset
-	aggIDs := []ftypes.AggId{aggID}
-	lbuckets := [][]libcounter.Bucket{buckets}
-	defaults := []value.Value{value.Nil}
-	// set bucket
-	assert.NoError(t, store.SetMulti(ctx, tier, aggIDs, lbuckets))
-	// check it went through
-	found2, err := store.GetMulti(ctx, tier, aggIDs, lbuckets, defaults)
-	assert.NoError(t, err)
-	assert.Len(t, found2, 1)
-	assert.Len(t, found2[0], 1)
-	assert.Equal(t, value.Int(0), found2[0][0])
-	// now push time forward to somewhere in the middle
-	mr.FastForward(time.Second * time.Duration(retention/2))
-	// value should be same for now
-	found2, err = store.GetMulti(ctx, tier, aggIDs, lbuckets, defaults)
-	assert.NoError(t, err)
-	assert.Len(t, found2, 1)
-	assert.Len(t, found2[0], 1)
-	assert.Equal(t, value.Int(0), found2[0][0])
-	// resetting it should not change any TTL
-	assert.NoError(t, store.SetMulti(ctx, tier, aggIDs, lbuckets))
-	// now fast-forward barely beyond retention
-	mr.FastForward(time.Second * time.Duration(5+retention/2))
-	// and now key should be gone
-	found2, err = store.GetMulti(ctx, tier, aggIDs, lbuckets, defaults)
-	assert.NoError(t, err)
-	assert.Len(t, found2, 1)
-	assert.Len(t, found2[0], 1)
-	assert.Equal(t, value.Nil, found2[0][0])
+	assert.Equal(t, value.Nil, found[0][0])
 }
