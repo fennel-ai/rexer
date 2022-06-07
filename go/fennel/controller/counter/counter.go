@@ -2,6 +2,7 @@ package counter
 
 import (
 	"context"
+	"fennel/lib/arena"
 	"fmt"
 	"go.uber.org/zap"
 	"os"
@@ -40,8 +41,8 @@ func makeCacheKey(aggId ftypes.AggId, b libcounter.Bucket) string {
 
 func fetchFromPCache(tier tier.Tier, aggId ftypes.AggId, buckets []libcounter.Bucket) ([]value.Value, []libcounter.Bucket) {
 	// We expect number of day buckets to not be more than 28.
-	cachedVals := make([]value.Value, 0, 28)
-	cachedIndexes := make([]int, 0, 28)
+	cachedVals := arena.Values.Alloc(0, 28)
+	cachedIndexes := arena.Ints.Alloc(0, 28)
 
 	for i, b := range buckets {
 		if b.Window != ftypes.Window_DAY {
@@ -72,6 +73,7 @@ func fetchFromPCache(tier tier.Tier, aggId ftypes.AggId, buckets []libcounter.Bu
 
 	// Chop off the last elements.
 	buckets = buckets[:len(buckets)-len(cachedIndexes)]
+	arena.Ints.Free(cachedIndexes)
 	return cachedVals, buckets
 }
 
@@ -133,6 +135,7 @@ func BatchValue(
 		fillPCache(tier, ids_, buckets, counts)
 		for cur, index := range indices {
 			counts[cur] = append(counts[cur], cachedBuckets[cur]...)
+			arena.Values.Free(cachedBuckets[cur])
 			ret[index], err = histograms[index].Reduce(counts[cur])
 			if err != nil {
 				return nil, fmt.Errorf("failed to reduce aggregate (id): %d, err: %v", aggIds[index], err)

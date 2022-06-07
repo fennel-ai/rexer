@@ -210,7 +210,7 @@ func (t twoLevelRedisStore) get(
 	if err != nil {
 		return nil, err
 	}
-	ret := make([]value.Value, len(buckets))
+	ret := arena.Values.Alloc(len(buckets), len(buckets))
 	for i, s := range slots {
 		ptr := seen[s.g]
 		slotDict, ok := groupVals[ptr].(value.Dict)
@@ -308,10 +308,12 @@ func (t twoLevelRedisStore) GetMulti(
 				copy(ret[j], vals[:l])
 				vals = vals[l:]
 			}
+			arena.Values.Free(vals)
 			putIdx = j
 			bsz = 0
 		}
 	}
+
 	metrics.WithLabelValues("l2_num_batches_per_get_multi").Observe(float64(batchSize))
 	return ret, nil
 }
