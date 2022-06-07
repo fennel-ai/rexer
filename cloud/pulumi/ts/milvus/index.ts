@@ -90,6 +90,13 @@ export const setup = async (input: inputType): Promise<pulumi.Output<outputType>
             "service": {
                 "type": "LoadBalancer",
             },
+            // Run attu in port-forward mode.
+            "attu": {
+                "enabled": true,
+                "ingress": {
+                    "enabled": false,
+                },
+            },
         }
     }, { provider: k8sProvider })
 
