@@ -28,6 +28,22 @@ var cacheMisses = promauto.NewCounterVec(
 	[]string{"namespace"},
 )
 
+var cacheSets = promauto.NewCounterVec(
+	prometheus.CounterOpts{
+		Name: "pcache_sets_namespace",
+		Help: "Number of P Cache sets per namespace.",
+	},
+	[]string{"namespace"},
+)
+
+var cacheEvicts = promauto.NewCounterVec(
+	prometheus.CounterOpts{
+		Name: "pcache_evicts_namespace",
+		Help: "Number of P Cache evicts per namespace.",
+	},
+	[]string{"namespace"},
+)
+
 // NewPCache creates a new instance of PCache
 // https://pkg.go.dev/github.com/dgraph-io/ristretto#Config
 func NewPCache(maxCost int64, averageItemCost int64) (PCache, error) {
@@ -40,6 +56,14 @@ func NewPCache(maxCost int64, averageItemCost int64) (PCache, error) {
 		// of the metrics reported to Prometheus
 		BufferItems: 1 << 10,
 		Metrics:     true,
+		OnEvict: func(item *ristretto.Item) {
+			itemGap := item.Expiration.Sub(time.Now())
+			if itemGap.Seconds() <= 3 {
+				cacheEvicts.WithLabelValues("expired").Inc()
+			} else {
+				cacheEvicts.WithLabelValues("kickedout").Inc()
+			}
+		},
 	})
 	if err != nil {
 		return PCache{}, err
@@ -53,8 +77,12 @@ func (pc *PCache) Set(key, value interface{}, cost int64) bool {
 	return pc.Cache.Set(key, value, cost)
 }
 
-func (pc *PCache) SetWithTTL(key, value interface{}, cost int64, ttl time.Duration) bool {
-	return pc.Cache.SetWithTTL(key, value, cost, ttl)
+func (pc *PCache) SetWithTTL(key, value interface{}, cost int64, ttl time.Duration, namespace string) bool {
+	ok := pc.Cache.SetWithTTL(key, value, cost, ttl)
+	if ok {
+		cacheSets.WithLabelValues(namespace).Inc()
+	}
+	return ok
 }
 
 func (pc *PCache) Get(key interface{}, namespace string) (interface{}, bool) {

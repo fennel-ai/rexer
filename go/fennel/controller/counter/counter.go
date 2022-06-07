@@ -81,7 +81,7 @@ func fillPCache(tier tier.Tier, aggIds []ftypes.AggId, buckets [][]libcounter.Bu
 				continue
 			}
 			ckey := makeCacheKey(aggId, buckets[i][j])
-			if ok := tier.PCache.SetWithTTL(ckey, bucketVal[i][j], int64(len(ckey)+len(bucketVal[i][j].String())), cacheValueDuration); !ok {
+			if ok := tier.PCache.SetWithTTL(ckey, bucketVal[i][j], int64(len(ckey)+len(bucketVal[i][j].String())), cacheValueDuration, "BucketValue"); !ok {
 				tier.Logger.Debug(fmt.Sprintf("failed to set bucket aggregate value in cache: key: '%s' value: '%s'", ckey, bucketVal[i][j].String()))
 			}
 		}
