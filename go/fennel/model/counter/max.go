@@ -13,9 +13,10 @@ import (
 */
 type rollingMax struct {
 	Durations []uint64
-	Bucketizer
 	BucketStore
 }
+
+var _ Histogram = rollingMax{}
 
 var zeroMax value.Value = value.NewList(value.Double(0), value.Bool(true))
 
@@ -31,10 +32,6 @@ func NewMax(durations []uint64) Histogram {
 	maxDuration := getMaxDuration(durations)
 	return rollingMax{
 		Durations: durations,
-		Bucketizer: fixedWidthBucketizer{map[ftypes.Window]uint32{
-			ftypes.Window_MINUTE: 6,
-			ftypes.Window_DAY:    1,
-		}, true},
 		// retain all keys for 1.1days (95040) + duration
 		BucketStore: NewTwoLevelStorage(24*3600, maxDuration+95040),
 	}
@@ -123,5 +120,3 @@ func (m rollingMax) Merge(a, b value.Value) (value.Value, error) {
 func (m rollingMax) Zero() value.Value {
 	return zeroMax
 }
-
-var _ Histogram = rollingMax{}

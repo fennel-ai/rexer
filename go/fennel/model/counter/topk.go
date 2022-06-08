@@ -14,18 +14,15 @@ var zeroTopK value.Value = value.NewDict(nil)
 
 type topK struct {
 	Durations []uint64
-	Bucketizer
 	BucketStore
 }
+
+var _ Histogram = topK{}
 
 func NewTopK(durations []uint64) Histogram {
 	maxDuration := getMaxDuration(durations)
 	return topK{
 		Durations: durations,
-		Bucketizer: fixedWidthBucketizer{map[ftypes.Window]uint32{
-			ftypes.Window_MINUTE: 6,
-			ftypes.Window_DAY:    1,
-		}, true},
 		// retain all keys for 1.1days(95040) + duration
 		BucketStore: NewTwoLevelStorage(24*3600, maxDuration+95040),
 	}
@@ -149,5 +146,3 @@ func (t topK) merge(ds []value.Dict) (value.Dict, error) {
 	}
 	return ret, nil
 }
-
-var _ Histogram = topK{}

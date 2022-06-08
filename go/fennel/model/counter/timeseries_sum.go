@@ -13,9 +13,10 @@ var zeroTsSum value.Value = value.Int(0)
 type timeseriesSum struct {
 	Window ftypes.Window
 	Limit  uint64
-	Bucketizer
 	BucketStore
 }
+
+var _ Histogram = timeseriesSum{}
 
 func NewTimeseriesSum(window ftypes.Window, limit uint64) Histogram {
 	d, err := utils.Duration(window)
@@ -30,9 +31,6 @@ func NewTimeseriesSum(window ftypes.Window, limit uint64) Histogram {
 	return timeseriesSum{
 		Window: window,
 		Limit:  limit,
-		Bucketizer: fixedWidthBucketizer{map[ftypes.Window]uint32{
-			window: 1,
-		}, false},
 		// retain all keys for 1.5days + duration
 		BucketStore: NewTwoLevelStorage(24*3600, retention),
 	}
@@ -82,5 +80,3 @@ func (r timeseriesSum) Transform(v value.Value) (value.Value, error) {
 	}
 	return v, nil
 }
-
-var _ Histogram = timeseriesSum{}

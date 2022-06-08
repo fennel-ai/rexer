@@ -11,18 +11,15 @@ var zeroSum value.Value = value.Int(0)
 
 type rollingSum struct {
 	Durations []uint64
-	Bucketizer
 	BucketStore
 }
+
+var _ Histogram = rollingSum{}
 
 func NewSum(durations []uint64) Histogram {
 	maxDuration := getMaxDuration(durations)
 	return rollingSum{
 		Durations: durations,
-		Bucketizer: fixedWidthBucketizer{map[ftypes.Window]uint32{
-			ftypes.Window_MINUTE: 6,
-			ftypes.Window_DAY:    1,
-		}, true},
 		// retain all keys for 1.1days(95040) + duration
 		BucketStore: NewTwoLevelStorage(24*3600, maxDuration+95040),
 	}
@@ -69,5 +66,3 @@ func (r rollingSum) Transform(v value.Value) (value.Value, error) {
 	}
 	return v, nil
 }
-
-var _ Histogram = rollingSum{}

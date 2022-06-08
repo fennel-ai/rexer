@@ -31,7 +31,6 @@ type MergeReduce interface {
 
 type Histogram interface {
 	Start(end ftypes.Timestamp, kwargs value.Dict) (ftypes.Timestamp, error)
-	Bucketizer
 	MergeReduce
 	BucketStore
 }
@@ -60,5 +59,29 @@ func ToHistogram(tr tier.Tier, aggId ftypes.AggId, opts aggregate.Options) (Hist
 		return NewTopK(opts.Durations), nil
 	default:
 		return nil, fmt.Errorf("invalid aggregate type: %v", opts.AggType)
+	}
+}
+
+var (
+	sixMinutelyBucketizer = fixedWidthBucketizer{
+		map[ftypes.Window]uint32{
+			ftypes.Window_MINUTE: 6,
+			ftypes.Window_DAY:    1,
+		},
+		true, /* include trailing */
+	}
+)
+
+func GetFixedWidthBucketizer(h Histogram) Bucketizer {
+	switch t := h.(type) {
+	case timeseriesSum:
+		return fixedWidthBucketizer{
+			map[ftypes.Window]uint32{
+				t.Window: 1,
+			},
+			false, /* include trailing */
+		}
+	default:
+		return sixMinutelyBucketizer
 	}
 }

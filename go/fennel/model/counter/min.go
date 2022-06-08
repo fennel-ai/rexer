@@ -13,9 +13,10 @@ import (
 */
 type rollingMin struct {
 	Durations []uint64
-	Bucketizer
 	BucketStore
 }
+
+var _ Histogram = rollingMin{}
 
 var zeroMin value.Value = value.NewList(value.Double(0), value.Bool(true))
 
@@ -23,10 +24,6 @@ func NewMin(durations []uint64) Histogram {
 	maxDuration := getMaxDuration(durations)
 	return rollingMin{
 		Durations: durations,
-		Bucketizer: fixedWidthBucketizer{map[ftypes.Window]uint32{
-			ftypes.Window_MINUTE: 6,
-			ftypes.Window_DAY:    1,
-		}, true},
 		// retain all keys for 1.1days (95040) + duration
 		BucketStore: NewTwoLevelStorage(24*3600, maxDuration+95040),
 	}
@@ -122,5 +119,3 @@ func (m rollingMin) Transform(v value.Value) (value.Value, error) {
 
 	return value.NewList(v, value.Bool(false)), nil
 }
-
-var _ Histogram = rollingMin{}

@@ -32,9 +32,10 @@ type rollingRate struct {
 	aggId     ftypes.AggId
 	Durations []uint64
 	Normalize bool
-	Bucketizer
 	BucketStore
 }
+
+var _ Histogram = rollingRate{}
 
 func NewRate(tr tier.Tier, aggId ftypes.AggId, durations []uint64, normalize bool) Histogram {
 	maxDuration := getMaxDuration(durations)
@@ -43,10 +44,6 @@ func NewRate(tr tier.Tier, aggId ftypes.AggId, durations []uint64, normalize boo
 		aggId:     aggId,
 		Durations: durations,
 		Normalize: normalize,
-		Bucketizer: fixedWidthBucketizer{map[ftypes.Window]uint32{
-			ftypes.Window_MINUTE: 6,
-			ftypes.Window_DAY:    1,
-		}, true},
 		// retain all keys for 1.1days (95040) + duration
 		BucketStore: NewTwoLevelStorage(24*3600, maxDuration+95040),
 	}
@@ -141,5 +138,3 @@ func (r rollingRate) Merge(a, b value.Value) (value.Value, error) {
 func (r rollingRate) Zero() value.Value {
 	return zeroRate
 }
-
-var _ Histogram = rollingRate{}
