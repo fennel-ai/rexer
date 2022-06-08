@@ -286,11 +286,11 @@ func (t twoLevelRedisStore) GetMulti(
 			i++
 		} else {
 			vals, err := t.get(ctx, tier, ids_[:bsz], buckets_[:bsz], defaults_[:bsz])
+			defer arena.Values.Free(vals)
 			if err != nil {
 				return nil, err
 			}
 			j := putIdx
-
 			for ; len(vals) > 0 && j < len(aggIds); j++ {
 				l := len(buckets[j])
 				// We copy the values into ret[j] instead of just assigning them to
@@ -301,7 +301,6 @@ func (t twoLevelRedisStore) GetMulti(
 				copy(ret[j], vals[:l])
 				vals = vals[l:]
 			}
-			arena.Values.Free(vals)
 			putIdx = j
 			bsz = 0
 		}
