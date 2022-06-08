@@ -48,22 +48,22 @@ func (f featureLog) Apply(ctx context.Context, static value.Dict, in operators.I
 		if err != nil {
 			return err
 		}
-		ts := ftypes.Timestamp(get(kwargs, "timestamp").(value.Int))
+		ts := ftypes.Timestamp(kwargs.GetUnsafe("timestamp").(value.Int))
 		if ts == 0 {
 			ts = ftypes.Timestamp(f.tier.Clock.Now())
 		}
 		msg := libfeature.Row{
-			ContextOType:    ftypes.OType(get(kwargs, "context_otype").(value.String)),
-			ContextOid:      ftypes.OidType(get(kwargs, "context_oid").String()),
-			CandidateOType:  ftypes.OType(get(kwargs, "candidate_otype").(value.String)),
-			CandidateOid:    ftypes.OidType(get(kwargs, "candidate_oid").String()),
-			Features:        get(kwargs, "features").(value.Dict),
+			ContextOType:    ftypes.OType(kwargs.GetUnsafe("context_otype").(value.String)),
+			ContextOid:      ftypes.OidType(kwargs.GetUnsafe("context_oid").String()),
+			CandidateOType:  ftypes.OType(kwargs.GetUnsafe("candidate_otype").(value.String)),
+			CandidateOid:    ftypes.OidType(kwargs.GetUnsafe("candidate_oid").String()),
+			Features:        kwargs.GetUnsafe("features").(value.Dict),
 			Workflow:        workflow,
-			RequestID:       ftypes.RequestID(get(kwargs, "request_id").String()),
+			RequestID:       ftypes.RequestID(kwargs.GetUnsafe("request_id").String()),
 			Timestamp:       ts,
 			ModelName:       modelName,
 			ModelVersion:    modelVersion,
-			ModelPrediction: float64(get(kwargs, "model_prediction").(value.Double)),
+			ModelPrediction: float64(kwargs.GetUnsafe("model_prediction").(value.Double)),
 		}
 		if err = feature.Log(ctx, f.tier, msg); err != nil {
 			return err

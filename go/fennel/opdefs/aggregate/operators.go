@@ -54,9 +54,9 @@ func (a AggValue) Apply(ctx context.Context, staticKwargs value.Dict, in operato
 		}
 
 		req := aggregate2.GetAggValueRequest{
-			AggName: ftypes.AggName(get(contextKwargs, "name").(value.String)),
+			AggName: ftypes.AggName(contextKwargs.GetUnsafe("name").(value.String)),
 			Key:     gk,
-			Kwargs:  get(contextKwargs, "kwargs").(value.Dict),
+			Kwargs:  contextKwargs.GetUnsafe("kwargs").(value.Dict),
 		}
 		reqs = append(reqs, req)
 		rows = append(rows, heads[0])
@@ -65,7 +65,7 @@ func (a AggValue) Apply(ctx context.Context, staticKwargs value.Dict, in operato
 	if err != nil {
 		return err
 	}
-	field := string(get(staticKwargs, "field").(value.String))
+	field := string(staticKwargs.GetUnsafe("field").(value.String))
 	outs.Grow(len(rows))
 	for i, row := range rows {
 		var out value.Value

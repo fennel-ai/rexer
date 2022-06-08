@@ -109,79 +109,79 @@ func TestTypeCheck(t *testing.T) {
 	scenarios := []struct {
 		op      Operator
 		input   []value.Value
-		context value.Dict
+		context Kwargs
 		matches bool
 	}{
 		{
 			op1,
 			[]value.Value{value.String("xyz")},
-			value.NewDict(map[string]value.Value{"p2": value.Double(9.0)}),
+			Kwargs{sig: op1.Signature(), static: false, vals: []value.Value{value.Double(9.0)}},
 			true,
 		},
 		{
 			op1,
 			[]value.Value{value.Int(2)},
-			value.NewDict(map[string]value.Value{"p2": value.Double(9.0)}),
+			Kwargs{sig: op1.Signature(), static: false, vals: []value.Value{value.Double(9.0)}},
 			false,
 		},
 		{
 			op1,
 			[]value.Value{value.Int(4)},
-			value.NewDict(map[string]value.Value{"p2": value.Double(16.0)}),
+			Kwargs{sig: op1.Signature(), static: false, vals: []value.Value{value.Double(9.0)}},
 			false,
 		},
 		{
 			op1,
 			[]value.Value{value.String("pqrs")},
-			value.NewDict(map[string]value.Value{"p2": value.Int(3)}),
+			Kwargs{sig: op1.Signature(), static: false, vals: []value.Value{value.Int(3)}},
 			false,
 		},
 		{
 			op1,
 			[]value.Value{value.String("ijk")},
-			value.Dict{},
+			Kwargs{sig: op1.Signature(), static: false, vals: []value.Value{}},
 			false,
 		},
 		{
 			op2,
 			[]value.Value{value.String("ijk")},
-			value.Dict{},
+			Kwargs{sig: op1.Signature(), static: false, vals: []value.Value{}},
 			false,
 		},
 		{
 			op2,
 			[]value.Value{},
-			value.Dict{},
+			Kwargs{sig: op1.Signature(), static: false, vals: []value.Value{}},
 			false,
 		},
 		{
 			op2,
 			[]value.Value{value.String("jhi"), value.Int(4), value.Int(5)},
-			value.Dict{},
+			Kwargs{sig: op1.Signature(), static: false, vals: []value.Value{}},
 			true,
 		},
 		{
 			op2,
 			[]value.Value{value.String("jhi"), value.Int(4), value.Nil},
-			value.Dict{},
+			Kwargs{sig: op1.Signature(), static: false, vals: []value.Value{}},
 			true,
 		},
 		{
 			op3,
 			[]value.Value{value.String("jhi"), value.Int(4), value.Nil},
-			value.Dict{},
+			Kwargs{sig: op1.Signature(), static: false, vals: []value.Value{}},
 			true,
 		},
 		{
 			op3,
 			[]value.Value{value.String("jhi")},
-			value.Dict{},
+			Kwargs{sig: op1.Signature(), static: false, vals: []value.Value{}},
 			true,
 		},
 		{
 			op3,
 			[]value.Value{value.NewDict(map[string]value.Value{"jhi": value.Int(3)})},
-			value.Dict{},
+			Kwargs{sig: op1.Signature(), static: false, vals: []value.Value{}},
 			true,
 		},
 	}
