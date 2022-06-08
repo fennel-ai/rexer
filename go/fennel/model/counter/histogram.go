@@ -14,7 +14,7 @@ import (
 
 type Bucketizer interface {
 	BucketizeMoment(key string, ts ftypes.Timestamp) []counter.Bucket
-	BucketizeDuration(key string, start, end ftypes.Timestamp) []counter.Bucket
+	BucketizeDuration(key string, start, end ftypes.Timestamp) []counter.BucketList
 }
 
 type BucketStore interface {

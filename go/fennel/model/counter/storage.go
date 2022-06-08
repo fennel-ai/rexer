@@ -2,11 +2,12 @@ package counter
 
 import (
 	"context"
-	"fennel/lib/arena"
 	"fmt"
 	"strings"
 	"sync"
 	"time"
+
+	"fennel/lib/arena"
 
 	// TODO: consider implementing own library in the future since the repository is old
 	// and probably not maintained
@@ -253,7 +254,7 @@ func (t twoLevelRedisStore) GetMulti(
 
 	// to ensure that we don't allocate crazy large memory, we iterate through all
 	// data in batches - we prefer to use a batch size up to MAX_BATCH_SZ but if
-	// some bucket[i] itself has more buckets than this, we are forced to use a batch
+	// some buckets[i] itself has more buckets than this, we are forced to use a batch
 	// size that can at least accommodate that
 	sz := 0
 	maxSz := 0

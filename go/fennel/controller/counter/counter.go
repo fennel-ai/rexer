@@ -2,9 +2,10 @@ package counter
 
 import (
 	"context"
-	"fennel/lib/arena"
 	"fmt"
 	"time"
+
+	"fennel/lib/arena"
 
 	"fennel/lib/aggregate"
 	libcounter "fennel/lib/counter"
