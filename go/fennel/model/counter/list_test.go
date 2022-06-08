@@ -24,7 +24,7 @@ func SetEqual(t *testing.T, a, b value.List) {
 
 func TestList_Reduce(t *testing.T) {
 	t.Parallel()
-	h := NewList([]uint64{123})
+	h := NewList()
 	cases := []struct {
 		input  []value.Value
 		output value.Value
@@ -63,7 +63,7 @@ func TestList_Reduce(t *testing.T) {
 
 func TestList_Merge_Valid(t *testing.T) {
 	t.Parallel()
-	h := NewList([]uint64{123})
+	h := NewList()
 	validCases := []struct {
 		input1 value.Value
 		input2 value.Value
@@ -104,7 +104,7 @@ func TestList_Merge_Valid(t *testing.T) {
 
 func TestList_Merge_Invalid(t *testing.T) {
 	t.Parallel()
-	h := NewList([]uint64{123})
+	h := NewList()
 	invalidCases := []struct {
 		input1 value.Value
 		input2 value.Value

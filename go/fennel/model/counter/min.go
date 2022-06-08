@@ -3,7 +3,6 @@ package counter
 import (
 	"fmt"
 
-	"fennel/lib/ftypes"
 	"fennel/lib/value"
 )
 
@@ -11,22 +10,14 @@ import (
 	rollingMin maintains minimum of a bucket with two vars (minv and empty).
 	Minv is the minimum value. If empty is true, the bucket is empty so minv is ignored.
 */
-type rollingMin struct {
-	Durations []uint64
-	BucketStore
-}
+type rollingMin struct{}
 
-var _ Histogram = rollingMin{}
+var _ MergeReduce = rollingMin{}
 
 var zeroMin value.Value = value.NewList(value.Double(0), value.Bool(true))
 
-func NewMin(durations []uint64) Histogram {
-	maxDuration := getMaxDuration(durations)
-	return rollingMin{
-		Durations: durations,
-		// retain all keys for 1.1days (95040) + duration
-		BucketStore: NewTwoLevelStorage(24*3600, maxDuration+95040),
-	}
+func NewMin() rollingMin {
+	return rollingMin{}
 }
 
 func min(a value.Value, b value.Value) (value.Value, error) {
@@ -38,14 +29,6 @@ func min(a value.Value, b value.Value) (value.Value, error) {
 		return a, nil
 	}
 	return b, nil
-}
-
-func (m rollingMin) Start(end ftypes.Timestamp, kwargs value.Dict) (ftypes.Timestamp, error) {
-	d, err := extractDuration(kwargs, m.Durations)
-	if err != nil {
-		return 0, err
-	}
-	return start(end, d), nil
 }
 
 func (m rollingMin) extract(v value.Value) (value.Value, bool, error) {

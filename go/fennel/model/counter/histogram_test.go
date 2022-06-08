@@ -3,34 +3,36 @@ package counter
 import (
 	"testing"
 
+	"fennel/lib/aggregate"
 	"fennel/lib/ftypes"
 	"fennel/lib/value"
+
 	"github.com/stretchr/testify/assert"
 )
 
 func TestStart(t *testing.T) {
 	durations := []uint64{100, 200}
 	badDurations := []uint64{0, 1, 50, 150, 250}
-	testHistogramStart(t, average{Durations: durations}, durations, badDurations)
-	testHistogramStart(t, list{Durations: durations}, durations, badDurations)
-	testHistogramStart(t, rollingMax{Durations: durations}, durations, badDurations)
-	testHistogramStart(t, rollingMin{Durations: durations}, durations, badDurations)
-	testHistogramStart(t, rollingRate{Durations: durations}, durations, badDurations)
-	testHistogramStart(t, rollingStdDev{Durations: durations}, durations, badDurations)
-	testHistogramStart(t, rollingSum{Durations: durations}, durations, badDurations)
-	testHistogramStart(t, topK{Durations: durations}, durations, badDurations)
+	testHistogramStart(t, Histogram{Options: aggregate.Options{Durations: durations}, MergeReduce: average{}}, durations, badDurations)
+	testHistogramStart(t, Histogram{Options: aggregate.Options{Durations: durations}, MergeReduce: list{}}, durations, badDurations)
+	testHistogramStart(t, Histogram{Options: aggregate.Options{Durations: durations}, MergeReduce: rollingMax{}}, durations, badDurations)
+	testHistogramStart(t, Histogram{Options: aggregate.Options{Durations: durations}, MergeReduce: rollingMin{}}, durations, badDurations)
+	testHistogramStart(t, Histogram{Options: aggregate.Options{Durations: durations}, MergeReduce: rollingRate{}}, durations, badDurations)
+	testHistogramStart(t, Histogram{Options: aggregate.Options{Durations: durations}, MergeReduce: rollingStdDev{}}, durations, badDurations)
+	testHistogramStart(t, Histogram{Options: aggregate.Options{Durations: durations}, MergeReduce: rollingSum{}}, durations, badDurations)
+	testHistogramStart(t, Histogram{Options: aggregate.Options{Durations: durations}, MergeReduce: topK{}}, durations, badDurations)
 }
 
 func TestMergeReduceZeroNotMutated(t *testing.T) {
 	durations := []uint64{100, 200}
-	testHistogramZeroNotMutated(t, average{Durations: durations}, value.NewList(value.Int(2), value.Int(3)), value.NewList(value.Int(0), value.Int(0)))
-	testHistogramZeroNotMutated(t, list{Durations: durations}, value.NewList(value.Int(1), value.Int(2)), value.NewList())
-	testHistogramZeroNotMutated(t, rollingMax{Durations: durations}, value.NewList(value.Double(1.0), value.Bool(true)), value.NewList(value.Double(0), value.Bool(true)))
-	testHistogramZeroNotMutated(t, rollingMin{Durations: durations}, value.NewList(value.Double(-1.0), value.Bool(true)), value.NewList(value.Double(0), value.Bool(true)))
-	testHistogramZeroNotMutated(t, rollingRate{Durations: durations}, value.NewList(value.Double(1.0), value.Double(2.0)), value.NewList(value.Double(0), value.Double(0)))
-	testHistogramZeroNotMutated(t, rollingStdDev{Durations: durations}, value.NewList(value.Double(1.0), value.Double(2.0), value.Int(1)), value.NewList(value.Double(0), value.Double(0), value.Int(0)))
-	testHistogramZeroNotMutated(t, rollingSum{Durations: durations}, value.Int(2), value.Int(0))
-	testHistogramZeroNotMutated(t, topK{Durations: durations}, value.NewDict(map[string]value.Value{"foo": value.Double(2.0)}), value.NewDict(nil))
+	testHistogramZeroNotMutated(t, Histogram{Options: aggregate.Options{Durations: durations}, MergeReduce: average{}}, value.NewList(value.Int(2), value.Int(3)), value.NewList(value.Int(0), value.Int(0)))
+	testHistogramZeroNotMutated(t, Histogram{Options: aggregate.Options{Durations: durations}, MergeReduce: list{}}, value.NewList(value.Int(1), value.Int(2)), value.NewList())
+	testHistogramZeroNotMutated(t, Histogram{Options: aggregate.Options{Durations: durations}, MergeReduce: rollingMax{}}, value.NewList(value.Double(1.0), value.Bool(true)), value.NewList(value.Double(0), value.Bool(true)))
+	testHistogramZeroNotMutated(t, Histogram{Options: aggregate.Options{Durations: durations}, MergeReduce: rollingMin{}}, value.NewList(value.Double(-1.0), value.Bool(true)), value.NewList(value.Double(0), value.Bool(true)))
+	testHistogramZeroNotMutated(t, Histogram{Options: aggregate.Options{Durations: durations}, MergeReduce: rollingRate{}}, value.NewList(value.Double(1.0), value.Double(2.0)), value.NewList(value.Double(0), value.Double(0)))
+	testHistogramZeroNotMutated(t, Histogram{Options: aggregate.Options{Durations: durations}, MergeReduce: rollingStdDev{}}, value.NewList(value.Double(1.0), value.Double(2.0), value.Int(1)), value.NewList(value.Double(0), value.Double(0), value.Int(0)))
+	testHistogramZeroNotMutated(t, Histogram{Options: aggregate.Options{Durations: durations}, MergeReduce: rollingSum{}}, value.Int(2), value.Int(0))
+	testHistogramZeroNotMutated(t, Histogram{Options: aggregate.Options{Durations: durations}, MergeReduce: topK{}}, value.NewDict(map[string]value.Value{"foo": value.Double(2.0)}), value.NewDict(nil))
 }
 
 func testHistogramStart(t *testing.T, h Histogram, durations []uint64, badDurations []uint64) {

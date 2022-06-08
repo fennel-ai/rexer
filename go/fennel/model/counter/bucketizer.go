@@ -8,6 +8,16 @@ import (
 	"fennel/lib/ftypes"
 )
 
+var (
+	sixMinutelyBucketizer = fixedWidthBucketizer{
+		map[ftypes.Window]uint32{
+			ftypes.Window_MINUTE: 6,
+			ftypes.Window_DAY:    1,
+		},
+		true, /* include trailing */
+	}
+)
+
 type fixedWidthBucketizer struct {
 	sizes                  map[ftypes.Window]uint32
 	includeTrailingPartial bool

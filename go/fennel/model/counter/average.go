@@ -3,7 +3,6 @@ package counter
 import (
 	"fmt"
 
-	"fennel/lib/ftypes"
 	"fennel/lib/value"
 )
 
@@ -13,20 +12,14 @@ import (
 */
 type average struct {
 	Durations []uint64
-	BucketStore
 }
 
-var _ Histogram = average{}
+var _ MergeReduce = average{}
 
 var zeroAvg value.Value = value.NewList(value.Int(0), value.Int(0))
 
-func NewAverage(durations []uint64) Histogram {
-	maxDuration := getMaxDuration(durations)
-	return average{
-		Durations: durations,
-		// retain all keys for 1.1days (95040) + duration
-		BucketStore: NewTwoLevelStorage(24*3600, maxDuration+95040),
-	}
+func NewAverage() average {
+	return average{}
 }
 
 func (r average) Transform(v value.Value) (value.Value, error) {
@@ -35,14 +28,6 @@ func (r average) Transform(v value.Value) (value.Value, error) {
 		return nil, fmt.Errorf("expected value to be an int but got: '%s' instead", v)
 	}
 	return value.NewList(v_int, value.Int(1)), nil
-}
-
-func (r average) Start(end ftypes.Timestamp, kwargs value.Dict) (ftypes.Timestamp, error) {
-	d, err := extractDuration(kwargs, r.Durations)
-	if err != nil {
-		return 0, err
-	}
-	return start(end, d), nil
 }
 
 func (r average) extract(v value.Value) (int64, int64, error) {

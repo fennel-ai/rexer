@@ -436,10 +436,10 @@ func TestServer_AggregateValue_Valid(t *testing.T) {
 	valueSendReceive(t, holder, agg, key, value.Int(0), value.NewDict(map[string]value.Value{"duration": value.Int(6 * 3600)}))
 
 	// now create an increment
-	h := counter.NewSum(agg.Options.Durations)
+	h, err := counter.ToHistogram(tier, agg.Id, agg.Options)
+	assert.NoError(t, err)
 	t1 := t0 + 3600
-	bucketizer := counter.GetFixedWidthBucketizer(h)
-	buckets := bucketizer.BucketizeMoment(keystr, t1)
+	buckets := h.BucketizeMoment(keystr, t1)
 	v := make([]value.Value, len(buckets))
 	slice.Fill[value.Value](v, value.Int(1))
 	err = counter.Update(context.Background(), tier, agg.Id, buckets, v, h)
@@ -449,8 +449,7 @@ func TestServer_AggregateValue_Valid(t *testing.T) {
 
 	// create another increment at a later timestamp
 	t2 := t1 + 3600
-	bucketizer = counter.GetFixedWidthBucketizer(h)
-	buckets = bucketizer.BucketizeMoment(keystr, t2)
+	buckets = h.BucketizeMoment(keystr, t2)
 	v = make([]value.Value, len(buckets))
 	slice.Fill[value.Value](v, value.Int(1))
 	err = counter.Update(context.Background(), tier, agg.Id, buckets, v, h)
@@ -502,14 +501,14 @@ func TestServer_BatchAggregateValue(t *testing.T) {
 	key := value.Nil
 	keystr := key.String()
 
-	h1 := counter.NewSum(agg1.Options.Durations)
-	bucketizer := counter.GetFixedWidthBucketizer(h1)
-	buckets := bucketizer.BucketizeMoment(keystr, t1)
+	h1, err := counter.ToHistogram(tier, agg1.Id, agg1.Options)
+	assert.NoError(t, err)
+	buckets := h1.BucketizeMoment(keystr, t1)
 	v1 := make([]value.Value, len(buckets))
 	slice.Fill[value.Value](v1, value.Int(1))
 	err = counter.Update(context.Background(), tier, agg1.Id, buckets, v1, h1)
 	assert.NoError(t, err)
-	buckets = bucketizer.BucketizeMoment(keystr, t1)
+	buckets = h1.BucketizeMoment(keystr, t1)
 	v1 = make([]value.Value, len(buckets))
 	slice.Fill[value.Value](v1, value.Int(3))
 	err = counter.Update(context.Background(), tier, agg1.Id, buckets, v1, h1)
@@ -518,14 +517,14 @@ func TestServer_BatchAggregateValue(t *testing.T) {
 		AggName: agg1.Name, Key: key, Kwargs: value.NewDict(map[string]value.Value{"duration": value.Int(6 * 3600)}),
 	}
 
-	h2 := counter.NewMax(agg2.Options.Durations)
-	bucketizer = counter.GetFixedWidthBucketizer(h2)
-	buckets = bucketizer.BucketizeMoment(keystr, t1)
+	h2, err := counter.ToHistogram(tier, agg2.Id, agg2.Options)
+	assert.NoError(t, err)
+	buckets = h2.BucketizeMoment(keystr, t1)
 	v2 := make([]value.Value, len(buckets))
 	slice.Fill[value.Value](v2, value.NewList(value.Int(2), value.Bool(false)))
 	err = counter.Update(context.Background(), tier, agg2.Id, buckets, v2, h2)
 	assert.NoError(t, err)
-	buckets = bucketizer.BucketizeMoment(keystr, t1)
+	buckets = h2.BucketizeMoment(keystr, t1)
 	v2 = make([]value.Value, len(buckets))
 	slice.Fill[value.Value](v2, value.NewList(value.Int(7), value.Bool(false)))
 	err = counter.Update(context.Background(), tier, agg2.Id, buckets, v2, h2)
@@ -540,8 +539,7 @@ func TestServer_BatchAggregateValue(t *testing.T) {
 
 	// create some more changes at a later timestamp
 	t2 := t1 + 3600
-	bucketizer = counter.GetFixedWidthBucketizer(h1)
-	buckets = bucketizer.BucketizeMoment(keystr, t2)
+	buckets = h1.BucketizeMoment(keystr, t2)
 	v3 := make([]value.Value, len(buckets))
 	slice.Fill[value.Value](v3, value.Int(9))
 	err = counter.Update(context.Background(), tier, agg1.Id, buckets, v3, h1)

@@ -30,22 +30,16 @@ var zeroRate value.Value = value.NewList(value.Double(0), value.Double(0))
 type rollingRate struct {
 	tr        tier.Tier
 	aggId     ftypes.AggId
-	Durations []uint64
 	Normalize bool
-	BucketStore
 }
 
-var _ Histogram = rollingRate{}
+var _ MergeReduce = rollingRate{}
 
-func NewRate(tr tier.Tier, aggId ftypes.AggId, durations []uint64, normalize bool) Histogram {
-	maxDuration := getMaxDuration(durations)
+func NewRate(tr tier.Tier, aggId ftypes.AggId, normalize bool) rollingRate {
 	return rollingRate{
 		tr:        tr,
 		aggId:     aggId,
-		Durations: durations,
 		Normalize: normalize,
-		// retain all keys for 1.1days (95040) + duration
-		BucketStore: NewTwoLevelStorage(24*3600, maxDuration+95040),
 	}
 }
 
@@ -55,14 +49,6 @@ func (r rollingRate) Transform(v value.Value) (value.Value, error) {
 		return nil, err
 	}
 	return value.NewList(value.Double(a), value.Double(b)), nil
-}
-
-func (r rollingRate) Start(end ftypes.Timestamp, kwargs value.Dict) (ftypes.Timestamp, error) {
-	d, err := extractDuration(kwargs, r.Durations)
-	if err != nil {
-		return 0, err
-	}
-	return start(end, d), nil
 }
 
 func (r rollingRate) extract(v value.Value) (float64, float64, error) {

@@ -11,7 +11,7 @@ import (
 
 func TestStddev_Reduce(t *testing.T) {
 	t.Parallel()
-	h := NewStdDev([]uint64{123})
+	h := NewStdDev()
 	cases := []struct {
 		input  []value.Value
 		output value.Value
@@ -39,7 +39,7 @@ func TestStddev_Reduce(t *testing.T) {
 
 func TestStddev_Merge_Valid(t *testing.T) {
 	t.Parallel()
-	h := NewStdDev([]uint64{123})
+	h := NewStdDev()
 	validCases := [][]float64{
 		{4, -2, 9, -11, 3},
 		{2, -7, 6, 0},
@@ -64,7 +64,7 @@ func TestStddev_Merge_Valid(t *testing.T) {
 
 func TestStddev_Merge_Invalid(t *testing.T) {
 	t.Parallel()
-	h := NewStdDev([]uint64{123})
+	h := NewStdDev()
 	validStddevVals := makeStddevVals([][]float64{
 		{-9, -8, -7}, {-6, -5}, {-4, -3, -2, -1, 0}, {}, {0, 1, 2, 3, 4}, {5, 6}, {7, 8, 9},
 	})

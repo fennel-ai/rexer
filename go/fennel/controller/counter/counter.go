@@ -25,8 +25,7 @@ func Value(
 	if err != nil {
 		return nil, err
 	}
-	bucketizer := counter.GetFixedWidthBucketizer(histogram)
-	buckets := bucketizer.BucketizeDuration(key.String(), start, end)
+	buckets := histogram.BucketizeDuration(key.String(), start, end)
 	defer arena.Buckets.Free(buckets)
 	counts, err := histogram.GetMulti(ctx, tier, []ftypes.AggId{aggId}, [][]libcounter.Bucket{buckets}, []value.Value{histogram.Zero()})
 	if err != nil {
@@ -60,8 +59,7 @@ func BatchValue(
 				return nil, fmt.Errorf("failed to get start timestamp of aggregate (id): %d, err: %v", aggIds[index], err)
 			}
 			ids_[i] = aggIds[index]
-			bucketizer := counter.GetFixedWidthBucketizer(h)
-			buckets[i] = bucketizer.BucketizeDuration(keys[index].String(), start, end)
+			buckets[i] = h.BucketizeDuration(keys[index].String(), start, end)
 			defer arena.Buckets.Free(buckets[i])
 			defaults[i] = h.Zero()
 		}
@@ -83,8 +81,7 @@ func BatchValue(
 func Update(
 	ctx context.Context, tier tier.Tier, agg aggregate.Aggregate, table value.List, histogram counter.Histogram,
 ) error {
-	bucketizer := counter.GetFixedWidthBucketizer(histogram)
-	buckets, values, err := counter.Bucketize(bucketizer, table)
+	buckets, values, err := counter.Bucketize(histogram, table)
 	if err != nil {
 		return err
 	}

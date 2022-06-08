@@ -4,7 +4,6 @@ import (
 	"fmt"
 
 	"fennel/lib/ftypes"
-	"fennel/lib/utils"
 	"fennel/lib/value"
 )
 
@@ -13,26 +12,14 @@ var zeroTsSum value.Value = value.Int(0)
 type timeseriesSum struct {
 	Window ftypes.Window
 	Limit  uint64
-	BucketStore
 }
 
-var _ Histogram = timeseriesSum{}
+var _ MergeReduce = timeseriesSum{}
 
-func NewTimeseriesSum(window ftypes.Window, limit uint64) Histogram {
-	d, err := utils.Duration(window)
-	if err != nil {
-		d = 0
-	}
-	retention := uint64(0)
-	if d > 0 {
-		// retain all keys for 1.1days(95040) + duration
-		retention = limit*uint64(d) + 95040
-	}
+func NewTimeseriesSum(window ftypes.Window, limit uint64) MergeReduce {
 	return timeseriesSum{
 		Window: window,
 		Limit:  limit,
-		// retain all keys for 1.5days + duration
-		BucketStore: NewTwoLevelStorage(24*3600, retention),
 	}
 }
 

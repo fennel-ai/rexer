@@ -47,7 +47,11 @@ func TestRolling(t *testing.T) {
 		})
 		table.Append(row)
 	}
-	histogram := counter2.NewSum([]uint64{3600 * 28, 3600 * 24})
+	histogram, err := counter2.ToHistogram(tier, ftypes.AggId(1), libaggregate.Options{
+		AggType:   "sum",
+		Durations: []uint64{3600 * 28, 3600 * 24}},
+	)
+	assert.NoError(t, err)
 	err = Update(ctx, tier, agg, table, histogram)
 	assert.NoError(t, err)
 
@@ -85,7 +89,12 @@ func TestTimeseries(t *testing.T) {
 		},
 		Id: 1,
 	}
-	histogram := counter2.NewTimeseriesSum(ftypes.Window_HOUR, 9)
+	histogram, err := counter2.ToHistogram(tier, ftypes.AggId(1), libaggregate.Options{
+		AggType: "timeseries_sum",
+		Window:  ftypes.Window_HOUR,
+		Limit:   9,
+	})
+	assert.NoError(t, err)
 
 	assert.NoError(t, aggregate.Store(ctx, tier, agg))
 	key := value.NewList(value.Int(1), value.Int(2))
@@ -173,7 +182,11 @@ func TestRollingAverage(t *testing.T) {
 		})
 		table.Append(row)
 	}
-	histogram := counter2.NewAverage([]uint64{28 * 3600, 24 * 3600})
+	histogram, err := counter2.ToHistogram(tier, ftypes.AggId(1), libaggregate.Options{
+		AggType:   "average",
+		Durations: []uint64{28 * 3600, 24 * 3600},
+	})
+	assert.NoError(t, err)
 	err = Update(ctx, tier, agg, table, histogram)
 	assert.NoError(t, err)
 
@@ -232,7 +245,11 @@ func TestStream(t *testing.T) {
 			expected2 = append(expected2, value.Int(i))
 		}
 	}
-	histogram := counter2.NewList([]uint64{28 * 3600, 24 * 3600})
+	histogram, err := counter2.ToHistogram(tier, ftypes.AggId(1), libaggregate.Options{
+		AggType:   "list",
+		Durations: []uint64{28 * 3600, 24 * 3600},
+	})
+	assert.NoError(t, err)
 	err = Update(ctx, tier, agg, table, histogram)
 	assert.NoError(t, err)
 
@@ -299,7 +316,12 @@ func TestRate(t *testing.T) {
 			den2 += int64(i + 1)
 		}
 	}
-	histogram := counter2.NewRate(tier, agg.Id, []uint64{28 * 3600, 24 * 3600}, true)
+	histogram, err := counter2.ToHistogram(tier, ftypes.AggId(1), libaggregate.Options{
+		AggType:   "rate",
+		Durations: []uint64{28 * 3600, 24 * 3600},
+		Normalize: true,
+	})
+	assert.NoError(t, err)
 	err = Update(ctx, tier, agg, table, histogram)
 	assert.NoError(t, err)
 
@@ -377,8 +399,16 @@ func TestBatchValue(t *testing.T) {
 	}}
 	aggIds := []ftypes.AggId{aggs[0].Id, aggs[1].Id}
 	keys := []value.Value{value.Int(0), value.Int(0)}
-	h1 := counter2.NewSum([]uint64{14 * 3600 * 24, 3600 * 24})
-	h2 := counter2.NewAverage([]uint64{14 * 3600 * 24, 3600 * 24})
+	h1, err := counter2.ToHistogram(tier, ftypes.AggId(1), libaggregate.Options{
+		AggType:   "sum",
+		Durations: []uint64{14 * 24 * 3600, 24 * 3600},
+	})
+	assert.NoError(t, err)
+	h2, err := counter2.ToHistogram(tier, ftypes.AggId(2), libaggregate.Options{
+		AggType:   "average",
+		Durations: []uint64{14 * 24 * 3600, 24 * 3600},
+	})
+	assert.NoError(t, err)
 	kwargs := []value.Dict{
 		value.NewDict(map[string]value.Value{"duration": value.Int(14 * 3600 * 24)}),
 		value.NewDict(map[string]value.Value{"duration": value.Int(14 * 3600 * 24)})}
@@ -436,7 +466,11 @@ func TestDurations(t *testing.T) {
 
 	aggId := ftypes.AggId(1)
 	durations := []uint64{7 * 24 * 3600, 14 * 24 * 3600}
-	h := counter2.NewSum(durations)
+	h, err := counter2.ToHistogram(tier, ftypes.AggId(2), libaggregate.Options{
+		AggType:   "sum",
+		Durations: durations,
+	})
+	assert.NoError(t, err)
 
 	// not specifying a duration in kwargs should return an error
 	_, err = Value(ctx, tier, aggId, value.Int(0), h, value.NewDict(nil))
@@ -460,9 +494,12 @@ func assertInvalid(tier tier.Tier, ctx context.Context, t *testing.T, ds ...valu
 		Timestamp: 0,
 		Options: libaggregate.Options{
 			AggType:   "sum",
-			Durations: []uint64{3600 * 14, 3600 * 28},
+			Durations: []uint64{123},
 		},
 		Id: 1,
 	}
-	assert.Error(t, Update(ctx, tier, agg, table, counter2.NewSum([]uint64{123})))
+
+	h, err := counter2.ToHistogram(tier, agg.Id, agg.Options)
+	assert.NoError(t, err)
+	assert.Error(t, Update(ctx, tier, agg, table, h))
 }
