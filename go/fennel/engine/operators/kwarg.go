@@ -48,16 +48,6 @@ func (k *Kwargs) Get(key string) (value.Value, bool) {
 }
 
 func (k *Kwargs) GetUnsafe(key string) value.Value {
-	var params []Param
-	if k.static {
-		params = k.sig.StaticKwargs
-	} else {
-		params = k.sig.ContextKwargs
-	}
-	for i, p := range params {
-		if p.Name == key {
-			return k.vals[i]
-		}
-	}
-	return nil
+	found, _ := k.Get(key)
+	return found
 }
