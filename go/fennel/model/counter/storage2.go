@@ -252,7 +252,7 @@ func (g splitGroup) getRedisKey(buffer []byte, start int) (int, error) {
 		if err != nil {
 			return 0, err
 		}
-		e := base91.StdEncoding.EncodedLen(8)
+		e := base91.StdEncoding.EncodedLen(cur)
 		dest := arena.Bytes.Alloc(e, e)
 		defer arena.Bytes.Free(dest)
 		a, n := base91.StdEncoding.Encode(dest, aggBuf[:cur])
@@ -267,7 +267,7 @@ func (g splitGroup) getRedisKey(buffer []byte, start int) (int, error) {
 		if err != nil {
 			return 0, err
 		}
-		e := base91.StdEncoding.EncodedLen(8)
+		e := base91.StdEncoding.EncodedLen(cur)
 		dest := arena.Bytes.Alloc(e, e)
 		defer arena.Bytes.Free(dest)
 		a, n := base91.StdEncoding.Encode(dest, codecBuf[:cur])

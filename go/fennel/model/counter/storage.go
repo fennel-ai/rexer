@@ -142,7 +142,7 @@ func minSlotKey(width uint32, idx int) (string, error) {
 	} else {
 		curr += n
 	}
-	e := base91.StdEncoding.EncodedLen(24)
+	e := base91.StdEncoding.EncodedLen(curr)
 	dest := arena.Bytes.Alloc(e, e)
 	defer arena.Bytes.Free(dest)
 	a, n := base91.StdEncoding.Encode(dest, buf[:curr])
@@ -174,7 +174,7 @@ func slotKey(window ftypes.Window, width uint32, idx int) (string, error) {
 	} else {
 		curr += n
 	}
-	e := base91.StdEncoding.EncodedLen(32)
+	e := base91.StdEncoding.EncodedLen(curr)
 	dest := arena.Bytes.Alloc(e, e)
 	defer arena.Bytes.Free(dest)
 	a, n := base91.StdEncoding.Encode(dest, buf[:curr])
@@ -429,7 +429,7 @@ func (t twoLevelRedisStore) redisKey(g group) (string, error) {
 			return "", err
 		}
 
-		e := base91.StdEncoding.EncodedLen(8)
+		e := base91.StdEncoding.EncodedLen(curr)
 		dest := arena.Bytes.Alloc(e, e)
 		defer arena.Bytes.Free(dest)
 		a, n := base91.StdEncoding.Encode(dest, aggBuf[:curr])
@@ -444,7 +444,7 @@ func (t twoLevelRedisStore) redisKey(g group) (string, error) {
 			return "", err
 		}
 
-		e := base91.StdEncoding.EncodedLen(8)
+		e := base91.StdEncoding.EncodedLen(curr)
 		dest := arena.Bytes.Alloc(e, e)
 		defer arena.Bytes.Free(dest)
 		a, n := base91.StdEncoding.Encode(dest, codecBuf[:curr])
@@ -472,7 +472,7 @@ func (t twoLevelRedisStore) redisKey(g group) (string, error) {
 			curr += n
 		}
 
-		e := base91.StdEncoding.EncodedLen(sz)
+		e := base91.StdEncoding.EncodedLen(curr)
 		dest := arena.Bytes.Alloc(e, e)
 		defer arena.Bytes.Free(dest)
 		a, n := base91.StdEncoding.Encode(dest, groupIdBuf[:curr])
