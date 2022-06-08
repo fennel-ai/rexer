@@ -69,8 +69,13 @@ func (a AggValue) Apply(ctx context.Context, staticKwargs value.Dict, in operato
 	for i, row := range rows {
 		var out value.Value
 		if len(field) > 0 {
-			d := row.(value.Dict)
-			d.Set(field, res[i])
+			var d value.Dict
+			d, ok := row.(value.Dict)
+			if ok {
+				d.Set(field, res[i])
+			} else {
+				d = value.NewDict(map[string]value.Value{field: res[i]})
+			}
 			out = d
 		} else {
 			out = res[i]
