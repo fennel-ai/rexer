@@ -10,9 +10,10 @@ import (
 
 type rollingStdDev struct {
 	Durations []uint64
-	Bucketizer
 	BucketStore
 }
+
+var _ Histogram = rollingStdDev{}
 
 var zeroStddev value.Value = value.NewList(value.Double(0), value.Double(0), value.Int(0))
 
@@ -20,10 +21,6 @@ func NewStdDev(durations []uint64) Histogram {
 	maxDuration := getMaxDuration(durations)
 	return rollingStdDev{
 		Durations: durations,
-		Bucketizer: fixedWidthBucketizer{map[ftypes.Window]uint32{
-			ftypes.Window_MINUTE: 6,
-			ftypes.Window_DAY:    1,
-		}, true},
 		// retain all keys for 1.1days(95040) + duration
 		BucketStore: NewTwoLevelStorage(24*3600, maxDuration+95040),
 	}
@@ -111,5 +108,3 @@ func (s rollingStdDev) Transform(v value.Value) (value.Value, error) {
 	}
 	return value.NewList(value.Double(vDouble), value.Double(vDouble*vDouble), value.Int(1)), nil
 }
-
-var _ Histogram = rollingStdDev{}

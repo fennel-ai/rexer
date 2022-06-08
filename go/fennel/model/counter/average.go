@@ -13,9 +13,10 @@ import (
 */
 type average struct {
 	Durations []uint64
-	Bucketizer
 	BucketStore
 }
+
+var _ Histogram = average{}
 
 var zeroAvg value.Value = value.NewList(value.Int(0), value.Int(0))
 
@@ -23,10 +24,6 @@ func NewAverage(durations []uint64) Histogram {
 	maxDuration := getMaxDuration(durations)
 	return average{
 		Durations: durations,
-		Bucketizer: fixedWidthBucketizer{map[ftypes.Window]uint32{
-			ftypes.Window_MINUTE: 6,
-			ftypes.Window_DAY:    1,
-		}, true},
 		// retain all keys for 1.1days (95040) + duration
 		BucketStore: NewTwoLevelStorage(24*3600, maxDuration+95040),
 	}
@@ -39,8 +36,6 @@ func (r average) Transform(v value.Value) (value.Value, error) {
 	}
 	return value.NewList(v_int, value.Int(1)), nil
 }
-
-var _ Histogram = average{}
 
 func (r average) Start(end ftypes.Timestamp, kwargs value.Dict) (ftypes.Timestamp, error) {
 	d, err := extractDuration(kwargs, r.Durations)

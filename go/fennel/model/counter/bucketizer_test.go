@@ -241,7 +241,6 @@ func TestMergeBuckets(t *testing.T) {
 
 func TestBucketizeHistogram_Invalid(t *testing.T) {
 	t.Parallel()
-	h := NewSum([]uint64{100})
 	cases := [][]value.Dict{
 		{value.NewDict(nil)},
 		{value.NewDict(map[string]value.Value{"groupkey": value.Int(1), "timestamp": value.Int(2)})},
@@ -255,14 +254,13 @@ func TestBucketizeHistogram_Invalid(t *testing.T) {
 		for _, d := range test {
 			table.Append(d)
 		}
-		_, _, err := Bucketize(h, table)
+		_, _, err := Bucketize(sixMinutelyBucketizer, table)
 		assert.Error(t, err, fmt.Sprintf("case was: %v", table))
 	}
 }
 
 func TestBucketizeHistogram_Valid(t *testing.T) {
 	t.Parallel()
-	h := NewSum([]uint64{100})
 	actions := value.NewList()
 	expected := make([]counter.Bucket, 0)
 	expVals := make([]value.Value, 0)
@@ -281,7 +279,7 @@ func TestBucketizeHistogram_Valid(t *testing.T) {
 		expected = append(expected, counter.Bucket{Key: v.String(), Window: ftypes.Window_MINUTE, Width: 6, Index: uint32(24*10 + i*10)})
 		expVals = append(expVals, e)
 	}
-	buckets, vals, err := Bucketize(h, actions)
+	buckets, vals, err := Bucketize(sixMinutelyBucketizer, actions)
 	assert.NoError(t, err)
 	assert.ElementsMatch(t, expected, buckets)
 	assert.ElementsMatch(t, expVals, vals)
