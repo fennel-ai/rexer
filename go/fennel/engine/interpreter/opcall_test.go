@@ -360,6 +360,8 @@ func benchmarkInterpreter_VisitOpcall(numRows int, b *testing.B) {
 	}
 	query := getOpCallQuery()
 	var res value.Value
+	b.ReportAllocs()
+	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		evaler := getInterpreter(nil, value.NewDict(map[string]value.Value{"table": table}))
 		res, _ = query.AcceptValue(evaler)
