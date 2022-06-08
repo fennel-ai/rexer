@@ -460,20 +460,15 @@ func pollS3Bucket(namespace, identifier string, tr tier.Tier) error {
 			<-ticker.C
 			p, err := Retrieve(context.Background(), tr, namespace, identifier)
 			if err != nil {
-				tr.Logger.Error("Error retrieving phaser", zap.Error(err))
+				tr.Logger.Error("Error retrieving phaser", zap.Error(err), zap.String("namespace", namespace), zap.String("identifier", identifier))
 				continue
 			}
 
 			tr.Logger.Info("Processing phaser ", zap.String("ID", p.GetId()))
 
-			if err != nil {
-				tr.Logger.Error("failed to get latest updated version", zap.Error(err))
-				continue
-			}
-
 			files, err := tr.S3Client.ListFiles(p.S3Bucket, p.S3Prefix)
 			if err != nil {
-				tr.Logger.Error("error while listing files in s3 bucket:", zap.Error(err))
+				tr.Logger.Error("error while listing files in s3 bucket:", zap.Error(err), zap.String("namespace", namespace), zap.String("identifier", identifier), zap.String("s3Bucket", p.S3Bucket), zap.String("s3Prefix", p.S3Prefix))
 				continue
 			}
 
