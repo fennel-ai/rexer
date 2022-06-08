@@ -18,6 +18,7 @@ export type inputType = {
     glueConfig: pulumi.Output<Record<string, string>>,
     unleashConfig: pulumi.Output<Record<string, string>>,
     otelCollectorConfig: pulumi.Output<Record<string, string>>,
+    offlineAggregateOutputConfig: pulumi.Output<Record<string, string>>,
 }
 
 export type outputType = {}
@@ -88,6 +89,13 @@ export const setup = async (input: inputType) => {
         data: input.otelCollectorConfig,
         metadata: {
             name: "otel-collector-conf",
+        }
+    }, { provider, deleteBeforeReplace: true });
+
+    const offlineAggregateOutputConf = new k8s.core.v1.ConfigMap("offline-aggr-output-conf", {
+        data: input.offlineAggregateOutputConfig,
+        metadata: {
+            name: "offline-aggregate-output-conf",
         }
     }, { provider, deleteBeforeReplace: true });
 
