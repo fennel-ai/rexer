@@ -3,6 +3,7 @@ package aggregate
 import (
 	"context"
 	"fennel/lib/arena"
+	"fmt"
 
 	"fennel/controller/aggregate"
 	"fennel/engine/interpreter/bootarg"
@@ -71,11 +72,10 @@ func (a AggValue) Apply(ctx context.Context, staticKwargs value.Dict, in operato
 		if len(field) > 0 {
 			var d value.Dict
 			d, ok := row.(value.Dict)
-			if ok {
-				d.Set(field, res[i])
-			} else {
-				d = value.NewDict(map[string]value.Value{field: res[i]})
+			if !ok {
+				return fmt.Errorf("when setting a field, operands for aggregator are required to be dicts, please convert them to a dict using map")
 			}
+			d.Set(field, res[i])
 			out = d
 		} else {
 			out = res[i]
