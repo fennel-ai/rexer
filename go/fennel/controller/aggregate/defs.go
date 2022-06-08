@@ -145,7 +145,7 @@ func Deactivate(ctx context.Context, tier tier.Tier, aggname ftypes.AggName) err
 	} else {
 		// deactive trigger only if the aggregate if offline
 		if agg.IsOffline() {
-			if err := tier.GlueClient.DeactivateOfflineAggregate(string(aggname)); err != nil {
+			if err := tier.GlueClient.DeactivateOfflineAggregate(tier.ID, string(aggname)); err != nil {
 				return err
 			}
 			for _, duration := range agg.Options.Durations {

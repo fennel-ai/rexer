@@ -48,11 +48,11 @@ func TestGlueClient(t *testing.T) {
 	aggs, err := glueClient.getAllOfflineAggregates()
 	assert.NoError(t, err)
 
-	expectedAggregates := []string{"OfflineAggTest::604800", "OfflineAggTest::259200"}
+	expectedAggregates := []string{"107::OfflineAggTest::604800", "107::OfflineAggTest::259200"}
 	// Could find both aggregates
 	assert.Equal(t, 2, listIntersectionCount(expectedAggregates, aggs))
 
-	err = glueClient.DeactivateOfflineAggregate(string(agg.Name))
+	err = glueClient.DeactivateOfflineAggregate(107, string(agg.Name))
 	assert.NoError(t, err)
 }
 
@@ -111,6 +111,6 @@ func TestHyperParameters(t *testing.T) {
 	err = glueClient.ScheduleOfflineAggregate(107, agg)
 	assert.NoError(t, err)
 
-	err = glueClient.DeactivateOfflineAggregate(string(agg.Name))
+	err = glueClient.DeactivateOfflineAggregate(107, string(agg.Name))
 	assert.NoError(t, err)
 }
