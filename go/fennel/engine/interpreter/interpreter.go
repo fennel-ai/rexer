@@ -3,9 +3,10 @@ package interpreter
 import (
 	"context"
 	"fmt"
-	"go.opentelemetry.io/otel/attribute"
 	"strconv"
 	"strings"
+
+	"go.opentelemetry.io/otel/attribute"
 
 	"fennel/engine/ast"
 	"fennel/engine/operators"
@@ -329,15 +330,17 @@ func (i *Interpreter) getContextKwargs(op operators.Operator, trees *ast.Dict, i
 			}
 		}
 		// now using these lambda variables, evaluate kwargs variables
-		kwargs := value.NewDict(make(map[string]value.Value, len(sig.ContextKwargs)))
+		kwargVals := make([]value.Value, 0, len(sig.ContextKwargs))
+		// kwargs := value.NewDict(make(map[string]value.Value, len(sig.ContextKwargs)))
 		for _, p := range sig.ContextKwargs {
 			k := p.Name
 			tree, ok := trees.Values[k]
 			switch {
 			case !ok && !p.Optional:
-				return operators.ZipTable{}, fmt.Errorf("kwarg '%s' not provided for operator '%s.%s'", k, sig.Module, sig.Name)
+				return ret, fmt.Errorf("kwarg '%s' not provided for operator '%s.%s'", k, sig.Module, sig.Name)
 			case !ok && p.Optional:
-				kwargs.Set(k, p.Default)
+				kwargVals = append(kwargVals, p.Default)
+				// kwargs.Set(k, p.Default)
 				continue
 			case ok:
 				// we have to evaluate the tree with the current values of the lambda variables
@@ -346,15 +349,21 @@ func (i *Interpreter) getContextKwargs(op operators.Operator, trees *ast.Dict, i
 					if err != nil {
 						return operators.ZipTable{}, fmt.Errorf("error: %s while evaluating kwarg: %s for operator '%s.%s'", err, k, sig.Module, sig.Name)
 					}
-					kwargs.Set(k, val)
+					kwargVals = append(kwargVals, val)
+					// kwargs.Set(k, val)
 				} else {
 					val, err := i.visitInContext(tree, vars, varvals)
 					if err != nil {
 						return operators.ZipTable{}, fmt.Errorf("error: %s while evaluating kwarg '%s' for operator '%s.%s'", err, k, sig.Module, sig.Name)
 					}
-					kwargs.Set(k, val)
+					kwargVals = append(kwargVals, val)
+					// kwargs.Set(k, val)
 				}
 			}
+		}
+		kwargs, err := operators.NewKwargs(sig, kwargVals, false)
+		if err != nil {
+			return ret, err
 		}
 		if err := ret.Append(data[begin:ptr], kwargs); err != nil {
 			return operators.ZipTable{}, err

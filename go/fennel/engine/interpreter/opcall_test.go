@@ -293,11 +293,11 @@ func (s squareFn) New(
 }
 
 func (s squareFn) Apply(_ context.Context, kwargs value.Dict, in operators.InputIter, out *value.List) error {
-	_, kwargs, err := in.Next()
+	_, cKwargs, err := in.Next()
 	if err != nil {
 		return err
 	}
-	v, _ := kwargs.Get("x")
+	v, _ := cKwargs.Get("x")
 	switch n := v.(type) {
 	case value.Int:
 		out.Append(n * n)
@@ -323,18 +323,17 @@ func (e zip) New(
 }
 
 func (e zip) Apply(_ context.Context, kwargs value.Dict, in operators.InputIter, out *value.List) error {
-	_, kwargs, err := in.Next()
+	_, cKwargs, err := in.Next()
 	if err != nil {
 		return err
 	}
-	l, _ := kwargs.Get("left")
-	r, _ := kwargs.Get("right")
+	l, _ := cKwargs.Get("left")
+	r, _ := cKwargs.Get("right")
 	left, right := l.(value.List), r.(value.List)
 	if left.Len() != right.Len() {
 		return fmt.Errorf("unequal lengths")
 	}
 	ret := value.List{}
-	// for i := range left {
 	for i := 0; i < left.Len(); i++ {
 		l, _ := left.At(i)
 		r, _ := right.At(i)
@@ -360,11 +359,15 @@ func benchmarkInterpreter_VisitOpcall(numRows int, b *testing.B) {
 	}
 	query := getOpCallQuery()
 	var res value.Value
+	var err error
 	b.ReportAllocs()
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		evaler := getInterpreter(nil, value.NewDict(map[string]value.Value{"table": table}))
-		res, _ = query.AcceptValue(evaler)
+		res, err = query.AcceptValue(evaler)
+		if err != nil {
+			panic(err)
+		}
 	}
 	_ = res
 }
