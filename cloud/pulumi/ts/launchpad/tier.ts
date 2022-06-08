@@ -253,6 +253,7 @@ const setupResources = async () => {
         region: input.region,
         roleArn: input.roleArn,
         tierId: input.tierId,
+        nodeInstanceRole: input.nodeInstanceRole,
     })
 
     // setup offline aggregate glue job

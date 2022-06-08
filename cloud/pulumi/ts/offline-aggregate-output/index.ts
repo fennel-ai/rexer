@@ -9,11 +9,47 @@ export type inputType = {
     region: string,
     roleArn: string,
     tierId: number,
+    nodeInstanceRole: string,
 }
 
 // should not contain any pulumi.Output<> types.
 export type outputType = {
     bucketName: string
+}
+
+function setupOfflineBucketStoreAccess(provider: aws.Provider, input: inputType, bucketName: string) {
+    const policyStr = `{
+          "Version": "2012-10-17",
+          "Statement": [
+            {
+              "Effect": "Allow",
+              "Action": [
+                "s3:ListBucket"
+              ],
+              "Resource": "arn:aws:s3:::${bucketName}"
+            },
+            {
+              "Effect": "Allow",
+              "Action": [
+                "s3:PutObject",
+                "s3:GetObject",
+                "s3:DeleteObject"
+              ],
+              "Resource": "arn:aws:s3:::${bucketName}/*"
+            }
+          ]
+        }
+    `
+
+    const policy = new aws.iam.Policy(`t-${input.tierId}-node-offline-aggr-output-policy`, {
+        namePrefix: `t-${input.tierId}-NodeOfflineAggrOutputPolicy-`,
+        policy: policyStr,
+    }, { provider: provider });
+
+    const attachNodeOfflineAggrOutputPolicy = new aws.iam.RolePolicyAttachment(`t-${input.tierId}-node-offline-aggr-output-policy-attach`, {
+        policyArn: policy.arn,
+        role: input.nodeInstanceRole,
+    }, { provider: provider });
 }
 
 export const setup = async (input: inputType): Promise<outputType> => {
@@ -33,6 +69,9 @@ export const setup = async (input: inputType): Promise<outputType> => {
         // delete all the objects so that the bucket can be deleted without error
         forceDestroy: true,
     }, {provider});
+
+    // setup EKS worker node have access to the S3 bucket and the folder
+    setupOfflineBucketStoreAccess(provider, input, bucketName);
 
     return { bucketName: bucketName }
 }

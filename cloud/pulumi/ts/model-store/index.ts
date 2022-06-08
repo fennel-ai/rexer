@@ -24,8 +24,7 @@ function setupModelStoreAccess(provider: aws.Provider, input: inputType, bucketN
             {
               "Effect": "Allow",
               "Action": [
-                "s3:ListBucket",
-                "s3:ListBucket2"
+                "s3:ListBucket"
               ],
               "Resource": "arn:aws:s3:::${bucketName}"
             },
