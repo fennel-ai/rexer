@@ -179,6 +179,15 @@ export const serviceEnvs = [
             }
         }
     },
+    {
+        name: "OFFLINE_AGG_BUCKET",
+        valueFrom: {
+            configMapKeyRef: {
+                name: "offline-aggregate-output-conf",
+                key: "bucket"
+            }
+        }
+    }
 ];
 
 export const UNLEASH_USERNAME = "unleash";
