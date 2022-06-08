@@ -1,80 +1,74 @@
 package operators
 
 import (
+	"errors"
 	"fennel/lib/value"
 	"fmt"
 )
 
 // ZipTable represents a list of values (inputs) and list of dicts (contextual kwargs)
 type ZipTable struct {
-	first  value.List
-	second value.List
+	first  []value.Value
+	second []value.Dict
 	sig    *Signature
 }
 
 func NewZipTable(op Operator) ZipTable {
-	first := value.NewList()
-	second := value.NewList()
 	sig := op.Signature()
-	return ZipTable{first, second, sig}
+	return ZipTable{first: nil, second: nil, sig: sig}
 }
 
-// TODO: this almost certainly has weird race conditions if run in paralle. Fix
 func (zt *ZipTable) Append(first []value.Value, second value.Dict) error {
 	d := value.NewList(first...)
-	zt.first.Append(d)
-	zt.second.Append(second)
+	zt.first = append(zt.first, d)
+	zt.second = append(zt.second, second)
 	return nil
 }
 
 func (zt *ZipTable) Grow(n int) {
-	if cap(zt.first.Values()) >= zt.first.Len()+n {
+	if cap(zt.first) >= len(zt.first)+n {
 		return
 	}
-	zt.first.Grow(n)
-	zt.second.Grow(n)
+	first := make([]value.Value, len(zt.first), len(zt.first)+n)
+	copy(first, zt.first)
+	zt.first = first
+
+	second := make([]value.Dict, len(zt.first), len(zt.first)+n)
+	copy(second, zt.second)
+	zt.second = second
 }
 
 func (zt *ZipTable) Len() int {
-	return zt.first.Len()
+	return len(zt.first)
 }
 
 func (zt *ZipTable) Iter() ZipIter {
-	first := zt.first.Iter()
-	second := zt.second.Iter()
-	return ZipIter{
-		first:  &first,
-		second: &second,
-		sig:    zt.sig,
-	}
+	return ZipIter{idx: 0, zt: zt}
 }
 
 type ZipIter struct {
-	first  *value.Iter
-	second *value.Iter
-	sig    *Signature
+	idx int
+	zt  *ZipTable
 }
 
 func (zi *ZipIter) HasMore() bool {
-	return zi.first.HasMore() && zi.second.HasMore()
+	return zi.idx < len(zi.zt.first)
 }
 
 func (zi *ZipIter) Next() ([]value.Value, value.Dict, error) {
-	first, err := zi.first.Next()
-	if err != nil {
-		return nil, value.Dict{}, err
+	idx := zi.idx
+	zi.idx += 1
+	if idx >= len(zi.zt.first) {
+		return nil, value.Dict{}, errors.New("no more elements in zip iter")
 	}
+	first := zi.zt.first[idx]
+	second := zi.zt.second[idx]
 	aslist, ok := first.(value.List)
 	if !ok {
 		return nil, value.Dict{}, fmt.Errorf("expected list of operands but found: %s", first)
 	}
 	elems := aslist.Values()
-	second_val, err := zi.second.Next()
-	if err != nil {
-		return nil, value.Dict{}, err
-	}
-	second := second_val.(value.Dict)
-	if err = Typecheck(zi.sig, elems, second); err != nil {
+	if err := Typecheck(zi.zt.sig, elems, second); err != nil {
 		return nil, value.Dict{}, err
 	}
 	return elems, second, nil
