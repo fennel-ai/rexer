@@ -39,16 +39,6 @@ const PRIVATE_LB_SCHEME = "internal";
 
 // map from tier id to plane id.
 const tierConfs: Record<number, TierConf> = {
-    // Aditya's new dev tier.
-    104: {
-        planeId: 3,
-        httpServerConf: {
-            podConf: {
-                replicas: 1,
-                enforceReplicaIsolation: false,
-            }
-        },
-    },
     // Fennel staging tier using Fennel's staging data plane.
     106: {
         planeId: 3,
@@ -120,6 +110,21 @@ const tierConfs: Record<number, TierConf> = {
             },
         },
     },
+    // Discord demo tier
+    111: {
+        planeId: 3,
+        // use public subnets for ingress to allow traffic from outside the assigned vpc
+        ingressConf: {
+            usePublicSubnets: true,
+            loadBalancerScheme: PUBLIC_LB_SCHEME,
+        },
+        httpServerConf: {
+            podConf: {
+                replicas: 2,
+                enforceReplicaIsolation: false,
+            },
+        },
+    }
 }
 
 // map from plane id to its configuration.
