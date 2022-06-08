@@ -316,7 +316,7 @@ const setupResources = async () => {
     // setup configs after resources are setup.
     const configsOutput = pulumi.all(
         [input.dbPassword, input.kafkaApiSecret, sagemakerOutput.roleArn, sagemakerOutput.subnetIds,
-        sagemakerOutput.securityGroup, offlineAggregateGlueJobOutput.jobNames, offlineAggregateStorageBucket.bucketName]).apply(async ([dbPassword, kafkaPassword, sagemakerRole, subnetIds, sagemakerSg, jobNames, offlineAggrOutputBucket]) => {
+        sagemakerOutput.securityGroup, offlineAggregateGlueJobOutput.jobNames, offlineAggregateOutputBucket.bucketName]).apply(async ([dbPassword, kafkaPassword, sagemakerRole, subnetIds, sagemakerSg, jobNames, offlineAggrOutputBucket]) => {
             // transform jobname map to string with the format `key1=val1 key2=val2`
             let jobNamesStr = "";
             Object.entries(jobNames).forEach(([agg, jobName]) => jobNamesStr += `${agg}=${jobName},`);
