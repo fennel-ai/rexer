@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"sort"
 
-	"fennel/lib/ftypes"
 	"fennel/lib/value"
 )
 
@@ -12,20 +11,12 @@ const numK = 100
 
 var zeroTopK value.Value = value.NewDict(nil)
 
-type topK struct {
-	Durations []uint64
-	BucketStore
-}
+type topK struct{}
 
-var _ Histogram = topK{}
+var _ MergeReduce = topK{}
 
-func NewTopK(durations []uint64) Histogram {
-	maxDuration := getMaxDuration(durations)
-	return topK{
-		Durations: durations,
-		// retain all keys for 1.1days(95040) + duration
-		BucketStore: NewTwoLevelStorage(24*3600, maxDuration+95040),
-	}
+func NewTopK() topK {
+	return topK{}
 }
 
 func (t topK) Transform(v value.Value) (value.Value, error) {
@@ -55,14 +46,6 @@ func (t topK) Transform(v value.Value) (value.Value, error) {
 		return nil, fmt.Errorf("expected field 'score' of dict to be an int or float but got: '%s' instead", s)
 	}
 	return value.NewDict(map[string]value.Value{string(keystr): score}), nil
-}
-
-func (t topK) Start(end ftypes.Timestamp, kwargs value.Dict) (ftypes.Timestamp, error) {
-	d, err := extractDuration(kwargs, t.Durations)
-	if err != nil {
-		return 0, err
-	}
-	return start(end, d), nil
 }
 
 func (t topK) Reduce(values []value.Value) (value.Value, error) {

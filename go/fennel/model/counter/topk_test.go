@@ -14,7 +14,7 @@ import (
 
 func TestTopK_Reduce(t *testing.T) {
 	t.Parallel()
-	h := NewTopK([]uint64{123})
+	h := NewTopK()
 	numCases := 3
 	cases := make([]struct {
 		input  []value.Value
@@ -64,7 +64,7 @@ func TestTopK_Reduce(t *testing.T) {
 
 func TestTopK_Merge_Valid(t *testing.T) {
 	t.Parallel()
-	h := NewTopK([]uint64{123})
+	h := NewTopK()
 	validCases := make([][]value.Value, 2)
 
 	validCases[0] = append(validCases[0], value.NewDict(nil))
@@ -84,7 +84,7 @@ func TestTopK_Merge_Valid(t *testing.T) {
 
 func TestTopK_Merge_Invalid(t *testing.T) {
 	t.Parallel()
-	h := NewTopK([]uint64{123})
+	h := NewTopK()
 	keys := genKeys(1000)
 	validTopKVals := []value.Value{
 		genTopKDict(0, nil),

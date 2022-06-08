@@ -60,15 +60,15 @@ func TestValueAll(t *testing.T) {
 	key := value.Nil
 	keystr := key.String()
 
-	h1 := counter.NewSum(agg1.Options.Durations)
-	bucketizer := counter.GetFixedWidthBucketizer(h1)
-	buckets := bucketizer.BucketizeMoment(keystr, t1)
+	h1, err := counter.ToHistogram(tier, agg1.Id, agg1.Options)
+	assert.NoError(t, err)
+	buckets := h1.BucketizeMoment(keystr, t1)
 	v1 := make([]value.Value, len(buckets))
 	slice.Fill[value.Value](v1, value.Int(1))
 
 	err = counter.Update(context.Background(), tier, agg1.Id, buckets, v1, h1)
 	assert.NoError(t, err)
-	buckets = bucketizer.BucketizeMoment(keystr, t1)
+	buckets = h1.BucketizeMoment(keystr, t1)
 	v1 = make([]value.Value, len(buckets))
 	slice.Fill[value.Value](v1, value.Int(3))
 	err = counter.Update(context.Background(), tier, agg1.Id, buckets, v1, h1)
@@ -80,14 +80,14 @@ func TestValueAll(t *testing.T) {
 	}
 	exp1 := value.Int(4)
 
-	h2 := counter.NewMin(agg2.Options.Durations)
-	bucketizer = counter.GetFixedWidthBucketizer(h2)
-	buckets = bucketizer.BucketizeMoment(keystr, t1)
+	h2, err := counter.ToHistogram(tier, agg2.Id, agg2.Options)
+	assert.NoError(t, err)
+	buckets = h2.BucketizeMoment(keystr, t1)
 	v2 := make([]value.Value, len(buckets))
 	slice.Fill[value.Value](v2, value.NewList(value.Int(2), value.Bool(false)))
 	err = counter.Update(context.Background(), tier, agg2.Id, buckets, v2, h2)
 	assert.NoError(t, err)
-	buckets = bucketizer.BucketizeMoment(keystr, t1)
+	buckets = h2.BucketizeMoment(keystr, t1)
 	v2 = make([]value.Value, len(buckets))
 	slice.Fill[value.Value](v2, value.NewList(value.Int(7), value.Bool(false)))
 	err = counter.Update(context.Background(), tier, agg2.Id, buckets, v2, h2)
@@ -100,7 +100,7 @@ func TestValueAll(t *testing.T) {
 	}
 	exp2 := value.Int(2)
 	// Test kwargs with duration of an hour
-	buckets = bucketizer.BucketizeMoment(keystr, t1+5400)
+	buckets = h2.BucketizeMoment(keystr, t1+5400)
 	v3 := make([]value.Value, len(buckets))
 	slice.Fill[value.Value](v3, value.NewList(value.Int(5), value.Bool(false)))
 
@@ -166,7 +166,8 @@ func TestCachedValueAll(t *testing.T) {
 		},
 		Id: 1,
 	}
-	h := counter.NewSum(agg.Options.Durations)
+	h, err := counter.ToHistogram(tier, agg.Id, agg.Options)
+	assert.NoError(t, err)
 	key := value.String("key")
 	kwargs := value.NewDict(map[string]value.Value{"duration": value.Int(3600)})
 	assert.NoError(t, Store(ctx, tier, agg))
@@ -180,8 +181,7 @@ func TestCachedValueAll(t *testing.T) {
 	// wait for value to be cached
 	time.Sleep(10 * time.Millisecond)
 	// update buckets, we should still get back cached value
-	bucketizer := counter.GetFixedWidthBucketizer(h)
-	buckets := bucketizer.BucketizeMoment(key.String(), t0)
+	buckets := h.BucketizeMoment(key.String(), t0)
 	v1 := make([]value.Value, len(buckets))
 	slice.Fill[value.Value](v1, value.Int(1))
 	assert.NoError(t, counter.Update(ctx, tier, agg.Id, buckets, v1, h))
@@ -204,11 +204,13 @@ func TestCachedValueAll(t *testing.T) {
 		{AggName: agg3.Name, Key: key, Kwargs: kwargs},
 	}
 	ids := []ftypes.AggId{2, 3, 4}
-	histograms := []counter.Histogram{
-		counter.NewSum(agg1.Options.Durations),
-		counter.NewSum(agg2.Options.Durations),
-		counter.NewSum(agg3.Options.Durations),
-	}
+	h1, err := counter.ToHistogram(tier, ids[0], agg1.Options)
+	assert.NoError(t, err)
+	h2, err := counter.ToHistogram(tier, ids[1], agg2.Options)
+	assert.NoError(t, err)
+	h3, err := counter.ToHistogram(tier, ids[2], agg3.Options)
+	assert.NoError(t, err)
+	histograms := []counter.Histogram{h1, h2, h3}
 	assert.NoError(t, Store(ctx, tier, agg1))
 	assert.NoError(t, Store(ctx, tier, agg2))
 	assert.NoError(t, Store(ctx, tier, agg3))
@@ -226,7 +228,7 @@ func TestCachedValueAll(t *testing.T) {
 	time.Sleep(10 * time.Millisecond)
 	// update buckets, we should get back cached value from req1 and req3 but ground truth from req2
 	for i, h := range histograms {
-		buckets := bucketizer.BucketizeMoment(key.String(), t0)
+		buckets := h.BucketizeMoment(key.String(), t0)
 		v := make([]value.Value, len(buckets))
 		slice.Fill[value.Value](v, value.Int(1))
 		assert.NoError(t, counter.Update(ctx, tier, ids[i], buckets, v1, h))

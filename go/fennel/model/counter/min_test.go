@@ -10,7 +10,7 @@ import (
 
 func TestMin_Reduce(t *testing.T) {
 	t.Parallel()
-	h := NewMin([]uint64{123})
+	h := NewMin()
 	cases := []struct {
 		input  []value.Value
 		output value.Value
@@ -44,7 +44,7 @@ func TestMin_Reduce(t *testing.T) {
 
 func TestMin_Merge_Valid(t *testing.T) {
 	t.Parallel()
-	h := NewMin([]uint64{123})
+	h := NewMin()
 	validCases := [][]value.Value{
 		makeMinVals([]value.Value{value.Double(3), value.Double(6), value.Double(3)}, []bool{false, false, false}),
 		makeMinVals([]value.Value{value.Double(-2), value.Double(-5), value.Double(-5)}, []bool{false, false, false}),
@@ -62,7 +62,7 @@ func TestMin_Merge_Valid(t *testing.T) {
 
 func TestMin_Merge_Invalid(t *testing.T) {
 	t.Parallel()
-	h := NewMin([]uint64{123})
+	h := NewMin()
 	validMinVals := makeMinVals(
 		[]value.Value{value.Int(-8), value.Double(-2), value.Int(0), value.Int(0), value.Double(5), value.Int(9)},
 		[]bool{false, false, false, true, false, false},

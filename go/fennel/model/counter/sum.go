@@ -3,34 +3,17 @@ package counter
 import (
 	"fmt"
 
-	"fennel/lib/ftypes"
 	"fennel/lib/value"
 )
 
 var zeroSum value.Value = value.Int(0)
 
-type rollingSum struct {
-	Durations []uint64
-	BucketStore
-}
+type rollingSum struct{}
 
-var _ Histogram = rollingSum{}
+var _ MergeReduce = rollingSum{}
 
-func NewSum(durations []uint64) Histogram {
-	maxDuration := getMaxDuration(durations)
-	return rollingSum{
-		Durations: durations,
-		// retain all keys for 1.1days(95040) + duration
-		BucketStore: NewTwoLevelStorage(24*3600, maxDuration+95040),
-	}
-}
-
-func (r rollingSum) Start(end ftypes.Timestamp, kwargs value.Dict) (ftypes.Timestamp, error) {
-	d, err := extractDuration(kwargs, r.Durations)
-	if err != nil {
-		return 0, err
-	}
-	return start(end, d), nil
+func NewSum() rollingSum {
+	return rollingSum{}
 }
 
 func (r rollingSum) Reduce(values []value.Value) (value.Value, error) {

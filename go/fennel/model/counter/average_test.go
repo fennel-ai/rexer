@@ -10,7 +10,7 @@ import (
 
 func TestRollingAverage_Reduce(t *testing.T) {
 	t.Parallel()
-	h := NewAverage([]uint64{100})
+	h := NewAverage()
 	cases := []struct {
 		input  []value.Value
 		output value.Value
@@ -50,7 +50,7 @@ func TestRollingAverage_Reduce(t *testing.T) {
 
 func TestRollingAverage_Merge_Valid(t *testing.T) {
 	t.Parallel()
-	h := NewAverage([]uint64{100})
+	h := NewAverage()
 	validCases := [][]int64{
 		{1, 2, 1, 2, 2, 4},
 		{1, 2, -1, 2, 0, 4},
@@ -67,7 +67,7 @@ func TestRollingAverage_Merge_Valid(t *testing.T) {
 
 func TestRollingAverage_Merge_Invalid(t *testing.T) {
 	t.Parallel()
-	h := NewAverage([]uint64{100})
+	h := NewAverage()
 	invalidCases := []struct {
 		a value.Value
 		b value.Value

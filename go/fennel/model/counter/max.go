@@ -3,7 +3,6 @@ package counter
 import (
 	"fmt"
 
-	"fennel/lib/ftypes"
 	"fennel/lib/value"
 )
 
@@ -11,14 +10,15 @@ import (
 	rollingMax maintains maximum of a bucket with two vars (maxv and empty).
 	Maxv is the maximum value. If empty is true, the bucket is empty so maxv is ignored.
 */
-type rollingMax struct {
-	Durations []uint64
-	BucketStore
-}
+type rollingMax struct{}
 
-var _ Histogram = rollingMax{}
+var _ MergeReduce = rollingMax{}
 
 var zeroMax value.Value = value.NewList(value.Double(0), value.Bool(true))
+
+func NewMax() rollingMax {
+	return rollingMax{}
+}
 
 func (m rollingMax) Transform(v value.Value) (value.Value, error) {
 	if err := value.Types.Number.Validate(v); err != nil {
@@ -26,23 +26,6 @@ func (m rollingMax) Transform(v value.Value) (value.Value, error) {
 	}
 
 	return value.NewList(v, value.Bool(false)), nil
-}
-
-func NewMax(durations []uint64) Histogram {
-	maxDuration := getMaxDuration(durations)
-	return rollingMax{
-		Durations: durations,
-		// retain all keys for 1.1days (95040) + duration
-		BucketStore: NewTwoLevelStorage(24*3600, maxDuration+95040),
-	}
-}
-
-func (m rollingMax) Start(end ftypes.Timestamp, kwargs value.Dict) (ftypes.Timestamp, error) {
-	d, err := extractDuration(kwargs, m.Durations)
-	if err != nil {
-		return 0, err
-	}
-	return start(end, d), nil
 }
 
 func (m rollingMax) extract(v value.Value) (value.Value, bool, error) {

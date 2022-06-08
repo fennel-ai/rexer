@@ -3,30 +3,21 @@ package counter
 import (
 	"fmt"
 
-	"fennel/lib/ftypes"
 	"fennel/lib/value"
 )
 
 var zeroList value.Value = value.NewList()
 
-type list struct {
-	Durations []uint64
-	BucketStore
-}
+type list struct{}
 
-var _ Histogram = list{}
+var _ MergeReduce = list{}
 
 func (s list) Transform(v value.Value) (value.Value, error) {
 	return value.NewList(v), nil
 }
 
-func NewList(durations []uint64) Histogram {
-	maxDuration := getMaxDuration(durations)
-	return list{
-		Durations: durations,
-		// retain all keys for 1.1days(95040) + duration
-		BucketStore: NewTwoLevelStorage(24*3600, maxDuration+95040),
-	}
+func NewList() list {
+	return list{}
 }
 
 func (s list) extract(v value.Value) (value.List, error) {
@@ -35,14 +26,6 @@ func (s list) extract(v value.Value) (value.List, error) {
 		return value.List{}, fmt.Errorf("value expected to be list but instead found: %v", v)
 	}
 	return l, nil
-}
-
-func (s list) Start(end ftypes.Timestamp, kwargs value.Dict) (ftypes.Timestamp, error) {
-	d, err := extractDuration(kwargs, s.Durations)
-	if err != nil {
-		return 0, err
-	}
-	return start(end, d), nil
 }
 
 // Reduce just appends all the lists to an empty list

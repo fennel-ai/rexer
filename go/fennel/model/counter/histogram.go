@@ -7,6 +7,7 @@ import (
 	"fennel/lib/aggregate"
 	"fennel/lib/counter"
 	"fennel/lib/ftypes"
+	"fennel/lib/utils"
 	"fennel/lib/value"
 	"fennel/tier"
 )
@@ -29,59 +30,83 @@ type MergeReduce interface {
 	Zero() value.Value
 }
 
-type Histogram interface {
-	Start(end ftypes.Timestamp, kwargs value.Dict) (ftypes.Timestamp, error)
+type Histogram struct {
+	aggregate.Options
 	MergeReduce
 	BucketStore
+	Bucketizer
 }
 
+func (h Histogram) Start(end ftypes.Timestamp, kwargs value.Dict) (ftypes.Timestamp, error) {
+	switch mr := h.MergeReduce.(type) {
+	case timeseriesSum:
+		return mr.Start(end, kwargs)
+	default:
+		d, err := extractDuration(kwargs, h.Durations)
+		if err != nil {
+			return 0, err
+		}
+		return start(end, d), nil
+	}
+}
+
+// Returns the default histogram that uses two-level store and 6-minutely
+// buckets.
 // TODO: implement aggregations that can support forever aggregations.
 // https://linear.app/fennel-ai/issue/REX-1053/support-forever-aggregates
 func ToHistogram(tr tier.Tier, aggId ftypes.AggId, opts aggregate.Options) (Histogram, error) {
+	var retention uint64
+	var mr MergeReduce
+	bucketizer := sixMinutelyBucketizer
 	switch opts.AggType {
-	case "sum":
-		return NewSum(opts.Durations), nil
 	case "timeseries_sum":
-		return NewTimeseriesSum(opts.Window, opts.Limit), nil
-	case "average":
-		return NewAverage(opts.Durations), nil
-	case "list":
-		return NewList(opts.Durations), nil
-	case "min":
-		return NewMin(opts.Durations), nil
-	case "max":
-		return NewMax(opts.Durations), nil
-	case "stddev":
-		return NewStdDev(opts.Durations), nil
-	case "rate":
-		return NewRate(tr, aggId, opts.Durations, opts.Normalize), nil
-	case "topk":
-		return NewTopK(opts.Durations), nil
-	default:
-		return nil, fmt.Errorf("invalid aggregate type: %v", opts.AggType)
-	}
-}
-
-var (
-	sixMinutelyBucketizer = fixedWidthBucketizer{
-		map[ftypes.Window]uint32{
-			ftypes.Window_MINUTE: 6,
-			ftypes.Window_DAY:    1,
-		},
-		true, /* include trailing */
-	}
-)
-
-func GetFixedWidthBucketizer(h Histogram) Bucketizer {
-	switch t := h.(type) {
-	case timeseriesSum:
-		return fixedWidthBucketizer{
+		mr = NewTimeseriesSum(opts.Window, opts.Limit)
+		d, err := utils.Duration(opts.Window)
+		if err != nil {
+			d = 0
+		}
+		if d > 0 {
+			retention = opts.Limit * uint64(d)
+		}
+		bucketizer = fixedWidthBucketizer{
 			map[ftypes.Window]uint32{
-				t.Window: 1,
+				opts.Window: 1,
 			},
 			false, /* include trailing */
 		}
+	case "sum":
+		mr = NewSum()
+		retention = getMaxDuration(opts.Durations)
+	case "average":
+		mr = NewAverage()
+		retention = getMaxDuration(opts.Durations)
+	case "list":
+		mr = NewList()
+		retention = getMaxDuration(opts.Durations)
+	case "min":
+		mr = NewMin()
+		retention = getMaxDuration(opts.Durations)
+	case "max":
+		mr = NewMax()
+		retention = getMaxDuration(opts.Durations)
+	case "stddev":
+		mr = NewStdDev()
+		retention = getMaxDuration(opts.Durations)
+	case "rate":
+		mr = NewRate(tr, aggId, opts.Normalize)
+		retention = getMaxDuration(opts.Durations)
+	case "topk":
+		mr = NewTopK()
+		retention = getMaxDuration(opts.Durations)
 	default:
-		return sixMinutelyBucketizer
+		return Histogram{}, fmt.Errorf("invalid aggregate type: %v", opts.AggType)
 	}
+
+	return Histogram{
+		opts,
+		mr,
+		// retain all keys for 1.1days(95040) + retention
+		NewTwoLevelStorage(24*3600, retention+95040),
+		bucketizer,
+	}, nil
 }
