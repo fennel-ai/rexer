@@ -75,6 +75,7 @@ func (a AggValue) Apply(ctx context.Context, staticKwargs value.Dict, in operato
 			if !ok {
 				return fmt.Errorf("when setting a field, operands for aggregator are required to be dicts, please convert them to a dict using map")
 			}
+			d.Set(field, res[i])
 			out = d
 		} else {
 			out = res[i]
