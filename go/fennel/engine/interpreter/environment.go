@@ -87,6 +87,10 @@ func (e *Env) PopEnv() (*Env, error) {
 	p := e.parent
 	for k, ev := range e.table {
 		delete(e.table, k)
+		// Reset value to nil to avoid memory sitting around in the pool.
+		// Not setting value to Nil would not necessary cause a leak, but it
+		// helps in making the underlying value available for GC sooner.
+		ev.value = value.Nil
 		evPool.Put(ev)
 	}
 	e.parent = nil
