@@ -58,6 +58,8 @@ func NewInspector(tr tier.Tier, args InspectorArgs) server {
 func (s *server) startFeatureLogTailer() error {
 	topic := feature.KAFKA_TOPIC_NAME
 	// Start tailing topic from the most recent messages.
+	// We don't commit the offsets for this consumer since we always want to
+	// read from the latest offset.
 	consumer, err := s.tier.NewKafkaConsumer(libkakfa.ConsumerConfig{
 		Topic:        topic,
 		GroupID:      "featurelog_inspector",
@@ -78,9 +80,6 @@ func (s *server) startFeatureLogTailer() error {
 			if len(msgs) > 0 {
 				s.tier.Logger.Debug("Got featurelog messages", zap.Int("count", len(msgs)))
 				s.processMessages(msgs)
-			}
-			if _, err := consumer.Commit(); err != nil {
-				s.tier.Logger.Error("failed to commit feature log consumer: ", zap.Error(err))
 			}
 		}
 	}(s, consumer)
