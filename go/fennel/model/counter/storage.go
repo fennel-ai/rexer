@@ -191,11 +191,11 @@ func (t twoLevelRedisStore) get(
 	// TODO: Consider creating a large enough buffer and construct slotKey and redisKey using partitions of the buffer
 	// to save some CPU cycles
 	for i, b := range buckets {
-		s, err := t.toSlot(aggIds[i], defaults[i], &b)
+		s := &slots[i]
+		err := t.toSlot(aggIds[i], &b, s)
 		if err != nil {
 			return nil, err
 		}
-		slots[i] = s
 		if _, ok := seen[s.g]; !ok {
 			rkey, err := t.redisKey(s.g)
 			if err != nil {
@@ -322,11 +322,12 @@ func (t twoLevelRedisStore) set(ctx context.Context, tier tier.Tier, aggIds []ft
 	// TODO: Consider creating a large enough buffer and construct slotKey and redisKey using partitions of the buffer
 	// to save some CPU cycles
 	for i, b := range buckets {
-		s, err := t.toSlot(aggIds[i], values[i], &b)
+		s := &slots[i]
+		s.val = values[i]
+		err := t.toSlot(aggIds[i], &b, s)
 		if err != nil {
 			return err
 		}
-		slots[i] = s
 		if _, ok := seen[s.g]; !ok {
 			rkey, err := t.redisKey(s.g)
 			if err != nil {
@@ -465,24 +466,22 @@ func (t twoLevelRedisStore) redisKey(g group) (string, error) {
 	return sb.String(), nil
 }
 
-func (t twoLevelRedisStore) toSlot(id ftypes.AggId, v value.Value, b *counter.Bucket) (slot, error) {
+func (t twoLevelRedisStore) toSlot(id ftypes.AggId, b *counter.Bucket, s *slot) error {
 	d := toDuration(b.Window) * b.Width
 	if t.period%d != 0 {
-		return slot{}, fmt.Errorf("can only store buckets with width that can fully fit in period of: '%d'sec", t.period)
+		return fmt.Errorf("can only store buckets with width that can fully fit in period of: '%d'sec", t.period)
 	}
 	startTs := d * b.Index
 	gap := startTs % t.period
-	return slot{
-		g: group{
-			aggId: id,
-			key:   b.Key,
-			id:    startTs / t.period,
-		},
-		window: b.Window,
-		width:  b.Width,
-		idx:    int(gap / d),
-		val:    v,
-	}, nil
+	s.g = group{
+		aggId: id,
+		key:   b.Key,
+		id:    startTs / t.period,
+	}
+	s.window = b.Window
+	s.width = b.Width
+	s.idx = int(gap / d)
+	return nil
 }
 
 func toDuration(w ftypes.Window) uint32 {

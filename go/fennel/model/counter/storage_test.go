@@ -285,7 +285,7 @@ func TestTwoLevelRedisStore(t *testing.T) {
 	}{
 		{
 			counter.Bucket{Key: k, Window: ftypes.Window_MINUTE, Width: 2, Index: 3},
-			slot{g: group{aggId: aggId, key: k, id: 0}, window: ftypes.Window_MINUTE, width: 2, idx: 3, val: value.Int(1)},
+			slot{g: group{aggId: aggId, key: k, id: 0}, window: ftypes.Window_MINUTE, width: 2, idx: 3},
 			false,
 		},
 		{
@@ -295,17 +295,18 @@ func TestTwoLevelRedisStore(t *testing.T) {
 		},
 		{
 			counter.Bucket{Key: k, Window: ftypes.Window_HOUR, Width: 2, Index: 30},
-			slot{g: group{aggId: aggId, key: k, id: 7}, window: ftypes.Window_HOUR, width: 2, idx: 2, val: value.Int(1)},
+			slot{g: group{aggId: aggId, key: k, id: 7}, window: ftypes.Window_HOUR, width: 2, idx: 2},
 			false,
 		},
 		{
 			counter.Bucket{Key: k, Window: ftypes.Window_HOUR, Width: 2, Index: 24 * 30},
-			slot{g: group{aggId: aggId, key: k, id: 180}, window: ftypes.Window_HOUR, width: 2, idx: 0, val: value.Int(1)},
+			slot{g: group{aggId: aggId, key: k, id: 180}, window: ftypes.Window_HOUR, width: 2, idx: 0},
 			false,
 		},
 	}
 	for _, scene := range scenarios {
-		s, err := g.toSlot(aggId, scene.s.val, &scene.b)
+		var s slot
+		err := g.toSlot(aggId, &scene.b, &s)
 		if scene.err {
 			assert.Error(t, err)
 		} else {
