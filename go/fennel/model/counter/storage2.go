@@ -7,15 +7,14 @@ import (
 	"time"
 	"unsafe"
 
-	"fennel/lib/arena"
 	"fennel/lib/counter"
 	"fennel/lib/ftypes"
 	"fennel/lib/timer"
 	"fennel/lib/utils/binary"
-	"fennel/lib/utils/encoding/base91"
 	"fennel/lib/value"
 	"fennel/tier"
 
+	"github.com/mtraver/base91"
 	"go.uber.org/zap"
 )
 
@@ -252,14 +251,7 @@ func (g splitGroup) getRedisKey(buffer []byte, start int) (int, error) {
 		if err != nil {
 			return 0, err
 		}
-		e := base91.StdEncoding.EncodedLen(cur)
-		dest := arena.Bytes.Alloc(e, e)
-		defer arena.Bytes.Free(dest)
-		a, n := base91.StdEncoding.Encode(dest, aggBuf[:cur])
-		if err != nil {
-			return 0, err
-		}
-		aggStr = a[:n]
+		aggStr = base91.StdEncoding.EncodeToString(aggBuf[:cur])
 	}
 	{
 		codecBuf := make([]byte, 8)
@@ -267,15 +259,10 @@ func (g splitGroup) getRedisKey(buffer []byte, start int) (int, error) {
 		if err != nil {
 			return 0, err
 		}
-		e := base91.StdEncoding.EncodedLen(cur)
-		dest := arena.Bytes.Alloc(e, e)
-		defer arena.Bytes.Free(dest)
-		a, n := base91.StdEncoding.Encode(dest, codecBuf[:cur])
-		codecStr = a[:n]
+		codecStr = base91.StdEncoding.EncodeToString(codecBuf[:cur])
 	}
 	{
-		sz := 8+len(g.key)+8+8
-		groupBuf := make([]byte, sz)
+		groupBuf := make([]byte, 8+len(g.key)+8+8)
 		cur := 0
 		if n, err := binary.PutString(groupBuf, g.key); err != nil {
 			return 0, err
@@ -292,11 +279,7 @@ func (g splitGroup) getRedisKey(buffer []byte, start int) (int, error) {
 		} else {
 			cur += n
 		}
-		e := base91.StdEncoding.EncodedLen(sz)
-		dest := arena.Bytes.Alloc(e, e)
-		defer arena.Bytes.Free(dest)
-		a, n := base91.StdEncoding.Encode(dest, groupBuf[:cur])
-		groupStr = a[:n]
+		groupStr = base91.StdEncoding.EncodeToString(groupBuf[:cur])
 	}
 
 	// concatenate the base91 encoded strings with `-` as the delimiter
