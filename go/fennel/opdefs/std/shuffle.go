@@ -21,7 +21,7 @@ func (op ShuffleOperator) New(
 
 func (op ShuffleOperator) Signature() *operators.Signature {
 	return operators.NewSignature("std", "shuffle").
-		Input([]value.Type{value.Types.Dict})
+		Input(nil)
 }
 
 func (op ShuffleOperator) Apply(_ context.Context, _ value.Dict, in operators.InputIter, out *value.List) error {
