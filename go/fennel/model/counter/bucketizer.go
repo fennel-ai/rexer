@@ -1,7 +1,6 @@
 package counter
 
 import (
-	"fennel/lib/arena"
 	"fmt"
 
 	"fennel/lib/counter"
@@ -42,9 +41,10 @@ func (f fixedWidthBucketizer) BucketizeMoment(key string, ts ftypes.Timestamp) [
 	return ret
 }
 
-func (f fixedWidthBucketizer) BucketizeDuration(key string, start, end ftypes.Timestamp) []counter.Bucket {
+func (f fixedWidthBucketizer) BucketizeDuration(key string, start, end ftypes.Timestamp) []counter.BucketList {
 	periods := []period{{start, end}}
-	ret := []counter.Bucket(arena.Buckets.Alloc(0, 512))
+	// maximum possible number of BucketLists: one for day, two for hour, two for minute and one trailing partial
+	ret := make([]counter.BucketList, 0, 6)
 	// iterate through in the right order - first day, then hour, then minute
 	for _, w := range []ftypes.Window{ftypes.Window_DAY, ftypes.Window_HOUR, ftypes.Window_MINUTE} {
 		width, ok := f.sizes[w]
@@ -53,9 +53,10 @@ func (f fixedWidthBucketizer) BucketizeDuration(key string, start, end ftypes.Ti
 		}
 		nextPeriods := make([]period, 0)
 		for _, p := range periods {
-			buckets, bucketStart, bucketEnd := f.bucketizeTimeseries(key, p.start, p.end, w, width)
-			ret = append(ret, buckets...)
-			arena.Buckets.Free(buckets)
+			bList, bucketStart, bucketEnd, empty := f.bucketizeTimeseries(key, p.start, p.end, w, width)
+			if !empty {
+				ret = append(ret, bList)
+			}
 			nextPeriods = append(nextPeriods, period{p.start, bucketStart}, period{bucketEnd, p.end})
 		}
 		periods = nextPeriods
@@ -77,9 +78,12 @@ func (f fixedWidthBucketizer) BucketizeDuration(key string, start, end ftypes.Ti
 	return ret
 }
 
-// bucketizeTimeseries returns a list of buckets of size 'Window' that begin at or after 'start'
-// and go until at or before 'end'. Each bucket's count is left at 0
-func (b fixedWidthBucketizer) bucketizeTimeseries(key string, start, end ftypes.Timestamp, window ftypes.Window, width uint32) ([]counter.Bucket, ftypes.Timestamp, ftypes.Timestamp) {
+// bucketizeTimeseries returns a BucketList of buckets of size 'window' that
+// begin at or after 'start' and go until at or before 'end'. If there are no
+// buckets, 'empty' (the 4th return value) is true.
+func (f fixedWidthBucketizer) bucketizeTimeseries(
+	key string, start, end ftypes.Timestamp, window ftypes.Window, width uint32,
+) (counter.BucketList, ftypes.Timestamp, ftypes.Timestamp, bool) {
 	var period uint32
 	switch window {
 	case ftypes.Window_MINUTE:
@@ -93,16 +97,17 @@ func (b fixedWidthBucketizer) bucketizeTimeseries(key string, start, end ftypes.
 	}
 	startBoundary, endBoundary := boundary(start, end, period)
 	if endBoundary <= startBoundary {
-		return []counter.Bucket{}, start, start
+		return counter.BucketList{}, start, start, true
 	}
 	bucketStart := ftypes.Timestamp(startBoundary * period)
 	bucketEnd := ftypes.Timestamp(endBoundary * period)
-	sz := int(endBoundary - startBoundary)
-	ret := arena.Buckets.Alloc(sz, sz)
-	for i := startBoundary; i < endBoundary; i++ {
-		ret[i-startBoundary] = counter.Bucket{Key: key, Window: window, Index: i, Width: width}
-	}
-	return ret, bucketStart, bucketEnd
+	return counter.BucketList{
+		Key:        key,
+		Window:     window,
+		Width:      width,
+		StartIndex: startBoundary,
+		EndIndex:   endBoundary - 1,
+	}, bucketStart, bucketEnd, false
 }
 
 // fixedSplitBucketizer splits each duration into numBuckets buckets
@@ -159,7 +164,7 @@ func (f fixedSplitBucketizer) BucketizeMoment(key string, ts ftypes.Timestamp) [
 	return buckets
 }
 
-func (f fixedSplitBucketizer) BucketizeDuration(key string, start, finish ftypes.Timestamp) []counter.Bucket {
+func (f fixedSplitBucketizer) BucketizeDuration(key string, start, finish ftypes.Timestamp) []counter.BucketList {
 	// Find which width, duration of the Bucketizer we are working with
 	d := finish - start
 	var w uint32
@@ -171,16 +176,13 @@ func (f fixedSplitBucketizer) BucketizeDuration(key string, start, finish ftypes
 	// Get buckets
 	beg := f.getIndex(start, w)
 	end := f.getIndex(finish-1, w)
-	buckets := make([]counter.Bucket, end-beg+1)
-	for i := beg; i <= end; i++ {
-		buckets[i-beg] = counter.Bucket{
-			Key:    key,
-			Window: ftypes.Window_FOREVER,
-			Width:  w,
-			Index:  i,
-		}
-	}
-	return buckets
+	return []counter.BucketList{{
+		Key:        key,
+		Window:     ftypes.Window_FOREVER,
+		Width:      w,
+		StartIndex: beg,
+		EndIndex:   end,
+	}}
 }
 
 func (f fixedSplitBucketizer) getIndex(ts ftypes.Timestamp, w uint32) uint32 {
@@ -210,19 +212,16 @@ func (t thirdBucketizer) BucketizeMoment(key string, ts ftypes.Timestamp) []coun
 	}
 }
 
-func (t thirdBucketizer) BucketizeDuration(key string, start, finish ftypes.Timestamp) []counter.Bucket {
+func (t thirdBucketizer) BucketizeDuration(key string, start, finish ftypes.Timestamp) []counter.BucketList {
 	beg := t.getIndex(start)
 	end := t.getIndex(finish - 1)
-	buckets := make([]counter.Bucket, end-beg+1)
-	for i := beg; i <= end; i++ {
-		buckets[i-beg] = counter.Bucket{
-			Key:    key,
-			Window: ftypes.Window_FOREVER,
-			Width:  t.size,
-			Index:  i,
-		}
-	}
-	return buckets
+	return []counter.BucketList{{
+		Key:        key,
+		Window:     ftypes.Window_FOREVER,
+		Width:      t.size,
+		StartIndex: beg,
+		EndIndex:   end,
+	}}
 }
 
 func (t thirdBucketizer) getIndex(ts ftypes.Timestamp) uint32 {

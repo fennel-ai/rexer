@@ -6,7 +6,7 @@ import (
 )
 
 // Arenas of few commonly used types are defined below which are to be shared
-// across the binary. The combined memory footprint of these is upto ~300MB
+// across the binary. The combined memory footprint of these is upto ~2.3GB
 
 var (
 	Bytes   = New[byte](1<<12, 1<<22)           // memory footprint <= 4MB
