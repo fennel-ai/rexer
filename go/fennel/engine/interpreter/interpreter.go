@@ -2,6 +2,7 @@ package interpreter
 
 import (
 	"context"
+	"fennel/lib/arena"
 	"fmt"
 	"strconv"
 	"strings"
@@ -228,6 +229,7 @@ func (i *Interpreter) VisitOpcall(operands []ast.Ast, vars []string, namespace, 
 		}
 		voperands[j] = inData
 	}
+	szOperands := voperands[0].Len()
 
 	// find & init the operator
 	op, err := i.getOperator(namespace, name)
@@ -244,7 +246,10 @@ func (i *Interpreter) VisitOpcall(operands []ast.Ast, vars []string, namespace, 
 	}
 
 	// and same for inputs + dynamic kwargs to create InputTable
-	inputTable, err := i.getContextKwargs(op, kwargs, voperands, vars)
+	// just pre-create space for all context kwargs
+	kwargVals := arena.Values.Alloc(0, szOperands*len(op.Signature().ContextKwargs))
+	defer arena.Values.Free(kwargVals)
+	inputTable, err := i.getContextKwargs(op, kwargs, voperands, vars, kwargVals)
 	if err != nil {
 		return value.Nil, err
 	}
@@ -307,7 +312,7 @@ func (i *Interpreter) getStaticKwargs(op operators.Operator, kwargs *ast.Dict) (
 	return ret, nil
 }
 
-func (i *Interpreter) getContextKwargs(op operators.Operator, trees *ast.Dict, inputs []value.List, vars []string) (operators.ZipTable, error) {
+func (i *Interpreter) getContextKwargs(op operators.Operator, trees *ast.Dict, inputs []value.List, vars []string, kwargVals []value.Value) (operators.ZipTable, error) {
 	ret := operators.NewZipTable(op)
 	sig := op.Signature()
 	varvals := make([]value.Value, len(vars))
@@ -330,7 +335,7 @@ func (i *Interpreter) getContextKwargs(op operators.Operator, trees *ast.Dict, i
 			}
 		}
 		// now using these lambda variables, evaluate kwargs variables
-		kwargVals := make([]value.Value, 0, len(sig.ContextKwargs))
+		kwargValBegin := len(kwargVals)
 		for _, p := range sig.ContextKwargs {
 			k := p.Name
 			tree, ok := trees.Values[k]
@@ -357,7 +362,7 @@ func (i *Interpreter) getContextKwargs(op operators.Operator, trees *ast.Dict, i
 				}
 			}
 		}
-		kwargs, err := operators.NewKwargs(sig, kwargVals, false)
+		kwargs, err := operators.NewKwargs(sig, kwargVals[kwargValBegin:], false)
 		if err != nil {
 			return ret, err
 		}
