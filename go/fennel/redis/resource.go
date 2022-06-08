@@ -63,6 +63,8 @@ func (conf ClientConfig) Materialize() (resource.Resource, error) {
 		client: redis.NewClusterClient(&redis.ClusterOptions{
 			Addrs:     []string{conf.Addr},
 			TLSConfig: conf.TLSConfig,
+			// this also enables routing read-only commands to replica nodes
+			RouteByLatency: true,
 		}),
 		Scope: conf.Scope}
 	// do a ping and verify that the client can actually talk to the server
