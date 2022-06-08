@@ -331,7 +331,6 @@ func (i *Interpreter) getContextKwargs(op operators.Operator, trees *ast.Dict, i
 		}
 		// now using these lambda variables, evaluate kwargs variables
 		kwargVals := make([]value.Value, 0, len(sig.ContextKwargs))
-		// kwargs := value.NewDict(make(map[string]value.Value, len(sig.ContextKwargs)))
 		for _, p := range sig.ContextKwargs {
 			k := p.Name
 			tree, ok := trees.Values[k]
@@ -340,7 +339,6 @@ func (i *Interpreter) getContextKwargs(op operators.Operator, trees *ast.Dict, i
 				return ret, fmt.Errorf("kwarg '%s' not provided for operator '%s.%s'", k, sig.Module, sig.Name)
 			case !ok && p.Optional:
 				kwargVals = append(kwargVals, p.Default)
-				// kwargs.Set(k, p.Default)
 				continue
 			case ok:
 				// we have to evaluate the tree with the current values of the lambda variables
@@ -350,14 +348,12 @@ func (i *Interpreter) getContextKwargs(op operators.Operator, trees *ast.Dict, i
 						return operators.ZipTable{}, fmt.Errorf("error: %s while evaluating kwarg: %s for operator '%s.%s'", err, k, sig.Module, sig.Name)
 					}
 					kwargVals = append(kwargVals, val)
-					// kwargs.Set(k, val)
 				} else {
 					val, err := i.visitInContext(tree, vars, varvals)
 					if err != nil {
 						return operators.ZipTable{}, fmt.Errorf("error: %s while evaluating kwarg '%s' for operator '%s.%s'", err, k, sig.Module, sig.Name)
 					}
 					kwargVals = append(kwargVals, val)
-					// kwargs.Set(k, val)
 				}
 			}
 		}
