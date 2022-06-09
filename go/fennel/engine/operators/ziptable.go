@@ -68,7 +68,7 @@ func (zi *ZipIter) Next() ([]value.Value, Kwargs, error) {
 		return nil, Kwargs{}, fmt.Errorf("expected list of operands but found: %s", first)
 	}
 	elems := aslist.Values()
-	if err := Typecheck(zi.zt.sig, elems, second); err != nil {
+	if err := ValidateInputs(zi.zt.sig, elems); err != nil {
 		return nil, Kwargs{}, err
 	}
 	return elems, second, nil

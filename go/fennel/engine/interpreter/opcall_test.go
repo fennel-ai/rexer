@@ -191,7 +191,7 @@ func (t testOpDefault) New(
 	return testOpDefault{}, nil
 }
 
-func (t testOpDefault) Apply(_ context.Context, kwargs value.Dict, in operators.InputIter, out *value.List) error {
+func (t testOpDefault) Apply(_ context.Context, kwargs operators.Kwargs, in operators.InputIter, out *value.List) error {
 	for in.HasMore() {
 		heads, context, _ := in.Next()
 		rowVal := heads[0]
@@ -240,7 +240,7 @@ func (top testOpInit) New(
 	}, nil
 }
 
-func (top testOpInit) Apply(_ context.Context, kwargs value.Dict, in operators.InputIter, out *value.List) error {
+func (top testOpInit) Apply(_ context.Context, kwargs operators.Kwargs, in operators.InputIter, out *value.List) error {
 	for in.HasMore() {
 		heads, _, _ := in.Next()
 		rowVal := heads[0]
@@ -267,7 +267,7 @@ func (r *rowCount) New(
 	return &rowCount{}, nil
 }
 
-func (r *rowCount) Apply(_ context.Context, kwargs value.Dict, in operators.InputIter, out *value.List) error {
+func (r *rowCount) Apply(_ context.Context, kwargs operators.Kwargs, in operators.InputIter, out *value.List) error {
 	for in.HasMore() {
 		heads, _, _ := in.Next()
 		v := heads[0]
@@ -292,7 +292,7 @@ func (s squareFn) New(
 	return squareFn{}, nil
 }
 
-func (s squareFn) Apply(_ context.Context, kwargs value.Dict, in operators.InputIter, out *value.List) error {
+func (s squareFn) Apply(_ context.Context, kwargs operators.Kwargs, in operators.InputIter, out *value.List) error {
 	_, cKwargs, err := in.Next()
 	if err != nil {
 		return err
@@ -322,7 +322,7 @@ func (e zip) New(
 	return zip{}, nil
 }
 
-func (e zip) Apply(_ context.Context, kwargs value.Dict, in operators.InputIter, out *value.List) error {
+func (e zip) Apply(_ context.Context, kwargs operators.Kwargs, in operators.InputIter, out *value.List) error {
 	_, cKwargs, err := in.Next()
 	if err != nil {
 		return err

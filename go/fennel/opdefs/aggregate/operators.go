@@ -37,7 +37,7 @@ func (a AggValue) New(
 	return AggValue{tr}, nil
 }
 
-func (a AggValue) Apply(ctx context.Context, staticKwargs value.Dict, in operators.InputIter, outs *value.List) error {
+func (a AggValue) Apply(ctx context.Context, staticKwargs operators.Kwargs, in operators.InputIter, outs *value.List) error {
 	var reqs []aggregate2.GetAggValueRequest
 	var rows []value.Value = arena.Values.Alloc(0, 256)
 	defer arena.Values.Free(rows)

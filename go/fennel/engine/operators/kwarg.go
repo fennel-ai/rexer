@@ -1,7 +1,8 @@
 package operators
 
 import (
-	"errors"
+	"fmt"
+
 	"fennel/lib/value"
 )
 
@@ -12,16 +13,31 @@ type Kwargs struct {
 }
 
 func NewKwargs(sig *Signature, vals []value.Value, static bool) (Kwargs, error) {
-	if static && len(sig.StaticKwargs) != len(vals) {
-		return Kwargs{}, errors.New("length of static kwargs doesn't match the signature")
-	} else if !static && len(sig.ContextKwargs) != len(vals) {
-		return Kwargs{}, errors.New("length of context kwargs doesn't match the signature")
-	}
-	return Kwargs{
+	kw := Kwargs{
 		sig:    sig,
 		vals:   vals,
 		static: static,
-	}, nil
+	}
+	return kw, kw.TypeCheck()
+}
+
+func (k *Kwargs) TypeCheck() error {
+	var params []Param
+	if k.static {
+		params = k.sig.StaticKwargs
+	} else {
+		params = k.sig.ContextKwargs
+	}
+	if len(params) != len(k.vals) {
+		return fmt.Errorf("length of static/contextual kwargs doesn't match the signature for %s.%s. Expected: %d, Got: %d", k.sig.Module, k.sig.Name, len(params), len(k.vals))
+	}
+	for i, p := range params {
+		v := k.vals[i]
+		if err := p.Type.Validate(v); err != nil {
+			return fmt.Errorf("operator '%s.%s' expects type of kwarg '%s' to be of type '%s': %w", k.sig.Module, k.sig.Name, p.Name, p.Type, err)
+		}
+	}
+	return nil
 }
 
 func (k *Kwargs) Len() int {
@@ -37,11 +53,7 @@ func (k *Kwargs) Get(key string) (value.Value, bool) {
 	}
 	for i, p := range params {
 		if p.Name == key {
-			if i < len(k.vals) {
-				return k.vals[i], true
-			} else {
-				return nil, false
-			}
+			return k.vals[i], true
 		}
 	}
 	return nil, false

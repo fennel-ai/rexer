@@ -23,7 +23,7 @@ func (op ShuffleOperator) Signature() *operators.Signature {
 	return operators.NewSignature("std", "shuffle")
 }
 
-func (op ShuffleOperator) Apply(_ context.Context, _ value.Dict, in operators.InputIter, out *value.List) error {
+func (op ShuffleOperator) Apply(_ context.Context, _ operators.Kwargs, in operators.InputIter, out *value.List) error {
 	var rows []value.Value
 	for in.HasMore() {
 		heads, _, err := in.Next()

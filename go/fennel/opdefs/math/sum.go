@@ -20,7 +20,7 @@ func (a adder) New(
 	return adder{}, nil
 }
 
-func (a adder) Apply(_ context.Context, _ value.Dict, in operators.InputIter, out *value.List) error {
+func (a adder) Apply(_ context.Context, _ operators.Kwargs, in operators.InputIter, out *value.List) error {
 	for in.HasMore() {
 		heads, kwargs, err := in.Next()
 		if err != nil {

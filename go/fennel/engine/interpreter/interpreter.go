@@ -241,10 +241,6 @@ func (i *Interpreter) VisitOpcall(operands []ast.Ast, vars []string, namespace, 
 	if err != nil {
 		return value.Nil, err
 	}
-	if err = operators.TypeCheckStaticKwargs(op, staticKwargs); err != nil {
-		return value.Nil, err
-	}
-
 	// and same for inputs + dynamic kwargs to create InputTable
 	// just pre-create space for all context kwargs
 	kwargVals := arena.Values.Alloc(0, szOperands*len(op.Signature().ContextKwargs))
@@ -289,27 +285,26 @@ func (i *Interpreter) VisitIfelse(condition ast.Ast, thenDo ast.Ast, elseDo ast.
 	}
 }
 
-func (i *Interpreter) getStaticKwargs(op operators.Operator, kwargs *ast.Dict) (value.Dict, error) {
-	ret := value.NewDict(nil)
+func (i *Interpreter) getStaticKwargs(op operators.Operator, kwargs *ast.Dict) (operators.Kwargs, error) {
+	vals := make([]value.Value, 0, len(kwargs.Values))
 	sig := op.Signature()
 	for _, p := range sig.StaticKwargs {
 		k := p.Name
 		tree, ok := kwargs.Values[k]
 		switch {
 		case !ok && !p.Optional:
-			return value.Dict{}, fmt.Errorf("kwarg '%s' not provided for operator '%s.%s'", k, sig.Module, sig.Name)
+			return operators.Kwargs{}, fmt.Errorf("kwarg '%s' not provided for operator '%s.%s'", k, sig.Module, sig.Name)
 		case !ok && p.Optional:
-			ret.Set(k, p.Default)
-			// ret[k] = p.Default
+			vals = append(vals, p.Default)
 		case ok:
 			val, err := tree.AcceptValue(i)
 			if err != nil {
-				return value.Dict{}, fmt.Errorf("error: %s while evaluating kwarg: %s for operator '%s.%s'", err, k, sig.Module, sig.Name)
+				return operators.Kwargs{}, fmt.Errorf("error: %s while evaluating kwarg: %s for operator '%s.%s'", err, k, sig.Module, sig.Name)
 			}
-			ret.Set(k, val)
+			vals = append(vals, val)
 		}
 	}
-	return ret, nil
+	return operators.NewKwargs(sig, vals, true)
 }
 
 func (i *Interpreter) getContextKwargs(op operators.Operator, trees *ast.Dict, inputs []value.List, vars []string, kwargVals []value.Value) (operators.ZipTable, error) {

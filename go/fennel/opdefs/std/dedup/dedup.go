@@ -19,7 +19,7 @@ func (d deduper) New(
 	return deduper{}, nil
 }
 
-func (d deduper) Apply(_ context.Context, kwargs value.Dict, in operators.InputIter, out *value.List) error {
+func (d deduper) Apply(_ context.Context, _ operators.Kwargs, in operators.InputIter, out *value.List) error {
 	seen := make(map[string]struct{})
 	for in.HasMore() {
 		heads, kwargs, err := in.Next()
