@@ -1,6 +1,7 @@
 package phaser
 
 import (
+	"bufio"
 	"context"
 	"encoding/base64"
 	"fennel/lib/ftypes"
@@ -8,6 +9,7 @@ import (
 	"fennel/redis"
 	"fennel/tier"
 	"fmt"
+	"github.com/buger/jsonparser"
 	"io/ioutil"
 	"os"
 	"os/exec"
@@ -16,9 +18,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/xitongsys/parquet-go-source/local"
-	"github.com/xitongsys/parquet-go/reader"
-	"github.com/xitongsys/parquet-go/source"
 	"go.uber.org/zap"
 	"golang.org/x/sync/errgroup"
 )
@@ -160,23 +159,18 @@ func (p Phaser) GetId() string {
 // 2. Key -> List of item[string]
 // 3. Key -> Item[string]
 type ItemScore struct {
-	ItemName *string  `parquet:"name=item, type=BYTE_ARRAY, convertedtype=UTF8"`
-	Score    *float64 `parquet:"name=score, type=FLOAT"`
+	ItemName string  `json:"item"`
+	Score    float64 `json:"score"`
 }
 
 type ItemScoreList struct {
-	Key           *string     `parquet:"name=key, type=BYTE_ARRAY, convertedtype=UTF8"`
-	ItemScoreList []ItemScore `parquet:"name=item_list, type=LIST"`
+	Key           value.Value `json:"key"`
+	ItemScoreList value.Value `json:"item_list"`
 }
 
 type ItemList struct {
-	Key      *string  `parquet:"name=key, type=BYTE_ARRAY, convertedtype=UTF8"`
-	ItemList []string `parquet:"name=item_list, type=MAP, convertedtype=LIST, valuetype=BYTE_ARRAY, valueconvertedtype=UTF8"`
-}
-
-type Item struct {
-	Key  *string `parquet:"name=key, type=BYTE_ARRAY, convertedtype=UTF8"`
-	Item string  `parquet:"name=item, type=BYTE_ARRAY, convertedtype=UTF8"`
+	Key      string   `json:"key"`
+	ItemList []string `json:"item_list"`
 }
 
 func bulkUploadToRedis(tr tier.Tier, file string, numRows int, tempDir string) error {
@@ -244,135 +238,48 @@ func (p Phaser) getRedisCommand(tierId ftypes.RealmID, key, encodedString string
 	return "SET " + p.getRedisKey(tierId, value.String(key)) + " " + encodedString + " EX " + fmt.Sprint(int(p.TTL.Seconds())) + "\n"
 }
 
-func (p Phaser) createItemScoreListFile(localFileReader source.ParquetFile, redisWriter *os.File, tierId ftypes.RealmID) (int, error) {
-	pr, err := reader.NewParquetReader(localFileReader, new(ItemScoreList), 4)
-	defer pr.ReadStop()
-	if err != nil {
-		return 0, nil
-	}
-
-	numRows := int(pr.GetNumRows())
+func (p Phaser) createRedisFile(localFileReader, redisWriter *os.File, tierId ftypes.RealmID) (int, error) {
+	s := bufio.NewScanner(localFileReader)
 	numRowsWritten := 0
-	for i := 0; i < numRows; i += BATCH_SIZE {
-		sz := BATCH_SIZE
-		if i+BATCH_SIZE > numRows {
-			sz = numRows - i
+	for s.Scan() {
+		data := s.Bytes()
+		vdata, vtype, _, err := jsonparser.Get(data, "key")
+		if err != nil {
+			return 0, err
 		}
-		examples := make([]ItemScoreList, sz)
-		if err = pr.Read(&examples); err != nil {
-			return 0, fmt.Errorf("%w", err)
+		key, err := value.ParseJSON(vdata, vtype)
+		vdata, vtype, _, err = jsonparser.Get(data, "item_list")
+		if err != nil {
+			return 0, err
 		}
-
-		for _, example := range examples {
-			v := value.NewList()
-			for _, item := range example.ItemScoreList {
-				if item.ItemName != nil {
-					v.Append(value.NewDict(map[string]value.Value{
-						"item":  value.String(*item.ItemName),
-						"score": value.Double(*item.Score),
-					}))
-				}
-			}
-			if example.Key != nil {
-				numRowsWritten += 1
-				encodedString := base64.StdEncoding.EncodeToString(value.ToJSON(v))
-				redisWriter.WriteString(p.getRedisCommand(tierId, *example.Key, encodedString))
-			}
+		val, err := value.ParseJSON(vdata, vtype)
+		if err != nil {
+			return 0, err
 		}
+		numRowsWritten += 1
+		encodedString := base64.StdEncoding.EncodeToString(value.ToJSON(val))
+		redisWriter.WriteString(p.getRedisCommand(tierId, key.String(), encodedString))
 	}
+
 	return numRowsWritten, nil
 }
 
-func (p Phaser) createItemListFile(localFileReader source.ParquetFile, redisWriter *os.File, tierId ftypes.RealmID) (int, error) {
-	pr, err := reader.NewParquetReader(localFileReader, new(ItemList), 4)
-	defer pr.ReadStop()
-	if err != nil {
-		return 0, err
-	}
-
-	numRows := int(pr.GetNumRows())
-	numRowsWritten := 0
-	for i := 0; i < numRows; i += BATCH_SIZE {
-		sz := BATCH_SIZE
-		if i+BATCH_SIZE > numRows {
-			sz = numRows - i
-		}
-		examples := make([]ItemList, sz)
-		if err = pr.Read(&examples); err != nil {
-			return 0, fmt.Errorf("%w", err)
-		}
-
-		for _, example := range examples {
-			v := value.NewList()
-			for _, item := range example.ItemList {
-				if item != "" {
-					v.Append(value.String(item))
-				}
-			}
-			if example.Key != nil {
-				numRowsWritten += 1
-				encodedString := base64.StdEncoding.EncodeToString(value.ToJSON(v))
-				redisWriter.WriteString(p.getRedisCommand(tierId, *example.Key, encodedString))
-			}
-		}
-	}
-	return numRowsWritten, nil
-}
-
-func (p Phaser) createItemFile(localFileReader source.ParquetFile, redisWriter *os.File, tierId ftypes.RealmID) (int, error) {
-	pr, err := reader.NewParquetReader(localFileReader, new(Item), 4)
-	defer pr.ReadStop()
-	if err != nil {
-		return 0, err
-	}
-
-	numRows := int(pr.GetNumRows())
-	numRowsWritten := 0
-	for i := 0; i < numRows; i += BATCH_SIZE {
-		sz := BATCH_SIZE
-		if i+BATCH_SIZE > numRows {
-			sz = numRows - i
-		}
-		examples := make([]Item, sz)
-		if err = pr.Read(&examples); err != nil {
-			return 0, fmt.Errorf("%w", err)
-		}
-
-		for _, example := range examples {
-			if example.Key != nil {
-				numRowsWritten += 1
-				encodedString := base64.StdEncoding.EncodeToString(value.ToJSON(value.String(example.Item)))
-				redisWriter.WriteString(p.getRedisCommand(tierId, *example.Key, encodedString))
-			}
-		}
-	}
-	return numRowsWritten, nil
-}
-
-// This function is responsible for reading the parquet file from
+// This function is responsible for reading the json file from
 // tempDir and creating the appropriate redis file for uploading.
 func (p Phaser) prepareFileForBulkUpload(tr tier.Tier, file string, tempDir string) (int, error) {
-	localFileReader, err := local.NewLocalFileReader(tempDir + "/" + file)
+	localFileReader, err := os.Open(tempDir + "/" + file)
+	defer localFileReader.Close()
 	if err != nil {
 		return 0, err
 	}
-	defer localFileReader.Close()
+
 	redisWriter, err := os.Create(tempDir + "/" + file + REDIS_BULK_UPLOAD_FILE_SUFFIX)
 	if err != nil {
 		return 0, err
 	}
 	defer redisWriter.Close()
 
-	switch p.Schema {
-	case ITEM_SCORE_LIST:
-		return p.createItemScoreListFile(localFileReader, redisWriter, tr.ID)
-	case ITEM_LIST:
-		return p.createItemListFile(localFileReader, redisWriter, tr.ID)
-	case STRING:
-		return p.createItemFile(localFileReader, redisWriter, tr.ID)
-	default:
-		return 0, fmt.Errorf("unknown schema type: %d", p.Schema)
-	}
+	return p.createRedisFile(localFileReader, redisWriter, tr.ID)
 }
 
 func (p Phaser) prepareAndBulkUpload(tr tier.Tier, fileNames []string, tempDir string) error {
