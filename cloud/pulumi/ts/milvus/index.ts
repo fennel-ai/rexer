@@ -110,6 +110,6 @@ export const setup = async (input: inputType): Promise<outputType> => {
     }, { provider: k8sProvider, deleteBeforeReplace: true })
 
     return {
-        endpoint: "http://milvus.milvus:19530"
+        endpoint: "milvus.milvus:19530"
     }
 }
