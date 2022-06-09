@@ -16,6 +16,7 @@ from awsglue.job import Job
 from pyspark.sql import functions as F
 from pyspark.sql.functions import col, collect_list, array_join
 from pyspark.sql.functions import arrays_zip, concat_ws
+from pyspark.sql.types import IntegerType
 
 success_file_name = "_SUCCESS-"
 ## @params: [JOB_NAME]
@@ -56,6 +57,8 @@ time_filter = "timestamp>{}".format(lower_time_bound)
 actions = actions.filter("aggregate='{}'".format(args["AGGREGATE_NAME"]))
 actions = actions.filter(time_filter)
 
+if actions.filter(col("groupkey").cast("int").isNull()).count() == 0:
+    actions = actions.withColumn("groupkey", actions["groupkey"].cast(IntegerType()))
 
 actions = actions.withColumn("vlist", F.col("value.context")).withColumn("weight", F.col("value.weight")).withColumn("context", concat_ws("::", "vlist")).select("groupkey", "context", "weight")
 actions.createOrReplaceTempView("ACTIONS")
