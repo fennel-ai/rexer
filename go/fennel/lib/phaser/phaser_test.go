@@ -12,20 +12,19 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/xitongsys/parquet-go-source/local"
 )
 
 var S3Bucket = "phaser-test-data"
 
-func TestCreateItemScoreListFile(t *testing.T) {
-	itemListPq := "item_score_list.parquet"
+func TestCreateRedisFileString(t *testing.T) {
+	itemListPq := "item_score_list.json"
 	s3Client := s3.NewClient(s3.S3Args{Region: "us-west-2"})
 	tempDir, err := ioutil.TempDir("", "phaser")
 	defer os.RemoveAll(tempDir)
 	assert.NoError(t, err)
 	err = s3Client.BatchDiskDownload([]string{"unit-tests/" + itemListPq}, S3Bucket, tempDir)
 	assert.NoError(t, err)
-	localFileReader, err := local.NewLocalFileReader(tempDir + "/" + itemListPq)
+	localFileReader, err := os.Open(tempDir + "/" + itemListPq)
 	defer localFileReader.Close()
 	assert.NoError(t, err)
 	writeFile := fmt.Sprint(rand.Uint64()) + ".txt"
@@ -34,8 +33,8 @@ func TestCreateItemScoreListFile(t *testing.T) {
 
 	assert.NoError(t, err)
 
-	p := Phaser{"testNamespace", "testIdentifier", "testBucket", "testPrefix", ITEM_SCORE_LIST, 1, time.Hour}
-	numRows, err := p.createItemScoreListFile(localFileReader, cmdWriter, 123)
+	p := Phaser{"testNamespace", "testIdentifier", "testBucket", "testPrefix", 1, time.Hour}
+	numRows, err := p.createRedisFile(localFileReader, cmdWriter, 123)
 	assert.NoError(t, err)
 	assert.Equal(t, 3, numRows)
 
@@ -56,15 +55,16 @@ func TestCreateItemScoreListFile(t *testing.T) {
 		i += 1
 	}
 }
-func TestCreateItemListFile(t *testing.T) {
-	itemListPq := "item_list.parquet"
+
+func TestCreateRedisFileNumer(t *testing.T) {
+	itemListPq := "item_score_list_number.json"
 	s3Client := s3.NewClient(s3.S3Args{Region: "us-west-2"})
 	tempDir, err := ioutil.TempDir("", "phaser")
 	defer os.RemoveAll(tempDir)
 	assert.NoError(t, err)
 	err = s3Client.BatchDiskDownload([]string{"unit-tests/" + itemListPq}, S3Bucket, tempDir)
 	assert.NoError(t, err)
-	localFileReader, err := local.NewLocalFileReader(tempDir + "/" + itemListPq)
+	localFileReader, err := os.Open(tempDir + "/" + itemListPq)
 	defer localFileReader.Close()
 	assert.NoError(t, err)
 	writeFile := fmt.Sprint(rand.Uint64()) + ".txt"
@@ -73,8 +73,8 @@ func TestCreateItemListFile(t *testing.T) {
 
 	assert.NoError(t, err)
 
-	p := Phaser{"testNamespace", "testIdentifier", "testBucket", "testPrefix", ITEM_LIST, 1, time.Hour}
-	numRows, err := p.createItemListFile(localFileReader, cmdWriter, 123)
+	p := Phaser{"testNamespace", "testIdentifier", "testBucket", "testPrefix", 1, time.Hour}
+	numRows, err := p.createRedisFile(localFileReader, cmdWriter, 123)
 	assert.NoError(t, err)
 	assert.Equal(t, 3, numRows)
 
@@ -86,48 +86,9 @@ func TestCreateItemListFile(t *testing.T) {
 
 	scanner := bufio.NewScanner(file)
 	// optionally, resize scanner's capacity for lines over 64K, see next example
-	expected := []string{"SET 123:testNamespace:testIdentifier:1:ImluZGlhIg== WyJhcmp1biIsInNod2V0aGEiLCJyYWh1bCIsImFkaXR5YSIsImFiaGF5IiwibW9oaXQiLCJuaWtoaWwiLCJhcmF5YSJd EX 3600",
-		"SET 123:testNamespace:testIdentifier:1:InJ1c3NpYSI= WyJuYXRhc2hhIiwib2xlZyIsInZvbG9keW15ciJd EX 3600",
-		"SET 123:testNamespace:testIdentifier:1:InVzYSI= WyJqb2huIiwidGltIiwiYmV0dHkiLCJjbGFpcmUiLCJwaGlsIl0= EX 3600"}
-	i := 0
-	for scanner.Scan() {
-		assert.Equal(t, expected[i], scanner.Text())
-		i += 1
-	}
-}
-
-func TestCreateItemFile(t *testing.T) {
-	itemListPq := "item.parquet"
-	s3Client := s3.NewClient(s3.S3Args{Region: "us-west-2"})
-	tempDir, err := ioutil.TempDir("", "phaser")
-	defer os.RemoveAll(tempDir)
-	err = s3Client.BatchDiskDownload([]string{"unit-tests/" + itemListPq}, S3Bucket, tempDir)
-	assert.NoError(t, err)
-	localPqReader, err := local.NewLocalFileReader(tempDir + "/" + itemListPq)
-	assert.NoError(t, err)
-	defer localPqReader.Close()
-	writeFile := fmt.Sprint(rand.Uint64()) + ".txt"
-	cmdWriter, err := os.Create(tempDir + "/" + writeFile)
-	defer cmdWriter.Close()
-
-	assert.NoError(t, err)
-
-	p := Phaser{"testNamespace", "testIdentifier", "testBucket", "testPrefix", STRING, 1, time.Hour}
-	numRows, err := p.createItemFile(localPqReader, cmdWriter, 123)
-	assert.NoError(t, err)
-	assert.Equal(t, 3, numRows)
-
-	file, err := os.Open(tempDir + "/" + writeFile)
-	if err != nil {
-		log.Fatal(err)
-	}
-	defer file.Close()
-
-	scanner := bufio.NewScanner(file)
-	// optionally, resize scanner's capacity for lines over 64K, see next example
-	expected := []string{"SET 123:testNamespace:testIdentifier:1:ImluZGlhIg== ImFyanVuOjpzaHdldGhhOjpyYWh1bDo6YWRpdHlhOjphYmhheTo6bW9oaXQ6Om5pa2hpbDo6YXJheWEi EX 3600",
-		"SET 123:testNamespace:testIdentifier:1:InJ1c3NpYSI= Im5hdGFzaGE6Om9sZWc6OnZvbG9keW15ciI= EX 3600",
-		"SET 123:testNamespace:testIdentifier:1:InVzYSI= ImpvaG46OnRpbTo6YmV0dHk6OmNsYWlyZTo6cGhpbCI= EX 3600"}
+	expected := []string{"SET 123:testNamespace:testIdentifier:1:ImluZGlhIg== WzEyLDIzLDQzLDEyLDQzLDM0LDM0LDNd EX 3600",
+		"SET 123:testNamespace:testIdentifier:1:InJ1c3NpYSI= WzQzLDM0NCwzNF0= EX 3600",
+		"SET 123:testNamespace:testIdentifier:1:InVzYSI= WzM0NCwzNCw2NCw1MywzNV0= EX 3600"}
 	i := 0
 	for scanner.Scan() {
 		assert.Equal(t, expected[i], scanner.Text())

@@ -55,8 +55,8 @@ func getGlueTriggerActions(jobName string, arguments map[string]*string) []*glue
 	return actions
 }
 
-func (c GlueClient) createTrigger(aggregateName, aggregateType, cronSchedule, jobName string, jobArguments map[string]*string) error {
-	triggerName := fmt.Sprintf("%s::%s", aggregateName, *jobArguments["--DURATION"])
+func (c GlueClient) createTrigger(tierID ftypes.RealmID, aggregateName, cronSchedule, jobName string, jobArguments map[string]*string) error {
+	triggerName := fmt.Sprintf("%d::%s::%s", tierID, aggregateName, *jobArguments["--DURATION"])
 	input := glue.CreateTriggerInput{
 		Name:            aws.String(triggerName),
 		Actions:         getGlueTriggerActions(jobName, jobArguments),
@@ -99,7 +99,7 @@ func (c GlueClient) ScheduleOfflineAggregate(tierID ftypes.RealmID, agg aggregat
 	for _, duration := range agg.Options.Durations {
 		jobArguments["--DURATION"] = aws.String(fmt.Sprintf("%d", duration))
 
-		err := c.createTrigger(string(agg.Name), aggregateType, agg.Options.CronSchedule, jobName, jobArguments)
+		err := c.createTrigger(tierID, string(agg.Name), agg.Options.CronSchedule, jobName, jobArguments)
 		if err != nil {
 			return err
 		}
@@ -119,14 +119,15 @@ func (c GlueClient) getAllOfflineAggregates() ([]string, error) {
 	return offlineAggregates, nil
 }
 
-func (c GlueClient) DeactivateOfflineAggregate(aggregateName string) error {
+func (c GlueClient) DeactivateOfflineAggregate(tierID ftypes.RealmID, aggregateName string) error {
 	triggers, err := c.getAllOfflineAggregates()
 	if err != nil {
 		return err
 	}
 
+	prefix := fmt.Sprintf("%d::%s", tierID, aggregateName)
 	for _, trigger := range triggers {
-		if strings.HasPrefix(trigger, aggregateName) {
+		if strings.HasPrefix(trigger, prefix) {
 			input := glue.DeleteTriggerInput{
 				Name: aws.String(trigger),
 			}

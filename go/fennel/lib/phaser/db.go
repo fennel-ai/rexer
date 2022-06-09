@@ -27,7 +27,6 @@ func getPhaser(p phaserSer) (Phaser, error) {
 	p2.S3Bucket = p.S3Bucket
 	p2.S3Prefix = p.S3Prefix
 	var err error
-	p2.Schema, err = FromPhaserSchema(p.Schema)
 	if err != nil {
 		return Phaser{}, err
 	}
@@ -134,15 +133,12 @@ func GetLatestUpdatedVersion(ctx context.Context, tier tier.Tier, namespace, ide
 	return strconv.ParseUint(string(value[0]), 10, 64)
 }
 
-func InitializePhaser(ctx context.Context, tier tier.Tier, s3Bucket, s3Prefix, namespace, identifier string, ttl time.Duration, schema PhaserSchema) error {
+func InitializePhaser(ctx context.Context, tier tier.Tier, s3Bucket, s3Prefix, namespace, identifier string, ttl time.Duration) error {
 	if len(identifier) > 255 {
 		return fmt.Errorf("identifier name can not be longer than 255 chars")
 	}
-	schemaStr, err := schema.String()
-	if err != nil {
-		return err
-	}
-	_, err = tier.DB.ExecContext(ctx, `INSERT INTO phaser (namespace, identifier, s3_bucket,  s3_prefix, phaser_schema, update_version, ttl) VALUES (?, ?, ?, ?, ?, ?, ?)`, namespace, identifier, s3Bucket, s3Prefix, schemaStr, 0, int(ttl.Seconds()))
+	schemaStr := "N/A"
+	_, err := tier.DB.ExecContext(ctx, `INSERT INTO phaser (namespace, identifier, s3_bucket,  s3_prefix, phaser_schema, update_version, ttl) VALUES (?, ?, ?, ?, ?, ?, ?)`, namespace, identifier, s3Bucket, s3Prefix, schemaStr, 0, int(ttl.Seconds()))
 	return err
 }
 

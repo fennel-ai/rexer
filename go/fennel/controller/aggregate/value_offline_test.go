@@ -29,7 +29,7 @@ func TestOfflineAggregates(t *testing.T) {
 	clock := test.FakeClock{}
 	tier.Clock = &clock
 	t1 := ftypes.Timestamp(456)
-	clock.Set(int64(t1))
+	clock.Set(uint32(t1))
 	t0 := ftypes.Timestamp(0)
 
 	agg := aggregate.Aggregate{
@@ -97,6 +97,6 @@ func TestOfflineAggregates(t *testing.T) {
 	wg.Wait()
 
 	// TODO: Mock Glue Client
-	err = tier.GlueClient.DeactivateOfflineAggregate(string(agg.Name))
+	err = tier.GlueClient.DeactivateOfflineAggregate(tier.ID, string(agg.Name))
 	assert.NoError(t, err)
 }

@@ -1,6 +1,7 @@
 package phaser
 
 import (
+	"bufio"
 	"context"
 	"encoding/base64"
 	"fennel/lib/ftypes"
@@ -8,6 +9,7 @@ import (
 	"fennel/redis"
 	"fennel/tier"
 	"fmt"
+	"github.com/buger/jsonparser"
 	"io/ioutil"
 	"os"
 	"os/exec"
@@ -16,9 +18,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/xitongsys/parquet-go-source/local"
-	"github.com/xitongsys/parquet-go/reader"
-	"github.com/xitongsys/parquet-go/source"
 	"go.uber.org/zap"
 	"golang.org/x/sync/errgroup"
 )
@@ -29,38 +28,6 @@ var SUCCESS_PREFIX = "_SUCCESS-"
 var BATCH_SIZE = 1000
 var REDIS_BULK_UPLOAD_FILE_SUFFIX = "-redis-bulk-upload.txt"
 var POLL_FREQUENCY_SEC = 30
-
-type PhaserSchema int
-
-const (
-	ITEM_SCORE_LIST PhaserSchema = iota
-	ITEM_LIST
-	STRING
-)
-
-func FromPhaserSchema(schema string) (PhaserSchema, error) {
-	switch schema {
-	case "ITEM_SCORE_LIST":
-		return ITEM_SCORE_LIST, nil
-	case "ITEM_LIST":
-		return ITEM_LIST, nil
-	case "STRING":
-		return STRING, nil
-	}
-	return -1, fmt.Errorf("Unknown Phaser schema, currently we only support ITEM_SCORE_LIST,ITEM_LIST,  STRING")
-}
-
-func (schema PhaserSchema) String() (string, error) {
-	switch schema {
-	case ITEM_SCORE_LIST:
-		return "ITEM_SCORE_LIST", nil
-	case ITEM_LIST:
-		return "ITEM_LIST", nil
-	case STRING:
-		return "STRING", nil
-	}
-	return "", fmt.Errorf("Unknown Phaser schema, currently we only support ITEM_SCORE_LIST,ITEM_LIST,  STRING")
-}
 
 //================================================
 // Public API for Phaser
@@ -76,16 +43,15 @@ type Phaser struct {
 	S3Bucket string
 	// Prefix withing the s3 bucket which is polled by Phaser.
 	S3Prefix string
-	// Schema of the data stored.
-	Schema        PhaserSchema
+
 	UpdateVersion uint64
 	TTL           time.Duration
 }
 
-func NewPhaser(namespace, identifier, s3Bucket, s3Prefix string, ttl time.Duration, schema PhaserSchema, tr tier.Tier) error {
+func NewPhaser(namespace, identifier, s3Bucket, s3Prefix string, ttl time.Duration, tr tier.Tier) error {
 	_, err := GetLatestUpdatedVersion(context.Background(), tr, namespace, identifier)
 	if err != nil && err == PhaserNotFound {
-		return InitializePhaser(context.Background(), tr, s3Bucket, s3Prefix, namespace, identifier, ttl, schema)
+		return InitializePhaser(context.Background(), tr, s3Bucket, s3Prefix, namespace, identifier, ttl)
 	} else if err != nil {
 		return err
 	} else {
@@ -93,11 +59,11 @@ func NewPhaser(namespace, identifier, s3Bucket, s3Prefix string, ttl time.Durati
 	}
 }
 
-func Get(namespace, identifier string, key value.String) (interface{}, error) {
-	return BatchGet(tier.Tier{}, []string{namespace}, []string{identifier}, []value.String{key})
+func Get(namespace, identifier string, key value.Value) (interface{}, error) {
+	return BatchGet(tier.Tier{}, []string{namespace}, []string{identifier}, []value.Value{key})
 }
 
-func BatchGet(tr tier.Tier, namespaces, identifiers []string, keys []value.String) ([]value.Value, error) {
+func BatchGet(tr tier.Tier, namespaces, identifiers []string, keys []value.Value) ([]value.Value, error) {
 	phasers, err := RetrieveBatch(context.Background(), tr, namespaces, identifiers)
 	if err != nil {
 		return nil, err
@@ -106,7 +72,7 @@ func BatchGet(tr tier.Tier, namespaces, identifiers []string, keys []value.Strin
 	// construct keys
 	keysToGet := make([]string, 0, len(namespaces))
 	for i := 0; i < len(namespaces); i++ {
-		key := phasers[i].getRedisKey(tr.ID, keys[i])
+		key := phasers[i].getRedisKey(tr.ID, keys[i].String())
 		keysToGet = append(keysToGet, key)
 	}
 
@@ -154,30 +120,6 @@ func (p Phaser) GetId() string {
 //================================================
 // Private helpers/interface
 //================================================
-
-// Different formats supported by Phaser include
-// 1. Key -> List of ( item[string], score[double] )
-// 2. Key -> List of item[string]
-// 3. Key -> Item[string]
-type ItemScore struct {
-	ItemName *string  `parquet:"name=item, type=BYTE_ARRAY, convertedtype=UTF8"`
-	Score    *float64 `parquet:"name=score, type=FLOAT"`
-}
-
-type ItemScoreList struct {
-	Key           *string     `parquet:"name=key, type=BYTE_ARRAY, convertedtype=UTF8"`
-	ItemScoreList []ItemScore `parquet:"name=item_list, type=LIST"`
-}
-
-type ItemList struct {
-	Key      *string  `parquet:"name=key, type=BYTE_ARRAY, convertedtype=UTF8"`
-	ItemList []string `parquet:"name=item_list, type=MAP, convertedtype=LIST, valuetype=BYTE_ARRAY, valueconvertedtype=UTF8"`
-}
-
-type Item struct {
-	Key  *string `parquet:"name=key, type=BYTE_ARRAY, convertedtype=UTF8"`
-	Item string  `parquet:"name=item, type=BYTE_ARRAY, convertedtype=UTF8"`
-}
 
 func bulkUploadToRedis(tr tier.Tier, file string, numRows int, tempDir string) error {
 	redisAddress := tr.Args.RedisServer[:strings.IndexByte(tr.Args.RedisServer, ':')]
@@ -235,144 +177,56 @@ func bulkUploadToRedis(tr tier.Tier, file string, numRows int, tempDir string) e
 	return nil
 }
 
-func (p Phaser) getRedisKey(tierId ftypes.RealmID, key value.String) string {
-	encodedKey := base64.StdEncoding.EncodeToString(value.ToJSON(key))
+func (p Phaser) getRedisKey(tierId ftypes.RealmID, key string) string {
+	encodedKey := base64.StdEncoding.EncodeToString([]byte(key))
 	return fmt.Sprintf("%d:%s:%s:%d:%s", int(tierId), p.Namespace, p.Identifier, p.UpdateVersion, encodedKey)
 }
 
 func (p Phaser) getRedisCommand(tierId ftypes.RealmID, key, encodedString string) string {
-	return "SET " + p.getRedisKey(tierId, value.String(key)) + " " + encodedString + " EX " + fmt.Sprint(int(p.TTL.Seconds())) + "\n"
+	return "SET " + p.getRedisKey(tierId, key) + " " + encodedString + " EX " + fmt.Sprint(int(p.TTL.Seconds())) + "\n"
 }
 
-func (p Phaser) createItemScoreListFile(localFileReader source.ParquetFile, redisWriter *os.File, tierId ftypes.RealmID) (int, error) {
-	pr, err := reader.NewParquetReader(localFileReader, new(ItemScoreList), 4)
-	defer pr.ReadStop()
-	if err != nil {
-		return 0, nil
-	}
-
-	numRows := int(pr.GetNumRows())
+func (p Phaser) createRedisFile(localFileReader, redisWriter *os.File, tierId ftypes.RealmID) (int, error) {
+	s := bufio.NewScanner(localFileReader)
 	numRowsWritten := 0
-	for i := 0; i < numRows; i += BATCH_SIZE {
-		sz := BATCH_SIZE
-		if i+BATCH_SIZE > numRows {
-			sz = numRows - i
+	for s.Scan() {
+		data := s.Bytes()
+		vdata, vtype, _, err := jsonparser.Get(data, "key")
+		if err != nil {
+			return 0, err
 		}
-		examples := make([]ItemScoreList, sz)
-		if err = pr.Read(&examples); err != nil {
-			return 0, fmt.Errorf("%w", err)
+		key, err := value.ParseJSON(vdata, vtype)
+		vdata, vtype, _, err = jsonparser.Get(data, "value")
+		if err != nil {
+			return 0, err
 		}
-
-		for _, example := range examples {
-			v := value.NewList()
-			for _, item := range example.ItemScoreList {
-				if item.ItemName != nil {
-					v.Append(value.NewDict(map[string]value.Value{
-						"item":  value.String(*item.ItemName),
-						"score": value.Double(*item.Score),
-					}))
-				}
-			}
-			if example.Key != nil {
-				numRowsWritten += 1
-				encodedString := base64.StdEncoding.EncodeToString(value.ToJSON(v))
-				redisWriter.WriteString(p.getRedisCommand(tierId, *example.Key, encodedString))
-			}
+		val, err := value.ParseJSON(vdata, vtype)
+		if err != nil {
+			return 0, err
 		}
+		numRowsWritten += 1
+		encodedString := base64.StdEncoding.EncodeToString(value.ToJSON(val))
+		redisWriter.WriteString(p.getRedisCommand(tierId, key.String(), encodedString))
 	}
+
 	return numRowsWritten, nil
 }
 
-func (p Phaser) createItemListFile(localFileReader source.ParquetFile, redisWriter *os.File, tierId ftypes.RealmID) (int, error) {
-	pr, err := reader.NewParquetReader(localFileReader, new(ItemList), 4)
-	defer pr.ReadStop()
-	if err != nil {
-		return 0, err
-	}
-
-	numRows := int(pr.GetNumRows())
-	numRowsWritten := 0
-	for i := 0; i < numRows; i += BATCH_SIZE {
-		sz := BATCH_SIZE
-		if i+BATCH_SIZE > numRows {
-			sz = numRows - i
-		}
-		examples := make([]ItemList, sz)
-		if err = pr.Read(&examples); err != nil {
-			return 0, fmt.Errorf("%w", err)
-		}
-
-		for _, example := range examples {
-			v := value.NewList()
-			for _, item := range example.ItemList {
-				if item != "" {
-					v.Append(value.String(item))
-				}
-			}
-			if example.Key != nil {
-				numRowsWritten += 1
-				encodedString := base64.StdEncoding.EncodeToString(value.ToJSON(v))
-				redisWriter.WriteString(p.getRedisCommand(tierId, *example.Key, encodedString))
-			}
-		}
-	}
-	return numRowsWritten, nil
-}
-
-func (p Phaser) createItemFile(localFileReader source.ParquetFile, redisWriter *os.File, tierId ftypes.RealmID) (int, error) {
-	pr, err := reader.NewParquetReader(localFileReader, new(Item), 4)
-	defer pr.ReadStop()
-	if err != nil {
-		return 0, err
-	}
-
-	numRows := int(pr.GetNumRows())
-	numRowsWritten := 0
-	for i := 0; i < numRows; i += BATCH_SIZE {
-		sz := BATCH_SIZE
-		if i+BATCH_SIZE > numRows {
-			sz = numRows - i
-		}
-		examples := make([]Item, sz)
-		if err = pr.Read(&examples); err != nil {
-			return 0, fmt.Errorf("%w", err)
-		}
-
-		for _, example := range examples {
-			if example.Key != nil {
-				numRowsWritten += 1
-				encodedString := base64.StdEncoding.EncodeToString(value.ToJSON(value.String(example.Item)))
-				redisWriter.WriteString(p.getRedisCommand(tierId, *example.Key, encodedString))
-			}
-		}
-	}
-	return numRowsWritten, nil
-}
-
-// This function is responsible for reading the parquet file from
+// This function is responsible for reading the json file from
 // tempDir and creating the appropriate redis file for uploading.
 func (p Phaser) prepareFileForBulkUpload(tr tier.Tier, file string, tempDir string) (int, error) {
-	localFileReader, err := local.NewLocalFileReader(tempDir + "/" + file)
+	localFileReader, err := os.Open(tempDir + "/" + file)
+	defer localFileReader.Close()
 	if err != nil {
 		return 0, err
 	}
-	defer localFileReader.Close()
+
 	redisWriter, err := os.Create(tempDir + "/" + file + REDIS_BULK_UPLOAD_FILE_SUFFIX)
 	if err != nil {
 		return 0, err
 	}
 	defer redisWriter.Close()
-
-	switch p.Schema {
-	case ITEM_SCORE_LIST:
-		return p.createItemScoreListFile(localFileReader, redisWriter, tr.ID)
-	case ITEM_LIST:
-		return p.createItemListFile(localFileReader, redisWriter, tr.ID)
-	case STRING:
-		return p.createItemFile(localFileReader, redisWriter, tr.ID)
-	default:
-		return 0, fmt.Errorf("unknown schema type: %d", p.Schema)
-	}
+	return p.createRedisFile(localFileReader, redisWriter, tr.ID)
 }
 
 func (p Phaser) prepareAndBulkUpload(tr tier.Tier, fileNames []string, tempDir string) error {
