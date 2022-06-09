@@ -51,17 +51,20 @@ func TestRollingAverage_Reduce(t *testing.T) {
 func TestRollingAverage_Merge_Valid(t *testing.T) {
 	t.Parallel()
 	h := NewAverage()
-	validCases := [][]int64{
-		{1, 2, 1, 2, 2, 4},
-		{1, 2, -1, 2, 0, 4},
-		{0, 0, -1, 0, -1, 0},
-		{1e12, 1, 1e12, 1, 2e12, 2},
-		{1e12, 1, -1e12, 1, 0, 2},
+	validCases := [][]value.Value{
+		{value.Int(1), value.Int(2), value.Int(1), value.Int(2), value.Int(2), value.Int(4)},
+		{value.Int(1), value.Int(2), value.Double(2), value.Int(2), value.Double(3), value.Int(4)},
+		{value.Int(1), value.Int(2), value.Int(-1), value.Int(2), value.Int(0), value.Int(4)},
+		{value.Int(0), value.Int(0), value.Double(0), value.Int(0), value.Double(0), value.Int(0)},
+		{value.Int(1e12), value.Int(1), value.Int(1e12), value.Int(1), value.Int(2e12), value.Int(2)},
+		{value.Int(1e12), value.Int(1), value.Int(-1e12), value.Int(1), value.Int(0), value.Int(2)},
+		{value.Int(1), value.Int(2), value.Int(-2), value.Int(2), value.Int(-1), value.Int(4)},
+		{value.Int(1), value.Int(2), value.Double(1.52), value.Int(3), value.Double(2.52), value.Int(5)},
 	}
 	for _, n := range validCases {
-		found, err := h.Merge(value.NewList(value.Int(n[0]), value.Int(n[1])), value.NewList(value.Int(n[2]), value.Int(n[3])))
+		found, err := h.Merge(value.NewList(n[0], n[1]), value.NewList(n[2], n[3]))
 		assert.NoError(t, err)
-		assert.Equal(t, value.NewList(value.Int(n[4]), value.Int(n[5])), found)
+		assert.Equal(t, value.NewList(n[4], n[5]), found)
 	}
 }
 
