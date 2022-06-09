@@ -233,6 +233,7 @@ func (t twoLevelRedisStore) get(
 // upto 32K size of each slice, total capacity of 4M * 4 = 16MB
 var aggIDArena = arena.New[ftypes.AggId](1<<15, 1<<22)
 
+// GetMulti returns arena-allocated value slices which should be freed by the caller.
 func (t twoLevelRedisStore) GetMulti(
 	ctx context.Context, tier tier.Tier, aggIds []ftypes.AggId, buckets [][]counter.Bucket, defaults []value.Value,
 ) ([][]value.Value, error) {
@@ -297,7 +298,7 @@ func (t twoLevelRedisStore) GetMulti(
 				// ret[j] since the returned slices would otherwise share the same
 				// underlying array and changes (e.g. append) to one would be
 				// reflected in the other.
-				ret[j] = make([]value.Value, l)
+				ret[j] = arena.Values.Alloc(l, l)
 				copy(ret[j], vals[:l])
 				vals = vals[l:]
 			}

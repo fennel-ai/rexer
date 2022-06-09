@@ -31,6 +31,7 @@ func Value(
 	if err != nil {
 		return nil, err
 	}
+	defer arena.Values.Free(counts[0])
 	return histogram.Reduce(counts[0])
 }
 
@@ -67,7 +68,10 @@ func BatchValue(
 		if err != nil {
 			return nil, err
 		}
-
+		// Explicitly free the counter slices back to the arena.
+		for _, v := range counts {
+			defer arena.Values.Free(v)
+		}
 		for cur, index := range indices {
 			ret[index], err = histograms[index].Reduce(counts[cur])
 			if err != nil {
