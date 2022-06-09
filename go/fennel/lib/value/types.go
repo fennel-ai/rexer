@@ -7,6 +7,8 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+
+	"fennel/lib/utils/slice"
 )
 
 type Value interface {
@@ -261,12 +263,7 @@ func (l *List) Append(vals ...Value) {
 }
 
 func (l *List) Grow(n int) {
-	if cap(l.values) >= len(l.values)+n {
-		return
-	}
-	values := make([]Value, len(l.values), len(l.values)+n)
-	copy(values, l.values)
-	l.values = values
+	l.values = slice.Grow(l.values, n)
 }
 
 func (l *List) Iter() Iter {

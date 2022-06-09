@@ -10,3 +10,12 @@ func Fill[T any](slice []T, elem T) {
 		copy(slice[j:], slice[:j])
 	}
 }
+
+func Grow[T any](slice []T, n int) []T {
+	if cap(slice) >= len(slice)+n {
+		return slice
+	}
+	newSlice := make([]T, len(slice), len(slice)+n)
+	copy(newSlice, slice)
+	return newSlice
+}
