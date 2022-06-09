@@ -119,6 +119,7 @@ type inputType = {
     nodeInstanceRole: string,
     vpcId: string,
     connectedSecurityGroups: Record<string, string>,
+    milvusEndpoint: string,
 }
 
 const parseConfig = (): inputType => {
@@ -177,6 +178,8 @@ const parseConfig = (): inputType => {
 
         vpcId: config.require(nameof<inputType>("vpcId")),
         connectedSecurityGroups: config.requireObject(nameof<inputType>("connectedSecurityGroups")),
+
+        milvusEndpoint: config.require(nameof<inputType>("milvusEndpoint")),
     };
 };
 
@@ -367,6 +370,9 @@ const setupResources = async () => {
                 offlineAggregateOutputConfig: pulumi.output({
                     "bucket": offlineAggrOutputBucket,
                 } as Record<string, string>),
+                milvusConfig: pulumi.output({
+                    "endpoint": input.milvusEndpoint,
+                } as Record<string, string>),
             })
         })
     // setup ingress.
@@ -530,6 +536,9 @@ type TierInput = {
     // sagemaker configuration
     vpcId: string,
     connectedSecurityGroups: Record<string, string>,
+
+    // milvus
+    milvusEndpoint: string,
 }
 
 const setupTier = async (args: TierInput, preview?: boolean, destroy?: boolean) => {
@@ -616,6 +625,8 @@ const setupTier = async (args: TierInput, preview?: boolean, destroy?: boolean) 
 
     await stack.setConfig(nameof<inputType>("vpcId"), { value: args.vpcId })
     await stack.setConfig(nameof<inputType>("connectedSecurityGroups"), { value: JSON.stringify(args.connectedSecurityGroups) })
+
+    await stack.setConfig(nameof<inputType>("milvusEndpoint"), { value: args.milvusEndpoint })
 
     console.info("config set");
 

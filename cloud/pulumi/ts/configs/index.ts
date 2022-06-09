@@ -19,6 +19,7 @@ export type inputType = {
     unleashConfig: pulumi.Output<Record<string, string>>,
     otelCollectorConfig: pulumi.Output<Record<string, string>>,
     offlineAggregateOutputConfig: pulumi.Output<Record<string, string>>,
+    milvusConfig: pulumi.Output<Record<string, string>>,
 }
 
 export type outputType = {}
@@ -96,6 +97,13 @@ export const setup = async (input: inputType) => {
         data: input.offlineAggregateOutputConfig,
         metadata: {
             name: "offline-aggregate-output-conf",
+        }
+    }, { provider, deleteBeforeReplace: true });
+
+    const milvusConf = new k8s.core.v1.ConfigMap("milvus-conf", {
+        data: input.milvusConfig,
+        metadata: {
+            name: "milvus-conf",
         }
     }, { provider, deleteBeforeReplace: true });
 

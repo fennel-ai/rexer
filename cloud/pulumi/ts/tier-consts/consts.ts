@@ -187,6 +187,15 @@ export const serviceEnvs = [
                 key: "bucket"
             }
         }
+    },
+    {
+        name: "MILVUS_URL",
+        valueFrom: {
+            configMapKeyRef: {
+                name: "milvus-conf",
+                key: "endpoint"
+            }
+        }
     }
 ];
 

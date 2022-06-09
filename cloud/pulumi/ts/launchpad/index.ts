@@ -12,6 +12,7 @@ import * as offlineAggregateSource from "../offline-aggregate-script-source";
 import * as glueSource from "../glue-script-source";
 import * as kafkatopics from "../kafkatopics";
 import * as telemetry from "../telemetry";
+import * as milvus from "../milvus";
 import { nameof } from "../lib/util";
 
 import * as process from "process";
@@ -357,6 +358,7 @@ const trainingDataOutput = dataplane[nameof<PlaneOutput>("trainingData")].value 
 const offlineAggregateSourceFiles = dataplane[nameof<PlaneOutput>("offlineAggregateSourceFiles")].value as offlineAggregateSource.outputType
 const glueOutput = dataplane[nameof<PlaneOutput>("glue")].value as glueSource.outputType
 const telemetryOutput = dataplane[nameof<PlaneOutput>("telemetry")].value as telemetry.outputType
+const milvusOutput = dataplane[nameof<PlaneOutput>("milvus")].value as milvus.outputType
 
 // Create/update/delete the tier.
 if (tierId !== 0) {
@@ -440,5 +442,6 @@ if (tierId !== 0) {
         connectedSecurityGroups: {
             "eks": eksOutput.clusterSg,
         },
+        milvusEndpoint: milvusOutput.endpoint,
     }, preview, destroy).catch(err => console.log(err))
 }
