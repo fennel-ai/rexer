@@ -16,9 +16,10 @@ export type inputType = {
 
 // should not contain any pulumi.Output<> types.
 export type outputType = {
+    endpoint: string,
 }
 
-export const setup = async (input: inputType): Promise<pulumi.Output<outputType>> => {
+export const setup = async (input: inputType): Promise<outputType> => {
 
     const awsProvider = new aws.Provider("milvus-aws-provider", {
         region: <aws.Region>input.region,
@@ -108,7 +109,7 @@ export const setup = async (input: inputType): Promise<pulumi.Output<outputType>
         }
     }, { provider: k8sProvider, deleteBeforeReplace: true })
 
-    const output = pulumi.output({})
-
-    return output
+    return {
+        endpoint: "http://milvus.milvus:19530"
+    }
 }

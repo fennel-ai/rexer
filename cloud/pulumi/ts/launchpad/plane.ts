@@ -90,6 +90,7 @@ export type PlaneOutput = {
     offlineAggregateSourceFiles: offlineAggregateSources.outputType,
     glue: glueSource.outputType,
     telemetry: telemetry.outputType,
+    milvus: milvus.outputType,
 }
 
 const parseConfig = (): PlaneConf => {
@@ -195,8 +196,11 @@ const setupResources = async () => {
         numNodeGroups: input.cacheConf?.numNodeGroups,
         replicasPerNodeGroup: input.cacheConf?.replicasPerNodeGroup,
     })
+    let milvusOutput: milvus.outputType = {
+        endpoint: ""
+    };
     if (input.milvusConf !== undefined) {
-        const milvusOutput = await milvus.setup({
+        milvusOutput = await milvus.setup({
             region: input.region,
             roleArn: input.roleArn,
             planeId: input.planeId,
@@ -258,6 +262,7 @@ const setupResources = async () => {
         offlineAggregateSourceFiles: offlineAggregateSourceFiles,
         glue: glueOutput,
         telemetry: telemetryOutput,
+        milvus: milvusOutput,
     }
 };
 
