@@ -55,7 +55,7 @@ ca_df.createOrReplaceTempView("ACTIONS")
 sql_str = """
 select groupkey as key, collect_list(key) as item, collect_list(total_score) as score
 from (
-  select cast(groupkey AS string), cast(key as string), cast(total_score as double),
+  select groupkey, key, cast(total_score as double),
   rank() over (partition by groupkey order by total_score desc) as rank
   from (
       select groupkey, key, sum(score) as total_score
@@ -68,12 +68,12 @@ group by groupkey
 """.format(args["LIMIT"])
 
 topk = spark.sql(sql_str)
-zip_topk = topk.withColumn("item_list", arrays_zip("item","score")).select("key","item_list")
+zip_topk = topk.withColumn("value", arrays_zip("item","score")).select("key","value")
 
 folder_name = f'{args["AGGREGATE_NAME"]}-{args["DURATION"]}'
 
 topk_aggregate_path = f's3://{args["OUTPUT_BUCKET"]}/t_{args["TIER_ID"]}/{folder_name}/day={day}/{now_utc.strftime("%H:%M")}/{args["AGGREGATE_TYPE"]}'
-zip_topk.write.mode('overwrite').parquet(topk_aggregate_path)
+zip_topk.write.mode('overwrite').json(topk_aggregate_path)
 
 # Write SUCCESS file to S3
 client = boto3.client('s3')
