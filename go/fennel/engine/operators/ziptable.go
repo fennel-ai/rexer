@@ -2,8 +2,10 @@ package operators
 
 import (
 	"errors"
-	"fennel/lib/value"
 	"fmt"
+
+	"fennel/lib/utils/slice"
+	"fennel/lib/value"
 )
 
 // ZipTable represents a list of values (inputs) and list of dicts (contextual kwargs)
@@ -29,13 +31,8 @@ func (zt *ZipTable) Grow(n int) {
 	if cap(zt.first) >= len(zt.first)+n {
 		return
 	}
-	first := make([]value.Value, len(zt.first), len(zt.first)+n)
-	copy(first, zt.first)
-	zt.first = first
-
-	second := make([]Kwargs, len(zt.first), len(zt.first)+n)
-	copy(second, zt.second)
-	zt.second = second
+	zt.first = slice.Grow(zt.first, n)
+	zt.second = slice.Grow(zt.second, n)
 }
 
 func (zt *ZipTable) Len() int {
