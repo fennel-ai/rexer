@@ -224,14 +224,14 @@ func CreateFromArgs(args *TierArgs) (tier Tier, err error) {
 	}
 	logger = logger.With(zap.Uint32("tier_id", args.TierID.Value()))
 
-	//var milvusClient milvus.Client
-	//if args.MilvusArgs.Url != "" {
-	//	log.Print("Connecting to milvus")
-	//	milvusClient, err = milvus.NewClient(args.MilvusArgs)
-	//	if err != nil {
-	//		return tier, fmt.Errorf("failed to create milvus client: %v", err)
-	//	}
-	//}
+	var milvusClient milvus.Client
+	if args.MilvusArgs.Url != "" {
+		log.Print("Connecting to milvus")
+		milvusClient, err = milvus.NewClient(args.MilvusArgs)
+		if err != nil {
+			return tier, fmt.Errorf("failed to create milvus client: %v", err)
+		}
+	}
 
 	log.Print("Connecting to sagemaker")
 	smclient, err := sagemaker.NewClient(args.SagemakerArgs)
@@ -317,10 +317,10 @@ func CreateFromArgs(args *TierArgs) (tier Tier, err error) {
 		SagemakerClient:  smclient,
 		S3Client:         s3client,
 		GlueClient:       glueclient,
-		// MilvusClient:     milvusClient,
-		ModelStore:    modelStore,
-		Args:          *args,
-		AggregateDefs: new(sync.Map),
+		MilvusClient:     milvusClient,
+		ModelStore:       modelStore,
+		Args:             *args,
+		AggregateDefs:    new(sync.Map),
 	}, nil
 }
 
