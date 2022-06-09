@@ -177,9 +177,6 @@ func (o Options) Equals(other Options) bool {
 	if o.Normalize != other.Normalize {
 		return false
 	}
-	if o.CronSchedule != other.CronSchedule {
-		return false
-	}
 	if o.Dim != other.Dim {
 		return false
 	}
