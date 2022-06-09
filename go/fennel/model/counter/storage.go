@@ -527,6 +527,7 @@ func Update(ctx context.Context, tier tier.Tier, aggId ftypes.AggId, buckets []c
 	}
 
 	// We fetch for only 1 aggregate, hence its a 2d array of 1 element
+	defer arena.Values.Free(cur[0])
 	for i := range cur[0] {
 		values[i], err = h.Merge(cur[0][i], values[i])
 		if err != nil {
