@@ -295,7 +295,7 @@ func Update(ctx context.Context, tier tier.Tier, consumer kafka.FConsumer, agg a
 	// The number of actions and profiles need to be tuned.
 	// They should not be too many such that operations like op.model.predict cant handle them.
 	if agg.Source == aggregate.SOURCE_PROFILE {
-		profiles, err := profile.ReadBatch(ctx, consumer, 500, time.Second*10)
+		profiles, err := profile.ReadBatch(ctx, consumer, 300, time.Second*10)
 
 		if err != nil {
 			return err
