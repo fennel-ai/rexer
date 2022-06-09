@@ -177,7 +177,7 @@ func fetchOfflineAggregates(tier tier.Tier, aggMap map[ftypes.AggName]aggregate.
 	offlinePtr := make([]int, 0, len(batch))
 	namespaces := make([]string, 0, len(batch))
 	identifier := make([]string, 0, len(batch))
-	offlineKeys := make([]value.String, 0, len(batch))
+	offlineKeys := make([]value.Value, 0, len(batch))
 	numSlotsLeft := len(batch)
 
 	// Fetch offline aggregate values
@@ -194,12 +194,7 @@ func fetchOfflineAggregates(tier tier.Tier, aggMap map[ftypes.AggName]aggregate.
 		aggPhaserIdentifier := fmt.Sprintf("%s-%d", agg.Name, duration)
 		namespaces = append(namespaces, OFFLINE_AGG_NAMESPACE)
 		identifier = append(identifier, aggPhaserIdentifier)
-		// Convert all keys to value.String
-		if s, ok := req.Key.(value.String); ok {
-			offlineKeys = append(offlineKeys, s)
-		} else {
-			offlineKeys = append(offlineKeys, value.String(req.Key.String()))
-		}
+		offlineKeys = append(offlineKeys, req.Key)
 	}
 
 	if len(offlinePtr) > 0 {

@@ -29,38 +29,6 @@ var BATCH_SIZE = 1000
 var REDIS_BULK_UPLOAD_FILE_SUFFIX = "-redis-bulk-upload.txt"
 var POLL_FREQUENCY_SEC = 30
 
-type PhaserSchema int
-
-const (
-	ITEM_SCORE_LIST PhaserSchema = iota
-	ITEM_LIST
-	STRING
-)
-
-func FromPhaserSchema(schema string) (PhaserSchema, error) {
-	switch schema {
-	case "ITEM_SCORE_LIST":
-		return ITEM_SCORE_LIST, nil
-	case "ITEM_LIST":
-		return ITEM_LIST, nil
-	case "STRING":
-		return STRING, nil
-	}
-	return -1, fmt.Errorf("Unknown Phaser schema, currently we only support ITEM_SCORE_LIST,ITEM_LIST,  STRING")
-}
-
-func (schema PhaserSchema) String() (string, error) {
-	switch schema {
-	case ITEM_SCORE_LIST:
-		return "ITEM_SCORE_LIST", nil
-	case ITEM_LIST:
-		return "ITEM_LIST", nil
-	case STRING:
-		return "STRING", nil
-	}
-	return "", fmt.Errorf("Unknown Phaser schema, currently we only support ITEM_SCORE_LIST,ITEM_LIST,  STRING")
-}
-
 //================================================
 // Public API for Phaser
 //================================================
@@ -75,16 +43,15 @@ type Phaser struct {
 	S3Bucket string
 	// Prefix withing the s3 bucket which is polled by Phaser.
 	S3Prefix string
-	// Schema of the data stored.
-	Schema        PhaserSchema
+
 	UpdateVersion uint64
 	TTL           time.Duration
 }
 
-func NewPhaser(namespace, identifier, s3Bucket, s3Prefix string, ttl time.Duration, schema PhaserSchema, tr tier.Tier) error {
+func NewPhaser(namespace, identifier, s3Bucket, s3Prefix string, ttl time.Duration, tr tier.Tier) error {
 	_, err := GetLatestUpdatedVersion(context.Background(), tr, namespace, identifier)
 	if err != nil && err == PhaserNotFound {
-		return InitializePhaser(context.Background(), tr, s3Bucket, s3Prefix, namespace, identifier, ttl, schema)
+		return InitializePhaser(context.Background(), tr, s3Bucket, s3Prefix, namespace, identifier, ttl)
 	} else if err != nil {
 		return err
 	} else {
@@ -92,11 +59,11 @@ func NewPhaser(namespace, identifier, s3Bucket, s3Prefix string, ttl time.Durati
 	}
 }
 
-func Get(namespace, identifier string, key value.String) (interface{}, error) {
-	return BatchGet(tier.Tier{}, []string{namespace}, []string{identifier}, []value.String{key})
+func Get(namespace, identifier string, key value.Value) (interface{}, error) {
+	return BatchGet(tier.Tier{}, []string{namespace}, []string{identifier}, []value.Value{key})
 }
 
-func BatchGet(tr tier.Tier, namespaces, identifiers []string, keys []value.String) ([]value.Value, error) {
+func BatchGet(tr tier.Tier, namespaces, identifiers []string, keys []value.Value) ([]value.Value, error) {
 	phasers, err := RetrieveBatch(context.Background(), tr, namespaces, identifiers)
 	if err != nil {
 		return nil, err
@@ -105,7 +72,7 @@ func BatchGet(tr tier.Tier, namespaces, identifiers []string, keys []value.Strin
 	// construct keys
 	keysToGet := make([]string, 0, len(namespaces))
 	for i := 0; i < len(namespaces); i++ {
-		key := phasers[i].getRedisKey(tr.ID, keys[i])
+		key := phasers[i].getRedisKey(tr.ID, keys[i].String())
 		keysToGet = append(keysToGet, key)
 	}
 
@@ -153,25 +120,6 @@ func (p Phaser) GetId() string {
 //================================================
 // Private helpers/interface
 //================================================
-
-// Different formats supported by Phaser include
-// 1. Key -> List of ( item[string], score[double] )
-// 2. Key -> List of item[string]
-// 3. Key -> Item[string]
-type ItemScore struct {
-	ItemName string  `json:"item"`
-	Score    float64 `json:"score"`
-}
-
-type ItemScoreList struct {
-	Key           value.Value `json:"key"`
-	ItemScoreList value.Value `json:"item_list"`
-}
-
-type ItemList struct {
-	Key      string   `json:"key"`
-	ItemList []string `json:"item_list"`
-}
 
 func bulkUploadToRedis(tr tier.Tier, file string, numRows int, tempDir string) error {
 	redisAddress := tr.Args.RedisServer[:strings.IndexByte(tr.Args.RedisServer, ':')]
@@ -229,13 +177,13 @@ func bulkUploadToRedis(tr tier.Tier, file string, numRows int, tempDir string) e
 	return nil
 }
 
-func (p Phaser) getRedisKey(tierId ftypes.RealmID, key value.String) string {
-	encodedKey := base64.StdEncoding.EncodeToString(value.ToJSON(key))
+func (p Phaser) getRedisKey(tierId ftypes.RealmID, key string) string {
+	encodedKey := base64.StdEncoding.EncodeToString([]byte(key))
 	return fmt.Sprintf("%d:%s:%s:%d:%s", int(tierId), p.Namespace, p.Identifier, p.UpdateVersion, encodedKey)
 }
 
 func (p Phaser) getRedisCommand(tierId ftypes.RealmID, key, encodedString string) string {
-	return "SET " + p.getRedisKey(tierId, value.String(key)) + " " + encodedString + " EX " + fmt.Sprint(int(p.TTL.Seconds())) + "\n"
+	return "SET " + p.getRedisKey(tierId, key) + " " + encodedString + " EX " + fmt.Sprint(int(p.TTL.Seconds())) + "\n"
 }
 
 func (p Phaser) createRedisFile(localFileReader, redisWriter *os.File, tierId ftypes.RealmID) (int, error) {
@@ -248,7 +196,7 @@ func (p Phaser) createRedisFile(localFileReader, redisWriter *os.File, tierId ft
 			return 0, err
 		}
 		key, err := value.ParseJSON(vdata, vtype)
-		vdata, vtype, _, err = jsonparser.Get(data, "item_list")
+		vdata, vtype, _, err = jsonparser.Get(data, "value")
 		if err != nil {
 			return 0, err
 		}
@@ -278,7 +226,6 @@ func (p Phaser) prepareFileForBulkUpload(tr tier.Tier, file string, tempDir stri
 		return 0, err
 	}
 	defer redisWriter.Close()
-
 	return p.createRedisFile(localFileReader, redisWriter, tr.ID)
 }
 

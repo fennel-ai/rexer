@@ -1,12 +1,13 @@
-//go:build phaser
+//go:build integration
 
 package phaser
 
 import (
 	"context"
+	"fennel/lib/value"
 	"io/ioutil"
 
-	"fennel/lib/value"
+	"fennel/s3"
 	"fennel/test"
 	"fmt"
 	"os"
@@ -59,11 +60,12 @@ func TestPrepareAndBulkUpload(t *testing.T) {
 	assert.NoError(t, err)
 	defer os.RemoveAll(tempDir)
 
-	err = tier.S3Client.BatchDiskDownload([]string{"integration-tests/item.parquet"}, S3Bucket, tempDir)
+	tier.S3Client = s3.NewClient(s3.S3Args{Region: "us-west-2"})
+	err = tier.S3Client.BatchDiskDownload([]string{"integration-tests/item.json"}, S3Bucket, tempDir)
 	assert.NoError(t, err)
 
-	files := []string{"item.parquet"}
-	p := Phaser{"testNamespace2", "testIdentifier2", "testBucket", "testPrefix", STRING, 1, time.Hour}
+	files := []string{"item.json"}
+	p := Phaser{"testNamespace2", "testIdentifier2", "testBucket", "testPrefix", 1, time.Hour}
 	err = p.prepareAndBulkUpload(tier, files, tempDir)
 	assert.NoError(t, err)
 
@@ -83,7 +85,7 @@ func TestPollS3Bucket(t *testing.T) {
 	defer test.Teardown(tier)
 	ctx := context.Background()
 
-	err = NewPhaser("testNamespace", "testIdentifier", "phaser-test-data", "integration-tests", time.Minute*time.Duration(5), STRING, tier)
+	err = NewPhaser("testNamespace", "testIdentifier", "phaser-test-data", "integration-tests", time.Minute*time.Duration(5), tier)
 	assert.NoError(t, err)
 
 	phasers, err := RetrieveAll(ctx, tier)
@@ -94,7 +96,7 @@ func TestPollS3Bucket(t *testing.T) {
 	POLL_FREQUENCY_SEC = 5
 	time.Sleep(10 * time.Second)
 
-	keys := []value.String{value.String("india"), value.String("russia"), value.String("usa")}
+	keys := []value.Value{value.String("india"), value.String("russia"), value.String("usa")}
 	namespaces := []string{"testNamespace", "testNamespace", "testNamespace"}
 	identifiers := []string{"testIdentifier", "testIdentifier", "testIdentifier"}
 

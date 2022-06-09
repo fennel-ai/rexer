@@ -33,7 +33,7 @@ func TestCreateRedisFileString(t *testing.T) {
 
 	assert.NoError(t, err)
 
-	p := Phaser{"testNamespace", "testIdentifier", "testBucket", "testPrefix", ITEM_SCORE_LIST, 1, time.Hour}
+	p := Phaser{"testNamespace", "testIdentifier", "testBucket", "testPrefix", 1, time.Hour}
 	numRows, err := p.createRedisFile(localFileReader, cmdWriter, 123)
 	assert.NoError(t, err)
 	assert.Equal(t, 3, numRows)
@@ -46,9 +46,9 @@ func TestCreateRedisFileString(t *testing.T) {
 
 	scanner := bufio.NewScanner(file)
 	// optionally, resize scanner's capacity for lines over 64K, see next example
-	expected := []string{"SET 123:testNamespace:testIdentifier:1:IiJpbmRpYSIi W3siaXRlbSI6Im1vaGl0Iiwic2NvcmUiOjAuNTc3NTkyNTU3NjU4OTAxOH0seyJpdGVtIjoiYWJoYXkiLCJzY29yZSI6MC45NDc2MDQ3ODY5ODgwOTI1fSx7Iml0ZW0iOiJhZGl0eWEiLCJzY29yZSI6MC4zNjY2NDIyMjYxNzk0NzgxN30seyJpdGVtIjoiYXJheWEiLCJzY29yZSI6MC44MDc4Njg4MTc4MzcxODgyfSx7Iml0ZW0iOiJzaHdldGhhIiwic2NvcmUiOjAuNzEzNTE0MzQzMzQ1MjQ2MX0seyJpdGVtIjoiYXJqdW4iLCJzY29yZSI6MC44MDYyNTAzNzEyMDI1NzI2fSx7Iml0ZW0iOiJuaWtoaWwiLCJzY29yZSI6MC44MTMzMzA0ODAzODM3NjY3fSx7Iml0ZW0iOiJyYWh1bCIsInNjb3JlIjowLjUyNDcyODA5NjI5Mzg2NX1d EX 3600",
-		"SET 123:testNamespace:testIdentifier:1:IiJydXNzaWEiIg== W3siaXRlbSI6Im9sZWciLCJzY29yZSI6MC4xNzA5NDk3MTM3OTU1NTY4fSx7Iml0ZW0iOiJ2b2xvZHlteXIiLCJzY29yZSI6MC44MDUxMTQzOTU4MDA1NDU5fSx7Iml0ZW0iOiJuYXRhc2hhIiwic2NvcmUiOjAuNzE5NTMyNTU2NjMwNjA1M31d EX 3600",
-		"SET 123:testNamespace:testIdentifier:1:IiJ1c2EiIg== W3siaXRlbSI6ImJldHR5Iiwic2NvcmUiOjAuMjA5MzcwNDk3NzU3N30seyJpdGVtIjoidGltIiwic2NvcmUiOjAuMzEzMzUyOTIzMTExNzU0NTZ9LHsiaXRlbSI6ImNsYWlyZSIsInNjb3JlIjowLjEwODE0OTE0NjQ2MTc2NjU0fSx7Iml0ZW0iOiJqb2huIiwic2NvcmUiOjAuMzM2MjIzMjk4MDcwMTE3Mn0seyJpdGVtIjoicGhpbCIsInNjb3JlIjowLjQ3NjQ5NDI4NzM4MTcwODk2fV0= EX 3600"}
+	expected := []string{"SET 123:testNamespace:testIdentifier:1:ImluZGlhIg== W3siaXRlbSI6Im1vaGl0Iiwic2NvcmUiOjAuNTc3NTkyNTU3NjU4OTAxOH0seyJpdGVtIjoiYWJoYXkiLCJzY29yZSI6MC45NDc2MDQ3ODY5ODgwOTI1fSx7Iml0ZW0iOiJhZGl0eWEiLCJzY29yZSI6MC4zNjY2NDIyMjYxNzk0NzgxN30seyJpdGVtIjoiYXJheWEiLCJzY29yZSI6MC44MDc4Njg4MTc4MzcxODgyfSx7Iml0ZW0iOiJzaHdldGhhIiwic2NvcmUiOjAuNzEzNTE0MzQzMzQ1MjQ2MX0seyJpdGVtIjoiYXJqdW4iLCJzY29yZSI6MC44MDYyNTAzNzEyMDI1NzI2fSx7Iml0ZW0iOiJuaWtoaWwiLCJzY29yZSI6MC44MTMzMzA0ODAzODM3NjY3fSx7Iml0ZW0iOiJyYWh1bCIsInNjb3JlIjowLjUyNDcyODA5NjI5Mzg2NX1d EX 3600",
+		"SET 123:testNamespace:testIdentifier:1:InJ1c3NpYSI= W3siaXRlbSI6Im9sZWciLCJzY29yZSI6MC4xNzA5NDk3MTM3OTU1NTY4fSx7Iml0ZW0iOiJ2b2xvZHlteXIiLCJzY29yZSI6MC44MDUxMTQzOTU4MDA1NDU5fSx7Iml0ZW0iOiJuYXRhc2hhIiwic2NvcmUiOjAuNzE5NTMyNTU2NjMwNjA1M31d EX 3600",
+		"SET 123:testNamespace:testIdentifier:1:InVzYSI= W3siaXRlbSI6ImJldHR5Iiwic2NvcmUiOjAuMjA5MzcwNDk3NzU3N30seyJpdGVtIjoidGltIiwic2NvcmUiOjAuMzEzMzUyOTIzMTExNzU0NTZ9LHsiaXRlbSI6ImNsYWlyZSIsInNjb3JlIjowLjEwODE0OTE0NjQ2MTc2NjU0fSx7Iml0ZW0iOiJqb2huIiwic2NvcmUiOjAuMzM2MjIzMjk4MDcwMTE3Mn0seyJpdGVtIjoicGhpbCIsInNjb3JlIjowLjQ3NjQ5NDI4NzM4MTcwODk2fV0= EX 3600"}
 	i := 0
 	for scanner.Scan() {
 		assert.Equal(t, expected[i], scanner.Text())
@@ -73,7 +73,7 @@ func TestCreateRedisFileNumer(t *testing.T) {
 
 	assert.NoError(t, err)
 
-	p := Phaser{"testNamespace", "testIdentifier", "testBucket", "testPrefix", ITEM_SCORE_LIST, 1, time.Hour}
+	p := Phaser{"testNamespace", "testIdentifier", "testBucket", "testPrefix", 1, time.Hour}
 	numRows, err := p.createRedisFile(localFileReader, cmdWriter, 123)
 	assert.NoError(t, err)
 	assert.Equal(t, 3, numRows)
@@ -86,9 +86,9 @@ func TestCreateRedisFileNumer(t *testing.T) {
 
 	scanner := bufio.NewScanner(file)
 	// optionally, resize scanner's capacity for lines over 64K, see next example
-	expected := []string{"SET 123:testNamespace:testIdentifier:1:IiJpbmRpYSIi WzEyLDIzLDQzLDEyLDQzLDM0LDM0LDNd EX 3600",
-		"SET 123:testNamespace:testIdentifier:1:IiJydXNzaWEiIg== WzQzLDM0NCwzNF0= EX 3600",
-		"SET 123:testNamespace:testIdentifier:1:IiJ1c2EiIg== WzM0NCwzNCw2NCw1MywzNV0= EX 3600"}
+	expected := []string{"SET 123:testNamespace:testIdentifier:1:ImluZGlhIg== WzEyLDIzLDQzLDEyLDQzLDM0LDM0LDNd EX 3600",
+		"SET 123:testNamespace:testIdentifier:1:InJ1c3NpYSI= WzQzLDM0NCwzNF0= EX 3600",
+		"SET 123:testNamespace:testIdentifier:1:InVzYSI= WzM0NCwzNCw2NCw1MywzNV0= EX 3600"}
 	i := 0
 	for scanner.Scan() {
 		assert.Equal(t, expected[i], scanner.Text())

@@ -58,7 +58,7 @@ func Store(ctx context.Context, tier tier.Tier, agg aggregate.Aggregate) error {
 						return err
 					}
 					ttl *= time.Duration(OFFLINE_AGG_TTL_MULTIPLIER)
-					err = phaser.NewPhaser(OFFLINE_AGG_NAMESPACE, aggPhaserIdentifier, tier.Args.OfflineAggBucket, prefix, ttl, phaser.ITEM_SCORE_LIST, tier)
+					err = phaser.NewPhaser(OFFLINE_AGG_NAMESPACE, aggPhaserIdentifier, tier.Args.OfflineAggBucket, prefix, ttl, tier)
 					if err != nil {
 						return err
 					}
