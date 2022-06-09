@@ -20,7 +20,7 @@ func (g grouper) New(
 	return grouper{}, nil
 }
 
-func (g grouper) Apply(_ context.Context, kwargs value.Dict, in operators.InputIter, out *value.List) error {
+func (g grouper) Apply(_ context.Context, _ operators.Kwargs, in operators.InputIter, out *value.List) error {
 	groups := make([]string, 0)
 	bys := make([]value.Value, 0)
 	elements := make(map[string][]value.Value)

@@ -38,10 +38,10 @@ func (f featureLog) New(
 	return featureLog{tr}, nil
 }
 
-func (f featureLog) Apply(ctx context.Context, static value.Dict, in operators.InputIter, out *value.List) error {
-	workflow := string(get(static, "workflow").(value.String))
-	modelName := ftypes.ModelName(get(static, "model_name").(value.String))
-	modelVersion := ftypes.ModelVersion(get(static, "model_version").(value.String))
+func (f featureLog) Apply(ctx context.Context, static operators.Kwargs, in operators.InputIter, out *value.List) error {
+	workflow := string(static.GetUnsafe("workflow").(value.String))
+	modelName := ftypes.ModelName(static.GetUnsafe("model_name").(value.String))
+	modelVersion := ftypes.ModelVersion(static.GetUnsafe("model_version").(value.String))
 	featurelog_entries := 0
 	for in.HasMore() {
 		_, kwargs, err := in.Next()

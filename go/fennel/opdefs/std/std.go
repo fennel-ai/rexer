@@ -35,7 +35,7 @@ func (f FilterOperator) Signature() *operators.Signature {
 		ParamWithHelp("where", value.Types.Bool, false, false, value.Bool(false), "ContextKwargs: Expr that evaluates to a boolean.  If true, the row is included in the output.")
 }
 
-func (f FilterOperator) Apply(_ context.Context, _ value.Dict, in operators.InputIter, out *value.List) error {
+func (f FilterOperator) Apply(_ context.Context, _ operators.Kwargs, in operators.InputIter, out *value.List) error {
 	for in.HasMore() {
 		heads, contextKwargs, err := in.Next()
 		if err != nil {
@@ -64,7 +64,7 @@ func (f TakeOperator) Signature() *operators.Signature {
 		Param("limit", value.Types.Int, true, false, value.Nil)
 }
 
-func (f TakeOperator) Apply(_ context.Context, staticKwargs value.Dict, in operators.InputIter, out *value.List) error {
+func (f TakeOperator) Apply(_ context.Context, staticKwargs operators.Kwargs, in operators.InputIter, out *value.List) error {
 	v, _ := staticKwargs.Get("limit")
 	limit := v.(value.Int)
 	taken := 0

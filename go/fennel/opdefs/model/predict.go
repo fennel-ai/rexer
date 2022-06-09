@@ -25,10 +25,10 @@ func (p predictOperator) New(args value.Dict, bootargs map[string]interface{}) (
 	return predictOperator{tr}, nil
 }
 
-func (p predictOperator) Apply(ctx context.Context, staticKwargs value.Dict, in operators.InputIter, outs *value.List) error {
+func (p predictOperator) Apply(ctx context.Context, staticKwargs operators.Kwargs, in operators.InputIter, outs *value.List) error {
 	var rows []value.Value
 	var inputs []value.List
-	modelName := string(get(staticKwargs, "model").(value.String))
+	modelName := string(staticKwargs.GetUnsafe("model").(value.String))
 	_, isPretrainedModel := modelstore.SupportedPretrainedModels[modelName]
 	for in.HasMore() {
 		heads, contextKwargs, err := in.Next()
@@ -56,7 +56,7 @@ func (p predictOperator) Apply(ctx context.Context, staticKwargs value.Dict, in 
 	if err != nil {
 		return err
 	}
-	field := string(get(staticKwargs, "field").(value.String))
+	field := string(staticKwargs.GetUnsafe("field").(value.String))
 	outs.Grow(len(rows))
 	for i, row := range rows {
 		var out value.Value

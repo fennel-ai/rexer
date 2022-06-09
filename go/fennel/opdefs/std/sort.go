@@ -25,7 +25,7 @@ func (op SortOperator) Signature() *operators.Signature {
 		ParamWithHelp("reverse", value.Types.Bool, true, true, value.Bool(false), "StaticKwargs: Set true to get descending sort order")
 }
 
-func (op SortOperator) Apply(_ context.Context, staticKwargs value.Dict, in operators.InputIter, out *value.List) error {
+func (op SortOperator) Apply(_ context.Context, staticKwargs operators.Kwargs, in operators.InputIter, out *value.List) error {
 	type sortableRow struct {
 		key  float64
 		data value.Value

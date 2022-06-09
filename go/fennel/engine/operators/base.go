@@ -82,7 +82,7 @@ func (s *Signature) Input(types []value.Type) *Signature {
 
 type Operator interface {
 	New(args value.Dict, bootargs map[string]interface{}) (Operator, error)
-	Apply(ctx context.Context, kwargs value.Dict, in InputIter, out *value.List) error
+	Apply(ctx context.Context, kwargs Kwargs, in InputIter, out *value.List) error
 	Signature() *Signature
 }
 
@@ -135,42 +135,8 @@ func GetOperators() map[string]map[string]map[string]param {
 	return opdata
 }
 
-func TypeCheckStaticKwargs(op Operator, staticKwargs value.Dict) error {
-	sig := op.Signature()
-	if len(sig.StaticKwargs) != staticKwargs.Len() {
-		return fmt.Errorf("[%s.%s] incorrect number of static kwargs passed - expected: %d but got: %d",
-			sig.Module, sig.Name, len(sig.StaticKwargs), staticKwargs.Len())
-	}
-	for _, p := range sig.StaticKwargs {
-		k := p.Name
-		v, ok := staticKwargs.Get(k)
-		if !ok {
-			return fmt.Errorf("operator '%s' expects kwarg '%s' but not found", op, k)
-		}
-		if err := p.Type.Validate(v); err != nil {
-			return fmt.Errorf("type of kwarg '%s' is not of type '%s': %s", k, p.Type, err)
-		}
-	}
-	return nil
-}
-
-func Typecheck(sig *Signature, inputVal []value.Value, contextKwargs Kwargs) error {
-	// let's look at contextual kwargs first
-	if len(sig.ContextKwargs) != contextKwargs.Len() {
-		return fmt.Errorf("[%s.%s] incorrect number of contextual kwargs passed - expected: %d but got: %d",
-			sig.Module, sig.Name, len(sig.ContextKwargs), contextKwargs.Len())
-	}
-	for _, p := range sig.ContextKwargs {
-		k := p.Name
-		v, ok := contextKwargs.Get(k)
-		if !ok {
-			return fmt.Errorf("operator '%s.%s' expects kwarg '%s' but not found", sig.Module, sig.Name, k)
-		}
-		if err := p.Type.Validate(v); err != nil {
-			return fmt.Errorf("operator '%s.%s' expects type of kwarg '%s' to be of type '%s': %s", sig.Module, sig.Name, k, p.Type, err)
-		}
-	}
-	// next let's validate InputTypes
+func ValidateInputs(sig *Signature, inputVal []value.Value) error {
+	// Validate InputTypes
 	if len(sig.InputTypes) > 0 {
 		if len(inputVal) != len(sig.InputTypes) {
 			return fmt.Errorf("operator '%s.%s' expects '%d' inputs but received '%d' inputs", sig.Module, sig.Name, len(sig.InputTypes), len(inputVal))

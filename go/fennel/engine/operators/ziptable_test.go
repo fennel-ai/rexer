@@ -20,7 +20,7 @@ func (top testOpZip) New(
 	return nil, nil
 }
 
-func (top testOpZip) Apply(_ context.Context, kwargs value.Dict, in InputIter, out *value.List) error {
+func (top testOpZip) Apply(_ context.Context, kwargs Kwargs, in InputIter, out *value.List) error {
 	return nil
 }
 
@@ -41,13 +41,13 @@ func TestNewZipTable(t *testing.T) {
 		"a": value.Int(1),
 		"b": value.String("hi"),
 	})
-	context1, err := NewKwargs(op.Signature(), []value.Value{value.Int(5), value.String("bye")}, false)
+	context1, err := NewKwargs(op.Signature(), []value.Value{value.Double(3.0), value.String("bye")}, false)
 	assert.NoError(t, err)
 	row2 := value.NewDict(map[string]value.Value{
 		"a": value.Int(9),
 		"b": value.String("third"),
 	})
-	context2, err := NewKwargs(op.Signature(), []value.Value{value.Int(122), value.String("fourth")}, false)
+	context2, err := NewKwargs(op.Signature(), []value.Value{value.Double(122.0), value.String("fourth")}, false)
 	assert.NoError(t, err)
 	err = zt.Append([]value.Value{row1}, context1)
 	assert.NoError(t, err)
@@ -89,14 +89,6 @@ func TestIterTypeCheck(t *testing.T) {
 			},
 			[]bool{true, true},
 			"basic_input_mistyping_2",
-		},
-		{value.NewList(value.String("hello"), value.String("again")),
-			[]Kwargs{
-				{sig: op.Signature(), static: false, vals: []value.Value{value.Int(3), value.Nil}},
-				{sig: op.Signature(), static: false, vals: []value.Value{value.Double(12.1), value.Int(2)}},
-			},
-			[]bool{true, false},
-			"basic_kwarg_mistyping",
 		},
 	}
 

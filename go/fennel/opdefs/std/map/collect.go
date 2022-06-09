@@ -21,7 +21,7 @@ func (m collect) New(
 	return collect{}, nil
 }
 
-func (m collect) Apply(_ context.Context, staticKwargs value.Dict, in operators.InputIter, out *value.List) error {
+func (m collect) Apply(_ context.Context, _ operators.Kwargs, in operators.InputIter, out *value.List) error {
 	for in.HasMore() {
 		heads, kwargs, err := in.Next()
 		row := heads[0].(value.Dict)

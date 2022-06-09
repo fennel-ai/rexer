@@ -18,7 +18,7 @@ func (m maxOp) New(args value.Dict, bootargs map[string]interface{}) (operators.
 	return maxOp{}, nil
 }
 
-func (m maxOp) Apply(_ context.Context, _ value.Dict, in operators.InputIter, out *value.List) error {
+func (m maxOp) Apply(_ context.Context, _ operators.Kwargs, in operators.InputIter, out *value.List) error {
 	for in.HasMore() {
 		heads, kwargs, err := in.Next()
 		if err != nil {

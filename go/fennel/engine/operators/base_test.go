@@ -21,7 +21,7 @@ func (top testOp) New(
 	return top, nil
 }
 
-func (top testOp) Apply(_ context.Context, kwargs value.Dict, in InputIter, out *value.List) error {
+func (top testOp) Apply(_ context.Context, kwargs Kwargs, in InputIter, out *value.List) error {
 	return nil
 }
 
@@ -43,7 +43,7 @@ func (top testOp2) New(
 	return top, nil
 }
 
-func (top testOp2) Apply(_ context.Context, _ value.Dict, _ InputIter, _ *value.List) error {
+func (top testOp2) Apply(_ context.Context, _ Kwargs, _ InputIter, _ *value.List) error {
 	return nil
 }
 
@@ -62,7 +62,7 @@ func (top testOp3) New(
 	return top, nil
 }
 
-func (top testOp3) Apply(_ context.Context, _ value.Dict, _ InputIter, _ *value.List) error {
+func (top testOp3) Apply(_ context.Context, _ Kwargs, _ InputIter, _ *value.List) error {
 	return nil
 }
 
@@ -70,37 +70,7 @@ func (top testOp3) Signature() *Signature {
 	return NewSignature("anothertest", "anotherop").Input(nil)
 }
 
-func TestTypeCheckStaticKwargs(t *testing.T) {
-	t.Parallel()
-	op := testOp{}
-	scenarios := []struct {
-		given   value.Dict
-		matches bool
-	}{
-		{
-			value.NewDict(map[string]value.Value{"p1": value.Bool(true), "p3": value.String("abc")}),
-			true,
-		},
-		{
-			value.NewDict(map[string]value.Value{"p1": value.Bool(false), "p2": value.Double(4.0)}),
-			false,
-		},
-		{
-			value.Dict{},
-			false,
-		},
-	}
-	for _, scenario := range scenarios {
-		err := TypeCheckStaticKwargs(op, scenario.given)
-		if scenario.matches {
-			assert.NoError(t, err)
-		} else {
-			assert.Error(t, err)
-		}
-	}
-}
-
-func TestTypeCheck(t *testing.T) {
+func TestInputVaidation(t *testing.T) {
 	t.Parallel()
 	op1 := testOp{}  // expects exactly one input of string
 	op2 := testOp2{} // expects 3 inputs: string, int, anything
@@ -109,84 +79,56 @@ func TestTypeCheck(t *testing.T) {
 	scenarios := []struct {
 		op      Operator
 		input   []value.Value
-		context Kwargs
 		matches bool
 	}{
 		{
 			op1,
 			[]value.Value{value.String("xyz")},
-			Kwargs{sig: op1.Signature(), static: false, vals: []value.Value{value.Double(9.0)}},
 			true,
 		},
 		{
 			op1,
 			[]value.Value{value.Int(2)},
-			Kwargs{sig: op1.Signature(), static: false, vals: []value.Value{value.Double(9.0)}},
-			false,
-		},
-		{
-			op1,
-			[]value.Value{value.Int(4)},
-			Kwargs{sig: op1.Signature(), static: false, vals: []value.Value{value.Double(9.0)}},
-			false,
-		},
-		{
-			op1,
-			[]value.Value{value.String("pqrs")},
-			Kwargs{sig: op1.Signature(), static: false, vals: []value.Value{value.Int(3)}},
-			false,
-		},
-		{
-			op1,
-			[]value.Value{value.String("ijk")},
-			Kwargs{sig: op1.Signature(), static: false, vals: []value.Value{}},
 			false,
 		},
 		{
 			op2,
 			[]value.Value{value.String("ijk")},
-			Kwargs{sig: op1.Signature(), static: false, vals: []value.Value{}},
 			false,
 		},
 		{
 			op2,
 			[]value.Value{},
-			Kwargs{sig: op1.Signature(), static: false, vals: []value.Value{}},
 			false,
 		},
 		{
 			op2,
 			[]value.Value{value.String("jhi"), value.Int(4), value.Int(5)},
-			Kwargs{sig: op1.Signature(), static: false, vals: []value.Value{}},
 			true,
 		},
 		{
 			op2,
 			[]value.Value{value.String("jhi"), value.Int(4), value.Nil},
-			Kwargs{sig: op1.Signature(), static: false, vals: []value.Value{}},
 			true,
 		},
 		{
 			op3,
 			[]value.Value{value.String("jhi"), value.Int(4), value.Nil},
-			Kwargs{sig: op1.Signature(), static: false, vals: []value.Value{}},
 			true,
 		},
 		{
 			op3,
 			[]value.Value{value.String("jhi")},
-			Kwargs{sig: op1.Signature(), static: false, vals: []value.Value{}},
 			true,
 		},
 		{
 			op3,
 			[]value.Value{value.NewDict(map[string]value.Value{"jhi": value.Int(3)})},
-			Kwargs{sig: op1.Signature(), static: false, vals: []value.Value{}},
 			true,
 		},
 	}
 	for _, scenario := range scenarios {
-		err := Typecheck(scenario.op.Signature(), scenario.input, scenario.context)
+		err := ValidateInputs(scenario.op.Signature(), scenario.input)
 		if scenario.matches {
 			assert.NoError(t, err)
 		} else {

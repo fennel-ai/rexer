@@ -7,6 +7,49 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+func TestTypeCheckKwargs(t *testing.T) {
+	t.Parallel()
+	op := testOp{}
+	scenarios := []struct {
+		given   []value.Value
+		static  bool
+		matches bool
+	}{
+		{
+			[]value.Value{value.Bool(true), value.String("abc")},
+			true,
+			true,
+		},
+		{
+			[]value.Value{value.Bool(false), value.Double(4.0)},
+			true,
+			true,
+		},
+		{
+			[]value.Value{value.Int(1)},
+			true,
+			false,
+		},
+		{
+			[]value.Value{},
+			false,
+			false,
+		},
+		{
+			[]value.Value{value.Double(2.0)},
+			false,
+			true,
+		},
+	}
+	for _, scenario := range scenarios {
+		_, err := NewKwargs(op.Signature(), scenario.given, scenario.static)
+		if scenario.matches {
+			assert.NoError(t, err)
+		} else {
+			assert.Error(t, err)
+		}
+	}
+}
 func TestKwargs_Get(t *testing.T) {
 	op := testOp{}
 	scenarios := []struct {
@@ -21,16 +64,16 @@ func TestKwargs_Get(t *testing.T) {
 		{
 			sig:    op.Signature(),
 			static: true,
-			vals:   []value.Value{value.Int(1), value.String("hello")},
+			vals:   []value.Value{value.Bool(true), value.String("hello")},
 			key:    "p1",
-			val:    value.Int(1),
+			val:    value.Bool(true),
 			ok:     true,
 			err:    false,
 		},
 		{
 			sig:    op.Signature(),
 			static: true,
-			vals:   []value.Value{value.Int(1), value.String("hello")},
+			vals:   []value.Value{value.Bool(false), value.String("hello")},
 			key:    "p3",
 			val:    value.String("hello"),
 			ok:     true,
@@ -39,13 +82,13 @@ func TestKwargs_Get(t *testing.T) {
 		{
 			sig:    op.Signature(),
 			static: true,
-			vals:   []value.Value{value.Int(1), value.String("hello"), value.NewList()},
+			vals:   []value.Value{value.Bool(true), value.String("hello"), value.NewList()},
 			err:    true,
 		},
 		{
 			sig:    op.Signature(),
 			static: true,
-			vals:   []value.Value{value.Int(1), value.String("hello")},
+			vals:   []value.Value{value.Bool(false), value.String("hello")},
 			key:    "p2",
 			val:    nil,
 			ok:     false,
@@ -54,16 +97,17 @@ func TestKwargs_Get(t *testing.T) {
 		{
 			sig:    op.Signature(),
 			static: false,
-			vals:   []value.Value{value.Int(1)},
+			vals:   []value.Value{value.Double(1)},
 			key:    "p3",
 			ok:     false,
+			err:    false,
 		},
 		{
 			sig:    op.Signature(),
 			static: false,
-			vals:   []value.Value{value.Int(1)},
+			vals:   []value.Value{value.Double(1)},
 			key:    "p2",
-			val:    value.Int(1),
+			val:    value.Double(1),
 			ok:     true,
 			err:    false,
 		},
