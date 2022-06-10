@@ -225,7 +225,7 @@ func (i *Interpreter) VisitOpcall(operands []ast.Ast, vars []string, namespace, 
 		val := vals[j]
 		inData, ok := val.(value.List)
 		if !ok {
-			return value.Nil, fmt.Errorf("operator '%s.%s' can not be applied, operand '%s' not a list", namespace, name, val)
+			return value.Nil, fmt.Errorf("operator '%s.%s' can not be applied because operand '%s' not a list", namespace, name, val)
 		}
 		voperands[j] = inData
 	}
@@ -299,7 +299,7 @@ func (i *Interpreter) getStaticKwargs(op operators.Operator, kwargs *ast.Dict) (
 		case ok:
 			val, err := tree.AcceptValue(i)
 			if err != nil {
-				return operators.Kwargs{}, fmt.Errorf("errors while evaluating kwarg '%s' for operator '%s.%s': %s", k, sig.Module, sig.Name, err)
+				return operators.Kwargs{}, fmt.Errorf("error while evaluating kwarg '%s' for operator '%s.%s': %s", k, sig.Module, sig.Name, err)
 			}
 			vals = append(vals, val)
 		}
