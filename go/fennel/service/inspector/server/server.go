@@ -51,39 +51,43 @@ func NewInspector(tr tier.Tier, args InspectorArgs) server {
 		tier: tr,
 		r:    ring.New(int(args.NumRecent)),
 	}
-	s.startFeatureLogTailer()
+	go s.startFeatureLogTailer()
 	return s
 }
 
-func (s *server) startFeatureLogTailer() error {
+func (s *server) startFeatureLogTailer() {
 	topic := feature.KAFKA_TOPIC_NAME
-	// Start tailing topic from the most recent messages.
-	// We don't commit the offsets for this consumer since we always want to
-	// read from the latest offset.
-	consumer, err := s.tier.NewKafkaConsumer(libkakfa.ConsumerConfig{
-		Topic:        topic,
-		GroupID:      "featurelog_inspector",
-		OffsetPolicy: libkakfa.LatestOffsetPolicy,
-	})
-	if err != nil {
-		return fmt.Errorf("failed to start kafka consumer: %w", err)
-	}
-	go func(s *server, consumer libkakfa.FConsumer) {
-		defer consumer.Close()
-		ctx := context.Background()
-		for {
+	ticker := time.NewTicker(5 * time.Minute)
+	defer ticker.Stop()
+	for ; true; <-ticker.C {
+		err := func() error {
+			// Start tailing topic from the most recent messages.
+			// We don't commit the offsets for this consumer since we always want to
+			// read from the latest offset.
+			consumer, err := s.tier.NewKafkaConsumer(libkakfa.ConsumerConfig{
+				Topic:        topic,
+				GroupID:      "featurelog_inspector",
+				OffsetPolicy: libkakfa.LatestOffsetPolicy,
+			})
+			if err != nil {
+				return fmt.Errorf("failed to start kafka consumer: %w", err)
+			}
+			defer consumer.Close()
+			ctx := context.Background()
 			msgs, err := consumer.ReadBatch(ctx, 1000, time.Second*10)
 			if err != nil {
-				s.tier.Logger.Error("Error reading from kafka:", zap.Error(err))
-				continue
+				return fmt.Errorf("error reading from kafka: %v", err)
 			}
 			if len(msgs) > 0 {
 				s.tier.Logger.Debug("Got featurelog messages", zap.Int("count", len(msgs)))
 				s.processMessages(msgs)
 			}
+			return nil
+		}()
+		if err != nil {
+			s.tier.Logger.Error("Kafka inspector error", zap.Error(err))
 		}
-	}(s, consumer)
-	return nil
+	}
 }
 
 func (s *server) SetHandlers(router *mux.Router) {
