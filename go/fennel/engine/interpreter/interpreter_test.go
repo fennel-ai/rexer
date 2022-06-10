@@ -241,7 +241,7 @@ func TestVisitOpCallIncorrectLength(t *testing.T) {
 	}
 	_, err := q.AcceptValue(i)
 	require.Error(t, err)
-	assert.Equal(t, "operator 'std.map' can not be applied: operand 1 has length 3, but all operands have lengths 2, 3", err.Error())
+	assert.Equal(t, "operator 'std.map' can not be applied: unequal lengths of operands 2, 3", err.Error())
 
 	q = ast.OpCall{
 		Operands: []ast.Ast{
@@ -261,7 +261,7 @@ func TestVisitOpCallIncorrectLength(t *testing.T) {
 	}
 	_, err = q.AcceptValue(i)
 	require.Error(t, err)
-	assert.Equal(t, "operator 'std.map' can not be applied: operand 1 has length 2, but all operands have lengths 3, 2", err.Error())
+	assert.Equal(t, "operator 'std.map' can not be applied: unequal lengths of operands 3, 2", err.Error())
 }
 
 func getOpCallQuery() ast.Ast {
