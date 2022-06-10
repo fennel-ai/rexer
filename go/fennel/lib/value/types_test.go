@@ -90,17 +90,18 @@ func TestList_Append(t *testing.T) {
 	assert.Equal(t, NewList(Int(2), Bool(false)), l)
 }
 
-// func TestStringingNilValue(t *testing.T) {
-//	l1 := List{nil}
-//	l2 := List{List{nil}}
-//	d1 := Dict{"0": nil}
-//	d2 := Dict{"0": Dict{"_": nil}}
-//
-//	assert.Equal(t, `[null]`, l1.String())
-//	assert.Equal(t, `[[null]]`, l2.String())
-//	assert.Equal(t, `{"0":null}`, d1.String())
-//	assert.Equal(t, `{"0":{"_":null}}`, d2.String())
-// }
+func TestStringingNilValue(t *testing.T) {
+	l1 := List{nil}
+	l2 := List{[]Value{List{}}}
+	d1 := Dict{map[string]Value{"0": nil}}
+
+	d2 := Dict{map[string]Value{"0": Dict{map[string]Value{"_": nil}}}}
+
+	assert.Equal(t, `[]`, l1.String())
+	assert.Equal(t, `[[]]`, l2.String())
+	assert.Equal(t, `{"0":null}`, d1.String())
+	assert.Equal(t, `{"0":{"_":null}}`, d2.String())
+}
 
 // Test that calling Grow() on a list before appending can save allocations.
 func TestListGrow(t *testing.T) {
