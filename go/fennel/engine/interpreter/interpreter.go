@@ -320,6 +320,7 @@ func (i *Interpreter) getContextKwargs(op operators.Operator, trees *ast.Dict, i
 	for k := range inputs {
 		if inputs[k].Len() != inputs[0].Len() {
 			incorrectOperandIndex = k
+			break
 		}
 	}
 
