@@ -116,9 +116,11 @@ data:
       awscontainerinsightreceiver:
 
     processors:
+      # increase the timeout (time after which a batch is sent regardless), defaults to 200ms to maximizing
+      # the number of spans sent collectively to the destination (cloudwatch xray).
+      # rest of the values are set to default `end_batch_size (default = 8192)` and `send_batch_max_size (default = 0)`
       batch/traces:
         timeout: 10s
-        send_batch_size: 50
       batch/metrics:
         timeout: 60s
       resourcedetection:
