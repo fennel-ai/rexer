@@ -1,14 +1,12 @@
 package value
 
 import (
+	"fennel/lib/utils/slice"
 	"fmt"
 	"reflect"
 	"sort"
 	"strconv"
 	"strings"
-	"sync"
-
-	"fennel/lib/utils/slice"
 )
 
 type Value interface {
@@ -31,7 +29,6 @@ var _ Value = String("")
 var _ Value = List{}
 var _ Value = Dict{}
 var _ Value = nil_{}
-var _ Value = &Future{}
 
 type Int int64
 
@@ -192,8 +189,6 @@ func (n nil_) MarshalJSON() ([]byte, error) {
 	return []byte(n.String()), nil
 }
 
-// TODO: hide internal details of List struct so people can not create lists without using
-// NewList. That way, we can ensure that no one creates nested lists
 type List struct {
 	values []Value
 }
@@ -406,53 +401,4 @@ func (iter *Iter) Next() (Value, error) {
 	}
 	iter.next += 1
 	return iter.rows.values[curr], nil
-}
-
-type Future struct {
-	lock   sync.Mutex
-	ch     <-chan Value
-	cached Value
-}
-
-func NewFuture(ch <-chan Value) Future {
-	return Future{
-		lock:   sync.Mutex{},
-		ch:     ch,
-		cached: nil,
-	}
-}
-
-func (f *Future) await() Value {
-	if f.cached != nil {
-		return f.cached
-	}
-	f.lock.Lock()
-	defer f.lock.Unlock()
-	f.cached = <-f.ch
-	return f.cached
-}
-
-func (f *Future) isValue() {}
-
-func (f *Future) Equal(v Value) bool {
-	return f.await().Equal(v)
-}
-
-func (f *Future) Op(opt string, other Value) (Value, error) {
-	return f.await().Op(opt, other)
-}
-func (f *Future) OpUnary(opt string) (Value, error) {
-	return f.await().OpUnary(opt)
-}
-
-func (f *Future) String() string {
-	return f.await().String()
-}
-
-func (f *Future) Clone() Value {
-	return f.await().Clone()
-}
-
-func (f *Future) MarshalJSON() ([]byte, error) {
-	return f.await().MarshalJSON()
 }

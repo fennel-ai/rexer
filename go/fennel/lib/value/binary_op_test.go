@@ -2,7 +2,6 @@ package value
 
 import (
 	"fmt"
-	"sync"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -12,37 +11,11 @@ func verifyBinaryOp(t *testing.T, left, right, expected Value, op string) {
 	ret, err := left.Op(op, right)
 	assert.NoError(t, err)
 	assert.Equal(t, expected, ret)
-
-	// and verify future forms too
-	lf := getFuture(left)
-	rf := getFuture(right)
-	fret, err := lf.Op(op, right)
-	assert.NoError(t, err)
-	assert.Equal(t, expected, fret)
-
-	fret, err = left.Op(op, rf)
-	assert.NoError(t, err)
-	assert.Equal(t, expected, fret)
-
-	fret, err = lf.Op(op, rf)
-	assert.NoError(t, err)
-	assert.Equal(t, expected, fret)
 }
 
 func verifyBinaryError(t *testing.T, left, right Value, ops []string) {
 	for _, op := range ops {
 		_, err := left.Op(op, right)
-		assert.Error(t, err)
-		// and also with future
-		lf := getFuture(left)
-		rf := getFuture(right)
-		_, err = lf.Op(op, right)
-		assert.Error(t, err)
-
-		_, err = left.Op(op, rf)
-		assert.Error(t, err)
-
-		_, err = lf.Op(op, rf)
 		assert.Error(t, err)
 	}
 }
@@ -264,8 +237,6 @@ func testIndexList(t *testing.T, v Value, l List) {
 func TestIndexList(t *testing.T) {
 	l := NewList(Int(1), Double(2.0), Bool(true))
 	testIndexList(t, l, l)
-	// also with futures
-	testIndexList(t, getFuture(l), l)
 }
 
 func testIndexDict(t *testing.T, v Value, di Dict) {
@@ -282,8 +253,6 @@ func testIndexDict(t *testing.T, v Value, di Dict) {
 func TestIndexDict(t *testing.T) {
 	di := NewDict(map[string]Value{"a": Int(2), "b": Double(1.0)})
 	testIndexDict(t, di, di)
-	// and also futures
-	testIndexDict(t, getFuture(di), di)
 }
 
 func TestConcatenation(t *testing.T) {
@@ -294,16 +263,6 @@ func TestConcatenation(t *testing.T) {
 	l1 := NewList(Int(1), Nil)
 	l2 := NewList(Double(2), Bool(false))
 	verifyBinaryOp(t, l1, l2, NewList(Int(1), Nil, Double(2), Bool(false)), "+")
-}
-
-func getFuture(v Value) *Future {
-	ch := make(chan Value, 1)
-	ch <- v
-	return &Future{
-		lock:   sync.Mutex{},
-		ch:     ch,
-		cached: nil,
-	}
 }
 
 func TestContains_Valid(t *testing.T) {

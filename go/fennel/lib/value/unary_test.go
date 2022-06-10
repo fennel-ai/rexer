@@ -10,21 +10,11 @@ func verifyUnaryOp(t *testing.T, op string, operand Value, expected Value) {
 	ret, err := operand.OpUnary(op)
 	assert.NoError(t, err)
 	assert.Equal(t, expected, ret)
-
-	// and verify future too
-	f := getFuture(operand)
-	fret, err := f.OpUnary(op)
-	assert.NoError(t, err)
-	assert.Equal(t, expected, fret)
 }
 
 func verifyUnaryError(t *testing.T, operand Value, ops []string) {
 	for _, op := range ops {
 		_, err := operand.OpUnary(op)
-		assert.Error(t, err)
-		// and also with future
-		f := getFuture(operand)
-		_, err = f.OpUnary(op)
 		assert.Error(t, err)
 	}
 }

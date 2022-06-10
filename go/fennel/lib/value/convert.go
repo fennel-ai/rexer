@@ -65,8 +65,6 @@ func ToCapnValue(v Value) (CapnValue, error) {
 		}
 	case nil_:
 		cv.SetNil()
-	case *Future:
-		return ToCapnValue(t.await())
 	default:
 		return CapnValue{}, fmt.Errorf("invalid value: %s", v.String())
 	}
@@ -166,8 +164,6 @@ func ToProtoValue(v Value) (PValue, error) {
 		return PValue{Node: &PValue_Dict{Dict: &pvd}}, nil
 	case nil_:
 		return PValue{Node: &PValue_Nil{}}, nil
-	case *Future:
-		return ToProtoValue(t.await())
 	default:
 		return PValue{Node: &PValue_Nil{}}, fmt.Errorf("invalid value: %v", v)
 	}
