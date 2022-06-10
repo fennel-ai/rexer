@@ -75,51 +75,6 @@ const prometheusScrapeConfigs = {
         //     "regex": "go_gc_duration_seconds.*"
         //   }]
     }, {
-        "job_name": "kubernetes-service-endpoints",
-        "kubernetes_sd_configs": [{
-            "role": "endpoints"
-        }],
-        "relabel_configs": [{
-            "action": "keep",
-            "regex": true,
-            "source_labels": ["__meta_kubernetes_service_annotation_prometheus_io_scrape"]
-        }, {
-            "action": "replace",
-            "source_labels": ["__meta_kubernetes_service_annotation_prometheus_io_port", "__address__"],
-            "regex": "([^:]+)(?::\d+)?;(\d+)",
-            "replacement": "$$1:$$2",
-            "target_label": "__address__"
-        }, {
-            "action": "labelmap",
-            "regex": "__meta_kubernetes_pod_label_(.+)",
-        }, {
-            "action": "replace",
-            "source_labels": ["__meta_kubernetes_namespace"],
-            "target_label": "Namespace",
-        }, {
-            "action": "replace",
-            "source_labels": ["__meta_kubernetes_service_name"],
-            "target_label": "Service",
-        }, {
-            "action": "replace",
-            "source_labels": ["__meta_kubernetes_pod_node_name"],
-            "target_label": "kubernetes_node",
-        }, {
-            "action": "replace",
-            "source_labels": ["__meta_kubernetes_pod_name"],
-            "target_label": "PodName",
-        }, {
-            "action": "replace",
-            "source_labels": ["__meta_kubernetes_pod_container_name"],
-            "target_label": "ContainerName",
-        }],
-        // Fails with: str `__name__` into model.LabelNames
-        // "metric_relabel_configs": [{
-        //     "source_labels": ["__name__"],
-        //     "regex": "go_gc_duration_seconds.*",
-        //     "action": "drop",
-        //   }]
-    }, {
         "job_name": "kubernetes-nodes-cadvisor",
         "kubernetes_sd_configs": [{
             "role": "node"
@@ -134,6 +89,21 @@ const prometheusScrapeConfigs = {
         "relabel_configs": [{
             "action": "labelmap",
             "regex": "__meta_kubernetes_node_label_(.+)",
+        }],
+    }, {
+        "job_name": "kubernetes-services",
+        "kubernetes_sd_configs": [{
+            "role": "service"
+        }],
+        "relabel_configs": [{
+            "action": "labelmap",
+            "regex": "__meta_kubernetes_service_label_(.+)"
+        }, {
+            "source_labels": ["__meta_kubernetes_namespace"],
+            "target_label": "Namespace"
+        }, {
+            "source_labels": ["__meta_kubernetes_service_name"],
+            "target_label": "Service"
         }],
     }],
 }
@@ -207,6 +177,15 @@ export const setupPrometheus = async (input: inputType): Promise<pulumi.Output<o
             "nodeExporter": {
                 "enabled": false
             },
+            // disable spinning up config map reloader
+            //
+            // this is not required as the helm release is updated altogether replacing the prometheus-server
+            // while keeping the same PVC
+            "configmapReload": {
+                "prometheus": {
+                    "enabled": false
+                }
+            },
             // Set service type as LoadBalancer so that AWS LBC creates a corresponding
             // NLB for the servers endpoint. NLB endpoint could then be used to query metrics.
             "server": {
@@ -215,6 +194,15 @@ export const setupPrometheus = async (input: inputType): Promise<pulumi.Output<o
                 },
                 // https://github.com/prometheus-community/helm-charts/blob/main/charts/prometheus/values.yaml#L1124
                 "retention": "60d",
+                "extraFlags": [
+                    // disable lock for the tsdb
+                    //
+                    // underneath the prometheus server captures a lock on the PVC. When the server is updated,
+                    // it tries to grab a lock on the same PVC which results in a conflict and the container fails to
+                    // come up. We have fixed this in the past by using `deleteBeforeReplace` but that resulted in
+                    // deleted the PVC as well.
+                    "storage.tsdb.no-lockfile"
+                ]
             },
             // Server configmap entries.
             //
