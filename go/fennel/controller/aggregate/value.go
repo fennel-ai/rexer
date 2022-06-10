@@ -151,7 +151,8 @@ func batchValue(ctx context.Context, tier tier.Tier, batch []aggregate.GetAggVal
 	for name := range unique {
 		unique[name], err = Retrieve(ctx, tier, name)
 		if err != nil {
-			return nil, fmt.Errorf("failed to retrieve aggregate %s ", name)
+			tier.Logger.Error("failed to retrieve aggregate", zap.String("aggregate: ", string(name)), zap.Error(fmt.Errorf("%w", err)))
+			return nil, fmt.Errorf("failed to retrieve aggregate %s", name)
 		}
 	}
 
