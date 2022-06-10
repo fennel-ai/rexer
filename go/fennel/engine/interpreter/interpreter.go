@@ -315,14 +315,26 @@ func (i *Interpreter) getContextKwargs(op operators.Operator, trees *ast.Dict, i
 	data := make([]value.Value, len(inputs)*inputs[0].Len())
 	ptr := 0
 	ret.Grow(inputs[0].Len())
+
+	lengthOfOperands := make([]string, len(inputs))
+	incorrectOperandIndex := -1
+	for k := range inputs {
+		lengthOfOperands[k] = fmt.Sprint(inputs[k].Len())
+		if inputs[k].Len() != inputs[0].Len() {
+			incorrectOperandIndex = k
+		}
+	}
+
+	if incorrectOperandIndex != -1 {
+		return operators.ZipTable{}, fmt.Errorf("operator '%s.%s' can not be applied: operand %d has length %d, but all operands have lengths %s", sig.Module, sig.Name, incorrectOperandIndex, inputs[incorrectOperandIndex].Len(), strings.Join(lengthOfOperands, ", "))
+	}
+
 	for j := 0; j < inputs[0].Len(); j++ {
 		begin := ptr
 		for idx := range inputs {
 			val, err := inputs[idx].At(j)
 			if err != nil {
-				return operators.ZipTable{}, fmt.Errorf(
-					"error while evaluating element #%d of operand #%d in operator '%s.%s': %s",
-					j, idx, sig.Module, sig.Name, err)
+				return operators.ZipTable{}, fmt.Errorf("error while evaluating operand %d for operator '%s.%s': %s", idx, sig.Module, sig.Name, err)
 			}
 			data[ptr] = val
 			ptr++

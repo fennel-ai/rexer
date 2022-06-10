@@ -221,6 +221,49 @@ func TestVisitOpCallMultiop(t *testing.T) {
 	assert.Equal(t, value.NewList(value.Int(8), value.Int(13)), out)
 }
 
+func TestVisitOpCallIncorrectLength(t *testing.T) {
+	i := getInterpreter(nil, value.Dict{})
+	q := ast.OpCall{
+		Operands: []ast.Ast{
+			ast.MakeList(ast.MakeInt(5), ast.MakeInt(9)),
+			ast.MakeList(ast.MakeInt(3), ast.MakeInt(3), ast.MakeInt(9)),
+		},
+		Vars:      []string{"a", "b"},
+		Namespace: "std",
+		Name:      "map",
+		Kwargs: ast.MakeDict(map[string]ast.Ast{
+			"to": &ast.Binary{
+				Op:    "+",
+				Left:  &ast.Var{Name: "a"},
+				Right: &ast.Var{Name: "b"},
+			},
+		}),
+	}
+	_, err := q.AcceptValue(i)
+	require.Error(t, err)
+	assert.Equal(t, "operator 'std.map' can not be applied: operand 1 has length 3, but all operands have lengths 2, 3", err.Error())
+
+	q = ast.OpCall{
+		Operands: []ast.Ast{
+			ast.MakeList(ast.MakeInt(5), ast.MakeInt(9), ast.MakeInt(3)),
+			ast.MakeList(ast.MakeInt(3), ast.MakeInt(3)),
+		},
+		Vars:      []string{"a", "b"},
+		Namespace: "std",
+		Name:      "map",
+		Kwargs: ast.MakeDict(map[string]ast.Ast{
+			"to": &ast.Binary{
+				Op:    "+",
+				Left:  &ast.Var{Name: "a"},
+				Right: &ast.Var{Name: "b"},
+			},
+		}),
+	}
+	_, err = q.AcceptValue(i)
+	require.Error(t, err)
+	assert.Equal(t, "operator 'std.map' can not be applied: operand 1 has length 2, but all operands have lengths 3, 2", err.Error())
+}
+
 func getOpCallQuery() ast.Ast {
 	return &ast.Query{
 		Statements: []*ast.Statement{
