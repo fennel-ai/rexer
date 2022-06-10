@@ -104,7 +104,15 @@ func InitProvider(endpoint string) error {
 		// Ideally we should be sampling the traces (say at 1%) of the traces at the root node.
 		// e.g. sdktrace.ParentBased(/*root*/ sdktrace.TraceIDRatioBased(0.01))
 		sdktrace.WithSampler(sdktrace.AlwaysSample()),
-		sdktrace.WithBatcher(traceExporter),
+		// By default, trace exporter exports 512 spans while maintaining a local queue of size `2048`
+		//
+		// Increase the queue size so that traces are dropped locally.
+		//
+		// Increase the batch size sent so that the queue is also emptied at a larger rate and can ingest more spans.
+		//
+		// Note: The otel collector (running in the same cluster) which ingests the traces exported from each service,
+		// batches and exports to xray, batches the traces in sizes of `8192` or exports every 10s (regardless of size).
+		sdktrace.WithBatcher(traceExporter, sdktrace.WithMaxQueueSize(20480), sdktrace.WithMaxExportBatchSize(2048)),
 		sdktrace.WithIDGenerator(idg))
 
 	otel.SetTracerProvider(tp)
