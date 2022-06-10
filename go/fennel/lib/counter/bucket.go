@@ -17,10 +17,15 @@ type Bucket struct {
 	Index uint32
 }
 
+// BucketList is a list of buckets covering the range [StartIndex, EndIndex] (inclusive).
 type BucketList struct {
 	Key        string
 	Window     ftypes.Window
 	Width      uint32
 	StartIndex uint32
 	EndIndex   uint32
+}
+
+func (b BucketList) Count() uint32 {
+	return b.EndIndex - b.StartIndex + 1
 }

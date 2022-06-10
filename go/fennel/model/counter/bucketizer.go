@@ -79,7 +79,7 @@ func (f fixedWidthBucketizer) BucketizeDuration(key string, start, end ftypes.Ti
 
 // bucketizeTimeseries returns a BucketList of buckets of size 'window' that
 // begin at or after 'start' and go until at or before 'end'. If there are no
-// buckets, the 4th return value is false.
+// buckets, 'empty' (the 4th return value) is true.
 func (f fixedWidthBucketizer) bucketizeTimeseries(
 	key string, start, end ftypes.Timestamp, window ftypes.Window, width uint32,
 ) (counter.BucketList, ftypes.Timestamp, ftypes.Timestamp, bool) {

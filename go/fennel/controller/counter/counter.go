@@ -5,8 +5,6 @@ import (
 	"fmt"
 	"time"
 
-	"fennel/lib/arena"
-
 	"fennel/lib/aggregate"
 	libcounter "fennel/lib/counter"
 	"fennel/lib/ftypes"
@@ -26,9 +24,8 @@ func Value(
 	if err != nil {
 		return nil, err
 	}
-	buckets := histogram.BucketizeDuration(key.String(), start, end)
-	defer arena.Buckets.Free(buckets)
-	counts, err := histogram.GetMulti(ctx, tier, []ftypes.AggId{aggId}, [][]libcounter.Bucket{buckets}, []value.Value{histogram.Zero()})
+	bucketLists := histogram.BucketizeDuration(key.String(), start, end)
+	counts, err := histogram.GetMulti(ctx, tier, []ftypes.AggId{aggId}, [][]libcounter.BucketList{bucketLists}, []value.Value{histogram.Zero()})
 	if err != nil {
 		return nil, err
 	}
@@ -52,7 +49,7 @@ func BatchValue(
 	for bs, indices := range unique {
 		n := len(indices)
 		ids_ := make([]ftypes.AggId, n)
-		buckets := make([][]libcounter.Bucket, n)
+		bucketLists := make([][]libcounter.BucketList, n)
 		defaults := make([]value.Value, n)
 		for i, index := range indices {
 			h := histograms[index]
@@ -61,11 +58,10 @@ func BatchValue(
 				return nil, fmt.Errorf("failed to get start timestamp of aggregate (id): %d, err: %v", aggIds[index], err)
 			}
 			ids_[i] = aggIds[index]
-			buckets[i] = h.BucketizeDuration(keys[index].String(), start, end)
-			defer arena.Buckets.Free(buckets[i])
+			bucketLists[i] = h.BucketizeDuration(keys[index].String(), start, end)
 			defaults[i] = h.Zero()
 		}
-		counts, err := bs.GetMulti(ctx, tier, ids_, buckets, defaults)
+		counts, err := bs.GetMulti(ctx, tier, ids_, bucketLists, defaults)
 		if err != nil {
 			return nil, err
 		}
