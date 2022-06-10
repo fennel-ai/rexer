@@ -70,7 +70,7 @@ func (i *Interpreter) VisitLookup(on ast.Ast, property string) (value.Value, err
 	}
 	asdict, ok := val.(value.Dict)
 	if !ok {
-		return value.Nil, fmt.Errorf("can only do property lookup: %s on non-dict value: '%s'", property, on)
+		return value.Nil, fmt.Errorf("can not lookup property '%s' on non-dict value: '%s'", property, on)
 	}
 	ret, ok := asdict.Get(property)
 	if !ok {
@@ -225,7 +225,7 @@ func (i *Interpreter) VisitOpcall(operands []ast.Ast, vars []string, namespace, 
 		val := vals[j]
 		inData, ok := val.(value.List)
 		if !ok {
-			return value.Nil, fmt.Errorf("operator '%s.%s' can not be applied: operand not a list", namespace, name)
+			return value.Nil, fmt.Errorf("operator '%s.%s' can not be applied, operand '%s' not a list", namespace, name, val)
 		}
 		voperands[j] = inData
 	}
@@ -281,7 +281,7 @@ func (i *Interpreter) VisitIfelse(condition ast.Ast, thenDo ast.Ast, elseDo ast.
 		}
 		return e, nil
 	} else {
-		return value.Nil, fmt.Errorf("condition %s does not evaluate to a boolean", condition)
+		return value.Nil, fmt.Errorf("invalid cond: condition '%s' does not evaluate to a boolean", condition)
 	}
 }
 
@@ -299,7 +299,7 @@ func (i *Interpreter) getStaticKwargs(op operators.Operator, kwargs *ast.Dict) (
 		case ok:
 			val, err := tree.AcceptValue(i)
 			if err != nil {
-				return operators.Kwargs{}, fmt.Errorf("error: %s while evaluating kwarg: %s for operator '%s.%s'", err, k, sig.Module, sig.Name)
+				return operators.Kwargs{}, fmt.Errorf("errors while evaluating kwarg '%s' for operator '%s.%s': %s", k, sig.Module, sig.Name, err)
 			}
 			vals = append(vals, val)
 		}
@@ -320,7 +320,9 @@ func (i *Interpreter) getContextKwargs(op operators.Operator, trees *ast.Dict, i
 		for idx := range inputs {
 			val, err := inputs[idx].At(j)
 			if err != nil {
-				return operators.ZipTable{}, fmt.Errorf("unequal length of operands")
+				return operators.ZipTable{}, fmt.Errorf(
+					"error while evaluating element #%d of operand #%d in operator '%s.%s': %s",
+					j, idx, sig.Module, sig.Name, err)
 			}
 			data[ptr] = val
 			ptr++
@@ -336,7 +338,7 @@ func (i *Interpreter) getContextKwargs(op operators.Operator, trees *ast.Dict, i
 			tree, ok := trees.Values[k]
 			switch {
 			case !ok && !p.Optional:
-				return ret, fmt.Errorf("kwarg '%s' not provided for operator '%s.%s'", k, sig.Module, sig.Name)
+				return ret, fmt.Errorf("non-opetional kwarg '%s' not provided for operator '%s.%s'", k, sig.Module, sig.Name)
 			case !ok && p.Optional:
 				kwargVals = append(kwargVals, p.Default)
 				continue
@@ -345,13 +347,17 @@ func (i *Interpreter) getContextKwargs(op operators.Operator, trees *ast.Dict, i
 				val, done, err := i.fastKwargEval(tree, vars, varvals)
 				if done {
 					if err != nil {
-						return operators.ZipTable{}, fmt.Errorf("error: %s while evaluating kwarg: %s for operator '%s.%s'", err, k, sig.Module, sig.Name)
+						return operators.ZipTable{}, fmt.Errorf(
+							"error while evaluating kwarg '%s' for operator '%s.%s': %s", k, sig.Module, sig.Name, err,
+						)
 					}
 					kwargVals = append(kwargVals, val)
 				} else {
 					val, err := i.visitInContext(tree, vars, varvals)
 					if err != nil {
-						return operators.ZipTable{}, fmt.Errorf("error: %s while evaluating kwarg '%s' for operator '%s.%s'", err, k, sig.Module, sig.Name)
+						return operators.ZipTable{}, fmt.Errorf(
+							"error while evaluating kwarg '%s' for operator '%s.%s': %s", k, sig.Module, sig.Name, err,
+						)
 					}
 					kwargVals = append(kwargVals, val)
 				}
