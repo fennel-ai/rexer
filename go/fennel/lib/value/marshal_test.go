@@ -13,14 +13,6 @@ func verifyMarshalUnMarshal(t *testing.T, v Value) {
 	err = Unmarshal(b, &u)
 	assert.NoError(t, err)
 	assert.Equal(t, v, u)
-
-	// also test futures
-	f := getFuture(v)
-	bf, err := Marshal(f)
-	assert.NoError(t, err)
-	err = Unmarshal(bf, &u)
-	assert.NoError(t, err)
-	assert.Equal(t, u, v)
 }
 
 func verifyUnequalMarshal(t *testing.T, v Value, unequal []Value) {

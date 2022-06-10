@@ -26,11 +26,11 @@ func TestJSON(t *testing.T) {
 	}
 
 	// Test nil pointer list and dict not marshalling to null
-	//tests = append(tests, test{str: "{}", val: Dict(nil)})
-	//tests = append(tests, test{str: "[[[],{}]]", val: List{List{List(nil), Dict(nil)}}})
-	//tests = append(tests, test{str: `{"1":{"2":{"3":[],"4":{}}}}`, val: Dict{"1": Dict{"2": Dict{
+	// tests = append(tests, test{str: "{}", val: Dict(nil)})
+	// tests = append(tests, test{str: "[[[],{}]]", val: List{List{List(nil), Dict(nil)}}})
+	// tests = append(tests, test{str: `{"1":{"2":{"3":[],"4":{}}}}`, val: Dict{"1": Dict{"2": Dict{
 	//	"3": List(nil), "4": Dict(nil),
-	//}}}})
+	// }}}})
 
 	l1 := NewList(Nil, Int(4), Double(3.14), String("xyz"))
 	l1Str := `[null,4,3.14,"xyz"]`
@@ -58,10 +58,6 @@ func TestJSON(t *testing.T) {
 	for _, tst := range tests {
 		ser := ToJSON(tst.val)
 		assert.Equal(t, tst.str, string(ser))
-		// also test future
-		f := getFuture(tst.val)
-		serf := ToJSON(f)
-		assert.Equal(t, tst.str, string(serf))
 	}
 }
 

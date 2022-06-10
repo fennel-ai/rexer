@@ -3,9 +3,7 @@ package value
 import (
 	"testing"
 
-	"capnproto.org/go/capnp/v3"
 	"github.com/stretchr/testify/assert"
-	"google.golang.org/protobuf/proto"
 )
 
 func TestConvertToCapnValue(t *testing.T) {
@@ -32,14 +30,6 @@ func TestConvertToCapnValue(t *testing.T) {
 		v2, err := FromCapnValue(cv)
 		assert.NoError(t, err)
 		assert.Equal(t, v, v2)
-
-		// also verify futures
-		f := getFuture(v)
-		cf, err := ToCapnValue(f)
-		assert.NoError(t, err)
-		eq, err := capnp.Equal(cv.ToPtr(), cf.ToPtr())
-		assert.NoError(t, err)
-		assert.True(t, eq, "%s != %s", cv, cf)
 	}
 }
 
@@ -66,12 +56,6 @@ func TestConvert(t *testing.T) {
 		v2, err := FromProtoValue(&pv)
 		assert.NoError(t, err)
 		assert.Equal(t, v, v2)
-
-		// also verify futures
-		f := getFuture(v)
-		pf, err := ToProtoValue(f)
-		assert.NoError(t, err)
-		assert.True(t, proto.Equal(&pv, &pf))
 	}
 }
 
