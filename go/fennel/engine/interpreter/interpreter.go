@@ -315,14 +315,18 @@ func (i *Interpreter) getContextKwargs(op operators.Operator, trees *ast.Dict, i
 	data := make([]value.Value, len(inputs)*inputs[0].Len())
 	ptr := 0
 	ret.Grow(inputs[0].Len())
+
+	err := validateOperandLength(inputs, sig)
+	if err != nil {
+		return operators.ZipTable{}, err
+	}
+
 	for j := 0; j < inputs[0].Len(); j++ {
 		begin := ptr
 		for idx := range inputs {
 			val, err := inputs[idx].At(j)
 			if err != nil {
-				return operators.ZipTable{}, fmt.Errorf(
-					"error while evaluating element #%d of operand #%d in operator '%s.%s': %s",
-					j, idx, sig.Module, sig.Name, err)
+				return operators.ZipTable{}, fmt.Errorf("error while evaluating operand %d for operator '%s.%s': %s", idx, sig.Module, sig.Name, err)
 			}
 			data[ptr] = val
 			ptr++
@@ -439,4 +443,23 @@ func (i *Interpreter) visitAll(trees []ast.Ast, ctx context.Context) ([]value.Va
 		err = eg.Wait()
 	}
 	return vals, err
+}
+
+func validateOperandLength(inputs []value.List, sig *operators.Signature) error {
+	incorrectOperandIndex := -1
+	for k := range inputs {
+		if inputs[k].Len() != inputs[0].Len() {
+			incorrectOperandIndex = k
+			break
+		}
+	}
+
+	if incorrectOperandIndex != -1 {
+		lengthOfOperands := make([]string, len(inputs))
+		for k := range inputs {
+			lengthOfOperands[k] = fmt.Sprint(inputs[k].Len())
+		}
+		return fmt.Errorf("operator '%s.%s' can not be applied: unequal lengths of operands %s", sig.Module, sig.Name, strings.Join(lengthOfOperands, ", "))
+	}
+	return nil
 }
