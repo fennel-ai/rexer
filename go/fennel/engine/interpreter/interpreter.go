@@ -316,16 +316,18 @@ func (i *Interpreter) getContextKwargs(op operators.Operator, trees *ast.Dict, i
 	ptr := 0
 	ret.Grow(inputs[0].Len())
 
-	lengthOfOperands := make([]string, len(inputs))
 	incorrectOperandIndex := -1
 	for k := range inputs {
-		lengthOfOperands[k] = fmt.Sprint(inputs[k].Len())
 		if inputs[k].Len() != inputs[0].Len() {
 			incorrectOperandIndex = k
 		}
 	}
 
 	if incorrectOperandIndex != -1 {
+		lengthOfOperands := make([]string, len(inputs))
+		for k := range inputs {
+			lengthOfOperands[k] = fmt.Sprint(inputs[k].Len())
+		}
 		return operators.ZipTable{}, fmt.Errorf("operator '%s.%s' can not be applied: operand %d has length %d, but all operands have lengths %s", sig.Module, sig.Name, incorrectOperandIndex, inputs[incorrectOperandIndex].Len(), strings.Join(lengthOfOperands, ", "))
 	}
 
