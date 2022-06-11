@@ -248,7 +248,7 @@ func (t twoLevelRedisStore) GetMulti(
 		return [][]value.Value{}, nil
 	}
 	for i, aggId := range aggIds {
-		bucket_stats.WithLabelValues(string(aggId)).Set(float64(len(buckets[i])))
+		bucket_stats.WithLabelValues(fmt.Sprint(aggId)).Set(float64(len(buckets[i])))
 	}
 
 	// to ensure that we don't allocate crazy large memory, we iterate through all
