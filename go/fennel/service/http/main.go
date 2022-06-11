@@ -3,6 +3,7 @@ package main
 import (
 	_ "expvar"
 	"fmt"
+	"io/ioutil"
 	"log"
 	"math/rand"
 	"net"
@@ -111,11 +112,12 @@ func main() {
 	}
 	arg.MustParse(&flags)
 	log.SetFlags(log.LstdFlags | log.Lshortfile)
+	log.SetOutput(ioutil.Discard)
 	tier, err := tier.CreateFromArgs(&flags.TierArgs)
 	if err != nil {
 		panic(fmt.Sprintf("Failed to setup tier connectors: %v", err))
 	}
-
+	fmt.Printf("Tier: %v\n", tier)
 	router := mux.NewRouter()
 
 	// Start a prometheus server and add a middleware to the main router to capture

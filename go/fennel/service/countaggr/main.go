@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"io/ioutil"
 	"log"
 	"math/rand"
 	_ "net/http/pprof"
@@ -88,14 +89,14 @@ func processAggregate(tr tier.Tier, agg libaggregate.Aggregate, stopCh <-chan st
 				logKafkaLag(tr, consumer)
 			default:
 				run++
-				tr.Logger.Debug("Processing aggregate", zap.String("name", string(agg.Name)), zap.Int("run", run))
+				//tr.Logger.Debug("Processing aggregate", zap.String("name", string(agg.Name)), zap.Int("run", run))
 				ctx := context.Background()
 				err := aggregate.Update(ctx, tr, consumer, agg)
 				if err != nil {
 					aggregate_errors.WithLabelValues(string(agg.Name)).Add(1)
 					tr.Logger.Warn("Error found in aggregate", zap.String("name", string(agg.Name)), zap.Error(err))
 				}
-				tr.Logger.Debug("Processed aggregate", zap.String("name", string(agg.Name)), zap.Int("run", run))
+				//tr.Logger.Debug("Processed aggregate", zap.String("name", string(agg.Name)), zap.Int("run", run))
 			}
 		}
 	}(tr, consumer, agg, stopCh)
@@ -221,6 +222,7 @@ func main() {
 	// Parse flags / environment variables.
 	arg.MustParse(&flags)
 	log.SetFlags(log.LstdFlags | log.Lshortfile)
+	log.SetOutput(ioutil.Discard)
 
 	tr, err := tier.CreateFromArgs(&flags.TierArgs)
 	if err != nil {
@@ -244,9 +246,9 @@ func main() {
 		panic(err)
 	}
 
-	if err = startPhaserProcessing(tr); err != nil {
-		panic(err)
-	}
+	//if err = startPhaserProcessing(tr); err != nil {
+	//	panic(err)
+	//}
 
 	if err = startAggregateProcessing(tr); err != nil {
 		panic(err)
