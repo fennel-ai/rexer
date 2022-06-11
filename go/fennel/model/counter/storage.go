@@ -57,6 +57,11 @@ var metrics = promauto.NewSummaryVec(prometheus.SummaryOpts{
 	},
 }, []string{"metric"})
 
+var bucket_stats = promauto.NewGaugeVec(prometheus.GaugeOpts{
+	Name: "bucket_stats",
+	Help: "Stats number of buckets being computed for every aggregate",
+}, []string{"aggregate_id"})
+
 // slotArena is a pool of slices of type slot such that max cap of any slice is upto 1 << 15 (i.e. 32K)
 // and total cap of all slices in pools is upto 1 << 24 i.e. ~4M. Since each slot is 64 bytes, this
 // arena's total size is at most 4M * 64B = 256MB
@@ -241,6 +246,9 @@ func (t twoLevelRedisStore) GetMulti(
 	defer tmr.Stop()
 	if len(buckets) == 0 {
 		return [][]value.Value{}, nil
+	}
+	for aggId := range aggIds {
+		bucket_stats.WithLabelValues(string(aggId)).Set(float64(len(buckets[aggId])))
 	}
 
 	// to ensure that we don't allocate crazy large memory, we iterate through all
