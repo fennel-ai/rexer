@@ -12,6 +12,13 @@ import (
 	"fennel/tier"
 )
 
+type HistogramInfo struct {
+	AggType ftypes.AggId
+	Zero    value.Value
+	Window  ftypes.Window
+	Width   uint32
+}
+
 type Bucketizer interface {
 	BucketizeMoment(key string, ts ftypes.Timestamp) []counter.Bucket
 	BucketizeDuration(key string, start, end ftypes.Timestamp) []counter.Bucket
@@ -19,8 +26,8 @@ type Bucketizer interface {
 
 type BucketStore interface {
 	GetBucketStore() BucketStore
-	GetMulti(ctx context.Context, tr tier.Tier, aggIds []ftypes.AggId, buckets [][]counter.Bucket, defaults_ []value.Value) ([][]value.Value, error)
-	SetMulti(ctx context.Context, tr tier.Tier, aggIds []ftypes.AggId, deltas [][]counter.Bucket, values [][]value.Value) error
+	GetMulti(ctx context.Context, tr tier.Tier, aggIds []ftypes.AggId, buckets [][]counter.StorageBucket, HInfo map[ftypes.HistId]HistogramInfo) ([][]value.Value, error)
+	SetMulti(ctx context.Context, tr tier.Tier, aggIds []ftypes.AggId, deltas [][]counter.StorageBucket, values [][]value.Value) error
 }
 
 type MergeReduce interface {

@@ -275,6 +275,10 @@ func fetchOnlineAggregates(ctx context.Context, tier tier.Tier, aggMap map[ftype
 	}
 
 	if len(onlinePtr) > 0 {
+		fmt.Println("fetching online aggregates")
+		fmt.Println(ids)
+		fmt.Println(keys)
+
 		onlineValues, err := counter.BatchValue(ctx, tier, ids, keys, histograms, kwargs)
 		if err != nil {
 			return err

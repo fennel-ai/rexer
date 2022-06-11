@@ -4,11 +4,9 @@ import (
 	"context"
 	"fennel/lib/arena"
 	"fmt"
+	"go.opentelemetry.io/otel/attribute"
 	"strconv"
 	"strings"
-	"time"
-
-	"go.opentelemetry.io/otel/attribute"
 
 	"fennel/engine/ast"
 	"fennel/engine/operators"
@@ -214,14 +212,14 @@ func (i *Interpreter) VisitOpcall(operands []ast.Ast, vars []string, namespace, 
 	}
 	cCtx, span := otel.Tracer("fennel").Start(i.ctx, fmt.Sprintf("%s.%s", namespace, name))
 	defer span.End()
-	start := time.Now()
+	//start := time.Now()
 	// eval all operands
 	vals, err := i.visitAll(operands, cCtx)
 	if err != nil {
 		return value.Nil, err
 	}
-	elapsed := time.Since(start)
-	fmt.Println("Visitall took %s", elapsed)
+	//elapsed := time.Since(start)
+	//fmt.Println("Visitall took %s", elapsed)
 	// verify each operand is a list
 	voperands := make([]value.List, len(operands))
 	for j := range vals {
@@ -245,8 +243,8 @@ func (i *Interpreter) VisitOpcall(operands []ast.Ast, vars []string, namespace, 
 		return value.Nil, err
 	}
 
-	elapsed = time.Since(start)
-	fmt.Println("Static took %s", elapsed)
+	//elapsed = time.Since(start)
+	//fmt.Println("Static took %s", elapsed)
 	// and same for inputs + dynamic kwargs to create InputTable
 	// just pre-create space for all context kwargs
 	kwargVals := arena.Values.Alloc(0, szOperands*len(op.Signature().ContextKwargs))
@@ -262,8 +260,6 @@ func (i *Interpreter) VisitOpcall(operands []ast.Ast, vars []string, namespace, 
 	if err = op.Apply(cCtx, staticKwargs, inputTable.Iter(), &outtable); err != nil {
 		return value.Nil, err
 	}
-	elapsed = time.Since(start)
-	fmt.Println("Everything took %s", elapsed)
 	return outtable, nil
 }
 
@@ -429,7 +425,6 @@ func (i *Interpreter) visitAll(trees []ast.Ast, ctx context.Context) ([]value.Va
 	vals := make([]value.Value, len(trees))
 	var err error
 	if len(trees) == 1 {
-		fmt.Println("visitAll: single tree")
 		// Create a new interpreter to pass the new context used in the trace
 		subtreeInterpreter := Interpreter{i.env, i.bootargs, cCtx}
 		vals[0], err = trees[0].AcceptValue(&subtreeInterpreter)

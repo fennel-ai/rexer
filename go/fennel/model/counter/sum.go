@@ -6,6 +6,10 @@ import (
 	"fennel/lib/value"
 )
 
+func init() {
+	Register("sum", NewSum)
+}
+
 var zeroSum value.Value = value.Int(0)
 
 type rollingSum struct{}

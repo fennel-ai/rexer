@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"fmt"
-	"io/ioutil"
 	"log"
 	"math/rand"
 	_ "net/http/pprof"
@@ -222,7 +221,6 @@ func main() {
 	// Parse flags / environment variables.
 	arg.MustParse(&flags)
 	log.SetFlags(log.LstdFlags | log.Lshortfile)
-	log.SetOutput(ioutil.Discard)
 
 	tr, err := tier.CreateFromArgs(&flags.TierArgs)
 	if err != nil {

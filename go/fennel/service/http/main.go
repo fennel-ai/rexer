@@ -3,7 +3,6 @@ package main
 import (
 	_ "expvar"
 	"fmt"
-	"io/ioutil"
 	"log"
 	"math/rand"
 	"net"
@@ -112,7 +111,6 @@ func main() {
 	}
 	arg.MustParse(&flags)
 	log.SetFlags(log.LstdFlags | log.Lshortfile)
-	log.SetOutput(ioutil.Discard)
 	tier, err := tier.CreateFromArgs(&flags.TierArgs)
 	if err != nil {
 		panic(fmt.Sprintf("Failed to setup tier connectors: %v", err))

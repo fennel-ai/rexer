@@ -25,14 +25,54 @@ func Value(
 	if err != nil {
 		return nil, err
 	}
-	buckets := histogram.BucketizeDuration(key.String(), start, end)
-	defer arena.Buckets.Free(buckets)
-	counts, err := histogram.GetMulti(ctx, tier, []ftypes.AggId{aggId}, [][]libcounter.Bucket{buckets}, []value.Value{histogram.Zero()})
+	storageBuckets := convertBuckets(histogram.BucketizeDuration(key.String(), start, end))
+	defer arena.Buckets.Free(storageBuckets)
+	counts, err := histogram.GetMulti(ctx, tier, []ftypes.AggId{aggId}, [][]libcounter.StorageBucket{buckets}, []value.Value{histogram.Zero()})
 	if err != nil {
 		return nil, err
 	}
 	defer arena.Values.Free(counts[0])
 	return histogram.Reduce(counts[0])
+}
+
+type BucketCompressor struct {
+	HInfo          map[ftypes.HistId]counter.HistogramInfo
+	SeenHistograms map[counter.HistogramInfo]ftypes.HistId
+	HIdCntr        ftypes.HistId
+}
+
+func NewBucketCompressor() *BucketCompressor {
+	return &BucketCompressor{
+		HInfo:          make(map[ftypes.HistId]counter.HistogramInfo),
+		SeenHistograms: make(map[counter.HistogramInfo]ftypes.HistId),
+		HIdCntr:        0,
+	}
+}
+
+func (c *BucketCompressor) Compress(buckets []libcounter.Bucket, zero value.Value, aggId ftypes.AggId) []libcounter.StorageBucket {
+	n := len(buckets)
+	ret := make([]libcounter.StorageBucket, n)
+	for i, b := range buckets {
+		hInfo := counter.HistogramInfo{
+			aggId,
+			zero,
+			b.Window,
+			b.Width,
+		}
+		hId, ok := c.SeenHistograms[hInfo]
+		if !ok {
+			c.HIdCntr++
+			c.SeenHistograms[hInfo] = c.HIdCntr
+			c.HInfo[c.HIdCntr] = hInfo
+		}
+
+		ret[i] = libcounter.StorageBucket{
+			Key:   b.Key,
+			Index: b.Index,
+			HId:   hId,
+		}
+	}
+	return ret
 }
 
 // TODO(Mohit): Fix this code if we decide to still use BucketStore
@@ -44,6 +84,7 @@ func BatchValue(
 	end := ftypes.Timestamp(tier.Clock.Now())
 	unique := make(map[counter.BucketStore][]int)
 	ret := make([]value.Value, len(aggIds))
+	bucketCompressor := NewBucketCompressor()
 	for i, h := range histograms {
 		bs := h.GetBucketStore()
 		unique[bs] = append(unique[bs], i)
@@ -51,7 +92,8 @@ func BatchValue(
 	for bs, indices := range unique {
 		n := len(indices)
 		ids_ := make([]ftypes.AggId, n)
-		buckets := make([][]libcounter.Bucket, n)
+		// buckets := make([][]libcounter.Bucket, n)
+		buckets := make([][]libcounter.StorageBucket, n)
 		defaults := make([]value.Value, n)
 		for i, index := range indices {
 			h := histograms[index]
@@ -60,11 +102,13 @@ func BatchValue(
 				return nil, fmt.Errorf("failed to get start timestamp of aggregate (id): %d, err: %v", aggIds[index], err)
 			}
 			ids_[i] = aggIds[index]
-			buckets[i] = h.BucketizeDuration(keys[index].String(), start, end)
+			bkts := h.BucketizeDuration(keys[index].String(), start, end)
+			buckets[i] = bucketCompressor.Compress(bkts, h.Zero(), aggIds[index])
 			defer arena.Buckets.Free(buckets[i])
 			defaults[i] = h.Zero()
 		}
-		counts, err := bs.GetMulti(ctx, tier, ids_, buckets, defaults)
+
+		counts, err := bs.GetMulti(ctx, tier, ids_, buckets, bucketCompressor.HInfo)
 		if err != nil {
 			return nil, err
 		}

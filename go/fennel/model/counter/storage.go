@@ -40,7 +40,7 @@ const (
 
 	// redisKey delimiter
 	redisKeyDelimiter string = "-"
-	MAX_BATCH_SZ             = 1 << 14
+	MAX_BATCH_SZ             = 1 << 16
 )
 
 var metrics = promauto.NewSummaryVec(prometheus.SummaryOpts{
@@ -178,7 +178,7 @@ func (t twoLevelRedisStore) GetBucketStore() BucketStore {
 }
 
 func (t twoLevelRedisStore) get(
-	ctx context.Context, tier tier.Tier, aggIds []ftypes.AggId, buckets []counter.Bucket, defaults []value.Value,
+	ctx context.Context, tier tier.Tier, aggIds []ftypes.AggId, buckets []counter.StorageBucket, histInfo map[ftypes.HistId]HistogramInfo,
 ) ([]value.Value, error) {
 	// track seen groups, so we do not send duplicate groups to redis
 	// 'seen' maps group to index in the array of groups sent to redis
@@ -192,7 +192,7 @@ func (t twoLevelRedisStore) get(
 	// to save some CPU cycles
 	for i, b := range buckets {
 		s := &slots[i]
-		err := t.toSlot(aggIds[i], &b, s)
+		err := t.toSlot(aggIds[i], &b, s, histInfo[b.HId])
 		if err != nil {
 			return nil, err
 		}
@@ -223,7 +223,7 @@ func (t twoLevelRedisStore) get(
 		}
 		ret[i], ok = slotDict.Get(idxStr)
 		if !ok {
-			ret[i] = defaults[i]
+			ret[i] = histInfo[buckets[i].HId].Zero
 		}
 	}
 	t.logStats(groupVals, "get")
@@ -235,14 +235,20 @@ var aggIDArena = arena.New[ftypes.AggId](1<<15, 1<<22)
 
 // GetMulti returns arena-allocated value slices which should be freed by the caller.
 func (t twoLevelRedisStore) GetMulti(
-	ctx context.Context, tier tier.Tier, aggIds []ftypes.AggId, buckets [][]counter.Bucket, defaults []value.Value,
+	ctx context.Context, tier tier.Tier, aggIds []ftypes.AggId, buckets [][]counter.StorageBucket, histInfo map[ftypes.HistId]HistogramInfo,
 ) ([][]value.Value, error) {
 	ctx, tmr := timer.Start(ctx, tier.ID, "twolevelredis.get_multi")
 	defer tmr.Stop()
 	if len(buckets) == 0 {
 		return [][]value.Value{}, nil
 	}
-
+	start := time.Now()
+	numbuckets := 0
+	for _, b := range buckets {
+		numbuckets += len(b)
+	}
+	fmt.Printf("GetMulti: numbuckets: %d\n", numbuckets)
+	fmt.Println("Num aggIds:", len(aggIds))
 	// to ensure that we don't allocate crazy large memory, we iterate through all
 	// data in batches - we prefer to use a batch size up to MAX_BATCH_SZ but if
 	// some bucket[i] itself has more buckets than this, we are forced to use a batch
@@ -251,6 +257,7 @@ func (t twoLevelRedisStore) GetMulti(
 	maxSz := 0
 	for i := range buckets {
 		sz += len(buckets[i])
+		fmt.Printf("Bucket %d has %d buckets\n", i, len(buckets[i]))
 		if len(buckets[i]) > maxSz {
 			maxSz = len(buckets[i])
 		}
@@ -263,6 +270,9 @@ func (t twoLevelRedisStore) GetMulti(
 	if batchSize < maxSz {
 		batchSize = maxSz
 	}
+	fmt.Printf("Batch size: %d\n", batchSize)
+	elapsed := time.Since(start)
+	fmt.Println("Find size took %s", elapsed)
 
 	if batchSize == 0 {
 		return [][]value.Value{}, nil
@@ -272,21 +282,35 @@ func (t twoLevelRedisStore) GetMulti(
 	defer aggIDArena.Free(ids_)
 	buckets_ := arena.Buckets.Alloc(batchSize, batchSize)
 	defer arena.Buckets.Free(buckets_)
-	defaults_ := arena.Values.Alloc(batchSize, batchSize)
-	defer arena.Values.Free(defaults_)
+
 	i := 0      // i tracks the index of the next aggId whose buckets we will attempt to insert into the batch
 	putIdx := 0 // putIdx tracks the index of the next aggId for which values received from redis need to be filled
 	bsz := 0    // bsz tracks the number of buckets in the current batch
+	elapsed = time.Since(start)
+	fmt.Println("Arena took %s", elapsed)
+	start = time.Now()
 	for putIdx < len(aggIds) {
 		// Insert the buckets for the next aggId into the batch only if there's room for all of them.
 		if i < len(aggIds) && len(buckets[i]) <= len(buckets_)-bsz {
 			copy(buckets_[bsz:], buckets[i])
 			slice.Fill(ids_[bsz:bsz+len(buckets[i])], aggIds[i])
-			slice.Fill(defaults_[bsz:bsz+len(buckets[i])], defaults[i])
 			bsz += len(buckets[i])
 			i++
 		} else {
-			vals, err := t.get(ctx, tier, ids_[:bsz], buckets_[:bsz], defaults_[:bsz])
+			fmt.Println("------------------------------------------------------")
+			elapsed = time.Since(start)
+
+			fmt.Printf("Before get %d took %s \n", putIdx, elapsed)
+			//vals := make([]value.Value, len(ids_[:bsz]))
+			//for i := range vals {
+			//	vals[i] = value.Int(0)
+			//}
+			vals, err := t.get(ctx, tier, ids_[:bsz], buckets_[:bsz], histInfo)
+
+			elapsed = time.Since(start)
+			fmt.Printf("After get %d took %s \n", putIdx, elapsed)
+
+			fmt.Println("------------------------------------------------------")
 			defer arena.Values.Free(vals)
 			if err != nil {
 				return nil, err
@@ -306,6 +330,8 @@ func (t twoLevelRedisStore) GetMulti(
 			bsz = 0
 		}
 	}
+	elapsed = time.Since(start)
+	fmt.Println("Everything took %s", elapsed)
 
 	metrics.WithLabelValues("l2_num_batches_per_get_multi").Observe(float64(batchSize))
 	return ret, nil
@@ -466,8 +492,8 @@ func (t twoLevelRedisStore) redisKey(g group) (string, error) {
 	return sb.String(), nil
 }
 
-func (t twoLevelRedisStore) toSlot(id ftypes.AggId, b *counter.Bucket, s *slot) error {
-	d := toDuration(b.Window) * b.Width
+func (t twoLevelRedisStore) toSlot(id ftypes.AggId, b *counter.StorageBucket, s *slot, info HistogramInfo) error {
+	d := toDuration(info.Window) * info.Width
 	if t.period%d != 0 {
 		return fmt.Errorf("can only store buckets with width that can fully fit in period of: '%d'sec", t.period)
 	}
@@ -478,8 +504,8 @@ func (t twoLevelRedisStore) toSlot(id ftypes.AggId, b *counter.Bucket, s *slot) 
 		key:   b.Key,
 		id:    startTs / t.period,
 	}
-	s.window = b.Window
-	s.width = b.Width
+	s.window = info.Window
+	s.width = info.Width
 	s.idx = int(gap / d)
 	return nil
 }
