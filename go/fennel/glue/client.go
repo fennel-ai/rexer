@@ -125,7 +125,7 @@ func (c GlueClient) DeactivateOfflineAggregate(tierID ftypes.RealmID, aggregateN
 		return err
 	}
 
-	prefix := fmt.Sprintf("%d::%s", tierID, aggregateName)
+	prefix := fmt.Sprintf("%d::%s::", tierID, aggregateName)
 	for _, trigger := range triggers {
 		if strings.HasPrefix(trigger, prefix) {
 			input := glue.DeleteTriggerInput{
