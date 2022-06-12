@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"fennel/lib/aggregate"
+	"fennel/lib/arena"
 	libcounter "fennel/lib/counter"
 	"fennel/lib/ftypes"
 	"fennel/lib/value"

@@ -4,11 +4,9 @@ import (
 	"context"
 	"fmt"
 	"strings"
-	"sync"
 	"time"
 
 	"fennel/lib/arena"
-
 	// TODO: consider implementing own library in the future since the repository is old
 	// and probably not maintained
 	"github.com/mtraver/base91"
@@ -21,7 +19,6 @@ import (
 	"fennel/lib/ftypes"
 	"fennel/lib/timer"
 	"fennel/lib/utils/binary"
-	"fennel/lib/utils/slice"
 	"fennel/lib/value"
 	"fennel/redis"
 	"fennel/tier"
@@ -41,7 +38,9 @@ const (
 
 	// redisKey delimiter
 	redisKeyDelimiter string = "-"
-	MAX_BATCH_SZ             = 1 << 14
+
+	// Batch size (number of keys to call from redis) for GetMulti
+	batchSize = 10000
 )
 
 var metrics = promauto.NewSummaryVec(prometheus.SummaryOpts{
@@ -58,28 +57,10 @@ var metrics = promauto.NewSummaryVec(prometheus.SummaryOpts{
 	},
 }, []string{"metric"})
 
-// slotArena is a pool of slices of type slot such that max cap of any slice is upto 1 << 15 (i.e. 32K)
-// and total cap of all slices in pools is upto 1 << 24 i.e. ~4M. Since each slot is 64 bytes, this
-// arena's total size is at most 4M * 64B = 256MB
-var slotArena = arena.New[slot](1<<15, 1<<22)
-
-// seenMapPool is a pool of maps from group -> int
-var seenMapPool = sync.Pool{
-	New: func() interface{} {
-		return make(map[group]int)
-	},
-}
-
-func allocSeenMap() map[group]int {
-	return seenMapPool.Get().(map[group]int)
-}
-
-func freeSeenMap(s map[group]int) {
-	for k := range s {
-		delete(s, k)
-	}
-	seenMapPool.Put(s)
-}
+var bucket_stats = promauto.NewGaugeVec(prometheus.GaugeOpts{
+	Name: "bucket_stats",
+	Help: "Stats number of buckets being computed for every aggregate",
+}, []string{"aggregate_id"})
 
 /*
 	twoLevelRedisStore groups all keys that fall within a period and stores them as value.Dict in a single redis key
@@ -178,61 +159,21 @@ func (t twoLevelRedisStore) GetBucketStore() BucketStore {
 	return twoLevelRedisStore{period: t.period}
 }
 
-func (t twoLevelRedisStore) get(
-	ctx context.Context, tier tier.Tier, aggIds []ftypes.AggId, buckets []counter.Bucket, defaults []value.Value,
-) ([]value.Value, error) {
-	// track seen groups, so we do not send duplicate groups to redis
-	// 'seen' maps group to index in the array of groups sent to redis
-	seen := allocSeenMap()
-	defer freeSeenMap(seen)
-	var rkeys []string
-	var slots []slot = slotArena.Alloc(len(buckets), len(buckets)) // slots is a slice with length/cap of len(buckets)
-	defer slotArena.Free(slots)
-
-	// TODO: Consider creating a large enough buffer and construct slotKey and redisKey using partitions of the buffer
-	// to save some CPU cycles
-	for i, b := range buckets {
-		s := &slots[i]
-		err := t.toSlot(aggIds[i], &b, s)
-		if err != nil {
-			return nil, err
-		}
-		if _, ok := seen[s.g]; !ok {
-			rkey, err := t.redisKey(s.g)
-			if err != nil {
-				return nil, err
-			}
-			rkeys = append(rkeys, rkey)
-			seen[s.g] = len(rkeys) - 1
-		}
-	}
-	// now load all groups from redis and get values from relevant slots
-	groupVals, err := readFromRedis(ctx, tier, rkeys)
-	if err != nil {
-		return nil, err
-	}
-	ret := arena.Values.Alloc(len(buckets), len(buckets))
-	for i, s := range slots {
-		ptr := seen[s.g]
-		slotDict, ok := groupVals[ptr].(value.Dict)
-		if !ok {
-			return nil, fmt.Errorf("could not read data: expected dict but found: %v", groupVals[ptr])
-		}
-		idxStr, err := t.slotKey(s)
-		if err != nil {
-			return nil, err
-		}
-		ret[i], ok = slotDict.Get(idxStr)
-		if !ok {
-			ret[i] = defaults[i]
-		}
-	}
-	t.logStats(groupVals, "get")
-	return ret, nil
+type ptr struct {
+	slotId []int
+	window []ftypes.Window
+	width  []uint32
+	aggPtr []int
+	posPtr []int
 }
 
-// upto 32K size of each slice, total capacity of 4M * 4 = 16MB
-var aggIdArena = arena.New[ftypes.AggId](1<<15, 1<<22)
+func (p *ptr) addToPtr(slotId int, window ftypes.Window, width uint32, aggPtr int, posPtr int) {
+	p.slotId = append(p.slotId, slotId)
+	p.window = append(p.window, window)
+	p.width = append(p.width, width)
+	p.aggPtr = append(p.aggPtr, aggPtr)
+	p.posPtr = append(p.posPtr, posPtr)
+}
 
 func (t twoLevelRedisStore) GetMulti(ctx context.Context, tier tier.Tier,
 	aggIds []ftypes.AggId, bucketLists [][]counter.BucketList, defaults []value.Value,
@@ -243,6 +184,15 @@ func (t twoLevelRedisStore) GetMulti(ctx context.Context, tier tier.Tier,
 		return vals, err
 	}
 	vals = make([][]value.Value, len(aggIds))
+	for i := range bucketLists {
+		totalSize := 0
+		for _, bl := range bucketLists[i] {
+			totalSize += int(bl.Count())
+		}
+		vals[i] = make([]value.Value, totalSize)
+		bucket_stats.WithLabelValues(fmt.Sprint(aggIds[i])).Set(float64(totalSize))
+	}
+	curs := make([]int, len(aggIds))
 
 	// We want to process same aggIds together.
 	// aggMap[aggPtr] maps to a slice that contains all the indices of aggIds whose value is aggPtr.
@@ -258,106 +208,97 @@ func (t twoLevelRedisStore) GetMulti(ctx context.Context, tier tier.Tier,
 		aggMap[aggId] = append(aggMap[aggId], i)
 	}
 
-	type slotType struct {
-		window ftypes.Window
-		width  uint32
-	}
-	type ptr struct {
-		slotId []int
-		aggPtr []int
-	}
-
-	bufSize := 1000
-	seen := make(map[group]int, bufSize)
+	// We request redis for at most batchSize keys at a time. Aggregates are processed in order, groups already
+	// seen are not added to the buffer, and when the number of groups to query from redis reaches bufsize,
+	// we query redis and fill vals with those values.
+	// TODO: Consider creating a large enough buffer and construct keys using partitions of the buffer
+	// to save some CPU cycles
+	numBatches := 0
+	seen := make(map[group]int, batchSize)
 	keyCtr := 0
-	rkeys := make([]string, bufSize)
-	aggIds_ := make([]ftypes.AggId, bufSize)
-	slots := make([]slotType, bufSize)
-	ptrs := make([]ptr, bufSize)
+	rkeys := make([]string, batchSize)
+	// keep pointers to note which slot's value to return to which get request of the batch
+	ptrs := make([]ptr, batchSize)
 	for aggId, indices := range aggMap {
 		for _, i := range indices {
 			for _, bl := range bucketLists[i] {
+				// convert bucket lists to groups and also get the indices of the groups requested by this bucket list
 				groups, locs, err := t.toGroups(aggId, bl)
 				if err != nil {
 					return nil, err
 				}
 				for j, g := range groups {
 					if p, ok := seen[g]; ok {
+						// if we have already seen this group, then we just need to update the ptrs
 						for _, loc := range locs[j] {
-							ptrs[p].slotId = append(ptrs[p].slotId, loc)
-							ptrs[p].aggPtr = append(ptrs[p].aggPtr, i)
+							ptrs[p].addToPtr(loc, bl.Window, bl.Width, i, curs[i])
+							curs[i]++
 						}
 						continue
 					}
-					seen[g] = keyCtr
+					seen[g] = keyCtr // mark group as seen
 					rkeys[keyCtr], err = t.redisKey(g)
-					aggIds_[keyCtr] = aggId
-					slots[keyCtr] = slotType{
-						window: bl.Window,
-						width:  bl.Width,
-					}
 					for _, loc := range locs[j] {
-						ptrs[keyCtr].slotId = append(ptrs[keyCtr].slotId, loc)
-						ptrs[keyCtr].aggPtr = append(ptrs[keyCtr].aggPtr, i)
+						ptrs[keyCtr].addToPtr(loc, bl.Window, bl.Width, i, curs[i]) // update ptrs
+						curs[i]++
 					}
-					keyCtr++
+					keyCtr++ // increment batch counter
 
-					if keyCtr == bufSize {
-						ret, err := readFromRedis(ctx, tier, rkeys)
+					// batch is full, so we get values now
+					if keyCtr == batchSize {
+						err := t.get(ctx, tier, rkeys, ptrs, defaults, vals)
 						if err != nil {
 							return nil, err
 						}
-						for p, v := range ret {
-							vDict, ok := v.(value.Dict)
-							if !ok {
-								return nil, fmt.Errorf("could not read data: expected dict but found: %v", v)
-							}
-							for q, sId := range ptrs[p].slotId {
-								aPtr := ptrs[p].aggPtr[q]
-								idxStr, err := t.slotKey2(slots[p].window, slots[p].width, sId)
-								if err != nil {
-									return nil, err
-								}
-								val, ok := vDict.Get(idxStr)
-								if !ok {
-									val = defaults[aPtr]
-								}
-								vals[aPtr] = append(vals[aPtr], val)
-							}
-						}
+						numBatches++
 						keyCtr = 0
-						seen = make(map[group]int, bufSize)
+						seen = make(map[group]int, batchSize)
 					}
 				}
 			}
 		}
 	}
+	// if batch is not empty at the end, get the remaining values
 	if keyCtr != 0 {
-		ret, err := readFromRedis(ctx, tier, rkeys)
+		err := t.get(ctx, tier, rkeys[:keyCtr], ptrs[:keyCtr], defaults, vals)
 		if err != nil {
 			return nil, err
 		}
-		for p, v := range ret {
-			vDict, ok := v.(value.Dict)
-			if !ok {
-				return nil, fmt.Errorf("could not read data: expected dict but found: %v", v)
-			}
-			for q, sId := range ptrs[p].slotId {
-				aPtr := ptrs[p].aggPtr[q]
-				idxStr, err := t.slotKey2(slots[p].window, slots[p].width, sId)
-				if err != nil {
-					return nil, err
-				}
-				val, ok := vDict.Get(idxStr)
-				if !ok {
-					val = defaults[aPtr]
-				}
-				vals[aPtr] = append(vals[aPtr], val)
-			}
-		}
+		numBatches++
 	}
+	metrics.WithLabelValues("l2_num_batches_per_get_multi").Observe(float64(numBatches))
 
 	return vals, err
+}
+
+// get performs one batch call for GetMulti and fills values into the 2D slice provided by it
+func (t twoLevelRedisStore) get(
+	ctx context.Context, tier tier.Tier, rkeys []string, ptrs []ptr, defaults []value.Value, vals [][]value.Value,
+) error {
+	rvals, err := readFromRedis(ctx, tier, rkeys)
+	if err != nil {
+		return err
+	}
+	for p, v := range rvals {
+		vDict, ok := v.(value.Dict)
+		if !ok {
+			return fmt.Errorf("could not read data: expected dict but found: %v", v)
+		}
+		for q, sId := range ptrs[p].slotId {
+			aPtr, pPtr := ptrs[p].aggPtr[q], ptrs[p].posPtr[q]
+			idxStr, err := t.slotKey2(ptrs[p].window[q], ptrs[p].width[q], sId)
+			if err != nil {
+				return err
+			}
+			val, ok := vDict.Get(idxStr)
+			if !ok {
+				val = defaults[aPtr]
+			}
+			vals[aPtr][pPtr] = val
+		}
+	}
+	t.logStats(rvals, "get")
+	return nil
 }
 
 func (t twoLevelRedisStore) toGroups(aggId ftypes.AggId, bList counter.BucketList) ([]group, [][]int, error) {
@@ -393,98 +334,6 @@ func (t twoLevelRedisStore) toGroups(aggId ftypes.AggId, bList counter.BucketLis
 	return groups, locs, nil
 }
 
-func (t twoLevelRedisStore) GetMulti2(
-	ctx context.Context, tier tier.Tier, aggIds []ftypes.AggId, bucketLists [][]counter.BucketList, defaults []value.Value,
-) ([][]value.Value, error) {
-	ctx, tmr := timer.Start(ctx, tier.ID, "twolevelredis.get_multi")
-	defer tmr.Stop()
-	if len(aggIds) == 0 {
-		return [][]value.Value{}, nil
-	}
-
-	// to ensure that we don't allocate crazy large memory, we iterate through all
-	// data in batches - we prefer to use a batch size up to MAX_BATCH_SZ but if
-	// some bucketLists[i] itself has more buckets than this, we are forced to use a batch
-	// size that can at least accommodate that
-	var sz, maxSz int
-	numBuckets := make([]int, len(aggIds))
-	for i := range bucketLists {
-		for j := range bucketLists[i] {
-			numBuckets[i] += int(bucketLists[i][j].Count())
-		}
-		sz += numBuckets[i]
-		if numBuckets[i] > maxSz {
-			maxSz = numBuckets[i]
-		}
-	}
-
-	ret := make([][]value.Value, len(aggIds))
-	batchSize := sz
-	if batchSize > MAX_BATCH_SZ {
-		batchSize = MAX_BATCH_SZ
-	}
-	if batchSize < maxSz {
-		batchSize = maxSz
-	}
-
-	if batchSize == 0 {
-		return [][]value.Value{}, nil
-	}
-
-	ids_ := aggIdArena.Alloc(batchSize, batchSize)
-	defer aggIdArena.Free(ids_)
-	buckets_ := arena.Buckets.Alloc(batchSize, batchSize)
-	defer arena.Buckets.Free(buckets_)
-	defaults_ := arena.Values.Alloc(batchSize, batchSize)
-	defer arena.Values.Free(defaults_)
-	i := 0      // i tracks the index of the next aggPtr whose buckets we will attempt to insert into the batch
-	putIdx := 0 // putIdx tracks the index of the next aggPtr for which values received from redis need to be filled
-	bsz := 0    // bsz tracks the number of buckets in the current batch
-	for putIdx < len(aggIds) {
-		// Insert the buckets for the next aggPtr into the batch only if there's room for all of them.
-		if i < len(aggIds) && numBuckets[i] <= len(buckets_)-bsz {
-			ctr := 0
-			for _, bl := range bucketLists[i] {
-				for k := bl.StartIndex; k <= bl.EndIndex; k++ {
-					buckets_[bsz+ctr] = counter.Bucket{
-						Key:    bl.Key,
-						Window: bl.Window,
-						Width:  bl.Width,
-						Index:  k,
-					}
-					ctr++
-				}
-			}
-			slice.Fill(ids_[bsz:bsz+numBuckets[i]], aggIds[i])
-			slice.Fill(defaults_[bsz:bsz+numBuckets[i]], defaults[i])
-			bsz += numBuckets[i]
-			i++
-		} else {
-			vals, err := t.get(ctx, tier, ids_[:bsz], buckets_[:bsz], defaults_[:bsz])
-			defer arena.Values.Free(vals)
-			if err != nil {
-				return nil, err
-			}
-			j := putIdx
-			for ; len(vals) > 0 && j < len(aggIds); j++ {
-				l := numBuckets[j]
-				// We copy the values into ret[j] instead of just assigning them to
-				// ret[j] since the returned slices would otherwise share the same
-				// underlying array and changes (e.g. append) to one would be
-				// reflected in the other.
-				ret[j] = arena.Values.Alloc(l, l)
-				copy(ret[j], vals[:l])
-				vals = vals[l:]
-			}
-			putIdx = j
-			bsz = 0
-		}
-	}
-
-	metrics.WithLabelValues("l2_num_batches_per_get_multi").Observe(float64(batchSize))
-	return ret, nil
-}
-
 func (t twoLevelRedisStore) set(ctx context.Context, tier tier.Tier, aggIds []ftypes.AggId, buckets []counter.Bucket, values []value.Value) error {
 	// track seen groups, so we do not send duplicate groups to redis
 	// 'seen' maps group to index in the array of groups sent to redis
@@ -493,8 +342,6 @@ func (t twoLevelRedisStore) set(ctx context.Context, tier tier.Tier, aggIds []ft
 	slots := make([]slot, len(buckets))
 	keyCount := make(map[ftypes.AggId]int, len(buckets))
 
-	// TODO: Consider creating a large enough buffer and construct slotKey and redisKey using partitions of the buffer
-	// to save some CPU cycles
 	for i, b := range buckets {
 		s := &slots[i]
 		s.val = values[i]
