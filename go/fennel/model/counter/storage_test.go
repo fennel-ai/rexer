@@ -42,7 +42,7 @@ func TestRedisKeyEncodeDecode(t *testing.T) {
 
 	// TODO(mohit): Potentially move this to a library which could be helpful for tools which can use this functionality
 
-	// decode aggPtr
+	// decode aggId
 	s := strings.Split(rKey, redisKeyDelimiter)
 	assert.True(t, len(s) == 3)
 	{
