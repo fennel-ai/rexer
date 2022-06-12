@@ -2,6 +2,8 @@ package counter
 
 import (
 	"context"
+	"testing"
+
 	"fennel/engine/ast"
 	libaggregate "fennel/lib/aggregate"
 	"fennel/lib/ftypes"
@@ -11,7 +13,6 @@ import (
 	counter2 "fennel/model/counter"
 	"fennel/test"
 	"fennel/tier"
-	"testing"
 
 	"github.com/stretchr/testify/assert"
 )
