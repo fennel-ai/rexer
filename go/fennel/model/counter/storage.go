@@ -195,7 +195,7 @@ func (t twoLevelRedisStore) GetMulti(ctx context.Context, tier tier.Tier,
 	curs := make([]int, len(aggIds))
 
 	// We want to process same aggIds together.
-	// aggMap[aggId] maps to a slice that contains all the indices of aggId.
+	// aggMap[aggPtr] maps to a slice that contains all the indices of aggIds whose value is aggPtr.
 	aggReps := make(map[ftypes.AggId]int, len(aggIds))
 	for _, aggId := range aggIds {
 		aggReps[aggId]++
@@ -440,10 +440,10 @@ func (t twoLevelRedisStore) slotKey(s slot) (string, error) {
 // AggId or (AggId, Codec) pair on redis
 func (t twoLevelRedisStore) redisKey(g group) (string, error) {
 	var aggStr, codecStr, groupIdStr string
-	// aggId
+	// aggPtr
 	{
 		arr := [8]byte{}
-		aggBuf := arr[:] // aggId
+		aggBuf := arr[:] // aggPtr
 		curr, err := binary.PutUvarint(aggBuf, uint64(g.aggId))
 		if err != nil {
 			return "", err
