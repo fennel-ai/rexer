@@ -18,7 +18,7 @@ var rateNumGTDen = promauto.NewCounterVec(
 		Name: "rolling_rate_num_gt_den",
 		Help: "Total number of normalized rate counter reductions with numerator > denominator",
 	},
-	[]string{"aggPtr"},
+	[]string{"aggId"},
 )
 
 var zeroRate value.Value = value.NewList(value.Double(0), value.Double(0))
@@ -91,7 +91,7 @@ func (r rollingRate) Reduce(values []value.Value) (value.Value, error) {
 	if r.Normalize {
 		// TODO(Mohit): Consider making this an error in the future once Lokal's counters data has been evicted
 		if num > den {
-			r.tr.Logger.Warn(fmt.Sprintf("normalized rate requires numerator to be <= denominator but found '%f', '%f' for aggPtr: %d", num, den, r.aggId))
+			r.tr.Logger.Warn(fmt.Sprintf("normalized rate requires numerator to be <= denominator but found '%f', '%f' for aggId: %d", num, den, r.aggId))
 			// report metrics for this case
 			rateNumGTDen.WithLabelValues(strconv.Itoa(int(r.aggId))).Inc()
 			// set the ratio as 1.0
