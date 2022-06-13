@@ -16,6 +16,11 @@ import (
 	"fennel/tier"
 )
 
+const (
+	defaultSagemakerInstanceType = "ml.c5.large"
+	defaultInitInstanceSize = 1
+)
+
 type RetryError error
 
 // local cache of model container name to framework.
@@ -407,8 +412,8 @@ func EnsureEndpointExists(ctx context.Context, tier tier.Tier) error {
 			Name:          fmt.Sprintf("%s-config-%d", sagemakerModelName, rand.Int63()),
 			ModelName:     sagemakerModelName,
 			VariantName:   sagemakerModelName,
-			InstanceType:  "ml.t2.medium",
-			InstanceCount: 1,
+			InstanceType:  defaultSagemakerInstanceType,
+			InstanceCount: defaultInitInstanceSize,
 		}
 		err = db.InsertEndpointConfig(tier, endpointCfg)
 		if err != nil {
