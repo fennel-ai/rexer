@@ -22,7 +22,6 @@ const (
 	serviceNamespace = "sagemaker"
 	scalableDimInstanceCount = "sagemaker:variant:DesiredInstanceCount"
 	scalablePolicyType = "TargetTrackingScaling"
-	cpuScalingTargetValue = 70
 )
 
 type SagemakerArgs struct {
@@ -43,6 +42,7 @@ func NewClient(args SagemakerArgs, logger *zap.Logger) (SMClient, error) {
 	))
 	runtime := sagemakerruntime.New(sess)
 	metadata := sagemaker.New(sess)
+	// TODO: Create application infra for application autoscaling as it supports autoscaling other AWS resources as well
 	autoscaler := applicationautoscaling.New(sess)
 	return SMClient{
 		args:           args,
@@ -323,16 +323,17 @@ func (smc SMClient) UpdateEndpoint(ctx context.Context, endpoint lib.SagemakerEn
 	return nil
 }
 
-func (smc SMClient) EnableAutoscaling(ctx context.Context, sagemakerEndpointName string, modelVariantName string) error {
+func (smc SMClient) EnableAutoscaling(ctx context.Context, sagemakerEndpointName string, modelVariantName string, scalingConfig lib.ScalingConfiguration) error {
 	resourceId := aws.String(fmt.Sprintf("endpoint/%s/variant/%s", sagemakerEndpointName, modelVariantName))
+	if scalingConfig.MinCapacity <= scalingConfig.MaxCapacity || scalingConfig.MinCapacity <= 0 || scalingConfig.MaxCapacity <= 0 {
+		return fmt.Errorf("MinCapacity and MaxCapacity have to non-zero values with MaxCapacity >= MinCapacity. Given: %d (min) and %d (max)", scalingConfig.MinCapacity, scalingConfig.MaxCapacity)
+	}
 	req := applicationautoscaling.RegisterScalableTargetInput{
 		ServiceNamespace: aws.String(serviceNamespace),
 		ResourceId: resourceId,
 		ScalableDimension: aws.String(scalableDimInstanceCount),
-		// TODO: configure these using dynamic configuration and setup a tailer to update the scaling policy
-		// if changed
-		MinCapacity: aws.Int64(1),
-		MaxCapacity: aws.Int64(5),
+		MinCapacity: aws.Int64(scalingConfig.MinCapacity),
+		MaxCapacity: aws.Int64(scalingConfig.MaxCapacity),
 	}
 	_, err := smc.autoscalerClient.RegisterScalableTargetWithContext(ctx, &req)
 	if err != nil {
@@ -340,7 +341,10 @@ func (smc SMClient) EnableAutoscaling(ctx context.Context, sagemakerEndpointName
 		return fmt.Errorf("failed to register model variant for autoscaling: %w", err)
 	}
 	// define and apply
-	scalingPolicy := cpuUtilizationScalingPolicy(sagemakerEndpointName, modelVariantName)
+	scalingPolicy, err := cpuUtilizationScalingPolicy(sagemakerEndpointName, modelVariantName, scalingConfig.Cpu)
+	if err != nil {
+		return err
+	}
 	// TODO: source of truth for these policies should be a DB table and we should ideally have an update path.
 	// configuring the policy with "sagemakerEndpointName" and "modelVariantName" makes it uniquely identifiable now
 	// and allows migrating this to be stored in DB later
@@ -416,9 +420,12 @@ func (smc SMClient) Score(ctx context.Context, in *lib.ScoreRequest) (*lib.Score
 	return adapter.Score(ctx, in)
 }
 
-func cpuUtilizationScalingPolicy(sagemakerEndpointName string, modelVariantName string) applicationautoscaling.TargetTrackingScalingPolicyConfiguration {
+func cpuUtilizationScalingPolicy(sagemakerEndpointName string, modelVariantName string, cpu lib.CpuScalingPolicy) (applicationautoscaling.TargetTrackingScalingPolicyConfiguration, error) {
+	if cpu.CpuTargetValue <= 0 {
+		return applicationautoscaling.TargetTrackingScalingPolicyConfiguration{}, fmt.Errorf("CpuTargetValue should non-zero positive value, given: %v", cpu.CpuTargetValue)
+	}
 	return applicationautoscaling.TargetTrackingScalingPolicyConfiguration{
-		TargetValue: aws.Float64(cpuScalingTargetValue),
+		TargetValue: aws.Float64(cpu.CpuTargetValue),
 		CustomizedMetricSpecification: &applicationautoscaling.CustomizedMetricSpecification{
 			MetricName: aws.String("CPUUtilization"),
 			Namespace:  aws.String("/aws/sagemaker/Endpoints"),
@@ -436,9 +443,11 @@ func cpuUtilizationScalingPolicy(sagemakerEndpointName string, modelVariantName 
 			Unit:      aws.String("Percent"),
 		},
 		// TODO: tune this according to the load patterns. May be these should be dynamic configurations as well
+		// if not set, default value of 300 seconds is used
+
 		// time to wait b/w two consecutive scale-in operations
-		ScaleInCooldown: aws.Int64(120),
+		ScaleInCooldown: aws.Int64(cpu.ScaleInCoolDownPeriod),
 		// time to wait b/w two consecutive scale-out operations
-		ScaleOutCooldown: aws.Int64(120),
-	}
+		ScaleOutCooldown: aws.Int64(cpu.ScaleOutCoolDownPeriod),
+	}, nil
 }

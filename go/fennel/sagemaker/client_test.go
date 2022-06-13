@@ -222,7 +222,14 @@ func TestIsAutoscalingConfigured(t *testing.T) {
 	assert.False(t, yes)
 
 	// configure autoscaling on this instance and assert
-	err = c.EnableAutoscaling(ctx, endpoint, variantName)
+	err = c.EnableAutoscaling(ctx, endpoint, variantName, lib.ScalingConfiguration{
+		Cpu: lib.CpuScalingPolicy{
+			CpuTargetValue: 20,
+			ScaleInCoolDownPeriod: 100,
+			ScaleOutCoolDownPeriod: 200,
+		},
+		BaseConfig: &lib.BaseConfig{MinCapacity: 1, MaxCapacity: 2},
+	})
 	assert.NoError(t, err)
 	yes, err = c.IsAutoscalingConfigured(ctx, endpoint, variantName)
 	assert.NoError(t, err)
@@ -234,6 +241,72 @@ func TestIsAutoscalingConfigured(t *testing.T) {
 	yes, err = c.IsAutoscalingConfigured(ctx, endpoint, variantName)
 	assert.NoError(t, err)
 	assert.False(t, yes)
+}
+
+func TestEnableAutoscalingMisConfigs(t *testing.T) {
+	c, err := getTestClient()
+	assert.NoError(t, err)
+
+	endpoint := "autoscaling-unittest-endpoint"
+	// model - autoscaling-unittest-model
+	variantName := "variant-name-1"
+	ctx := context.Background()
+
+	{
+		err := c.EnableAutoscaling(ctx, endpoint, variantName, lib.ScalingConfiguration{
+			Cpu: lib.CpuScalingPolicy{
+				CpuTargetValue:         -1,
+				ScaleInCoolDownPeriod:  100,
+				ScaleOutCoolDownPeriod: 200,
+			},
+			BaseConfig: &lib.BaseConfig{MinCapacity: 1, MaxCapacity: 2},
+		})
+		assert.Error(t, err)
+	}
+	{
+		err := c.EnableAutoscaling(ctx, endpoint, variantName, lib.ScalingConfiguration{
+			Cpu: lib.CpuScalingPolicy{
+				CpuTargetValue:         20,
+				ScaleInCoolDownPeriod:  100,
+				ScaleOutCoolDownPeriod: 200,
+			},
+			BaseConfig: &lib.BaseConfig{MinCapacity: 0, MaxCapacity: 2},
+		})
+		assert.Error(t, err)
+	}
+	{
+		err := c.EnableAutoscaling(ctx, endpoint, variantName, lib.ScalingConfiguration{
+			Cpu: lib.CpuScalingPolicy{
+				CpuTargetValue:         20,
+				ScaleInCoolDownPeriod:  100,
+				ScaleOutCoolDownPeriod: 200,
+			},
+			BaseConfig: &lib.BaseConfig{MinCapacity: 1, MaxCapacity: 0},
+		})
+		assert.Error(t, err)
+	}
+	{
+		err := c.EnableAutoscaling(ctx, endpoint, variantName, lib.ScalingConfiguration{
+			Cpu: lib.CpuScalingPolicy{
+				CpuTargetValue:         20,
+				ScaleInCoolDownPeriod:  100,
+				ScaleOutCoolDownPeriod: 200,
+			},
+			BaseConfig: &lib.BaseConfig{MinCapacity: 2, MaxCapacity: 1},
+		})
+		assert.Error(t, err)
+	}
+	{
+		err := c.EnableAutoscaling(ctx, endpoint, variantName, lib.ScalingConfiguration{
+			Cpu: lib.CpuScalingPolicy{
+				CpuTargetValue:         20,
+				ScaleInCoolDownPeriod:  -1,
+				ScaleOutCoolDownPeriod: -1,
+			},
+			BaseConfig: &lib.BaseConfig{MinCapacity: 2, MaxCapacity: 1},
+		})
+		assert.Error(t, err)
+	}
 }
 
 func TestDisablingAutoscalingOnUnconfiguredVariant(t *testing.T) {

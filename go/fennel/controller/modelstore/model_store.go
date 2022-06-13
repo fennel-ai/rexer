@@ -591,7 +591,21 @@ func EnableAutoscalingWhenEndpointInService(ctx context.Context, tier tier.Tier,
 	}
 
 	// register the variant as a scalable target
-	if err := tier.SagemakerClient.EnableAutoscaling(ctx, sagemakerEndpointName, modelVariantName); err != nil {
+
+	// TODO: Consider configuring these values as dynamic configurations
+	// currently starting with reasonable values
+	if err := tier.SagemakerClient.EnableAutoscaling(ctx, sagemakerEndpointName, modelVariantName, lib.ScalingConfiguration{
+		Cpu: lib.CpuScalingPolicy{
+			CpuTargetValue: 70,
+			// scale out aggressively than scaling in
+			ScaleInCoolDownPeriod: 180,
+			ScaleOutCoolDownPeriod: 60,
+		},
+		BaseConfig: &lib.BaseConfig{
+			MinCapacity: 1,
+			MaxCapacity: 5,
+		},
+	}); err != nil {
 		tier.Logger.Error("failed to enable autoscaling for endpoint and variant", zapEndpointName, zapVariantName, zap.Error(err))
 		scalingConfigErrors.WithLabelValues("EnableAutoscaling").Inc()
 		return
