@@ -25,4 +25,6 @@ import (
 	_ "fennel/opdefs/std/zip"
 
 	_ "fennel/opdefs/math"
+
+	_ "fennel/opdefs/time"
 )
