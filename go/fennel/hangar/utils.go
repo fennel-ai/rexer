@@ -2,6 +2,8 @@ package hangar
 
 import (
 	"time"
+
+	"fennel/lib/utils/slice"
 )
 
 func ExpiryToTTL(expiry int64) (time.Duration, bool) {
@@ -27,7 +29,7 @@ func EncodeKeyMany(keys []Key, enc Encoder) ([][]byte, error) {
 		if err != nil {
 			return nil, err
 		}
-		ret[i] = buf[:n]
+		ret[i] = slice.Limit(buf[:n])
 		buf = buf[n:]
 	}
 	return ret, nil
@@ -45,7 +47,7 @@ func EncodeValMany(vgs []ValGroup, enc Encoder) ([][]byte, error) {
 		if err != nil {
 			return nil, err
 		}
-		ret[i] = buf[:n]
+		ret[i] = slice.Limit(buf[:n])
 		buf = buf[n:]
 	}
 	return ret, nil
@@ -63,7 +65,7 @@ func EncodeKeyManyKG(kgs []KeyGroup, enc Encoder) ([][]byte, error) {
 		if err != nil {
 			return nil, err
 		}
-		ret[i] = buf[:n]
+		ret[i] = slice.Limit(buf[:n])
 		buf = buf[n:]
 	}
 	return ret, nil
