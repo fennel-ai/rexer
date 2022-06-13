@@ -45,3 +45,31 @@ func TestGrow(t *testing.T) {
 		assert.Equal(t, i, arr[i])
 	}
 }
+
+func TestLimit(t *testing.T) {
+	arr := make([]int, 10)
+	for i := range arr {
+		arr[i] = i
+	}
+	for i := 0; i < len(arr); i++ {
+		assert.Equal(t, i, arr[i])
+	}
+	// Now, create limited view to a part of the slice.
+	part := arr[0:5]
+	limited := slice.Limit(part)
+	assert.Equal(t, 5, len(limited))
+	assert.Equal(t, 5, cap(limited))
+	// Modifications to the base slice are reflected in the view if it has not
+	// been appended to.
+	part[0] = -1
+	assert.Equal(t, -1, limited[0])
+	// However, appending to the limited view creates a copy.
+	limited = append(limited, -2)
+	assert.Equal(t, 6, len(limited))
+	assert.Equal(t, -2, limited[5])
+	assert.NotEqual(t, -2, arr[5])
+	// Now, modifications to original slice are also not reflected in the
+	// limited view.
+	part[2] = 16
+	assert.NotEqual(t, 16, limited[2])
+}
