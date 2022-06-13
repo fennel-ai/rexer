@@ -234,7 +234,7 @@ func CreateFromArgs(args *TierArgs) (tier Tier, err error) {
 	}
 
 	log.Print("Connecting to sagemaker")
-	smclient, err := sagemaker.NewClient(args.SagemakerArgs)
+	smclient, err := sagemaker.NewClient(args.SagemakerArgs, logger)
 	if err != nil {
 		return tier, fmt.Errorf("failed to create sagemaker client: %v", err)
 	}

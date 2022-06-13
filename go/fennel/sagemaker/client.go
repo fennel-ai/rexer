@@ -10,10 +10,19 @@ import (
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/awserr"
 	"github.com/aws/aws-sdk-go/aws/session"
+	"github.com/aws/aws-sdk-go/service/applicationautoscaling"
 	"github.com/aws/aws-sdk-go/service/sagemaker"
 	"github.com/aws/aws-sdk-go/service/sagemakerruntime"
+	"go.uber.org/zap"
 
 	lib "fennel/lib/sagemaker"
+)
+
+const (
+	serviceNamespace = "sagemaker"
+	scalableDimInstanceCount = "sagemaker:variant:DesiredInstanceCount"
+	scalablePolicyType = "TargetTrackingScaling"
+	cpuScalingTargetValue = 70
 )
 
 type SagemakerArgs struct {
@@ -25,7 +34,7 @@ type SagemakerArgs struct {
 	SagemakerInstanceCount uint     `arg:"--sagemaker-instance-count,env:SAGEMAKER_INSTANCE_COUNT,help:SageMaker instance count"`
 }
 
-func NewClient(args SagemakerArgs) (SMClient, error) {
+func NewClient(args SagemakerArgs, logger *zap.Logger) (SMClient, error) {
 	sess := session.Must(session.NewSession(
 		&aws.Config{
 			Region:                        aws.String(args.Region),
@@ -34,17 +43,22 @@ func NewClient(args SagemakerArgs) (SMClient, error) {
 	))
 	runtime := sagemakerruntime.New(sess)
 	metadata := sagemaker.New(sess)
+	autoscaler := applicationautoscaling.New(sess)
 	return SMClient{
 		args:           args,
+		logger: 		logger,
 		runtimeClient:  runtime,
 		metadataClient: metadata,
+		autoscalerClient: autoscaler,
 	}, nil
 }
 
 type SMClient struct {
 	args           SagemakerArgs
+	logger 		   *zap.Logger
 	runtimeClient  *sagemakerruntime.SageMakerRuntime
 	metadataClient *sagemaker.SageMaker
+	autoscalerClient *applicationautoscaling.ApplicationAutoScaling
 }
 
 var _ lib.SagemakerRegistry = SMClient{}
@@ -154,6 +168,21 @@ func (smc SMClient) GetEndpointConfigName(ctx context.Context, endpointName stri
 		return "", fmt.Errorf("failed to get config name of endpoint '%s': %v", endpointName, err)
 	}
 	return *res.EndpointConfigName, nil
+}
+
+func (smc SMClient) GetProductionVariantName(ctx context.Context, endpointName string) (string, error) {
+	input := sagemaker.DescribeEndpointInput{
+		EndpointName: aws.String(endpointName),
+	}
+	res, err := smc.metadataClient.DescribeEndpointWithContext(ctx, &input)
+	if err != nil {
+		return "", fmt.Errorf("failed to get production variant name of endpoint %s: %v", endpointName, err)
+	}
+	// we always have a single production variant behind an endpoint
+	if len(res.ProductionVariants) != 1 {
+		return "", fmt.Errorf("found %d production variants, expected 1", len(res.ProductionVariants))
+	}
+	return *res.ProductionVariants[0].VariantName, nil
 }
 
 func (smc SMClient) GetEndpointStatus(ctx context.Context, endpointName string) (string, error) {
@@ -294,10 +323,122 @@ func (smc SMClient) UpdateEndpoint(ctx context.Context, endpoint lib.SagemakerEn
 	return nil
 }
 
+func (smc SMClient) EnableAutoscaling(ctx context.Context, sagemakerEndpointName string, modelVariantName string) error {
+	resourceId := aws.String(fmt.Sprintf("endpoint/%s/variant/%s", sagemakerEndpointName, modelVariantName))
+	req := applicationautoscaling.RegisterScalableTargetInput{
+		ServiceNamespace: aws.String(serviceNamespace),
+		ResourceId: resourceId,
+		ScalableDimension: aws.String(scalableDimInstanceCount),
+		// TODO: configure these using dynamic configuration and setup a tailer to update the scaling policy
+		// if changed
+		MinCapacity: aws.Int64(1),
+		MaxCapacity: aws.Int64(5),
+	}
+	_, err := smc.autoscalerClient.RegisterScalableTargetWithContext(ctx, &req)
+	if err != nil {
+		smc.logger.Error("failed to register model variant for autoscaling", zap.String("endpoint", sagemakerEndpointName), zap.String("variant", modelVariantName), zap.Error(err))
+		return fmt.Errorf("failed to register model variant for autoscaling: %w", err)
+	}
+	// define and apply
+	scalingPolicy := cpuUtilizationScalingPolicy(sagemakerEndpointName, modelVariantName)
+	// TODO: source of truth for these policies should be a DB table and we should ideally have an update path.
+	// configuring the policy with "sagemakerEndpointName" and "modelVariantName" makes it uniquely identifiable now
+	// and allows migrating this to be stored in DB later
+	scalingReq := applicationautoscaling.PutScalingPolicyInput{
+		PolicyName: aws.String(fmt.Sprintf("CpuScalingPolicy-%s-%s", sagemakerEndpointName, modelVariantName)),
+		ServiceNamespace: aws.String(serviceNamespace),
+		ResourceId: resourceId,
+		ScalableDimension: aws.String(scalableDimInstanceCount),
+		PolicyType: aws.String(scalablePolicyType),
+		TargetTrackingScalingPolicyConfiguration: &scalingPolicy,
+	}
+	out, err := smc.autoscalerClient.PutScalingPolicyWithContext(ctx, &scalingReq)
+	if err != nil {
+		smc.logger.Error("failed to apply scaling policy to the register scalable target", zap.String("endpoint", sagemakerEndpointName), zap.String("variant", modelVariantName), zap.Error(err))
+		return fmt.Errorf("failed to apply scaling policy for autoscaling: %w", err)
+	}
+	smc.logger.Info("successfully applied scaling policies for model variant", zap.String("endpoint", sagemakerEndpointName), zap.String("variant", modelVariantName), zap.String("policyArn", *out.PolicyARN))
+	return nil
+}
+
+func (smc SMClient) DisableAutoscaling(ctx context.Context, sagemakerEndpointName string, modelVariantName string) error {
+	found, err := smc.IsAutoscalingConfigured(ctx, sagemakerEndpointName, modelVariantName)
+	if err != nil {
+		return fmt.Errorf("could not determine if autoscaling is configured: %w", err)
+	}
+	if !found {
+		smc.logger.Info("autoscaling is not configured, skipping disabling it", zap.String("endpoint", sagemakerEndpointName), zap.String("variant", modelVariantName))
+		return nil
+	}
+	resourceId := aws.String(fmt.Sprintf("endpoint/%s/variant/%s", sagemakerEndpointName, modelVariantName))
+	req := applicationautoscaling.DeregisterScalableTargetInput{
+		ServiceNamespace: aws.String(serviceNamespace),
+		ResourceId: resourceId,
+		ScalableDimension: aws.String(scalableDimInstanceCount),
+	}
+	_, err = smc.autoscalerClient.DeregisterScalableTargetWithContext(ctx, &req)
+	if err != nil {
+		smc.logger.Error("failed to disable autoscaling for endpoint and model variant", zap.String("endpoint", sagemakerEndpointName), zap.String("variant", modelVariantName), zap.Error(err))
+		return fmt.Errorf("failed to disable autoscaling policy for endpoint: %s, variant: %s: %w", sagemakerEndpointName, modelVariantName, err)
+	}
+	smc.logger.Info("successfully disabled autoscaling for endpoint and model variant", zap.String("endpoint", sagemakerEndpointName), zap.String("variant", modelVariantName))
+	return nil
+}
+
+func (smc SMClient) IsAutoscalingConfigured(ctx context.Context, sagemakerEndpointName string, modelVariantName string) (bool, error) {
+	resourceId := aws.String(fmt.Sprintf("endpoint/%s/variant/%s", sagemakerEndpointName, modelVariantName))
+	req := applicationautoscaling.DescribeScalableTargetsInput{
+		ServiceNamespace: aws.String(serviceNamespace),
+		ResourceIds: []*string{resourceId},
+		ScalableDimension: aws.String(scalableDimInstanceCount),
+	}
+	out, err := smc.autoscalerClient.DescribeScalableTargetsWithContext(ctx, &req)
+	if err != nil {
+		return false, err
+	}
+	// we should find exactly one scalable target for the variant
+	if len(out.ScalableTargets) == 1 {
+		return true, nil
+	}
+	// if no scalable target is registered
+	if len(out.ScalableTargets) == 0 {
+		return false, nil
+	}
+	// this should never happen
+	return false, fmt.Errorf("found %d scalable targets for endpoint: %s, variant: %s. Expected 1", len(out.ScalableTargets), sagemakerEndpointName, modelVariantName)
+}
+
 func (smc SMClient) Score(ctx context.Context, in *lib.ScoreRequest) (*lib.ScoreResponse, error) {
 	adapter, err := smc.getAdapter(in.Framework)
 	if err != nil {
 		return nil, fmt.Errorf("could not get adapter: %v", err)
 	}
 	return adapter.Score(ctx, in)
+}
+
+func cpuUtilizationScalingPolicy(sagemakerEndpointName string, modelVariantName string) applicationautoscaling.TargetTrackingScalingPolicyConfiguration {
+	return applicationautoscaling.TargetTrackingScalingPolicyConfiguration{
+		TargetValue: aws.Float64(cpuScalingTargetValue),
+		CustomizedMetricSpecification: &applicationautoscaling.CustomizedMetricSpecification{
+			MetricName: aws.String("CPUUtilization"),
+			Namespace:  aws.String("/aws/sagemaker/Endpoints"),
+			Dimensions: []*applicationautoscaling.MetricDimension{
+				{
+					Name:  aws.String("EndpointName"),
+					Value: aws.String(sagemakerEndpointName),
+				},
+				{
+					Name:  aws.String("VariantName"),
+					Value: aws.String(modelVariantName),
+				},
+			},
+			Statistic: aws.String("Average"),
+			Unit:      aws.String("Percent"),
+		},
+		// TODO: tune this according to the load patterns. May be these should be dynamic configurations as well
+		// time to wait b/w two consecutive scale-in operations
+		ScaleInCooldown: aws.Int64(120),
+		// time to wait b/w two consecutive scale-out operations
+		ScaleOutCooldown: aws.Int64(120),
+	}
 }

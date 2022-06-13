@@ -3,6 +3,7 @@ package modelstore
 import (
 	"context"
 	"fmt"
+
 	"math/rand"
 	"strconv"
 	"strings"
@@ -14,12 +15,22 @@ import (
 	"fennel/lib/value"
 	db "fennel/model/sagemaker"
 	"fennel/tier"
+
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promauto"
+	"go.uber.org/zap"
 )
 
 const (
 	defaultSagemakerInstanceType = "ml.c5.large"
 	defaultInitInstanceSize = 1
 )
+
+// Note: errorStatus here should not be verbose or the "cardinality" should not be high
+var scalingConfigErrors = promauto.NewCounterVec(prometheus.CounterOpts{
+	Name: "sagemaker_scaling_config_errors",
+	Help: "Errors corresponding to sagemaker scaling configuration",
+}, []string{"errorStatus"})
 
 type RetryError error
 
@@ -354,6 +365,8 @@ func EnsureEndpointExists(ctx context.Context, tier tier.Tier) error {
 			return fmt.Errorf("failed to check endpoint exists: %v", err)
 		}
 		if ok {
+			// Deleting endpoint with autoscaling configured is fine as long as the caller has the permissions
+			// https://docs.aws.amazon.com/sagemaker/latest/dg/endpoint-scaling.html
 			err := tier.SagemakerClient.DeleteEndpoint(ctx, tier.ModelStore.EndpointName())
 			if err != nil {
 				return fmt.Errorf("failed to delete endpoint '%s': %v", tier.ModelStore.EndpointName(), err)
@@ -361,6 +374,12 @@ func EnsureEndpointExists(ctx context.Context, tier tier.Tier) error {
 		}
 		return nil
 	}
+
+	// in case model(s) was stored or removed, there wouldn't be a hosted model which would cover all the active models.
+	// in these cases, `coveringModels` is an empty list, hence we end up creating a sagemaker hosted model for it
+	// and it's corresponding endpoint configuration and update the endpoint by applying this new configuration
+	//
+	// TODO(REX-1203): Delete headless models and corresponding configurations from sagemaker and DB.
 	coveringModels, err := db.GetCoveringHostedModels(tier)
 	if err != nil {
 		return fmt.Errorf("failed to check if any sagemaker model covers all active models: %v", err)
@@ -413,6 +432,10 @@ func EnsureEndpointExists(ctx context.Context, tier tier.Tier) error {
 			ModelName:     sagemakerModelName,
 			VariantName:   sagemakerModelName,
 			InstanceType:  defaultSagemakerInstanceType,
+			// TODO: use a larger number of initial instance size as an additional precaution step - creating and
+			// applying a new endpoint configuration results in updating the endpoint during which autoscaling is
+			// blocked (or we have not explicitly configured it yet), it might be better to start with a larger
+			// initial size and let autoscaling scale-in.
 			InstanceCount: defaultInitInstanceSize,
 		}
 		err = db.InsertEndpointConfig(tier, endpointCfg)
@@ -462,6 +485,28 @@ func EnsureEndpointExists(ctx context.Context, tier tier.Tier) error {
 			return fmt.Errorf("couldn't get current endpoint config's name from sagemaker: %v", err)
 		}
 		if curEndpointCfgName != endpointCfg.Name {
+			// should deregister the current endpoint configuration as a scalable target
+			//
+			// this is required in case of changing the instance type for a production variant that previously had
+			// automatic scaling configured or removing a production variant that has automatic scaling configured
+			//
+			// since this is a generalized path, we always de-register the scaling policy attached to the current
+			// endpoint configuration and re-enable it once the update has gone through.
+			curVariantName, err := tier.SagemakerClient.GetProductionVariantName(ctx, endpointName)
+			if err != nil {
+				tier.Logger.Error("failed to get production model variant for endpoint", zap.String("endpoint", endpointName), zap.Error(err))
+				return fmt.Errorf("failed to get production model variant for endpoint: %v", err)
+			}
+			if err = tier.SagemakerClient.DisableAutoscaling(ctx, endpointName, curVariantName); err != nil {
+				tier.Logger.Error("failed to de-register autoscaling for endpoint", zap.String("endpoint", endpointName), zap.String("variant", curVariantName), zap.Error(err))
+				return fmt.Errorf("failed to disable autoscaling for endpoint: %v", err)
+			}
+
+			// TODO: since we just registered autoscaling for the endpoint, we should update it with a larger instance
+			// count as an additional precaution during the update (which can last upto 10-15 minutes, during which
+			// a large traffic could potentially result in the model variant crashing (OOMs or high latencies).
+			//
+			// this could be done using `UpdateEndpointWeightsAndCapacities`
 			err = tier.SagemakerClient.UpdateEndpoint(ctx, lib.SagemakerEndpoint{
 				Name:               endpointName,
 				EndpointConfigName: endpointCfg.Name,
@@ -471,6 +516,9 @@ func EnsureEndpointExists(ctx context.Context, tier tier.Tier) error {
 			}
 		}
 	}
+	// once the endpoint is "InService", re-enable or register the endpoint configuration as a scalable target.
+	// since the endpoint update can take ~10-15 minutes, this needs to happen asynchronously.
+	go EnableAutoscalingWhenEndpointInService(ctx, tier, endpointName, sagemakerModelName)
 	return nil
 }
 
@@ -498,6 +546,57 @@ func EnsureEndpointInService(ctx context.Context, tier tier.Tier) (err error) {
 	default:
 		return fmt.Errorf("endpoint in unknown status")
 	}
+}
+
+func EnableAutoscalingWhenEndpointInService(ctx context.Context, tier tier.Tier, sagemakerEndpointName, modelVariantName string) {
+	// check if the variant is configured as a scalable target already (since this is a generalized path,
+	// this function could have been called even when there was no update to the variant/configs/endpoints).
+	zapEndpointName := zap.String("endpoint", sagemakerEndpointName)
+	zapVariantName := zap.String("variant", modelVariantName)
+	found, err := tier.SagemakerClient.IsAutoscalingConfigured(ctx, sagemakerEndpointName, modelVariantName)
+	if err != nil {
+		tier.Logger.Error("failed to check if autoscaling is configured for endpoint and variant", zapEndpointName, zapVariantName, zap.Error(err))
+		scalingConfigErrors.WithLabelValues("IsAutoscalingConfigured").Inc()
+		return
+	}
+	if found {
+		// nothing to do
+		tier.Logger.Info("autoscaling already configured for endpoint and variant", zapEndpointName, zapVariantName)
+		return
+	}
+	// wait for the endpoint to be in `InService` state
+	ticker := time.NewTicker(1 * time.Second)
+	inService := false
+	for {
+		select {
+		case <- ticker.C:
+			err := EnsureEndpointInService(ctx, tier)
+			if err == nil {
+				inService = true
+				break
+			}
+			_, ok := err.(RetryError)
+			if !ok {
+				// not a retry error, should fail
+				tier.Logger.Error("checking endpoint status failed", zapEndpointName, zap.Error(err))
+				scalingConfigErrors.WithLabelValues("EnsureEndpointExists").Inc()
+				return
+			}
+			// retry error, continue
+		default:
+		}
+		if inService {
+			break
+		}
+	}
+
+	// register the variant as a scalable target
+	if err := tier.SagemakerClient.EnableAutoscaling(ctx, sagemakerEndpointName, modelVariantName); err != nil {
+		tier.Logger.Error("failed to enable autoscaling for endpoint and variant", zapEndpointName, zapVariantName, zap.Error(err))
+		scalingConfigErrors.WithLabelValues("EnableAutoscaling").Inc()
+		return
+	}
+	tier.Logger.Info("successfully enabled autoscaling for endpoint and variant", zapEndpointName, zapVariantName)
 }
 
 func getDummyModel(model lib.Model) lib.Model {

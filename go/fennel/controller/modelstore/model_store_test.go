@@ -100,7 +100,7 @@ func TestPretrainedModelEndPoint(t *testing.T) {
 	c, err := sagemaker.NewClient(sagemaker.SagemakerArgs{
 		Region:                 "us-west-2",
 		SagemakerExecutionRole: "arn:aws:iam::030813887342:role/service-role/AmazonSageMaker-ExecutionRole-20220315T123828",
-	})
+	}, tier.Logger)
 	assert.NoError(t, err)
 	tier.SagemakerClient = c
 	tier.S3Client = s3.NewClient(s3.S3Args{Region: "us-west-2"})
@@ -147,12 +147,9 @@ func TestEnsureEndpoint(t *testing.T) {
 	assert.NoError(t, err)
 	defer test.Teardown(tier)
 
-	c, err := sagemaker.NewClient(sagemaker.SagemakerArgs{
-		Region:                 "ap-south-1",
-		SagemakerExecutionRole: "arn:aws:iam::030813887342:role/service-role/AmazonSageMaker-ExecutionRole-20220315T123828",
-	})
+	err = test.AddSagemakerClientToTier(&tier)
 	assert.NoError(t, err)
-	tier.SagemakerClient = c
+	defer cleanup(t, tier)
 
 	model := lib.Model{
 		Name:             "my-test-model",
@@ -200,10 +197,6 @@ func TestEnsureEndpoint(t *testing.T) {
 	exists, err = tier.SagemakerClient.EndpointConfigExists(context.Background(), endpointCfg.Name)
 	assert.NoError(t, err)
 	assert.True(t, exists)
-	defer func() {
-		err := tier.SagemakerClient.DeleteEndpointConfig(context.Background(), endpointCfg.Name)
-		assert.NoError(t, err)
-	}()
 
 	exists, err = tier.SagemakerClient.ModelExists(context.Background(), sagemakerModels[0])
 	assert.NoError(t, err)
@@ -217,9 +210,129 @@ func TestEnsureEndpoint(t *testing.T) {
 			status, err = tier.SagemakerClient.GetEndpointStatus(context.Background(), endpointName)
 			assert.NoError(t, err)
 		}
-		err := tier.SagemakerClient.DeleteModel(context.Background(), sagemakerModels[0])
-		assert.NoError(t, err)
 	}()
+}
+
+func TestAutoscalingEnabledOnEndpointVariant(t *testing.T) {
+	if os.Getenv("long") == "" {
+		t.Skip("Skipping long test")
+	}
+	// NOTE: This needs to be run for ~15-20 minutes (requires updating the endpoint twice),
+	// so please set the timeout accordingly (-timeout 15m)
+	tier, err := test.Tier()
+	assert.NoError(t, err)
+	defer test.Teardown(tier)
+
+	err = test.AddSagemakerClientToTier(&tier)
+	assert.NoError(t, err)
+	defer cleanup(t, tier)
+
+	endpointName := "unit-test-endpoint"
+	tier.ModelStore = modelstore.NewModelStore(modelstore.ModelStoreArgs{
+		ModelStoreS3Bucket:     "my-xgboost-test-bucket-2",
+		ModelStoreEndpointName: endpointName,
+	}, tier.ID)
+
+	var sagemakerModel1, sagemakerModel2 string
+
+	{
+		model := lib.Model{
+			Name:             "my-test-model",
+			Version:          "v1",
+			Framework:        "xgboost",
+			FrameworkVersion: "1.3-1",
+			ArtifactPath:     "s3://my-xgboost-test-bucket-2/model.tar.gz",
+		}
+
+		// Insert an active model into db.
+		modelId, err := db.InsertModel(tier, model)
+		assert.NoError(t, err)
+		assert.Equal(t, uint32(1), modelId)
+
+		// Ensure model is served on sagemaker.
+		err = EnsureEndpointExists(context.Background(), tier)
+		assert.NoError(t, err)
+
+		sagemakerModels, err := db.GetCoveringHostedModels(tier)
+		assert.NoError(t, err)
+		assert.Equal(t, 1, len(sagemakerModels))
+		sagemakerModel1 = sagemakerModels[0]
+
+		yes, err := tier.SagemakerClient.IsAutoscalingConfigured(context.Background(), endpointName, sagemakerModel1)
+		assert.NoError(t, err)
+		assert.False(t, yes)
+
+		// assert that resources are created in sagemaker.
+		exists, err := tier.SagemakerClient.EndpointExists(context.Background(), endpointName)
+		assert.NoError(t, err)
+		assert.True(t, exists)
+		// explicitly delete the endpoint, cleanup() only delete the models and configs
+		defer func() {
+			err := tier.SagemakerClient.DeleteEndpoint(context.Background(), endpointName)
+			assert.NoError(t, err)
+		}()
+
+		// wait for endpoint to be in-service before it can be deleted.
+		var status string
+		for status != "InService" {
+			log.Printf("Waiting for endpoint [%s] to be in service...", endpointName)
+			time.Sleep(time.Second * 10)
+			status, err = tier.SagemakerClient.GetEndpointStatus(context.Background(), endpointName)
+			assert.NoError(t, err)
+		}
+
+		// assert that autoscaling is configured on the endpoint and model variant
+		yes, err = tier.SagemakerClient.IsAutoscalingConfigured(context.Background(), endpointName, sagemakerModel1)
+		assert.NoError(t, err)
+		assert.True(t, yes)
+	}
+
+	{
+		// store another model, this should create a different hosted model -> different endpoint config.
+		// this should disable autoscaling for previous config and enable for the new config
+		model := lib.Model{
+			Name:             "my-test-model",
+			Version:          "v2",
+			Framework:        "xgboost",
+			FrameworkVersion: "1.3-1",
+			ArtifactPath:     "s3://my-xgboost-test-bucket-2/model.tar.gz",
+		}
+		// Insert an active model into db.
+		modelId, err := db.InsertModel(tier, model)
+		assert.NoError(t, err)
+		assert.Equal(t, uint32(2), modelId)
+
+		// Ensure model is served on sagemaker.
+		err = EnsureEndpointExists(context.Background(), tier)
+		assert.NoError(t, err)
+
+		sagemakerModels, err := db.GetCoveringHostedModels(tier)
+		assert.NoError(t, err)
+		assert.Equal(t, 1, len(sagemakerModels))
+		sagemakerModel2 = sagemakerModels[0]
+
+		// scaling is disabled for the first endpoint configuration
+		yes, err := tier.SagemakerClient.IsAutoscalingConfigured(context.Background(), endpointName, sagemakerModel1)
+		assert.NoError(t, err)
+		assert.False(t, yes)
+
+		yes, err = tier.SagemakerClient.IsAutoscalingConfigured(context.Background(), endpointName, sagemakerModel2)
+		assert.NoError(t, err)
+		assert.False(t, yes)
+
+		var status string
+		for status != "InService" {
+			log.Printf("Waiting for endpoint [%s] to be in service...", endpointName)
+			time.Sleep(time.Second * 10)
+			status, err = tier.SagemakerClient.GetEndpointStatus(context.Background(), endpointName)
+			assert.NoError(t, err)
+		}
+
+		// assert that autoscaling is configured on the endpoint and model variant
+		yes, err = tier.SagemakerClient.IsAutoscalingConfigured(context.Background(), endpointName, sagemakerModel2)
+		assert.NoError(t, err)
+		assert.True(t, yes)
+	}
 }
 
 func cleanup(t *testing.T, tier tier.Tier) {

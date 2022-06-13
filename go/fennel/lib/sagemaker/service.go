@@ -22,6 +22,10 @@ type SagemakerRegistry interface {
 
 	GetEndpointStatus(ctx context.Context, sagemakerEndpointName string) (string, error)
 	UpdateEndpoint(ctx context.Context, endpoint SagemakerEndpoint) error
+
+	IsAutoscalingConfigured(ctx context.Context, sagemakerEndpointName string, modelVariantName string) (bool, error)
+	EnableAutoscaling(ctx context.Context, sagemakerEndpointName string, modelVariantName string) error
+	DisableAutoscaling(ctx context.Context, sagemakerEndpointName string, modelVariantName string) error
 }
 
 type InferenceServer interface {
