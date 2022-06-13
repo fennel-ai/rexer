@@ -79,6 +79,13 @@ const tierConfs: Record<number, TierConf> = {
                     "node-group": "p-5-queryserver-ng"
                 }
             }
+        },
+        sagemakerConf: {
+            // this is the cheapest sagemaker instance type other than burstable instances (t3, t4g.. - but they are
+            // autoscalable).
+            instanceType: "ml.c5.large",
+            // have multiple instances for fault tolerance
+            instanceCount: 2,
         }
     },
     // Convoy staging tier using Fennel's staging data plane.

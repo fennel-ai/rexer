@@ -23,6 +23,9 @@ import * as unleash from "../unleash";
 
 import * as process from "process";
 
+const DEFAULT_SAGEMAKER_INSTANCE_TYPE = "ml.c5.large";
+const DEFAULT_SAGEMAKER_INSTANCE_COUNT = 1;
+
 // All the attributes here are optional, which gives each service a choice to apply service-specific defaults
 export type PodConf = {
     // Number of pods to launch for a service
@@ -364,8 +367,8 @@ const setupResources = async () => {
                     "modelStoreBucket": modelStoreOutput.modelStoreBucket,
                     // pass tierId as the endpoint name
                     "modelStoreEndpoint": `t-${input.tierId}`,
-                    "instanceType": input.sagemakerConf?.instanceType || "ml.c5.large",
-                    "instanceCount": `${input.sagemakerConf?.instanceCount || 1}`,
+                    "instanceType": input.sagemakerConf?.instanceType || DEFAULT_SAGEMAKER_INSTANCE_TYPE,
+                    "instanceCount": `${input.sagemakerConf?.instanceCount || DEFAULT_SAGEMAKER_INSTANCE_COUNT}`,
                 } as Record<string, string>),
                 glueConfig: pulumi.output({
                     "region": input.region,
