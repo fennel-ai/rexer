@@ -149,7 +149,6 @@ func TestEnsureEndpoint(t *testing.T) {
 
 	err = test.AddSagemakerClientToTier(&tier)
 	assert.NoError(t, err)
-	defer cleanup(t, tier)
 
 	model := lib.Model{
 		Name:             "my-test-model",
@@ -225,7 +224,6 @@ func TestAutoscalingEnabledOnEndpointVariant(t *testing.T) {
 
 	err = test.AddSagemakerClientToTier(&tier)
 	assert.NoError(t, err)
-	defer cleanup(t, tier)
 
 	endpointName := "unit-test-endpoint"
 	tier.ModelStore = modelstore.NewModelStore(modelstore.ModelStoreArgs{
