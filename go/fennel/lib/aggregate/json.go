@@ -22,9 +22,9 @@ func (agg *Aggregate) UnmarshalJSON(data []byte) error {
 		Source    ftypes.Source    `json:"Source"`
 		Options   struct {
 			AggType         string        `json:"Type"`
-			Durations       []uint64      `json:"Durations"`
+			Durations       []uint32      `json:"Durations"`
 			Window          ftypes.Window `json:"Window"`
-			Limit           uint64        `json:"Limit"`
+			Limit           uint32        `json:"Limit"`
 			Normalize       bool          `json:"Normalize"`
 			CronSchedule    string        `json:"CronSchedule"`
 			Dim             uint32        `json:"Dim"`
@@ -75,9 +75,9 @@ func (agg Aggregate) MarshalJSON() ([]byte, error) {
 		Source    ftypes.Source    `json:"Source"`
 		Options   struct {
 			AggType         string        `json:"Type"`
-			Durations       []uint64      `json:"Durations"`
+			Durations       []uint32      `json:"Durations"`
 			Window          ftypes.Window `json:"Window"`
-			Limit           uint64        `json:"Limit"`
+			Limit           uint32        `json:"Limit"`
 			Normalize       bool          `json:"Normalize"`
 			CronSchedule    string        `json:"CronSchedule"`
 			Dim             uint32        `json:"Dim"`

@@ -43,7 +43,7 @@ func TestEndToEndActionAggregates(t *testing.T) {
 			libaggregate.Aggregate{
 				Name: "agg_1", Query: getQuery(), Timestamp: 123,
 				Source:  libaggregate.SOURCE_ACTION,
-				Options: libaggregate.Options{AggType: "sum", Durations: []uint64{3 * 3600, 6 * 3600, 3600}},
+				Options: libaggregate.Options{AggType: "sum", Durations: []uint32{3 * 3600, 6 * 3600, 3600}},
 				Id:      1,
 			},
 			value.Int(0),
@@ -71,7 +71,7 @@ func TestEndToEndActionAggregates(t *testing.T) {
 			libaggregate.Aggregate{
 				Name: "agg_3", Query: getQuery(), Timestamp: 123,
 				Source:  libaggregate.SOURCE_ACTION,
-				Options: libaggregate.Options{AggType: "list", Durations: []uint64{3 * 3600, 6 * 3600, 3600}},
+				Options: libaggregate.Options{AggType: "list", Durations: []uint32{3 * 3600, 6 * 3600, 3600}},
 				Id:      3,
 			},
 			value.NewList(),
@@ -87,7 +87,7 @@ func TestEndToEndActionAggregates(t *testing.T) {
 			libaggregate.Aggregate{
 				Name: "agg_4", Query: getQuery(), Timestamp: 123,
 				Source:  libaggregate.SOURCE_ACTION,
-				Options: libaggregate.Options{AggType: "min", Durations: []uint64{3 * 3600, 6 * 3600, 3600}},
+				Options: libaggregate.Options{AggType: "min", Durations: []uint32{3 * 3600, 6 * 3600, 3600}},
 				Id:      4,
 			},
 			value.Double(0),
@@ -102,7 +102,7 @@ func TestEndToEndActionAggregates(t *testing.T) {
 			libaggregate.Aggregate{
 				Name: "agg_5", Query: getQuery(), Timestamp: 123,
 				Source:  libaggregate.SOURCE_ACTION,
-				Options: libaggregate.Options{AggType: "max", Durations: []uint64{3 * 3600, 6 * 3600, 3600}},
+				Options: libaggregate.Options{AggType: "max", Durations: []uint32{3 * 3600, 6 * 3600, 3600}},
 				Id:      5,
 			},
 			value.Double(0),
@@ -117,7 +117,7 @@ func TestEndToEndActionAggregates(t *testing.T) {
 			libaggregate.Aggregate{
 				Name: "agg_6", Query: getQuery(), Timestamp: 123,
 				Source:  libaggregate.SOURCE_ACTION,
-				Options: libaggregate.Options{AggType: "stddev", Durations: []uint64{3 * 3600, 6 * 3600, 3600}},
+				Options: libaggregate.Options{AggType: "stddev", Durations: []uint32{3 * 3600, 6 * 3600, 3600}},
 				Id:      6,
 			},
 			value.Double(0),
@@ -132,7 +132,7 @@ func TestEndToEndActionAggregates(t *testing.T) {
 			libaggregate.Aggregate{
 				Name: "agg_7", Query: getQuery(), Timestamp: 123,
 				Source:  libaggregate.SOURCE_ACTION,
-				Options: libaggregate.Options{AggType: "average", Durations: []uint64{3 * 3600, 6 * 3600, 3600}},
+				Options: libaggregate.Options{AggType: "average", Durations: []uint32{3 * 3600, 6 * 3600, 3600}},
 				Id:      7,
 			},
 			value.Double(0),
@@ -149,7 +149,7 @@ func TestEndToEndActionAggregates(t *testing.T) {
 				Source: libaggregate.SOURCE_ACTION,
 				Options: libaggregate.Options{
 					AggType:   "rate",
-					Durations: []uint64{3 * 3600, 6 * 3600, 3600},
+					Durations: []uint32{3 * 3600, 6 * 3600, 3600},
 					Normalize: true,
 				},
 				Id: 8,
@@ -166,7 +166,7 @@ func TestEndToEndActionAggregates(t *testing.T) {
 			libaggregate.Aggregate{
 				Name: "agg_9", Query: getQueryTopK(), Timestamp: 123,
 				Source:  libaggregate.SOURCE_ACTION,
-				Options: libaggregate.Options{AggType: "topk", Durations: []uint64{3 * 3600, 6 * 3600, 3600}, Limit: 1},
+				Options: libaggregate.Options{AggType: "topk", Durations: []uint32{3 * 3600, 6 * 3600, 3600}, Limit: 1},
 				Id:      9,
 			},
 			value.NewList(),
@@ -261,7 +261,7 @@ func TestEndToEndProfileAggregates(t *testing.T) {
 			libaggregate.Aggregate{
 				Name: "agg_prof_1", Query: getProfileQuery(), Timestamp: 123,
 				Source:  libaggregate.SOURCE_PROFILE,
-				Options: libaggregate.Options{AggType: "sum", Durations: []uint64{3 * 3600, 6 * 3600, 3600}},
+				Options: libaggregate.Options{AggType: "sum", Durations: []uint32{3 * 3600, 6 * 3600, 3600}},
 				Id:      1,
 			},
 			value.Int(0),
@@ -276,7 +276,7 @@ func TestEndToEndProfileAggregates(t *testing.T) {
 			libaggregate.Aggregate{
 				Name: "agg_prof_2", Query: getProfileQuery(), Timestamp: 123,
 				Source:  libaggregate.SOURCE_PROFILE,
-				Options: libaggregate.Options{AggType: "min", Durations: []uint64{3 * 3600, 6 * 3600, 3600}},
+				Options: libaggregate.Options{AggType: "min", Durations: []uint32{3 * 3600, 6 * 3600, 3600}},
 				Id:      2,
 			},
 			value.Double(0),

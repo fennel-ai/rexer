@@ -103,10 +103,10 @@ func freeSeenMap(s map[group]int) {
 */
 type twoLevelRedisStore struct {
 	period    uint32
-	retention uint64
+	retention uint32
 }
 
-func NewTwoLevelStorage(period uint32, retention uint64) BucketStore {
+func NewTwoLevelStorage(period uint32, retention uint32) BucketStore {
 	return twoLevelRedisStore{
 		period:    period,
 		retention: retention,

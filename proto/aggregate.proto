@@ -9,15 +9,15 @@ import "value.proto";
 message ProtoAggregate {
   string agg_name = 1;
   Ast query = 2;
-  uint64 timestamp = 3;
+  uint32 timestamp = 3;
   AggOptions options = 4;
 }
 
 message AggOptions {
   string agg_type = 1;
-  repeated uint64 durations = 2;
+  repeated uint32 durations = 2;
   Window window = 3;
-  uint64 limit = 4;
+  uint32 limit = 4;
   bool normalize = 5;
   string cron_schedule = 6;
   string hyper_parameters = 7;

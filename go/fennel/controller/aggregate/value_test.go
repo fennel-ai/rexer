@@ -37,7 +37,7 @@ func TestValueAll(t *testing.T) {
 		Timestamp: t0,
 		Options: aggregate.Options{
 			AggType:   "sum",
-			Durations: []uint64{6 * 3600, 3 * 3600, 48 * 3600},
+			Durations: []uint32{6 * 3600, 3 * 3600, 48 * 3600},
 		},
 	}
 	agg2 := aggregate.Aggregate{
@@ -46,7 +46,7 @@ func TestValueAll(t *testing.T) {
 		Timestamp: t0,
 		Options: aggregate.Options{
 			AggType:   "min",
-			Durations: []uint64{24 * 3600, 3 * 3600, 3600},
+			Durations: []uint32{24 * 3600, 3 * 3600, 3600},
 		},
 	}
 	assert.NoError(t, Store(ctx, tier, agg1))
@@ -162,7 +162,7 @@ func TestCachedValueAll(t *testing.T) {
 		Timestamp: t0,
 		Options: aggregate.Options{
 			AggType:   "sum",
-			Durations: []uint64{3600},
+			Durations: []uint32{3600},
 		},
 		Id: 1,
 	}

@@ -110,7 +110,7 @@ type period struct {
 	end   ftypes.Timestamp
 }
 
-func start(end ftypes.Timestamp, duration uint64) ftypes.Timestamp {
+func start(end ftypes.Timestamp, duration uint32) ftypes.Timestamp {
 	d := ftypes.Timestamp(duration)
 	if end > d {
 		return end - d
@@ -118,7 +118,7 @@ func start(end ftypes.Timestamp, duration uint64) ftypes.Timestamp {
 	return 0
 }
 
-func extractDuration(kwargs value.Dict, durations []uint64) (uint64, error) {
+func extractDuration(kwargs value.Dict, durations []uint32) (uint32, error) {
 	v, ok := kwargs.Get("duration")
 	if !ok {
 		return 0, fmt.Errorf("error: no duration specified")
@@ -127,10 +127,10 @@ func extractDuration(kwargs value.Dict, durations []uint64) (uint64, error) {
 	if !ok {
 		return 0, fmt.Errorf("error: expected kwarg 'duration' to be an int but found: '%v'", v)
 	}
-	// check duration is positive so it can be typecast to uint64 safely
+	// check duration is positive so it can be typecast to uint32 safely
 	if duration >= 0 {
 		for _, d := range durations {
-			if uint64(duration) == d {
+			if uint32(duration) == d {
 				return d, nil
 			}
 		}
@@ -138,8 +138,8 @@ func extractDuration(kwargs value.Dict, durations []uint64) (uint64, error) {
 	return 0, fmt.Errorf("error: specified duration not found in aggregate")
 }
 
-func getMaxDuration(durations []uint64) uint64 {
-	var maxDuration uint64 = 0
+func getMaxDuration(durations []uint32) uint32 {
+	var maxDuration uint32 = 0
 	for _, d := range durations {
 		if d > maxDuration {
 			maxDuration = d

@@ -26,14 +26,14 @@ func TestAggregateJSON(t *testing.T) {
 		{Name: "some name", Timestamp: 123,
 			Options: Options{
 				AggType:   "some type",
-				Durations: []uint64{120, 12 * 3600},
+				Durations: []uint32{120, 12 * 3600},
 				Window:    1,
 				Limit:     10},
 		},
 		{Timestamp: math.MaxUint32,
 			Options: Options{
-				Durations: []uint64{math.MaxUint64},
-				Limit:     math.MaxUint64,
+				Durations: []uint32{math.MaxUint32},
+				Limit:     math.MaxUint32,
 			},
 		},
 	}
@@ -123,7 +123,7 @@ func makeAggregateJSON(agg *Aggregate) (string, error) {
 
 	var dStr []string
 	for _, d := range agg.Options.Durations {
-		dStr = append(dStr, strconv.FormatUint(d, 10))
+		dStr = append(dStr, strconv.FormatUint(uint64(d), 10))
 	}
 	return fmt.Sprintf(
 			`{"Name":"%s","Query":"%s","Timestamp":%d,`+

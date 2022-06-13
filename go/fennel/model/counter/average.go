@@ -10,9 +10,7 @@ import (
 	Maintains a rolling average by storing a pair of ints (denoting sum and count)
 	in each bucket representing the total sum / count of events within that bucket.
 */
-type average struct {
-	Durations []uint64
-}
+type average struct{}
 
 var _ MergeReduce = average{}
 

@@ -11,8 +11,8 @@ import (
 )
 
 func TestStart(t *testing.T) {
-	durations := []uint64{100, 200}
-	badDurations := []uint64{0, 1, 50, 150, 250}
+	durations := []uint32{100, 200}
+	badDurations := []uint32{0, 1, 50, 150, 250}
 	testHistogramStart(t, Histogram{Options: aggregate.Options{Durations: durations}, MergeReduce: average{}}, durations, badDurations)
 	testHistogramStart(t, Histogram{Options: aggregate.Options{Durations: durations}, MergeReduce: list{}}, durations, badDurations)
 	testHistogramStart(t, Histogram{Options: aggregate.Options{Durations: durations}, MergeReduce: rollingMax{}}, durations, badDurations)
@@ -24,7 +24,7 @@ func TestStart(t *testing.T) {
 }
 
 func TestMergeReduceZeroNotMutated(t *testing.T) {
-	durations := []uint64{100, 200}
+	durations := []uint32{100, 200}
 	testHistogramZeroNotMutated(t, Histogram{Options: aggregate.Options{Durations: durations}, MergeReduce: average{}}, value.NewList(value.Int(2), value.Int(3)), value.NewList(value.Int(0), value.Int(0)))
 	testHistogramZeroNotMutated(t, Histogram{Options: aggregate.Options{Durations: durations}, MergeReduce: list{}}, value.NewList(value.Int(1), value.Int(2)), value.NewList())
 	testHistogramZeroNotMutated(t, Histogram{Options: aggregate.Options{Durations: durations}, MergeReduce: rollingMax{}}, value.NewList(value.Double(1.0), value.Bool(true)), value.NewList(value.Double(0), value.Bool(true)))
@@ -35,7 +35,7 @@ func TestMergeReduceZeroNotMutated(t *testing.T) {
 	testHistogramZeroNotMutated(t, Histogram{Options: aggregate.Options{Durations: durations}, MergeReduce: topK{}}, value.NewDict(map[string]value.Value{"foo": value.Double(2.0)}), value.NewDict(nil))
 }
 
-func testHistogramStart(t *testing.T, h Histogram, durations []uint64, badDurations []uint64) {
+func testHistogramStart(t *testing.T, h Histogram, durations []uint32, badDurations []uint32) {
 	for _, d := range durations {
 		kwargs := value.NewDict(map[string]value.Value{"duration": value.Int(d)})
 		s, err := h.Start(ftypes.Timestamp(d+10), kwargs)
