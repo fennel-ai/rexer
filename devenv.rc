@@ -25,6 +25,8 @@ export MODEL_STORE_S3_BUCKET="my-xgboost-test-bucket-2"
 export MODEL_STORE_ENDPOINT="integration-test-endpoint"
 
 # TODO: Add SageMakerArgs
+export SAGEMAKER_INSTANCE_TYPE="ml.c5.large"
+export SAGEMAKER_INSTANCE_COUNT=1
 
 export AWS_REGION="us-west-2"
 # dev tier ID

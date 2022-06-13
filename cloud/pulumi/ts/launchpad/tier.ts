@@ -59,12 +59,18 @@ export type IngressConf = {
     loadBalancerScheme: string,
 }
 
+export type SagemakerConf = {
+    instanceType: string,
+    instanceCount: number,
+}
+
 export type TierConf = {
     planeId: number,
     httpServerConf?: HttpServerConf,
     queryServerConf?: QueryServerConf,
     countAggrConf?: CountAggrConf,
     ingressConf?: IngressConf,
+    sagemakerConf?: SagemakerConf,
 }
 
 type inputType = {
@@ -116,6 +122,7 @@ type inputType = {
     httpServerConf?: HttpServerConf,
     queryServerConf?: QueryServerConf,
     countAggrConf?: CountAggrConf,
+    sagemakerConf?: SagemakerConf,
     nodeInstanceRole: string,
     vpcId: string,
     connectedSecurityGroups: Record<string, string>,
@@ -173,6 +180,8 @@ const parseConfig = (): inputType => {
         httpServerConf: config.getObject(nameof<inputType>("httpServerConf")),
         queryServerConf: config.getObject(nameof<inputType>("queryServerConf")),
         countAggrConf: config.getObject(nameof<inputType>("countAggrConf")),
+
+        sagemakerConf: config.getObject(nameof<inputType>("sagemakerConf")),
 
         nodeInstanceRole: config.require(nameof<inputType>("nodeInstanceRole")),
 
@@ -355,6 +364,8 @@ const setupResources = async () => {
                     "modelStoreBucket": modelStoreOutput.modelStoreBucket,
                     // pass tierId as the endpoint name
                     "modelStoreEndpoint": `t-${input.tierId}`,
+                    "instanceType": input.sagemakerConf?.instanceType || "ml.c5.large",
+                    "instanceCount": `${input.sagemakerConf?.instanceCount || 1}`,
                 } as Record<string, string>),
                 glueConfig: pulumi.output({
                     "region": input.region,
@@ -536,6 +547,7 @@ type TierInput = {
     // sagemaker configuration
     vpcId: string,
     connectedSecurityGroups: Record<string, string>,
+    sagemakerConf?: SagemakerConf,
 
     // milvus
     milvusEndpoint: string,
@@ -619,6 +631,10 @@ const setupTier = async (args: TierInput, preview?: boolean, destroy?: boolean) 
 
     if (args.countAggrConf !== undefined) {
         await stack.setConfig(nameof<inputType>("countAggrConf"), { value: JSON.stringify(args.countAggrConf) })
+    }
+
+    if (args.sagemakerConf !== undefined) {
+        await stack.setConfig(nameof<inputType>("sagemakerConf"), { value: JSON.stringify(args.sagemakerConf) })
     }
 
     await stack.setConfig(nameof<inputType>("nodeInstanceRole"), { value: args.nodeInstanceRole })

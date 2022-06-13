@@ -21,11 +21,6 @@ import (
 	"go.uber.org/zap"
 )
 
-const (
-	defaultSagemakerInstanceType = "ml.c5.large"
-	defaultInitInstanceSize = 1
-)
-
 // Note: errorStatus here should not be verbose or the "cardinality" should not be high
 var scalingConfigErrors = promauto.NewCounterVec(prometheus.CounterOpts{
 	Name: "sagemaker_scaling_config_errors",
@@ -431,12 +426,12 @@ func EnsureEndpointExists(ctx context.Context, tier tier.Tier) error {
 			Name:          fmt.Sprintf("%s-config-%d", sagemakerModelName, rand.Int63()),
 			ModelName:     sagemakerModelName,
 			VariantName:   sagemakerModelName,
-			InstanceType:  defaultSagemakerInstanceType,
+			InstanceType:  tier.SagemakerClient.GetInstanceType(),
 			// TODO: use a larger number of initial instance size as an additional precaution step - creating and
 			// applying a new endpoint configuration results in updating the endpoint during which autoscaling is
 			// blocked (or we have not explicitly configured it yet), it might be better to start with a larger
 			// initial size and let autoscaling scale-in.
-			InstanceCount: defaultInitInstanceSize,
+			InstanceCount: tier.SagemakerClient.GetInstanceCount(),
 		}
 		err = db.InsertEndpointConfig(tier, endpointCfg)
 		if err != nil {

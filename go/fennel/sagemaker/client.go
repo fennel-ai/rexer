@@ -68,6 +68,14 @@ func (smc SMClient) GetSMCRegion() string {
 	return smc.args.Region
 }
 
+func (smc SMClient) GetInstanceType() string {
+	return smc.args.SagemakerInstanceType
+}
+
+func (smc SMClient) GetInstanceCount() uint {
+	return smc.args.SagemakerInstanceCount
+}
+
 func (smc SMClient) CreateModel(ctx context.Context, hostedModels []lib.Model, sagemakerModelName string) error {
 	if len(hostedModels) == 0 {
 		return nil

@@ -443,5 +443,6 @@ if (tierId !== 0) {
             "eks": eksOutput.clusterSg,
         },
         milvusEndpoint: milvusOutput.endpoint,
+        sagemakerConf: tierConf.sagemakerConf,
     }, preview, destroy).catch(err => console.log(err))
 }

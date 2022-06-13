@@ -126,6 +126,24 @@ export const serviceEnvs = [
         }
     },
     {
+        name: "SAGEMAKER_INSTANCE_TYPE",
+        valueFrom: {
+            secretKeyRef: {
+                name: "model-serving-conf",
+                key: "instanceType",
+            }
+        }
+    },
+    {
+        name: "SAGEMAKER_INSTANCE_COUNT",
+        valueFrom: {
+            secretKeyRef: {
+                name: "model-serving-conf",
+                key: "instanceCount",
+            }
+        }
+    },
+    {
         name: "MODEL_STORE_S3_BUCKET",
         valueFrom: {
             secretKeyRef: {
