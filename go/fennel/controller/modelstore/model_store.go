@@ -513,7 +513,7 @@ func EnsureEndpointExists(ctx context.Context, tier tier.Tier) error {
 	}
 	// once the endpoint is "InService", re-enable or register the endpoint configuration as a scalable target.
 	// since the endpoint update can take ~10-15 minutes, this needs to happen asynchronously.
-	go EnableAutoscalingWhenEndpointInService(ctx, tier, endpointName, sagemakerModelName)
+	go EnableAutoscalingWhenEndpointInService(tier, endpointName, sagemakerModelName)
 	return nil
 }
 
@@ -543,7 +543,10 @@ func EnsureEndpointInService(ctx context.Context, tier tier.Tier) (err error) {
 	}
 }
 
-func EnableAutoscalingWhenEndpointInService(ctx context.Context, tier tier.Tier, sagemakerEndpointName, modelVariantName string) {
+func EnableAutoscalingWhenEndpointInService(tier tier.Tier, sagemakerEndpointName, modelVariantName string) {
+	// we use an empty context here since the context passed as part of the request could be cancelled by now.
+	ctx := context.Background()
+
 	// check if the variant is configured as a scalable target already (since this is a generalized path,
 	// this function could have been called even when there was no update to the variant/configs/endpoints).
 	zapEndpointName := zap.String("endpoint", sagemakerEndpointName)
