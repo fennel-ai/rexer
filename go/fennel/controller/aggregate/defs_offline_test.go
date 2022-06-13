@@ -25,7 +25,7 @@ func TestDeactivateOffline(t *testing.T) {
 		Timestamp: 1,
 		Options: aggregate.Options{
 			AggType:      "topk",
-			Durations:    []uint64{3600 * 24 * 7},
+			Durations:    []uint32{3600 * 24 * 7},
 			CronSchedule: "20 1 * * ?",
 			Limit:        10,
 		},

@@ -25,7 +25,7 @@ func TestRetrieveStore(t *testing.T) {
 		Timestamp: 1,
 		Options: aggregate.Options{
 			AggType:   "rolling_counter",
-			Durations: []uint64{3600 * 24 * 7},
+			Durations: []uint32{3600 * 24 * 7},
 		},
 		Active: true,
 	}

@@ -38,7 +38,7 @@ func ToProtoAggregate(agg Aggregate) (ProtoAggregate, error) {
 	return ProtoAggregate{
 		AggName:   string(agg.Name),
 		Query:     &pquery,
-		Timestamp: uint64(agg.Timestamp),
+		Timestamp: uint32(agg.Timestamp),
 		Options:   ToProtoOptions(agg.Options),
 	}, nil
 }

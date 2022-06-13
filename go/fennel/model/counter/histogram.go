@@ -55,7 +55,7 @@ func (h Histogram) Start(end ftypes.Timestamp, kwargs value.Dict) (ftypes.Timest
 // TODO: implement aggregations that can support forever aggregations.
 // https://linear.app/fennel-ai/issue/REX-1053/support-forever-aggregates
 func ToHistogram(tr tier.Tier, aggId ftypes.AggId, opts aggregate.Options) (Histogram, error) {
-	var retention uint64
+	var retention uint32
 	var mr MergeReduce
 	bucketizer := sixMinutelyBucketizer
 	switch opts.AggType {
@@ -66,7 +66,7 @@ func ToHistogram(tr tier.Tier, aggId ftypes.AggId, opts aggregate.Options) (Hist
 			d = 0
 		}
 		if d > 0 {
-			retention = opts.Limit * uint64(d)
+			retention = opts.Limit * uint32(d)
 		}
 		bucketizer = fixedWidthBucketizer{
 			map[ftypes.Window]uint32{

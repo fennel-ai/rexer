@@ -38,7 +38,7 @@ func TestTwoLevelRedisStore_TTL(t *testing.T) {
 	retention := 3 * 24 * 3600
 	store := twoLevelRedisStore{
 		period:    24 * 3600,
-		retention: uint64(retention),
+		retention: uint32(retention),
 	}
 	buckets := []libcounter.Bucket{
 		{Key: "k1", Window: ftypes.Window_DAY, Width: 1, Index: 5},
@@ -102,7 +102,7 @@ func TestSplitStore_TTL(t *testing.T) {
 	retention := 3600
 	store := splitStore{
 		bucketsPerGroup: 10,
-		retention:       uint64(retention),
+		retention:       uint32(retention),
 	}
 	aggID := ftypes.AggId(1)
 	buckets := []libcounter.Bucket{

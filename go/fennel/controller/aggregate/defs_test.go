@@ -24,7 +24,7 @@ func TestRetrieveActive(t *testing.T) {
 		Timestamp: 1,
 		Options: aggregate.Options{
 			AggType:   "sum",
-			Durations: []uint64{3600 * 24, 3600 * 24 * 2},
+			Durations: []uint32{3600 * 24, 3600 * 24 * 2},
 		},
 	}
 	// initially retrieve all is empty
@@ -60,7 +60,7 @@ func TestDuplicate(t *testing.T) {
 		Timestamp: 1,
 		Options: aggregate.Options{
 			AggType:   "sum",
-			Durations: []uint64{3600 * 24 * 7},
+			Durations: []uint32{3600 * 24 * 7},
 		},
 	}
 	err = Store(ctx, tier, agg)
@@ -80,7 +80,7 @@ func TestDuplicate(t *testing.T) {
 	agg.Query = &ast.Query{}
 
 	// Error if different options
-	agg.Options.Durations = []uint64{3600 * 24 * 6}
+	agg.Options.Durations = []uint32{3600 * 24 * 6}
 	err = Store(ctx, tier, agg)
 	assert.Error(t, err)
 }
@@ -97,7 +97,7 @@ func TestDeactivate(t *testing.T) {
 		Timestamp: 1,
 		Options: aggregate.Options{
 			AggType:   "sum",
-			Durations: []uint64{3600 * 24 * 7},
+			Durations: []uint32{3600 * 24 * 7},
 		},
 	}
 
@@ -136,7 +136,7 @@ func TestReactivate(t *testing.T) {
 		Query:     ast.MakeInt(1),
 		Options: aggregate.Options{
 			AggType:   "sum",
-			Durations: []uint64{3600 * 24, 3600 * 24 * 2},
+			Durations: []uint32{3600 * 24, 3600 * 24 * 2},
 		},
 	}
 

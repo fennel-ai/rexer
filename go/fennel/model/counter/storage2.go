@@ -34,7 +34,7 @@ import (
 */
 type splitStore struct {
 	bucketsPerGroup uint32
-	retention       uint64
+	retention       uint32
 }
 
 func (s splitStore) GetBucketStore() BucketStore {

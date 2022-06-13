@@ -32,7 +32,7 @@ func TestAggValue_Apply(t *testing.T) {
 		Source: libaggregate.SOURCE_ACTION,
 		Options: libaggregate.Options{
 			AggType:   "sum",
-			Durations: []uint64{6 * 3600, 3 * 3600, 2000},
+			Durations: []uint32{6 * 3600, 3 * 3600, 2000},
 		},
 		Id: 1,
 	}
@@ -41,7 +41,7 @@ func TestAggValue_Apply(t *testing.T) {
 		Source: libaggregate.SOURCE_ACTION,
 		Options: libaggregate.Options{
 			AggType:   "max",
-			Durations: []uint64{6 * 3600},
+			Durations: []uint32{6 * 3600},
 		},
 		Id: 2,
 	}

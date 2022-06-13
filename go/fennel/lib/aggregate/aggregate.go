@@ -147,9 +147,9 @@ func (agg Aggregate) IsForever() bool {
 
 type Options struct {
 	AggType         ftypes.AggType
-	Durations       []uint64
+	Durations       []uint32
 	Window          ftypes.Window
-	Limit           uint64
+	Limit           uint32
 	Normalize       bool
 	CronSchedule    string
 	Dim             uint32

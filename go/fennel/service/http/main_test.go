@@ -424,7 +424,7 @@ func TestServer_AggregateValue_Valid(t *testing.T) {
 		Timestamp: t0,
 		Options: aggregate.Options{
 			AggType:   "sum",
-			Durations: []uint64{3 * 3600, 6 * 3600, 120},
+			Durations: []uint32{3 * 3600, 6 * 3600, 120},
 		},
 		Id: 1,
 	}
@@ -477,7 +477,7 @@ func TestServer_BatchAggregateValue(t *testing.T) {
 		Timestamp: t0,
 		Options: aggregate.Options{
 			AggType:   "sum",
-			Durations: []uint64{3 * 3600, 6 * 3600, 1800},
+			Durations: []uint32{3 * 3600, 6 * 3600, 1800},
 		},
 	}
 	agg2 := aggregate.Aggregate{
@@ -486,7 +486,7 @@ func TestServer_BatchAggregateValue(t *testing.T) {
 		Timestamp: t0,
 		Options: aggregate.Options{
 			AggType:   "max",
-			Durations: []uint64{3 * 3600, 6 * 3600},
+			Durations: []uint32{3 * 3600, 6 * 3600},
 		},
 	}
 	assert.NoError(t, aggregate2.Store(ctx, tier, agg1))
@@ -575,7 +575,7 @@ func TestStoreRetrieveDeactivateAggregate(t *testing.T) {
 		Query: ast.MakeInt(1),
 		Options: aggregate.Options{
 			AggType:   "sum",
-			Durations: []uint64{3600 * 24, 3600 * 12},
+			Durations: []uint32{3600 * 24, 3600 * 12},
 		},
 		Timestamp: 123,
 	}
@@ -594,7 +594,7 @@ func TestStoreRetrieveDeactivateAggregate(t *testing.T) {
 		Query: ast.MakeDouble(3.4),
 		Options: aggregate.Options{
 			AggType:   "sum",
-			Durations: []uint64{3600 * 24 * 2, 3600 * 24},
+			Durations: []uint32{3600 * 24 * 2, 3600 * 24},
 		},
 		Timestamp: 123,
 	}

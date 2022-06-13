@@ -11,12 +11,12 @@ var zeroTsSum value.Value = value.Int(0)
 
 type timeseriesSum struct {
 	Window ftypes.Window
-	Limit  uint64
+	Limit  uint32
 }
 
 var _ MergeReduce = timeseriesSum{}
 
-func NewTimeseriesSum(window ftypes.Window, limit uint64) MergeReduce {
+func NewTimeseriesSum(window ftypes.Window, limit uint32) MergeReduce {
 	return timeseriesSum{
 		Window: window,
 		Limit:  limit,
@@ -24,7 +24,7 @@ func NewTimeseriesSum(window ftypes.Window, limit uint64) MergeReduce {
 }
 
 func (r timeseriesSum) Start(end ftypes.Timestamp, _ value.Dict) (ftypes.Timestamp, error) {
-	var d uint64
+	var d uint32
 	switch r.Window {
 	case ftypes.Window_HOUR:
 		d = (1 + r.Limit) * 3600

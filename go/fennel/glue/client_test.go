@@ -36,7 +36,7 @@ func TestGlueClient(t *testing.T) {
 		Timestamp: t0,
 		Options: aggregate.Options{
 			AggType:      "topk",
-			Durations:    []uint64{7 * 24 * 3600, 3 * 24 * 3600},
+			Durations:    []uint32{7 * 24 * 3600, 3 * 24 * 3600},
 			CronSchedule: "37 1 * * ?",
 		},
 		Id: 1,
@@ -67,7 +67,7 @@ func TestHyperParameters(t *testing.T) {
 		Timestamp: t0,
 		Options: aggregate.Options{
 			AggType:         "cf",
-			Durations:       []uint64{7 * 24 * 3600, 3 * 24 * 3600},
+			Durations:       []uint32{7 * 24 * 3600, 3 * 24 * 3600},
 			CronSchedule:    "37 1 * * ?",
 			HyperParameters: `{"rand": 123.5}`,
 		},
@@ -84,7 +84,7 @@ func TestHyperParameters(t *testing.T) {
 		Timestamp: t0,
 		Options: aggregate.Options{
 			AggType:         "cf",
-			Durations:       []uint64{7 * 24 * 3600, 3 * 24 * 3600},
+			Durations:       []uint32{7 * 24 * 3600, 3 * 24 * 3600},
 			CronSchedule:    "37 1 * * ?",
 			HyperParameters: `{"min_co_occurence": 123.5}`,
 		},
@@ -101,7 +101,7 @@ func TestHyperParameters(t *testing.T) {
 		Timestamp: t0,
 		Options: aggregate.Options{
 			AggType:         "cf",
-			Durations:       []uint64{7 * 24 * 3600, 3 * 24 * 3600},
+			Durations:       []uint32{7 * 24 * 3600, 3 * 24 * 3600},
 			CronSchedule:    "37 1 * * ?",
 			HyperParameters: `{"min_co_occurence": 123}`,
 		},

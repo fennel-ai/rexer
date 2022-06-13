@@ -21,7 +21,7 @@ func TestReadRecentIntegration(t *testing.T) {
 	ctx := context.Background()
 
 	s := NewInspector(tier, InspectorArgs{NumRecent: 10})
-	err = s.startFeatureLogTailer()
+	go s.startFeatureLogTailer()
 	require.NoError(t, err)
 
 	p := tier.Producers[feature.KAFKA_TOPIC_NAME]
