@@ -35,7 +35,6 @@ func (p predictOperator) Apply(ctx context.Context, staticKwargs operators.Kwarg
 		if err != nil {
 			return err
 		}
-
 		input, ok := contextKwargs.Get("input")
 		if !ok || input == value.Nil {
 			input = heads[0]
@@ -78,7 +77,7 @@ func (p predictOperator) Signature() *operators.Signature {
 		Input([]value.Type{value.Types.Dict}).
 		ParamWithHelp("field", value.Types.String, true, true, value.String(""), "StaticKwarg: String param that is used as key post evaluation of this operator").
 		ParamWithHelp("model", value.Types.String, true, false, value.Nil, "model name that should be called for eg sbert").
-		ParamWithHelp("input", value.Types.List, false, false, value.Nil, "ContextKwarg: Expr that is evaluated to provide input to the model.").
+		ParamWithHelp("input", value.Types.List, false, true, value.Nil, "ContextKwarg: Expr that is evaluated to provide input to the model.").
 		ParamWithHelp("version", value.Types.String, true, true, value.String(""), "StaticKwarg: Model version that should be called for a given model. Not applicable for pretrained models.")
 }
 
