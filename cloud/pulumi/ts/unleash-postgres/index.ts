@@ -16,6 +16,7 @@ export type inputType = {
     connectedSecurityGroups: Record<string, pulumi.Output<string>>,
     connectedCidrBlocks?: string[],
     planeId: number,
+    protect: boolean,
 }
 
 // should not contain any pulumi.Output<> types.
@@ -95,7 +96,7 @@ export const setup = async (input: inputType): Promise<pulumi.Output<outputType>
         },
         skipFinalSnapshot: true,
         tags: { ...fennelStdTags }
-    }, { provider });
+    }, { provider, protect: input.protect });
 
     const output = pulumi.output({
         host: cluster.endpoint,

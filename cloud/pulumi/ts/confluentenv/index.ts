@@ -10,6 +10,7 @@ export type inputType = {
     username: string,
     password: pulumi.Output<string>,
     envName: string,
+    protect: boolean,
 }
 
 export type outputType = {
@@ -28,14 +29,14 @@ export const setup = async (input: inputType): Promise<pulumi.Output<outputType>
 
     const env = new confluent.ConfluentEnvironment("conf-env", {
         name: input.envName,
-    }, { provider })
+    }, { provider, protect: input.protect })
 
     const cluster = new confluent.KafkaCluster("cluster", {
         availability: "LOW",
         environmentId: env.id,
         region: input.region,
         serviceProvider: "AWS",
-    }, { provider });
+    }, { provider, protect: input.protect });
 
     const apiKey = new confluent.ApiKey("key", {
         environmentId: cluster.environmentId,

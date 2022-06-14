@@ -16,6 +16,7 @@ export type inputType = {
     unleashDbEndpoint: string,
     unleashDbPort: number,
     kubeconfig: string,
+    protect: boolean,
 }
 
 // should not contain any pulumi.Output<> types.
@@ -49,7 +50,7 @@ export const setup = async (input: inputType): Promise<outputType> => {
     }, { provider: provider });
     const db = new postgresql.Database(databaseName, {
         name: databaseName,
-    }, { provider: postgresProvider });
+    }, { provider: postgresProvider, protect: input.protect });
 
     // setup unleash with:
     //  1. disable API tokens - it is not possible to create one automatically; we disable API tokens and enforce

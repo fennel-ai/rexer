@@ -6,6 +6,7 @@ export type inputType = {
   username: string
   password: pulumi.Output<string>
   db: string
+  protect: boolean
 };
 
 export const plugins = {
@@ -24,7 +25,7 @@ export const setup = (input: inputType) => {
 
   const database = new mysql.Database("mysql-database", {
     name: db,
-  }, { provider });
+  }, { provider, protect: input.protect });
 
   const output: outputType = {};
   return output;

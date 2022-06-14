@@ -23,6 +23,7 @@ export type inputType = {
     // Upon deletion of the cluster, should the final snapshot be skipped.
     // We should ideally set this to `false` for production tiers and true for the test/staging tiers.
     skipFinalSnapshot: boolean,
+    protect: boolean,
 }
 
 export type outputType = {
@@ -123,7 +124,7 @@ export const setup = async (input: inputType): Promise<pulumi.Output<outputType>
         skipFinalSnapshot: input.skipFinalSnapshot,
         finalSnapshotIdentifier: `p-${input.planeId}-${snapshotId}`,
         tags: { ...fennelStdTags }
-    }, { provider })
+    }, { provider, protect: input.protect })
 
     const output = pulumi.output({
         host: cluster.endpoint,

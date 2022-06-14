@@ -42,6 +42,7 @@ const PRIVATE_LB_SCHEME = "internal";
 const tierConfs: Record<number, TierConf> = {
     // Fennel staging tier using Fennel's staging data plane.
     106: {
+        protectResources: true,
         planeId: 3,
         httpServerConf: {
             podConf: {
@@ -52,6 +53,7 @@ const tierConfs: Record<number, TierConf> = {
     },
     // Lokal prod tier on their prod data plane.
     107: {
+        protectResources: true,
         planeId: 5,
         httpServerConf: {
             podConf: {
@@ -90,6 +92,7 @@ const tierConfs: Record<number, TierConf> = {
     },
     // Convoy staging tier using Fennel's staging data plane.
     108: {
+        protectResources: true,
         planeId: 3,
         // use public subnets for ingress to allow traffic from outside the assigned vpc
         ingressConf: {
@@ -105,6 +108,7 @@ const tierConfs: Record<number, TierConf> = {
     },
     // Lokal's staging tier
     109: {
+        protectResources: true,
         planeId: 6,
         // use public subnets for ingress to allow traffic from outside the assigned vpc
         ingressConf: {
@@ -120,6 +124,7 @@ const tierConfs: Record<number, TierConf> = {
     },
     // Discord demo tier
     111: {
+        protectResources: true,
         planeId: 3,
         // use public subnets for ingress to allow traffic from outside the assigned vpc
         ingressConf: {
@@ -139,6 +144,7 @@ const tierConfs: Record<number, TierConf> = {
 const planeConfs: Record<number, PlaneConf> = {
     // this is used for test resources
     2: {
+        protectResources: true,
         planeId: 2,
         region: "us-west-2",
         roleArn: "arn:aws:iam::030813887342:role/admin",
@@ -178,6 +184,7 @@ const planeConfs: Record<number, PlaneConf> = {
     },
     // Fennel's staging data plane to run dev tiers
     3: {
+        protectResources: true,
         planeId: 3,
         region: "us-west-2",
         roleArn: "arn:aws:iam::030813887342:role/admin",
@@ -218,6 +225,7 @@ const planeConfs: Record<number, PlaneConf> = {
     },
     // Lokal's prod tier data plane
     5: {
+        protectResources: true,
         planeId: 5,
         region: "ap-south-1",
         roleArn: "arn:aws:iam::030813887342:role/admin",
@@ -282,6 +290,7 @@ const planeConfs: Record<number, PlaneConf> = {
     },
     // Lokal's staging data plane
     6: {
+        protectResources: true,
         planeId: 6,
         region: "ap-south-1",
         roleArn: "arn:aws:iam::030813887342:role/admin",
@@ -392,6 +401,8 @@ if (tierId !== 0) {
         { name: `t_${tierId}_aggr_offline_transform` },
     ];
     setupTier({
+        protect: tierConf.protectResources,
+
         tierId: Number(tierId),
         planeId: Number(planeId),
 

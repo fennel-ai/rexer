@@ -13,6 +13,7 @@ export type inputType = {
     region: string,
     roleArn: string,
     planeId: number,
+    protect: boolean,
 }
 
 // should not contain any pulumi.Output<> types.
@@ -121,7 +122,7 @@ export const setupAMP = async (input: inputType): Promise<pulumi.Output<outputTy
     const workspaceName = `p-${input.planeId}-prom`
     const prom = new aws.amp.Workspace(workspaceName, {
         alias: workspaceName,
-    }, {provider: awsProvider})
+    }, {provider: awsProvider, protect: input.protect})
 
     const arn = prom.arn
     const prometheusWriteEndpoint = prom.prometheusEndpoint.apply(endpoint => {
@@ -214,7 +215,7 @@ export const setupPrometheus = async (input: inputType): Promise<pulumi.Output<o
                 "prometheus.yml": prometheusScrapeConfigs,
             }
         },
-    }, {provider: k8sProvider})
+    }, {provider: k8sProvider, protect: input.protect})
 
     const output = pulumi.output({
         arn: "",  // ARN for a K8S pod does not exist

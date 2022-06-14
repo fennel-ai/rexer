@@ -8,7 +8,8 @@ export const plugins = {
 export type inputType = {
     region: string,
     roleArn: string,
-    planeId: number
+    planeId: number,
+    protect: boolean,
 }
 
 // should not contain any pulumi.Output<> types.
@@ -37,7 +38,7 @@ export const setup = async (input: inputType): Promise<pulumi.Output<outputType>
         bucket: bucketName,
         // delete all the objects so that the bucket can be deleted without error.
         forceDestroy: true,
-    }, { provider });
+    }, { provider, protect: input.protect });
 
     // create an AWS user account to authenticate kafka connector to write to S3 bucket
     const user = new aws.iam.User("conn-sink-user", {

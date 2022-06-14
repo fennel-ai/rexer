@@ -10,6 +10,7 @@ export type inputType = {
     roleArn: string,
     tierId: number,
     nodeInstanceRole: string,
+    protect: boolean,
 }
 
 // should not contain any pulumi.Output<> types.
@@ -69,7 +70,7 @@ export const setup = async (input: inputType): Promise<outputType> => {
         bucket: bucketName,
         // delete all the objects so that the bucket can be deleted without error
         forceDestroy: true,
-    }, {provider});
+    }, {provider, protect: input.protect });
 
     // setup EKS worker node have access to the S3 bucket and the folder
     setupModelStoreAccess(provider, input, bucketName);
