@@ -333,8 +333,8 @@ func (smc SMClient) UpdateEndpoint(ctx context.Context, endpoint lib.SagemakerEn
 
 func (smc SMClient) EnableAutoscaling(ctx context.Context, sagemakerEndpointName string, modelVariantName string, scalingConfig lib.ScalingConfiguration) error {
 	resourceId := aws.String(fmt.Sprintf("endpoint/%s/variant/%s", sagemakerEndpointName, modelVariantName))
-	if scalingConfig.MinCapacity <= scalingConfig.MaxCapacity || scalingConfig.MinCapacity <= 0 || scalingConfig.MaxCapacity <= 0 {
-		return fmt.Errorf("MinCapacity and MaxCapacity have to non-zero values with MaxCapacity >= MinCapacity. Given: %d (min) and %d (max)", scalingConfig.MinCapacity, scalingConfig.MaxCapacity)
+	if scalingConfig.MaxCapacity < scalingConfig.MinCapacity || scalingConfig.MinCapacity <= 0 || scalingConfig.MaxCapacity <= 0 {
+		return fmt.Errorf("MinCapacity and MaxCapacity should have non-zero, positive values with MaxCapacity >= MinCapacity. Given: %d (min) and %d (max)", scalingConfig.MinCapacity, scalingConfig.MaxCapacity)
 	}
 	req := applicationautoscaling.RegisterScalableTargetInput{
 		ServiceNamespace: aws.String(serviceNamespace),
