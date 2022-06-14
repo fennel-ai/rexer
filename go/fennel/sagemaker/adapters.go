@@ -262,11 +262,7 @@ func fromCSV(csv []byte) ([]value.Value, error) {
 	rows = rows[:len(rows)-1] // ignore empty last line
 	vals := make([]value.Value, len(rows))
 	for i, row := range rows {
-		buf := bytes.Buffer{}
-		buf.WriteRune('[')
-		buf.Write(row)
-		buf.WriteRune(']')
-		v, err := value.FromJSON(buf.Bytes())
+		v, err := value.FromJSON(row)
 		if err != nil {
 			return nil, fmt.Errorf("failed to parse csv: %v", err)
 		}
