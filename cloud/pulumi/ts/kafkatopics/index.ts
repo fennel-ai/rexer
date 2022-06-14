@@ -19,6 +19,7 @@ export type inputType = {
     apiSecret: pulumi.Output<string>
     topics: topicConf[],
     bootstrapServer: string,
+    protect: boolean,
 }
 
 export type outputType = {
@@ -42,7 +43,7 @@ export const setup = async (input: inputType) => {
             // since that's the minimum required by confluent cloud:
             // https://github.com/Mongey/terraform-provider-kafka/issues/40#issuecomment-456897983
             replicationFactor: topic.replicationFactor || DEFAULT_REPLICATION_FACTOR,
-        }, { provider: kafkaProvider })
+        }, { provider: kafkaProvider, protect: input.protect })
     })
 
     const output: outputType = {

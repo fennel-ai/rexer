@@ -12,6 +12,7 @@ export type inputType = {
     region: string,
     roleArn: string,
     tierId: number,
+    protect: boolean,
 }
 
 // should not contain any pulumi.Output<> types.
@@ -37,7 +38,7 @@ export const setup = async (input: inputType): Promise<pulumi.Output<outputType>
         bucket: bucketName,
         // delete all the objects so that the bucket can be deleted without error
         forceDestroy: true,
-    }, {provider});
+    }, { provider, protect: input.protect });
 
     // setup AWS user account with access to this bucket. This user access is used by kafka connector
     const user = new aws.iam.User(`t-${input.tierId}-offline-aggr-user`, {

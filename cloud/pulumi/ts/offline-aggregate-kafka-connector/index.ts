@@ -22,6 +22,7 @@ export type inputType = {
     awsAccessKeyId: pulumi.Input<string>,
     awsSecretAccessKey: pulumi.Input<string>,
     s3BucketName: pulumi.Input<string>,
+    protect: boolean,
 }
 
 // should not contain any pulumi.Output<> types.
@@ -61,7 +62,7 @@ export const setup = async (input: inputType): Promise<pulumi.Output<outputType>
             // `path.format` has the default value of: `‘year’=YYYY/’month’=MM/’day’=dd/’hour’=HH` - we will use this
             "topics": `t_${input.tierId}_aggr_offline_transform`,
         },
-    }, {provider: confProvider})
+    }, {provider: confProvider, protect: input.protect })
 
     const output = pulumi.output({})
     return output

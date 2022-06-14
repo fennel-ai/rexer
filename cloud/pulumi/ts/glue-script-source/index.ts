@@ -14,6 +14,7 @@ export type inputType = {
     region: string,
     roleArn: string,
     planeId: number,
+    protect: boolean,
 }
 
 // should not contain any pulumi.Output<> types.
@@ -41,7 +42,7 @@ export const setup = async (input: inputType): Promise<pulumi.Output<outputType>
         bucket: bucketName,
         // delete all the objects so that the bucket can be deleted without error.
         forceDestroy: true,
-    }, { provider })
+    }, { provider, protect: input.protect })
 
     const root = process.env["FENNEL_ROOT"]!
     const scriptPath = path.join(root, "tools/aws_glue_parquet_transform.py");
@@ -54,7 +55,7 @@ export const setup = async (input: inputType): Promise<pulumi.Output<outputType>
         // in case of the file change, force an update
         etag: fileHash,
         sourceHash: fileHash,
-    }, { provider })
+    }, { provider, protect: input.protect })
 
     return pulumi.output({
         scriptSourceBucket: bucketName,

@@ -63,6 +63,13 @@ type EksConf = {
 type MilvusConf = {}
 
 export type PlaneConf = {
+    // Should be set to false, when deleting the plane
+    //
+    // Else, individual data storage resources, if they are to be deleted, should be set to false and the stack should
+    // be updated
+    //
+    // NOTE: Please add a justification if this value is being set to False and the configuration is being checked-in
+    protectResources: boolean,
     planeId: number,
     region: string,
     roleArn: string,
@@ -153,6 +160,7 @@ const setupResources = async () => {
         },
         connectedCidrBlocks: [input.controlPlaneConf.cidrBlock],
         planeId: input.planeId,
+        protect: input.protectResources,
     });
     const auroraOutput = await aurora.setup({
         roleArn: input.roleArn,
@@ -168,6 +176,7 @@ const setupResources = async () => {
         connectedCidrBlocks: [input.controlPlaneConf.cidrBlock],
         planeId: input.planeId,
         skipFinalSnapshot: input.dbConf.skipFinalSnapshot,
+        protect: input.protectResources,
     })
     const redisOutput = await redis.setup({
         roleArn: input.roleArn,
@@ -182,6 +191,7 @@ const setupResources = async () => {
         connectedCidrBlocks: [input.controlPlaneConf.cidrBlock],
         azs: vpcOutput.azs,
         planeId: input.planeId,
+        protect: input.protectResources,
     })
     const elasticacheOutput = await elasticache.setup({
         roleArn: input.roleArn,
@@ -195,6 +205,7 @@ const setupResources = async () => {
         nodeType: input.cacheConf?.nodeType,
         numNodeGroups: input.cacheConf?.numNodeGroups,
         replicasPerNodeGroup: input.cacheConf?.replicasPerNodeGroup,
+        protect: input.protectResources,
     })
     let milvusOutput: milvus.outputType = {
         endpoint: ""
@@ -212,11 +223,13 @@ const setupResources = async () => {
         username: input.confluentConf.username,
         password: pulumi.output(input.confluentConf.password),
         envName: `plane-${input.planeId}`,
+        protect: input.protectResources,
     })
     const connectorSinkOutput = await connectorSink.setup({
         region: input.region,
         roleArn: input.roleArn,
-        planeId: input.planeId
+        planeId: input.planeId,
+        protect: input.protectResources,
     })
 
     const prometheusOutput = await prometheus.setup({
@@ -225,6 +238,7 @@ const setupResources = async () => {
         region: input.region,
         roleArn: input.roleArn,
         planeId: input.planeId,
+        protect: input.protectResources,
     })
 
     const telemetryOutput = await telemetry.setup({
@@ -241,12 +255,14 @@ const setupResources = async () => {
         region: input.region,
         roleArn: input.roleArn,
         planeId: input.planeId,
+        protect: input.protectResources,
     })
 
     const glueOutput = await glueSource.setup({
         region: input.region,
         roleArn: input.roleArn,
         planeId: input.planeId,
+        protect: input.protectResources,
     })
 
     return {

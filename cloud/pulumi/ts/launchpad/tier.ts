@@ -68,6 +68,13 @@ export type SagemakerConf = {
 }
 
 export type TierConf = {
+    // Should be set to false, when deleting the tier
+    //
+    // Else, individual data storage resources, if they are to be deleted, should be set to false and the stack should
+    // be updated
+    //
+    // NOTE: Please add a justification if this value is being set to False and the configuration is being checked-in
+    protectResources: boolean,
     planeId: number,
     httpServerConf?: HttpServerConf,
     queryServerConf?: QueryServerConf,
@@ -77,6 +84,7 @@ export type TierConf = {
 }
 
 type inputType = {
+    protect: boolean,
     tierId: number,
     planeId: number,
     // aws and k8s configuration.
@@ -135,6 +143,7 @@ type inputType = {
 const parseConfig = (): inputType => {
     const config = new pulumi.Config();
     return {
+        protect: config.requireBoolean(nameof<inputType>("protect")),
         tierId: config.requireNumber(nameof<inputType>("tierId")),
         planeId: config.requireNumber(nameof<inputType>("planeId")),
 
@@ -231,11 +240,13 @@ const setupResources = async () => {
         apiSecret: input.kafkaApiSecret,
         topics: input.topics,
         bootstrapServer: input.bootstrapServer,
+        protect: input.protect,
     })
     const offlineAggregateStorageBucket = await offlineAggregateStorage.setup({
         region: input.region,
         roleArn: input.roleArn,
         tierId: input.tierId,
+        protect: input.protect,
     })
     // setup kafka connector to s3 bucket for the action and feature log topics.
     const kafkaConnectors = await kafkaconnectors.setup({
@@ -249,6 +260,7 @@ const setupResources = async () => {
         awsAccessKeyId: input.connUserAccessKey,
         awsSecretAccessKey: input.connUserSecret,
         s3BucketName: input.connBucketName,
+        protect: input.protect,
     })
     // setup kafka connectors to s3 bucket for offline aggregate data
     const offlineAggregateConnector = await offlineAggregateKafkaConnector.setup({
@@ -262,6 +274,7 @@ const setupResources = async () => {
         awsAccessKeyId: offlineAggregateStorageBucket.userAccessKeyId,
         awsSecretAccessKey: offlineAggregateStorageBucket.userSecretAccessKey,
         s3BucketName: offlineAggregateStorageBucket.bucketName,
+        protect: input.protect,
     })
     // setup offline aggregate output bucket
     const offlineAggregateOutputBucket = await offlineAggregateOutput.setup({
@@ -269,6 +282,7 @@ const setupResources = async () => {
         roleArn: input.roleArn,
         tierId: input.tierId,
         nodeInstanceRole: input.nodeInstanceRole,
+        protect: input.protect,
     })
 
     // setup offline aggregate glue job
@@ -292,6 +306,7 @@ const setupResources = async () => {
         password: input.dbPassword,
         endpoint: input.dbEndpoint,
         db: `t_${input.tierId}_db`,
+        protect: input.protect,
     })
     // setup k8s namespace.
     const namespace = await ns.setup({
@@ -304,6 +319,7 @@ const setupResources = async () => {
         roleArn: input.roleArn,
         tierId: input.tierId,
         nodeInstanceRole: input.nodeInstanceRole,
+        protect: input.protect,
     })
     // setup sagemaker endpoint related resources
     const sagemakerOutput = await sagemaker.setup({
@@ -326,6 +342,7 @@ const setupResources = async () => {
         unleashDbEndpoint: input.unleashDbEndpoint,
         unleashDbPort: input.unleashDbPort,
         kubeconfig: input.kubeconfig,
+        protect: input.protect,
     });
 
     // setup configs after resources are setup.
@@ -483,6 +500,8 @@ const setupResources = async () => {
 };
 
 type TierInput = {
+    protect: boolean,
+
     tierId: number,
     planeId: number,
     // kafka configuration.
@@ -574,6 +593,8 @@ const setupTier = async (args: TierInput, preview?: boolean, destroy?: boolean) 
     await setupPlugins(stack)
 
     console.info("setting up config");
+
+    await stack.setConfig(nameof<inputType>("protect"), { value: String(args.protect) })
 
     await stack.setConfig(nameof<inputType>("tierId"), { value: String(args.tierId) })
     await stack.setConfig(nameof<inputType>("planeId"), { value: String(args.planeId) })

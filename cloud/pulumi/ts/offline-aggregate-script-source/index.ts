@@ -15,6 +15,7 @@ export type inputType = {
     roleArn: string,
     // TODO(mohit): See if this should be made a tier specific resource
     planeId: number,
+    protect: boolean,
 }
 
 // should not contain any pulumi.Output<> types.
@@ -41,7 +42,7 @@ export const setup = async (input: inputType): Promise<pulumi.Output<outputType>
         bucket: bucketName,
         // delete all the objects so that the bucket can be deleted without error.
         forceDestroy: true,
-    }, { provider })
+    }, { provider, protect: input.protect })
 
     const root = process.env["FENNEL_ROOT"]!
 
@@ -57,7 +58,7 @@ export const setup = async (input: inputType): Promise<pulumi.Output<outputType>
         // in case of the file change, force an update
         etag: topkFileHash,
         sourceHash: topkFileHash,
-    }, { provider });
+    }, { provider, protect: input.protect });
 
     // cf source file
     const cfScriptPath = path.join(root, "pyspark/cf.py");
@@ -71,7 +72,7 @@ export const setup = async (input: inputType): Promise<pulumi.Output<outputType>
         // in case of the file change, force an update
         etag: cfFileHash,
         sourceHash: cfFileHash,
-    }, { provider });
+    }, { provider, protect: input.protect });
 
     const sources: Record<string, pulumi.Output<string>> = {
         "topk": topk.key.apply(key => { return `s3://${bucketName}/${key}` }),

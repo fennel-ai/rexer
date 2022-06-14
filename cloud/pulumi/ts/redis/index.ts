@@ -18,6 +18,7 @@ export type inputType = {
     connectedSecurityGroups: Record<string, pulumi.Output<string>>,
     connectedCidrBlocks?: string[],
     planeId: number,
+    protect: boolean,
 }
 
 export type outputType = {
@@ -96,7 +97,7 @@ export const setup = async (input: inputType): Promise<pulumi.Output<outputType>
         numReplicasPerShard: input.numReplicasPerShard || DEFAULT_NUM_REPLICAS_PER_SHARD,
         nodeType: input.nodeType || DEFAULT_NODE_TYPE,
         tags: { ...fennelStdTags },
-    }, { provider })
+    }, { provider, protect: input.protect })
 
     const output = pulumi.output({
         clusterId: cluster.id,

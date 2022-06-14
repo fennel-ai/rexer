@@ -17,6 +17,7 @@ export type inputType = {
     nodeType?: string,
     numNodeGroups?: number,
     replicasPerNodeGroup?: number,
+    protect: boolean,
 }
 
 export type outputType = {
@@ -119,7 +120,7 @@ export const setup = async (input: inputType): Promise<pulumi.Output<outputType>
         automaticFailoverEnabled: true,
         tags: { ...fennelStdTags },
         parameterGroupName: parameterGroup.name,
-    }, { provider })
+    }, { provider, protect: input.protect })
 
     const primaryAddress = cluster.primaryEndpointAddress
     const replicaAddress = cluster.readerEndpointAddress
