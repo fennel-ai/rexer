@@ -70,7 +70,7 @@ func (i *Interpreter) VisitLookup(on ast.Ast, property string) (value.Value, err
 	}
 	asdict, ok := val.(value.Dict)
 	if !ok {
-		return value.Nil, fmt.Errorf("can not lookup property '%s' on non-dict value: '%s'", property, on)
+		return value.Nil, fmt.Errorf("can not lookup property '%s' on non-dict value: '%s'", property, val.String())
 	}
 	ret, ok := asdict.Get(property)
 	if !ok {
