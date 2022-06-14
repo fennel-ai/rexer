@@ -44,6 +44,7 @@ const parseConfig = (): inputType => {
         password: config.requireSecret(nameof<inputType>("password")),
         planeId: config.requireNumber(nameof<inputType>("planeId")),
         skipFinalSnapshot: config.requireBoolean(nameof<inputType>("skipFinalSnapshot")),
+        protect: config.requireBoolean(nameof<inputType>("protect")),
     }
 }
 

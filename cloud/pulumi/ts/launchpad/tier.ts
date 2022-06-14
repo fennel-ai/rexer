@@ -500,6 +500,8 @@ const setupResources = async () => {
 };
 
 type TierInput = {
+    protect: boolean,
+
     tierId: number,
     planeId: number,
     // kafka configuration.
@@ -591,6 +593,8 @@ const setupTier = async (args: TierInput, preview?: boolean, destroy?: boolean) 
     await setupPlugins(stack)
 
     console.info("setting up config");
+
+    await stack.setConfig(nameof<inputType>("protect"), { value: String(args.protect) })
 
     await stack.setConfig(nameof<inputType>("tierId"), { value: String(args.tierId) })
     await stack.setConfig(nameof<inputType>("planeId"), { value: String(args.planeId) })
