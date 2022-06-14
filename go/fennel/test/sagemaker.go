@@ -14,7 +14,7 @@ func AddSagemakerClientToTier(tier *tier.Tier) error {
 	c, err := sagemaker.NewClient(sagemaker.SagemakerArgs{
 		Region:                 "ap-south-1",
 		SagemakerExecutionRole: "arn:aws:iam::030813887342:role/service-role/AmazonSageMaker-ExecutionRole-20220315T123828",
-	})
+	}, tier.Logger)
 	if err != nil {
 		return err
 	}

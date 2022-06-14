@@ -515,7 +515,6 @@ func (m server) UploadModel(w http.ResponseWriter, req *http.Request) {
 	if err != nil {
 		handleBadRequest(w, "", err)
 	}
-	log.Print(formFile)
 	modelFile, err := formFile.Open()
 	if err != nil {
 		handleBadRequest(w, "", err)

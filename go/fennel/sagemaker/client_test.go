@@ -4,6 +4,7 @@ package sagemaker
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"os"
 	"testing"
@@ -12,6 +13,7 @@ import (
 	"fennel/lib/value"
 
 	"github.com/stretchr/testify/assert"
+	"go.uber.org/zap"
 )
 
 func TestCreateDeleteExists(t *testing.T) {
@@ -191,13 +193,153 @@ func TestScoreCsv(t *testing.T) {
 	assert.Equal(t, len(featureVectors), len(response.Scores))
 }
 
+func TestGetProductionVariantName(t *testing.T) {
+	c, err := getTestClient()
+	assert.NoError(t, err)
+
+	endpoint := "autoscaling-unittest-endpoint"
+	// model - autoscaling-unittest-model
+	expected := "variant-name-1"
+	ctx := context.Background()
+
+	actual, err := c.GetProductionVariantName(ctx, endpoint)
+	assert.NoError(t, err)
+	assert.Equal(t, expected, actual)
+}
+
+func TestIsAutoscalingConfigured(t *testing.T) {
+	c, err := getTestClient()
+	assert.NoError(t, err)
+
+	endpoint := "autoscaling-unittest-endpoint"
+	// model - autoscaling-unittest-model
+	variantName := "variant-name-1"
+	ctx := context.Background()
+
+	// autoscaling by default is not configured
+	yes, err := c.IsAutoscalingConfigured(ctx, endpoint, variantName)
+	assert.NoError(t, err)
+	assert.False(t, yes)
+
+	// configure autoscaling on this instance and assert
+	err = c.EnableAutoscaling(ctx, endpoint, variantName, lib.ScalingConfiguration{
+		Cpu: lib.CpuScalingPolicy{
+			CpuTargetValue: 20,
+			ScaleInCoolDownPeriod: 100,
+			ScaleOutCoolDownPeriod: 200,
+		},
+		BaseConfig: &lib.BaseConfig{MinCapacity: 1, MaxCapacity: 2},
+	})
+	assert.NoError(t, err)
+	yes, err = c.IsAutoscalingConfigured(ctx, endpoint, variantName)
+	assert.NoError(t, err)
+	assert.True(t, yes)
+
+	// now disable autoscaling and verify again
+	err = c.DisableAutoscaling(ctx, endpoint, variantName)
+	assert.NoError(t, err)
+	yes, err = c.IsAutoscalingConfigured(ctx, endpoint, variantName)
+	assert.NoError(t, err)
+	assert.False(t, yes)
+}
+
+func TestEnableAutoscalingMisConfigs(t *testing.T) {
+	c, err := getTestClient()
+	assert.NoError(t, err)
+
+	endpoint := "autoscaling-unittest-endpoint"
+	// model - autoscaling-unittest-model
+	variantName := "variant-name-1"
+	ctx := context.Background()
+
+	{
+		err := c.EnableAutoscaling(ctx, endpoint, variantName, lib.ScalingConfiguration{
+			Cpu: lib.CpuScalingPolicy{
+				CpuTargetValue:         -1,
+				ScaleInCoolDownPeriod:  100,
+				ScaleOutCoolDownPeriod: 200,
+			},
+			BaseConfig: &lib.BaseConfig{MinCapacity: 1, MaxCapacity: 2},
+		})
+		assert.Error(t, err)
+	}
+	{
+		err := c.EnableAutoscaling(ctx, endpoint, variantName, lib.ScalingConfiguration{
+			Cpu: lib.CpuScalingPolicy{
+				CpuTargetValue:         20,
+				ScaleInCoolDownPeriod:  100,
+				ScaleOutCoolDownPeriod: 200,
+			},
+			BaseConfig: &lib.BaseConfig{MinCapacity: 0, MaxCapacity: 2},
+		})
+		assert.Error(t, err)
+	}
+	{
+		err := c.EnableAutoscaling(ctx, endpoint, variantName, lib.ScalingConfiguration{
+			Cpu: lib.CpuScalingPolicy{
+				CpuTargetValue:         20,
+				ScaleInCoolDownPeriod:  100,
+				ScaleOutCoolDownPeriod: 200,
+			},
+			BaseConfig: &lib.BaseConfig{MinCapacity: 1, MaxCapacity: 0},
+		})
+		assert.Error(t, err)
+	}
+	{
+		err := c.EnableAutoscaling(ctx, endpoint, variantName, lib.ScalingConfiguration{
+			Cpu: lib.CpuScalingPolicy{
+				CpuTargetValue:         20,
+				ScaleInCoolDownPeriod:  100,
+				ScaleOutCoolDownPeriod: 200,
+			},
+			BaseConfig: &lib.BaseConfig{MinCapacity: 2, MaxCapacity: 1},
+		})
+		assert.Error(t, err)
+	}
+	{
+		err := c.EnableAutoscaling(ctx, endpoint, variantName, lib.ScalingConfiguration{
+			Cpu: lib.CpuScalingPolicy{
+				CpuTargetValue:         20,
+				ScaleInCoolDownPeriod:  -1,
+				ScaleOutCoolDownPeriod: -1,
+			},
+			BaseConfig: &lib.BaseConfig{MinCapacity: 2, MaxCapacity: 1},
+		})
+		assert.Error(t, err)
+	}
+}
+
+func TestDisablingAutoscalingOnUnconfiguredVariant(t *testing.T) {
+	c, err := getTestClient()
+	assert.NoError(t, err)
+
+	endpoint := "autoscaling-unittest-endpoint"
+	// model - autoscaling-unittest-model
+	variantName := "variant-name-1"
+	ctx := context.Background()
+
+	// check that autoscaling is not configured
+	yes, err := c.IsAutoscalingConfigured(ctx, endpoint, variantName)
+	assert.NoError(t, err)
+	assert.False(t, yes)
+
+	// disable on this, should not return error
+	err = c.DisableAutoscaling(ctx, endpoint, variantName)
+	assert.NoError(t, err)
+}
+
 func getTestClient() (SMClient, error) {
 	// Set the environment variables to enable access the test sagemaker endpoint.
 	os.Setenv("AWS_PROFILE", "admin")
 	os.Setenv("AWS_SDK_LOAD_CONFIG", "1")
 
+	logger, err := zap.NewDevelopment()
+	if err != nil {
+		return SMClient{}, fmt.Errorf("failed to construct logger: %v", err)
+	}
+
 	return NewClient(SagemakerArgs{
 		Region:                 "ap-south-1",
 		SagemakerExecutionRole: "arn:aws:iam::030813887342:role/service-role/AmazonSageMaker-ExecutionRole-20220315T123828",
-	})
+	}, logger)
 }

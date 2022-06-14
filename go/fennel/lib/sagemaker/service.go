@@ -7,6 +7,22 @@ import (
 	"fennel/lib/value"
 )
 
+type BaseConfig struct {
+	MinCapacity  int64
+	MaxCapacity int64
+}
+
+type CpuScalingPolicy struct {
+	CpuTargetValue float64
+	ScaleInCoolDownPeriod int64
+	ScaleOutCoolDownPeriod int64
+}
+
+type ScalingConfiguration struct {
+	*BaseConfig
+	Cpu CpuScalingPolicy
+}
+
 type SagemakerRegistry interface {
 	CreateModel(ctx context.Context, hostedModels []Model, sagemakerModelName string) error
 	CreateEndpointConfig(ctx context.Context, cfg SagemakerEndpointConfig) error
@@ -22,6 +38,10 @@ type SagemakerRegistry interface {
 
 	GetEndpointStatus(ctx context.Context, sagemakerEndpointName string) (string, error)
 	UpdateEndpoint(ctx context.Context, endpoint SagemakerEndpoint) error
+
+	IsAutoscalingConfigured(ctx context.Context, sagemakerEndpointName string, modelVariantName string) (bool, error)
+	EnableAutoscaling(ctx context.Context, sagemakerEndpointName string, modelVariantName string, scalingConfig ScalingConfiguration) error
+	DisableAutoscaling(ctx context.Context, sagemakerEndpointName string, modelVariantName string) error
 }
 
 type InferenceServer interface {
