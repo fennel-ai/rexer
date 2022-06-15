@@ -127,6 +127,14 @@ func (agg Aggregate) Validate() error {
 	return nil
 }
 
+func (agg Aggregate) IsProfileBased() bool {
+	return agg.Source == SOURCE_PROFILE
+}
+
+func (agg Aggregate) IsActionBased() bool {
+	return agg.Source == SOURCE_ACTION
+}
+
 func (agg Aggregate) Equals(other Aggregate) bool {
 	if agg.Options.AggType != other.Options.AggType || agg.Name != other.Name || agg.Timestamp != other.Timestamp {
 		return false

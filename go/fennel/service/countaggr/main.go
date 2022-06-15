@@ -58,13 +58,14 @@ func processAggregate(tr tier.Tier, agg libaggregate.Aggregate, stopCh <-chan st
 	var consumer kafka.FConsumer
 	var err error
 
-	if agg.Source == libaggregate.SOURCE_PROFILE {
+	if agg.IsProfileBased() {
 		consumer, err = tr.NewKafkaConsumer(kafka.ConsumerConfig{
 			Topic:        profile.PROFILELOG_KAFKA_TOPIC,
 			GroupID:      string(agg.Name),
 			OffsetPolicy: kafka.DefaultOffsetPolicy,
 		})
 	} else {
+		// We assume that aggregates are by default action based.
 		consumer, err = tr.NewKafkaConsumer(kafka.ConsumerConfig{
 			Topic:        action.ACTIONLOG_KAFKA_TOPIC,
 			GroupID:      string(agg.Name),
@@ -91,7 +92,7 @@ func processAggregate(tr tier.Tier, agg libaggregate.Aggregate, stopCh <-chan st
 				run++
 				tr.Logger.Debug("Processing aggregate", zap.String("name", string(agg.Name)), zap.Int("run", run))
 				ctx := context.Background()
-				if agg.Source == libaggregate.SOURCE_PROFILE {
+				if agg.IsProfileBased() {
 					// The number of actions and profiles need to be tuned.
 					// They should not be too many such that operations like op.model.predict cant handle them.
 					profiles, err := profile2.ReadBatch(ctx, consumer, 300, time.Second*10)
@@ -104,8 +105,9 @@ func processAggregate(tr tier.Tier, agg libaggregate.Aggregate, stopCh <-chan st
 					}
 					err = aggregate.Update(ctx, tr, profiles, agg)
 					if err != nil {
-						aggregate_errors.WithLabelValues(string(agg.Name)).Add(1)
+						aggregate_errors.WithLabelValues(string(agg.Name)).Inc()
 						tr.Logger.Warn("Error found in profile aggregate", zap.String("name", string(agg.Name)), zap.Error(err))
+						continue
 					}
 				} else {
 					actions, err := action2.ReadBatch(ctx, consumer, 10000, time.Second*10)
@@ -118,8 +120,9 @@ func processAggregate(tr tier.Tier, agg libaggregate.Aggregate, stopCh <-chan st
 					}
 					err = aggregate.Update(ctx, tr, actions, agg)
 					if err != nil {
-						aggregate_errors.WithLabelValues(string(agg.Name)).Add(1)
+						aggregate_errors.WithLabelValues(string(agg.Name)).Inc()
 						tr.Logger.Warn("Error found in action aggregate", zap.String("name", string(agg.Name)), zap.Error(err))
+						continue
 					}
 				}
 				_, err = consumer.Commit()
