@@ -2,6 +2,7 @@ import setupTier, { TierConf } from "./tier";
 import setupDataPlane, { PlaneConf, PlaneOutput } from "./plane";
 import * as vpc from "../vpc";
 import * as eks from "../eks";
+import * as account from "../account";
 import * as aurora from "../aurora";
 import * as unleashDb from "../unleash-postgres";
 import * as elasticache from "../elasticache";
@@ -22,7 +23,7 @@ const controlPlane: vpc.controlPlaneConfig = {
     region: "us-west-2",
     accountId: "030813887342",
     vpcId: "vpc-0d9942e83f94c049c",
-    roleArn: "arn:aws:iam::030813887342:role/admin",
+    roleArn: account.MASTER_ACCOUNT_ADMIN_ROLE_ARN,
     routeTableId: "rtb-07afe7458db9c4479",
     cidrBlock: "172.31.0.0/16"
 }
@@ -147,7 +148,6 @@ const planeConfs: Record<number, PlaneConf> = {
         protectResources: true,
         planeId: 2,
         region: "us-west-2",
-        roleArn: "arn:aws:iam::030813887342:role/admin",
         vpcConf: {
             cidr: "10.102.0.0/16"
         },
@@ -193,7 +193,6 @@ const planeConfs: Record<number, PlaneConf> = {
         protectResources: true,
         planeId: 3,
         region: "us-west-2",
-        roleArn: "arn:aws:iam::030813887342:role/admin",
         vpcConf: {
             cidr: "10.103.0.0/16"
         },
@@ -241,7 +240,6 @@ const planeConfs: Record<number, PlaneConf> = {
         protectResources: true,
         planeId: 5,
         region: "ap-south-1",
-        roleArn: "arn:aws:iam::030813887342:role/admin",
         vpcConf: {
             cidr: "10.105.0.0/16"
         },
@@ -306,7 +304,6 @@ const planeConfs: Record<number, PlaneConf> = {
         protectResources: true,
         planeId: 6,
         region: "ap-south-1",
-        roleArn: "arn:aws:iam::030813887342:role/admin",
         vpcConf: {
             cidr: "10.106.0.0/16"
         },
@@ -328,6 +325,43 @@ const planeConfs: Record<number, PlaneConf> = {
         },
         cacheConf: {
             nodeType: "cache.t4g.micro",
+            numNodeGroups: 1,
+            replicasPerNodeGroup: 0,
+        },
+        prometheusConf: {
+            useAMP: false
+        },
+    },
+    // testing account creation in different account
+    8: {
+        protectResources: false,
+        planeId: 8,
+        region: "us-west-2",
+        accountConf: {
+            name: "fennel-convoy-testing",
+            email: "admin+convoy-testing@fennel.ai",
+        },
+        vpcConf: {
+            cidr: "10.108.0.0/16"
+        },
+        dbConf: {
+            minCapacity: 1,
+            maxCapacity: 2,
+            password: "password",
+            skipFinalSnapshot: true,
+        },
+        confluentConf: {
+            username: confluentUsername,
+            password: confluentPassword
+        },
+        controlPlaneConf: controlPlane,
+        redisConf: {
+            numShards: 1,
+            nodeType: "db.t4g.medium",
+            numReplicasPerShard: 0,
+        },
+        cacheConf: {
+            nodeType: "cache.t4g.medium",
             numNodeGroups: 1,
             replicasPerNodeGroup: 0,
         },
@@ -376,6 +410,7 @@ console.log("Updating plane: ", planeId)
 const planeConf = planeConfs[planeId]
 const dataplane = await setupDataPlane(planeConf, preview, destroy);
 
+const roleArn = dataplane[nameof<PlaneOutput>("roleArn")].value as string
 const confluentOutput = dataplane[nameof<PlaneOutput>("confluent")].value as confluentenv.outputType
 const dbOutput = dataplane[nameof<PlaneOutput>("db")].value as aurora.outputType
 const unleashDbOutput = dataplane[nameof<PlaneOutput>("unleashDb")].value as unleashDb.outputType
@@ -454,7 +489,7 @@ if (tierId !== 0) {
         unleashDbEndpoint: unleashDbOutput.host,
         unleashDbPort: unleashDbOutput.port,
 
-        roleArn: planeConf.roleArn,
+        roleArn: roleArn,
         region: planeConf.region,
 
         kubeconfig: JSON.stringify(eksOutput.kubeconfig),

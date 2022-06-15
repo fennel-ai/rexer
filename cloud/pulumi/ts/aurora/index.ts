@@ -10,7 +10,7 @@ export const plugins = {
 }
 
 export type inputType = {
-    roleArn: string,
+    roleArn: pulumi.Input<string>,
     region: string,
     vpcId: pulumi.Output<string>,
     minCapacity: number,

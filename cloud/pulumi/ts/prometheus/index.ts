@@ -11,7 +11,7 @@ export type inputType = {
     useAMP: boolean,
     kubeconfig: pulumi.Input<any>,
     region: string,
-    roleArn: string,
+    roleArn: pulumi.Input<string>,
     planeId: number,
     protect: boolean,
 }

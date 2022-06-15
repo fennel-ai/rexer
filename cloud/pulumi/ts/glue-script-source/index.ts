@@ -12,7 +12,7 @@ export const plugins = {
 
 export type inputType = {
     region: string,
-    roleArn: string,
+    roleArn: pulumi.Input<string>,
     planeId: number,
     protect: boolean,
 }
