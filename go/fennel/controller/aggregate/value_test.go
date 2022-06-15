@@ -2,17 +2,16 @@ package aggregate
 
 import (
 	"context"
-	"fennel/lib/utils/slice"
 	"fmt"
 	"testing"
 	"time"
 
+	agg_test "fennel/controller/aggregate/test"
 	"fennel/engine/ast"
 	"fennel/lib/action"
 	"fennel/lib/aggregate"
 	"fennel/lib/ftypes"
 	"fennel/lib/value"
-	"fennel/model/counter"
 	_ "fennel/opdefs/std"
 	_ "fennel/opdefs/std/set"
 	"fennel/test"
@@ -33,7 +32,7 @@ func TestValueAll(t *testing.T) {
 
 	agg1 := aggregate.Aggregate{
 		Name:      "mycounter",
-		Query:     ast.MakeInt(0),
+		Query:     agg_test.GetDummyAggQuery(),
 		Timestamp: t0,
 		Options: aggregate.Options{
 			AggType:   "sum",
@@ -42,7 +41,7 @@ func TestValueAll(t *testing.T) {
 	}
 	agg2 := aggregate.Aggregate{
 		Name:      "minelem",
-		Query:     ast.MakeInt(0),
+		Query:     agg_test.GetDummyAggQuery(),
 		Timestamp: t0,
 		Options: aggregate.Options{
 			AggType:   "min",
@@ -58,20 +57,20 @@ func TestValueAll(t *testing.T) {
 	// now create changes
 	t1 := t0 + 3600
 	key := value.Nil
-	keystr := key.String()
 
-	h1, err := counter.ToHistogram(tier, agg1.Id, agg1.Options)
-	assert.NoError(t, err)
-	buckets := h1.BucketizeMoment(keystr, t1)
-	v1 := make([]value.Value, len(buckets))
-	slice.Fill[value.Value](v1, value.Int(1))
-
-	err = counter.Update(context.Background(), tier, agg1.Id, buckets, v1, h1)
-	assert.NoError(t, err)
-	buckets = h1.BucketizeMoment(keystr, t1)
-	v1 = make([]value.Value, len(buckets))
-	slice.Fill[value.Value](v1, value.Int(3))
-	err = counter.Update(context.Background(), tier, agg1.Id, buckets, v1, h1)
+	actions := []action.Action{
+		{
+			ActorID:   "5",
+			TargetID:  "7",
+			RequestID: "1234",
+			Metadata: value.NewDict(map[string]value.Value{
+				"groupkey":  key,
+				"value":     value.Int(4),
+				"timestamp": value.Int(t1),
+			}),
+		},
+	}
+	err = Update(ctx, tier, actions, agg1)
 	assert.NoError(t, err)
 	req1 := aggregate.GetAggValueRequest{
 		AggName: agg1.Name,
@@ -80,18 +79,29 @@ func TestValueAll(t *testing.T) {
 	}
 	exp1 := value.Int(4)
 
-	h2, err := counter.ToHistogram(tier, agg2.Id, agg2.Options)
-	assert.NoError(t, err)
-	buckets = h2.BucketizeMoment(keystr, t1)
-	v2 := make([]value.Value, len(buckets))
-	slice.Fill[value.Value](v2, value.NewList(value.Int(2), value.Bool(false)))
-	err = counter.Update(context.Background(), tier, agg2.Id, buckets, v2, h2)
-	assert.NoError(t, err)
-	buckets = h2.BucketizeMoment(keystr, t1)
-	v2 = make([]value.Value, len(buckets))
-	slice.Fill[value.Value](v2, value.NewList(value.Int(7), value.Bool(false)))
-	err = counter.Update(context.Background(), tier, agg2.Id, buckets, v2, h2)
-
+	actions = []action.Action{
+		{
+			ActorID:   "5",
+			TargetID:  "7",
+			RequestID: "1234",
+			Metadata: value.NewDict(map[string]value.Value{
+				"groupkey":  key,
+				"value":     value.Int(2),
+				"timestamp": value.Int(t1),
+			}),
+		},
+		{
+			ActorID:   "5",
+			TargetID:  "7",
+			RequestID: "1234",
+			Metadata: value.NewDict(map[string]value.Value{
+				"groupkey":  key,
+				"value":     value.Int(7),
+				"timestamp": value.Int(t1),
+			}),
+		},
+	}
+	err = Update(ctx, tier, actions, agg2)
 	assert.NoError(t, err)
 	req2 := aggregate.GetAggValueRequest{
 		AggName: agg2.Name,
@@ -99,12 +109,21 @@ func TestValueAll(t *testing.T) {
 		Kwargs:  value.NewDict(map[string]value.Value{"duration": value.Int(24 * 3600)}),
 	}
 	exp2 := value.Int(2)
-	// Test kwargs with duration of an hour
-	buckets = h2.BucketizeMoment(keystr, t1+5400)
-	v3 := make([]value.Value, len(buckets))
-	slice.Fill[value.Value](v3, value.NewList(value.Int(5), value.Bool(false)))
 
-	err = counter.Update(context.Background(), tier, agg2.Id, buckets, v3, h2)
+	// Test kwargs with duration of an hour
+	actions = []action.Action{
+		{
+			ActorID:   "5",
+			TargetID:  "7",
+			RequestID: "1234",
+			Metadata: value.NewDict(map[string]value.Value{
+				"groupkey":  key,
+				"value":     value.Int(5),
+				"timestamp": value.Int(t1 + 5400),
+			}),
+		},
+	}
+	err = Update(ctx, tier, actions, agg2)
 	assert.NoError(t, err)
 	req3 := aggregate.GetAggValueRequest{
 		AggName: agg2.Name,
@@ -158,7 +177,7 @@ func TestCachedValueAll(t *testing.T) {
 
 	agg := aggregate.Aggregate{
 		Name:      "agg",
-		Query:     ast.MakeInt(0),
+		Query:     agg_test.GetDummyAggQuery(),
 		Timestamp: t0,
 		Options: aggregate.Options{
 			AggType:   "sum",
@@ -166,25 +185,32 @@ func TestCachedValueAll(t *testing.T) {
 		},
 		Id: 1,
 	}
-	h, err := counter.ToHistogram(tier, agg.Id, agg.Options)
-	assert.NoError(t, err)
-	key := value.String("key")
-	kwargs := value.NewDict(map[string]value.Value{"duration": value.Int(3600)})
 	assert.NoError(t, Store(ctx, tier, agg))
 
 	// initially we should get 0
-	expected := value.Int(0)
+	key := value.String("key")
+	kwargs := value.NewDict(map[string]value.Value{"duration": value.Int(3600)})
 	found, err := Value(ctx, tier, agg.Name, key, kwargs)
 	assert.NoError(t, err)
+	expected := value.Int(0)
 	assert.True(t, expected.Equal(found))
 
 	// wait for value to be cached
 	time.Sleep(10 * time.Millisecond)
 	// update buckets, we should still get back cached value
-	buckets := h.BucketizeMoment(key.String(), t0)
-	v1 := make([]value.Value, len(buckets))
-	slice.Fill[value.Value](v1, value.Int(1))
-	assert.NoError(t, counter.Update(ctx, tier, agg.Id, buckets, v1, h))
+	actions := []action.Action{
+		{
+			ActorID:   "5",
+			TargetID:  "7",
+			RequestID: "1234",
+			Metadata: value.NewDict(map[string]value.Value{
+				"groupkey":  key,
+				"value":     value.Int(1),
+				"timestamp": value.Int(t0),
+			}),
+		},
+	}
+	assert.NoError(t, Update(ctx, tier, actions, agg))
 	expected = value.Int(0)
 	found, err = Value(ctx, tier, agg.Name, key, kwargs)
 	assert.NoError(t, err)
@@ -198,24 +224,17 @@ func TestCachedValueAll(t *testing.T) {
 	// test batch now
 	agg1, agg2, agg3 := agg, agg, agg
 	agg1.Name, agg2.Name, agg3.Name = "agg1", "agg2", "agg3"
-	reqs := []aggregate.GetAggValueRequest{
-		{AggName: agg1.Name, Key: key, Kwargs: kwargs},
-		{AggName: agg2.Name, Key: key, Kwargs: kwargs},
-		{AggName: agg3.Name, Key: key, Kwargs: kwargs},
-	}
-	ids := []ftypes.AggId{2, 3, 4}
-	h1, err := counter.ToHistogram(tier, ids[0], agg1.Options)
-	assert.NoError(t, err)
-	h2, err := counter.ToHistogram(tier, ids[1], agg2.Options)
-	assert.NoError(t, err)
-	h3, err := counter.ToHistogram(tier, ids[2], agg3.Options)
-	assert.NoError(t, err)
-	histograms := []counter.Histogram{h1, h2, h3}
+	agg1.Id, agg2.Id, agg3.Id = 2, 3, 4
 	assert.NoError(t, Store(ctx, tier, agg1))
 	assert.NoError(t, Store(ctx, tier, agg2))
 	assert.NoError(t, Store(ctx, tier, agg3))
 
 	// initially we only get req1 and req3 and we should find 0s
+	reqs := []aggregate.GetAggValueRequest{
+		{AggName: agg1.Name, Key: key, Kwargs: kwargs},
+		{AggName: agg2.Name, Key: key, Kwargs: kwargs},
+		{AggName: agg3.Name, Key: key, Kwargs: kwargs},
+	}
 	reqs_ := []aggregate.GetAggValueRequest{reqs[0], reqs[2]}
 	expectedVals := []value.Value{value.Int(0), value.Int(0)}
 	foundVals, err := BatchValue(ctx, tier, reqs_)
@@ -227,11 +246,8 @@ func TestCachedValueAll(t *testing.T) {
 	// wait for values to be cached
 	time.Sleep(10 * time.Millisecond)
 	// update buckets, we should get back cached value from req1 and req3 but ground truth from req2
-	for i, h := range histograms {
-		buckets := h.BucketizeMoment(key.String(), t0)
-		v := make([]value.Value, len(buckets))
-		slice.Fill[value.Value](v, value.Int(1))
-		assert.NoError(t, counter.Update(ctx, tier, ids[i], buckets, v1, h))
+	for _, agg := range []aggregate.Aggregate{agg1, agg2, agg3} {
+		assert.NoError(t, Update(ctx, tier, actions, agg))
 	}
 	// and this works even with repeated requests
 	req2 := []aggregate.GetAggValueRequest{reqs[0], reqs[2], reqs[1], reqs[1], reqs[2]}
@@ -268,7 +284,7 @@ func TestTransformActions(t *testing.T) {
 		actions = append(actions, a1, a2)
 	}
 
-	table, err := transformActions(tier, actions, getQuery())
+	table, err := transform(tier, actions, getQuery())
 	assert.NoError(t, err)
 	assert.Equal(t, 100, table.Len())
 	for i := 0; i < table.Len(); i++ {

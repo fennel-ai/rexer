@@ -2,23 +2,20 @@ package aggregate
 
 import (
 	"context"
-	"fennel/controller/action"
 	"fmt"
 	"os"
 	"time"
 
 	"fennel/controller/counter"
-	"fennel/controller/profile"
 	"fennel/engine"
 	"fennel/engine/ast"
 	"fennel/engine/interpreter/bootarg"
-	"fennel/kafka"
-	libaction "fennel/lib/action"
+	"fennel/lib/action"
 	"fennel/lib/aggregate"
 	libcounter "fennel/lib/counter"
 	"fennel/lib/ftypes"
 	"fennel/lib/phaser"
-	profilelib "fennel/lib/profile"
+	"fennel/lib/profile"
 	"fennel/lib/value"
 	modelCounter "fennel/model/counter"
 	"fennel/tier"
@@ -288,60 +285,18 @@ func fetchOnlineAggregates(ctx context.Context, tier tier.Tier, aggMap map[ftype
 }
 
 // Update the aggregates given a kafka consumer responsible for reading any stream
-func Update(ctx context.Context, tier tier.Tier, consumer kafka.FConsumer, agg aggregate.Aggregate) error {
-	var table value.List
-	var err error
-	var streamLen int
-
-	// The number of actions and profiles need to be tuned.
-	// They should not be too many such that operations like op.model.predict cant handle them.
-	if agg.Source == aggregate.SOURCE_PROFILE {
-		profiles, err := profile.ReadBatch(ctx, consumer, 300, time.Second*10)
-
-		if err != nil {
-			return err
-		}
-		if len(profiles) == 0 {
-			return nil
-		}
-
-		table, err = transformProfiles(tier, profiles, agg.Query)
-		if err != nil {
-			return err
-		}
-		streamLen = len(profiles)
-	} else {
-		actions, err := action.ReadBatch(ctx, consumer, 10000, time.Second*10)
-		if err != nil {
-			return err
-		}
-		if len(actions) == 0 {
-			return nil
-		}
-
-		table, err = transformActions(tier, actions, agg.Query)
-		if err != nil {
-			return err
-		}
-		streamLen = len(actions)
-	}
-
+func Update[I action.Action | profile.ProfileItem](ctx context.Context, tier tier.Tier, items []I, agg aggregate.Aggregate) error {
+	table, err := transform(tier, items, agg.Query)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to transform actions: %w", err)
 	}
-
-	if table.Len() == 0 {
-		tier.Logger.Info(fmt.Sprintf("no data to update aggregate %s", agg.Name))
-		_, err = consumer.Commit()
-		return err
-	}
-
+	tier.Logger.Info("Processed aggregate",
+		zap.String("name", string(agg.Name)),
+		zap.Int("input", len(items)),
+		zap.Int("output", table.Len()))
 	// Update the aggregate according to the type
-
-	// Offline Aggregates
-	if agg.IsOffline() {
-		tier.Logger.Info(fmt.Sprintf("found %d new %s, %d transformed %s for offline aggregate: %s", streamLen, agg.Source, table.Len(), agg.Source, agg.Name))
-
+	if agg.IsOffline() { // Offline Aggregates
+		tier.Logger.Info(fmt.Sprintf("found %d new items, %d transformed %s for offline aggregate: %s", len(items), table.Len(), agg.Source, agg.Name))
 		offlineTransformProducer := tier.Producers[libcounter.AGGREGATE_OFFLINE_TRANSFORM_TOPIC_NAME]
 		for i := 0; i < table.Len(); i++ {
 			rowVal, _ := table.At(i)
@@ -357,80 +312,64 @@ func Update(ctx context.Context, tier tier.Tier, consumer kafka.FConsumer, agg a
 				tier.Logger.Error(fmt.Sprintf("failed to log action proto: %v", err))
 			}
 		}
-		_, err = consumer.Commit()
-		return err
-	}
-
-	// Forever Aggregates dont use histograms
-	if agg.IsForever() {
+		return nil
+	} else if agg.IsForever() {
+		// Forever Aggregates dont use histograms
 		// Current support for only KNN, add support for other aggregates
 		// https://linear.app/fennel-ai/issue/REX-1053/support-forever-aggregates
 		if agg.Options.AggType != "knn" {
 			return fmt.Errorf("forever aggregates are not supported for aggregate %s", agg.Name)
 		}
-		tier.Logger.Info(fmt.Sprintf("found %d new %s, %d transformed %s for forever aggregate: %s", streamLen, agg.Source, table.Len(), agg.Source, agg.Name))
 		// Update the aggregate
 		// Use milvus library to update the index with all actions
 		err = tier.MilvusClient.InsertStream(ctx, agg, table)
 		if err != nil {
-			return err
+			return fmt.Errorf("failed to insert stream into milvus: %w", err)
 		}
-		_, err = consumer.Commit()
+		return nil
+	} else { // Online duration based aggregates
+		histogram, err := modelCounter.ToHistogram(tier, agg.Id, agg.Options)
+		if err != nil {
+			return fmt.Errorf("failed to make histogram from aggregate: %w", err)
+		}
+		if err = counter.Update(ctx, tier, agg, table, histogram); err != nil {
+			return fmt.Errorf("failed to update counter: %w", err)
+		}
 		return err
 	}
-
-	// Online duration based aggregates
-
-	tier.Logger.Info(fmt.Sprintf("found %d new %s, %d transformed %s for online aggregate: %s", streamLen, agg.Source, table.Len(), agg.Source, agg.Name))
-	histogram, err := modelCounter.ToHistogram(tier, agg.Id, agg.Options)
-	if err != nil {
-		return err
-	}
-	if err = counter.Update(ctx, tier, agg, table, histogram); err != nil {
-		return err
-	}
-	_, err = consumer.Commit()
-	return err
 }
 
 // ============================
 // Private helpers below
 // ============================
 
-func transformProfiles(tier tier.Tier, profiles []profilelib.ProfileItem, query ast.Ast) (value.List, error) {
+func transform(tier tier.Tier, items any, query ast.Ast) (value.List, error) {
 	bootargs := bootarg.Create(tier)
 	executor := engine.NewQueryExecutor(bootargs)
-	table, err := profilelib.ToList(profiles)
+	var table value.List
+	var err error
+	var key string
+	switch t := items.(type) {
+	case []action.Action:
+		key = "actions"
+		table, err = action.ToList(t)
+	case []profile.ProfileItem:
+		key = "profiles"
+		table, err = profile.ToList(t)
+	default:
+		return table, fmt.Errorf("unsupported type: %T", t)
+	}
 	if err != nil {
 		return value.NewList(), err
 	}
-
-	result, err := executor.Exec(context.Background(), query, value.NewDict(map[string]value.Value{"profiles": table}))
+	result, err := executor.Exec(context.Background(), query, value.NewDict(map[string]value.Value{key: table}))
 	if err != nil {
 		return value.NewList(), err
 	}
-	table, ok := result.(value.List)
+	var ok bool
+	table, ok = result.(value.List)
 	if !ok {
-		return value.NewList(), fmt.Errorf("query did not transform profiles into a list")
-	}
-	return table, nil
-}
-
-func transformActions(tier tier.Tier, actions []libaction.Action, query ast.Ast) (value.List, error) {
-	bootargs := bootarg.Create(tier)
-	executor := engine.NewQueryExecutor(bootargs)
-	table, err := libaction.ToList(actions)
-	if err != nil {
-		return value.NewList(), err
-	}
-
-	result, err := executor.Exec(context.Background(), query, value.NewDict(map[string]value.Value{"actions": table}))
-	if err != nil {
-		return value.NewList(), err
-	}
-	table, ok := result.(value.List)
-	if !ok {
-		return value.NewList(), fmt.Errorf("query did not transform actions into a list")
+		return value.NewList(), fmt.Errorf("query did not transform items into a list")
 	}
 	return table, nil
 }

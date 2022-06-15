@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"encoding/json"
-	"fennel/lib/utils/slice"
 	"fmt"
 	"io/ioutil"
 	"net/http/httptest"
@@ -13,11 +12,11 @@ import (
 
 	action2 "fennel/controller/action"
 	aggregate2 "fennel/controller/aggregate"
+	agg_test "fennel/controller/aggregate/test"
 	"fennel/controller/mock"
 	"fennel/engine/ast"
 	"fennel/kafka"
 	"fennel/lib/aggregate"
-	"fennel/model/counter"
 
 	"fennel/client"
 	"fennel/lib/action"
@@ -420,7 +419,7 @@ func TestServer_AggregateValue_Valid(t *testing.T) {
 	holder := server{tier: tier}
 	agg := aggregate.Aggregate{
 		Name:      "mycounter",
-		Query:     ast.MakeInt(1),
+		Query:     agg_test.GetDummyAggQuery(),
 		Timestamp: t0,
 		Options: aggregate.Options{
 			AggType:   "sum",
@@ -429,30 +428,46 @@ func TestServer_AggregateValue_Valid(t *testing.T) {
 		Id: 1,
 	}
 	key := value.Int(4)
-	keystr := key.String()
 	assert.Equal(t, uint32(t0), tier.Clock.Now())
 	assert.NoError(t, aggregate2.Store(ctx, tier, agg))
 	// initially count is zero
 	valueSendReceive(t, holder, agg, key, value.Int(0), value.NewDict(map[string]value.Value{"duration": value.Int(6 * 3600)}))
 
 	// now create an increment
-	h, err := counter.ToHistogram(tier, agg.Id, agg.Options)
-	assert.NoError(t, err)
 	t1 := t0 + 3600
-	buckets := h.BucketizeMoment(keystr, t1)
-	v := make([]value.Value, len(buckets))
-	slice.Fill[value.Value](v, value.Int(1))
-	err = counter.Update(context.Background(), tier, agg.Id, buckets, v, h)
+	actions := []action.Action{
+		{
+			ActorID:   "5",
+			TargetID:  "7",
+			RequestID: "1234",
+			Metadata: value.NewDict(map[string]value.Value{
+				"groupkey":  key,
+				"value":     value.Int(1),
+				"timestamp": value.Int(t1),
+			}),
+		},
+	}
+	err = aggregate2.Update(ctx, tier, actions, agg)
 	assert.NoError(t, err)
+
 	clock.Set(uint32(t1 + 60))
 	valueSendReceive(t, holder, agg, key, value.Int(1), value.NewDict(map[string]value.Value{"duration": value.Int(6 * 3600)}))
 
 	// create another increment at a later timestamp
 	t2 := t1 + 3600
-	buckets = h.BucketizeMoment(keystr, t2)
-	v = make([]value.Value, len(buckets))
-	slice.Fill[value.Value](v, value.Int(1))
-	err = counter.Update(context.Background(), tier, agg.Id, buckets, v, h)
+	actions = []action.Action{
+		{
+			ActorID:   "5",
+			TargetID:  "7",
+			RequestID: "1234",
+			Metadata: value.NewDict(map[string]value.Value{
+				"groupkey":  key,
+				"value":     value.Int(1),
+				"timestamp": value.Int(t2),
+			}),
+		},
+	}
+	err = aggregate2.Update(ctx, tier, actions, agg)
 	assert.NoError(t, err)
 	clock.Set(uint32(t2 + 60))
 	valueSendReceive(t, holder, agg, key, value.Int(2), value.NewDict(map[string]value.Value{"duration": value.Int(6 * 3600)}))
@@ -473,7 +488,7 @@ func TestServer_BatchAggregateValue(t *testing.T) {
 
 	agg1 := aggregate.Aggregate{
 		Name:      "mycounter",
-		Query:     ast.MakeInt(0),
+		Query:     agg_test.GetDummyAggQuery(),
 		Timestamp: t0,
 		Options: aggregate.Options{
 			AggType:   "sum",
@@ -482,7 +497,7 @@ func TestServer_BatchAggregateValue(t *testing.T) {
 	}
 	agg2 := aggregate.Aggregate{
 		Name:      "maxelem",
-		Query:     ast.MakeInt(0),
+		Query:     agg_test.GetDummyAggQuery(),
 		Timestamp: t0,
 		Options: aggregate.Options{
 			AggType:   "max",
@@ -499,35 +514,58 @@ func TestServer_BatchAggregateValue(t *testing.T) {
 	// now create changes
 	t1 := t0 + 3600
 	key := value.Nil
-	keystr := key.String()
 
-	h1, err := counter.ToHistogram(tier, agg1.Id, agg1.Options)
-	assert.NoError(t, err)
-	buckets := h1.BucketizeMoment(keystr, t1)
-	v1 := make([]value.Value, len(buckets))
-	slice.Fill[value.Value](v1, value.Int(1))
-	err = counter.Update(context.Background(), tier, agg1.Id, buckets, v1, h1)
-	assert.NoError(t, err)
-	buckets = h1.BucketizeMoment(keystr, t1)
-	v1 = make([]value.Value, len(buckets))
-	slice.Fill[value.Value](v1, value.Int(3))
-	err = counter.Update(context.Background(), tier, agg1.Id, buckets, v1, h1)
+	actions := []action.Action{
+		{
+			ActorID:   "5",
+			TargetID:  "7",
+			RequestID: "1234",
+			Metadata: value.NewDict(map[string]value.Value{
+				"groupkey":  key,
+				"value":     value.Int(1),
+				"timestamp": value.Int(t1),
+			}),
+		},
+		{
+			ActorID:   "5",
+			TargetID:  "7",
+			RequestID: "1234",
+			Metadata: value.NewDict(map[string]value.Value{
+				"groupkey":  key,
+				"value":     value.Int(3),
+				"timestamp": value.Int(t1),
+			}),
+		},
+	}
+	err = aggregate2.Update(ctx, tier, actions, agg1)
 	assert.NoError(t, err)
 	req1 := aggregate.GetAggValueRequest{
 		AggName: agg1.Name, Key: key, Kwargs: value.NewDict(map[string]value.Value{"duration": value.Int(6 * 3600)}),
 	}
 
-	h2, err := counter.ToHistogram(tier, agg2.Id, agg2.Options)
-	assert.NoError(t, err)
-	buckets = h2.BucketizeMoment(keystr, t1)
-	v2 := make([]value.Value, len(buckets))
-	slice.Fill[value.Value](v2, value.NewList(value.Int(2), value.Bool(false)))
-	err = counter.Update(context.Background(), tier, agg2.Id, buckets, v2, h2)
-	assert.NoError(t, err)
-	buckets = h2.BucketizeMoment(keystr, t1)
-	v2 = make([]value.Value, len(buckets))
-	slice.Fill[value.Value](v2, value.NewList(value.Int(7), value.Bool(false)))
-	err = counter.Update(context.Background(), tier, agg2.Id, buckets, v2, h2)
+	actions = []action.Action{
+		{
+			ActorID:   "5",
+			TargetID:  "7",
+			RequestID: "1234",
+			Metadata: value.NewDict(map[string]value.Value{
+				"groupkey":  key,
+				"value":     value.Int(2),
+				"timestamp": value.Int(t1),
+			}),
+		},
+		{
+			ActorID:   "5",
+			TargetID:  "7",
+			RequestID: "1234",
+			Metadata: value.NewDict(map[string]value.Value{
+				"groupkey":  key,
+				"value":     value.Int(7),
+				"timestamp": value.Int(t1),
+			}),
+		},
+	}
+	err = aggregate2.Update(ctx, tier, actions, agg2)
 	assert.NoError(t, err)
 	req2 := aggregate.GetAggValueRequest{
 		AggName: agg2.Name, Key: key, Kwargs: value.NewDict(map[string]value.Value{"duration": value.Int(6 * 3600)}),
@@ -539,10 +577,19 @@ func TestServer_BatchAggregateValue(t *testing.T) {
 
 	// create some more changes at a later timestamp
 	t2 := t1 + 3600
-	buckets = h1.BucketizeMoment(keystr, t2)
-	v3 := make([]value.Value, len(buckets))
-	slice.Fill[value.Value](v3, value.Int(9))
-	err = counter.Update(context.Background(), tier, agg1.Id, buckets, v3, h1)
+	actions = []action.Action{
+		{
+			ActorID:   "5",
+			TargetID:  "7",
+			RequestID: "1234",
+			Metadata: value.NewDict(map[string]value.Value{
+				"groupkey":  key,
+				"value":     value.Int(9),
+				"timestamp": value.Int(t2),
+			}),
+		},
+	}
+	err = aggregate2.Update(ctx, tier, actions, agg1)
 	assert.NoError(t, err)
 	req3 := aggregate.GetAggValueRequest{
 		AggName: agg1.Name, Key: key, Kwargs: value.NewDict(map[string]value.Value{"duration": value.Int(1800)}),
@@ -665,6 +712,7 @@ func batchValueSendReceive(t *testing.T, controller server,
 	found, err := ioutil.ReadAll(w.Body)
 	assert.NoError(t, err)
 	expected, err := json.Marshal(expectedVals)
+	assert.NoError(t, err)
 	assert.Equal(t, string(expected), string(found))
 }
 

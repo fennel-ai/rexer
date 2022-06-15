@@ -23,7 +23,7 @@ func Clean(v Value) Value {
 func FromJSON(data []byte) (Value, error) {
 	vdata, vtype, _, err := jsonparser.Get(data)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to create parser: %w", err)
 	}
 	return ParseJSON(vdata, vtype)
 }
@@ -51,7 +51,6 @@ func ParseJSON(vdata []byte, vtype jsonparser.ValueType) (Value, error) {
 		return Nil, nil
 	default:
 		return nil, fmt.Errorf("unsupported json type %v", vtype)
-		return nil, fmt.Errorf("unknown type")
 	}
 }
 
