@@ -1,3 +1,4 @@
+import * as pulumi from "@pulumi/pulumi"
 import * as aws from "@pulumi/aws";
 
 const ROOT_ID = "r-7try";
@@ -51,12 +52,12 @@ export const setup = async (input: inputType): Promise<pulumi.Output<outputType>
         }
     });
 
-    const policyName = `assume_admin_${input.name}`
-    const policyAttachName = `assume_admin_${input.name}_policyAttach`
+    const policyName = `assume-${input.name}-admin`
+    const policyAttachName = `assume-${input.name}-admin--policyAttach`
     const accountAdminRoleArn = account.id.apply(accountId => { return `arn:aws:iam::${accountId}:role/admin` });
 
     // create IAM policy in the master account which allows assuming admin access in this newly created account
-    const policy = pulumi.all([account.id, accountAdminRoleArn]).apply((accountId, roleArn) => {
+    const policy = pulumi.all([account.id, accountAdminRoleArn]).apply(([accountId, roleArn]) => {
         return new aws.iam.Policy(policyName, {
             path: "/",
             namePrefix: policyName,

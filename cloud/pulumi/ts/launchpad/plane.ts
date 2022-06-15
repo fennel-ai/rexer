@@ -64,7 +64,12 @@ type EksConf = {
 type MilvusConf = {}
 
 type AccountConf = {
+    // account name
     name: string,
+    // this is the email associated with this account, this should be unique i.e. an AWS account, even outside the
+    // organization is not supposed to have used this email.
+    //
+    // consider using email of the form: `admin+{account-name}@fennel.ai` to easily map the accounts with the email
     email: string,
 }
 
