@@ -26,7 +26,7 @@ class LocalTier():
 
     def run_local_server(self):
         if self.is_dev_tier:
-            tier_id = 106
+            tier_id = 108
         else:
             tier_id = random.randint(0, 1e8)
         self.env['TIER_ID'] = str(tier_id)
