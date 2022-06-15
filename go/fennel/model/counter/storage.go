@@ -526,25 +526,6 @@ func (t twoLevelRedisStore) logStats(groupVals []value.Value, mode string) {
 
 var _ BucketStore = twoLevelRedisStore{}
 
-func Update(ctx context.Context, tier tier.Tier, aggId ftypes.AggId, buckets []counter.Bucket, values []value.Value, h Histogram) error {
-	ctx, tmr := timer.Start(ctx, tier.ID, "counter.update")
-	defer tmr.Stop()
-	cur, err := h.GetMulti(ctx, tier, []ftypes.AggId{aggId}, [][]counter.Bucket{buckets}, []value.Value{h.Zero()})
-	if err != nil {
-		return err
-	}
-
-	// We fetch for only 1 aggregate, hence its a 2d array of 1 element
-	defer arena.Values.Free(cur[0])
-	for i := range cur[0] {
-		values[i], err = h.Merge(cur[0][i], values[i])
-		if err != nil {
-			return err
-		}
-	}
-	return h.SetMulti(ctx, tier, []ftypes.AggId{aggId}, [][]counter.Bucket{buckets}, [][]value.Value{values})
-}
-
 // ==========================================================
 // Private helpers for talking to redis
 // ==========================================================

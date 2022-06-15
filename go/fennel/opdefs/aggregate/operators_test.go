@@ -9,7 +9,6 @@ import (
 	controller_action "fennel/controller/action"
 	"fennel/controller/aggregate"
 	"fennel/engine/ast"
-	"fennel/kafka"
 	"fennel/lib/action"
 	libaggregate "fennel/lib/aggregate"
 	"fennel/lib/ftypes"
@@ -53,32 +52,21 @@ func TestAggValue_Apply(t *testing.T) {
 	assert.NoError(t, aggregate.Store(ctx, tier, agg2))
 
 	uids := []ftypes.OidType{"1", "2", "1"}
+	var actions []action.Action
 	for i := 0; i < 3; i++ {
 		a := getAction(uids[i], ftypes.Timestamp(t0), "like")
+		actions = append(actions, a)
 		err = controller_action.Insert(ctx, tier, a)
 		assert.NoError(t, err)
 	}
 	// Insert one action at a later timestamp
 	a := getAction("2", ftypes.Timestamp(t0+1800), "like")
+	actions = append(actions, a)
 	err = controller_action.Insert(ctx, tier, a)
 	assert.NoError(t, err)
 	clock.Set(t0 + 3600)
-	consumer, err := tier.NewKafkaConsumer(kafka.ConsumerConfig{
-		Topic:        action.ACTIONLOG_KAFKA_TOPIC,
-		GroupID:      string(agg.Name),
-		OffsetPolicy: kafka.DefaultOffsetPolicy,
-	})
-	assert.NoError(t, err)
-	defer consumer.Close()
-	consumer2, err := tier.NewKafkaConsumer(kafka.ConsumerConfig{
-		Topic:        action.ACTIONLOG_KAFKA_TOPIC,
-		GroupID:      string(agg2.Name),
-		OffsetPolicy: kafka.DefaultOffsetPolicy,
-	})
-	defer consumer2.Close()
-	assert.NoError(t, err)
-	assert.NoError(t, aggregate.Update(ctx, tier, consumer, agg))
-	assert.NoError(t, aggregate.Update(ctx, tier, consumer2, agg2))
+	assert.NoError(t, aggregate.Update(ctx, tier, actions, agg))
+	assert.NoError(t, aggregate.Update(ctx, tier, actions, agg2))
 	found, err := aggregate.Value(ctx, tier, agg.Name, value.Int(1), value.NewDict(map[string]value.Value{"duration": value.Int(6 * 3600)}))
 	assert.NoError(t, err)
 	assert.Equal(t, value.Int(2), found)

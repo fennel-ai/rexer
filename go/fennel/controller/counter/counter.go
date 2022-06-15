@@ -3,6 +3,7 @@ package counter
 import (
 	"context"
 	"fennel/lib/arena"
+	"fennel/lib/timer"
 	"fmt"
 	"time"
 
@@ -85,6 +86,8 @@ func BatchValue(
 func Update(
 	ctx context.Context, tier tier.Tier, agg aggregate.Aggregate, table value.List, histogram counter.Histogram,
 ) error {
+	ctx, tmr := timer.Start(ctx, tier.ID, "counter.update")
+	defer tmr.Stop()
 	buckets, values, err := counter.Bucketize(histogram, table)
 	if err != nil {
 		return err
@@ -93,5 +96,17 @@ func Update(
 	if err != nil {
 		return err
 	}
-	return counter.Update(ctx, tier, agg.Id, buckets, values, histogram)
+	cur, err := histogram.GetMulti(ctx, tier, []ftypes.AggId{agg.Id}, [][]libcounter.Bucket{buckets}, []value.Value{histogram.Zero()})
+	if err != nil {
+		return err
+	}
+	// We fetch for only 1 aggregate, hence its a 2d array of 1 element
+	defer arena.Values.Free(cur[0])
+	for i := range cur[0] {
+		values[i], err = histogram.Merge(cur[0][i], values[i])
+		if err != nil {
+			return err
+		}
+	}
+	return histogram.SetMulti(ctx, tier, []ftypes.AggId{agg.Id}, [][]libcounter.Bucket{buckets}, [][]value.Value{values})
 }

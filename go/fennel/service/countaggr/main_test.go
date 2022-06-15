@@ -28,7 +28,6 @@ type scenario struct {
 	key      value.Value
 	kwargs   []value.Dict
 	expected []value.Value
-	consumer kafka.FConsumer
 }
 
 func TestEndToEndActionAggregates(t *testing.T) {
@@ -52,7 +51,6 @@ func TestEndToEndActionAggregates(t *testing.T) {
 				value.NewDict(map[string]value.Value{"duration": value.Int(6 * 3600)}),
 				value.NewDict(map[string]value.Value{"duration": value.Int(3600)})},
 			[]value.Value{value.Int(3), value.Int(2)},
-			nil,
 		},
 		{
 			libaggregate.Aggregate{
@@ -65,7 +63,6 @@ func TestEndToEndActionAggregates(t *testing.T) {
 			value.Int(uid),
 			[]value.Dict{value.NewDict(nil)},
 			[]value.Value{value.NewList(value.Int(0), value.Int(0), value.Int(1), value.Int(2))},
-			nil,
 		},
 		{
 			libaggregate.Aggregate{
@@ -81,7 +78,6 @@ func TestEndToEndActionAggregates(t *testing.T) {
 				value.NewDict(map[string]value.Value{"duration": value.Int(3600)}),
 			},
 			[]value.Value{value.NewList(value.Int(1), value.Int(2)), value.NewList(value.Int(2))},
-			nil,
 		},
 		{
 			libaggregate.Aggregate{
@@ -96,7 +92,6 @@ func TestEndToEndActionAggregates(t *testing.T) {
 				value.NewDict(map[string]value.Value{"duration": value.Int(6 * 3600)}),
 				value.NewDict(map[string]value.Value{"duration": value.Int(3600)})},
 			[]value.Value{value.Int(1), value.Int(2)},
-			nil,
 		},
 		{
 			libaggregate.Aggregate{
@@ -111,7 +106,6 @@ func TestEndToEndActionAggregates(t *testing.T) {
 				value.NewDict(map[string]value.Value{"duration": value.Int(6 * 3600)}),
 				value.NewDict(map[string]value.Value{"duration": value.Int(3600)})},
 			[]value.Value{value.Int(2), value.Int(2)},
-			nil,
 		},
 		{
 			libaggregate.Aggregate{
@@ -126,7 +120,6 @@ func TestEndToEndActionAggregates(t *testing.T) {
 				value.NewDict(map[string]value.Value{"duration": value.Int(6 * 3600)}),
 				value.NewDict(map[string]value.Value{"duration": value.Int(3600)})},
 			[]value.Value{value.Double(0.5), value.Double(0)},
-			nil,
 		},
 		{
 			libaggregate.Aggregate{
@@ -141,7 +134,6 @@ func TestEndToEndActionAggregates(t *testing.T) {
 				value.NewDict(map[string]value.Value{"duration": value.Int(6 * 3600)}),
 				value.NewDict(map[string]value.Value{"duration": value.Int(3600)})},
 			[]value.Value{value.Double(1.5), value.Double(2)},
-			nil,
 		},
 		{
 			libaggregate.Aggregate{
@@ -160,7 +152,6 @@ func TestEndToEndActionAggregates(t *testing.T) {
 				value.NewDict(map[string]value.Value{"duration": value.Int(6 * 3600)}),
 				value.NewDict(map[string]value.Value{"duration": value.Int(3600)})},
 			[]value.Value{value.Double(0.15003570882017145), value.Double(0.09452865480086611)},
-			nil,
 		},
 		{
 			libaggregate.Aggregate{
@@ -183,7 +174,6 @@ func TestEndToEndActionAggregates(t *testing.T) {
 					value.NewList(value.String("like"), value.Double(2)),
 					value.NewList(value.String("share"), value.Double(0.5)),
 				)},
-			nil,
 		},
 	}
 	clock := &test.FakeClock{}
@@ -198,15 +188,6 @@ func TestEndToEndActionAggregates(t *testing.T) {
 		for i := range scenario.kwargs {
 			verify(t, tier, scenario.agg, scenario.key, scenario.kwargs[i], scenario.initial)
 		}
-
-		// next create kafka consumers for each
-		scenario.consumer, err = tier.NewKafkaConsumer(kafka.ConsumerConfig{
-			Topic:        actionlib.ACTIONLOG_KAFKA_TOPIC,
-			GroupID:      string(scenario.agg.Name),
-			OffsetPolicy: kafka.DefaultOffsetPolicy,
-		})
-		assert.NoError(t, err)
-		defer scenario.consumer.Close()
 	}
 
 	// now fire a few actions
@@ -222,7 +203,7 @@ func TestEndToEndActionAggregates(t *testing.T) {
 			verify(t, tier, scenario.agg, scenario.key, scenario.kwargs[i], scenario.initial)
 		}
 	}
-	processInParallel(t, tier, scenarios)
+	processInParallel(t, tier, scenarios, actions)
 	// now the counts should have updated
 	for _, scenario := range scenarios {
 		for i := range scenario.kwargs {
@@ -270,7 +251,6 @@ func TestEndToEndProfileAggregates(t *testing.T) {
 				value.NewDict(map[string]value.Value{"duration": value.Int(6 * 3600)}),
 				value.NewDict(map[string]value.Value{"duration": value.Int(3600)})},
 			[]value.Value{value.Int(3), value.Int(2)},
-			nil,
 		},
 		{
 			libaggregate.Aggregate{
@@ -285,7 +265,6 @@ func TestEndToEndProfileAggregates(t *testing.T) {
 				value.NewDict(map[string]value.Value{"duration": value.Int(6 * 3600)}),
 				value.NewDict(map[string]value.Value{"duration": value.Int(3600)})},
 			[]value.Value{value.Int(1), value.Int(2)},
-			nil,
 		},
 	}
 	clock := &test.FakeClock{}
@@ -300,15 +279,6 @@ func TestEndToEndProfileAggregates(t *testing.T) {
 		for i := range scenario.kwargs {
 			verify(t, tier, scenario.agg, scenario.key, scenario.kwargs[i], scenario.initial)
 		}
-
-		// next create kafka consumers for each
-		scenario.consumer, err = tier.NewKafkaConsumer(kafka.ConsumerConfig{
-			Topic:        profilelib.PROFILELOG_KAFKA_TOPIC,
-			GroupID:      string(scenario.agg.Name),
-			OffsetPolicy: kafka.DefaultOffsetPolicy,
-		})
-		assert.NoError(t, err)
-		defer scenario.consumer.Close()
 	}
 
 	// now fire a few profiles
@@ -324,7 +294,7 @@ func TestEndToEndProfileAggregates(t *testing.T) {
 			verify(t, tier, scenario.agg, scenario.key, scenario.kwargs[i], scenario.initial)
 		}
 	}
-	processInParallel(t, tier, scenarios)
+	processInParallel(t, tier, scenarios, profiles)
 	// now the counts should have updated
 	for _, scenario := range scenarios {
 		for i := range scenario.kwargs {
@@ -355,16 +325,16 @@ func TestEndToEndProfileAggregates(t *testing.T) {
 	assert.Equal(t, expectedProfile, found[1])
 
 }
-
-func processInParallel(t *testing.T, tier tier.Tier, scenarios []*scenario) {
+func processInParallel[I actionlib.Action | profilelib.ProfileItem](t *testing.T, tier tier.Tier, scenarios []*scenario, items []I) {
 	wg := sync.WaitGroup{}
 	wg.Add(len(scenarios))
-	for _, sc := range scenarios {
-		go func(s *scenario) {
+	ctx := context.Background()
+	for i := 0; i < len(scenarios); i++ {
+		go func(scene *scenario) {
 			defer wg.Done()
-			err := aggregate.Update(context.Background(), tier, s.consumer, s.agg)
+			err := aggregate.Update(ctx, tier, items, scene.agg)
 			assert.NoError(t, err)
-		}(sc)
+		}(scenarios[i])
 	}
 	wg.Wait()
 }

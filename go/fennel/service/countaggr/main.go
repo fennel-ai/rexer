@@ -80,6 +80,7 @@ func processAggregate(tr tier.Tier, agg libaggregate.Aggregate, stopCh <-chan st
 		// Ticker to log kafka lag every 1 minute.
 		kt := time.NewTicker(1 * time.Minute)
 		defer kt.Stop()
+		commitFailures := 0
 		for run := 0; true; {
 			select {
 			case <-stopCh:
@@ -90,10 +91,48 @@ func processAggregate(tr tier.Tier, agg libaggregate.Aggregate, stopCh <-chan st
 				run++
 				tr.Logger.Debug("Processing aggregate", zap.String("name", string(agg.Name)), zap.Int("run", run))
 				ctx := context.Background()
-				err := aggregate.Update(ctx, tr, consumer, agg)
+				if agg.Source == libaggregate.SOURCE_PROFILE {
+					// The number of actions and profiles need to be tuned.
+					// They should not be too many such that operations like op.model.predict cant handle them.
+					profiles, err := profile2.ReadBatch(ctx, consumer, 300, time.Second*10)
+					if err != nil {
+						tr.Logger.Error("Error reading profiles", zap.Error(err))
+						continue
+					}
+					if len(profiles) == 0 {
+						continue
+					}
+					err = aggregate.Update(ctx, tr, profiles, agg)
+					if err != nil {
+						aggregate_errors.WithLabelValues(string(agg.Name)).Add(1)
+						tr.Logger.Warn("Error found in profile aggregate", zap.String("name", string(agg.Name)), zap.Error(err))
+					}
+				} else {
+					actions, err := action2.ReadBatch(ctx, consumer, 10000, time.Second*10)
+					if err != nil {
+						tr.Logger.Error("Error while reading batch of actions:", zap.Error(err))
+						continue
+					}
+					if len(actions) == 0 {
+						continue
+					}
+					err = aggregate.Update(ctx, tr, actions, agg)
+					if err != nil {
+						aggregate_errors.WithLabelValues(string(agg.Name)).Add(1)
+						tr.Logger.Warn("Error found in action aggregate", zap.String("name", string(agg.Name)), zap.Error(err))
+					}
+				}
+				_, err = consumer.Commit()
 				if err != nil {
-					aggregate_errors.WithLabelValues(string(agg.Name)).Add(1)
-					tr.Logger.Warn("Error found in aggregate", zap.String("name", string(agg.Name)), zap.Error(err))
+					commitFailures++
+					if commitFailures > 10 {
+						// We panic in case we fail to commit the offset, since
+						// a subsequent crash-recovery could cause us to double-
+						// process a lot of data. The right solution to this would
+						// be to start managing the offsets ourselves instead of
+						// relying on the broker.
+						tr.Logger.Panic("Failed to commit kafka offset", zap.Error(err))
+					}
 				}
 				tr.Logger.Debug("Processed aggregate", zap.String("name", string(agg.Name)), zap.Int("run", run))
 			}
