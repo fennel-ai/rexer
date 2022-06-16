@@ -332,43 +332,8 @@ const planeConfs: Record<number, PlaneConf> = {
             useAMP: false
         },
     },
-    // testing account creation in different account
-    8: {
-        protectResources: false,
-        planeId: 8,
-        region: "us-west-2",
-        accountConf: {
-            name: "fennel-convoy-testing",
-            email: "admin+convoy-testing@fennel.ai",
-        },
-        vpcConf: {
-            cidr: "10.108.0.0/16"
-        },
-        dbConf: {
-            minCapacity: 1,
-            maxCapacity: 2,
-            password: "password",
-            skipFinalSnapshot: true,
-        },
-        confluentConf: {
-            username: confluentUsername,
-            password: confluentPassword
-        },
-        controlPlaneConf: controlPlane,
-        redisConf: {
-            numShards: 1,
-            nodeType: "db.t4g.medium",
-            numReplicasPerShard: 0,
-        },
-        cacheConf: {
-            nodeType: "cache.t4g.medium",
-            numNodeGroups: 1,
-            replicasPerNodeGroup: 0,
-        },
-        prometheusConf: {
-            useAMP: true
-        },
-    },
+    // plane 7 - created for testing out multi-arch support, not checked in yet
+    // plane 8 - pending account close, post which it can be destroyed
 }
 
 //==============================================================================
