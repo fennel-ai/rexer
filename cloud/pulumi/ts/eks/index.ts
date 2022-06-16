@@ -6,6 +6,7 @@ import * as aws from "@pulumi/aws";
 import * as fs from 'fs';
 import * as process from "process";
 import * as path from 'path';
+import {provider} from "@pulumi/pulumi";
 
 export const plugins = {
     "eks": "0.39.0",
@@ -24,14 +25,25 @@ const AMI_BY_REGION: Record<string, string> = {
 }
 
 const DEFAULT_NODE_TYPE = "t3.medium"
-const DEFAULT_DESIRED_CAPACITY = 3
+const DEFAULT_MIN_SIZE = 1
+const DEFAULT_MAX_SIZE = 3
 
 // Node Group configuration for the EKS cluster
 export type NodeGroupConf = {
     // Must be unique across node groups defined in the same plane
     name: string,
     nodeType: string,
-    desiredCapacity: number,
+    // take the following into consideration before setting this value:
+    //  i) pods and services (and their replicas) which will run on this node group
+    //  ii) availability of the services - if there more than one public facing service, it might be better to have more
+    //      than 1 node to have better fault-tolerance
+    //  iii) for a prod plane, consider setting this to >= 2 to avoid tainted node problems
+    minSize: number,
+    // this is the maximum size of the node group up-to which it can be scaled up to.
+    //
+    // NOTE: Take quota limits into consideration before setting this value -
+    //  https://docs.aws.amazon.com/eks/latest/userguide/service-quotas.html
+    maxSize: number,
     // labels to be attached to the node group
     labels?: Record<string, string>,
 }
@@ -292,6 +304,124 @@ function setupStorageClasses(cluster: eks.Cluster): Record<string, pulumi.Output
     return { "io1": io1.metadata.name }
 }
 
+async function setupClusterAutoscaler(awsProvider: aws.Provider, input: inputType, cluster: eks.Cluster) {
+    // Account ID
+    const current = await aws.getCallerIdentity({ provider: awsProvider });
+    const accountId = current.accountId;
+
+    // See: https://docs.aws.amazon.com/eks/latest/userguide/autoscaling.html
+    const roleName = `p-${input.planeId}-autoscaler-role`;
+
+    const role = pulumi.all([cluster.core.oidcProvider!.url, cluster.core.cluster.name]).apply(([oidcUrl, clusterName]) => {
+        return new aws.iam.Role(roleName, {
+            namePrefix: roleName,
+            description: "IAM role for EKS cluster autoscaler",
+            assumeRolePolicy: `{
+                 "Version": "2012-10-17",
+                 "Statement": [
+                   {
+                     "Effect": "Allow",
+                     "Principal": {
+                       "Federated": "arn:aws:iam::${accountId}:oidc-provider/${oidcUrl}"
+                     },
+                     "Action": "sts:AssumeRoleWithWebIdentity",
+                     "Condition": {
+                       "StringEquals": {
+                         "${oidcUrl}:sub": "system:serviceaccount:kube-system:cluster-autoscaler"
+                       }
+                     }
+                   }
+                 ]
+               }`,
+            inlinePolicies: [{
+                name: "eks-cluster-autoscaler-policy",
+                policy: `{
+                    "Version": "2012-10-17",
+                    "Statement": [
+                        {
+                            "Effect": "Allow",
+                            "Action": [
+                                "autoscaling:SetDesiredCapacity",
+                                "autoscaling:TerminateInstanceInAutoScalingGroup"
+                            ],
+                            "Resource": "*",
+                            "Condition": {
+                                "StringEquals": {
+                                    "aws:ResourceTag/k8s.io/cluster-autoscaler/${clusterName}": "owned"
+                                }
+                            }
+                        },
+                        {
+                            "Effect": "Allow",
+                            "Action": [
+                                "autoscaling:DescribeAutoScalingGroups",
+                                "autoscaling:DescribeAutoScalingInstances",
+                                "autoscaling:DescribeInstances",
+                                "autoscaling:DescribeLaunchConfigurations",
+                                "autoscaling:DescribeTags",
+                                "ec2:DescribeLaunchTemplateVersions",
+                                "ec2:DescribeInstanceTypes"
+                            ],
+                            "Resource": "*"
+                        }
+                    ]
+                }`,
+            }],
+        }, { provider: awsProvider });
+    });
+
+    // Setup the cluster autoscaler
+    //
+    // Currently the cluster autoscaler ensures that none of the pods are un-schedulable.
+    //
+    // NOTE: our setup with node-selectors and affinity does not allow cluster autoscaler to run at it's full power.
+    // This is currently setup along with Horizontal Pod Autoscaler which increases/decreases the pods, which could
+    // require adding/removing a new node, which is actuated by the cluster autoscaler.
+    return pulumi.all([role.arn, cluster.core.cluster.name]).apply(([roleArn, clusterName]) => {
+        const autoscalerName = `p-${input.planeId}-cluster-autoscaler`;
+        return new k8s.helm.v3.Release(autoscalerName, {
+            repositoryOpts: {
+                "repo": "https://kubernetes.github.io/autoscaler",
+            },
+            // this must match the namespace provided in the role above.
+            namespace: "kube-system",
+            chart: "cluster-autoscaler",
+            values: {
+                // auto-discover the autoscaling groups of the EKS cluster (since we use managed node groups, the necessary
+                // tags (`k8s.io/cluster-autoscaler/enabled` and `k8s.io/cluster-autoscaler/<CLUSTER_NAME>`) are
+                // already applied.
+                "autoDiscovery": {
+                    "clusterName": clusterName,
+                },
+                "awsRegion": input.region,
+                "cloudProvider": "aws",
+                // create 2 replicas for the cluster autoscaler to be fault-tolerant.
+                "replicaCount": 1,
+                // autoscaler exports prometheus metrics, enable scraping them through our telemetry setup
+                "podAnnotations": {
+                    "prometheus.io/scrape": "true",
+                    // the port is the default value for the port of the service
+                    "prometheus.io/port": "8085",
+                },
+                // annotate the service account with the IAM role
+                "rbac": {
+                    "serviceAccount": {
+                        // this must match the name provided above in the role.
+                        "name": "cluster-autoscaler",
+                        "annotations": {
+                            "eks.amazonaws.com/role-arn": roleArn,
+                        }
+                    }
+                },
+                // override the full name as the one created by the helm release is long and has redundant words
+                "fullnameOverride": autoscalerName,
+                // "extraArgs" needs to be set to tune the autoscaler as per:
+                // https://github.com/kubernetes/autoscaler/blob/master/cluster-autoscaler/FAQ.md#what-are-the-parameters-to-ca
+            }
+        }, { provider: cluster.provider, deleteBeforeReplace: true });
+    });
+}
+
 export const setup = async (input: inputType): Promise<pulumi.Output<outputType>> => {
     const { vpcId, publicSubnets, privateSubnets, region, roleArn } = input
 
@@ -332,6 +462,9 @@ export const setup = async (input: inputType): Promise<pulumi.Output<outputType>
         enabledClusterLogTypes: ["api", "authenticator", "controllerManager", "scheduler"],
     }, { provider: awsProvider });
 
+    // setup cluster autoscaler
+    const autoscaler = setupClusterAutoscaler(awsProvider, input, cluster);
+
     // Get the cluster security group created by EKS for managed node groups and fargate.
     // Source: https://docs.aws.amazon.com/eks/latest/userguide/sec-group-reqs.html
     const clusterSg = cluster.eksCluster.vpcConfig.clusterSecurityGroupId;
@@ -342,19 +475,21 @@ export const setup = async (input: inputType): Promise<pulumi.Output<outputType>
     const defaultNodeGroup = {
         name: `p-${input.planeId}-default-nodegroup`,
         nodeType: DEFAULT_NODE_TYPE,
-        desiredCapacity: DEFAULT_DESIRED_CAPACITY,
+        minSize: DEFAULT_MIN_SIZE,
+        maxSize: DEFAULT_MAX_SIZE,
     };
     let nodeGroups: NodeGroupConf[] = input.nodeGroups !== undefined ? input.nodeGroups : [defaultNodeGroup];
 
     // Setup managed node groups
     for (let nodeGroup of nodeGroups) {
-        const nodeGroupSize = nodeGroup.desiredCapacity;
         const n = new eks.ManagedNodeGroup(nodeGroup.name, {
             cluster: cluster,
             scalingConfig: {
-                desiredSize: nodeGroupSize,
-                minSize: nodeGroupSize,
-                maxSize: nodeGroupSize,
+                // start the desired size with the min required size and let the cluster autoscaler
+                // scale up the nodes up-to `maxSize` based on the schedulability of the pods.
+                desiredSize: nodeGroup.minSize,
+                minSize: nodeGroup.minSize,
+                maxSize: nodeGroup.maxSize,
             },
             // accepts multiple strings but the EKS API accepts only a single string
             instanceTypes: [nodeGroup.nodeType],

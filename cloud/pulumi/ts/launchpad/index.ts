@@ -58,6 +58,7 @@ const tierConfs: Record<number, TierConf> = {
         planeId: 5,
         httpServerConf: {
             podConf: {
+                // NOTE: This should not exceed the maxSize of the node group it is trying to be scheduled on.
                 replicas: 2,
                 // each http-server should be in different nodes from each other
                 enforceReplicaIsolation: true,
@@ -76,6 +77,7 @@ const tierConfs: Record<number, TierConf> = {
         },
         queryServerConf: {
             podConf: {
+                // NOTE: This should not exceed the maxSize of the node group it is trying to be scheduled on.
                 replicas: 4,
                 enforceReplicaIsolation: true,
                 nodeLabels: {
@@ -195,7 +197,8 @@ const planeConfs: Record<number, PlaneConf> = {
                 {
                     name: "p-2-common-ng",
                     nodeType: "c6i.xlarge",
-                    desiredCapacity: 3,
+                    minSize: 3,
+                    maxSize: 5,
                 },
             ],
         },
@@ -249,7 +252,8 @@ const planeConfs: Record<number, PlaneConf> = {
                 {
                     name: "p-3-common-ng",
                     nodeType: "c6i.2xlarge",
-                    desiredCapacity: 4,
+                    minSize: 4,
+                    maxSize: 6,
                 },
             ],
         },
@@ -297,7 +301,9 @@ const planeConfs: Record<number, PlaneConf> = {
                 {
                     name: "p-5-httpserver-ng",
                     nodeType: "t3.medium",
-                    desiredCapacity: 2,
+                    // at least have 2 nodes for fault tolerance
+                    minSize: 2,
+                    maxSize: 10,
                     labels: {
                         "node-group": "p-5-httpserver-ng"
                     }
@@ -306,7 +312,8 @@ const planeConfs: Record<number, PlaneConf> = {
                 {
                     name: "p-5-countaggr-ng",
                     nodeType: "c6i.8xlarge",
-                    desiredCapacity: 1,
+                    minSize: 1,
+                    maxSize: 1,
                     labels: {
                         "node-group": "p-5-countaggr-ng"
                     }
@@ -315,7 +322,9 @@ const planeConfs: Record<number, PlaneConf> = {
                 {
                     name: "p-5-queryserver-ng",
                     nodeType: "c6i.4xlarge",
-                    desiredCapacity: 4,
+                    // at least have 2 nodes for fault tolerance
+                    minSize: 2,
+                    maxSize: 10,
                     labels: {
                         "node-group": "p-5-queryserver-ng"
                     }

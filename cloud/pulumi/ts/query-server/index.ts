@@ -150,10 +150,12 @@ export const setup = async (input: inputType) => {
         whenUnsatisfiable = "DoNotSchedule";
     }
 
+    const queryServerDepName = "query-server";
+
     const appDep = image.imageName.apply(() => {
         return new k8s.apps.v1.Deployment("query-server-deployment", {
             metadata: {
-                name: "query-server",
+                name: queryServerDepName,
             },
             spec: {
                 selector: { matchLabels: appLabels },
@@ -308,6 +310,78 @@ export const setup = async (input: inputType) => {
             }
         }
     }, { provider: k8sProvider, deleteBeforeReplace: true })
+
+    // TODO(mohit): Consider making this a library for other pods/deployments to use passing a simple configuration
+
+    // configure horizontal pod autoscaler for the query-server deployment/pod
+    //
+    // we can not use autoscaling/v2 because since we are limited by EKS support for only v1.22.9. v2 is supported from
+    // v1.23
+    const podAutoscaler = new k8s.autoscaling.v2beta2.HorizontalPodAutoscaler("query-server-hpa", {
+            metadata: {
+                name: "query-server-hpa",
+            },
+            spec: {
+                scaleTargetRef: {
+                    kind: "Deployment",
+                    name: queryServerDepName,
+                },
+                // we will keep the default behavior for scaling up and down. We should tune this per-service
+                // based on the behavior we notice
+                //
+                // default behavior for scaleDown is to allow to scale down to `minReplicas` pods, with a
+                // 300 second stabilization window (i.e., the highest recommendation for the last 300sec is used)
+                //
+                // default behavior for scaleUp is the higher of:
+                //  i) increase no more than 4 pods per 60 seconds
+                //  ii) double the number of pods per 60 seconds; No stabilization is used
+                //
+                // stabilization is the number of seconds for which past recommendation should be considered while
+                // scaling up or down. If it is set to ZERO, no stabilization is done i.e. the latest recommendation
+                // is considered
+                //
+                // behavior: {}
+
+                // spec used to calculate the replica count (maximum replica count across all the metrics will be used).
+                //
+                // replica count is calculated as (current value / target value) * #pods
+                //
+                // metrics used must decrease by increasing the pod count or vice-versa
+                //
+                // TODO: Explore other dimensions (e.g. external metrics, ingress metrics etc)
+                // https://kubernetes.io/docs/tasks/run-application/horizontal-pod-autoscale-walkthrough/#autoscaling-on-multiple-metrics-and-custom-metrics
+                metrics: [
+                    {
+                        type: "Resource",
+                        resource: {
+                            name: "cpu",
+                            target: {
+                                type: "Utilization",
+                                // value is in %
+                                averageUtilization: 80
+                            }
+                        }
+                    },
+                    {
+                        type: "Resource",
+                        resource: {
+                            name: "memory",
+                            target: {
+                                type: "Utilization",
+                                // value is in %
+                                // leave a buffer of 20% here so that, in the worst case, there is enough time
+                                // for a node to spin up and pod getting scheduled on it
+                                averageUtilization: 80
+                            }
+                        }
+                    }
+                ],
+                // currently we set this to 1 so that at-least one replica is always available, but explore if
+                // (and which) services could be scaled down to ZERO.
+                minReplicas: 1,
+                maxReplicas: 5,
+            },
+        },{ provider: k8sProvider });
 
     const output: outputType = {
         appLabels: appLabels,

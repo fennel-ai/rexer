@@ -78,6 +78,12 @@ export const setup = async (input: inputType): Promise<outputType> => {
             "cluster": {
                 "enabled": true,
             },
+            "etcd": {
+                "image": {
+                    "tag": "3.5.1",
+                    "pullPolicy": "IfNotPresent"
+                }
+            },
             "externalS3": {
                 "enabled": true,
                 "host": `s3.${input.region}.amazonaws.com`,
