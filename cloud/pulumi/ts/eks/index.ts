@@ -422,6 +422,20 @@ async function setupClusterAutoscaler(awsProvider: aws.Provider, input: inputTyp
     });
 }
 
+async function setupMetricsServer(provider: aws.Provider, input: inputType, cluster: eks.Cluster) {
+    const metricServerName = `p-${input.planeId}-metrics-server`
+    return new k8s.helm.v3.Release(metricServerName, {
+        repositoryOpts: {
+            repo: "https://kubernetes-sigs.github.io/metrics-server/"
+        },
+        chart: "metrics-server",
+        namespace: "kube-system",
+        values: {
+            "fullnameOverride": metricServerName,
+        }
+    }, { provider: cluster.provider, deleteBeforeReplace: true })
+}
+
 export const setup = async (input: inputType): Promise<pulumi.Output<outputType>> => {
     const { vpcId, publicSubnets, privateSubnets, region, roleArn } = input
 
@@ -464,6 +478,9 @@ export const setup = async (input: inputType): Promise<pulumi.Output<outputType>
 
     // setup cluster autoscaler
     const autoscaler = setupClusterAutoscaler(awsProvider, input, cluster);
+
+    // setup metrics server for autoscaling needs
+    const metricsServer = setupMetricsServer(awsProvider, input, cluster);
 
     // Get the cluster security group created by EKS for managed node groups and fargate.
     // Source: https://docs.aws.amazon.com/eks/latest/userguide/sec-group-reqs.html
