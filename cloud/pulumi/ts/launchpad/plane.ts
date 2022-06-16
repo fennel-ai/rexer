@@ -148,7 +148,6 @@ const setupResources = async () => {
     let roleArn = pulumi.output(account.MASTER_ACCOUNT_ADMIN_ROLE_ARN);
     if (input.accountConf !== undefined) {
         const accountOutput = await account.setup({
-            region: input.region,
             name: input.accountConf.name,
             email: input.accountConf.email,
         });

@@ -366,7 +366,7 @@ const planeConfs: Record<number, PlaneConf> = {
             replicasPerNodeGroup: 0,
         },
         prometheusConf: {
-            useAMP: false
+            useAMP: true
         },
     },
 }

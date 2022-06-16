@@ -11,7 +11,6 @@ export const plugins = {
 export const MASTER_ACCOUNT_ADMIN_ROLE_ARN = "arn:aws:iam::030813887342:role/admin";
 
 export type inputType = {
-    region: string,
     name: string,
     email: string,
 }
@@ -43,7 +42,6 @@ export const setup = async (input: inputType): Promise<pulumi.Output<outputType>
     });
 
     const provider = new aws.Provider("account-aws-provider", {
-        region: <aws.Region>input.region,
         assumeRole: {
             // This should be the master account ARN
             roleArn: MASTER_ACCOUNT_ADMIN_ROLE_ARN,
@@ -53,7 +51,7 @@ export const setup = async (input: inputType): Promise<pulumi.Output<outputType>
     });
 
     const policyName = `assume-${input.name}-admin`
-    const policyAttachName = `assume-${input.name}-admin--policyAttach`
+    const policyAttachName = `assume-${input.name}-admin-policyAttach`
     const accountAdminRoleArn = account.id.apply(accountId => { return `arn:aws:iam::${accountId}:role/admin` });
 
     // create IAM policy in the master account which allows assuming admin access in this newly created account
@@ -65,6 +63,7 @@ export const setup = async (input: inputType): Promise<pulumi.Output<outputType>
             policy: JSON.stringify({
                 Version: "2012-10-17",
                 Statement: [{
+                    Effect: "Allow",
                     Action: [
                         "sts:AssumeRole",
                     ],
@@ -75,12 +74,16 @@ export const setup = async (input: inputType): Promise<pulumi.Output<outputType>
             })
         }, { provider: provider });
     });
+
+    // get admins usergroup
+    const group = pulumi.output(aws.iam.getGroup({groupName: "admins"}, { provider: provider }));
+
     // attach this IAM policy to the `admins` user group of the master account so that any user who joins/added
     // to the user group can assume admin access for the resources in this account
     const policyAttach = new aws.iam.PolicyAttachment(policyAttachName, {
         name: policyAttachName,
         policyArn: policy.arn,
-        groups: ["admins"],
+        groups: [group.groupName],
     }, { provider: provider });
 
     return pulumi.output({
