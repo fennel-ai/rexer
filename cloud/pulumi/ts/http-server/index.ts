@@ -186,6 +186,16 @@ export const setup = async (input: inputType) => {
                             "config.linkerd.io/skip-outbound-ports": "3306,6379",
                             "prometheus.io/scrape": "true",
                             "prometheus.io/port": metricsPort.toString(),
+                            // set linkerd proxy CPU and Memory requests and limits
+                            //
+                            // these needs to be set for Horizontal Pod Autoscaler to monitor and scale the pods
+                            // (we configure the Horizontal Pod Autoscaler on the Deployment, which has 2 containers
+                            // and for the metric server to scrape and monitor the resource utilization, it requires
+                            // the limits for both to be reported).
+                            "config.linkerd.io/proxy-cpu-limit": "1",
+                            "config.linkerd.io/proxy-cpu-request": "0.2",
+                            "config.linkerd.io/proxy-memory-limit": "2G",
+                            "config.linkerd.io/proxy-memory-request": "128M",
                         }
                     },
                     spec: {
@@ -318,6 +328,7 @@ export const setup = async (input: inputType) => {
         },
         spec: {
             scaleTargetRef: {
+                apiVersion: "apps/v1",
                 kind: "Deployment",
                 name: httpServerDepName,
             },
