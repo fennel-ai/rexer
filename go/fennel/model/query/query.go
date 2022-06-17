@@ -9,9 +9,9 @@ import (
 	"fennel/tier"
 )
 
-func Insert(tier tier.Tier, timestamp ftypes.Timestamp, querySer string) (uint64, error) {
-	sql := "INSERT INTO query_ast VALUES (?, ?, ?);"
-	res, err := tier.DB.Exec(sql, 0, timestamp, querySer)
+func Insert(tier tier.Tier, name string, timestamp ftypes.Timestamp, querySer []byte) (uint64, error) {
+	sql := "INSERT INTO query_ast (name, timestamp, query_ser) VALUES (?, ?, ?);"
+	res, err := tier.DB.Exec(sql, name, timestamp, querySer)
 	if err != nil {
 		return 0, err
 	}
@@ -27,6 +27,9 @@ func Get(tier tier.Tier, request query.QueryRequest) ([]query.QuerySer, error) {
 	clauses := make([]string, 0)
 	if request.QueryId > 0 {
 		clauses = append(clauses, "query_id = :query_id")
+	}
+	if request.Name != "" {
+		clauses = append(clauses, "name = :name")
 	}
 	if request.MinTimestamp > 0 {
 		clauses = append(clauses, "timestamp >= :min_timestamp")

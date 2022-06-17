@@ -15,14 +15,16 @@ import (
 
 type QueryRequest struct {
 	QueryId      uint64           `db:"query_id"`
+	Name         string           `db:"name"`
 	MinTimestamp ftypes.Timestamp `db:"min_timestamp"`
 	MaxTimestamp ftypes.Timestamp `db:"max_timestamp"`
 }
 
 type QuerySer struct {
 	QueryId   uint64           `db:"query_id"`
+	Name      string           `db:"name"`
 	Timestamp ftypes.Timestamp `db:"timestamp"`
-	QuerySer  string           `db:"query_ser"`
+	QuerySer  []byte           `db:"query_ser"`
 }
 
 type BoundQuery struct {
@@ -63,24 +65,20 @@ func FromBoundQueryJSON(data []byte) (tree ast.Ast, args value.Dict, mockData mo
 	// Extract the ast first
 	astStr, err := jsonparser.GetString(data, "Ast")
 	if err != nil {
-		return tree, args, mockData, fmt.Errorf("error parsing ast json: %v", err)
+		return tree, args, mockData, fmt.Errorf("error parsing ast json: %w", err)
 	}
-	astSer, err := base64.StdEncoding.DecodeString(astStr)
+	tree, err = FromString(astStr)
 	if err != nil {
-		return tree, args, mockData, fmt.Errorf("error decoding ast from base64: %v", err)
-	}
-	err = ast.Unmarshal(astSer, &tree)
-	if err != nil {
-		return tree, args, mockData, fmt.Errorf("error unmarshalling ast: %v", err)
+		return tree, args, mockData, fmt.Errorf("error parsing ast string: %w", err)
 	}
 	// Now extract args
 	vdata, vtype, _, err := jsonparser.Get(data, "Args")
 	if err != nil {
-		return tree, args, mockData, fmt.Errorf("error getting args: %v", err)
+		return tree, args, mockData, fmt.Errorf("error getting args: %w", err)
 	}
 	argsVar, err := value.ParseJSON(vdata, vtype)
 	if err != nil {
-		return tree, args, mockData, fmt.Errorf("error parsing args json: %v", err)
+		return tree, args, mockData, fmt.Errorf("error parsing args json: %w", err)
 	}
 	args, ok := argsVar.(value.Dict)
 	if !ok {
@@ -89,28 +87,48 @@ func FromBoundQueryJSON(data []byte) (tree ast.Ast, args value.Dict, mockData mo
 	// Now get mock data
 	vdata, _, _, err = jsonparser.Get(data, "Mock")
 	if err != nil && err != jsonparser.KeyPathNotFoundError {
-		return tree, args, mockData, fmt.Errorf("error getting mock: %v", err)
+		return tree, args, mockData, fmt.Errorf("error getting mock: %w", err)
 	}
 	if err == jsonparser.KeyPathNotFoundError {
 		return tree, args, mockData, nil
 	}
 	err = json.Unmarshal(vdata, &mockData)
 	if err != nil {
-		return tree, args, mockData, fmt.Errorf("error parsing mock json: %v", err)
+		return tree, args, mockData, fmt.Errorf("error parsing mock json: %w", err)
 	}
 	return tree, args, mockData, nil
 }
 
 func ToBoundQueryJSON(tree ast.Ast, args value.Dict, mockData mock.Data) ([]byte, error) {
-	astSer, err := ast.Marshal(tree)
+	astStr, err := ToString(tree)
 	if err != nil {
-		return nil, fmt.Errorf("error marshalling ast: %v", err)
+		return nil, err
 	}
-	astStr := base64.StdEncoding.EncodeToString(astSer)
 	bq := struct {
 		Ast  string     `json:"Ast"`
 		Args value.Dict `json:"Args"`
 		Mock mock.Data  `json:"Mock"`
 	}{Ast: astStr, Args: value.Clean(args).(value.Dict), Mock: mockData}
 	return json.Marshal(bq)
+}
+
+func FromString(astStr string) (ast.Ast, error) {
+	astSer, err := base64.StdEncoding.DecodeString(astStr)
+	if err != nil {
+		return nil, fmt.Errorf("error decoding ast from base64: %w", err)
+	}
+	var tree ast.Ast
+	err = ast.Unmarshal(astSer, &tree)
+	if err != nil {
+		return nil, fmt.Errorf("error unmarshalling ast: %w", err)
+	}
+	return tree, nil
+}
+
+func ToString(tree ast.Ast) (string, error) {
+	astSer, err := ast.Marshal(tree)
+	if err != nil {
+		return "", fmt.Errorf("error marshalling ast: %w", err)
+	}
+	return base64.StdEncoding.EncodeToString(astSer), nil
 }

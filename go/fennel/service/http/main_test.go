@@ -406,6 +406,49 @@ func TestQuery(t *testing.T) {
 	assert.True(t, exp1.Equal(found))
 }
 
+func TestStoreRunQuery(t *testing.T) {
+	tier, err := test.Tier()
+	assert.NoError(t, err)
+	defer test.Teardown(tier)
+
+	controller := server{tier: tier}
+	server := startTestServer(controller)
+	defer server.Close()
+	c, err := client.NewClient(server.URL, server.Client())
+	assert.NoError(t, err)
+
+	tree := ast.Ast(&ast.IfElse{
+		Condition: &ast.Binary{
+			Left:  ast.MakeInt(5),
+			Op:    "<",
+			Right: &ast.Var{Name: "x"},
+		},
+		ThenDo: ast.MakeString("left"),
+		ElseDo: ast.MakeString("right"),
+	})
+
+	name := "query_name"
+	// attempting to run a query that is not stored should return an error
+	_, err = c.RunQuery(name, value.NewDict(nil))
+	assert.Error(t, err)
+
+	// now store a query
+	err = c.StoreQuery(name, tree)
+	assert.NoError(t, err)
+
+	found, err := c.RunQuery(name, value.NewDict(map[string]value.Value{"x": value.Int(3)}))
+	assert.NoError(t, err)
+	assert.Equal(t, value.String("right"), found)
+
+	found, err = c.RunQuery(name, value.NewDict(map[string]value.Value{"x": value.Int(7)}))
+	assert.NoError(t, err)
+	assert.Equal(t, value.String("left"), found)
+
+	// running with no args for variable should return an error
+	_, err = c.RunQuery(name, value.NewDict(nil))
+	assert.Error(t, err)
+}
+
 func TestServer_AggregateValue_Valid(t *testing.T) {
 	tier, err := test.Tier()
 	assert.NoError(t, err)

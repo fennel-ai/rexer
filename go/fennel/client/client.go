@@ -107,6 +107,18 @@ func (c Client) getAggregateValueURL() string {
 	return fmt.Sprintf(url.String())
 }
 
+func (c Client) storeQueryURL() string {
+	url := *c.url
+	url.Path = url.Path + "/store_query"
+	return fmt.Sprintf(url.String())
+}
+
+func (c Client) runQueryURL() string {
+	url := *c.url
+	url.Path = url.Path + "/run_query"
+	return fmt.Sprintf(url.String())
+}
+
 func (c Client) postJSON(data []byte, url string) ([]byte, error) {
 	reqBody := bytes.NewBuffer(data)
 	response, err := c.httpclient.Post(url, "application/json", reqBody)
@@ -166,6 +178,52 @@ func (c *Client) Query(reqAst ast.Ast, reqArgs value.Dict, reqMock mock.Data) (v
 	if err != nil {
 		return nil, err
 	}
+	// now try to read response as a JSON object and convert to value
+	v, err := value.FromJSON(response)
+	if err != nil {
+		return nil, fmt.Errorf("error parsing value json: %v", err)
+	}
+	return v, nil
+}
+
+func (c *Client) StoreQuery(name string, tree ast.Ast) error {
+	if tree == nil {
+		return fmt.Errorf("'tree' cannot be nil")
+	}
+	type ReqObject struct {
+		Name  string `json:"name"`
+		Query string `json:"query"`
+	}
+	qStr, err := query.ToString(tree)
+	reqObj := ReqObject{
+		Name:  name,
+		Query: qStr,
+	}
+	req, err := json.Marshal(reqObj)
+	if err != nil {
+		return err
+	}
+	_, err = c.postJSON(req, c.storeQueryURL())
+	return err
+}
+
+func (c *Client) RunQuery(name string, args value.Dict) (value.Value, error) {
+	type ReqObject struct {
+		Name string     `json:"name"`
+		Args value.Dict `json:"args"`
+	}
+	if args.Iter() == nil {
+		args = value.NewDict(nil)
+	}
+	reqObj := ReqObject{
+		Name: name,
+		Args: args,
+	}
+	req, err := json.Marshal(reqObj)
+	if err != nil {
+		return nil, err
+	}
+	response, err := c.postJSON(req, c.runQueryURL())
 	// now try to read response as a JSON object and convert to value
 	v, err := value.FromJSON(response)
 	if err != nil {

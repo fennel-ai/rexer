@@ -118,4 +118,5 @@ var Schema = db.Schema{
 		);`,
 	// ==================== END Schema for Phaser ======================
 	13: `ALTER TABLE aggregate_config ADD COLUMN source VARCHAR(64) NOT NULL DEFAULT 'action';`,
+	14: `ALTER TABLE query_ast ADD COLUMN name VARCHAR(64) NOT NULL;`,
 }
