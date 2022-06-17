@@ -106,6 +106,11 @@ export const setup = async (input: inputType): Promise<outputType> => {
                     "enabled": false,
                 },
             },
+            // TODO(mohit): Configure this per-component once helm chart supports this
+            // see: https://github.com/milvus-io/milvus-helm/issues/339
+            "metrics": {
+                "enabled": false,
+            }
         }
     }, { provider: k8sProvider, deleteBeforeReplace: true })
 
