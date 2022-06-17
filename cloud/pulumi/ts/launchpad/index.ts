@@ -401,7 +401,7 @@ if (tierId !== 0) {
         {
             name: `t_${tierId}_featurelog`,
             partitions: 10,
-            retention_ms: 172800000  // 2 days retention
+            retention_ms: 432000000  // 5 days retention
         },
         // configure profile topic to have "unlimited" retention
         {
@@ -410,7 +410,7 @@ if (tierId !== 0) {
         },
         {
             name: `t_${tierId}_actionlog_json`,
-            retention_ms: 172800000  // 2 days retention
+            retention_ms: 432000000  // 5 days retention
         },
         { name: `t_${tierId}_aggr_offline_transform` },
     ];

@@ -47,15 +47,9 @@ export const setup = async (input: inputType) => {
     })
 
     const topics = input.topics.map((topic) => {
-        let config: Record<string, any> = undefined;
-        if (topic.retention_ms !== undefined) {
-            // https://kafka.apache.org/documentation/#topicconfigs_retention.ms
-            config["retention.ms"] = topic.retention_ms
-        }
-        if (topic.partition_retention_bytes !== undefined) {
-            // https://kafka.apache.org/documentation/#topicconfigs_retention.bytes
-            config["retention.bytes"] = topic.partition_retention_bytes
-        }
+        let config: Record<string, any> = {};
+        config["retention.ms"] = topic.retention_ms
+        config["retention.bytes"] = topic.partition_retention_bytes
         return new kafka.Topic(`topic-${topic.name}`, {
             name: topic.name,
             partitions: topic.partitions || DEFAULT_PARTITIONS,
