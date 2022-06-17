@@ -2,9 +2,11 @@ package timer
 
 import (
 	"context"
+	"fmt"
+
 	"fennel/lib/ftypes"
 	"fennel/lib/utils"
-	"fmt"
+
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 	"go.opentelemetry.io/otel"
