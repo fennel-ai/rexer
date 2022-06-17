@@ -115,7 +115,7 @@ export const setup = async (input: inputType): Promise<pulumi.Output<outputType>
         atRestEncryptionEnabled: true,
         clusterMode: {
             numNodeGroups: input.numNodeGroups || DEFAULT_NODE_GROUPS,
-            replicasPerNodeGroup: input.replicasPerNodeGroup || DEFAULT_REPLICAS_PER_NODE_GROUPS,
+            replicasPerNodeGroup: input.replicasPerNodeGroup !== undefined ? input.replicasPerNodeGroup : DEFAULT_REPLICAS_PER_NODE_GROUPS,
         },
         automaticFailoverEnabled: true,
         tags: { ...fennelStdTags },

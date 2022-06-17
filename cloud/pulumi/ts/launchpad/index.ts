@@ -164,7 +164,13 @@ const planeConfs: Record<number, PlaneConf> = {
         controlPlaneConf: controlPlane,
         redisConf: {
             numShards: 1,
-            nodeType: "db.t4g.medium",
+            nodeType: "db.t4g.small",
+            numReplicasPerShard: 0,
+        },
+        cacheConf: {
+            numNodeGroups: 1,
+            nodeType: "cache.t4g.micro",
+            replicasPerNodeGroup: 0,
         },
         prometheusConf: {
             useAMP: true
@@ -203,11 +209,17 @@ const planeConfs: Record<number, PlaneConf> = {
         },
         controlPlaneConf: controlPlane,
         redisConf: {
-            numShards: 2,
+            numShards: 1,
             nodeType: "db.t4g.medium",
+            numReplicasPerShard: 0,
         },
         prometheusConf: {
             useAMP: true
+        },
+        cacheConf: {
+            numNodeGroups: 1,
+            nodeType: "cache.t4g.micro",
+            replicasPerNodeGroup: 0,
         },
         // increase the desired capacity and scale up to occupy more pods
         //
@@ -310,11 +322,11 @@ const planeConfs: Record<number, PlaneConf> = {
         controlPlaneConf: controlPlane,
         redisConf: {
             numShards: 1,
-            nodeType: "db.t4g.medium",
+            nodeType: "db.t4g.small",
             numReplicasPerShard: 0,
         },
         cacheConf: {
-            nodeType: "cache.t4g.medium",
+            nodeType: "cache.t4g.micro",
             numNodeGroups: 1,
             replicasPerNodeGroup: 0,
         },
