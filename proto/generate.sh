@@ -1,14 +1,35 @@
 #!/bin/bash
 
+function version { echo "$@" | awk -F. '{ printf("%d%03d%03d\n", $1,$2,$3); }'; }
+
+protoc_version=`/usr/local/bin/protoc --version`
+IFS=', ' read -r -a array <<< "${protoc_version}"
+
+# If your installation fails please follow the guide at https://github.com/protocolbuffers/protobuf/tree/main/src
+# to install the latest version.
+if [ $(version ${array[1]}) -lt $(version "3.20.0") ]; then
+    echo "Protoc version needs update"
+    curl --silent --location --remote-name https://github.com/protocolbuffers/protobuf/releases/download/v21.1/protobuf-all-21.1.tar.gz
+    tmp_dir=$(mktemp -d -t ci-XXX)
+    tar -zxf protobuf-all-21.1.tar.gz -C $tmp_dir
+    rm -rf protobuf-all-21.1.tar.gz
+    cd $tmp_dir
+    cd protobuf-3.21.1
+    ./autogen.sh
+    ./configure --prefix=/usr/local
+    make
+    make check
+    sudo make install
+fi
 
 # Generate python bindings
-protoc -I=. --python_out=../../rexer-pyclient-alpha/rexerclient/gen ftypes.proto ast.proto
+/usr/local/bin/protoc -I=. --python_out=../../rexer-pyclient-alpha/rexerclient/gen ftypes.proto ast.proto
 
 # Generate go bindings
-protoc -I=. --go_out=../go/ ./*.proto
+/usr/local/bin/protoc -I=. --go_out=../go/ ./*.proto
 
 # Generate grpc go bindings
-protoc -I=. --go-grpc_out=../go/ ./*.proto
+/usr/local/bin/protoc -I=. --go-grpc_out=../go/ ./*.proto
 
 prepare_libs=`cat <<EOF
 import sys
@@ -49,17 +70,13 @@ swap_module.clear()
 EOF
 `
 
-#cat <echo $text
-#echo -e $prepare_libs >
-#sed -i 's/search_string/replace_string/' filename
 client_gen_directory="../../rexer-pyclient-alpha/rexerclient/gen/*"
 for file in $client_gen_directory; do
     if [[ $file == *.py ]]
     then
-      first=${first/Suzy/$second}
       echo "${restore_libs}" >> $file
       cat <(echo "${prepare_libs}") $file > tmpfile
       mv tmpfile $file
-      sed -i 's/from google.protobuf import/from rex.google.protobuf import/' $file
+      sed -i 's/from google.protobuf/from rex.google.protobuf/' $file
     fi
 done
