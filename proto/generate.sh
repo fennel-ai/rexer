@@ -5,6 +5,7 @@ function version { echo "$@" | awk -F. '{ printf("%d%03d%03d\n", $1,$2,$3); }'; 
 protoc_version=`/usr/local/bin/protoc --version`
 IFS=', ' read -r -a array <<< "${protoc_version}"
 
+# Installation takes 15-20min.
 # If your installation fails please follow the guide at https://github.com/protocolbuffers/protobuf/tree/main/src
 # to install the latest version.
 if [ $(version ${array[1]}) -lt $(version "3.20.0") ]; then
