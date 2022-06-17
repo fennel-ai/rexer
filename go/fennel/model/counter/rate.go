@@ -7,8 +7,6 @@ import (
 	"fennel/lib/ftypes"
 	"fennel/lib/utils/math"
 	"fennel/lib/value"
-	"fennel/tier"
-
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 )
@@ -28,16 +26,14 @@ var zeroRate value.Value = value.NewList(value.Double(0), value.Double(0))
 	It stores two numbers - num (numerator) and den (denominator)
 */
 type rollingRate struct {
-	tr        tier.Tier
 	aggId     ftypes.AggId
 	Normalize bool
 }
 
 var _ MergeReduce = rollingRate{}
 
-func NewRate(tr tier.Tier, aggId ftypes.AggId, normalize bool) rollingRate {
+func NewRate(aggId ftypes.AggId, normalize bool) rollingRate {
 	return rollingRate{
-		tr:        tr,
 		aggId:     aggId,
 		Normalize: normalize,
 	}
@@ -91,7 +87,6 @@ func (r rollingRate) Reduce(values []value.Value) (value.Value, error) {
 	if r.Normalize {
 		// TODO(Mohit): Consider making this an error in the future once Lokal's counters data has been evicted
 		if num > den {
-			r.tr.Logger.Warn(fmt.Sprintf("normalized rate requires numerator to be <= denominator but found '%f', '%f' for aggId: %d", num, den, r.aggId))
 			// report metrics for this case
 			rateNumGTDen.WithLabelValues(strconv.Itoa(int(r.aggId))).Inc()
 			// set the ratio as 1.0
