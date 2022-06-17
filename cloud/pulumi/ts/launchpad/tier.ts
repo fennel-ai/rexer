@@ -20,6 +20,7 @@ import * as offlineAggregateKafkaConnector from "../offline-aggregate-kafka-conn
 import * as offlineAggregateGlueJob from "../offline-aggregate-glue-job";
 import * as countersCleanup from "../counters-cleanup";
 import * as unleash from "../unleash";
+import * as util from "../lib/util";
 
 import * as process from "process";
 
@@ -28,11 +29,15 @@ const DEFAULT_SAGEMAKER_INSTANCE_COUNT = 1;
 
 // All the attributes here are optional, which gives each service a choice to apply service-specific defaults
 export type PodConf = {
-    // Number of pods to launch for a service
-    replicas?: number,
-    // Whether replicas scheduled should be on the same node or not
-    // this determines intra-pod affinity (or anti-affinity)
-    enforceReplicaIsolation?: boolean,
+    // Minimum and Maximum number of pods to launch for a service
+    //
+    // If not set, each pod level defaults will be used
+    minReplicas?: number,
+    maxReplicas?: number,
+    // Resource configuration for the pod
+    //
+    // If unset, pod specific defaults will be used
+    resourceConf?: util.ResourceConf,
     // Node where this pod should be scheduled on MUST have at least one of these label - this determines node selection.
     //
     // NOTE: if specified, this must be a subset of the labels of at least one NodeGroup defined in EksConf
@@ -53,7 +58,6 @@ export type QueryServerConf = {
 
 export type CountAggrConf = {
     // replicas are currently not set, but in the future they might be configured
-    // hence setting enforceReplicaIsolation does not make sense
     podConf?: PodConf
 }
 
@@ -453,8 +457,9 @@ const setupResources = async () => {
             kubeconfig: input.kubeconfig,
             namespace: input.namespace,
             tierId: input.tierId,
-            replicas: input.httpServerConf?.podConf?.replicas,
-            enforceReplicaIsolation: input.httpServerConf?.podConf?.enforceReplicaIsolation,
+            minReplicas: input.httpServerConf?.podConf?.minReplicas,
+            maxReplicas: input.httpServerConf?.podConf?.maxReplicas,
+            resourceConf: input.httpServerConf?.podConf?.resourceConf,
             nodeLabels: input.httpServerConf?.podConf?.nodeLabels,
         });
 
@@ -469,8 +474,9 @@ const setupResources = async () => {
                 kubeconfig: input.kubeconfig,
                 namespace: input.namespace,
                 tierId: input.tierId,
-                replicas: input.queryServerConf?.podConf?.replicas,
-                enforceReplicaIsolation: input.queryServerConf?.podConf?.enforceReplicaIsolation,
+                minReplicas: input.queryServerConf?.podConf?.minReplicas,
+                maxReplicas: input.queryServerConf?.podConf?.maxReplicas,
+                resourceConf: input.queryServerConf?.podConf?.resourceConf,
                 nodeLabels: input.queryServerConf?.podConf?.nodeLabels,
             });
         }

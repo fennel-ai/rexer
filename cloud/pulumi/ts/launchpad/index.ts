@@ -47,8 +47,18 @@ const tierConfs: Record<number, TierConf> = {
         planeId: 3,
         httpServerConf: {
             podConf: {
-                replicas: 1,
-                enforceReplicaIsolation: false,
+                minReplicas: 1,
+                maxReplicas: 3,
+                resourceConf: {
+                    cpu: {
+                        request: "500m",
+                        limit: "1500m"
+                    },
+                    memory: {
+                        request: "500M",
+                        limit: "3G",
+                    }
+                }
             }
         },
     },
@@ -58,10 +68,19 @@ const tierConfs: Record<number, TierConf> = {
         planeId: 5,
         httpServerConf: {
             podConf: {
-                // NOTE: This should not exceed the maxSize of the node group it is trying to be scheduled on.
-                replicas: 2,
+                minReplicas: 2,
+                maxReplicas: 4,
+                resourceConf: {
+                    cpu: {
+                        request: "500m",
+                        limit: "1500m"
+                    },
+                    memory: {
+                        request: "500M",
+                        limit: "3G",
+                    }
+                },
                 // each http-server should be in different nodes from each other
-                enforceReplicaIsolation: true,
                 nodeLabels: {
                     "node-group": "p-5-httpserver-ng"
                 }
@@ -77,12 +96,21 @@ const tierConfs: Record<number, TierConf> = {
         },
         queryServerConf: {
             podConf: {
-                // NOTE: This should not exceed the maxSize of the node group it is trying to be scheduled on.
-                replicas: 4,
-                enforceReplicaIsolation: true,
+                minReplicas: 2,
+                maxReplicas: 10,
                 nodeLabels: {
                     "node-group": "p-5-queryserver-ng"
-                }
+                },
+                resourceConf: {
+                    cpu: {
+                        request: "500m",
+                        limit: "4500m"
+                    },
+                    memory: {
+                        request: "2G",
+                        limit: "25G",
+                    }
+                },
             }
         },
         sagemakerConf: {
@@ -104,8 +132,18 @@ const tierConfs: Record<number, TierConf> = {
         },
         httpServerConf: {
             podConf: {
-                replicas: 1,
-                enforceReplicaIsolation: false,
+                minReplicas: 1,
+                maxReplicas: 3,
+                resourceConf: {
+                    cpu: {
+                        request: "500m",
+                        limit: "1500m"
+                    },
+                    memory: {
+                        request: "500M",
+                        limit: "3G",
+                    }
+                }
             },
         },
     },
@@ -120,8 +158,18 @@ const tierConfs: Record<number, TierConf> = {
         },
         httpServerConf: {
             podConf: {
-                replicas: 1,
-                enforceReplicaIsolation: false,
+                minReplicas: 1,
+                maxReplicas: 3,
+                resourceConf: {
+                    cpu: {
+                        request: "500m",
+                        limit: "1500m"
+                    },
+                    memory: {
+                        request: "500M",
+                        limit: "3G",
+                    }
+                }
             },
         },
     },
@@ -136,8 +184,18 @@ const tierConfs: Record<number, TierConf> = {
         },
         httpServerConf: {
             podConf: {
-                replicas: 2,
-                enforceReplicaIsolation: false,
+                minReplicas: 1,
+                maxReplicas: 3,
+                resourceConf: {
+                    cpu: {
+                        request: "500m",
+                        limit: "1500m"
+                    },
+                    memory: {
+                        request: "500M",
+                        limit: "3G",
+                    }
+                }
             },
         },
     },

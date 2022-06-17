@@ -6,6 +6,7 @@ import * as path from "path";
 import * as process from "process";
 import * as childProcess from "child_process";
 import {serviceEnvs} from "../tier-consts/consts";
+import * as util from "../lib/util";
 
 const name = "http-server"
 
@@ -15,8 +16,14 @@ export const plugins = {
     "aws": "v5.1.0"
 }
 
-const DEFAULT_REPLICAS = 2
-const DEFAULT_FORCE_REPLICA_ISOLATION = false
+const DEFAULT_MIN_REPLICAS = 1
+const DEFAULT_MAX_REPLICAS = 2
+
+// default for resource requirement configurations
+const DEFAULT_CPU_REQUEST = "200m"
+const DEFAULT_CPU_LIMIT = "1000m"
+const DEFAULT_MEMORY_REQUEST = "500M"
+const DEFAULT_MEMORY_LIMIT = "2G"
 
 export type inputType = {
     region: string,
@@ -24,9 +31,10 @@ export type inputType = {
     kubeconfig: string,
     namespace: string,
     tierId: number,
-    replicas?: number,
-    enforceReplicaIsolation?: boolean,
+    minReplicas?: number,
+    maxReplicas?: number,
     nodeLabels?: Record<string, string>,
+    resourceConf?: util.ResourceConf
 }
 
 export type outputType = {
@@ -143,12 +151,6 @@ export const setup = async (input: inputType) => {
         }
     }
 
-    const forceReplicaIsolation = input.enforceReplicaIsolation || DEFAULT_FORCE_REPLICA_ISOLATION;
-    let whenUnsatisfiable = "ScheduleAnyway";
-    if (forceReplicaIsolation) {
-        whenUnsatisfiable = "DoNotSchedule";
-    }
-
     const httpServerDepName = "http-server";
     const appDep = image.imageName.apply(() => {
         return new k8s.apps.v1.Deployment("http-server-deployment", {
@@ -157,25 +159,9 @@ export const setup = async (input: inputType) => {
             },
             spec: {
                 selector: { matchLabels: appLabels },
-                // NOTE: If changing number replicas, please take: size and desired capacity of the nodegroup,
-                //
-                // NOTE: If changing number replicas, please take `topologySpreadConstraints`
-                // into consideration which schedules replicas on different nodes.
-                replicas: input.replicas || DEFAULT_REPLICAS,
-                // TODO: eventually remove this.
-                //
-                // configure one of the existing pods to go down before k8s scheduler tries to schedule a new
-                // pod - this is required since with the current setup of:
-                //  1. X nodes
-                //  2. <= X replicas, with the requirement that each replica is scheduled on different nodes
-                //
-                // might run into a scheduling problem if new pods are brought up before old pods are descheduled
-                strategy: {
-                    rollingUpdate: {
-                        maxSurge: 0,
-                        maxUnavailable: 1,
-                    }
-                },
+                // start with minReplica, since autoscaler is setup, if the resources are being over-utilized,
+                // there will be scale-out operation
+                replicas: input.minReplicas || DEFAULT_MIN_REPLICAS,
                 template: {
                     metadata: {
                         labels: appLabels,
@@ -200,30 +186,6 @@ export const setup = async (input: inputType) => {
                     },
                     spec: {
                         affinity: affinity,
-                        // https://kubernetes.io/docs/concepts/workloads/pods/pod-topology-spread-constraints/
-                        topologySpreadConstraints: [
-                            // describes how a group of pods ought to spread across topology domains.
-                            // Scheduler will schedule pods in a way which abides by the constraints.
-                            // All the constraints are ANDed
-                            {
-                                // describes the degree to which pods may be unevenly distributed.
-                                // it is the maximum permitted difference between the number of matching pods in the
-                                // target topology and the global minimum.
-                                maxSkew: 1,
-                                // key of the node labels. we check by the host name.
-                                topologyKey: "kubernetes.io/hostname",
-                                // schedule anyway on the pod when constraints are not satisfied - to avoid potential
-                                // contention b/w pods. This is to avoid scheduling multiple http-server pods
-                                // from different namespaces on the same data plane.
-                                whenUnsatisfiable: whenUnsatisfiable,
-                                // find matching pods using the labels - `appLabels`
-                                //
-                                // this should schedule the replicas across different nodes
-                                labelSelector: {
-                                    matchLabels: appLabels,
-                                },
-                            }
-                        ],
                         containers: [{
                             command: [
                                 "/root/server",
@@ -245,6 +207,16 @@ export const setup = async (input: inputType) => {
                                 },
                             ],
                             env: serviceEnvs,
+                            resources: {
+                                requests: {
+                                    "cpu": input.resourceConf?.cpu.request || DEFAULT_CPU_REQUEST,
+                                    "memory": input.resourceConf?.memory.request || DEFAULT_MEMORY_REQUEST,
+                                },
+                                limits: {
+                                    "cpu": input.resourceConf?.cpu.limit || DEFAULT_CPU_LIMIT,
+                                    "memory": input.resourceConf?.memory.limit || DEFAULT_MEMORY_LIMIT,
+                                }
+                            }
                         },],
                     },
                 },
@@ -382,10 +354,8 @@ export const setup = async (input: inputType) => {
                     }
                 }
             ],
-            // currently we set this to 1 so that at-least one replica is always available, but explore if
-            // (and which) services could be scaled down to ZERO.
-            minReplicas: 1,
-            maxReplicas: 5,
+            minReplicas: input.minReplicas || DEFAULT_MIN_REPLICAS,
+            maxReplicas: input.maxReplicas || DEFAULT_MAX_REPLICAS,
         },
     },{ provider: k8sProvider });
 
