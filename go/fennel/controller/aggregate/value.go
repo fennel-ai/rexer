@@ -118,7 +118,7 @@ func unitValue(
 	if err != nil {
 		return value.Nil, err
 	}
-	histogram, err := modelCounter.ToHistogram(tier, agg.Id, agg.Options)
+	histogram, err := modelCounter.ToHistogram(agg.Id, agg.Options)
 	if err != nil {
 		return nil, err
 	}
@@ -261,7 +261,7 @@ func fetchOnlineAggregates(ctx context.Context, tier tier.Tier, aggMap map[ftype
 			continue
 		}
 		onlinePtr = append(onlinePtr, i)
-		h, err := modelCounter.ToHistogram(tier, agg.Id, agg.Options)
+		h, err := modelCounter.ToHistogram(agg.Id, agg.Options)
 		if err != nil {
 			return fmt.Errorf("failed to make histogram from aggregate at index %d of batch: %v", i, err)
 		}
@@ -328,7 +328,7 @@ func Update[I action.Action | profile.ProfileItem](ctx context.Context, tier tie
 		}
 		return nil
 	} else { // Online duration based aggregates
-		histogram, err := modelCounter.ToHistogram(tier, agg.Id, agg.Options)
+		histogram, err := modelCounter.ToHistogram(agg.Id, agg.Options)
 		if err != nil {
 			return fmt.Errorf("failed to make histogram from aggregate: %w", err)
 		}
