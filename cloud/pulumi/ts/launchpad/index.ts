@@ -393,11 +393,25 @@ if (tierId !== 0) {
     // defined in all node groups.
 
     const topics: kafkatopics.topicConf[] = [
-        { name: `t_${tierId}_actionlog` },
-        { name: `t_${tierId}_featurelog`, partitions: 10 },
-        { name: `t_${tierId}_profilelog` },
-        { name: `t_${tierId}_actionlog_json` },
-        { name: `t_${tierId}_aggr_delta` },
+        {
+            name: `t_${tierId}_actionlog`,
+            // TODO(mohit): Increase this period to 21 days to support few of the larger aggregates
+            retention_ms: 1209600000  // 14 days retention
+        },
+        {
+            name: `t_${tierId}_featurelog`,
+            partitions: 10,
+            retention_ms: 432000000  // 5 days retention
+        },
+        // configure profile topic to have "unlimited" retention
+        {
+            name: `t_${tierId}_profilelog`,
+            retention_ms: -1
+        },
+        {
+            name: `t_${tierId}_actionlog_json`,
+            retention_ms: 432000000  // 5 days retention
+        },
         { name: `t_${tierId}_aggr_offline_transform` },
     ];
     setupTier({
