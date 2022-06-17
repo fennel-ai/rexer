@@ -8,7 +8,8 @@ IFS=', ' read -r -a array <<< "${protoc_version}"
 # Installation takes 15-20min.
 # If your installation fails please follow the guide at https://github.com/protocolbuffers/protobuf/tree/main/src
 # to install the latest version.
-if [ $(version ${array[1]}) -lt $(version "3.20.0") ]; then
+if [ $(version ${array[1]}) -lt $(version "3.20.0") ]
+then
     echo "Protoc version needs update"
     curl --silent --location --remote-name https://github.com/protocolbuffers/protobuf/releases/download/v21.1/protobuf-all-21.1.tar.gz
     tmp_dir=$(mktemp -d -t ci-XXX)
@@ -21,6 +22,7 @@ if [ $(version ${array[1]}) -lt $(version "3.20.0") ]; then
     make
     make check
     sudo make install
+    echo "installation done"
 fi
 
 # Generate python bindings
