@@ -100,12 +100,13 @@ func Update(
 	if err != nil {
 		return err
 	}
-	// We fetch for only 1 aggregate, hence its a 2d array of 1 element
-	defer arena.Values.Free(cur[0])
-	for i := range cur[0] {
-		values[i], err = histogram.Merge(cur[0][i], values[i])
-		if err != nil {
-			return err
+	for _, c := range cur {
+		defer arena.Values.Free(c)
+		for i := range c {
+			values[i], err = histogram.Merge(c[i], values[i])
+			if err != nil {
+				return err
+			}
 		}
 	}
 	return histogram.SetMulti(ctx, tier, []ftypes.AggId{agg.Id}, [][]libcounter.Bucket{buckets}, [][]value.Value{values})
