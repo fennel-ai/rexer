@@ -395,7 +395,8 @@ if (tierId !== 0) {
     const topics: kafkatopics.topicConf[] = [
         { name: `t_${tierId}_actionlog` },
         { name: `t_${tierId}_featurelog`, partitions: 10 },
-        { name: `t_${tierId}_profilelog` },
+        // configure profile topic to have "unlimited" retention
+        { name: `t_${tierId}_profilelog`, retention_ms: -1 },
         { name: `t_${tierId}_actionlog_json` },
         { name: `t_${tierId}_aggr_offline_transform` },
     ];
