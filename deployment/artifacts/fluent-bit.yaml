@@ -128,6 +128,7 @@ data:
         log_stream_prefix   from-fluent-bit-
         auto_create_group   true
         extra_user_agent    container-insights
+        log_retention_days  5
 
   dataplane-log.conf: |
     [INPUT]
@@ -176,6 +177,7 @@ data:
         log_stream_prefix   from-fluent-bit-
         auto_create_group   true
         extra_user_agent    container-insights
+        log_retention_days  5
 
   host-log.conf: |
     [INPUT]
@@ -224,6 +226,7 @@ data:
         log_stream_prefix   ${HOST_NAME}.
         auto_create_group   true
         extra_user_agent    container-insights
+        log_retention_days  5
 
   parsers.conf: |
     [PARSER]
