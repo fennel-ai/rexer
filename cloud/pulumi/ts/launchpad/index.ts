@@ -397,7 +397,6 @@ if (tierId !== 0) {
         { name: `t_${tierId}_featurelog`, partitions: 10 },
         { name: `t_${tierId}_profilelog` },
         { name: `t_${tierId}_actionlog_json` },
-        { name: `t_${tierId}_aggr_delta` },
         { name: `t_${tierId}_aggr_offline_transform` },
     ];
     setupTier({
