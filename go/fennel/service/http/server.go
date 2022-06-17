@@ -18,6 +18,7 @@ import (
 	"fennel/controller/mock"
 	"fennel/controller/modelstore"
 	profile2 "fennel/controller/profile"
+	query2 "fennel/controller/query"
 	"fennel/engine"
 	"fennel/engine/interpreter/bootarg"
 	"fennel/engine/operators"
@@ -89,6 +90,8 @@ func (s server) setHandlers(router *mux.Router) {
 	router.HandleFunc("/log_multi", s.LogMulti)
 	router.HandleFunc("/get_multi", s.GetProfileMulti)
 	router.HandleFunc("/query", s.Query)
+	router.HandleFunc("/store_query", s.StoreQuery)
+	router.HandleFunc("/run_query", s.RunQuery)
 	router.HandleFunc("/store_aggregate", s.StoreAggregate)
 	router.HandleFunc("/retrieve_aggregate", s.RetrieveAggregate)
 	router.HandleFunc("/deactivate_aggregate", s.DeactivateAggregate)
@@ -351,7 +354,7 @@ func (m server) Query(w http.ResponseWriter, req *http.Request) {
 		w.Write([]byte("{}"))
 		return
 	}
-	
+
 	data, err := readRequest(req)
 	cCtx, span := timer.Start(req.Context(), m.tier.ID, "server.Query")
 	defer span.Stop()
@@ -381,6 +384,80 @@ func (m server) Query(w http.ResponseWriter, req *http.Request) {
 	// execute the tree
 	executor := engine.NewQueryExecutor(bootarg.Create(m.tier))
 	ret, err := executor.Exec(cCtx, tree, args)
+	if err != nil {
+		handleInternalServerError(w, "", err)
+		return
+	}
+	w.Write(value.ToJSON(ret))
+}
+
+func (m server) StoreQuery(w http.ResponseWriter, req *http.Request) {
+	data, err := readRequest(req)
+	if err != nil {
+		handleBadRequest(w, "", err)
+		return
+	}
+	name, err := jsonparser.GetString(data, "name")
+	if err != nil {
+		handleBadRequest(w, "", err)
+		return
+	}
+	qStr, err := jsonparser.GetString(data, "query")
+	if err != nil {
+		handleBadRequest(w, "", err)
+		return
+	}
+	q, err := query.FromString(qStr)
+	if err != nil {
+		handleBadRequest(w, "", err)
+		return
+	}
+	_, err = query2.Insert(m.tier, name, q)
+	if err != nil {
+		handleInternalServerError(w, "", err)
+		return
+	}
+	// if storing succeeds, just return empty response
+}
+
+func (m server) RunQuery(w http.ResponseWriter, req *http.Request) {
+	data, err := readRequest(req)
+	if err != nil {
+		handleBadRequest(w, "", err)
+		return
+	}
+	name, err := jsonparser.GetString(data, "name")
+	if err != nil {
+		handleBadRequest(w, "", err)
+		return
+	}
+	args := value.NewDict(nil)
+	vData, vType, _, err := jsonparser.Get(data, "args")
+	if err != nil && err != jsonparser.KeyPathNotFoundError {
+		handleBadRequest(w, "", err)
+		return
+	}
+	if err != jsonparser.KeyPathNotFoundError {
+		v, err := value.ParseJSON(vData, vType)
+		if err != nil {
+			handleBadRequest(w, "", err)
+			return
+		}
+		var ok bool
+		args, ok = v.(value.Dict)
+		if !ok {
+			handleBadRequest(w, "", fmt.Errorf("error: expected 'args' to be a value.Dict but found: '%v'", v.String()))
+			return
+		}
+	}
+	tree, err := query2.Get(m.tier, name)
+	if err != nil {
+		handleInternalServerError(w, "", err)
+		return
+	}
+	// execute the tree
+	executor := engine.NewQueryExecutor(bootarg.Create(m.tier))
+	ret, err := executor.Exec(req.Context(), tree, args)
 	if err != nil {
 		handleInternalServerError(w, "", err)
 		return

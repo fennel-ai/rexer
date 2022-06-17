@@ -184,7 +184,6 @@ class TestEndToEnd(unittest.TestCase):
         self.assertTrue(passed)
         print('all checks passed...')
 
-
     @tiered
     def test_end_to_end(self):
         c = client.Client(URL)
@@ -348,7 +347,15 @@ class TestEndToEnd(unittest.TestCase):
                          c.query(e1))
         self.assertEqual([{'a': 1, 'b': 'one'}, {'a': 2, 'b': 'two'}, {'a': 2, 'b': 'three'}, {'a': 3, 'b': 'four'}],
                          c.query(e2))
-    
+
+        # test storing and running queries
+        q = cond(var('x') < 3, 'left', 'right')
+        q_name = 'query_name'
+        c.store_query(q_name, q)
+        ret = c.run_query(q_name, {'x': 1})
+        self.assertEqual('left', ret)
+        ret = c.run_query(q_name, {'x': 5})
+        self.assertEqual('right', ret)
 
     @tiered
     def test_features(self):

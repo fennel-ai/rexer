@@ -29,9 +29,9 @@ func TestInsertGet(t *testing.T) {
 
 	// set a couple of queries and verify we can get them
 	ts1 := ftypes.Timestamp(1)
-	query1 := query.QuerySer{QueryId: 0, Timestamp: ts1, QuerySer: "hello"}
+	query1 := query.QuerySer{QueryId: 0, Name: "name", Timestamp: ts1, QuerySer: []byte("hello")}
 
-	queryID1, err := Insert(tier, query1.Timestamp, query1.QuerySer)
+	queryID1, err := Insert(tier, query1.Name, query1.Timestamp, query1.QuerySer)
 	assert.NoError(t, err)
 	query1.QueryId = queryID1
 
@@ -44,8 +44,8 @@ func TestInsertGet(t *testing.T) {
 	verifyGet(t, tier, query.QueryRequest{MinTimestamp: ts1 + 1}, []query.QuerySer{})
 
 	ts2 := ftypes.Timestamp(3)
-	query2 := query.QuerySer{QueryId: 0, Timestamp: ts2, QuerySer: "bye"}
-	queryID2, err := Insert(tier, query2.Timestamp, query2.QuerySer)
+	query2 := query.QuerySer{QueryId: 0, Name: "query2", Timestamp: ts2, QuerySer: []byte("bye")}
+	queryID2, err := Insert(tier, query2.Name, query2.Timestamp, query2.QuerySer)
 	assert.NoError(t, err)
 	query2.QueryId = queryID2
 
