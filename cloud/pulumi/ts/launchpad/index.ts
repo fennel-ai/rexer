@@ -51,11 +51,11 @@ const tierConfs: Record<number, TierConf> = {
                 maxReplicas: 3,
                 resourceConf: {
                     cpu: {
-                        request: "500m",
+                        request: "1250m",
                         limit: "1500m"
                     },
                     memory: {
-                        request: "500M",
+                        request: "2G",
                         limit: "3G",
                     }
                 }
@@ -72,11 +72,11 @@ const tierConfs: Record<number, TierConf> = {
                 maxReplicas: 4,
                 resourceConf: {
                     cpu: {
-                        request: "500m",
+                        request: "1250m",
                         limit: "1500m"
                     },
                     memory: {
-                        request: "500M",
+                        request: "2G",
                         limit: "3G",
                     }
                 },
@@ -94,6 +94,9 @@ const tierConfs: Record<number, TierConf> = {
                 }
             }
         },
+        // TODO(mohit): Currently the requests are configured such that each replica is going to be scheduled
+        // in different node in the node group, ideally we should try to reduce the `request` and let the scheduler
+        // place the pods across the nodes based on utilization and `limit`
         queryServerConf: {
             podConf: {
                 minReplicas: 2,
@@ -103,12 +106,12 @@ const tierConfs: Record<number, TierConf> = {
                 },
                 resourceConf: {
                     cpu: {
-                        request: "500m",
-                        limit: "4500m"
+                        request: "5500m",
+                        limit: "6500m"
                     },
                     memory: {
-                        request: "2G",
-                        limit: "25G",
+                        request: "25G",
+                        limit: "30G",
                     }
                 },
             }
@@ -136,11 +139,11 @@ const tierConfs: Record<number, TierConf> = {
                 maxReplicas: 3,
                 resourceConf: {
                     cpu: {
-                        request: "500m",
+                        request: "1250m",
                         limit: "1500m"
                     },
                     memory: {
-                        request: "500M",
+                        request: "2G",
                         limit: "3G",
                     }
                 }
@@ -162,11 +165,11 @@ const tierConfs: Record<number, TierConf> = {
                 maxReplicas: 3,
                 resourceConf: {
                     cpu: {
-                        request: "500m",
+                        request: "1250m",
                         limit: "1500m"
                     },
                     memory: {
-                        request: "500M",
+                        request: "2G",
                         limit: "3G",
                     }
                 }
@@ -188,11 +191,11 @@ const tierConfs: Record<number, TierConf> = {
                 maxReplicas: 3,
                 resourceConf: {
                     cpu: {
-                        request: "500m",
+                        request: "1250m",
                         limit: "1500m"
                     },
                     memory: {
-                        request: "500M",
+                        request: "2G",
                         limit: "3G",
                     }
                 }

@@ -159,9 +159,12 @@ export const setup = async (input: inputType) => {
             },
             spec: {
                 selector: { matchLabels: appLabels },
-                // start with minReplica, since autoscaler is setup, if the resources are being over-utilized,
-                // there will be scale-out operation
-                replicas: input.minReplicas || DEFAULT_MIN_REPLICAS,
+                // We skip setting replicas since the horizontal pod autoscaler is responsible on scheduling the
+                // pods based on the utilization as configured in the HPA
+                //
+                // https://kubernetes.io/docs/tasks/run-application/horizontal-pod-autoscale/#migrating-deployments-and-statefulsets-to-horizontal-autoscaling
+                //
+                // replicas:
                 template: {
                     metadata: {
                         labels: appLabels,
@@ -329,6 +332,8 @@ export const setup = async (input: inputType) => {
             // TODO: Explore other dimensions (e.g. external metrics, ingress metrics etc)
             // https://kubernetes.io/docs/tasks/run-application/horizontal-pod-autoscale-walkthrough/#autoscaling-on-multiple-metrics-and-custom-metrics
             metrics: [
+                // TODO(mohit): Explore configuring horizontal pod autoscaler once EKS supports kubernetes feature flags
+                // See: https://github.com/aws/containers-roadmap/issues/512
                 {
                     type: "Resource",
                     resource: {
