@@ -30,9 +30,9 @@ const REDIS_FAMILY = "redis6.x";
 //
 // The cache evicts the least recently used (LRU) keys regardless of TTL set.
 const DEFAULT_EVICTION_POLICY = "allkeys-lru";
-const NODE_TYPE = "cache.t4g.medium";
-const DEFAULT_NODE_GROUPS = 2;
-const DEFAULT_REPLICAS_PER_NODE_GROUPS = 1;
+const NODE_TYPE = "cache.t4g.micro";
+const DEFAULT_NODE_GROUPS = 1;
+const DEFAULT_REPLICAS_PER_NODE_GROUPS = 0;
 
 export const setup = async (input: inputType): Promise<pulumi.Output<outputType>> => {
 

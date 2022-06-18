@@ -217,8 +217,9 @@ const planeConfs: Record<number, PlaneConf> = {
             useAMP: true
         },
         cacheConf: {
-            numNodeGroups: 1,
-            nodeType: "cache.t4g.micro",
+            // this is used for demo tiers, which could right a lot of profiles
+            numNodeGroups: 2,
+            nodeType: "cache.t4g.medium",
             replicasPerNodeGroup: 0,
         },
         // increase the desired capacity and scale up to occupy more pods
