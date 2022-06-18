@@ -222,6 +222,7 @@ func fetchForeverAggregates(ctx context.Context, tier tier.Tier, aggMap map[ftyp
 		if !agg.IsForever() {
 			continue
 		}
+
 		// Current code only supports knn, need to extend this to support other aggregates
 		if agg.Options.AggType != "knn" {
 			return numSlotsLeft, fmt.Errorf("error: Only KNN supports forever aggregates")

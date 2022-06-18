@@ -156,6 +156,10 @@ func Deactivate(ctx context.Context, tier tier.Tier, aggname ftypes.AggName) err
 				}
 			}
 		}
+		if agg.Options.AggType == "knn" {
+			tier.MilvusClient.DeleteCollection(ctx, agg.Name, tier.ID)
+		}
+
 		// Disable online & offline aggregates
 		err = modelAgg.Deactivate(ctx, tier, aggname)
 		return err

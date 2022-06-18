@@ -76,10 +76,15 @@ func (c Client) Close() error {
 	return nil
 }
 
-func (c Client) CreateKNNIndex(ctx context.Context, agg aggregate.Aggregate) error {
+func getCollectionName(aggName ftypes.AggName, tierId ftypes.RealmID) string {
+	// Milvus collection name does not support ':'
+	return "t_" + fmt.Sprint(tierId) + "$" + string(aggName)
+}
+
+func (c Client) CreateKNNIndex(ctx context.Context, agg aggregate.Aggregate, tierId ftypes.RealmID) error {
 	// get fields from the aggregate and set them in schema
 	schema := &entity.Schema{
-		CollectionName: string(agg.Name),
+		CollectionName: getCollectionName(agg.Name, tierId),
 		Description:    fmt.Sprintf("Collection for agg %s", agg.Name),
 		Fields: []*entity.Field{
 			{
@@ -126,23 +131,23 @@ func (c Client) CreateKNNIndex(ctx context.Context, agg aggregate.Aggregate) err
 		return err
 	}
 	err = c.client.CreateIndex(
-		ctx,              // ctx
-		string(agg.Name), // CollectionName
-		VectorField,      // fieldName
-		idx,              // index
-		false,            // async
+		ctx,                                 // ctx
+		getCollectionName(agg.Name, tierId), // collectionName
+		VectorField,                         // fieldName
+		idx,                                 // index
+		false,                               // async
 	)
 	if err != nil {
 		return err
 	}
 	return c.client.LoadCollection(
-		ctx,              // ctx
-		string(agg.Name), // CollectionName
-		false,            // async
+		ctx,
+		getCollectionName(agg.Name, tierId), // ctx
+		false,                               // async
 	)
 }
 
-func (c Client) InsertStream(ctx context.Context, agg aggregate.Aggregate, table value.List) error {
+func (c Client) InsertStream(ctx context.Context, agg aggregate.Aggregate, table value.List, tierId ftypes.RealmID) error {
 	// Change this to string once Milvus 2.1 is released.
 	ids := make([]int64, 0, table.Len())
 	timestamps := make([]int64, 0, table.Len())
@@ -181,17 +186,17 @@ func (c Client) InsertStream(ctx context.Context, agg aggregate.Aggregate, table
 	timestampColumn := entity.NewColumnInt64("Timestamp", timestamps)
 	vectorColumn := entity.NewColumnFloatVector(VectorField, int(agg.Options.Dim), vectors)
 	_, err := c.client.Insert(
-		ctx,              // ctx
-		string(agg.Name), // CollectionName
-		"",               // partitionName
-		idColumn,         // columnarData
-		timestampColumn,  // columnarData
-		vectorColumn,     // columnarData
+		ctx,                                 // ctx
+		getCollectionName(agg.Name, tierId), // collectionName
+		"",                                  // partitionName
+		idColumn,                            // columnarData
+		timestampColumn,                     // columnarData
+		vectorColumn,                        // columnarData
 	)
 	return err
 }
 
-func (c Client) GetNeighbors(ctx context.Context, agg aggregate.Aggregate, vectors []value.Value, kwarg value.Dict) ([]value.Value, error) {
+func (c Client) GetNeighbors(ctx context.Context, agg aggregate.Aggregate, vectors []value.Value, kwarg value.Dict, tierId ftypes.RealmID) ([]value.Value, error) {
 	hyperparameters, err := hp.GetHyperParameters("knn", agg.Options.HyperParameters, supportedHyperParameters)
 
 	if err != nil {
@@ -240,16 +245,16 @@ func (c Client) GetNeighbors(ctx context.Context, agg aggregate.Aggregate, vecto
 	}
 
 	searchResult, err := c.client.Search(
-		ctx,                    // ctx
-		string(agg.Name),       // CollectionName
-		[]string{},             // partitionNames
-		"",                     // expr
-		[]string{PrimaryField}, // outputFields
-		milvusVectors,          // vectors
-		VectorField,            // vectorField
-		metric,                 // metricType
-		topK,                   // topK
-		sp,                     // sp
+		ctx,                                 // ctx
+		getCollectionName(agg.Name, tierId), // collectionName
+		[]string{},                          // partitionNames
+		"",                                  // expr
+		[]string{PrimaryField},              // outputFields
+		milvusVectors,                       // vectors
+		VectorField,                         // vectorField
+		metric,                              // metricType
+		topK,                                // topK
+		sp,                                  // sp
 	)
 
 	if err != nil {
@@ -285,7 +290,7 @@ func (c Client) GetNeighbors(ctx context.Context, agg aggregate.Aggregate, vecto
 	return allResults, nil
 }
 
-func (c Client) GetEmbedding(ctx context.Context, agg aggregate.Aggregate, keys value.List) ([]value.Value, error) {
+func (c Client) GetEmbedding(ctx context.Context, agg aggregate.Aggregate, keys value.List, tierId ftypes.RealmID) ([]value.Value, error) {
 	ids := make([]int64, keys.Len())
 	for i := 0; i < keys.Len(); i++ {
 		idVal, _ := keys.At(i)
@@ -298,11 +303,11 @@ func (c Client) GetEmbedding(ctx context.Context, agg aggregate.Aggregate, keys 
 	idColumn := entity.NewColumnInt64(PrimaryField, ids)
 
 	queryResult, err := c.client.QueryByPks(
-		ctx,                   // ctx
-		string(agg.Name),      // CollectionName
-		[]string{},            // partitionNames
-		idColumn,              // expr
-		[]string{VectorField}, // outputFields
+		ctx,                                 // ctx
+		getCollectionName(agg.Name, tierId), // collectionName
+		[]string{},                          // partitionNames
+		idColumn,                            // expr
+		[]string{VectorField},               // outputFields
 	)
 
 	if err != nil {
@@ -331,8 +336,8 @@ func (c Client) GetEmbedding(ctx context.Context, agg aggregate.Aggregate, keys 
 	return allResults, nil
 }
 
-func (c Client) DeleteCollection(ctx context.Context, aggName ftypes.AggName) error {
-	return c.client.DropCollection(context.Background(), string(aggName))
+func (c Client) DeleteCollection(ctx context.Context, aggName ftypes.AggName, tierId ftypes.RealmID) error {
+	return c.client.DropCollection(ctx, getCollectionName(aggName, tierId))
 }
 
 //================================================
