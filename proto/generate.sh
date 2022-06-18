@@ -4,6 +4,7 @@ function version { echo "$@" | awk -F. '{ printf("%d%03d%03d\n", $1,$2,$3); }'; 
 
 protoc_version=`/usr/local/bin/protoc --version`
 IFS=', ' read -r -a array <<< "${protoc_version}"
+cwd=$(pwd)
 
 # Installation takes 15-20min.
 # If your installation fails please follow the guide at https://github.com/protocolbuffers/protobuf/tree/main/src
@@ -23,6 +24,7 @@ then
     make check
     sudo make install
     echo "installation done"
+    cd $cwd
 fi
 
 # Generate python bindings
