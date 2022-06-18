@@ -24,9 +24,9 @@ type Client struct {
 }
 
 const (
-	PrimaryField = `ID`
-	VectorField  = `Vector`
-	ScoreField   = `Score`
+	PrimaryField = `item`
+	VectorField  = `vector`
+	ScoreField   = `score`
 )
 
 var supportedHyperParameters = hp.HyperParamRegistry{
@@ -154,7 +154,7 @@ func (c Client) InsertStream(ctx context.Context, agg aggregate.Aggregate, table
 		if !ok {
 			return fmt.Errorf("%s expected to be dict but found: '%v'", agg.Source, rowVal)
 		}
-		groupkey, ok := row.Get("groupkey")
+		id, ok := row.Get("value")
 		if !ok {
 			return fmt.Errorf("%s '%v' does not have a field called 'groupkey'", agg.Source, rowVal)
 		}
@@ -162,12 +162,12 @@ func (c Client) InsertStream(ctx context.Context, agg aggregate.Aggregate, table
 		if !ok || value.Types.Int.Validate(ts) != nil {
 			return fmt.Errorf("action '%v' does not have a field called 'timestamp' with datatype of 'int'", row)
 		}
-		v, ok := row.Get("value")
+		v, ok := row.Get("groupkey")
 		if !ok {
 			return fmt.Errorf("action '%v' does not have a field called 'value'", row)
 		}
 		ts_int := ts.(value.Int)
-		key := groupkey.(value.Int)
+		key := id.(value.Int)
 		ids = append(ids, int64(key))
 		timestamps = append(timestamps, int64(ts_int))
 		vector, err := toList(v.(value.List))

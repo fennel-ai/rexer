@@ -117,7 +117,7 @@ func TestClient_InsertStream_GetNeighbors(t *testing.T) {
 		for j := 0; j < 10; j++ {
 			vector[j] = float32(i)
 		}
-		d := value.NewDict(map[string]value.Value{"groupkey": value.Int(i), "timestamp": value.Int(t0), "value": FromList(vector)})
+		d := value.NewDict(map[string]value.Value{"groupkey": FromList(vector), "value": value.Int(i), "timestamp": value.Int(t0)})
 		table.Append(d)
 	}
 	err = milvusClient.InsertStream(ctx, agg, table)
@@ -175,7 +175,7 @@ func TestClient_InsertStream_GetEmbedding(t *testing.T) {
 		for j := 0; j < 10; j++ {
 			vector[j] = float32(i)
 		}
-		d := value.NewDict(map[string]value.Value{"groupkey": value.Int(i), "timestamp": value.Int(t0), "value": FromList(vector)})
+		d := value.NewDict(map[string]value.Value{"value": value.Int(i), "timestamp": value.Int(t0), "groupkey": FromList(vector)})
 		table.Append(d)
 	}
 	err = milvusClient.InsertStream(ctx, agg, table)
