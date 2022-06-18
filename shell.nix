@@ -16,7 +16,7 @@ with pkgs; mkShell {
     llvmPackages.openmp
 
     # Protobuf
-    pkgs.protobuf3_17
+    pkgs.protobuf
 
     # Packages for go development.
     unstable.go_1_18
