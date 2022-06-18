@@ -8,6 +8,7 @@ import (
 	"fennel/lib/aggregate"
 	"fennel/lib/ftypes"
 	"fennel/lib/value"
+	"fmt"
 	"github.com/milvus-io/milvus-sdk-go/v2/entity"
 	"github.com/stretchr/testify/assert"
 	"os"
@@ -15,6 +16,8 @@ import (
 	"testing"
 	"time"
 )
+
+const TEST_TIER_ID = 123
 
 func TestClient_CreateKNNIndex(t *testing.T) {
 	milvusUrl := os.Getenv("MILVUS_URL")
@@ -35,15 +38,15 @@ func TestClient_CreateKNNIndex(t *testing.T) {
 		},
 		Id: 1,
 	}
-	err = milvusClient.CreateKNNIndex(ctx, agg)
+	err = milvusClient.CreateKNNIndex(ctx, agg, TEST_TIER_ID)
 	assert.NoError(t, err)
-	idx, err := milvusClient.client.DescribeIndex(ctx, string(agg.Name), VectorField)
+	idx, err := milvusClient.client.DescribeIndex(ctx, getCollectionName(agg.Name, TEST_TIER_ID), VectorField)
 	assert.NoError(t, err)
 	assert.Equal(t, 1, len(idx))
 	assert.Equal(t, entity.IndexType("HNSW"), idx[0].IndexType())
 	// Using default params
 	assert.Equal(t, map[string]string{"index_type": "HNSW", "metric_type": "IP", "params": "{\"M\":\"32\",\"efConstruction\":\"128\"}"}, idx[0].Params())
-	assert.NoError(t, milvusClient.DeleteCollection(ctx, agg.Name))
+	assert.NoError(t, milvusClient.DeleteCollection(ctx, agg.Name, TEST_TIER_ID))
 
 	// Create an Annoy Index
 	agg = aggregate.Aggregate{
@@ -57,15 +60,15 @@ func TestClient_CreateKNNIndex(t *testing.T) {
 		},
 		Id: 1,
 	}
-	err = milvusClient.CreateKNNIndex(ctx, agg)
+	err = milvusClient.CreateKNNIndex(ctx, agg, TEST_TIER_ID)
 	assert.NoError(t, err)
-	idx, err = milvusClient.client.DescribeIndex(ctx, string(agg.Name), VectorField)
+	idx, err = milvusClient.client.DescribeIndex(ctx, getCollectionName(agg.Name, TEST_TIER_ID), VectorField)
 	assert.NoError(t, err)
 	assert.Equal(t, 1, len(idx))
 	assert.Equal(t, entity.IndexType("ANNOY"), idx[0].IndexType())
 	// Using default params
 	assert.Equal(t, map[string]string{"index_type": "ANNOY", "metric_type": "L2", "params": "{\"n_trees\":\"23\"}"}, idx[0].Params())
-	assert.NoError(t, milvusClient.DeleteCollection(ctx, agg.Name))
+	assert.NoError(t, milvusClient.DeleteCollection(ctx, agg.Name, TEST_TIER_ID))
 
 	// Create a flat index
 	agg = aggregate.Aggregate{
@@ -79,15 +82,15 @@ func TestClient_CreateKNNIndex(t *testing.T) {
 		},
 		Id: 1,
 	}
-	err = milvusClient.CreateKNNIndex(ctx, agg)
+	err = milvusClient.CreateKNNIndex(ctx, agg, TEST_TIER_ID)
 	assert.NoError(t, err)
-	idx, err = milvusClient.client.DescribeIndex(ctx, string(agg.Name), VectorField)
+	idx, err = milvusClient.client.DescribeIndex(ctx, getCollectionName(agg.Name, TEST_TIER_ID), VectorField)
 	assert.NoError(t, err)
 	assert.Equal(t, 1, len(idx))
 	assert.Equal(t, entity.IndexType("FLAT"), idx[0].IndexType())
 	// Using default params
 	assert.Equal(t, map[string]string{"index_type": "FLAT", "metric_type": "L2", "params": "{\"nlist\":\"1024\"}"}, idx[0].Params())
-	assert.NoError(t, milvusClient.DeleteCollection(ctx, agg.Name))
+	assert.NoError(t, milvusClient.DeleteCollection(ctx, agg.Name, TEST_TIER_ID))
 }
 
 func TestClient_InsertStream_GetNeighbors(t *testing.T) {
@@ -108,7 +111,7 @@ func TestClient_InsertStream_GetNeighbors(t *testing.T) {
 		},
 		Id: 1,
 	}
-	err = milvusClient.CreateKNNIndex(ctx, agg)
+	err = milvusClient.CreateKNNIndex(ctx, agg, TEST_TIER_ID)
 	assert.NoError(t, err)
 	table := value.NewList()
 	table.Grow(100)
@@ -120,7 +123,7 @@ func TestClient_InsertStream_GetNeighbors(t *testing.T) {
 		d := value.NewDict(map[string]value.Value{"groupkey": FromList(vector), "value": value.Int(i), "timestamp": value.Int(t0)})
 		table.Append(d)
 	}
-	err = milvusClient.InsertStream(ctx, agg, table)
+	err = milvusClient.InsertStream(ctx, agg, table, TEST_TIER_ID)
 	assert.NoError(t, err)
 	time.Sleep(time.Second)
 	// Get neighbors
@@ -130,7 +133,7 @@ func TestClient_InsertStream_GetNeighbors(t *testing.T) {
 		vec[i] = float32(49.2)
 		vec2[i] = float32(59.8)
 	}
-	res, err := milvusClient.GetNeighbors(ctx, agg, []value.Value{FromList(vec), FromList(vec2)}, value.NewDict(map[string]value.Value{"topK": value.Int(2)}))
+	res, err := milvusClient.GetNeighbors(ctx, agg, []value.Value{FromList(vec), FromList(vec2)}, value.NewDict(map[string]value.Value{"topK": value.Int(2)}), TEST_TIER_ID)
 	assert.NoError(t, err)
 	expected := []value.Value{
 		value.NewList(
@@ -166,7 +169,7 @@ func TestClient_InsertStream_GetEmbedding(t *testing.T) {
 		},
 		Id: 1,
 	}
-	err = milvusClient.CreateKNNIndex(ctx, agg)
+	err = milvusClient.CreateKNNIndex(ctx, agg, TEST_TIER_ID)
 	assert.NoError(t, err)
 	table := value.NewList()
 	table.Grow(100)
@@ -178,11 +181,11 @@ func TestClient_InsertStream_GetEmbedding(t *testing.T) {
 		d := value.NewDict(map[string]value.Value{"value": value.Int(i), "timestamp": value.Int(t0), "groupkey": FromList(vector)})
 		table.Append(d)
 	}
-	err = milvusClient.InsertStream(ctx, agg, table)
+	err = milvusClient.InsertStream(ctx, agg, table, TEST_TIER_ID)
 	assert.NoError(t, err)
 	time.Sleep(time.Second)
 
-	result, err := milvusClient.GetEmbedding(ctx, agg, value.NewList([]value.Value{value.Int(0), value.Int(1), value.Int(2)}...))
+	result, err := milvusClient.GetEmbedding(ctx, agg, value.NewList([]value.Value{value.Int(0), value.Int(1), value.Int(2)}...), TEST_TIER_ID)
 	assert.NoError(t, err)
 	assert.Equal(t, 3, len(result))
 	for i := 0; i < 3; i++ {
@@ -200,8 +203,8 @@ func cleanUpCollections(milvusClient Client, ctx context.Context) {
 		return
 	}
 	for _, collection := range collections {
-		if strings.HasPrefix(collection.Name, "milvusAggTest") {
-			milvusClient.DeleteCollection(ctx, ftypes.AggName(collection.Name))
+		if strings.HasPrefix(collection.Name, "t_"+fmt.Sprint(TEST_TIER_ID)+"$milvusAggTest") {
+			milvusClient.client.DropCollection(ctx, collection.Name)
 		}
 	}
 }
