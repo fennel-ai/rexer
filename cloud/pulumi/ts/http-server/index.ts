@@ -5,7 +5,7 @@ import * as pulumi from "@pulumi/pulumi";
 import * as path from "path";
 import * as process from "process";
 import * as childProcess from "child_process";
-import {serviceEnvs} from "../tier-consts/consts";
+import {ecrImageExpiryPolicy, serviceEnvs} from "../tier-consts/consts";
 
 const name = "http-server"
 
@@ -50,6 +50,13 @@ export const setup = async (input: inputType) => {
             scanOnPush: true
         },
         imageTagMutability: "MUTABLE"
+    }, { provider: awsProvider });
+
+    const repoPolicy = new aws.ecr.LifecyclePolicy(`t-${input.tierId}-http-server-repo-policy`, {
+        repository: repo.name,
+        policy: {
+            rules: [ecrImageExpiryPolicy],
+        }
     }, { provider: awsProvider });
 
     // Get registry info (creds and endpoint).
