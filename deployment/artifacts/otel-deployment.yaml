@@ -228,20 +228,10 @@ data:
           - metric_name_selectors:
               - node_cpu_utilization
               - node_memory_utilization
-              - node_network_total_bytes
               - node_cpu_reserved_capacity
               - node_memory_reserved_capacity
-              - node_number_of_running_pods
-              - node_number_of_running_containers
             dimensions: [[NodeName, InstanceId, ClusterName]]
           - metric_name_selectors:
-              - node_cpu_utilization
-              - node_memory_utilization
-              - node_network_total_bytes
-              - node_cpu_reserved_capacity
-              - node_memory_reserved_capacity
-              - node_number_of_running_pods
-              - node_number_of_running_containers
               - node_cpu_usage_total
               - node_cpu_limit
               - node_memory_working_set
@@ -251,16 +241,10 @@ data:
           - metric_name_selectors:
               - pod_cpu_utilization
               - pod_memory_utilization
-              - pod_network_rx_bytes
-              - pod_network_tx_bytes
               - pod_cpu_utilization_over_pod_limit
               - pod_memory_utilization_over_pod_limit
-            dimensions: [[PodName, Namespace, ClusterName], [Service, Namespace, ClusterName], [Namespace, ClusterName], [ClusterName]]
-          - metric_name_selectors:
               - pod_cpu_reserved_capacity
               - pod_memory_reserved_capacity
-            dimensions: [[PodName, Namespace, ClusterName], [ClusterName]]
-          - metric_name_selectors:
               - pod_number_of_container_restarts
             dimensions: [[PodName, Namespace, ClusterName]]
           # cluster metrics
@@ -268,18 +252,6 @@ data:
               - cluster_node_count
               - cluster_failed_node_count
             dimensions: [[ClusterName]]
-          # service metrics
-          - metric_name_selectors:
-              - service_number_of_running_pods
-            dimensions: [[Service, Namespace, ClusterName], [ClusterName]]
-          # node fs metrics
-          - metric_name_selectors:
-              - node_filesystem_utilization
-            dimensions: [[NodeName, InstanceId, ClusterName], [ClusterName]]
-          # namespace metrics
-          - metric_name_selectors:
-              - namespace_number_of_running_pods
-            dimensions: [[Namespace, ClusterName], [ClusterName]]
 
       awsprometheusremotewrite:
         # This should be replaced before it is used for deployment
