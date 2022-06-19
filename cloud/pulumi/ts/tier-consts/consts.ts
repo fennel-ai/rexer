@@ -235,4 +235,5 @@ export const ecrImageExpiryPolicy = {
         countUnit: "days",
         countNumber: 120,
     },
+    action: "expire",
 }
