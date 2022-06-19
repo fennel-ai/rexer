@@ -220,20 +220,3 @@ export const serviceEnvs = [
 export const UNLEASH_USERNAME = "unleash";
 // needs to be at least 8 characters
 export const UNLEASH_PASSWORD = "unleash1";
-
-export const ecrImageExpiryPolicy = {
-    // sets the order in which rules are applied; this rule will be applied first
-    rulePriority: 1,
-    description: "Policy to expire images after 120 days",
-    selection: {
-        // since we don't deterministically know the tag prefix, we use "any" -> both tagged and untagged
-        // images are considered
-        tagStatus: "any",
-        // limits since when the image was pushed
-        countType: "sinceImagePushed",
-        // set 120 days as the ttl
-        countUnit: "days",
-        countNumber: 120,
-    },
-    action: "expire",
-}

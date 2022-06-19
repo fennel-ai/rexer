@@ -2,7 +2,7 @@ import * as pulumi from "@pulumi/pulumi";
 import * as aws from "@pulumi/aws"
 import * as docker from "@pulumi/docker";
 import * as k8s from "@pulumi/kubernetes";
-import {ecrImageExpiryPolicy, serviceEnvs} from "../tier-consts/consts";
+import {serviceEnvs} from "../tier-consts/consts";
 import process from "process";
 import childProcess from "child_process";
 import path from "path";
@@ -49,7 +49,24 @@ export const setup = async (input: inputType): Promise<pulumi.Output<outputType>
     const repoPolicy = new aws.ecr.LifecyclePolicy(`t-${input.tierId}-counter-cleanup-repo-policy`, {
         repository: repo.name,
         policy: {
-            rules: [ecrImageExpiryPolicy],
+            rules: [{
+                // sets the order in which rules are applied; this rule will be applied first
+                rulePriority: 1,
+                description: "Policy to expire images after 120 days",
+                selection: {
+                    // since we don't deterministically know the tag prefix, we use "any" -> both tagged and untagged
+                    // images are considered
+                    tagStatus: "any",
+                    // limits since when the image was pushed
+                    countType: "sinceImagePushed",
+                    // set 120 days as the ttl
+                    countUnit: "days",
+                    countNumber: 120,
+                },
+                action: {
+                    type: "expire"
+                },
+            }],
         }
     }, { provider: awsProvider });
 
