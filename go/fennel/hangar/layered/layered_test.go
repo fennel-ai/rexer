@@ -13,6 +13,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/samber/mo"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -72,7 +73,7 @@ func TestCaching(t *testing.T) {
 
 	gt.set(key.Data, field1, val1)
 	gt.set(key.Data, field2, val2)
-	ret, err := s.GetMany([]hangar.KeyGroup{{Prefix: key, Fields: [][]byte{field1, field2}}})
+	ret, err := s.GetMany([]hangar.KeyGroup{{Prefix: key, Fields: mo.Some[hangar.Fields]([][]byte{field1, field2})}})
 	time.Sleep(100 * time.Millisecond) // sleep a bit for writes to propagate
 	assert.NoError(t, err)
 	assert.Len(t, ret, 1)
@@ -84,17 +85,17 @@ func TestCaching(t *testing.T) {
 	gt.set(key.Data, field2, val4)
 
 	// since data is cached, doing gets from store should be same as before
-	ret, err = s.GetMany([]hangar.KeyGroup{{Prefix: key, Fields: [][]byte{field1, field2}}})
+	ret, err = s.GetMany([]hangar.KeyGroup{{Prefix: key, Fields: mo.Some[hangar.Fields]([][]byte{field1, field2})}})
 	assert.NoError(t, err)
 	assert.ElementsMatch(t, [][]byte{field1, field2}, ret[0].Fields)
 	assert.ElementsMatch(t, [][]byte{val1, val2}, ret[0].Values)
 
 	// now delete just one field
-	assert.NoError(t, s.DelMany([]hangar.KeyGroup{{Prefix: key, Fields: [][]byte{field1}}}))
+	assert.NoError(t, s.DelMany([]hangar.KeyGroup{{Prefix: key, Fields: mo.Some[hangar.Fields]([][]byte{field1})}}))
 	time.Sleep(100 * time.Millisecond) // sleep a bit for writes to propagate
 
 	// for that key alone the value should have changed
-	ret, err = s.GetMany([]hangar.KeyGroup{{Prefix: key, Fields: [][]byte{field1, field2}}})
+	ret, err = s.GetMany([]hangar.KeyGroup{{Prefix: key, Fields: mo.Some[hangar.Fields]([][]byte{field1, field2})}})
 	assert.NoError(t, err)
 	assert.ElementsMatch(t, [][]byte{field1, field2}, ret[0].Fields)
 	assert.ElementsMatch(t, [][]byte{val3, val2}, ret[0].Values)
@@ -130,10 +131,17 @@ func (m *mockStore) GetMany(kgs []hangar.KeyGroup) ([]hangar.ValGroup, error) {
 		prefix := string(kg.Prefix.Data)
 		vg := &hangar.ValGroup{}
 		if map_, ok := m.data[prefix]; ok {
-			for _, f := range kg.Fields {
-				if v, ok := map_[string(f)]; ok {
-					vg.Fields = append(vg.Fields, f)
+			if kg.Fields.IsAbsent() {
+				for f, v := range map_ {
+					vg.Fields = append(vg.Fields, []byte(f))
 					vg.Values = append(vg.Values, []byte(v))
+				}
+			} else {
+				for _, f := range kg.Fields.OrEmpty() {
+					if v, ok := map_[string(f)]; ok {
+						vg.Fields = append(vg.Fields, f)
+						vg.Values = append(vg.Values, []byte(v))
+					}
 				}
 			}
 		}

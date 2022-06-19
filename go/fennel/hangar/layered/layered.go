@@ -7,6 +7,8 @@ import (
 	"fmt"
 	"io"
 	"time"
+
+	"github.com/samber/mo"
 )
 
 /*
@@ -119,19 +121,26 @@ func (l *layered) GetMany(kgs []hangar.KeyGroup) ([]hangar.ValGroup, error) {
 	ptr := make([]int, len(kgs))
 
 	for i, cval := range results {
-		if len(cval.Fields) != len(kgs[i].Fields) {
-			found := make(map[string]struct{}, len(kgs[i].Fields))
+		if kgs[i].Fields.IsAbsent() {
+			var kg hangar.KeyGroup
+			kg.Prefix = kgs[i].Prefix
+			kg.Fields = mo.None[hangar.Fields]()
+			ptr[i] = len(notfound)
+			notfound = append(notfound, kg)
+		} else if len(cval.Fields) != len(kgs[i].Fields.MustGet()) {
+			found := make(map[string]struct{}, len(kgs[i].Fields.MustGet()))
 			for _, field := range cval.Fields {
 				found[string(field)] = struct{}{}
 			}
 			var kg hangar.KeyGroup
-			kg.Fields = make(hangar.Fields, 0, len(kgs[i].Fields)-len(cval.Fields))
-			for _, field := range kgs[i].Fields {
+			fields := make(hangar.Fields, 0, len(kgs[i].Fields.MustGet())-len(cval.Fields))
+			for _, field := range kgs[i].Fields.OrEmpty() {
 				if _, ok := found[string(field)]; !ok {
-					kg.Fields = append(kg.Fields, field)
+					fields = append(fields, field)
 				}
 			}
 			kg.Prefix = kgs[i].Prefix
+			kg.Fields = mo.Some(fields)
 			ptr[i] = len(notfound)
 			notfound = append(notfound, kg)
 		} else {
@@ -149,7 +158,7 @@ func (l *layered) GetMany(kgs []hangar.KeyGroup) ([]hangar.ValGroup, error) {
 	tofill := make([]hangar.KeyGroup, 0, len(notfound))
 	for i, dbval := range dbvals {
 		if len(dbval.Fields) > 0 {
-			results[i].Update(dbval)
+			results[ptr[i]].Update(dbval)
 			tofill = append(tofill, notfound[i])
 		}
 	}
@@ -165,7 +174,7 @@ func (l *layered) SetMany(keys []hangar.Key, vgs []hangar.ValGroup) error {
 	kgs := make([]hangar.KeyGroup, len(keys))
 	for i, key := range keys {
 		kgs[i].Prefix = key
-		kgs[i].Fields = vgs[i].Fields
+		kgs[i].Fields = mo.Some(vgs[i].Fields)
 	}
 	if err := l.cache.DelMany(kgs); err != nil {
 		return err

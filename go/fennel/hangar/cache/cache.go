@@ -172,12 +172,16 @@ func (c *rcache) DelMany(keyGroups []hangar.KeyGroup) error {
 		if _, err := c.enc.DecodeVal(asbytes, &asvg, true); err != nil {
 			return err
 		}
-		asvg.Del(keyGroups[i].Fields)
-		if len(asvg.Fields) > 0 {
-			setKeys = append(setKeys, ek)
-			vgs = append(vgs, asvg)
-		} else {
+		if keyGroups[i].Fields.IsAbsent() {
 			delKeys = append(delKeys, ek)
+		} else {
+			asvg.Del(keyGroups[i].Fields.MustGet())
+			if len(asvg.Fields) > 0 {
+				setKeys = append(setKeys, ek)
+				vgs = append(vgs, asvg)
+			} else {
+				delKeys = append(delKeys, ek)
+			}
 		}
 	}
 	return c.commit(setKeys, vgs, delKeys)
@@ -236,7 +240,9 @@ func (c *rcache) respond(reqchan chan getRequest) {
 			} else if _, err := c.enc.DecodeVal(asbytes, &res[i].Ok, true); err != nil {
 				res[i].Err = err
 			} else {
-				res[i].Ok.Select(req.keyGroups[i].Fields)
+				if req.keyGroups[i].Fields.IsPresent() {
+					res[i].Ok.Select(req.keyGroups[i].Fields.MustGet())
+				}
 			}
 		}
 		req.resch <- res
