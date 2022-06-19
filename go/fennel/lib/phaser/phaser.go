@@ -85,7 +85,7 @@ func BatchGet(tr tier.Tier, namespaces, identifiers []string, keys []value.Value
 	results := make([]value.Value, 0, len(namespaces))
 	for i := 0; i < len(namespaces); i++ {
 		if res[i] == nil || res[i] == redis.Nil {
-			results = append(results, value.Nil)
+			results = append(results, value.NewList())
 		} else {
 			resStr, ok := res[i].(string)
 			if !ok {
