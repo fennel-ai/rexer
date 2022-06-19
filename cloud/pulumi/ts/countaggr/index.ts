@@ -46,6 +46,30 @@ export const setup = async (input: inputType) => {
         imageTagMutability: "MUTABLE"
     }, { provider: awsProvider });
 
+    const repoPolicy = new aws.ecr.LifecyclePolicy(`t-${input.tierId}-countaggr-repo-policy`, {
+        repository: repo.name,
+        policy: {
+            rules: [{
+                // sets the order in which rules are applied; this rule will be applied first
+                rulePriority: 1,
+                description: "Policy to expire images after 120 days",
+                selection: {
+                    // since we don't deterministically know the tag prefix, we use "any" -> both tagged and untagged
+                    // images are considered
+                    tagStatus: "any",
+                    // limits since when the image was pushed
+                    countType: "sinceImagePushed",
+                    // set 120 days as the ttl
+                    countUnit: "days",
+                    countNumber: 120,
+                },
+                action: {
+                    type: "expire"
+                },
+            }],
+        }
+    }, { provider: awsProvider });
+
     // Get registry info (creds and endpoint).
     const registryInfo = repo.registryId.apply(async id => {
         const credentials = await aws.ecr.getCredentials({ registryId: id }, { provider: awsProvider });
