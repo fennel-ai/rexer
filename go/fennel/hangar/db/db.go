@@ -185,12 +185,16 @@ func (b *badgerDB) DelMany(keyGroups []hangar.KeyGroup) error {
 					if _, err := b.enc.DecodeVal(val, &old, false); err != nil {
 						return err
 					}
-					old.Del(keyGroups[i].Fields)
-					if len(old.Fields) > 0 {
-						setKeys = append(setKeys, ek)
-						vgs = append(vgs, old)
-					} else {
+					if keyGroups[i].Fields.IsAbsent() {
 						delKeys = append(delKeys, ek)
+					} else {
+						old.Del(keyGroups[i].Fields.MustGet())
+						if len(old.Fields) > 0 {
+							setKeys = append(setKeys, ek)
+							vgs = append(vgs, old)
+						} else {
+							delKeys = append(delKeys, ek)
+						}
 					}
 					return nil
 				}); err != nil {
@@ -230,7 +234,9 @@ func (b *badgerDB) respond(reqchan chan getRequest) {
 						if _, err := b.enc.DecodeVal(val, &res[i].Ok, false); err != nil {
 							return err
 						}
-						res[i].Ok.Select(req.keyGroups[i].Fields)
+						if req.keyGroups[i].Fields.IsPresent() {
+							res[i].Ok.Select(req.keyGroups[i].Fields.MustGet())
+						}
 						return nil
 					}); err != nil {
 						res[i].Err = err

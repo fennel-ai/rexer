@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/samber/mo"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -19,6 +20,7 @@ func TestStore(t *testing.T, maker func(t *testing.T) Hangar) {
 		{name: "test_set_ttl", test: testTTL},
 		{name: "test_partial_missing", test: testPartialMissing},
 		{name: "test_large_batch", test: testLargeBatch},
+		{name: "test_select_all", test: testSelectAll},
 	}
 	for _, scenario := range scenarios {
 		t.Run(scenario.name, func(t *testing.T) {
@@ -87,18 +89,26 @@ func testPartialMissing(t *testing.T, store Hangar) {
 	oddKg, evenKg := make([]KeyGroup, 10), make([]KeyGroup, 10)
 	oddVg, evenVg := make([]ValGroup, 10), make([]ValGroup, 10)
 	for i, kg := range kgs {
-		oddKg[i].Prefix = kg.Prefix
-		evenKg[i].Prefix = kg.Prefix
-		for j, field := range kg.Fields {
+		var oddfields Fields
+		var evenfields Fields
+		for j, field := range kg.Fields.OrEmpty() {
 			if (i+j)%2 == 0 {
-				evenKg[i].Fields = append(evenKg[i].Fields, field)
+				evenfields = append(evenfields, field)
 				evenVg[i].Fields = append(evenVg[i].Fields, vgs[i].Fields[j])
 				evenVg[i].Values = append(evenVg[i].Values, vgs[i].Values[j])
 			} else {
-				oddKg[i].Fields = append(oddKg[i].Fields, field)
+				oddfields = append(oddfields, field)
 				oddVg[i].Fields = append(oddVg[i].Fields, vgs[i].Fields[j])
 				oddVg[i].Values = append(oddVg[i].Values, vgs[i].Values[j])
 			}
+		}
+		oddKg[i] = KeyGroup{
+			Prefix: kg.Prefix,
+			Fields: mo.Some(oddfields),
+		}
+		evenKg[i] = KeyGroup{
+			Prefix: kg.Prefix,
+			Fields: mo.Some(evenfields),
 		}
 	}
 
@@ -115,6 +125,24 @@ func testLargeBatch(t *testing.T, store Hangar) {
 	err := store.SetMany(keys, vgs)
 	assert.NoError(t, err)
 	verifyValues(t, store, kgs, vgs)
+	assert.NoError(t, store.DelMany(kgs))
+	verifyMissing(t, store, kgs)
+}
+
+func testSelectAll(t *testing.T, store Hangar) {
+	keys, kgs, vgs := getData(10, 20)
+	verifyMissing(t, store, kgs)
+	err := store.SetMany(keys, vgs)
+	assert.NoError(t, err)
+	verifyValues(t, store, kgs, vgs)
+	// Key-groups with fields no specified.
+	kgsNoFields := make([]KeyGroup, 10)
+	for i, kg := range kgs {
+		kgsNoFields[i] = KeyGroup{
+			Prefix: kg.Prefix,
+		}
+	}
+	verifyValues(t, store, kgsNoFields, vgs)
 	assert.NoError(t, store.DelMany(kgs))
 	verifyMissing(t, store, kgs)
 }
@@ -136,7 +164,7 @@ func verifyMissing(t *testing.T, store Hangar, kgs []KeyGroup) {
 	assert.NoError(t, err)
 	assert.Len(t, found, len(kgs))
 	for i, kg := range kgs {
-		for _, field := range kg.Fields {
+		for _, field := range kg.Fields.OrEmpty() {
 			assert.NotContains(t, found[i].Fields, field)
 		}
 	}
@@ -154,12 +182,12 @@ func getData(numKey, numIndex int) ([]Key, []KeyGroup, []ValGroup) {
 		keys[i] = Key{Data: []byte(utils.RandString(10))}
 		kgs[i] = KeyGroup{
 			Prefix: keys[i],
-			Fields: fields,
+			Fields: mo.Some(fields),
 		}
 		vgs[i] = ValGroup{
 			Fields: fields,
 		}
-		for j := range kgs[i].Fields {
+		for j := range kgs[i].Fields.OrEmpty() {
 			vgs[i].Values = append(vgs[i].Values, []byte(fmt.Sprintf("value%d", i*numIndex+j)))
 		}
 	}
@@ -197,7 +225,7 @@ func benchmarkGetSet(b *testing.B, store Hangar, numKeys, numFields, szKey, szVa
 		cur := 0
 		for start := rand.Intn(szGets); cur < len(toRead) && start < len(keys); cur++ {
 			toRead[cur].Prefix = keys[start]
-			toRead[cur].Fields = fields[start]
+			toRead[cur].Fields = mo.Some[Fields](fields[start])
 			start += ratio
 		}
 		b.StartTimer()

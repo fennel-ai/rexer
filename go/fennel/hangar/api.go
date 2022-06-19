@@ -1,8 +1,11 @@
 package hangar
 
 import (
-	"fennel/lib/ftypes"
 	"io"
+
+	"fennel/lib/ftypes"
+
+	"github.com/samber/mo"
 )
 
 type Key struct {
@@ -14,7 +17,8 @@ type Values [][]byte
 
 type KeyGroup struct {
 	Prefix Key
-	Fields Fields
+	// If Fields is absent, all fields are selected.
+	Fields mo.Option[Fields]
 }
 
 type ValGroup struct {

@@ -54,6 +54,7 @@ require (
 	github.com/pierrec/lz4/v4 v4.1.8 // indirect
 	github.com/raulk/clock v1.1.0 // indirect
 	github.com/raulk/go-watchdog v1.2.0 // indirect
+	github.com/samber/mo v1.0.0 // indirect
 	github.com/twmb/murmur3 v1.1.5 // indirect
 	go.opencensus.io v0.22.5 // indirect
 	go.opentelemetry.io/otel/exporters/otlp/internal/retry v1.7.0 // indirect
