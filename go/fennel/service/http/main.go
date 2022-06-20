@@ -22,6 +22,8 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
+	"golang.org/x/net/http2"
+	"golang.org/x/net/http2/h2c"
 )
 
 // ------------------------ START metric definitions ----------------------------
@@ -152,7 +154,10 @@ func main() {
 	// to know that server has initialized and is ready to take traffic
 	log.Println("server is ready...")
 
-	if err = http.Serve(l, router); err != http.ErrServerClosed {
+	// Start listening for incoming connections using http/2.
+	server := &http2.Server{}
+	handler := h2c.NewHandler(router, server)
+	if err = http.Serve(l, handler); err != http.ErrServerClosed {
 		log.Fatalf("Serve(): %v", err)
 	}
 }
