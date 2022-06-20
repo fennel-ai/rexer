@@ -4,6 +4,7 @@ import * as pulumi from "@pulumi/pulumi"
 import * as vpc from "../vpc";
 import * as eks from "../eks";
 import * as milvus from "../milvus";
+import * as account from "../account";
 import * as aurora from "../aurora";
 import * as elasticache from "../elasticache";
 import * as redis from "../redis";
@@ -62,6 +63,31 @@ type EksConf = {
 
 type MilvusConf = {}
 
+type NewAccount = {
+    // account name
+    name: string,
+    // this is the email associated with this account, this should be unique i.e. an AWS account, even outside the
+    // organization is not supposed to have used this email.
+    //
+    // consider using email of the form: `admin+{account-name}@fennel.ai` to easily map the accounts with the email
+    email: string,
+}
+
+type ExistingAccount = {
+    // ARN of the IAM role which has access in the existing account to create/update/delete the resources
+    roleArn: string
+}
+
+// Account configuration
+//
+// Only one of them should be set
+type AccountConf = {
+    // Configuration for creating a new account to setup the plane
+    newAccount?: NewAccount,
+    // Configuration to use an existing account to setup the plane
+    existingAccount?: ExistingAccount,
+}
+
 export type PlaneConf = {
     // Should be set to false, when deleting the plane
     //
@@ -70,9 +96,11 @@ export type PlaneConf = {
     //
     // NOTE: Please add a justification if this value is being set to False and the configuration is being checked-in
     protectResources: boolean,
+
+    accountConf: AccountConf,
+
     planeId: number,
     region: string,
-    roleArn: string,
     vpcConf: VpcConfig,
     dbConf: DBConfig,
     confluentConf: ConfluentConfig,
@@ -85,6 +113,8 @@ export type PlaneConf = {
 }
 
 export type PlaneOutput = {
+    // ARN of the IAM role using which the resources were created in the plane and will be created in the tier
+    roleArn: string,
     eks: eks.outputType,
     vpc: vpc.outputType,
     redis: redis.outputType,
@@ -132,15 +162,30 @@ const setupPlugins = async (stack: pulumi.automation.Stack) => {
 // This is our pulumi program in "inline function" form
 const setupResources = async () => {
     const input = parseConfig();
+    // setup account for the plane, if configured explicitly. Else, use the master account.
+    let roleArn: pulumi.Output<string>;
+    if (input.accountConf.newAccount !== undefined) {
+        const accountOutput = await account.setup({
+            name: input.accountConf.newAccount.name,
+            email: input.accountConf.newAccount.email
+        })
+        roleArn = accountOutput.roleArn;
+    } else if (input.accountConf.existingAccount !== undefined) {
+        roleArn = pulumi.output(input.accountConf.existingAccount.roleArn);
+    } else {
+        console.info("both newAccount and existingAccount are undefined; Exactly one of them should be set")
+        process.exit(1)
+    }
+
     const vpcOutput = await vpc.setup({
         region: input.region,
-        roleArn: input.roleArn,
+        roleArn: roleArn,
         cidr: input.vpcConf.cidr,
         controlPlane: input.controlPlaneConf,
         planeId: input.planeId,
     })
     const eksOutput = await eks.setup({
-        roleArn: input.roleArn,
+        roleArn: roleArn,
         region: input.region,
         vpcId: vpcOutput.vpcId,
         publicSubnets: vpcOutput.publicSubnets,
@@ -150,7 +195,7 @@ const setupResources = async () => {
         nodeGroups: input.eksConf?.nodeGroups,
     });
     const auroraUnleashOutput = await unleashAurora.setup({
-        roleArn: input.roleArn,
+        roleArn: roleArn,
         region: input.region,
         vpcId: vpcOutput.vpcId,
         minCapacity: 2,
@@ -163,7 +208,7 @@ const setupResources = async () => {
         protect: input.protectResources,
     });
     const auroraOutput = await aurora.setup({
-        roleArn: input.roleArn,
+        roleArn: roleArn,
         region: input.region,
         vpcId: vpcOutput.vpcId,
         minCapacity: input.dbConf.minCapacity || 1,
@@ -179,7 +224,7 @@ const setupResources = async () => {
         protect: input.protectResources,
     })
     const redisOutput = await redis.setup({
-        roleArn: input.roleArn,
+        roleArn: roleArn,
         region: input.region,
         vpcId: vpcOutput.vpcId,
         connectedSecurityGroups: {
@@ -194,7 +239,7 @@ const setupResources = async () => {
         protect: input.protectResources,
     })
     const elasticacheOutput = await elasticache.setup({
-        roleArn: input.roleArn,
+        roleArn: roleArn,
         region: input.region,
         vpcId: vpcOutput.vpcId,
         connectedSecurityGroups: {
@@ -213,7 +258,7 @@ const setupResources = async () => {
     if (input.milvusConf !== undefined) {
         milvusOutput = await milvus.setup({
             region: input.region,
-            roleArn: input.roleArn,
+            roleArn: roleArn,
             planeId: input.planeId,
             kubeconfig: eksOutput.kubeconfig,
         })
@@ -227,7 +272,7 @@ const setupResources = async () => {
     })
     const connectorSinkOutput = await connectorSink.setup({
         region: input.region,
-        roleArn: input.roleArn,
+        roleArn: roleArn,
         planeId: input.planeId,
         protect: input.protectResources,
     })
@@ -236,7 +281,7 @@ const setupResources = async () => {
         useAMP: input.prometheusConf.useAMP,
         kubeconfig: eksOutput.kubeconfig,
         region: input.region,
-        roleArn: input.roleArn,
+        roleArn: roleArn,
         planeId: input.planeId,
         protect: input.protectResources,
     })
@@ -244,7 +289,7 @@ const setupResources = async () => {
     const telemetryOutput = await telemetry.setup({
         planeId: input.planeId,
         region: input.region,
-        roleArn: input.roleArn,
+        roleArn: roleArn,
         eksClusterName: eksOutput.clusterName,
         kubeconfig: eksOutput.kubeconfig,
         nodeInstanceRole: eksOutput.instanceRole,
@@ -253,19 +298,20 @@ const setupResources = async () => {
 
     const offlineAggregateSourceFiles = await offlineAggregateSources.setup({
         region: input.region,
-        roleArn: input.roleArn,
+        roleArn: roleArn,
         planeId: input.planeId,
         protect: input.protectResources,
     })
 
     const glueOutput = await glueSource.setup({
         region: input.region,
-        roleArn: input.roleArn,
+        roleArn: roleArn,
         planeId: input.planeId,
         protect: input.protectResources,
     })
 
     return {
+        roleArn: roleArn,
         eks: eksOutput,
         vpc: vpcOutput,
         redis: redisOutput,
@@ -285,6 +331,17 @@ const setupResources = async () => {
 const setupDataPlane = async (args: PlaneConf, preview?: boolean, destroy?: boolean) => {
     const projectName = `launchpad`
     const stackName = `fennel/${projectName}/plane-${args.planeId}`
+
+    // validate that exactly one account configuration is set
+    if (args.accountConf.newAccount !== undefined && args.accountConf.existingAccount !== undefined) {
+        console.info("both newAccount and existingAccount configuration is set; Exactly one should be set")
+        process.exit(1);
+    }
+
+    if (args.accountConf.newAccount === undefined && args.accountConf.existingAccount === undefined) {
+        console.info("neither newAccount or existingAccount is set; Exactly one should be set")
+        process.exit(1);
+    }
 
     console.info("initializing stack");
     // Create our stack

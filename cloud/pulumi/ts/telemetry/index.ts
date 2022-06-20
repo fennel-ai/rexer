@@ -13,7 +13,7 @@ export const plugins = {
 
 export type inputType = {
     planeId: number,
-    roleArn: string,
+    roleArn: pulumi.Input<string>,
     region: string,
     kubeconfig: pulumi.Output<any>,
     eksClusterName: pulumi.Output<string>,

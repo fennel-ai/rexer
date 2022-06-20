@@ -12,7 +12,7 @@ export const plugins = {
 
 export type inputType = {
     region: string,
-    roleArn: string,
+    roleArn: pulumi.Input<string>,
     // TODO(mohit): See if this should be made a tier specific resource
     planeId: number,
     protect: boolean,

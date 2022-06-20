@@ -2,6 +2,7 @@ import setupTier, { TierConf } from "./tier";
 import setupDataPlane, { PlaneConf, PlaneOutput } from "./plane";
 import * as vpc from "../vpc";
 import * as eks from "../eks";
+import * as account from "../account";
 import * as aurora from "../aurora";
 import * as unleashDb from "../unleash-postgres";
 import * as elasticache from "../elasticache";
@@ -22,7 +23,7 @@ const controlPlane: vpc.controlPlaneConfig = {
     region: "us-west-2",
     accountId: "030813887342",
     vpcId: "vpc-0d9942e83f94c049c",
-    roleArn: "arn:aws:iam::030813887342:role/admin",
+    roleArn: account.MASTER_ACCOUNT_ADMIN_ROLE_ARN,
     routeTableId: "rtb-07afe7458db9c4479",
     cidrBlock: "172.31.0.0/16"
 }
@@ -145,9 +146,15 @@ const planeConfs: Record<number, PlaneConf> = {
     // this is used for test resources
     2: {
         protectResources: true,
+
+        accountConf: {
+            existingAccount: {
+                roleArn: account.MASTER_ACCOUNT_ADMIN_ROLE_ARN,
+            }
+        },
+
         planeId: 2,
         region: "us-west-2",
-        roleArn: "arn:aws:iam::030813887342:role/admin",
         vpcConf: {
             cidr: "10.102.0.0/16"
         },
@@ -191,9 +198,15 @@ const planeConfs: Record<number, PlaneConf> = {
     // Fennel's staging data plane to run dev tiers
     3: {
         protectResources: true,
+
+        accountConf: {
+            existingAccount: {
+                roleArn: account.MASTER_ACCOUNT_ADMIN_ROLE_ARN,
+            }
+        },
+
         planeId: 3,
         region: "us-west-2",
-        roleArn: "arn:aws:iam::030813887342:role/admin",
         vpcConf: {
             cidr: "10.103.0.0/16"
         },
@@ -239,9 +252,15 @@ const planeConfs: Record<number, PlaneConf> = {
     // Lokal's prod tier data plane
     5: {
         protectResources: true,
+
+        accountConf: {
+            existingAccount: {
+                roleArn: account.MASTER_ACCOUNT_ADMIN_ROLE_ARN,
+            }
+        },
+
         planeId: 5,
         region: "ap-south-1",
-        roleArn: "arn:aws:iam::030813887342:role/admin",
         vpcConf: {
             cidr: "10.105.0.0/16"
         },
@@ -304,9 +323,15 @@ const planeConfs: Record<number, PlaneConf> = {
     // Lokal's staging data plane
     6: {
         protectResources: true,
+
+        accountConf: {
+            existingAccount: {
+                roleArn: account.MASTER_ACCOUNT_ADMIN_ROLE_ARN,
+            }
+        },
+
         planeId: 6,
         region: "ap-south-1",
-        roleArn: "arn:aws:iam::030813887342:role/admin",
         vpcConf: {
             cidr: "10.106.0.0/16"
         },
@@ -335,6 +360,8 @@ const planeConfs: Record<number, PlaneConf> = {
             useAMP: false
         },
     },
+    // plane 7 - created for testing out multi-arch support, not checked in yet
+    // plane 8 - pending account close, post which it can be destroyed
 }
 
 //==============================================================================
@@ -376,6 +403,7 @@ console.log("Updating plane: ", planeId)
 const planeConf = planeConfs[planeId]
 const dataplane = await setupDataPlane(planeConf, preview, destroy);
 
+const roleArn = dataplane[nameof<PlaneOutput>("roleArn")].value as string
 const confluentOutput = dataplane[nameof<PlaneOutput>("confluent")].value as confluentenv.outputType
 const dbOutput = dataplane[nameof<PlaneOutput>("db")].value as aurora.outputType
 const unleashDbOutput = dataplane[nameof<PlaneOutput>("unleashDb")].value as unleashDb.outputType
@@ -454,7 +482,7 @@ if (tierId !== 0) {
         unleashDbEndpoint: unleashDbOutput.host,
         unleashDbPort: unleashDbOutput.port,
 
-        roleArn: planeConf.roleArn,
+        roleArn: roleArn,
         region: planeConf.region,
 
         kubeconfig: JSON.stringify(eksOutput.kubeconfig),

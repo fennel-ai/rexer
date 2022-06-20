@@ -37,7 +37,7 @@ export type NodeGroupConf = {
 }
 
 export type inputType = {
-    roleArn: string,
+    roleArn: pulumi.Input<string>,
     region: string,
     vpcId: pulumi.Output<string>,
     connectedVpcCidrs: string[],

@@ -20,7 +20,7 @@ export type controlPlaneConfig = {
 export type inputType = {
     cidr: string
     region: string
-    roleArn: string
+    roleArn: pulumi.Input<string>,
     controlPlane: controlPlaneConfig,
     planeId: number,
 }
