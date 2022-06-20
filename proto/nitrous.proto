@@ -16,8 +16,7 @@ service Nitrous {
   rpc GetAggregateValues(AggregateValuesRequest)
       returns (AggregateValuesResponse);
   // API to get processing lag. This is especially useful in tests.
-  rpc GetProfileLag(ProfileLagRequest) returns (LagResponse);
-  rpc GetAggregateLag(AggregateLagRequest) returns (LagResponse);
+  rpc GetLag(LagRequest) returns (LagResponse);
 }
 
 enum OpType {
@@ -68,16 +67,7 @@ message ProfileUpdate {
   uint32 timestamp = 3;
 }
 
-message ProfileLagRequest { uint32 tier_id = 1; }
-
-// For now, we report a single lag for all aggregates in a tier. At some point,
-// we may want to catch up new codecs by having them read through the entire
-// binlog via separate consumers. At that point, we should add agg_id and
-// codec fields to this message.
-// Note that the actual backfill of new aggregates is the responsiblity of the
-// aggregator. When a new aggregate is defined, the aggregator should parse
-// through the entire action/profile log and create ops for nitrous to process.
-message AggregateLagRequest { uint32 tier_id = 1; }
+message LagRequest {}
 
 message LagResponse { uint64 lag = 1; }
 

@@ -501,16 +501,14 @@ func (x *ProfileUpdate) GetTimestamp() uint32 {
 	return 0
 }
 
-type ProfileLagRequest struct {
+type LagRequest struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
-
-	TierId uint32 `protobuf:"varint,1,opt,name=tier_id,json=tierId,proto3" json:"tier_id,omitempty"`
 }
 
-func (x *ProfileLagRequest) Reset() {
-	*x = ProfileLagRequest{}
+func (x *LagRequest) Reset() {
+	*x = LagRequest{}
 	if protoimpl.UnsafeEnabled {
 		mi := &file_nitrous_proto_msgTypes[6]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -518,13 +516,13 @@ func (x *ProfileLagRequest) Reset() {
 	}
 }
 
-func (x *ProfileLagRequest) String() string {
+func (x *LagRequest) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*ProfileLagRequest) ProtoMessage() {}
+func (*LagRequest) ProtoMessage() {}
 
-func (x *ProfileLagRequest) ProtoReflect() protoreflect.Message {
+func (x *LagRequest) ProtoReflect() protoreflect.Message {
 	mi := &file_nitrous_proto_msgTypes[6]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -536,70 +534,9 @@ func (x *ProfileLagRequest) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use ProfileLagRequest.ProtoReflect.Descriptor instead.
-func (*ProfileLagRequest) Descriptor() ([]byte, []int) {
+// Deprecated: Use LagRequest.ProtoReflect.Descriptor instead.
+func (*LagRequest) Descriptor() ([]byte, []int) {
 	return file_nitrous_proto_rawDescGZIP(), []int{6}
-}
-
-func (x *ProfileLagRequest) GetTierId() uint32 {
-	if x != nil {
-		return x.TierId
-	}
-	return 0
-}
-
-// For now, we report a single lag for all aggregates in a tier. At some point,
-// we may want to catch up new codecs by having them read through the entire
-// binlog via separate consumers. At that point, we should add agg_id and
-// codec fields to this message.
-// Note that the actual backfill of new aggregates is the responsiblity of the
-// aggregator. When a new aggregate is defined, the aggregator should parse
-// through the entire action/profile log and create ops for nitrous to process.
-type AggregateLagRequest struct {
-	state         protoimpl.MessageState
-	sizeCache     protoimpl.SizeCache
-	unknownFields protoimpl.UnknownFields
-
-	TierId uint32 `protobuf:"varint,1,opt,name=tier_id,json=tierId,proto3" json:"tier_id,omitempty"`
-}
-
-func (x *AggregateLagRequest) Reset() {
-	*x = AggregateLagRequest{}
-	if protoimpl.UnsafeEnabled {
-		mi := &file_nitrous_proto_msgTypes[7]
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		ms.StoreMessageInfo(mi)
-	}
-}
-
-func (x *AggregateLagRequest) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*AggregateLagRequest) ProtoMessage() {}
-
-func (x *AggregateLagRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_nitrous_proto_msgTypes[7]
-	if protoimpl.UnsafeEnabled && x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use AggregateLagRequest.ProtoReflect.Descriptor instead.
-func (*AggregateLagRequest) Descriptor() ([]byte, []int) {
-	return file_nitrous_proto_rawDescGZIP(), []int{7}
-}
-
-func (x *AggregateLagRequest) GetTierId() uint32 {
-	if x != nil {
-		return x.TierId
-	}
-	return 0
 }
 
 type LagResponse struct {
@@ -613,7 +550,7 @@ type LagResponse struct {
 func (x *LagResponse) Reset() {
 	*x = LagResponse{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_nitrous_proto_msgTypes[8]
+		mi := &file_nitrous_proto_msgTypes[7]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -626,7 +563,7 @@ func (x *LagResponse) String() string {
 func (*LagResponse) ProtoMessage() {}
 
 func (x *LagResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_nitrous_proto_msgTypes[8]
+	mi := &file_nitrous_proto_msgTypes[7]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -639,7 +576,7 @@ func (x *LagResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use LagResponse.ProtoReflect.Descriptor instead.
 func (*LagResponse) Descriptor() ([]byte, []int) {
-	return file_nitrous_proto_rawDescGZIP(), []int{8}
+	return file_nitrous_proto_rawDescGZIP(), []int{7}
 }
 
 func (x *LagResponse) GetLag() uint64 {
@@ -664,7 +601,7 @@ type AggregateValuesRequest struct {
 func (x *AggregateValuesRequest) Reset() {
 	*x = AggregateValuesRequest{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_nitrous_proto_msgTypes[9]
+		mi := &file_nitrous_proto_msgTypes[8]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -677,7 +614,7 @@ func (x *AggregateValuesRequest) String() string {
 func (*AggregateValuesRequest) ProtoMessage() {}
 
 func (x *AggregateValuesRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_nitrous_proto_msgTypes[9]
+	mi := &file_nitrous_proto_msgTypes[8]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -690,7 +627,7 @@ func (x *AggregateValuesRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AggregateValuesRequest.ProtoReflect.Descriptor instead.
 func (*AggregateValuesRequest) Descriptor() ([]byte, []int) {
-	return file_nitrous_proto_rawDescGZIP(), []int{9}
+	return file_nitrous_proto_rawDescGZIP(), []int{8}
 }
 
 func (x *AggregateValuesRequest) GetTierId() uint32 {
@@ -739,7 +676,7 @@ type AggregateValuesResponse struct {
 func (x *AggregateValuesResponse) Reset() {
 	*x = AggregateValuesResponse{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_nitrous_proto_msgTypes[10]
+		mi := &file_nitrous_proto_msgTypes[9]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -752,7 +689,7 @@ func (x *AggregateValuesResponse) String() string {
 func (*AggregateValuesResponse) ProtoMessage() {}
 
 func (x *AggregateValuesResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_nitrous_proto_msgTypes[10]
+	mi := &file_nitrous_proto_msgTypes[9]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -765,7 +702,7 @@ func (x *AggregateValuesResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AggregateValuesResponse.ProtoReflect.Descriptor instead.
 func (*AggregateValuesResponse) Descriptor() ([]byte, []int) {
-	return file_nitrous_proto_rawDescGZIP(), []int{10}
+	return file_nitrous_proto_rawDescGZIP(), []int{9}
 }
 
 func (x *AggregateValuesResponse) GetResults() []*value.PValue {
@@ -787,7 +724,7 @@ type ProfilesRequest struct {
 func (x *ProfilesRequest) Reset() {
 	*x = ProfilesRequest{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_nitrous_proto_msgTypes[11]
+		mi := &file_nitrous_proto_msgTypes[10]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -800,7 +737,7 @@ func (x *ProfilesRequest) String() string {
 func (*ProfilesRequest) ProtoMessage() {}
 
 func (x *ProfilesRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_nitrous_proto_msgTypes[11]
+	mi := &file_nitrous_proto_msgTypes[10]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -813,7 +750,7 @@ func (x *ProfilesRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ProfilesRequest.ProtoReflect.Descriptor instead.
 func (*ProfilesRequest) Descriptor() ([]byte, []int) {
-	return file_nitrous_proto_rawDescGZIP(), []int{11}
+	return file_nitrous_proto_rawDescGZIP(), []int{10}
 }
 
 func (x *ProfilesRequest) GetTierId() uint32 {
@@ -841,7 +778,7 @@ type ProfilesResponse struct {
 func (x *ProfilesResponse) Reset() {
 	*x = ProfilesResponse{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_nitrous_proto_msgTypes[12]
+		mi := &file_nitrous_proto_msgTypes[11]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -854,7 +791,7 @@ func (x *ProfilesResponse) String() string {
 func (*ProfilesResponse) ProtoMessage() {}
 
 func (x *ProfilesResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_nitrous_proto_msgTypes[12]
+	mi := &file_nitrous_proto_msgTypes[11]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -867,7 +804,7 @@ func (x *ProfilesResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ProfilesResponse.ProtoReflect.Descriptor instead.
 func (*ProfilesResponse) Descriptor() ([]byte, []int) {
-	return file_nitrous_proto_rawDescGZIP(), []int{12}
+	return file_nitrous_proto_rawDescGZIP(), []int{11}
 }
 
 func (x *ProfilesResponse) GetResults() []*value.PValue {
@@ -931,12 +868,7 @@ var file_nitrous_proto_rawDesc = []byte{
 	0x20, 0x01, 0x28, 0x0b, 0x32, 0x07, 0x2e, 0x50, 0x56, 0x61, 0x6c, 0x75, 0x65, 0x52, 0x05, 0x76,
 	0x61, 0x6c, 0x75, 0x65, 0x12, 0x1c, 0x0a, 0x09, 0x74, 0x69, 0x6d, 0x65, 0x73, 0x74, 0x61, 0x6d,
 	0x70, 0x18, 0x03, 0x20, 0x01, 0x28, 0x0d, 0x52, 0x09, 0x74, 0x69, 0x6d, 0x65, 0x73, 0x74, 0x61,
-	0x6d, 0x70, 0x22, 0x2c, 0x0a, 0x11, 0x50, 0x72, 0x6f, 0x66, 0x69, 0x6c, 0x65, 0x4c, 0x61, 0x67,
-	0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x12, 0x17, 0x0a, 0x07, 0x74, 0x69, 0x65, 0x72, 0x5f,
-	0x69, 0x64, 0x18, 0x01, 0x20, 0x01, 0x28, 0x0d, 0x52, 0x06, 0x74, 0x69, 0x65, 0x72, 0x49, 0x64,
-	0x22, 0x2e, 0x0a, 0x13, 0x41, 0x67, 0x67, 0x72, 0x65, 0x67, 0x61, 0x74, 0x65, 0x4c, 0x61, 0x67,
-	0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x12, 0x17, 0x0a, 0x07, 0x74, 0x69, 0x65, 0x72, 0x5f,
-	0x69, 0x64, 0x18, 0x01, 0x20, 0x01, 0x28, 0x0d, 0x52, 0x06, 0x74, 0x69, 0x65, 0x72, 0x49, 0x64,
+	0x6d, 0x70, 0x22, 0x0c, 0x0a, 0x0a, 0x4c, 0x61, 0x67, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74,
 	0x22, 0x1f, 0x0a, 0x0b, 0x4c, 0x61, 0x67, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x12,
 	0x10, 0x0a, 0x03, 0x6c, 0x61, 0x67, 0x18, 0x01, 0x20, 0x01, 0x28, 0x04, 0x52, 0x03, 0x6c, 0x61,
 	0x67, 0x22, 0x96, 0x01, 0x0a, 0x16, 0x41, 0x67, 0x67, 0x72, 0x65, 0x67, 0x61, 0x74, 0x65, 0x56,
@@ -966,7 +898,7 @@ var file_nitrous_proto_rawDesc = []byte{
 	0x0e, 0x50, 0x52, 0x4f, 0x46, 0x49, 0x4c, 0x45, 0x5f, 0x55, 0x50, 0x44, 0x41, 0x54, 0x45, 0x10,
 	0x01, 0x12, 0x14, 0x0a, 0x10, 0x43, 0x52, 0x45, 0x41, 0x54, 0x45, 0x5f, 0x41, 0x47, 0x47, 0x52,
 	0x45, 0x47, 0x41, 0x54, 0x45, 0x10, 0x02, 0x12, 0x14, 0x0a, 0x10, 0x44, 0x45, 0x4c, 0x45, 0x54,
-	0x45, 0x5f, 0x41, 0x47, 0x47, 0x52, 0x45, 0x47, 0x41, 0x54, 0x45, 0x10, 0x03, 0x32, 0xb0, 0x02,
+	0x45, 0x5f, 0x41, 0x47, 0x47, 0x52, 0x45, 0x47, 0x41, 0x54, 0x45, 0x10, 0x03, 0x32, 0xdb, 0x01,
 	0x0a, 0x07, 0x4e, 0x69, 0x74, 0x72, 0x6f, 0x75, 0x73, 0x12, 0x42, 0x0a, 0x0b, 0x47, 0x65, 0x74,
 	0x50, 0x72, 0x6f, 0x66, 0x69, 0x6c, 0x65, 0x73, 0x12, 0x18, 0x2e, 0x6e, 0x69, 0x74, 0x72, 0x6f,
 	0x75, 0x73, 0x2e, 0x50, 0x72, 0x6f, 0x66, 0x69, 0x6c, 0x65, 0x73, 0x52, 0x65, 0x71, 0x75, 0x65,
@@ -977,18 +909,12 @@ var file_nitrous_proto_rawDesc = []byte{
 	0x67, 0x72, 0x65, 0x67, 0x61, 0x74, 0x65, 0x56, 0x61, 0x6c, 0x75, 0x65, 0x73, 0x52, 0x65, 0x71,
 	0x75, 0x65, 0x73, 0x74, 0x1a, 0x20, 0x2e, 0x6e, 0x69, 0x74, 0x72, 0x6f, 0x75, 0x73, 0x2e, 0x41,
 	0x67, 0x67, 0x72, 0x65, 0x67, 0x61, 0x74, 0x65, 0x56, 0x61, 0x6c, 0x75, 0x65, 0x73, 0x52, 0x65,
-	0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x12, 0x41, 0x0a, 0x0d, 0x47, 0x65, 0x74, 0x50, 0x72, 0x6f,
-	0x66, 0x69, 0x6c, 0x65, 0x4c, 0x61, 0x67, 0x12, 0x1a, 0x2e, 0x6e, 0x69, 0x74, 0x72, 0x6f, 0x75,
-	0x73, 0x2e, 0x50, 0x72, 0x6f, 0x66, 0x69, 0x6c, 0x65, 0x4c, 0x61, 0x67, 0x52, 0x65, 0x71, 0x75,
-	0x65, 0x73, 0x74, 0x1a, 0x14, 0x2e, 0x6e, 0x69, 0x74, 0x72, 0x6f, 0x75, 0x73, 0x2e, 0x4c, 0x61,
-	0x67, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x12, 0x45, 0x0a, 0x0f, 0x47, 0x65, 0x74,
-	0x41, 0x67, 0x67, 0x72, 0x65, 0x67, 0x61, 0x74, 0x65, 0x4c, 0x61, 0x67, 0x12, 0x1c, 0x2e, 0x6e,
-	0x69, 0x74, 0x72, 0x6f, 0x75, 0x73, 0x2e, 0x41, 0x67, 0x67, 0x72, 0x65, 0x67, 0x61, 0x74, 0x65,
-	0x4c, 0x61, 0x67, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x1a, 0x14, 0x2e, 0x6e, 0x69, 0x74,
-	0x72, 0x6f, 0x75, 0x73, 0x2e, 0x4c, 0x61, 0x67, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65,
-	0x42, 0x17, 0x5a, 0x15, 0x66, 0x65, 0x6e, 0x6e, 0x65, 0x6c, 0x2f, 0x6e, 0x69, 0x74, 0x72, 0x6f,
-	0x75, 0x73, 0x2f, 0x72, 0x70, 0x63, 0x2f, 0x76, 0x32, 0x62, 0x06, 0x70, 0x72, 0x6f, 0x74, 0x6f,
-	0x33,
+	0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x12, 0x33, 0x0a, 0x06, 0x47, 0x65, 0x74, 0x4c, 0x61, 0x67,
+	0x12, 0x13, 0x2e, 0x6e, 0x69, 0x74, 0x72, 0x6f, 0x75, 0x73, 0x2e, 0x4c, 0x61, 0x67, 0x52, 0x65,
+	0x71, 0x75, 0x65, 0x73, 0x74, 0x1a, 0x14, 0x2e, 0x6e, 0x69, 0x74, 0x72, 0x6f, 0x75, 0x73, 0x2e,
+	0x4c, 0x61, 0x67, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x42, 0x17, 0x5a, 0x15, 0x66,
+	0x65, 0x6e, 0x6e, 0x65, 0x6c, 0x2f, 0x6e, 0x69, 0x74, 0x72, 0x6f, 0x75, 0x73, 0x2f, 0x72, 0x70,
+	0x63, 0x2f, 0x76, 0x32, 0x62, 0x06, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x33,
 }
 
 var (
@@ -1004,7 +930,7 @@ func file_nitrous_proto_rawDescGZIP() []byte {
 }
 
 var file_nitrous_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
-var file_nitrous_proto_msgTypes = make([]protoimpl.MessageInfo, 13)
+var file_nitrous_proto_msgTypes = make([]protoimpl.MessageInfo, 12)
 var file_nitrous_proto_goTypes = []interface{}{
 	(OpType)(0),                     // 0: nitrous.OpType
 	(*NitrousOp)(nil),               // 1: nitrous.NitrousOp
@@ -1013,15 +939,14 @@ var file_nitrous_proto_goTypes = []interface{}{
 	(*AggEvent)(nil),                // 4: nitrous.AggEvent
 	(*ProfileKey)(nil),              // 5: nitrous.ProfileKey
 	(*ProfileUpdate)(nil),           // 6: nitrous.ProfileUpdate
-	(*ProfileLagRequest)(nil),       // 7: nitrous.ProfileLagRequest
-	(*AggregateLagRequest)(nil),     // 8: nitrous.AggregateLagRequest
-	(*LagResponse)(nil),             // 9: nitrous.LagResponse
-	(*AggregateValuesRequest)(nil),  // 10: nitrous.AggregateValuesRequest
-	(*AggregateValuesResponse)(nil), // 11: nitrous.AggregateValuesResponse
-	(*ProfilesRequest)(nil),         // 12: nitrous.ProfilesRequest
-	(*ProfilesResponse)(nil),        // 13: nitrous.ProfilesResponse
-	(*aggregate.AggOptions)(nil),    // 14: AggOptions
-	(*value.PValue)(nil),            // 15: PValue
+	(*LagRequest)(nil),              // 7: nitrous.LagRequest
+	(*LagResponse)(nil),             // 8: nitrous.LagResponse
+	(*AggregateValuesRequest)(nil),  // 9: nitrous.AggregateValuesRequest
+	(*AggregateValuesResponse)(nil), // 10: nitrous.AggregateValuesResponse
+	(*ProfilesRequest)(nil),         // 11: nitrous.ProfilesRequest
+	(*ProfilesResponse)(nil),        // 12: nitrous.ProfilesResponse
+	(*aggregate.AggOptions)(nil),    // 13: AggOptions
+	(*value.PValue)(nil),            // 14: PValue
 }
 var file_nitrous_proto_depIdxs = []int32{
 	0,  // 0: nitrous.NitrousOp.type:type_name -> nitrous.OpType
@@ -1029,23 +954,21 @@ var file_nitrous_proto_depIdxs = []int32{
 	3,  // 2: nitrous.NitrousOp.delete_aggregate:type_name -> nitrous.DeleteAggregate
 	4,  // 3: nitrous.NitrousOp.agg_event:type_name -> nitrous.AggEvent
 	6,  // 4: nitrous.NitrousOp.profile:type_name -> nitrous.ProfileUpdate
-	14, // 5: nitrous.CreateAggregate.options:type_name -> AggOptions
-	15, // 6: nitrous.AggEvent.value:type_name -> PValue
+	13, // 5: nitrous.CreateAggregate.options:type_name -> AggOptions
+	14, // 6: nitrous.AggEvent.value:type_name -> PValue
 	5,  // 7: nitrous.ProfileUpdate.key:type_name -> nitrous.ProfileKey
-	15, // 8: nitrous.ProfileUpdate.value:type_name -> PValue
-	15, // 9: nitrous.AggregateValuesResponse.results:type_name -> PValue
+	14, // 8: nitrous.ProfileUpdate.value:type_name -> PValue
+	14, // 9: nitrous.AggregateValuesResponse.results:type_name -> PValue
 	5,  // 10: nitrous.ProfilesRequest.rows:type_name -> nitrous.ProfileKey
-	15, // 11: nitrous.ProfilesResponse.results:type_name -> PValue
-	12, // 12: nitrous.Nitrous.GetProfiles:input_type -> nitrous.ProfilesRequest
-	10, // 13: nitrous.Nitrous.GetAggregateValues:input_type -> nitrous.AggregateValuesRequest
-	7,  // 14: nitrous.Nitrous.GetProfileLag:input_type -> nitrous.ProfileLagRequest
-	8,  // 15: nitrous.Nitrous.GetAggregateLag:input_type -> nitrous.AggregateLagRequest
-	13, // 16: nitrous.Nitrous.GetProfiles:output_type -> nitrous.ProfilesResponse
-	11, // 17: nitrous.Nitrous.GetAggregateValues:output_type -> nitrous.AggregateValuesResponse
-	9,  // 18: nitrous.Nitrous.GetProfileLag:output_type -> nitrous.LagResponse
-	9,  // 19: nitrous.Nitrous.GetAggregateLag:output_type -> nitrous.LagResponse
-	16, // [16:20] is the sub-list for method output_type
-	12, // [12:16] is the sub-list for method input_type
+	14, // 11: nitrous.ProfilesResponse.results:type_name -> PValue
+	11, // 12: nitrous.Nitrous.GetProfiles:input_type -> nitrous.ProfilesRequest
+	9,  // 13: nitrous.Nitrous.GetAggregateValues:input_type -> nitrous.AggregateValuesRequest
+	7,  // 14: nitrous.Nitrous.GetLag:input_type -> nitrous.LagRequest
+	12, // 15: nitrous.Nitrous.GetProfiles:output_type -> nitrous.ProfilesResponse
+	10, // 16: nitrous.Nitrous.GetAggregateValues:output_type -> nitrous.AggregateValuesResponse
+	8,  // 17: nitrous.Nitrous.GetLag:output_type -> nitrous.LagResponse
+	15, // [15:18] is the sub-list for method output_type
+	12, // [12:15] is the sub-list for method input_type
 	12, // [12:12] is the sub-list for extension type_name
 	12, // [12:12] is the sub-list for extension extendee
 	0,  // [0:12] is the sub-list for field type_name
@@ -1130,7 +1053,7 @@ func file_nitrous_proto_init() {
 			}
 		}
 		file_nitrous_proto_msgTypes[6].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*ProfileLagRequest); i {
+			switch v := v.(*LagRequest); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -1142,18 +1065,6 @@ func file_nitrous_proto_init() {
 			}
 		}
 		file_nitrous_proto_msgTypes[7].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*AggregateLagRequest); i {
-			case 0:
-				return &v.state
-			case 1:
-				return &v.sizeCache
-			case 2:
-				return &v.unknownFields
-			default:
-				return nil
-			}
-		}
-		file_nitrous_proto_msgTypes[8].Exporter = func(v interface{}, i int) interface{} {
 			switch v := v.(*LagResponse); i {
 			case 0:
 				return &v.state
@@ -1165,7 +1076,7 @@ func file_nitrous_proto_init() {
 				return nil
 			}
 		}
-		file_nitrous_proto_msgTypes[9].Exporter = func(v interface{}, i int) interface{} {
+		file_nitrous_proto_msgTypes[8].Exporter = func(v interface{}, i int) interface{} {
 			switch v := v.(*AggregateValuesRequest); i {
 			case 0:
 				return &v.state
@@ -1177,7 +1088,7 @@ func file_nitrous_proto_init() {
 				return nil
 			}
 		}
-		file_nitrous_proto_msgTypes[10].Exporter = func(v interface{}, i int) interface{} {
+		file_nitrous_proto_msgTypes[9].Exporter = func(v interface{}, i int) interface{} {
 			switch v := v.(*AggregateValuesResponse); i {
 			case 0:
 				return &v.state
@@ -1189,7 +1100,7 @@ func file_nitrous_proto_init() {
 				return nil
 			}
 		}
-		file_nitrous_proto_msgTypes[11].Exporter = func(v interface{}, i int) interface{} {
+		file_nitrous_proto_msgTypes[10].Exporter = func(v interface{}, i int) interface{} {
 			switch v := v.(*ProfilesRequest); i {
 			case 0:
 				return &v.state
@@ -1201,7 +1112,7 @@ func file_nitrous_proto_init() {
 				return nil
 			}
 		}
-		file_nitrous_proto_msgTypes[12].Exporter = func(v interface{}, i int) interface{} {
+		file_nitrous_proto_msgTypes[11].Exporter = func(v interface{}, i int) interface{} {
 			switch v := v.(*ProfilesResponse); i {
 			case 0:
 				return &v.state
@@ -1226,7 +1137,7 @@ func file_nitrous_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: file_nitrous_proto_rawDesc,
 			NumEnums:      1,
-			NumMessages:   13,
+			NumMessages:   12,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

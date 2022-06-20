@@ -26,8 +26,7 @@ type NitrousClient interface {
 	GetProfiles(ctx context.Context, in *ProfilesRequest, opts ...grpc.CallOption) (*ProfilesResponse, error)
 	GetAggregateValues(ctx context.Context, in *AggregateValuesRequest, opts ...grpc.CallOption) (*AggregateValuesResponse, error)
 	// API to get processing lag. This is especially useful in tests.
-	GetProfileLag(ctx context.Context, in *ProfileLagRequest, opts ...grpc.CallOption) (*LagResponse, error)
-	GetAggregateLag(ctx context.Context, in *AggregateLagRequest, opts ...grpc.CallOption) (*LagResponse, error)
+	GetLag(ctx context.Context, in *LagRequest, opts ...grpc.CallOption) (*LagResponse, error)
 }
 
 type nitrousClient struct {
@@ -56,18 +55,9 @@ func (c *nitrousClient) GetAggregateValues(ctx context.Context, in *AggregateVal
 	return out, nil
 }
 
-func (c *nitrousClient) GetProfileLag(ctx context.Context, in *ProfileLagRequest, opts ...grpc.CallOption) (*LagResponse, error) {
+func (c *nitrousClient) GetLag(ctx context.Context, in *LagRequest, opts ...grpc.CallOption) (*LagResponse, error) {
 	out := new(LagResponse)
-	err := c.cc.Invoke(ctx, "/nitrous.Nitrous/GetProfileLag", in, out, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *nitrousClient) GetAggregateLag(ctx context.Context, in *AggregateLagRequest, opts ...grpc.CallOption) (*LagResponse, error) {
-	out := new(LagResponse)
-	err := c.cc.Invoke(ctx, "/nitrous.Nitrous/GetAggregateLag", in, out, opts...)
+	err := c.cc.Invoke(ctx, "/nitrous.Nitrous/GetLag", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -82,8 +72,7 @@ type NitrousServer interface {
 	GetProfiles(context.Context, *ProfilesRequest) (*ProfilesResponse, error)
 	GetAggregateValues(context.Context, *AggregateValuesRequest) (*AggregateValuesResponse, error)
 	// API to get processing lag. This is especially useful in tests.
-	GetProfileLag(context.Context, *ProfileLagRequest) (*LagResponse, error)
-	GetAggregateLag(context.Context, *AggregateLagRequest) (*LagResponse, error)
+	GetLag(context.Context, *LagRequest) (*LagResponse, error)
 	mustEmbedUnimplementedNitrousServer()
 }
 
@@ -97,11 +86,8 @@ func (UnimplementedNitrousServer) GetProfiles(context.Context, *ProfilesRequest)
 func (UnimplementedNitrousServer) GetAggregateValues(context.Context, *AggregateValuesRequest) (*AggregateValuesResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetAggregateValues not implemented")
 }
-func (UnimplementedNitrousServer) GetProfileLag(context.Context, *ProfileLagRequest) (*LagResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method GetProfileLag not implemented")
-}
-func (UnimplementedNitrousServer) GetAggregateLag(context.Context, *AggregateLagRequest) (*LagResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method GetAggregateLag not implemented")
+func (UnimplementedNitrousServer) GetLag(context.Context, *LagRequest) (*LagResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetLag not implemented")
 }
 func (UnimplementedNitrousServer) mustEmbedUnimplementedNitrousServer() {}
 
@@ -152,38 +138,20 @@ func _Nitrous_GetAggregateValues_Handler(srv interface{}, ctx context.Context, d
 	return interceptor(ctx, in, info, handler)
 }
 
-func _Nitrous_GetProfileLag_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(ProfileLagRequest)
+func _Nitrous_GetLag_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(LagRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(NitrousServer).GetProfileLag(ctx, in)
+		return srv.(NitrousServer).GetLag(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/nitrous.Nitrous/GetProfileLag",
+		FullMethod: "/nitrous.Nitrous/GetLag",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(NitrousServer).GetProfileLag(ctx, req.(*ProfileLagRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-func _Nitrous_GetAggregateLag_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(AggregateLagRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(NitrousServer).GetAggregateLag(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: "/nitrous.Nitrous/GetAggregateLag",
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(NitrousServer).GetAggregateLag(ctx, req.(*AggregateLagRequest))
+		return srv.(NitrousServer).GetLag(ctx, req.(*LagRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -204,12 +172,8 @@ var Nitrous_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _Nitrous_GetAggregateValues_Handler,
 		},
 		{
-			MethodName: "GetProfileLag",
-			Handler:    _Nitrous_GetProfileLag_Handler,
-		},
-		{
-			MethodName: "GetAggregateLag",
-			Handler:    _Nitrous_GetAggregateLag_Handler,
+			MethodName: "GetLag",
+			Handler:    _Nitrous_GetLag_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
