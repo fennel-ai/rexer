@@ -17,18 +17,20 @@ from threading import Event
 # Url of the local server
 URL = 'http://localhost:2425'
 class LocalTier():
-    def __init__(self, is_dev_tier=False):
+    def __init__(self, is_dev_tier=False, tier_id=None):
         self.http_process = lib.Process(None, None, None, None)
         self.countaggr_process = lib.Process(None, None, None, None)
         self.env = os.environ.copy()
         self.is_dev_tier = is_dev_tier
+        self.tier_id = tier_id
         signal.signal(signal.SIGINT, self.kill_process)
 
     def run_local_server(self):
         if self.is_dev_tier:
-            tier_id = 106
+            tier_id = self.tier_id
         else:
             tier_id = random.randint(0, 1e8)
+        print("Starting local server with tier_id: {}".format(tier_id))
         self.env['TIER_ID'] = str(tier_id)
         with lib.gorun('fennel/test/cmds/tiergod', 'dynamic,integration', self.env, flags=['--mode', 'create'], wait=True):
             pass
@@ -61,7 +63,11 @@ if __name__ == '__main__':
         local_tier = LocalTier(is_dev_tier=False)
         local_tier.run_local_server()
     elif sys.argv[1] == 'dev':
-        local_tier = LocalTier(is_dev_tier=True)
+        if len(sys.argv) == 3:
+            tier_id = int(sys.argv[2])
+        else:
+            tier_id = 106
+        local_tier = LocalTier(is_dev_tier=True, tier_id=tier_id)
         local_tier.run_local_server()
     else:
         print("Unknown argument")
