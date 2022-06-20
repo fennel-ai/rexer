@@ -49,6 +49,8 @@ jobs:
 
       - name: install rexerclient using pip
         run: |
+          pip install keystring
+          echo ${{ secrets.PACKAGR_ACCESS_TOKEN }} | keyring set ${{ secrets.PACKAGR_URL }}
           pip install --index-url=${{ secrets.PACKAGR_URL }} rexerclient
 
       # Run the test
