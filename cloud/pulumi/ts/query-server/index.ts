@@ -183,8 +183,11 @@ export const setup = async (input: inputType) => {
                             // (we configure the Horizontal Pod Autoscaler on the Deployment, which has 2 containers
                             // and for the metric server to scrape and monitor the resource utilization, it requires
                             // the limits for both to be reported).
+                            //
+                            // If we see any performance degradation due to the limits set here, we should increase them
+                            // See - https://linkerd.io/2.9/tasks/configuring-proxy-concurrency/#using-kubernetes-cpu-limits-and-requests
                             "config.linkerd.io/proxy-cpu-limit": "1",
-                            "config.linkerd.io/proxy-cpu-request": "0.2",
+                            "config.linkerd.io/proxy-cpu-request": "0.75",
                             "config.linkerd.io/proxy-memory-limit": "2Gi",
                             "config.linkerd.io/proxy-memory-request": "128Mi",
                         }

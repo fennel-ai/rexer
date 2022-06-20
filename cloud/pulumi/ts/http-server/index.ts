@@ -181,8 +181,11 @@ export const setup = async (input: inputType) => {
                             // (we configure the Horizontal Pod Autoscaler on the Deployment, which has 2 containers
                             // and for the metric server to scrape and monitor the resource utilization, it requires
                             // the limits for both to be reported).
+                            //
+                            // If we see any performance degradation due to the limits set here, we should increase them
+                            // See - https://linkerd.io/2.9/tasks/configuring-proxy-concurrency/#using-kubernetes-cpu-limits-and-requests
                             "config.linkerd.io/proxy-cpu-limit": "1",
-                            "config.linkerd.io/proxy-cpu-request": "0.2",
+                            "config.linkerd.io/proxy-cpu-request": "0.75",
                             "config.linkerd.io/proxy-memory-limit": "2G",
                             "config.linkerd.io/proxy-memory-request": "128M",
                         }
@@ -293,7 +296,7 @@ export const setup = async (input: inputType) => {
         }
     }, { provider: k8sProvider, deleteBeforeReplace: true })
 
-    // configure horizontal pod autoscaler for the query-server deployment/pod
+    // configure horizontal pod autoscaler for the http-server deployment/pod
     //
     // we can not use autoscaling/v2 because since we are limited by EKS support for only v1.22.9. v2 is supported from
     // v1.23

@@ -502,9 +502,6 @@ export const setup = async (input: inputType): Promise<pulumi.Output<outputType>
         const n = new eks.ManagedNodeGroup(nodeGroup.name, {
             cluster: cluster,
             scalingConfig: {
-                // start the desired size with the min required size and let the cluster autoscaler
-                // scale up the nodes up-to `maxSize` based on the schedulability of the pods.
-                desiredSize: nodeGroup.minSize,
                 minSize: nodeGroup.minSize,
                 maxSize: nodeGroup.maxSize,
             },
