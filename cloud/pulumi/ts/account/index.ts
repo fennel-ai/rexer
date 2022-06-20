@@ -21,6 +21,7 @@ export type outputType = {
 }
 
 export const setup = async (input: inputType): Promise<pulumi.Output<outputType>> => {
+    const roleName = "admin";
     // keep the pulumi resource name same as the account name
     const account = await new aws.organizations.Account(input.name, {
         // email id for the account being setup
@@ -38,7 +39,7 @@ export const setup = async (input: inputType): Promise<pulumi.Output<outputType>
         // trusted policy.
         //
         // This allows assuming admin access for the IAM users in the master account if configured.
-        roleName: "admin",
+        roleName: roleName,
     });
 
     const provider = new aws.Provider("account-aws-provider", {
@@ -52,7 +53,7 @@ export const setup = async (input: inputType): Promise<pulumi.Output<outputType>
 
     const policyName = `assume-${input.name}-admin`
     const policyAttachName = `assume-${input.name}-admin-policyAttach`
-    const accountAdminRoleArn = account.id.apply(accountId => { return `arn:aws:iam::${accountId}:role/admin` });
+    const accountAdminRoleArn = account.id.apply(accountId => { return `arn:aws:iam::${accountId}:role/${roleName}` });
 
     // create IAM policy in the master account which allows assuming admin access in this newly created account
     const policy = pulumi.all([account.id, accountAdminRoleArn]).apply(([accountId, roleArn]) => {
