@@ -51,6 +51,48 @@ def tiered(wrapped):
     return fn
 
 
+class TestOperator(unittest.TestCase):
+
+    @tiered
+    def test_time_extract(self):
+        c = client.Client(URL)
+
+        ret = c.query(op.time.extract([1655090123, 1655090123 + 86400, 1655090123 + 86400 * 3], part="dayofyear", timezone=-7))
+        self.assertEqual([163, 164, 166], ret)
+        ret = c.query(op.time.extract([
+            {"a": 1655090123, "b": 1, "tz": -7, "p": "dayofweek"},  # Sun Jun 12 20:15:23 PDT 2022
+            {"a": 1655090123, "b": 1, "tz": -7, "p": "year"},  # Sun Jun 12 20:15:23 PDT 2022
+            {"a": 1655090123, "b": 1, "tz": -7, "p": "month"},  # Sun Jun 12 20:15:23 PDT 2022
+            {"a": 1655090123, "b": 1, "tz": -7, "p": "day"},  # Sun Jun 12 20:15:23 PDT 2022
+            {"a": 1655090123, "b": 1, "tz": -7, "p": "hour"},  # Sun Jun 12 20:15:23 PDT 2022
+            {"a": 1655090123, "b": 1, "tz": -7, "p": "minute"},  # Sun Jun 12 20:15:23 PDT 2022
+            {"a": 1655090123, "b": 1, "tz": -7, "p": "second"},  # Sun Jun 12 20:15:23 PDT 2022
+            {"a": 1655090123, "b": 1, "tz": -7, "p": "slot"},  # 1655090123 // 3600 % 6 == 3
+            {"a": 1655010123, "b": 1, "tz": -7, "p": "slot"},  # 1655090123 // 3600 % 6 == 5
+            {"a": 1655090123 + 3600, "b": 1, "tz": "UTC", "p": "hour"}, # Sun Jun 12 21:15:23 PDT 2022
+            {"a": 1655090123 + 3600, "c": 1, "tz": "+08:00", "p": "rfc3339"},   # Sun Jun 12 21:15:23 PDT 2022
+            {"a": "2022-06-13T12:15:23+08:00", "c": 3, "p": "timestamp", "tz": ""},
+            {"a": "2022-06-13T12:15:23+08:00", "c": 3, "p": "timestamp", "tz": "UTC"},
+            {"a": "2022-06-13T12:15:23+08:00", "c": 3, "p": "rfc3339", "tz": "UTC"}],
+            var="d", on=var("d").a, field="output", timezone=var("d").tz, part=var("d").p, slot_size=3600, slot_cycle=6))
+        expect_ret = [
+            {'a': 1655090123, 'b': 1, 'output': 0, 'p': 'dayofweek', 'tz': -7},
+            {'a': 1655090123, 'b': 1, 'output': 2022, 'p': 'year', 'tz': -7},
+            {'a': 1655090123, 'b': 1, 'output': 6, 'p': 'month', 'tz': -7},
+            {'a': 1655090123, 'b': 1, 'output': 12, 'p': 'day', 'tz': -7},
+            {'a': 1655090123, 'b': 1, 'output': 20, 'p': 'hour', 'tz': -7},
+            {'a': 1655090123, 'b': 1, 'output': 15, 'p': 'minute', 'tz': -7},
+            {'a': 1655090123, 'b': 1, 'output': 23, 'p': 'second', 'tz': -7},
+            {'a': 1655090123, 'b': 1, 'output': 3, 'p': 'slot', 'tz': -7},
+            {'a': 1655010123, 'b': 1, 'output': 5, 'p': 'slot', 'tz': -7},
+            {'a': 1655093723, 'b': 1, 'output': 4, 'p': 'hour', 'tz': 'UTC'},
+            {'a': 1655093723, 'c': 1, 'output': '2022-06-13T12:15:23+08:00', 'p': 'rfc3339', 'tz': '+08:00'},
+            {'a': '2022-06-13T12:15:23+08:00', 'c': 3, 'output': 1655093723, 'p': 'timestamp', 'tz': ''},
+            {'a': '2022-06-13T12:15:23+08:00', 'c': 3, 'output': 1655093723, 'p': 'timestamp', 'tz': 'UTC'},
+            {'a': '2022-06-13T12:15:23+08:00', 'c': 3, 'output': '2022-06-13T04:15:23Z', 'p': 'rfc3339', 'tz': 'UTC'}]
+        self.assertEqual(expect_ret, ret)
+
+
 class TestEndToEnd(unittest.TestCase):
 
     @tiered
