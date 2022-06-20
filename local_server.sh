@@ -8,14 +8,23 @@ while getopts ":hdl" option; do
         echo "Syntax: ./local_server.sh [-h|d|l]"
         echo "options:"
         echo "h     Print this Help."
-        echo "d     Run the server in dev tier ( all resources are provisioned )."
+        echo "d     Run the server in dev tier ( all resources are provisioned ). Optionally specify the tier id ( default is 106 )."
         echo "l     Run the server in local test tier ( all resource are created and destroyed, does not have access to AWS services that need seperate provisioning)."
         exit;;
       d) # Run dev tier
         echo "Running dev tier"
-        source devenv.rc
-        python e2etests/run_local.py dev
+        if [ -z "$2" ]; then
+          tier_id=106
+        else
+          tier_id=$2
+        fi
+        cp devenv.rc devenv_temp.rc
+        sed -i "s/-106-/-$tier_id-/g" devenv_temp.rc
+        sed -i "s/=106$/=$tier_id/g" devenv_temp.rc
+        source devenv_temp.rc
+        python e2etests/run_local.py dev $tier_id
         source testenv.rc
+        rm devenv_temp.rc
         exit;;
       l) # Run local test tier
         echo "Running local test tier"
