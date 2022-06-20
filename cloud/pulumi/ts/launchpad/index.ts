@@ -146,6 +146,13 @@ const planeConfs: Record<number, PlaneConf> = {
     // this is used for test resources
     2: {
         protectResources: true,
+
+        accountConf: {
+            existingAccount: {
+                roleArn: account.MASTER_ACCOUNT_ADMIN_ROLE_ARN,
+            }
+        },
+
         planeId: 2,
         region: "us-west-2",
         vpcConf: {
@@ -191,6 +198,13 @@ const planeConfs: Record<number, PlaneConf> = {
     // Fennel's staging data plane to run dev tiers
     3: {
         protectResources: true,
+
+        accountConf: {
+            existingAccount: {
+                roleArn: account.MASTER_ACCOUNT_ADMIN_ROLE_ARN,
+            }
+        },
+
         planeId: 3,
         region: "us-west-2",
         vpcConf: {
@@ -238,6 +252,13 @@ const planeConfs: Record<number, PlaneConf> = {
     // Lokal's prod tier data plane
     5: {
         protectResources: true,
+
+        accountConf: {
+            existingAccount: {
+                roleArn: account.MASTER_ACCOUNT_ADMIN_ROLE_ARN,
+            }
+        },
+
         planeId: 5,
         region: "ap-south-1",
         vpcConf: {
@@ -302,6 +323,13 @@ const planeConfs: Record<number, PlaneConf> = {
     // Lokal's staging data plane
     6: {
         protectResources: true,
+
+        accountConf: {
+            existingAccount: {
+                roleArn: account.MASTER_ACCOUNT_ADMIN_ROLE_ARN,
+            }
+        },
+
         planeId: 6,
         region: "ap-south-1",
         vpcConf: {

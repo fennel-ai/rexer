@@ -63,7 +63,7 @@ type EksConf = {
 
 type MilvusConf = {}
 
-type AccountConf = {
+type NewAccount = {
     // account name
     name: string,
     // this is the email associated with this account, this should be unique i.e. an AWS account, even outside the
@@ -71,6 +71,21 @@ type AccountConf = {
     //
     // consider using email of the form: `admin+{account-name}@fennel.ai` to easily map the accounts with the email
     email: string,
+}
+
+type ExistingAccount = {
+    // ARN of the IAM role which has access in the existing account to create/update/delete the resources
+    roleArn: string
+}
+
+// Account configuration
+//
+// Only one of them should be set
+type AccountConf = {
+    // Configuration for creating a new account to setup the plane
+    newAccount?: NewAccount,
+    // Configuration to use an existing account to setup the plane
+    existingAccount?: ExistingAccount,
 }
 
 export type PlaneConf = {
@@ -81,9 +96,11 @@ export type PlaneConf = {
     //
     // NOTE: Please add a justification if this value is being set to False and the configuration is being checked-in
     protectResources: boolean,
+
+    accountConf: AccountConf,
+
     planeId: number,
     region: string,
-    accountConf?: AccountConf,
     vpcConf: VpcConfig,
     dbConf: DBConfig,
     confluentConf: ConfluentConfig,
@@ -96,6 +113,7 @@ export type PlaneConf = {
 }
 
 export type PlaneOutput = {
+    // ARN of the IAM role using which the resources were created in the plane and will be created in the tier
     roleArn: string,
     eks: eks.outputType,
     vpc: vpc.outputType,
@@ -145,13 +163,18 @@ const setupPlugins = async (stack: pulumi.automation.Stack) => {
 const setupResources = async () => {
     const input = parseConfig();
     // setup account for the plane, if configured explicitly. Else, use the master account.
-    let roleArn = pulumi.output(account.MASTER_ACCOUNT_ADMIN_ROLE_ARN);
-    if (input.accountConf !== undefined) {
+    let roleArn: pulumi.Output<string>;
+    if (input.accountConf.newAccount !== undefined) {
         const accountOutput = await account.setup({
-            name: input.accountConf.name,
-            email: input.accountConf.email,
-        });
+            name: input.accountConf.newAccount.name,
+            email: input.accountConf.newAccount.email
+        })
         roleArn = accountOutput.roleArn;
+    } else if (input.accountConf.existingAccount !== undefined) {
+        roleArn = pulumi.output(input.accountConf.existingAccount.roleArn);
+    } else {
+        console.info("both newAccount and existingAccount are undefined; Exactly one of them should be set")
+        process.exit(1)
     }
 
     const vpcOutput = await vpc.setup({
@@ -308,6 +331,17 @@ const setupResources = async () => {
 const setupDataPlane = async (args: PlaneConf, preview?: boolean, destroy?: boolean) => {
     const projectName = `launchpad`
     const stackName = `fennel/${projectName}/plane-${args.planeId}`
+
+    // validate that exactly one account configuration is set
+    if (args.accountConf.newAccount !== undefined && args.accountConf.existingAccount !== undefined) {
+        console.info("both newAccount and existingAccount configuration is set; Exactly one should be set")
+        process.exit(1);
+    }
+
+    if (args.accountConf.newAccount === undefined && args.accountConf.existingAccount === undefined) {
+        console.info("neither newAccount or existingAccount is set; Exactly one should be set")
+        process.exit(1);
+    }
 
     console.info("initializing stack");
     // Create our stack
