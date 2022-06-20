@@ -49,9 +49,7 @@ jobs:
 
       - name: install rexerclient using pip
         run: |
-          pip install keyring
-          echo ${{ secrets.PACKAGR_ACCESS_TOKEN }} | keyring set ${{ secrets.PACKAGR_URL }} __token__
-          pip install --index-url=${{ secrets.PACKAGR_URL }} rexerclient
+          pip install rexerclient --extra-index-url=https://token:${{ secrets.PACKAGR_ACCESS_TOKEN }}@api.packagr.app/mVIM1fJ/
 
       # Run the test
       - name: Run test
