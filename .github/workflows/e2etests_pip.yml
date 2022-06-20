@@ -49,7 +49,7 @@ jobs:
 
       - name: install rexerclient using pip
         run: |
-          pip install rexerclient --extra-index-url=https://token:${{ secrets.PACKAGR_ACCESS_TOKEN }}@api.packagr.app/mVIM1fJ/
+          pip install rexerclient --extra-index-url=https://token:${{ secrets.PACKAGR_ACCESS_TOKEN }}@api.packagr.app/${{ secrets.PACKAGR_HASH_ID }}/
 
       # Run the test
       - name: Run test
