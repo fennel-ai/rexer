@@ -292,7 +292,7 @@ const planeConfs: Record<number, PlaneConf> = {
         },
         controlPlaneConf: controlPlane,
         redisConf: {
-            numShards: 1,
+            numShards: 2,
             nodeType: "db.t4g.medium",
             numReplicasPerShard: 0,
         },
