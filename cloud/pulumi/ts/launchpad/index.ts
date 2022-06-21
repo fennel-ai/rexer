@@ -106,8 +106,8 @@ const tierConfs: Record<number, TierConf> = {
                 },
                 resourceConf: {
                     cpu: {
-                        request: "5500m",
-                        limit: "6500m"
+                        request: "12000m",
+                        limit: "15000m"
                     },
                     memory: {
                         request: "25G",
@@ -364,7 +364,7 @@ const planeConfs: Record<number, PlaneConf> = {
                     nodeType: "t3.medium",
                     // at least have 2 nodes for fault tolerance
                     minSize: 2,
-                    maxSize: 10,
+                    maxSize: 5,
                     labels: {
                         "node-group": "p-5-httpserver-ng"
                     }
