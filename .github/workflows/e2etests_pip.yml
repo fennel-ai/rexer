@@ -67,4 +67,4 @@ jobs:
           TIER_ID: ${{ secrets.TIER_ID }}
           BADGER_DIR: ${{ secrets.BADGER_DIR }}
         run: |
-          python -m unittest discover e2etests
+          python -m unittest discover e2etests -p "teste2e.py"
