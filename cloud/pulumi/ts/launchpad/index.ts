@@ -138,6 +138,12 @@ const tierConfs: Record<number, TierConf> = {
                 enforceReplicaIsolation: false,
             },
         },
+    },
+    // Envoy prod tier
+    112: {
+        protectResources: true,
+        planeId: 9,
+        // TODO(mohit): set service configurations
     }
 }
 
@@ -362,6 +368,47 @@ const planeConfs: Record<number, PlaneConf> = {
     },
     // plane 7 - created for testing out multi-arch support, not checked in yet
     // plane 8 - pending account close, post which it can be destroyed
+    // Convoy's production plane
+    9: {
+        protectResources: true,
+
+        accountConf: {
+            newAccount: {
+                name: "convoy",
+                email: "admin+convoy@fennel.ai",
+            }
+        },
+
+        planeId: 9,
+        region: "us-west-2",
+        vpcConf: {
+            cidr: "10.109.0.0/16"
+        },
+        dbConf: {
+            minCapacity: 1,
+            maxCapacity: 4,
+            password: "password",
+            skipFinalSnapshot: true,
+        },
+        confluentConf: {
+            username: confluentUsername,
+            password: confluentPassword
+        },
+        controlPlaneConf: controlPlane,
+        redisConf: {
+            numShards: 1,
+            nodeType: "db.t4g.medium",
+            numReplicasPerShard: 1,
+        },
+        cacheConf: {
+            nodeType: "cache.t4g.small",
+            numNodeGroups: 1,
+            replicasPerNodeGroup: 1,
+        },
+        prometheusConf: {
+            useAMP: true
+        },
+    }
 }
 
 //==============================================================================

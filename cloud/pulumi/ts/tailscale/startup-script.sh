@@ -21,6 +21,8 @@ sudo systemctl enable --now tailscaled
 # 172.31.0.0/16 : Control plane
 # 10.102.0.0/16: Test data plane
 # 10.103.0.0/16: Dev data plane
-# 10.104.0.0/16: Lokal dev data plane
 # 10.105.0.0/16: Lokal prod data plane
-sudo tailscale up --advertise-routes=172.31.0.0/16,10.102.0.0/16,10.103.0.0/16,10.104.0.0/16,10.105.0.0 --authkey tskey-kDewAh5CNTRL-FbviE3gvCANZXyP9teQwh
+# 10.106.0.0/16: Lokal staging data plane
+# 10.107.0.0/16: Dev multi-arch test plane
+# 10.109.0.0/16: Convoy production plane
+sudo tailscale up --advertise-routes=172.31.0.0/16,10.102.0.0/16,10.103.0.0/16,10.105.0.0/16,10.106.0.0/16,10.107.0.0/16,10.109.0.0/16 --authkey tskey-kDewAh5CNTRL-FbviE3gvCANZXyP9teQwh
