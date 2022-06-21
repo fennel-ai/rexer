@@ -105,12 +105,6 @@ export const setup = async (input: inputType): Promise<outputType> => {
                     "service.beta.kubernetes.io/aws-load-balancer-scheme": "internal",
                 }
             },
-            "etcd": {
-                "image": {
-                    "tag": "3.5.1",
-                    "pullPolicy": "IfNotPresent"
-                }
-            },
             // Run attu in port-forward mode.
             "attu": {
                 "enabled": true,

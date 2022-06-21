@@ -502,6 +502,15 @@ export const setup = async (input: inputType): Promise<pulumi.Output<outputType>
         const n = new eks.ManagedNodeGroup(nodeGroup.name, {
             cluster: cluster,
             scalingConfig: {
+                // desired size should be set only for scenarios where the cluster should start with a certain set
+                // of nodes but this should not be changed when cluster autoscaler is setup
+                //
+                // this field is optional and should ideally not be set when cluster autoscaler is configured;
+                // see: https://docs.aws.amazon.com/eks/latest/APIReference/API_NodegroupScalingConfig.html
+                //
+                // NOTE: This field is optional from AWS but pulumi marks this field as required, we set this to minSize
+                // and expect that the cluster autoscaler will scale this up
+                desiredSize: nodeGroup.minSize,
                 minSize: nodeGroup.minSize,
                 maxSize: nodeGroup.maxSize,
             },
