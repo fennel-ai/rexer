@@ -47,8 +47,18 @@ const tierConfs: Record<number, TierConf> = {
         planeId: 3,
         httpServerConf: {
             podConf: {
-                replicas: 1,
-                enforceReplicaIsolation: false,
+                minReplicas: 1,
+                maxReplicas: 3,
+                resourceConf: {
+                    cpu: {
+                        request: "1250m",
+                        limit: "1500m"
+                    },
+                    memory: {
+                        request: "2G",
+                        limit: "3G",
+                    }
+                }
             }
         },
     },
@@ -58,9 +68,19 @@ const tierConfs: Record<number, TierConf> = {
         planeId: 5,
         httpServerConf: {
             podConf: {
-                replicas: 2,
+                minReplicas: 2,
+                maxReplicas: 4,
+                resourceConf: {
+                    cpu: {
+                        request: "1250m",
+                        limit: "1500m"
+                    },
+                    memory: {
+                        request: "2G",
+                        limit: "3G",
+                    }
+                },
                 // each http-server should be in different nodes from each other
-                enforceReplicaIsolation: true,
                 nodeLabels: {
                     "node-group": "p-5-httpserver-ng"
                 }
@@ -74,13 +94,26 @@ const tierConfs: Record<number, TierConf> = {
                 }
             }
         },
+        // TODO(mohit): Currently the requests are configured such that each replica is going to be scheduled
+        // in different node in the node group, ideally we should try to reduce the `request` and let the scheduler
+        // place the pods across the nodes based on utilization and `limit`
         queryServerConf: {
             podConf: {
-                replicas: 4,
-                enforceReplicaIsolation: true,
+                minReplicas: 2,
+                maxReplicas: 10,
                 nodeLabels: {
                     "node-group": "p-5-queryserver-ng"
-                }
+                },
+                resourceConf: {
+                    cpu: {
+                        request: "12000m",
+                        limit: "15000m"
+                    },
+                    memory: {
+                        request: "25G",
+                        limit: "30G",
+                    }
+                },
             }
         },
         sagemakerConf: {
@@ -102,8 +135,18 @@ const tierConfs: Record<number, TierConf> = {
         },
         httpServerConf: {
             podConf: {
-                replicas: 1,
-                enforceReplicaIsolation: false,
+                minReplicas: 1,
+                maxReplicas: 3,
+                resourceConf: {
+                    cpu: {
+                        request: "1250m",
+                        limit: "1500m"
+                    },
+                    memory: {
+                        request: "2G",
+                        limit: "3G",
+                    }
+                }
             },
         },
     },
@@ -118,8 +161,18 @@ const tierConfs: Record<number, TierConf> = {
         },
         httpServerConf: {
             podConf: {
-                replicas: 1,
-                enforceReplicaIsolation: false,
+                minReplicas: 1,
+                maxReplicas: 3,
+                resourceConf: {
+                    cpu: {
+                        request: "1250m",
+                        limit: "1500m"
+                    },
+                    memory: {
+                        request: "2G",
+                        limit: "3G",
+                    }
+                }
             },
         },
     },
@@ -134,8 +187,18 @@ const tierConfs: Record<number, TierConf> = {
         },
         httpServerConf: {
             podConf: {
-                replicas: 2,
-                enforceReplicaIsolation: false,
+                minReplicas: 1,
+                maxReplicas: 3,
+                resourceConf: {
+                    cpu: {
+                        request: "1250m",
+                        limit: "1500m"
+                    },
+                    memory: {
+                        request: "2G",
+                        limit: "3G",
+                    }
+                }
             },
         },
     },
@@ -195,7 +258,8 @@ const planeConfs: Record<number, PlaneConf> = {
                 {
                     name: "p-2-common-ng",
                     nodeType: "c6i.xlarge",
-                    desiredCapacity: 3,
+                    minSize: 3,
+                    maxSize: 5,
                 },
             ],
         },
@@ -249,7 +313,8 @@ const planeConfs: Record<number, PlaneConf> = {
                 {
                     name: "p-3-common-ng",
                     nodeType: "c6i.2xlarge",
-                    desiredCapacity: 4,
+                    minSize: 4,
+                    maxSize: 6,
                 },
             ],
         },
@@ -297,7 +362,9 @@ const planeConfs: Record<number, PlaneConf> = {
                 {
                     name: "p-5-httpserver-ng",
                     nodeType: "t3.medium",
-                    desiredCapacity: 2,
+                    // at least have 2 nodes for fault tolerance
+                    minSize: 2,
+                    maxSize: 5,
                     labels: {
                         "node-group": "p-5-httpserver-ng"
                     }
@@ -306,7 +373,8 @@ const planeConfs: Record<number, PlaneConf> = {
                 {
                     name: "p-5-countaggr-ng",
                     nodeType: "c6i.8xlarge",
-                    desiredCapacity: 1,
+                    minSize: 1,
+                    maxSize: 1,
                     labels: {
                         "node-group": "p-5-countaggr-ng"
                     }
@@ -315,7 +383,9 @@ const planeConfs: Record<number, PlaneConf> = {
                 {
                     name: "p-5-queryserver-ng",
                     nodeType: "c6i.4xlarge",
-                    desiredCapacity: 4,
+                    // at least have 2 nodes for fault tolerance
+                    minSize: 2,
+                    maxSize: 10,
                     labels: {
                         "node-group": "p-5-queryserver-ng"
                     }

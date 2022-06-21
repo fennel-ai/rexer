@@ -78,6 +78,12 @@ export const setup = async (input: inputType): Promise<outputType> => {
             "cluster": {
                 "enabled": true,
             },
+            "etcd": {
+                "image": {
+                    "tag": "3.5.1",
+                    "pullPolicy": "IfNotPresent"
+                }
+            },
             "externalS3": {
                 "enabled": true,
                 "host": `s3.${input.region}.amazonaws.com`,
@@ -97,12 +103,6 @@ export const setup = async (input: inputType): Promise<outputType> => {
                     "service.beta.kubernetes.io/aws-load-balancer-type": "external",
                     "service.beta.kubernetes.io/aws-load-balancer-nlb-target-type": "instance",
                     "service.beta.kubernetes.io/aws-load-balancer-scheme": "internal",
-                }
-            },
-            "etcd": {
-                "image": {
-                    "tag": "3.5.1",
-                    "pullPolicy": "IfNotPresent"
                 }
             },
             // Run attu in port-forward mode.

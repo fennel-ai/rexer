@@ -6,6 +6,7 @@ import * as path from "path";
 import * as process from "process";
 import * as childProcess from "child_process";
 import {serviceEnvs} from "../tier-consts/consts";
+import * as util from "../lib/util";
 
 const name = "query-server"
 
@@ -15,8 +16,14 @@ export const plugins = {
     "aws": "v5.1.0"
 }
 
-const DEFAULT_REPLICAS = 2
-const DEFAULT_FORCE_REPLICA_ISOLATION = false
+const DEFAULT_MIN_REPLICAS = 1
+const DEFAULT_MAX_REPLICAS = 2
+
+// default for resource requirement configurations
+const DEFAULT_CPU_REQUEST = "200m"
+const DEFAULT_CPU_LIMIT = "1000m"
+const DEFAULT_MEMORY_REQUEST = "500M"
+const DEFAULT_MEMORY_LIMIT = "2G"
 
 export type inputType = {
     region: string,
@@ -24,9 +31,10 @@ export type inputType = {
     kubeconfig: string,
     namespace: string,
     tierId: number,
-    replicas?: number,
-    enforceReplicaIsolation?: boolean,
+    minReplicas?: number,
+    maxReplicas?: number,
     nodeLabels?: Record<string, string>,
+    resourceConf?: util.ResourceConf
 }
 
 export type outputType = {
@@ -144,38 +152,21 @@ export const setup = async (input: inputType) => {
         }
     }
 
-    const forceReplicaIsolation = input.enforceReplicaIsolation || DEFAULT_FORCE_REPLICA_ISOLATION;
-    let whenUnsatisfiable = "ScheduleAnyway";
-    if (forceReplicaIsolation) {
-        whenUnsatisfiable = "DoNotSchedule";
-    }
+    const queryServerDepName = "query-server";
 
     const appDep = image.imageName.apply(() => {
         return new k8s.apps.v1.Deployment("query-server-deployment", {
             metadata: {
-                name: "query-server",
+                name: queryServerDepName,
             },
             spec: {
                 selector: { matchLabels: appLabels },
-                // NOTE: If changing number replicas, please take: size and desired capacity of the nodegroup.
+                // We skip setting replicas since the horizontal pod autoscaler is responsible on scheduling the
+                // pods based on the utilization as configured in the HPA
                 //
-                // NOTE: If changing number replicas, please take `topologySpreadConstraints`
-                // into consideration which schedules replicas on different nodes.
-                replicas: input.replicas || DEFAULT_REPLICAS,
-                // TODO: eventually remove this.
+                // https://kubernetes.io/docs/tasks/run-application/horizontal-pod-autoscale/#migrating-deployments-and-statefulsets-to-horizontal-autoscaling
                 //
-                // configure one of the existing pods to go down before k8s scheduler tries to schedule a new
-                // pod - this is required since with the current setup of:
-                //  1. X nodes
-                //  2. <= X replicas, with the requirement that each replica is scheduled on different nodes
-                //
-                // might run into a scheduling problem if new pods are brought up before old pods are descheduled
-                strategy: {
-                    rollingUpdate: {
-                        maxSurge: 0,
-                        maxUnavailable: 1,
-                    }
-                },
+                // replicas:
                 template: {
                     metadata: {
                         labels: appLabels,
@@ -186,34 +177,23 @@ export const setup = async (input: inputType) => {
                             "config.linkerd.io/skip-outbound-ports": "3306,6379",
                             "prometheus.io/scrape": "true",
                             "prometheus.io/port": metricsPort.toString(),
+                            // set linkerd proxy CPU and Memory requests and limits
+                            //
+                            // these needs to be set for Horizontal Pod Autoscaler to monitor and scale the pods
+                            // (we configure the Horizontal Pod Autoscaler on the Deployment, which has 2 containers
+                            // and for the metric server to scrape and monitor the resource utilization, it requires
+                            // the limits for both to be reported).
+                            //
+                            // If we see any performance degradation due to the limits set here, we should increase them
+                            // See - https://linkerd.io/2.9/tasks/configuring-proxy-concurrency/#using-kubernetes-cpu-limits-and-requests
+                            "config.linkerd.io/proxy-cpu-limit": "1",
+                            "config.linkerd.io/proxy-cpu-request": "0.75",
+                            "config.linkerd.io/proxy-memory-limit": "2Gi",
+                            "config.linkerd.io/proxy-memory-request": "128Mi",
                         }
                     },
                     spec: {
                         affinity: affinity,
-                        // https://kubernetes.io/docs/concepts/workloads/pods/pod-topology-spread-constraints/
-                        topologySpreadConstraints: [
-                            // describes how a group of pods ought to spread across topology domains.
-                            // Scheduler will schedule pods in a way which abides by the constraints.
-                            // All the constraints are ANDed
-                            {
-                                // describes the degree to which pods may be unevenly distributed.
-                                // it is the maximum permitted difference between the number of matching pods in the
-                                // target topology and the global minimum.
-                                maxSkew: 1,
-                                // key of the node labels. we check by the host name.
-                                topologyKey: "kubernetes.io/hostname",
-                                // schedule anyway on the pod when constraints are not satisfied - to avoid potential
-                                // contention b/w pods. This is to avoid scheduling multiple query-server pods
-                                // from different namespaces on the same data plane.
-                                whenUnsatisfiable: whenUnsatisfiable,
-                                // find matching pods using the labels - `appLabels`
-                                //
-                                // this should schedule the replicas across different nodes
-                                labelSelector: {
-                                    matchLabels: appLabels,
-                                },
-                            }
-                        ],
                         containers: [{
                             command: [
                                 "/root/server",
@@ -235,6 +215,16 @@ export const setup = async (input: inputType) => {
                                 },
                             ],
                             env: serviceEnvs,
+                            resources: {
+                                requests: {
+                                    "cpu": input.resourceConf?.cpu.request || DEFAULT_CPU_REQUEST,
+                                    "memory": input.resourceConf?.memory.request || DEFAULT_MEMORY_REQUEST,
+                                },
+                                limits: {
+                                    "cpu": input.resourceConf?.cpu.limit || DEFAULT_CPU_LIMIT,
+                                    "memory": input.resourceConf?.memory.limit || DEFAULT_MEMORY_LIMIT,
+                                }
+                            }
                         },],
                     },
                 },
@@ -308,6 +298,79 @@ export const setup = async (input: inputType) => {
             }
         }
     }, { provider: k8sProvider, deleteBeforeReplace: true })
+
+    // TODO(mohit): Consider making this a library for other pods/deployments to use passing a simple configuration
+
+    // configure horizontal pod autoscaler for the query-server deployment/pod
+    //
+    // we can not use autoscaling/v2 because since we are limited by EKS support for only v1.22.9. v2 is supported from
+    // v1.23
+    const podAutoscaler = new k8s.autoscaling.v2beta2.HorizontalPodAutoscaler("query-server-hpa", {
+            metadata: {
+                name: "query-server-hpa",
+            },
+            spec: {
+                scaleTargetRef: {
+                    apiVersion: "apps/v1",
+                    kind: "Deployment",
+                    name: queryServerDepName,
+                },
+                // we will keep the default behavior for scaling up and down. We should tune this per-service
+                // based on the behavior we notice
+                //
+                // default behavior for scaleDown is to allow to scale down to `minReplicas` pods, with a
+                // 300 second stabilization window (i.e., the highest recommendation for the last 300sec is used)
+                //
+                // default behavior for scaleUp is the higher of:
+                //  i) increase no more than 4 pods per 60 seconds
+                //  ii) double the number of pods per 60 seconds; No stabilization is used
+                //
+                // stabilization is the number of seconds for which past recommendation should be considered while
+                // scaling up or down. If it is set to ZERO, no stabilization is done i.e. the latest recommendation
+                // is considered
+                //
+                // behavior: {}
+
+                // spec used to calculate the replica count (maximum replica count across all the metrics will be used).
+                //
+                // replica count is calculated as (current value / target value) * #pods
+                //
+                // metrics used must decrease by increasing the pod count or vice-versa
+                //
+                // TODO: Explore other dimensions (e.g. external metrics, ingress metrics etc)
+                // https://kubernetes.io/docs/tasks/run-application/horizontal-pod-autoscale-walkthrough/#autoscaling-on-multiple-metrics-and-custom-metrics
+                metrics: [
+                    // TODO(mohit): Explore configuring horizontal pod autoscaler once EKS supports kubernetes feature flags
+                    // See: https://github.com/aws/containers-roadmap/issues/512
+                    {
+                        type: "Resource",
+                        resource: {
+                            name: "cpu",
+                            target: {
+                                type: "Utilization",
+                                // value is in %
+                                averageUtilization: 80
+                            }
+                        }
+                    },
+                    {
+                        type: "Resource",
+                        resource: {
+                            name: "memory",
+                            target: {
+                                type: "Utilization",
+                                // value is in %
+                                // leave a buffer of 20% here so that, in the worst case, there is enough time
+                                // for a node to spin up and pod getting scheduled on it
+                                averageUtilization: 80
+                            }
+                        }
+                    }
+                ],
+                minReplicas: input.minReplicas || DEFAULT_MIN_REPLICAS,
+                maxReplicas: input.maxReplicas || DEFAULT_MAX_REPLICAS,
+            },
+        },{ provider: k8sProvider });
 
     const output: outputType = {
         appLabels: appLabels,
