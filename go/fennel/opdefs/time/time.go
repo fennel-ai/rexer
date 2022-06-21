@@ -189,7 +189,6 @@ func (e Extractor) Apply(_ context.Context, staticKwargs operators.Kwargs, in op
 			}
 		}
 
-		fmt.Println("case", rawV, part, timezone, extracted, kwargs)
 		if len(field) > 0 && by != nil {
 			d := heads[0].(value.Dict)
 			d.Set(field, extracted)
