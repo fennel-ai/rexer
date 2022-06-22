@@ -521,6 +521,7 @@ export const setup = async (input: inputType): Promise<pulumi.Output<outputType>
             nodeRoleArn: instanceRoleArn,
             subnetIds: privateSubnets,
         }, { provider: awsProvider });
+        n.nodeGroup.tags
     }
 
     // Install descheduler.
