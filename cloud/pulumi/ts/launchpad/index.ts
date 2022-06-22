@@ -207,6 +207,16 @@ const tierConfs: Record<number, TierConf> = {
         protectResources: true,
         planeId: 9,
         // TODO(mohit): set service configurations
+    },
+    // Envoy prod tier
+    113: {
+        protectResources: true,
+        planeId: 3,
+        // use public subnets for ingress to allow traffic from outside the assigned vpc
+        ingressConf: {
+            usePublicSubnets: true,
+            loadBalancerScheme: PUBLIC_LB_SCHEME,
+        },
     }
 }
 
