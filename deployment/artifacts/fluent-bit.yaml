@@ -103,18 +103,6 @@ data:
         Read_from_Head      ${READ_FROM_HEAD}
 
     [FILTER]
-        Name                kubernetes
-        Match               application.*
-        Kube_URL            https://kubernetes.default.svc:443
-        Kube_Tag_Prefix     application.var.log.containers.
-        Merge_Log           On
-        Merge_Log_Key       log
-        K8S-Logging.Parser  On
-        K8S-Logging.Exclude Off
-        Labels              Off
-        Annotations         Off
-
-    [FILTER]
         name                  multiline
         match                 *
         multiline.key_content log
