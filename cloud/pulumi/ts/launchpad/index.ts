@@ -72,7 +72,7 @@ const tierConfs: Record<number, TierConf> = {
                 maxReplicas: 4,
                 resourceConf: {
                     cpu: {
-                        request: "1250m",
+                        request: "1000m",
                         limit: "1500m"
                     },
                     memory: {

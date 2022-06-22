@@ -261,7 +261,7 @@ export const setup = async (input: inputType) => {
             "prefix": "/data/query",
            "rewrite": "/query",
             "service": "query-server:2425",
-            "timeout_ms": 30000,
+            "timeout_ms": 60000,
         }
     }, { provider: k8sProvider, deleteBeforeReplace: true })
 

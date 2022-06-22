@@ -185,8 +185,8 @@ export const setup = async (input: inputType) => {
                             // If we see any performance degradation due to the limits set here, we should increase them
                             // See - https://linkerd.io/2.9/tasks/configuring-proxy-concurrency/#using-kubernetes-cpu-limits-and-requests
                             "config.linkerd.io/proxy-cpu-limit": "1",
-                            "config.linkerd.io/proxy-cpu-request": "0.75",
-                            "config.linkerd.io/proxy-memory-limit": "2G",
+                            "config.linkerd.io/proxy-cpu-request": "0.25",
+                            "config.linkerd.io/proxy-memory-limit": "1G",
                             "config.linkerd.io/proxy-memory-request": "128M",
                         }
                     },
@@ -258,7 +258,7 @@ export const setup = async (input: inputType) => {
             "hostname": "*",
             "prefix": "/data/",
             "service": "http-server:2425",
-            "timeout_ms": 30000,
+            "timeout_ms": 60000,
         }
     }, { provider: k8sProvider, deleteBeforeReplace: true })
 
