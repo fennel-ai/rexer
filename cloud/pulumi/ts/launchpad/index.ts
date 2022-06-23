@@ -122,6 +122,9 @@ const tierConfs: Record<number, TierConf> = {
             instanceType: "ml.c5.large",
             // have multiple instances for fault tolerance
             instanceCount: 2,
+        },
+        ingressConf: {
+            useDedicatedMachines: true,
         }
     },
     // Convoy staging tier using Fennel's staging data plane.
@@ -131,7 +134,6 @@ const tierConfs: Record<number, TierConf> = {
         // use public subnets for ingress to allow traffic from outside the assigned vpc
         ingressConf: {
             usePublicSubnets: true,
-            loadBalancerScheme: PUBLIC_LB_SCHEME,
         },
         httpServerConf: {
             podConf: {
@@ -157,7 +159,6 @@ const tierConfs: Record<number, TierConf> = {
         // use public subnets for ingress to allow traffic from outside the assigned vpc
         ingressConf: {
             usePublicSubnets: true,
-            loadBalancerScheme: PUBLIC_LB_SCHEME,
         },
         httpServerConf: {
             podConf: {
@@ -183,7 +184,6 @@ const tierConfs: Record<number, TierConf> = {
         // use public subnets for ingress to allow traffic from outside the assigned vpc
         ingressConf: {
             usePublicSubnets: true,
-            loadBalancerScheme: PUBLIC_LB_SCHEME,
         },
         httpServerConf: {
             podConf: {
@@ -215,7 +215,6 @@ const tierConfs: Record<number, TierConf> = {
         // use public subnets for ingress to allow traffic from outside the assigned vpc
         ingressConf: {
             usePublicSubnets: true,
-            loadBalancerScheme: PUBLIC_LB_SCHEME,
         },
     }
 }
@@ -550,11 +549,14 @@ if (tierId !== 0) {
     const tierConf = tierConfs[tierId]
     // by default use private subnets
     let subnetIds;
-    const usePublicSubnets = tierConf.ingressConf?.usePublicSubnets || false;
+    let loadBalancerScheme;
+    const usePublicSubnets = tierConf.ingressConf !== undefined ? tierConf.ingressConf.usePublicSubnets || false : false;
     if (usePublicSubnets) {
         subnetIds = vpcOutput.publicSubnets;
+        loadBalancerScheme = PUBLIC_LB_SCHEME;
     } else {
         subnetIds = vpcOutput.privateSubnets;
+        loadBalancerScheme = PRIVATE_LB_SCHEME;
     }
 
     // TODO(mohit): Validate that the nodeLabel specified in `PodConf` have at least one label match across labels
@@ -617,8 +619,12 @@ if (tierId !== 0) {
 
         redisEndpoint: redisOutput.clusterEndPoints[0],
         cachePrimaryEndpoint: elasticacheOutput.endpoint,
+
         subnetIds: subnetIds,
-        loadBalancerScheme: tierConf.ingressConf?.loadBalancerScheme || PRIVATE_LB_SCHEME,
+        loadBalancerScheme: loadBalancerScheme,
+        ingressUseDedicatedMachines: tierConf.ingressConf?.useDedicatedMachines,
+        clusterName: eksOutput.clusterName,
+        nodeInstanceRoleArn: eksOutput.instanceRoleArn,
 
         glueSourceBucket: glueOutput.scriptSourceBucket,
         glueSourceScript: glueOutput.scriptPath,

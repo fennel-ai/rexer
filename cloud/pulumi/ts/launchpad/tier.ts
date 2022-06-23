@@ -62,8 +62,8 @@ export type CountAggrConf = {
 }
 
 export type IngressConf = {
-    usePublicSubnets: boolean,
-    loadBalancerScheme: string,
+    useDedicatedMachines?: boolean,
+    usePublicSubnets?: boolean,
 }
 
 export type SagemakerConf = {
@@ -124,6 +124,10 @@ type inputType = {
     // ingress configuration.
     subnetIds: string[],
     loadBalancerScheme: string,
+    ingressUseDedicatedMachines?: boolean,
+    clusterName: string,
+    nodeInstanceRoleArn: string,
+
     // glue configuration
     glueSourceBucket: string,
     glueSourceScript: string,
@@ -182,6 +186,9 @@ const parseConfig = (): inputType => {
 
         subnetIds: config.requireObject(nameof<inputType>("subnetIds")),
         loadBalancerScheme: config.require(nameof<inputType>("loadBalancerScheme")),
+        ingressUseDedicatedMachines: config.getBoolean(nameof<inputType>("ingressUseDedicatedMachines")),
+        clusterName: config.require(nameof<inputType>("clusterName")),
+        nodeInstanceRoleArn: config.require(nameof<inputType>("nodeInstanceRoleArn")),
 
         glueSourceBucket: config.require(nameof<inputType>("glueSourceBucket")),
         glueSourceScript: config.require(nameof<inputType>("glueSourceScript")),
@@ -419,6 +426,9 @@ const setupResources = async () => {
         subnetIds: input.subnetIds,
         loadBalancerScheme: input.loadBalancerScheme,
         tierId: input.tierId,
+        useDedicatedMachines: input.ingressUseDedicatedMachines,
+        clusterName: input.clusterName,
+        nodeRoleArn: input.nodeInstanceRoleArn,
     })
     // setup glue
     const glueOutput = await glue.setup({
@@ -547,6 +557,10 @@ type TierInput = {
     // ingress configuration.
     subnetIds: string[],
     loadBalancerScheme: string,
+    ingressUseDedicatedMachines?: boolean,
+    clusterName: string,
+    nodeInstanceRoleArn: string,
+
     // glue configuration.
     glueSourceBucket: string,
     glueSourceScript: string,
@@ -640,6 +654,11 @@ const setupTier = async (args: TierInput, preview?: boolean, destroy?: boolean) 
 
     await stack.setConfig(nameof<inputType>("subnetIds"), { value: JSON.stringify(args.subnetIds) })
     await stack.setConfig(nameof<inputType>("loadBalancerScheme"), { value: args.loadBalancerScheme })
+    if (args.ingressUseDedicatedMachines !== undefined) {
+        await stack.setConfig(nameof<inputType>("ingressUseDedicatedMachines"), { value: JSON.stringify(args.ingressUseDedicatedMachines) })
+    }
+    await stack.setConfig(nameof<inputType>("clusterName"), { value: args.clusterName });
+    await stack.setConfig(nameof<inputType>("nodeInstanceRoleArn"), { value: args.nodeInstanceRoleArn } )
 
     await stack.setConfig(nameof<inputType>("glueSourceBucket"), { value: args.glueSourceBucket })
     await stack.setConfig(nameof<inputType>("glueSourceScript"), { value: args.glueSourceScript })

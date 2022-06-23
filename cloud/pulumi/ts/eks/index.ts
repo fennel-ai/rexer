@@ -64,6 +64,7 @@ export type outputType = {
     kubeconfig: any,
     oidcUrl: string,
     instanceRole: string,
+    instanceRoleArn: string,
     clusterSg: string,
     storageclasses: Record<string, string>
 }
@@ -521,7 +522,6 @@ export const setup = async (input: inputType): Promise<pulumi.Output<outputType>
             nodeRoleArn: instanceRoleArn,
             subnetIds: privateSubnets,
         }, { provider: awsProvider });
-        n.nodeGroup.tags
     }
 
     // Install descheduler.
@@ -578,7 +578,7 @@ export const setup = async (input: inputType): Promise<pulumi.Output<outputType>
     const clusterName = cluster.core.cluster.name
 
     const output = pulumi.output({
-        kubeconfig, oidcUrl, instanceRole, clusterSg, clusterName, storageclasses,
+        kubeconfig, oidcUrl, instanceRole, instanceRoleArn, clusterSg, clusterName, storageclasses,
     })
 
     return output
