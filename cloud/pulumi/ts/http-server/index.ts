@@ -342,21 +342,40 @@ export const setup = async (input: inputType) => {
                 kind: "Deployment",
                 name: httpServerDepName,
             },
-            // we will keep the default behavior for scaling up and down. We should tune this per-service
-            // based on the behavior we notice
-            //
-            // default behavior for scaleDown is to allow to scale down to `minReplicas` pods, with a
-            // 300 second stabilization window (i.e., the highest recommendation for the last 300sec is used)
-            //
-            // default behavior for scaleUp is the higher of:
-            //  i) increase no more than 4 pods per 60 seconds
-            //  ii) double the number of pods per 60 seconds; No stabilization is used
-            //
-            // stabilization is the number of seconds for which past recommendation should be considered while
-            // scaling up or down. If it is set to ZERO, no stabilization is done i.e. the latest recommendation
-            // is considered
-            //
-            // behavior: {}
+
+            behavior: {
+                scaleDown: {
+                    policies: [
+                        {
+                            // Scale down by 1 pod in 120 seconds, this will essentially restrict scaling
+                            // down the pods by 1 every 2 minutes even if the target replica count differs by > 1.
+                            //
+                            // `periodSeconds` indicates the length of time in the past for which the policy
+                            // must hold true.
+                            periodSeconds: 120,
+                            type: "Pods",
+                            value: 1,
+                        }
+                    ],
+                    // This is redundant since we set a single policy
+                    selectPolicy: "Min",
+                    // This helps restrict "flapping" replica count due to fluctuating metric values during live
+                    // traffic. When the metrics indicate that the target should be scaled down the algorithm
+                    // looks into previously computed desired states, use the HIGHEST value in the past
+                    // `stabilizationWindowSeconds` seconds.
+                    //
+                    // We set this to 600, so that we don't scale down aggressively during their customers live
+                    // traffic - however, this will still scale down to the desired replica count eventually
+                    // if we don't see any traffic (hence utilization).
+                    stabilizationWindowSeconds: 600,
+                }
+                // default behavior for scaleUp is the higher of:
+                //  i) increase no more than 4 pods per 60 seconds
+                //  ii) double the number of pods per 60 seconds; No stabilization is used
+                //
+                // stabilization is set to ZERO, no stabilization is done i.e. the latest recommendation
+                // is considered
+            },
 
             // spec used to calculate the replica count (maximum replica count across all the metrics will be used).
             //
