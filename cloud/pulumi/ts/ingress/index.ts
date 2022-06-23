@@ -5,6 +5,10 @@ import { local } from "@pulumi/command";
 
 import { fennelStdTags } from "../lib/util";
 
+const DEFAULT_INGRESS_NODE_TYPE = "t3.micro";
+const DEFAULT_INGRESS_NODE_COUNT = 2;
+const DEFAULT_USE_DEDICATED_MACHINES = false;
+
 export const plugins = {
     "kubernetes": "v3.18.0",
     "command": "v0.0.3",
@@ -14,11 +18,14 @@ export const plugins = {
 export type inputType = {
     roleArn: string,
     region: string,
+    clusterName: string,
+    nodeRoleArn: string,
     kubeconfig: pulumi.Input<string>,
     namespace: string,
     loadBalancerScheme: string,
     subnetIds: pulumi.Input<string[]>,
     tierId: number,
+    useDedicatedMachines?: boolean,
 }
 
 export type outputType = {
@@ -88,12 +95,53 @@ export const setup = async (input: inputType) => {
         }
     }, { provider: k8sProvider })
 
+    // Create dedicated node-group for emissary ingress pods
+    //
+    // This is to isolate them from getting scheduled on pods where the API servers are which could potentially
+    // put pressure on node CPU or memory, affecting the availability of the emissary ingress pods (edge proxy for
+    // the eks cluster).
+    let topologySpreadConstraints: Record<string, any>[] = [];
+    let nodeSelector: Record<string, string> = {};
+    if (input.useDedicatedMachines || DEFAULT_USE_DEDICATED_MACHINES) {
+        const ngName = `aes-${input.namespace}-ng`;
+        const ngLabel = {'node-group': ngName};
+
+        const nodeGroup = new aws.eks.NodeGroup(ngName, {
+            clusterName: input.clusterName,
+            nodeRoleArn: input.nodeRoleArn,
+            subnetIds: input.subnetIds,
+            scalingConfig: {
+                desiredSize: DEFAULT_INGRESS_NODE_COUNT,
+                minSize: DEFAULT_INGRESS_NODE_COUNT,
+                maxSize: DEFAULT_INGRESS_NODE_COUNT,
+            },
+            instanceTypes: [DEFAULT_INGRESS_NODE_TYPE],
+            nodeGroupNamePrefix: ngName,
+            labels: ngLabel,
+        }, { provider: awsProvider });
+
+        // scheduled the pods on the dedicated node group created
+        nodeSelector = ngLabel;
+
+        // create affinity such that they are not scheduled in the same zone, however do not make this as a "strict"
+        // restriction i.e. allow it to be scheduled in case both the nodes are in the same AZs as well (which should
+        // not ideally happen with Managed Node Groups).
+        topologySpreadConstraints = [{
+            // do not allow > 1 skew i.e. diff of pods on domain topologies should never be above 1
+            "maxSkew": 1,
+            // use zone as the domain topology i.e. pods in the same zone count towards computing maxSkew
+            "topologyKey": "topology.kubernetes.io/zone",
+            "whenUnsatisfiable": "ScheduleAnyway",
+        }];
+    }
+
+
     // Install emissary-ingress via helm.
     // NOTE: the name of the pulumi resource for the helm chart is also prefixed
     // to resource names. So if we're changing the name of the chart, we should also
     // change the lookup names of the emissary service/deployment in the transformation
     // spec and when looking up the URL.
-    // We add a namspace to the name of the helm chart to avoid name collisions
+    // We add a namespace to the name of the helm chart to avoid name collisions
     // with other ingresses in the same data plane.
     const chartName = `aes-${input.namespace}`;
     const emissaryIngress = new k8s.helm.v3.Chart(chartName, {
@@ -145,12 +193,17 @@ export const setup = async (input: inputType) => {
         // tiers on the same cluster, emissary ingress routes requests across them. We scope the ingress to
         // respect a single namespace (namespace it is created in i.e. tier id).
         values: {
+            // create 2 emissary ingress pods, same as the number of nodes in the node group
+            "replicaCount": `${DEFAULT_INGRESS_NODE_COUNT}`,
             "scope": {
                 "singleNamespace": true,
             },
             "namespace": {
                 "name": input.namespace,
             },
+            "topologySpreadConstraints": topologySpreadConstraints,
+            "nodeSelector": nodeSelector,
+
             // annotate emissary ingress admin such that the otel collector or self-hosted prometheus instance running
             // in the cluster is able to scrape the metrics reported by emissary ingress
             //
