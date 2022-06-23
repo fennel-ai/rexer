@@ -6,6 +6,10 @@ on:
     branches:
       - main
   pull_request:
+  
+  # Allows you to run this workflow manually from the Actions tab
+  workflow_dispatch:
+
 permissions:
   contents: read
 jobs:
@@ -27,4 +31,4 @@ jobs:
           # Optional: show only new issues if it's a pull request. The default value is `false`.
           only-new-issues: true
           # Optional: golangci-lint command line arguments.
-          # args: --issues-exit-code=0
+          args: --timeout=10m
