@@ -143,7 +143,16 @@ func (l mockConsumer) CommitOffsets(kafka.TopicPartitions) (kafka.TopicPartition
 }
 
 func (l mockConsumer) Offsets() (kafka.TopicPartitions, error) {
-	return nil, nil
+	var toppars kafka.TopicPartitions
+	for k, v := range l.broker.nexts {
+		if l.groupid != k {
+			continue
+		}
+		toppars = append(toppars, kafka.TopicPartition{
+			Topic: &l.Topic, Partition: 0, Offset: kafka.Offset(v),
+		})
+	}
+	return toppars, nil
 }
 
 func (l mockConsumer) GroupID() string {
