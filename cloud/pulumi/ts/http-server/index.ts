@@ -151,6 +151,32 @@ export const setup = async (input: inputType) => {
         }
     }
 
+    const timeoutSeconds = 60;
+    // NOTE: This is configured for "slow" clients who might, at the time of graceful shutdown (i.e. when the kubelet
+    // has asked the container runtime to trigger TERM), since see this pod as a viable endpoint of the service.
+    //
+    // Linkerd as part of graceful shutdown does not accept any new requests (failing the request in this case), nor
+    // does it allow the container running in the same pod to establish new network connections.
+    //
+    // A deeper dive:
+    //  1. Envoy (shipped as part of Emissary Ingress and meshed with linkerd itself) uses linkerd proxy's service
+    //      discovery data to route traffic.
+    //  2. Linkerd service discovery involves the proxies registered with the linkerd destination, which receives
+    //      updates from "EndpointsWatcher" which maintains a cache of the endpoints of the service, updating it
+    //      from the data it fetches from API server. This information is streamed from linkerd destination to
+    //      linkerd proxies. See: https://linkerd.io/2020/11/23/topology-aware-service-routing-on-kubernetes-with-linkerd/#putting-it-all-together-service-topology-in-linkerd
+    //  3. Kubernetes, when a pod is scheduled for deletion or eviction, adds an entry in the API server (probably in etcd hosts).
+    //      Kubelet running on the node, on which the pod is scheduled, notices this entry to invoke the container runtime
+    //      to trigger "TERM" on the containers of the pod. See: https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle/#pod-termination
+    //
+    // Given a race condition in 2. and 3. it is possible that a proxy (running on envoy) thinks that an
+    // endpoint corresponding to the pod shutting down is active, and send the request, which is rejected by the linkerd
+    // proxy running on that pod.
+    //
+    // We set a delay of 1 sec, so that any calls made by the main container do not see a huge latency. We can also
+    // remove this as a race b/w 2. and 3. is less likely, additionally this scenario is only noticed during pod termination.
+    const linkerdPreStopDelaySecs = 1;
+
     const httpServerDepName = "http-server";
     const appDep = image.imageName.apply(() => {
         return new k8s.apps.v1.Deployment("http-server-deployment", {
@@ -188,6 +214,8 @@ export const setup = async (input: inputType) => {
                             "config.linkerd.io/proxy-cpu-request": "0.25",
                             "config.linkerd.io/proxy-memory-limit": "1G",
                             "config.linkerd.io/proxy-memory-request": "128M",
+                            // See: https://linkerd.io/2.11/tasks/graceful-shutdown/
+                            "config.alpha.linkerd.io/proxy-wait-before-exit-seconds": linkerdPreStopDelaySecs.toString(),
                         }
                     },
                     spec: {
@@ -224,6 +252,10 @@ export const setup = async (input: inputType) => {
                                 }
                             }
                         },],
+                        // this should be at least the timeout seconds so that any new request sent to the container
+                        // could take this much time + `preStop` on linkerd is an artificial delay added to avoid
+                        // failing requests downstream.
+                        terminationGracePeriodSeconds: timeoutSeconds + linkerdPreStopDelaySecs,
                     },
                 },
             },
@@ -258,7 +290,7 @@ export const setup = async (input: inputType) => {
             "hostname": "*",
             "prefix": "/data/",
             "service": "http-server:2425",
-            "timeout_ms": 60000,
+            "timeout_ms": timeoutSeconds * 1000,
         }
     }, { provider: k8sProvider, deleteBeforeReplace: true })
 
