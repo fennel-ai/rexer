@@ -150,7 +150,7 @@ func (agg Aggregate) IsOffline() bool {
 }
 
 func (agg Aggregate) IsForever() bool {
-	return (agg.Options.Durations == nil || len(agg.Options.Durations) == 0) && agg.Options.AggType != "timeseries_sum"
+	return len(agg.Options.Durations) == 0 && agg.Options.AggType != "timeseries_sum"
 }
 
 type Options struct {
