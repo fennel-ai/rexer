@@ -2,12 +2,12 @@ package kafka
 
 import (
 	"context"
-	"fennel/nitrous"
 	"time"
 
 	"fennel/lib/action"
 	"fennel/lib/counter"
 	"fennel/lib/feature"
+	"fennel/lib/nitrous"
 	"fennel/lib/profile"
 	"fennel/resource"
 
