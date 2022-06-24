@@ -77,25 +77,21 @@ func TestTimeseries(t *testing.T) {
 
 	ctx := context.Background()
 	start := 24*3600*12 + 60
+	opts := libaggregate.Options{
+		AggType: "timeseries_sum",
+		Window:  ftypes.Window_HOUR,
+		Limit:   9,
+	}
 	agg := libaggregate.Aggregate{
+		Id:        1,
 		Name:      "mycounter",
 		Query:     ast.MakeInt(1),
 		Timestamp: 0,
 		// at any time, we want data from last 9 hours
-		Options: libaggregate.Options{
-			AggType: "timeseries_counter",
-			Window:  ftypes.Window_HOUR,
-			Limit:   9,
-		},
-		Id: 1,
+		Options: opts,
 	}
-	histogram, err := counter2.ToHistogram(ftypes.AggId(1), libaggregate.Options{
-		AggType: "timeseries_sum",
-		Window:  ftypes.Window_HOUR,
-		Limit:   9,
-	})
+	histogram, err := counter2.ToHistogram(agg.Id, opts)
 	assert.NoError(t, err)
-
 	assert.NoError(t, aggregate.Store(ctx, tier, agg))
 	key := value.NewList(value.Int(1), value.Int(2))
 	table := value.NewList()

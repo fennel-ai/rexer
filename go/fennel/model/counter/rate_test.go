@@ -5,6 +5,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
+	"fennel/lib/aggregate"
 	"fennel/lib/value"
 )
 
@@ -14,46 +15,51 @@ func TestRate_Reduce(t *testing.T) {
 		input  []value.Value
 		output value.Value
 	}{
-		{NewRate(1, false),
+		{
+			NewRate(1, aggregate.Options{Normalize: false}),
 			[]value.Value{
 				value.NewList(value.Int(0), value.Int(1)),
 				value.NewList(value.Int(4), value.Int(2)),
 				value.NewList(value.Int(0), value.Int(0))},
 			value.Double(float64(4) / float64(3)),
 		},
-		{NewRate(1, false),
+		{
+			NewRate(1, aggregate.Options{Normalize: false}),
 			[]value.Value{
 				value.NewList(value.Int(0), value.Int(0))},
 			value.Double(0),
 		},
-		{NewRate(1, false),
+		{
+			NewRate(1, aggregate.Options{Normalize: false}),
 			[]value.Value{
 				value.NewList(value.Int(1), value.Int(1)),
 				value.NewList(value.Int(34), value.Int(199))},
 			value.Double(float64(35) / float64(200)),
 		},
-		{NewRate(1, true),
+		{
+			NewRate(1, aggregate.Options{Normalize: true}),
 			[]value.Value{
 				value.NewList(value.Int(1), value.Int(1)),
 				value.NewList(value.Int(34), value.Int(199))},
 			value.Double(0.12860441174608936),
 		},
 		{
-			NewRate(1, false),
+			NewRate(1, aggregate.Options{Normalize: false}),
 			[]value.Value{
 				value.NewList(value.Int(0), value.Int(1)),
 				value.NewList(value.Int(2), value.Int(1))},
 			value.Double(1.),
 		},
 		{
-			NewRate(1, false),
+			NewRate(1, aggregate.Options{Normalize: false}),
 			[]value.Value{
 				value.NewList(value.Int(1e17), value.Int(1e17)),
 				value.NewList(value.Int(0), value.Int(1e17))},
 			value.Double(0.5),
 		},
 		// TODO(Mohit): Move this case to _Invalid
-		{NewRate(1, true),
+		{
+			NewRate(1, aggregate.Options{Normalize: true}),
 			[]value.Value{
 				value.NewList(value.Int(1), value.Int(1)),
 				value.NewList(value.Int(2), value.Int(1))},
@@ -78,16 +84,19 @@ func TestRate_Reduce_Invalid(t *testing.T) {
 		r     rollingRate
 		input []value.Value
 	}{
-		{NewRate(1, false),
+		{
+			NewRate(1, aggregate.Options{Normalize: false}),
 			[]value.Value{
 				value.NewList(value.Int(-1), value.Int(1)),
 				value.NewList(value.Int(0), value.Int(0))},
 		},
-		{NewRate(1, false),
+		{
+			NewRate(1, aggregate.Options{Normalize: false}),
 			[]value.Value{
 				value.NewList(value.Int(0), value.Int(-1))},
 		},
-		{NewRate(1, false),
+		{
+			NewRate(1, aggregate.Options{Normalize: false}),
 			[]value.Value{
 				value.Double(0.5),
 				value.NewList(value.Int(34), value.Int(199))},
@@ -105,7 +114,7 @@ func TestRate_Reduce_Invalid(t *testing.T) {
 }
 
 func TestRate_Merge_Valid(t *testing.T) {
-	h := NewRate(1, false)
+	h := NewRate(1, aggregate.Options{Normalize: false})
 	validCases := []struct {
 		input1 value.Value
 		input2 value.Value
@@ -135,7 +144,7 @@ func TestRate_Merge_Valid(t *testing.T) {
 }
 
 func TestRate_Merge_Invalid(t *testing.T) {
-	h := NewRate(1, false)
+	h := NewRate(1, aggregate.Options{Normalize: false})
 	invalidCases := []struct {
 		input1 value.Value
 		input2 value.Value

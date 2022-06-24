@@ -21,19 +21,12 @@ func Value(
 	ctx context.Context, tier tier.Tier,
 	aggId ftypes.AggId, key value.Value, histogram counter.Histogram, kwargs value.Dict,
 ) (value.Value, error) {
-	end := ftypes.Timestamp(tier.Clock.Now())
-	start, err := histogram.Start(end, kwargs)
+	vals, err := BatchValue(ctx, tier,
+		[]ftypes.AggId{aggId}, []value.Value{key}, []counter.Histogram{histogram}, []value.Dict{kwargs})
 	if err != nil {
-		return nil, err
+		return value.Nil, err
 	}
-	buckets := histogram.BucketizeDuration(key.String(), start, end)
-	defer arena.Buckets.Free(buckets)
-	counts, err := histogram.GetMulti(ctx, tier, []ftypes.AggId{aggId}, [][]libcounter.Bucket{buckets}, []value.Value{histogram.Zero()})
-	if err != nil {
-		return nil, err
-	}
-	defer arena.Values.Free(counts[0])
-	return histogram.Reduce(counts[0])
+	return vals[0], nil
 }
 
 // TODO(Mohit): Fix this code if we decide to still use BucketStore
@@ -56,7 +49,7 @@ func BatchValue(
 		defaults := make([]value.Value, n)
 		for i, index := range indices {
 			h := histograms[index]
-			start, err := h.Start(end, kwargs[index])
+			start, err := counter.Start(h, end, kwargs[index])
 			if err != nil {
 				return nil, fmt.Errorf("failed to get start timestamp of aggregate (id): %d, err: %v", aggIds[index], err)
 			}
@@ -92,6 +85,7 @@ func Update(
 	if err != nil {
 		return err
 	}
+	// Merge buckets before reads to reduce number of keys fetched.
 	buckets, values, err = counter.MergeBuckets(histogram, buckets, values)
 	if err != nil {
 		return err

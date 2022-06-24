@@ -5,12 +5,13 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
+	"fennel/lib/aggregate"
 	"fennel/lib/value"
 )
 
 func TestRollingAverage_Reduce(t *testing.T) {
 	t.Parallel()
-	h := NewAverage()
+	h := NewAverage(aggregate.Options{})
 	cases := []struct {
 		input  []value.Value
 		output value.Value
@@ -50,7 +51,7 @@ func TestRollingAverage_Reduce(t *testing.T) {
 
 func TestRollingAverage_Merge_Valid(t *testing.T) {
 	t.Parallel()
-	h := NewAverage()
+	h := NewAverage(aggregate.Options{})
 	validCases := [][]value.Value{
 		{value.Int(1), value.Int(2), value.Int(1), value.Int(2), value.Int(2), value.Int(4)},
 		{value.Int(1), value.Int(2), value.Double(2), value.Int(2), value.Double(3), value.Int(4)},
@@ -70,7 +71,7 @@ func TestRollingAverage_Merge_Valid(t *testing.T) {
 
 func TestRollingAverage_Merge_Invalid(t *testing.T) {
 	t.Parallel()
-	h := NewAverage()
+	h := NewAverage(aggregate.Options{})
 	invalidCases := []struct {
 		a value.Value
 		b value.Value

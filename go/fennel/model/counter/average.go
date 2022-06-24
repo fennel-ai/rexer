@@ -3,6 +3,7 @@ package counter
 import (
 	"fmt"
 
+	"fennel/lib/aggregate"
 	"fennel/lib/value"
 )
 
@@ -10,14 +11,20 @@ import (
 	Maintains a rolling average by storing a pair of ints (denoting sum and count)
 	in each bucket representing the total sum / count of events within that bucket.
 */
-type average struct{}
+type average struct {
+	opts aggregate.Options
+}
 
 var _ MergeReduce = average{}
 
 var zeroAvg value.Value = value.NewList(value.Int(0), value.Int(0))
 
-func NewAverage() average {
-	return average{}
+func NewAverage(options aggregate.Options) average {
+	return average{options}
+}
+
+func (r average) Options() aggregate.Options {
+	return r.opts
 }
 
 func (r average) Transform(v value.Value) (value.Value, error) {

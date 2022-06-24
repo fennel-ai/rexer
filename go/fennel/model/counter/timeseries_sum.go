@@ -3,6 +3,7 @@ package counter
 import (
 	"fmt"
 
+	"fennel/lib/aggregate"
 	"fennel/lib/ftypes"
 	"fennel/lib/value"
 )
@@ -10,26 +11,24 @@ import (
 var zeroTsSum value.Value = value.Int(0)
 
 type timeseriesSum struct {
-	Window ftypes.Window
-	Limit  uint32
+	opts aggregate.Options
 }
 
 var _ MergeReduce = timeseriesSum{}
 
-func NewTimeseriesSum(window ftypes.Window, limit uint32) MergeReduce {
-	return timeseriesSum{
-		Window: window,
-		Limit:  limit,
-	}
+func NewTimeseriesSum(opts aggregate.Options) MergeReduce {
+	return timeseriesSum{opts}
 }
 
-func (r timeseriesSum) Start(end ftypes.Timestamp, _ value.Dict) (ftypes.Timestamp, error) {
+func (r timeseriesSum) Options() aggregate.Options { return r.opts }
+
+func (r timeseriesSum) Start(end ftypes.Timestamp) (ftypes.Timestamp, error) {
 	var d uint32
-	switch r.Window {
+	switch r.opts.Window {
 	case ftypes.Window_HOUR:
-		d = (1 + r.Limit) * 3600
+		d = uint32(1+r.opts.Limit) * 3600
 	case ftypes.Window_DAY:
-		d = (1 + r.Limit) * 3600 * 24
+		d = uint32(1+r.opts.Limit) * 3600 * 24
 	}
 	return start(end, d), nil
 }
@@ -37,9 +36,9 @@ func (r timeseriesSum) Start(end ftypes.Timestamp, _ value.Dict) (ftypes.Timesta
 func (r timeseriesSum) Reduce(values []value.Value) (value.Value, error) {
 	// we have to take the last Limit values only and if there are fewer than that
 	// available we pad a few entries with zeros.
-	limit := int(r.Limit)
+	limit := int(r.opts.Limit)
 	last := len(values) - 1
-	ret := make([]value.Value, r.Limit)
+	ret := make([]value.Value, r.opts.Limit)
 	var i int
 	for i = 0; i < limit && i < len(values); i++ {
 		ret[limit-1-i] = values[last-i]

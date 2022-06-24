@@ -5,12 +5,13 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
+	"fennel/lib/aggregate"
 	"fennel/lib/value"
 )
 
 func TestMax_Reduce(t *testing.T) {
 	t.Parallel()
-	h := NewMax()
+	h := NewMax(aggregate.Options{})
 	cases := []struct {
 		input  []value.Value
 		output value.Value
@@ -44,7 +45,7 @@ func TestMax_Reduce(t *testing.T) {
 
 func TestMax_Merge_Valid(t *testing.T) {
 	t.Parallel()
-	h := NewMax()
+	h := NewMax(aggregate.Options{})
 	validCases := [][]value.Value{
 		makeMaxVals([]value.Value{value.Double(3), value.Double(6), value.Double(6)}, []bool{false, false, false}),
 		makeMaxVals([]value.Value{value.Double(-2), value.Double(-5), value.Double(-2)}, []bool{false, false, false}),
@@ -63,7 +64,7 @@ func TestMax_Merge_Valid(t *testing.T) {
 
 func TestMax_Merge_Invalid(t *testing.T) {
 	t.Parallel()
-	h := NewMax()
+	h := NewMax(aggregate.Options{})
 	validMaxVals := makeMaxVals(
 		[]value.Value{value.Int(-8), value.Int(-2), value.Int(0), value.Double(0), value.Int(5), value.Double(9)},
 		[]bool{false, false, false, true, false, false},

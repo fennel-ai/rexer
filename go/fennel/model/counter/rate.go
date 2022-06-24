@@ -4,9 +4,11 @@ import (
 	"fmt"
 	"strconv"
 
+	"fennel/lib/aggregate"
 	"fennel/lib/ftypes"
 	"fennel/lib/utils/math"
 	"fennel/lib/value"
+
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 )
@@ -26,17 +28,22 @@ var zeroRate value.Value = value.NewList(value.Double(0), value.Double(0))
 	It stores two numbers - num (numerator) and den (denominator)
 */
 type rollingRate struct {
-	aggId     ftypes.AggId
-	Normalize bool
+	opts aggregate.Options
+
+	aggId ftypes.AggId
 }
 
 var _ MergeReduce = rollingRate{}
 
-func NewRate(aggId ftypes.AggId, normalize bool) rollingRate {
+func NewRate(aggId ftypes.AggId, opts aggregate.Options) rollingRate {
 	return rollingRate{
-		aggId:     aggId,
-		Normalize: normalize,
+		aggId: aggId,
+		opts:  opts,
 	}
+}
+
+func (r rollingRate) Options() aggregate.Options {
+	return r.opts
 }
 
 func (r rollingRate) Transform(v value.Value) (value.Value, error) {
@@ -84,7 +91,7 @@ func (r rollingRate) Reduce(values []value.Value) (value.Value, error) {
 	}
 	var ratio float64
 	var err error
-	if r.Normalize {
+	if r.opts.Normalize {
 		// TODO(Mohit): Consider making this an error in the future once Lokal's counters data has been evicted
 		if num > den {
 			// report metrics for this case
