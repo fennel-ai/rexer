@@ -8,6 +8,7 @@ import (
 	"fennel/lib/ftypes"
 	"fennel/lib/value"
 	rpc "fennel/nitrous/rpc/v2"
+	"fennel/nitrous/server/tailer"
 
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -29,6 +30,7 @@ type AggregateStore interface {
 
 type Server struct {
 	handlers map[aggKey]AggregateStore
+	tailer   *tailer.Tailer
 	mu       sync.Mutex
 
 	// Embed UnimplementedNitrousServer for forward compatibility with future
@@ -38,9 +40,10 @@ type Server struct {
 
 var _ rpc.NitrousServer = &Server{}
 
-func NewServer() *Server {
+func NewServer(tailer *tailer.Tailer) *Server {
 	return &Server{
 		handlers: make(map[aggKey]AggregateStore),
+		tailer:   tailer,
 	}
 }
 
@@ -63,6 +66,16 @@ func (s *Server) RegisterHandler(tierId ftypes.RealmID, aggId ftypes.AggId, code
 	newHandlers[newKey] = handler
 	s.handlers = newHandlers
 	return nil
+}
+
+func (s *Server) GetLag(ctx context.Context, _ *rpc.LagRequest) (*rpc.LagResponse, error) {
+	lag, err := s.tailer.GetLag()
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "error getting lag: %v", err)
+	}
+	return &rpc.LagResponse{
+		Lag: uint64(lag),
+	}, nil
 }
 
 func (s *Server) GetAggregateValues(ctx context.Context, req *rpc.AggregateValuesRequest) (*rpc.AggregateValuesResponse, error) {

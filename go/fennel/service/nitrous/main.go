@@ -43,7 +43,7 @@ func main() {
 	}
 
 	// Setup server.
-	svr := server.NewServer()
+	svr := server.NewServer(tailer)
 
 	// Restore aggregate definitions.
 	adm := metadata.NewAggDefsMgr(plane, tailer, svr)
