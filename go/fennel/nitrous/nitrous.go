@@ -6,10 +6,6 @@ import (
 	"fennel/resource"
 )
 
-const (
-	BINLOG_KAFKA_TOPIC = "nitrous_log"
-)
-
 type Client interface {
 	resource.Resource
 	Init(ctx context.Context) error
