@@ -32,6 +32,24 @@ func (t TierScope) PrefixedName(name string) string {
 	return fmt.Sprintf("t_%d_%s", t.tierID, name)
 }
 
+type PlaneScope struct {
+	planeId ftypes.RealmID
+}
+
+func NewPlaneScope(planeID ftypes.RealmID) PlaneScope {
+	return PlaneScope{
+		planeId: planeID,
+	}
+}
+
+func (p PlaneScope) ID() ftypes.RealmID {
+	return p.planeId
+}
+
+func (p PlaneScope) PrefixedName(name string) string {
+	return fmt.Sprintf("p_%d_%s", p.planeId, name)
+}
+
 type MothershipScope struct {
 	mothershipID ftypes.RealmID
 }
