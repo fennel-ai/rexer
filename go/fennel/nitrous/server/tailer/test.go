@@ -3,6 +3,7 @@ package tailer
 import (
 	"fennel/kafka"
 	"fennel/plane"
+	"sync"
 	"time"
 )
 
@@ -19,5 +20,6 @@ func NewTestTailer(plane plane.Plane, topic string) *Tailer {
 		[]byte("default-offsets-kg"),
 		nil,
 		100 * time.Millisecond, // Short poll timeout of 100ms for tests.
+		&sync.RWMutex{},
 	}
 }

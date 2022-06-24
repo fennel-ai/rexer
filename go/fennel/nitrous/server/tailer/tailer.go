@@ -3,6 +3,7 @@ package tailer
 import (
 	"context"
 	"fmt"
+	"sync"
 	"time"
 
 	"fennel/hangar"
@@ -33,6 +34,8 @@ type Tailer struct {
 	offsetkg    []byte
 	stopCh      chan struct{}
 	pollTimeout time.Duration
+
+	mu *sync.RWMutex
 }
 
 // Returns a new Tailer that can be used to tail the binlog.
@@ -57,10 +60,13 @@ func NewTailer(plane plane.Plane, topic string, offsets kafka.TopicPartitions, o
 		offsetkg,
 		stopCh,
 		10 * time.Second, // 10s as poll timeout
+		&sync.RWMutex{},
 	}, nil
 }
 
 func (t *Tailer) Subscribe(p EventProcessor) {
+	t.mu.Lock()
+	defer t.mu.Unlock()
 	t.processors = append(t.processors, p)
 }
 
@@ -121,9 +127,12 @@ func (t *Tailer) Tail() {
 				vgs  []hangar.ValGroup
 			}
 			eg := &errgroup.Group{}
-			updates := make(chan update, len(t.processors))
-			for i := range t.processors {
-				p := t.processors[i]
+			t.mu.RLock()
+			processors := t.processors
+			t.mu.RUnlock()
+			updates := make(chan update, len(processors))
+			for i := range processors {
+				p := processors[i]
 				eg.Go(func() error {
 					ks, vs, err := p.Process(ctx, ops)
 					if err != nil {
