@@ -52,7 +52,7 @@ func TestRolling(t *testing.T) {
 		Durations: []uint32{3600 * 28, 3600 * 24}},
 	)
 	assert.NoError(t, err)
-	err = Update(ctx, tier, agg, table, histogram)
+	err = Update(ctx, tier, agg.Id, table, histogram)
 	assert.NoError(t, err)
 
 	clock := &test.FakeClock{}
@@ -105,7 +105,7 @@ func TestTimeseries(t *testing.T) {
 		})
 		table.Append(row)
 	}
-	err = Update(ctx, tier, agg, table, histogram)
+	err = Update(ctx, tier, agg.Id, table, histogram)
 	assert.NoError(t, err)
 
 	clock := &test.FakeClock{}
@@ -183,7 +183,7 @@ func TestRollingAverage(t *testing.T) {
 		Durations: []uint32{28 * 3600, 24 * 3600},
 	})
 	assert.NoError(t, err)
-	err = Update(ctx, tier, agg, table, histogram)
+	err = Update(ctx, tier, agg.Id, table, histogram)
 	assert.NoError(t, err)
 
 	clock := &test.FakeClock{}
@@ -246,7 +246,7 @@ func TestStream(t *testing.T) {
 		Durations: []uint32{28 * 3600, 24 * 3600},
 	})
 	assert.NoError(t, err)
-	err = Update(ctx, tier, agg, table, histogram)
+	err = Update(ctx, tier, agg.Id, table, histogram)
 	assert.NoError(t, err)
 
 	clock := &test.FakeClock{}
@@ -318,7 +318,7 @@ func TestRate(t *testing.T) {
 		Normalize: true,
 	})
 	assert.NoError(t, err)
-	err = Update(ctx, tier, agg, table, histogram)
+	err = Update(ctx, tier, agg.Id, table, histogram)
 	assert.NoError(t, err)
 
 	clock := &test.FakeClock{}
@@ -416,9 +416,9 @@ func TestBatchValue(t *testing.T) {
 	assert.True(t, exp2.Equal(found[1]))
 
 	// now update with actions
-	err = Update(ctx, tier, aggs[0], table, h1)
+	err = Update(ctx, tier, aggs[0].Id, table, h1)
 	assert.NoError(t, err)
-	err = Update(ctx, tier, aggs[1], table, h2)
+	err = Update(ctx, tier, aggs[1].Id, table, h2)
 	assert.NoError(t, err)
 
 	// should find this time
@@ -497,5 +497,5 @@ func assertInvalid(tier tier.Tier, ctx context.Context, t *testing.T, ds ...valu
 
 	h, err := counter2.ToHistogram(agg.Id, agg.Options)
 	assert.NoError(t, err)
-	assert.Error(t, Update(ctx, tier, agg, table, h))
+	assert.Error(t, Update(ctx, tier, agg.Id, table, h))
 }

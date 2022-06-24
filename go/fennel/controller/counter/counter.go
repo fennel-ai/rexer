@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"time"
 
-	"fennel/lib/aggregate"
 	libcounter "fennel/lib/counter"
 	"fennel/lib/ftypes"
 	"fennel/lib/value"
@@ -77,7 +76,7 @@ func BatchValue(
 }
 
 func Update(
-	ctx context.Context, tier tier.Tier, agg aggregate.Aggregate, table value.List, histogram counter.Histogram,
+	ctx context.Context, tier tier.Tier, aggId ftypes.AggId, table value.List, histogram counter.Histogram,
 ) error {
 	ctx, tmr := timer.Start(ctx, tier.ID, "counter.update")
 	defer tmr.Stop()
@@ -90,7 +89,7 @@ func Update(
 	if err != nil {
 		return err
 	}
-	cur, err := histogram.GetMulti(ctx, tier, []ftypes.AggId{agg.Id}, [][]libcounter.Bucket{buckets}, []value.Value{histogram.Zero()})
+	cur, err := histogram.GetMulti(ctx, tier, []ftypes.AggId{aggId}, [][]libcounter.Bucket{buckets}, []value.Value{histogram.Zero()})
 	if err != nil {
 		return err
 	}
@@ -103,5 +102,5 @@ func Update(
 			}
 		}
 	}
-	return histogram.SetMulti(ctx, tier, []ftypes.AggId{agg.Id}, [][]libcounter.Bucket{buckets}, [][]value.Value{values})
+	return histogram.SetMulti(ctx, tier, []ftypes.AggId{aggId}, [][]libcounter.Bucket{buckets}, [][]value.Value{values})
 }
