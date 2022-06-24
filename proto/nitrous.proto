@@ -71,12 +71,19 @@ message LagRequest {}
 
 message LagResponse { uint64 lag = 1; }
 
+enum AggCodec {
+  NONE = 0;
+  V1 = 1;
+
+  // next: 2
+}
+
 message AggregateValuesRequest {
   uint32 tier_id = 1;
   uint32 agg_id = 2;
-  uint32 codec = 3;
+  AggCodec codec = 3;
   uint32 duration = 4;
-  repeated string groupkey = 5;
+  repeated string groupkeys = 5;
 }
 
 message AggregateValuesResponse { repeated PValue results = 1; }
