@@ -4,17 +4,24 @@ import (
 	"fmt"
 	"math"
 
+	"fennel/lib/aggregate"
 	"fennel/lib/value"
 )
 
-type rollingStdDev struct{}
+type rollingStdDev struct {
+	opts aggregate.Options
+}
 
 var _ MergeReduce = rollingStdDev{}
 
 var zeroStddev value.Value = value.NewList(value.Double(0), value.Double(0), value.Int(0))
 
-func NewStdDev() rollingStdDev {
-	return rollingStdDev{}
+func NewStdDev(opts aggregate.Options) rollingStdDev {
+	return rollingStdDev{opts}
+}
+
+func (r rollingStdDev) Options() aggregate.Options {
+	return r.opts
 }
 
 func (s rollingStdDev) eval(sum, sumsq float64, num int64) value.Double {

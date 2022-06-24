@@ -3,6 +3,7 @@ package counter
 import (
 	"fmt"
 
+	"fennel/lib/aggregate"
 	"fennel/lib/value"
 )
 
@@ -10,14 +11,20 @@ import (
 	rollingMin maintains minimum of a bucket with two vars (minv and empty).
 	Minv is the minimum value. If empty is true, the bucket is empty so minv is ignored.
 */
-type rollingMin struct{}
+type rollingMin struct {
+	opts aggregate.Options
+}
 
 var _ MergeReduce = rollingMin{}
 
 var zeroMin value.Value = value.NewList(value.Double(0), value.Bool(true))
 
-func NewMin() rollingMin {
-	return rollingMin{}
+func NewMin(options aggregate.Options) rollingMin {
+	return rollingMin{options}
+}
+
+func (m rollingMin) Options() aggregate.Options {
+	return m.opts
 }
 
 func min(a value.Value, b value.Value) (value.Value, error) {

@@ -44,7 +44,7 @@ func Bucketize(bz Bucketizer, actions value.List) ([]counter.Bucket, []value.Val
 // MergeBuckets takes a list of buckets and "merges" their counts if rest of their properties
 // are identical this reduces the number of keys to touch in storage
 func MergeBuckets(mr MergeReduce, buckets []counter.Bucket, values []value.Value) ([]counter.Bucket, []value.Value, error) {
-	seen := make(map[counter.Bucket]value.Value, 0)
+	seen := make(map[counter.Bucket]value.Value, len(buckets))
 	for i := range buckets {
 		mapkey := buckets[i]
 		current, ok := seen[mapkey]
@@ -128,11 +128,12 @@ func extractDuration(kwargs value.Dict, durations []uint32) (uint32, error) {
 		return 0, fmt.Errorf("error: expected kwarg 'duration' to be an int but found: '%v'", v)
 	}
 	// check duration is positive so it can be typecast to uint32 safely
-	if duration >= 0 {
-		for _, d := range durations {
-			if uint32(duration) == d {
-				return d, nil
-			}
+	if duration < 0 {
+		return 0, fmt.Errorf("error: specified duration (%d) < 0", duration)
+	}
+	for _, d := range durations {
+		if uint32(duration) == d {
+			return d, nil
 		}
 	}
 	return 0, fmt.Errorf("error: specified duration not found in aggregate")

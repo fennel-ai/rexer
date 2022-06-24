@@ -3,12 +3,15 @@ package counter
 import (
 	"fmt"
 
+	"fennel/lib/aggregate"
 	"fennel/lib/value"
 )
 
 var zeroList value.Value = value.NewList()
 
-type list struct{}
+type list struct {
+	opts aggregate.Options
+}
 
 var _ MergeReduce = list{}
 
@@ -16,8 +19,12 @@ func (s list) Transform(v value.Value) (value.Value, error) {
 	return value.NewList(v), nil
 }
 
-func NewList() list {
-	return list{}
+func NewList(opts aggregate.Options) list {
+	return list{opts}
+}
+
+func (s list) Options() aggregate.Options {
+	return s.opts
 }
 
 func (s list) extract(v value.Value) (value.List, error) {

@@ -3,17 +3,24 @@ package counter
 import (
 	"fmt"
 
+	"fennel/lib/aggregate"
 	"fennel/lib/value"
 )
 
 var zeroSum value.Value = value.Int(0)
 
-type rollingSum struct{}
+type rollingSum struct {
+	opts aggregate.Options
+}
 
 var _ MergeReduce = rollingSum{}
 
-func NewSum() rollingSum {
-	return rollingSum{}
+func NewSum(opts aggregate.Options) rollingSum {
+	return rollingSum{opts}
+}
+
+func (r rollingSum) Options() aggregate.Options {
+	return r.opts
 }
 
 func (r rollingSum) Reduce(values []value.Value) (value.Value, error) {

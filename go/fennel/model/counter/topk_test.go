@@ -5,6 +5,7 @@ import (
 	"sort"
 	"testing"
 
+	"fennel/lib/aggregate"
 	"fennel/lib/utils"
 
 	"github.com/stretchr/testify/assert"
@@ -14,7 +15,7 @@ import (
 
 func TestTopK_Reduce(t *testing.T) {
 	t.Parallel()
-	h := NewTopK()
+	h := NewTopK(aggregate.Options{})
 	numCases := 3
 	cases := make([]struct {
 		input  []value.Value
@@ -64,7 +65,7 @@ func TestTopK_Reduce(t *testing.T) {
 
 func TestTopK_Merge_Valid(t *testing.T) {
 	t.Parallel()
-	h := NewTopK()
+	h := NewTopK(aggregate.Options{})
 	validCases := make([][]value.Value, 2)
 
 	validCases[0] = append(validCases[0], value.NewDict(nil))
@@ -84,7 +85,7 @@ func TestTopK_Merge_Valid(t *testing.T) {
 
 func TestTopK_Merge_Invalid(t *testing.T) {
 	t.Parallel()
-	h := NewTopK()
+	h := NewTopK(aggregate.Options{})
 	keys := genKeys(1000)
 	validTopKVals := []value.Value{
 		genTopKDict(0, nil),

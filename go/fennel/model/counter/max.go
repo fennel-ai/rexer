@@ -3,6 +3,7 @@ package counter
 import (
 	"fmt"
 
+	"fennel/lib/aggregate"
 	"fennel/lib/value"
 )
 
@@ -10,14 +11,20 @@ import (
 	rollingMax maintains maximum of a bucket with two vars (maxv and empty).
 	Maxv is the maximum value. If empty is true, the bucket is empty so maxv is ignored.
 */
-type rollingMax struct{}
+type rollingMax struct {
+	opts aggregate.Options
+}
 
 var _ MergeReduce = rollingMax{}
 
 var zeroMax value.Value = value.NewList(value.Double(0), value.Bool(true))
 
-func NewMax() rollingMax {
-	return rollingMax{}
+func NewMax(options aggregate.Options) rollingMax {
+	return rollingMax{options}
+}
+
+func (m rollingMax) Options() aggregate.Options {
+	return m.opts
 }
 
 func (m rollingMax) Transform(v value.Value) (value.Value, error) {

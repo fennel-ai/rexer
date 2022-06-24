@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"sort"
 
+	"fennel/lib/aggregate"
 	"fennel/lib/value"
 )
 
@@ -11,12 +12,18 @@ const numK = 100
 
 var zeroTopK value.Value = value.NewDict(nil)
 
-type topK struct{}
+type topK struct {
+	opts aggregate.Options
+}
 
 var _ MergeReduce = topK{}
 
-func NewTopK() topK {
-	return topK{}
+func NewTopK(opts aggregate.Options) topK {
+	return topK{opts}
+}
+
+func (t topK) Options() aggregate.Options {
+	return t.opts
 }
 
 func (t topK) Transform(v value.Value) (value.Value, error) {
