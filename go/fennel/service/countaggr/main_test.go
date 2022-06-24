@@ -4,6 +4,7 @@ import (
 	"context"
 	profile2 "fennel/controller/profile"
 	profilelib "fennel/lib/profile"
+	"fennel/resource"
 	"strconv"
 	"sync"
 	"testing"
@@ -216,6 +217,7 @@ func TestEndToEndActionAggregates(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Empty(t, found)
 	consumer, err := tier.NewKafkaConsumer(kafka.ConsumerConfig{
+		Scope:        resource.NewTierScope(tier.ID),
 		Topic:        actionlib.ACTIONLOG_KAFKA_TOPIC,
 		GroupID:      "insert_in_db",
 		OffsetPolicy: kafka.DefaultOffsetPolicy,
@@ -309,6 +311,7 @@ func TestEndToEndProfileAggregates(t *testing.T) {
 	assert.Empty(t, found[1].Value)
 
 	consumer, err := tier.NewKafkaConsumer(kafka.ConsumerConfig{
+		Scope:        resource.NewTierScope(tier.ID),
 		Topic:        profilelib.PROFILELOG_KAFKA_TOPIC,
 		GroupID:      "insert_in_db",
 		OffsetPolicy: kafka.DefaultOffsetPolicy,

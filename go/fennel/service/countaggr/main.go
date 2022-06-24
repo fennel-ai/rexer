@@ -18,6 +18,7 @@ import (
 	"fennel/lib/phaser"
 	"fennel/lib/profile"
 	_ "fennel/opdefs" // ensure that all operators are present in the binary
+	"fennel/resource"
 	"fennel/service/common"
 	"fennel/tier"
 
@@ -60,6 +61,7 @@ func processAggregate(tr tier.Tier, agg libaggregate.Aggregate, stopCh <-chan st
 
 	if agg.IsProfileBased() {
 		consumer, err = tr.NewKafkaConsumer(kafka.ConsumerConfig{
+			Scope:        resource.NewTierScope(tr.ID),
 			Topic:        profile.PROFILELOG_KAFKA_TOPIC,
 			GroupID:      string(agg.Name),
 			OffsetPolicy: kafka.DefaultOffsetPolicy,
@@ -67,6 +69,7 @@ func processAggregate(tr tier.Tier, agg libaggregate.Aggregate, stopCh <-chan st
 	} else {
 		// We assume that aggregates are by default action based.
 		consumer, err = tr.NewKafkaConsumer(kafka.ConsumerConfig{
+			Scope:        resource.NewTierScope(tr.ID),
 			Topic:        action.ACTIONLOG_KAFKA_TOPIC,
 			GroupID:      string(agg.Name),
 			OffsetPolicy: kafka.DefaultOffsetPolicy,
@@ -146,6 +149,7 @@ func processAggregate(tr tier.Tier, agg libaggregate.Aggregate, stopCh <-chan st
 
 func startActionDBInsertion(tr tier.Tier) error {
 	consumer, err := tr.NewKafkaConsumer(kafka.ConsumerConfig{
+		Scope:        resource.NewTierScope(tr.ID),
 		Topic:        action.ACTIONLOG_KAFKA_TOPIC,
 		GroupID:      "_put_actions_in_db",
 		OffsetPolicy: kafka.DefaultOffsetPolicy,
@@ -170,6 +174,7 @@ func startActionDBInsertion(tr tier.Tier) error {
 
 func startProfileDBInsertion(tr tier.Tier) error {
 	consumer, err := tr.NewKafkaConsumer(kafka.ConsumerConfig{
+		Scope:        resource.NewTierScope(tr.ID),
 		Topic:        profile.PROFILELOG_KAFKA_TOPIC,
 		GroupID:      "_put_profiles_in_db",
 		OffsetPolicy: kafka.DefaultOffsetPolicy,

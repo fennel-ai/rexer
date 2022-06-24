@@ -10,6 +10,7 @@ import (
 
 	libkakfa "fennel/kafka"
 	"fennel/lib/feature"
+	"fennel/resource"
 	"fennel/tier"
 
 	"github.com/gorilla/mux"
@@ -65,6 +66,7 @@ func (s *server) startFeatureLogTailer() {
 			// We don't commit the offsets for this consumer since we always want to
 			// read from the latest offset.
 			consumer, err := s.tier.NewKafkaConsumer(libkakfa.ConsumerConfig{
+				Scope:        resource.NewTierScope(s.tier.ID),
 				Topic:        topic,
 				GroupID:      "featurelog_inspector",
 				OffsetPolicy: libkakfa.LatestOffsetPolicy,

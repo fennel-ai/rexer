@@ -46,6 +46,7 @@ type TierArgs struct {
 	MysqlUsername    string         `arg:"--mysql-user,env:MYSQL_USERNAME" json:"mysql_username,omitempty"`
 	MysqlPassword    string         `arg:"--mysql-password,env:MYSQL_PASSWORD" json:"mysql_password,omitempty"`
 	TierID           ftypes.RealmID `arg:"--tier-id,env:TIER_ID" json:"tier_id,omitempty"`
+	PlaneID          ftypes.RealmID `arg:"--plane-id,env:PLANE_ID" json:"plane_id,omitempty"`
 	RedisServer      string         `arg:"--redis-server,env:REDIS_SERVER_ADDRESS" json:"redis_server,omitempty"`
 	CachePrimary     string         `arg:"--cache-primary,env:CACHE_PRIMARY" json:"cache_primary,omitempty"`
 	CacheReplica     string         `arg:"--cache-replica,env:CACHE_REPLICA" json:"cache_replica,omitempty"`
@@ -186,7 +187,7 @@ func CreateFromArgs(args *TierArgs) (tier Tier, err error) {
 	}()
 
 	log.Print("Creating kafka producer")
-	producers, err := CreateKafka(scope, args.KafkaServer, args.KafkaUsername, args.KafkaPassword)
+	producers, err := CreateKafka(tierID, args.PlaneID, args.KafkaServer, args.KafkaUsername, args.KafkaPassword)
 	if err != nil {
 		return tier, err
 	}
@@ -194,11 +195,10 @@ func CreateFromArgs(args *TierArgs) (tier Tier, err error) {
 	log.Print("Creating kafka consumer")
 	consumerCreator := func(config libkafka.ConsumerConfig) (libkafka.FConsumer, error) {
 		kafkaConsumerConfig := libkafka.RemoteConsumerConfig{
-			Scope:           scope,
+			ConsumerConfig:  config,
 			BootstrapServer: args.KafkaServer,
 			Username:        args.KafkaUsername,
 			Password:        args.KafkaPassword,
-			ConsumerConfig:  config,
 		}
 		kafkaConsumer, err := kafkaConsumerConfig.Materialize()
 		if err != nil {
@@ -324,9 +324,18 @@ func CreateFromArgs(args *TierArgs) (tier Tier, err error) {
 	}, nil
 }
 
-func CreateKafka(scope resource.Scope, server, username, password string) (map[string]libkafka.FProducer, error) {
+func CreateKafka(tierID, planeID ftypes.RealmID, server, username, password string) (map[string]libkafka.FProducer, error) {
 	producers := make(map[string]libkafka.FProducer)
 	for _, topic := range libkafka.ALL_TOPICS {
+		var scope resource.Scope
+		switch topic.Scope.(type) {
+		case resource.TierScope:
+			scope = resource.NewTierScope(tierID)
+		case resource.PlaneScope:
+			scope = resource.NewPlaneScope(planeID)
+		default:
+			return nil, fmt.Errorf("unknown scope type: %T", topic.Scope)
+		}
 		kafkaProducerConfig := libkafka.RemoteProducerConfig{
 			BootstrapServer: server,
 			Username:        username,

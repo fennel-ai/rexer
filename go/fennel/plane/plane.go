@@ -70,7 +70,6 @@ func CreateFromArgs(args PlaneArgs) (Plane, error) {
 	// Initialize kafka consumer factory.
 	consumerFactory := func(config libkafka.ConsumerConfig) (libkafka.FConsumer, error) {
 		kafkaConsumerConfig := libkafka.RemoteConsumerConfig{
-			Scope:           scope,
 			BootstrapServer: args.KafkaServer,
 			Username:        args.KafkaUsername,
 			Password:        args.KafkaPassword,

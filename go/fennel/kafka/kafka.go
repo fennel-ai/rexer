@@ -43,18 +43,20 @@ type FProducer interface {
 }
 
 type TopicConf struct {
+	Scope    resource.Scope
 	Topic    string
 	PConfigs ProducerConfigs
 }
 
 var ALL_TOPICS = []TopicConf{
-	{Topic: action.ACTIONLOG_KAFKA_TOPIC},
+	{Scope: resource.TierScope{}, Topic: action.ACTIONLOG_KAFKA_TOPIC},
 	// TODO: Deprecate `ACTIONLOG_JSON_KAFKA_TOPIC` once confluent go supports
 	// producing and consuming schema versioned messages
-	{Topic: action.ACTIONLOG_JSON_KAFKA_TOPIC},
+	{Scope: resource.TierScope{}, Topic: action.ACTIONLOG_JSON_KAFKA_TOPIC},
 
 	// NOTE: features kafka topic has multiple partitions.
 	{
+		Scope: resource.TierScope{},
 		Topic: feature.KAFKA_TOPIC_NAME,
 		PConfigs: ProducerConfigs{
 			// controls how many records are batched together and sent as a single request to the broker (one for each partition)
@@ -66,10 +68,9 @@ var ALL_TOPICS = []TopicConf{
 			"linger.ms=10",
 		},
 	},
-
-	{Topic: profile.PROFILELOG_KAFKA_TOPIC},
-	{Topic: counter.AGGREGATE_OFFLINE_TRANSFORM_TOPIC_NAME},
-	{Topic: nitrous.BINLOG_KAFKA_TOPIC},
+	{Scope: resource.TierScope{}, Topic: profile.PROFILELOG_KAFKA_TOPIC},
+	{Scope: resource.TierScope{}, Topic: counter.AGGREGATE_OFFLINE_TRANSFORM_TOPIC_NAME},
+	{Scope: resource.PlaneScope{}, Topic: nitrous.BINLOG_KAFKA_TOPIC},
 }
 
 func ConfigMap(server, username, password string) *kafka.ConfigMap {
