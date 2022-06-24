@@ -333,7 +333,7 @@ func Update[I action.Action | profile.ProfileItem](ctx context.Context, tier tie
 		if err != nil {
 			return fmt.Errorf("failed to make histogram from aggregate: %w", err)
 		}
-		if err = counter.Update(ctx, tier, agg, table, histogram); err != nil {
+		if err = counter.Update(ctx, tier, agg.Id, table, histogram); err != nil {
 			return fmt.Errorf("failed to update counter: %w", err)
 		}
 		return err
