@@ -3,11 +3,14 @@ package server_test
 import (
 	"context"
 	"testing"
+	"time"
 
 	"fennel/lib/ftypes"
 	"fennel/lib/value"
 	rpc "fennel/nitrous/rpc/v2"
 	"fennel/nitrous/server"
+	"fennel/nitrous/server/tailer"
+	"fennel/plane"
 
 	"github.com/stretchr/testify/assert"
 )
@@ -25,7 +28,7 @@ func (th *TestHandler) Get(ctx context.Context, duration uint32, keys []string) 
 }
 
 func TestGet(t *testing.T) {
-	svr := server.NewServer()
+	svr := server.NewServer(nil)
 	handler := &TestHandler{}
 	tierId := ftypes.RealmID(1)
 	aggId := ftypes.AggId(1)
@@ -60,7 +63,7 @@ func TestGet(t *testing.T) {
 }
 
 func TestRegisterDuplicate(t *testing.T) {
-	svr := server.NewServer()
+	svr := server.NewServer(nil)
 	tierId := ftypes.RealmID(1)
 	aggId := ftypes.AggId(1)
 	codec := rpc.AggCodec_V1
@@ -68,4 +71,29 @@ func TestRegisterDuplicate(t *testing.T) {
 	assert.NoError(t, err)
 	err = svr.RegisterHandler(tierId, aggId, codec, nil)
 	assert.ErrorIs(t, err, server.EEXISTS)
+}
+
+func TestGetLag(t *testing.T) {
+	p := plane.NewTestPlane(t)
+	topic := "test-topic"
+	tailer := tailer.NewTestTailer(p.Plane, topic)
+	svr := server.NewServer(tailer)
+	ctx := context.Background()
+
+	// Initial lag should be 0.
+	resp, err := svr.GetLag(ctx, nil)
+	assert.NoError(t, err)
+	assert.EqualValues(t, 0, resp.Lag)
+
+	// Produce a message for tailer.
+	producer := p.NewProducer(t, topic)
+	err = producer.Log(ctx, []byte("hello world"), nil)
+	assert.NoError(t, err)
+	err = producer.Flush(time.Second)
+	assert.NoError(t, err)
+
+	// Lag should now be 1.
+	resp, err = svr.GetLag(ctx, nil)
+	assert.NoError(t, err)
+	assert.EqualValues(t, 1, resp.Lag)
 }

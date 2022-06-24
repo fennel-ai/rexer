@@ -22,7 +22,7 @@ func TestInitRestore(t *testing.T) {
 
 	tlr := tailer.NewTestTailer(p, nitrous.BINLOG_KAFKA_TOPIC)
 	go tlr.Tail()
-	svr := server.NewServer()
+	svr := server.NewServer(nil)
 	ctx := context.Background()
 	tierId := ftypes.RealmID(5)
 	aggId := ftypes.AggId(20)
@@ -105,7 +105,7 @@ func TestInitRestore(t *testing.T) {
 	}
 
 	// Restore on a new "server".
-	svr2 := server.NewServer()
+	svr2 := server.NewServer(nil)
 	adm = NewAggDefsMgr(p, tlr, svr2)
 	err = adm.RestoreAggregates()
 	assert.NoError(t, err)
