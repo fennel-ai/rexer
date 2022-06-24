@@ -44,7 +44,6 @@ type Encoder interface {
 
 type Hangar interface {
 	PlaneID() ftypes.RealmID
-	Encoder() Encoder
 	GetMany(kgs []KeyGroup) ([]ValGroup, error)
 	SetMany(keys []Key, vgs []ValGroup) error
 	DelMany(keys []KeyGroup) error

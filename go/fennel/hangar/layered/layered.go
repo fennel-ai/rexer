@@ -108,10 +108,6 @@ func (l *layered) PlaneID() ftypes.RealmID {
 	return l.planeID
 }
 
-func (l *layered) Encoder() hangar.Encoder {
-	return l.cache.Encoder()
-}
-
 func (l *layered) GetMany(kgs []hangar.KeyGroup) ([]hangar.ValGroup, error) {
 	results, err := l.cache.GetMany(kgs)
 	if err != nil {
