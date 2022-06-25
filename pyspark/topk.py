@@ -16,6 +16,7 @@ from awsglue.job import Job
 from pyspark.sql import functions as F
 from pyspark.sql.functions import col, collect_list, array_join
 from pyspark.sql.functions import arrays_zip
+from pyspark.sql.types import IntegerType
 
 ## @params: [JOB_NAME]
 args = getResolvedOptions(sys.argv, ['JOB_NAME', 'INPUT_BUCKET', 'OUTPUT_BUCKET', 'TIER_ID', 'AGGREGATE_NAME', 'DURATION', 'AGGREGATE_TYPE', 'LIMIT'])
@@ -36,7 +37,7 @@ day = utc_past.strftime("%d")
 print(f'======== Reading data from date: year={year}/month={month}/day={day}\n')
 # read JSON files using wildcard to fetch all the files
 
-# use default credentials which in this case would be derived from GLUE job IAM role which has access to the S3 buckets 
+# use default credentials which in this case would be derived from GLUE job IAM role which has access to the S3 buckets
 fs = s3fs.S3FileSystem(anon=False)
 transformed_actions_path = f's3://{args["INPUT_BUCKET"]}/daily/t_{args["TIER_ID"]}_aggr_offline_transform/year={year}/month={month}/*/*/*.json'
 if not fs.glob(transformed_actions_path):
@@ -49,6 +50,9 @@ lower_time_bound = int(now_utc.timestamp()) - int(args['DURATION'])
 time_filter = "timestamp>{}".format(lower_time_bound)
 actions = actions.filter("aggregate='{}'".format(args["AGGREGATE_NAME"]))
 actions = actions.filter(time_filter)
+if actions.filter(col("groupkey").cast("int").isNull()).count() == 0:
+    actions = actions.withColumn("groupkey", actions["groupkey"].cast(IntegerType()))
+
 ca_df = actions.withColumn("key", F.col("value.item")).withColumn("score", F.col("value.score")).select("key", "score", "groupkey")
 ca_df.createOrReplaceTempView("ACTIONS")
 
