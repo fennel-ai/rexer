@@ -216,6 +216,7 @@ func (conf RemoteConsumerConfig) Materialize() (resource.Resource, error) {
 	configmap := ConfigMap(conf.BootstrapServer, conf.Username, conf.Password)
 
 	topic := conf.Scope.PrefixedName(conf.Topic)
+	log.Printf("Creating remote consumer for topic %s", topic)
 
 	if err := configmap.SetKey("group.id", conf.GroupID); err != nil {
 		return nil, err

@@ -24,6 +24,10 @@ func Tier() (tier.Tier, error) {
 	arg.Parse(&flags)
 	flags.Dev = true
 	flags.TierID = tierID
+	// If PlaneID has not been set, genarate a random one.
+	if flags.PlaneID == 0 {
+		flags.PlaneID = ftypes.RealmID(rand.Uint32())
+	}
 	if err := flags.Valid(); err != nil {
 		return tier.Tier{}, err
 	}

@@ -23,6 +23,7 @@ func createMockKafka(tierID ftypes.RealmID) (map[string]fkafka.FProducer, tier.K
 		prodConfig := fkafka.MockProducerConfig{
 			Broker: &broker,
 			Topic:  scope.PrefixedName(topic.Topic),
+			Scope:  scope,
 		}
 		kProducer, err := prodConfig.Materialize()
 		if err != nil {
@@ -37,8 +38,9 @@ func createMockKafka(tierID ftypes.RealmID) (map[string]fkafka.FProducer, tier.K
 		}
 		kConsumer, err := fkafka.MockConsumerConfig{
 			Broker:  broker,
-			Topic:   scope.PrefixedName(config.Topic),
+			Topic:   config.Topic,
 			GroupID: config.GroupID,
+			Scope:   scope,
 		}.Materialize()
 		if err != nil {
 			return nil, err
