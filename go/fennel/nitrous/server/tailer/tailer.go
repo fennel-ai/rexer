@@ -11,6 +11,7 @@ import (
 	rpc "fennel/nitrous/rpc/v2"
 	"fennel/nitrous/server/offsets"
 	"fennel/plane"
+	"fennel/resource"
 
 	"github.com/confluentinc/confluent-kafka-go/kafka"
 	"github.com/golang/protobuf/proto"
@@ -45,6 +46,7 @@ type Tailer struct {
 func NewTailer(plane plane.Plane, topic string, offsets kafka.TopicPartitions, offsetkg []byte) (*Tailer, error) {
 	stopCh := make(chan struct{})
 	consumer, err := plane.KafkaConsumerFactory(fkafka.ConsumerConfig{
+		Scope:        resource.NewPlaneScope(plane.ID),
 		Topic:        topic,
 		GroupID:      "default-nitrous-tailer",
 		OffsetPolicy: fkafka.DefaultOffsetPolicy,

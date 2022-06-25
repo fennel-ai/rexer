@@ -12,6 +12,7 @@ import (
 	"fennel/lib/utils"
 	"fennel/lib/value"
 	"fennel/model/action"
+	"fennel/resource"
 	"fennel/test"
 
 	"github.com/stretchr/testify/assert"
@@ -88,6 +89,7 @@ func testKafkaInsertRead(t *testing.T, batch bool) {
 	go func() {
 		defer wg.Done()
 		consumer1, err := tier.NewKafkaConsumer(kafka.ConsumerConfig{
+			Scope:        resource.NewTierScope(1),
 			Topic:        actionlib.ACTIONLOG_KAFKA_TOPIC,
 			GroupID:      utils.RandString(6),
 			OffsetPolicy: kafka.DefaultOffsetPolicy,

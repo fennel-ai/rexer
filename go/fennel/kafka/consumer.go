@@ -196,6 +196,7 @@ func (k RemoteConsumer) Backlog() (int, error) {
 }
 
 type ConsumerConfig struct {
+	Scope        resource.Scope
 	GroupID      string
 	OffsetPolicy string
 	Topic        string
@@ -206,7 +207,6 @@ type ConsumerConfig struct {
 
 type RemoteConsumerConfig struct {
 	ConsumerConfig
-	Scope           resource.Scope
 	BootstrapServer string
 	Username        string
 	Password        string

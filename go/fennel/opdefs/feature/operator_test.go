@@ -11,6 +11,7 @@ import (
 	"fennel/lib/feature"
 	"fennel/lib/ftypes"
 	"fennel/lib/value"
+	"fennel/resource"
 	"fennel/test"
 	"fennel/test/optest"
 )
@@ -24,6 +25,7 @@ func TestFeatureLog_Apply(t *testing.T) {
 	t0 := uint32(1231231)
 	clock.Set(t0)
 	consumer, err := tier.NewKafkaConsumer(kafka.ConsumerConfig{
+		Scope:        resource.NewTierScope(tier.ID),
 		Topic:        feature.KAFKA_TOPIC_NAME,
 		GroupID:      "testgroup",
 		OffsetPolicy: kafka.DefaultOffsetPolicy,

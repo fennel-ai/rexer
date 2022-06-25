@@ -17,6 +17,7 @@ import (
 	"fennel/engine/ast"
 	"fennel/kafka"
 	"fennel/lib/aggregate"
+	"fennel/resource"
 
 	"fennel/client"
 	"fennel/lib/action"
@@ -79,6 +80,7 @@ func TestLogFetchServerClient(t *testing.T) {
 	assert.NoError(t, err)
 
 	consumer, err := tier.NewKafkaConsumer(kafka.ConsumerConfig{
+		Scope:        resource.NewTierScope(tier.ID),
 		Topic:        action.ACTIONLOG_KAFKA_TOPIC,
 		GroupID:      "somegroup",
 		OffsetPolicy: kafka.DefaultOffsetPolicy,
@@ -217,6 +219,7 @@ func TestActionDedupedPerActionType(t *testing.T) {
 	assert.NoError(t, err)
 
 	consumer, err := tier.NewKafkaConsumer(kafka.ConsumerConfig{
+		Scope:        resource.NewTierScope(tier.ID),
 		Topic:        action.ACTIONLOG_KAFKA_TOPIC,
 		GroupID:      "somegroup",
 		OffsetPolicy: kafka.DefaultOffsetPolicy,
@@ -307,6 +310,7 @@ func TestProfileServerClient(t *testing.T) {
 
 	// these profiles are also written to kafka queue
 	consumer, err := tier.NewKafkaConsumer(kafka.ConsumerConfig{
+		Scope:        resource.NewTierScope(tier.ID),
 		Topic:        profilelib.PROFILELOG_KAFKA_TOPIC,
 		GroupID:      "someprofilegroup",
 		OffsetPolicy: kafka.DefaultOffsetPolicy,
@@ -339,6 +343,7 @@ func TestSetProfilesQueuesToKafka(t *testing.T) {
 	assert.NoError(t, c.SetProfiles(profileList2))
 
 	consumer, err := tier.NewKafkaConsumer(kafka.ConsumerConfig{
+		Scope:        resource.NewTierScope(tier.ID),
 		Topic:        profilelib.PROFILELOG_KAFKA_TOPIC,
 		GroupID:      "someprofilegroup2",
 		OffsetPolicy: kafka.DefaultOffsetPolicy,

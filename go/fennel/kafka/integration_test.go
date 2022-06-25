@@ -263,8 +263,8 @@ func integrationConsumer(t *testing.T, scope resource.Scope, topic, groupid, off
 		BootstrapServer: test_kafka_servers,
 		Username:        kafka_username,
 		Password:        kafka_password,
-		Scope:           scope,
 		ConsumerConfig: ConsumerConfig{
+			Scope:        scope,
 			Topic:        topic,
 			GroupID:      groupid,
 			OffsetPolicy: offsetpolicy,
