@@ -1,12 +1,18 @@
+//go:build !integration
+
 package plane
 
 import (
+	"math/rand"
+	"testing"
+	"time"
+
 	"fennel/hangar/db"
 	"fennel/hangar/encoders"
 	"fennel/kafka"
+	fkafka "fennel/kafka"
 	"fennel/lib/ftypes"
 	"fennel/resource"
-	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"go.uber.org/zap"
@@ -14,42 +20,48 @@ import (
 
 type TestPlane struct {
 	Plane
-	broker *kafka.MockBroker
+	broker *fkafka.MockBroker
 }
 
 func NewTestPlane(t *testing.T) TestPlane {
-	planeId := ftypes.RealmID(1)
+	rand.Seed(time.Now().UnixNano())
+	planeId := ftypes.RealmID(rand.Uint32())
 	db, err := db.NewHangar(planeId, t.TempDir(), 1<<10, encoders.Default())
 	assert.NoError(t, err)
-	broker := kafka.NewMockTopicBroker()
+	broker := fkafka.NewMockTopicBroker()
+	logger, err := zap.NewDevelopment()
+	assert.NoError(t, err)
 	p := Plane{
 		ID:     planeId,
-		Logger: zap.NewNop(),
+		Logger: logger,
 		Store:  db,
-		KafkaConsumerFactory: func(config kafka.ConsumerConfig) (kafka.FConsumer, error) {
-			mockConfig := kafka.MockConsumerConfig{
+		KafkaConsumerFactory: func(config fkafka.ConsumerConfig) (fkafka.FConsumer, error) {
+			scope := resource.NewPlaneScope(planeId)
+			mockConfig := fkafka.MockConsumerConfig{
 				Broker:  &broker,
 				Topic:   config.Topic,
 				GroupID: config.GroupID,
-				Scope:   resource.NewPlaneScope(planeId),
+				Scope:   scope,
 			}
 			consumer, err := mockConfig.Materialize()
-			return consumer.(kafka.FConsumer), err
+			return consumer.(fkafka.FConsumer), err
 		},
 	}
+
 	return TestPlane{
 		Plane:  p,
 		broker: &broker,
 	}
 }
 
-func (tp *TestPlane) NewProducer(t *testing.T, topic string) kafka.FProducer {
-	config := kafka.MockProducerConfig{
+func (tp TestPlane) NewProducer(t *testing.T, topic string) kafka.FProducer {
+	scope := resource.NewPlaneScope(tp.Plane.ID)
+	mockConfig := fkafka.MockProducerConfig{
 		Broker: tp.broker,
-		Scope:  resource.NewPlaneScope(tp.ID),
 		Topic:  topic,
+		Scope:  scope,
 	}
-	producer, err := config.Materialize()
+	p, err := mockConfig.Materialize()
 	assert.NoError(t, err)
-	return producer.(kafka.FProducer)
+	return p.(kafka.FProducer)
 }
