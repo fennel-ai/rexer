@@ -201,7 +201,8 @@ func testSameKeyReadBySameConsumer(t *testing.T, producer FProducer, consumer1, 
 func getMockProducer(t *testing.T, scope resource.Scope, topic string, broker *MockBroker) FProducer {
 	producer, err := MockProducerConfig{
 		Broker: broker,
-		Topic:  scope.PrefixedName(topic),
+		Topic:  topic,
+		Scope:  scope,
 	}.Materialize()
 	assert.NoError(t, err)
 	return producer.(FProducer)
@@ -210,7 +211,7 @@ func getMockProducer(t *testing.T, scope resource.Scope, topic string, broker *M
 func getMockConsumer(t *testing.T, scope resource.Scope, topic, groupID string, broker *MockBroker) FConsumer {
 	consumer, err := MockConsumerConfig{
 		Broker:  broker,
-		Topic:   scope.PrefixedName(topic),
+		Topic:   topic,
 		GroupID: groupID,
 		Scope:   scope,
 	}.Materialize()

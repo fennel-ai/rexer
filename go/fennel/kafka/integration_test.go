@@ -247,7 +247,7 @@ func integrationProducer(t *testing.T, scope resource.Scope, topic string, parti
 
 	// then create producer
 	resource, err := RemoteProducerConfig{
-		Topic:           scope.PrefixedName(topic),
+		Topic:           topic,
 		BootstrapServer: test_kafka_servers,
 		Username:        kafka_username,
 		Password:        kafka_password,

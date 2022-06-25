@@ -340,7 +340,7 @@ func CreateKafka(tierID, planeID ftypes.RealmID, server, username, password stri
 			BootstrapServer: server,
 			Username:        username,
 			Password:        password,
-			Topic:           scope.PrefixedName(topic.Topic),
+			Topic:           topic.Topic,
 			Scope:           scope,
 			Configs:         topic.PConfigs,
 		}

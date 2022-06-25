@@ -20,18 +20,26 @@ import (
 */
 
 type MockBroker struct {
-	id    string
-	msgs  [][]byte
-	nexts map[string]int
-	mutex sync.Mutex
+	id      string
+	msgs    [][]byte
+	nexts   map[string]int
+	commits map[string]int
+	mutex   sync.Mutex
 }
 
 func NewMockTopicBroker() MockBroker {
 	return MockBroker{
-		id:    utils.RandString(5),
-		msgs:  make([][]byte, 0),
-		nexts: make(map[string]int),
+		id:      utils.RandString(5),
+		msgs:    make([][]byte, 0),
+		nexts:   make(map[string]int),
+		commits: make(map[string]int),
 	}
+}
+
+func (l *MockBroker) InitConsumer(groupID string) {
+	l.mutex.Lock()
+	defer l.mutex.Unlock()
+	l.nexts[groupID] = 0
 }
 
 func (l *MockBroker) Log(msg []byte) {
@@ -43,9 +51,6 @@ func (l *MockBroker) Log(msg []byte) {
 func (l *MockBroker) Read(groupID string) ([]byte, error) {
 	l.mutex.Lock()
 	defer l.mutex.Unlock()
-	if _, ok := l.nexts[groupID]; !ok {
-		l.nexts[groupID] = 0
-	}
 	nxt := l.nexts[groupID]
 	if nxt >= len(l.msgs) {
 		return nil, fmt.Errorf("no new messages")
@@ -57,11 +62,17 @@ func (l *MockBroker) Read(groupID string) ([]byte, error) {
 func (l *MockBroker) Backlog(groupID string) int {
 	l.mutex.Lock()
 	defer l.mutex.Unlock()
-	if offset, ok := l.nexts[groupID]; !ok {
+	if offset, ok := l.commits[groupID]; !ok {
 		return len(l.msgs)
 	} else {
-		return len(l.msgs) - offset
+		return (len(l.msgs) - 1) - offset
 	}
+}
+
+func (l *MockBroker) Commit(groupID string) {
+	l.mutex.Lock()
+	defer l.mutex.Unlock()
+	l.commits[groupID] = l.nexts[groupID] - 1
 }
 
 //=================================
@@ -135,10 +146,12 @@ func (l mockConsumer) ReadBatch(ctx context.Context, upto int, timeout time.Dura
 }
 
 func (l mockConsumer) Commit() (kafka.TopicPartitions, error) {
+	l.broker.Commit(l.groupid)
 	return nil, nil
 }
 
 func (l mockConsumer) CommitOffsets(kafka.TopicPartitions) (kafka.TopicPartitions, error) {
+	l.broker.Commit(l.groupid)
 	return nil, nil
 }
 
@@ -185,7 +198,9 @@ type MockConsumerConfig struct {
 }
 
 func (l MockConsumerConfig) Materialize() (resource.Resource, error) {
-	return mockConsumer{l.Scope, l.GroupID, l.Topic, l.Broker}, nil
+	topic := l.Scope.PrefixedName(l.Topic)
+	l.Broker.InitConsumer(l.GroupID)
+	return mockConsumer{l.Scope, l.GroupID, topic, l.Broker}, nil
 }
 
 var _ resource.Config = MockConsumerConfig{}
@@ -239,7 +254,8 @@ type MockProducerConfig struct {
 }
 
 func (conf MockProducerConfig) Materialize() (resource.Resource, error) {
-	return mockProducer{conf.Scope, conf.Topic, conf.Broker}, nil
+	topic := conf.Scope.PrefixedName(conf.Topic)
+	return mockProducer{conf.Scope, topic, conf.Broker}, nil
 }
 
 var _ resource.Config = MockProducerConfig{}

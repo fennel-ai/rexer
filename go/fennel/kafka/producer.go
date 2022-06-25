@@ -3,6 +3,7 @@ package kafka
 import (
 	"context"
 	"fmt"
+	"log"
 	"time"
 
 	"fennel/lib/timer"
@@ -78,19 +79,21 @@ type RemoteProducerConfig struct {
 }
 
 func (conf RemoteProducerConfig) Materialize() (resource.Resource, error) {
+	topic := conf.Scope.PrefixedName(conf.Topic)
 	configmap := ConfigMap(conf.BootstrapServer, conf.Username, conf.Password)
 	for _, config := range conf.Configs {
 		if err := configmap.Set(config); err != nil {
 			return nil, err
 		}
 	}
+	log.Printf("Creating remote producer for topic %s", topic)
 	producer, err := kafka.NewProducer(configmap)
 	if err != nil {
-		return nil, fmt.Errorf("failed to initialize kafka producer for Topic [%s]: %v", conf.Topic, err)
+		return nil, fmt.Errorf("failed to initialize kafka producer for Topic [%s]: %v", topic, err)
 	}
 	// record events
 	go RecordEvents(producer.Events())
-	return RemoteProducer{conf.Topic, producer, conf.Scope}, err
+	return RemoteProducer{topic, producer, conf.Scope}, err
 }
 
 var _ resource.Config = RemoteProducerConfig{}
