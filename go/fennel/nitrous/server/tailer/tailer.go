@@ -104,6 +104,7 @@ func (t *Tailer) Tail() {
 			return
 		default:
 			ctx := context.Background()
+			t.plane.Logger.Info("Waiting for new messages from binlog...")
 			rawops, err := t.binlog.ReadBatch(ctx, tailer_batch, t.pollTimeout)
 			if err != nil {
 				t.plane.Logger.Warn("failed to read from binlog", zap.Error(err))
@@ -111,10 +112,12 @@ func (t *Tailer) Tail() {
 				time.Sleep(t.pollTimeout)
 				continue
 			} else if len(rawops) == 0 {
+				t.plane.Logger.Debug("no new messages from binlog")
 				// Insert a brief sleep to avoid busy loop.
 				time.Sleep(t.pollTimeout)
 				continue
 			}
+			t.plane.Logger.Debug("Got new messages from binlog", zap.Int("count", len(rawops)))
 			ops := make([]*rpc.NitrousOp, len(rawops))
 			for i, rawop := range rawops {
 				var op rpc.NitrousOp
@@ -174,6 +177,11 @@ func (t *Tailer) Tail() {
 			err = t.plane.Store.SetMany(keys, vgs)
 			if err != nil {
 				t.plane.Logger.Error("failed to update store", zap.Error(err))
+			}
+			// Commit the offsets to the kafka binlog.
+			_, err = t.binlog.CommitOffsets(offs)
+			if err != nil {
+				t.plane.Logger.Error("failed to commit offsets", zap.Error(err))
 			}
 		}
 	}
