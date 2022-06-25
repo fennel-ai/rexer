@@ -39,6 +39,8 @@ func route(l Value, opt string, other Value) (Value, error) {
 		return modulo(l, other)
 	case "in":
 		return contains(l, other)
+	case "^":
+		return power(l, other)
 	}
 	return Nil, nil
 }
@@ -57,7 +59,7 @@ func contains(e Value, iter Value) (Value, error) {
 		if !ok {
 			return nil, fmt.Errorf("'in' operation on dicts can only be done using strings, but given: '%s'", e)
 		}
-		for k, _ := range t.Iter() {
+		for k := range t.Iter() {
 			if k == string(asstr) {
 				return Bool(true), nil
 			}
@@ -318,6 +320,26 @@ func gte(left Value, right Value) (Value, error) {
 		}
 	}
 	return nil, fmt.Errorf("'>=' only supported between numbers. Got '%s' and '%s'", left.String(), right.String())
+}
+
+func power(left Value, right Value) (Value, error) {
+	switch left := left.(type) {
+	case Int:
+		switch right := right.(type) {
+		case Int:
+			return Int(math.Pow(float64(left), float64(right))), nil
+		case Double:
+			return Double(math.Pow(float64(left), float64(right))), nil
+		}
+	case Double:
+		switch right := right.(type) {
+		case Int:
+			return Double(math.Pow(float64(left), float64(right))), nil
+		case Double:
+			return Double(math.Pow(float64(left), float64(right))), nil
+		}
+	}
+	return nil, fmt.Errorf("'^' only supported between numbers. Got '%s' and '%s'", left.String(), right.String())
 }
 
 func index(left Value, right Value) (Value, error) {

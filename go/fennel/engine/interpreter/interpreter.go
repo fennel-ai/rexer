@@ -342,7 +342,7 @@ func (i *Interpreter) getContextKwargs(op operators.Operator, trees *ast.Dict, i
 			tree, ok := trees.Values[k]
 			switch {
 			case !ok && !p.Optional:
-				return ret, fmt.Errorf("non-opetional kwarg '%s' not provided for operator '%s.%s'", k, sig.Module, sig.Name)
+				return ret, fmt.Errorf("non-optional kwarg '%s' not provided for operator '%s.%s'", k, sig.Module, sig.Name)
 			case !ok && p.Optional:
 				kwargVals = append(kwargVals, p.Default)
 				continue
