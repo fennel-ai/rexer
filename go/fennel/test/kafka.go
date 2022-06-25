@@ -48,10 +48,18 @@ func createMockKafka(tierID ftypes.RealmID) (map[string]fkafka.FProducer, tier.K
 	return producers, consumerCreator, nil
 }
 
-func setupKafkaTopics(tierID ftypes.RealmID, host, username, password string, topics []fkafka.TopicConf) error {
-	scope := resource.NewTierScope(tierID)
+func SetupKafkaTopics(tierID, planeID ftypes.RealmID, host, username, password string, topics []fkafka.TopicConf) error {
 	names := make([]string, len(topics))
 	for i, topic := range topics {
+		var scope resource.Scope
+		switch topic.Scope.(type) {
+		case resource.TierScope:
+			scope = resource.NewTierScope(tierID)
+		case resource.PlaneScope:
+			scope = resource.NewPlaneScope(planeID)
+		default:
+			return fmt.Errorf("unknown scope type: %T", topic.Scope)
+		}
 		names[i] = scope.PrefixedName(topic.Topic)
 	}
 	// Create admin client

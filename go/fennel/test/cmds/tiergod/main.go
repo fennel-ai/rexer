@@ -29,7 +29,7 @@ func main() {
 
 	switch *mode {
 	case "create":
-		if err := test.Setup(args); err != nil {
+		if err := test.SetupTier(args); err != nil {
 			panic(err)
 		}
 	case "destroy":
