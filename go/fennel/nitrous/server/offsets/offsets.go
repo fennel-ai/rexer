@@ -54,7 +54,7 @@ func SaveBinlogOffsets(toppars []kafka.TopicPartition, offsetkg []byte) ([]hanga
 		}
 		values[i] = v
 	}
-	return []hangar.Key{{Data: offsetkg}}, []hangar.ValGroup{{Fields: fields, Values: values}}, nil
+	return []hangar.Key{{Data: offsetkg}}, []hangar.ValGroup{{Fields: fields, Values: values, Expiry: 0}}, nil
 }
 
 func encodeField(topic string, partition int32) ([]byte, error) {
