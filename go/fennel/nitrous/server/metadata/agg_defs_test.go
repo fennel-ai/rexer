@@ -2,6 +2,9 @@ package metadata
 
 import (
 	"context"
+	"testing"
+	"time"
+
 	"fennel/lib/aggregate"
 	"fennel/lib/ftypes"
 	"fennel/lib/nitrous"
@@ -10,8 +13,6 @@ import (
 	"fennel/nitrous/server"
 	"fennel/nitrous/server/tailer"
 	"fennel/plane"
-	"testing"
-	"time"
 
 	"github.com/stretchr/testify/assert"
 )
@@ -19,9 +20,23 @@ import (
 func TestInitRestore(t *testing.T) {
 	tp := plane.NewTestPlane(t)
 	p := tp.Plane
+	// Create producer so the topic is initialized.
+	producer := tp.NewProducer(t, nitrous.BINLOG_KAFKA_TOPIC)
 
 	tlr := tailer.NewTestTailer(p, nitrous.BINLOG_KAFKA_TOPIC)
+	// Start tailing and wait for the consumer to be assigned partitions.
+	// Before the consumer is assigned partitions, it is not possible to measure
+	// the lag.
 	go tlr.Tail()
+	for {
+		offs, err := tlr.GetOffsets()
+		assert.NoError(t, err)
+		if len(offs) > 0 {
+			break
+		}
+		time.Sleep(1 * time.Second)
+	}
+
 	svr := server.NewServer(nil)
 	ctx := context.Background()
 	tierId := ftypes.RealmID(5)
@@ -73,7 +88,6 @@ func TestInitRestore(t *testing.T) {
 	assert.Equal(t, value.Int(0), val)
 
 	// Create some aggregate events.
-	producer := tp.NewProducer(t, nitrous.BINLOG_KAFKA_TOPIC)
 	ev, err := value.ToProtoValue(value.Int(42))
 	assert.NoError(t, err)
 	op := &rpc.NitrousOp{
@@ -97,10 +111,10 @@ func TestInitRestore(t *testing.T) {
 		if lag == 0 {
 			// Sleep a brief amount of time to allow the read from consumer too
 			// actually be processed.
-			time.Sleep(time.Millisecond * 100)
+			time.Sleep(5 * time.Second)
 			break
 		} else {
-			time.Sleep(time.Millisecond * 10)
+			time.Sleep(tlr.GetPollTimeout())
 		}
 	}
 

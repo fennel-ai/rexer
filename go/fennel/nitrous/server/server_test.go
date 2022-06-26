@@ -76,7 +76,13 @@ func TestRegisterDuplicate(t *testing.T) {
 func TestGetLag(t *testing.T) {
 	p := plane.NewTestPlane(t)
 	topic := "test-topic"
+	// Produce a message for tailer.
+	producer := p.NewProducer(t, topic)
+
 	tailer := tailer.NewTestTailer(p.Plane, topic)
+	// Set a very long test timeout so message is not really consumed.
+	tailer.SetPollTimeout(1 * time.Minute)
+	go tailer.Tail()
 	svr := server.NewServer(tailer)
 	ctx := context.Background()
 
@@ -85,14 +91,13 @@ func TestGetLag(t *testing.T) {
 	assert.NoError(t, err)
 	assert.EqualValues(t, 0, resp.Lag)
 
-	// Produce a message for tailer.
-	producer := p.NewProducer(t, topic)
 	err = producer.Log(ctx, []byte("hello world"), nil)
 	assert.NoError(t, err)
-	err = producer.Flush(time.Second)
+	err = producer.Flush(10 * time.Second)
 	assert.NoError(t, err)
 
 	// Lag should now be 1.
+	time.Sleep(5 * time.Second)
 	resp, err = svr.GetLag(ctx, nil)
 	assert.NoError(t, err)
 	assert.EqualValues(t, 1, resp.Lag)

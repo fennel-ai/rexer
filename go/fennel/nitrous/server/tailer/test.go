@@ -21,7 +21,7 @@ func NewTestTailer(plane plane.Plane, topic string) *Tailer {
 		consumer.(kafka.FConsumer),
 		[]byte("default-offsets-kg"),
 		nil,
-		100 * time.Millisecond, // Short poll timeout of 100ms for tests.
+		5 * time.Second,
 		&sync.RWMutex{},
 	}
 }

@@ -97,7 +97,7 @@ func (adm *AggDefsMgr) InitAggregate(tierId ftypes.RealmID, aggId ftypes.AggId, 
 	}
 	if len(vgs) == 0 {
 		// No aggregates defined yet.
-		vgs = []hangar.ValGroup{{Expiry: -1}}
+		vgs = []hangar.ValGroup{{Expiry: 0}}
 	}
 	// TODO: Initialize the aggregate store only for codecs that are supported
 	// for the given aggregate type.
