@@ -444,6 +444,16 @@ const planeConfs: Record<number, PlaneConf> = {
         prometheusConf: {
             useAMP: false
         },
+        eksConf: {
+            nodeGroups: [
+                {
+                    name: "p-6-common-ng",
+                    nodeType: "c6i.xlarge",
+                    minSize: 3,
+                    maxSize: 3,
+                },
+            ],
+        },
     },
     // plane 7 - created for testing out multi-arch support, not checked in yet
     // plane 8 - pending account close, post which it can be destroyed
