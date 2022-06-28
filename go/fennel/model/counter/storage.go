@@ -4,6 +4,7 @@ import (
 	"context"
 	"fennel/lib/arena"
 	"fmt"
+	"golang.org/x/sync/errgroup"
 	"strings"
 	"sync"
 	"time"
@@ -190,7 +191,7 @@ func (t twoLevelRedisStore) get(
 	seen := allocSeenMap()
 	defer freeSeenMap(seen)
 	var rkeys []string
-	var slots []slot = slotArena.Alloc(len(buckets), len(buckets)) // slots is a slice with length/cap of len(buckets)
+	var slots = slotArena.Alloc(len(buckets), len(buckets)) // slots is a slice with length/cap of len(buckets)
 	defer slotArena.Free(slots)
 
 	// TODO: Consider creating a large enough buffer and construct slotKey and redisKey using partitions of the buffer
@@ -526,9 +527,18 @@ func (t twoLevelRedisStore) logStats(groupVals []value.Value, mode string) {
 
 var _ BucketStore = twoLevelRedisStore{}
 
+type redisResponse struct {
+	resp  interface{}
+	index int
+}
+
 // ==========================================================
 // Private helpers for talking to redis
 // ==========================================================
+var redis_key_stats = promauto.NewGaugeVec(prometheus.GaugeOpts{
+	Name: "redis_key_stats",
+	Help: "Number of keys queried in redis",
+}, []string{"type"})
 
 func readFromRedis(ctx context.Context, tier tier.Tier, rkeys []string) ([]value.Value, error) {
 	res, err := tier.Redis.MGet(ctx, rkeys...)
@@ -536,15 +546,48 @@ func readFromRedis(ctx context.Context, tier tier.Tier, rkeys []string) ([]value
 		return nil, err
 	}
 	ret := make([]value.Value, len(rkeys))
-	for i, v := range res {
-		if ret[i], err = interpretRedisResponse(v); err != nil {
-			return nil, err
+
+	nWorkers := 16
+	readers := make(chan redisResponse)
+
+	redis_key_stats.WithLabelValues("redis_keys_interpreted").Set(float64(len(res)))
+	g, ctx := errgroup.WithContext(ctx)
+
+	g.Go(func() error {
+		defer close(readers)
+		for i := range res {
+			select {
+			case <-ctx.Done():
+				return ctx.Err()
+			case readers <- redisResponse{res[i], i}:
+			}
 		}
+		return nil
+	})
+
+	workers := nWorkers
+	for i := 0; i < workers; i++ {
+		g.Go(func() error {
+			for v := range readers {
+				if ret[v.index], err = interpretRedisResponse(v.resp); err != nil {
+					return err
+				} else {
+					select {
+					case <-ctx.Done():
+						return ctx.Err()
+					default:
+					}
+				}
+			}
+			return nil
+		})
 	}
-	return ret, nil
+
+	return ret, g.Wait()
 }
 
 func interpretRedisResponse(v interface{}) (value.Value, error) {
+
 	switch t := v.(type) {
 	case nil:
 		return value.NewDict(nil), nil
