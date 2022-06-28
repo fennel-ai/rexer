@@ -45,8 +45,6 @@ with pkgs; mkShell {
     pkgs.nodejs
 
     # Packages for deployment
-    pkgs.awscli
-
     pkgs.docker
 
     # Packages for working with kubernetes
