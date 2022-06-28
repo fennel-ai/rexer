@@ -548,9 +548,6 @@ func readFromRedis(ctx context.Context, tier tier.Tier, rkeys []string) ([]value
 	ret := make([]value.Value, len(rkeys))
 
 	nWorkers := 16
-	if len(rkeys) < nWorkers {
-		nWorkers = len(rkeys)
-	}
 	readers := make(chan redisResponse)
 
 	redis_key_stats.WithLabelValues("redis_keys_interpreted").Set(float64(len(res)))
@@ -568,8 +565,7 @@ func readFromRedis(ctx context.Context, tier tier.Tier, rkeys []string) ([]value
 		return nil
 	})
 
-	workers := nWorkers
-	for i := 0; i < workers; i++ {
+	for i := 0; i < nWorkers; i++ {
 		g.Go(func() error {
 			for v := range readers {
 				if ret[v.index], err = interpretRedisResponse(v.resp); err != nil {
