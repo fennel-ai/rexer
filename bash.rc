@@ -3,6 +3,7 @@ export PYTHONPATH="$FENNEL_ROOT/../rexer-pyclient-alpha/rexerclient/gen:$PYTHONP
 export AWS_PROFILE=admin
 export GOPATH="$FENNEL_ROOT/go"
 export PATH="$PATH:$GOPATH/bin"
+export AWS_SDK_LOAD_CONFIG=1
 
 # flask specific variables
 export FLASK_APP="$FENNEL_ROOT/pyconsole/app.py"
