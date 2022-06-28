@@ -139,7 +139,6 @@ func (m server) Log(w http.ResponseWriter, req *http.Request) {
 		handleBadRequest(w, "invalid action: ", err)
 		return
 	}
-	fmt.Printf("action: %v\n", a)
 
 	incomingActions.WithLabelValues("log", string(a.ActionType)).Inc()
 
@@ -184,7 +183,6 @@ func (m server) LogMulti(w http.ResponseWriter, req *http.Request) {
 		log.Printf("Error: %v", err)
 		return
 	}
-	fmt.Printf("actions: %v\n", actions)
 
 	for _, a := range actions {
 		incomingActions.WithLabelValues("log_multi", string(a.ActionType)).Inc()
@@ -248,26 +246,20 @@ func (m server) LogActions(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	var actions []RestAction
-	if err := json.Unmarshal(data, &actions); err != nil {
+	actions, err := GetActionsFromRest(data)
+	if err != nil {
 		http.Error(w, fmt.Sprintf("invalid request: %v; no action was logged", err), http.StatusBadRequest)
 		log.Printf("Error: %v", err)
 		return
 	}
 
-	batch := make([]actionlib.Action, len(actions))
-
-	for i, a := range actions {
-		batch[i] = a.action
-	}
-
 	// fwd to controller
-	if err = action.BatchInsert(req.Context(), m.tier, batch); err != nil {
+	if err = action.BatchInsert(req.Context(), m.tier, actions); err != nil {
 		handleInternalServerError(w, "", err)
 		return
 	}
 	// increment metrics after successfully writing to the system
-	for _, a := range batch {
+	for _, a := range actions {
 		totalActions.WithLabelValues("log_multi", string(a.ActionType)).Inc()
 	}
 	// nothing to do on successful call :)
@@ -369,14 +361,11 @@ func (m server) LogProfiles(w http.ResponseWriter, req *http.Request) {
 		handleBadRequest(w, "", err)
 		return
 	}
-	var request []RestProfile
-	if err := json.Unmarshal(data, &request); err != nil {
-		handleBadRequest(w, "invalid request: ", err)
+
+	profiles, err := GetProfilesFromRest(data)
+	if err != nil {
+		handleInternalServerError(w, "", err)
 		return
-	}
-	profiles := make([]profilelib.ProfileItem, len(request))
-	for i, r := range request {
-		profiles[i] = r.profile
 	}
 	// send to controller
 	if err = profile2.SetMulti(req.Context(), m.tier, profiles); err != nil {

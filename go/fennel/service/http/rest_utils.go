@@ -15,11 +15,35 @@ import (
 
 const MICRO_SECONDS_PER_SECOND = 1000000
 
-type RestAction struct {
+func GetProfilesFromRest(data []byte) ([]profilelib.ProfileItem, error) {
+	var request []restProfile
+	if err := json.Unmarshal(data, &request); err != nil {
+		return nil, err
+	}
+	profiles := make([]profilelib.ProfileItem, len(request))
+	for i, r := range request {
+		profiles[i] = r.profile
+	}
+	return profiles, nil
+}
+
+func GetActionsFromRest(data []byte) ([]actionlib.Action, error) {
+	var request []restAction
+	if err := json.Unmarshal(data, &request); err != nil {
+		return nil, err
+	}
+	actions := make([]actionlib.Action, len(request))
+	for i, r := range request {
+		actions[i] = r.action
+	}
+	return actions, nil
+}
+
+type restAction struct {
 	action actionlib.Action
 }
 
-func (a *RestAction) UnmarshalJSON(data []byte) error {
+func (a *restAction) UnmarshalJSON(data []byte) error {
 	var fields struct {
 		ActionID   ftypes.IDType     `json:"ActionID"`
 		ActorID    json.RawMessage   `json:"ActorID"`
@@ -70,11 +94,11 @@ func (a *RestAction) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
-type RestProfile struct {
+type restProfile struct {
 	profile profilelib.ProfileItem
 }
 
-func (p *RestProfile) UnmarshalJSON(data []byte) error {
+func (p *restProfile) UnmarshalJSON(data []byte) error {
 	var fields struct {
 		OType      ftypes.OType    `json:"OType"`
 		Oid        json.RawMessage `json:"Oid"`
