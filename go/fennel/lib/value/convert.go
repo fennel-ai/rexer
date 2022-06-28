@@ -184,12 +184,12 @@ func FromProtoValue(pv *PValue) (Value, error) {
 	}
 	if pvl, ok := pv.Node.(*PValue_List); ok {
 		ret := make([]Value, len(pvl.List.Values))
-		for _, pv := range pvl.List.Values {
+		for i, pv := range pvl.List.Values {
 			v, err := FromProtoValue(pv)
 			if err != nil {
 				return Nil, fmt.Errorf("can not convert element of list to value: %v", pv)
 			}
-			ret = append(ret, v)
+			ret[i] = v
 		}
 		return NewList(ret...), nil
 	}
