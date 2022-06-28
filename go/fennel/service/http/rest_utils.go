@@ -15,6 +15,26 @@ import (
 
 const MICRO_SECONDS_PER_SECOND = 1000000
 
+// Map of keys to if they required on not.
+var PROFILE_KEYS = map[string]bool{
+	"OType":      true,
+	"Oid":        true,
+	"Key":        true,
+	"Value":      true,
+	"UpdateTime": false,
+}
+
+var ACTION_KEYS = map[string]bool{
+	"ActorID":    true,
+	"ActorType":  true,
+	"TargetID":   true,
+	"TargetType": true,
+	"ActionType": true,
+	"Timestamp":  false,
+	"RequestID":  true,
+	"Metadata":   false,
+}
+
 func GetProfilesFromRest(data []byte) ([]profilelib.ProfileItem, error) {
 	var request []restProfile
 	if err := json.Unmarshal(data, &request); err != nil {
@@ -55,7 +75,11 @@ func (a *restAction) UnmarshalJSON(data []byte) error {
 		RequestID  json.RawMessage   `json:"RequestID"`
 	}
 
-	err := json.Unmarshal(data, &fields)
+	err := verifyFields(data, ACTION_KEYS)
+	if err != nil {
+		return fmt.Errorf("error unmarshalling action json: %v", err)
+	}
+	err = json.Unmarshal(data, &fields)
 	if err != nil {
 		return fmt.Errorf("error unmarshalling action json: %v", err)
 	}
@@ -106,7 +130,11 @@ func (p *restProfile) UnmarshalJSON(data []byte) error {
 		UpdateTime uint64          `json:"UpdateTime"`
 	}
 
-	err := json.Unmarshal(data, &fields)
+	err := verifyFields(data, PROFILE_KEYS)
+	if err != nil {
+		return fmt.Errorf("error unmarshalling profile json: %v", err)
+	}
+	err = json.Unmarshal(data, &fields)
 	if err != nil {
 		return fmt.Errorf("error unmarshalling profile json: %v", err)
 	}
@@ -129,6 +157,25 @@ func (p *restProfile) UnmarshalJSON(data []byte) error {
 	p.profile.Value, err = value.ParseJSON(vdata, vtype)
 	if err != nil {
 		return fmt.Errorf("error parsing value from profile json: %v", err)
+	}
+	return nil
+}
+
+func verifyFields(data []byte, keys map[string]bool) error {
+	var mp map[string]interface{}
+	err := json.Unmarshal(data, &mp)
+	if err != nil {
+		return fmt.Errorf("error unmarshalling json: %v", err)
+	}
+	for key, required := range keys {
+		if _, ok := mp[key]; !ok && required {
+			return fmt.Errorf("json is missing key: %v", key)
+		}
+	}
+	for k := range mp {
+		if _, ok := keys[k]; !ok {
+			return fmt.Errorf("json has extra key: %v", k)
+		}
 	}
 	return nil
 }
