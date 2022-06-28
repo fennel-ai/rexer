@@ -41,6 +41,8 @@ import (
 
 const dedupTTL = 6 * time.Hour
 
+const REST_VERSION = "/v1"
+
 var incomingActions = promauto.NewCounterVec(
 	prometheus.CounterOpts{
 		Name: "incoming_actions_total",
@@ -82,6 +84,7 @@ type server struct {
 }
 
 func (s server) setHandlers(router *mux.Router) {
+	// Endpoints used by python client
 	router.HandleFunc("/fetch", s.Fetch)
 	router.HandleFunc("/get", s.GetProfile)
 	router.HandleFunc("/set", s.SetProfile)
@@ -91,7 +94,6 @@ func (s server) setHandlers(router *mux.Router) {
 	router.HandleFunc("/get_multi", s.GetProfileMulti)
 	router.HandleFunc("/query", s.Query)
 	router.HandleFunc("/store_query", s.StoreQuery)
-	router.HandleFunc("/run_query", s.RunQuery)
 	router.HandleFunc("/store_aggregate", s.StoreAggregate)
 	router.HandleFunc("/retrieve_aggregate", s.RetrieveAggregate)
 	router.HandleFunc("/deactivate_aggregate", s.DeactivateAggregate)
@@ -101,6 +103,11 @@ func (s server) setHandlers(router *mux.Router) {
 	router.HandleFunc("/upload_model", s.UploadModel)
 	router.HandleFunc("/delete_model", s.DeleteModel)
 	router.HandleFunc("/enable_model", s.EnableModel)
+
+	// Rest endpoints
+	router.HandleFunc(REST_VERSION+"/actions/log", s.LogActions)
+	router.HandleFunc(REST_VERSION+"/profiles/log", s.LogProfiles)
+	router.HandleFunc("/run_query", s.RunQuery)
 }
 
 func constructDedupKey(dedupKey string, actionType ftypes.ActionType) string {
@@ -132,6 +139,8 @@ func (m server) Log(w http.ResponseWriter, req *http.Request) {
 		handleBadRequest(w, "invalid action: ", err)
 		return
 	}
+	fmt.Printf("action: %v\n", a)
+
 	incomingActions.WithLabelValues("log", string(a.ActionType)).Inc()
 
 	dedupKey, err := jsonparser.GetString(data, "DedupKey")
@@ -175,6 +184,7 @@ func (m server) LogMulti(w http.ResponseWriter, req *http.Request) {
 		log.Printf("Error: %v", err)
 		return
 	}
+	fmt.Printf("actions: %v\n", actions)
 
 	for _, a := range actions {
 		incomingActions.WithLabelValues("log_multi", string(a.ActionType)).Inc()
@@ -219,6 +229,38 @@ func (m server) LogMulti(w http.ResponseWriter, req *http.Request) {
 			totalDedupedActions.WithLabelValues("log_multi", string(actions[ids[i]].ActionType)).Inc()
 		}
 	}
+	// fwd to controller
+	if err = action.BatchInsert(req.Context(), m.tier, batch); err != nil {
+		handleInternalServerError(w, "", err)
+		return
+	}
+	// increment metrics after successfully writing to the system
+	for _, a := range batch {
+		totalActions.WithLabelValues("log_multi", string(a.ActionType)).Inc()
+	}
+	// nothing to do on successful call :)
+}
+
+func (m server) LogActions(w http.ResponseWriter, req *http.Request) {
+	data, err := readRequest(req)
+	if err != nil {
+		handleBadRequest(w, "", err)
+		return
+	}
+
+	var actions []RestAction
+	if err := json.Unmarshal(data, &actions); err != nil {
+		http.Error(w, fmt.Sprintf("invalid request: %v; no action was logged", err), http.StatusBadRequest)
+		log.Printf("Error: %v", err)
+		return
+	}
+
+	batch := make([]actionlib.Action, len(actions))
+
+	for i, a := range actions {
+		batch[i] = a.action
+	}
+
 	// fwd to controller
 	if err = action.BatchInsert(req.Context(), m.tier, batch); err != nil {
 		handleInternalServerError(w, "", err)
@@ -316,6 +358,28 @@ func (m server) SetProfiles(w http.ResponseWriter, req *http.Request) {
 	}
 	// send to controller
 	if err = profile2.SetMulti(req.Context(), m.tier, request); err != nil {
+		handleInternalServerError(w, "", err)
+		return
+	}
+}
+
+func (m server) LogProfiles(w http.ResponseWriter, req *http.Request) {
+	data, err := readRequest(req)
+	if err != nil {
+		handleBadRequest(w, "", err)
+		return
+	}
+	var request []RestProfile
+	if err := json.Unmarshal(data, &request); err != nil {
+		handleBadRequest(w, "invalid request: ", err)
+		return
+	}
+	profiles := make([]profilelib.ProfileItem, len(request))
+	for i, r := range request {
+		profiles[i] = r.profile
+	}
+	// send to controller
+	if err = profile2.SetMulti(req.Context(), m.tier, profiles); err != nil {
 		handleInternalServerError(w, "", err)
 		return
 	}
