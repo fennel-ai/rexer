@@ -202,13 +202,13 @@ const tierConfs: Record<number, TierConf> = {
             },
         },
     },
-    // Envoy prod tier
+    // Convoy prod tier
     112: {
         protectResources: true,
         planeId: 9,
         // TODO(mohit): set service configurations
     },
-    // Envoy prod tier
+    // Gopuff demo tier
     113: {
         protectResources: true,
         planeId: 3,
@@ -216,7 +216,33 @@ const tierConfs: Record<number, TierConf> = {
         ingressConf: {
             usePublicSubnets: true,
         },
-    }
+    },
+    // Discord demo tier
+    114: {
+        protectResources: true,
+        planeId: 3,
+        // use public subnets for ingress to allow traffic from outside the assigned vpc
+        ingressConf: {
+            usePublicSubnets: true,
+        },
+        // set larger requests for the http + query server
+        httpServerConf: {
+            podConf: {
+                minReplicas: 1,
+                maxReplicas: 4,
+                resourceConf: {
+                    cpu: {
+                        request: "2250m",
+                        limit: "2500m"
+                    },
+                    memory: {
+                        request: "6G",
+                        limit: "7G",
+                    }
+                }
+            },
+        },
+    },
 }
 
 // map from plane id to its configuration.
@@ -323,7 +349,9 @@ const planeConfs: Record<number, PlaneConf> = {
                     name: "p-3-common-ng",
                     nodeType: "c6i.2xlarge",
                     minSize: 4,
-                    maxSize: 6,
+                    // since we create demo tiers on top of this plane, allow scaling this node group to a larger
+                    // number to accommodate more servers
+                    maxSize: 10,
                 },
             ],
         },
