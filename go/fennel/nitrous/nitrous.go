@@ -12,6 +12,7 @@ import (
 	"fennel/nitrous/server/tailer"
 	"fennel/plane"
 
+	"github.com/grpc-ecosystem/go-grpc-prometheus"
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
 )
@@ -47,9 +48,15 @@ func StartServer(plane plane.Plane, listener net.Listener) error {
 	// that they don't miss any events.
 	go tailer.Tail()
 
-	// Setup the grpc server.
-	grpcServer := grpc.NewServer()
+	// Setup the grpc server. Add a prometheus middleware to the main router to
+	// capture standard metrics.
+	grpcServer := grpc.NewServer(
+		grpc.StreamInterceptor(grpc_prometheus.StreamServerInterceptor),
+		grpc.UnaryInterceptor(grpc_prometheus.UnaryServerInterceptor),
+	)
 	rpc.RegisterNitrousServer(grpcServer, svr)
+	// After all your registrations, make sure all of the Prometheus metrics are initialized.
+	grpc_prometheus.Register(grpcServer)
 
 	// Finally, start the server.
 	if err = grpcServer.Serve(listener); err != nil {
