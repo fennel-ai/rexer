@@ -1,31 +1,28 @@
 package value
 
 import (
+	"bytes"
 	"capnproto.org/go/capnp/v3"
 	"google.golang.org/protobuf/proto"
 )
 
 func CaptainMarshal(v Value) ([]byte, error) {
-	_, ret, err := ToCapnValue(v)
+	_, bytes, err := ToCapnValue(v)
+	return bytes, err
+}
+
+func CaptainUnmarshal(data []byte) (Value, error) {
+	msg, _ := capnp.NewDecoder(bytes.NewBuffer(data)).Decode()
+	cv, err := ReadRootCapnValue(msg)
+	//return nil, err
 	if err != nil {
 		return nil, err
 	}
-	return ret, err
-}
-
-func CaptainUnmarshal(data []byte, v *Value) error {
-	var pa CapnValue
-	msg, err = capnp.Unmarshal(data)
-
-	if err := proto.Unmarshal(data, &pa); err != nil {
-		return err
-	}
-	a, err := FromCapnValue(pa)
+	v, err := FromCapnValue(cv)
 	if err != nil {
-		return err
+		return nil, err
 	}
-	*v = a
-	return nil
+	return v, nil
 }
 
 func Marshal(v Value) ([]byte, error) {
@@ -41,6 +38,7 @@ func Unmarshal(data []byte, v *Value) error {
 	if err := proto.Unmarshal(data, &pa); err != nil {
 		return err
 	}
+	// return nil
 	a, err := FromProtoValue(&pa)
 	if err != nil {
 		return err

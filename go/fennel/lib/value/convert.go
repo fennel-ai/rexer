@@ -95,6 +95,7 @@ func FromCapnValue(cv CapnValue) (Value, error) {
 		}
 		v := NewList()
 		v.Grow(l.Len())
+		//ProcessInParallel()
 		for i := 0; i < l.Len(); i++ {
 			e := l.At(i)
 			ve, err := FromCapnValue(e)

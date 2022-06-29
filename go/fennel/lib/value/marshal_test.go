@@ -1,6 +1,7 @@
 package value
 
 import (
+	"fmt"
 	"github.com/stretchr/testify/assert"
 	"math/rand"
 	"testing"
@@ -84,19 +85,28 @@ func RandStringRunes(n int) string {
 	return string(b)
 }
 
-func smallValue(n int) [][]byte {
+func smallValue(n int, t string) ([][]byte, []Value) {
 	arr := make([][]byte, n)
-
+	samples := make([]Value, n)
 	for i := 0; i < n; i++ {
 		sample := NewList(String(RandStringRunes(5)), Int(rand.Int()), Bool(true))
-		arr[i], _ = Marshal(sample)
+		samples[i] = sample
+		if t == "captain" {
+			arr[i], _ = CaptainMarshal(sample)
+		} else if t == "proto" {
+			arr[i], _ = Marshal(sample)
+		} else if t == "json" {
+			arr[i], _ = sample.MarshalJSON()
+		} else {
+			panic("unknown type")
+		}
 	}
-	return arr
+	return arr, samples
 }
 
-func largeValue(n int) [][]byte {
+func largeValue(n int, t string) ([][]byte, []Value) {
 	arr := make([][]byte, n)
-
+	samples := make([]Value, n)
 	for i := 0; i < n; i++ {
 		sample := NewDict(map[string]Value{})
 		for j := 0; j < 200; j++ {
@@ -106,31 +116,56 @@ func largeValue(n int) [][]byte {
 			}
 			sample.Set(RandStringRunes(5), l)
 		}
-		arr[i], _ = CaptainMarshal(sample)
+		if t == "captain" {
+			arr[i], _ = CaptainMarshal(sample)
+		} else if t == "proto" {
+			arr[i], _ = Marshal(sample)
+		} else if t == "json" {
+			arr[i], _ = sample.MarshalJSON()
+		} else {
+			panic("unknown type")
+		}
+		samples[i] = sample
 	}
-	return arr
+	return arr, samples
 }
 
 func benchMarkAdityaProto(b *testing.B) {
-	arr := smallValue(b.N)
+	fmt.Println("Benchmarking Proto ", b.N)
+	arr, _ := largeValue(b.N, "proto")
 	b.ResetTimer()
 	b.ReportAllocs()
 
 	for n := 0; n < b.N; n++ {
 		var v Value
 		err := Unmarshal(arr[n], &v)
+		// assert.True(b, v.Equal(samples[n]))
 		assert.NoError(b, err)
 	}
 }
 
 func benchMarkAdityaCaptain(b *testing.B) {
-	arr := largeValue(b.N)
+	fmt.Println("Benchmarking Captain ", b.N)
+	arr, _ := largeValue(b.N, "captain")
 	b.ResetTimer()
 	b.ReportAllocs()
 
 	for n := 0; n < b.N; n++ {
-		var v Value
-		err := CaptainUnmarshal(arr[n], &v)
+		_, err := CaptainUnmarshal(arr[n])
+		//assert.True(b, v.Equal(samples[n]))
+		assert.NoError(b, err)
+	}
+}
+
+func benchMarkAdityaJson(b *testing.B) {
+	fmt.Println("Benchmarking Json ", b.N)
+	arr, _ := largeValue(b.N, "json")
+	b.ResetTimer()
+	b.ReportAllocs()
+
+	for n := 0; n < b.N; n++ {
+		_, err := FromJSON(arr[n])
+		//assert.True(b, v.Equal(samples[n]))
 		assert.NoError(b, err)
 	}
 }
@@ -138,4 +173,5 @@ func benchMarkAdityaCaptain(b *testing.B) {
 func Benchmark_Marshal2(b *testing.B) {
 	// benchMarkAdityaProto(b)
 	benchMarkAdityaCaptain(b)
+	// benchMarkAdityaJson(b)
 }
