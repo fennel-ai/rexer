@@ -1,9 +1,9 @@
 package value
 
 import (
-	"testing"
-
 	"github.com/stretchr/testify/assert"
+	"math/rand"
+	"testing"
 )
 
 func verifyMarshalUnMarshal(t *testing.T, v Value) {
@@ -72,4 +72,66 @@ func TestUnequalMarshal(t *testing.T) {
 	verifyUnequalMarshal(t, Nil, []Value{i, d, b, s, l, di})
 	verifyUnequalMarshal(t, NewList(Int(2), Bool(true)), []Value{i, d, b, s, l, di})
 	verifyUnequalMarshal(t, NewDict(map[string]Value{"b": Int(2)}), []Value{i, d, b, s, l, di})
+}
+
+var letterRunes = []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ")
+
+func RandStringRunes(n int) string {
+	b := make([]rune, n)
+	for i := range b {
+		b[i] = letterRunes[rand.Intn(len(letterRunes))]
+	}
+	return string(b)
+}
+func benchMarkAditya(numRows int, b *testing.B) {
+
+	arr := make([][]byte, b.N)
+
+	for i := 0; i < b.N; i++ {
+		//sample := NewDict(map[string]Value{})
+		sample := NewList(Int(1), Double(2.0), Bool(true))
+		for j := 0; j < 200; j++ {
+			for k := 0; k < 3; k++ {
+				sample.Append(String(RandStringRunes(5)))
+			}
+		}
+		arr[i], _ = Marshal(sample)
+	}
+	b.ResetTimer()
+	b.ReportAllocs()
+
+	for n := 0; n < b.N; n++ {
+		var v Value
+		err := Unmarshal(arr[n], &v)
+		assert.NoError(b, err)
+	}
+}
+
+func benchMarkAdityaCaptain(numRows int, b *testing.B) {
+
+	arr := make([][]byte, b.N)
+
+	for i := 0; i < b.N; i++ {
+		sample := NewDict(map[string]Value{})
+		for j := 0; j < 200; j++ {
+			l := NewList(Int(1), Double(2.0), Bool(true))
+			for k := 0; k < 3; k++ {
+				l.Append(String(RandStringRunes(5)))
+			}
+			sample.Set(RandStringRunes(5), l)
+		}
+		arr[i], _ = Marshal(sample)
+	}
+	b.ResetTimer()
+	b.ReportAllocs()
+
+	for n := 0; n < b.N; n++ {
+		var v Value
+		err := Unmarshal(arr[n], &v)
+		assert.NoError(b, err)
+	}
+}
+
+func Benchmark_Marshal2(b *testing.B) {
+	benchMarkAditya(100, b)
 }

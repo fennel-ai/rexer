@@ -188,15 +188,15 @@ const tierConfs: Record<number, TierConf> = {
         httpServerConf: {
             podConf: {
                 minReplicas: 1,
-                maxReplicas: 3,
+                maxReplicas: 2,
                 resourceConf: {
                     cpu: {
                         request: "1250m",
                         limit: "1500m"
                     },
                     memory: {
-                        request: "2G",
-                        limit: "3G",
+                        request: "8G",
+                        limit: "12G",
                     }
                 }
             },

@@ -90,17 +90,14 @@ func freeSeenMap(s map[group]int) {
 	twoLevelRedisStore groups all keys that fall within a period and stores them as value.Dict in a single redis key
 	within that dictionary, the key is derived from the index of the key within that group
 	as a result, it can only store those buckets where Window x Width is a divisor of period (else it throws error)
-
 	As an example, if we set period to be 1 day and send it keys with window of Hour and Width of 2, we create
 	one redis key for each day. Within that key, we have a dictionary and that dictionary stores upto 12 keys,
 	where each key denotes a 2hr window within that day (and is called as slot in the code). This is sparse storage
 	so keys for which there is no data aren't stored at all. It further reduces storage by using byte strings for
 	indices which can become larger so that we reduce the overhead of per slot key as much as we can.
-
 	The system can simultaneously handle buckets of multiple Window/Width as long as period is an even multiple
 	of their total size (window x width). Prefix of all keys is agg_l2 which can help identify raw redis keys which
 	come from this storage policy.
-
 */
 type twoLevelRedisStore struct {
 	period    uint32
