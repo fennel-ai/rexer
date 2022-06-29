@@ -4,7 +4,6 @@ import (
 	"context"
 	"fennel/lib/arena"
 	"fmt"
-	"golang.org/x/sync/errgroup"
 	"strings"
 	"sync"
 	"time"
@@ -21,6 +20,7 @@ import (
 	"fennel/lib/ftypes"
 	"fennel/lib/timer"
 	"fennel/lib/utils/binary"
+	plib "fennel/lib/utils/efficiency"
 	"fennel/lib/utils/slice"
 	"fennel/lib/value"
 	"fennel/redis"
@@ -535,9 +535,17 @@ type redisResponse struct {
 // ==========================================================
 // Private helpers for talking to redis
 // ==========================================================
-var redis_key_stats = promauto.NewGaugeVec(prometheus.GaugeOpts{
-	Name: "redis_key_stats",
+var redisKeyStats = promauto.NewSummaryVec(prometheus.SummaryOpts{
+	Name: "num_keys_queried",
 	Help: "Number of keys queried in redis",
+	Objectives: map[float64]float64{
+		0.25: 0.05,
+		0.50: 0.05,
+		0.75: 0.05,
+		0.90: 0.05,
+		0.95: 0.02,
+		0.99: 0.01,
+	},
 }, []string{"type"})
 
 func readFromRedis(ctx context.Context, tier tier.Tier, rkeys []string) ([]value.Value, error) {
@@ -545,49 +553,18 @@ func readFromRedis(ctx context.Context, tier tier.Tier, rkeys []string) ([]value
 	if err != nil {
 		return nil, err
 	}
-	ret := make([]value.Value, len(rkeys))
-
-	readers := make(chan redisResponse)
-	redis_key_stats.WithLabelValues("redis_keys_interpreted").Set(float64(len(res)))
+	redisKeyStats.WithLabelValues("redis_keys_interpreted").Observe(float64(len(res)))
 	ctx, tmr := timer.Start(ctx, tier.ID, "redis.interpret_response")
 	defer tmr.Stop()
 
-	g, ctx := errgroup.WithContext(ctx)
-
-	g.Go(func() error {
-		defer close(readers)
-		for i := range res {
-			select {
-			case <-ctx.Done():
-				return ctx.Err()
-			case readers <- redisResponse{res[i], i}:
-			}
-		}
-		return nil
-	})
-
-	nWorkers := 16
-	for i := 0; i < nWorkers; i++ {
-		g.Go(func() error {
-			for v := range readers {
-				if ret[v.index], err = interpretRedisResponse(v.resp); err != nil {
-					return err
-				} else {
-					select {
-					case <-ctx.Done():
-						return ctx.Err()
-					default:
-					}
-				}
-			}
-			return nil
-		})
+	ret, err := plib.ProcessInParallel(ctx, res, interpretRedisResponse)
+	if err != nil {
+		return nil, fmt.Errorf("failed to interpret redis response: %w", err)
 	}
-	return ret, g.Wait()
+	return ret, nil
 }
 
 func interpretRedisResponse(v interface{}) (value.Value, error) {
-
 	switch t := v.(type) {
 	case nil:
 		return value.NewDict(nil), nil
