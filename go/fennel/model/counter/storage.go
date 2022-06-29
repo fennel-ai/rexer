@@ -20,6 +20,7 @@ import (
 	"fennel/lib/ftypes"
 	"fennel/lib/timer"
 	"fennel/lib/utils/binary"
+	plib "fennel/lib/utils/efficiency"
 	"fennel/lib/utils/slice"
 	"fennel/lib/value"
 	"fennel/redis"
@@ -190,7 +191,7 @@ func (t twoLevelRedisStore) get(
 	seen := allocSeenMap()
 	defer freeSeenMap(seen)
 	var rkeys []string
-	var slots []slot = slotArena.Alloc(len(buckets), len(buckets)) // slots is a slice with length/cap of len(buckets)
+	var slots = slotArena.Alloc(len(buckets), len(buckets)) // slots is a slice with length/cap of len(buckets)
 	defer slotArena.Free(slots)
 
 	// TODO: Consider creating a large enough buffer and construct slotKey and redisKey using partitions of the buffer
@@ -526,20 +527,39 @@ func (t twoLevelRedisStore) logStats(groupVals []value.Value, mode string) {
 
 var _ BucketStore = twoLevelRedisStore{}
 
+type redisResponse struct {
+	resp  interface{}
+	index int
+}
+
 // ==========================================================
 // Private helpers for talking to redis
 // ==========================================================
+var redisKeyStats = promauto.NewSummaryVec(prometheus.SummaryOpts{
+	Name: "num_keys_queried",
+	Help: "Number of keys queried in redis",
+	Objectives: map[float64]float64{
+		0.25: 0.05,
+		0.50: 0.05,
+		0.75: 0.05,
+		0.90: 0.05,
+		0.95: 0.02,
+		0.99: 0.01,
+	},
+}, []string{"type"})
 
 func readFromRedis(ctx context.Context, tier tier.Tier, rkeys []string) ([]value.Value, error) {
 	res, err := tier.Redis.MGet(ctx, rkeys...)
 	if err != nil {
 		return nil, err
 	}
-	ret := make([]value.Value, len(rkeys))
-	for i, v := range res {
-		if ret[i], err = interpretRedisResponse(v); err != nil {
-			return nil, err
-		}
+	redisKeyStats.WithLabelValues("redis_keys_interpreted").Observe(float64(len(res)))
+	ctx, tmr := timer.Start(ctx, tier.ID, "redis.interpret_response")
+	defer tmr.Stop()
+
+	ret, err := plib.ProcessInParallel(ctx, res, interpretRedisResponse)
+	if err != nil {
+		return nil, fmt.Errorf("failed to interpret redis response: %w", err)
 	}
 	return ret, nil
 }

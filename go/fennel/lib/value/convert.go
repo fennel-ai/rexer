@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"sort"
 
-	capnp "capnproto.org/go/capnp/v3"
+	"capnproto.org/go/capnp/v3"
 )
 
 func ToCapnValue(v Value) (CapnValue, error) {
@@ -183,18 +183,18 @@ func FromProtoValue(pv *PValue) (Value, error) {
 		return Bool(pvb.Bool), nil
 	}
 	if pvl, ok := pv.Node.(*PValue_List); ok {
-		ret := make([]Value, 0)
-		for _, pv := range pvl.List.Values {
+		ret := make([]Value, len(pvl.List.Values))
+		for i, pv := range pvl.List.Values {
 			v, err := FromProtoValue(pv)
 			if err != nil {
 				return Nil, fmt.Errorf("can not convert element of list to value: %v", pv)
 			}
-			ret = append(ret, v)
+			ret[i] = v
 		}
 		return NewList(ret...), nil
 	}
 	if pvd, ok := pv.Node.(*PValue_Dict); ok {
-		ret := make(map[string]Value, 0)
+		ret := make(map[string]Value, len(pvd.Dict.Values))
 		for k, pv := range pvd.Dict.Values {
 			v, err := FromProtoValue(pv)
 			if err != nil {
