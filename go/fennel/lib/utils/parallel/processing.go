@@ -1,4 +1,4 @@
-package efficiency
+package parallel
 
 import (
 	"context"
@@ -12,7 +12,7 @@ type input[T any] struct {
 	index int
 }
 
-func ProcessInParallel[S, T any](ctx context.Context, inputs []S, f func(S) (T, error)) ([]T, error) {
+func Process[S, T any](ctx context.Context, inputs []S, f func(S) (T, error)) ([]T, error) {
 	g, ctx := errgroup.WithContext(ctx)
 	readers := make(chan input[S])
 	var err error

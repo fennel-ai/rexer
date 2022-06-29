@@ -20,7 +20,7 @@ import (
 	"fennel/lib/ftypes"
 	"fennel/lib/timer"
 	"fennel/lib/utils/binary"
-	plib "fennel/lib/utils/efficiency"
+	"fennel/lib/utils/parallel"
 	"fennel/lib/utils/slice"
 	"fennel/lib/value"
 	"fennel/redis"
@@ -557,7 +557,7 @@ func readFromRedis(ctx context.Context, tier tier.Tier, rkeys []string) ([]value
 	ctx, tmr := timer.Start(ctx, tier.ID, "redis.interpret_response")
 	defer tmr.Stop()
 
-	ret, err := plib.ProcessInParallel(ctx, res, interpretRedisResponse)
+	ret, err := parallel.Process(ctx, res, interpretRedisResponse)
 	if err != nil {
 		return nil, fmt.Errorf("failed to interpret redis response: %w", err)
 	}
