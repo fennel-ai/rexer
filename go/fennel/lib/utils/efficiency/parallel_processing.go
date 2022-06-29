@@ -2,18 +2,19 @@ package efficiency
 
 import (
 	"context"
-	"golang.org/x/sync/errgroup"
 	"runtime"
+
+	"golang.org/x/sync/errgroup"
 )
 
-type input struct {
-	inp   interface{}
+type input[T any] struct {
+	inp   T
 	index int
 }
 
 func ProcessInParallel[S, T any](ctx context.Context, inputs []S, f func(S) (T, error)) ([]T, error) {
 	g, ctx := errgroup.WithContext(ctx)
-	readers := make(chan input)
+	readers := make(chan input[S])
 	var err error
 
 	g.Go(func() error {
@@ -22,7 +23,7 @@ func ProcessInParallel[S, T any](ctx context.Context, inputs []S, f func(S) (T, 
 			select {
 			case <-ctx.Done():
 				return ctx.Err()
-			case readers <- input{inputs[i], i}:
+			case readers <- input[S]{inputs[i], i}:
 			}
 		}
 		return nil
@@ -37,7 +38,7 @@ func ProcessInParallel[S, T any](ctx context.Context, inputs []S, f func(S) (T, 
 				case <-ctx.Done():
 					return ctx.Err()
 				default:
-					if ret[v.index], err = f(v.inp.(S)); err != nil {
+					if ret[v.index], err = f(v.inp); err != nil {
 						return err
 					}
 				}
