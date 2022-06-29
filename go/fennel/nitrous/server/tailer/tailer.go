@@ -106,7 +106,9 @@ func (t *Tailer) Tail() {
 			ctx := context.Background()
 			t.plane.Logger.Info("Waiting for new messages from binlog...")
 			rawops, err := t.binlog.ReadBatch(ctx, tailer_batch, t.pollTimeout)
-			if err != nil {
+			if kerr, ok := err.(kafka.Error); ok && (kerr.IsFatal() || kerr.Code() == kafka.ErrUnknownTopicOrPart) {
+				t.plane.Logger.Fatal("permanent error when reading from kafka", zap.Error(err))
+			} else if err != nil {
 				t.plane.Logger.Warn("failed to read from binlog", zap.Error(err))
 				// Insert a brief sleep to avoid busy loop.
 				time.Sleep(t.pollTimeout)
