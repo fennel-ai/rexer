@@ -2,6 +2,7 @@ package parallel_test
 
 import (
 	"context"
+	"runtime"
 	"testing"
 	"time"
 
@@ -30,7 +31,8 @@ func TestParallelProcessing(t *testing.T) {
 	elapsed := time.Since(start)
 	assert.NoError(t, err)
 	assert.Equal(t, expected, results)
-	// Iteratively it would have taken 10*2 = 20 seconds to process 10 inputs
-	// Parallel processing would have taken 10 ( #input) /8 (workers ) *1 = 1.25 seconds to process 10 inputs
-	assert.True(t, elapsed < 3*time.Second)
+	// Iteratively it would have taken 10*1 = 10 seconds to process 10 inputs
+	// Parallel processing would have taken 10 ( #input) /(num workers) * 1.
+	// We add a 2 second buffer to account for scheduling delays and rounding.
+	assert.LessOrEqual(t, elapsed, time.Duration(len(inputs)/runtime.GOMAXPROCS(0)+2)*time.Second)
 }
