@@ -7,21 +7,21 @@ import (
 	"golang.org/x/sync/errgroup"
 )
 
-type input[T any] struct {
-	inp   T
+type item[T any] struct {
+	input T
 	index int
 }
 
 func Process[S, T any](ctx context.Context, inputs []S, f func(S) (T, error)) ([]T, error) {
 	g, ctx := errgroup.WithContext(ctx)
-	readers := make(chan input[S])
+	itemCh := make(chan item[S])
 	g.Go(func() error {
-		defer close(readers)
+		defer close(itemCh)
 		for i := range inputs {
 			select {
 			case <-ctx.Done():
 				return ctx.Err()
-			case readers <- input[S]{inputs[i], i}:
+			case itemCh <- item[S]{inputs[i], i}:
 			}
 		}
 		return nil
@@ -30,13 +30,13 @@ func Process[S, T any](ctx context.Context, inputs []S, f func(S) (T, error)) ([
 	nWorkers := runtime.GOMAXPROCS(0)
 	for i := 0; i < nWorkers; i++ {
 		g.Go(func() error {
-			for v := range readers {
+			for item := range itemCh {
 				select {
 				case <-ctx.Done():
 					return ctx.Err()
 				default:
 					var err error
-					if ret[v.index], err = f(v.inp); err != nil {
+					if ret[item.index], err = f(item.input); err != nil {
 						return err
 					}
 				}
