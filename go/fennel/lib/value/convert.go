@@ -7,11 +7,11 @@ import (
 	"capnproto.org/go/capnp/v3"
 )
 
-func ToCapnValue(v Value) (CapnValue, error) {
+func ToCapnValue(v Value) (CapnValue, []byte, error) {
 	// Make a brand new empty message. A Message allocates Cap'n Proto structs.
-	_, seg, err := capnp.NewMessage(capnp.SingleSegment(nil))
+	msg, seg, err := capnp.NewMessage(capnp.SingleSegment(nil))
 	if err != nil {
-		return CapnValue{}, err
+		return CapnValue{}, nil, err
 	}
 	cv, err := NewRootCapnValue(seg)
 	switch t := v.(type) {
@@ -26,24 +26,24 @@ func ToCapnValue(v Value) (CapnValue, error) {
 	case List:
 		l, err := cv.NewList(int32(t.Len()))
 		if err != nil {
-			return CapnValue{}, err
+			return CapnValue{}, nil, err
 		}
 		for i, v := range t.values {
-			cv, err := ToCapnValue(v)
+			cv, _, err := ToCapnValue(v)
 			if err != nil {
-				return CapnValue{}, err
+				return CapnValue{}, nil, err
 			}
 			l.Set(i, cv)
 		}
 	case Dict:
 		m, err := cv.NewDict()
 		if err != nil {
-			return cv, err
+			return cv, nil, err
 		}
 		entries := t.Iter()
 		es, err := m.NewEntries(int32(len(entries)))
 		if err != nil {
-			return cv, err
+			return cv, nil, err
 		}
 		// Collect keys in dict and sort to get canonical order.
 		keys := make([]string, 0, len(entries))
@@ -54,21 +54,22 @@ func ToCapnValue(v Value) (CapnValue, error) {
 		for i, k := range keys {
 			key, err := capnp.NewText(seg, k)
 			if err != nil {
-				return CapnValue{}, fmt.Errorf("failed to convert map key to string: %w", err)
+				return CapnValue{}, nil, fmt.Errorf("failed to convert map key to string: %w", err)
 			}
 			es.At(i).SetKey(key.ToPtr())
-			value, err := ToCapnValue(entries[k])
+			value, _, err := ToCapnValue(entries[k])
 			if err != nil {
-				return CapnValue{}, err
+				return CapnValue{}, nil, err
 			}
 			es.At(i).SetValue(value.ToPtr())
 		}
 	case nil_:
 		cv.SetNil()
 	default:
-		return CapnValue{}, fmt.Errorf("invalid value: %s", v.String())
+		return CapnValue{}, nil, fmt.Errorf("invalid value: %s", v.String())
 	}
-	return cv, nil
+	serializedProto, err := msg.Marshal()
+	return cv, serializedProto, err
 }
 
 func FromCapnValue(cv CapnValue) (Value, error) {
