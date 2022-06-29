@@ -2,7 +2,7 @@ import functools
 import os
 import random
 import unittest
-
+import requests
 import time
 from datetime import datetime, timezone, timedelta
 import lib
@@ -185,6 +185,167 @@ class TestEndToEnd(unittest.TestCase):
         print('all checks passed...')
 
     @tiered
+    def test_end_to_end_rest_endpoints(self):
+        c = client.Client(URL)
+        uid = 12312
+        video_id = 456
+        city = 'delhi'
+        gender = 1
+        age_group = 3
+        creator_id = 567
+
+        # set some profiles using set_profiles
+        profiles = [
+            {
+                'otype': 'user',
+                'oid': uid,
+                'key': 'city',
+                'value': city
+            },
+            {
+                'otype': 'user',
+                'oid': uid,
+                'key': 'gender',
+                'value': gender
+            },
+            {
+                'otype': 'user',
+                'oid': uid,
+                'key': 'age_group',
+                'value': age_group
+            },
+            {
+                'otype': 'video',
+                'oid': video_id,
+                'key': 'creatorId',
+                'value': creator_id
+            },
+        ]
+        result = requests.post(URL + '/v1/profiles', json=profiles)
+        self.assertEqual(result.status_code, 200)
+
+        slept = 0
+        passed = False
+        while slept < 60:
+            passed = (
+                    city == c.get_profile("user", uid, "city") and
+                    gender == c.get_profile("user", uid, "gender") and
+                    age_group == c.get_profile("user", uid, "age_group") and
+                    creator_id == c.get_profile("video", video_id, "creatorId")
+            )
+            if passed:
+                break
+
+            time.sleep(5)
+            slept += 5
+        self.assertTrue(passed)
+
+        # Total views gained by a video in last 2 days for given city+gender+age_group
+        @rex.aggregate(
+            name='video_view_by_city_gender_agegroup',
+            aggregate_type='sum', action_types=['view'], config={'durations': [2 * 24 * 3600]},
+        )
+        def agg1(actions):
+            q = op.std.filter(actions, var='a', where=var('a').target_type == 'video')
+            q = op.std.profile(q, var='e', field='city', otype='user', oid=var('e').actor_id, key='city')
+            q = op.std.profile(q, var='e', field='gender', otype='user', oid=var('e').actor_id, key='gender')
+            q = op.std.profile(q, var='e', field='age_group', otype='user', oid=var('e').actor_id, key='age_group')
+            q = op.std.set(q, field='groupkey', var=('e',), value=[
+                var('e').target_id, var('e').city, var('e').gender, var('e').age_group
+            ])
+            return op.std.set(q, field='value', value=1)
+
+        agg1.store(client=c)
+
+        @rex.aggregate(
+            name='user_creator_avg_watchtime_by_2hour_windows',
+            aggregate_type='average', action_types=['view'], config={'durations': [30 * 24 * 3600, 1200]},
+        )
+        def agg2(actions):
+            q = op.std.filter(actions, var='a', where=var('a').action_type == 'view')
+            q = op.std.profile(q, var='e', field='creator_id', otype='video', oid=var('e').target_id, key='creatorId')
+            q = op.std.set(q, var='e', field='time_bucket', value=var('e').timestamp % (24 * 3600) // (2 * 3600))
+            q = op.std.set(q, field='groupkey', var='e',
+                           value=[var('e').actor_id, var('e').creator_id, var('e').time_bucket])
+            return op.std.set(q, field='value', var='e', value=var('e').metadata.watch_time)
+
+        agg2.store(client=c)
+
+        ts = datetime.now().astimezone(timezone.utc)
+
+        b = int((ts.timestamp() % (24 * 3600)) / (2 * 3600))
+
+        actions = [
+            {
+                "actorType": "user",
+                "actorId": uid,
+                "targetType": "video",
+                "targetId": video_id,
+                "actionType": "view",
+                "requestId": 1,
+                "timestamp": ts.timestamp(),
+                "metadata": {"watch_time": 20},
+            },
+            {
+                "actorType": "user",
+                "actorId": uid,
+                "targetType": "video",
+                "targetId": video_id,
+                "actionType": "view",
+                "requestId": 1,
+                "timestamp": (ts - timedelta(days=3)).timestamp(),
+                "metadata": {"watch_time": 22},
+            },
+        ]
+        result = requests.post(URL + '/v1/actions', json=actions)
+        self.assertEqual(result.status_code, 200)
+        # now sleep for upto a minute and verify count processing worked
+        # we could also just sleep for full minute but this rolling sleep
+        # allows test to end earlier in happy cases
+        slept = 0
+        passed = False
+        expected1 = 1
+        expected2 = 21
+        expected3 = expected4 = 20
+        while slept < 120:
+            found1 = c.aggregate_value(
+                'video_view_by_city_gender_agegroup',
+                [video_id, city, gender, age_group],
+                {'duration': 2 * 24 * 3600},
+            )
+            q1 = op.std.aggregate(
+                [{'uid': uid, 'creator_id': creator_id, 'b': b}], field='found',
+                name='user_creator_avg_watchtime_by_2hour_windows', var='e',
+                groupkey=[var('e').uid, var('e').creator_id, var('e').b], kwargs={'duration': 30 * 24 * 3600},
+            )[0].found
+            found2 = c.query(q1)
+            found3 = c.aggregate_value('user_creator_avg_watchtime_by_2hour_windows', [uid, creator_id, b],
+                                       {'duration': 1200})
+            q2 = op.std.aggregate([{'uid': uid, 'creator_id': creator_id, 'b': b}], field='found',
+                                  name='user_creator_avg_watchtime_by_2hour_windows', var='e',
+                                  groupkey=[var('e').uid, var('e').creator_id, var('e').b], kwargs={"duration": 1200})[
+                0].found
+            found4 = c.query(q2)
+
+            if found1 == expected1 and found2 == expected2 and found3 == expected3 and found4 == expected4:
+                passed = True
+                break
+            time.sleep(5)
+            slept += 5
+        self.assertTrue(passed)
+
+        # test with batch_aggregate_value()
+        req1 = ('video_view_by_city_gender_agegroup', [video_id, city, gender, age_group], {"duration": 2 * 24 * 3600})
+        req2 = ('user_creator_avg_watchtime_by_2hour_windows', [uid, creator_id, b], {"duration": 30 * 24 * 3600})
+        req3 = ('user_creator_avg_watchtime_by_2hour_windows', [uid, creator_id, b], {"duration": 1200})
+        found1, found2, found3 = c.batch_aggregate_value([req1, req2, req3])
+        self.assertEqual(expected1, found1)
+        self.assertEqual(expected2, found2)
+        self.assertEqual(expected3, found3)
+
+        print('all checks passed...')
+
+    @tiered
     def test_end_to_end(self):
         c = client.Client(URL)
         uid = 12312
@@ -310,6 +471,7 @@ class TestEndToEnd(unittest.TestCase):
         self.assertEqual(expected3, found3)
 
         print('all checks passed...')
+
 
     @tiered
     def test_queries(self):
@@ -501,7 +663,6 @@ class TestLoad(unittest.TestCase):
             return op.std.set(q, field='value', var='e', value=var('e').metadata.watch_time)
 
         agg2.store(client=c)
-
 
 if __name__ == '__main__':
     unittest.main()

@@ -105,8 +105,8 @@ func (s server) setHandlers(router *mux.Router) {
 	router.HandleFunc("/enable_model", s.EnableModel)
 
 	// Rest endpoints
-	router.HandleFunc(REST_VERSION+"/actions/log", s.LogActions)
-	router.HandleFunc(REST_VERSION+"/profiles/log", s.LogProfiles)
+	router.HandleFunc(REST_VERSION+"/actions", s.LogActions)
+	router.HandleFunc(REST_VERSION+"/profiles", s.LogProfiles)
 	router.HandleFunc("/run_query", s.RunQuery)
 }
 
@@ -361,7 +361,7 @@ func (m server) LogProfiles(w http.ResponseWriter, req *http.Request) {
 		handleBadRequest(w, "", err)
 		return
 	}
-
+	fmt.Println("LogProfiles: ", string(data))
 	profiles, err := GetProfilesFromRest(data)
 	if err != nil {
 		handleInternalServerError(w, "", err)

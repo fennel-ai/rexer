@@ -13,26 +13,26 @@ import (
 	"time"
 )
 
-const MICRO_SECONDS_PER_SECOND = 1000000
+const MicroSecondsPerSecond = 1000000
 
-// Map of keys to if they required on not.
-var PROFILE_KEYS = map[string]bool{
-	"OType":      true,
-	"Oid":        true,
-	"Key":        true,
-	"Value":      true,
-	"UpdateTime": false,
+// ProfileKeys map keys to if they required on not.
+var ProfileKeys = map[string]bool{
+	"otype":      true,
+	"oid":        true,
+	"key":        true,
+	"value":      true,
+	"updateTime": false,
 }
 
-var ACTION_KEYS = map[string]bool{
-	"ActorID":    true,
-	"ActorType":  true,
-	"TargetID":   true,
-	"TargetType": true,
-	"ActionType": true,
-	"Timestamp":  false,
-	"RequestID":  true,
-	"Metadata":   false,
+var ActionKeys = map[string]bool{
+	"actorId":    true,
+	"actorType":  true,
+	"targetId":   true,
+	"targetType": true,
+	"actionType": true,
+	"timestamp":  false,
+	"requestId":  true,
+	"metadata":   false,
 }
 
 func GetProfilesFromRest(data []byte) ([]profilelib.ProfileItem, error) {
@@ -65,17 +65,17 @@ type restAction struct {
 
 func (a *restAction) UnmarshalJSON(data []byte) error {
 	var fields struct {
-		ActionID   ftypes.IDType     `json:"ActionID"`
-		ActorID    json.RawMessage   `json:"ActorID"`
-		ActorType  ftypes.OType      `json:"ActorType"`
-		TargetID   json.RawMessage   `json:"TargetID"`
-		TargetType ftypes.OType      `json:"TargetType"`
-		ActionType ftypes.ActionType `json:"ActionType"`
-		Timestamp  ftypes.Timestamp  `json:"Timestamp"`
-		RequestID  json.RawMessage   `json:"RequestID"`
+		ActionID   ftypes.IDType     `json:"actionId"`
+		ActorID    json.RawMessage   `json:"actorId"`
+		ActorType  ftypes.OType      `json:"actorType"`
+		TargetID   json.RawMessage   `json:"targetId"`
+		TargetType ftypes.OType      `json:"targetType"`
+		ActionType ftypes.ActionType `json:"actionType"`
+		Timestamp  float64           `json:"timestamp"`
+		RequestID  json.RawMessage   `json:"requestId"`
 	}
 
-	err := verifyFields(data, ACTION_KEYS)
+	err := verifyFields(data, ActionKeys)
 	if err != nil {
 		return fmt.Errorf("error unmarshalling action json: %v", err)
 	}
@@ -99,14 +99,14 @@ func (a *restAction) UnmarshalJSON(data []byte) error {
 	if err != nil {
 		return fmt.Errorf("error unmarshalling action json: %w", err)
 	}
-	a.action.Timestamp = fields.Timestamp
+	a.action.Timestamp = ftypes.Timestamp(fields.Timestamp)
 	requestId, err := idToStr(fields.RequestID)
 	if err != nil {
 		return fmt.Errorf("error unmarshalling action json: %w", err)
 	}
 	a.action.RequestID = ftypes.RequestID(requestId)
 
-	vdata, vtype, _, err := jsonparser.Get(data, "Metadata")
+	vdata, vtype, _, err := jsonparser.Get(data, "metadata")
 	if err != nil {
 		a.action.Metadata = value.NewDict(map[string]value.Value{})
 		return nil
@@ -124,13 +124,13 @@ type restProfile struct {
 
 func (p *restProfile) UnmarshalJSON(data []byte) error {
 	var fields struct {
-		OType      ftypes.OType    `json:"OType"`
-		Oid        json.RawMessage `json:"Oid"`
-		Key        string          `json:"Key"`
-		UpdateTime uint64          `json:"UpdateTime"`
+		OType      ftypes.OType    `json:"otype"`
+		Oid        json.RawMessage `json:"oid"`
+		Key        string          `json:"key"`
+		UpdateTime float64         `json:"updateTime"`
 	}
 
-	err := verifyFields(data, PROFILE_KEYS)
+	err := verifyFields(data, ProfileKeys)
 	if err != nil {
 		return fmt.Errorf("error unmarshalling profile json: %v", err)
 	}
@@ -149,12 +149,13 @@ func (p *restProfile) UnmarshalJSON(data []byte) error {
 		return fmt.Errorf("error unmarshalling profile json: %w", err)
 	}
 	// Profile time is in microseconds.
-	p.profile.UpdateTime = fields.UpdateTime * MICRO_SECONDS_PER_SECOND
-	vdata, vtype, _, err := jsonparser.Get(data, "Value")
+	p.profile.UpdateTime = uint64(fields.UpdateTime * MicroSecondsPerSecond)
+	vdata, vtype, _, err := jsonparser.Get(data, "value")
 	if err != nil {
 		return fmt.Errorf("error getting value from profile json: %v", err)
 	}
 	p.profile.Value, err = value.ParseJSON(vdata, vtype)
+	fmt.Println("Recieved profile: ", p.profile)
 	if err != nil {
 		return fmt.Errorf("error parsing value from profile json: %v", err)
 	}
