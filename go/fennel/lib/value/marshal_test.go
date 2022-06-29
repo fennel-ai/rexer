@@ -83,20 +83,36 @@ func RandStringRunes(n int) string {
 	}
 	return string(b)
 }
-func benchMarkAditya(numRows int, b *testing.B) {
 
-	arr := make([][]byte, b.N)
+func smallValue(n int) [][]byte {
+	arr := make([][]byte, n)
 
-	for i := 0; i < b.N; i++ {
-		//sample := NewDict(map[string]Value{})
-		sample := NewList(Int(1), Double(2.0), Bool(true))
-		for j := 0; j < 200; j++ {
-			for k := 0; k < 3; k++ {
-				sample.Append(String(RandStringRunes(5)))
-			}
-		}
+	for i := 0; i < n; i++ {
+		sample := NewList(String(RandStringRunes(5)), Int(rand.Int()), Bool(true))
 		arr[i], _ = Marshal(sample)
 	}
+	return arr
+}
+
+func largeValue(n int) [][]byte {
+	arr := make([][]byte, n)
+
+	for i := 0; i < n; i++ {
+		sample := NewDict(map[string]Value{})
+		for j := 0; j < 200; j++ {
+			l := NewList(Int(1), Double(2.0), Bool(true))
+			for k := 0; k < 10; k++ {
+				l.Append(String(RandStringRunes(5)))
+			}
+			sample.Set(RandStringRunes(5), l)
+		}
+		arr[i], _ = CaptainMarshal(sample)
+	}
+	return arr
+}
+
+func benchMarkAdityaProto(b *testing.B) {
+	arr := smallValue(b.N)
 	b.ResetTimer()
 	b.ReportAllocs()
 
@@ -107,31 +123,19 @@ func benchMarkAditya(numRows int, b *testing.B) {
 	}
 }
 
-func benchMarkAdityaCaptain(numRows int, b *testing.B) {
-
-	arr := make([][]byte, b.N)
-
-	for i := 0; i < b.N; i++ {
-		sample := NewDict(map[string]Value{})
-		for j := 0; j < 200; j++ {
-			l := NewList(Int(1), Double(2.0), Bool(true))
-			for k := 0; k < 3; k++ {
-				l.Append(String(RandStringRunes(5)))
-			}
-			sample.Set(RandStringRunes(5), l)
-		}
-		arr[i], _ = Marshal(sample)
-	}
+func benchMarkAdityaCaptain(b *testing.B) {
+	arr := largeValue(b.N)
 	b.ResetTimer()
 	b.ReportAllocs()
 
 	for n := 0; n < b.N; n++ {
 		var v Value
-		err := Unmarshal(arr[n], &v)
+		err := CaptainUnmarshal(arr[n], &v)
 		assert.NoError(b, err)
 	}
 }
 
 func Benchmark_Marshal2(b *testing.B) {
-	benchMarkAditya(100, b)
+	// benchMarkAdityaProto(b)
+	benchMarkAdityaCaptain(b)
 }
