@@ -15,8 +15,6 @@ type input[T any] struct {
 func Process[S, T any](ctx context.Context, inputs []S, f func(S) (T, error)) ([]T, error) {
 	g, ctx := errgroup.WithContext(ctx)
 	readers := make(chan input[S])
-	var err error
-
 	g.Go(func() error {
 		defer close(readers)
 		for i := range inputs {
@@ -28,7 +26,6 @@ func Process[S, T any](ctx context.Context, inputs []S, f func(S) (T, error)) ([
 		}
 		return nil
 	})
-
 	ret := make([]T, len(inputs))
 	nWorkers := runtime.GOMAXPROCS(0)
 	for i := 0; i < nWorkers; i++ {
@@ -38,6 +35,7 @@ func Process[S, T any](ctx context.Context, inputs []S, f func(S) (T, error)) ([
 				case <-ctx.Done():
 					return ctx.Err()
 				default:
+					var err error
 					if ret[v.index], err = f(v.inp); err != nil {
 						return err
 					}
