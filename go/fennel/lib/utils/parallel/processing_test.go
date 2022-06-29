@@ -1,10 +1,13 @@
-package efficiency
+package parallel_test
 
 import (
 	"context"
-	"github.com/stretchr/testify/assert"
 	"testing"
 	"time"
+
+	"fennel/lib/utils/parallel"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func square(x int) (int, error) {
@@ -18,12 +21,12 @@ func squareSleep(x int) (int, error) {
 
 func TestParallelProcessing(t *testing.T) {
 	inputs := []int{1, 2, 3, 4, 5, 6, 7, 8, 9, 10}
-	results, err := ProcessInParallel(context.Background(), inputs, square)
+	results, err := parallel.Process(context.Background(), inputs, square)
 	assert.NoError(t, err)
 	expected := []int{1, 4, 9, 16, 25, 36, 49, 64, 81, 100}
 	assert.Equal(t, expected, results)
 	start := time.Now()
-	results, err = ProcessInParallel(context.Background(), inputs, squareSleep)
+	results, err = parallel.Process(context.Background(), inputs, squareSleep)
 	elapsed := time.Since(start)
 	assert.NoError(t, err)
 	assert.Equal(t, expected, results)
