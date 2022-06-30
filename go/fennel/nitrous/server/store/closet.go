@@ -12,7 +12,6 @@ import (
 	"fennel/lib/value"
 	"fennel/model/counter"
 	rpc "fennel/nitrous/rpc/v2"
-	"fennel/nitrous/server"
 	"fennel/nitrous/server/tailer"
 	"fennel/nitrous/server/temporal"
 	"fennel/plane"
@@ -38,7 +37,7 @@ type Closet struct {
 	bucketizer temporal.TimeBucketizer
 }
 
-var _ server.AggregateStore = Closet{}
+var _ AggregateStore = Closet{}
 var _ tailer.EventProcessor = Closet{}
 
 func NewCloset(

@@ -3,15 +3,19 @@ package metadata
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
+	"sync"
 
 	"fennel/hangar"
 	"fennel/lib/aggregate"
 	"fennel/lib/ftypes"
 	"fennel/lib/utils/binary"
+	"fennel/lib/value"
 	"fennel/nitrous/encoders"
 	rpc "fennel/nitrous/rpc/v2"
 	"fennel/nitrous/server"
+	"fennel/nitrous/server/store"
 	"fennel/nitrous/server/tailer"
 	"fennel/plane"
 
@@ -22,17 +26,27 @@ var (
 	agg_table_key = []byte("agg_table")
 )
 
-type AggDefsMgr struct {
-	plane  plane.Plane
-	tailer *tailer.Tailer
-	svr    *server.Server
+type aggKey struct {
+	tierId ftypes.RealmID
+	aggId  ftypes.AggId
+	codec  rpc.AggCodec
 }
 
-func NewAggDefsMgr(plane plane.Plane, tailer *tailer.Tailer, svr *server.Server) *AggDefsMgr {
+type AggDefsMgr struct {
+	plane    plane.Plane
+	tailer   *tailer.Tailer
+	handlers map[aggKey]store.AggregateStore
+
+	mu sync.Mutex
+}
+
+var _ server.AggDB = (*AggDefsMgr)(nil)
+
+func NewAggDefsMgr(plane plane.Plane, tailer *tailer.Tailer) *AggDefsMgr {
 	mgr := &AggDefsMgr{
-		plane:  plane,
-		tailer: tailer,
-		svr:    svr,
+		plane:    plane,
+		tailer:   tailer,
+		handlers: make(map[aggKey]store.AggregateStore),
 	}
 	tailer.Subscribe(mgr)
 	return mgr
@@ -40,6 +54,26 @@ func NewAggDefsMgr(plane plane.Plane, tailer *tailer.Tailer, svr *server.Server)
 
 func (adm *AggDefsMgr) Identity() string {
 	return "aggdefsmgr"
+}
+
+func (adm *AggDefsMgr) registerHandler(key aggKey, handler store.AggregateStore) error {
+	adm.mu.Lock()
+	defer adm.mu.Unlock()
+	// Inserting directly in adm.handlers would require us to take a write
+	// mutex to prevent race conditions with simultaneous readers. To avoid
+	// making the common read path slow, we instead make the update path slow
+	// by copying the current map, inserting the new handler, and replacing it
+	// with an updated map.
+	newHandlers := make(map[aggKey]store.AggregateStore, len(adm.handlers)+1)
+	for k, v := range adm.handlers {
+		if k == key {
+			return errors.New("handler for aggregate already exists")
+		}
+		newHandlers[k] = v
+	}
+	newHandlers[key] = handler
+	adm.handlers = newHandlers
+	return nil
 }
 
 func (adm *AggDefsMgr) Process(ctx context.Context, ops []*rpc.NitrousOp) (keys []hangar.Key, vgs []hangar.ValGroup, err error) {
@@ -153,11 +187,20 @@ func (adm *AggDefsMgr) initAggStore(tierId ftypes.RealmID, aggId ftypes.AggId, c
 	// Subscribe the aggregate store to the tailer for aggregate events.
 	// Also, register for gRPC.
 	adm.tailer.Subscribe(ags)
-	err = adm.svr.RegisterHandler(tierId, aggId, codec, ags)
+	err = adm.registerHandler(aggKey{tierId, aggId, codec}, ags)
 	if err != nil {
 		return fmt.Errorf("failed to register aggregate handler for new aggregate (%d) in tier (%d): %w", aggId, tierId, err)
 	}
 	return nil
+}
+
+func (adm *AggDefsMgr) Get(ctx context.Context, tierId ftypes.RealmID, aggId ftypes.AggId, codec rpc.AggCodec, duration uint32, groupkeys []string) ([]value.Value, error) {
+	// Get the aggregate store for this aggregate.
+	handler, ok := adm.handlers[aggKey{tierId, aggId, codec}]
+	if !ok {
+		return nil, fmt.Errorf("no handler for aggregate %d in tier %d with codec %d", aggId, tierId, codec)
+	}
+	return handler.Get(ctx, duration, groupkeys)
 }
 
 func encodeField(tierId ftypes.RealmID, aggId ftypes.AggId, codec rpc.AggCodec) ([]byte, error) {

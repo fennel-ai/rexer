@@ -4,14 +4,14 @@ import (
 	"fennel/lib/aggregate"
 	"fennel/lib/ftypes"
 	rpc "fennel/nitrous/rpc/v2"
-	"fennel/nitrous/server"
+	"fennel/nitrous/server/store"
 	"fennel/nitrous/server/tailer"
 	"fennel/plane"
 )
 
 type TailingStore interface {
 	tailer.EventProcessor
-	server.AggregateStore
+	store.AggregateStore
 }
 
 type Encoder interface {
