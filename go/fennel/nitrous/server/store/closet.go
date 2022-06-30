@@ -41,18 +41,6 @@ type Closet struct {
 var _ server.AggregateStore = Closet{}
 var _ tailer.EventProcessor = Closet{}
 
-type AggStoreOptions struct {
-	plane plane.Plane
-	tlr   *tailer.Tailer
-	s     *server.Server
-
-	tierId     ftypes.RealmID
-	aggId      ftypes.AggId
-	codec      rpc.AggCodec
-	mr         counter.MergeReduce
-	bucketizer temporal.TimeBucketizer
-}
-
 func NewCloset(
 	plane plane.Plane, tierId ftypes.RealmID, aggId ftypes.AggId, codec rpc.AggCodec,
 	mr counter.MergeReduce, bucketizer temporal.TimeBucketizer) (Closet, error) {
