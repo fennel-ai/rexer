@@ -75,6 +75,17 @@ func (l *MockBroker) Commit(groupID string) {
 	l.commits[groupID] = l.nexts[groupID] - 1
 }
 
+func (l *MockBroker) Offset(groupID string) int {
+	l.mutex.Lock()
+	defer l.mutex.Unlock()
+	for k, v := range l.nexts {
+		if groupID == k {
+			return v
+		}
+	}
+	return 0
+}
+
 //=================================
 // Local consumer(for tests)
 //=================================
@@ -156,16 +167,10 @@ func (l mockConsumer) CommitOffsets(kafka.TopicPartitions) (kafka.TopicPartition
 }
 
 func (l mockConsumer) Offsets() (kafka.TopicPartitions, error) {
-	var toppars kafka.TopicPartitions
-	for k, v := range l.broker.nexts {
-		if l.groupid == k {
-			toppars = append(toppars, kafka.TopicPartition{
-				Topic: &l.Topic, Partition: 0, Offset: kafka.Offset(v),
-			})
-			break
-		}
-	}
-	return toppars, nil
+	offset := l.broker.Offset(l.groupid)
+	return kafka.TopicPartitions{
+		{Topic: &l.Topic, Partition: 0, Offset: kafka.Offset(offset)},
+	}, nil
 }
 
 func (l mockConsumer) GroupID() string {
