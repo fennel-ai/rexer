@@ -16,6 +16,7 @@ import (
 
 	"github.com/confluentinc/confluent-kafka-go/kafka"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"go.uber.org/atomic"
 )
 
@@ -74,9 +75,12 @@ func TestTailer(t *testing.T) {
 	assert.NoError(t, err)
 	assert.EqualValues(t, 1, lag)
 	// Offsets should be empty in db.
-	offs, err := offsets.RestoreBinlogOffset(p.Store, offsetkey)
+	offvgs, err := p.Store.GetMany([]hangar.KeyGroup{{Prefix: hangar.Key{Data: offsetkey}}})
 	assert.NoError(t, err)
-	assert.ElementsMatch(t, kafka.TopicPartitions{}, offs)
+	assert.Equal(t, 1, len(offvgs))
+	toppars, err := offsets.DecodeOffsets(offvgs[0])
+	assert.NoError(t, err)
+	assert.ElementsMatch(t, kafka.TopicPartitions{}, toppars)
 
 	for {
 		lag, err := tlr.GetLag()
@@ -96,9 +100,12 @@ func TestTailer(t *testing.T) {
 
 	// Offsets should be stored in db.
 	scope := resource.NewPlaneScope(p.ID)
-	offs, err = offsets.RestoreBinlogOffset(p.Store, offsetkey)
+	offvgs, err = p.Store.GetMany([]hangar.KeyGroup{{Prefix: hangar.Key{Data: offsetkey}}})
+	assert.NoError(t, err)
+	require.Equal(t, 1, len(offvgs))
+	toppars, err = offsets.DecodeOffsets(offvgs[0])
 	assert.NoError(t, err)
 	assert.ElementsMatch(t, kafka.TopicPartitions{
 		{Topic: ptr.To(scope.PrefixedName(nitrous.BINLOG_KAFKA_TOPIC)), Partition: 0, Offset: 1},
-	}, offs)
+	}, toppars)
 }

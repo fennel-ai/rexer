@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net"
 
+	"fennel/hangar"
 	"fennel/lib/nitrous"
 	rpc "fennel/nitrous/rpc/v2"
 	"fennel/nitrous/server"
@@ -12,6 +13,7 @@ import (
 	"fennel/nitrous/server/tailer"
 	"fennel/plane"
 
+	"github.com/confluentinc/confluent-kafka-go/kafka"
 	grpc_prometheus "github.com/grpc-ecosystem/go-grpc-prometheus"
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
@@ -22,11 +24,18 @@ import (
 func StartServer(plane plane.Plane, listener net.Listener) error {
 	// Initialize binlog tailer.
 	offsetkey := []byte("default_tailer")
-	offsets, err := offsets.RestoreBinlogOffset(plane.Store, offsetkey)
+	vgs, err := plane.Store.GetMany([]hangar.KeyGroup{{Prefix: hangar.Key{Data: offsetkey}}})
 	if err != nil {
-		plane.Logger.Fatal("Failed to restore binlog offsets from hangar", zap.Error(err))
+		return fmt.Errorf("failed to get binlog offsets: %w", err)
 	}
-	tailer, err := tailer.NewTailer(plane, nitrous.BINLOG_KAFKA_TOPIC, offsets, offsetkey)
+	var toppars kafka.TopicPartitions
+	if len(vgs) > 0 {
+		toppars, err = offsets.DecodeOffsets(vgs[0])
+		if err != nil {
+			plane.Logger.Fatal("Failed to restore binlog offsets from hangar", zap.Error(err))
+		}
+	}
+	tailer, err := tailer.NewTailer(plane, nitrous.BINLOG_KAFKA_TOPIC, toppars, offsetkey)
 	if err != nil {
 		return fmt.Errorf("failed to setup tailer: %w", err)
 	}

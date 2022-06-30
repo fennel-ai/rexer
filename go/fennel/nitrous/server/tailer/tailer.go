@@ -169,12 +169,12 @@ func (t *Tailer) Tail() {
 			if err != nil {
 				t.plane.Logger.Error("failed to get offsets", zap.Error(err))
 			}
-			offkeys, offvs, err := offsets.SaveBinlogOffsets(offs, t.offsetkey)
+			offvg, err := offsets.EncodeOffsets(offs)
 			if err != nil {
 				t.plane.Logger.Error("failed to save offsets", zap.Error(err))
 			}
-			keys = append(keys, offkeys...)
-			vgs = append(vgs, offvs...)
+			keys = append(keys, hangar.Key{Data: t.offsetkey})
+			vgs = append(vgs, offvg)
 			// Finally, write the batch to the hangar.
 			err = t.plane.Store.SetMany(keys, vgs)
 			if err != nil {
