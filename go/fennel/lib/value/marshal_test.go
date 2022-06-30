@@ -76,11 +76,8 @@ func TestUnequalMarshal(t *testing.T) {
 	verifyUnequalMarshal(t, NewDict(map[string]Value{"b": Int(2)}), []Value{i, d, b, s, l, di})
 }
 
-var SZ = "l"
-
-var letterRunes = []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ")
-
 func RandStringRunes(n int) string {
+	var letterRunes = []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ")
 	b := make([]rune, n)
 	for i := range b {
 		b[i] = letterRunes[rand.Intn(len(letterRunes))]
@@ -139,64 +136,38 @@ func largeValue(n int, t string) ([][]byte, []Value) {
 	return arr, samples
 }
 
-func benchMarkProtoSerialization(b *testing.B) {
-	fmt.Println("Benchmarking Proto ", b.N)
+func benchMarkSerialization(b *testing.B, algo, sz string) {
+	fmt.Println("Benchmarking Algo ", algo, b.N)
 	var arr [][]byte
 	//var samples []Value
-	if SZ == "l" {
-		arr, _ = largeValue(b.N, "proto")
+	if sz == "l" {
+		arr, _ = largeValue(b.N, algo)
 	} else {
-		arr, _ = smallValue(b.N, "proto")
+		arr, _ = smallValue(b.N, algo)
 	}
 	b.ResetTimer()
 	b.ReportAllocs()
 
 	for n := 0; n < b.N; n++ {
-		var v Value
-		err := Unmarshal(arr[n], &v)
+		var err error
+		switch algo {
+		case "captain":
+			_, err = CaptainUnmarshal(arr[n])
+		case "proto":
+			var v Value
+			_ = Unmarshal(arr[n], &v)
+		case "json":
+			_, err = FromJSON(arr[n])
+		}
 		//assert.True(b, v.Equal(samples[n]))
 		assert.NoError(b, err)
 	}
 }
 
-func benchMarkCaptainSerialization(b *testing.B) {
-	fmt.Println("Benchmarking Captain ", b.N)
-	var arr [][]byte
-	if SZ == "l" {
-		arr, _ = largeValue(b.N, "captain")
-	} else {
-		arr, _ = smallValue(b.N, "captain")
-	}
-	b.ResetTimer()
-	b.ReportAllocs()
-
-	for n := 0; n < b.N; n++ {
-		_, err := CaptainUnmarshal(arr[n])
-		//assert.True(b, v.Equal(samples[n]))
-		assert.NoError(b, err)
-	}
-}
-
-func benchMarkJsonSerialization(b *testing.B) {
-	fmt.Println("Benchmarking Json ", b.N)
-	var arr [][]byte
-	if SZ == "l" {
-		arr, _ = largeValue(b.N, "json")
-	} else {
-		arr, _ = smallValue(b.N, "json")
-	}
-	b.ResetTimer()
-	b.ReportAllocs()
-
-	for n := 0; n < b.N; n++ {
-		_, err := FromJSON(arr[n])
-		//assert.True(b, v.Equal(samples[n]))
-		assert.NoError(b, err)
-	}
-}
-
+// go test -tags dynamic  -bench Benchmark_Serialization -v fennel/lib/value -run ^$  -benchtime=10000x
+// go test -tags dynamic  -bench Benchmark_Serialization -v fennel/lib/value -run ^$  -benchtime=60s
+// go test -tags dynamic  -bench Benchmark_Serialization -v fennel/lib/value -run ^$  -benchtime=10000x -cpuprofile cpu.out
+// go tool pprof -http=localhost:6060 cpu.out
 func Benchmark_Serialization(b *testing.B) {
-	benchMarkProtoSerialization(b)
-	//benchMarkCaptainSerialization(b)
-	//benchMarkJsonSerialization(b)
+	benchMarkSerialization(b, "proto", "l")
 }
