@@ -207,6 +207,10 @@ const tierConfs: Record<number, TierConf> = {
         protectResources: true,
         planeId: 9,
         // TODO(mohit): set service configurations
+        // use public subnets for ingress to allow traffic from outside the assigned vpc
+        ingressConf: {
+            usePublicSubnets: true,
+        },
     },
     // Gopuff demo tier
     113: {
