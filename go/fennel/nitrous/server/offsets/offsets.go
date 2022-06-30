@@ -9,23 +9,16 @@ import (
 	"github.com/confluentinc/confluent-kafka-go/kafka"
 )
 
-func RestoreBinlogOffset(store hangar.Hangar, offsetkey []byte) (kafka.TopicPartitions, error) {
-	vgs, err := store.GetMany([]hangar.KeyGroup{{Prefix: hangar.Key{Data: offsetkey}}})
-	if err != nil {
-		return nil, fmt.Errorf("failed to get binlog offsets: %w", err)
-	}
-	if len(vgs) == 0 {
-		return nil, nil
-	}
-	toppars := make([]kafka.TopicPartition, len(vgs[0].Fields))
-	for i, f := range vgs[0].Fields {
+func DecodeOffsets(vg hangar.ValGroup) (kafka.TopicPartitions, error) {
+	toppars := make([]kafka.TopicPartition, len(vg.Fields))
+	for i, f := range vg.Fields {
 		topic, partition, err := decodeField(f)
 		if err != nil {
 			return nil, fmt.Errorf("failed to decode binlog offset field [%s]: %w", string(f), err)
 		}
-		offset, err := decodeValue(vgs[0].Values[i])
+		offset, err := decodeValue(vg.Values[i])
 		if err != nil {
-			return nil, fmt.Errorf("failed to decode binlog offset value [%s]: %w", string(vgs[0].Values[i]), err)
+			return nil, fmt.Errorf("failed to decode binlog offset value [%s]: %w", string(vg.Values[i]), err)
 		}
 		tp := kafka.TopicPartition{
 			Topic:     &topic,
@@ -37,7 +30,7 @@ func RestoreBinlogOffset(store hangar.Hangar, offsetkey []byte) (kafka.TopicPart
 	return toppars, nil
 }
 
-func SaveBinlogOffsets(toppars []kafka.TopicPartition, offsetkey []byte) ([]hangar.Key, []hangar.ValGroup, error) {
+func EncodeOffsets(toppars []kafka.TopicPartition) (hangar.ValGroup, error) {
 	fields := make([][]byte, len(toppars))
 	values := make([][]byte, len(toppars))
 	for i, toppar := range toppars {
@@ -45,16 +38,16 @@ func SaveBinlogOffsets(toppars []kafka.TopicPartition, offsetkey []byte) ([]hang
 		partition := toppar.Partition
 		f, err := encodeField(topic, partition)
 		if err != nil {
-			return nil, nil, fmt.Errorf("failed to encode topic/partition key for {topic: \"%s\", partition: %d}: %v", topic, partition, err)
+			return hangar.ValGroup{}, fmt.Errorf("failed to encode topic/partition key for {topic: \"%s\", partition: %d}: %v", topic, partition, err)
 		}
 		fields[i] = f
 		v, err := encodeValue(int64(toppar.Offset))
 		if err != nil {
-			return nil, nil, fmt.Errorf("failed to encode offset [%d]: %v", toppar.Offset, err)
+			return hangar.ValGroup{}, fmt.Errorf("failed to encode offset [%d]: %v", toppar.Offset, err)
 		}
 		values[i] = v
 	}
-	return []hangar.Key{{Data: offsetkey}}, []hangar.ValGroup{{Fields: fields, Values: values, Expiry: 0}}, nil
+	return hangar.ValGroup{Fields: fields, Values: values, Expiry: 0}, nil
 }
 
 func encodeField(topic string, partition int32) ([]byte, error) {

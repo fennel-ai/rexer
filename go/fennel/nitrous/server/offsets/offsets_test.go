@@ -1,9 +1,8 @@
 package offsets
 
 import (
+	"fennel/hangar"
 	"testing"
-
-	"fennel/plane"
 
 	"github.com/confluentinc/confluent-kafka-go/kafka"
 	"github.com/stretchr/testify/assert"
@@ -14,7 +13,6 @@ func String(v string) *string {
 }
 
 func TestOffsetSaveRestore(t *testing.T) {
-	tp := plane.NewTestPlane(t)
 	toppars := []kafka.TopicPartition{
 		{
 			Topic:     String("topicA"),
@@ -27,19 +25,16 @@ func TestOffsetSaveRestore(t *testing.T) {
 			Offset:    kafka.Offset(295),
 		},
 	}
-	ks, vgs, err := SaveBinlogOffsets(toppars, []byte("offsetkey"))
-	assert.NoError(t, err)
-	err = tp.Store.SetMany(ks, vgs)
+	vg, err := EncodeOffsets(toppars)
 	assert.NoError(t, err)
 
-	got, err := RestoreBinlogOffset(tp.Store, []byte("offsetkey"))
+	got, err := DecodeOffsets(vg)
 	assert.NoError(t, err)
 	assert.ElementsMatch(t, toppars, got)
 }
 
 func TestRestoreEmpty(t *testing.T) {
-	tp := plane.NewTestPlane(t)
-	got, err := RestoreBinlogOffset(tp.Store, []byte("offsetkey"))
+	got, err := DecodeOffsets(hangar.ValGroup{})
 	assert.NoError(t, err)
 	assert.Empty(t, got)
 }
