@@ -10,7 +10,6 @@ import (
 	"fennel/lib/nitrous"
 	"fennel/lib/value"
 	rpc "fennel/nitrous/rpc/v2"
-	"fennel/nitrous/server"
 	"fennel/nitrous/server/tailer"
 	"fennel/plane"
 
@@ -37,27 +36,17 @@ func TestInitRestore(t *testing.T) {
 		time.Sleep(1 * time.Second)
 	}
 
-	svr := server.NewServer(nil)
 	ctx := context.Background()
 	tierId := ftypes.RealmID(5)
 	aggId := ftypes.AggId(20)
 
-	req := &rpc.AggregateValuesRequest{
-		TierId:    uint32(tierId),
-		AggId:     uint32(aggId),
-		Codec:     rpc.AggCodec_V1,
-		Duration:  24 * 3600,
-		Groupkeys: []string{"mygk"},
-	}
-
-	_, err := svr.GetAggregateValues(ctx, req)
+	adm := NewAggDefsMgr(p, tlr)
+	// Get fails since aggregate has not been defined yet.
+	_, err := adm.Get(ctx, tierId, aggId, rpc.AggCodec_V1, 24*3600, []string{"mygk"})
 	assert.Error(t, err)
-
-	adm := NewAggDefsMgr(p, tlr, svr)
 	err = adm.RestoreAggregates()
 	assert.NoError(t, err)
-	// Get fails since aggregate has not been defined yet.
-	_, err = svr.GetAggregateValues(ctx, req)
+	_, err = adm.Get(ctx, tierId, aggId, rpc.AggCodec_V1, 24*3600, []string{"mygk"})
 	assert.Error(t, err)
 
 	// Define the aggregate.
@@ -80,12 +69,10 @@ func TestInitRestore(t *testing.T) {
 	err = p.Store.SetMany(ks, vgs)
 	assert.NoError(t, err)
 
-	resp, err := svr.GetAggregateValues(ctx, req)
+	resp, err := adm.Get(ctx, tierId, aggId, rpc.AggCodec_V1, 24*3600, []string{"mygk"})
 	assert.NoError(t, err)
-	assert.Equal(t, 1, len(resp.Results))
-	val, err := value.FromProtoValue(resp.Results[0])
-	assert.NoError(t, err)
-	assert.Equal(t, value.Int(0), val)
+	assert.Equal(t, 1, len(resp))
+	assert.Equal(t, value.Int(0), resp[0])
 
 	// Create some aggregate events.
 	ev, err := value.ToProtoValue(value.Int(42))
@@ -119,14 +106,26 @@ func TestInitRestore(t *testing.T) {
 	}
 
 	// Restore on a new "server".
-	svr2 := server.NewServer(nil)
-	adm = NewAggDefsMgr(p, tlr, svr2)
+	adm = NewAggDefsMgr(p, tlr)
 	err = adm.RestoreAggregates()
 	assert.NoError(t, err)
-	resp, err = svr2.GetAggregateValues(ctx, req)
+	resp, err = adm.Get(ctx, tierId, aggId, rpc.AggCodec_V1, 24*3600, []string{"mygk"})
 	assert.NoError(t, err)
-	assert.Equal(t, 1, len(resp.Results))
-	val, err = value.FromProtoValue(resp.Results[0])
+	assert.Equal(t, 1, len(resp))
 	assert.NoError(t, err)
-	assert.Equal(t, value.Int(42), val)
+	assert.Equal(t, value.Int(42), resp[0])
+}
+
+func TestRegisterDuplicate(t *testing.T) {
+	tp := plane.NewTestPlane(t)
+	p := tp.Plane
+	tlr := tailer.NewTestTailer(p, nitrous.BINLOG_KAFKA_TOPIC)
+	adm := NewAggDefsMgr(p, tlr)
+	tierId := ftypes.RealmID(1)
+	aggId := ftypes.AggId(1)
+	codec := rpc.AggCodec_V1
+	err := adm.registerHandler(aggKey{tierId, aggId, codec}, nil)
+	assert.NoError(t, err)
+	err = adm.registerHandler(aggKey{tierId, aggId, codec}, nil)
+	assert.Error(t, err)
 }

@@ -2,6 +2,7 @@ package server_test
 
 import (
 	"context"
+	"fmt"
 	"testing"
 	"time"
 
@@ -15,30 +16,28 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-type TestHandler struct {
+type TestDB struct {
 	next []value.Value
 }
 
-func (th *TestHandler) ReturnNext(vals []value.Value) {
-	th.next = vals
+func (tdb *TestDB) ReturnNext(vals []value.Value) {
+	tdb.next = vals
 }
 
-func (th *TestHandler) Get(ctx context.Context, duration uint32, keys []string) ([]value.Value, error) {
-	return th.next, nil
+func (tdb *TestDB) Get(ctx context.Context, tierId ftypes.RealmID, aggId ftypes.AggId, codec rpc.AggCodec, duration uint32, groupkeys []string) ([]value.Value, error) {
+	if tdb.next == nil {
+		return nil, fmt.Errorf("no values")
+	}
+	return tdb.next, nil
 }
 
 func TestGet(t *testing.T) {
-	svr := server.NewServer(nil)
-	handler := &TestHandler{}
+	testdb := &TestDB{}
+	svr := server.NewServer(testdb, nil)
 	tierId := ftypes.RealmID(1)
 	aggId := ftypes.AggId(1)
 	codec := rpc.AggCodec_V1
-	err := svr.RegisterHandler(tierId, aggId, codec, handler)
-	assert.NoError(t, err)
-	expected := []value.Value{value.Int(29), value.Int(-10)}
-	handler.ReturnNext(expected)
-	// Getting the aggregate value for a tier without a handler.
-	_, err = svr.GetAggregateValues(context.Background(), &rpc.AggregateValuesRequest{
+	_, err := svr.GetAggregateValues(context.Background(), &rpc.AggregateValuesRequest{
 		TierId:    2,
 		AggId:     uint32(aggId),
 		Codec:     codec,
@@ -46,6 +45,8 @@ func TestGet(t *testing.T) {
 		Groupkeys: []string{"mygk"},
 	})
 	assert.Error(t, err)
+	expected := []value.Value{value.Int(29), value.Int(-10)}
+	testdb.ReturnNext(expected)
 	resp, err := svr.GetAggregateValues(context.Background(), &rpc.AggregateValuesRequest{
 		TierId:    uint32(tierId),
 		AggId:     uint32(aggId),
@@ -62,17 +63,6 @@ func TestGet(t *testing.T) {
 	}
 }
 
-func TestRegisterDuplicate(t *testing.T) {
-	svr := server.NewServer(nil)
-	tierId := ftypes.RealmID(1)
-	aggId := ftypes.AggId(1)
-	codec := rpc.AggCodec_V1
-	err := svr.RegisterHandler(tierId, aggId, codec, nil)
-	assert.NoError(t, err)
-	err = svr.RegisterHandler(tierId, aggId, codec, nil)
-	assert.ErrorIs(t, err, server.EEXISTS)
-}
-
 func TestGetLag(t *testing.T) {
 	p := plane.NewTestPlane(t)
 	topic := "test-topic"
@@ -83,7 +73,7 @@ func TestGetLag(t *testing.T) {
 	// Set a very long test timeout so message is not really consumed.
 	tailer.SetPollTimeout(1 * time.Minute)
 	go tailer.Tail()
-	svr := server.NewServer(tailer)
+	svr := server.NewServer(nil, tailer)
 	ctx := context.Background()
 
 	// Initial lag should be 0.

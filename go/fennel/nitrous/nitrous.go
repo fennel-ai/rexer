@@ -40,11 +40,8 @@ func StartServer(plane plane.Plane, listener net.Listener) error {
 		return fmt.Errorf("failed to setup tailer: %w", err)
 	}
 
-	// Setup server.
-	svr := server.NewServer(tailer)
-
 	// Restore aggregate definitions.
-	adm := metadata.NewAggDefsMgr(plane, tailer, svr)
+	adm := metadata.NewAggDefsMgr(plane, tailer)
 	if err != nil {
 		return fmt.Errorf("failed to setup aggregate definitions manager: %w", err)
 	}
@@ -52,6 +49,9 @@ func StartServer(plane plane.Plane, listener net.Listener) error {
 	if err != nil {
 		return fmt.Errorf("failed to restore aggregate definitions: %w", err)
 	}
+
+	// Setup server.
+	svr := server.NewServer(adm, tailer)
 
 	// Start tailing the binlog. We do this after restoring the aggregates, so
 	// that they don't miss any events.
