@@ -169,5 +169,5 @@ func benchMarkSerialization(b *testing.B, algo, sz string) {
 // go test -tags dynamic  -bench Benchmark_Serialization -v fennel/lib/value -run ^$  -benchtime=10000x -cpuprofile cpu.out
 // go tool pprof -http=localhost:6060 cpu.out
 func Benchmark_Serialization(b *testing.B) {
-	benchMarkSerialization(b, "proto", "l")
+	benchMarkSerialization(b, "captain", "l")
 }
