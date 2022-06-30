@@ -28,13 +28,19 @@ then
 fi
 
 # Generate python bindings
-/usr/local/bin/protoc -I=. --python_out=../../rexer-pyclient-alpha/rexerclient/gen ftypes.proto ast.proto
+#/usr/local/bin/protoc -I=. --python_out=../../rexer-pyclient-alpha/rexerclient/gen ftypes.proto ast.proto
 
 # Generate go bindings
-/usr/local/bin/protoc -I=. --go_out=../go/ ./*.proto
+#/usr/local/bin/protoc -I=. --go_out=../go/ ./*.proto
 
 # Generate grpc go bindings
-/usr/local/bin/protoc -I=. --go-grpc_out=../go/ ./*.proto
+#/usr/local/bin/protoc -I=. --go-grpc_out=../go/ ./*.proto
+
+#protoc --gofast_out=../go/ ./gogo.proto
+protoc --go_out=../go/ --go-grpc_out=../go/ \
+              --go-vtproto_out=../go/ --plugin protoc-gen-go-vtproto="/Users/adityanambiar/Documents/Code/rexer/go/bin/protoc-gen-go-vtproto" \
+              --go-vtproto_opt=features=marshal+unmarshal+size+pool \
+              --go-vtproto_opt=pool=fennel/lib/value.PValue  ./gogo.proto
 
 prepare_libs=`cat <<EOF
 import sys

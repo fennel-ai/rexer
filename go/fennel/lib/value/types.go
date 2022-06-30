@@ -1,6 +1,7 @@
 package value
 
 import (
+	"encoding/binary"
 	"fennel/lib/utils/slice"
 	"fmt"
 	"reflect"
@@ -158,6 +159,16 @@ func (s String) OpUnary(opt string) (Value, error) {
 }
 func (s String) MarshalJSON() ([]byte, error) {
 	return []byte(s.String()), nil
+	var ret []byte
+	ret = append(ret, `"`...)
+	b := make([]byte, 2)
+	str := string(s)
+	//fmt.Println("Str length :", len(str))
+	binary.LittleEndian.PutUint16(b, uint16(len(str)+2))
+	ret = append(ret, b...)
+	ret = append(ret, str...)
+	ret = append(ret, `"`...)
+	return ret, nil
 }
 
 type nil_ struct{}
@@ -250,7 +261,48 @@ func (l List) Clone() Value {
 	return NewList(clone...)
 }
 func (l List) MarshalJSON() ([]byte, error) {
-	return []byte(l.String()), nil
+	var ret []byte
+	openSym := "["
+	closeSym := "]"
+	if l.Len() > 1 {
+		if l.Len() > 65536 {
+			return nil, fmt.Errorf("arrays longer than 65k elements not supported")
+		}
+		openSym = "("
+	}
+
+	ret = append(ret, openSym...)
+	//sb.WriteString(openSym)
+	var rest []byte
+	for i, v := range l.values {
+		if v == nil {
+			rest = append(rest, "null"...)
+		} else {
+			// Need to marshal this
+			b, err := v.MarshalJSON()
+			if err != nil {
+				return nil, err
+			}
+			rest = append(rest, b...)
+			//sb.WriteString(v.String())
+		}
+		if i != len(l.values)-1 {
+			rest = append(rest, ","...)
+		}
+	}
+	//rest = append(rest, closeSym...)
+	if l.Len() > 1 {
+		b := make([]byte, 2)
+		binary.LittleEndian.PutUint16(b, uint16(l.Len()))
+		ret = append(ret, b...)
+		c := make([]byte, 2)
+		//fmt.Println("Length of rest", len(rest))
+		binary.LittleEndian.PutUint16(c, uint16(len(rest)+2))
+		ret = append(ret, c...)
+	}
+	ret = append(ret, rest...)
+	ret = append(ret, closeSym...)
+	return ret, nil
 }
 
 func (l *List) Append(vals ...Value) {
@@ -343,6 +395,7 @@ func (d Dict) Equal(v Value) bool {
 		return false
 	}
 }
+
 func (d Dict) String() string {
 	s := make([]string, 0, d.Len())
 	for k, v := range d.Iter() {
@@ -366,6 +419,7 @@ func (d Dict) String() string {
 	sb.WriteString("}")
 	return sb.String()
 }
+
 func (d Dict) Clone() Value {
 	clone := make(map[string]Value, d.Len())
 	for k, v := range d.Iter() {
@@ -374,7 +428,38 @@ func (d Dict) Clone() Value {
 	return NewDict(clone)
 }
 func (d Dict) MarshalJSON() ([]byte, error) {
-	return []byte(d.String()), nil
+	var ret []byte
+	var rst []byte
+	ret = append(ret, "<"...)
+	for k, v := range d.Iter() {
+		sb := strings.Builder{}
+		sb.WriteString(`"`)
+		sb.WriteString(k)
+		sb.WriteString(`"`)
+		sb.WriteString(":")
+
+		rst = append(rst, sb.String()...)
+		if v == nil {
+			rst = append(rst, "null"...)
+		} else {
+			b, err := v.MarshalJSON()
+			if err != nil {
+				return nil, err
+			}
+			rst = append(rst, b...)
+		}
+		rst = append(rst, ","...)
+	}
+	rst = rst[:len(rst)-1]
+	b := make([]byte, 2)
+	binary.LittleEndian.PutUint16(b, uint16(d.Len()))
+	ret = append(ret, b...)
+	c := make([]byte, 2)
+	binary.LittleEndian.PutUint16(c, uint16(len(rst)+2))
+	ret = append(ret, c...)
+	ret = append(ret, rst...)
+	ret = append(ret, "}"...)
+	return ret, nil
 }
 
 func (d Dict) Schema() map[string]reflect.Type {

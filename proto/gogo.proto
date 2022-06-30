@@ -1,0 +1,32 @@
+syntax = "proto3";
+
+option go_package = "fennel/lib/value";
+
+message PValue {
+oneof node {
+int64 Int = 1;
+double Double = 2;
+bool Bool = 3;
+string String = 4;
+PVList List = 5;
+PVDict Dict = 6;
+PVTable Table = 7;
+PVNil Nil = 8;
+// [deprecated] PVTuple Tuple = 9;
+}
+}
+
+message PVList {
+repeated PValue values = 1;
+}
+
+message PVDict {
+map<string, PValue> values = 1;
+}
+
+message PVTable {
+repeated PVDict rows = 1;
+}
+
+message PVNil {
+}

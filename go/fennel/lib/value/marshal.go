@@ -3,7 +3,6 @@ package value
 import (
 	"bytes"
 	"capnproto.org/go/capnp/v3"
-	"google.golang.org/protobuf/proto"
 )
 
 func CaptainMarshal(v Value) ([]byte, error) {
@@ -30,16 +29,17 @@ func Marshal(v Value) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	return proto.Marshal(&pa)
+	return pa.MarshalVT()
 }
 
 func Unmarshal(data []byte, v *Value) error {
-	var pa PValue
-	if err := proto.Unmarshal(data, &pa); err != nil {
+	//var pa PValue
+	pa := PValueFromVTPool()
+	if err := pa.UnmarshalVT(data); err != nil {
 		return err
 	}
-	// return nil
-	a, err := FromProtoValue(&pa)
+	a, err := FromProtoValue(pa)
+	pa.ReturnToVTPool()
 	if err != nil {
 		return err
 	}

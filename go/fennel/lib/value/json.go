@@ -1,9 +1,8 @@
 package value
 
 import (
+	"fennel/lib/value/rexparser"
 	"fmt"
-
-	"github.com/buger/jsonparser"
 )
 
 func Clean(v Value) Value {
@@ -21,11 +20,12 @@ func Clean(v Value) Value {
 }
 
 func FromJSON(data []byte) (Value, error) {
-	vdata, vtype, _, err := jsonparser.Get(data)
+	vdata, vtype, _, sz, err := rexparser.Get(data)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create parser: %w", err)
 	}
-	return ParseJSON(vdata, vtype)
+	//fmt.Println(vtype)
+	return ParseJSON(vdata, vtype, sz)
 }
 
 func ToJSON(val Value) []byte {
@@ -35,19 +35,19 @@ func ToJSON(val Value) []byte {
 	return []byte(val.String())
 }
 
-func ParseJSON(vdata []byte, vtype jsonparser.ValueType) (Value, error) {
+func ParseJSON(vdata []byte, vtype rexparser.ValueType, sz int) (Value, error) {
 	switch vtype {
-	case jsonparser.Boolean:
+	case rexparser.Boolean:
 		return parseJSONBoolean(vdata)
-	case jsonparser.Number:
+	case rexparser.Number:
 		return parseJSONNumber(vdata)
-	case jsonparser.String:
+	case rexparser.RString:
 		return parseJSONString(vdata)
-	case jsonparser.Array:
-		return parseJSONArray(vdata)
-	case jsonparser.Object:
-		return parseJSONObject(vdata)
-	case jsonparser.Null:
+	case rexparser.Array:
+		return parseJSONArray(vdata, sz)
+	case rexparser.Object:
+		return parseJSONObject(vdata, sz)
+	case rexparser.Null:
 		return Nil, nil
 	default:
 		return nil, fmt.Errorf("unsupported json type %v", vtype)
@@ -55,7 +55,7 @@ func ParseJSON(vdata []byte, vtype jsonparser.ValueType) (Value, error) {
 }
 
 func parseJSONBoolean(data []byte) (Value, error) {
-	if v, err := jsonparser.ParseBoolean(data); err != nil {
+	if v, err := rexparser.ParseBoolean(data); err != nil {
 		return nil, err
 	} else {
 		return Bool(v), nil
@@ -65,39 +65,45 @@ func parseJSONBoolean(data []byte) (Value, error) {
 func parseJSONNumber(data []byte) (Value, error) {
 	for i := 0; i < len(data); i++ {
 		if data[i] == '.' {
-			v, err := jsonparser.ParseFloat(data)
+			v, err := rexparser.ParseFloat(data)
 			return Double(v), err
 		}
 	}
-	v, err := jsonparser.ParseInt(data)
+	v, err := rexparser.ParseInt(data)
 	return Int(v), err
 }
 
 func parseJSONString(data []byte) (Value, error) {
-	if v, err := jsonparser.ParseString(data); err != nil {
+	if v, err := rexparser.ParseString(data); err != nil {
 		return nil, err
 	} else {
 		return String(v), nil
 	}
 }
 
-func parseJSONArray(data []byte) (Value, error) {
+func parseJSONArray(data []byte, sz int) (Value, error) {
+	//start := time.Now()
 	var ret List
+	ret.Grow(sz)
+
+	//fmt.Println(string(data))
 	var errors []error
-	handler := func(vdata []byte, vtype jsonparser.ValueType, _ int, err error) {
+	handler := func(vdata []byte, vtype rexparser.ValueType, _ int, sz int, err error) {
+		//start := time.Now()
 		if err != nil {
 			errors = append(errors, err)
 			return
 		}
-		v, err := ParseJSON(vdata, vtype)
+		v, err := ParseJSON(vdata, vtype, sz)
 		if err != nil {
 			errors = append(errors, err)
 			return
 		}
+		//fmt.Println("Time  spent: ", time.Since(start))
 		ret.Append(v)
 		//ret = append(ret, v)
 	}
-	_, err := jsonparser.ArrayEach(data, handler)
+	_, err := rexparser.ArrayEach(data, handler)
 	if err != nil {
 		return nil, err
 	}
@@ -105,26 +111,33 @@ func parseJSONArray(data []byte) (Value, error) {
 		// should this combine errors instead of returning only first error?
 		return nil, errors[0]
 	}
+	//fmt.Println("Elapsed Array: ", time.Since(start))
 	return ret, nil
 }
 
-func parseJSONObject(data []byte) (Value, error) {
-	ret := NewDict(map[string]Value{})
-	handler := func(key []byte, vdata []byte, vtype jsonparser.ValueType, _ int) error {
-		k, err := jsonparser.ParseString(key)
+func parseJSONObject(data []byte, sz int) (Value, error) {
+	//start := time.Now()
+	//ret := NewDict(map[string]Value{})
+	ret := make(map[string]Value, sz)
+	handler := func(key []byte, vdata []byte, vtype rexparser.ValueType, _ int, sz int) error {
+		k, err := rexparser.ParseString(key)
 		if err != nil {
 			return err
 		}
-		v, err := ParseJSON(vdata, vtype)
+		v, err := ParseJSON(vdata, vtype, sz)
 		if err != nil {
 			return err
 		}
-		ret.Set(k, v)
+		//ret.Set(k, v)
+		ret[k] = v
 		return nil
 	}
-	err := jsonparser.ObjectEach(data, handler)
+	// rexparser.EachKey(data, handler, nil)
+	err := rexparser.ObjectEach(data, handler)
 	if err != nil {
 		return nil, err
 	}
-	return ret, nil
+	//fmt.Println("Elapsed Dict: ", time.Since(start))
+
+	return NewDict(ret), nil
 }

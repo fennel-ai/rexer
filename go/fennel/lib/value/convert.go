@@ -1,10 +1,10 @@
 package value
 
 import (
+	"capnproto.org/go/capnp/v3"
 	"fmt"
 	"sort"
-
-	"capnproto.org/go/capnp/v3"
+	"time"
 )
 
 func ToCapnValue(v Value) (CapnValue, []byte, error) {
@@ -72,6 +72,11 @@ func ToCapnValue(v Value) (CapnValue, []byte, error) {
 	return cv, ret, err
 }
 
+type input struct {
+	inp   CapnValue
+	index int
+}
+
 func FromCapnValue(cv CapnValue) (Value, error) {
 	switch cv.Which() {
 	case CapnValue_Which_nil:
@@ -93,25 +98,28 @@ func FromCapnValue(cv CapnValue) (Value, error) {
 		if err != nil {
 			return Nil, fmt.Errorf("capnvalue is not list: %v", cv.String())
 		}
-		v := NewList()
-		v.Grow(l.Len())
-		//ProcessInParallel()
+		//v := NewList()
+		//v.Grow(l.Len())
+		v := make([]Value, l.Len())
 		for i := 0; i < l.Len(); i++ {
 			e := l.At(i)
 			ve, err := FromCapnValue(e)
 			if err != nil {
 				return Nil, err
 			}
-			v.Append(ve)
+			v[i] = ve
 		}
-		return v, nil
+		x := NewList(v...)
+		return x, nil
 	case CapnValue_Which_dict:
+		start := time.Now()
 		d, err := cv.Dict()
 		if err != nil {
 			return Nil, fmt.Errorf("capnvalue is not dict: %v", cv.String())
 		}
-		v := NewDict(make(map[string]Value))
+		//v := NewDict(make(map[string]Value))
 		entries, err := d.Entries()
+		ret := make(map[string]Value, entries.Len())
 		if err != nil {
 			return Nil, fmt.Errorf("failed to get dict entries from capnvalue: %w", err)
 		}
@@ -129,9 +137,11 @@ func FromCapnValue(cv CapnValue) (Value, error) {
 			if err != nil {
 				return Nil, fmt.Errorf("failed to convert dict value from capnvalue to Value: %w", err)
 			}
-			v.Set(ek.Text(), val)
+			//v.Set(ek.Text(), val)
+			ret[ek.Text()] = val
 		}
-		return v, nil
+		fmt.Println("dict:", time.Since(start))
+		return NewDict(ret), nil
 	default:
 		return Nil, fmt.Errorf("invalid value: %v", cv.String())
 	}
@@ -186,6 +196,7 @@ func FromProtoValue(pv *PValue) (Value, error) {
 	}
 	if pvl, ok := pv.Node.(*PValue_List); ok {
 		ret := make([]Value, len(pvl.List.Values))
+
 		for i, pv := range pvl.List.Values {
 			v, err := FromProtoValue(pv)
 			if err != nil {
@@ -193,7 +204,8 @@ func FromProtoValue(pv *PValue) (Value, error) {
 			}
 			ret[i] = v
 		}
-		return NewList(ret...), nil
+		x := NewList(ret...)
+		return x, nil
 	}
 	if pvd, ok := pv.Node.(*PValue_Dict); ok {
 		ret := make(map[string]Value, len(pvd.Dict.Values))

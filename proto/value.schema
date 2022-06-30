@@ -1,0 +1,19 @@
+struct GenMap {
+    []string
+    []GenValue
+}
+
+struct GenList {
+    []GenValue
+}
+
+struct GenValue {
+    data union {
+        int
+        float64
+        bool
+        string
+        GenList
+        GenMap
+    }
+}
