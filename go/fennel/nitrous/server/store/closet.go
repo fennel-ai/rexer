@@ -231,10 +231,6 @@ func (ms Closet) Update(ctx context.Context, ts []uint32, keys []string, val []v
 	for i := range vgs {
 		vg := &vgs[i]
 		hkeys[i] = hkgs[i].Prefix
-		// Select only the field specific to the current aggregate. This is to
-		// avoid data races with other concurrent go-routines trying to update
-		// another field in the same prefix.
-		vg.Select([][]byte{slice.Limit(ms.field)})
 		if len(vg.Fields) == 0 {
 			vg.Fields = append(vg.Fields, slice.Limit(ms.field))
 			vg.Values = append(vg.Values, []byte(vals[i].String()))
