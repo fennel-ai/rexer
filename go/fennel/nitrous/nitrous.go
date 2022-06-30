@@ -12,7 +12,7 @@ import (
 	"fennel/nitrous/server/tailer"
 	"fennel/plane"
 
-	"github.com/grpc-ecosystem/go-grpc-prometheus"
+	grpc_prometheus "github.com/grpc-ecosystem/go-grpc-prometheus"
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
 )
@@ -21,12 +21,12 @@ import (
 // termination.
 func StartServer(plane plane.Plane, listener net.Listener) error {
 	// Initialize binlog tailer.
-	offsetkg := []byte("default_tailer")
-	offsets, err := offsets.RestoreBinlogOffset(plane.Store, offsetkg)
+	offsetkey := []byte("default_tailer")
+	offsets, err := offsets.RestoreBinlogOffset(plane.Store, offsetkey)
 	if err != nil {
 		plane.Logger.Fatal("Failed to restore binlog offsets from hangar", zap.Error(err))
 	}
-	tailer, err := tailer.NewTailer(plane, nitrous.BINLOG_KAFKA_TOPIC, offsets, offsetkg)
+	tailer, err := tailer.NewTailer(plane, nitrous.BINLOG_KAFKA_TOPIC, offsets, offsetkey)
 	if err != nil {
 		return fmt.Errorf("failed to setup tailer: %w", err)
 	}

@@ -27,19 +27,19 @@ func TestOffsetSaveRestore(t *testing.T) {
 			Offset:    kafka.Offset(295),
 		},
 	}
-	ks, vgs, err := SaveBinlogOffsets(toppars, []byte("offsetkg"))
+	ks, vgs, err := SaveBinlogOffsets(toppars, []byte("offsetkey"))
 	assert.NoError(t, err)
 	err = tp.Store.SetMany(ks, vgs)
 	assert.NoError(t, err)
 
-	got, err := RestoreBinlogOffset(tp.Store, []byte("offsetkg"))
+	got, err := RestoreBinlogOffset(tp.Store, []byte("offsetkey"))
 	assert.NoError(t, err)
 	assert.ElementsMatch(t, toppars, got)
 }
 
 func TestRestoreEmpty(t *testing.T) {
 	tp := plane.NewTestPlane(t)
-	got, err := RestoreBinlogOffset(tp.Store, []byte("offsetkg"))
+	got, err := RestoreBinlogOffset(tp.Store, []byte("offsetkey"))
 	assert.NoError(t, err)
 	assert.Empty(t, got)
 }

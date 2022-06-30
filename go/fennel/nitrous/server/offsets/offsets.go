@@ -9,8 +9,8 @@ import (
 	"github.com/confluentinc/confluent-kafka-go/kafka"
 )
 
-func RestoreBinlogOffset(store hangar.Hangar, offsetkg []byte) (kafka.TopicPartitions, error) {
-	vgs, err := store.GetMany([]hangar.KeyGroup{{Prefix: hangar.Key{Data: offsetkg}}})
+func RestoreBinlogOffset(store hangar.Hangar, offsetkey []byte) (kafka.TopicPartitions, error) {
+	vgs, err := store.GetMany([]hangar.KeyGroup{{Prefix: hangar.Key{Data: offsetkey}}})
 	if err != nil {
 		return nil, fmt.Errorf("failed to get binlog offsets: %w", err)
 	}
@@ -37,7 +37,7 @@ func RestoreBinlogOffset(store hangar.Hangar, offsetkg []byte) (kafka.TopicParti
 	return toppars, nil
 }
 
-func SaveBinlogOffsets(toppars []kafka.TopicPartition, offsetkg []byte) ([]hangar.Key, []hangar.ValGroup, error) {
+func SaveBinlogOffsets(toppars []kafka.TopicPartition, offsetkey []byte) ([]hangar.Key, []hangar.ValGroup, error) {
 	fields := make([][]byte, len(toppars))
 	values := make([][]byte, len(toppars))
 	for i, toppar := range toppars {
@@ -54,7 +54,7 @@ func SaveBinlogOffsets(toppars []kafka.TopicPartition, offsetkg []byte) ([]hanga
 		}
 		values[i] = v
 	}
-	return []hangar.Key{{Data: offsetkg}}, []hangar.ValGroup{{Fields: fields, Values: values, Expiry: 0}}, nil
+	return []hangar.Key{{Data: offsetkey}}, []hangar.ValGroup{{Fields: fields, Values: values, Expiry: 0}}, nil
 }
 
 func encodeField(topic string, partition int32) ([]byte, error) {
