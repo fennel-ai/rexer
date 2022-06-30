@@ -71,13 +71,14 @@ func (adm *AggDefsMgr) RestoreAggregates() error {
 		// No aggregates defined yet.
 		return nil
 	}
-	for i, field := range vgs[0].Fields {
+	vg := vgs[0]
+	for i, field := range vg.Fields {
 		_, tierId, aggId, codec, err := decodeField(field)
 		if err != nil {
 			return fmt.Errorf("failed to decode %s: %w", string(field), err)
 		}
 		var popts aggregate.AggOptions
-		err = proto.Unmarshal(vgs[0].Values[i], &popts)
+		err = proto.Unmarshal(vg.Values[i], &popts)
 		if err != nil {
 			return fmt.Errorf("faield to unmarshal store proto options for aggId %d in tier %d: %w", aggId, tierId, err)
 		}
@@ -95,9 +96,11 @@ func (adm *AggDefsMgr) InitAggregate(tierId ftypes.RealmID, aggId ftypes.AggId, 
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to get aggregate definitions: %w", err)
 	}
-	if len(vgs) == 0 {
-		// No aggregates defined yet.
-		vgs = []hangar.ValGroup{{Expiry: 0}}
+	var vg hangar.ValGroup
+	if len(vgs) == 0 { // No aggregates defined yet.
+		vg = hangar.ValGroup{Expiry: 0}
+	} else {
+		vg = vgs[0]
 	}
 	// TODO: Initialize the aggregate store only for codecs that are supported
 	// for the given aggregate type.
@@ -112,9 +115,9 @@ func (adm *AggDefsMgr) InitAggregate(tierId ftypes.RealmID, aggId ftypes.AggId, 
 			return nil, nil, fmt.Errorf("failed to serialize aggregate options to json: %w", err)
 		}
 		// Check if this aggregate has already been defined for this tier.
-		for i, f := range vgs[0].Fields {
+		for i, f := range vg.Fields {
 			if bytes.Equal(f, field) {
-				currv := vgs[0].Values[i]
+				currv := vg.Values[i]
 				var curropts aggregate.AggOptions
 				err = proto.Unmarshal(currv, &curropts)
 				if err != nil {
@@ -127,14 +130,14 @@ func (adm *AggDefsMgr) InitAggregate(tierId ftypes.RealmID, aggId ftypes.AggId, 
 				}
 			}
 		}
-		vgs[0].Fields = append(vgs[0].Fields, field)
-		vgs[0].Values = append(vgs[0].Values, rawopts)
+		vg.Fields = append(vg.Fields, field)
+		vg.Values = append(vg.Values, rawopts)
 		err = adm.initAggStore(tierId, aggId, codec, popts)
 		if err != nil {
 			return nil, nil, fmt.Errorf("failed to initialize aggregate store for new aggregate (%d) in tier (%d): %w", aggId, tierId, err)
 		}
 	}
-	return []hangar.Key{{Data: agg_table_key}}, vgs, nil
+	return []hangar.Key{{Data: agg_table_key}}, []hangar.ValGroup{vg}, nil
 }
 
 func (adm *AggDefsMgr) initAggStore(tierId ftypes.RealmID, aggId ftypes.AggId, codec rpc.AggCodec, popts *aggregate.AggOptions) error {
