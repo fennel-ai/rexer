@@ -25,7 +25,7 @@ func TestConvertToCapnValue(t *testing.T) {
 	}
 
 	for _, v := range values {
-		cv, err := ToCapnValue(v)
+		cv, _, err := ToCapnValue(v)
 		assert.NoError(t, err)
 		v2, err := FromCapnValue(cv)
 		assert.NoError(t, err)

@@ -1,6 +1,8 @@
 package value
 
 import (
+	"fmt"
+	"math/rand"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -72,4 +74,100 @@ func TestUnequalMarshal(t *testing.T) {
 	verifyUnequalMarshal(t, Nil, []Value{i, d, b, s, l, di})
 	verifyUnequalMarshal(t, NewList(Int(2), Bool(true)), []Value{i, d, b, s, l, di})
 	verifyUnequalMarshal(t, NewDict(map[string]Value{"b": Int(2)}), []Value{i, d, b, s, l, di})
+}
+
+func RandStringRunes(n int) string {
+	var letterRunes = []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ")
+	b := make([]rune, n)
+	for i := range b {
+		b[i] = letterRunes[rand.Intn(len(letterRunes))]
+	}
+	return string(b)
+}
+
+func smallValue(n int, t string) ([][]byte, []Value) {
+	arr := make([][]byte, n)
+	samples := make([]Value, n)
+	totalSize := 0
+	for i := 0; i < n; i++ {
+		sample := NewList(String(RandStringRunes(5)), Int(rand.Int()), Bool(true))
+		samples[i] = sample
+		if t == "captain" {
+			arr[i], _ = CaptainMarshal(sample)
+		} else if t == "proto" {
+			arr[i], _ = Marshal(sample)
+		} else if t == "json" {
+			arr[i], _ = sample.MarshalJSON()
+		} else {
+			panic("unknown type")
+		}
+		totalSize += len(arr[i])
+	}
+	fmt.Println("Total size: ", totalSize/n)
+	return arr, samples
+}
+
+func largeValue(n int, t string) ([][]byte, []Value) {
+	arr := make([][]byte, n)
+	samples := make([]Value, n)
+	totalSize := 0
+	for i := 0; i < n; i++ {
+		sample := NewDict(map[string]Value{})
+		for j := 0; j < 200; j++ {
+			l := NewList(Int(1), Double(2.0), Bool(true))
+			for k := 0; k < 10; k++ {
+				l.Append(String(RandStringRunes(5)))
+			}
+			sample.Set(RandStringRunes(5), l)
+		}
+		if t == "captain" {
+			arr[i], _ = CaptainMarshal(sample)
+		} else if t == "proto" {
+			arr[i], _ = Marshal(sample)
+		} else if t == "json" {
+			arr[i], _ = sample.MarshalJSON()
+		} else {
+			panic("unknown type")
+		}
+		totalSize += len(arr[i])
+		samples[i] = sample
+	}
+	fmt.Printf("total size: %d\n", totalSize/n)
+	return arr, samples
+}
+
+func benchMarkSerialization(b *testing.B, algo, sz string) {
+	fmt.Println("Benchmarking Algo ", algo, b.N)
+	var arr [][]byte
+	//var samples []Value
+	if sz == "l" {
+		arr, _ = largeValue(b.N, algo)
+	} else {
+		arr, _ = smallValue(b.N, algo)
+	}
+	b.ResetTimer()
+	b.ReportAllocs()
+
+	for n := 0; n < b.N; n++ {
+		var err error
+		switch algo {
+		case "captain":
+			_, err = CaptainUnmarshal(arr[n])
+		case "proto":
+			var v Value
+			_ = Unmarshal(arr[n], &v)
+		case "json":
+			_, err = FromJSON(arr[n])
+		}
+		//assert.True(b, v.Equal(samples[n]))
+		assert.NoError(b, err)
+	}
+}
+
+// go test -tags dynamic  -bench Benchmark_Serialization -v fennel/lib/value -run ^$  -benchtime=10000x
+// go test -tags dynamic  -bench Benchmark_Serialization -v fennel/lib/value -run ^$  -benchtime=60s
+// go test -tags dynamic  -bench Benchmark_Serialization -v fennel/lib/value -run ^$  -benchtime=10000x -cpuprofile cpu.out
+// go tool pprof -http=localhost:6060 cpu.out
+func Benchmark_Serialization(b *testing.B) {
+	benchMarkSerialization(b, "captain", "l")
 }
