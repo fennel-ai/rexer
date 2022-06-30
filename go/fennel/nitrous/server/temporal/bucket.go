@@ -33,19 +33,13 @@ type FixedWidthBucketizer struct {
 	numbuckets uint32
 	opts       aggregate.Options
 	clock      clock.Clock
-	durations  map[uint32]struct{}
 }
 
 func NewFixedWidthBucketizer(opts aggregate.Options, numbuckets uint32, clock clock.Clock) FixedWidthBucketizer {
-	durations := make(map[uint32]struct{}, len(opts.Durations))
-	for _, d := range opts.Durations {
-		durations[d] = struct{}{}
-	}
 	return FixedWidthBucketizer{
 		numbuckets,
 		opts,
 		clock,
-		durations,
 	}
 }
 
@@ -53,7 +47,7 @@ var _ TimeBucketizer = FixedWidthBucketizer{}
 
 func (fwb FixedWidthBucketizer) BucketizeMoment(ts uint32) ([]TimeBucket, []int64, error) {
 	// TODO: Handle forever aggregates.
-	if len(fwb.durations) == 0 {
+	if len(fwb.opts.Durations) == 0 {
 		if fwb.opts.AggType != "timeseries_sum" {
 			return nil, nil, errors.New("empty durations only supported for 'timeseries_sum' aggregate type")
 		}
@@ -67,10 +61,10 @@ func (fwb FixedWidthBucketizer) BucketizeMoment(ts uint32) ([]TimeBucket, []int6
 		ttls := []int64{int64(d * fwb.opts.Limit)}
 		return buckets, ttls, nil
 	} else {
-		buckets := make([]TimeBucket, len(fwb.durations))
-		ttls := make([]int64, len(fwb.durations))
+		buckets := make([]TimeBucket, len(fwb.opts.Durations))
+		ttls := make([]int64, len(fwb.opts.Durations))
 		i := 0
-		for d := range fwb.durations {
+		for _, d := range fwb.opts.Durations {
 			width := d / fwb.numbuckets
 			buckets[i].Width = width
 			buckets[i].Index = ts / width
@@ -81,9 +75,22 @@ func (fwb FixedWidthBucketizer) BucketizeMoment(ts uint32) ([]TimeBucket, []int6
 	}
 }
 
+func (fwb FixedWidthBucketizer) isValid(duration uint32) bool {
+	valid := false
+	// Note: We do a scan over fwb.opts.Durations to see if duration is in there.
+	// For small slices, this is faster than using a map.
+	for _, d := range fwb.opts.Durations {
+		if d == duration {
+			valid = true
+			break
+		}
+	}
+	return valid
+}
+
 func (fwb FixedWidthBucketizer) BucketizeDuration(duration uint32) ([]TimeBucket, error) {
-	if _, ok := fwb.durations[duration]; !ok {
-		return nil, fmt.Errorf("incorrect duration value (%d) for aggregate of type (%s)", duration, fwb.opts.AggType)
+	if !fwb.isValid(duration) {
+		return nil, fmt.Errorf("incorrect duration value (%d) for aggregate of type (%s). Allowed values: %v", duration, fwb.opts.AggType, fwb.opts.Durations)
 	}
 	width := duration / fwb.numbuckets
 	end := uint32(fwb.clock.Now().Unix())
