@@ -34,7 +34,7 @@ func (c countingProcessor) Process(ctx context.Context, ops []*rpc.NitrousOp) (k
 	return nil, nil, nil
 }
 
-var offsetkg = []byte("offsetkg")
+var offsetkey = []byte("offsetkey")
 
 func TestTailer(t *testing.T) {
 	tp := plane.NewTestPlane(t)
@@ -43,7 +43,7 @@ func TestTailer(t *testing.T) {
 	// Create the producer first so the topic is initialized.
 	producer := tp.NewProducer(t, nitrous.BINLOG_KAFKA_TOPIC)
 
-	tlr, err := tailer.NewTailer(p, nitrous.BINLOG_KAFKA_TOPIC, nil, offsetkg)
+	tlr, err := tailer.NewTailer(p, nitrous.BINLOG_KAFKA_TOPIC, nil, offsetkey)
 	assert.NoError(t, err)
 	notifs := atomic.NewInt32(0)
 	p1 := countingProcessor{t, notifs}
@@ -74,7 +74,7 @@ func TestTailer(t *testing.T) {
 	assert.NoError(t, err)
 	assert.EqualValues(t, 1, lag)
 	// Offsets should be empty in db.
-	offs, err := offsets.RestoreBinlogOffset(p.Store, offsetkg)
+	offs, err := offsets.RestoreBinlogOffset(p.Store, offsetkey)
 	assert.NoError(t, err)
 	assert.ElementsMatch(t, kafka.TopicPartitions{}, offs)
 
@@ -96,7 +96,7 @@ func TestTailer(t *testing.T) {
 
 	// Offsets should be stored in db.
 	scope := resource.NewPlaneScope(p.ID)
-	offs, err = offsets.RestoreBinlogOffset(p.Store, offsetkg)
+	offs, err = offsets.RestoreBinlogOffset(p.Store, offsetkey)
 	assert.NoError(t, err)
 	assert.ElementsMatch(t, kafka.TopicPartitions{
 		{Topic: ptr.To(scope.PrefixedName(nitrous.BINLOG_KAFKA_TOPIC)), Partition: 0, Offset: 1},

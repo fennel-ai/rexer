@@ -32,7 +32,7 @@ type Tailer struct {
 	processors  []EventProcessor
 	plane       plane.Plane
 	binlog      fkafka.FConsumer
-	offsetkg    []byte
+	offsetkey   []byte
 	stopCh      chan struct{}
 	pollTimeout time.Duration
 
@@ -41,9 +41,9 @@ type Tailer struct {
 
 // Returns a new Tailer that can be used to tail the binlog.
 // 'offsets' denotes the kafka offsets at which the tailer should start tailing
-// the log. 'offsetkg' denotes the keygroup under which the offsets should be
+// the log. 'offsetkey' denotes the keygroup under which the offsets should be
 // checkpointed in the plane's hangar.
-func NewTailer(plane plane.Plane, topic string, offsets kafka.TopicPartitions, offsetkg []byte) (*Tailer, error) {
+func NewTailer(plane plane.Plane, topic string, offsets kafka.TopicPartitions, offsetkey []byte) (*Tailer, error) {
 	stopCh := make(chan struct{})
 	consumer, err := plane.KafkaConsumerFactory(fkafka.ConsumerConfig{
 		Scope:        resource.NewPlaneScope(plane.ID),
@@ -59,7 +59,7 @@ func NewTailer(plane plane.Plane, topic string, offsets kafka.TopicPartitions, o
 		nil,
 		plane,
 		consumer,
-		offsetkg,
+		offsetkey,
 		stopCh,
 		10 * time.Second, // 10s as poll timeout
 		&sync.RWMutex{},
@@ -169,7 +169,7 @@ func (t *Tailer) Tail() {
 			if err != nil {
 				t.plane.Logger.Error("failed to get offsets", zap.Error(err))
 			}
-			offkeys, offvs, err := offsets.SaveBinlogOffsets(offs, t.offsetkg)
+			offkeys, offvs, err := offsets.SaveBinlogOffsets(offs, t.offsetkey)
 			if err != nil {
 				t.plane.Logger.Error("failed to save offsets", zap.Error(err))
 			}
