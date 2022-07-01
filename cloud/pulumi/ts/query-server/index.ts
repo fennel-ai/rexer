@@ -5,7 +5,7 @@ import * as pulumi from "@pulumi/pulumi";
 import * as path from "path";
 import * as process from "process";
 import * as childProcess from "child_process";
-import {serviceEnvs} from "../tier-consts/consts";
+import { serviceEnvs } from "../tier-consts/consts";
 import * as util from "../lib/util";
 
 const name = "query-server"
@@ -38,7 +38,7 @@ export type inputType = {
 }
 
 export type outputType = {
-    appLabels: {[key: string]: string},
+    appLabels: { [key: string]: string },
     svc: pulumi.Output<k8s.core.v1.Service>,
 }
 
@@ -107,7 +107,7 @@ export const setup = async (input: inputType) => {
     // Get the (hash) commit id.
     // NOTE: This requires git to be installed and DOES NOT take local changes or commits into consideration.
     const hashId = childProcess.execSync('git rev-parse --short HEAD').toString().trim()
-    const imageName = repo.repositoryUrl.apply( imgName => {
+    const imageName = repo.repositoryUrl.apply(imgName => {
         return `${imgName}:${hashId}`
     })
 
@@ -133,6 +133,7 @@ export const setup = async (input: inputType) => {
     // Create a load balanced Kubernetes service using this image, and export its IP.
     const appLabels = { app: name };
     const metricsPort = 2112;
+    const appPort = 2425;
 
     // if node labels are specified, create an affinity for the pod towards that node (or set of nodes)
     let affinity: k8s.types.input.core.v1.Affinity = {};
@@ -238,7 +239,7 @@ export const setup = async (input: inputType) => {
                             imagePullPolicy: "Always",
                             ports: [
                                 {
-                                    containerPort: 2425,
+                                    containerPort: appPort,
                                     protocol: "TCP",
                                 },
                                 {
@@ -276,7 +277,7 @@ export const setup = async (input: inputType) => {
             },
             spec: {
                 type: "ClusterIP",
-                ports: [{ port: 2425, targetPort: 2425, protocol: "TCP" }],
+                ports: [{ port: appPort, targetPort: appPort, protocol: "TCP" }],
                 selector: appLabels,
             },
         }, { provider: k8sProvider, deleteBeforeReplace: true })
@@ -295,8 +296,8 @@ export const setup = async (input: inputType) => {
         spec: {
             "hostname": "*",
             "prefix": "/data/query",
-           "rewrite": "/query",
-            "service": "query-server:2425",
+            "rewrite": "/query",
+            "service": `query-server:${appPort}`,
             "timeout_ms": timeoutSeconds * 1000,
         }
     }, { provider: k8sProvider, deleteBeforeReplace: true })
@@ -342,90 +343,90 @@ export const setup = async (input: inputType) => {
     // we can not use autoscaling/v2 because since we are limited by EKS support for only v1.22.9. v2 is supported from
     // v1.23
     const podAutoscaler = new k8s.autoscaling.v2beta2.HorizontalPodAutoscaler("query-server-hpa", {
-            metadata: {
-                name: "query-server-hpa",
+        metadata: {
+            name: "query-server-hpa",
+        },
+        spec: {
+            scaleTargetRef: {
+                apiVersion: "apps/v1",
+                kind: "Deployment",
+                name: queryServerDepName,
             },
-            spec: {
-                scaleTargetRef: {
-                    apiVersion: "apps/v1",
-                    kind: "Deployment",
-                    name: queryServerDepName,
-                },
 
-                behavior: {
-                    scaleDown: {
-                        policies: [
-                            {
-                                // Scale down by 1 pod in 120 seconds, this will essentially restrict scaling
-                                // down the pods by 1 every 2 minutes even if the target replica count differs by > 1.
-                                //
-                                // `periodSeconds` indicates the length of time in the past for which the policy
-                                // must hold true.
-                                periodSeconds: 120,
-                                type: "Pods",
-                                value: 1,
-                            }
-                        ],
-                        // This is redundant since we set a single policy
-                        selectPolicy: "Min",
-                        // This helps restrict "flapping" replica count due to fluctuating metric values during live
-                        // traffic. When the metrics indicate that the target should be scaled down the algorithm
-                        // looks into previously computed desired states, use the HIGHEST value in the past
-                        // `stabilizationWindowSeconds` seconds.
-                        //
-                        // We set this to 600, so that we don't scale down aggressively during their customers live
-                        // traffic - however, this will still scale down to the desired replica count eventually
-                        // if we don't see any traffic (hence utilization).
-                        stabilizationWindowSeconds: 600,
-                    }
-                    // default behavior for scaleUp is the higher of:
-                    //  i) increase no more than 4 pods per 60 seconds
-                    //  ii) double the number of pods per 60 seconds; No stabilization is used
+            behavior: {
+                scaleDown: {
+                    policies: [
+                        {
+                            // Scale down by 1 pod in 120 seconds, this will essentially restrict scaling
+                            // down the pods by 1 every 2 minutes even if the target replica count differs by > 1.
+                            //
+                            // `periodSeconds` indicates the length of time in the past for which the policy
+                            // must hold true.
+                            periodSeconds: 120,
+                            type: "Pods",
+                            value: 1,
+                        }
+                    ],
+                    // This is redundant since we set a single policy
+                    selectPolicy: "Min",
+                    // This helps restrict "flapping" replica count due to fluctuating metric values during live
+                    // traffic. When the metrics indicate that the target should be scaled down the algorithm
+                    // looks into previously computed desired states, use the HIGHEST value in the past
+                    // `stabilizationWindowSeconds` seconds.
                     //
-                    // stabilization is set to ZERO, no stabilization is done i.e. the latest recommendation
-                    // is considered
-                },
+                    // We set this to 600, so that we don't scale down aggressively during their customers live
+                    // traffic - however, this will still scale down to the desired replica count eventually
+                    // if we don't see any traffic (hence utilization).
+                    stabilizationWindowSeconds: 600,
+                }
+                // default behavior for scaleUp is the higher of:
+                //  i) increase no more than 4 pods per 60 seconds
+                //  ii) double the number of pods per 60 seconds; No stabilization is used
+                //
+                // stabilization is set to ZERO, no stabilization is done i.e. the latest recommendation
+                // is considered
+            },
 
-                // spec used to calculate the replica count (maximum replica count across all the metrics will be used).
-                //
-                // replica count is calculated as (current value / target value) * #pods
-                //
-                // metrics used must decrease by increasing the pod count or vice-versa
-                //
-                // TODO: Explore other dimensions (e.g. external metrics, ingress metrics etc)
-                // https://kubernetes.io/docs/tasks/run-application/horizontal-pod-autoscale-walkthrough/#autoscaling-on-multiple-metrics-and-custom-metrics
-                metrics: [
-                    // TODO(mohit): Explore configuring horizontal pod autoscaler once EKS supports kubernetes feature flags
-                    // See: https://github.com/aws/containers-roadmap/issues/512
-                    {
-                        type: "Resource",
-                        resource: {
-                            name: "cpu",
-                            target: {
-                                type: "Utilization",
-                                // value is in %
-                                averageUtilization: 80
-                            }
-                        }
-                    },
-                    {
-                        type: "Resource",
-                        resource: {
-                            name: "memory",
-                            target: {
-                                type: "Utilization",
-                                // value is in %
-                                // leave a buffer of 20% here so that, in the worst case, there is enough time
-                                // for a node to spin up and pod getting scheduled on it
-                                averageUtilization: 80
-                            }
+            // spec used to calculate the replica count (maximum replica count across all the metrics will be used).
+            //
+            // replica count is calculated as (current value / target value) * #pods
+            //
+            // metrics used must decrease by increasing the pod count or vice-versa
+            //
+            // TODO: Explore other dimensions (e.g. external metrics, ingress metrics etc)
+            // https://kubernetes.io/docs/tasks/run-application/horizontal-pod-autoscale-walkthrough/#autoscaling-on-multiple-metrics-and-custom-metrics
+            metrics: [
+                // TODO(mohit): Explore configuring horizontal pod autoscaler once EKS supports kubernetes feature flags
+                // See: https://github.com/aws/containers-roadmap/issues/512
+                {
+                    type: "Resource",
+                    resource: {
+                        name: "cpu",
+                        target: {
+                            type: "Utilization",
+                            // value is in %
+                            averageUtilization: 80
                         }
                     }
-                ],
-                minReplicas: input.minReplicas || DEFAULT_MIN_REPLICAS,
-                maxReplicas: input.maxReplicas || DEFAULT_MAX_REPLICAS,
-            },
-        },{ provider: k8sProvider });
+                },
+                {
+                    type: "Resource",
+                    resource: {
+                        name: "memory",
+                        target: {
+                            type: "Utilization",
+                            // value is in %
+                            // leave a buffer of 20% here so that, in the worst case, there is enough time
+                            // for a node to spin up and pod getting scheduled on it
+                            averageUtilization: 80
+                        }
+                    }
+                }
+            ],
+            minReplicas: input.minReplicas || DEFAULT_MIN_REPLICAS,
+            maxReplicas: input.maxReplicas || DEFAULT_MAX_REPLICAS,
+        },
+    }, { provider: k8sProvider });
 
     const output: outputType = {
         appLabels: appLabels,
