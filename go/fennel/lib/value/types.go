@@ -1,6 +1,7 @@
 package value
 
 import (
+	"encoding/json"
 	"fennel/lib/utils/binary"
 	"fennel/lib/utils/slice"
 	"fmt"
@@ -172,12 +173,6 @@ func (s String) MarshalJSON() ([]byte, error) {
 }
 
 func (s String) Marshal() ([]byte, error) {
-	return []byte(s.String()), nil
-}
-
-/*
-Consider encoding length of string too. But this adds more memory overhead
-func (s String) Marshal() ([]byte, error) {
 	var ret []byte
 	ret = append(ret, '"')
 	metadata := make([]byte, 10)
@@ -190,7 +185,6 @@ func (s String) Marshal() ([]byte, error) {
 	ret = append(ret, '"')
 	return ret, nil
 }
-*/
 
 type nil_ struct{}
 
@@ -445,18 +439,18 @@ func (d Dict) String() string {
 	sb.WriteString("}")
 	return sb.String()
 }
+
 func (d Dict) Marshal() ([]byte, error) {
 	var ret []byte
 	var rest []byte
 	ret = append(ret, "{"...)
 	for k, v := range d.Iter() {
-		sb := strings.Builder{}
-		sb.WriteString(`"`)
-		sb.WriteString(k)
-		sb.WriteString(`"`)
-		sb.WriteString(":")
-
-		rest = append(rest, sb.String()...)
+		key, err := json.Marshal(k)
+		if err != nil {
+			return nil, err
+		}
+		rest = append(rest, key...)
+		rest = append(rest, ":"...)
 		if v == nil {
 			rest = append(rest, "null"...)
 		} else {

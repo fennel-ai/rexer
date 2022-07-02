@@ -575,7 +575,7 @@ func interpretRedisResponse(v interface{}) (value.Value, error) {
 		var val value.Value
 		var err error
 		tBytes := []byte(t)
-		if t[len(tBytes)-4:] == string(CUSTOM_JSON_IDENTIFER) {
+		if len(t) > 4 && t[len(tBytes)-4:] == string(CUSTOM_JSON_IDENTIFER) {
 			val, err = value.Unmarshal(tBytes[:len(t)-4])
 			if err == nil {
 				return val, nil

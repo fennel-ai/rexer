@@ -171,16 +171,16 @@ func largeValue(n int, t string) ([][]byte, []Value) {
 }
 
 func benchMarkSerialization(b *testing.B, algo, sz string) {
-	fmt.Println("Benchmarking Algo ", algo, b.N)
 	var arr [][]byte
-	//var samples []Value
+	var samples []Value
 	if sz == "l" {
-		arr, _ = largeValue(b.N, algo)
+		arr, samples = largeValue(b.N, algo)
 	} else if sz == "s" {
-		arr, _ = smallValue(b.N, algo)
+		arr, samples = smallValue(b.N, algo)
 	} else {
-		arr, _ = randomValue(b.N, algo)
+		arr, samples = randomValue(b.N, algo)
 	}
+	fmt.Println("Benchmarking Algo ", algo, len(samples))
 	var v Value
 	b.ResetTimer()
 	b.ReportAllocs()
@@ -197,7 +197,6 @@ func benchMarkSerialization(b *testing.B, algo, sz string) {
 		case "rexerjson":
 			v, err = Unmarshal(arr[n])
 		}
-
 		//assert.True(b, v.Equal(samples[n]))
 		assert.NoError(b, err)
 	}

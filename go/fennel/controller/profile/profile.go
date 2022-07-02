@@ -53,7 +53,6 @@ func SetMulti(ctx context.Context, tier tier.Tier, request []profilelib.ProfileI
 		if profile.UpdateTime == 0 {
 			profile.UpdateTime = uint64(time.Now().UnixMicro())
 		}
-		fmt.Println(profile)
 		protoVal, err := profilelib.ToProtoProfileItem(&profile)
 		if err != nil {
 			return err
