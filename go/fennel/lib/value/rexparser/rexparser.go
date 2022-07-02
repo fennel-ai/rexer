@@ -138,7 +138,6 @@ func getMetadata(data []byte, offset int) (int, int, int, error) {
 func getType(data []byte, offset int) ([]byte, ValueType, int, int, error) {
 	var dataType ValueType
 	endOffset := offset
-	//fmt.Println("getType: ", string(data[offset:]))
 	// if string value
 	if data[offset] == '"' {
 		dataType = String
@@ -151,11 +150,6 @@ func getType(data []byte, offset int) ([]byte, ValueType, int, int, error) {
 		endOffset += offset
 		data[offset] = '"'
 		return data[offset:endOffset], dataType, endOffset, 0, nil
-		//if idx, _ := stringEnd(data[offset+1:]); idx != -1 {
-		//	endOffset += idx + 1
-		//} else {
-		//	return nil, dataType, offset, 0, MalformedObjectError
-		//}
 	} else if data[offset] == '[' { // if array value
 		dataType = Array
 		arrLength, endOffset, metadataOffset, err := getMetadata(data, offset)
