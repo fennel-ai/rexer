@@ -218,7 +218,7 @@ export const setup = async (input: inputType) => {
                             // See: https://linkerd.io/2.11/tasks/graceful-shutdown/
                             "config.alpha.linkerd.io/proxy-wait-before-exit-seconds": linkerdPreStopDelaySecs.toString(),
                             // See: https://github.com/linkerd/linkerd2/issues/7079#issuecomment-1022096439
-                            "config.linkerd.io/opaque-port": appPort.toString(),
+                            "config.linkerd.io/opaque-ports": appPort.toString(),
                         }
                     },
                     spec: {
