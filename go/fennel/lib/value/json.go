@@ -38,11 +38,11 @@ func ToJSON(val Value) []byte {
 func ParseJSON(vdata []byte, vtype jsonparser.ValueType) (Value, error) {
 	switch vtype {
 	case jsonparser.Boolean:
-		return parseJSONBoolean(vdata)
+		return ParseJSONBoolean(vdata)
 	case jsonparser.Number:
-		return parseJSONNumber(vdata)
+		return ParseJSONNumber(vdata)
 	case jsonparser.String:
-		return parseJSONString(vdata)
+		return ParseJSONString(vdata)
 	case jsonparser.Array:
 		return parseJSONArray(vdata)
 	case jsonparser.Object:
@@ -54,15 +54,16 @@ func ParseJSON(vdata []byte, vtype jsonparser.ValueType) (Value, error) {
 	}
 }
 
-func parseJSONBoolean(data []byte) (Value, error) {
+func ParseJSONBoolean(data []byte) (Value, error) {
 	if v, err := jsonparser.ParseBoolean(data); err != nil {
 		return nil, err
 	} else {
 		return Bool(v), nil
 	}
+
 }
 
-func parseJSONNumber(data []byte) (Value, error) {
+func ParseJSONNumber(data []byte) (Value, error) {
 	for i := 0; i < len(data); i++ {
 		if data[i] == '.' {
 			v, err := jsonparser.ParseFloat(data)
@@ -73,7 +74,7 @@ func parseJSONNumber(data []byte) (Value, error) {
 	return Int(v), err
 }
 
-func parseJSONString(data []byte) (Value, error) {
+func ParseJSONString(data []byte) (Value, error) {
 	if v, err := jsonparser.ParseString(data); err != nil {
 		return nil, err
 	} else {

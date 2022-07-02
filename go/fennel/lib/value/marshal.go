@@ -3,6 +3,8 @@ package value
 import (
 	"bytes"
 	"capnproto.org/go/capnp/v3"
+	"fennel/lib/value/rexparser"
+	"fmt"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -24,7 +26,7 @@ func CaptainUnmarshal(data []byte) (Value, error) {
 	return v, nil
 }
 
-func Marshal(v Value) ([]byte, error) {
+func ProtoMarshal(v Value) ([]byte, error) {
 	pa, err := ToProtoValue(v)
 	if err != nil {
 		return nil, err
@@ -32,7 +34,7 @@ func Marshal(v Value) ([]byte, error) {
 	return proto.Marshal(&pa)
 }
 
-func Unmarshal(data []byte, v *Value) error {
+func ProtoUnmarshal(data []byte, v *Value) error {
 	var pa PValue
 	if err := proto.Unmarshal(data, &pa); err != nil {
 		return err
@@ -43,4 +45,78 @@ func Unmarshal(data []byte, v *Value) error {
 	}
 	*v = a
 	return nil
+}
+
+func Unmarshal(data []byte) (Value, error) {
+	vdata, vtype, _, sz, err := rexparser.Get(data)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create parser: %w", err)
+	}
+	return parseCustomJSON(vdata, vtype, sz)
+}
+
+func parseCustomJSON(vdata []byte, vtype rexparser.ValueType, sz int) (Value, error) {
+	switch vtype {
+	case rexparser.Boolean:
+		return ParseJSONBoolean(vdata)
+	case rexparser.Number:
+		return ParseJSONNumber(vdata)
+	case rexparser.String:
+		return ParseJSONString(vdata)
+	case rexparser.Array:
+		return parseCustomJSONArray(vdata, sz)
+	case rexparser.Object:
+		return parseCustomJSONObject(vdata, sz)
+	case rexparser.Null:
+		return Nil, nil
+	default:
+		return nil, fmt.Errorf("unsupported json type %v", vtype)
+	}
+}
+
+func parseCustomJSONArray(data []byte, sz int) (Value, error) {
+	var ret List
+	ret.Grow(sz)
+	var errors []error
+	handler := func(vdata []byte, vtype rexparser.ValueType, _ int, sz int, err error) {
+		if err != nil {
+			errors = append(errors, err)
+			return
+		}
+		v, err := parseCustomJSON(vdata, vtype, sz)
+		if err != nil {
+			errors = append(errors, err)
+			return
+		}
+		ret.Append(v)
+	}
+	_, err := rexparser.ArrayEach(data, handler)
+	if err != nil {
+		return nil, err
+	}
+	if len(errors) != 0 {
+		return nil, errors[0]
+	}
+	return ret, nil
+}
+
+func parseCustomJSONObject(data []byte, sz int) (Value, error) {
+	ret := make(map[string]Value, sz)
+	handler := func(key []byte, vdata []byte, vtype rexparser.ValueType, _ int, sz int) error {
+		k, err := rexparser.ParseString(key)
+		if err != nil {
+			return err
+		}
+		v, err := parseCustomJSON(vdata, vtype, sz)
+		if err != nil {
+			return err
+		}
+		ret[k] = v
+		return nil
+	}
+	err := rexparser.ObjectEach(data, handler)
+	if err != nil {
+		return nil, err
+	}
+	return NewDict(ret), nil
 }

@@ -27,6 +27,8 @@ import (
 	"fennel/tier"
 )
 
+var CUSTOM_JSON_IDENTIFER = []byte("JSON")
+
 const (
 	// counterCodec is used to differentiate keys in potentially different schemas
 	// with counterCodec = 1, the schema is: <agg_id>:<group_key>:<period>:<group_id>
@@ -571,7 +573,15 @@ func interpretRedisResponse(v interface{}) (value.Value, error) {
 		}
 	case string:
 		var val value.Value
-		err := value.Unmarshal([]byte(t), &val)
+		var err error
+		tBytes := []byte(t)
+		if t[len(tBytes)-4:] == string(CUSTOM_JSON_IDENTIFER) {
+			val, err = value.Unmarshal(tBytes[:len(t)-4])
+			if err == nil {
+				return val, nil
+			}
+		}
+		err = value.ProtoUnmarshal([]byte(t), &val)
 		return val, err
 	default:
 		return nil, fmt.Errorf("unexpected type from redis")
@@ -585,10 +595,12 @@ func setInRedis(ctx context.Context, tier tier.Tier, rkeys []string, values []va
 	keySize, valSize := 0, 0
 	vals := make([]interface{}, len(rkeys))
 	for i := range rkeys {
-		s, err := value.Marshal(values[i])
+		s, err := values[i].Marshal()
 		if err != nil {
 			return err
 		}
+		// Temporary identifier, should be removed later.
+		s = append(s, CUSTOM_JSON_IDENTIFER...)
 		vals[i] = s
 		keySize += len(rkeys[i])
 		valSize += len(s)

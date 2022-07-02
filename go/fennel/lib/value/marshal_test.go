@@ -9,19 +9,19 @@ import (
 )
 
 func verifyMarshalUnMarshal(t *testing.T, v Value) {
-	b, err := Marshal(v)
+	b, err := ProtoMarshal(v)
 	assert.NoError(t, err)
 	var u Value
-	err = Unmarshal(b, &u)
+	err = ProtoUnmarshal(b, &u)
 	assert.NoError(t, err)
 	assert.Equal(t, v, u)
 }
 
 func verifyUnequalMarshal(t *testing.T, v Value, unequal []Value) {
-	b, err := Marshal(v)
+	b, err := ProtoMarshal(v)
 	assert.NoError(t, err)
 	var u Value
-	err = Unmarshal(b, &u)
+	err = ProtoUnmarshal(b, &u)
 	for _, other := range unequal {
 		assert.NotEqual(t, u, other)
 	}
@@ -85,6 +85,34 @@ func RandStringRunes(n int) string {
 	return string(b)
 }
 
+func randomValue(n int, t string) ([][]byte, []Value) {
+	arr := make([][]byte, n)
+	samples := make([]Value, n)
+	totalSize := 0
+	for i := 0; i < n; i++ {
+		sample := NewDict(map[string]Value{})
+		for j := 0; j < rand.Intn(10); j++ {
+			sample.Set(RandStringRunes(5), NewList(String(RandStringRunes(5)), Int(rand.Int()), Bool(true)))
+		}
+		samples[i] = sample
+		switch t {
+		case "captain":
+			arr[i], _ = CaptainMarshal(sample)
+		case "proto":
+			arr[i], _ = ProtoMarshal(sample)
+		case "json":
+			arr[i], _ = sample.MarshalJSON()
+		case "rexerjson":
+			arr[i], _ = sample.Marshal()
+		default:
+			panic("unknown type")
+		}
+		totalSize += len(arr[i])
+	}
+	fmt.Println("Total size: ", totalSize/n)
+	return arr, samples
+}
+
 func smallValue(n int, t string) ([][]byte, []Value) {
 	arr := make([][]byte, n)
 	samples := make([]Value, n)
@@ -92,13 +120,16 @@ func smallValue(n int, t string) ([][]byte, []Value) {
 	for i := 0; i < n; i++ {
 		sample := NewList(String(RandStringRunes(5)), Int(rand.Int()), Bool(true))
 		samples[i] = sample
-		if t == "captain" {
+		switch t {
+		case "captain":
 			arr[i], _ = CaptainMarshal(sample)
-		} else if t == "proto" {
-			arr[i], _ = Marshal(sample)
-		} else if t == "json" {
+		case "proto":
+			arr[i], _ = ProtoMarshal(sample)
+		case "json":
 			arr[i], _ = sample.MarshalJSON()
-		} else {
+		case "rexerjson":
+			arr[i], _ = sample.Marshal()
+		default:
 			panic("unknown type")
 		}
 		totalSize += len(arr[i])
@@ -120,13 +151,16 @@ func largeValue(n int, t string) ([][]byte, []Value) {
 			}
 			sample.Set(RandStringRunes(5), l)
 		}
-		if t == "captain" {
+		switch t {
+		case "captain":
 			arr[i], _ = CaptainMarshal(sample)
-		} else if t == "proto" {
-			arr[i], _ = Marshal(sample)
-		} else if t == "json" {
+		case "proto":
+			arr[i], _ = ProtoMarshal(sample)
+		case "json":
 			arr[i], _ = sample.MarshalJSON()
-		} else {
+		case "rexerjson":
+			arr[i], _ = sample.Marshal()
+		default:
 			panic("unknown type")
 		}
 		totalSize += len(arr[i])
@@ -142,9 +176,12 @@ func benchMarkSerialization(b *testing.B, algo, sz string) {
 	//var samples []Value
 	if sz == "l" {
 		arr, _ = largeValue(b.N, algo)
-	} else {
+	} else if sz == "s" {
 		arr, _ = smallValue(b.N, algo)
+	} else {
+		arr, _ = randomValue(b.N, algo)
 	}
+	var v Value
 	b.ResetTimer()
 	b.ReportAllocs()
 
@@ -154,11 +191,13 @@ func benchMarkSerialization(b *testing.B, algo, sz string) {
 		case "captain":
 			_, err = CaptainUnmarshal(arr[n])
 		case "proto":
-			var v Value
-			_ = Unmarshal(arr[n], &v)
+			_ = ProtoUnmarshal(arr[n], &v)
 		case "json":
 			_, err = FromJSON(arr[n])
+		case "rexerjson":
+			v, err = Unmarshal(arr[n])
 		}
+
 		//assert.True(b, v.Equal(samples[n]))
 		assert.NoError(b, err)
 	}
@@ -169,5 +208,5 @@ func benchMarkSerialization(b *testing.B, algo, sz string) {
 // go test -tags dynamic  -bench Benchmark_Serialization -v fennel/lib/value -run ^$  -benchtime=10000x -cpuprofile cpu.out
 // go tool pprof -http=localhost:6060 cpu.out
 func Benchmark_Serialization(b *testing.B) {
-	benchMarkSerialization(b, "captain", "l")
+	benchMarkSerialization(b, "rexerjson", "l")
 }

@@ -1,6 +1,7 @@
 package value
 
 import (
+	"fennel/lib/utils/binary"
 	"fennel/lib/utils/slice"
 	"fmt"
 	"reflect"
@@ -20,6 +21,7 @@ type Value interface {
 	String() string
 	Clone() Value
 	MarshalJSON() ([]byte, error)
+	Marshal() ([]byte, error)
 }
 
 var _ Value = Int(0)
@@ -56,6 +58,9 @@ func (I Int) OpUnary(opt string) (Value, error) {
 	return routeUnary(opt, I)
 }
 func (I Int) MarshalJSON() ([]byte, error) {
+	return []byte(I.String()), nil
+}
+func (I Int) Marshal() ([]byte, error) {
 	return []byte(I.String()), nil
 }
 
@@ -101,6 +106,9 @@ func (d Double) OpUnary(opt string) (Value, error) {
 func (d Double) MarshalJSON() ([]byte, error) {
 	return []byte(d.String()), nil
 }
+func (d Double) Marshal() ([]byte, error) {
+	return []byte(d.String()), nil
+}
 
 type Bool bool
 
@@ -126,6 +134,9 @@ func (b Bool) OpUnary(opt string) (Value, error) {
 	return routeUnary(opt, b)
 }
 func (b Bool) MarshalJSON() ([]byte, error) {
+	return []byte(b.String()), nil
+}
+func (b Bool) Marshal() ([]byte, error) {
 	return []byte(b.String()), nil
 }
 
@@ -160,6 +171,27 @@ func (s String) MarshalJSON() ([]byte, error) {
 	return []byte(s.String()), nil
 }
 
+func (s String) Marshal() ([]byte, error) {
+	return []byte(s.String()), nil
+}
+
+/*
+Consider encoding length of string too. But this adds more memory overhead
+func (s String) Marshal() ([]byte, error) {
+	var ret []byte
+	ret = append(ret, '"')
+	metadata := make([]byte, 10)
+	n, err := binary.PutUvarint(metadata[:], uint64(len(string(s))+2))
+	if err != nil {
+		return nil, err
+	}
+	ret = append(ret, metadata[:n]...)
+	ret = append(ret, string(s)...)
+	ret = append(ret, '"')
+	return ret, nil
+}
+*/
+
 type nil_ struct{}
 
 var Nil = nil_{}
@@ -186,6 +218,9 @@ func (n nil_) OpUnary(opt string) (Value, error) {
 	return routeUnary(opt, n)
 }
 func (n nil_) MarshalJSON() ([]byte, error) {
+	return []byte(n.String()), nil
+}
+func (n nil_) Marshal() ([]byte, error) {
 	return []byte(n.String()), nil
 }
 
@@ -251,6 +286,50 @@ func (l List) Clone() Value {
 }
 func (l List) MarshalJSON() ([]byte, error) {
 	return []byte(l.String()), nil
+}
+
+func encodeMetadata(numElements, numBytes uint64) ([]byte, error) {
+	metadataBuffer := make([]byte, 10)
+	cur := 0
+	n, err := binary.PutUvarint(metadataBuffer[cur:], numElements)
+	if err != nil {
+		return nil, err
+	}
+	cur += n
+	n, err = binary.PutUvarint(metadataBuffer[cur:], numBytes+2)
+	if err != nil {
+		return nil, err
+	}
+	cur += n
+	return metadataBuffer[:cur], nil
+}
+
+func (l List) Marshal() ([]byte, error) {
+	var ret []byte
+	ret = append(ret, "["...)
+	var rest []byte
+	for i, v := range l.values {
+		if v == nil {
+			rest = append(rest, "null"...)
+		} else {
+			b, err := v.Marshal()
+			if err != nil {
+				return nil, err
+			}
+			rest = append(rest, b...)
+		}
+		if i != len(l.values)-1 {
+			rest = append(rest, ","...)
+		}
+	}
+	metadata, err := encodeMetadata(uint64(len(l.values)), uint64(len(rest)))
+	if err != nil {
+		return nil, err
+	}
+	ret = append(ret, metadata...)
+	ret = append(ret, rest...)
+	ret = append(ret, "]"...)
+	return ret, nil
 }
 
 func (l *List) Append(vals ...Value) {
@@ -366,6 +445,42 @@ func (d Dict) String() string {
 	sb.WriteString("}")
 	return sb.String()
 }
+func (d Dict) Marshal() ([]byte, error) {
+	var ret []byte
+	var rest []byte
+	ret = append(ret, "{"...)
+	for k, v := range d.Iter() {
+		sb := strings.Builder{}
+		sb.WriteString(`"`)
+		sb.WriteString(k)
+		sb.WriteString(`"`)
+		sb.WriteString(":")
+
+		rest = append(rest, sb.String()...)
+		if v == nil {
+			rest = append(rest, "null"...)
+		} else {
+			b, err := v.Marshal()
+			if err != nil {
+				return nil, err
+			}
+			rest = append(rest, b...)
+		}
+		rest = append(rest, ","...)
+	}
+	if d.Len() > 0 {
+		rest = rest[:len(rest)-1]
+	}
+	metadata, err := encodeMetadata(uint64(len(d.values)), uint64(len(rest)))
+	if err != nil {
+		return nil, err
+	}
+	ret = append(ret, metadata...)
+	ret = append(ret, rest...)
+	ret = append(ret, "}"...)
+	return ret, nil
+}
+
 func (d Dict) Clone() Value {
 	clone := make(map[string]Value, d.Len())
 	for k, v := range d.Iter() {
