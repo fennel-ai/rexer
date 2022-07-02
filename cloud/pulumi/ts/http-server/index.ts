@@ -260,6 +260,10 @@ export const setup = async (input: inputType) => {
             metadata: {
                 labels: appLabels,
                 name: name,
+                annotations: {
+                    // See: https://github.com/linkerd/linkerd2/issues/7079#issuecomment-1022096439
+                    "config.linkerd.io/opaque-ports": appPort.toString(),
+                }
             },
             spec: {
                 type: "ClusterIP",
