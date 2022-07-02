@@ -173,17 +173,17 @@ func (s String) MarshalJSON() ([]byte, error) {
 }
 
 func (s String) Marshal() ([]byte, error) {
-	var ret []byte
-	ret = append(ret, '"')
-	metadata := make([]byte, 10)
-	n, err := binary.PutUvarint(metadata[:], uint64(len(string(s))+2))
-	if err != nil {
-		return nil, err
-	}
-	ret = append(ret, metadata[:n]...)
-	ret = append(ret, string(s)...)
-	ret = append(ret, '"')
-	return ret, nil
+	return json.Marshal(string(s))
+	//metadata := make([]byte, 10)
+	//n, err := binary.PutUvarint(metadata[:], uint64(len(string(s))+2))
+	//if err != nil {
+	//	return nil, err
+	//}
+	//ret = append(ret, metadata[:n]...)
+	//ret = append(ret, string(s)...)
+	//ret = append(ret, '"')
+	//fmt.Println("String marshal", string(ret))
+	//return ret, nil
 }
 
 type nil_ struct{}

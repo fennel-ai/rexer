@@ -77,7 +77,7 @@ func TestUnequalMarshal(t *testing.T) {
 }
 
 func RandStringRunes(n int) string {
-	var letterRunes = []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ")
+	var letterRunes = []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ~!@#$%^&*()_+-=[]{}|;':,./<>?\"")
 	b := make([]rune, n)
 	for i := range b {
 		b[i] = letterRunes[rand.Intn(len(letterRunes))]
@@ -90,10 +90,13 @@ func randomValue(n int, t string) ([][]byte, []Value) {
 	samples := make([]Value, n)
 	totalSize := 0
 	for i := 0; i < n; i++ {
-		sample := NewDict(map[string]Value{})
-		for j := 0; j < rand.Intn(10); j++ {
-			sample.Set(RandStringRunes(5), NewList(String(RandStringRunes(5)), Int(rand.Int()), Bool(true)))
+		subSample := NewDict(map[string]Value{})
+		for j := 0; j < rand.Intn(200); j++ {
+			subSample.Set(RandStringRunes(5), NewList(String(RandStringRunes(5)), Int(rand.Int()), Bool(true), NewDict(map[string]Value{})))
+			subSample.Set(RandStringRunes(5), String(RandStringRunes(5)))
+			subSample.Set(RandStringRunes(5), Int(rand.Int()))
 		}
+		sample := NewList(Int(rand.Int()), Double(rand.Float64()), Bool(rand.Int()%2 == 0), subSample, Nil, NewList(), String(`";<>?/\|':,./`))
 		samples[i] = sample
 		switch t {
 		case "captain":
