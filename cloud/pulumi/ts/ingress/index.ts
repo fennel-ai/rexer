@@ -115,7 +115,10 @@ export const setup = async (input: inputType) => {
             scalingConfig: {
                 desiredSize: DEFAULT_INGRESS_NODE_COUNT,
                 minSize: DEFAULT_INGRESS_NODE_COUNT,
-                maxSize: DEFAULT_INGRESS_NODE_COUNT,
+                // have maxSize to be at least one more than least or desired node count
+                // so that emissary ingress's rolling update goes through (which creates a new instance
+                // before replacing the original one).
+                maxSize: DEFAULT_INGRESS_NODE_COUNT + 1,
             },
             instanceTypes: [DEFAULT_INGRESS_NODE_TYPE],
             nodeGroupNamePrefix: ngName,

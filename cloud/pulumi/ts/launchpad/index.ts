@@ -465,7 +465,8 @@ const planeConfs: Record<number, PlaneConf> = {
                 // Countaggr server node group
                 {
                     name: "p-5-countaggr-ng-arm64",
-                    nodeType: "c7g.8xlarge",
+                    // TODO(mohit): Move to c7g once they are supported in ap-south-1
+                    nodeType: "c6g.8xlarge",
                     minSize: 1,
                     maxSize: 1,
                     amiType: DEFAULT_ARM_AMI_TYPE,
@@ -476,7 +477,8 @@ const planeConfs: Record<number, PlaneConf> = {
                 // Query server node group
                 {
                     name: "p-5-queryserver-ng-arm64",
-                    nodeType: "c7g.4xlarge",
+                    // TODO(mohit): Move to c7g once they are supported in ap-south-1
+                    nodeType: "c6g.4xlarge",
                     // at least have 2 nodes for fault tolerance
                     minSize: 2,
                     maxSize: 10,
