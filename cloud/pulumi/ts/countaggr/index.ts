@@ -8,6 +8,7 @@ import * as childProcess from "child_process";
 import {serviceEnvs} from "../tier-consts/consts";
 
 const name = "countaggr"
+const DEFAULT_USE_AMD64 = false
 
 export const plugins = {
     "kubernetes": "v3.18.0",
@@ -21,6 +22,7 @@ export type inputType = {
     kubeconfig: string,
     namespace: string,
     tierId: number,
+    useAmd64?: boolean,
     nodeLabels?: Record<string, string>,
 }
 
@@ -85,8 +87,8 @@ export const setup = async (input: inputType) => {
         };
     });
 
+    let nodeSelector = input.nodeLabels || {};
     const root = process.env["FENNEL_ROOT"]!
-
     // Get the (hash) commit id.
     // NOTE: This requires git to be installed and DOES NOT take local changes or commits into consideration.
     const hashId = childProcess.execSync('git rev-parse --short HEAD').toString().trim()
@@ -94,13 +96,24 @@ export const setup = async (input: inputType) => {
         return `${imgName}:${hashId}`
     })
 
+    let dockerfile, platform;
+    if (input.useAmd64 || DEFAULT_USE_AMD64) {
+        dockerfile = path.join(root, "dockerfiles/countaggr.dockerfile")
+        platform = "linux/amd64"
+        nodeSelector["kubernetes.io/arch"] = "amd64"
+    } else {
+        dockerfile = path.join(root, "dockerfiles/countaggr_arm64.dockerfile")
+        platform = "linux/arm64"
+        nodeSelector["kubernetes.io/arch"] = "arm64"
+    }
+
     // Build and publish the container image.
     const image = new docker.Image("countaggr-img", {
         build: {
             context: root,
-            dockerfile: path.join(root, "dockerfiles/countaggr.dockerfile"),
+            dockerfile: dockerfile,
             args: {
-                "platform": "linux/amd64",
+                "platform": platform,
             },
         },
         imageName: imageName,
@@ -115,28 +128,6 @@ export const setup = async (input: inputType) => {
     // Create a load balanced Kubernetes service using this image, and export its IP.
     const appLabels = { app: name };
     const metricsPort = 2113;
-
-    // if node labels are specified, create an affinity for the pod towards that node (or set of nodes)
-    let affinity: k8s.types.input.core.v1.Affinity = {};
-    if (input.nodeLabels !== undefined) {
-        let terms: k8s.types.input.core.v1.NodeSelectorTerm[] = [];
-
-        // Terms are ORed i.e. if there are 2 node labels mentioned, if there is a node with either (or both) the
-        // nodes, the pod is scheduled on it.
-        Object.entries(input.nodeLabels).forEach(([labelKey, labelValue]) => terms.push({
-            matchExpressions: [{
-                key: labelKey,
-                operator: "In",
-                values: [labelValue],
-            }],
-        }));
-
-        affinity.nodeAffinity = {
-            requiredDuringSchedulingIgnoredDuringExecution: {
-                nodeSelectorTerms: terms,
-            },
-        }
-    }
 
     const appDep = image.imageName.apply(() => {
         return new k8s.apps.v1.Deployment("countaggr-deployment", {
@@ -159,7 +150,7 @@ export const setup = async (input: inputType) => {
                         }
                     },
                     spec: {
-                        affinity: affinity,
+                        nodeSelector: nodeSelector,
                         containers: [{
                             name: name,
                             image: image.imageName,

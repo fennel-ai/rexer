@@ -87,6 +87,11 @@ export const setup = async (input: inputType): Promise<outputType> => {
                     `,
                 }
             },
+            // unleash's default image tag does not have an arm64 compatible build. They introduced the support post
+            // version `4`. Use latest instead of tagging to a specific version.
+            "image": {
+                "tag": "latest",
+            },
             "fullnameOverride": `t-${input.tierId}-unleash`,
             "postgresql": {
                 "enabled": false,

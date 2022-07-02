@@ -101,7 +101,9 @@ export const setup = async (input: inputType) => {
     // put pressure on node CPU or memory, affecting the availability of the emissary ingress pods (edge proxy for
     // the eks cluster).
     let topologySpreadConstraints: Record<string, any>[] = [];
-    let nodeSelector: Record<string, string> = {};
+    let nodeSelector: Record<string, string> = {
+        "kubernetes.io/arch": "amd64",
+    };
     if (input.useDedicatedMachines || DEFAULT_USE_DEDICATED_MACHINES) {
         const ngName = `aes-${input.namespace}-ng`;
         const ngLabel = {'node-group': ngName};
@@ -121,7 +123,7 @@ export const setup = async (input: inputType) => {
         }, { provider: awsProvider });
 
         // scheduled the pods on the dedicated node group created
-        nodeSelector = ngLabel;
+        nodeSelector['node-group'] = ngName;
 
         // create affinity such that they are not scheduled in the same zone, however do not make this as a "strict"
         // restriction i.e. allow it to be scheduled in case both the nodes are in the same AZs as well (which should
@@ -203,6 +205,10 @@ export const setup = async (input: inputType) => {
             },
             "topologySpreadConstraints": topologySpreadConstraints,
             "nodeSelector": nodeSelector,
+
+            "agent": {
+                "enabled": false,
+            },
 
             // annotate emissary ingress admin such that the otel collector or self-hosted prometheus instance running
             // in the cluster is able to scrape the metrics reported by emissary ingress

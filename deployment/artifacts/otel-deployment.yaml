@@ -313,6 +313,12 @@ spec:
         name: otel-collector
     spec:
       serviceAccountName: otel-collector-account
+      # otel collector do not publish arm64 docker images but build arm64 binaries
+      #
+      # TODO(mohit): we can tag arm64; `latest` -> `0.54.0-arm64`
+      # Or wait for https://github.com/open-telemetry/opentelemetry-collector-contrib/issues/2379 to be fixed
+      nodeSelector:
+        kubernetes.io/arch: "amd64"
       containers:
         - name: otel-collector
           image: otel/opentelemetry-collector-contrib:latest

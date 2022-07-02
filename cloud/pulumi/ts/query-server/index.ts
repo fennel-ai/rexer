@@ -18,6 +18,7 @@ export const plugins = {
 
 const DEFAULT_MIN_REPLICAS = 1
 const DEFAULT_MAX_REPLICAS = 2
+const DEFAULT_USE_AMD64 = false
 
 // default for resource requirement configurations
 const DEFAULT_CPU_REQUEST = "200m"
@@ -33,6 +34,7 @@ export type inputType = {
     tierId: number,
     minReplicas?: number,
     maxReplicas?: number,
+    useAmd64?: boolean,
     nodeLabels?: Record<string, string>,
     resourceConf?: util.ResourceConf
 }
@@ -103,6 +105,7 @@ export const setup = async (input: inputType) => {
         };
     });
 
+    let nodeSelector = input.nodeLabels || {};
     const root = process.env["FENNEL_ROOT"]!
     // Get the (hash) commit id.
     // NOTE: This requires git to be installed and DOES NOT take local changes or commits into consideration.
@@ -111,14 +114,25 @@ export const setup = async (input: inputType) => {
         return `${imgName}:${hashId}`
     })
 
+    let dockerfile, platform;
+    if (input.useAmd64 || DEFAULT_USE_AMD64) {
+        dockerfile = path.join(root, "dockerfiles/http.dockerfile")
+        platform = "linux/amd64"
+        nodeSelector["kubernetes.io/arch"] = "amd64"
+    } else {
+        dockerfile = path.join(root, "dockerfiles/http_arm64.dockerfile")
+        platform = "linux/arm64"
+        nodeSelector["kubernetes.io/arch"] = "arm64"
+    }
+
     // Build and publish the container image.
     const image = new docker.Image("query-server-img", {
         build: {
             context: root,
             // We use HTTP server's dockerfile to spin up the query servers
-            dockerfile: path.join(root, "dockerfiles/http.dockerfile"),
+            dockerfile: dockerfile,
             args: {
-                "platform": "linux/amd64",
+                "platform": platform,
             },
         },
         imageName: imageName,
@@ -226,7 +240,7 @@ export const setup = async (input: inputType) => {
                         }
                     },
                     spec: {
-                        affinity: affinity,
+                        nodeSelector: nodeSelector,
                         containers: [{
                             command: [
                                 "/root/server",
