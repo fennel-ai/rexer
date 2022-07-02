@@ -19,6 +19,16 @@ import { nameof } from "../lib/util";
 import * as process from "process";
 import * as assert from "assert";
 
+// NOTE: The AMI used should be an eks-worker AMI that can be searched
+// on the AWS AMI catalog with one of the following prefixes:
+// amazon-eks-node / amazon-eks-gpu-node / amazon-eks-arm64-node,
+// depending on the type of machine provisioned.
+
+const DEFAULT_NODE_TYPE = "t3.medium"
+const DEFAULT_DESIRED_CAPACITY = 3
+const DEFAULT_X86_AMI_TYPE = "AL2_x86_64"
+const DEFAULT_ARM_AMI_TYPE = "AL2_ARM_64"
+
 const controlPlane: vpc.controlPlaneConfig = {
     region: "us-west-2",
     accountId: "030813887342",
@@ -177,6 +187,33 @@ const tierConfs: Record<number, TierConf> = {
             },
         },
     },
+    110: {
+        protectResources: false,
+        planeId: 7,
+        // use public subnets for ingress to allow traffic from outside the assigned VPC
+        ingressConf: {
+            usePublicSubnets: true,
+        },
+        httpServerConf: {
+            podConf: {
+                minReplicas: 1,
+                maxReplicas: 1,
+                resourceConf: {
+                    cpu: {
+                        request: "750m",
+                        limit: "1500m"
+                    },
+                    memory: {
+                        request: "1G",
+                        limit: "3G",
+                    }
+                },
+                nodeLabels: {
+                    "node-group": "http-arm-ng"
+                }
+            }
+        },
+    },
     // Discord demo tier
     111: {
         protectResources: true,
@@ -195,8 +232,8 @@ const tierConfs: Record<number, TierConf> = {
                         limit: "1500m"
                     },
                     memory: {
-                        request: "2G",
-                        limit: "3G",
+                        request: "6G",
+                        limit: "8G",
                     }
                 }
             },
@@ -299,7 +336,9 @@ const planeConfs: Record<number, PlaneConf> = {
                     nodeType: "c6i.xlarge",
                     minSize: 3,
                     maxSize: 5,
+                    amiType: DEFAULT_X86_AMI_TYPE,
                 },
+                // TODO: For nitrous, we may need to spin up ARM specific node group
             ],
         },
         milvusConf: {},
@@ -350,12 +389,24 @@ const planeConfs: Record<number, PlaneConf> = {
         eksConf: {
             nodeGroups: [
                 {
-                    name: "p-3-common-ng",
-                    nodeType: "c6i.2xlarge",
-                    minSize: 4,
+                    name: "p-3-common-ng-arm64",
+                    nodeType: "c7g.2xlarge",
+                    minSize: 2,
                     // since we create demo tiers on top of this plane, allow scaling this node group to a larger
                     // number to accommodate more servers
                     maxSize: 10,
+                    amiType: DEFAULT_ARM_AMI_TYPE,
+                },
+                {
+                    name: "p-3-common-ng-x86",
+                    nodeType: "c6i.2xlarge",
+                    // since we create demo tiers on top of this plane, allow scaling this node group to a larger
+                    // number to accommodate more servers
+                    //
+                    // milvus requires minimum 3 nodes
+                    minSize: 4,
+                    maxSize: 10,
+                    amiType: DEFAULT_X86_AMI_TYPE,
                 },
             ],
         },
@@ -401,35 +452,46 @@ const planeConfs: Record<number, PlaneConf> = {
             nodeGroups: [
                 // HTTP server node group
                 {
-                    name: "p-5-httpserver-ng",
-                    nodeType: "t3.medium",
+                    name: "p-5-httpserver-ng-arm64",
+                    nodeType: "t4g.medium",
                     // at least have 2 nodes for fault tolerance
                     minSize: 2,
                     maxSize: 5,
+                    amiType: DEFAULT_ARM_AMI_TYPE,
                     labels: {
                         "node-group": "p-5-httpserver-ng"
                     }
                 },
                 // Countaggr server node group
                 {
-                    name: "p-5-countaggr-ng",
-                    nodeType: "c6i.8xlarge",
+                    name: "p-5-countaggr-ng-arm64",
+                    nodeType: "c7g.8xlarge",
                     minSize: 1,
                     maxSize: 1,
+                    amiType: DEFAULT_ARM_AMI_TYPE,
                     labels: {
                         "node-group": "p-5-countaggr-ng"
                     }
                 },
                 // Query server node group
                 {
-                    name: "p-5-queryserver-ng",
-                    nodeType: "c6i.4xlarge",
+                    name: "p-5-queryserver-ng-arm64",
+                    nodeType: "c7g.4xlarge",
                     // at least have 2 nodes for fault tolerance
                     minSize: 2,
                     maxSize: 10,
+                    amiType: DEFAULT_ARM_AMI_TYPE,
                     labels: {
                         "node-group": "p-5-queryserver-ng"
                     }
+                },
+                {
+                    name: "p-5-common-ng-x86",
+                    nodeType: "t3.medium",
+                    // few pods still require X86 based machines and are not compatible with ARM64.
+                    minSize: 2,
+                    maxSize: 10,
+                    amiType: DEFAULT_X86_AMI_TYPE,
                 }
             ],
         },
@@ -458,6 +520,24 @@ const planeConfs: Record<number, PlaneConf> = {
             password: "password",
             skipFinalSnapshot: true,
         },
+        eksConf: {
+            nodeGroups: [
+                {
+                    name: "p-6-common-ng-x86",
+                    nodeType: "t3.medium",
+                    minSize: 1,
+                    maxSize: 3,
+                    amiType: DEFAULT_X86_AMI_TYPE,
+                },
+                {
+                    name: "p-6-common-ng-arm64",
+                    nodeType: "t4g.medium",
+                    minSize: 1,
+                    maxSize: 3,
+                    amiType: DEFAULT_ARM_AMI_TYPE,
+                },
+            ],
+        },
         confluentConf: {
             username: confluentUsername,
             password: confluentPassword
@@ -476,18 +556,79 @@ const planeConfs: Record<number, PlaneConf> = {
         prometheusConf: {
             useAMP: false
         },
+    },
+    7: {
+        protectResources: true,
+
+        accountConf: {
+            existingAccount: {
+                roleArn: account.MASTER_ACCOUNT_ADMIN_ROLE_ARN,
+            }
+        },
+
+        planeId: 7,
+        region: "us-west-2",
+        vpcConf: {
+            cidr: "10.107.0.0/16"
+        },
+        dbConf: {
+            minCapacity: 1,
+            maxCapacity: 2,
+            password: "password",
+            skipFinalSnapshot: true,
+        },
+        confluentConf: {
+            username: confluentUsername,
+            password: confluentPassword
+        },
+        controlPlaneConf: controlPlane,
+        redisConf: {
+            numShards: 1,
+            nodeType: "db.t4g.small",
+            numReplicasPerShard: 0,
+        },
+        cacheConf: {
+            nodeType: "cache.t4g.micro",
+            numNodeGroups: 1,
+            replicasPerNodeGroup: 0,
+        },
+        prometheusConf: {
+            // TODO(mohit): Set this to true and false both and set it up
+            useAMP: false
+        },
+        // Create two node groups. 1 with ARM backed instances and another with x86 backed instances
         eksConf: {
             nodeGroups: [
                 {
-                    name: "p-6-common-ng",
-                    nodeType: "c6i.xlarge",
-                    minSize: 3,
+                    name: "x86-ng2",
+                    nodeType: "t3.medium",
+                    minSize: 2,
+                    maxSize: 2,
+                    amiType: DEFAULT_X86_AMI_TYPE,
+                },
+                {
+                    name: "http-arm-ng",
+                    nodeType: "t4g.medium",
+                    minSize: 1,
                     maxSize: 3,
+                    amiType: DEFAULT_ARM_AMI_TYPE,
+                    labels: {
+                        "node-group": "http-arm-ng",
+                    }
+                },
+                {
+                    name: "x86-ng",
+                    nodeType: "c6i.2xlarge",
+                    minSize: 4,
+                    maxSize: 5,
+                    amiType: DEFAULT_X86_AMI_TYPE,
                 },
             ],
         },
+        // TODO(mohit): Add milvus and see how it works?
+        milvusConf: {},
     },
-    // plane 7 - created for testing out multi-arch support, not checked in yet
+
     // plane 8 - pending account close, post which it can be destroyed
     // Convoy's production plane
     9: {
@@ -504,6 +645,24 @@ const planeConfs: Record<number, PlaneConf> = {
         region: "us-west-2",
         vpcConf: {
             cidr: "10.109.0.0/16"
+        },
+        eksConf: {
+            nodeGroups: [
+                {
+                    name: "p-9-common-ng-x86",
+                    nodeType: "t3.medium",
+                    minSize: 1,
+                    maxSize: 3,
+                    amiType: DEFAULT_X86_AMI_TYPE,
+                },
+                {
+                    name: "p-9-common-ng-arm64",
+                    nodeType: "t4g.medium",
+                    minSize: 1,
+                    maxSize: 3,
+                    amiType: DEFAULT_ARM_AMI_TYPE,
+                },
+            ],
         },
         dbConf: {
             minCapacity: 1,

@@ -3990,6 +3990,9 @@ spec:
         app.kubernetes.io/part-of: emissary-apiext
     spec:
       serviceAccountName: emissary-apiext
+      # Emissary ingress docker image does not support arm64 yet
+      nodeSelector:
+        kubernetes.io/arch: "amd64"
       containers:
         - name: emissary-apiext
           image: docker.io/emissaryingress/emissary:2.2.1

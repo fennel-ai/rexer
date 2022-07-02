@@ -46,6 +46,8 @@ export type PodConf = {
     //
     // This is primarily being introduced to allow scheduling certain pods on specific nodes (which are part of a node group)
     nodeLabels?: Record<string, string>,
+    // Build and use amd64 compatible image for the pod. Defaults to false.
+    useAmd64?: boolean,
 }
 
 export type HttpServerConf = {
@@ -57,6 +59,11 @@ export type QueryServerConf = {
 }
 
 export type CountAggrConf = {
+    // replicas are currently not set, but in the future they might be configured
+    podConf?: PodConf
+}
+
+export type CounterCleanupConf = {
     // replicas are currently not set, but in the future they might be configured
     podConf?: PodConf
 }
@@ -83,6 +90,7 @@ export type TierConf = {
     httpServerConf?: HttpServerConf,
     queryServerConf?: QueryServerConf,
     countAggrConf?: CountAggrConf,
+    counterCleanupConf?: CounterCleanupConf,
     ingressConf?: IngressConf,
     sagemakerConf?: SagemakerConf,
 }
@@ -141,6 +149,7 @@ type inputType = {
     httpServerConf?: HttpServerConf,
     queryServerConf?: QueryServerConf,
     countAggrConf?: CountAggrConf,
+    counterCleanupConf?: CounterCleanupConf,
     sagemakerConf?: SagemakerConf,
     nodeInstanceRole: string,
     vpcId: string,
@@ -203,6 +212,7 @@ const parseConfig = (): inputType => {
         httpServerConf: config.getObject(nameof<inputType>("httpServerConf")),
         queryServerConf: config.getObject(nameof<inputType>("queryServerConf")),
         countAggrConf: config.getObject(nameof<inputType>("countAggrConf")),
+        counterCleanupConf: config.getObject(nameof<inputType>("counterCleanupConf")),
 
         sagemakerConf: config.getObject(nameof<inputType>("sagemakerConf")),
 
@@ -470,6 +480,7 @@ const setupResources = async () => {
             minReplicas: input.httpServerConf?.podConf?.minReplicas,
             maxReplicas: input.httpServerConf?.podConf?.maxReplicas,
             resourceConf: input.httpServerConf?.podConf?.resourceConf,
+            useAmd64: input.httpServerConf?.podConf?.useAmd64,
             nodeLabels: input.httpServerConf?.podConf?.nodeLabels,
         });
 
@@ -487,6 +498,7 @@ const setupResources = async () => {
                 minReplicas: input.queryServerConf?.podConf?.minReplicas,
                 maxReplicas: input.queryServerConf?.podConf?.maxReplicas,
                 resourceConf: input.queryServerConf?.podConf?.resourceConf,
+                useAmd64: input.queryServerConf?.podConf?.useAmd64,
                 nodeLabels: input.queryServerConf?.podConf?.nodeLabels,
             });
         }
@@ -499,6 +511,7 @@ const setupResources = async () => {
             kubeconfig: input.kubeconfig,
             namespace: input.namespace,
             tierId: input.tierId,
+            useAmd64: input.countAggrConf?.podConf?.useAmd64,
             nodeLabels: input.countAggrConf?.podConf?.nodeLabels,
         });
         await countersCleanup.setup({
@@ -507,6 +520,7 @@ const setupResources = async () => {
             kubeconfig: input.kubeconfig,
             namespace: input.namespace,
             tierId: input.tierId,
+            useAmd64: input.counterCleanupConf?.podConf?.useAmd64,
         });
     })
     return {
@@ -582,6 +596,9 @@ type TierInput = {
 
     // countaggr configuration
     countAggrConf?: CountAggrConf,
+
+    // counter cleanup configuration
+    counterCleanupConf?: CounterCleanupConf,
 
     // model store configuration
     nodeInstanceRole: string,
@@ -680,6 +697,10 @@ const setupTier = async (args: TierInput, preview?: boolean, destroy?: boolean) 
 
     if (args.countAggrConf !== undefined) {
         await stack.setConfig(nameof<inputType>("countAggrConf"), { value: JSON.stringify(args.countAggrConf) })
+    }
+
+    if (args.counterCleanupConf !== undefined) {
+        await stack.setConfig(nameof<inputType>("counterCleanupConf"), { value: JSON.stringify(args.counterCleanupConf) })
     }
 
     if (args.sagemakerConf !== undefined) {

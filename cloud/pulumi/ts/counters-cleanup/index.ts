@@ -15,12 +15,15 @@ export const plugins = {
     "aws": "v5.1.0"
 }
 
+const DEFAULT_USE_AMD64 = false
+
 export type inputType = {
     region: string,
     roleArn: string,
     kubeconfig: string,
     namespace: string,
     tierId: number,
+    useAmd64?: boolean,
 }
 
 // should not contain any pulumi.Output<> types.
@@ -85,6 +88,7 @@ export const setup = async (input: inputType): Promise<pulumi.Output<outputType>
         };
     });
 
+    let nodeSelector: Record<string, string> = {};
     const root = process.env["FENNEL_ROOT"]!
     // Get the (hash) commit id.
     // NOTE: This requires git to be installed and DOES NOT take local changes or commits into consideration.
@@ -93,13 +97,24 @@ export const setup = async (input: inputType): Promise<pulumi.Output<outputType>
         return `${imgName}:${hashId}`
     });
 
+    let dockerfile, platform;
+    if (input.useAmd64 || DEFAULT_USE_AMD64) {
+        dockerfile = path.join(root, "dockerfiles/counters-cleanup.dockerfile")
+        platform = "linux/amd64"
+        nodeSelector["kubernetes.io/arch"] = "amd64"
+    } else {
+        dockerfile = path.join(root, "dockerfiles/counters-cleanup_arm64.dockerfile")
+        platform = "linux/arm64"
+        nodeSelector["kubernetes.io/arch"] = "arm64"
+    }
+
     // Build and publish the container image.
     const image = new docker.Image("counters-cleanup-img", {
         build: {
             context: root,
-            dockerfile: path.join(root, "dockerfiles/counters-cleanup.dockerfile"),
+            dockerfile: dockerfile,
             args: {
-                "platform": "linux/amd64",
+                "platform": platform,
             },
         },
         imageName: imageName,
@@ -150,6 +165,7 @@ export const setup = async (input: inputType): Promise<pulumi.Output<outputType>
                                 }],
                                 // This has to be either `OnFailure` or `Never`
                                 restartPolicy: "OnFailure",
+                                nodeSelector: nodeSelector,
                             }
                         }
                     }

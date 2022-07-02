@@ -18,6 +18,7 @@ export const plugins = {
 
 const DEFAULT_MIN_REPLICAS = 1
 const DEFAULT_MAX_REPLICAS = 2
+const DEFAULT_USE_AMD64 = false
 
 // default for resource requirement configurations
 const DEFAULT_CPU_REQUEST = "200m"
@@ -33,6 +34,7 @@ export type inputType = {
     tierId: number,
     minReplicas?: number,
     maxReplicas?: number,
+    useAmd64?: boolean,
     nodeLabels?: Record<string, string>,
     resourceConf?: util.ResourceConf
 }
@@ -99,6 +101,7 @@ export const setup = async (input: inputType) => {
         };
     });
 
+    let nodeSelector = input.nodeLabels || {};
     const root = process.env["FENNEL_ROOT"]!
     // Get the (hash) commit id.
     // NOTE: This requires git to be installed and DOES NOT take local changes or commits into consideration.
@@ -107,13 +110,24 @@ export const setup = async (input: inputType) => {
         return `${imgName}:${hashId}`
     })
 
+    let dockerfile, platform;
+    if (input.useAmd64 || DEFAULT_USE_AMD64) {
+        dockerfile = path.join(root, "dockerfiles/http.dockerfile")
+        platform = "linux/amd64"
+        nodeSelector["kubernetes.io/arch"] = "amd64"
+    } else {
+        dockerfile = path.join(root, "dockerfiles/http_arm64.dockerfile")
+        platform = "linux/arm64"
+        nodeSelector["kubernetes.io/arch"] = "arm64"
+    }
+
     // Build and publish the container image.
     const image = new docker.Image("http-server-img", {
         build: {
             context: root,
-            dockerfile: path.join(root, "dockerfiles/http.dockerfile"),
+            dockerfile: dockerfile,
             args: {
-                "platform": "linux/amd64",
+                "platform": platform,
             },
         },
         imageName: imageName,
@@ -129,28 +143,6 @@ export const setup = async (input: inputType) => {
     const appLabels = { app: name };
     const metricsPort = 2112;
     const appPort = 2425;
-
-    // if node labels are specified, create an affinity for the pod towards that node (or set of nodes)
-    let affinity: k8s.types.input.core.v1.Affinity = {};
-    if (input.nodeLabels !== undefined) {
-        let terms: k8s.types.input.core.v1.NodeSelectorTerm[] = [];
-
-        // Terms are ORed i.e. if there are 2 node labels mentioned, if there is a node with either (or both) the
-        // nodes, the pod is scheduled on it.
-        Object.entries(input.nodeLabels).forEach(([labelKey, labelValue]) => terms.push({
-            matchExpressions: [{
-                key: labelKey,
-                operator: "In",
-                values: [labelValue],
-            }],
-        }));
-
-        affinity.nodeAffinity = {
-            requiredDuringSchedulingIgnoredDuringExecution: {
-                nodeSelectorTerms: terms,
-            },
-        }
-    }
 
     const timeoutSeconds = 60;
     // NOTE: This is configured for "slow" clients who might, at the time of graceful shutdown (i.e. when the kubelet
@@ -220,7 +212,7 @@ export const setup = async (input: inputType) => {
                         }
                     },
                     spec: {
-                        affinity: affinity,
+                        nodeSelector: nodeSelector,
                         containers: [{
                             command: [
                                 "/root/server",
