@@ -466,7 +466,7 @@ const planeConfs: Record<number, PlaneConf> = {
                 {
                     name: "p-5-countaggr-ng-arm64",
                     // TODO(mohit): Move to c7g once they are supported in ap-south-1
-                    nodeType: "c6g.8xlarge",
+                    nodeType: "c6g.4xlarge",
                     minSize: 1,
                     maxSize: 1,
                     amiType: DEFAULT_ARM_AMI_TYPE,
