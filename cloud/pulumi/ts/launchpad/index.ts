@@ -232,8 +232,8 @@ const tierConfs: Record<number, TierConf> = {
                         limit: "1500m"
                     },
                     memory: {
-                        request: "2G",
-                        limit: "3G",
+                        request: "6G",
+                        limit: "8G",
                     }
                 }
             },
