@@ -479,8 +479,9 @@ const planeConfs: Record<number, PlaneConf> = {
                     name: "p-5-queryserver-ng-arm64",
                     // TODO(mohit): Move to c7g once they are supported in ap-south-1
                     nodeType: "c6g.4xlarge",
-                    // at least have 2 nodes for fault tolerance
-                    minSize: 2,
+                    // at least have 4 nodes (previously this was 2, but our servers have been OOMing for which
+                    // we will have 4 nodes up and running).
+                    minSize: 4,
                     maxSize: 10,
                     amiType: DEFAULT_ARM_AMI_TYPE,
                     labels: {
