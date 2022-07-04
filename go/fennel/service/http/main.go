@@ -169,13 +169,13 @@ func main() {
 	<-stopped
 	log.Println("server stopped...")
 
-	ctx, cancel := context.WithTimeout(context.Background(), 10 * time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 30 * time.Second)
 	defer cancel()
 
 	// Shutdown gracefully shuts down the server without interrupting any active connections.
 	//
 	// Shutdown waits indefinitely for connections to return to idle and then shut down - therefore we pass a context
-	// with 10 seconds timeout - so that this method does not wait indefinitely but waits enough time for the
+	// with 30 seconds timeout - so that this method does not wait indefinitely but waits enough time for the
 	// ongoing requests or connections to finish
 	//
 	// NOTE: Shutdown does not attempt to close nor wait for "hijacked" connections such as WebSockets - these needs to
