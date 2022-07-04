@@ -109,7 +109,7 @@ const tierConfs: Record<number, TierConf> = {
         // place the pods across the nodes based on utilization and `limit`
         queryServerConf: {
             podConf: {
-                minReplicas: 4,
+                minReplicas: 8,
                 maxReplicas: 10,
                 nodeLabels: {
                     "node-group": "p-5-queryserver-ng"
