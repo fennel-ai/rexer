@@ -1,13 +1,16 @@
 package main
 
 import (
+	"context"
 	_ "expvar"
 	"fmt"
 	"log"
 	"math/rand"
-	"net"
 	"net/http"
+	"os"
+	"os/signal"
 	"strconv"
+	"syscall"
 	"time"
 
 	httplib "fennel/lib/http"
@@ -139,20 +142,47 @@ func main() {
 
 	addr := fmt.Sprintf(":%d", httplib.PORT)
 	log.Printf("starting http service on %s...", addr)
-	l, err := net.Listen("tcp", addr)
-	if err != nil {
-		log.Fatalf("Listen(): %v", err)
-	}
 
 	// Run memory watchdog.
 	memory.RunMemoryWatchdog(time.Minute)
+	stopped := make(chan os.Signal, 1)
+	signal.Notify(stopped, syscall.SIGTERM, syscall.SIGINT)
+
+	srv := &http.Server{
+		Addr: addr,
+		Handler: router,
+	}
+
+	go func () {
+		// `ListenAndServer` listens on the TCP network address at `srv.Addr` and then calls Server to handle
+		// requests on incoming connections
+		if err = srv.ListenAndServe(); err != http.ErrServerClosed {
+			log.Fatalf("Serve(): %v", err)
+		}
+	}()
 
 	// Signal that server is open for business.
 	// Note: don't delete this log line - e2e tests rely on this to be printed
 	// to know that server has initialized and is ready to take traffic
 	log.Println("server is ready...")
 
-	if err = http.Serve(l, router); err != http.ErrServerClosed {
-		log.Fatalf("Serve(): %v", err)
+	<-stopped
+	log.Println("server stopped...")
+
+	ctx, cancel := context.WithTimeout(context.Background(), 30 * time.Second)
+	defer cancel()
+
+	// Shutdown gracefully shuts down the server without interrupting any active connections.
+	//
+	// Shutdown waits indefinitely for connections to return to idle and then shut down - therefore we pass a context
+	// with 30 seconds timeout - so that this method does not wait indefinitely but waits enough time for the
+	// ongoing requests or connections to finish
+	//
+	// NOTE: Shutdown does not attempt to close nor wait for "hijacked" connections such as WebSockets - these needs to
+	// separately notify those connections to shutdown and wait for them to close.
+	// `RegisterOnShutdown` is a way to register those notification functions
+	if err := srv.Shutdown(ctx); err != nil {
+		log.Fatalf("server shutdown failed: %v", err)
 	}
+	log.Println("server exited properly...")
 }
