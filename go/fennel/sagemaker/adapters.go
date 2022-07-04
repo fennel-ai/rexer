@@ -5,14 +5,30 @@ import (
 	"context"
 	"fmt"
 	"strings"
+	"time"
 	"unicode"
 
 	lib "fennel/lib/sagemaker"
 	"fennel/lib/value"
 
 	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/aws/awserr"
 	"github.com/aws/aws-sdk-go/service/sagemakerruntime"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promauto"
 )
+
+// Since the retry delays will add up to the overall latency, we try to keep this as low as possible
+const maxInvokeRetries = 3
+const initialDelay = 200 * time.Millisecond
+
+var invokeRetries = promauto.NewCounterVec(
+	prometheus.CounterOpts{
+		Name: "sagemaker_invoke_retries",
+		Help: "Number of sagemaker invoke retries due to throttle",
+	}, []string{"errorCode", "framework"},
+)
+
 
 type Adapter interface {
 	Score(ctx context.Context, in *lib.ScoreRequest) (*lib.ScoreResponse, error)
@@ -43,6 +59,31 @@ func (smc SMClient) getAdapter(framework string) (Adapter, error) {
 
 type XGBoostAdapter struct {
 	client *sagemakerruntime.SageMakerRuntime
+}
+
+func invokeRetryOnThrottle(ctx context.Context, framework string, client *sagemakerruntime.SageMakerRuntime, input *sagemakerruntime.InvokeEndpointInput) (*sagemakerruntime.InvokeEndpointOutput, error) {
+	var out *sagemakerruntime.InvokeEndpointOutput
+	delay := initialDelay
+	for i := 0; i < maxInvokeRetries; i++ {
+		var err error
+		out, err = client.InvokeEndpointWithContext(ctx, input)
+		if err == nil {
+			break
+		}
+		// check if this is a ThrottleException, if so, retry with a backoff
+		if e, ok :=	err.(awserr.Error); ok {
+			if e.Code() == "ThrottleException" {
+				// we should backoff here and retry
+				invokeRetries.WithLabelValues("ThrottleException", framework).Inc()
+				time.Sleep(delay)
+				delay = delay * 2
+				continue
+			}
+		}
+		// some other error? Return it as is
+		return nil, err
+	}
+	return out, nil
 }
 
 func (xga XGBoostAdapter) Score(ctx context.Context, in *lib.ScoreRequest) (*lib.ScoreResponse, error) {
@@ -81,7 +122,7 @@ func (xga XGBoostAdapter) Score(ctx context.Context, in *lib.ScoreRequest) (*lib
 			contentType = "text/libsvm"
 		}
 	}
-	out, err := xga.client.InvokeEndpointWithContext(ctx, &sagemakerruntime.InvokeEndpointInput{
+	out, err := invokeRetryOnThrottle(ctx, "xgboost", xga.client, &sagemakerruntime.InvokeEndpointInput{
 		Body:                    payload.Bytes(),
 		ContentType:             aws.String(contentType),
 		EndpointName:            aws.String(in.EndpointName),
@@ -108,7 +149,7 @@ func (sa SklearnAdapter) Score(ctx context.Context, in *lib.ScoreRequest) (*lib.
 		return &lib.ScoreResponse{}, nil
 	}
 	payload := toJSON(in.FeatureLists)
-	out, err := sa.client.InvokeEndpointWithContext(ctx, &sagemakerruntime.InvokeEndpointInput{
+	out, err := invokeRetryOnThrottle(ctx, "sklearn", sa.client, &sagemakerruntime.InvokeEndpointInput{
 		Body:                    payload,
 		ContentType:             aws.String("application/json"),
 		EndpointName:            aws.String(in.EndpointName),
@@ -137,7 +178,7 @@ func (pta PyTorchAdapter) Score(ctx context.Context, in *lib.ScoreRequest) (*lib
 		return &lib.ScoreResponse{}, nil
 	}
 	payload := toJSON(in.FeatureLists)
-	out, err := pta.client.InvokeEndpointWithContext(ctx, &sagemakerruntime.InvokeEndpointInput{
+	out, err := invokeRetryOnThrottle(ctx, "pytorch", pta.client, &sagemakerruntime.InvokeEndpointInput{
 		Body:                    []byte(payload),
 		ContentType:             aws.String("application/json"),
 		EndpointName:            aws.String(in.EndpointName),
@@ -187,7 +228,7 @@ func (hfa HuggingFaceAdapter) Score(ctx context.Context, in *lib.ScoreRequest) (
 
 	payload := value.ToJSON(value.NewDict(map[string]value.Value{"inputs": inputs}))
 
-	out, err := hfa.client.InvokeEndpointWithContext(ctx, &sagemakerruntime.InvokeEndpointInput{
+	out, err := invokeRetryOnThrottle(ctx, "huggingface", hfa.client, &sagemakerruntime.InvokeEndpointInput{
 		Body:         []byte(payload),
 		ContentType:  aws.String("application/json"),
 		EndpointName: aws.String(in.EndpointName),
@@ -220,7 +261,7 @@ func (tfa TensorFlowAdapter) Score(ctx context.Context, in *lib.ScoreRequest) (*
 		return &lib.ScoreResponse{}, nil
 	}
 	payload := toJSON(in.FeatureLists)
-	out, err := tfa.client.InvokeEndpointWithContext(ctx, &sagemakerruntime.InvokeEndpointInput{
+	out, err := invokeRetryOnThrottle(ctx, "tensorflow", tfa.client, &sagemakerruntime.InvokeEndpointInput{
 		Body:                    payload,
 		ContentType:             aws.String("application/json"),
 		EndpointName:            aws.String(in.EndpointName),
