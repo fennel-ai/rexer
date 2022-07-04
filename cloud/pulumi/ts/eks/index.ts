@@ -420,6 +420,10 @@ async function setupMetricsServer(provider: aws.Provider, input: inputType, clus
         namespace: "kube-system",
         values: {
             "fullnameOverride": metricServerName,
+            "extraArgs": [
+                // this needs to be at least 10s - https://github.com/kubernetes-sigs/metrics-server/blob/master/cmd/metrics-server/app/options/options.go#L67
+                "--metric-resolution=10s"
+            ]
         }
     }, { provider: cluster.provider, deleteBeforeReplace: true })
 }
