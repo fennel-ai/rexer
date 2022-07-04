@@ -177,11 +177,11 @@ const tierConfs: Record<number, TierConf> = {
                 resourceConf: {
                     cpu: {
                         request: "1250m",
-                        limit: "1500m"
+                        limit: "2500m"
                     },
                     memory: {
-                        request: "2G",
-                        limit: "3G",
+                        request: "3G",
+                        limit: "5G",
                     }
                 }
             },
@@ -534,7 +534,7 @@ const planeConfs: Record<number, PlaneConf> = {
                 },
                 {
                     name: "p-6-common-ng-arm64",
-                    nodeType: "t4g.medium",
+                    nodeType: "c6g.xlarge",
                     minSize: 1,
                     maxSize: 3,
                     amiType: DEFAULT_ARM_AMI_TYPE,
