@@ -72,7 +72,7 @@ func invokeRetryOnThrottle(ctx context.Context, framework string, client *sagema
 		}
 		// check if this is a ThrottleException, if so, retry with a backoff
 		if e, ok :=	err.(awserr.Error); ok {
-			if e.Code() == "ThrottleException" {
+			if e.Code() == "ThrottlingException" {
 				// we should backoff here and retry
 				invokeRetries.WithLabelValues("ThrottleException", framework).Inc()
 				time.Sleep(delay)
