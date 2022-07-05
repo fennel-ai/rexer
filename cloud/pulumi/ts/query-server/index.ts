@@ -149,28 +149,6 @@ export const setup = async (input: inputType) => {
     const metricsPort = 2112;
     const appPort = 2425;
 
-    // if node labels are specified, create an affinity for the pod towards that node (or set of nodes)
-    let affinity: k8s.types.input.core.v1.Affinity = {};
-    if (input.nodeLabels !== undefined) {
-        let terms: k8s.types.input.core.v1.NodeSelectorTerm[] = [];
-
-        // Terms are ORed i.e. if there are 2 node labels mentioned, if there is a node with either (or both) the
-        // nodes, the pod is scheduled on it.
-        Object.entries(input.nodeLabels).forEach(([labelKey, labelValue]) => terms.push({
-            matchExpressions: [{
-                key: labelKey,
-                operator: "In",
-                values: [labelValue],
-            }],
-        }));
-
-        affinity.nodeAffinity = {
-            requiredDuringSchedulingIgnoredDuringExecution: {
-                nodeSelectorTerms: terms,
-            },
-        }
-    }
-
     const timeoutSeconds = 60;
     // NOTE: This is configured for "slow" clients who might, at the time of graceful shutdown (i.e. when the kubelet
     // has asked the container runtime to trigger TERM), since see this pod as a viable endpoint of the service.
