@@ -27,8 +27,6 @@ import (
 	"fennel/tier"
 )
 
-var CUSTOM_JSON_IDENTIFER = []byte("JSON")
-
 const (
 	// counterCodec is used to differentiate keys in potentially different schemas
 	// with counterCodec = 1, the schema is: <agg_id>:<group_key>:<period>:<group_id>
@@ -561,6 +559,24 @@ func readFromRedis(ctx context.Context, tier tier.Tier, rkeys []string) ([]value
 	return ret, nil
 }
 
+// This function should be deleted after migration.
+func checkRexJson(v []byte) bool {
+	rjsonBytes := map[byte]byte{
+		'{': '}',
+		'[': ']',
+		'"': '"',
+	}
+	if len(v) < 2 {
+		return false
+	}
+
+	if val, ok := rjsonBytes[v[0]]; ok && val == v[len(v)-1] {
+		return true
+	}
+
+	return false
+}
+
 func interpretRedisResponse(v interface{}) (value.Value, error) {
 	switch t := v.(type) {
 	case nil:
@@ -575,13 +591,13 @@ func interpretRedisResponse(v interface{}) (value.Value, error) {
 		var val value.Value
 		var err error
 		tBytes := []byte(t)
-		if len(t) > 4 && t[len(tBytes)-4:] == string(CUSTOM_JSON_IDENTIFER) {
-			val, err = value.Unmarshal(tBytes[:len(t)-4])
+		if checkRexJson(tBytes) {
+			val, err = value.Unmarshal(tBytes)
 			if err == nil {
 				return val, nil
 			}
 		}
-		err = value.ProtoUnmarshal([]byte(t), &val)
+		err = value.ProtoUnmarshal(tBytes, &val)
 		return val, err
 	default:
 		return nil, fmt.Errorf("unexpected type from redis")
@@ -600,7 +616,6 @@ func setInRedis(ctx context.Context, tier tier.Tier, rkeys []string, values []va
 			return err
 		}
 		// Temporary identifier, should be removed later.
-		s = append(s, CUSTOM_JSON_IDENTIFER...)
 		vals[i] = s
 		keySize += len(rkeys[i])
 		valSize += len(s)
