@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"runtime/debug"
 	"strconv"
 	"syscall"
 	"time"
@@ -168,6 +169,12 @@ func main() {
 
 	<-stopped
 	log.Println("server stopped...")
+
+	// before shutting down the server, try to write the heap dump to the stdout for later inspection
+	//
+	// NOTE: this may not be accurate with the cause of the crash (e.g. OOM - because of potential delay b/w oom killer
+	// triggering the SIGTERM and this statement being executed + potential involvement of watchdog which triggers GC).
+	debug.WriteHeapDump(os.Stderr.Fd())
 
 	ctx, cancel := context.WithTimeout(context.Background(), 30 * time.Second)
 	defer cancel()
