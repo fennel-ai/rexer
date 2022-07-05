@@ -3,6 +3,8 @@ package binary
 import (
 	"encoding/binary"
 	"fmt"
+	"math"
+	"reflect"
 	"unsafe"
 )
 
@@ -76,4 +78,102 @@ func PutVarint(b []byte, n int64) (int, error) {
 	}
 	copy(b, lenbuf[:sz])
 	return sz, nil
+}
+
+func reverseArray(arr []byte) []byte {
+	for i, j := 0, len(arr)-1; i < j; i, j = i+1, j-1 {
+		arr[i], arr[j] = arr[j], arr[i]
+	}
+	return arr
+}
+
+// The first 2 bits are for type, the 3rd bit for sign.
+// The remaining bits are encoded using 7 bits per byte.
+// The first bit is always 1 to distinguish from the ASCII characters.
+func Num2Bytes[T int64 | float64](num T) ([]byte, error) {
+	sign := uint8(0)
+	if num < 0 {
+		sign = 0x20
+		num = -num
+	}
+
+	tmpBuf := make([]byte, 8)
+	switch reflect.TypeOf(num).Kind() {
+	case reflect.Int64:
+		binary.BigEndian.PutUint64(tmpBuf, uint64(num))
+	case reflect.Float64:
+		binary.BigEndian.PutUint64(tmpBuf, math.Float64bits(float64(num)))
+	default:
+		return nil, fmt.Errorf("invalid type")
+	}
+
+	var buf []byte
+	for i := 0; i < 8; i++ {
+		if tmpBuf[i] != 0 {
+			buf = tmpBuf[i:]
+			break
+		}
+	}
+	carry := uint8(0)
+	var ret []byte
+	// Number of bits in carry.
+	numShift := 0
+	for i := len(buf) - 1; i >= 0; i-- {
+		// temp is formed by picking all bits from carry and LSB (7 - numShift) #bits in buf[i]
+		temp := ((buf[i] << numShift) | carry) & 0x7f
+		carry = buf[i] >> (7 - numShift)
+		if i > 0 {
+			// Set the first bit to 1 to distinguish from ASCII characters.
+			// Only needed for the non type encoded bytes.
+			temp = temp | 0x80
+		}
+		ret = append(ret, temp)
+		numShift += 1
+	}
+	if carry != 0 {
+		ret[len(ret)-1] = ret[len(ret)-1] | 0x80
+		ret = append(ret, carry)
+	}
+	ret = reverseArray(ret)
+	if len(ret) > 0 && (ret[0]&0xE0) == 0 {
+		ret[0] = ret[0] | sign
+		return ret, nil
+	}
+	if len(ret) > 1 {
+		ret[0] = ret[0] | 0x80
+	}
+	ret = append([]byte{0}, ret...)
+	ret[0] = ret[0] | sign
+	return ret, nil
+}
+
+func parseInteger(data []byte) int64 {
+	var v int64
+	v = int64(data[0] & 0x1f)
+
+	if len(data) > 1 {
+		for i := 1; i < len(data); i++ {
+			v = v<<7 | int64(data[i]&0x7f)
+		}
+	}
+	if (data[0] & 0x20) == 0 {
+		return v
+	}
+	return -v
+}
+
+func parseFloat(data []byte) float64 {
+	var v uint64
+	v = uint64(data[0] & 0x1f)
+
+	if len(data) > 1 {
+		for i := 1; i < len(data); i++ {
+			v = v<<7 | uint64(data[i]&0x7f)
+		}
+	}
+	d := math.Float64frombits(v)
+	if (data[0] & 0x20) == 0 {
+		return d
+	}
+	return -d
 }

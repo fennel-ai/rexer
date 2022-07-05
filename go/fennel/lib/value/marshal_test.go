@@ -121,7 +121,7 @@ func smallValue(n int, t string) ([][]byte, []Value) {
 	samples := make([]Value, n)
 	totalSize := 0
 	for i := 0; i < n; i++ {
-		sample := NewList(String(RandStringRunes(5)), Int(rand.Int()), Bool(true))
+		sample := NewList(String(RandStringRunes(5)), Int(rand.Int()))
 		samples[i] = sample
 		switch t {
 		case "captain":
@@ -147,11 +147,12 @@ func largeValue(n int, t string) ([][]byte, []Value) {
 	totalSize := 0
 	for i := 0; i < n; i++ {
 		sample := NewDict(map[string]Value{})
-		for j := 0; j < 200; j++ {
-			l := NewList(Int(1), Double(2.0), Bool(true))
-			for k := 0; k < 10; k++ {
-				l.Append(String(RandStringRunes(5)))
-			}
+		for j := 0; j < 250; j++ {
+			l := NewList(Double(rand.Float64()*100), Int(rand.Int63n(100)))
+			//for k := 0; k < 10; k++ {
+			//	l.Append(String(RandStringRunes(5)))
+			//}
+			//sample.Set(RandStringRunes(5), Int(rand.Int()))
 			sample.Set(RandStringRunes(5), l)
 		}
 		switch t {
@@ -189,6 +190,7 @@ func benchMarkSerialization(b *testing.B, algo, sz string) {
 	b.ReportAllocs()
 
 	for n := 0; n < b.N; n++ {
+		//fmt.Println("Sample: ", samples[n].String())
 		var err error
 		switch algo {
 		case "captain":
@@ -210,5 +212,5 @@ func benchMarkSerialization(b *testing.B, algo, sz string) {
 // go test -tags dynamic  -bench Benchmark_Serialization -v fennel/lib/value -run ^$  -benchtime=10000x -cpuprofile cpu.out
 // go tool pprof -http=localhost:6060 cpu.out
 func Benchmark_Serialization(b *testing.B) {
-	benchMarkSerialization(b, "rexerjson", "l")
+	benchMarkSerialization(b, "proto", "l")
 }

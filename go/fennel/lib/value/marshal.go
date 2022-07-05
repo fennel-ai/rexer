@@ -6,6 +6,7 @@ import (
 	"fennel/lib/value/rexparser"
 	"fmt"
 	"google.golang.org/protobuf/proto"
+	"math"
 )
 
 func CaptainMarshal(v Value) ([]byte, error) {
@@ -59,8 +60,10 @@ func parseCustomJSON(vdata []byte, vtype rexparser.ValueType, sz int) (Value, er
 	switch vtype {
 	case rexparser.Boolean:
 		return ParseJSONBoolean(vdata)
-	case rexparser.Number:
-		return ParseJSONNumber(vdata)
+	case rexparser.Integer:
+		return parseCustomJSONInteger(vdata)
+	case rexparser.Float:
+		return parseCustomJSONFloat(vdata)
 	case rexparser.String:
 		return ParseJSONString(vdata)
 	case rexparser.Array:
@@ -72,6 +75,37 @@ func parseCustomJSON(vdata []byte, vtype rexparser.ValueType, sz int) (Value, er
 	default:
 		return nil, fmt.Errorf("unsupported json type %v", vtype)
 	}
+}
+
+func parseCustomJSONInteger(data []byte) (Value, error) {
+	var v int64
+	v = int64(data[0] & 0x1f)
+
+	if len(data) > 1 {
+		for i := 1; i < len(data); i++ {
+			v = v<<7 | int64(data[i]&0x7f)
+		}
+	}
+	if (data[0] & 0x20) == 0 {
+		return Int(v), nil
+	}
+	return Int(-v), nil
+}
+
+func parseCustomJSONFloat(data []byte) (Value, error) {
+	var v uint64
+	v = uint64(data[0] & 0x1f)
+
+	if len(data) > 1 {
+		for i := 1; i < len(data); i++ {
+			v = v<<7 | uint64(data[i]&0x7f)
+		}
+	}
+	d := math.Float64frombits(v)
+	if (data[0] & 0x20) == 0 {
+		return Double(d), nil
+	}
+	return Double(-d), nil
 }
 
 func parseCustomJSONArray(data []byte, sz int) (Value, error) {

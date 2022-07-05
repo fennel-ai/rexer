@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fennel/lib/utils/binary"
 	"fennel/lib/utils/slice"
+	"fennel/lib/value/rexparser"
 	"fmt"
 	"reflect"
 	"sort"
@@ -62,7 +63,12 @@ func (I Int) MarshalJSON() ([]byte, error) {
 	return []byte(I.String()), nil
 }
 func (I Int) Marshal() ([]byte, error) {
-	return []byte(I.String()), nil
+	ret, err := binary.Num2Bytes(int64(I))
+	if err != nil {
+		return nil, err
+	}
+	ret[0] = ret[0] | rexparser.INT
+	return ret, nil
 }
 
 type Double float64
@@ -108,7 +114,12 @@ func (d Double) MarshalJSON() ([]byte, error) {
 	return []byte(d.String()), nil
 }
 func (d Double) Marshal() ([]byte, error) {
-	return []byte(d.String()), nil
+	ret, err := binary.Num2Bytes(float64(d))
+	if err != nil {
+		return nil, err
+	}
+	ret[0] = ret[0] | rexparser.FLOAT
+	return ret, nil
 }
 
 type Bool bool
@@ -138,7 +149,11 @@ func (b Bool) MarshalJSON() ([]byte, error) {
 	return []byte(b.String()), nil
 }
 func (b Bool) Marshal() ([]byte, error) {
-	return []byte(b.String()), nil
+	if b {
+		return []byte("true"), nil
+	} else {
+		return []byte("false"), nil
+	}
 }
 
 type String string
@@ -174,16 +189,6 @@ func (s String) MarshalJSON() ([]byte, error) {
 
 func (s String) Marshal() ([]byte, error) {
 	return json.Marshal(string(s))
-	//metadata := make([]byte, 10)
-	//n, err := binary.PutUvarint(metadata[:], uint64(len(string(s))+2))
-	//if err != nil {
-	//	return nil, err
-	//}
-	//ret = append(ret, metadata[:n]...)
-	//ret = append(ret, string(s)...)
-	//ret = append(ret, '"')
-	//fmt.Println("String marshal", string(ret))
-	//return ret, nil
 }
 
 type nil_ struct{}

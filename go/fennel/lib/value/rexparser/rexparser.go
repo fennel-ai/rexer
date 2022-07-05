@@ -1,11 +1,16 @@
 package rexparser
 
 import (
-	"bytes"
 	"errors"
 	"fennel/lib/utils/binary"
 	lib "github.com/buger/jsonparser"
 )
+
+// Primitive types
+const BOOL = 0x00
+const INT = 0xC0
+const FLOAT = 0x80
+const NULL = 0x40
 
 // Errors
 var (
@@ -85,7 +90,8 @@ type ValueType int
 const (
 	NotExist = ValueType(iota)
 	String
-	Number
+	Integer
+	Float
 	Object
 	Array
 	Tuple
@@ -98,10 +104,12 @@ func (vt ValueType) String() string {
 	switch vt {
 	case NotExist:
 		return "non-existent"
+	case Integer:
+		return "integer"
+	case Float:
+		return "float"
 	case String:
 		return "string"
-	case Number:
-		return "number"
 	case Object:
 		return "object"
 	case Array:
@@ -169,28 +177,20 @@ func getType(data []byte, offset int) ([]byte, ValueType, int, int, error) {
 	} else {
 		// Number, Boolean or None
 		end := tokenEnd(data[endOffset:])
-
 		if end == -1 {
 			return nil, dataType, offset, 0, MalformedValueError
 		}
 
-		value := data[offset : endOffset+end]
-
-		switch data[offset] {
-		case 't', 'f': // true or false
-			if bytes.Equal(value, trueLiteral) || bytes.Equal(value, falseLiteral) {
-				dataType = Boolean
-			} else {
-				return nil, Unknown, offset, 0, UnknownValueTypeError
-			}
-		case 'u', 'n': // undefined or null
-			if bytes.Equal(value, nullLiteral) {
-				dataType = Null
-			} else {
-				return nil, Unknown, offset, 0, UnknownValueTypeError
-			}
-		case '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '-':
-			dataType = Number
+		// Extract first 2 bits to determine value type
+		switch data[offset] & 0xC0 {
+		case BOOL: // boolean
+			dataType = Boolean
+		case INT: // number
+			dataType = Integer
+		case FLOAT: // undefined or null
+			dataType = Float
+		case NULL:
+			dataType = Null
 		default:
 			return nil, Unknown, offset, 0, UnknownValueTypeError
 		}
@@ -244,7 +244,6 @@ func ArrayEach(data []byte, cb func(value []byte, dataType ValueType, offset, sz
 	if len(data) == 0 {
 		return -1, MalformedObjectError
 	}
-
 	nT := nextToken(data)
 	if nT == -1 {
 		return -1, MalformedJsonError
@@ -287,7 +286,6 @@ func ArrayEach(data []byte, cb func(value []byte, dataType ValueType, offset, sz
 			return offset, MalformedArrayError
 		}
 		offset += skipToToken
-
 		if data[offset] == ']' {
 			break
 		}
