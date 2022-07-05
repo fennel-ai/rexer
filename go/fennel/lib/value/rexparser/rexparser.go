@@ -7,10 +7,12 @@ import (
 )
 
 // Primitive types
-const BOOL = 0x00
+const BOOL = 0x40
 const INT = 0xC0
 const FLOAT = 0x80
-const NULL = 0x40
+const NULL = 0x00
+const TRUE = 0x01
+const FALSE = 0x00
 
 // Errors
 var (

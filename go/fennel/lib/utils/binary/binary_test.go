@@ -46,19 +46,19 @@ func Test_Int64(t *testing.T) {
 		}
 		ret, err := Num2Bytes(x)
 		assert.NoError(t, err)
-		assert.Equal(t, x, parseInteger(ret))
+		assert.Equal(t, x, ParseInteger(ret))
 	}
 }
 
 func Test_Float64(t *testing.T) {
-	for i := 0; i < 1000; i++ {
-		x := rand.Float64() * 1000
+	for i := 0; i < 100; i++ {
+		x := rand.Float32() * 1000
 		if rand.Int()%2 == 0 {
 			x = -x
 		}
-		ret, err := Num2Bytes(x)
+		ret, err := Num2Bytes(float64(x))
 		assert.NoError(t, err)
-		assert.Equal(t, x, parseFloat(ret))
+		assert.Equal(t, x, float32(ParseFloat(ret)))
 	}
 }
 

@@ -79,7 +79,7 @@ func (d Double) Equal(v Value) bool {
 	case Int:
 		return float64(v) == float64(d)
 	case Double:
-		return v == d
+		return float32(v) == float32(d)
 	default:
 		return false
 	}
@@ -149,11 +149,12 @@ func (b Bool) MarshalJSON() ([]byte, error) {
 	return []byte(b.String()), nil
 }
 func (b Bool) Marshal() ([]byte, error) {
+	ret := uint8(0)
+	ret = ret | rexparser.BOOL
 	if b {
-		return []byte("true"), nil
-	} else {
-		return []byte("false"), nil
+		ret = ret | rexparser.TRUE
 	}
+	return []byte{ret}, nil
 }
 
 type String string
@@ -168,11 +169,8 @@ func (s String) Equal(v Value) bool {
 	}
 }
 func (s String) String() string {
-	sb := strings.Builder{}
-	sb.WriteString(`"`)
-	sb.WriteString(string(s))
-	sb.WriteString(`"`)
-	return sb.String()
+	ret, _ := json.Marshal(string(s))
+	return string(ret)
 }
 func (s String) Clone() Value {
 	return s
@@ -220,7 +218,7 @@ func (n nil_) MarshalJSON() ([]byte, error) {
 	return []byte(n.String()), nil
 }
 func (n nil_) Marshal() ([]byte, error) {
-	return []byte(n.String()), nil
+	return []byte{rexparser.NULL}, nil
 }
 
 type List struct {
@@ -309,7 +307,7 @@ func (l List) Marshal() ([]byte, error) {
 	var rest []byte
 	for i, v := range l.values {
 		if v == nil {
-			rest = append(rest, "null"...)
+			rest = append(rest, rexparser.NULL)
 		} else {
 			b, err := v.Marshal()
 			if err != nil {
@@ -425,9 +423,8 @@ func (d Dict) String() string {
 	s := make([]string, 0, d.Len())
 	for k, v := range d.Iter() {
 		sb := strings.Builder{}
-		sb.WriteString(`"`)
-		sb.WriteString(k)
-		sb.WriteString(`"`)
+		key, _ := json.Marshal(k)
+		sb.WriteString(string(key))
 		sb.WriteString(":")
 		if v == nil {
 			sb.WriteString("null")
@@ -449,7 +446,13 @@ func (d Dict) Marshal() ([]byte, error) {
 	var ret []byte
 	var rest []byte
 	ret = append(ret, "{"...)
-	for k, v := range d.Iter() {
+	keys := make([]string, 0, len(d.values))
+	for k := range d.values {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+	for _, k := range keys {
+		v := d.values[k]
 		key, err := json.Marshal(k)
 		if err != nil {
 			return nil, err
@@ -457,7 +460,7 @@ func (d Dict) Marshal() ([]byte, error) {
 		rest = append(rest, key...)
 		rest = append(rest, ":"...)
 		if v == nil {
-			rest = append(rest, "null"...)
+			rest = append(rest, rexparser.NULL)
 		} else {
 			b, err := v.Marshal()
 			if err != nil {
