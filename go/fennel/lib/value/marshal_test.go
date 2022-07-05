@@ -190,7 +190,6 @@ func benchMarkSerialization(b *testing.B, algo, sz string) {
 	b.ReportAllocs()
 
 	for n := 0; n < b.N; n++ {
-		fmt.Println("Bytes", algo, arr[n][0], arr[n][len(arr[n])-1])
 		var err error
 		switch algo {
 		case "captain":
@@ -212,6 +211,5 @@ func benchMarkSerialization(b *testing.B, algo, sz string) {
 // go test -tags dynamic  -bench Benchmark_Serialization -v fennel/lib/value -run ^$  -benchtime=10000x -cpuprofile cpu.out
 // go tool pprof -http=localhost:6060 cpu.out
 func Benchmark_Serialization(b *testing.B) {
-	benchMarkSerialization(b, "proto", "s")
-	benchMarkSerialization(b, "rexerjson", "s")
+	benchMarkSerialization(b, "rexerjson", "l")
 }
