@@ -600,7 +600,9 @@ func EnableAutoscalingWhenEndpointInService(tier tier.Tier, sagemakerEndpointNam
 			ScaleOutCoolDownPeriod: 60,
 		},
 		BaseConfig: &lib.BaseConfig{
-			MinCapacity: 1,
+			// use the initial instance count as the min capacity - ideally this should be separately configurable
+			// as well
+			MinCapacity: int64(tier.SagemakerClient.GetInstanceCount()),
 			MaxCapacity: 5,
 		},
 	}); err != nil {
