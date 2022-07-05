@@ -90,18 +90,6 @@ func parseCustomJSONBoolean(data []byte) (Value, error) {
 
 func parseCustomJSONInteger(data []byte) (Value, error) {
 	return Int(binary.ParseInteger(data)), nil
-	var v int64
-	v = int64(data[0] & 0x1f)
-
-	if len(data) > 1 {
-		for i := 1; i < len(data); i++ {
-			v = v<<7 | int64(data[i]&0x7f)
-		}
-	}
-	if (data[0] & 0x20) == 0 {
-		return Int(v), nil
-	}
-	return Int(-v), nil
 }
 
 func parseCustomJSONFloat(data []byte) (Value, error) {

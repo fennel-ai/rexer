@@ -147,11 +147,11 @@ func largeValue(n int, t string) ([][]byte, []Value) {
 	totalSize := 0
 	for i := 0; i < n; i++ {
 		sample := NewDict(map[string]Value{})
-		for j := 0; j < 250; j++ {
+		for j := 0; j < 200; j++ {
 			l := NewList(Double(rand.Float32()*100), Int(rand.Int63n(100)))
-			//for k := 0; k < 10; k++ {
-			//	l.Append(String(RandStringRunes(5)))
-			//}
+			for k := 0; k < 10; k++ {
+				l.Append(String(RandStringRunes(5)))
+			}
 			//sample.Set(RandStringRunes(5), Int(rand.Int()))
 			sample.Set(RandStringRunes(5), l)
 		}
