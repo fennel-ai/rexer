@@ -100,15 +100,13 @@ func setMSB(data []byte) {
 // The first 3 bits are for type.
 // The remaining bits are encoded using 7 bits per byte.
 // The first bit is always 1 to distinguish from the ASCII characters.
-func Num2Bytes[T int64 | float32](num T) ([]byte, error) {
-	var tmpBuf []byte
+func Num2Bytes[T int64 | float64](num T) ([]byte, error) {
+	tmpBuf := make([]byte, 8)
 	switch reflect.TypeOf(num).Kind() {
 	case reflect.Int64:
-		tmpBuf = make([]byte, 8)
 		binary.BigEndian.PutUint64(tmpBuf, uint64(num))
-	case reflect.Float32:
-		tmpBuf = make([]byte, 4)
-		binary.BigEndian.PutUint32(tmpBuf, math.Float32bits(float32(num)))
+	case reflect.Float64:
+		binary.BigEndian.PutUint64(tmpBuf, math.Float64bits(float64(num)))
 	default:
 		return nil, fmt.Errorf("invalid type")
 	}
@@ -160,18 +158,18 @@ func ParseInteger(data []byte) (int64, int) {
 	return v, i
 }
 
-func ParseFloat(data []byte) (float32, int) {
-	var v uint32
-	v = uint32(data[0] & 0x1f)
+func ParseFloat(data []byte) (float64, int) {
+	var v uint64
+	v = uint64(data[0] & 0x1f)
 	i := 0
 	if data[0]&0x10 != 0 {
 		i++
 		for data[i] >= 0x80 {
-			v = v<<7 | uint32(data[i]&0x7f)
+			v = v<<7 | uint64(data[i]&0x7f)
 			i++
 		}
-		v = v<<7 | uint32(data[i]&0x7f)
+		v = v<<7 | uint64(data[i]&0x7f)
 	}
 
-	return math.Float32frombits(v), i
+	return math.Float64frombits(v), i
 }

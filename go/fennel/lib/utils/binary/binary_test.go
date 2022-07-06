@@ -50,7 +50,7 @@ func Test_Int64(t *testing.T) {
 
 func Test_Float64(t *testing.T) {
 	for i := 0; i < 1; i++ {
-		x := rand.Float32() * 1000
+		x := rand.Float64() * 1000
 		if rand.Int()%2 == 0 {
 			x = -x
 		}

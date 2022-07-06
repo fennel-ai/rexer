@@ -6,6 +6,11 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
+const (
+	// Codec is our v1 serializer for values.
+	Codec = 0x1
+)
+
 func CaptainMarshal(v Value) ([]byte, error) {
 	_, bytes, err := ToCapnValue(v)
 	return bytes, err
@@ -46,6 +51,11 @@ func ProtoUnmarshal(data []byte, v *Value) error {
 }
 
 func Unmarshal(data []byte) (Value, error) {
-	v, _, err := ParseValue(data)
+	v, _, err := ParseValue(data[1:])
 	return v, err
+}
+
+func Marshal(v Value) ([]byte, error) {
+	ret, err := v.Marshal()
+	return append([]byte{Codec}, ret...), err
 }

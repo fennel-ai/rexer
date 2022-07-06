@@ -79,26 +79,27 @@ func (I Int) Marshal() ([]byte, error) {
 	return ret, nil
 }
 
-type Double float32
+type Double float64
 
 func (d Double) isValue() {}
 func (d Double) Equal(v Value) bool {
 	switch v := v.(type) {
 	case Int:
-		return float32(v) == float32(d)
+		return float64(v) == float64(d)
 	case Double:
 		return math.Abs(float64(v-d)) < float64EqualityThreshold
 	default:
 		return false
 	}
 }
+
 func (d Double) String() string {
 	// here we take the minimum number of decimal places needed to represent the float
 	// so 3.4 is represented as just that, not 3.400000
 	// this helps keep the representation unique
 	// Integral floats are to be differentiated from integers
 	// so 2 is represented as 2.0
-	str := strconv.FormatFloat(float64(d), 'f', -1, 32)
+	str := strconv.FormatFloat(float64(d), 'f', -1, 64)
 	for i := range str {
 		if str[i] == '.' {
 			return str
@@ -123,7 +124,7 @@ func (d Double) MarshalJSON() ([]byte, error) {
 }
 func (d Double) Marshal() ([]byte, error) {
 	sign := POS_FLOAT
-	x := float32(d)
+	x := float64(d)
 	if x < 0 {
 		sign = NEG_FLOAT
 		x = -x
