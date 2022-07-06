@@ -413,6 +413,11 @@ const planeConfs: Record<number, PlaneConf> = {
         milvusConf: {},
         // Run nitrous on the plane.
         nitrousConf: {
+            // We use amd64 for nitrous instead of arm64 because of a known
+            // issue in badger/ristretto that causes error in initializing the
+            // badger db.
+            // Issue: https://discuss.dgraph.io/t/error-mremap-size-mismatch-on-arm64/15333
+            // Fix (merged but not released): https://github.com/dgraph-io/ristretto/pull/281
             useAmd64: true,
             replicas: 1,
             storageCapacityGB: 100,
