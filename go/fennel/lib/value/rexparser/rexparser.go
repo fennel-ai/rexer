@@ -42,20 +42,6 @@ func tokenEnd(data []byte) int {
 	return len(data)
 }
 
-// Find position of next character which is not whitespace
-func nextToken(data []byte) int {
-	for i, c := range data {
-		switch c {
-		case ' ', '\n', '\r', '\t':
-			continue
-		default:
-			return i
-		}
-	}
-
-	return -1
-}
-
 // Tries to find the end of string
 // Support if string contains escaped quote symbols.
 func stringEnd(data []byte) (int, bool) {
@@ -149,14 +135,15 @@ func getType(data []byte, offset int) ([]byte, ValueType, int, int, error) {
 	var dataType ValueType
 	endOffset := offset
 	// if string value
-	if data[offset] == '"' {
+	switch data[offset] {
+	case '"':
 		dataType = String
 		if idx, _ := stringEnd(data[offset+1:]); idx != -1 {
 			endOffset += idx + 1
 		} else {
 			return nil, dataType, offset, 0, MalformedStringError
 		}
-	} else if data[offset] == '[' { // if array value
+	case '[':
 		dataType = Array
 		arrLength, endOffset, metadataOffset, err := getMetadata(data, offset)
 		if err != nil {
@@ -169,7 +156,7 @@ func getType(data []byte, offset int) ([]byte, ValueType, int, int, error) {
 			return nil, dataType, offset, 0, MalformedArrayError
 		}
 		return data[offset:endOffset], dataType, endOffset, arrLength, nil
-	} else if data[offset] == '{' {
+	case '{':
 		dataType = Object
 		arrLength, endOffset, metadataOffset, err := getMetadata(data, offset)
 		if err != nil {
@@ -182,7 +169,7 @@ func getType(data []byte, offset int) ([]byte, ValueType, int, int, error) {
 			return nil, dataType, offset, 0, MalformedObjectError
 		}
 		return data[offset:endOffset], dataType, endOffset, arrLength, nil
-	} else {
+	default:
 		// Number, Boolean or None
 		end := tokenEnd(data[endOffset:])
 		if end == -1 {
@@ -227,13 +214,6 @@ func Get(data []byte, keys ...string) (value []byte, dataType ValueType, offset,
 
 func internalGet(data []byte) (value []byte, dataType ValueType, offset, endOffset, sz int, err error) {
 
-	// go to closest value
-	nO := nextToken(data[offset:])
-	if nO == -1 {
-		return nil, NotExist, offset, -1, 0, MalformedJsonError
-	}
-
-	offset += nO
 	value, dataType, endOffset, sz, err = getType(data, offset)
 	if err != nil {
 		return value, dataType, offset, endOffset, 0, err
@@ -252,18 +232,7 @@ func ArrayEach(data []byte, cb func(value []byte, dataType ValueType, offset, sz
 	if len(data) == 0 {
 		return -1, MalformedObjectError
 	}
-	nT := nextToken(data)
-	if nT == -1 {
-		return -1, MalformedJsonError
-	}
-
-	offset = nT + 1
-	nO := nextToken(data[offset:])
-	if nO == -1 {
-		return offset, MalformedJsonError
-	}
-
-	offset += nO
+	offset = 1
 
 	if data[offset] == ']' {
 		return offset, nil
@@ -289,11 +258,6 @@ func ArrayEach(data []byte, cb func(value []byte, dataType ValueType, offset, sz
 
 		offset += o
 
-		skipToToken := nextToken(data[offset:])
-		if skipToToken == -1 {
-			return offset, MalformedArrayError
-		}
-		offset += skipToToken
 		if data[offset] == ']' {
 			break
 		}
@@ -313,18 +277,14 @@ func ObjectEach(data []byte, callback func(key []byte, value []byte, dataType Va
 	offset := 0
 
 	// Validate and skip past opening brace
-	if off := nextToken(data[offset:]); off == -1 {
-		return MalformedObjectError
-	} else if offset += off; data[offset] != '{' {
+	if data[offset] != '{' {
 		return MalformedObjectError
 	} else {
 		offset++
 	}
 
 	// Skip to the first token inside the object, or stop if we find the ending brace
-	if off := nextToken(data[offset:]); off == -1 {
-		return MalformedJsonError
-	} else if offset += off; data[offset] == '}' {
+	if data[offset] == '}' {
 		return nil
 	}
 
@@ -363,9 +323,7 @@ func ObjectEach(data []byte, callback func(key []byte, value []byte, dataType Va
 		}
 
 		// Step 2: skip the colon
-		if off := nextToken(data[offset:]); off == -1 {
-			return MalformedJsonError
-		} else if offset += off; data[offset] != ':' {
+		if data[offset] != ':' {
 			return MalformedJsonError
 		} else {
 			offset++
@@ -381,28 +339,15 @@ func ObjectEach(data []byte, callback func(key []byte, value []byte, dataType Va
 		}
 
 		// Step 4: skip over the next comma to the following token, or stop if we hit the ending brace
-		if off := nextToken(data[offset:]); off == -1 {
-			return MalformedArrayError
-		} else {
-			offset += off
-			switch data[offset] {
-			case '}':
-				return nil // Stop if we hit the close brace
-			case ',':
-				offset++ // Ignore the comma
-			default:
-				return MalformedObjectError
-			}
-		}
-
-		// Skip to the next token after the comma
-		if off := nextToken(data[offset:]); off == -1 {
-			return MalformedArrayError
-		} else {
-			offset += off
+		switch data[offset] {
+		case '}':
+			return nil // Stop if we hit the close brace
+		case ',':
+			offset++ // Ignore the comma
+		default:
+			return MalformedObjectError
 		}
 	}
-
 	return MalformedObjectError // we shouldn't get here; it's expected that we will return via finding the ending brace
 }
 
