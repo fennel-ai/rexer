@@ -62,7 +62,7 @@ func maybeExportProfile(t time.Time, pprofArgs PprofArgs, s3Client s3.Client) er
 
 	// convert the bytes to G and specify it in the path
 	path += "_"
-	path += fmt.Sprintf("%dG", stats.HeapAlloc << 30)
+	path += fmt.Sprintf("%dG", stats.HeapAlloc >> 30)
 
 	// create a reader and writer using in process i/o pipe
 	reader, writer := io.Pipe()
@@ -79,7 +79,7 @@ func maybeExportProfile(t time.Time, pprofArgs PprofArgs, s3Client s3.Client) er
 		return fmt.Errorf("failed to the upload the profile to S3 bucket, err: %w", err)
 	}
 
-	log.Printf("successfully uploaded profile, key: %s when the size of the heap allocated objects was: %dG", path, stats.HeapAlloc << 30)
+	log.Printf("successfully uploaded profile, key: %s when the size of the heap allocated objects was: %dG", path, stats.HeapAlloc >> 30)
 	return nil
 }
 
