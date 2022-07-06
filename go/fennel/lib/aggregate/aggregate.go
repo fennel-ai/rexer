@@ -8,6 +8,8 @@ import (
 	"fennel/engine/ast"
 	"fennel/lib/ftypes"
 	"fennel/lib/value"
+
+	"google.golang.org/protobuf/proto"
 )
 
 var ValidTypes = []ftypes.AggType{
@@ -198,4 +200,33 @@ type GetAggValueRequest struct {
 	AggName ftypes.AggName `json:"Name"`
 	Key     value.Value    `json:"Key"`
 	Kwargs  value.Dict     `json:"Kwargs"`
+}
+
+// AggregateSer should not be used outside of package `fennel/model/aggregate` and `tier.go` file
+type AggregateSer struct {
+	Name      ftypes.AggName   `db:"name"`
+	Source    ftypes.Source    `db:"source"`
+	QuerySer  []byte           `db:"query_ser"`
+	Timestamp ftypes.Timestamp `db:"timestamp"`
+	OptionSer []byte           `db:"options_ser"`
+	Active    bool             `db:"active"`
+	Id        ftypes.AggId     `db:"id"`
+}
+
+func (ser AggregateSer) ToAggregate() (Aggregate, error) {
+	var agg Aggregate
+	agg.Timestamp = ser.Timestamp
+	agg.Name = ser.Name
+	if err := ast.Unmarshal(ser.QuerySer, &agg.Query); err != nil {
+		return Aggregate{}, err
+	}
+	var popt AggOptions
+	if err := proto.Unmarshal(ser.OptionSer, &popt); err != nil {
+		return Aggregate{}, err
+	}
+	agg.Options = FromProtoOptions(&popt)
+	agg.Active = ser.Active
+	agg.Id = ser.Id
+	agg.Source = ser.Source
+	return agg, nil
 }
