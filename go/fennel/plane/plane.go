@@ -83,7 +83,7 @@ func CreateFromArgs(args PlaneArgs) (Plane, error) {
 	}
 
 	// Initialize layered storage.
-	db, err := db.NewHangar(scope.ID(), args.BadgerDir, args.BadgerBlockCacheMB<<6, encoders.Default())
+	db, err := db.NewHangar(scope.ID(), args.BadgerDir, args.BadgerBlockCacheMB<<20, encoders.Default())
 	if err != nil {
 		return Plane{}, fmt.Errorf("failed to create badger db: %w", err)
 	}
