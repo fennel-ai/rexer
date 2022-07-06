@@ -68,7 +68,9 @@ const tierConfs: Record<number, TierConf> = {
                         request: "2G",
                         limit: "3G",
                     }
-                }
+                },
+                // start report at 200 MB
+                pprofHeapAllocThresholdBytes: 200 << 20,
             }
         },
     },

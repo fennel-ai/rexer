@@ -34,7 +34,8 @@ func main() {
 	// Start a prometheus server.
 	common.StartPromMetricsServer(flags.MetricsPort)
 	// Start a pprof server to export the standard pprof endpoints.
-	common.StartPprofServer(flags.PprofPort)
+	profiler := common.CreateProfiler(flags.PprofArgs)
+	profiler.StartPprofServer()
 
 	lis, err := net.Listen("tcp", fmt.Sprintf(":%d", flags.ListenPort))
 	if err != nil {
