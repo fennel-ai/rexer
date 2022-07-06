@@ -2,10 +2,9 @@ package value
 
 import (
 	"fmt"
+	"github.com/stretchr/testify/assert"
 	"math/rand"
 	"testing"
-
-	"github.com/stretchr/testify/assert"
 )
 
 func verifyMarshalUnMarshal(t *testing.T, v Value) {
@@ -212,4 +211,30 @@ func benchMarkSerialization(b *testing.B, algo, sz string) {
 // go tool pprof -http=localhost:6060 cpu.out
 func Benchmark_Serialization(b *testing.B) {
 	benchMarkSerialization(b, "rexerjson", "l")
+}
+
+func FuzzRandom(f *testing.F) {
+	f.Add([]byte{'{', '"', 'a', 'b', 'c', '"', ':', '1', '}'})
+	f.Add([]byte{'{', '"', 'a', 'b', 'c', '"', ':', '1', '}', '{', '"', 'a', 'b', 'c', '"', ':', '1', '}'})
+	f.Add([]byte{'[', ']'})
+	f.Add([]byte{'{', '"', 'a', 'b', 'c', '"', ':', '1', '.', '2', '3', '}'})
+	f.Add([]byte{'{', '"', 'a', 'b', 'c', '"', ':', '1', '}', '{', '"', 'a', 'b', 'c', '"', ':', '1', '}'})
+	f.Add([]byte{'[', ']'})
+	f.Add([]byte{'[', '2', '.', '4', '4', ']'})
+
+	f.Fuzz(func(t *testing.T, b []byte) {
+		v, err := FromJSON(b)
+		if err != nil {
+			t.Skip()
+		}
+		jsonBytes, err := v.MarshalJSON()
+		if err != nil || string(jsonBytes) != string(b) {
+			t.Skip()
+		}
+		vBytes, err := v.Marshal()
+		assert.NoError(t, err)
+		v2, err := Unmarshal(vBytes)
+		assert.NoError(t, err)
+		assert.True(t, v.Equal(v2))
+	})
 }

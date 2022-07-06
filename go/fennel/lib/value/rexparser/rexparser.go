@@ -165,6 +165,9 @@ func getType(data []byte, offset int) ([]byte, ValueType, int, int, error) {
 		offset += metadataOffset
 		endOffset += offset
 		data[offset] = '['
+		if endOffset > len(data) {
+			return nil, dataType, offset, 0, MalformedArrayError
+		}
 		return data[offset:endOffset], dataType, endOffset, arrLength, nil
 	} else if data[offset] == '{' {
 		dataType = Object
@@ -175,6 +178,9 @@ func getType(data []byte, offset int) ([]byte, ValueType, int, int, error) {
 		offset += metadataOffset
 		endOffset += offset
 		data[offset] = '{'
+		if endOffset > len(data) {
+			return nil, dataType, offset, 0, MalformedObjectError
+		}
 		return data[offset:endOffset], dataType, endOffset, arrLength, nil
 	} else {
 		// Number, Boolean or None
