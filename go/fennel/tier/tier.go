@@ -1,6 +1,7 @@
 package tier
 
 import (
+	"context"
 	"crypto/tls"
 	"fmt"
 	"log"
@@ -11,6 +12,7 @@ import (
 	"fennel/db"
 	"fennel/glue"
 	libkafka "fennel/kafka"
+	"fennel/lib/aggregate"
 	"fennel/lib/cache"
 	"fennel/lib/clock"
 	"fennel/lib/ftypes"
@@ -304,6 +306,20 @@ func CreateFromArgs(args *TierArgs) (tier Tier, err error) {
 		}
 	}
 
+	// warm up aggregate defs cache
+	//
+	// NOTE: there is a potential race condition here, when a tier (which is a process level entity) tries to fetch
+	// all active aggregates but in the same time an aggregate was requested to be deactivated. This will lead to
+	// the aggregate cache in a different process - which is the first storage level for aggregates for a process - to
+	// reflect that aggregate as ACTIVE. Queries or Aggregate service might still continue to process and fetch results
+	// for them, but since deactivation is triggered by the user, we do not guarantee results returned for a deactivated
+	// aggregate and the users should not depend on them
+	//
+	// this is to avoid potentially bombarding our DB, which could have been scaled down significantly, not having
+	// enough memory allocated to open and maintain downstream connections
+	aggregateDefs := new(sync.Map)
+	populateAggregateCache(aggregateDefs, sqlConn, logger)
+
 	return Tier{
 		DB:               sqlConn.(db.Connection),
 		Redis:            redisClient.(redis.Client),
@@ -320,7 +336,7 @@ func CreateFromArgs(args *TierArgs) (tier Tier, err error) {
 		MilvusClient:     milvusClient,
 		ModelStore:       modelStore,
 		Args:             *args,
-		AggregateDefs:    new(sync.Map),
+		AggregateDefs:    aggregateDefs,
 	}, nil
 }
 
@@ -351,4 +367,27 @@ func CreateKafka(tierID, planeID ftypes.RealmID, server, username, password stri
 		producers[topic.Topic] = kafkaProducer.(libkafka.FProducer)
 	}
 	return producers, nil
+}
+
+// populateAggregateCache retrieves all active aggregates and sets them on the cache
+//
+// NOTE: this works on best effort basis i.e. does not return an error and may not update the cache at all
+func populateAggregateCache(cache *sync.Map, sqlConn resource.Resource, logger *zap.Logger) {
+	// we do not rely on the aggregate controller here to primarily maintain dependency hierarchy
+	// (to avoid cyclic dependencies). Tier is a process level package (and resource) and should ideally not
+	// depend on packages other than other utility or third-party libraries
+	var aggregates []aggregate.AggregateSer
+	err := sqlConn.(db.Connection).SelectContext(context.Background(), &aggregates, `SELECT * FROM aggregate_config WHERE active = TRUE`)
+	if err != nil {
+		logger.Warn("failed to populate the aggregate cache with active aggregates", zap.Error(err))
+		return
+	}
+	for i := range aggregates {
+		agg, err := aggregates[i].ToAggregate()
+		if err != nil {
+			logger.Warn("failed to convert aggregate def", zap.String("name", string(aggregates[i].Name)), zap.Error(err))
+			continue
+		}
+		cache.Store(agg.Name, agg)
+	}
 }
