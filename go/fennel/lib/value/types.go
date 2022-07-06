@@ -12,7 +12,7 @@ import (
 	"strings"
 )
 
-const float64EqualityThreshold = 1e-6
+const float64EqualityThreshold = 1e-9
 
 type Value interface {
 	isValue()
@@ -79,7 +79,7 @@ func (I Int) Marshal() ([]byte, error) {
 	return ret, nil
 }
 
-type Double float64
+type Double float32
 
 func (d Double) isValue() {}
 func (d Double) Equal(v Value) bool {
@@ -98,7 +98,7 @@ func (d Double) String() string {
 	// this helps keep the representation unique
 	// Integral floats are to be differentiated from integers
 	// so 2 is represented as 2.0
-	str := strconv.FormatFloat(float64(d), 'f', -1, 64)
+	str := strconv.FormatFloat(float64(d), 'f', -1, 32)
 	for i := range str {
 		if str[i] == '.' {
 			return str
@@ -128,7 +128,6 @@ func (d Double) Marshal() ([]byte, error) {
 		sign = NEG_FLOAT
 		x = -x
 	}
-	fmt.Println("x:", x)
 	ret, err := binary.Num2Bytes(x)
 	if err != nil {
 		return nil, err

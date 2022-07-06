@@ -270,7 +270,6 @@ func FuzzRandom(f *testing.F) {
 }
 
 func Test_Fuzz(t *testing.T) {
-	//b := []byte{'{', '"', 'a', 'b', 'c', '"', ':', '1', '.', '2', '3', '}'}
 	b := []byte("100000000000.0")
 	v, err := FromJSON(b)
 	assert.NoError(t, err)
@@ -278,7 +277,5 @@ func Test_Fuzz(t *testing.T) {
 	assert.NoError(t, err)
 	v2, err := Unmarshal(vBytes)
 	assert.NoError(t, err)
-	fmt.Println(v.String())
-	fmt.Println(v2.String())
 	assert.True(t, v.Equal(v2))
 }
