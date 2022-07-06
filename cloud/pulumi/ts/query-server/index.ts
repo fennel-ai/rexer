@@ -36,7 +36,8 @@ export type inputType = {
     maxReplicas?: number,
     useAmd64?: boolean,
     nodeLabels?: Record<string, string>,
-    resourceConf?: util.ResourceConf
+    resourceConf?: util.ResourceConf,
+    pprofHeapAllocThresholdBytes?: number,
 }
 
 export type outputType = {
@@ -176,6 +177,13 @@ export const setup = async (input: inputType) => {
     const linkerdPreStopDelaySecs = 1;
 
     const queryServerDepName = "query-server";
+    let envVars: pulumi.Input<k8s.types.input.core.v1.EnvVar>[] = serviceEnvs;
+    if (input.pprofHeapAllocThresholdBytes !== undefined) {
+        envVars.push({
+            name: "PPROF_HEAP_ALLOC_THRESHOLD_BYTES",
+            value: `${input.pprofHeapAllocThresholdBytes}`
+        })
+    }
 
     const appDep = image.imageName.apply(() => {
         return new k8s.apps.v1.Deployment("query-server-deployment", {
@@ -239,7 +247,7 @@ export const setup = async (input: inputType) => {
                                     protocol: "TCP",
                                 },
                             ],
-                            env: serviceEnvs,
+                            env: envVars,
                             resources: {
                                 requests: {
                                     "cpu": input.resourceConf?.cpu.request || DEFAULT_CPU_REQUEST,

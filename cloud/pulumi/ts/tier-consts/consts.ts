@@ -214,6 +214,23 @@ export const serviceEnvs = [
                 key: "endpoint"
             }
         }
+    },
+    {
+        name: "PROCESS_ID",
+        valueFrom: {
+            fieldRef: {
+                fieldPath: "metadata.name"
+            }
+        }
+    },
+    {
+        name: "PPROF_BUCKET",
+        valueFrom: {
+            configMapKeyRef: {
+                name: "pprof-conf",
+                key: "bucket",
+            }
+        }
     }
 ];
 
