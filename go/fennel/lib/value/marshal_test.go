@@ -120,20 +120,7 @@ func smallValue(n int, t string) ([][]byte, []Value) {
 	samples := make([]Value, n)
 	totalSize := 0
 	for i := 0; i < n; i++ {
-		//sample := NewList(String(RandStringRunes(5)), Int(rand.Int()))
-		x := "{\"YLIAA\":[2,false],\"[Q*BB\":2,\"[QkE\":[5,false]}"
-		x = `{"YLIAA":4,"[Q*B":4}`
-		x = "0"
-		x = `{"YLIAA":[2876,2854,2878,2868,2862,2861,2874,2851,2855,2877,2863,2853,2875,2869,2859,2879,2865,2864,2857,2860,2871,2850,2866,2870,2858,2872,2867,2856,2873,2852],"[QAA":[2850,2851,2854,2855,2852,2853]}`
-		//x = `{"YLIAA":[2876,2854,2878,2868,2862,2861,2874,2851,2855,2877,2863,2853,2875,2869,2859,2879,2865,2864,2857,2860,2871,2850,2866,2870,2858,2872,2867,2856,2873,2852]}`
-		sample, err := FromJSON([]byte(x))
-		if err != nil {
-			panic(err)
-		}
-		//sample := NewDict(map[string]Value{})
-		//sample.Set(RandStringRunes(5), NewList(Int(rand.Intn(10)), Bool(rand.Int()%2 == 0)))
-		//sample.Set(RandStringRunes(5), Int(rand.Intn(10)))
-		//sample.Set(RandStringRunes(5), NewList(Int(rand.Intn(10)), Bool(rand.Int()%2 == 0)))
+		sample := NewList(String(RandStringRunes(5)), Int(rand.Int()))
 		samples[i] = sample
 		switch t {
 		case "captain":
@@ -232,8 +219,6 @@ func benchMarkSerialization(b *testing.B, algo, sz string) {
 	b.ReportAllocs()
 
 	for n := 0; n < b.N; n++ {
-		//fmt.Println(samples[n].String())
-		//fmt.Println(arr[n])
 		var err error
 		switch algo {
 		case "captain":
@@ -245,9 +230,7 @@ func benchMarkSerialization(b *testing.B, algo, sz string) {
 		case "rexerjson":
 			v, err = Unmarshal(arr[n])
 		}
-		//fmt.Println(samples[n].String())
-		//fmt.Println(v.String())
-		assert.True(b, v.Equal(samples[n]))
+		//assert.True(b, v.Equal(samples[n]))
 		assert.NoError(b, err)
 	}
 }
@@ -278,7 +261,7 @@ func FuzzRandom(f *testing.F) {
 		if err != nil || string(jsonBytes) != string(b) {
 			t.Skip()
 		}
-		vBytes, err := v.Marshal()
+		vBytes, err := Marshal(v)
 		assert.NoError(t, err)
 		v2, err := Unmarshal(vBytes)
 		assert.NoError(t, err)
@@ -287,7 +270,7 @@ func FuzzRandom(f *testing.F) {
 }
 
 //func Test_Fuzz(t *testing.T) {
-//	b := []byte("100000000000.0")
+//	b := []byte("100000000000.0")cd
 //	v, err := FromJSON(b)
 //	assert.NoError(t, err)
 //	vBytes, err := v.Marshal()

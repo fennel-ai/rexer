@@ -155,7 +155,7 @@ func ParseInteger(data []byte) (int64, int) {
 		}
 		v = v<<7 | int64(data[i]&0x7f)
 	}
-	return v, i
+	return v, i + 1
 }
 
 func ParseFloat(data []byte) (float64, int) {
@@ -171,5 +171,5 @@ func ParseFloat(data []byte) (float64, int) {
 		v = v<<7 | uint64(data[i]&0x7f)
 	}
 
-	return math.Float64frombits(v), i
+	return math.Float64frombits(v), i + 1
 }

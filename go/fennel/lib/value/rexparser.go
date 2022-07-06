@@ -40,7 +40,7 @@ func EncodeTypeWithNum(t byte, n int64) ([]byte, error) {
 	return ret, nil
 }
 
-// ParseValue returns the value and the current offset.
+// ParseValue returns the value and the amount of bytes consumed by the value.
 func ParseValue(data []byte) (Value, int, error) {
 	if len(data) == 0 {
 		return nil, 0, EmptyValueError
@@ -48,14 +48,14 @@ func ParseValue(data []byte) (Value, int, error) {
 	switch data[0] & 0xE0 {
 	case STRING:
 		length, offset := binary.ParseInteger(data)
-		s := string(data[offset+1 : offset+1+int(length)])
+		s := string(data[offset : offset+int(length)])
 		return String(s), offset + int(length), nil
 	case LIST:
 		arrLength, offset := binary.ParseInteger(data)
-		return parseArray(data[offset+1:], int(arrLength))
+		return parseArray(data[offset:], offset, int(arrLength))
 	case DICT:
 		arrLength, offset := binary.ParseInteger(data)
-		return parseDict(data[offset+1:], int(arrLength))
+		return parseDict(data[offset:], offset, int(arrLength))
 	case POS_INT: // number
 		n, offset := binary.ParseInteger(data)
 		return Int(n), offset, nil
@@ -70,10 +70,10 @@ func ParseValue(data []byte) (Value, int, error) {
 		return Double(-n), offset, nil
 	default:
 		if data[0] == NULL {
-			return Nil, 0, nil
+			return Nil, 1, nil
 		}
 		v, err := parseBoolean(data[0])
-		return v, 0, err
+		return v, 1, err
 	}
 }
 
@@ -84,14 +84,13 @@ func parseBoolean(data byte) (Value, error) {
 	return Bool(false), nil
 }
 
-func parseArray(data []byte, sz int) (Value, int, error) {
+func parseArray(data []byte, metadataSz, sz int) (Value, int, error) {
 	if sz == 0 {
-		return NewList(), 0, nil
+		return NewList(), metadataSz, nil
 	}
 
 	var ret List
 	ret.Grow(sz)
-
 	offset := 0
 	for i := 0; i < sz; i++ {
 		v, o, e := ParseValue(data[offset:])
@@ -100,15 +99,14 @@ func parseArray(data []byte, sz int) (Value, int, error) {
 		}
 		ret.Append(v)
 		offset += o
-		offset++
 	}
-	return ret, offset, nil
+	return ret, offset + metadataSz, nil
 }
 
-func parseDict(data []byte, sz int) (Value, int, error) {
+func parseDict(data []byte, metadataSz, sz int) (Value, int, error) {
 	ret := make(map[string]Value, sz)
 	if sz == 0 {
-		return NewDict(ret), 0, nil
+		return NewDict(ret), metadataSz, nil
 	}
 
 	offset := 0
@@ -116,11 +114,12 @@ func parseDict(data []byte, sz int) (Value, int, error) {
 		// Step 1: find the next key
 		length, o := binary.ParseInteger(data[offset:])
 		offset += o
-		if len(data) < offset+1+int(length) {
+		if len(data) < offset+int(length) {
 			return nil, 0, MalformedDictError
 		}
-		key := string(data[offset+1 : offset+1+int(length)])
-		offset += int(length) + 1
+
+		key := string(data[offset : offset+int(length)])
+		offset += int(length)
 		// Step 2: find the associated value
 
 		if v, o, e := ParseValue(data[offset:]); e != nil {
@@ -129,7 +128,6 @@ func parseDict(data []byte, sz int) (Value, int, error) {
 			ret[key] = v
 			offset += o
 		}
-		offset++
 	}
-	return NewDict(ret), offset + 1, nil
+	return NewDict(ret), offset + metadataSz, nil
 }
