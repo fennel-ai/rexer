@@ -214,6 +214,23 @@ export const serviceEnvs = [
                 key: "endpoint"
             }
         }
+    },
+    {
+        name: "K8S_POD_NAME",
+        valueFrom: {
+            fieldRef: {
+                fieldPath: "metadata.name"
+            }
+        }
+    },
+    {
+        name: "PPROF_BUCKET",
+        valueFrom: {
+            configMapKeyRef: {
+                name: "pprof-conf",
+                key: "bucket",
+            }
+        }
     }
 ];
 

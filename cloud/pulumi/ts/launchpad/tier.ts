@@ -18,6 +18,7 @@ import * as offlineAggregateStorage from "../offline-aggregate-storage";
 import * as offlineAggregateOutput from "../offline-aggregate-output";
 import * as offlineAggregateKafkaConnector from "../offline-aggregate-kafka-connector";
 import * as offlineAggregateGlueJob from "../offline-aggregate-glue-job";
+import * as pprofBucket from "../pprof-bucket";
 import * as countersCleanup from "../counters-cleanup";
 import * as unleash from "../unleash";
 import * as util from "../lib/util";
@@ -48,6 +49,8 @@ export type PodConf = {
     nodeLabels?: Record<string, string>,
     // Build and use amd64 compatible image for the pod. Defaults to false.
     useAmd64?: boolean,
+    // pprof heap alloc threshold
+    pprofHeapAllocThresholdBytes?: number
 }
 
 export type HttpServerConf = {
@@ -241,6 +244,7 @@ const setupPlugins = async (stack: pulumi.automation.Stack) => {
         ...modelStore.plugins,
         ...sagemaker.plugins,
         ...offlineAggregateStorage.plugins,
+        ...pprofBucket.plugins,
         ...countersCleanup.plugins,
         ...queryserver.plugins,
         ...unleash.plugins,
@@ -366,6 +370,15 @@ const setupResources = async () => {
         protect: input.protect,
     });
 
+    // create a s3 bucket for pprof profiles
+    const pprofBucketOutput = await pprofBucket.setup({
+        region: input.region,
+        roleArn: input.roleArn,
+        tierId: input.tierId,
+        nodeInstanceRole: input.nodeInstanceRole,
+        protect: input.protect,
+    })
+
     // setup configs after resources are setup.
     const configsOutput = pulumi.all(
         [input.dbPassword, input.kafkaApiSecret, sagemakerOutput.roleArn, sagemakerOutput.subnetIds,
@@ -425,6 +438,9 @@ const setupResources = async () => {
                 milvusConfig: pulumi.output({
                     "endpoint": input.milvusEndpoint,
                 } as Record<string, string>),
+                pprofConfig: pulumi.output({
+                    "bucket": pprofBucketOutput.pprofStoreBucket,
+                } as Record<string, string>)
             })
         })
     // setup ingress.
@@ -482,6 +498,7 @@ const setupResources = async () => {
             resourceConf: input.httpServerConf?.podConf?.resourceConf,
             useAmd64: input.httpServerConf?.podConf?.useAmd64,
             nodeLabels: input.httpServerConf?.podConf?.nodeLabels,
+            pprofHeapAllocThresholdBytes: input.httpServerConf?.podConf?.pprofHeapAllocThresholdBytes,
         });
 
         // this sets up query server which is responsible for handling `/data/query` REST calls
@@ -500,6 +517,7 @@ const setupResources = async () => {
                 resourceConf: input.queryServerConf?.podConf?.resourceConf,
                 useAmd64: input.queryServerConf?.podConf?.useAmd64,
                 nodeLabels: input.queryServerConf?.podConf?.nodeLabels,
+                pprofHeapAllocThresholdBytes: input.queryServerConf?.podConf?.pprofHeapAllocThresholdBytes,
             });
         }
 
