@@ -13,34 +13,6 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
-type AggregateSer struct {
-	Name      ftypes.AggName   `db:"name"`
-	Source    ftypes.Source    `db:"source"`
-	QuerySer  []byte           `db:"query_ser"`
-	Timestamp ftypes.Timestamp `db:"timestamp"`
-	OptionSer []byte           `db:"options_ser"`
-	Active    bool             `db:"active"`
-	Id        ftypes.AggId     `db:"id"`
-}
-
-func (ser AggregateSer) ToAggregate() (aggregate.Aggregate, error) {
-	var agg aggregate.Aggregate
-	agg.Timestamp = ser.Timestamp
-	agg.Name = ser.Name
-	if err := ast.Unmarshal(ser.QuerySer, &agg.Query); err != nil {
-		return aggregate.Aggregate{}, err
-	}
-	var popt aggregate.AggOptions
-	if err := proto.Unmarshal(ser.OptionSer, &popt); err != nil {
-		return aggregate.Aggregate{}, err
-	}
-	agg.Options = aggregate.FromProtoOptions(&popt)
-	agg.Active = ser.Active
-	agg.Id = ser.Id
-	agg.Source = ser.Source
-	return agg, nil
-}
-
 func Store(ctx context.Context, tier tier.Tier, agg aggregate.Aggregate) error {
 	querySer, err := ast.Marshal(agg.Query)
 	if err != nil {
@@ -59,7 +31,7 @@ func Store(ctx context.Context, tier tier.Tier, agg aggregate.Aggregate) error {
 }
 
 func RetrieveActive(ctx context.Context, tier tier.Tier) ([]aggregate.Aggregate, error) {
-	var aggregates []AggregateSer
+	var aggregates []aggregate.AggregateSer
 	err := tier.DB.SelectContext(ctx, &aggregates, `SELECT * FROM aggregate_config WHERE active = TRUE`)
 	if err != nil {
 		return nil, err
@@ -75,7 +47,7 @@ func RetrieveActive(ctx context.Context, tier tier.Tier) ([]aggregate.Aggregate,
 }
 
 func RetrieveAll(ctx context.Context, tier tier.Tier) ([]aggregate.Aggregate, error) {
-	var aggregates []AggregateSer
+	var aggregates []aggregate.AggregateSer
 	err := tier.DB.SelectContext(ctx, &aggregates, `SELECT * FROM aggregate_config`)
 	if err != nil {
 		return nil, err
@@ -91,7 +63,7 @@ func RetrieveAll(ctx context.Context, tier tier.Tier) ([]aggregate.Aggregate, er
 }
 
 func Retrieve(ctx context.Context, tier tier.Tier, name ftypes.AggName) (aggregate.Aggregate, error) {
-	var agg AggregateSer
+	var agg aggregate.AggregateSer
 	err := tier.DB.GetContext(ctx, &agg, `SELECT * FROM aggregate_config WHERE name = ?`, name)
 	if err != nil && err == sql.ErrNoRows {
 		return aggregate.Aggregate{}, aggregate.ErrNotFound
