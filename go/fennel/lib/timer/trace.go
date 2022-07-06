@@ -3,9 +3,12 @@ package timer
 import (
 	"context"
 	"fmt"
+	"log"
+	"os"
 	"strings"
 	"time"
 
+	"github.com/go-logr/stdr"
 	"go.opentelemetry.io/contrib/propagators/aws/xray"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc"
@@ -90,6 +93,17 @@ func InitProvider(endpoint string) error {
 
 	otel.SetTracerProvider(tp)
 	otel.SetTextMapPropagator(xray.Propagator{})
+
+	// set logger so that we see some log entries of the number of spans which are dropped
+	// see - https://github.com/open-telemetry/opentelemetry-go/blob/main/sdk/trace/batch_span_processor.go#L268
+	//
+	// NOTE: This is temporary and should be eventually removed
+	stdrLogger := stdr.New(log.New(os.Stderr, "", log.LstdFlags | log.Lshortfile))
+	// set global verbosity of the level as 5 since Debug messages in otel collector logger are logged with V-level = 5
+	// see - https://github.com/open-telemetry/opentelemetry-go/blob/575e1bb27025c73fd76f1e6b9dc2727b85867fdc/internal/global/internal_logging.go#L62
+	stdr.SetVerbosity(5)
+	otel.SetLogger(stdrLogger)
+
 	// TODO(mohit): Consider returning the shutdown callback
 	return nil
 }
