@@ -411,6 +411,16 @@ const planeConfs: Record<number, PlaneConf> = {
             ],
         },
         milvusConf: {},
+        // Run nitrous on the plane.
+        nitrousConf: {
+            useAmd64: true,
+            replicas: 1,
+            storageCapacityGB: 100,
+            storageClass: "io1",
+            blockCacheMB: 512,
+            kvCacheMB: 1024,
+            binlog: {},
+        }
     },
     // Lokal's prod tier data plane
     5: {

@@ -4,6 +4,7 @@ import * as pulumi from "@pulumi/pulumi"
 import * as vpc from "../vpc";
 import * as eks from "../eks";
 import * as milvus from "../milvus";
+import * as nitrous from "../nitrous";
 import * as account from "../account";
 import * as aurora from "../aurora";
 import * as elasticache from "../elasticache";
@@ -15,9 +16,10 @@ import * as connectorSink from "../connectorsink";
 import * as glueSource from "../glue-script-source";
 import * as offlineAggregateSources from "../offline-aggregate-script-source";
 import * as unleashAurora from "../unleash-postgres";
+import * as util from "../lib/util";
 
 import * as process from "process";
-import {NodeGroupConf} from "../eks";
+import { NodeGroupConf } from "../eks";
 
 type VpcConfig = {
     cidr: string,
@@ -62,6 +64,19 @@ type EksConf = {
 }
 
 type MilvusConf = {}
+
+type NitrousConf = {
+    useAmd64?: boolean,
+    replicas?: number,
+    enforceReplicaIsolation?: boolean,
+    resourceConf?: util.ResourceConf,
+    nodeLabels?: Record<string, string>,
+    storageClass: string
+    storageCapacityGB: number
+    blockCacheMB: number,
+    kvCacheMB: number,
+    binlog: nitrous.binlogConfig,
+}
 
 type NewAccount = {
     // account name
@@ -110,6 +125,7 @@ export type PlaneConf = {
     prometheusConf: PrometheusConf,
     eksConf: EksConf,
     milvusConf?: MilvusConf,
+    nitrousConf?: NitrousConf,
 }
 
 export type PlaneOutput = {
@@ -151,6 +167,7 @@ const setupPlugins = async (stack: pulumi.automation.Stack) => {
         ...offlineAggregateSources.plugins,
         ...milvus.plugins,
         ...unleashAurora.plugins,
+        ...nitrous.plugins,
     }
     console.info("installing plugins...");
     for (var key in plugins) {
@@ -276,6 +293,39 @@ const setupResources = async () => {
         planeId: input.planeId,
         protect: input.protectResources,
     })
+
+    if (input.nitrousConf !== undefined) {
+        const nitrousOutput = await nitrous.setup({
+            planeId: input.planeId,
+            region: input.region,
+            roleArn: roleArn,
+            kubeconfig: eksOutput.kubeconfig,
+
+            replicas: input.nitrousConf.replicas,
+            useAmd64: input.nitrousConf.useAmd64,
+            enforceReplicaIsolation: input.nitrousConf.enforceReplicaIsolation,
+            resourceConf: input.nitrousConf.resourceConf,
+            nodeLabels: input.nitrousConf.nodeLabels,
+
+            storageCapacityGB: input.nitrousConf.storageCapacityGB,
+            storageClass: eksOutput.storageclasses[input.nitrousConf.storageClass],
+            blockCacheMB: input.nitrousConf.blockCacheMB,
+            kvCacheMB: input.nitrousConf.kvCacheMB,
+
+            kafka: {
+                apiKey: confluentOutput.apiKey,
+                apiSecret: confluentOutput.apiSecret,
+                bootstrapServer: confluentOutput.bootstrapServer,
+            },
+            binlog: {
+                partitions: input.nitrousConf.binlog.partitions,
+                replicationFactor: input.nitrousConf.binlog.replicationFactor,
+                retention_ms: input.nitrousConf.binlog.retention_ms,
+                partition_retention_bytes: input.nitrousConf.binlog.partition_retention_bytes,
+            },
+            protect: input.protectResources,
+        })
+    }
 
     const prometheusOutput = await prometheus.setup({
         useAMP: input.prometheusConf.useAMP,
