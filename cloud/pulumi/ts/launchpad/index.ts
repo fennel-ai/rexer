@@ -69,8 +69,6 @@ const tierConfs: Record<number, TierConf> = {
                         limit: "3G",
                     }
                 },
-                // start report at 200 MB
-                pprofHeapAllocThresholdBytes: 200 << 20,
             }
         },
     },
@@ -126,6 +124,8 @@ const tierConfs: Record<number, TierConf> = {
                         limit: "30G",
                     }
                 },
+                // set a threshold of 22G
+                pprofHeapAllocThresholdBytes: 22 << 30,
             }
         },
         sagemakerConf: {
