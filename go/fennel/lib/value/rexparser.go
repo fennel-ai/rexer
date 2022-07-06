@@ -24,7 +24,8 @@ const FALSE = 0x2
 
 // Errors
 var (
-	EmptyValueError = errors.New("serialized bytes are empty")
+	EmptyValueError    = errors.New("serialized bytes are empty")
+	MalformedDictError = errors.New("malformed dictionary serialization")
 )
 
 func EncodeTypeWithNum(t byte, n int64) ([]byte, error) {
@@ -68,7 +69,7 @@ func ParseValue(data []byte) (Value, int, error) {
 		n, offset := binary.ParseFloat(data)
 		return Double(-n), offset, nil
 	default:
-		if data[0] == byte(0) {
+		if data[0] == NULL {
 			return Nil, 0, nil
 		}
 		v, err := parseBoolean(data[0])
@@ -113,11 +114,15 @@ func parseDict(data []byte, sz int) (Value, int, error) {
 	offset := 0
 	for i := 0; i < sz; i++ {
 		// Step 1: find the next key
-		length, o := binary.ParseInteger(data)
+		length, o := binary.ParseInteger(data[offset:])
 		offset += o
+		if len(data) < offset+1+int(length) {
+			return nil, 0, MalformedDictError
+		}
 		key := string(data[offset+1 : offset+1+int(length)])
 		offset += int(length) + 1
 		// Step 2: find the associated value
+
 		if v, o, e := ParseValue(data[offset:]); e != nil {
 			return nil, 0, e
 		} else {

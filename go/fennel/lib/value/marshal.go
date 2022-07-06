@@ -57,5 +57,6 @@ func Unmarshal(data []byte) (Value, error) {
 
 func Marshal(v Value) ([]byte, error) {
 	ret, err := v.Marshal()
+	//fmt.Println("Value: ", v.String(), "Marshal: ", ret)
 	return append([]byte{Codec}, ret...), err
 }

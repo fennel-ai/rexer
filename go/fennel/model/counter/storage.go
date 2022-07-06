@@ -559,24 +559,6 @@ func readFromRedis(ctx context.Context, tier tier.Tier, rkeys []string) ([]value
 	return ret, nil
 }
 
-// This function should be deleted after migration.
-func checkRexJson(v []byte) bool {
-	rjsonBytes := map[byte]byte{
-		'{': '}',
-		'[': ']',
-		'"': '"',
-	}
-	if len(v) < 2 {
-		return false
-	}
-
-	if val, ok := rjsonBytes[v[0]]; ok && val == v[len(v)-1] {
-		return true
-	}
-
-	return false
-}
-
 func interpretRedisResponse(v interface{}) (value.Value, error) {
 	switch t := v.(type) {
 	case nil:
@@ -591,7 +573,7 @@ func interpretRedisResponse(v interface{}) (value.Value, error) {
 		var val value.Value
 		var err error
 		tBytes := []byte(t)
-		if checkRexJson(tBytes) {
+		if tBytes[0] == value.Codec {
 			val, err = value.Unmarshal(tBytes)
 			if err == nil {
 				return val, nil
@@ -611,7 +593,7 @@ func setInRedis(ctx context.Context, tier tier.Tier, rkeys []string, values []va
 	keySize, valSize := 0, 0
 	vals := make([]interface{}, len(rkeys))
 	for i := range rkeys {
-		s, err := values[i].Marshal()
+		s, err := value.Marshal(values[i])
 		if err != nil {
 			return err
 		}
