@@ -125,7 +125,8 @@ func main() {
 	// standard metrics.
 	common.StartPromMetricsServer(flags.MetricsPort)
 	// Start a pprof server to export the standard pprof endpoints.
-	common.StartPprofServer(flags.PprofPort)
+	profiler := common.CreateProfiler(flags.PprofArgs)
+	profiler.StartPprofServer()
 
 	router.Use(prometheusMiddleware)
 	// TODO: add-back timeout and rate-limiting middleware once system is more
@@ -163,7 +164,7 @@ func main() {
 
 	// start profile writer
 	go func() {
-		common.StartProfileExporter(flags.PprofArgs, tier.S3Client)
+		profiler.StartProfileExporter(tier.S3Client)
 	}()
 
 	// Signal that server is open for business.

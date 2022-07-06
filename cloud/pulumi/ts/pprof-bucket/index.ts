@@ -32,8 +32,7 @@ function setupPprofStoreAccess(provider: aws.Provider, input: inputType, bucketN
               "Effect": "Allow",
               "Action": [
                 "s3:PutObject",
-                "s3:GetObject",
-                "s3:DeleteObject"
+                "s3:GetObject"
               ],
               "Resource": "arn:aws:s3:::${bucketName}/*"
             }

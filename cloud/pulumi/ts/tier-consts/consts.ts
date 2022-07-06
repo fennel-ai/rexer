@@ -216,7 +216,7 @@ export const serviceEnvs = [
         }
     },
     {
-        name: "K8S_POD_NAME",
+        name: "PROCESS_ID",
         valueFrom: {
             fieldRef: {
                 fieldPath: "metadata.name"
