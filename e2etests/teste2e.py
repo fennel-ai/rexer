@@ -514,9 +514,9 @@ class TestEndToEnd(unittest.TestCase):
         q = cond(var('x') < 3, 'left', 'right')
         q_name = 'query_name'
         c.store_query(q_name, q)
-        ret = c.run_query(q_name, {'x': 1})
+        ret = c.run_stored_query(q_name, {'x': 1})
         self.assertEqual('left', ret)
-        ret = c.run_query(q_name, {'x': 5})
+        ret = c.run_stored_query(q_name, {'x': 5})
         self.assertEqual('right', ret)
 
     @tiered
