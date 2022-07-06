@@ -80,7 +80,7 @@ export const setup = async (input: inputType): Promise<outputType> => {
             },
             "etcd": {
                 "image": {
-                    "tag": "3.5.1",
+                    "tag": "3.5.4-r1",
                     "pullPolicy": "IfNotPresent"
                 },
                 // Set node selector (affinity) explicitly for etcd as this is installed as a dependency to milvus
