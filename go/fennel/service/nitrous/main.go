@@ -1,11 +1,11 @@
 package main
 
 import (
+	"fennel/lib/tracer"
 	"fmt"
 	"log"
 	"net"
 
-	"fennel/lib/timer"
 	"fennel/nitrous"
 	"fennel/plane"
 	"fennel/service/common"
@@ -20,7 +20,7 @@ var flags struct {
 	// Observability.
 	common.PprofArgs
 	common.PrometheusArgs
-	timer.TracerArgs
+	tracer.TracerArgs
 }
 
 func main() {

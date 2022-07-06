@@ -39,8 +39,7 @@ func (k RemoteConsumer) Type() resource.Type {
 }
 
 func (k RemoteConsumer) Read(ctx context.Context, timeout time.Duration) ([]byte, error) {
-	ctx, t := timer.Start(ctx, k.ID(), "kafka.read")
-	defer t.Stop()
+	defer timer.Start("kafka.read").Stop()
 	errCh := make(chan error)
 	msgCh := make(chan []byte)
 	go func() {
@@ -62,8 +61,7 @@ func (k RemoteConsumer) Read(ctx context.Context, timeout time.Duration) ([]byte
 }
 
 func (k RemoteConsumer) ReadProto(ctx context.Context, pmsg proto.Message, timeout time.Duration) error {
-	ctx, t := timer.Start(ctx, k.ID(), "kafka.read_proto")
-	defer t.Stop()
+	defer timer.Start("kafka.read_proto").Stop()
 	ch := make(chan error)
 	go func() {
 		kmsg, err := k.ReadMessage(timeout)

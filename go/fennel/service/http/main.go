@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	_ "expvar"
+	"fennel/lib/tracer"
 	"fmt"
 	"log"
 	"math/rand"
@@ -14,7 +15,6 @@ import (
 	"time"
 
 	httplib "fennel/lib/http"
-	"fennel/lib/timer"
 	"fennel/lib/utils/memory"
 	_ "fennel/opdefs"
 	"fennel/service/common"
@@ -110,7 +110,7 @@ func main() {
 		common.PrometheusArgs
 		common.PprofArgs
 		inspector.InspectorArgs
-		timer.TracerArgs
+		tracer.TracerArgs
 	}
 	arg.MustParse(&flags)
 	log.SetFlags(log.LstdFlags | log.Lshortfile)
@@ -133,7 +133,7 @@ func main() {
 	// consistently functioning end-to-end.
 	// router.Use(httplib.TimeoutMiddleware(2 * time.Second))
 	// router.Use(httplib.RateLimitingMiddleware(1000))
-	router.Use(httplib.Tracer(tier.Logger, time.Millisecond*500, 0))
+	router.Use(httplib.Tracer(tier.Logger, time.Second*2, 0))
 
 	controller := server{tier}
 	controller.setHandlers(router)

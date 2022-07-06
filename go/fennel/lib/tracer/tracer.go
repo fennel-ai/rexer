@@ -1,53 +1,55 @@
-package timer
+package tracer
 
 import (
 	"context"
 	"fmt"
 	"log"
 	"os"
-	"strings"
-	"time"
 
 	"github.com/go-logr/stdr"
 	"go.opentelemetry.io/contrib/propagators/aws/xray"
 	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 	oteltrace "go.opentelemetry.io/otel/trace"
-	"go.uber.org/zap"
 )
 
 type TracerArgs struct {
 	OtlpEndpoint string `arg:"--otlp-endpoint,env:OTLP_ENDPOINT" default:""`
 }
 
-type traceKey struct{}
-
-type trace struct {
-	start  time.Time
-	xrayId string
+type Span struct {
+	c context.Context
+	span oteltrace.Span
 }
 
-func WithTracing(ctx context.Context, xrayId string) context.Context {
-	return context.WithValue(ctx, traceKey{}, &trace{
-		start: time.Now(),
-		xrayId: xrayId,
-	})
+func (s Span) Context() context.Context {
+	return s.c
 }
 
-func LogTracingInfo(ctx context.Context, log *zap.Logger) error {
-	ctxval := ctx.Value(traceKey{})
-	if ctxval == nil {
-		return nil
+func (s Span) GetXrayTraceID() string {
+	xrayTraceID := s.span.SpanContext().TraceID().String()
+	result := fmt.Sprintf("1-%s-%s", xrayTraceID[0:8], xrayTraceID[8:])
+	return result
+}
+
+func (s Span) End() {
+	s.span.End()
+}
+
+// TODO(mohit): Good candidate for generics
+func (s Span) SetIntAttribute(attrName string, val int) {
+	s.span.SetAttributes(attribute.Int(attrName, val))
+}
+
+func StartSpan(ctx context.Context, name string) Span {
+	tracer := otel.Tracer("fennel")
+	cCtx, span := tracer.Start(ctx, name)
+	return Span{
+		c: cCtx,
+		span: span,
 	}
-	trace, ok := ctxval.(*trace)
-	if !ok {
-		return fmt.Errorf("expected trace but got: %v", ctxval)
-	}
-	sb := strings.Builder{}
-	sb.WriteString(fmt.Sprintf("x-ray traceid: %s\n", trace.xrayId))
-	log.Info(sb.String())
-	return nil
 }
 
 func InitProvider(endpoint string) error {
@@ -79,7 +81,7 @@ func InitProvider(endpoint string) error {
 	tp := sdktrace.NewTracerProvider(
 		// Ideally we should be sampling the traces (say at 1%) of the traces at the root node.
 		// e.g. sdktrace.ParentBased(/*root*/ sdktrace.TraceIDRatioBased(0.01))
-		sdktrace.WithSampler(sdktrace.AlwaysSample()),
+		sdktrace.WithSampler(sdktrace.ParentBased(sdktrace.AlwaysSample())),
 		// By default, trace exporter exports 512 spans while maintaining a local queue of size `2048`
 		//
 		// Increase the queue size so that traces are dropped locally.
@@ -106,10 +108,4 @@ func InitProvider(endpoint string) error {
 
 	// TODO(mohit): Consider returning the shutdown callback
 	return nil
-}
-
-func GetXrayTraceID(span oteltrace.Span) string {
-	xrayTraceID := span.SpanContext().TraceID().String()
-	result := fmt.Sprintf("1-%s-%s", xrayTraceID[0:8], xrayTraceID[8:])
-	return result
 }

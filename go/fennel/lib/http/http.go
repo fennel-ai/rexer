@@ -5,11 +5,10 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/gorilla/mux"
-	"go.opentelemetry.io/otel"
-	"go.uber.org/zap"
+	"fennel/lib/tracer"
 
-	"fennel/lib/timer"
+	"github.com/gorilla/mux"
+	"go.uber.org/zap"
 )
 
 const (
@@ -48,14 +47,13 @@ func Tracer(log *zap.Logger, slowThreshold time.Duration, sampleRate float64) mu
 			route := mux.CurrentRoute(r)
 			path, _ := route.GetPathTemplate()
 			start := time.Now()
-			ctx, span := otel.Tracer("fennel").Start(r.Context(), path)
-			traceId := timer.GetXrayTraceID(span)
+			span := tracer.StartSpan(r.Context(), path)
+			traceId := span.GetXrayTraceID()
 			rw.Header().Add("rexer-traceid", traceId)
-			ctx = timer.WithTracing(ctx, traceId)
-			h.ServeHTTP(rw, r.WithContext(ctx))
+			h.ServeHTTP(rw, r.WithContext(span.Context()))
 			span.End()
 			if time.Since(start) > slowThreshold || rand.Float64() < sampleRate {
-				timer.LogTracingInfo(ctx, log)
+				log.Info("trace", zap.String("xray-id", traceId))
 			}
 		})
 	}

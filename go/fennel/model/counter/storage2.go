@@ -67,8 +67,7 @@ func (s splitStore) logStats(groups map[splitGroup][]string, mode string) {
 func (s splitStore) GetMulti(
 	ctx context.Context, tier tier.Tier, aggIDs []ftypes.AggId, buckets [][]counter.Bucket, defaults []value.Value,
 ) ([][]value.Value, error) {
-	ctx, t := timer.Start(ctx, tier.ID, "splitstore.get_multi")
-	defer t.Stop()
+	defer timer.Start("splitstore.get_multi").Stop()
 	vals, err := s.getFromRedis(ctx, &tier, aggIDs, buckets)
 	if err != nil {
 		return nil, err
@@ -97,8 +96,7 @@ func (s splitStore) GetMulti(
 func (s splitStore) SetMulti(
 	ctx context.Context, tier tier.Tier, aggIDs []ftypes.AggId, buckets [][]counter.Bucket, values [][]value.Value,
 ) error {
-	ctx, t := timer.Start(ctx, tier.ID, "splitstore.set_multi")
-	defer t.Stop()
+	defer timer.Start("splitstore.set_multi").Stop()
 	vals, err := s.getFromRedis(ctx, &tier, aggIDs, buckets)
 	if err != nil {
 		return err

@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	t "runtime/trace"
 	"time"
 
 	"fennel/lib/timer"
@@ -12,7 +13,7 @@ import (
 )
 
 func (c Client) Set(ctx context.Context, k string, v interface{}, ttl time.Duration) error {
-	ctx, t := timer.Start(ctx, c.ID(), "redis.set")
+	defer timer.Start("redis.set").Stop()
 	defer t.Stop()
 
 	k = c.tieredKey(k)
@@ -20,7 +21,7 @@ func (c Client) Set(ctx context.Context, k string, v interface{}, ttl time.Durat
 }
 
 func (c Client) SetNX(ctx context.Context, key string, v interface{}, ttl time.Duration) (bool, error) {
-	ctx, t := timer.Start(ctx, c.ID(), "redis.setnx")
+	defer timer.Start("redis.setnx").Stop()
 	defer t.Stop()
 
 	key = c.tieredKey(key)
@@ -28,8 +29,7 @@ func (c Client) SetNX(ctx context.Context, key string, v interface{}, ttl time.D
 }
 
 func (c Client) Del(ctx context.Context, k ...string) error {
-	ctx, t := timer.Start(ctx, c.ID(), "redis.del")
-	defer t.Stop()
+	defer timer.Start("redis.del").Stop()
 
 	pipe := c.client.Pipeline()
 	for _, key := range k {
@@ -42,8 +42,7 @@ func (c Client) Del(ctx context.Context, k ...string) error {
 }
 
 func (c Client) Get(ctx context.Context, k string) (interface{}, error) {
-	ctx, t := timer.Start(ctx, c.ID(), "redis.get")
-	defer t.Stop()
+	defer timer.Start("redis.get").Stop()
 
 	k = c.tieredKey(k)
 	return c.client.Get(ctx, k).Result()
@@ -52,8 +51,7 @@ func (c Client) Get(ctx context.Context, k string) (interface{}, error) {
 // MGet takes a list of strings and returns a list of interfaces along with an error
 // returned is either the correct value of key or redis.Nil
 func (c Client) MGet(ctx context.Context, ks ...string) ([]interface{}, error) {
-	ctx, t := timer.Start(ctx, c.ID(), "redis.mget")
-	defer t.Stop()
+	defer timer.Start("redis.mget").Stop()
 
 	// this check is to handle a bug, likely related to https://github.com/redis/node-redis/issues/125
 	if len(ks) == 0 {
@@ -86,8 +84,7 @@ func (c Client) MGet(ctx context.Context, ks ...string) ([]interface{}, error) {
 
 // Same as MGet without transforming the keys
 func (c Client) MRawGet(ctx context.Context, ks ...string) ([]interface{}, error) {
-	ctx, t := timer.Start(ctx, c.ID(), "redis.mget")
-	defer t.Stop()
+	defer timer.Start("redis.mrawget").Stop()
 
 	// this check is to handle a bug, likely related to https://github.com/redis/node-redis/issues/125
 	if len(ks) == 0 {
@@ -119,8 +116,7 @@ func (c Client) MRawGet(ctx context.Context, ks ...string) ([]interface{}, error
 }
 
 func (c Client) MSet(ctx context.Context, keys []string, values []interface{}, ttls []time.Duration) error {
-	ctx, t := timer.Start(ctx, c.ID(), "redis.mset")
-	defer t.Stop()
+	defer timer.Start("redis.mset").Stop()
 
 	// nothing to write if there are no keys.
 	if len(keys) == 0 {
@@ -142,8 +138,7 @@ func (c Client) MSet(ctx context.Context, keys []string, values []interface{}, t
 func (c Client) SetNXPipelined(
 	ctx context.Context, keys []string, values []interface{}, ttls []time.Duration,
 ) (ok []bool, err error) {
-	ctx, t := timer.Start(ctx, c.ID(), "redis.setnx_pipelined")
-	defer t.Stop()
+	defer timer.Start("redis.setnx_pipelined").Stop()
 
 	// nothing to write if there are no keys.
 	if len(keys) == 0 {
@@ -173,8 +168,7 @@ func (c Client) SetNXPipelined(
 }
 
 func (c Client) HGetAllPipelined(ctx context.Context, keys ...string) (hmaps []map[string]string, err error) {
-	ctx, t := timer.Start(ctx, c.ID(), "redis.hgetall_pipelined")
-	defer t.Stop()
+	defer timer.Start("redis.hgetall_pipelined").Stop()
 
 	// nothing to get if there are no keys
 	if len(keys) == 0 {
@@ -207,8 +201,7 @@ func (c Client) HGetAllPipelined(ctx context.Context, keys ...string) (hmaps []m
 func (c Client) HSetPipelined(
 	ctx context.Context, keys []string, values []map[string]interface{}, ttls []time.Duration,
 ) (err error) {
-	ctx, t := timer.Start(ctx, c.ID(), "redis.hset_pipelined")
-	defer t.Stop()
+	defer timer.Start("redis.hset_pipelined").Stop()
 
 	// nothing to set if there are no keys
 	if len(keys) == 0 {

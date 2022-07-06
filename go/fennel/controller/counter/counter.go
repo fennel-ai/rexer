@@ -78,8 +78,7 @@ func BatchValue(
 func Update(
 	ctx context.Context, tier tier.Tier, aggId ftypes.AggId, table value.List, histogram counter.Histogram,
 ) error {
-	ctx, tmr := timer.Start(ctx, tier.ID, "counter.update")
-	defer tmr.Stop()
+	defer timer.Start("counter.update").Stop()
 	buckets, values, err := counter.Bucketize(histogram, table)
 	if err != nil {
 		return err

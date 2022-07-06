@@ -52,8 +52,7 @@ func (k RemoteProducer) Type() resource.Type {
 }
 
 func (k RemoteProducer) LogProto(ctx context.Context, protoMsg proto.Message, partitionKey []byte) error {
-	ctx, t := timer.Start(ctx, k.ID(), "kafka.log_proto")
-	defer t.Stop()
+	defer timer.Start("kafka.log_proto").Stop()
 	raw, err := proto.Marshal(protoMsg)
 	if err != nil {
 		return fmt.Errorf("failed to serialize protoMsg to proto: %v", err)

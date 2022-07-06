@@ -28,8 +28,7 @@ type actionSer struct {
 // failure. All actions are inserted at once and so either the whole insertion works or none
 // of it does
 func InsertBatch(ctx context.Context, tier tier.Tier, actions []action.Action) error {
-	ctx, t := timer.Start(ctx, tier.ID, "model.action.insert_batch")
-	defer t.Stop()
+	defer timer.Start("model.action.insert_batch").Stop()
 	actionSers := make([]actionSer, len(actions))
 	for i, a := range actions {
 		if err := a.Validate(); err != nil {
@@ -62,8 +61,7 @@ func InsertBatch(ctx context.Context, tier tier.Tier, actions []action.Action) e
 // For actionValue range, both min/max are inclusive
 // TODO: add limit support?
 func Fetch(ctx context.Context, tier tier.Tier, request action.ActionFetchRequest) ([]action.Action, error) {
-	ctx, t := timer.Start(ctx, tier.ID, "model.action.fetch")
-	defer t.Stop()
+	defer timer.Start("model.action.fetch").Stop()
 	query := "SELECT * FROM actionlog"
 	clauses := make([]string, 0)
 	if len(request.ActorType) != 0 {

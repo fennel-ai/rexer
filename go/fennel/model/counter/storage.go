@@ -243,8 +243,7 @@ var aggIDArena = arena.New[ftypes.AggId](1<<15, 1<<22)
 func (t twoLevelRedisStore) GetMulti(
 	ctx context.Context, tier tier.Tier, aggIds []ftypes.AggId, buckets [][]counter.Bucket, defaults []value.Value,
 ) ([][]value.Value, error) {
-	ctx, tmr := timer.Start(ctx, tier.ID, "twolevelredis.get_multi")
-	defer tmr.Stop()
+	defer timer.Start("twolevelredis.get_multi").Stop()
 	if len(buckets) == 0 {
 		return [][]value.Value{}, nil
 	}
@@ -381,8 +380,7 @@ func (t twoLevelRedisStore) set(ctx context.Context, tier tier.Tier, aggIds []ft
 
 func (t twoLevelRedisStore) SetMulti(
 	ctx context.Context, tier tier.Tier, aggIds []ftypes.AggId, buckets [][]counter.Bucket, values [][]value.Value) error {
-	ctx, tmr := timer.Start(ctx, tier.ID, "twolevelredis.set_multi")
-	defer tmr.Stop()
+	defer timer.Start("twolevelredis.set_multi").Stop()
 	var ids_ []ftypes.AggId
 	var buckets_ []counter.Bucket
 	var values_ []value.Value
@@ -554,8 +552,7 @@ func readFromRedis(ctx context.Context, tier tier.Tier, rkeys []string) ([]value
 		return nil, err
 	}
 	redisKeyStats.WithLabelValues("redis_keys_interpreted").Observe(float64(len(res)))
-	ctx, tmr := timer.Start(ctx, tier.ID, "redis.interpret_response")
-	defer tmr.Stop()
+	defer timer.Start("redis.interpret_response").Stop()
 
 	ret, err := parallel.Process(ctx, res, interpretRedisResponse)
 	if err != nil {

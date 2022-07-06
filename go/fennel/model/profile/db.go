@@ -60,8 +60,7 @@ func toProfileItemSer(profile profile.ProfileItem) *profileItemSer {
 }
 
 func (D dbProvider) setBatch(ctx context.Context, tier tier.Tier, profiles []profile.ProfileItem) error {
-	ctx, t := timer.Start(ctx, tier.ID, "model.profile.db.setBatch")
-	defer t.Stop()
+	defer timer.Start("model.profile.db.setBatch").Stop()
 	if len(profiles) == 0 {
 		return nil
 	}
@@ -137,14 +136,12 @@ func (D dbProvider) setBatch(ctx context.Context, tier tier.Tier, profiles []pro
 }
 
 func (D dbProvider) set(ctx context.Context, tier tier.Tier, profileItem profile.ProfileItem) error {
-	ctx, t := timer.Start(ctx, tier.ID, "model.profile.db.set")
-	defer t.Stop()
+	defer timer.Start("model.profile.db.set").Stop()
 	return D.setBatch(ctx, tier, []profile.ProfileItem{profileItem})
 }
 
 func (D dbProvider) get(ctx context.Context, tier tier.Tier, profileKey profile.ProfileItemKey) (profile.ProfileItem, error) {
-	ctx, t := timer.Start(ctx, tier.ID, "model.profile.db.get")
-	defer t.Stop()
+	defer timer.Start("model.profile.db.get").Stop()
 	profiles, err := D.getBatch(ctx, tier, []profile.ProfileItemKey{profileKey})
 	if err != nil || len(profiles) == 0 {
 		p := profile.NewProfileItem(profileKey.OType, profileKey.Oid, profileKey.Key, value.Nil, 0)
@@ -157,8 +154,7 @@ func (D dbProvider) get(ctx context.Context, tier tier.Tier, profileKey profile.
 
 // getBatched returns the version for (otype, oid, key)
 func (D dbProvider) getBatch(ctx context.Context, tier tier.Tier, profileKeys []profile.ProfileItemKey) ([]profile.ProfileItem, error) {
-	ctx, t := timer.Start(ctx, tier.ID, "model.profile.db.getBatch")
-	defer t.Stop()
+	defer timer.Start("model.profile.db.getBatch").Stop()
 
 	if len(profileKeys) == 0 {
 		return []profile.ProfileItem{}, nil

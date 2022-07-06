@@ -46,8 +46,7 @@ func (t thirdStore) GetBucketStore() BucketStore {
 func (t thirdStore) GetMulti(
 	ctx context.Context, tier tier.Tier, aggIDs []ftypes.AggId, buckets [][]counter.Bucket, defaults []value.Value,
 ) ([][]value.Value, error) {
-	ctx, tmr := timer.Start(ctx, tier.ID, "thirdstore.get_multi")
-	defer tmr.Stop()
+	defer timer.Start("thirdstore.get_multi").Stop()
 	slots, ptrs, hashes := t.toSlots(aggIDs, buckets)
 	view, err := newThirdStoreView(slots, hashes, t)
 	if err != nil {
@@ -77,8 +76,7 @@ func (t thirdStore) GetMulti(
 func (t thirdStore) SetMulti(
 	ctx context.Context, tier tier.Tier, aggIDs []ftypes.AggId, buckets [][]counter.Bucket, values [][]value.Value,
 ) error {
-	ctx, tmr := timer.Start(ctx, tier.ID, "thirdstore.set_multi")
-	defer tmr.Stop()
+	defer timer.Start("thirdstore.set_multi").Stop()
 	slots, ptrs, hashes := t.toSlots(aggIDs, buckets)
 	view, err := newThirdStoreView(slots, hashes, t)
 	if err != nil {

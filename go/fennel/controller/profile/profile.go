@@ -15,14 +15,12 @@ import (
 )
 
 func Get(ctx context.Context, tier tier.Tier, pk profilelib.ProfileItemKey) (profilelib.ProfileItem, error) {
-	ctx, t := timer.Start(ctx, tier.ID, "controller.profile.get")
-	defer t.Stop()
+	defer timer.Start("controller.profile.get").Stop()
 	return profile.Get(ctx, tier, pk)
 }
 
 func Set(ctx context.Context, tier tier.Tier, request profilelib.ProfileItem) error {
-	ctx, t := timer.Start(ctx, tier.ID, "controller.profile.set")
-	defer t.Stop()
+	defer timer.Start("controller.profile.set").Stop()
 	if err := request.Validate(); err != nil {
 		return err
 	}
@@ -43,8 +41,7 @@ func Set(ctx context.Context, tier tier.Tier, request profilelib.ProfileItem) er
 }
 
 func SetMulti(ctx context.Context, tier tier.Tier, request []profilelib.ProfileItem) error {
-	ctx, t := timer.Start(ctx, tier.ID, "controller.profile.setmulti")
-	defer t.Stop()
+	defer timer.Start("controller.profile.setmulti").Stop()
 	profiles := make([]*profilelib.ProtoProfileItem, 0)
 	for _, profile := range request {
 		if err := profile.Validate(); err != nil {

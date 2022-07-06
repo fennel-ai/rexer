@@ -3,6 +3,7 @@ package tier
 import (
 	"context"
 	"crypto/tls"
+	"fennel/lib/tracer"
 	"fmt"
 	"log"
 	"strings"
@@ -16,7 +17,6 @@ import (
 	"fennel/lib/cache"
 	"fennel/lib/clock"
 	"fennel/lib/ftypes"
-	"fennel/lib/timer"
 	unleashlib "fennel/lib/unleash"
 	"fennel/milvus"
 	"fennel/modelstore"
@@ -35,9 +35,9 @@ type TierArgs struct {
 	s3.S3Args                 `json:"s3_._s3_args"`
 	sagemaker.SagemakerArgs   `json:"sagemaker_._sagemaker_args"`
 	modelstore.ModelStoreArgs `json:"modelstore_._model_store_args"`
-	glue.GlueArgs             `json:"glue_._glue_args"`
-	timer.TracerArgs          `json:"tracer_._tracer_args"`
-	milvus.MilvusArgs         `json:"milvus_._milvus_args"`
+	glue.GlueArgs     `json:"glue_._glue_args"`
+	tracer.TracerArgs `json:"tracer_._tracer_args"`
+	milvus.MilvusArgs `json:"milvus_._milvus_args"`
 
 	Region           string         `arg:"--aws-region,env:AWS_REGION" json:"aws_region,omitempty"`
 	KafkaServer      string         `arg:"--kafka-server,env:KAFKA_SERVER_ADDRESS" json:"kafka_server,omitempty"`
@@ -300,7 +300,7 @@ func CreateFromArgs(args *TierArgs) (tier Tier, err error) {
 
 	// Setup tracer provider (which exports remotely) if an endpoint is defined. Otherwise a default tracer is used.
 	if len(args.OtlpEndpoint) > 0 {
-		err = timer.InitProvider(args.OtlpEndpoint)
+		err = tracer.InitProvider(args.OtlpEndpoint)
 		if err != nil {
 			panic(err)
 		}
