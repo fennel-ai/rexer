@@ -66,7 +66,6 @@ type EksConf = {
 type MilvusConf = {}
 
 type NitrousConf = {
-    useAmd64?: boolean,
     replicas?: number,
     enforceReplicaIsolation?: boolean,
     resourceConf?: util.ResourceConf,
@@ -302,7 +301,12 @@ const setupResources = async () => {
             kubeconfig: eksOutput.kubeconfig,
 
             replicas: input.nitrousConf.replicas,
-            useAmd64: input.nitrousConf.useAmd64,
+            // We only use amd64 for nitrous instead of arm64 because of a known
+            // issue in badger/ristretto that causes error in initializing the
+            // badger db.
+            // Issue: https://discuss.dgraph.io/t/error-mremap-size-mismatch-on-arm64/15333
+            // Fix (merged but not released): https://github.com/dgraph-io/ristretto/pull/281
+            useAmd64: true,
             enforceReplicaIsolation: input.nitrousConf.enforceReplicaIsolation,
             resourceConf: input.nitrousConf.resourceConf,
             nodeLabels: input.nitrousConf.nodeLabels,
