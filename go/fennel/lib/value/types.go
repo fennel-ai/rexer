@@ -303,22 +303,6 @@ func (l List) MarshalJSON() ([]byte, error) {
 	return []byte(l.String()), nil
 }
 
-func encodeMetadata(numElements, numBytes uint64) ([]byte, error) {
-	metadataBuffer := make([]byte, 10)
-	cur := 0
-	n, err := binary.PutUvarint(metadataBuffer[cur:], numElements)
-	if err != nil {
-		return nil, err
-	}
-	cur += n
-	n, err = binary.PutUvarint(metadataBuffer[cur:], numBytes+2)
-	if err != nil {
-		return nil, err
-	}
-	cur += n
-	return metadataBuffer[:cur], nil
-}
-
 func (l List) Marshal() ([]byte, error) {
 	var rest []byte
 	for _, v := range l.values {
