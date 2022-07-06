@@ -37,7 +37,7 @@ export type inputType = {
     useAmd64?: boolean,
     nodeLabels?: Record<string, string>,
     resourceConf?: util.ResourceConf,
-    pprofHeapAllocThresholdBytes?: number,
+    pprofHeapAllocThresholdMegaBytes?: number,
 }
 
 export type outputType = {
@@ -173,10 +173,10 @@ export const setup = async (input: inputType) => {
 
     const httpServerDepName = "http-server";
     let envVars: pulumi.Input<k8s.types.input.core.v1.EnvVar>[] = serviceEnvs;
-    if (input.pprofHeapAllocThresholdBytes !== undefined) {
+    if (input.pprofHeapAllocThresholdMegaBytes !== undefined) {
         envVars.push({
-            name: "PPROF_HEAP_ALLOC_THRESHOLD_BYTES",
-            value: `${input.pprofHeapAllocThresholdBytes}`
+            name: "PPROF_HEAP_ALLOC_THRESHOLD_MEGABYTES",
+            value: `${input.pprofHeapAllocThresholdMegaBytes}`
         })
     }
 
