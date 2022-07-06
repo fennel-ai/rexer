@@ -11,7 +11,7 @@ require (
 	github.com/confluentinc/confluent-kafka-go v1.8.2
 	github.com/detailyang/fastrand-go v0.0.0-20191106153122-53093851e761
 	github.com/dgraph-io/badger/v3 v3.2103.2
-	github.com/go-logr/zapr v1.2.3
+	github.com/go-logr/stdr v1.2.2
 	github.com/go-redis/redis/v8 v8.11.5
 	github.com/go-sql-driver/mysql v1.5.0
 	github.com/gorilla/mux v1.8.0
@@ -45,7 +45,6 @@ require (
 	github.com/docker/go-units v0.4.0 // indirect
 	github.com/elastic/gosigar v0.12.0 // indirect
 	github.com/go-logr/logr v1.2.3 // indirect
-	github.com/go-logr/stdr v1.2.2 // indirect
 	github.com/godbus/dbus/v5 v5.0.3 // indirect
 	github.com/gogo/protobuf v1.3.2 // indirect
 	github.com/golang/groupcache v0.0.0-20200121045136-8c9f03a8e57e // indirect
