@@ -46,6 +46,6 @@ func ProtoUnmarshal(data []byte, v *Value) error {
 }
 
 func Unmarshal(data []byte) (Value, error) {
-	v, _, err := ParseValue(data, 0)
+	v, _, err := ParseValue(data)
 	return v, err
 }

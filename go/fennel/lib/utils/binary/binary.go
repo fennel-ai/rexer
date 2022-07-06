@@ -86,32 +86,27 @@ func reverseArray(arr []byte) []byte {
 	}
 	return arr
 }
-func setMSBWithSign(data []byte, sign byte) {
+func setMSB(data []byte) {
+	if len(data) > 1 {
+		data[0] = data[0] | 0x10
+	}
 	for i := 0; i < len(data); i++ {
-		if i == 0 {
-			data[i] = data[i] | sign
-		} else {
+		if i > 0 && i != len(data)-1 {
 			data[i] = data[i] | 0x80
 		}
 	}
 }
 
-// The first 2 bits are for type, the 3rd bit for sign.
+// The first 3 bits are for type.
 // The remaining bits are encoded using 7 bits per byte.
 // The first bit is always 1 to distinguish from the ASCII characters.
-func Num2Bytes[T int64 | float64](num T) ([]byte, error) {
-	sign := uint8(0)
-	if num < 0 {
-		sign = 0x20
-		num = -num
-	}
-
+func Num2Bytes[T int64 | float32](num T) ([]byte, error) {
 	var tmpBuf []byte
 	switch reflect.TypeOf(num).Kind() {
 	case reflect.Int64:
 		tmpBuf = make([]byte, 8)
 		binary.BigEndian.PutUint64(tmpBuf, uint64(num))
-	case reflect.Float64:
+	case reflect.Float32:
 		tmpBuf = make([]byte, 4)
 		binary.BigEndian.PutUint32(tmpBuf, math.Float32bits(float32(num)))
 	default:
@@ -140,43 +135,43 @@ func Num2Bytes[T int64 | float64](num T) ([]byte, error) {
 	}
 	ret = reverseArray(ret)
 	// If number fits with the type being encoded then we don't need additional byte for type.
-	// This can fit numbers <= 63 within 1 byte.
-	if len(ret) > 0 && (ret[0]&0xE0) == 0 {
-		setMSBWithSign(ret, sign)
+	// This can fit numbers <= 16 within 1 byte.
+	if len(ret) > 0 && (ret[0]&0xF0) == 0 {
+		setMSB(ret)
 		return ret, nil
 	}
 	ret = append([]byte{0}, ret...)
-	setMSBWithSign(ret, sign)
+	setMSB(ret)
 	return ret, nil
 }
 
-func ParseInteger(data []byte) int64 {
+func ParseInteger(data []byte) (int64, int) {
 	var v int64
-	v = int64(data[0] & 0x1f)
-
-	if len(data) > 1 {
-		for i := 1; i < len(data); i++ {
+	v = int64(data[0] & 0xf)
+	i := 0
+	if data[0]&0x10 != 0 {
+		i++
+		for data[i] >= 0x80 {
 			v = v<<7 | int64(data[i]&0x7f)
+			i++
 		}
+		v = v<<7 | int64(data[i]&0x7f)
 	}
-	if (data[0] & 0x20) == 0 {
-		return v
-	}
-	return -v
+	return v, i
 }
 
-func ParseFloat(data []byte) float64 {
+func ParseFloat(data []byte) (float32, int) {
 	var v uint32
 	v = uint32(data[0] & 0x1f)
-	if len(data) > 1 {
-		for i := 1; i < len(data); i++ {
+	i := 0
+	if data[0]&0x10 != 0 {
+		i++
+		for data[i] >= 0x80 {
 			v = v<<7 | uint32(data[i]&0x7f)
+			i++
 		}
+		v = v<<7 | uint32(data[i]&0x7f)
 	}
 
-	d := math.Float32frombits(v)
-	if (data[0] & 0x20) == 0 {
-		return float64(d)
-	}
-	return float64(-d)
+	return math.Float32frombits(v), i
 }

@@ -39,26 +39,25 @@ func TestPut_ReadString(t *testing.T) {
 }
 
 func Test_Int64(t *testing.T) {
-	for i := 0; i < 100; i++ {
-		x := int64(rand.Int())
+	for i := 0; i < 1000; i++ {
+		x := rand.Int63()
+		ret, err := Num2Bytes(x)
+		assert.NoError(t, err)
+		v, _ := ParseInteger(ret)
+		assert.Equal(t, x, v)
+	}
+}
+
+func Test_Float64(t *testing.T) {
+	for i := 0; i < 1; i++ {
+		x := rand.Float32() * 1000
 		if rand.Int()%2 == 0 {
 			x = -x
 		}
 		ret, err := Num2Bytes(x)
 		assert.NoError(t, err)
-		assert.Equal(t, x, ParseInteger(ret))
-	}
-}
-
-func Test_Float64(t *testing.T) {
-	for i := 0; i < 100; i++ {
-		x := rand.Float32() * 1000
-		if rand.Int()%2 == 0 {
-			x = -x
-		}
-		ret, err := Num2Bytes(float64(x))
-		assert.NoError(t, err)
-		assert.Equal(t, x, float32(ParseFloat(ret)))
+		v, _ := ParseFloat(ret)
+		assert.Equal(t, x, v)
 	}
 }
 

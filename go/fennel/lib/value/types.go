@@ -5,11 +5,14 @@ import (
 	"fennel/lib/utils/binary"
 	"fennel/lib/utils/slice"
 	"fmt"
+	"math"
 	"reflect"
 	"sort"
 	"strconv"
 	"strings"
 )
+
+const float64EqualityThreshold = 1e-6
 
 type Value interface {
 	isValue()
@@ -62,11 +65,17 @@ func (I Int) MarshalJSON() ([]byte, error) {
 	return []byte(I.String()), nil
 }
 func (I Int) Marshal() ([]byte, error) {
-	ret, err := binary.Num2Bytes(int64(I))
+	sign := POS_INT
+	x := int64(I)
+	if x < 0 {
+		sign = NEG_INT
+		x = -x
+	}
+	ret, err := binary.Num2Bytes(x)
 	if err != nil {
 		return nil, err
 	}
-	ret[0] = ret[0] | INT
+	ret[0] = ret[0] | byte(sign)
 	return ret, nil
 }
 
@@ -76,9 +85,9 @@ func (d Double) isValue() {}
 func (d Double) Equal(v Value) bool {
 	switch v := v.(type) {
 	case Int:
-		return float64(v) == float64(d)
-	case Double:
 		return float32(v) == float32(d)
+	case Double:
+		return math.Abs(float64(v-d)) < float64EqualityThreshold
 	default:
 		return false
 	}
@@ -113,11 +122,18 @@ func (d Double) MarshalJSON() ([]byte, error) {
 	return []byte(d.String()), nil
 }
 func (d Double) Marshal() ([]byte, error) {
-	ret, err := binary.Num2Bytes(float64(d))
+	sign := POS_FLOAT
+	x := float32(d)
+	if x < 0 {
+		sign = NEG_FLOAT
+		x = -x
+	}
+	fmt.Println("x:", x)
+	ret, err := binary.Num2Bytes(x)
 	if err != nil {
 		return nil, err
 	}
-	ret[0] = ret[0] | FLOAT
+	ret[0] = ret[0] | byte(sign)
 	return ret, nil
 }
 
@@ -148,12 +164,10 @@ func (b Bool) MarshalJSON() ([]byte, error) {
 	return []byte(b.String()), nil
 }
 func (b Bool) Marshal() ([]byte, error) {
-	ret := uint8(0)
-	ret = ret | BOOL
 	if b {
-		ret = ret | TRUE
+		return []byte{TRUE}, nil
 	}
-	return []byte{ret}, nil
+	return []byte{FALSE}, nil
 }
 
 type String string
@@ -185,7 +199,12 @@ func (s String) MarshalJSON() ([]byte, error) {
 }
 
 func (s String) Marshal() ([]byte, error) {
-	return json.Marshal(string(s))
+	ret, err := EncodeTypeWithNum(STRING, int64(len(s)))
+	if err != nil {
+		return nil, err
+	}
+	ret = append(ret, []byte(s)...)
+	return ret, nil
 }
 
 type nil_ struct{}
@@ -301,10 +320,8 @@ func encodeMetadata(numElements, numBytes uint64) ([]byte, error) {
 }
 
 func (l List) Marshal() ([]byte, error) {
-	var ret []byte
-	ret = append(ret, "["...)
 	var rest []byte
-	for i, v := range l.values {
+	for _, v := range l.values {
 		if v == nil {
 			rest = append(rest, NULL)
 		} else {
@@ -314,17 +331,12 @@ func (l List) Marshal() ([]byte, error) {
 			}
 			rest = append(rest, b...)
 		}
-		if i != len(l.values)-1 {
-			rest = append(rest, ","...)
-		}
 	}
-	metadata, err := encodeMetadata(uint64(len(l.values)), uint64(len(rest)))
+	ret, err := EncodeTypeWithNum(LIST, int64(len(l.values)))
 	if err != nil {
 		return nil, err
 	}
-	ret = append(ret, metadata...)
 	ret = append(ret, rest...)
-	ret = append(ret, "]"...)
 	return ret, nil
 }
 
@@ -442,9 +454,7 @@ func (d Dict) String() string {
 }
 
 func (d Dict) Marshal() ([]byte, error) {
-	var ret []byte
 	var rest []byte
-	ret = append(ret, "{"...)
 	keys := make([]string, 0, len(d.values))
 	for k := range d.values {
 		keys = append(keys, k)
@@ -452,12 +462,11 @@ func (d Dict) Marshal() ([]byte, error) {
 	sort.Strings(keys)
 	for _, k := range keys {
 		v := d.values[k]
-		key, err := json.Marshal(k)
+		key, err := String(k).Marshal()
 		if err != nil {
 			return nil, err
 		}
 		rest = append(rest, key...)
-		rest = append(rest, ":"...)
 		if v == nil {
 			rest = append(rest, NULL)
 		} else {
@@ -467,18 +476,12 @@ func (d Dict) Marshal() ([]byte, error) {
 			}
 			rest = append(rest, b...)
 		}
-		rest = append(rest, ","...)
 	}
-	if d.Len() > 0 {
-		rest = rest[:len(rest)-1]
-	}
-	metadata, err := encodeMetadata(uint64(len(d.values)), uint64(len(rest)))
+	ret, err := EncodeTypeWithNum(DICT, int64(len(keys)))
 	if err != nil {
 		return nil, err
 	}
-	ret = append(ret, metadata...)
 	ret = append(ret, rest...)
-	ret = append(ret, "}"...)
 	return ret, nil
 }
 

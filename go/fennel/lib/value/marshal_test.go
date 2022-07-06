@@ -95,7 +95,7 @@ func randomValue(n int, t string) ([][]byte, []Value) {
 			subSample.Set(RandStringRunes(5), String(RandStringRunes(5)))
 			subSample.Set(RandStringRunes(5), Int(rand.Int()))
 		}
-		sample := NewList(Int(rand.Int()), Double(rand.Float64()), Bool(rand.Int()%2 == 0), subSample, Nil, NewList(), String(`";<>?/\|':,./`))
+		sample := NewList(Int(rand.Int()), Nil, Double(rand.Float64()), Bool(rand.Int()%2 == 0), subSample, Nil, NewList(), String(`";<>?/\|':,./`))
 		samples[i] = sample
 		switch t {
 		case "captain":
@@ -230,6 +230,7 @@ func benchMarkSerialization(b *testing.B, algo, sz string) {
 		case "rexerjson":
 			v, err = Unmarshal(arr[n])
 		}
+		assert.True(b, v.Equal(samples[n]))
 		assert.NoError(b, err)
 	}
 }
@@ -266,4 +267,18 @@ func FuzzRandom(f *testing.F) {
 		assert.NoError(t, err)
 		assert.True(t, v.Equal(v2))
 	})
+}
+
+func Test_Fuzz(t *testing.T) {
+	//b := []byte{'{', '"', 'a', 'b', 'c', '"', ':', '1', '.', '2', '3', '}'}
+	b := []byte("100000000000.0")
+	v, err := FromJSON(b)
+	assert.NoError(t, err)
+	vBytes, err := v.Marshal()
+	assert.NoError(t, err)
+	v2, err := Unmarshal(vBytes)
+	assert.NoError(t, err)
+	fmt.Println(v.String())
+	fmt.Println(v2.String())
+	assert.True(t, v.Equal(v2))
 }
