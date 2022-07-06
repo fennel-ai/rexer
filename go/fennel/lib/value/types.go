@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fennel/lib/utils/binary"
 	"fennel/lib/utils/slice"
-	"fennel/lib/value/rexparser"
 	"fmt"
 	"reflect"
 	"sort"
@@ -67,7 +66,7 @@ func (I Int) Marshal() ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	ret[0] = ret[0] | rexparser.INT
+	ret[0] = ret[0] | INT
 	return ret, nil
 }
 
@@ -118,7 +117,7 @@ func (d Double) Marshal() ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	ret[0] = ret[0] | rexparser.FLOAT
+	ret[0] = ret[0] | FLOAT
 	return ret, nil
 }
 
@@ -150,9 +149,9 @@ func (b Bool) MarshalJSON() ([]byte, error) {
 }
 func (b Bool) Marshal() ([]byte, error) {
 	ret := uint8(0)
-	ret = ret | rexparser.BOOL
+	ret = ret | BOOL
 	if b {
-		ret = ret | rexparser.TRUE
+		ret = ret | TRUE
 	}
 	return []byte{ret}, nil
 }
@@ -218,7 +217,7 @@ func (n nil_) MarshalJSON() ([]byte, error) {
 	return []byte(n.String()), nil
 }
 func (n nil_) Marshal() ([]byte, error) {
-	return []byte{rexparser.NULL}, nil
+	return []byte{NULL}, nil
 }
 
 type List struct {
@@ -307,7 +306,7 @@ func (l List) Marshal() ([]byte, error) {
 	var rest []byte
 	for i, v := range l.values {
 		if v == nil {
-			rest = append(rest, rexparser.NULL)
+			rest = append(rest, NULL)
 		} else {
 			b, err := v.Marshal()
 			if err != nil {
@@ -460,7 +459,7 @@ func (d Dict) Marshal() ([]byte, error) {
 		rest = append(rest, key...)
 		rest = append(rest, ":"...)
 		if v == nil {
-			rest = append(rest, rexparser.NULL)
+			rest = append(rest, NULL)
 		} else {
 			b, err := v.Marshal()
 			if err != nil {

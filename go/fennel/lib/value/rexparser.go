@@ -1,8 +1,9 @@
-package rexparser
+package value
 
 import (
 	"errors"
 	"fennel/lib/utils/binary"
+	"fmt"
 	lib "github.com/buger/jsonparser"
 )
 
@@ -12,7 +13,6 @@ const INT = 0xC0
 const FLOAT = 0x80
 const NULL = 0x00
 const TRUE = 0x01
-const FALSE = 0x00
 
 // Errors
 var (
@@ -72,53 +72,6 @@ func stringEnd(data []byte) (int, bool) {
 	return -1, escaped
 }
 
-// Data types available in valid JSON data.
-type ValueType int
-
-const (
-	NotExist = ValueType(iota)
-	String
-	Integer
-	Float
-	Object
-	Array
-	Tuple
-	Boolean
-	Null
-	Unknown
-)
-
-func (vt ValueType) String() string {
-	switch vt {
-	case NotExist:
-		return "non-existent"
-	case Integer:
-		return "integer"
-	case Float:
-		return "float"
-	case String:
-		return "string"
-	case Object:
-		return "object"
-	case Array:
-		return "array"
-	case Tuple:
-		return "tuple"
-	case Boolean:
-		return "boolean"
-	case Null:
-		return "null"
-	default:
-		return "unknown"
-	}
-}
-
-var (
-	trueLiteral  = []byte("true")
-	falseLiteral = []byte("false")
-	nullLiteral  = []byte("null")
-)
-
 func getMetadata(data []byte, offset int) (int, int, int, error) {
 	arrLength, n1, err := binary.ReadUvarint(data[offset+1:])
 	if err != nil {
@@ -131,131 +84,103 @@ func getMetadata(data []byte, offset int) (int, int, int, error) {
 	return int(arrLength), int(endOffset), n1 + n2, nil
 }
 
-func getType(data []byte, offset int) ([]byte, ValueType, int, int, error) {
-	var dataType ValueType
+// ParseValue returns the value and the current offset.
+func ParseValue(data []byte, offset int) (Value, int, error) {
 	endOffset := offset
-	// if string value
 	switch data[offset] {
 	case '"':
-		dataType = String
 		if idx, _ := stringEnd(data[offset+1:]); idx != -1 {
 			endOffset += idx + 1
 		} else {
-			return nil, dataType, offset, 0, MalformedStringError
+			return nil, offset, MalformedStringError
 		}
+		s, err := parseString(data[offset+1 : endOffset-1])
+		return String(s), endOffset, err
 	case '[':
-		dataType = Array
 		arrLength, endOffset, metadataOffset, err := getMetadata(data, offset)
 		if err != nil {
-			return nil, dataType, offset, 0, err
+			return nil, 0, err
 		}
 		offset += metadataOffset
 		endOffset += offset
 		data[offset] = '['
 		if endOffset > len(data) {
-			return nil, dataType, offset, 0, MalformedArrayError
+			return nil, 0, MalformedArrayError
 		}
-		return data[offset:endOffset], dataType, endOffset, arrLength, nil
+		v, err := parseArray(data[offset:endOffset], arrLength)
+		return v, endOffset, err
 	case '{':
-		dataType = Object
 		arrLength, endOffset, metadataOffset, err := getMetadata(data, offset)
 		if err != nil {
-			return nil, dataType, offset, 0, err
+			return nil, 0, err
 		}
 		offset += metadataOffset
 		endOffset += offset
 		data[offset] = '{'
 		if endOffset > len(data) {
-			return nil, dataType, offset, 0, MalformedObjectError
+			return nil, 0, MalformedObjectError
 		}
-		return data[offset:endOffset], dataType, endOffset, arrLength, nil
+		v, err := parseDict(data[offset:endOffset], arrLength)
+		return v, endOffset, err
 	default:
 		// Number, Boolean or None
 		end := tokenEnd(data[endOffset:])
 		if end == -1 {
-			return nil, dataType, offset, 0, MalformedValueError
+			return nil, 0, MalformedValueError
 		}
-
+		endOffset += end
 		// Extract first 2 bits to determine value type
 		switch data[offset] & 0xC0 {
 		case BOOL: // boolean
-			dataType = Boolean
+			v, err := parseBoolean(data[offset:endOffset])
+			return v, endOffset, err
 		case INT: // number
-			dataType = Integer
-		case FLOAT: // undefined or null
-			dataType = Float
+			return Int(binary.ParseInteger(data[offset:endOffset])), endOffset, nil
+		case FLOAT:
+			return Double(binary.ParseFloat(data[offset:endOffset])), endOffset, nil
 		case NULL:
-			dataType = Null
+			return Nil, endOffset, nil
 		default:
-			return nil, Unknown, offset, 0, UnknownValueTypeError
+			return nil, 0, UnknownValueTypeError
 		}
-
-		endOffset += end
 	}
-	return data[offset:endOffset], dataType, endOffset, 0, nil
 }
 
-/*
-get - receives data structure, and key path to extract value from.
-
-returns:
-`value` - pointer to original data structure containing key value, or just empty slice if nothing found or error
-`dataType` -    can be: `notexist`, `string`, `number`, `object`, `array`, `boolean` or `null`
-`offset` - offset from provided data structure where key value ends. used mostly internally, for example for `arrayeach` helper.
-`err` - if key not found or any other parsing issue it should return error. if key not found it also sets `dataType` to `notexist`
-
-accept multiple keys to specify path to json value (in case of quering nested structures).
-if no keys provided it will try to extract closest json value (simple ones or object/array), useful for reading streams or arrays, see `arrayeach` implementation.
-*/
-func Get(data []byte, keys ...string) (value []byte, dataType ValueType, offset, sz int, err error) {
-	a, b, _, d, sz, e := internalGet(data)
-	return a, b, d, sz, e
-}
-
-func internalGet(data []byte) (value []byte, dataType ValueType, offset, endOffset, sz int, err error) {
-
-	value, dataType, endOffset, sz, err = getType(data, offset)
-	if err != nil {
-		return value, dataType, offset, endOffset, 0, err
+func parseBoolean(data []byte) (Value, error) {
+	if len(data) != 1 {
+		return nil, fmt.Errorf("invalid boolean")
 	}
-
-	// Strip quotes from string values
-	if dataType == String {
-		value = value[1 : len(value)-1]
+	data[0] = data[0] & 0x3F
+	if data[0] == 0 {
+		return Bool(false), nil
 	}
-
-	return value[:len(value):len(value)], dataType, offset, endOffset, sz, nil
+	return Bool(true), nil
 }
 
 // ArrayEach is used when iterating arrays, accepts a callback function with the same return arguments as `Get`.
-func ArrayEach(data []byte, cb func(value []byte, dataType ValueType, offset, sz int, err error), keys ...string) (offset int, err error) {
+func parseArray(data []byte, sz int) (Value, error) {
 	if len(data) == 0 {
-		return -1, MalformedObjectError
+		return nil, MalformedObjectError
 	}
-	offset = 1
+	offset := 1
 
 	if data[offset] == ']' {
-		return offset, nil
+		return NewList(), nil
 	}
 
+	var ret List
+	ret.Grow(sz)
+
 	for true {
-		v, t, o, sz, e := Get(data[offset:])
+		v, o, e := ParseValue(data[offset:], 0)
 		if e != nil {
-			return offset, e
+			return nil, e
 		}
+		ret.Append(v)
 
 		if o == 0 {
 			break
 		}
-
-		if t != NotExist {
-			cb(v, t, offset+o-len(v), sz, e)
-		}
-
-		if e != nil {
-			break
-		}
-
 		offset += o
 
 		if data[offset] == ']' {
@@ -263,29 +188,29 @@ func ArrayEach(data []byte, cb func(value []byte, dataType ValueType, offset, sz
 		}
 
 		if data[offset] != ',' {
-			return offset, MalformedArrayError
+			return nil, MalformedArrayError
 		}
-
 		offset++
 	}
-
-	return offset, nil
+	return ret, nil
 }
 
 // ObjectEach iterates over the key-value pairs of a JSON object, invoking a given callback for each such entry
-func ObjectEach(data []byte, callback func(key []byte, value []byte, dataType ValueType, offset, sz int) error, keys ...string) (err error) {
+func parseDict(data []byte, sz int) (Value, error) {
 	offset := 0
 
 	// Validate and skip past opening brace
 	if data[offset] != '{' {
-		return MalformedObjectError
+		return nil, MalformedObjectError
 	} else {
 		offset++
 	}
 
+	ret := make(map[string]Value, sz)
+
 	// Skip to the first token inside the object, or stop if we find the ending brace
 	if data[offset] == '}' {
-		return nil
+		return NewDict(ret), nil
 	}
 
 	// Loop pre-condition: data[offset] points to what should be either the next entry's key, or the closing brace (if it's anything else, the JSON is malformed)
@@ -298,15 +223,15 @@ func ObjectEach(data []byte, callback func(key []byte, value []byte, dataType Va
 		case '"':
 			offset++ // accept as string and skip opening quote
 		case '}':
-			return nil // we found the end of the object; stop and return success
+			return NewDict(ret), nil // we found the end of the object; stop and return success
 		default:
-			return MalformedObjectError
+			return nil, MalformedObjectError
 		}
 
 		// Find the end of the key string
 		var keyEscaped bool
 		if off, esc := stringEnd(data[offset:]); off == -1 {
-			return MalformedJsonError
+			return nil, MalformedJsonError
 		} else {
 			key, keyEscaped = data[offset:offset+off-1], esc
 			offset += off
@@ -316,7 +241,7 @@ func ObjectEach(data []byte, callback func(key []byte, value []byte, dataType Va
 		if keyEscaped {
 			var stackbuf [unescapeStackBufSize]byte // stack-allocated array for allocation-free unescaping of small strings
 			if keyUnescaped, err := lib.Unescape(key, stackbuf[:]); err != nil {
-				return MalformedStringEscapeError
+				return nil, MalformedStringEscapeError
 			} else {
 				key = keyUnescaped
 			}
@@ -324,35 +249,38 @@ func ObjectEach(data []byte, callback func(key []byte, value []byte, dataType Va
 
 		// Step 2: skip the colon
 		if data[offset] != ':' {
-			return MalformedJsonError
+			return nil, MalformedJsonError
 		} else {
 			offset++
 		}
 
 		// Step 3: find the associated value, then invoke the callback
-		if value, valueType, off, sz, err := Get(data[offset:]); err != nil {
-			return err
-		} else if err := callback(key, value, valueType, offset+off, sz); err != nil { // Invoke the callback here!
-			return err
+		if v, o, e := ParseValue(data[offset:], 0); e != nil {
+			return nil, e
 		} else {
-			offset += off
+			k, err := parseString(key)
+			if err != nil {
+				return nil, err
+			}
+			ret[k] = v
+			offset += o
 		}
 
 		// Step 4: skip over the next comma to the following token, or stop if we hit the ending brace
 		switch data[offset] {
 		case '}':
-			return nil // Stop if we hit the close brace
+			return NewDict(ret), nil // Stop if we hit the close brace
 		case ',':
 			offset++ // Ignore the comma
 		default:
-			return MalformedObjectError
+			return nil, MalformedObjectError
 		}
 	}
-	return MalformedObjectError // we shouldn't get here; it's expected that we will return via finding the ending brace
+	return nil, MalformedObjectError // we shouldn't get here; it's expected that we will return via finding the ending brace
 }
 
 // ParseString parses a String ValueType into a Go string (the main parsing work is unescaping the JSON string)
-func ParseString(b []byte) (string, error) {
+func parseString(b []byte) (string, error) {
 	var stackbuf [unescapeStackBufSize]byte // stack-allocated array for allocation-free unescaping of small strings
 	if bU, err := lib.Unescape(b, stackbuf[:]); err != nil {
 		return "", MalformedValueError

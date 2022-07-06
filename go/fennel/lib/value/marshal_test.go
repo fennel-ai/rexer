@@ -230,7 +230,6 @@ func benchMarkSerialization(b *testing.B, algo, sz string) {
 		case "rexerjson":
 			v, err = Unmarshal(arr[n])
 		}
-		//assert.True(b, v.Equal(samples[n]))
 		assert.NoError(b, err)
 	}
 }
