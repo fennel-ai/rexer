@@ -12,6 +12,7 @@ import (
 	"fennel/kafka"
 	fkafka "fennel/kafka"
 	"fennel/lib/ftypes"
+	"fennel/lib/nitrous"
 	"fennel/resource"
 
 	"github.com/stretchr/testify/assert"
@@ -54,11 +55,11 @@ func NewTestPlane(t *testing.T) TestPlane {
 	}
 }
 
-func (tp TestPlane) NewProducer(t *testing.T, topic string) kafka.FProducer {
+func (tp TestPlane) NewBinlogProducer(t *testing.T) kafka.FProducer {
 	scope := resource.NewPlaneScope(tp.Plane.ID)
 	mockConfig := fkafka.MockProducerConfig{
 		Broker: tp.broker,
-		Topic:  topic,
+		Topic:  nitrous.BINLOG_KAFKA_TOPIC,
 		Scope:  scope,
 	}
 	p, err := mockConfig.Materialize()

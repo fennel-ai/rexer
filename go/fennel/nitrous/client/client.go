@@ -2,18 +2,15 @@ package client
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"time"
 
 	"fennel/kafka"
 	"fennel/lib/aggregate"
 	"fennel/lib/ftypes"
-	"fennel/lib/nitrous"
 	"fennel/lib/value"
 	rpc "fennel/nitrous/rpc/v2"
 	"fennel/resource"
-	"fennel/tier"
 
 	"google.golang.org/grpc"
 )
@@ -21,7 +18,6 @@ import (
 type NitrousClient struct {
 	resource.Scope
 
-	tier   tier.Tier
 	binlog kafka.FProducer
 	reader rpc.NitrousClient
 }
@@ -39,7 +35,7 @@ func (nc NitrousClient) Type() resource.Type {
 func (nc NitrousClient) CreateAggregate(ctx context.Context, aggId ftypes.AggId, opts aggregate.Options) error {
 	popts := aggregate.ToProtoOptions(opts)
 	op := &rpc.NitrousOp{
-		TierId: uint32(nc.tier.ID),
+		TierId: uint32(nc.ID()),
 		Type:   rpc.OpType_CREATE_AGGREGATE,
 		Op: &rpc.NitrousOp_CreateAggregate{
 			CreateAggregate: &rpc.CreateAggregate{
@@ -86,7 +82,7 @@ func (nc NitrousClient) Push(ctx context.Context, aggId ftypes.AggId, updates va
 			return fmt.Errorf("failed to convert value %s to proto: %w", v, err)
 		}
 		op := &rpc.NitrousOp{
-			TierId: uint32(nc.tier.ID),
+			TierId: uint32(nc.ID()),
 			Type:   rpc.OpType_AGG_EVENT,
 			Op: &rpc.NitrousOp_AggEvent{
 				AggEvent: &rpc.AggEvent{
@@ -111,7 +107,7 @@ func (nc NitrousClient) Push(ctx context.Context, aggId ftypes.AggId, updates va
 
 func (nc NitrousClient) GetMulti(ctx context.Context, aggId ftypes.AggId, duration uint32, groupkeys []string, values []value.Value) error {
 	req := &rpc.AggregateValuesRequest{
-		TierId:    uint32(nc.tier.ID),
+		TierId:    uint32(nc.ID()),
 		AggId:     uint32(aggId),
 		Duration:  duration,
 		Groupkeys: groupkeys,
@@ -141,27 +137,23 @@ func (nc NitrousClient) GetLag(ctx context.Context) (uint64, error) {
 }
 
 type NitrousClientConfig struct {
-	Tier    tier.Tier
-	PlaneId ftypes.RealmID
-	Addr    string
+	PlaneId        ftypes.RealmID
+	ServerAddr     string
+	BinlogProducer kafka.FProducer
 }
 
 var _ resource.Config = NitrousClientConfig{}
 
 func (cfg NitrousClientConfig) Materialize() (resource.Resource, error) {
 	scope := resource.NewPlaneScope(cfg.PlaneId)
-	conn, err := grpc.Dial(cfg.Addr, grpc.WithInsecure())
+	conn, err := grpc.Dial(cfg.ServerAddr, grpc.WithInsecure())
 	if err != nil {
 		return nil, fmt.Errorf("failed to connect to nitrous: %w", err)
 	}
-	binlog, ok := cfg.Tier.Producers[nitrous.BINLOG_KAFKA_TOPIC]
-	if !ok {
-		return nil, errors.New("nitrous binlog producer not found")
-	}
+	rpcclient := rpc.NewNitrousClient(conn)
 	return NitrousClient{
 		Scope:  scope,
-		tier:   cfg.Tier,
-		reader: rpc.NewNitrousClient(conn),
-		binlog: binlog,
+		reader: rpcclient,
+		binlog: cfg.BinlogProducer,
 	}, nil
 }

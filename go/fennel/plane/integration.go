@@ -12,6 +12,7 @@ import (
 	"fennel/kafka"
 	fkafka "fennel/kafka"
 	"fennel/lib/ftypes"
+	"fennel/lib/nitrous"
 	"fennel/resource"
 	"fennel/test"
 
@@ -41,26 +42,22 @@ func NewTestPlane(t *testing.T) TestPlane {
 	require.NoError(t, err)
 	// Create the binlog kafka topic for this plane.
 	os.Setenv("PLANE_ID", fmt.Sprintf("%d", p.ID))
+	// Create plane-level kafka topics.
+	scope := resource.NewPlaneScope(p.ID)
+	err = test.SetupKafkaTopics(scope, flags.KafkaServer, flags.KafkaUsername, flags.KafkaPassword)
+	assert.NoError(t, err)
+
 	return TestPlane{
 		Plane: p,
 		args:  flags,
 	}
 }
 
-func (tp TestPlane) NewProducer(t *testing.T, topic string) kafka.FProducer {
-	scope := resource.NewPlaneScope(tp.Plane.ID)
-	// Create the kafka topic.
-	// TODO: This should be separated out from tier creation?
-	rand.Seed(time.Now().UnixNano())
-	tierId := ftypes.RealmID(rand.Uint32())
-	err := test.SetupKafkaTopics(
-		tierId, tp.ID, tp.args.KafkaServer, tp.args.KafkaUsername, tp.args.KafkaPassword,
-		[]kafka.TopicConf{{Scope: scope, Topic: topic}})
-	assert.NoError(t, err)
-
+func (tp TestPlane) NewBinlogProducer(t *testing.T) kafka.FProducer {
+	scope := resource.NewPlaneScope(tp.ID)
 	config := fkafka.RemoteProducerConfig{
 		Scope:           scope,
-		Topic:           topic,
+		Topic:           nitrous.BINLOG_KAFKA_TOPIC,
 		BootstrapServer: tp.args.KafkaServer,
 		Username:        tp.args.KafkaUsername,
 		Password:        tp.args.KafkaPassword,
