@@ -109,7 +109,7 @@ func createVal(seed, depth int) Value {
 	case 6:
 		return Nil
 	case 7:
-		length := rand.Int() % 100000
+		length := rand.Int() % 10000
 		list := make([]Value, 0, length)
 		for i := 0; i < length; i++ {
 			list = append(list, createVal(rand.Int(), depth+1))
@@ -284,11 +284,11 @@ func benchMarkSerialization(b *testing.B, algo, sz string) {
 // go test -tags dynamic  -bench Benchmark_Serialization -v fennel/lib/value -run ^$  -benchtime=10000x -cpuprofile cpu.out
 // go tool pprof -http=localhost:6060 cpu.out
 func Benchmark_Serialization(b *testing.B) {
-	benchMarkSerialization(b, "proto", "r")
+	benchMarkSerialization(b, "rexparser", "r")
 }
 
 func Benchmark_Small_Serialization(b *testing.B) {
-	benchMarkSerialization(b, "proto", "s")
+	benchMarkSerialization(b, "rexparser", "s")
 }
 
 func FuzzRandom(f *testing.F) {

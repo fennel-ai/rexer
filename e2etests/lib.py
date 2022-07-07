@@ -62,8 +62,8 @@ def gorun(path, tags, env, flags=None, wait=False, sleep=0, cwd: str = GODIR):
     b.wait()
     print('build: ', 'success' if b.returncode == 0 else 'fail')
     print('going to run:', path, ' '.join(flags))
-    #p = subprocess.Popen([binary] + flags, stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL, env=env)
-    p = subprocess.Popen([binary] + flags, stderr=sys.stderr, stdout=sys.stdout, env=env)
+    p = subprocess.Popen([binary] + flags, stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL, env=env)
+    # p = subprocess.Popen([binary] + flags, stderr=sys.stderr, stdout=sys.stdout, env=env)
     if wait:
         p.wait()
     if sleep:
