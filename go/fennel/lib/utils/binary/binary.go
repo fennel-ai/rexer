@@ -77,3 +77,79 @@ func PutVarint(b []byte, n int64) (int, error) {
 	copy(b, lenbuf[:sz])
 	return sz, nil
 }
+
+func reverseArray(arr []byte) []byte {
+	for i, j := 0, len(arr)-1; i < j; i, j = i+1, j-1 {
+		arr[i], arr[j] = arr[j], arr[i]
+	}
+	return arr
+}
+func setMSB(data []byte) {
+	if len(data) > 1 {
+		data[0] = data[0] | 0x10
+	}
+	for i := 0; i < len(data); i++ {
+		if i > 0 && i != len(data)-1 {
+			data[i] = data[i] | 0x80
+		}
+	}
+}
+
+// The first 3 bits are for type.
+// The remaining bits are encoded using 7 bits per byte.
+func Num2Bytes(num int64) ([]byte, error) {
+	tmpBuf := make([]byte, 8)
+	binary.BigEndian.PutUint64(tmpBuf, uint64(num))
+	var buf []byte
+	for i := 0; i < len(tmpBuf); i++ {
+		if tmpBuf[i] != 0 {
+			buf = tmpBuf[i:]
+			break
+		}
+	}
+	carry := uint8(0)
+	ret := make([]byte, 0, len(buf)+1)
+	// Number of bits in carry.
+	numShift := 0
+	for i := len(buf) - 1; i >= 0; i-- {
+		// temp is formed by picking all bits from carry and LSB (7 - numShift) #bits in buf[i]
+		temp := ((buf[i] << numShift) | carry) & 0x7f
+		carry = buf[i] >> (7 - numShift)
+		ret = append(ret, temp)
+		numShift += 1
+	}
+	if carry != 0 {
+		ret = append(ret, carry)
+	}
+	ret = reverseArray(ret)
+	// If number fits with the type being encoded then we don't need additional byte for type.
+	// This can fit numbers <= 16 within 1 byte.
+	if len(ret) > 0 && (ret[0]&0xF0) == 0 {
+		setMSB(ret)
+		return ret, nil
+	}
+	ret = append([]byte{0}, ret...)
+	setMSB(ret)
+	return ret, nil
+}
+
+func ParseInteger(data []byte) (int64, int, error) {
+	var v int64
+	if len(data) == 0 {
+		return 0, 0, fmt.Errorf("integer data is empty")
+	}
+	v = int64(data[0] & 0xf)
+	i := 0
+	if data[0]&0x10 != 0 {
+		i++
+		for i < len(data) && data[i] >= 0x80 {
+			v = v<<7 | int64(data[i]&0x7f)
+			i++
+		}
+		if i >= len(data) {
+			return 0, 0, fmt.Errorf("invalid integer")
+		}
+		v = v<<7 | int64(data[i]&0x7f)
+	}
+	return v, i + 1, nil
+}

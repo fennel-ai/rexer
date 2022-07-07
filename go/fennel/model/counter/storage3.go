@@ -190,7 +190,7 @@ func (v *thirdStoreView) Load(ctx context.Context, tier *tier.Tier) error {
 			valStr, ok := vals[i][k]
 			if ok {
 				var val value.Value
-				if err := value.Unmarshal([]byte(valStr), &val); err != nil {
+				if err := value.ProtoUnmarshal([]byte(valStr), &val); err != nil {
 					return fmt.Errorf("failed to unmarshal '%s' into value", valStr)
 				}
 				if v.view[slot][k], ok = val.(value.Dict); !ok {
@@ -212,7 +212,7 @@ func (v *thirdStoreView) Save(ctx context.Context, tier *tier.Tier, ttl time.Dur
 		slot := v.slots[i]
 		vals[i] = make(map[string]interface{}, len(v.view[slot]))
 		for k := range v.view[slot] {
-			vser, err := value.Marshal(v.view[slot][k])
+			vser, err := value.ProtoMarshal(v.view[slot][k])
 			if err != nil {
 				return err
 			}

@@ -36,7 +36,7 @@ func TestServer_ProfileHandler(t *testing.T) {
 		r.Body.Close()
 		// Verify request unmarshals properly into a ProfileItem
 		var pi profile.ProfileItem
-		err = json.Unmarshal(data, &pi)
+		err = json.ProtoUnmarshal(data, &pi)
 		assert.NoError(t, err)
 		assert.True(t, expected.Equals(&pi))
 		// Write back prepared value
@@ -82,7 +82,7 @@ func TestServer_ProfileMultiHandler(t *testing.T) {
 	profiles = append(profiles, profile.ProfileItem{OType: "1", Oid: "2", Key: "3",
 		Version: math.MaxUint64 - 4, Value: value.Int(5)})
 	profiles = append(profiles, profile.ProfileItem{OType: "5", Oid: "4", Key: "3", Version: 2, Value: value.Int(1)})
-	profilesSer, err := json.Marshal(profiles)
+	profilesSer, err := json.ProtoMarshal(profiles)
 	assert.NoError(t, err)
 	// Set up the endpoint server
 	es := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -92,7 +92,7 @@ func TestServer_ProfileMultiHandler(t *testing.T) {
 		r.Body.Close()
 		// Verify request unmarshals properly into a ProfileFetchRequest
 		var pfr profile.ProfileFetchRequest
-		err = json.Unmarshal(data, &pfr)
+		err = json.ProtoUnmarshal(data, &pfr)
 		assert.NoError(t, err)
 		assert.Equal(t, expected, pfr)
 		// Write back prepared list of profiles
