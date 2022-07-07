@@ -11,9 +11,11 @@ import (
 	"fennel/lib/timer"
 	"fennel/lib/value"
 	"fennel/model/counter"
+	nitrous "fennel/nitrous/client"
 	"fennel/tier"
 
 	"github.com/samber/mo"
+	"go.uber.org/zap"
 )
 
 func Value(
@@ -94,6 +96,22 @@ func Update(
 	if err != nil {
 		return fmt.Errorf("failed to make histogram from aggregate: %w", err)
 	}
+
+	if tier.NitrousClient.IsPresent() {
+		// Forward updates to nitrous asynchronously. If it fails, log the error.
+		// In the future, we will want to handle this error and in fact have
+		// exactly-once processing of updates.
+		go func() {
+			var err error
+			tier.NitrousClient.ForEach(func(client nitrous.NitrousClient) {
+				err = client.Push(ctx, aggId, table)
+			})
+			if err != nil {
+				tier.Logger.Info("Failed to push updates to nitrous", zap.Error(err))
+			}
+		}()
+	}
+
 	buckets, values, err := counter.Bucketize(histogram, table)
 	if err != nil {
 		return err
