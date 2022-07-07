@@ -7,10 +7,11 @@ import (
 	profilelib "fennel/lib/profile"
 	"fennel/lib/value"
 	"fmt"
-	"github.com/buger/jsonparser"
 	"math"
 	"strconv"
 	"time"
+
+	"github.com/buger/jsonparser"
 )
 
 const MicroSecondsPerSecond = 1000000
@@ -194,17 +195,16 @@ func validateTime(t int64) error {
 func idToStr(val json.RawMessage) (ftypes.OidType, error) {
 	var v interface{}
 	_ = json.Unmarshal(val, &v)
-	switch v.(type) {
+	switch id := v.(type) {
 	case string:
-		return ftypes.OidType("\"" + v.(string) + "\""), nil
+		return ftypes.OidType("\"" + id + "\""), nil
 	case float64:
-		f := v.(float64)
-		if f != math.Trunc(f) {
+		if id != math.Trunc(id) {
 			return "", fmt.Errorf("id should be string or int: %v", v)
 		}
-		return ftypes.OidType(strconv.FormatInt(int64(f), 10)), nil
+		return ftypes.OidType(strconv.FormatInt(int64(id), 10)), nil
 	case int64:
-		return ftypes.OidType(strconv.FormatInt(v.(int64), 10)), nil
+		return ftypes.OidType(strconv.FormatInt(id, 10)), nil
 	default:
 		return "", fmt.Errorf("id should be string or int: %v", v)
 	}

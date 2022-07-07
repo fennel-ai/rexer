@@ -55,7 +55,7 @@ func run(tr tier.Tier, op operators.Operator, static value.Dict, inputs [][]valu
 	kwargs := make(map[string]ast.Ast)
 
 	// all static kwargs will be based on Var("static")
-	for k, _ := range static.Iter() {
+	for k := range static.Iter() {
 		kwargs[k] = &ast.Lookup{
 			On:       &ast.Var{Name: "static"},
 			Property: k,
@@ -75,7 +75,7 @@ func run(tr tier.Tier, op operators.Operator, static value.Dict, inputs [][]valu
 	field := "context"
 	// context kwarg k will be accessible Var("field")[str(@)].k
 	if len(queryContext) > 0 {
-		for k, _ := range queryContext[0].Iter() {
+		for k := range queryContext[0].Iter() {
 			kwargs[k] = &ast.Lookup{
 				On: &ast.Binary{
 					Left: &ast.Var{Name: field},

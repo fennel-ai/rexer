@@ -32,7 +32,7 @@ func RateLimitingMiddleware(maxConcurrentRequests int) mux.MiddlewareFunc {
 			case bucket <- struct{}{}:
 				h.ServeHTTP(w, r)
 				<-bucket
-			case <-r.Cancel:
+			case <-r.Context().Done():
 				return
 			}
 		})

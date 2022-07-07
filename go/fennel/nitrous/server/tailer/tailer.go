@@ -14,9 +14,9 @@ import (
 	"fennel/resource"
 
 	"github.com/confluentinc/confluent-kafka-go/kafka"
-	"github.com/golang/protobuf/proto"
 	"go.uber.org/zap"
 	"golang.org/x/sync/errgroup"
+	"google.golang.org/protobuf/proto"
 )
 
 const (

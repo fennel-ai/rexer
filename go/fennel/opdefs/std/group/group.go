@@ -2,13 +2,16 @@ package group
 
 import (
 	"context"
+	"log"
 
 	"fennel/engine/operators"
 	"fennel/lib/value"
 )
 
 func init() {
-	operators.Register(grouper{})
+	if err := operators.Register(grouper{}); err != nil {
+		log.Fatalf("Failed to register std.group operator: %v", err)
+	}
 }
 
 type grouper struct {

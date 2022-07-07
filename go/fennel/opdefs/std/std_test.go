@@ -41,9 +41,7 @@ func TestTakeOperator_Apply(t *testing.T) {
 	}
 	// and when the limit is very large, it only returns intable as it is
 	outtable := make([]value.Value, len(intable))
-	for i, input := range intable {
-		outtable[i] = input
-	}
+	copy(outtable, intable)
 
 	// passing limit 2 works
 	expected := []value.Value{

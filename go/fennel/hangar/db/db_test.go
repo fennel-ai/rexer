@@ -24,8 +24,6 @@ func TestDBStore(t *testing.T) {
 	hangar.TestStore(t, maker)
 }
 
-var dummy int
-
 func BenchmarkDBStore(b *testing.B) {
 	rand.Seed(time.Now().UnixNano())
 	maker := func(t *testing.B) hangar.Hangar {

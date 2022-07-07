@@ -9,10 +9,6 @@ import (
 	"fennel/tier"
 )
 
-const (
-	consumerGroup = "default"
-)
-
 func LogMulti(ctx context.Context, tr tier.Tier, rows []feature.Row) error {
 	producer := tr.Producers[feature.KAFKA_TOPIC_NAME]
 	for _, row := range rows {

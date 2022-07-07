@@ -15,10 +15,10 @@ import (
 )
 
 type PprofArgs struct {
-	PprofPort uint `arg:"--pprof-port,env:PPROF_PORT" default:"6060"`
+	PprofPort                        uint   `arg:"--pprof-port,env:PPROF_PORT" default:"6060"`
 	PprofHeapAllocThresholdMegaBytes uint64 `arg:"--pprof-heap-alloc-threshold-megabytes,env:PPROF_HEAP_ALLOC_THRESHOLD_MEGABYTES"`
-	PprofBucket string `arg:"--pprof-bucket,env:PPROF_BUCKET"`
-	ProcessId string `arg:"--process-id,env:PROCESS_ID" default:"DEFAULT"`
+	PprofBucket                      string `arg:"--pprof-bucket,env:PPROF_BUCKET"`
+	ProcessId                        string `arg:"--process-id,env:PROCESS_ID" default:"DEFAULT"`
 }
 
 type Profiler struct {
@@ -42,13 +42,10 @@ func (p Profiler) StartProfileExporter(s3client s3.Client) {
 	ticker := time.NewTicker(2 * time.Minute)
 	defer ticker.Stop()
 
-	for {
-		select {
-		case t := <-ticker.C:
-			err := maybeExportProfile(t, p.args, s3client)
-			if err != nil {
-				log.Printf("found err: %v at time: %v\n", err, t)
-			}
+	for t := range ticker.C {
+		err := maybeExportProfile(t, p.args, s3client)
+		if err != nil {
+			log.Printf("found err: %v at time: %v\n", err, t)
 		}
 	}
 }
@@ -78,7 +75,7 @@ func maybeExportProfile(t time.Time, pprofArgs PprofArgs, s3Client s3.Client) er
 
 	// create an object in the bucket with the following folder structure:
 	// 	yyyy-mm-dd/pod_name/timestampMillis_heapAllocSpace
-	key := path.Join(t.Format("2006/01/02"), pprofArgs.ProcessId, fmt.Sprintf("%d_%dG", t.UnixMilli(), stats.HeapAlloc >> 30))
+	key := path.Join(t.Format("2006/01/02"), pprofArgs.ProcessId, fmt.Sprintf("%d_%dG", t.UnixMilli(), stats.HeapAlloc>>30))
 
 	// create a reader and writer using in process i/o pipe
 	reader, writer := io.Pipe()
@@ -95,6 +92,6 @@ func maybeExportProfile(t time.Time, pprofArgs PprofArgs, s3Client s3.Client) er
 		return fmt.Errorf("failed to the upload the profile to S3 bucket, err: %w", err)
 	}
 
-	log.Printf("successfully uploaded profile, key: %s when the size of the heap allocated objects was: %dG", key, stats.HeapAlloc >> 30)
+	log.Printf("successfully uploaded profile, key: %s when the size of the heap allocated objects was: %dG", key, stats.HeapAlloc>>30)
 	return nil
 }

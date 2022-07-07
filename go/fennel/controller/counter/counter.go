@@ -5,7 +5,6 @@ import (
 	"fennel/lib/arena"
 	"fennel/lib/timer"
 	"fmt"
-	"time"
 
 	libcounter "fennel/lib/counter"
 	"fennel/lib/ftypes"
@@ -13,8 +12,6 @@ import (
 	"fennel/model/counter"
 	"fennel/tier"
 )
-
-var cacheValueDuration = 30 * time.Minute
 
 func Value(
 	ctx context.Context, tier tier.Tier,

@@ -194,8 +194,6 @@ func getData(numKey, numIndex int) ([]Key, []KeyGroup, []ValGroup) {
 	return keys, kgs, vgs
 }
 
-var dummy int
-
 func benchmarkGetSet(b *testing.B, store Hangar, numKeys, numFields, szKey, szVal, szGets int) {
 	b.ReportAllocs()
 	// first create all the key/field/value data

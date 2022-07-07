@@ -4,6 +4,7 @@ import (
 	"context"
 	"fennel/lib/arena"
 	"fmt"
+	"log"
 
 	"fennel/controller/aggregate"
 	"fennel/engine/interpreter/bootarg"
@@ -15,11 +16,8 @@ import (
 )
 
 func init() {
-	ops := []operators.Operator{AggValue{}}
-	for _, op := range ops {
-		if err := operators.Register(op); err != nil {
-			panic(err)
-		}
+	if err := operators.Register(AggValue{}); err != nil {
+		log.Fatalf("Failed to register std.aggregate operator: %v", err)
 	}
 }
 
@@ -83,11 +81,6 @@ func (a AggValue) Apply(ctx context.Context, staticKwargs operators.Kwargs, in o
 		outs.Append(out)
 	}
 	return nil
-}
-
-func get(d value.Dict, k string) value.Value {
-	ret, _ := d.Get(k)
-	return ret
 }
 
 func (a AggValue) Signature() *operators.Signature {

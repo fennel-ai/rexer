@@ -14,11 +14,11 @@ materialization.
 
 const (
 	DBConnection  Type = 1
-	RedisClient        = 2
-	KafkaConsumer      = 3
-	KafkaProducer      = 4
-	Badger             = 5
-	NitrousClient      = 6
+	RedisClient   Type = 2
+	KafkaConsumer Type = 3
+	KafkaProducer Type = 4
+	Badger        Type = 5
+	NitrousClient Type = 6
 )
 
 type Config interface {

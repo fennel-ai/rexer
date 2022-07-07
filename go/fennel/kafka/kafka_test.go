@@ -143,61 +143,6 @@ func testReadBatch(t *testing.T, producer FProducer, consumer FConsumer, ordered
 	wg.Wait()
 }
 
-func testSameKeyReadBySameConsumer(t *testing.T, producer FProducer, consumer1, consumer2 FConsumer, ordered bool) {
-	wg := sync.WaitGroup{}
-	wg.Add(3)
-	ctx := context.Background()
-	found1 := make([][]byte, 0)
-	found2 := make([][]byte, 0)
-	go func() {
-		defer wg.Done()
-		defer producer.Close()
-		for i := 0; i < 10; i++ {
-			msg, e := value.Int(i).MarshalJSON()
-			assert.NoError(t, e)
-			// same key for two consecutive messages
-			key := []byte(fmt.Sprintf("%d", (i/2)*10))
-			assert.NoError(t, producer.Log(ctx, msg, key))
-		}
-	}()
-	go func() {
-		defer wg.Done()
-		defer consumer1.Close()
-		var err error
-		found1, err = consumer1.ReadBatch(ctx, 10, time.Second*10)
-		assert.NoError(t, err)
-		consumer1.Commit()
-		// it is possible that a consumer has nothing to commit in case of a multi-partition setup
-	}()
-	go func() {
-		defer wg.Done()
-		defer consumer2.Close()
-		var err error
-		found2, err = consumer2.ReadBatch(ctx, 10, time.Second*10)
-		assert.NoError(t, err)
-		consumer2.Commit()
-		// it is possible that a consumer has nothing to commit in case of a multi-partition setup
-	}()
-	wg.Wait()
-	// in the multi-partition setup, one consumer would have been assigned to one partition, hence should read
-	// messages in even number (we have the same key for two messages); and since each consumer will read them in order,
-	// every next message should have +1 value than itself
-	for i := 0; i < len(found1)/2; i++ {
-		v1, e := value.FromJSON(found1[i*2])
-		assert.NoError(t, e)
-		v2, e := value.FromJSON(found1[i*2+1])
-		assert.NoError(t, e)
-		assert.Equal(t, int64(v1.(value.Int))+1, int64(v2.(value.Int)))
-	}
-	for i := 0; i < len(found2)/2; i++ {
-		v1, e := value.FromJSON(found2[i*2])
-		assert.NoError(t, e)
-		v2, e := value.FromJSON(found2[i*2+1])
-		assert.NoError(t, e)
-		assert.Equal(t, int64(v1.(value.Int))+1, int64(v2.(value.Int)))
-	}
-}
-
 func getMockProducer(t *testing.T, scope resource.Scope, topic string, broker *MockBroker) FProducer {
 	producer, err := MockProducerConfig{
 		Broker: broker,
@@ -223,7 +168,7 @@ func testBacklog(t *testing.T, producer FProducer, consumer FConsumer) {
 	wg := sync.WaitGroup{}
 	wg.Add(2)
 	ctx := context.Background()
-	message := []byte(fmt.Sprintf("hello"))
+	message := []byte("hello")
 	go func() {
 		defer wg.Done()
 		defer producer.Close()
@@ -281,7 +226,8 @@ func testDifferentConsumerGroups(t *testing.T, producer FProducer, consumer1, co
 		} else {
 			assert.ElementsMatch(t, expected, found)
 		}
-		consumer1.Commit()
+		_, err = consumer1.Commit()
+		assert.NoError(t, err)
 		found, err = consumer2.ReadBatch(ctx, 5, time.Second*30)
 		assert.NoError(t, err)
 		if ordered {
@@ -289,7 +235,8 @@ func testDifferentConsumerGroups(t *testing.T, producer FProducer, consumer1, co
 		} else {
 			assert.ElementsMatch(t, expected, found)
 		}
-		consumer2.Commit()
+		_, err = consumer2.Commit()
+		assert.NoError(t, err)
 	}()
 	wg.Wait()
 }
@@ -320,7 +267,8 @@ func testSameConsumerGroup(t *testing.T, producer FProducer, consumer1, consumer
 		var err error
 		found1, err = consumer1.ReadBatch(ctx, 10, time.Second*10)
 		assert.NoError(t, err)
-		consumer1.Commit()
+		_, err = consumer1.Commit()
+		assert.NoError(t, err)
 		// it is possible that a consumer has nothing to commit in case of a multi-partition setup
 	}()
 	go func() {
@@ -329,53 +277,13 @@ func testSameConsumerGroup(t *testing.T, producer FProducer, consumer1, consumer
 		var err error
 		found2, err = consumer2.ReadBatch(ctx, 10, time.Second*10)
 		assert.NoError(t, err)
-		consumer2.Commit()
+		_, err = consumer2.Commit()
+		assert.NoError(t, err)
 		// it is possible that a consumer has nothing to commit in case of a multi-partition setup
 	}()
 	wg.Wait()
 	found := append(found1, found2...)
 	assert.ElementsMatch(t, expected, found)
-}
-
-func testNoAutoCommit(t *testing.T, producer FProducer, consumer1, consumer2 FConsumer, ordered bool) {
-	// verify that if a consumer closes before committing, its messages
-	// get assigned to another consumer
-	// NOTE: current local / mock kafka implementation doesn't support commits so this
-	// only applies to the remote kafka
-	ctx := context.Background()
-	expected := make([][]byte, 0)
-	found := make([][]byte, 0)
-	for i := 0; i < 10; i++ {
-		expected = append(expected, []byte(fmt.Sprintf("%d", i)))
-	}
-	wg := sync.WaitGroup{}
-	wg.Add(2)
-	go func() {
-		defer wg.Done()
-		defer producer.Close()
-		for _, msg := range expected {
-			assert.NoError(t, producer.Log(ctx, msg, nil))
-		}
-	}()
-	go func() {
-		// consumer 1 reads some messages but then closes before doing commit
-		defer wg.Done()
-		defer consumer1.Close()
-		_, err := consumer1.ReadBatch(ctx, 5, time.Second*30)
-		assert.NoError(t, err)
-	}()
-	wg.Wait()
-	// now consumer 2 is kicked off, which should be able to read all messages
-	defer consumer2.Close()
-	found, err := consumer2.ReadBatch(ctx, 20, time.Second*10)
-	assert.NoError(t, err)
-	// it is possible that a consumer has nothing to commit in case of a multi-partition setup
-	consumer2.Commit()
-	if ordered {
-		assert.Equal(t, found, expected)
-	} else {
-		assert.ElementsMatch(t, found, expected)
-	}
 }
 
 func TestLocal(t *testing.T) {

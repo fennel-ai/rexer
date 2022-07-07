@@ -201,7 +201,7 @@ func (c cachedProvider) getBatch(ctx context.Context, tier tier.Tier, profileKey
 				}
 				pk := keyToProfileKey[keys[i]]
 				profile := profile.NewProfileItem(pk.OType, pk.Oid, pk.Key, value.Nil, 0)
-				profile.Value = vc.(value.Value)
+				profile.Value = vc
 				keyToVal.Store(keyToProfileKey[keys[i]], profile)
 			}
 		}
