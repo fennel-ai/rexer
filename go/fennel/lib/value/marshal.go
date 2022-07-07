@@ -8,8 +8,9 @@ import (
 )
 
 const (
-	// Codec is our v1 serializer for values.
-	REXER_CODEC_V1 = 0x1
+	// Codec values are stored in the first byte of the serialized value
+	// and are used to determine the codec used to unmarshal the value.
+	REXER_CODEC_V1 = 0x81
 )
 
 func CaptainMarshal(v Value) ([]byte, error) {

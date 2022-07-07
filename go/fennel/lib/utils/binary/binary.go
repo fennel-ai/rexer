@@ -97,7 +97,6 @@ func setMSB(data []byte) {
 
 // The first 3 bits are for type.
 // The remaining bits are encoded using 7 bits per byte.
-// The first bit is always 1 to distinguish from the ASCII characters.
 func Num2Bytes(num int64) ([]byte, error) {
 	tmpBuf := make([]byte, 8)
 	binary.BigEndian.PutUint64(tmpBuf, uint64(num))

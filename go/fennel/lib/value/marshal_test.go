@@ -5,7 +5,12 @@ import (
 	"github.com/stretchr/testify/assert"
 	"math/rand"
 	"testing"
+	"time"
 )
+
+func init() {
+	rand.Seed(time.Now().UTC().UnixNano())
+}
 
 func verifyMarshalUnMarshal(t *testing.T, v Value) {
 	b, err := ProtoMarshal(v)
@@ -84,18 +89,54 @@ func RandStringRunes(n int) string {
 	return string(b)
 }
 
-func randomValue(n int, t string) ([][]byte, []Value) {
+func createVal(seed, depth int) Value {
+	if depth > 2 {
+		return Nil
+	}
+	switch seed % 11 {
+	case 0:
+		return Int(rand.Int())
+	case 1:
+		return Int(-rand.Int())
+	case 2:
+		return Double(rand.Float64())
+	case 3:
+		return Double(-rand.Float64())
+	case 4:
+		return Bool(rand.Int()%2 == 0)
+	case 5:
+		return String(RandStringRunes(rand.Intn(20)))
+	case 6:
+		return Nil
+	case 7:
+		length := rand.Int() % 10000
+		list := make([]Value, 0, length)
+		for i := 0; i < length; i++ {
+			list = append(list, createVal(rand.Int(), depth+1))
+		}
+		return NewList(list...)
+	case 8:
+		length := rand.Int() % 10000
+		dict := make(map[string]Value, length)
+		for i := 0; i < length; i++ {
+			dict[RandStringRunes(rand.Intn(10))] = createVal(rand.Int(), depth+1)
+		}
+		return NewDict(dict)
+	case 9:
+		return NewList()
+	case 10:
+		return NewDict(map[string]Value{})
+	}
+	return Nil
+}
+
+func generateValue(n int, t string) ([][]byte, []Value) {
 	arr := make([][]byte, n)
 	samples := make([]Value, n)
 	totalSize := 0
+	fmt.Printf("Generating %d %s values\n", n, t)
 	for i := 0; i < n; i++ {
-		subSample := NewDict(map[string]Value{})
-		for j := 0; j < 300; j++ {
-			subSample.Set(RandStringRunes(5), NewList(String(RandStringRunes(5)), Int(rand.Int()), Bool(true), NewDict(map[string]Value{})))
-			subSample.Set(RandStringRunes(5), String(RandStringRunes(5)))
-			subSample.Set(RandStringRunes(5), Int(rand.Int()))
-		}
-		sample := NewList(Int(rand.Int()), Nil, Double(rand.Float64()), Bool(rand.Int()%2 == 0), subSample, Nil, NewList(), String(`";<>?/\|':,./`))
+		sample := createVal(rand.Int(), 0)
 		samples[i] = sample
 		switch t {
 		case "captain":
@@ -104,14 +145,14 @@ func randomValue(n int, t string) ([][]byte, []Value) {
 			arr[i], _ = ProtoMarshal(sample)
 		case "json":
 			arr[i], _ = sample.MarshalJSON()
-		case "rexerjson":
+		case "rexparser":
 			arr[i], _ = Marshal(sample)
 		default:
 			panic("unknown type")
 		}
 		totalSize += len(arr[i])
 	}
-	fmt.Println("Total size: ", totalSize/n)
+	fmt.Println("Total siz", totalSize, "Number", n, "Avg size: ", totalSize/n)
 	return arr, samples
 }
 
@@ -121,8 +162,9 @@ func smallValue(n int, t string) ([][]byte, []Value) {
 	totalSize := 0
 	for i := 0; i < n; i++ {
 		//sample := NewList(String(RandStringRunes(5)), Int(rand.Int()))
-		x := `[123.455, 23.3]`
-		sample, _ := FromJSON([]byte(x))
+		//x = `[5,0.9405090880450124]`
+		//sample, _ := FromJSON([]byte(x))
+		sample := createVal(rand.Int(), 0)
 		samples[i] = sample
 		switch t {
 		case "captain":
@@ -131,7 +173,7 @@ func smallValue(n int, t string) ([][]byte, []Value) {
 			arr[i], _ = ProtoMarshal(sample)
 		case "json":
 			arr[i], _ = sample.MarshalJSON()
-		case "rexerjson":
+		case "rexparser":
 			arr[i], _ = Marshal(sample)
 		default:
 			panic("unknown type")
@@ -159,7 +201,7 @@ func commonValue(n int, t string) ([][]byte, []Value) {
 			arr[i], _ = ProtoMarshal(sample)
 		case "json":
 			arr[i], _ = sample.MarshalJSON()
-		case "rexerjson":
+		case "rexparser":
 			arr[i], _ = Marshal(sample)
 		default:
 			panic("unknown type")
@@ -191,7 +233,7 @@ func largeValue(n int, t string) ([][]byte, []Value) {
 			arr[i], _ = ProtoMarshal(sample)
 		case "json":
 			arr[i], _ = sample.MarshalJSON()
-		case "rexerjson":
+		case "rexparser":
 			arr[i], _ = Marshal(sample)
 		default:
 			panic("unknown type")
@@ -211,11 +253,12 @@ func benchMarkSerialization(b *testing.B, algo, sz string) {
 	} else if sz == "s" {
 		arr, samples = smallValue(b.N, algo)
 	} else if sz == "r" {
-		arr, samples = randomValue(b.N, algo)
+		arr, samples = generateValue(b.N, algo)
 	} else {
 		arr, samples = commonValue(b.N, algo)
 	}
 	fmt.Println("Benchmarking Algo ", algo, len(samples))
+
 	var v Value
 	b.ResetTimer()
 	b.ReportAllocs()
@@ -229,11 +272,11 @@ func benchMarkSerialization(b *testing.B, algo, sz string) {
 			_ = ProtoUnmarshal(arr[n], &v)
 		case "json":
 			v, err = FromJSON(arr[n])
-		case "rexerjson":
+		case "rexparser":
 			v, err = Unmarshal(arr[n])
 		}
-		assert.True(b, v.Equal(samples[n]))
 		assert.NoError(b, err)
+		//assert.True(b, v.Equal(samples[n]))
 	}
 }
 
@@ -242,7 +285,11 @@ func benchMarkSerialization(b *testing.B, algo, sz string) {
 // go test -tags dynamic  -bench Benchmark_Serialization -v fennel/lib/value -run ^$  -benchtime=10000x -cpuprofile cpu.out
 // go tool pprof -http=localhost:6060 cpu.out
 func Benchmark_Serialization(b *testing.B) {
-	benchMarkSerialization(b, "rexerjson", "r")
+	benchMarkSerialization(b, "rexparser", "r")
+}
+
+func Benchmark_Small_Serialization(b *testing.B) {
+	benchMarkSerialization(b, "proto", "s")
 }
 
 func FuzzRandom(f *testing.F) {
@@ -275,7 +322,6 @@ func FuzzRandom(f *testing.F) {
 }
 
 func FuzzRandomBytes(f *testing.F) {
-
 	f.Add([]byte{REXER_CODEC_V1})
 	f.Add([]byte{REXER_CODEC_V1, REXER_CODEC_V1})
 	f.Add([]byte{REXER_CODEC_V1, 0x12})
@@ -284,21 +330,4 @@ func FuzzRandomBytes(f *testing.F) {
 	f.Fuzz(func(t *testing.T, b []byte) {
 		_, _ = Unmarshal(b)
 	})
-}
-
-//func Test_Fuzz(t *testing.T) {
-//	b := []byte("100000000000.0")
-//	v, err := FromJSON(b)
-//	assert.NoError(t, err)
-//	vBytes, err := v.Marshal()
-//	assert.NoError(t, err)
-//	v2, err := Unmarshal(vBytes)
-//	assert.NoError(t, err)
-//	assert.True(t, v.Equal(v2))
-//}
-
-func Test_FuzzRandomBytes(t *testing.T) {
-	b := []byte("\x01Y\xf0\xf0\xf0\xf0")
-	_, err := Unmarshal(b)
-	assert.Error(t, err)
 }

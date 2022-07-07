@@ -23,6 +23,8 @@ const NULL = 0x00
 const TRUE = 0x1
 const FALSE = 0x2
 
+const MAX_ALLOC_SIZE = 10000000
+
 // Errors
 var (
 	EmptyValueError       = errors.New("serialized bytes are empty")
@@ -116,7 +118,9 @@ func parseArray(data []byte, metadataSz, sz int) (Value, int, error) {
 	if sz == 0 {
 		return NewList(), metadataSz, nil
 	}
-
+	if sz > MAX_ALLOC_SIZE {
+		return nil, 0, fmt.Errorf("array size is too large")
+	}
 	var ret List
 	ret.Grow(sz)
 	offset := 0
@@ -135,11 +139,14 @@ func parseArray(data []byte, metadataSz, sz int) (Value, int, error) {
 }
 
 func parseDict(data []byte, metadataSz, sz int) (Value, int, error) {
-	ret := make(map[string]Value, sz)
 	if sz == 0 {
-		return NewDict(ret), metadataSz, nil
+		return NewDict(map[string]Value{}), metadataSz, nil
+	}
+	if sz > MAX_ALLOC_SIZE {
+		return nil, 0, fmt.Errorf("dict size is too large")
 	}
 
+	ret := make(map[string]Value, sz)
 	offset := 0
 	for i := 0; i < sz; i++ {
 		if len(data) < offset {
