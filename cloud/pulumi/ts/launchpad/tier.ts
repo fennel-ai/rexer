@@ -50,7 +50,7 @@ export type PodConf = {
     // Build and use amd64 compatible image for the pod. Defaults to false.
     useAmd64?: boolean,
     // pprof heap alloc threshold
-    pprofHeapAllocThresholdBytes?: number
+    pprofHeapAllocThresholdMegaBytes?: number
 }
 
 export type HttpServerConf = {
@@ -498,7 +498,7 @@ const setupResources = async () => {
             resourceConf: input.httpServerConf?.podConf?.resourceConf,
             useAmd64: input.httpServerConf?.podConf?.useAmd64,
             nodeLabels: input.httpServerConf?.podConf?.nodeLabels,
-            pprofHeapAllocThresholdBytes: input.httpServerConf?.podConf?.pprofHeapAllocThresholdBytes,
+            pprofHeapAllocThresholdMegaBytes: input.httpServerConf?.podConf?.pprofHeapAllocThresholdMegaBytes,
         });
 
         // this sets up query server which is responsible for handling `/data/query` REST calls
@@ -517,7 +517,7 @@ const setupResources = async () => {
                 resourceConf: input.queryServerConf?.podConf?.resourceConf,
                 useAmd64: input.queryServerConf?.podConf?.useAmd64,
                 nodeLabels: input.queryServerConf?.podConf?.nodeLabels,
-                pprofHeapAllocThresholdBytes: input.queryServerConf?.podConf?.pprofHeapAllocThresholdBytes,
+                pprofHeapAllocThresholdMegaBytes: input.queryServerConf?.podConf?.pprofHeapAllocThresholdMegaBytes,
             });
         }
 
