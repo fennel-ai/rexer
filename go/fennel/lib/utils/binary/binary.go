@@ -133,6 +133,7 @@ func Num2Bytes(num int64) ([]byte, error) {
 	return ret, nil
 }
 
+// ParseInteger returns the number encoded and the number of bytes taken.
 func ParseInteger(data []byte) (int64, int, error) {
 	var v int64
 	if len(data) == 0 {
