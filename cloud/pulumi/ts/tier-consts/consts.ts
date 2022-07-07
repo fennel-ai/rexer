@@ -81,6 +81,15 @@ export const serviceEnvs = [
         }
     },
     {
+        name: "PLANE_ID",
+        valueFrom: {
+            configMapKeyRef: {
+                name: "tier-conf",
+                key: "plane_id",
+            }
+        }
+    },
+    {
         name: "CACHE_PRIMARY",
         valueFrom: {
             secretKeyRef: {
