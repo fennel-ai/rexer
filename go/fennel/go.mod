@@ -45,6 +45,7 @@ require (
 	github.com/docker/go-units v0.4.0 // indirect
 	github.com/elastic/gosigar v0.12.0 // indirect
 	github.com/go-logr/logr v1.2.3 // indirect
+	github.com/gocarina/gocsv v0.0.0-20220706085418-24d8f607f4a2 // indirect
 	github.com/godbus/dbus/v5 v5.0.3 // indirect
 	github.com/gogo/protobuf v1.3.2 // indirect
 	github.com/golang/groupcache v0.0.0-20200121045136-8c9f03a8e57e // indirect
