@@ -125,7 +125,7 @@ const tierConfs: Record<number, TierConf> = {
                     }
                 },
                 // set a threshold of 22G
-                pprofHeapAllocThresholdBytes: 22 << 30,
+                pprofHeapAllocThresholdMegaBytes: 22 << 10,
             }
         },
         sagemakerConf: {

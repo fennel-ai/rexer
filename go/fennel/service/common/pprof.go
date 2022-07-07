@@ -16,7 +16,7 @@ import (
 
 type PprofArgs struct {
 	PprofPort uint `arg:"--pprof-port,env:PPROF_PORT" default:"6060"`
-	PprofHeapAllocThresholdBytes uint64 `arg:"--pprof-heap-alloc-threshold-bytes,env:PPROF_HEAP_ALLOC_THRESHOLD_BYTES"`
+	PprofHeapAllocThresholdMegaBytes uint64 `arg:"--pprof-heap-alloc-threshold-megabytes,env:PPROF_HEAP_ALLOC_THRESHOLD_MEGABYTES"`
 	PprofBucket string `arg:"--pprof-bucket,env:PPROF_BUCKET"`
 	ProcessId string `arg:"--process-id,env:PROCESS_ID" default:"DEFAULT"`
 }
@@ -57,7 +57,7 @@ func maybeExportProfile(t time.Time, pprofArgs PprofArgs, s3Client s3.Client) er
 	// TODO(mohit): Add sampling here so that we don't keep exporting the profiles in case the process is under load
 
 	// if threshold is not set, do not profile at all
-	if pprofArgs.PprofHeapAllocThresholdBytes == 0 {
+	if pprofArgs.PprofHeapAllocThresholdMegaBytes == 0 {
 		return nil
 	}
 
@@ -72,7 +72,7 @@ func maybeExportProfile(t time.Time, pprofArgs PprofArgs, s3Client s3.Client) er
 	runtime.ReadMemStats(&stats)
 
 	// if the heap allocated objects require/consume lesser bytes than the configured threshold, do not profile at all
-	if stats.HeapAlloc < pprofArgs.PprofHeapAllocThresholdBytes {
+	if (stats.HeapAlloc >> 20) < pprofArgs.PprofHeapAllocThresholdMegaBytes {
 		return nil
 	}
 
