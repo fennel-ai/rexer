@@ -91,6 +91,9 @@ func (args TierArgs) Valid() error {
 	if args.TierID == 0 {
 		missingFields = append(missingFields, "TIER_ID")
 	}
+	if args.PlaneID == 0 {
+		missingFields = append(missingFields, "PLANE_ID")
+	}
 
 	// TODO: require args when ready for s3, glue, modelStore, sagemaker, UnleashEndpoint
 	if len(missingFields) > 0 {
