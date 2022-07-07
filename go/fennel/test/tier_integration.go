@@ -9,6 +9,7 @@ import (
 
 	fkafka "fennel/kafka"
 	"fennel/lib/ftypes"
+	"fennel/resource"
 	"fennel/tier"
 
 	"github.com/alexflint/go-arg"
@@ -43,7 +44,7 @@ func SetupTier(flags tier.TierArgs) error {
 	if err := setupDB(flags.TierID, flags.MysqlDB, flags.MysqlUsername, flags.MysqlPassword, flags.MysqlHost); err != nil {
 		return err
 	}
-	return SetupKafkaTopics(flags.TierID, flags.PlaneID, flags.KafkaServer, flags.KafkaUsername, flags.KafkaPassword, fkafka.ALL_TOPICS)
+	return SetupKafkaTopics(resource.NewTierScope(flags.TierID), flags.KafkaServer, flags.KafkaUsername, flags.KafkaPassword)
 }
 
 func Teardown(tr tier.Tier) error {

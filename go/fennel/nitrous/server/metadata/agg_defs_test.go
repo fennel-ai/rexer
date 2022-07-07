@@ -20,7 +20,7 @@ func TestInitRestore(t *testing.T) {
 	tp := plane.NewTestPlane(t)
 	p := tp.Plane
 	// Create producer so the topic is initialized.
-	producer := tp.NewProducer(t, nitrous.BINLOG_KAFKA_TOPIC)
+	producer := tp.NewBinlogProducer(t)
 
 	tlr := tailer.NewTestTailer(p, nitrous.BINLOG_KAFKA_TOPIC)
 	// Start tailing and wait for the consumer to be assigned partitions.

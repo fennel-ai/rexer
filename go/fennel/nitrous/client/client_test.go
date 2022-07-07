@@ -14,7 +14,6 @@ import (
 	"fennel/nitrous"
 	"fennel/nitrous/client"
 	"fennel/plane"
-	"fennel/test"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -23,8 +22,6 @@ import (
 
 func TestPush(t *testing.T) {
 	plane := plane.NewTestPlane(t)
-	tier, err := test.Tier()
-	assert.NoError(t, err)
 
 	// Start server.
 	lis, err := net.Listen("tcp", ":0")
@@ -33,9 +30,9 @@ func TestPush(t *testing.T) {
 
 	// Create client.
 	cfg := client.NitrousClientConfig{
-		Tier:    tier,
-		PlaneId: plane.ID,
-		Addr:    lis.Addr().String(),
+		PlaneId:        plane.ID,
+		ServerAddr:     lis.Addr().String(),
+		BinlogProducer: plane.NewBinlogProducer(t),
 	}
 	res, err := cfg.Materialize()
 	assert.NoError(t, err)
