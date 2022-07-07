@@ -3,12 +3,13 @@ package value
 import (
 	"bytes"
 	"capnproto.org/go/capnp/v3"
+	"fmt"
 	"google.golang.org/protobuf/proto"
 )
 
 const (
 	// Codec is our v1 serializer for values.
-	Codec = 0x1
+	REXER_CODEC_V1 = 0x1
 )
 
 func CaptainMarshal(v Value) ([]byte, error) {
@@ -51,11 +52,17 @@ func ProtoUnmarshal(data []byte, v *Value) error {
 }
 
 func Unmarshal(data []byte) (Value, error) {
+	if len(data) == 0 {
+		return nil, fmt.Errorf("data is empty")
+	}
+	if data[0] != REXER_CODEC_V1 {
+		return nil, fmt.Errorf("unsupported codec: %x", data[0])
+	}
 	v, _, err := ParseValue(data[1:])
 	return v, err
 }
 
 func Marshal(v Value) ([]byte, error) {
 	ret, err := v.Marshal()
-	return append([]byte{Codec}, ret...), err
+	return append([]byte{REXER_CODEC_V1}, ret...), err
 }

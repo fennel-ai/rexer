@@ -1,6 +1,7 @@
 package value
 
 import (
+	binlib "encoding/binary"
 	"encoding/json"
 	"fennel/lib/utils/binary"
 	"fennel/lib/utils/slice"
@@ -123,17 +124,9 @@ func (d Double) MarshalJSON() ([]byte, error) {
 	return []byte(d.String()), nil
 }
 func (d Double) Marshal() ([]byte, error) {
-	sign := POS_FLOAT
-	x := float64(d)
-	if x < 0 {
-		sign = NEG_FLOAT
-		x = -x
-	}
-	ret, err := binary.Num2Bytes(x)
-	if err != nil {
-		return nil, err
-	}
-	ret[0] = ret[0] | byte(sign)
+	ret := make([]byte, 9)
+	ret[0] = DOUBLE
+	binlib.BigEndian.PutUint64(ret[1:], math.Float64bits(float64(d)))
 	return ret, nil
 }
 

@@ -120,7 +120,9 @@ func smallValue(n int, t string) ([][]byte, []Value) {
 	samples := make([]Value, n)
 	totalSize := 0
 	for i := 0; i < n; i++ {
-		sample := NewList(String(RandStringRunes(5)), Int(rand.Int()))
+		//sample := NewList(String(RandStringRunes(5)), Int(rand.Int()))
+		x := `[123.455, 23.3]`
+		sample, _ := FromJSON([]byte(x))
 		samples[i] = sample
 		switch t {
 		case "captain":
@@ -230,7 +232,7 @@ func benchMarkSerialization(b *testing.B, algo, sz string) {
 		case "rexerjson":
 			v, err = Unmarshal(arr[n])
 		}
-		//assert.True(b, v.Equal(samples[n]))
+		assert.True(b, v.Equal(samples[n]))
 		assert.NoError(b, err)
 	}
 }
@@ -240,7 +242,7 @@ func benchMarkSerialization(b *testing.B, algo, sz string) {
 // go test -tags dynamic  -bench Benchmark_Serialization -v fennel/lib/value -run ^$  -benchtime=10000x -cpuprofile cpu.out
 // go tool pprof -http=localhost:6060 cpu.out
 func Benchmark_Serialization(b *testing.B) {
-	benchMarkSerialization(b, "rexerjson", "l")
+	benchMarkSerialization(b, "rexerjson", "r")
 }
 
 func FuzzRandom(f *testing.F) {
@@ -258,9 +260,12 @@ func FuzzRandom(f *testing.F) {
 			t.Skip()
 		}
 		jsonBytes, err := v.MarshalJSON()
+		_, err = Unmarshal(jsonBytes)
 		if err != nil || string(jsonBytes) != string(b) {
 			t.Skip()
 		}
+		protobufBytes, err := ProtoMarshal(v)
+		_, err = Unmarshal(protobufBytes)
 		vBytes, err := Marshal(v)
 		assert.NoError(t, err)
 		v2, err := Unmarshal(vBytes)
@@ -269,8 +274,20 @@ func FuzzRandom(f *testing.F) {
 	})
 }
 
+func FuzzRandomBytes(f *testing.F) {
+
+	f.Add([]byte{REXER_CODEC_V1})
+	f.Add([]byte{REXER_CODEC_V1, REXER_CODEC_V1})
+	f.Add([]byte{REXER_CODEC_V1, 0x12})
+	f.Add([]byte{REXER_CODEC_V1, 0x23})
+
+	f.Fuzz(func(t *testing.T, b []byte) {
+		_, _ = Unmarshal(b)
+	})
+}
+
 //func Test_Fuzz(t *testing.T) {
-//	b := []byte("100000000000.0")cd
+//	b := []byte("100000000000.0")
 //	v, err := FromJSON(b)
 //	assert.NoError(t, err)
 //	vBytes, err := v.Marshal()
@@ -279,3 +296,9 @@ func FuzzRandom(f *testing.F) {
 //	assert.NoError(t, err)
 //	assert.True(t, v.Equal(v2))
 //}
+
+func Test_FuzzRandomBytes(t *testing.T) {
+	b := []byte("\x01Y\xf0\xf0\xf0\xf0")
+	_, err := Unmarshal(b)
+	assert.Error(t, err)
+}

@@ -3,8 +3,6 @@ package binary
 import (
 	"encoding/binary"
 	"fmt"
-	"math"
-	"reflect"
 	"unsafe"
 )
 
@@ -100,16 +98,9 @@ func setMSB(data []byte) {
 // The first 3 bits are for type.
 // The remaining bits are encoded using 7 bits per byte.
 // The first bit is always 1 to distinguish from the ASCII characters.
-func Num2Bytes[T int64 | float64](num T) ([]byte, error) {
+func Num2Bytes(num int64) ([]byte, error) {
 	tmpBuf := make([]byte, 8)
-	switch reflect.TypeOf(num).Kind() {
-	case reflect.Int64:
-		binary.BigEndian.PutUint64(tmpBuf, uint64(num))
-	case reflect.Float64:
-		binary.BigEndian.PutUint64(tmpBuf, math.Float64bits(float64(num)))
-	default:
-		return nil, fmt.Errorf("invalid type")
-	}
+	binary.BigEndian.PutUint64(tmpBuf, uint64(num))
 	var buf []byte
 	for i := 0; i < len(tmpBuf); i++ {
 		if tmpBuf[i] != 0 {
@@ -143,33 +134,23 @@ func Num2Bytes[T int64 | float64](num T) ([]byte, error) {
 	return ret, nil
 }
 
-func ParseInteger(data []byte) (int64, int) {
+func ParseInteger(data []byte) (int64, int, error) {
 	var v int64
+	if len(data) == 0 {
+		return 0, 0, fmt.Errorf("integer data is empty")
+	}
 	v = int64(data[0] & 0xf)
 	i := 0
 	if data[0]&0x10 != 0 {
 		i++
-		for data[i] >= 0x80 {
+		for i < len(data) && data[i] >= 0x80 {
 			v = v<<7 | int64(data[i]&0x7f)
 			i++
 		}
+		if i >= len(data) {
+			return 0, 0, fmt.Errorf("invalid integer")
+		}
 		v = v<<7 | int64(data[i]&0x7f)
 	}
-	return v, i + 1
-}
-
-func ParseFloat(data []byte) (float64, int) {
-	var v uint64
-	v = uint64(data[0] & 0x1f)
-	i := 0
-	if data[0]&0x10 != 0 {
-		i++
-		for data[i] >= 0x80 {
-			v = v<<7 | uint64(data[i]&0x7f)
-			i++
-		}
-		v = v<<7 | uint64(data[i]&0x7f)
-	}
-
-	return math.Float64frombits(v), i + 1
+	return v, i + 1, nil
 }
