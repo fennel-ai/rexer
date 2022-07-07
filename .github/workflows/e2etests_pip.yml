@@ -65,6 +65,7 @@ jobs:
           REDIS_SERVER_ADDRESS: ${{ secrets.REDIS_SERVER_ADDRESS }}
           CACHE_PRIMARY: ${{ secrets.CACHE_PRIMARY }}
           TIER_ID: ${{ secrets.TIER_ID }}
+          PLANE_ID: ${{ secrets.PLANE_ID }}
           BADGER_DIR: ${{ secrets.BADGER_DIR }}
         run: |
           python -m unittest discover e2etests -p "teste2e.py"

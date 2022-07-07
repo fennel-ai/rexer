@@ -392,7 +392,10 @@ const setupResources = async () => {
             return await configs.setup({
                 kubeconfig: input.kubeconfig,
                 namespace: input.namespace,
-                tierConfig: { "tier_id": String(input.tierId) },
+                tierConfig: {
+                    "tier_id": String(input.tierId),
+                    "plane_id": String(input.planeId),
+                },
                 redisConfig: pulumi.output({
                     "addr": input.redisEndpoint,
                 } as Record<string, string>),
@@ -693,7 +696,7 @@ const setupTier = async (args: TierInput, preview?: boolean, destroy?: boolean) 
         await stack.setConfig(nameof<inputType>("ingressUseDedicatedMachines"), { value: JSON.stringify(args.ingressUseDedicatedMachines) })
     }
     await stack.setConfig(nameof<inputType>("clusterName"), { value: args.clusterName });
-    await stack.setConfig(nameof<inputType>("nodeInstanceRoleArn"), { value: args.nodeInstanceRoleArn } )
+    await stack.setConfig(nameof<inputType>("nodeInstanceRoleArn"), { value: args.nodeInstanceRoleArn })
 
     await stack.setConfig(nameof<inputType>("glueSourceBucket"), { value: args.glueSourceBucket })
     await stack.setConfig(nameof<inputType>("glueSourceScript"), { value: args.glueSourceScript })
