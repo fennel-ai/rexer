@@ -3,13 +3,16 @@ package math
 import (
 	"context"
 	"fmt"
+	"log"
 
 	"fennel/engine/operators"
 	"fennel/lib/value"
 )
 
 func init() {
-	operators.Register(maxOp{})
+	if err := operators.Register(maxOp{}); err != nil {
+		log.Fatalf("Failed to register math.max operator: %v", err)
+	}
 }
 
 type maxOp struct{}

@@ -60,7 +60,7 @@ func TestCaching(t *testing.T) {
 	assert.NoError(t, err)
 
 	s := NewHangar(planeID, cache, gt)
-	defer s.Teardown()
+	defer s.Teardown() //nolint: errcheck
 
 	// first setup some keys
 	key := hangar.Key{Data: []byte("key")}
@@ -128,9 +128,8 @@ func (m *mockStore) GetMany(kgs []hangar.KeyGroup) ([]hangar.ValGroup, error) {
 	defer m.Unlock()
 	ret := make([]hangar.ValGroup, len(kgs))
 	for i, kg := range kgs {
-		prefix := string(kg.Prefix.Data)
 		vg := &hangar.ValGroup{}
-		if map_, ok := m.data[prefix]; ok {
+		if map_, ok := m.data[string(kg.Prefix.Data)]; ok {
 			if kg.Fields.IsAbsent() {
 				for f, v := range map_ {
 					vg.Fields = append(vg.Fields, []byte(f))

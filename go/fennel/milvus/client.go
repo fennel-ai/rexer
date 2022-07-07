@@ -31,27 +31,26 @@ const (
 
 var supportedHyperParameters = hp.HyperParamRegistry{
 	"knn": {
-		"metric":         hp.HyperParameterInfo{"ip", reflect.String, []string{"ip", "l2", "hamming", "jaccard"}},
-		"index":          hp.HyperParameterInfo{"hnsw", reflect.String, []string{"flat", "ivf_flat", "hnsw", "annoy"}},
-		"nList":          hp.HyperParameterInfo{1024, reflect.Int, nil},
-		"M":              hp.HyperParameterInfo{32, reflect.Int, nil},
-		"efConstruction": hp.HyperParameterInfo{128, reflect.Int, nil},
-		"nTrees":         hp.HyperParameterInfo{1024, reflect.Int, nil},
+		"metric":         {Default: "ip", Type: reflect.String, Options: []string{"ip", "l2", "hamming", "jaccard"}},
+		"index":          {Default: "hnsw", Type: reflect.String, Options: []string{"flat", "ivf_flat", "hnsw", "annoy"}},
+		"nList":          {Default: 1024, Type: reflect.Int, Options: nil},
+		"M":              {Default: 32, Type: reflect.Int, Options: nil},
+		"efConstruction": {Default: 128, Type: reflect.Int, Options: nil},
 	},
 }
 
 var knnIndexSearchParams = hp.HyperParamRegistry{
 	"flat": {
-		"nprobe": hp.HyperParameterInfo{12, reflect.Int, nil},
+		"nprobe": hp.HyperParameterInfo{Default: 12, Type: reflect.Int, Options: nil},
 	},
 	"ivf_flat": {
-		"nprobe": hp.HyperParameterInfo{12, reflect.Int, nil},
+		"nprobe": hp.HyperParameterInfo{Default: 12, Type: reflect.Int, Options: nil},
 	},
 	"hnsw": {
-		"ef": hp.HyperParameterInfo{128, reflect.Int, nil},
+		"ef": hp.HyperParameterInfo{Default: 128, Type: reflect.Int, Options: nil},
 	},
 	"annoy": {
-		"searchK": hp.HyperParameterInfo{-1, reflect.Int, nil},
+		"searchK": hp.HyperParameterInfo{Default: -1, Type: reflect.Int, Options: nil},
 	},
 }
 
@@ -215,7 +214,11 @@ func (c Client) GetNeighbors(ctx context.Context, agg aggregate.Aggregate, vecto
 	if err != nil {
 		return nil, err
 	}
+
 	sp, err := getSearchParams(indexType, searchParams)
+	if err != nil {
+		return nil, err
+	}
 
 	metric, err := getMetric(hyperparameters["metric"].(string))
 	if err != nil {

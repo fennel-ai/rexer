@@ -224,7 +224,7 @@ func (b *badgerDB) respond(reqchan chan getRequest) {
 			req.resch <- res
 			continue
 		}
-		b.db.View(func(txn *badger.Txn) error {
+		_ = b.db.View(func(txn *badger.Txn) error {
 			for i, ek := range eks {
 				item, err := txn.Get(ek)
 				switch err {

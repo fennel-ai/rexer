@@ -2,13 +2,16 @@ package bool
 
 import (
 	"context"
+	"log"
 
 	"fennel/engine/operators"
 	"fennel/lib/value"
 )
 
 func init() {
-	operators.Register(allop{})
+	if err := operators.Register(allop{}); err != nil {
+		log.Fatalf("Failed to register std.all operator: %v", err)
+	}
 }
 
 type allop struct{}

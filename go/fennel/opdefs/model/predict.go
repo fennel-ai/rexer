@@ -7,10 +7,13 @@ import (
 	"fennel/engine/operators"
 	"fennel/lib/value"
 	"fennel/tier"
+	"log"
 )
 
 func init() {
-	operators.Register(predictOperator{})
+	if err := operators.Register(predictOperator{}); err != nil {
+		log.Fatalf("Failed to register model.predict operator: %v", err)
+	}
 }
 
 type predictOperator struct {
@@ -82,8 +85,3 @@ func (p predictOperator) Signature() *operators.Signature {
 }
 
 var _ operators.Operator = &predictOperator{}
-
-func get(d value.Dict, k string) value.Value {
-	ret, _ := d.Get(k)
-	return ret
-}

@@ -165,8 +165,6 @@ func TestInterpreter_QueryArgs(t *testing.T) {
 	assert.Equal(t, args, i.queryArgs())
 }
 
-var res value.Value
-
 func TestInterpreter_VisitLookup(t *testing.T) {
 	// lookups on non dicts all fail
 	for _, tree := range ast.TestExamples {

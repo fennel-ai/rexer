@@ -2,6 +2,7 @@ package feature
 
 import (
 	"context"
+	"log"
 
 	"fennel/controller/feature"
 	"fennel/engine/interpreter/bootarg"
@@ -21,7 +22,9 @@ var featurelog_stats = promauto.NewGaugeVec(prometheus.GaugeOpts{
 }, []string{"workflow"})
 
 func init() {
-	operators.Register(featureLog{})
+	if err := operators.Register(featureLog{}); err != nil {
+		log.Fatalf("Failed to register feature.log operator: %v", err)
+	}
 }
 
 type featureLog struct {
@@ -96,8 +99,3 @@ func (f featureLog) Signature() *operators.Signature {
 }
 
 var _ operators.Operator = &featureLog{}
-
-func get(d value.Dict, k string) value.Value {
-	ret, _ := d.Get(k)
-	return ret
-}

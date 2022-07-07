@@ -98,7 +98,7 @@ type mockConsumer struct {
 }
 
 func (l mockConsumer) Read(ctx context.Context, timeout time.Duration) ([]byte, error) {
-	ticker := time.Tick(timeout)
+	ticker := time.Tick(timeout) //nolint
 	for {
 		select {
 		case <-ctx.Done():
@@ -117,7 +117,7 @@ func (l mockConsumer) Read(ctx context.Context, timeout time.Duration) ([]byte, 
 }
 
 func (l mockConsumer) ReadProto(ctx context.Context, message proto.Message, timeout time.Duration) error {
-	ticker := time.Tick(timeout)
+	ticker := time.Tick(timeout) //nolint
 	for {
 		select {
 		case <-ctx.Done():
@@ -137,7 +137,7 @@ func (l mockConsumer) ReadProto(ctx context.Context, message proto.Message, time
 
 func (l mockConsumer) ReadBatch(ctx context.Context, upto int, timeout time.Duration) ([][]byte, error) {
 	ret := make([][]byte, 0)
-	ticker := time.Tick(timeout)
+	ticker := time.Tick(timeout) //nolint
 	for len(ret) < upto {
 		select {
 		case <-ctx.Done():

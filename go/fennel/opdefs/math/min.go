@@ -3,13 +3,16 @@ package math
 import (
 	"context"
 	"fmt"
+	"log"
 
 	"fennel/engine/operators"
 	"fennel/lib/value"
 )
 
 func init() {
-	operators.Register(minOp{})
+	if err := operators.Register(minOp{}); err != nil {
+		log.Fatalf("Failed to register math.min operator: %v", err)
+	}
 }
 
 type minOp struct{}

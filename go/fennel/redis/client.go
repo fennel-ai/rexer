@@ -244,9 +244,8 @@ func (c Client) HSetPipelined(
 		if err != nil {
 			log.Printf("Redis Error: HSetPipelined()[%d]: %v", i, err)
 		}
-		return err
 	}
-	return nil
+	return err
 }
 
 func (c Client) TTL(ctx context.Context, key string) (time.Duration, error) {
