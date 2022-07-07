@@ -16,10 +16,12 @@ import (
 	"fennel/lib/cache"
 	"fennel/lib/clock"
 	"fennel/lib/ftypes"
+	libnitrous "fennel/lib/nitrous"
 	"fennel/lib/timer"
 	unleashlib "fennel/lib/unleash"
 	"fennel/milvus"
 	"fennel/modelstore"
+	nitrous "fennel/nitrous/client"
 	"fennel/pcache"
 	"fennel/redis"
 	"fennel/resource"
@@ -27,6 +29,7 @@ import (
 	"fennel/sagemaker"
 
 	"github.com/Unleash/unleash-client-go/v3"
+	"github.com/samber/mo"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 )
@@ -50,6 +53,7 @@ type TierArgs struct {
 	TierID           ftypes.RealmID `arg:"--tier-id,env:TIER_ID" json:"tier_id,omitempty"`
 	PlaneID          ftypes.RealmID `arg:"--plane-id,env:PLANE_ID" json:"plane_id,omitempty"`
 	RedisServer      string         `arg:"--redis-server,env:REDIS_SERVER_ADDRESS" json:"redis_server,omitempty"`
+	NitrousServer    string         `arg:"--nitrous-server,env:NITROUS_SERVER_ADDRESS" json:"nitrous_server,omitempty"`
 	CachePrimary     string         `arg:"--cache-primary,env:CACHE_PRIMARY" json:"cache_primary,omitempty"`
 	CacheReplica     string         `arg:"--cache-replica,env:CACHE_REPLICA" json:"cache_replica,omitempty"`
 	Dev              bool           `arg:"--dev" default:"true" json:"dev,omitempty"`
@@ -120,6 +124,7 @@ type Tier struct {
 	GlueClient       glue.GlueClient
 	SagemakerClient  sagemaker.SMClient
 	MilvusClient     milvus.Client
+	NitrousClient    mo.Option[nitrous.NitrousClient]
 	ModelStore       *modelstore.ModelStore
 	Args             TierArgs
 	// In-process caches for the tier, has very short TTL ( order of minutes )
@@ -232,6 +237,21 @@ func CreateFromArgs(args *TierArgs) (tier Tier, err error) {
 		return kafkaConsumer.(libkafka.FConsumer), nil
 	}
 
+	nitrousClient := mo.None[nitrous.NitrousClient]()
+	if args.NitrousServer != "" {
+		logger.Info("Connecting to nitrous")
+		nitrousConfig := nitrous.NitrousClientConfig{
+			PlaneId:        args.PlaneID,
+			ServerAddr:     args.NitrousServer,
+			BinlogProducer: producers[libnitrous.BINLOG_KAFKA_TOPIC],
+		}
+		client, err := nitrousConfig.Materialize()
+		if err != nil {
+			return tier, fmt.Errorf("failed to create nitrous client: %w", err)
+		}
+		nitrousClient = mo.Some(client.(nitrous.NitrousClient))
+	}
+
 	var milvusClient milvus.Client
 	if args.MilvusArgs.Url != "" {
 		logger.Info("Connecting to milvus")
@@ -337,6 +357,7 @@ func CreateFromArgs(args *TierArgs) (tier Tier, err error) {
 		PCache:           pCache,
 		NewKafkaConsumer: consumerCreator,
 		SagemakerClient:  smclient,
+		NitrousClient:    nitrousClient,
 		S3Client:         s3client,
 		GlueClient:       glueclient,
 		MilvusClient:     milvusClient,
