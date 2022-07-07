@@ -573,7 +573,7 @@ func interpretRedisResponse(v interface{}) (value.Value, error) {
 		var val value.Value
 		var err error
 		tBytes := []byte(t)
-		if tBytes[0] == value.REXER_CODEC_V1 {
+		if len(tBytes) > 0 && tBytes[0] == value.REXER_CODEC_V1 {
 			val, err = value.Unmarshal(tBytes)
 			if err == nil {
 				return val, nil
