@@ -156,7 +156,7 @@ class TestEndToEnd(unittest.TestCase):
         c.log(action.Action(actor_type='user', actor_id=uid, target_type='content', target_id=content_id,
                             action_type='notif_send', request_id=7, timestamp=ts - timedelta(days=8)))
 
-        # Number of hours in the ts. 
+        # Number of hours in the ts.
         b = int((ts.timestamp() % (24 * 3600)) / 3600)
 
         # now sleep for upto 3 minutes and verify count processing worked
@@ -194,7 +194,7 @@ class TestEndToEnd(unittest.TestCase):
         age_group = 3
         creator_id = 567
 
-        # set some profiles using set_profiles
+        # set some profiles using set_profile_multi
         profiles = [
             {
                 'otype': 'user',
@@ -355,8 +355,8 @@ class TestEndToEnd(unittest.TestCase):
         age_group = 3
         creator_id = 567
 
-        # set some profiles using set_profiles
-        c.set_profiles([
+        # set some profiles using set_profile_multi
+        c.set_profile_multi([
             profile.Profile(otype="user", oid=uid, key="city", value=city),
             profile.Profile(otype="user", oid=uid, key="gender", value=gender),
             profile.Profile(otype="user", oid=uid, key="age_group", value=age_group),
@@ -514,9 +514,9 @@ class TestEndToEnd(unittest.TestCase):
         q = cond(var('x') < 3, 'left', 'right')
         q_name = 'query_name'
         c.store_query(q_name, q)
-        ret = c.run_query(q_name, {'x': 1})
+        ret = c.run_stored_query(q_name, {'x': 1})
         self.assertEqual('left', ret)
-        ret = c.run_query(q_name, {'x': 5})
+        ret = c.run_stored_query(q_name, {'x': 5})
         self.assertEqual('right', ret)
 
     @tiered
@@ -528,7 +528,7 @@ class TestEndToEnd(unittest.TestCase):
         topics = ['topic1', 'topic2']
         for p in post_ids:
             c.set_profile('post', p, 'topic', topics[p % 2])
-        
+
         slept = 0
         while slept < 60:
             passed = True
