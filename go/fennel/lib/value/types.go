@@ -1,13 +1,19 @@
 package value
 
 import (
+	binlib "encoding/binary"
+	"encoding/json"
+	"fennel/lib/utils/binary"
 	"fennel/lib/utils/slice"
 	"fmt"
+	"math"
 	"reflect"
 	"sort"
 	"strconv"
 	"strings"
 )
+
+const float64EqualityThreshold = 1e-9
 
 type Value interface {
 	isValue()
@@ -20,6 +26,7 @@ type Value interface {
 	String() string
 	Clone() Value
 	MarshalJSON() ([]byte, error)
+	Marshal() ([]byte, error)
 }
 
 var _ Value = Int(0)
@@ -58,6 +65,20 @@ func (I Int) OpUnary(opt string) (Value, error) {
 func (I Int) MarshalJSON() ([]byte, error) {
 	return []byte(I.String()), nil
 }
+func (I Int) Marshal() ([]byte, error) {
+	sign := POS_INT
+	x := int64(I)
+	if x < 0 {
+		sign = NEG_INT
+		x = -x
+	}
+	ret, err := binary.Num2Bytes(x)
+	if err != nil {
+		return nil, err
+	}
+	ret[0] = ret[0] | byte(sign)
+	return ret, nil
+}
 
 type Double float64
 
@@ -67,11 +88,12 @@ func (d Double) Equal(v Value) bool {
 	case Int:
 		return float64(v) == float64(d)
 	case Double:
-		return v == d
+		return math.Abs(float64(v-d)) < float64EqualityThreshold
 	default:
 		return false
 	}
 }
+
 func (d Double) String() string {
 	// here we take the minimum number of decimal places needed to represent the float
 	// so 3.4 is represented as just that, not 3.400000
@@ -101,6 +123,12 @@ func (d Double) OpUnary(opt string) (Value, error) {
 func (d Double) MarshalJSON() ([]byte, error) {
 	return []byte(d.String()), nil
 }
+func (d Double) Marshal() ([]byte, error) {
+	ret := make([]byte, 9)
+	ret[0] = DOUBLE
+	binlib.BigEndian.PutUint64(ret[1:], math.Float64bits(float64(d)))
+	return ret, nil
+}
 
 type Bool bool
 
@@ -128,6 +156,12 @@ func (b Bool) OpUnary(opt string) (Value, error) {
 func (b Bool) MarshalJSON() ([]byte, error) {
 	return []byte(b.String()), nil
 }
+func (b Bool) Marshal() ([]byte, error) {
+	if b {
+		return []byte{TRUE}, nil
+	}
+	return []byte{FALSE}, nil
+}
 
 type String string
 
@@ -141,11 +175,8 @@ func (s String) Equal(v Value) bool {
 	}
 }
 func (s String) String() string {
-	sb := strings.Builder{}
-	sb.WriteString(`"`)
-	sb.WriteString(string(s))
-	sb.WriteString(`"`)
-	return sb.String()
+	ret, _ := json.Marshal(string(s))
+	return string(ret)
 }
 func (s String) Clone() Value {
 	return s
@@ -158,6 +189,15 @@ func (s String) OpUnary(opt string) (Value, error) {
 }
 func (s String) MarshalJSON() ([]byte, error) {
 	return []byte(s.String()), nil
+}
+
+func (s String) Marshal() ([]byte, error) {
+	ret, err := EncodeTypeWithNum(STRING, int64(len(s)))
+	if err != nil {
+		return nil, err
+	}
+	ret = append(ret, []byte(s)...)
+	return ret, nil
 }
 
 type nil_ struct{}
@@ -187,6 +227,9 @@ func (n nil_) OpUnary(opt string) (Value, error) {
 }
 func (n nil_) MarshalJSON() ([]byte, error) {
 	return []byte(n.String()), nil
+}
+func (n nil_) Marshal() ([]byte, error) {
+	return []byte{NULL}, nil
 }
 
 type List struct {
@@ -251,6 +294,27 @@ func (l List) Clone() Value {
 }
 func (l List) MarshalJSON() ([]byte, error) {
 	return []byte(l.String()), nil
+}
+
+func (l List) Marshal() ([]byte, error) {
+	var rest []byte
+	for _, v := range l.values {
+		if v == nil {
+			rest = append(rest, NULL)
+		} else {
+			b, err := v.Marshal()
+			if err != nil {
+				return nil, err
+			}
+			rest = append(rest, b...)
+		}
+	}
+	ret, err := EncodeTypeWithNum(LIST, int64(len(l.values)))
+	if err != nil {
+		return nil, err
+	}
+	ret = append(ret, rest...)
+	return ret, nil
 }
 
 func (l *List) Append(vals ...Value) {
@@ -347,9 +411,8 @@ func (d Dict) String() string {
 	s := make([]string, 0, d.Len())
 	for k, v := range d.Iter() {
 		sb := strings.Builder{}
-		sb.WriteString(`"`)
-		sb.WriteString(k)
-		sb.WriteString(`"`)
+		key, _ := json.Marshal(k)
+		sb.WriteString(string(key))
 		sb.WriteString(":")
 		if v == nil {
 			sb.WriteString("null")
@@ -366,6 +429,39 @@ func (d Dict) String() string {
 	sb.WriteString("}")
 	return sb.String()
 }
+
+func (d Dict) Marshal() ([]byte, error) {
+	var rest []byte
+	keys := make([]string, 0, len(d.values))
+	for k := range d.values {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+	for _, k := range keys {
+		v := d.values[k]
+		key, err := String(k).Marshal()
+		if err != nil {
+			return nil, err
+		}
+		rest = append(rest, key...)
+		if v == nil {
+			rest = append(rest, NULL)
+		} else {
+			b, err := v.Marshal()
+			if err != nil {
+				return nil, err
+			}
+			rest = append(rest, b...)
+		}
+	}
+	ret, err := EncodeTypeWithNum(DICT, int64(len(keys)))
+	if err != nil {
+		return nil, err
+	}
+	ret = append(ret, rest...)
+	return ret, nil
+}
+
 func (d Dict) Clone() Value {
 	clone := make(map[string]Value, d.Len())
 	for k, v := range d.Iter() {

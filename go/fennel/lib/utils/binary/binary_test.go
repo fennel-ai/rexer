@@ -1,6 +1,7 @@
 package binary
 
 import (
+	"math/rand"
 	"testing"
 
 	"fennel/lib/utils"
@@ -34,6 +35,17 @@ func TestPut_ReadString(t *testing.T) {
 			assert.Equal(t, scene.input, found)
 			assert.Equal(t, scene.n, n1)
 		}
+	}
+}
+
+func Test_Int64(t *testing.T) {
+	for i := 0; i < 1000; i++ {
+		x := rand.Int63()
+		ret, err := Num2Bytes(x)
+		assert.NoError(t, err)
+		v, _, err := ParseInteger(ret)
+		assert.NoError(t, err)
+		assert.Equal(t, x, v)
 	}
 }
 

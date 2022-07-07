@@ -571,7 +571,15 @@ func interpretRedisResponse(v interface{}) (value.Value, error) {
 		}
 	case string:
 		var val value.Value
-		err := value.Unmarshal([]byte(t), &val)
+		var err error
+		tBytes := []byte(t)
+		if len(tBytes) > 0 && tBytes[0] == value.REXER_CODEC_V1 {
+			val, err = value.Unmarshal(tBytes)
+			if err == nil {
+				return val, nil
+			}
+		}
+		err = value.ProtoUnmarshal(tBytes, &val)
 		return val, err
 	default:
 		return nil, fmt.Errorf("unexpected type from redis")
@@ -589,6 +597,7 @@ func setInRedis(ctx context.Context, tier tier.Tier, rkeys []string, values []va
 		if err != nil {
 			return err
 		}
+		// Temporary identifier, should be removed later.
 		vals[i] = s
 		keySize += len(rkeys[i])
 		valSize += len(s)
