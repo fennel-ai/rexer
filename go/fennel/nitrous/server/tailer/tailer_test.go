@@ -42,7 +42,7 @@ func TestTailer(t *testing.T) {
 	p := tp.Plane
 
 	// Create the producer first so the topic is initialized.
-	producer := tp.NewProducer(t, nitrous.BINLOG_KAFKA_TOPIC)
+	producer := tp.NewBinlogProducer(t)
 
 	tlr, err := tailer.NewTailer(p, nitrous.BINLOG_KAFKA_TOPIC, nil, offsetkey)
 	assert.NoError(t, err)

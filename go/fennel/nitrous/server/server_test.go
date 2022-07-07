@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"fennel/lib/ftypes"
+	"fennel/lib/nitrous"
 	"fennel/lib/value"
 	rpc "fennel/nitrous/rpc/v2"
 	"fennel/nitrous/server"
@@ -65,11 +66,10 @@ func TestGet(t *testing.T) {
 
 func TestGetLag(t *testing.T) {
 	p := plane.NewTestPlane(t)
-	topic := "test-topic"
 	// Produce a message for tailer.
-	producer := p.NewProducer(t, topic)
+	producer := p.NewBinlogProducer(t)
 
-	tailer := tailer.NewTestTailer(p.Plane, topic)
+	tailer := tailer.NewTestTailer(p.Plane, nitrous.BINLOG_KAFKA_TOPIC)
 	// Set a very long test timeout so message is not really consumed.
 	tailer.SetPollTimeout(1 * time.Minute)
 	go tailer.Tail()
