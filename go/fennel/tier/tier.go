@@ -133,7 +133,26 @@ type Tier struct {
 func CreateFromArgs(args *TierArgs) (tier Tier, err error) {
 	tierID := args.TierID
 	scope := resource.NewTierScope(tierID)
-	log.Print("Connecting to mysql")
+
+	// First, create a structured logger that we can then use in other places.
+	log.Print("Creating logger")
+	var logger *zap.Logger
+	if args.Dev {
+		logger, err = zap.NewDevelopment()
+	} else {
+		config := zap.NewProductionConfig()
+		config.EncoderConfig.EncodeTime = zapcore.RFC3339TimeEncoder
+		logger, err = config.Build(
+			zap.AddCaller(),
+			zap.AddStacktrace(zap.ErrorLevel),
+		)
+	}
+	if err != nil {
+		return tier, fmt.Errorf("failed to construct logger: %v", err)
+	}
+	logger = logger.With(zap.Uint32("tier_id", args.TierID.Value()))
+
+	logger.Info("Connecting to mysql")
 	mysqlConfig := db.MySQLConfig{
 		Host:     args.MysqlHost,
 		DBname:   scope.PrefixedName(args.MysqlDB),
@@ -145,7 +164,8 @@ func CreateFromArgs(args *TierArgs) (tier Tier, err error) {
 	if err != nil {
 		return tier, fmt.Errorf("failed to connect with mysql: %v", err)
 	}
-	log.Print("Connecting to redis")
+
+	logger.Info("Connecting to redis")
 	redisConfig := redis.ClientConfig{
 		Addr: args.RedisServer,
 		TLSConfig: &tls.Config{
@@ -158,7 +178,7 @@ func CreateFromArgs(args *TierArgs) (tier Tier, err error) {
 		return tier, fmt.Errorf("failed to create redis client: %v", err)
 	}
 
-	log.Print("Connecting to cache")
+	logger.Info("Connecting to cache")
 	cacheClientConfig := redis.ClientConfig{
 		Addr: args.CachePrimary,
 		TLSConfig: &tls.Config{
@@ -171,7 +191,7 @@ func CreateFromArgs(args *TierArgs) (tier Tier, err error) {
 		return tier, fmt.Errorf("failed to create cache client: %v", err)
 	}
 
-	log.Print("Creating process-level cache")
+	logger.Info("Creating process-level cache")
 	// Capacity: 2 GB
 	// Expected size of item: 128 bytes
 	pCache, err := pcache.NewPCache(1<<31, 1<<7)
@@ -191,13 +211,13 @@ func CreateFromArgs(args *TierArgs) (tier Tier, err error) {
 		}
 	}()
 
-	log.Print("Creating kafka producer")
+	logger.Info("Creating kafka producers")
 	producers, err := CreateKafka(tierID, args.PlaneID, args.KafkaServer, args.KafkaUsername, args.KafkaPassword)
 	if err != nil {
 		return tier, err
 	}
 
-	log.Print("Creating kafka consumer")
+	logger.Info("Creating kafka consumer factory")
 	consumerCreator := func(config libkafka.ConsumerConfig) (libkafka.FConsumer, error) {
 		kafkaConsumerConfig := libkafka.RemoteConsumerConfig{
 			ConsumerConfig:  config,
@@ -212,39 +232,22 @@ func CreateFromArgs(args *TierArgs) (tier Tier, err error) {
 		return kafkaConsumer.(libkafka.FConsumer), nil
 	}
 
-	log.Print("Creating logger")
-	var logger *zap.Logger
-	if args.Dev {
-		logger, err = zap.NewDevelopment()
-	} else {
-		config := zap.NewProductionConfig()
-		config.EncoderConfig.EncodeTime = zapcore.RFC3339TimeEncoder
-		logger, err = config.Build(
-			zap.AddCaller(),
-			zap.AddStacktrace(zap.ErrorLevel),
-		)
-	}
-	if err != nil {
-		return tier, fmt.Errorf("failed to construct logger: %v", err)
-	}
-	logger = logger.With(zap.Uint32("tier_id", args.TierID.Value()))
-
 	var milvusClient milvus.Client
 	if args.MilvusArgs.Url != "" {
-		log.Print("Connecting to milvus")
+		logger.Info("Connecting to milvus")
 		milvusClient, err = milvus.NewClient(args.MilvusArgs)
 		if err != nil {
 			return tier, fmt.Errorf("failed to create milvus client: %v", err)
 		}
 	}
 
-	log.Print("Connecting to sagemaker")
+	logger.Info("Connecting to sagemaker")
 	smclient, err := sagemaker.NewClient(args.SagemakerArgs, logger)
 	if err != nil {
 		return tier, fmt.Errorf("failed to create sagemaker client: %v", err)
 	}
 
-	log.Println("Creating AWS clients for S3, Glue, and ModelStore")
+	logger.Info("Creating AWS clients for S3, Glue, and ModelStore")
 	s3client := s3.NewClient(args.S3Args)
 	glueclient := glue.NewGlueClient(args.GlueArgs)
 
