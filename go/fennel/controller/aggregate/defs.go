@@ -7,11 +7,14 @@ import (
 	"fennel/lib/ftypes"
 	"fennel/lib/phaser"
 	modelAgg "fennel/model/aggregate"
+	nitrous "fennel/nitrous/client"
 	"fennel/tier"
 	"fmt"
 	"strconv"
 	"strings"
 	"time"
+
+	"go.uber.org/zap"
 )
 
 // Data is kept in redis OFFLINE_AGG_TTL_MULTIPLIER times the update frequency
@@ -80,7 +83,16 @@ func Store(ctx context.Context, tier tier.Tier, agg aggregate.Aggregate) error {
 					}
 				}
 			}
-			return modelAgg.Store(ctx, tier, agg)
+			// Store aggregate in db.
+			err = modelAgg.Store(ctx, tier, agg)
+			if err != nil {
+				return err
+			}
+			// Forward online aggregate definition to nitrous.
+			if !agg.IsOffline() {
+				go createOnNitrous(ctx, tier, agg)
+			}
+			return nil
 		} else {
 			return fmt.Errorf("failed to retrieve aggregate: %w", err)
 		}
@@ -95,10 +107,39 @@ func Store(ctx context.Context, tier tier.Tier, agg aggregate.Aggregate) error {
 					return fmt.Errorf("failed to reactivate aggregate '%s': %w", agg.Name, err)
 				}
 			}
+			// Forward online aggregates to nitrous if the client has been initialized.
+			// We do this even if the aggregate has been previously defined.
+			if !agg.IsOffline() {
+				go createOnNitrous(ctx, tier, agg)
+			}
 			return nil
 		} else {
 			return fmt.Errorf("already present but with different query/options")
 		}
+	}
+}
+
+func createOnNitrous(ctx context.Context, tier tier.Tier, agg aggregate.Aggregate) {
+	var err error
+	tier.NitrousClient.ForEach(func(nc nitrous.NitrousClient) {
+		err = nc.CreateAggregate(ctx, agg.Id, agg.Options)
+	})
+	if err != nil {
+		tier.Logger.Warn("Failed to forward aggregate definition to nitrous", zap.Error(err))
+	} else {
+		tier.Logger.Debug("Forwarded aggregate definition to nitrous")
+	}
+}
+
+func deleteFromNitrous(ctx context.Context, tier tier.Tier, aggId ftypes.AggId) {
+	var err error
+	tier.NitrousClient.ForEach(func(nc nitrous.NitrousClient) {
+		err = nc.DeleteAggregate(ctx, aggId)
+	})
+	if err != nil {
+		tier.Logger.Warn("Failed to forward aggregate deletion to nitrous", zap.Error(err))
+	} else {
+		tier.Logger.Debug("Forwarded aggregate deletion to nitrous")
 	}
 }
 
@@ -142,6 +183,12 @@ func Deactivate(ctx context.Context, tier tier.Tier, aggname ftypes.AggName) err
 	if err != nil {
 		return err
 	}
+
+	// Forward online aggregate deletions to nitrous.
+	if !agg.IsOffline() {
+		go deleteFromNitrous(ctx, tier, agg.Id)
+	}
+
 	// If it is present and inactive, do nothing
 	// otherwise, deactivate
 	if !agg.Active {
