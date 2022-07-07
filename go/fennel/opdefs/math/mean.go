@@ -3,13 +3,16 @@ package math
 import (
 	"context"
 	"fmt"
+	"log"
 
 	"fennel/engine/operators"
 	"fennel/lib/value"
 )
 
 func init() {
-	operators.Register(meanop{})
+	if err := operators.Register(meanop{}); err != nil {
+		log.Fatalf("Failed to register math.mean operator: %v", err)
+	}
 }
 
 type meanop struct{}

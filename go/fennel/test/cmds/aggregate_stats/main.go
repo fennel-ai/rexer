@@ -78,7 +78,7 @@ func printAndLogStat(aggId ftypes.AggId, s ShardStat, csvWriter *csv.Writer) {
 	avgKeyLen := float64(s.KeyLen) / float64(s.NumKeys)
 	avgValLen := float64(s.ValLen) / float64(s.NumKeys)
 	row := []string{strconv.Itoa(int(aggId)), strconv.Itoa(int(s.NumKeys)), fmt.Sprintf("%.2f", avgKeyLen), fmt.Sprintf("%.2f", avgValLen), strconv.Itoa(int(s.SizeBytes >> 20))}
-	csvWriter.Write(row)
+	_ = csvWriter.Write(row)
 
 	fmt.Println("==========")
 	fmt.Printf("AggId: %d\n", aggId)
@@ -309,7 +309,7 @@ func computeStatsForAggs(csvDir, fileName string, tierId int) (map[ftypes.AggId]
 		// try converting the total memory usage to int
 		size, err := strconv.Atoi(d[sizeIndex])
 		if err != nil {
-			v, _ := aggToStats[aggId]
+			v := aggToStats[aggId]
 			v.NumErrors++
 			aggToStats[aggId] = v
 			fmt.Printf("could not convert (v[sizeIndex]: %v) to int: %v\n", d[sizeIndex], err)
@@ -323,7 +323,7 @@ func computeStatsForAggs(csvDir, fileName string, tierId int) (map[ftypes.AggId]
 			continue
 		}
 
-		v, _ = aggToStats[aggId]
+		v = aggToStats[aggId]
 		v.NumKeys++
 		v.SizeBytes += uint64(size)
 		v.ValLen += uint64(valLen)
@@ -458,7 +458,7 @@ func main() {
 	csvWriter := csv.NewWriter(csvFile)
 	defer csvWriter.Flush()
 
-	csvWriter.Write([]string{"AggId", "NumKeys", "Avg KeyLen", "Avg ValLen", "Total size MB"})
+	_ = csvWriter.Write([]string{"AggId", "NumKeys", "Avg KeyLen", "Avg ValLen", "Total size MB"})
 
 	// compute statistics from the snapshot files
 	if len(flags.Aggregates) > 0 {

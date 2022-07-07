@@ -103,7 +103,7 @@ func getHyperParametersFromMap(key string, hyperparameters value.Dict, supported
 		}
 	}
 
-	var retParams map[string]interface{}
+	retParams := make(map[string]interface{})
 	if hyperparameters.Len() != 0 {
 		for param, v := range hyperparameters.Iter() {
 			if hyperparamtersMap[param].Type == reflect.Int || hyperparamtersMap[param].Type == reflect.Float64 {

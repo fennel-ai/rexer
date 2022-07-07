@@ -18,7 +18,7 @@ func NewTestTailer(plane plane.Plane, topic string) *Tailer {
 	return &Tailer{
 		nil,
 		plane,
-		consumer.(kafka.FConsumer),
+		consumer,
 		[]byte("default-offsets-kg"),
 		nil,
 		5 * time.Second,

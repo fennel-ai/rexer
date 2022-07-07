@@ -109,7 +109,8 @@ func TestInterpreter_VisitOpcall2(t *testing.T) {
 
 func TestInterpreter_VisitOpcall3(t *testing.T) {
 	// first register the test operation
-	operators.Register(&testOpInit{})
+	err := operators.Register(&testOpInit{})
+	assert.NoError(t, err)
 	// then create an ast that uses this op
 	query := ast.OpCall{
 		Namespace: "test",
@@ -138,7 +139,8 @@ func TestInterpreter_VisitOpcall3(t *testing.T) {
 }
 
 func TestInterpreter_VisitOpcall4(t *testing.T) {
-	operators.Register(testOpDefault{})
+	err := operators.Register(testOpDefault{})
+	assert.NoError(t, err)
 	query := ast.OpCall{
 		Namespace: "test",
 		Name:      "testop",
@@ -160,7 +162,8 @@ func TestInterpreter_VisitOpcall4(t *testing.T) {
 func TestInterpreter_VisitOpcall5(t *testing.T) {
 	// verifies that if the same operator appears twice in a query,
 	// it works, even when the operator has some internal state
-	operators.Register(&rowCount{})
+	err := operators.Register(&rowCount{})
+	assert.NoError(t, err)
 	query := ast.OpCall{
 		Operands: []ast.Ast{&ast.OpCall{
 			Namespace: "test",

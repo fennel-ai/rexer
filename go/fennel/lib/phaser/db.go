@@ -91,7 +91,7 @@ func RetrieveBatch(ctx context.Context, tier tier.Tier, namespace, identifier []
 	`
 	v := make([]interface{}, 0, len(namespaceIdentifiers))
 	inval := "("
-	for key, _ := range namespaceIdentifiers {
+	for key := range namespaceIdentifiers {
 		inval += "(?, ?),"
 		v = append(v, key.Namespace, key.Identifier)
 	}

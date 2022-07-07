@@ -19,8 +19,6 @@ func TestShuffleOperator_Apply(t *testing.T) {
 
 	tr := tier.Tier{}
 	outTable := make([]value.Value, len(intable))
-	for i, in := range intable {
-		outTable[i] = in
-	}
+	copy(outTable, intable)
 	optest.AssertElementsMatch(t, tr, &ShuffleOperator{}, staticKwargs, [][]value.Value{intable}, contextKwargs, outTable)
 }

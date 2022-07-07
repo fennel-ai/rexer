@@ -527,11 +527,6 @@ func (t twoLevelRedisStore) logStats(groupVals []value.Value, mode string) {
 
 var _ BucketStore = twoLevelRedisStore{}
 
-type redisResponse struct {
-	resp  interface{}
-	index int
-}
-
 // ==========================================================
 // Private helpers for talking to redis
 // ==========================================================

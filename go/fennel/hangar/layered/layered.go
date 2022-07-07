@@ -6,6 +6,7 @@ import (
 	"fennel/test"
 	"fmt"
 	"io"
+	"log"
 	"time"
 
 	"github.com/samber/mo"
@@ -95,12 +96,11 @@ func NewHangar(planeID ftypes.RealmID, cache, db hangar.Hangar) hangar.Hangar {
 func (l *layered) DelMany(keys []hangar.KeyGroup) error {
 	err := l.cache.DelMany(keys)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to delete keys from the cache: %w", err)
 	}
 	if err = l.db.DelMany(keys); err != nil {
-		return err
+		return fmt.Errorf("failed to delete keys from the db: %w", err)
 	}
-	l.fill(keys)
 	return nil
 }
 
@@ -149,19 +149,23 @@ func (l *layered) GetMany(kgs []hangar.KeyGroup) ([]hangar.ValGroup, error) {
 	}
 	dbvals, err := l.db.GetMany(notfound)
 	if err != nil {
-		return results, err
+		return nil, fmt.Errorf("failed to get values from the db: %w", err)
 	}
 	tofill := make([]hangar.KeyGroup, 0, len(notfound))
 	for i, dbval := range dbvals {
 		if len(dbval.Fields) > 0 {
-			results[ptr[i]].Update(dbval)
+			if err = results[ptr[i]].Update(dbval); err != nil {
+				return nil, fmt.Errorf("failed to update valgroup: %w", err)
+			}
 			tofill = append(tofill, notfound[i])
 		}
 	}
 
 	// fill whatever cache misses we saw
 	if len(tofill) > 0 {
-		l.fill(tofill)
+		if err = l.fill(tofill); err != nil {
+			return results, fmt.Errorf("failed to fill cache: %w", err)
+		}
 	}
 	return results, nil
 }
@@ -209,6 +213,7 @@ func (l *layered) processFillReqs() {
 		}
 		dbvals, err := l.db.GetMany(batch)
 		if err != nil {
+			log.Printf("Failed to get values from db: %v", err)
 			continue
 		}
 		keys := make([]hangar.Key, 0, len(batch))
@@ -222,7 +227,10 @@ func (l *layered) processFillReqs() {
 			keys = append(keys, batch[i].Prefix)
 			valgroups = append(valgroups, dbval)
 		}
-		l.cache.SetMany(keys, valgroups)
+		if err = l.cache.SetMany(keys, valgroups); err != nil {
+			log.Printf("Failed to fill cache: %v", err)
+			continue
+		}
 	}
 }
 
