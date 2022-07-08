@@ -552,7 +552,7 @@ func readFromRedis(ctx context.Context, tier tier.Tier, rkeys []string) ([]value
 	ctx, tmr := timer.Start(ctx, tier.ID, "redis.interpret_response")
 	defer tmr.Stop()
 
-	ret, err := parallel.Process(ctx, res, interpretRedisResponse)
+	ret, err := parallel.Process(ctx, 2, res, interpretRedisResponse)
 	if err != nil {
 		return nil, fmt.Errorf("failed to interpret redis response: %w", err)
 	}

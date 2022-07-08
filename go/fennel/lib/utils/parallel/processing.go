@@ -3,6 +3,7 @@ package parallel
 import (
 	"context"
 	"golang.org/x/sync/errgroup"
+	"runtime"
 )
 
 type item[T any] struct {
@@ -10,7 +11,8 @@ type item[T any] struct {
 	index int
 }
 
-func Process[S, T any](ctx context.Context, inputs []S, f func(S) (T, error)) ([]T, error) {
+// Process runs the function f on each item in inputs in parallel. parallelism ranges from 1 to runtime.GOMAXPROCS(0)
+func Process[S, T any](ctx context.Context, parallelism int, inputs []S, f func(S) (T, error)) ([]T, error) {
 	g, ctx := errgroup.WithContext(ctx)
 	itemCh := make(chan item[S])
 	g.Go(func() error {
@@ -24,10 +26,11 @@ func Process[S, T any](ctx context.Context, inputs []S, f func(S) (T, error)) ([
 		}
 		return nil
 	})
+	if parallelism == 0 || parallelism > runtime.GOMAXPROCS(0) {
+		parallelism = runtime.GOMAXPROCS(0)
+	}
 	ret := make([]T, len(inputs))
-	//nWorkers := runtime.GOMAXPROCS(0)
-	nWorkers := 1
-	for i := 0; i < nWorkers; i++ {
+	for i := 0; i < parallelism; i++ {
 		g.Go(func() error {
 			for item := range itemCh {
 				select {
