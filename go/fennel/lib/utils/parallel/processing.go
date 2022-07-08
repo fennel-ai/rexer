@@ -2,8 +2,6 @@ package parallel
 
 import (
 	"context"
-	"runtime"
-
 	"golang.org/x/sync/errgroup"
 )
 
@@ -27,7 +25,8 @@ func Process[S, T any](ctx context.Context, inputs []S, f func(S) (T, error)) ([
 		return nil
 	})
 	ret := make([]T, len(inputs))
-	nWorkers := runtime.GOMAXPROCS(0)
+	//nWorkers := runtime.GOMAXPROCS(0)
+	nWorkers := 1
 	for i := 0; i < nWorkers; i++ {
 		g.Go(func() error {
 			for item := range itemCh {
