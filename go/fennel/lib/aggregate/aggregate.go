@@ -12,18 +12,32 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
+const (
+	SUM            ftypes.AggType = "sum"
+	TIMESERIES_SUM ftypes.AggType = "timeseries_sum"
+	AVERAGE        ftypes.AggType = "average"
+	MIN            ftypes.AggType = "min"
+	MAX            ftypes.AggType = "max"
+	STDDEV         ftypes.AggType = "stddev"
+	LIST           ftypes.AggType = "list"
+	RATE           ftypes.AggType = "rate"
+	TOPK           ftypes.AggType = "topk"
+	CF             ftypes.AggType = "cf"
+	KNN            ftypes.AggType = "knn"
+)
+
 var ValidTypes = []ftypes.AggType{
-	"sum",
-	"timeseries_sum",
-	"average",
-	"list",
-	"min",
-	"max",
-	"stddev",
-	"rate",
-	"topk",
-	"cf",
-	"knn",
+	SUM,
+	TIMESERIES_SUM,
+	AVERAGE,
+	MIN,
+	MAX,
+	STDDEV,
+	LIST,
+	RATE,
+	TOPK,
+	CF,
+	KNN,
 }
 
 const (
@@ -63,8 +77,8 @@ func (agg Aggregate) Validate() error {
 	}
 	options := agg.Options
 	aggtype := agg.Options.AggType
-	switch strings.ToLower(string(aggtype)) {
-	case "sum", "average", "min", "max", "stddev", "list":
+	switch ftypes.AggType(strings.ToLower(string(aggtype))) {
+	case SUM, AVERAGE, MIN, MAX, STDDEV, LIST:
 		if len(options.Durations) < 1 {
 			return fmt.Errorf("at least one duration must be provided for %s", aggtype)
 		}
@@ -76,7 +90,7 @@ func (agg Aggregate) Validate() error {
 		if options.Window != 0 || options.Limit != 0 || options.Normalize {
 			return fmt.Errorf("window, limit, normalize should all be zero for %v", aggtype)
 		}
-	case "topk", "cf":
+	case TOPK, CF:
 		if len(options.Durations) < 1 {
 			return fmt.Errorf("at least one duration must be provided for %s", aggtype)
 		}
@@ -91,7 +105,7 @@ func (agg Aggregate) Validate() error {
 		if options.Limit == 0 {
 			return fmt.Errorf("limit should be non-zero for %v", aggtype)
 		}
-	case "rate":
+	case RATE:
 		for _, d := range options.Durations {
 			if d == 0 {
 				return fmt.Errorf("duration can not be zero for %s", aggtype)
@@ -100,7 +114,7 @@ func (agg Aggregate) Validate() error {
 		if options.Window != 0 || options.Limit != 0 {
 			return fmt.Errorf("window, limit should all be zero for %v", aggtype)
 		}
-	case "knn":
+	case KNN:
 		if len(options.Durations) > 0 {
 			return fmt.Errorf("no durations should be provided for %s", aggtype)
 		}
@@ -110,7 +124,7 @@ func (agg Aggregate) Validate() error {
 		if agg.Options.Dim <= 0 {
 			return fmt.Errorf("dim must be greater than zero for %v", aggtype)
 		}
-	case "timeseries_sum":
+	case TIMESERIES_SUM:
 		if options.Window != ftypes.Window_HOUR && options.Window != ftypes.Window_DAY {
 			return fmt.Errorf("valid windows for time series are 'HOUR' or 'DAY' but got: '%v' instead", options.Window)
 		}
@@ -152,7 +166,7 @@ func (agg Aggregate) IsOffline() bool {
 }
 
 func (agg Aggregate) IsForever() bool {
-	return len(agg.Options.Durations) == 0 && agg.Options.AggType != "timeseries_sum"
+	return len(agg.Options.Durations) == 0 && agg.Options.AggType != TIMESERIES_SUM
 }
 
 type Options struct {

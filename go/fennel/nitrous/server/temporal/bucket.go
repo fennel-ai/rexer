@@ -1,7 +1,6 @@
 package temporal
 
 import (
-	"errors"
 	"fmt"
 
 	"fennel/lib/aggregate"
@@ -48,8 +47,8 @@ var _ TimeBucketizer = FixedWidthBucketizer{}
 func (fwb FixedWidthBucketizer) BucketizeMoment(ts uint32) ([]TimeBucket, []int64, error) {
 	// TODO: Handle forever aggregates.
 	if len(fwb.opts.Durations) == 0 {
-		if fwb.opts.AggType != "timeseries_sum" {
-			return nil, nil, errors.New("empty durations only supported for 'timeseries_sum' aggregate type")
+		if fwb.opts.AggType != aggregate.TIMESERIES_SUM {
+			return nil, nil, fmt.Errorf("empty durations only supported for '%v' aggregate type", aggregate.TIMESERIES_SUM)
 		}
 		d, err := utils.Duration(fwb.opts.Window)
 		if err != nil || d == 0 {

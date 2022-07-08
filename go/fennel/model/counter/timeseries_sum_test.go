@@ -7,6 +7,7 @@ import (
 	"fennel/lib/ftypes"
 	"fennel/lib/value"
 
+	"github.com/samber/mo"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -27,31 +28,31 @@ func TestTimeseriesCounter_Reduce(t *testing.T) {
 func TestTimeseriesCounter_Start(t *testing.T) {
 	// Limit: 1, Window: Hour makes duration = 7200
 	h, err := ToHistogram(ftypes.AggId(1), aggregate.Options{
-		AggType: "timeseries_sum",
+		AggType: aggregate.TIMESERIES_SUM,
 		Limit:   1,
 		Window:  ftypes.Window_HOUR,
 	})
 	assert.NoError(t, err)
-	s, err := Start(h, 7300, value.Dict{})
+	s, err := Start(h, 7300, mo.None[uint32]())
 	assert.NoError(t, err)
 	assert.Equal(t, s, ftypes.Timestamp(100))
 	// limit is larger than end.
-	s, err = Start(h, 7100, value.Dict{})
+	s, err = Start(h, 7100, mo.None[uint32]())
 	assert.NoError(t, err)
 	assert.Equal(t, s, ftypes.Timestamp(0))
 
 	// Limit: 1, Window: day makes duration = 172800
 	h, err = ToHistogram(ftypes.AggId(1), aggregate.Options{
-		AggType: "timeseries_sum",
+		AggType: aggregate.TIMESERIES_SUM,
 		Limit:   1,
 		Window:  ftypes.Window_DAY,
 	})
 	assert.NoError(t, err)
-	s, err = Start(h, 172900, value.Dict{})
+	s, err = Start(h, 172900, mo.None[uint32]())
 	assert.NoError(t, err)
 	assert.Equal(t, s, ftypes.Timestamp(100))
 	// limit is larger than end.
-	s, err = Start(h, 172700, value.Dict{})
+	s, err = Start(h, 172700, mo.None[uint32]())
 	assert.NoError(t, err)
 	assert.Equal(t, s, ftypes.Timestamp(0))
 }

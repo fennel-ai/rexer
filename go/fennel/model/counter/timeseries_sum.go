@@ -4,7 +4,6 @@ import (
 	"fmt"
 
 	"fennel/lib/aggregate"
-	"fennel/lib/ftypes"
 	"fennel/lib/value"
 )
 
@@ -21,17 +20,6 @@ func NewTimeseriesSum(opts aggregate.Options) MergeReduce {
 }
 
 func (r timeseriesSum) Options() aggregate.Options { return r.opts }
-
-func (r timeseriesSum) Start(end ftypes.Timestamp) (ftypes.Timestamp, error) {
-	var d uint32
-	switch r.opts.Window {
-	case ftypes.Window_HOUR:
-		d = uint32(1+r.opts.Limit) * 3600
-	case ftypes.Window_DAY:
-		d = uint32(1+r.opts.Limit) * 3600 * 24
-	}
-	return start(end, d), nil
-}
 
 func (r timeseriesSum) Reduce(values []value.Value) (value.Value, error) {
 	// we have to take the last Limit values only and if there are fewer than that

@@ -10,6 +10,8 @@ import (
 	"fennel/lib/utils"
 	"fennel/lib/value"
 	"fennel/tier"
+
+	"github.com/samber/mo"
 )
 
 type Bucketizer interface {
@@ -37,41 +39,46 @@ type Histogram struct {
 	Bucketizer
 }
 
-// This is only useful in bucketizing, so once bucketizer becomes mr-aware,
-// we can move this out of histogram.
-func Start(h Histogram, end ftypes.Timestamp, kwargs value.Dict) (ftypes.Timestamp, error) {
-	switch t := h.MergeReduce.(type) {
-	case timeseriesSum:
-		return t.Start(end)
-	default:
-		d, err := extractDuration(kwargs, h.Options().Durations)
-		if err != nil {
-			return 0, err
+func Start(mr MergeReduce, end ftypes.Timestamp, duration mo.Option[uint32]) (ftypes.Timestamp, error) {
+	switch mr.Options().AggType {
+	case aggregate.TIMESERIES_SUM:
+		var d uint32
+		opts := mr.Options()
+		switch opts.Window {
+		case ftypes.Window_HOUR:
+			d = uint32(1+opts.Limit) * 3600
+		case ftypes.Window_DAY:
+			d = uint32(1+opts.Limit) * 3600 * 24
 		}
 		return start(end, d), nil
+	default:
+		if duration.IsAbsent() {
+			return 0, fmt.Errorf("duration is required for aggregate to ftype %v", mr.Options().AggType)
+		}
+		return start(end, duration.MustGet()), nil
 	}
 }
 
 func ToMergeReduce(aggId ftypes.AggId, opts aggregate.Options) (MergeReduce, error) {
 	var mr MergeReduce
 	switch opts.AggType {
-	case "timeseries_sum":
+	case aggregate.TIMESERIES_SUM:
 		mr = NewTimeseriesSum(opts)
-	case "sum":
+	case aggregate.SUM:
 		mr = NewSum(opts)
-	case "average":
+	case aggregate.AVERAGE:
 		mr = NewAverage(opts)
-	case "list":
+	case aggregate.LIST:
 		mr = NewList(opts)
-	case "min":
+	case aggregate.MIN:
 		mr = NewMin(opts)
-	case "max":
+	case aggregate.MAX:
 		mr = NewMax(opts)
-	case "stddev":
+	case aggregate.STDDEV:
 		mr = NewStdDev(opts)
-	case "rate":
+	case aggregate.RATE:
 		mr = NewRate(aggId, opts)
-	case "topk":
+	case aggregate.TOPK:
 		mr = NewTopK(opts)
 	default:
 		return nil, fmt.Errorf("invalid aggregate type: %v", opts.AggType)

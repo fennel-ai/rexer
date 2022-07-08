@@ -74,7 +74,7 @@ func TestTimeseries(t *testing.T) {
 	ctx := context.Background()
 	start := 24*3600*12 + 60
 	opts := libaggregate.Options{
-		AggType: "timeseries_sum",
+		AggType: libaggregate.TIMESERIES_SUM,
 		Window:  ftypes.Window_HOUR,
 		Limit:   9,
 	}
