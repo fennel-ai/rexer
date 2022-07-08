@@ -26,10 +26,9 @@ func TestNoModelsError(t *testing.T) {
 		}),
 	}
 
-	tier, err := test.Tier()
-	assert.NoError(t, err)
+	tier := test.Tier(t)
 	defer test.Teardown(tier)
-	err = test.AddSagemakerClientToTier(&tier)
+	err := test.AddSagemakerClientToTier(&tier)
 	assert.NoError(t, err)
 
 	optest.AssertError(t, tier, &predictOperator{}, value.NewDict(map[string]value.Value{
@@ -51,10 +50,9 @@ func TestPredictModelError(t *testing.T) {
 		}),
 	}
 
-	tier, err := test.Tier()
-	assert.NoError(t, err)
+	tier := test.Tier(t)
 	defer test.Teardown(tier)
-	err = test.AddSagemakerClientToTier(&tier)
+	err := test.AddSagemakerClientToTier(&tier)
 	assert.NoError(t, err)
 	model := "sbert"
 	defer cleanupPreTrainedModelTest(t, tier, model)
@@ -99,10 +97,9 @@ func TestPredictModelWorking(t *testing.T) {
 		}),
 	}
 
-	tier, err := test.Tier()
-	assert.NoError(t, err)
+	tier := test.Tier(t)
 	defer test.Teardown(tier)
-	err = test.AddSagemakerClientToTier(&tier)
+	err := test.AddSagemakerClientToTier(&tier)
 	assert.NoError(t, err)
 	model := "sbert"
 	defer cleanupPreTrainedModelTest(t, tier, model)

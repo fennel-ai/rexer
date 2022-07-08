@@ -7,9 +7,7 @@ import (
 )
 
 func TestUnix_Now(t *testing.T) {
-	tier, err := Tier()
-	assert.NoError(t, err)
-
+	tier := Tier(t)
 	clock := &FakeClock{}
 	tier.Clock = clock
 	assert.Equal(t, uint32(0), tier.Clock.Now())

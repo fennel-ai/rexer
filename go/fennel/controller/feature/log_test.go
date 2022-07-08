@@ -15,8 +15,7 @@ import (
 )
 
 func TestLogMulti_Kafka(t *testing.T) {
-	tier, err := test.Tier()
-	assert.NoError(t, err)
+	tier := test.Tier(t)
 	defer test.Teardown(tier)
 	ctx := context.Background()
 
@@ -36,7 +35,7 @@ func TestLogMulti_Kafka(t *testing.T) {
 			ModelPrediction: 0.1323,
 		})
 	}
-	err = LogMulti(ctx, tier, rows)
+	err := LogMulti(ctx, tier, rows)
 	assert.NoError(t, err)
 	consumer, err := tier.NewKafkaConsumer(kafka.ConsumerConfig{
 		Topic:        feature.KAFKA_TOPIC_NAME,
@@ -54,8 +53,7 @@ func TestLogMulti_Kafka(t *testing.T) {
 }
 
 func TestLog_Read(t *testing.T) {
-	tier, err := test.Tier()
-	assert.NoError(t, err)
+	tier := test.Tier(t)
 	defer test.Teardown(tier)
 	ctx := context.Background()
 
@@ -72,7 +70,7 @@ func TestLog_Read(t *testing.T) {
 		ModelPrediction: 0.1323,
 	}
 
-	err = Log(ctx, tier, row)
+	err := Log(ctx, tier, row)
 	assert.NoError(t, err)
 	consumer, err := tier.NewKafkaConsumer(kafka.ConsumerConfig{
 		Topic:        feature.KAFKA_TOPIC_NAME,

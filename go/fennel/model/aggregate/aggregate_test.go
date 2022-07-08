@@ -15,8 +15,7 @@ import (
 )
 
 func TestRetrieveStore(t *testing.T) {
-	tier, err := test.Tier()
-	assert.NoError(t, err)
+	tier := test.Tier(t)
 	defer test.Teardown(tier)
 
 	agg := aggregate.Aggregate{
@@ -32,7 +31,7 @@ func TestRetrieveStore(t *testing.T) {
 	ctx := context.Background()
 
 	// initially we can't retrieve
-	_, err = Retrieve(ctx, tier, agg.Name)
+	_, err := Retrieve(ctx, tier, agg.Name)
 	assert.Error(t, err)
 	assert.ErrorIs(t, err, aggregate.ErrNotFound)
 
@@ -58,8 +57,7 @@ func TestRetrieveStore(t *testing.T) {
 }
 
 func TestRetrieveActive(t *testing.T) {
-	tier, err := test.Tier()
-	assert.NoError(t, err)
+	tier := test.Tier(t)
 	defer test.Teardown(tier)
 
 	options := aggregate.Options{
@@ -87,8 +85,7 @@ func TestRetrieveActive(t *testing.T) {
 }
 
 func TestRetrieveAll(t *testing.T) {
-	tier, err := test.Tier()
-	assert.NoError(t, err)
+	tier := test.Tier(t)
 	defer test.Teardown(tier)
 
 	options := aggregate.Options{
@@ -106,7 +103,7 @@ func TestRetrieveAll(t *testing.T) {
 			Active:    true,
 			Query:     ast.MakeString(fmt.Sprintf("some query: %d", i)),
 		}
-		err = Store(ctx, tier, agg)
+		err := Store(ctx, tier, agg)
 		assert.NoError(t, err)
 		agg.Id = ftypes.AggId(i + 1)
 		aggs = append(aggs, agg)
@@ -118,8 +115,7 @@ func TestRetrieveAll(t *testing.T) {
 }
 
 func TestLongStrings(t *testing.T) {
-	tier, err := test.Tier()
-	assert.NoError(t, err)
+	tier := test.Tier(t)
 	defer test.Teardown(tier)
 
 	options := aggregate.Options{
@@ -135,7 +131,7 @@ func TestLongStrings(t *testing.T) {
 		Active:    true,
 		Query:     ast.MakeString("query"),
 	}
-	err = Store(ctx, tier, agg)
+	err := Store(ctx, tier, agg)
 	assert.NoError(t, err)
 
 	// but can not if aggname is longer than 255 chars
@@ -150,8 +146,7 @@ func TestLongStrings(t *testing.T) {
 }
 
 func TestDeactivate(t *testing.T) {
-	tier, err := test.Tier()
-	assert.NoError(t, err)
+	tier := test.Tier(t)
 	defer test.Teardown(tier)
 
 	ctx := context.Background()
@@ -167,7 +162,7 @@ func TestDeactivate(t *testing.T) {
 	}
 
 	// Store and retrieve - active should be "true"
-	err = Store(ctx, tier, agg)
+	err := Store(ctx, tier, agg)
 	assert.NoError(t, err)
 	got, err := Retrieve(ctx, tier, "my_counter")
 	assert.NoError(t, err)

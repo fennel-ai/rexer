@@ -20,8 +20,7 @@ import (
 )
 
 func TestCachedGetBatchMultipleObjs(t *testing.T) {
-	tier, err := test.Tier()
-	assert.NoError(t, err)
+	tier := test.Tier(t)
 	defer test.Teardown(tier)
 	ctx := context.Background()
 	p := cachedProvider{base: dbProvider{}}
@@ -63,8 +62,7 @@ func TestCachedGetBatchMultipleObjs(t *testing.T) {
 }
 
 func TestCachedDBConcurrentMultiSet(t *testing.T) {
-	tier, err := test.Tier()
-	assert.NoError(t, err)
+	tier := test.Tier(t)
 	defer test.Teardown(tier)
 	ctx := context.Background()
 	c := cachedProvider{base: dbProvider{}}
@@ -127,8 +125,7 @@ func TestCachedDBConcurrentMultiSet(t *testing.T) {
 // concurrent reads and writes for the profiles and set expectations on value stored for "latest profile"
 func TestCachedDBEventuallyConsistentMultipleObjs(t *testing.T) {
 	rand.Seed(time.Now().UnixNano())
-	tier, err := test.Tier()
-	assert.NoError(t, err)
+	tier := test.Tier(t)
 	defer test.Teardown(tier)
 	ctx := context.Background()
 	db := dbProvider{}

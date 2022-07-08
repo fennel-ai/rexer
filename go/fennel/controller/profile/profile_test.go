@@ -17,8 +17,7 @@ import (
 
 // TODO: Add more tests
 func TestProfileController(t *testing.T) {
-	tier, err := test.Tier()
-	assert.NoError(t, err)
+	tier := test.Tier(t)
 	defer test.Teardown(tier)
 	ctx := context.Background()
 
@@ -36,7 +35,7 @@ func TestProfileController(t *testing.T) {
 	checkGet(t, ctx, tier, profiles[0].GetProfileKey(), value.Nil)
 
 	// cannot set an invalid profile
-	err = Set(ctx, tier, profilelib.NewProfileItem("", "1", "key", value.Int(1), 1))
+	err := Set(ctx, tier, profilelib.NewProfileItem("", "1", "key", value.Int(1), 1))
 	assert.Error(t, err)
 	err = Set(ctx, tier, profilelib.NewProfileItem("User", "", "key", value.Int(1), 1))
 	assert.Error(t, err)
@@ -75,8 +74,7 @@ func TestProfileController(t *testing.T) {
 }
 
 func TestProfileDBInsert(t *testing.T) {
-	tier, err := test.Tier()
-	assert.NoError(t, err)
+	tier := test.Tier(t)
 	defer test.Teardown(tier)
 	ctx := context.Background()
 
@@ -104,8 +102,7 @@ func TestProfileDBInsert(t *testing.T) {
 }
 
 func TestProfileSetMultiWritesToKafka(t *testing.T) {
-	tier, err := test.Tier()
-	assert.NoError(t, err)
+	tier := test.Tier(t)
 	defer test.Teardown(tier)
 	ctx := context.Background()
 
@@ -149,8 +146,7 @@ func checkGet(t *testing.T, ctx context.Context, tier tier.Tier, request profile
 }
 
 func TestGetBatched(t *testing.T) {
-	tier, err := test.Tier()
-	assert.NoError(t, err)
+	tier := test.Tier(t)
 	defer test.Teardown(tier)
 	ctx := context.Background()
 
@@ -191,8 +187,7 @@ func TestGetBatched(t *testing.T) {
 }
 
 func TestGetBatchedWithTestSet(t *testing.T) {
-	tier, err := test.Tier()
-	assert.NoError(t, err)
+	tier := test.Tier(t)
 	defer test.Teardown(tier)
 	ctx := context.Background()
 

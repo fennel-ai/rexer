@@ -15,8 +15,7 @@ import (
 )
 
 func TestThirdStore(t *testing.T) {
-	tier, err := test.Tier()
-	assert.NoError(t, err)
+	tier := test.Tier(t)
 	defer test.Teardown(tier)
 	ctx := context.Background()
 
@@ -85,7 +84,6 @@ func TestThirdStore(t *testing.T) {
 		vals[i] = append(vals[i], value.Int(i*23))
 	}
 	thirdStoreSet(t, ctx, &tier, s, aggIDs, buckets, vals)
-	assert.NoError(t, err)
 
 	// should get them
 	found = thirdStoreGet(t, ctx, &tier, s, aggIDs, buckets, defaults)

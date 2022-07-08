@@ -15,8 +15,7 @@ import (
 )
 
 func TestDeleteKeysForAggId(t *testing.T) {
-	tier, err := test.Tier()
-	assert.NoError(t, err)
+	tier := test.Tier(t)
 	defer test.Teardown(tier)
 
 	ctx := context.Background()

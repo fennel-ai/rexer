@@ -11,8 +11,7 @@ import (
 )
 
 func TestInsertModel(t *testing.T) {
-	tier, err := test.Tier()
-	assert.NoError(t, err)
+	tier := test.Tier(t)
 	defer test.Teardown(tier)
 
 	id, err := InsertModel(tier, lib.Model{
@@ -47,8 +46,7 @@ func TestInsertModel(t *testing.T) {
 }
 
 func TestGetActiveModels(t *testing.T) {
-	tier, err := test.Tier()
-	assert.NoError(t, err)
+	tier := test.Tier(t)
 	defer test.Teardown(tier)
 
 	curr := time.Now()
@@ -76,8 +74,7 @@ func TestGetActiveModels(t *testing.T) {
 }
 
 func TestInsertHostedModels(t *testing.T) {
-	tier, err := test.Tier()
-	assert.NoError(t, err)
+	tier := test.Tier(t)
 	defer test.Teardown(tier)
 
 	id, err := InsertModel(tier, lib.Model{
@@ -99,8 +96,7 @@ func TestInsertHostedModels(t *testing.T) {
 }
 
 func TestGetCoveringModels(t *testing.T) {
-	tier, err := test.Tier()
-	assert.NoError(t, err)
+	tier := test.Tier(t)
 	defer test.Teardown(tier)
 
 	id, err := InsertModel(tier, lib.Model{
@@ -152,11 +148,10 @@ func TestGetCoveringModels(t *testing.T) {
 }
 
 func TestInsertEndpointConfig(t *testing.T) {
-	tier, err := test.Tier()
-	assert.NoError(t, err)
+	tier := test.Tier(t)
 	defer test.Teardown(tier)
 
-	err = InsertEndpointConfig(tier, lib.SagemakerEndpointConfig{
+	err := InsertEndpointConfig(tier, lib.SagemakerEndpointConfig{
 		Name:          "test-endpoint-config",
 		VariantName:   "test-variant",
 		ModelName:     "test-model",
@@ -171,8 +166,7 @@ func TestInsertEndpointConfig(t *testing.T) {
 }
 
 func TestInsertEndpoint(t *testing.T) {
-	tier, err := test.Tier()
-	assert.NoError(t, err)
+	tier := test.Tier(t)
 	defer test.Teardown(tier)
 
 	cfgName := "test-endpoint-config"
@@ -215,8 +209,7 @@ func TestInsertEndpoint(t *testing.T) {
 }
 
 func TestGetFramework(t *testing.T) {
-	tier, err := test.Tier()
-	assert.NoError(t, err)
+	tier := test.Tier(t)
 	defer test.Teardown(tier)
 
 	id, err := InsertModel(tier, lib.Model{

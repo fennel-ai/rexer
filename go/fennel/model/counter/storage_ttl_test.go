@@ -19,8 +19,7 @@ import (
 )
 
 func TestTwoLevelRedisStore_TTL(t *testing.T) {
-	tier, err := test.Tier()
-	assert.NoError(t, err)
+	tier := test.Tier(t)
 	defer test.Teardown(tier)
 
 	scope := resource.NewTierScope(tier.ID)
@@ -84,8 +83,7 @@ func TestTwoLevelRedisStore_TTL(t *testing.T) {
 }
 
 func TestSplitStore_TTL(t *testing.T) {
-	tier, err := test.Tier()
-	assert.NoError(t, err)
+	tier := test.Tier(t)
 	defer test.Teardown(tier)
 
 	scope := resource.NewTierScope(tier.ID)

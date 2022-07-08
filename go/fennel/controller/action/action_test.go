@@ -19,9 +19,8 @@ import (
 )
 
 func TestDBInsertFetch(t *testing.T) {
-	tier, err := test.Tier()
+	tier := test.Tier(t)
 	defer test.Teardown(tier)
-	assert.NoError(t, err)
 	ctx := context.Background()
 
 	// initially fetching is empty
@@ -61,9 +60,8 @@ func TestDBInsertFetch(t *testing.T) {
 }
 
 func testKafkaInsertRead(t *testing.T, batch bool) {
-	tier, err := test.Tier()
+	tier := test.Tier(t)
 	defer test.Teardown(tier)
-	assert.NoError(t, err)
 	ctx := context.Background()
 
 	clock := test.FakeClock{}
@@ -184,8 +182,7 @@ func TestLongTypes(t *testing.T) {
 }
 
 func Test_ReadActions(t *testing.T) {
-	tier, err := test.Tier()
-	assert.NoError(t, err)
+	tier := test.Tier(t)
 	defer test.Teardown(tier)
 	ctx := context.Background()
 

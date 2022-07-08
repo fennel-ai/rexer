@@ -2,7 +2,6 @@ package profile
 
 import (
 	"context"
-	"fennel/lib/ftypes"
 	"math/rand"
 	"strconv"
 	"sync"
@@ -10,6 +9,7 @@ import (
 	"time"
 
 	"fennel/db"
+	"fennel/lib/ftypes"
 	"fennel/lib/profile"
 	"fennel/lib/value"
 
@@ -70,8 +70,7 @@ func TestCachedDBBasic(t *testing.T) {
 
 func TestCaching(t *testing.T) {
 	// test that we cache the value instead of always pulling from ground truth
-	tier, err := test.Tier()
-	assert.NoError(t, err)
+	tier := test.Tier(t)
 	defer test.Teardown(tier)
 	ctx := context.Background()
 
@@ -108,8 +107,7 @@ func TestCaching(t *testing.T) {
 }
 
 func TestCachedGetBatch(t *testing.T) {
-	tier, err := test.Tier()
-	assert.NoError(t, err)
+	tier := test.Tier(t)
 	defer test.Teardown(tier)
 	ctx := context.Background()
 	p := cachedProvider{base: dbProvider{}}
@@ -161,8 +159,7 @@ func TestCachedDBConcurrentSet(t *testing.T) {
 	// mini-redis does not play well with cache keys in different "slots" (in the same txn),
 	// currently it is determined using (otype, oid, key). We test `setBatch` behavior across
 	// different objects in `_integration_test`
-	tier, err := test.Tier()
-	assert.NoError(t, err)
+	tier := test.Tier(t)
 	defer test.Teardown(tier)
 	ctx := context.Background()
 	c := cachedProvider{base: dbProvider{}}
@@ -222,8 +219,7 @@ func TestCachedDBConcurrentSet(t *testing.T) {
 }
 
 func TestCachedDBCacheMissOnReadSets(t *testing.T) {
-	tier, err := test.Tier()
-	assert.NoError(t, err)
+	tier := test.Tier(t)
 	defer test.Teardown(tier)
 	ctx := context.Background()
 	c := cachedProvider{base: dbProvider{}}
@@ -251,8 +247,7 @@ func TestCachedDBCacheMissOnReadSets(t *testing.T) {
 // concurrent reads and writes for the profiles and set expectations on value stored for "latest profile"
 func TestCachedDBEventuallyConsistent(t *testing.T) {
 	rand.Seed(time.Now().UnixNano())
-	tier, err := test.Tier()
-	assert.NoError(t, err)
+	tier := test.Tier(t)
 	defer test.Teardown(tier)
 	ctx := context.Background()
 	db := dbProvider{}

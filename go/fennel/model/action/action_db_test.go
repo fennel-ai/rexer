@@ -15,8 +15,7 @@ import (
 
 // TODO: write exhaustive tests
 func TestActionDBBasic(t *testing.T) {
-	tier, err := test.Tier()
-	assert.NoError(t, err)
+	tier := test.Tier(t)
 	defer test.Teardown(tier)
 	ctx := context.Background()
 
@@ -63,8 +62,7 @@ func TestActionDBBasic(t *testing.T) {
 }
 
 func TestInsertBatch(t *testing.T) {
-	tier, err := test.Tier()
-	assert.NoError(t, err)
+	tier := test.Tier(t)
 	defer test.Teardown(tier)
 	ctx := context.Background()
 

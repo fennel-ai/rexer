@@ -3,54 +3,56 @@
 package test
 
 import (
-	unleashlib "fennel/lib/unleash"
 	"fmt"
-	"github.com/Unleash/unleash-client-go/v3"
 	"math/rand"
 	"os"
 	"sync"
+	"testing"
 	"time"
 
 	"fennel/glue"
 	"fennel/lib/clock"
 	"fennel/lib/ftypes"
+	unleashlib "fennel/lib/unleash"
 	"fennel/modelstore"
 	"fennel/pcache"
 	"fennel/redis"
 	"fennel/s3"
 	"fennel/tier"
 
+	"github.com/Unleash/unleash-client-go/v3"
+	"github.com/stretchr/testify/assert"
 	"go.uber.org/zap"
 )
 
 // Tier returns a tier to be used in tests based off a standard test plane
 // since this is only compiled when 'integration' build tag is not given, most resources are mocked
-func Tier() (tier.Tier, error) {
+func Tier(t *testing.T) tier.Tier {
 	rand.Seed(time.Now().UnixNano())
 	tierID := ftypes.RealmID(rand.Uint32())
+
 	db, err := defaultDB(tierID, "testdb" /*logicalname*/, os.Getenv("MYSQL_USERNAME"), os.Getenv("MYSQL_PASSWORD"), os.Getenv("MYSQL_SERVER_ADDRESS"))
-	if err != nil {
-		return tier.Tier{}, err
-	}
+	assert.NoError(t, err)
+
 	redClient, err := mockRedis(tierID)
-	if err != nil {
-		return tier.Tier{}, err
-	}
+	assert.NoError(t, err)
 
 	Cache := redis.NewCache(redClient)
+
 	producers, consumerCreator, err := createMockKafka(tierID)
-	if err != nil {
-		return tier.Tier{}, err
-	}
+	assert.NoError(t, err)
 
 	PCache, err := pcache.NewPCache(1<<31, 1<<6)
-	if err != nil {
-		return tier.Tier{}, err
-	}
+	assert.NoError(t, err)
 
 	// TODO - decide what region to use for test tier
 	s3Client := s3.NewClient(s3.S3Args{Region: "ap-south-1"})
-	glueClient := glue.NewGlueClient(glue.GlueArgs{Region: "ap-south-1"})
+	glueClient := glue.NewGlueClient(glue.GlueArgs{
+		Region: "ap-south-1",
+		JobNameByAgg: map[string]string{
+			"cf": "my-cf-job",
+		},
+	})
 
 	modelStore := modelstore.NewModelStore(modelstore.ModelStoreArgs{
 		ModelStoreS3Bucket:     os.Getenv("MODEL_STORE_S3_BUCKET"),
@@ -58,17 +60,14 @@ func Tier() (tier.Tier, error) {
 	}, tierID)
 
 	logger, err := zap.NewDevelopment()
-	if err != nil {
-		return tier.Tier{}, fmt.Errorf("failed to construct logger: %v", err)
-	}
+	assert.NoError(t, err)
 	logger = logger.With(zap.Uint32("tier_id", uint32(tierID)))
 
 	faker := unleashlib.NewFakeUnleash()
-	if err := unleash.Initialize(unleash.WithListener(&unleash.DebugListener{}),
+	unleash.Initialize(unleash.WithListener(&unleash.DebugListener{}),
 		unleash.WithAppName("local-tier"),
-		unleash.WithUrl(faker.Url())); err != nil {
-		return tier.Tier{}, fmt.Errorf("failed created fake unleash")
-	}
+		unleash.WithUrl(faker.Url()))
+	assert.NoError(t, err)
 
 	return tier.Tier{
 		ID:               tierID,
@@ -84,7 +83,7 @@ func Tier() (tier.Tier, error) {
 		ModelStore:       modelStore,
 		Logger:           logger,
 		AggregateDefs:    new(sync.Map),
-	}, nil
+	}
 }
 
 func Teardown(tier tier.Tier) error {

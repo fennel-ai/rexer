@@ -31,11 +31,9 @@ func TestStoreScoreRemoveModel(t *testing.T) {
 		t.Skip("Skipping broken test")
 	}
 
-	tier, err := test.Tier()
-	assert.NoError(t, err)
-	defer test.Teardown(tier)
+	tier := test.Tier(t)
 
-	err = test.AddSagemakerClientToTier(&tier)
+	err := test.AddSagemakerClientToTier(&tier)
 	assert.NoError(t, err)
 	defer cleanup(t, tier)
 
@@ -92,8 +90,7 @@ func TestPretrainedModelEndPoint(t *testing.T) {
 	if os.Getenv("long") == "" {
 		t.Skip("Skipping long test")
 	}
-	tier, err := test.Tier()
-	assert.NoError(t, err)
+	tier := test.Tier(t)
 	defer test.Teardown(tier)
 	os.Setenv("AWS_PROFILE", "admin")
 	os.Setenv("AWS_SDK_LOAD_CONFIG", "1")
@@ -143,11 +140,10 @@ func TestEnsureEndpoint(t *testing.T) {
 	if os.Getenv("long") == "" {
 		t.Skip("Skipping long test")
 	}
-	tier, err := test.Tier()
-	assert.NoError(t, err)
+	tier := test.Tier(t)
 	defer test.Teardown(tier)
 
-	err = test.AddSagemakerClientToTier(&tier)
+	err := test.AddSagemakerClientToTier(&tier)
 	assert.NoError(t, err)
 
 	model := lib.Model{
@@ -218,11 +214,10 @@ func TestAutoscalingEnabledOnEndpointVariant(t *testing.T) {
 	}
 	// NOTE: This needs to be run for ~15-20 minutes (requires updating the endpoint twice),
 	// so please set the timeout accordingly (-timeout 15m)
-	tier, err := test.Tier()
-	assert.NoError(t, err)
+	tier := test.Tier(t)
 	defer test.Teardown(tier)
 
-	err = test.AddSagemakerClientToTier(&tier)
+	err := test.AddSagemakerClientToTier(&tier)
 	assert.NoError(t, err)
 
 	endpointName := "unit-test-endpoint"

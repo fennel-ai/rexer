@@ -17,8 +17,7 @@ import (
 )
 
 func TestFeatureLog_Apply(t *testing.T) {
-	tier, err := test.Tier()
-	assert.NoError(t, err)
+	tier := test.Tier(t)
 	defer test.Teardown(tier)
 	clock := &test.FakeClock{}
 	tier.Clock = clock

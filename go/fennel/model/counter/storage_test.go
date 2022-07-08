@@ -64,8 +64,7 @@ func TestRedisKeyEncodeDecode(t *testing.T) {
 }
 
 func testStorage(t *testing.T, store BucketStore) {
-	tier, err := test.Tier()
-	assert.NoError(t, err)
+	tier := test.Tier(t)
 	defer test.Teardown(tier)
 	ctx := context.Background()
 
@@ -157,8 +156,7 @@ func testStorage(t *testing.T, store BucketStore) {
 }
 
 func testStorageMulti(t *testing.T, store BucketStore) {
-	tier, err := test.Tier()
-	assert.NoError(t, err)
+	tier := test.Tier(t)
 	defer test.Teardown(tier)
 	ctx := context.Background()
 
@@ -235,8 +233,7 @@ func testStorageMulti(t *testing.T, store BucketStore) {
 }
 
 func testLarge(t *testing.T, store BucketStore, numAggs, numBuckets int) {
-	tier, err := test.Tier()
-	assert.NoError(t, err)
+	tier := test.Tier(t)
 	defer test.Teardown(tier)
 	ctx := context.Background()
 

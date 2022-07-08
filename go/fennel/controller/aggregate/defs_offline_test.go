@@ -14,8 +14,7 @@ import (
 
 // TODO(mohit): Remove build tag `glue` dependency for the following test cases
 func TestDeactivateOffline(t *testing.T) {
-	tier, err := test.Tier()
-	assert.NoError(t, err)
+	tier := test.Tier(t)
 	defer test.Teardown(tier)
 
 	ctx := context.Background()
@@ -24,14 +23,14 @@ func TestDeactivateOffline(t *testing.T) {
 		Query:     ast.MakeInt(4),
 		Timestamp: 1,
 		Options: aggregate.Options{
-			AggType:      "topk",
+			AggType:      "cf",
 			Durations:    []uint32{3600 * 24 * 7},
-			CronSchedule: "20 1 * * ?",
+			CronSchedule: "37 */2 * * ?",
 			Limit:        10,
 		},
 	}
 
-	err = Deactivate(ctx, tier, "my_counter_offline")
+	err := Deactivate(ctx, tier, "my_counter_offline")
 	assert.Error(t, err)
 	assert.ErrorIs(t, err, aggregate.ErrNotFound)
 
@@ -48,7 +47,7 @@ func TestDeactivateOffline(t *testing.T) {
 	// But cannot after deactivating
 	_, err = Retrieve(ctx, tier, "my_counter_offline")
 	assert.Error(t, err)
-	assert.ErrorIs(t, err, aggregate.ErrNotFound)
+	assert.ErrorIs(t, err, aggregate.ErrNotActive)
 
 	// And can deactivate multiple times
 	err = Deactivate(ctx, tier, "my_counter_offline")

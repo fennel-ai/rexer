@@ -18,8 +18,7 @@ func verifyGet(t *testing.T, tier tier.Tier, request query.QueryRequest, expecte
 }
 
 func TestInsertGet(t *testing.T) {
-	tier, err := test.Tier()
-	assert.NoError(t, err)
+	tier := test.Tier(t)
 	defer test.Teardown(tier)
 
 	// initially no queries even with no filters

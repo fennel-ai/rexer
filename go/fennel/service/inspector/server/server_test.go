@@ -12,8 +12,7 @@ import (
 )
 
 func TestReadRecent(t *testing.T) {
-	tier, err := test.Tier()
-	require.NoError(t, err)
+	tier := test.Tier(t)
 	defer test.Teardown(tier)
 
 	s := NewInspector(tier, InspectorArgs{NumRecent: 10})

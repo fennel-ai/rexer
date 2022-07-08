@@ -14,8 +14,7 @@ import (
 )
 
 func TestGetBatchDiffObjs(t *testing.T) {
-	tier, err := test.Tier()
-	assert.NoError(t, err)
+	tier := test.Tier(t)
 	defer test.Teardown(tier)
 	ctx := context.Background()
 
@@ -53,8 +52,7 @@ func TestGetBatchDiffObjs(t *testing.T) {
 }
 
 func TestProfileDBInsertDiffObjs(t *testing.T) {
-	tier, err := test.Tier()
-	assert.NoError(t, err)
+	tier := test.Tier(t)
 	defer test.Teardown(tier)
 	ctx := context.Background()
 

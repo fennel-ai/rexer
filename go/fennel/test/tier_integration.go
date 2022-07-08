@@ -6,6 +6,7 @@ import (
 	"context"
 	"fmt"
 	"math/rand"
+	"testing"
 	"time"
 
 	fkafka "fennel/kafka"
@@ -15,11 +16,12 @@ import (
 
 	"github.com/alexflint/go-arg"
 	"github.com/confluentinc/confluent-kafka-go/kafka"
+	"github.com/stretchr/testify/assert"
 )
 
 // Tier returns a tier to be used in tests based off a standard test plane
 // since this is only compiled when 'integration' build tag is given, all resources are real
-func Tier() (tier.Tier, error) {
+func Tier(t *testing.T) tier.Tier {
 	rand.Seed(time.Now().UnixNano())
 	tierID := ftypes.RealmID(rand.Uint32())
 	var flags tier.TierArgs
@@ -31,15 +33,15 @@ func Tier() (tier.Tier, error) {
 	if flags.PlaneID == 0 {
 		flags.PlaneID = ftypes.RealmID(rand.Uint32())
 	}
-	if err := flags.Valid(); err != nil {
-		return tier.Tier{}, err
-	}
+	err := flags.Valid()
+	assert.NoError(t, err)
 	// do all Setup that needs to be done to setup a valid tier
-	if err := SetupTier(flags); err != nil {
-		return tier.Tier{}, err
-	}
+	err = SetupTier(flags)
+	assert.NoError(t, err)
 	// finally, instantiate and return the tier
-	return tier.CreateFromArgs(&flags)
+	tier, err := tier.CreateFromArgs(&flags)
+	assert.NoError(t, err)
+	return tier
 }
 
 func SetupTier(flags tier.TierArgs) error {
