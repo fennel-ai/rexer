@@ -51,22 +51,22 @@ func BatchValue(
 			}
 			ids_[i] = aggIds[index]
 			buckets[i] = h.BucketizeDuration(keys[index].String(), start, end)
-			defer arena.Buckets.Free(buckets[i])
 			defaults[i] = h.Zero()
 		}
 		counts, err := bs.GetMulti(ctx, tier, ids_, buckets, defaults)
 		if err != nil {
 			return nil, err
 		}
-		// Explicitly free the counter slices back to the arena.
-		for _, v := range counts {
-			defer arena.Values.Free(v)
-		}
 		for cur, index := range indices {
 			ret[index], err = histograms[index].Reduce(counts[cur])
 			if err != nil {
 				return nil, fmt.Errorf("failed to reduce aggregate (id): %d, err: %v", aggIds[index], err)
 			}
+		}
+		// Explicitly free the counter and bucket slices back to the arena.
+		for i, v := range counts {
+			arena.Values.Free(v)
+			arena.Buckets.Free(buckets[i])
 		}
 	}
 	return ret, nil
