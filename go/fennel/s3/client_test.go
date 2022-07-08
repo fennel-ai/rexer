@@ -19,10 +19,18 @@ func TestClient(t *testing.T) {
 	err := c.Upload(file, fileName, bucketName)
 	assert.NoError(t, err)
 
+	exist, err := c.Exist(fileName, bucketName)
+	assert.NoError(t, err)
+	assert.Equal(t, exist, true)
+
 	found, err := c.Download(fileName, bucketName)
 	assert.NoError(t, err)
 	assert.Equal(t, string(found), contents)
 
 	err = c.Delete(fileName, bucketName)
 	assert.NoError(t, err)
+
+	exist, err = c.Exist(fileName, bucketName)
+	assert.NoError(t, err)
+	assert.Equal(t, exist, false)
 }
