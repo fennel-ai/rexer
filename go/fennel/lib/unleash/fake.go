@@ -91,7 +91,10 @@ func (f *FakeUnleashServer) handler(w http.ResponseWriter, req *http.Request) {
 	case "POST /client/metrics":
 		w.WriteHeader(200)
 	default:
-		w.Write([]byte("Unknown route"))
+		_, err := w.Write([]byte("Unknown route"))
+		if err != nil {
+			println(err.Error())
+		}
 		w.WriteHeader(500)
 	}
 }
