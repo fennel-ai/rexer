@@ -82,7 +82,10 @@ func TestSyncSchema(t *testing.T) {
 
 	resource, err := config.Materialize()
 	assert.NoError(t, err)
-	defer drop(config.DBname, config.Username, config.Password, config.Host)
+	defer func() {
+		err = drop(config.DBname, config.Username, config.Password, config.Host)
+		assert.NoError(t, err)
+	}()
 	db := resource.(Connection)
 
 	// version goes to zero after dropping the DB
@@ -112,7 +115,8 @@ func TestSyncSchema(t *testing.T) {
 	row := db.QueryRow("select zkey + value as total from schema_test where zkey = 3;")
 	var total sql.NullInt32
 
-	row.Scan(&total)
+	err = row.Scan(&total)
+	assert.NoError(t, err)
 	assert.True(t, total.Valid)
 	assert.Equal(t, int32(7), total.Int32)
 }

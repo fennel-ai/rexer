@@ -597,7 +597,6 @@ func setInRedis(ctx context.Context, tier tier.Tier, rkeys []string, values []va
 		if err != nil {
 			return err
 		}
-		// Temporary identifier, should be removed later.
 		vals[i] = s
 		keySize += len(rkeys[i])
 		valSize += len(s)
