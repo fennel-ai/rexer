@@ -19,6 +19,7 @@ import * as offlineAggregateOutput from "../offline-aggregate-output";
 import * as offlineAggregateKafkaConnector from "../offline-aggregate-kafka-connector";
 import * as offlineAggregateGlueJob from "../offline-aggregate-glue-job";
 import * as pprofBucket from "../pprof-bucket";
+import * as tierEksPermissions from "../tier-eks-permissions";
 import * as countersCleanup from "../counters-cleanup";
 import * as unleash from "../unleash";
 import * as util from "../lib/util";
@@ -306,7 +307,6 @@ const setupResources = async () => {
         region: input.region,
         roleArn: input.roleArn,
         tierId: input.tierId,
-        nodeInstanceRole: input.nodeInstanceRole,
         protect: input.protect,
     })
 
@@ -319,7 +319,6 @@ const setupResources = async () => {
         storageBucket: offlineAggregateStorageBucket.bucketName,
         outputBucket: offlineAggregateOutputBucket.bucketName,
         sourceFiles: input.offlineAggregateSourceFiles,
-        nodeInstanceRole: input.nodeInstanceRole,
     })
 
     // setup mysql db.
@@ -343,7 +342,6 @@ const setupResources = async () => {
         region: input.region,
         roleArn: input.roleArn,
         tierId: input.tierId,
-        nodeInstanceRole: input.nodeInstanceRole,
         protect: input.protect,
     })
     // setup sagemaker endpoint related resources
@@ -353,7 +351,6 @@ const setupResources = async () => {
         tierId: input.tierId,
         planeId: input.planeId,
         vpcId: input.vpcId,
-        nodeInstanceRole: input.nodeInstanceRole,
         connectedSecurityGroups: input.connectedSecurityGroups,
         modelStoreBucket: modelStoreOutput.modelStoreBucket,
     });
@@ -375,7 +372,6 @@ const setupResources = async () => {
         region: input.region,
         roleArn: input.roleArn,
         tierId: input.tierId,
-        nodeInstanceRole: input.nodeInstanceRole,
         protect: input.protect,
     })
 
@@ -469,6 +465,18 @@ const setupResources = async () => {
         trainingDataBucket: input.glueTrainingDataBucket,
         script: input.glueSourceScript,
     })
+
+    // setup tier level permissions on the EKS instance role
+    await tierEksPermissions.setup({
+        region: input.region,
+        roleArn: input.roleArn,
+        tierId: input.tierId,
+        nodeInstanceRole: input.nodeInstanceRole,
+        modelStoreBucket: modelStoreOutput.modelStoreBucket,
+        pprofBucket: pprofBucketOutput.pprofStoreBucket,
+        offlineAggregateOutputBucket: offlineAggregateOutputBucket.bucketName,
+    })
+
     configsOutput.apply(async () => {
         // setup services after configs are setup.
 

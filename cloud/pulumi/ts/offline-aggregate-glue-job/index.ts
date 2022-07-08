@@ -13,44 +13,12 @@ export type inputType = {
     storageBucket: pulumi.Output<string>,
     outputBucket: string,
     sourceFiles: Record<string, string>,
-    nodeInstanceRole: string,
 }
 
 // should not contain any pulumi.Output<> types.
 export type outputType = {
     // using a map to easily transform to a string later when this is passed as job arguments
     jobNames: Record<string, string>,
-}
-
-function setupNodeTriggerAccess(provider: aws.Provider, input: inputType) {
-    // setup permissions for the EKS node instance to create triggers; since the API server can create as many triggers
-    // as user configures, we set `resource`: "*"
-    //
-    // TODO(mohit): See if granular permissions could be created e.g. Resource: "arn:aws:glue:*:030813887342:trigger/t-XXX-*"
-    // and make API server create triggers with t-XXX as the prefix
-    const policyStr = `{
-          "Version": "2012-10-17",
-          "Statement": [
-            {
-              "Effect": "Allow",
-              "Action": [
-                "glue:CreateTrigger",
-                "glue:ListTriggers",
-                "glue:DeleteTrigger"
-              ],
-              "Resource": "*"
-            }
-          ]
-        }
-        `
-    const policy = new aws.iam.Policy(`t-${input.tierId}-node-trigger-crud-policy`, {
-        namePrefix: `t-${input.tierId}-NodeTriggerCRUD-`,
-        policy: policyStr,
-    }, { provider: provider });
-    const attachNodeTriggerCrudPolicy = new aws.iam.RolePolicyAttachment(`t-${input.tierId}-node-trigger-crud-policy-attach`, {
-        policyArn: policy.arn,
-        role: input.nodeInstanceRole,
-    }, { provider: provider });
 }
 
 export const setup = async (input: inputType): Promise<pulumi.Output<outputType>> => {
@@ -153,9 +121,6 @@ export const setup = async (input: inputType): Promise<pulumi.Output<outputType>
         }`,
         }, {provider});
     });
-
-    // setup EKS worker node have access to CRUD GLUE triggers
-    setupNodeTriggerAccess(provider, input);
 
     // create the glue job for topk
     const topkSource = input.sourceFiles["topk"]
