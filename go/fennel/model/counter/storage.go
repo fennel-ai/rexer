@@ -4,6 +4,8 @@ import (
 	"context"
 	"fennel/lib/arena"
 	"fmt"
+	"github.com/Unleash/unleash-client-go/v3"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -265,9 +267,18 @@ func (t twoLevelRedisStore) GetMulti(
 		}
 	}
 	ret := make([][]value.Value, len(aggIds))
+	maxBatchSz := MAX_BATCH_SZ
+	var err error
+	variant := unleash.GetVariant("redis_max_bucketsize")
+	if variant.Enabled {
+		maxBatchSz, err = strconv.Atoi(variant.Payload.Value)
+		if err != nil {
+			maxBatchSz = MAX_BATCH_SZ
+		}
+	}
 	batchSize := sz
-	if batchSize > MAX_BATCH_SZ {
-		batchSize = MAX_BATCH_SZ
+	if batchSize > maxBatchSz {
+		batchSize = maxBatchSz
 	}
 	if batchSize < maxSz {
 		batchSize = maxSz
