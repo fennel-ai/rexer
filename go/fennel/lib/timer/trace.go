@@ -6,8 +6,6 @@ import (
 	"log"
 	"math/rand"
 	"os"
-	"strings"
-	"time"
 
 	"github.com/go-logr/stdr"
 	"go.opentelemetry.io/contrib/propagators/aws/xray"
@@ -15,40 +13,10 @@ import (
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 	oteltrace "go.opentelemetry.io/otel/trace"
-	"go.uber.org/zap"
 )
 
 type TracerArgs struct {
 	OtlpEndpoint string `arg:"--otlp-endpoint,env:OTLP_ENDPOINT" default:""`
-}
-
-type traceKey struct{}
-
-type trace struct {
-	start  time.Time
-	xrayId string
-}
-
-func WithTracing(ctx context.Context, xrayId string) context.Context {
-	return context.WithValue(ctx, traceKey{}, &trace{
-		start: time.Now(),
-		xrayId: xrayId,
-	})
-}
-
-func LogTracingInfo(ctx context.Context, log *zap.Logger) error {
-	ctxval := ctx.Value(traceKey{})
-	if ctxval == nil {
-		return nil
-	}
-	trace, ok := ctxval.(*trace)
-	if !ok {
-		return fmt.Errorf("expected trace but got: %v", ctxval)
-	}
-	sb := strings.Builder{}
-	sb.WriteString(fmt.Sprintf("x-ray traceid: %s\n", trace.xrayId))
-	log.Info(sb.String())
-	return nil
 }
 
 type TraceKey struct {}

@@ -133,7 +133,7 @@ func main() {
 	// consistently functioning end-to-end.
 	// router.Use(httplib.TimeoutMiddleware(2 * time.Second))
 	// router.Use(httplib.RateLimitingMiddleware(1000))
-	router.Use(httplib.Tracer(tier.Logger, time.Millisecond*500, 0))
+	router.Use(httplib.Tracer(tier.Logger, time.Millisecond*500))
 
 	controller := server{tier}
 	controller.setHandlers(router)
