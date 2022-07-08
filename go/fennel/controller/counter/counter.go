@@ -2,12 +2,13 @@ package counter
 
 import (
 	"context"
-	"fennel/lib/arena"
-	"fennel/lib/timer"
 	"fmt"
 
+	"fennel/lib/aggregate"
+	"fennel/lib/arena"
 	libcounter "fennel/lib/counter"
 	"fennel/lib/ftypes"
+	"fennel/lib/timer"
 	"fennel/lib/value"
 	"fennel/model/counter"
 	"fennel/tier"
@@ -15,10 +16,10 @@ import (
 
 func Value(
 	ctx context.Context, tier tier.Tier,
-	aggId ftypes.AggId, key value.Value, histogram counter.Histogram, kwargs value.Dict,
+	aggId ftypes.AggId, aggOptions aggregate.Options, key value.Value, kwargs value.Dict,
 ) (value.Value, error) {
 	vals, err := BatchValue(ctx, tier,
-		[]ftypes.AggId{aggId}, []value.Value{key}, []counter.Histogram{histogram}, []value.Dict{kwargs})
+		[]ftypes.AggId{aggId}, []aggregate.Options{aggOptions}, []value.Value{key}, []value.Dict{kwargs})
 	if err != nil {
 		return value.Nil, err
 	}
@@ -29,12 +30,18 @@ func Value(
 // BucketStore instances are created per histogram - the list `indices` created is always a single element list
 func BatchValue(
 	ctx context.Context, tier tier.Tier,
-	aggIds []ftypes.AggId, keys []value.Value, histograms []counter.Histogram, kwargs []value.Dict,
+	aggIds []ftypes.AggId, aggOptions []aggregate.Options, keys []value.Value, kwargs []value.Dict,
 ) ([]value.Value, error) {
+	histograms := make([]counter.Histogram, len(aggIds))
 	end := ftypes.Timestamp(tier.Clock.Now())
 	unique := make(map[counter.BucketStore][]int)
 	ret := make([]value.Value, len(aggIds))
-	for i, h := range histograms {
+	for i, aggId := range aggIds {
+		h, err := counter.ToHistogram(aggId, aggOptions[i])
+		if err != nil {
+			return nil, fmt.Errorf("failed to make histogram from aggregate at index %d of batch: %v", i, err)
+		}
+		histograms[i] = h
 		bs := h.GetBucketStore()
 		unique[bs] = append(unique[bs], i)
 	}
@@ -73,10 +80,14 @@ func BatchValue(
 }
 
 func Update(
-	ctx context.Context, tier tier.Tier, aggId ftypes.AggId, table value.List, histogram counter.Histogram,
-) error {
+	ctx context.Context, tier tier.Tier, aggId ftypes.AggId, aggOptions aggregate.Options,
+	table value.List) error {
 	ctx, tmr := timer.Start(ctx, tier.ID, "counter.update")
 	defer tmr.Stop()
+	histogram, err := counter.ToHistogram(aggId, aggOptions)
+	if err != nil {
+		return fmt.Errorf("failed to make histogram from aggregate: %w", err)
+	}
 	buckets, values, err := counter.Bucketize(histogram, table)
 	if err != nil {
 		return err
