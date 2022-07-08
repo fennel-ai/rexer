@@ -50,6 +50,37 @@ func LogTracingInfo(ctx context.Context, log *zap.Logger) error {
 	return nil
 }
 
+type TraceKey struct {}
+
+type TraceVal struct {}
+
+// PathSampler is a span sampler which samples a span if the parent context is embedded with an instance of `TraceKey`
+// and non-nil value
+type PathSampler struct {}
+
+func (r PathSampler) ShouldSample(parameters sdktrace.SamplingParameters) sdktrace.SamplingResult {
+	c := parameters.ParentContext
+	traceVal := c.Value(TraceKey{})
+	psc := oteltrace.SpanContextFromContext(c)
+	decision := sdktrace.Drop
+	// TODO: consider making the ratio unleash configurable - this allows changing the sampling rate without
+	// restarting the services
+	if traceVal != nil {
+		// sample using the sampling rate
+		decision = sdktrace.RecordAndSample
+	}
+	return sdktrace.SamplingResult{
+		Decision: decision,
+		Tracestate: psc.TraceState(),
+	}
+}
+
+func (r PathSampler) Description() string {
+	return "PathSampler"
+}
+
+var _ sdktrace.Sampler = PathSampler{}
+
 func InitProvider(endpoint string) error {
 	ctx := context.Background()
 
@@ -79,7 +110,10 @@ func InitProvider(endpoint string) error {
 	tp := sdktrace.NewTracerProvider(
 		// Ideally we should be sampling the traces (say at 1%) of the traces at the root node.
 		// e.g. sdktrace.ParentBased(/*root*/ sdktrace.TraceIDRatioBased(0.01))
-		sdktrace.WithSampler(sdktrace.AlwaysSample()),
+		//
+		// Currently only sample a span if it's parent has been sampled. Currently the parent span will be sampled
+		// based on `PathSampler`
+		sdktrace.WithSampler(sdktrace.ParentBased(PathSampler{})),
 		// By default, trace exporter exports 512 spans while maintaining a local queue of size `2048`
 		//
 		// Increase the queue size so that traces are dropped locally.

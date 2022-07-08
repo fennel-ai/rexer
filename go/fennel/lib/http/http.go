@@ -1,6 +1,7 @@
 package http
 
 import (
+	"context"
 	"math/rand"
 	"net/http"
 	"time"
@@ -48,7 +49,8 @@ func Tracer(log *zap.Logger, slowThreshold time.Duration, sampleRate float64) mu
 			route := mux.CurrentRoute(r)
 			path, _ := route.GetPathTemplate()
 			start := time.Now()
-			ctx, span := otel.Tracer("fennel").Start(r.Context(), path)
+			c := context.WithValue(r.Context(), timer.TraceKey{}, timer.TraceVal{})
+			ctx, span := otel.Tracer("fennel").Start(c, path)
 			traceId := timer.GetXrayTraceID(span)
 			rw.Header().Add("rexer-traceid", traceId)
 			ctx = timer.WithTracing(ctx, traceId)
