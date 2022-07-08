@@ -286,6 +286,32 @@ const tierConfs: Record<number, TierConf> = {
             },
         },
     },
+    // Yext demo tier
+    115: {
+        protectResources: true,
+        planeId: 3,
+        // use public subnets for ingress to allow traffic from outside the assigned vpc
+        ingressConf: {
+            usePublicSubnets: true,
+        },
+        // set larger requests for the http + query server
+        httpServerConf: {
+            podConf: {
+                minReplicas: 1,
+                maxReplicas: 4,
+                resourceConf: {
+                    cpu: {
+                        request: "2250m",
+                        limit: "2500m"
+                    },
+                    memory: {
+                        request: "6G",
+                        limit: "7G",
+                    }
+                }
+            },
+        },
+    },
 }
 
 // map from plane id to its configuration.
