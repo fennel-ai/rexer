@@ -118,27 +118,6 @@ func start(end ftypes.Timestamp, duration uint32) ftypes.Timestamp {
 	return 0
 }
 
-func extractDuration(kwargs value.Dict, durations []uint32) (uint32, error) {
-	v, ok := kwargs.Get("duration")
-	if !ok {
-		return 0, fmt.Errorf("error: no duration specified")
-	}
-	duration, ok := v.(value.Int)
-	if !ok {
-		return 0, fmt.Errorf("error: expected kwarg 'duration' to be an int but found: '%v'", v)
-	}
-	// check duration is positive so it can be typecast to uint32 safely
-	if duration < 0 {
-		return 0, fmt.Errorf("error: specified duration (%d) < 0", duration)
-	}
-	for _, d := range durations {
-		if uint32(duration) == d {
-			return d, nil
-		}
-	}
-	return 0, fmt.Errorf("error: specified duration not found in aggregate")
-}
-
 func getMaxDuration(durations []uint32) uint32 {
 	var maxDuration uint32 = 0
 	for _, d := range durations {

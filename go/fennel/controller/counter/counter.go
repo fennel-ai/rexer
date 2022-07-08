@@ -12,6 +12,8 @@ import (
 	"fennel/lib/value"
 	"fennel/model/counter"
 	"fennel/tier"
+
+	"github.com/samber/mo"
 )
 
 func Value(
@@ -52,9 +54,13 @@ func BatchValue(
 		defaults := make([]value.Value, n)
 		for i, index := range indices {
 			h := histograms[index]
-			start, err := counter.Start(h, end, kwargs[index])
+			duration, err := getRequestDuration(h.Options(), kwargs[index])
 			if err != nil {
-				return nil, fmt.Errorf("failed to get start timestamp of aggregate (id): %d, err: %v", aggIds[index], err)
+				return nil, fmt.Errorf("failed to get duration of aggregate (id): %d, err: %w", aggIds[index], err)
+			}
+			start, err := counter.Start(h, end, duration)
+			if err != nil {
+				return nil, fmt.Errorf("failed to get start timestamp of aggregate (id): %d, err: %w", aggIds[index], err)
 			}
 			ids_[i] = aggIds[index]
 			buckets[i] = h.BucketizeDuration(keys[index].String(), start, end)
@@ -111,4 +117,36 @@ func Update(
 		}
 	}
 	return histogram.SetMulti(ctx, tier, []ftypes.AggId{aggId}, [][]libcounter.Bucket{buckets}, [][]value.Value{values})
+}
+
+func getRequestDuration(options aggregate.Options, kwargs value.Dict) (mo.Option[uint32], error) {
+	if options.AggType == aggregate.TIMESERIES_SUM {
+		return mo.None[uint32](), nil
+	}
+	d, err := extractDuration(kwargs, options.Durations)
+	if err != nil {
+		return mo.None[uint32](), err
+	}
+	return mo.Some(d), nil
+}
+
+func extractDuration(kwargs value.Dict, durations []uint32) (uint32, error) {
+	v, ok := kwargs.Get("duration")
+	if !ok {
+		return 0, fmt.Errorf("error: no duration specified")
+	}
+	duration, ok := v.(value.Int)
+	if !ok {
+		return 0, fmt.Errorf("error: expected kwarg 'duration' to be an int but found: '%v'", v)
+	}
+	// check duration is positive so it can be typecast to uint32 safely
+	if duration < 0 {
+		return 0, fmt.Errorf("error: specified duration (%d) < 0", duration)
+	}
+	for _, d := range durations {
+		if uint32(duration) == d {
+			return d, nil
+		}
+	}
+	return 0, fmt.Errorf("error: specified duration not found in aggregate")
 }

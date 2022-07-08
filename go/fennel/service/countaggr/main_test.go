@@ -57,7 +57,7 @@ func TestEndToEndActionAggregates(t *testing.T) {
 			libaggregate.Aggregate{
 				Name: "agg_2", Query: getQuery(), Timestamp: 123,
 				Source:  libaggregate.SOURCE_ACTION,
-				Options: libaggregate.Options{AggType: "timeseries_sum", Window: ftypes.Window_HOUR, Limit: 4},
+				Options: libaggregate.Options{AggType: libaggregate.TIMESERIES_SUM, Window: ftypes.Window_HOUR, Limit: 4},
 				Id:      2,
 			},
 			value.NewList(value.Int(0), value.Int(0), value.Int(0), value.Int(0)),
