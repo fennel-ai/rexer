@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"math/rand"
 	"os"
 	"strings"
 	"time"
@@ -56,7 +57,9 @@ type TraceVal struct {}
 
 // PathSampler is a span sampler which samples a span if the parent context is embedded with an instance of `TraceKey`
 // and non-nil value
-type PathSampler struct {}
+type PathSampler struct {
+	samplingRatio float32
+}
 
 func (r PathSampler) ShouldSample(parameters sdktrace.SamplingParameters) sdktrace.SamplingResult {
 	c := parameters.ParentContext
@@ -65,8 +68,7 @@ func (r PathSampler) ShouldSample(parameters sdktrace.SamplingParameters) sdktra
 	decision := sdktrace.Drop
 	// TODO: consider making the ratio unleash configurable - this allows changing the sampling rate without
 	// restarting the services
-	if traceVal != nil {
-		// sample using the sampling rate
+	if traceVal != nil && r.samplingRatio >= rand.Float32() {
 		decision = sdktrace.RecordAndSample
 	}
 	return sdktrace.SamplingResult{
@@ -80,6 +82,10 @@ func (r PathSampler) Description() string {
 }
 
 var _ sdktrace.Sampler = PathSampler{}
+
+func createPathSampler(samplingRatio float32) PathSampler {
+	return PathSampler{samplingRatio: samplingRatio}
+}
 
 func InitProvider(endpoint string) error {
 	ctx := context.Background()
@@ -112,8 +118,8 @@ func InitProvider(endpoint string) error {
 		// e.g. sdktrace.ParentBased(/*root*/ sdktrace.TraceIDRatioBased(0.01))
 		//
 		// Currently only sample a span if it's parent has been sampled. Currently the parent span will be sampled
-		// based on `PathSampler`
-		sdktrace.WithSampler(sdktrace.ParentBased(PathSampler{})),
+		// based on `PathSampler` and sample at 1%
+		sdktrace.WithSampler(sdktrace.ParentBased(createPathSampler(0.01))),
 		// By default, trace exporter exports 512 spans while maintaining a local queue of size `2048`
 		//
 		// Increase the queue size so that traces are dropped locally.
@@ -122,7 +128,10 @@ func InitProvider(endpoint string) error {
 		//
 		// Note: The otel collector (running in the same cluster) which ingests the traces exported from each service,
 		// batches and exports to xray, batches the traces in sizes of `8192` or exports every 10s (regardless of size).
-		sdktrace.WithBatcher(traceExporter, sdktrace.WithMaxQueueSize(20480), sdktrace.WithMaxExportBatchSize(2048)),
+		//
+		// Increase queuesize and the export batch size so that a lot of spans are not dropped.
+		// See - https://linear.app/fennel-ai/issue/REX-1288#comment-59690710 for rough estimations with live traffic
+		sdktrace.WithBatcher(traceExporter, sdktrace.WithMaxQueueSize(204800), sdktrace.WithMaxExportBatchSize(20480)),
 		sdktrace.WithIDGenerator(idg))
 
 	otel.SetTracerProvider(tp)
