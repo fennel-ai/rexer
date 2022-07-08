@@ -4,6 +4,9 @@ import (
 	"context"
 	"fennel/lib/arena"
 	"fmt"
+	"github.com/Unleash/unleash-client-go/v3"
+	"runtime"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -552,7 +555,18 @@ func readFromRedis(ctx context.Context, tier tier.Tier, rkeys []string) ([]value
 	ctx, tmr := timer.Start(ctx, tier.ID, "redis.interpret_response")
 	defer tmr.Stop()
 
-	ret, err := parallel.Process(ctx, 2, res, interpretRedisResponse)
+	parallelism := 2
+	variant := unleash.GetVariant("parallel_processes")
+	if variant.Enabled {
+		percentage, err := strconv.Atoi(variant.Payload.Value)
+		if err == nil {
+			parallelism = percentage * runtime.GOMAXPROCS(0) / 100
+			if parallelism == 0 {
+				parallelism = 1
+			}
+		}
+	}
+	ret, err := parallel.Process(ctx, parallelism, res, interpretRedisResponse)
 	if err != nil {
 		return nil, fmt.Errorf("failed to interpret redis response: %w", err)
 	}
