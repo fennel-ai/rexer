@@ -20,8 +20,7 @@ import (
 )
 
 func TestValueAll(t *testing.T) {
-	tier, err := test.Tier()
-	assert.NoError(t, err)
+	tier := test.Tier(t)
 	defer test.Teardown(tier)
 
 	ctx := context.Background()
@@ -70,7 +69,7 @@ func TestValueAll(t *testing.T) {
 			}),
 		},
 	}
-	err = Update(ctx, tier, actions, agg1)
+	err := Update(ctx, tier, actions, agg1)
 	assert.NoError(t, err)
 	req1 := aggregate.GetAggValueRequest{
 		AggName: agg1.Name,
@@ -162,8 +161,7 @@ func TestValueAll(t *testing.T) {
 }
 
 func TestCachedValueAll(t *testing.T) {
-	tier, err := test.Tier()
-	assert.NoError(t, err)
+	tier := test.Tier(t)
 	defer test.Teardown(tier)
 
 	ctx := context.Background()
@@ -271,8 +269,7 @@ func TestCachedValueAll(t *testing.T) {
 
 // this test verifies that given a list of actions, the query is run on it to produce the right table
 func TestTransformActions(t *testing.T) {
-	tier, err := test.Tier()
-	assert.NoError(t, err)
+	tier := test.Tier(t)
 	defer test.Teardown(tier)
 
 	actions := make([]action.Action, 0)

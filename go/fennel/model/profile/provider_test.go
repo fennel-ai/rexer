@@ -13,8 +13,7 @@ import (
 )
 
 func testProviderBasic(t *testing.T, p provider) {
-	tier, err := test.Tier()
-	assert.NoError(t, err)
+	tier := test.Tier(t)
 	defer test.Teardown(tier)
 	ctx := context.Background()
 
@@ -40,8 +39,7 @@ func testProviderBasic(t *testing.T, p provider) {
 }
 
 func testSQLGetMulti(t *testing.T, p provider) {
-	tier, err := test.Tier()
-	assert.NoError(t, err)
+	tier := test.Tier(t)
 	defer test.Teardown(tier)
 	ctx := context.Background()
 
@@ -82,8 +80,7 @@ func checkGetBatch(t *testing.T, ctx context.Context, p provider, tier tier.Tier
 
 func testSetAgain(t *testing.T, p provider) {
 	// Setting the same profile twice with same version should be an error unless the value is identical
-	tier, err := test.Tier()
-	assert.NoError(t, err)
+	tier := test.Tier(t)
 	defer test.Teardown(tier)
 	ctx := context.Background()
 
@@ -116,8 +113,7 @@ func testSetAgain(t *testing.T, p provider) {
 }
 
 func testSetGetBatch(t *testing.T, p provider) {
-	tier, err := test.Tier()
-	assert.NoError(t, err)
+	tier := test.Tier(t)
 	defer test.Teardown(tier)
 	ctx := context.Background()
 

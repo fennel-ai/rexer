@@ -5,16 +5,16 @@ import (
 
 	"fennel/engine/ast"
 	"fennel/test"
+
 	"github.com/stretchr/testify/assert"
 )
 
 func TestQuery(t *testing.T) {
-	tier, err := test.Tier()
-	assert.NoError(t, err)
+	tier := test.Tier(t)
 	defer test.Teardown(tier)
 
 	// trying to get a query not in DB should fail
-	_, err = Get(tier, "query")
+	_, err := Get(tier, "query")
 	assert.Error(t, err)
 
 	// store query now

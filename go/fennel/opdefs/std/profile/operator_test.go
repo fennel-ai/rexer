@@ -19,8 +19,7 @@ import (
 )
 
 func TestDefault(t *testing.T) {
-	tier, err := test.Tier()
-	assert.NoError(t, err)
+	tier := test.Tier(t)
 	defer test.Teardown(tier)
 	query := ast.OpCall{
 		Operands:  []ast.Ast{&ast.Var{Name: "actions"}},
@@ -52,8 +51,7 @@ func TestDefault(t *testing.T) {
 }
 
 func TestProfileOp(t *testing.T) {
-	tier, err := test.Tier()
-	assert.NoError(t, err)
+	tier := test.Tier(t)
 	defer test.Teardown(tier)
 	ctx := context.Background()
 
@@ -99,8 +97,7 @@ func TestProfileOp(t *testing.T) {
 }
 
 func TestProfileOpCache(t *testing.T) {
-	tier, err := test.Tier()
-	assert.NoError(t, err)
+	tier := test.Tier(t)
 	defer test.Teardown(tier)
 	ctx := context.Background()
 	cacheValueDuration = time.Second * 10

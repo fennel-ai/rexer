@@ -35,8 +35,7 @@ func TestDBBasic(t *testing.T) {
 }
 
 func TestLongKey(t *testing.T) {
-	tier, err := test.Tier()
-	assert.NoError(t, err)
+	tier := test.Tier(t)
 	defer test.Teardown(tier)
 	ctx := context.Background()
 
@@ -45,7 +44,7 @@ func TestLongKey(t *testing.T) {
 	val := value.Int(2)
 
 	// can not set value on a makeKey that is greater than 255 chars
-	err = p.set(ctx, tier, profile.NewProfileItem("1", "1232", utils.RandString(256), val, 1))
+	err := p.set(ctx, tier, profile.NewProfileItem("1", "1232", utils.RandString(256), val, 1))
 	assert.Error(t, err)
 
 	// but works for a makeKey of size upto 255
@@ -54,8 +53,7 @@ func TestLongKey(t *testing.T) {
 }
 
 func TestLongOType(t *testing.T) {
-	tier, err := test.Tier()
-	assert.NoError(t, err)
+	tier := test.Tier(t)
 	defer test.Teardown(tier)
 	ctx := context.Background()
 	p := dbProvider{}
@@ -63,7 +61,7 @@ func TestLongOType(t *testing.T) {
 	val := value.Int(5)
 
 	// otype cannot be longer than 255 chars
-	err = p.set(ctx, tier, profile.NewProfileItem(ftypes.OType(utils.RandString(256)), "23", "key", val, 1))
+	err := p.set(ctx, tier, profile.NewProfileItem(ftypes.OType(utils.RandString(256)), "23", "key", val, 1))
 	assert.Error(t, err)
 
 	// but works for otype of length 255 chars

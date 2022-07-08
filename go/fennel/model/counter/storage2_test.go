@@ -15,8 +15,7 @@ import (
 )
 
 func TestSplitStore(t *testing.T) {
-	tier, err := test.Tier()
-	assert.NoError(t, err)
+	tier := test.Tier(t)
 	defer test.Teardown(tier)
 	ctx := context.Background()
 
@@ -84,7 +83,6 @@ func TestSplitStore(t *testing.T) {
 		vals[i] = append(vals[i], value.Int(i*23))
 	}
 	splitStoreSet(t, ctx, &tier, s, aggIDs, buckets, vals)
-	assert.NoError(t, err)
 
 	// should get them
 	found = splitStoreGet(t, ctx, &tier, s, aggIDs, buckets, defaults)

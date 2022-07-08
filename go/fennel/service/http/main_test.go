@@ -67,9 +67,8 @@ func startTestServer(controller server) *httptest.Server {
 }
 
 func TestLogFetchServerClient(t *testing.T) {
+	tier := test.Tier(t)
 	// create a service
-	tier, err := test.Tier()
-	assert.NoError(t, err)
 	defer test.Teardown(tier)
 	ctx := context.Background()
 
@@ -207,8 +206,7 @@ func TestLogFetchServerClient(t *testing.T) {
 
 func TestActionDedupedPerActionType(t *testing.T) {
 	// create a service
-	tier, err := test.Tier()
-	assert.NoError(t, err)
+	tier := test.Tier(t)
 	defer test.Teardown(tier)
 	ctx := context.Background()
 
@@ -287,8 +285,7 @@ func TestActionDedupedPerActionType(t *testing.T) {
 // TODO: add more tests covering more error conditions
 func TestProfileServerClient(t *testing.T) {
 	// create a service
-	tier, err := test.Tier()
-	assert.NoError(t, err)
+	tier := test.Tier(t)
 	defer test.Teardown(tier)
 
 	controller := server{tier: tier}
@@ -323,8 +320,7 @@ func TestProfileServerClient(t *testing.T) {
 }
 
 func TestSetProfilesQueuesToKafka(t *testing.T) {
-	tier, err := test.Tier()
-	assert.NoError(t, err)
+	tier := test.Tier(t)
 	defer test.Teardown(tier)
 
 	controller := server{tier: tier}
@@ -357,8 +353,7 @@ func TestSetProfilesQueuesToKafka(t *testing.T) {
 
 func TestQuery(t *testing.T) {
 	// create a service
-	tier, err := test.Tier()
-	assert.NoError(t, err)
+	tier := test.Tier(t)
 	defer test.Teardown(tier)
 
 	controller := server{tier: tier}
@@ -412,8 +407,7 @@ func TestQuery(t *testing.T) {
 }
 
 func TestStoreRunQuery(t *testing.T) {
-	tier, err := test.Tier()
-	assert.NoError(t, err)
+	tier := test.Tier(t)
 	defer test.Teardown(tier)
 
 	controller := server{tier: tier}
@@ -455,8 +449,7 @@ func TestStoreRunQuery(t *testing.T) {
 }
 
 func TestServer_AggregateValue_Valid(t *testing.T) {
-	tier, err := test.Tier()
-	assert.NoError(t, err)
+	tier := test.Tier(t)
 	defer test.Teardown(tier)
 
 	ctx := context.Background()
@@ -495,7 +488,7 @@ func TestServer_AggregateValue_Valid(t *testing.T) {
 			}),
 		},
 	}
-	err = aggregate2.Update(ctx, tier, actions, agg)
+	err := aggregate2.Update(ctx, tier, actions, agg)
 	assert.NoError(t, err)
 
 	clock.Set(uint32(t1 + 60))
@@ -523,8 +516,7 @@ func TestServer_AggregateValue_Valid(t *testing.T) {
 }
 
 func TestServer_BatchAggregateValue(t *testing.T) {
-	tier, err := test.Tier()
-	assert.NoError(t, err)
+	tier := test.Tier(t)
 	defer test.Teardown(tier)
 
 	ctx := context.Background()
@@ -585,7 +577,7 @@ func TestServer_BatchAggregateValue(t *testing.T) {
 			}),
 		},
 	}
-	err = aggregate2.Update(ctx, tier, actions, agg1)
+	err := aggregate2.Update(ctx, tier, actions, agg1)
 	assert.NoError(t, err)
 	req1 := aggregate.GetAggValueRequest{
 		AggName: agg1.Name, Key: key, Kwargs: value.NewDict(map[string]value.Value{"duration": value.Int(6 * 3600)}),
@@ -650,8 +642,7 @@ func TestServer_BatchAggregateValue(t *testing.T) {
 
 func TestStoreRetrieveDeactivateAggregate(t *testing.T) {
 	// create a service + client
-	tier, err := test.Tier()
-	assert.NoError(t, err)
+	tier := test.Tier(t)
 	defer test.Teardown(tier)
 
 	controller := server{tier: tier}

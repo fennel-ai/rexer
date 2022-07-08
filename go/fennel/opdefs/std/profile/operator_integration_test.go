@@ -22,8 +22,7 @@ import (
 )
 
 func TestProfileOpMultipleObjs(t *testing.T) {
-	tier, err := test.Tier()
-	assert.NoError(t, err)
+	tier := test.Tier(t)
 	defer test.Teardown(tier)
 	ctx := context.Background()
 
@@ -69,8 +68,7 @@ func TestProfileOpMultipleObjs(t *testing.T) {
 }
 
 func TestNonDictProfile(t *testing.T) {
-	tier, err := test.Tier()
-	assert.NoError(t, err)
+	tier := test.Tier(t)
 	defer test.Teardown(tier)
 
 	// Set some profiles.
@@ -121,8 +119,7 @@ func TestNonDictProfile(t *testing.T) {
 }
 
 func TestProfileOpCacheMultiple(t *testing.T) {
-	tier, err := test.Tier()
-	assert.NoError(t, err)
+	tier := test.Tier(t)
 	defer test.Teardown(tier)
 	ctx := context.Background()
 

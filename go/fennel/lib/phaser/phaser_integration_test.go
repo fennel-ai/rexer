@@ -22,8 +22,7 @@ func TestBulkUploadToRedis(t *testing.T) {
 		// This test works locally but doesnt work on github, needs to be debugged.
 		t.Skip("Skipping broken test")
 	}
-	tier, err := test.Tier()
-	assert.NoError(t, err)
+	tier := test.Tier(t)
 	defer test.Teardown(tier)
 	ctx := context.Background()
 
@@ -52,8 +51,7 @@ func TestBulkUploadToRedis(t *testing.T) {
 }
 
 func TestPrepareAndBulkUpload(t *testing.T) {
-	tier, err := test.Tier()
-	assert.NoError(t, err)
+	tier := test.Tier(t)
 	defer test.Teardown(tier)
 
 	tempDir, err := ioutil.TempDir("", "phaser")
@@ -80,12 +78,11 @@ func TestPrepareAndBulkUpload(t *testing.T) {
 }
 
 func TestPollS3Bucket(t *testing.T) {
-	tier, err := test.Tier()
-	assert.NoError(t, err)
+	tier := test.Tier(t)
 	defer test.Teardown(tier)
 	ctx := context.Background()
 
-	err = NewPhaser("testNamespace", "testIdentifier", "phaser-test-data", "integration-tests", time.Minute*time.Duration(5), tier)
+	err := NewPhaser("testNamespace", "testIdentifier", "phaser-test-data", "integration-tests", time.Minute*time.Duration(5), tier)
 	assert.NoError(t, err)
 
 	phasers, err := RetrieveAll(ctx, tier)

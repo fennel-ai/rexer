@@ -15,23 +15,21 @@ import (
 )
 
 func TestReadRecentIntegration(t *testing.T) {
-	tier, err := test.Tier()
-	require.NoError(t, err)
+	tier := test.Tier(t)
 	defer test.Teardown(tier)
 	ctx := context.Background()
 
 	s := NewInspector(tier, InspectorArgs{NumRecent: 10})
 	go s.startFeatureLogTailer()
-	require.NoError(t, err)
 
 	p := tier.Producers[feature.KAFKA_TOPIC_NAME]
 	messages := make([][]byte, 100)
 	for i := 0; i < 100; i++ {
 		messages[i] = []byte(fmt.Sprintf("message %d", i))
-		err = p.Log(ctx, messages[i], nil)
+		err := p.Log(ctx, messages[i], nil)
 		require.NoError(t, err)
 	}
-	err = p.Flush(time.Second)
+	err := p.Flush(time.Second)
 	require.NoError(t, err)
 
 	// Wait for messages to be consumed.

@@ -18,8 +18,7 @@ import (
 
 // verifies that given a table created from a query, we do correct inserts/queries
 func TestRolling(t *testing.T) {
-	tier, err := test.Tier()
-	assert.NoError(t, err)
+	tier := test.Tier(t)
 	defer test.Teardown(tier)
 
 	ctx := context.Background()
@@ -47,8 +46,7 @@ func TestRolling(t *testing.T) {
 		})
 		table.Append(row)
 	}
-	assert.NoError(t, err)
-	err = Update(ctx, tier, agg.Id, agg.Options, table)
+	err := Update(ctx, tier, agg.Id, agg.Options, table)
 	assert.NoError(t, err)
 
 	clock := &test.FakeClock{}
@@ -67,8 +65,7 @@ func TestRolling(t *testing.T) {
 }
 
 func TestTimeseries(t *testing.T) {
-	tier, err := test.Tier()
-	assert.NoError(t, err)
+	tier := test.Tier(t)
 	defer test.Teardown(tier)
 
 	ctx := context.Background()
@@ -99,7 +96,7 @@ func TestTimeseries(t *testing.T) {
 		})
 		table.Append(row)
 	}
-	err = Update(ctx, tier, agg.Id, agg.Options, table)
+	err := Update(ctx, tier, agg.Id, agg.Options, table)
 	assert.NoError(t, err)
 
 	clock := &test.FakeClock{}
@@ -143,8 +140,7 @@ func TestTimeseries(t *testing.T) {
 }
 
 func TestRollingAverage(t *testing.T) {
-	tier, err := test.Tier()
-	assert.NoError(t, err)
+	tier := test.Tier(t)
 	defer test.Teardown(tier)
 
 	ctx := context.Background()
@@ -172,7 +168,7 @@ func TestRollingAverage(t *testing.T) {
 		})
 		table.Append(row)
 	}
-	err = Update(ctx, tier, agg.Id, agg.Options, table)
+	err := Update(ctx, tier, agg.Id, agg.Options, table)
 	assert.NoError(t, err)
 
 	clock := &test.FakeClock{}
@@ -193,8 +189,7 @@ func TestRollingAverage(t *testing.T) {
 }
 
 func TestStream(t *testing.T) {
-	tier, err := test.Tier()
-	assert.NoError(t, err)
+	tier := test.Tier(t)
 	defer test.Teardown(tier)
 
 	ctx := context.Background()
@@ -230,7 +225,7 @@ func TestStream(t *testing.T) {
 			expected2 = append(expected2, value.Int(i))
 		}
 	}
-	err = Update(ctx, tier, agg.Id, agg.Options, table)
+	err := Update(ctx, tier, agg.Id, agg.Options, table)
 	assert.NoError(t, err)
 
 	clock := &test.FakeClock{}
@@ -257,8 +252,7 @@ func slice(l value.List) []value.Value {
 }
 
 func TestRate(t *testing.T) {
-	tier, err := test.Tier()
-	assert.NoError(t, err)
+	tier := test.Tier(t)
 	defer test.Teardown(tier)
 
 	ctx := context.Background()
@@ -297,7 +291,7 @@ func TestRate(t *testing.T) {
 			den2 += int64(i + 1)
 		}
 	}
-	err = Update(ctx, tier, agg.Id, agg.Options, table)
+	err := Update(ctx, tier, agg.Id, agg.Options, table)
 	assert.NoError(t, err)
 
 	clock := &test.FakeClock{}
@@ -318,8 +312,7 @@ func TestRate(t *testing.T) {
 }
 
 func TestCounterUpdateInvalid(t *testing.T) {
-	tier, err := test.Tier()
-	assert.NoError(t, err)
+	tier := test.Tier(t)
 	defer test.Teardown(tier)
 	ctx := context.Background()
 	// no col for key or timestamp
@@ -334,8 +327,7 @@ func TestCounterUpdateInvalid(t *testing.T) {
 }
 
 func TestBatchValue(t *testing.T) {
-	tier, err := test.Tier()
-	assert.NoError(t, err)
+	tier := test.Tier(t)
 	defer test.Teardown(tier)
 	ctx := context.Background()
 
@@ -425,8 +417,7 @@ func TestBatchValue(t *testing.T) {
 }
 
 func TestDurations(t *testing.T) {
-	tier, err := test.Tier()
-	assert.NoError(t, err)
+	tier := test.Tier(t)
 	defer test.Teardown(tier)
 	ctx := context.Background()
 
@@ -437,7 +428,7 @@ func TestDurations(t *testing.T) {
 		Durations: durations,
 	}
 	// not specifying a duration in kwargs should return an error
-	_, err = Value(ctx, tier, aggId, aggOptions, value.Int(0), value.NewDict(nil))
+	_, err := Value(ctx, tier, aggId, aggOptions, value.Int(0), value.NewDict(nil))
 	assert.Error(t, err)
 	// specifying a duration that wasn't registered should also return an error
 	_, err = Value(ctx, tier, aggId, aggOptions, value.Int(0), value.NewDict(map[string]value.Value{"duration": value.Int(10 * 24 * 3600)}))

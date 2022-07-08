@@ -15,8 +15,7 @@ import (
 )
 
 func TestRetrieveActive(t *testing.T) {
-	tier, err := test.Tier()
-	assert.NoError(t, err)
+	tier := test.Tier(t)
 	defer test.Teardown(tier)
 
 	ctx := context.Background()
@@ -49,8 +48,7 @@ func TestRetrieveActive(t *testing.T) {
 }
 
 func TestDuplicate(t *testing.T) {
-	tier, err := test.Tier()
-	assert.NoError(t, err)
+	tier := test.Tier(t)
 	defer test.Teardown(tier)
 
 	ctx := context.Background()
@@ -63,7 +61,7 @@ func TestDuplicate(t *testing.T) {
 			Durations: []uint32{3600 * 24 * 7},
 		},
 	}
-	err = Store(ctx, tier, agg)
+	err := Store(ctx, tier, agg)
 	assert.NoError(t, err)
 
 	// No error with duplicate store with different timestamp
@@ -86,8 +84,7 @@ func TestDuplicate(t *testing.T) {
 }
 
 func TestDeactivate(t *testing.T) {
-	tier, err := test.Tier()
-	assert.NoError(t, err)
+	tier := test.Tier(t)
 	defer test.Teardown(tier)
 
 	ctx := context.Background()
@@ -102,7 +99,7 @@ func TestDeactivate(t *testing.T) {
 	}
 
 	// Deactivating when aggregate doesn't exist should throw an error
-	err = Deactivate(ctx, tier, "my_counter")
+	err := Deactivate(ctx, tier, "my_counter")
 	assert.Error(t, err)
 	assert.ErrorIs(t, err, aggregate.ErrNotFound)
 
@@ -125,8 +122,7 @@ func TestDeactivate(t *testing.T) {
 }
 
 func TestReactivate(t *testing.T) {
-	tier, err := test.Tier()
-	assert.NoError(t, err)
+	tier := test.Tier(t)
 	defer test.Teardown(tier)
 
 	ctx := context.Background()
@@ -141,7 +137,7 @@ func TestReactivate(t *testing.T) {
 	}
 
 	// initially retrieve all is empty
-	_, err = Retrieve(ctx, tier, agg.Name)
+	_, err := Retrieve(ctx, tier, agg.Name)
 	require.ErrorIs(t, err, aggregate.ErrNotFound)
 
 	err = Store(ctx, tier, agg)

@@ -19,8 +19,7 @@ import (
 )
 
 func TestAggValue_Apply(t *testing.T) {
-	tier, err := test.Tier()
-	assert.NoError(t, err)
+	tier := test.Tier(t)
 	defer test.Teardown(tier)
 
 	ctx := context.Background()
@@ -53,6 +52,7 @@ func TestAggValue_Apply(t *testing.T) {
 
 	uids := []ftypes.OidType{"1", "2", "1"}
 	var actions []action.Action
+	var err error
 	for i := 0; i < 3; i++ {
 		a := getAction(uids[i], ftypes.Timestamp(t0), "like")
 		actions = append(actions, a)

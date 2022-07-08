@@ -34,10 +34,9 @@ func TestPredict(t *testing.T) {
 		value.NewList(value.Double(0.923923909664154)),
 	}
 
-	tier, err := test.Tier()
-	assert.NoError(t, err)
+	tier := test.Tier(t)
 	defer test.Teardown(tier)
-	err = test.AddSagemakerClientToTier(&tier)
+	err := test.AddSagemakerClientToTier(&tier)
 	assert.NoError(t, err)
 	_, err = sagemaker.InsertModel(tier, lib.Model{
 		Name:             "smclient-test-xgboost-model",
@@ -65,10 +64,9 @@ func TestPredictError(t *testing.T) {
 		}),
 	}
 
-	tier, err := test.Tier()
-	assert.NoError(t, err)
+	tier := test.Tier(t)
 	defer test.Teardown(tier)
-	err = test.AddSagemakerClientToTier(&tier)
+	err := test.AddSagemakerClientToTier(&tier)
 	assert.NoError(t, err)
 	tier.ModelStore.TestSetEndpointName("smclient-test-endpoint")
 	optest.AssertError(t, tier, &predictOperator{}, value.NewDict(map[string]value.Value{
@@ -87,10 +85,9 @@ func TestPredictErrorNoModel(t *testing.T) {
 		}),
 	}
 
-	tier, err := test.Tier()
-	assert.NoError(t, err)
+	tier := test.Tier(t)
 	defer test.Teardown(tier)
-	err = test.AddSagemakerClientToTier(&tier)
+	err := test.AddSagemakerClientToTier(&tier)
 	assert.NoError(t, err)
 	optest.AssertError(t, tier, &predictOperator{}, value.Dict{} /* no static kwargs */, [][]value.Value{intable}, contextKwargTable)
 }

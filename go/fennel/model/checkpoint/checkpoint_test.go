@@ -11,8 +11,7 @@ import (
 )
 
 func TestCheckpoint2(t *testing.T) {
-	tier, err := test.Tier()
-	assert.NoError(t, err)
+	tier := test.Tier(t)
 	defer test.Teardown(tier)
 
 	ctx := context.Background()

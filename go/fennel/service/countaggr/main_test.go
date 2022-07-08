@@ -32,8 +32,7 @@ type scenario struct {
 }
 
 func TestEndToEndActionAggregates(t *testing.T) {
-	tier, err := test.Tier()
-	assert.NoError(t, err)
+	tier := test.Tier(t)
 	defer test.Teardown(tier)
 
 	ctx := context.Background()
@@ -233,8 +232,7 @@ func TestEndToEndActionAggregates(t *testing.T) {
 }
 
 func TestEndToEndProfileAggregates(t *testing.T) {
-	tier, err := test.Tier()
-	assert.NoError(t, err)
+	tier := test.Tier(t)
 	defer test.Teardown(tier)
 
 	ctx := context.Background()
