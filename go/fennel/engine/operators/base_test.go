@@ -30,6 +30,7 @@ func (top testOp) Signature() *Signature {
 		Param("p1", value.Types.Bool, true, false, value.Nil).
 		Param("p2", value.Types.Double, false, false, value.Double(3.0)).
 		Param("p3", value.Types.Any, true, false, value.Nil).
+		Param("p4", value.Types.List, true, true, value.Nil).
 		Input([]value.Type{value.Types.String})
 }
 

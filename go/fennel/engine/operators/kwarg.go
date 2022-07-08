@@ -33,6 +33,10 @@ func (k *Kwargs) TypeCheck() error {
 	}
 	for i, p := range params {
 		v := k.vals[i]
+		// allow value.Nil to be used for optional params
+		if p.Optional && v == value.Nil {
+			continue
+		}
 		if err := p.Type.Validate(v); err != nil {
 			return fmt.Errorf("operator '%s.%s' expects type of kwarg '%s' to be of type '%s': %w", k.sig.Module, k.sig.Name, p.Name, p.Type, err)
 		}
