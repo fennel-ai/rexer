@@ -30,12 +30,54 @@ func Value(
 	return vals[0], nil
 }
 
+func NitrousBatchValue(
+	ctx context.Context, tier tier.Tier, aggIds []ftypes.AggId, aggOptions []aggregate.Options, keys []value.Value, kwargs []value.Dict,
+) ([]value.Value, error) {
+	ret := make([]value.Value, len(keys))
+	idxByAgg := make(map[ftypes.AggId][]int)
+	for i, aggId := range aggIds {
+		idxByAgg[aggId] = append(idxByAgg[aggId], i)
+	}
+	// Note: we make the calls serially because for the most part, we will only
+	// have one aggregate per call.
+	// TODO(abhay): Call nitrous in parallel if/when we have multiple aggregates.
+	for aggId, indices := range idxByAgg {
+		aggkeys := arena.Values.Alloc(len(indices), len(indices))
+		defer arena.Values.Free(aggkeys)
+		aggkwargs := arena.DictValues.Alloc(len(indices), len(indices))
+		defer arena.DictValues.Free(aggkwargs)
+		for i, index := range indices {
+			aggkeys[i] = keys[index]
+			aggkwargs[i] = kwargs[index]
+		}
+		output := arena.Values.Alloc(len(indices), len(indices))
+		defer arena.Values.Free(output)
+		err := tier.NitrousClient.MustGet().GetMulti(ctx, aggId, aggkeys, aggkwargs, output)
+		if err != nil {
+			return nil, err
+		}
+		for i, index := range indices {
+			ret[index] = output[i]
+		}
+	}
+	return ret, nil
+}
+
 // TODO(Mohit): Fix this code if we decide to still use BucketStore
 // BucketStore instances are created per histogram - the list `indices` created is always a single element list
 func BatchValue(
 	ctx context.Context, tier tier.Tier,
 	aggIds []ftypes.AggId, aggOptions []aggregate.Options, keys []value.Value, kwargs []value.Dict,
 ) ([]value.Value, error) {
+	// Send a shadow request to nitrous if client has been initialized.
+	if tier.NitrousClient.IsPresent() {
+		go func() {
+			_, err := NitrousBatchValue(ctx, tier, aggIds, aggOptions, keys, kwargs)
+			if err != nil {
+				tier.Logger.Warn("Nitrous read error", zap.Error(err))
+			}
+		}()
+	}
 	histograms := make([]counter.Histogram, len(aggIds))
 	end := ftypes.Timestamp(tier.Clock.Now())
 	unique := make(map[counter.BucketStore][]int)
