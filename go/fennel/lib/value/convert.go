@@ -22,7 +22,10 @@ func ToCapnValue(v Value) (CapnValue, []byte, error) {
 	case Bool:
 		cv.SetBool(bool(t))
 	case String:
-		cv.SetStr(string(t))
+		err = cv.SetStr(string(t))
+		if err != nil {
+			return CapnValue{}, nil, err
+		}
 	case List:
 		l, err := cv.NewList(int32(t.Len()))
 		if err != nil {
@@ -33,7 +36,10 @@ func ToCapnValue(v Value) (CapnValue, []byte, error) {
 			if err != nil {
 				return CapnValue{}, nil, err
 			}
-			l.Set(i, cv)
+			err = l.Set(i, cv)
+			if err != nil {
+				return CapnValue{}, nil, err
+			}
 		}
 	case Dict:
 		m, err := cv.NewDict()
@@ -56,12 +62,18 @@ func ToCapnValue(v Value) (CapnValue, []byte, error) {
 			if err != nil {
 				return CapnValue{}, nil, fmt.Errorf("failed to convert map key to string: %w", err)
 			}
-			es.At(i).SetKey(key.ToPtr())
+			err = es.At(i).SetKey(key.ToPtr())
+			if err != nil {
+				return CapnValue{}, nil, fmt.Errorf("failed to set map key: %w", err)
+			}
 			value, _, err := ToCapnValue(entries[k])
 			if err != nil {
 				return CapnValue{}, nil, err
 			}
-			es.At(i).SetValue(value.ToPtr())
+			err = es.At(i).SetValue(value.ToPtr())
+			if err != nil {
+				return CapnValue{}, nil, fmt.Errorf("failed to set map value: %w", err)
+			}
 		}
 	case nil_:
 		cv.SetNil()

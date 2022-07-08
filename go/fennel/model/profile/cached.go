@@ -12,18 +12,11 @@ import (
 	"fennel/lib/value"
 	"fennel/tier"
 
-	"github.com/prometheus/client_golang/prometheus"
-	"github.com/prometheus/client_golang/prometheus/promauto"
 	"go.uber.org/zap"
 )
 
 // increment this to invalidate all existing cache keys for profile
 const cacheVersion = 0
-
-var profiles_cache_failures = promauto.NewCounter(prometheus.CounterOpts{
-	Name: "profile_cache_mset_failures",
-	Help: "Number of failures while trying to set versioned profiles in the cache",
-})
 
 //================================================
 // Public API for profile model (includes caching)

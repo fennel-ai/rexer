@@ -64,7 +64,11 @@ func syncSchema(db *sqlx.DB, defs Schema) error {
 	}
 
 	name := fmt.Sprintf("update_schema_%s", utils.RandString(8))
-	defer db.Exec(fmt.Sprintf("DROP PROCEDURE IF EXISTS %s", name))
+	defer func() {
+		if _, tempErr := db.Exec(fmt.Sprintf("DROP PROCEDURE IF EXISTS %s", name)); tempErr != nil {
+			err = tempErr
+		}
+	}()
 
 	// starting from version next to 'start' so that we don't have to recreate the existing schema
 	for version := start + 1; version <= len_; version++ {
@@ -88,5 +92,5 @@ func syncSchema(db *sqlx.DB, defs Schema) error {
 			return fmt.Errorf("could not execute procedure: %v", err)
 		}
 	}
-	return nil
+	return err
 }

@@ -30,7 +30,7 @@ const (
 )
 
 var supportedHyperParameters = hp.HyperParamRegistry{
-	"knn": {
+	"knn": map[string]hp.HyperParameterInfo{
 		"metric":         {Default: "ip", Type: reflect.String, Options: []string{"ip", "l2", "hamming", "jaccard"}},
 		"index":          {Default: "hnsw", Type: reflect.String, Options: []string{"flat", "ivf_flat", "hnsw", "annoy"}},
 		"nList":          {Default: 1024, Type: reflect.Int, Options: nil},
@@ -40,17 +40,17 @@ var supportedHyperParameters = hp.HyperParamRegistry{
 }
 
 var knnIndexSearchParams = hp.HyperParamRegistry{
-	"flat": {
-		"nprobe": hp.HyperParameterInfo{Default: 12, Type: reflect.Int, Options: nil},
+	"flat": map[string]hp.HyperParameterInfo{
+		"nprobe": {Default: 12, Type: reflect.Int, Options: nil},
 	},
-	"ivf_flat": {
-		"nprobe": hp.HyperParameterInfo{Default: 12, Type: reflect.Int, Options: nil},
+	"ivf_flat": map[string]hp.HyperParameterInfo{
+		"nprobe": {Default: 12, Type: reflect.Int, Options: nil},
 	},
-	"hnsw": {
-		"ef": hp.HyperParameterInfo{Default: 128, Type: reflect.Int, Options: nil},
+	"hnsw": map[string]hp.HyperParameterInfo{
+		"ef": {Default: 128, Type: reflect.Int, Options: nil},
 	},
-	"annoy": {
-		"searchK": hp.HyperParameterInfo{Default: -1, Type: reflect.Int, Options: nil},
+	"annoy": map[string]hp.HyperParameterInfo{
+		"searchK": {Default: -1, Type: reflect.Int, Options: nil},
 	},
 }
 
@@ -69,10 +69,7 @@ func NewClient(args MilvusArgs) (Client, error) {
 //================================================
 
 func (c Client) Close() error {
-	if c.client != nil {
-		return c.client.Close()
-	}
-	return nil
+	return c.client.Close()
 }
 
 func getCollectionName(aggName ftypes.AggName, tierId ftypes.RealmID) string {

@@ -114,7 +114,11 @@ func (s server) ProfileHandler(w http.ResponseWriter, req *http.Request) {
 			handleInternalServerError(w, err)
 			return
 		}
-		w.Write(response)
+		_, err = w.Write(response)
+		if err != nil {
+			handleInternalServerError(w, err)
+			return
+		}
 	default:
 		http.Error(w, "unsupported request method", http.StatusMethodNotAllowed)
 	}
@@ -160,7 +164,11 @@ func (s server) ProfileMultiHandler(w http.ResponseWriter, req *http.Request) {
 			handleInternalServerError(w, err)
 			return
 		}
-		w.Write(response)
+		_, err = w.Write(response)
+		if err != nil {
+			handleInternalServerError(w, err)
+			return
+		}
 	default:
 		http.Error(w, "unsupported request method", http.StatusMethodNotAllowed)
 	}
