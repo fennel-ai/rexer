@@ -82,8 +82,8 @@ message AggregateValuesRequest {
   uint32 tier_id = 1;
   uint32 agg_id = 2;
   AggCodec codec = 3;
-  uint32 duration = 4;
-  repeated string groupkeys = 5;
+  repeated string groupkeys = 4;
+  repeated PVDict kwargs = 5;
 }
 
 message AggregateValuesResponse { repeated PValue results = 1; }

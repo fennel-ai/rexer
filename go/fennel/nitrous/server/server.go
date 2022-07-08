@@ -10,10 +10,11 @@ import (
 
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/encoding/protojson"
 )
 
 type AggDB interface {
-	Get(ctx context.Context, tierId ftypes.RealmID, aggId ftypes.AggId, codec rpc.AggCodec, duration uint32, groupkeys []string) ([]value.Value, error)
+	Get(ctx context.Context, tierId ftypes.RealmID, aggId ftypes.AggId, codec rpc.AggCodec, kwargs []value.Dict, groupkeys []string) ([]value.Value, error)
 }
 
 type Server struct {
@@ -48,7 +49,16 @@ func (s *Server) GetAggregateValues(ctx context.Context, req *rpc.AggregateValue
 	tierId := ftypes.RealmID(req.TierId)
 	aggId := ftypes.AggId(req.AggId)
 	codec := req.Codec
-	vals, err := s.aggdb.Get(ctx, tierId, aggId, codec, req.GetDuration(), req.GetGroupkeys())
+	kwargs := make([]value.Dict, len(req.Kwargs))
+	var err error
+	for i, kw := range req.Kwargs {
+		kwargs[i], err = value.FromProtoDict(kw)
+		if err != nil {
+			s, _ := protojson.Marshal(kw)
+			return nil, status.Errorf(codes.Internal, "error converting kwarg [%s] to value: %v", s, err)
+		}
+	}
+	vals, err := s.aggdb.Get(ctx, tierId, aggId, codec, kwargs, req.GetGroupkeys())
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "error getting aggregate %d for tier %d with codec %d: %v", aggId, tierId, codec, err)
 	}

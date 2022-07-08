@@ -25,7 +25,7 @@ func (tdb *TestDB) ReturnNext(vals []value.Value) {
 	tdb.next = vals
 }
 
-func (tdb *TestDB) Get(ctx context.Context, tierId ftypes.RealmID, aggId ftypes.AggId, codec rpc.AggCodec, duration uint32, groupkeys []string) ([]value.Value, error) {
+func (tdb *TestDB) Get(ctx context.Context, tierId ftypes.RealmID, aggId ftypes.AggId, codec rpc.AggCodec, kwargs []value.Dict, groupkeys []string) ([]value.Value, error) {
 	if tdb.next == nil {
 		return nil, fmt.Errorf("no values")
 	}
@@ -38,11 +38,15 @@ func TestGet(t *testing.T) {
 	tierId := ftypes.RealmID(1)
 	aggId := ftypes.AggId(1)
 	codec := rpc.AggCodec_V1
-	_, err := svr.GetAggregateValues(context.Background(), &rpc.AggregateValuesRequest{
+	kwargs := value.NewDict(nil)
+	kwargs.Set("duration", value.Int(24*3600))
+	pkwargs, err := value.ToProtoDict(kwargs)
+	assert.NoError(t, err)
+	_, err = svr.GetAggregateValues(context.Background(), &rpc.AggregateValuesRequest{
 		TierId:    2,
 		AggId:     uint32(aggId),
 		Codec:     codec,
-		Duration:  24 * 3600,
+		Kwargs:    []*value.PVDict{&pkwargs},
 		Groupkeys: []string{"mygk"},
 	})
 	assert.Error(t, err)
@@ -52,7 +56,7 @@ func TestGet(t *testing.T) {
 		TierId:    uint32(tierId),
 		AggId:     uint32(aggId),
 		Codec:     codec,
-		Duration:  24 * 3600,
+		Kwargs:    []*value.PVDict{&pkwargs},
 		Groupkeys: []string{"mygk1", "mygk2"},
 	})
 	assert.NoError(t, err)

@@ -37,16 +37,18 @@ func TestInitRestore(t *testing.T) {
 	}
 
 	ctx := context.Background()
+	kwargs := value.NewDict(nil)
+	kwargs.Set("duration", value.Int(24*3600))
 	tierId := ftypes.RealmID(5)
 	aggId := ftypes.AggId(20)
 
 	adm := NewAggDefsMgr(p, tlr)
 	// Get fails since aggregate has not been defined yet.
-	_, err := adm.Get(ctx, tierId, aggId, rpc.AggCodec_V1, 24*3600, []string{"mygk"})
+	_, err := adm.Get(ctx, tierId, aggId, rpc.AggCodec_V1, []value.Dict{kwargs}, []string{"mygk"})
 	assert.Error(t, err)
 	err = adm.RestoreAggregates()
 	assert.NoError(t, err)
-	_, err = adm.Get(ctx, tierId, aggId, rpc.AggCodec_V1, 24*3600, []string{"mygk"})
+	_, err = adm.Get(ctx, tierId, aggId, rpc.AggCodec_V1, []value.Dict{kwargs}, []string{"mygk"})
 	assert.Error(t, err)
 
 	// Define the aggregate.
@@ -69,7 +71,7 @@ func TestInitRestore(t *testing.T) {
 	err = p.Store.SetMany(ks, vgs)
 	assert.NoError(t, err)
 
-	resp, err := adm.Get(ctx, tierId, aggId, rpc.AggCodec_V1, 24*3600, []string{"mygk"})
+	resp, err := adm.Get(ctx, tierId, aggId, rpc.AggCodec_V1, []value.Dict{kwargs}, []string{"mygk"})
 	assert.NoError(t, err)
 	assert.Equal(t, 1, len(resp))
 	assert.Equal(t, value.Int(0), resp[0])
@@ -109,7 +111,7 @@ func TestInitRestore(t *testing.T) {
 	adm = NewAggDefsMgr(p, tlr)
 	err = adm.RestoreAggregates()
 	assert.NoError(t, err)
-	resp, err = adm.Get(ctx, tierId, aggId, rpc.AggCodec_V1, 24*3600, []string{"mygk"})
+	resp, err = adm.Get(ctx, tierId, aggId, rpc.AggCodec_V1, []value.Dict{kwargs}, []string{"mygk"})
 	assert.NoError(t, err)
 	assert.Equal(t, 1, len(resp))
 	assert.NoError(t, err)
