@@ -9,48 +9,12 @@ export type inputType = {
     region: string,
     roleArn: string,
     tierId: number,
-    nodeInstanceRole: string,
     protect: boolean,
 }
 
 // should not contain any pulumi.Output<> types.
 export type outputType = {
     modelStoreBucket: string
-}
-
-function setupModelStoreAccess(provider: aws.Provider, input: inputType, bucketName: string) {
-    const policyStr = `{
-          "Version": "2012-10-17",
-          "Statement": [
-            {
-              "Effect": "Allow",
-              "Action": [
-                "s3:ListBucket"
-              ],
-              "Resource": "arn:aws:s3:::${bucketName}"
-            },
-            {
-              "Effect": "Allow",
-              "Action": [
-                "s3:PutObject",
-                "s3:GetObject",
-                "s3:DeleteObject"
-              ],
-              "Resource": "arn:aws:s3:::${bucketName}/*"
-            }
-          ]
-        }
-        `
-
-    const policy = new aws.iam.Policy(`t-${input.tierId}-node-model-storage-policy`, {
-        namePrefix: `t-${input.tierId}-NodeModelStoragePolicy-`,
-        policy: policyStr,
-    }, { provider: provider });
-
-    const attachNodeModelStoragePolicy = new aws.iam.RolePolicyAttachment(`t-${input.tierId}-node-model-storage-policy-attach`, {
-        policyArn: policy.arn,
-        role: input.nodeInstanceRole,
-    }, { provider: provider });
 }
 
 export const setup = async (input: inputType): Promise<outputType> => {
@@ -71,9 +35,6 @@ export const setup = async (input: inputType): Promise<outputType> => {
         // delete all the objects so that the bucket can be deleted without error
         forceDestroy: true,
     }, {provider, protect: input.protect });
-
-    // setup EKS worker node have access to the S3 bucket and the folder
-    setupModelStoreAccess(provider, input, bucketName);
 
     const output: outputType = {
         modelStoreBucket: bucketName,
