@@ -81,7 +81,7 @@ func maybeExportProfile(t time.Time, pprofArgs PprofArgs, s3Client s3.Client) er
 	reader, writer := io.Pipe()
 
 	go func() {
-		runtime.GC() // get up-to-date statistics
+		// runtime.GC() // get up-to-date statistics
 		if err := pprof.WriteHeapProfile(writer); err != nil {
 			log.Printf("failed to write heapprofile to writer, err: %v\n", err)
 		}
