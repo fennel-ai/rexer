@@ -18,9 +18,10 @@ func InsertModel(tier tier.Tier, model lib.Model) (uint32, error) {
 			framework,
 			framework_version,
 			artifact_path,
-			last_modified
+			last_modified,
+			container_name
 		) VALUES (
-			?, ?, ?, ?, ?, ?
+			?, ?, ?, ?, ?, ?, ?
 		)
 	`
 	res, err := tier.DB.Exec(stmt,
@@ -30,6 +31,7 @@ func InsertModel(tier tier.Tier, model lib.Model) (uint32, error) {
 		model.FrameworkVersion,
 		model.ArtifactPath,
 		ts,
+		model.ContainerName,
 	)
 	if err != nil {
 		return 0, fmt.Errorf("failed to create model entry in db: %v", err)
@@ -54,13 +56,13 @@ func MakeModelInactive(tier tier.Tier, name, version string) error {
 	return nil
 }
 
-func GetModel(tier tier.Tier, id uint32) (lib.Model, error) {
+func GetModel(tier tier.Tier, name, version string) (lib.Model, error) {
 	var model lib.Model
 	err := tier.DB.Get(&model, `
 		SELECT *
 		FROM model
-		WHERE id=?
-	`, id)
+		WHERE name=? AND version=?
+	`, name, version)
 	if err != nil {
 		return model, fmt.Errorf("failed to get model: %v", err)
 	}

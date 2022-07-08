@@ -3,7 +3,6 @@ package modelstore
 import (
 	"context"
 	"fmt"
-
 	"math/rand"
 	"strconv"
 	"strings"
@@ -29,9 +28,13 @@ var scalingConfigErrors = promauto.NewCounterVec(prometheus.CounterOpts{
 
 type RetryError error
 
-// local cache of model container name to framework.
+// local cache of model name, version to model.
 // key type is string, value type is string.
-var frameworkCache = sync.Map{}
+var modelCache = sync.Map{}
+
+func genCacheKey(name, version string) string {
+	return name + "-" + version
+}
 
 type ModelInfo struct {
 	ModelName        string
@@ -202,21 +205,22 @@ func Store(ctx context.Context, tier tier.Tier, req lib.ModelUploadRequest) erro
 		return fmt.Errorf("cannot have more than 15 active models: %v", err)
 	}
 
+	containerName := lib.GenContainerName()
 	// upload to s3
-	fileName := lib.GetContainerName(req.Name, req.Version)
-	err = tier.S3Client.Upload(req.ModelFile, fileName, tier.ModelStore.S3Bucket())
+	err = tier.S3Client.Upload(req.ModelFile, containerName, tier.ModelStore.S3Bucket())
 	if err != nil {
 		return fmt.Errorf("failed to upload model to s3: %v", err)
 	}
 
 	// now insert into db
-	artifactPath := tier.ModelStore.GetArtifactPath(fileName)
+	artifactPath := tier.ModelStore.GetArtifactPath(containerName)
 	model := lib.Model{
 		Name:             req.Name,
 		Version:          req.Version,
 		Framework:        req.Framework,
 		FrameworkVersion: req.FrameworkVersion,
 		ArtifactPath:     artifactPath,
+		ContainerName:    containerName,
 	}
 	_, err = db.InsertModel(tier, model)
 	if err != nil {
@@ -245,7 +249,11 @@ func Remove(ctx context.Context, tier tier.Tier, name, version string) error {
 	// If it does not exist, it will be created later
 
 	// delete from s3
-	err = tier.S3Client.Delete(lib.GetContainerName(name, version), tier.ModelStore.S3Bucket())
+	model, err := db.GetModel(tier, name, version)
+	if err != nil {
+		return fmt.Errorf("failed to load model from db: %w", err)
+	}
+	err = tier.S3Client.Delete(model.ContainerName, tier.ModelStore.S3Bucket())
 	if err != nil {
 		return fmt.Errorf("failed to delete model from s3: %v", err)
 	}
@@ -279,23 +287,23 @@ func PreTrainedScore(ctx context.Context, tier tier.Tier, modelName string, inpu
 func Score(
 	ctx context.Context, tier tier.Tier, name, version string, featureVecs []value.List,
 ) (res []value.Value, err error) {
-	containerName := lib.GetContainerName(name, version)
-	var framework string
-	val, ok := frameworkCache.Load(containerName)
+	ckey := genCacheKey(name, version)
+	var model lib.Model
+	val, ok := modelCache.Load(ckey)
 	if ok {
-		framework, ok = val.(string)
+		model, ok = val.(lib.Model)
 	}
 	if !ok {
-		framework, err = db.GetFramework(tier, name, version)
+		model, err = db.GetModel(tier, name, version)
 		if err != nil {
-			return nil, fmt.Errorf("could not get framework from db: %w", err)
+			return nil, fmt.Errorf("could not get model from db: %w", err)
 		}
-		frameworkCache.Store(containerName, framework)
+		modelCache.Store(ckey, model)
 	}
 	req := lib.ScoreRequest{
-		Framework:     framework,
+		Framework:     model.Framework,
 		EndpointName:  tier.ModelStore.EndpointName(),
-		ContainerName: lib.GetContainerName(name, version),
+		ContainerName: model.ContainerName,
 		FeatureLists:  featureVecs,
 	}
 	response, err := tier.SagemakerClient.Score(ctx, &req)
@@ -387,7 +395,7 @@ func EnsureEndpointExists(ctx context.Context, tier tier.Tier) error {
 			hostedModels[i] = lib.SagemakerHostedModel{
 				SagemakerModelName: sagemakerModelName,
 				ModelId:            model.Id,
-				ContainerHostname:  lib.GetContainerName(model.Name, model.Version),
+				ContainerHostname:  model.ContainerName,
 			}
 		}
 		err = db.InsertHostedModels(tier, hostedModels...)
@@ -423,10 +431,10 @@ func EnsureEndpointExists(ctx context.Context, tier tier.Tier) error {
 	}
 	if endpointCfg.Name == "" {
 		endpointCfg = lib.SagemakerEndpointConfig{
-			Name:          fmt.Sprintf("%s-config-%d", sagemakerModelName, rand.Int63()),
-			ModelName:     sagemakerModelName,
-			VariantName:   sagemakerModelName,
-			InstanceType:  tier.SagemakerClient.GetInstanceType(),
+			Name:         fmt.Sprintf("%s-config-%d", sagemakerModelName, rand.Int63()),
+			ModelName:    sagemakerModelName,
+			VariantName:  sagemakerModelName,
+			InstanceType: tier.SagemakerClient.GetInstanceType(),
 			// TODO: use a larger number of initial instance size as an additional precaution step - creating and
 			// applying a new endpoint configuration results in updating the endpoint during which autoscaling is
 			// blocked (or we have not explicitly configured it yet), it might be better to start with a larger
@@ -567,7 +575,7 @@ func EnableAutoscalingWhenEndpointInService(tier tier.Tier, sagemakerEndpointNam
 	inService := false
 	for {
 		select {
-		case <- ticker.C:
+		case <-ticker.C:
 			err := EnsureEndpointInService(ctx, tier)
 			if err == nil {
 				inService = true
@@ -596,7 +604,7 @@ func EnableAutoscalingWhenEndpointInService(tier tier.Tier, sagemakerEndpointNam
 		Cpu: lib.CpuScalingPolicy{
 			CpuTargetValue: 70,
 			// scale out aggressively than scaling in
-			ScaleInCoolDownPeriod: 180,
+			ScaleInCoolDownPeriod:  180,
 			ScaleOutCoolDownPeriod: 60,
 		},
 		BaseConfig: &lib.BaseConfig{
@@ -620,5 +628,6 @@ func getDummyModel(model lib.Model) lib.Model {
 		Framework:        model.Framework,
 		FrameworkVersion: model.FrameworkVersion,
 		ArtifactPath:     model.ArtifactPath,
+		ContainerName:    lib.GenContainerName(),
 	}
 }

@@ -167,7 +167,7 @@ func TestScoreSvm(t *testing.T) {
 	response, err := c.Score(context.Background(), &lib.ScoreRequest{
 		Framework:     "xgboost",
 		EndpointName:  "smclient-test-endpoint",
-		ContainerName: lib.GetContainerName("smclient-test-xgboost-model", "v1"),
+		ContainerName: "Container-smclient-test-xgboost-model-v1",
 		FeatureLists:  featureVectors,
 	})
 	assert.NoError(t, err)
@@ -186,7 +186,7 @@ func TestScoreCsv(t *testing.T) {
 	response, err := c.Score(context.Background(), &lib.ScoreRequest{
 		Framework:     "xgboost",
 		EndpointName:  "smclient-test-endpoint",
-		ContainerName: lib.GetContainerName("smclient-test-xgboost-model", "v1"),
+		ContainerName: "Container-smclient-test-xgboost-model-v1",
 		FeatureLists:  featureVectors,
 	})
 	assert.NoError(t, err)
@@ -224,8 +224,8 @@ func TestIsAutoscalingConfigured(t *testing.T) {
 	// configure autoscaling on this instance and assert
 	err = c.EnableAutoscaling(ctx, endpoint, variantName, lib.ScalingConfiguration{
 		Cpu: lib.CpuScalingPolicy{
-			CpuTargetValue: 20,
-			ScaleInCoolDownPeriod: 100,
+			CpuTargetValue:         20,
+			ScaleInCoolDownPeriod:  100,
 			ScaleOutCoolDownPeriod: 200,
 		},
 		BaseConfig: &lib.BaseConfig{MinCapacity: 1, MaxCapacity: 2},
