@@ -24,7 +24,7 @@ type V1Encoder struct{}
 
 func (e V1Encoder) NewStore(plane plane.Plane, tierId ftypes.RealmID, aggId ftypes.AggId, options aggregate.Options) (TailingStore, error) {
 	const numBuckets = 100
-	bucketizer := temporal.NewFixedWidthBucketizer(options, numBuckets, clock.New())
+	bucketizer := temporal.NewFixedWidthBucketizer(numBuckets, clock.New())
 	mr, err := counter.ToMergeReduce(aggId, options)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create merge reduce for aggId %d in tier %d: %w", aggId, tierId, err)

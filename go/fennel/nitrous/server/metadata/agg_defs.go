@@ -194,13 +194,13 @@ func (adm *AggDefsMgr) initAggStore(tierId ftypes.RealmID, aggId ftypes.AggId, c
 	return nil
 }
 
-func (adm *AggDefsMgr) Get(ctx context.Context, tierId ftypes.RealmID, aggId ftypes.AggId, codec rpc.AggCodec, duration uint32, groupkeys []string) ([]value.Value, error) {
+func (adm *AggDefsMgr) Get(ctx context.Context, tierId ftypes.RealmID, aggId ftypes.AggId, codec rpc.AggCodec, kwargs []value.Dict, groupkeys []string) ([]value.Value, error) {
 	// Get the aggregate store for this aggregate.
 	handler, ok := adm.handlers[aggKey{tierId, aggId, codec}]
 	if !ok {
 		return nil, fmt.Errorf("no handler for aggregate %d in tier %d with codec %d", aggId, tierId, codec)
 	}
-	return handler.Get(ctx, duration, groupkeys)
+	return handler.Get(ctx, kwargs, groupkeys)
 }
 
 func encodeField(tierId ftypes.RealmID, aggId ftypes.AggId, codec rpc.AggCodec) ([]byte, error) {

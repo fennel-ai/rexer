@@ -6,6 +6,7 @@ import (
 	"unsafe"
 
 	"fennel/hangar"
+	"fennel/lib/arena"
 	"fennel/lib/ftypes"
 	"fennel/lib/utils/binary"
 	"fennel/lib/utils/slice"
@@ -114,38 +115,50 @@ func (ms Closet) encodeKeys(groupkey string, buckets []temporal.TimeBucket) ([]h
 	return kgs, nil
 }
 
-func (ms Closet) Get(ctx context.Context, duration uint32, keys []string) ([]value.Value, error) {
-	buckets, err := ms.bucketizer.BucketizeDuration(duration)
-	if err != nil {
-		return nil, fmt.Errorf("error bucketizing: %w", err)
-	}
-	kgs := make([]hangar.KeyGroup, 0, len(keys)*len(buckets))
-	for _, key := range keys {
+func (ms Closet) Get(ctx context.Context, kwargs []value.Dict, keys []string) ([]value.Value, error) {
+	kgs := make([]hangar.KeyGroup, 0, len(keys)*(ms.bucketizer.NumBucketsHint()+1))
+	// Slice containing number of buckets for each key. This is useful in
+	// dividing up the read result from hangar.
+	bucketLengths := make([]int, len(keys))
+	for i, key := range keys {
+		duration, err := getRequestDuration(ms.mr.Options(), kwargs[i])
+		if err != nil {
+			return nil, fmt.Errorf("error extracting duration from request: %w", err)
+		}
+		buckets, err := ms.bucketizer.Bucketize(ms.mr, duration)
+		if err != nil {
+			return nil, fmt.Errorf("error bucketizing: %w", err)
+		}
 		encoded, err := ms.encodeKeys(key, buckets)
 		if err != nil {
 			return nil, fmt.Errorf("error encoding: %w", err)
 		}
 		kgs = append(kgs, encoded...)
+		bucketLengths[i] = len(buckets)
 	}
 	vgs, err := ms.plane.Store.GetMany(kgs)
 	if err != nil {
 		return nil, fmt.Errorf("error getting values: %w", err)
 	}
 	ret := make([]value.Value, len(keys))
-	vals := make([]value.Value, len(buckets))
+	offset := 0
 	for i := 0; i < len(keys); i++ {
-		offset := i * len(buckets)
-		for j := 0; j < len(buckets); j++ {
+		numBuckets := bucketLengths[i]
+		vals := arena.Values.Alloc(numBuckets, numBuckets)
+		defer arena.Values.Free(vals)
+		for j := 0; j < numBuckets; j++ {
 			vg := vgs[offset+j]
 			if len(vg.Values) == 0 {
 				vals[j] = ms.mr.Zero()
 			} else {
+				var err error
 				vals[j], err = value.FromJSON(vg.Values[0])
 				if err != nil {
 					return nil, fmt.Errorf("error decoding value(%s): %w", string(vg.Values[0]), err)
 				}
 			}
 		}
+		offset += numBuckets
 		ret[i], err = ms.mr.Reduce(vals)
 		if err != nil {
 			return nil, fmt.Errorf("error reducing: %w", err)
@@ -199,7 +212,7 @@ func (ms Closet) Update(ctx context.Context, ts []uint32, keys []string, val []v
 	var vals []value.Value
 	var expiry []int64
 	for i := 0; i < len(keys); i++ {
-		buckets, ttls, err := ms.bucketizer.BucketizeMoment(ts[i])
+		buckets, ttls, err := ms.bucketizer.BucketizeMoment(ms.mr, ts[i])
 		if err != nil {
 			return nil, nil, fmt.Errorf("error bucketizing ts (%d) for aggId (%d): %w", ts[i], ms.aggId, err)
 		}

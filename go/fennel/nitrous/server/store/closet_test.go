@@ -37,13 +37,15 @@ func TestAggregateStore(t *testing.T) {
 	aggId := ftypes.AggId(1)
 	mr, err := counter.ToMergeReduce(aggId, opts)
 	assert.NoError(t, err)
-	b := temporal.NewFixedWidthBucketizer(opts, 5, clock.New())
+	b := temporal.NewFixedWidthBucketizer(5, clock.New())
 	tierId := ftypes.RealmID(1)
 	cs, err := NewCloset(p, tierId, aggId, rpc.AggCodec_V1, mr, b)
 	assert.NoError(t, err)
 	ctx := context.Background()
+	kwargs := value.NewDict(nil)
+	kwargs.Set("duration", value.Int(24*3600))
 
-	val, err := cs.Get(ctx, 24*3600, []string{"mygk"})
+	val, err := cs.Get(ctx, []value.Dict{kwargs}, []string{"mygk"})
 	assert.NoError(t, err)
 	assert.ElementsMatch(t, []value.Value{value.Int(0)}, val)
 
@@ -51,7 +53,7 @@ func TestAggregateStore(t *testing.T) {
 	assert.NoError(t, err)
 	err = db.SetMany(keys, vgs)
 	assert.NoError(t, err)
-	val, err = cs.Get(ctx, 24*3600, []string{"mygk"})
+	val, err = cs.Get(ctx, []value.Dict{kwargs}, []string{"mygk"})
 	assert.NoError(t, err)
 	assert.ElementsMatch(t, []value.Value{value.Int(5)}, val)
 
@@ -59,7 +61,7 @@ func TestAggregateStore(t *testing.T) {
 	assert.NoError(t, err)
 	err = db.SetMany(keys, vgs)
 	assert.NoError(t, err)
-	val, err = cs.Get(ctx, 24*3600, []string{"mygk"})
+	val, err = cs.Get(ctx, []value.Dict{kwargs}, []string{"mygk"})
 	assert.NoError(t, err)
 	assert.ElementsMatch(t, []value.Value{value.Int(12)}, val)
 }
@@ -83,11 +85,13 @@ func TestProcess(t *testing.T) {
 	assert.NoError(t, err)
 	ck := clock.NewMock()
 	ck.Add(time.Since(time.Unix(0, 0)))
-	b := temporal.NewFixedWidthBucketizer(opts, 100, ck)
+	b := temporal.NewFixedWidthBucketizer(100, ck)
 	tierId := ftypes.RealmID(1)
 	cs, err := NewCloset(p, tierId, aggId, rpc.AggCodec_V1, mr, b)
 	assert.NoError(t, err)
 	ctx := context.Background()
+	kwargs := value.NewDict(nil)
+	kwargs.Set("duration", value.Int(24*3600))
 
 	// function for pushing an event to Closet.
 	pushEvent := func(cs Closet, tierId ftypes.RealmID, aggId ftypes.AggId, gk string, val value.Value) {
@@ -113,20 +117,20 @@ func TestProcess(t *testing.T) {
 	}
 
 	// max is 0.
-	vals, err := cs.Get(ctx, 24*3600, []string{"mygk"})
+	vals, err := cs.Get(ctx, []value.Dict{kwargs}, []string{"mygk"})
 	assert.NoError(t, err)
 	assert.ElementsMatch(t, []value.Value{value.Double(0)}, vals)
 
 	// max is the inserted value.
 	pushEvent(cs, tierId, aggId, "mygk", value.Int(42))
-	vals, err = cs.Get(ctx, 24*3600, []string{"mygk"})
+	vals, err = cs.Get(ctx, []value.Dict{kwargs}, []string{"mygk"})
 	assert.NoError(t, err)
 	assert.ElementsMatch(t, []value.Value{value.Int(42)}, vals)
 
 	// max should remain as 42.
 	ck.Add(10 * time.Hour)
 	pushEvent(cs, tierId, aggId, "mygk", value.Int(29))
-	vals, err = cs.Get(ctx, 24*3600, []string{"mygk"})
+	vals, err = cs.Get(ctx, []value.Dict{kwargs}, []string{"mygk"})
 	assert.NoError(t, err)
 	assert.ElementsMatch(t, []value.Value{value.Int(42)}, vals)
 
@@ -142,10 +146,10 @@ func TestProcess(t *testing.T) {
 	cs2, err := NewCloset(p, tierId, aggId2, rpc.AggCodec_V1, mr2, b)
 	assert.NoError(t, err)
 	pushEvent(cs2, tierId, aggId2, "mygk", value.Int(531))
-	vals, err = cs2.Get(ctx, 24*3600, []string{"mygk"})
+	vals, err = cs2.Get(ctx, []value.Dict{kwargs}, []string{"mygk"})
 	assert.NoError(t, err)
 	assert.ElementsMatch(t, []value.Value{value.Int(531)}, vals)
-	vals, err = cs.Get(ctx, 24*3600, []string{"mygk"})
+	vals, err = cs.Get(ctx, []value.Dict{kwargs}, []string{"mygk"})
 	assert.NoError(t, err)
 	assert.ElementsMatch(t, []value.Value{value.Int(42)}, vals)
 
@@ -153,20 +157,20 @@ func TestProcess(t *testing.T) {
 	// agg2 should remain unchanged.
 	ck.Add(16 * time.Hour)
 	pushEvent(cs, tierId, aggId, "mygk", value.Int(-10))
-	vals, err = cs.Get(ctx, 24*3600, []string{"mygk"})
+	vals, err = cs.Get(ctx, []value.Dict{kwargs}, []string{"mygk"})
 	assert.NoError(t, err)
 	assert.ElementsMatch(t, []value.Value{value.Int(29)}, vals)
-	vals, err = cs2.Get(ctx, 24*3600, []string{"mygk"})
+	vals, err = cs2.Get(ctx, []value.Dict{kwargs}, []string{"mygk"})
 	assert.NoError(t, err)
 	assert.ElementsMatch(t, []value.Value{value.Int(531)}, vals)
 
 	// "29" will expire and max should now be -10.
 	// agg2 value should also expire and now return 0.
 	ck.Add(10 * time.Hour)
-	vals, err = cs.Get(ctx, 24*3600, []string{"mygk"})
+	vals, err = cs.Get(ctx, []value.Dict{kwargs}, []string{"mygk"})
 	assert.NoError(t, err)
 	assert.ElementsMatch(t, []value.Value{value.Int(-10)}, vals)
-	vals, err = cs2.Get(ctx, 24*3600, []string{"mygk"})
+	vals, err = cs2.Get(ctx, []value.Dict{kwargs}, []string{"mygk"})
 	assert.NoError(t, err)
 	assert.ElementsMatch(t, []value.Value{value.Int(0)}, vals)
 }

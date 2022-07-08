@@ -13,6 +13,7 @@ import (
 	"fennel/resource"
 
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
 )
 
 type NitrousClient struct {
@@ -105,12 +106,25 @@ func (nc NitrousClient) Push(ctx context.Context, aggId ftypes.AggId, updates va
 	return nil
 }
 
-func (nc NitrousClient) GetMulti(ctx context.Context, aggId ftypes.AggId, duration uint32, groupkeys []string, values []value.Value) error {
+func (nc NitrousClient) GetMulti(ctx context.Context, aggId ftypes.AggId, groupkeys []value.Value, kwargs []value.Dict, output []value.Value) error {
+	if len(groupkeys) != len(kwargs) {
+		return fmt.Errorf("groupkeys and kwargs must be the same length %d != %d", len(groupkeys), len(kwargs))
+	}
+	pkwargs := make([]*value.PVDict, len(kwargs))
+	strkeys := make([]string, len(groupkeys))
+	for i := 0; i < len(kwargs); i++ {
+		pk, err := value.ToProtoDict(kwargs[i])
+		if err != nil {
+			return fmt.Errorf("failed to convert kwargs %s to proto: %w", kwargs[i], err)
+		}
+		pkwargs[i] = &pk
+		strkeys[i] = groupkeys[i].String()
+	}
 	req := &rpc.AggregateValuesRequest{
 		TierId:    uint32(nc.ID()),
 		AggId:     uint32(aggId),
-		Duration:  duration,
-		Groupkeys: groupkeys,
+		Kwargs:    pkwargs,
+		Groupkeys: strkeys,
 		// TODO: Make codec an argument to GetMulti instead of hard-coding.
 		Codec: rpc.AggCodec_V1,
 	}
@@ -119,7 +133,7 @@ func (nc NitrousClient) GetMulti(ctx context.Context, aggId ftypes.AggId, durati
 		return fmt.Errorf("failed to get aggregate values: %w", err)
 	}
 	for i, pv := range resp.Results {
-		values[i], err = value.FromProtoValue(pv)
+		output[i], err = value.FromProtoValue(pv)
 		if err != nil {
 			return fmt.Errorf("failed to convert proto value to value: %w", err)
 		}
@@ -146,7 +160,7 @@ var _ resource.Config = NitrousClientConfig{}
 
 func (cfg NitrousClientConfig) Materialize() (resource.Resource, error) {
 	scope := resource.NewPlaneScope(cfg.PlaneId)
-	conn, err := grpc.Dial(cfg.ServerAddr, grpc.WithInsecure())
+	conn, err := grpc.Dial(cfg.ServerAddr, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		return nil, fmt.Errorf("failed to connect to nitrous: %w", err)
 	}
