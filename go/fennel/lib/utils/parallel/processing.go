@@ -6,21 +6,26 @@ import (
 	"runtime"
 )
 
-type item[T any] struct {
-	input T
+type input[I any] struct {
+	inp   interface{}
+	index int
+}
+
+type response[R any] struct {
+	resp  R
 	index int
 }
 
 func Process[S, T any](ctx context.Context, parallelism int, inputs []S, f func(S) (T, error)) ([]T, error) {
 	g, ctx := errgroup.WithContext(ctx)
-	itemCh := make(chan item[S])
+	itemCh := make(chan input[S])
 	g.Go(func() error {
 		defer close(itemCh)
 		for i := range inputs {
 			select {
 			case <-ctx.Done():
 				return ctx.Err()
-			case itemCh <- item[S]{inputs[i], i}:
+			case itemCh <- input[S]{inputs[i], i}:
 			}
 		}
 		return nil
@@ -37,7 +42,8 @@ func Process[S, T any](ctx context.Context, parallelism int, inputs []S, f func(
 					return ctx.Err()
 				default:
 					var err error
-					if ret[item.index], err = f(item.input); err != nil {
+					inp := item.inp.(S)
+					if ret[item.index], err = f(inp); err != nil {
 						return err
 					}
 				}
@@ -48,19 +54,9 @@ func Process[S, T any](ctx context.Context, parallelism int, inputs []S, f func(
 	return ret, g.Wait()
 }
 
-type input struct {
-	resp  interface{}
-	index int
-}
-
-type response[R any] struct {
-	resp  R
-	index int
-}
-
 func InitWorkerPool[I, R any](n int, jobQueue chan interface{}) {
 	for i := 0; i < n; i++ {
-		worker := NewWorker[input, response[R]](jobQueue)
+		worker := NewWorker[input[I], response[R]](jobQueue)
 		worker.Start()
 	}
 }
@@ -69,8 +65,8 @@ func ProcessUsingWorkerPool[I, R any](ctx context.Context, inputs []I, jobQueue 
 	ret := make([]R, len(inputs))
 	retChan := make(chan response[R])
 	errChan := make(chan error)
-	wrappedF := func(i input) (response[R], error) {
-		inp := i.resp.(I)
+	wrappedF := func(i input[I]) (response[R], error) {
+		inp := i.inp.(I)
 		r, err := f(inp)
 		if err != nil {
 			return response[R]{}, err
@@ -92,7 +88,7 @@ func ProcessUsingWorkerPool[I, R any](ctx context.Context, inputs []I, jobQueue 
 		return nil
 	})
 	for i := range inputs {
-		jobQueue <- Job[input, response[R]]{input{inputs[i], i}, wrappedF, retChan, errChan}
+		jobQueue <- Job[input[I], response[R]]{input[I]{inputs[i], i}, wrappedF, retChan, errChan}
 	}
 	return ret, g.Wait()
 }

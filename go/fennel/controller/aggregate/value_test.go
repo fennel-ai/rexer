@@ -158,7 +158,6 @@ func TestValueAll(t *testing.T) {
 	ret, err := BatchValue(ctx, tier, []aggregate.GetAggValueRequest{req1, req2, req3})
 	assert.NoError(t, err)
 	assert.Equal(t, []value.Value{exp1, exp2, exp3}, ret)
-	fmt.Println("All done")
 }
 
 func TestCachedValueAll(t *testing.T) {
