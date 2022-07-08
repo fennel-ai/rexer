@@ -230,7 +230,10 @@ func fetchForeverAggregates(ctx context.Context, tier tier.Tier, aggMap map[ftyp
 	}
 
 	if len(foreverPtr) > 0 {
-		nn, err := tier.MilvusClient.GetNeighbors(ctx, foreverAgg, foreverKeys, foreverKwarags, tier.ID)
+		if tier.MilvusClient.IsAbsent() {
+			return numSlotsLeft, fmt.Errorf("error: Milvus client is not initialized")
+		}
+		nn, err := tier.MilvusClient.MustGet().GetNeighbors(ctx, foreverAgg, foreverKeys, foreverKwarags, tier.ID)
 		if err != nil {
 			return numSlotsLeft, err
 		}
@@ -313,10 +316,14 @@ func Update[I action.Action | profile.ProfileItem](ctx context.Context, tier tie
 			return fmt.Errorf("forever aggregates are not supported for aggregate %s", agg.Name)
 		}
 		// Update the aggregate
-		// Use milvus library to update the index with all actions
-		err = tier.MilvusClient.InsertStream(ctx, agg, table, tier.ID)
-		if err != nil {
-			return fmt.Errorf("failed to insert stream into milvus: %w", err)
+		if tier.MilvusClient.IsAbsent() {
+			return fmt.Errorf("error: Milvus client is not initialized")
+		} else {
+			// Use milvus library to update the index with all actions
+			err = tier.MilvusClient.MustGet().InsertStream(ctx, agg, table, tier.ID)
+			if err != nil {
+				return fmt.Errorf("failed to insert stream into milvus: %w", err)
+			}
 		}
 		return nil
 	} else { // Online duration based aggregates

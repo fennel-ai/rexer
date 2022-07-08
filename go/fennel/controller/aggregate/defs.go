@@ -70,10 +70,14 @@ func Store(ctx context.Context, tier tier.Tier, agg aggregate.Aggregate) error {
 			}
 			agg.Active = true
 			if agg.Options.AggType == "knn" {
-				// Call into Milvus to create the knn index
-				err = tier.MilvusClient.CreateKNNIndex(ctx, agg, tier.ID)
-				if err != nil {
-					return err
+				if tier.MilvusClient.IsAbsent() {
+					return fmt.Errorf("milvus client is not configured for this tier")
+				} else {
+					// Call into Milvus to create the knn index
+					err = tier.MilvusClient.MustGet().CreateKNNIndex(ctx, agg, tier.ID)
+					if err != nil {
+						return err
+					}
 				}
 			}
 			return modelAgg.Store(ctx, tier, agg)
@@ -157,7 +161,15 @@ func Deactivate(ctx context.Context, tier tier.Tier, aggname ftypes.AggName) err
 			}
 		}
 		if agg.Options.AggType == "knn" {
-			tier.MilvusClient.DeleteCollection(ctx, agg.Name, tier.ID)
+			if tier.MilvusClient.IsAbsent() {
+				return fmt.Errorf("milvus client is not configured for this tier")
+			} else {
+				// Call into Milvus to delete the knn index
+				err = tier.MilvusClient.MustGet().DeleteCollection(ctx, agg.Name, tier.ID)
+				if err != nil {
+					return err
+				}
+			}
 		}
 
 		// Disable online & offline aggregates

@@ -11,6 +11,7 @@ import (
 
 	fkafka "fennel/kafka"
 	"fennel/lib/ftypes"
+	"fennel/milvus"
 	"fennel/resource"
 	"fennel/tier"
 
@@ -67,7 +68,9 @@ func Teardown(tr tier.Tier) error {
 	if err := teardownKafkaTopics(tr.ID, flags.KafkaServer, flags.KafkaUsername, flags.KafkaPassword, fkafka.ALL_TOPICS); err != nil {
 		panic(fmt.Sprintf("unable to teardown kafka topics: %v", err))
 	}
-	return tr.MilvusClient.Close()
+	var err error
+	tr.MilvusClient.ForEach(func(client milvus.Client) { err = client.Close() })
+	return err
 }
 
 func teardownKafkaTopics(tierID ftypes.RealmID, host, username, password string, topics []fkafka.TopicConf) error {
