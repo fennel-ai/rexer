@@ -2,9 +2,10 @@ package parallel
 
 import (
 	"context"
-	"runtime"
-
+	"github.com/Unleash/unleash-client-go/v3"
 	"golang.org/x/sync/errgroup"
+	"runtime"
+	"strconv"
 )
 
 type item[T any] struct {
@@ -27,7 +28,18 @@ func Process[S, T any](ctx context.Context, inputs []S, f func(S) (T, error)) ([
 		return nil
 	})
 	ret := make([]T, len(inputs))
+	variant := unleash.GetVariant("parallel_processes")
 	nWorkers := runtime.GOMAXPROCS(0)
+	if variant.Enabled {
+		percentage, err := strconv.Atoi(variant.Payload.Value)
+		if err == nil {
+			nWorkers = percentage * nWorkers / 100
+			if nWorkers == 0 {
+				nWorkers = 1
+			}
+		}
+	}
+
 	for i := 0; i < nWorkers; i++ {
 		g.Go(func() error {
 			for item := range itemCh {
