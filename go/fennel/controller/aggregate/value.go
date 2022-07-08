@@ -17,7 +17,6 @@ import (
 	"fennel/lib/phaser"
 	"fennel/lib/profile"
 	"fennel/lib/value"
-	modelCounter "fennel/model/counter"
 	"fennel/tier"
 
 	"go.uber.org/zap"
@@ -118,11 +117,7 @@ func unitValue(
 	if err != nil {
 		return value.Nil, err
 	}
-	histogram, err := modelCounter.ToHistogram(agg.Id, agg.Options)
-	if err != nil {
-		return nil, err
-	}
-	return counter.Value(ctx, tier, agg.Id, key, histogram, kwargs)
+	return counter.Value(ctx, tier, agg.Id, agg.Options, key, kwargs)
 }
 
 func getDuration(kwargs value.Dict) (int, error) {
@@ -249,8 +244,8 @@ func fetchForeverAggregates(ctx context.Context, tier tier.Tier, aggMap map[ftyp
 }
 
 func fetchOnlineAggregates(ctx context.Context, tier tier.Tier, aggMap map[ftypes.AggName]aggregate.Aggregate, batch []aggregate.GetAggValueRequest, ret []value.Value, numSlotsLeft int) error {
-	histograms := make([]modelCounter.Histogram, 0, numSlotsLeft)
 	ids := make([]ftypes.AggId, 0, numSlotsLeft)
+	options := make([]aggregate.Options, 0, numSlotsLeft)
 	keys := make([]value.Value, 0, numSlotsLeft)
 	kwargs := make([]value.Dict, 0, numSlotsLeft)
 
@@ -262,18 +257,14 @@ func fetchOnlineAggregates(ctx context.Context, tier tier.Tier, aggMap map[ftype
 			continue
 		}
 		onlinePtr = append(onlinePtr, i)
-		h, err := modelCounter.ToHistogram(agg.Id, agg.Options)
-		if err != nil {
-			return fmt.Errorf("failed to make histogram from aggregate at index %d of batch: %v", i, err)
-		}
-		histograms = append(histograms, h)
 		ids = append(ids, agg.Id)
+		options = append(options, agg.Options)
 		keys = append(keys, req.Key)
 		kwargs = append(kwargs, req.Kwargs)
 	}
 
 	if len(onlinePtr) > 0 {
-		onlineValues, err := counter.BatchValue(ctx, tier, ids, keys, histograms, kwargs)
+		onlineValues, err := counter.BatchValue(ctx, tier, ids, options, keys, kwargs)
 		if err != nil {
 			return err
 		}
@@ -329,11 +320,7 @@ func Update[I action.Action | profile.ProfileItem](ctx context.Context, tier tie
 		}
 		return nil
 	} else { // Online duration based aggregates
-		histogram, err := modelCounter.ToHistogram(agg.Id, agg.Options)
-		if err != nil {
-			return fmt.Errorf("failed to make histogram from aggregate: %w", err)
-		}
-		if err = counter.Update(ctx, tier, agg.Id, table, histogram); err != nil {
+		if err = counter.Update(ctx, tier, agg.Id, agg.Options, table); err != nil {
 			return fmt.Errorf("failed to update counter: %w", err)
 		}
 		return err

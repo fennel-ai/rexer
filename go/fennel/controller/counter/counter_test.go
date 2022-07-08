@@ -2,16 +2,16 @@ package counter
 
 import (
 	"context"
+	"testing"
+
 	"fennel/engine/ast"
 	libaggregate "fennel/lib/aggregate"
 	"fennel/lib/ftypes"
 	"fennel/lib/utils/math"
 	"fennel/lib/value"
 	"fennel/model/aggregate"
-	counter2 "fennel/model/counter"
 	"fennel/test"
 	"fennel/tier"
-	"testing"
 
 	"github.com/stretchr/testify/assert"
 )
@@ -30,7 +30,7 @@ func TestRolling(t *testing.T) {
 		Timestamp: 0,
 		Options: libaggregate.Options{
 			AggType:   "sum",
-			Durations: []uint32{3600 * 14, 3600 * 28},
+			Durations: []uint32{3600 * 24, 3600 * 28},
 		},
 		Id: 1,
 	}
@@ -47,24 +47,20 @@ func TestRolling(t *testing.T) {
 		})
 		table.Append(row)
 	}
-	histogram, err := counter2.ToHistogram(ftypes.AggId(1), libaggregate.Options{
-		AggType:   "sum",
-		Durations: []uint32{3600 * 28, 3600 * 24}},
-	)
 	assert.NoError(t, err)
-	err = Update(ctx, tier, agg.Id, table, histogram)
+	err = Update(ctx, tier, agg.Id, agg.Options, table)
 	assert.NoError(t, err)
 
 	clock := &test.FakeClock{}
 	tier.Clock = clock
 	clock.Set(uint32(start + 24*3600*2))
 	// at the end of 2 days, rolling counter should only be worth 28 hours, not full 48 hours
-	found, err := Value(ctx, tier, agg.Id, key, histogram, value.NewDict(map[string]value.Value{"duration": value.Int(28 * 3600)}))
+	found, err := Value(ctx, tier, agg.Id, agg.Options, key, value.NewDict(map[string]value.Value{"duration": value.Int(28 * 3600)}))
 	assert.NoError(t, err)
 	assert.Equal(t, value.Int(28*60), found)
 	// with a duration of 1 day, rolling counter should only be worth 24 hours
 	found, err = Value(
-		ctx, tier, agg.Id, key, histogram, value.NewDict(map[string]value.Value{"duration": value.Int(24 * 3600)}),
+		ctx, tier, agg.Id, agg.Options, key, value.NewDict(map[string]value.Value{"duration": value.Int(24 * 3600)}),
 	)
 	assert.NoError(t, err)
 	assert.Equal(t, value.Int(24*60), found)
@@ -90,8 +86,6 @@ func TestTimeseries(t *testing.T) {
 		// at any time, we want data from last 9 hours
 		Options: opts,
 	}
-	histogram, err := counter2.ToHistogram(agg.Id, opts)
-	assert.NoError(t, err)
 	assert.NoError(t, aggregate.Store(ctx, tier, agg))
 	key := value.NewList(value.Int(1), value.Int(2))
 	table := value.NewList()
@@ -105,14 +99,14 @@ func TestTimeseries(t *testing.T) {
 		})
 		table.Append(row)
 	}
-	err = Update(ctx, tier, agg.Id, table, histogram)
+	err = Update(ctx, tier, agg.Id, agg.Options, table)
 	assert.NoError(t, err)
 
 	clock := &test.FakeClock{}
 	tier.Clock = clock
 	clock.Set(uint32(start + 24*3600*2))
 	// at the end of 2 days, we should get one data point each for 9 days
-	f, err := Value(ctx, tier, agg.Id, key, histogram, value.NewDict(nil))
+	f, err := Value(ctx, tier, agg.Id, agg.Options, key, value.NewDict(nil))
 	assert.NoError(t, err)
 	found, ok := f.(value.List)
 	assert.True(t, ok)
@@ -128,7 +122,7 @@ func TestTimeseries(t *testing.T) {
 	// but if we set time to just at 6 hours from start, we will still 9 entries, but few will be zero padded
 	// and since our start time is 1 min delayed, the 4th entry will be one short of 60
 	clock.Set(uint32(start + 6*3600))
-	f, err = Value(ctx, tier, agg.Id, key, histogram, value.NewDict(nil))
+	f, err = Value(ctx, tier, agg.Id, agg.Options, key, value.NewDict(nil))
 	assert.NoError(t, err)
 	found, ok = f.(value.List)
 	assert.True(t, ok)
@@ -160,8 +154,8 @@ func TestRollingAverage(t *testing.T) {
 		Query:     ast.MakeInt(1),
 		Timestamp: 0,
 		Options: libaggregate.Options{
-			AggType:   "sum",
-			Durations: []uint32{3600 * 14, 3600 * 28},
+			AggType:   "average",
+			Durations: []uint32{28 * 3600, 24 * 3600},
 		},
 		Id: 1,
 	}
@@ -178,25 +172,20 @@ func TestRollingAverage(t *testing.T) {
 		})
 		table.Append(row)
 	}
-	histogram, err := counter2.ToHistogram(ftypes.AggId(1), libaggregate.Options{
-		AggType:   "average",
-		Durations: []uint32{28 * 3600, 24 * 3600},
-	})
-	assert.NoError(t, err)
-	err = Update(ctx, tier, agg.Id, table, histogram)
+	err = Update(ctx, tier, agg.Id, agg.Options, table)
 	assert.NoError(t, err)
 
 	clock := &test.FakeClock{}
 	tier.Clock = clock
 	clock.Set(uint32(start + 24*3600*2))
 	// at the end of 2 days, rolling average should only be worth 28 hours, not full 48 hours
-	found, err := Value(ctx, tier, agg.Id, key, histogram, value.NewDict(map[string]value.Value{"duration": value.Int(28 * 3600)}))
+	found, err := Value(ctx, tier, agg.Id, agg.Options, key, value.NewDict(map[string]value.Value{"duration": value.Int(28 * 3600)}))
 	assert.NoError(t, err)
 	expected := float64(24*60) / float64(28*60)
 	assert.Equal(t, value.Double(expected), found)
 	// with a duration of 1 day, rolling average should only be worth 24 hours
 	found, err = Value(
-		ctx, tier, agg.Id, key, histogram, value.NewDict(map[string]value.Value{"duration": value.Int(24 * 3600)}),
+		ctx, tier, agg.Id, agg.Options, key, value.NewDict(map[string]value.Value{"duration": value.Int(24 * 3600)}),
 	)
 	assert.NoError(t, err)
 	expected = float64(24*60) / float64(24*60)
@@ -215,8 +204,8 @@ func TestStream(t *testing.T) {
 		Query:     ast.MakeInt(1),
 		Timestamp: 0,
 		Options: libaggregate.Options{
-			AggType:   "sum",
-			Durations: []uint32{3600 * 14, 3600 * 28},
+			AggType:   "list",
+			Durations: []uint32{28 * 3600, 24 * 3600},
 		},
 		Id: 1,
 	}
@@ -241,24 +230,19 @@ func TestStream(t *testing.T) {
 			expected2 = append(expected2, value.Int(i))
 		}
 	}
-	histogram, err := counter2.ToHistogram(ftypes.AggId(1), libaggregate.Options{
-		AggType:   "list",
-		Durations: []uint32{28 * 3600, 24 * 3600},
-	})
-	assert.NoError(t, err)
-	err = Update(ctx, tier, agg.Id, table, histogram)
+	err = Update(ctx, tier, agg.Id, agg.Options, table)
 	assert.NoError(t, err)
 
 	clock := &test.FakeClock{}
 	tier.Clock = clock
 	clock.Set(uint32(start + 24*3600*2))
 	// at the end of 2 days, stream should only be worth 28 hours, not full 48 hours
-	found, err := Value(ctx, tier, agg.Id, key, histogram, value.NewDict(map[string]value.Value{"duration": value.Int(28 * 3600)}))
+	found, err := Value(ctx, tier, agg.Id, agg.Options, key, value.NewDict(map[string]value.Value{"duration": value.Int(28 * 3600)}))
 	assert.NoError(t, err)
 	assert.ElementsMatch(t, expected, slice(found.(value.List)))
 	// with a duration of 1 day, stream should only be worth 24 hours
 	found, err = Value(
-		ctx, tier, agg.Id, key, histogram, value.NewDict(map[string]value.Value{"duration": value.Int(24 * 3600)}),
+		ctx, tier, agg.Id, agg.Options, key, value.NewDict(map[string]value.Value{"duration": value.Int(24 * 3600)}),
 	)
 	assert.NoError(t, err)
 	assert.ElementsMatch(t, expected2, slice(found.(value.List)))
@@ -284,8 +268,9 @@ func TestRate(t *testing.T) {
 		Query:     ast.MakeInt(1),
 		Timestamp: 0,
 		Options: libaggregate.Options{
-			AggType:   "sum",
-			Durations: []uint32{3600 * 14, 3600 * 28},
+			AggType:   "rate",
+			Durations: []uint32{28 * 3600, 24 * 3600},
+			Normalize: true,
 		},
 		Id: 1,
 	}
@@ -312,26 +297,20 @@ func TestRate(t *testing.T) {
 			den2 += int64(i + 1)
 		}
 	}
-	histogram, err := counter2.ToHistogram(ftypes.AggId(1), libaggregate.Options{
-		AggType:   "rate",
-		Durations: []uint32{28 * 3600, 24 * 3600},
-		Normalize: true,
-	})
-	assert.NoError(t, err)
-	err = Update(ctx, tier, agg.Id, table, histogram)
+	err = Update(ctx, tier, agg.Id, agg.Options, table)
 	assert.NoError(t, err)
 
 	clock := &test.FakeClock{}
 	tier.Clock = clock
 	clock.Set(uint32(start + 24*3600*2))
 	// at the end of 2 days, rate should only be worth 28 hours, not full 48 hours
-	found, err := Value(ctx, tier, agg.Id, key, histogram, value.NewDict(map[string]value.Value{"duration": value.Int(28 * 3600)}))
+	found, err := Value(ctx, tier, agg.Id, agg.Options, key, value.NewDict(map[string]value.Value{"duration": value.Int(28 * 3600)}))
 	assert.NoError(t, err)
 	expected, err := math.Wilson(float64(num), float64(den), true)
 	assert.NoError(t, err)
 	assert.Equal(t, value.Double(expected), found)
 	// with a duration of 1 day, rate should only be worth 24 hours
-	found, err = Value(ctx, tier, agg.Id, key, histogram, value.NewDict(map[string]value.Value{"duration": value.Int(24 * 3600)}))
+	found, err = Value(ctx, tier, agg.Id, agg.Options, key, value.NewDict(map[string]value.Value{"duration": value.Int(24 * 3600)}))
 	assert.NoError(t, err)
 	expected, err = math.Wilson(float64(num2), float64(den2), true)
 	assert.NoError(t, err)
@@ -380,7 +359,7 @@ func TestBatchValue(t *testing.T) {
 		Timestamp: 0,
 		Options: libaggregate.Options{
 			AggType:   "sum",
-			Durations: []uint32{3600 * 14, 3600 * 28},
+			Durations: []uint32{14 * 24 * 3600, 24 * 3600},
 		},
 		Id: 1,
 	}, {
@@ -388,37 +367,28 @@ func TestBatchValue(t *testing.T) {
 		Query:     ast.MakeInt(1),
 		Timestamp: 0,
 		Options: libaggregate.Options{
-			AggType:   "sum",
-			Durations: []uint32{3600 * 14, 3600 * 28},
+			AggType:   "average",
+			Durations: []uint32{14 * 24 * 3600, 24 * 3600},
 		},
 		Id: 2,
 	}}
 	aggIds := []ftypes.AggId{aggs[0].Id, aggs[1].Id}
+	aggOptions := []libaggregate.Options{aggs[0].Options, aggs[1].Options}
 	keys := []value.Value{value.Int(0), value.Int(0)}
-	h1, err := counter2.ToHistogram(ftypes.AggId(1), libaggregate.Options{
-		AggType:   "sum",
-		Durations: []uint32{14 * 24 * 3600, 24 * 3600},
-	})
-	assert.NoError(t, err)
-	h2, err := counter2.ToHistogram(ftypes.AggId(2), libaggregate.Options{
-		AggType:   "average",
-		Durations: []uint32{14 * 24 * 3600, 24 * 3600},
-	})
-	assert.NoError(t, err)
 	kwargs := []value.Dict{
 		value.NewDict(map[string]value.Value{"duration": value.Int(14 * 3600 * 24)}),
 		value.NewDict(map[string]value.Value{"duration": value.Int(14 * 3600 * 24)})}
 	// initially should find nothing
 	exp1, exp2 := value.Int(0), value.Double(0)
-	found, err := BatchValue(ctx, tier, aggIds, keys, []counter2.Histogram{h1, h2}, kwargs)
+	found, err := BatchValue(ctx, tier, aggIds, aggOptions, keys, kwargs)
 	assert.NoError(t, err)
 	assert.True(t, exp1.Equal(found[0]))
 	assert.True(t, exp2.Equal(found[1]))
 
 	// now update with actions
-	err = Update(ctx, tier, aggs[0].Id, table, h1)
+	err = Update(ctx, tier, aggs[0].Id, aggs[0].Options, table)
 	assert.NoError(t, err)
-	err = Update(ctx, tier, aggs[1].Id, table, h2)
+	err = Update(ctx, tier, aggs[1].Id, aggs[1].Options, table)
 	assert.NoError(t, err)
 
 	// should find this time
@@ -427,7 +397,7 @@ func TestBatchValue(t *testing.T) {
 	clock.Set(uint32(start + 24*3600*2))
 
 	exp1, exp2 = value.Int(60*48), value.Double(1.0)
-	found, err = BatchValue(ctx, tier, aggIds, keys, []counter2.Histogram{h1, h2}, kwargs)
+	found, err = BatchValue(ctx, tier, aggIds, aggOptions, keys, kwargs)
 	assert.NoError(t, err)
 	assert.True(t, exp1.Equal(found[0]))
 	assert.True(t, exp2.Equal(found[1]))
@@ -438,19 +408,19 @@ func TestBatchValue(t *testing.T) {
 	kwargs[0] = value.NewDict(map[string]value.Value{"duration": value.Int(24 * 3600)})
 	kwargs[1] = value.NewDict(map[string]value.Value{"duration": value.Int(24 * 3600)})
 	exp1, exp2 = value.Int(0), value.Double(0.0)
-	found, err = BatchValue(ctx, tier, aggIds, keys, []counter2.Histogram{h1, h2}, kwargs)
+	found, err = BatchValue(ctx, tier, aggIds, aggOptions, keys, kwargs)
 	assert.NoError(t, err)
 	assert.True(t, exp1.Equal(found[0]))
 	assert.True(t, exp2.Equal(found[1]))
 
 	// not specifying a duration in kwargs should return an error
 	kwargs[1] = value.NewDict(nil)
-	_, err = BatchValue(ctx, tier, aggIds, keys, []counter2.Histogram{h1, h2}, kwargs)
+	_, err = BatchValue(ctx, tier, aggIds, aggOptions, keys, kwargs)
 	assert.Error(t, err)
 
 	// specifying a duration that wasn't registered should also return an error
 	kwargs[1] = value.NewDict(map[string]value.Value{"duration": value.Int(7 * 24 * 3600)})
-	_, err = BatchValue(ctx, tier, aggIds, keys, []counter2.Histogram{h1, h2}, kwargs)
+	_, err = BatchValue(ctx, tier, aggIds, aggOptions, keys, kwargs)
 	assert.Error(t, err)
 }
 
@@ -460,22 +430,20 @@ func TestDurations(t *testing.T) {
 	defer test.Teardown(tier)
 	ctx := context.Background()
 
-	aggId := ftypes.AggId(1)
 	durations := []uint32{7 * 24 * 3600, 14 * 24 * 3600}
-	h, err := counter2.ToHistogram(ftypes.AggId(2), libaggregate.Options{
+	aggId := ftypes.AggId(1)
+	aggOptions := libaggregate.Options{
 		AggType:   "sum",
 		Durations: durations,
-	})
-	assert.NoError(t, err)
-
+	}
 	// not specifying a duration in kwargs should return an error
-	_, err = Value(ctx, tier, aggId, value.Int(0), h, value.NewDict(nil))
+	_, err = Value(ctx, tier, aggId, aggOptions, value.Int(0), value.NewDict(nil))
 	assert.Error(t, err)
 	// specifying a duration that wasn't registered should also return an error
-	_, err = Value(ctx, tier, aggId, value.Int(0), h, value.NewDict(map[string]value.Value{"duration": value.Int(10 * 24 * 3600)}))
+	_, err = Value(ctx, tier, aggId, aggOptions, value.Int(0), value.NewDict(map[string]value.Value{"duration": value.Int(10 * 24 * 3600)}))
 	assert.Error(t, err)
 	// no error when using a registered duration
-	_, err = Value(ctx, tier, aggId, value.Int(0), h, value.NewDict(map[string]value.Value{"duration": value.Int(7 * 24 * 3600)}))
+	_, err = Value(ctx, tier, aggId, aggOptions, value.Int(0), value.NewDict(map[string]value.Value{"duration": value.Int(7 * 24 * 3600)}))
 	assert.NoError(t, err)
 }
 
@@ -494,8 +462,5 @@ func assertInvalid(tier tier.Tier, ctx context.Context, t *testing.T, ds ...valu
 		},
 		Id: 1,
 	}
-
-	h, err := counter2.ToHistogram(agg.Id, agg.Options)
-	assert.NoError(t, err)
-	assert.Error(t, Update(ctx, tier, agg.Id, table, h))
+	assert.Error(t, Update(ctx, tier, agg.Id, agg.Options, table))
 }
