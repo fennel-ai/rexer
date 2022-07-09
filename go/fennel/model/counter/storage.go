@@ -5,6 +5,7 @@ import (
 	"fennel/lib/arena"
 	"fmt"
 	"github.com/Unleash/unleash-client-go/v3"
+	"runtime"
 	"strconv"
 	"strings"
 	"sync"
@@ -64,6 +65,12 @@ var bucket_stats = promauto.NewGaugeVec(prometheus.GaugeOpts{
 	Name: "bucket_stats",
 	Help: "Stats number of buckets being computed for every aggregate",
 }, []string{"aggregate_id"})
+
+var workerPool parallel.WorkerPool[interface{}, value.Value]
+
+func init() {
+	workerPool = parallel.NewWorkerPool[interface{}, value.Value](runtime.GOMAXPROCS(0))
+}
 
 // slotArena is a pool of slices of type slot such that max cap of any slice is upto 1 << 15 (i.e. 32K)
 // and total cap of all slices in pools is upto 1 << 24 i.e. ~4M. Since each slot is 64 bytes, this
@@ -563,11 +570,7 @@ func readFromRedis(ctx context.Context, tier tier.Tier, rkeys []string) ([]value
 	ctx, tmr := timer.Start(ctx, tier.ID, "redis.interpret_response")
 	defer tmr.Stop()
 
-	ret, err := parallel.Process(ctx, res, interpretRedisResponse)
-	if err != nil {
-		return nil, fmt.Errorf("failed to interpret redis response: %w", err)
-	}
-	return ret, nil
+	return workerPool.Process(ctx, res, interpretRedisResponse)
 }
 
 func interpretRedisResponse(v interface{}) (value.Value, error) {
