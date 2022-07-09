@@ -15,6 +15,7 @@ import * as prometheus from "../prometheus";
 import * as connectorSink from "../connectorsink";
 import * as glueSource from "../glue-script-source";
 import * as offlineAggregateSources from "../offline-aggregate-script-source";
+import * as planeEksPermissions from "../plane-eks-permissions";
 import * as unleashAurora from "../unleash-postgres";
 import * as util from "../lib/util";
 
@@ -167,6 +168,7 @@ const setupPlugins = async (stack: pulumi.automation.Stack) => {
         ...milvus.plugins,
         ...unleashAurora.plugins,
         ...nitrous.plugins,
+        ...planeEksPermissions.plugins,
     }
     console.info("installing plugins...");
     for (var key in plugins) {
@@ -363,6 +365,12 @@ const setupResources = async () => {
         planeId: input.planeId,
         protect: input.protectResources,
     })
+
+    await planeEksPermissions.setup({
+        region: input.region,
+        roleArn: roleArn,
+        nodeInstanceRole: eksOutput.instanceRole,
+    });
 
     return {
         roleArn: roleArn,
