@@ -189,33 +189,6 @@ const tierConfs: Record<number, TierConf> = {
             },
         },
     },
-    110: {
-        protectResources: false,
-        planeId: 7,
-        // use public subnets for ingress to allow traffic from outside the assigned VPC
-        ingressConf: {
-            usePublicSubnets: true,
-        },
-        httpServerConf: {
-            podConf: {
-                minReplicas: 1,
-                maxReplicas: 1,
-                resourceConf: {
-                    cpu: {
-                        request: "750m",
-                        limit: "1500m"
-                    },
-                    memory: {
-                        request: "1G",
-                        limit: "3G",
-                    }
-                },
-                nodeLabels: {
-                    "node-group": "http-arm-ng"
-                }
-            }
-        },
-    },
     // Discord demo tier
     111: {
         protectResources: true,
@@ -606,78 +579,6 @@ const planeConfs: Record<number, PlaneConf> = {
             useAMP: false
         },
     },
-    7: {
-        protectResources: true,
-
-        accountConf: {
-            existingAccount: {
-                roleArn: account.MASTER_ACCOUNT_ADMIN_ROLE_ARN,
-            }
-        },
-
-        planeId: 7,
-        region: "us-west-2",
-        vpcConf: {
-            cidr: "10.107.0.0/16"
-        },
-        dbConf: {
-            minCapacity: 1,
-            maxCapacity: 2,
-            password: "password",
-            skipFinalSnapshot: true,
-        },
-        confluentConf: {
-            username: confluentUsername,
-            password: confluentPassword
-        },
-        controlPlaneConf: controlPlane,
-        redisConf: {
-            numShards: 1,
-            nodeType: "db.t4g.small",
-            numReplicasPerShard: 0,
-        },
-        cacheConf: {
-            nodeType: "cache.t4g.micro",
-            numNodeGroups: 1,
-            replicasPerNodeGroup: 0,
-        },
-        prometheusConf: {
-            // TODO(mohit): Set this to true and false both and set it up
-            useAMP: false
-        },
-        // Create two node groups. 1 with ARM backed instances and another with x86 backed instances
-        eksConf: {
-            nodeGroups: [
-                {
-                    name: "x86-ng2",
-                    nodeType: "t3.medium",
-                    minSize: 2,
-                    maxSize: 2,
-                    amiType: DEFAULT_X86_AMI_TYPE,
-                },
-                {
-                    name: "http-arm-ng",
-                    nodeType: "t4g.medium",
-                    minSize: 1,
-                    maxSize: 3,
-                    amiType: DEFAULT_ARM_AMI_TYPE,
-                    labels: {
-                        "node-group": "http-arm-ng",
-                    }
-                },
-                {
-                    name: "x86-ng",
-                    nodeType: "c6i.2xlarge",
-                    minSize: 4,
-                    maxSize: 5,
-                    amiType: DEFAULT_X86_AMI_TYPE,
-                },
-            ],
-        },
-        // TODO(mohit): Add milvus and see how it works?
-        milvusConf: {},
-    },
-
     // plane 8 - pending account close, post which it can be destroyed
     // Convoy's production plane
     9: {
