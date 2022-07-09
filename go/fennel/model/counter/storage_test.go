@@ -22,9 +22,9 @@ import (
 
 func TestTwoLevelRedisStore_Get(t *testing.T) {
 	t.Parallel()
-	t.Run("test_basic", func(t *testing.T) {
-		testStorage(t, twoLevelRedisStore{period: 24 * 3600, retention: 0})
-	})
+	//t.Run("test_basic", func(t *testing.T) {
+	//	testStorage(t, twoLevelRedisStore{period: 24 * 3600, retention: 0})
+	//})
 	t.Run("test_multi", func(t *testing.T) {
 		testStorageMulti(t, twoLevelRedisStore{period: 24 * 3600, retention: 0})
 	})
