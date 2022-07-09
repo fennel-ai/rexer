@@ -7,7 +7,7 @@ import (
 )
 
 type input[I any] struct {
-	inp   interface{}
+	inp   I
 	index int
 }
 
@@ -16,16 +16,16 @@ type response[R any] struct {
 	index int
 }
 
-func Process[S, T any](ctx context.Context, parallelism int, inputs []S, f func(S) (T, error)) ([]T, error) {
+func Process[I, R any](ctx context.Context, parallelism int, inputs []I, f func(I) (R, error)) ([]R, error) {
 	g, ctx := errgroup.WithContext(ctx)
-	itemCh := make(chan input[S])
+	itemCh := make(chan input[I])
 	g.Go(func() error {
 		defer close(itemCh)
 		for i := range inputs {
 			select {
 			case <-ctx.Done():
 				return ctx.Err()
-			case itemCh <- input[S]{inputs[i], i}:
+			case itemCh <- input[I]{inputs[i], i}:
 			}
 		}
 		return nil
@@ -33,7 +33,7 @@ func Process[S, T any](ctx context.Context, parallelism int, inputs []S, f func(
 	if parallelism == 0 || parallelism > runtime.GOMAXPROCS(0) {
 		parallelism = runtime.GOMAXPROCS(0)
 	}
-	ret := make([]T, len(inputs))
+	ret := make([]R, len(inputs))
 	for i := 0; i < parallelism; i++ {
 		g.Go(func() error {
 			for item := range itemCh {
@@ -42,8 +42,7 @@ func Process[S, T any](ctx context.Context, parallelism int, inputs []S, f func(
 					return ctx.Err()
 				default:
 					var err error
-					inp := item.inp.(S)
-					if ret[item.index], err = f(inp); err != nil {
+					if ret[item.index], err = f(item.inp); err != nil {
 						return err
 					}
 				}
@@ -66,8 +65,7 @@ func ProcessUsingWorkerPool[I, R any](ctx context.Context, inputs []I, jobQueue 
 	retChan := make(chan response[R])
 	errChan := make(chan error)
 	wrappedF := func(i input[I]) (response[R], error) {
-		inp := i.inp.(I)
-		r, err := f(inp)
+		r, err := f(i.inp)
 		if err != nil {
 			return response[R]{}, err
 		}
