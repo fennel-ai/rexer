@@ -81,6 +81,31 @@ export const setup = async (input: inputType): Promise<pulumi.Output<outputType>
         }`,
     }, { provider });
 
+    // create inline role policy
+    const policy = new aws.iam.RolePolicy(`t-${input.tierId}-sagemaker-rolepolicy`, {
+        name: `t-${input.tierId}-sagemaker-rolepolicy`,
+        role: role,
+        policy: `{
+            "Version": "2012-10-17",
+            "Statement": [
+                {
+                    "Effect":"Allow",
+                    "Action": "s3:ListBucket",
+                    "Resource": "arn:aws:s3:::${input.modelStoreBucket}"
+                },
+                {
+                    "Effect":"Allow",
+                    "Action": [
+                        "s3:PutObject",
+                        "s3:GetObject",
+                        "s3:DeleteObject"
+                    ],
+                    "Resource": "arn:aws:s3:::${input.modelStoreBucket}/*"
+                }
+            ]
+        }`,
+    }, { provider });
+
     // attach sagemaker full access to the sagemaker execution role
     const attachSagemakerRolePolicy = new aws.iam.RolePolicyAttachment(`t-${input.tierId}-sagemaker-fullaccess-execrole`, {
         policyArn: AMAZON_SAGE_MAKER_FULL_ACCESS_POLICY_ARN,
