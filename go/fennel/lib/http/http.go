@@ -55,8 +55,9 @@ func Tracer(log *zap.Logger, slowThreshold time.Duration) mux.MiddlewareFunc {
 			rw.Header().Add("rexer-traceid", traceId)
 			h.ServeHTTP(rw, r.WithContext(ctx))
 			span.End()
-			if time.Since(start) > slowThreshold && span.SpanContext().IsSampled() {
-				log.Info(fmt.Sprintf("x-ray traceid: %s", traceId))
+			dur := time.Since(start)
+			if dur > slowThreshold && span.SpanContext().IsSampled() {
+				log.Info(fmt.Sprintf("x-ray traceid: %s, took: %dms", traceId, dur.Milliseconds()))
 			}
 		})
 	}
