@@ -123,7 +123,7 @@ type Tier struct {
 	S3Client         s3.Client
 	GlueClient       glue.GlueClient
 	SagemakerClient  sagemaker.SMClient
-	MilvusClient     milvus.Client
+	MilvusClient     mo.Option[milvus.Client]
 	NitrousClient    mo.Option[nitrous.NitrousClient]
 	ModelStore       *modelstore.ModelStore
 	Args             TierArgs
@@ -252,13 +252,14 @@ func CreateFromArgs(args *TierArgs) (tier Tier, err error) {
 		nitrousClient = mo.Some(client.(nitrous.NitrousClient))
 	}
 
-	var milvusClient milvus.Client
+	milvusClient := mo.None[milvus.Client]()
 	if args.MilvusArgs.Url != "" {
 		logger.Info("Connecting to milvus")
-		milvusClient, err = milvus.NewClient(args.MilvusArgs)
+		client, err := milvus.NewClient(args.MilvusArgs)
 		if err != nil {
 			return tier, fmt.Errorf("failed to create milvus client: %v", err)
 		}
+		milvusClient = mo.Some(client)
 	}
 
 	logger.Info("Connecting to sagemaker")
