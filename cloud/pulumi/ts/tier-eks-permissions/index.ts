@@ -18,15 +18,6 @@ export type inputType = {
 // should not contain any pulumi.Output<> types.
 export type outputType = {}
 
-const AMAZON_SAGE_MAKER_FULL_ACCESS_POLICY_ARN = "arn:aws:iam::aws:policy/AmazonSageMakerFullAccess";
-
-function setupEksWorkerSageMakerFullAccess(provider: aws.Provider,input: inputType) {
-    const attachNodeModelStoragePolicy = new aws.iam.RolePolicyAttachment(`t-${input.tierId}-node-sagemaker-policy-attach`, {
-        policyArn: AMAZON_SAGE_MAKER_FULL_ACCESS_POLICY_ARN,
-        role: input.nodeInstanceRole,
-    }, { provider: provider });
-}
-
 export const setup = async (input: inputType): Promise<pulumi.Output<outputType>> => {
     const provider = new aws.Provider("tier-eks-instance-iam-policy-provider", {
         region: <aws.Region>input.region,
@@ -93,9 +84,6 @@ export const setup = async (input: inputType): Promise<pulumi.Output<outputType>
         policyArn: policy.arn,
         role: input.nodeInstanceRole,
     }, { provider: provider });
-
-    // Grant workers to have full sagemaker access to invoke it's services
-    setupEksWorkerSageMakerFullAccess(provider, input);
 
     return pulumi.output({})
 }
