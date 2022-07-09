@@ -66,10 +66,10 @@ var bucket_stats = promauto.NewGaugeVec(prometheus.GaugeOpts{
 	Help: "Stats number of buckets being computed for every aggregate",
 }, []string{"aggregate_id"})
 
-var JobQueue chan interface{}
+var workerPool parallel.WorkerPool[interface{}, value.Value]
 
 func init() {
-	JobQueue = parallel.InitWorkerPool[interface{}, value.Value](runtime.GOMAXPROCS(0))
+	workerPool = parallel.NewWorkerPool[interface{}, value.Value](runtime.GOMAXPROCS(0))
 }
 
 // slotArena is a pool of slices of type slot such that max cap of any slice is upto 1 << 15 (i.e. 32K)
@@ -570,7 +570,7 @@ func readFromRedis(ctx context.Context, tier tier.Tier, rkeys []string) ([]value
 	ctx, tmr := timer.Start(ctx, tier.ID, "redis.interpret_response")
 	defer tmr.Stop()
 
-	return parallel.ProcessUsingWorkerPool(ctx, res, JobQueue, interpretRedisResponse)
+	return workerPool.Process(ctx, res, interpretRedisResponse)
 }
 
 func interpretRedisResponse(v interface{}) (value.Value, error) {

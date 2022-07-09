@@ -41,9 +41,9 @@ func TestParallelProcessing(t *testing.T) {
 func TestWorkerPool(t *testing.T) {
 	inputs := []int{1, 2, 3, 4, 5, 6, 7, 8, 9, 10}
 	maxWorkers := runtime.GOMAXPROCS(0)
-	jobqueue := parallel.InitWorkerPool[int, int](maxWorkers)
+	workerPool := parallel.NewWorkerPool[int, int](maxWorkers)
 	start := time.Now()
-	results, err := parallel.ProcessUsingWorkerPool(context.Background(), inputs, jobqueue, square)
+	results, err := workerPool.Process(context.Background(), inputs, square)
 	elapsed := time.Since(start)
 	assert.NoError(t, err)
 	expected := []int{1, 4, 9, 16, 25, 36, 49, 64, 81, 100}
