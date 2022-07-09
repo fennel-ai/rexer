@@ -561,6 +561,11 @@ var redisKeyStats = promauto.NewSummaryVec(prometheus.SummaryOpts{
 	},
 }, []string{"type"})
 
+var protoUnmarshalCtr = promauto.NewCounter(prometheus.CounterOpts{
+	Name: "proto_unmarshal_ctr",
+	Help: "Number of keys read in non-rexer encoded format",
+})
+
 func readFromRedis(ctx context.Context, tier tier.Tier, rkeys []string) ([]value.Value, error) {
 	res, err := tier.Redis.MGet(ctx, rkeys...)
 	if err != nil {
@@ -593,6 +598,7 @@ func interpretRedisResponse(v interface{}) (value.Value, error) {
 				return val, nil
 			}
 		}
+		protoUnmarshalCtr.Inc()
 		err = value.ProtoUnmarshal(tBytes, &val)
 		return val, err
 	default:
