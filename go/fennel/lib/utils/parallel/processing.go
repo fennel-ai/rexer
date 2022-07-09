@@ -74,6 +74,7 @@ func NewWorkerPool[I, R any](nWorkers int) WorkerPool[I, R] {
 func (w *WorkerPool[I, R]) Process(ctx context.Context, inputs []I, f func(I) (R, error)) ([]R, error) {
 	ret := make([]R, len(inputs))
 	retChan := make(chan mo.Result[response[R]])
+	defer close(retChan)
 	wrappedF := func(i input[I]) (response[R], error) {
 		r, err := f(i.inp)
 		if err != nil {
@@ -81,27 +82,29 @@ func (w *WorkerPool[I, R]) Process(ctx context.Context, inputs []I, f func(I) (R
 		}
 		return response[R]{r, i.index}, nil
 	}
-	g, ctx := errgroup.WithContext(ctx)
-	g.Go(func() error {
-		for i := 0; i < len(inputs); i++ {
-			select {
-			case r := <-retChan:
-				output, err := r.Get()
-				if err != nil {
-					return err
-				}
-				ret[output.index] = output.resp
-			case <-ctx.Done():
-				return ctx.Err()
-			}
+
+	// Needs to run in a separate go routine as else workers will try to write to retChan but no one is reading
+	// from retChan, hence blocking the workers.
+	go func() {
+		for i := range inputs {
+			w.jobQueue <- Job[input[I], response[R]]{input[I]{inputs[i], i}, wrappedF, retChan}
 		}
-		close(retChan)
-		return nil
-	})
-	for i := range inputs {
-		w.jobQueue <- Job[input[I], response[R]]{input[I]{inputs[i], i}, wrappedF, retChan}
+	}()
+
+	for i := 0; i < len(inputs); i++ {
+		select {
+		case r := <-retChan:
+			output, err := r.Get()
+			if err != nil {
+				return nil, err
+			}
+			ret[output.index] = output.resp
+		case <-ctx.Done():
+			return nil, ctx.Err()
+		}
 	}
-	return ret, g.Wait()
+
+	return ret, nil
 }
 
 // Job represents the job to be run. It accepts a function F that needs to be run on
