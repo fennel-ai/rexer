@@ -69,8 +69,7 @@ var bucket_stats = promauto.NewGaugeVec(prometheus.GaugeOpts{
 var JobQueue chan interface{}
 
 func init() {
-	JobQueue = make(chan interface{})
-	parallel.InitWorkerPool[interface{}, value.Value](runtime.GOMAXPROCS(0), JobQueue)
+	JobQueue = parallel.InitWorkerPool[interface{}, value.Value](runtime.GOMAXPROCS(0))
 }
 
 // slotArena is a pool of slices of type slot such that max cap of any slice is upto 1 << 15 (i.e. 32K)

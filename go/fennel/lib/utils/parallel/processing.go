@@ -16,6 +16,8 @@ type response[R any] struct {
 	index int
 }
 
+// Process takes a list of inputs, the degree of parallelism ( capped by max cpu cores )
+// and a function that processes each input.
 func Process[I, R any](ctx context.Context, parallelism int, inputs []I, f func(I) (R, error)) ([]R, error) {
 	g, ctx := errgroup.WithContext(ctx)
 	itemCh := make(chan input[I])
@@ -53,13 +55,19 @@ func Process[I, R any](ctx context.Context, parallelism int, inputs []I, f func(
 	return ret, g.Wait()
 }
 
-func InitWorkerPool[I, R any](n int, jobQueue chan interface{}) {
+// InitWorkerPool starts a pool of workers and returns a channel
+// which needs to be passed while calling ProcessUsingWorkerPool.
+func InitWorkerPool[I, R any](n int) chan interface{} {
+	jobQueue := make(chan interface{})
 	for i := 0; i < n; i++ {
 		worker := NewWorker[input[I], response[R]](jobQueue)
 		worker.Start()
 	}
+	return jobQueue
 }
 
+// ProcessUsingWorkerPool is similar to Process but uses a worker pool rather than spinning up individual workers determined
+// by the parallelism. The only difference is that this function takes a jobQueue while Process takes a parallelism.
 func ProcessUsingWorkerPool[I, R any](ctx context.Context, inputs []I, jobQueue chan interface{}, f func(I) (R, error)) ([]R, error) {
 	ret := make([]R, len(inputs))
 	retChan := make(chan response[R])
@@ -79,6 +87,8 @@ func ProcessUsingWorkerPool[I, R any](ctx context.Context, inputs []I, jobQueue 
 				ret[r.index] = r.resp
 			case err := <-errChan:
 				return err
+			case <-ctx.Done():
+				return ctx.Err()
 			}
 		}
 		close(retChan)
