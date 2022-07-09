@@ -5,7 +5,6 @@ import (
 	"fmt"
 
 	"fennel/lib/ftypes"
-	"fennel/lib/utils"
 
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
@@ -30,7 +29,6 @@ type Timer struct {
 	span       string
 	realmID    ftypes.RealmID
 	timer      *prometheus.Timer
-	trace      *trace
 	id         string
 	tracerSpan oteltrace.Span
 }
@@ -43,18 +41,10 @@ func (t Timer) Stop() {
 func Start(ctx context.Context, realmID ftypes.RealmID, funcName string) (context.Context, Timer) {
 	tracer := otel.Tracer("fennel")
 	cCtx, span := tracer.Start(ctx, funcName)
-	ctxval := cCtx.Value(traceKey{})
-	id := utils.RandString(6)
-	var tr *trace = nil
-	if ctxval != nil {
-		tr = ctxval.(*trace)
-	}
 	return cCtx, Timer{
 		span:       funcName,
 		realmID:    realmID,
 		timer:      prometheus.NewTimer(fnDuration.WithLabelValues(fmt.Sprintf("%d", realmID), funcName)),
-		trace:      tr,
-		id:         id,
 		tracerSpan: span,
 	}
 }
