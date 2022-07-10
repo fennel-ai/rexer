@@ -216,11 +216,14 @@ func InsertEndpoint(tier tier.Tier, endpoint lib.SagemakerEndpoint) error {
 	if err != nil {
 		return fmt.Errorf("failed to start txn: %v", err)
 	}
-	txn.Exec(`
+	_, err = txn.Exec(`
 		UPDATE sagemaker_endpoint SET active=false
 		WHERE name=?
 	`, endpoint.Name)
-	txn.Exec(`
+	if err != nil {
+		return fmt.Errorf("failed to exec statement: %w", err)
+	}
+	_, err = txn.Exec(`
 		INSERT INTO sagemaker_endpoint (
 			name,
 			endpoint_config_name
@@ -228,6 +231,9 @@ func InsertEndpoint(tier tier.Tier, endpoint lib.SagemakerEndpoint) error {
 			?, ?
 		)
 	`, endpoint.Name, endpoint.EndpointConfigName)
+	if err != nil {
+		return fmt.Errorf("failed to exec statement: %w", err)
+	}
 	err = txn.Commit()
 	if err != nil {
 		return fmt.Errorf("failed to create endpoint entry in db: %v", err)

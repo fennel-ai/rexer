@@ -160,7 +160,10 @@ func TestConcurrentSyncSchema(t *testing.T) {
 
 	resource, err := config.Materialize()
 	assert.NoError(t, err)
-	defer drop(config.DBname, config.Username, config.Password, config.Host)
+	defer func() {
+		err := drop(config.DBname, config.Username, config.Password, config.Host)
+		assert.NoError(t, err)
+	}()
 	db := resource.(Connection)
 
 	// version goes to zero after dropping the DB

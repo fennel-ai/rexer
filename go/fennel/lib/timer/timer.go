@@ -29,7 +29,6 @@ type Timer struct {
 	span       string
 	realmID    ftypes.RealmID
 	timer      *prometheus.Timer
-	id         string
 	tracerSpan oteltrace.Span
 }
 

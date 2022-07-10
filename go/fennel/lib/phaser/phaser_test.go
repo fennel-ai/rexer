@@ -25,13 +25,12 @@ func TestCreateRedisFileString(t *testing.T) {
 	err = s3Client.BatchDiskDownload([]string{"unit-tests/" + itemListPq}, S3Bucket, tempDir)
 	assert.NoError(t, err)
 	localFileReader, err := os.Open(tempDir + "/" + itemListPq)
-	defer localFileReader.Close()
 	assert.NoError(t, err)
+	defer localFileReader.Close()
 	writeFile := fmt.Sprint(rand.Uint64()) + ".txt"
 	cmdWriter, err := os.Create(tempDir + "/" + writeFile)
-	defer cmdWriter.Close()
-
 	assert.NoError(t, err)
+	defer cmdWriter.Close()
 
 	p := Phaser{"testNamespace", "testIdentifier", "testBucket", "testPrefix", 1, time.Hour}
 	numRows, err := p.createRedisFile(localFileReader, cmdWriter, 123)
@@ -65,13 +64,12 @@ func TestCreateRedisFileNumer(t *testing.T) {
 	err = s3Client.BatchDiskDownload([]string{"unit-tests/" + itemListPq}, S3Bucket, tempDir)
 	assert.NoError(t, err)
 	localFileReader, err := os.Open(tempDir + "/" + itemListPq)
-	defer localFileReader.Close()
 	assert.NoError(t, err)
+	defer localFileReader.Close()
 	writeFile := fmt.Sprint(rand.Uint64()) + ".txt"
 	cmdWriter, err := os.Create(tempDir + "/" + writeFile)
-	defer cmdWriter.Close()
-
 	assert.NoError(t, err)
+	defer cmdWriter.Close()
 
 	p := Phaser{"testNamespace", "testIdentifier", "testBucket", "testPrefix", 1, time.Hour}
 	numRows, err := p.createRedisFile(localFileReader, cmdWriter, 123)

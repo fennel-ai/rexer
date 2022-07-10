@@ -8,7 +8,10 @@ import (
 )
 
 func init() {
-	operators.Register(deduper{})
+	err := operators.Register(deduper{})
+	if err != nil {
+		panic(err)
+	}
 }
 
 type deduper struct{}

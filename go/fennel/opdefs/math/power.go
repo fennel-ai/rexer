@@ -7,7 +7,10 @@ import (
 )
 
 func init() {
-	operators.Register(powerOp{})
+	err := operators.Register(powerOp{})
+	if err != nil {
+		panic(err)
+	}
 }
 
 type powerOp struct{}

@@ -265,7 +265,7 @@ func TestCachedDBEventuallyConsistent(t *testing.T) {
 
 	// remove few entries from the cache - eviction
 	// these could be random, for the sake of testing, picking few numbers..
-	tier.Cache.Delete(ctx, []string{
+	_ = tier.Cache.Delete(ctx, []string{
 		makeKey(profile.NewProfileItemKey("user", "2", "age")),
 		makeKey(profile.NewProfileItemKey("user", "3", "age")),
 	}...)

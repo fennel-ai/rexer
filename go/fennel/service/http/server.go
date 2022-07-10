@@ -287,7 +287,7 @@ func (m server) Fetch(w http.ResponseWriter, req *http.Request) {
 		handleInternalServerError(w, "", err)
 		return
 	}
-	w.Write(ser)
+	_, _ = w.Write(ser)
 }
 
 func (m server) GetProfile(w http.ResponseWriter, req *http.Request) {
@@ -314,7 +314,7 @@ func (m server) GetProfile(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 	// now serialize value to JSON and write
-	w.Write(value.ToJSON(val.Value))
+	_, _ = w.Write(value.ToJSON(val.Value))
 }
 
 // TODO: add some locking etc to ensure that if two requests try to modify
@@ -396,7 +396,7 @@ func (m server) GetProfileMulti(w http.ResponseWriter, req *http.Request) {
 		handleInternalServerError(w, "", err)
 		return
 	}
-	w.Write(ser)
+	_, _ = w.Write(ser)
 }
 
 func (m server) Query(w http.ResponseWriter, req *http.Request) {
@@ -404,7 +404,7 @@ func (m server) Query(w http.ResponseWriter, req *http.Request) {
 	// percentage configured.
 	if unleash.IsEnabled("disable-query-calls") {
 		totalUnleashQueryRequestsDropped.Inc()
-		w.Write([]byte("{}"))
+		_, _ = w.Write([]byte("{}"))
 		return
 	}
 
@@ -441,7 +441,7 @@ func (m server) Query(w http.ResponseWriter, req *http.Request) {
 		handleInternalServerError(w, "", err)
 		return
 	}
-	w.Write(value.ToJSON(ret))
+	_, _ = w.Write(value.ToJSON(ret))
 }
 
 func (m server) StoreQuery(w http.ResponseWriter, req *http.Request) {
@@ -515,7 +515,7 @@ func (m server) RunQuery(w http.ResponseWriter, req *http.Request) {
 		handleInternalServerError(w, "", err)
 		return
 	}
-	w.Write(value.ToJSON(ret))
+	_, _ = w.Write(value.ToJSON(ret))
 }
 
 func (m server) StoreAggregate(w http.ResponseWriter, req *http.Request) {
@@ -566,7 +566,7 @@ func (m server) RetrieveAggregate(w http.ResponseWriter, req *http.Request) {
 		handleInternalServerError(w, "", err)
 		return
 	}
-	w.Write(ser)
+	_, _ = w.Write(ser)
 }
 
 func (m server) DeactivateAggregate(w http.ResponseWriter, req *http.Request) {
@@ -607,7 +607,7 @@ func (m server) AggregateValue(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 	// marshal ret and then write it back
-	w.Write(value.ToJSON(ret))
+	_, _ = w.Write(value.ToJSON(ret))
 }
 
 func (m server) BatchAggregateValue(w http.ResponseWriter, req *http.Request) {
@@ -626,7 +626,7 @@ func (m server) BatchAggregateValue(w http.ResponseWriter, req *http.Request) {
 		handleInternalServerError(w, "", err)
 		return
 	}
-	w.Write(value.ToJSON(value.NewList(ret...)))
+	_, _ = w.Write(value.ToJSON(value.NewList(ret...)))
 }
 
 func (m server) UploadModel(w http.ResponseWriter, req *http.Request) {
@@ -736,7 +736,7 @@ func (m server) GetOperators(w http.ResponseWriter, req *http.Request) {
 		handleBadRequest(w, "", err)
 		return
 	}
-	w.Write(data)
+	_, _ = w.Write(data)
 }
 
 func handleBadRequest(w http.ResponseWriter, errorPrefix string, err error) {

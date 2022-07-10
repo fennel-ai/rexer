@@ -120,16 +120,16 @@ func TestValidArithmetic(t *testing.T) {
 	// Add
 	var base Value
 	base = Int(1)
-	verifyBinaryOp(t, Int(1), Int(2), Int(3), "+")
-	verifyBinaryOp(t, Int(1), Double(2.0), Double(3.0), "+")
+	verifyBinaryOp(t, base, Int(2), Int(3), "+")
+	verifyBinaryOp(t, base, Double(2.0), Double(3.0), "+")
 	base = Double(1.0)
 	verifyBinaryOp(t, base, Int(2), Double(3.0), "+")
 	verifyBinaryOp(t, base, Double(2.0), Double(3.0), "+")
 
 	// Sub
 	base = Int(1)
-	verifyBinaryOp(t, Int(1), Int(2), Int(-1), "-")
-	verifyBinaryOp(t, Int(1), Double(2.0), Double(-1.0), "-")
+	verifyBinaryOp(t, base, Int(2), Int(-1), "-")
+	verifyBinaryOp(t, base, Double(2.0), Double(-1.0), "-")
 	base = Double(1.0)
 	verifyBinaryOp(t, base, Int(2), Double(-1.0), "-")
 	verifyBinaryOp(t, base, Double(2.0), Double(-1.0), "-")

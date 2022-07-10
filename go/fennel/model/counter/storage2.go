@@ -291,7 +291,7 @@ func (g splitGroup) getRedisKey(buffer []byte, start int) (int, error) {
 	start = writeStringToBuf(buffer, redisKeyDelimiter, start)
 	start = writeStringToBuf(buffer, codecStr, start)
 	start = writeStringToBuf(buffer, redisKeyDelimiter, start)
-	start = writeStringToBuf(buffer, groupStr, start)
+	_ = writeStringToBuf(buffer, groupStr, start)
 	return n, nil
 }
 

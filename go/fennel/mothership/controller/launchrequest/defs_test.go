@@ -11,7 +11,7 @@ import (
 func TestProcessCompletedRequests(t *testing.T) {
 	m, err := mothership.NewTestMothership()
 	assert.NoError(t, err)
-	defer mothership.Teardown(m)
+	defer func() { err = mothership.Teardown(m); assert.NoError(t, err) }()
 
 	reqID, err := launchrequest.InsertRequest(m, []byte(`{}`), []byte(`{"state":"COMPLETED"}`))
 	assert.NoError(t, err)

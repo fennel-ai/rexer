@@ -390,7 +390,8 @@ func logProfile(t *testing.T, tier tier.Tier, oid ftypes.OidType, ts uint64, val
 		Value:      val,
 		UpdateTime: ts,
 	}
-	profile2.Set(context.Background(), tier, p)
+	err := profile2.Set(context.Background(), tier, p)
+	assert.NoError(t, err)
 	return []profilelib.ProfileItem{p}
 }
 

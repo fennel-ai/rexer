@@ -161,7 +161,7 @@ func TestServer_ActionsHandler(t *testing.T) {
 		assert.NoError(t, err)
 		assert.Equal(t, expected, afr)
 		// Write back prepared list of actions
-		w.Write(actionsSer)
+		_, _ = w.Write(actionsSer)
 	}))
 	defer es.Close()
 	// Set up server and test valid request

@@ -12,7 +12,7 @@ import (
 func TestPollLaunchRequestStatus(t *testing.T) {
 	m, err := mothership.NewTestMothership()
 	assert.NoError(t, err)
-	defer mothership.Teardown(m)
+	defer func() { err = mothership.Teardown(m); assert.NoError(t, err) }()
 
 	go pollLaunchRequestStatus(m)
 	_, err = launchrequest.InsertRequest(m, []byte(`{}`), []byte(`{"state":"COMPLETED"}`))

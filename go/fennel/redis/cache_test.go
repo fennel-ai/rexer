@@ -57,9 +57,10 @@ func TestCache(t *testing.T) {
 	assert.Error(t, err)
 
 	// try setting it in a txn
-	c.RunAsTxn(context.Background(), func(c cache.Txn, keys []string) error {
+	err = c.RunAsTxn(context.Background(), func(c cache.Txn, keys []string) error {
 		return c.Set(context.Background(), keys[0], "hi2", *new(time.Duration))
 	}, []string{k}, 1)
+	assert.NoError(t, err)
 
 	v, err = c.Get(context.Background(), k)
 	assert.NoError(t, err)

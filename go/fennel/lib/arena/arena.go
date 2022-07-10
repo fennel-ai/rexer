@@ -52,7 +52,6 @@ type Arena[T any] struct {
 	maxalloc  int
 	capacity  int
 	cursz     int
-	name      string
 	hits      int64
 	misses    int64
 	frees     int64

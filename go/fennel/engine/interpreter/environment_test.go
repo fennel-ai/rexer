@@ -16,6 +16,7 @@ func TestEnv_Define_Lookup(t *testing.T) {
 	err = env.Define("var", val)
 	assert.NoError(t, err)
 	ret, err := env.Lookup("var")
+	assert.NoError(t, err)
 	assert.Equal(t, val, ret)
 	assert.Error(t, env.Define("var", value.Bool(true)))
 	assert.Error(t, env.DefineReferencable("var", value.Bool(true)))
@@ -28,6 +29,7 @@ func TestEnv_DefineReferencable_Lookup(t *testing.T) {
 	val := value.NewDict(map[string]value.Value{"foo": value.NewList(value.Int(1))})
 	assert.NoError(t, env.DefineReferencable("var", val))
 	ret, err := env.Lookup("var")
+	assert.NoError(t, err)
 	assert.Equal(t, val, ret)
 
 	retd := ret.(value.Dict)

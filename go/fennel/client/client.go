@@ -38,85 +38,85 @@ func NewClient(hostport string, httpclient *http.Client) (*Client, error) {
 func (c Client) logURL() string {
 	url := *c.url
 	url.Path = url.Path + "/log"
-	return fmt.Sprintf(url.String())
+	return url.String()
 }
 
 func (c Client) logMultiURL() string {
 	url := *c.url
 	url.Path = url.Path + "/log_multi"
-	return fmt.Sprintf(url.String())
+	return url.String()
 }
 
 func (c Client) fetchURL() string {
 	url := *c.url
 	url.Path = url.Path + "/fetch"
-	return fmt.Sprintf(url.String())
+	return url.String()
 }
 
 func (c Client) queryURL() string {
 	url := *c.url
 	url.Path = url.Path + "/query"
-	return fmt.Sprintf(url.String())
+	return url.String()
 }
 
 func (c Client) getProfileURL() string {
 	url := *c.url
 	url.Path = url.Path + "/get"
-	return fmt.Sprintf(url.String())
+	return url.String()
 }
 
 func (c Client) setProfileURL() string {
 	url := *c.url
 	url.Path = url.Path + "/set"
-	return fmt.Sprintf(url.String())
+	return url.String()
 }
 
 func (c Client) setProfilesURL() string {
 	url := *c.url
 	url.Path = url.Path + "/set_profiles"
-	return fmt.Sprintf(url.String())
+	return url.String()
 }
 
-func (c Client) getProfileMultiURL() string {
+func (c Client) getProfileMultiURL() string { // nolint
 	url := *c.url
 	url.Path = url.Path + "/get_multi"
-	return fmt.Sprintf(url.String())
+	return url.String()
 }
 
 func (c Client) storeAggregateURL() string {
 	url := *c.url
 	url.Path = url.Path + "/store_aggregate"
-	return fmt.Sprintf(url.String())
+	return url.String()
 }
 
 func (c Client) retrieveAggregateURL() string {
 	url := *c.url
 	url.Path = url.Path + "/retrieve_aggregate"
-	return fmt.Sprintf(url.String())
+	return url.String()
 }
 
 func (c Client) deactivateAggregateURL() string {
 	url := *c.url
 	url.Path = url.Path + "/deactivate_aggregate"
-	return fmt.Sprintf(url.String())
+	return url.String()
 }
 
 func (c Client) getAggregateValueURL() string {
 	url := *c.url
 	url.Path = url.Path + "/aggregate_value"
-	return fmt.Sprintf(url.String())
+	return url.String()
 }
 
 func (c Client) storeQueryURL() string {
 	url := *c.url
 	url.Path = url.Path + "/store_query"
-	return fmt.Sprintf(url.String())
+	return url.String()
 }
 
 func (c Client) runQueryURL() string {
 	url := *c.url
 	url.Path = url.Path + "/run_query"
-	return fmt.Sprintf(url.String())
+	return url.String()
 }
 
 func (c Client) postJSON(data []byte, url string) ([]byte, error) {
@@ -195,6 +195,9 @@ func (c *Client) StoreQuery(name string, tree ast.Ast) error {
 		Query string `json:"query"`
 	}
 	qStr, err := query.ToString(tree)
+	if err != nil {
+		return err
+	}
 	reqObj := ReqObject{
 		Name:  name,
 		Query: qStr,
@@ -224,6 +227,9 @@ func (c *Client) RunQuery(name string, args value.Dict) (value.Value, error) {
 		return nil, err
 	}
 	response, err := c.postJSON(req, c.runQueryURL())
+	if err != nil {
+		return nil, fmt.Errorf("query post error: %w", err)
+	}
 	// now try to read response as a JSON object and convert to value
 	v, err := value.FromJSON(response)
 	if err != nil {
@@ -348,6 +354,9 @@ func (c *Client) RetrieveAggregate(aggname ftypes.AggName) (aggregate.Aggregate,
 	req, err := json.Marshal(struct {
 		Name string `json:"Name"`
 	}{Name: string(aggname)})
+	if err != nil {
+		return empty, fmt.Errorf("marshal error: %w", err)
+	}
 	response, err := c.postJSON(req, c.retrieveAggregateURL())
 	if err != nil {
 		return empty, err
@@ -372,6 +381,9 @@ func (c *Client) DeactivateAggregate(aggname ftypes.AggName) error {
 	req, err := json.Marshal(struct {
 		Name string `json:"Name"`
 	}{Name: string(aggname)})
+	if err != nil {
+		return fmt.Errorf("marshal error: %w", err)
+	}
 	_, err = c.postJSON(req, c.deactivateAggregateURL())
 	return err
 }

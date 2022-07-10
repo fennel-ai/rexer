@@ -255,7 +255,7 @@ func (s thirdSlot) redisKey(buffer []byte, start int, bucketsPerSlot uint32, suf
 		start = writeStringToBuf(buffer, words[i], start)
 		start = writeStringToBuf(buffer, redisKeyDelimiter, start)
 	}
-	start = writeStringToBuf(buffer, s.prefix, start)
+	_ = writeStringToBuf(buffer, s.prefix, start)
 
 	return length, nil
 }

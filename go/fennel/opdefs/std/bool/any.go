@@ -8,7 +8,10 @@ import (
 )
 
 func init() {
-	operators.Register(anyop{})
+	err := operators.Register(anyop{})
+	if err != nil {
+		panic(err)
+	}
 }
 
 type anyop struct{}

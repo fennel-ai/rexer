@@ -8,7 +8,10 @@ import (
 )
 
 func init() {
-	operators.Register(mapper{})
+	err := operators.Register(mapper{})
+	if err != nil {
+		panic(err)
+	}
 }
 
 type mapper struct {
