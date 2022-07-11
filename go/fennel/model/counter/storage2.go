@@ -7,7 +7,6 @@ import (
 	"time"
 	"unsafe"
 
-	"fennel/lib/arena"
 	"fennel/lib/counter"
 	"fennel/lib/ftypes"
 	"fennel/lib/timer"
@@ -252,10 +251,7 @@ func (g splitGroup) getRedisKey(buffer []byte, start int) (int, error) {
 		if err != nil {
 			return 0, err
 		}
-		e := base91.StdEncoding.EncodedLen(cur)
-		dest := arena.Bytes.Alloc(e, e)
-		defer arena.Bytes.Free(dest)
-		a, n := base91.StdEncoding.Encode(dest, aggBuf[:cur])
+		a, n := base91.StdEncoding.Encode(aggBuf[:cur])
 		if err != nil {
 			return 0, err
 		}
@@ -267,10 +263,7 @@ func (g splitGroup) getRedisKey(buffer []byte, start int) (int, error) {
 		if err != nil {
 			return 0, err
 		}
-		e := base91.StdEncoding.EncodedLen(cur)
-		dest := arena.Bytes.Alloc(e, e)
-		defer arena.Bytes.Free(dest)
-		a, n := base91.StdEncoding.Encode(dest, codecBuf[:cur])
+		a, n := base91.StdEncoding.Encode(codecBuf[:cur])
 		codecStr = a[:n]
 	}
 	{
@@ -292,10 +285,7 @@ func (g splitGroup) getRedisKey(buffer []byte, start int) (int, error) {
 		} else {
 			cur += n
 		}
-		e := base91.StdEncoding.EncodedLen(sz)
-		dest := arena.Bytes.Alloc(e, e)
-		defer arena.Bytes.Free(dest)
-		a, n := base91.StdEncoding.Encode(dest, groupBuf[:cur])
+		a, n := base91.StdEncoding.Encode(groupBuf[:cur])
 		groupStr = a[:n]
 	}
 

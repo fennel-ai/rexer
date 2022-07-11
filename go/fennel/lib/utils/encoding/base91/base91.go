@@ -61,8 +61,11 @@ var StdEncoding = NewEncoding(encodeStd)
 // It returns the number of bytes written, because the exact output size cannot
 // be known before encoding takes place. EncodedLen(len(src)) may be used to
 // determine an upper bound on the output size when allocating a dst slice.
-func (enc *Encoding) Encode(dst, src []byte) (string, int) {
+func (enc *Encoding) Encode(src []byte) (string, int) {
+
 	var queue, numBits uint
+
+	dst := make([]byte, enc.EncodedLen(len(src)))
 
 	n := 0
 	for i := 0; i < len(src); i++ {

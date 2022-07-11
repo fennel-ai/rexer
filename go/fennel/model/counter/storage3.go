@@ -7,7 +7,6 @@ import (
 	"time"
 	"unsafe"
 
-	"fennel/lib/arena"
 	"fennel/lib/counter"
 	"fennel/lib/ftypes"
 	"fennel/lib/timer"
@@ -233,10 +232,7 @@ func (s thirdSlot) redisKey(buffer []byte, start int, bucketsPerSlot uint32, suf
 	if err != nil {
 		return 0, err
 	}
-	e := base91.StdEncoding.EncodedLen(cur)
-	dest := arena.Bytes.Alloc(e, e)
-	defer arena.Bytes.Free(dest)
-	a, n := base91.StdEncoding.Encode(dest, buf[:cur])
+	a, n := base91.StdEncoding.Encode(buf[:cur])
 	codecStr := a[:n]
 	length += len(codecStr) + 1 // 1 extra byte for delimiter
 
@@ -248,10 +244,7 @@ func (s thirdSlot) redisKey(buffer []byte, start int, bucketsPerSlot uint32, suf
 		if err != nil {
 			return 0, err
 		}
-		e := base91.StdEncoding.EncodedLen(cur)
-		dest := arena.Bytes.Alloc(e, e)
-		defer arena.Bytes.Free(dest)
-		a, n := base91.StdEncoding.Encode(dest, buf[:cur])
+		a, n := base91.StdEncoding.Encode(buf[:cur])
 		words[i] = a[:n]
 		length += len(words[i]) + 1 // 1 extra byte for delimiter
 	}

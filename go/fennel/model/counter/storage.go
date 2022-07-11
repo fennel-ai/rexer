@@ -2,30 +2,30 @@ package counter
 
 import (
 	"context"
-	"fennel/lib/arena"
-	"fennel/lib/utils/encoding/base91"
 	"fmt"
-	"github.com/Unleash/unleash-client-go/v3"
 	"runtime"
 	"strconv"
 	"strings"
 	"sync"
 	"time"
 
-	"github.com/prometheus/client_golang/prometheus"
-	"github.com/prometheus/client_golang/prometheus/promauto"
-	"go.uber.org/zap"
-
+	"fennel/lib/arena"
 	"fennel/lib/codex"
 	"fennel/lib/counter"
 	"fennel/lib/ftypes"
 	"fennel/lib/timer"
 	"fennel/lib/utils/binary"
+	"fennel/lib/utils/encoding/base91"
 	"fennel/lib/utils/parallel"
 	"fennel/lib/utils/slice"
 	"fennel/lib/value"
 	"fennel/redis"
 	"fennel/tier"
+
+	"github.com/Unleash/unleash-client-go/v3"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promauto"
+	"go.uber.org/zap"
 )
 
 const (
@@ -137,7 +137,6 @@ type group struct {
 	aggId ftypes.AggId // 4 bytes
 }
 
-// TODO(mohit): Consider passing an arena allocated buffer to save copying/cloning the string
 func minSlotKey(width uint32, idx int) (string, error) {
 	arr := [24]byte{}
 	buf := arr[:] // 8 + 8 + 8 for code, width, idx
@@ -157,12 +156,8 @@ func minSlotKey(width uint32, idx int) (string, error) {
 	} else {
 		curr += n
 	}
-	e := base91.StdEncoding.EncodedLen(curr)
-	dest := arena.Bytes.Alloc(e, e)
-	defer arena.Bytes.Free(dest)
-	a, n := base91.StdEncoding.Encode(dest, buf[:curr])
-	// Clone the encoded string since the memory allocated for it is freed to the Arena
-	return strings.Clone(a[:n]), nil
+	a, n := base91.StdEncoding.Encode(buf[:curr])
+	return a[:n], nil
 }
 
 func slotKey(window ftypes.Window, width uint32, idx int) (string, error) {
@@ -189,12 +184,8 @@ func slotKey(window ftypes.Window, width uint32, idx int) (string, error) {
 	} else {
 		curr += n
 	}
-	e := base91.StdEncoding.EncodedLen(curr)
-	dest := arena.Bytes.Alloc(e, e)
-	defer arena.Bytes.Free(dest)
-	a, n := base91.StdEncoding.Encode(dest, buf[:curr])
-	// Clone the encoded string since the memory allocated for it is freed to the Arena
-	return strings.Clone(a[:n]), nil
+	a, n := base91.StdEncoding.Encode(buf[:curr])
+	return a[:n], nil
 }
 
 func (t twoLevelRedisStore) GetBucketStore() BucketStore {
@@ -455,11 +446,7 @@ func (t twoLevelRedisStore) redisKey(g group) (string, error) {
 		if err != nil {
 			return "", err
 		}
-
-		e := base91.StdEncoding.EncodedLen(curr)
-		dest := arena.Bytes.Alloc(e, e)
-		defer arena.Bytes.Free(dest)
-		a, n := base91.StdEncoding.Encode(dest, aggBuf[:curr])
+		a, n := base91.StdEncoding.Encode(aggBuf[:curr])
 		aggStr = a[:n]
 	}
 	// codec
@@ -470,18 +457,13 @@ func (t twoLevelRedisStore) redisKey(g group) (string, error) {
 		if err != nil {
 			return "", err
 		}
-
-		e := base91.StdEncoding.EncodedLen(curr)
-		dest := arena.Bytes.Alloc(e, e)
-		defer arena.Bytes.Free(dest)
-		a, n := base91.StdEncoding.Encode(dest, codecBuf[:curr])
+		a, n := base91.StdEncoding.Encode(codecBuf[:curr])
 		codecStr = a[:n]
 	}
 	// groupid
 	{
 		sz := 24 + len(g.key)
-		groupIdBuf := arena.Bytes.Alloc(sz, sz) // (length of groupkey) + groupkey + period + groupid
-		defer arena.Bytes.Free(groupIdBuf)
+		groupIdBuf := make([]byte, sz)
 		curr := 0
 		if n, err := binary.PutString(groupIdBuf[curr:], g.key); err != nil {
 			return "", err
@@ -498,11 +480,7 @@ func (t twoLevelRedisStore) redisKey(g group) (string, error) {
 		} else {
 			curr += n
 		}
-
-		e := base91.StdEncoding.EncodedLen(curr)
-		dest := arena.Bytes.Alloc(e, e)
-		defer arena.Bytes.Free(dest)
-		a, n := base91.StdEncoding.Encode(dest, groupIdBuf[:curr])
+		a, n := base91.StdEncoding.Encode(groupIdBuf[:curr])
 		groupIdStr = a[:n]
 	}
 
