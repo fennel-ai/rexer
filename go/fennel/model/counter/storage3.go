@@ -232,8 +232,7 @@ func (s thirdSlot) redisKey(buffer []byte, start int, bucketsPerSlot uint32, suf
 	if err != nil {
 		return 0, err
 	}
-	a, n := base91.StdEncoding.Encode(buf[:cur])
-	codecStr := a[:n]
+	codecStr := base91.StdEncoding.Encode(buf[:cur])
 	length += len(codecStr) + 1 // 1 extra byte for delimiter
 
 	nums := []uint64{uint64(s.aggID), uint64(bucketsPerSlot), uint64(suffixSize)}
@@ -244,8 +243,7 @@ func (s thirdSlot) redisKey(buffer []byte, start int, bucketsPerSlot uint32, suf
 		if err != nil {
 			return 0, err
 		}
-		a, n := base91.StdEncoding.Encode(buf[:cur])
-		words[i] = a[:n]
+		words[i] = base91.StdEncoding.Encode(buf[:cur])
 		length += len(words[i]) + 1 // 1 extra byte for delimiter
 	}
 

@@ -57,11 +57,8 @@ var StdEncoding = NewEncoding(encodeStd)
  * Encoder
  */
 
-// Encode encodes src using the encoding enc, writing bytes to dst.
-// It returns the number of bytes written, because the exact output size cannot
-// be known before encoding takes place. EncodedLen(len(src)) may be used to
-// determine an upper bound on the output size when allocating a dst slice.
-func (enc *Encoding) Encode(src []byte) (string, int) {
+// Encode encodes src using the encoding enc and returns the encoded string.
+func (enc *Encoding) Encode(src []byte) string {
 
 	var queue, numBits uint
 
@@ -100,7 +97,8 @@ func (enc *Encoding) Encode(src []byte) (string, int) {
 		}
 	}
 
-	return *(*string)(unsafe.Pointer(&dst)), n
+	dst = dst[:n]
+	return *(*string)(unsafe.Pointer(&dst))
 }
 
 // EncodedLen returns an upper bound on the length in bytes of the base91 encoding
@@ -150,7 +148,7 @@ func (enc *Encoding) Decode(dst, src []byte) (int, error) {
 				numBits += 14
 			}
 
-			for ok := true; ok; ok = (numBits > 7) {
+			for numBits > 7 {
 				dst[n] = byte(queue)
 				n++
 

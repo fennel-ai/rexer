@@ -40,8 +40,8 @@ var pairs = []pair{
 func TestEncode(t *testing.T) {
 	for i, p := range pairs {
 		t.Run(fmt.Sprintf("case_%d", i), func(t *testing.T) {
-			got, n := StdEncoding.Encode([]byte(p.decoded))
-			if !bytes.Equal([]byte(got[:n]), []byte(p.encoded)) {
+			got := StdEncoding.Encode([]byte(p.decoded))
+			if !bytes.Equal([]byte(got), []byte(p.encoded)) {
 				t.Errorf("Expected %v, got %v", []byte(p.encoded), got)
 			}
 		})

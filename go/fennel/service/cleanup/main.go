@@ -29,10 +29,9 @@ func redisKeyPrefix(tr tier.Tier, aggId ftypes.AggId) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	dest := make([]byte, 20) // this is not in the critical path, avoid using arena
-	aggStr, n := base91.StdEncoding.Encode(dest, aggBuf[:curr])
+	aggStr := base91.StdEncoding.Encode(aggBuf[:curr])
 	// TODO(mohit): redis key delimiter is hardcode, consider unifying this by making it a lib
-	return fmt.Sprintf("%s-*", tr.Redis.Scope.PrefixedName(aggStr[:n])), nil
+	return fmt.Sprintf("%s-*", tr.Redis.Scope.PrefixedName(aggStr)), nil
 }
 
 func deleteKeys(tr tier.Tier, aggId ftypes.AggId, rdb *redis.ClusterClient, batchSize int) error {

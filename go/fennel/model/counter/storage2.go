@@ -251,11 +251,7 @@ func (g splitGroup) getRedisKey(buffer []byte, start int) (int, error) {
 		if err != nil {
 			return 0, err
 		}
-		a, n := base91.StdEncoding.Encode(aggBuf[:cur])
-		if err != nil {
-			return 0, err
-		}
-		aggStr = a[:n]
+		aggStr = base91.StdEncoding.Encode(aggBuf[:cur])
 	}
 	{
 		codecBuf := make([]byte, 8)
@@ -263,8 +259,7 @@ func (g splitGroup) getRedisKey(buffer []byte, start int) (int, error) {
 		if err != nil {
 			return 0, err
 		}
-		a, n := base91.StdEncoding.Encode(codecBuf[:cur])
-		codecStr = a[:n]
+		codecStr = base91.StdEncoding.Encode(codecBuf[:cur])
 	}
 	{
 		sz := 8+len(g.key)+8+8
@@ -285,8 +280,7 @@ func (g splitGroup) getRedisKey(buffer []byte, start int) (int, error) {
 		} else {
 			cur += n
 		}
-		a, n := base91.StdEncoding.Encode(groupBuf[:cur])
-		groupStr = a[:n]
+		groupStr = base91.StdEncoding.Encode(groupBuf[:cur])
 	}
 
 	// concatenate the base91 encoded strings with `-` as the delimiter

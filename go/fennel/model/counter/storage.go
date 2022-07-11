@@ -156,8 +156,8 @@ func minSlotKey(width uint32, idx int) (string, error) {
 	} else {
 		curr += n
 	}
-	a, n := base91.StdEncoding.Encode(buf[:curr])
-	return a[:n], nil
+	a := base91.StdEncoding.Encode(buf[:curr])
+	return a, nil
 }
 
 func slotKey(window ftypes.Window, width uint32, idx int) (string, error) {
@@ -184,8 +184,8 @@ func slotKey(window ftypes.Window, width uint32, idx int) (string, error) {
 	} else {
 		curr += n
 	}
-	a, n := base91.StdEncoding.Encode(buf[:curr])
-	return a[:n], nil
+	a := base91.StdEncoding.Encode(buf[:curr])
+	return a, nil
 }
 
 func (t twoLevelRedisStore) GetBucketStore() BucketStore {
@@ -446,8 +446,7 @@ func (t twoLevelRedisStore) redisKey(g group) (string, error) {
 		if err != nil {
 			return "", err
 		}
-		a, n := base91.StdEncoding.Encode(aggBuf[:curr])
-		aggStr = a[:n]
+		aggStr = base91.StdEncoding.Encode(aggBuf[:curr])
 	}
 	// codec
 	{
@@ -457,8 +456,7 @@ func (t twoLevelRedisStore) redisKey(g group) (string, error) {
 		if err != nil {
 			return "", err
 		}
-		a, n := base91.StdEncoding.Encode(codecBuf[:curr])
-		codecStr = a[:n]
+		codecStr = base91.StdEncoding.Encode(codecBuf[:curr])
 	}
 	// groupid
 	{
@@ -480,8 +478,7 @@ func (t twoLevelRedisStore) redisKey(g group) (string, error) {
 		} else {
 			curr += n
 		}
-		a, n := base91.StdEncoding.Encode(groupIdBuf[:curr])
-		groupIdStr = a[:n]
+		groupIdStr = base91.StdEncoding.Encode(groupIdBuf[:curr])
 	}
 
 	// concatenate the base91 encoded strings with `-` as the delimiter

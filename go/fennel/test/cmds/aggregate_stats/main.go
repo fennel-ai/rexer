@@ -42,10 +42,9 @@ func redisKeyPrefix(tr tier.Tier, aggId ftypes.AggId) (string, error) {
 		return "", err
 	}
 
-	dest := make([]byte, 20) // this is not in the critical path, avoid using arena
-	a, n := base91.StdEncoding.Encode(dest, aggBuf[:curr])
+	a := base91.StdEncoding.Encode(aggBuf[:curr])
 	// TODO(mohit): redis key delimiter is hardcode, consider unifying this by making it a lib
-	return fmt.Sprintf("%s-*", tr.Redis.Scope.PrefixedName(a[:n])), nil
+	return fmt.Sprintf("%s-*", tr.Redis.Scope.PrefixedName(a)), nil
 }
 
 func isRdbFile(f string) bool {
