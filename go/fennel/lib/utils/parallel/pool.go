@@ -31,25 +31,19 @@ func (w *WorkerPool[I, O]) Process(ctx context.Context, inputs []I, f func(I) (O
 	// a closed channel. This is also why we create a buffered channel, so that
 	// worker go-routines can write to it even if there is no consumer.
 	errCh := make(chan error, numBatches)
-	// Needs to run in a separate go routine as else workers will try to write to retChan but no one is reading
-	// from retChan, hence blocking the workers.
-	go func() {
-		for i := 0; i < len(inputs); {
-			end := i + BATCH_SIZE
-			if end > len(inputs) {
-				end = len(inputs)
-			}
-			// TODO: If there's already been an error, stop dispatching more
-			// jobs in this task to the worker.
-			w.jobQueue <- job[I, O]{
-				inputs:  inputs[i:end],
-				outputs: ret[i:end],
-				f:       f,
-				errChan: errCh,
-			}
-			i = end
+	for i := 0; i < len(inputs); {
+		end := i + BATCH_SIZE
+		if end > len(inputs) {
+			end = len(inputs)
 		}
-	}()
+		w.jobQueue <- job[I, O]{
+			inputs:  inputs[i:end],
+			outputs: ret[i:end],
+			f:       f,
+			errChan: errCh,
+		}
+		i = end
+	}
 	for i := 0; i < numBatches; i++ {
 		select {
 		case <-ctx.Done():
