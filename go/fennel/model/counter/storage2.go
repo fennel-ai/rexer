@@ -11,10 +11,10 @@ import (
 	"fennel/lib/ftypes"
 	"fennel/lib/timer"
 	"fennel/lib/utils/binary"
+	"fennel/lib/utils/encoding/base91"
 	"fennel/lib/value"
 	"fennel/tier"
 
-	"github.com/mtraver/base91"
 	"go.uber.org/zap"
 )
 
@@ -251,7 +251,7 @@ func (g splitGroup) getRedisKey(buffer []byte, start int) (int, error) {
 		if err != nil {
 			return 0, err
 		}
-		aggStr = base91.StdEncoding.EncodeToString(aggBuf[:cur])
+		aggStr = base91.StdEncoding.Encode(aggBuf[:cur])
 	}
 	{
 		codecBuf := make([]byte, 8)
@@ -259,10 +259,11 @@ func (g splitGroup) getRedisKey(buffer []byte, start int) (int, error) {
 		if err != nil {
 			return 0, err
 		}
-		codecStr = base91.StdEncoding.EncodeToString(codecBuf[:cur])
+		codecStr = base91.StdEncoding.Encode(codecBuf[:cur])
 	}
 	{
-		groupBuf := make([]byte, 8+len(g.key)+8+8)
+		sz := 8+len(g.key)+8+8
+		groupBuf := make([]byte, sz)
 		cur := 0
 		if n, err := binary.PutString(groupBuf, g.key); err != nil {
 			return 0, err
@@ -279,7 +280,7 @@ func (g splitGroup) getRedisKey(buffer []byte, start int) (int, error) {
 		} else {
 			cur += n
 		}
-		groupStr = base91.StdEncoding.EncodeToString(groupBuf[:cur])
+		groupStr = base91.StdEncoding.Encode(groupBuf[:cur])
 	}
 
 	// concatenate the base91 encoded strings with `-` as the delimiter

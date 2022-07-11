@@ -2,12 +2,12 @@ package counter
 
 import (
 	"context"
+	"fennel/lib/utils/encoding/base91"
 	"fmt"
 	"math/rand"
 	"strings"
 	"testing"
 
-	"github.com/mtraver/base91"
 	"github.com/stretchr/testify/assert"
 
 	"fennel/lib/codex"
@@ -47,17 +47,19 @@ func TestRedisKeyEncodeDecode(t *testing.T) {
 	s := strings.Split(rKey, redisKeyDelimiter)
 	assert.True(t, len(s) == 3)
 	{
-		b, err := base91.StdEncoding.DecodeString(s[0])
+		dest := make([]byte, 100)
+		n, err := base91.StdEncoding.Decode(dest, []byte(s[0]))
 		assert.NoError(t, err)
-		aggId, _, err := binary.ReadUvarint(b)
+		aggId, _, err := binary.ReadUvarint(dest[:n])
 		assert.NoError(t, err)
 		assert.Equal(t, aggId, uint64(ftypes.AggId(12)))
 	}
 	// decode codec
 	{
-		b, err := base91.StdEncoding.DecodeString(s[1])
+		dest := make([]byte, 100)
+		n, err := base91.StdEncoding.Decode(dest, []byte(s[1]))
 		assert.NoError(t, err)
-		codec, _, err := codex.Read(b)
+		codec, _, err := codex.Read(dest[:n])
 		assert.NoError(t, err)
 		assert.Equal(t, codec, counterCodec)
 	}

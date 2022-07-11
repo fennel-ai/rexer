@@ -16,10 +16,10 @@ import (
 
 	"fennel/lib/ftypes"
 	"fennel/lib/utils/binary"
+	"fennel/lib/utils/encoding/base91"
 	"fennel/tier"
 
 	"github.com/alexflint/go-arg"
-	"github.com/mtraver/base91"
 )
 
 type StatsArgs struct {
@@ -41,9 +41,10 @@ func redisKeyPrefix(tr tier.Tier, aggId ftypes.AggId) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	aggStr := base91.StdEncoding.EncodeToString(aggBuf[:curr])
+
+	a := base91.StdEncoding.Encode(aggBuf[:curr])
 	// TODO(mohit): redis key delimiter is hardcode, consider unifying this by making it a lib
-	return fmt.Sprintf("%s-*", tr.Redis.Scope.PrefixedName(aggStr)), nil
+	return fmt.Sprintf("%s-*", tr.Redis.Scope.PrefixedName(a)), nil
 }
 
 func isRdbFile(f string) bool {
@@ -246,12 +247,13 @@ func getAggId(key string, tierId int) (ftypes.AggId, error) {
 		// we probably came across dedup key :/
 		return 0, nil
 	}
-	b, err := base91.StdEncoding.DecodeString(subs[0])
+	dest := make([]byte, 2 * len(key))
+	n, err := base91.StdEncoding.Decode(dest, []byte(subs[0]))
 	if err != nil {
 		return 0, err
 	}
 	// get the aggId from the serialized bytes
-	aggId, _, err := binary.ReadUvarint(b)
+	aggId, _, err := binary.ReadUvarint(dest[:n])
 	if err != nil {
 		return 0, err
 	}

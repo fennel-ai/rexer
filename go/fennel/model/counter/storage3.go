@@ -7,15 +7,14 @@ import (
 	"time"
 	"unsafe"
 
-	"fennel/lib/codex"
 	"fennel/lib/counter"
 	"fennel/lib/ftypes"
 	"fennel/lib/timer"
 	"fennel/lib/utils/binary"
+	"fennel/lib/utils/encoding/base91"
 	"fennel/lib/value"
 	"fennel/tier"
 
-	"github.com/mtraver/base91"
 	"github.com/zeebo/xxh3"
 )
 
@@ -228,19 +227,23 @@ func (v *thirdStoreView) Save(ctx context.Context, tier *tier.Tier, ttl time.Dur
 func (s thirdSlot) redisKey(buffer []byte, start int, bucketsPerSlot uint32, suffixSize int) (int, error) {
 	length := 0
 
-	codecStr, err := encodeCodex(counterCodec3)
+	buf := make([]byte, 8)
+	cur, err := counterCodec3.Write(buf)
 	if err != nil {
 		return 0, err
 	}
+	codecStr := base91.StdEncoding.Encode(buf[:cur])
 	length += len(codecStr) + 1 // 1 extra byte for delimiter
 
 	nums := []uint64{uint64(s.aggID), uint64(bucketsPerSlot), uint64(suffixSize)}
 	words := make([]string, len(nums))
 	for i := range nums {
-		words[i], err = encodeUint64(nums[i])
+		buf := make([]byte, 8)
+		cur, err := binary.PutUvarint(buf, nums[i])
 		if err != nil {
 			return 0, err
 		}
+		words[i] = base91.StdEncoding.Encode(buf[:cur])
 		length += len(words[i]) + 1 // 1 extra byte for delimiter
 	}
 
@@ -258,26 +261,4 @@ func (s thirdSlot) redisKey(buffer []byte, start int, bucketsPerSlot uint32, suf
 	_ = writeStringToBuf(buffer, s.prefix, start)
 
 	return length, nil
-}
-
-func encodeUint64(v uint64) (string, error) {
-	buf := make([]byte, 8)
-	cur, err := binary.PutUvarint(buf, v)
-	if err != nil {
-		return "", err
-	}
-	return toBase91(buf[:cur]), nil
-}
-
-func encodeCodex(c codex.Codex) (string, error) {
-	buf := make([]byte, 8)
-	cur, err := c.Write(buf)
-	if err != nil {
-		return "", err
-	}
-	return toBase91(buf[:cur]), nil
-}
-
-func toBase91(b []byte) string {
-	return base91.StdEncoding.EncodeToString(b)
 }
