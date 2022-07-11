@@ -31,16 +31,6 @@ func NewModelStore(args ModelStoreArgs, tierID ftypes.RealmID) *ModelStore {
 	return &ms
 }
 
-// TestSetEndpointName should only be used in tests
-func (ms *ModelStore) TestSetEndpointName(endpointName string) {
-	ms.endpointName = endpointName
-}
-
-// TestSetS3Bucket should only be used in tests
-func (ms *ModelStore) TestSetS3Bucket(s3Bucket string) {
-	ms.s3Bucket = s3Bucket
-}
-
 func (ms *ModelStore) EndpointName() string {
 	return ms.endpointName
 }

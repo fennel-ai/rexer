@@ -26,7 +26,13 @@ var scalingConfigErrors = promauto.NewCounterVec(prometheus.CounterOpts{
 	Help: "Errors corresponding to sagemaker scaling configuration",
 }, []string{"errorStatus"})
 
-type RetryError error
+type RetryError struct {
+	err string
+}
+
+func (re RetryError) Error() string {
+	return re.err + ", please retry after a few minutes"
+}
 
 // local cache of model name, version to model.
 // key type is string, value type is string.
@@ -138,6 +144,7 @@ func EnableModel(ctx context.Context, tier tier.Tier, model string) error {
 			Framework:        modelConfig.Framework,
 			FrameworkVersion: modelConfig.FrameworkVersion,
 			ArtifactPath:     modelStorage,
+			ContainerName:    "Container-" + model + "-1",
 		}
 		err = tier.SagemakerClient.CreateModel(ctx, []lib.Model{model}, sagemakerModelId)
 		if err != nil {
@@ -226,7 +233,16 @@ func Store(ctx context.Context, tier tier.Tier, req lib.ModelUploadRequest) erro
 	if err != nil {
 		return fmt.Errorf("failed to insert model in db: %v", err)
 	}
-	return EnsureEndpointExists(ctx, tier)
+	err = EnsureEndpointExists(ctx, tier)
+	// revert changes to db and s3 if failed to update endpoint
+	if err != nil {
+		err1 := db.DeleteModel(tier, model.Name, model.Version)
+		err2 := tier.S3Client.Delete(containerName, tier.ModelStore.S3Bucket())
+		if err1 != nil || err2 != nil {
+			return fmt.Errorf("failed to upload model to sagemaker: [%v] and failed to revert db change: [%v] [%v]", err, err1, err2)
+		}
+	}
+	return err
 }
 
 // Remove attempts to remove a model from the DB and SageMaker. Returns an error
@@ -248,20 +264,29 @@ func Remove(ctx context.Context, tier tier.Tier, name, version string) error {
 	}
 	// If it does not exist, it will be created later
 
-	// delete from s3
 	model, err := db.GetModel(tier, name, version)
 	if err != nil {
 		return fmt.Errorf("failed to load model from db: %w", err)
-	}
-	err = tier.S3Client.Delete(model.ContainerName, tier.ModelStore.S3Bucket())
-	if err != nil {
-		return fmt.Errorf("failed to delete model from s3: %v", err)
 	}
 	err = db.MakeModelInactive(tier, name, version)
 	if err != nil {
 		return fmt.Errorf("failed to deactivate model in db: %v", err)
 	}
-	return EnsureEndpointExists(ctx, tier)
+	err = EnsureEndpointExists(ctx, tier)
+	if err != nil {
+		_, err2 := db.InsertModel(tier, model)
+		if err2 != nil {
+			return fmt.Errorf("failed to upload model to sagemaker: [%v] and failed to revert db change: [%v]", err, err2)
+		}
+	}
+	// delete from s3 only if delete on sagemaker endpoint succeeded
+	if err == nil {
+		err2 := tier.S3Client.Delete(model.ContainerName, tier.ModelStore.S3Bucket())
+		if err2 != nil {
+			return fmt.Errorf("failed to delete model from s3: %v", err2)
+		}
+	}
+	return err
 }
 
 func PreTrainedScore(ctx context.Context, tier tier.Tier, modelName string, inputs []value.List) ([]value.Value, error) {
@@ -313,7 +338,7 @@ func Score(
 	}
 
 	/*
-		Updating the endpoint on sagemaker takes about 11 minutes during which it works with the
+		Updating the endpoint on sagemaker takes about 5-20 minutes during which it works with the
 		previous endpoint configuration. Attempting to score a newly uploaded model would return
 		a not found error. We check if the endpoint is updating, and if the model to be scored
 		is active, and if the corresponding covering model is hosted. In that case, we return
@@ -347,7 +372,7 @@ func Score(
 			return nil, fmt.Errorf("failed to score the model: %v; %v", err, err2)
 		}
 		if ok {
-			return nil, RetryError(fmt.Errorf("failed to score the model: endpoint not updated with new model yet"))
+			return nil, RetryError{"failed to score the model: endpoint not updated with new model yet"}
 		} else {
 			return nil, fmt.Errorf("failed to score the model: covering model not hosted")
 		}
@@ -537,11 +562,11 @@ func EnsureEndpointInService(ctx context.Context, tier tier.Tier) (err error) {
 	case "InService":
 		return nil
 	case "Updating", "SystemUpdating", "RollingBack":
-		return RetryError(fmt.Errorf("endpoint is updating, please wait for a few minutes"))
+		return RetryError{"endpoint is updating"}
 	case "Creating":
-		return RetryError(fmt.Errorf("endpoint is being created, please wait for a few minutes"))
+		return RetryError{"endpoint is being created"}
 	case "Deleting":
-		return RetryError(fmt.Errorf("endpoint is being deleted, please wait for a few minutes"))
+		return RetryError{"endpoint is being deleted"}
 	case "OutOfService":
 		return fmt.Errorf("endpoint out of service and not available to take incoming requests")
 	case "Failed":

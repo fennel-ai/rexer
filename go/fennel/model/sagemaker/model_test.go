@@ -10,7 +10,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestInsertGetModel(t *testing.T) {
+func TestInsertGetDeleteModel(t *testing.T) {
 	tier := test.Tier(t)
 	defer test.Teardown(tier)
 
@@ -65,6 +65,14 @@ func TestInsertGetModel(t *testing.T) {
 	found, err = GetModel(tier, model3.Name, model3.Version)
 	assert.NoError(t, err)
 	foundExpectedModel(t, model3, found)
+
+	// now delete one model
+	err = DeleteModel(tier, model1.Name, model1.Version)
+	assert.NoError(t, err)
+
+	// should not find model after it is deleted
+	_, err = GetModel(tier, model1.Name, model1.Version)
+	assert.Error(t, err)
 }
 
 func TestGetActiveModels(t *testing.T) {
