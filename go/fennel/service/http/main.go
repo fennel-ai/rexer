@@ -13,7 +13,6 @@ import (
 	"syscall"
 	"time"
 
-	"fennel/controller/modelstore"
 	httplib "fennel/lib/http"
 	"fennel/lib/timer"
 	"fennel/lib/utils/memory"
@@ -118,11 +117,6 @@ func main() {
 	tier, err := tier.CreateFromArgs(&flags.TierArgs)
 	if err != nil {
 		panic(fmt.Sprintf("Failed to setup tier connectors: %v", err))
-	}
-	// ensure sagemaker endpoint exists
-	err = modelstore.EnsureEndpointExists(context.Background(), tier)
-	if err != nil {
-		panic(fmt.Sprintf("Failed to ensure sagemaker endpoint exists: %v", err))
 	}
 
 	router := mux.NewRouter()
