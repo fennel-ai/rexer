@@ -9,12 +9,12 @@ import (
 
 	"fennel/lib/ftypes"
 	"fennel/lib/utils/binary"
+	"fennel/lib/utils/encoding/base91"
 	"fennel/model/aggregate"
 	"fennel/tier"
 
 	"github.com/alexflint/go-arg"
 	"github.com/go-redis/redis/v8"
-	"github.com/mtraver/base91"
 	"golang.org/x/net/context"
 )
 
@@ -29,9 +29,10 @@ func redisKeyPrefix(tr tier.Tier, aggId ftypes.AggId) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	aggStr := base91.StdEncoding.EncodeToString(aggBuf[:curr])
+	dest := make([]byte, 20) // this is not in the critical path, avoid using arena
+	aggStr, n := base91.StdEncoding.Encode(dest, aggBuf[:curr])
 	// TODO(mohit): redis key delimiter is hardcode, consider unifying this by making it a lib
-	return fmt.Sprintf("%s-*", tr.Redis.Scope.PrefixedName(aggStr)), nil
+	return fmt.Sprintf("%s-*", tr.Redis.Scope.PrefixedName(aggStr[:n])), nil
 }
 
 func deleteKeys(tr tier.Tier, aggId ftypes.AggId, rdb *redis.ClusterClient, batchSize int) error {
