@@ -14,6 +14,7 @@ on:
 jobs:
   # This workflow contains a single job called "integration"
   integration:
+    name: integration
     # The type of runner that the job will run on
     runs-on: [self-hosted, Linux, X64, integration-tests]
 
