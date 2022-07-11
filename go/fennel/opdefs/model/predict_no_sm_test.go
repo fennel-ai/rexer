@@ -5,8 +5,6 @@ import (
 	"fennel/test"
 	"fennel/test/optest"
 	"testing"
-
-	"github.com/stretchr/testify/assert"
 )
 
 func TestPredictErrorNoModelParam(t *testing.T) {
@@ -19,10 +17,8 @@ func TestPredictErrorNoModelParam(t *testing.T) {
 		}),
 	}
 
-	tier, err := test.Tier()
-	assert.NoError(t, err)
+	tier := test.Tier(t)
 	defer test.Teardown(tier)
-	assert.NoError(t, err)
 	optest.AssertErrorContains(t, tier, &predictOperator{}, value.Dict{} /* no static kwargs */, [][]value.Value{intable}, contextKwargTable, "kwarg 'model' not provided for operator")
 }
 
@@ -37,10 +33,8 @@ func TestPredictErrorNoInputParam(t *testing.T) {
 		value.NewDict(map[string]value.Value{}),
 	}
 
-	tier, err := test.Tier()
-	assert.NoError(t, err)
+	tier := test.Tier(t)
 	defer test.Teardown(tier)
-	assert.NoError(t, err)
 	optest.AssertErrorContains(t, tier, &predictOperator{}, staticKwargsTable, [][]value.Value{intable}, contextKwargTable, "input is not a list, got 'null'")
 }
 
@@ -55,9 +49,7 @@ func TestPredictErrorNoModelStore(t *testing.T) {
 		value.NewDict(map[string]value.Value{}),
 	}
 
-	tier, err := test.Tier()
-	assert.NoError(t, err)
+	tier := test.Tier(t)
 	defer test.Teardown(tier)
-	assert.NoError(t, err)
 	optest.AssertErrorContains(t, tier, &predictOperator{}, staticKwargsTable, [][]value.Value{intable}, contextKwargTable, "could not get framework from db")
 }
