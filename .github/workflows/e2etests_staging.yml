@@ -6,14 +6,14 @@ name: e2e-tests-staging-linux-x64
 on:
   # Allows you to run this workflow manually from the Actions tab
   workflow_dispatch:
-  
+
   schedule:
     # Runs every 2 hours
     - cron: '0 */2 * * *'
 
 # A workflow run is made up of one or more jobs that can run sequentially or in parallel
 jobs:
-  build:
+  e2e-staging:
     # The type of runner that the job will run on
     runs-on: [self-hosted, Linux, X64, e2e-tests]
 
@@ -22,9 +22,9 @@ jobs:
       # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
       - uses: actions/checkout@v3
 
-      - uses: actions/checkout@v3  
+      - uses: actions/checkout@v3
         with:
-          path: rexer-pyclient-alpha	
+          path: rexer-pyclient-alpha
           repository: fennel-ai/rexer-pyclient-alpha
           token: ${{ secrets.ACCESS_TOKEN }}
 
