@@ -246,7 +246,7 @@ func (s server) ActionsHandler(w http.ResponseWriter, req *http.Request) {
 			handleInternalServerError(w, err)
 			return
 		}
-		w.Write(response)
+		_, _ = w.Write(response)
 	default:
 		http.Error(w, "unsupported request method", http.StatusMethodNotAllowed)
 	}

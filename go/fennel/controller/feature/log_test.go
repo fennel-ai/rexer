@@ -42,6 +42,7 @@ func TestLogMulti_Kafka(t *testing.T) {
 		GroupID:      "somegroup",
 		OffsetPolicy: kafka.DefaultOffsetPolicy,
 	})
+	assert.NoError(t, err)
 	for i := 0; i < 10; i++ {
 		data, err := consumer.Read(ctx, -1)
 		assert.NoError(t, err)

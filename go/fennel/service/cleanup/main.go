@@ -108,7 +108,7 @@ func main() {
 		}
 		wg.Wait()
 	} else {
-		tier.Logger.Info(fmt.Sprint("--aggregates is not set, will delete keys for all inactive aggregates\n"))
+		tier.Logger.Info("--aggregates is not set, will delete keys for all inactive aggregates\n")
 		aggs, err := aggregate.RetrieveAll(context.Background(), tier)
 		if err != nil {
 			panic(err)

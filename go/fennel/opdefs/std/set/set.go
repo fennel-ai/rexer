@@ -7,7 +7,10 @@ import (
 )
 
 func init() {
-	operators.Register(setOperator{})
+	err := operators.Register(setOperator{})
+	if err != nil {
+		panic(err)
+	}
 }
 
 type setOperator struct{}

@@ -110,7 +110,7 @@ func DeletePhaser(tr tier.Tier, namespace, identifier string) error {
 }
 
 func ServeData(tr tier.Tier, p Phaser) {
-	pollS3Bucket(p.Namespace, p.Identifier, tr)
+	_ = pollS3Bucket(p.Namespace, p.Identifier, tr)
 }
 
 func (p Phaser) GetId() string {
@@ -150,7 +150,7 @@ func bulkUploadToRedis(tr tier.Tier, file string, numRows int, tempDir string) e
 			bulkUploadCmd := "cat " + tempDir + "/" + file + REDIS_BULK_UPLOAD_FILE_SUFFIX + " | redis-cli -h " + nodeAddress + " --pipe --tls"
 			// Ignore the error, since we know there will be errors when there are multiple nodes in the cluster
 			out, _ = exec.Command("bash", "-c", bulkUploadCmd).Output()
-			re := regexp.MustCompile(".*errors\\:\\s([0-9]+),\\sreplies\\:\\s([0-9]+)")
+			re := regexp.MustCompile(`.*errors\:\s([0-9]+),\sreplies\:\s([0-9]+)`)
 			match := re.FindStringSubmatch(string(out))
 			if len(match) < 3 {
 				return fmt.Errorf("could not identify number of successfull phaser writes to redis :- %s", string(out))
@@ -196,6 +196,9 @@ func (p Phaser) createRedisFile(localFileReader, redisWriter *os.File, tierId ft
 			return 0, err
 		}
 		key, err := value.ParseJSON(vdata, vtype)
+		if err != nil {
+			return 0, err
+		}
 		vdata, vtype, _, err = jsonparser.Get(data, "value")
 		if err != nil {
 			return 0, err
@@ -206,7 +209,10 @@ func (p Phaser) createRedisFile(localFileReader, redisWriter *os.File, tierId ft
 		}
 		numRowsWritten += 1
 		encodedString := base64.StdEncoding.EncodeToString(value.ToJSON(val))
-		redisWriter.WriteString(p.getRedisCommand(tierId, key.String(), encodedString))
+		_, err = redisWriter.WriteString(p.getRedisCommand(tierId, key.String(), encodedString))
+		if err != nil {
+			return 0, err
+		}
 	}
 
 	return numRowsWritten, nil
@@ -216,10 +222,11 @@ func (p Phaser) createRedisFile(localFileReader, redisWriter *os.File, tierId ft
 // tempDir and creating the appropriate redis file for uploading.
 func (p Phaser) prepareFileForBulkUpload(tr tier.Tier, file string, tempDir string) (int, error) {
 	localFileReader, err := os.Open(tempDir + "/" + file)
-	defer localFileReader.Close()
 	if err != nil {
 		return 0, err
 	}
+
+	defer localFileReader.Close()
 
 	redisWriter, err := os.Create(tempDir + "/" + file + REDIS_BULK_UPLOAD_FILE_SUFFIX)
 	if err != nil {

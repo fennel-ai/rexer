@@ -20,7 +20,10 @@ import (
 var cacheValueDuration = 2 * time.Minute
 
 func init() {
-	operators.Register(profileOp{})
+	err := operators.Register(profileOp{})
+	if err != nil {
+		panic(err)
+	}
 }
 
 type profileOp struct {

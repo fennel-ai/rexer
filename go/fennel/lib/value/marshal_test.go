@@ -26,6 +26,7 @@ func verifyUnequalMarshal(t *testing.T, v Value, unequal []Value) {
 	assert.NoError(t, err)
 	var u Value
 	err = ProtoUnmarshal(b, &u)
+	assert.NoError(t, err)
 	for _, other := range unequal {
 		assert.NotEqual(t, u, other)
 	}
@@ -306,12 +307,15 @@ func FuzzRandom(f *testing.F) {
 			t.Skip()
 		}
 		jsonBytes, err := v.MarshalJSON()
+		assert.NoError(t, err)
 		_, err = Unmarshal(jsonBytes)
 		if err != nil || string(jsonBytes) != string(b) {
 			t.Skip()
 		}
 		protobufBytes, err := ProtoMarshal(v)
+		assert.NoError(t, err)
 		_, err = Unmarshal(protobufBytes)
+		assert.NoError(t, err)
 		vBytes, err := Marshal(v)
 		assert.NoError(t, err)
 		v2, err := Unmarshal(vBytes)

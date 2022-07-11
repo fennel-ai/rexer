@@ -193,6 +193,7 @@ func testHashmap(t *testing.T, c Client) {
 
 	// no error if no keys are given
 	err := c.HSetPipelined(ctx, nil, nil, nil)
+	assert.NoError(t, err)
 	found, err := c.HGetAllPipelined(ctx)
 	assert.NoError(t, err)
 	assert.Empty(t, found)

@@ -9,7 +9,10 @@ import (
 )
 
 func init() {
-	operators.Register(adder{})
+	err := operators.Register(adder{})
+	if err != nil {
+		panic(err)
+	}
 }
 
 type adder struct{}

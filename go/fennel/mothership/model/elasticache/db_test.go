@@ -11,7 +11,7 @@ import (
 func TestInsert(t *testing.T) {
 	m, err := mothership.NewTestMothership()
 	assert.NoError(t, err)
-	defer mothership.Teardown(m)
+	defer func() { err = mothership.Teardown(m); assert.NoError(t, err) }()
 
 	_, err = Insert(m, lib.ElastiCache{
 		ClusterID:            "id",

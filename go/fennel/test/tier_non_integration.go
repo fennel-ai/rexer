@@ -64,7 +64,7 @@ func Tier(t *testing.T) tier.Tier {
 	logger = logger.With(zap.Uint32("tier_id", uint32(tierID)))
 
 	faker := unleashlib.NewFakeUnleash()
-	unleash.Initialize(unleash.WithListener(&unleash.DebugListener{}),
+	err = unleash.Initialize(unleash.WithListener(&unleash.DebugListener{}),
 		unleash.WithAppName("local-tier"),
 		unleash.WithUrl(faker.Url()))
 	assert.NoError(t, err)
@@ -86,9 +86,8 @@ func Tier(t *testing.T) tier.Tier {
 	}
 }
 
-func Teardown(tier tier.Tier) error {
+func Teardown(tier tier.Tier) {
 	if err := drop(tier.ID, "testdb" /*logicalname*/, os.Getenv("MYSQL_USERNAME"), os.Getenv("MYSQL_PASSWORD"), os.Getenv("MYSQL_SERVER_ADDRESS")); err != nil {
 		panic(fmt.Sprintf("error in db teardown: %v\n", err))
 	}
-	return nil
 }

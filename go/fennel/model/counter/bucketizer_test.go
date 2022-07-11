@@ -67,7 +67,7 @@ func TestFixedWidthBucketizer_BucketizeMoment_Widths(t *testing.T) {
 			key,
 			3601,
 			value.Int(1),
-			[]counter.Bucket{{key, ftypes.Window_MINUTE, 5, 12}},
+			[]counter.Bucket{{Key: key, Window: ftypes.Window_MINUTE, Width: 5, Index: 12}},
 		},
 		{
 			fixedWidthBucketizer{map[ftypes.Window]uint32{
@@ -77,8 +77,8 @@ func TestFixedWidthBucketizer_BucketizeMoment_Widths(t *testing.T) {
 			47*3600 + 1,
 			value.Int(1),
 			[]counter.Bucket{
-				{key, ftypes.Window_HOUR, 5, 9},
-				{key, ftypes.Window_DAY, 2, 0},
+				{Key: key, Window: ftypes.Window_HOUR, Width: 5, Index: 9},
+				{Key: key, Window: ftypes.Window_DAY, Width: 2, Index: 0},
 			},
 		},
 	}
@@ -107,7 +107,7 @@ func TestFixedWidthBucketizer_BucketizeDuration(t *testing.T) {
 			3601,
 			4459,
 			value.Int(1),
-			[]counter.Bucket{{key, ftypes.Window_MINUTE, 5, 13}},
+			[]counter.Bucket{{Key: key, Window: ftypes.Window_MINUTE, Width: 5, Index: 13}},
 		},
 	}
 

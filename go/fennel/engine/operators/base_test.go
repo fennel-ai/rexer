@@ -10,7 +10,7 @@ import (
 )
 
 type testOp struct {
-	num value.Int
+	_ value.Int
 }
 
 var _ Operator = testOp{}

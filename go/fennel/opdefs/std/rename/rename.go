@@ -9,7 +9,10 @@ import (
 )
 
 func init() {
-	operators.Register(renamer{})
+	err := operators.Register(renamer{})
+	if err != nil {
+		panic(err)
+	}
 }
 
 type renamer struct{}

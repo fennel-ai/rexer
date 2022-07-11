@@ -14,6 +14,9 @@ func ToCapnValue(v Value) (CapnValue, []byte, error) {
 		return CapnValue{}, nil, err
 	}
 	cv, err := NewRootCapnValue(seg)
+	if err != nil {
+		return CapnValue{}, nil, err
+	}
 	switch t := v.(type) {
 	case Int:
 		cv.SetInt(int64(t))

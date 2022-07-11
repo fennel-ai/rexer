@@ -46,6 +46,6 @@ func TestPCache_Get(t *testing.T) {
 
 	// should expire after 5 seconds
 	time.Sleep(5 * time.Second)
-	v, ok = cache.Get(key2, "Test")
+	_, ok = cache.Get(key2, "Test")
 	assert.False(t, ok)
 }

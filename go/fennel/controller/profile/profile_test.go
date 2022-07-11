@@ -183,6 +183,7 @@ func TestGetBatched(t *testing.T) {
 	})
 	assert.NoError(t, err)
 	found, err = ReadBatch(ctx, consumer, 3, time.Second*2)
+	assert.NoError(t, err)
 	assert.Equal(t, profiles, found)
 }
 

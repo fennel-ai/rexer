@@ -9,7 +9,10 @@ import (
 )
 
 func init() {
-	operators.Register(collect{})
+	err := operators.Register(collect{})
+	if err != nil {
+		panic(err)
+	}
 }
 
 type collect struct {
