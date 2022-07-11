@@ -3,18 +3,19 @@ package sagemaker
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"fennel/lib/value"
 )
 
 type BaseConfig struct {
-	MinCapacity  int64
+	MinCapacity int64
 	MaxCapacity int64
 }
 
 type CpuScalingPolicy struct {
-	CpuTargetValue float64
-	ScaleInCoolDownPeriod int64
+	CpuTargetValue         float64
+	ScaleInCoolDownPeriod  int64
 	ScaleOutCoolDownPeriod int64
 }
 
@@ -59,6 +60,6 @@ type ScoreResponse struct {
 	Scores []value.Value
 }
 
-func GetContainerName(modelName, modelVersion string) string {
-	return fmt.Sprintf("Container-%s-%s", modelName, modelVersion)
+func GenContainerName() string {
+	return fmt.Sprintf("Container-%d", time.Now().UnixNano())
 }

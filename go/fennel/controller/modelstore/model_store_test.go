@@ -27,15 +27,16 @@ func TestStoreScoreRemoveModel(t *testing.T) {
 	if os.Getenv("long") == "" {
 		t.Skip("Skipping long test")
 	}
-	if os.Getenv("broken") == "" {
-		t.Skip("Skipping broken test")
-	}
 
 	tier := test.Tier(t)
 
 	err := test.AddSagemakerClientToTier(&tier)
 	assert.NoError(t, err)
 	defer cleanup(t, tier)
+	tier.ModelStore = modelstore.NewModelStore(modelstore.ModelStoreArgs{
+		ModelStoreS3Bucket:     "my-xgboost-test-bucket-2",
+		ModelStoreEndpointName: "unit-test-1-endpoint",
+	}, tier.ID)
 
 	data, err := tier.S3Client.Download("model.tar.gz", "my-xgboost-test-bucket-2")
 	assert.NoError(t, err)
@@ -50,7 +51,7 @@ func TestStoreScoreRemoveModel(t *testing.T) {
 	for {
 		err = Store(context.Background(), tier, req)
 		var retry RetryError
-		if errors.As(err, &retry) {
+		if !errors.As(err, &retry) {
 			break
 		}
 		log.Print("Waiting one minute before retrying to store")
@@ -65,7 +66,7 @@ func TestStoreScoreRemoveModel(t *testing.T) {
 	for {
 		scores, err = Score(context.Background(), tier, "name", "v1", featureVecs)
 		var retry RetryError
-		if errors.As(err, &retry) {
+		if !errors.As(err, &retry) {
 			break
 		}
 		log.Print("Waiting one minute before retrying to score")
@@ -77,7 +78,7 @@ func TestStoreScoreRemoveModel(t *testing.T) {
 	for {
 		err = Remove(context.Background(), tier, req.Name, req.Version)
 		var retry RetryError
-		if errors.As(err, &retry) {
+		if !errors.As(err, &retry) {
 			break
 		}
 		log.Print("Waiting one minute before retrying to remove")
@@ -152,8 +153,9 @@ func TestEnsureEndpoint(t *testing.T) {
 		Framework:        "xgboost",
 		FrameworkVersion: "1.3-1",
 		ArtifactPath:     "s3://my-xgboost-test-bucket-2/model.tar.gz",
+		ContainerName:    "Container-my-test-model-v1",
 	}
-	endpointName := "unit-test-endpoint"
+	endpointName := "unit-test-2-endpoint"
 	tier.ModelStore = modelstore.NewModelStore(modelstore.ModelStoreArgs{
 		ModelStoreS3Bucket:     "my-xgboost-test-bucket-2",
 		ModelStoreEndpointName: endpointName,
@@ -186,6 +188,10 @@ func TestEnsureEndpoint(t *testing.T) {
 	assert.True(t, exists)
 	defer func() {
 		err := tier.SagemakerClient.DeleteEndpoint(context.Background(), endpointName)
+		assert.NoError(t, err)
+		err = tier.SagemakerClient.DeleteModel(context.Background(), sagemakerModels[0])
+		assert.NoError(t, err)
+		err = tier.SagemakerClient.DeleteEndpointConfig(context.Background(), endpointCfg.Name)
 		assert.NoError(t, err)
 	}()
 
@@ -220,11 +226,12 @@ func TestAutoscalingEnabledOnEndpointVariant(t *testing.T) {
 	err := test.AddSagemakerClientToTier(&tier)
 	assert.NoError(t, err)
 
-	endpointName := "unit-test-endpoint"
+	endpointName := "unit-test-3-endpoint"
 	tier.ModelStore = modelstore.NewModelStore(modelstore.ModelStoreArgs{
 		ModelStoreS3Bucket:     "my-xgboost-test-bucket-2",
 		ModelStoreEndpointName: endpointName,
 	}, tier.ID)
+	defer cleanup(t, tier)
 
 	var sagemakerModel1, sagemakerModel2 string
 
@@ -235,6 +242,7 @@ func TestAutoscalingEnabledOnEndpointVariant(t *testing.T) {
 			Framework:        "xgboost",
 			FrameworkVersion: "1.3-1",
 			ArtifactPath:     "s3://my-xgboost-test-bucket-2/model.tar.gz",
+			ContainerName:    "Container-my-test-model-v1",
 		}
 
 		// Insert an active model into db.
@@ -289,6 +297,7 @@ func TestAutoscalingEnabledOnEndpointVariant(t *testing.T) {
 			Framework:        "xgboost",
 			FrameworkVersion: "1.3-1",
 			ArtifactPath:     "s3://my-xgboost-test-bucket-2/model.tar.gz",
+			ContainerName:    "Container-my-test-model-v2",
 		}
 		// Insert an active model into db.
 		modelId, err := db.InsertModel(tier, model)
@@ -332,9 +341,9 @@ func cleanup(t *testing.T, tier tier.Tier) {
 	hostedModels, err := db.GetAllHostedModels(tier)
 	assert.NoError(t, err)
 	for _, m := range hostedModels {
-		endpointCfg, err := db.GetEndpointConfigWithModel(tier, m.SagemakerModelName)
+		endpointCfg, err := db.GetEndpointConfigWithModel(tier, m)
 		assert.NoError(t, err)
-		err = tier.SagemakerClient.DeleteModel(context.Background(), m.SagemakerModelName)
+		err = tier.SagemakerClient.DeleteModel(context.Background(), m)
 		assert.NoError(t, err)
 		err = tier.SagemakerClient.DeleteEndpointConfig(context.Background(), endpointCfg.Name)
 		assert.NoError(t, err)

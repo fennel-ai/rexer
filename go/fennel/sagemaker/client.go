@@ -19,9 +19,9 @@ import (
 )
 
 const (
-	serviceNamespace = "sagemaker"
+	serviceNamespace         = "sagemaker"
 	scalableDimInstanceCount = "sagemaker:variant:DesiredInstanceCount"
-	scalablePolicyType = "TargetTrackingScaling"
+	scalablePolicyType       = "TargetTrackingScaling"
 )
 
 type SagemakerArgs struct {
@@ -45,19 +45,19 @@ func NewClient(args SagemakerArgs, logger *zap.Logger) (SMClient, error) {
 	// TODO: Create application infra for application autoscaling as it supports autoscaling other AWS resources as well
 	autoscaler := applicationautoscaling.New(sess)
 	return SMClient{
-		args:           args,
-		logger: 		logger,
-		runtimeClient:  runtime,
-		metadataClient: metadata,
+		args:             args,
+		logger:           logger,
+		runtimeClient:    runtime,
+		metadataClient:   metadata,
 		autoscalerClient: autoscaler,
 	}, nil
 }
 
 type SMClient struct {
-	args           SagemakerArgs
-	logger 		   *zap.Logger
-	runtimeClient  *sagemakerruntime.SageMakerRuntime
-	metadataClient *sagemaker.SageMaker
+	args             SagemakerArgs
+	logger           *zap.Logger
+	runtimeClient    *sagemakerruntime.SageMakerRuntime
+	metadataClient   *sagemaker.SageMaker
 	autoscalerClient *applicationautoscaling.ApplicationAutoScaling
 }
 
@@ -100,7 +100,7 @@ func (smc SMClient) CreateModel(ctx context.Context, hostedModels []lib.Model, s
 			return fmt.Errorf("failed to get image: %v", err)
 		}
 		modelInput.Containers = append(modelInput.Containers, &sagemaker.ContainerDefinition{
-			ContainerHostname: aws.String(lib.GetContainerName(model.Name, model.Version)),
+			ContainerHostname: aws.String(model.ContainerName),
 			Image:             aws.String(image),
 			ModelDataUrl:      aws.String(model.ArtifactPath),
 			Environment:       env,
@@ -337,11 +337,11 @@ func (smc SMClient) EnableAutoscaling(ctx context.Context, sagemakerEndpointName
 		return fmt.Errorf("MinCapacity and MaxCapacity should have non-zero, positive values with MaxCapacity >= MinCapacity. Given: %d (min) and %d (max)", scalingConfig.MinCapacity, scalingConfig.MaxCapacity)
 	}
 	req := applicationautoscaling.RegisterScalableTargetInput{
-		ServiceNamespace: aws.String(serviceNamespace),
-		ResourceId: resourceId,
+		ServiceNamespace:  aws.String(serviceNamespace),
+		ResourceId:        resourceId,
 		ScalableDimension: aws.String(scalableDimInstanceCount),
-		MinCapacity: aws.Int64(scalingConfig.MinCapacity),
-		MaxCapacity: aws.Int64(scalingConfig.MaxCapacity),
+		MinCapacity:       aws.Int64(scalingConfig.MinCapacity),
+		MaxCapacity:       aws.Int64(scalingConfig.MaxCapacity),
 	}
 	_, err := smc.autoscalerClient.RegisterScalableTargetWithContext(ctx, &req)
 	if err != nil {
@@ -357,11 +357,11 @@ func (smc SMClient) EnableAutoscaling(ctx context.Context, sagemakerEndpointName
 	// configuring the policy with "sagemakerEndpointName" and "modelVariantName" makes it uniquely identifiable now
 	// and allows migrating this to be stored in DB later
 	scalingReq := applicationautoscaling.PutScalingPolicyInput{
-		PolicyName: aws.String(fmt.Sprintf("CpuScalingPolicy-%s-%s", sagemakerEndpointName, modelVariantName)),
-		ServiceNamespace: aws.String(serviceNamespace),
-		ResourceId: resourceId,
-		ScalableDimension: aws.String(scalableDimInstanceCount),
-		PolicyType: aws.String(scalablePolicyType),
+		PolicyName:                               aws.String(fmt.Sprintf("CpuScalingPolicy-%s-%s", sagemakerEndpointName, modelVariantName)),
+		ServiceNamespace:                         aws.String(serviceNamespace),
+		ResourceId:                               resourceId,
+		ScalableDimension:                        aws.String(scalableDimInstanceCount),
+		PolicyType:                               aws.String(scalablePolicyType),
 		TargetTrackingScalingPolicyConfiguration: &scalingPolicy,
 	}
 	out, err := smc.autoscalerClient.PutScalingPolicyWithContext(ctx, &scalingReq)
@@ -384,8 +384,8 @@ func (smc SMClient) DisableAutoscaling(ctx context.Context, sagemakerEndpointNam
 	}
 	resourceId := aws.String(fmt.Sprintf("endpoint/%s/variant/%s", sagemakerEndpointName, modelVariantName))
 	req := applicationautoscaling.DeregisterScalableTargetInput{
-		ServiceNamespace: aws.String(serviceNamespace),
-		ResourceId: resourceId,
+		ServiceNamespace:  aws.String(serviceNamespace),
+		ResourceId:        resourceId,
 		ScalableDimension: aws.String(scalableDimInstanceCount),
 	}
 	_, err = smc.autoscalerClient.DeregisterScalableTargetWithContext(ctx, &req)
@@ -400,8 +400,8 @@ func (smc SMClient) DisableAutoscaling(ctx context.Context, sagemakerEndpointNam
 func (smc SMClient) IsAutoscalingConfigured(ctx context.Context, sagemakerEndpointName string, modelVariantName string) (bool, error) {
 	resourceId := aws.String(fmt.Sprintf("endpoint/%s/variant/%s", sagemakerEndpointName, modelVariantName))
 	req := applicationautoscaling.DescribeScalableTargetsInput{
-		ServiceNamespace: aws.String(serviceNamespace),
-		ResourceIds: []*string{resourceId},
+		ServiceNamespace:  aws.String(serviceNamespace),
+		ResourceIds:       []*string{resourceId},
 		ScalableDimension: aws.String(scalableDimInstanceCount),
 	}
 	out, err := smc.autoscalerClient.DescribeScalableTargetsWithContext(ctx, &req)
