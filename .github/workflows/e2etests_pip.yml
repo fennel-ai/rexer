@@ -14,6 +14,7 @@ on:
 jobs:
   # This workflow contains a single job called "e2e"
   e2e:
+    name: e2e
     # The type of runner that the job will run on
     runs-on: [self-hosted, Linux, X64, e2e-tests]
 
