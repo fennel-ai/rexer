@@ -2,6 +2,14 @@ package parallel
 
 import "context"
 
+const (
+	// We use a default batch size of 64 to dispatch jobs to the workers. This
+	// amortizes the synchronization cost of sending a job to a worker, but does
+	// not make the batch so large that we lose the benefit of parallelism.
+	// A batch size of 64 performs reasonably well in our benchmark.
+	batchSize = 64
+)
+
 // WorkerPool is a pool of workers that can be used to run jobs.
 // Jobs are submitted to the pool via the `Process` method.
 type WorkerPool[I, O any] struct {
@@ -20,19 +28,14 @@ func NewWorkerPool[I, O any](nWorkers int) WorkerPool[I, O] {
 
 func (w *WorkerPool[I, O]) Process(ctx context.Context, inputs []I, f func(I) (O, error)) ([]O, error) {
 	ret := make([]O, len(inputs))
-	// We use a batch size of 16 to dispatch jobs to the workers. This amortizes
-	// the synchronization cost of sending a job to a worker, but does not make
-	// the batch so large that we lose the benefit of parallelism.
-	// A batch size of 16 performs reasonably well in our benchmark.
-	const BATCH_SIZE = 16
-	numBatches := (len(inputs) + BATCH_SIZE - 1) / BATCH_SIZE
+	numBatches := (len(inputs) + batchSize - 1) / batchSize
 	// Note: We don't close errCh because we early-return in case of an error,
 	// but don't want worker go-routines to panic if they try to write on
 	// a closed channel. This is also why we create a buffered channel, so that
 	// worker go-routines can write to it even if there is no consumer.
 	errCh := make(chan error, numBatches)
 	for i := 0; i < len(inputs); {
-		end := i + BATCH_SIZE
+		end := i + batchSize
 		if end > len(inputs) {
 			end = len(inputs)
 		}
