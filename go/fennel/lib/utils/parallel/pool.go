@@ -1,6 +1,8 @@
 package parallel
 
-import "context"
+import (
+	"context"
+)
 
 const (
 	// We use a default batch size of 64 to dispatch jobs to the workers. This
@@ -29,35 +31,41 @@ func NewWorkerPool[I, O any](nWorkers int) WorkerPool[I, O] {
 func (w *WorkerPool[I, O]) Process(ctx context.Context, inputs []I, f func(I) (O, error)) ([]O, error) {
 	ret := make([]O, len(inputs))
 	numBatches := (len(inputs) + batchSize - 1) / batchSize
-	// Note: We don't close errCh because we early-return in case of an error,
-	// but don't want worker go-routines to panic if they try to write on
-	// a closed channel. This is also why we create a buffered channel, so that
-	// worker go-routines can write to it even if there is no consumer.
 	errCh := make(chan error, numBatches)
-	for i := 0; i < len(inputs); {
-		end := i + batchSize
-		if end > len(inputs) {
-			end = len(inputs)
+	ctx, cancelFn := context.WithCancel(ctx)
+	defer cancelFn()
+	// Run the job submission in a go-routine, so that we can start consuming
+	// results/errors from errCh and cancel any outstanding jobs.
+	go func() {
+		start := 0
+		for i := 0; i < numBatches; i++ {
+			end := start + batchSize
+			if end > len(inputs) {
+				end = len(inputs)
+			}
+			w.jobQueue <- job[I, O]{
+				ctx:     ctx,
+				inputs:  inputs[start:end],
+				outputs: ret[start:end],
+				f:       f,
+				errChan: errCh,
+			}
+			start = end
 		}
-		w.jobQueue <- job[I, O]{
-			inputs:  inputs[i:end],
-			outputs: ret[i:end],
-			f:       f,
-			errChan: errCh,
-		}
-		i = end
-	}
+	}()
+	var err error
+	// We wait for all the jobs to complete.
 	for i := 0; i < numBatches; i++ {
-		select {
-		case <-ctx.Done():
-			return nil, ctx.Err()
-		case err := <-errCh:
-			if err != nil {
-				return nil, err
+		e := <-errCh
+		if e != nil {
+			cancelFn()
+			// We want to capture and return the first error encountered.
+			if err == nil {
+				err = e
 			}
 		}
 	}
-	return ret, nil
+	return ret, err
 }
 
 // job represents the job to be run. It accepts a function `f` that needs to be
@@ -65,6 +73,7 @@ func (w *WorkerPool[I, O]) Process(ctx context.Context, inputs []I, f func(I) (O
 // slice. If an error is encountered, it is written to the `errChan` and the
 // remaining slice is not processed.
 type job[I, O any] struct {
+	ctx     context.Context
 	inputs  []I
 	outputs []O
 	f       func(I) (O, error)
@@ -87,10 +96,15 @@ func (w worker[I, O]) start() {
 	go func() {
 		for job := range w.jobQueue {
 			var err error
-			for i, input := range job.inputs {
-				job.outputs[i], err = job.f(input)
-				if err != nil {
-					break
+			select {
+			case <-job.ctx.Done():
+				err = job.ctx.Err()
+			default:
+				for i, input := range job.inputs {
+					job.outputs[i], err = job.f(input)
+					if err != nil {
+						break
+					}
 				}
 			}
 			job.errChan <- err
