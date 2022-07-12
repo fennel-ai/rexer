@@ -3,6 +3,7 @@ package modelstore
 import (
 	"context"
 	"fmt"
+
 	"math/rand"
 	"strconv"
 	"strings"
@@ -26,21 +27,11 @@ var scalingConfigErrors = promauto.NewCounterVec(prometheus.CounterOpts{
 	Help: "Errors corresponding to sagemaker scaling configuration",
 }, []string{"errorStatus"})
 
-type RetryError struct {
-	err string
-}
+type RetryError error
 
-func (re RetryError) Error() string {
-	return re.err + ", please retry after a few minutes"
-}
-
-// local cache of model name, version to model.
+// local cache of model container name to framework.
 // key type is string, value type is string.
-var modelCache = sync.Map{}
-
-func genCacheKey(name, version string) string {
-	return name + "-" + version
-}
+var frameworkCache = sync.Map{}
 
 type ModelInfo struct {
 	ModelName        string
@@ -144,7 +135,6 @@ func EnableModel(ctx context.Context, tier tier.Tier, model string) error {
 			Framework:        modelConfig.Framework,
 			FrameworkVersion: modelConfig.FrameworkVersion,
 			ArtifactPath:     modelStorage,
-			ContainerName:    "Container-" + model + "-1",
 		}
 		err = tier.SagemakerClient.CreateModel(ctx, []lib.Model{model}, sagemakerModelId)
 		if err != nil {
@@ -212,37 +202,27 @@ func Store(ctx context.Context, tier tier.Tier, req lib.ModelUploadRequest) erro
 		return fmt.Errorf("cannot have more than 15 active models: %v", err)
 	}
 
-	containerName := lib.GenContainerName()
 	// upload to s3
-	err = tier.S3Client.Upload(req.ModelFile, containerName, tier.ModelStore.S3Bucket())
+	fileName := lib.GetContainerName(req.Name, req.Version)
+	err = tier.S3Client.Upload(req.ModelFile, fileName, tier.ModelStore.S3Bucket())
 	if err != nil {
 		return fmt.Errorf("failed to upload model to s3: %v", err)
 	}
 
 	// now insert into db
-	artifactPath := tier.ModelStore.GetArtifactPath(containerName)
+	artifactPath := tier.ModelStore.GetArtifactPath(fileName)
 	model := lib.Model{
 		Name:             req.Name,
 		Version:          req.Version,
 		Framework:        req.Framework,
 		FrameworkVersion: req.FrameworkVersion,
 		ArtifactPath:     artifactPath,
-		ContainerName:    containerName,
 	}
 	_, err = db.InsertModel(tier, model)
 	if err != nil {
 		return fmt.Errorf("failed to insert model in db: %v", err)
 	}
-	err = EnsureEndpointExists(ctx, tier)
-	// revert changes to db and s3 if failed to update endpoint
-	if err != nil {
-		err1 := db.DeleteModel(tier, model.Name, model.Version)
-		err2 := tier.S3Client.Delete(containerName, tier.ModelStore.S3Bucket())
-		if err1 != nil || err2 != nil {
-			return fmt.Errorf("failed to upload model to sagemaker: [%v] and failed to revert db change: [%v] [%v]", err, err1, err2)
-		}
-	}
-	return err
+	return EnsureEndpointExists(ctx, tier)
 }
 
 // Remove attempts to remove a model from the DB and SageMaker. Returns an error
@@ -264,29 +244,16 @@ func Remove(ctx context.Context, tier tier.Tier, name, version string) error {
 	}
 	// If it does not exist, it will be created later
 
-	model, err := db.GetModel(tier, name, version)
+	// delete from s3
+	err = tier.S3Client.Delete(lib.GetContainerName(name, version), tier.ModelStore.S3Bucket())
 	if err != nil {
-		return fmt.Errorf("failed to load model from db: %w", err)
+		return fmt.Errorf("failed to delete model from s3: %v", err)
 	}
 	err = db.MakeModelInactive(tier, name, version)
 	if err != nil {
 		return fmt.Errorf("failed to deactivate model in db: %v", err)
 	}
-	err = EnsureEndpointExists(ctx, tier)
-	if err != nil {
-		_, err2 := db.InsertModel(tier, model)
-		if err2 != nil {
-			return fmt.Errorf("failed to upload model to sagemaker: [%v] and failed to revert db change: [%v]", err, err2)
-		}
-	}
-	// delete from s3 only if delete on sagemaker endpoint succeeded
-	if err == nil {
-		err2 := tier.S3Client.Delete(model.ContainerName, tier.ModelStore.S3Bucket())
-		if err2 != nil {
-			return fmt.Errorf("failed to delete model from s3: %v", err2)
-		}
-	}
-	return err
+	return EnsureEndpointExists(ctx, tier)
 }
 
 func PreTrainedScore(ctx context.Context, tier tier.Tier, modelName string, inputs []value.List) ([]value.Value, error) {
@@ -312,23 +279,23 @@ func PreTrainedScore(ctx context.Context, tier tier.Tier, modelName string, inpu
 func Score(
 	ctx context.Context, tier tier.Tier, name, version string, featureVecs []value.List,
 ) (res []value.Value, err error) {
-	ckey := genCacheKey(name, version)
-	var model lib.Model
-	val, ok := modelCache.Load(ckey)
+	containerName := lib.GetContainerName(name, version)
+	var framework string
+	val, ok := frameworkCache.Load(containerName)
 	if ok {
-		model, ok = val.(lib.Model)
+		framework, ok = val.(string)
 	}
 	if !ok {
-		model, err = db.GetModel(tier, name, version)
+		framework, err = db.GetFramework(tier, name, version)
 		if err != nil {
-			return nil, fmt.Errorf("could not get model from db: %w", err)
+			return nil, fmt.Errorf("could not get framework from db: %w", err)
 		}
-		modelCache.Store(ckey, model)
+		frameworkCache.Store(containerName, framework)
 	}
 	req := lib.ScoreRequest{
-		Framework:     model.Framework,
+		Framework:     framework,
 		EndpointName:  tier.ModelStore.EndpointName(),
-		ContainerName: model.ContainerName,
+		ContainerName: lib.GetContainerName(name, version),
 		FeatureLists:  featureVecs,
 	}
 	response, err := tier.SagemakerClient.Score(ctx, &req)
@@ -338,7 +305,7 @@ func Score(
 	}
 
 	/*
-		Updating the endpoint on sagemaker takes about 5-20 minutes during which it works with the
+		Updating the endpoint on sagemaker takes about 11 minutes during which it works with the
 		previous endpoint configuration. Attempting to score a newly uploaded model would return
 		a not found error. We check if the endpoint is updating, and if the model to be scored
 		is active, and if the corresponding covering model is hosted. In that case, we return
@@ -372,7 +339,7 @@ func Score(
 			return nil, fmt.Errorf("failed to score the model: %v; %v", err, err2)
 		}
 		if ok {
-			return nil, RetryError{"failed to score the model: endpoint not updated with new model yet"}
+			return nil, RetryError(fmt.Errorf("failed to score the model: endpoint not updated with new model yet"))
 		} else {
 			return nil, fmt.Errorf("failed to score the model: covering model not hosted")
 		}
@@ -420,7 +387,7 @@ func EnsureEndpointExists(ctx context.Context, tier tier.Tier) error {
 			hostedModels[i] = lib.SagemakerHostedModel{
 				SagemakerModelName: sagemakerModelName,
 				ModelId:            model.Id,
-				ContainerHostname:  model.ContainerName,
+				ContainerHostname:  lib.GetContainerName(model.Name, model.Version),
 			}
 		}
 		err = db.InsertHostedModels(tier, hostedModels...)
@@ -456,10 +423,10 @@ func EnsureEndpointExists(ctx context.Context, tier tier.Tier) error {
 	}
 	if endpointCfg.Name == "" {
 		endpointCfg = lib.SagemakerEndpointConfig{
-			Name:         fmt.Sprintf("%s-config-%d", sagemakerModelName, rand.Int63()),
-			ModelName:    sagemakerModelName,
-			VariantName:  sagemakerModelName,
-			InstanceType: tier.SagemakerClient.GetInstanceType(),
+			Name:          fmt.Sprintf("%s-config-%d", sagemakerModelName, rand.Int63()),
+			ModelName:     sagemakerModelName,
+			VariantName:   sagemakerModelName,
+			InstanceType:  tier.SagemakerClient.GetInstanceType(),
 			// TODO: use a larger number of initial instance size as an additional precaution step - creating and
 			// applying a new endpoint configuration results in updating the endpoint during which autoscaling is
 			// blocked (or we have not explicitly configured it yet), it might be better to start with a larger
@@ -562,11 +529,11 @@ func EnsureEndpointInService(ctx context.Context, tier tier.Tier) (err error) {
 	case "InService":
 		return nil
 	case "Updating", "SystemUpdating", "RollingBack":
-		return RetryError{"endpoint is updating"}
+		return RetryError(fmt.Errorf("endpoint is updating, please wait for a few minutes"))
 	case "Creating":
-		return RetryError{"endpoint is being created"}
+		return RetryError(fmt.Errorf("endpoint is being created, please wait for a few minutes"))
 	case "Deleting":
-		return RetryError{"endpoint is being deleted"}
+		return RetryError(fmt.Errorf("endpoint is being deleted, please wait for a few minutes"))
 	case "OutOfService":
 		return fmt.Errorf("endpoint out of service and not available to take incoming requests")
 	case "Failed":
@@ -600,7 +567,7 @@ func EnableAutoscalingWhenEndpointInService(tier tier.Tier, sagemakerEndpointNam
 	inService := false
 	for {
 		select {
-		case <-ticker.C:
+		case <- ticker.C:
 			err := EnsureEndpointInService(ctx, tier)
 			if err == nil {
 				inService = true
@@ -629,7 +596,7 @@ func EnableAutoscalingWhenEndpointInService(tier tier.Tier, sagemakerEndpointNam
 		Cpu: lib.CpuScalingPolicy{
 			CpuTargetValue: 70,
 			// scale out aggressively than scaling in
-			ScaleInCoolDownPeriod:  180,
+			ScaleInCoolDownPeriod: 180,
 			ScaleOutCoolDownPeriod: 60,
 		},
 		BaseConfig: &lib.BaseConfig{
@@ -653,6 +620,5 @@ func getDummyModel(model lib.Model) lib.Model {
 		Framework:        model.Framework,
 		FrameworkVersion: model.FrameworkVersion,
 		ArtifactPath:     model.ArtifactPath,
-		ContainerName:    lib.GenContainerName(),
 	}
 }
