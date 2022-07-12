@@ -41,3 +41,15 @@ func TestWorkerPoolWithError(t *testing.T) {
 	_, err := workerPool.Process(context.Background(), inputs, f)
 	assert.Error(t, err)
 }
+
+func TestWorkerPoolWithSmallInput(t *testing.T) {
+	var inputs []int
+	for i := 1; i <= 10; i++ {
+		inputs = append(inputs, i)
+	}
+	workerPool := parallel.NewWorkerPool[int, int](100)
+	results, err := workerPool.Process(context.Background(), inputs, square)
+	assert.NoError(t, err)
+	expected := []int{1, 4, 9, 16, 25, 36, 49, 64, 81, 100}
+	assert.Equal(t, expected, results)
+}
