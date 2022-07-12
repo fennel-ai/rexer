@@ -11,7 +11,6 @@ type Model struct {
 	ArtifactPath     string `db:"artifact_path"`
 	Active           bool   `db:"active"`
 	LastModified     int64  `db:"last_modified"`
-	ContainerName    string `db:"container_name"`
 }
 
 type ModelUploadRequest struct {

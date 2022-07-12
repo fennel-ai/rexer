@@ -13,7 +13,6 @@ import (
 	"syscall"
 	"time"
 
-	"fennel/controller/modelstore"
 	httplib "fennel/lib/http"
 	"fennel/lib/timer"
 	"fennel/lib/utils/memory"
@@ -119,11 +118,6 @@ func main() {
 	if err != nil {
 		panic(fmt.Sprintf("Failed to setup tier connectors: %v", err))
 	}
-	// ensure sagemaker endpoint exists
-	err = modelstore.EnsureEndpointExists(context.Background(), tier)
-	if err != nil {
-		panic(fmt.Sprintf("Failed to ensure sagemaker endpoint exists: %v", err))
-	}
 
 	router := mux.NewRouter()
 
@@ -156,11 +150,11 @@ func main() {
 	signal.Notify(stopped, syscall.SIGTERM, syscall.SIGINT)
 
 	srv := &http.Server{
-		Addr:    addr,
+		Addr: addr,
 		Handler: router,
 	}
 
-	go func() {
+	go func () {
 		// `ListenAndServer` listens on the TCP network address at `srv.Addr` and then calls Server to handle
 		// requests on incoming connections
 		if err = srv.ListenAndServe(); err != http.ErrServerClosed {
@@ -181,7 +175,7 @@ func main() {
 	<-stopped
 	log.Println("server stopped...")
 
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 30 * time.Second)
 	defer cancel()
 
 	// Shutdown gracefully shuts down the server without interrupting any active connections.

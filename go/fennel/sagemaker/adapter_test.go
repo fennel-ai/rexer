@@ -9,6 +9,7 @@ import (
 
 	lib "fennel/lib/sagemaker"
 	"fennel/lib/value"
+
 	"github.com/stretchr/testify/assert"
 )
 
@@ -28,7 +29,7 @@ func TestAdapterScore(t *testing.T) {
 	for _, framework := range frameworks {
 		resp, err := c.Score(context.Background(), &lib.ScoreRequest{
 			EndpointName:  "frameworks-test-endpoint",
-			ContainerName: "Container-" + framework + "-test-v1",
+			ContainerName: lib.GetContainerName(framework+"-test", "v1"),
 			Framework:     framework,
 			FeatureLists:  featureVectors,
 		})
@@ -57,7 +58,7 @@ func TestXgboost(t *testing.T) {
 	}
 	resp, err := c.Score(context.Background(), &lib.ScoreRequest{
 		EndpointName:  "frameworks-test-endpoint",
-		ContainerName: "Container-xgboost-test-v1",
+		ContainerName: lib.GetContainerName("xgboost-test", "v1"),
 		Framework:     "xgboost",
 		FeatureLists:  featureVectors,
 	})

@@ -31,6 +31,11 @@ func NewModelStore(args ModelStoreArgs, tierID ftypes.RealmID) *ModelStore {
 	return &ms
 }
 
+// TestSetEndpointName should only be used in tests
+func (ms *ModelStore) TestSetEndpointName(endpointName string) {
+	ms.endpointName = endpointName
+}
+
 func (ms *ModelStore) EndpointName() string {
 	return ms.endpointName
 }

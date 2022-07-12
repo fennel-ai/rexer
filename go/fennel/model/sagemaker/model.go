@@ -18,10 +18,9 @@ func InsertModel(tier tier.Tier, model lib.Model) (uint32, error) {
 			framework,
 			framework_version,
 			artifact_path,
-			last_modified,
-			container_name
+			last_modified
 		) VALUES (
-			?, ?, ?, ?, ?, ?, ?
+			?, ?, ?, ?, ?, ?
 		)
 	`
 	res, err := tier.DB.Exec(stmt,
@@ -31,7 +30,6 @@ func InsertModel(tier tier.Tier, model lib.Model) (uint32, error) {
 		model.FrameworkVersion,
 		model.ArtifactPath,
 		ts,
-		model.ContainerName,
 	)
 	if err != nil {
 		return 0, fmt.Errorf("failed to create model entry in db: %v", err)
@@ -41,17 +39,6 @@ func InsertModel(tier tier.Tier, model lib.Model) (uint32, error) {
 		return 0, fmt.Errorf("failed to get last insert id: %v", err)
 	}
 	return uint32(id), nil
-}
-
-func DeleteModel(tier tier.Tier, name, version string) error {
-	_, err := tier.DB.Exec(
-		"DELETE FROM model WHERE name=? AND version=?",
-		name, version,
-	)
-	if err != nil {
-		return fmt.Errorf("failed to remove model entry from db: %v", err)
-	}
-	return nil
 }
 
 func MakeModelInactive(tier tier.Tier, name, version string) error {
@@ -67,13 +54,13 @@ func MakeModelInactive(tier tier.Tier, name, version string) error {
 	return nil
 }
 
-func GetModel(tier tier.Tier, name, version string) (lib.Model, error) {
+func GetModel(tier tier.Tier, id uint32) (lib.Model, error) {
 	var model lib.Model
 	err := tier.DB.Get(&model, `
 		SELECT *
 		FROM model
-		WHERE name=? AND version=?
-	`, name, version)
+		WHERE id=?
+	`, id)
 	if err != nil {
 		return model, fmt.Errorf("failed to get model: %v", err)
 	}
@@ -165,11 +152,10 @@ func GetCoveringHostedModels(tier tier.Tier) ([]string, error) {
 	return hostedModelNames, nil
 }
 
-// GetAllHostedModels returns the names of all hosted models
-func GetAllHostedModels(tier tier.Tier) ([]string, error) {
-	var hostedModels []string
+func GetAllHostedModels(tier tier.Tier) ([]lib.SagemakerHostedModel, error) {
+	var hostedModels []lib.SagemakerHostedModel
 	err := tier.DB.Select(&hostedModels, `
-		SELECT DISTINCT sagemaker_model_name
+		SELECT *
 		FROM sagemaker_hosted_model
 	`)
 	if err == sql.ErrNoRows {
