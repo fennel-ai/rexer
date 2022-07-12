@@ -37,21 +37,20 @@ func Insert(ctx context.Context, tier tier.Tier, a actionlib.Action) error {
 		return err
 	}
 
-	// best effort write for actions in JSON format
-	go func() {
-		jsonProducer := tier.Producers[actionlib.ACTIONLOG_JSON_KAFKA_TOPIC]
-		// log actions as json in a best effort way - this is used for feature logging
-		// and should not fail the request
-		j, err := a.MarshalJSON()
-		if err != nil {
-			tier.Logger.Warn("could not marshal action into JSON: ", zap.Error(err))
-			jsonLogErrs.WithLabelValues("marshal").Inc()
-		}
-		if err = jsonProducer.Log(ctx, j, nil); err != nil {
-			tier.Logger.Warn("could not log JSON action: ", zap.Error(err))
-			jsonLogErrs.WithLabelValues("log").Inc()
-		}
-	}()
+	// Best-effort write for actions in JSON format.
+	jsonProducer := tier.Producers[actionlib.ACTIONLOG_JSON_KAFKA_TOPIC]
+	// Log actions as JSON in a best-effort way - this is used for joining
+	// actions with feature logs to create training data, but failure
+	// to log as JSON should not fail the request.
+	j, err := a.MarshalJSON()
+	if err != nil {
+		tier.Logger.Warn("could not marshal action into JSON: ", zap.Error(err))
+		jsonLogErrs.WithLabelValues("marshal").Inc()
+	}
+	if err = jsonProducer.Log(ctx, j, nil); err != nil {
+		tier.Logger.Warn("could not log JSON action: ", zap.Error(err))
+		jsonLogErrs.WithLabelValues("log").Inc()
+	}
 
 	producer := tier.Producers[actionlib.ACTIONLOG_KAFKA_TOPIC]
 	return producer.LogProto(ctx, &pa, nil)
