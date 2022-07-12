@@ -99,27 +99,6 @@ func testKafkaInsertRead(t *testing.T, batch bool) {
 		assert.Equal(t, actions, found)
 	}()
 
-	// test that actions were written as JSON as well
-	go func() {
-		consumer, err := tier.NewKafkaConsumer(kafka.ConsumerConfig{
-			Topic:        actionlib.ACTIONLOG_JSON_KAFKA_TOPIC,
-			GroupID:      utils.RandString(6),
-			OffsetPolicy: kafka.DefaultOffsetPolicy,
-		})
-		assert.NoError(t, err)
-		defer consumer.Close()
-		data, err := consumer.ReadBatch(ctx, 2, 30*time.Second)
-		assert.NoError(t, err)
-		found := make([]actionlib.Action, 0)
-		for i := range data {
-			var a actionlib.Action
-			err := a.UnmarshalJSON(data[i])
-			assert.NoError(t, err)
-			found = append(found, a)
-		}
-		assert.Equal(t, actions, found)
-	}()
-
 	// finally, transferring these from kafka to DB also works
 	go func() {
 		defer wg.Done()
@@ -139,6 +118,25 @@ func testKafkaInsertRead(t *testing.T, batch bool) {
 		}
 	}()
 	wg.Wait()
+
+	// Test that actions were written as JSON as well.
+	consumer, err := tier.NewKafkaConsumer(kafka.ConsumerConfig{
+		Topic:        actionlib.ACTIONLOG_JSON_KAFKA_TOPIC,
+		GroupID:      utils.RandString(6),
+		OffsetPolicy: kafka.DefaultOffsetPolicy,
+	})
+	assert.NoError(t, err)
+	defer consumer.Close()
+	data, err := consumer.ReadBatch(ctx, 2, 30*time.Second)
+	assert.NoError(t, err)
+	found := make([]actionlib.Action, 0)
+	for i := range data {
+		var a actionlib.Action
+		err := a.UnmarshalJSON(data[i])
+		assert.NoError(t, err)
+		found = append(found, a)
+	}
+	assert.Equal(t, actions, found)
 }
 
 func TestKafkaInsertRead(t *testing.T) {
