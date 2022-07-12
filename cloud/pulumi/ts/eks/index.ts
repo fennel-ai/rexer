@@ -155,7 +155,11 @@ async function setupEmissaryIngressCrds(input: inputType, awsProvider: aws.Provi
                         // Specifies the maximum number of parallel outstanding requests to ALL hosts in a cluster at any given time.
                         "max_requests": 3072,
                         // default - "max_retries": 3,
-                    }
+                    },
+                    // NOTE: This does not seem to be working
+                    // See: https://github.com/emissary-ingress/emissary/issues/4329
+                    "envoy_log_type": "text",
+                    "envoy_log_format": "%REQ(:METHOD)% %RESPONSE_CODE% %RESPONSE_FLAGS% %RESPONSE_CODE_DETAILS% %CONNECTION_TERMINATION_DETAILS% %DURATION%"
                 }
             }
         }, { provider: cluster.provider, dependsOn: waiter })
