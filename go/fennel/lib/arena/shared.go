@@ -6,16 +6,17 @@ import (
 )
 
 // Arenas of few commonly used types are defined below which are to be shared
-// across the binary. The combined memory footprint of these is upto ~300MB
+// across the binary. The combined memory footprint of these is upto ~2.4GB
 
 var (
 	Bytes   = New[byte](1<<12, 1<<22)           // memory footprint <= 4MB
-	Values  = New[value.Value](1<<15, 1<<23)    // memory footprint <= 128MB
+	Values  = New[value.Value](1<<15, 1<<24)    // memory footprint <= 256MB
 	Strings = New[string](1<<12, 1<<22)         // memory footprint <= 96MB
 	Ints    = New[int](1<<12, 1<<22)            // memory footprint <= 16MB
 	Longs   = New[int64](1<<12, 1<<22)          // memory footprint <= 32MB
 	Bools   = New[bool](1<<12, 1<<22)           // memory footprint <= 4MB
 	Bytes2D = New[[]byte](1<<12, 1<<22)         // memory footprint <= 96MB
-	Buckets = New[counter.Bucket](1<<15, 1<<25) // memory footprint <= 2GB
+	// this is assuming `bucket.key` consumes 20 bytes. Rest of the fields add up to 12 bytes.
+	Buckets = New[counter.Bucket](1<<15, 1<<26) // memory footprint <= 2GB
 	// NOTE: if you add more arena, please update the total size above in docstrings
 )
