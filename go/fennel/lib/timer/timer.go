@@ -22,6 +22,7 @@ var fnDuration = promauto.NewSummaryVec(prometheus.SummaryOpts{
 		0.90: 0.05,
 		0.95: 0.02,
 		0.99: 0.01,
+		0.999: 0.001,
 	},
 }, []string{"realm_id", "function_name"})
 
