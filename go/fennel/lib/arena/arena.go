@@ -125,6 +125,10 @@ func (a *Arena[T]) Free(b []T) {
 	}
 	// ignore out-of-range slices
 	if cap(b) >= a.maxalloc {
+		// grab a lock before incrementing `outOfRange` counter since
+		// a race is possible here
+		a.lock.Lock()
+		defer a.lock.Unlock()
 		a.outOfRange += 1
 		return
 	}

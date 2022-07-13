@@ -16,7 +16,7 @@ var (
 	Longs   = New[int64](1<<12, 1<<22)          // memory footprint <= 32MB
 	Bools   = New[bool](1<<12, 1<<22)           // memory footprint <= 4MB
 	Bytes2D = New[[]byte](1<<12, 1<<22)         // memory footprint <= 96MB
-	// this is assuming `bucket.key` consumes 20 bytes. Rest of the fields add up to 12 bytes.
+	// Bucket struct uses up 28 bytes (16 for string header, 4 each for width, index and window)
 	Buckets = New[counter.Bucket](1<<15, 1<<26) // memory footprint <= 2GB
 	// NOTE: if you add more arena, please update the total size above in docstrings
 )
