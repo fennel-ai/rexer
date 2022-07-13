@@ -26,6 +26,7 @@ export type inputType = {
     subnetIds: pulumi.Input<string[]>,
     tierId: number,
     useDedicatedMachines?: boolean,
+    replicas?: number,
 }
 
 export type outputType = {
@@ -104,21 +105,21 @@ export const setup = async (input: inputType) => {
     let nodeSelector: Record<string, string> = {
         "kubernetes.io/arch": "amd64",
     };
+    const replicas = input.replicas || DEFAULT_INGRESS_NODE_COUNT;
     if (input.useDedicatedMachines || DEFAULT_USE_DEDICATED_MACHINES) {
         const ngName = `aes-${input.namespace}-ng`;
         const ngLabel = {'node-group': ngName};
-
         const nodeGroup = new aws.eks.NodeGroup(ngName, {
             clusterName: input.clusterName,
             nodeRoleArn: input.nodeRoleArn,
             subnetIds: input.subnetIds,
             scalingConfig: {
-                desiredSize: DEFAULT_INGRESS_NODE_COUNT,
-                minSize: DEFAULT_INGRESS_NODE_COUNT,
+                desiredSize: replicas,
+                minSize: replicas,
                 // have maxSize to be at least one more than least or desired node count
                 // so that emissary ingress's rolling update goes through (which creates a new instance
                 // before replacing the original one).
-                maxSize: DEFAULT_INGRESS_NODE_COUNT + 1,
+                maxSize: replicas + 1,
             },
             instanceTypes: [DEFAULT_INGRESS_NODE_TYPE],
             nodeGroupNamePrefix: ngName,
@@ -198,8 +199,7 @@ export const setup = async (input: inputType) => {
         // tiers on the same cluster, emissary ingress routes requests across them. We scope the ingress to
         // respect a single namespace (namespace it is created in i.e. tier id).
         values: {
-            // create 2 emissary ingress pods, same as the number of nodes in the node group
-            "replicaCount": `${DEFAULT_INGRESS_NODE_COUNT}`,
+            "replicaCount": `${replicas}`,
             "scope": {
                 "singleNamespace": true,
             },
