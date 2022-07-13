@@ -1,56 +1,77 @@
 package main
 
 import (
-	"fmt"
 	"log"
 	"net/http"
-	"time"
 
-	"fennel/mothership"
-	"fennel/mothership/controller/launchrequest"
-
-	"github.com/alexflint/go-arg"
+	"github.com/gin-gonic/gin"
 )
 
-const (
-	requestPollingDelay = time.Minute
-	dataPlaneEndpoint   = "http://http-server.fennel:2425"
-)
+var db = make(map[string]string)
 
-func pollLaunchRequestStatus(m mothership.Mothership) {
-	ticker := time.NewTicker(requestPollingDelay)
-	defer ticker.Stop()
-	for ; true; <-ticker.C {
-		log.Print("processing completed requests")
-		err := launchrequest.ProcessCompletedRequests(m)
-		if err != nil {
-			log.Printf("Error polling: %v", err)
+func setupRouter() *gin.Engine {
+	// Disable Console Color
+	// gin.DisableConsoleColor()
+	r := gin.Default()
+
+	// Ping test
+	r.GET("/ping", func(c *gin.Context) {
+		c.String(http.StatusOK, "pong")
+	})
+
+	// Get user value
+	r.GET("/user/:name", func(c *gin.Context) {
+		user := c.Params.ByName("name")
+		value, ok := db[user]
+		if ok {
+			c.JSON(http.StatusOK, gin.H{"user": user, "value": value})
+		} else {
+			c.JSON(http.StatusOK, gin.H{"user": user, "status": "no value"})
 		}
-		time.Sleep(requestPollingDelay)
-	}
-}
+	})
 
-type BridgeArgs struct {
-	Port uint32 `arg:"--bridge-port,env:BRIDGE_PORT" default:"2475"`
+	// Authorized group (uses gin.BasicAuth() middleware)
+	// Same than:
+	// authorized := r.Group("/")
+	// authorized.Use(gin.BasicAuth(gin.Credentials{
+	//	  "foo":  "bar",
+	//	  "manu": "123",
+	//}))
+	authorized := r.Group("/", gin.BasicAuth(gin.Accounts{
+		"foo":  "bar", // user:foo password:bar
+		"manu": "123", // user:manu password:123
+	}))
+
+	/* example curl for /admin with basicauth header
+	   Zm9vOmJhcg== is base64("foo:bar")
+
+		curl -X POST \
+	  	http://localhost:8080/admin \
+	  	-H 'authorization: Basic Zm9vOmJhcg==' \
+	  	-H 'content-type: application/json' \
+	  	-d '{"value":"bar"}'
+	*/
+	authorized.POST("admin", func(c *gin.Context) {
+		user := c.MustGet(gin.AuthUserKey).(string)
+
+		// Parse JSON
+		var json struct {
+			Value string `json:"value" binding:"required"`
+		}
+
+		if c.Bind(&json) == nil {
+			db[user] = json.Value
+			c.JSON(http.StatusOK, gin.H{"status": "ok"})
+		}
+	})
+
+	return r
 }
 
 func main() {
-	// Parse flags / environment variables.
-	var flags struct {
-		mothership.MothershipArgs
-		BridgeArgs
+	r := setupRouter()
+	// Listen and Server in 0.0.0.0:8080
+	if err := r.Run(":8080"); err != nil {
+		log.Fatalf("Error running the server: %s", err)
 	}
-	arg.MustParse(&flags)
-
-	m, err := mothership.CreateFromArgs(&flags.MothershipArgs)
-	if err != nil {
-		log.Fatalf("Error creating mothership: %v", err)
-	}
-
-	server := createServer(flags.BridgeArgs.Port, dataPlaneEndpoint)
-	go pollLaunchRequestStatus(m)
-
-	address := fmt.Sprintf(":%d", server.port)
-	log.Printf("starting http service on '%s'\n", address)
-	log.Fatal(http.ListenAndServe(address, server))
 }
