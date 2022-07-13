@@ -285,6 +285,23 @@ func (i *Interpreter) VisitIfelse(condition ast.Ast, thenDo ast.Ast, elseDo ast.
 	}
 }
 
+type RequiredKwargNotProvidedError struct {
+	ParamName string
+	OpModule  string
+	OpName    string
+}
+
+func (e *RequiredKwargNotProvidedError) Error() string {
+	return fmt.Sprintf("kwarg '%s' not provided for operator '%s.%s'", e.ParamName, e.OpModule, e.OpName)
+}
+
+func (e *RequiredKwargNotProvidedError) Is(targetError error) bool {
+	if te, ok := targetError.(*RequiredKwargNotProvidedError); ok {
+		return e.ParamName == te.ParamName && e.OpModule == te.OpModule && e.OpName == te.OpName
+	}
+	return false
+}
+
 func (i *Interpreter) getStaticKwargs(op operators.Operator, kwargs *ast.Dict) (operators.Kwargs, error) {
 	vals := make([]value.Value, 0, len(kwargs.Values))
 	sig := op.Signature()
@@ -293,7 +310,7 @@ func (i *Interpreter) getStaticKwargs(op operators.Operator, kwargs *ast.Dict) (
 		tree, ok := kwargs.Values[k]
 		switch {
 		case !ok && !p.Optional:
-			return operators.Kwargs{}, fmt.Errorf("kwarg '%s' not provided for operator '%s.%s'", k, sig.Module, sig.Name)
+			return operators.Kwargs{}, &RequiredKwargNotProvidedError{ParamName: k, OpModule: sig.Module, OpName: sig.Name}
 		case !ok && p.Optional:
 			vals = append(vals, p.Default)
 		case ok:
@@ -342,7 +359,7 @@ func (i *Interpreter) getContextKwargs(op operators.Operator, trees *ast.Dict, i
 			tree, ok := trees.Values[k]
 			switch {
 			case !ok && !p.Optional:
-				return ret, fmt.Errorf("non-optional kwarg '%s' not provided for operator '%s.%s'", k, sig.Module, sig.Name)
+				return ret, &RequiredKwargNotProvidedError{ParamName: k, OpModule: sig.Module, OpName: sig.Name}
 			case !ok && p.Optional:
 				kwargVals = append(kwargVals, p.Default)
 				continue

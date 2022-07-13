@@ -47,6 +47,16 @@ func AssertError(t *testing.T, tr tier.Tier, op operators.Operator, static value
 	assert.Error(t, err)
 }
 
+func AssertErrorIs(t *testing.T, tr tier.Tier, op operators.Operator, static value.Dict, inputs [][]value.Value, context []value.Dict, targetError error) {
+	_, err := run(tr, op, static, inputs, context)
+	assert.ErrorIs(t, err, targetError)
+}
+
+func AssertErrorContains(t *testing.T, tr tier.Tier, op operators.Operator, static value.Dict, inputs [][]value.Value, context []value.Dict, errorString string) {
+	_, err := run(tr, op, static, inputs, context)
+	assert.ErrorContains(t, err, errorString)
+}
+
 // run takes some value properties and creates a real ast that represents that opcall and executes it with
 // an interpreter
 func run(tr tier.Tier, op operators.Operator, static value.Dict, inputs [][]value.Value, queryContext []value.Dict) (value.Value, error) {

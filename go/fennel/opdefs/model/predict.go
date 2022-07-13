@@ -7,6 +7,7 @@ import (
 	"fennel/engine/operators"
 	"fennel/lib/value"
 	"fennel/tier"
+	"fmt"
 	"log"
 )
 
@@ -42,7 +43,11 @@ func (p predictOperator) Apply(ctx context.Context, staticKwargs operators.Kwarg
 		if !ok || input == value.Nil {
 			input = heads[0]
 		}
-		inputs = append(inputs, input.(value.List))
+		inputList, ok := input.(value.List)
+		if !ok {
+			return fmt.Errorf("input is not a list, got '%s'", input)
+		}
+		inputs = append(inputs, inputList)
 		rows = append(rows, heads[0])
 	}
 	var outputs []value.Value
@@ -77,7 +82,6 @@ func (p predictOperator) Apply(ctx context.Context, staticKwargs operators.Kwarg
 
 func (p predictOperator) Signature() *operators.Signature {
 	return operators.NewSignature("model", "predict").
-		Input([]value.Type{value.Types.Dict}).
 		ParamWithHelp("field", value.Types.String, true, true, value.String(""), "StaticKwarg: String param that is used as key post evaluation of this operator").
 		ParamWithHelp("model", value.Types.String, true, false, value.Nil, "model name that should be called for eg sbert").
 		ParamWithHelp("input", value.Types.List, false, true, value.Nil, "ContextKwarg: Expr that is evaluated to provide input to the model.").
