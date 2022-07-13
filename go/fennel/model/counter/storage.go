@@ -568,8 +568,13 @@ func readFromRedis(ctx context.Context, tier tier.Tier, rkeys []string) ([]value
 	redisKeyStats.WithLabelValues("redis_keys_interpreted").Observe(float64(len(res)))
 	ctx, tmr := timer.Start(ctx, tier.ID, "redis.interpret_response")
 	defer tmr.Stop()
-
-	return workerPool.Process(ctx, res, interpretRedisResponse)
+	ret := make([]value.Value, len(rkeys))
+	for i, v := range res {
+		if ret[i], err = interpretRedisResponse(v); err != nil {
+			return nil, err
+		}
+	}
+	return ret, nil
 }
 
 func interpretRedisResponse(v interface{}) (value.Value, error) {
