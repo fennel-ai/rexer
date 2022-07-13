@@ -137,6 +137,7 @@ const tierConfs: Record<number, TierConf> = {
         },
         ingressConf: {
             useDedicatedMachines: true,
+            replicas: 4,
         }
     },
     // Convoy staging tier using Fennel's staging data plane.
@@ -774,6 +775,7 @@ if (tierId !== 0) {
         subnetIds: subnetIds,
         loadBalancerScheme: loadBalancerScheme,
         ingressUseDedicatedMachines: tierConf.ingressConf?.useDedicatedMachines,
+        ingressReplicas: tierConf.ingressConf?.replicas,
         clusterName: eksOutput.clusterName,
         nodeInstanceRoleArn: eksOutput.instanceRoleArn,
 
