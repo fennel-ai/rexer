@@ -5,6 +5,8 @@ import (
 	"fennel/test"
 	"fennel/test/optest"
 	"testing"
+
+	"fennel/engine/interpreter"
 )
 
 func TestPredictErrorNoModelParam(t *testing.T) {
@@ -19,7 +21,7 @@ func TestPredictErrorNoModelParam(t *testing.T) {
 
 	tier := test.Tier(t)
 	defer test.Teardown(tier)
-	optest.AssertErrorContains(t, tier, &predictOperator{}, value.Dict{} /* no static kwargs */, [][]value.Value{intable}, contextKwargTable, "kwarg 'model' not provided for operator")
+	optest.AssertErrorIs(t, tier, &predictOperator{}, value.Dict{} /* no static kwargs */, [][]value.Value{intable}, contextKwargTable, &interpreter.RequiredKwargNotProvidedError{ParamName: "model", OpModule: "model", OpName: "predict"})
 }
 
 func TestPredictErrorNoInputParam(t *testing.T) {
