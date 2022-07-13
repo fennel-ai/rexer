@@ -1,12 +1,13 @@
 package cache
 
 import (
-	"fennel/hangar"
-	"fennel/hangar/encoders"
-	"fennel/lib/ftypes"
 	"math/rand"
 	"testing"
 	"time"
+
+	"fennel/hangar"
+	"fennel/hangar/encoders"
+	"fennel/lib/ftypes"
 
 	"github.com/stretchr/testify/assert"
 )

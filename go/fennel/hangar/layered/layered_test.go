@@ -1,17 +1,18 @@
 package layered
 
 import (
-	"fennel/hangar"
-	"fennel/hangar/cache"
-	"fennel/hangar/db"
-	"fennel/hangar/encoders"
-	"fennel/lib/ftypes"
 	"fmt"
 	"io"
 	"math/rand"
 	"sync"
 	"testing"
 	"time"
+
+	"fennel/hangar"
+	"fennel/hangar/cache"
+	"fennel/hangar/db"
+	"fennel/hangar/encoders"
+	"fennel/lib/ftypes"
 
 	"github.com/samber/mo"
 	"github.com/stretchr/testify/assert"
@@ -60,45 +61,67 @@ func TestCaching(t *testing.T) {
 	assert.NoError(t, err)
 
 	s := NewHangar(planeID, cache, gt)
-	defer s.Teardown() //nolint: errcheck
 
 	// first setup some keys
-	key := hangar.Key{Data: []byte("key")}
+	key1 := hangar.Key{Data: []byte("key1")}
+	key2 := hangar.Key{Data: []byte("key2")}
 	field1 := []byte("field1")
 	field2 := []byte("field2")
+	field3 := []byte("field3")
 	val1 := []byte("val1")
 	val2 := []byte("val2")
 	val3 := []byte("val3")
 	val4 := []byte("val4")
 
-	gt.set(key.Data, field1, val1)
-	gt.set(key.Data, field2, val2)
-	ret, err := s.GetMany([]hangar.KeyGroup{{Prefix: key, Fields: mo.Some[hangar.Fields]([][]byte{field1, field2})}})
-	time.Sleep(100 * time.Millisecond) // sleep a bit for writes to propagate
+	gt.set(key1.Data, field1, val1)
+	gt.set(key1.Data, field2, val2)
+	gt.set(key2.Data, field3, val3)
+
+	ret, err := s.GetMany([]hangar.KeyGroup{
+		{Prefix: key1, Fields: mo.Some[hangar.Fields]([][]byte{field1, field2})},
+		{Prefix: key2, Fields: mo.None[hangar.Fields]()},
+	})
 	assert.NoError(t, err)
-	assert.Len(t, ret, 1)
+	assert.Len(t, ret, 2)
 	assert.ElementsMatch(t, [][]byte{field1, field2}, ret[0].Fields)
 	assert.ElementsMatch(t, [][]byte{val1, val2}, ret[0].Values)
+	assert.ElementsMatch(t, [][]byte{field3}, ret[1].Fields)
+	assert.ElementsMatch(t, [][]byte{val3}, ret[1].Values)
+	time.Sleep(100 * time.Millisecond) // sleep a bit for writes to propagate
 
-	// now update the fields
-	gt.set(key.Data, field1, val3)
-	gt.set(key.Data, field2, val4)
+	// now update some fields directly in the store.
+	gt.set(key1.Data, field1, val3)
+	gt.set(key1.Data, field2, val4)
 
 	// since data is cached, doing gets from store should be same as before
-	ret, err = s.GetMany([]hangar.KeyGroup{{Prefix: key, Fields: mo.Some[hangar.Fields]([][]byte{field1, field2})}})
+	ret, err = s.GetMany([]hangar.KeyGroup{
+		{Prefix: key1, Fields: mo.Some[hangar.Fields]([][]byte{field1, field2})},
+		{Prefix: key2, Fields: mo.None[hangar.Fields]()},
+	})
 	assert.NoError(t, err)
+	assert.Len(t, ret, 2)
 	assert.ElementsMatch(t, [][]byte{field1, field2}, ret[0].Fields)
 	assert.ElementsMatch(t, [][]byte{val1, val2}, ret[0].Values)
+	assert.ElementsMatch(t, [][]byte{field3}, ret[1].Fields)
+	assert.ElementsMatch(t, [][]byte{val3}, ret[1].Values)
 
-	// now delete just one field
-	assert.NoError(t, s.DelMany([]hangar.KeyGroup{{Prefix: key, Fields: mo.Some[hangar.Fields]([][]byte{field1})}}))
+	// now delete just one field from one of the keys.
+	assert.NoError(t, s.DelMany([]hangar.KeyGroup{
+		{Prefix: key1, Fields: mo.Some[hangar.Fields]([][]byte{field1})},
+	}))
 	time.Sleep(100 * time.Millisecond) // sleep a bit for writes to propagate
 
 	// for that key alone the value should have changed
-	ret, err = s.GetMany([]hangar.KeyGroup{{Prefix: key, Fields: mo.Some[hangar.Fields]([][]byte{field1, field2})}})
+	ret, err = s.GetMany([]hangar.KeyGroup{
+		{Prefix: key2, Fields: mo.Some[hangar.Fields]([][]byte{field3})},
+		{Prefix: key1, Fields: mo.Some[hangar.Fields]([][]byte{field1, field2})},
+	})
 	assert.NoError(t, err)
-	assert.ElementsMatch(t, [][]byte{field1, field2}, ret[0].Fields)
-	assert.ElementsMatch(t, [][]byte{val3, val2}, ret[0].Values)
+	assert.Len(t, ret, 2)
+	assert.ElementsMatch(t, [][]byte{field3}, ret[0].Fields)
+	assert.ElementsMatch(t, [][]byte{val3}, ret[0].Values)
+	assert.ElementsMatch(t, [][]byte{field1, field2}, ret[1].Fields)
+	assert.ElementsMatch(t, [][]byte{val3, val2}, ret[1].Values)
 }
 
 type mockStore struct {
