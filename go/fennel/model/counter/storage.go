@@ -558,7 +558,7 @@ func readFromRedis(ctx context.Context, tier tier.Tier, rkeys []string) ([]value
 		return nil, err
 	}
 	redisKeyStats.WithLabelValues("redis_keys_interpreted").Observe(float64(len(res)))
-	ctx, tmr := timer.Start(ctx, tier.ID, "redis.interpret_response")
+	_, tmr := timer.Start(ctx, tier.ID, "redis.interpret_response")
 	defer tmr.Stop()
 	ret := make([]value.Value, len(rkeys))
 	for i, v := range res {
