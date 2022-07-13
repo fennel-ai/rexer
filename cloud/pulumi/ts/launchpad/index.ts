@@ -137,6 +137,7 @@ const tierConfs: Record<number, TierConf> = {
         },
         ingressConf: {
             useDedicatedMachines: true,
+            replicas: 4,
         }
     },
     // Convoy staging tier using Fennel's staging data plane.
@@ -501,7 +502,7 @@ const planeConfs: Record<number, PlaneConf> = {
                     // at least have 4 nodes (previously this was 2, but our servers have been OOMing for which
                     // we will have 4 nodes up and running).
                     minSize: 4,
-                    maxSize: 10,
+                    maxSize: 15,
                     amiType: DEFAULT_ARM_AMI_TYPE,
                     labels: {
                         "node-group": "p-5-queryserver-ng"
@@ -774,6 +775,7 @@ if (tierId !== 0) {
         subnetIds: subnetIds,
         loadBalancerScheme: loadBalancerScheme,
         ingressUseDedicatedMachines: tierConf.ingressConf?.useDedicatedMachines,
+        ingressReplicas: tierConf.ingressConf?.replicas,
         clusterName: eksOutput.clusterName,
         nodeInstanceRoleArn: eksOutput.instanceRoleArn,
 

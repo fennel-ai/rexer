@@ -74,6 +74,7 @@ export type CounterCleanupConf = {
 
 export type IngressConf = {
     useDedicatedMachines?: boolean,
+    replicas?: number,
     usePublicSubnets?: boolean,
 }
 
@@ -137,6 +138,7 @@ type inputType = {
     subnetIds: string[],
     loadBalancerScheme: string,
     ingressUseDedicatedMachines?: boolean,
+    ingressReplicas?: number,
     clusterName: string,
     nodeInstanceRoleArn: string,
 
@@ -200,6 +202,7 @@ const parseConfig = (): inputType => {
         subnetIds: config.requireObject(nameof<inputType>("subnetIds")),
         loadBalancerScheme: config.require(nameof<inputType>("loadBalancerScheme")),
         ingressUseDedicatedMachines: config.getBoolean(nameof<inputType>("ingressUseDedicatedMachines")),
+        ingressReplicas: config.getNumber(nameof<inputType>("ingressReplicas")),
         clusterName: config.require(nameof<inputType>("clusterName")),
         nodeInstanceRoleArn: config.require(nameof<inputType>("nodeInstanceRoleArn")),
 
@@ -452,6 +455,7 @@ const setupResources = async () => {
         loadBalancerScheme: input.loadBalancerScheme,
         tierId: input.tierId,
         useDedicatedMachines: input.ingressUseDedicatedMachines,
+        replicas: input.ingressReplicas,
         clusterName: input.clusterName,
         nodeRoleArn: input.nodeInstanceRoleArn,
     })
@@ -601,6 +605,7 @@ type TierInput = {
     subnetIds: string[],
     loadBalancerScheme: string,
     ingressUseDedicatedMachines?: boolean,
+    ingressReplicas?: number,
     clusterName: string,
     nodeInstanceRoleArn: string,
 
@@ -702,6 +707,9 @@ const setupTier = async (args: TierInput, preview?: boolean, destroy?: boolean) 
     await stack.setConfig(nameof<inputType>("loadBalancerScheme"), { value: args.loadBalancerScheme })
     if (args.ingressUseDedicatedMachines !== undefined) {
         await stack.setConfig(nameof<inputType>("ingressUseDedicatedMachines"), { value: JSON.stringify(args.ingressUseDedicatedMachines) })
+    }
+    if (args.ingressReplicas !== undefined) {
+        await stack.setConfig(nameof<inputType>("ingressReplicas"), { value: String(args.ingressReplicas) })
     }
     await stack.setConfig(nameof<inputType>("clusterName"), { value: args.clusterName });
     await stack.setConfig(nameof<inputType>("nodeInstanceRoleArn"), { value: args.nodeInstanceRoleArn })
