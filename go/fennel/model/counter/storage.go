@@ -3,7 +3,6 @@ package counter
 import (
 	"context"
 	"fmt"
-	"runtime"
 	"strconv"
 	"strings"
 	"sync"
@@ -16,7 +15,6 @@ import (
 	"fennel/lib/timer"
 	"fennel/lib/utils/binary"
 	"fennel/lib/utils/encoding/base91"
-	"fennel/lib/utils/parallel"
 	"fennel/lib/utils/slice"
 	"fennel/lib/value"
 	"fennel/redis"
@@ -63,12 +61,6 @@ var bucket_stats = promauto.NewGaugeVec(prometheus.GaugeOpts{
 	Name: "bucket_stats",
 	Help: "Stats number of buckets being computed for every aggregate",
 }, []string{"aggregate_id"})
-
-var workerPool parallel.WorkerPool[interface{}, value.Value]
-
-func init() {
-	workerPool = parallel.NewWorkerPool[interface{}, value.Value](runtime.GOMAXPROCS(0))
-}
 
 // slotArena is a pool of slices of type slot such that max cap of any slice is upto 1 << 15 (i.e. 32K)
 // and total cap of all slices in pools is upto 1 << 24 i.e. ~4M. Since each slot is 64 bytes, this
@@ -566,10 +558,15 @@ func readFromRedis(ctx context.Context, tier tier.Tier, rkeys []string) ([]value
 		return nil, err
 	}
 	redisKeyStats.WithLabelValues("redis_keys_interpreted").Observe(float64(len(res)))
-	ctx, tmr := timer.Start(ctx, tier.ID, "redis.interpret_response")
+	_, tmr := timer.Start(ctx, tier.ID, "redis.interpret_response")
 	defer tmr.Stop()
-
-	return workerPool.Process(ctx, res, interpretRedisResponse)
+	ret := make([]value.Value, len(rkeys))
+	for i, v := range res {
+		if ret[i], err = interpretRedisResponse(v); err != nil {
+			return nil, err
+		}
+	}
+	return ret, nil
 }
 
 func interpretRedisResponse(v interface{}) (value.Value, error) {
