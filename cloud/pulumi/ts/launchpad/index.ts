@@ -775,7 +775,7 @@ if (tierId !== 0) {
         subnetIds: subnetIds,
         loadBalancerScheme: loadBalancerScheme,
         ingressUseDedicatedMachines: tierConf.ingressConf?.useDedicatedMachines,
-        ingressReplicas: tierConf.ingressConf?.machineCount,
+        ingressReplicas: tierConf.ingressConf?.replicas,
         clusterName: eksOutput.clusterName,
         nodeInstanceRoleArn: eksOutput.instanceRoleArn,
 
