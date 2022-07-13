@@ -1,7 +1,7 @@
 import * as k8s from "@pulumi/kubernetes";
 import * as aws from "@pulumi/aws";
 import * as postgresql from "@pulumi/postgresql";
-import {UNLEASH_PASSWORD, UNLEASH_USERNAME} from "../tier-consts/consts";
+import {POSTGRESQL_PASSWORD, POSTGRESQL_USERNAME} from "../tier-consts/consts";
 
 export const plugins = {
     "kubernetes": "v3.18.0",
@@ -44,13 +44,13 @@ export const setup = async (input: inputType): Promise<outputType> => {
         host: input.unleashDbEndpoint,
         port: input.unleashDbPort,
         superuser: true,
-        databaseUsername: UNLEASH_USERNAME,
-        username: UNLEASH_USERNAME,
-        password: UNLEASH_PASSWORD,
+        databaseUsername: POSTGRESQL_USERNAME,
+        username: POSTGRESQL_USERNAME,
+        password: POSTGRESQL_PASSWORD,
     }, { provider: provider });
     const db = new postgresql.Database(databaseName, {
         name: databaseName,
-    }, { provider: postgresProvider, protect: input.protect });
+    }, { provider: postgresProvider, protect: input.protect, dependsOn: postgresProvider });
 
     // setup unleash with:
     //  1. disable API tokens - it is not possible to create one automatically; we disable API tokens and enforce
@@ -77,7 +77,7 @@ export const setup = async (input: inputType): Promise<outputType> => {
                     "content": `
                         'use strict';
                         const unleash = require('unleash-server');
-                        
+
                         unleash.start({
                             authentication: {
                                 enableApiToken: false,
@@ -100,8 +100,8 @@ export const setup = async (input: inputType): Promise<outputType> => {
                 "database": databaseName,
                 "host": input.unleashDbEndpoint,
                 "port": input.unleashDbPort,
-                "user": UNLEASH_USERNAME,
-                "pass": UNLEASH_PASSWORD,
+                "user": POSTGRESQL_USERNAME,
+                "pass": POSTGRESQL_PASSWORD,
             },
             "containerPort": containerPort,
         }
