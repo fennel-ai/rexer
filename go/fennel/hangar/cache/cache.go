@@ -1,12 +1,12 @@
 package cache
 
 import (
-	"fennel/hangar"
-	"fennel/lib/ftypes"
-	"fennel/test"
 	"fmt"
 	"io"
 	"log"
+
+	"fennel/hangar"
+	"fennel/lib/ftypes"
 
 	"github.com/dgraph-io/ristretto"
 )
@@ -55,9 +55,6 @@ func (c *rcache) Restore(source io.Reader) error {
 }
 
 func (c *rcache) Teardown() error {
-	if !test.IsInTest() {
-		return fmt.Errorf("can not teardown a store outside of test mode")
-	}
 	return c.Close()
 }
 

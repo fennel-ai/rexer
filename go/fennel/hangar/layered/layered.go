@@ -1,13 +1,14 @@
 package layered
 
 import (
-	"fennel/hangar"
-	"fennel/lib/ftypes"
-	"fennel/test"
 	"fmt"
 	"io"
 	"log"
 	"time"
+
+	"fennel/hangar"
+	"fennel/lib/arena"
+	"fennel/lib/ftypes"
 
 	"github.com/samber/mo"
 )
@@ -61,9 +62,6 @@ func (l *layered) Restore(source io.Reader) error {
 
 // TODO: close all goroutines as part of teardown
 func (l *layered) Teardown() error {
-	if !test.IsInTest() {
-		return fmt.Errorf("can not teardown a store outside of test mode")
-	}
 	if err := l.cache.Teardown(); err != nil {
 		return fmt.Errorf("could not tear down cache of store: %v", err)
 	}
@@ -114,14 +112,14 @@ func (l *layered) GetMany(kgs []hangar.KeyGroup) ([]hangar.ValGroup, error) {
 		return nil, err
 	}
 	notfound := make([]hangar.KeyGroup, 0, len(kgs))
-	ptr := make([]int, len(kgs))
-
+	ptr := arena.Ints.Alloc(0, len(kgs))
+	defer arena.Ints.Free(ptr)
 	for i, cval := range results {
 		if kgs[i].Fields.IsAbsent() {
 			var kg hangar.KeyGroup
 			kg.Prefix = kgs[i].Prefix
 			kg.Fields = mo.None[hangar.Fields]()
-			ptr[i] = len(notfound)
+			ptr = append(ptr, i)
 			notfound = append(notfound, kg)
 		} else if len(cval.Fields) != len(kgs[i].Fields.MustGet()) {
 			found := make(map[string]struct{}, len(kgs[i].Fields.MustGet()))
@@ -137,10 +135,8 @@ func (l *layered) GetMany(kgs []hangar.KeyGroup) ([]hangar.ValGroup, error) {
 			}
 			kg.Prefix = kgs[i].Prefix
 			kg.Fields = mo.Some(fields)
-			ptr[i] = len(notfound)
+			ptr = append(ptr, i)
 			notfound = append(notfound, kg)
-		} else {
-			ptr[i] = -1
 		}
 	}
 
