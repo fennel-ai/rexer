@@ -1,12 +1,12 @@
 package db
 
 import (
-	"fennel/hangar"
-	"fennel/lib/ftypes"
-	"fennel/test"
 	"fmt"
 	"io"
 	"os"
+
+	"fennel/hangar"
+	"fennel/lib/ftypes"
 
 	"github.com/dgraph-io/badger/v3"
 )
@@ -29,9 +29,6 @@ func (b *badgerDB) Restore(source io.Reader) error {
 }
 
 func (b *badgerDB) Teardown() error {
-	if !test.IsInTest() {
-		return fmt.Errorf("can not teardown a store outside of tests")
-	}
 	if err := b.Close(); err != nil {
 		return err
 	}
