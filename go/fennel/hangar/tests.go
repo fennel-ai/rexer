@@ -65,13 +65,19 @@ func testTTL(t *testing.T, store Hangar) {
 	// initially all empty
 	verifyMissing(t, store, kgs)
 	// set all a TTL of 1 second
+	start := time.Now()
 	for i := range vgs {
-		(&vgs[i]).Expiry = int64(time.Now().Unix()) + 1
+		(&vgs[i]).Expiry = start.Unix() + 1
 	}
 	// set with TTL and verify can get
 	err := store.SetMany(keys, vgs)
 	assert.NoError(t, err)
-	verifyValues(t, store, kgs, vgs)
+	// If the keys shouldn't have expired, we should be able to get them back.
+	// Note: we need this check for cases when this go-routine may not have run
+	// for a while, for example when the test is run with -race flag.
+	if time.Since(start) < time.Second {
+		verifyValues(t, store, kgs, vgs)
+	}
 
 	// now sleep for 2 seconds and verify missing
 	time.Sleep(time.Second * 2)
