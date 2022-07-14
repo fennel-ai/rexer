@@ -139,36 +139,35 @@ func TestUpdateEndpoint(t *testing.T) {
 }
 
 func TestScoreSvm(t *testing.T) {
-	t.Skip("Skipping test, till smclient-test-endpoint is fixed")
 	c, err := getTestClient()
 	assert.NoError(t, err)
-	featureVectors := []value.List{
-		value.NewList(value.String("1:1 9:1 19:1 21:1 24:1 34:1 36:1 39:1 42:1 53:1 56:1 65:1 69:1 77:1 86:1 88:1 92:1 95:1 102:1 106:1 117:1 122:1")),
-		value.NewList(value.String("3:1 9:1 19:1 21:1 30:1 34:1 36:1 40:1 41:1 53:1 58:1 65:1 69:1 77:1 86:1 88:1 92:1 95:1 102:1 106:1 118:1 124:1")),
-		value.NewList(value.String("1:1 9:1 20:1 21:1 24:1 34:1 36:1 39:1 41:1 53:1 56:1 65:1 69:1 77:1 86:1 88:1 92:1 95:1 102:1 106:1 117:1 122:1")),
-		value.NewList(value.String("3:1 9:1 19:1 21:1 24:1 34:1 36:1 39:1 51:1 53:1 56:1 65:1 69:1 77:1 86:1 88:1 92:1 95:1 102:1 106:1 116:1 122:1")),
-		value.NewList(value.String("4:1 7:1 11:1 22:1 29:1 34:1 36:1 40:1 41:1 53:1 58:1 65:1 69:1 77:1 86:1 88:1 92:1 95:1 102:1 105:1 119:1 124:1")),
-		value.NewList(value.String("3:1 10:1 20:1 21:1 23:1 34:1 37:1 40:1 42:1 54:1 55:1 65:1 69:1 77:1 86:1 88:1 92:1 95:1 102:1 106:1 118:1 126:1")),
-		value.NewList(value.String("3:1 9:1 11:1 21:1 30:1 34:1 36:1 40:1 51:1 53:1 58:1 65:1 69:1 77:1 86:1 88:1 92:1 95:1 102:1 106:1 117:1 124:1")),
-		value.NewList(value.String("1:1 9:1 20:1 21:1 23:1 34:1 36:1 39:1 42:1 53:1 56:1 65:1 69:1 77:1 86:1 88:1 92:1 95:1 102:1 106:1 117:1 120:1")),
-		value.NewList(value.String("3:1 9:1 19:1 21:1 30:1 34:1 36:1 40:1 48:1 53:1 58:1 65:1 69:1 77:1 86:1 88:1 92:1 95:1 102:1 106:1 118:1 120:1")),
-		value.NewList(value.String("4:1 9:1 20:1 21:1 24:1 34:1 36:1 39:1 51:1 53:1 60:1 65:1 67:1 77:1 86:1 88:1 92:1 95:1 102:1 105:1 117:1 123:1")),
-		value.NewList(value.String("3:1 9:1 11:1 21:1 30:1 34:1 36:1 40:1 41:1 53:1 58:1 65:1 69:1 77:1 86:1 88:1 92:1 95:1 102:1 106:1 118:1 124:1")),
-		value.NewList(value.String("1:1 9:1 20:1 21:1 23:1 34:1 36:1 39:1 51:1 53:1 56:1 65:1 69:1 77:1 86:1 88:1 92:1 95:1 102:1 105:1 117:1 122:1")),
-		value.NewList(value.String("4:1 7:1 14:1 22:1 29:1 34:1 37:1 39:1 42:1 54:1 58:1 65:1 69:1 77:1 86:1 88:1 92:1 95:1 98:1 106:1 114:1 120:1")),
-		value.NewList(value.String("1:1 9:1 19:1 21:1 24:1 34:1 36:1 39:1 42:1 53:1 56:1 65:1 69:1 77:1 86:1 88:1 92:1 95:1 102:1 106:1 117:1 120:1")),
-		value.NewList(value.String("4:1 10:1 11:1 22:1 29:1 34:1 37:1 39:1 41:1 54:1 58:1 65:1 69:1 77:1 86:1 88:1 92:1 95:1 98:1 105:1 114:1 120:1")),
-		value.NewList(value.String("4:1 9:1 20:1 21:1 23:1 34:1 36:1 39:1 51:1 53:1 60:1 65:1 67:1 77:1 86:1 88:1 92:1 95:1 102:1 106:1 117:1 120:1")),
-		value.NewList(value.String("1:1 10:1 20:1 21:1 23:1 34:1 36:1 39:1 41:1 53:1 56:1 65:1 69:1 77:1 86:1 88:1 92:1 95:1 102:1 105:1 117:1 120:1")),
-		value.NewList(value.String("3:1 9:1 11:1 21:1 30:1 34:1 36:1 40:1 51:1 53:1 58:1 65:1 69:1 77:1 86:1 88:1 92:1 95:1 102:1 106:1 118:1 124:1")),
-		value.NewList(value.String("6:1 7:1 11:1 22:1 29:1 34:1 36:1 40:1 42:1 53:1 58:1 65:1 69:1 77:1 86:1 88:1 92:1 95:1 102:1 106:1 118:1 124:1")),
-		value.NewList(value.String("3:1 10:1 20:1 21:1 23:1 34:1 36:1 39:1 42:1 53:1 56:1 65:1 69:1 77:1 86:1 88:1 92:1 95:1 102:1 105:1 116:1 120:1")),
+	featureVectors := []value.Value{
+		value.NewDict(map[string]value.Value{"1": value.Int(1), "9": value.Int(1), "19": value.Int(1), "21": value.Int(1), "24": value.Int(1), "34": value.Int(1), "36": value.Int(1), "39": value.Int(1), "42": value.Int(1), "53": value.Int(1), "56": value.Int(1), "65": value.Int(1), "69": value.Int(1), "77": value.Int(1), "86": value.Int(1), "88": value.Int(1), "92": value.Int(1), "95": value.Int(1), "102": value.Int(1), "106": value.Int(1), "117": value.Int(1), "122": value.Int(1)}),
+		value.NewDict(map[string]value.Value{"3": value.Int(1), "9": value.Int(1), "19": value.Int(1), "21": value.Int(1), "30": value.Int(1), "34": value.Int(1), "36": value.Int(1), "40": value.Int(1), "41": value.Int(1), "53": value.Int(1), "58": value.Int(1), "65": value.Int(1), "69": value.Int(1), "77": value.Int(1), "86": value.Int(1), "88": value.Int(1), "92": value.Int(1), "95": value.Int(1), "102": value.Int(1), "106": value.Int(1), "118": value.Int(1), "124": value.Int(1)}),
+		value.NewDict(map[string]value.Value{"1": value.Int(1), "9": value.Int(1), "20": value.Int(1), "21": value.Int(1), "24": value.Int(1), "34": value.Int(1), "36": value.Int(1), "39": value.Int(1), "41": value.Int(1), "53": value.Int(1), "56": value.Int(1), "65": value.Int(1), "69": value.Int(1), "77": value.Int(1), "86": value.Int(1), "88": value.Int(1), "92": value.Int(1), "95": value.Int(1), "102": value.Int(1), "106": value.Int(1), "117": value.Int(1), "122": value.Int(1)}),
+		value.NewDict(map[string]value.Value{"3": value.Int(1), "9": value.Int(1), "19": value.Int(1), "21": value.Int(1), "24": value.Int(1), "34": value.Int(1), "36": value.Int(1), "39": value.Int(1), "51": value.Int(1), "53": value.Int(1), "56": value.Int(1), "65": value.Int(1), "69": value.Int(1), "77": value.Int(1), "86": value.Int(1), "88": value.Int(1), "92": value.Int(1), "95": value.Int(1), "102": value.Int(1), "106": value.Int(1), "116": value.Int(1), "122": value.Int(1)}),
+		value.NewDict(map[string]value.Value{"4": value.Int(1), "7": value.Int(1), "11": value.Int(1), "22": value.Int(1), "29": value.Int(1), "34": value.Int(1), "36": value.Int(1), "40": value.Int(1), "41": value.Int(1), "53": value.Int(1), "58": value.Int(1), "65": value.Int(1), "69": value.Int(1), "77": value.Int(1), "86": value.Int(1), "88": value.Int(1), "92": value.Int(1), "95": value.Int(1), "102": value.Int(1), "105": value.Int(1), "119": value.Int(1), "124": value.Int(1)}),
+		value.NewDict(map[string]value.Value{"3": value.Int(1), "10": value.Int(1), "20": value.Int(1), "21": value.Int(1), "23": value.Int(1), "34": value.Int(1), "37": value.Int(1), "40": value.Int(1), "42": value.Int(1), "54": value.Int(1), "55": value.Int(1), "65": value.Int(1), "69": value.Int(1), "77": value.Int(1), "86": value.Int(1), "88": value.Int(1), "92": value.Int(1), "95": value.Int(1), "102": value.Int(1), "106": value.Int(1), "118": value.Int(1), "126": value.Int(1)}),
+		value.NewDict(map[string]value.Value{"3": value.Int(1), "9": value.Int(1), "11": value.Int(1), "21": value.Int(1), "30": value.Int(1), "34": value.Int(1), "36": value.Int(1), "40": value.Int(1), "51": value.Int(1), "53": value.Int(1), "58": value.Int(1), "65": value.Int(1), "69": value.Int(1), "77": value.Int(1), "86": value.Int(1), "88": value.Int(1), "92": value.Int(1), "95": value.Int(1), "102": value.Int(1), "106": value.Int(1), "117": value.Int(1), "124": value.Int(1)}),
+		value.NewDict(map[string]value.Value{"1": value.Int(1), "9": value.Int(1), "20": value.Int(1), "21": value.Int(1), "23": value.Int(1), "34": value.Int(1), "36": value.Int(1), "39": value.Int(1), "42": value.Int(1), "53": value.Int(1), "56": value.Int(1), "65": value.Int(1), "69": value.Int(1), "77": value.Int(1), "86": value.Int(1), "88": value.Int(1), "92": value.Int(1), "95": value.Int(1), "102": value.Int(1), "106": value.Int(1), "117": value.Int(1), "120": value.Int(1)}),
+		value.NewDict(map[string]value.Value{"3": value.Int(1), "9": value.Int(1), "19": value.Int(1), "21": value.Int(1), "30": value.Int(1), "34": value.Int(1), "36": value.Int(1), "40": value.Int(1), "48": value.Int(1), "53": value.Int(1), "58": value.Int(1), "65": value.Int(1), "69": value.Int(1), "77": value.Int(1), "86": value.Int(1), "88": value.Int(1), "92": value.Int(1), "95": value.Int(1), "102": value.Int(1), "106": value.Int(1), "118": value.Int(1), "120": value.Int(1)}),
+		value.NewDict(map[string]value.Value{"4": value.Int(1), "9": value.Int(1), "20": value.Int(1), "21": value.Int(1), "24": value.Int(1), "34": value.Int(1), "36": value.Int(1), "39": value.Int(1), "51": value.Int(1), "53": value.Int(1), "60": value.Int(1), "65": value.Int(1), "67": value.Int(1), "77": value.Int(1), "86": value.Int(1), "88": value.Int(1), "92": value.Int(1), "95": value.Int(1), "102": value.Int(1), "105": value.Int(1), "117": value.Int(1), "123": value.Int(1)}),
+		value.NewDict(map[string]value.Value{"3": value.Int(1), "9": value.Int(1), "11": value.Int(1), "21": value.Int(1), "30": value.Int(1), "34": value.Int(1), "36": value.Int(1), "40": value.Int(1), "41": value.Int(1), "53": value.Int(1), "58": value.Int(1), "65": value.Int(1), "69": value.Int(1), "77": value.Int(1), "86": value.Int(1), "88": value.Int(1), "92": value.Int(1), "95": value.Int(1), "102": value.Int(1), "106": value.Int(1), "118": value.Int(1), "124": value.Int(1)}),
+		value.NewDict(map[string]value.Value{"1": value.Int(1), "9": value.Int(1), "20": value.Int(1), "21": value.Int(1), "23": value.Int(1), "34": value.Int(1), "36": value.Int(1), "39": value.Int(1), "51": value.Int(1), "53": value.Int(1), "56": value.Int(1), "65": value.Int(1), "69": value.Int(1), "77": value.Int(1), "86": value.Int(1), "88": value.Int(1), "92": value.Int(1), "95": value.Int(1), "102": value.Int(1), "105": value.Int(1), "117": value.Int(1), "122": value.Int(1)}),
+		value.NewDict(map[string]value.Value{"4": value.Int(1), "7": value.Int(1), "14": value.Int(1), "22": value.Int(1), "29": value.Int(1), "34": value.Int(1), "37": value.Int(1), "39": value.Int(1), "42": value.Int(1), "54": value.Int(1), "58": value.Int(1), "65": value.Int(1), "69": value.Int(1), "77": value.Int(1), "86": value.Int(1), "88": value.Int(1), "92": value.Int(1), "95": value.Int(1), "98": value.Int(1), "106": value.Int(1), "114": value.Int(1), "120": value.Int(1)}),
+		value.NewDict(map[string]value.Value{"1": value.Int(1), "9": value.Int(1), "19": value.Int(1), "21": value.Int(1), "24": value.Int(1), "34": value.Int(1), "36": value.Int(1), "39": value.Int(1), "42": value.Int(1), "53": value.Int(1), "56": value.Int(1), "65": value.Int(1), "69": value.Int(1), "77": value.Int(1), "86": value.Int(1), "88": value.Int(1), "92": value.Int(1), "95": value.Int(1), "102": value.Int(1), "106": value.Int(1), "117": value.Int(1), "120": value.Int(1)}),
+		value.NewDict(map[string]value.Value{"4": value.Int(1), "10": value.Int(1), "11": value.Int(1), "22": value.Int(1), "29": value.Int(1), "34": value.Int(1), "37": value.Int(1), "39": value.Int(1), "41": value.Int(1), "54": value.Int(1), "58": value.Int(1), "65": value.Int(1), "69": value.Int(1), "77": value.Int(1), "86": value.Int(1), "88": value.Int(1), "92": value.Int(1), "95": value.Int(1), "98": value.Int(1), "105": value.Int(1), "114": value.Int(1), "120": value.Int(1)}),
+		value.NewDict(map[string]value.Value{"4": value.Int(1), "9": value.Int(1), "20": value.Int(1), "21": value.Int(1), "23": value.Int(1), "34": value.Int(1), "36": value.Int(1), "39": value.Int(1), "51": value.Int(1), "53": value.Int(1), "60": value.Int(1), "65": value.Int(1), "67": value.Int(1), "77": value.Int(1), "86": value.Int(1), "88": value.Int(1), "92": value.Int(1), "95": value.Int(1), "102": value.Int(1), "106": value.Int(1), "117": value.Int(1), "120": value.Int(1)}),
+		value.NewDict(map[string]value.Value{"1": value.Int(1), "10": value.Int(1), "20": value.Int(1), "21": value.Int(1), "23": value.Int(1), "34": value.Int(1), "36": value.Int(1), "39": value.Int(1), "41": value.Int(1), "53": value.Int(1), "56": value.Int(1), "65": value.Int(1), "69": value.Int(1), "77": value.Int(1), "86": value.Int(1), "88": value.Int(1), "92": value.Int(1), "95": value.Int(1), "102": value.Int(1), "105": value.Int(1), "117": value.Int(1), "120": value.Int(1)}),
+		value.NewDict(map[string]value.Value{"3": value.Int(1), "9": value.Int(1), "11": value.Int(1), "21": value.Int(1), "30": value.Int(1), "34": value.Int(1), "36": value.Int(1), "40": value.Int(1), "51": value.Int(1), "53": value.Int(1), "58": value.Int(1), "65": value.Int(1), "69": value.Int(1), "77": value.Int(1), "86": value.Int(1), "88": value.Int(1), "92": value.Int(1), "95": value.Int(1), "102": value.Int(1), "106": value.Int(1), "118": value.Int(1), "124": value.Int(1)}),
+		value.NewDict(map[string]value.Value{"6": value.Int(1), "7": value.Int(1), "11": value.Int(1), "22": value.Int(1), "29": value.Int(1), "34": value.Int(1), "36": value.Int(1), "40": value.Int(1), "42": value.Int(1), "53": value.Int(1), "58": value.Int(1), "65": value.Int(1), "69": value.Int(1), "77": value.Int(1), "86": value.Int(1), "88": value.Int(1), "92": value.Int(1), "95": value.Int(1), "102": value.Int(1), "106": value.Int(1), "118": value.Int(1), "124": value.Int(1)}),
+		value.NewDict(map[string]value.Value{"3": value.Int(1), "10": value.Int(1), "20": value.Int(1), "21": value.Int(1), "23": value.Int(1), "34": value.Int(1), "36": value.Int(1), "39": value.Int(1), "42": value.Int(1), "53": value.Int(1), "56": value.Int(1), "65": value.Int(1), "69": value.Int(1), "77": value.Int(1), "86": value.Int(1), "88": value.Int(1), "92": value.Int(1), "95": value.Int(1), "102": value.Int(1), "105": value.Int(1), "116": value.Int(1), "120": value.Int(1)}),
 	}
 	response, err := c.Score(context.Background(), &lib.ScoreRequest{
 		Framework:     "xgboost",
 		EndpointName:  "smclient-test-endpoint",
-		ContainerName: lib.GetContainerName("smclient-test-xgboost-model", "v1"),
-		FeatureLists:  featureVectors,
+		ContainerName: lib.GetContainerName("smclient-model", "v1"),
+		FeaturesList:  featureVectors,
 	})
 	assert.NoError(t, err)
 	assert.Equal(t, len(featureVectors), len(response.Scores))
@@ -180,14 +179,14 @@ func TestScoreCsv(t *testing.T) {
 	assert.NoError(t, err)
 	csv, err := value.FromJSON([]byte("[0,0,0,0,0,0,0,1,0,1,0,1,0,0,1,0,0,0,1,0,0,0,0,0,0,0,0,0,1,0,1,0,0,1,0,0,0,0,0,0,0,0,1,1,0,1,0,0,1,0,0,0,0,0,0,0,0,0,0,1,0,0,1,0,0,0,0,0,0,1,0,0,0,1,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,1,0,1,0,0,1,0,0,1,0,0,0,0,0,1,0,1,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,1,0,0,0,0]"))
 	assert.NoError(t, err)
-	featureVectors := []value.List{
+	featureVectors := []value.Value{
 		csv.(value.List),
 	}
 	response, err := c.Score(context.Background(), &lib.ScoreRequest{
 		Framework:     "xgboost",
 		EndpointName:  "smclient-test-endpoint",
 		ContainerName: lib.GetContainerName("smclient-test-xgboost-model", "v1"),
-		FeatureLists:  featureVectors,
+		FeaturesList:  featureVectors,
 	})
 	assert.NoError(t, err)
 	assert.Equal(t, len(featureVectors), len(response.Scores))
@@ -224,8 +223,8 @@ func TestIsAutoscalingConfigured(t *testing.T) {
 	// configure autoscaling on this instance and assert
 	err = c.EnableAutoscaling(ctx, endpoint, variantName, lib.ScalingConfiguration{
 		Cpu: lib.CpuScalingPolicy{
-			CpuTargetValue: 20,
-			ScaleInCoolDownPeriod: 100,
+			CpuTargetValue:         20,
+			ScaleInCoolDownPeriod:  100,
 			ScaleOutCoolDownPeriod: 200,
 		},
 		BaseConfig: &lib.BaseConfig{MinCapacity: 1, MaxCapacity: 2},

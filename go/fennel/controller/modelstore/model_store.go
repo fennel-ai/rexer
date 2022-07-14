@@ -3,7 +3,6 @@ package modelstore
 import (
 	"context"
 	"fmt"
-
 	"math/rand"
 	"strconv"
 	"strings"
@@ -256,7 +255,7 @@ func Remove(ctx context.Context, tier tier.Tier, name, version string) error {
 	return EnsureEndpointExists(ctx, tier)
 }
 
-func PreTrainedScore(ctx context.Context, tier tier.Tier, modelName string, inputs []value.List) ([]value.Value, error) {
+func PreTrainedScore(ctx context.Context, tier tier.Tier, modelName string, inputs []value.Value) ([]value.Value, error) {
 	modelConfig, ok := SupportedPretrainedModels[modelName]
 	if !ok {
 		return nil, fmt.Errorf("model %s is not supported, currently supported models are: %s", modelName, strings.Join(GetSupportedModels(), ", "))
@@ -264,7 +263,7 @@ func PreTrainedScore(ctx context.Context, tier tier.Tier, modelName string, inpu
 	req := lib.ScoreRequest{
 		Framework:    modelConfig.Framework,
 		EndpointName: PreTrainedModelId(modelName, tier.ID),
-		FeatureLists: inputs,
+		FeaturesList: inputs,
 	}
 	res, err := tier.SagemakerClient.Score(ctx, &req)
 	if err != nil {
@@ -277,7 +276,7 @@ func PreTrainedScore(ctx context.Context, tier tier.Tier, modelName string, inpu
 // on a successful run. Returns an error of type modelstore.RetryError when the error is only
 // temporary and sending the request again after a few minutes is recommended.
 func Score(
-	ctx context.Context, tier tier.Tier, name, version string, featureVecs []value.List,
+	ctx context.Context, tier tier.Tier, name, version string, featureVecs []value.Value,
 ) (res []value.Value, err error) {
 	containerName := lib.GetContainerName(name, version)
 	var framework string
@@ -296,7 +295,7 @@ func Score(
 		Framework:     framework,
 		EndpointName:  tier.ModelStore.EndpointName(),
 		ContainerName: lib.GetContainerName(name, version),
-		FeatureLists:  featureVecs,
+		FeaturesList:  featureVecs,
 	}
 	response, err := tier.SagemakerClient.Score(ctx, &req)
 
@@ -423,10 +422,10 @@ func EnsureEndpointExists(ctx context.Context, tier tier.Tier) error {
 	}
 	if endpointCfg.Name == "" {
 		endpointCfg = lib.SagemakerEndpointConfig{
-			Name:          fmt.Sprintf("%s-config-%d", sagemakerModelName, rand.Int63()),
-			ModelName:     sagemakerModelName,
-			VariantName:   sagemakerModelName,
-			InstanceType:  tier.SagemakerClient.GetInstanceType(),
+			Name:         fmt.Sprintf("%s-config-%d", sagemakerModelName, rand.Int63()),
+			ModelName:    sagemakerModelName,
+			VariantName:  sagemakerModelName,
+			InstanceType: tier.SagemakerClient.GetInstanceType(),
 			// TODO: use a larger number of initial instance size as an additional precaution step - creating and
 			// applying a new endpoint configuration results in updating the endpoint during which autoscaling is
 			// blocked (or we have not explicitly configured it yet), it might be better to start with a larger
@@ -567,7 +566,7 @@ func EnableAutoscalingWhenEndpointInService(tier tier.Tier, sagemakerEndpointNam
 	inService := false
 	for {
 		select {
-		case <- ticker.C:
+		case <-ticker.C:
 			err := EnsureEndpointInService(ctx, tier)
 			if err == nil {
 				inService = true
@@ -596,7 +595,7 @@ func EnableAutoscalingWhenEndpointInService(tier tier.Tier, sagemakerEndpointNam
 		Cpu: lib.CpuScalingPolicy{
 			CpuTargetValue: 70,
 			// scale out aggressively than scaling in
-			ScaleInCoolDownPeriod: 180,
+			ScaleInCoolDownPeriod:  180,
 			ScaleOutCoolDownPeriod: 60,
 		},
 		BaseConfig: &lib.BaseConfig{
