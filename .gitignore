@@ -38,3 +38,5 @@ Cargo.lock
 
 # Test files
 go/fennel/lib/value/testdata/
+dist/
+
