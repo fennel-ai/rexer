@@ -41,6 +41,9 @@ with pkgs; mkShell {
     pkgs.poetry
     pkgs.pipenv
 
+    # Packages for javascript development
+    unstable.nodejs-18_x
+
     # Packages for deployment
     pkgs.docker
 
