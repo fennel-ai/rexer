@@ -1,8 +1,8 @@
 # The Pulumi.yaml, package.json and tsconfig.json files in this project contain
 # some non-default changes to allow us to use await outside an async function.
 # See: https://github.com/pulumi/pulumi/issues/5161#issuecomment-1010018506
-name: unleash-postgres
-description: unleash-postgres is a pulumi project to setup postgres cluster for unleash setup
+name: postgres
+description: postgres is a pulumi project to setup postgres cluster
 runtime:
   name: nodejs
   options:
