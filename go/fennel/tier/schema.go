@@ -119,8 +119,23 @@ var Schema = db.Schema{
 	// ==================== END Schema for Phaser ======================
 	13: `ALTER TABLE aggregate_config ADD COLUMN source VARCHAR(64) NOT NULL DEFAULT 'action';`,
 	14: `ALTER TABLE query_ast ADD COLUMN name VARCHAR(64) NOT NULL;`,
+<<<<<<< HEAD
 	// Statement 15 adds the container_name column to the model table.
 	// Statement 16 generates container names for rows with no container name.
 	15: `ALTER TABLE model ADD COLUMN container_name VARCHAR(255) NOT NULL;`,
 	16: `UPDATE model SET container_name=CONCAT("Container-", name, "-", version) WHERE container_name="";`,
+=======
+
+	// ================== BEGIN Schema for Connector  ======================
+	15: `CREATE TABLE IF NOT EXISTS connector (
+			id BIGINT UNSIGNED NOT NULL PRIMARY KEY AUTO_INCREMENT,
+			name VARCHAR(255) NOT NULL,
+			version VARCHAR(255) NOT NULL,
+			source_name VARCHAR(255) NOT NULL,
+			source_type VARCHAR(255) NOT NULL,
+			destination_name VARCHAR(255) NOT NULL,
+			query_ser BLOB NOT NULL,
+		);`,
+	// ==================== END Schema for Connector ======================
+>>>>>>> ef3832ef (checkpoint work)
 }
