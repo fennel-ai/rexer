@@ -185,7 +185,11 @@ async function setupFluentBit(input: inputType, k8sProvider: k8s.Provider) {
         file: fluentBitConfigPath,
     }, {
         provider: k8sProvider,
-        dependsOn: cm
+        dependsOn: cm,
+        // replace the existing pods when there is a configmap change so that effect is immediate and deterministic.
+        // previously, we saw that when the pod was restarted (manually or due to scheduling) or when a new pod
+        // was scheduled (autoscaler spun up a new node etc), the behavior was different for different nodes
+        replaceOnChanges: ["*"],
     })
 
 }
