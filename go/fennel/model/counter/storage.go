@@ -553,6 +553,8 @@ var redisKeyStats = promauto.NewSummaryVec(prometheus.SummaryOpts{
 }, []string{"type"})
 
 func readFromRedis(ctx context.Context, tier tier.Tier, rkeys []string) ([]value.Value, error) {
+	_, tmrEntire := timer.Start(ctx, tier.ID, "redis.readFromRedis")
+	defer tmrEntire.Stop()
 	res, err := tier.Redis.MGet(ctx, rkeys...)
 	if err != nil {
 		return nil, err
