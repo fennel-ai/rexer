@@ -82,26 +82,27 @@ func boundary(start, end ftypes.Timestamp, period uint32) (uint32, uint32) {
 
 // trailingPartial returns the partial bucket that started within [start, end] but didn't fully finish before end
 // if there is no such bucket, ok (2nd return value) is false
-func trailingPartial(key string, start, end ftypes.Timestamp, window ftypes.Window, width uint32) (counter.Bucket, bool) {
+func trailingPartial(key string, start, end ftypes.Timestamp, window ftypes.Window, width uint32) (counter.BucketList, bool) {
 	d, err := utils.Duration(window)
 	if err != nil {
-		return counter.Bucket{}, false
+		return counter.BucketList{}, false
 	}
 	// this will always fit in uint32
 	period := d * width
 	startBoundary, endBoundary := boundary(start, end, period)
 	if endBoundary < startBoundary {
-		return counter.Bucket{}, false
+		return counter.BucketList{}, false
 	}
 	if endBoundary*period == uint32(end) {
 		// last bucket perfectly lines up with the end so there is no trailing partial bucket
-		return counter.Bucket{}, false
+		return counter.BucketList{}, false
 	}
-	return counter.Bucket{
-		Key:    key,
-		Window: window,
-		Width:  width,
-		Index:  endBoundary,
+	return counter.BucketList{
+		Key:        key,
+		Window:     window,
+		Width:      width,
+		StartIndex: endBoundary,
+		EndIndex:   endBoundary,
 	}, true
 }
 

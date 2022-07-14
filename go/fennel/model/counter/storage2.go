@@ -1,3 +1,5 @@
+//go:build exclude
+
 package counter
 
 import (
@@ -26,7 +28,7 @@ import (
 	(curTimeInSeconds / width).
 
 	splitStore divides the entire time range with groups that cover a time range of width bucketsPerGroup * bucketWidth.
-	The first group contains buckets with indices in range [0, bucketsPerGroup) and so on. A group is stored as a
+	The first Group contains buckets with indices in range [0, bucketsPerGroup) and so on. A Group is stored as a
 	redis hashmap. When the number of keys in a redis hashmap is small, it is stored very efficiently. So,
 	bucketsPerGroup should not be too large. Redis configuration should be set accordingly.
 
@@ -229,7 +231,7 @@ func (s splitStore) setInRedis(
 	return tier.Redis.HSetPipelined(ctx, rkeys, rvals, ttls)
 }
 
-// getRedisKey writes the redis key corresponding to the given aggregate id and group
+// getRedisKey writes the redis key corresponding to the given aggregate id and Group
 // in the provided buffer at index start and returns the number of bytes written.
 // This uses a buffer to avoid CPU inefficiency working with heap memory.
 //
