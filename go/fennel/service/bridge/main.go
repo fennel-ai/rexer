@@ -20,7 +20,7 @@ func setupRouter() *gin.Engine {
 	})
 
 	r.LoadHTMLGlob("templates/*.tmpl")
-	r.Static("/assets", "assets/bridge")
+	r.Static("/assets", "../../clientapp/assets")
 	r.GET("/", func(c *gin.Context) {
 		c.HTML(http.StatusOK, "index.tmpl", gin.H{
 			"title": "World",
