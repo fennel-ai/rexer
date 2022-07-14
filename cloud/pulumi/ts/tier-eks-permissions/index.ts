@@ -13,7 +13,6 @@ export type inputType = {
     modelStoreBucket: string,
     pprofBucket: string,
     offlineAggregateOutputBucket: string,
-    airbyteLogsBucket: string,
 }
 
 // should not contain any pulumi.Output<> types.
@@ -44,7 +43,6 @@ export const setup = async (input: inputType): Promise<pulumi.Output<outputType>
                         `arn:aws:s3:::${input.modelStoreBucket}`,
                         `arn:aws:s3:::${input.pprofBucket}`,
                         `arn:aws:s3:::${input.offlineAggregateOutputBucket}`,
-                        `arn:aws:s3:::${input.airbyteLogsBucket}`,
                     ]
                 },
                 {
@@ -57,7 +55,6 @@ export const setup = async (input: inputType): Promise<pulumi.Output<outputType>
                         `arn:aws:s3:::${input.modelStoreBucket}/*`,
                         `arn:aws:s3:::${input.pprofBucket}/*`,
                         `arn:aws:s3:::${input.offlineAggregateOutputBucket}/*`,
-                        `arn:aws:s3:::${input.airbyteLogsBucket}/*`,
                     ]
                 },
                 {
@@ -68,7 +65,6 @@ export const setup = async (input: inputType): Promise<pulumi.Output<outputType>
                     Resource: [
                         `arn:aws:s3:::${input.modelStoreBucket}/*`,
                         `arn:aws:s3:::${input.offlineAggregateOutputBucket}/*`,
-                        `arn:aws:s3:::${input.airbyteLogsBucket}/*`,
                     ]
                 },
                 {

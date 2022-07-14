@@ -366,18 +366,6 @@ const setupResources = async () => {
         modelStoreBucket: modelStoreOutput.modelStoreBucket,
     });
 
-    // airbyte configuration
-    const airbyteOutput = await airbyte.setup({
-        region: input.region,
-        roleArn: input.roleArn,
-        tierId: input.tierId,
-        namespace: input.namespace,
-        dbEndpoint: input.postgresDbEndpoint,
-        dbPort: input.postgresDbPort,
-        kubeconfig: input.kubeconfig,
-        protect: input.protect,
-    });
-
     // setup unleash
     const unleashOutput = await unleash.setup({
         region: input.region,
@@ -396,7 +384,21 @@ const setupResources = async () => {
         roleArn: input.roleArn,
         tierId: input.tierId,
         protect: input.protect,
-    })
+    });
+
+    // airbyte configuration
+    if (input.airbyteConf !== undefined) {
+        const airbyteOutput = await airbyte.setup({
+            region: input.region,
+            roleArn: input.roleArn,
+            tierId: input.tierId,
+            namespace: input.namespace,
+            dbEndpoint: input.postgresDbEndpoint,
+            dbPort: input.postgresDbPort,
+            kubeconfig: input.kubeconfig,
+            protect: input.protect,
+        });
+    }
 
     // setup configs after resources are setup.
     const configsOutput = pulumi.all(
@@ -499,7 +501,6 @@ const setupResources = async () => {
         modelStoreBucket: modelStoreOutput.modelStoreBucket,
         pprofBucket: pprofBucketOutput.pprofStoreBucket,
         offlineAggregateOutputBucket: offlineAggregateOutputBucket.bucketName,
-        airbyteLogsBucket: airbyteOutput.logBucket,
     })
 
     configsOutput.apply(async () => {
