@@ -57,6 +57,7 @@ type Arena[T any] struct {
 	frees     int64
 	drops     int64
 	rejects   int64
+	outOfRange int64
 	pagelists []*pageList[T]
 	lock      sync.Mutex
 }
@@ -119,8 +120,17 @@ func (a *Arena[T]) Alloc(len_, cap_ int) []T {
 // Free returns a slice to the Arena allocator. It need not have
 // been allocated via SliceAlloc().
 func (a *Arena[T]) Free(b []T) {
-	if cap(b) == 0 || cap(b) >= a.maxalloc {
-		return // ignore out-of-range slices
+	if cap(b) == 0 {
+		return
+	}
+	// ignore out-of-range slices
+	if cap(b) >= a.maxalloc {
+		// grab a lock before incrementing `outOfRange` counter since
+		// a race is possible here
+		a.lock.Lock()
+		defer a.lock.Unlock()
+		a.outOfRange += 1
+		return
 	}
 	drop := false
 	if (fastrand.FastRand() & (dropRate - 1)) == 0 {
@@ -174,6 +184,7 @@ func (a *Arena[T]) report() {
 			stats.WithLabelValues("drops", name).Set(float64(a.drops))
 			stats.WithLabelValues("rejects", name).Set(float64(a.rejects))
 			stats.WithLabelValues("size_bytes", name).Set(float64(sz * a.cursz))
+			stats.WithLabelValues("out_of_range", name).Set(float64(a.outOfRange))
 		}()
 	}
 }
