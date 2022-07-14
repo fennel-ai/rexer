@@ -22,9 +22,7 @@ func setupRouter() *gin.Engine {
 	r.LoadHTMLGlob("templates/*.tmpl")
 	r.Static("/assets", "../../webapp/dist")
 	r.GET("/", func(c *gin.Context) {
-		c.HTML(http.StatusOK, "index.tmpl", gin.H{
-			"title": "World",
-		})
+		c.HTML(http.StatusOK, "index.tmpl", gin.H{})
 	})
 
 	// Get user value
