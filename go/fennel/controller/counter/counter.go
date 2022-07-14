@@ -50,7 +50,7 @@ func BatchValue(
 	for bs, indices := range unique {
 		n := len(indices)
 		ids_ := make([]ftypes.AggId, n)
-		buckets := make([][]libcounter.Bucket, n)
+		bucketLists := make([][]libcounter.BucketList, n)
 		defaults := make([]value.Value, n)
 		for i, index := range indices {
 			h := histograms[index]
@@ -63,10 +63,10 @@ func BatchValue(
 				return nil, fmt.Errorf("failed to get start timestamp of aggregate (id): %d, err: %w", aggIds[index], err)
 			}
 			ids_[i] = aggIds[index]
-			buckets[i] = h.BucketizeDuration(keys[index].String(), start, end)
+			bucketLists[i] = h.BucketizeDuration(keys[index].String(), start, end)
 			defaults[i] = h.Zero()
 		}
-		counts, err := bs.GetMulti(ctx, tier, ids_, buckets, defaults)
+		counts, err := bs.GetMulti(ctx, tier, ids_, bucketLists, defaults)
 		if err != nil {
 			return nil, err
 		}
@@ -76,10 +76,9 @@ func BatchValue(
 				return nil, fmt.Errorf("failed to reduce aggregate (id): %d, err: %v", aggIds[index], err)
 			}
 		}
-		// Explicitly free the counter and bucket slices back to the arena.
-		for i, v := range counts {
+		// Explicitly free the counter slices back to the arena.
+		for _, v := range counts {
 			arena.Values.Free(v)
-			arena.Buckets.Free(buckets[i])
 		}
 	}
 	return ret, nil
@@ -103,7 +102,8 @@ func Update(
 	if err != nil {
 		return err
 	}
-	cur, err := histogram.GetMulti(ctx, tier, []ftypes.AggId{aggId}, [][]libcounter.Bucket{buckets}, []value.Value{histogram.Zero()})
+	bucketLists := bucketsToBucketLists(buckets)
+	cur, err := histogram.GetMulti(ctx, tier, []ftypes.AggId{aggId}, [][]libcounter.BucketList{bucketLists}, []value.Value{histogram.Zero()})
 	if err != nil {
 		return err
 	}
@@ -149,4 +149,18 @@ func extractDuration(kwargs value.Dict, durations []uint32) (uint32, error) {
 		}
 	}
 	return 0, fmt.Errorf("error: specified duration not found in aggregate")
+}
+
+func bucketsToBucketLists(buckets []libcounter.Bucket) []libcounter.BucketList {
+	bLists := make([]libcounter.BucketList, len(buckets))
+	for i, b := range buckets {
+		bLists[i] = libcounter.BucketList{
+			Key:        b.Key,
+			Window:     b.Window,
+			Width:      b.Width,
+			StartIndex: b.Index,
+			EndIndex:   b.Index,
+		}
+	}
+	return bLists
 }

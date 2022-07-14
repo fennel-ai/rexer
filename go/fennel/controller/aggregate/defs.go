@@ -3,15 +3,16 @@ package aggregate
 import (
 	"context"
 	"errors"
+	"fmt"
+	"strconv"
+	"strings"
+	"time"
+
 	"fennel/lib/aggregate"
 	"fennel/lib/ftypes"
 	"fennel/lib/phaser"
 	modelAgg "fennel/model/aggregate"
 	"fennel/tier"
-	"fmt"
-	"strconv"
-	"strings"
-	"time"
 )
 
 // Data is kept in redis OFFLINE_AGG_TTL_MULTIPLIER times the update frequency
