@@ -33,6 +33,7 @@ func TestCreateDeleteExists(t *testing.T) {
 			Framework:        "xgboost",
 			FrameworkVersion: "1.3-1",
 			ArtifactPath:     "s3://my-xgboost-test-bucket-2/model.tar.gz",
+			ContainerName:    "Container-my-test-model-v1",
 		},
 	}, sagemakerModelName)
 	assert.NoError(t, err)
@@ -83,7 +84,6 @@ func TestEndpointConfigExists(t *testing.T) {
 }
 
 func TestEndpointExists(t *testing.T) {
-	t.Skip("Skipping test, till smclient-test-endpoint is fixed")
 	c, err := getTestClient()
 	assert.NoError(t, err)
 
@@ -115,7 +115,6 @@ func TestEndpointExists(t *testing.T) {
 }
 
 func TestGetEndpointConfigName(t *testing.T) {
-	t.Skip("Skipping test, till smclient-test-endpoint is fixed")
 	c, err := getTestClient()
 	assert.NoError(t, err)
 
@@ -166,7 +165,7 @@ func TestScoreSvm(t *testing.T) {
 	response, err := c.Score(context.Background(), &lib.ScoreRequest{
 		Framework:     "xgboost",
 		EndpointName:  "smclient-test-endpoint",
-		ContainerName: lib.GetContainerName("smclient-model", "v1"),
+		ContainerName: "Container-smclient-model-v1",
 		FeaturesList:  featureVectors,
 	})
 	assert.NoError(t, err)
@@ -174,7 +173,6 @@ func TestScoreSvm(t *testing.T) {
 }
 
 func TestScoreCsv(t *testing.T) {
-	t.Skip("Skipping test, till smclient-test-endpoint is fixed")
 	c, err := getTestClient()
 	assert.NoError(t, err)
 	csv, err := value.FromJSON([]byte("[0,0,0,0,0,0,0,1,0,1,0,1,0,0,1,0,0,0,1,0,0,0,0,0,0,0,0,0,1,0,1,0,0,1,0,0,0,0,0,0,0,0,1,1,0,1,0,0,1,0,0,0,0,0,0,0,0,0,0,1,0,0,1,0,0,0,0,0,0,1,0,0,0,1,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,1,0,1,0,0,1,0,0,1,0,0,0,0,0,1,0,1,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,1,0,0,0,0]"))
@@ -185,7 +183,7 @@ func TestScoreCsv(t *testing.T) {
 	response, err := c.Score(context.Background(), &lib.ScoreRequest{
 		Framework:     "xgboost",
 		EndpointName:  "smclient-test-endpoint",
-		ContainerName: lib.GetContainerName("smclient-test-xgboost-model", "v1"),
+		ContainerName: "Container-smclient-model-v1",
 		FeaturesList:  featureVectors,
 	})
 	assert.NoError(t, err)
@@ -340,5 +338,7 @@ func getTestClient() (SMClient, error) {
 	return NewClient(SagemakerArgs{
 		Region:                 "ap-south-1",
 		SagemakerExecutionRole: "arn:aws:iam::030813887342:role/service-role/AmazonSageMaker-ExecutionRole-20220315T123828",
+		SagemakerInstanceType:  "ml.c5.large",
+		SagemakerInstanceCount: 1,
 	}, logger)
 }

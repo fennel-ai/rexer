@@ -40,5 +40,5 @@ func TestPredictErrorNoModelStore(t *testing.T) {
 		value.NewDict(map[string]value.Value{}),
 	}
 
-	optest.AssertErrorContains(t, tier, &predictOperator{}, staticKwargsTable, [][]value.Value{intable}, contextKwargTable, "could not get framework from db")
+	optest.AssertErrorContains(t, tier, &predictOperator{}, staticKwargsTable, [][]value.Value{intable}, contextKwargTable, "could not get model from db")
 }

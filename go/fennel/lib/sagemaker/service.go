@@ -3,6 +3,7 @@ package sagemaker
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"fennel/lib/value"
 )
@@ -59,6 +60,6 @@ type ScoreResponse struct {
 	Scores []value.Value
 }
 
-func GetContainerName(modelName, modelVersion string) string {
-	return fmt.Sprintf("Container-%s-%s", modelName, modelVersion)
+func GenContainerName() string {
+	return fmt.Sprintf("Container-%d", time.Now().UnixNano())
 }
