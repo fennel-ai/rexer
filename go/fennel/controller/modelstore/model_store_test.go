@@ -60,7 +60,7 @@ func TestStoreScoreRemoveModel(t *testing.T) {
 
 	csv, err := value.FromJSON([]byte("[0,0,0,0,0,0,0,1,0,1,0,1,0,0,1,0,0,0,1,0,0,0,0,0,0,0,0,0,1,0,1,0,0,1,0,0,0,0,0,0,0,0,1,1,0,1,0,0,1,0,0,0,0,0,0,0,0,0,0,1,0,0,1,0,0,0,0,0,0,1,0,0,0,1,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,1,0,1,0,0,1,0,0,1,0,0,0,0,0,1,0,1,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,1,0,0,0,0]"))
 	assert.NoError(t, err)
-	featureVecs := []value.List{csv.(value.List)}
+	featureVecs := []value.Value{csv.(value.List)}
 	var scores []value.Value
 	for {
 		scores, err = Score(context.Background(), tier, "name", "v1", featureVecs)
@@ -118,7 +118,7 @@ func TestPretrainedModelEndPoint(t *testing.T) {
 	assert.True(t, exists)
 
 	inp := value.NewList(value.String("Recommendation systems is the way to go"))
-	featureInput := []value.List{inp, inp, inp}
+	featureInput := []value.Value{inp, inp, inp}
 
 	response, err := PreTrainedScore(context.Background(), tier, model, featureInput)
 

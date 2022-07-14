@@ -8,13 +8,13 @@ import (
 )
 
 type BaseConfig struct {
-	MinCapacity  int64
+	MinCapacity int64
 	MaxCapacity int64
 }
 
 type CpuScalingPolicy struct {
-	CpuTargetValue float64
-	ScaleInCoolDownPeriod int64
+	CpuTargetValue         float64
+	ScaleInCoolDownPeriod  int64
 	ScaleOutCoolDownPeriod int64
 }
 
@@ -52,7 +52,7 @@ type ScoreRequest struct {
 	EndpointName  string
 	ContainerName string
 	Framework     string
-	FeatureLists  []value.List
+	FeaturesList  []value.Value
 }
 
 type ScoreResponse struct {

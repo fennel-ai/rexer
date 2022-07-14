@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"sort"
+	"strconv"
 	"strings"
 	"time"
 	"unicode"
@@ -28,7 +30,6 @@ var invokeRetries = promauto.NewCounterVec(
 		Help: "Number of sagemaker invoke retries due to throttle",
 	}, []string{"errorCode", "framework"},
 )
-
 
 type Adapter interface {
 	Score(ctx context.Context, in *lib.ScoreRequest) (*lib.ScoreResponse, error)
@@ -71,7 +72,7 @@ func invokeRetryOnThrottle(ctx context.Context, framework string, client *sagema
 			break
 		}
 		// check if this is a ThrottleException, if so, retry with a backoff
-		if e, ok :=	err.(awserr.Error); ok {
+		if e, ok := err.(awserr.Error); ok {
 			if e.Code() == "ThrottlingException" {
 				// we should backoff here and retry
 				invokeRetries.WithLabelValues("ThrottleException", framework).Inc()
@@ -87,41 +88,70 @@ func invokeRetryOnThrottle(ctx context.Context, framework string, client *sagema
 }
 
 func (xga XGBoostAdapter) Score(ctx context.Context, in *lib.ScoreRequest) (*lib.ScoreResponse, error) {
-	if len(in.FeatureLists) == 0 {
+	if len(in.FeaturesList) == 0 {
 		return &lib.ScoreResponse{}, nil
 	}
 	payload := bytes.Buffer{}
-	for _, fl := range in.FeatureLists {
-		sf := make([]string, 0, fl.Len())
-		for i := 0; i < fl.Len(); i++ {
-			f, _ := fl.At(i)
-			raw, err := f.MarshalJSON()
-			if err != nil {
-				return nil, fmt.Errorf("failed to marshal feaures: %v: %v", f, err)
-			}
-			sf = append(sf, string(raw))
-		}
-		line := strings.Join(sf, ",")
-		payload.Write([]byte(line[1 : len(line)-1]))
-		_, err := payload.WriteRune('\n')
-		if err != nil {
-			return nil, fmt.Errorf("failed to write newline: %v", err)
-		}
-	}
 	var contentType string
-	// If features list if empty, assume input is csv.
-	if in.FeatureLists[0].Len() == 0 {
-		contentType = "text/csv"
+	// if features are stored as a dict, then use libsvm format otherwise use csv format
+	if _, ok := in.FeaturesList[0].(value.Dict); ok {
+		contentType = "text/libsvm"
+		for _, v := range in.FeaturesList {
+			payload.WriteRune('0')
+			vd, ok := v.(value.Dict)
+			if !ok {
+				return nil, fmt.Errorf("expected dict but found: '%s'", v.String())
+			}
+			// libsvm expects keys in ascending order, so we sort first
+			type kvpair struct {
+				key uint64
+				val value.Value
+			}
+			features := make([]kvpair, len(vd.Iter()))
+			i := 0
+			for k, v := range vd.Iter() {
+				key, err := strconv.ParseUint(k, 10, 64)
+				if err != nil {
+					return nil, fmt.Errorf("expected key in feature dict to be an unsigned integer but found: '%s'", k)
+				}
+				features[i].key = key
+				switch val := v.(type) {
+				case value.Int, value.Double:
+					features[i].val = val
+				default:
+					return nil, fmt.Errorf("expected value in feature dict to be number but found: '%s'", v.String())
+				}
+				i++
+			}
+			sort.SliceStable(features, func(i, j int) bool {
+				return features[i].key < features[j].key
+			})
+			for _, f := range features {
+				payload.WriteRune(' ')
+				payload.WriteString(strconv.FormatUint(f.key, 10))
+				payload.WriteRune(':')
+				payload.WriteString(f.val.String())
+			}
+			payload.WriteRune('\n')
+		}
 	} else {
-		feature, _ := in.FeatureLists[0].At(0)
-		if _, ok := feature.(value.Double); ok {
-			contentType = "text/csv"
-		} else if _, ok := feature.(value.Int); ok {
-			contentType = "text/csv"
-		} else {
-			contentType = "text/libsvm"
+		contentType = "text/csv"
+		for _, v := range in.FeaturesList {
+			vl, ok := v.(value.List)
+			if !ok {
+				return nil, fmt.Errorf("expected list but found: '%s'", v.String())
+			}
+			for i := 0; i < vl.Len(); i++ {
+				v, _ := vl.At(i)
+				payload.WriteString(v.String())
+				if i != vl.Len()-1 {
+					payload.WriteRune(',')
+				}
+			}
+			payload.WriteRune('\n')
 		}
 	}
+
 	out, err := invokeRetryOnThrottle(ctx, "xgboost", xga.client, &sagemakerruntime.InvokeEndpointInput{
 		Body:                    payload.Bytes(),
 		ContentType:             aws.String(contentType),
@@ -145,10 +175,10 @@ type SklearnAdapter struct {
 }
 
 func (sa SklearnAdapter) Score(ctx context.Context, in *lib.ScoreRequest) (*lib.ScoreResponse, error) {
-	if len(in.FeatureLists) == 0 {
+	if len(in.FeaturesList) == 0 {
 		return &lib.ScoreResponse{}, nil
 	}
-	payload := toJSON(in.FeatureLists)
+	payload := toJSON(in.FeaturesList)
 	out, err := invokeRetryOnThrottle(ctx, "sklearn", sa.client, &sagemakerruntime.InvokeEndpointInput{
 		Body:                    payload,
 		ContentType:             aws.String("application/json"),
@@ -174,12 +204,12 @@ type PyTorchAdapter struct {
 }
 
 func (pta PyTorchAdapter) Score(ctx context.Context, in *lib.ScoreRequest) (*lib.ScoreResponse, error) {
-	if len(in.FeatureLists) == 0 {
+	if len(in.FeaturesList) == 0 {
 		return &lib.ScoreResponse{}, nil
 	}
-	payload := toJSON(in.FeatureLists)
+	payload := toJSON(in.FeaturesList)
 	out, err := invokeRetryOnThrottle(ctx, "pytorch", pta.client, &sagemakerruntime.InvokeEndpointInput{
-		Body:                    []byte(payload),
+		Body:                    payload,
 		ContentType:             aws.String("application/json"),
 		EndpointName:            aws.String(in.EndpointName),
 		TargetContainerHostname: aws.String(in.ContainerName),
@@ -212,24 +242,20 @@ func removeSpecialCharacters(s string) string {
 }
 
 func (hfa HuggingFaceAdapter) Score(ctx context.Context, in *lib.ScoreRequest) (*lib.ScoreResponse, error) {
-	if len(in.FeatureLists) == 0 {
+	if len(in.FeaturesList) == 0 {
 		return &lib.ScoreResponse{}, nil
 	}
 	inputs := value.NewList()
-	inputs.Grow(len(in.FeatureLists))
+	inputs.Grow(len(in.FeaturesList))
 	// It is expected that every feature list only contains one feature, a string, which is the input to the model.
-	for _, v := range in.FeatureLists {
-		inp, err := v.At(0)
-		if err != nil {
-			return nil, fmt.Errorf("failed to get input: %v", err)
-		}
-		inputs.Append(value.String(removeSpecialCharacters(inp.String())))
+	for _, v := range in.FeaturesList {
+		inputs.Append(value.String(removeSpecialCharacters(v.String())))
 	}
 
 	payload := value.ToJSON(value.NewDict(map[string]value.Value{"inputs": inputs}))
 
 	out, err := invokeRetryOnThrottle(ctx, "huggingface", hfa.client, &sagemakerruntime.InvokeEndpointInput{
-		Body:         []byte(payload),
+		Body:         payload,
 		ContentType:  aws.String("application/json"),
 		EndpointName: aws.String(in.EndpointName),
 	})
@@ -257,10 +283,10 @@ type TensorFlowAdapter struct {
 }
 
 func (tfa TensorFlowAdapter) Score(ctx context.Context, in *lib.ScoreRequest) (*lib.ScoreResponse, error) {
-	if len(in.FeatureLists) == 0 {
+	if len(in.FeaturesList) == 0 {
 		return &lib.ScoreResponse{}, nil
 	}
-	payload := toJSON(in.FeatureLists)
+	payload := toJSON(in.FeaturesList)
 	out, err := invokeRetryOnThrottle(ctx, "tensorflow", tfa.client, &sagemakerruntime.InvokeEndpointInput{
 		Body:                    payload,
 		ContentType:             aws.String("application/json"),
@@ -289,13 +315,13 @@ func (tfa TensorFlowAdapter) Score(ctx context.Context, in *lib.ScoreRequest) (*
 	return &lib.ScoreResponse{Scores: pList.Values()}, nil
 }
 
-func toJSON(featureLists []value.List) []byte {
-	fLists := value.NewList()
-	fLists.Grow(len(featureLists))
-	for _, fl := range featureLists {
-		fLists.Append(fl)
+func toJSON(featuresList []value.Value) []byte {
+	fList := value.NewList()
+	fList.Grow(len(featuresList))
+	for _, fl := range featuresList {
+		fList.Append(fl)
 	}
-	return value.ToJSON(fLists)
+	return value.ToJSON(fList)
 }
 
 func fromCSV(csv []byte) ([]value.Value, error) {
