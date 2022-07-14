@@ -175,6 +175,8 @@ data:
               # `http`.
               scheme: https
               metrics_path: /metrics/cadvisor
+              # overwrites the global configuration
+              scrape_interval: 10s
               
               kubernetes_sd_configs:
               - role: node

@@ -80,6 +80,7 @@ const prometheusScrapeConfigs = {
         "kubernetes_sd_configs": [{
             "role": "node"
         }],
+        "scrape_interval": "10s",
         "scheme": "https",
         "metrics_path": "/metrics/cadvisor",
         "tls_config": {
