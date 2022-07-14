@@ -16,7 +16,7 @@ import * as connectorSink from "../connectorsink";
 import * as glueSource from "../glue-script-source";
 import * as offlineAggregateSources from "../offline-aggregate-script-source";
 import * as planeEksPermissions from "../plane-eks-permissions";
-import * as unleashAurora from "../unleash-postgres";
+import * as postgres from "../postgres";
 import * as util from "../lib/util";
 
 import * as process from "process";
@@ -137,7 +137,7 @@ export type PlaneOutput = {
     elasticache: elasticache.outputType,
     confluent: confluentenv.outputType,
     db: aurora.outputType,
-    unleashDb: unleashAurora.outputType,
+    postgresDb: postgres.outputType,
     prometheus: prometheus.outputType,
     trainingData: connectorSink.outputType,
     offlineAggregateSourceFiles: offlineAggregateSources.outputType,
@@ -166,7 +166,7 @@ const setupPlugins = async (stack: pulumi.automation.Stack) => {
         ...glueSource.plugins,
         ...offlineAggregateSources.plugins,
         ...milvus.plugins,
-        ...unleashAurora.plugins,
+        ...postgres.plugins,
         ...nitrous.plugins,
         ...planeEksPermissions.plugins,
     }
@@ -212,7 +212,7 @@ const setupResources = async () => {
         planeId: input.planeId,
         nodeGroups: input.eksConf.nodeGroups,
     });
-    const auroraUnleashOutput = await unleashAurora.setup({
+    const postgresDbOutput = await postgres.setup({
         roleArn: roleArn,
         region: input.region,
         vpcId: vpcOutput.vpcId,
@@ -380,7 +380,7 @@ const setupResources = async () => {
         elasticache: elasticacheOutput,
         confluent: confluentOutput,
         db: auroraOutput,
-        unleashDb: auroraUnleashOutput,
+        postgresDb: postgresDbOutput,
         prometheus: prometheusOutput,
         trainingData: connectorSinkOutput,
         offlineAggregateSourceFiles: offlineAggregateSourceFiles,
