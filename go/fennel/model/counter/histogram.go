@@ -16,13 +16,13 @@ import (
 
 type Bucketizer interface {
 	BucketizeMoment(key string, ts ftypes.Timestamp) []counter.Bucket
-	BucketizeDuration(key string, start, end ftypes.Timestamp) []counter.BucketList
+	BucketizeDuration(key string, start, end ftypes.Timestamp) []counter.Bucket
 }
 
 type BucketStore interface {
 	GetBucketStore() BucketStore
-	GetMulti(ctx context.Context, tr tier.Tier, aggIds []ftypes.AggId, bucketLists [][]counter.BucketList, defaults_ []value.Value) ([][]value.Value, error)
-	SetMulti(ctx context.Context, tr tier.Tier, aggIds []ftypes.AggId, deltas [][]counter.Bucket, values [][]value.Value) error
+	GetMulti(ctx context.Context, tr tier.Tier, aggIds []ftypes.AggId, buckets [][]counter.Bucket, defaults_ []value.Value) ([][]value.Value, error)
+	SetMulti(ctx context.Context, tr tier.Tier, aggIds []ftypes.AggId, buckets [][]counter.Bucket, values [][]value.Value) error
 }
 
 type MergeReduce interface {

@@ -97,7 +97,7 @@ func TestFixedWidthBucketizer_BucketizeDuration(t *testing.T) {
 		start      ftypes.Timestamp
 		end        ftypes.Timestamp
 		v          value.Value
-		expected   []counter.BucketList
+		expected   []counter.Bucket
 	}{
 		{
 			fixedWidthBucketizer{map[ftypes.Window]uint32{
@@ -107,7 +107,7 @@ func TestFixedWidthBucketizer_BucketizeDuration(t *testing.T) {
 			3601,
 			4459,
 			value.Int(1),
-			[]counter.BucketList{{Key: key, Window: ftypes.Window_MINUTE, Width: 5, StartIndex: 13, EndIndex: 13}},
+			[]counter.Bucket{{Key: key, Window: ftypes.Window_MINUTE, Width: 5, Index: 13}},
 		},
 	}
 
@@ -127,26 +127,26 @@ func TestBucketizeDuration_SingleWindow2(t *testing.T) {
 	}, false}
 	found := f.BucketizeDuration(key, start, end)
 
-	expected := []counter.BucketList{{
-		Key:        key,
-		Window:     ftypes.Window_HOUR,
-		Width:      1,
-		StartIndex: 2,
-		EndIndex:   48,
-	}}
-	assert.Equal(t, expected, found)
+	assert.Len(t, found, 47)
+	for i := 0; i < 47; i++ {
+		assert.Contains(t, found, counter.Bucket{
+			Key:    key,
+			Window: ftypes.Window_HOUR,
+			Index:  uint32(2 + i),
+			Width:  1,
+		}, i)
+	}
 	f = fixedWidthBucketizer{map[ftypes.Window]uint32{
 		ftypes.Window_DAY: 1,
 	}, false}
 	found = f.BucketizeDuration(key, start, end)
-	expected = []counter.BucketList{{
-		Key:        key,
-		Window:     ftypes.Window_DAY,
-		Width:      1,
-		StartIndex: 1,
-		EndIndex:   1,
-	}}
-	assert.Equal(t, expected, found)
+	assert.Len(t, found, 1)
+	assert.Contains(t, found, counter.Bucket{
+		Key:    key,
+		Window: ftypes.Window_DAY,
+		Index:  1,
+		Width:  1,
+	})
 }
 
 func TestBucketizeDuration_All(t *testing.T) {
@@ -157,66 +157,63 @@ func TestBucketizeDuration_All(t *testing.T) {
 		ftypes.Window_HOUR:   1,
 		ftypes.Window_DAY:    1,
 	}, false}
-	found := f.BucketizeDuration(key, 0, 24*3600+3601)
-	assert.Equal(t, 2, len(found))
-	assert.Equal(t, counter.BucketList{
-		Key:        key,
-		Window:     ftypes.Window_DAY,
-		Width:      1,
-		StartIndex: 0,
-		EndIndex:   0,
-	}, found[0])
-	assert.Equal(t, counter.BucketList{
-		Key:        key,
-		Window:     ftypes.Window_HOUR,
-		Width:      1,
-		StartIndex: 24,
-		EndIndex:   24,
-	}, found[1])
+	buckets := f.BucketizeDuration(key, 0, 24*3600+3601)
+	assert.Equal(t, 2, len(buckets))
+	assert.Equal(t, counter.Bucket{
+		Key:    key,
+		Window: ftypes.Window_DAY,
+		Index:  0,
+		Width:  1,
+	}, buckets[0])
+	assert.Equal(t, counter.Bucket{
+		Key:    key,
+		Window: ftypes.Window_HOUR,
+		Index:  24,
+		Width:  1,
+	}, buckets[1])
 
 	// now let's try a more involved case
 	start := ftypes.Timestamp(3601)
 	end := ftypes.Timestamp(2*24*3600 + 3665) // i.e. 2 days + 1 minute + few seconds later
-	found = f.BucketizeDuration(key, start, end)
+	buckets = f.BucketizeDuration(key, start, end)
 	// we expect 1 day, 23 hours, 59 minutes?
-	expected := make([]counter.BucketList, 0)
-	expected = append(expected, counter.BucketList{
-		Key:        key,
-		Window:     ftypes.Window_MINUTE,
-		StartIndex: 61,
-		EndIndex:   119,
-		Width:      1,
-	})
-	expected = append(expected, counter.BucketList{
-		Key:        key,
-		Window:     ftypes.Window_HOUR,
-		Width:      1,
-		StartIndex: 2,
-		EndIndex:   23,
-	})
-	expected = append(expected, counter.BucketList{
-		Key:        key,
-		Window:     ftypes.Window_DAY,
-		Width:      1,
-		StartIndex: 1,
-		EndIndex:   1,
+	expected := make([]counter.Bucket, 0)
+	for i := 0; i < 59; i++ {
+		expected = append(expected, counter.Bucket{
+			Key:    key,
+			Window: ftypes.Window_MINUTE,
+			Index:  uint32(61 + i),
+			Width:  1,
+		})
+	}
+	for i := 0; i < 22; i++ {
+		expected = append(expected, counter.Bucket{
+			Key:    key,
+			Window: ftypes.Window_HOUR,
+			Width:  1,
+			Index:  uint32(2 + i),
+		})
+	}
+	expected = append(expected, counter.Bucket{
+		Key:    key,
+		Window: ftypes.Window_DAY,
+		Width:  1,
+		Index:  1,
 	})
 
-	expected = append(expected, counter.BucketList{
-		Key:        key,
-		Window:     ftypes.Window_HOUR,
-		Width:      1,
-		StartIndex: 48,
-		EndIndex:   48,
+	expected = append(expected, counter.Bucket{
+		Key:    key,
+		Window: ftypes.Window_HOUR,
+		Width:  1,
+		Index:  48,
 	})
-	expected = append(expected, counter.BucketList{
-		Key:        key,
-		Window:     ftypes.Window_MINUTE,
-		Width:      1,
-		StartIndex: 60*24*2 + 60,
-		EndIndex:   60*24*2 + 60,
+	expected = append(expected, counter.Bucket{
+		Key:    key,
+		Window: ftypes.Window_MINUTE,
+		Width:  1,
+		Index:  60*24*2 + 60,
 	})
-	assert.ElementsMatch(t, expected, found)
+	assert.ElementsMatch(t, expected, buckets)
 }
 
 func TestMergeBuckets(t *testing.T) {
@@ -237,12 +234,8 @@ func TestMergeBuckets(t *testing.T) {
 	buckets, vals, err := MergeBuckets(rollingSum{}, []counter.Bucket{b1, b1b, b2, b3, b4, b4b}, []value.Value{one, three, one, one, one, value.Int(2)})
 	assert.NoError(t, err)
 	assert.Len(t, buckets, 4)
-	assert.ElementsMatch(t, buckets, []counter.Bucket{
-		{Key: key1, Window: window1, Index: idx1},
-		{Key: key2, Window: window2, Index: idx1},
-		{Key: key1, Window: window2, Index: idx1},
-		{Key: key1, Window: window2, Index: idx2},
-	})
+	assert.ElementsMatch(t, buckets, []counter.Bucket{counter.Bucket{Key: key1, Window: window1, Index: idx1}, counter.Bucket{Key: key2, Window: window2, Index: idx1},
+		counter.Bucket{Key: key1, Window: window2, Index: idx1}, counter.Bucket{Key: key1, Window: window2, Index: idx2}})
 	assert.ElementsMatch(t, vals, []value.Value{value.Int(4), one, one, three})
 }
 
@@ -316,12 +309,11 @@ func TestTrailingPartial(t *testing.T) {
 		found, ok := trailingPartial(scene.key, scene.start, scene.end, scene.w, scene.width)
 		assert.Equal(t, scene.ok, ok)
 		if scene.ok {
-			assert.Equal(t, counter.BucketList{
-				Key:        scene.key,
-				Window:     scene.w,
-				Width:      scene.width,
-				StartIndex: scene.idx,
-				EndIndex:   scene.idx,
+			assert.Equal(t, counter.Bucket{
+				Key:    scene.key,
+				Window: scene.w,
+				Width:  scene.width,
+				Index:  scene.idx,
 			}, found)
 		}
 	}
@@ -331,33 +323,36 @@ func TestFixedSplitBucketizer_BucketizeDuration(t *testing.T) {
 	f, _ := newFixedSplitBucketizer([]uint64{3, 2, 1}, []uint64{3600, 7200, 0})
 
 	found1 := f.BucketizeDuration("key", 0, 3600)
-	expected1 := []counter.BucketList{{
-		Key:        "key",
-		Window:     ftypes.Window_FOREVER,
-		Width:      1200,
-		StartIndex: 0,
-		EndIndex:   2,
-	}}
+	var expected1 []counter.Bucket
+	for i := 0; i < 3; i++ {
+		expected1 = append(expected1, counter.Bucket{
+			Key:    "key",
+			Window: ftypes.Window_FOREVER,
+			Width:  1200,
+			Index:  uint32(i),
+		})
+	}
 	assert.Equal(t, expected1, found1)
 
 	found2 := f.BucketizeDuration("key", 0, 7200)
-	expected2 := []counter.BucketList{{
-		Key:        "key",
-		Window:     ftypes.Window_FOREVER,
-		Width:      3600,
-		StartIndex: 0,
-		EndIndex:   1,
-	}}
+	var expected2 []counter.Bucket
+	for i := 0; i < 2; i++ {
+		expected2 = append(expected2, counter.Bucket{
+			Key:    "key",
+			Window: ftypes.Window_FOREVER,
+			Width:  3600,
+			Index:  uint32(i),
+		})
+	}
 	assert.Equal(t, expected2, found2)
 
 	found3 := f.BucketizeDuration("key", 10800, 10800)
-	expected3 := []counter.BucketList{
+	expected3 := []counter.Bucket{
 		{
-			Key:        "key",
-			Window:     ftypes.Window_FOREVER,
-			Width:      0,
-			StartIndex: 0,
-			EndIndex:   0,
+			Key:    "key",
+			Window: ftypes.Window_FOREVER,
+			Width:  0,
+			Index:  0,
 		},
 	}
 	assert.Equal(t, expected3, found3)
@@ -395,31 +390,32 @@ func TestThirdBucketizer_BucketizeDuration(t *testing.T) {
 		size               uint32
 		start              ftypes.Timestamp
 		finish             ftypes.Timestamp
-		expectedStartIndex uint32
-		expectedEndIndex   uint32
+		expectedStartIndex int
+		expectedNumBuckets int
 	}{
-		{60, 0, 120, 0, 1},
-		{60, 30, 120, 0, 1},
-		{60, 30, 90, 0, 1},
+		{60, 0, 120, 0, 2},
+		{60, 30, 120, 0, 2},
+		{60, 30, 90, 0, 2},
 		{60, 60, 90, 1, 1},
 		{60, 60, 120, 1, 1},
 		{60, 60, 121, 1, 2},
-		{0, 0, 0, 0, 0},
-		{0, 9143, 1942131, 0, 0},
+		{0, 0, 0, 0, 1},
+		{0, 9143, 1942131, 0, 1},
 	}
 
 	for _, scenario := range scenarios {
 		bzer := thirdBucketizer{size: scenario.size}
 		found := bzer.BucketizeDuration("key", scenario.start, scenario.finish)
-		assert.Len(t, found, 1)
-		expected := counter.BucketList{
-			Key:        "key",
-			Window:     ftypes.Window_FOREVER,
-			Width:      scenario.size,
-			StartIndex: scenario.expectedStartIndex,
-			EndIndex:   scenario.expectedEndIndex,
+		assert.Len(t, found, scenario.expectedNumBuckets)
+		for i := range found {
+			expected := counter.Bucket{
+				Key:    "key",
+				Window: ftypes.Window_FOREVER,
+				Width:  scenario.size,
+				Index:  uint32(i + scenario.expectedStartIndex),
+			}
+			assert.Equal(t, expected, found[i])
 		}
-		assert.Equal(t, expected, found[0])
 	}
 }
 
