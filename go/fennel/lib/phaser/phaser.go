@@ -152,7 +152,7 @@ func bulkUploadToRedis(tr tier.Tier, file string, numRows int, tempDir string) e
 			out, _ = exec.Command("bash", "-c", bulkUploadCmd).Output()
 			re := regexp.MustCompile(`.*errors\:\s([0-9]+),\sreplies\:\s([0-9]+)`)
 			match := re.FindStringSubmatch(string(out))
-			fmt.Errorf("redis upload file %s at %s: %s", file, nodeAddress, string(out))
+			tr.Logger.Error("redis upload file " + file + " at " + nodeAddress + " output " + string(out))
 			if len(match) < 3 {
 				return fmt.Errorf("could not identify number of successfull phaser writes to redis :- %s", string(out))
 			}
