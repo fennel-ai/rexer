@@ -1,8 +1,10 @@
 package counter
 
 import (
-	"fennel/lib/value"
 	"fmt"
+
+	"fennel/lib/ftypes"
+	"fennel/lib/value"
 )
 
 func getDouble(v value.Value) (float64, error) {
@@ -14,4 +16,12 @@ func getDouble(v value.Value) (float64, error) {
 		return float64(i), nil
 	}
 	return 0, fmt.Errorf("value [%s] is not a $$ number", v.String())
+}
+
+func start(end ftypes.Timestamp, duration uint32) ftypes.Timestamp {
+	d := ftypes.Timestamp(duration)
+	if end > d {
+		return end - d
+	}
+	return 0
 }

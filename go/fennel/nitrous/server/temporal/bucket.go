@@ -4,9 +4,9 @@ import (
 	"fmt"
 
 	"fennel/lib/aggregate"
+	"fennel/lib/counter"
 	"fennel/lib/ftypes"
 	"fennel/lib/utils"
-	"fennel/model/counter"
 
 	"github.com/raulk/clock"
 	"github.com/samber/mo"

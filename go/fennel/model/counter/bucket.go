@@ -43,7 +43,7 @@ func Bucketize(bz Bucketizer, actions value.List) ([]counter.Bucket, []value.Val
 
 // MergeBuckets takes a list of buckets and "merges" their counts if rest of their properties
 // are identical this reduces the number of keys to touch in storage
-func MergeBuckets(mr MergeReduce, buckets []counter.Bucket, values []value.Value) ([]counter.Bucket, []value.Value, error) {
+func MergeBuckets(mr counter.MergeReduce, buckets []counter.Bucket, values []value.Value) ([]counter.Bucket, []value.Value, error) {
 	seen := make(map[counter.Bucket]value.Value, len(buckets))
 	for i := range buckets {
 		mapkey := buckets[i]
