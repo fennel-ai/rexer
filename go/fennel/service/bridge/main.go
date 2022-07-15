@@ -19,6 +19,12 @@ func setupRouter() *gin.Engine {
 		c.String(http.StatusOK, "pong")
 	})
 
+	r.LoadHTMLGlob("templates/*.tmpl")
+	r.Static("/assets", "../../webapp/dist")
+	r.GET("/", func(c *gin.Context) {
+		c.HTML(http.StatusOK, "index.tmpl", gin.H{})
+	})
+
 	// Get user value
 	r.GET("/user/:name", func(c *gin.Context) {
 		user := c.Params.ByName("name")
