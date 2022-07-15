@@ -42,7 +42,7 @@ with pkgs; mkShell {
     pkgs.pipenv
 
     # Packages for javascript development
-    unstable.nodejs-18_x
+    pkgs.nodejs
 
     # Packages for deployment
     pkgs.docker
