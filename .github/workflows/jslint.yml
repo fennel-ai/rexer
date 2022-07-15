@@ -11,7 +11,9 @@ jobs:
     - uses: actions/setup-node@v3
       with:
         node-version: 16
-    - run: npm install
+    - run: |
+        cd webapp
+        npm install
     - name: Run ESLint
       run: |
         cd webapp
