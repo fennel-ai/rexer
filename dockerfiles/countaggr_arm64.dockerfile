@@ -21,5 +21,6 @@ COPY --from=builder /usr/local/lib .
 RUN echo /kafka/lib >> /etc/ld.so.conf.d/librdkafka.conf
 WORKDIR /root/
 COPY --from=builder /app/go/fennel/countaggr ./
+RUN apt update && apt install -y redis-tools
 RUN ldconfig
 CMD ["./countaggr"]
