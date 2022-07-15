@@ -38,3 +38,5 @@ Cargo.lock
 go/fennel/lib/value/testdata/
 
 webapp/dist/
+
+.github/*
