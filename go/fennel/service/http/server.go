@@ -167,7 +167,7 @@ func (m server) Log(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 	totalActions.WithLabelValues("log", string(a.ActionType)).Inc()
-	// nothing to do on successful call :)
+	handleSuccessfulRequest(w)
 }
 
 func (m server) LogMulti(w http.ResponseWriter, req *http.Request) {
@@ -236,7 +236,7 @@ func (m server) LogMulti(w http.ResponseWriter, req *http.Request) {
 	for _, a := range batch {
 		totalActions.WithLabelValues("log_multi", string(a.ActionType)).Inc()
 	}
-	// nothing to do on successful call :)
+	handleSuccessfulRequest(w)
 }
 
 func (m server) LogActions(w http.ResponseWriter, req *http.Request) {
@@ -262,7 +262,7 @@ func (m server) LogActions(w http.ResponseWriter, req *http.Request) {
 	for _, a := range actions {
 		totalActions.WithLabelValues("log_multi", string(a.ActionType)).Inc()
 	}
-	// nothing to do on successful call :)
+	handleSuccessfulRequest(w)
 }
 
 func (m server) Fetch(w http.ResponseWriter, req *http.Request) {
@@ -335,6 +335,7 @@ func (m server) SetProfile(w http.ResponseWriter, req *http.Request) {
 		handleInternalServerError(w, "", err)
 		return
 	}
+	handleSuccessfulRequest(w)
 }
 
 func (m server) SetProfiles(w http.ResponseWriter, req *http.Request) {
@@ -353,6 +354,7 @@ func (m server) SetProfiles(w http.ResponseWriter, req *http.Request) {
 		handleInternalServerError(w, "", err)
 		return
 	}
+	handleSuccessfulRequest(w)
 }
 
 func (m server) LogProfiles(w http.ResponseWriter, req *http.Request) {
@@ -372,6 +374,7 @@ func (m server) LogProfiles(w http.ResponseWriter, req *http.Request) {
 		handleInternalServerError(w, "", err)
 		return
 	}
+	handleSuccessfulRequest(w)
 }
 
 func (m server) GetProfileMulti(w http.ResponseWriter, req *http.Request) {
@@ -471,6 +474,7 @@ func (m server) StoreQuery(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 	// if storing succeeds, just return empty response
+	handleSuccessfulRequest(w)
 }
 
 func (m server) RunQuery(w http.ResponseWriter, req *http.Request) {
@@ -536,6 +540,7 @@ func (m server) StoreAggregate(w http.ResponseWriter, req *http.Request) {
 		handleInternalServerError(w, "", err)
 		return
 	}
+	handleSuccessfulRequest(w)
 }
 
 func (m server) RetrieveAggregate(w http.ResponseWriter, req *http.Request) {
@@ -587,6 +592,7 @@ func (m server) DeactivateAggregate(w http.ResponseWriter, req *http.Request) {
 		handleInternalServerError(w, "", err)
 		return
 	}
+	handleSuccessfulRequest(w)
 }
 
 func (m server) AggregateValue(w http.ResponseWriter, req *http.Request) {
@@ -672,6 +678,7 @@ func (m server) UploadModel(w http.ResponseWriter, req *http.Request) {
 		}
 		return
 	}
+	handleSuccessfulRequest(w)
 }
 
 func (m server) DeleteModel(w http.ResponseWriter, req *http.Request) {
@@ -698,6 +705,7 @@ func (m server) DeleteModel(w http.ResponseWriter, req *http.Request) {
 		}
 		return
 	}
+	handleSuccessfulRequest(w)
 }
 
 func (m server) EnableModel(w http.ResponseWriter, req *http.Request) {
@@ -723,6 +731,7 @@ func (m server) EnableModel(w http.ResponseWriter, req *http.Request) {
 		}
 		return
 	}
+	handleSuccessfulRequest(w)
 }
 
 func (m server) GetOperators(w http.ResponseWriter, req *http.Request) {
@@ -737,6 +746,14 @@ func (m server) GetOperators(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 	_, _ = w.Write(data)
+}
+
+// handleSuccessfulRequest explicitly writes `StatusOk` to the ResponseWriter instance.
+//
+// this should be used for methods which do not write anything back as part of the response body i.e. do not call
+// `w.Write()` since that would automatically add `StatusOk` header
+func handleSuccessfulRequest(w http.ResponseWriter) {
+	w.WriteHeader(http.StatusOK)
 }
 
 func handleBadRequest(w http.ResponseWriter, errorPrefix string, err error) {
