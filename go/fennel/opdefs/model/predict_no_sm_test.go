@@ -1,10 +1,11 @@
 package model
 
 import (
+	"testing"
+
 	"fennel/lib/value"
 	"fennel/test"
 	"fennel/test/optest"
-	"testing"
 
 	"fennel/engine/interpreter"
 )
@@ -25,23 +26,6 @@ func TestPredictErrorNoModelParam(t *testing.T) {
 	optest.AssertErrorIs(t, tier, &predictOperator{}, value.Dict{} /* no static kwargs */, [][]value.Value{intable}, contextKwargTable, &interpreter.RequiredKwargNotProvidedError{ParamName: "model", OpModule: "model", OpName: "predict"})
 }
 
-func TestPredictErrorNoInputParam(t *testing.T) {
-	tier := test.Tier(t)
-	defer test.Teardown(tier)
-
-	intable := []value.Value{
-		value.Nil,
-	}
-	staticKwargsTable := value.NewDict(map[string]value.Value{
-		"model": value.String("no model"),
-	})
-	contextKwargTable := []value.Dict{
-		value.NewDict(map[string]value.Value{}),
-	}
-
-	optest.AssertErrorContains(t, tier, &predictOperator{}, staticKwargsTable, [][]value.Value{intable}, contextKwargTable, "input is not a list, got 'null'")
-}
-
 func TestPredictErrorNoModelStore(t *testing.T) {
 	tier := test.Tier(t)
 	defer test.Teardown(tier)
@@ -56,5 +40,5 @@ func TestPredictErrorNoModelStore(t *testing.T) {
 		value.NewDict(map[string]value.Value{}),
 	}
 
-	optest.AssertErrorContains(t, tier, &predictOperator{}, staticKwargsTable, [][]value.Value{intable}, contextKwargTable, "could not get framework from db")
+	optest.AssertErrorContains(t, tier, &predictOperator{}, staticKwargsTable, [][]value.Value{intable}, contextKwargTable, "could not get model from db")
 }

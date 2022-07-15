@@ -1,7 +1,7 @@
 import * as pulumi from "@pulumi/pulumi";
 import * as aws from "@pulumi/aws";
 import {fennelStdTags} from "../lib/util";
-import {UNLEASH_PASSWORD, UNLEASH_USERNAME} from "../tier-consts/consts";
+import {POSTGRESQL_PASSWORD, POSTGRESQL_USERNAME} from "../tier-consts/consts";
 
 export const plugins = {
     "aws": "v4.38.1",
@@ -26,7 +26,7 @@ export type outputType = {
 }
 
 export const setup = async (input: inputType): Promise<pulumi.Output<outputType>> => {
-    const provider = new aws.Provider(`p-${input.planeId}-unleash-aurora-aws-provider`, {
+    const provider = new aws.Provider(`p-${input.planeId}-postgres-aurora-aws-provider`, {
         region: <aws.Region>input.region,
         assumeRole: {
             roleArn: input.roleArn,
@@ -46,21 +46,21 @@ export const setup = async (input: inputType): Promise<pulumi.Output<outputType>
         }, { provider });
     });
 
-    const subnetGroup = new aws.rds.SubnetGroup(`p-${input.planeId}-unleash-db-subnetgroup`, {
+    const subnetGroup = new aws.rds.SubnetGroup(`p-${input.planeId}-postgres-db-subnetgroup`, {
         subnetIds: subnetIds.ids,
-        description: "Subnet group for unleash postgres database",
+        description: "Subnet group for postgres database",
         tags: { ...fennelStdTags },
     }, { provider });
 
-    const securityGroup = new aws.ec2.SecurityGroup(`p-${input.planeId}-unleash-db-sg`, {
-        namePrefix: `p-${input.planeId}-unleash-db-sg-`,
+    const securityGroup = new aws.ec2.SecurityGroup(`p-${input.planeId}-postgres-db-sg`, {
+        namePrefix: `p-${input.planeId}-postgres-db-sg-`,
         vpcId: input.vpcId,
         tags: { ...fennelStdTags },
     }, { provider });
 
     let sgRules: pulumi.Output<string>[] = []
     for (var key in input.connectedSecurityGroups) {
-        sgRules.push(new aws.ec2.SecurityGroupRule(`p-${input.planeId}-unleash-allow-${key}`, {
+        sgRules.push(new aws.ec2.SecurityGroupRule(`p-${input.planeId}-postgres-allow-${key}`, {
             securityGroupId: securityGroup.id,
             sourceSecurityGroupId: input.connectedSecurityGroups[key],
             fromPort: 0,
@@ -70,7 +70,7 @@ export const setup = async (input: inputType): Promise<pulumi.Output<outputType>
         }, { provider }).id)
     }
     if (input.connectedCidrBlocks !== undefined) {
-        sgRules.push(new aws.ec2.SecurityGroupRule(`p-${input.planeId}-unleash-aurora-allow-connected-cidr`, {
+        sgRules.push(new aws.ec2.SecurityGroupRule(`p-${input.planeId}-postgres-aurora-allow-connected-cidr`, {
             securityGroupId: securityGroup.id,
             cidrBlocks: input.connectedCidrBlocks,
             fromPort: 0,
@@ -80,16 +80,16 @@ export const setup = async (input: inputType): Promise<pulumi.Output<outputType>
         }, { provider }).id)
     }
 
-    const cluster = new aws.rds.Cluster(`p-${input.planeId}-unleash-db-instance`, {
+    const cluster = new aws.rds.Cluster(`p-${input.planeId}-postgres-db-instance`, {
         // Apply any changes proposed immediately instead of applying them during maintenance window
         applyImmediately: true,
         dbSubnetGroupName: subnetGroup.name,
         vpcSecurityGroupIds: [securityGroup.id],
-        clusterIdentifierPrefix: `p-${input.planeId}-unleash-db-`,
+        clusterIdentifierPrefix: `p-${input.planeId}-postgres-db-`,
         engine: aws.rds.EngineType.AuroraPostgresql,
         engineMode: aws.rds.EngineMode.Serverless,
-        masterUsername: UNLEASH_USERNAME,
-        masterPassword: UNLEASH_PASSWORD,
+        masterUsername: POSTGRESQL_USERNAME,
+        masterPassword: POSTGRESQL_PASSWORD,
         scalingConfiguration: {
             minCapacity: input.minCapacity,
             maxCapacity: input.maxCapacity,

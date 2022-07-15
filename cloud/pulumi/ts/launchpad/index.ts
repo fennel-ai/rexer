@@ -4,7 +4,7 @@ import * as vpc from "../vpc";
 import * as eks from "../eks";
 import * as account from "../account";
 import * as aurora from "../aurora";
-import * as unleashDb from "../unleash-postgres";
+import * as postgres from "../postgres";
 import * as elasticache from "../elasticache";
 import * as redis from "../redis";
 import * as confluentenv from "../confluentenv";
@@ -189,6 +189,7 @@ const tierConfs: Record<number, TierConf> = {
                 }
             },
         },
+        airbyteConf: {},
     },
     // Discord demo tier
     111: {
@@ -684,7 +685,7 @@ const dataplane = await setupDataPlane(planeConf, preview, destroy);
 const roleArn = dataplane[nameof<PlaneOutput>("roleArn")].value as string
 const confluentOutput = dataplane[nameof<PlaneOutput>("confluent")].value as confluentenv.outputType
 const dbOutput = dataplane[nameof<PlaneOutput>("db")].value as aurora.outputType
-const unleashDbOutput = dataplane[nameof<PlaneOutput>("unleashDb")].value as unleashDb.outputType
+const postgresDbOutput = dataplane[nameof<PlaneOutput>("postgresDb")].value as postgres.outputType
 const eksOutput = dataplane[nameof<PlaneOutput>("eks")].value as eks.outputType
 const redisOutput = dataplane[nameof<PlaneOutput>("redis")].value as redis.outputType
 const elasticacheOutput = dataplane[nameof<PlaneOutput>("elasticache")].value as elasticache.outputType
@@ -760,8 +761,8 @@ if (tierId !== 0) {
         dbUsername: "admin",
         dbPassword: planeConf.dbConf.password,
 
-        unleashDbEndpoint: unleashDbOutput.host,
-        unleashDbPort: unleashDbOutput.port,
+        postgresDbEndpoint: postgresDbOutput.host,
+        postgresDbPort: postgresDbOutput.port,
 
         roleArn: roleArn,
         region: planeConf.region,
@@ -803,5 +804,7 @@ if (tierId !== 0) {
         },
         milvusEndpoint: milvusOutput.endpoint,
         sagemakerConf: tierConf.sagemakerConf,
+
+        airbyteConf: tierConf.airbyteConf,
     }, preview, destroy).catch(err => console.log(err))
 }

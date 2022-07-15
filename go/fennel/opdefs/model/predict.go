@@ -2,13 +2,13 @@ package model
 
 import (
 	"context"
+	"log"
+
 	modelstore "fennel/controller/modelstore"
 	"fennel/engine/interpreter/bootarg"
 	"fennel/engine/operators"
 	"fennel/lib/value"
 	"fennel/tier"
-	"fmt"
-	"log"
 )
 
 func init() {
@@ -31,7 +31,7 @@ func (p predictOperator) New(args value.Dict, bootargs map[string]interface{}) (
 
 func (p predictOperator) Apply(ctx context.Context, staticKwargs operators.Kwargs, in operators.InputIter, outs *value.List) error {
 	var rows []value.Value
-	var inputs []value.List
+	var inputs []value.Value
 	modelName := string(staticKwargs.GetUnsafe("model").(value.String))
 	_, isPretrainedModel := modelstore.SupportedPretrainedModels[modelName]
 	for in.HasMore() {
@@ -43,11 +43,7 @@ func (p predictOperator) Apply(ctx context.Context, staticKwargs operators.Kwarg
 		if !ok || input == value.Nil {
 			input = heads[0]
 		}
-		inputList, ok := input.(value.List)
-		if !ok {
-			return fmt.Errorf("input is not a list, got '%s'", input)
-		}
-		inputs = append(inputs, inputList)
+		inputs = append(inputs, input)
 		rows = append(rows, heads[0])
 	}
 	var outputs []value.Value

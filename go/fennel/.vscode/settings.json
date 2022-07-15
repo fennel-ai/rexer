@@ -1,3 +1,0 @@
-{
-    "go.buildTags": "dynamic,integration,sagemaker,glue"
-}

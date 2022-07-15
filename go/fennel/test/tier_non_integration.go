@@ -86,6 +86,79 @@ func Tier(t *testing.T) tier.Tier {
 	}
 }
 
+// BenchmarkTier returns a tier to be used in benchmarks based off a standard test plane
+// since this is only compiled when 'integration' build tag is not given, most resources are mocked
+func BenchmarkTier() tier.Tier {
+	rand.Seed(time.Now().UnixNano())
+	tierID := ftypes.RealmID(rand.Uint32())
+
+	db, err := defaultDB(tierID, "testdb" /*logicalname*/, os.Getenv("MYSQL_USERNAME"), os.Getenv("MYSQL_PASSWORD"), os.Getenv("MYSQL_SERVER_ADDRESS"))
+	if err != nil {
+		panic(err)
+	}
+
+	redClient, err := mockRedis(tierID)
+	if err != nil {
+		panic(err)
+	}
+
+	Cache := redis.NewCache(redClient)
+
+	producers, consumerCreator, err := createMockKafka(tierID)
+	if err != nil {
+		panic(err)
+	}
+
+	PCache, err := pcache.NewPCache(1<<31, 1<<6)
+	if err != nil {
+		panic(err)
+	}
+
+	// TODO - decide what region to use for test tier
+	s3Client := s3.NewClient(s3.S3Args{Region: "ap-south-1"})
+	glueClient := glue.NewGlueClient(glue.GlueArgs{
+		Region: "ap-south-1",
+		JobNameByAgg: map[string]string{
+			"cf": "my-cf-job",
+		},
+	})
+
+	modelStore := modelstore.NewModelStore(modelstore.ModelStoreArgs{
+		ModelStoreS3Bucket:     os.Getenv("MODEL_STORE_S3_BUCKET"),
+		ModelStoreEndpointName: os.Getenv("MODEL_STORE_ENDPOINT") + fmt.Sprintf("-%d", tierID),
+	}, tierID)
+
+	logger, err := zap.NewDevelopment()
+	if err != nil {
+		panic(err)
+	}
+	logger = logger.With(zap.Uint32("tier_id", uint32(tierID)))
+
+	faker := unleashlib.NewFakeUnleash()
+	err = unleash.Initialize(unleash.WithListener(&unleash.DebugListener{}),
+		unleash.WithAppName("local-tier"),
+		unleash.WithUrl(faker.Url()))
+	if err != nil {
+		panic(err)
+	}
+
+	return tier.Tier{
+		ID:               tierID,
+		DB:               db,
+		Cache:            Cache,
+		PCache:           PCache,
+		Redis:            redClient,
+		Producers:        producers,
+		Clock:            clock.Unix{},
+		NewKafkaConsumer: consumerCreator,
+		S3Client:         s3Client,
+		GlueClient:       glueClient,
+		ModelStore:       modelStore,
+		Logger:           logger,
+		AggregateDefs:    new(sync.Map),
+	}
+}
+
 func Teardown(tier tier.Tier) {
 	if err := drop(tier.ID, "testdb" /*logicalname*/, os.Getenv("MYSQL_USERNAME"), os.Getenv("MYSQL_PASSWORD"), os.Getenv("MYSQL_SERVER_ADDRESS")); err != nil {
 		panic(fmt.Sprintf("error in db teardown: %v\n", err))

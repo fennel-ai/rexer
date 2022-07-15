@@ -2,6 +2,7 @@ import { InlineProgramArgs, LocalWorkspace } from "@pulumi/pulumi/automation";
 import * as pulumi from "@pulumi/pulumi"
 
 import { nameof } from "../lib/util"
+import * as airbyte from "../airbyte";
 import * as kafkatopics from "../kafkatopics";
 import * as kafkaconnectors from "../kafkaconnectors";
 import * as mysql from "../mysql"
@@ -83,6 +84,8 @@ export type SagemakerConf = {
     instanceCount: number,
 }
 
+export type AirbyteConf = {}
+
 export type TierConf = {
     // Should be set to false, when deleting the tier
     //
@@ -98,6 +101,7 @@ export type TierConf = {
     counterCleanupConf?: CounterCleanupConf,
     ingressConf?: IngressConf,
     sagemakerConf?: SagemakerConf,
+    airbyteConf?: AirbyteConf,
 }
 
 type inputType = {
@@ -128,8 +132,8 @@ type inputType = {
     dbPassword: pulumi.Output<string>,
     dbEndpoint: string,
     // unleash db configuration.
-    unleashDbEndpoint: string,
-    unleashDbPort: number,
+    postgresDbEndpoint: string,
+    postgresDbPort: number,
     // redis configuration.
     redisEndpoint: string,
     // elasticache configuration.
@@ -161,6 +165,7 @@ type inputType = {
     vpcId: string,
     connectedSecurityGroups: Record<string, string>,
     milvusEndpoint: string,
+    airbyteConf?: AirbyteConf,
 }
 
 const parseConfig = (): inputType => {
@@ -188,8 +193,8 @@ const parseConfig = (): inputType => {
         dbPassword: config.requireSecret(nameof<inputType>("dbPassword")),
         dbEndpoint: config.require(nameof<inputType>("dbEndpoint")),
 
-        unleashDbEndpoint: config.require(nameof<inputType>("unleashDbEndpoint")),
-        unleashDbPort: config.requireNumber(nameof<inputType>("unleashDbPort")),
+        postgresDbEndpoint: config.require(nameof<inputType>("postgresDbEndpoint")),
+        postgresDbPort: config.requireNumber(nameof<inputType>("postgresDbPort")),
 
         roleArn: config.require(nameof<inputType>("roleArn")),
         region: config.require(nameof<inputType>("region")),
@@ -229,6 +234,8 @@ const parseConfig = (): inputType => {
         connectedSecurityGroups: config.requireObject(nameof<inputType>("connectedSecurityGroups")),
 
         milvusEndpoint: config.require(nameof<inputType>("milvusEndpoint")),
+
+        airbyteConf: config.getObject(nameof<inputType>("airbyteConf")),
     };
 };
 
@@ -252,6 +259,7 @@ const setupPlugins = async (stack: pulumi.automation.Stack) => {
         ...countersCleanup.plugins,
         ...queryserver.plugins,
         ...unleash.plugins,
+        ...airbyte.plugins,
     }
     console.info("installing plugins...");
     for (var key in plugins) {
@@ -364,8 +372,8 @@ const setupResources = async () => {
         roleArn: input.roleArn,
         tierId: input.tierId,
         namespace: input.namespace,
-        unleashDbEndpoint: input.unleashDbEndpoint,
-        unleashDbPort: input.unleashDbPort,
+        unleashDbEndpoint: input.postgresDbEndpoint,
+        unleashDbPort: input.postgresDbPort,
         kubeconfig: input.kubeconfig,
         protect: input.protect,
     });
@@ -376,7 +384,21 @@ const setupResources = async () => {
         roleArn: input.roleArn,
         tierId: input.tierId,
         protect: input.protect,
-    })
+    });
+
+    // airbyte configuration
+    if (input.airbyteConf !== undefined) {
+        const airbyteOutput = await airbyte.setup({
+            region: input.region,
+            roleArn: input.roleArn,
+            tierId: input.tierId,
+            namespace: input.namespace,
+            dbEndpoint: input.postgresDbEndpoint,
+            dbPort: input.postgresDbPort,
+            kubeconfig: input.kubeconfig,
+            protect: input.protect,
+        });
+    }
 
     // setup configs after resources are setup.
     const configsOutput = pulumi.all(
@@ -589,8 +611,8 @@ type TierInput = {
     dbEndpoint: string,
 
     // unleash db configuration
-    unleashDbEndpoint: string,
-    unleashDbPort: number,
+    postgresDbEndpoint: string,
+    postgresDbPort: number,
 
     // aws and k8s configuration.
     roleArn: string,
@@ -644,6 +666,9 @@ type TierInput = {
 
     // milvus
     milvusEndpoint: string,
+
+    // airbyte
+    airbyteConf?: AirbyteConf,
 }
 
 const setupTier = async (args: TierInput, preview?: boolean, destroy?: boolean) => {
@@ -692,8 +717,8 @@ const setupTier = async (args: TierInput, preview?: boolean, destroy?: boolean) 
     await stack.setConfig(nameof<inputType>("dbPassword"), { value: args.dbPassword, secret: true })
     await stack.setConfig(nameof<inputType>("dbEndpoint"), { value: args.dbEndpoint })
 
-    await stack.setConfig(nameof<inputType>("unleashDbEndpoint"), { value: args.unleashDbEndpoint })
-    await stack.setConfig(nameof<inputType>("unleashDbPort"), { value: String(args.unleashDbPort) })
+    await stack.setConfig(nameof<inputType>("postgresDbEndpoint"), { value: args.postgresDbEndpoint })
+    await stack.setConfig(nameof<inputType>("postgresDbPort"), { value: String(args.postgresDbPort ) })
 
     await stack.setConfig(nameof<inputType>("roleArn"), { value: args.roleArn })
     await stack.setConfig(nameof<inputType>("region"), { value: args.region })
@@ -750,6 +775,10 @@ const setupTier = async (args: TierInput, preview?: boolean, destroy?: boolean) 
     await stack.setConfig(nameof<inputType>("connectedSecurityGroups"), { value: JSON.stringify(args.connectedSecurityGroups) })
 
     await stack.setConfig(nameof<inputType>("milvusEndpoint"), { value: args.milvusEndpoint })
+
+    if (args.airbyteConf !== undefined) {
+        await stack.setConfig(nameof<inputType>("airbyteConf"), { value: JSON.stringify(args.airbyteConf) })
+    }
 
     console.info("config set");
 

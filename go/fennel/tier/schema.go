@@ -119,4 +119,8 @@ var Schema = db.Schema{
 	// ==================== END Schema for Phaser ======================
 	13: `ALTER TABLE aggregate_config ADD COLUMN source VARCHAR(64) NOT NULL DEFAULT 'action';`,
 	14: `ALTER TABLE query_ast ADD COLUMN name VARCHAR(64) NOT NULL;`,
+	// Statement 15 adds the container_name column to the model table.
+	// Statement 16 generates container names for rows with no container name.
+	15: `ALTER TABLE model ADD COLUMN container_name VARCHAR(255) NOT NULL;`,
+	16: `UPDATE model SET container_name=CONCAT("Container-", name, "-", version) WHERE container_name="";`,
 }

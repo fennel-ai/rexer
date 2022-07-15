@@ -42,7 +42,7 @@ export const setup = async (input: inputType): Promise<pulumi.Output<outputType>
                     Resource: [
                         `arn:aws:s3:::${input.modelStoreBucket}`,
                         `arn:aws:s3:::${input.pprofBucket}`,
-                        `arn:aws:s3:::${input.offlineAggregateOutputBucket}`
+                        `arn:aws:s3:::${input.offlineAggregateOutputBucket}`,
                     ]
                 },
                 {
@@ -54,7 +54,7 @@ export const setup = async (input: inputType): Promise<pulumi.Output<outputType>
                     Resource: [
                         `arn:aws:s3:::${input.modelStoreBucket}/*`,
                         `arn:aws:s3:::${input.pprofBucket}/*`,
-                        `arn:aws:s3:::${input.offlineAggregateOutputBucket}/*`
+                        `arn:aws:s3:::${input.offlineAggregateOutputBucket}/*`,
                     ]
                 },
                 {
@@ -64,7 +64,7 @@ export const setup = async (input: inputType): Promise<pulumi.Output<outputType>
                     ],
                     Resource: [
                         `arn:aws:s3:::${input.modelStoreBucket}/*`,
-                        `arn:aws:s3:::${input.offlineAggregateOutputBucket}/*`
+                        `arn:aws:s3:::${input.offlineAggregateOutputBucket}/*`,
                     ]
                 },
                 {

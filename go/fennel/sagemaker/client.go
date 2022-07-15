@@ -100,7 +100,7 @@ func (smc SMClient) CreateModel(ctx context.Context, hostedModels []lib.Model, s
 			return fmt.Errorf("failed to get image: %v", err)
 		}
 		modelInput.Containers = append(modelInput.Containers, &sagemaker.ContainerDefinition{
-			ContainerHostname: aws.String(lib.GetContainerName(model.Name, model.Version)),
+			ContainerHostname: aws.String(model.ContainerName),
 			Image:             aws.String(image),
 			ModelDataUrl:      aws.String(model.ArtifactPath),
 			Environment:       env,
