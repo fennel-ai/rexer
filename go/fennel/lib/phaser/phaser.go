@@ -130,6 +130,10 @@ func bulkUploadToRedis(tr tier.Tier, file string, numRows int, tempDir string) e
 		return err
 	}
 
+	if strings.Contains(string(out), "redis-cli: command not found") {
+		return fmt.Errorf("redis-cli not found")
+	}
+
 	nodes := strings.Split(string(out), "\n")
 	if len(nodes) == 0 {
 		return fmt.Errorf("no redis cluster nodes found")
@@ -143,7 +147,7 @@ func bulkUploadToRedis(tr tier.Tier, file string, numRows int, tempDir string) e
 		g.Go(func() error {
 			node := strings.TrimSpace(nodeAddress)
 			if !strings.Contains(node, ":") {
-				return nil
+				return fmt.Errorf("invalid redis cluster node address: %s", node)
 			}
 			nodeAddress := node[:strings.IndexByte(node, ':')]
 
@@ -152,7 +156,6 @@ func bulkUploadToRedis(tr tier.Tier, file string, numRows int, tempDir string) e
 			out, _ = exec.Command("bash", "-c", bulkUploadCmd).Output()
 			re := regexp.MustCompile(`.*errors\:\s([0-9]+),\sreplies\:\s([0-9]+)`)
 			match := re.FindStringSubmatch(string(out))
-			tr.Logger.Error("redis upload file " + file + " at " + nodeAddress + " output " + string(out))
 			if len(match) < 3 {
 				return fmt.Errorf("could not identify number of successfull phaser writes to redis :- %s", string(out))
 			}
@@ -291,8 +294,7 @@ func (p Phaser) updateServing(tr tier.Tier, fileNames, filesToDownload []string,
 		return err
 	}
 
-	// Temporarily lets not delete the files, as we need them for the bulk upload
-	//defer os.RemoveAll(tempDir)
+	defer os.RemoveAll(tempDir)
 
 	err = tr.S3Client.BatchDiskDownload(filesToDownload, p.S3Bucket, tempDir)
 	if err != nil {
