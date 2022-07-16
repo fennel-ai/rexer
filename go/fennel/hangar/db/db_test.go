@@ -19,6 +19,7 @@ func TestDBStore(t *testing.T) {
 		dirname := fmt.Sprintf("/tmp/badger_%d", planeID)
 		db, err := NewHangar(planeID, dirname, 10*1<<24, encoders.Default())
 		assert.NoError(t, err)
+		t.Cleanup(func() { _ = db.Teardown() })
 		return db
 	}
 	hangar.TestStore(t, maker)
@@ -31,6 +32,7 @@ func BenchmarkDBStore(b *testing.B) {
 		dirname := fmt.Sprintf("/tmp/badger_%d", planeID)
 		db, err := NewHangar(planeID, dirname, 10*1<<24, encoders.Default())
 		assert.NoError(t, err)
+		t.Cleanup(func() { _ = db.Teardown() })
 		return db
 	}
 	hangar.BenchmarkStore(b, maker)
