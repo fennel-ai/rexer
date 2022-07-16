@@ -111,7 +111,6 @@ data:
             endpoint: 0.0.0.0:4317
           http:
             endpoint: 0.0.0.0:4318
-      awscontainerinsightreceiver:
       prometheus:
         config:
           global:
@@ -217,43 +216,6 @@ data:
     exporters:
       awsxray:
         region: "%%AWS_REGION%%"
-      awsemf/containerinsights:
-        namespace: ContainerInsights
-        log_group_name: '/aws/containerinsights/%%PLANE_ID%%/{ClusterName}/performance'
-        log_stream_name: '{NodeName}'
-        resource_to_telemetry_conversion:
-          enabled: true
-        dimension_rollup_option: NoDimensionRollup
-        parse_json_encoded_attr_values: [Sources, kubernetes]
-        metric_declarations:
-          # node metrics
-          - metric_name_selectors:
-              - node_cpu_utilization
-              - node_memory_utilization
-              - node_cpu_reserved_capacity
-              - node_memory_reserved_capacity
-            dimensions: [[NodeName, InstanceId, ClusterName]]
-          - metric_name_selectors:
-              - node_cpu_usage_total
-              - node_cpu_limit
-              - node_memory_working_set
-              - node_memory_limit
-            dimensions: [[ClusterName]]
-          # pod metrics
-          - metric_name_selectors:
-              - pod_cpu_utilization
-              - pod_memory_utilization
-              - pod_cpu_utilization_over_pod_limit
-              - pod_memory_utilization_over_pod_limit
-              - pod_cpu_reserved_capacity
-              - pod_memory_reserved_capacity
-              - pod_number_of_container_restarts
-            dimensions: [[PodName, Namespace, ClusterName]]
-          # cluster metrics
-          - metric_name_selectors:
-              - cluster_node_count
-              - cluster_failed_node_count
-            dimensions: [[ClusterName]]
 
       awsprometheusremotewrite:
         # This should be replaced before it is used for deployment
@@ -278,15 +240,6 @@ data:
             - batch/traces
           exporters:
             - awsxray
-        metrics/containerinsights:
-          receivers:
-            - awscontainerinsightreceiver
-          processors:
-            - resourcedetection
-            - resource
-            - batch/metrics
-          exporters:
-            - awsemf/containerinsights
         metrics/prometheus:
           receivers:
             - prometheus
