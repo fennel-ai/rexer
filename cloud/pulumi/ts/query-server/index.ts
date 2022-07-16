@@ -303,6 +303,30 @@ export const setup = async (input: inputType) => {
             "rewrite": "/query",
             "service": `query-server:${appPort}`,
             "timeout_ms": timeoutSeconds * 1000,
+            "retry_policy": {
+                // Retry on gateway errors (which applies to 502, 503 or 504 responses), any connection failure errors
+                // to the upstream service (here query server) and retryable 4xx response (which is 409).
+                //
+                // See - https://www.getambassador.io/docs/emissary/latest/topics/using/retries/#retry_on
+                //
+                // Also see - https://www.envoyproxy.io/docs/envoy/latest/faq/load_balancing/transient_failures#retries
+                // (request retry section) - that multiple `retry_on` are in fact possible to configure
+                "retry_on": "gateway-error,connect-failure,retriable-4xx",
+                // Retry twice at max
+                //
+                // Currently we have not ruled out the exact cause for query servers OOMing. If the root cause is that
+                // there is a query of death (=> a query which requires a large memory allocation in this case),
+                // retrying many times will lead to multiple servers crashing with OOMs
+                //
+                // NOTE: we currently do not set `max_retry` in the global circuit breaker configured and it defaults to
+                // 5. This should be lower than the value set there so that the circuit breaker does not preempt
+                // the request before desired (or Mapping configured) retries
+                "num_retries": 2,
+                // Use `per_try_timeout` - specifies the timeout for each retry.
+                // Default: this is the global request timeout (which is by default 3000ms, and is overridden per
+                // mapping)
+                "per_try_timeout": "60s"
+            }
         }
     }, { provider: k8sProvider, deleteBeforeReplace: true })
 
