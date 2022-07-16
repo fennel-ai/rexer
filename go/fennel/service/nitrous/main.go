@@ -54,6 +54,11 @@ func main() {
 	profiler := common.CreateProfiler(flags.PprofArgs)
 	profiler.StartPprofServer()
 
+	/*
+		if err = nitrous.StartBackupNode(plane); err != nil {
+			plane.Logger.Fatal("Failed to start nitrous backup instance", zap.Error(err))
+		}
+	*/
 	lis, err := net.Listen("tcp", fmt.Sprintf(":%d", flags.ListenPort))
 	if err != nil {
 		n.Logger.Fatal("Failed to listen", zap.Uint32("port", flags.ListenPort), zap.Error(err))

@@ -7,13 +7,17 @@ import (
 	"io"
 	"log"
 	"os"
+	"sort"
 	"sync"
+	"time"
 
 	"fennel/hangar"
 	"fennel/lib/ftypes"
 	"fennel/lib/timer"
+	"fennel/nitrous/backup"
 
 	"github.com/dgraph-io/badger/v3"
+	"go.uber.org/zap"
 )
 
 const (
@@ -22,18 +26,36 @@ const (
 )
 
 type badgerDB struct {
-	planeID  ftypes.RealmID
-	baseOpts badger.Options
-	enc      hangar.Encoder
-	db       *badger.DB
-	reqchan  chan getRequest
+	planeID       ftypes.RealmID
+	baseOpts      badger.Options
+	enc           hangar.Encoder
+	db            *badger.DB
+	reqchan       chan getRequest
+	backupManager *backup.BackupManager
+	logger        *zap.Logger
 
 	// WaitGroup to wait for all goroutines to finish.
 	wg *sync.WaitGroup
 }
 
-func (b *badgerDB) Restore(source io.Reader) error {
-	panic("implement me")
+func (b *badgerDB) Restore(dbDir string) error {
+	backups, err := b.backupManager.ListBackups()
+	if err != nil {
+		return err
+	}
+	if len(backups) == 0 {
+		b.logger.Warn("There is no previous backups")
+		return nil
+	}
+	sort.Strings(backups)
+	backupToRecover := backups[len(backups)-1]
+	b.logger.Info(fmt.Sprintf("Going to restorethe lastest backup: %s", backupToRecover))
+	err = b.backupManager.RestoreToPath(dbDir, backupToRecover)
+	if err != nil {
+		return err
+	}
+	b.logger.Info("Successfully restored the latest backup")
+	return nil
 }
 
 func (b *badgerDB) Teardown() error {
@@ -43,8 +65,28 @@ func (b *badgerDB) Teardown() error {
 	return os.Remove(b.baseOpts.Dir)
 }
 
-func (b *badgerDB) Backup(sink io.Writer, since uint64) (uint64, error) {
-	return b.db.Backup(sink, since)
+func (b *badgerDB) BackupManager(_ io.Writer, _ uint64) (uint64, error) {
+
+}
+
+func (b *badgerDB) Backup(_ io.Writer, _ uint64) (uint64, error) {
+	opt := b.db.Opts()
+	err := b.db.Close()
+	if err != nil {
+		return 0, nil
+	}
+
+	err = b.backupManager.BackupPath(opt.Dir, time.Now().Format(time.RFC3339))
+	if err != nil {
+		return 0, nil
+	}
+
+	newDB, err := badger.Open(opt)
+	if err != nil {
+		return 0, nil
+	}
+	b.db = newDB
+	return 0, nil
 }
 
 func (b *badgerDB) Close() error {
@@ -60,7 +102,7 @@ type getRequest struct {
 	resch     chan<- []hangar.Result
 }
 
-func NewHangar(planeID ftypes.RealmID, dirname string, blockCacheBytes int64, enc hangar.Encoder) (*badgerDB, error) {
+func NewHangar(planeID ftypes.RealmID, dirname string, blockCacheBytes int64, enc hangar.Encoder, backupManager *backup.BackupManager) (*badgerDB, error) {
 	opts := badger.DefaultOptions(dirname)
 	opts = opts.WithLoggingLevel(badger.WARNING)
 	opts = opts.WithBlockCacheSize(blockCacheBytes)
@@ -70,12 +112,13 @@ func NewHangar(planeID ftypes.RealmID, dirname string, blockCacheBytes int64, en
 		return nil, err
 	}
 	bs := badgerDB{
-		planeID:  planeID,
-		baseOpts: opts,
-		db:       db,
-		reqchan:  reqchan,
-		enc:      enc,
-		wg:       &sync.WaitGroup{},
+		planeID:       planeID,
+		baseOpts:      opts,
+		db:            db,
+		reqchan:       reqchan,
+		enc:           enc,
+		wg:            &sync.WaitGroup{},
+		backupManager: backupManager,
 	}
 	// spin up lots of goroutines to handle requests in parallel
 	bs.wg.Add(PARALLELISM)
