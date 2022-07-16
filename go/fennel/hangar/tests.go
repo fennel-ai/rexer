@@ -61,27 +61,25 @@ func testBasic(t *testing.T, store Hangar) {
 }
 
 func testTTL(t *testing.T, store Hangar) {
-	keys, kgs, vgs := getData(3, 5)
+	keys, kgs, vgs := getData(100, 5)
 	// initially all empty
 	verifyMissing(t, store, kgs)
-	// set all a TTL of 1 second
+	// set first 50 keys with a large TTL of 10 minutes and the last 50 keys
+	// with a small TTL of 1 second.
 	start := time.Now()
-	for i := range vgs {
-		(&vgs[i]).Expiry = start.Unix() + 1
+	for i := range vgs[:50] {
+		if i > 50 {
+			(&vgs[i]).Expiry = start.Unix() + 600
+		} else {
+			(&vgs[i]).Expiry = start.Unix() + 1
+		}
 	}
-	// set with TTL and verify can get
 	err := store.SetMany(keys, vgs)
 	assert.NoError(t, err)
-	// If the keys shouldn't have expired, we should be able to get them back.
-	// Note: we need this check for cases when this go-routine may not have run
-	// for a while, for example when the test is run with -race flag.
-	if time.Since(start) < time.Second {
-		verifyValues(t, store, kgs, vgs)
-	}
-
-	// now sleep for 2 seconds and verify missing
-	time.Sleep(time.Second * 2)
-	verifyMissing(t, store, kgs)
+	// sleep 2 seconds and verify we can only get the last 50 keys.
+	time.Sleep(2 * time.Second)
+	verifyMissing(t, store, kgs[0:50])
+	verifyValues(t, store, kgs[50:], vgs[50:])
 }
 
 func testPartialMissing(t *testing.T, store Hangar) {
