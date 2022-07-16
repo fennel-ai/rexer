@@ -304,14 +304,17 @@ export const setup = async (input: inputType) => {
             "service": `query-server:${appPort}`,
             "timeout_ms": timeoutSeconds * 1000,
             "retry_policy": {
-                // Retry on gateway errors (which applies to 502, 503 or 504 responses), any connection failure errors
-                // to the upstream service (here query server) and retryable 4xx response (which is 409).
+                // Retry on gateway errors (which applies to 502, 503 or 504 responses)
                 //
                 // See - https://www.getambassador.io/docs/emissary/latest/topics/using/retries/#retry_on
                 //
                 // Also see - https://www.envoyproxy.io/docs/envoy/latest/faq/load_balancing/transient_failures#retries
+                //
+                // Ideally we want to retry on `connect-failure` and `retriable-4xx` errors as well, but
+                // emissary does not support configuring multiple `retry_on`
+                //
                 // (request retry section) - that multiple `retry_on` are in fact possible to configure
-                "retry_on": "gateway-error,connect-failure,retriable-4xx",
+                "retry_on": "gateway-error",
                 // Retry twice at max
                 //
                 // Currently we have not ruled out the exact cause for query servers OOMing. If the root cause is that
