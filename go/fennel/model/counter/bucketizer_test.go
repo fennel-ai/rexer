@@ -6,6 +6,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
+	"fennel/lib/aggregate"
 	"fennel/lib/counter"
 	"fennel/lib/ftypes"
 	"fennel/lib/value"
@@ -231,7 +232,11 @@ func TestMergeBuckets(t *testing.T) {
 	b3 := counter.Bucket{Key: key1, Window: window2, Index: idx1}
 	b4 := counter.Bucket{Key: key1, Window: window2, Index: idx2}
 	b4b := counter.Bucket{Key: key1, Window: window2, Index: idx2}
-	buckets, vals, err := MergeBuckets(rollingSum{}, []counter.Bucket{b1, b1b, b2, b3, b4, b4b}, []value.Value{one, three, one, one, one, value.Int(2)})
+	mr, err := counter.ToMergeReduce(1, aggregate.Options{
+		AggType: aggregate.SUM,
+	})
+	assert.NoError(t, err)
+	buckets, vals, err := MergeBuckets(mr, []counter.Bucket{b1, b1b, b2, b3, b4, b4b}, []value.Value{one, three, one, one, one, value.Int(2)})
 	assert.NoError(t, err)
 	assert.Len(t, buckets, 4)
 	assert.ElementsMatch(t, buckets, []counter.Bucket{counter.Bucket{Key: key1, Window: window1, Index: idx1}, counter.Bucket{Key: key2, Window: window2, Index: idx1},

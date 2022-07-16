@@ -5,8 +5,8 @@ import (
 	"time"
 
 	"fennel/lib/aggregate"
+	"fennel/lib/counter"
 	"fennel/lib/ftypes"
-	"fennel/model/counter"
 
 	"github.com/raulk/clock"
 	"github.com/samber/mo"

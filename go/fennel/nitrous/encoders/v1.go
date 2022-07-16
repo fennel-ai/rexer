@@ -4,8 +4,8 @@ import (
 	"fmt"
 
 	"fennel/lib/aggregate"
+	"fennel/lib/counter"
 	"fennel/lib/ftypes"
-	"fennel/model/counter"
 	rpc "fennel/nitrous/rpc/v2"
 	"fennel/nitrous/server/store"
 	"fennel/nitrous/server/temporal"
