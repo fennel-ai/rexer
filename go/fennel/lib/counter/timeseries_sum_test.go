@@ -27,7 +27,7 @@ func TestTimeseriesCounter_Reduce(t *testing.T) {
 
 func TestTimeseriesCounter_Start(t *testing.T) {
 	// Limit: 1, Window: Hour makes duration = 7200
-	h, err := ToHistogram(ftypes.AggId(1), aggregate.Options{
+	h, err := ToMergeReduce(ftypes.AggId(1), aggregate.Options{
 		AggType: aggregate.TIMESERIES_SUM,
 		Limit:   1,
 		Window:  ftypes.Window_HOUR,
@@ -42,7 +42,7 @@ func TestTimeseriesCounter_Start(t *testing.T) {
 	assert.Equal(t, s, ftypes.Timestamp(0))
 
 	// Limit: 1, Window: day makes duration = 172800
-	h, err = ToHistogram(ftypes.AggId(1), aggregate.Options{
+	h, err = ToMergeReduce(ftypes.AggId(1), aggregate.Options{
 		AggType: aggregate.TIMESERIES_SUM,
 		Limit:   1,
 		Window:  ftypes.Window_DAY,

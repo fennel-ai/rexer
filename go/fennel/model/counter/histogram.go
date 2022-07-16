@@ -25,21 +25,13 @@ type BucketStore interface {
 	SetMulti(ctx context.Context, tr tier.Tier, aggIds []ftypes.AggId, buckets [][]counter.Bucket, values [][]value.Value) error
 }
 
-type MergeReduce interface {
-	Options() aggregate.Options
-	Transform(v value.Value) (value.Value, error)
-	Merge(a, b value.Value) (value.Value, error)
-	Reduce(values []value.Value) (value.Value, error)
-	Zero() value.Value
-}
-
 type Histogram struct {
-	MergeReduce
+	counter.MergeReduce
 	BucketStore
 	Bucketizer
 }
 
-func Start(mr MergeReduce, end ftypes.Timestamp, duration mo.Option[uint32]) (ftypes.Timestamp, error) {
+func Start(mr counter.MergeReduce, end ftypes.Timestamp, duration mo.Option[uint32]) (ftypes.Timestamp, error) {
 	switch mr.Options().AggType {
 	case aggregate.TIMESERIES_SUM:
 		var d uint32
@@ -59,46 +51,18 @@ func Start(mr MergeReduce, end ftypes.Timestamp, duration mo.Option[uint32]) (ft
 	}
 }
 
-func ToMergeReduce(aggId ftypes.AggId, opts aggregate.Options) (MergeReduce, error) {
-	var mr MergeReduce
-	switch opts.AggType {
-	case aggregate.TIMESERIES_SUM:
-		mr = NewTimeseriesSum(opts)
-	case aggregate.SUM:
-		mr = NewSum(opts)
-	case aggregate.AVERAGE:
-		mr = NewAverage(opts)
-	case aggregate.LIST:
-		mr = NewList(opts)
-	case aggregate.MIN:
-		mr = NewMin(opts)
-	case aggregate.MAX:
-		mr = NewMax(opts)
-	case aggregate.STDDEV:
-		mr = NewStdDev(opts)
-	case aggregate.RATE:
-		mr = NewRate(aggId, opts)
-	case aggregate.TOPK:
-		mr = NewTopK(opts)
-	default:
-		return nil, fmt.Errorf("invalid aggregate type: %v", opts.AggType)
-	}
-	return mr, nil
-}
-
 // Returns the default histogram that uses two-level store and 6-minutely
 // buckets.
 // TODO: implement aggregations that can support forever aggregations.
 // https://linear.app/fennel-ai/issue/REX-1053/support-forever-aggregates
 func ToHistogram(aggId ftypes.AggId, opts aggregate.Options) (Histogram, error) {
 	var retention uint32
-	mr, err := ToMergeReduce(aggId, opts)
+	mr, err := counter.ToMergeReduce(aggId, opts)
 	if err != nil {
 		return Histogram{}, err
 	}
 	bucketizer := sixMinutelyBucketizer
-	switch mr.(type) {
-	case timeseriesSum:
+	if mr.Options().AggType == aggregate.TIMESERIES_SUM {
 		d, err := utils.Duration(opts.Window)
 		if err != nil {
 			d = 0
@@ -112,10 +76,9 @@ func ToHistogram(aggId ftypes.AggId, opts aggregate.Options) (Histogram, error) 
 			},
 			false, /* include trailing */
 		}
-	default:
+	} else {
 		retention = getMaxDuration(opts.Durations)
 	}
-
 	return Histogram{
 		mr,
 		// retain all keys for 1.1days(95040) + retention

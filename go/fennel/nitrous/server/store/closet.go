@@ -7,11 +7,11 @@ import (
 
 	"fennel/hangar"
 	"fennel/lib/arena"
+	"fennel/lib/counter"
 	"fennel/lib/ftypes"
 	"fennel/lib/utils/binary"
 	"fennel/lib/utils/slice"
 	"fennel/lib/value"
-	"fennel/model/counter"
 	rpc "fennel/nitrous/rpc/v2"
 	"fennel/nitrous/server/tailer"
 	"fennel/nitrous/server/temporal"
