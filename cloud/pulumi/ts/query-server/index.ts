@@ -329,7 +329,18 @@ export const setup = async (input: inputType) => {
                 // Default: this is the global request timeout (which is by default 3000ms, and is overridden per
                 // mapping)
                 "per_try_timeout": "60s"
-            }
+            },
+            "circuit_breakers": [{
+                // Specifies the maximum number of concurrent retries there could be to the upstream service
+                //
+                // We noticed that this limit was being hit for many 5xx failures and there were no retry attempts,
+                // increasing it reasonably so that - the budget is not hit frequently, but also considering
+                // too many retries could potentially kill other servers (as the root cause for these failures in the
+                // first place is because of servers restarting)
+                //
+                // defaults to 3
+                "max_retries": 25,
+            }]
         }
     }, { provider: k8sProvider, deleteBeforeReplace: true })
 
