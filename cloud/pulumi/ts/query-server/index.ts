@@ -458,9 +458,14 @@ export const setup = async (input: inputType) => {
                         target: {
                             type: "Utilization",
                             // value is in %
-                            // leave a buffer of 20% here so that, in the worst case, there is enough time
+                            // leave a buffer of 40% here so that, in the worst case, there is enough time
                             // for a node to spin up and pod getting scheduled on it
-                            averageUtilization: 80
+                            //
+                            // See - https://linear.app/fennel-ai/issue/REX-1391#comment-55651540. tl;dr: even at lower
+                            // QPS, the memory utilization seem to spike up significantly and cause server crashes.
+                            // The servers are around 50-75% of limit utilization when this happens, maybe we could
+                            // scale up the servers around this time so that queries are distributed
+                            averageUtilization: 60
                         }
                     }
                 }
