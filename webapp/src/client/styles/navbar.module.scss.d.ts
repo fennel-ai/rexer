@@ -4,6 +4,7 @@ interface CssExports {
   'container': string;
   'divider': string;
   'leftNav': string;
+  'menu': string;
   'rightNav': string;
 }
 export const cssExports: CssExports;

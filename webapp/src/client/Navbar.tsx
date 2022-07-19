@@ -1,9 +1,21 @@
 import styles from "./styles/Navbar.module.scss";
+import type { MenuProps } from "antd";
 import { Dropdown, Menu, Space } from "antd";
 import { DownOutlined } from '@ant-design/icons';
 
 
 function Navbar() {
+    const items: MenuProps["items"] = [
+        {
+            label: "Dashboard",
+            key: "dashboard",
+        },
+        {
+            label: "Data",
+            key: "data",
+        },
+    ];
+
     return (
         <nav>
             <div className={styles.container}>
@@ -16,6 +28,14 @@ function Navbar() {
                         <TierDropdown />
                     </div>
                     <div className={styles.divider} />
+                    <div>
+                        <Menu
+                            mode="horizontal"
+                            defaultSelectedKeys={["dashboard"]}
+                            items={items}
+                            className={styles.menu}
+                        />
+                    </div>
                 </div>
 
                 <div className={styles.rightNav}>
