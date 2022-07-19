@@ -1,0 +1,30 @@
+.container {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+
+    height: 48px;
+    border-bottom: 1px solid #EFECF2;
+}
+
+.leftNav {
+    display: flex;
+    align-items: center;
+}
+
+.leftNav > div {
+    margin-left: 20px;
+}
+
+.rightNav {
+    padding-right: 12px;
+}
+
+.divider {
+    border-left: 1px solid #E7E3EC;
+    height: 30px;
+}
+
+.menu {
+    border-bottom: none;
+}

@@ -29,6 +29,7 @@
     "webpack-cli": "^4.10.0"
   },
   "dependencies": {
+    "antd": "^4.21.7",
     "react": "^18.2.0",
     "react-dom": "^18.2.0"
   }
