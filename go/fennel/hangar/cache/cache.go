@@ -52,7 +52,7 @@ type rcache struct {
 	reqchan chan getRequest
 }
 
-func (c *rcache) Restore(source io.Reader) error {
+func (c *rcache) Restore(_ string) error {
 	panic("implement me")
 }
 
