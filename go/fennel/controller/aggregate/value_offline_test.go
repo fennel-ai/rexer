@@ -13,6 +13,7 @@ import (
 	libcounter "fennel/lib/counter"
 	"fennel/lib/ftypes"
 	"fennel/lib/utils"
+	"fennel/resource"
 	"fennel/test"
 
 	"github.com/stretchr/testify/assert"
@@ -60,6 +61,7 @@ func TestOfflineAggregates(t *testing.T) {
 		`{"aggregate":"aggTest","groupkey":[325235],"timestamp":1000,"value":null}`,
 	}
 	consumer, err := tier.NewKafkaConsumer(kafka.ConsumerConfig{
+		Scope:        resource.NewTierScope(tier.ID),
 		Topic:        libcounter.AGGREGATE_OFFLINE_TRANSFORM_TOPIC_NAME,
 		GroupID:      utils.RandString(6),
 		OffsetPolicy: kafka.DefaultOffsetPolicy,

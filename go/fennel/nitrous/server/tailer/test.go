@@ -1,27 +1,29 @@
 package tailer
 
 import (
-	"fennel/kafka"
-	"fennel/plane"
-	"fennel/resource"
 	"sync"
 	"time"
+
+	"fennel/kafka"
+	"fennel/nitrous"
+	"fennel/resource"
 )
 
-func NewTestTailer(plane plane.Plane, topic string) *Tailer {
-	consumer, _ := plane.KafkaConsumerFactory(kafka.ConsumerConfig{
-		Scope:        resource.NewPlaneScope(plane.ID),
+func NewTestTailer(n nitrous.Nitrous, topic string) *Tailer {
+	consumer, _ := n.KafkaConsumerFactory(kafka.ConsumerConfig{
+		Scope:        resource.NewPlaneScope(n.PlaneID),
 		Topic:        topic,
 		GroupID:      "hello-world-group",
 		OffsetPolicy: "earliest",
 	})
 	return &Tailer{
 		nil,
-		plane,
+		n,
 		consumer,
 		[]byte("default-offsets-kg"),
 		nil,
 		5 * time.Second,
+		false,
 		&sync.RWMutex{},
 	}
 }

@@ -4,7 +4,7 @@
 // - protoc             v3.21.1
 // source: nitrous.proto
 
-package v2
+package rpc
 
 import (
 	context "context"

@@ -1,41 +1,48 @@
 //go:build !integration
 
-package plane
+package test
 
 import (
+	"fmt"
 	"math/rand"
 	"testing"
 	"time"
 
-	"fennel/hangar/db"
-	"fennel/hangar/encoders"
+	testhangar "fennel/hangar/test"
 	"fennel/kafka"
 	fkafka "fennel/kafka"
 	"fennel/lib/ftypes"
-	"fennel/lib/nitrous"
+	libnitrous "fennel/lib/nitrous"
+	"fennel/nitrous"
 	"fennel/resource"
 
+	"github.com/raulk/clock"
 	"github.com/stretchr/testify/assert"
 	"go.uber.org/zap"
 )
 
-type TestPlane struct {
-	Plane
+type TestNitrous struct {
+	nitrous.Nitrous
 	broker *fkafka.MockBroker
 }
 
-func NewTestPlane(t *testing.T) TestPlane {
+func NewTestNitrous(t *testing.T) TestNitrous {
 	rand.Seed(time.Now().UnixNano())
 	planeId := ftypes.RealmID(rand.Uint32())
-	db, err := db.NewHangar(planeId, t.TempDir(), 1<<10, encoders.Default())
-	assert.NoError(t, err)
+	// TODO: use db Hangar instead of in-memory hangar.
+	// Currently, using db hangar leads to a test failure under -race flag
+	// in the controller/counter package.
+	// db, err := db.NewHangar(planeId, t.TempDir(), 1<<10, encoders.Default())
+	// assert.NoError(t, err)
+	db := testhangar.NewInMemoryHangar(planeId)
 	broker := fkafka.NewMockTopicBroker()
 	logger, err := zap.NewDevelopment()
 	assert.NoError(t, err)
-	p := Plane{
-		ID:     planeId,
-		Logger: logger,
-		Store:  db,
+	n := nitrous.Nitrous{
+		PlaneID: planeId,
+		Logger:  logger,
+		Store:   db,
+		Clock:   clock.New(),
 		KafkaConsumerFactory: func(config fkafka.ConsumerConfig) (fkafka.FConsumer, error) {
 			scope := resource.NewPlaneScope(planeId)
 			mockConfig := fkafka.MockConsumerConfig{
@@ -48,18 +55,18 @@ func NewTestPlane(t *testing.T) TestPlane {
 			return consumer.(fkafka.FConsumer), err
 		},
 	}
-
-	return TestPlane{
-		Plane:  p,
-		broker: &broker,
+	t.Setenv("PLANE_ID", fmt.Sprintf("%d", planeId))
+	return TestNitrous{
+		Nitrous: n,
+		broker:  &broker,
 	}
 }
 
-func (tp TestPlane) NewBinlogProducer(t *testing.T) kafka.FProducer {
-	scope := resource.NewPlaneScope(tp.Plane.ID)
+func (tn TestNitrous) NewBinlogProducer(t *testing.T) kafka.FProducer {
+	scope := resource.NewPlaneScope(tn.Nitrous.PlaneID)
 	mockConfig := fkafka.MockProducerConfig{
-		Broker: tp.broker,
-		Topic:  nitrous.BINLOG_KAFKA_TOPIC,
+		Broker: tn.broker,
+		Topic:  libnitrous.BINLOG_KAFKA_TOPIC,
 		Scope:  scope,
 	}
 	p, err := mockConfig.Materialize()

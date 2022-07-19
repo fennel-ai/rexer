@@ -1,7 +1,7 @@
 syntax = "proto3";
 
 package nitrous;
-option go_package = "fennel/nitrous/rpc/v2";
+option go_package = "fennel/nitrous/rpc";
 
 import "value.proto";
 import "aggregate.proto";

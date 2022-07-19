@@ -30,6 +30,7 @@ func TestValueAll(t *testing.T) {
 	assert.Equal(t, uint32(t0), tier.Clock.Now())
 
 	agg1 := aggregate.Aggregate{
+		Id:        1,
 		Name:      "mycounter",
 		Query:     agg_test.GetDummyAggQuery(),
 		Timestamp: t0,
@@ -39,6 +40,7 @@ func TestValueAll(t *testing.T) {
 		},
 	}
 	agg2 := aggregate.Aggregate{
+		Id:        2,
 		Name:      "minelem",
 		Query:     agg_test.GetDummyAggQuery(),
 		Timestamp: t0,
@@ -49,9 +51,6 @@ func TestValueAll(t *testing.T) {
 	}
 	assert.NoError(t, Store(ctx, tier, agg1))
 	assert.NoError(t, Store(ctx, tier, agg2))
-
-	agg1.Id = 1
-	agg2.Id = 2
 
 	// now create changes
 	t1 := t0 + 3600
@@ -174,6 +173,7 @@ func TestCachedValueAll(t *testing.T) {
 	assert.Equal(t, uint32(t1), tier.Clock.Now())
 
 	agg := aggregate.Aggregate{
+		Id:        1,
 		Name:      "agg",
 		Query:     agg_test.GetDummyAggQuery(),
 		Timestamp: t0,
@@ -181,7 +181,6 @@ func TestCachedValueAll(t *testing.T) {
 			AggType:   "sum",
 			Durations: []uint32{3600},
 		},
-		Id: 1,
 	}
 	assert.NoError(t, Store(ctx, tier, agg))
 

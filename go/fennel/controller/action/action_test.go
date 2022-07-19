@@ -87,7 +87,7 @@ func testKafkaInsertRead(t *testing.T, batch bool) {
 	go func() {
 		defer wg.Done()
 		consumer1, err := tier.NewKafkaConsumer(kafka.ConsumerConfig{
-			Scope:        resource.NewTierScope(1),
+			Scope:        resource.NewTierScope(tier.ID),
 			Topic:        actionlib.ACTIONLOG_KAFKA_TOPIC,
 			GroupID:      utils.RandString(6),
 			OffsetPolicy: kafka.DefaultOffsetPolicy,
@@ -103,6 +103,7 @@ func testKafkaInsertRead(t *testing.T, batch bool) {
 	go func() {
 		defer wg.Done()
 		consumer2, err := tier.NewKafkaConsumer(kafka.ConsumerConfig{
+			Scope:        resource.NewTierScope(tier.ID),
 			Topic:        actionlib.ACTIONLOG_KAFKA_TOPIC,
 			GroupID:      utils.RandString(6),
 			OffsetPolicy: kafka.DefaultOffsetPolicy,
@@ -121,6 +122,7 @@ func testKafkaInsertRead(t *testing.T, batch bool) {
 
 	// Test that actions were written as JSON as well.
 	consumer, err := tier.NewKafkaConsumer(kafka.ConsumerConfig{
+		Scope:        resource.NewTierScope(tier.ID),
 		Topic:        actionlib.ACTIONLOG_JSON_KAFKA_TOPIC,
 		GroupID:      utils.RandString(6),
 		OffsetPolicy: kafka.DefaultOffsetPolicy,
@@ -194,6 +196,7 @@ func Test_ReadActions(t *testing.T) {
 		actions = append(actions, a1, a2)
 	}
 	c1, err := tier.NewKafkaConsumer(kafka.ConsumerConfig{
+		Scope:        resource.NewTierScope(tier.ID),
 		Topic:        actionlib.ACTIONLOG_KAFKA_TOPIC,
 		GroupID:      "one",
 		OffsetPolicy: kafka.DefaultOffsetPolicy,
@@ -201,6 +204,7 @@ func Test_ReadActions(t *testing.T) {
 	defer c1.Close()
 	assert.NoError(t, err)
 	c2, err := tier.NewKafkaConsumer(kafka.ConsumerConfig{
+		Scope:        resource.NewTierScope(tier.ID),
 		Topic:        actionlib.ACTIONLOG_KAFKA_TOPIC,
 		GroupID:      "two",
 		OffsetPolicy: kafka.DefaultOffsetPolicy,

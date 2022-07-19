@@ -2,6 +2,7 @@ package kafka
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log"
 	"time"
@@ -11,6 +12,10 @@ import (
 
 	"github.com/confluentinc/confluent-kafka-go/kafka"
 	"google.golang.org/protobuf/proto"
+)
+
+var (
+	ErrNoPartition = errors.New("no partition assigned")
 )
 
 type RemoteConsumer struct {
@@ -167,6 +172,10 @@ func (k RemoteConsumer) Backlog() (int, error) {
 	toppars, err := k.Assignment()
 	if err != nil {
 		return n, err
+	}
+
+	if len(toppars) == 0 {
+		return 0, ErrNoPartition
 	}
 
 	// Get the current offset for each partition, assigned to this consumer group.

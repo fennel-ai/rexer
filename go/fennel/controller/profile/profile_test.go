@@ -9,6 +9,7 @@ import (
 	profilelib "fennel/lib/profile"
 	"fennel/lib/utils"
 	"fennel/lib/value"
+	"fennel/resource"
 	"fennel/test"
 	"fennel/tier"
 
@@ -48,6 +49,7 @@ func TestProfileController(t *testing.T) {
 	checkGet(t, ctx, tier, profiles[0].GetProfileKey(), vals[0])
 	// test that the profile was written to kafka queue as well
 	consumer, err := tier.NewKafkaConsumer(kafka.ConsumerConfig{
+		Scope:        resource.NewTierScope(tier.ID),
 		Topic:        profilelib.PROFILELOG_KAFKA_TOPIC,
 		GroupID:      utils.RandString(6),
 		OffsetPolicy: kafka.DefaultOffsetPolicy,
@@ -116,6 +118,7 @@ func TestProfileSetMultiWritesToKafka(t *testing.T) {
 
 	// Read kafka to check that profiles have been written
 	consumer, err := tier.NewKafkaConsumer(kafka.ConsumerConfig{
+		Scope:        resource.NewTierScope(tier.ID),
 		Topic:        profilelib.PROFILELOG_KAFKA_TOPIC,
 		GroupID:      utils.RandString(6),
 		OffsetPolicy: kafka.DefaultOffsetPolicy,
@@ -177,6 +180,7 @@ func TestGetBatched(t *testing.T) {
 	checkSet(t, ctx, tier, profiles[2])
 
 	consumer, err := tier.NewKafkaConsumer(kafka.ConsumerConfig{
+		Scope:        resource.NewTierScope(tier.ID),
 		Topic:        profilelib.PROFILELOG_KAFKA_TOPIC,
 		GroupID:      utils.RandString(6),
 		OffsetPolicy: kafka.DefaultOffsetPolicy,

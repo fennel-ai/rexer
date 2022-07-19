@@ -11,6 +11,7 @@ import (
 	"fennel/lib/feature"
 	"fennel/lib/ftypes"
 	"fennel/lib/value"
+	"fennel/resource"
 	"fennel/test"
 )
 
@@ -38,6 +39,7 @@ func TestLogMulti_Kafka(t *testing.T) {
 	err := LogMulti(ctx, tier, rows)
 	assert.NoError(t, err)
 	consumer, err := tier.NewKafkaConsumer(kafka.ConsumerConfig{
+		Scope:        resource.NewTierScope(tier.ID),
 		Topic:        feature.KAFKA_TOPIC_NAME,
 		GroupID:      "somegroup",
 		OffsetPolicy: kafka.DefaultOffsetPolicy,
@@ -74,6 +76,7 @@ func TestLog_Read(t *testing.T) {
 	err := Log(ctx, tier, row)
 	assert.NoError(t, err)
 	consumer, err := tier.NewKafkaConsumer(kafka.ConsumerConfig{
+		Scope:        resource.NewTierScope(tier.ID),
 		Topic:        feature.KAFKA_TOPIC_NAME,
 		GroupID:      "testgroup",
 		OffsetPolicy: kafka.DefaultOffsetPolicy,

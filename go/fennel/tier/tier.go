@@ -241,7 +241,7 @@ func CreateFromArgs(args *TierArgs) (tier Tier, err error) {
 	if args.NitrousServer != "" {
 		logger.Info("Connecting to nitrous")
 		nitrousConfig := nitrous.NitrousClientConfig{
-			PlaneId:        args.PlaneID,
+			TierID:         args.TierID,
 			ServerAddr:     args.NitrousServer,
 			BinlogProducer: producers[libnitrous.BINLOG_KAFKA_TOPIC],
 		}

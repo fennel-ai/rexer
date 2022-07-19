@@ -1,4 +1,4 @@
-package server_test
+package rpc_test
 
 import (
 	"context"
@@ -7,34 +7,47 @@ import (
 	"time"
 
 	"fennel/lib/ftypes"
-	"fennel/lib/nitrous"
 	"fennel/lib/value"
-	rpc "fennel/nitrous/rpc/v2"
-	"fennel/nitrous/server"
-	"fennel/nitrous/server/tailer"
-	"fennel/plane"
+	"fennel/nitrous/rpc"
 
 	"github.com/stretchr/testify/assert"
 )
 
 type TestDB struct {
 	next []value.Value
+	lag  int
 }
 
 func (tdb *TestDB) ReturnNext(vals []value.Value) {
 	tdb.next = vals
 }
 
-func (tdb *TestDB) Get(ctx context.Context, tierId ftypes.RealmID, aggId ftypes.AggId, codec rpc.AggCodec, kwargs []value.Dict, groupkeys []string) ([]value.Value, error) {
+func (tdb *TestDB) setLag(lag int) {
+	tdb.lag = lag
+}
+
+func (tdb *TestDB) Get(ctx context.Context, tierId ftypes.RealmID, aggId ftypes.AggId, codec rpc.AggCodec, groupkeys []string, kwargs []value.Dict) ([]value.Value, error) {
 	if tdb.next == nil {
 		return nil, fmt.Errorf("no values")
 	}
 	return tdb.next, nil
 }
 
+func (tdb *TestDB) GetLag(ctx context.Context) (int, error) {
+	return tdb.lag, nil
+}
+
+func (tdb *TestDB) Stop() {}
+
+func (tdb *TestDB) SetPollTimeout(time.Duration) {}
+
+func (tdb *TestDB) GetPollTimeout() time.Duration {
+	return 0
+}
+
 func TestGet(t *testing.T) {
 	testdb := &TestDB{}
-	svr := server.NewServer(testdb, nil)
+	svr := rpc.NewServer(testdb)
 	tierId := ftypes.RealmID(1)
 	aggId := ftypes.AggId(1)
 	codec := rpc.AggCodec_V1
@@ -69,15 +82,8 @@ func TestGet(t *testing.T) {
 }
 
 func TestGetLag(t *testing.T) {
-	p := plane.NewTestPlane(t)
-	// Produce a message for tailer.
-	producer := p.NewBinlogProducer(t)
-
-	tailer := tailer.NewTestTailer(p.Plane, nitrous.BINLOG_KAFKA_TOPIC)
-	// Set a very long test timeout so message is not really consumed.
-	tailer.SetPollTimeout(1 * time.Minute)
-	go tailer.Tail()
-	svr := server.NewServer(nil, tailer)
+	testdb := &TestDB{}
+	svr := rpc.NewServer(testdb)
 	ctx := context.Background()
 
 	// Initial lag should be 0.
@@ -85,13 +91,7 @@ func TestGetLag(t *testing.T) {
 	assert.NoError(t, err)
 	assert.EqualValues(t, 0, resp.Lag)
 
-	err = producer.Log(ctx, []byte("hello world"), nil)
-	assert.NoError(t, err)
-	err = producer.Flush(10 * time.Second)
-	assert.NoError(t, err)
-
-	// Lag should now be 1.
-	time.Sleep(5 * time.Second)
+	testdb.setLag(1)
 	resp, err = svr.GetLag(ctx, nil)
 	assert.NoError(t, err)
 	assert.EqualValues(t, 1, resp.Lag)

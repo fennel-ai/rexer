@@ -4,14 +4,49 @@ import (
 	"context"
 	"fmt"
 
+	"fennel/hangar"
 	"fennel/lib/aggregate"
+	"fennel/lib/counter"
+	"fennel/lib/ftypes"
 	"fennel/lib/value"
+	"fennel/nitrous/rpc"
+	"fennel/nitrous/server/tailer"
+	"fennel/nitrous/server/temporal"
 
+	"github.com/raulk/clock"
 	"github.com/samber/mo"
 )
 
-type AggregateStore interface {
-	Get(ctx context.Context, kwargs []value.Dict, keys []string) ([]value.Value, error)
+type Table interface {
+	tailer.EventProcessor
+	Get(ctx context.Context, keys []string, kwargs []value.Dict, store hangar.Hangar) ([]value.Value, error)
+	Options() aggregate.Options
+}
+
+func Make(tierId ftypes.RealmID, aggId ftypes.AggId, codec rpc.AggCodec, options aggregate.Options,
+	clock clock.Clock) (Table, error) {
+	switch codec {
+	case rpc.AggCodec_V1:
+		// The v1 logical encoding has three salient components:
+		// 1. It uses the FixedWidthBucketizer with 100 buckets for bucketizing time.
+		// 2. Uses the counter.ToMergeReduce function to determine how intermediate or
+		// partial counter values are represented and merged.
+		// 3. Uses the Closet store to store the aggregate values.
+		// If any of these need to be changed, we need to create a different encoding.
+		const numBuckets = 100
+		bucketizer := temporal.NewFixedWidthBucketizer(numBuckets, clock)
+		mr, err := counter.ToMergeReduce(aggId, options)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create merge reduce for aggId %d in tier %d: %w", aggId, tierId, err)
+		}
+		table, err := NewCloset(tierId, aggId, rpc.AggCodec_V1, mr, bucketizer)
+		if err != nil {
+			return nil, fmt.Errorf("failed to initialize aggregate store for new aggregate (%d) in tier (%d): %w", aggId, tierId, err)
+		}
+		return table, nil
+	default:
+		return nil, fmt.Errorf("unsupported codec %d", codec)
+	}
 }
 
 func getRequestDuration(options aggregate.Options, kwargs value.Dict) (mo.Option[uint32], error) {

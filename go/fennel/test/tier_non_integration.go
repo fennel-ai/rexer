@@ -18,9 +18,12 @@ import (
 	"fennel/pcache"
 	"fennel/redis"
 	"fennel/s3"
+	"fennel/test/kafka"
+	"fennel/test/nitrous"
 	"fennel/tier"
 
 	"github.com/Unleash/unleash-client-go/v3"
+	"github.com/samber/mo"
 	"github.com/stretchr/testify/assert"
 	"go.uber.org/zap"
 )
@@ -39,7 +42,7 @@ func Tier(t *testing.T) tier.Tier {
 
 	Cache := redis.NewCache(redClient)
 
-	producers, consumerCreator, err := createMockKafka(tierID)
+	producers, consumerCreator, err := kafka.CreateMockKafka(tierID)
 	assert.NoError(t, err)
 
 	PCache, err := pcache.NewPCache(1<<31, 1<<6)
@@ -69,12 +72,15 @@ func Tier(t *testing.T) tier.Tier {
 		unleash.WithUrl(faker.Url()))
 	assert.NoError(t, err)
 
+	_, nitrousClient := nitrous.NewLocalClient(t, tierID)
+
 	return tier.Tier{
 		ID:               tierID,
 		DB:               db,
 		Cache:            Cache,
 		PCache:           PCache,
 		Redis:            redClient,
+		NitrousClient:    mo.Some(nitrousClient),
 		Producers:        producers,
 		Clock:            clock.Unix{},
 		NewKafkaConsumer: consumerCreator,

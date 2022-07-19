@@ -7,7 +7,8 @@ import (
 
 	"fennel/lib/timer"
 	"fennel/nitrous"
-	"fennel/plane"
+	"fennel/nitrous/rpc"
+	"fennel/nitrous/server"
 	"fennel/service/common"
 
 	"github.com/alexflint/go-arg"
@@ -16,7 +17,7 @@ import (
 
 var flags struct {
 	ListenPort uint32 `arg:"--listen-port,env:LISTEN_PORT" json:"listen_port"`
-	plane.PlaneArgs
+	nitrous.NitrousArgs
 	// Observability.
 	common.PprofArgs
 	common.PrometheusArgs
@@ -26,10 +27,17 @@ var flags struct {
 func main() {
 	arg.MustParse(&flags)
 	log.SetFlags(log.LstdFlags | log.Lshortfile)
-	plane, err := plane.CreateFromArgs(flags.PlaneArgs)
+	n, err := nitrous.CreateFromArgs(flags.NitrousArgs)
 	if err != nil {
-		log.Fatalf("Failed to setup plane: %v", err)
+		log.Fatalf("Failed to setup nitrous: %v", err)
 	}
+
+	// Initialize the db.
+	svr, err := server.InitDB(n)
+	if err != nil {
+		n.Logger.Fatal("Failed to initialize db", zap.Error(err))
+	}
+	svr.Start()
 
 	// Start a prometheus server.
 	common.StartPromMetricsServer(flags.MetricsPort)
@@ -39,10 +47,10 @@ func main() {
 
 	lis, err := net.Listen("tcp", fmt.Sprintf(":%d", flags.ListenPort))
 	if err != nil {
-		plane.Logger.Fatal("Failed to listen", zap.Uint32("port", flags.ListenPort), zap.Error(err))
+		n.Logger.Fatal("Failed to listen", zap.Uint32("port", flags.ListenPort), zap.Error(err))
 	}
-
-	if err = nitrous.StartServer(plane, lis); err != nil {
-		plane.Logger.Fatal("Failed to start nitrous instance", zap.Error(err))
+	s := rpc.NewServer(svr)
+	if err = s.Serve(lis); err != nil {
+		n.Logger.Fatal("Server terminated / failed to start", zap.Error(err))
 	}
 }
