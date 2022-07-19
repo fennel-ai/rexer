@@ -20,9 +20,10 @@ func setupRouter() *gin.Engine {
 	})
 
 	r.LoadHTMLGlob("templates/*.tmpl")
+	r.Static("/images", "../../webapp/images")
 	r.Static("/assets", "../../webapp/dist")
 	r.GET("/", func(c *gin.Context) {
-		c.HTML(http.StatusOK, "index.tmpl", gin.H{})
+		c.HTML(http.StatusOK, "index.tmpl", gin.H{"title": "Fennel AI"})
 	})
 
 	// Get user value
