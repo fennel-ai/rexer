@@ -32,9 +32,16 @@ module.exports = {
                   "sass-loader",
                 ],
             },
+            {
+                test: /\.css/i,
+                use: [
+                    "style-loader",
+                    "css-loader",
+                ],
+            },
         ]
     },
     resolve: {
-        extensions: [".tsx", ".ts", ".js", ".css", ".scss"]
+        extensions: [".tsx", ".ts", ".js", ".jsx", ".css", ".scss", ".sass"]
     }
 }
