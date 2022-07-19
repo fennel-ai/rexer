@@ -96,6 +96,28 @@ function setupLinkerd(cluster: k8s.Provider) {
                         "keyPEM": readIssuerKey.stdout
                     }
                 }
+            },
+            "proxy": {
+                // Add all the ports specified in the default value + our HTTP/Query server port
+                //
+                // Default set of opaque ports:
+                // - SMTP (25,587) server-first
+                // - MYSQL (3306) server-first
+                // - Galera (4444) server-first
+                // - PostgreSQL (5432) server-first
+                // - Redis (6379) server-first
+                // - ElasticSearch (9300) server-first
+                // - Memcached (11211)
+                // clients do not issue any preamble, which breaks detection
+                //
+                // - HTTP/Query server 2425
+                //
+                // NOTE: it seems like these ports are marked opaque only if it is a container port on that pod
+                // and the rest are ignored
+                //
+                // TODO(mohit): Migrate away from setting HTTP/Query server port here, instead this should be
+                // configurable on a pod level. Awaiting a fix/response in - https://github.com/linkerd/linkerd2/issues/8922
+                "opaquePorts": "25,587,3306,4444,5432,6379,9300,11211,2425",
             }
         }
     }, { provider: cluster })
