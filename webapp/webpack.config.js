@@ -22,13 +22,19 @@ module.exports = {
                 test: /\.s[ac]ss$/i,
                 use: [
                   "style-loader",
-                  "css-loader",
+                  "css-modules-typescript-loader",
+                  {
+                    loader: "css-loader",
+                    options: {
+                        modules: true,
+                    },
+                  },
                   "sass-loader",
                 ],
             },
         ]
     },
     resolve: {
-        extensions: [".tsx", ".ts", ".js"]
+        extensions: [".tsx", ".ts", ".js", ".css", ".scss"]
     }
 }
