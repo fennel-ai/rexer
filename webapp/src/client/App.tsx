@@ -1,8 +1,7 @@
 import "./styles/App.css";
 import styles from "./styles/App.module.scss";
 import Navbar from "./Navbar";
-import { Button, DatePicker, version } from "antd";
-
+import { Button, DatePicker } from "antd";
 
 function App() {
     return (

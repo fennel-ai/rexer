@@ -5,21 +5,17 @@ function Navbar() {
         <nav>
             <div className={styles.container}>
                 <div className={styles.leftNav}>
-                    <div className="logo">
+                    <div>
                         <img src="images/logo.svg" alt="logo" />
                     </div>
+                    <div className={styles.divider} />
                     <div>
                         Tier 1
                     </div>
-                    <div>
-                        Dashboard
-                    </div>
-                    <div>
-                        Data
-                    </div>
+                    <div className={styles.divider} />
                 </div>
 
-                <div>
+                <div className={styles.rightNav}>
                     <div>
                         Documentation
                     </div>
