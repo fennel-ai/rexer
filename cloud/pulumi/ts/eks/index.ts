@@ -554,7 +554,7 @@ export const setup = async (input: inputType): Promise<pulumi.Output<outputType>
         metadata: {
             name: "fennel",
             annotations: {
-                "linkerd.io/inject": "enabled",
+                // "linkerd.io/inject": "enabled",
             },
         }
     }, { provider: cluster.provider })

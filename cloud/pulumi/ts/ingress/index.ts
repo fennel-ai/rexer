@@ -167,7 +167,7 @@ export const setup = async (input: inputType) => {
                     // We use inject=enabled instead of inject=ingress as per
                     // https://github.com/linkerd/linkerd2/issues/6650#issuecomment-898732177.
                     // Otherwise, we see the issue reported in the above bug report.
-                    metadata.annotations["linkerd.io/inject"] = "enabled"
+                    // metadata.annotations["linkerd.io/inject"] = "enabled"
                     metadata.annotations["config.linkerd.io/skip-inbound-ports"] = "80,443"
                     obj.spec.template.metadata = metadata
                 }

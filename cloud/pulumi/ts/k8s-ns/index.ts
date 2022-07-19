@@ -20,7 +20,6 @@ export const setup = async (input: inputType) => {
         metadata: {
             name: input.namespace,
             annotations: {
-                "linkerd.io/inject": "enabled",
             },
         }
     }, { provider: k8sProvider })
