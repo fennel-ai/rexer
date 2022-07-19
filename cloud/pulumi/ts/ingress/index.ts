@@ -158,7 +158,7 @@ export const setup = async (input: inputType) => {
         // provided k8s provider, so we explicitly specify the namespace here.
         namespace: input.namespace,
         chart: "emissary-ingress",
-        version: "7.4.1",
+        version: "8.0.0",
         transformations: [
             (obj: any, opts: pulumi.CustomResourceOptions) => {
                 if (obj.kind === "Deployment" && obj.metadata.name === `${chartName}-emissary-ingress`) {
