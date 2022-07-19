@@ -53,6 +53,11 @@ type Hangar interface {
 	Restore(source io.Reader) error
 }
 
+type Reader interface {
+	PlaneID() ftypes.RealmID
+	GetMany(kgs []KeyGroup) ([]ValGroup, error)
+}
+
 type Codec uint8
 
 const (

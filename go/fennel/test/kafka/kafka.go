@@ -1,4 +1,4 @@
-package test
+package kafka
 
 import (
 	"context"
@@ -14,11 +14,14 @@ import (
 	"github.com/confluentinc/confluent-kafka-go/kafka"
 )
 
-func createMockKafka(tierID ftypes.RealmID) (map[string]fkafka.FProducer, tier.KafkaConsumerCreator, error) {
-	scope := resource.NewTierScope(tierID)
+func CreateMockKafka(tierID ftypes.RealmID) (map[string]fkafka.FProducer, tier.KafkaConsumerCreator, error) {
 	brokerMap := make(map[string]*fkafka.MockBroker)
 	producers := make(map[string]fkafka.FProducer)
+	scope := resource.NewTierScope(tierID)
 	for _, topic := range fkafka.ALL_TOPICS {
+		if reflect.TypeOf(scope) != reflect.TypeOf(topic.Scope) {
+			continue
+		}
 		broker := fkafka.NewMockTopicBroker()
 		brokerMap[topic.Topic] = &broker
 		prodConfig := fkafka.MockProducerConfig{
@@ -41,7 +44,7 @@ func createMockKafka(tierID ftypes.RealmID) (map[string]fkafka.FProducer, tier.K
 			Broker:  broker,
 			Topic:   config.Topic,
 			GroupID: config.GroupID,
-			Scope:   scope,
+			Scope:   config.Scope,
 		}.Materialize()
 		if err != nil {
 			return nil, err

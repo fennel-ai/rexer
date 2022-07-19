@@ -12,7 +12,10 @@ import (
 	fkafka "fennel/kafka"
 	"fennel/lib/ftypes"
 	"fennel/milvus"
+	nitrous "fennel/nitrous/test"
 	"fennel/resource"
+	testkafka "fennel/test/kafka"
+	testnitrous "fennel/test/nitrous"
 	"fennel/tier"
 
 	"github.com/alexflint/go-arg"
@@ -24,16 +27,15 @@ import (
 // since this is only compiled when 'integration' build tag is given, all resources are real
 func Tier(t *testing.T) tier.Tier {
 	rand.Seed(time.Now().UnixNano())
-	tierID := ftypes.RealmID(rand.Uint32())
-	var flags tier.TierArgs
+	// Setup plane-level nitrous.
+	tn := nitrous.NewTestNitrous(t)
+	_, _ = testnitrous.StartNitrousServer(t, tn.Nitrous)
 	// Parse flags / environment variables.
+	var flags tier.TierArgs
 	arg.Parse(&flags)
 	flags.Dev = true
-	flags.TierID = tierID
-	// If PlaneID has not been set, genarate a random one.
-	if flags.PlaneID == 0 {
-		flags.PlaneID = ftypes.RealmID(rand.Uint32())
-	}
+	flags.PlaneID = tn.PlaneID
+	flags.TierID = ftypes.RealmID(rand.Uint32())
 	err := flags.Valid()
 	assert.NoError(t, err)
 	// do all Setup that needs to be done to setup a valid tier
@@ -49,7 +51,7 @@ func SetupTier(flags tier.TierArgs) error {
 	if err := setupDB(flags.TierID, flags.MysqlDB, flags.MysqlUsername, flags.MysqlPassword, flags.MysqlHost); err != nil {
 		return err
 	}
-	return SetupKafkaTopics(resource.NewTierScope(flags.TierID), flags.KafkaServer, flags.KafkaUsername, flags.KafkaPassword)
+	return testkafka.SetupKafkaTopics(resource.NewTierScope(flags.TierID), flags.KafkaServer, flags.KafkaUsername, flags.KafkaPassword)
 }
 
 func Teardown(tr tier.Tier) error {

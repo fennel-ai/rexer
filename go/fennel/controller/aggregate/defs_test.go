@@ -35,6 +35,7 @@ func TestRetrieveActive(t *testing.T) {
 	for i := 0; i < 2; i++ {
 		agg.Name = ftypes.AggName(fmt.Sprintf("name:%d", i))
 		agg.Query = ast.MakeInt(int32(i))
+		agg.Id = ftypes.AggId(i)
 		err = Store(ctx, tier, agg)
 		assert.NoError(t, err)
 		expected = append(expected, agg)

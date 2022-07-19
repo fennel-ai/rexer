@@ -7,9 +7,10 @@ import (
 
 	"fennel/kafka"
 	"fennel/lib/aggregate"
+	"fennel/lib/arena"
 	"fennel/lib/ftypes"
 	"fennel/lib/value"
-	rpc "fennel/nitrous/rpc/v2"
+	"fennel/nitrous/rpc"
 	"fennel/resource"
 
 	"google.golang.org/grpc"
@@ -42,6 +43,27 @@ func (nc NitrousClient) CreateAggregate(ctx context.Context, aggId ftypes.AggId,
 			CreateAggregate: &rpc.CreateAggregate{
 				AggId:   uint32(aggId),
 				Options: popts,
+			},
+		},
+	}
+	err := nc.binlog.LogProto(ctx, op, nil)
+	if err != nil {
+		return fmt.Errorf("write to nitrous binlog failed: %w", err)
+	}
+	err = nc.binlog.Flush(5 * time.Second)
+	if err != nil {
+		return fmt.Errorf("failed to flush writes to nitrous binlog: %w", err)
+	}
+	return nil
+}
+
+func (nc NitrousClient) DeleteAggregate(ctx context.Context, aggId ftypes.AggId) error {
+	op := &rpc.NitrousOp{
+		TierId: uint32(nc.ID()),
+		Type:   rpc.OpType_DELETE_AGGREGATE,
+		Op: &rpc.NitrousOp_DeleteAggregate{
+			DeleteAggregate: &rpc.DeleteAggregate{
+				AggId: uint32(aggId),
 			},
 		},
 	}
@@ -111,11 +133,12 @@ func (nc NitrousClient) GetMulti(ctx context.Context, aggId ftypes.AggId, groupk
 		return fmt.Errorf("groupkeys and kwargs must be the same length %d != %d", len(groupkeys), len(kwargs))
 	}
 	pkwargs := make([]*value.PVDict, len(kwargs))
-	strkeys := make([]string, len(groupkeys))
+	strkeys := arena.Strings.Alloc(len(groupkeys), len(groupkeys))
+	defer arena.Strings.Free(strkeys)
 	for i := 0; i < len(kwargs); i++ {
 		pk, err := value.ToProtoDict(kwargs[i])
 		if err != nil {
-			return fmt.Errorf("failed to convert kwargs %s to proto: %w", kwargs[i], err)
+			return fmt.Errorf("could not convert kwargs %s to proto: %w", kwargs[i], err)
 		}
 		pkwargs[i] = &pk
 		strkeys[i] = groupkeys[i].String()
@@ -130,12 +153,12 @@ func (nc NitrousClient) GetMulti(ctx context.Context, aggId ftypes.AggId, groupk
 	}
 	resp, err := nc.reader.GetAggregateValues(ctx, req)
 	if err != nil {
-		return fmt.Errorf("failed to get aggregate values: %w", err)
+		return fmt.Errorf("rpc: %w", err)
 	}
 	for i, pv := range resp.Results {
 		output[i], err = value.FromProtoValue(pv)
 		if err != nil {
-			return fmt.Errorf("failed to convert proto value to value: %w", err)
+			return fmt.Errorf("could not convert proto value to value: %w", err)
 		}
 	}
 	return nil
@@ -145,13 +168,13 @@ func (nc NitrousClient) GetLag(ctx context.Context) (uint64, error) {
 	req := &rpc.LagRequest{}
 	resp, err := nc.reader.GetLag(ctx, req)
 	if err != nil {
-		return 0, fmt.Errorf("failed to get lag: %w", err)
+		return 0, fmt.Errorf("rpc: %w", err)
 	}
 	return resp.Lag, nil
 }
 
 type NitrousClientConfig struct {
-	PlaneId        ftypes.RealmID
+	TierID         ftypes.RealmID
 	ServerAddr     string
 	BinlogProducer kafka.FProducer
 }
@@ -159,14 +182,13 @@ type NitrousClientConfig struct {
 var _ resource.Config = NitrousClientConfig{}
 
 func (cfg NitrousClientConfig) Materialize() (resource.Resource, error) {
-	scope := resource.NewPlaneScope(cfg.PlaneId)
 	conn, err := grpc.Dial(cfg.ServerAddr, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
-		return nil, fmt.Errorf("failed to connect to nitrous: %w", err)
+		return nil, fmt.Errorf("could not connect to nitrous: %w", err)
 	}
 	rpcclient := rpc.NewNitrousClient(conn)
 	return NitrousClient{
-		Scope:  scope,
+		Scope:  resource.NewPlaneScope(cfg.TierID),
 		reader: rpcclient,
 		binlog: cfg.BinlogProducer,
 	}, nil

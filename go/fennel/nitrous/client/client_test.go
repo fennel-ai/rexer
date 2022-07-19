@@ -1,38 +1,30 @@
-//go:build integration
-
 package client_test
 
 import (
 	"context"
-	"net"
 	"testing"
 	"time"
 
 	"fennel/lib/aggregate"
 	"fennel/lib/ftypes"
 	"fennel/lib/value"
-	"fennel/nitrous"
 	"fennel/nitrous/client"
-	"fennel/plane"
+	"fennel/nitrous/test"
+	"fennel/test/nitrous"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"go.uber.org/zap"
 )
 
 func TestPush(t *testing.T) {
-	plane := plane.NewTestPlane(t)
-
-	// Start server.
-	lis, err := net.Listen("tcp", ":0")
-	assert.NoError(t, err)
-	go nitrous.StartServer(plane.Plane, lis)
+	n := test.NewTestNitrous(t)
+	server, addr := nitrous.StartNitrousServer(t, n.Nitrous)
 
 	// Create client.
 	cfg := client.NitrousClientConfig{
-		PlaneId:        plane.ID,
-		ServerAddr:     lis.Addr().String(),
-		BinlogProducer: plane.NewBinlogProducer(t),
+		TierID:         0,
+		ServerAddr:     addr.String(),
+		BinlogProducer: n.NewBinlogProducer(t),
 	}
 	res, err := cfg.Materialize()
 	assert.NoError(t, err)
@@ -52,23 +44,25 @@ func TestPush(t *testing.T) {
 	require.NoError(t, err)
 
 	waitToConsume := func() {
-		time.Sleep(10 * time.Second)
-		for {
+		count := 0
+		for count < 3 {
+			// Assuming that nitrous tails the log every 100 ms in tests.
+			time.Sleep(server.GetPollTimeout())
 			lag, err := nc.GetLag(ctx)
 			if err != nil {
 				time.Sleep(1 * time.Second)
 				continue
 			}
 			assert.NoError(t, err)
-			plane.Logger.Info("Current lag", zap.Uint64("value", lag))
+			t.Logf("Current lag: %d", lag)
 			if lag == 0 {
-				break
+				count++
 			}
 		}
 		// It is possible for the lag to be zero but the event to not have
 		// been processed yet. Sleep some more to reduce the likelihood of
 		// that happening.
-		time.Sleep(5 * time.Second)
+		time.Sleep(1 * time.Second)
 	}
 
 	// Wait till the binlog lag is 0 before sending any events for this aggregate.

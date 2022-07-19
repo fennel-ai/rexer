@@ -8,10 +8,10 @@ import (
 	"fennel/hangar"
 	"fennel/lib/nitrous"
 	"fennel/lib/utils/ptr"
-	rpc "fennel/nitrous/rpc/v2"
+	"fennel/nitrous/rpc"
 	"fennel/nitrous/server/offsets"
 	"fennel/nitrous/server/tailer"
-	"fennel/plane"
+	"fennel/nitrous/test"
 	"fennel/resource"
 
 	"github.com/confluentinc/confluent-kafka-go/kafka"
@@ -29,22 +29,23 @@ func (c countingProcessor) Identity() string {
 	return "countingProcessor"
 }
 
-func (c countingProcessor) Process(ctx context.Context, ops []*rpc.NitrousOp) (keys []hangar.Key, vgs []hangar.ValGroup, err error) {
+func (c countingProcessor) Process(ctx context.Context, ops []*rpc.NitrousOp, store hangar.Reader) ([]hangar.Key, []hangar.ValGroup, error) {
 	c.t.Log("got notified")
 	_ = c.counter.Inc()
 	return nil, nil, nil
 }
 
+var _ tailer.EventProcessor = countingProcessor{}
+
 var offsetkey = []byte("offsetkey")
 
 func TestTailer(t *testing.T) {
-	tp := plane.NewTestPlane(t)
-	p := tp.Plane
+	n := test.NewTestNitrous(t)
 
 	// Create the producer first so the topic is initialized.
-	producer := tp.NewBinlogProducer(t)
+	producer := n.NewBinlogProducer(t)
 
-	tlr, err := tailer.NewTailer(p, nitrous.BINLOG_KAFKA_TOPIC, nil, offsetkey)
+	tlr, err := tailer.NewTailer(n.Nitrous, nitrous.BINLOG_KAFKA_TOPIC, nil, offsetkey)
 	assert.NoError(t, err)
 	notifs := atomic.NewInt32(0)
 	p1 := countingProcessor{t, notifs}
@@ -75,7 +76,7 @@ func TestTailer(t *testing.T) {
 	assert.NoError(t, err)
 	assert.EqualValues(t, 1, lag)
 	// Offsets should be empty in db.
-	offvgs, err := p.Store.GetMany([]hangar.KeyGroup{{Prefix: hangar.Key{Data: offsetkey}}})
+	offvgs, err := n.Store.GetMany([]hangar.KeyGroup{{Prefix: hangar.Key{Data: offsetkey}}})
 	assert.NoError(t, err)
 	assert.Equal(t, 1, len(offvgs))
 	toppars, err := offsets.DecodeOffsets(offvgs[0])
@@ -99,8 +100,8 @@ func TestTailer(t *testing.T) {
 	assert.EqualValues(t, 2, notifs.Load())
 
 	// Offsets should be stored in db.
-	scope := resource.NewPlaneScope(p.ID)
-	offvgs, err = p.Store.GetMany([]hangar.KeyGroup{{Prefix: hangar.Key{Data: offsetkey}}})
+	scope := resource.NewPlaneScope(n.PlaneID)
+	offvgs, err = n.Store.GetMany([]hangar.KeyGroup{{Prefix: hangar.Key{Data: offsetkey}}})
 	assert.NoError(t, err)
 	require.Equal(t, 1, len(offvgs))
 	toppars, err = offsets.DecodeOffsets(offvgs[0])
