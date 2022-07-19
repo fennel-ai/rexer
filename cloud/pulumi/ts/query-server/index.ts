@@ -283,6 +283,16 @@ export const setup = async (input: inputType) => {
         }, { provider: k8sProvider, deleteBeforeReplace: true })
     })
 
+    // Create kubernetes endpoint resolver, which configures emissary to resolve kubernetes endpoints.
+    const endpointResolverName = 'query-server-endpoint-resolver';
+    const resolver = new k8s.apiextensions.CustomResource("query-server-resolver", {
+        apiVersion: "getambassador.io/v3alpha1",
+        kind: "KubernetesEndpointResolver",
+        metadata: {
+            name: endpointResolverName,
+        }
+    }, { provider: k8sProvider, deleteBeforeReplace: true });
+
     // Setup ingress resources for query-server.
     const mapping = new k8s.apiextensions.CustomResource("query-server-mapping", {
         apiVersion: "getambassador.io/v3alpha1",
@@ -336,7 +346,20 @@ export const setup = async (input: inputType) => {
                 //
                 // defaults to 3
                 "max_retries": 25,
-            }]
+            }],
+            // use kubernetes endpoint level discovery so that the load balancing decisions are taken by
+            // emissary (or envoy) and we can configure advanced load balancing algorithms
+            "resolver": endpointResolverName,
+            "load_balancer": {
+                // NOTE: We use round-robin so that every healthy query server gets at least one request to process
+                // unlike the traffic pattern we noticed in https://linear.app/fennel-ai/issue/REX-1341#comment-e4537bb9
+                //
+                // We can consider moving to `least_request` as well which will allow the query server which
+                // has the least active requests to get the query and hence saving servers which could potentially
+                // be at a high utilization and could get assigned a query with round-robin
+                // captured here - REX-1170
+                "policy": "round_robin"
+            }
         }
     }, { provider: k8sProvider, deleteBeforeReplace: true })
 
