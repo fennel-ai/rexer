@@ -79,6 +79,27 @@ func (nc NitrousClient) DeleteAggregate(ctx context.Context, aggId ftypes.AggId)
 	return nil
 }
 
+func (nc NitrousClient) DeleteAggregate(ctx context.Context, aggId ftypes.AggId) error {
+	op := &rpc.NitrousOp{
+		TierId: uint32(nc.ID()),
+		Type:   rpc.OpType_DELETE_AGGREGATE,
+		Op: &rpc.NitrousOp_DeleteAggregate{
+			DeleteAggregate: &rpc.DeleteAggregate{
+				AggId: uint32(aggId),
+			},
+		},
+	}
+	err := nc.binlog.LogProto(ctx, op, nil)
+	if err != nil {
+		return fmt.Errorf("failed to forward create aggregate event to nitrous binlog: %w", err)
+	}
+	err = nc.binlog.Flush(5 * time.Second)
+	if err != nil {
+		return fmt.Errorf("failed to flush writes to nitrous binlog: %w", err)
+	}
+	return nil
+}
+
 // TODO: Define better error-handling semantics. Current failure handling is
 // very ad-hoc - for example, we fail the entire batch if any update fails.
 func (nc NitrousClient) Push(ctx context.Context, aggId ftypes.AggId, updates value.List) error {
