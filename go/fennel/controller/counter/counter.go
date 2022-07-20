@@ -31,7 +31,7 @@ func Value(
 }
 
 func NitrousBatchValue(
-	ctx context.Context, tier tier.Tier, aggIds []ftypes.AggId, aggOptions []aggregate.Options, keys []value.Value, kwargs []value.Dict,
+	ctx context.Context, tier tier.Tier, aggIds []ftypes.AggId, keys []value.Value, kwargs []value.Dict,
 ) ([]value.Value, error) {
 	ret := make([]value.Value, len(keys))
 	idxByAgg := make(map[ftypes.AggId][]int)
@@ -71,12 +71,23 @@ func BatchValue(
 ) ([]value.Value, error) {
 	// Send a shadow request to nitrous if client has been initialized.
 	if tier.NitrousClient.IsPresent() {
-		go func() {
-			_, err := NitrousBatchValue(ctx, tier, aggIds, aggOptions, keys, kwargs)
+		// Copy the input arrays to allow the original to be returned to the
+		// arena in case they were arena allocated without causing a race
+		// condition.
+		aggIdsDup := make([]ftypes.AggId, len(aggIds))
+		copy(aggIdsDup, aggIds)
+		keysDup := arena.Values.Alloc(len(keys), len(keys))
+		copy(keysDup, keys)
+		kwargsDup := arena.DictValues.Alloc(len(kwargs), len(kwargs))
+		copy(kwargsDup, kwargs)
+		go func(aggIds []ftypes.AggId, keys []value.Value, kwargs []value.Dict) {
+			defer arena.Values.Free(keys)
+			defer arena.DictValues.Free(kwargs)
+			_, err := NitrousBatchValue(ctx, tier, aggIds, keys, kwargs)
 			if err != nil {
 				tier.Logger.Warn("Nitrous read error", zap.Error(err))
 			}
-		}()
+		}(aggIdsDup, keysDup, kwargsDup)
 	}
 	histograms := make([]counter.Histogram, len(aggIds))
 	end := ftypes.Timestamp(tier.Clock.Now())
