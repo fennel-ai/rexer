@@ -2,7 +2,7 @@
 // Please do not change this file!
 interface CssExports {
   'container': string;
-  'profiles': string;
+  'tabContent': string;
   'tabs': string;
 }
 export const cssExports: CssExports;
