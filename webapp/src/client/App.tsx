@@ -1,5 +1,6 @@
 import "./styles/App.css";
 import Navbar from "./Navbar";
+import DataPage from "./DataPage";
 
 interface Props {
     page: string | null;
@@ -26,10 +27,6 @@ function Route(props: Props) {
             return <DashboardPage />;
     }
     return <DashboardPage />;
-}
-
-function DataPage() {
-    return (<h1> Data </h1>);
 }
 
 function DashboardPage() {
