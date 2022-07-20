@@ -9,6 +9,9 @@ import (
 
 var db = make(map[string]string)
 
+const DashboardPage = "dashboard"
+const DataPage = "data"
+
 func setupRouter() *gin.Engine {
 	// Disable Console Color
 	// gin.DisableConsoleColor()
@@ -23,7 +26,13 @@ func setupRouter() *gin.Engine {
 	r.Static("/images", "../../webapp/images")
 	r.Static("/assets", "../../webapp/dist")
 	r.GET("/", func(c *gin.Context) {
-		c.HTML(http.StatusOK, "index.tmpl", gin.H{"title": "Fennel AI"})
+		c.HTML(http.StatusOK, "index.tmpl", gin.H{"title": "Fennel | Dashboard", "page": DashboardPage})
+	})
+	r.GET("/dashboard", func(c *gin.Context) {
+		c.HTML(http.StatusOK, "index.tmpl", gin.H{"title": "Fennel | Dashboard", "page": DashboardPage})
+	})
+	r.GET("/data", func(c *gin.Context) {
+		c.HTML(http.StatusOK, "index.tmpl", gin.H{"title": "Fennel | Data", "page": DataPage})
 	})
 
 	// Get user value

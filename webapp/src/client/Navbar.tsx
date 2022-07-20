@@ -3,18 +3,30 @@ import type { MenuProps } from "antd";
 import { Dropdown, Menu, Space } from "antd";
 import { DownOutlined } from '@ant-design/icons';
 
+interface Props {
+    page: string;
+}
 
-function Navbar() {
+function Navbar(props: Props) {
     const items: MenuProps["items"] = [
         {
-            label: "Dashboard",
+            label: (
+                <a href="/dashboard">
+                    Dashboard
+                </a>
+            ),
             key: "dashboard",
         },
         {
-            label: "Data",
+            label: (
+                <a href="/data">
+                    Data
+                </a>
+            ),
             key: "data",
         },
     ];
+    const menuView = [props.page];
 
     return (
         <nav>
@@ -31,7 +43,7 @@ function Navbar() {
                     <div>
                         <Menu
                             mode="horizontal"
-                            defaultSelectedKeys={["dashboard"]}
+                            defaultSelectedKeys={menuView}
                             items={items}
                             className={styles.menu}
                         />
