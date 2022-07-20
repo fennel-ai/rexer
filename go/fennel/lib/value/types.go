@@ -407,6 +407,15 @@ func (d Dict) Equal(v Value) bool {
 		return false
 	}
 }
+
+func (d Dict) Merge(other Dict) Value {
+	ret := d.Clone().(Dict)
+	for k, v := range other.Iter() {
+		ret.values[k] = v
+	}
+	return ret
+}
+
 func (d Dict) String() string {
 	s := make([]string, 0, d.Len())
 	for k, v := range d.Iter() {
