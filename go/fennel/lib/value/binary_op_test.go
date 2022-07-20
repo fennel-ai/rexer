@@ -304,3 +304,9 @@ func TestContains_Valid(t *testing.T) {
 		assert.Equal(t, scene.exp, found, msg)
 	}
 }
+
+func TestMergeDictionary(t *testing.T) {
+	d1 := NewDict(map[string]Value{"a": Int(1), "b": Int(2)})
+	d2 := NewDict(map[string]Value{"a": Int(3)})
+	verifyBinaryOp(t, d1, d2, NewDict(map[string]Value{"a": Int(3), "b": Int(2)}), "|")
+}

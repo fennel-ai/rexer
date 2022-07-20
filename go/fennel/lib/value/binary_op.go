@@ -41,6 +41,8 @@ func route(l Value, opt string, other Value) (Value, error) {
 		return contains(l, other)
 	case "^":
 		return power(l, other)
+	case "|":
+		return merge(l, other)
 	}
 	return Nil, nil
 }
@@ -364,4 +366,15 @@ func index(left Value, right Value) (Value, error) {
 		return ret, nil
 	}
 	return nil, fmt.Errorf("'index' operation supported only on lists or dicts but got: '%T' instead", left)
+}
+
+func merge(left Value, right Value) (Value, error) {
+	switch left := left.(type) {
+	case Dict:
+		switch right := right.(type) {
+		case Dict:
+			return left.Merge(right), nil
+		}
+	}
+	return nil, fmt.Errorf("'|' only supported between dictionaries. Got '%s' and '%s'", left.String(), right.String())
 }
