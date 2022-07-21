@@ -8,7 +8,8 @@ import (
 	"testing"
 	"time"
 
-	testhangar "fennel/hangar/test"
+	"fennel/hangar/db"
+	"fennel/hangar/encoders"
 	"fennel/kafka"
 	fkafka "fennel/kafka"
 	"fennel/lib/ftypes"
@@ -29,12 +30,9 @@ type TestNitrous struct {
 func NewTestNitrous(t *testing.T) TestNitrous {
 	rand.Seed(time.Now().UnixNano())
 	planeId := ftypes.RealmID(rand.Uint32())
-	// TODO: use db Hangar instead of in-memory hangar.
-	// Currently, using db hangar leads to a test failure under -race flag
-	// in the controller/counter package.
-	// db, err := db.NewHangar(planeId, t.TempDir(), 1<<10, encoders.Default())
-	// assert.NoError(t, err)
-	db := testhangar.NewInMemoryHangar(planeId)
+	db, err := db.NewHangar(planeId, t.TempDir(), 1<<10, encoders.Default())
+	t.Cleanup(func() { _ = db.Teardown() })
+	assert.NoError(t, err)
 	broker := fkafka.NewMockTopicBroker()
 	logger, err := zap.NewDevelopment()
 	assert.NoError(t, err)
