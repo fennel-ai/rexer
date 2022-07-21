@@ -98,22 +98,11 @@ func TestNitrousBatchValue(t *testing.T) {
 
 	// should find this time
 	exp1, exp2 = value.Int(60*48), value.Double(1.0)
-	for {
-		found, err = NitrousBatchValue(ctx, tier, aggIds, keys, kwargs)
-		assert.NoError(t, err)
-		assert.Equal(t, 2, len(found))
-		if found[0].(value.Int) < exp1 {
-			t.Logf("%d < %d", found[0], exp1)
-			time.Sleep(1 * time.Second)
-			continue
-		}
-		if found[1].(value.Double) < exp2 {
-			t.Logf("%s < %f", found[1].String(), exp2)
-			time.Sleep(1 * time.Second)
-			continue
-		}
-		break
-	}
+	found, err = NitrousBatchValue(ctx, tier, aggIds, keys, kwargs)
+	assert.NoError(t, err)
+	assert.Equal(t, 2, len(found))
+	assert.GreaterOrEqual(t, found[0], exp1)
+	assert.GreaterOrEqual(t, found[1], exp2)
 
 	// now check with duration of 1 day
 	kwargs[0] = value.NewDict(map[string]value.Value{"duration": value.Int(24 * 3600)})
