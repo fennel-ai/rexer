@@ -88,6 +88,7 @@ func (s server) setHandlers(router *mux.Router) {
 	// Older API Endpoints will be deprecated in the future.
 
 	// Endpoints used by python client
+	router.HandleFunc("/fetch", s.Fetch)
 	router.HandleFunc("/get", s.GetProfile)
 	router.HandleFunc("/set", s.SetProfile)
 	router.HandleFunc("/set_profiles", s.SetProfiles)
@@ -117,7 +118,7 @@ func (s server) setHandlers(router *mux.Router) {
 	router.HandleFunc(REST_VERSION+"/profile", s.SetProfiles).Methods("POST")
 	router.HandleFunc(REST_VERSION+"/log", s.Log).Methods("POST")
 
-	router.HandleFunc(REST_VERSION+"/query", s.Query).Methods("POST")
+	router.HandleFunc(REST_VERSION+"/query", s.Query)
 	router.HandleFunc(REST_VERSION+"/query/store", s.StoreQuery).Methods("POST")
 	router.HandleFunc(REST_VERSION+"/query/run", s.RunQuery)
 
@@ -125,7 +126,7 @@ func (s server) setHandlers(router *mux.Router) {
 	router.HandleFunc(REST_VERSION+"/aggregate", s.StoreAggregate).Methods("POST")
 	router.HandleFunc(REST_VERSION+"/aggregate", s.RetrieveAggregate).Methods("GET")
 	router.HandleFunc(REST_VERSION+"/aggregate", s.DeactivateAggregate).Methods("DELETE")
-	router.HandleFunc(REST_VERSION+"/aggregate/compute", s.BatchAggregateValue).Methods("POST")
+	router.HandleFunc(REST_VERSION+"/aggregate/compute", s.BatchAggregateValue)
 
 	// Endpoints used by the model
 	router.HandleFunc(REST_VERSION+"/model", s.UploadModel).Methods("POST")
@@ -138,7 +139,6 @@ func (s server) setHandlers(router *mux.Router) {
 
 	// Misc endpoints
 	router.HandleFunc(REST_VERSION+"/operators", s.GetOperators).Methods("GET")
-	router.HandleFunc(REST_VERSION+"/aggregate_value", s.BatchAggregateValue).Methods("GET")
 }
 
 func constructDedupKey(dedupKey string, actionType ftypes.ActionType) string {
@@ -294,6 +294,31 @@ func (m server) LogActions(w http.ResponseWriter, req *http.Request) {
 		totalActions.WithLabelValues("log_multi", string(a.ActionType)).Inc()
 	}
 	handleSuccessfulRequest(w)
+}
+
+func (m server) Fetch(w http.ResponseWriter, req *http.Request) {
+	data, err := readRequest(req)
+	if err != nil {
+		handleBadRequest(w, "", err)
+		return
+	}
+	var request actionlib.ActionFetchRequest
+	if err := json.Unmarshal(data, &request); err != nil {
+		handleBadRequest(w, "invalid request: ", err)
+		return
+	}
+	// send to controller
+	actions, err := action.Fetch(req.Context(), m.tier, request)
+	if err != nil {
+		handleInternalServerError(w, "", err)
+		return
+	}
+	ser, err := json.Marshal(actions)
+	if err != nil {
+		handleInternalServerError(w, "", err)
+		return
+	}
+	_, _ = w.Write(ser)
 }
 
 func (m server) GetProfile(w http.ResponseWriter, req *http.Request) {
