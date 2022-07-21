@@ -37,7 +37,7 @@ type Closet struct {
 
 func NewCloset(tierId ftypes.RealmID, aggId ftypes.AggId, codec rpc.AggCodec,
 	mr counter.MergeReduce, bucketizer temporal.TimeBucketizer) (*Closet, error) {
-	field, err := encodeField(tierId, aggId)
+	field, err := encodeField(aggId)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create field: %w", err)
 	}
@@ -52,15 +52,10 @@ func NewCloset(tierId ftypes.RealmID, aggId ftypes.AggId, codec rpc.AggCodec,
 	return &ags, nil
 }
 
-func encodeField(tierId ftypes.RealmID, aggId ftypes.AggId) ([]byte, error) {
+func encodeField(aggId ftypes.AggId) ([]byte, error) {
 	buf := make([]byte, 20)
 	curr := 0
-	n, err := binary.PutUvarint(buf[curr:], uint64(tierId))
-	if err != nil {
-		return nil, fmt.Errorf("error encoding tierId (%d): %w", tierId, err)
-	}
-	curr += n
-	n, err = binary.PutUvarint(buf[curr:], uint64(aggId))
+	n, err := binary.PutUvarint(buf[curr:], uint64(aggId))
 	if err != nil {
 		return nil, fmt.Errorf("error encoding aggId (%d): %w", aggId, err)
 	}
@@ -98,6 +93,11 @@ func (c *Closet) encodeKeys(groupkey string, buckets []temporal.TimeBucket) ([]h
 		n, err = binary.PutUvarint(keybuf[curr:], uint64(b.Index))
 		if err != nil {
 			return nil, fmt.Errorf("error encoding index (%d): %w", b.Index, err)
+		}
+		curr += n
+		n, err = binary.PutUvarint(keybuf[curr:], uint64(c.tierId))
+		if err != nil {
+			return nil, fmt.Errorf("error encoding tierId (%d): %w", c.tierId, err)
 		}
 		curr += n
 		kgs[i].Prefix.Data = keybuf[:curr:curr]
