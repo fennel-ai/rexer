@@ -41,7 +41,8 @@ import (
 
 const dedupTTL = 6 * time.Hour
 
-const REST_VERSION = "/v1"
+const EXT_REST_VERSION = "/v1"
+const INT_REST_VERSION = "/internal/v1"
 
 var incomingActions = promauto.NewCounterVec(
 	prometheus.CounterOpts{
@@ -84,6 +85,9 @@ type server struct {
 }
 
 func (s server) setHandlers(router *mux.Router) {
+
+	// OLDER END POINTS WILL BE DEPRECATED
+
 	// Endpoints used by python client
 	router.HandleFunc("/fetch", s.Fetch)
 	router.HandleFunc("/get", s.GetProfile)
@@ -94,20 +98,51 @@ func (s server) setHandlers(router *mux.Router) {
 	router.HandleFunc("/get_multi", s.GetProfileMulti)
 	router.HandleFunc("/query", s.Query)
 	router.HandleFunc("/store_query", s.StoreQuery)
+	router.HandleFunc("/get_operators", s.GetOperators)
+	router.HandleFunc("/run_query", s.RunQuery)
+
+	// Endpoints used by aggregate
 	router.HandleFunc("/store_aggregate", s.StoreAggregate)
 	router.HandleFunc("/retrieve_aggregate", s.RetrieveAggregate)
 	router.HandleFunc("/deactivate_aggregate", s.DeactivateAggregate)
 	router.HandleFunc("/aggregate_value", s.AggregateValue)
 	router.HandleFunc("/batch_aggregate_value", s.BatchAggregateValue)
-	router.HandleFunc("/get_operators", s.GetOperators)
+
+	// Endpoints used by the model
 	router.HandleFunc("/upload_model", s.UploadModel)
 	router.HandleFunc("/delete_model", s.DeleteModel)
 	router.HandleFunc("/enable_model", s.EnableModel)
 
-	// Rest endpoints
-	router.HandleFunc(REST_VERSION+"/actions", s.LogActions)
-	router.HandleFunc(REST_VERSION+"/profiles", s.LogProfiles)
-	router.HandleFunc("/run_query", s.RunQuery)
+	//--------------------------------Version Based Apis--------------------------------------------------
+	// Format is <version>/<resource>/<verb>
+	// ----------------------------------------/v1--------------------------------------------------------
+
+	router.HandleFunc(INT_REST_VERSION+"/profiles", s.GetProfileMulti).Methods("GET")
+	router.HandleFunc(INT_REST_VERSION+"/profiles", s.SetProfiles).Methods("POST")
+	router.HandleFunc(INT_REST_VERSION+"/log", s.LogMulti).Methods("POST")
+
+	router.HandleFunc(INT_REST_VERSION+"/query", s.Query)
+	router.HandleFunc(INT_REST_VERSION+"/query/store", s.StoreQuery).Methods("POST")
+
+	// Endpoints used by aggregate
+	router.HandleFunc(INT_REST_VERSION+"/aggregate", s.StoreAggregate).Methods("POST")
+	router.HandleFunc(INT_REST_VERSION+"/aggregate", s.RetrieveAggregate).Methods("GET")
+	router.HandleFunc(INT_REST_VERSION+"/aggregate", s.DeactivateAggregate).Methods("DELETE")
+	router.HandleFunc(INT_REST_VERSION+"/aggregate/compute", s.BatchAggregateValue)
+
+	// Endpoints used by the model
+	router.HandleFunc(INT_REST_VERSION+"/model", s.UploadModel).Methods("POST")
+	router.HandleFunc(INT_REST_VERSION+"/model", s.DeleteModel).Methods("DELETE")
+	router.HandleFunc(INT_REST_VERSION+"/model/enable", s.EnableModel).Methods("POST")
+
+	// Misc endpoints
+	router.HandleFunc(INT_REST_VERSION+"/operators", s.GetOperators).Methods("GET")
+
+	// ----------------------------------External Endpoints-----------------------------------------------
+
+	router.HandleFunc(EXT_REST_VERSION+"/actions", s.LogActions)
+	router.HandleFunc(EXT_REST_VERSION+"/profiles", s.LogProfiles)
+	router.HandleFunc(EXT_REST_VERSION+"/query", s.RunQuery)
 }
 
 func constructDedupKey(dedupKey string, actionType ftypes.ActionType) string {
@@ -595,6 +630,7 @@ func (m server) DeactivateAggregate(w http.ResponseWriter, req *http.Request) {
 	handleSuccessfulRequest(w)
 }
 
+// Delete this code after client migrates to new API
 func (m server) AggregateValue(w http.ResponseWriter, req *http.Request) {
 	data, err := readRequest(req)
 	if err != nil {

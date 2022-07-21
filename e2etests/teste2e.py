@@ -274,7 +274,6 @@ class TestEndToEnd(unittest.TestCase):
         ts = datetime.now().astimezone(timezone.utc)
 
         b = int((ts.timestamp() % (24 * 3600)) / (2 * 3600))
-
         actions = [
             {
                 "actorType": "user",
@@ -326,7 +325,6 @@ class TestEndToEnd(unittest.TestCase):
                                   groupkey=[var('e').uid, var('e').creator_id, var('e').b], kwargs={"duration": 1200})[
                 0].found
             found4 = c.query(q2)
-
             if found1 == expected1 and found2 == expected2 and found3 == expected3 and found4 == expected4:
                 passed = True
                 break
@@ -378,7 +376,6 @@ class TestEndToEnd(unittest.TestCase):
             time.sleep(5)
             slept += 5
         self.assertTrue(passed)
-
         # Total views gained by a video in last 2 days for given city+gender+age_group
         @rex.aggregate(
             name='video_view_by_city_gender_agegroup',
@@ -472,7 +469,6 @@ class TestEndToEnd(unittest.TestCase):
 
         print('all checks passed...')
 
-
     @tiered
     def test_queries(self):
         c = client.Client(URL)
@@ -541,7 +537,6 @@ class TestEndToEnd(unittest.TestCase):
             if passed:
                 break
         self.assertTrue(passed)
-
         # and log a few actions
         now = datetime.now().astimezone(timezone.utc)
 
@@ -622,7 +617,6 @@ class TestEndToEnd(unittest.TestCase):
                 time.sleep(5)
 
         self.assertTrue(found)
-
 
 @unittest.skip
 class TestLoad(unittest.TestCase):
