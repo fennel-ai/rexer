@@ -1,6 +1,7 @@
 package hangar
 
 import (
+	"fmt"
 	"time"
 
 	"fennel/lib/utils/slice"
@@ -69,4 +70,25 @@ func EncodeKeyManyKG(kgs []KeyGroup, enc Encoder) ([][]byte, error) {
 		buf = buf[n:]
 	}
 	return ret, nil
+}
+
+func MergeUpdates(keys []Key, updates []ValGroup) ([]Key, []ValGroup, error) {
+	ptr := make(map[string]int, len(keys))
+	n := 0
+	for i, k := range keys {
+		if j, ok := ptr[string(k.Data)]; ok {
+			err := updates[j].Update(updates[i])
+			if err != nil {
+				return nil, nil, fmt.Errorf("failed to update valgroup: %w", err)
+			}
+		} else {
+			ptr[string(k.Data)] = n
+			keys[n] = k
+			updates[n] = updates[i]
+			n++
+		}
+	}
+	keys = keys[:n]
+	updates = updates[:n]
+	return keys, updates, nil
 }

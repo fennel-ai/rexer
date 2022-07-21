@@ -59,6 +59,10 @@ func (h *InMemoryHangar) GetMany(kgs []hangar.KeyGroup) ([]hangar.ValGroup, erro
 func (h *InMemoryHangar) SetMany(keys []hangar.Key, vgs []hangar.ValGroup) error {
 	h.mu.Lock()
 	defer h.mu.Unlock()
+	keys, vgs, err := hangar.MergeUpdates(keys, vgs)
+	if err != nil {
+		return err
+	}
 	for i, key := range keys {
 		vg := vgs[i]
 		if _, ok := h.m[string(key.Data)]; !ok {

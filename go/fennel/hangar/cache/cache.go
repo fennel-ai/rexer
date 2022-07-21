@@ -117,6 +117,11 @@ func (c *rcache) SetMany(keys []hangar.Key, deltas []hangar.ValGroup) error {
 	if len(keys) != len(deltas) {
 		return fmt.Errorf("key, value lengths do not match")
 	}
+	// Consolidate updates to fields in the same key.
+	keys, deltas, err := hangar.MergeUpdates(keys, deltas)
+	if err != nil {
+		return fmt.Errorf("failed to merge updates: %w", err)
+	}
 	// since we may only be setting some indices of the keyGroups, we need to
 	// read existing deltas, merge them, and get the full deltas to be written
 	eks, err := hangar.EncodeKeyMany(keys, c.enc)

@@ -135,6 +135,11 @@ func (b *badgerDB) SetMany(keys []hangar.Key, deltas []hangar.ValGroup) error {
 	if len(keys) != len(deltas) {
 		return fmt.Errorf("key, value lengths do not match")
 	}
+	// Consolidate updates to fields in the same key.
+	keys, deltas, err := hangar.MergeUpdates(keys, deltas)
+	if err != nil {
+		return fmt.Errorf("failed to merge updates: %w", err)
+	}
 	eks, err := hangar.EncodeKeyMany(keys, b.enc)
 	if err != nil {
 		return err
