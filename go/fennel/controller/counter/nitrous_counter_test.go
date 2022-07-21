@@ -12,10 +12,7 @@ import (
 	"fennel/test"
 
 	"github.com/stretchr/testify/assert"
-<<<<<<< HEAD
 	"go.uber.org/zap"
-=======
->>>>>>> 0158da50 (counter: add function to call nitrous for getting counter value)
 )
 
 func TestNitrousBatchValue(t *testing.T) {

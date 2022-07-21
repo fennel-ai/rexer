@@ -12,10 +12,7 @@ import (
 	"fennel/nitrous/server"
 
 	"github.com/stretchr/testify/assert"
-<<<<<<< HEAD
 	"go.uber.org/zap"
-=======
->>>>>>> 69ad73bc (nitrous: refactor, fix bugs and add some functionality)
 )
 
 func StartNitrousServer(t *testing.T, n nitrous.Nitrous) (*rpc.Server, net.Addr) {
