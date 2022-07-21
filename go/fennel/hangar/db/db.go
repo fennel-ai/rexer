@@ -40,6 +40,7 @@ func (b *badgerDB) Backup(sink io.Writer, since uint64) (uint64, error) {
 }
 
 func (b *badgerDB) Close() error {
+	close(b.reqchan)
 	return b.db.Close()
 }
 
@@ -210,8 +211,7 @@ func (b *badgerDB) DelMany(keyGroups []hangar.KeyGroup) error {
 }
 
 func (b *badgerDB) respond(reqchan chan getRequest) {
-	for {
-		req := <-reqchan
+	for req := range reqchan {
 		res := make([]hangar.Result, len(req.keyGroups))
 		eks, err := hangar.EncodeKeyManyKG(req.keyGroups, b.enc)
 		if err != nil {
