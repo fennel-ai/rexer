@@ -263,6 +263,10 @@ func (ndb *NitrousDB) GetLag(ctx context.Context) (int, error) {
 	return lag, nil
 }
 
+func (ndb *NitrousDB) BackupProc() error {
+
+}
+
 func encodeField(tierId ftypes.RealmID, aggId ftypes.AggId, codec rpc.AggCodec) ([]byte, error) {
 	field := [30]byte{}
 	curr := 0

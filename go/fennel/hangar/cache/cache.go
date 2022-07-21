@@ -52,10 +52,6 @@ type rcache struct {
 	reqchan chan getRequest
 }
 
-func (c *rcache) Restore(_ string) error {
-	panic("implement me")
-}
-
 func (c *rcache) Teardown() error {
 	return c.Close()
 }

@@ -3,6 +3,7 @@ package tailer
 import (
 	"context"
 	"fmt"
+	"strconv"
 	"sync"
 	"time"
 
@@ -120,6 +121,7 @@ func (t *Tailer) Stop() {
 // stop the tailer, call Stop().
 func (t *Tailer) Tail() {
 	t.running.Store(true)
+	lastFlagRefreshTs := time.Now().Unix()
 	for {
 		select {
 		case ack := <-t.stopCh:
@@ -212,6 +214,14 @@ func (t *Tailer) Tail() {
 			_, err = t.binlog.CommitOffsets(offs)
 			if err != nil {
 				t.nitrous.Logger.Error("Failed to commit binlog offsets to broker", zap.Error(err))
+			}
+			nowTs := time.Now().Unix()
+			if nowTs > lastFlagRefreshTs+60 {
+				err = nitrous.WriteFlag(t.nitrous.DataDir+"/last_write_minute.flag", strconv.FormatInt(nowTs, 10))
+				lastFlagRefreshTs = nowTs
+				if err != nil {
+					t.nitrous.Logger.Error("failed refresh update flag file", zap.Error(err))
+				}
 			}
 		}
 	}

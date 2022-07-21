@@ -1,22 +1,20 @@
 package main
 
 import (
+	"fennel/lib/timer"
+	"fennel/nitrous"
+	"fennel/nitrous/server"
+	"fennel/service/common"
 	"fmt"
 	"log"
 	"net"
-
-	"fennel/lib/timer"
-	"fennel/nitrous"
-	"fennel/nitrous/rpc"
-	"fennel/nitrous/server"
-	"fennel/service/common"
 
 	"github.com/alexflint/go-arg"
 	"go.uber.org/zap"
 )
 
 var flags struct {
-	ListenPort uint32 `arg:"--listen-port,env:LISTEN_PORT" json:"listen_port"`
+	ListenPort uint32 `arg:"--listen-port,env:LISTEN_PORT" default:"3333" json:"listen_port,omitempty"`
 	nitrous.NitrousArgs
 	// Observability.
 	common.PprofArgs
@@ -54,17 +52,19 @@ func main() {
 	profiler := common.CreateProfiler(flags.PprofArgs)
 	profiler.StartPprofServer()
 
-	/*
-		if err = nitrous.StartBackupNode(plane); err != nil {
-			plane.Logger.Fatal("Failed to start nitrous backup instance", zap.Error(err))
+	if flags.NitrousArgs.BackupNode {
+		err := svr.BackupProc()
+		if err != nil {
+			n.Logger.Fatal("Failed to start nitrous backup instance", zap.Error(err))
 		}
-	*/
-	lis, err := net.Listen("tcp", fmt.Sprintf(":%d", flags.ListenPort))
-	if err != nil {
-		n.Logger.Fatal("Failed to listen", zap.Uint32("port", flags.ListenPort), zap.Error(err))
-	}
-	s := rpc.NewServer(svr)
-	if err = s.Serve(lis); err != nil {
-		n.Logger.Fatal("Server terminated / failed to start", zap.Error(err))
+	} else {
+		lis, err := net.Listen("tcp", fmt.Sprintf(":%d", flags.ListenPort))
+		if err != nil {
+			n.Logger.Fatal("Failed to listen", zap.Uint32("port", flags.ListenPort), zap.Error(err))
+		}
+		s := rpc.NewServer(svr)
+		if err = s.Serve(lis); err != nil {
+			n.Logger.Fatal("Server terminated / failed to start", zap.Error(err))
+		}
 	}
 }

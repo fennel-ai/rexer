@@ -7,7 +7,6 @@ import (
 	"io"
 	"log"
 	"os"
-	"sort"
 	"sync"
 	"time"
 
@@ -38,23 +37,7 @@ type badgerDB struct {
 	wg *sync.WaitGroup
 }
 
-func (b *badgerDB) Restore(dbDir string) error {
-	backups, err := b.backupManager.ListBackups()
-	if err != nil {
-		return err
-	}
-	if len(backups) == 0 {
-		b.logger.Warn("There is no previous backups")
-		return nil
-	}
-	sort.Strings(backups)
-	backupToRecover := backups[len(backups)-1]
-	b.logger.Info(fmt.Sprintf("Going to restorethe lastest backup: %s", backupToRecover))
-	err = b.backupManager.RestoreToPath(dbDir, backupToRecover)
-	if err != nil {
-		return err
-	}
-	b.logger.Info("Successfully restored the latest backup")
+func (b *badgerDB) Restore(_ string) error {
 	return nil
 }
 
@@ -63,10 +46,6 @@ func (b *badgerDB) Teardown() error {
 		return err
 	}
 	return os.Remove(b.baseOpts.Dir)
-}
-
-func (b *badgerDB) BackupManager(_ io.Writer, _ uint64) (uint64, error) {
-
 }
 
 func (b *badgerDB) Backup(_ io.Writer, _ uint64) (uint64, error) {
@@ -111,6 +90,12 @@ func NewHangar(planeID ftypes.RealmID, dirname string, blockCacheBytes int64, en
 	if err != nil {
 		return nil, err
 	}
+
+	if db.VerifyChecksum() != nil {
+		_ = db.Close()
+		return nil, err
+	}
+
 	bs := badgerDB{
 		planeID:       planeID,
 		baseOpts:      opts,

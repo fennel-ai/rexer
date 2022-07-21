@@ -383,23 +383,31 @@ func (bm *BackupManager) BackupPath(dir string, versionName string) error {
 	return nil
 }
 
-func (bm *BackupManager) RestoreToPath(dir string, versionName string) error {
-	bm.logger.Info(fmt.Sprintf("Starting to restore remote version %s to local path %s on plane %d", versionName, dir, bm.planeID))
+func DirIsEmpty(dir string) (bool, error) {
 	fdir, err := os.Open(dir)
 	if err != nil {
-		return err
+		return false, err
 	}
 	defer fdir.Close()
 
 	_, err = fdir.Readdirnames(1)
-	if err == nil {
-		return fmt.Errorf("The path %s must be empty", dir)
-	} else if err != io.EOF {
-		return err
+	if err == io.EOF {
+		return true, err
 	}
+	return false, err
+}
+
+func (bm *BackupManager) RestoreToPath(dir string, versionName string) error {
+	bm.logger.Info(fmt.Sprintf("Starting to restore remote version %s to local path %s on plane %d", versionName, dir, bm.planeID))
+
+	folderEmpty, _ := DirIsEmpty(dir)
+	if !folderEmpty {
+		return fmt.Errorf("the path %s must be empty", dir)
+	}
+
 	// now it's clear that the directory is empty
 	manifestFileName := dir + "/RexUploadedManifest.csv"
-	err = bm.store.Fetch("manifest_"+versionName, manifestFileName)
+	err := bm.store.Fetch("manifest_"+versionName, manifestFileName)
 	if err != nil {
 		return err
 	}

@@ -2,7 +2,12 @@ package nitrous
 
 import (
 	"fmt"
+	"io/ioutil"
 	"log"
+	"os"
+	"sort"
+	"strconv"
+	"time"
 
 	"fennel/hangar"
 	"fennel/hangar/cache"
@@ -85,6 +90,51 @@ type Nitrous struct {
 	Clock                clock.Clock
 	Store                hangar.Hangar
 	KafkaConsumerFactory KafkaConsumerFactory
+	DataDir              string
+}
+
+func WriteFlag(flagFileName string, value string) error {
+	fFlag, err := os.Create(flagFileName)
+	if err != nil {
+		return err
+	}
+	_, err = fFlag.WriteString(value)
+	if err != nil {
+		return err
+	}
+	err = fFlag.Close()
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func ReadFlag(flagFileName str) string {
+	content, err := ioutil.ReadFile(flagFileName)
+	if err != nil {
+		return ""
+	}
+	return string(content)
+}
+
+func Restore(bm *backup.BackupManager, dbDir string, logger *zap.Logger) error {
+	backups, err := bm.ListBackups()
+	if err != nil {
+		return err
+	}
+	if len(backups) == 0 {
+		logger.Warn("There is no previous backups")
+		return nil
+	}
+	sort.Strings(backups)
+	backupToRecover := backups[len(backups)-1]
+	logger.Info(fmt.Sprintf("Going to restorethe lastest backup: %s", backupToRecover))
+	err = bm.RestoreToPath(dbDir, backupToRecover)
+	if err != nil {
+		return err
+	}
+	logger.Info("Successfully restored the latest backup")
+	return nil
 }
 
 func CreateFromArgs(args NitrousArgs) (Nitrous, error) {
@@ -133,23 +183,73 @@ func CreateFromArgs(args NitrousArgs) (Nitrous, error) {
 		return Nitrous{}, err
 	}
 
-	// Initialize layered storage.
-	db, err := db.NewHangar(scope.ID(), args.BadgerDir, args.BadgerBlockCacheMB<<20, encoders.Default(), bm)
+	currentDirFlag := args.BadgerDir + "/current_data_folder.txt"
+
+	newRestoreDir := fmt.Sprintf("%s/%d", args.BadgerDir, time.Now().Unix())
+	err = os.Mkdir(newRestoreDir, os.ModePerm)
 	if err != nil {
-		return Nitrous{}, fmt.Errorf("failed to create badger db: %w", err)
+		return Nitrous{}, err
 	}
-	cache, err := cache.NewHangar(scope.ID(), args.RistrettoMaxCost, args.RistrettoAvgCost, encoders.Default())
+
+	// Initialize layered storage.
+	currentDBDir := ReadFlag(currentDirFlag)
+	lastWriteTs, _ := strconv.ParseInt(ReadFlag(currentDirFlag+"/last_write_minute.flag"), 10, 64)
+	var DBDirPrecedence []string
+
+	if lastWriteTs+7200 >= time.Now().Unix() {
+		// pull from the last DB
+		logger.Info(fmt.Sprintf("Found previous last write timestamp %d, going to reload the previous DB first", lastWriteTs))
+		DBDirPrecedence = append(DBDirPrecedence, currentDBDir, newRestoreDir, newRestoreDir)
+	} else {
+		logger.Info(fmt.Sprintf("Found previous last write timestamp %d, going to use backup DB first", lastWriteTs))
+		DBDirPrecedence = append(DBDirPrecedence, newRestoreDir, currentDBDir, newRestoreDir)
+	}
+
+	var dbIns hangar.Hangar
+	for idx, dbDir := range DBDirPrecedence {
+		dirEmpty, _ := backup.DirIsEmpty(dbDir)
+		if idx != 2 && dirEmpty {
+			// we don't try to restore in the 3rd try, which means we are supposed create an empty database
+			err = Restore(bm, dbDir, logger)
+			if err != nil {
+				logger.Error(fmt.Sprintf("Failed to restore from backup %v", err))
+				continue
+			}
+		}
+
+		dbIns, err = db.NewHangar(scope.ID(), dbDir, args.BadgerBlockCacheMB<<20, encoders.Default(), bm)
+		if err != nil {
+			logger.Error(fmt.Sprintf("failed to create badger db: %v", err))
+			continue
+		} else {
+			// opened successfully
+			err = WriteFlag(currentDirFlag, dbDir)
+			if err != nil {
+				return Nitrous{}, fmt.Errorf("failed to write current dir flag file: %w", err)
+			}
+			currentDBDir = dbDir
+			// clear other directories
+		}
+		break
+	}
+
+	if dbIns == nil {
+		return Nitrous{}, fmt.Errorf("failed to create db after all the tries")
+	}
+
+	cacheIns, err := cache.NewHangar(scope.ID(), args.RistrettoMaxCost, args.RistrettoAvgCost, encoders.Default())
 	if err != nil {
 		return Nitrous{}, fmt.Errorf("failed to create cache: %w", err)
 	}
-	layered := layered.NewHangar(scope.ID(), cache, db)
+	layeredIns := layered.NewHangar(scope.ID(), cacheIns, dbIns)
 
 	return Nitrous{
 		PlaneID:              scope.ID(),
 		KafkaConsumerFactory: consumerFactory,
 		Clock:                clock.New(),
 		Logger:               logger,
-		Store:                layered,
+		Store:                layeredIns,
+		DataDir:              currentDBDir,
 	}, nil
 	/*
 		=======

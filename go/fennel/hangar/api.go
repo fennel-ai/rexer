@@ -51,7 +51,6 @@ type Hangar interface {
 	Close() error
 	Teardown() error
 	Backup(sink io.Writer, since uint64) (uint64, error)
-	Restore(dbDir string) error
 }
 
 type Reader interface {
