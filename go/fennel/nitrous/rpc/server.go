@@ -2,7 +2,9 @@ package rpc
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"log"
 	"net"
 	"time"
 
@@ -89,6 +91,10 @@ func (s *Server) GetAggregateValues(ctx context.Context, req *AggregateValuesReq
 
 func (s *Server) Serve(listener net.Listener) error {
 	if err := s.inner.Serve(listener); err != nil {
+		if errors.Is(err, grpc.ErrServerStopped) {
+			log.Printf("Server stopped before starting")
+			return nil
+		}
 		return fmt.Errorf("failed to serve: %w", err)
 	}
 	return nil
