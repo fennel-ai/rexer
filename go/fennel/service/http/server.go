@@ -41,7 +41,8 @@ import (
 
 const dedupTTL = 6 * time.Hour
 
-const REST_VERSION = "/v1"
+const EXT_REST_VERSION = "/v1"
+const INT_REST_VERSION = "/internal/v1"
 
 var incomingActions = promauto.NewCounterVec(
 	prometheus.CounterOpts{
@@ -85,7 +86,7 @@ type server struct {
 
 func (s server) setHandlers(router *mux.Router) {
 
-	// Older API Endpoints will be deprecated in the future.
+	// OLDER END POINTS WILL BE DEPRECATED
 
 	// Endpoints used by python client
 	router.HandleFunc("/fetch", s.Fetch)
@@ -98,6 +99,7 @@ func (s server) setHandlers(router *mux.Router) {
 	router.HandleFunc("/query", s.Query)
 	router.HandleFunc("/store_query", s.StoreQuery)
 	router.HandleFunc("/get_operators", s.GetOperators)
+	router.HandleFunc("/run_query", s.RunQuery)
 
 	// Endpoints used by aggregate
 	router.HandleFunc("/store_aggregate", s.StoreAggregate)
@@ -113,32 +115,34 @@ func (s server) setHandlers(router *mux.Router) {
 
 	//--------------------------------Version Based Apis--------------------------------------------------
 	// Format is <version>/<resource>/<verb>
-	// -------------------------------------------------/v1-----------------------------------------------
-	router.HandleFunc(REST_VERSION+"/profile", s.GetProfileMulti).Methods("GET")
-	router.HandleFunc(REST_VERSION+"/profile", s.SetProfiles).Methods("POST")
-	router.HandleFunc(REST_VERSION+"/log", s.Log).Methods("POST")
+	// ----------------------------------------/v1--------------------------------------------------------
 
-	router.HandleFunc(REST_VERSION+"/query", s.Query)
-	router.HandleFunc(REST_VERSION+"/query/store", s.StoreQuery).Methods("POST")
-	router.HandleFunc(REST_VERSION+"/query/run", s.RunQuery)
+	router.HandleFunc(INT_REST_VERSION+"/profiles", s.GetProfileMulti).Methods("GET")
+	router.HandleFunc(INT_REST_VERSION+"/profiles", s.SetProfiles).Methods("POST")
+	router.HandleFunc(INT_REST_VERSION+"/log", s.LogMulti).Methods("POST")
+
+	router.HandleFunc(INT_REST_VERSION+"/query", s.Query)
+	router.HandleFunc(INT_REST_VERSION+"/query/store", s.StoreQuery).Methods("POST")
 
 	// Endpoints used by aggregate
-	router.HandleFunc(REST_VERSION+"/aggregate", s.StoreAggregate).Methods("POST")
-	router.HandleFunc(REST_VERSION+"/aggregate", s.RetrieveAggregate).Methods("GET")
-	router.HandleFunc(REST_VERSION+"/aggregate", s.DeactivateAggregate).Methods("DELETE")
-	router.HandleFunc(REST_VERSION+"/aggregate/compute", s.BatchAggregateValue)
+	router.HandleFunc(INT_REST_VERSION+"/aggregate", s.StoreAggregate).Methods("POST")
+	router.HandleFunc(INT_REST_VERSION+"/aggregate", s.RetrieveAggregate).Methods("GET")
+	router.HandleFunc(INT_REST_VERSION+"/aggregate", s.DeactivateAggregate).Methods("DELETE")
+	router.HandleFunc(INT_REST_VERSION+"/aggregate/compute", s.BatchAggregateValue)
 
 	// Endpoints used by the model
-	router.HandleFunc(REST_VERSION+"/model", s.UploadModel).Methods("POST")
-	router.HandleFunc(REST_VERSION+"/model", s.DeleteModel).Methods("DELETE")
-	router.HandleFunc(REST_VERSION+"/model/enable", s.EnableModel).Methods("POST")
-
-	// Rest endpoints
-	router.HandleFunc(REST_VERSION+"/actions", s.LogActions).Methods("POST")
-	router.HandleFunc(REST_VERSION+"/profiles", s.LogProfiles).Methods("POST")
+	router.HandleFunc(INT_REST_VERSION+"/model", s.UploadModel).Methods("POST")
+	router.HandleFunc(INT_REST_VERSION+"/model", s.DeleteModel).Methods("DELETE")
+	router.HandleFunc(INT_REST_VERSION+"/model/enable", s.EnableModel).Methods("POST")
 
 	// Misc endpoints
-	router.HandleFunc(REST_VERSION+"/operators", s.GetOperators).Methods("GET")
+	router.HandleFunc(INT_REST_VERSION+"/operators", s.GetOperators).Methods("GET")
+
+	// ----------------------------------External Endpoints-----------------------------------------------
+
+	router.HandleFunc(EXT_REST_VERSION+"/actions", s.LogActions).Methods("POST")
+	router.HandleFunc(EXT_REST_VERSION+"/profiles", s.LogProfiles).Methods("POST")
+	router.HandleFunc(EXT_REST_VERSION+"/query/run", s.RunQuery)
 }
 
 func constructDedupKey(dedupKey string, actionType ftypes.ActionType) string {
