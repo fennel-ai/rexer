@@ -24,6 +24,7 @@ func TestStore(t *testing.T, maker func(t *testing.T) Hangar, skipped ...string)
 		{name: "test_large_batch", test: testLargeBatch},
 		{name: "test_select_all", test: testSelectAll},
 		{name: "test_concurrent", test: testConcurrent},
+		{name: "test_consolidation", test: testConsolidation},
 	}
 	for _, scenario := range scenarios {
 		if lo.Contains(skipped, scenario.name) {
@@ -162,29 +163,34 @@ func testConcurrent(t *testing.T, store Hangar) {
 	wg := &sync.WaitGroup{}
 	numKeys := 10
 	wg.Add(numKeys)
+	fields := make([][]byte, numKeys)
+	values := make([][]byte, numKeys)
 	for i := 0; i < numKeys; i++ {
 		go func(i int) {
 			defer wg.Done()
-			err := store.SetMany([]Key{{Data: prefix}}, []ValGroup{
-				{Fields: [][]byte{[]byte(fmt.Sprintf("%d", i))}, Values: [][]byte{[]byte(fmt.Sprintf("%d", i))}},
-			})
+			fields[i] = []byte(fmt.Sprintf("field-%d", i))
+			values[i] = []byte(fmt.Sprintf("value-%d", i))
+			vg := ValGroup{Fields: [][]byte{fields[i]}, Values: [][]byte{values[i]}}
+			err := store.SetMany([]Key{{Data: prefix}}, []ValGroup{vg})
 			assert.NoError(t, err)
 		}(i)
 	}
 	wg.Wait()
 
-	vg, err := store.GetMany([]KeyGroup{
-		{
-			Prefix: Key{Data: prefix},
-			Fields: mo.None[Fields](),
-		},
-	})
-	assert.NoError(t, err)
-	assert.Equal(t, numKeys, len(vg[0].Fields))
-	assert.Equal(t, numKeys, len(vg[0].Values))
-	for i := 0; i < numKeys; i++ {
-		assert.Equal(t, vg[0].Fields[i], vg[0].Values[i])
+	verifyValues(t, store, []KeyGroup{{Prefix: Key{Data: prefix}}}, []ValGroup{{Fields: fields, Values: values}})
+}
+
+func testConsolidation(t *testing.T, store Hangar) {
+	prefix := []byte("my-prefix")
+	keys := []Key{{Data: prefix}, {Data: prefix}}
+	vgs := []ValGroup{
+		{Fields: Fields{[]byte("hello")}, Values: Values{[]byte("world")}},
+		{Fields: Fields{[]byte("bonjour")}, Values: Values{[]byte("world")}},
 	}
+	err := store.SetMany(keys, vgs)
+	assert.NoError(t, err)
+
+	verifyValues(t, store, []KeyGroup{{Prefix: keys[0]}}, vgs)
 }
 
 func verifyValues(t *testing.T, store Hangar, kgs []KeyGroup, vgs []ValGroup) {
