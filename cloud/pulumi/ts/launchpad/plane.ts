@@ -349,7 +349,6 @@ const setupResources = async () => {
         eksClusterName: eksOutput.clusterName,
         kubeconfig: eksOutput.kubeconfig,
         nodeInstanceRole: eksOutput.instanceRole,
-        prometheusEndpoint: prometheusOutput.prometheusWriteEndpoint,
     })
 
     const offlineAggregateSourceFiles = await offlineAggregateSources.setup({
@@ -381,7 +380,6 @@ const setupResources = async () => {
         confluent: confluentOutput,
         db: auroraOutput,
         postgresDb: postgresDbOutput,
-        prometheus: prometheusOutput,
         trainingData: connectorSinkOutput,
         offlineAggregateSourceFiles: offlineAggregateSourceFiles,
         glue: glueOutput,

@@ -17,11 +17,7 @@ export type inputType = {
 }
 
 // should not contain any pulumi.Output<> types.
-export type outputType = {
-    arn: string,
-    prometheusWriteEndpoint: string,
-    prometheusQueryEndpoint: string,
-}
+export type outputType = {}
 
 const prometheusScrapeConfigs = {
     "scrape_configs": [{
@@ -110,7 +106,7 @@ const prometheusScrapeConfigs = {
     }],
 }
 
-export const setupAMP = async (input: inputType): Promise<pulumi.Output<outputType>> => {
+async function setupAMP(input: inputType) {
     const awsProvider = new aws.Provider("prom-aws-provider", {
         region: <aws.Region>input.region,
         assumeRole: {
@@ -118,32 +114,15 @@ export const setupAMP = async (input: inputType): Promise<pulumi.Output<outputTy
             // TODO: Also populate the externalId field to prevent "confused deputy"
             // attacks: https://docs.aws.amazon.com/IAM/latest/UserGuide/confused-deputy.html
         }
-    })
+    });
 
     const workspaceName = `p-${input.planeId}-prom`
     const prom = new aws.amp.Workspace(workspaceName, {
         alias: workspaceName,
-    }, {provider: awsProvider, protect: input.protect})
-
-    const arn = prom.arn
-    const prometheusWriteEndpoint = prom.prometheusEndpoint.apply(endpoint => {
-        // endpoint ends with `/`.
-        return `${endpoint}api/v1/remote_write`
-    })
-    const prometheusQueryEndpoint = prom.prometheusEndpoint.apply(endpoint => {
-        // endpoint ends with `/`.
-        return `${endpoint}api/v1/query`
-    })
-
-    const output = pulumi.output({
-        arn,
-        prometheusWriteEndpoint,
-        prometheusQueryEndpoint,
-    })
-    return output
+    }, {provider: awsProvider, protect: input.protect});
 }
 
-export const setupPrometheus = async (input: inputType): Promise<pulumi.Output<outputType>> => {
+async function setupPrometheus(input: inputType) {
     const k8sProvider = new k8s.Provider("prom-k8s-provider", {
         kubeconfig: input.kubeconfig,
     })
@@ -216,19 +195,15 @@ export const setupPrometheus = async (input: inputType): Promise<pulumi.Output<o
                 "prometheus.yml": prometheusScrapeConfigs,
             }
         },
-    }, {provider: k8sProvider, protect: input.protect})
-
-    const output = pulumi.output({
-        arn: "",  // ARN for a K8S pod does not exist
-        prometheusWriteEndpoint: "",
-        prometheusQueryEndpoint: "",
-    })
-    return output
+    }, {provider: k8sProvider, protect: input.protect});
 }
 
 export const setup = async (input: inputType): Promise<pulumi.Output<outputType>> => {
+    await setupPrometheus(input);
+    // prefer AMP's output over default prometheus since the endpoint of the AMP is required to export metrics to
+    // it from otel deployment
     if (input.useAMP) {
-        return setupAMP(input)
+        await setupAMP(input)
     }
-    return setupPrometheus(input)
+    return pulumi.output({});
 }
