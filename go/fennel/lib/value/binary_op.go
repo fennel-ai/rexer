@@ -227,8 +227,29 @@ func or(left Value, right Value) (Value, error) {
 		case Bool:
 			return Bool(bool(left) || bool(right)), nil
 		}
+	case Dict:
+		// Ideally we shouldn't be merging dictionaries in the 'or' binary operator, but as rql is not
+		// type aware and also given that python's merge ('|') operator resolves internally to __or__()
+		// method in an object it becomes hard to resolve when to send '|' vs 'or' to rexer.
+		// Eg.
+		// Suppose a user does the following.
+		// a = Dict(a=1,b=2) | Dict(a=2) | Dict(b=3)
+		// The first two Dict with | would form a Binary expression and then the it would be Binary | Dict
+		// Because, the Binary expression doesn't know the type of the expression (this is what I meant by lack
+		// of type awareness in RQL) we wouldn't want to know how to overload the __or__() method.
+		// BTW, since Dict and List ctrs are not supposed to be private this might not be the right way of using.
+		// The typical way a user would be using the merge operator would be the following.
+		// op.std.map([{'a':1, 'b':2}], [{'a': 3}], var=['a', 'b'], to=var('a') | var('b'))
+		// Again, here the rql doesn't know the type of var('a') and var('b') in to expression so it would simply
+		// always resolve it to 'or' operator.
+		// Hence, we are abusing the or operator here to also work between dictionaries and perform a merge with
+		// last dictionary holds the final value incase of key matches (what a python merge operator does).
+		switch right := right.(type) {
+		case Dict:
+			return left.Merge(right), nil
+		}
 	}
-	return nil, fmt.Errorf("'or' only supported between booleans. Got '%s' and '%s'", left.String(), right.String())
+	return nil, fmt.Errorf("'or' only supported between booleans or between dictionaries. Got '%s' and '%s'", left.String(), right.String())
 }
 
 func and(left Value, right Value) (Value, error) {

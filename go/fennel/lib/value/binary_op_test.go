@@ -104,7 +104,7 @@ func TestBinaryInvalid(t *testing.T) {
 	// can only do an indexing on dictionary using a string
 	verifyBinaryError(t, di, s, allBut("[]]"))
 	verifyBinaryError(t, di, l, allBut("in"))
-	verifyBinaryError(t, di, di, ops)
+	verifyBinaryError(t, di, di, allBut("or"))
 	verifyBinaryError(t, di, n, ops)
 
 	verifyBinaryError(t, n, i, ops)
@@ -303,4 +303,10 @@ func TestContains_Valid(t *testing.T) {
 		assert.NoError(t, err, msg)
 		assert.Equal(t, scene.exp, found, msg)
 	}
+}
+
+func TestMergeDictionary(t *testing.T) {
+	d1 := NewDict(map[string]Value{"a": Int(1), "b": Int(2)})
+	d2 := NewDict(map[string]Value{"a": Int(3)})
+	verifyBinaryOp(t, d1, d2, NewDict(map[string]Value{"a": Int(3), "b": Int(2)}), "or")
 }
