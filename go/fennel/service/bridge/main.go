@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"log"
 	"net/http"
 	"time"
@@ -12,6 +13,11 @@ var db = make(map[string]string)
 
 const DashboardPage = "dashboard"
 const DataPage = "data"
+
+type User struct {
+	Email    string `json:"email"`
+	Password string `json:"password"`
+}
 
 func setupRouter() *gin.Engine {
 	// Disable Console Color
@@ -34,6 +40,37 @@ func setupRouter() *gin.Engine {
 	})
 	r.GET("/data", func(c *gin.Context) {
 		c.HTML(http.StatusOK, "index.tmpl", gin.H{"title": "Fennel | Data", "page": DataPage})
+	})
+
+	users := make(map[string]User)
+	r.POST("/signup", func(c *gin.Context) {
+		var user User
+		c.BindJSON(&user)
+
+		if _, exists := users[user.Email]; exists || user.Email == "" {
+			c.JSON(http.StatusOK, gin.H{
+				"result": fmt.Sprintf("user already exists or empty %s", user.Email),
+			})
+		} else {
+			users[user.Email] = user
+			c.JSON(http.StatusOK, gin.H{
+				"email":    user.Email,
+				"password": user.Password,
+			})
+		}
+	})
+	r.POST("/signin", func(c *gin.Context) {
+		var user User
+		c.BindJSON(&user)
+		if existingUser, ok := users[user.Email]; ok && user.Password == existingUser.Password {
+			c.JSON(http.StatusOK, gin.H{
+				"result": "found user",
+			})
+		} else {
+			c.JSON(http.StatusOK, gin.H{
+				"result": "user not found",
+			})
+		}
 	})
 
 	r.GET("/profiles", func(c *gin.Context) {
