@@ -1,33 +1,24 @@
 import { Table } from "antd";
 import { LoadingOutlined } from '@ant-design/icons';
+import { useState, useEffect } from "react";
+import axios from "axios";
 
 function ProfilesTab() {
-    const dataSource = [
-        {
-            key: '1-genre',
-            otype: 'movie',
-            oid: 1,
-            key_col: 'genre',
-            last_updated: 1652296764,
-            value: "Adventure|Animation|Children",
-        },
-        {
-            key: '1-movie_title',
-            otype: 'movie',
-            oid: 1,
-            key_col: 'movie_title',
-            last_updated: 1652296764,
-            value: "Toy Story"
-        },
-        {
-            key: '1-release_year',
-            otype: 'movie',
-            oid: 1,
-            key_col: 'release_year',
-            last_updated: 1652296764,
-            value: "1995",
-        },
-    ];
+    const [dataSource, setDataSource] = useState([]);
+    const [loading, setLoading] = useState(false);
+    useEffect(() => {
+        setLoading(true);
+        axios.get("/profiles")
+            .then(function (response) {
+                if (response.status === 200) {
+                    setDataSource(response.data.profiles.map((profile: any, idx: any) => ({
+                        key: idx,
+                        ...profile,
+                    })));
+                }
+                setLoading(false);
+            });
+    }, []);
     const columns = [
         {
             title: 'otype',
@@ -58,7 +49,7 @@ function ProfilesTab() {
     const antIcon = <LoadingOutlined spin />;
 
     return (
-        <Table dataSource={dataSource} columns={columns} loading={{"indicator": antIcon}} />
+        <Table dataSource={dataSource} columns={columns} loading={loading && {"indicator": antIcon}} />
     );
 }
 

@@ -3,6 +3,7 @@ package main
 import (
 	"log"
 	"net/http"
+	"time"
 
 	"github.com/gin-gonic/gin"
 )
@@ -33,6 +34,35 @@ func setupRouter() *gin.Engine {
 	})
 	r.GET("/data", func(c *gin.Context) {
 		c.HTML(http.StatusOK, "index.tmpl", gin.H{"title": "Fennel | Data", "page": DataPage})
+	})
+
+	r.GET("/profiles", func(c *gin.Context) {
+		time.Sleep(3 * time.Second)
+		c.JSON(http.StatusOK, gin.H{
+			"profiles": []gin.H{
+				{
+					"otype":        "movie",
+					"oid":          1,
+					"key_col":      "genre",
+					"last_updated": 1652296764,
+					"value":        "Adventure|Animation|Children",
+				},
+				{
+					"otype":        "movie",
+					"oid":          1,
+					"key_col":      "movie_title",
+					"last_updated": 1652296764,
+					"value":        "Toy Story",
+				},
+				{
+					"otype":        "movie",
+					"oid":          1,
+					"key_col":      "release_year",
+					"last_updated": 1652296764,
+					"value":        "1995",
+				},
+			},
+		})
 	})
 
 	// Get user value
