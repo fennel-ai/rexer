@@ -140,9 +140,9 @@ func (s server) setHandlers(router *mux.Router) {
 
 	// ----------------------------------External Endpoints-----------------------------------------------
 
-	router.HandleFunc(EXT_REST_VERSION+"/actions", s.LogActions).Methods("POST")
-	router.HandleFunc(EXT_REST_VERSION+"/profiles", s.LogProfiles).Methods("POST")
-	router.HandleFunc(EXT_REST_VERSION+"/query/run", s.RunQuery)
+	router.HandleFunc(EXT_REST_VERSION+"/actions", s.LogActions)
+	router.HandleFunc(EXT_REST_VERSION+"/profiles", s.LogProfiles)
+	router.HandleFunc(EXT_REST_VERSION+"/query", s.RunQuery)
 }
 
 func constructDedupKey(dedupKey string, actionType ftypes.ActionType) string {

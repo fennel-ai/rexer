@@ -274,7 +274,6 @@ class TestEndToEnd(unittest.TestCase):
         ts = datetime.now().astimezone(timezone.utc)
 
         b = int((ts.timestamp() % (24 * 3600)) / (2 * 3600))
-
         actions = [
             {
                 "actorType": "user",
@@ -326,7 +325,6 @@ class TestEndToEnd(unittest.TestCase):
                                   groupkey=[var('e').uid, var('e').creator_id, var('e').b], kwargs={"duration": 1200})[
                 0].found
             found4 = c.query(q2)
-
             if found1 == expected1 and found2 == expected2 and found3 == expected3 and found4 == expected4:
                 passed = True
                 break
@@ -344,6 +342,7 @@ class TestEndToEnd(unittest.TestCase):
         self.assertEqual(expected3, found3)
 
         print('all checks passed...')
+
 
     @tiered
     def test_end_to_end(self):
@@ -541,7 +540,6 @@ class TestEndToEnd(unittest.TestCase):
             if passed:
                 break
         self.assertTrue(passed)
-
         # and log a few actions
         now = datetime.now().astimezone(timezone.utc)
 
@@ -623,7 +621,6 @@ class TestEndToEnd(unittest.TestCase):
 
         self.assertTrue(found)
 
-
 @unittest.skip
 class TestLoad(unittest.TestCase):
     @tiered
@@ -663,6 +660,7 @@ class TestLoad(unittest.TestCase):
             return op.std.set(q, field='value', var='e', value=var('e').metadata.watch_time)
 
         agg2.store(client=c)
+
 
 if __name__ == '__main__':
     unittest.main()
