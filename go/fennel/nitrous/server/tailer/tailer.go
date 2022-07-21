@@ -129,14 +129,14 @@ func (t *Tailer) Tail() {
 			t.nitrous.Logger.Info("Waiting for new messages from binlog...")
 			rawops, err := t.binlog.ReadBatch(ctx, tailer_batch, t.pollTimeout)
 			if kerr, ok := err.(kafka.Error); ok && (kerr.IsFatal() || kerr.Code() == kafka.ErrUnknownTopicOrPart) {
-				t.nitrous.Logger.Fatal("permanent error when reading from kafka", zap.Error(err))
+				t.nitrous.Logger.Fatal("Permanent error when reading from kafka", zap.Error(err))
 			} else if err != nil {
-				t.nitrous.Logger.Warn("failed to read from binlog", zap.Error(err))
+				t.nitrous.Logger.Warn("Failed to read from binlog", zap.Error(err))
 				// Insert a brief sleep to avoid busy loop.
 				time.Sleep(t.pollTimeout)
 				continue
 			} else if len(rawops) == 0 {
-				t.nitrous.Logger.Debug("no new messages from binlog")
+				t.nitrous.Logger.Debug("No new messages from binlog")
 				// Insert a brief sleep to avoid busy loop.
 				time.Sleep(t.pollTimeout)
 				continue
@@ -147,7 +147,7 @@ func (t *Tailer) Tail() {
 				var op rpc.NitrousOp
 				err := proto.Unmarshal(rawop, &op)
 				if err != nil {
-					t.nitrous.Logger.Error("failed to unmarshal op", zap.Error(err))
+					t.nitrous.Logger.Error("Failed to unmarshal op", zap.Error(err))
 				}
 				ops[i] = &op
 			}
@@ -165,7 +165,7 @@ func (t *Tailer) Tail() {
 				eg.Go(func() error {
 					ks, vs, err := p.Process(ctx, ops, t.nitrous.Store)
 					if err != nil {
-						t.nitrous.Logger.Error("failed to process ops", zap.String("processor", p.Identity()), zap.Error(err))
+						t.nitrous.Logger.Error("Failed to process ops", zap.String("processor", p.Identity()), zap.Error(err))
 						return err
 					}
 					updates <- update{ks, vs}
@@ -176,37 +176,41 @@ func (t *Tailer) Tail() {
 			err = eg.Wait()
 			close(updates)
 			if err != nil {
-				t.nitrous.Logger.Error("one or more op processors failed", zap.Error(err))
+				t.nitrous.Logger.Error("One or more op processors failed", zap.Error(err))
 				continue
 			}
 			// Consolidate all updates into one write batch.
 			var keys []hangar.Key
 			var vgs []hangar.ValGroup
-			for up := range updates {
-				keys = append(keys, up.keys...)
-				vgs = append(vgs, up.vgs...)
+			for update := range updates {
+				keys = append(keys, update.keys...)
+				vgs = append(vgs, update.vgs...)
 			}
 			// Save kafka offsets in the same batch for exactly-once processing.
 			offs, err := t.binlog.Offsets()
 			if err != nil {
-				t.nitrous.Logger.Error("failed to get offsets", zap.Error(err))
+				t.nitrous.Logger.Error("Failed to get offsets", zap.Error(err))
+				continue
 			}
 			offvg, err := offsets.EncodeOffsets(offs)
 			if err != nil {
-				t.nitrous.Logger.Error("failed to save offsets", zap.Error(err))
+				t.nitrous.Logger.Error("Failed to encode offsets", zap.Error(err))
+				continue
 			}
 			keys = append(keys, hangar.Key{Data: t.offsetkey})
 			vgs = append(vgs, offvg)
 			// Finally, write the batch to the hangar.
 			err = t.nitrous.Store.SetMany(keys, vgs)
 			if err != nil {
-				t.nitrous.Logger.Error("failed to update store", zap.Error(err))
+				t.nitrous.Logger.Error("Hangar write failed", zap.Error(err))
+				continue
 			}
 			// Commit the offsets to the kafka binlog.
+			// This is not strictly necessary in prod, but useful in tests.
 			t.nitrous.Logger.Info("Committing offsets to binlog", zap.Any("offsets", offs))
 			_, err = t.binlog.CommitOffsets(offs)
 			if err != nil {
-				t.nitrous.Logger.Error("failed to commit offsets", zap.Error(err))
+				t.nitrous.Logger.Error("Failed to commit binlog offsets to broker", zap.Error(err))
 			}
 		}
 	}
