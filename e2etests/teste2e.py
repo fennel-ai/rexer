@@ -343,7 +343,6 @@ class TestEndToEnd(unittest.TestCase):
 
         print('all checks passed...')
 
-
     @tiered
     def test_end_to_end(self):
         c = client.Client(URL)
@@ -377,7 +376,6 @@ class TestEndToEnd(unittest.TestCase):
             time.sleep(5)
             slept += 5
         self.assertTrue(passed)
-
         # Total views gained by a video in last 2 days for given city+gender+age_group
         @rex.aggregate(
             name='video_view_by_city_gender_agegroup',
@@ -470,7 +468,6 @@ class TestEndToEnd(unittest.TestCase):
         self.assertEqual(expected3, found3)
 
         print('all checks passed...')
-
 
     @tiered
     def test_queries(self):
@@ -660,7 +657,6 @@ class TestLoad(unittest.TestCase):
             return op.std.set(q, field='value', var='e', value=var('e').metadata.watch_time)
 
         agg2.store(client=c)
-
 
 if __name__ == '__main__':
     unittest.main()
