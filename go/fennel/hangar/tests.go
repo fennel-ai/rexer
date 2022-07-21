@@ -4,14 +4,16 @@ import (
 	"fennel/lib/utils"
 	"fmt"
 	"math/rand"
+	"sync"
 	"testing"
 	"time"
 
+	"github.com/samber/lo"
 	"github.com/samber/mo"
 	"github.com/stretchr/testify/assert"
 )
 
-func TestStore(t *testing.T, maker func(t *testing.T) Hangar) {
+func TestStore(t *testing.T, maker func(t *testing.T) Hangar, skipped ...string) {
 	scenarios := []struct {
 		name string
 		test func(t *testing.T, store Hangar)
@@ -21,8 +23,12 @@ func TestStore(t *testing.T, maker func(t *testing.T) Hangar) {
 		{name: "test_partial_missing", test: testPartialMissing},
 		{name: "test_large_batch", test: testLargeBatch},
 		{name: "test_select_all", test: testSelectAll},
+		{name: "test_concurrent", test: testConcurrent},
 	}
 	for _, scenario := range scenarios {
+		if lo.Contains(skipped, scenario.name) {
+			continue
+		}
 		t.Run(scenario.name, func(t *testing.T) {
 			store := maker(t)
 			defer func() { _ = store.Teardown() }()
@@ -149,6 +155,36 @@ func testSelectAll(t *testing.T, store Hangar) {
 	verifyValues(t, store, kgsNoFields, vgs)
 	assert.NoError(t, store.DelMany(kgs))
 	verifyMissing(t, store, kgs)
+}
+
+func testConcurrent(t *testing.T, store Hangar) {
+	prefix := []byte("prefix")
+	wg := &sync.WaitGroup{}
+	numKeys := 10
+	wg.Add(numKeys)
+	for i := 0; i < numKeys; i++ {
+		go func(i int) {
+			defer wg.Done()
+			err := store.SetMany([]Key{{Data: prefix}}, []ValGroup{
+				{Fields: [][]byte{[]byte(fmt.Sprintf("%d", i))}, Values: [][]byte{[]byte(fmt.Sprintf("%d", i))}},
+			})
+			assert.NoError(t, err)
+		}(i)
+	}
+	wg.Wait()
+
+	vg, err := store.GetMany([]KeyGroup{
+		{
+			Prefix: Key{Data: prefix},
+			Fields: mo.None[Fields](),
+		},
+	})
+	assert.NoError(t, err)
+	assert.Equal(t, numKeys, len(vg[0].Fields))
+	assert.Equal(t, numKeys, len(vg[0].Values))
+	for i := 0; i < numKeys; i++ {
+		assert.Equal(t, vg[0].Fields[i], vg[0].Values[i])
+	}
 }
 
 func verifyValues(t *testing.T, store Hangar, kgs []KeyGroup, vgs []ValGroup) {

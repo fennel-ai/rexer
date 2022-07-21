@@ -54,14 +54,21 @@ type layered struct {
 	cache       hangar.Hangar
 	db          hangar.Hangar
 	fillReqChan chan []hangar.KeyGroup
+
+	doneCh chan struct{}
 }
 
 func (l *layered) Restore(source io.Reader) error {
 	panic("implement me")
 }
 
-// TODO: close all goroutines as part of teardown
+func (l *layered) stopFill() {
+	close(l.fillReqChan)
+	<-l.doneCh
+}
+
 func (l *layered) Teardown() error {
+	l.stopFill()
 	if err := l.cache.Teardown(); err != nil {
 		return fmt.Errorf("could not tear down cache of store: %v", err)
 	}
@@ -73,6 +80,7 @@ func (l *layered) Backup(sink io.Writer, since uint64) (uint64, error) {
 }
 
 func (l *layered) Close() error {
+	l.stopFill()
 	if err := l.cache.Close(); err != nil {
 		return err
 	}
@@ -85,6 +93,7 @@ func NewHangar(planeID ftypes.RealmID, cache, db hangar.Hangar) hangar.Hangar {
 		cache:       cache,
 		db:          db,
 		fillReqChan: make(chan []hangar.KeyGroup, 10*FILL_BATCH_SIZE),
+		doneCh:      make(chan struct{}),
 	}
 	// TODO: if needed, shard the filling process
 	go ret.processFillReqs()
@@ -193,10 +202,15 @@ func (l *layered) fill(kgs []hangar.KeyGroup) error {
 }
 
 func (l *layered) processFillReqs() {
+	defer close(l.doneCh)
 	arr := [2 * FILL_BATCH_SIZE]hangar.KeyGroup{}
 	for {
 		batch := arr[:0]
-		batch = append(batch, <-l.fillReqChan...)
+		req, ok := <-l.fillReqChan
+		if !ok {
+			break
+		}
+		batch = append(batch, req...)
 		tick := time.After(FILL_TIMEOUT_MS * time.Millisecond)
 	POLL:
 		for len(batch) < FILL_BATCH_SIZE {

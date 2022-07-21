@@ -21,7 +21,8 @@ func TestCache(t *testing.T) {
 		assert.NoError(t, err)
 		return cache
 	}
-	hangar.TestStore(t, maker)
+	skipped := []string{"test_concurrent"}
+	hangar.TestStore(t, maker, skipped...)
 }
 func BenchmarkCacheStore(b *testing.B) {
 	rand.Seed(time.Now().UnixNano())

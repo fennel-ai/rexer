@@ -1,7 +1,6 @@
 package layered
 
 import (
-	"fmt"
 	"io"
 	"math/rand"
 	"sync"
@@ -22,7 +21,7 @@ func TestLayered_Store(t *testing.T) {
 	rand.Seed(time.Now().UnixNano())
 	maker := func(t *testing.T) hangar.Hangar {
 		planeID := ftypes.RealmID(rand.Uint32())
-		dirname := fmt.Sprintf("/tmp/badger/%d", planeID)
+		dirname := t.TempDir()
 		dbstore, err := db.NewHangar(planeID, dirname, 64*1<<20, encoders.Default())
 		assert.NoError(t, err)
 
@@ -39,13 +38,14 @@ func BenchmarkLayered_GetMany(b *testing.B) {
 	rand.Seed(time.Now().UnixNano())
 	maker := func(t *testing.B) hangar.Hangar {
 		planeID := ftypes.RealmID(rand.Uint32())
-		dirname := fmt.Sprintf("/tmp/badger/%d", planeID)
+		dirname := b.TempDir()
 		// 160MB block cache
 		dbstore, err := db.NewHangar(planeID, dirname, 1<<20, encoders.Default())
 		assert.NoError(t, err)
 		// 80 MB cache with avg size of 100 bytes
 		cache, err := cache.NewHangar(planeID, 1<<23, 1000, encoders.Default())
 		assert.NoError(t, err)
+
 		return NewHangar(planeID, cache, dbstore)
 	}
 	hangar.BenchmarkStore(b, maker)
