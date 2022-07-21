@@ -111,82 +111,6 @@ data:
             endpoint: 0.0.0.0:4317
           http:
             endpoint: 0.0.0.0:4318
-      prometheus:
-        config:
-          global:
-            scrape_interval: 1m
-            scrape_timeout: 10s
-          scrape_configs:
-            - job_name: 'kubernetes-pods'
-              sample_limit: 10000
-              kubernetes_sd_configs:
-              - role: pod
-              relabel_configs:
-              - action: keep
-                regex: true
-                source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_scrape]
-              - action: replace
-                source_labels: [__address__, __meta_kubernetes_pod_annotation_prometheus_io_port]
-                regex: ([^:]+)(?::\d+)?;(\d+)
-                replacement: $$1:$$2
-                target_label: __address__
-              - action: replace
-                source_labels: [__meta_kubernetes_namespace]
-                target_label: Namespace
-              - action: replace
-                source_labels: [__meta_kubernetes_pod_name]
-                target_label: PodName
-              - action: drop
-                source_labels: [__meta_kubernetes_pod_container_name]
-                regex: (linkerd-init|linkerd-proxy)
-              - action: replace
-                source_labels: [__meta_kubernetes_pod_container_name]
-                target_label: ContainerName
-              - action: replace
-                source_labels: [__meta_kubernetes_pod_controller_name]
-                target_label: PodControllerName
-              - action: replace
-                source_labels: [__meta_kubernetes_pod_controller_kind]
-                target_label: PodControllerKind
-              - action: replace
-                source_labels: [__meta_kubernetes_pod_phase]
-                target_label: PodPhase
-              # Exclude high cardinality metrics
-              metric_relabel_configs:
-              - action: drop
-                source_labels: [__name__]
-                regex: 'go_gc_duration_seconds.*'
-    
-            - job_name: 'kubernetes-service'
-              kubernetes_sd_configs:
-              - role: service
-              relabel_configs:
-              - action: replace
-                source_labels: [__meta_kubernetes_namespace]
-                target_label: Namespace
-              - action: replace
-                source_labels: [__meta_kubernetes_service_name]
-                target_label: Service
-
-            - job_name: 'kubernetes-cadvisor'
-              sample_limit: 10000
-              # Default to scraping over https. If required, just disable this or change to
-              # `http`.
-              scheme: https
-              metrics_path: /metrics/cadvisor
-              # overwrites the global configuration
-              scrape_interval: 10s
-              
-              kubernetes_sd_configs:
-              - role: node
-              tls_config:
-                ca_file: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
-                insecure_skip_verify: true
-              bearer_token_file: /var/run/secrets/kubernetes.io/serviceaccount/token
-              
-              relabel_configs:
-              - action: labelmap
-                regex: __meta_kubernetes_node_label_(.+)
 
     processors:
       # increase the timeout (time after which a batch is sent regardless), defaults to 200ms to maximizing
@@ -209,20 +133,9 @@ data:
           - key: TaskId
             from_attribute: job
             action: insert
-          - key: receiver
-            value: "prometheus"
-            action: insert
 
     exporters:
       awsxray:
-        region: "%%AWS_REGION%%"
-
-      awsprometheusremotewrite:
-        # This should be replaced before it is used for deployment
-        endpoint: "%%AMP_ENDPOINT%%"
-        aws_auth:
-          service: "aps"
-          region: "%%AWS_REGION%%"
 
     service:
       telemetry:
@@ -240,15 +153,6 @@ data:
             - batch/traces
           exporters:
             - awsxray
-        metrics/prometheus:
-          receivers:
-            - prometheus
-          processors:
-            - resourcedetection
-            - resource
-            - batch/metrics
-          exporters:
-            - awsprometheusremotewrite
 
 ---
 # create standalone deployment
