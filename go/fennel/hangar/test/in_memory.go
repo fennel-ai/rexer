@@ -14,7 +14,7 @@ type InMemoryHangar struct {
 	planeId ftypes.RealmID
 	m       map[string]map[string]string
 
-	mu sync.Mutex
+	mu sync.RWMutex
 }
 
 func NewInMemoryHangar(planeId ftypes.RealmID) *InMemoryHangar {
@@ -31,8 +31,8 @@ func (h *InMemoryHangar) PlaneID() ftypes.RealmID {
 }
 
 func (h *InMemoryHangar) GetMany(kgs []hangar.KeyGroup) ([]hangar.ValGroup, error) {
-	h.mu.Lock()
-	defer h.mu.Unlock()
+	h.mu.RLock()
+	defer h.mu.RUnlock()
 	var vgs []hangar.ValGroup
 	for _, kg := range kgs {
 		vg := hangar.ValGroup{}

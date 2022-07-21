@@ -1,9 +1,12 @@
 package db
 
 import (
+	"errors"
 	"fmt"
 	"io"
+	"log"
 	"os"
+	"sync"
 
 	"fennel/hangar"
 	"fennel/lib/ftypes"
@@ -22,6 +25,9 @@ type badgerDB struct {
 	enc      hangar.Encoder
 	db       *badger.DB
 	reqchan  chan getRequest
+
+	// WaitGroup to wait for all goroutines to finish.
+	wg *sync.WaitGroup
 }
 
 func (b *badgerDB) Restore(source io.Reader) error {
@@ -40,7 +46,10 @@ func (b *badgerDB) Backup(sink io.Writer, since uint64) (uint64, error) {
 }
 
 func (b *badgerDB) Close() error {
+	// Close the request channel to signal to all read goroutines to stop.
 	close(b.reqchan)
+	// Wait for all read goroutines to finish.
+	b.wg.Wait()
 	return b.db.Close()
 }
 
@@ -64,8 +73,10 @@ func NewHangar(planeID ftypes.RealmID, dirname string, blockCacheBytes int64, en
 		db:       db,
 		reqchan:  reqchan,
 		enc:      enc,
+		wg:       &sync.WaitGroup{},
 	}
 	// spin up lots of goroutines to handle requests in parallel
+	bs.wg.Add(PARALLELISM)
 	for i := 0; i < PARALLELISM; i++ {
 		go bs.respond(reqchan)
 	}
@@ -130,36 +141,40 @@ func (b *badgerDB) SetMany(keys []hangar.Key, deltas []hangar.ValGroup) error {
 	}
 	// since we may only be setting some indices of the keyGroups, we need to
 	// read existing deltas, merge them, and get the full deltas to be written
-	err = b.db.View(func(txn *badger.Txn) error {
-		for i, ek := range eks {
-			var old hangar.ValGroup
-			olditem, err := txn.Get(ek)
-			switch err {
-			case badger.ErrKeyNotFound:
-				// no existing value, so just use the deltas
-				old = deltas[i]
-			case nil:
-				// existing value, so merge it with the deltas
-				if err = olditem.Value(func(val []byte) error {
-					_, err := b.enc.DecodeVal(val, &old, false)
-					return err
-				}); err != nil {
+	for {
+		err = b.db.Update(func(txn *badger.Txn) error {
+			for i, ek := range eks {
+				var old hangar.ValGroup
+				olditem, err := txn.Get(ek)
+				switch err {
+				case badger.ErrKeyNotFound:
+					// no existing value, so just use the deltas
+					old = deltas[i]
+				case nil:
+					// existing value, so merge it with the deltas
+					if err = olditem.Value(func(val []byte) error {
+						_, err := b.enc.DecodeVal(val, &old, false)
+						return err
+					}); err != nil {
+						return err
+					}
+					if err = old.Update(deltas[i]); err != nil {
+						return err
+					}
+				default: // some other error
 					return err
 				}
-				if err = old.Update(deltas[i]); err != nil {
-					return err
-				}
-			default: // some other error
-				return err
+				deltas[i] = old
 			}
-			deltas[i] = old
+			return b.write(txn, eks, deltas, nil)
+		})
+		if errors.Is(err, badger.ErrConflict) {
+			log.Print("badgerDB: conflict detected, retrying")
+			continue
 		}
-		return nil
-	})
-	if err != nil {
-		return err
+		break
 	}
-	return b.commit(eks, deltas, nil)
+	return err
 }
 
 func (b *badgerDB) DelMany(keyGroups []hangar.KeyGroup) error {
@@ -170,7 +185,7 @@ func (b *badgerDB) DelMany(keyGroups []hangar.KeyGroup) error {
 	setKeys := make([][]byte, 0, len(keyGroups))
 	vgs := make([]hangar.ValGroup, 0, len(keyGroups))
 	delKeys := make([][]byte, 0, len(keyGroups))
-	err = b.db.View(func(txn *badger.Txn) error {
+	err = b.db.Update(func(txn *badger.Txn) error {
 		for i, ek := range eks {
 			var old hangar.ValGroup
 			olditem, err := txn.Get(ek)
@@ -202,15 +217,13 @@ func (b *badgerDB) DelMany(keyGroups []hangar.KeyGroup) error {
 				return err
 			}
 		}
-		return nil
+		return b.write(txn, setKeys, vgs, delKeys)
 	})
-	if err != nil {
-		return err
-	}
-	return b.commit(setKeys, vgs, delKeys)
+	return err
 }
 
 func (b *badgerDB) respond(reqchan chan getRequest) {
+	defer b.wg.Done()
 	for req := range reqchan {
 		res := make([]hangar.Result, len(req.keyGroups))
 		eks, err := hangar.EncodeKeyManyKG(req.keyGroups, b.enc)
@@ -248,37 +261,35 @@ func (b *badgerDB) respond(reqchan chan getRequest) {
 	}
 }
 
-func (b *badgerDB) commit(eks [][]byte, vgs []hangar.ValGroup, delks [][]byte) error {
+func (b *badgerDB) write(txn *badger.Txn, eks [][]byte, vgs []hangar.ValGroup, delks [][]byte) error {
 	evs, err := hangar.EncodeValMany(vgs, b.enc)
 	if err != nil {
 		return err
 	}
-	wb := b.db.NewWriteBatch()
-	defer wb.Cancel()
 	for i, ek := range eks {
 		e := badger.NewEntry(ek, evs[i])
 		// if ttl is 0, we set the key to never expire, else we set it to expire in ttl duration from now
 		ttl, alive := hangar.ExpiryToTTL(vgs[i].Expiry)
 		if !alive {
 			// if key is not alive, we delete it for good, just to be safe
-			if err := wb.Delete(ek); err != nil {
+			if err := txn.Delete(ek); err != nil {
 				return err
 			}
 		} else {
 			if ttl != 0 {
 				e = e.WithTTL(ttl)
 			}
-			if err := wb.SetEntry(e); err != nil {
+			if err := txn.SetEntry(e); err != nil {
 				return err
 			}
 		}
 	}
 	for _, k := range delks {
-		if err := wb.Delete(k); err != nil {
+		if err := txn.Delete(k); err != nil {
 			return err
 		}
 	}
-	return wb.Flush()
+	return nil
 }
 
 var _ hangar.Hangar = &badgerDB{}

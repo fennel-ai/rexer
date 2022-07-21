@@ -1,7 +1,9 @@
 package test
 
 import (
+	"math/rand"
 	"testing"
+	"time"
 
 	"fennel/hangar"
 	"fennel/lib/ftypes"
@@ -101,4 +103,15 @@ func TestBasic(t *testing.T) {
 	assert.Equal(t, 1, len(vgs[0].Values), "%+v", vgs[0])
 	assert.ElementsMatch(t, fields[1:], vgs[0].Fields)
 	assert.ElementsMatch(t, values[1:], vgs[0].Values)
+}
+
+func TestInMemoryFull(t *testing.T) {
+	rand.Seed(time.Now().UnixNano())
+	maker := func(_ *testing.T) hangar.Hangar {
+		planeID := ftypes.RealmID(rand.Uint32())
+		db := NewInMemoryHangar(planeID)
+		return db
+	}
+	skipped := []string{"test_set_ttl"}
+	hangar.TestStore(t, maker, skipped...)
 }
