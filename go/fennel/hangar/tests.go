@@ -158,7 +158,8 @@ func verifyValues(t *testing.T, store Hangar, kgs []KeyGroup, vgs []ValGroup) {
 	assert.NoError(t, err)
 	assert.Len(t, found, len(kgs))
 	for i := range found {
-		assert.Equal(t, vgs[i], found[i])
+		assert.ElementsMatch(t, vgs[i].Fields, found[i].Fields)
+		assert.ElementsMatch(t, vgs[i].Values, found[i].Values)
 	}
 }
 
