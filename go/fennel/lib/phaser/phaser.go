@@ -147,7 +147,9 @@ func bulkUploadToRedis(tr tier.Tier, file string, numRows int, tempDir string) e
 		g.Go(func() error {
 			node := strings.TrimSpace(nodeAddress)
 			if !strings.Contains(node, ":") {
-				tr.Logger.Info("invalid redis node address", zap.String("node", node))
+				if len(node) != 0 {
+					tr.Logger.Info("invalid redis node address", zap.String("node", node))
+				}
 				return nil
 			}
 			nodeAddress := node[:strings.IndexByte(node, ':')]
