@@ -30,6 +30,9 @@ func StartNitrousServer(t *testing.T, n nitrous.Nitrous) (*rpc.Server, net.Addr)
 		err = remote.Serve(lis)
 		assert.NoError(t, err)
 	}()
+	t.Cleanup(func() {
+		remote.Stop()
+	})
 	t.Setenv("NITROUS_SERVER_ADDRESS", lis.Addr().String())
 	return remote, lis.Addr()
 }

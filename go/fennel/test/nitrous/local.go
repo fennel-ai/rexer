@@ -14,10 +14,6 @@ import (
 func NewLocalClient(t *testing.T, tierId ftypes.RealmID) (*rpc.Server, client.NitrousClient) {
 	n := test.NewTestNitrous(t)
 	server, addr := StartNitrousServer(t, n.Nitrous)
-	// Stop the nitrous server once the test finishes.
-	t.Cleanup(func() {
-		server.Stop()
-	})
 	config := client.NitrousClientConfig{
 		TierID:         tierId,
 		ServerAddr:     addr.String(),
