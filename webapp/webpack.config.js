@@ -4,6 +4,7 @@ module.exports = {
     mode: "development",
     entry: {
         clientapp: path.resolve(__dirname, "src/client/index.tsx"),
+        signon: path.resolve(__dirname, "src/client/signon/index.tsx"),
     },
     output: {
         path: path.resolve(__dirname, "dist"),

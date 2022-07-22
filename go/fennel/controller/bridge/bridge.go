@@ -7,9 +7,6 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-const DashboardPage = "dashboard"
-const DataPage = "data"
-
 func Ping(c *gin.Context) {
 	c.String(http.StatusOK, "pong")
 }
