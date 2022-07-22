@@ -14,6 +14,7 @@ import (
 	"fennel/resource"
 
 	"github.com/confluentinc/confluent-kafka-go/kafka"
+	"go.uber.org/atomic"
 	"go.uber.org/zap"
 	"golang.org/x/sync/errgroup"
 	"google.golang.org/protobuf/proto"
@@ -35,7 +36,7 @@ type Tailer struct {
 	offsetkey   []byte
 	stopCh      chan chan struct{}
 	pollTimeout time.Duration
-	running     bool
+	running     *atomic.Bool
 
 	mu *sync.RWMutex
 }
@@ -62,8 +63,8 @@ func NewTailer(n nitrous.Nitrous, topic string, offsets kafka.TopicPartitions, o
 		consumer,
 		offsetkey,
 		stopCh,
-		10 * time.Second, // 10s as poll timeout
-		false,
+		3 * time.Second, // 1s as poll timeout
+		atomic.NewBool(false),
 		&sync.RWMutex{},
 	}, nil
 }
@@ -105,20 +106,20 @@ func (t *Tailer) GetLag() (int, error) {
 }
 
 func (t *Tailer) Stop() {
-	if !t.running {
+	if !t.running.Load() {
 		return
 	}
 	ack := make(chan struct{})
 	t.stopCh <- ack
 	<-ack
-	t.running = false
+	t.running.Store(false)
 }
 
 // Start tailing the kafka binlog and forwarding events to processors.
 // Note: This function blocks the caller and should be run in a goroutine. To
 // stop the tailer, call Stop().
 func (t *Tailer) Tail() {
-	t.running = true
+	t.running.Store(true)
 	for {
 		select {
 		case ack := <-t.stopCh:
