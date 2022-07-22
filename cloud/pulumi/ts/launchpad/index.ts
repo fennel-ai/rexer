@@ -109,23 +109,23 @@ const tierConfs: Record<number, TierConf> = {
         // place the pods across the nodes based on utilization and `limit`
         queryServerConf: {
             podConf: {
-                minReplicas: 8,
-                maxReplicas: 20,
+                minReplicas: 2,
+                maxReplicas: 10,
                 nodeLabels: {
                     "node-group": "p-5-queryserver-ng"
                 },
                 resourceConf: {
                     cpu: {
-                        request: "12000m",
-                        limit: "15000m"
+                        request: "28000m",
+                        limit: "31000m"
                     },
                     memory: {
-                        request: "25G",
-                        limit: "30G",
+                        request: "58G",
+                        limit: "63G",
                     }
                 },
                 // set a threshold of 22G
-                pprofHeapAllocThresholdMegaBytes: 22 << 10,
+                pprofHeapAllocThresholdMegaBytes: 50 << 10,
             }
         },
         sagemakerConf: {
@@ -499,11 +499,11 @@ const planeConfs: Record<number, PlaneConf> = {
                 {
                     name: "p-5-queryserver-ng-arm64",
                     // TODO(mohit): Move to c7g once they are supported in ap-south-1
-                    nodeType: "c6g.4xlarge",
+                    nodeType: "c6g.8xlarge",
                     // at least have 4 nodes (previously this was 2, but our servers have been OOMing for which
                     // we will have 4 nodes up and running).
-                    minSize: 4,
-                    maxSize: 15,
+                    minSize: 2,
+                    maxSize: 10,
                     amiType: DEFAULT_ARM_AMI_TYPE,
                     labels: {
                         "node-group": "p-5-queryserver-ng"
