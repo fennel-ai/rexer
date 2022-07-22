@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"golang.org/x/crypto/bcrypt"
 )
 
 var db = make(map[string]string)
@@ -14,9 +15,24 @@ var db = make(map[string]string)
 const DashboardPage = "dashboard"
 const DataPage = "data"
 
-type User struct {
+type SignUpForm struct {
 	Email    string `json:"email"`
 	Password string `json:"password"`
+}
+
+type User struct {
+	Email    string
+	Password string
+}
+
+func HashPassword(password string) (string, error) {
+	bytes, err := bcrypt.GenerateFromPassword([]byte(password), 14)
+	return string(bytes), err
+}
+
+func CheckPasswordHash(password, hash string) bool {
+	err := bcrypt.CompareHashAndPassword([]byte(hash), []byte(password))
+	return err == nil
 }
 
 func setupRouter() *gin.Engine {
@@ -44,14 +60,19 @@ func setupRouter() *gin.Engine {
 
 	users := make(map[string]User)
 	r.POST("/signup", func(c *gin.Context) {
-		var user User
-		c.BindJSON(&user)
+		var form SignUpForm
+		c.BindJSON(&form)
 
-		if _, exists := users[user.Email]; exists || user.Email == "" {
+		if _, exists := users[form.Email]; exists || form.Email == "" {
 			c.JSON(http.StatusOK, gin.H{
-				"result": fmt.Sprintf("user already exists or empty %s", user.Email),
+				"result": fmt.Sprintf("user already exists or empty"),
 			})
 		} else {
+			hash, _ := HashPassword(form.Password)
+			user := User{
+				Email:    form.Email,
+				Password: hash,
+			}
 			users[user.Email] = user
 			c.JSON(http.StatusOK, gin.H{
 				"email":    user.Email,
@@ -60,9 +81,9 @@ func setupRouter() *gin.Engine {
 		}
 	})
 	r.POST("/signin", func(c *gin.Context) {
-		var user User
-		c.BindJSON(&user)
-		if existingUser, ok := users[user.Email]; ok && user.Password == existingUser.Password {
+		var form SignUpForm
+		c.BindJSON(&form)
+		if user, ok := users[form.Email]; ok && CheckPasswordHash(form.Password, user.Password) {
 			c.JSON(http.StatusOK, gin.H{
 				"result": "found user",
 			})
