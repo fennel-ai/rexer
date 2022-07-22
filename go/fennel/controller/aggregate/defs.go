@@ -90,7 +90,13 @@ func Store(ctx context.Context, tier tier.Tier, agg aggregate.Aggregate) error {
 			}
 			// Forward online aggregate definition to nitrous.
 			if !agg.IsOffline() {
-				go createOnNitrous(ctx, tier, agg)
+				// Note: we retrieve the aggregate back from the db since agg.Id
+				// is not initialized yet.
+				agg, err = modelAgg.Retrieve(ctx, tier, agg.Name)
+				if err != nil {
+					return fmt.Errorf("failed to retrieve aggregate %s after creating: %w", agg.Name, err)
+				}
+				go createOnNitrous(ctx, tier, agg.Id, agg.Options)
 			}
 			return nil
 		} else {
@@ -110,7 +116,8 @@ func Store(ctx context.Context, tier tier.Tier, agg aggregate.Aggregate) error {
 			// Forward online aggregates to nitrous if the client has been initialized.
 			// We do this even if the aggregate has been previously defined.
 			if !agg.IsOffline() {
-				go createOnNitrous(ctx, tier, agg)
+				// Note: we send agg2.Id since agg.Id is not initialized yet.
+				go createOnNitrous(ctx, tier, agg2.Id, agg.Options)
 			}
 			return nil
 		} else {
@@ -119,15 +126,15 @@ func Store(ctx context.Context, tier tier.Tier, agg aggregate.Aggregate) error {
 	}
 }
 
-func createOnNitrous(ctx context.Context, tier tier.Tier, agg aggregate.Aggregate) {
+func createOnNitrous(ctx context.Context, tier tier.Tier, aggId ftypes.AggId, aggOptions aggregate.Options) {
 	var err error
 	tier.NitrousClient.ForEach(func(nc nitrous.NitrousClient) {
-		err = nc.CreateAggregate(ctx, agg.Id, agg.Options)
+		err = nc.CreateAggregate(ctx, aggId, aggOptions)
 	})
 	if err != nil {
 		tier.Logger.Warn("Failed to forward aggregate definition to nitrous", zap.Error(err))
 	} else {
-		tier.Logger.Debug("Forwarded aggregate definition to nitrous")
+		tier.Logger.Debug("Forwarded aggregate definition to nitrous", zap.Int("aggId", int(aggId)))
 	}
 }
 
