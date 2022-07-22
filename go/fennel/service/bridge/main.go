@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"log"
 	"net/http"
 	"time"
@@ -61,11 +60,11 @@ func setupRouter() *gin.Engine {
 	users := make(map[string]User)
 	r.POST("/signup", func(c *gin.Context) {
 		var form SignUpForm
-		c.BindJSON(&form)
+		_ = c.BindJSON(&form)
 
 		if _, exists := users[form.Email]; exists || form.Email == "" {
 			c.JSON(http.StatusOK, gin.H{
-				"result": fmt.Sprintf("user already exists or empty"),
+				"result": "user already exists or empty",
 			})
 		} else {
 			hash, _ := HashPassword(form.Password)
@@ -82,7 +81,7 @@ func setupRouter() *gin.Engine {
 	})
 	r.POST("/signin", func(c *gin.Context) {
 		var form SignUpForm
-		c.BindJSON(&form)
+		_ = c.BindJSON(&form)
 		if user, ok := users[form.Email]; ok && CheckPasswordHash(form.Password, user.Password) {
 			c.JSON(http.StatusOK, gin.H{
 				"result": "found user",
