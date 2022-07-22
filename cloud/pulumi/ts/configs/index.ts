@@ -10,17 +10,18 @@ export type inputType = {
     kubeconfig: string,
     namespace: string,
     tierConfig: Record<string, string>,
-    redisConfig: pulumi.Output<Record<string, string>>,
-    cacheConfig: pulumi.Output<Record<string, string>>,
-    dbConfig: pulumi.Output<Record<string, string>>,
-    kafkaConfig: pulumi.Output<Record<string, string>>,
-    modelServingConfig: pulumi.Output<Record<string, string>>,
-    glueConfig: pulumi.Output<Record<string, string>>,
-    unleashConfig: pulumi.Output<Record<string, string>>,
-    otelCollectorConfig: pulumi.Output<Record<string, string>>,
-    offlineAggregateOutputConfig: pulumi.Output<Record<string, string>>,
-    milvusConfig: pulumi.Output<Record<string, string>>,
-    pprofConfig: pulumi.Output<Record<string, string>>
+    redisConfig: pulumi.Input<Record<string, string>>,
+    cacheConfig: pulumi.Input<Record<string, string>>,
+    dbConfig: pulumi.Input<Record<string, string>>,
+    kafkaConfig: pulumi.Input<Record<string, string>>,
+    modelServingConfig: pulumi.Input<Record<string, string>>,
+    glueConfig: pulumi.Input<Record<string, string>>,
+    unleashConfig: pulumi.Input<Record<string, string>>,
+    otelCollectorConfig: pulumi.Input<Record<string, string>>,
+    offlineAggregateOutputConfig: pulumi.Input<Record<string, string>>,
+    milvusConfig: pulumi.Input<Record<string, string>>,
+    pprofConfig: pulumi.Input<Record<string, string>>,
+    nitrousConfig: pulumi.Input<Record<string, string>>,
 }
 
 export type outputType = {}
@@ -113,6 +114,13 @@ export const setup = async (input: inputType) => {
         metadata: {
             name: "pprof-conf"
         }
+    }, { provider, deleteBeforeReplace: true });
+
+    const nitrousConf = new k8s.core.v1.ConfigMap("nitrous-conf", {
+        data: input.nitrousConfig,
+        metadata: {
+            name: "nitrous-conf"
+        },
     }, { provider, deleteBeforeReplace: true });
 
     const output: outputType = {}

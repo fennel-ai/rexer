@@ -1,5 +1,14 @@
 export const serviceEnvs = [
     {
+        name: "NITROUS_SERVER_ADDRESS",
+        valueFrom: {
+            configMapKeyRef: {
+                name: "nitrous-conf",
+                key: "addr",
+            }
+        }
+    },
+    {
         name: "KAFKA_SERVER_ADDRESS",
         valueFrom: {
             secretKeyRef: {

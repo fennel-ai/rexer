@@ -8,7 +8,6 @@ import * as process from "process";
 import * as childProcess from "child_process";
 import * as util from "../lib/util";
 
-const name = "nitrous"
 
 export const plugins = {
     "aws": "v5.1.0",
@@ -34,7 +33,9 @@ const DEFAULT_CPU_LIMIT = "1500m"
 const DEFAULT_MEMORY_REQUEST = "2G"
 const DEFAULT_MEMORY_LIMIT = "4G"
 
-const namespace = "fennel"
+export const name = "nitrous"
+export const namespace = "fennel"
+export const servicePort = 3333;
 
 export type binlogConfig = {
     partitions?: number,
@@ -201,7 +202,6 @@ export const setup = async (input: inputType) => {
     // Create a load balanced Kubernetes service using this image, and export its IP.
     const appLabels = { app: name };
     const metricsPort = 2112;
-    const servicePort = 3333;
 
     const forceReplicaIsolation = input.enforceReplicaIsolation || DEFAULT_FORCE_REPLICA_ISOLATION;
     let whenUnsatisfiable = "ScheduleAnyway";
