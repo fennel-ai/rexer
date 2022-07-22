@@ -2,7 +2,7 @@ import * as pulumi from "@pulumi/pulumi";
 import * as aws from "@pulumi/aws";
 
 export const plugins = {
-    "aws": "v5.1.0",
+    "aws": "v4.38.1",
 }
 
 export type inputType = {
