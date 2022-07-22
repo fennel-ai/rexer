@@ -87,6 +87,23 @@ func (ndb *NitrousDB) Stop() {
 	// _ = ndb.nos.Store.Close()
 }
 
+func (ndb *NitrousDB) Close() {
+	ndb.tailer.Stop()
+	err := ndb.nos.Store.Close()
+	if err != nil {
+		ndb.nos.Logger.Error(fmt.Sprintf("Failed to close the db: %v", err))
+	}
+}
+
+func (ndb *NitrousDB) Backup() error {
+	_, err := ndb.nos.Store.Backup(nil, 0)
+	if err != nil {
+		// TODO(siyuan): add retry? let's see how often does it break
+		ndb.nos.Logger.Error(fmt.Sprintf("Failed to create backup: %v", err))
+	}
+	return err
+}
+
 func (ndb *NitrousDB) SetPollTimeout(d time.Duration) {
 	ndb.tailer.SetPollTimeout(d)
 }
@@ -261,10 +278,6 @@ func (ndb *NitrousDB) GetLag(ctx context.Context) (int, error) {
 		return 0, fmt.Errorf("error getting lag: %w", err)
 	}
 	return lag, nil
-}
-
-func (ndb *NitrousDB) BackupProc() error {
-
 }
 
 func encodeField(tierId ftypes.RealmID, aggId ftypes.AggId, codec rpc.AggCodec) ([]byte, error) {
