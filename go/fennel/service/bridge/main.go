@@ -6,12 +6,33 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"golang.org/x/crypto/bcrypt"
 )
 
 var db = make(map[string]string)
 
 const DashboardPage = "dashboard"
 const DataPage = "data"
+
+type SignUpForm struct {
+	Email    string `json:"email"`
+	Password string `json:"password"`
+}
+
+type User struct {
+	Email    string
+	Password string
+}
+
+func HashPassword(password string) (string, error) {
+	bytes, err := bcrypt.GenerateFromPassword([]byte(password), 14)
+	return string(bytes), err
+}
+
+func CheckPasswordHash(password, hash string) bool {
+	err := bcrypt.CompareHashAndPassword([]byte(hash), []byte(password))
+	return err == nil
+}
 
 func setupRouter() *gin.Engine {
 	// Disable Console Color
@@ -34,6 +55,42 @@ func setupRouter() *gin.Engine {
 	})
 	r.GET("/data", func(c *gin.Context) {
 		c.HTML(http.StatusOK, "index.tmpl", gin.H{"title": "Fennel | Data", "page": DataPage})
+	})
+
+	users := make(map[string]User)
+	r.POST("/signup", func(c *gin.Context) {
+		var form SignUpForm
+		_ = c.BindJSON(&form)
+
+		if _, exists := users[form.Email]; exists || form.Email == "" {
+			c.JSON(http.StatusOK, gin.H{
+				"result": "user already exists or empty",
+			})
+		} else {
+			hash, _ := HashPassword(form.Password)
+			user := User{
+				Email:    form.Email,
+				Password: hash,
+			}
+			users[user.Email] = user
+			c.JSON(http.StatusOK, gin.H{
+				"email":    user.Email,
+				"password": user.Password,
+			})
+		}
+	})
+	r.POST("/signin", func(c *gin.Context) {
+		var form SignUpForm
+		_ = c.BindJSON(&form)
+		if user, ok := users[form.Email]; ok && CheckPasswordHash(form.Password, user.Password) {
+			c.JSON(http.StatusOK, gin.H{
+				"result": "found user",
+			})
+		} else {
+			c.JSON(http.StatusOK, gin.H{
+				"result": "user not found",
+			})
+		}
 	})
 
 	r.GET("/profiles", func(c *gin.Context) {
