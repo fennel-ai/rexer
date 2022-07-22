@@ -7,7 +7,12 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
-type SignUpForm struct {
+const DashboardPage = "dashboard"
+const DataPage = "data"
+const SignUpPage = "signup"
+const SignInPage = "signin"
+
+type Form struct {
 	Email    string `json:"email"`
 	Password string `json:"password"`
 }
@@ -29,8 +34,16 @@ func checkPasswordHash(password, hash string) bool {
 	return err == nil
 }
 
+func SignUpGet(c *gin.Context) {
+	c.HTML(http.StatusOK, "sign_on.tmpl", gin.H{"title": "Fennel | SignUp", "page": SignUpPage})
+}
+
+func SignInGet(c *gin.Context) {
+	c.HTML(http.StatusOK, "sign_on.tmpl", gin.H{"title": "Fennel | SignIn", "page": SignInPage})
+}
+
 func SignUp(c *gin.Context) {
-	var form SignUpForm
+	var form Form
 	_ = c.BindJSON(&form)
 
 	if _, exists := users[form.Email]; exists || form.Email == "" {
@@ -52,7 +65,7 @@ func SignUp(c *gin.Context) {
 }
 
 func SignIn(c *gin.Context) {
-	var form SignUpForm
+	var form Form
 	_ = c.BindJSON(&form)
 	if user, ok := users[form.Email]; ok && checkPasswordHash(form.Password, user.Password) {
 		c.JSON(http.StatusOK, gin.H{

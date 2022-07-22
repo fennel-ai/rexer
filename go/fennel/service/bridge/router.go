@@ -26,7 +26,9 @@ func setupRouter() *gin.Engine {
 	r.GET("/data", controller.Data)
 	r.GET("/profiles", controller.Profiles)
 
+	r.GET("/signup", controller.SignUpGet)
 	r.POST("/signup", controller.SignUp)
+	r.GET("/signin", controller.SignInGet)
 	r.POST("/signin", controller.SignIn)
 
 	// (xiaoj) Example code below, to be deleted!!!
