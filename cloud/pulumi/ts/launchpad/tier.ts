@@ -8,6 +8,7 @@ import * as kafkaconnectors from "../kafkaconnectors";
 import * as mysql from "../mysql"
 import * as httpserver from "../http-server";
 import * as queryserver from "../query-server";
+import * as nitrous from "../nitrous";
 import * as countaggr from "../countaggr";
 import * as configs from "../configs";
 import * as ingress from "../ingress";
@@ -95,6 +96,7 @@ export type TierConf = {
     // NOTE: Please add a justification if this value is being set to False and the configuration is being checked-in
     protectResources: boolean,
     planeId: number,
+    enableNitrous?: boolean,
     httpServerConf?: HttpServerConf,
     queryServerConf?: QueryServerConf,
     countAggrConf?: CountAggrConf,
@@ -113,6 +115,9 @@ type inputType = {
     region: string,
     kubeconfig: string,
     namespace: string,
+    nodeInstanceRole: string,
+    vpcId: string,
+    connectedSecurityGroups: Record<string, string>,
     // kafka configuration.
     topics: kafkatopics.topicConf[],
     bootstrapServer: string,
@@ -156,14 +161,15 @@ type inputType = {
     // otel collector endpoints
     otelCollectorEndpoint: string,
     otelCollectorHttpEndpoint: string,
+    // service configurations.
     httpServerConf?: HttpServerConf,
     queryServerConf?: QueryServerConf,
     countAggrConf?: CountAggrConf,
     counterCleanupConf?: CounterCleanupConf,
+    enableNitrous?: boolean,
+
+    // third-party services configuration
     sagemakerConf?: SagemakerConf,
-    nodeInstanceRole: string,
-    vpcId: string,
-    connectedSecurityGroups: Record<string, string>,
     milvusEndpoint: string,
     airbyteConf?: AirbyteConf,
 }
@@ -225,6 +231,7 @@ const parseConfig = (): inputType => {
         queryServerConf: config.getObject(nameof<inputType>("queryServerConf")),
         countAggrConf: config.getObject(nameof<inputType>("countAggrConf")),
         counterCleanupConf: config.getObject(nameof<inputType>("counterCleanupConf")),
+        enableNitrous: config.getObject(nameof<inputType>("enableNitrous")),
 
         sagemakerConf: config.getObject(nameof<inputType>("sagemakerConf")),
 
@@ -464,7 +471,10 @@ const setupResources = async () => {
                 } as Record<string, string>),
                 pprofConfig: pulumi.output({
                     "bucket": pprofBucketOutput.pprofStoreBucket,
-                } as Record<string, string>)
+                } as Record<string, string>),
+                nitrousConfig: pulumi.output({
+                    "addr": input.enableNitrous ? `${nitrous.name}.${nitrous.namespace}:${nitrous.servicePort}` : "",
+                } as Record<string, string>),
             })
         })
     // setup ingress.
@@ -650,6 +660,9 @@ type TierInput = {
     // query server configuration
     queryServerConf?: QueryServerConf,
 
+    // flag to enable nitrous.
+    enableNitrous?: boolean,
+
     // countaggr configuration
     countAggrConf?: CountAggrConf,
 
@@ -718,7 +731,7 @@ const setupTier = async (args: TierInput, preview?: boolean, destroy?: boolean) 
     await stack.setConfig(nameof<inputType>("dbEndpoint"), { value: args.dbEndpoint })
 
     await stack.setConfig(nameof<inputType>("postgresDbEndpoint"), { value: args.postgresDbEndpoint })
-    await stack.setConfig(nameof<inputType>("postgresDbPort"), { value: String(args.postgresDbPort ) })
+    await stack.setConfig(nameof<inputType>("postgresDbPort"), { value: String(args.postgresDbPort) })
 
     await stack.setConfig(nameof<inputType>("roleArn"), { value: args.roleArn })
     await stack.setConfig(nameof<inputType>("region"), { value: args.region })
@@ -763,6 +776,10 @@ const setupTier = async (args: TierInput, preview?: boolean, destroy?: boolean) 
 
     if (args.counterCleanupConf !== undefined) {
         await stack.setConfig(nameof<inputType>("counterCleanupConf"), { value: JSON.stringify(args.counterCleanupConf) })
+    }
+
+    if (args.enableNitrous !== undefined) {
+        await stack.setConfig(nameof<inputType>("enableNitrous"), { value: JSON.stringify(args.enableNitrous) })
     }
 
     if (args.sagemakerConf !== undefined) {
