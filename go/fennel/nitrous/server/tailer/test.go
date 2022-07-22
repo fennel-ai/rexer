@@ -7,6 +7,8 @@ import (
 	"fennel/kafka"
 	"fennel/nitrous"
 	"fennel/resource"
+
+	"go.uber.org/atomic"
 )
 
 func NewTestTailer(n nitrous.Nitrous, topic string) *Tailer {
@@ -23,7 +25,7 @@ func NewTestTailer(n nitrous.Nitrous, topic string) *Tailer {
 		[]byte("default-offsets-kg"),
 		nil,
 		5 * time.Second,
-		false,
+		atomic.NewBool(false),
 		&sync.RWMutex{},
 	}
 }
