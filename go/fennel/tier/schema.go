@@ -123,4 +123,47 @@ var Schema = db.Schema{
 	// Statement 16 generates container names for rows with no container name.
 	15: `ALTER TABLE model ADD COLUMN container_name VARCHAR(255) NOT NULL;`,
 	16: `UPDATE model SET container_name=CONCAT("Container-", name, "-", version) WHERE container_name="";`,
+
+	// ================== BEGIN Schema for Data Integration  ======================
+	// Reserve 17 - 29 for different sources.
+	17: `CREATE TABLE IF NOT EXISTS source (
+			name VARCHAR(255) NOT NULL,
+			type VARCHAR(255) NOT NULL,
+			last_updated timestamp default now() on update now(), 
+			PRIMARY KEY (name)
+		);`,
+	18: `CREATE TABLE IF NOT EXISTS connector (
+			name VARCHAR(255) NOT NULL,
+			version VARCHAR(255) NOT NULL,
+			source_name VARCHAR(255) NOT NULL,
+			source_type VARCHAR(255) NOT NULL,
+			destination VARCHAR(255) NOT NULL,
+			query_ser BLOB NOT NULL,
+			active BOOL NOT NULL DEFAULT TRUE,
+			last_updated timestamp default now() on update now(), 
+			PRIMARY KEY (name, version),
+			FOREIGN KEY (source_name) REFERENCES source(name) ON DELETE CASCADE
+		);`,
+	19: `CREATE TABLE IF NOT EXISTS s3_source (
+			name VARCHAR(255) NOT NULL,
+			cursor_field VARCHAR(255) NOT NULL,
+			bucket VARCHAR(255) NOT NULL,
+			path_prefix VARCHAR(255) NOT NULL,
+			format ENUM('csv','parquet', 'avro') NOT NULL,
+			delimiter VARCHAR(1) NOT NULL DEFAULT ',',
+			last_updated timestamp default now() on update now(), 
+			PRIMARY KEY (name),
+			FOREIGN KEY (name) REFERENCES source(name) ON DELETE CASCADE
+			);`,
+	20: `CREATE TABLE IF NOT EXISTS bigquery_source (
+			name VARCHAR(255) NOT NULL,
+			cursor_field VARCHAR(255) NOT NULL,
+			project_id VARCHAR(255) NOT NULL,
+			dataset_id VARCHAR(255) NOT NULL,
+			last_updated timestamp default now() on update now(), 
+			PRIMARY KEY (name),
+			FOREIGN KEY (name) REFERENCES source(name) ON DELETE CASCADE
+		);`,
+	// ==================== END Schema for Data Integration ======================
+	// Next starts from 30.
 }

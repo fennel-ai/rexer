@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"errors"
+	"fennel/lib/data_integration"
 	"fmt"
 	"io/ioutil"
 	"log"
@@ -15,6 +16,7 @@ import (
 
 	"fennel/controller/action"
 	aggregate2 "fennel/controller/aggregate"
+	connector2 "fennel/controller/data_integration"
 	"fennel/controller/mock"
 	"fennel/controller/modelstore"
 	profile2 "fennel/controller/profile"
@@ -134,6 +136,12 @@ func (s server) setHandlers(router *mux.Router) {
 	router.HandleFunc(INT_REST_VERSION+"/model", s.UploadModel).Methods("POST")
 	router.HandleFunc(INT_REST_VERSION+"/model", s.DeleteModel).Methods("DELETE")
 	router.HandleFunc(INT_REST_VERSION+"/model/enable", s.EnableModel).Methods("POST")
+
+	// Endpoints used for data integration
+	router.HandleFunc(INT_REST_VERSION+"/connector", s.StoreConnector).Methods("POST")
+	router.HandleFunc(INT_REST_VERSION+"/connector", s.DeactivateConnector).Methods("DELETE")
+	router.HandleFunc(INT_REST_VERSION+"/source", s.StoreSource).Methods("POST")
+	router.HandleFunc(INT_REST_VERSION+"/source", s.DeactivateSource).Methods("DELETE")
 
 	// Misc endpoints
 	router.HandleFunc(INT_REST_VERSION+"/operators", s.GetOperators).Methods("GET")
@@ -557,6 +565,46 @@ func (m server) RunQuery(w http.ResponseWriter, req *http.Request) {
 	_, _ = w.Write(value.ToJSON(ret))
 }
 
+func (m server) StoreConnector(w http.ResponseWriter, req *http.Request) {
+	data, err := readRequest(req)
+	if err != nil {
+		handleBadRequest(w, "", err)
+		return
+	}
+
+	var conn data_integration.Connector
+	if err := json.Unmarshal(data, &conn); err != nil {
+		handleBadRequest(w, "invalid request: ", err)
+		return
+	}
+
+	if err := connector2.StoreConnector(req.Context(), m.tier, conn); err != nil {
+		handleInternalServerError(w, "", err)
+		return
+	}
+	// if storing succeeds, just return empty response
+}
+
+func (m server) StoreSource(w http.ResponseWriter, req *http.Request) {
+	data, err := readRequest(req)
+	if err != nil {
+		handleBadRequest(w, "", err)
+		return
+	}
+
+	src, err := connector2.UnmarshalSource(data)
+	if err != nil {
+		handleBadRequest(w, "invalid request: ", err)
+		return
+	}
+
+	if err := connector2.StoreSource(req.Context(), m.tier, src); err != nil {
+		handleInternalServerError(w, "", err)
+		return
+	}
+	// if storing succeeds, just return empty response
+}
+
 func (m server) StoreAggregate(w http.ResponseWriter, req *http.Request) {
 	data, err := readRequest(req)
 	if err != nil {
@@ -630,7 +678,46 @@ func (m server) DeactivateAggregate(w http.ResponseWriter, req *http.Request) {
 	handleSuccessfulRequest(w)
 }
 
-// Delete this code after client migrates to new API
+func (m server) DeactivateConnector(w http.ResponseWriter, req *http.Request) {
+	data, err := readRequest(req)
+	if err != nil {
+		handleBadRequest(w, "", err)
+		return
+	}
+	var connReq struct {
+		Name string `json:"Name"`
+	}
+	if err := json.Unmarshal(data, &connReq); err != nil {
+		handleBadRequest(w, "invalid request: ", err)
+		return
+	}
+	err = connector2.DeactivateConnector(req.Context(), m.tier, connReq.Name)
+	if err != nil {
+		handleInternalServerError(w, "", err)
+		return
+	}
+}
+
+func (m server) DeactivateSource(w http.ResponseWriter, req *http.Request) {
+	data, err := readRequest(req)
+	if err != nil {
+		handleBadRequest(w, "", err)
+		return
+	}
+	var sourceReq struct {
+		Name string `json:"Name"`
+	}
+	if err := json.Unmarshal(data, &sourceReq); err != nil {
+		handleBadRequest(w, "invalid request: ", err)
+		return
+	}
+	err = connector2.DeactivateConnector(req.Context(), m.tier, sourceReq.Name)
+	if err != nil {
+		handleInternalServerError(w, "", err)
+		return
+	}
+}
+
 func (m server) AggregateValue(w http.ResponseWriter, req *http.Request) {
 	data, err := readRequest(req)
 	if err != nil {
