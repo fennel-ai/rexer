@@ -225,7 +225,7 @@ export const setup = async (input: inputType): Promise<outputType> => {
             },
 
             // we need to set the `JOB_KUBE_NODE_SELECTORS` env var to schedule the workers on amd64 workers since
-            // the worker pods are spun up with airbyte data_integration container (which is multi-arch compatible), but
+            // the worker pods are spun up with airbyte connector container (which is multi-arch compatible), but
             // the other containers (e.g. `alpine/socat:1.7.4.3-r0`) can only run on amd64 machines
             "jobs": {
                 "kube": {
@@ -233,7 +233,7 @@ export const setup = async (input: inputType): Promise<outputType> => {
                         "kubernetes.io/arch": "amd64",
                     },
                     "annotations": {
-                        // disable injecting linkerd for the data_integration jobs
+                        // disable injecting linkerd for the connector jobs
                         "linkerd.io/inject": "disabled",
                     }
                 }

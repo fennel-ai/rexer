@@ -2,7 +2,7 @@
 # some non-default changes to allow us to use await outside an async function.
 # See: https://github.com/pulumi/pulumi/issues/5161#issuecomment-1010018506
 name: connectorsink
-description: Pulumi project to setup a data_integration sink
+description: Pulumi project to setup a connector sink
 runtime:
   name: nodejs
   options:

@@ -1,7 +1,0 @@
-syntax = "proto3";
-
-option go_package = "fennel/lib/data_integration";
-
-message ConnectorConfig {
-  string cursor_field = 1;
-}
