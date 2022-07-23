@@ -1,0 +1,43 @@
+$width: 315px;
+
+.container {
+    display: flex;
+    flex-direction: column;
+    width: $width;
+}
+
+.logo {
+    width: 40px;
+    align-self: center;
+    margin-top: 57px;
+}
+
+.logoDivider {
+    border-bottom: 1px solid;
+    margin-top: 50px;
+    width: 100%;
+}
+
+.signUpHeader {
+    display: flex;
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 12px;
+}
+
+.signUpForm Input {
+    width: 100%;
+}
+
+.signUpItem :first-child {
+    margin-top: 28px;
+}
+
+.signUpFormItem {
+    margin-top: 16px;
+}
+
+.signUpFormButton {
+    width: 100%;
+}
