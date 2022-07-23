@@ -1,6 +1,8 @@
 name: JS Lint
 on:
   pull_request:
+    paths:
+      - 'webapp/**'
   workflow_dispatch:
 
 jobs:
