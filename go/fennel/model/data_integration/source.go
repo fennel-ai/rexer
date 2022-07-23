@@ -78,5 +78,5 @@ func DeleteSource(ctx context.Context, tier tier.Tier, src data_integration.Sour
 	default:
 		err = fmt.Errorf("unsupported source type: %T found during deleting source", srcDerived)
 	}
-	return nil
+	return err
 }

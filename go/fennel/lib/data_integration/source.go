@@ -42,7 +42,6 @@ func (s S3) Equals(src Source) error {
 	} else {
 		return fmt.Errorf("source type mismatch")
 	}
-	return nil
 }
 
 func (s S3) Validate() error {
@@ -88,7 +87,6 @@ func (s BigQuery) Equals(src Source) error {
 	} else {
 		return fmt.Errorf("source type mismatch")
 	}
-	return nil
 }
 
 func (s BigQuery) Validate() error {
