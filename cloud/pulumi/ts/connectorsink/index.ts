@@ -20,7 +20,7 @@ export type outputType = {
 }
 
 export const setup = async (input: inputType): Promise<pulumi.Output<outputType>> => {
-    const provider = new aws.Provider("connector-sink-aws-provider", {
+    const provider = new aws.Provider("data_integration-sink-aws-provider", {
         region: <aws.Region>input.region,
         assumeRole: {
             roleArn: input.roleArn,
@@ -40,7 +40,7 @@ export const setup = async (input: inputType): Promise<pulumi.Output<outputType>
         forceDestroy: true,
     }, { provider, protect: input.protect });
 
-    // create an AWS user account to authenticate kafka connector to write to S3 bucket
+    // create an AWS user account to authenticate kafka data_integration to write to S3 bucket
     const user = new aws.iam.User("conn-sink-user", {
         name: `p-${input.planeId}-conn-sink-user`,
         // set path to differentiate this user from the rest of human users

@@ -1,4 +1,4 @@
-""" Script to crawl all the json files written by kafka s3 connector in a day and writing them as a single parquet file.
+""" Script to crawl all the json files written by kafka s3 data_integration in a day and writing them as a single parquet file.
 
 The script is meant to be run on AWS GLUE.
 

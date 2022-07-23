@@ -3,7 +3,7 @@ package main
 import (
 	"encoding/json"
 	"errors"
-	"fennel/lib/connector"
+	"fennel/lib/data_integration"
 	"fmt"
 	"io/ioutil"
 	"log"
@@ -16,7 +16,7 @@ import (
 
 	"fennel/controller/action"
 	aggregate2 "fennel/controller/aggregate"
-	connector2 "fennel/controller/connector"
+	connector2 "fennel/controller/data_integration"
 	"fennel/controller/mock"
 	"fennel/controller/modelstore"
 	profile2 "fennel/controller/profile"
@@ -140,7 +140,7 @@ func (s server) setHandlers(router *mux.Router) {
 	// Endpoints used for data integration
 	router.HandleFunc(INT_REST_VERSION+"/connector", s.StoreConnector).Methods("POST")
 	router.HandleFunc(INT_REST_VERSION+"/connector", s.DeactivateConnector).Methods("DELETE")
-	router.HandleFunc(INT_REST_VERSION+"/source", s.StoreConnector).Methods("DELETE")
+	router.HandleFunc(INT_REST_VERSION+"/source", s.StoreSource).Methods("POST")
 	router.HandleFunc(INT_REST_VERSION+"/source", s.DeactivateConnector).Methods("DELETE")
 
 	// Misc endpoints
@@ -572,13 +572,33 @@ func (m server) StoreConnector(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	var conn connector.Connector
+	var conn data_integration.Connector
 	if err := json.Unmarshal(data, &conn); err != nil {
 		handleBadRequest(w, "invalid request: ", err)
 		return
 	}
 
-	if err := connector2.Store(req.Context(), m.tier, conn); err != nil {
+	if err := connector2.StoreConnector(req.Context(), m.tier, conn); err != nil {
+		handleInternalServerError(w, "", err)
+		return
+	}
+	// if storing succeeds, just return empty response
+}
+
+func (m server) StoreSource(w http.ResponseWriter, req *http.Request) {
+	data, err := readRequest(req)
+	if err != nil {
+		handleBadRequest(w, "", err)
+		return
+	}
+
+	src, err := connector2.UnmarshalSource(data)
+	if err != nil {
+		handleBadRequest(w, "invalid request: ", err)
+		return
+	}
+
+	if err := connector2.StoreSource(req.Context(), m.tier, src); err != nil {
 		handleInternalServerError(w, "", err)
 		return
 	}

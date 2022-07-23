@@ -1,8 +1,8 @@
 # The Pulumi.yaml, package.json and tsconfig.json files in this project contain
 # some non-default changes to allow us to use await outside an async function.
 # See: https://github.com/pulumi/pulumi/issues/5161#issuecomment-1010018506
-name: offline-aggregate-kafka-connector
-description: Pulumi project for offline aggregate kafka connector
+name: offline-aggregate-kafka-data_integration
+description: Pulumi project for offline aggregate kafka data_integration
 runtime:
   name: nodejs
   options:

@@ -1,7 +1,7 @@
 import * as pulumi from "@pulumi/pulumi";
 import * as confluent from "@pulumi/confluent";
 
-// TODO(mohit): Consolidate with training data generation kafka connector if possible to remove redundant configurations
+// TODO(mohit): Consolidate with training data generation kafka data_integration if possible to remove redundant configurations
 // and code
 
 export const plugins = {

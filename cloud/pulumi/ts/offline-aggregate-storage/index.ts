@@ -5,7 +5,7 @@ export const plugins = {
     "aws": "v4.38.1"
 }
 
-// TODO(mohit): Consolidate with training data generation kafka connector if possible to remove redundant configurations
+// TODO(mohit): Consolidate with training data generation kafka data_integration if possible to remove redundant configurations
 // and code
 
 export type inputType = {
@@ -40,7 +40,7 @@ export const setup = async (input: inputType): Promise<pulumi.Output<outputType>
         forceDestroy: true,
     }, { provider, protect: input.protect });
 
-    // setup AWS user account with access to this bucket. This user access is used by kafka connector
+    // setup AWS user account with access to this bucket. This user access is used by kafka data_integration
     const user = new aws.iam.User(`t-${input.tierId}-offline-aggr-user`, {
         name: `t-${input.tierId}-offline-aggr-user`,
         // set path to differentiate this user from the rest of human users

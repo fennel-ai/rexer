@@ -285,7 +285,7 @@ const setupResources = async () => {
         tierId: input.tierId,
         protect: input.protect,
     })
-    // setup kafka connector to s3 bucket for the action and feature log topics.
+    // setup kafka data_integration to s3 bucket for the action and feature log topics.
     const kafkaConnectors = await kafkaconnectors.setup({
         tierId: input.tierId,
         username: input.confUsername,
@@ -595,7 +595,7 @@ type TierInput = {
     kafkaApiKey: string,
     kafkaApiSecret: string,
 
-    // connector configuration
+    // data_integration configuration
     confUsername: string,
     confPassword: string,
     clusterId: string,
