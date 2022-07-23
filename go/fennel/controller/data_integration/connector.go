@@ -37,3 +37,14 @@ func StoreConnector(ctx context.Context, tier tier.Tier, conn data_integration.C
 	}
 
 }
+
+func DeactivateConnector(ctx context.Context, tier tier.Tier, name string) error {
+	conn, err := connectorModel.Retrieve(ctx, tier, name)
+	if err != nil {
+		return fmt.Errorf("failed to retrieve connector: %w", err)
+	}
+	if !conn.Active {
+		return nil
+	}
+	return connectorModel.Deactivate(ctx, tier, name)
+}

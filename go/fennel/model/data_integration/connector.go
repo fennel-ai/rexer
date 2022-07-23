@@ -68,6 +68,11 @@ func Retrieve(ctx context.Context, tier tier.Tier, name string) (data_integratio
 }
 
 func Activate(ctx context.Context, tier tier.Tier, name string) error {
-	_, err := tier.DB.ExecContext(ctx, `UPDATE connector SET active = 1 WHERE name = ?`, name)
+	_, err := tier.DB.ExecContext(ctx, `UPDATE connector SET active = TRUE WHERE name = ?`, name)
+	return err
+}
+
+func Deactivate(ctx context.Context, tier tier.Tier, name string) error {
+	_, err := tier.DB.ExecContext(ctx, `UPDATE connector SET active = FALSE WHERE name = ?`, name)
 	return err
 }

@@ -60,3 +60,11 @@ func StoreSource(ctx context.Context, tier tier.Tier, src data_integration.Sourc
 	}
 	return nil
 }
+
+func DeleteSource(ctx context.Context, tier tier.Tier, name string) error {
+	src, err := diModel.RetrieveSource(ctx, tier, name)
+	if err != nil {
+		return fmt.Errorf("failed to retrieve source: %w", err)
+	}
+	return diModel.DeleteSource(ctx, tier, src)
+}

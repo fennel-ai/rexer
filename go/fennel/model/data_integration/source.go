@@ -64,3 +64,19 @@ func RetrieveSource(ctx context.Context, tier tier.Tier, srcName string) (data_i
 		return nil, fmt.Errorf("unsupported source type: %s found during retrieving source", srcSer.Type)
 	}
 }
+
+func DeleteSource(ctx context.Context, tier tier.Tier, src data_integration.Source) error {
+	_, err := tier.DB.ExecContext(ctx, "DELETE FROM source WHERE name = ?", src.GetSourceName())
+	if err != nil {
+		return fmt.Errorf("failed to delete source: %w", err)
+	}
+	switch srcDerived := src.(type) {
+	case data_integration.S3:
+		_, err = tier.DB.ExecContext(ctx, "DELETE FROM s3_source WHERE name = ?", srcDerived.Name)
+	case data_integration.BigQuery:
+		_, err = tier.DB.ExecContext(ctx, "DELETE FROM bigquery_source WHERE name = ?", srcDerived.Name)
+	default:
+		err = fmt.Errorf("unsupported source type: %T found during deleting source", srcDerived)
+	}
+	return nil
+}

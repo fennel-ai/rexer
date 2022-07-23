@@ -141,7 +141,7 @@ func (s server) setHandlers(router *mux.Router) {
 	router.HandleFunc(INT_REST_VERSION+"/connector", s.StoreConnector).Methods("POST")
 	router.HandleFunc(INT_REST_VERSION+"/connector", s.DeactivateConnector).Methods("DELETE")
 	router.HandleFunc(INT_REST_VERSION+"/source", s.StoreSource).Methods("POST")
-	router.HandleFunc(INT_REST_VERSION+"/source", s.DeactivateConnector).Methods("DELETE")
+	router.HandleFunc(INT_REST_VERSION+"/source", s.DeactivateSource).Methods("DELETE")
 
 	// Misc endpoints
 	router.HandleFunc(INT_REST_VERSION+"/operators", s.GetOperators).Methods("GET")
@@ -684,14 +684,34 @@ func (m server) DeactivateConnector(w http.ResponseWriter, req *http.Request) {
 		handleBadRequest(w, "", err)
 		return
 	}
-	var aggReq struct {
+	var connReq struct {
 		Name string `json:"Name"`
 	}
-	if err := json.Unmarshal(data, &aggReq); err != nil {
+	if err := json.Unmarshal(data, &connReq); err != nil {
 		handleBadRequest(w, "invalid request: ", err)
 		return
 	}
-	err = aggregate2.Deactivate(req.Context(), m.tier, ftypes.AggName(aggReq.Name))
+	err = connector2.DeactivateConnector(req.Context(), m.tier, connReq.Name)
+	if err != nil {
+		handleInternalServerError(w, "", err)
+		return
+	}
+}
+
+func (m server) DeactivateSource(w http.ResponseWriter, req *http.Request) {
+	data, err := readRequest(req)
+	if err != nil {
+		handleBadRequest(w, "", err)
+		return
+	}
+	var sourceReq struct {
+		Name string `json:"Name"`
+	}
+	if err := json.Unmarshal(data, &sourceReq); err != nil {
+		handleBadRequest(w, "invalid request: ", err)
+		return
+	}
+	err = connector2.DeactivateConnector(req.Context(), m.tier, sourceReq.Name)
 	if err != nil {
 		handleInternalServerError(w, "", err)
 		return
