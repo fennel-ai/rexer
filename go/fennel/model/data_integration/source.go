@@ -12,23 +12,25 @@ import (
 type sourceSer struct {
 	Name        string `db:"name"`
 	Type        string `db:"type"`
+	SourceId    string `db:"source_id"`
+	CursorField string `db:"cursor_field"`
 	LastUpdated string `db:"last_updated"`
 }
 
-func StoreSource(ctx context.Context, tier tier.Tier, src data_integration.Source) error {
-	sql := "INSERT INTO source (name, type) VALUES (?, ?)"
-	_, err := tier.DB.QueryContext(ctx, sql, src.GetSourceName(), reflect.TypeOf(src).Name())
+func StoreSource(ctx context.Context, tier tier.Tier, src data_integration.Source, srcId string) error {
+	sql := "INSERT INTO source (name, type, source_id ) VALUES (?, ?, ?)"
+	_, err := tier.DB.QueryContext(ctx, sql, src.GetSourceName(), reflect.TypeOf(src).Name(), srcId)
 	if err != nil {
 		return fmt.Errorf("failed to store source: %w", err)
 	}
 
 	switch srcDerived := src.(type) {
 	case data_integration.S3:
-		sql := "INSERT INTO s3_source (name, cursor_field, bucket, path_prefix, format, delimiter) VALUES (?, ?, ?, ?, ?, ?)"
-		_, err = tier.DB.QueryContext(ctx, sql, srcDerived.Name, srcDerived.CursorField, srcDerived.Bucket, srcDerived.PathPrefix, srcDerived.Format, srcDerived.Delimiter)
+		sql := "INSERT INTO s3_source (name, bucket, path_prefix, format, delimiter, source_id) VALUES (?, ?, ?, ?, ?, ?)"
+		_, err = tier.DB.QueryContext(ctx, sql, srcDerived.Name, srcDerived.Bucket, srcDerived.PathPrefix, srcDerived.Format, srcDerived.Delimiter, srcId)
 	case data_integration.BigQuery:
-		sql := `INSERT INTO bigquery_source (name, cursor_field, project_id, dataset_id) VALUES (?, ?, ?, ?)`
-		_, err = tier.DB.QueryContext(ctx, sql, srcDerived.Name, srcDerived.CursorField, srcDerived.ProjectID, srcDerived.DatasetID)
+		sql := `INSERT INTO bigquery_source (name,  project_id, dataset_id, source_id) VALUES (?, ?, ?, ?)`
+		_, err = tier.DB.QueryContext(ctx, sql, srcDerived.Name, srcDerived.ProjectId, srcDerived.DatasetId, srcId)
 	default:
 		err = fmt.Errorf("unsupported source type: %T found during storing source", src)
 	}

@@ -15,6 +15,8 @@ func (conn *Connector) UnmarshalJSON(data []byte) error {
 		Version     string `json:"Version"`
 		Destination string `json:"Destination"`
 		Query       string `json:"Query"`
+		StreamName  string `json:"StreamName"`
+		CursorField string `json:"CursorField"`
 		Active      bool   `json:"Active"`
 	}
 	err := json.Unmarshal(data, &fields)
@@ -27,6 +29,8 @@ func (conn *Connector) UnmarshalJSON(data []byte) error {
 	conn.Version = fields.Version
 	conn.Destination = fields.Destination
 	conn.Active = fields.Active
+	conn.StreamName = fields.StreamName
+	conn.CursorField = fields.CursorField
 	// Extract query now
 	querySer, err := base64.StdEncoding.DecodeString(fields.Query)
 	if err != nil {

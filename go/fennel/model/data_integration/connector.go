@@ -10,14 +10,17 @@ import (
 )
 
 type connectorSer struct {
-	Name        string `db:"name"`
-	SourceName  string `db:"source_name"`
-	SourceType  string `db:"source_type"`
-	Version     string `db:"version"`
-	Destination string `db:"destination"`
-	QuerySer    []byte `db:"query_ser"`
-	LastUpdated int64  `db:"last_updated"`
-	Active      bool   `db:"active"`
+	Name        string  `db:"name"`
+	SourceName  string  `db:"source_name"`
+	SourceType  string  `db:"source_type"`
+	StreamName  string  `db:"stream_name"`
+	Version     string  `db:"version"`
+	Destination string  `db:"destination"`
+	QuerySer    []byte  `db:"query_ser"`
+	LastUpdated []uint8 `db:"last_updated"`
+	ConnId      string  `db:"conn_id"`
+	CursorField string  `db:"cursor_field"`
+	Active      bool    `db:"active"`
 }
 
 func (ser connectorSer) ToConnector() (data_integration.Connector, error) {
@@ -31,10 +34,13 @@ func (ser connectorSer) ToConnector() (data_integration.Connector, error) {
 	conn.SourceType = ser.SourceType
 	conn.Version = ser.Version
 	conn.Destination = ser.Destination
+	conn.StreamName = ser.StreamName
+	conn.ConnId = ser.ConnId
+	conn.CursorField = ser.CursorField
 	return conn, nil
 }
 
-func Store(ctx context.Context, tier tier.Tier, conn data_integration.Connector) error {
+func Store(ctx context.Context, tier tier.Tier, conn data_integration.Connector, connId string) error {
 	querySer, err := ast.Marshal(conn.Query)
 	if err != nil {
 		return fmt.Errorf("failed to marshal query: %w", err)
@@ -51,8 +57,8 @@ func Store(ctx context.Context, tier tier.Tier, conn data_integration.Connector)
 		return fmt.Errorf("failed to check if source exists: %w", err)
 	}
 
-	sql := `INSERT INTO connector (name, version, source_name, source_type, destination, query_ser) VALUES (?, ?, ?, ?, ?, ?)`
-	_, err = tier.DB.QueryContext(ctx, sql, conn.Name, conn.Version, conn.SourceName, conn.SourceType, conn.Destination, querySer)
+	sql := `INSERT INTO connector (name, version, source_name, source_type, destination, query_ser, conn_id, cursor_field, stream_name) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
+	_, err = tier.DB.QueryContext(ctx, sql, conn.Name, conn.Version, conn.SourceName, conn.SourceType, conn.Destination, querySer, connId, conn.CursorField, conn.StreamName)
 	return err
 }
 

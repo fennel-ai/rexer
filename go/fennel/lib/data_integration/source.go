@@ -5,27 +5,48 @@ import (
 	"fmt"
 )
 
-var ErrSrcNotFound = errors.New("source not found")
-var ErrConnNotFound = errors.New("connector not found")
+const (
+	S3_CURSOR_FIELD = "_ab_source_file_last_modified"
+)
 
+var ErrSrcNotFound = errors.New("source not found")
+
+// Every derived source must include the following fields:
+// Name: the name of the source
+// SourceId: Id returned by Airbyte
 type Source interface {
 	Validate() error
 	GetSourceName() string
+	GetSourceId() string
+	GetDefaultCursorField() string
 	Equals(Source) error
 }
 
+var _ Source = S3{}
+var _ Source = BigQuery{}
+
 type S3 struct {
-	Name        string `db:"name" json:"name"`
-	CursorField string `db:"cursor_field" json:"cursor_field"`
-	Bucket      string `db:"bucket" json:"bucket"`
-	PathPrefix  string `db:"path_prefix" json:"path_prefix"`
-	Format      string `db:"format" json:"format"`
-	Delimiter   string `db:"delimiter" json:"delimiter"`
-	LastUpdated string `db:"last_updated" json:"last_updated"`
+	Name               string `db:"name" json:"name"`
+	SourceId           string `db:"source_id" json:"source_id"`
+	Bucket             string `db:"bucket" json:"bucket"`
+	PathPrefix         string `db:"path_prefix" json:"path_prefix"`
+	Format             string `db:"format" json:"format"`
+	Delimiter          string `db:"delimiter" json:"delimiter"`
+	AWSAccessKeyId     string `json:"aws_access_key_id"`
+	AWSSecretAccessKey string `json:"aws_secret_access_key"`
+	LastUpdated        string `db:"last_updated" json:"last_updated"`
 }
 
 func (s S3) GetSourceName() string {
 	return s.Name
+}
+
+func (s S3) GetSourceId() string {
+	return s.SourceId
+}
+
+func (s S3) GetDefaultCursorField() string {
+	return S3_CURSOR_FIELD
 }
 
 func (s S3) Equals(src Source) error {
@@ -36,8 +57,6 @@ func (s S3) Equals(src Source) error {
 		if s.Bucket == s2.Bucket && s.PathPrefix == s2.PathPrefix && s.Format == s2.Format && s.Delimiter == s2.Delimiter {
 			return nil
 		}
-		fmt.Println(s.Bucket, s.PathPrefix, s.Format, s.Delimiter)
-		fmt.Println(s2.Bucket, s2.PathPrefix, s2.Format, s2.Delimiter)
 		return fmt.Errorf("s3 fields do not match")
 	} else {
 		return fmt.Errorf("source type mismatch")
@@ -64,15 +83,38 @@ func (s S3) Validate() error {
 }
 
 type BigQuery struct {
-	Name        string `db:"name" json:"name"`
-	CursorField string `db:"cursor_field" json:"cursor_field"`
-	ProjectID   string `db:"project_id" json:"project_id"`
-	DatasetID   string `db:"dataset_id" json:"dataset_id"`
-	LastUpdated string `db:"last_updated" json:"last_updated"`
+	Name            string `db:"name" json:"name"`
+	SourceId        string `db:"source_id" json:"source_id"`
+	CursorField     string `db:"cursor_field" json:"cursor_field"`
+	ProjectId       string `db:"project_id" json:"project_id"`
+	DatasetId       string `db:"dataset_id" json:"dataset_id"`
+	LastUpdated     string `db:"last_updated" json:"last_updated"`
+	CredentialsJson string `json:"credentials_json"`
 }
 
 func (s BigQuery) GetSourceName() string {
 	return s.Name
+}
+
+func (s BigQuery) GetCursorField() string {
+	return s.CursorField
+}
+
+func (s BigQuery) GetSourceId() string {
+	return s.SourceId
+}
+
+// BigQuery does not have a default cursor field
+func (s BigQuery) GetDefaultCursorField() string {
+	return ""
+}
+
+func (s BigQuery) SetCursorField() error {
+	if s.CursorField != "" {
+		return nil
+	}
+	// TODO: Add link to documentation for BigQuery cursor field
+	return fmt.Errorf("BigQuery sources require a cursor field")
 }
 
 func (s BigQuery) Equals(src Source) error {
@@ -80,7 +122,7 @@ func (s BigQuery) Equals(src Source) error {
 		return fmt.Errorf("source name mismatch")
 	}
 	if s2, ok := src.(BigQuery); ok {
-		if s.ProjectID == s2.ProjectID && s.DatasetID == s2.DatasetID {
+		if s.ProjectId == s2.ProjectId && s.DatasetId == s2.DatasetId {
 			return nil
 		}
 		return fmt.Errorf("bigquery fields do not match")
@@ -93,10 +135,10 @@ func (s BigQuery) Validate() error {
 	if s.Name == "" {
 		return fmt.Errorf("name is required")
 	}
-	if len(s.ProjectID) == 0 {
+	if len(s.ProjectId) == 0 {
 		return fmt.Errorf("project_id is required")
 	}
-	if len(s.DatasetID) == 0 {
+	if len(s.DatasetId) == 0 {
 		return fmt.Errorf("dataset_id is required")
 	}
 	return nil

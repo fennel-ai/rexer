@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fennel/lib/data_integration"
 	connectorModel "fennel/model/data_integration"
+
 	"fennel/tier"
 	"fmt"
 )
@@ -18,7 +19,20 @@ func StoreConnector(ctx context.Context, tier tier.Tier, conn data_integration.C
 	if err != nil {
 		if errors.Is(err, data_integration.ErrConnNotFound) {
 			tier.Logger.Debug("Storing new connector")
-			return connectorModel.Store(ctx, tier, conn)
+			// Write the connector to Airbyte
+			if tier.AirbyteClient.IsAbsent() {
+				return fmt.Errorf("error: Airbyte client is not initialized")
+			}
+			source, err := connectorModel.RetrieveSource(ctx, tier, conn.SourceName)
+			if err != nil {
+				return fmt.Errorf("error: failed to retrieve source: %w", err)
+			}
+			connId, err := tier.AirbyteClient.MustGet().CreateConnector(source, conn)
+			if err != nil {
+				return fmt.Errorf("error: failed to create connector: %w", err)
+			}
+			// Finally, write the connector to the db
+			return connectorModel.Store(ctx, tier, conn, connId)
 		} else {
 			return fmt.Errorf("failed to retrieve connector: %w", err)
 		}
