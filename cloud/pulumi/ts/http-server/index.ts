@@ -145,7 +145,7 @@ export const setup = async (input: inputType) => {
     const metricsPort = 2112;
     const appPort = 2425;
 
-    const timeoutSeconds = 60;
+    const timeoutSeconds = 25;
     // NOTE: This is configured for "slow" clients who might, at the time of graceful shutdown (i.e. when the kubelet
     // has asked the container runtime to trigger TERM), since see this pod as a viable endpoint of the service.
     //
