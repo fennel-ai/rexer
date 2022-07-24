@@ -44,11 +44,19 @@ func StoreSource(ctx context.Context, tier tier.Tier, src data_integration.Sourc
 	src2, err := diModel.RetrieveSource(ctx, tier, src.GetSourceName())
 	if err != nil {
 		if errors.Is(err, data_integration.ErrSrcNotFound) {
-			tier.Logger.Debug("Storing new src")
+			tier.Logger.Debug("Storing new src " + src.GetSourceName())
+
 			// Write the source to Airbyte
+			if tier.AirbyteClient.IsAbsent() {
+				return fmt.Errorf("error: Airbyte client is not initialized")
+			}
+			srcId, err := tier.AirbyteClient.MustGet().CreateSource(src)
+			if err != nil {
+				return fmt.Errorf("error: failed to create source: %w", err)
+			}
 
 			// Write the source to the db
-			return diModel.StoreSource(ctx, tier, src)
+			return diModel.StoreSource(ctx, tier, src, srcId)
 		} else {
 			return fmt.Errorf("failed to retrieve source: %w", err)
 		}

@@ -3,6 +3,7 @@ package tier
 import (
 	"context"
 	"crypto/tls"
+	"fennel/airbyte"
 	"fmt"
 	"log"
 	"strings"
@@ -42,23 +43,25 @@ type TierArgs struct {
 	timer.TracerArgs          `json:"tracer_._tracer_args"`
 	milvus.MilvusArgs         `json:"milvus_._milvus_args"`
 
-	Region           string         `arg:"--aws-region,env:AWS_REGION" json:"aws_region,omitempty"`
-	KafkaServer      string         `arg:"--kafka-server,env:KAFKA_SERVER_ADDRESS" json:"kafka_server,omitempty"`
-	KafkaUsername    string         `arg:"--kafka-user,env:KAFKA_USERNAME" json:"kafka_username,omitempty"`
-	KafkaPassword    string         `arg:"--kafka-password,env:KAFKA_PASSWORD" json:"kafka_password,omitempty"`
-	MysqlHost        string         `arg:"--mysql-host,env:MYSQL_SERVER_ADDRESS" json:"mysql_host,omitempty"`
-	MysqlDB          string         `arg:"--mysql-db,env:MYSQL_DATABASE_NAME" json:"mysql_db,omitempty"`
-	MysqlUsername    string         `arg:"--mysql-user,env:MYSQL_USERNAME" json:"mysql_username,omitempty"`
-	MysqlPassword    string         `arg:"--mysql-password,env:MYSQL_PASSWORD" json:"mysql_password,omitempty"`
-	TierID           ftypes.RealmID `arg:"--tier-id,env:TIER_ID" json:"tier_id,omitempty"`
-	PlaneID          ftypes.RealmID `arg:"--plane-id,env:PLANE_ID" json:"plane_id,omitempty"`
-	RedisServer      string         `arg:"--redis-server,env:REDIS_SERVER_ADDRESS" json:"redis_server,omitempty"`
-	NitrousServer    string         `arg:"--nitrous-server,env:NITROUS_SERVER_ADDRESS" json:"nitrous_server,omitempty"`
-	CachePrimary     string         `arg:"--cache-primary,env:CACHE_PRIMARY" json:"cache_primary,omitempty"`
-	CacheReplica     string         `arg:"--cache-replica,env:CACHE_REPLICA" json:"cache_replica,omitempty"`
-	Dev              bool           `arg:"--dev" default:"true" json:"dev,omitempty"`
-	OfflineAggBucket string         `arg:"--offline-agg-bucket,env:OFFLINE_AGG_BUCKET" json:"offline_agg_bucket,omitempty"`
-	UnleashEndpoint  string         `arg:"--unleash-endpoint,env:UNLEASH_ENDPOINT" json:"unleash_endpoint,omitempty"`
+	Region            string         `arg:"--aws-region,env:AWS_REGION" json:"aws_region,omitempty"`
+	KafkaServer       string         `arg:"--kafka-server,env:KAFKA_SERVER_ADDRESS" json:"kafka_server,omitempty"`
+	KafkaUsername     string         `arg:"--kafka-user,env:KAFKA_USERNAME" json:"kafka_username,omitempty"`
+	KafkaPassword     string         `arg:"--kafka-password,env:KAFKA_PASSWORD" json:"kafka_password,omitempty"`
+	MysqlHost         string         `arg:"--mysql-host,env:MYSQL_SERVER_ADDRESS" json:"mysql_host,omitempty"`
+	MysqlDB           string         `arg:"--mysql-db,env:MYSQL_DATABASE_NAME" json:"mysql_db,omitempty"`
+	MysqlUsername     string         `arg:"--mysql-user,env:MYSQL_USERNAME" json:"mysql_username,omitempty"`
+	MysqlPassword     string         `arg:"--mysql-password,env:MYSQL_PASSWORD" json:"mysql_password,omitempty"`
+	TierID            ftypes.RealmID `arg:"--tier-id,env:TIER_ID" json:"tier_id,omitempty"`
+	PlaneID           ftypes.RealmID `arg:"--plane-id,env:PLANE_ID" json:"plane_id,omitempty"`
+	RedisServer       string         `arg:"--redis-server,env:REDIS_SERVER_ADDRESS" json:"redis_server,omitempty"`
+	NitrousServer     string         `arg:"--nitrous-server,env:NITROUS_SERVER_ADDRESS" json:"nitrous_server,omitempty"`
+	CachePrimary      string         `arg:"--cache-primary,env:CACHE_PRIMARY" json:"cache_primary,omitempty"`
+	CacheReplica      string         `arg:"--cache-replica,env:CACHE_REPLICA" json:"cache_replica,omitempty"`
+	Dev               bool           `arg:"--dev" default:"true" json:"dev,omitempty"`
+	OfflineAggBucket  string         `arg:"--offline-agg-bucket,env:OFFLINE_AGG_BUCKET" json:"offline_agg_bucket,omitempty"`
+	UnleashEndpoint   string         `arg:"--unleash-endpoint,env:UNLEASH_ENDPOINT" json:"unleash_endpoint,omitempty"`
+	AirbyteServer     string         `arg:"--airbyte-server,env:AIRBYTE_SERVER_ADDRESS" json:"airbyte_server,omitempty"`
+	AirbyteKafkaTopic string         `arg:"--airbyte-kafka-topic,env:AIRBYTE_KAFKA_TOPIC" json:"airbyte_kafka_topic,omitempty"`
 }
 
 type KafkaConsumerCreator func(libkafka.ConsumerConfig) (libkafka.FConsumer, error)
@@ -122,6 +125,7 @@ type Tier struct {
 	NewKafkaConsumer KafkaConsumerCreator
 	S3Client         s3.Client
 	GlueClient       glue.GlueClient
+	AirbyteClient    mo.Option[airbyte.Client]
 	SagemakerClient  sagemaker.SMClient
 	MilvusClient     mo.Option[milvus.Client]
 	NitrousClient    mo.Option[nitrous.NitrousClient]
@@ -262,6 +266,16 @@ func CreateFromArgs(args *TierArgs) (tier Tier, err error) {
 		milvusClient = mo.Some(client)
 	}
 
+	airbyteClient := mo.None[airbyte.Client]()
+	if args.AirbyteServer != "" {
+		logger.Info("Connecting to airbyte")
+		client, err := airbyte.NewClient(args.AirbyteServer, args.AirbyteKafkaTopic)
+		if err != nil {
+			return tier, fmt.Errorf("failed to create airbyte client: %v", err)
+		}
+		airbyteClient = mo.Some(client)
+	}
+
 	logger.Info("Connecting to sagemaker")
 	smclient, err := sagemaker.NewClient(args.SagemakerArgs, logger)
 	if err != nil {
@@ -362,6 +376,7 @@ func CreateFromArgs(args *TierArgs) (tier Tier, err error) {
 		S3Client:         s3client,
 		GlueClient:       glueclient,
 		MilvusClient:     milvusClient,
+		AirbyteClient:    airbyteClient,
 		ModelStore:       modelStore,
 		Args:             *args,
 		AggregateDefs:    aggregateDefs,
