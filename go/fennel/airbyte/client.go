@@ -22,7 +22,7 @@ const (
 	LIST_DESTINATIONS_PATH      = "/v1/destinations/list"
 )
 
-const REFRESH_FREQUENCY_MINUTES = 15
+const REFRESH_FREQUENCY_MINUTES = 5
 
 type Client struct {
 	httpclient *http.Client
@@ -53,7 +53,7 @@ func NewClient(hostport, kafkaDestinationTopic string) (Client, error) {
 		return Client{}, fmt.Errorf("failed to set workspace: %w", err)
 	}
 	err = c.setKafkaDestinationId(kafkaDestinationTopic)
-	if err != nil {
+	if err != nil || kafkaDestinationId == "" {
 		return Client{}, fmt.Errorf("failed to set kafka destination id: %w", err)
 	}
 	return c, err
@@ -137,7 +137,7 @@ func (c Client) createConnector(conn data_integration.Connector, source data_int
 	return "", fmt.Errorf("something went wrong during connection creation")
 }
 
-// getSourceSchema returns the JSON schema of the source. If there are multiple stream we use conn.StreamName to
+// getSourceSchema returns the JSON schema of the source. If there are multiple streams we use conn.StreamName to
 // determine which stream to use.
 func (c Client) getSourceSchema(source data_integration.Source, conn data_integration.Connector) (StreamConfig, error) {
 	var fields struct {

@@ -11,6 +11,7 @@ export CACHE_PRIMARY="clustercfg.p-2-cache-cluster-f1b24e1.fbjfph.usw2.cache.ama
 export KUBECONFIG="$FENNEL_ROOT/cloud/pulumi/ts/eks/kubeconfig-plane-2.json"
 export AWS_ROLE_ARN="arn:aws:iam::030813887342:role/admin"
 export MILVUS_URL="k8s-milvus-milvus-1d4771a6ac-1ee0d842dde32b35.elb.us-west-2.amazonaws.com:19530"
+# kb port-forward svc/airbyte-server-svc 8002:8001
 export AIRBYTE_SERVER_ADDRESS="http://localhost:8002/api"
 export AIRBYTE_KAFKA_TOPIC="airbyte_topic"
 export MOTHERSHIP_ID=1
