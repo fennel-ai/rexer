@@ -83,6 +83,7 @@ func BatchValue(
 		go func(aggIds []ftypes.AggId, keys []value.Value, kwargs []value.Dict) {
 			defer arena.Values.Free(keys)
 			defer arena.DictValues.Free(kwargs)
+			ctx := context.Background()
 			_, err := NitrousBatchValue(ctx, tier, aggIds, keys, kwargs)
 			if err != nil {
 				tier.Logger.Warn("Nitrous read error", zap.Error(err))
