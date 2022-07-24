@@ -190,6 +190,7 @@ const tierConfs: Record<number, TierConf> = {
             },
         },
         airbyteConf: {},
+        enableNitrous: true,
     },
     // Discord demo tier
     111: {
@@ -215,6 +216,7 @@ const tierConfs: Record<number, TierConf> = {
                 }
             },
         },
+        enableNitrous: true,
     },
     // Convoy prod tier
     112: {
@@ -580,6 +582,15 @@ const planeConfs: Record<number, PlaneConf> = {
         prometheusConf: {
             useAMP: false
         },
+        // Run nitrous on the plane.
+        nitrousConf: {
+            replicas: 1,
+            storageCapacityGB: 10,
+            storageClass: "io1",
+            blockCacheMB: 512,
+            kvCacheMB: 1024,
+            binlog: {},
+        }
     },
     // plane 8 - pending account close, post which it can be destroyed
     // Convoy's production plane
@@ -791,8 +802,8 @@ if (tierId !== 0) {
         otelCollectorHttpEndpoint: telemetryOutput.otelCollectorHttpEndpoint,
 
         httpServerConf: tierConf.httpServerConf,
-
         queryServerConf: tierConf.queryServerConf,
+        enableNitrous: tierConf.enableNitrous,
 
         countAggrConf: tierConf.countAggrConf,
 
