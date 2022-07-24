@@ -52,12 +52,10 @@ func NewClient(hostport, kafkaDestinationTopic string) (Client, error) {
 	if err != nil || workspaceId == "" {
 		return Client{}, fmt.Errorf("failed to set workspace: %w", err)
 	}
-
 	err = c.setKafkaDestinationId(kafkaDestinationTopic)
 	if err != nil {
 		return Client{}, fmt.Errorf("failed to set kafka destination id: %w", err)
 	}
-	fmt.Printf("kafkaDestinationId: %s\n", kafkaDestinationId)
 	return c, err
 }
 
@@ -93,7 +91,6 @@ func (c Client) CreateConnector(source data_integration.Source, conn data_integr
 	if err != nil {
 		return "", fmt.Errorf("failed to discover schema of source: %w", err)
 	}
-
 	// Create connector
 	return c.createConnector(conn, source, streamConfig)
 }
@@ -124,7 +121,6 @@ func (c Client) createConnector(conn data_integration.Connector, source data_int
 	if err != nil {
 		return "", err
 	}
-	fmt.Printf("request: %s\n", string(request))
 	resp, err := c.postJSON(request, c.getURL(CREATE_CONNECTOR_PATH))
 	if err != nil {
 		return "", err
@@ -134,8 +130,7 @@ func (c Client) createConnector(conn data_integration.Connector, source data_int
 	if err != nil {
 		return "", err
 	}
-	fmt.Printf("resp: %s\n", resp)
-	if connectionId, ok := connResponse["sourceId"]; ok {
+	if connectionId, ok := connResponse["connectionId"]; ok {
 		return connectionId.(string), nil
 	}
 	// This should not happen
@@ -159,7 +154,6 @@ func (c Client) getSourceSchema(source data_integration.Source, conn data_integr
 	if err != nil {
 		return StreamConfig{}, err
 	}
-	fmt.Printf("resp: %s\n", resp)
 
 	var schemaResponse struct {
 		Catalog Catalog     `json:"catalog"`
@@ -178,6 +172,7 @@ func (c Client) getSourceSchema(source data_integration.Source, conn data_integr
 		if streams[0].supportIncrementalMode() {
 			return streams[0], nil
 		}
+		return StreamConfig{}, fmt.Errorf("source schema does not support incremental mode")
 	}
 
 	if conn.StreamName == "" {
@@ -289,7 +284,7 @@ func (c *Client) getSourceDefinitionId(sourceType string) (string, error) {
 		return sourceId, nil
 	}
 
-	resp, err := c.postJSON([]byte{}, c.getURL(SOURCE_ID_LIST_LATEST_PATH))
+	resp, err := c.postJSON([]byte{}, c.getURL(SOURCE_ID_LIST_PATH))
 	if err != nil {
 		return "", err
 	}
@@ -301,7 +296,7 @@ func (c *Client) getSourceDefinitionId(sourceType string) (string, error) {
 	}
 
 	// Try the list path to see if source type is in the list
-	resp, err = c.postJSON([]byte{}, c.getURL(SOURCE_ID_LIST_PATH))
+	resp, err = c.postJSON([]byte{}, c.getURL(SOURCE_ID_LIST_LATEST_PATH))
 	if err != nil {
 		return "", err
 	}
@@ -350,7 +345,6 @@ func (c Client) setWorkspace() error {
 		return fmt.Errorf("multiple workspaces found")
 	}
 	workspaceId = fields["workspaces"][0]["workspaceId"].(string)
-	fmt.Printf("Using workspace %s\n", workspaceId)
 	return nil
 }
 
@@ -364,7 +358,6 @@ func (c Client) setKafkaDestinationId(kafkaDestinationTopic string) error {
 	if err != nil {
 		return err
 	}
-	fmt.Println("Getting Kafka destination ID", string(data))
 	resp, err := c.postJSON(data, c.getURL(LIST_DESTINATIONS_PATH))
 	if err != nil {
 		return err
