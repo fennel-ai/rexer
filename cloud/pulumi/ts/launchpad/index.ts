@@ -758,6 +758,12 @@ if (tierId !== 0) {
             retention_ms: 432000000  // 5 days retention
         },
         { name: `t_${tierId}_aggr_offline_transform` },
+        // configure stream log to which airbyte connectors will write stream data to
+        {
+            name: `t_${tierId}_streamlog`,
+            partitions: 10,
+            retention_ms: 432000000  // 5 days retention
+        }
     ];
     setupTier({
         protect: tierConf.protectResources,
