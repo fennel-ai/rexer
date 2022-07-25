@@ -10,6 +10,7 @@ import (
 	"fennel/lib/arena"
 	"fennel/lib/counter"
 	"fennel/lib/ftypes"
+	"fennel/lib/timer"
 	"fennel/lib/utils/binary"
 	"fennel/lib/utils/slice"
 	"fennel/lib/value"
@@ -112,6 +113,8 @@ func (c *Closet) Options() aggregate.Options {
 }
 
 func (c *Closet) Get(ctx context.Context, keys []string, kwargs []value.Dict, store hangar.Hangar) ([]value.Value, error) {
+	ctx, t := timer.Start(ctx, c.tierId, "nitrous.closet.get")
+	defer t.Stop()
 	kgs := make([]hangar.KeyGroup, 0, len(keys)*(c.bucketizer.NumBucketsHint()+1))
 	// Slice containing number of buckets for each key. This is useful in
 	// dividing up the read result from hangar.
