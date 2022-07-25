@@ -249,6 +249,15 @@ export const serviceEnvs = [
                 key: "bucket",
             }
         }
+    },
+    {
+        name: "AIRBYTE_SERVER_ADDRESS",
+        valueFrom: {
+            configMapKeyRef: {
+                name: "airbyte-conf",
+                key: "endpoint"
+            }
+        }
     }
 ];
 

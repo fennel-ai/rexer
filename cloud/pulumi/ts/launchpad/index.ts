@@ -71,6 +71,18 @@ const tierConfs: Record<number, TierConf> = {
                 },
             }
         },
+        // NOTE: We make the airbyte instance hosted on the staging tier public for unit, integration and e2e tests
+        //
+        // Since Airbyte is a tier level resource, our testing plane 2, does not have any tiers on it. Hence we will
+        // use this tier for all purposes for now
+        //
+        // TODO(mohit): Consider introducing a test tier if required on the plane 2 - since we now have sagemaker tests
+        // requiring setting up an tier-level endpoint etc, we currently work on manually created test endpoints
+        // it might be better to create a test tier and use it's resources instead if more such requirements arise
+        // in the future
+        airbyteConf: {
+            publicServer: true,
+        }
     },
     // Lokal prod tier on their prod data plane.
     107: {
@@ -189,7 +201,6 @@ const tierConfs: Record<number, TierConf> = {
                 }
             },
         },
-        airbyteConf: {},
         enableNitrous: true,
     },
     // Discord demo tier
