@@ -761,6 +761,7 @@ if (tierId !== 0) {
         // configure stream log to which airbyte connectors will write stream data to
         {
             name: `t_${tierId}_streamlog`,
+            partitions: 10,
             retention_ms: 432000000  // 5 days retention
         }
     ];
