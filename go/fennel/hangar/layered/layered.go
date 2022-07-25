@@ -12,6 +12,8 @@ import (
 	"fennel/lib/ftypes"
 	"fennel/lib/timer"
 
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promauto"
 	"github.com/samber/mo"
 )
 
@@ -59,6 +61,20 @@ type layered struct {
 
 	doneCh chan struct{}
 }
+
+var cacheHits = promauto.NewCounter(
+	prometheus.CounterOpts{
+		Name: "hangar_layered_cache_hits",
+		Help: "Number of cache hits in layered store",
+	},
+)
+
+var cacheMisses = promauto.NewCounter(
+	prometheus.CounterOpts{
+		Name: "hangar_layered_cache_misses",
+		Help: "Number of cache misses in layered store",
+	},
+)
 
 func (l *layered) Restore(source io.Reader) error {
 	panic("implement me")
@@ -154,6 +170,11 @@ func (l *layered) GetMany(ctx context.Context, kgs []hangar.KeyGroup) ([]hangar.
 			notfound = append(notfound, kg)
 		}
 	}
+
+	// Track cache hits/misses at keygroup granularity. We might want to track
+	// these at a lower (field-level) granularity, but this is fine for now.
+	cacheHits.Add(float64(len(kgs) - len(notfound)))
+	cacheMisses.Add(float64(len(notfound)))
 
 	if len(notfound) == 0 {
 		return results, nil
