@@ -2,6 +2,7 @@ package parallel_test
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"runtime"
 	"testing"
@@ -52,4 +53,41 @@ func TestWorkerPoolWithSmallInput(t *testing.T) {
 	assert.NoError(t, err)
 	expected := []int{1, 4, 9, 16, 25, 36, 49, 64, 81, 100}
 	assert.Equal(t, expected, results)
+}
+
+func TestPoolEarlyExit(t *testing.T) {
+	var inputs []int
+	for i := 1; i <= 64*25; i++ {
+		inputs = append(inputs, i)
+	}
+	workerPool := parallel.NewWorkerPool[int, int](1)
+	e := errors.New("primerr")
+	f := func(x int) (int, error) {
+		if x == 47 {
+			return 0, e
+		}
+		return square(x)
+	}
+	results, err := workerPool.Process(context.Background(), inputs, f)
+	assert.ErrorIs(t, err, e)
+	zeroes := 0
+	for _, x := range results {
+		if x == 0 {
+			zeroes++
+		}
+	}
+	assert.Greater(t, zeroes, 1)
+}
+
+func TestPoolCancellation(t *testing.T) {
+	var inputs []int
+	for i := 1; i <= 64*25; i++ {
+		inputs = append(inputs, i)
+	}
+	workerPool := parallel.NewWorkerPool[int, int](10)
+	ctx := context.Background()
+	ctx, cancel := context.WithCancel(ctx)
+	cancel()
+	_, err := workerPool.Process(ctx, inputs, square)
+	assert.ErrorIs(t, err, context.Canceled)
 }
