@@ -10,6 +10,7 @@ import (
 	"fennel/hangar"
 	"fennel/lib/arena"
 	"fennel/lib/ftypes"
+	"fennel/lib/timer"
 
 	"github.com/samber/mo"
 )
@@ -102,6 +103,8 @@ func NewHangar(planeID ftypes.RealmID, cache, db hangar.Hangar) hangar.Hangar {
 }
 
 func (l *layered) DelMany(ctx context.Context, keys []hangar.KeyGroup) error {
+	ctx, t := timer.Start(ctx, l.planeID, "hangar.layered.delmany")
+	defer t.Stop()
 	err := l.cache.DelMany(ctx, keys)
 	if err != nil {
 		return fmt.Errorf("failed to delete keys from the cache: %w", err)
@@ -117,6 +120,8 @@ func (l *layered) PlaneID() ftypes.RealmID {
 }
 
 func (l *layered) GetMany(ctx context.Context, kgs []hangar.KeyGroup) ([]hangar.ValGroup, error) {
+	ctx, t := timer.Start(ctx, l.planeID, "hangar.layered.getmany")
+	defer t.Stop()
 	results, err := l.cache.GetMany(ctx, kgs)
 	if err != nil {
 		return nil, err
@@ -177,6 +182,8 @@ func (l *layered) GetMany(ctx context.Context, kgs []hangar.KeyGroup) ([]hangar.
 }
 
 func (l *layered) SetMany(ctx context.Context, keys []hangar.Key, vgs []hangar.ValGroup) error {
+	ctx, t := timer.Start(ctx, l.planeID, "hangar.layered.setmany")
+	defer t.Stop()
 	kgs := make([]hangar.KeyGroup, len(keys))
 	for i, key := range keys {
 		kgs[i].Prefix = key

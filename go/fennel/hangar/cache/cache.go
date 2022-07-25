@@ -8,6 +8,7 @@ import (
 
 	"fennel/hangar"
 	"fennel/lib/ftypes"
+	"fennel/lib/timer"
 
 	"github.com/dgraph-io/ristretto"
 )
@@ -79,6 +80,8 @@ func (c *rcache) PlaneID() ftypes.RealmID {
 // GetMany returns the values for the given keyGroups.
 // It parallelizes the requests to the underlying cache upto a degree of parallelism
 func (c *rcache) GetMany(ctx context.Context, keys []hangar.KeyGroup) ([]hangar.ValGroup, error) {
+	_, t := timer.Start(ctx, c.planeID, "hangar.cache.getmany")
+	defer t.Stop()
 	// we try to spread across available workers while giving each worker
 	// a minimum of DB_BATCH_SIZE keyGroups to work on
 	batch := len(keys) / parallelism
@@ -115,6 +118,8 @@ func (c *rcache) GetMany(ctx context.Context, keys []hangar.KeyGroup) ([]hangar.
 // transaction, there is no parallelism. If parallelism is desired, create batches of
 // keyGroups and call SetMany on each batch.
 func (c *rcache) SetMany(ctx context.Context, keys []hangar.Key, deltas []hangar.ValGroup) error {
+	_, t := timer.Start(ctx, c.planeID, "hangar.cache.setmany")
+	defer t.Stop()
 	if len(keys) != len(deltas) {
 		return fmt.Errorf("key, value lengths do not match")
 	}
@@ -150,6 +155,8 @@ func (c *rcache) SetMany(ctx context.Context, keys []hangar.Key, deltas []hangar
 }
 
 func (c *rcache) DelMany(ctx context.Context, keyGroups []hangar.KeyGroup) error {
+	_, t := timer.Start(ctx, c.planeID, "hangar.cache.delmany")
+	defer t.Stop()
 	eks, err := hangar.EncodeKeyManyKG(keyGroups, c.enc)
 	if err != nil {
 		return err
