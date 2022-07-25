@@ -32,6 +32,15 @@ func main() {
 		log.Fatalf("Failed to setup nitrous: %v", err)
 	}
 
+	// Setup tracer provider (which exports remotely) if an endpoint is defined.
+	// Otherwise a default tracer is used.
+	if len(flags.TracerArgs.OtlpEndpoint) > 0 {
+		err = timer.InitProvider(flags.TracerArgs.OtlpEndpoint)
+		if err != nil {
+			log.Fatalf("Failed to setup tracing provider: %v", err)
+		}
+	}
+
 	// Initialize the db.
 	svr, err := server.InitDB(n)
 	if err != nil {
