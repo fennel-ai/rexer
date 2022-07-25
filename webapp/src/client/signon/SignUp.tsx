@@ -31,20 +31,43 @@ function SignUpForm() {
         >
             <Form.Item
                 name="email"
-                rules={[{ required: true, message: 'Please input your work email!' }]}
+                rules={[
+                    { required: true, message: "Please input your work email" },
+                    { type: "email", message: "Please input a valid email address"},
+                ]}
                 className={styles.signUpFormItem}
             >
                 <Input placeholder="Work email" />
             </Form.Item>
             <Form.Item
                 name="password"
-                rules={[{ required: true, message: 'Please input your Password!' }]}
+                rules={[{ required: true, message: "Please input your password" }]}
                 className={styles.signUpFormItem}
             >
-            <Input
-                type="password"
-                placeholder="Password"
-            />
+                <Input
+                    type="password"
+                    placeholder="Password"
+                />
+            </Form.Item>
+            <Form.Item
+                name="confirm_password"
+                rules={[
+                    { required: true, message: "Please re-enter your password" },
+                    ({ getFieldValue }) => ({
+                        validator(_, value) {
+                          if (!value || getFieldValue("password") === value) {
+                            return Promise.resolve();
+                          }
+                          return Promise.reject(new Error('The two passwords do not match'));
+                        },
+                    }),
+                ]}
+                className={styles.signUpFormItem}
+            >
+                <Input
+                    type="password"
+                    placeholder="Re-enter password  "
+                />
             </Form.Item>
             <Form.Item className={styles.signUpFormItem}>
                 <Button type="primary" htmlType="submit" className={styles.signUpFormButton}>

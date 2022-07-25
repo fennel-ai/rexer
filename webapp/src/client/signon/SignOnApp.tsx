@@ -1,5 +1,6 @@
 import SignUp from "./SignUp";
 import SignIn from "./SignIn";
+import "../styles/signon/SignOnApp.css";
 
 interface Props {
     page: string,
