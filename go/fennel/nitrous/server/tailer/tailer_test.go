@@ -41,6 +41,7 @@ var offsetkey = []byte("offsetkey")
 
 func TestTailer(t *testing.T) {
 	n := test.NewTestNitrous(t)
+	ctx := context.Background()
 
 	// Create the producer first so the topic is initialized.
 	producer := n.NewBinlogProducer(t)
@@ -76,7 +77,7 @@ func TestTailer(t *testing.T) {
 	assert.NoError(t, err)
 	assert.EqualValues(t, 1, lag)
 	// Offsets should be empty in db.
-	offvgs, err := n.Store.GetMany([]hangar.KeyGroup{{Prefix: hangar.Key{Data: offsetkey}}})
+	offvgs, err := n.Store.GetMany(ctx, []hangar.KeyGroup{{Prefix: hangar.Key{Data: offsetkey}}})
 	assert.NoError(t, err)
 	assert.Equal(t, 1, len(offvgs))
 	toppars, err := offsets.DecodeOffsets(offvgs[0])
@@ -101,7 +102,7 @@ func TestTailer(t *testing.T) {
 
 	// Offsets should be stored in db.
 	scope := resource.NewPlaneScope(n.PlaneID)
-	offvgs, err = n.Store.GetMany([]hangar.KeyGroup{{Prefix: hangar.Key{Data: offsetkey}}})
+	offvgs, err = n.Store.GetMany(ctx, []hangar.KeyGroup{{Prefix: hangar.Key{Data: offsetkey}}})
 	assert.NoError(t, err)
 	require.Equal(t, 1, len(offvgs))
 	toppars, err = offsets.DecodeOffsets(offvgs[0])

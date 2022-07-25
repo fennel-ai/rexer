@@ -1,6 +1,7 @@
 package layered
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"log"
@@ -100,12 +101,12 @@ func NewHangar(planeID ftypes.RealmID, cache, db hangar.Hangar) hangar.Hangar {
 	return ret
 }
 
-func (l *layered) DelMany(keys []hangar.KeyGroup) error {
-	err := l.cache.DelMany(keys)
+func (l *layered) DelMany(ctx context.Context, keys []hangar.KeyGroup) error {
+	err := l.cache.DelMany(ctx, keys)
 	if err != nil {
 		return fmt.Errorf("failed to delete keys from the cache: %w", err)
 	}
-	if err = l.db.DelMany(keys); err != nil {
+	if err = l.db.DelMany(ctx, keys); err != nil {
 		return fmt.Errorf("failed to delete keys from the db: %w", err)
 	}
 	return nil
@@ -115,8 +116,8 @@ func (l *layered) PlaneID() ftypes.RealmID {
 	return l.planeID
 }
 
-func (l *layered) GetMany(kgs []hangar.KeyGroup) ([]hangar.ValGroup, error) {
-	results, err := l.cache.GetMany(kgs)
+func (l *layered) GetMany(ctx context.Context, kgs []hangar.KeyGroup) ([]hangar.ValGroup, error) {
+	results, err := l.cache.GetMany(ctx, kgs)
 	if err != nil {
 		return nil, err
 	}
@@ -152,7 +153,7 @@ func (l *layered) GetMany(kgs []hangar.KeyGroup) ([]hangar.ValGroup, error) {
 	if len(notfound) == 0 {
 		return results, nil
 	}
-	dbvals, err := l.db.GetMany(notfound)
+	dbvals, err := l.db.GetMany(ctx, notfound)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get values from the db: %w", err)
 	}
@@ -175,16 +176,16 @@ func (l *layered) GetMany(kgs []hangar.KeyGroup) ([]hangar.ValGroup, error) {
 	return results, nil
 }
 
-func (l *layered) SetMany(keys []hangar.Key, vgs []hangar.ValGroup) error {
+func (l *layered) SetMany(ctx context.Context, keys []hangar.Key, vgs []hangar.ValGroup) error {
 	kgs := make([]hangar.KeyGroup, len(keys))
 	for i, key := range keys {
 		kgs[i].Prefix = key
 		kgs[i].Fields = mo.Some(vgs[i].Fields)
 	}
-	if err := l.cache.DelMany(kgs); err != nil {
+	if err := l.cache.DelMany(ctx, kgs); err != nil {
 		return err
 	}
-	if err := l.db.SetMany(keys, vgs); err != nil {
+	if err := l.db.SetMany(ctx, keys, vgs); err != nil {
 		return err
 	}
 	return l.fill(kgs)
@@ -221,7 +222,7 @@ func (l *layered) processFillReqs() {
 				break POLL
 			}
 		}
-		dbvals, err := l.db.GetMany(batch)
+		dbvals, err := l.db.GetMany(context.Background(), batch)
 		if err != nil {
 			log.Printf("Failed to get values from db: %v", err)
 			continue
@@ -237,7 +238,7 @@ func (l *layered) processFillReqs() {
 			keys = append(keys, batch[i].Prefix)
 			valgroups = append(valgroups, dbval)
 		}
-		if err = l.cache.SetMany(keys, valgroups); err != nil {
+		if err = l.cache.SetMany(context.Background(), keys, valgroups); err != nil {
 			log.Printf("Failed to fill cache: %v", err)
 			continue
 		}

@@ -1,6 +1,7 @@
 package hangar
 
 import (
+	"context"
 	"fennel/lib/utils"
 	"fmt"
 	"math/rand"
@@ -56,13 +57,15 @@ func testBasic(t *testing.T, store Hangar) {
 	// initially all empty
 	verifyMissing(t, store, kgs)
 
+	ctx := context.Background()
+
 	// set all with infinite ttl and verify can get
-	err := store.SetMany(keys, vgs)
+	err := store.SetMany(ctx, keys, vgs)
 	assert.NoError(t, err)
 	verifyValues(t, store, kgs, vgs)
 
 	// now delete all and verify missing
-	err = store.DelMany(kgs)
+	err = store.DelMany(ctx, kgs)
 	assert.NoError(t, err)
 	verifyMissing(t, store, kgs)
 }
@@ -81,7 +84,8 @@ func testTTL(t *testing.T, store Hangar) {
 			(&vgs[i]).Expiry = start.Unix() + 1
 		}
 	}
-	err := store.SetMany(keys, vgs)
+	ctx := context.Background()
+	err := store.SetMany(ctx, keys, vgs)
 	assert.NoError(t, err)
 	// sleep 2 seconds and verify we can only get the last 50 keys.
 	time.Sleep(2 * time.Second)
@@ -91,9 +95,9 @@ func testTTL(t *testing.T, store Hangar) {
 
 func testPartialMissing(t *testing.T, store Hangar) {
 	keys, kgs, vgs := getData(10, 10)
-
+	ctx := context.Background()
 	// set all and verify can get
-	err := store.SetMany(keys, vgs)
+	err := store.SetMany(ctx, keys, vgs)
 	assert.NoError(t, err)
 	verifyValues(t, store, kgs, vgs)
 
@@ -124,7 +128,7 @@ func testPartialMissing(t *testing.T, store Hangar) {
 	}
 
 	// now delete half and verify can get the rest
-	err = store.DelMany(oddKg)
+	err = store.DelMany(ctx, oddKg)
 	assert.NoError(t, err)
 	verifyMissing(t, store, oddKg)
 	verifyValues(t, store, evenKg, evenVg)
@@ -132,18 +136,20 @@ func testPartialMissing(t *testing.T, store Hangar) {
 
 func testLargeBatch(t *testing.T, store Hangar) {
 	keys, kgs, vgs := getData(65, 3)
+	ctx := context.Background()
 	verifyMissing(t, store, kgs)
-	err := store.SetMany(keys, vgs)
+	err := store.SetMany(ctx, keys, vgs)
 	assert.NoError(t, err)
 	verifyValues(t, store, kgs, vgs)
-	assert.NoError(t, store.DelMany(kgs))
+	assert.NoError(t, store.DelMany(ctx, kgs))
 	verifyMissing(t, store, kgs)
 }
 
 func testSelectAll(t *testing.T, store Hangar) {
 	keys, kgs, vgs := getData(10, 20)
+	ctx := context.Background()
 	verifyMissing(t, store, kgs)
-	err := store.SetMany(keys, vgs)
+	err := store.SetMany(ctx, keys, vgs)
 	assert.NoError(t, err)
 	verifyValues(t, store, kgs, vgs)
 	// Key-groups with fields no specified.
@@ -154,7 +160,7 @@ func testSelectAll(t *testing.T, store Hangar) {
 		}
 	}
 	verifyValues(t, store, kgsNoFields, vgs)
-	assert.NoError(t, store.DelMany(kgs))
+	assert.NoError(t, store.DelMany(ctx, kgs))
 	verifyMissing(t, store, kgs)
 }
 
@@ -165,13 +171,14 @@ func testConcurrent(t *testing.T, store Hangar) {
 	wg.Add(numKeys)
 	fields := make([][]byte, numKeys)
 	values := make([][]byte, numKeys)
+	ctx := context.Background()
 	for i := 0; i < numKeys; i++ {
 		go func(i int) {
 			defer wg.Done()
 			fields[i] = []byte(fmt.Sprintf("field-%d", i))
 			values[i] = []byte(fmt.Sprintf("value-%d", i))
 			vg := ValGroup{Fields: [][]byte{fields[i]}, Values: [][]byte{values[i]}}
-			err := store.SetMany([]Key{{Data: prefix}}, []ValGroup{vg})
+			err := store.SetMany(ctx, []Key{{Data: prefix}}, []ValGroup{vg})
 			assert.NoError(t, err)
 		}(i)
 	}
@@ -187,7 +194,8 @@ func testConsolidation(t *testing.T, store Hangar) {
 		{Fields: Fields{[]byte("hello")}, Values: Values{[]byte("world")}},
 		{Fields: Fields{[]byte("bonjour")}, Values: Values{[]byte("world")}},
 	}
-	err := store.SetMany(keys, vgs)
+	ctx := context.Background()
+	err := store.SetMany(ctx, keys, vgs)
 	assert.NoError(t, err)
 
 	verifyValues(t, store, []KeyGroup{{Prefix: keys[0]}}, vgs)
@@ -196,7 +204,8 @@ func testConsolidation(t *testing.T, store Hangar) {
 func verifyValues(t *testing.T, store Hangar, kgs []KeyGroup, vgs []ValGroup) {
 	// sleep for a bit to ensure all writes are flushed
 	time.Sleep(100 * time.Millisecond)
-	found, err := store.GetMany(kgs)
+	ctx := context.Background()
+	found, err := store.GetMany(ctx, kgs)
 	assert.NoError(t, err)
 	assert.Len(t, found, len(kgs))
 	for i := range found {
@@ -207,7 +216,8 @@ func verifyValues(t *testing.T, store Hangar, kgs []KeyGroup, vgs []ValGroup) {
 
 func verifyMissing(t *testing.T, store Hangar, kgs []KeyGroup) {
 	time.Sleep(100 * time.Millisecond)
-	found, err := store.GetMany(kgs)
+	ctx := context.Background()
+	found, err := store.GetMany(ctx, kgs)
 	assert.NoError(t, err)
 	assert.Len(t, found, len(kgs))
 	for i, kg := range kgs {
@@ -258,7 +268,8 @@ func benchmarkGetSet(b *testing.B, store Hangar, numKeys, numFields, szKey, szVa
 		vgs[i].Fields = fields[i]
 	}
 	// and set this
-	assert.NoError(b, store.SetMany(keys, vgs))
+	ctx := context.Background()
+	assert.NoError(b, store.SetMany(ctx, keys, vgs))
 	ratio := numKeys / szGets
 	toRead := make([]KeyGroup, szGets)
 
@@ -274,7 +285,7 @@ func benchmarkGetSet(b *testing.B, store Hangar, numKeys, numFields, szKey, szVa
 			start += ratio
 		}
 		b.StartTimer()
-		_, err := store.GetMany(toRead[:cur])
+		_, err := store.GetMany(ctx, toRead[:cur])
 		if err != nil {
 			panic(err)
 		}

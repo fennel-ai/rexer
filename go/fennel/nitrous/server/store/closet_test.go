@@ -40,7 +40,7 @@ func TestAggregateStore(t *testing.T) {
 
 	keys, vgs, err := cs.update(ctx, []uint32{uint32(time.Now().Unix())}, []string{"mygk"}, []value.Value{value.Int(5)}, n.Store)
 	assert.NoError(t, err)
-	err = n.Store.SetMany(keys, vgs)
+	err = n.Store.SetMany(ctx, keys, vgs)
 	assert.NoError(t, err)
 	// sleep for a bit to ensure all writes are flushed
 	time.Sleep(100 * time.Millisecond)
@@ -50,7 +50,7 @@ func TestAggregateStore(t *testing.T) {
 
 	keys, vgs, err = cs.update(ctx, []uint32{uint32(time.Now().Unix())}, []string{"mygk"}, []value.Value{value.Int(7)}, n.Store)
 	assert.NoError(t, err)
-	err = n.Store.SetMany(keys, vgs)
+	err = n.Store.SetMany(ctx, keys, vgs)
 	assert.NoError(t, err)
 	// sleep for a bit to ensure all writes are flushed
 	time.Sleep(100 * time.Millisecond)
@@ -97,7 +97,7 @@ func TestProcess(t *testing.T) {
 			},
 		}, n.Store)
 		assert.NoError(t, err)
-		err = n.Store.SetMany(keys, vgs)
+		err = n.Store.SetMany(ctx, keys, vgs)
 		assert.NoError(t, err)
 	}
 

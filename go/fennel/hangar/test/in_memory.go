@@ -1,6 +1,7 @@
 package test
 
 import (
+	"context"
 	"io"
 	"sync"
 
@@ -30,7 +31,7 @@ func (h *InMemoryHangar) PlaneID() ftypes.RealmID {
 	return h.planeId
 }
 
-func (h *InMemoryHangar) GetMany(kgs []hangar.KeyGroup) ([]hangar.ValGroup, error) {
+func (h *InMemoryHangar) GetMany(ctx context.Context, kgs []hangar.KeyGroup) ([]hangar.ValGroup, error) {
 	h.mu.RLock()
 	defer h.mu.RUnlock()
 	var vgs []hangar.ValGroup
@@ -56,7 +57,7 @@ func (h *InMemoryHangar) GetMany(kgs []hangar.KeyGroup) ([]hangar.ValGroup, erro
 	return vgs, nil
 }
 
-func (h *InMemoryHangar) SetMany(keys []hangar.Key, vgs []hangar.ValGroup) error {
+func (h *InMemoryHangar) SetMany(ctx context.Context, keys []hangar.Key, vgs []hangar.ValGroup) error {
 	h.mu.Lock()
 	defer h.mu.Unlock()
 	keys, vgs, err := hangar.MergeUpdates(keys, vgs)
@@ -75,7 +76,7 @@ func (h *InMemoryHangar) SetMany(keys []hangar.Key, vgs []hangar.ValGroup) error
 	return nil
 }
 
-func (h *InMemoryHangar) DelMany(keys []hangar.KeyGroup) error {
+func (h *InMemoryHangar) DelMany(ctx context.Context, keys []hangar.KeyGroup) error {
 	h.mu.Lock()
 	defer h.mu.Unlock()
 	for _, key := range keys {

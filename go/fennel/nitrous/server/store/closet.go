@@ -132,7 +132,7 @@ func (c *Closet) Get(ctx context.Context, keys []string, kwargs []value.Dict, st
 		kgs = append(kgs, encoded...)
 		bucketLengths[i] = len(buckets)
 	}
-	vgs, err := store.GetMany(kgs)
+	vgs, err := store.GetMany(ctx, kgs)
 	if err != nil {
 		return nil, fmt.Errorf("error getting values: %w", err)
 	}
@@ -230,7 +230,7 @@ func (c *Closet) update(ctx context.Context, ts []uint32, keys []string, val []v
 			}
 		}
 	}
-	vgs, err := store.GetMany(hkgs)
+	vgs, err := store.GetMany(ctx, hkgs)
 	if err != nil {
 		return nil, nil, fmt.Errorf("error reading from store: %w", err)
 	}
