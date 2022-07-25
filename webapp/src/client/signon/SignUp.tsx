@@ -1,4 +1,7 @@
 import { Button, Form, Input } from "antd";
+import axios from "axios";
+import { useState } from "react";
+
 import styles from "../styles/signon/SignUp.module.scss";
 
 function SignUp() {
@@ -17,9 +20,28 @@ function SignUp() {
     );
 }
 
+interface FormValues {
+    email: string,
+    password: string,
+}
+
 function SignUpForm() {
-    const onFinish = () => {
-        console.log("sign up");
+    const [submitting, setSubmitting] = useState(false);
+
+    const onFinish = (values: FormValues) => {
+        setSubmitting(true);
+        axios.post("/signup", {
+            email: values.email,
+            password: values.password,
+        })
+        .then(function (response) {
+            setSubmitting(false);
+            console.log(response);
+        })
+        .catch(function (error) {
+            setSubmitting(false);
+            console.log(error);
+        });
     };
 
     return (
@@ -70,7 +92,7 @@ function SignUpForm() {
                 />
             </Form.Item>
             <Form.Item className={styles.signUpFormItem}>
-                <Button type="primary" htmlType="submit" className={styles.signUpFormButton}>
+                <Button type="primary" htmlType="submit" className={styles.signUpFormButton} disabled={submitting}>
                     Sign Up
                 </Button>
             </Form.Item>
