@@ -9,9 +9,12 @@ import (
 	"time"
 
 	"fennel/lib/ftypes"
+	"fennel/lib/timer"
 	"fennel/lib/value"
 
+	grpc_middleware "github.com/grpc-ecosystem/go-grpc-middleware"
 	grpc_prometheus "github.com/grpc-ecosystem/go-grpc-prometheus"
+	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
 	grpc "google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -36,10 +39,18 @@ type Server struct {
 	UnimplementedNitrousServer
 }
 
+func FennelTracingInterceptor(ctx context.Context, req any, _ *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (resp any, err error) {
+	ctx = context.WithValue(ctx, timer.TraceKey{}, timer.TraceVal{})
+	return handler(ctx, req)
+}
+
 func NewServer(aggdb AggDB) *Server {
 	grpcServer := grpc.NewServer(
-		grpc.StreamInterceptor(grpc_prometheus.StreamServerInterceptor),
-		grpc.UnaryInterceptor(grpc_prometheus.UnaryServerInterceptor),
+		grpc.UnaryInterceptor(grpc_middleware.ChainUnaryServer(
+			FennelTracingInterceptor,
+			grpc_prometheus.UnaryServerInterceptor,
+			otelgrpc.UnaryServerInterceptor(),
+		)),
 	)
 	s := &Server{
 		aggdb: aggdb,

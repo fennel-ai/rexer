@@ -13,6 +13,7 @@ import (
 	"fennel/nitrous/rpc"
 	"fennel/resource"
 
+	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 )
@@ -182,7 +183,11 @@ type NitrousClientConfig struct {
 var _ resource.Config = NitrousClientConfig{}
 
 func (cfg NitrousClientConfig) Materialize() (resource.Resource, error) {
-	conn, err := grpc.Dial(cfg.ServerAddr, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	conn, err := grpc.Dial(cfg.ServerAddr,
+		grpc.WithTransportCredentials(insecure.NewCredentials()),
+		grpc.WithUnaryInterceptor(otelgrpc.UnaryClientInterceptor()),
+		grpc.WithStreamInterceptor(otelgrpc.StreamClientInterceptor()),
+	)
 	if err != nil {
 		return nil, fmt.Errorf("could not connect to nitrous: %w", err)
 	}
