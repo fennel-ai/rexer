@@ -3,7 +3,6 @@ package main
 import (
 	"encoding/json"
 	"errors"
-	"fennel/lib/data_integration"
 	"fmt"
 	"io/ioutil"
 	"log"
@@ -26,10 +25,12 @@ import (
 	"fennel/engine/operators"
 	actionlib "fennel/lib/action"
 	"fennel/lib/aggregate"
+	"fennel/lib/data_integration"
 	"fennel/lib/ftypes"
 	profilelib "fennel/lib/profile"
 	"fennel/lib/query"
 	"fennel/lib/sagemaker"
+	"fennel/lib/sql"
 	"fennel/lib/timer"
 	"fennel/lib/value"
 	"fennel/tier"
@@ -120,6 +121,7 @@ func (s server) setHandlers(router *mux.Router) {
 	// ----------------------------------------/v1--------------------------------------------------------
 
 	router.HandleFunc(INT_REST_VERSION+"/profiles", s.GetProfileMulti).Methods("GET")
+	router.HandleFunc(INT_REST_VERSION+"/query_profiles", s.QueryProfiles).Methods("GET")
 	router.HandleFunc(INT_REST_VERSION+"/profiles", s.SetProfiles).Methods("POST")
 	router.HandleFunc(INT_REST_VERSION+"/log", s.LogMulti).Methods("POST")
 
@@ -417,6 +419,32 @@ func (m server) LogProfiles(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 	handleSuccessfulRequest(w)
+}
+
+func (m server) QueryProfiles(w http.ResponseWriter, req *http.Request) {
+	var err error
+	var data []byte
+	if data, err = readRequest(req); err != nil {
+		handleBadRequest(w, "invalid request", err)
+		return
+	}
+	var sqlFilter sql.SqlFilter
+	if sqlFilter, err = sql.FromJSON(data); err != nil {
+		handleBadRequest(w, "invalid request", fmt.Errorf("failed to parse query filter from json: %s", err))
+		return
+	}
+	profiles, err := profile2.Query(req.Context(), m.tier, sqlFilter)
+	if err != nil {
+		handleInternalServerError(w, "invalid request: ", err)
+		return
+	}
+	ser, err := json.Marshal(profiles)
+	if err != nil {
+		handleInternalServerError(w, "invalid request: ", err)
+		return
+
+	}
+	_, _ = w.Write(ser)
 }
 
 func (m server) GetProfileMulti(w http.ResponseWriter, req *http.Request) {
