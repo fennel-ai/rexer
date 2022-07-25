@@ -22,6 +22,7 @@ export type inputType = {
     milvusConfig: pulumi.Input<Record<string, string>>,
     pprofConfig: pulumi.Input<Record<string, string>>,
     nitrousConfig: pulumi.Input<Record<string, string>>,
+    airbyteConfig: pulumi.Input<Record<string, string>>,
 }
 
 export type outputType = {}
@@ -120,6 +121,13 @@ export const setup = async (input: inputType) => {
         data: input.nitrousConfig,
         metadata: {
             name: "nitrous-conf"
+        },
+    }, { provider, deleteBeforeReplace: true });
+
+    const airbyteConf = new k8s.core.v1.ConfigMap("airbyte-conf", {
+        data: input.airbyteConfig,
+        metadata: {
+            name: "airbyte-conf"
         },
     }, { provider, deleteBeforeReplace: true });
 

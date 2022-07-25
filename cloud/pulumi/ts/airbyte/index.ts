@@ -5,6 +5,8 @@ import * as postgresql from "@pulumi/postgresql";
 import {POSTGRESQL_PASSWORD, POSTGRESQL_USERNAME} from "../tier-consts/consts";
 
 
+const DEFAULT_AIRBYTE_SERVER_PUBLIC = false;
+
 export const plugins = {
     "kubernetes": "v3.16.0",
     "postgresql": "v3.4.0",
@@ -20,15 +22,17 @@ export type inputType = {
     dbPort: number,
     kubeconfig: string,
     protect: boolean,
+    publicServer?: boolean,
 }
 
 // should not contain any pulumi.Output<> types.
 export type outputType = {
     logBucket: string,
-    airbyteDbName: string,
+    dbName: string,
+    endpoint: string,
 }
 
-export const setup = async (input: inputType): Promise<outputType> => {
+export const setup = async (input: inputType): Promise<pulumi.Output<outputType>> => {
     // providers
     const provider = new aws.Provider(`t-${input.tierId}-airbyte-provider`, {
         region: <aws.Region>input.region,
@@ -127,6 +131,14 @@ export const setup = async (input: inputType): Promise<outputType> => {
 
     // setup airbyte instance
 
+    let serverServiceType;
+    if (input.publicServer || DEFAULT_AIRBYTE_SERVER_PUBLIC) {
+        serverServiceType = "LoadBalancer";
+    } else {
+        // by default this is of type `ClusterIP`
+        serverServiceType = "ClusterIP";
+    }
+
     // TODO(mohit): Airbyte currently does not officially publish the helm chart, however they have implemented one
     // here - https://github.com/airbytehq/airbyte/tree/master/charts/airbyte
     //
@@ -135,6 +147,7 @@ export const setup = async (input: inputType): Promise<outputType> => {
     //
     // This is also mentioned in the Airbyte Issue - https://github.com/airbytehq/airbyte/issues/1868#issuecomment-1025952077
     const imageTag = "0.39.1-alpha";
+    const serverPort = 8001;
     const airbyteRelease = new k8s.helm.v3.Release("airbyte", {
         repositoryOpts: {
             "repo": "https://fennel-ai.github.io/public/helm-charts/airbyte/",
@@ -190,6 +203,11 @@ export const setup = async (input: inputType): Promise<outputType> => {
                 "podAnnotations": {
                     "linkerd.io/inject": "disabled",
                 },
+                // service type for the airbyte server
+                "service": {
+                    "type": serverServiceType,
+                    "port": serverPort,
+                }
             },
             "bootloader": {
                 "image": {
@@ -280,8 +298,14 @@ export const setup = async (input: inputType): Promise<outputType> => {
         },
     }, { provider: k8sProvider, dependsOn: [airbyteSecret] });
 
-    return {
+    // append `-server` to get the service name of the airbyte server up and running
+    const airbyteServiceEndpoint = airbyteRelease.name.apply(releaseName => {
+        return `http://${releaseName}-server.${input.namespace}:${serverPort}/api`;
+    });
+
+    return pulumi.output({
         logBucket: bucketName,
-        airbyteDbName: databaseName,
-    };
+        dbName: databaseName,
+        endpoint: airbyteServiceEndpoint,
+    });
 }

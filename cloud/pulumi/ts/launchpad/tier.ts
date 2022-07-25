@@ -85,7 +85,12 @@ export type SagemakerConf = {
     instanceCount: number,
 }
 
-export type AirbyteConf = {}
+export type AirbyteConf = {
+    // whether airbyte server to be made externally available
+    //
+    // NOTE: This should be enabled only for test/staging tiers
+    publicServer?: boolean,
+}
 
 export type TierConf = {
     // Should be set to false, when deleting the tier
@@ -394,6 +399,9 @@ const setupResources = async () => {
     });
 
     // airbyte configuration
+    //
+    // this is empty for tiers which do not configure airbyte
+    let airbyteEndpoint: pulumi.Output<string> = pulumi.output("");
     if (input.airbyteConf !== undefined) {
         const airbyteOutput = await airbyte.setup({
             region: input.region,
@@ -404,13 +412,15 @@ const setupResources = async () => {
             dbPort: input.postgresDbPort,
             kubeconfig: input.kubeconfig,
             protect: input.protect,
+            publicServer: input.airbyteConf.publicServer,
         });
+        airbyteEndpoint = airbyteOutput.endpoint;
     }
 
     // setup configs after resources are setup.
     const configsOutput = pulumi.all(
         [input.dbPassword, input.kafkaApiSecret, sagemakerOutput.roleArn, sagemakerOutput.subnetIds,
-        sagemakerOutput.securityGroup, offlineAggregateGlueJobOutput.jobNames, offlineAggregateOutputBucket.bucketName]).apply(async ([dbPassword, kafkaPassword, sagemakerRole, subnetIds, sagemakerSg, jobNames, offlineAggrOutputBucket]) => {
+        sagemakerOutput.securityGroup, offlineAggregateGlueJobOutput.jobNames, offlineAggregateOutputBucket.bucketName, airbyteEndpoint]).apply(async ([dbPassword, kafkaPassword, sagemakerRole, subnetIds, sagemakerSg, jobNames, offlineAggrOutputBucket, airbyteServerEndpoint]) => {
             // transform jobname map to string with the format `key1=val1 key2=val2`
             let jobNamesStr = "";
             Object.entries(jobNames).forEach(([agg, jobName]) => jobNamesStr += `${agg}=${jobName},`);
@@ -474,6 +484,9 @@ const setupResources = async () => {
                 } as Record<string, string>),
                 nitrousConfig: pulumi.output({
                     "addr": input.enableNitrous ? `${nitrous.name}.${nitrous.namespace}:${nitrous.servicePort}` : "",
+                } as Record<string, string>),
+                airbyteConfig: pulumi.output({
+                    "endpoint": airbyteServerEndpoint,
                 } as Record<string, string>),
             })
         })
