@@ -3,6 +3,7 @@ package sql
 import (
 	"encoding/json"
 	"fmt"
+	"hash/fnv"
 	"sort"
 	"strings"
 )
@@ -10,6 +11,13 @@ import (
 type SqlFilter interface {
 	fmt.Stringer
 	Equal(SqlFilter) bool
+	Hash() uint64
+}
+
+func hash(str string) uint64 {
+	hash := fnv.New64a()
+	hash.Write([]byte(str))
+	return hash.Sum64()
 }
 
 type filterOperator string
@@ -18,9 +26,16 @@ func (f filterOperator) String() string {
 	return string(f)
 }
 
+func (f filterOperator) Hash() uint64 {
+	return hash(string(f))
+}
+
 func (f filterOperator) Equal(other SqlFilter) bool {
 	o, ok := other.(filterOperator)
 	if !ok {
+		return false
+	}
+	if f.Hash() != o.Hash() {
 		return false
 	}
 	return f.String() == o.String()
@@ -57,9 +72,16 @@ func (f filterName) Equal(other SqlFilter) bool {
 	return f.String() == o.String()
 }
 
+func (f filterName) Hash() uint64 {
+	return hash(string(f))
+}
+
 type filterValue struct {
 	SingleValue string
 	MultiValue  []string
+	// Sorted order to have consistent ordering in case of MultiValue.
+	canonicalMultiValue []string
+	hash                uint64
 }
 
 func (f *filterValue) UnmarshalJSON(data []byte) error {
@@ -70,12 +92,14 @@ func (f *filterValue) UnmarshalJSON(data []byte) error {
 		err = json.Unmarshal(data, &da)
 		if err == nil {
 			f.MultiValue = da
-			sort.Strings([]string(f.MultiValue))
+			f.canonicalMultiValue = make([]string, len(f.MultiValue))
+			sort.Strings([]string(f.canonicalMultiValue))
 			return nil
 		}
 		return err
 	}
 	f.SingleValue = d
+	f.hash = hash(f.String())
 	return nil
 }
 
@@ -84,8 +108,7 @@ func (f *filterValue) String() string {
 		return f.SingleValue
 	}
 	if f.MultiValue != nil {
-
-		return "(" + strings.Join(f.MultiValue, ",") + ")"
+		return "(" + strings.Join(f.canonicalMultiValue, ",") + ")"
 	}
 	return ""
 }
@@ -98,10 +121,19 @@ func (f *filterValue) Equal(other SqlFilter) bool {
 	return f.String() == o.String()
 }
 
+func (f *filterValue) Hash() uint64 {
+	if f.hash != 0 {
+		f.hash = hash(f.String())
+		return f.hash
+	}
+	return f.hash
+}
+
 type simpleSqlFilter struct {
 	Name  filterName     `json:"Name"`
 	Op    filterOperator `json:"Op"`
 	Value *filterValue   `json:"Value"`
+	hash  uint64
 }
 
 func (f *simpleSqlFilter) String() string {
@@ -119,13 +151,29 @@ func (f *simpleSqlFilter) Equal(other SqlFilter) bool {
 	if !ok {
 		return false
 	}
+	if f.Hash() != other.Hash() {
+		return false
+	}
 	return f.Name.Equal(o.Name) && f.Op.Equal(o.Op) && f.Value.Equal(o.Value)
 }
 
+func (f *simpleSqlFilter) Hash() uint64 {
+	if f.hash != 0 {
+		return f.hash
+	}
+	hash := fnv.New64()
+	hash.Write([]byte(fmt.Sprintf("%v%v%v", f.Name.Hash(), f.Op.Hash(), f.Value.Hash())))
+	f.hash = hash.Sum64()
+	return f.hash
+}
+
 type compositeSqlFilter struct {
-	Left  SqlFilter
-	Op    filterOperator
-	Right SqlFilter
+	Left           SqlFilter
+	canonicalLeft  SqlFilter
+	Op             filterOperator
+	Right          SqlFilter
+	canonicalRight SqlFilter
+	hash           uint64
 }
 
 func containsKeys(m map[string]interface{}, keys []string) bool {
@@ -184,6 +232,13 @@ func fromMap(m map[string]any) (SqlFilter, error) {
 			return nil, fmt.Errorf("unexpected value of \"Value\" in composite filter, expected struct, got %v", m["Right"])
 		}
 		ret.Right, err = fromMap(v)
+		if ret.Left.Hash() < ret.Right.Hash() {
+			ret.canonicalLeft = ret.Left
+			ret.canonicalRight = ret.Right
+		} else {
+			ret.canonicalLeft = ret.Right
+			ret.canonicalRight = ret.Left
+		}
 		return ret, err
 
 	}
@@ -199,14 +254,18 @@ func (f *compositeSqlFilter) Equal(other SqlFilter) bool {
 	if !ok {
 		return false
 	}
-	// composite filter trees could be mirror images as and and or are commutative.
-	// Hence, checking both left == left as well as left == right.
-	if !f.Left.Equal(oth.Left) && !f.Left.Equal(oth.Right) {
+	if f.Hash() != oth.Hash() {
 		return false
 	}
+	return f.canonicalLeft.Equal(oth.canonicalLeft) && f.Op.Equal(oth.Op) && f.canonicalRight.Equal(oth.canonicalRight)
+}
 
-	if !f.Right.Equal(oth.Right) && !f.Right.Equal(oth.Left) {
-		return false
+func (f *compositeSqlFilter) Hash() uint64 {
+	if f.hash != 0 {
+		return f.hash
 	}
-	return true
+	hash := fnv.New64()
+	hash.Write([]byte(fmt.Sprintf("%v%v%v", f.canonicalLeft.Hash(), f.Op.Hash(), f.canonicalRight.Hash())))
+	f.hash = hash.Sum64()
+	return f.hash
 }
