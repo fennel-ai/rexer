@@ -351,14 +351,23 @@ export const setup = async (input: inputType) => {
             // emissary (or envoy) and we can configure advanced load balancing algorithms
             "resolver": endpointResolverName,
             "load_balancer": {
-                // NOTE: We use round-robin so that every healthy query server gets at least one request to process
-                // unlike the traffic pattern we noticed in https://linear.app/fennel-ai/issue/REX-1341#comment-e4537bb9
+                // Since we have not configured any weights for the endpoints, this should effectively
+                // behave like P2C (power of 2 choices) in which 2 endpoints are picked at random and one with the least
+                // requests is used to forward the request. This should help us more or less equally distribute
+                // the requests but also ensure the queue length (and potentially the latency) into consideration
+                // while load balancing.
                 //
-                // We can consider moving to `least_request` as well which will allow the query server which
-                // has the least active requests to get the query and hence saving servers which could potentially
-                // be at a high utilization and could get assigned a query with round-robin
-                // captured here - REX-1170
-                "policy": "round_robin"
+                // See - https://www.envoyproxy.io/docs/envoy/latest/intro/arch_overview/upstream/load_balancing/load_balancers#weighted-least-request
+                //
+                // Also see - https://blog.envoyproxy.io/examining-load-balancing-algorithms-with-envoy-1be643ea121c
+                // which gives a good idea about how different algorithms behave.
+                //
+                // NOTE: This is may not an ideal load balancing algorithms when say a "node" or "endpoint" is
+                // constantly failing and fails immediately hence it's queue length is almost always lower than any
+                // other node, if this is a contender in the 2 endpoints selected, this will always be selected,
+                // hence failing the requests. A good solution for this is "outlier detection" mechanism in
+                // envoy but emissary does not allow us to configure them
+                "policy": "least_request"
             }
         }
     }, { provider: k8sProvider, deleteBeforeReplace: true })
