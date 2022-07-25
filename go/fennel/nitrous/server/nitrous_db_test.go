@@ -19,7 +19,7 @@ import (
 
 func TestInitRestore(t *testing.T) {
 	n := test.NewTestNitrous(t)
-	adm, err := InitDB(n.Nitrous)
+	ndb, err := InitDB(n.Nitrous)
 	assert.NoError(t, err)
 
 	ctx := context.Background()
@@ -28,14 +28,14 @@ func TestInitRestore(t *testing.T) {
 	kwargs := value.NewDict(nil)
 	kwargs.Set("duration", value.Int(24*3600))
 
-	adm.SetPollTimeout(100 * time.Millisecond)
-	adm.Start()
-	defer adm.Stop()
+	ndb.SetPollTimeout(100 * time.Millisecond)
+	ndb.Start()
+	defer ndb.Stop()
 	wait := func() {
 		count := 0
 		for count < 3 {
-			time.Sleep(adm.tailer.GetPollTimeout())
-			lag, err := adm.GetLag(ctx)
+			time.Sleep(ndb.tailer.GetPollTimeout())
+			lag, err := ndb.GetLag(ctx)
 			if err != nil {
 				time.Sleep(1 * time.Second)
 				continue
@@ -54,7 +54,7 @@ func TestInitRestore(t *testing.T) {
 
 	// Before the aggregate is created, we should get an error on trying to
 	// read its value.
-	_, err = adm.Get(ctx, tierId, aggId, rpc.AggCodec_V1, []string{"mygk"}, []value.Dict{kwargs})
+	_, err = ndb.Get(ctx, tierId, aggId, rpc.AggCodec_V1, []string{"mygk"}, []value.Dict{kwargs})
 	assert.Error(t, err)
 
 	// Define the aggregate.
@@ -79,7 +79,7 @@ func TestInitRestore(t *testing.T) {
 
 	// After the aggregate is created, we should get the zero value before any
 	// event is logged  for the aggregate.
-	resp, err := adm.Get(ctx, tierId, aggId, rpc.AggCodec_V1, []string{"mygk"}, []value.Dict{kwargs})
+	resp, err := ndb.Get(ctx, tierId, aggId, rpc.AggCodec_V1, []string{"mygk"}, []value.Dict{kwargs})
 	assert.NoError(t, err)
 	assert.Equal(t, 1, len(resp))
 	assert.Equal(t, value.Int(0), resp[0])
@@ -106,16 +106,16 @@ func TestInitRestore(t *testing.T) {
 	wait()
 
 	// Read the aggregate value - it should be 42.
-	resp, err = adm.Get(ctx, tierId, aggId, rpc.AggCodec_V1, []string{"mygk"}, []value.Dict{kwargs})
+	resp, err = ndb.Get(ctx, tierId, aggId, rpc.AggCodec_V1, []string{"mygk"}, []value.Dict{kwargs})
 	assert.NoError(t, err)
 	assert.Equal(t, 1, len(resp))
 	assert.NoError(t, err)
 	assert.Equal(t, value.Int(42), resp[0])
 
 	// Restore on a new instance of the same store and read the same value.
-	adm, err = InitDB(n.Nitrous)
+	ndb, err = InitDB(n.Nitrous)
 	assert.NoError(t, err)
-	resp, err = adm.Get(ctx, tierId, aggId, rpc.AggCodec_V1, []string{"mygk"}, []value.Dict{kwargs})
+	resp, err = ndb.Get(ctx, tierId, aggId, rpc.AggCodec_V1, []string{"mygk"}, []value.Dict{kwargs})
 	assert.NoError(t, err)
 	assert.Equal(t, 1, len(resp))
 	assert.NoError(t, err)
@@ -124,7 +124,7 @@ func TestInitRestore(t *testing.T) {
 
 func TestCreateDuplicate(t *testing.T) {
 	n := test.NewTestNitrous(t)
-	adm, err := InitDB(n.Nitrous)
+	ndb, err := InitDB(n.Nitrous)
 	assert.NoError(t, err)
 	op := &rpc.CreateAggregate{
 		AggId: 1,
@@ -135,23 +135,23 @@ func TestCreateDuplicate(t *testing.T) {
 	}
 	tierId := ftypes.RealmID(5)
 	vg := hangar.ValGroup{}
-	vg, err = adm.processCreateEvent(tierId, op, vg)
+	vg, err = ndb.processCreateEvent(tierId, op, vg)
 	assert.NoError(t, err)
 	assert.Equal(t, 1, len(vg.Fields))
 	// This should be a no-op and therefore we should get no errors.
-	vg, err = adm.processCreateEvent(tierId, op, vg)
+	vg, err = ndb.processCreateEvent(tierId, op, vg)
 	assert.NoError(t, err)
 	assert.Equal(t, 1, len(vg.Fields))
 	// This should fail.
 	op.Options.AggType = "max"
-	vg, err = adm.processCreateEvent(tierId, op, vg)
+	vg, err = ndb.processCreateEvent(tierId, op, vg)
 	assert.Error(t, err)
 	assert.Equal(t, 1, len(vg.Fields))
 }
 
 func TestDeleteAggregate(t *testing.T) {
 	n := test.NewTestNitrous(t)
-	adm, err := InitDB(n.Nitrous)
+	ndb, err := InitDB(n.Nitrous)
 	assert.NoError(t, err)
 	tierId := ftypes.RealmID(5)
 	ctx := context.Background()
@@ -167,11 +167,11 @@ func TestDeleteAggregate(t *testing.T) {
 		},
 	}
 	vg := hangar.ValGroup{}
-	vg, err = adm.processCreateEvent(tierId, op, vg)
+	vg, err = ndb.processCreateEvent(tierId, op, vg)
 	assert.NoError(t, err)
 
 	// Fetch aggregate value. This should return the zero value for the aggregate.
-	vals, err := adm.Get(ctx, tierId, 1, rpc.AggCodec_V1, []string{"mygk"}, []value.Dict{kwargs})
+	vals, err := ndb.Get(ctx, tierId, 1, rpc.AggCodec_V1, []string{"mygk"}, []value.Dict{kwargs})
 	assert.NoError(t, err)
 	assert.Equal(t, 1, len(vals))
 	assert.EqualValues(t, 0, vals[0].(value.Int))
@@ -180,17 +180,17 @@ func TestDeleteAggregate(t *testing.T) {
 	del := &rpc.DeleteAggregate{
 		AggId: 1,
 	}
-	_, err = adm.processDeleteEvent(tierId, del, vg) //nolint:ineffassign
+	_, err = ndb.processDeleteEvent(tierId, del, vg) //nolint:ineffassign
 	assert.NoError(t, err)
 
 	// Fetching the aggregate should now fail.
-	_, err = adm.Get(ctx, tierId, 1, rpc.AggCodec_V1, []string{"mygk"}, []value.Dict{kwargs})
+	_, err = ndb.Get(ctx, tierId, 1, rpc.AggCodec_V1, []string{"mygk"}, []value.Dict{kwargs})
 	assert.Error(t, err)
 }
 
 func TestGetLag(t *testing.T) {
 	n := test.NewTestNitrous(t)
-	adm, err := InitDB(n.Nitrous)
+	ndb, err := InitDB(n.Nitrous)
 	assert.NoError(t, err)
 
 	// Produce a message for tailer.
@@ -198,15 +198,15 @@ func TestGetLag(t *testing.T) {
 
 	// Set a very long test timeout so message is not really consumed and then
 	// restart tailer.
-	adm.tailer.SetPollTimeout(1 * time.Minute)
-	adm.Start()
+	ndb.tailer.SetPollTimeout(1 * time.Minute)
+	ndb.Start()
 
 	ctx := context.Background()
 
 	// Initial lag should be 0. It's possible we get an error if the consumer
 	// hasn't yet been assigned a partition by the broker.
 	for {
-		lag, err := adm.GetLag(ctx)
+		lag, err := ndb.GetLag(ctx)
 		if err == nil {
 			assert.EqualValues(t, 0, lag)
 			break
@@ -222,7 +222,7 @@ func TestGetLag(t *testing.T) {
 
 	// Lag should now be 1.
 	time.Sleep(5 * time.Second)
-	lag, err := adm.GetLag(ctx)
+	lag, err := ndb.GetLag(ctx)
 	assert.NoError(t, err)
 	assert.EqualValues(t, 1, lag)
 }
