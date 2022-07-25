@@ -295,12 +295,31 @@ const setupResources = async () => {
         protect: input.protectResources,
     })
 
+    const prometheusOutput = await prometheus.setup({
+        useAMP: input.prometheusConf.useAMP,
+        kubeconfig: eksOutput.kubeconfig,
+        region: input.region,
+        roleArn: roleArn,
+        planeId: input.planeId,
+        protect: input.protectResources,
+    })
+
+    const telemetryOutput = await telemetry.setup({
+        planeId: input.planeId,
+        region: input.region,
+        roleArn: roleArn,
+        eksClusterName: eksOutput.clusterName,
+        kubeconfig: eksOutput.kubeconfig,
+        nodeInstanceRole: eksOutput.instanceRole,
+    })
+
     if (input.nitrousConf !== undefined) {
         const nitrousOutput = await nitrous.setup({
             planeId: input.planeId,
             region: input.region,
             roleArn: roleArn,
             kubeconfig: eksOutput.kubeconfig,
+            otlpEndpoint: telemetryOutput.otelCollectorEndpoint,
 
             replicas: input.nitrousConf.replicas,
             // We only use amd64 for nitrous instead of arm64 because of a known
@@ -332,24 +351,6 @@ const setupResources = async () => {
             protect: input.protectResources,
         })
     }
-
-    const prometheusOutput = await prometheus.setup({
-        useAMP: input.prometheusConf.useAMP,
-        kubeconfig: eksOutput.kubeconfig,
-        region: input.region,
-        roleArn: roleArn,
-        planeId: input.planeId,
-        protect: input.protectResources,
-    })
-
-    const telemetryOutput = await telemetry.setup({
-        planeId: input.planeId,
-        region: input.region,
-        roleArn: roleArn,
-        eksClusterName: eksOutput.clusterName,
-        kubeconfig: eksOutput.kubeconfig,
-        nodeInstanceRole: eksOutput.instanceRole,
-    })
 
     const offlineAggregateSourceFiles = await offlineAggregateSources.setup({
         region: input.region,
