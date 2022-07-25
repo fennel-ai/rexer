@@ -43,7 +43,7 @@ type NitrousDB struct {
 func InitDB(n nitrous.Nitrous) (*NitrousDB, error) {
 	// Initialize binlog tailer.
 	offsetkey := []byte("default_tailer")
-	vgs, err := n.Store.GetMany([]hangar.KeyGroup{{Prefix: hangar.Key{Data: offsetkey}}})
+	vgs, err := n.Store.GetMany(context.Background(), []hangar.KeyGroup{{Prefix: hangar.Key{Data: offsetkey}}})
 	if err != nil {
 		return nil, fmt.Errorf("failed to get binlog offsets: %w", err)
 	}
@@ -102,7 +102,7 @@ func (ndb *NitrousDB) Identity() string {
 
 func (ndb *NitrousDB) Process(ctx context.Context, ops []*rpc.NitrousOp, store hangar.Reader) ([]hangar.Key, []hangar.ValGroup, error) {
 	// Get current set of aggregates for this plane.
-	vgs, err := store.GetMany([]hangar.KeyGroup{{Prefix: hangar.Key{Data: agg_table_key}}})
+	vgs, err := store.GetMany(ctx, []hangar.KeyGroup{{Prefix: hangar.Key{Data: agg_table_key}}})
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to get aggregate definitions: %w", err)
 	}
@@ -140,7 +140,7 @@ func (ndb *NitrousDB) Process(ctx context.Context, ops []*rpc.NitrousOp, store h
 
 func (ndb *NitrousDB) restoreAggregates(store hangar.Hangar) error {
 	// Get current set of aggregates for this plane.
-	vgs, err := store.GetMany([]hangar.KeyGroup{{Prefix: hangar.Key{Data: agg_table_key}}})
+	vgs, err := store.GetMany(context.Background(), []hangar.KeyGroup{{Prefix: hangar.Key{Data: agg_table_key}}})
 	if err != nil {
 		return fmt.Errorf("failed to get aggregate definitions: %w", err)
 	}

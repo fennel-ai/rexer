@@ -1,6 +1,7 @@
 package hangar
 
 import (
+	"context"
 	"io"
 
 	"fennel/lib/ftypes"
@@ -44,9 +45,9 @@ type Encoder interface {
 
 type Hangar interface {
 	PlaneID() ftypes.RealmID
-	GetMany(kgs []KeyGroup) ([]ValGroup, error)
-	SetMany(keys []Key, vgs []ValGroup) error
-	DelMany(keys []KeyGroup) error
+	GetMany(ctx context.Context, kgs []KeyGroup) ([]ValGroup, error)
+	SetMany(ctx context.Context, keys []Key, vgs []ValGroup) error
+	DelMany(ctx context.Context, keys []KeyGroup) error
 	Close() error
 	Teardown() error
 	Backup(sink io.Writer, since uint64) (uint64, error)
@@ -55,7 +56,7 @@ type Hangar interface {
 
 type Reader interface {
 	PlaneID() ftypes.RealmID
-	GetMany(kgs []KeyGroup) ([]ValGroup, error)
+	GetMany(ctx context.Context, kgs []KeyGroup) ([]ValGroup, error)
 }
 
 type Codec uint8

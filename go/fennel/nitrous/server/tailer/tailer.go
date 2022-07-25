@@ -201,7 +201,7 @@ func (t *Tailer) Tail() {
 			keys = append(keys, hangar.Key{Data: t.offsetkey})
 			vgs = append(vgs, offvg)
 			// Finally, write the batch to the hangar.
-			err = t.nitrous.Store.SetMany(keys, vgs)
+			err = t.nitrous.Store.SetMany(context.Background(), keys, vgs)
 			if err != nil {
 				t.nitrous.Logger.Error("Hangar write failed", zap.Error(err))
 				continue

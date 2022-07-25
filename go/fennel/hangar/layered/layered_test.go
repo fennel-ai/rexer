@@ -1,6 +1,7 @@
 package layered
 
 import (
+	"context"
 	"io"
 	"math/rand"
 	"sync"
@@ -55,6 +56,7 @@ func TestCaching(t *testing.T) {
 	rand.Seed(time.Now().UnixNano())
 	planeID := ftypes.RealmID(rand.Uint32())
 	gt := &mockStore{data: make(map[string]map[string]string)}
+	ctx := context.Background()
 
 	// 80 MB cache with avg size of 100 bytes
 	cache, err := cache.NewHangar(planeID, 1<<23, 1000, encoders.Default())
@@ -77,7 +79,7 @@ func TestCaching(t *testing.T) {
 	gt.set(key1.Data, field2, val2)
 	gt.set(key2.Data, field3, val3)
 
-	ret, err := s.GetMany([]hangar.KeyGroup{
+	ret, err := s.GetMany(ctx, []hangar.KeyGroup{
 		{Prefix: key1, Fields: mo.Some[hangar.Fields]([][]byte{field1, field2})},
 		{Prefix: key2, Fields: mo.None[hangar.Fields]()},
 	})
@@ -94,7 +96,7 @@ func TestCaching(t *testing.T) {
 	gt.set(key1.Data, field2, val4)
 
 	// since data is cached, doing gets from store should be same as before
-	ret, err = s.GetMany([]hangar.KeyGroup{
+	ret, err = s.GetMany(ctx, []hangar.KeyGroup{
 		{Prefix: key1, Fields: mo.Some[hangar.Fields]([][]byte{field1, field2})},
 		{Prefix: key2, Fields: mo.None[hangar.Fields]()},
 	})
@@ -106,13 +108,13 @@ func TestCaching(t *testing.T) {
 	assert.ElementsMatch(t, [][]byte{val3}, ret[1].Values)
 
 	// now delete just one field from one of the keys.
-	assert.NoError(t, s.DelMany([]hangar.KeyGroup{
+	assert.NoError(t, s.DelMany(ctx, []hangar.KeyGroup{
 		{Prefix: key1, Fields: mo.Some[hangar.Fields]([][]byte{field1})},
 	}))
 	time.Sleep(100 * time.Millisecond) // sleep a bit for writes to propagate
 
 	// for that key alone the value should have changed
-	ret, err = s.GetMany([]hangar.KeyGroup{
+	ret, err = s.GetMany(ctx, []hangar.KeyGroup{
 		{Prefix: key2, Fields: mo.Some[hangar.Fields]([][]byte{field3})},
 		{Prefix: key1, Fields: mo.Some[hangar.Fields]([][]byte{field1, field2})},
 	})
@@ -146,7 +148,7 @@ func (m *mockStore) set(key, field, value []byte) {
 	m.data[k][string(field)] = string(value)
 }
 
-func (m *mockStore) GetMany(kgs []hangar.KeyGroup) ([]hangar.ValGroup, error) {
+func (m *mockStore) GetMany(ctx context.Context, kgs []hangar.KeyGroup) ([]hangar.ValGroup, error) {
 	m.Lock()
 	defer m.Unlock()
 	ret := make([]hangar.ValGroup, len(kgs))
@@ -172,9 +174,11 @@ func (m *mockStore) GetMany(kgs []hangar.KeyGroup) ([]hangar.ValGroup, error) {
 	return ret, nil
 }
 
-func (m *mockStore) SetMany(keys []hangar.Key, vgs []hangar.ValGroup) error { return nil }
+func (m *mockStore) SetMany(ctx context.Context, keys []hangar.Key, vgs []hangar.ValGroup) error {
+	return nil
+}
 
-func (m *mockStore) DelMany(keys []hangar.KeyGroup) error { return nil }
+func (m *mockStore) DelMany(ctx context.Context, keys []hangar.KeyGroup) error { return nil }
 
 func (m *mockStore) Close() error { return nil }
 

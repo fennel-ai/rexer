@@ -1,6 +1,7 @@
 package db
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"io"
@@ -93,7 +94,7 @@ func (b *badgerDB) Encoder() hangar.Encoder {
 
 // GetMany returns the values for the given keyGroups.
 // It parallelizes the requests to the underlying DB upto a degree of PARALLELISM
-func (b *badgerDB) GetMany(kgs []hangar.KeyGroup) ([]hangar.ValGroup, error) {
+func (b *badgerDB) GetMany(ctx context.Context, kgs []hangar.KeyGroup) ([]hangar.ValGroup, error) {
 	// we try to spread across available workers while giving each worker
 	// a minimum of DB_BATCH_SIZE keyGroups to work on
 	batch := len(kgs) / PARALLELISM
@@ -131,7 +132,7 @@ func (b *badgerDB) GetMany(kgs []hangar.KeyGroup) ([]hangar.ValGroup, error) {
 // keyGroups and call SetMany on each batch.
 // NOTE: the calculation of "deltas" isn't done as part of write transaction and so this
 // assumes that the same keyGroups are not being written to in a separate goroutine.
-func (b *badgerDB) SetMany(keys []hangar.Key, deltas []hangar.ValGroup) error {
+func (b *badgerDB) SetMany(ctx context.Context, keys []hangar.Key, deltas []hangar.ValGroup) error {
 	if len(keys) != len(deltas) {
 		return fmt.Errorf("key, value lengths do not match")
 	}
@@ -182,7 +183,7 @@ func (b *badgerDB) SetMany(keys []hangar.Key, deltas []hangar.ValGroup) error {
 	return err
 }
 
-func (b *badgerDB) DelMany(keyGroups []hangar.KeyGroup) error {
+func (b *badgerDB) DelMany(ctx context.Context, keyGroups []hangar.KeyGroup) error {
 	eks, err := hangar.EncodeKeyManyKG(keyGroups, b.enc)
 	if err != nil {
 		return err

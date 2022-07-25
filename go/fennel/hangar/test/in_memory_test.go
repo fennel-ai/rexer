@@ -1,6 +1,7 @@
 package test
 
 import (
+	"context"
 	"math/rand"
 	"testing"
 	"time"
@@ -15,9 +16,10 @@ import (
 func TestBasic(t *testing.T) {
 	planeId := ftypes.RealmID(1)
 	h := NewInMemoryHangar(planeId)
+	ctx := context.Background()
 
 	// Get before set.
-	vgs, err := h.GetMany([]hangar.KeyGroup{
+	vgs, err := h.GetMany(ctx, []hangar.KeyGroup{
 		{
 			Prefix: hangar.Key{
 				Data: []byte("foo"),
@@ -33,7 +35,7 @@ func TestBasic(t *testing.T) {
 	// Now set some fields.
 	fields := [][]byte{[]byte("a"), []byte("b")}
 	values := [][]byte{[]byte("x"), []byte("y")}
-	err = h.SetMany([]hangar.Key{
+	err = h.SetMany(ctx, []hangar.Key{
 		{
 			Data: []byte("foo"),
 		},
@@ -46,7 +48,7 @@ func TestBasic(t *testing.T) {
 	assert.NoError(t, err)
 
 	// Get all values for "foo" prefix.
-	vgs, err = h.GetMany([]hangar.KeyGroup{
+	vgs, err = h.GetMany(ctx, []hangar.KeyGroup{
 		{
 			Prefix: hangar.Key{
 				Data: []byte("foo"),
@@ -62,7 +64,7 @@ func TestBasic(t *testing.T) {
 	assert.ElementsMatch(t, values, vgs[0].Values)
 
 	// Get a specific field for "foo" prefix.
-	vgs, err = h.GetMany([]hangar.KeyGroup{
+	vgs, err = h.GetMany(ctx, []hangar.KeyGroup{
 		{
 			Prefix: hangar.Key{
 				Data: []byte("foo"),
@@ -78,7 +80,7 @@ func TestBasic(t *testing.T) {
 	assert.ElementsMatch(t, values[:1], vgs[0].Values)
 
 	// Delete a field for "foo" prefix.
-	err = h.DelMany([]hangar.KeyGroup{
+	err = h.DelMany(ctx, []hangar.KeyGroup{
 		{
 			Prefix: hangar.Key{
 				Data: []byte("foo"),
@@ -89,7 +91,7 @@ func TestBasic(t *testing.T) {
 	assert.NoError(t, err)
 
 	// Now get all fields for "foo".
-	vgs, err = h.GetMany([]hangar.KeyGroup{
+	vgs, err = h.GetMany(ctx, []hangar.KeyGroup{
 		{
 			Prefix: hangar.Key{
 				Data: []byte("foo"),

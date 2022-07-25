@@ -1,6 +1,7 @@
 package cache
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"log"
@@ -77,7 +78,7 @@ func (c *rcache) PlaneID() ftypes.RealmID {
 
 // GetMany returns the values for the given keyGroups.
 // It parallelizes the requests to the underlying cache upto a degree of parallelism
-func (c *rcache) GetMany(keys []hangar.KeyGroup) ([]hangar.ValGroup, error) {
+func (c *rcache) GetMany(ctx context.Context, keys []hangar.KeyGroup) ([]hangar.ValGroup, error) {
 	// we try to spread across available workers while giving each worker
 	// a minimum of DB_BATCH_SIZE keyGroups to work on
 	batch := len(keys) / parallelism
@@ -113,7 +114,7 @@ func (c *rcache) GetMany(keys []hangar.KeyGroup) ([]hangar.ValGroup, error) {
 // SetMany sets many keyGroups in a single transaction. Since these are all set in a single
 // transaction, there is no parallelism. If parallelism is desired, create batches of
 // keyGroups and call SetMany on each batch.
-func (c *rcache) SetMany(keys []hangar.Key, deltas []hangar.ValGroup) error {
+func (c *rcache) SetMany(ctx context.Context, keys []hangar.Key, deltas []hangar.ValGroup) error {
 	if len(keys) != len(deltas) {
 		return fmt.Errorf("key, value lengths do not match")
 	}
@@ -148,7 +149,7 @@ func (c *rcache) SetMany(keys []hangar.Key, deltas []hangar.ValGroup) error {
 	return c.commit(eks, deltas, nil)
 }
 
-func (c *rcache) DelMany(keyGroups []hangar.KeyGroup) error {
+func (c *rcache) DelMany(ctx context.Context, keyGroups []hangar.KeyGroup) error {
 	eks, err := hangar.EncodeKeyManyKG(keyGroups, c.enc)
 	if err != nil {
 		return err
