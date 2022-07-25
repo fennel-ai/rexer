@@ -64,6 +64,7 @@ export type inputType = {
     region: string,
     roleArn: pulumi.Input<string>,
     kubeconfig: pulumi.Input<any>,
+    otlpEndpoint: pulumi.Input<string>,
 
     replicas?: number,
     useAmd64?: boolean,
@@ -253,6 +254,8 @@ export const setup = async (input: inputType) => {
                                     `${input.blockCacheMB}`,
                                     "--ristretto_max_cost",
                                     (input.kvCacheMB << 20).toString(),
+                                    "--otlp-endpoint",
+                                    input.otlpEndpoint,
                                     "--dev=false"
                                 ],
                                 name: name,
