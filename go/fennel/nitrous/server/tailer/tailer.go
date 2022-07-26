@@ -50,7 +50,7 @@ func NewTailer(n nitrous.Nitrous, topic string, offsets kafka.TopicPartitions, o
 	consumer, err := n.KafkaConsumerFactory(fkafka.ConsumerConfig{
 		Scope:        resource.NewPlaneScope(n.PlaneID),
 		Topic:        topic,
-		GroupID:      "default-nitrous-tailer",
+		GroupID:      n.Identity,
 		OffsetPolicy: fkafka.DefaultOffsetPolicy,
 		Partitions:   offsets,
 	})
