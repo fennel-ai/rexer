@@ -41,7 +41,8 @@ type Stream struct {
 	SourceDefinedCursor     bool        `json:"sourceDefinedCursor"`
 	DefaultCursorField      []string    `json:"defaultCursorField"`
 	SourceDefinedPrimaryKey []string    `json:"sourceDefinedPrimaryKey"`
-	Namespace               string      `json:"namespace"`
+	// It is a ptr since Namespace can be null and Go defaults to "" for empty string rather than null.
+	Namespace *string `json:"namespace"`
 }
 
 type MutableSourceConfig struct {

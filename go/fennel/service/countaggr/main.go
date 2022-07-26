@@ -188,16 +188,17 @@ func processConnector(tr tier.Tier, conn data_integration.Connector, stopCh <-ch
 				logKafkaLag(tr, consumer)
 			default:
 				run++
-				values, hashes, err := connector.ReadBatch(ctx, consumer, 10000, time.Second*10)
+				values, hashes, err := connector.ReadBatch(ctx, consumer, conn.StreamName, 10000, time.Second*10)
 				if err != nil {
 					tr.Logger.Error("Error while reading batch of actions:", zap.Error(err))
 					continue
 				}
-				tr.Logger.Debug("Processing connector", zap.String("name", conn.Name), zap.Int("run", run), zap.Int("values", len(values)))
 
 				if len(values) == 0 {
 					continue
 				}
+
+				tr.Logger.Debug("Processing connector", zap.String("name", conn.Name), zap.Int("run", run), zap.Int("values", len(values)))
 
 				var keys []string
 				var vals []interface{}
