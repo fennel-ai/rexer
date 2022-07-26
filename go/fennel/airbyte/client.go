@@ -378,7 +378,6 @@ func (c Client) setKafkaDestinationId(tierId ftypes.RealmID) error {
 	if len(destinationList["destinations"]) == 0 {
 		return fmt.Errorf("no kafka destination found")
 	}
-
 	for _, destination := range destinationList["destinations"] {
 		if destination.ConnectionConfiguration.TopicPattern == getFullAirbyteKafkaTopic(tierId) {
 			kafkaDestinationId = destination.DestinationId

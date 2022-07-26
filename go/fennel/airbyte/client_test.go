@@ -10,7 +10,6 @@ import (
 )
 
 const (
-	TEST_AIRBYTE_TOPIC   = "airbyte_topic"
 	TEST_SOURCE_ID       = "abc-123-test-source-id"
 	KAFKA_DESTINATION_ID = "abc-123-test-destination-id"
 	TEST_CONNECTION_ID   = "abc-123-test-connector-id"
@@ -57,7 +56,7 @@ func (s *testServer) listDestinationsHandler(w http.ResponseWriter, r *http.Requ
 		{
 			DestinationId: KAFKA_DESTINATION_ID,
 			ConnectionConfiguration: KafkaConnectorConfig{
-				TopicPattern: TEST_AIRBYTE_TOPIC,
+				TopicPattern: "t_123_" + AIRBYTE_KAFKA_TOPIC,
 			},
 		},
 	}

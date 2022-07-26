@@ -170,7 +170,7 @@ func main() {
 	// Signal that server is open for business.
 	// Note: don't delete this log line - e2e tests rely on this to be printed
 	// to know that server has initialized and is ready to take traffic
-	log.Println("http server is ready...")
+	log.Println("server is ready...")
 
 	<-stopped
 	log.Println("server stopped...")

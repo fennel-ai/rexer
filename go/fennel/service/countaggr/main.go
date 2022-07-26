@@ -450,7 +450,7 @@ func main() {
 
 	// Note: don't delete this log line - e2e tests rely on this to be printed
 	// to know that server has initialized and is ready to take traffic
-	log.Println("countaggr server is ready...")
+	log.Println("server is ready...")
 
 	// first kick off a goroutine to transfer actions from kafka to DB
 	if err = startActionDBInsertion(tr); err != nil {
