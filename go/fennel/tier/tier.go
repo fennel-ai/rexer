@@ -341,7 +341,7 @@ func CreateFromArgs(args *TierArgs) (tier Tier, err error) {
 
 	// Setup tracer provider (which exports remotely) if an endpoint is defined. Otherwise a default tracer is used.
 	if len(args.OtlpEndpoint) > 0 {
-		err = timer.InitProvider(args.OtlpEndpoint)
+		err = timer.InitProvider(args.OtlpEndpoint, timer.PathSampler{SamplingRatio: 0.01})
 		if err != nil {
 			panic(err)
 		}
