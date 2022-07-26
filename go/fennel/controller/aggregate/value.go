@@ -367,7 +367,7 @@ func Transform(tier tier.Tier, items any, query ast.Ast) (value.List, error) {
 	table, ok = result.(value.List)
 
 	if !ok {
-		return value.NewList(), fmt.Errorf("query did not Transform items into a list")
+		return value.NewList(), fmt.Errorf("query did not transform items into a list")
 	}
 	return table, nil
 }

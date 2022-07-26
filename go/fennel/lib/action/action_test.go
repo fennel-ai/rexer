@@ -35,6 +35,7 @@ func TestAction_ToFromValueDict(t *testing.T) {
 		"metadata":    value.Int(8),
 	})
 	d, err := a.ToValueDict()
+	assert.NoError(t, err)
 	a2, err := FromValueDict(d)
 	assert.NoError(t, err)
 	assert.True(t, a.Equals(a2, false))
