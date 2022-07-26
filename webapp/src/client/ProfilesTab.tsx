@@ -11,7 +11,7 @@ function ProfilesTab() {
         axios.get("/profiles")
             .then(function (response) {
                 if (response.status === 200) {
-                    setDataSource(response.data.profiles.map((profile: any, idx: any) => ({
+                    setDataSource(response.data.profiles.map((profile: object, idx: number) => ({
                         key: idx,
                         ...profile,
                     })));
