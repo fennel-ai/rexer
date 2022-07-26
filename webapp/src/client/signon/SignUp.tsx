@@ -9,7 +9,7 @@ function SignUp() {
                 <hr className={styles.logoDivider} />
                 <div className={styles.signUpHeader}>
                     <h4>Sign up</h4>
-                    <div>Login Instead</div>
+                    <a href="#">Login instead?</a>
                 </div>
                 <SignUpForm />
             </div>
@@ -24,7 +24,7 @@ function SignUpForm() {
 
     return (
         <Form
-            name="normal_login"
+            name="signup_form"
             className={styles.signUpForm}
             initialValues={{ remember: true }}
             onFinish={onFinish}

@@ -17,7 +17,7 @@ $width: 315px;
     width: 100%;
 }
 
-.signUpHeader {
+.signInHeader {
     display: flex;
     flex-direction: row;
     justify-content: space-between;
@@ -25,18 +25,18 @@ $width: 315px;
     margin-top: 12px;
 }
 
-.signUpForm Input {
+.signInForm Input {
     width: 100%;
 }
 
-.signUpItem :first-child {
+.signInItem :first-child {
     margin-top: 28px;
 }
 
-.signUpFormItem {
+.signInFormItem {
     margin-top: 16px;
 }
 
-.signUpFormButton {
+.signInFormButton {
     width: 100%;
 }
