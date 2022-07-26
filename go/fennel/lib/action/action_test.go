@@ -96,7 +96,7 @@ func TestActionFromValueDict(t *testing.T) {
 			"target_type": value.String("video"),
 			"action_type": value.String("like"),
 			"timestamp":   value.Int(9),
-			"request_id":  value.Int(10),
+			"request_id":  value.String("axd-asdff-sdfd"),
 			"metadata":    value.Int(8),
 		}),
 		a: Action{
@@ -107,7 +107,7 @@ func TestActionFromValueDict(t *testing.T) {
 			TargetType: "video",
 			ActionType: "like",
 			Timestamp:  9,
-			RequestID:  "10",
+			RequestID:  `"axd-asdff-sdfd"`,
 			Metadata:   value.Int(8),
 		},
 	}, {

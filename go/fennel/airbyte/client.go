@@ -175,7 +175,6 @@ func (c Client) getSourceSchema(source data_integration.Source, conn data_integr
 	if len(streams) == 0 {
 		return StreamConfig{}, fmt.Errorf("no schema for the source was found, please ensure the source is properly configured")
 	}
-
 	if len(streams) == 1 {
 		if streams[0].supportIncrementalMode() {
 			return streams[0], nil
@@ -183,6 +182,7 @@ func (c Client) getSourceSchema(source data_integration.Source, conn data_integr
 		return StreamConfig{}, fmt.Errorf("source schema does not support incremental mode")
 	}
 
+	// This should not happen as we check for this in the client.
 	if conn.StreamName == "" {
 		return StreamConfig{}, fmt.Errorf("multiple streams found in the source, please specify the stream name")
 	}

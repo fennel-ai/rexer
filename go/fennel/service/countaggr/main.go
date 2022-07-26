@@ -175,7 +175,7 @@ func processConnector(tr tier.Tier, conn data_integration.Connector, stopCh <-ch
 
 	go func(tr tier.Tier, consumer kafka.FConsumer, conn data_integration.Connector, stopCh <-chan struct{}) {
 		defer consumer.Close()
-		// Ticker to log kafka lag every 1 minute.
+		// Ticker to log kafka lag every 30 seconds.
 		kt := time.NewTicker(30 * time.Second)
 		defer kt.Stop()
 		ctx := context.Background()
@@ -204,7 +204,6 @@ func processConnector(tr tier.Tier, conn data_integration.Connector, stopCh <-ch
 				var ttls []time.Duration
 				var ids []int
 				for i, h := range hashes {
-					// otherwise, store them for duplication check
 					keys = append(keys, string(h[:]))
 					vals = append(vals, 1)
 					ttls = append(ttls, airbyte.AIRBYTE_DEDUP_TTL)
@@ -223,7 +222,6 @@ func processConnector(tr tier.Tier, conn data_integration.Connector, stopCh <-ch
 						// If dedup key of an action was not set, add to batch
 						batch = append(batch, values[ids[i]])
 					} else {
-						//batch = append(batch, values[ids[i]])
 						totalDedupedStreamLogs.WithLabelValues("airbyte_log", conn.Name).Inc()
 					}
 				}

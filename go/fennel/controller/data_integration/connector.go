@@ -15,7 +15,9 @@ import (
 )
 
 const (
-	AIRBYTE_DATA_FIELD = "_airbyte_data"
+	AIRBYTE_DATA_FIELD           = "_airbyte_data"
+	AIRBYTE_STREAM_NAME          = "_airbyte_stream"
+	AIRBYTE_CONNECTOR_NAME_FIELD = "stream_name"
 )
 
 func StoreConnector(ctx context.Context, tier tier.Tier, conn data_integration.Connector) error {
@@ -85,6 +87,8 @@ func ReadBatch(ctx context.Context, consumer kafka.FConsumer, count int, timeout
 		}
 		if dict, ok := val.(value.Dict); ok {
 			streams[i] = dict.GetUnsafe(AIRBYTE_DATA_FIELD)
+			row := streams[i].(value.Dict)
+			row.Set(AIRBYTE_CONNECTOR_NAME_FIELD, dict.GetUnsafe(AIRBYTE_STREAM_NAME))
 			serialized, err := streams[i].Marshal()
 			if err != nil {
 				return nil, nil, fmt.Errorf("failed to serialize message: %w", err)

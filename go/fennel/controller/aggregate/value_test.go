@@ -292,6 +292,35 @@ func TestTransformActions(t *testing.T) {
 	}
 }
 
+// this test verifies that given a list of actions, the query is run on it to produce the right table
+func TestTransformValues(t *testing.T) {
+	tier := test.Tier(t)
+	defer test.Teardown(tier)
+
+	values := make([]value.Value, 0, 2)
+	for i := 0; i < 2; i++ {
+		// our query only looks at Like action, not share
+		values = append(values, value.NewDict(map[string]value.Value{
+			"user_id":        value.Int(i + 123),
+			"connector_name": value.String("conn1"),
+		}))
+		values = append(values, value.NewDict(map[string]value.Value{
+			"user_id":        value.Int(i + 11000),
+			"connector_name": value.String("conn2"),
+		}))
+	}
+	table, err := Transform(tier, values, getValueQuery())
+	assert.NoError(t, err)
+	assert.Equal(t, 2, table.Len())
+	for i := 0; i < table.Len(); i++ {
+		r, _ := table.At(i)
+		row, ok := r.(value.Dict)
+		assert.True(t, ok)
+		assert.Equal(t, value.Int(i+123), get(row, "actor_id"))
+		assert.Equal(t, value.String("user"), get(row, "actor_type"))
+	}
+}
+
 func get(d value.Dict, k string) value.Value {
 	ret, _ := d.Get(k)
 	return ret
@@ -321,6 +350,42 @@ func getQuery() ast.Ast {
 				On:       &ast.Var{Name: "var"},
 				Property: "actor_id",
 			}}},
+		}),
+	}
+}
+
+func getValueQuery() ast.Ast {
+	return &ast.OpCall{
+		Namespace: "std",
+		Name:      "set",
+		Operands: []ast.Ast{&ast.OpCall{
+			Namespace: "std",
+			Name:      "set",
+			Operands: []ast.Ast{&ast.OpCall{
+				Namespace: "std",
+				Name:      "filter",
+				Operands:  []ast.Ast{&ast.Var{Name: "stream"}},
+				Vars:      []string{"s"},
+				Kwargs: ast.MakeDict(map[string]ast.Ast{
+					"where": &ast.Binary{
+						Left:  &ast.Lookup{On: &ast.Var{Name: "s"}, Property: "connector_name"},
+						Op:    "==",
+						Right: ast.MakeString("conn1"),
+					},
+				}),
+			}},
+			Vars: []string{"e"},
+			Kwargs: ast.MakeDict(map[string]ast.Ast{
+				"field": ast.MakeString("actor_id"),
+				"value": &ast.Lookup{
+					On:       &ast.Var{Name: "e"},
+					Property: "user_id",
+				},
+			}),
+		}},
+		Kwargs: ast.MakeDict(map[string]ast.Ast{
+			"field": ast.MakeString("actor_type"),
+			"value": ast.MakeString("user"),
 		}),
 	}
 }
