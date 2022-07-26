@@ -40,7 +40,7 @@ type Server struct {
 }
 
 func FennelTracingInterceptor(ctx context.Context, req any, _ *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (resp any, err error) {
-	ctx = context.WithValue(ctx, timer.TraceKey{}, timer.TraceVal{})
+	ctx = timer.WithTracing(ctx)
 	return handler(ctx, req)
 }
 

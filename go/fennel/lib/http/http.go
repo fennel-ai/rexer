@@ -1,7 +1,6 @@
 package http
 
 import (
-	"context"
 	"fmt"
 	"net/http"
 	"time"
@@ -49,8 +48,11 @@ func Tracer(log *zap.Logger, slowThreshold time.Duration) mux.MiddlewareFunc {
 			route := mux.CurrentRoute(r)
 			path, _ := route.GetPathTemplate()
 			start := time.Now()
-			c := context.WithValue(r.Context(), timer.TraceKey{}, timer.TraceVal{})
-			ctx, span := otel.Tracer("fennel").Start(c, path)
+			ctx := r.Context()
+			ctx = timer.WithTracing(ctx)
+			// Start a span for the request, so we can extrace the trace id
+			// and add it as a response header.
+			ctx, span := otel.Tracer("fennel").Start(ctx, path)
 			traceId := timer.GetXrayTraceID(span)
 			rw.Header().Add("rexer-traceid", traceId)
 			h.ServeHTTP(rw, r.WithContext(ctx))

@@ -15,32 +15,38 @@ import (
 	oteltrace "go.opentelemetry.io/otel/trace"
 )
 
+var (
+	traceKey = struct{}{}
+	traceVal = struct{}{}
+)
+
 type TracerArgs struct {
 	OtlpEndpoint string `arg:"--otlp-endpoint,env:OTLP_ENDPOINT" default:""`
 }
 
-type TraceKey struct {}
-
-type TraceVal struct {}
+func WithTracing(ctx context.Context) context.Context {
+	ctx = context.WithValue(ctx, traceKey, traceVal)
+	return ctx
+}
 
 // PathSampler is a span sampler which samples a span if the parent context is embedded with an instance of `TraceKey`
 // and non-nil value
 type PathSampler struct {
-	samplingRatio float32
+	SamplingRatio float32
 }
 
 func (r PathSampler) ShouldSample(parameters sdktrace.SamplingParameters) sdktrace.SamplingResult {
 	c := parameters.ParentContext
-	traceVal := c.Value(TraceKey{})
+	traceVal := c.Value(traceKey)
 	psc := oteltrace.SpanContextFromContext(c)
 	decision := sdktrace.Drop
 	// TODO: consider making the ratio unleash configurable - this allows changing the sampling rate without
 	// restarting the services
-	if traceVal != nil && r.samplingRatio >= rand.Float32() {
+	if traceVal != nil && r.SamplingRatio >= rand.Float32() {
 		decision = sdktrace.RecordAndSample
 	}
 	return sdktrace.SamplingResult{
-		Decision: decision,
+		Decision:   decision,
 		Tracestate: psc.TraceState(),
 	}
 }
@@ -51,11 +57,7 @@ func (r PathSampler) Description() string {
 
 var _ sdktrace.Sampler = PathSampler{}
 
-func createPathSampler(samplingRatio float32) PathSampler {
-	return PathSampler{samplingRatio: samplingRatio}
-}
-
-func InitProvider(endpoint string) error {
+func InitProvider(endpoint string, sampler sdktrace.Sampler) error {
 	ctx := context.Background()
 
 	// create and start new OTLP trace exporter
@@ -64,8 +66,6 @@ func InitProvider(endpoint string) error {
 	if err != nil {
 		return fmt.Errorf("failed to create trace exporter, err: %v", err)
 	}
-
-	idg := xray.NewIDGenerator()
 
 	// TODO(mohit): Currently fails with a permission but should probably add this back
 	// See: https://github.com/open-telemetry/opentelemetry-go-contrib/issues/1856
@@ -86,8 +86,8 @@ func InitProvider(endpoint string) error {
 		// e.g. sdktrace.ParentBased(/*root*/ sdktrace.TraceIDRatioBased(0.01))
 		//
 		// Currently only sample a span if it's parent has been sampled. Currently the parent span will be sampled
-		// based on `PathSampler` and sample at 1%
-		sdktrace.WithSampler(sdktrace.ParentBased(createPathSampler(0.01))),
+		// based on the given sampler.
+		sdktrace.WithSampler(sdktrace.ParentBased(sampler)),
 		// By default, trace exporter exports 512 spans while maintaining a local queue of size `2048`
 		//
 		// Increase the queue size so that traces are dropped locally.
@@ -100,7 +100,8 @@ func InitProvider(endpoint string) error {
 		// Increase queuesize and the export batch size so that a lot of spans are not dropped.
 		// See - https://linear.app/fennel-ai/issue/REX-1288#comment-59690710 for rough estimations with live traffic
 		sdktrace.WithBatcher(traceExporter, sdktrace.WithMaxQueueSize(204800), sdktrace.WithMaxExportBatchSize(20480)),
-		sdktrace.WithIDGenerator(idg))
+		sdktrace.WithIDGenerator(xray.NewIDGenerator()),
+	)
 
 	otel.SetTracerProvider(tp)
 	otel.SetTextMapPropagator(xray.Propagator{})
@@ -109,7 +110,7 @@ func InitProvider(endpoint string) error {
 	// see - https://github.com/open-telemetry/opentelemetry-go/blob/main/sdk/trace/batch_span_processor.go#L268
 	//
 	// NOTE: This is temporary and should be eventually removed
-	stdrLogger := stdr.New(log.New(os.Stderr, "", log.LstdFlags | log.Lshortfile))
+	stdrLogger := stdr.New(log.New(os.Stderr, "", log.LstdFlags|log.Lshortfile))
 	// set global verbosity of the level as 5 since Debug messages in otel collector logger are logged with V-level = 5
 	// see - https://github.com/open-telemetry/opentelemetry-go/blob/575e1bb27025c73fd76f1e6b9dc2727b85867fdc/internal/global/internal_logging.go#L62
 	stdr.SetVerbosity(5)
