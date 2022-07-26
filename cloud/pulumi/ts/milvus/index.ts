@@ -73,6 +73,9 @@ export const setup = async (input: inputType): Promise<outputType> => {
         name: "milvus",
         createNamespace: true,
         namespace: "milvus",
+        // hardcode version to 3.0.29 which is the last release for 3.0.x version. 3.1.x supports milvus
+        // 2.1.x which our application code does not yet support
+        version: "3.0.29",
         // See: https://github.com/milvus-io/milvus-helm/blob/master/charts/milvus/values.yaml
         values: {
             "cluster": {
@@ -118,6 +121,22 @@ export const setup = async (input: inputType): Promise<outputType> => {
                 "ingress": {
                     "enabled": false,
                 },
+                // use affinity here since the helm chart does not allow setting nodeSelector for attu
+                "affinity": {
+                    "nodeAffinity": {
+                        "requiredDuringSchedulingIgnoredDuringExecution": {
+                            "nodeSelectorTerms": [{
+                                "matchExpressions": [{
+                                    "key": "kubernetes.io/arch",
+                                    "operator": "In",
+                                    "values": [
+                                        "amd64"
+                                    ]
+                                }]
+                            }]
+                        }
+                    }
+                }
             },
             // TODO(mohit): Configure this per-component once helm chart supports this
             // see: https://github.com/milvus-io/milvus-helm/issues/339
