@@ -406,7 +406,6 @@ func (m server) LogProfiles(w http.ResponseWriter, req *http.Request) {
 		handleBadRequest(w, "", err)
 		return
 	}
-	fmt.Println("LogProfiles: ", string(data))
 	profiles, err := GetProfilesFromRest(data)
 	if err != nil {
 		handleInternalServerError(w, "", err)

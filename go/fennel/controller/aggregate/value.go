@@ -281,9 +281,9 @@ func fetchOnlineAggregates(ctx context.Context, tier tier.Tier, aggMap map[ftype
 
 // Update the aggregates given a kafka consumer responsible for reading any stream
 func Update[I action.Action | profile.ProfileItem](ctx context.Context, tier tier.Tier, items []I, agg aggregate.Aggregate) error {
-	table, err := transform(tier, items, agg.Query)
+	table, err := Transform(tier, items, agg.Query)
 	if err != nil {
-		return fmt.Errorf("failed to transform actions: %w", err)
+		return fmt.Errorf("failed to Transform actions: %w", err)
 	}
 	tier.Logger.Info("Processed aggregate",
 		zap.String("name", string(agg.Name)),
@@ -334,11 +334,7 @@ func Update[I action.Action | profile.ProfileItem](ctx context.Context, tier tie
 	}
 }
 
-// ============================
-// Private helpers below
-// ============================
-
-func transform(tier tier.Tier, items any, query ast.Ast) (value.List, error) {
+func Transform(tier tier.Tier, items any, query ast.Ast) (value.List, error) {
 	bootargs := bootarg.Create(tier)
 	executor := engine.NewQueryExecutor(bootargs)
 	var table value.List
@@ -351,11 +347,17 @@ func transform(tier tier.Tier, items any, query ast.Ast) (value.List, error) {
 	case []profile.ProfileItem:
 		key = "profiles"
 		table, err = profile.ToList(t)
+	case []value.Value:
+		key = "stream"
+		table = value.NewList(t...)
 	default:
 		return table, fmt.Errorf("unsupported type: %T", t)
 	}
 	if err != nil {
 		return value.NewList(), err
+	}
+	if table.Len() == 0 {
+		return table, nil
 	}
 	result, err := executor.Exec(context.Background(), query, value.NewDict(map[string]value.Value{key: table}))
 	if err != nil {
@@ -363,11 +365,16 @@ func transform(tier tier.Tier, items any, query ast.Ast) (value.List, error) {
 	}
 	var ok bool
 	table, ok = result.(value.List)
+
 	if !ok {
 		return value.NewList(), fmt.Errorf("query did not transform items into a list")
 	}
 	return table, nil
 }
+
+// ============================
+// Private helpers below
+// ============================
 
 // TODO: Use AggId here as well to keep the formatting consistent with remote storage (MemoryDB)
 func makeCacheKey(name ftypes.AggName, key value.Value, kwargs value.Dict) string {

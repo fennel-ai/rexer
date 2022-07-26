@@ -145,10 +145,46 @@ func (pi ProfileItem) ToValueDict() (value.Dict, error) {
 	}), nil
 }
 
+func FromValueDict(dict value.Dict) (ProfileItem, error) {
+	var pi ProfileItem
+	if oid, ok := dict.Get("oid"); ok {
+		pi.Oid = ftypes.OidType(value.ToJSON(oid))
+	} else {
+		return pi, fmt.Errorf("oid not found in profile dict")
+	}
+
+	if otype, ok := dict.Get("otype"); ok {
+		pi.OType = ftypes.OType(otype.(value.String))
+	} else {
+		return pi, fmt.Errorf("otype not found in profile dict")
+	}
+
+	if key, ok := dict.Get("key"); ok {
+		pi.Key = string(key.(value.String))
+	} else {
+		return pi, fmt.Errorf("key not found in profile dict")
+	}
+
+	if timestamp, ok := dict.Get("timestamp"); ok {
+		pi.UpdateTime = uint64(timestamp.(value.Int))
+	} else {
+		return pi, fmt.Errorf("timestamp not found in profile dict")
+	}
+
+	if value, ok := dict.Get("value"); ok {
+		pi.Value = value
+	} else {
+		return pi, fmt.Errorf("value not found in profile dict")
+	}
+
+	return pi, nil
+}
+
 // ToList takes a list of profiles and arranges that in a value.List
 // else returns errors
 func ToList(profiles []ProfileItem) (value.List, error) {
 	table := value.List{}
+	table.Grow(len(profiles))
 	for i := range profiles {
 		d, err := profiles[i].ToValueDict()
 		if err != nil {

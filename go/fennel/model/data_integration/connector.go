@@ -73,6 +73,22 @@ func Retrieve(ctx context.Context, tier tier.Tier, name string) (data_integratio
 	return conn.ToConnector()
 }
 
+func RetrieveActive(ctx context.Context, tier tier.Tier) ([]data_integration.Connector, error) {
+	var conn []connectorSer
+	err := tier.DB.SelectContext(ctx, &conn, `SELECT * FROM connector WHERE active = True`)
+	if err != nil {
+		return nil, err
+	}
+	ret := make([]data_integration.Connector, len(conn))
+	for i := range conn {
+		ret[i], err = conn[i].ToConnector()
+		if err != nil {
+			return nil, err
+		}
+	}
+	return ret, nil
+}
+
 func Activate(ctx context.Context, tier tier.Tier, name string) error {
 	_, err := tier.DB.ExecContext(ctx, `UPDATE connector SET active = TRUE WHERE name = ?`, name)
 	return err

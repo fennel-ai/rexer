@@ -10,10 +10,10 @@ import (
 )
 
 const (
-	TEST_AIRBYTE_TOPIC   = "airbyte_topic"
 	TEST_SOURCE_ID       = "abc-123-test-source-id"
 	KAFKA_DESTINATION_ID = "abc-123-test-destination-id"
 	TEST_CONNECTION_ID   = "abc-123-test-connector-id"
+	TEST_TIER_ID         = 123
 )
 
 type testServer struct {
@@ -57,7 +57,7 @@ func (s *testServer) listDestinationsHandler(w http.ResponseWriter, r *http.Requ
 		{
 			DestinationId: KAFKA_DESTINATION_ID,
 			ConnectionConfiguration: KafkaConnectorConfig{
-				TopicPattern: TEST_AIRBYTE_TOPIC,
+				TopicPattern: getFullAirbyteKafkaTopic(TEST_TIER_ID),
 			},
 		},
 	}
@@ -135,7 +135,7 @@ func TestAirbyteSourceClient(t *testing.T) {
 	}
 	svr := newTestServer(t, Ts)
 	defer svr.Close()
-	client, err := NewClient(svr.URL, TEST_AIRBYTE_TOPIC)
+	client, err := NewClient(svr.URL, TEST_TIER_ID)
 	assert.NoError(t, err)
 	src := data_integration.S3{
 		Name: "test-source",
@@ -151,7 +151,7 @@ func TestAirbyteConnectorClient(t *testing.T) {
 	}
 	svr := newTestServer(t, Ts)
 	defer svr.Close()
-	client, err := NewClient(svr.URL, TEST_AIRBYTE_TOPIC)
+	client, err := NewClient(svr.URL, TEST_TIER_ID)
 	assert.NoError(t, err)
 	src := data_integration.S3{
 		Name: "test-source",
