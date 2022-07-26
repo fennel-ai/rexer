@@ -135,7 +135,7 @@ func TestAirbyteSourceClient(t *testing.T) {
 	}
 	svr := newTestServer(t, Ts)
 	defer svr.Close()
-	client, err := NewClient(svr.URL, TEST_AIRBYTE_TOPIC)
+	client, err := NewClient(svr.URL, 123)
 	assert.NoError(t, err)
 	src := data_integration.S3{
 		Name: "test-source",
@@ -151,7 +151,7 @@ func TestAirbyteConnectorClient(t *testing.T) {
 	}
 	svr := newTestServer(t, Ts)
 	defer svr.Close()
-	client, err := NewClient(svr.URL, TEST_AIRBYTE_TOPIC)
+	client, err := NewClient(svr.URL, 123)
 	assert.NoError(t, err)
 	src := data_integration.S3{
 		Name: "test-source",

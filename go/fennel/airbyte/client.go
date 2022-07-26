@@ -4,11 +4,13 @@ import (
 	"bytes"
 	"encoding/json"
 	"fennel/lib/data_integration"
+	"fennel/lib/ftypes"
 	"fmt"
 	"io/ioutil"
 	"net/http"
 	"net/url"
 	"reflect"
+	"time"
 )
 
 const (
@@ -22,7 +24,13 @@ const (
 	LIST_DESTINATIONS_PATH      = "/v1/destinations/list"
 )
 
-const REFRESH_FREQUENCY_MINUTES = 5
+const (
+	REFRESH_FREQUENCY_MINUTES = 5
+	AIRBYTE_KAFKA_TOPIC       = "streamlog"
+	PROFILE_DESTINATION       = "profile"
+	ACTION_DESTINATION        = "action"
+	AIRBYTE_DEDUP_TTL         = 30 * time.Minute
+)
 
 type Client struct {
 	httpclient *http.Client
@@ -37,7 +45,7 @@ func init() {
 	sourceDefinitionIdCache = make(map[string]string)
 }
 
-func NewClient(hostport, kafkaDestinationTopic string) (Client, error) {
+func NewClient(hostport string, tierId ftypes.RealmID) (Client, error) {
 	url, err := url.Parse(hostport)
 	if err != nil {
 		return Client{}, fmt.Errorf("failed to parse hostport [%s]: %v", hostport, err)
@@ -52,7 +60,7 @@ func NewClient(hostport, kafkaDestinationTopic string) (Client, error) {
 	if err != nil || workspaceId == "" {
 		return Client{}, fmt.Errorf("failed to set workspace: %w", err)
 	}
-	err = c.setKafkaDestinationId(kafkaDestinationTopic)
+	err = c.setKafkaDestinationId(tierId)
 	if err != nil || kafkaDestinationId == "" {
 		return Client{}, fmt.Errorf("failed to set kafka destination id: %w", err)
 	}
@@ -349,7 +357,7 @@ func (c Client) setWorkspace() error {
 }
 
 // TODO: create Kafka destination if no destination is found
-func (c Client) setKafkaDestinationId(kafkaDestinationTopic string) error {
+func (c Client) setKafkaDestinationId(tierId ftypes.RealmID) error {
 	var workspace struct {
 		WorkspaceId string `json:"workspaceId"`
 	}
@@ -372,7 +380,7 @@ func (c Client) setKafkaDestinationId(kafkaDestinationTopic string) error {
 	}
 
 	for _, destination := range destinationList["destinations"] {
-		if destination.ConnectionConfiguration.TopicPattern == kafkaDestinationTopic {
+		if destination.ConnectionConfiguration.TopicPattern == getFullAirbyteKafkaTopic(tierId) {
 			kafkaDestinationId = destination.DestinationId
 			return nil
 		}
@@ -403,4 +411,8 @@ func (c Client) getURL(path string) string {
 	url := *c.url
 	url.Path = url.Path + path
 	return url.String()
+}
+
+func getFullAirbyteKafkaTopic(tierId ftypes.RealmID) string {
+	return fmt.Sprintf("t_%d_%s", tierId, AIRBYTE_KAFKA_TOPIC)
 }

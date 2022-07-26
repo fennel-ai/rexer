@@ -2,6 +2,8 @@ package main
 
 import (
 	"context"
+	"fennel/airbyte"
+	"fennel/lib/value"
 	"fmt"
 	"log"
 	"math/rand"
@@ -17,6 +19,11 @@ import (
 	"fennel/lib/ftypes"
 	"fennel/lib/phaser"
 	"fennel/lib/profile"
+
+	connector "fennel/controller/data_integration"
+	"fennel/lib/data_integration"
+	connectorModel "fennel/model/data_integration"
+
 	_ "fennel/opdefs" // ensure that all operators are present in the binary
 	"fennel/resource"
 	"fennel/service/common"
@@ -147,6 +154,133 @@ func processAggregate(tr tier.Tier, agg libaggregate.Aggregate, stopCh <-chan st
 	return nil
 }
 
+var totalDedupedStreamLogs = promauto.NewCounterVec(
+	prometheus.CounterOpts{
+		Name: "deduped_stream_total",
+		Help: "Total number of deduped stream logs.",
+	},
+	[]string{"path", "action_type"},
+)
+
+func processConnector(tr tier.Tier, conn data_integration.Connector, stopCh <-chan struct{}) error {
+	consumer, err := tr.NewKafkaConsumer(kafka.ConsumerConfig{
+		Scope:        resource.NewTierScope(tr.ID),
+		Topic:        airbyte.AIRBYTE_KAFKA_TOPIC,
+		GroupID:      conn.Name,
+		OffsetPolicy: kafka.DefaultOffsetPolicy,
+	})
+	if err != nil {
+		return fmt.Errorf("unable to start consumer for connector: %s. Error: %v", conn.Name, err)
+	}
+
+	go func(tr tier.Tier, consumer kafka.FConsumer, conn data_integration.Connector, stopCh <-chan struct{}) {
+		defer consumer.Close()
+		// Ticker to log kafka lag every 1 minute.
+		kt := time.NewTicker(30 * time.Second)
+		defer kt.Stop()
+		ctx := context.Background()
+		commitFailures := 0
+		for run := 0; true; {
+			select {
+			case <-stopCh:
+				return
+			case <-kt.C:
+				logKafkaLag(tr, consumer)
+			default:
+				run++
+				values, hashes, err := connector.ReadBatch(ctx, consumer, 10000, time.Second*10)
+				if err != nil {
+					tr.Logger.Error("Error while reading batch of actions:", zap.Error(err))
+					continue
+				}
+				tr.Logger.Debug("Processing connector", zap.String("name", conn.Name), zap.Int("run", run), zap.Int("values", len(values)))
+
+				if len(values) == 0 {
+					continue
+				}
+
+				var keys []string
+				var vals []interface{}
+				var ttls []time.Duration
+				var ids []int
+				for i, h := range hashes {
+					// otherwise, store them for duplication check
+					keys = append(keys, string(h[:]))
+					vals = append(vals, 1)
+					ttls = append(ttls, airbyte.AIRBYTE_DEDUP_TTL)
+					ids = append(ids, i)
+				}
+				// Check for dedup with a pipeline
+				ok, err := tr.Redis.SetNXPipelined(ctx, keys, vals, ttls)
+				if err != nil {
+					tr.Logger.Error("Error while checking for dedup from stream", zap.Error(err))
+					return
+				}
+
+				var batch []value.Value
+				for i := range ok {
+					if ok[i] {
+						// If dedup key of an action was not set, add to batch
+						batch = append(batch, values[ids[i]])
+					} else {
+						//batch = append(batch, values[ids[i]])
+						totalDedupedStreamLogs.WithLabelValues("airbyte_log", conn.Name).Inc()
+					}
+				}
+
+				// Process the deduped stream
+				table, err := aggregate.Transform(tr, batch, conn.Query)
+				if err != nil {
+					tr.Logger.Error("Error while transforming stream", zap.Error(err))
+					continue
+				}
+				tr.Logger.Debug("Processing connector after transform", zap.String("name", conn.Name), zap.Int("run", run), zap.Int("transformed values", table.Len()))
+
+				// fwd to controller
+				switch conn.Destination {
+				case airbyte.ACTION_DESTINATION:
+					// Convert to actions
+					actionBatch := make([]action.Action, table.Len())
+					for i := 0; i < table.Len(); i++ {
+						row, _ := table.At(i)
+						actionBatch[i], err = action.FromValueDict(row.(value.Dict))
+						if err != nil {
+							tr.Logger.Error("Error while converting to action:", zap.Error(err))
+							continue
+						}
+					}
+					if err = action2.BatchInsert(ctx, tr, actionBatch); err != nil {
+						tr.Logger.Error("Error while inserting actions:", zap.Error(err))
+						continue
+					}
+				case airbyte.PROFILE_DESTINATION:
+					// Convert to profiles
+					profileBatch := make([]profile.ProfileItem, table.Len())
+					for i := 0; i < table.Len(); i++ {
+						row, _ := table.At(i)
+						profileBatch[i], err = profile.FromValueDict(row.(value.Dict))
+						if err != nil {
+							tr.Logger.Error("Error while converting to profile:", zap.Error(err))
+							continue
+						}
+					}
+					if err = profile2.SetMulti(ctx, tr, profileBatch); err != nil {
+						tr.Logger.Error("Error while inserting profile", zap.Error(err))
+					}
+				}
+				_, err = consumer.Commit()
+				if err != nil {
+					commitFailures++
+					if commitFailures > 10 {
+						tr.Logger.Panic("Failed to commit kafka offset for airbyte streams", zap.Error(err))
+					}
+				}
+			}
+		}
+	}(tr, consumer, conn, stopCh)
+	return nil
+}
+
 func startActionDBInsertion(tr tier.Tier) error {
 	consumer, err := tr.NewKafkaConsumer(kafka.ConsumerConfig{
 		Scope:        resource.NewTierScope(tr.ID),
@@ -256,6 +390,41 @@ func startPhaserProcessing(tr tier.Tier) error {
 	return nil
 }
 
+func startConnectorProcessing(tr tier.Tier) error {
+	go func(tr tier.Tier) {
+		// Map from connector name to channel to stop the connector processing.
+		processedConnectors := make(map[string]chan<- struct{})
+		ticker := time.NewTicker(time.Second * 30)
+		for ; true; <-ticker.C {
+			conns, err := connectorModel.RetrieveActive(context.Background(), tr)
+			if err != nil {
+				continue
+			}
+			connNames := make(map[string]struct{}, len(conns))
+			for _, conn := range conns {
+				connNames[conn.Name] = struct{}{}
+				if _, ok := processedConnectors[conn.Name]; !ok {
+					log.Printf("Retrieved a new connector: %s", conn.Name)
+					ch := make(chan struct{})
+					err := processConnector(tr, conn, ch)
+					if err != nil {
+						tr.Logger.Error("Could not start connector processing", zap.String("Connector Name", string(conn.Name)), zap.Error(err))
+					}
+					processedConnectors[conn.Name] = ch
+				}
+			}
+			// Stop processing any aggregates that are no longer active.
+			for a := range processedConnectors {
+				if _, ok := connNames[a]; !ok {
+					close(processedConnectors[a])
+					delete(processedConnectors, a)
+				}
+			}
+		}
+	}(tr)
+	return nil
+}
+
 func main() {
 	// seed random number generator so that all uses of rand work well
 	rand.Seed(time.Now().UnixNano())
@@ -281,7 +450,7 @@ func main() {
 
 	// Note: don't delete this log line - e2e tests rely on this to be printed
 	// to know that server has initialized and is ready to take traffic
-	log.Println("server is ready...")
+	log.Println("countaggr server is ready...")
 
 	// first kick off a goroutine to transfer actions from kafka to DB
 	if err = startActionDBInsertion(tr); err != nil {
@@ -296,8 +465,11 @@ func main() {
 		panic(err)
 	}
 
-	if err = startAggregateProcessing(tr); err != nil {
+	if err = startConnectorProcessing(tr); err != nil {
 		panic(err)
 	}
 
+	if err = startAggregateProcessing(tr); err != nil {
+		panic(err)
+	}
 }

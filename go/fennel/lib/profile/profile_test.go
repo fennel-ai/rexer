@@ -69,3 +69,48 @@ func TestProfileItemJSON(t *testing.T) {
 		assert.Equal(t, tst.str, string(ser))
 	}
 }
+
+func TestActionFromValueDict(t *testing.T) {
+	tests := []struct {
+		v value.Dict
+		p ProfileItem
+	}{{
+		v: value.NewDict(map[string]value.Value{
+			"oid":       value.Int(1),
+			"otype":     value.String("user"),
+			"timestamp": value.Int(9),
+			"key":       value.String("random"),
+			"value":     value.Int(8),
+		}),
+		p: ProfileItem{
+			OType:      "user",
+			Oid:        "1",
+			Key:        "random",
+			Value:      value.Int(8),
+			UpdateTime: 9,
+		},
+	}, {
+		v: value.NewDict(map[string]value.Value{
+			"oid":       value.String("aditya"),
+			"otype":     value.String("user"),
+			"timestamp": value.Int(9),
+			"key":       value.String("random"),
+			"value":     value.NewList(value.Int(8), value.String("abc")),
+		}),
+		p: ProfileItem{
+			OType:      "user",
+			Oid:        `"aditya"`,
+			Key:        "random",
+			Value:      value.NewList(value.Int(8), value.String("abc")),
+			UpdateTime: 9,
+		},
+	}}
+	for _, test := range tests {
+		p, err := FromValueDict(test.v)
+		assert.NoError(t, err)
+		d, err := p.ToValueDict()
+		assert.NoError(t, err)
+		assert.Equal(t, test.v, d)
+		assert.Equal(t, test.p, p)
+	}
+}

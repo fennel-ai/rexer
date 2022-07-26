@@ -11,7 +11,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestAction_ToValueDict(t *testing.T) {
+func TestAction_ToFromValueDict(t *testing.T) {
 	a := Action{
 		ActionID:   1,
 		ActorID:    "3",
@@ -35,6 +35,9 @@ func TestAction_ToValueDict(t *testing.T) {
 		"metadata":    value.Int(8),
 	})
 	d, err := a.ToValueDict()
+	a2, err := FromValueDict(d)
+	assert.NoError(t, err)
+	assert.True(t, a.Equals(a2, false))
 	assert.NoError(t, err)
 	assert.Equal(t, expected, d)
 }
@@ -54,6 +57,89 @@ func TestToList(t *testing.T) {
 	found, err := ToList([]Action{a1, a2, a3})
 	assert.NoError(t, err)
 	assert.Equal(t, expected, found)
+}
+
+func TestActionFromValueDict(t *testing.T) {
+	tests := []struct {
+		v value.Dict
+		a Action
+	}{{
+		v: value.NewDict(map[string]value.Value{
+			"action_id":   value.Int(1),
+			"actor_id":    value.Int(3),
+			"actor_type":  value.String("user"),
+			"target_id":   value.String("f9rp2"),
+			"target_type": value.String("video"),
+			"action_type": value.String("like"),
+			"timestamp":   value.Int(9),
+			"request_id":  value.Int(10),
+			"metadata":    value.Int(8),
+		}),
+		a: Action{
+			ActionID:   1,
+			ActorID:    "3",
+			ActorType:  "user",
+			TargetID:   `"f9rp2"`,
+			TargetType: "video",
+			ActionType: "like",
+			Timestamp:  9,
+			RequestID:  "10",
+			Metadata:   value.Int(8),
+		},
+	}, {
+		v: value.NewDict(map[string]value.Value{
+			"action_id":   value.Int(1),
+			"actor_id":    value.String("aditya"),
+			"actor_type":  value.String("user"),
+			"target_id":   value.Int(5),
+			"target_type": value.String("video"),
+			"action_type": value.String("like"),
+			"timestamp":   value.Int(9),
+			"request_id":  value.Int(10),
+			"metadata":    value.Int(8),
+		}),
+		a: Action{
+			ActionID:   1,
+			ActorID:    `"aditya"`,
+			ActorType:  "user",
+			TargetID:   `5`,
+			TargetType: "video",
+			ActionType: "like",
+			Timestamp:  9,
+			RequestID:  "10",
+			Metadata:   value.Int(8),
+		},
+	}, {
+		v: value.NewDict(map[string]value.Value{
+			"action_id":   value.Int(1),
+			"actor_id":    value.String("aditya"),
+			"actor_type":  value.String("user"),
+			"target_id":   value.String("f9rp2"),
+			"target_type": value.String("video"),
+			"action_type": value.String("like"),
+			"timestamp":   value.Int(9),
+			"request_id":  value.Int(10),
+			"metadata":    value.Int(8),
+		}), a: Action{
+			ActionID:   1,
+			ActorID:    `"aditya"`,
+			ActorType:  "user",
+			TargetID:   `"f9rp2"`,
+			TargetType: "video",
+			ActionType: "like",
+			Timestamp:  9,
+			RequestID:  "10",
+			Metadata:   value.Int(8),
+		},
+	}}
+	for _, test := range tests {
+		a, err := FromValueDict(test.v)
+		assert.NoError(t, err)
+		d, err := a.ToValueDict()
+		assert.NoError(t, err)
+		assert.Equal(t, test.v, d)
+		assert.Equal(t, test.a, a)
+	}
 }
 
 func TestActionJSON(t *testing.T) {

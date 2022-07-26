@@ -280,7 +280,7 @@ func TestTransformActions(t *testing.T) {
 		actions = append(actions, a1, a2)
 	}
 
-	table, err := transform(tier, actions, getQuery())
+	table, err := Transform(tier, actions, getQuery())
 	assert.NoError(t, err)
 	assert.Equal(t, 100, table.Len())
 	for i := 0; i < table.Len(); i++ {

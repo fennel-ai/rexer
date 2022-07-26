@@ -137,10 +137,66 @@ func (a Action) ToValueDict() (value.Dict, error) {
 	}), nil
 }
 
+func FromValueDict(dict value.Dict) (Action, error) {
+	var action Action
+	if actionID, ok := dict.Get("action_id"); ok {
+		action.ActionID = ftypes.IDType(actionID.(value.Int))
+	}
+
+	if actorID, ok := dict.Get("actor_id"); ok {
+		action.ActorID = ftypes.OidType(value.ToJSON(actorID))
+	} else {
+		return action, fmt.Errorf("action missing actor ID")
+	}
+
+	if actorType, ok := dict.Get("actor_type"); ok {
+		action.ActorType = ftypes.OType(actorType.(value.String))
+	} else {
+		return action, fmt.Errorf("action missing actor type")
+	}
+
+	if targetID, ok := dict.Get("target_id"); ok {
+		action.TargetID = ftypes.OidType(value.ToJSON(targetID))
+	} else {
+		return action, fmt.Errorf("action missing target ID")
+	}
+
+	if targetType, ok := dict.Get("target_type"); ok {
+		action.TargetType = ftypes.OType(targetType.(value.String))
+	} else {
+		return action, fmt.Errorf("action missing target type")
+	}
+
+	if actionType, ok := dict.Get("action_type"); ok {
+		action.ActionType = ftypes.ActionType(actionType.(value.String))
+	} else {
+		return action, fmt.Errorf("action missing action type")
+	}
+
+	if timestamp, ok := dict.Get("timestamp"); ok {
+		action.Timestamp = ftypes.Timestamp(int(timestamp.(value.Int)))
+	} else {
+		return action, fmt.Errorf("action missing timestamp")
+	}
+
+	if requestID, ok := dict.Get("request_id"); ok {
+		action.RequestID = ftypes.RequestID(value.ToJSON(requestID))
+	} else {
+		return action, fmt.Errorf("action missing request ID")
+	}
+
+	if metadata, ok := dict.Get("metadata"); ok {
+		action.Metadata = metadata
+	}
+
+	return action, nil
+}
+
 // ToList takes a list of actions and arranges that in a value.List
 // else returns errors
 func ToList(actions []Action) (value.List, error) {
 	table := value.List{}
+	table.Grow(len(actions))
 	for i := range actions {
 		d, err := actions[i].ToValueDict()
 		if err != nil {

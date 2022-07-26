@@ -34,7 +34,7 @@ func (c Connector) Validate() error {
 	if c.Version == "" {
 		return fmt.Errorf("version is required")
 	}
-	if c.Destination != "actions" && c.Destination != "profiles" {
+	if c.Destination != "action" && c.Destination != "profile" {
 		return fmt.Errorf("invalid destination: %s", c.Destination)
 	}
 	if c.Query == nil {
