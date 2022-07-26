@@ -301,12 +301,12 @@ func TestTransformValues(t *testing.T) {
 	for i := 0; i < 2; i++ {
 		// our query only looks at Like action, not share
 		values = append(values, value.NewDict(map[string]value.Value{
-			"user_id":        value.Int(i + 123),
-			"connector_name": value.String("conn1"),
+			"user_id":     value.Int(i + 123),
+			"stream_name": value.String("conn1"),
 		}))
 		values = append(values, value.NewDict(map[string]value.Value{
-			"user_id":        value.Int(i + 11000),
-			"connector_name": value.String("conn2"),
+			"user_id":     value.Int(i + 11000),
+			"stream_name": value.String("conn2"),
 		}))
 	}
 	table, err := Transform(tier, values, getValueQuery())
@@ -368,7 +368,7 @@ func getValueQuery() ast.Ast {
 				Vars:      []string{"s"},
 				Kwargs: ast.MakeDict(map[string]ast.Ast{
 					"where": &ast.Binary{
-						Left:  &ast.Lookup{On: &ast.Var{Name: "s"}, Property: "connector_name"},
+						Left:  &ast.Lookup{On: &ast.Var{Name: "s"}, Property: "stream_name"},
 						Op:    "==",
 						Right: ast.MakeString("conn1"),
 					},
