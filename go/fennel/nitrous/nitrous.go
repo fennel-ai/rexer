@@ -30,7 +30,10 @@ type NitrousArgs struct {
 	BadgerBlockCacheMB int64          `arg:"--badger_block_cache_mb,env:BADGER_BLOCK_CACHE_MB" json:"badger_block_cache_mb,omitempty"`
 	RistrettoMaxCost   uint64         `arg:"--ristretto_max_cost,env:RISTRETTO_MAX_COST" json:"ristretto_max_cost,omitempty"`
 	RistrettoAvgCost   uint64         `arg:"--ristretto_avg_cost,env:RISTRETTO_AVG_COST" json:"ristretto_avg_cost,omitempty" default:"100"`
-	Dev                bool           `arg:"--dev" default:"true" json:"dev,omitempty"`
+	// Hostname should be unique for each instance of nitrous. The HOSTNAME environment
+	// variable is uniquely set for each replica of a StatefulSet in k8s.
+	Hostname string `args:"--hostname,env:HOSTNAME" json:"hostname" default:"localhost"`
+	Dev      bool   `arg:"--dev" default:"true" json:"dev,omitempty"`
 }
 
 func (args NitrousArgs) Valid() error {
@@ -42,6 +45,7 @@ type KafkaConsumerFactory func(libkafka.ConsumerConfig) (libkafka.FConsumer, err
 
 type Nitrous struct {
 	PlaneID              ftypes.RealmID
+	Identity             string
 	Logger               *zap.Logger
 	Clock                clock.Clock
 	Store                hangar.Hangar
@@ -97,6 +101,7 @@ func CreateFromArgs(args NitrousArgs) (Nitrous, error) {
 
 	return Nitrous{
 		PlaneID:              scope.ID(),
+		Identity:             args.Hostname,
 		KafkaConsumerFactory: consumerFactory,
 		Clock:                clock.New(),
 		Logger:               logger,
