@@ -1,6 +1,6 @@
-import { Button, Form, Input } from "antd";
+import { Button, Form, Input, notification } from "antd";
 import { LoadingOutlined } from '@ant-design/icons';
-import axios from "axios";
+import axios, { AxiosError } from "axios";
 import { useState } from "react";
 
 import styles from "../styles/signon/SignIn.module.scss";
@@ -13,7 +13,7 @@ function SignIn() {
                 <hr className={styles.logoDivider} />
                 <div className={styles.signInHeader}>
                     <h4>Sign In</h4>
-                    <a href="#">Sign up instead?</a>
+                    <a href="/signup">Sign up instead?</a>
                 </div>
                 <SignInForm />
             </div>
@@ -24,6 +24,10 @@ function SignIn() {
 interface FormValues {
     email: string,
     password: string,
+}
+
+interface Error {
+    error: string,
 }
 
 function SignInForm() {
@@ -39,9 +43,13 @@ function SignInForm() {
             setSubmitting(false);
             console.log(response);
         })
-        .catch(function (error) {
+        .catch(function (error: AxiosError) {
             setSubmitting(false);
-            console.log(error);
+            notification.error({
+                message: "Something went wrong",
+                description: (error.response?.data as Error).error,
+                placement: "bottomRight",
+            })
         });
     };
 

@@ -2,6 +2,7 @@ package bridge
 
 import (
 	"net/http"
+	"net/mail"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -19,16 +20,23 @@ type Form struct {
 }
 
 type User struct {
-	Email    string
-	Password string
+	Email    string `json:"email"`
+	Password string `json:"-"`
+}
+
+func NewUserFromForm(f *Form) (*User, error) {
+	hash, err := bcrypt.GenerateFromPassword([]byte(f.Password), 14)
+
+	if err != nil {
+		return nil, err
+	}
+	return &User{
+		Email:    f.Email,
+		Password: string(hash),
+	}, nil
 }
 
 var users = make(map[string]User)
-
-func hashPassword(password string) (string, error) {
-	bytes, err := bcrypt.GenerateFromPassword([]byte(password), 14)
-	return string(bytes), err
-}
 
 func checkPasswordHash(password, hash string) bool {
 	err := bcrypt.CompareHashAndPassword([]byte(hash), []byte(password))
@@ -47,38 +55,66 @@ func SignUp(c *gin.Context) {
 	time.Sleep(time.Second)
 
 	var form Form
-	_ = c.BindJSON(&form)
-
-	if _, exists := users[form.Email]; exists || form.Email == "" {
-		c.JSON(http.StatusOK, gin.H{
-			"result": "user already exists or empty",
-		})
-	} else {
-		hash, _ := hashPassword(form.Password)
-		user := User{
-			Email:    form.Email,
-			Password: hash,
-		}
-		users[user.Email] = user
-		c.JSON(http.StatusOK, gin.H{
-			"email":    user.Email,
-			"password": user.Password,
-		})
+	if err := c.BindJSON(&form); err != nil {
+		// BindJSON would write status
+		return
 	}
+
+	if _, err := mail.ParseAddress(form.Email); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "Bad email address",
+		})
+		return
+	}
+
+	if _, prs := users[form.Email]; prs {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "User already exists",
+		})
+		return
+	}
+
+	user, err := NewUserFromForm(&form)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "Illegal password",
+		})
+		return
+	}
+	users[user.Email] = *user
+	c.JSON(http.StatusOK, gin.H{
+		"data": gin.H{
+			"user": user,
+		},
+	})
 }
 
 func SignIn(c *gin.Context) {
-	time.Sleep(2 * time.Second)
+	time.Sleep(time.Second) // TODO: remove
 
 	var form Form
-	_ = c.BindJSON(&form)
-	if user, ok := users[form.Email]; ok && checkPasswordHash(form.Password, user.Password) {
+	if err := c.BindJSON(&form); err != nil {
+		// BindJSON would write status
+		return
+	}
+
+	user, prs := users[form.Email]
+
+	if !prs {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "User not found",
+		})
+		return
+	}
+	if checkPasswordHash(form.Password, user.Password) {
 		c.JSON(http.StatusOK, gin.H{
-			"result": "found user",
+			"data": gin.H{
+				"user": user,
+			},
 		})
 	} else {
-		c.JSON(http.StatusOK, gin.H{
-			"result": "user not found",
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "Wrong password",
 		})
 	}
 }
