@@ -119,10 +119,9 @@ export const setup = async (input: inputType): Promise<outputType> => {
                     "enabled": false,
                 },
             },
-            // TODO(mohit): Configure this per-component once helm chart supports this
-            // see: https://github.com/milvus-io/milvus-helm/issues/339
+            // enable metrics so that they are scraped from all the worker nodes (data, query and index)
             "metrics": {
-                "enabled": false,
+                "enabled": true,
             },
             // Milvus services are not arm64 compatible. Set this at the global level.
             "nodeSelector": {
