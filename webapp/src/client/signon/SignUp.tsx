@@ -1,4 +1,8 @@
 import { Button, Form, Input } from "antd";
+import { LoadingOutlined } from '@ant-design/icons';
+import axios from "axios";
+import { useState } from "react";
+
 import styles from "../styles/signon/SignUp.module.scss";
 
 function SignUp() {
@@ -9,7 +13,7 @@ function SignUp() {
                 <hr className={styles.logoDivider} />
                 <div className={styles.signUpHeader}>
                     <h4>Sign up</h4>
-                    <div>Login Instead</div>
+                    <a href="#">Login instead?</a>
                 </div>
                 <SignUpForm />
             </div>
@@ -17,14 +21,33 @@ function SignUp() {
     );
 }
 
+interface FormValues {
+    email: string,
+    password: string,
+}
+
 function SignUpForm() {
-    const onFinish = () => {
-        console.log("sign up");
+    const [submitting, setSubmitting] = useState(false);
+
+    const onFinish = (values: FormValues) => {
+        setSubmitting(true);
+        axios.post("/signup", {
+            email: values.email,
+            password: values.password,
+        })
+        .then(function (response) {
+            setSubmitting(false);
+            console.log(response);
+        })
+        .catch(function (error) {
+            setSubmitting(false);
+            console.log(error);
+        });
     };
 
     return (
         <Form
-            name="normal_login"
+            name="signup_form"
             className={styles.signUpForm}
             initialValues={{ remember: true }}
             onFinish={onFinish}
@@ -70,8 +93,8 @@ function SignUpForm() {
                 />
             </Form.Item>
             <Form.Item className={styles.signUpFormItem}>
-                <Button type="primary" htmlType="submit" className={styles.signUpFormButton}>
-                    Sign Up
+                <Button type="primary" htmlType="submit" className={styles.signUpFormButton} disabled={submitting}>
+                    {submitting ? (<div> <LoadingOutlined spin /> Signing Up... </div>) : "Sign Up"}
                 </Button>
             </Form.Item>
       </Form>
