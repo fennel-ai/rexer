@@ -302,7 +302,11 @@ export const setup = async (input: inputType) => {
                                     {
                                         name: "GOMAXPROCS",
                                         value: "128",
-                                    }
+                                    },
+                                    {
+                                        name: "OTEL_SERVICE_NAME",
+                                        value: "nitrous",
+                                    },
                                 ],
                                 resources: {
                                     requests: {
