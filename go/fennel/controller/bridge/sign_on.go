@@ -68,6 +68,8 @@ func SignUp(c *gin.Context) {
 }
 
 func SignIn(c *gin.Context) {
+	time.Sleep(2 * time.Second)
+
 	var form Form
 	_ = c.BindJSON(&form)
 	if user, ok := users[form.Email]; ok && checkPasswordHash(form.Password, user.Password) {

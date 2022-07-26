@@ -1,4 +1,8 @@
 import { Button, Form, Input } from "antd";
+import { LoadingOutlined } from '@ant-design/icons';
+import axios from "axios";
+import { useState } from "react";
+
 import styles from "../styles/signon/SignIn.module.scss";
 
 function SignIn() {
@@ -17,9 +21,28 @@ function SignIn() {
     );
 }
 
+interface FormValues {
+    email: string,
+    password: string,
+}
+
 function SignInForm() {
-    const onFinish = () => {
-        console.log("sign in");
+    const [submitting, setSubmitting] = useState(false);
+
+    const onFinish = (values: FormValues) => {
+        setSubmitting(true);
+        axios.post("/signin", {
+            email: values.email,
+            password: values.password,
+        })
+        .then(function (response) {
+            setSubmitting(false);
+            console.log(response);
+        })
+        .catch(function (error) {
+            setSubmitting(false);
+            console.log(error);
+        });
     };
 
     return (
@@ -50,8 +73,8 @@ function SignInForm() {
                 />
             </Form.Item>
             <Form.Item className={styles.signInFormItem}>
-                <Button type="primary" htmlType="submit" className={styles.signInFormButton}>
-                    Sign In
+                <Button type="primary" htmlType="submit" className={styles.signInFormButton} disabled={submitting}>
+                {submitting ? (<div> <LoadingOutlined spin /> Signing In... </div>) : "Sign In"}
                 </Button>
             </Form.Item>
             <a href="#">Forgot your password</a>
