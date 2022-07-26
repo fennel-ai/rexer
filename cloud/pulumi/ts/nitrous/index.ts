@@ -7,6 +7,7 @@ import * as kafka from "@pulumi/kafka";
 import * as process from "process";
 import * as childProcess from "child_process";
 import * as util from "../lib/util";
+import { NONAME } from "dns";
 
 
 export const plugins = {
@@ -36,6 +37,7 @@ const DEFAULT_MEMORY_LIMIT = "4G"
 export const name = "nitrous"
 export const namespace = "fennel"
 export const servicePort = 3333;
+const root = process.env["FENNEL_ROOT"]!
 
 export type binlogConfig = {
     partitions?: number,
@@ -85,7 +87,7 @@ export type inputType = {
 
 export type outputType = {
     appLabels: { [key: string]: string },
-    svc: pulumi.Output<k8s.core.v1.Service>,
+    svc: k8s.core.v1.Service,
 }
 
 function setupBinlog(input: inputType) {
@@ -124,6 +126,171 @@ function setupBinlog(input: inputType) {
             name: "kafka-conf",
         }
     }, { provider: k8sProvider, deleteBeforeReplace: true })
+}
+
+function createBackupService(input: inputType, k8sProvider: k8s.Provider,
+    imageName: pulumi.Input<string>, bucketName: string) {
+    const name = "nitrous-backup"
+    const appLabels = { app: name };
+    const metricsPort = 2112;
+    let platformConfig = getPlatformSpecificConfig(input)
+
+    const nitrousBackupSvc = new k8s.core.v1.Service("nitrous-backup-svc", {
+        metadata: {
+            labels: appLabels,
+            name: name,
+        },
+        spec: {
+            clusterIP: "None",
+        }
+    }, { provider: k8sProvider, deleteBeforeReplace: true })
+
+    const backupStatefulState = new k8s.apps.v1.StatefulSet("nitrous-backup-statefulset", {
+        metadata: {
+            name: "nitrous-backup",
+            labels: appLabels,
+        },
+        spec: {
+            serviceName: nitrousBackupSvc.metadata.name,
+            selector: { matchLabels: appLabels },
+            replicas: 1,
+            template: {
+                metadata: {
+                    labels: appLabels,
+                    annotations: {
+                        // Skip Linkerd protocol detection for mysql and redis
+                        // instances running outside the cluster.
+                        // See: https://linkerd.io/2.11/features/protocol-detection/.
+                        "config.linkerd.io/skip-outbound-ports": "3306,6379",
+                        "prometheus.io/scrape": "true",
+                        "prometheus.io/port": metricsPort.toString(),
+                    }
+                },
+                spec: {
+                    nodeSelector: platformConfig.nodeSelector,
+                    containers: [
+                        {
+                            command: [
+                                "/root/nitrous",
+                                "--region",
+                                `${input.region}`,
+                                "--listen-port",
+                                `${servicePort}`,
+                                "--metrics-port",
+                                `${metricsPort}`,
+                                "--plane-id",
+                                `${input.planeId}`,
+                                "--badger_dir",
+                                "/oxide",
+                                "--badger_block_cache_mb",
+                                `${input.blockCacheMB}`,
+                                "--ristretto_max_cost",
+                                (input.kvCacheMB << 20).toString(),
+                                "--otlp-endpoint",
+                                input.otlpEndpoint,
+                                "--backup-bucket",
+                                bucketName,
+                                "--shard-name",
+                                "default",
+                                "--dev=false",
+                                "--backup-node",
+                            ],
+                            name: name,
+                            image: imageName,
+                            imagePullPolicy: "Always",
+                            ports: [
+                                {
+                                    containerPort: metricsPort,
+                                    protocol: "TCP",
+                                },
+                            ],
+                            env: [
+                                {
+                                    name: "KAFKA_SERVER_ADDRESS",
+                                    valueFrom: {
+                                        secretKeyRef: {
+                                            name: "kafka-conf",
+                                            key: "server",
+                                        }
+                                    }
+                                },
+                                {
+                                    name: "KAFKA_USERNAME",
+                                    valueFrom: {
+                                        secretKeyRef: {
+                                            name: "kafka-conf",
+                                            key: "username",
+                                        }
+                                    }
+                                },
+                                {
+                                    name: "KAFKA_PASSWORD",
+                                    valueFrom: {
+                                        secretKeyRef: {
+                                            name: "kafka-conf",
+                                            key: "password",
+                                        }
+                                    }
+                                },
+                            ],
+                            resources: {
+                                requests: {
+                                    "cpu": input.resourceConf?.cpu.request || DEFAULT_CPU_REQUEST,
+                                    "memory": input.resourceConf?.memory.request || DEFAULT_MEMORY_REQUEST,
+                                },
+                                limits: {
+                                    "cpu": input.resourceConf?.cpu.limit || DEFAULT_CPU_LIMIT,
+                                    "memory": input.resourceConf?.memory.limit || DEFAULT_MEMORY_LIMIT,
+                                }
+                            },
+                            volumeMounts: [
+                                {
+                                    name: "badgerdb",
+                                    mountPath: "/oxide",
+                                }
+                            ],
+                        },
+                    ],
+                },
+            },
+            volumeClaimTemplates: [
+                {
+                    metadata: {
+                        name: "badgerdb",
+                    },
+                    spec: {
+                        accessModes: ["ReadWriteOnce"],
+                        // if the storage class is undefined, default storage class is used by the PVC.
+                        storageClassName: input.storageClass,
+                        resources: {
+                            requests: {
+                                storage: `${input.storageCapacityGB}Gi`,
+                            },
+                        }
+                    }
+                }
+            ]
+        },
+    }, { provider: k8sProvider, deleteBeforeReplace: true })
+}
+
+function getPlatformSpecificConfig(input: inputType) {
+    let nodeSelector = input.nodeLabels || {};
+    let dockerfile, platform;
+    if (input.useAmd64 || DEFAULT_USE_AMD64) {
+        dockerfile = path.join(root, "dockerfiles/nitrous.dockerfile")
+        platform = "linux/amd64"
+        nodeSelector["kubernetes.io/arch"] = "amd64"
+    } else {
+        dockerfile = path.join(root, "dockerfiles/nitrous_arm64.dockerfile")
+        platform = "linux/arm64"
+        nodeSelector["kubernetes.io/arch"] = "arm64"
+    }
+    return {
+        "dockerfile": dockerfile,
+        "platform": platform,
+        "nodeSelector": nodeSelector,
+    }
 }
 
 export const setup = async (input: inputType) => {
@@ -172,7 +339,6 @@ export const setup = async (input: inputType) => {
         };
     });
 
-    const root = process.env["FENNEL_ROOT"]!
     // Get the (hash) commit id.
     // NOTE: This requires git to be installed and DOES NOT take local changes or commits into consideration.
     const hashId = childProcess.execSync('git rev-parse --short HEAD').toString().trim()
@@ -181,23 +347,13 @@ export const setup = async (input: inputType) => {
     })
 
     // Build and publish the container image.
-    let nodeSelector = input.nodeLabels || {};
-    let dockerfile, platform;
-    if (input.useAmd64 || DEFAULT_USE_AMD64) {
-        dockerfile = path.join(root, "dockerfiles/nitrous.dockerfile")
-        platform = "linux/amd64"
-        nodeSelector["kubernetes.io/arch"] = "amd64"
-    } else {
-        dockerfile = path.join(root, "dockerfiles/nitrous_arm64.dockerfile")
-        platform = "linux/arm64"
-        nodeSelector["kubernetes.io/arch"] = "arm64"
-    }
+    let platformConfig = getPlatformSpecificConfig(input)
     const image = new docker.Image("nitrous-img", {
         build: {
             context: root,
-            dockerfile: dockerfile,
+            dockerfile: platformConfig.dockerfile,
             args: {
-                "platform": platform,
+                "platform": platformConfig.platform,
             },
         },
         imageName: imageName,
@@ -223,156 +379,155 @@ export const setup = async (input: inputType) => {
         console.log('storageClass is undefined for Nitrous - will use default storage class for persistent volume.')
     }
 
-    const appStatefulset = image.imageName.apply(() => {
-        return new k8s.apps.v1.StatefulSet("nitrous-statefulset", {
-            metadata: {
-                name: "nitrous",
-                labels: appLabels,
-            },
-            spec: {
-                serviceName: "nitrous",
-                selector: { matchLabels: appLabels },
-                replicas: input.replicas || DEFAULT_REPLICAS,
-                template: {
-                    metadata: {
-                        labels: appLabels,
-                        annotations: {
-                            // Skip Linkerd protocol detection for mysql and redis
-                            // instances running outside the cluster.
-                            // See: https://linkerd.io/2.11/features/protocol-detection/.
-                            "config.linkerd.io/skip-outbound-ports": "3306,6379",
-                            "prometheus.io/scrape": "true",
-                            "prometheus.io/port": metricsPort.toString(),
-                        }
-                    },
-                    spec: {
-                        nodeSelector: nodeSelector,
-                        containers: [
-                            {
-                                command: [
-                                    "/root/nitrous",
-                                    "--region",
-                                    `${input.region}`,
-                                    "--listen-port",
-                                    `${servicePort}`,
-                                    "--metrics-port",
-                                    `${metricsPort}`,
-                                    "--plane-id",
-                                    `${input.planeId}`,
-                                    "--badger_dir",
-                                    "/oxide",
-                                    "--badger_block_cache_mb",
-                                    `${input.blockCacheMB}`,
-                                    "--ristretto_max_cost",
-                                    (input.kvCacheMB << 20).toString(),
-                                    "--otlp-endpoint",
-                                    input.otlpEndpoint,
-                                    "--backup-bucket",
-                                    bucketName,
-                                    "--shard-name",
-                                    "default",
-                                    "--dev=false",
-                                ],
-                                name: name,
-                                image: image.imageName,
-                                imagePullPolicy: "Always",
-                                ports: [
-                                    {
-                                        containerPort: servicePort,
-                                        protocol: "TCP",
-                                    },
-                                    {
-                                        containerPort: metricsPort,
-                                        protocol: "TCP",
-                                    },
-                                ],
-                                env: [
-                                    {
-                                        name: "KAFKA_SERVER_ADDRESS",
-                                        valueFrom: {
-                                            secretKeyRef: {
-                                                name: "kafka-conf",
-                                                key: "server",
-                                            }
+    const nitrousSvc = new k8s.core.v1.Service("nitrous-svc", {
+        metadata: {
+            labels: appLabels,
+            name: name,
+        },
+        spec: {
+            type: "ClusterIP",
+            ports: [{ port: servicePort, targetPort: servicePort, protocol: "TCP" }],
+            selector: appLabels,
+        },
+    }, { provider: k8sProvider, deleteBeforeReplace: true })
+
+    const nitrousStatefulSet = new k8s.apps.v1.StatefulSet("nitrous-statefulset", {
+        metadata: {
+            name: "nitrous",
+            labels: appLabels,
+        },
+        spec: {
+            serviceName: nitrousSvc.metadata.name,
+            selector: { matchLabels: appLabels },
+            replicas: input.replicas || DEFAULT_REPLICAS,
+            template: {
+                metadata: {
+                    labels: appLabels,
+                    annotations: {
+                        // Skip Linkerd protocol detection for mysql and redis
+                        // instances running outside the cluster.
+                        // See: https://linkerd.io/2.11/features/protocol-detection/.
+                        "config.linkerd.io/skip-outbound-ports": "3306,6379",
+                        "prometheus.io/scrape": "true",
+                        "prometheus.io/port": metricsPort.toString(),
+                    }
+                },
+                spec: {
+                    nodeSelector: platformConfig.nodeSelector,
+                    containers: [
+                        {
+                            command: [
+                                "/root/nitrous",
+                                "--region",
+                                `${input.region}`,
+                                "--listen-port",
+                                `${servicePort}`,
+                                "--metrics-port",
+                                `${metricsPort}`,
+                                "--plane-id",
+                                `${input.planeId}`,
+                                "--badger_dir",
+                                "/oxide",
+                                "--badger_block_cache_mb",
+                                `${input.blockCacheMB}`,
+                                "--ristretto_max_cost",
+                                (input.kvCacheMB << 20).toString(),
+                                "--otlp-endpoint",
+                                input.otlpEndpoint,
+                                "--backup-bucket",
+                                bucketName,
+                                "--shard-name",
+                                "default",
+                                "--dev=false",
+                            ],
+                            name: name,
+                            image: image.imageName,
+                            imagePullPolicy: "Always",
+                            ports: [
+                                {
+                                    containerPort: servicePort,
+                                    protocol: "TCP",
+                                },
+                                {
+                                    containerPort: metricsPort,
+                                    protocol: "TCP",
+                                },
+                            ],
+                            env: [
+                                {
+                                    name: "KAFKA_SERVER_ADDRESS",
+                                    valueFrom: {
+                                        secretKeyRef: {
+                                            name: "kafka-conf",
+                                            key: "server",
                                         }
-                                    },
-                                    {
-                                        name: "KAFKA_USERNAME",
-                                        valueFrom: {
-                                            secretKeyRef: {
-                                                name: "kafka-conf",
-                                                key: "username",
-                                            }
-                                        }
-                                    },
-                                    {
-                                        name: "KAFKA_PASSWORD",
-                                        valueFrom: {
-                                            secretKeyRef: {
-                                                name: "kafka-conf",
-                                                key: "password",
-                                            }
-                                        }
-                                    },
-                                ],
-                                resources: {
-                                    requests: {
-                                        "cpu": input.resourceConf?.cpu.request || DEFAULT_CPU_REQUEST,
-                                        "memory": input.resourceConf?.memory.request || DEFAULT_MEMORY_REQUEST,
-                                    },
-                                    limits: {
-                                        "cpu": input.resourceConf?.cpu.limit || DEFAULT_CPU_LIMIT,
-                                        "memory": input.resourceConf?.memory.limit || DEFAULT_MEMORY_LIMIT,
                                     }
                                 },
-                                volumeMounts: [
-                                    {
-                                        name: "badgerdb",
-                                        mountPath: "/oxide",
+                                {
+                                    name: "KAFKA_USERNAME",
+                                    valueFrom: {
+                                        secretKeyRef: {
+                                            name: "kafka-conf",
+                                            key: "username",
+                                        }
                                     }
-                                ],
-                            },
-                        ],
-                    },
-                },
-                volumeClaimTemplates: [
-                    {
-                        metadata: {
-                            name: "badgerdb",
-                        },
-                        spec: {
-                            accessModes: ["ReadWriteOnce"],
-                            // if the storage class is undefined, default storage class is used by the PVC.
-                            storageClassName: input.storageClass,
+                                },
+                                {
+                                    name: "KAFKA_PASSWORD",
+                                    valueFrom: {
+                                        secretKeyRef: {
+                                            name: "kafka-conf",
+                                            key: "password",
+                                        }
+                                    }
+                                },
+                            ],
                             resources: {
                                 requests: {
-                                    storage: `${input.storageCapacityGB}Gi`,
+                                    "cpu": input.resourceConf?.cpu.request || DEFAULT_CPU_REQUEST,
+                                    "memory": input.resourceConf?.memory.request || DEFAULT_MEMORY_REQUEST,
                                 },
-                            }
+                                limits: {
+                                    "cpu": input.resourceConf?.cpu.limit || DEFAULT_CPU_LIMIT,
+                                    "memory": input.resourceConf?.memory.limit || DEFAULT_MEMORY_LIMIT,
+                                }
+                            },
+                            volumeMounts: [
+                                {
+                                    name: "badgerdb",
+                                    mountPath: "/oxide",
+                                }
+                            ],
+                        },
+                    ],
+                },
+            },
+            volumeClaimTemplates: [
+                {
+                    metadata: {
+                        name: "badgerdb",
+                    },
+                    spec: {
+                        accessModes: ["ReadWriteOnce"],
+                        // if the storage class is undefined, default storage class is used by the PVC.
+                        storageClassName: input.storageClass,
+                        resources: {
+                            requests: {
+                                storage: `${input.storageCapacityGB}Gi`,
+                            },
                         }
                     }
-                ]
-            },
-        }, { provider: k8sProvider, deleteBeforeReplace: true });
-    })
+                }
+            ]
+        },
+    }, { provider: k8sProvider, deleteBeforeReplace: true })
 
-    const appSvc = appStatefulset.apply(() => {
-        return new k8s.core.v1.Service("nitrous-svc", {
-            metadata: {
-                labels: appLabels,
-                name: name,
-            },
-            spec: {
-                type: "ClusterIP",
-                ports: [{ port: servicePort, targetPort: servicePort, protocol: "TCP" }],
-                selector: appLabels,
-            },
-        }, { provider: k8sProvider, deleteBeforeReplace: true })
-    })
+    // Create backup service and statefulset for Nitrous.
+    createBackupService(input, k8sProvider, imageName, bucketName)
 
     const output: outputType = {
         appLabels: appLabels,
-        svc: appSvc,
+        svc: nitrousSvc,
     }
     return output
 }
