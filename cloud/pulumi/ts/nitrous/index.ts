@@ -299,6 +299,10 @@ export const setup = async (input: inputType) => {
                                             }
                                         }
                                     },
+                                    {
+                                        name: "GOMAXPROCS",
+                                        value: "128",
+                                    }
                                 ],
                                 resources: {
                                     requests: {
