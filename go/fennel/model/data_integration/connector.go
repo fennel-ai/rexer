@@ -89,6 +89,19 @@ func RetrieveActive(ctx context.Context, tier tier.Tier) ([]data_integration.Con
 	return ret, nil
 }
 
+// Check if any connector is using this source.
+func CheckIfInUse(ctx context.Context, tier tier.Tier, sourceName string) error {
+	var conn []connectorSer
+	err := tier.DB.SelectContext(ctx, &conn, `SELECT * FROM connector WHERE source_name = ?`, sourceName)
+	if err != nil {
+		return err
+	}
+	if len(conn) > 0 {
+		return fmt.Errorf("source %s is in use by %d connectors", sourceName, len(conn))
+	}
+	return nil
+}
+
 func Activate(ctx context.Context, tier tier.Tier, name string) error {
 	_, err := tier.DB.ExecContext(ctx, `UPDATE connector SET active = TRUE WHERE name = ?`, name)
 	return err
