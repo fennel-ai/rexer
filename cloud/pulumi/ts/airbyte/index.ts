@@ -32,6 +32,18 @@ export type outputType = {
     endpoint: string,
 }
 
+// TODO(mohit, aditya): Replace this with Fennel's official GCP Account
+const FENNEL_GCP_PROJECT_ID = 'gold-cocoa-356105';
+const FENNEL_GCP_CREDENTIALS_JSON = "{\"type\": \"service_account\", \"project_id\": \"gold-cocoa-356105\", \"private_key_id\": \"d7fa128cbbcc6e5a1d1615ed9faafc621829810d\"," +
+    "  \"private_key\": \"-----BEGIN PRIVATE KEY-----\\nMIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQCXXKsnDnAsDyhx\\nUdJjiZ0dBx57dH6dQWswE5puMIG5uO7uFRyA7gOB2i9eiCLDPhz7T33QhQaG+7aK\\n+vdtpBLMBImHG98w7WAWY25/8vInBaSbTo7fFvc5r/9FgODqP9M5rVTCBReIscbC\\nrnwAnscDB/kZd5xLNYmXYWU+YjbMJQfCoGc8Js6EBjqheTnWk5ZBGfofwbOFQZVQ\\nQY00IWkicW9I/vidap3VaCdsRC7UZDxxMriu+wUSL+d2ZaCgH9RD/05mGz2uMeX7\\npTe/az3rD83meJpUPbKHYERFGGHJyav05occsLoFvCTl1FIfP9FbABZTNDe+Bwxl\\nkcTY+UHfAgMBAAECggEAAOWzPAmJX7F9T2KpSR7FOClVJG013O/I12GeXj3aXwP6\\nIp4sa5U9nxTwh/JtplOlb1XyzHwlZEJ0vBEty1AYLm5udEcVhSA7HBbdzlNd3R5a\\n8fK+xRLJR2XEMSDI9IqJUYO2B2ppT82h/IB1SrmmO13eO6jqW8XG+YdBxuNlKMOj\\nGRwNurfmDDGvXJvNZAGUfEjoUPvz5iefJqBSkxm29WkgmN6vf8gOTNgNbFfK2AE/\\nRdLu5nRiynFvDQf9BsYKF/WNXaRWo/WKT8X6c0HWvRn2CBEXhV9pNGXiFhi/P8y9\\n0UwpzMvKN4Ti7p9YAPyTjIEj2V7e9sLHEZe5RYzZpQKBgQDH3gjIGN6VRkQjxaeo\\nRYhCIQisipWdqJW93LFH7bx8o9qO86TnbEnIdPvxnptLOhqWrC9AP8UtjlZJRCyt\\ng+v19RKMWxnwye6cFq1AcwM0rkB9OydIxKVF+MZ0jZU1k6zMDAfg2obXFGZXIzQL\\nNKX1fR2GEye2rqmlNelUhVFfswKBgQDB3ziCn70C0TVeKSLy4xopDbAKxW1l2lnu\\nWeHY7eevdaMPx34Q4lkeleTzUaLV5gGjvvKFBzzts84XIrYcc3goHGtkA/ObHCdv\\nP2HopYC/zfm6va/Rv75DK18s+Ic6WQsBfXlv7Byy9zKVFc0AhWZwE3bsKnz2mEQl\\nYI5/9gFfJQKBgD2YMrKf33C3f+ZaUonsK8rdbVPnPaahvswNSGE3ZeAvivqFIavk\\nVnS9gKt8yrULSghnNgSh4n1goTzhErfCsSRSi43PwZXQVYWrA2eaSkGg9eTiJwAp\\nAhonSdm/jF0/joAvsPndvrJn6gYupipR5ldaYI/iNVn6R/PPQoI2t9Y7AoGBAKXn\\nswE9V08Y3xWkGE9H/vQQzYx6JMMblwf8jOPJuxGQlqkDK6OhP2iIF3QNcU6gVNje\\np8UlS4OS8hMkVjmEqteQcmoVY5th/XEbCVtAfiwlRMcEWnghIN10OS9PwtEwr9Vn\\nncskf+660eN404TVo7LXRVaWiXexF+fweCGS0NutAoGAL49ERMHrwihF4K0ERSwR\\ndIHf+oemHduCmzsd8wdUGQgyrI3OBky4hwf1wdX+8yPxOfRK/fZSM6otm8YamOlo\\nwTJY5+OgmyyzAtfmbdA71zaNbE6V2kAkcoWxjCDGqFrX5LAMo590RP5FpVmND3AS\\n0Ni9HFmV+PwPdx3FyL2+g60=\\n-----END PRIVATE KEY-----\\n\"," +
+    "  \"client_email\": \"fennel@gold-cocoa-356105.iam.gserviceaccount.com\"," +
+    "  \"client_id\": \"112871096554223481842\"," +
+    "  \"auth_uri\": \"https://accounts.google.com/o/oauth2/auth\"," +
+    "  \"token_uri\": \"https://oauth2.googleapis.com/token\"," +
+    "  \"auth_provider_x509_cert_url\": \"https://www.googleapis.com/oauth2/v1/certs\"," +
+    "  \"client_x509_cert_url\": \"https://www.googleapis.com/robot/v1/metadata/x509/fennel%40gold-cocoa-356105.iam.gserviceaccount.com\"" +
+    "}";
+
 export const setup = async (input: inputType): Promise<pulumi.Output<outputType>> => {
     // providers
     const provider = new aws.Provider(`t-${input.tierId}-airbyte-provider`, {
@@ -129,6 +141,18 @@ export const setup = async (input: inputType): Promise<pulumi.Output<outputType>
         },
     }, { provider: k8sProvider, deleteBeforeReplace: true });
 
+    // create a secret to store GCP information
+    const gcpSecretName = `airbyte-gcp-secret`;
+    const gcpAirbyteSecret = new k8s.core.v1.Secret("airbyte-gcp-password-config", {
+        stringData: {
+            "projectId": FENNEL_GCP_PROJECT_ID,
+            "credentialsJson": FENNEL_GCP_CREDENTIALS_JSON,
+        },
+        metadata: {
+            name: gcpSecretName,
+        }
+    }, { provider: k8sProvider, deleteBeforeReplace: true });
+
     // setup airbyte instance
 
     let serverServiceType;
@@ -207,7 +231,31 @@ export const setup = async (input: inputType): Promise<pulumi.Output<outputType>
                 "service": {
                     "type": serverServiceType,
                     "port": serverPort,
-                }
+                },
+                "extraEnv": [
+                    {
+                        "name": "SECRET_PERSISTENCE",
+                        "value": "GOOGLE_SECRET_MANAGER"
+                    },
+                    {
+                        "name": "SECRET_STORE_GCP_PROJECT_ID",
+                        "valueFrom": {
+                            "secretKeyRef": {
+                                "key": "projectId",
+                                "name": gcpSecretName,
+                            }
+                        }
+                    },
+                    {
+                        "name": "SECRET_STORE_GCP_CREDENTIALS",
+                        "valueFrom": {
+                            "secretKeyRef": {
+                                "key": "credentialsJson",
+                                "name": gcpSecretName,
+                            }
+                        }
+                    }
+                ]
             },
             "bootloader": {
                 "image": {
@@ -240,6 +288,30 @@ export const setup = async (input: inputType): Promise<pulumi.Output<outputType>
                 "podAnnotations": {
                     "linkerd.io/inject": "disabled",
                 },
+                "extraEnv": [
+                    {
+                        "name": "SECRET_PERSISTENCE",
+                        "value": "GOOGLE_SECRET_MANAGER"
+                    },
+                    {
+                        "name": "SECRET_STORE_GCP_PROJECT_ID",
+                        "valueFrom": {
+                            "secretKeyRef": {
+                                "key": "projectId",
+                                "name": gcpSecretName,
+                            }
+                        }
+                    },
+                    {
+                        "name": "SECRET_STORE_GCP_CREDENTIALS",
+                        "valueFrom": {
+                            "secretKeyRef": {
+                                "key": "credentialsJson",
+                                "name": gcpSecretName,
+                            }
+                        }
+                    }
+                ]
             },
 
             // we need to set the `JOB_KUBE_NODE_SELECTORS` env var to schedule the workers on amd64 workers since
