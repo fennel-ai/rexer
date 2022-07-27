@@ -7,11 +7,11 @@ import (
 	"io"
 	"log"
 	"os"
-	"sync"
 
 	"fennel/hangar"
 	"fennel/lib/ftypes"
 	"fennel/lib/timer"
+	"fennel/lib/utils/parallel"
 
 	"github.com/dgraph-io/badger/v3"
 )
@@ -22,14 +22,11 @@ const (
 )
 
 type badgerDB struct {
-	planeID  ftypes.RealmID
-	baseOpts badger.Options
-	enc      hangar.Encoder
-	db       *badger.DB
-	reqchan  chan getRequest
-
-	// WaitGroup to wait for all goroutines to finish.
-	wg *sync.WaitGroup
+	planeID    ftypes.RealmID
+	baseOpts   badger.Options
+	enc        hangar.Encoder
+	db         *badger.DB
+	workerPool *parallel.WorkerPool[hangar.KeyGroup, hangar.ValGroup]
 }
 
 func (b *badgerDB) Restore(source io.Reader) error {
@@ -48,39 +45,25 @@ func (b *badgerDB) Backup(sink io.Writer, since uint64) (uint64, error) {
 }
 
 func (b *badgerDB) Close() error {
-	// Close the request channel to signal to all read goroutines to stop.
-	close(b.reqchan)
-	// Wait for all read goroutines to finish.
-	b.wg.Wait()
+	// Close the worker pool.
+	b.workerPool.Close()
 	return b.db.Close()
-}
-
-type getRequest struct {
-	keyGroups []hangar.KeyGroup
-	resch     chan<- []hangar.Result
 }
 
 func NewHangar(planeID ftypes.RealmID, dirname string, blockCacheBytes int64, enc hangar.Encoder) (*badgerDB, error) {
 	opts := badger.DefaultOptions(dirname)
 	opts = opts.WithLoggingLevel(badger.WARNING)
 	opts = opts.WithBlockCacheSize(blockCacheBytes)
-	reqchan := make(chan getRequest)
 	db, err := badger.Open(opts)
 	if err != nil {
 		return nil, err
 	}
 	bs := badgerDB{
-		planeID:  planeID,
-		baseOpts: opts,
-		db:       db,
-		reqchan:  reqchan,
-		enc:      enc,
-		wg:       &sync.WaitGroup{},
-	}
-	// spin up lots of goroutines to handle requests in parallel
-	bs.wg.Add(PARALLELISM)
-	for i := 0; i < PARALLELISM; i++ {
-		go bs.respond(reqchan)
+		planeID:    planeID,
+		baseOpts:   opts,
+		db:         db,
+		workerPool: parallel.NewWorkerPool[hangar.KeyGroup, hangar.ValGroup](PARALLELISM),
+		enc:        enc,
 	}
 	return &bs, nil
 }
@@ -98,36 +81,42 @@ func (b *badgerDB) Encoder() hangar.Encoder {
 func (b *badgerDB) GetMany(ctx context.Context, kgs []hangar.KeyGroup) ([]hangar.ValGroup, error) {
 	_, t := timer.Start(ctx, b.planeID, "hangar.db.getmany")
 	defer t.Stop()
-	// we try to spread across available workers while giving each worker
-	// a minimum of DB_BATCH_SIZE keyGroups to work on
+	// We try to spread across available workers while giving each worker
+	// a minimum of DB_BATCH_SIZE keyGroups to work on.
 	batch := len(kgs) / PARALLELISM
 	if batch < DB_BATCH_SIZE {
 		batch = DB_BATCH_SIZE
 	}
-	chans := make([]chan []hangar.Result, 0, len(kgs)/batch)
-	for i := 0; i < len(kgs); i += batch {
-		end := i + batch
-		if end > len(kgs) {
-			end = len(kgs)
+	return b.workerPool.Process(ctx, kgs, func(keyGroups []hangar.KeyGroup, valGroups []hangar.ValGroup) error {
+		eks, err := hangar.EncodeKeyManyKG(keyGroups, b.enc)
+		if err != nil {
+			return fmt.Errorf("failed to encode keys: %w", err)
 		}
-		resch := make(chan []hangar.Result, 1)
-		chans = append(chans, resch)
-		b.reqchan <- getRequest{
-			keyGroups: kgs[i:end],
-			resch:     resch,
-		}
-	}
-	results := make([]hangar.ValGroup, 0, len(kgs))
-	for _, ch := range chans {
-		subresults := <-ch
-		for _, res := range subresults {
-			if res.Err != nil {
-				return nil, res.Err
+		err = b.db.View(func(txn *badger.Txn) error {
+			for i, ek := range eks {
+				item, err := txn.Get(ek)
+				switch err {
+				case badger.ErrKeyNotFound:
+				case nil:
+					if err := item.Value(func(val []byte) error {
+						if _, err := b.enc.DecodeVal(val, &valGroups[i], false); err != nil {
+							return err
+						}
+						if keyGroups[i].Fields.IsPresent() {
+							valGroups[i].Select(keyGroups[i].Fields.MustGet())
+						}
+						return nil
+					}); err != nil {
+						return err
+					}
+				default:
+					return err
+				}
 			}
-			results = append(results, res.Ok)
-		}
-	}
-	return results, nil
+			return nil
+		})
+		return err
+	}, batch)
 }
 
 // SetMany sets many keyGroups in a single transaction. Since these are all set in a single
@@ -233,45 +222,6 @@ func (b *badgerDB) DelMany(ctx context.Context, keyGroups []hangar.KeyGroup) err
 		return b.write(txn, setKeys, vgs, delKeys)
 	})
 	return err
-}
-
-func (b *badgerDB) respond(reqchan chan getRequest) {
-	defer b.wg.Done()
-	for req := range reqchan {
-		res := make([]hangar.Result, len(req.keyGroups))
-		eks, err := hangar.EncodeKeyManyKG(req.keyGroups, b.enc)
-		if err != nil {
-			for i := range res {
-				res[i].Err = err
-			}
-			req.resch <- res
-			continue
-		}
-		_ = b.db.View(func(txn *badger.Txn) error {
-			for i, ek := range eks {
-				item, err := txn.Get(ek)
-				switch err {
-				case badger.ErrKeyNotFound:
-				case nil:
-					if err := item.Value(func(val []byte) error {
-						if _, err := b.enc.DecodeVal(val, &res[i].Ok, false); err != nil {
-							return err
-						}
-						if req.keyGroups[i].Fields.IsPresent() {
-							res[i].Ok.Select(req.keyGroups[i].Fields.MustGet())
-						}
-						return nil
-					}); err != nil {
-						res[i].Err = err
-					}
-				default:
-					res[i].Err = err
-				}
-			}
-			return nil
-		})
-		req.resch <- res
-	}
 }
 
 func (b *badgerDB) write(txn *badger.Txn, eks [][]byte, vgs []hangar.ValGroup, delks [][]byte) error {

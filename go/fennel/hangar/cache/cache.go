@@ -9,15 +9,16 @@ import (
 	"fennel/hangar"
 	"fennel/lib/ftypes"
 	"fennel/lib/timer"
+	"fennel/lib/utils/parallel"
 
 	"github.com/dgraph-io/ristretto"
 )
 
 const (
-	// batchSize the size of the batches in which we break down
+	// CACHE_BATCH_SIZE the size of the batches in which we break down
 	// incoming get calls
-	batchSize   = 1000
-	parallelism = 64
+	CACHE_BATCH_SIZE = 1000
+	PARALLELISM      = 64
 )
 
 func NewHangar(planeId ftypes.RealmID, maxSize, avgSize uint64, enc hangar.Encoder) (*rcache, error) {
@@ -31,26 +32,23 @@ func NewHangar(planeId ftypes.RealmID, maxSize, avgSize uint64, enc hangar.Encod
 	if err != nil {
 		return nil, err
 	}
-	reqchan := make(chan getRequest, parallelism)
 	ret := rcache{
-		planeID: planeId,
-		cache:   cache,
-		reqchan: reqchan,
-		enc:     enc,
-	}
-	// spin up lots of goroutines to handle requests in parallel
-	for i := 0; i < parallelism; i++ {
-		go ret.respond(reqchan)
+		planeID:    planeId,
+		cache:      cache,
+		enc:        enc,
+		workerPool: parallel.NewWorkerPool[hangar.KeyGroup, hangar.ValGroup](PARALLELISM),
 	}
 	return &ret, nil
 }
 
 type rcache struct {
-	enc     hangar.Encoder
-	planeID ftypes.RealmID
-	cache   *ristretto.Cache
-	reqchan chan getRequest
+	enc        hangar.Encoder
+	planeID    ftypes.RealmID
+	cache      *ristretto.Cache
+	workerPool *parallel.WorkerPool[hangar.KeyGroup, hangar.ValGroup]
 }
+
+var _ hangar.Hangar = &rcache{}
 
 func (c *rcache) Restore(source io.Reader) error {
 	panic("implement me")
@@ -79,39 +77,38 @@ func (c *rcache) PlaneID() ftypes.RealmID {
 
 // GetMany returns the values for the given keyGroups.
 // It parallelizes the requests to the underlying cache upto a degree of parallelism
-func (c *rcache) GetMany(ctx context.Context, keys []hangar.KeyGroup) ([]hangar.ValGroup, error) {
+func (c *rcache) GetMany(ctx context.Context, kgs []hangar.KeyGroup) ([]hangar.ValGroup, error) {
 	_, t := timer.Start(ctx, c.planeID, "hangar.cache.getmany")
 	defer t.Stop()
-	// we try to spread across available workers while giving each worker
-	// a minimum of DB_BATCH_SIZE keyGroups to work on
-	batch := len(keys) / parallelism
-	if batch < batchSize {
-		batch = batchSize
+	// We try to spread across available workers while giving each worker
+	// a minimum of CACHE_BATCH_SIZE keyGroups to work on.
+	batch := len(kgs) / PARALLELISM
+	if batch < CACHE_BATCH_SIZE {
+		batch = CACHE_BATCH_SIZE
 	}
-	chans := make([]chan []hangar.Result, 0, len(keys)/batch)
-	for i := 0; i < len(keys); i += batch {
-		end := i + batch
-		if end > len(keys) {
-			end = len(keys)
+	return c.workerPool.Process(ctx, kgs, func(kgs []hangar.KeyGroup, vgs []hangar.ValGroup) error {
+		eks, err := hangar.EncodeKeyManyKG(kgs, c.enc)
+		if err != nil {
+			return fmt.Errorf("error encoding key: %w", err)
 		}
-		resch := make(chan []hangar.Result, 1)
-		chans = append(chans, resch)
-		c.reqchan <- getRequest{
-			keyGroups: keys[i:end],
-			resch:     resch,
-		}
-	}
-	results := make([]hangar.ValGroup, 0, len(keys))
-	for _, ch := range chans {
-		subresults := <-ch
-		for _, res := range subresults {
-			if res.Err != nil {
-				return nil, res.Err
+		for i, ek := range eks {
+			val, found := c.cache.Get(ek)
+			if !found {
+				// not found, this is not an error, so we will just return empty ValGroup
+				continue
 			}
-			results = append(results, res.Ok)
+			if asbytes, ok := val.([]byte); !ok {
+				return fmt.Errorf("cache: expected []byte, got %T", val)
+			} else if _, err := c.enc.DecodeVal(asbytes, &vgs[i], true); err != nil {
+				return fmt.Errorf("error decoding value: %w", err)
+			} else {
+				if kgs[i].Fields.IsPresent() {
+					vgs[i].Select(kgs[i].Fields.MustGet())
+				}
+			}
 		}
-	}
-	return results, nil
+		return nil
+	}, batch)
 }
 
 // SetMany sets many keyGroups in a single transaction. Since these are all set in a single
@@ -215,46 +212,4 @@ func (c *rcache) commit(eks [][]byte, vgs []hangar.ValGroup, delks [][]byte) err
 		c.cache.Del(k)
 	}
 	return nil
-}
-
-var _ hangar.Hangar = &rcache{}
-
-type getRequest struct {
-	keyGroups []hangar.KeyGroup
-	resch     chan<- []hangar.Result
-}
-
-func (c *rcache) respond(reqchan chan getRequest) {
-	for {
-		req := <-reqchan
-		res := make([]hangar.Result, len(req.keyGroups))
-		eks, err := hangar.EncodeKeyManyKG(req.keyGroups, c.enc)
-		if err != nil {
-			for i := range res {
-				res[i] = hangar.Result{
-					Err: fmt.Errorf("error encoding key: %v", err),
-				}
-			}
-			req.resch <- res
-			continue
-		}
-		for i, ek := range eks {
-			val, found := c.cache.Get(ek)
-			if !found {
-				// not found, this is not an error, so we will just return empty ValGroup
-				continue
-			}
-			if asbytes, ok := val.([]byte); !ok {
-				log.Printf("Cache: expected []byte, got %T", val)
-				res[i].Err = fmt.Errorf("cache: expected []byte, got %T", val)
-			} else if _, err := c.enc.DecodeVal(asbytes, &res[i].Ok, true); err != nil {
-				res[i].Err = err
-			} else {
-				if req.keyGroups[i].Fields.IsPresent() {
-					res[i].Ok.Select(req.keyGroups[i].Fields.MustGet())
-				}
-			}
-		}
-		req.resch <- res
-	}
 }
