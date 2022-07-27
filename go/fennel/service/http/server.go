@@ -139,9 +139,10 @@ func (s server) setHandlers(router *mux.Router) {
 
 	// Endpoints used for data integration
 	router.HandleFunc(INT_REST_VERSION+"/connector", s.StoreConnector).Methods("POST")
-	router.HandleFunc(INT_REST_VERSION+"/connector", s.DeactivateConnector).Methods("DELETE")
+	router.HandleFunc(INT_REST_VERSION+"/connector/disable", s.DisableConnector).Methods("POST")
+	router.HandleFunc(INT_REST_VERSION+"/connector", s.DeleteConnector).Methods("DELETE")
 	router.HandleFunc(INT_REST_VERSION+"/source", s.StoreSource).Methods("POST")
-	router.HandleFunc(INT_REST_VERSION+"/source", s.DeactivateSource).Methods("DELETE")
+	router.HandleFunc(INT_REST_VERSION+"/source", s.DeleteSource).Methods("DELETE")
 
 	// Misc endpoints
 	router.HandleFunc(INT_REST_VERSION+"/operators", s.GetOperators).Methods("GET")
@@ -677,7 +678,7 @@ func (m server) DeactivateAggregate(w http.ResponseWriter, req *http.Request) {
 	handleSuccessfulRequest(w)
 }
 
-func (m server) DeactivateConnector(w http.ResponseWriter, req *http.Request) {
+func (m server) DisableConnector(w http.ResponseWriter, req *http.Request) {
 	data, err := readRequest(req)
 	if err != nil {
 		handleBadRequest(w, "", err)
@@ -690,14 +691,34 @@ func (m server) DeactivateConnector(w http.ResponseWriter, req *http.Request) {
 		handleBadRequest(w, "invalid request: ", err)
 		return
 	}
-	err = connector2.DeactivateConnector(req.Context(), m.tier, connReq.Name)
+	err = connector2.DisableConnector(req.Context(), m.tier, connReq.Name)
 	if err != nil {
 		handleInternalServerError(w, "", err)
 		return
 	}
 }
 
-func (m server) DeactivateSource(w http.ResponseWriter, req *http.Request) {
+func (m server) DeleteConnector(w http.ResponseWriter, req *http.Request) {
+	data, err := readRequest(req)
+	if err != nil {
+		handleBadRequest(w, "", err)
+		return
+	}
+	var connReq struct {
+		Name string `json:"Name"`
+	}
+	if err := json.Unmarshal(data, &connReq); err != nil {
+		handleBadRequest(w, "invalid request: ", err)
+		return
+	}
+	err = connector2.DeleteConnector(req.Context(), m.tier, connReq.Name)
+	if err != nil {
+		handleInternalServerError(w, "", err)
+		return
+	}
+}
+
+func (m server) DeleteSource(w http.ResponseWriter, req *http.Request) {
 	data, err := readRequest(req)
 	if err != nil {
 		handleBadRequest(w, "", err)
@@ -710,7 +731,7 @@ func (m server) DeactivateSource(w http.ResponseWriter, req *http.Request) {
 		handleBadRequest(w, "invalid request: ", err)
 		return
 	}
-	err = connector2.DeactivateConnector(req.Context(), m.tier, sourceReq.Name)
+	err = connector2.DeleteSource(req.Context(), m.tier, sourceReq.Name)
 	if err != nil {
 		handleInternalServerError(w, "", err)
 		return

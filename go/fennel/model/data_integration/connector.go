@@ -94,7 +94,12 @@ func Activate(ctx context.Context, tier tier.Tier, name string) error {
 	return err
 }
 
-func Deactivate(ctx context.Context, tier tier.Tier, name string) error {
+func Disable(ctx context.Context, tier tier.Tier, name string) error {
 	_, err := tier.DB.ExecContext(ctx, `UPDATE connector SET active = FALSE WHERE name = ?`, name)
+	return err
+}
+
+func Delete(ctx context.Context, tier tier.Tier, name string) error {
+	_, err := tier.DB.ExecContext(ctx, `DELETE FROM connector WHERE name = ?`, name)
 	return err
 }

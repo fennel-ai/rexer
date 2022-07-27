@@ -74,5 +74,11 @@ func DeleteSource(ctx context.Context, tier tier.Tier, name string) error {
 	if err != nil {
 		return fmt.Errorf("failed to retrieve source: %w", err)
 	}
+	if tier.AirbyteClient.IsAbsent() {
+		return fmt.Errorf("error: Airbyte client is not initialized")
+	}
+	if err = tier.AirbyteClient.MustGet().DeleteSource(src); err != nil {
+		return fmt.Errorf("error: failed to delete source: %w", err)
+	}
 	return diModel.DeleteSource(ctx, tier, src)
 }

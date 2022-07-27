@@ -21,7 +21,10 @@ const (
 	WORKSPACE_LIST_PATH         = "/v1/workspaces/list"
 	DISCOVER_SOURCE_SCHEMA_PATH = "/v1/sources/discover_schema"
 	CREATE_CONNECTOR_PATH       = "/v1/connections/create"
+	UPDATE_CONNECTOR_PATH       = "/v1/connections/update"
 	LIST_DESTINATIONS_PATH      = "/v1/destinations/list"
+	DELETE_CONNECTOR_PATH       = "/v1/connections/delete"
+	DELETE_SOURCE_PATH          = "/v1/sources/delete"
 )
 
 const (
@@ -88,6 +91,21 @@ func (c Client) CreateSource(source data_integration.Source) (string, error) {
 	return c.createSource(srcConfig)
 }
 
+func (c Client) DeleteSource(source data_integration.Source) error {
+	var fields struct {
+		SrcId string `json:"sourceId"`
+	}
+	fields.SrcId = source.GetSourceId()
+	req, err := json.Marshal(fields)
+	if err != nil {
+		return fmt.Errorf("failed to marshal source id: %w", err)
+	}
+	if _, err := c.postJSON(req, c.getURL(DELETE_SOURCE_PATH)); err != nil {
+		return fmt.Errorf("failed to delete source: %w", err)
+	}
+	return nil
+}
+
 func (c Client) CreateConnector(source data_integration.Source, conn data_integration.Connector) (string, error) {
 	// Set Cursor Field for source
 	if err := setCursorField(source, &conn); err != nil {
@@ -101,6 +119,57 @@ func (c Client) CreateConnector(source data_integration.Source, conn data_integr
 	}
 	// Create connector
 	return c.createConnector(conn, source, streamConfig)
+}
+
+func (c Client) EnableConnector(source data_integration.Source, conn data_integration.Connector) error {
+	// Set Cursor Field for source
+	if err := setCursorField(source, &conn); err != nil {
+		return err
+	}
+
+	// Discover schema of the source
+	streamConfig, err := c.getSourceSchema(source, conn)
+	if err != nil {
+		return fmt.Errorf("failed to discover schema of source: %w", err)
+	}
+	// Enable connector
+	if err = c.updateConnector(conn, streamConfig, "active"); err != nil {
+		return fmt.Errorf("failed to enable connector: %w", err)
+	}
+	return nil
+}
+
+func (c Client) DisableConnector(source data_integration.Source, conn data_integration.Connector) error {
+	// Set Cursor Field for source
+	if err := setCursorField(source, &conn); err != nil {
+		return err
+	}
+
+	// Discover schema of the source
+	streamConfig, err := c.getSourceSchema(source, conn)
+	if err != nil {
+		return fmt.Errorf("failed to discover schema of source: %w", err)
+	}
+	if err = c.updateConnector(conn, streamConfig, "inactive"); err != nil {
+		return fmt.Errorf("failed to disable connector: %w", err)
+	}
+	return nil
+}
+
+func (c Client) DeleteConnector(conn data_integration.Connector) error {
+	// Delete connector
+	var fields struct {
+		ConnId string `json:"connectionId"`
+	}
+	fields.ConnId = conn.ConnId
+	req, err := json.Marshal(fields)
+	if err != nil {
+		return fmt.Errorf("failed to marshal connection id: %w", err)
+	}
+	if _, err := c.postJSON(req, c.getURL(DELETE_CONNECTOR_PATH)); err != nil {
+		return fmt.Errorf("failed to delete connector: %w", err)
+	}
+	return nil
 }
 
 // ---------------------------------------------------------------------------------------------------------------------
@@ -143,6 +212,33 @@ func (c Client) createConnector(conn data_integration.Connector, source data_int
 	}
 	// This should not happen
 	return "", fmt.Errorf("something went wrong during connection creation")
+}
+
+func (c Client) updateConnector(conn data_integration.Connector, streamConfig StreamConfig, state string) error {
+	if kafkaDestinationId == "" {
+		return fmt.Errorf("kafka destination id is not set, system is not initialized")
+	}
+
+	connConfig := UpdateConnectorConfig{NamespaceDefinition: "source", NamespaceFormat: "${SOURCE_NAMESPACE}", Prefix: ""}
+	// TODO: Check if cursor field is among the stream config fields
+	streamConfig.Config.CursorField = []string{conn.CursorField}
+	streamConfig.Config.SyncMode = "incremental"
+	streamConfig.Config.Selected = true
+	connConfig.SyncCatalog.Streams = []StreamConfig{streamConfig}
+	connConfig.ConnectionId = conn.ConnId
+	connConfig.Schedule = Schedule{
+		Units:    REFRESH_FREQUENCY_MINUTES,
+		TimeUnit: "minutes",
+	}
+	connConfig.Status = state
+	request, err := json.Marshal(connConfig)
+	if err != nil {
+		return err
+	}
+	if _, err := c.postJSON(request, c.getURL(UPDATE_CONNECTOR_PATH)); err != nil {
+		return fmt.Errorf("failed to update connector: %w", err)
+	}
+	return nil
 }
 
 // getSourceSchema returns the JSON schema of the source. If there are multiple streams we use conn.StreamName to
