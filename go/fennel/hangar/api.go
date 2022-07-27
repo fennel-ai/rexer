@@ -28,11 +28,6 @@ type ValGroup struct {
 	Values Values
 }
 
-type Result struct {
-	Ok  ValGroup
-	Err error
-}
-
 type Encoder interface {
 	Codec() Codec
 	EncodeKey(dest []byte, key Key) (int, error)
