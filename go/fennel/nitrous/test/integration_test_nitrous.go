@@ -25,7 +25,7 @@ type TestNitrous struct {
 	args nitrous.NitrousArgs
 }
 
-func NewTestNitrous(t *testing.T) TestNitrous {
+func NewTestNitrous[TB testing.TB](t TB) TestNitrous {
 	rand.Seed(time.Now().UnixNano())
 	planeId := ftypes.RealmID(rand.Uint32())
 	var flags nitrous.NitrousArgs
