@@ -35,14 +35,19 @@ type StreamConfig struct {
 }
 
 type Stream struct {
-	Name                    string      `json:"name"`
-	JsonSchema              interface{} `json:"jsonSchema"`
-	SupportedSyncModes      []string    `json:"supportedSyncModes"`
-	SourceDefinedCursor     bool        `json:"sourceDefinedCursor"`
-	DefaultCursorField      []string    `json:"defaultCursorField"`
-	SourceDefinedPrimaryKey []string    `json:"sourceDefinedPrimaryKey"`
+	Name                    string           `json:"name"`
+	JsonSchema              StreamJsonSchema `json:"jsonSchema"`
+	SupportedSyncModes      []string         `json:"supportedSyncModes"`
+	SourceDefinedCursor     bool             `json:"sourceDefinedCursor"`
+	DefaultCursorField      []string         `json:"defaultCursorField"`
+	SourceDefinedPrimaryKey []string         `json:"sourceDefinedPrimaryKey"`
 	// It is a ptr since Namespace can be null and Go defaults to "" for empty string rather than null.
 	Namespace *string `json:"namespace"`
+}
+
+type StreamJsonSchema struct {
+	Type       string                 `json:"type"`
+	Properties map[string]interface{} `json:"properties"`
 }
 
 type MutableSourceConfig struct {
@@ -52,13 +57,22 @@ type MutableSourceConfig struct {
 	Selected            bool     `json:"selected"`
 }
 
-func (c StreamConfig) supportIncrementalMode() bool {
-	modes := c.Stream.SupportedSyncModes
+func (s StreamConfig) SupportIncrementalMode() bool {
+	modes := s.Stream.SupportedSyncModes
 	if len(modes) == 0 {
 		return false
 	}
 	for _, mode := range modes {
 		if mode == "incremental" {
+			return true
+		}
+	}
+	return false
+}
+
+func (s StreamConfig) HasCursorField(cursorField string) bool {
+	for key := range s.Stream.JsonSchema.Properties {
+		if key == cursorField {
 			return true
 		}
 	}
