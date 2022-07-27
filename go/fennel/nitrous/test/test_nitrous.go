@@ -27,7 +27,7 @@ type TestNitrous struct {
 	broker *fkafka.MockBroker
 }
 
-func NewTestNitrous(t *testing.T) TestNitrous {
+func NewTestNitrous[TB testing.TB](t TB) TestNitrous {
 	rand.Seed(time.Now().UnixNano())
 	planeId := ftypes.RealmID(rand.Uint32())
 	db, err := db.NewHangar(planeId, t.TempDir(), 1<<10, encoders.Default())
