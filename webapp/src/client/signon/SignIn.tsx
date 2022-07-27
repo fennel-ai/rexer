@@ -12,10 +12,10 @@ function SignIn() {
             <Pancake />
             <div className={styles.container}>
                 <img src="images/logo.svg" alt="logo" className={styles.logo} />
-                <hr className={styles.logoDivider} />
+                <div className={styles.logoDivider} />
                 <div className={styles.signInHeader}>
-                    <h4>Sign In</h4>
-                    <a href="/signup">Sign up instead?</a>
+                    <h4 className={styles.headerTitle}>Sign In</h4>
+                    <a href="/signup" className={styles.headerAlt}>Sign up instead?</a>
                 </div>
                 <SignInForm />
             </div>

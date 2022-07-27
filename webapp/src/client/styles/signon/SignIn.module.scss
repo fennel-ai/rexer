@@ -20,8 +20,10 @@
 }
 
 .logoDivider {
-    margin-top: 50px;
+    height: 1px;
     width: 100%;
+    border-top: 1px solid #DDE0E5;
+    margin-top: 50px;
 }
 
 .signInHeader {
@@ -32,8 +34,12 @@
     margin-top: 12px;
 }
 
-.signInHeader h4 {
+.headerTitle {
     font-size: 20px;
+}
+
+.headerAlt {
+    font-size: 12px;
 }
 
 .signInForm Input {
