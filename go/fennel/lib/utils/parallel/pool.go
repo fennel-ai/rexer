@@ -2,14 +2,7 @@ package parallel
 
 import (
 	"context"
-)
-
-const (
-	// We use a default batch size of 64 to dispatch jobs to the workers. This
-	// amortizes the synchronization cost of sending a job to a worker, but does
-	// not make the batch so large that we lose the benefit of parallelism.
-	// A batch size of 64 performs reasonably well in our benchmark.
-	batchSize = 64
+	"sync"
 )
 
 // WorkerPool is a pool of workers that can be used to run jobs.
@@ -17,18 +10,22 @@ const (
 type WorkerPool[I, O any] struct {
 	// channel over which sub-tasks are dispatched to the workers.
 	jobQueue chan<- job[I, O]
+	// WaitGroup to wait for all goroutines to finish.
+	wg *sync.WaitGroup
 }
 
-func NewWorkerPool[I, O any](nWorkers int) WorkerPool[I, O] {
+func NewWorkerPool[I, O any](nWorkers int) *WorkerPool[I, O] {
 	jobQueue := make(chan job[I, O])
+	wg := &sync.WaitGroup{}
+	wg.Add(nWorkers)
 	for i := 0; i < nWorkers; i++ {
-		worker := newWorker(jobQueue)
+		worker := worker[I, O]{jobQueue, wg}
 		worker.start()
 	}
-	return WorkerPool[I, O]{jobQueue: jobQueue}
+	return &WorkerPool[I, O]{jobQueue, wg}
 }
 
-func (w *WorkerPool[I, O]) Process(ctx context.Context, inputs []I, f func(I) (O, error)) ([]O, error) {
+func (w *WorkerPool[I, O]) Process(ctx context.Context, inputs []I, f func([]I, []O) error, batchSize int) ([]O, error) {
 	ret := make([]O, len(inputs))
 	numBatches := (len(inputs) + batchSize - 1) / batchSize
 	errCh := make(chan error, numBatches)
@@ -68,6 +65,11 @@ func (w *WorkerPool[I, O]) Process(ctx context.Context, inputs []I, f func(I) (O
 	return ret, err
 }
 
+func (w *WorkerPool[I, O]) Close() {
+	close(w.jobQueue)
+	w.wg.Wait()
+}
+
 // job represents the job to be run. It accepts a function `f` that needs to be
 // run on inputs of type I and writes outputs of type O to the given `outputs``
 // slice. If an error is encountered, it is written to the `errChan` and the
@@ -76,36 +78,27 @@ type job[I, O any] struct {
 	ctx     context.Context
 	inputs  []I
 	outputs []O
-	f       func(I) (O, error)
+	f       func([]I, []O) error
 	errChan chan<- error
 }
 
 // worker accepts a job from `jobQueue` and runs it.
 type worker[I, O any] struct {
 	jobQueue <-chan job[I, O]
-}
-
-func newWorker[I, O any](jobQueue chan job[I, O]) worker[I, O] {
-	return worker[I, O]{
-		jobQueue: jobQueue,
-	}
+	wg       *sync.WaitGroup
 }
 
 // start method starts the run loop for the worker.
 func (w worker[I, O]) start() {
 	go func() {
+		defer w.wg.Done()
 		for job := range w.jobQueue {
 			var err error
 			select {
 			case <-job.ctx.Done():
 				err = job.ctx.Err()
 			default:
-				for i, input := range job.inputs {
-					job.outputs[i], err = job.f(input)
-					if err != nil {
-						break
-					}
-				}
+				err = job.f(job.inputs, job.outputs)
 			}
 			job.errChan <- err
 		}
