@@ -11,6 +11,7 @@ import (
 	"fennel/db"
 	"fennel/lib/ftypes"
 	"fennel/lib/profile"
+	"fennel/lib/sql"
 	"fennel/lib/value"
 
 	"fennel/test"
@@ -46,6 +47,12 @@ func (m *mockProvider) getBatch(ctx context.Context, tier tier.Tier, profileKeys
 	return mp, nil
 }
 
+func (m *mockProvider) query(ctx context.Context, tier tier.Tier, filter sql.SqlFilter) ([]profile.ProfileItem, error) {
+	mp := make([]profile.ProfileItem, 1)
+	mp[0] = m.ret
+	return mp, nil
+}
+
 // this is used only in `TestCaching`
 var _ provider = &mockProvider{}
 
@@ -65,6 +72,10 @@ func TestCachedDBBasic(t *testing.T) {
 	// })
 	t.Run("cache_db_get_multi", func(t *testing.T) {
 		testSQLGetMulti(t, provider)
+	})
+
+	t.Run("cached_db_query", func(t *testing.T) {
+		testQuery(t, provider)
 	})
 }
 

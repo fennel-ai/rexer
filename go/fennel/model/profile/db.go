@@ -8,6 +8,7 @@ import (
 
 	"fennel/lib/ftypes"
 	"fennel/lib/profile"
+	"fennel/lib/sql"
 	"fennel/lib/timer"
 	"fennel/lib/value"
 	"fennel/tier"
@@ -23,6 +24,7 @@ type provider interface {
 	setBatch(ctx context.Context, tier tier.Tier, profiles []profile.ProfileItem) error
 	get(ctx context.Context, tier tier.Tier, profileKey profile.ProfileItemKey) (profile.ProfileItem, error)
 	getBatch(ctx context.Context, tier tier.Tier, profileKeys []profile.ProfileItemKey) ([]profile.ProfileItem, error)
+	query(ctx context.Context, tier tier.Tier, filter sql.SqlFilter) ([]profile.ProfileItem, error)
 }
 
 type dbProvider struct{}
@@ -153,6 +155,32 @@ func (D dbProvider) get(ctx context.Context, tier tier.Tier, profileKey profile.
 
 	return profiles[0], nil
 
+}
+
+func (D dbProvider) query(ctx context.Context, tier tier.Tier, filter sql.SqlFilter) ([]profile.ProfileItem, error) {
+	ctx, t := timer.Start(ctx, tier.ID, "model.profile.db.query")
+	defer t.Stop()
+	// construct the select query to execute it.
+	sql := fmt.Sprintf(`
+	SELECT otype, oid, zkey, value, version
+	FROM profile
+	WHERE %s
+	`, filter.String())
+	profilereqs := make([]profileItemSer, 0)
+	var err error
+	if err = tier.DB.SelectContext(ctx, &profilereqs, sql); err != nil {
+		return nil, err
+	}
+	ret := make([]profile.ProfileItem, 0)
+	for _, p := range profilereqs {
+		prof, err := p.toProfileItem()
+		if err == nil {
+			ret = append(ret, prof)
+		} else {
+			tier.Logger.Error("Failed to get profileItem from profileItemSer: %s" + err.Error())
+		}
+	}
+	return ret, nil
 }
 
 // getBatched returns the version for (otype, oid, key)

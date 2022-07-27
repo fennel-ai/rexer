@@ -2,15 +2,17 @@ package profile
 
 import (
 	"context"
-	"fmt"
-	"sync"
-	"time"
-
 	"fennel/lib/cache"
+	"fennel/lib/compress"
 	"fennel/lib/profile"
+	"fennel/lib/sql"
 	"fennel/lib/timer"
 	"fennel/lib/value"
 	"fennel/tier"
+	"fmt"
+	"strconv"
+	"sync"
+	"time"
 
 	"go.uber.org/zap"
 )
@@ -32,6 +34,10 @@ func SetBatch(ctx context.Context, tier tier.Tier, profiles []profile.ProfileIte
 
 func Get(ctx context.Context, tier tier.Tier, profileKey profile.ProfileItemKey) (profile.ProfileItem, error) {
 	return cachedProvider{base: dbProvider{}}.get(ctx, tier, profileKey)
+}
+
+func Query(ctx context.Context, tier tier.Tier, filter sql.SqlFilter) ([]profile.ProfileItem, error) {
+	return cachedProvider{base: dbProvider{}}.query(ctx, tier, filter)
 }
 
 func GetBatch(ctx context.Context, tier tier.Tier, profileKeys []profile.ProfileItemKey) ([]profile.ProfileItem, error) {
@@ -140,6 +146,42 @@ func (c cachedProvider) get(ctx context.Context, tier tier.Tier, profileKey prof
 	}
 
 	return ret[0], nil
+}
+
+func (c cachedProvider) query(ctx context.Context, tier tier.Tier, filter sql.SqlFilter) ([]profile.ProfileItem, error) {
+	ctx, t := timer.Start(ctx, tier.ID, "model.profile.cached.query")
+	defer t.Stop()
+	filterHash := strconv.FormatUint(filter.Hash(), 10)
+	val, err := tier.Cache.Get(ctx, filterHash)
+	result := make(map[string]any)
+	result[filterHash] = val
+	if err != nil || len(val.(string)) == 0 {
+		dbProfiles, err := c.base.query(ctx, tier, filter)
+		if err == nil {
+			result[filterHash] = dbProfiles
+			if b, err := compress.Encode(dbProfiles); err != nil {
+				_ = tier.Cache.Set(ctx, filterHash, b, time.Duration(0))
+			}
+		} else {
+			return nil, err
+		}
+	}
+
+	v, ok := result[filterHash]
+	if !ok || v == tier.Cache.Nil() {
+		return nil, fmt.Errorf("failed to fetch profiles")
+	}
+	ret := make([]profile.ProfileItem, 0)
+	switch t := v.(type) {
+	case string:
+		if err := compress.Decode([]byte(t), &ret); err != nil {
+			return nil, fmt.Errorf("unexpected error in uncompression result from cache: %s", err)
+		}
+		return ret, nil
+	case []profile.ProfileItem:
+		return t, nil
+	}
+	return nil, fmt.Errorf("unexpected type found in cache")
 }
 
 func getValueFromCache(v interface{}) (value.Value, error) {

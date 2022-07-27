@@ -7,6 +7,7 @@ import (
 
 	"fennel/kafka"
 	profilelib "fennel/lib/profile"
+	"fennel/lib/sql"
 	"fennel/lib/timer"
 	"fennel/model/profile"
 	"fennel/tier"
@@ -18,6 +19,12 @@ func Get(ctx context.Context, tier tier.Tier, pk profilelib.ProfileItemKey) (pro
 	ctx, t := timer.Start(ctx, tier.ID, "controller.profile.get")
 	defer t.Stop()
 	return profile.Get(ctx, tier, pk)
+}
+
+func Query(ctx context.Context, tier tier.Tier, filter sql.SqlFilter) ([]profilelib.ProfileItem, error) {
+	ctx, t := timer.Start(ctx, tier.ID, "controller.profile.query")
+	defer t.Stop()
+	return profile.Query(ctx, tier, filter)
 }
 
 func Set(ctx context.Context, tier tier.Tier, request profilelib.ProfileItem) error {
