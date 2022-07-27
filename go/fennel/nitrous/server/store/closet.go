@@ -69,16 +69,23 @@ func asString(s []byte) string {
 }
 
 func (c *Closet) encodeKeys(groupkey string, buckets []temporal.TimeBucket) ([]hangar.KeyGroup, error) {
-	kgs := make([]hangar.KeyGroup, len(buckets))
 	// Allocate space for storing keys.
 	keylen := 10 + 10 + len(groupkey) + 10 + 10
 	keybuf := make([]byte, keylen*len(buckets))
+	// Encoded keys are stored in kgs, but the key prefix points to locations in
+	// the keybuf slice.
+	kgs := make([]hangar.KeyGroup, len(buckets))
 	for i, b := range buckets {
-		// Encode (codec | groupkey | width | index) as "prefix".
+		// Encode (codec | tierId | groupkey | width | index) as "prefix".
 		curr := 0
 		n, err := binary.PutVarint(keybuf[curr:], int64(c.codec))
 		if err != nil {
 			return nil, fmt.Errorf("error encoding codec (%d): %w", c.codec, err)
+		}
+		curr += n
+		n, err = binary.PutUvarint(keybuf[curr:], uint64(c.tierId))
+		if err != nil {
+			return nil, fmt.Errorf("error encoding tierId (%d): %w", c.tierId, err)
 		}
 		curr += n
 		n, err = binary.PutString(keybuf[curr:], groupkey)
@@ -94,11 +101,6 @@ func (c *Closet) encodeKeys(groupkey string, buckets []temporal.TimeBucket) ([]h
 		n, err = binary.PutUvarint(keybuf[curr:], uint64(b.Index))
 		if err != nil {
 			return nil, fmt.Errorf("error encoding index (%d): %w", b.Index, err)
-		}
-		curr += n
-		n, err = binary.PutUvarint(keybuf[curr:], uint64(c.tierId))
-		if err != nil {
-			return nil, fmt.Errorf("error encoding tierId (%d): %w", c.tierId, err)
 		}
 		curr += n
 		kgs[i].Prefix.Data = keybuf[:curr:curr]
@@ -194,10 +196,6 @@ func (c *Closet) Process(ctx context.Context, ops []*rpc.NitrousOp, store hangar
 					return nil, nil, fmt.Errorf("error decoding value %s: %w", s, err)
 				}
 			}
-			val, err = c.mr.Transform(val)
-			if err != nil {
-				return nil, nil, fmt.Errorf("error transforming value: %w", err)
-			}
 			vals = append(vals, val)
 		}
 	}
@@ -220,13 +218,18 @@ func (c *Closet) update(ctx context.Context, ts []uint32, keys []string, val []v
 		}
 		for j, kg := range kgs {
 			p := asString(kg.Prefix.Data)
+			// Transform the value and store or merge into existing value.
+			v, err := c.mr.Transform(val[i])
+			if err != nil {
+				return nil, nil, fmt.Errorf("error transforming value (%s): %w", val[i], err)
+			}
 			if ptr, ok := prefixes[p]; !ok {
 				prefixes[p] = len(vals)
-				vals = append(vals, val[i])
+				vals = append(vals, v)
 				expiry = append(expiry, ttls[j])
 				hkgs = append(hkgs, kg)
 			} else {
-				vals[ptr], err = c.mr.Merge(vals[ptr], val[i])
+				vals[ptr], err = c.mr.Merge(vals[ptr], v)
 				if err != nil {
 					return nil, nil, fmt.Errorf("error merging: %w", err)
 				}
