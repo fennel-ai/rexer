@@ -161,7 +161,7 @@ export const setup = async (input: inputType) => {
                                 "--metrics-port",
                                 `${metricsPort}`,
                                 "--health-port",
-                                `${healthPort},`,
+                                `${healthPort}`,
                                 "--dev=false"
                             ],
                             ports: [
