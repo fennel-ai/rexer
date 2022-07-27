@@ -1,0 +1,22 @@
+$background-color: #EFE3FE;
+
+.container {
+    width: 100%;
+    background-color: $background-color;
+    position: relative;
+}
+
+.banner {
+    width: 472px;
+    font-weight: 700;
+    font-size: 44px;
+    position: relative;
+    top: 90px;
+    left: 70px;
+}
+
+.pancake {
+    position: absolute;
+    right: 0;
+    bottom: 0;
+}

@@ -4,10 +4,12 @@ import axios, { AxiosError } from "axios";
 import { useState } from "react";
 
 import styles from "../styles/signon/SignUp.module.scss";
+import Pancake from "./Pancake";
 
 function SignUp() {
     return (
-        <div>
+        <div className={styles.page}>
+            <Pancake />
             <div className={styles.container}>
                 <img src="images/logo.svg" alt="logo" className={styles.logo} />
                 <hr className={styles.logoDivider} />

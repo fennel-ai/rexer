@@ -4,11 +4,11 @@ interface CssExports {
   'container': string;
   'logo': string;
   'logoDivider': string;
+  'page': string;
   'signInForm': string;
   'signInFormButton': string;
   'signInFormItem': string;
   'signInHeader': string;
-  'signInItem': string;
 }
 export const cssExports: CssExports;
 export default cssExports;
