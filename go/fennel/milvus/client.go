@@ -146,6 +146,10 @@ func (c Client) CreateKNNIndex(ctx context.Context, agg aggregate.Aggregate, tie
 }
 
 func (c Client) InsertStream(ctx context.Context, agg aggregate.Aggregate, table value.List, tierId ftypes.RealmID) error {
+	// if the transformed profiles are empty, nothing to write to milvus
+	if table.Len() == 0 {
+		return nil
+	}
 	// Change this to string once Milvus 2.1 is released.
 	ids := make([]int64, 0, table.Len())
 	timestamps := make([]int64, 0, table.Len())
