@@ -70,9 +70,18 @@ func StoreSource(ctx context.Context, tier tier.Tier, src data_integration.Sourc
 }
 
 func DeleteSource(ctx context.Context, tier tier.Tier, name string) error {
+	if err := diModel.CheckIfInUse(ctx, tier, name); err != nil {
+		return err
+	}
 	src, err := diModel.RetrieveSource(ctx, tier, name)
 	if err != nil {
 		return fmt.Errorf("failed to retrieve source: %w", err)
+	}
+	if tier.AirbyteClient.IsAbsent() {
+		return fmt.Errorf("error: Airbyte client is not initialized")
+	}
+	if err = tier.AirbyteClient.MustGet().DeleteSource(src); err != nil {
+		return fmt.Errorf("error: failed to delete source: %w", err)
 	}
 	return diModel.DeleteSource(ctx, tier, src)
 }

@@ -20,6 +20,16 @@ type ConnectorConfig struct {
 	Status              string   `json:"status"`
 }
 
+type UpdateConnectorConfig struct {
+	ConnectionId        string   `json:"connectionId"`
+	NamespaceDefinition string   `json:"namespaceDefinition"`
+	NamespaceFormat     string   `json:"namespaceFormat"`
+	Prefix              string   `json:"prefix"`
+	SyncCatalog         Catalog  `json:"syncCatalog"`
+	Schedule            Schedule `json:"schedule"`
+	Status              string   `json:"status"`
+}
+
 type Schedule struct {
 	Units    int    `json:"units"`
 	TimeUnit string `json:"timeUnit"`

@@ -154,19 +154,31 @@ func FromValueDict(dict value.Dict) (ProfileItem, error) {
 	}
 
 	if otype, ok := dict.Get("otype"); ok {
-		pi.OType = ftypes.OType(otype.(value.String))
+		if o, ok := otype.(value.String); ok {
+			pi.OType = ftypes.OType(o)
+		} else {
+			return pi, fmt.Errorf("otype not a string")
+		}
 	} else {
 		return pi, fmt.Errorf("otype not found in profile dict")
 	}
 
 	if key, ok := dict.Get("key"); ok {
-		pi.Key = string(key.(value.String))
+		if k, ok := key.(value.String); ok {
+			pi.Key = string(k)
+		} else {
+			return pi, fmt.Errorf("key not a string")
+		}
 	} else {
 		return pi, fmt.Errorf("key not found in profile dict")
 	}
 
 	if timestamp, ok := dict.Get("timestamp"); ok {
-		pi.UpdateTime = uint64(timestamp.(value.Int))
+		if t, ok := timestamp.(value.Int); ok {
+			pi.UpdateTime = uint64(t)
+		} else {
+			return pi, fmt.Errorf("timestamp not an int")
+		}
 	} else {
 		return pi, fmt.Errorf("timestamp not found in profile dict")
 	}

@@ -140,7 +140,11 @@ func (a Action) ToValueDict() (value.Dict, error) {
 func FromValueDict(dict value.Dict) (Action, error) {
 	var action Action
 	if actionID, ok := dict.Get("action_id"); ok {
-		action.ActionID = ftypes.IDType(actionID.(value.Int))
+		if aid, ok := actionID.(value.Int); ok {
+			action.ActionID = ftypes.IDType(aid)
+		} else {
+			return action, fmt.Errorf("action ID must be an integer")
+		}
 	}
 
 	if actorID, ok := dict.Get("actor_id"); ok {
@@ -150,7 +154,11 @@ func FromValueDict(dict value.Dict) (Action, error) {
 	}
 
 	if actorType, ok := dict.Get("actor_type"); ok {
-		action.ActorType = ftypes.OType(actorType.(value.String))
+		if at, ok := actorType.(value.String); ok {
+			action.ActorType = ftypes.OType(at)
+		} else {
+			return action, fmt.Errorf("actor type must be a string")
+		}
 	} else {
 		return action, fmt.Errorf("action missing actor type")
 	}
@@ -162,19 +170,31 @@ func FromValueDict(dict value.Dict) (Action, error) {
 	}
 
 	if targetType, ok := dict.Get("target_type"); ok {
-		action.TargetType = ftypes.OType(targetType.(value.String))
+		if t, ok := targetType.(value.String); ok {
+			action.TargetType = ftypes.OType(t)
+		} else {
+			return action, fmt.Errorf("target type must be a string")
+		}
 	} else {
 		return action, fmt.Errorf("action missing target type")
 	}
 
 	if actionType, ok := dict.Get("action_type"); ok {
-		action.ActionType = ftypes.ActionType(actionType.(value.String))
+		if at, ok := actionType.(value.String); ok {
+			action.ActionType = ftypes.ActionType(at)
+		} else {
+			return action, fmt.Errorf("action type must be a string")
+		}
 	} else {
 		return action, fmt.Errorf("action missing action type")
 	}
 
 	if timestamp, ok := dict.Get("timestamp"); ok {
-		action.Timestamp = ftypes.Timestamp(int(timestamp.(value.Int)))
+		if ts, ok := timestamp.(value.Int); ok {
+			action.Timestamp = ftypes.Timestamp(ts)
+		} else {
+			return action, fmt.Errorf("action timestamp must be an integer")
+		}
 	} else {
 		return action, fmt.Errorf("action missing timestamp")
 	}

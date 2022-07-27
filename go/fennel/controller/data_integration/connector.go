@@ -28,7 +28,7 @@ func StoreConnector(ctx context.Context, tier tier.Tier, conn data_integration.C
 	conn2, err := connectorModel.Retrieve(ctx, tier, conn.Name)
 	if err != nil {
 		if errors.Is(err, data_integration.ErrConnNotFound) {
-			tier.Logger.Debug("Storing new connector")
+			tier.Logger.Debug("Storing new connector: " + conn.Name)
 			// Write the connector to Airbyte
 			if tier.AirbyteClient.IsAbsent() {
 				return fmt.Errorf("error: Airbyte client is not initialized")
@@ -49,8 +49,17 @@ func StoreConnector(ctx context.Context, tier tier.Tier, conn data_integration.C
 	} else {
 		if err = conn.Equals(conn2); err == nil {
 			if !conn2.Active {
-				err := connectorModel.Activate(ctx, tier, conn.Name)
+				if tier.AirbyteClient.IsAbsent() {
+					return fmt.Errorf("error: Airbyte client is not initialized")
+				}
+				source, err := connectorModel.RetrieveSource(ctx, tier, conn.SourceName)
 				if err != nil {
+					return fmt.Errorf("error: failed to retrieve source: %w", err)
+				}
+				if err = tier.AirbyteClient.MustGet().EnableConnector(source, conn2); err != nil {
+					return fmt.Errorf("error: failed to enable connector: %w", err)
+				}
+				if err = connectorModel.Activate(ctx, tier, conn.Name); err != nil {
 					return fmt.Errorf("failed to reactivate connector '%s': %w", conn.Name, err)
 				}
 			}
@@ -59,10 +68,9 @@ func StoreConnector(ctx context.Context, tier tier.Tier, conn data_integration.C
 			return fmt.Errorf("connector already present but with different params: %w", err)
 		}
 	}
-
 }
 
-func DeactivateConnector(ctx context.Context, tier tier.Tier, name string) error {
+func DisableConnector(ctx context.Context, tier tier.Tier, name string) error {
 	conn, err := connectorModel.Retrieve(ctx, tier, name)
 	if err != nil {
 		return fmt.Errorf("failed to retrieve connector: %w", err)
@@ -70,7 +78,33 @@ func DeactivateConnector(ctx context.Context, tier tier.Tier, name string) error
 	if !conn.Active {
 		return nil
 	}
-	return connectorModel.Deactivate(ctx, tier, name)
+	tier.Logger.Debug("Disabling active connector: " + conn.Name)
+	if tier.AirbyteClient.IsAbsent() {
+		return fmt.Errorf("error: Airbyte client is not initialized")
+	}
+	source, err := connectorModel.RetrieveSource(ctx, tier, conn.SourceName)
+	if err != nil {
+		return fmt.Errorf("error: failed to retrieve source: %w", err)
+	}
+	if err = tier.AirbyteClient.MustGet().DisableConnector(source, conn); err != nil {
+		return fmt.Errorf("error: failed to disable connector: %w", err)
+	}
+	// Finally, write the connector to the db
+	return connectorModel.Disable(ctx, tier, conn.Name)
+}
+
+func DeleteConnector(ctx context.Context, tier tier.Tier, name string) error {
+	conn, err := connectorModel.Retrieve(ctx, tier, name)
+	if err != nil {
+		return fmt.Errorf("failed to retrieve connector: %w", err)
+	}
+	if tier.AirbyteClient.IsAbsent() {
+		return fmt.Errorf("error: Airbyte client is not initialized")
+	}
+	if err = tier.AirbyteClient.MustGet().DeleteConnector(conn); err != nil {
+		return fmt.Errorf("error: failed to delete connector: %w", err)
+	}
+	return connectorModel.Delete(ctx, tier, name)
 }
 
 func ReadBatch(ctx context.Context, consumer kafka.FConsumer, streamName string, count int, timeout time.Duration) ([]value.Value, [][16]byte, error) {
