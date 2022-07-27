@@ -40,15 +40,15 @@ func TestStore(t *testing.T, maker func(t *testing.T) Hangar, skipped ...string)
 }
 
 func BenchmarkStore(b *testing.B, maker func(b *testing.B) Hangar) {
-	b.Run("basic:keys_num_10000_sz_100:fields_num_100:vals_sz_100:gets_1000", func(b *testing.B) {
+	b.Run("basic:keys_num_100_sz_100:fields_num_100:vals_sz_100:gets_1000", func(b *testing.B) {
 		store := maker(b)
-		defer func() { _ = store.Teardown() }()
-		benchmarkGetSet(b, store, 10000, 100, 100, 100, 1000)
+		b.Cleanup(func() { _ = store.Teardown() })
+		benchmarkGetSet(b, store, 100, 100, 100, 100, 1000)
 	})
-	b.Run("basic:keys_num_10000_sz_100:fields_num_100:vals_sz_100:gets_1000", func(b *testing.B) {
+	b.Run("basic:keys_num_1000_sz_100:fields_num_10:vals_sz_100:gets_1000", func(b *testing.B) {
 		store := maker(b)
-		defer func() { _ = store.Teardown() }()
-		benchmarkGetSet(b, store, 10000, 10, 100, 100, 1000)
+		b.Cleanup(func() { _ = store.Teardown() })
+		benchmarkGetSet(b, store, 1000, 10, 100, 100, 1000)
 	})
 }
 
