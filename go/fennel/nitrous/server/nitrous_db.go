@@ -184,15 +184,18 @@ func (ndb *NitrousDB) processDeleteEvent(tierId ftypes.RealmID, event *rpc.Delet
 			return hangar.ValGroup{}, fmt.Errorf("failed to encode hangar field for new aggregate %d in tier %d: %w", aggId, tierId, err)
 		}
 		fields := vg.Fields[:0]
-		for _, f := range vg.Fields {
+		values := vg.Values[:0]
+		for i, f := range vg.Fields {
 			if bytes.Equal(f, field) {
 				ndb.tables.Delete(aggKey{tierId, aggId, codec})
 				ndb.tailer.Unsubscribe(table.Identity())
 				continue
 			}
 			fields = append(fields, field)
+			values = append(values, vg.Values[i])
 		}
 		vg.Fields = fields
+		vg.Values = values
 	}
 	return vg, nil
 }

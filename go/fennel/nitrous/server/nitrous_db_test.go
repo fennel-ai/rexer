@@ -180,8 +180,9 @@ func TestDeleteAggregate(t *testing.T) {
 	del := &rpc.DeleteAggregate{
 		AggId: 1,
 	}
-	_, err = ndb.processDeleteEvent(tierId, del, vg) //nolint:ineffassign
+	vg, err = ndb.processDeleteEvent(tierId, del, vg) //nolint:ineffassign
 	assert.NoError(t, err)
+	assert.True(t, vg.Valid())
 
 	// Fetching the aggregate should now fail.
 	_, err = ndb.Get(ctx, tierId, 1, rpc.AggCodec_V1, []string{"mygk"}, []value.Dict{kwargs})
