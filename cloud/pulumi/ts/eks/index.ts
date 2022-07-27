@@ -313,7 +313,23 @@ function setupStorageClasses(cluster: eks.Cluster): Record<string, pulumi.Output
         }
     }, { provider: cluster.provider })
 
-    return { "io1": io1.metadata.name }
+    const io2 = new k8s.storage.v1.StorageClass("ebs-io2-200ops", {
+        allowVolumeExpansion: true,
+        reclaimPolicy: "Delete",
+        provisioner: "ebs.csi.aws.com",
+        volumeBindingMode: "WaitForFirstConsumer",
+        parameters: {
+            "type": "io2",
+            "iopsPerGB": "200",
+            "encrypted": "true",
+            "fsType": "ext4",
+        }
+    })
+
+    return {
+        "io1": io1.metadata.name,
+        "io2": io2.metadata.name,
+    }
 }
 
 // This function follows the EBS CSI driver's setup instructions from:
