@@ -36,6 +36,8 @@ var supportedHyperParameters = hp.HyperParamRegistry{
 		"nList":          {Default: 1024, Type: reflect.Int, Options: nil},
 		"M":              {Default: 32, Type: reflect.Int, Options: nil},
 		"efConstruction": {Default: 128, Type: reflect.Int, Options: nil},
+		// larger number of trees produces accurate results but creates larger indexes
+		"nTrees": 		  {Default: 32, Type: reflect.Int, Options: nil},
 	},
 }
 
