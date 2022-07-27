@@ -22,6 +22,7 @@ var flags struct {
 	common.PprofArgs
 	common.PrometheusArgs
 	timer.TracerArgs
+	common.HealthCheckArgs
 }
 
 func main() {
@@ -52,6 +53,8 @@ func main() {
 
 	// Start a prometheus server.
 	common.StartPromMetricsServer(flags.MetricsPort)
+	// Start health checker to export readiness and liveness state for the container running the server
+	common.StartHealthCheckServer(flags.HealthPort)
 	// Start a pprof server to export the standard pprof endpoints.
 	profiler := common.CreateProfiler(flags.PprofArgs)
 	profiler.StartPprofServer()
