@@ -2,6 +2,7 @@ package store
 
 import (
 	"context"
+	"fmt"
 	"testing"
 	"time"
 
@@ -158,4 +159,46 @@ func TestProcess(t *testing.T) {
 	vals, err = cs2.Get(ctx, []string{"mygk"}, []value.Dict{kwargs}, n.Store)
 	assert.NoError(t, err)
 	assert.ElementsMatch(t, []value.Value{value.Int(0)}, vals)
+}
+
+func BenchmarkGet(b *testing.B) {
+	n := test.NewTestNitrous(b)
+	opts := aggregate.Options{
+		AggType:   "max",
+		Durations: []uint32{24 * 3600},
+	}
+	aggId := ftypes.AggId(1)
+	mr, err := counter.ToMergeReduce(aggId, opts)
+	assert.NoError(b, err)
+	ck := clock.NewMock()
+	ck.Add(time.Since(time.Unix(0, 0)))
+	bucketizer := temporal.NewFixedWidthBucketizer(100, ck)
+	tierId := ftypes.RealmID(1)
+	cs, err := NewCloset(tierId, aggId, rpc.AggCodec_V1, mr, bucketizer)
+	assert.NoError(b, err)
+
+	ctx := context.Background()
+
+	var gks []string
+	var vals []value.Value
+	var kwargs []value.Dict
+	var ts []uint32
+	now := uint32(n.Clock.Now().Unix())
+	duration := value.NewDict(map[string]value.Value{"duration": value.Int(24 * 3600)})
+	for i := 0; i < 1000; i++ {
+		gks = append(gks, fmt.Sprintf("mygk-%d", i))
+		vals = append(vals, value.Int(i))
+		ts = append(ts, now)
+		kwargs = append(kwargs, duration)
+	}
+	keys, vgs, err := cs.update(ctx, ts, gks, vals, n.Store)
+	assert.NoError(b, err)
+	err = n.Store.SetMany(ctx, keys, vgs)
+	assert.NoError(b, err)
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		_, err := cs.Get(ctx, gks, kwargs, n.Store)
+		assert.NoError(b, err)
+	}
 }
