@@ -188,17 +188,15 @@ async function setupEmissaryIngressCrds(input: inputType, awsProvider: aws.Provi
     })
 }
 
-async function setupIamRoleForServiceAccount(input: inputType, awsProvider: aws.Provider, namespace: string, serviceAccountName: string, cluster: eks.Cluster) {
+async function setupIamRoleForServiceAccount(input: inputType, awsProvider: aws.Provider, entity: string, namespace: string, serviceAccountName: string, cluster: eks.Cluster) {
     // Account id
     const current = await aws.getCallerIdentity({ provider: awsProvider });
     const accountId = current.accountId
 
-    // Create k8s service account and IAM role for LoadBalancerController, and
-    // associate the above policy with the account.
+    // Create IAM role and k8s service account.
     const role = cluster.core.oidcProvider!.url.apply(oidcUrl => {
-        return new aws.iam.Role(`p-${input.planeId}-lbc-role`, {
+        return new aws.iam.Role(`p-${input.planeId}-${entity}-role`, {
             namePrefix: `p-${input.planeId}-${serviceAccountName}`,
-            description: "IAM role for AWS load-balancer-controller",
             assumeRolePolicy: `{
              "Version": "2012-10-17",
              "Statement": [
@@ -221,7 +219,7 @@ async function setupIamRoleForServiceAccount(input: inputType, awsProvider: aws.
     })
 
     const acc = role.apply(role => {
-        new k8s.core.v1.ServiceAccount("lbc-ac", {
+        new k8s.core.v1.ServiceAccount(`${entity}-ac`, {
             automountServiceAccountToken: true,
             metadata: {
                 name: serviceAccountName,
@@ -241,7 +239,7 @@ async function setupLoadBalancerController(input: inputType, awsProvider: aws.Pr
 
     // Create k8s service account and IAM role for LoadBalanacerController, and
     // associate the above policy with the account.
-    const { role } = await setupIamRoleForServiceAccount(input, awsProvider, "kube-system", serviceAccountName, cluster)
+    const { role } = await setupIamRoleForServiceAccount(input, awsProvider, "lbc", "kube-system", serviceAccountName, cluster)
 
     // Create policy for lb-controller.
     try {
@@ -316,6 +314,54 @@ function setupStorageClasses(cluster: eks.Cluster): Record<string, pulumi.Output
     }, { provider: cluster.provider })
 
     return { "io1": io1.metadata.name }
+}
+
+// This function follows the EBS CSI driver's setup instructions from:
+// https://github.com/kubernetes-sigs/aws-ebs-csi-driver/blob/master/docs/install.md
+async function setupEbsCsiDriver(input: inputType, awsProvider: aws.Provider, cluster: eks.Cluster) {
+    // Give the driver IAM permission to talk to Amazon EBS and manage the volume
+    // on our behalf.
+    try {
+        const root = process.env.FENNEL_ROOT!;
+        const policyFilePath = path.join(root, "/deployment/artifacts/volume-policy.yaml")
+        var policyJson = fs.readFileSync(policyFilePath, 'utf8')
+    } catch (err) {
+        console.error(err)
+        process.exit()
+    }
+    const iamPolicy = new aws.iam.Policy(`p-${input.planeId}-ebs-driver-policy`, {
+        namePrefix: `p-${input.planeId}-EbsCsiDriverIAMPolicy`,
+        policy: policyJson,
+    }, { provider: awsProvider })
+
+    const serviceAccountName = "ebs-csi-controller-sa"
+    const namespace = "kube-system"
+
+    const { role } = await setupIamRoleForServiceAccount(input, awsProvider,
+        "csi-driver", namespace, serviceAccountName, cluster)
+
+    const attachPolicy = new aws.iam.RolePolicyAttachment(`p-${input.planeId}-attach-ebs-policy`, {
+        role: role.id,
+        policyArn: iamPolicy.arn,
+    }, { provider: awsProvider })
+
+    // Install the driver.
+    const driver = new k8s.helm.v3.Release("ebs-csi-driver", {
+        repositoryOpts: {
+            repo: "https://kubernetes-sigs.github.io/aws-ebs-csi-driver/",
+        },
+        chart: "aws-ebs-csi-driver",
+        namespace: namespace,
+        version: "v2.8.1",
+        values: {
+            "controller": {
+                "serviceAccount": {
+                    "create": false,
+                    "name": serviceAccountName,
+                }
+            },
+        }
+    }, { provider: cluster.provider, dependsOn: attachPolicy })
 }
 
 async function setupClusterAutoscaler(awsProvider: aws.Provider, input: inputType, cluster: eks.Cluster) {
@@ -580,6 +626,9 @@ export const setup = async (input: inputType): Promise<pulumi.Output<outputType>
             },
         }
     }, { provider: cluster.provider })
+
+    // Setup AWS EBS CSI driver.
+    setupEbsCsiDriver(input, awsProvider, cluster)
 
     // Setup storageclasses to be used by stateful sets.
     const storageclasses = setupStorageClasses(cluster)
