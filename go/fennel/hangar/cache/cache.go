@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"time"
 
 	"fennel/hangar"
 	"fennel/lib/ftypes"
@@ -32,6 +33,14 @@ func NewHangar(planeId ftypes.RealmID, maxSize, avgSize uint64, enc hangar.Encod
 	if err != nil {
 		return nil, err
 	}
+	// Start reporting cache stats periodically.
+	go func() {
+		ticker := time.NewTicker(10 * time.Second)
+		defer ticker.Stop()
+		for ; true; <-ticker.C {
+			reportStats(cache)
+		}
+	}()
 	ret := rcache{
 		planeID:    planeId,
 		cache:      cache,
@@ -67,6 +76,7 @@ func (c *rcache) Encoder() hangar.Encoder {
 }
 
 func (c *rcache) Close() error {
+	c.workerPool.Close()
 	c.cache.Close()
 	return nil
 }
