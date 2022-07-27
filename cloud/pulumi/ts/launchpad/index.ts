@@ -440,7 +440,7 @@ const planeConfs: Record<number, PlaneConf> = {
         nitrousConf: {
             replicas: 1,
             storageCapacityGB: 100,
-            storageClass: "io1",
+            storageClass: "io2",
             blockCacheMB: 512,
             kvCacheMB: 1024,
             binlog: {},
