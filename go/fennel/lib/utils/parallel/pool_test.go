@@ -3,7 +3,6 @@ package parallel_test
 import (
 	"context"
 	"errors"
-	"fmt"
 	"runtime"
 	"testing"
 	"time"
@@ -18,7 +17,7 @@ func TestWorkerPool(t *testing.T) {
 	maxWorkers := runtime.GOMAXPROCS(0)
 	workerPool := parallel.NewWorkerPool[int, int](maxWorkers)
 	start := time.Now()
-	results, err := workerPool.Process(context.Background(), inputs, square)
+	results, err := workerPool.Process(context.Background(), inputs, squareSlice, 64)
 	elapsed := time.Since(start)
 	assert.NoError(t, err)
 	expected := []int{1, 4, 9, 16, 25, 36, 49, 64, 81, 100}
@@ -33,13 +32,17 @@ func TestWorkerPoolWithError(t *testing.T) {
 	}
 	maxWorkers := runtime.GOMAXPROCS(0)
 	workerPool := parallel.NewWorkerPool[int, int](maxWorkers)
-	f := func(x int) (int, error) {
-		if x%4 == 0 {
-			return 0, fmt.Errorf("error")
+	f := func(x []int, y []int) error {
+		for i := 0; i < len(x); i++ {
+			if x[i]%4 == 0 {
+				return errors.New("error")
+			} else {
+				y[i] = x[i] * x[i]
+			}
 		}
-		return square(x)
+		return nil
 	}
-	_, err := workerPool.Process(context.Background(), inputs, f)
+	_, err := workerPool.Process(context.Background(), inputs, f, 64)
 	assert.Error(t, err)
 }
 
@@ -49,7 +52,7 @@ func TestWorkerPoolWithSmallInput(t *testing.T) {
 		inputs = append(inputs, i)
 	}
 	workerPool := parallel.NewWorkerPool[int, int](100)
-	results, err := workerPool.Process(context.Background(), inputs, square)
+	results, err := workerPool.Process(context.Background(), inputs, squareSlice, 64)
 	assert.NoError(t, err)
 	expected := []int{1, 4, 9, 16, 25, 36, 49, 64, 81, 100}
 	assert.Equal(t, expected, results)
@@ -62,13 +65,16 @@ func TestPoolEarlyExit(t *testing.T) {
 	}
 	workerPool := parallel.NewWorkerPool[int, int](1)
 	e := errors.New("primerr")
-	f := func(x int) (int, error) {
-		if x == 47 {
-			return 0, e
+	f := func(x []int, y []int) error {
+		for i := 0; i < len(x); i++ {
+			if x[i] == 47 {
+				return e
+			}
+			y[i] = x[i] * x[i]
 		}
-		return square(x)
+		return nil
 	}
-	results, err := workerPool.Process(context.Background(), inputs, f)
+	results, err := workerPool.Process(context.Background(), inputs, f, 64)
 	assert.ErrorIs(t, err, e)
 	zeroes := 0
 	for _, x := range results {
@@ -88,6 +94,6 @@ func TestPoolCancellation(t *testing.T) {
 	ctx := context.Background()
 	ctx, cancel := context.WithCancel(ctx)
 	cancel()
-	_, err := workerPool.Process(ctx, inputs, square)
+	_, err := workerPool.Process(ctx, inputs, squareSlice, 64)
 	assert.ErrorIs(t, err, context.Canceled)
 }

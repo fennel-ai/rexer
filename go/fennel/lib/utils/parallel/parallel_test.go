@@ -24,6 +24,24 @@ func squareSleep(x int) (int, error) {
 	return x * x, nil
 }
 
+func squareSlice(x []int, y []int) error {
+	for i := 0; i < len(x); i++ {
+		y[i] = x[i] * x[i]
+	}
+	return nil
+}
+
+func countPrimesSlice(limits []int, count []int) error {
+	var err error
+	for i := 0; i < len(limits); i++ {
+		count[i], err = countPrimes(limits[i])
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 func countPrimes(limit int) (int, error) {
 	primes := make([]int, limit)
 	count := 0
@@ -98,7 +116,7 @@ func featureThread(b *testing.B, mode string) {
 		_, err := parallel.Process(context.Background(), runtime.GOMAXPROCS(0), arr, countPrimes)
 		assert.NoError(b, err)
 	case "pool":
-		_, err := workerPool.Process(context.Background(), arr, countPrimes)
+		_, err := workerPool.Process(context.Background(), arr, countPrimesSlice, 64)
 		assert.NoError(b, err)
 	}
 }
