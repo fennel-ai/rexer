@@ -54,6 +54,7 @@ func NewHangar(planeID ftypes.RealmID, dirname string, blockCacheBytes int64, en
 	opts := badger.DefaultOptions(dirname)
 	opts = opts.WithLoggingLevel(badger.WARNING)
 	opts = opts.WithBlockCacheSize(blockCacheBytes)
+	opts = opts.WithBlockSize(16 * 1024)
 	db, err := badger.Open(opts)
 	if err != nil {
 		return nil, err
