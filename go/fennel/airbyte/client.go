@@ -181,7 +181,11 @@ func (c Client) getSourceSchema(source data_integration.Source, conn data_integr
 	}
 
 	for _, stream := range streams {
-		if stream.supportIncrementalMode() && stream.Stream.Name == conn.StreamName {
+		if stream.SupportIncrementalMode() && stream.Stream.Name == conn.StreamName {
+			// Check if stream has the specified cursor field
+			if !stream.HasCursorField(conn.CursorField) {
+				return StreamConfig{}, fmt.Errorf("stream %s does not have the cursor field %s: %w", stream.Stream.Name, conn.CursorField, err)
+			}
 			return stream, nil
 		}
 	}

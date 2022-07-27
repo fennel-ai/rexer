@@ -91,6 +91,15 @@ func (s *testServer) discoverSchemaHandler(w http.ResponseWriter, r *http.Reques
 			SupportedSyncModes: []string{
 				"incremental",
 			},
+			JsonSchema: StreamJsonSchema{
+				Type: "object",
+				Properties: map[string]interface{}{
+					"id":        1,
+					"name":      1,
+					"age":       1,
+					"timestamp": 1,
+				},
+			},
 		},
 		Config: MutableSourceConfig{
 			SyncMode: "incremental",
@@ -171,4 +180,18 @@ func TestAirbyteConnectorClient(t *testing.T) {
 	connId, err := client.CreateConnector(src, conn)
 	assert.NoError(t, err)
 	assert.Equal(t, TEST_CONNECTION_ID, connId)
+
+	conn = data_integration.Connector{
+		Name:        "test-connector",
+		SourceName:  "test-source",
+		SourceType:  "S3",
+		StreamName:  "test-stream",
+		Version:     "1.0.0",
+		Destination: "profiles",
+		CursorField: "timestamp-random",
+		Query:       nil,
+		Active:      false,
+	}
+	_, err = client.CreateConnector(src, conn)
+	assert.Error(t, err)
 }
