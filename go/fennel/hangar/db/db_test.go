@@ -30,7 +30,6 @@ func BenchmarkDBStore(b *testing.B) {
 		dirname := t.TempDir()
 		db, err := NewHangar(planeID, dirname, 10*1<<24, encoders.Default())
 		assert.NoError(t, err)
-		t.Cleanup(func() { _ = db.Teardown() })
 		return db
 	}
 	hangar.BenchmarkStore(b, maker)
