@@ -2,6 +2,8 @@
 // Please do not change this file!
 interface CssExports {
   'container': string;
+  'headerAlt': string;
+  'headerTitle': string;
   'logo': string;
   'logoDivider': string;
   'page': string;
