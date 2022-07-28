@@ -31,6 +31,8 @@ export type NodeGroupConf = {
     //  https://docs.aws.amazon.com/eks/latest/userguide/service-quotas.html
     maxSize: number,
     amiType: string,
+    // Type of the instance to use in this node group
+    instanceType: string,
     // labels to be attached to the node group
     labels?: Record<string, string>,
 }
@@ -591,6 +593,8 @@ export const setup = async (input: inputType): Promise<pulumi.Output<outputType>
             nodeRoleArn: instanceRoleArn,
             subnetIds: privateSubnets,
             amiType: nodeGroup.amiType,
+            // this specifies if the instances in this node group should be SPOT or ON_DEMAND
+            capacityType: nodeGroup.instanceType,
         }, { provider: awsProvider });
     }
 

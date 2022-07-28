@@ -29,6 +29,9 @@ const DEFAULT_DESIRED_CAPACITY = 3
 const DEFAULT_X86_AMI_TYPE = "AL2_x86_64"
 const DEFAULT_ARM_AMI_TYPE = "AL2_ARM_64"
 
+const SPOT_INSTANCE_TYPE = "SPOT";
+const ON_DEMAND_INSTANCE_TYPE = "ON_DEMAND";
+
 const controlPlane: vpc.controlPlaneConfig = {
     region: "us-west-2",
     accountId: "030813887342",
@@ -353,6 +356,7 @@ const planeConfs: Record<number, PlaneConf> = {
                     minSize: 1,
                     maxSize: 3,
                     amiType: DEFAULT_X86_AMI_TYPE,
+                    instanceType: "",
                 },
                 // TODO: For nitrous, we may need to spin up ARM specific node group
             ],
@@ -420,6 +424,7 @@ const planeConfs: Record<number, PlaneConf> = {
                     // number to accommodate more servers
                     maxSize: 10,
                     amiType: DEFAULT_ARM_AMI_TYPE,
+                    instanceType: ON_DEMAND_INSTANCE_TYPE,
                 },
                 {
                     name: "p-3-common-ng-x86",
@@ -431,6 +436,7 @@ const planeConfs: Record<number, PlaneConf> = {
                     minSize: 4,
                     maxSize: 10,
                     amiType: DEFAULT_X86_AMI_TYPE,
+                    instanceType: ON_DEMAND_INSTANCE_TYPE,
                 },
             ],
         },
@@ -493,7 +499,8 @@ const planeConfs: Record<number, PlaneConf> = {
                     amiType: DEFAULT_ARM_AMI_TYPE,
                     labels: {
                         "node-group": "p-5-httpserver-ng"
-                    }
+                    },
+                    instanceType: ON_DEMAND_INSTANCE_TYPE,
                 },
                 // Countaggr server node group
                 {
@@ -505,7 +512,8 @@ const planeConfs: Record<number, PlaneConf> = {
                     amiType: DEFAULT_ARM_AMI_TYPE,
                     labels: {
                         "node-group": "p-5-countaggr-ng"
-                    }
+                    },
+                    instanceType: ON_DEMAND_INSTANCE_TYPE,
                 },
                 // Query server node group
                 {
@@ -519,7 +527,8 @@ const planeConfs: Record<number, PlaneConf> = {
                     amiType: DEFAULT_ARM_AMI_TYPE,
                     labels: {
                         "node-group": "p-5-queryserver-ng"
-                    }
+                    },
+                    instanceType: ON_DEMAND_INSTANCE_TYPE,
                 },
                 {
                     name: "p-5-common-ng-x86",
@@ -528,6 +537,7 @@ const planeConfs: Record<number, PlaneConf> = {
                     minSize: 2,
                     maxSize: 10,
                     amiType: DEFAULT_X86_AMI_TYPE,
+                    instanceType: ON_DEMAND_INSTANCE_TYPE,
                 }
             ],
         },
@@ -564,6 +574,7 @@ const planeConfs: Record<number, PlaneConf> = {
                     minSize: 1,
                     maxSize: 3,
                     amiType: DEFAULT_X86_AMI_TYPE,
+                    instanceType: ON_DEMAND_INSTANCE_TYPE,
                 },
                 {
                     name: "p-6-common-ng-arm64",
@@ -571,6 +582,7 @@ const planeConfs: Record<number, PlaneConf> = {
                     minSize: 1,
                     maxSize: 3,
                     amiType: DEFAULT_ARM_AMI_TYPE,
+                    instanceType: ON_DEMAND_INSTANCE_TYPE,
                 },
             ],
         },
@@ -627,6 +639,7 @@ const planeConfs: Record<number, PlaneConf> = {
                     minSize: 1,
                     maxSize: 3,
                     amiType: DEFAULT_X86_AMI_TYPE,
+                    instanceType: ON_DEMAND_INSTANCE_TYPE,
                 },
                 {
                     name: "p-9-common-ng-arm64",
@@ -634,6 +647,7 @@ const planeConfs: Record<number, PlaneConf> = {
                     minSize: 1,
                     maxSize: 3,
                     amiType: DEFAULT_ARM_AMI_TYPE,
+                    instanceType: ON_DEMAND_INSTANCE_TYPE,
                 },
             ],
         },
