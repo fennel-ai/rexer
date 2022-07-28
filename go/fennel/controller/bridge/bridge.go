@@ -1,8 +1,10 @@
 package bridge
 
 import (
+	"encoding/json"
+	"fennel/client"
+	"fennel/lib/sql"
 	"net/http"
-	"time"
 
 	"github.com/gin-gonic/gin"
 )
@@ -20,30 +22,42 @@ func Data(c *gin.Context) {
 }
 
 func Profiles(c *gin.Context) {
-	time.Sleep(time.Second)
+	var filter sql.CompositeSqlFilter
+	// We expect filter type in the body.
+	// c.BindJSON(&filter)
+	// For now just using a dummy filter to see if things work e2e.
+	str := `{
+		"Left": "OType",
+		"Op": "=",
+		"Right": "channel"
+	}
+		`
+	err := json.Unmarshal([]byte(str), &filter)
+	if err != nil {
+		c.String(http.StatusInternalServerError, err.Error())
+		return
+	}
+	cli, err := client.NewClient("http://localhost:2425", http.DefaultClient)
+	if err != nil {
+		c.String(http.StatusInternalServerError, err.Error())
+		return
+	}
+	profiles, err := cli.QueryProfiles(&filter)
+	if err != nil {
+		c.String(http.StatusInternalServerError, err.Error())
+		return
+	}
+	result := make([]gin.H, len(profiles))
+	for i, p := range profiles {
+		result[i] = map[string]any{
+			"otype":        p.OType,
+			"oid":          p.Oid,
+			"key_col":      p.Key,
+			"last_updated": p.UpdateTime,
+			"value":        p.Value,
+		}
+	}
 	c.JSON(http.StatusOK, gin.H{
-		"profiles": []gin.H{
-			{
-				"otype":        "movie",
-				"oid":          1,
-				"key_col":      "genre",
-				"last_updated": 1652296764,
-				"value":        "Adventure|Animation|Children",
-			},
-			{
-				"otype":        "movie",
-				"oid":          1,
-				"key_col":      "movie_title",
-				"last_updated": 1652296764,
-				"value":        "Toy Story",
-			},
-			{
-				"otype":        "movie",
-				"oid":          1,
-				"key_col":      "release_year",
-				"last_updated": 1652296764,
-				"value":        "1995",
-			},
-		},
+		"profiles": result,
 	})
 }
