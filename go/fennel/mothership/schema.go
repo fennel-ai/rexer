@@ -76,4 +76,14 @@ var Schema = db.Schema{
                 config JSON NOT NULL,
                 status JSON NOT NULL
         );`,
+	11: `CREATE TABLE IF NOT EXISTS user (
+                id INT UNSIGNED NOT NULL PRIMARY KEY AUTO_INCREMENT,
+                email VARCHAR(255) NOT NULL,
+                encrypted_password VARBINARY(80) NOT NULL,
+                deleted_at BIGINT UNSIGNED,
+                created_at BIGINT UNSIGNED NOT NULL,
+                updated_at BIGINT UNSIGNED NOT NULL,
+
+                UNIQUE KEY (email)
+        );`,
 }
