@@ -49,7 +49,7 @@ var aggregates_disabled = promauto.NewGauge(prometheus.GaugeOpts{
 func logKafkaLag(t tier.Tier, consumer kafka.FConsumer) {
 	backlog, err := consumer.Backlog()
 	if err != nil {
-		t.Logger.Error("Failed to read kafka backlog", zap.Error(err))
+		t.Logger.Error("Failed to read kafka backlog", zap.String("Name", consumer.GroupID()), zap.Error(err))
 	}
 	backlog_stats.WithLabelValues(consumer.GroupID()).Set(float64(backlog))
 }
@@ -188,7 +188,7 @@ func processConnector(tr tier.Tier, conn data_integration.Connector, stopCh <-ch
 				logKafkaLag(tr, consumer)
 			default:
 				run++
-				values, hashes, err := connector.ReadBatch(ctx, consumer, conn.StreamName, 10000, time.Second*10)
+				values, hashes, err := connector.ReadBatch(ctx, consumer, conn.StreamName, conn.Name, 10000, time.Second*20)
 				if err != nil {
 					tr.Logger.Error("Error while reading batch of actions:", zap.Error(err))
 					continue
@@ -197,7 +197,6 @@ func processConnector(tr tier.Tier, conn data_integration.Connector, stopCh <-ch
 				if len(values) == 0 {
 					continue
 				}
-
 				tr.Logger.Debug("Processing connector", zap.String("name", conn.Name), zap.Int("run", run), zap.Int("values", len(values)))
 
 				var keys []string
@@ -397,6 +396,7 @@ func startConnectorProcessing(tr tier.Tier) error {
 		for ; true; <-ticker.C {
 			conns, err := connectorModel.RetrieveActive(context.Background(), tr)
 			if err != nil {
+				tr.Logger.Error("Could not retrieve connectors", zap.Error(err))
 				continue
 			}
 			connNames := make(map[string]struct{}, len(conns))
@@ -412,7 +412,7 @@ func startConnectorProcessing(tr tier.Tier) error {
 					processedConnectors[conn.Name] = ch
 				}
 			}
-			// Stop processing any aggregates that are no longer active.
+			// Stop processing any connector that are no longer active.
 			for a := range processedConnectors {
 				if _, ok := connNames[a]; !ok {
 					close(processedConnectors[a])

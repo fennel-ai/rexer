@@ -135,7 +135,7 @@ var Schema = db.Schema{
 		);`,
 	18: `CREATE TABLE IF NOT EXISTS connector (
 			name VARCHAR(255) NOT NULL,
-			version VARCHAR(255) NOT NULL,
+			version INT DEFAULT 0,
 			source_name VARCHAR(255) NOT NULL,
 			source_type VARCHAR(255) NOT NULL,
 			stream_name VARCHAR(255) NOT NULL,

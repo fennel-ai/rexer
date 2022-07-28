@@ -14,7 +14,7 @@ type connectorSer struct {
 	SourceName  string  `db:"source_name"`
 	SourceType  string  `db:"source_type"`
 	StreamName  string  `db:"stream_name"`
-	Version     string  `db:"version"`
+	Version     int     `db:"version"`
 	Destination string  `db:"destination"`
 	QuerySer    []byte  `db:"query_ser"`
 	LastUpdated []uint8 `db:"last_updated"`
@@ -114,5 +114,14 @@ func Disable(ctx context.Context, tier tier.Tier, name string) error {
 
 func Delete(ctx context.Context, tier tier.Tier, name string) error {
 	_, err := tier.DB.ExecContext(ctx, `DELETE FROM connector WHERE name = ?`, name)
+	return err
+}
+
+func Update(ctx context.Context, tier tier.Tier, conn data_integration.Connector) error {
+	querySer, err := ast.Marshal(conn.Query)
+	if err != nil {
+		return fmt.Errorf("failed to marshal query: %w", err)
+	}
+	_, err = tier.DB.ExecContext(ctx, `UPDATE connector  SET version = ?, query_ser = ?, active = TRUE WHERE name = ?`, conn.Version, querySer, conn.Name)
 	return err
 }

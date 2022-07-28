@@ -156,6 +156,23 @@ func (c Client) DisableConnector(source data_integration.Source, conn data_integ
 	return nil
 }
 
+func (c Client) UpdateConnector(source data_integration.Source, conn data_integration.Connector) error {
+	// Set Cursor Field for source
+	if err := setCursorField(source, &conn); err != nil {
+		return err
+	}
+
+	// Discover schema of the source
+	streamConfig, err := c.getSourceSchema(source, conn)
+	if err != nil {
+		return fmt.Errorf("failed to discover schema of source: %w", err)
+	}
+	if err = c.updateConnector(conn, streamConfig, "active"); err != nil {
+		return fmt.Errorf("failed to disable connector: %w", err)
+	}
+	return nil
+}
+
 func (c Client) DeleteConnector(conn data_integration.Connector) error {
 	// Delete connector
 	var fields struct {
