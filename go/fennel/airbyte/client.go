@@ -32,6 +32,7 @@ const (
 	AIRBYTE_KAFKA_TOPIC       = "streamlog"
 	PROFILE_DESTINATION       = "profile"
 	ACTION_DESTINATION        = "action"
+	AIRBYTE_DESTINATION_NAME  = "Fennel Kafka"
 	AIRBYTE_DEDUP_TTL         = 30 * time.Minute
 )
 
@@ -151,6 +152,23 @@ func (c Client) DisableConnector(source data_integration.Source, conn data_integ
 		return fmt.Errorf("failed to discover schema of source: %w", err)
 	}
 	if err = c.updateConnector(conn, streamConfig, "inactive"); err != nil {
+		return fmt.Errorf("failed to disable connector: %w", err)
+	}
+	return nil
+}
+
+func (c Client) UpdateConnector(source data_integration.Source, conn data_integration.Connector) error {
+	// Set Cursor Field for source
+	if err := setCursorField(source, &conn); err != nil {
+		return err
+	}
+
+	// Discover schema of the source
+	streamConfig, err := c.getSourceSchema(source, conn)
+	if err != nil {
+		return fmt.Errorf("failed to discover schema of source: %w", err)
+	}
+	if err = c.updateConnector(conn, streamConfig, "active"); err != nil {
 		return fmt.Errorf("failed to disable connector: %w", err)
 	}
 	return nil
@@ -472,7 +490,7 @@ func (c Client) setKafkaDestinationId(tierId ftypes.RealmID) error {
 		return fmt.Errorf("no kafka destination found")
 	}
 	for _, destination := range destinationList["destinations"] {
-		if destination.ConnectionConfiguration.TopicPattern == getFullAirbyteKafkaTopic(tierId) {
+		if destination.ConnectionConfiguration.TopicPattern == getFullAirbyteKafkaTopic(tierId) && destination.Name == AIRBYTE_DESTINATION_NAME {
 			kafkaDestinationId = destination.DestinationId
 			return nil
 		}

@@ -12,7 +12,7 @@ func (conn *Connector) UnmarshalJSON(data []byte) error {
 		Name        string `json:"Name"`
 		SourceName  string `json:"SourceName"`
 		SourceType  string `json:"SourceType"`
-		Version     string `json:"Version"`
+		Version     int    `json:"Version"`
 		Destination string `json:"Destination"`
 		Query       string `json:"Query"`
 		StreamName  string `json:"StreamName"`

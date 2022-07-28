@@ -15,9 +15,10 @@ import (
 )
 
 const (
-	AIRBYTE_DATA_FIELD           = "_airbyte_data"
-	AIRBYTE_STREAM_NAME          = "_airbyte_stream"
-	AIRBYTE_CONNECTOR_NAME_FIELD = "stream_name"
+	AIRBYTE_DATA_FIELD             = "_airbyte_data"
+	AIRBYTE_STREAM_NAME            = "_airbyte_stream"
+	AIRBYTE_CONNECTOR_STREAM_FIELD = "stream_name"
+	AIRBYTE_CONNECTOR_NAME_FIELD   = "connector_name"
 )
 
 func StoreConnector(ctx context.Context, tier tier.Tier, conn data_integration.Connector) error {
@@ -25,18 +26,20 @@ func StoreConnector(ctx context.Context, tier tier.Tier, conn data_integration.C
 		return err
 	}
 
+	if tier.AirbyteClient.IsAbsent() {
+		return fmt.Errorf("error: Airbyte client is not initialized")
+	}
+
+	source, err := connectorModel.RetrieveSource(ctx, tier, conn.SourceName)
+	if err != nil {
+		return fmt.Errorf("error: failed to retrieve source: %w", err)
+	}
 	conn2, err := connectorModel.Retrieve(ctx, tier, conn.Name)
+
 	if err != nil {
 		if errors.Is(err, data_integration.ErrConnNotFound) {
 			tier.Logger.Debug("Storing new connector: " + conn.Name)
 			// Write the connector to Airbyte
-			if tier.AirbyteClient.IsAbsent() {
-				return fmt.Errorf("error: Airbyte client is not initialized")
-			}
-			source, err := connectorModel.RetrieveSource(ctx, tier, conn.SourceName)
-			if err != nil {
-				return fmt.Errorf("error: failed to retrieve source: %w", err)
-			}
 			connId, err := tier.AirbyteClient.MustGet().CreateConnector(source, conn)
 			if err != nil {
 				return fmt.Errorf("error: failed to create connector: %w", err)
@@ -49,22 +52,37 @@ func StoreConnector(ctx context.Context, tier tier.Tier, conn data_integration.C
 	} else {
 		if err = conn.Equals(conn2); err == nil {
 			if !conn2.Active {
-				if tier.AirbyteClient.IsAbsent() {
-					return fmt.Errorf("error: Airbyte client is not initialized")
-				}
-				source, err := connectorModel.RetrieveSource(ctx, tier, conn.SourceName)
-				if err != nil {
-					return fmt.Errorf("error: failed to retrieve source: %w", err)
-				}
-				if err = tier.AirbyteClient.MustGet().EnableConnector(source, conn2); err != nil {
-					return fmt.Errorf("error: failed to enable connector: %w", err)
-				}
 				if err = connectorModel.Activate(ctx, tier, conn.Name); err != nil {
 					return fmt.Errorf("failed to reactivate connector '%s': %w", conn.Name, err)
 				}
 			}
 			return nil
 		} else {
+			// Update the connector in Airbyte
+			if conn.Version > conn2.Version {
+				conn.ConnId = conn2.ConnId
+				tier.Logger.Debug("Updating connector: " + conn.Name)
+				tier.Logger.Debug("Disabling active connector: " + conn.Name)
+				if err = tier.AirbyteClient.MustGet().DisableConnector(source, conn); err != nil {
+					return fmt.Errorf("error: failed to disable connector: %w", err)
+				}
+				if err = connectorModel.Disable(ctx, tier, conn.Name); err != nil {
+					return fmt.Errorf("failed to disable connector '%s': %w", conn.Name, err)
+				}
+				fmt.Println(conn)
+				fmt.Println(conn2)
+				tier.Logger.Debug("Updating and enabling connector: " + conn.Name)
+				if err = tier.AirbyteClient.MustGet().UpdateConnector(source, conn); err != nil {
+					return fmt.Errorf("error: failed to update connector: %w", err)
+				}
+				// Finally, set state of connector to active
+				if err = connectorModel.Update(ctx, tier, conn); err != nil {
+					return fmt.Errorf("failed to reactivate connector '%s': %w", conn.Name, err)
+				}
+				return nil
+			} else if conn.Version < conn2.Version {
+				return fmt.Errorf("error: connector '%s' has been updated to version %d since you last retrieved it", conn.Name, conn2.Version)
+			}
 			return fmt.Errorf("connector already present but with different params: %w", err)
 		}
 	}
@@ -107,7 +125,7 @@ func DeleteConnector(ctx context.Context, tier tier.Tier, name string) error {
 	return connectorModel.Delete(ctx, tier, name)
 }
 
-func ReadBatch(ctx context.Context, consumer kafka.FConsumer, streamName string, count int, timeout time.Duration) ([]value.Value, [][16]byte, error) {
+func ReadBatch(ctx context.Context, consumer kafka.FConsumer, streamName, connName string, count int, timeout time.Duration) ([]value.Value, [][16]byte, error) {
 	msgs, err := consumer.ReadBatch(ctx, count, timeout)
 	if err != nil {
 		return nil, nil, err
@@ -124,8 +142,10 @@ func ReadBatch(ctx context.Context, consumer kafka.FConsumer, streamName string,
 				continue
 			}
 			d := dict.GetUnsafe(AIRBYTE_DATA_FIELD).(value.Dict)
-			d.Set(AIRBYTE_CONNECTOR_NAME_FIELD, dict.GetUnsafe(AIRBYTE_STREAM_NAME))
+			d.Set(AIRBYTE_CONNECTOR_STREAM_FIELD, dict.GetUnsafe(AIRBYTE_STREAM_NAME))
 			streams = append(streams, d)
+			// This field is added only so that the same stream can be used for multiple connectors and is not deduped by redis
+			d.Set(AIRBYTE_CONNECTOR_NAME_FIELD, value.String(connName))
 			serialized, err := d.Marshal()
 			if err != nil {
 				return nil, nil, fmt.Errorf("failed to serialize message: %w", err)

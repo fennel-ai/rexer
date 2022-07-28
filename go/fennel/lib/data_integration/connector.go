@@ -13,7 +13,7 @@ type Connector struct {
 	SourceName  string
 	SourceType  string
 	StreamName  string
-	Version     string
+	Version     int
 	Destination string
 	ConnId      string
 	CursorField string
@@ -30,9 +30,6 @@ func (c Connector) Validate() error {
 	}
 	if c.SourceType == "" {
 		return fmt.Errorf("source_type is required")
-	}
-	if c.Version == "" {
-		return fmt.Errorf("version is required")
 	}
 	if c.Destination != "action" && c.Destination != "profile" {
 		return fmt.Errorf("invalid destination: %s", c.Destination)
