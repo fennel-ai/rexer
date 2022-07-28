@@ -121,7 +121,7 @@ func (s server) setHandlers(router *mux.Router) {
 	// ----------------------------------------/v1--------------------------------------------------------
 
 	router.HandleFunc(INT_REST_VERSION+"/profiles", s.GetProfileMulti).Methods("GET")
-	router.HandleFunc(INT_REST_VERSION+"/query_profiles", s.QueryProfiles).Methods("GET")
+	router.HandleFunc(INT_REST_VERSION+"/query_profiles", s.QueryProfiles).Methods("POST")
 	router.HandleFunc(INT_REST_VERSION+"/profiles", s.SetProfiles).Methods("POST")
 	router.HandleFunc(INT_REST_VERSION+"/log", s.LogMulti).Methods("POST")
 
@@ -429,12 +429,12 @@ func (m server) QueryProfiles(w http.ResponseWriter, req *http.Request) {
 		handleBadRequest(w, "invalid request", err)
 		return
 	}
-	var sqlFilter sql.SqlFilter
-	if sqlFilter, err = sql.FromJSON(data); err != nil {
+	var sqlFilter sql.CompositeSqlFilter
+	if err = json.Unmarshal(data, &sqlFilter); err != nil {
 		handleBadRequest(w, "invalid request", fmt.Errorf("failed to parse query filter from json: %s", err))
 		return
 	}
-	profiles, err := profile2.Query(req.Context(), m.tier, sqlFilter)
+	profiles, err := profile2.Query(req.Context(), m.tier, &sqlFilter)
 	if err != nil {
 		handleInternalServerError(w, "invalid request: ", err)
 		return
