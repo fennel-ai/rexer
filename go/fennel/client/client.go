@@ -16,6 +16,7 @@ import (
 	"fennel/lib/profile"
 	profileLib "fennel/lib/profile"
 	"fennel/lib/query"
+	"fennel/lib/sql"
 	"fennel/lib/value"
 )
 
@@ -62,6 +63,12 @@ func (c Client) queryURL() string {
 func (c Client) getProfileURL() string {
 	url := *c.url
 	url.Path = url.Path + "/get"
+	return url.String()
+}
+
+func (c Client) queryProfilersURL() string {
+	url := *c.url
+	url.Path = url.Path + "/internal/v1/query_profiles"
 	return url.String()
 }
 
@@ -166,6 +173,30 @@ func (c *Client) GetProfile(request *profileLib.ProfileItemKey) (*profile.Profil
 		prof := profile.NewProfileItem(request.OType, request.Oid, request.Key, v, 0)
 		return &prof, nil
 	}
+}
+
+func (c *Client) QueryProfiles(sqlFilter sql.SqlFilter) ([]profile.ProfileItem, error) {
+	b, err := json.Marshal(&sqlFilter)
+	if err != nil {
+		return nil, err
+	}
+	response, err := c.postJSON(b, c.queryProfilersURL())
+	if err != nil {
+		return nil, err
+	}
+	// so server sent some response without error, so let's decode that response
+	if len(response) == 0 {
+		// i.e. no valid value is found, so we return nil pointer
+		return nil, nil
+	}
+
+	// now try to read response as a JSON object and convert to value
+	ret := make([]profile.ProfileItem, 0)
+	err = json.Unmarshal(response, &ret)
+	if err != nil {
+		return nil, err
+	}
+	return ret, nil
 }
 
 func (c *Client) Query(reqAst ast.Ast, reqArgs value.Dict, reqMock mock.Data) (value.Value, error) {
