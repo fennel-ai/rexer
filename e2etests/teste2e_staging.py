@@ -74,7 +74,7 @@ class TestStagingEndToEnd(unittest.TestCase):
                 time.sleep(5.0)
 
             self.assertEqual(val_now, init_val + _NEW_ACTIONS)
-
+        agg.deactivate(client=c)
 
     # TODO(mohit): Allow running this test once CI is setup with necessary permissions and keys
     @unittest.skip
