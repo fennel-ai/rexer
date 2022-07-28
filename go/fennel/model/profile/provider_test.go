@@ -187,9 +187,9 @@ func testQuery(t *testing.T, p provider) {
 	var filter sql.CompositeSqlFilter
 	err := json.Unmarshal([]byte(`
 		{
-			"Name": "OType",
+			"Left": "OType",
 			"Op": "=",
-			"Value": "12"
+			"Right": "12"
 		}
 	`), &filter)
 	assert.NoError(t, err)
