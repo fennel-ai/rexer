@@ -346,18 +346,17 @@ const planeConfs: Record<number, PlaneConf> = {
         eksConf: {
             nodeGroups: [
                 // Plane 2 does not run any tier-specific services, but needs to run
-                // plane-level services like nitrous and milvus.
+                // plane-level services like nitrous etc.
                 {
                     name: "p-2-common-ng",
-                    nodeType: "c6i.xlarge",
-                    minSize: 3,
-                    maxSize: 5,
+                    nodeType: "t3.medium",
+                    minSize: 1,
+                    maxSize: 3,
                     amiType: DEFAULT_X86_AMI_TYPE,
                 },
                 // TODO: For nitrous, we may need to spin up ARM specific node group
             ],
         },
-        milvusConf: {},
         // Run nitrous on the plane.
         nitrousConf: {
             replicas: 1,
