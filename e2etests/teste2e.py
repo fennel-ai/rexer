@@ -40,9 +40,11 @@ def tiered(wrapped):
         with TestTier(tier_id):
             env['METRICS_PORT'] = str(2436)
             env['PPROF_PORT'] = str(2437)
+            env['HEALTH_PORT'] = str(2438)
             with lib.gorun('fennel/service/http', 'dynamic,integration', env):
                 env['METRICS_PORT'] = str(2446)
                 env['PPROF_PORT'] = str(2467)
+                env['HEALTH_PORT'] = str(2468)
                 with lib.gorun('fennel/service/countaggr', 'dynamic,integration', env):
                     # Wait for the services to be up.
                     time.sleep(10)

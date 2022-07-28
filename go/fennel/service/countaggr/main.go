@@ -432,6 +432,7 @@ func main() {
 		tier.TierArgs
 		common.PrometheusArgs
 		common.PprofArgs
+		common.HealthCheckArgs
 	}
 	// Parse flags / environment variables.
 	arg.MustParse(&flags)
@@ -443,6 +444,8 @@ func main() {
 	}
 	// Start a prometheus server.
 	common.StartPromMetricsServer(flags.MetricsPort)
+	// Start health checker to export readiness and liveness state for the container running the server
+	common.StartHealthCheckServer(flags.HealthPort)
 	// Start a pprof server to export the standard pprof endpoints.
 	profiler := common.CreateProfiler(flags.PprofArgs)
 	profiler.StartPprofServer()

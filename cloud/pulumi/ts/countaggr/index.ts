@@ -5,7 +5,7 @@ import * as pulumi from "@pulumi/pulumi";
 import * as path from "path";
 import * as process from "process";
 import * as childProcess from "child_process";
-import {serviceEnvs} from "../tier-consts/consts";
+import {ReadinessProbe, serviceEnvs} from "../tier-consts/consts";
 
 const name = "countaggr"
 const DEFAULT_USE_AMD64 = false
@@ -128,6 +128,7 @@ export const setup = async (input: inputType) => {
     // Create a load balanced Kubernetes service using this image, and export its IP.
     const appLabels = { app: name };
     const metricsPort = 2113;
+    const healthPort = 8082;
 
     const appDep = image.imageName.apply(() => {
         return new k8s.apps.v1.Deployment("countaggr-deployment", {
@@ -159,6 +160,8 @@ export const setup = async (input: inputType) => {
                                 "/root/countaggr",
                                 "--metrics-port",
                                 `${metricsPort}`,
+                                "--health-port",
+                                `${healthPort}`,
                                 "--dev=false"
                             ],
                             ports: [
@@ -168,9 +171,19 @@ export const setup = async (input: inputType) => {
                                 },
                             ],
                             env: serviceEnvs,
+                            readinessProbe: ReadinessProbe(healthPort),
                         }],
                     },
                 },
+                strategy: {
+                    type: "RollingUpdate",
+                    rollingUpdate: {
+                        // we set maxSurge as 0 here because replicated countaggr instances do not work well and
+                        // maxSurge could potentially create a new replica as part of the update process
+                        maxSurge: 0,
+                        maxUnavailable: 1,
+                    },
+                }
             },
         }, { provider: k8sProvider, deleteBeforeReplace: true });
     })

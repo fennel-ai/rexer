@@ -111,6 +111,7 @@ func main() {
 		common.PprofArgs
 		inspector.InspectorArgs
 		timer.TracerArgs
+		common.HealthCheckArgs
 	}
 	arg.MustParse(&flags)
 	log.SetFlags(log.LstdFlags | log.Lshortfile)
@@ -124,6 +125,8 @@ func main() {
 	// Start a prometheus server and add a middleware to the main router to capture
 	// standard metrics.
 	common.StartPromMetricsServer(flags.MetricsPort)
+	// Start health checker to export readiness and liveness state for the container running the server
+	common.StartHealthCheckServer(flags.HealthPort)
 	// Start a pprof server to export the standard pprof endpoints.
 	profiler := common.CreateProfiler(flags.PprofArgs)
 	profiler.StartPprofServer()

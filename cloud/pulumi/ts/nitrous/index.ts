@@ -7,6 +7,7 @@ import * as kafka from "@pulumi/kafka";
 import * as process from "process";
 import * as childProcess from "child_process";
 import * as util from "../lib/util";
+import {ReadinessProbe} from "../tier-consts/consts";
 
 
 export const plugins = {
@@ -203,6 +204,7 @@ export const setup = async (input: inputType) => {
     // Create a load balanced Kubernetes service using this image, and export its IP.
     const appLabels = { app: name };
     const metricsPort = 2112;
+    const healthPort = 8082;
 
     const forceReplicaIsolation = input.enforceReplicaIsolation || DEFAULT_FORCE_REPLICA_ISOLATION;
     let whenUnsatisfiable = "ScheduleAnyway";
@@ -246,6 +248,8 @@ export const setup = async (input: inputType) => {
                                     `${servicePort}`,
                                     "--metrics-port",
                                     `${metricsPort}`,
+                                    "--health-port",
+                                    `${healthPort}`,
                                     "--plane-id",
                                     `${input.planeId}`,
                                     "--badger_dir",
@@ -268,6 +272,10 @@ export const setup = async (input: inputType) => {
                                     },
                                     {
                                         containerPort: metricsPort,
+                                        protocol: "TCP",
+                                    },
+                                    {
+                                        containerPort: healthPort,
                                         protocol: "TCP",
                                     },
                                 ],
@@ -318,6 +326,7 @@ export const setup = async (input: inputType) => {
                                         "memory": input.resourceConf?.memory.limit || DEFAULT_MEMORY_LIMIT,
                                     }
                                 },
+                                readinessProbe: ReadinessProbe(healthPort),
                                 volumeMounts: [
                                     {
                                         name: "badgerdb",
@@ -344,7 +353,9 @@ export const setup = async (input: inputType) => {
                             }
                         }
                     }
-                ]
+                ],
+                // default update strategy is "RollingUpdate" with "maxUnavailable: 1". Stateful sets have a
+                // concept of partitions, but I believe are useful for canary rollout
             },
         }, { provider: k8sProvider, deleteBeforeReplace: true });
     })

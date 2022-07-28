@@ -5,7 +5,7 @@ import * as pulumi from "@pulumi/pulumi";
 import * as path from "path";
 import * as process from "process";
 import * as childProcess from "child_process";
-import { serviceEnvs } from "../tier-consts/consts";
+import {ReadinessProbe, serviceEnvs} from "../tier-consts/consts";
 import * as util from "../lib/util";
 
 const name = "query-server"
@@ -149,6 +149,7 @@ export const setup = async (input: inputType) => {
     const appLabels = { app: name };
     const metricsPort = 2112;
     const appPort = 2425;
+    const healthPort = 8082;
 
     const timeoutSeconds = 25;
     // NOTE: This is configured for "slow" clients who might, at the time of graceful shutdown (i.e. when the kubelet
@@ -232,6 +233,8 @@ export const setup = async (input: inputType) => {
                                 "/root/server",
                                 "--metrics-port",
                                 "2112",
+                                "--health-port",
+                                `${healthPort}`,
                                 "--dev=false"
                             ],
                             name: name,
@@ -246,6 +249,10 @@ export const setup = async (input: inputType) => {
                                     containerPort: metricsPort,
                                     protocol: "TCP",
                                 },
+                                {
+                                    containerPort: healthPort,
+                                    protocol: "TCP",
+                                }
                             ],
                             env: envVars,
                             resources: {
@@ -257,7 +264,8 @@ export const setup = async (input: inputType) => {
                                     "cpu": input.resourceConf?.cpu.limit || DEFAULT_CPU_LIMIT,
                                     "memory": input.resourceConf?.memory.limit || DEFAULT_MEMORY_LIMIT,
                                 }
-                            }
+                            },
+                            readinessProbe: ReadinessProbe(healthPort),
                         },],
                         // this should be at least the timeout seconds so that any new request sent to the container
                         // could take this much time + `preStop` on linkerd is an artificial delay added to avoid
@@ -265,6 +273,13 @@ export const setup = async (input: inputType) => {
                         terminationGracePeriodSeconds: timeoutSeconds + linkerdPreStopDelaySecs,
                     },
                 },
+                strategy: {
+                    type: "RollingUpdate",
+                    rollingUpdate: {
+                        maxSurge: 1,
+                        maxUnavailable: 1,
+                    },
+                }
             },
         }, { provider: k8sProvider, deleteBeforeReplace: true });
     })

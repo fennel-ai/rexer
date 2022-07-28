@@ -264,3 +264,16 @@ export const serviceEnvs = [
 export const POSTGRESQL_USERNAME = "username";
 // needs to be at least 8 characters
 export const POSTGRESQL_PASSWORD = "password";
+
+export function ReadinessProbe(metricPort: number) {
+    return {
+        initialDelaySeconds: 2,
+        periodSeconds: 2,
+        successThreshold: 1,
+        timeoutSeconds: 1,
+        httpGet: {
+            path: "/ready",
+            port: metricPort
+        }
+    }
+}
