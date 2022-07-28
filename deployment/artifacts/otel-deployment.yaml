@@ -206,9 +206,7 @@ spec:
             - name: otlp-http
               containerPort: 4318
               protocol: TCP
-          command:
-            - "/otelcontribcol"
-            - "--config=/conf/otel-agent-config.yaml"
+          args: ["--config", "/conf/otel-agent-config.yaml"]
           volumeMounts:
             - name: rootfs
               mountPath: /rootfs
