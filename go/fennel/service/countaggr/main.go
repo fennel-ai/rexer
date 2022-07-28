@@ -330,7 +330,6 @@ func startProfileDBInsertion(tr tier.Tier) error {
 }
 
 func startAggregateProcessing(tr tier.Tier) error {
-	fmt.Println("Starting aggregate processing")
 	// Map from aggregate name to channel to stop the aggregate processing.
 	processedAggregates := make(map[ftypes.AggName]chan<- struct{})
 	ticker := time.NewTicker(time.Second * 15)
@@ -368,7 +367,6 @@ func startAggregateProcessing(tr tier.Tier) error {
 }
 
 func startPhaserProcessing(tr tier.Tier) error {
-	fmt.Println("Starting phaser processing")
 	go func(tr tier.Tier) {
 		processedPhasers := make(map[string]struct{})
 		ticker := time.NewTicker(time.Second * 60)
@@ -391,7 +389,6 @@ func startPhaserProcessing(tr tier.Tier) error {
 }
 
 func startConnectorProcessing(tr tier.Tier) error {
-	fmt.Println("Starting connector processing")
 	go func(tr tier.Tier) {
 		// Map from connector name to channel to stop the connector processing.
 		processedConnectors := make(map[string]chan<- struct{})
