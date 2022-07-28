@@ -4,12 +4,14 @@ import (
 	"encoding/json"
 	"fmt"
 	"hash/fnv"
+	"reflect"
 	"sort"
 	"strings"
 )
 
 type SqlFilter interface {
 	fmt.Stringer
+	json.Marshaler
 	Equal(SqlFilter) bool
 	Hash() uint64
 }
@@ -28,6 +30,10 @@ func (f filterOperator) String() string {
 
 func (f filterOperator) Hash() uint64 {
 	return hash(string(f))
+}
+
+func (f filterOperator) MarshalJSON() ([]byte, error) {
+	return json.Marshal(f.String())
 }
 
 func (f filterOperator) Equal(other SqlFilter) bool {
@@ -54,8 +60,7 @@ var (
 	_ SqlFilter        = (*filterName)(nil)
 	_ SqlFilter        = (*filterValue)(nil)
 	_ SqlFilter        = (*filterOperator)(nil)
-	_ SqlFilter        = (*simpleSqlFilter)(nil)
-	_ SqlFilter        = (*compositeSqlFilter)(nil)
+	_ SqlFilter        = (*CompositeSqlFilter)(nil)
 )
 
 type filterName string
@@ -74,6 +79,10 @@ func (f filterName) Equal(other SqlFilter) bool {
 
 func (f filterName) Hash() uint64 {
 	return hash(string(f))
+}
+
+func (f filterName) MarshalJSON() ([]byte, error) {
+	return json.Marshal(f.String())
 }
 
 type filterValue struct {
@@ -103,9 +112,18 @@ func (f *filterValue) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
+func (f *filterValue) MarshalJSON() ([]byte, error) {
+	if len(f.SingleValue) > 0 {
+		return json.Marshal(f.SingleValue)
+	} else if len(f.MultiValue) > 0 {
+		return json.Marshal(f.MultiValue)
+	}
+	return nil, fmt.Errorf("filterValue should be either be SingleValue or MultiValue")
+}
+
 func (f *filterValue) String() string {
 	if f.SingleValue != "" {
-		return f.SingleValue
+		return `"` + f.SingleValue + `"`
 	}
 	if f.MultiValue != nil {
 		return "(" + strings.Join(f.canonicalMultiValue, ",") + ")"
@@ -129,45 +147,7 @@ func (f *filterValue) Hash() uint64 {
 	return f.hash
 }
 
-type simpleSqlFilter struct {
-	Name  filterName     `json:"Name"`
-	Op    filterOperator `json:"Op"`
-	Value *filterValue   `json:"Value"`
-	hash  uint64
-}
-
-func (f *simpleSqlFilter) String() string {
-	defaultResult := "1 = 1"
-
-	switch f.Op {
-	case EQUAL, NOT_EQUAL, IN:
-		return fmt.Sprintf("(%s %s \"%s\")", f.Name, f.Op, f.Value)
-	}
-	return defaultResult
-}
-
-func (f *simpleSqlFilter) Equal(other SqlFilter) bool {
-	o, ok := other.(*simpleSqlFilter)
-	if !ok {
-		return false
-	}
-	if f.Hash() != other.Hash() {
-		return false
-	}
-	return f.Name.Equal(o.Name) && f.Op.Equal(o.Op) && f.Value.Equal(o.Value)
-}
-
-func (f *simpleSqlFilter) Hash() uint64 {
-	if f.hash != 0 {
-		return f.hash
-	}
-	hash := fnv.New64()
-	hash.Write([]byte(fmt.Sprintf("%v%v%v", f.Name.Hash(), f.Op.Hash(), f.Value.Hash())))
-	f.hash = hash.Sum64()
-	return f.hash
-}
-
-type compositeSqlFilter struct {
+type CompositeSqlFilter struct {
 	Left           SqlFilter
 	canonicalLeft  SqlFilter
 	Op             filterOperator
@@ -185,72 +165,100 @@ func containsKeys(m map[string]interface{}, keys []string) bool {
 	return true
 }
 
-func FromJSON(data []byte) (SqlFilter, error) {
-	var d map[string]any
-	if err := json.Unmarshal(data, &d); err != nil {
-		return nil, err
-	}
-	if containsKeys(d, []string{"Name", "Op", "Value"}) {
-		ret := new(simpleSqlFilter)
-		err := json.Unmarshal(data, &ret)
-		return ret, err
-	}
-	if containsKeys(d, []string{"Left", "Op", "Right"}) {
-		ret, err := fromMap(d)
-		return ret, err
-	}
-	return nil, fmt.Errorf("unexpected expression in filter json: %s", string(data))
-}
+func fromMap(m map[string]any, ret *CompositeSqlFilter) error {
+	keys := []string{"Left", "Op", "Right"}
+	if containsKeys(m, keys) {
+		for _, k := range keys {
+			switch t := m[k].(type) {
+			case string:
+				switch k {
+				case "Left":
+					ret.Left = filterName(t)
+				case "Op":
+					ret.Op = filterOperator(t)
+				case "Right":
+					ret.Right = &filterValue{
+						SingleValue: t,
+					}
+				default:
+					return fmt.Errorf("unpexpected key in json: %s", k)
+				}
+			case []any:
+				switch k {
+				case "Right":
+					vals := make([]string, len(t))
+					var ok bool
+					for i := range vals {
+						if vals[i], ok = t[i].(string); !ok {
+							return fmt.Errorf("expected []string type in %s expression, got %v", k, t)
+						}
 
-func fromMap(m map[string]any) (SqlFilter, error) {
-	if containsKeys(m, []string{"Name", "Op", "Value"}) {
-		data, err := json.Marshal(m)
-		if err != nil {
-			return nil, fmt.Errorf("unexpected failure in marshaling map to json")
-		}
-		return FromJSON(data)
-	}
-	if containsKeys(m, []string{"Left", "Op", "Right"}) {
-		ret := new(compositeSqlFilter)
-		var v map[string]any
-		var ok bool
-		var err error
-		if v, ok = m["Left"].(map[string]any); !ok {
-			return nil, fmt.Errorf("unexpected value of \"Left\" in composite filter, expected struct, got %v", m["Left"])
-		}
-		ret.Left, err = fromMap(v)
-		if err != nil {
-			return nil, err
-		}
+					}
 
-		var x string
-		if x, ok = m["Op"].(string); !ok {
-			return nil, fmt.Errorf("unexpected value of \"Operator\" in composite filter, expected string, got %v", m["Op"])
+					ret.Right = &filterValue{
+						MultiValue: vals,
+					}
+				default:
+					return fmt.Errorf("expected []string type in %s expression", k)
+				}
+			case map[string]any:
+				switch k {
+				case "Left":
+					ret.Left = new(CompositeSqlFilter)
+					var err error
+					if err = fromMap(t, ret.Left.(*CompositeSqlFilter)); err != nil {
+						return err
+					}
+				case "Right":
+					ret.Right = new(CompositeSqlFilter)
+					var err error
+					if err = fromMap(t, ret.Right.(*CompositeSqlFilter)); err != nil {
+						return err
+					}
+				}
+			default:
+				return fmt.Errorf("unpexpected value %s in %s expression", reflect.TypeOf(m[k]), k)
+			}
 		}
-		ret.Op = filterOperator(x)
-		if v, ok = m["Right"].(map[string]any); !ok {
-			return nil, fmt.Errorf("unexpected value of \"Value\" in composite filter, expected struct, got %v", m["Right"])
-		}
-		ret.Right, err = fromMap(v)
-		if ret.Left.Hash() < ret.Right.Hash() {
-			ret.canonicalLeft = ret.Left
-			ret.canonicalRight = ret.Right
-		} else {
+		ret.canonicalLeft = ret.Left
+		ret.canonicalRight = ret.Right
+		if ret.Left.Hash() > ret.Right.Hash() {
 			ret.canonicalLeft = ret.Right
 			ret.canonicalRight = ret.Left
 		}
-		return ret, err
-
+		return nil
 	}
-	return nil, fmt.Errorf("unexpected sub json structure in filter expression, %v", m)
+	return fmt.Errorf("unexpected sub json structure in filter expression, %v", m)
 }
 
-func (f *compositeSqlFilter) String() string {
+func (f *CompositeSqlFilter) String() string {
 	return fmt.Sprintf("(%s %s %s)", f.Left.String(), f.Op, f.Right.String())
 }
 
-func (f *compositeSqlFilter) Equal(other SqlFilter) bool {
-	oth, ok := other.(*compositeSqlFilter)
+func (f *CompositeSqlFilter) MarshalJSON() ([]byte, error) {
+	lb, err := json.Marshal(f.Left)
+	if err != nil {
+		return nil, err
+	}
+	op, err := json.Marshal(f.Op)
+	if err != nil {
+		return nil, err
+	}
+	rb, err := json.Marshal(f.Right)
+	if err != nil {
+		return nil, err
+	}
+	return []byte(fmt.Sprintf(`
+			{
+				"Left": %s,
+				"Op": %s,
+				"Right": %s
+			}
+	`, lb, op, rb)), nil
+}
+
+func (f *CompositeSqlFilter) Equal(other SqlFilter) bool {
+	oth, ok := other.(*CompositeSqlFilter)
 	if !ok {
 		return false
 	}
@@ -260,7 +268,7 @@ func (f *compositeSqlFilter) Equal(other SqlFilter) bool {
 	return f.canonicalLeft.Equal(oth.canonicalLeft) && f.Op.Equal(oth.Op) && f.canonicalRight.Equal(oth.canonicalRight)
 }
 
-func (f *compositeSqlFilter) Hash() uint64 {
+func (f *CompositeSqlFilter) Hash() uint64 {
 	if f.hash != 0 {
 		return f.hash
 	}
@@ -268,4 +276,15 @@ func (f *compositeSqlFilter) Hash() uint64 {
 	hash.Write([]byte(fmt.Sprintf("%v%v%v", f.canonicalLeft.Hash(), f.Op.Hash(), f.canonicalRight.Hash())))
 	f.hash = hash.Sum64()
 	return f.hash
+}
+
+func (f *CompositeSqlFilter) UnmarshalJSON(b []byte) error {
+	var d map[string]any
+	if err := json.Unmarshal(b, &d); err != nil {
+		return err
+	}
+	if err := fromMap(d, f); err != nil {
+		return err
+	}
+	return nil
 }

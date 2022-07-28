@@ -2,6 +2,7 @@ package profile
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"sort"
 	"strconv"
@@ -183,18 +184,19 @@ func testQuery(t *testing.T, p provider) {
 	}
 
 	assert.NoError(t, p.setBatch(ctx, tier, profiles))
-	filter, err := sql.FromJSON([]byte(`
+	var filter sql.CompositeSqlFilter
+	err := json.Unmarshal([]byte(`
 		{
 			"Name": "OType",
 			"Op": "=",
 			"Value": "12"
 		}
-	`))
+	`), &filter)
 	assert.NoError(t, err)
 	v, _ := tier.Cache.Get(context.Background(), strconv.FormatUint(filter.Hash(), 10))
 	assert.Equal(t, v.(string), "")
 
-	actualProfiles, err := p.query(ctx, tier, filter)
+	actualProfiles, err := p.query(ctx, tier, &filter)
 	sort.Slice(actualProfiles, func(i, j int) bool {
 		return fmt.Sprintf("%v", actualProfiles[i].GetProfileKey()) < fmt.Sprintf("%v", actualProfiles[j].GetProfileKey())
 	})
