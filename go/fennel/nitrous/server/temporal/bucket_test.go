@@ -30,13 +30,16 @@ func TestBucketizer(t *testing.T) {
 	assert.Equal(t, uint32(clock.Now().Unix())/864, buckets[0].Index)
 	curr := buckets[0]
 
-	buckets, err = b.Bucketize(mr, mo.Some[uint32](24*3600))
+	bucketRange, err := b.Bucketize(mr, mo.Some[uint32](24*3600))
 	assert.NoError(t, err)
-	assert.Contains(t, []int{100, 101}, len(buckets))
-	assert.Contains(t, buckets, curr)
+	assert.Equal(t, curr.Width, bucketRange.Width)
+	assert.EqualValues(t, 100, bucketRange.EndIdx-bucketRange.StartIdx)
+	assert.GreaterOrEqual(t, curr.Index, bucketRange.StartIdx)
+	assert.LessOrEqual(t, curr.Index, bucketRange.EndIdx)
 
 	clock.Add(25 * time.Hour)
-	buckets, err = b.Bucketize(mr, mo.Some[uint32](24*3600))
+	bucketRange, err = b.Bucketize(mr, mo.Some[uint32](24*3600))
 	assert.NoError(t, err)
-	assert.NotContains(t, buckets, curr, "buckets %v should not contain %v", buckets, curr)
+	assert.Equal(t, curr.Width, bucketRange.Width)
+	assert.Less(t, curr.Index, bucketRange.StartIdx)
 }

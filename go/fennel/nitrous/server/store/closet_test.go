@@ -29,7 +29,7 @@ func TestAggregateStore(t *testing.T) {
 	assert.NoError(t, err)
 	b := temporal.NewFixedWidthBucketizer(5, clock.New())
 	tierId := ftypes.RealmID(1)
-	cs, err := NewCloset(tierId, aggId, rpc.AggCodec_V1, mr, b)
+	cs, err := NewCloset(tierId, aggId, rpc.AggCodec_V1, mr, b, 25)
 	assert.NoError(t, err)
 	ctx := context.Background()
 	kwargs := value.NewDict(nil)
@@ -73,7 +73,7 @@ func TestProcess(t *testing.T) {
 	ck.Add(time.Since(time.Unix(0, 0)))
 	b := temporal.NewFixedWidthBucketizer(100, ck)
 	tierId := ftypes.RealmID(1)
-	cs, err := NewCloset(tierId, aggId, rpc.AggCodec_V1, mr, b)
+	cs, err := NewCloset(tierId, aggId, rpc.AggCodec_V1, mr, b, 25)
 	assert.NoError(t, err)
 	ctx := context.Background()
 	kwargs := value.NewDict(nil)
@@ -129,7 +129,7 @@ func TestProcess(t *testing.T) {
 	aggId2 := ftypes.AggId(2)
 	mr2, err := counter.ToMergeReduce(aggId2, opts)
 	assert.NoError(t, err)
-	cs2, err := NewCloset(tierId, aggId2, rpc.AggCodec_V1, mr2, b)
+	cs2, err := NewCloset(tierId, aggId2, rpc.AggCodec_V1, mr2, b, 25)
 	assert.NoError(t, err)
 	pushEvent(cs2, tierId, aggId2, "mygk", value.Int(531))
 	vals, err = cs2.Get(ctx, []string{"mygk"}, []value.Dict{kwargs}, n.Store)
@@ -174,7 +174,7 @@ func BenchmarkGet(b *testing.B) {
 	ck.Add(time.Since(time.Unix(0, 0)))
 	bucketizer := temporal.NewFixedWidthBucketizer(100, ck)
 	tierId := ftypes.RealmID(1)
-	cs, err := NewCloset(tierId, aggId, rpc.AggCodec_V1, mr, bucketizer)
+	cs, err := NewCloset(tierId, aggId, rpc.AggCodec_V1, mr, bucketizer, 25)
 	assert.NoError(b, err)
 
 	ctx := context.Background()
@@ -200,5 +200,97 @@ func BenchmarkGet(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		_, err := cs.Get(ctx, gks, kwargs, n.Store)
 		assert.NoError(b, err)
+	}
+}
+
+func TestKeyGroupsToRead(t *testing.T) {
+	opts := aggregate.Options{
+		AggType:   "max",
+		Durations: []uint32{24 * 3600},
+	}
+	aggId := ftypes.AggId(1)
+	mr, err := counter.ToMergeReduce(aggId, opts)
+	assert.NoError(t, err)
+
+	ck := clock.NewMock()
+	ck.Add(time.Since(time.Unix(0, 0)))
+	bucketizer := temporal.NewFixedWidthBucketizer(100, ck)
+
+	tierId := ftypes.RealmID(1)
+	cs, err := NewCloset(tierId, aggId, rpc.AggCodec_V1, mr, bucketizer, 25)
+	assert.NoError(t, err)
+
+	timeRange := temporal.TimeBucketRange{
+		Width: 100,
+	}
+
+	// Start and End index in different first-level buckets.
+	timeRange.StartIdx = 24
+	timeRange.EndIdx = 25
+	kgs, err := cs.getKeyGroupsToRead("mygk", timeRange)
+	assert.NoError(t, err)
+	assert.Equal(t, 2, len(kgs))
+
+	// Start and End index in the same first-level bucket.
+	timeRange.StartIdx = 23
+	timeRange.EndIdx = 24
+	kgs, err = cs.getKeyGroupsToRead("mygk", timeRange)
+	assert.NoError(t, err)
+	assert.Equal(t, 1, len(kgs))
+
+	// Start and End index that enclose 3 full first-level buckets.
+	timeRange.StartIdx = 13
+	timeRange.EndIdx = 4*25 + 9
+	kgs, err = cs.getKeyGroupsToRead("mygk", timeRange)
+	assert.NoError(t, err)
+	assert.Equal(t, 5, len(kgs))
+
+	// Start idx aligned with start of second-level buckets under key.
+	timeRange.StartIdx = 25
+	timeRange.EndIdx = 3*25 + 10
+	kgs, err = cs.getKeyGroupsToRead("mygk", timeRange)
+	assert.NoError(t, err)
+	assert.Equal(t, 3, len(kgs))
+
+	// End idx aligned with end of second-level buckets under key.
+	timeRange.StartIdx = 13
+	timeRange.EndIdx = 3*25 - 1
+	kgs, err = cs.getKeyGroupsToRead("mygk", timeRange)
+	assert.NoError(t, err)
+	assert.Equal(t, 3, len(kgs))
+}
+
+func TestKeyGroupsToUpdate(t *testing.T) {
+	opts := aggregate.Options{
+		AggType:   "max",
+		Durations: []uint32{24 * 3600},
+	}
+	aggId := ftypes.AggId(1)
+	mr, err := counter.ToMergeReduce(aggId, opts)
+	assert.NoError(t, err)
+
+	ck := clock.NewMock()
+	ck.Add(time.Since(time.Unix(0, 0)))
+	bucketizer := temporal.NewFixedWidthBucketizer(100, ck)
+
+	tierId := ftypes.RealmID(1)
+	cs, err := NewCloset(tierId, aggId, rpc.AggCodec_V1, mr, bucketizer, 25)
+	assert.NoError(t, err)
+
+	buckets := []temporal.TimeBucket{
+		{
+			Width: 100,
+			Index: 25,
+		},
+		{
+			Width: 50,
+			Index: 50,
+		},
+	}
+	kgs, err := cs.getKeyGroupsToUpdate("mygk", buckets)
+	assert.NoError(t, err)
+	assert.Equal(t, 2, len(kgs))
+	for _, kg := range kgs {
+		assert.Equal(t, 2, len(kg.Fields.MustGet()))
 	}
 }
