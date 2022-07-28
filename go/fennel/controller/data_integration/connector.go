@@ -144,7 +144,7 @@ func ReadBatch(ctx context.Context, consumer kafka.FConsumer, streamName, connNa
 			d := dict.GetUnsafe(AIRBYTE_DATA_FIELD).(value.Dict)
 			d.Set(AIRBYTE_CONNECTOR_STREAM_FIELD, dict.GetUnsafe(AIRBYTE_STREAM_NAME))
 			streams = append(streams, d)
-			// This field is added only so that the same stream can be used for multiple connectors and is not deduped by redis
+			// This field is added so that the same stream can be used for multiple connectors and is not deduped by redis
 			d.Set(AIRBYTE_CONNECTOR_NAME_FIELD, value.String(connName))
 			serialized, err := d.Marshal()
 			if err != nil {

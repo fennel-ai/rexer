@@ -32,7 +32,6 @@ const (
 	AIRBYTE_KAFKA_TOPIC       = "streamlog"
 	PROFILE_DESTINATION       = "profile"
 	ACTION_DESTINATION        = "action"
-	AIRBYTE_DESTINATION_NAME  = "Fennel Kafka"
 	AIRBYTE_DEDUP_TTL         = 30 * time.Minute
 )
 
@@ -490,7 +489,7 @@ func (c Client) setKafkaDestinationId(tierId ftypes.RealmID) error {
 		return fmt.Errorf("no kafka destination found")
 	}
 	for _, destination := range destinationList["destinations"] {
-		if destination.ConnectionConfiguration.TopicPattern == getFullAirbyteKafkaTopic(tierId) && destination.Name == AIRBYTE_DESTINATION_NAME {
+		if destination.ConnectionConfiguration.TopicPattern == getFullAirbyteKafkaTopic(tierId) {
 			kafkaDestinationId = destination.DestinationId
 			return nil
 		}
