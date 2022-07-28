@@ -8,10 +8,10 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestFilterNameComparison(t *testing.T) {
-	fName := filterName("test")
-	assert.True(t, fName.Equal(filterName("test")))
-	assert.False(t, fName.Equal(filterName("test1")))
+func TestFilterLeftComparison(t *testing.T) {
+	fLeft := filterName("test")
+	assert.True(t, fLeft.Equal(filterName("test")))
+	assert.False(t, fLeft.Equal(filterName("test1")))
 }
 
 func TestFilterOperatorComparisons(t *testing.T) {
@@ -19,7 +19,7 @@ func TestFilterOperatorComparisons(t *testing.T) {
 	assert.False(t, EQUAL.Equal(NOT_EQUAL))
 }
 
-func TestFilterValueDecoding(t *testing.T) {
+func TestFilterRightDecoding(t *testing.T) {
 	fVStr := "\"testvalue\""
 	var f filterValue
 	assert.NoError(t, json.Unmarshal([]byte(fVStr), &f))
@@ -27,7 +27,7 @@ func TestFilterValueDecoding(t *testing.T) {
 	assert.NoError(t, json.Unmarshal([]byte(fVStr), &f))
 }
 
-func TestFilterValueComparisons(t *testing.T) {
+func TestFilterRightComparisons(t *testing.T) {
 	fVStr1 := "\"testvalue\""
 	var f1 filterValue
 	assert.NoError(t, json.Unmarshal([]byte(fVStr1), &f1))
@@ -39,202 +39,248 @@ func TestFilterValueComparisons(t *testing.T) {
 
 func TestSimpleSqlFilterComparisions(t *testing.T) {
 	{
+		var filter CompositeSqlFilter
+		var filter2 CompositeSqlFilter
 		str := `{
-		"Name": "a",
+		"Left": "a",
 		"Op": "=",
-		"Value" : "b"
+		"Right" : "b"
 	}
 	`
-		filter, err := FromJSON([]byte(str))
-		simpleFilter := filter.(*simpleSqlFilter)
-		assert.True(t, simpleFilter.Name.Equal(filterName("a")))
-		assert.True(t, simpleFilter.Value.Equal(&filterValue{
+
+		assert.NoError(t, json.Unmarshal([]byte(str), &filter))
+		assert.True(t, filter.Left.Equal(filterName("a")))
+		assert.True(t, filter.Right.Equal(&filterValue{
 			SingleValue: "b",
 		}))
-		assert.True(t, simpleFilter.Op.Equal(EQUAL))
-		assert.NoError(t, err)
+		assert.True(t, filter.Op.Equal(EQUAL))
 		str2 := `{
-		"Name": "a",
+		"Left": "a",
 		"Op": "=",
-		"Value" : "b"
+		"Right" : "b"
 	}
 	`
-		filter2, err := FromJSON([]byte(str2))
-		assert.True(t, filter.Equal(filter2))
-		assert.NoError(t, err)
+		assert.NoError(t, json.Unmarshal([]byte(str2), &filter2))
+		assert.True(t, filter.Equal(&filter2))
 	}
 
 	{
-		// MultiValue with ordering change.
+		var filter CompositeSqlFilter
+		var filter2 CompositeSqlFilter
+		// MultiRight with ordering change.
 		str := `{
-		"Name": "a",
+		"Left": "a",
 		"Op": "in",
-		"Value" : ["b", "a"]
+		"Right" : ["b", "a"]
 	}
 	`
-		filter, err := FromJSON([]byte(str))
-		assert.NoError(t, err)
+		assert.NoError(t, json.Unmarshal([]byte(str), &filter))
 		str2 := `{
-		"Name": "a",
+		"Left": "a",
 		"Op": "in",
-		"Value" : ["a", "b"]
+		"Right" : ["a", "b"]
 	}
 	`
-		filter2, err := FromJSON([]byte(str2))
-		assert.True(t, filter.Equal(filter2))
-		assert.NoError(t, err)
+		assert.NoError(t, json.Unmarshal([]byte(str2), &filter2))
+		assert.True(t, filter.Equal(&filter2))
 
 	}
 }
 
 func TestCompositeFilterDecoding(t *testing.T) {
+	var filter CompositeSqlFilter
 	str := `
 	{
 		"Left": {
-			"Name": "a",
+			"Left": "a",
 			"Op": "=",
-			"Value": "b"
+			"Right": "b"
 		},
 		"Right": {
-			"Name": "a",
+			"Left": "a",
 			"Op": "=",
-			"Value": "b"
+			"Right": "b"
 		},
 		"Op": "and"
 	}
 	`
-	filter, err := FromJSON([]byte(str))
-	assert.NoError(t, err)
-	cFilter := filter.(*compositeSqlFilter)
+	assert.NoError(t, json.Unmarshal([]byte(str), &filter))
 	// Compare Left values.
-	left := cFilter.Left.(*simpleSqlFilter)
-	assert.True(t, left.Name.Equal(filterName("a")))
-	assert.True(t, left.Value.Equal(&filterValue{
+	left := filter.Left.(*CompositeSqlFilter)
+	assert.True(t, left.Left.Equal(filterName("a")))
+	assert.True(t, left.Right.Equal(&filterValue{
 		SingleValue: "b",
 	}))
 	assert.True(t, left.Op.Equal(EQUAL))
 	// Compare Left and right filter, they are the same.
-	fmt.Println(cFilter.Left.String(), cFilter.Right.String())
-	assert.True(t, cFilter.Left.Equal(cFilter.Right))
+	fmt.Println(filter.Left.String(), filter.Right.String())
+	assert.True(t, filter.Left.Equal(filter.Right))
 
 }
 
 func TestCompositeFilterComparisons(t *testing.T) {
 	{
+		var filter1 CompositeSqlFilter
+		var filter2 CompositeSqlFilter
 		str1 := `
 	{
 		"Left": {
-			"Name": "a",
+			"Left": "a",
 			"Op": "=",
-			"Value": "b"
+			"Right": "b"
 		},
 		"Right": {
-			"Name": "c",
+			"Left": "c",
 			"Op": "=",
-			"Value": "d"
+			"Right": "d"
 		},
 		"Op": "and"
 	}
 	`
-		filter1, err := FromJSON([]byte(str1))
-		assert.NoError(t, err)
+
+		assert.NoError(t, json.Unmarshal([]byte(str1), &filter1))
 		str2 := `
 	{
 		"Left": {
-			"Name": "a",
+			"Left": "a",
 			"Op": "=",
-			"Value": "b"
+			"Right": "b"
 		},
 		"Right": {
-			"Name": "c",
+			"Left": "c",
 			"Op": "=",
-			"Value": "d"
+			"Right": "d"
 		},
 		"Op": "and"
 	}
 	`
-		filter2, err := FromJSON([]byte(str2))
-		assert.NoError(t, err)
-		assert.True(t, filter1.Equal(filter2))
-
+		assert.NoError(t, json.Unmarshal([]byte(str2), &filter2))
+		assert.True(t, filter1.Equal(&filter2))
 	}
 	{
+		var filter1 CompositeSqlFilter
+		var filter2 CompositeSqlFilter
 		// Test with operator tree are mirror images.
 		str1 := `
 	{
 		"Left": {
-			"Name": "a",
+			"Left": "a",
 			"Op": "=",
-			"Value": "b"
+			"Right": "b"
 		},
 		"Right": {
-			"Name": "c",
+			"Left": "c",
 			"Op": "=",
-			"Value": "d"
+			"Right": "d"
 		},
 		"Op": "and"
 	}
 	`
-		filter1, err := FromJSON([]byte(str1))
-		assert.NoError(t, err)
+		assert.NoError(t, json.Unmarshal([]byte(str1), &filter1))
 		str2 := `
 	{
 		"Left": {
-			"Name": "c",
+			"Left": "c",
 			"Op": "=",
-			"Value": "d"
+			"Right": "d"
 		},
 		"Right": {
-			"Name": "a",
+			"Left": "a",
 			"Op": "=",
-			"Value": "b"
+			"Right": "b"
 		},
 		"Op": "and"
 	}
 	`
-		filter2, err := FromJSON([]byte(str2))
-		assert.NoError(t, err)
-		assert.True(t, filter1.Equal(filter2))
-
+		assert.NoError(t, json.Unmarshal([]byte(str2), &filter2))
+		assert.Equal(t, filter1.Hash(), filter2.Hash())
+		assert.True(t, filter1.Equal(&filter2))
 	}
 	{
 		// Test with operator tree are mirror images as well multi value operators.
+		var filter1 CompositeSqlFilter
+		var filter2 CompositeSqlFilter
 		str1 := `
 	{
 		"Left": {
-			"Name": "a",
+			"Left": "a",
 			"Op": "=",
-			"Value": "b"
+			"Right": "b"
 		},
 		"Right": {
-			"Name": "c",
+			"Left": "c",
 			"Op": "=",
-			"Value": ["d", "e"]
+			"Right": ["d", "e"]
 		},
 		"Op": "and"
 	}
 	`
-		filter1, err := FromJSON([]byte(str1))
-		assert.NoError(t, err)
+		assert.NoError(t, json.Unmarshal([]byte(str1), &filter1))
 		str2 := `
 	{
 		"Left": {
-			"Name": "c",
+			"Left": "c",
 			"Op": "=",
-			"Value": ["e", "d"]
+			"Right": ["e", "d"]
 		},
 		"Right": {
-			"Name": "a",
+			"Left": "a",
 			"Op": "=",
-			"Value": "b"
+			"Right": "b"
 		},
 		"Op": "and"
 	}
 	`
-		filter2, err := FromJSON([]byte(str2))
-		assert.NoError(t, err)
-		assert.True(t, filter1.Equal(filter2))
+		assert.NoError(t, json.Unmarshal([]byte(str2), &filter2))
+		assert.True(t, filter1.Equal(&filter2))
 
 	}
+}
 
+func TestMarshalUnmarshal(t *testing.T) {
+	strs := []string{
+		`{
+			"Left": "a",
+			"Op": "=",
+			"Right": "b"
+		}`,
+		`{
+			"Left": {
+				"Left": "a",
+				"Op": "=",
+				"Right": "b"
+			},
+			"Op": "and",
+			"Right": {
+				"Left": "c",
+				"Op": "=",
+				"Right": "d"
+			}
+		}`,
+		`
+		{
+			"Left": {
+				"Left": "a",
+				"Op": "=",
+				"Right": "b"
+			},
+			"Op": "and",
+			"Right": {
+				"Left": "c",
+				"Op": "=",
+				"Right": "d"
+			}
+		}`,
+	}
+	for _, str := range strs {
+		// Test simple marshal and unmarshal
+		var filter CompositeSqlFilter
+		assert.NoError(t, json.Unmarshal([]byte(str), &filter))
+		b, err := json.Marshal(&filter)
+		assert.NoError(t, err)
+		var filter2 CompositeSqlFilter
+		assert.NoError(t, json.Unmarshal(b, &filter2))
+		assert.True(t, filter.Equal(&filter2))
+
+	}
 }
