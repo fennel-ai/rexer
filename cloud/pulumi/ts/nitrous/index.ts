@@ -141,6 +141,14 @@ export const setup = async (input: inputType) => {
         }
     })
 
+    const bucketName = `nitrous-p-${input.planeId}-backup`
+    const bucket = new aws.s3.Bucket(bucketName, {
+        acl: "private",
+        bucket: bucketName,
+        // delete all the objects so that the bucket can be deleted without error
+        forceDestroy: true,
+    }, { provider: awsProvider, protect: input.protect });
+
     // Create a private ECR repository.
     const repo = new aws.ecr.Repository(`p-${input.planeId}-nitrous-repo`, {
         imageScanningConfiguration: {
