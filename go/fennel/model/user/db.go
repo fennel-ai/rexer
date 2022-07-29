@@ -7,8 +7,8 @@ import (
 
 func Insert(mothership mothership.Mothership, user lib.User) (uint32, error) {
 	res, err := mothership.DB.Exec(
-		`INSERT INTO user (email, encrypted_password, created_at, updated_at) VALUES (?, ?, ?, ?)`,
-		user.Email, user.EncryptedPassword, user.CreatedAt, user.UpdatedAt)
+		`INSERT INTO user (email, encrypted_password, remember_token, remember_created_at, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)`,
+		user.Email, user.EncryptedPassword, user.RememberToken, user.RememberCreatedAt, user.CreatedAt, user.UpdatedAt)
 	if err != nil {
 		return 0, err
 	}

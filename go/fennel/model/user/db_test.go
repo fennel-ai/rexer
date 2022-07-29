@@ -27,6 +27,8 @@ func TestFetchAfterInsert(t *testing.T) {
 	assert.Equal(t, "foo@fennel.ai", user.Email)
 	assert.Equal(t, []byte("abcd"), user.EncryptedPassword)
 	assert.False(t, user.DeletedAt.Valid)
+	assert.False(t, user.RememberToken.Valid)
+	assert.False(t, user.RememberCreatedAt.Valid)
 	assert.Equal(t, int64(123), user.CreatedAt)
 	assert.Zero(t, user.UpdatedAt)
 }
