@@ -6,7 +6,6 @@ import (
 	action2 "fennel/controller/action"
 	"fennel/controller/aggregate"
 	profile2 "fennel/controller/profile"
-	printer "fennel/engine/ast"
 	"fennel/kafka"
 	"fennel/lib/action"
 	libaggregate "fennel/lib/aggregate"
@@ -188,8 +187,6 @@ func processConnector(tr tier.Tier, conn data_integration.Connector, stopCh <-ch
 				logKafkaLag(tr, consumer)
 			default:
 				run++
-				p := printer.Printer{}
-
 				values, hashes, err := connector.ReadBatch(ctx, consumer, conn.StreamName, conn.Name, 10000, time.Second*20)
 				if err != nil {
 					tr.Logger.Error("Error while reading batch of actions:", zap.Error(err))
@@ -390,7 +387,6 @@ func startPhaserProcessing(tr tier.Tier) error {
 }
 
 func startConnectorProcessing(tr tier.Tier) error {
-	log.Printf("Starting connector processing")
 	go func(tr tier.Tier) {
 		// Map from connector name to channel to stop the connector processing.
 		processedConnectors := make(map[string]chan<- struct{})
@@ -404,10 +400,6 @@ func startConnectorProcessing(tr tier.Tier) error {
 			}
 			connNames := make(map[string]struct{}, len(conns))
 			for _, conn := range conns {
-				log.Printf("Checking connector: %s", conn.Name)
-				if running, ok := runningConnectors[conn.Name]; ok {
-					log.Println(conn.Equals(running))
-				}
 				connNames[conn.Name] = struct{}{}
 				if _, ok := processedConnectors[conn.Name]; !ok {
 					log.Printf("Retrieved a new connector: %s", conn.Name)
@@ -474,10 +466,6 @@ func main() {
 	// to know that server has initialized and is ready to take traffic
 	log.Println("server is ready...")
 
-	if err = startConnectorProcessing(tr); err != nil {
-		panic(err)
-	}
-
 	if err = startActionDBInsertion(tr); err != nil {
 		panic(err)
 	}
@@ -487,6 +475,10 @@ func main() {
 	}
 
 	if err = startPhaserProcessing(tr); err != nil {
+		panic(err)
+	}
+
+	if err = startConnectorProcessing(tr); err != nil {
 		panic(err)
 	}
 
