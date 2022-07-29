@@ -21,7 +21,8 @@ import (
 )
 
 const (
-	tailer_batch = 1000
+	tailer_batch         = 10_000
+	default_poll_timeout = 10 * time.Second
 )
 
 type EventProcessor interface {
@@ -63,7 +64,7 @@ func NewTailer(n nitrous.Nitrous, topic string, offsets kafka.TopicPartitions, o
 		consumer,
 		offsetkey,
 		stopCh,
-		3 * time.Second, // 1s as poll timeout
+		default_poll_timeout,
 		atomic.NewBool(false),
 		&sync.RWMutex{},
 	}, nil
