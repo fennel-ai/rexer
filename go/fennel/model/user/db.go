@@ -24,3 +24,9 @@ func FetchByEmail(mothership mothership.Mothership, email string) (lib.User, err
 	err := mothership.DB.Get(&user, `SELECT * FROM user where email=?`, email)
 	return user, err
 }
+
+func FetchByRememberToken(mothership mothership.Mothership, token string) (lib.User, error) {
+	user := lib.User{}
+	err := mothership.DB.Get(&user, `SELECT * FROM user where remember_token=?`, token)
+	return user, err
+}
