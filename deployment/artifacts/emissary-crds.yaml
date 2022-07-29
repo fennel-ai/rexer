@@ -4045,6 +4045,7 @@ spec:
       # Emissary ingress docker image does not support arm64 yet
       nodeSelector:
         kubernetes.io/arch: "amd64"
+        eks.amazonaws.com/capacityType: "ON_DEMAND"
       containers:
         - name: emissary-apiext
           image: docker.io/emissaryingress/emissary:3.0.0

@@ -108,6 +108,11 @@ export const setup = async (input: inputType): Promise<pulumi.Output<outputType>
         nodeSelector["kubernetes.io/arch"] = "arm64"
     }
 
+    // NOTE: We do not set `CapacityType` for node selector configuration for counters cleanup servers since we
+    // expect this to not run for more than 2 minutes - which is the duration before which the node is
+    // notified and the pods are drained and removed. Also, kubernetes scheduler will not schedule the job
+    // on a node which has already been signaled for termination
+
     // Build and publish the container image.
     const image = new docker.Image("counters-cleanup-img", {
         build: {

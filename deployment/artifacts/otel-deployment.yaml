@@ -178,6 +178,8 @@ spec:
       # Or wait for https://github.com/open-telemetry/opentelemetry-collector-contrib/issues/2379 to be fixed
       nodeSelector:
         kubernetes.io/arch: "amd64"
+        # we should schedule all components of otel deployment on ON_DEMAND instances
+        eks.amazonaws.com/capacityType: "ON_DEMAND",
       containers:
         - name: otel-collector
           image: otel/opentelemetry-collector-contrib:latest

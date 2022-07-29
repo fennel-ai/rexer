@@ -126,6 +126,10 @@ export const setup = async (input: inputType) => {
         nodeSelector["kubernetes.io/arch"] = "arm64"
     }
 
+    // NOTE: We do not set `CapacityType` for node selector configuration for Query servers as we want to run a
+    // hybrid setup for it i.e. have a few replicas running on ON_DEMAND instances to have availability all the time
+    // but run most of the workload on spot instances for cost efficiency
+
     // Build and publish the container image.
     const image = new docker.Image("query-server-img", {
         build: {

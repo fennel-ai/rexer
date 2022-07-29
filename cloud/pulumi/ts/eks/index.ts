@@ -99,6 +99,11 @@ function setupLinkerd(cluster: k8s.Provider) {
                     }
                 }
             },
+            "nodeSelector": {
+                "kubernetes.io/os": "linux",
+                // we should schedule all components of Linkerd control plane on ON_DEMAND instances
+                "eks.amazonaws.com/capacityType": "ON_DEMAND",
+            },
             "proxy": {
                 // Add all the ports specified in the default value + our HTTP/Query server port
                 //
@@ -268,6 +273,10 @@ async function setupLoadBalancerController(input: inputType, awsProvider: aws.Pr
             "serviceAccount": {
                 "create": false,
                 "name": serviceAccountName,
+            },
+            "nodeSelector": {
+                // we should schedule all components of AWS LBC on ON_DEMAND instances
+                "eks.amazonaws.com/capacityType": "ON_DEMAND",
             }
         }
     })
@@ -295,7 +304,11 @@ function setupDescheduler(cluster: eks.Cluster) {
         namespace: "kube-system",
         values: {
             // Run descheduler every 30 minutes.
-            "schedule": "*/30 * * * *"
+            "schedule": "*/30 * * * *",
+            "nodeSelector": {
+                // we should schedule all components of K8S descheduler on ON_DEMAND instances
+                "eks.amazonaws.com/capacityType": "ON_DEMAND",
+            }
         }
     }, { provider: cluster.provider })
 }
@@ -364,6 +377,8 @@ async function setupEbsCsiDriver(input: inputType, awsProvider: aws.Provider, cl
     }, { provider: awsProvider })
 
     // Install the driver.
+    //
+    // we should schedule all components of EBS CSI driver on ON_DEMAND instances
     const driver = new k8s.helm.v3.Release("ebs-csi-driver", {
         repositoryOpts: {
             repo: "https://kubernetes-sigs.github.io/aws-ebs-csi-driver/",
@@ -376,8 +391,16 @@ async function setupEbsCsiDriver(input: inputType, awsProvider: aws.Provider, cl
                 "serviceAccount": {
                     "create": false,
                     "name": serviceAccountName,
+                },
+                "nodeSelector": {
+                    "eks.amazonaws.com/capacityType": "ON_DEMAND",
                 }
             },
+            "node": {
+                "nodeSelector": {
+                    "eks.amazonaws.com/capacityType": "ON_DEMAND",
+                }
+            }
         }
     }, { provider: cluster.provider, dependsOn: attachPolicy })
 }
@@ -481,6 +504,10 @@ async function setupClusterAutoscaler(awsProvider: aws.Provider, input: inputTyp
                     // the port is the default value for the port of the service
                     "prometheus.io/port": "8085",
                 },
+                // we should schedule all components of kubernetes cluster autoscaler on ON_DEMAND instances
+                "nodeSelector": {
+                    "eks.amazonaws.com/capacityType": "ON_DEMAND",
+                },
                 // annotate the service account with the IAM role
                 "rbac": {
                     "serviceAccount": {
@@ -513,7 +540,11 @@ async function setupMetricsServer(provider: aws.Provider, input: inputType, clus
             "extraArgs": [
                 // this needs to be at least 10s - https://github.com/kubernetes-sigs/metrics-server/blob/master/cmd/metrics-server/app/options/options.go#L67
                 "--metric-resolution=10s"
-            ]
+            ],
+            // we should schedule all components of kubernetes metrics server on ON_DEMAND instances
+            "nodeSelector": {
+                "eks.amazonaws.com/capacityType": "ON_DEMAND",
+            },
         }
     }, { provider: cluster.provider, deleteBeforeReplace: true })
 }

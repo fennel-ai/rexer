@@ -173,6 +173,10 @@ async function setupPrometheus(input: inputType) {
                 "service": {
                     "type": "LoadBalancer"
                 },
+                "nodeSelector": {
+                    // we should schedule all components of Prometheus on ON_DEMAND instances
+                    "eks.amazonaws.com/capacityType": "ON_DEMAND",
+                },
                 // https://github.com/prometheus-community/helm-charts/blob/main/charts/prometheus/values.yaml#L1124
                 "retention": "60d",
                 "extraFlags": [

@@ -104,6 +104,8 @@ export const setup = async (input: inputType) => {
     let topologySpreadConstraints: Record<string, any>[] = [];
     let nodeSelector: Record<string, string> = {
         "kubernetes.io/arch": "amd64",
+        // we should schedule all components of Emissary on ON_DEMAND instances
+        "eks.amazonaws.com/capacityType": "ON_DEMAND",
     };
     const replicas = input.replicas || DEFAULT_INGRESS_NODE_COUNT;
     if (input.useDedicatedMachines || DEFAULT_USE_DEDICATED_MACHINES) {

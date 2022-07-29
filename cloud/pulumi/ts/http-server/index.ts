@@ -121,6 +121,11 @@ export const setup = async (input: inputType) => {
         platform = "linux/arm64"
         nodeSelector["kubernetes.io/arch"] = "arm64"
     }
+    // TODO(mohit): Consider making this a pod level configuration so that we can cut costs for tiers which
+    // need not be available all the time e.g. demo tiers
+    //
+    // we should schedule all components of HTTP server on ON_DEMAND instances
+    nodeSelector["eks.amazonaws.com/capacityType"] = "ON_DEMAND";
 
     // Build and publish the container image.
     const image = new docker.Image("http-server-img", {

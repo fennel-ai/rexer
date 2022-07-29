@@ -86,12 +86,14 @@ export const setup = async (input: inputType): Promise<outputType> => {
                     "tag": "3.5.4-r1",
                     "pullPolicy": "IfNotPresent"
                 },
-                // Set node selector (affinity) explicitly for etcd as this is installed as a dependency to milvus
-                // and setting a global configuration on milvus does not apply here.
-                //
-                // https://github.com/kubernetes/kubernetes/issues/57838
                 "nodeSelector": {
+                    // Set node selector (affinity) explicitly for etcd as this is installed as a dependency to milvus
+                    // and setting a global configuration on milvus does not apply here.
+                    //
+                    // https://github.com/kubernetes/kubernetes/issues/57838
                     "kubernetes.io/arch": "amd64",
+                    // we should schedule all components of Milvus on ON_DEMAND instances
+                    "eks.amazonaws.com/capacityType": "ON_DEMAND",
                 }
             },
             "externalS3": {
@@ -132,6 +134,12 @@ export const setup = async (input: inputType): Promise<outputType> => {
                                     "values": [
                                         "amd64"
                                     ]
+                                }, {
+                                    "key": "eks.amazonaws.com/capacityType",
+                                    "operator": "In",
+                                    "values": [
+                                        "ON_DEMAND"
+                                    ]
                                 }]
                             }]
                         }
@@ -145,6 +153,8 @@ export const setup = async (input: inputType): Promise<outputType> => {
             // Milvus services are not arm64 compatible. Set this at the global level.
             "nodeSelector": {
                 "kubernetes.io/arch": "amd64",
+                // we should schedule all components of Milvus on ON_DEMAND instances
+                "eks.amazonaws.com/capacityType": "ON_DEMAND",
             },
             // Set node selector (affinity) explicitly for pulsar as this is installed as a dependency to milvus
             // and setting a global configuration on milvus does not apply here.
@@ -158,26 +168,36 @@ export const setup = async (input: inputType): Promise<outputType> => {
                 "zookeeper": {
                     "nodeSelector": {
                         "kubernetes.io/arch": "amd64",
+                        // we should schedule all components of Milvus on ON_DEMAND instances
+                        "eks.amazonaws.com/capacityType": "ON_DEMAND",
                     },
                 },
                 "bookkeeper": {
                     "nodeSelector": {
                         "kubernetes.io/arch": "amd64",
+                        // we should schedule all components of Milvus on ON_DEMAND instances
+                        "eks.amazonaws.com/capacityType": "ON_DEMAND",
                     },
                 },
                 "autorecovery": {
                     "nodeSelector": {
                         "kubernetes.io/arch": "amd64",
+                        // we should schedule all components of Milvus on ON_DEMAND instances
+                        "eks.amazonaws.com/capacityType": "ON_DEMAND",
                     },
                 },
                 "broker": {
                     "nodeSelector": {
                         "kubernetes.io/arch": "amd64",
+                        // we should schedule all components of Milvus on ON_DEMAND instances
+                        "eks.amazonaws.com/capacityType": "ON_DEMAND",
                     },
                 },
                 "proxy": {
                     "nodeSelector": {
                         "kubernetes.io/arch": "amd64",
+                        // we should schedule all components of Milvus on ON_DEMAND instances
+                        "eks.amazonaws.com/capacityType": "ON_DEMAND",
                     },
                 },
             },

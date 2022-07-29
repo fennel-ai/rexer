@@ -24,8 +24,6 @@ import * as assert from "assert";
 // amazon-eks-node / amazon-eks-gpu-node / amazon-eks-arm64-node,
 // depending on the type of machine provisioned.
 
-const DEFAULT_NODE_TYPE = "t3.medium"
-const DEFAULT_DESIRED_CAPACITY = 3
 const DEFAULT_X86_AMI_TYPE = "AL2_x86_64"
 const DEFAULT_ARM_AMI_TYPE = "AL2_ARM_64"
 
