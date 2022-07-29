@@ -348,7 +348,7 @@ func pollS3Bucket(namespace, identifier string, tr tier.Tier) error {
 			}
 
 			if newUpdateVersion <= p.UpdateVersion {
-				tr.Logger.Info("No new updates found for ", zap.String("ID", p.GetId()))
+				tr.Logger.Info("No new updates found for ", zap.String("ID", p.GetId()), zap.Uint64("LatestVersion", newUpdateVersion), zap.Uint64("CurrentVersion", p.UpdateVersion))
 				continue
 			}
 			tr.Logger.Info("Found update for ", zap.String("ID", p.GetId()), zap.Uint64("newUpdateVersion", newUpdateVersion))
