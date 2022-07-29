@@ -3,34 +3,32 @@ package bridge
 import (
 	"context"
 	"errors"
+	"fennel/mothership"
+	"time"
 
 	"golang.org/x/crypto/bcrypt"
+
+	lib "fennel/lib/user"
+	db "fennel/model/user"
 )
 
-const DashboardPage = "dashboard"
-const DataPage = "data"
-
-type User struct {
-	Email    string `json:"email"`
-	Password string `json:"-"`
-}
-
-func NewUserFromForm(f Form) (User, error) {
+func NewUserFromForm(f Form) (lib.User, error) {
 	hash, err := bcrypt.GenerateFromPassword([]byte(f.Password), 14)
 
 	if err != nil {
-		return User{}, err
+		return lib.User{}, err
 	}
-	return User{
-		Email:    f.Email,
-		Password: string(hash),
+	now := time.Now().UTC().UnixMicro()
+	return lib.User{
+		Email:             f.Email,
+		EncryptedPassword: hash,
+		CreatedAt:         now,
+		UpdatedAt:         now,
 	}, nil
 }
 
-var users = make(map[string]User)
-
-func checkPasswordHash(password, hash string) bool {
-	err := bcrypt.CompareHashAndPassword([]byte(hash), []byte(password))
+func checkPasswordHash(password string, hash []byte) bool {
+	err := bcrypt.CompareHashAndPassword(hash, []byte(password))
 	return err == nil
 }
 
@@ -39,27 +37,29 @@ type Form struct {
 	Password string `json:"password"`
 }
 
-func SignUp(c context.Context, form Form) (User, error) {
-	if _, prs := users[form.Email]; prs {
-		return User{}, errors.New("User already exists")
+func SignUp(c context.Context, m mothership.Mothership, form Form) (lib.User, error) {
+	_, err := db.FetchByEmail(m, form.Email)
+	if err == nil {
+		return lib.User{}, errors.New("User already exists")
 	}
 
 	user, err := NewUserFromForm(form)
-	if err == nil {
-		users[user.Email] = user
+	if err != nil {
+		return user, err
 	}
-	return user, nil
+	_, err = db.Insert(m, user)
+	return user, err
 }
 
-func SignIn(c context.Context, form Form) (User, error) {
-	user, prs := users[form.Email]
+func SignIn(c context.Context, m mothership.Mothership, form Form) (lib.User, error) {
+	user, err := db.FetchByEmail(m, form.Email)
 
-	if !prs {
-		return User{}, errors.New("User not found")
+	if err != nil {
+		return lib.User{}, errors.New("User not found")
 	}
-	if checkPasswordHash(form.Password, user.Password) {
+	if checkPasswordHash(form.Password, user.EncryptedPassword) {
 		return user, nil
 	} else {
-		return User{}, errors.New("Wrong password")
+		return lib.User{}, errors.New("Wrong password")
 	}
 }

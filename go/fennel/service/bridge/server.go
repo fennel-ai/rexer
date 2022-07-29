@@ -3,24 +3,37 @@ package main
 import (
 	"context"
 	controller "fennel/controller/bridge"
+	"fennel/mothership"
 	"net/http"
 	"net/mail"
 
+	"github.com/alexflint/go-arg"
 	"github.com/gin-gonic/gin"
 )
 
 type server struct {
-	engine *gin.Engine
+	engine     *gin.Engine
+	mothership mothership.Mothership
 }
 
-func NewServer() server {
+func NewServer() (server, error) {
+	args := mothership.MothershipArgs{}
+	err := arg.Parse(&args)
+	if err != nil {
+		return server{}, err
+	}
+	m, err := mothership.CreateFromArgs(&args)
+	if err != nil {
+		return server{}, err
+	}
 	r := gin.Default()
 	s := server{
-		engine: r,
+		engine:     r,
+		mothership: m,
 	}
 	s.setupRouter()
 
-	return s
+	return s, nil
 }
 
 var db = make(map[string]string)
@@ -111,7 +124,7 @@ func (s *server) SignUp(c *gin.Context) {
 	}
 
 	ctx := context.Background()
-	user, err := controller.SignUp(ctx, form)
+	user, err := controller.SignUp(ctx, s.mothership, form)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"error": err.Error(),
@@ -135,7 +148,7 @@ func (s *server) SignIn(c *gin.Context) {
 	}
 
 	ctx := context.Background()
-	user, err := controller.SignIn(ctx, form)
+	user, err := controller.SignIn(ctx, s.mothership, form)
 
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
