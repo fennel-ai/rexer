@@ -250,6 +250,7 @@ func (c *Closet) Get(ctx context.Context, keys []string, kwargs []value.Dict, st
 	// dividing up the read result from hangar.
 	numKeys := arena.Ints.Alloc(len(keys), len(keys))
 	defer arena.Ints.Free(numKeys)
+	var maxKeys int
 	for i, key := range keys {
 		duration, err := getRequestDuration(c.mr.Options(), kwargs[i])
 		if err != nil {
@@ -265,36 +266,40 @@ func (c *Closet) Get(ctx context.Context, keys []string, kwargs []value.Dict, st
 		}
 		kgs = append(kgs, encoded...)
 		numKeys[i] = len(encoded)
+		if len(encoded) > maxKeys {
+			maxKeys = len(encoded)
+		}
 	}
 	vgs, err := store.GetMany(ctx, kgs)
 	if err != nil {
 		return nil, fmt.Errorf("error getting values: %w", err)
 	}
 	ret := make([]value.Value, len(keys))
-	offset := 0
+	// Slice allocated for storing the result of each key.
+	vals := arena.Values.Alloc(maxKeys, maxKeys)
+	defer arena.Values.Free(vals)
 	for i := 0; i < len(keys); i++ {
 		n := numKeys[i]
-		vals := arena.Values.Alloc(n, n)
-		defer arena.Values.Free(vals)
-		for j := 0; j < n; j++ {
-			vg := vgs[offset+j]
-			vals[j] = c.mr.Zero()
+		intermediate := vals[:0]
+		for _, vg := range vgs[:n] {
+			merged := c.mr.Zero()
 			for _, v := range vg.Values {
 				uv, err := value.Unmarshal(v)
 				if err != nil {
 					return nil, fmt.Errorf("error decoding value(%s): %w", uv, err)
 				}
-				vals[j], err = c.mr.Merge(vals[j], uv)
+				merged, err = c.mr.Merge(merged, uv)
 				if err != nil {
-					return nil, fmt.Errorf("failed to merge values: %s and %s: %w", vals[j], uv, err)
+					return nil, fmt.Errorf("failed to merge values: %s and %s: %w", merged, uv, err)
 				}
 			}
+			intermediate = append(intermediate, merged)
 		}
-		offset += n
-		ret[i], err = c.mr.Reduce(vals)
+		ret[i], err = c.mr.Reduce(intermediate)
 		if err != nil {
 			return nil, fmt.Errorf("error reducing: %w", err)
 		}
+		vgs = vgs[n:]
 	}
 	return ret, nil
 }
