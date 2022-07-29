@@ -24,6 +24,8 @@ type Source interface {
 
 var _ Source = S3{}
 var _ Source = BigQuery{}
+var _ Source = Postgres{}
+var _ Source = MySQL{}
 
 type S3 struct {
 	Name               string `db:"name" json:"name"`
@@ -85,7 +87,6 @@ func (s S3) Validate() error {
 type BigQuery struct {
 	Name            string `db:"name" json:"name"`
 	SourceId        string `db:"source_id" json:"source_id"`
-	CursorField     string `db:"cursor_field" json:"cursor_field"`
 	ProjectId       string `db:"project_id" json:"project_id"`
 	DatasetId       string `db:"dataset_id" json:"dataset_id"`
 	LastUpdated     string `db:"last_updated" json:"last_updated"`
@@ -96,10 +97,6 @@ func (s BigQuery) GetSourceName() string {
 	return s.Name
 }
 
-func (s BigQuery) GetCursorField() string {
-	return s.CursorField
-}
-
 func (s BigQuery) GetSourceId() string {
 	return s.SourceId
 }
@@ -107,14 +104,6 @@ func (s BigQuery) GetSourceId() string {
 // BigQuery does not have a default cursor field
 func (s BigQuery) GetDefaultCursorField() string {
 	return ""
-}
-
-func (s BigQuery) SetCursorField() error {
-	if s.CursorField != "" {
-		return nil
-	}
-	// TODO: Add link to documentation for BigQuery cursor field
-	return fmt.Errorf("BigQuery sources require a cursor field")
 }
 
 func (s BigQuery) Equals(src Source) error {
@@ -140,6 +129,104 @@ func (s BigQuery) Validate() error {
 	}
 	if len(s.DatasetId) == 0 {
 		return fmt.Errorf("dataset_id is required")
+	}
+	return nil
+}
+
+type SQLSource struct {
+	Name        string `db:"name" json:"name"`
+	SourceId    string `db:"source_id" json:"source_id"`
+	Host        string `db:"host" json:"host"`
+	Dbname      string `db:"db_name" json:"db_name"`
+	Username    string `json:"username"`
+	Password    string `json:"password"`
+	JdbcParams  string `db:"jdbc_params" json:"jdbc_params"`
+	Port        int    `db:"port" json:"port"`
+	LastUpdated string `db:"last_updated" json:"last_updated"`
+}
+
+type Postgres struct {
+	SQLSource
+}
+
+func (s Postgres) GetSourceName() string {
+	return s.Name
+}
+
+func (s Postgres) GetSourceId() string {
+	return s.SourceId
+}
+
+func (s Postgres) GetDefaultCursorField() string {
+	return ""
+}
+
+func (s Postgres) Equals(src Source) error {
+	if src.GetSourceName() != s.Name {
+		return fmt.Errorf("source name mismatch")
+	}
+	if s2, ok := src.(Postgres); ok {
+		if s.Host == s2.Host && s.Dbname == s2.Dbname {
+			return nil
+		}
+		return fmt.Errorf("postgres fields do not match")
+	} else {
+		return fmt.Errorf("source type mismatch")
+	}
+}
+
+func (s Postgres) Validate() error {
+	if s.Name == "" {
+		return fmt.Errorf("name is required")
+	}
+	if s.Host == "" {
+		return fmt.Errorf("host is required")
+	}
+	if s.Dbname == "" {
+		return fmt.Errorf("dbname is required")
+	}
+	return nil
+}
+
+type MySQL struct {
+	SQLSource
+}
+
+func (s MySQL) GetSourceName() string {
+	return s.Name
+}
+
+func (s MySQL) GetSourceId() string {
+	return s.SourceId
+}
+
+func (s MySQL) Equals(src Source) error {
+	if src.GetSourceName() != s.Name {
+		return fmt.Errorf("source name mismatch")
+	}
+	if s2, ok := src.(MySQL); ok {
+		if s.Host == s2.Host && s.Dbname == s2.Dbname {
+			return nil
+		}
+		return fmt.Errorf("mysql fields do not match")
+	} else {
+		return fmt.Errorf("source type mismatch")
+	}
+}
+
+func (s MySQL) GetDefaultCursorField() string {
+	return ""
+}
+
+func (s MySQL) Validate() error {
+	if s.Name == "" {
+		return fmt.Errorf("name is required")
+	}
+	if s.Host == "" {
+		return fmt.Errorf("host is required")
+	}
+	if s.Dbname == "" {
+		return fmt.Errorf("dbname is required")
 	}
 	return nil
 }

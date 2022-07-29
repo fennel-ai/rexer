@@ -168,6 +168,28 @@ var Schema = db.Schema{
 			PRIMARY KEY (name),
 			FOREIGN KEY (name) REFERENCES source(name) ON DELETE CASCADE
 		);`,
+	21: `CREATE TABLE IF NOT EXISTS postgres_source (
+			name VARCHAR(255) NOT NULL,
+			source_id VARCHAR(255) NOT NULL,
+			db_name VARCHAR(255) NOT NULL,
+			host VARCHAR(255) NOT NULL,
+			jdbc_params VARCHAR(255) NOT NULL,
+			port INT NOT NULL,
+			last_updated timestamp default now() on update now(), 
+			PRIMARY KEY (name),
+			FOREIGN KEY (name) REFERENCES source(name) ON DELETE CASCADE
+		);`,
+	22: `CREATE TABLE IF NOT EXISTS mysql_source (
+			name VARCHAR(255) NOT NULL,
+			source_id VARCHAR(255) NOT NULL,
+			db_name VARCHAR(255) NOT NULL,
+			host VARCHAR(255) NOT NULL,
+			port INT NOT NULL,
+			jdbc_params VARCHAR(255) NOT NULL,
+			last_updated timestamp default now() on update now(), 
+			PRIMARY KEY (name),
+			FOREIGN KEY (name) REFERENCES source(name) ON DELETE CASCADE
+		);`,
 	// ==================== END Schema for Data Integration ======================
 	// Next starts from 30.
 }

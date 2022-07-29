@@ -50,7 +50,7 @@ type Stream struct {
 	SupportedSyncModes      []string         `json:"supportedSyncModes"`
 	SourceDefinedCursor     bool             `json:"sourceDefinedCursor"`
 	DefaultCursorField      []string         `json:"defaultCursorField"`
-	SourceDefinedPrimaryKey []string         `json:"sourceDefinedPrimaryKey"`
+	SourceDefinedPrimaryKey []interface{}    `json:"sourceDefinedPrimaryKey"`
 	// It is a ptr since Namespace can be null and Go defaults to "" for empty string rather than null.
 	Namespace *string `json:"namespace"`
 }
@@ -108,6 +108,11 @@ type CheckConnectionRequest struct {
 type ConnectionConfig interface {
 	GetSourceType() string
 }
+
+var _ ConnectionConfig = S3ConnectorConfig{}
+var _ ConnectionConfig = BigQueryConnectorConfig{}
+var _ ConnectionConfig = PostgresConnectorConfig{}
+var _ ConnectionConfig = MySQLConnectorConfig{}
 
 // S3 Info
 
@@ -222,6 +227,74 @@ type BigQueryConnectorConfig struct {
 
 func (b BigQueryConnectorConfig) GetSourceType() string {
 	return "BigQuery"
+}
+
+type TunnelMethod struct {
+	TunnelMethod string `json:"tunnel_method"`
+}
+
+type ReplicationMethod struct {
+	Method string `json:"method"`
+}
+
+type PostgresConnectorConfig struct {
+	ReplicationMethod ReplicationMethod `json:"replication_method"`
+	TunnelMethod      TunnelMethod      `json:"tunnel_method"`
+	Username          string            `json:"username"`
+	Password          string            `json:"password"`
+	Database          string            `json:"database"`
+	Schemas           []string          `json:"schemas"`
+	Port              int               `json:"port"`
+	Host              string            `json:"host"`
+	Ssl               bool              `json:"ssl"`
+}
+
+func NewPostgresConnectorConfig(src data_integration.Postgres) PostgresConnectorConfig {
+	return PostgresConnectorConfig{
+		ReplicationMethod: ReplicationMethod{Method: "Standard"},
+		TunnelMethod:      TunnelMethod{"NO_TUNNEL"},
+		Username:          src.Username,
+		Password:          src.Password,
+		Database:          src.Dbname,
+		Port:              src.Port,
+		Host:              src.Host,
+		Schemas:           []string{"public"},
+		Ssl:               true,
+	}
+}
+
+func (b PostgresConnectorConfig) GetSourceType() string {
+	return "Postgres"
+}
+
+type MySQLConnectorConfig struct {
+	ReplicationMethod string       `json:"replication_method"`
+	JdbcUrlParams     string       `json:"jdbc_url_params"`
+	TunnelMethod      TunnelMethod `json:"tunnel_method"`
+	Username          string       `json:"username"`
+	Password          string       `json:"password"`
+	Database          string       `json:"database"`
+	Port              int          `json:"port"`
+	Host              string       `json:"host"`
+	Ssl               bool         `json:"ssl"`
+}
+
+func NewMySQLConnectorConfig(src data_integration.MySQL) MySQLConnectorConfig {
+	return MySQLConnectorConfig{
+		ReplicationMethod: "STANDARD",
+		TunnelMethod:      TunnelMethod{"NO_TUNNEL"},
+		Username:          src.Username,
+		Password:          src.Password,
+		Database:          src.Dbname,
+		Port:              src.Port,
+		Host:              src.Host,
+		JdbcUrlParams:     src.JdbcParams,
+		Ssl:               true,
+	}
+}
+
+func (b MySQLConnectorConfig) GetSourceType() string {
+	return "MySQL"
 }
 
 // ---------------------------------------------------------------------------------------------------------------------
