@@ -391,7 +391,7 @@ func startConnectorProcessing(tr tier.Tier) error {
 		// Map from connector name to channel to stop the connector processing.
 		processedConnectors := make(map[string]chan<- struct{})
 		runningConnectors := make(map[string]data_integration.Connector)
-		ticker := time.NewTicker(time.Second * 15)
+		ticker := time.NewTicker(time.Second * 30)
 		for ; true; <-ticker.C {
 			conns, err := connectorModel.RetrieveActive(context.Background(), tr)
 			if err != nil {
