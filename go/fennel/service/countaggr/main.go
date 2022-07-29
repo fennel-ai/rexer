@@ -3,22 +3,22 @@ package main
 import (
 	"context"
 	"fennel/airbyte"
-	"fennel/lib/value"
-	"fmt"
-	"log"
-	"math/rand"
-	_ "net/http/pprof"
-	"time"
-
 	action2 "fennel/controller/action"
 	"fennel/controller/aggregate"
 	profile2 "fennel/controller/profile"
+	printer "fennel/engine/ast"
 	"fennel/kafka"
 	"fennel/lib/action"
 	libaggregate "fennel/lib/aggregate"
 	"fennel/lib/ftypes"
 	"fennel/lib/phaser"
 	"fennel/lib/profile"
+	"fennel/lib/value"
+	"fmt"
+	"log"
+	"math/rand"
+	_ "net/http/pprof"
+	"time"
 
 	connector "fennel/controller/data_integration"
 	"fennel/lib/data_integration"
@@ -188,6 +188,8 @@ func processConnector(tr tier.Tier, conn data_integration.Connector, stopCh <-ch
 				logKafkaLag(tr, consumer)
 			default:
 				run++
+				p := printer.Printer{}
+
 				values, hashes, err := connector.ReadBatch(ctx, consumer, conn.StreamName, conn.Name, 10000, time.Second*20)
 				if err != nil {
 					tr.Logger.Error("Error while reading batch of actions:", zap.Error(err))
@@ -225,7 +227,6 @@ func processConnector(tr tier.Tier, conn data_integration.Connector, stopCh <-ch
 						totalDedupedStreamLogs.WithLabelValues("airbyte_log", conn.Name).Inc()
 					}
 				}
-
 				// Process the deduped stream
 				table, err := aggregate.Transform(tr, batch, conn.Query)
 				if err != nil {
@@ -389,10 +390,12 @@ func startPhaserProcessing(tr tier.Tier) error {
 }
 
 func startConnectorProcessing(tr tier.Tier) error {
+	log.Printf("Starting connector processing")
 	go func(tr tier.Tier) {
 		// Map from connector name to channel to stop the connector processing.
 		processedConnectors := make(map[string]chan<- struct{})
-		ticker := time.NewTicker(time.Second * 30)
+		runningConnectors := make(map[string]data_integration.Connector)
+		ticker := time.NewTicker(time.Second * 15)
 		for ; true; <-ticker.C {
 			conns, err := connectorModel.RetrieveActive(context.Background(), tr)
 			if err != nil {
@@ -401,14 +404,31 @@ func startConnectorProcessing(tr tier.Tier) error {
 			}
 			connNames := make(map[string]struct{}, len(conns))
 			for _, conn := range conns {
+				log.Printf("Checking connector: %s", conn.Name)
+				if running, ok := runningConnectors[conn.Name]; ok {
+					log.Println(conn.Equals(running))
+				}
 				connNames[conn.Name] = struct{}{}
 				if _, ok := processedConnectors[conn.Name]; !ok {
 					log.Printf("Retrieved a new connector: %s", conn.Name)
 					ch := make(chan struct{})
 					err := processConnector(tr, conn, ch)
 					if err != nil {
-						tr.Logger.Error("Could not start connector processing", zap.String("Connector Name", string(conn.Name)), zap.Error(err))
+						tr.Logger.Error("Could not start connector processing", zap.String("Connector Name", conn.Name), zap.Error(err))
 					}
+					runningConnectors[conn.Name] = conn
+					processedConnectors[conn.Name] = ch
+				} else if conn.Equals(runningConnectors[conn.Name]) != nil {
+					// Detect changes in the connector state and shut down the existing go routine and start a new one
+					log.Printf("Updating existing connector: %s", conn.Name)
+					close(processedConnectors[conn.Name])
+					delete(processedConnectors, conn.Name)
+					ch := make(chan struct{})
+					err := processConnector(tr, conn, ch)
+					if err != nil {
+						tr.Logger.Error("Could not start connector processing", zap.String("Connector Name", conn.Name), zap.Error(err))
+					}
+					runningConnectors[conn.Name] = conn
 					processedConnectors[conn.Name] = ch
 				}
 			}
@@ -454,7 +474,10 @@ func main() {
 	// to know that server has initialized and is ready to take traffic
 	log.Println("server is ready...")
 
-	// first kick off a goroutine to transfer actions from kafka to DB
+	if err = startConnectorProcessing(tr); err != nil {
+		panic(err)
+	}
+
 	if err = startActionDBInsertion(tr); err != nil {
 		panic(err)
 	}
@@ -464,10 +487,6 @@ func main() {
 	}
 
 	if err = startPhaserProcessing(tr); err != nil {
-		panic(err)
-	}
-
-	if err = startConnectorProcessing(tr); err != nil {
 		panic(err)
 	}
 

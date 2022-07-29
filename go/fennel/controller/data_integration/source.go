@@ -30,11 +30,8 @@ func UnmarshalSource(data []byte) (data_integration.Source, error) {
 		err = json.Unmarshal(data, &src)
 		return src, err
 	case "MySQL":
-		fmt.Println("MySQL")
-		fmt.Println(string(data))
 		src := data_integration.MySQL{}
 		err = json.Unmarshal(data, &src)
-		fmt.Println(src)
 		return src, err
 	default:
 		return nil, fmt.Errorf("unknown source type: %s", srcInfo["type"])

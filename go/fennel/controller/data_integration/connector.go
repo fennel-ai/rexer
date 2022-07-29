@@ -69,8 +69,6 @@ func StoreConnector(ctx context.Context, tier tier.Tier, conn data_integration.C
 				if err = connectorModel.Disable(ctx, tier, conn.Name); err != nil {
 					return fmt.Errorf("failed to disable connector '%s': %w", conn.Name, err)
 				}
-				fmt.Println(conn)
-				fmt.Println(conn2)
 				tier.Logger.Debug("Updating and enabling connector: " + conn.Name)
 				if err = tier.AirbyteClient.MustGet().UpdateConnector(source, conn); err != nil {
 					return fmt.Errorf("error: failed to update connector: %w", err)
