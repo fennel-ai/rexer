@@ -96,8 +96,10 @@ func (s *server) setupRouter() {
 	})
 }
 
-const SignUpPage = "signup"
-const SignInPage = "signin"
+const (
+	SignUpPage = "signup"
+	SignInPage = "signin"
+)
 
 func (s *server) SignUpGet(c *gin.Context) {
 	c.HTML(http.StatusOK, "sign_on.tmpl", gin.H{"title": "Fennel | SignUp", "page": SignUpPage})
@@ -107,10 +109,15 @@ func (s *server) SignInGet(c *gin.Context) {
 	c.HTML(http.StatusOK, "sign_on.tmpl", gin.H{"title": "Fennel | SignIn", "page": SignInPage})
 }
 
+type SignOnForm struct {
+	Email    string `json:"email"`
+	Password string `json:"password"`
+}
+
 func (s *server) SignUp(c *gin.Context) {
 	// time.Sleep(time.Second)
 
-	var form controller.Form
+	var form SignOnForm
 	if err := c.BindJSON(&form); err != nil {
 		// BindJSON would write status
 		return
@@ -124,7 +131,7 @@ func (s *server) SignUp(c *gin.Context) {
 	}
 
 	ctx := context.Background()
-	user, err := controller.SignUp(ctx, s.mothership, form)
+	user, err := controller.SignUp(ctx, s.mothership, form.Email, form.Password)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"error": err.Error(),
@@ -141,14 +148,14 @@ func (s *server) SignUp(c *gin.Context) {
 func (s *server) SignIn(c *gin.Context) {
 	// time.Sleep(time.Second)
 
-	var form controller.Form
+	var form SignOnForm
 	if err := c.BindJSON(&form); err != nil {
 		// BindJSON would write status
 		return
 	}
 
 	ctx := context.Background()
-	user, err := controller.SignIn(ctx, s.mothership, form)
+	user, err := controller.SignIn(ctx, s.mothership, form.Email, form.Password)
 
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{

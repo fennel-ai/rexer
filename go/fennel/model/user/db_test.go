@@ -16,13 +16,17 @@ func TestFetchAfterInsert(t *testing.T) {
 
 	_, err = FetchByEmail(m, "foo@fennel.ai")
 	assert.Error(t, err)
-	_, err = Insert(m, lib.User{Email: "foo@fennel.ai", EncryptedPassword: []byte("abcd")})
+	_, err = Insert(m, lib.User{
+		Email:             "foo@fennel.ai",
+		EncryptedPassword: []byte("abcd"),
+		CreatedAt:         123,
+	})
 	assert.NoError(t, err)
 	user, err := FetchByEmail(m, "foo@fennel.ai")
 	assert.NoError(t, err)
 	assert.Equal(t, "foo@fennel.ai", user.Email)
 	assert.Equal(t, []byte("abcd"), user.EncryptedPassword)
 	assert.False(t, user.DeletedAt.Valid)
-	assert.Positive(t, user.CreatedAt)
-	assert.Positive(t, user.UpdatedAt)
+	assert.Equal(t, int64(123), user.CreatedAt)
+	assert.Zero(t, user.UpdatedAt)
 }

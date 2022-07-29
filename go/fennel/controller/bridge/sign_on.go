@@ -12,15 +12,15 @@ import (
 	db "fennel/model/user"
 )
 
-func NewUserFromForm(f Form) (lib.User, error) {
-	hash, err := bcrypt.GenerateFromPassword([]byte(f.Password), 14)
+func newUser(email, password string) (lib.User, error) {
+	hash, err := bcrypt.GenerateFromPassword([]byte(password), 14)
 
 	if err != nil {
 		return lib.User{}, err
 	}
 	now := time.Now().UTC().UnixMicro()
 	return lib.User{
-		Email:             f.Email,
+		Email:             email,
 		EncryptedPassword: hash,
 		CreatedAt:         now,
 		UpdatedAt:         now,
@@ -32,18 +32,13 @@ func checkPasswordHash(password string, hash []byte) bool {
 	return err == nil
 }
 
-type Form struct {
-	Email    string `json:"email"`
-	Password string `json:"password"`
-}
-
-func SignUp(c context.Context, m mothership.Mothership, form Form) (lib.User, error) {
-	_, err := db.FetchByEmail(m, form.Email)
+func SignUp(c context.Context, m mothership.Mothership, email, password string) (lib.User, error) {
+	_, err := db.FetchByEmail(m, email)
 	if err == nil {
 		return lib.User{}, errors.New("User already exists")
 	}
 
-	user, err := NewUserFromForm(form)
+	user, err := newUser(email, password)
 	if err != nil {
 		return user, err
 	}
@@ -51,13 +46,13 @@ func SignUp(c context.Context, m mothership.Mothership, form Form) (lib.User, er
 	return user, err
 }
 
-func SignIn(c context.Context, m mothership.Mothership, form Form) (lib.User, error) {
-	user, err := db.FetchByEmail(m, form.Email)
+func SignIn(c context.Context, m mothership.Mothership, email, password string) (lib.User, error) {
+	user, err := db.FetchByEmail(m, email)
 
 	if err != nil {
 		return lib.User{}, errors.New("User not found")
 	}
-	if checkPasswordHash(form.Password, user.EncryptedPassword) {
+	if checkPasswordHash(password, user.EncryptedPassword) {
 		return user, nil
 	} else {
 		return lib.User{}, errors.New("Wrong password")
