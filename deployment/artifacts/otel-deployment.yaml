@@ -179,7 +179,7 @@ spec:
       nodeSelector:
         kubernetes.io/arch: "amd64"
         # we should schedule all components of otel deployment on ON_DEMAND instances
-        eks.amazonaws.com/capacityType: "ON_DEMAND",
+        eks.amazonaws.com/capacityType: "ON_DEMAND"
       containers:
         - name: otel-collector
           image: otel/opentelemetry-collector-contrib:latest
