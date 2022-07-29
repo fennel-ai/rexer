@@ -1,120 +1,60 @@
 package bridge
 
 import (
-	"net/http"
-	"net/mail"
+	"context"
+	"errors"
+	"fennel/mothership"
 	"time"
 
-	"github.com/gin-gonic/gin"
 	"golang.org/x/crypto/bcrypt"
+
+	lib "fennel/lib/user"
+	db "fennel/model/user"
 )
 
-const DashboardPage = "dashboard"
-const DataPage = "data"
-const SignUpPage = "signup"
-const SignInPage = "signin"
-
-type Form struct {
-	Email    string `json:"email"`
-	Password string `json:"password"`
-}
-
-type User struct {
-	Email    string `json:"email"`
-	Password string `json:"-"`
-}
-
-func NewUserFromForm(f *Form) (*User, error) {
-	hash, err := bcrypt.GenerateFromPassword([]byte(f.Password), 14)
+func newUser(email, password string) (lib.User, error) {
+	hash, err := bcrypt.GenerateFromPassword([]byte(password), 14)
 
 	if err != nil {
-		return nil, err
+		return lib.User{}, err
 	}
-	return &User{
-		Email:    f.Email,
-		Password: string(hash),
+	now := time.Now().UTC().UnixMicro()
+	return lib.User{
+		Email:             email,
+		EncryptedPassword: hash,
+		CreatedAt:         now,
+		UpdatedAt:         now,
 	}, nil
 }
 
-var users = make(map[string]User)
-
-func checkPasswordHash(password, hash string) bool {
-	err := bcrypt.CompareHashAndPassword([]byte(hash), []byte(password))
+func checkPasswordHash(password string, hash []byte) bool {
+	err := bcrypt.CompareHashAndPassword(hash, []byte(password))
 	return err == nil
 }
 
-func SignUpGet(c *gin.Context) {
-	c.HTML(http.StatusOK, "sign_on.tmpl", gin.H{"title": "Fennel | SignUp", "page": SignUpPage})
-}
-
-func SignInGet(c *gin.Context) {
-	c.HTML(http.StatusOK, "sign_on.tmpl", gin.H{"title": "Fennel | SignIn", "page": SignInPage})
-}
-
-func SignUp(c *gin.Context) {
-	time.Sleep(time.Second)
-
-	var form Form
-	if err := c.BindJSON(&form); err != nil {
-		// BindJSON would write status
-		return
+func SignUp(c context.Context, m mothership.Mothership, email, password string) (lib.User, error) {
+	_, err := db.FetchByEmail(m, email)
+	if err == nil {
+		return lib.User{}, errors.New("User already exists")
 	}
 
-	if _, err := mail.ParseAddress(form.Email); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error": "Bad email address",
-		})
-		return
-	}
-
-	if _, prs := users[form.Email]; prs {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error": "User already exists",
-		})
-		return
-	}
-
-	user, err := NewUserFromForm(&form)
+	user, err := newUser(email, password)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error": "Illegal password",
-		})
-		return
+		return user, err
 	}
-	users[user.Email] = *user
-	c.JSON(http.StatusOK, gin.H{
-		"data": gin.H{
-			"user": user,
-		},
-	})
+	_, err = db.Insert(m, user)
+	return user, err
 }
 
-func SignIn(c *gin.Context) {
-	time.Sleep(time.Second) // TODO: remove
+func SignIn(c context.Context, m mothership.Mothership, email, password string) (lib.User, error) {
+	user, err := db.FetchByEmail(m, email)
 
-	var form Form
-	if err := c.BindJSON(&form); err != nil {
-		// BindJSON would write status
-		return
+	if err != nil {
+		return lib.User{}, errors.New("User not found")
 	}
-
-	user, prs := users[form.Email]
-
-	if !prs {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error": "User not found",
-		})
-		return
-	}
-	if checkPasswordHash(form.Password, user.Password) {
-		c.JSON(http.StatusOK, gin.H{
-			"data": gin.H{
-				"user": user,
-			},
-		})
+	if checkPasswordHash(password, user.EncryptedPassword) {
+		return user, nil
 	} else {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error": "Wrong password",
-		})
+		return lib.User{}, errors.New("Wrong password")
 	}
 }
