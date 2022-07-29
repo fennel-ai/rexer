@@ -37,6 +37,7 @@ func NewTestNitrous[TB testing.TB](t TB) TestNitrous {
 	flags.BadgerBlockCacheMB = 1000
 	flags.RistrettoMaxCost = 1000
 	flags.RistrettoAvgCost = 1
+	flags.Hostname = "localhost"
 	p, err := nitrous.CreateFromArgs(flags)
 	require.NoError(t, err)
 	t.Setenv("PLANE_ID", fmt.Sprintf("%d", p.PlaneID))

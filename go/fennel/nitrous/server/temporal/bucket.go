@@ -21,10 +21,22 @@ type TimeBucket struct {
 	Index uint32
 }
 
+// TimeBucketRange represents the contiguous range of time buckets that cover
+// the time interval from [StartIdx*Width, (EndIdx + 1)*Width] seconds since t=0.
+// covered
+type TimeBucketRange struct {
+	// Width of the bucket in seconds.
+	Width uint32
+	// Start index
+	StartIdx uint32
+	// End index
+	EndIdx uint32
+}
+
 // TimeBucketizer is an interface for placing timestamps and durations into time
 // buckets.
 type TimeBucketizer interface {
-	Bucketize(mr counter.MergeReduce, duration mo.Option[uint32]) (buckets []TimeBucket, err error)
+	Bucketize(mr counter.MergeReduce, duration mo.Option[uint32]) (r TimeBucketRange, err error)
 	BucketizeMoment(mr counter.MergeReduce, ts uint32) (buckets []TimeBucket, ttls []int64, err error)
 	NumBucketsHint() int
 }
@@ -69,31 +81,28 @@ func (fwb FixedWidthBucketizer) BucketizeMoment(mr counter.MergeReduce, ts uint3
 	} else {
 		buckets := make([]TimeBucket, len(opts.Durations))
 		ttls := make([]int64, len(opts.Durations))
-		i := 0
-		for _, d := range opts.Durations {
+		for i, d := range opts.Durations {
 			width := d / fwb.numbuckets
 			buckets[i].Width = width
 			buckets[i].Index = ts / width
 			ttls[i] = int64(ts + d + width)
-			i++
 		}
 		return buckets, ttls, nil
 	}
 }
 
-func (fwb FixedWidthBucketizer) Bucketize(mr counter.MergeReduce, duration mo.Option[uint32]) ([]TimeBucket, error) {
+func (fwb FixedWidthBucketizer) Bucketize(mr counter.MergeReduce, duration mo.Option[uint32]) (TimeBucketRange, error) {
 	end := ftypes.Timestamp(fwb.clock.Now().Unix())
 	start, err := counter.Start(mr, ftypes.Timestamp(end), duration)
 	if err != nil {
-		return nil, err
+		return TimeBucketRange{}, err
 	}
 	width := uint32(end-start) / fwb.numbuckets
 	first := uint32(start) / width
 	last := uint32(end) / width
-	buckets := make([]TimeBucket, last-first+1)
-	for i := first; i <= last; i++ {
-		buckets[i-first].Width = width
-		buckets[i-first].Index = i
-	}
-	return buckets, nil
+	return TimeBucketRange{
+		Width:    width,
+		StartIdx: first,
+		EndIdx:   last,
+	}, nil
 }

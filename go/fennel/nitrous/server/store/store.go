@@ -31,15 +31,17 @@ func Make(tierId ftypes.RealmID, aggId ftypes.AggId, codec rpc.AggCodec, options
 		// 1. It uses the FixedWidthBucketizer with 100 buckets for bucketizing time.
 		// 2. Uses the counter.ToMergeReduce function to determine how intermediate or
 		// partial counter values are represented and merged.
-		// 3. Uses the Closet store to store the aggregate values.
+		// 3. Uses the Closet store to store the aggregate values in a 2-level hierarchy
+		//    with the the second level storing 25 buckets as fields under a hangar key.
 		// If any of these need to be changed, we need to create a different encoding.
 		const numBuckets = 100
+		const secondLevelSize = 25
 		bucketizer := temporal.NewFixedWidthBucketizer(numBuckets, clock)
 		mr, err := counter.ToMergeReduce(aggId, options)
 		if err != nil {
 			return nil, fmt.Errorf("failed to create merge reduce for aggId %d in tier %d: %w", aggId, tierId, err)
 		}
-		table, err := NewCloset(tierId, aggId, rpc.AggCodec_V1, mr, bucketizer)
+		table, err := NewCloset(tierId, aggId, rpc.AggCodec_V1, mr, bucketizer, secondLevelSize)
 		if err != nil {
 			return nil, fmt.Errorf("failed to initialize aggregate store for new aggregate (%d) in tier (%d): %w", aggId, tierId, err)
 		}
