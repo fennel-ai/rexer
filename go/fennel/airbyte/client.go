@@ -297,7 +297,7 @@ func (c Client) getSourceSchema(source data_integration.Source, conn data_integr
 		if stream.SupportIncrementalMode() && stream.Stream.Name == conn.StreamName {
 			// Check if stream has the specified cursor field
 			if !stream.HasCursorField(conn.CursorField) {
-				return StreamConfig{}, fmt.Errorf("stream %s does not have the cursor field %s: %w", stream.Stream.Name, conn.CursorField, err)
+				return StreamConfig{}, fmt.Errorf("stream %s does not have the cursor field %s", stream.Stream.Name, conn.CursorField)
 			}
 			return stream, nil
 		}
@@ -361,17 +361,23 @@ func getConnectionConfiguration(source data_integration.Source, sourceDefId stri
 		s3ConnectorConfig.Provider.Bucket = src.Bucket
 		s3ConnectorConfig.Provider.PathPrefix = src.PathPrefix
 		srcConfig.ConnectionConfiguration = s3ConnectorConfig
-		return srcConfig, nil
 	case data_integration.BigQuery:
 		bigQueryConnectorConfig := BigQueryConnectorConfig{}
 		bigQueryConnectorConfig.ProjectId = src.ProjectId
 		bigQueryConnectorConfig.DatasetId = src.DatasetId
 		bigQueryConnectorConfig.CredentialsJson = src.CredentialsJson
 		srcConfig.ConnectionConfiguration = bigQueryConnectorConfig
-		return srcConfig, nil
+	case data_integration.Postgres:
+		postgresConnectorConfig := NewPostgresConnectorConfig(src)
+		srcConfig.ConnectionConfiguration = postgresConnectorConfig
+	case data_integration.MySQL:
+		fmt.Println(src)
+		mysqlConnectorConfig := NewMySQLConnectorConfig(src)
+		srcConfig.ConnectionConfiguration = mysqlConnectorConfig
 	default:
 		return srcConfig, fmt.Errorf("source type %s not supported", reflect.TypeOf(source).Name())
 	}
+	return srcConfig, nil
 }
 
 func (c *Client) checkConnection(srcConfig SourceConfig) error {
@@ -382,6 +388,7 @@ func (c *Client) checkConnection(srcConfig SourceConfig) error {
 	if err != nil {
 		return err
 	}
+	fmt.Println(string(data))
 	resp, err := c.postJSON(data, c.getURL(CHECK_CONNECTION_PATH))
 	if err != nil {
 		return err
