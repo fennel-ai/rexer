@@ -12,10 +12,6 @@ import (
 const DashboardPage = "dashboard"
 const DataPage = "data"
 
-func Ping(c *gin.Context) {
-	c.String(http.StatusOK, "pong")
-}
-
 func Dashboard(c *gin.Context) {
 	c.HTML(http.StatusOK, "index.tmpl", gin.H{"title": "Fennel | Dashboard", "page": DashboardPage})
 }

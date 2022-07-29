@@ -8,27 +8,36 @@ import (
 	"net/mail"
 
 	"github.com/alexflint/go-arg"
+	"github.com/gin-contrib/sessions"
+	"github.com/gin-contrib/sessions/cookie"
 	"github.com/gin-gonic/gin"
 )
 
 type server struct {
-	engine     *gin.Engine
+	*gin.Engine
 	mothership mothership.Mothership
 }
 
+type serverArgs struct {
+	mothership.MothershipArgs
+	SessionKey string `arg:"--bridge_session_key,env:BRIDGE_SESSION_KEY"`
+}
+
 func NewServer() (server, error) {
-	args := mothership.MothershipArgs{}
+	args := serverArgs{}
 	err := arg.Parse(&args)
 	if err != nil {
 		return server{}, err
 	}
-	m, err := mothership.CreateFromArgs(&args)
+	m, err := mothership.CreateFromArgs(&args.MothershipArgs)
 	if err != nil {
 		return server{}, err
 	}
 	r := gin.Default()
+	store := cookie.NewStore([]byte(args.SessionKey))
+	r.Use(sessions.Sessions("mysession", store))
 	s := server{
-		engine:     r,
+		Engine:     r,
 		mothership: m,
 	}
 	s.setupRouter()
@@ -41,22 +50,22 @@ var db = make(map[string]string)
 func (s *server) setupRouter() {
 	// Disable Console Color
 	// gin.DisableConsoleColor()
-	s.engine.LoadHTMLGlob("templates/*.tmpl")
-	s.engine.Static("/images", "../../webapp/images")
-	s.engine.Static("/assets", "../../webapp/dist")
+	s.LoadHTMLGlob("templates/*.tmpl")
+	s.Static("/images", "../../webapp/images")
+	s.Static("/assets", "../../webapp/dist")
 
 	// Ping test
-	s.engine.GET("/ping", controller.Ping)
+	s.GET("/ping", s.Ping)
 
-	s.engine.GET("/", controller.Dashboard)
-	s.engine.GET("/dashboard", controller.Dashboard)
-	s.engine.GET("/data", controller.Data)
-	s.engine.GET("/profiles", controller.Profiles)
+	s.GET("/", controller.Dashboard)
+	s.GET("/dashboard", controller.Dashboard)
+	s.GET("/data", controller.Data)
+	s.GET("/profiles", controller.Profiles)
 
-	s.engine.GET("/signup", s.SignUpGet)
-	s.engine.POST("/signup", s.SignUp)
-	s.engine.GET("/signin", s.SignInGet)
-	s.engine.POST("/signin", s.SignIn)
+	s.GET("/signup", s.SignUpGet)
+	s.POST("/signup", s.SignUp)
+	s.GET("/signin", s.SignInGet)
+	s.POST("/signin", s.SignIn)
 
 	// (xiaoj) Example code below, to be deleted!!!
 
@@ -67,7 +76,7 @@ func (s *server) setupRouter() {
 	//	  "foo":  "bar",
 	//	  "manu": "123",
 	//}))
-	authorized := s.engine.Group("/", gin.BasicAuth(gin.Accounts{
+	authorized := s.Group("/", gin.BasicAuth(gin.Accounts{
 		"foo":  "bar", // user:foo password:bar
 		"manu": "123", // user:manu password:123
 	}))
@@ -93,6 +102,16 @@ func (s *server) setupRouter() {
 			db[user] = json.Value
 			c.JSON(http.StatusOK, gin.H{"status": "ok"})
 		}
+	})
+}
+
+func (s *server) Ping(c *gin.Context) {
+	// TODO(xiao) remove testing code
+	session := sessions.Default(c)
+	token := session.Get("remember_token")
+	c.JSON(http.StatusOK, gin.H{
+		"ping":  "pong",
+		"token": token,
 	})
 }
 
@@ -137,6 +156,10 @@ func (s *server) SignUp(c *gin.Context) {
 			"error": err.Error(),
 		})
 	} else {
+		session := sessions.Default(c)
+
+		session.Set("remember_token", user.RememberToken.String)
+		_ = session.Save()
 		c.JSON(http.StatusCreated, gin.H{
 			"data": gin.H{
 				"user": user,
@@ -168,8 +191,4 @@ func (s *server) SignIn(c *gin.Context) {
 			},
 		})
 	}
-}
-
-func (s *server) Run(address string) error {
-	return s.engine.Run(address)
 }
