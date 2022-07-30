@@ -340,7 +340,7 @@ func pollS3Bucket(namespace, identifier string, tr tier.Tier) error {
 				tr.Logger.Error("error while listing files in s3 bucket:", zap.Error(err), zap.String("namespace", namespace), zap.String("identifier", identifier), zap.String("s3Bucket", p.S3Bucket), zap.String("s3Prefix", p.S3Prefix))
 				continue
 			}
-			tr.Logger.Info("Found ", zap.Int("numFiles", len(files)), zap.String("namespace", namespace), zap.String("identifier", identifier))
+
 			newUpdateVersion, prefixToUpdate, err := findLatestVersion(tr, files, p.UpdateVersion)
 
 			if err != nil {
