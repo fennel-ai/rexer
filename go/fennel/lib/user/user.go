@@ -1,9 +1,12 @@
 package user
 
-import "database/sql"
+import (
+	"database/sql"
+	"fennel/lib/ftypes"
+)
 
 type User struct {
-	Id                uint32         `db:"id"`
+	Id                ftypes.UserId  `db:"id"`
 	Email             string         `db:"email"`
 	EncryptedPassword []byte         `db:"encrypted_password"`
 	RememberToken     sql.NullString `db:"remember_token"`

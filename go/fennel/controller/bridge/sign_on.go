@@ -16,6 +16,18 @@ import (
 	db "fennel/model/user"
 )
 
+type ErrorUserNotFound struct{}
+
+func (e *ErrorUserNotFound) Error() string {
+	return "User not found"
+}
+
+type ErrorWrongPassword struct{}
+
+func (e *ErrorWrongPassword) Error() string {
+	return "Wrong password"
+}
+
 func newUser(m mothership.Mothership, email, password string) (lib.User, error) {
 	hash, err := bcrypt.GenerateFromPassword([]byte(password), 14)
 
@@ -60,7 +72,10 @@ func SignUp(c context.Context, m mothership.Mothership, email, password string) 
 	if err != nil {
 		return user, err
 	}
-	_, err = db.Insert(m, user)
+	uid, err := db.Insert(m, user)
+	if err == nil {
+		user.Id = uid
+	}
 	return user, err
 }
 
@@ -68,11 +83,11 @@ func SignIn(c context.Context, m mothership.Mothership, email, password string) 
 	user, err := db.FetchByEmail(m, email)
 
 	if err != nil {
-		return lib.User{}, errors.New("User not found")
+		return lib.User{}, &ErrorUserNotFound{}
 	}
 	if checkPasswordHash(password, user.EncryptedPassword) {
 		return user, nil
 	} else {
-		return lib.User{}, errors.New("Wrong password")
+		return lib.User{}, &ErrorWrongPassword{}
 	}
 }
