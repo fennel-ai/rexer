@@ -266,7 +266,7 @@ func (p Phaser) prepareAndBulkUpload(tr tier.Tier, fileNames []string, tempDir s
 	return g.Wait()
 }
 
-func findLatestVersion(tr tier.Tier, files []string, currUpdateVersion uint64) (uint64, string, error) {
+func findLatestVersion(files []string, currUpdateVersion uint64) (uint64, string, error) {
 	var prefixToUpdate string
 	for _, file := range files {
 		pathArray := strings.Split(file, "/")
@@ -341,7 +341,7 @@ func pollS3Bucket(namespace, identifier string, tr tier.Tier) error {
 				continue
 			}
 
-			newUpdateVersion, prefixToUpdate, err := findLatestVersion(tr, files, p.UpdateVersion)
+			newUpdateVersion, prefixToUpdate, err := findLatestVersion(files, p.UpdateVersion)
 
 			if err != nil {
 				tr.Logger.Error("error while findLatestVersion ", zap.Error(err))
