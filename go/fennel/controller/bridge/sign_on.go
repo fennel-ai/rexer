@@ -2,8 +2,12 @@ package bridge
 
 import (
 	"context"
+	"database/sql"
+	"encoding/base64"
+	"encoding/binary"
 	"errors"
 	"fennel/mothership"
+	"math/rand"
 	"time"
 
 	"golang.org/x/crypto/bcrypt"
@@ -12,7 +16,19 @@ import (
 	db "fennel/model/user"
 )
 
-func newUser(email, password string) (lib.User, error) {
+type ErrorUserNotFound struct{}
+
+func (e *ErrorUserNotFound) Error() string {
+	return "User not found"
+}
+
+type ErrorWrongPassword struct{}
+
+func (e *ErrorWrongPassword) Error() string {
+	return "Wrong password"
+}
+
+func newUser(m mothership.Mothership, email, password string) (lib.User, error) {
 	hash, err := bcrypt.GenerateFromPassword([]byte(password), 14)
 
 	if err != nil {
@@ -22,9 +38,23 @@ func newUser(email, password string) (lib.User, error) {
 	return lib.User{
 		Email:             email,
 		EncryptedPassword: hash,
+		RememberToken:     sql.NullString{String: generateRememberToken(m), Valid: true},
+		RememberCreatedAt: sql.NullInt64{Int64: now, Valid: true},
 		CreatedAt:         now,
 		UpdatedAt:         now,
 	}, nil
+}
+
+func generateRememberToken(m mothership.Mothership) string {
+	bytes := make([]byte, 16)
+	for {
+		binary.LittleEndian.PutUint64(bytes, rand.Uint64())
+		binary.LittleEndian.PutUint64(bytes[8:], rand.Uint64())
+		token := base64.RawURLEncoding.EncodeToString(bytes)
+		if _, err := db.FetchByRememberToken(m, token); err != nil {
+			return token
+		}
+	}
 }
 
 func checkPasswordHash(password string, hash []byte) bool {
@@ -38,11 +68,14 @@ func SignUp(c context.Context, m mothership.Mothership, email, password string) 
 		return lib.User{}, errors.New("User already exists")
 	}
 
-	user, err := newUser(email, password)
+	user, err := newUser(m, email, password)
 	if err != nil {
 		return user, err
 	}
-	_, err = db.Insert(m, user)
+	uid, err := db.Insert(m, user)
+	if err == nil {
+		user.Id = uid
+	}
 	return user, err
 }
 
@@ -50,11 +83,11 @@ func SignIn(c context.Context, m mothership.Mothership, email, password string) 
 	user, err := db.FetchByEmail(m, email)
 
 	if err != nil {
-		return lib.User{}, errors.New("User not found")
+		return lib.User{}, &ErrorUserNotFound{}
 	}
 	if checkPasswordHash(password, user.EncryptedPassword) {
 		return user, nil
 	} else {
-		return lib.User{}, errors.New("Wrong password")
+		return lib.User{}, &ErrorWrongPassword{}
 	}
 }

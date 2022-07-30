@@ -79,11 +79,16 @@ var Schema = db.Schema{
 	11: `CREATE TABLE IF NOT EXISTS user (
                 id INT UNSIGNED NOT NULL PRIMARY KEY AUTO_INCREMENT,
                 email VARCHAR(255) NOT NULL,
-                encrypted_password VARBINARY(80) NOT NULL,
+                encrypted_password VARBINARY(255) NOT NULL,
+
+                remember_token VARCHAR(255),
+                remember_created_at BIGINT UNSIGNED,
+
                 deleted_at BIGINT UNSIGNED,
                 created_at BIGINT UNSIGNED NOT NULL,
                 updated_at BIGINT UNSIGNED NOT NULL,
 
-                UNIQUE KEY (email)
+                UNIQUE KEY (email),
+                UNIQUE KEY (remember_token)
         );`,
 }
