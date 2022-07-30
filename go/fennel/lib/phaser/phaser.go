@@ -266,7 +266,7 @@ func (p Phaser) prepareAndBulkUpload(tr tier.Tier, fileNames []string, tempDir s
 	return g.Wait()
 }
 
-func findLatestVersion(files []string, currUpdateVersion uint64) (uint64, string, error) {
+func findLatestVersion(tr tier.Tier, files []string, currUpdateVersion uint64) (uint64, string, error) {
 	var prefixToUpdate string
 	for _, file := range files {
 		pathArray := strings.Split(file, "/")
@@ -276,6 +276,7 @@ func findLatestVersion(files []string, currUpdateVersion uint64) (uint64, string
 			if err != nil {
 				return 0, "", err
 			}
+
 			if UpdateVersionInt > currUpdateVersion {
 				prefixToUpdate = strings.Join(pathArray[:len(pathArray)-1], "/")
 				currUpdateVersion = UpdateVersionInt
@@ -334,13 +335,13 @@ func pollS3Bucket(namespace, identifier string, tr tier.Tier) error {
 
 			tr.Logger.Info("Processing phaser ", zap.String("ID", p.GetId()))
 
-			files, err := tr.S3Client.ListFiles(p.S3Bucket, p.S3Prefix)
+			files, err := tr.S3Client.ListFiles(p.S3Bucket, p.S3Prefix, "")
 			if err != nil {
 				tr.Logger.Error("error while listing files in s3 bucket:", zap.Error(err), zap.String("namespace", namespace), zap.String("identifier", identifier), zap.String("s3Bucket", p.S3Bucket), zap.String("s3Prefix", p.S3Prefix))
 				continue
 			}
-
-			newUpdateVersion, prefixToUpdate, err := findLatestVersion(files, p.UpdateVersion)
+			tr.Logger.Info("Found ", zap.Int("numFiles", len(files)), zap.String("namespace", namespace), zap.String("identifier", identifier))
+			newUpdateVersion, prefixToUpdate, err := findLatestVersion(tr, files, p.UpdateVersion)
 
 			if err != nil {
 				tr.Logger.Error("error while findLatestVersion ", zap.Error(err))

@@ -42,14 +42,18 @@ func NewClient(args S3Args) Client {
 	}
 }
 
-func (c Client) ListFiles(bucketName, pathPrefix string) ([]string, error) {
+func (c Client) ListFiles(bucketName, pathPrefix, continuationToken string) ([]string, error) {
 	input := s3.ListObjectsV2Input{
 		Bucket:  aws.String(bucketName),
 		Prefix:  aws.String(pathPrefix),
-		MaxKeys: aws.Int64(10000),
+		MaxKeys: aws.Int64(1000),
 	}
-	output, err := c.client.ListObjectsV2(&input)
 
+	if continuationToken != "" {
+		input.ContinuationToken = aws.String(continuationToken)
+	}
+
+	output, err := c.client.ListObjectsV2(&input)
 	if err != nil {
 		if aerr, ok := err.(awserr.Error); ok {
 			if aerr.Code() == s3.ErrCodeNoSuchBucket {
@@ -62,6 +66,14 @@ func (c Client) ListFiles(bucketName, pathPrefix string) ([]string, error) {
 	var files []string
 	for _, obj := range output.Contents {
 		files = append(files, *obj.Key)
+	}
+
+	if *output.IsTruncated {
+		additionalFiles, err := c.ListFiles(bucketName, pathPrefix, *output.NextContinuationToken)
+		if err != nil {
+			return nil, err
+		}
+		files = append(files, additionalFiles...)
 	}
 	return files, nil
 }
