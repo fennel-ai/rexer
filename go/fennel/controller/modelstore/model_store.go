@@ -88,7 +88,7 @@ func ensureModelFileInRegion(tier tier.Tier, modelFile string) (string, error) {
 	}
 
 	prefix := parts[3] + "/" + parts[4]
-	files, err := tier.S3Client.ListFiles(s3Bucket, prefix)
+	files, err := tier.S3Client.ListFiles(s3Bucket, prefix, "")
 	if err != nil {
 		return "", fmt.Errorf("failed to list files in s3: %w", err)
 	}
