@@ -193,6 +193,8 @@ export const setup = async (input: inputType): Promise<pulumi.Output<outputType>
             "webapp": {
                 "nodeSelector": {
                     "kubernetes.io/arch": "amd64",
+                    // we should schedule all components of Airbyte on ON_DEMAND instances
+                    "eks.amazonaws.com/capacityType": "ON_DEMAND",
                 },
                 "image": {
                     "tag": imageTag,
@@ -205,6 +207,8 @@ export const setup = async (input: inputType): Promise<pulumi.Output<outputType>
             "podSweeper": {
                 "nodeSelector": {
                     "kubernetes.io/arch": "amd64",
+                    // we should schedule all components of Airbyte on ON_DEMAND instances
+                    "eks.amazonaws.com/capacityType": "ON_DEMAND",
                 },
                 "podAnnotations": {
                     "linkerd.io/inject": "disabled",
@@ -214,6 +218,8 @@ export const setup = async (input: inputType): Promise<pulumi.Output<outputType>
             "temporal": {
                 "nodeSelector": {
                     "kubernetes.io/arch": "amd64",
+                    // we should schedule all components of Airbyte on ON_DEMAND instances
+                    "eks.amazonaws.com/capacityType": "ON_DEMAND",
                 },
                 "podAnnotations": {
                     "linkerd.io/inject": "disabled",
@@ -226,6 +232,10 @@ export const setup = async (input: inputType): Promise<pulumi.Output<outputType>
                 },
                 "podAnnotations": {
                     "linkerd.io/inject": "disabled",
+                },
+                "nodeSelector": {
+                    // we should schedule all components of Airbyte on ON_DEMAND instances
+                    "eks.amazonaws.com/capacityType": "ON_DEMAND",
                 },
                 // service type for the airbyte server
                 "service": {
@@ -264,6 +274,10 @@ export const setup = async (input: inputType): Promise<pulumi.Output<outputType>
                 "podAnnotations": {
                     "linkerd.io/inject": "disabled",
                 },
+                "nodeSelector": {
+                    // we should schedule all components of Airbyte on ON_DEMAND instances
+                    "eks.amazonaws.com/capacityType": "ON_DEMAND",
+                }
             },
 
             // NOTE: We should configure rest of the Airbyte resources as per recommendations from:
@@ -287,6 +301,10 @@ export const setup = async (input: inputType): Promise<pulumi.Output<outputType>
                 },
                 "podAnnotations": {
                     "linkerd.io/inject": "disabled",
+                },
+                "nodeSelector": {
+                    // we should schedule all components of Airbyte on ON_DEMAND instances
+                    "eks.amazonaws.com/capacityType": "ON_DEMAND",
                 },
                 "extraEnv": [
                     {
@@ -321,6 +339,8 @@ export const setup = async (input: inputType): Promise<pulumi.Output<outputType>
                 "kube": {
                     "nodeSelector": {
                         "kubernetes.io/arch": "amd64",
+                        // we should schedule all components of Airbyte on ON_DEMAND instances
+                        "eks.amazonaws.com/capacityType": "ON_DEMAND",
                     },
                     "annotations": {
                         // disable injecting linkerd for the connector jobs

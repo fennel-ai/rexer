@@ -92,6 +92,10 @@ export const setup = async (input: inputType): Promise<outputType> => {
             "image": {
                 "tag": "latest",
             },
+            "nodeSelector": {
+                // we should schedule all components of Unleash on ON_DEMAND instances
+                "eks.amazonaws.com/capacityType": "ON_DEMAND",
+            },
             "fullnameOverride": `t-${input.tierId}-unleash`,
             "postgresql": {
                 "enabled": false,

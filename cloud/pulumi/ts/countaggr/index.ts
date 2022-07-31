@@ -106,6 +106,8 @@ export const setup = async (input: inputType) => {
         platform = "linux/arm64"
         nodeSelector["kubernetes.io/arch"] = "arm64"
     }
+    // we should schedule all components of Aggregator service on ON_DEMAND instances
+    nodeSelector["eks.amazonaws.com/capacityType"] = "ON_DEMAND";
 
     // Build and publish the container image.
     const image = new docker.Image("countaggr-img", {
