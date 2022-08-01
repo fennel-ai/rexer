@@ -503,7 +503,12 @@ async function setupClusterAutoscaler(awsProvider: aws.Provider, input: inputTyp
             expansionPriorities.set(priority, [nodeGroupNameRegex]);
         }
     }
-    console.log(expansionPriorities);
+    // convert to a record since helm charts seem to only work with records (maybe because of the difference in
+    // map and record's string repr?)
+    let expanderPriorities: Record<string, string[]> = {};
+    for (let [priority, ngs] of expansionPriorities) {
+        expanderPriorities[priority] = ngs
+    }
 
     // Setup the cluster autoscaler
     //
@@ -566,7 +571,7 @@ async function setupClusterAutoscaler(awsProvider: aws.Provider, input: inputTyp
                 // not be considered for expansion
                 //
                 // For more details see - https://github.com/kubernetes/autoscaler/blob/master/cluster-autoscaler/expander/priority/readme.md
-                "expanderPriorities": expansionPriorities,
+                "expanderPriorities": expanderPriorities,
                 "extraArgs": {
                     // set priority based expander where the cluster autoscaler will expand the specified node groups
                     // based on the configured priority
