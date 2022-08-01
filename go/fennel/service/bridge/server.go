@@ -5,6 +5,7 @@ import (
 	controller "fennel/controller/bridge"
 	"fennel/model/user"
 	"fennel/mothership"
+	"log"
 	"net/http"
 	"net/mail"
 
@@ -12,6 +13,8 @@ import (
 	"github.com/gin-contrib/sessions"
 	"github.com/gin-contrib/sessions/cookie"
 	"github.com/gin-gonic/gin"
+
+	libuser "fennel/lib/user"
 )
 
 type server struct {
@@ -117,8 +120,6 @@ type SignOnForm struct {
 }
 
 func (s *server) SignUp(c *gin.Context) {
-	// time.Sleep(time.Second)
-
 	var form SignOnForm
 	if err := c.BindJSON(&form); err != nil {
 		// BindJSON would write status
@@ -139,21 +140,14 @@ func (s *server) SignUp(c *gin.Context) {
 			"error": err.Error(),
 		})
 	} else {
-		session := sessions.Default(c)
-
-		session.Set(RememberTokenKey, user.RememberToken.String)
-		_ = session.Save()
+		saveUserIntoCookie(c, user)
 		c.JSON(http.StatusCreated, gin.H{
-			"data": gin.H{
-				"user": user,
-			},
+			"data": gin.H{},
 		})
 	}
 }
 
 func (s *server) SignIn(c *gin.Context) {
-	// time.Sleep(time.Second)
-
 	var form SignOnForm
 	if err := c.BindJSON(&form); err != nil {
 		// BindJSON would write status
@@ -168,10 +162,17 @@ func (s *server) SignIn(c *gin.Context) {
 			"error": err.Error(),
 		})
 	} else {
+		saveUserIntoCookie(c, user)
 		c.JSON(http.StatusOK, gin.H{
-			"data": gin.H{
-				"user": user,
-			},
+			"data": gin.H{},
 		})
 	}
+}
+
+func saveUserIntoCookie(c *gin.Context, user libuser.User) {
+	session := sessions.Default(c)
+
+	session.Set(RememberTokenKey, user.RememberToken.String)
+	err := session.Save()
+	log.Printf("Error saving cookie: %v", err)
 }
