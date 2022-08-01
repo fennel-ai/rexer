@@ -29,6 +29,11 @@ export type NodeGroupConf = {
     // Must be unique across node groups defined in the same plane
     name: string,
     // list of instance types in this node group
+    //
+    // NOTE: Ideally these instance types should have identical resource specs (e.g. CPU, Memory etc). Kubernetes
+    // cluster autoscaler (which is configured for our EKS cluster) does not behave well when a node group has
+    // multiple instance types with different resource specs
+    // see - https://github.com/kubernetes/autoscaler/blob/master/cluster-autoscaler/cloudprovider/aws/README.md#using-mixed-instances-policies-and-spot-instances
     instanceTypes: string[],
     // take the following into consideration before setting this value:
     //  i) pods and services (and their replicas) which will run on this node group
