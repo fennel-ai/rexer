@@ -302,7 +302,7 @@ func (c Client) getSourceSchema(source data_integration.Source, conn data_integr
 			return stream, nil
 		}
 	}
-	return StreamConfig{}, fmt.Errorf("no valid schema for the source was found, please ensure the source is properly configured")
+	return StreamConfig{}, fmt.Errorf("no valid schema for the source was found, please ensure the source is properly configured or the stream name is correctly set")
 }
 
 func setCursorField(source data_integration.Source, conn *data_integration.Connector) error {
@@ -371,7 +371,6 @@ func getConnectionConfiguration(source data_integration.Source, sourceDefId stri
 		postgresConnectorConfig := NewPostgresConnectorConfig(src)
 		srcConfig.ConnectionConfiguration = postgresConnectorConfig
 	case data_integration.MySQL:
-		fmt.Println(src)
 		mysqlConnectorConfig := NewMySQLConnectorConfig(src)
 		srcConfig.ConnectionConfiguration = mysqlConnectorConfig
 	default:
@@ -388,7 +387,6 @@ func (c *Client) checkConnection(srcConfig SourceConfig) error {
 	if err != nil {
 		return err
 	}
-	fmt.Println(string(data))
 	resp, err := c.postJSON(data, c.getURL(CHECK_CONNECTION_PATH))
 	if err != nil {
 		return err
