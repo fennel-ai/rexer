@@ -173,6 +173,7 @@ func saveUserIntoCookie(c *gin.Context, user libuser.User) {
 	session := sessions.Default(c)
 
 	session.Set(RememberTokenKey, user.RememberToken.String)
-	err := session.Save()
-	log.Printf("Error saving cookie: %v", err)
+	if err := session.Save(); err != nil {
+		log.Printf("Error saving cookie: %v", err)
+	}
 }
