@@ -35,6 +35,14 @@ export type NodeGroupConf = {
     instanceType: string,
     // labels to be attached to the node group
     labels?: Record<string, string>,
+    // priority assigned to the autoscaling group backing this node group for the Cluster Autoscaler to select
+    // for expansion in case a new node needs to be scheduled for scheduling a pod
+    //
+    // This has the following requirements and expansion behavior -
+    //  i. Must be a positive value
+    //  ii. The highest value is given the priority i.e. highest value wins
+    //  iii. If multiple node groups have the same priority, a node group among them is selected at random
+    expansionPriority: number,
 }
 
 export type inputType = {
@@ -405,7 +413,8 @@ async function setupEbsCsiDriver(input: inputType, awsProvider: aws.Provider, cl
     }, { provider: cluster.provider, dependsOn: attachPolicy })
 }
 
-async function setupClusterAutoscaler(awsProvider: aws.Provider, input: inputType, cluster: eks.Cluster) {
+async function setupClusterAutoscaler(awsProvider: aws.Provider, input: inputType, cluster: eks.Cluster,
+                                      nodeGroups: NodeGroupConf[]) {
     // Account ID
     const current = await aws.getCallerIdentity({ provider: awsProvider });
     const accountId = current.accountId;
@@ -471,6 +480,45 @@ async function setupClusterAutoscaler(awsProvider: aws.Provider, input: inputTyp
         }, { provider: awsProvider });
     });
 
+    // create a mapping from priority to list of node group name regex's for the expansion priority configmap in
+    // cluster autoscaler
+    //
+    // Since EKS 1.21, autoscaling group names are of the format - `eks-<managed-node-group-name>-uuid`.
+    // See - https://aws.amazon.com/blogs/containers/amazon-eks-1-21-released/
+    // We will need to construct a regex of the form - `.*{managed-node-group-name}.*`. This creates a restriction that
+    // node group name cannot have `.` because it needs to be formatted as `/.` for the regex to work
+    // TODO(mohit): Consider adding support for this
+    //
+    // NOTE: this is required because priority expander has a requirement that "priority values cannot be duplicated"
+    let expansionPriorities = new Map<string, string[]>();
+    for (const nodeGroup of nodeGroups) {
+        const priority = `${nodeGroup.expansionPriority}`;
+        const nodeGroupNameRegex = `.*${nodeGroup.name}.*`;
+        if (expansionPriorities.has(priority)) {
+            // we just checked if the map has entries for priority, we can force a value and not worry about `undefined`
+            let ngs = expansionPriorities.get(priority)!;
+            ngs.push(nodeGroupNameRegex)
+            expansionPriorities.set(priority, ngs);
+        } else {
+            expansionPriorities.set(priority, [nodeGroupNameRegex]);
+        }
+    }
+
+    // TODO(mohit): Consider adding a placeholder regex `.*` with the least priority so that every node group in the
+    // cluster is considered for expansion.
+    //
+    // Currently we configure all the node groups at the plane level and a regex is created for each. But in the "higher
+    // availability" mode, we create a node group for envoy pods, which will miss out here for priority expansion.
+    // This is expected for now as we do not want any other service/pod to run there, but we might in the future
+    // consider autoscaling envoy pods as well.
+
+    // convert to a record since helm charts seem to only work with records (maybe because of the difference in
+    // map and record's string repr?)
+    let expanderPriorities: Record<string, string[]> = {};
+    for (let [priority, ngs] of expansionPriorities) {
+        expanderPriorities[priority] = ngs
+    }
+
     // Setup the cluster autoscaler
     //
     // Currently the cluster autoscaler ensures that none of the pods are un-schedulable.
@@ -520,6 +568,24 @@ async function setupClusterAutoscaler(awsProvider: aws.Provider, input: inputTyp
                 },
                 // override the full name as the one created by the helm release is long and has redundant words
                 "fullnameOverride": autoscalerName,
+                // Set expansion priorities for the cluster autoscaler to scale node groups based on the priorities
+                // configured for them
+                //
+                // NOTE: Expander is usually the last factor considered in the scheduler i.e. say the workload
+                // has other scheduler requirements (e.g. node selector, affinity/anti-affinity, gpu availability etc),
+                // they will take precedence over the expander. Expander is used to select a node group with the
+                // highest priority, matching all requirements
+                //
+                // NOTE: If a group name doesn't match any of the regular expressions in the priority list, it will
+                // not be considered for expansion
+                //
+                // For more details see - https://github.com/kubernetes/autoscaler/blob/master/cluster-autoscaler/expander/priority/readme.md
+                "expanderPriorities": expanderPriorities,
+                "extraArgs": {
+                    // set priority based expander where the cluster autoscaler will expand the specified node groups
+                    // based on the configured priority
+                    "expander": "priority"
+                }
                 // "extraArgs" needs to be set to tune the autoscaler as per:
                 // https://github.com/kubernetes/autoscaler/blob/master/cluster-autoscaler/FAQ.md#what-are-the-parameters-to-ca
             }
@@ -588,7 +654,7 @@ export const setup = async (input: inputType): Promise<pulumi.Output<outputType>
     }, { provider: awsProvider });
 
     // setup cluster autoscaler
-    const autoscaler = setupClusterAutoscaler(awsProvider, input, cluster);
+    const autoscaler = setupClusterAutoscaler(awsProvider, input, cluster, input.nodeGroups);
 
     // setup metrics server for autoscaling needs
     const metricsServer = setupMetricsServer(awsProvider, input, cluster);

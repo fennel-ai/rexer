@@ -378,6 +378,7 @@ const planeConfs: Record<number, PlaneConf> = {
                     maxSize: 3,
                     amiType: DEFAULT_X86_AMI_TYPE,
                     instanceType: "",
+                    expansionPriority: 1,
                 },
                 // TODO: For nitrous, we may need to spin up ARM specific node group
             ],
@@ -446,6 +447,7 @@ const planeConfs: Record<number, PlaneConf> = {
                     maxSize: 10,
                     amiType: DEFAULT_ARM_AMI_TYPE,
                     instanceType: ON_DEMAND_INSTANCE_TYPE,
+                    expansionPriority: 1,
                 },
                 {
                     name: "p-3-common-ng-x86",
@@ -458,6 +460,7 @@ const planeConfs: Record<number, PlaneConf> = {
                     maxSize: 10,
                     amiType: DEFAULT_X86_AMI_TYPE,
                     instanceType: ON_DEMAND_INSTANCE_TYPE,
+                    expansionPriority: 1,
                 },
             ],
         },
@@ -522,6 +525,7 @@ const planeConfs: Record<number, PlaneConf> = {
                         "node-group": "p-5-httpserver-ng"
                     },
                     instanceType: ON_DEMAND_INSTANCE_TYPE,
+                    expansionPriority: 1,
                 },
                 // Countaggr server node group
                 {
@@ -535,6 +539,7 @@ const planeConfs: Record<number, PlaneConf> = {
                         "node-group": "p-5-countaggr-ng"
                     },
                     instanceType: ON_DEMAND_INSTANCE_TYPE,
+                    expansionPriority: 1,
                 },
                 // Query server node group
                 {
@@ -550,6 +555,7 @@ const planeConfs: Record<number, PlaneConf> = {
                         "node-group": "p-5-queryserver-ng"
                     },
                     instanceType: ON_DEMAND_INSTANCE_TYPE,
+                    expansionPriority: 1,
                 },
                 {
                     name: "p-5-common-ng-x86",
@@ -559,6 +565,7 @@ const planeConfs: Record<number, PlaneConf> = {
                     maxSize: 10,
                     amiType: DEFAULT_X86_AMI_TYPE,
                     instanceType: ON_DEMAND_INSTANCE_TYPE,
+                    expansionPriority: 1,
                 }
             ],
         },
@@ -596,6 +603,7 @@ const planeConfs: Record<number, PlaneConf> = {
                     maxSize: 3,
                     amiType: DEFAULT_X86_AMI_TYPE,
                     instanceType: ON_DEMAND_INSTANCE_TYPE,
+                    expansionPriority: 1,
                 },
                 {
                     name: "p-6-common-ng-arm64",
@@ -604,6 +612,7 @@ const planeConfs: Record<number, PlaneConf> = {
                     maxSize: 3,
                     amiType: DEFAULT_ARM_AMI_TYPE,
                     instanceType: ON_DEMAND_INSTANCE_TYPE,
+                    expansionPriority: 1,
                 },
                 // Query server on demand node group
                 {
@@ -616,6 +625,7 @@ const planeConfs: Record<number, PlaneConf> = {
                         "node-group": "p-6-queryserver-ng"
                     },
                     instanceType: ON_DEMAND_INSTANCE_TYPE,
+                    expansionPriority: 1,
                 },
                 // Query server spot node group
                 {
@@ -628,6 +638,8 @@ const planeConfs: Record<number, PlaneConf> = {
                         "node-group": "p-6-queryserver-ng"
                     },
                     instanceType: SPOT_INSTANCE_TYPE,
+                    // assign a higher priority for the node group with spot instance capacity type
+                    expansionPriority: 10,
                 },
             ],
         },
@@ -685,6 +697,7 @@ const planeConfs: Record<number, PlaneConf> = {
                     maxSize: 3,
                     amiType: DEFAULT_X86_AMI_TYPE,
                     instanceType: ON_DEMAND_INSTANCE_TYPE,
+                    expansionPriority: 1,
                 },
                 {
                     name: "p-9-common-ng-arm64",
@@ -693,6 +706,7 @@ const planeConfs: Record<number, PlaneConf> = {
                     maxSize: 3,
                     amiType: DEFAULT_ARM_AMI_TYPE,
                     instanceType: ON_DEMAND_INSTANCE_TYPE,
+                    expansionPriority: 1,
                 },
             ],
         },
