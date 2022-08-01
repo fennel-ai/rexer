@@ -249,6 +249,7 @@ func (p Phaser) prepareAndBulkUpload(tr tier.Tier, fileNames []string, tempDir s
 	g, _ := errgroup.WithContext(context.Background())
 	numRowsWritten := make([]int, len(fileNames))
 	for i, f := range fileNames {
+		index := i
 		file := f
 		g.Go(func() error {
 			numRows, err := p.prepareFileForBulkUpload(tr, file, tempDir)
@@ -261,7 +262,7 @@ func (p Phaser) prepareAndBulkUpload(tr tier.Tier, fileNames []string, tempDir s
 				tr.Logger.Error("error while uploading the data to Redis:", zap.Error(err))
 				return err
 			}
-			numRowsWritten[i] = numRows
+			numRowsWritten[index] = numRows
 			return nil
 		})
 	}
