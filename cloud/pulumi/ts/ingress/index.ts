@@ -5,7 +5,7 @@ import { local } from "@pulumi/command";
 
 import { fennelStdTags } from "../lib/util";
 
-const DEFAULT_INGRESS_NODE_TYPE = "t3.micro";
+const DEFAULT_INGRESS_NODE_TYPE = "t3.small";
 const DEFAULT_INGRESS_NODE_COUNT = 2;
 const DEFAULT_USE_DEDICATED_MACHINES = false;
 
