@@ -10,6 +10,8 @@ import (
 	"fennel/tier"
 	"fmt"
 	"github.com/buger/jsonparser"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promauto"
 	"io/ioutil"
 	"os"
 	"os/exec"
@@ -243,10 +245,10 @@ func (p Phaser) prepareFileForBulkUpload(tr tier.Tier, file string, tempDir stri
 	return p.createRedisFile(localFileReader, redisWriter, tr.ID)
 }
 
-func (p Phaser) prepareAndBulkUpload(tr tier.Tier, fileNames []string, tempDir string) error {
+func (p Phaser) prepareAndBulkUpload(tr tier.Tier, fileNames []string, tempDir string) (int, error) {
 	g, _ := errgroup.WithContext(context.Background())
-
-	for _, f := range fileNames {
+	numRowsWritten := make([]int, len(fileNames))
+	for i, f := range fileNames {
 		file := f
 		g.Go(func() error {
 			numRows, err := p.prepareFileForBulkUpload(tr, file, tempDir)
@@ -255,15 +257,25 @@ func (p Phaser) prepareAndBulkUpload(tr tier.Tier, fileNames []string, tempDir s
 				return err
 			}
 
-			err = bulkUploadToRedis(tr, file, numRows, tempDir)
-			if err != nil {
+			if bulkUploadToRedis(tr, file, numRows, tempDir) != nil {
 				tr.Logger.Error("error while uploading the data to Redis:", zap.Error(err))
 				return err
 			}
+			numRowsWritten[i] = numRows
 			return nil
 		})
 	}
-	return g.Wait()
+
+	err := g.Wait()
+	if err != nil {
+		return 0, err
+	}
+
+	numRows := 0
+	for _, r := range numRowsWritten {
+		numRows += r
+	}
+	return numRows, nil
 }
 
 func findLatestVersion(files []string, currUpdateVersion uint64) (uint64, string, error) {
@@ -292,7 +304,12 @@ func findLatestVersion(files []string, currUpdateVersion uint64) (uint64, string
 	return currUpdateVersion, prefixToUpdate + "/", nil
 }
 
-func (p Phaser) updateServing(tr tier.Tier, fileNames, filesToDownload []string, newUpdateVersion uint64) error {
+var phaserStats = promauto.NewGaugeVec(prometheus.GaugeOpts{
+	Name: "phaser_rows_written",
+	Help: "Stats about number of rows written by phaser",
+}, []string{"namespace", "identifier"})
+
+func (p Phaser) updateServing(tr tier.Tier, namespace, identifier string, fileNames, filesToDownload []string, newUpdateVersion uint64) error {
 	tempDir, err := ioutil.TempDir("", "phaser")
 	if err != nil {
 		return err
@@ -306,7 +323,7 @@ func (p Phaser) updateServing(tr tier.Tier, fileNames, filesToDownload []string,
 		return err
 	}
 
-	err = p.prepareAndBulkUpload(tr, fileNames, tempDir)
+	numRows, err := p.prepareAndBulkUpload(tr, fileNames, tempDir)
 	if err != nil {
 		tr.Logger.Error("error during bulk upload phaser data to redis", zap.Error(err))
 		return err
@@ -318,9 +335,18 @@ func (p Phaser) updateServing(tr tier.Tier, fileNames, filesToDownload []string,
 		tr.Logger.Error("error while updating phaser", zap.String("namespace", p.Namespace), zap.String("identifier", p.Identifier), zap.Uint64("version", newUpdateVersion), zap.Error(err))
 		return err
 	}
+
+	// Update prometheus with the number of rows written
+	phaserStats.WithLabelValues(namespace, identifier).Set(float64(numRows))
+
 	tr.Logger.Info("Completed update for ", zap.String("ID", p.GetId()), zap.Uint64("newUpdateVersion", newUpdateVersion))
 	return nil
 }
+
+var phaserLag = promauto.NewGaugeVec(prometheus.GaugeOpts{
+	Name: "phaser_percentage_lag",
+	Help: "Stats about number of rows written by phaser",
+}, []string{"namespace", "identifier"})
 
 func pollS3Bucket(namespace, identifier string, tr tier.Tier) error {
 	go func(tr tier.Tier, namespace, identifier string) {
@@ -332,6 +358,10 @@ func pollS3Bucket(namespace, identifier string, tr tier.Tier) error {
 				tr.Logger.Error("Error retrieving phaser", zap.Error(err), zap.String("namespace", namespace), zap.String("identifier", identifier))
 				continue
 			}
+
+			// Percentage lag should be less than 50%.
+			percentageLag := float64(time.Since(time.Unix(int64(p.UpdateVersion), 0))) / float64(p.TTL) * 100.0
+			phaserLag.WithLabelValues(namespace, identifier).Set(percentageLag)
 
 			tr.Logger.Info("Processing phaser ", zap.String("ID", p.GetId()))
 
@@ -366,7 +396,7 @@ func pollS3Bucket(namespace, identifier string, tr tier.Tier) error {
 				}
 			}
 
-			err = p.updateServing(tr, fileNames, filesToDownload, newUpdateVersion)
+			err = p.updateServing(tr, namespace, identifier, fileNames, filesToDownload, newUpdateVersion)
 			if err != nil {
 				tr.Logger.Error("error while updating serving", zap.Error(err))
 			}
