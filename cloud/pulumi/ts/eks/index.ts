@@ -7,6 +7,16 @@ import * as fs from 'fs';
 import * as process from "process";
 import * as path from 'path';
 
+// NOTE: The AMI used should be an eks-worker AMI that can be searched
+// on the AWS AMI catalog with one of the following prefixes:
+// amazon-eks-node / amazon-eks-gpu-node / amazon-eks-arm64-node,
+// depending on the type of machine provisioned.
+export const DEFAULT_X86_AMI_TYPE = "AL2_x86_64"
+export const DEFAULT_ARM_AMI_TYPE = "AL2_ARM_64"
+
+export const SPOT_INSTANCE_TYPE = "SPOT";
+export const ON_DEMAND_INSTANCE_TYPE = "ON_DEMAND";
+
 export const plugins = {
     "eks": "0.39.0",
     "kubernetes": "v3.18.0",
@@ -669,6 +679,13 @@ export const setup = async (input: inputType): Promise<pulumi.Output<outputType>
 
     // Setup managed node groups
     for (let nodeGroup of input.nodeGroups) {
+        if (nodeGroup.capacityType === SPOT_INSTANCE_TYPE && nodeGroup.instanceTypes.length <= 1) {
+            console.warn(`consider specifying > 1 instance type for node group with SPOT capacity type. node group: ${nodeGroup.name}`)
+        }
+        if (nodeGroup.capacityType === ON_DEMAND_INSTANCE_TYPE && nodeGroup.instanceTypes.length != 1) {
+            console.error(`node group with capacity type ON_DEMAND should have a single instance type. node group: ${nodeGroup.name}`)
+            process.exit(1)
+        }
         const n = new eks.ManagedNodeGroup(nodeGroup.name, {
             cluster: cluster,
             scalingConfig: {

@@ -18,17 +18,7 @@ import { nameof } from "../lib/util";
 
 import * as process from "process";
 import * as assert from "assert";
-
-// NOTE: The AMI used should be an eks-worker AMI that can be searched
-// on the AWS AMI catalog with one of the following prefixes:
-// amazon-eks-node / amazon-eks-gpu-node / amazon-eks-arm64-node,
-// depending on the type of machine provisioned.
-
-const DEFAULT_X86_AMI_TYPE = "AL2_x86_64"
-const DEFAULT_ARM_AMI_TYPE = "AL2_ARM_64"
-
-const SPOT_INSTANCE_TYPE = "SPOT";
-const ON_DEMAND_INSTANCE_TYPE = "ON_DEMAND";
+import {DEFAULT_ARM_AMI_TYPE, DEFAULT_X86_AMI_TYPE, ON_DEMAND_INSTANCE_TYPE, SPOT_INSTANCE_TYPE} from "../eks";
 
 const controlPlane: vpc.controlPlaneConfig = {
     region: "us-west-2",
@@ -630,7 +620,7 @@ const planeConfs: Record<number, PlaneConf> = {
                 // Query server spot node group
                 {
                     name: "p-6-queryserver-4vCPU-8G-spot",
-                    instanceTypes: ["c6g.xlarge"],
+                    instanceTypes: ["c6g.xlarge", "c6gn.xlarge", "c6gd.xlarge"],
                     minSize: 1,
                     maxSize: 2,
                     amiType: DEFAULT_ARM_AMI_TYPE,
