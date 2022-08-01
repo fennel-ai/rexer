@@ -3,7 +3,9 @@ package main
 import (
 	"context"
 	controller "fennel/controller/bridge"
+	"fennel/model/user"
 	"fennel/mothership"
+	"log"
 	"net/http"
 	"net/mail"
 
@@ -45,7 +47,26 @@ func NewServer() (server, error) {
 	return s, nil
 }
 
-var db = make(map[string]string)
+const RememberTokenKey = "remember_token"
+const CurrentUserKey = "current_user"
+
+func (s *server) authenticationRequired() gin.HandlerFunc {
+	log.Printf("aaaaaa!\n")
+	return func(c *gin.Context) {
+		log.Printf("triggred!\n")
+		session := sessions.Default(c)
+		token, ok := session.Get(RememberTokenKey).(string)
+		if ok && token != "" {
+			if user, err := user.FetchByRememberToken(s.mothership, token); err == nil {
+				c.Set(CurrentUserKey, user)
+				return
+			}
+		}
+		log.Printf("no user found!\n")
+
+		c.AbortWithStatus(http.StatusUnauthorized) // change to redirect
+	}
+}
 
 func (s *server) setupRouter() {
 	// Disable Console Color
@@ -57,58 +78,23 @@ func (s *server) setupRouter() {
 	// Ping test
 	s.GET("/ping", s.Ping)
 
-	s.GET("/", controller.Dashboard)
-	s.GET("/dashboard", controller.Dashboard)
-	s.GET("/data", controller.Data)
-	s.GET("/profiles", controller.Profiles)
+	auth := s.Group("/", s.authenticationRequired())
+
+	auth.GET("/", controller.Dashboard)
+	auth.GET("/dashboard", controller.Dashboard)
+	auth.GET("/data", controller.Data)
+	auth.GET("/profiles", controller.Profiles)
 
 	s.GET("/signup", s.SignUpGet)
 	s.POST("/signup", s.SignUp)
 	s.GET("/signin", s.SignInGet)
 	s.POST("/signin", s.SignIn)
-
-	// (xiaoj) Example code below, to be deleted!!!
-
-	// Authorized group (uses gin.BasicAuth() middleware)
-	// Same than:
-	// authorized := r.Group("/")
-	// authorized.Use(gin.BasicAuth(gin.Credentials{
-	//	  "foo":  "bar",
-	//	  "manu": "123",
-	//}))
-	authorized := s.Group("/", gin.BasicAuth(gin.Accounts{
-		"foo":  "bar", // user:foo password:bar
-		"manu": "123", // user:manu password:123
-	}))
-
-	/* example curl for /admin with basicauth header
-	   Zm9vOmJhcg== is base64("foo:bar")
-
-		curl -X POST \
-	  	http://localhost:8080/admin \
-	  	-H 'authorization: Basic Zm9vOmJhcg==' \
-	  	-H 'content-type: application/json' \
-	  	-d '{"value":"bar"}'
-	*/
-	authorized.POST("admin", func(c *gin.Context) {
-		user := c.MustGet(gin.AuthUserKey).(string)
-
-		// Parse JSON
-		var json struct {
-			Value string `json:"value" binding:"required"`
-		}
-
-		if c.Bind(&json) == nil {
-			db[user] = json.Value
-			c.JSON(http.StatusOK, gin.H{"status": "ok"})
-		}
-	})
 }
 
 func (s *server) Ping(c *gin.Context) {
 	// TODO(xiao) remove testing code
 	session := sessions.Default(c)
-	token := session.Get("remember_token")
+	token := session.Get(RememberTokenKey)
 	c.JSON(http.StatusOK, gin.H{
 		"ping":  "pong",
 		"token": token,
@@ -158,7 +144,7 @@ func (s *server) SignUp(c *gin.Context) {
 	} else {
 		session := sessions.Default(c)
 
-		session.Set("remember_token", user.RememberToken.String)
+		session.Set(RememberTokenKey, user.RememberToken.String)
 		_ = session.Save()
 		c.JSON(http.StatusCreated, gin.H{
 			"data": gin.H{
