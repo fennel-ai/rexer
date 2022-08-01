@@ -5,7 +5,6 @@ import (
 	controller "fennel/controller/bridge"
 	"fennel/model/user"
 	"fennel/mothership"
-	"log"
 	"net/http"
 	"net/mail"
 
@@ -47,13 +46,14 @@ func NewServer() (server, error) {
 	return s, nil
 }
 
-const RememberTokenKey = "remember_token"
-const CurrentUserKey = "current_user"
+const (
+	RememberTokenKey = "remember_token"
+	CurrentUserKey   = "current_user"
+	SignInURL        = "/signin"
+)
 
 func (s *server) authenticationRequired() gin.HandlerFunc {
-	log.Printf("aaaaaa!\n")
 	return func(c *gin.Context) {
-		log.Printf("triggred!\n")
 		session := sessions.Default(c)
 		token, ok := session.Get(RememberTokenKey).(string)
 		if ok && token != "" {
@@ -62,9 +62,7 @@ func (s *server) authenticationRequired() gin.HandlerFunc {
 				return
 			}
 		}
-		log.Printf("no user found!\n")
-
-		c.AbortWithStatus(http.StatusUnauthorized) // change to redirect
+		c.Redirect(http.StatusFound, SignInURL)
 	}
 }
 
@@ -77,6 +75,10 @@ func (s *server) setupRouter() {
 
 	// Ping test
 	s.GET("/ping", s.Ping)
+	s.GET("/signup", s.SignUpGet)
+	s.POST("/signup", s.SignUp)
+	s.GET(SignInURL, s.SignInGet)
+	s.POST(SignInURL, s.SignIn)
 
 	auth := s.Group("/", s.authenticationRequired())
 
@@ -84,11 +86,6 @@ func (s *server) setupRouter() {
 	auth.GET("/dashboard", controller.Dashboard)
 	auth.GET("/data", controller.Data)
 	auth.GET("/profiles", controller.Profiles)
-
-	s.GET("/signup", s.SignUpGet)
-	s.POST("/signup", s.SignUp)
-	s.GET("/signin", s.SignInGet)
-	s.POST("/signin", s.SignIn)
 }
 
 func (s *server) Ping(c *gin.Context) {
