@@ -363,7 +363,7 @@ function setupStorageClasses(cluster: eks.Cluster): Record<string, pulumi.Output
             "encrypted": "true",
             "fsType": "ext4",
         }
-    })
+    }, { provider: cluster.provider })
 
     return {
         "io1": io1.metadata.name,
@@ -430,7 +430,7 @@ async function setupEbsCsiDriver(input: inputType, awsProvider: aws.Provider, cl
 }
 
 async function setupClusterAutoscaler(awsProvider: aws.Provider, input: inputType, cluster: eks.Cluster,
-                                      nodeGroups: NodeGroupConf[]) {
+    nodeGroups: NodeGroupConf[]) {
     // Account ID
     const current = await aws.getCallerIdentity({ provider: awsProvider });
     const accountId = current.accountId;
