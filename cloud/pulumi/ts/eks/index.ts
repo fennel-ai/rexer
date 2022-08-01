@@ -503,6 +503,15 @@ async function setupClusterAutoscaler(awsProvider: aws.Provider, input: inputTyp
             expansionPriorities.set(priority, [nodeGroupNameRegex]);
         }
     }
+
+    // TODO(mohit): Consider adding a placeholder regex `.*` with the least priority so that every node group in the
+    // cluster is considered for expansion.
+    //
+    // Currently we configure all the node groups at the plane level and a regex is created for each. But in the "higher
+    // availability" mode, we create a node group for envoy pods, which will miss out here for priority expansion.
+    // This is expected for now as we do not want any other service/pod to run there, but we might in the future
+    // consider autoscaling envoy pods as well.
+
     // convert to a record since helm charts seem to only work with records (maybe because of the difference in
     // map and record's string repr?)
     let expanderPriorities: Record<string, string[]> = {};
