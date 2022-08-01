@@ -7,6 +7,16 @@ import * as fs from 'fs';
 import * as process from "process";
 import * as path from 'path';
 
+// NOTE: The AMI used should be an eks-worker AMI that can be searched
+// on the AWS AMI catalog with one of the following prefixes:
+// amazon-eks-node / amazon-eks-gpu-node / amazon-eks-arm64-node,
+// depending on the type of machine provisioned.
+export const DEFAULT_X86_AMI_TYPE = "AL2_x86_64"
+export const DEFAULT_ARM_AMI_TYPE = "AL2_ARM_64"
+
+export const SPOT_INSTANCE_TYPE = "SPOT";
+export const ON_DEMAND_INSTANCE_TYPE = "ON_DEMAND";
+
 export const plugins = {
     "eks": "0.39.0",
     "kubernetes": "v3.18.0",
@@ -18,7 +28,13 @@ export const plugins = {
 export type NodeGroupConf = {
     // Must be unique across node groups defined in the same plane
     name: string,
-    nodeType: string,
+    // list of instance types in this node group
+    //
+    // NOTE: Ideally these instance types should have identical resource specs (e.g. CPU, Memory etc). Kubernetes
+    // cluster autoscaler (which is configured for our EKS cluster) does not behave well when a node group has
+    // multiple instance types with different resource specs
+    // see - https://github.com/kubernetes/autoscaler/blob/master/cluster-autoscaler/cloudprovider/aws/README.md#using-mixed-instances-policies-and-spot-instances
+    instanceTypes: string[],
     // take the following into consideration before setting this value:
     //  i) pods and services (and their replicas) which will run on this node group
     //  ii) availability of the services - if there more than one public facing service, it might be better to have more
@@ -32,7 +48,7 @@ export type NodeGroupConf = {
     maxSize: number,
     amiType: string,
     // Type of the instance to use in this node group
-    instanceType: string,
+    capacityType: string,
     // labels to be attached to the node group
     labels?: Record<string, string>,
     // priority assigned to the autoscaling group backing this node group for the Cluster Autoscaler to select
@@ -668,6 +684,13 @@ export const setup = async (input: inputType): Promise<pulumi.Output<outputType>
 
     // Setup managed node groups
     for (let nodeGroup of input.nodeGroups) {
+        if (nodeGroup.capacityType === SPOT_INSTANCE_TYPE && nodeGroup.instanceTypes.length <= 1) {
+            console.warn(`consider specifying > 1 instance type for node group with SPOT capacity type. node group: ${nodeGroup.name}`)
+        }
+        if (nodeGroup.capacityType === ON_DEMAND_INSTANCE_TYPE && nodeGroup.instanceTypes.length != 1) {
+            console.error(`node group with capacity type ON_DEMAND should have a single instance type. node group: ${nodeGroup.name}`)
+            process.exit(1)
+        }
         const n = new eks.ManagedNodeGroup(nodeGroup.name, {
             cluster: cluster,
             scalingConfig: {
@@ -684,14 +707,14 @@ export const setup = async (input: inputType): Promise<pulumi.Output<outputType>
                 maxSize: nodeGroup.maxSize,
             },
             // accepts multiple strings but the EKS API accepts only a single string
-            instanceTypes: [nodeGroup.nodeType],
+            instanceTypes: nodeGroup.instanceTypes,
             nodeGroupNamePrefix: nodeGroup.name,
             labels: nodeGroup.labels,
             nodeRoleArn: instanceRoleArn,
             subnetIds: privateSubnets,
             amiType: nodeGroup.amiType,
             // this specifies if the instances in this node group should be SPOT or ON_DEMAND
-            capacityType: nodeGroup.instanceType,
+            capacityType: nodeGroup.capacityType,
         }, { provider: awsProvider });
     }
 
