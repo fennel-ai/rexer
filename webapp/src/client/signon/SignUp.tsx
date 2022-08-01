@@ -41,9 +41,9 @@ function SignUpForm() {
             email: values.email,
             password: values.password,
         })
-        .then(function (response) {
+        .then(function () {
             setSubmitting(false);
-            console.log(response);
+            document.location.href = "/";
         })
         .catch(function (error: AxiosError) {
             setSubmitting(false);
