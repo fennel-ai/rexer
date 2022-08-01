@@ -69,8 +69,8 @@ func (s S3) Validate() error {
 	if s.Name == "" {
 		return fmt.Errorf("source name is required")
 	}
-	if s.Format != "csv" && s.Format != "json" {
-		return fmt.Errorf("invalid format: %s", s.Format)
+	if s.Format != "csv" && s.Format != "parquet" && s.Format != "avro" {
+		return fmt.Errorf("invalid format: %s we only support csv, parquet, or avro", s.Format)
 	}
 	if s.Delimiter != "," && s.Delimiter != "|" && s.Delimiter != "\t" {
 		return fmt.Errorf("invalid delimiter: %s", s.Delimiter)
