@@ -18,7 +18,8 @@ export const plugins = {
 export type NodeGroupConf = {
     // Must be unique across node groups defined in the same plane
     name: string,
-    nodeType: string,
+    // list of instance types in this node group
+    instanceTypes: string[],
     // take the following into consideration before setting this value:
     //  i) pods and services (and their replicas) which will run on this node group
     //  ii) availability of the services - if there more than one public facing service, it might be better to have more
@@ -32,7 +33,7 @@ export type NodeGroupConf = {
     maxSize: number,
     amiType: string,
     // Type of the instance to use in this node group
-    instanceType: string,
+    capacityType: string,
     // labels to be attached to the node group
     labels?: Record<string, string>,
     // priority assigned to the autoscaling group backing this node group for the Cluster Autoscaler to select
@@ -684,14 +685,14 @@ export const setup = async (input: inputType): Promise<pulumi.Output<outputType>
                 maxSize: nodeGroup.maxSize,
             },
             // accepts multiple strings but the EKS API accepts only a single string
-            instanceTypes: [nodeGroup.nodeType],
+            instanceTypes: nodeGroup.instanceTypes,
             nodeGroupNamePrefix: nodeGroup.name,
             labels: nodeGroup.labels,
             nodeRoleArn: instanceRoleArn,
             subnetIds: privateSubnets,
             amiType: nodeGroup.amiType,
             // this specifies if the instances in this node group should be SPOT or ON_DEMAND
-            capacityType: nodeGroup.instanceType,
+            capacityType: nodeGroup.capacityType,
         }, { provider: awsProvider });
     }
 

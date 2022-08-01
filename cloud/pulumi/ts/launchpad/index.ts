@@ -373,11 +373,11 @@ const planeConfs: Record<number, PlaneConf> = {
                 // plane-level services like nitrous etc.
                 {
                     name: "p-2-common-ng",
-                    nodeType: "t3.medium",
+                    instanceTypes: ["t3.medium"],
                     minSize: 1,
                     maxSize: 3,
                     amiType: DEFAULT_X86_AMI_TYPE,
-                    instanceType: "",
+                    capacityType: ON_DEMAND_INSTANCE_TYPE,
                     expansionPriority: 1,
                 },
                 // TODO: For nitrous, we may need to spin up ARM specific node group
@@ -440,18 +440,18 @@ const planeConfs: Record<number, PlaneConf> = {
             nodeGroups: [
                 {
                     name: "p-3-common-ng-arm64",
-                    nodeType: "c7g.2xlarge",
+                    instanceTypes: ["c7g.2xlarge"],
                     minSize: 2,
                     // since we create demo tiers on top of this plane, allow scaling this node group to a larger
                     // number to accommodate more servers
                     maxSize: 10,
                     amiType: DEFAULT_ARM_AMI_TYPE,
-                    instanceType: ON_DEMAND_INSTANCE_TYPE,
+                    capacityType: ON_DEMAND_INSTANCE_TYPE,
                     expansionPriority: 1,
                 },
                 {
                     name: "p-3-common-ng-x86",
-                    nodeType: "c6i.2xlarge",
+                    instanceTypes: ["c6i.2xlarge"],
                     // since we create demo tiers on top of this plane, allow scaling this node group to a larger
                     // number to accommodate more servers
                     //
@@ -459,7 +459,7 @@ const planeConfs: Record<number, PlaneConf> = {
                     minSize: 4,
                     maxSize: 10,
                     amiType: DEFAULT_X86_AMI_TYPE,
-                    instanceType: ON_DEMAND_INSTANCE_TYPE,
+                    capacityType: ON_DEMAND_INSTANCE_TYPE,
                     expansionPriority: 1,
                 },
             ],
@@ -516,7 +516,7 @@ const planeConfs: Record<number, PlaneConf> = {
                 // HTTP server node group
                 {
                     name: "p-5-httpserver-ng-arm64",
-                    nodeType: "t4g.medium",
+                    instanceTypes: ["t4g.medium"],
                     // at least have 2 nodes for fault tolerance
                     minSize: 2,
                     maxSize: 5,
@@ -524,28 +524,28 @@ const planeConfs: Record<number, PlaneConf> = {
                     labels: {
                         "node-group": "p-5-httpserver-ng"
                     },
-                    instanceType: ON_DEMAND_INSTANCE_TYPE,
+                    capacityType: ON_DEMAND_INSTANCE_TYPE,
                     expansionPriority: 1,
                 },
                 // Countaggr server node group
                 {
                     name: "p-5-countaggr-ng-arm64",
                     // TODO(mohit): Move to c7g once they are supported in ap-south-1
-                    nodeType: "c6g.4xlarge",
+                    instanceTypes: ["c6g.4xlarge"],
                     minSize: 1,
                     maxSize: 1,
                     amiType: DEFAULT_ARM_AMI_TYPE,
                     labels: {
                         "node-group": "p-5-countaggr-ng"
                     },
-                    instanceType: ON_DEMAND_INSTANCE_TYPE,
+                    capacityType: ON_DEMAND_INSTANCE_TYPE,
                     expansionPriority: 1,
                 },
                 // Query server node group
                 {
                     name: "p-5-queryserver-ng-arm64",
                     // TODO(mohit): Move to c7g once they are supported in ap-south-1
-                    nodeType: "c6g.8xlarge",
+                    instanceTypes: ["c6g.8xlarge"],
                     // at least have 4 nodes (previously this was 2, but our servers have been OOMing for which
                     // we will have 4 nodes up and running).
                     minSize: 2,
@@ -554,17 +554,17 @@ const planeConfs: Record<number, PlaneConf> = {
                     labels: {
                         "node-group": "p-5-queryserver-ng"
                     },
-                    instanceType: ON_DEMAND_INSTANCE_TYPE,
+                    capacityType: ON_DEMAND_INSTANCE_TYPE,
                     expansionPriority: 1,
                 },
                 {
                     name: "p-5-common-ng-x86",
-                    nodeType: "t3.medium",
+                    instanceTypes: ["t3.medium"],
                     // few pods still require X86 based machines and are not compatible with ARM64.
                     minSize: 2,
                     maxSize: 10,
                     amiType: DEFAULT_X86_AMI_TYPE,
-                    instanceType: ON_DEMAND_INSTANCE_TYPE,
+                    capacityType: ON_DEMAND_INSTANCE_TYPE,
                     expansionPriority: 1,
                 }
             ],
@@ -598,46 +598,46 @@ const planeConfs: Record<number, PlaneConf> = {
             nodeGroups: [
                 {
                     name: "p-6-common-ng-x86",
-                    nodeType: "t3.medium",
+                    instanceTypes: ["t3.medium"],
                     minSize: 1,
                     maxSize: 3,
                     amiType: DEFAULT_X86_AMI_TYPE,
-                    instanceType: ON_DEMAND_INSTANCE_TYPE,
+                    capacityType: ON_DEMAND_INSTANCE_TYPE,
                     expansionPriority: 1,
                 },
                 {
                     name: "p-6-common-ng-arm64",
-                    nodeType: "t4g.medium",
+                    instanceTypes: ["t4g.medium"],
                     minSize: 1,
                     maxSize: 3,
                     amiType: DEFAULT_ARM_AMI_TYPE,
-                    instanceType: ON_DEMAND_INSTANCE_TYPE,
+                    capacityType: ON_DEMAND_INSTANCE_TYPE,
                     expansionPriority: 1,
                 },
                 // Query server on demand node group
                 {
                     name: "p-6-queryserver-on-demand",
-                    nodeType: "c6g.xlarge",
+                    instanceTypes: ["c6g.xlarge"],
                     minSize: 1,
                     maxSize: 2,
                     amiType: DEFAULT_ARM_AMI_TYPE,
                     labels: {
                         "node-group": "p-6-queryserver-ng"
                     },
-                    instanceType: ON_DEMAND_INSTANCE_TYPE,
+                    capacityType: ON_DEMAND_INSTANCE_TYPE,
                     expansionPriority: 1,
                 },
                 // Query server spot node group
                 {
                     name: "p-6-queryserver-4vCPU-8G-spot",
-                    nodeType: "c6g.xlarge",
+                    instanceTypes: ["c6g.xlarge"],
                     minSize: 1,
                     maxSize: 2,
                     amiType: DEFAULT_ARM_AMI_TYPE,
                     labels: {
                         "node-group": "p-6-queryserver-ng"
                     },
-                    instanceType: SPOT_INSTANCE_TYPE,
+                    capacityType: SPOT_INSTANCE_TYPE,
                     // assign a higher priority for the node group with spot instance capacity type
                     expansionPriority: 10,
                 },
@@ -692,20 +692,20 @@ const planeConfs: Record<number, PlaneConf> = {
             nodeGroups: [
                 {
                     name: "p-9-common-ng-x86",
-                    nodeType: "t3.medium",
+                    instanceTypes: ["t3.medium"],
                     minSize: 1,
                     maxSize: 3,
                     amiType: DEFAULT_X86_AMI_TYPE,
-                    instanceType: ON_DEMAND_INSTANCE_TYPE,
+                    capacityType: ON_DEMAND_INSTANCE_TYPE,
                     expansionPriority: 1,
                 },
                 {
                     name: "p-9-common-ng-arm64",
-                    nodeType: "t4g.medium",
+                    instanceTypes: ["t4g.medium"],
                     minSize: 1,
                     maxSize: 3,
                     amiType: DEFAULT_ARM_AMI_TYPE,
-                    instanceType: ON_DEMAND_INSTANCE_TYPE,
+                    capacityType: ON_DEMAND_INSTANCE_TYPE,
                     expansionPriority: 1,
                 },
             ],
