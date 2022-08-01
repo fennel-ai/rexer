@@ -3,7 +3,9 @@ package main
 import (
 	"context"
 	controller "fennel/controller/bridge"
+	"fennel/model/user"
 	"fennel/mothership"
+	"log"
 	"net/http"
 	"net/mail"
 
@@ -11,6 +13,8 @@ import (
 	"github.com/gin-contrib/sessions"
 	"github.com/gin-contrib/sessions/cookie"
 	"github.com/gin-gonic/gin"
+
+	libuser "fennel/lib/user"
 )
 
 type server struct {
@@ -45,7 +49,25 @@ func NewServer() (server, error) {
 	return s, nil
 }
 
-var db = make(map[string]string)
+const (
+	RememberTokenKey = "remember_token"
+	CurrentUserKey   = "current_user"
+	SignInURL        = "/signin"
+)
+
+func (s *server) authenticationRequired() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		session := sessions.Default(c)
+		token, ok := session.Get(RememberTokenKey).(string)
+		if ok && token != "" {
+			if user, err := user.FetchByRememberToken(s.mothership, token); err == nil {
+				c.Set(CurrentUserKey, user)
+				return
+			}
+		}
+		c.Redirect(http.StatusFound, SignInURL)
+	}
+}
 
 func (s *server) setupRouter() {
 	// Disable Console Color
@@ -56,59 +78,23 @@ func (s *server) setupRouter() {
 
 	// Ping test
 	s.GET("/ping", s.Ping)
-
-	s.GET("/", controller.Dashboard)
-	s.GET("/dashboard", controller.Dashboard)
-	s.GET("/data", controller.Data)
-	s.GET("/profiles", controller.Profiles)
-
 	s.GET("/signup", s.SignUpGet)
 	s.POST("/signup", s.SignUp)
-	s.GET("/signin", s.SignInGet)
-	s.POST("/signin", s.SignIn)
+	s.GET(SignInURL, s.SignInGet)
+	s.POST(SignInURL, s.SignIn)
 
-	// (xiaoj) Example code below, to be deleted!!!
+	auth := s.Group("/", s.authenticationRequired())
 
-	// Authorized group (uses gin.BasicAuth() middleware)
-	// Same than:
-	// authorized := r.Group("/")
-	// authorized.Use(gin.BasicAuth(gin.Credentials{
-	//	  "foo":  "bar",
-	//	  "manu": "123",
-	//}))
-	authorized := s.Group("/", gin.BasicAuth(gin.Accounts{
-		"foo":  "bar", // user:foo password:bar
-		"manu": "123", // user:manu password:123
-	}))
-
-	/* example curl for /admin with basicauth header
-	   Zm9vOmJhcg== is base64("foo:bar")
-
-		curl -X POST \
-	  	http://localhost:8080/admin \
-	  	-H 'authorization: Basic Zm9vOmJhcg==' \
-	  	-H 'content-type: application/json' \
-	  	-d '{"value":"bar"}'
-	*/
-	authorized.POST("admin", func(c *gin.Context) {
-		user := c.MustGet(gin.AuthUserKey).(string)
-
-		// Parse JSON
-		var json struct {
-			Value string `json:"value" binding:"required"`
-		}
-
-		if c.Bind(&json) == nil {
-			db[user] = json.Value
-			c.JSON(http.StatusOK, gin.H{"status": "ok"})
-		}
-	})
+	auth.GET("/", controller.Dashboard)
+	auth.GET("/dashboard", controller.Dashboard)
+	auth.GET("/data", controller.Data)
+	auth.GET("/profiles", controller.Profiles)
 }
 
 func (s *server) Ping(c *gin.Context) {
 	// TODO(xiao) remove testing code
 	session := sessions.Default(c)
-	token := session.Get("remember_token")
+	token := session.Get(RememberTokenKey)
 	c.JSON(http.StatusOK, gin.H{
 		"ping":  "pong",
 		"token": token,
@@ -134,8 +120,6 @@ type SignOnForm struct {
 }
 
 func (s *server) SignUp(c *gin.Context) {
-	// time.Sleep(time.Second)
-
 	var form SignOnForm
 	if err := c.BindJSON(&form); err != nil {
 		// BindJSON would write status
@@ -156,21 +140,14 @@ func (s *server) SignUp(c *gin.Context) {
 			"error": err.Error(),
 		})
 	} else {
-		session := sessions.Default(c)
-
-		session.Set("remember_token", user.RememberToken.String)
-		_ = session.Save()
+		saveUserIntoCookie(c, user)
 		c.JSON(http.StatusCreated, gin.H{
-			"data": gin.H{
-				"user": user,
-			},
+			"data": gin.H{},
 		})
 	}
 }
 
 func (s *server) SignIn(c *gin.Context) {
-	// time.Sleep(time.Second)
-
 	var form SignOnForm
 	if err := c.BindJSON(&form); err != nil {
 		// BindJSON would write status
@@ -185,10 +162,18 @@ func (s *server) SignIn(c *gin.Context) {
 			"error": err.Error(),
 		})
 	} else {
+		saveUserIntoCookie(c, user)
 		c.JSON(http.StatusOK, gin.H{
-			"data": gin.H{
-				"user": user,
-			},
+			"data": gin.H{},
 		})
+	}
+}
+
+func saveUserIntoCookie(c *gin.Context, user libuser.User) {
+	session := sessions.Default(c)
+
+	session.Set(RememberTokenKey, user.RememberToken.String)
+	if err := session.Save(); err != nil {
+		log.Printf("Error saving cookie: %v", err)
 	}
 }
