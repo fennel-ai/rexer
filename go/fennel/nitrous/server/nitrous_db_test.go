@@ -158,7 +158,7 @@ func TestDeleteAggregate(t *testing.T) {
 	kwargs := value.NewDict(nil)
 	kwargs.Set("duration", value.Int(24*3600))
 
-	// Create an aggregate.
+	// Create a couple of aggregates.
 	op := &rpc.CreateAggregate{
 		AggId: 1,
 		Options: &aggregate.AggOptions{
@@ -168,6 +168,20 @@ func TestDeleteAggregate(t *testing.T) {
 	}
 	vg := hangar.ValGroup{}
 	vg, err = ndb.processCreateEvent(tierId, op, vg)
+	assert.NoError(t, err)
+	err = n.Nitrous.Store.SetMany(ctx, []hangar.Key{{Data: agg_table_key}}, []hangar.ValGroup{vg})
+	assert.NoError(t, err)
+
+	op = &rpc.CreateAggregate{
+		AggId: 2,
+		Options: &aggregate.AggOptions{
+			AggType:   "max",
+			Durations: []uint32{24 * 3600},
+		},
+	}
+	vg, err = ndb.processCreateEvent(tierId, op, vg)
+	assert.NoError(t, err)
+	err = n.Nitrous.Store.SetMany(ctx, []hangar.Key{{Data: agg_table_key}}, []hangar.ValGroup{vg})
 	assert.NoError(t, err)
 
 	// Fetch aggregate value. This should return the zero value for the aggregate.
@@ -180,13 +194,25 @@ func TestDeleteAggregate(t *testing.T) {
 	del := &rpc.DeleteAggregate{
 		AggId: 1,
 	}
-	vg, err = ndb.processDeleteEvent(tierId, del, vg) //nolint:ineffassign
+	vg, err = ndb.processDeleteEvent(tierId, del, vg)
 	assert.NoError(t, err)
 	assert.True(t, vg.Valid())
+	err = n.Nitrous.Store.SetMany(ctx, []hangar.Key{{Data: agg_table_key}}, []hangar.ValGroup{vg})
+	assert.NoError(t, err)
 
 	// Fetching the aggregate should now fail.
 	_, err = ndb.Get(ctx, tierId, 1, rpc.AggCodec_V1, []string{"mygk"}, []value.Dict{kwargs})
 	assert.Error(t, err)
+
+	// We should be able to restore aggregate definitions.
+	ndb, err = InitDB(n.Nitrous)
+	assert.NoError(t, err)
+	numTables := 0
+	ndb.tables.Range(func(key, value any) bool {
+		numTables++
+		return true
+	})
+	assert.Equal(t, 1, numTables)
 }
 
 func TestGetLag(t *testing.T) {
