@@ -12,7 +12,8 @@ import (
 )
 
 const (
-	PROFILELOG_KAFKA_TOPIC = "profilelog"
+	PROFILELOG_KAFKA_TOPIC  = "profilelog"
+	MICRO_SECOND_MULTIPLIER = 1000000
 )
 
 type ProfileItemKey struct {
@@ -129,7 +130,7 @@ func (pi ProfileItem) ToValueDict() (value.Dict, error) {
 		pi.UpdateTime = uint64(time.Now().Unix())
 	} else if pi.UpdateTime > uint64(time.Now().Unix())+uint64(time.Hour.Seconds()) {
 		//  Convert microseconds to seconds
-		pi.UpdateTime = uint64(pi.UpdateTime / 1000000)
+		pi.UpdateTime = pi.UpdateTime / 1000000
 	}
 
 	oid, err := value.FromJSON([]byte(pi.Oid))
@@ -175,12 +176,12 @@ func FromValueDict(dict value.Dict) (ProfileItem, error) {
 
 	if timestamp, ok := dict.Get("timestamp"); ok {
 		if t, ok := timestamp.(value.Int); ok {
-			pi.UpdateTime = uint64(t)
+			pi.UpdateTime = uint64(t) * MICRO_SECOND_MULTIPLIER
 		} else {
 			return pi, fmt.Errorf("timestamp not an int")
 		}
 	} else {
-		pi.UpdateTime = uint64(time.Now().Unix())
+		pi.UpdateTime = uint64(time.Now().UnixMicro())
 	}
 
 	if value, ok := dict.Get("value"); ok {

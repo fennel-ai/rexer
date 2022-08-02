@@ -60,17 +60,15 @@ func StoreConnector(ctx context.Context, tier tier.Tier, conn data_integration.C
 		} else {
 			// Update the connector in Airbyte
 			if conn.Version > conn2.Version {
-				conn.ConnId = conn2.ConnId
 				tier.Logger.Debug("Updating connector: " + conn.Name)
-				tier.Logger.Debug("Disabling active connector: " + conn.Name)
+				conn.ConnId = conn2.ConnId
 				if err = tier.AirbyteClient.MustGet().DisableConnector(source, conn); err != nil {
 					return fmt.Errorf("error: failed to disable connector: %w", err)
 				}
 				if err = connectorModel.Disable(ctx, tier, conn.Name); err != nil {
 					return fmt.Errorf("failed to disable connector '%s': %w", conn.Name, err)
 				}
-				fmt.Println(conn)
-				fmt.Println(conn2)
+
 				tier.Logger.Debug("Updating and enabling connector: " + conn.Name)
 				if err = tier.AirbyteClient.MustGet().UpdateConnector(source, conn); err != nil {
 					return fmt.Errorf("error: failed to update connector: %w", err)
