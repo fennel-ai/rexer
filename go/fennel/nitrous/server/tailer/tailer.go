@@ -209,7 +209,7 @@ func (t *Tailer) Tail() {
 			}
 			// Commit the offsets to the kafka binlog.
 			// This is not strictly necessary in prod, but useful in tests.
-			t.nitrous.Logger.Info("Committing offsets to binlog", zap.Any("offsets", offs))
+			t.nitrous.Logger.Debug("Committing offsets to binlog", zap.Any("offsets", offs))
 			_, err = t.binlog.CommitOffsets(offs)
 			if err != nil {
 				t.nitrous.Logger.Error("Failed to commit binlog offsets to broker", zap.Error(err))

@@ -150,9 +150,17 @@ func (ndb *NitrousDB) restoreAggregates(store hangar.Hangar) error {
 	}
 	vg := vgs[0]
 	for i, field := range vg.Fields {
+		if len(field) == 0 {
+			ndb.nos.Logger.Warn("Skipping aggregate definition with empty field", zap.Binary("field", field), zap.Binary("value", vg.Values[i]))
+			continue
+		}
 		_, tierId, aggId, codec, err := decodeField(field)
 		if err != nil {
 			return fmt.Errorf("failed to decode %s: %w", string(field), err)
+		}
+		if len(vg.Values[i]) == 0 {
+			ndb.nos.Logger.Debug("Skipping deactivated aggregate", zap.Uint64("tierId", uint64(tierId)), zap.Uint64("aggId", uint64(aggId)))
+			continue
 		}
 		var popts aggregate.AggOptions
 		err = proto.Unmarshal(vg.Values[i], &popts)
@@ -183,19 +191,15 @@ func (ndb *NitrousDB) processDeleteEvent(tierId ftypes.RealmID, event *rpc.Delet
 		if err != nil {
 			return hangar.ValGroup{}, fmt.Errorf("failed to encode hangar field for new aggregate %d in tier %d: %w", aggId, tierId, err)
 		}
-		fields := vg.Fields[:0]
-		values := vg.Values[:0]
 		for i, f := range vg.Fields {
 			if bytes.Equal(f, field) {
 				ndb.tables.Delete(aggKey{tierId, aggId, codec})
 				ndb.tailer.Unsubscribe(table.Identity())
-				continue
+				// We use an empty value to indicate that the aggregate is deactivated.
+				// We do this because Hangar currently doesn't have field deletion semantics.
+				vg.Values[i] = []byte{}
 			}
-			fields = append(fields, field)
-			values = append(values, vg.Values[i])
 		}
-		vg.Fields = fields
-		vg.Values = values
 	}
 	return vg, nil
 }
