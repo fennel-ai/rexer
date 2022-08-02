@@ -130,7 +130,7 @@ func (pi ProfileItem) ToValueDict() (value.Dict, error) {
 		pi.UpdateTime = uint64(time.Now().Unix())
 	} else if pi.UpdateTime > uint64(time.Now().Unix())+uint64(time.Hour.Seconds()) {
 		//  Convert microseconds to seconds
-		pi.UpdateTime = uint64(pi.UpdateTime / 1000000)
+		pi.UpdateTime = pi.UpdateTime / 1000000
 	}
 
 	oid, err := value.FromJSON([]byte(pi.Oid))

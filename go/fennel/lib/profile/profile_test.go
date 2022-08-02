@@ -70,7 +70,7 @@ func TestProfileItemJSON(t *testing.T) {
 	}
 }
 
-func TestActionFromValueDict(t *testing.T) {
+func TestProfileFromValueDict(t *testing.T) {
 	tests := []struct {
 		v value.Dict
 		p ProfileItem
@@ -87,7 +87,7 @@ func TestActionFromValueDict(t *testing.T) {
 			Oid:        "1",
 			Key:        "random",
 			Value:      value.Int(8),
-			UpdateTime: 9,
+			UpdateTime: 9000000,
 		},
 	}, {
 		v: value.NewDict(map[string]value.Value{
@@ -102,7 +102,7 @@ func TestActionFromValueDict(t *testing.T) {
 			Oid:        `"aditya"`,
 			Key:        "random",
 			Value:      value.NewList(value.Int(8), value.String("abc")),
-			UpdateTime: 9,
+			UpdateTime: 9000000,
 		},
 	}}
 	for _, test := range tests {
@@ -110,6 +110,8 @@ func TestActionFromValueDict(t *testing.T) {
 		assert.NoError(t, err)
 		d, err := p.ToValueDict()
 		assert.NoError(t, err)
+		microTimestamp := test.v.GetUnsafe("timestamp").(value.Int)
+		test.v.Set("timestamp", microTimestamp*1000000)
 		assert.Equal(t, test.v, d)
 		assert.Equal(t, test.p, p)
 	}
