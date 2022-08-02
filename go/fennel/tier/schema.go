@@ -155,6 +155,7 @@ var Schema = db.Schema{
 			format ENUM('csv','parquet', 'avro') NOT NULL,
 			delimiter VARCHAR(1) NOT NULL DEFAULT ',',
 			source_id VARCHAR(255) NOT NULL,
+			json_schema VARCHAR(1024) NOT NULL,
 			last_updated timestamp default now() on update now(), 
 			PRIMARY KEY (name),
 			FOREIGN KEY (name) REFERENCES source(name) ON DELETE CASCADE

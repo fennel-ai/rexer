@@ -1,6 +1,7 @@
 package data_integration
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 )
@@ -34,6 +35,7 @@ type S3 struct {
 	PathPrefix         string `db:"path_prefix" json:"path_prefix"`
 	Format             string `db:"format" json:"format"`
 	Delimiter          string `db:"delimiter" json:"delimiter"`
+	Schema             string `db:"json_schema" json:"schema"`
 	AWSAccessKeyId     string `json:"aws_access_key_id"`
 	AWSSecretAccessKey string `json:"aws_secret_access_key"`
 	LastUpdated        string `db:"last_updated" json:"last_updated"`
@@ -65,6 +67,11 @@ func (s S3) Equals(src Source) error {
 	}
 }
 
+func isJSON(str string) bool {
+	var js json.RawMessage
+	return json.Unmarshal([]byte(str), &js) == nil
+}
+
 func (s S3) Validate() error {
 	if s.Name == "" {
 		return fmt.Errorf("source name is required")
@@ -80,6 +87,10 @@ func (s S3) Validate() error {
 	}
 	if len(s.PathPrefix) == 0 {
 		return fmt.Errorf("s3 prefix is required")
+	}
+
+	if !isJSON(s.Schema) {
+		return fmt.Errorf("schema must be valid json")
 	}
 	return nil
 }

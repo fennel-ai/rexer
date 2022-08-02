@@ -125,9 +125,13 @@ type S3ConnectorConfig struct {
 }
 
 func NewS3ConnectorConfig(src data_integration.S3) (S3ConnectorConfig, error) {
+	if src.Schema == "" {
+		src.Schema = "{}"
+	}
+
 	config := S3ConnectorConfig{
 		PathPattern: "**",
-		Schema:      "{}",
+		Schema:      src.Schema,
 	}
 	switch src.Format {
 	case "parquet":

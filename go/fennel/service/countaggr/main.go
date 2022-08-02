@@ -100,7 +100,6 @@ func processAggregate(tr tier.Tier, agg libaggregate.Aggregate, stopCh <-chan st
 				logKafkaLag(tr, consumer)
 			default:
 				run++
-				tr.Logger.Debug("Processing aggregate", zap.String("name", string(agg.Name)), zap.Int("run", run))
 				ctx := context.Background()
 				if agg.IsProfileBased() {
 					// The number of actions and profiles need to be tuned.
@@ -113,6 +112,8 @@ func processAggregate(tr tier.Tier, agg libaggregate.Aggregate, stopCh <-chan st
 					if len(profiles) == 0 {
 						continue
 					}
+					tr.Logger.Debug("Processing aggregate", zap.String("name", string(agg.Name)), zap.Int("run", run), zap.Int("profiles", len(profiles)))
+
 					err = aggregate.Update(ctx, tr, profiles, agg)
 					if err != nil {
 						aggregate_errors.WithLabelValues(string(agg.Name)).Inc()
@@ -128,6 +129,8 @@ func processAggregate(tr tier.Tier, agg libaggregate.Aggregate, stopCh <-chan st
 					if len(actions) == 0 {
 						continue
 					}
+					tr.Logger.Debug("Processing aggregate", zap.String("name", string(agg.Name)), zap.Int("run", run), zap.Int("actions", len(actions)))
+
 					err = aggregate.Update(ctx, tr, actions, agg)
 					if err != nil {
 						aggregate_errors.WithLabelValues(string(agg.Name)).Inc()
