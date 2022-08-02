@@ -7,7 +7,7 @@ import * as kafka from "@pulumi/kafka";
 import * as process from "process";
 import * as childProcess from "child_process";
 import * as util from "../lib/util";
-import {ReadinessProbe} from "../tier-consts/consts";
+import { ReadinessProbe } from "../tier-consts/consts";
 
 
 export const plugins = {
@@ -268,7 +268,7 @@ export const setup = async (input: inputType) => {
                                     "--badger_block_cache_mb",
                                     `${input.blockCacheMB}`,
                                     "--ristretto_max_cost",
-                                    (input.kvCacheMB << 20).toString(),
+                                    (input.kvCacheMB * 1024 * 1024).toString(),
                                     "--otlp-endpoint",
                                     input.otlpEndpoint,
                                     "--dev=false"
