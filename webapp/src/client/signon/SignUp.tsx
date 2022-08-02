@@ -3,7 +3,7 @@ import { LoadingOutlined } from '@ant-design/icons';
 import axios, { AxiosError } from "axios";
 import { useState } from "react";
 
-import styles from "../styles/signon/SignUp.module.scss";
+import styles from "../styles/signon/SignOn.module.scss";
 import Pancake from "./Pancake";
 
 function SignUp() {
@@ -13,7 +13,7 @@ function SignUp() {
             <div className={styles.container}>
                 <img src="images/logo.svg" alt="logo" className={styles.logo} />
                 <div className={styles.logoDivider} />
-                <div className={styles.signUpHeader}>
+                <div className={styles.header}>
                     <h4 className={styles.headerTitle}>Sign up</h4>
                     <a href="/signin" className={styles.headerAlt}>Login instead?</a>
                 </div>
@@ -58,7 +58,7 @@ function SignUpForm() {
     return (
         <Form
             name="signup_form"
-            className={styles.signUpForm}
+            className={styles.mainForm}
             initialValues={{ remember: true }}
             onFinish={onFinish}
         >
@@ -68,14 +68,14 @@ function SignUpForm() {
                     { required: true, message: "Please input your work email" },
                     { type: "email", message: "Please input a valid email address"},
                 ]}
-                className={styles.signUpFormItem}
+                className={styles.formItem}
             >
                 <Input placeholder="Work email" />
             </Form.Item>
             <Form.Item
                 name="password"
                 rules={[{ required: true, message: "Please input your password" }]}
-                className={styles.signUpFormItem}
+                className={styles.formItem}
             >
                 <Input
                     type="password"
@@ -95,15 +95,15 @@ function SignUpForm() {
                         },
                     }),
                 ]}
-                className={styles.signUpFormItem}
+                className={styles.formItem}
             >
                 <Input
                     type="password"
                     placeholder="Re-enter password  "
                 />
             </Form.Item>
-            <Form.Item className={styles.signUpFormItem}>
-                <Button type="primary" htmlType="submit" className={styles.signUpFormButton} disabled={submitting}>
+            <Form.Item className={styles.formItem}>
+                <Button type="primary" htmlType="submit" className={styles.formButton} disabled={submitting}>
                     {submitting ? (<div> <LoadingOutlined spin /> Signing Up... </div>) : "Sign Up"}
                 </Button>
             </Form.Item>

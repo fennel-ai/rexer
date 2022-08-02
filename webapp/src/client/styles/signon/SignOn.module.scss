@@ -26,7 +26,7 @@
     margin-top: 50px;
 }
 
-.signUpHeader {
+.header {
     display: flex;
     flex-direction: row;
     justify-content: space-between;
@@ -42,18 +42,18 @@
     font-size: 12px;
 }
 
-.signUpForm Input {
+.mainForm Input {
     width: 100%;
 }
 
-.signUpFormItem:first-child {
+.formItem:first-child {
     margin-top: 28px;
 }
 
-.signUpFormItem {
+.formItem {
     margin-top: 16px;
 }
 
-.signUpFormButton {
+.formButton {
     width: 100%;
 }

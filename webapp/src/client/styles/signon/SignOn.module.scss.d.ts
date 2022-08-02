@@ -2,15 +2,15 @@
 // Please do not change this file!
 interface CssExports {
   'container': string;
+  'formButton': string;
+  'formItem': string;
+  'header': string;
   'headerAlt': string;
   'headerTitle': string;
   'logo': string;
   'logoDivider': string;
+  'mainForm': string;
   'page': string;
-  'signInForm': string;
-  'signInFormButton': string;
-  'signInFormItem': string;
-  'signInHeader': string;
 }
 export const cssExports: CssExports;
 export default cssExports;
