@@ -5,7 +5,7 @@ import * as pulumi from "@pulumi/pulumi";
 import * as path from "path";
 import * as process from "process";
 import * as childProcess from "child_process";
-import {ReadinessProbe, serviceEnvs} from "../tier-consts/consts";
+import { serviceEnvs } from "../tier-consts/consts";
 
 const name = "countaggr"
 const DEFAULT_USE_AMD64 = false
@@ -92,7 +92,7 @@ export const setup = async (input: inputType) => {
     // Get the (hash) commit id.
     // NOTE: This requires git to be installed and DOES NOT take local changes or commits into consideration.
     const hashId = childProcess.execSync('git rev-parse --short HEAD').toString().trim()
-    const imageName = repo.repositoryUrl.apply( imgName => {
+    const imageName = repo.repositoryUrl.apply(imgName => {
         return `${imgName}:${hashId}`
     })
 
@@ -173,7 +173,6 @@ export const setup = async (input: inputType) => {
                                 },
                             ],
                             env: serviceEnvs,
-                            readinessProbe: ReadinessProbe(healthPort),
                         }],
                     },
                 },
