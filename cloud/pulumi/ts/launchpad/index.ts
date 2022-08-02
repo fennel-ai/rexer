@@ -18,7 +18,7 @@ import { nameof } from "../lib/util";
 
 import * as process from "process";
 import * as assert from "assert";
-import {DEFAULT_ARM_AMI_TYPE, DEFAULT_X86_AMI_TYPE, ON_DEMAND_INSTANCE_TYPE, SPOT_INSTANCE_TYPE} from "../eks";
+import { DEFAULT_ARM_AMI_TYPE, DEFAULT_X86_AMI_TYPE, ON_DEMAND_INSTANCE_TYPE, SPOT_INSTANCE_TYPE } from "../eks";
 
 const controlPlane: vpc.controlPlaneConfig = {
     region: "us-west-2",
@@ -141,7 +141,8 @@ const tierConfs: Record<number, TierConf> = {
         ingressConf: {
             useDedicatedMachines: true,
             replicas: 4,
-        }
+        },
+        enableNitrous: true,
     },
     // Convoy staging tier using Fennel's staging data plane.
     108: {
@@ -521,7 +522,7 @@ const planeConfs: Record<number, PlaneConf> = {
                 {
                     name: "p-5-countaggr-ng-arm64",
                     // TODO(mohit): Move to c7g once they are supported in ap-south-1
-                    instanceTypes: ["c6g.4xlarge"],
+                    instanceTypes: ["c6g.8xlarge"],
                     minSize: 1,
                     maxSize: 1,
                     amiType: DEFAULT_ARM_AMI_TYPE,
@@ -547,6 +548,16 @@ const planeConfs: Record<number, PlaneConf> = {
                     capacityType: ON_DEMAND_INSTANCE_TYPE,
                     expansionPriority: 1,
                 },
+                // Nitrous node group.
+                {
+                    name: "p-5-nitrous-ng-x86",
+                    instanceTypes: ["m6i.8xlarge"],
+                    minSize: 1,
+                    maxSize: 1,
+                    amiType: DEFAULT_X86_AMI_TYPE,
+                    capacityType: ON_DEMAND_INSTANCE_TYPE,
+                    expansionPriority: 1,
+                },
                 {
                     name: "p-5-common-ng-x86",
                     instanceTypes: ["t3.medium"],
@@ -561,6 +572,29 @@ const planeConfs: Record<number, PlaneConf> = {
         },
         prometheusConf: {
             useAMP: false
+        },
+        // Run nitrous on the plane.
+        nitrousConf: {
+            replicas: 1,
+            storageCapacityGB: 500,
+            storageClass: "io2",
+            blockCacheMB: 1024 * 8,
+            kvCacheMB: 1024 * 75,
+            resourceConf: {
+                cpu: {
+                    request: "30000m",
+                    limit: "32000m"
+                },
+                memory: {
+                    request: "125G",
+                    limit: "128G",
+                }
+            },
+            binlog: {
+                partitions: 10,
+                retention_ms: 30 * 24 * 60 * 60 * 1000 /* 30 days */,
+                partition_retention_bytes: -1,
+            },
         }
     },
     // Lokal's staging data plane
