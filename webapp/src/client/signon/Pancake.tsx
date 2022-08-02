@@ -4,7 +4,7 @@ function Pancake() {
     return (
         <div className={styles.container}>
             <div className={styles.banner}>
-                Jump start ML in Your Organization
+                <span className={styles.jump}>Jump start ML</span> in Your Organization
             </div>
             <img src="images/pancake.svg" className={styles.pancake} />
         </div>

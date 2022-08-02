@@ -3,6 +3,7 @@
 interface CssExports {
   'banner': string;
   'container': string;
+  'jump': string;
   'pancake': string;
 }
 export const cssExports: CssExports;

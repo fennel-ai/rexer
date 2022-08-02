@@ -1,3 +1,5 @@
+@use "../colors";
+
 .page {
     display: flex;
     width: 100%;
@@ -26,7 +28,7 @@
     margin-top: 50px;
 }
 
-.signUpHeader {
+.header {
     display: flex;
     flex-direction: row;
     justify-content: space-between;
@@ -40,20 +42,27 @@
 
 .headerAlt {
     font-size: 12px;
+    color: colors.$purple0;
 }
 
-.signUpForm Input {
+.mainForm Input {
     width: 100%;
 }
 
-.signUpFormItem:first-child {
+.formItem:first-child {
     margin-top: 28px;
 }
 
-.signUpFormItem {
+.formItem {
     margin-top: 16px;
 }
 
-.signUpFormButton {
+$formButton-background: colors.$purple0;
+
+.formButton {
     width: 100%;
+}
+
+:export {
+    formButtonBackground: $formButton-background;
 }
