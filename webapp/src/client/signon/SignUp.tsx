@@ -103,7 +103,13 @@ function SignUpForm() {
                 />
             </Form.Item>
             <Form.Item className={styles.formItem}>
-                <Button type="primary" htmlType="submit" className={styles.formButton} disabled={submitting}>
+                <Button
+                    type="primary"
+                    htmlType="submit"
+                    className={styles.formButton}
+                    style={{background: styles.formButtonBackground}}
+                    disabled={submitting}>
+
                     {submitting ? (<div> <LoadingOutlined spin /> Signing Up... </div>) : "Sign Up"}
                 </Button>
             </Form.Item>

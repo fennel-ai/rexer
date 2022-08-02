@@ -1,8 +1,8 @@
-$background-color: #EFE3FE;
+@use "../colors";
 
 .container {
     width: 100%;
-    background-color: $background-color;
+    background-color: colors.$purple1;
     position: relative;
 }
 
@@ -19,4 +19,8 @@ $background-color: #EFE3FE;
     position: absolute;
     right: 0;
     bottom: 0;
+}
+
+.jump {
+    color: colors.$purple0;
 }

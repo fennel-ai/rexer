@@ -3,6 +3,7 @@
 interface CssExports {
   'container': string;
   'formButton': string;
+  'formButtonBackground': string;
   'formItem': string;
   'header': string;
   'headerAlt': string;

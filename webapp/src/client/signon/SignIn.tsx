@@ -83,8 +83,14 @@ function SignInForm() {
                 />
             </Form.Item>
             <Form.Item className={styles.formItem}>
-                <Button type="primary" htmlType="submit" className={styles.formButton} disabled={submitting}>
-                {submitting ? (<div> <LoadingOutlined spin /> Signing In... </div>) : "Sign In"}
+                <Button
+                    type="primary"
+                    htmlType="submit"
+                    className={styles.formButton}
+                    style={{background: styles.formButtonBackground}}
+                    disabled={submitting}>
+
+                    {submitting ? (<div> <LoadingOutlined spin /> Signing In... </div>) : "Sign In"}
                 </Button>
             </Form.Item>
             <a href="#">Forgot your password</a>
