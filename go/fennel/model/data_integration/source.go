@@ -26,8 +26,8 @@ func StoreSource(ctx context.Context, tier tier.Tier, src data_integration.Sourc
 
 	switch srcDerived := src.(type) {
 	case data_integration.S3:
-		sql := "INSERT INTO s3_source (name, bucket, path_prefix, format, delimiter, source_id) VALUES (?, ?, ?, ?, ?, ?)"
-		_, err = tier.DB.QueryContext(ctx, sql, srcDerived.Name, srcDerived.Bucket, srcDerived.PathPrefix, srcDerived.Format, srcDerived.Delimiter, srcId)
+		sql := "INSERT INTO s3_source (name, bucket, path_prefix, format, delimiter, json_schema, source_id) VALUES (?, ?, ?, ?, ?, ?, ?)"
+		_, err = tier.DB.QueryContext(ctx, sql, srcDerived.Name, srcDerived.Bucket, srcDerived.PathPrefix, srcDerived.Format, srcDerived.Delimiter, srcDerived.Schema, srcId)
 	case data_integration.BigQuery:
 		sql := `INSERT INTO bigquery_source (name,  project_id, dataset_id, source_id) VALUES (?, ?, ?, ?)`
 		_, err = tier.DB.QueryContext(ctx, sql, srcDerived.Name, srcDerived.ProjectId, srcDerived.DatasetId, srcId)
