@@ -180,7 +180,7 @@ func FromValueDict(dict value.Dict) (ProfileItem, error) {
 			return pi, fmt.Errorf("timestamp not an int")
 		}
 	} else {
-		return pi, fmt.Errorf("timestamp not found in profile dict")
+		pi.UpdateTime = uint64(time.Now().Unix())
 	}
 
 	if value, ok := dict.Get("value"); ok {
