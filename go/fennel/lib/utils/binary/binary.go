@@ -54,8 +54,10 @@ func PutUvarint(b []byte, n uint64) (int, error) {
 
 func ReadUvarint(b []byte) (uint64, int, error) {
 	n, sz := binary.Uvarint(b)
-	if sz <= 0 {
-		return 0, 0, fmt.Errorf("invalid uvarint")
+	if sz == 0 {
+		return 0, 0, fmt.Errorf("invalid uvarint: buffer (size: %d) too small", len(b))
+	} else if sz < 0 {
+		return 0, 0, fmt.Errorf("invalid uvarint: value too large (read %d bytes)", -sz)
 	}
 	return n, sz, nil
 }
