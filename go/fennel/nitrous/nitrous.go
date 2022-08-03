@@ -29,10 +29,10 @@ type NitrousArgs struct {
 	BadgerDir          string         `arg:"--badger_dir,env:BADGER_DIR" json:"badger_dir,omitempty"`
 	BadgerBlockCacheMB int64          `arg:"--badger_block_cache_mb,env:BADGER_BLOCK_CACHE_MB" json:"badger_block_cache_mb,omitempty"`
 	RistrettoMaxCost   uint64         `arg:"--ristretto_max_cost,env:RISTRETTO_MAX_COST" json:"ristretto_max_cost,omitempty"`
-	RistrettoAvgCost   uint64         `arg:"--ristretto_avg_cost,env:RISTRETTO_AVG_COST" json:"ristretto_avg_cost,omitempty" default:"100"`
-	// Hostname should be unique for each instance of nitrous. The HOSTNAME environment
-	// variable is uniquely set for each replica of a StatefulSet in k8s.
-	Hostname string `args:"--hostname,env:HOSTNAME" json:"hostname" default:"localhost"`
+	RistrettoAvgCost   uint64         `arg:"--ristretto_avg_cost,env:RISTRETTO_AVG_COST" json:"ristretto_avg_cost,omitempty" default:"1000"`
+	// Identity should be unique for each instance of nitrous. The IDENTITY environment
+	// variable should be unique for each replica of a StatefulSet in k8s.
+	Identity string `arg:"--identity,env:IDENTITY" json:"identity" default:"localhost"`
 	Dev      bool   `arg:"--dev" default:"true" json:"dev,omitempty"`
 }
 
@@ -101,7 +101,7 @@ func CreateFromArgs(args NitrousArgs) (Nitrous, error) {
 
 	return Nitrous{
 		PlaneID:              scope.ID(),
-		Identity:             args.Hostname,
+		Identity:             args.Identity,
 		KafkaConsumerFactory: consumerFactory,
 		Clock:                clock.New(),
 		Logger:               logger,
