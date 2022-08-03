@@ -21,7 +21,7 @@ import (
 )
 
 const (
-	tailer_batch         = 10_000
+	tailer_batch         = 100_000
 	default_poll_timeout = 10 * time.Second
 )
 
