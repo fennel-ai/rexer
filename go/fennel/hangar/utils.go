@@ -43,8 +43,8 @@ func EncodeValMany(vgs []ValGroup, enc Encoder) ([][]byte, error) {
 	}
 	buf := make([]byte, sz)
 	ret := make([][]byte, len(vgs))
-	for i, k := range vgs {
-		n, err := enc.EncodeVal(buf, k)
+	for i, vg := range vgs {
+		n, err := enc.EncodeVal(buf, vg)
 		if err != nil {
 			return nil, err
 		}

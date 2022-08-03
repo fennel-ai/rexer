@@ -52,13 +52,13 @@ func testEncodeVal(t *testing.T, enc hangar.Encoder) {
 		{[]hangar.ValGroup{
 			{
 				Expiry: 1232,
-				Fields: [][]byte{[]byte("foo"), []byte("bar"), []byte("foo"), []byte("baz"), []byte("foo"), []byte("qux")},
-				Values: [][]byte{[]byte("foo"), []byte("bar"), []byte("foo"), []byte("baz"), []byte("foo"), []byte("qux")},
+				Fields: [][]byte{[]byte("foo"), []byte("bar"), []byte("baz"), []byte("qux")},
+				Values: [][]byte{[]byte("foo"), []byte("bar"), []byte("baz"), []byte("qux")},
 			},
 			{
 				Expiry: -1,
-				Fields: [][]byte{[]byte("sdf"), []byte("sdf"), []byte("sdf"), []byte("sdf"), []byte("sdf"), []byte("sdf")},
-				Values: [][]byte{[]byte("wqe"), []byte("wqe"), []byte("wqe"), []byte("wqe"), []byte("wqe"), []byte("wqe")},
+				Fields: [][]byte{[]byte("sdf")},
+				Values: [][]byte{[]byte("wqe")},
 			},
 		}, true, false,
 		},
@@ -70,8 +70,8 @@ func testEncodeVal(t *testing.T, enc hangar.Encoder) {
 			},
 			{
 				Expiry: -1,
-				Fields: [][]byte{[]byte("sdf"), []byte("sdf"), []byte("sdf"), []byte("sdf"), []byte("sdf"), []byte("sdf")},
-				Values: [][]byte{[]byte("wqe"), []byte("wqe"), []byte("wqe"), []byte("wqe"), []byte("wqe"), []byte("wqe")},
+				Fields: [][]byte{[]byte("sdf")},
+				Values: [][]byte{[]byte("wqe")},
 			},
 		}, true, true,
 		},
