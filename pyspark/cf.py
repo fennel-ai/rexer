@@ -1,7 +1,7 @@
 # This file is meant for being uploading into S3 as a script and create a job out of it. 
 # CreateTrigger will then schedule these jobs according to the cron schedule specified by the user. 
 
-from datetime import datetime, timedelta, timezone
+from datetime import date, datetime, timedelta, timezone
 
 import sys
 import json
@@ -17,6 +17,8 @@ from pyspark.sql import functions as F
 from pyspark.sql.functions import col, collect_list, array_join
 from pyspark.sql.functions import arrays_zip, concat_ws
 from pyspark.sql.types import IntegerType
+from functools import reduce  # For Python 3.x
+from pyspark.sql import DataFrame
 
 success_file_name = "_SUCCESS-"
 ## @params: [JOB_NAME]
@@ -41,19 +43,43 @@ print(f'======== Reading data from date: year={year}/month={month}/day={day}\n')
 params = json.loads(args["HYPERPARAMETERS"])
 print("Hyperparameters used - ", params)
 
-# use default credentials which in this case would be derived from GLUE job IAM role which has access to the S3 buckets 
-fs = s3fs.S3FileSystem(anon=False)
-transformed_actions_path = f's3://{args["INPUT_BUCKET"]}/daily/t_{args["TIER_ID"]}_aggr_offline_transform/year={year}/month={month}/*/*/*.json'
-
-if not fs.glob(transformed_actions_path):
-    print("No data found for the given date")
-
-actions = spark.read.json(transformed_actions_path)
-
 now_utc = datetime.now(timezone.utc)
 lower_time_bound = int(now_utc.timestamp()) - int(args['DURATION'])
 time_filter = "timestamp>{}".format(lower_time_bound)
 
+transformed_actions_prefix = f's3://{args["INPUT_BUCKET"]}/daily/t_{args["TIER_ID"]}_aggr_offline_transform'
+paths = []
+day = 0
+fs = s3fs.S3FileSystem(anon=False)
+while True:
+    past_day = date.today() - timedelta(days=day)
+    pt = datetime(past_day.year, past_day.month, past_day.day)
+    # One day buffer for safety
+    if pt.timestamp() < lower_time_bound - 86400:
+        break
+    day += 1
+
+    d = f'{past_day.day}'
+    if past_day.day < 10:
+        d = f'0{past_day.day}'
+
+    m = f'{past_day.month}'
+    if past_day.month < 10:
+        m = f'0{past_day.month}'
+
+    path = f'{transformed_actions_prefix}/year={past_day.year}/month={m}/day={d}/*/*.json'
+    if not fs.glob(path):
+        print("No data found for path", path)
+    else:
+        paths.append(path)
+
+def unionAll(dfs):
+    return reduce(DataFrame.unionAll, dfs)
+
+dfs = []
+for path in paths:
+    dfs.append(spark.read.json(path))
+actions = unionAll(dfs)
 actions = actions.filter("aggregate='{}'".format(args["AGGREGATE_NAME"]))
 actions = actions.filter(time_filter)
 
