@@ -43,9 +43,9 @@ print(f'======== Reading data from date: year={year}/month={month}/day={day}\n')
 params = json.loads(args["HYPERPARAMETERS"])
 print("Hyperparameters used - ", params)
 
+# use default credentials which in this case would be derived from GLUE job IAM role which has access to the S3 buckets
 now_utc = datetime.now(timezone.utc)
 lower_time_bound = int(now_utc.timestamp()) - int(args['DURATION'])
-time_filter = "timestamp>{}".format(lower_time_bound)
 
 transformed_actions_prefix = f's3://{args["INPUT_BUCKET"]}/daily/t_{args["TIER_ID"]}_aggr_offline_transform'
 paths = []
@@ -81,6 +81,7 @@ for path in paths:
     dfs.append(spark.read.json(path))
 actions = unionAll(dfs)
 actions = actions.filter("aggregate='{}'".format(args["AGGREGATE_NAME"]))
+time_filter = "timestamp>{}".format(lower_time_bound)
 actions = actions.filter(time_filter)
 
 if actions.filter(col("groupkey").cast("int").isNull()).count() == 0:
