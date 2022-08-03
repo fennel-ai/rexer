@@ -326,6 +326,14 @@ export const setup = async (input: inputType) => {
                                         name: "OTEL_SERVICE_NAME",
                                         value: "nitrous",
                                     },
+                                    {
+                                        name: "IDENTITY",
+                                        valueFrom: {
+                                            fieldRef: {
+                                                fieldPath: "metadata.labels['statefulset.kubernetes.io/pod-name']",
+                                            }
+                                        }
+                                    }
                                 ],
                                 resources: {
                                     requests: {
