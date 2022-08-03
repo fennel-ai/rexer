@@ -8,6 +8,7 @@ import (
 	"time"
 )
 
+// TODO(xiao) return or update in-place the user id
 func Insert(mothership mothership.Mothership, user lib.User) (ftypes.UserId, error) {
 	res, err := mothership.DB.Exec(
 		`INSERT INTO user (email, encrypted_password, remember_token, remember_created_at, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)`,
@@ -55,7 +56,7 @@ func FetchByRememberToken(mothership mothership.Mothership, token string) (lib.U
 	return user, err
 }
 
-func FetchByConfirmationToke(mothership mothership.Mothership, token string) (lib.User, error) {
+func FetchByConfirmationToken(mothership mothership.Mothership, token string) (lib.User, error) {
 	user := lib.User{}
 	err := mothership.DB.Get(&user, `SELECT * FROM user where confirmation_token=?`, token)
 	return user, err

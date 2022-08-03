@@ -65,6 +65,7 @@ func checkPasswordHash(password string, hash []byte) bool {
 	return err == nil
 }
 
+// TODO(xiao) testing the email
 func SendConfirmationEmail(c context.Context, m mothership.Mothership, client *sendgrid.Client, user lib.User) (lib.User, error) {
 	if user.IsConfirmed() {
 		return user, errors.New("User email is already confirmed")
@@ -110,7 +111,7 @@ func generateConfirmationLink(token string) url.URL {
 func generateConfirmationToken(m mothership.Mothership) string {
 	for {
 		token := generateToken(m)
-		if _, err := db.FetchByConfirmationToke(m, token); err != nil {
+		if _, err := db.FetchByConfirmationToken(m, token); err != nil {
 			return token
 		}
 	}
