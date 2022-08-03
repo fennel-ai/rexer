@@ -1,4 +1,4 @@
-package bridge
+package user
 
 import (
 	"context"
@@ -7,13 +7,19 @@ import (
 	"encoding/binary"
 	"errors"
 	"fennel/mothership"
-	"math/rand"
+	"fmt"
 	"time"
 
 	"golang.org/x/crypto/bcrypt"
 
 	lib "fennel/lib/user"
+	"math/rand"
+	"net/url"
+
 	db "fennel/model/user"
+
+	"github.com/sendgrid/sendgrid-go"
+	"github.com/sendgrid/sendgrid-go/helpers/mail"
 )
 
 type ErrorUserNotFound struct{}
@@ -46,11 +52,8 @@ func newUser(m mothership.Mothership, email, password string) (lib.User, error) 
 }
 
 func generateRememberToken(m mothership.Mothership) string {
-	bytes := make([]byte, 16)
 	for {
-		binary.LittleEndian.PutUint64(bytes, rand.Uint64())
-		binary.LittleEndian.PutUint64(bytes[8:], rand.Uint64())
-		token := base64.RawURLEncoding.EncodeToString(bytes)
+		token := generateToken(m)
 		if _, err := db.FetchByRememberToken(m, token); err != nil {
 			return token
 		}
@@ -60,6 +63,64 @@ func generateRememberToken(m mothership.Mothership) string {
 func checkPasswordHash(password string, hash []byte) bool {
 	err := bcrypt.CompareHashAndPassword(hash, []byte(password))
 	return err == nil
+}
+
+func SendConfirmationEmail(c context.Context, m mothership.Mothership, client *sendgrid.Client, user lib.User) (lib.User, error) {
+	if user.IsConfirmed() {
+		return user, errors.New("User email is already confirmed")
+	}
+	token := generateConfirmationToken(m)
+	user.ConfirmationToken = sql.NullString{
+		String: token,
+		Valid:  true,
+	}
+	var err error
+	if user, err = db.UpdateConfirmation(m, user); err != nil {
+		return user, err
+	}
+
+	from := mail.NewEmail("Xiao Jiang", "xiao+dev@fennel.ai")
+	subject := "Welcome to Fennel.ai! Confirm Your Email"
+	to := mail.NewEmail("", user.Email)
+
+	link := generateConfirmationLink(token)
+	plainTextContent := fmt.Sprintf("confirm email at %s", link.String())
+	htmlContent := fmt.Sprintf(`confirm email at <a href="%s" target="_blank">...</a>`, link.String())
+	message := mail.NewSingleEmail(from, subject, to, plainTextContent, htmlContent)
+	if _, err := client.Send(message); err != nil {
+		return user, err
+	}
+	user.ConfirmationSentAt = sql.NullInt64{
+		Int64: time.Now().UTC().UnixMicro(),
+		Valid: true,
+	}
+	return db.UpdateConfirmation(m, user)
+}
+
+func generateConfirmationLink(token string) url.URL {
+	// TODO(xiao) read host from config
+	return url.URL{
+		Scheme:   "http",
+		Host:     "localhost:8080",
+		Path:     "confirm_email",
+		RawQuery: fmt.Sprintf("token=%s", token),
+	}
+}
+
+func generateConfirmationToken(m mothership.Mothership) string {
+	for {
+		token := generateToken(m)
+		if _, err := db.FetchByConfirmationToke(m, token); err != nil {
+			return token
+		}
+	}
+}
+
+func generateToken(m mothership.Mothership) string {
+	bytes := make([]byte, 16)
+	binary.LittleEndian.PutUint64(bytes, rand.Uint64())
+	binary.LittleEndian.PutUint64(bytes[8:], rand.Uint64())
+	return base64.RawURLEncoding.EncodeToString(bytes)
 }
 
 func SignUp(c context.Context, m mothership.Mothership, email, password string) (lib.User, error) {

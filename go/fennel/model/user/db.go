@@ -1,9 +1,11 @@
 package user
 
 import (
+	"errors"
 	"fennel/lib/ftypes"
 	lib "fennel/lib/user"
 	"fennel/mothership"
+	"time"
 )
 
 func Insert(mothership mothership.Mothership, user lib.User) (ftypes.UserId, error) {
@@ -20,6 +22,27 @@ func Insert(mothership mothership.Mothership, user lib.User) (ftypes.UserId, err
 	return ftypes.UserId(id), nil
 }
 
+func UpdateConfirmation(mothership mothership.Mothership, user lib.User) (lib.User, error) {
+	if !user.IsPersisted() {
+		return user, errors.New("Fail to update user, not persisted yet")
+	}
+
+	now := time.Now().UTC().UnixMicro()
+	_, err := mothership.DB.Exec(
+		`UPDATE user SET confirmation_token = ?, confirmed_at = ?, confirmation_sent_at = ?, updated_at = ? WHERE id = ?`,
+		user.ConfirmationToken,
+		user.ConfirmedAt,
+		user.ConfirmationSentAt,
+		now,
+		user.Id,
+	)
+	if err != nil {
+		return user, err
+	}
+	user.UpdatedAt = now
+	return user, nil
+}
+
 func FetchByEmail(mothership mothership.Mothership, email string) (lib.User, error) {
 	user := lib.User{}
 	err := mothership.DB.Get(&user, `SELECT * FROM user where email=?`, email)
@@ -29,5 +52,11 @@ func FetchByEmail(mothership mothership.Mothership, email string) (lib.User, err
 func FetchByRememberToken(mothership mothership.Mothership, token string) (lib.User, error) {
 	user := lib.User{}
 	err := mothership.DB.Get(&user, `SELECT * FROM user where remember_token=?`, token)
+	return user, err
+}
+
+func FetchByConfirmationToke(mothership mothership.Mothership, token string) (lib.User, error) {
+	user := lib.User{}
+	err := mothership.DB.Get(&user, `SELECT * FROM user where confirmation_token=?`, token)
 	return user, err
 }

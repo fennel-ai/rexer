@@ -83,12 +83,16 @@ var Schema = db.Schema{
 
                 remember_token VARCHAR(255),
                 remember_created_at BIGINT UNSIGNED,
+                confirmation_token VARCHAR(255),
+                confirmation_sent_at BIGINT UNSIGNED,
+                confirmed_at BIGINT UNSIGNED,
 
                 deleted_at BIGINT UNSIGNED,
                 created_at BIGINT UNSIGNED NOT NULL,
                 updated_at BIGINT UNSIGNED NOT NULL,
 
                 UNIQUE KEY (email),
-                UNIQUE KEY (remember_token)
+                UNIQUE KEY (remember_token),
+                UNIQUE KEY (confirmation_token)
         );`,
 }
