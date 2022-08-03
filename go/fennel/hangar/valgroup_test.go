@@ -43,6 +43,11 @@ func TestValGroup_Valid(t *testing.T) {
 			Fields: Fields([][]byte{}),
 			Values: Values([][]byte{[]byte("bar")}),
 		}, false},
+		{ValGroup{
+			Expiry: int64(time.Now().Add(time.Minute).Second()),
+			Fields: Fields([][]byte{[]byte("foo"), []byte("foo")}),
+			Values: Values([][]byte{[]byte("bar"), []byte("baz")}),
+		}, false},
 	}
 	for _, scene := range scenarios {
 		assert.Equal(t, scene.valid, scene.vg.Valid())

@@ -3,6 +3,7 @@ package hangar
 import (
 	"fmt"
 	"sync"
+	"unsafe"
 )
 
 var stringSet = sync.Pool{New: func() interface{} {
@@ -26,8 +27,20 @@ func freeStringSet(m map[string]struct{}) {
 	stringSet.Put(m)
 }
 
-func (vg ValGroup) Valid() bool {
-	return len(vg.Fields) == len(vg.Values)
+func (vg *ValGroup) Valid() bool {
+	if len(vg.Fields) != len(vg.Values) {
+		return false
+	}
+	// Ensure that all fields are unique.
+	fields := stringSet.Get().(map[string]struct{})
+	defer freeStringSet(fields)
+	for _, f := range vg.Fields {
+		if _, ok := fields[asString(f)]; ok {
+			return false
+		}
+		fields[asString(f)] = struct{}{}
+	}
+	return true
 }
 
 func (vg *ValGroup) Update(other ValGroup) error {
@@ -37,13 +50,13 @@ func (vg *ValGroup) Update(other ValGroup) error {
 	newData := stringToByteSlice.Get().(map[string][]byte)
 	defer freeStringToByteSlice(newData)
 	for i := range other.Fields {
-		newData[string(other.Fields[i])] = other.Values[i]
+		newData[asString(other.Fields[i])] = other.Values[i]
 	}
 	written := stringSet.Get().(map[string]struct{})
 	defer freeStringSet(written)
 	for i, field := range vg.Fields {
-		if nv, ok := newData[string(field)]; ok {
-			written[string(field)] = struct{}{}
+		if nv, ok := newData[asString(field)]; ok {
+			written[asString(field)] = struct{}{}
 			vg.Values[i] = nv
 		}
 	}
@@ -54,7 +67,7 @@ func (vg *ValGroup) Update(other ValGroup) error {
 		vg.Fields = append(vg.Fields, make(Fields, tobeWritten)...)
 		vg.Values = append(vg.Values, make(Values, tobeWritten)...)
 		for i, field := range other.Fields {
-			if _, ok := written[string(field)]; !ok {
+			if _, ok := written[asString(field)]; !ok {
 				vg.Fields[idx] = field
 				vg.Values[idx] = other.Values[i]
 				idx += 1
@@ -73,14 +86,14 @@ func (vg *ValGroup) Select(fields Fields) {
 	data := stringSet.Get().(map[string]struct{})
 	defer freeStringSet(data)
 	for i := range fields {
-		data[string(fields[i])] = struct{}{}
+		data[asString(fields[i])] = struct{}{}
 	}
 	oldFields := vg.Fields
 	oldValues := vg.Values
 	vg.Fields = vg.Fields[:0]
 	vg.Values = vg.Values[:0]
 	for i, field := range oldFields {
-		if _, ok := data[string(field)]; ok {
+		if _, ok := data[asString(field)]; ok {
 			vg.Fields = append(vg.Fields, field)
 			vg.Values = append(vg.Values, oldValues[i])
 		}
@@ -90,7 +103,7 @@ func (vg *ValGroup) Select(fields Fields) {
 func (vg *ValGroup) Del(fields Fields) {
 	del := make(map[string]struct{}, len(fields))
 	for i := range fields {
-		del[string(fields[i])] = struct{}{}
+		del[asString(fields[i])] = struct{}{}
 	}
 	oldFields := vg.Fields
 	oldValues := vg.Values
@@ -98,10 +111,14 @@ func (vg *ValGroup) Del(fields Fields) {
 	vg.Values = vg.Values[:0]
 	write := 0
 	for i, field := range oldFields {
-		if _, ok := del[string(field)]; !ok {
+		if _, ok := del[asString(field)]; !ok {
 			vg.Fields = append(vg.Fields, field)
 			vg.Values = append(vg.Values, oldValues[i])
 			write++
 		}
 	}
+}
+
+func asString(s []byte) string {
+	return *(*string)(unsafe.Pointer(&s))
 }
