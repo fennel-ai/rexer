@@ -1,5 +1,6 @@
 import SignUp from "./SignUp";
 import SignIn from "./SignIn";
+import ResetPassword from "./ResetPassword";
 import "../styles/signon/SignOnApp.css";
 
 interface Props {
@@ -8,6 +9,7 @@ interface Props {
 
 const SIGNUP_PAGE = "signup";
 const SIGNIN_PAGE = "signin";
+const RESET_PASSWORD_PAGE = "resetpassword";
 
 function SignOnApp(props: Props) {
     const {page} = props;
@@ -24,9 +26,11 @@ function Route(props: Props) {
 
     switch (page) {
         case SIGNUP_PAGE:
-            return <SignUp />
+            return <SignUp />;
         case SIGNIN_PAGE:
-            return <SignIn />
+            return <SignIn />;
+        case RESET_PASSWORD_PAGE:
+            return <ResetPassword />;
     }
     return <SignIn />;
 }

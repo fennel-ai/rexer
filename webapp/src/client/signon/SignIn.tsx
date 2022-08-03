@@ -1,5 +1,5 @@
 import { Button, Form, Input, notification } from "antd";
-import { LoadingOutlined } from '@ant-design/icons';
+import { LoadingOutlined } from "@ant-design/icons";
 import axios, { AxiosError } from "axios";
 import { useState } from "react";
 
