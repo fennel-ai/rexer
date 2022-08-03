@@ -209,6 +209,8 @@ func (ndb *NitrousDB) processCreateEvent(tierId ftypes.RealmID, event *rpc.Creat
 	aggId := ftypes.AggId(event.AggId)
 	codecs := getCodecs(ftypes.AggType(popts.AggType))
 	options := aggregate.FromProtoOptions(popts)
+	fields := make(hangar.Fields, 0, len(codecs))
+	values := make(hangar.Values, 0, len(codecs))
 	for _, codec := range codecs {
 		key := aggKey{tierId, aggId, codec}
 		if v, ok := ndb.tables.Load(key); ok {
@@ -226,14 +228,15 @@ func (ndb *NitrousDB) processCreateEvent(tierId ftypes.RealmID, event *rpc.Creat
 		if err != nil {
 			return vg, fmt.Errorf("failed to byte-serialize aggregate options proto: %w", err)
 		}
-		vg.Fields = append(vg.Fields, field)
-		vg.Values = append(vg.Values, rawopts)
+		fields = append(fields, field)
+		values = append(values, rawopts)
 		err = ndb.setupAggregateTable(tierId, aggId, codec, options)
 		if err != nil {
 			return vg, fmt.Errorf("failed to initialize aggregate store for new aggregate (%d) in tier (%d): %w", aggId, tierId, err)
 		}
 	}
-	return vg, nil
+	err := vg.Update(hangar.ValGroup{Fields: fields, Values: values})
+	return vg, err
 }
 
 func getCodecs(aggType ftypes.AggType) []rpc.AggCodec {
