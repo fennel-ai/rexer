@@ -9,20 +9,6 @@ import (
 	"fennel/lib/value"
 )
 
-func SetEqual(t *testing.T, a, b value.List) {
-	assert.Equal(t, a.Len(), b.Len())
-	m := make(map[string]struct{})
-	for i := 0; i < a.Len(); i++ {
-		val, _ := a.At(i)
-		m[val.String()] = struct{}{}
-	}
-	for i := 0; i < b.Len(); i++ {
-		val, _ := b.At(i)
-		_, ok := m[val.String()]
-		assert.True(t, ok)
-	}
-}
-
 func TestList_Reduce(t *testing.T) {
 	t.Parallel()
 	h := NewList(aggregate.Options{})
@@ -43,7 +29,7 @@ func TestList_Reduce(t *testing.T) {
 		{[]value.Value{
 			value.NewList(value.Int(0), value.Int(-1)),
 			value.NewList(value.Int(2), value.Int(1))},
-			value.NewList(value.Int(2), value.Int(1), value.Int(0), value.Int(-1)),
+			value.NewList(value.Int(0), value.Int(-1), value.Int(2), value.Int(1)),
 		},
 		{[]value.Value{
 			value.NewList(value.Int(1e17), value.Int(-1e17)),
@@ -54,11 +40,11 @@ func TestList_Reduce(t *testing.T) {
 	for _, c := range cases {
 		found, err := h.Reduce(c.input)
 		assert.NoError(t, err)
-		SetEqual(t, c.output.(value.List), found.(value.List))
+		assert.Equal(t, c.output.(value.List), found.(value.List))
 		// and this works even when one of the elements is zero of the histogram
 		c.input = append(c.input, h.Zero())
 		assert.NoError(t, err)
-		SetEqual(t, c.output.(value.List), found.(value.List))
+		assert.Equal(t, c.output.(value.List), found.(value.List))
 	}
 }
 
@@ -99,7 +85,7 @@ func TestList_Merge_Valid(t *testing.T) {
 	for _, n := range validCases {
 		found, err := h.Merge(n.input1, n.input2)
 		assert.NoError(t, err)
-		SetEqual(t, n.output.(value.List), found.(value.List))
+		assert.Equal(t, n.output.(value.List), found.(value.List))
 	}
 }
 

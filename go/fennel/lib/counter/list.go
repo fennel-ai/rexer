@@ -38,6 +38,8 @@ func (s list) extract(v value.Value) (value.List, error) {
 // Reduce just appends all the lists to an empty list
 func (s list) Reduce(values []value.Value) (value.Value, error) {
 	m := make(map[string]value.Value)
+	z := s.Zero().Clone().(value.List)
+
 	for i := range values {
 		l, err := s.extract(values[i])
 		if err != nil {
@@ -45,12 +47,11 @@ func (s list) Reduce(values []value.Value) (value.Value, error) {
 		}
 		for j := 0; j < l.Len(); j++ {
 			val, _ := l.At(j)
-			m[val.String()] = val
+			if _, ok := m[val.String()]; !ok {
+				z.Append(val)
+				m[val.String()] = val
+			}
 		}
-	}
-	z := s.Zero().Clone().(value.List)
-	for _, v := range m {
-		z.Append(v)
 	}
 	return z, nil
 }
@@ -65,18 +66,20 @@ func (s list) Merge(a, b value.Value) (value.Value, error) {
 		return nil, err
 	}
 	m := make(map[string]value.Value, la.Len())
+	ret := value.NewList()
+	ret.Grow(la.Len())
 	for j := 0; j < la.Len(); j++ {
 		val, _ := la.At(j)
-		m[val.String()] = val
+		if _, ok := m[val.String()]; !ok {
+			ret.Append(val)
+			m[val.String()] = val
+		}
 	}
 	for j := 0; j < lb.Len(); j++ {
 		val, _ := lb.At(j)
-		m[val.String()] = val
-	}
-	ret := value.NewList()
-	ret.Grow(len(m))
-	for _, v := range m {
-		ret.Append(v)
+		if _, ok := m[val.String()]; !ok {
+			ret.Append(val)
+		}
 	}
 	return ret, nil
 }
