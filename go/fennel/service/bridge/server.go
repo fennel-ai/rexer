@@ -82,6 +82,7 @@ func (s *server) setupRouter() {
 	s.POST("/signup", s.SignUp)
 	s.GET(SignInURL, s.SignInGet)
 	s.POST(SignInURL, s.SignIn)
+	s.GET("/resetpassword", s.ResetPassword)
 
 	auth := s.Group("/", s.authenticationRequired())
 
@@ -102,8 +103,9 @@ func (s *server) Ping(c *gin.Context) {
 }
 
 const (
-	SignUpPage = "signup"
-	SignInPage = "signin"
+	SignUpPage        = "signup"
+	SignInPage        = "signin"
+	ResetPasswordPage = "resetpassword"
 )
 
 func (s *server) SignUpGet(c *gin.Context) {
@@ -112,6 +114,10 @@ func (s *server) SignUpGet(c *gin.Context) {
 
 func (s *server) SignInGet(c *gin.Context) {
 	c.HTML(http.StatusOK, "sign_on.tmpl", gin.H{"title": "Fennel | SignIn", "page": SignInPage})
+}
+
+func (s *server) ResetPassword(c *gin.Context) {
+	c.HTML(http.StatusOK, "sign_on.tmpl", gin.H{"title": "Fennel | Reset Password", "page": ResetPasswordPage})
 }
 
 type SignOnForm struct {
