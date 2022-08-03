@@ -131,7 +131,7 @@ func (ndb *NitrousDB) Process(ctx context.Context, ops []*rpc.NitrousOp, store h
 		}
 	}
 	if count > 0 {
-		ndb.nos.Logger.Info("Recieved aggregate definition updates", zap.Int("count", count))
+		ndb.nos.Logger.Info("Received aggregate definition updates", zap.Int("count", count))
 		return []hangar.Key{{Data: agg_table_key}}, []hangar.ValGroup{vg}, nil
 	} else {
 		return nil, nil, nil
@@ -149,6 +149,7 @@ func (ndb *NitrousDB) restoreAggregates(store hangar.Hangar) error {
 		return nil
 	}
 	vg := vgs[0]
+	count := 0
 	for i, field := range vg.Fields {
 		if len(field) == 0 {
 			ndb.nos.Logger.Warn("Skipping aggregate definition with empty field", zap.Binary("field", field), zap.Binary("value", vg.Values[i]))
@@ -172,7 +173,9 @@ func (ndb *NitrousDB) restoreAggregates(store hangar.Hangar) error {
 		if err != nil {
 			return fmt.Errorf("failed to initialize aggregate store for new aggregate (%d) in tier (%d): %w", aggId, tierId, err)
 		}
+		count++
 	}
+	ndb.nos.Logger.Info("Restored aggregate definitions", zap.Int("active", count), zap.Int("total", len(vg.Fields)))
 	return nil
 }
 
@@ -196,7 +199,8 @@ func (ndb *NitrousDB) processDeleteEvent(tierId ftypes.RealmID, event *rpc.Delet
 				ndb.tables.Delete(aggKey{tierId, aggId, codec})
 				ndb.tailer.Unsubscribe(table.Identity())
 				// We use an empty value to indicate that the aggregate is deactivated.
-				// We do this because Hangar currently doesn't have field deletion semantics.
+				// We do this because we currently don't have a way to delete fields
+				// when processing events from the tailer.
 				vg.Values[i] = []byte{}
 			}
 		}
