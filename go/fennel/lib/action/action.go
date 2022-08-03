@@ -3,6 +3,7 @@ package action
 import (
 	"encoding/json"
 	"fmt"
+	"time"
 
 	"fennel/lib/ftypes"
 	"fennel/lib/value"
@@ -196,7 +197,7 @@ func FromValueDict(dict value.Dict) (Action, error) {
 			return action, fmt.Errorf("action timestamp must be an integer")
 		}
 	} else {
-		return action, fmt.Errorf("action missing timestamp")
+		action.Timestamp = ftypes.Timestamp(time.Now().Unix())
 	}
 
 	if requestID, ok := dict.Get("request_id"); ok {
