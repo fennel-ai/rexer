@@ -14,6 +14,7 @@ import (
 	nitrous "fennel/nitrous/client"
 	"fennel/tier"
 
+	"github.com/Unleash/unleash-client-go/v3"
 	"github.com/samber/mo"
 	"go.uber.org/zap"
 )
@@ -70,7 +71,7 @@ func BatchValue(
 	aggIds []ftypes.AggId, aggOptions []aggregate.Options, keys []value.Value, kwargs []value.Dict,
 ) ([]value.Value, error) {
 	// Send a shadow request to nitrous if client has been initialized.
-	if tier.NitrousClient.IsPresent() {
+	if tier.NitrousClient.IsPresent() && unleash.IsEnabled("nitrous_shadow_requests") {
 		// Copy the input arrays to allow the original to be returned to the
 		// arena in case they were arena allocated without causing a race
 		// condition.
