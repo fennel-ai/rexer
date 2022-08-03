@@ -23,7 +23,7 @@ import (
 )
 
 // Closet encodes aggregate data as a two-level hierarchy in hangar.
-// The hangar key is (codec | tierId | groupkey | width | first-level index), and
+// The hangar key is (tierId | codec | groupkey | width | first-level index), and
 // the hangar field is (aggId | second-level index).
 // The first-level index is decided by the bucket index and the size of the
 // second-level index. For example, if the size of the second-level index is 25,
@@ -67,17 +67,17 @@ func unsafeGetBytes(s string) []byte {
 	return unsafe.Slice((*byte)(unsafe.Pointer((*reflect.StringHeader)(unsafe.Pointer(&s)).Data)), len(s))
 }
 
-// Encode (codec | tierId | groupkey | width | first-level index) as hangar key.
+// Encode (tierId | codec | groupkey | width | first-level index) as hangar key.
 func (c *Closet) encodeKey(keybuf []byte, groupkey string, width uint32, firstLevelIdx int) (int, error) {
 	curr := 0
-	n, err := binary.PutVarint(keybuf[curr:], int64(c.codec))
-	if err != nil {
-		return 0, fmt.Errorf("error encoding codec (%d): %w", c.codec, err)
-	}
-	curr += n
-	n, err = binary.PutUvarint(keybuf[curr:], uint64(c.tierId))
+	n, err := binary.PutUvarint(keybuf[curr:], uint64(c.tierId))
 	if err != nil {
 		return 0, fmt.Errorf("error encoding tierId (%d): %w", c.tierId, err)
+	}
+	curr += n
+	n, err = binary.PutVarint(keybuf[curr:], int64(c.codec))
+	if err != nil {
+		return 0, fmt.Errorf("error encoding codec (%d): %w", c.codec, err)
 	}
 	curr += n
 	n, err = binary.PutString(keybuf[curr:], groupkey)
@@ -131,9 +131,9 @@ func (c *Closet) getKeyGroupsToUpdate(groupkey string, buckets []temporal.TimeBu
 	// the keybuf slice.
 	kgs := make([]hangar.KeyGroup, len(buckets))
 	for i, b := range buckets {
-		// Encode key.
 		curr := 0
 
+		// Encode key.
 		n, err := c.encodeKey(buf[curr:], groupkey, b.Width, int(b.Index)/c.secondLevelSize)
 		if err != nil {
 			return nil, fmt.Errorf("error encoding key: %w", err)
