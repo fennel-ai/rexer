@@ -47,7 +47,7 @@ function ForgotForm() {
                 <Input placeholder="Work email" />
             </Form.Item>
             <Form.Item className={styles.formItem}>
-                <Button
+            <Button
                     type="primary"
                     htmlType="submit"
                     className={styles.formButton}
