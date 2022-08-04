@@ -89,9 +89,9 @@ func (s *server) setupRouter() {
 	s.POST(SignInURL, s.SignIn)
 	s.GET("/resetpassword", s.ResetPassword)
 	s.GET("/confirm_user", s.ConfirmUser)
+	s.POST("/resend_confirmation_email", s.ResendConfirmationEmail)
 
 	auth := s.Group("/", s.authenticationRequired())
-
 	auth.GET("/", controller.Dashboard)
 	auth.GET("/dashboard", controller.Dashboard)
 	auth.GET("/data", controller.Data)
@@ -181,7 +181,6 @@ func (s *server) SignUp(c *gin.Context) {
 		})
 		return
 	}
-	//		saveUserIntoCookie(c, user)
 	if _, err = userC.SendConfirmationEmail(ctx, s.mothership, s.sendgridClient(), user); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"error": "Failed to send confirmation email, please try again!",
@@ -223,5 +222,37 @@ func saveUserIntoCookie(c *gin.Context, user libuser.User) {
 	session.Set(RememberTokenKey, user.RememberToken.String)
 	if err := session.Save(); err != nil {
 		log.Printf("Error saving cookie: %v", err)
+	}
+}
+
+type SendConfirmationEmailForm struct {
+	Email string `json:"email"`
+}
+
+func (s *server) ResendConfirmationEmail(c *gin.Context) {
+	var form SendConfirmationEmailForm
+	if err := c.BindJSON(&form); err != nil {
+		// BindJSON would write status
+		return
+	}
+
+	ctx := context.Background()
+	err := userC.ResendConfirmationEmail(ctx, s.mothership, s.sendgridClient(), form.Email)
+	if err != nil {
+		switch err.(type) {
+		case *userC.ErrorUserNotFound, *userC.ErrorAlreadyConfirmed:
+			c.JSON(http.StatusBadRequest, gin.H{
+				"error": err.Error(),
+			})
+		default:
+			c.JSON(http.StatusBadRequest, gin.H{
+				"error": "Fail to resend confirmation email, please try again later.",
+			})
+			log.Printf("Failed to resend confirmation email: %v\n", err)
+		}
+	} else {
+		c.JSON(http.StatusOK, gin.H{
+			"data": gin.H{},
+		})
 	}
 }

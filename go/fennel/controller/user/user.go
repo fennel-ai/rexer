@@ -40,6 +40,12 @@ func (e *ErrorNotConfirmed) Error() string {
 	return "User not confirmed yet. Please confirm your email first."
 }
 
+type ErrorAlreadyConfirmed struct{}
+
+func (e *ErrorAlreadyConfirmed) Error() string {
+	return "User email is already confirmed"
+}
+
 func newUser(m mothership.Mothership, email, password string) (lib.User, error) {
 	hash, err := bcrypt.GenerateFromPassword([]byte(password), 14)
 
@@ -74,7 +80,7 @@ func checkPasswordHash(password string, hash []byte) bool {
 // TODO(xiao) testing the email
 func SendConfirmationEmail(c context.Context, m mothership.Mothership, client *sendgrid.Client, user lib.User) (lib.User, error) {
 	if user.IsConfirmed() {
-		return user, errors.New("User email is already confirmed")
+		return user, &ErrorAlreadyConfirmed{}
 	}
 	token := generateConfirmationToken(m)
 	user.ConfirmationToken = sql.NullString{
@@ -128,6 +134,15 @@ func generateToken(m mothership.Mothership) string {
 	binary.LittleEndian.PutUint64(bytes, rand.Uint64())
 	binary.LittleEndian.PutUint64(bytes[8:], rand.Uint64())
 	return base64.RawURLEncoding.EncodeToString(bytes)
+}
+
+func ResendConfirmationEmail(c context.Context, m mothership.Mothership, client *sendgrid.Client, email string) error {
+	user, err := db.FetchByEmail(m, email)
+	if err != nil {
+		return &ErrorUserNotFound{}
+	}
+	_, err = SendConfirmationEmail(c, m, client, user)
+	return err
 }
 
 func SignUp(c context.Context, m mothership.Mothership, email, password string) (lib.User, error) {
