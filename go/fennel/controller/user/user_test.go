@@ -52,6 +52,13 @@ func TestSignInAfterSignUp(t *testing.T) {
 	_, err = SignIn(ctx, m, "test@fennel.ai", "123")
 	assert.ErrorIs(t, err, &ErrorWrongPassword{})
 
+	_, err = SignIn(ctx, m, "test@fennel.ai", "12345")
+	assert.ErrorIs(t, err, &ErrorNotConfirmed{})
+
+	user.ConfirmedAt = sql.NullInt64{Valid: true, Int64: 123}
+	_, err = db.UpdateConfirmation(m, user)
+	assert.NoError(t, err)
+
 	sameUser, err := SignIn(ctx, m, "test@fennel.ai", "12345")
 	assert.NoError(t, err)
 

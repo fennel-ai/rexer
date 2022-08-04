@@ -34,6 +34,12 @@ func (e *ErrorWrongPassword) Error() string {
 	return "Wrong password"
 }
 
+type ErrorNotConfirmed struct{}
+
+func (e *ErrorNotConfirmed) Error() string {
+	return "User not confirmed yet. Please confirm your email first."
+}
+
 func newUser(m mothership.Mothership, email, password string) (lib.User, error) {
 	hash, err := bcrypt.GenerateFromPassword([]byte(password), 14)
 
@@ -143,15 +149,18 @@ func SignUp(c context.Context, m mothership.Mothership, email, password string) 
 
 func SignIn(c context.Context, m mothership.Mothership, email, password string) (lib.User, error) {
 	user, err := db.FetchByEmail(m, email)
-
 	if err != nil {
 		return lib.User{}, &ErrorUserNotFound{}
 	}
-	if checkPasswordHash(password, user.EncryptedPassword) {
-		return user, nil
-	} else {
+
+	if !checkPasswordHash(password, user.EncryptedPassword) {
 		return lib.User{}, &ErrorWrongPassword{}
 	}
+
+	if !user.IsConfirmed() {
+		return user, &ErrorNotConfirmed{}
+	}
+	return user, nil
 }
 
 func ConfirmUser(c context.Context, m mothership.Mothership, token string) (lib.User, error) {
