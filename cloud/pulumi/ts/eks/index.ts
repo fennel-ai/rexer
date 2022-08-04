@@ -692,6 +692,16 @@ export const setup = async (input: inputType): Promise<pulumi.Output<outputType>
             process.exit(1)
         }
         const n = new eks.ManagedNodeGroup(nodeGroup.name, {
+            // Todo(Amit): Stop using fixed RSA keys and migrate to Tailscale.
+            // Following were the hard part of getting things up and running with tailscale.
+            // 1. Need to figure out if every node should be running tailscale SSH or
+            //    one node per plane serving as reverse tunnel to the other nodes.
+            // 2. Bootstrapping tailscale needs running custom script on launch. ManagedNodeGroup does provide
+            //    that mechanism using NodeLaunchTemplate and ec2.LaunchTemplate, but setting all this
+            //    up becomes too configuration heavy and prone to errors and needs careful evaluation.
+            remoteAccess: {
+                ec2SshKey: "eks-workers"
+            },
             cluster: cluster,
             scalingConfig: {
                 // desired size should be set only for scenarios where the cluster should start with a certain set
