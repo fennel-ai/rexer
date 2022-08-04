@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	controller "fennel/controller/bridge"
+	userC "fennel/controller/user"
 	"fennel/model/user"
 	"fennel/mothership"
 	"log"
@@ -13,6 +14,7 @@ import (
 	"github.com/gin-contrib/sessions"
 	"github.com/gin-contrib/sessions/cookie"
 	"github.com/gin-gonic/gin"
+	"github.com/sendgrid/sendgrid-go"
 
 	libuser "fennel/lib/user"
 )
@@ -20,11 +22,13 @@ import (
 type server struct {
 	*gin.Engine
 	mothership mothership.Mothership
+	args       serverArgs
 }
 
 type serverArgs struct {
 	mothership.MothershipArgs
-	SessionKey string `arg:"--bridge_session_key,env:BRIDGE_SESSION_KEY"`
+	SessionKey     string `arg:"required,--bridge_session_key,env:BRIDGE_SESSION_KEY"`
+	SendgridAPIKey string `arg:"required,--sendgrid_api_key,env:SENDGRID_API_KEY"`
 }
 
 func NewServer() (server, error) {
@@ -43,6 +47,7 @@ func NewServer() (server, error) {
 	s := server{
 		Engine:     r,
 		mothership: m,
+		args:       args,
 	}
 	s.setupRouter()
 
@@ -83,6 +88,7 @@ func (s *server) setupRouter() {
 	s.GET(SignInURL, s.SignInGet)
 	s.POST(SignInURL, s.SignIn)
 	s.GET("/resetpassword", s.ResetPassword)
+	s.GET("/confirm_user", s.ConfirmUser)
 
 	auth := s.Group("/", s.authenticationRequired())
 
@@ -120,9 +126,37 @@ func (s *server) ResetPassword(c *gin.Context) {
 	c.HTML(http.StatusOK, "sign_on.tmpl", gin.H{"title": "Fennel | Reset Password", "page": ResetPasswordPage})
 }
 
+type ConfirmPassordForm struct {
+	Token string `form:"token"`
+}
+
+func (s *server) ConfirmUser(c *gin.Context) {
+	// TODO(xiao) polish (rediret to sign in page with flash message)
+	var form ConfirmPassordForm
+	if err := c.ShouldBind(&form); err != nil {
+		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{
+			"error": err.Error(),
+		})
+		return
+	}
+
+	ctx := context.Background()
+	if _, err := userC.ConfirmUser(ctx, s.mothership, form.Token); err != nil {
+		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{
+			"error": err.Error(),
+		})
+		return
+	}
+	c.Redirect(http.StatusFound, SignInURL)
+}
+
 type SignOnForm struct {
 	Email    string `json:"email"`
 	Password string `json:"password"`
+}
+
+func (s *server) sendgridClient() *sendgrid.Client {
+	return sendgrid.NewSendClient(s.args.SendgridAPIKey)
 }
 
 func (s *server) SignUp(c *gin.Context) {
@@ -140,17 +174,25 @@ func (s *server) SignUp(c *gin.Context) {
 	}
 
 	ctx := context.Background()
-	user, err := controller.SignUp(ctx, s.mothership, form.Email, form.Password)
+	user, err := userC.SignUp(ctx, s.mothership, form.Email, form.Password)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"error": err.Error(),
 		})
-	} else {
-		saveUserIntoCookie(c, user)
-		c.JSON(http.StatusCreated, gin.H{
-			"data": gin.H{},
-		})
+		return
 	}
+	//		saveUserIntoCookie(c, user)
+	if _, err = userC.SendConfirmationEmail(ctx, s.mothership, s.sendgridClient(), user); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "Failed to send confirmation email, please try again!",
+		})
+		log.Printf("Failed to send confirmation email: %v\n", err)
+		return
+	}
+
+	c.JSON(http.StatusCreated, gin.H{
+		"data": gin.H{},
+	})
 }
 
 func (s *server) SignIn(c *gin.Context) {
@@ -161,7 +203,7 @@ func (s *server) SignIn(c *gin.Context) {
 	}
 
 	ctx := context.Background()
-	user, err := controller.SignIn(ctx, s.mothership, form.Email, form.Password)
+	user, err := userC.SignIn(ctx, s.mothership, form.Email, form.Password)
 
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{

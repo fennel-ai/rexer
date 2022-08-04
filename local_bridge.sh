@@ -1,11 +1,12 @@
 #!/bin/bash
 
-MOTHERSHIP_ID=42
-MOTHERSHIP_MYSQL_ADDRESS=127.0.0.1
-MOTHERSHIP_MYSQL_DBNAME=controldb_dev
-MOTHERSHIP_MYSQL_USERNAME=dev
-MOTHERSHIP_MYSQL_PASSWORD=jumpstartml
-BRIDGE_SESSION_KEY=secret
+export MOTHERSHIP_ID=42
+export MOTHERSHIP_MYSQL_ADDRESS=127.0.0.1
+export MOTHERSHIP_MYSQL_DBNAME=controldb_dev
+export MOTHERSHIP_MYSQL_USERNAME=dev
+export MOTHERSHIP_MYSQL_PASSWORD=jumpstartml
+export BRIDGE_SESSION_KEY=secret
+export SENDGRID_API_KEY="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"
 
 pushd ./go/fennel >/dev/null
 go run --tags=dynamic fennel/service/bridge/
