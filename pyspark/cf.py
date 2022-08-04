@@ -198,11 +198,15 @@ cf.createOrReplaceTempView("CF")
 zip_cf = cf.withColumn("value", arrays_zip("item","score")).select("key","value")
 folder_name = f'{args["AGGREGATE_NAME"]}-{args["DURATION"]}'
 
-aggregate_path = f's3://{args["OUTPUT_BUCKET"]}/t_{args["TIER_ID"]}/{folder_name}/day={day}/{now_utc.strftime("%H:%M")}/{args["AGGREGATE_TYPE"]}'
+cur_time = datetime.utcnow()
+month = cur_time.strftime("%m")
+day = cur_time.strftime("%d")
+
+aggregate_path = f's3://{args["OUTPUT_BUCKET"]}/t_{args["TIER_ID"]}/{folder_name}/month={month}/day={day}/{now_utc.strftime("%H:%M")}/{args["AGGREGATE_TYPE"]}'
 zip_cf.write.mode('overwrite').json(aggregate_path)
 
 # Write SUCCESS file to S3
 client = boto3.client('s3')
 some_binary_data = b'Here we have some data'
-cur_timestamp = int(datetime.utcnow().timestamp())
-client.put_object(Body=some_binary_data, Bucket=args["OUTPUT_BUCKET"], Key=f't_{args["TIER_ID"]}/{folder_name}/day={day}/{now_utc.strftime("%H:%M")}/{args["AGGREGATE_TYPE"]}/_SUCCESS-{cur_timestamp}')
+cur_timestamp = int(cur_time.timestamp())
+client.put_object(Body=some_binary_data, Bucket=args["OUTPUT_BUCKET"], Key=f't_{args["TIER_ID"]}/{folder_name}/month={month}/day={day}/{now_utc.strftime("%H:%M")}/{args["AGGREGATE_TYPE"]}/_SUCCESS-{cur_timestamp}')
