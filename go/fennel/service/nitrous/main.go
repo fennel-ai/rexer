@@ -35,10 +35,10 @@ func main() {
 
 	// Setup tracer provider (which exports remotely) if an endpoint is defined.
 	if len(flags.TracerArgs.OtlpEndpoint) > 0 {
-		// Sampling ratio of 1.0 means 100% of traces are exported, unless this
+		// A sampling ratio of 1.0 means 100% of traces are exported, unless this
 		// is a part of a distributed trace, in which case sampling is pre-determined
 		// by the parent trace being sampled.
-		err = timer.InitProvider(flags.TracerArgs.OtlpEndpoint, timer.PathSampler{SamplingRatio: 1.0})
+		err = timer.InitProvider(flags.TracerArgs.OtlpEndpoint, timer.PathSampler{SamplingRatio: flags.TracerArgs.SamplingRatio})
 		if err != nil {
 			log.Fatalf("Failed to setup tracing provider: %v", err)
 		}

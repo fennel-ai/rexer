@@ -21,7 +21,8 @@ var (
 )
 
 type TracerArgs struct {
-	OtlpEndpoint string `arg:"--otlp-endpoint,env:OTLP_ENDPOINT" default:""`
+	OtlpEndpoint  string  `arg:"--otlp-endpoint,env:OTLP_ENDPOINT" default:""`
+	SamplingRatio float32 `arg:"--trace-sampling-ratio,env:TRACE_SAMPLING_RATIO" default:"0.01"`
 }
 
 func WithTracing(ctx context.Context) context.Context {
