@@ -62,18 +62,19 @@ type layered struct {
 	doneCh chan struct{}
 }
 
-var cacheHits = promauto.NewCounter(
-	prometheus.CounterOpts{
-		Name: "hangar_layered_cache_hits",
-		Help: "Number of cache hits in layered store",
-	},
-)
-
-var cacheMisses = promauto.NewCounter(
-	prometheus.CounterOpts{
-		Name: "hangar_layered_cache_misses",
-		Help: "Number of cache misses in layered store",
-	},
+var (
+	cacheHits = promauto.NewCounter(
+		prometheus.CounterOpts{
+			Name: "hangar_layered_cache_hits",
+			Help: "Number of cache hits in layered store",
+		},
+	)
+	cacheMisses = promauto.NewCounter(
+		prometheus.CounterOpts{
+			Name: "hangar_layered_cache_misses",
+			Help: "Number of cache misses in layered store",
+		},
+	)
 )
 
 func (l *layered) Restore(source io.Reader) error {
@@ -153,28 +154,28 @@ func (l *layered) GetMany(ctx context.Context, kgs []hangar.KeyGroup) ([]hangar.
 			ptr = append(ptr, i)
 			notfound = append(notfound, kg)
 		} else if len(cval.Fields) != len(kgs[i].Fields.MustGet()) {
-			found := make(map[string]struct{}, len(kgs[i].Fields.MustGet()))
+			numFound := len(cval.Fields)
+			cacheHits.Add(float64(numFound))
+			found := make(map[string]struct{}, numFound)
 			for _, field := range cval.Fields {
 				found[string(field)] = struct{}{}
 			}
-			var kg hangar.KeyGroup
-			fields := make(hangar.Fields, 0, len(kgs[i].Fields.MustGet())-len(cval.Fields))
+			numRequested := len(kgs[i].Fields.MustGet())
+			fields := make(hangar.Fields, 0, numRequested-numFound)
 			for _, field := range kgs[i].Fields.OrEmpty() {
 				if _, ok := found[string(field)]; !ok {
 					fields = append(fields, field)
 				}
 			}
-			kg.Prefix = kgs[i].Prefix
-			kg.Fields = mo.Some(fields)
 			ptr = append(ptr, i)
-			notfound = append(notfound, kg)
+			notfound = append(notfound, hangar.KeyGroup{
+				Prefix: kgs[i].Prefix,
+				Fields: mo.Some(fields),
+			})
+		} else {
+			cacheHits.Add(float64(len(cval.Fields)))
 		}
 	}
-
-	// Track cache hits/misses at keygroup granularity. We might want to track
-	// these at a lower (field-level) granularity, but this is fine for now.
-	cacheHits.Add(float64(len(kgs) - len(notfound)))
-	cacheMisses.Add(float64(len(notfound)))
 
 	if len(notfound) == 0 {
 		return results, nil
@@ -183,16 +184,20 @@ func (l *layered) GetMany(ctx context.Context, kgs []hangar.KeyGroup) ([]hangar.
 	if err != nil {
 		return nil, fmt.Errorf("failed to get values from the db: %w", err)
 	}
-	tofill := make([]hangar.KeyGroup, 0, len(notfound))
+	tofill := notfound[:0]
 	for i, dbval := range dbvals {
 		if len(dbval.Fields) > 0 {
+			// Count retrieved fields as cache misses if-and-only if the fields
+			// were explicitly requested.
+			if kgs[ptr[i]].Fields.IsPresent() {
+				cacheMisses.Add(float64(len(dbval.Fields)))
+			}
 			if err = results[ptr[i]].Update(dbval); err != nil {
 				return nil, fmt.Errorf("failed to update valgroup: %w", err)
 			}
 			tofill = append(tofill, notfound[i])
 		}
 	}
-
 	// fill whatever cache misses we saw
 	if len(tofill) > 0 {
 		if err = l.fill(tofill); err != nil {
@@ -233,22 +238,26 @@ func (l *layered) fill(kgs []hangar.KeyGroup) error {
 func (l *layered) processFillReqs() {
 	defer close(l.doneCh)
 	arr := [2 * FILL_BATCH_SIZE]hangar.KeyGroup{}
+	timeout := FILL_TIMEOUT_MS * time.Millisecond
 	for {
 		batch := arr[:0]
-		req, ok := <-l.fillReqChan
-		if !ok {
-			break
-		}
-		batch = append(batch, req...)
-		tick := time.After(FILL_TIMEOUT_MS * time.Millisecond)
-	POLL:
+		timer := time.NewTimer(timeout)
+	FILL:
 		for len(batch) < FILL_BATCH_SIZE {
 			select {
-			case kgs := <-l.fillReqChan:
+			case kgs, ok := <-l.fillReqChan:
+				if !ok {
+					return
+				}
 				batch = append(batch, kgs...)
-			case <-tick:
-				break POLL
+			case <-timer.C:
+				break FILL
 			}
+		}
+		// Stop the timer explicitly to make it eligible for garbage collection.
+		_ = timer.Stop()
+		if len(batch) == 0 {
+			continue
 		}
 		dbvals, err := l.db.GetMany(context.Background(), batch)
 		if err != nil {
@@ -257,7 +266,6 @@ func (l *layered) processFillReqs() {
 		}
 		keys := make([]hangar.Key, 0, len(batch))
 		valgroups := make([]hangar.ValGroup, 0, len(batch))
-
 		for i, dbval := range dbvals {
 			if len(dbval.Fields) == 0 {
 				// nothing to put in cache
