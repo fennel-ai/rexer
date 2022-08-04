@@ -87,14 +87,11 @@ export const setup = async (input: inputType): Promise<outputType> => {
                     `,
                 }
             },
-            // unleash's default image tag does not have an arm64 compatible build. They introduced the support post
-            // version `4`. Use latest instead of tagging to a specific version.
-            "image": {
-                "tag": "latest",
-            },
+            // by default uses image tagged 4.4.4
             "nodeSelector": {
-                // we should schedule all components of Unleash on ON_DEMAND instances
+                // we should schedule all components of Unleash on ON_DEMAND and X86 instances
                 "eks.amazonaws.com/capacityType": "ON_DEMAND",
+                "kubernetes.io/arch": "amd64",
             },
             "fullnameOverride": `t-${input.tierId}-unleash`,
             "postgresql": {
