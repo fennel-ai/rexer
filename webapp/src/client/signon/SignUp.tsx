@@ -8,6 +8,12 @@ import Pancake from "./Pancake";
 
 function SignUp() {
     const [submitted, setSubmitted] = useState(false);
+    const [submittedEmail, setSubmittedEmail] = useState("");
+
+    const onSubmit = (email: string) => {
+        setSubmitted(true);
+        setSubmittedEmail(email);
+    };
 
     return (
         <div className={styles.page}>
@@ -16,8 +22,8 @@ function SignUp() {
                 <img src="images/logo.svg" alt="logo" className={styles.logo} />
                 <div className={styles.logoDivider} />
                 {
-                    submitted ? <ConfirmEmail />
-                        : <SignUpForm onSubmit={() => setSubmitted(true)} />
+                    submitted ? <ConfirmEmail email={submittedEmail} />
+                        : <SignUpForm onSubmit={onSubmit} />
                 }
             </div>
         </div>
@@ -34,7 +40,7 @@ interface Error {
 }
 
 interface SignUpFormProps {
-    onSubmit: () => void,
+    onSubmit: (email: string) => void,
 }
 
 function SignUpForm(props: SignUpFormProps) {
@@ -46,11 +52,11 @@ function SignUpForm(props: SignUpFormProps) {
             email: values.email,
             password: values.password,
         })
-        .then(function () {
+        .then(() => {
             setSubmitting(false);
-            props.onSubmit();
+            props.onSubmit(values.email);
         })
-        .catch(function (error: AxiosError) {
+        .catch((error: AxiosError) => {
             setSubmitting(false);
             notification.error({
                 message: "Something went wrong",
@@ -128,7 +134,11 @@ function SignUpForm(props: SignUpFormProps) {
     );
 }
 
-function ConfirmEmail() {
+interface ConfirmEmailProps {
+    email: string,
+}
+
+function ConfirmEmail(props: ConfirmEmailProps) {
     return (
         <div className={styles.confirmEmailContainer}>
             <CheckCircleOutlined
@@ -144,22 +154,54 @@ function ConfirmEmail() {
                 <p className={styles.missEmail}>
                     Didn’t get an email?
                 </p>
-                <ResendButton />
+                <ResendButton {...props} />
             </div>
         </div>
     )
 }
 
-function ResendButton() {
-    return (
-        <Button
-            type="primary"
-            htmlType="submit"
-            className={styles.resendButton}
-            style={{background: styles.resendButtonBackground}}>
+function ResendButton(props: ConfirmEmailProps) {
+    const [resent, setResent] = useState(false);
 
-            Resend Email
-        </Button>
+    const onFinish = () => {
+        setResent(true);
+        axios.post("/resend_confirmation_email", {
+            email: props.email,
+        })
+        .then(() => {
+            notification.success({
+                message: "Confirmation email resent",
+                description: "Please check your email.",
+                placement: "bottomRight",
+            });
+            setTimeout(() => {
+                setResent(false);
+            }, 10 * 1000);
+        })
+        .catch((error: AxiosError) => {
+            notification.error({
+                message: "Something went wrong",
+                description: (error.response?.data as Error).error,
+                placement: "bottomRight",
+            });
+            setResent(false);
+        });
+    };
+    return (
+        <Form
+            name="resend_confirmation_form"
+            onFinish={onFinish}
+        >
+            <Button
+                type="primary"
+                htmlType="submit"
+                className={styles.resendButton}
+                style={{background: styles.resendButtonBackground}}
+                disabled={resent}>
+
+                Resend email
+            </Button>
+        </Form>
     );
 }
 

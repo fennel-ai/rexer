@@ -71,6 +71,7 @@ func (s *server) authenticationRequired() gin.HandlerFunc {
 			}
 		}
 		c.Redirect(http.StatusFound, SignInURL)
+		c.Abort()
 	}
 }
 
