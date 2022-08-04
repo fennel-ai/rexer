@@ -103,7 +103,7 @@ func generateConfirmationLink(token string) url.URL {
 	return url.URL{
 		Scheme:   "http",
 		Host:     "localhost:8080",
-		Path:     "confirm_email",
+		Path:     "confirm_user",
 		RawQuery: fmt.Sprintf("token=%s", token),
 	}
 }
@@ -152,4 +152,18 @@ func SignIn(c context.Context, m mothership.Mothership, email, password string) 
 	} else {
 		return lib.User{}, &ErrorWrongPassword{}
 	}
+}
+
+func ConfirmUser(c context.Context, m mothership.Mothership, token string) (lib.User, error) {
+	user, err := db.FetchByConfirmationToken(m, token)
+	if err != nil {
+		return lib.User{}, &ErrorUserNotFound{}
+	}
+	if user.IsConfirmed() {
+		return user, nil
+	}
+	user.ConfirmedAt = sql.NullInt64{Int64: time.Now().UnixMicro(), Valid: true}
+	user.ConfirmationToken = sql.NullString{Valid: false}
+	user.ConfirmationSentAt = sql.NullInt64{Valid: false}
+	return db.UpdateConfirmation(m, user)
 }

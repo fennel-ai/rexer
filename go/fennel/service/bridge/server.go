@@ -88,6 +88,7 @@ func (s *server) setupRouter() {
 	s.GET(SignInURL, s.SignInGet)
 	s.POST(SignInURL, s.SignIn)
 	s.GET("/resetpassword", s.ResetPassword)
+	s.GET("/confirm_user", s.ConfirmUser)
 
 	auth := s.Group("/", s.authenticationRequired())
 
@@ -123,6 +124,30 @@ func (s *server) SignInGet(c *gin.Context) {
 
 func (s *server) ResetPassword(c *gin.Context) {
 	c.HTML(http.StatusOK, "sign_on.tmpl", gin.H{"title": "Fennel | Reset Password", "page": ResetPasswordPage})
+}
+
+type ConfirmPassordForm struct {
+	Token string `form:"token"`
+}
+
+func (s *server) ConfirmUser(c *gin.Context) {
+	// TODO(xiao) polish (rediret to sign in page with flash message)
+	var form ConfirmPassordForm
+	if err := c.ShouldBind(&form); err != nil {
+		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{
+			"error": err.Error(),
+		})
+		return
+	}
+
+	ctx := context.Background()
+	if _, err := userC.ConfirmUser(ctx, s.mothership, form.Token); err != nil {
+		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{
+			"error": err.Error(),
+		})
+		return
+	}
+	c.Redirect(http.StatusFound, SignInURL)
 }
 
 type SignOnForm struct {
