@@ -374,15 +374,6 @@ const planeConfs: Record<number, PlaneConf> = {
                 // TODO: For nitrous, we may need to spin up ARM specific node group
             ],
         },
-        // Run nitrous on the plane.
-        nitrousConf: {
-            replicas: 1,
-            storageCapacityGB: 10,
-            storageClass: "io1",
-            blockCacheMB: 512,
-            kvCacheMB: 1024,
-            binlog: {},
-        }
     },
     // Fennel's staging data plane to run dev tiers
     3: {
