@@ -1,9 +1,9 @@
 package main
 
 import (
-	controller "fennel/controller/bridge"
-	userC "fennel/controller/user"
 	"fennel/mothership"
+	profileC "fennel/mothership/controller/profile"
+	userC "fennel/mothership/controller/user"
 	"fmt"
 	"log"
 	"net/http"
@@ -73,16 +73,18 @@ func (s *server) setupRouter() {
 	s.POST("/resend_confirmation_email", s.ResendConfirmationEmail)
 
 	auth := s.Group("/", AuthenticationRequired(s.mothership))
-	auth.GET("/", controller.Dashboard)
-	auth.GET("/dashboard", controller.Dashboard)
-	auth.GET("/data", controller.Data)
-	auth.GET("/profiles", controller.Profiles)
+	auth.GET("/", s.Dashboard)
+	auth.GET("/dashboard", s.Dashboard)
+	auth.GET("/data", s.Data)
+	auth.GET("/profiles", profileC.Profiles)
 }
 
 const (
 	SignUpPage        = "signup"
 	SignInPage        = "signin"
 	ResetPasswordPage = "resetpassword"
+	DashboardPage     = "dashboard"
+	DataPage          = "data"
 )
 
 func title(name string) string {
@@ -232,4 +234,12 @@ func (s *server) ResendConfirmationEmail(c *gin.Context) {
 			"data": gin.H{},
 		})
 	}
+}
+
+func (s *server) Dashboard(c *gin.Context) {
+	c.HTML(http.StatusOK, "index.tmpl", gin.H{"title": "Fennel | Dashboard", "page": DashboardPage})
+}
+
+func (s *server) Data(c *gin.Context) {
+	c.HTML(http.StatusOK, "index.tmpl", gin.H{"title": "Fennel | Data", "page": DataPage})
 }

@@ -8,7 +8,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	db "fennel/model/user"
+	db "fennel/mothership/model/user"
 )
 
 func TestNewUser(t *testing.T) {
