@@ -6,6 +6,8 @@ import * as aws from "@pulumi/aws";
 import * as fs from 'fs';
 import * as process from "process";
 import * as path from 'path';
+import { KeyPair } from "@pulumi/aws/ec2";
+import { exit } from "process";
 
 // NOTE: The AMI used should be an eks-worker AMI that can be searched
 // on the AWS AMI catalog with one of the following prefixes:
@@ -691,6 +693,13 @@ export const setup = async (input: inputType): Promise<pulumi.Output<outputType>
             console.error(`node group with capacity type ON_DEMAND should have a single instance type. node group: ${nodeGroup.name}`)
             process.exit(1)
         }
+        try {
+            var publicKey: string = fs.readFileSync("../eks/ssh_keypair/id_rsa.pub", "utf-8")
+        } catch (err) {
+            console.log("Failed to read key-pair: " + err)
+            exit(1)
+        }
+        const keyPair = new aws.ec2.KeyPair("eks-workers", { publicKey: publicKey }, { provider: awsProvider })
         const n = new eks.ManagedNodeGroup(nodeGroup.name, {
             // Todo(Amit): Stop using fixed RSA keys and migrate to Tailscale.
             // Following were the hard part of getting things up and running with tailscale.
@@ -700,7 +709,7 @@ export const setup = async (input: inputType): Promise<pulumi.Output<outputType>
             //    that mechanism using NodeLaunchTemplate and ec2.LaunchTemplate, but setting all this
             //    up becomes too configuration heavy and prone to errors and needs careful evaluation.
             remoteAccess: {
-                ec2SshKey: "eks-workers"
+                ec2SshKey: keyPair.keyName
             },
             cluster: cluster,
             scalingConfig: {
