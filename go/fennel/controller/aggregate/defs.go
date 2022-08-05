@@ -177,6 +177,27 @@ func RetrieveActive(ctx context.Context, tier tier.Tier) ([]aggregate.Aggregate,
 	return modelAgg.RetrieveActive(ctx, tier)
 }
 
+func RunAggregate(ctx context.Context, tier tier.Tier, aggname ftypes.AggName, duration int) error {
+	agg, err := Retrieve(ctx, tier, aggname)
+	if err != nil {
+		return err
+	}
+	if !agg.IsOffline() {
+		return fmt.Errorf("only offline computed aggregates can be run")
+	}
+	found := false
+	for _, d := range agg.Options.Durations {
+		if d == uint32(duration) {
+			found = true
+			break
+		}
+	}
+	if !found {
+		return fmt.Errorf("duration %d not found in aggregate %s", duration, aggname)
+	}
+	return tier.GlueClient.StartAggregate(tier.ID, agg, duration)
+}
+
 func Deactivate(ctx context.Context, tier tier.Tier, aggname ftypes.AggName) error {
 	if len(aggname) == 0 {
 		return fmt.Errorf("aggregate name can not be of length zero")

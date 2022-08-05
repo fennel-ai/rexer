@@ -15,7 +15,7 @@ import (
 
 var supportedHyperParameters = hp.HyperParamRegistry{
 	"cf": map[string]hp.HyperParameterInfo{
-		"min_co_occurence": {Default: 3, Type: reflect.Int, Options: []string{}},
+		"min_co_occurence":          {Default: 3, Type: reflect.Int, Options: []string{}},
 		"object_normalization_func": {Default: "sqrt", Type: reflect.String, Options: []string{"none", "log", "sqrt"}},
 	},
 }
@@ -55,16 +55,51 @@ func getGlueTriggerActions(jobName string, arguments map[string]*string) []*glue
 	return actions
 }
 
-func (c GlueClient) createTrigger(tierID ftypes.RealmID, aggregateName, cronSchedule, jobName string, jobArguments map[string]*string) error {
-	triggerName := fmt.Sprintf("%d::%s::%s", tierID, aggregateName, *jobArguments["--DURATION"])
+func getTriggerName(tierID ftypes.RealmID, aggregateName ftypes.AggName, duration string) string {
+	return fmt.Sprintf("%d::%s::%s", tierID, aggregateName, duration)
+}
+
+func (c GlueClient) createTrigger(tierID ftypes.RealmID, aggregateName ftypes.AggName, cronSchedule, jobName string, jobArguments map[string]*string) error {
 	input := glue.CreateTriggerInput{
-		Name:            aws.String(triggerName),
+		Name:            aws.String(getTriggerName(tierID, aggregateName, *jobArguments["--DURATION"])),
 		Actions:         getGlueTriggerActions(jobName, jobArguments),
 		Type:            aws.String(glue.TriggerTypeScheduled),
 		Schedule:        aws.String("cron(" + cronSchedule + " *)"),
 		StartOnCreation: aws.Bool(true),
 	}
 	_, err := c.client.CreateTrigger(&input)
+	return err
+}
+
+func (c GlueClient) StartAggregate(tierID ftypes.RealmID, agg aggregate.Aggregate, duration int) error {
+	aggregateType := strings.ToLower(string(agg.Options.AggType))
+	jobArguments := map[string]*string{
+		"--AGGREGATE_NAME": aws.String(string(agg.Name)),
+		"--AGGREGATE_TYPE": aws.String(aggregateType),
+		"--LIMIT":          aws.String(fmt.Sprintf("%d", agg.Options.Limit)),
+	}
+
+	if _, ok := supportedHyperParameters[aggregateType]; ok {
+		hyperparameters, err := hp.GetHyperParameters(aggregateType, agg.Options.HyperParameters, supportedHyperParameters)
+		if err != nil {
+			return err
+		}
+
+		hyperparametersStr, err := json.Marshal(hyperparameters)
+
+		if err != nil {
+			return err
+		}
+		jobArguments["--HYPERPARAMETERS"] = aws.String(string(hyperparametersStr))
+	}
+	jobArguments["--DURATION"] = aws.String(fmt.Sprintf("%d", duration))
+	input := glue.StartJobRunInput{
+		JobName:         aws.String("t-" + fmt.Sprintf("%d", tierID) + "-" + aggregateType),
+		Arguments:       jobArguments,
+		NumberOfWorkers: aws.Int64(5),
+		WorkerType:      aws.String("G.2X"),
+	}
+	_, err := c.client.StartJobRun(&input)
 	return err
 }
 
@@ -99,7 +134,7 @@ func (c GlueClient) ScheduleOfflineAggregate(tierID ftypes.RealmID, agg aggregat
 	for _, duration := range agg.Options.Durations {
 		jobArguments["--DURATION"] = aws.String(fmt.Sprintf("%d", duration))
 
-		err := c.createTrigger(tierID, string(agg.Name), agg.Options.CronSchedule, jobName, jobArguments)
+		err := c.createTrigger(tierID, agg.Name, agg.Options.CronSchedule, jobName, jobArguments)
 		if err != nil {
 			return err
 		}
