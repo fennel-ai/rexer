@@ -3,9 +3,6 @@ package profile
 import (
 	"context"
 	"encoding/json"
-	"fmt"
-	"sort"
-	"strconv"
 	"testing"
 
 	"fennel/lib/profile"
@@ -13,7 +10,6 @@ import (
 	"fennel/lib/value"
 	"fennel/test"
 	"fennel/tier"
-	"reflect"
 
 	"github.com/stretchr/testify/assert"
 )
@@ -170,17 +166,12 @@ func testQuery(t *testing.T, p provider) {
 	defer test.Teardown(tier)
 	ctx := context.Background()
 	val1 := value.Int(2)
-	val3 := value.Int(15)
 
 	profiles := []profile.ProfileItem{
-		profile.NewProfileItem("12", "1", "score", val3, 20),
+		profile.NewProfileItem("12", "1", "score", val1, 20),
 		profile.NewProfileItem("12", "2", "score", val1, 15),
-		profile.NewProfileItem("12", "3", "score", val3, 15),
-	}
-
-	profileKeyToProfile := make(map[profile.ProfileItemKey]profile.ProfileItem)
-	for _, p := range profiles {
-		profileKeyToProfile[p.GetProfileKey()] = p
+		profile.NewProfileItem("12", "3", "score", val1, 15),
+		profile.NewProfileItem("13", "1", "score", val1, 15),
 	}
 
 	assert.NoError(t, p.setBatch(ctx, tier, profiles))
@@ -193,13 +184,18 @@ func testQuery(t *testing.T, p provider) {
 		}
 	`), &filter)
 	assert.NoError(t, err)
-	v, _ := tier.Cache.Get(context.Background(), strconv.FormatUint(filter.Hash(), 10))
-	assert.Equal(t, v.(string), "")
 
-	actualProfiles, err := p.query(ctx, tier, &filter)
-	sort.Slice(actualProfiles, func(i, j int) bool {
-		return fmt.Sprintf("%v", actualProfiles[i].GetProfileKey()) < fmt.Sprintf("%v", actualProfiles[j].GetProfileKey())
-	})
+	actualProfiles, err := p.query(ctx, tier, &filter, sql.NewPagination())
 	assert.NoError(t, err)
-	assert.True(t, reflect.DeepEqual(actualProfiles, profiles))
+	assert.Equal(t, profiles[0:3], actualProfiles)
+
+	pagination := sql.Pagination{Page: 2, Per: 1}
+	actualProfiles, err = p.query(ctx, tier, &filter, pagination)
+	assert.NoError(t, err)
+	assert.Equal(t, profiles[1:2], actualProfiles)
+
+	pagination = sql.Pagination{Page: 2, Per: 2}
+	actualProfiles, err = p.query(ctx, tier, &filter, pagination)
+	assert.NoError(t, err)
+	assert.Equal(t, profiles[2:3], actualProfiles)
 }

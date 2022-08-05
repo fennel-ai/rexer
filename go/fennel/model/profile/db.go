@@ -24,7 +24,7 @@ type provider interface {
 	setBatch(ctx context.Context, tier tier.Tier, profiles []profile.ProfileItem) error
 	get(ctx context.Context, tier tier.Tier, profileKey profile.ProfileItemKey) (profile.ProfileItem, error)
 	getBatch(ctx context.Context, tier tier.Tier, profileKeys []profile.ProfileItemKey) ([]profile.ProfileItem, error)
-	query(ctx context.Context, tier tier.Tier, filter sql.SqlFilter) ([]profile.ProfileItem, error)
+	query(ctx context.Context, tier tier.Tier, filter sql.SqlFilter, pagination sql.Pagination) ([]profile.ProfileItem, error)
 }
 
 type dbProvider struct{}
@@ -157,7 +157,8 @@ func (D dbProvider) get(ctx context.Context, tier tier.Tier, profileKey profile.
 
 }
 
-func (D dbProvider) query(ctx context.Context, tier tier.Tier, filter sql.SqlFilter) ([]profile.ProfileItem, error) {
+func (D dbProvider) query(ctx context.Context, tier tier.Tier, filter sql.SqlFilter, pagination sql.Pagination) ([]profile.ProfileItem, error) {
+	// TODO(xiao) implement pagination
 	ctx, t := timer.Start(ctx, tier.ID, "model.profile.db.query")
 	defer t.Stop()
 	// construct the select query to execute it.
@@ -165,7 +166,9 @@ func (D dbProvider) query(ctx context.Context, tier tier.Tier, filter sql.SqlFil
 	SELECT otype, oid, zkey, value, version
 	FROM profile
 	WHERE %s
-	`, filter.String())
+	LIMIT %v
+	OFFSET %v
+	`, filter.String(), pagination.Per, pagination.Per*(pagination.Page-1))
 	profilereqs := make([]profileItemSer, 0)
 	var err error
 	if err = tier.DB.SelectContext(ctx, &profilereqs, sql); err != nil {

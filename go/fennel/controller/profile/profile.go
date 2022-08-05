@@ -21,10 +21,10 @@ func Get(ctx context.Context, tier tier.Tier, pk profilelib.ProfileItemKey) (pro
 	return profile.Get(ctx, tier, pk)
 }
 
-func Query(ctx context.Context, tier tier.Tier, filter sql.SqlFilter) ([]profilelib.ProfileItem, error) {
+func Query(ctx context.Context, tier tier.Tier, filter sql.SqlFilter, pagination sql.Pagination) ([]profilelib.ProfileItem, error) {
 	ctx, t := timer.Start(ctx, tier.ID, "controller.profile.query")
 	defer t.Stop()
-	return profile.Query(ctx, tier, filter)
+	return profile.Query(ctx, tier, filter, pagination)
 }
 
 func Set(ctx context.Context, tier tier.Tier, request profilelib.ProfileItem) error {
