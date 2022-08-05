@@ -133,6 +133,7 @@ func (s server) setHandlers(router *mux.Router) {
 	router.HandleFunc(INT_REST_VERSION+"/aggregate", s.RetrieveAggregate).Methods("GET")
 	router.HandleFunc(INT_REST_VERSION+"/aggregate", s.DeactivateAggregate).Methods("DELETE")
 	router.HandleFunc(INT_REST_VERSION+"/aggregate/compute", s.BatchAggregateValue)
+	router.HandleFunc(INT_REST_VERSION+"/aggregate/run", s.RunAggregate)
 
 	// Endpoints used by the model
 	router.HandleFunc(INT_REST_VERSION+"/model", s.UploadModel).Methods("POST")
@@ -683,6 +684,28 @@ func (m server) RetrieveAggregate(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 	_, _ = w.Write(ser)
+}
+
+func (m server) RunAggregate(w http.ResponseWriter, req *http.Request) {
+	data, err := readRequest(req)
+	if err != nil {
+		handleBadRequest(w, "", err)
+		return
+	}
+	var aggReq struct {
+		Name     string `json:"Name"`
+		Duration int    `json:"Duration"`
+	}
+	if err := json.Unmarshal(data, &aggReq); err != nil {
+		handleBadRequest(w, "invalid request: ", err)
+		return
+	}
+	// call controller
+	if err := aggregate2.RunAggregate(req.Context(), m.tier, ftypes.AggName(aggReq.Name), aggReq.Duration); err != nil {
+		handleInternalServerError(w, "", err)
+		return
+	}
+	handleSuccessfulRequest(w)
 }
 
 func (m server) DeactivateAggregate(w http.ResponseWriter, req *http.Request) {
