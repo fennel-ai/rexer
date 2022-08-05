@@ -1,7 +1,6 @@
 package main
 
 import (
-	"context"
 	controller "fennel/controller/bridge"
 	userC "fennel/controller/user"
 	"fennel/model/user"
@@ -127,13 +126,11 @@ func (s *server) ResetPassword(c *gin.Context) {
 	c.HTML(http.StatusOK, "sign_on.tmpl", gin.H{"title": "Fennel | Reset Password", "page": ResetPasswordPage})
 }
 
-type ConfirmPassordForm struct {
-	Token string `form:"token"`
-}
-
 func (s *server) ConfirmUser(c *gin.Context) {
 	// TODO(xiao) polish (rediret to sign in page with flash message)
-	var form ConfirmPassordForm
+	var form struct {
+		Token string `form:"token"`
+	}
 	if err := c.ShouldBind(&form); err != nil {
 		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{
 			"error": err.Error(),
@@ -141,8 +138,7 @@ func (s *server) ConfirmUser(c *gin.Context) {
 		return
 	}
 
-	ctx := context.Background()
-	if _, err := userC.ConfirmUser(ctx, s.mothership, form.Token); err != nil {
+	if _, err := userC.ConfirmUser(c.Request.Context(), s.mothership, form.Token); err != nil {
 		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{
 			"error": err.Error(),
 		})
@@ -174,7 +170,7 @@ func (s *server) SignUp(c *gin.Context) {
 		return
 	}
 
-	ctx := context.Background()
+	ctx := c.Request.Context()
 	user, err := userC.SignUp(ctx, s.mothership, form.Email, form.Password)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
@@ -202,8 +198,7 @@ func (s *server) SignIn(c *gin.Context) {
 		return
 	}
 
-	ctx := context.Background()
-	user, err := userC.SignIn(ctx, s.mothership, form.Email, form.Password)
+	user, err := userC.SignIn(c.Request.Context(), s.mothership, form.Email, form.Password)
 
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
@@ -226,19 +221,16 @@ func saveUserIntoCookie(c *gin.Context, user libuser.User) {
 	}
 }
 
-type SendConfirmationEmailForm struct {
-	Email string `json:"email"`
-}
-
 func (s *server) ResendConfirmationEmail(c *gin.Context) {
-	var form SendConfirmationEmailForm
+	var form struct {
+		Email string `json:"email"`
+	}
 	if err := c.BindJSON(&form); err != nil {
 		// BindJSON would write status
 		return
 	}
 
-	ctx := context.Background()
-	err := userC.ResendConfirmationEmail(ctx, s.mothership, s.sendgridClient(), form.Email)
+	err := userC.ResendConfirmationEmail(c.Request.Context(), s.mothership, s.sendgridClient(), form.Email)
 	if err != nil {
 		switch err.(type) {
 		case *userC.ErrorUserNotFound, *userC.ErrorAlreadyConfirmed:
