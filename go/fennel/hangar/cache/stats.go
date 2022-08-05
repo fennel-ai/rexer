@@ -20,4 +20,8 @@ func reportStats(c *ristretto.Cache) {
 	cacheStatsGauge.WithLabelValues("sets_rejected").Set(float64(c.Metrics.SetsRejected()))
 	cacheStatsGauge.WithLabelValues("gets_dropped").Set(float64(c.Metrics.GetsDropped()))
 	cacheStatsGauge.WithLabelValues("gets_kept").Set(float64(c.Metrics.GetsKept()))
+
+	cacheStatsGauge.WithLabelValues("cost_added").Set(float64(c.Metrics.CostAdded()))
+	cacheStatsGauge.WithLabelValues("cost_evicted").Set(float64(c.Metrics.CostEvicted()))
+	cacheStatsGauge.WithLabelValues("size").Set(float64(c.Metrics.CostAdded() - c.Metrics.CostEvicted()))
 }
