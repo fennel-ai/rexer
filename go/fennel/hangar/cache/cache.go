@@ -205,17 +205,19 @@ func (c *rcache) DelMany(ctx context.Context, keyGroups []hangar.KeyGroup) error
 }
 
 func (c *rcache) commit(eks [][]byte, vgs []hangar.ValGroup, delks [][]byte) error {
-	evs, err := hangar.EncodeValMany(vgs, c.enc)
-	if err != nil {
-		return err
-	}
 	// now we have all the deltas, we can set them
 	for i, ek := range eks {
 		ttl, alive := hangar.ExpiryToTTL(vgs[i].Expiry)
 		if !alive {
 			c.cache.Del(ek)
 		} else {
-			c.cache.SetWithTTL(ek, evs[i], int64(len(ek)+len(evs[i])), ttl)
+			buf := make([]byte, c.enc.ValLenHint(vgs[i]))
+			n, err := c.enc.EncodeVal(buf, vgs[i])
+			if err != nil {
+				return err
+			}
+			buf = buf[:n]
+			c.cache.SetWithTTL(ek, buf, int64(len(ek)+cap(buf)), ttl)
 		}
 	}
 	for _, k := range delks {
