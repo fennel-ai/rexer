@@ -2,6 +2,8 @@ package main
 
 import (
 	"fennel/model/user"
+	"fennel/mothership"
+	"fmt"
 	"net/http"
 
 	"github.com/gin-contrib/sessions"
@@ -13,12 +15,12 @@ const (
 	FlashMessageKey = "flash_message"
 )
 
-func (s *server) authenticationRequired() gin.HandlerFunc {
+func AuthenticationRequired(mothership mothership.Mothership) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		session := sessions.Default(c)
 		token, ok := session.Get(RememberTokenKey).(string)
 		if ok && token != "" {
-			if user, err := user.FetchByRememberToken(s.mothership, token); err == nil {
+			if user, err := user.FetchByRememberToken(mothership, token); err == nil {
 				c.Set(CurrentUserKey, user)
 				return
 			}
@@ -32,7 +34,7 @@ func (s *server) authenticationRequired() gin.HandlerFunc {
  * Flash message is an one-time message stored in the user session.
  * The middleware will read the message, remove it from the session and save it in the context.
  */
-func withFlashMessage(c *gin.Context) {
+func WithFlashMessage(c *gin.Context) {
 	session := sessions.Default(c)
 	msgType, ok := session.Get(FlashMessageTypeKey).(string)
 	if !ok {
@@ -44,8 +46,9 @@ func withFlashMessage(c *gin.Context) {
 	}
 	session.Delete(FlashMessageTypeKey)
 	session.Delete(FlashMessageContentKey)
-	c.Set(FlashMessageKey, gin.H{
-		"type":    msgType,
-		"content": msgContent,
+	fmt.Printf("%s %s %s\n", msgType, msgContent, c.Request.URL.Path)
+	c.Set(FlashMessageKey, map[string]string{
+		"flashMsgType":    msgType,
+		"flashMsgContent": msgContent,
 	})
 }

@@ -10,6 +10,10 @@ import (
 const (
 	FlashMessageTypeKey    = "flash_message_type"
 	FlashMessageContentKey = "flash_message_content"
+	RememberTokenKey       = "remember_token"
+
+	FlashTypeError   = "error"
+	FlashTypeSuccess = "success"
 )
 
 func addFlashMessage(session sessions.Session, msgType, msgContent string) {

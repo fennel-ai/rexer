@@ -4,6 +4,7 @@ import (
 	controller "fennel/controller/bridge"
 	userC "fennel/controller/user"
 	"fennel/mothership"
+	"fmt"
 	"log"
 	"net/http"
 	"net/mail"
@@ -40,7 +41,7 @@ func NewServer() (server, error) {
 	r := gin.Default()
 	store := cookie.NewStore([]byte(args.SessionKey))
 	r.Use(sessions.Sessions("mysession", store))
-	r.Use(withFlashMessage)
+	r.Use(WithFlashMessage)
 
 	s := server{
 		Engine:     r,
@@ -53,8 +54,7 @@ func NewServer() (server, error) {
 }
 
 const (
-	RememberTokenKey = "remember_token"
-	SignInURL        = "/signin"
+	SignInURL = "/signin"
 )
 
 func (s *server) setupRouter() {
@@ -64,8 +64,6 @@ func (s *server) setupRouter() {
 	s.Static("/images", "../../webapp/images")
 	s.Static("/assets", "../../webapp/dist")
 
-	// Ping test
-	s.GET("/ping", s.Ping)
 	s.GET("/signup", s.SignUpGet)
 	s.POST("/signup", s.SignUp)
 	s.GET(SignInURL, s.SignInGet)
@@ -74,21 +72,11 @@ func (s *server) setupRouter() {
 	s.GET("/confirm_user", s.ConfirmUser)
 	s.POST("/resend_confirmation_email", s.ResendConfirmationEmail)
 
-	auth := s.Group("/", s.authenticationRequired())
+	auth := s.Group("/", AuthenticationRequired(s.mothership))
 	auth.GET("/", controller.Dashboard)
 	auth.GET("/dashboard", controller.Dashboard)
 	auth.GET("/data", controller.Data)
 	auth.GET("/profiles", controller.Profiles)
-}
-
-func (s *server) Ping(c *gin.Context) {
-	// TODO(xiao) remove testing code
-	session := sessions.Default(c)
-	token := session.Get(RememberTokenKey)
-	c.JSON(http.StatusOK, gin.H{
-		"ping":  "pong",
-		"token": token,
-	})
 }
 
 const (
@@ -97,21 +85,30 @@ const (
 	ResetPasswordPage = "resetpassword"
 )
 
-const (
-	FlashTypeError   = "error"
-	FlashTypeSuccess = "success"
-)
+func title(name string) string {
+	return fmt.Sprintf("Fennel | %s", name)
+}
 
 func (s *server) SignUpGet(c *gin.Context) {
-	c.HTML(http.StatusOK, "sign_on.tmpl", gin.H{"title": "Fennel | SignUp", "page": SignUpPage})
+	c.HTML(http.StatusOK, "sign_on.tmpl", gin.H{
+		"title": title("Sign Up"),
+		"page":  SignUpPage,
+	})
 }
 
 func (s *server) SignInGet(c *gin.Context) {
-	c.HTML(http.StatusOK, "sign_on.tmpl", gin.H{"title": "Fennel | SignIn", "page": SignInPage})
+	c.HTML(http.StatusOK, "sign_on.tmpl", gin.H{
+		"title":    title("Sign In"),
+		"page":     SignInPage,
+		"flashMsg": c.GetStringMapString(FlashMessageKey),
+	})
 }
 
 func (s *server) ResetPassword(c *gin.Context) {
-	c.HTML(http.StatusOK, "sign_on.tmpl", gin.H{"title": "Fennel | Reset Password", "page": ResetPasswordPage})
+	c.HTML(http.StatusOK, "sign_on.tmpl", gin.H{
+		"title": title("Reset Password"),
+		"page":  ResetPasswordPage,
+	})
 }
 
 func (s *server) ConfirmUser(c *gin.Context) {
