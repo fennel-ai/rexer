@@ -1,11 +1,10 @@
 package main
 
 import (
-	"context"
 	controller "fennel/controller/bridge"
 	userC "fennel/controller/user"
-	"fennel/model/user"
 	"fennel/mothership"
+	"fmt"
 	"log"
 	"net/http"
 	"net/mail"
@@ -15,8 +14,6 @@ import (
 	"github.com/gin-contrib/sessions/cookie"
 	"github.com/gin-gonic/gin"
 	"github.com/sendgrid/sendgrid-go"
-
-	libuser "fennel/lib/user"
 )
 
 type server struct {
@@ -44,6 +41,8 @@ func NewServer() (server, error) {
 	r := gin.Default()
 	store := cookie.NewStore([]byte(args.SessionKey))
 	r.Use(sessions.Sessions("mysession", store))
+	r.Use(WithFlashMessage)
+
 	s := server{
 		Engine:     r,
 		mothership: m,
@@ -55,25 +54,8 @@ func NewServer() (server, error) {
 }
 
 const (
-	RememberTokenKey = "remember_token"
-	CurrentUserKey   = "current_user"
-	SignInURL        = "/signin"
+	SignInURL = "/signin"
 )
-
-func (s *server) authenticationRequired() gin.HandlerFunc {
-	return func(c *gin.Context) {
-		session := sessions.Default(c)
-		token, ok := session.Get(RememberTokenKey).(string)
-		if ok && token != "" {
-			if user, err := user.FetchByRememberToken(s.mothership, token); err == nil {
-				c.Set(CurrentUserKey, user)
-				return
-			}
-		}
-		c.Redirect(http.StatusFound, SignInURL)
-		c.Abort()
-	}
-}
 
 func (s *server) setupRouter() {
 	// Disable Console Color
@@ -82,8 +64,6 @@ func (s *server) setupRouter() {
 	s.Static("/images", "../../webapp/images")
 	s.Static("/assets", "../../webapp/dist")
 
-	// Ping test
-	s.GET("/ping", s.Ping)
 	s.GET("/signup", s.SignUpGet)
 	s.POST("/signup", s.SignUp)
 	s.GET(SignInURL, s.SignInGet)
@@ -92,21 +72,11 @@ func (s *server) setupRouter() {
 	s.GET("/confirm_user", s.ConfirmUser)
 	s.POST("/resend_confirmation_email", s.ResendConfirmationEmail)
 
-	auth := s.Group("/", s.authenticationRequired())
+	auth := s.Group("/", AuthenticationRequired(s.mothership))
 	auth.GET("/", controller.Dashboard)
 	auth.GET("/dashboard", controller.Dashboard)
 	auth.GET("/data", controller.Data)
 	auth.GET("/profiles", controller.Profiles)
-}
-
-func (s *server) Ping(c *gin.Context) {
-	// TODO(xiao) remove testing code
-	session := sessions.Default(c)
-	token := session.Get(RememberTokenKey)
-	c.JSON(http.StatusOK, gin.H{
-		"ping":  "pong",
-		"token": token,
-	})
 }
 
 const (
@@ -115,25 +85,37 @@ const (
 	ResetPasswordPage = "resetpassword"
 )
 
+func title(name string) string {
+	return fmt.Sprintf("Fennel | %s", name)
+}
+
 func (s *server) SignUpGet(c *gin.Context) {
-	c.HTML(http.StatusOK, "sign_on.tmpl", gin.H{"title": "Fennel | SignUp", "page": SignUpPage})
+	c.HTML(http.StatusOK, "sign_on.tmpl", gin.H{
+		"title": title("Sign Up"),
+		"page":  SignUpPage,
+	})
 }
 
 func (s *server) SignInGet(c *gin.Context) {
-	c.HTML(http.StatusOK, "sign_on.tmpl", gin.H{"title": "Fennel | SignIn", "page": SignInPage})
+	c.HTML(http.StatusOK, "sign_on.tmpl", gin.H{
+		"title":    title("Sign In"),
+		"page":     SignInPage,
+		"flashMsg": c.GetStringMapString(FlashMessageKey),
+	})
 }
 
 func (s *server) ResetPassword(c *gin.Context) {
-	c.HTML(http.StatusOK, "sign_on.tmpl", gin.H{"title": "Fennel | Reset Password", "page": ResetPasswordPage})
-}
-
-type ConfirmPassordForm struct {
-	Token string `form:"token"`
+	c.HTML(http.StatusOK, "sign_on.tmpl", gin.H{
+		"title": title("Reset Password"),
+		"page":  ResetPasswordPage,
+	})
 }
 
 func (s *server) ConfirmUser(c *gin.Context) {
 	// TODO(xiao) polish (rediret to sign in page with flash message)
-	var form ConfirmPassordForm
+	var form struct {
+		Token string `form:"token"`
+	}
 	if err := c.ShouldBind(&form); err != nil {
 		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{
 			"error": err.Error(),
@@ -141,13 +123,20 @@ func (s *server) ConfirmUser(c *gin.Context) {
 		return
 	}
 
-	ctx := context.Background()
-	if _, err := userC.ConfirmUser(ctx, s.mothership, form.Token); err != nil {
-		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{
-			"error": err.Error(),
-		})
+	session := sessions.Default(c)
+	if _, err := userC.ConfirmUser(c.Request.Context(), s.mothership, form.Token); err != nil {
+		msgDesc := ""
+		switch err.(type) {
+		case *userC.ErrorUserNotFound:
+			msgDesc = err.Error()
+		default:
+			msgDesc = "Something went wrong. Please try again."
+		}
+		addFlashMessage(session, FlashTypeError, msgDesc)
+		c.Redirect(http.StatusFound, SignInURL)
 		return
 	}
+	addFlashMessage(session, FlashTypeSuccess, "Your email address has been confirmed! You can now sign in.")
 	c.Redirect(http.StatusFound, SignInURL)
 }
 
@@ -174,7 +163,7 @@ func (s *server) SignUp(c *gin.Context) {
 		return
 	}
 
-	ctx := context.Background()
+	ctx := c.Request.Context()
 	user, err := userC.SignUp(ctx, s.mothership, form.Email, form.Password)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
@@ -202,43 +191,30 @@ func (s *server) SignIn(c *gin.Context) {
 		return
 	}
 
-	ctx := context.Background()
-	user, err := userC.SignIn(ctx, s.mothership, form.Email, form.Password)
+	user, err := userC.SignIn(c.Request.Context(), s.mothership, form.Email, form.Password)
 
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"error": err.Error(),
 		})
 	} else {
-		saveUserIntoCookie(c, user)
+		saveUserIntoCookie(sessions.Default(c), user)
 		c.JSON(http.StatusOK, gin.H{
 			"data": gin.H{},
 		})
 	}
 }
 
-func saveUserIntoCookie(c *gin.Context, user libuser.User) {
-	session := sessions.Default(c)
-
-	session.Set(RememberTokenKey, user.RememberToken.String)
-	if err := session.Save(); err != nil {
-		log.Printf("Error saving cookie: %v", err)
-	}
-}
-
-type SendConfirmationEmailForm struct {
-	Email string `json:"email"`
-}
-
 func (s *server) ResendConfirmationEmail(c *gin.Context) {
-	var form SendConfirmationEmailForm
+	var form struct {
+		Email string `json:"email"`
+	}
 	if err := c.BindJSON(&form); err != nil {
 		// BindJSON would write status
 		return
 	}
 
-	ctx := context.Background()
-	err := userC.ResendConfirmationEmail(ctx, s.mothership, s.sendgridClient(), form.Email)
+	err := userC.ResendConfirmationEmail(c.Request.Context(), s.mothership, s.sendgridClient(), form.Email)
 	if err != nil {
 		switch err.(type) {
 		case *userC.ErrorUserNotFound, *userC.ErrorAlreadyConfirmed:
