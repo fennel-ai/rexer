@@ -1,4 +1,4 @@
-package bridge
+package profile
 
 import (
 	"encoding/json"
@@ -8,17 +8,6 @@ import (
 
 	"github.com/gin-gonic/gin"
 )
-
-const DashboardPage = "dashboard"
-const DataPage = "data"
-
-func Dashboard(c *gin.Context) {
-	c.HTML(http.StatusOK, "index.tmpl", gin.H{"title": "Fennel | Dashboard", "page": DashboardPage})
-}
-
-func Data(c *gin.Context) {
-	c.HTML(http.StatusOK, "index.tmpl", gin.H{"title": "Fennel | Data", "page": DataPage})
-}
 
 func Profiles(c *gin.Context) {
 	var filter sql.CompositeSqlFilter

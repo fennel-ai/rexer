@@ -1,8 +1,8 @@
 package main
 
 import (
-	"fennel/model/user"
 	"fennel/mothership"
+	"fennel/mothership/model/user"
 	"fmt"
 	"net/http"
 
