@@ -7,6 +7,7 @@ import (
 	"io"
 	"log"
 	"os"
+	"time"
 
 	"fennel/hangar"
 	"fennel/lib/ftypes"
@@ -66,7 +67,24 @@ func NewHangar(planeID ftypes.RealmID, dirname string, blockCacheBytes int64, en
 		workerPool: parallel.NewWorkerPool[hangar.KeyGroup, hangar.ValGroup](PARALLELISM),
 		enc:        enc,
 	}
+	// Start periodic GC of value log.
+	go bs.runPeriodicGC()
 	return &bs, nil
+}
+
+func (b *badgerDB) runPeriodicGC() {
+	ticker := time.NewTicker(5 * time.Minute)
+	defer ticker.Stop()
+	for range ticker.C {
+		discardRatio := float64(0.5)
+		err := b.db.RunValueLogGC(discardRatio)
+		if errors.Is(err, badger.ErrRejected) && b.db.IsClosed() {
+			log.Printf("DB is closed, stopping value log GC")
+			return
+		} else if err != nil {
+			log.Printf("badger value log GC failed: %v", err)
+		}
+	}
 }
 
 func (b *badgerDB) PlaneID() ftypes.RealmID {
