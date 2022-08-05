@@ -59,6 +59,9 @@ func NewServer(aggdb AggDB) *Server {
 	RegisterNitrousServer(grpcServer, s)
 	// After all your registrations, make sure all of the Prometheus metrics are initialized.
 	grpc_prometheus.Register(grpcServer)
+	// Enable latency histograms as per:
+	// https://github.com/grpc-ecosystem/go-grpc-prometheus/blob/82c243799c991a7d5859215fba44a81834a52a71/README.md#histograms
+	grpc_prometheus.EnableHandlingTimeHistogram()
 	return s
 }
 
