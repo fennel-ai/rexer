@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"fennel/hangar"
+	"fennel/lib/arena"
 	"fennel/lib/ftypes"
 	"fennel/lib/timer"
 	"fennel/lib/utils/parallel"
@@ -161,39 +162,52 @@ func (b *badgerDB) SetMany(ctx context.Context, keys []hangar.Key, deltas []hang
 	// since we may only be setting some indices of the keyGroups, we need to
 	// read existing deltas, merge them, and get the full deltas to be written
 	for {
-		err = b.db.Update(func(txn *badger.Txn) error {
-			for i, ek := range eks {
-				var old hangar.ValGroup
-				olditem, err := txn.Get(ek)
-				switch err {
-				case badger.ErrKeyNotFound:
-					// no existing value, so just use the deltas
-					old = deltas[i]
-				case nil:
-					// existing value, so merge it with the deltas
-					if err = olditem.Value(func(val []byte) error {
-						_, err := b.enc.DecodeVal(val, &old, false)
-						return err
-					}); err != nil {
-						return err
-					}
-					if err = old.Update(deltas[i]); err != nil {
-						return err
-					}
-				default: // some other error
+		txn := b.db.NewTransaction(true)
+		defer txn.Discard()
+		for i, ek := range eks {
+			var old hangar.ValGroup
+			olditem, err := txn.Get(ek)
+			switch err {
+			case badger.ErrKeyNotFound:
+				// no existing value, so just use the deltas
+				old = deltas[i]
+			case nil:
+				// existing value, so merge it with the deltas
+				if err = olditem.Value(func(val []byte) error {
+					_, err := b.enc.DecodeVal(val, &old, false)
+					return err
+				}); err != nil {
 					return err
 				}
-				deltas[i] = old
+				if err = old.Update(deltas[i]); err != nil {
+					return err
+				}
+			default: // some other error
+				return err
 			}
-			return b.write(txn, eks, deltas, nil)
-		})
-		if errors.Is(err, badger.ErrConflict) {
+			deltas[i] = old
+		}
+		allocated, err := b.write(txn, eks, deltas, nil)
+		defer func() {
+			for _, buf := range allocated {
+				arena.Bytes.Free(buf)
+			}
+			arena.Bytes2D.Free(allocated)
+		}()
+		if err != nil {
+			return err
+		}
+		err = txn.Commit()
+		switch {
+		case err == nil:
+			return nil
+		case errors.Is(err, badger.ErrConflict):
 			log.Print("badgerDB: conflict detected, retrying")
 			continue
+		default:
+			return err
 		}
-		break
 	}
-	return err
 }
 
 func (b *badgerDB) DelMany(ctx context.Context, keyGroups []hangar.KeyGroup) error {
@@ -206,7 +220,11 @@ func (b *badgerDB) DelMany(ctx context.Context, keyGroups []hangar.KeyGroup) err
 	setKeys := make([][]byte, 0, len(keyGroups))
 	vgs := make([]hangar.ValGroup, 0, len(keyGroups))
 	delKeys := make([][]byte, 0, len(keyGroups))
-	err = b.db.Update(func(txn *badger.Txn) error {
+	for {
+		// We create a managed transaction because we want to perform some cleanup
+		// after the transaction is done executing.
+		txn := b.db.NewTransaction(true)
+		defer txn.Discard()
 		for i, ek := range eks {
 			var old hangar.ValGroup
 			olditem, err := txn.Get(ek)
@@ -238,40 +256,63 @@ func (b *badgerDB) DelMany(ctx context.Context, keyGroups []hangar.KeyGroup) err
 				return err
 			}
 		}
-		return b.write(txn, setKeys, vgs, delKeys)
-	})
-	return err
+		allocated, err := b.write(txn, setKeys, vgs, delKeys)
+		defer func() {
+			for _, buf := range allocated {
+				arena.Bytes.Free(buf)
+			}
+			arena.Bytes2D.Free(allocated)
+		}()
+		if err != nil {
+			return err
+		}
+		err = txn.Commit()
+		switch {
+		case err == nil:
+			return nil
+		case errors.Is(err, badger.ErrConflict):
+			log.Print("badgerDB: conflict detected, retrying")
+			continue
+		default:
+			return err
+		}
+	}
 }
 
-func (b *badgerDB) write(txn *badger.Txn, eks [][]byte, vgs []hangar.ValGroup, delks [][]byte) error {
-	evs, err := hangar.EncodeValMany(vgs, b.enc)
-	if err != nil {
-		return err
-	}
+func (b *badgerDB) write(txn *badger.Txn, eks [][]byte, vgs []hangar.ValGroup, delks [][]byte) ([][]byte, error) {
+	allocated := arena.Bytes2D.Alloc(len(eks), len(eks))
 	for i, ek := range eks {
-		e := badger.NewEntry(ek, evs[i])
 		// if ttl is 0, we set the key to never expire, else we set it to expire in ttl duration from now
 		ttl, alive := hangar.ExpiryToTTL(vgs[i].Expiry)
 		if !alive {
 			// if key is not alive, we delete it for good, just to be safe
 			if err := txn.Delete(ek); err != nil {
-				return err
+				return allocated, fmt.Errorf("failed to delete key: %w", err)
 			}
 		} else {
+			sz := b.enc.ValLenHint(vgs[i])
+			buf := arena.Bytes.Alloc(sz, sz)
+			allocated = append(allocated, buf)
+			n, err := b.enc.EncodeVal(buf, vgs[i])
+			if err != nil {
+				return allocated, fmt.Errorf("failed to encode value: %w", err)
+			}
+			buf = buf[:n]
+			e := badger.NewEntry(ek, buf)
 			if ttl != 0 {
 				e = e.WithTTL(ttl)
 			}
 			if err := txn.SetEntry(e); err != nil {
-				return err
+				return allocated, fmt.Errorf("failed to set entry: %w", err)
 			}
 		}
 	}
 	for _, k := range delks {
 		if err := txn.Delete(k); err != nil {
-			return err
+			return allocated, fmt.Errorf("failed to delete key: %w", err)
 		}
 	}
-	return nil
+	return allocated, nil
 }
 
 var _ hangar.Hangar = &badgerDB{}
