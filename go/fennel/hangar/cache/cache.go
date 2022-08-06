@@ -88,7 +88,7 @@ func (c *rcache) PlaneID() ftypes.RealmID {
 // GetMany returns the values for the given keyGroups.
 // It parallelizes the requests to the underlying cache upto a degree of parallelism
 func (c *rcache) GetMany(ctx context.Context, kgs []hangar.KeyGroup) ([]hangar.ValGroup, error) {
-	_, t := timer.Start(ctx, c.planeID, "hangar.cache.getmany")
+	ctx, t := timer.Start(ctx, c.planeID, "hangar.cache.getmany")
 	defer t.Stop()
 	// We try to spread across available workers while giving each worker
 	// a minimum of CACHE_BATCH_SIZE keyGroups to work on.
@@ -97,6 +97,8 @@ func (c *rcache) GetMany(ctx context.Context, kgs []hangar.KeyGroup) ([]hangar.V
 		batch = CACHE_BATCH_SIZE
 	}
 	return c.workerPool.Process(ctx, kgs, func(kgs []hangar.KeyGroup, vgs []hangar.ValGroup) error {
+		_, t := timer.Start(ctx, c.planeID, "hangar.cache.getmany.batch")
+		defer t.Stop()
 		eks, err := hangar.EncodeKeyManyKG(kgs, c.enc)
 		if err != nil {
 			return fmt.Errorf("error encoding key: %w", err)

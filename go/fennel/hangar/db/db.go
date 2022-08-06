@@ -108,6 +108,8 @@ func (b *badgerDB) GetMany(ctx context.Context, kgs []hangar.KeyGroup) ([]hangar
 		batch = DB_BATCH_SIZE
 	}
 	return b.workerPool.Process(ctx, kgs, func(keyGroups []hangar.KeyGroup, valGroups []hangar.ValGroup) error {
+		_, t := timer.Start(ctx, b.planeID, "hangar.db.getmany.batch")
+		defer t.Stop()
 		eks, err := hangar.EncodeKeyManyKG(keyGroups, b.enc)
 		if err != nil {
 			return fmt.Errorf("failed to encode keys: %w", err)
