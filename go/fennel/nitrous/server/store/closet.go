@@ -216,7 +216,7 @@ func (c *Closet) getKeyGroupsToRead(groupkey string, r temporal.TimeBucketRange)
 			if end > last {
 				end = last
 			}
-			var fields hangar.Fields
+			fields := make(hangar.Fields, 0, end-next+1)
 			for i := next; i <= end; i++ {
 				// encode i-th bucket.
 				n, err := encodeField(buf[curr:], c.aggId, mo.Some(i%c.secondLevelSize))
