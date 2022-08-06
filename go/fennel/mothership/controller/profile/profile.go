@@ -30,7 +30,7 @@ func Profiles(c *gin.Context) {
 		c.String(http.StatusInternalServerError, err.Error())
 		return
 	}
-	profiles, err := cli.QueryProfiles(&filter)
+	profiles, err := cli.QueryProfiles(filter, sql.Pagination{Page: 2, Per: 1})
 	if err != nil {
 		c.String(http.StatusInternalServerError, err.Error())
 		return

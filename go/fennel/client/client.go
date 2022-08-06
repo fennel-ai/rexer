@@ -175,8 +175,12 @@ func (c *Client) GetProfile(request *profileLib.ProfileItemKey) (*profile.Profil
 	}
 }
 
-func (c *Client) QueryProfiles(sqlFilter sql.SqlFilter) ([]profile.ProfileItem, error) {
-	b, err := json.Marshal(&sqlFilter)
+func (c *Client) QueryProfiles(sqlFilter sql.CompositeSqlFilter, pagination sql.Pagination) ([]profile.ProfileItem, error) {
+	request := profileLib.QueryRequest{
+		Pagination: pagination,
+		Filter:     sqlFilter,
+	}
+	b, err := json.Marshal(&request)
 	if err != nil {
 		return nil, err
 	}
