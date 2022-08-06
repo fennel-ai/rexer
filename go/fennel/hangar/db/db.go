@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"math/rand"
 	"os"
 	"time"
 
@@ -74,17 +75,26 @@ func NewHangar(planeID ftypes.RealmID, dirname string, blockCacheBytes int64, en
 }
 
 func (b *badgerDB) runPeriodicGC() {
-	ticker := time.NewTicker(5 * time.Minute)
-	defer ticker.Stop()
-	for range ticker.C {
+	interval := time.Hour
+	// Important: Set inital interval to be a random number between 0 and 1 hour.
+	// This is to ensure that all nitrous instances are not doing GC at the same time.
+	rand.Seed(time.Now().UnixNano())
+	timer := time.NewTimer(time.Second * time.Duration(interval.Seconds()*rand.Float64()))
+	defer timer.Stop()
+	for {
+		<-timer.C
 		discardRatio := float64(0.5)
+		log.Printf("Running badger value log GC with discard ratio %f", discardRatio)
 		err := b.db.RunValueLogGC(discardRatio)
 		if errors.Is(err, badger.ErrRejected) && b.db.IsClosed() {
 			log.Printf("DB is closed, stopping value log GC")
 			return
+		} else if errors.Is(err, badger.ErrNoRewrite) {
+			log.Printf("Value log GC resulted in no rewrite")
 		} else if err != nil {
-			log.Printf("badger value log GC failed: %v", err)
+			log.Printf("Value log GC failed: %v", err)
 		}
+		timer.Reset(interval)
 	}
 }
 
