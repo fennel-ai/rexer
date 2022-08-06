@@ -50,6 +50,7 @@ func NewServer(aggdb AggDB) *Server {
 			FennelTracingInterceptor,
 			grpc_prometheus.UnaryServerInterceptor,
 			otelgrpc.UnaryServerInterceptor(),
+			NewRateLimiter(5000),
 		)),
 	)
 	s := &Server{
