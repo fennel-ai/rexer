@@ -40,7 +40,7 @@ func (s list) Reduce(values []value.Value) (value.Value, error) {
 	m := make(map[string]value.Value)
 	z := s.Zero().Clone().(value.List)
 
-	for i := range values {
+	for i := len(values) - 1; i >= 0; i-- {
 		l, err := s.extract(values[i])
 		if err != nil {
 			return nil, err
@@ -65,20 +65,21 @@ func (s list) Merge(a, b value.Value) (value.Value, error) {
 	if err != nil {
 		return nil, err
 	}
-	m := make(map[string]value.Value, la.Len())
+	m := make(map[string]value.Value, lb.Len())
 	ret := value.NewList()
-	ret.Grow(la.Len())
-	for j := 0; j < la.Len(); j++ {
-		val, _ := la.At(j)
+	ret.Grow(lb.Len())
+	for j := 0; j < lb.Len(); j++ {
+		val, _ := lb.At(j)
 		if _, ok := m[val.String()]; !ok {
 			ret.Append(val)
 			m[val.String()] = val
 		}
 	}
-	for j := 0; j < lb.Len(); j++ {
-		val, _ := lb.At(j)
+	for j := 0; j < la.Len(); j++ {
+		val, _ := la.At(j)
 		if _, ok := m[val.String()]; !ok {
 			ret.Append(val)
+			m[val.String()] = val
 		}
 	}
 	return ret, nil
