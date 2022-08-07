@@ -26,6 +26,13 @@ export const plugins = {
     "aws": "v4.38.1",
 }
 
+export type SpotReschedulerConf = {
+    // Label attached to the spot nodes, on which the on-demand node's workload can be migrated to
+    spotNodeLabel: string,
+    // Label attached to the on-demand node, from which the workload will be migrated to spot nodes
+    onDemandNodeLabel: string,
+}
+
 // Node Group configuration for the EKS cluster
 export type NodeGroupConf = {
     // Must be unique across node groups defined in the same plane
@@ -72,6 +79,7 @@ export type inputType = {
     privateSubnets: pulumi.Output<string[]>,
     planeId: number,
     nodeGroups: NodeGroupConf[],
+    spotReschedulerConf?: SpotReschedulerConf,
 }
 
 export type outputType = {
@@ -431,6 +439,145 @@ async function setupEbsCsiDriver(input: inputType, awsProvider: aws.Provider, cl
     }, { provider: cluster.provider, dependsOn: attachPolicy })
 }
 
+// setupSpotRescheduler is responsible to move pods scheduled on on-demand nodes to spot nodes proactively
+async function setupSpotRescheduler(awsProvider: aws.Provider, input: inputType, cluster: eks.Cluster,
+                                    spotNodeLabel: string, onDemandNodeLabel: string) {
+    // Account ID
+    const current = await aws.getCallerIdentity({ provider: awsProvider });
+    const accountId = current.accountId;
+
+    // SpotRescheduler is doing a job which ideally cluster autoscaler should have done.
+    // It requires more or less the same permissions as cluster autoscaler (mostly around interacting with
+    // EC2 ASG, EKS, EKS Managed Node Groups and few AWS EC2 APIs to fetch supported instance types etc)
+    //
+    // See: https://docs.aws.amazon.com/eks/latest/userguide/autoscaling.html
+    const roleName = `p-${input.planeId}-spot-rescheduler-role`;
+
+    const role = pulumi.all([cluster.core.oidcProvider!.url, cluster.core.cluster.name]).apply(([oidcUrl, clusterName]) => {
+        return new aws.iam.Role(roleName, {
+            namePrefix: roleName,
+            description: "IAM role for EKS cluster spot rescheduler",
+            assumeRolePolicy: `{
+                 "Version": "2012-10-17",
+                 "Statement": [
+                   {
+                     "Effect": "Allow",
+                     "Principal": {
+                       "Federated": "arn:aws:iam::${accountId}:oidc-provider/${oidcUrl}"
+                     },
+                     "Action": "sts:AssumeRoleWithWebIdentity",
+                     "Condition": {
+                       "StringEquals": {
+                         "${oidcUrl}:sub": "system:serviceaccount:kube-system:spot-rescheduler"
+                       }
+                     }
+                   }
+                 ]
+               }`,
+            // Add `eks:DescribeNodeGroup` and `eks:ListNodeGroups` as additional permissions to allow list labels
+            // attached only to managed node groups and not EC2 ASGs
+            inlinePolicies: [{
+                name: "eks-cluster-spot-rescheduler-policy",
+                policy: `{
+                    "Version": "2012-10-17",
+                    "Statement": [
+                        {
+                            "Effect": "Allow",
+                            "Action": [
+                                "autoscaling:SetDesiredCapacity",
+                                "autoscaling:TerminateInstanceInAutoScalingGroup"
+                            ],
+                            "Resource": "*",
+                            "Condition": {
+                                "StringEquals": {
+                                    "aws:ResourceTag/k8s.io/cluster-autoscaler/${clusterName}": "owned"
+                                }
+                            }
+                        },
+                        {
+                            "Effect": "Allow",
+                            "Action": [
+                                "autoscaling:DescribeAutoScalingGroups",
+                                "autoscaling:DescribeAutoScalingInstances",
+                                "autoscaling:DescribeInstances",
+                                "autoscaling:DescribeLaunchConfigurations",
+                                "autoscaling:DescribeTags",
+                                "ec2:DescribeLaunchTemplateVersions",
+                                "ec2:DescribeInstanceTypes",
+                                "eks:DescribeNodegroup",
+                                "eks:ListNodegroups"
+                            ],
+                            "Resource": "*"
+                        }
+                    ]
+                }`,
+            }],
+        }, { provider: awsProvider });
+    });
+
+    // Setup the spot rescheduler
+    return pulumi.all([role.arn, cluster.core.cluster.name]).apply(([roleArn, clusterName]) => {
+        const autoscalerName = `p-${input.planeId}-cluster-spot-rescheduler`;
+        return new k8s.helm.v3.Release(autoscalerName, {
+            repositoryOpts: {
+                "repo": "https://fennel-ai.github.io/public/helm-charts/spot-rescheduler/",
+            },
+            // this must match the namespace provided in the role above.
+            namespace: "kube-system",
+            chart: "spot-rescheduler",
+            version: "0.1.4",
+            values: {
+                // auto-discover the autoscaling groups of the EKS cluster (since we use managed node groups, the necessary
+                // tags (`k8s.io/cluster-autoscaler/enabled` and `k8s.io/cluster-autoscaler/<CLUSTER_NAME>`) are
+                // already applied.
+                "autoDiscovery": {
+                    "clusterName": clusterName,
+                },
+                "image": {
+                    "tag": "1.0.1",
+                },
+                "awsRegion": input.region,
+                "cloudProvider": "aws",
+                // TODO(mohit): Consider making this > 1
+                "replicaCount": 1,
+                "onDemandNodeLabel": onDemandNodeLabel,
+                "spotNodeLabel": spotNodeLabel,
+                "prometheusMetricPort": 8084,
+                // autoscaler exports prometheus metrics, enable scraping them through our telemetry setup
+                "podAnnotations": {
+                    "prometheus.io/scrape": "true",
+                    // the port is the default value for the port of the service
+                    "prometheus.io/port": "8084",
+                },
+                // we should schedule all components of kubernetes cluster autoscaler on ON_DEMAND instances
+                "nodeSelector": {
+                    "eks.amazonaws.com/capacityType": "ON_DEMAND",
+                },
+                // annotate the service account with the IAM role
+                "rbac": {
+                    "serviceAccount": {
+                        // this must match the name provided above in the role.
+                        "name": "spot-rescheduler",
+                        "annotations": {
+                            "eks.amazonaws.com/role-arn": roleArn,
+                        }
+                    }
+                },
+                // override the full name as the one created by the helm release is long and has redundant words
+                "fullnameOverride": autoscalerName,
+                "extraArgs": {
+                    "housekeeping-interval": "2m",
+                    "pod-eviction-timeout": "2m",
+                    "node-scaleup-timeout": "5m",
+                    "node-ready-check-interval": "10s",
+                    "max-graceful-termination": "2m",
+                    "node-drain-cooldown-interval": "1m",
+                },
+            }
+        }, { provider: cluster.provider, deleteBeforeReplace: true });
+    });
+}
+
 async function setupClusterAutoscaler(awsProvider: aws.Provider, input: inputType, cluster: eks.Cluster,
     nodeGroups: NodeGroupConf[]) {
     // Account ID
@@ -673,6 +820,12 @@ export const setup = async (input: inputType): Promise<pulumi.Output<outputType>
 
     // setup cluster autoscaler
     const autoscaler = setupClusterAutoscaler(awsProvider, input, cluster, input.nodeGroups);
+
+    // setup spot rescheduler
+    if (input.spotReschedulerConf !== undefined) {
+        const rescheduler = setupSpotRescheduler(awsProvider, input, cluster, input.spotReschedulerConf.spotNodeLabel,
+            input.spotReschedulerConf.onDemandNodeLabel);
+    }
 
     // setup metrics server for autoscaling needs
     const metricsServer = setupMetricsServer(awsProvider, input, cluster);

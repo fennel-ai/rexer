@@ -20,7 +20,7 @@ import * as postgres from "../postgres";
 import * as util from "../lib/util";
 
 import * as process from "process";
-import { NodeGroupConf } from "../eks";
+import {NodeGroupConf, SpotReschedulerConf} from "../eks";
 
 type VpcConfig = {
     cidr: string,
@@ -61,7 +61,8 @@ type PrometheusConf = {
 
 type EksConf = {
     // EKS cluster can have more than one Node Group
-    nodeGroups: NodeGroupConf[]
+    nodeGroups: NodeGroupConf[],
+    spotReschedulerConf?: SpotReschedulerConf,
 }
 
 type MilvusConf = {}
@@ -211,6 +212,7 @@ const setupResources = async () => {
         connectedVpcCidrs: [input.controlPlaneConf.cidrBlock],
         planeId: input.planeId,
         nodeGroups: input.eksConf.nodeGroups,
+        spotReschedulerConf: input.eksConf.spotReschedulerConf,
     });
     const postgresDbOutput = await postgres.setup({
         roleArn: roleArn,
