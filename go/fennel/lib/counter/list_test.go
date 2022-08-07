@@ -17,10 +17,18 @@ func TestList_Reduce(t *testing.T) {
 		output value.Value
 	}{
 		{[]value.Value{
+			value.NewList(value.String("a")),
+			value.NewList(value.String("b")),
+			value.NewList(value.String("c")),
+			value.NewList(value.String("a")),
+		},
+			value.NewList(value.String("a"), value.String("c"), value.String("b")),
+		},
+		{[]value.Value{
 			value.NewList(value.Int(0), value.Int(1)),
 			value.NewList(value.Int(4), value.Int(2)),
 			value.NewList(value.Int(0), value.Int(0))},
-			value.NewList(value.Int(0), value.Int(1), value.Int(4), value.Int(2)),
+			value.NewList(value.Int(0), value.Int(4), value.Int(2), value.Int(1)),
 		},
 		{[]value.Value{
 			value.NewList(value.Int(0), value.Int(0))},
@@ -29,12 +37,12 @@ func TestList_Reduce(t *testing.T) {
 		{[]value.Value{
 			value.NewList(value.Int(0), value.Int(-1)),
 			value.NewList(value.Int(2), value.Int(1))},
-			value.NewList(value.Int(0), value.Int(-1), value.Int(2), value.Int(1)),
+			value.NewList(value.Int(2), value.Int(1), value.Int(0), value.Int(-1)),
 		},
 		{[]value.Value{
 			value.NewList(value.Int(1e17), value.Int(-1e17)),
 			value.NewList(value.Int(2), value.Int(1))},
-			value.NewList(value.Int(1e17), value.Int(-1e17), value.Int(2), value.Int(1)),
+			value.NewList(value.Int(2), value.Int(1), value.Int(1e17), value.Int(-1e17)),
 		},
 	}
 	for _, c := range cases {
@@ -59,17 +67,17 @@ func TestList_Merge_Valid(t *testing.T) {
 		{
 			value.NewList(value.Int(0), value.Int(1)),
 			value.NewList(value.Int(1), value.Int(3)),
-			value.NewList(value.Int(0), value.Int(1), value.Int(3)),
+			value.NewList(value.Int(1), value.Int(3), value.Int(0)),
 		},
 		{
 			value.NewList(value.Int(0), value.Int(0)),
 			value.NewList(value.Nil, value.Bool(true)),
-			value.NewList(value.Int(0), value.Nil, value.Bool(true)),
+			value.NewList(value.Nil, value.Bool(true), value.Int(0)),
 		},
 		{
 			value.NewList(value.Int(0), value.Int(-1)),
 			value.NewList(value.Int(2), value.NewList(value.Int(3))),
-			value.NewList(value.Int(0), value.Int(-1), value.Int(2), value.NewList(value.Int(3))),
+			value.NewList(value.Int(2), value.NewList(value.Int(3)), value.Int(0), value.Int(-1)),
 		},
 		{
 			value.NewList(value.Int(1e17), value.Int(-1e17)),
