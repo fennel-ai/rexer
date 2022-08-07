@@ -837,6 +837,13 @@ export const setup = async (input: inputType): Promise<pulumi.Output<outputType>
     const instanceRole = cluster.core.instanceRoles.apply((roles) => { return roles[0].name })
     const instanceRoleArn = cluster.core.instanceRoles.apply((roles) => { return roles[0].arn })
 
+    try {
+        var publicKey: string = fs.readFileSync("../eks/ssh_keypair/id_rsa.pub", "utf-8")
+    } catch (err) {
+        console.log("Failed to read key-pair: " + err)
+        exit(1)
+    }
+    const keyPair = new aws.ec2.KeyPair(`p-${input.planeId}-eks-workers`, { publicKey: publicKey }, { provider: awsProvider })
     // Setup managed node groups
     for (let nodeGroup of input.nodeGroups) {
         if (nodeGroup.capacityType === SPOT_INSTANCE_TYPE && nodeGroup.instanceTypes.length <= 1) {
@@ -846,13 +853,6 @@ export const setup = async (input: inputType): Promise<pulumi.Output<outputType>
             console.error(`node group with capacity type ON_DEMAND should have a single instance type. node group: ${nodeGroup.name}`)
             process.exit(1)
         }
-        try {
-            var publicKey: string = fs.readFileSync("../eks/ssh_keypair/id_rsa.pub", "utf-8")
-        } catch (err) {
-            console.log("Failed to read key-pair: " + err)
-            exit(1)
-        }
-        const keyPair = new aws.ec2.KeyPair("eks-workers", { publicKey: publicKey }, { provider: awsProvider })
         const n = new eks.ManagedNodeGroup(nodeGroup.name, {
             // Todo(Amit): Stop using fixed RSA keys and migrate to Tailscale.
             // Following were the hard part of getting things up and running with tailscale.
