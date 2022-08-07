@@ -2,17 +2,25 @@
 ARG platform
 
 FROM --platform=$platform golang:1.18-bullseye AS builder
-RUN apt -y update && apt -y install libssl-dev
+
+RUN apt -y update && apt -y install libssl-dev autoconf
+
+# Install Kafka
 WORKDIR /kafka
 RUN git clone https://github.com/edenhill/librdkafka.git
 WORKDIR /kafka/librdkafka
-RUN ./configure
-RUN make
-RUN make install
+RUN ./configure && make && make install
+
+# Install jemalloc
+RUN git clone https://github.com/jemalloc/jemalloc.git
+WORKDIR ./jemalloc
+RUN ./autogen.sh --with-jemalloc-prefix="je_" && make && make install
+
+# Build nitrous binary
 WORKDIR /app
 COPY go/fennel/ ./
 WORKDIR /app/go/fennel
-RUN go build -tags dynamic -o nitrous fennel/service/nitrous
+RUN go build -tags dynamic,jemalloc -o nitrous fennel/service/nitrous
 
 FROM --platform=$platform golang:1.18-bullseye
 RUN touch /etc/ld.so.conf.d/librdkafka.conf

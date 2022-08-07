@@ -348,6 +348,10 @@ export const setup = async (input: inputType) => {
                                                 fieldPath: "metadata.labels['statefulset.kubernetes.io/pod-name']",
                                             }
                                         }
+                                    },
+                                    {
+                                        name: "JE_MALLOC_CONF",
+                                        value: "background_thread:true,metadata_thp:auto"
                                     }
                                 ],
                                 resources: {
