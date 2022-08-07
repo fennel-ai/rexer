@@ -637,7 +637,8 @@ const planeConfs: Record<number, PlaneConf> = {
                     maxSize: 2,
                     amiType: DEFAULT_ARM_AMI_TYPE,
                     labels: {
-                        "node-group": "p-6-queryserver-ng"
+                        "node-group": "p-6-queryserver-ng",
+                        "rescheduler-label": "on-demand",
                     },
                     capacityType: ON_DEMAND_INSTANCE_TYPE,
                     expansionPriority: 1,
@@ -650,13 +651,18 @@ const planeConfs: Record<number, PlaneConf> = {
                     maxSize: 2,
                     amiType: DEFAULT_ARM_AMI_TYPE,
                     labels: {
-                        "node-group": "p-6-queryserver-ng"
+                        "node-group": "p-6-queryserver-ng",
+                        "rescheduler-label": "spot",
                     },
                     capacityType: SPOT_INSTANCE_TYPE,
                     // assign a higher priority for the node group with spot instance capacity type
                     expansionPriority: 10,
                 },
             ],
+            spotReschedulerConf: {
+                spotNodeLabel: "rescheduler-label=spot",
+                onDemandNodeLabel: "rescheduler-label=on-demand",
+            }
         },
         confluentConf: {
             username: confluentUsername,
