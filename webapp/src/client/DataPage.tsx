@@ -5,7 +5,7 @@ import ProfilesTab from "./ProfilesTab";
 function DataPage(){
     return (
         <div className={styles.container}>
-            <h4>Data</h4>
+            <h4 className={styles.title}>Data</h4>
             <Tabs defaultActiveKey="profiles" className={styles.tabs}>
                 <Tabs.TabPane tab="Profiles" key="profiles">
                     <div className={styles.tabContent}>
