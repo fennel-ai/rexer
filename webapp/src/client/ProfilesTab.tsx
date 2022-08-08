@@ -1,19 +1,52 @@
-import { Table, Button, Input, Form, Space} from "antd";
+import { Table, Button, Input, Form, Space, Pagination} from "antd";
 import { LoadingOutlined } from '@ant-design/icons';
 import { useState, useEffect } from "react";
 import axios from "axios";
 import styles from "./styles/ProfilesTab.module.scss";
 
+const columns = [
+    {
+        title: 'otype',
+        dataIndex: 'otype',
+        key: 'otype',
+    },
+    {
+        title: 'oid',
+        dataIndex: 'oid',
+        key: 'oid',
+    },
+    {
+        title: 'key',
+        dataIndex: 'key_col',
+        key: 'key_col',
+    },
+    {
+        title: "last_updated",
+        dataIndex: 'last_updated',
+        key: 'last_updated',
+    },
+    {
+        title: "value",
+        dataIndex: 'value',
+        key: 'value',
+    },
+];
+
 function ProfilesTab() {
     const [dataSource, setDataSource] = useState([]);
     const [loading, setLoading] = useState(false);
+    const [otype, setOtype] = useState("");
+    const [oid, setOid] = useState("");
+    const [page, setPage] = useState(1);
+    const [per, setPer] = useState(10);
 
-    // TODO: add pagination params
-    const queryProfiles = (otype: string, oid: string) => {
+    const queryProfiles = (page: number, per: number) => {
         setLoading(true);
         const params = {
             otype,
             oid,
+            page,
+            per,
         };
         axios.get("/profiles", {
             params: params,
@@ -32,53 +65,61 @@ function ProfilesTab() {
             });
     };
 
-    useEffect(() => queryProfiles("", ""), []);
-    const columns = [
-        {
-            title: 'otype',
-            dataIndex: 'otype',
-            key: 'otype',
-        },
-        {
-            title: 'oid',
-            dataIndex: 'oid',
-            key: 'oid',
-        },
-        {
-            title: 'key',
-            dataIndex: 'key_col',
-            key: 'key_col',
-        },
-        {
-            title: "last_updated",
-            dataIndex: 'last_updated',
-            key: 'last_updated',
-        },
-        {
-            title: "value",
-            dataIndex: 'value',
-            key: 'value',
-        },
-    ];
+    useEffect(() => queryProfiles(page, per), []);
     const antIcon = <LoadingOutlined spin />;
     return (
         <div className={styles.container}>
-            <Filters onQuery={queryProfiles} />
-            <Table dataSource={dataSource} columns={columns} loading={loading && {"indicator": antIcon}} />
+            <Filters
+                otype={otype}
+                oid={oid}
+                onOidChange={(newOid) => setOid(newOid)}
+                onOtypeChange={(newOtype) => setOtype(newOtype)}
+                onQuery={() => queryProfiles(page, per)}
+                buttonDisabled={loading}
+            />
+            <Table
+                bordered
+                dataSource={dataSource}
+                columns={columns}
+                loading={loading && {"indicator": antIcon}}
+            />
+            <Pagination
+                className={styles.pagination}
+                current={page}
+                pageSize={per}
+                onChange={(page, per) => {
+                    setPage(page);
+                    setPer(per);
+                    queryProfiles(page, per);
+                }}
+                disabled={loading}
+                total={100}
+            />
         </div>
     );
 }
 
 interface FiltersProps {
-    onQuery: (otype: string, oid: string) => void,
+    oid: string,
+    otype: string,
+    onQuery: () => void,
+    onOtypeChange: (otype: string) => void,
+    onOidChange: (oid: string) => void,
+    buttonDisabled?: boolean,
 }
 
 function Filters(props: FiltersProps) {
-    const [otype, setOtype] = useState("");
-    const [oid, setOid] = useState("");
+    const {
+        oid,
+        otype,
+        onQuery,
+        onOtypeChange,
+        onOidChange,
+        buttonDisabled,
+     } = props;
     const onReset = () => {
-        setOtype("");
-        setOid("");
+        onOidChange("");
+        onOtypeChange("");
     };
 
     return (
@@ -87,24 +128,26 @@ function Filters(props: FiltersProps) {
                 <Input
                     placeholder="Enter value"
                     value={otype}
-                    onChange={(e) => setOtype(e.target.value)}
+                    onChange={(e) => onOtypeChange(e.target.value)}
                 />
             </Form.Item>
             <Form.Item label="oid" className={styles.filter}>
                 <Input
                     placeholder="Enter value"
                     value={oid}
-                    onChange={(e) => setOid(e.target.value)}
+                    onChange={(e) => onOidChange(e.target.value)}
                 />
             </Form.Item>
             <Space size="small" align="start">
                 <Button
-                    onClick={onReset}>
+                    onClick={onReset}
+                    disabled={buttonDisabled}>
                     Reset
                 </Button>
                 <Button
                     type="primary"
-                    onClick={() => props.onQuery(otype, oid)}>
+                    disabled={buttonDisabled}
+                    onClick={onQuery}>
                     Query
                 </Button>
             </Space>

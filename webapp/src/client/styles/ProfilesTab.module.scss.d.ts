@@ -4,6 +4,7 @@ interface CssExports {
   'container': string;
   'filter': string;
   'filtersContainer': string;
+  'pagination': string;
 }
 export const cssExports: CssExports;
 export default cssExports;

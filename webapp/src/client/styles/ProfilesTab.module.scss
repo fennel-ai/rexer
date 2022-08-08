@@ -9,9 +9,14 @@
     border: 1px #F0F2F5 solid;
     padding: 24px 24px 0px 15px;
     margin-bottom: 32px;
+    gap: 50px;
 }
 
 .filter {
     flex-grow: 1;
-    margin-right: 50px;
+}
+
+.pagination {
+    margin-top: 12px;
+    align-self: flex-end;
 }
