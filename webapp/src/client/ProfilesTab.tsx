@@ -7,10 +7,17 @@ import styles from "./styles/ProfilesTab.module.scss";
 function ProfilesTab() {
     const [dataSource, setDataSource] = useState([]);
     const [loading, setLoading] = useState(false);
-    useEffect(() => {
+
+    // TODO: add pagination params
+    const queryProfiles = (otype: string, oid: string) => {
         setLoading(true);
-        axios.get("/profiles")
-            .then((response) => {
+        const params = {
+            otype,
+            oid,
+        };
+        axios.get("/profiles", {
+            params: params,
+        }).then((response) => {
                 if (response.status === 200) {
                     setDataSource(response.data.profiles.map((profile: object, idx: number) => ({
                         key: idx,
@@ -19,10 +26,13 @@ function ProfilesTab() {
                 }
                 setLoading(false);
             })
-            .catch((err) => {
+            .catch(err => {
+                setLoading(false);
                 console.log(err);
             });
-    }, []);
+    };
+
+    useEffect(() => queryProfiles("", ""), []);
     const columns = [
         {
             title: 'otype',
@@ -51,13 +61,9 @@ function ProfilesTab() {
         },
     ];
     const antIcon = <LoadingOutlined spin />;
-    const onQuery = (otype: string, oid: string) => {
-        console.log(otype, oid);
-    };
-
     return (
         <div className={styles.container}>
-            <Filters onQuery={onQuery} />
+            <Filters onQuery={queryProfiles} />
             <Table dataSource={dataSource} columns={columns} loading={loading && {"indicator": antIcon}} />
         </div>
     );
