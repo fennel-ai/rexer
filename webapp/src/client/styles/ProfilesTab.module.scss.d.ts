@@ -2,9 +2,8 @@
 // Please do not change this file!
 interface CssExports {
   'container': string;
-  'tabContent': string;
-  'tabs': string;
-  'title': string;
+  'filter': string;
+  'filtersContainer': string;
 }
 export const cssExports: CssExports;
 export default cssExports;
