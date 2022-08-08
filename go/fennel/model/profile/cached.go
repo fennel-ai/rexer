@@ -10,7 +10,6 @@ import (
 	"fennel/lib/value"
 	"fennel/tier"
 	"fmt"
-	"strconv"
 	"sync"
 	"time"
 
@@ -36,8 +35,8 @@ func Get(ctx context.Context, tier tier.Tier, profileKey profile.ProfileItemKey)
 	return cachedProvider{base: dbProvider{}}.get(ctx, tier, profileKey)
 }
 
-func Query(ctx context.Context, tier tier.Tier, filter sql.SqlFilter) ([]profile.ProfileItem, error) {
-	return cachedProvider{base: dbProvider{}}.query(ctx, tier, filter)
+func Query(ctx context.Context, tier tier.Tier, filter sql.SqlFilter, pagination sql.Pagination) ([]profile.ProfileItem, error) {
+	return cachedProvider{base: dbProvider{}}.query(ctx, tier, filter, pagination)
 }
 
 func GetBatch(ctx context.Context, tier tier.Tier, profileKeys []profile.ProfileItemKey) ([]profile.ProfileItem, error) {
@@ -148,38 +147,36 @@ func (c cachedProvider) get(ctx context.Context, tier tier.Tier, profileKey prof
 	return ret[0], nil
 }
 
-func (c cachedProvider) query(ctx context.Context, tier tier.Tier, filter sql.SqlFilter) ([]profile.ProfileItem, error) {
+func (c cachedProvider) query(ctx context.Context, tier tier.Tier, filter sql.SqlFilter, pagination sql.Pagination) ([]profile.ProfileItem, error) {
 	ctx, t := timer.Start(ctx, tier.ID, "model.profile.cached.query")
 	defer t.Stop()
-	filterHash := strconv.FormatUint(filter.Hash(), 10)
-	val, err := tier.Cache.Get(ctx, filterHash)
-	result := make(map[string]any)
-	result[filterHash] = val
-	if err != nil || len(val.(string)) == 0 {
-		dbProfiles, err := c.base.query(ctx, tier, filter)
-		if err == nil {
-			result[filterHash] = dbProfiles
-			if b, err := compress.Encode(dbProfiles); err != nil {
-				_ = tier.Cache.Set(ctx, filterHash, b, time.Duration(0))
-			}
-		} else {
-			return nil, err
-		}
+
+	// skip cache for late pages
+	if pagination.Page > 3 {
+		return c.base.query(ctx, tier, filter, pagination)
 	}
 
-	v, ok := result[filterHash]
-	if !ok || v == tier.Cache.Nil() {
-		return nil, fmt.Errorf("failed to fetch profiles")
+	key := makeQueryKey(filter, pagination)
+	val, err := tier.Cache.Get(ctx, key)
+	// cache miss
+	if err != nil || len(val.(string)) == 0 {
+		dbProfiles, err := c.base.query(ctx, tier, filter, pagination)
+		if err != nil {
+			return nil, err
+		}
+		if b, err := compress.Encode(dbProfiles); err != nil {
+			_ = tier.Cache.Set(ctx, key, b, time.Duration(60*1000_000_000))
+		}
+		return dbProfiles, err
 	}
+
 	ret := make([]profile.ProfileItem, 0)
-	switch t := v.(type) {
+	switch t := val.(type) {
 	case string:
 		if err := compress.Decode([]byte(t), &ret); err != nil {
 			return nil, fmt.Errorf("unexpected error in uncompression result from cache: %s", err)
 		}
 		return ret, nil
-	case []profile.ProfileItem:
-		return t, nil
 	}
 	return nil, fmt.Errorf("unexpected type found in cache")
 }
@@ -318,4 +315,9 @@ func cacheName() string {
 func makeKey(pk profile.ProfileItemKey) string {
 	prefix := fmt.Sprintf("%s:%d", cacheName(), cacheVersion)
 	return fmt.Sprintf("%s:{%s:%s:%s}", prefix, pk.OType, pk.Oid, pk.Key)
+}
+
+func makeQueryKey(filter sql.SqlFilter, pagination sql.Pagination) string {
+	prefix := fmt.Sprintf("cache:profile_query:%d", cacheVersion)
+	return fmt.Sprintf("%s:%v:%v:%v", prefix, filter.Hash(), pagination.Page, pagination.Per)
 }

@@ -31,7 +31,9 @@ func TestDBBasic(t *testing.T) {
 	t.Run("db_get_multi", func(t *testing.T) {
 		testSQLGetMulti(t, dbProvider{})
 	})
-
+	t.Run("db_query", func(t *testing.T) {
+		testQuery(t, dbProvider{})
+	})
 }
 
 func TestLongKey(t *testing.T) {

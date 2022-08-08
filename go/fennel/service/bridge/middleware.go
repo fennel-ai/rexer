@@ -3,7 +3,6 @@ package main
 import (
 	"fennel/mothership"
 	"fennel/mothership/model/user"
-	"fmt"
 	"net/http"
 
 	"github.com/gin-contrib/sessions"
@@ -46,7 +45,6 @@ func WithFlashMessage(c *gin.Context) {
 	}
 	session.Delete(FlashMessageTypeKey)
 	session.Delete(FlashMessageContentKey)
-	fmt.Printf("%s %s %s\n", msgType, msgContent, c.Request.URL.Path)
 	c.Set(FlashMessageKey, map[string]string{
 		"flashMsgType":    msgType,
 		"flashMsgContent": msgContent,

@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"fennel/lib/ftypes"
+	"fennel/lib/sql"
 	"fennel/lib/value"
 
 	"github.com/buger/jsonparser"
@@ -206,4 +207,9 @@ func ToList(profiles []ProfileItem) (value.List, error) {
 		table.Append(d)
 	}
 	return table, nil
+}
+
+type QueryRequest struct {
+	Pagination sql.Pagination         `json:"pagination"`
+	Filter     sql.CompositeSqlFilter `json:"filter"`
 }

@@ -430,12 +430,14 @@ func (m server) QueryProfiles(w http.ResponseWriter, req *http.Request) {
 		handleBadRequest(w, "invalid request", err)
 		return
 	}
-	var sqlFilter sql.CompositeSqlFilter
-	if err = json.Unmarshal(data, &sqlFilter); err != nil {
+	form := profilelib.QueryRequest{
+		Pagination: sql.NewPagination(),
+	}
+	if err = json.Unmarshal(data, &form); err != nil {
 		handleBadRequest(w, "invalid request", fmt.Errorf("failed to parse query filter from json: %s", err))
 		return
 	}
-	profiles, err := profile2.Query(req.Context(), m.tier, &sqlFilter)
+	profiles, err := profile2.Query(req.Context(), m.tier, &form.Filter, form.Pagination)
 	if err != nil {
 		handleInternalServerError(w, "invalid request: ", err)
 		return
