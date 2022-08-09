@@ -193,6 +193,9 @@ func fetchOfflineAggregates(tier tier.Tier, aggMap map[ftypes.AggName]aggregate.
 	if len(offlinePtr) > 0 {
 		offlineValues, err := phaser.BatchGet(tier, namespaces, identifier, offlineKeys)
 		if err != nil {
+			if err == phaser.PhaserNotFound {
+				return numSlotsLeft, fmt.Errorf("error: please check duration of offline aggregate, %s", identifier)
+			}
 			return numSlotsLeft, err
 		}
 
