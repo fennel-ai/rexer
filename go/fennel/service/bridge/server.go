@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fennel/lib/sql"
 	"fennel/mothership"
 	profileC "fennel/mothership/controller/profile"
 	userC "fennel/mothership/controller/user"
@@ -76,7 +77,7 @@ func (s *server) setupRouter() {
 	auth.GET("/", s.Dashboard)
 	auth.GET("/dashboard", s.Dashboard)
 	auth.GET("/data", s.Data)
-	auth.GET("/profiles", profileC.Profiles)
+	auth.GET("/profiles", s.Profiles)
 }
 
 const (
@@ -181,9 +182,7 @@ func (s *server) SignUp(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusCreated, gin.H{
-		"data": gin.H{},
-	})
+	c.JSON(http.StatusCreated, gin.H{})
 }
 
 func (s *server) SignIn(c *gin.Context) {
@@ -196,14 +195,13 @@ func (s *server) SignIn(c *gin.Context) {
 	user, err := userC.SignIn(c.Request.Context(), s.mothership, form.Email, form.Password)
 
 	if err != nil {
+		// TODO(xiao) better error handling
 		c.JSON(http.StatusBadRequest, gin.H{
 			"error": err.Error(),
 		})
 	} else {
 		saveUserIntoCookie(sessions.Default(c), user)
-		c.JSON(http.StatusOK, gin.H{
-			"data": gin.H{},
-		})
+		c.JSON(http.StatusOK, gin.H{})
 	}
 }
 
@@ -224,15 +222,13 @@ func (s *server) ResendConfirmationEmail(c *gin.Context) {
 				"error": err.Error(),
 			})
 		default:
-			c.JSON(http.StatusBadRequest, gin.H{
+			c.JSON(http.StatusInternalServerError, gin.H{
 				"error": "Fail to resend confirmation email, please try again later.",
 			})
 			log.Printf("Failed to resend confirmation email: %v\n", err)
 		}
 	} else {
-		c.JSON(http.StatusOK, gin.H{
-			"data": gin.H{},
-		})
+		c.JSON(http.StatusOK, gin.H{})
 	}
 }
 
@@ -242,4 +238,29 @@ func (s *server) Dashboard(c *gin.Context) {
 
 func (s *server) Data(c *gin.Context) {
 	c.HTML(http.StatusOK, "index.tmpl", gin.H{"title": "Fennel | Data", "page": DataPage})
+}
+
+func (s *server) Profiles(c *gin.Context) {
+	var form struct {
+		Otype string `form:"otype"`
+		Oid   string `form:"oid"`
+
+		sql.Pagination
+	}
+	if err := c.ShouldBind(&form); err != nil {
+		log.Printf("Failed to parse params: %v\n", err)
+		return
+	}
+
+	profiles, err := profileC.Profiles(c.Request.Context(), s.mothership, form.Otype, form.Oid, form.Pagination)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": "Fail to read profiles, please try again later.",
+		})
+		log.Printf("Failed to read profiles: %v\n", err)
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{
+		"profiles": profiles,
+	})
 }

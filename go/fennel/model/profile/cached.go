@@ -35,8 +35,8 @@ func Get(ctx context.Context, tier tier.Tier, profileKey profile.ProfileItemKey)
 	return cachedProvider{base: dbProvider{}}.get(ctx, tier, profileKey)
 }
 
-func Query(ctx context.Context, tier tier.Tier, filter sql.SqlFilter, pagination sql.Pagination) ([]profile.ProfileItem, error) {
-	return cachedProvider{base: dbProvider{}}.query(ctx, tier, filter, pagination)
+func Query(ctx context.Context, tier tier.Tier, otype, oid string, pagination sql.Pagination) ([]profile.ProfileItem, error) {
+	return cachedProvider{base: dbProvider{}}.query(ctx, tier, otype, oid, pagination)
 }
 
 func GetBatch(ctx context.Context, tier tier.Tier, profileKeys []profile.ProfileItemKey) ([]profile.ProfileItem, error) {
@@ -147,20 +147,20 @@ func (c cachedProvider) get(ctx context.Context, tier tier.Tier, profileKey prof
 	return ret[0], nil
 }
 
-func (c cachedProvider) query(ctx context.Context, tier tier.Tier, filter sql.SqlFilter, pagination sql.Pagination) ([]profile.ProfileItem, error) {
+func (c cachedProvider) query(ctx context.Context, tier tier.Tier, otype, oid string, pagination sql.Pagination) ([]profile.ProfileItem, error) {
 	ctx, t := timer.Start(ctx, tier.ID, "model.profile.cached.query")
 	defer t.Stop()
 
 	// skip cache for late pages
 	if pagination.Page > 3 {
-		return c.base.query(ctx, tier, filter, pagination)
+		return c.base.query(ctx, tier, otype, oid, pagination)
 	}
 
-	key := makeQueryKey(filter, pagination)
+	key := makeQueryKey(otype, oid, pagination)
 	val, err := tier.Cache.Get(ctx, key)
 	// cache miss
 	if err != nil || len(val.(string)) == 0 {
-		dbProfiles, err := c.base.query(ctx, tier, filter, pagination)
+		dbProfiles, err := c.base.query(ctx, tier, otype, oid, pagination)
 		if err != nil {
 			return nil, err
 		}
@@ -317,7 +317,7 @@ func makeKey(pk profile.ProfileItemKey) string {
 	return fmt.Sprintf("%s:{%s:%s:%s}", prefix, pk.OType, pk.Oid, pk.Key)
 }
 
-func makeQueryKey(filter sql.SqlFilter, pagination sql.Pagination) string {
+func makeQueryKey(otype, oid string, pagination sql.Pagination) string {
 	prefix := fmt.Sprintf("cache:profile_query:%d", cacheVersion)
-	return fmt.Sprintf("%s:%v:%v:%v", prefix, filter.Hash(), pagination.Page, pagination.Per)
+	return fmt.Sprintf("%s:%s:%s:%v:%v", prefix, otype, oid, pagination.Page, pagination.Per)
 }

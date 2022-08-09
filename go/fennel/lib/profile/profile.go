@@ -210,6 +210,7 @@ func ToList(profiles []ProfileItem) (value.List, error) {
 }
 
 type QueryRequest struct {
-	Pagination sql.Pagination         `json:"pagination"`
-	Filter     sql.CompositeSqlFilter `json:"filter"`
+	Otype string `json:"otype"`
+	Oid   string `json:"oid"`
+	sql.Pagination
 }

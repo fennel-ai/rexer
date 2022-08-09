@@ -437,7 +437,7 @@ func (m server) QueryProfiles(w http.ResponseWriter, req *http.Request) {
 		handleBadRequest(w, "invalid request", fmt.Errorf("failed to parse query filter from json: %s", err))
 		return
 	}
-	profiles, err := profile2.Query(req.Context(), m.tier, &form.Filter, form.Pagination)
+	profiles, err := profile2.Query(req.Context(), m.tier, form.Otype, form.Oid, form.Pagination)
 	if err != nil {
 		handleInternalServerError(w, "invalid request: ", err)
 		return
