@@ -251,6 +251,21 @@ export const setup = async (input: inputType) => {
                     },
                     spec: {
                         nodeSelector: nodeSelector,
+                        // We want to set the vm.swappniss sysctl to 0, but that
+                        // is blocked on https://github.com/pulumi/pulumi-eks/issues/611
+                        // Once the above issue resolved, we should add the following
+                        // as an option to the managed nodegroup for nitrous:
+                        //     kubeletExtraArgs: "--allowed-unsafe-sysctls=vm.swappiness",
+                        // After that, we can set the vm.swappiness sysctl to 1
+                        // for this pod by uncommenting the following:
+                        // securityContext: {
+                        //     sysctls: [
+                        //         {
+                        //             name: "vm.swappiness",
+                        //             value: "1",
+                        //         }
+                        //     ],
+                        // },
                         containers: [
                             {
                                 command: [
