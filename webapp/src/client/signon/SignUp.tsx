@@ -43,7 +43,7 @@ interface SignUpFormProps {
     onSubmit: (email: string) => void,
 }
 
-function SignUpForm(props: SignUpFormProps) {
+function SignUpForm({onSubmit}: SignUpFormProps) {
     const [submitting, setSubmitting] = useState(false);
 
     const onFinish = (values: FormValues) => {
@@ -54,7 +54,7 @@ function SignUpForm(props: SignUpFormProps) {
         })
         .then(() => {
             setSubmitting(false);
-            props.onSubmit(values.email);
+            onSubmit(values.email);
         })
         .catch((error: AxiosError) => {
             setSubmitting(false);
@@ -160,13 +160,13 @@ function ConfirmEmail(props: ConfirmEmailProps) {
     )
 }
 
-function ResendButton(props: ConfirmEmailProps) {
+function ResendButton({email}: ConfirmEmailProps) {
     const [resent, setResent] = useState(false);
 
     const onFinish = () => {
         setResent(true);
         axios.post("/resend_confirmation_email", {
-            email: props.email,
+            email: email,
         })
         .then(() => {
             notification.success({

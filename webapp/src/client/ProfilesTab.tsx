@@ -51,8 +51,9 @@ function ProfilesTab() {
     const [oid, setOid] = useState<string>("");
     const [page, setPage] = useState<number>(1);
     const [per, setPer] = useState<number>(10);
+    const [currentMaxTotal, setCurrentMaxTotal] = useState<number>(page * per);
 
-    const queryProfiles = (page: number, per: number) => {
+    const queryProfiles = (page: number, per: number, currentMaxTotal: number) => {
         setLoading(true);
         const params = {
             otype,
@@ -70,8 +71,16 @@ function ProfilesTab() {
                         oid: profile.Oid,
                         keyCol: profile.Key,
                         updatedTime: profile.UpdateTime,
+                        value: profile.Value,
                     }));
                     setDataSource(newData);
+                    if (newData.length === per) {
+                        if (page * per >= currentMaxTotal) {
+                            setCurrentMaxTotal(page * per + 1);
+                        }
+                    } else if (newData.length > 0 && (page - 1) * per + newData.length > currentMaxTotal) {
+                        setCurrentMaxTotal((page - 1) * per + newData.length);
+                    }
                 }
                 setLoading(false);
             })
@@ -81,7 +90,7 @@ function ProfilesTab() {
             });
     };
 
-    useEffect(() => queryProfiles(page, per), []);
+    useEffect(() => queryProfiles(page, per, currentMaxTotal), []);
     const antIcon = <LoadingOutlined spin />;
     return (
         <div className={styles.container}>
@@ -92,7 +101,8 @@ function ProfilesTab() {
                 onOtypeChange={(newOtype) => setOtype(newOtype)}
                 onQuery={() => {
                     setPage(1); // reset to page 1
-                    queryProfiles(1, per);
+                    setCurrentMaxTotal(per);
+                    queryProfiles(1, per, per);
                 }}
                 buttonDisabled={loading}
             />
@@ -110,10 +120,10 @@ function ProfilesTab() {
                 onChange={(page, per) => {
                     setPage(page);
                     setPer(per);
-                    queryProfiles(page, per);
+                    queryProfiles(page, per, currentMaxTotal);
                 }}
                 disabled={loading}
-                total={100}
+                total={currentMaxTotal}
             />
         </div>
     );

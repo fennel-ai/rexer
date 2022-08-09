@@ -11,9 +11,7 @@ const SIGNUP_PAGE = "signup";
 const SIGNIN_PAGE = "signin";
 const RESET_PASSWORD_PAGE = "resetpassword";
 
-function SignOnApp(props: Props) {
-    const {page} = props;
-
+function SignOnApp({page}: Props) {
     return (
         <div>
             <Route page={page} />
@@ -21,9 +19,7 @@ function SignOnApp(props: Props) {
     )
 }
 
-function Route(props: Props) {
-    const {page} = props;
-
+function Route({page}: Props) {
     switch (page) {
         case SIGNUP_PAGE:
             return <SignUp />;
