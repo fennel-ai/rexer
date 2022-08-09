@@ -3,6 +3,7 @@ package main
 import (
 	"fennel/lib/sql"
 	"fennel/mothership"
+	actionC "fennel/mothership/controller/action"
 	profileC "fennel/mothership/controller/profile"
 	userC "fennel/mothership/controller/user"
 	"fmt"
@@ -78,6 +79,7 @@ func (s *server) setupRouter() {
 	auth.GET("/dashboard", s.Dashboard)
 	auth.GET("/data", s.Data)
 	auth.GET("/profiles", s.Profiles)
+	auth.GET("/actions", s.Actions)
 }
 
 const (
@@ -248,11 +250,11 @@ func (s *server) Profiles(c *gin.Context) {
 		sql.Pagination
 	}
 	if err := c.ShouldBind(&form); err != nil {
-		log.Printf("Failed to parse params: %v\n", err)
+		log.Printf("Failed to parse Profiles params: %v\n", err)
 		return
 	}
 
-	profiles, err := profileC.Profiles(c.Request.Context(), s.mothership, form.Otype, form.Oid, form.Pagination)
+	profiles, err := profileC.Profiles(c.Request.Context(), form.Otype, form.Oid, form.Pagination)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error": "Fail to read profiles, please try again later.",
@@ -262,5 +264,31 @@ func (s *server) Profiles(c *gin.Context) {
 	}
 	c.JSON(http.StatusOK, gin.H{
 		"profiles": profiles,
+	})
+}
+
+func (s *server) Actions(c *gin.Context) {
+	var form struct {
+		ActionType string `form:"action_type"`
+		ActorType  string `form:"actor_type"`
+		ActorID    string `form:"actor_id"`
+		TargetType string `form:"target_type"`
+		TargetID   string `form:"target_id"`
+	}
+	if err := c.ShouldBind(&form); err != nil {
+		log.Printf("Failed to parse Actions params: %v\n", err)
+		return
+	}
+
+	actions, err := actionC.Actions(c.Request.Context(), form.ActionType, form.ActorType, form.ActorID, form.TargetType, form.TargetID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": "Fail to read actions, please try again later.",
+		})
+		log.Printf("Failed to read actions: %v\n", err)
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{
+		"actions": actions,
 	})
 }

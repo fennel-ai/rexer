@@ -4,6 +4,7 @@ import (
 	"context"
 	"fennel/lib/cache"
 	"fennel/lib/compress"
+	"fennel/lib/ftypes"
 	"fennel/lib/profile"
 	"fennel/lib/sql"
 	"fennel/lib/timer"
@@ -35,7 +36,7 @@ func Get(ctx context.Context, tier tier.Tier, profileKey profile.ProfileItemKey)
 	return cachedProvider{base: dbProvider{}}.get(ctx, tier, profileKey)
 }
 
-func Query(ctx context.Context, tier tier.Tier, otype, oid string, pagination sql.Pagination) ([]profile.ProfileItem, error) {
+func Query(ctx context.Context, tier tier.Tier, otype ftypes.OType, oid ftypes.OidType, pagination sql.Pagination) ([]profile.ProfileItem, error) {
 	return cachedProvider{base: dbProvider{}}.query(ctx, tier, otype, oid, pagination)
 }
 
@@ -147,7 +148,7 @@ func (c cachedProvider) get(ctx context.Context, tier tier.Tier, profileKey prof
 	return ret[0], nil
 }
 
-func (c cachedProvider) query(ctx context.Context, tier tier.Tier, otype, oid string, pagination sql.Pagination) ([]profile.ProfileItem, error) {
+func (c cachedProvider) query(ctx context.Context, tier tier.Tier, otype ftypes.OType, oid ftypes.OidType, pagination sql.Pagination) ([]profile.ProfileItem, error) {
 	ctx, t := timer.Start(ctx, tier.ID, "model.profile.cached.query")
 	defer t.Stop()
 
@@ -317,7 +318,7 @@ func makeKey(pk profile.ProfileItemKey) string {
 	return fmt.Sprintf("%s:{%s:%s:%s}", prefix, pk.OType, pk.Oid, pk.Key)
 }
 
-func makeQueryKey(otype, oid string, pagination sql.Pagination) string {
+func makeQueryKey(otype ftypes.OType, oid ftypes.OidType, pagination sql.Pagination) string {
 	prefix := fmt.Sprintf("cache:profile_query:%d", cacheVersion)
 	return fmt.Sprintf("%s:%s:%s:%v:%v", prefix, otype, oid, pagination.Page, pagination.Per)
 }

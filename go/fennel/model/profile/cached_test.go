@@ -47,7 +47,7 @@ func (m *mockProvider) getBatch(ctx context.Context, tier tier.Tier, profileKeys
 	return mp, nil
 }
 
-func (m *mockProvider) query(ctx context.Context, tier tier.Tier, otype, oid string, pagination sql.Pagination) ([]profile.ProfileItem, error) {
+func (m *mockProvider) query(ctx context.Context, tier tier.Tier, otype ftypes.OType, oid ftypes.OidType, pagination sql.Pagination) ([]profile.ProfileItem, error) {
 	mp := make([]profile.ProfileItem, 1)
 	mp[0] = m.ret
 	return mp, nil

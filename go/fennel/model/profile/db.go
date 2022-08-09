@@ -24,7 +24,7 @@ type provider interface {
 	setBatch(ctx context.Context, tier tier.Tier, profiles []profile.ProfileItem) error
 	get(ctx context.Context, tier tier.Tier, profileKey profile.ProfileItemKey) (profile.ProfileItem, error)
 	getBatch(ctx context.Context, tier tier.Tier, profileKeys []profile.ProfileItemKey) ([]profile.ProfileItem, error)
-	query(ctx context.Context, tier tier.Tier, otype, oid string, pagination sql.Pagination) ([]profile.ProfileItem, error)
+	query(ctx context.Context, tier tier.Tier, otype ftypes.OType, oid ftypes.OidType, pagination sql.Pagination) ([]profile.ProfileItem, error)
 }
 
 type dbProvider struct{}
@@ -157,7 +157,7 @@ func (D dbProvider) get(ctx context.Context, tier tier.Tier, profileKey profile.
 
 }
 
-func (D dbProvider) query(ctx context.Context, tier tier.Tier, otype, oid string, pagination sql.Pagination) ([]profile.ProfileItem, error) {
+func (D dbProvider) query(ctx context.Context, tier tier.Tier, otype ftypes.OType, oid ftypes.OidType, pagination sql.Pagination) ([]profile.ProfileItem, error) {
 	ctx, t := timer.Start(ctx, tier.ID, "model.profile.db.query")
 	defer t.Stop()
 	// construct the select query to execute it.
