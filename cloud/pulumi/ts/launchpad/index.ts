@@ -315,6 +315,31 @@ const tierConfs: Record<number, TierConf> = {
             },
         },
     },
+    // 3 Demo tiers asked by Nikhil as of 08/09/2022
+    116: {
+        protectResources: true,
+        planeId: 3,
+        // use public subnets for ingress to allow traffic from outside the assigned vpc
+        ingressConf: {
+            usePublicSubnets: true,
+        },
+    },
+    117: {
+        protectResources: true,
+        planeId: 3,
+        // use public subnets for ingress to allow traffic from outside the assigned vpc
+        ingressConf: {
+            usePublicSubnets: true,
+        }
+    },
+    118: {
+        protectResources: true,
+        planeId: 3,
+        // use public subnets for ingress to allow traffic from outside the assigned vpc
+        ingressConf: {
+            usePublicSubnets: true,
+        }
+    }
 }
 
 // map from plane id to its configuration.
