@@ -2,7 +2,6 @@ package profile
 
 import (
 	"context"
-	"encoding/json"
 	"testing"
 
 	"fennel/lib/profile"
@@ -175,27 +174,30 @@ func testQuery(t *testing.T, p provider) {
 	}
 
 	assert.NoError(t, p.setBatch(ctx, tier, profiles))
-	var filter sql.CompositeSqlFilter
-	err := json.Unmarshal([]byte(`
-		{
-			"Left": "OType",
-			"Op": "=",
-			"Right": "12"
-		}
-	`), &filter)
-	assert.NoError(t, err)
 
-	actualProfiles, err := p.query(ctx, tier, &filter, sql.NewPagination())
+	actualProfiles, err := p.query(ctx, tier, "", "", sql.NewPagination())
+	assert.NoError(t, err)
+	assert.Equal(t, profiles, actualProfiles)
+
+	actualProfiles, err = p.query(ctx, tier, "12", "", sql.NewPagination())
 	assert.NoError(t, err)
 	assert.Equal(t, profiles[0:3], actualProfiles)
 
+	actualProfiles, err = p.query(ctx, tier, "", "1", sql.NewPagination())
+	assert.NoError(t, err)
+	assert.Equal(t, []profile.ProfileItem{profiles[0], profiles[3]}, actualProfiles)
+
+	actualProfiles, err = p.query(ctx, tier, "13", "1", sql.NewPagination())
+	assert.NoError(t, err)
+	assert.Equal(t, profiles[3:], actualProfiles)
+
 	pagination := sql.Pagination{Page: 2, Per: 1}
-	actualProfiles, err = p.query(ctx, tier, &filter, pagination)
+	actualProfiles, err = p.query(ctx, tier, "12", "", pagination)
 	assert.NoError(t, err)
 	assert.Equal(t, profiles[1:2], actualProfiles)
 
 	pagination = sql.Pagination{Page: 2, Per: 2}
-	actualProfiles, err = p.query(ctx, tier, &filter, pagination)
+	actualProfiles, err = p.query(ctx, tier, "12", "", pagination)
 	assert.NoError(t, err)
 	assert.Equal(t, profiles[2:3], actualProfiles)
 }

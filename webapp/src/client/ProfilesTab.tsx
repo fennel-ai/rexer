@@ -1,7 +1,7 @@
 import { Table, Button, Input, Form, Space, Pagination} from "antd";
 import { LoadingOutlined } from '@ant-design/icons';
 import { useState, useEffect } from "react";
-import axios from "axios";
+import axios, { AxiosResponse } from "axios";
 import styles from "./styles/ProfilesTab.module.scss";
 
 const columns = [
@@ -17,13 +17,13 @@ const columns = [
     },
     {
         title: 'key',
-        dataIndex: 'key_col',
-        key: 'key_col',
+        dataIndex: 'keyCol',
+        key: 'keyCol',
     },
     {
-        title: "last_updated",
-        dataIndex: 'last_updated',
-        key: 'last_updated',
+        title: "updatedTime",
+        dataIndex: 'updatedTime',
+        key: 'updatedTime',
     },
     {
         title: "value",
@@ -32,13 +32,25 @@ const columns = [
     },
 ];
 
+interface ProfileResponse {
+    profiles: Array<Profile>,
+}
+
+interface Profile {
+    OType: string,
+    Oid: string,
+    Key: string,
+    Value: string,
+    UpdateTime: number,
+}
+
 function ProfilesTab() {
-    const [dataSource, setDataSource] = useState([]);
-    const [loading, setLoading] = useState(false);
-    const [otype, setOtype] = useState("");
-    const [oid, setOid] = useState("");
-    const [page, setPage] = useState(1);
-    const [per, setPer] = useState(10);
+    const [dataSource, setDataSource] = useState<object[]>([]);
+    const [loading, setLoading] = useState<boolean>(false);
+    const [otype, setOtype] = useState<string>("");
+    const [oid, setOid] = useState<string>("");
+    const [page, setPage] = useState<number>(1);
+    const [per, setPer] = useState<number>(10);
 
     const queryProfiles = (page: number, per: number) => {
         setLoading(true);
@@ -50,18 +62,22 @@ function ProfilesTab() {
         };
         axios.get("/profiles", {
             params: params,
-        }).then((response) => {
+        }).then((response: AxiosResponse<ProfileResponse>) => {
                 if (response.status === 200) {
-                    setDataSource(response.data.profiles.map((profile: object, idx: number) => ({
+                    const newData = response.data.profiles.map((profile: Profile, idx: number) => ({
                         key: idx,
-                        ...profile,
-                    })));
+                        otype: profile.OType,
+                        oid: profile.Oid,
+                        keyCol: profile.Key,
+                        updatedTime: profile.UpdateTime,
+                    }));
+                    setDataSource(newData);
                 }
                 setLoading(false);
             })
-            .catch(err => {
+            .catch(() => {
+                // TODO(xiao) error handling
                 setLoading(false);
-                console.log(err);
             });
     };
 
@@ -74,7 +90,10 @@ function ProfilesTab() {
                 oid={oid}
                 onOidChange={(newOid) => setOid(newOid)}
                 onOtypeChange={(newOtype) => setOtype(newOtype)}
-                onQuery={() => queryProfiles(page, per)}
+                onQuery={() => {
+                    setPage(1); // reset to page 1
+                    queryProfiles(1, per);
+                }}
                 buttonDisabled={loading}
             />
             <Table
@@ -82,6 +101,7 @@ function ProfilesTab() {
                 dataSource={dataSource}
                 columns={columns}
                 loading={loading && {"indicator": antIcon}}
+                pagination={false}
             />
             <Pagination
                 className={styles.pagination}
@@ -129,6 +149,7 @@ function Filters(props: FiltersProps) {
                     placeholder="Enter value"
                     value={otype}
                     onChange={(e) => onOtypeChange(e.target.value)}
+                    onPressEnter={onQuery}
                 />
             </Form.Item>
             <Form.Item label="oid" className={styles.filter}>
@@ -136,6 +157,7 @@ function Filters(props: FiltersProps) {
                     placeholder="Enter value"
                     value={oid}
                     onChange={(e) => onOidChange(e.target.value)}
+                    onPressEnter={onQuery}
                 />
             </Form.Item>
             <Space size="small" align="start">

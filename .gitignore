@@ -40,3 +40,5 @@ go/fennel/lib/value/testdata/
 webapp/dist/
 
 .github/*
+
+devenv_temp.rc

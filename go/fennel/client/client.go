@@ -175,10 +175,11 @@ func (c *Client) GetProfile(request *profileLib.ProfileItemKey) (*profile.Profil
 	}
 }
 
-func (c *Client) QueryProfiles(sqlFilter sql.CompositeSqlFilter, pagination sql.Pagination) ([]profile.ProfileItem, error) {
+func (c *Client) QueryProfiles(otype, oid string, pagination sql.Pagination) ([]profile.ProfileItem, error) {
 	request := profileLib.QueryRequest{
+		Otype:      otype,
+		Oid:        oid,
 		Pagination: pagination,
-		Filter:     sqlFilter,
 	}
 	b, err := json.Marshal(&request)
 	if err != nil {
@@ -188,19 +189,9 @@ func (c *Client) QueryProfiles(sqlFilter sql.CompositeSqlFilter, pagination sql.
 	if err != nil {
 		return nil, err
 	}
-	// so server sent some response without error, so let's decode that response
-	if len(response) == 0 {
-		// i.e. no valid value is found, so we return nil pointer
-		return nil, nil
-	}
-
-	// now try to read response as a JSON object and convert to value
-	ret := make([]profile.ProfileItem, 0)
+	ret := make([]profile.ProfileItem, 0, pagination.Per)
 	err = json.Unmarshal(response, &ret)
-	if err != nil {
-		return nil, err
-	}
-	return ret, nil
+	return ret, err
 }
 
 func (c *Client) Query(reqAst ast.Ast, reqArgs value.Dict, reqMock mock.Data) (value.Value, error) {

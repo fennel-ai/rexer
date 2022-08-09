@@ -1,51 +1,20 @@
 package profile
 
 import (
-	"encoding/json"
+	"context"
 	"fennel/client"
 	"fennel/lib/sql"
+	"fennel/mothership"
 	"net/http"
 
-	"github.com/gin-gonic/gin"
+	lib "fennel/lib/profile"
 )
 
-func Profiles(c *gin.Context) {
-	var filter sql.CompositeSqlFilter
-	// We expect filter type in the body.
-	// c.BindJSON(&filter)
-	// For now just using a dummy filter to see if things work e2e.
-	str := `{
-		"Left": "OType",
-		"Op": "=",
-		"Right": "channel"
-	}
-		`
-	err := json.Unmarshal([]byte(str), &filter)
-	if err != nil {
-		c.String(http.StatusInternalServerError, err.Error())
-		return
-	}
+func Profiles(c context.Context, m mothership.Mothership, otype, oid string, pagination sql.Pagination) ([]lib.ProfileItem, error) {
+	// TODO(xiao) client address
 	cli, err := client.NewClient("http://localhost:2425", http.DefaultClient)
 	if err != nil {
-		c.String(http.StatusInternalServerError, err.Error())
-		return
+		return nil, err
 	}
-	profiles, err := cli.QueryProfiles(filter, sql.Pagination{Page: 2, Per: 1})
-	if err != nil {
-		c.String(http.StatusInternalServerError, err.Error())
-		return
-	}
-	result := make([]gin.H, len(profiles))
-	for i, p := range profiles {
-		result[i] = map[string]any{
-			"otype":        p.OType,
-			"oid":          p.Oid,
-			"key_col":      p.Key,
-			"last_updated": p.UpdateTime,
-			"value":        p.Value,
-		}
-	}
-	c.JSON(http.StatusOK, gin.H{
-		"profiles": result,
-	})
+	return cli.QueryProfiles(otype, oid, pagination)
 }

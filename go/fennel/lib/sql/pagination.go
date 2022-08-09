@@ -1,8 +1,8 @@
 package sql
 
 type Pagination struct {
-	Page uint32 `json:"page"` // page number, start with 1
-	Per  uint32 `json:"per"`  // number of items per page
+	Page uint `json:"page" form:"page"` // page number, start with 1
+	Per  uint `json:"per" form:"per"`   // number of items per page
 }
 
 func NewPagination() Pagination {

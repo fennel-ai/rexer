@@ -24,7 +24,7 @@ type provider interface {
 	setBatch(ctx context.Context, tier tier.Tier, profiles []profile.ProfileItem) error
 	get(ctx context.Context, tier tier.Tier, profileKey profile.ProfileItemKey) (profile.ProfileItem, error)
 	getBatch(ctx context.Context, tier tier.Tier, profileKeys []profile.ProfileItemKey) ([]profile.ProfileItem, error)
-	query(ctx context.Context, tier tier.Tier, filter sql.SqlFilter, pagination sql.Pagination) ([]profile.ProfileItem, error)
+	query(ctx context.Context, tier tier.Tier, otype, oid string, pagination sql.Pagination) ([]profile.ProfileItem, error)
 }
 
 type dbProvider struct{}
@@ -157,24 +157,33 @@ func (D dbProvider) get(ctx context.Context, tier tier.Tier, profileKey profile.
 
 }
 
-func (D dbProvider) query(ctx context.Context, tier tier.Tier, filter sql.SqlFilter, pagination sql.Pagination) ([]profile.ProfileItem, error) {
-	// TODO(xiao) implement pagination
+func (D dbProvider) query(ctx context.Context, tier tier.Tier, otype, oid string, pagination sql.Pagination) ([]profile.ProfileItem, error) {
 	ctx, t := timer.Start(ctx, tier.ID, "model.profile.db.query")
 	defer t.Stop()
 	// construct the select query to execute it.
-	sql := fmt.Sprintf(`
+	sql := `
 	SELECT otype, oid, zkey, value, version
-	FROM profile
-	WHERE %s
-	LIMIT %v
-	OFFSET %v
-	`, filter.String(), pagination.Per, pagination.Per*(pagination.Page-1))
+	FROM profile`
+	vals := make([]any, 0, 4)
+	if otype != "" {
+		sql += " WHERE otype = ?"
+		vals = append(vals, otype)
+		if oid != "" {
+			sql += " AND oid = ?"
+			vals = append(vals, oid)
+		}
+	} else if oid != "" {
+		sql += " WHERE oid = ?"
+		vals = append(vals, oid)
+	}
+	sql += " LIMIT ? OFFSET ?"
+	vals = append(vals, pagination.Per, pagination.Per*(pagination.Page-1))
 	profilereqs := make([]profileItemSer, 0)
 	var err error
-	if err = tier.DB.SelectContext(ctx, &profilereqs, sql); err != nil {
+	if err = tier.DB.SelectContext(ctx, &profilereqs, sql, vals...); err != nil {
 		return nil, err
 	}
-	ret := make([]profile.ProfileItem, 0)
+	ret := make([]profile.ProfileItem, 0, pagination.Per)
 	for _, p := range profilereqs {
 		prof, err := p.toProfileItem()
 		if err == nil {
