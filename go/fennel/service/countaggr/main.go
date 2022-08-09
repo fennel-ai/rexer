@@ -86,6 +86,10 @@ func processAggregate(tr tier.Tier, agg libaggregate.Aggregate, stopCh <-chan st
 	if err != nil {
 		return fmt.Errorf("unable to start consumer for aggregate: %s. Error: %v", agg.Name, err)
 	}
+
+	// Report the initial lag of the consumer
+	logKafkaLag(tr, consumer)
+
 	go func(tr tier.Tier, consumer kafka.FConsumer, agg libaggregate.Aggregate, stopCh <-chan struct{}) {
 		defer consumer.Close()
 		// Ticker to log kafka lag every 1 minute.
