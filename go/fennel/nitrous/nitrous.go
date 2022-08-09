@@ -5,10 +5,8 @@ import (
 	"log"
 
 	"fennel/hangar"
-	"fennel/hangar/cache"
 	"fennel/hangar/db"
 	"fennel/hangar/encoders"
-	"fennel/hangar/layered"
 	libkafka "fennel/kafka"
 	"fennel/lib/ftypes"
 	"fennel/resource"
@@ -97,11 +95,6 @@ func CreateFromArgs(args NitrousArgs) (Nitrous, error) {
 	if err != nil {
 		return Nitrous{}, fmt.Errorf("failed to create badger db: %w", err)
 	}
-	cache, err := cache.NewHangar(scope.ID(), args.RistrettoMaxCost, args.RistrettoAvgCost, encoders.Default())
-	if err != nil {
-		return Nitrous{}, fmt.Errorf("failed to create cache: %w", err)
-	}
-	layered := layered.NewHangar(scope.ID(), cache, db)
 
 	return Nitrous{
 		PlaneID:              scope.ID(),
@@ -109,6 +102,6 @@ func CreateFromArgs(args NitrousArgs) (Nitrous, error) {
 		KafkaConsumerFactory: consumerFactory,
 		Clock:                clock.New(),
 		Logger:               logger,
-		Store:                layered,
+		Store:                db,
 	}, nil
 }
