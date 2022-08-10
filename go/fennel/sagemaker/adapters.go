@@ -24,11 +24,37 @@ import (
 const maxInvokeRetries = 3
 const initialDelay = 200 * time.Millisecond
 
-var invokeRetries = promauto.NewCounterVec(
-	prometheus.CounterOpts{
-		Name: "sagemaker_invoke_retries",
-		Help: "Number of sagemaker invoke retries due to throttle",
-	}, []string{"errorCode", "framework"},
+var (
+	invokeRetries = promauto.NewCounterVec(
+		prometheus.CounterOpts{
+			Name: "sagemaker_invoke_retries",
+			Help: "Number of sagemaker invoke retries due to throttle",
+		}, []string{"errorCode", "framework"},
+	)
+	invocationInputSize = promauto.NewSummaryVec(prometheus.SummaryOpts{
+		Name: "sagemaker_invocation_input_size",
+		Help: "Size of sagemaker invocation input",
+		Objectives: map[float64]float64{
+			0.25: 0.05,
+			0.50: 0.05,
+			0.75: 0.05,
+			0.90: 0.05,
+			0.95: 0.02,
+			0.99: 0.01,
+		},
+	}, []string{"container"})
+	invocationOutputSize = promauto.NewSummaryVec(prometheus.SummaryOpts{
+		Name: "sagemaker_invocation_output_size",
+		Help: "Size of sagemaker invocation output",
+		Objectives: map[float64]float64{
+			0.25: 0.05,
+			0.50: 0.05,
+			0.75: 0.05,
+			0.90: 0.05,
+			0.95: 0.02,
+			0.99: 0.01,
+		},
+	}, []string{"container"})
 )
 
 type Adapter interface {
@@ -151,9 +177,10 @@ func (xga XGBoostAdapter) Score(ctx context.Context, in *lib.ScoreRequest) (*lib
 			payload.WriteRune('\n')
 		}
 	}
-
+	payloadBuf := payload.Bytes()
+	invocationInputSize.WithLabelValues(in.ContainerName).Observe(float64(len(payload.Bytes())))
 	out, err := invokeRetryOnThrottle(ctx, "xgboost", xga.client, &sagemakerruntime.InvokeEndpointInput{
-		Body:                    payload.Bytes(),
+		Body:                    payloadBuf,
 		ContentType:             aws.String(contentType),
 		EndpointName:            aws.String(in.EndpointName),
 		TargetContainerHostname: aws.String(in.ContainerName),
@@ -161,6 +188,7 @@ func (xga XGBoostAdapter) Score(ctx context.Context, in *lib.ScoreRequest) (*lib
 	if err != nil {
 		return nil, fmt.Errorf("failed to invoke sagemaker endpoint: %v", err)
 	}
+	invocationOutputSize.WithLabelValues(in.ContainerName).Observe(float64(len(out.Body)))
 	scores, err := fromCSV(out.Body)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse response: %v", err)
