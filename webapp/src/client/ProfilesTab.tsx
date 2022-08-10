@@ -2,34 +2,16 @@ import { Table, Button, Input, Form, Space, Pagination} from "antd";
 import { LoadingOutlined } from '@ant-design/icons';
 import { useState, useEffect } from "react";
 import axios, { AxiosResponse } from "axios";
-import styles from "./styles/ProfilesTab.module.scss";
+
+import styles from "./styles/Tab.module.scss";
+import profileStyles from "./styles/ProfilesTab.module.scss";
 
 const columns = [
-    {
-        title: 'otype',
-        dataIndex: 'otype',
-        key: 'otype',
-    },
-    {
-        title: 'oid',
-        dataIndex: 'oid',
-        key: 'oid',
-    },
-    {
-        title: 'key',
-        dataIndex: 'keyCol',
-        key: 'keyCol',
-    },
-    {
-        title: "updatedTime",
-        dataIndex: 'updatedTime',
-        key: 'updatedTime',
-    },
-    {
-        title: "value",
-        dataIndex: 'value',
-        key: 'value',
-    },
+    { title: 'otype', dataIndex: 'otype', key: 'otype' },
+    { title: 'oid', dataIndex: 'oid', key: 'oid' },
+    { title: 'key', dataIndex: 'keyCol', key: 'keyCol' },
+    { title: "updatedTime", dataIndex: 'updatedTime', key: 'updatedTime' },
+    { title: "value", dataIndex: 'value', key: 'value' },
 ];
 
 interface ProfileResponse {
@@ -62,25 +44,23 @@ function ProfilesTab() {
             per,
         };
         axios.get("/profiles", {
-            params: params,
+            params,
         }).then((response: AxiosResponse<ProfileResponse>) => {
-                if (response.status === 200) {
-                    const newData = response.data.profiles.map((profile: Profile, idx: number) => ({
-                        key: idx,
-                        otype: profile.OType,
-                        oid: profile.Oid,
-                        keyCol: profile.Key,
-                        updatedTime: profile.UpdateTime,
-                        value: profile.Value,
-                    }));
-                    setDataSource(newData);
-                    if (newData.length === per) {
-                        if (page * per >= currentMaxTotal) {
-                            setCurrentMaxTotal(page * per + 1);
-                        }
-                    } else if (newData.length > 0 && (page - 1) * per + newData.length > currentMaxTotal) {
-                        setCurrentMaxTotal((page - 1) * per + newData.length);
+                const newData = response.data.profiles.map((profile: Profile, idx: number) => ({
+                    key: idx,
+                    otype: profile.OType,
+                    oid: profile.Oid,
+                    keyCol: profile.Key,
+                    updatedTime: profile.UpdateTime,
+                    value: profile.Value,
+                }));
+                setDataSource(newData);
+                if (newData.length === per) {
+                    if (page * per >= currentMaxTotal) {
+                        setCurrentMaxTotal(page * per + 1);
                     }
+                } else if (newData.length > 0 && (page - 1) * per + newData.length > currentMaxTotal) {
+                    setCurrentMaxTotal((page - 1) * per + newData.length);
                 }
                 setLoading(false);
             })
@@ -114,7 +94,7 @@ function ProfilesTab() {
                 pagination={false}
             />
             <Pagination
-                className={styles.pagination}
+                className={profileStyles.pagination}
                 current={page}
                 pageSize={per}
                 onChange={(page, per) => {
