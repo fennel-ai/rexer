@@ -10,6 +10,7 @@ import (
 
 	"fennel/controller/mock"
 	"fennel/engine/ast"
+
 	"fennel/lib/action"
 	"fennel/lib/aggregate"
 	"fennel/lib/ftypes"
@@ -177,8 +178,8 @@ func (c *Client) GetProfile(request *profileLib.ProfileItemKey) (*profile.Profil
 
 func (c *Client) QueryProfiles(otype, oid string, pagination sql.Pagination) ([]profile.ProfileItem, error) {
 	request := profileLib.QueryRequest{
-		Otype:      otype,
-		Oid:        oid,
+		Otype:      ftypes.OType(otype),
+		Oid:        ftypes.OidType(oid),
 		Pagination: pagination,
 	}
 	b, err := json.Marshal(&request)

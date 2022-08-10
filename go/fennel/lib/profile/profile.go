@@ -210,7 +210,7 @@ func ToList(profiles []ProfileItem) (value.List, error) {
 }
 
 type QueryRequest struct {
-	Otype string `json:"otype"`
-	Oid   string `json:"oid"`
+	Otype ftypes.OType   `json:"otype"`
+	Oid   ftypes.OidType `json:"oid"`
 	sql.Pagination
 }
