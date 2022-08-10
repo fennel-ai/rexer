@@ -149,7 +149,7 @@ func (nc NitrousClient) GetMulti(ctx context.Context, aggId ftypes.AggId, groupk
 		Kwargs:    pkwargs,
 		Groupkeys: strkeys,
 		// TODO: Make codec an argument to GetMulti instead of hard-coding.
-		Codec: rpc.AggCodec_V1,
+		Codec: rpc.AggCodec_V2,
 	}
 	resp, err := nc.reader.GetAggregateValues(ctx, req)
 	if err != nil {

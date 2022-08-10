@@ -3,6 +3,7 @@ package server
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"sync"
 	"time"
@@ -138,9 +139,9 @@ func (ndb *NitrousDB) Process(ctx context.Context, ops []*rpc.NitrousOp, store h
 	}
 }
 
-func (ndb *NitrousDB) restoreAggregates(store hangar.Hangar) error {
+func (ndb *NitrousDB) restoreAggregates(h hangar.Hangar) error {
 	// Get current set of aggregates for this plane.
-	vgs, err := store.GetMany(context.Background(), []hangar.KeyGroup{{Prefix: hangar.Key{Data: agg_table_key}}})
+	vgs, err := h.GetMany(context.Background(), []hangar.KeyGroup{{Prefix: hangar.Key{Data: agg_table_key}}})
 	if err != nil {
 		return fmt.Errorf("failed to get aggregate definitions: %w", err)
 	}
@@ -170,6 +171,10 @@ func (ndb *NitrousDB) restoreAggregates(store hangar.Hangar) error {
 		}
 		options := aggregate.FromProtoOptions(&popts)
 		err = ndb.setupAggregateTable(tierId, aggId, codec, options)
+		if errors.Is(err, store.ErrNotSupported) {
+			ndb.nos.Logger.Info("Skipping codec for aggregate", zap.Uint64("tierId", uint64(tierId)), zap.Uint64("aggId", uint64(aggId)), zap.Int("codec", int(codec)))
+			continue
+		}
 		if err != nil {
 			return fmt.Errorf("failed to initialize aggregate store for new aggregate (%d) in tier (%d): %w", aggId, tierId, err)
 		}
@@ -244,7 +249,7 @@ func (ndb *NitrousDB) processCreateEvent(tierId ftypes.RealmID, event *rpc.Creat
 }
 
 func getCodecs(aggType ftypes.AggType) []rpc.AggCodec {
-	return []rpc.AggCodec{rpc.AggCodec_V1}
+	return []rpc.AggCodec{rpc.AggCodec_V2}
 }
 
 func (ndb *NitrousDB) setupAggregateTable(tierId ftypes.RealmID, aggId ftypes.AggId, codec rpc.AggCodec, options aggregate.Options) error {

@@ -27,9 +27,9 @@ func TestAggregateStore(t *testing.T) {
 	aggId := ftypes.AggId(1)
 	mr, err := counter.ToMergeReduce(aggId, opts)
 	assert.NoError(t, err)
-	b := temporal.NewFixedWidthBucketizer(5, clock.New())
+	b := temporal.NewFixedWidthBucketizer(100, clock.New())
 	tierId := ftypes.RealmID(1)
-	cs, err := NewCloset(tierId, aggId, rpc.AggCodec_V1, mr, b, 25)
+	cs, err := NewCloset(tierId, aggId, rpc.AggCodec_V2, mr, b, 25)
 	assert.NoError(t, err)
 	ctx := context.Background()
 	kwargs := value.NewDict(nil)
@@ -73,7 +73,7 @@ func TestProcess(t *testing.T) {
 	ck.Add(time.Since(time.Unix(0, 0)))
 	b := temporal.NewFixedWidthBucketizer(100, ck)
 	tierId := ftypes.RealmID(1)
-	cs, err := NewCloset(tierId, aggId, rpc.AggCodec_V1, mr, b, 25)
+	cs, err := NewCloset(tierId, aggId, rpc.AggCodec_V2, mr, b, 25)
 	assert.NoError(t, err)
 	ctx := context.Background()
 	kwargs := value.NewDict(nil)
@@ -129,7 +129,7 @@ func TestProcess(t *testing.T) {
 	aggId2 := ftypes.AggId(2)
 	mr2, err := counter.ToMergeReduce(aggId2, opts)
 	assert.NoError(t, err)
-	cs2, err := NewCloset(tierId, aggId2, rpc.AggCodec_V1, mr2, b, 25)
+	cs2, err := NewCloset(tierId, aggId2, rpc.AggCodec_V2, mr2, b, 25)
 	assert.NoError(t, err)
 	pushEvent(cs2, tierId, aggId2, "mygk", value.Int(531))
 	vals, err = cs2.Get(ctx, []string{"mygk"}, []value.Dict{kwargs}, n.Store)
@@ -174,7 +174,7 @@ func BenchmarkGet(b *testing.B) {
 	ck.Add(time.Since(time.Unix(0, 0)))
 	bucketizer := temporal.NewFixedWidthBucketizer(100, ck)
 	tierId := ftypes.RealmID(1)
-	cs, err := NewCloset(tierId, aggId, rpc.AggCodec_V1, mr, bucketizer, 25)
+	cs, err := NewCloset(tierId, aggId, rpc.AggCodec_V2, mr, bucketizer, 25)
 	assert.NoError(b, err)
 
 	ctx := context.Background()
@@ -217,7 +217,7 @@ func TestKeyGroupsToRead(t *testing.T) {
 	bucketizer := temporal.NewFixedWidthBucketizer(100, ck)
 
 	tierId := ftypes.RealmID(1)
-	cs, err := NewCloset(tierId, aggId, rpc.AggCodec_V1, mr, bucketizer, 25)
+	cs, err := NewCloset(tierId, aggId, rpc.AggCodec_V2, mr, bucketizer, 25)
 	assert.NoError(t, err)
 
 	timeRange := temporal.TimeBucketRange{
@@ -274,7 +274,7 @@ func TestKeyGroupsToUpdate(t *testing.T) {
 	bucketizer := temporal.NewFixedWidthBucketizer(100, ck)
 
 	tierId := ftypes.RealmID(1)
-	cs, err := NewCloset(tierId, aggId, rpc.AggCodec_V1, mr, bucketizer, 25)
+	cs, err := NewCloset(tierId, aggId, rpc.AggCodec_V2, mr, bucketizer, 25)
 	assert.NoError(t, err)
 
 	buckets := []temporal.TimeBucket{
@@ -289,8 +289,8 @@ func TestKeyGroupsToUpdate(t *testing.T) {
 	}
 	kgs, err := cs.getKeyGroupsToUpdate("mygk", buckets)
 	assert.NoError(t, err)
-	assert.Equal(t, 2, len(kgs))
+	assert.Equal(t, 4, len(kgs))
 	for _, kg := range kgs {
-		assert.Equal(t, 2, len(kg.Fields.MustGet()))
+		assert.Equal(t, 1, len(kg.Fields.MustGet()))
 	}
 }

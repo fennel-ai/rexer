@@ -54,7 +54,7 @@ func TestInitRestore(t *testing.T) {
 
 	// Before the aggregate is created, we should get an error on trying to
 	// read its value.
-	_, err = ndb.Get(ctx, tierId, aggId, rpc.AggCodec_V1, []string{"mygk"}, []value.Dict{kwargs})
+	_, err = ndb.Get(ctx, tierId, aggId, rpc.AggCodec_V2, []string{"mygk"}, []value.Dict{kwargs})
 	assert.Error(t, err)
 
 	// Define the aggregate.
@@ -79,7 +79,7 @@ func TestInitRestore(t *testing.T) {
 
 	// After the aggregate is created, we should get the zero value before any
 	// event is logged  for the aggregate.
-	resp, err := ndb.Get(ctx, tierId, aggId, rpc.AggCodec_V1, []string{"mygk"}, []value.Dict{kwargs})
+	resp, err := ndb.Get(ctx, tierId, aggId, rpc.AggCodec_V2, []string{"mygk"}, []value.Dict{kwargs})
 	assert.NoError(t, err)
 	assert.Equal(t, 1, len(resp))
 	assert.Equal(t, value.Int(0), resp[0])
@@ -106,7 +106,7 @@ func TestInitRestore(t *testing.T) {
 	wait()
 
 	// Read the aggregate value - it should be 42.
-	resp, err = ndb.Get(ctx, tierId, aggId, rpc.AggCodec_V1, []string{"mygk"}, []value.Dict{kwargs})
+	resp, err = ndb.Get(ctx, tierId, aggId, rpc.AggCodec_V2, []string{"mygk"}, []value.Dict{kwargs})
 	assert.NoError(t, err)
 	assert.Equal(t, 1, len(resp))
 	assert.NoError(t, err)
@@ -115,7 +115,7 @@ func TestInitRestore(t *testing.T) {
 	// Restore on a new instance of the same store and read the same value.
 	ndb, err = InitDB(n.Nitrous)
 	assert.NoError(t, err)
-	resp, err = ndb.Get(ctx, tierId, aggId, rpc.AggCodec_V1, []string{"mygk"}, []value.Dict{kwargs})
+	resp, err = ndb.Get(ctx, tierId, aggId, rpc.AggCodec_V2, []string{"mygk"}, []value.Dict{kwargs})
 	assert.NoError(t, err)
 	assert.Equal(t, 1, len(resp))
 	assert.NoError(t, err)
@@ -185,7 +185,7 @@ func TestDeleteAggregate(t *testing.T) {
 	assert.NoError(t, err)
 
 	// Fetch aggregate value. This should return the zero value for the aggregate.
-	vals, err := ndb.Get(ctx, tierId, 1, rpc.AggCodec_V1, []string{"mygk"}, []value.Dict{kwargs})
+	vals, err := ndb.Get(ctx, tierId, 1, rpc.AggCodec_V2, []string{"mygk"}, []value.Dict{kwargs})
 	assert.NoError(t, err)
 	assert.Equal(t, 1, len(vals))
 	assert.EqualValues(t, 0, vals[0].(value.Int))
@@ -201,7 +201,7 @@ func TestDeleteAggregate(t *testing.T) {
 	assert.NoError(t, err)
 
 	// Fetching the aggregate should now fail.
-	_, err = ndb.Get(ctx, tierId, 1, rpc.AggCodec_V1, []string{"mygk"}, []value.Dict{kwargs})
+	_, err = ndb.Get(ctx, tierId, 1, rpc.AggCodec_V2, []string{"mygk"}, []value.Dict{kwargs})
 	assert.Error(t, err)
 
 	// We should be able to restore aggregate definitions.

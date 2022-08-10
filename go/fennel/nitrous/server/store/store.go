@@ -2,6 +2,7 @@ package store
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"fennel/hangar"
@@ -17,6 +18,10 @@ import (
 	"github.com/samber/mo"
 )
 
+var (
+	ErrNotSupported = errors.New("Codec no longer supported")
+)
+
 type Table interface {
 	tailer.EventProcessor
 	Get(ctx context.Context, keys []string, kwargs []value.Dict, store hangar.Hangar) ([]value.Value, error)
@@ -26,28 +31,28 @@ type Table interface {
 func Make(tierId ftypes.RealmID, aggId ftypes.AggId, codec rpc.AggCodec, options aggregate.Options,
 	clock clock.Clock) (Table, error) {
 	switch codec {
-	case rpc.AggCodec_V1:
+	case rpc.AggCodec_V2:
 		// The v1 logical encoding has three salient components:
 		// 1. It uses the FixedWidthBucketizer with 100 buckets for bucketizing time.
 		// 2. Uses the counter.ToMergeReduce function to determine how intermediate or
 		// partial counter values are represented and merged.
 		// 3. Uses the Closet store to store the aggregate values in a 2-level hierarchy
-		//    with the the second level storing 25 buckets as fields under a hangar key.
+		//    with each level storing 25 buckets as fields under a hangar key.
 		// If any of these need to be changed, we need to create a different encoding.
 		const numBuckets = 100
-		const secondLevelSize = 25
+		const levelSize = 25
 		bucketizer := temporal.NewFixedWidthBucketizer(numBuckets, clock)
 		mr, err := counter.ToMergeReduce(aggId, options)
 		if err != nil {
 			return nil, fmt.Errorf("failed to create merge reduce for aggId %d in tier %d: %w", aggId, tierId, err)
 		}
-		table, err := NewCloset(tierId, aggId, rpc.AggCodec_V1, mr, bucketizer, secondLevelSize)
+		table, err := NewCloset(tierId, aggId, rpc.AggCodec_V2, mr, bucketizer, levelSize)
 		if err != nil {
 			return nil, fmt.Errorf("failed to initialize aggregate store for new aggregate (%d) in tier (%d): %w", aggId, tierId, err)
 		}
 		return table, nil
 	default:
-		return nil, fmt.Errorf("unsupported codec %d", codec)
+		return nil, fmt.Errorf("%d: %w", codec, ErrNotSupported)
 	}
 }
 
