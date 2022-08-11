@@ -4,6 +4,7 @@ import (
 	"fennel/lib/sql"
 	"fennel/mothership"
 	actionC "fennel/mothership/controller/action"
+	featureC "fennel/mothership/controller/feature"
 	profileC "fennel/mothership/controller/profile"
 	userC "fennel/mothership/controller/user"
 	"fmt"
@@ -80,6 +81,7 @@ func (s *server) setupRouter() {
 	auth.GET("/data", s.Data)
 	auth.GET("/profiles", s.Profiles)
 	auth.GET("/actions", s.Actions)
+	auth.GET("/features", s.Features)
 }
 
 const (
@@ -290,5 +292,19 @@ func (s *server) Actions(c *gin.Context) {
 	}
 	c.JSON(http.StatusOK, gin.H{
 		"actions": actions,
+	})
+}
+
+func (s *server) Features(c *gin.Context) {
+	features, err := featureC.Features(c.Request.Context())
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": "Fail to read actions, please try again later.",
+		})
+		log.Printf("Failed to read actions: %v\n", err)
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{
+		"features": features,
 	})
 }
