@@ -1,7 +1,7 @@
 import styles from "./styles/Navbar.module.scss";
 import type { MenuProps } from "antd";
-import { Dropdown, Menu, Space } from "antd";
-import { DownOutlined } from '@ant-design/icons';
+import { Dropdown, Menu, Space, Avatar } from "antd";
+import { DownOutlined, UserOutlined } from '@ant-design/icons';
 
 interface Props {
     page: string;
@@ -52,7 +52,10 @@ function Navbar(props: Props) {
 
                 <div className={styles.rightNav}>
                     <div>
-                        Documentation
+                        <a href="https://app.gitbook.com/o/ezMhZP7ASmi43q12NHfL/s/5DToQ2XCuEpPMMLC0Rwr/">Documentation</a>
+                    </div>
+                    <div className={styles.avatar}>
+                        <Avatar size={24} icon={<UserOutlined />} />
                     </div>
                 </div>
             </div>
