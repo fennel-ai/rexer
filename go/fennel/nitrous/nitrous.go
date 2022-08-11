@@ -71,7 +71,11 @@ func CreateFromArgs(args NitrousArgs) (Nitrous, error) {
 	if err != nil {
 		return Nitrous{}, fmt.Errorf("failed to construct logger: %w", err)
 	}
-	logger = logger.With(zap.Uint32("plane_id", args.PlaneID.Value()))
+	logger = logger.With(
+		zap.Uint32("plane", args.PlaneID.Value()),
+		zap.String("identity", args.Identity),
+	)
+	_ = zap.ReplaceGlobals(logger)
 
 	// Initialize kafka consumer factory.
 	consumerFactory := func(config libkafka.ConsumerConfig) (libkafka.FConsumer, error) {
