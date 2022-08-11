@@ -2,6 +2,7 @@ import { Tabs } from "antd";
 import styles from "./styles/DataPage.module.scss";
 import ProfilesTab from "./ProfilesTab";
 import ActionsTab from "./ActionsTab";
+import FeaturesTab from "./FeaturesTab";
 
 function DataPage(){
     return (
@@ -18,7 +19,11 @@ function DataPage(){
                         <ActionsTab />
                     </div>
                 </Tabs.TabPane>
-                <Tabs.TabPane tab="Features" disabled key="features" />
+                <Tabs.TabPane tab="Features" key="features">
+                    <div className={styles.tabContent}>
+                        <FeaturesTab />
+                    </div>
+                </Tabs.TabPane>
             </Tabs>
         </div>
     );
