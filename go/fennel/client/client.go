@@ -13,6 +13,7 @@ import (
 
 	"fennel/lib/action"
 	"fennel/lib/aggregate"
+	"fennel/lib/feature"
 	"fennel/lib/ftypes"
 	"fennel/lib/profile"
 	profileLib "fennel/lib/profile"
@@ -64,6 +65,12 @@ func (c Client) queryURL() string {
 func (c Client) getProfileURL() string {
 	url := *c.url
 	url.Path = url.Path + "/get"
+	return url.String()
+}
+
+func (c Client) recentFeaturesURL() string {
+	url := *c.url
+	url.Path = url.Path + "/features"
 	return url.String()
 }
 
@@ -143,6 +150,35 @@ func (c Client) postJSON(data []byte, url string) ([]byte, error) {
 		return nil, fmt.Errorf("%s: %s", http.StatusText(response.StatusCode), string(body))
 	}
 	return body, nil
+}
+
+func (c Client) Get(url string) ([]byte, error) {
+	response, err := c.httpclient.Get(url)
+	if err != nil {
+		return nil, fmt.Errorf("server error: %v", err)
+	}
+	defer response.Body.Close()
+	body, err := ioutil.ReadAll(response.Body)
+	if err != nil {
+		return nil, fmt.Errorf("could not read server response: %v", err)
+	}
+	if response.StatusCode < 200 || response.StatusCode >= 300 {
+		return nil, fmt.Errorf("%s: %s", http.StatusText(response.StatusCode), string(body))
+	}
+	return body, nil
+}
+
+func (c Client) FetchRecentFeatures() ([]feature.Row, error) {
+	url := c.recentFeaturesURL()
+	response, err := c.Get(url)
+	if err != nil {
+		return nil, err
+	}
+	features := make([]feature.Row, 0)
+	if err := json.Unmarshal(response, &features); err != nil {
+		return nil, fmt.Errorf("error parsing json, %v", err)
+	}
+	return features, nil
 }
 
 // GetProfile if no matching value is found, a nil pointer is returned with no error
