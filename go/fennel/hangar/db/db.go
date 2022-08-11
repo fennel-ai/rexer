@@ -18,6 +18,7 @@ import (
 
 	"github.com/dgraph-io/badger/v3"
 	"github.com/dgraph-io/badger/v3/options"
+	"go.uber.org/zap"
 )
 
 const (
@@ -56,7 +57,7 @@ func (b *badgerDB) Close() error {
 
 func NewHangar(planeID ftypes.RealmID, dirname string, blockCacheBytes int64, enc hangar.Encoder) (*badgerDB, error) {
 	opts := badger.DefaultOptions(dirname)
-	opts = opts.WithLoggingLevel(badger.INFO)
+	opts = opts.WithLogger(NewLogger(zap.L()))
 	opts = opts.WithValueThreshold(1 << 10 /* 1 KB */)
 	opts = opts.WithCompression(options.ZSTD)
 	opts = opts.WithBlockSize(4 * 1024)
