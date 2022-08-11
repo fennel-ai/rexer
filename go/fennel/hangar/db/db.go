@@ -22,8 +22,8 @@ import (
 )
 
 const (
-	PARALLELISM   = 256
-	DB_BATCH_SIZE = 64
+	PARALLELISM   = 512
+	DB_BATCH_SIZE = 32
 )
 
 type badgerDB struct {
