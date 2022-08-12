@@ -175,7 +175,7 @@ func SendResetPasswordEmail(c context.Context, m mothership.Mothership, client *
 		return &ErrorUserNotFound{}
 	}
 
-	token := generateConfirmationToken(m)
+	token := generateResetToken(m)
 	user.ResetToken = sql.NullString{
 		String: token,
 		Valid:  true,
