@@ -100,10 +100,10 @@ function SignUpForm({onSubmit}: SignUpFormProps) {
                         { required: true, message: "Please re-enter your password" },
                         ({ getFieldValue }) => ({
                             validator(_, value) {
-                            if (!value || getFieldValue("password") === value) {
-                                return Promise.resolve();
-                            }
-                            return Promise.reject(new Error('The two passwords do not match'));
+                                if (!value || getFieldValue("password") === value) {
+                                    return Promise.resolve();
+                                }
+                                return Promise.reject(new Error('The two passwords do not match'));
                             },
                         }),
                     ]}
@@ -111,7 +111,7 @@ function SignUpForm({onSubmit}: SignUpFormProps) {
                 >
                     <Input
                         type="password"
-                        placeholder="Re-enter password  "
+                        placeholder="Re-enter password"
                     />
                 </Form.Item>
                 <Form.Item className={styles.formItem}>

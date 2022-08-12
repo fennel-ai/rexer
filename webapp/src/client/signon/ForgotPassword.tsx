@@ -1,10 +1,10 @@
 import { Form, Input, Button, notification } from "antd";
 import { LoadingOutlined } from "@ant-design/icons";
 import { useState } from "react";
+import axios, { AxiosError } from "axios";
 
 import Pancake from "./Pancake";
 import styles from "../styles/signon/SignOn.module.scss";
-import axios, { AxiosError } from "axios";
 
 function ForgotPassword() {
     return (
@@ -59,12 +59,12 @@ function ForgotForm() {
 
     return (
         <Form
-            name="forgot_password_form"
-            className={styles.mainForm}
-            initialValues={{ remember: true }}
-            onFinish={onFinish}
-        >
-            <Form.Item
+        name="forgot_password_form"
+        className={styles.mainForm}
+        initialValues={{ remember: true }}
+        onFinish={onFinish}
+    >
+        <Form.Item
                 name="email"
                 rules={[
                     { required: true, message: "Please input your work email" },

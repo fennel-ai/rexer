@@ -43,7 +43,7 @@ function SignInForm() {
         })
         .then(function () {
             setSubmitting(false);
-            document.location.href = "/";
+            window.location.href = "/";
         })
         .catch(function (error: AxiosError) {
             setSubmitting(false);
