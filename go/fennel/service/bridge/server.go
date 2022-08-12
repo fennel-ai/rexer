@@ -11,6 +11,7 @@ import (
 	"log"
 	"net/http"
 	"net/mail"
+	"time"
 
 	"github.com/alexflint/go-arg"
 	"github.com/gin-contrib/sessions"
@@ -71,7 +72,8 @@ func (s *server) setupRouter() {
 	s.POST("/signup", s.SignUp)
 	s.GET(SignInURL, s.SignInGet)
 	s.POST(SignInURL, s.SignIn)
-	s.GET("/forgot_password", s.ForgotPassword)
+	s.GET("/forgot_password", s.ForgotPasswordGet)
+	s.POST("/forgot_password", s.ForgotPassword)
 	s.GET("/confirm_user", s.ConfirmUser)
 	s.POST("/resend_confirmation_email", s.ResendConfirmationEmail)
 
@@ -111,10 +113,17 @@ func (s *server) SignInGet(c *gin.Context) {
 	})
 }
 
-func (s *server) ForgotPassword(c *gin.Context) {
+func (s *server) ForgotPasswordGet(c *gin.Context) {
 	c.HTML(http.StatusOK, "sign_on.tmpl", gin.H{
 		"title": title("Forgot Password"),
 		"page":  ForgotPasswordPage,
+	})
+}
+
+func (s *server) ForgotPassword(c *gin.Context) {
+	time.Sleep(time.Second)
+	c.JSON(http.StatusBadRequest, gin.H{
+		"error": "not implemented",
 	})
 }
 
