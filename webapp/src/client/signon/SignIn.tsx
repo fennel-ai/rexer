@@ -93,7 +93,7 @@ function SignInForm() {
                     {submitting ? (<div> <LoadingOutlined spin /> Signing In... </div>) : "Sign In"}
                 </Button>
             </Form.Item>
-            <a href="#">Forgot your password</a>
+            <a href="/forgot_password">Forgot your password</a>
         </Form>
     );
 }

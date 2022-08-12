@@ -5,7 +5,7 @@ import { useState } from "react";
 import Pancake from "./Pancake";
 import styles from "../styles/signon/SignOn.module.scss";
 
-function ResetPassword() {
+function ForgotPassword() {
     return (
         <div className={styles.page}>
             <Pancake />
@@ -54,11 +54,11 @@ function ForgotForm() {
                     style={{background: styles.formButtonBackground}}
                     disabled={submitting}>
 
-                    {submitting ? (<div> <LoadingOutlined spin /> Sending... </div>) : "Send reset password"}
+                    {submitting ? (<div> <LoadingOutlined spin /> Sending... </div>) : "Send a link to reset your password"}
                 </Button>
             </Form.Item>
         </Form>
     );
 }
 
-export default ResetPassword;
+export default ForgotPassword;

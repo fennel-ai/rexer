@@ -71,7 +71,7 @@ func (s *server) setupRouter() {
 	s.POST("/signup", s.SignUp)
 	s.GET(SignInURL, s.SignInGet)
 	s.POST(SignInURL, s.SignIn)
-	s.GET("/resetpassword", s.ResetPassword)
+	s.GET("/forgot_password", s.ForgotPassword)
 	s.GET("/confirm_user", s.ConfirmUser)
 	s.POST("/resend_confirmation_email", s.ResendConfirmationEmail)
 
@@ -85,11 +85,11 @@ func (s *server) setupRouter() {
 }
 
 const (
-	SignUpPage        = "signup"
-	SignInPage        = "signin"
-	ResetPasswordPage = "resetpassword"
-	DashboardPage     = "dashboard"
-	DataPage          = "data"
+	SignUpPage         = "signup"
+	SignInPage         = "signin"
+	ForgotPasswordPage = "forgot_password"
+	DashboardPage      = "dashboard"
+	DataPage           = "data"
 )
 
 func title(name string) string {
@@ -111,15 +111,14 @@ func (s *server) SignInGet(c *gin.Context) {
 	})
 }
 
-func (s *server) ResetPassword(c *gin.Context) {
+func (s *server) ForgotPassword(c *gin.Context) {
 	c.HTML(http.StatusOK, "sign_on.tmpl", gin.H{
-		"title": title("Reset Password"),
-		"page":  ResetPasswordPage,
+		"title": title("Forgot Password"),
+		"page":  ForgotPasswordPage,
 	})
 }
 
 func (s *server) ConfirmUser(c *gin.Context) {
-	// TODO(xiao) polish (rediret to sign in page with flash message)
 	var form struct {
 		Token string `form:"token"`
 	}
