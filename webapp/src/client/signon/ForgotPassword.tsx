@@ -35,8 +35,12 @@ function ForgotForm() {
         .then(function () {
             notification.success({
                 message: "A link to reset your password has been sent!",
-                description: `Please check your email address and click on the link to reset your password.
-                Didn’t receive the link? Try clicking again on the button above.`,
+                description: (
+                    <>
+                        <p>Please check your email address and click on the link to reset your password.</p>
+                        <p>Didn’t receive the link? Try clicking again on the button above.</p>
+                    </>
+                ),
                 placement: "bottomRight",
             })
             setTimeout(() => {

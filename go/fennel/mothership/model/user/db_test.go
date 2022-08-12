@@ -42,8 +42,6 @@ func TestFetchByToken(t *testing.T) {
 	assert.NoError(t, err)
 	defer func() { err = mothership.Teardown(m); assert.NoError(t, err) }()
 
-	_, err = FetchByRememberToken(m, "foo@fennel.ai")
-	assert.Error(t, err)
 	user := lib.User{
 		Email:             "foo@fennel.ai",
 		EncryptedPassword: []byte("abcd"),
@@ -53,9 +51,22 @@ func TestFetchByToken(t *testing.T) {
 	_, err = Insert(m, user)
 	assert.NoError(t, err)
 
+	userB := lib.User{
+		Email:             "bar@fennel.ai",
+		EncryptedPassword: []byte("abcd"),
+	}
+	_, err = Insert(m, userB)
+	assert.NoError(t, err)
+
+	_, err = FetchByRememberToken(m, "")
+	assert.Error(t, err)
+
 	user, err = FetchByRememberToken(m, "oracle")
 	assert.NoError(t, err)
 	assert.True(t, user.IsPersisted())
+
+	_, err = FetchByConfirmationToken(m, "")
+	assert.Error(t, err)
 
 	user.ConfirmationToken = sql.NullString{String: "confirm-oracle", Valid: true}
 	user, err = UpdateConfirmation(m, user)
@@ -63,8 +74,9 @@ func TestFetchByToken(t *testing.T) {
 	user.ConfirmationSentAt = sql.NullInt64{Int64: 456, Valid: true}
 	user.ConfirmedAt = sql.NullInt64{Int64: 789, Valid: true}
 	user, err = UpdateConfirmation(m, user)
+	assert.NoError(t, err)
 
-	_, err = FetchByConfirmationToken(m, "confirm-oracle")
+	user, err = FetchByConfirmationToken(m, "confirm-oracle")
 	assert.NoError(t, err)
 
 	assert.True(t, user.ConfirmationSentAt.Valid)
@@ -72,4 +84,18 @@ func TestFetchByToken(t *testing.T) {
 	assert.True(t, user.ConfirmedAt.Valid)
 	assert.Equal(t, int64(789), user.ConfirmedAt.Int64)
 	assert.True(t, user.IsConfirmed())
+
+	_, err = FetchByResetToken(m, "")
+	assert.Error(t, err)
+
+	user.ResetToken = sql.NullString{String: "reset-oracle", Valid: true}
+	user, err = UpdateResetInfo(m, user)
+	assert.NoError(t, err)
+	user.ResetSentAt = sql.NullInt64{Int64: 1234, Valid: true}
+	user, err = UpdateResetInfo(m, user)
+	assert.NoError(t, err)
+
+	user, err = FetchByResetToken(m, "reset-oracle")
+	assert.NoError(t, err)
+	assert.Equal(t, int64(1234), user.ResetSentAt.Int64)
 }

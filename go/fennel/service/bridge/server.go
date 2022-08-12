@@ -11,7 +11,6 @@ import (
 	"log"
 	"net/http"
 	"net/mail"
-	"time"
 
 	"github.com/alexflint/go-arg"
 	"github.com/gin-contrib/sessions"
@@ -121,10 +120,32 @@ func (s *server) ForgotPasswordGet(c *gin.Context) {
 }
 
 func (s *server) ForgotPassword(c *gin.Context) {
-	time.Sleep(time.Second)
-	c.JSON(http.StatusBadRequest, gin.H{
-		"error": "not implemented",
-	})
+	var form struct {
+		Email string `json:"email"`
+	}
+	if err := c.BindJSON(&form); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": err.Error(),
+		})
+		return
+	}
+	if err := userC.SendResetPasswordEmail(c.Request.Context(), s.mothership, s.sendgridClient(), form.Email); err != nil {
+		msg := "Something went wrong. Please try again."
+		status := http.StatusInternalServerError
+		switch err.(type) {
+		case *userC.ErrorUserNotFound:
+			msg = err.Error()
+			status = http.StatusBadRequest
+		default:
+			log.Printf("Failed to send reset password email: %v\n", err)
+		}
+		c.JSON(status, gin.H{
+			"error": msg,
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{})
 }
 
 func (s *server) ConfirmUser(c *gin.Context) {
