@@ -73,6 +73,8 @@ func (s *server) setupRouter() {
 	s.POST(SignInURL, s.SignIn)
 	s.GET("/forgot_password", s.ForgotPasswordGet)
 	s.POST("/forgot_password", s.ForgotPassword)
+	s.GET("/reset_password", s.ResetPasswordGet)
+	s.POST("/reset_password", s.ResetPassword)
 	s.GET("/confirm_user", s.ConfirmUser)
 	s.POST("/resend_confirmation_email", s.ResendConfirmationEmail)
 
@@ -89,12 +91,20 @@ const (
 	SignUpPage         = "signup"
 	SignInPage         = "signin"
 	ForgotPasswordPage = "forgot_password"
+	ResetPasswordPage  = "reset_password"
 	DashboardPage      = "dashboard"
 	DataPage           = "data"
 )
 
 func title(name string) string {
 	return fmt.Sprintf("Fennel | %s", name)
+}
+
+func (s *server) ResetPasswordGet(c *gin.Context) {
+	c.HTML(http.StatusOK, "sign_on.tmpl", gin.H{
+		"title": title("Reset Password"),
+		"page":  ResetPasswordPage,
+	})
 }
 
 func (s *server) SignUpGet(c *gin.Context) {
@@ -148,12 +158,42 @@ func (s *server) ForgotPassword(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{})
 }
 
+func (s *server) ResetPassword(c *gin.Context) {
+	var form struct {
+		Token    string `form:"token"`
+		Password string `form:"password"`
+	}
+	if err := c.ShouldBind(&form); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": err.Error(),
+		})
+		return
+	}
+
+	if err := userC.ResetPassword(c.Request.Context(), s.mothership, form.Token, form.Password); err != nil {
+		msg := "Something went wrong. Please try again."
+		status := http.StatusInternalServerError
+		switch err.(type) {
+		case *userC.ErrorUserNotFound:
+			msg = "Invalid token"
+			status = http.StatusBadRequest
+		default:
+			log.Printf("Failed to reset password: %v\n", err)
+		}
+		c.JSON(status, gin.H{
+			"error": msg,
+		})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{})
+}
+
 func (s *server) ConfirmUser(c *gin.Context) {
 	var form struct {
 		Token string `form:"token"`
 	}
 	if err := c.ShouldBind(&form); err != nil {
-		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{
+		c.JSON(http.StatusBadRequest, gin.H{
 			"error": err.Error(),
 		})
 		return

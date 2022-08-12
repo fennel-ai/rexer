@@ -8,6 +8,9 @@ import (
 	"time"
 )
 
+var EmptyTokenError = errors.New("empty token")
+var NotPersistedError = errors.New("Fail to update user, not persisted yet")
+
 // TODO(xiao) return or update in-place the user id
 func Insert(mothership mothership.Mothership, user lib.User) (ftypes.UserId, error) {
 	res, err := mothership.DB.Exec(
@@ -25,7 +28,7 @@ func Insert(mothership mothership.Mothership, user lib.User) (ftypes.UserId, err
 
 func UpdateConfirmation(mothership mothership.Mothership, user lib.User) (lib.User, error) {
 	if !user.IsPersisted() {
-		return user, errors.New("Fail to update user, not persisted yet")
+		return user, NotPersistedError
 	}
 
 	now := time.Now().UTC().UnixMicro()
@@ -46,7 +49,7 @@ func UpdateConfirmation(mothership mothership.Mothership, user lib.User) (lib.Us
 
 func UpdateResetInfo(mothership mothership.Mothership, user lib.User) (lib.User, error) {
 	if !user.IsPersisted() {
-		return user, errors.New("Fail to update user, not persisted yet")
+		return user, NotPersistedError
 	}
 
 	now := time.Now().UTC().UnixMicro()
@@ -64,13 +67,32 @@ func UpdateResetInfo(mothership mothership.Mothership, user lib.User) (lib.User,
 	return user, nil
 }
 
+func UpdatePassword(mothership mothership.Mothership, user lib.User) (lib.User, error) {
+	if !user.IsPersisted() {
+		return user, NotPersistedError
+	}
+
+	now := time.Now().UTC().UnixMicro()
+	_, err := mothership.DB.Exec(
+		`UPDATE user SET encrypted_password = ?, reset_token = ?, reset_sent_at = ?, updated_at = ? WHERE id = ?`,
+		user.EncryptedPassword,
+		user.ResetToken,
+		user.ResetSentAt,
+		now,
+		user.Id,
+	)
+	if err != nil {
+		return user, err
+	}
+	user.UpdatedAt = now
+	return user, nil
+}
+
 func FetchByEmail(mothership mothership.Mothership, email string) (lib.User, error) {
 	user := lib.User{}
 	err := mothership.DB.Get(&user, `SELECT * FROM user where email=?`, email)
 	return user, err
 }
-
-var EmptyTokenError = errors.New("empty token")
 
 func FetchByRememberToken(mothership mothership.Mothership, token string) (lib.User, error) {
 	user := lib.User{}
