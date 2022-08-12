@@ -10,7 +10,7 @@ export REDIS_SERVER_ADDRESS="clustercfg.p-3-redis-db-57b5586.fbjfph.memorydb.us-
 export CACHE_PRIMARY="clustercfg.p-3-cache-cluster-b20c9a6.fbjfph.usw2.cache.amazonaws.com:6379"
 export KUBECONFIG="$FENNEL_ROOT/cloud/pulumi/ts/eks/kubeconfig-plane-3.json"
 export AWS_ROLE_ARN="arn:aws:iam::030813887342:role/admin"
-export MILVUS_URL="k8s-milvus-milvus-99b4acca99-47ccbb043e82192b.elb.us-west-2.amazonaws.com:19530"
+export MILVUS_URL="k8s-milvus-milvus-bd81afaa2e-36b8f1a6cfe90d93.elb.us-west-2.amazonaws.com:19530"
 #export AIRBYTE_SERVER_ADDRESS="http://localhost:8002/api"
 
 export MOTHERSHIP_ID=1
