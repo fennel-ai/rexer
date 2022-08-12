@@ -35,10 +35,6 @@ interface FormValues {
     password: string,
 }
 
-interface Error {
-    error: string,
-}
-
 interface SignUpFormProps {
     onSubmit: (email: string) => void,
 }
@@ -56,11 +52,11 @@ function SignUpForm({onSubmit}: SignUpFormProps) {
             setSubmitting(false);
             onSubmit(values.email);
         })
-        .catch((error: AxiosError) => {
+        .catch((error: AxiosError<{error: string}>) => {
             setSubmitting(false);
             notification.error({
                 message: "Something went wrong",
-                description: (error.response?.data as Error).error,
+                description: error.response?.data.error,
                 placement: "bottomRight",
             })
         });
@@ -134,11 +130,7 @@ function SignUpForm({onSubmit}: SignUpFormProps) {
     );
 }
 
-interface ConfirmEmailProps {
-    email: string,
-}
-
-function ConfirmEmail(props: ConfirmEmailProps) {
+function ConfirmEmail(props: {email: string}) {
     return (
         <div className={styles.confirmEmailContainer}>
             <CheckCircleOutlined
@@ -160,7 +152,7 @@ function ConfirmEmail(props: ConfirmEmailProps) {
     )
 }
 
-function ResendButton({email}: ConfirmEmailProps) {
+function ResendButton({email}: {email: string}) {
     const [resent, setResent] = useState(false);
 
     const onFinish = () => {
@@ -176,12 +168,12 @@ function ResendButton({email}: ConfirmEmailProps) {
             });
             setTimeout(() => {
                 setResent(false);
-            }, 10 * 1000);
+            }, 5 * 1000);
         })
-        .catch((error: AxiosError) => {
+        .catch((error: AxiosError<{error: string}>) => {
             notification.error({
                 message: "Something went wrong",
-                description: (error.response?.data as Error).error,
+                description: error.response?.data.error,
                 placement: "bottomRight",
             });
             setResent(false);

@@ -77,7 +77,9 @@ func checkPasswordHash(password string, hash []byte) bool {
 	return err == nil
 }
 
-// TODO(xiao) testing the email
+// TODO(xiao) add a unit test for email
+// TODO(xiao) do not regen token if sent_at is recent enough
+// TODO(xiao) do not return user
 func SendConfirmationEmail(c context.Context, m mothership.Mothership, client *sendgrid.Client, user lib.User) (lib.User, error) {
 	if user.IsConfirmed() {
 		return user, &ErrorAlreadyConfirmed{}
@@ -129,6 +131,25 @@ func generateConfirmationToken(m mothership.Mothership) string {
 	}
 }
 
+func generateResetToken(m mothership.Mothership) string {
+	for {
+		token := generateToken(m)
+		if _, err := db.FetchByResetToken(m, token); err != nil {
+			return token
+		}
+	}
+}
+
+func generateResetLink(token string) url.URL {
+	// TODO(xiao) read host from config
+	return url.URL{
+		Scheme:   "http",
+		Host:     "localhost:8080",
+		Path:     "reset_password",
+		RawQuery: fmt.Sprintf("token=%s", token),
+	}
+}
+
 func generateToken(m mothership.Mothership) string {
 	bytes := make([]byte, 16)
 	binary.LittleEndian.PutUint64(bytes, rand.Uint64())
@@ -142,6 +163,44 @@ func ResendConfirmationEmail(c context.Context, m mothership.Mothership, client 
 		return &ErrorUserNotFound{}
 	}
 	_, err = SendConfirmationEmail(c, m, client, user)
+	return err
+}
+
+// TODO(xiao) add a test
+// TODO(xiao) do not regenerate token if sent_at recent enough
+func SendResetPasswordEmail(c context.Context, m mothership.Mothership, client *sendgrid.Client, email string) error {
+	var err error
+	user, err := db.FetchByEmail(m, email)
+	if err != nil {
+		return &ErrorUserNotFound{}
+	}
+
+	token := generateResetToken(m)
+	user.ResetToken = sql.NullString{
+		String: token,
+		Valid:  true,
+	}
+
+	if user, err = db.UpdateResetInfo(m, user); err != nil {
+		return err
+	}
+
+	from := mail.NewEmail("Xiao Jiang", "xiao+dev@fennel.ai")
+	subject := "Link to Reset your password"
+	to := mail.NewEmail("", user.Email)
+
+	link := generateResetLink(token)
+	plainTextContent := fmt.Sprintf("reset password at %s", link.String())
+	htmlContent := fmt.Sprintf(`reset password at <a href="%s" target="_blank">...</a>`, link.String())
+	message := mail.NewSingleEmail(from, subject, to, plainTextContent, htmlContent)
+	if _, err := client.Send(message); err != nil {
+		return err
+	}
+	user.ResetSentAt = sql.NullInt64{
+		Int64: time.Now().UTC().UnixMicro(),
+		Valid: true,
+	}
+	_, err = db.UpdateResetInfo(m, user)
 	return err
 }
 

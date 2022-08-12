@@ -14,6 +14,8 @@ type User struct {
 	ConfirmationToken  sql.NullString `db:"confirmation_token"`
 	ConfirmationSentAt sql.NullInt64  `db:"confirmation_sent_at"`
 	ConfirmedAt        sql.NullInt64  `db:"confirmed_at"`
+	ResetToken         sql.NullString `db:"reset_token"`
+	ResetSentAt        sql.NullInt64  `db:"reset_sent_at"`
 
 	DeletedAt sql.NullInt64 `db:"deleted_at"`
 	CreatedAt int64         `db:"created_at"`

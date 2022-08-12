@@ -1,11 +1,12 @@
-import { Form, Input, Button } from "antd";
+import { Form, Input, Button, notification } from "antd";
 import { LoadingOutlined } from "@ant-design/icons";
 import { useState } from "react";
 
 import Pancake from "./Pancake";
 import styles from "../styles/signon/SignOn.module.scss";
+import axios, { AxiosError } from "axios";
 
-function ResetPassword() {
+function ForgotPassword() {
     return (
         <div className={styles.page}>
             <Pancake />
@@ -25,13 +26,40 @@ function ResetPassword() {
 function ForgotForm() {
     const [submitting, setSubmitting] = useState(false);
 
-    const onFinish = () => {
+    const onFinish = (values: {email: string}) => {
         setSubmitting(true);
+
+        axios.post("/forgot_password", {
+            email: values.email,
+        })
+        .then(function () {
+            notification.success({
+                message: "A link to reset your password has been sent!",
+                description: (
+                    <>
+                        <p>Please check your email address and click on the link to reset your password.</p>
+                        <p>Didn’t receive the link? Try clicking again on the button above.</p>
+                    </>
+                ),
+                placement: "bottomRight",
+            })
+            setTimeout(() => {
+                setSubmitting(false);
+            }, 5 * 1000);
+        })
+        .catch((error: AxiosError<{error: string}>) => {
+            notification.error({
+                message: "Something went wrong",
+                description: error.response?.data.error,
+                placement: "bottomRight",
+            });
+            setSubmitting(false);
+        });
     };
 
     return (
         <Form
-            name="signin_form"
+            name="forgot_password_form"
             className={styles.mainForm}
             initialValues={{ remember: true }}
             onFinish={onFinish}
@@ -54,11 +82,11 @@ function ForgotForm() {
                     style={{background: styles.formButtonBackground}}
                     disabled={submitting}>
 
-                    {submitting ? (<div> <LoadingOutlined spin /> Sending... </div>) : "Send reset password"}
+                    {submitting ? (<> <LoadingOutlined spin /> Sending... </>) : "Send a link to reset your password"}
                 </Button>
             </Form.Item>
         </Form>
     );
 }
 
-export default ResetPassword;
+export default ForgotPassword;
