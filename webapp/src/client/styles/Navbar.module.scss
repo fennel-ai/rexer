@@ -3,10 +3,10 @@
 .container {
     display: flex;
     justify-content: space-between;
-    align-items: center;
 
     height: 48px;
     border-bottom: 1px solid colors.$gray3;
+    padding-right: 12px;
 }
 
 .leftNav {
@@ -19,7 +19,8 @@
 }
 
 .rightNav {
-    padding-right: 12px;
+    display: flex;
+    align-items: center;
 }
 
 .divider {
@@ -29,4 +30,8 @@
 
 .menu {
     border-bottom: none;
+}
+
+.avatar {
+    margin-left: 30px;
 }

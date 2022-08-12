@@ -1,32 +1,23 @@
 import styles from "./styles/Navbar.module.scss";
 import type { MenuProps } from "antd";
-import { Dropdown, Menu, Space } from "antd";
-import { DownOutlined } from '@ant-design/icons';
+import { Dropdown, Menu, Space, Avatar } from "antd";
+import { DownOutlined, UserOutlined, TeamOutlined, LogoutOutlined } from '@ant-design/icons';
 
 interface Props {
     page: string;
 }
 
-function Navbar(props: Props) {
+function Navbar({page}: Props) {
     const items: MenuProps["items"] = [
         {
-            label: (
-                <a href="/dashboard">
-                    Dashboard
-                </a>
-            ),
+            label: (<a href="/dashboard">Dashboard</a>),
             key: "dashboard",
         },
         {
-            label: (
-                <a href="/data">
-                    Data
-                </a>
-            ),
+            label: (<a href="/data">Data</a>),
             key: "data",
         },
     ];
-    const menuView = [props.page];
 
     return (
         <nav>
@@ -43,7 +34,7 @@ function Navbar(props: Props) {
                     <div>
                         <Menu
                             mode="horizontal"
-                            defaultSelectedKeys={menuView}
+                            defaultSelectedKeys={[page]}
                             items={items}
                             className={styles.menu}
                         />
@@ -52,11 +43,42 @@ function Navbar(props: Props) {
 
                 <div className={styles.rightNav}>
                     <div>
-                        Documentation
+                        <a href="https://app.gitbook.com/o/ezMhZP7ASmi43q12NHfL/s/5DToQ2XCuEpPMMLC0Rwr/">Documentation</a>
+                    </div>
+                    <div className={styles.avatar}>
+                        <AvatarDropdown />
                     </div>
                 </div>
             </div>
         </nav>
+    );
+}
+
+function AvatarDropdown() {
+    const items: MenuProps["items"] = [
+        {
+            icon: <UserOutlined />,
+            label: (<a href="#">Account</a>),
+            key: "account",
+        },
+        {
+            icon: <TeamOutlined />,
+            label: (<a href="#">Organization</a>),
+            key: "orgnization",
+        },
+        {
+            type: "divider",
+        },
+        {
+            icon: <LogoutOutlined />,
+            label: (<a href="#">Log out</a>),
+            key: "log_out",
+        },
+    ];
+    return (
+        <Dropdown overlay={<Menu items={items} />}>
+            <Avatar size={24} icon={<UserOutlined />} />
+        </Dropdown>
     );
 }
 
