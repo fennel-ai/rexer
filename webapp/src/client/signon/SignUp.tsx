@@ -55,8 +55,7 @@ function SignUpForm({onSubmit}: SignUpFormProps) {
         .catch((error: AxiosError<{error: string}>) => {
             setSubmitting(false);
             notification.error({
-                message: "Something went wrong",
-                description: error.response?.data.error,
+                message: error.response?.data.error,
                 placement: "bottomRight",
             })
         });
@@ -172,8 +171,7 @@ function ResendButton({email}: {email: string}) {
         })
         .catch((error: AxiosError<{error: string}>) => {
             notification.error({
-                message: "Something went wrong",
-                description: error.response?.data.error,
+                message: error.response?.data.error,
                 placement: "bottomRight",
             });
             setResent(false);

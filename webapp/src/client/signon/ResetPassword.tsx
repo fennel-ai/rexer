@@ -52,8 +52,7 @@ function ResetForm() {
         .catch((error: AxiosError<{error: string}>) => {
             setSubmitting(false);
             notification.error({
-                message: "Something went wrong",
-                description: error.response?.data.error,
+                message: error.response?.data.error,
                 placement: "bottomRight",
             });
         });

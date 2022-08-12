@@ -49,8 +49,7 @@ function ForgotForm() {
         })
         .catch((error: AxiosError<{error: string}>) => {
             notification.error({
-                message: "Something went wrong",
-                description: error.response?.data.error,
+                message: error.response?.data.error,
                 placement: "bottomRight",
             });
             setSubmitting(false);
@@ -59,12 +58,12 @@ function ForgotForm() {
 
     return (
         <Form
-        name="forgot_password_form"
-        className={styles.mainForm}
-        initialValues={{ remember: true }}
-        onFinish={onFinish}
-    >
-        <Form.Item
+            name="forgot_password_form"
+            className={styles.mainForm}
+            initialValues={{ remember: true }}
+            onFinish={onFinish}
+        >
+            <Form.Item
                 name="email"
                 rules={[
                     { required: true, message: "Please input your work email" },
