@@ -42,17 +42,19 @@ function ForgotForm() {
                     </>
                 ),
                 placement: "bottomRight",
+                onClose: () => {
+                    setSubmitting(false);
+                },
             })
-            setTimeout(() => {
-                setSubmitting(false);
-            }, 5 * 1000);
         })
         .catch((error: AxiosError<{error: string}>) => {
             notification.error({
                 message: error.response?.data.error,
                 placement: "bottomRight",
+                onClose: () => {
+                    setSubmitting(false);
+                },
             });
-            setSubmitting(false);
         });
     };
 

@@ -164,17 +164,19 @@ function ResendButton({email}: {email: string}) {
                 message: "Confirmation email resent",
                 description: "Please check your email.",
                 placement: "bottomRight",
+                onClose: () => {
+                    setResent(false);
+                },
             });
-            setTimeout(() => {
-                setResent(false);
-            }, 5 * 1000);
         })
         .catch((error: AxiosError<{error: string}>) => {
             notification.error({
                 message: error.response?.data.error,
                 placement: "bottomRight",
+                onClose: () => {
+                    setResent(false);
+                },
             });
-            setResent(false);
         });
     };
     return (
