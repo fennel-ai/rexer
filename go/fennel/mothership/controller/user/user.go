@@ -46,12 +46,14 @@ func (e *ErrorAlreadyConfirmed) Error() string {
 	return "User email is already confirmed"
 }
 
-func newUser(m mothership.Mothership, email, password string) (lib.User, error) {
-	hash, err := bcrypt.GenerateFromPassword([]byte(password), 14)
+const BCRYPT_COST = 14
 
+func newUser(m mothership.Mothership, email, password string) (lib.User, error) {
+	hash, err := bcrypt.GenerateFromPassword([]byte(password), BCRYPT_COST)
 	if err != nil {
 		return lib.User{}, err
 	}
+
 	now := time.Now().UTC().UnixMicro()
 	return lib.User{
 		Email:             email,
@@ -249,4 +251,20 @@ func ConfirmUser(c context.Context, m mothership.Mothership, token string) (lib.
 	user.ConfirmationToken = sql.NullString{Valid: false}
 	user.ConfirmationSentAt = sql.NullInt64{Valid: false}
 	return db.UpdateConfirmation(m, user)
+}
+
+func ResetPassword(c context.Context, m mothership.Mothership, token, password string) error {
+	user, err := db.FetchByResetToken(m, token)
+	if err != nil {
+		return &ErrorUserNotFound{}
+	}
+	hash, err := bcrypt.GenerateFromPassword([]byte(password), BCRYPT_COST)
+	if err != nil {
+		return err
+	}
+	user.EncryptedPassword = hash
+	user.ResetToken = sql.NullString{Valid: false}
+	user.ResetSentAt = sql.NullInt64{Valid: false}
+	_, err = db.UpdatePassword(m, user)
+	return err
 }

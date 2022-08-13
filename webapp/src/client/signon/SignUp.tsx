@@ -55,8 +55,7 @@ function SignUpForm({onSubmit}: SignUpFormProps) {
         .catch((error: AxiosError<{error: string}>) => {
             setSubmitting(false);
             notification.error({
-                message: "Something went wrong",
-                description: error.response?.data.error,
+                message: error.response?.data.error,
                 placement: "bottomRight",
             })
         });
@@ -100,10 +99,10 @@ function SignUpForm({onSubmit}: SignUpFormProps) {
                         { required: true, message: "Please re-enter your password" },
                         ({ getFieldValue }) => ({
                             validator(_, value) {
-                            if (!value || getFieldValue("password") === value) {
-                                return Promise.resolve();
-                            }
-                            return Promise.reject(new Error('The two passwords do not match'));
+                                if (!value || getFieldValue("password") === value) {
+                                    return Promise.resolve();
+                                }
+                                return Promise.reject(new Error('The two passwords do not match'));
                             },
                         }),
                     ]}
@@ -111,7 +110,7 @@ function SignUpForm({onSubmit}: SignUpFormProps) {
                 >
                     <Input
                         type="password"
-                        placeholder="Re-enter password  "
+                        placeholder="Re-enter password"
                     />
                 </Form.Item>
                 <Form.Item className={styles.formItem}>
@@ -165,18 +164,19 @@ function ResendButton({email}: {email: string}) {
                 message: "Confirmation email resent",
                 description: "Please check your email.",
                 placement: "bottomRight",
+                onClose: () => {
+                    setResent(false);
+                },
             });
-            setTimeout(() => {
-                setResent(false);
-            }, 5 * 1000);
         })
         .catch((error: AxiosError<{error: string}>) => {
             notification.error({
-                message: "Something went wrong",
-                description: error.response?.data.error,
+                message: error.response?.data.error,
                 placement: "bottomRight",
+                onClose: () => {
+                    setResent(false);
+                },
             });
-            setResent(false);
         });
     };
     return (

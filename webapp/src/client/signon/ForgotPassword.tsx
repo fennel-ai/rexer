@@ -1,10 +1,10 @@
 import { Form, Input, Button, notification } from "antd";
 import { LoadingOutlined } from "@ant-design/icons";
 import { useState } from "react";
+import axios, { AxiosError } from "axios";
 
 import Pancake from "./Pancake";
 import styles from "../styles/signon/SignOn.module.scss";
-import axios, { AxiosError } from "axios";
 
 function ForgotPassword() {
     return (
@@ -42,18 +42,19 @@ function ForgotForm() {
                     </>
                 ),
                 placement: "bottomRight",
+                onClose: () => {
+                    setSubmitting(false);
+                },
             })
-            setTimeout(() => {
-                setSubmitting(false);
-            }, 5 * 1000);
         })
         .catch((error: AxiosError<{error: string}>) => {
             notification.error({
-                message: "Something went wrong",
-                description: error.response?.data.error,
+                message: error.response?.data.error,
                 placement: "bottomRight",
+                onClose: () => {
+                    setSubmitting(false);
+                },
             });
-            setSubmitting(false);
         });
     };
 

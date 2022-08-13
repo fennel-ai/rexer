@@ -91,3 +91,33 @@ func TestConfirmUser(t *testing.T) {
 	assert.False(t, user.ConfirmationToken.Valid)
 	assert.False(t, user.ConfirmationSentAt.Valid)
 }
+
+func TestResetPassword(t *testing.T) {
+	m, err := mothership.NewTestMothership()
+	assert.NoError(t, err)
+	defer func() { err = mothership.Teardown(m); assert.NoError(t, err) }()
+
+	ctx := context.Background()
+
+	err = ResetPassword(ctx, m, "", "456")
+	assert.ErrorIs(t, err, &ErrorUserNotFound{})
+
+	user, err := SignUp(ctx, m, "test@fennel.ai", "123")
+	assert.NoError(t, err)
+	user.ConfirmedAt = sql.NullInt64{Valid: true, Int64: 12345}
+	user, err = db.UpdateConfirmation(m, user)
+	assert.NoError(t, err)
+
+	_, err = SignIn(ctx, m, "test@fennel.ai", "456")
+	assert.Error(t, err)
+
+	user.ResetToken = sql.NullString{Valid: true, String: "reset-oracle"}
+	user, err = db.UpdateResetInfo(m, user)
+	assert.NoError(t, err)
+
+	err = ResetPassword(ctx, m, "reset-oracle", "456")
+	assert.NoError(t, err)
+
+	_, err = SignIn(ctx, m, "test@fennel.ai", "456")
+	assert.NoError(t, err)
+}

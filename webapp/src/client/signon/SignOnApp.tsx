@@ -1,6 +1,7 @@
 import SignUp from "./SignUp";
 import SignIn from "./SignIn";
 import ForgotPassword from "./ForgotPassword";
+import ResetPassword from "./ResetPassword";
 import "../styles/signon/SignOnApp.css";
 
 interface Props {
@@ -10,6 +11,7 @@ interface Props {
 const SIGNUP_PAGE = "signup";
 const SIGNIN_PAGE = "signin";
 const FORGOT_PASSWORD_PAGE = "forgot_password";
+const RESET_PASSWORD_PAGE = "reset_password";
 
 function SignOnApp({page}: Props) {
     return (
@@ -25,6 +27,8 @@ function Route({page}: Props) {
             return <SignIn />;
         case FORGOT_PASSWORD_PAGE:
             return <ForgotPassword />;
+        case RESET_PASSWORD_PAGE:
+            return <ResetPassword />;
     }
     return <SignIn />;
 }

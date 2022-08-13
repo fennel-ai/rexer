@@ -28,10 +28,6 @@ interface FormValues {
     password: string,
 }
 
-interface Error {
-    error: string,
-}
-
 function SignInForm() {
     const [submitting, setSubmitting] = useState(false);
 
@@ -43,13 +39,12 @@ function SignInForm() {
         })
         .then(function () {
             setSubmitting(false);
-            document.location.href = "/";
+            window.location.href = "/";
         })
-        .catch(function (error: AxiosError) {
+        .catch(function (error: AxiosError<{error: string}>) {
             setSubmitting(false);
             notification.error({
-                message: "Something went wrong",
-                description: (error.response?.data as Error).error,
+                message: error.response?.data.error,
                 placement: "bottomRight",
             })
         });

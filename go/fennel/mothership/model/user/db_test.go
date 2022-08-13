@@ -99,3 +99,32 @@ func TestFetchByToken(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, int64(1234), user.ResetSentAt.Int64)
 }
+
+func TestUpdatePassword(t *testing.T) {
+	m, err := mothership.NewTestMothership()
+	assert.NoError(t, err)
+	defer func() { err = mothership.Teardown(m); assert.NoError(t, err) }()
+
+	user := lib.User{
+		Email:             "foo@fennel.ai",
+		EncryptedPassword: []byte("abcd"),
+	}
+	user_id, err := Insert(m, user)
+	assert.NoError(t, err)
+
+	user.Id = user_id
+	user.EncryptedPassword = []byte("efgh")
+	user.ResetToken = sql.NullString{Valid: true, String: "x"}
+	user.ResetSentAt = sql.NullInt64{Valid: true, Int64: 123}
+	_, err = UpdatePassword(m, user)
+	assert.NoError(t, err)
+
+	user, err = FetchByEmail(m, "foo@fennel.ai")
+	assert.NoError(t, err)
+
+	assert.Equal(t, []byte("efgh"), user.EncryptedPassword)
+	assert.True(t, user.ResetToken.Valid)
+	assert.Equal(t, "x", user.ResetToken.String)
+	assert.True(t, user.ResetSentAt.Valid)
+	assert.Equal(t, int64(123), user.ResetSentAt.Int64)
+}
