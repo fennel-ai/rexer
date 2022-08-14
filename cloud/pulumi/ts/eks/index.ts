@@ -634,8 +634,12 @@ async function setupClusterAutoscaler(awsProvider: aws.Provider, input: inputTyp
                                 "autoscaling:DescribeInstances",
                                 "autoscaling:DescribeLaunchConfigurations",
                                 "autoscaling:DescribeTags",
+                                "autoscaling:DescribeScalingActivities",
                                 "ec2:DescribeLaunchTemplateVersions",
-                                "ec2:DescribeInstanceTypes"
+                                "ec2:DescribeInstanceTypes",
+                                "ec2:DescribeImages",
+                                "ec2:GetInstanceTypesFromInstanceRequirements",
+                                "eks:DescribeNodegroup"
                             ],
                             "Resource": "*"
                         }
@@ -700,12 +704,21 @@ async function setupClusterAutoscaler(awsProvider: aws.Provider, input: inputTyp
             // this must match the namespace provided in the role above.
             namespace: "kube-system",
             chart: "cluster-autoscaler",
+            // fix a version so that a plane update does not lead to an unintentional cluster autoscaler update
+            version: "9.19.2",
             values: {
                 // auto-discover the autoscaling groups of the EKS cluster (since we use managed node groups, the necessary
                 // tags (`k8s.io/cluster-autoscaler/enabled` and `k8s.io/cluster-autoscaler/<CLUSTER_NAME>`) are
                 // already applied.
                 "autoDiscovery": {
                     "clusterName": clusterName,
+                },
+                // Use v1.24 image since it has the functionality to drop a node group for which scale up request failed
+                //
+                // This is possible when node groups comprise spot instances
+                // See - https://github.com/kubernetes/autoscaler/pull/4489#issuecomment-1157754799
+                "image": {
+                    "tag": "v1.24.0",
                 },
                 "awsRegion": input.region,
                 "cloudProvider": "aws",
