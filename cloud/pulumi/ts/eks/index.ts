@@ -192,7 +192,7 @@ async function setupEmissaryIngressCrds(input: inputType, awsProvider: aws.Provi
     // large timeout (1 hr).
     const waiter = new local.Command("waiter", {
         create: "kubectl wait deploy/emissary-apiext --for condition=available -n emissary-system",
-    }, { customTimeouts: { create: "1h" } })
+    }, { customTimeouts: { create: "1h" }, dependsOn: emissaryCrds });
 
     const l5dAmbConfig = waiter.stdout.apply(() => {
         return new k8s.apiextensions.CustomResource("l5d-amb-config", {

@@ -254,41 +254,6 @@ const tierConfs: Record<number, TierConf> = {
             usePublicSubnets: true,
         },
     },
-    // Gopuff demo tier
-    113: {
-        protectResources: true,
-        planeId: 3,
-        // use public subnets for ingress to allow traffic from outside the assigned vpc
-        ingressConf: {
-            usePublicSubnets: true,
-        },
-    },
-    // Discord demo tier
-    114: {
-        protectResources: true,
-        planeId: 3,
-        // use public subnets for ingress to allow traffic from outside the assigned vpc
-        ingressConf: {
-            usePublicSubnets: true,
-        },
-        // set larger requests for the http + query server
-        httpServerConf: {
-            podConf: {
-                minReplicas: 1,
-                maxReplicas: 4,
-                resourceConf: {
-                    cpu: {
-                        request: "2250m",
-                        limit: "2500m"
-                    },
-                    memory: {
-                        request: "6G",
-                        limit: "7G",
-                    }
-                }
-            },
-        },
-    },
     // Yext demo tier
     115: {
         protectResources: true,
@@ -314,6 +279,10 @@ const tierConfs: Record<number, TierConf> = {
                 }
             },
         },
+        // enable airbyte
+        airbyteConf: {
+            publicServer: false,
+        }
     },
     // 3 Demo tiers asked by Nikhil as of 08/09/2022
     116: {
