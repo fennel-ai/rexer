@@ -24,6 +24,7 @@ const (
 	TOPK           ftypes.AggType = "topk"
 	CF             ftypes.AggType = "cf"
 	KNN            ftypes.AggType = "knn"
+	MF             ftypes.AggType = "mf"
 )
 
 var ValidTypes = []ftypes.AggType{
@@ -37,6 +38,7 @@ var ValidTypes = []ftypes.AggType{
 	RATE,
 	TOPK,
 	CF,
+	MF,
 	KNN,
 }
 
@@ -123,6 +125,18 @@ func (agg Aggregate) Validate() error {
 		}
 		if agg.Options.Dim <= 0 {
 			return fmt.Errorf("dim must be greater than zero for %v", aggtype)
+		}
+	case MF:
+		if len(options.Durations) == 0 {
+			return fmt.Errorf("at least one duration must be provided for %s", aggtype)
+		}
+		for _, d := range options.Durations {
+			if d == 0 {
+				return fmt.Errorf("duration can not be zero for %s", aggtype)
+			}
+		}
+		if options.Limit == 0 {
+			return fmt.Errorf("limit should be non-zero for %v", aggtype)
 		}
 	case TIMESERIES_SUM:
 		if options.Window != ftypes.Window_HOUR && options.Window != ftypes.Window_DAY {

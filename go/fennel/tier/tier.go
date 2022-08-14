@@ -5,6 +5,7 @@ import (
 	"crypto/tls"
 	"fennel/airbyte"
 	"fmt"
+	"github.com/Unleash/unleash-client-go/v3"
 	"log"
 	"strings"
 	"sync"
@@ -29,7 +30,6 @@ import (
 	"fennel/s3"
 	"fennel/sagemaker"
 
-	"github.com/Unleash/unleash-client-go/v3"
 	"github.com/samber/mo"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
@@ -257,12 +257,12 @@ func CreateFromArgs(args *TierArgs) (tier Tier, err error) {
 
 	milvusClient := mo.None[milvus.Client]()
 	if args.MilvusArgs.Url != "" {
-		logger.Info("Connecting to milvus")
-		client, err := milvus.NewClient(args.MilvusArgs)
-		if err != nil {
-			return tier, fmt.Errorf("failed to create milvus client: %v", err)
-		}
-		milvusClient = mo.Some(client)
+		//logger.Info("Connecting to milvus")
+		//client, err := milvus.NewClient(args.MilvusArgs)
+		//if err != nil {
+		//	return tier, fmt.Errorf("failed to create milvus client: %v", err)
+		//}
+		//milvusClient = mo.Some(client)
 	}
 
 	airbyteClient := mo.None[airbyte.Client]()
