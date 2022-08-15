@@ -197,6 +197,11 @@ async function setupPrometheus(input: inputType) {
             // This overrides the configurations defined in the config map template in the chart.
             "serverFiles": {
                 "prometheus.yml": prometheusScrapeConfigs,
+            },
+            // enable scraping node labels to determine its capacity type and the node group it belongs to
+            "kube-state-metrics": {
+                // kube-state-metrics is enabled by default and is installed as a dependency
+                metricLabelsAllowlist: ["nodes=[eks.amazonaws.com/capacityType,eks.amazonaws.com/nodegroup]"],
             }
         },
     }, {provider: k8sProvider, protect: input.protect});
