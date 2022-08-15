@@ -1,4 +1,4 @@
-import "./styles/App.css";
+import "./styles/App.less";
 import Navbar from "./Navbar";
 import DataPage from "./DataPage";
 
