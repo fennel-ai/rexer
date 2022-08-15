@@ -1,4 +1,3 @@
-import * as docker from "@pulumi/docker";
 import * as aws from "@pulumi/aws";
 import * as k8s from "@pulumi/kubernetes";
 import * as pulumi from "@pulumi/pulumi";
@@ -91,58 +90,20 @@ export const setup = async (input: inputType) => {
         }
     }, { provider: awsProvider });
 
-    // Get registry info (creds and endpoint).
-    const registryInfo = repo.registryId.apply(async id => {
-        const credentials = await aws.ecr.getCredentials({ registryId: id }, { provider: awsProvider });
-        const decodedCredentials = Buffer.from(credentials.authorizationToken, "base64").toString();
-        const [username, password] = decodedCredentials.split(":");
-        if (!password || !username) {
-            throw new Error("Invalid credentials");
-        }
-        return {
-            server: credentials.proxyEndpoint,
-            username: username,
-            password: password,
-        };
-    });
-
     let nodeSelector = input.nodeLabels || {};
     const root = process.env["FENNEL_ROOT"]!
     // Get the (hash) commit id.
     // NOTE: This requires git to be installed and DOES NOT take local changes or commits into consideration.
-    const hashId = childProcess.execSync('git rev-parse --short HEAD').toString().trim()
-    const imageName = repo.repositoryUrl.apply(imgName => {
-        return `${imgName}:${hashId}`
-    })
+    const tag = childProcess.execSync('git rev-parse --short HEAD').toString().trim()
+    const dockerfile = path.join(root, "dockerfiles/http_multiarch.dockerfile");
 
-    let dockerfile, platform;
-    if (input.useAmd64 || DEFAULT_USE_AMD64) {
-        dockerfile = path.join(root, "dockerfiles/http.dockerfile")
-        platform = "linux/amd64"
-        nodeSelector["kubernetes.io/arch"] = "amd64"
-    } else {
-        dockerfile = path.join(root, "dockerfiles/http_arm64.dockerfile")
-        platform = "linux/arm64"
-        nodeSelector["kubernetes.io/arch"] = "arm64"
-    }
+    const imageName = await repo.repositoryUrl.apply(baseImageName => {
+        return util.DockerBuildMultiArch("query-server-img", baseImageName, dockerfile, root, tag);
+    });
 
     // NOTE: We do not set `CapacityType` for node selector configuration for Query servers as we want to run a
     // hybrid setup for it i.e. have a few replicas running on ON_DEMAND instances to have availability all the time
     // but run most of the workload on spot instances for cost efficiency
-
-    // Build and publish the container image.
-    const image = new docker.Image("query-server-img", {
-        build: {
-            context: root,
-            // We use HTTP server's dockerfile to spin up the query servers
-            dockerfile: dockerfile,
-            args: {
-                "platform": platform,
-            },
-        },
-        imageName: imageName,
-        registry: registryInfo,
-    });
 
     const k8sProvider = new k8s.Provider("queryserver-k8s-provider", {
         kubeconfig: input.kubeconfig,
@@ -190,7 +151,7 @@ export const setup = async (input: inputType) => {
         })
     }
 
-    const appDep = image.imageName.apply(() => {
+    const appDep = imageName.apply(imageName => {
         return new k8s.apps.v1.Deployment("query-server-deployment", {
             metadata: {
                 name: queryServerDepName,
@@ -242,7 +203,7 @@ export const setup = async (input: inputType) => {
                                 "--dev=false"
                             ],
                             name: name,
-                            image: image.imageName,
+                            image: imageName,
                             imagePullPolicy: "Always",
                             ports: [
                                 {
