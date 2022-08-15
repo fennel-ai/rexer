@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fennel/airbyte"
+	"fennel/lib/billing"
 	"fennel/lib/value"
 	"fmt"
 	"log"
@@ -12,6 +13,7 @@ import (
 
 	action2 "fennel/controller/action"
 	"fennel/controller/aggregate"
+	billingcontroller "fennel/controller/billing"
 	profile2 "fennel/controller/profile"
 	"fennel/kafka"
 	"fennel/lib/action"
@@ -286,6 +288,29 @@ func processConnector(tr tier.Tier, conn data_integration.Connector, stopCh <-ch
 	return nil
 }
 
+func startBillingCountersDBInsertion(tr tier.Tier) error {
+	consumer, err := tr.NewKafkaConsumer(kafka.ConsumerConfig{
+		Scope:        resource.NewTierScope(tr.ID),
+		Topic:        billing.HOURLY_BILLING_LOG_KAFKA_TOPIC,
+		GroupID:      "_put_billing_counters_in_db",
+		OffsetPolicy: kafka.DefaultOffsetPolicy,
+	})
+
+	if err != nil {
+		return fmt.Errorf("unable to start consumer for inserting billing counters in DB: %v", err)
+	}
+	go func(tr tier.Tier, consumer kafka.FConsumer) {
+		defer consumer.Close()
+		ctx := context.Background()
+		for {
+			if err := billingcontroller.TransferToDB(ctx, tr, consumer, billingcontroller.HourlyFold); err != nil {
+				tr.Logger.Error("error while reading/writing billing counters to db:", zap.Error(err))
+			}
+		}
+	}(tr, consumer)
+	return nil
+}
+
 func startActionDBInsertion(tr tier.Tier) error {
 	consumer, err := tr.NewKafkaConsumer(kafka.ConsumerConfig{
 		Scope:        resource.NewTierScope(tr.ID),
@@ -460,7 +485,9 @@ func main() {
 	// Note: don't delete this log line - e2e tests rely on this to be printed
 	// to know that server has initialized and is ready to take traffic
 	log.Println("server is ready...")
-
+	if err = startBillingCountersDBInsertion(tr); err != nil {
+		panic(err)
+	}
 	// first kick off a goroutine to transfer actions from kafka to DB
 	if err = startActionDBInsertion(tr); err != nil {
 		panic(err)
@@ -481,4 +508,5 @@ func main() {
 	if err = startAggregateProcessing(tr); err != nil {
 		panic(err)
 	}
+
 }

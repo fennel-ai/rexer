@@ -37,10 +37,10 @@ class LocalTier():
         print("Tier id", tier_id)
         self.env['METRICS_PORT'] = str(2436)
         self.env['PPROF_PORT'] = str(2437)
-        self.http_process = lib.run('fennel/service/http', 'dynamic,integration', self.env)
+        self.http_process = lib.run('fennel/service/http', 'dynamic,integration', self.env, flags=["--health-port", "8082"])
         self.env['METRICS_PORT'] = str(2446)
         self.env['PPROF_PORT'] = str(2467)
-        self.countaggr_process = lib.run('fennel/service/countaggr', 'dynamic,integration', self.env)  
+        self.countaggr_process = lib.run('fennel/service/countaggr', 'dynamic,integration', self.env, flags=["--health-port", "8083"])  
         # Wait for the services to be up.
         time.sleep(10)
         print("Server is up")

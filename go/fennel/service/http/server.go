@@ -10,6 +10,7 @@ import (
 	"mime/multipart"
 	"net/http"
 	_ "net/http/pprof"
+	"strconv"
 	"strings"
 	"time"
 
@@ -33,7 +34,11 @@ import (
 	"fennel/lib/sql"
 	"fennel/lib/timer"
 	"fennel/lib/value"
+	"fennel/model/billing"
 	"fennel/tier"
+
+	billingcontroller "fennel/controller/billing"
+	billinglib "fennel/lib/billing"
 
 	"github.com/Unleash/unleash-client-go/v3"
 	"github.com/buger/jsonparser"
@@ -155,6 +160,7 @@ func (s server) setHandlers(router *mux.Router) {
 	router.HandleFunc(EXT_REST_VERSION+"/actions", s.LogActions)
 	router.HandleFunc(EXT_REST_VERSION+"/profiles", s.LogProfiles)
 	router.HandleFunc(EXT_REST_VERSION+"/query", s.RunQuery)
+	router.HandleFunc(EXT_REST_VERSION+"/billing_counters", s.GetBillingCounters)
 }
 
 func constructDedupKey(dedupKey string, actionType ftypes.ActionType) string {
@@ -214,6 +220,9 @@ func (m server) Log(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 	totalActions.WithLabelValues("log", string(a.ActionType)).Inc()
+	bc := &billinglib.BillingCountersDBItem{Actions: 1}
+	// TODO(Amit): Handle error during insertion.
+	_ = billingcontroller.Insert(req.Context(), m.tier, bc)
 	handleSuccessfulRequest(w)
 }
 
@@ -283,6 +292,8 @@ func (m server) LogMulti(w http.ResponseWriter, req *http.Request) {
 	for _, a := range batch {
 		totalActions.WithLabelValues("log_multi", string(a.ActionType)).Inc()
 	}
+	bc := &billinglib.BillingCountersDBItem{Actions: uint64(len(actions))}
+	_ = billingcontroller.Insert(req.Context(), m.tier, bc)
 	handleSuccessfulRequest(w)
 }
 
@@ -309,6 +320,8 @@ func (m server) LogActions(w http.ResponseWriter, req *http.Request) {
 	for _, a := range actions {
 		totalActions.WithLabelValues("log_multi", string(a.ActionType)).Inc()
 	}
+	bc := &billinglib.BillingCountersDBItem{Actions: uint64(len(actions))}
+	_ = billingcontroller.Insert(req.Context(), m.tier, bc)
 	handleSuccessfulRequest(w)
 }
 
@@ -518,7 +531,10 @@ func (m server) Query(w http.ResponseWriter, req *http.Request) {
 		handleInternalServerError(w, "", err)
 		return
 	}
+	bc := &billinglib.BillingCountersDBItem{Queries: 1}
+	_ = billingcontroller.Insert(req.Context(), m.tier, bc)
 	_, _ = w.Write(value.ToJSON(ret))
+
 }
 
 func (m server) StoreQuery(w http.ResponseWriter, req *http.Request) {
@@ -549,6 +565,49 @@ func (m server) StoreQuery(w http.ResponseWriter, req *http.Request) {
 	}
 	// if storing succeeds, just return empty response
 	handleSuccessfulRequest(w)
+}
+
+func (m server) GetBillingCounters(w http.ResponseWriter, req *http.Request) {
+	startTimeStr := req.URL.Query().Get("start_time")
+	endTimeStr := req.URL.Query().Get("end_time")
+	var startTime, endTime uint64
+	var err error
+
+	// By default get the billing of the current hour.
+	if startTimeStr == "" || endTimeStr == "" {
+		startTime = billingcontroller.HourlyFold(uint64(m.tier.Clock.Now()))
+		endTime = billingcontroller.HourlyFold(uint64(m.tier.Clock.Now()))
+	} else {
+		startTime, err = strconv.ParseUint(startTimeStr, 10, 64)
+		if err != nil {
+			t, err := time.Parse(time.RFC3339, startTimeStr)
+			if err != nil {
+				handleBadRequest(w, "failed to parse query param `start_time`, should be either epoch or in format "+time.RFC3339+" :", err)
+				return
+			}
+			startTime = uint64(t.Unix())
+		}
+		endTime, err = strconv.ParseUint(endTimeStr, 10, 64)
+		if err != nil {
+			t, err := time.Parse(time.RFC3339, endTimeStr)
+			if err != nil {
+				handleBadRequest(w, "failed to parse query param `end_time`, should be either epoch or in format "+time.RFC3339+" :", err)
+				return
+			}
+			endTime = uint64(t.Unix())
+		}
+	}
+	bc, err := billing.GetBillingCounters(req.Context(), m.tier, startTime, endTime)
+	if err != nil {
+		handleInternalServerError(w, "", err)
+		return
+	}
+	var b []byte
+	b, err = json.Marshal(bc)
+	if err != nil {
+		handleInternalServerError(w, "", err)
+	}
+	_, _ = w.Write(b)
 }
 
 func (m server) RunQuery(w http.ResponseWriter, req *http.Request) {
@@ -593,6 +652,8 @@ func (m server) RunQuery(w http.ResponseWriter, req *http.Request) {
 		handleInternalServerError(w, "", err)
 		return
 	}
+	bc := &billinglib.BillingCountersDBItem{Queries: 1}
+	_ = billingcontroller.Insert(req.Context(), m.tier, bc)
 	_, _ = w.Write(value.ToJSON(ret))
 }
 
