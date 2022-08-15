@@ -525,7 +525,7 @@ async function setupSpotRescheduler(awsProvider: aws.Provider, input: inputType,
             // this must match the namespace provided in the role above.
             namespace: "kube-system",
             chart: "spot-rescheduler",
-            version: "0.1.4",
+            version: "0.1.5",
             values: {
                 // auto-discover the autoscaling groups of the EKS cluster (since we use managed node groups, the necessary
                 // tags (`k8s.io/cluster-autoscaler/enabled` and `k8s.io/cluster-autoscaler/<CLUSTER_NAME>`) are
@@ -534,7 +534,7 @@ async function setupSpotRescheduler(awsProvider: aws.Provider, input: inputType,
                     "clusterName": clusterName,
                 },
                 "image": {
-                    "tag": "1.0.1",
+                    "tag": "2.0.0",
                 },
                 "awsRegion": input.region,
                 "cloudProvider": "aws",
