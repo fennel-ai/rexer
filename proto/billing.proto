@@ -1,0 +1,13 @@
+syntax = "proto3";
+
+option go_package = "fennel/lib/billing";
+
+message BillingCountersProto {
+  // Number of queries.
+  uint64 queries = 1;
+  // Number of actions.
+  uint64 actions = 2;
+  // Time at which the counters are to be reported.
+  uint64 timestamp = 3;
+}
+

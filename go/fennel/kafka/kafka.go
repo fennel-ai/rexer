@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"fennel/lib/action"
+	"fennel/lib/billing"
 	"fennel/lib/counter"
 	"fennel/lib/feature"
 	"fennel/lib/nitrous"
@@ -71,6 +72,7 @@ var ALL_TOPICS = []TopicConf{
 	{Scope: resource.TierScope{}, Topic: profile.PROFILELOG_KAFKA_TOPIC},
 	{Scope: resource.TierScope{}, Topic: counter.AGGREGATE_OFFLINE_TRANSFORM_TOPIC_NAME},
 	{Scope: resource.PlaneScope{}, Topic: nitrous.BINLOG_KAFKA_TOPIC},
+	{Scope: resource.TierScope{}, Topic: billing.HOURLY_BILLING_LOG_KAFKA_TOPIC},
 }
 
 func ConfigMap(server, username, password string) *kafka.ConfigMap {

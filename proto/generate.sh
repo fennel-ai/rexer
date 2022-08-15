@@ -20,9 +20,9 @@ then
     cd protobuf-3.21.1
     ./autogen.sh
     ./configure --prefix=/usr/local
-    make
-    make check
-    sudo make install
+    make -j 24
+    make check -j 24
+    sudo make install -j 24
     echo "installation done"
     cd $cwd
 fi

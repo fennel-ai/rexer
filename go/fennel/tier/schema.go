@@ -192,5 +192,12 @@ var Schema = db.Schema{
 			FOREIGN KEY (name) REFERENCES source(name) ON DELETE CASCADE
 		);`,
 	// ==================== END Schema for Data Integration ======================
-	// Next starts from 30.
+	// ==================== BEGIN Schema for billing counters ================
+	23: `CREATE TABLE IF NOT EXISTS billing_counters (
+		queries BIGINT NOT NULL,
+		actions BIGINT NOT NULL,
+		timestamp BIGINT NOT NULL,
+		INDEX tx(timestamp)
+	);`,
+	// ==================== END Schema for billing counters ===================
 }
