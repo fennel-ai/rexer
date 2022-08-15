@@ -47,6 +47,26 @@ func UpdateConfirmation(mothership mothership.Mothership, user lib.User) (lib.Us
 	return user, nil
 }
 
+func UpdateRememberInfo(mothership mothership.Mothership, user lib.User) (lib.User, error) {
+	if !user.IsPersisted() {
+		return user, NotPersistedError
+	}
+
+	now := time.Now().UTC().UnixMicro()
+	_, err := mothership.DB.Exec(
+		`UPDATE user SET remember_token = ?, remember_created_at = ?, updated_at = ? WHERE id = ?`,
+		user.RememberToken,
+		user.RememberCreatedAt,
+		now,
+		user.Id,
+	)
+	if err != nil {
+		return user, err
+	}
+	user.UpdatedAt = now
+	return user, nil
+}
+
 func UpdateResetInfo(mothership mothership.Mothership, user lib.User) (lib.User, error) {
 	if !user.IsPersisted() {
 		return user, NotPersistedError

@@ -26,6 +26,10 @@ func addFlashMessage(session sessions.Session, msgType, msgContent string) {
 }
 
 func saveUserIntoCookie(session sessions.Session, user libuser.User) {
+	if !user.RememberToken.Valid {
+		log.Printf("Error saving cookie: remember token missing")
+		return
+	}
 	session.Set(RememberTokenKey, user.RememberToken.String)
 	if err := session.Save(); err != nil {
 		log.Printf("Error saving cookie: %v", err)

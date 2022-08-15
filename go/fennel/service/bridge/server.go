@@ -85,6 +85,7 @@ func (s *server) setupRouter() {
 	auth.GET("/profiles", s.Profiles)
 	auth.GET("/actions", s.Actions)
 	auth.GET("/features", s.Features)
+	auth.POST("/logout", s.Logout)
 }
 
 const (
@@ -376,4 +377,17 @@ func (s *server) Features(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{
 		"features": features,
 	})
+}
+
+func (s *server) Logout(c *gin.Context) {
+	if user, ok := CurrentUser(c); ok {
+		if _, err := userC.Logout(c.Request.Context(), s.mothership, user); err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"error": "Can't log out the user, please try again later.",
+			})
+			log.Printf("Failed to log out the user: %v\n", err)
+			return
+		}
+	}
+	c.JSON(http.StatusOK, gin.H{})
 }

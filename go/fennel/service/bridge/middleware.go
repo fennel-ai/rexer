@@ -1,6 +1,7 @@
 package main
 
 import (
+	lib "fennel/lib/user"
 	"fennel/mothership"
 	"fennel/mothership/model/user"
 	"net/http"
@@ -27,6 +28,15 @@ func AuthenticationRequired(mothership mothership.Mothership) gin.HandlerFunc {
 		c.Redirect(http.StatusFound, SignInURL)
 		c.Abort()
 	}
+}
+
+func CurrentUser(c *gin.Context) (lib.User, bool) {
+	userAny, ok := c.Get(CurrentUserKey)
+	if !ok {
+		return lib.User{}, false
+	}
+	user, ok := userAny.(lib.User)
+	return user, ok
 }
 
 /**
