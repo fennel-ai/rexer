@@ -315,32 +315,68 @@ type Destination struct {
 }
 
 type KafkaConnectorConfig struct {
-	Acks                           string   `json:"acks"`
-	Retries                        int      `json:"retries"`
-	Protocol                       Protocol `json:"protocol"`
-	LingerMs                       string   `json:"linger_ms"`
-	BathSize                       int      `json:"batch_size"`
-	TestTopic                      string   `json:"test_topic"`
-	MaxBlockMs                     string   `json:"max_block_ms"`
-	BufferMemory                   string   `json:"buffer_memory"`
-	SyncProducer                   bool     `json:"sync_producer"`
-	TopicPattern                   string   `json:"topic_pattern"`
-	CompressionType                string   `json:"compression_type"`
-	MaxRequestSize                 int      `json:"max_request_size"`
-	BootstrapServers               string   `json:"bootstrap_servers"`
-	ClientDnsLookup                string   `json:"client_dns_lookup"`
-	SendBufferBytes                int      `json:"send_buffer_bytes"`
-	EnableIdempotence              bool     `json:"enable_idempotence"`
-	RequestTimeoutMs               int      `json:"request_timeout_ms"`
-	DeliveryTimeoutMs              int      `json:"delivery_timeout_ms"`
-	ReceiveBufferBytes             int      `json:"receive_buffer_bytes"`
-	SocketConnectTimeoutMs         string   `json:"socket_connect_timeout_ms"`
-	MaxInFlightRequests            int      `json:"max_in_flight_requests"`
-	SocketConnectionSetupTimeoutMs string   `json:"socket_connection_setup_timeout_ms"`
+	Acks                              string   `json:"acks"`
+	ClientId                          string   `json:"client_id"`
+	Retries                           int      `json:"retries"`
+	Protocol                          Protocol `json:"protocol"`
+	LingerMs                          string   `json:"linger_ms"`
+	BathSize                          int      `json:"batch_size"`
+	TestTopic                         string   `json:"test_topic"`
+	MaxBlockMs                        string   `json:"max_block_ms"`
+	BufferMemory                      string   `json:"buffer_memory"`
+	SyncProducer                      bool     `json:"sync_producer"`
+	TopicPattern                      string   `json:"topic_pattern"`
+	CompressionType                   string   `json:"compression_type"`
+	MaxRequestSize                    int      `json:"max_request_size"`
+	BootstrapServers                  string   `json:"bootstrap_servers"`
+	ClientDnsLookup                   string   `json:"client_dns_lookup"`
+	SendBufferBytes                   int      `json:"send_buffer_bytes"`
+	EnableIdempotence                 bool     `json:"enable_idempotence"`
+	RequestTimeoutMs                  int      `json:"request_timeout_ms"`
+	DeliveryTimeoutMs                 int      `json:"delivery_timeout_ms"`
+	ReceiveBufferBytes                int      `json:"receive_buffer_bytes"`
+	SocketConnectTimeoutMs            string   `json:"socket_connect_timeout_ms"`
+	MaxInFlightRequests               int      `json:"max_in_flight_requests"`
+	MaxInFlightRequestsPerConnection  int      `json:"max_in_flight_requests_per_connection"`
+	SocketConnectionSetupTimeoutMs    string   `json:"socket_connection_setup_timeout_ms"`
+	SocketConnectionSetupTimeoutMaxMs string   `json:"socket_connection_setup_timeout_max_ms"`
 }
 
 type Protocol struct {
 	SaslMechanism    string `json:"sasl_mechanism"`
 	SaslJaasConfig   string `json:"sasl_jaas_config"`
 	SecurityProtocol string `json:"security_protocol"`
+}
+
+// TODO: Send Kafka config via environment variables
+func NewKafkaConnectorConfig(topic string) KafkaConnectorConfig {
+	return KafkaConnectorConfig{
+		Acks:                              "all",
+		ClientId:                          "airbyte-producer",
+		SocketConnectionSetupTimeoutMaxMs: "30000",
+		MaxInFlightRequestsPerConnection:  5,
+		SocketConnectionSetupTimeoutMs:    "10000",
+		ReceiveBufferBytes:                32768,
+		DeliveryTimeoutMs:                 120003,
+		RequestTimeoutMs:                  30002,
+		EnableIdempotence:                 true,
+		SendBufferBytes:                   131074,
+		ClientDnsLookup:                   "use_all_dns_ips",
+		BootstrapServers:                  "pkc-pgq85.us-west-2.aws.confluent.cloud:9092",
+		MaxRequestSize:                    1048578,
+		CompressionType:                   "none",
+		TopicPattern:                      topic,
+		SyncProducer:                      false,
+		BufferMemory:                      "33554432",
+		MaxBlockMs:                        "60000",
+		TestTopic:                         topic,
+		BathSize:                          16384,
+		LingerMs:                          "0",
+		Protocol: Protocol{
+			SecurityProtocol: "SASL_SSL",
+			SaslMechanism:    "PLAIN",
+			SaslJaasConfig:   "org.apache.kafka.common.security.plain.PlainLoginModule required username=\"SJLSMRYRKYALJ4Q4\" password=\"fXy4iNu+x0SY0Qmiwm60YFl+BV5LzXqPPVdy1NoK+xeffGEggv77MXxCGT7YTNyk\";",
+		},
+		Retries: 2147483647,
+	}
 }
