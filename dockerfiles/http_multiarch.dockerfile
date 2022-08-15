@@ -38,7 +38,7 @@ RUN go build -o server fennel/service/http
 # these build stages are later used in the runner build stage
 
 # executor_arm64
-FROM builder_arm64 AS executor_arm64
+FROM --platform=$TARGETPLATFORM golang:1.18-bullseye AS executor_arm64
 RUN touch /etc/ld.so.conf.d/librdkafka.conf
 WORKDIR /kafka/lib
 COPY --from=builder_arm64 /usr/local/lib .
@@ -48,7 +48,7 @@ COPY --from=builder_arm64 /app/go/fennel/server ./
 RUN ldconfig
 
 # executor_amd64
-FROM builder_amd64 AS executor_amd64
+FROM --platform=$TARGETPLATFORM golang:1.18-bullseye AS executor_amd64
 WORKDIR /root/
 COPY --from=builder_amd64 /app/go/fennel/server ./
 
