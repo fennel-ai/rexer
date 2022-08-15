@@ -1,5 +1,7 @@
+import axios, { AxiosError } from "axios";
+
 import styles from "./styles/Navbar.module.scss";
-import type { MenuProps } from "antd";
+import { MenuProps, notification } from "antd";
 import { Dropdown, Menu, Space, Avatar } from "antd";
 import { DownOutlined, UserOutlined, TeamOutlined, LogoutOutlined } from '@ant-design/icons';
 
@@ -55,28 +57,28 @@ function Navbar({page}: Props) {
 }
 
 function AvatarDropdown() {
+    const onLogout = () => {
+        axios.post("/logout")
+            .then(() => {
+                window.location.href = "/signin";
+            })
+            .catch((e: AxiosError<{error: string}>) => {
+                notification.error({
+                    message: e.response?.data.error,
+                    placement: "bottomRight",
+                });
+            });
+    };
     const items: MenuProps["items"] = [
         {
-            icon: <UserOutlined />,
-            label: (<a href="#">Account</a>),
-            key: "account",
-        },
-        {
-            icon: <TeamOutlined />,
-            label: (<a href="#">Organization</a>),
-            key: "orgnization",
-        },
-        {
-            type: "divider",
-        },
-        {
             icon: <LogoutOutlined />,
-            label: (<a href="#">Log out</a>),
-            key: "log_out",
+            label: "Log out",
+            key: "logout",
+            onClick: onLogout,
         },
     ];
     return (
-        <Dropdown overlay={<Menu items={items} />}>
+        <Dropdown overlay={<Menu items={items} />} trigger={["click"]}>
             <Avatar size={24} icon={<UserOutlined />} />
         </Dropdown>
     );

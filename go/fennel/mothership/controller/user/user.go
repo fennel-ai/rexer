@@ -58,8 +58,6 @@ func newUser(m mothership.Mothership, email, password string) (lib.User, error) 
 	return lib.User{
 		Email:             email,
 		EncryptedPassword: hash,
-		RememberToken:     sql.NullString{String: generateRememberToken(m), Valid: true},
-		RememberCreatedAt: sql.NullInt64{Int64: now, Valid: true},
 		CreatedAt:         now,
 		UpdatedAt:         now,
 	}, nil
@@ -236,7 +234,9 @@ func SignIn(c context.Context, m mothership.Mothership, email, password string) 
 	if !user.IsConfirmed() {
 		return user, &ErrorNotConfirmed{}
 	}
-	return user, nil
+	user.RememberToken = sql.NullString{String: generateRememberToken(m), Valid: true}
+	user.RememberCreatedAt = sql.NullInt64{Int64: time.Now().UTC().UnixMicro(), Valid: true}
+	return db.UpdateRememberInfo(m, user)
 }
 
 func ConfirmUser(c context.Context, m mothership.Mothership, token string) (lib.User, error) {
@@ -267,4 +267,11 @@ func ResetPassword(c context.Context, m mothership.Mothership, token, password s
 	user.ResetSentAt = sql.NullInt64{Valid: false}
 	_, err = db.UpdatePassword(m, user)
 	return err
+}
+
+func Logout(c context.Context, m mothership.Mothership, user lib.User) (lib.User, error) {
+	user.RememberToken = sql.NullString{Valid: false}
+	user.RememberCreatedAt = sql.NullInt64{Valid: false}
+
+	return db.UpdateRememberInfo(m, user)
 }

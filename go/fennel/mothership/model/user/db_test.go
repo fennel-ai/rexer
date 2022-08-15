@@ -47,6 +47,7 @@ func TestFetchByToken(t *testing.T) {
 		EncryptedPassword: []byte("abcd"),
 		CreatedAt:         123,
 		RememberToken:     sql.NullString{String: "oracle", Valid: true},
+		RememberCreatedAt: sql.NullInt64{Int64: 12345, Valid: true},
 	}
 	_, err = Insert(m, user)
 	assert.NoError(t, err)
@@ -64,6 +65,14 @@ func TestFetchByToken(t *testing.T) {
 	user, err = FetchByRememberToken(m, "oracle")
 	assert.NoError(t, err)
 	assert.True(t, user.IsPersisted())
+	assert.Equal(t, int64(12345), user.RememberCreatedAt.Int64)
+
+	user.RememberToken = sql.NullString{Valid: false}
+	user.RememberCreatedAt = sql.NullInt64{Valid: false}
+	user, err = UpdateRememberInfo(m, user)
+	assert.NoError(t, err)
+	assert.False(t, user.RememberToken.Valid)
+	assert.False(t, user.RememberCreatedAt.Valid)
 
 	_, err = FetchByConfirmationToken(m, "")
 	assert.Error(t, err)
