@@ -24,5 +24,7 @@ import (
 	_ "fennel/opdefs/std/set"
 	_ "fennel/opdefs/std/zip"
 
+	_ "fennel/opdefs/remote"
+
 	_ "fennel/opdefs/math"
 )
