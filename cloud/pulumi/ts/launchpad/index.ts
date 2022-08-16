@@ -626,10 +626,10 @@ const planeConfs: Record<number, PlaneConf> = {
                 // Query server on demand node group
                 {
                     name: "p-6-queryserver-on-demand",
-                    instanceTypes: ["c6g.xlarge"],
+                    instanceTypes: ["c6i.xlarge"],
                     minSize: 1,
                     maxSize: 2,
-                    amiType: DEFAULT_ARM_AMI_TYPE,
+                    amiType: DEFAULT_X86_AMI_TYPE,
                     labels: {
                         "node-group": "p-6-queryserver-ng",
                         "rescheduler-label": "on-demand",

@@ -3,9 +3,9 @@ import * as k8s from "@pulumi/kubernetes";
 import * as pulumi from "@pulumi/pulumi";
 import * as path from "path";
 import * as process from "process";
-import * as childProcess from "child_process";
 import {ReadinessProbe, serviceEnvs} from "../tier-consts/consts";
 import * as util from "../lib/util";
+import * as docker from "../docker";
 
 const name = "query-server"
 
@@ -17,7 +17,6 @@ export const plugins = {
 
 const DEFAULT_MIN_REPLICAS = 1
 const DEFAULT_MAX_REPLICAS = 2
-const DEFAULT_USE_AMD64 = false
 
 // default for resource requirement configurations
 const DEFAULT_CPU_REQUEST = "200m"
@@ -66,6 +65,21 @@ export const setup = async (input: inputType) => {
         imageTagMutability: "MUTABLE"
     }, { provider: awsProvider });
 
+    // Get registry info (creds and endpoint).
+    const registryInfo = repo.registryId.apply(async id => {
+        const credentials = await aws.ecr.getCredentials({ registryId: id }, { provider: awsProvider });
+        const decodedCredentials = Buffer.from(credentials.authorizationToken, "base64").toString();
+        const [username, password] = decodedCredentials.split(":");
+        if (!password || !username) {
+            throw new Error("Invalid credentials");
+        }
+        return {
+            server: credentials.proxyEndpoint,
+            username: username,
+            password: password,
+        };
+    });
+
     const repoPolicy = new aws.ecr.LifecyclePolicy(`t-${input.tierId}-query-server-repo-policy`, {
         repository: repo.name,
         policy: {
@@ -92,13 +106,11 @@ export const setup = async (input: inputType) => {
 
     let nodeSelector = input.nodeLabels || {};
     const root = process.env["FENNEL_ROOT"]!
-    // Get the (hash) commit id.
-    // NOTE: This requires git to be installed and DOES NOT take local changes or commits into consideration.
-    const tag = childProcess.execSync('git rev-parse --short HEAD').toString().trim()
-    const dockerfile = path.join(root, "dockerfiles/http_multiarch.dockerfile");
+    const amdDockerfile = path.join(root, "dockerfiles/http.dockerfile");
+    const armDockerfile = path.join(root, "dockerfiles/http_arm64.dockerfile");
 
-    const imageName = await repo.repositoryUrl.apply(baseImageName => {
-        return util.DockerBuildMultiArch("query-server-img", baseImageName, dockerfile, root, tag);
+    const imageName = repo.repositoryUrl.apply(baseImageName => {
+        return docker.DockerBuildMultiArch("query-server-img", amdDockerfile, armDockerfile, baseImageName, registryInfo);
     });
 
     // NOTE: We do not set `CapacityType` for node selector configuration for Query servers as we want to run a
