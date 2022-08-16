@@ -34,15 +34,23 @@ module.exports = {
                 ],
             },
             {
-                test: /\.css/i,
+                test: /\.less$/i,
                 use: [
                     "style-loader",
                     "css-loader",
+                    {
+                        loader: "less-loader",
+                        options: {
+                            lessOptions: {
+                                javascriptEnabled: true,
+                            },
+                        },
+                    }
                 ],
             },
         ]
     },
     resolve: {
-        extensions: [".tsx", ".ts", ".js", ".jsx", ".css", ".scss", ".sass"]
+        extensions: [".tsx", ".ts", ".js", ".jsx", ".scss", ".sass", ".less"]
     }
 }
