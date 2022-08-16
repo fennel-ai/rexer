@@ -115,7 +115,7 @@ export const setup = async (input: inputType): Promise<pulumi.Output<outputType>
         clusterIdentifierPrefix: `p-${input.planeId}-db-`,
         engine: aws.rds.EngineType.AuroraMysql,
         engineMode: aws.rds.EngineMode.Serverless,
-        engineVersion: "5.7.mysql_aurora.2.07.1",
+        engineVersion: "5.7.mysql_aurora.2.08.3",
         masterUsername: input.username,
         masterPassword: input.password,
         scalingConfiguration: {
