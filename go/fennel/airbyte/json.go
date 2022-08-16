@@ -2,6 +2,7 @@ package airbyte
 
 import (
 	"fennel/lib/data_integration"
+	"fmt"
 )
 
 // ---------------------------------------------------------------------------------------------------------------------
@@ -349,7 +350,8 @@ type Protocol struct {
 }
 
 // TODO: Send Kafka config via environment variables
-func NewKafkaConnectorConfig(topic string) KafkaConnectorConfig {
+func NewKafkaConnectorConfig(topic string, cred KafkaCredentials) KafkaConnectorConfig {
+	saslConfig := fmt.Sprintf("org.apache.kafka.common.security.plain.PlainLoginModule required username=\"%s\" password=\"%s\";", cred.Username, cred.Password)
 	return KafkaConnectorConfig{
 		Acks:                              "all",
 		ClientId:                          "airbyte-producer",
@@ -362,7 +364,7 @@ func NewKafkaConnectorConfig(topic string) KafkaConnectorConfig {
 		EnableIdempotence:                 true,
 		SendBufferBytes:                   131074,
 		ClientDnsLookup:                   "use_all_dns_ips",
-		BootstrapServers:                  "pkc-pgq85.us-west-2.aws.confluent.cloud:9092",
+		BootstrapServers:                  cred.Server,
 		MaxRequestSize:                    1048578,
 		CompressionType:                   "none",
 		TopicPattern:                      topic,
@@ -375,7 +377,7 @@ func NewKafkaConnectorConfig(topic string) KafkaConnectorConfig {
 		Protocol: Protocol{
 			SecurityProtocol: "SASL_SSL",
 			SaslMechanism:    "PLAIN",
-			SaslJaasConfig:   "org.apache.kafka.common.security.plain.PlainLoginModule required username=\"SJLSMRYRKYALJ4Q4\" password=\"fXy4iNu+x0SY0Qmiwm60YFl+BV5LzXqPPVdy1NoK+xeffGEggv77MXxCGT7YTNyk\";",
+			SaslJaasConfig:   saslConfig,
 		},
 		Retries: 2147483647,
 	}

@@ -268,7 +268,11 @@ func CreateFromArgs(args *TierArgs) (tier Tier, err error) {
 	airbyteClient := mo.None[airbyte.Client]()
 	if args.AirbyteServer != "" {
 		logger.Info("Connecting to airbyte")
-		client, err := airbyte.NewClient(args.AirbyteServer, tierID)
+		client, err := airbyte.NewClient(args.AirbyteServer, tierID, airbyte.KafkaCredentials{
+			Username: args.KafkaUsername,
+			Password: args.KafkaPassword,
+			Server:   args.KafkaServer,
+		})
 		if err != nil {
 			return tier, fmt.Errorf("failed to create airbyte client: %v", err)
 		}

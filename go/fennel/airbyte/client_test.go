@@ -142,9 +142,14 @@ func TestAirbyteSourceClient(t *testing.T) {
 	Ts := &testServer{
 		t: t,
 	}
+	cred := KafkaCredentials{
+		Username: "",
+		Password: "",
+		Server:   "",
+	}
 	svr := newTestServer(t, Ts)
 	defer svr.Close()
-	client, err := NewClient(svr.URL, TEST_TIER_ID)
+	client, err := NewClient(svr.URL, TEST_TIER_ID, cred)
 	assert.NoError(t, err)
 	src := data_integration.S3{
 		Name: "test-source",
@@ -160,7 +165,12 @@ func TestAirbyteConnectorClient(t *testing.T) {
 	}
 	svr := newTestServer(t, Ts)
 	defer svr.Close()
-	client, err := NewClient(svr.URL, TEST_TIER_ID)
+	cred := KafkaCredentials{
+		Username: "",
+		Password: "",
+		Server:   "",
+	}
+	client, err := NewClient(svr.URL, TEST_TIER_ID, cred)
 	assert.NoError(t, err)
 	src := data_integration.S3{
 		Name: "test-source",

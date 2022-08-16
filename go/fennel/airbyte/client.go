@@ -51,7 +51,13 @@ func init() {
 	sourceDefinitionIdCache = make(map[string]string)
 }
 
-func NewClient(hostport string, tierId ftypes.RealmID) (Client, error) {
+type KafkaCredentials struct {
+	Username string
+	Password string
+	Server   string
+}
+
+func NewClient(hostport string, tierId ftypes.RealmID, cred KafkaCredentials) (Client, error) {
 	url, err := url.Parse(hostport)
 	if err != nil {
 		return Client{}, fmt.Errorf("failed to parse hostport [%s]: %v", hostport, err)
@@ -66,7 +72,7 @@ func NewClient(hostport string, tierId ftypes.RealmID) (Client, error) {
 	if err != nil || workspaceId == "" {
 		return Client{}, fmt.Errorf("failed to set workspace: %w", err)
 	}
-	err = c.setKafkaDestinationId(tierId, 0)
+	err = c.setKafkaDestinationId(tierId, cred, 0)
 	if err != nil || kafkaDestinationId == "" {
 		return Client{}, fmt.Errorf("failed to set kafka destination id: %w", err)
 	}
@@ -502,7 +508,7 @@ func (c Client) findDestinationDefinitionId() (string, error) {
 	return "", fmt.Errorf("destination type Kafka not found among list of supported destinations")
 }
 
-func (c Client) createKafkaDestination(tierId ftypes.RealmID) error {
+func (c Client) createKafkaDestination(tierId ftypes.RealmID, cred KafkaCredentials) error {
 	fmt.Println("Creating Kafka destination for tier", tierId)
 	destinationDefinitionid, err := c.findDestinationDefinitionId()
 	if destinationDefinitionid == "" || err != nil {
@@ -515,7 +521,7 @@ func (c Client) createKafkaDestination(tierId ftypes.RealmID) error {
 		ConnectionConfiguration KafkaConnectorConfig `json:"connectionConfiguration"`
 	}
 	fields.DestinationDefinitionId = destinationDefinitionid
-	fields.ConnectionConfiguration = NewKafkaConnectorConfig(getFullAirbyteKafkaTopic(tierId))
+	fields.ConnectionConfiguration = NewKafkaConnectorConfig(getFullAirbyteKafkaTopic(tierId), cred)
 	data, err := json.Marshal(fields)
 	if err != nil {
 		return err
@@ -543,7 +549,7 @@ func (c Client) createKafkaDestination(tierId ftypes.RealmID) error {
 	fields2.Name = "Fennel Kafka Destination"
 	fields2.DestinationDefinitionId = destinationDefinitionid
 	fields2.WorkspaceId = workspaceId
-	fields2.ConnectionConfiguration = NewKafkaConnectorConfig(getFullAirbyteKafkaTopic(tierId))
+	fields2.ConnectionConfiguration = NewKafkaConnectorConfig(getFullAirbyteKafkaTopic(tierId), cred)
 	data, err = json.Marshal(fields2)
 	if err != nil {
 		return err
@@ -553,7 +559,7 @@ func (c Client) createKafkaDestination(tierId ftypes.RealmID) error {
 }
 
 // TODO: create Kafka destination if no destination is found
-func (c Client) setKafkaDestinationId(tierId ftypes.RealmID, retry int) error {
+func (c Client) setKafkaDestinationId(tierId ftypes.RealmID, cred KafkaCredentials, retry int) error {
 	var workspace struct {
 		WorkspaceId string `json:"workspaceId"`
 	}
@@ -577,10 +583,10 @@ func (c Client) setKafkaDestinationId(tierId ftypes.RealmID, retry int) error {
 			return fmt.Errorf("failed to create Kafka destination after %d retries", retry)
 		}
 
-		if err = c.createKafkaDestination(tierId); err != nil {
+		if err = c.createKafkaDestination(tierId, cred); err != nil {
 			return fmt.Errorf("failed to create Kafka destination: %s", err)
 		}
-		if err = c.setKafkaDestinationId(tierId, retry+1); err != nil {
+		if err = c.setKafkaDestinationId(tierId, cred, retry+1); err != nil {
 			return fmt.Errorf("failed to set Kafka destination id: %s", err)
 		}
 		return nil
