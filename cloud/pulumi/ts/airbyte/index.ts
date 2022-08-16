@@ -177,6 +177,7 @@ export const setup = async (input: inputType): Promise<pulumi.Output<outputType>
             "repo": "https://fennel-ai.github.io/public/helm-charts/airbyte/",
         },
         chart: "airbyte",
+        version: "0.3.9",
         values: {
             "version": imageTag,
 
