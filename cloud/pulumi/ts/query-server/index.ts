@@ -1,12 +1,13 @@
-import * as docker from "@pulumi/docker";
 import * as aws from "@pulumi/aws";
 import * as k8s from "@pulumi/kubernetes";
 import * as pulumi from "@pulumi/pulumi";
 import * as path from "path";
 import * as process from "process";
-import * as childProcess from "child_process";
 import {ReadinessProbe, serviceEnvs} from "../tier-consts/consts";
 import * as util from "../lib/util";
+import * as uuid from "uuid";
+import childProcess from "child_process";
+import { local } from "@pulumi/command";
 
 const name = "query-server"
 
@@ -18,7 +19,6 @@ export const plugins = {
 
 const DEFAULT_MIN_REPLICAS = 1
 const DEFAULT_MAX_REPLICAS = 2
-const DEFAULT_USE_AMD64 = false
 
 // default for resource requirement configurations
 const DEFAULT_CPU_REQUEST = "200m"
@@ -42,7 +42,7 @@ export type inputType = {
 
 export type outputType = {
     appLabels: { [key: string]: string },
-    svc: pulumi.Output<k8s.core.v1.Service>,
+    svc: k8s.core.v1.Service,
 }
 
 export const setup = async (input: inputType) => {
@@ -91,57 +91,62 @@ export const setup = async (input: inputType) => {
         }
     }, { provider: awsProvider });
 
-    // Get registry info (creds and endpoint).
-    const registryInfo = repo.registryId.apply(async id => {
-        const credentials = await aws.ecr.getCredentials({ registryId: id }, { provider: awsProvider });
-        const decodedCredentials = Buffer.from(credentials.authorizationToken, "base64").toString();
-        const [username, password] = decodedCredentials.split(":");
-        if (!password || !username) {
-            throw new Error("Invalid credentials");
-        }
-        return {
-            server: credentials.proxyEndpoint,
-            username: username,
-            password: password,
-        };
-    });
-
     let nodeSelector = input.nodeLabels || {};
-    const root = process.env["FENNEL_ROOT"]!
-    // Get the (hash) commit id.
-    // NOTE: This requires git to be installed and DOES NOT take local changes or commits into consideration.
-    const hashId = childProcess.execSync('git rev-parse --short HEAD').toString().trim()
-    const imageName = repo.repositoryUrl.apply(imgName => {
-        return `${imgName}:${hashId}`
-    })
-
-    let dockerfile, platform;
-    if (input.useAmd64 || DEFAULT_USE_AMD64) {
-        dockerfile = path.join(root, "dockerfiles/http.dockerfile")
-        platform = "linux/amd64"
-        nodeSelector["kubernetes.io/arch"] = "amd64"
-    } else {
-        dockerfile = path.join(root, "dockerfiles/http_arm64.dockerfile")
-        platform = "linux/arm64"
-        nodeSelector["kubernetes.io/arch"] = "arm64"
-    }
 
     // NOTE: We do not set `CapacityType` for node selector configuration for Query servers as we want to run a
     // hybrid setup for it i.e. have a few replicas running on ON_DEMAND instances to have availability all the time
     // but run most of the workload on spot instances for cost efficiency
 
     // Build and publish the container image.
-    const image = new docker.Image("query-server-img", {
-        build: {
-            context: root,
-            // We use HTTP server's dockerfile to spin up the query servers
-            dockerfile: dockerfile,
-            args: {
-                "platform": platform,
-            },
-        },
-        imageName: imageName,
-        registry: registryInfo,
+    const root = process.env["FENNEL_ROOT"]!;
+    const dockerfile = path.join(root, 'dockerfiles/http_multiarch.dockerfile');
+    const hashId = childProcess.execSync('git rev-parse --short HEAD').toString().trim()
+    const imageNameWithTag = repo.repositoryUrl.apply(iName => {
+        return `${iName}:${hashId}-${uuid.v4()}`;
+    });
+
+    // In case docker login is required
+    //
+    // const dockerLogin = new local.Command("docker-login", {
+    //     create: `docker login -u ${registry.username} -p ${registry.password}`,
+    //     delete: `docker logout ${registry.server}`
+    // });
+
+    // DockerBuildMultiArch builds multi-arch/multi-platform images using `buildx`
+    //
+    // buildx currently has a limitation (https://github.com/docker/buildx/issues/59) which does not allow us to build an
+    // image and then inspect/look it up - this is useful in avoiding pushing a new image when the image
+    // has not changed (i.e. it's checksum is unchanged).
+    //
+    // Previously we have tagged images with the commit SHA of HEAD. However, it is possible that there were uncommitted
+    // local changes. Using pulumi's docker provider, this was possible to get around as it would inspect the image built
+    // and tag the image additionally with its SHA value. This allowed de-duplicating images when it's content has not
+    // changed, but also allowed considering local changes.
+    //
+    // We get around `buildx` limitation by appending an uuid to the tag.
+    // NOTE: This will result in a new image on every update (hence triggering restarts in the pods using the image) even
+    // its content has not changed
+    //
+    // TODO(mohit): Replace this with https://github.com/fennel-ai/rexer/pull/1305 once buildx issue is resolved OR
+    // use pulumi buildx once it's implemented - https://github.com/pulumi/pulumi-docker/issues/296 OR
+    // switch to using materliaze docker provider which does exact same at a much lower maintenance burden -
+    // https://github.com/MaterializeInc/pulumi-docker-buildkit/issues/21
+    //
+    // TODO(mohit): refactor this into a lib
+    const imgBuildPush = imageNameWithTag.apply(imageName => {
+        return new local.Command('query-server-img', {
+            create: `docker buildx build --platform linux/amd64,linux/arm64 ${root} -f ${dockerfile} -t ${imageName} --push`,
+            // create a replacement for the command so that the command on creation is run everytime (if we don't
+            // replace this, the pulumi resource corresponding to the command will be updated and returned immediately).
+        }, { deleteBeforeReplace: true, replaceOnChanges: ['*'] });
+    });
+
+    imgBuildPush.stdout.apply(buildOut => {
+        console.log('query-server-img build push stdout: ', buildOut);
+    });
+
+    imgBuildPush.stderr.apply(buildErr => {
+        console.log('query-server-img build push stderr ', buildErr);
     });
 
     const k8sProvider = new k8s.Provider("queryserver-k8s-provider", {
@@ -190,117 +195,113 @@ export const setup = async (input: inputType) => {
         })
     }
 
-    const appDep = image.imageName.apply(() => {
-        return new k8s.apps.v1.Deployment("query-server-deployment", {
-            metadata: {
-                name: queryServerDepName,
-            },
-            spec: {
-                selector: { matchLabels: appLabels },
-                // We skip setting replicas since the horizontal pod autoscaler is responsible on scheduling the
-                // pods based on the utilization as configured in the HPA
-                //
-                // https://kubernetes.io/docs/tasks/run-application/horizontal-pod-autoscale/#migrating-deployments-and-statefulsets-to-horizontal-autoscaling
-                //
-                // replicas:
-                template: {
-                    metadata: {
-                        labels: appLabels,
-                        annotations: {
-                            // Skip Linkerd protocol detection for mysql and redis
-                            // instances running outside the cluster.
-                            // See: https://linkerd.io/2.11/features/protocol-detection/.
-                            "config.linkerd.io/skip-outbound-ports": "3306,6379",
-                            "prometheus.io/scrape": "true",
-                            "prometheus.io/port": metricsPort.toString(),
-                            // set linkerd proxy CPU and Memory requests and limits
-                            //
-                            // these needs to be set for Horizontal Pod Autoscaler to monitor and scale the pods
-                            // (we configure the Horizontal Pod Autoscaler on the Deployment, which has 2 containers
-                            // and for the metric server to scrape and monitor the resource utilization, it requires
-                            // the limits for both to be reported).
-                            //
-                            // If we see any performance degradation due to the limits set here, we should increase them
-                            // See - https://linkerd.io/2.9/tasks/configuring-proxy-concurrency/#using-kubernetes-cpu-limits-and-requests
-                            "config.linkerd.io/proxy-cpu-limit": "1",
-                            "config.linkerd.io/proxy-cpu-request": "0.75",
-                            "config.linkerd.io/proxy-memory-limit": "2Gi",
-                            "config.linkerd.io/proxy-memory-request": "128Mi",
-                            // See: https://linkerd.io/2.11/tasks/graceful-shutdown/
-                            "config.alpha.linkerd.io/proxy-wait-before-exit-seconds": linkerdPreStopDelaySecs.toString(),
-                        }
-                    },
-                    spec: {
-                        nodeSelector: nodeSelector,
-                        containers: [{
-                            command: [
-                                "/root/server",
-                                "--metrics-port",
-                                "2112",
-                                "--health-port",
-                                `${healthPort}`,
-                                "--dev=false"
-                            ],
-                            name: name,
-                            image: image.imageName,
-                            imagePullPolicy: "Always",
-                            ports: [
-                                {
-                                    containerPort: appPort,
-                                    protocol: "TCP",
-                                },
-                                {
-                                    containerPort: metricsPort,
-                                    protocol: "TCP",
-                                },
-                                {
-                                    containerPort: healthPort,
-                                    protocol: "TCP",
-                                }
-                            ],
-                            env: envVars,
-                            resources: {
-                                requests: {
-                                    "cpu": input.resourceConf?.cpu.request || DEFAULT_CPU_REQUEST,
-                                    "memory": input.resourceConf?.memory.request || DEFAULT_MEMORY_REQUEST,
-                                },
-                                limits: {
-                                    "cpu": input.resourceConf?.cpu.limit || DEFAULT_CPU_LIMIT,
-                                    "memory": input.resourceConf?.memory.limit || DEFAULT_MEMORY_LIMIT,
-                                }
-                            },
-                            readinessProbe: ReadinessProbe(healthPort),
-                        },],
-                        // this should be at least the timeout seconds so that any new request sent to the container
-                        // could take this much time + `preStop` on linkerd is an artificial delay added to avoid
-                        // failing requests downstream.
-                        terminationGracePeriodSeconds: timeoutSeconds + linkerdPreStopDelaySecs,
-                    },
+    const appDep = new k8s.apps.v1.Deployment("query-server-deployment", {
+        metadata: {
+            name: queryServerDepName,
+        },
+        spec: {
+            selector: { matchLabels: appLabels },
+            // We skip setting replicas since the horizontal pod autoscaler is responsible on scheduling the
+            // pods based on the utilization as configured in the HPA
+            //
+            // https://kubernetes.io/docs/tasks/run-application/horizontal-pod-autoscale/#migrating-deployments-and-statefulsets-to-horizontal-autoscaling
+            //
+            // replicas:
+            template: {
+                metadata: {
+                    labels: appLabels,
+                    annotations: {
+                        // Skip Linkerd protocol detection for mysql and redis
+                        // instances running outside the cluster.
+                        // See: https://linkerd.io/2.11/features/protocol-detection/.
+                        "config.linkerd.io/skip-outbound-ports": "3306,6379",
+                        "prometheus.io/scrape": "true",
+                        "prometheus.io/port": metricsPort.toString(),
+                        // set linkerd proxy CPU and Memory requests and limits
+                        //
+                        // these needs to be set for Horizontal Pod Autoscaler to monitor and scale the pods
+                        // (we configure the Horizontal Pod Autoscaler on the Deployment, which has 2 containers
+                        // and for the metric server to scrape and monitor the resource utilization, it requires
+                        // the limits for both to be reported).
+                        //
+                        // If we see any performance degradation due to the limits set here, we should increase them
+                        // See - https://linkerd.io/2.9/tasks/configuring-proxy-concurrency/#using-kubernetes-cpu-limits-and-requests
+                        "config.linkerd.io/proxy-cpu-limit": "1",
+                        "config.linkerd.io/proxy-cpu-request": "0.75",
+                        "config.linkerd.io/proxy-memory-limit": "2Gi",
+                        "config.linkerd.io/proxy-memory-request": "128Mi",
+                        // See: https://linkerd.io/2.11/tasks/graceful-shutdown/
+                        "config.alpha.linkerd.io/proxy-wait-before-exit-seconds": linkerdPreStopDelaySecs.toString(),
+                    }
                 },
-                strategy: {
-                    type: "RollingUpdate",
-                    rollingUpdate: {
-                        maxSurge: 1,
-                        maxUnavailable: 1,
-                    },
-                }
+                spec: {
+                    nodeSelector: nodeSelector,
+                    containers: [{
+                        command: [
+                            "/root/server",
+                            "--metrics-port",
+                            "2112",
+                            "--health-port",
+                            `${healthPort}`,
+                            "--dev=false"
+                        ],
+                        name: name,
+                        image: imageNameWithTag,
+                        imagePullPolicy: "Always",
+                        ports: [
+                            {
+                                containerPort: appPort,
+                                protocol: "TCP",
+                            },
+                            {
+                                containerPort: metricsPort,
+                                protocol: "TCP",
+                            },
+                            {
+                                containerPort: healthPort,
+                                protocol: "TCP",
+                            }
+                        ],
+                        env: envVars,
+                        resources: {
+                            requests: {
+                                "cpu": input.resourceConf?.cpu.request || DEFAULT_CPU_REQUEST,
+                                "memory": input.resourceConf?.memory.request || DEFAULT_MEMORY_REQUEST,
+                            },
+                            limits: {
+                                "cpu": input.resourceConf?.cpu.limit || DEFAULT_CPU_LIMIT,
+                                "memory": input.resourceConf?.memory.limit || DEFAULT_MEMORY_LIMIT,
+                            }
+                        },
+                        readinessProbe: ReadinessProbe(healthPort),
+                    },],
+                    // this should be at least the timeout seconds so that any new request sent to the container
+                    // could take this much time + `preStop` on linkerd is an artificial delay added to avoid
+                    // failing requests downstream.
+                    terminationGracePeriodSeconds: timeoutSeconds + linkerdPreStopDelaySecs,
+                },
             },
-        }, { provider: k8sProvider, deleteBeforeReplace: true });
-    })
+            strategy: {
+                type: "RollingUpdate",
+                rollingUpdate: {
+                    maxSurge: 1,
+                    maxUnavailable: 1,
+                },
+            }
+        },
+    }, { provider: k8sProvider, deleteBeforeReplace: true, dependsOn: imgBuildPush });
 
-    const appSvc = appDep.apply(() => {
-        return new k8s.core.v1.Service("query-svc", {
-            metadata: {
-                labels: appLabels,
-                name: name,
-            },
-            spec: {
-                type: "ClusterIP",
-                ports: [{ port: appPort, targetPort: appPort, protocol: "TCP" }],
-                selector: appLabels,
-            },
-        }, { provider: k8sProvider, deleteBeforeReplace: true })
-    })
+    const appSvc = new k8s.core.v1.Service("query-svc", {
+        metadata: {
+            labels: appLabels,
+            name: name,
+        },
+        spec: {
+            type: "ClusterIP",
+            ports: [{ port: appPort, targetPort: appPort, protocol: "TCP" }],
+            selector: appLabels,
+        },
+    }, { provider: k8sProvider, deleteBeforeReplace: true, dependsOn: appDep });
 
     // Create kubernetes endpoint resolver, which configures emissary to resolve kubernetes endpoints.
     const endpointResolverName = 'query-server-endpoint-resolver';
