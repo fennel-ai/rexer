@@ -5,6 +5,7 @@
   "main": "./bin/index.js",
   "author": "FennelAI Developers",
   "dependencies": {
+    "@materializeinc/pulumi-docker-buildkit": "^0.1.17",
     "@pulumi/aws": "^4.38.1",
     "@pulumi/command": "0.0.3",
     "@pulumi/confluent": "^0.2.2",

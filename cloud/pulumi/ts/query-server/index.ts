@@ -2,6 +2,8 @@ import * as docker from "@pulumi/docker";
 import * as aws from "@pulumi/aws";
 import * as k8s from "@pulumi/kubernetes";
 import * as pulumi from "@pulumi/pulumi";
+import * as dockerBuildkit from "@materializeinc/pulumi-docker-buildkit";
+import * as uuid from "uuid";
 import * as path from "path";
 import * as process from "process";
 import * as childProcess from "child_process";
@@ -112,35 +114,32 @@ export const setup = async (input: inputType) => {
     // NOTE: This requires git to be installed and DOES NOT take local changes or commits into consideration.
     const hashId = childProcess.execSync('git rev-parse --short HEAD').toString().trim()
     const imageName = repo.repositoryUrl.apply(imgName => {
-        return `${imgName}:${hashId}`
+        // Since it is possible that an image is being built with local changes, using SHA of the HEAD commit
+        // is not sufficient. There is currently no easy way to identify this (docker image when built have SHA value
+        // computed as well, we could inspect an image and see if one already exists, but that is not possible with
+        // buildx due to the lack of storing the built image locally - https://github.com/docker/buildx/issues/59),
+        // so we append an uuid. This results in a new imageName for every tier update, resulting in the deployments
+        // getting restarted. We consider this okay for now since we don't update tiers often and we have reliability
+        // mechanisms in place which prevent in-flight request failures.
+        //
+        // we should get replace this with either pulumi buildx support - https://github.com/pulumi/pulumi-docker/issues/296
+        // or use - https://github.com/fennel-ai/rexer/pull/1305 once the buildx bug is resolved.
+        return `${imgName}:${hashId}-${uuid.v4()}`;
     })
-
-    let dockerfile, platform;
-    if (input.useAmd64 || DEFAULT_USE_AMD64) {
-        dockerfile = path.join(root, "dockerfiles/http.dockerfile")
-        platform = "linux/amd64"
-        nodeSelector["kubernetes.io/arch"] = "amd64"
-    } else {
-        dockerfile = path.join(root, "dockerfiles/http_arm64.dockerfile")
-        platform = "linux/arm64"
-        nodeSelector["kubernetes.io/arch"] = "arm64"
-    }
 
     // NOTE: We do not set `CapacityType` for node selector configuration for Query servers as we want to run a
     // hybrid setup for it i.e. have a few replicas running on ON_DEMAND instances to have availability all the time
     // but run most of the workload on spot instances for cost efficiency
 
+    const dockerfile = path.join(root, 'dockerfiles/http_multiarch.dockerfile');
     // Build and publish the container image.
-    const image = new docker.Image("query-server-img", {
-        build: {
-            context: root,
-            // We use HTTP server's dockerfile to spin up the query servers
-            dockerfile: dockerfile,
-            args: {
-                "platform": platform,
-            },
-        },
-        imageName: imageName,
+    //
+    // NOTE: This will build a cross-platform compatible image.
+    const image = new dockerBuildkit.Image("query-server-img", {
+        context: root,
+        dockerfile: dockerfile,
+        name: imageName,
+        platforms: ['linux/amd64', 'linux/arm64'],
         registry: registryInfo,
     });
 
@@ -190,7 +189,7 @@ export const setup = async (input: inputType) => {
         })
     }
 
-    const appDep = image.imageName.apply(() => {
+    const appDep = image.name.apply((imageName) => {
         return new k8s.apps.v1.Deployment("query-server-deployment", {
             metadata: {
                 name: queryServerDepName,
@@ -242,7 +241,7 @@ export const setup = async (input: inputType) => {
                                 "--dev=false"
                             ],
                             name: name,
-                            image: image.imageName,
+                            image: imageName,
                             imagePullPolicy: "Always",
                             ports: [
                                 {
