@@ -47,7 +47,7 @@ func TestUser(t *testing.T) {
 	assert.False(t, user.IsConfirmed())
 	assert.False(t, user.ResetToken.Valid)
 	assert.False(t, user.ResetSentAt.Valid)
-	assert.False(t, user.DeletedAt.Valid)
+	assert.Zero(t, user.DeletedAt)
 
 	user.RememberToken = sql.NullString{
 		String: "remember",
@@ -74,5 +74,11 @@ func TestUser(t *testing.T) {
 	result = db.Delete(&user)
 	assert.NoError(t, result.Error)
 
-	assert.True(t, user.DeletedAt.Valid)
+	assert.Positive(t, user.DeletedAt)
+
+	result = db.First(&user, "email = ?", "foo@fennel.ai")
+	assert.ErrorIs(t, result.Error, gorm.ErrRecordNotFound)
+
+	result = db.Unscoped().First(&user, "email = ?", "foo@fennel.ai")
+	assert.NoError(t, result.Error)
 }

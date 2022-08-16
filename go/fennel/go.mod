@@ -88,6 +88,7 @@ require (
 	google.golang.org/genproto v0.0.0-20211118181313-81c1377c94b1 // indirect
 	gopkg.in/DATA-DOG/go-sqlmock.v1 v1.3.0 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
+	gorm.io/plugin/soft_delete v1.2.0 // indirect
 )
 
 require (

@@ -4,7 +4,7 @@ import (
 	"database/sql"
 	"fennel/lib/ftypes"
 
-	"gorm.io/gorm"
+	"gorm.io/plugin/soft_delete"
 )
 
 type User struct {
@@ -19,7 +19,8 @@ type User struct {
 	ResetToken         sql.NullString
 	ResetSentAt        sql.NullInt64
 
-	DeletedAt gorm.DeletedAt
+	DeletedAt soft_delete.DeletedAt `gorm:"softDelete:milli"`
+
 	CreatedAt int64 `gorm:"autoUpdateTime:milli"`
 	UpdatedAt int64 `gorm:"autoUpdateTime:milli"`
 }
