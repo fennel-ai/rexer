@@ -17,12 +17,15 @@ import (
 	"github.com/gin-contrib/sessions/cookie"
 	"github.com/gin-gonic/gin"
 	"github.com/sendgrid/sendgrid-go"
+	"gorm.io/driver/mysql"
+	"gorm.io/gorm"
 )
 
 type server struct {
 	*gin.Engine
 	mothership mothership.Mothership
 	args       serverArgs
+	db         *gorm.DB
 }
 
 type serverArgs struct {
@@ -46,10 +49,17 @@ func NewServer() (server, error) {
 	r.Use(sessions.Sessions("mysession", store))
 	r.Use(WithFlashMessage)
 
+	db, err := gorm.Open(mysql.New(mysql.Config{
+		Conn: m.DB,
+	}), &gorm.Config{})
+	if err != nil {
+		return server{}, err
+	}
 	s := server{
 		Engine:     r,
 		mothership: m,
 		args:       args,
+		db:         db,
 	}
 	s.setupRouter()
 
