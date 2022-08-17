@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"fennel/lib/timer"
+	"fennel/lib/utils/ptr"
 	"fennel/resource"
 
 	"github.com/confluentinc/confluent-kafka-go/kafka"
@@ -35,12 +36,32 @@ var _ FConsumer = RemoteConsumer{}
 var _ resource.Resource = RemoteConsumer{}
 
 func (k RemoteConsumer) Close() error {
-	k.Consumer.Close()
-	return nil
+	return k.Consumer.Close()
 }
 
 func (k RemoteConsumer) Type() resource.Type {
 	return resource.KafkaConsumer
+}
+
+// Returns all the partitions for the consumer's topic.
+func (k RemoteConsumer) GetPartitions() (kafka.TopicPartitions, error) {
+	topic := k.topic
+	metadata, err := k.Consumer.GetMetadata(ptr.To(topic), false, 1000 /* timeout_ms */)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get topic metadata: %w", err)
+	}
+	topicInfo, ok := metadata.Topics[topic]
+	if !ok {
+		return nil, fmt.Errorf("topic %s not found", topic)
+	}
+	toppars := make(kafka.TopicPartitions, len(topicInfo.Partitions))
+	for i := 0; i < len(topicInfo.Partitions); i++ {
+		toppars[i] = kafka.TopicPartition{
+			Topic:     ptr.To(topic),
+			Partition: int32(i),
+		}
+	}
+	return toppars, nil
 }
 
 func (k RemoteConsumer) Read(ctx context.Context, timeout time.Duration) ([]byte, error) {
