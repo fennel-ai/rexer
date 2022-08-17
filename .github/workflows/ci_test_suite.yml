@@ -1,0 +1,239 @@
+# This is a basic workflow to help you get started with Actions
+
+name: ci_test_suite
+
+# Controls when the workflow will run
+on:
+  # Allows you to run this workflow manually from the Actions tab
+  workflow_dispatch:
+
+  # Allows running unit test on every pull request
+  pull_request:
+
+# A workflow run is made up of one or more jobs that can run sequentially or in parallel
+jobs:
+  # workflow schedules the following jobs in parallel
+  #  - unittest: tests go unittests
+  #  - race-detector: runs go unittests with -race to detect potential race conditions
+  #  - e2etests: runs e2e tests. installs rexerclient using pip
+  #  - lint: go lint test
+  #  - integration tests: go integration tests
+
+  # go unit tests
+  unittest:
+    name: unittest
+    # The type of runner that the job will run on
+    runs-on: [self-hosted, Linux, X64, unit-tests]
+
+    # Steps represent a sequence of tasks that will be executed as part of the job
+    steps:
+      # Install build essentials
+      - name: install build essential
+        run: sudo apt-get --assume-yes install build-essential
+
+      # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
+      - uses: actions/checkout@v3
+
+      - uses: actions/checkout@v3
+        with:
+          path: rexer-pyclient-alpha
+          repository: fennel-ai/rexer-pyclient-alpha
+          token: ${{ secrets.ACCESS_TOKEN }}
+
+      # Move the repo explicitly, sadly github actions doesn't support this by default..
+      # https://github.com/actions/checkout/issues/197#issuecomment-829560171
+      - run: mv rexer-pyclient-alpha ../rexer-pyclient-alpha
+
+      # Install go (we use 1.18 version, so we will stick to it)
+      - uses: actions/setup-go@v2
+        with:
+          go-version: '1.18'
+
+      # -count 1 is required to force override test caches
+      - name: run go unit tests
+        env:
+          MYSQL_SERVER_ADDRESS: ${{ secrets.MYSQL_SERVER_ADDRESS }}
+          MYSQL_DATABASE_NAME: ${{ secrets.MYSQL_DATABASE_NAME }}
+          MYSQL_USERNAME: ${{ secrets.MYSQL_USERNAME }}
+          MYSQL_PASSWORD: ${{ secrets.MYSQL_PASSWORD }}
+          REDIS_SERVER_ADDRESS: ${{ secrets.REDIS_SERVER_ADDRESS }}
+        run: |
+          cd go/fennel
+          go test -v ./... -count 1
+      # Remove the client directory. Github actions removes the one installed using `actions/checkout@v2` which is now empty since we moved the content
+      - name: Remove rexer-client dir
+        if: always()
+        run: |
+          sudo rm -rf ../rexer-pyclient-alpha
+  
+  # go race detector
+  race-detector:
+    name: race-detector
+    # The type of runner that the job will run on
+    runs-on: [self-hosted, Linux, X64, unit-tests-race]
+
+    # Steps represent a sequence of tasks that will be executed as part of the job
+    steps:
+      # Install build essentials
+      - name: install build essential
+        run: sudo apt-get --assume-yes install build-essential
+
+      # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
+      - uses: actions/checkout@v3
+
+      - uses: actions/checkout@v3
+        with:
+          path: rexer-pyclient-alpha
+          repository: fennel-ai/rexer-pyclient-alpha
+          token: ${{ secrets.ACCESS_TOKEN }}
+
+      # Move the repo explicitly, sadly github actions doesn't support this by default..
+      # https://github.com/actions/checkout/issues/197#issuecomment-829560171
+      - run: mv rexer-pyclient-alpha ../rexer-pyclient-alpha
+
+      # Install go (we use 1.18 version, so we will stick to it)
+      - uses: actions/setup-go@v2
+        with:
+          go-version: '1.18'
+
+      # -count 1 is required to force override test caches
+      - name: run go unit tests
+        env:
+          MYSQL_SERVER_ADDRESS: ${{ secrets.MYSQL_SERVER_ADDRESS }}
+          MYSQL_DATABASE_NAME: ${{ secrets.MYSQL_DATABASE_NAME }}
+          MYSQL_USERNAME: ${{ secrets.MYSQL_USERNAME }}
+          MYSQL_PASSWORD: ${{ secrets.MYSQL_PASSWORD }}
+          REDIS_SERVER_ADDRESS: ${{ secrets.REDIS_SERVER_ADDRESS }}
+        run: |
+          cd go/fennel
+          go test -race -v ./... -count 1
+     # Remove the client directory. Github actions removes the one installed using `actions/checkout@v2` which is now empty since we moved the content
+      - name: Remove rexer-client dir
+        if: always()
+        run: |
+          sudo rm -rf ../rexer-pyclient-alpha
+
+  # end-to-end tests
+  e2e:
+    name: e2e
+    # The type of runner that the job will run on
+    runs-on: [self-hosted, Linux, X64, e2e-tests]
+
+    # Steps represent a sequence of tasks that will be executed as part of the job
+    steps:
+      # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
+      - uses: actions/checkout@v3
+
+      # Install prerequisites
+      - name: install build essential and pkg-config
+        run: |
+          sudo apt-get --assume-yes install build-essential
+          sudo apt-get --assume-yes install pkg-config
+          sudo apt-get --assume-yes install libssl-dev librdkafka-dev
+      # Install go (we use 1.18 version, so we will stick to it)
+      - uses: actions/setup-go@v2
+        with:
+          go-version: '1.18'
+
+      - name: Install go module (required for running go subprocesses)
+        run: |
+          cd go/fennel
+          go mod download
+      - uses: actions/setup-python@v2
+        with:
+          python-version: '3.x'
+
+      - name: install pip
+        run: |
+          python -m ensurepip --upgrade
+      - name: install rexerclient using pip
+        run: |
+          pip install --extra-index-url=https://token:${{ secrets.PACKAGR_ACCESS_TOKEN }}@api.packagr.app/${{ secrets.PACKAGR_HASH_ID }}/ -U rexerclient
+      # Run the test
+      - name: Run test
+        env:
+          FENNEL_ROOT: ${{ github.workspace }}
+          KAFKA_SERVER_ADDRESS: ${{ secrets.KAFKA_SERVER_ADDRESS }}
+          KAFKA_USERNAME: ${{ secrets.KAFKA_USERNAME }}
+          KAFKA_PASSWORD: ${{ secrets.KAFKA_PASSWORD }}
+          MYSQL_SERVER_ADDRESS: ${{ secrets.MYSQL_SERVER_ADDRESS }}
+          MYSQL_DATABASE_NAME: ${{ secrets.MYSQL_DATABASE_NAME }}
+          MYSQL_USERNAME: ${{ secrets.MYSQL_USERNAME }}
+          MYSQL_PASSWORD: ${{ secrets.MYSQL_PASSWORD }}
+          REDIS_SERVER_ADDRESS: ${{ secrets.REDIS_SERVER_ADDRESS }}
+          CACHE_PRIMARY: ${{ secrets.CACHE_PRIMARY }}
+          TIER_ID: ${{ secrets.TIER_ID }}
+          PLANE_ID: ${{ secrets.PLANE_ID }}
+          BADGER_DIR: ${{ secrets.BADGER_DIR }}
+        run: |
+          python -m unittest discover e2etests -p "teste2e.py"
+          
+  # go lint
+  golangci:
+    name: lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/setup-go@v3
+        with:
+          go-version: 1.18
+      - uses: actions/checkout@v3
+      - name: golangci-lint
+        uses: golangci/golangci-lint-action@v3
+        with:
+          # Optional: working directory, useful for monorepos
+          working-directory: go/fennel
+          # Optional: golangci-lint command line arguments.
+          args: --timeout=10m
+
+  # go integration tests
+  integration:
+    name: integration
+    # The type of runner that the job will run on
+    runs-on: [self-hosted, Linux, X64, integration-tests]
+
+    # Steps represent a sequence of tasks that will be executed as part of the job
+    steps:
+      # Install build essentials
+      - name: install build essential
+        run: sudo apt-get --assume-yes install build-essential
+
+      # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
+      - uses: actions/checkout@v3
+
+      - uses: actions/checkout@v3
+        with:
+          path: rexer-pyclient-alpha
+          repository: fennel-ai/rexer-pyclient-alpha
+          token: ${{ secrets.ACCESS_TOKEN }}
+
+      # Move the repo explicitly, sadly github actions doesn't support this by default..
+      # https://github.com/actions/checkout/issues/197#issuecomment-829560171
+      - run: mv rexer-pyclient-alpha ../rexer-pyclient-alpha
+
+      # Install go (we use 1.18 version, so we will stick to it)
+      - uses: actions/setup-go@v2
+        with:
+          go-version: '1.18'
+
+      - name: run go integration tests
+        env:
+          KAFKA_SERVER_ADDRESS: ${{ secrets.KAFKA_SERVER_ADDRESS }}
+          KAFKA_USERNAME: ${{ secrets.KAFKA_USERNAME }}
+          KAFKA_PASSWORD: ${{ secrets.KAFKA_PASSWORD }}
+          MYSQL_SERVER_ADDRESS: ${{ secrets.MYSQL_SERVER_ADDRESS }}
+          MYSQL_DATABASE_NAME: ${{ secrets.MYSQL_DATABASE_NAME }}
+          MYSQL_USERNAME: ${{ secrets.MYSQL_USERNAME }}
+          MYSQL_PASSWORD: ${{ secrets.MYSQL_PASSWORD }}
+          REDIS_SERVER_ADDRESS: ${{ secrets.REDIS_SERVER_ADDRESS }}
+          CACHE_PRIMARY: ${{ secrets.CACHE_PRIMARY }}
+          TIER_ID: ${{ secrets.TIER_ID }}
+          PLANE_ID: ${{ secrets.PLANE_ID }}
+          BADGER_DIR: ${{ secrets.BADGER_DIR }}
+        run: |
+          cd go/fennel
+          go test -v -tags integration ./... -count 1
+     # Remove the client directory. Github actions removes the one installed using `actions/checkout@v2` which is now empty since we moved the content
+      - name: Remove rexer-client dir
+        if: always()
+        run: |
+          sudo rm -rf ../rexer-pyclient-alpha
