@@ -89,6 +89,8 @@ var Schema = db.Schema{
                 reset_token VARCHAR(255),
                 reset_sent_at BIGINT UNSIGNED,
 
+                customer_id INT UNSIGNED NOT NULL,
+
                 deleted_at BIGINT UNSIGNED NOT NULL,
                 created_at BIGINT UNSIGNED NOT NULL,
                 updated_at BIGINT UNSIGNED NOT NULL,

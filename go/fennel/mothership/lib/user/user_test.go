@@ -3,6 +3,7 @@ package user
 import (
 	"database/sql"
 	"fennel/mothership"
+	"fennel/mothership/lib/customer"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -71,14 +72,26 @@ func TestUser(t *testing.T) {
 	})
 	assert.NoError(t, result.Error)
 
-	result = db.Delete(&user)
+	customer := customer.Customer{
+		Name:   "fennel",
+		Domain: sql.NullString{String: "fennel.ai", Valid: true},
+	}
+	result = db.Create(&customer)
 	assert.NoError(t, result.Error)
 
+	result = db.Model(&user).Update("CustomerID", customer.ID)
+	assert.NoError(t, result.Error)
+
+	result = db.Joins("Customer").Take(&user, user.ID)
+	assert.NoError(t, result.Error)
+	assert.Equal(t, "fennel", user.Customer.Name)
+
+	result = db.Delete(&user)
+	assert.NoError(t, result.Error)
 	assert.Positive(t, user.DeletedAt)
 
 	result = db.Take(&user, "email = ?", "foo@fennel.ai")
 	assert.ErrorIs(t, result.Error, gorm.ErrRecordNotFound)
-
 	result = db.Unscoped().Take(&user, "email = ?", "foo@fennel.ai")
 	assert.NoError(t, result.Error)
 }
