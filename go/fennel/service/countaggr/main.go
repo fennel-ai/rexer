@@ -49,7 +49,6 @@ var aggregates_disabled = promauto.NewGauge(prometheus.GaugeOpts{
 })
 
 func logKafkaLag(t tier.Tier, consumer kafka.FConsumer) {
-	return
 	backlog, err := consumer.Backlog()
 	if err != nil {
 		t.Logger.Error("Failed to read kafka backlog", zap.String("Name", consumer.GroupID()), zap.Error(err))
@@ -487,7 +486,7 @@ func main() {
 	// Start a prometheus server.
 	common.StartPromMetricsServer(flags.MetricsPort)
 	// Start health checker to export readiness and liveness state for the container running the server
-	common.StartHealthCheckServer(8083) //flags.HealthPort)
+	common.StartHealthCheckServer(flags.HealthPort)
 	// Start a pprof server to export the standard pprof endpoints.
 	profiler := common.CreateProfiler(flags.PprofArgs)
 	profiler.StartPprofServer()

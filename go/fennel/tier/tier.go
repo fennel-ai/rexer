@@ -257,12 +257,12 @@ func CreateFromArgs(args *TierArgs) (tier Tier, err error) {
 
 	milvusClient := mo.None[milvus.Client]()
 	if args.MilvusArgs.Url != "" {
-		//logger.Info("Connecting to milvus")
-		//client, err := milvus.NewClient(args.MilvusArgs)
-		//if err != nil {
-		//	return tier, fmt.Errorf("failed to create milvus client: %v", err)
-		//}
-		//milvusClient = mo.Some(client)
+		logger.Info("Connecting to milvus")
+		client, err := milvus.NewClient(args.MilvusArgs)
+		if err != nil {
+			return tier, fmt.Errorf("failed to create milvus client: %v", err)
+		}
+		milvusClient = mo.Some(client)
 	}
 
 	airbyteClient := mo.None[airbyte.Client]()

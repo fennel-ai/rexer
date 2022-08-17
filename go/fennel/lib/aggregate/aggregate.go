@@ -24,7 +24,7 @@ const (
 	TOPK           ftypes.AggType = "topk"
 	CF             ftypes.AggType = "cf"
 	KNN            ftypes.AggType = "knn"
-	MF             ftypes.AggType = "mf"
+	VAE            ftypes.AggType = "vae"
 )
 
 var ValidTypes = []ftypes.AggType{
@@ -38,7 +38,7 @@ var ValidTypes = []ftypes.AggType{
 	RATE,
 	TOPK,
 	CF,
-	MF,
+	VAE,
 	KNN,
 }
 
@@ -48,7 +48,7 @@ var ValidOfflineAggregates = []ftypes.AggType{
 }
 
 var ValidAutoMlAggregates = []ftypes.AggType{
-	MF,
+	VAE,
 }
 
 const (
@@ -135,7 +135,7 @@ func (agg Aggregate) Validate() error {
 		if agg.Options.Dim <= 0 {
 			return fmt.Errorf("dim must be greater than zero for %v", aggtype)
 		}
-	case MF:
+	case VAE:
 		if len(options.Durations) == 0 {
 			return fmt.Errorf("at least one duration must be provided for %s", aggtype)
 		}
