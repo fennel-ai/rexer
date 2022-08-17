@@ -42,8 +42,8 @@ func generateRememberToken(db *gorm.DB) string {
 	var user lib.User
 	for {
 		token := generateToken()
-		result := db.Take(&user, "remember_token = ?", token)
-		if result.Error != nil {
+		result := db.Find(&user, "remember_token = ?", token)
+		if result.RowsAffected == 0 {
 			return token
 		}
 	}
@@ -98,8 +98,8 @@ func generateConfirmationToken(db *gorm.DB) string {
 	var user lib.User
 	for {
 		token := generateToken()
-		result := db.Take(&user, "confirmation_token = ?", token)
-		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
+		result := db.Find(&user, "confirmation_token = ?", token)
+		if result.RowsAffected == 0 {
 			return token
 		}
 	}
@@ -109,8 +109,8 @@ func generateResetToken(db *gorm.DB) string {
 	var user lib.User
 	for {
 		token := generateToken()
-		result := db.Take(&user, "reset_token = ?", token)
-		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
+		result := db.Find(&user, "reset_token = ?", token)
+		if result.RowsAffected == 0 {
 			return token
 		}
 	}

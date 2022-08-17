@@ -20,7 +20,7 @@ func AuthenticationRequired(db *gorm.DB) gin.HandlerFunc {
 		token, ok := session.Get(RememberTokenKey).(string)
 		if ok && token != "" {
 			var user lib.User
-			result := db.Find(&user, "RememberToken = ?", token)
+			result := db.Take(&user, "remember_token = ?", token)
 			if result.Error == nil {
 				c.Set(CurrentUserKey, user)
 				return
