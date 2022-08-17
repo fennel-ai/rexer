@@ -12,7 +12,8 @@ export KUBECONFIG="$FENNEL_ROOT/cloud/pulumi/ts/eks/kubeconfig-plane-2.json"
 export AWS_ROLE_ARN="arn:aws:iam::030813887342:role/admin"
 # plane 3 milvus, we moved away from hosting a milvus on plane 2 because of it's expensive setup and requirements
 export MILVUS_URL="k8s-milvus-milvus-99b4acca99-47ccbb043e82192b.elb.us-west-2.amazonaws.com:19530"
-export AIRBYTE_SERVER_ADDRESS="http://a645fd3b34bc4419285322c0644669ff-232432470.us-west-2.elb.amazonaws.com:8001/api"
+#export AIRBYTE_SERVER_ADDRESS="http://a645fd3b34bc4419285322c0644669ff-232432470.us-west-2.elb.amazonaws.com:8001/api"
+export AIRBYTE_SERVER_ADDRESS="http://localhost:8002/api"
 export MOTHERSHIP_ID=1
 export MOTHERSHIP_MYSQL_ADDRESS="dw48w7ntx844.us-west-2.psdb.cloud"
 export MOTHERSHIP_MYSQL_DBNAME="controldb"

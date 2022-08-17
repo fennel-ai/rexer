@@ -49,6 +49,7 @@ var aggregates_disabled = promauto.NewGauge(prometheus.GaugeOpts{
 })
 
 func logKafkaLag(t tier.Tier, consumer kafka.FConsumer) {
+	return
 	backlog, err := consumer.Backlog()
 	if err != nil {
 		t.Logger.Error("Failed to read kafka backlog", zap.String("Name", consumer.GroupID()), zap.Error(err))
@@ -237,6 +238,11 @@ func processConnector(tr tier.Tier, conn data_integration.Connector, stopCh <-ch
 					} else {
 						totalDedupedStreamLogs.WithLabelValues("airbyte_log", conn.Name).Inc()
 					}
+				}
+
+				if len(batch) == 0 {
+					tr.Logger.Debug("No stream logs after dedup", zap.String("name", conn.Name))
+					continue
 				}
 
 				// Process the deduped stream

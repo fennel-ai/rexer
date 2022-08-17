@@ -579,6 +579,7 @@ func (c Client) setKafkaDestinationId(tierId ftypes.RealmID, cred KafkaCredentia
 	}
 
 	if len(destinationList["destinations"]) == 0 {
+		fmt.Println("No destinations found, creating one, try: #", retry)
 		if retry > 1 {
 			return fmt.Errorf("failed to create Kafka destination after %d retries", retry)
 		}
