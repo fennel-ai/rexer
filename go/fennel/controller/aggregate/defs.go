@@ -82,8 +82,6 @@ func Store(ctx context.Context, tier tier.Tier, agg aggregate.Aggregate) error {
 						return err
 					}
 				}
-			} else if agg.Options.AggType == "mf" {
-
 			}
 			// Store aggregate in db.
 			err = modelAgg.Store(ctx, tier, agg)
@@ -91,7 +89,7 @@ func Store(ctx context.Context, tier tier.Tier, agg aggregate.Aggregate) error {
 				return err
 			}
 			// Forward online aggregate definition to nitrous.
-			if !agg.IsOffline() {
+			if !agg.IsOffline() && !agg.IsAutoML() {
 				// Note: we retrieve the aggregate back from the db since agg.Id
 				// is not initialized yet.
 				agg, err = modelAgg.Retrieve(ctx, tier, agg.Name)

@@ -42,6 +42,15 @@ var ValidTypes = []ftypes.AggType{
 	KNN,
 }
 
+var ValidOfflineAggregates = []ftypes.AggType{
+	TOPK,
+	CF,
+}
+
+var ValidAutoMlAggregates = []ftypes.AggType{
+	MF,
+}
+
 const (
 	SOURCE_ACTION  = ftypes.Source("action")
 	SOURCE_PROFILE = ftypes.Source("profile")
@@ -60,9 +69,9 @@ type Aggregate struct {
 	Active    bool
 }
 
-func IsValid(s ftypes.AggType) bool {
+func IsValid(s ftypes.AggType, validTypes []ftypes.AggType) bool {
 	sl := ftypes.AggType(strings.ToLower(string(s)))
-	for _, m := range ValidTypes {
+	for _, m := range validTypes {
 		if sl == m {
 			return true
 		}
@@ -71,7 +80,7 @@ func IsValid(s ftypes.AggType) bool {
 }
 
 func (agg Aggregate) Validate() error {
-	if !IsValid(agg.Options.AggType) {
+	if !IsValid(agg.Options.AggType, ValidTypes) {
 		return fmt.Errorf("invalid aggregate type: '%v'; valid types are: %v", agg.Options.AggType, ValidTypes)
 	}
 	if len(agg.Name) == 0 {
@@ -176,7 +185,11 @@ func (agg Aggregate) Equals(other Aggregate) bool {
 }
 
 func (agg Aggregate) IsOffline() bool {
-	return agg.Options.CronSchedule != ""
+	return agg.Options.CronSchedule != "" && IsValid(agg.Options.AggType, ValidOfflineAggregates)
+}
+
+func (agg Aggregate) IsAutoML() bool {
+	return agg.Options.CronSchedule != "" && IsValid(agg.Options.AggType, ValidAutoMlAggregates)
 }
 
 func (agg Aggregate) IsForever() bool {

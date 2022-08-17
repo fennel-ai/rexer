@@ -127,7 +127,11 @@ func processAggregate(tr tier.Tier, agg libaggregate.Aggregate, stopCh <-chan st
 						continue
 					}
 				} else {
-					actions, err := action2.ReadBatch(ctx, consumer, 10000, time.Second*10)
+					timeout := time.Second * 10
+					if agg.IsOffline() || agg.IsAutoML() {
+						timeout = time.Second * 30
+					}
+					actions, err := action2.ReadBatch(ctx, consumer, 10000, timeout)
 					if err != nil {
 						tr.Logger.Error("Error while reading batch of actions:", zap.Error(err))
 						continue
@@ -477,7 +481,7 @@ func main() {
 	// Start a prometheus server.
 	common.StartPromMetricsServer(flags.MetricsPort)
 	// Start health checker to export readiness and liveness state for the container running the server
-	common.StartHealthCheckServer(flags.HealthPort)
+	common.StartHealthCheckServer(8083) //flags.HealthPort)
 	// Start a pprof server to export the standard pprof endpoints.
 	profiler := common.CreateProfiler(flags.PprofArgs)
 	profiler.StartPprofServer()
