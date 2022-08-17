@@ -73,9 +73,10 @@ message LagResponse { uint64 lag = 1; }
 
 enum AggCodec {
   NONE = 0;
-  V1 = 1;
+  V1 = 1 [deprecated=true];
+  V2 = 2;
 
-  // next: 2
+  // next: 3
 }
 
 message AggregateValuesRequest {

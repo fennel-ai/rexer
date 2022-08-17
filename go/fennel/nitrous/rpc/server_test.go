@@ -50,7 +50,7 @@ func TestGet(t *testing.T) {
 	svr := rpc.NewServer(testdb)
 	tierId := ftypes.RealmID(1)
 	aggId := ftypes.AggId(1)
-	codec := rpc.AggCodec_V1
+	codec := rpc.AggCodec_V2
 	kwargs := value.NewDict(nil)
 	kwargs.Set("duration", value.Int(24*3600))
 	pkwargs, err := value.ToProtoDict(kwargs)
