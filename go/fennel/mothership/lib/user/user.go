@@ -8,8 +8,8 @@ import (
 )
 
 type User struct {
-	Email              string
 	ID                 ftypes.UserId
+	Email              string
 	EncryptedPassword  []byte
 	RememberToken      sql.NullString
 	RememberCreatedAt  sql.NullInt64

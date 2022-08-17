@@ -22,7 +22,7 @@ func TestUser(t *testing.T) {
 
 	var user User
 
-	result := db.First(&user, "email = ?", "foo@fennel.ai")
+	result := db.Take(&user, "email = ?", "foo@fennel.ai")
 	assert.ErrorIs(t, result.Error, gorm.ErrRecordNotFound)
 
 	result = db.Create(&User{
@@ -31,7 +31,7 @@ func TestUser(t *testing.T) {
 	})
 	assert.NoError(t, result.Error)
 
-	result = db.First(&user, "email = ?", "foo@fennel.ai")
+	result = db.Take(&user, "email = ?", "foo@fennel.ai")
 	assert.NoError(t, result.Error)
 
 	assert.Positive(t, user.ID)
@@ -76,9 +76,9 @@ func TestUser(t *testing.T) {
 
 	assert.Positive(t, user.DeletedAt)
 
-	result = db.First(&user, "email = ?", "foo@fennel.ai")
+	result = db.Take(&user, "email = ?", "foo@fennel.ai")
 	assert.ErrorIs(t, result.Error, gorm.ErrRecordNotFound)
 
-	result = db.Unscoped().First(&user, "email = ?", "foo@fennel.ai")
+	result = db.Unscoped().Take(&user, "email = ?", "foo@fennel.ai")
 	assert.NoError(t, result.Error)
 }

@@ -89,7 +89,7 @@ var Schema = db.Schema{
                 reset_token VARCHAR(255),
                 reset_sent_at BIGINT UNSIGNED,
 
-                deleted_at BIGINT UNSIGNED,
+                deleted_at BIGINT UNSIGNED NOT NULL,
                 created_at BIGINT UNSIGNED NOT NULL,
                 updated_at BIGINT UNSIGNED NOT NULL,
 
@@ -98,4 +98,10 @@ var Schema = db.Schema{
                 UNIQUE KEY (reset_token),
                 UNIQUE KEY (confirmation_token)
         );`,
+	12: `ALTER TABLE customer
+                ADD COLUMN domain VARCHAR(255) UNIQUE,
+                ADD COLUMN deleted_at BIGINT UNSIGNED NOT NULL,
+                ADD COLUMN created_at BIGINT UNSIGNED NOT NULL,
+                ADD COLUMN updated_at BIGINT UNSIGNED NOT NULL;
+        `,
 }
