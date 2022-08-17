@@ -1,7 +1,6 @@
 package server
 
 import (
-	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -9,6 +8,7 @@ import (
 	"time"
 
 	"fennel/hangar"
+	fkafka "fennel/kafka"
 	"fennel/lib/aggregate"
 	"fennel/lib/ftypes"
 	libnitrous "fennel/lib/nitrous"
@@ -16,18 +16,39 @@ import (
 	"fennel/lib/value"
 	"fennel/nitrous"
 	"fennel/nitrous/rpc"
-	"fennel/nitrous/server/offsets"
 	"fennel/nitrous/server/store"
 	"fennel/nitrous/server/tailer"
+	"fennel/resource"
 
 	"github.com/confluentinc/confluent-kafka-go/kafka"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promauto"
 	"go.uber.org/zap"
+	"golang.org/x/sync/errgroup"
 	"google.golang.org/protobuf/proto"
 )
 
 var (
 	agg_table_key = []byte("agg_table")
+
+	backlog = promauto.NewGauge(prometheus.GaugeOpts{
+		Name: "nitrous_tailer_backlog",
+		Help: "Backlog of tailer",
+	})
 )
+
+// Start a go-routine that periodically reports the tailer's backlog to prometheus.
+func (ndb *NitrousDB) startReportingKafkaLag() {
+	go func() {
+		for range time.Tick(10 * time.Second) {
+			lag, err := ndb.GetLag(context.Background())
+			if err != nil {
+				ndb.nos.Logger.Error("Failed to get kafka backlog", zap.Error(err))
+			}
+			backlog.Set(float64(lag))
+		}
+	}()
+}
 
 type aggKey struct {
 	tierId ftypes.RealmID
@@ -36,107 +57,169 @@ type aggKey struct {
 }
 
 type NitrousDB struct {
-	nos    nitrous.Nitrous
-	tailer *tailer.Tailer
-	tables *sync.Map
+	nos     nitrous.Nitrous
+	tailers []*tailer.Tailer
+	tables  *sync.Map
+}
+
+func getPartitions(n nitrous.Nitrous) (kafka.TopicPartitions, error) {
+	// Create a temporary consumer to read topic metadata.
+	consumer, err := n.KafkaConsumerFactory(fkafka.ConsumerConfig{
+		Scope:        resource.NewPlaneScope(n.PlaneID),
+		Topic:        libnitrous.BINLOG_KAFKA_TOPIC,
+		GroupID:      "metadata_consumer",
+		OffsetPolicy: fkafka.LatestOffsetPolicy,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to create kafka consumer: %w", err)
+	}
+	defer consumer.Close()
+	return consumer.GetPartitions()
 }
 
 func InitDB(n nitrous.Nitrous) (*NitrousDB, error) {
-	// Initialize binlog tailer.
-	offsetkey := []byte("default_tailer")
-	vgs, err := n.Store.GetMany(context.Background(), []hangar.KeyGroup{{Prefix: hangar.Key{Data: offsetkey}}})
-	if err != nil {
-		return nil, fmt.Errorf("failed to get binlog offsets: %w", err)
-	}
-	var toppars kafka.TopicPartitions
-	if len(vgs) > 0 {
-		toppars, err = offsets.DecodeOffsets(vgs[0])
-		if err != nil {
-			n.Logger.Fatal("Failed to restore binlog offsets from hangar", zap.Error(err))
-		}
-	}
-	tailer, err := tailer.NewTailer(n, libnitrous.BINLOG_KAFKA_TOPIC, toppars, offsetkey)
-	if err != nil {
-		return nil, fmt.Errorf("failed to setup tailer: %w", err)
-	}
-
-	// Restore aggregate definitions.
 	ndb := &NitrousDB{
 		nos:    n,
-		tailer: tailer,
 		tables: new(sync.Map),
 	}
+	// Initialize a binlog tailer per topic partition.
+	toppars, err := getPartitions(n)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get topic partitions: %w", err)
+	}
+	tailers := make([]*tailer.Tailer, 0, len(toppars))
+	for _, toppar := range toppars {
+		tailer, err := tailer.NewTailer(n, libnitrous.BINLOG_KAFKA_TOPIC, kafka.TopicPartitions{toppar}, ndb.Process)
+		if err != nil {
+			return nil, fmt.Errorf("failed to setup tailer for partition %v: %w", toppar, err)
+		}
+		tailers = append(tailers, tailer)
+	}
+	ndb.tailers = tailers
+	ndb.startReportingKafkaLag()
+	// Restore aggregate definitions.
 	err = ndb.restoreAggregates(n.Store)
 	if err != nil {
 		return nil, fmt.Errorf("failed to restore aggregate definitions: %w", err)
 	}
-
-	// Subscribe to binlog events.
-	tailer.Subscribe(ndb)
-
 	return ndb, nil
 }
 
 func (ndb *NitrousDB) Start() {
-	go ndb.tailer.Tail()
+	for _, tailer := range ndb.tailers {
+		go tailer.Tail()
+	}
 }
 
 func (ndb *NitrousDB) Stop() {
 	// Stop tailing for new updates.
-	ndb.tailer.Stop()
+	for _, tailer := range ndb.tailers {
+		tailer.Stop()
+	}
 	// TODO: Should we close the store as well?
 	// _ = ndb.nos.Store.Close()
 }
 
 func (ndb *NitrousDB) SetPollTimeout(d time.Duration) {
-	ndb.tailer.SetPollTimeout(d)
+	for _, tailer := range ndb.tailers {
+		tailer.SetPollTimeout(d)
+	}
 }
 
 func (ndb *NitrousDB) GetPollTimeout() time.Duration {
-	return ndb.tailer.GetPollTimeout()
+	if len(ndb.tailers) == 0 {
+		return 0
+	}
+	return ndb.tailers[0].GetPollTimeout()
 }
 
-// Tailer-specific identity of this processor.
-func (ndb *NitrousDB) Identity() string {
-	return "aggdefsmgr"
-}
-
-func (ndb *NitrousDB) Process(ctx context.Context, ops []*rpc.NitrousOp, store hangar.Reader) ([]hangar.Key, []hangar.ValGroup, error) {
-	// Get current set of aggregates for this plane.
-	vgs, err := store.GetMany(ctx, []hangar.KeyGroup{{Prefix: hangar.Key{Data: agg_table_key}}})
-	if err != nil {
-		return nil, nil, fmt.Errorf("failed to get aggregate definitions: %w", err)
-	}
-	var vg hangar.ValGroup
-	if len(vgs) > 0 {
-		vg = vgs[0]
-	}
-	count := 0
+func (ndb *NitrousDB) Process(ctx context.Context, ops []*rpc.NitrousOp, reader hangar.Reader) ([]hangar.Key, []hangar.ValGroup, error) {
+	var keys []hangar.Key
+	var vgs []hangar.ValGroup
+	// First, process any changes to aggregate definitions.
+	var tablesDelta hangar.ValGroup
 	for _, op := range ops {
 		switch op.Type {
 		case rpc.OpType_CREATE_AGGREGATE:
-			count++
 			event := op.GetCreateAggregate()
-			vg, err = ndb.processCreateEvent(ftypes.RealmID(op.TierId), event, vg)
+			d, err := ndb.processCreateEvent(ftypes.RealmID(op.TierId), event)
 			if err != nil {
 				return nil, nil, fmt.Errorf("failed to initialize aggregate: %w", err)
 			}
+			err = tablesDelta.Update(d)
+			if err != nil {
+				return nil, nil, fmt.Errorf("failed to update valgroup: %w", err)
+			}
 		case rpc.OpType_DELETE_AGGREGATE:
-			count++
 			event := op.GetDeleteAggregate()
 			tierId := ftypes.RealmID(op.TierId)
-			vg, err = ndb.processDeleteEvent(tierId, event, vg)
+			d, err := ndb.processDeleteEvent(tierId, event)
 			if err != nil {
 				return nil, nil, fmt.Errorf("failed to deactivate aggregate: %w", err)
 			}
+			err = tablesDelta.Update(d)
+			if err != nil {
+				return nil, nil, fmt.Errorf("failed to update valgroup: %w", err)
+			}
 		}
 	}
-	if count > 0 {
-		ndb.nos.Logger.Info("Received aggregate definition updates", zap.Int("count", count))
-		return []hangar.Key{{Data: agg_table_key}}, []hangar.ValGroup{vg}, nil
-	} else {
-		return nil, nil, nil
+	if len(tablesDelta.Fields) > 0 {
+		ndb.nos.Logger.Info("Received aggregate definition updates", zap.Int("count", len(tablesDelta.Fields)))
+		keys = append(keys, hangar.Key{Data: agg_table_key})
+		vgs = append(vgs, tablesDelta)
 	}
+	// Only then process any updates to the aggregate tables.
+	tks, tvgs, err := ndb.getRowUpdates(ctx, ops, reader)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to get row updates: %w", err)
+	}
+	keys = append(keys, tks...)
+	vgs = append(vgs, tvgs...)
+	return keys, vgs, nil
+}
+
+func (ndb *NitrousDB) getRowUpdates(ctx context.Context, ops []*rpc.NitrousOp, reader hangar.Reader) ([]hangar.Key, []hangar.ValGroup, error) {
+	var keys []hangar.Key
+	var vgs []hangar.ValGroup
+	type update struct {
+		keys []hangar.Key
+		vgs  []hangar.ValGroup
+	}
+	updates := make(chan update)
+	doneCh := make(chan struct{})
+	go func() {
+		defer close(doneCh)
+		for update := range updates {
+			keys = append(keys, update.keys...)
+			vgs = append(vgs, update.vgs...)
+		}
+	}()
+	eg := &errgroup.Group{}
+	ndb.tables.Range(func(key, value interface{}) bool {
+		aggKey, table := key.(aggKey), value.(store.Table)
+		tierId, aggId, codec := aggKey.tierId, aggKey.aggId, aggKey.codec
+		ndb.nos.Logger.Debug("Iterating over new ops for table",
+			zap.Uint64("tierId", uint64(tierId)), zap.Uint64("aggId", uint64(aggId)), zap.Int("codec", int(codec)))
+		eg.Go(func() error {
+			ks, vs, err := table.Process(ctx, ops, reader)
+			if err != nil {
+				ndb.nos.Logger.Error("Failed to process ops",
+					zap.Uint64("tierId", uint64(tierId)), zap.Uint64("aggId", uint64(aggId)), zap.Int("codec", int(codec)), zap.Error(err))
+				return err
+			}
+			updates <- update{ks, vs}
+			return nil
+		})
+		return true
+	})
+	// Wait for all processors to finish and then close updates channel.
+	err := eg.Wait()
+	close(updates)
+	<-doneCh
+	if err != nil {
+		return nil, nil, fmt.Errorf("One or more tables failed to process ops: %w", err)
+	}
+	return keys, vgs, nil
 }
 
 func (ndb *NitrousDB) restoreAggregates(h hangar.Hangar) error {
@@ -184,7 +267,7 @@ func (ndb *NitrousDB) restoreAggregates(h hangar.Hangar) error {
 	return nil
 }
 
-func (ndb *NitrousDB) processDeleteEvent(tierId ftypes.RealmID, event *rpc.DeleteAggregate, vg hangar.ValGroup) (hangar.ValGroup, error) {
+func (ndb *NitrousDB) processDeleteEvent(tierId ftypes.RealmID, event *rpc.DeleteAggregate) (hangar.ValGroup, error) {
 	aggId := ftypes.AggId(event.AggId)
 	aggTables := make(map[rpc.AggCodec]store.Table)
 	ndb.tables.Range(func(key, value interface{}) bool {
@@ -194,26 +277,23 @@ func (ndb *NitrousDB) processDeleteEvent(tierId ftypes.RealmID, event *rpc.Delet
 		}
 		return true
 	})
-	for codec, table := range aggTables {
+	var ret hangar.ValGroup
+	for codec := range aggTables {
+		ndb.tables.Delete(aggKey{tierId, aggId, codec})
 		field, err := encodeField(tierId, aggId, codec)
 		if err != nil {
 			return hangar.ValGroup{}, fmt.Errorf("failed to encode hangar field for new aggregate %d in tier %d: %w", aggId, tierId, err)
 		}
-		for i, f := range vg.Fields {
-			if bytes.Equal(f, field) {
-				ndb.tables.Delete(aggKey{tierId, aggId, codec})
-				ndb.tailer.Unsubscribe(table.Identity())
-				// We use an empty value to indicate that the aggregate is deactivated.
-				// We do this because we currently don't have a way to delete fields
-				// when processing events from the tailer.
-				vg.Values[i] = []byte{}
-			}
-		}
+		ret.Fields = append(ret.Fields, field)
+		// We use an empty value to indicate that the aggregate is deactivated.
+		// We do this because we currently don't have a way to delete fields
+		// when processing events from the tailer.
+		ret.Values = append(ret.Values, []byte{})
 	}
-	return vg, nil
+	return ret, nil
 }
 
-func (ndb *NitrousDB) processCreateEvent(tierId ftypes.RealmID, event *rpc.CreateAggregate, vg hangar.ValGroup) (hangar.ValGroup, error) {
+func (ndb *NitrousDB) processCreateEvent(tierId ftypes.RealmID, event *rpc.CreateAggregate) (hangar.ValGroup, error) {
 	popts := event.GetOptions()
 	aggId := ftypes.AggId(event.AggId)
 	codecs := getCodecs(ftypes.AggType(popts.AggType))
@@ -224,28 +304,27 @@ func (ndb *NitrousDB) processCreateEvent(tierId ftypes.RealmID, event *rpc.Creat
 		key := aggKey{tierId, aggId, codec}
 		if v, ok := ndb.tables.Load(key); ok {
 			if !v.(store.Table).Options().Equals(options) {
-				return vg, fmt.Errorf("aggregate %d in tier %d already exists with different options", aggId, tierId)
+				return hangar.ValGroup{}, fmt.Errorf("aggregate %d in tier %d already exists with different options", aggId, tierId)
 			} else {
 				continue
 			}
 		}
 		field, err := encodeField(tierId, aggId, codec)
 		if err != nil {
-			return vg, fmt.Errorf("failed to encode hangar field for new aggregate %d in tier %d: %w", aggId, tierId, err)
+			return hangar.ValGroup{}, fmt.Errorf("failed to encode hangar field for new aggregate %d in tier %d: %w", aggId, tierId, err)
 		}
 		rawopts, err := proto.Marshal(popts)
 		if err != nil {
-			return vg, fmt.Errorf("failed to byte-serialize aggregate options proto: %w", err)
+			return hangar.ValGroup{}, fmt.Errorf("failed to byte-serialize aggregate options proto: %w", err)
 		}
 		fields = append(fields, field)
 		values = append(values, rawopts)
 		err = ndb.setupAggregateTable(tierId, aggId, codec, options)
 		if err != nil {
-			return vg, fmt.Errorf("failed to initialize aggregate store for new aggregate (%d) in tier (%d): %w", aggId, tierId, err)
+			return hangar.ValGroup{}, fmt.Errorf("failed to initialize aggregate store for new aggregate (%d) in tier (%d): %w", aggId, tierId, err)
 		}
 	}
-	err := vg.Update(hangar.ValGroup{Fields: fields, Values: values})
-	return vg, err
+	return hangar.ValGroup{Fields: fields, Values: values}, nil
 }
 
 func getCodecs(aggType ftypes.AggType) []rpc.AggCodec {
@@ -257,8 +336,6 @@ func (ndb *NitrousDB) setupAggregateTable(tierId ftypes.RealmID, aggId ftypes.Ag
 	if err != nil {
 		return fmt.Errorf("failed to create aggregate store for {aggId: %d, tierId: %d, codec: %d} : %w", aggId, tierId, codec, err)
 	}
-	// Subscribe the aggregate store to the tailer for aggregate events.
-	ndb.tailer.Subscribe(table)
 	// Register table has handler for corresponding aggregate "key" defined by
 	// the tier Id, aggregate Id, and codec.
 	ndb.tables.Store(aggKey{tierId, aggId, codec}, table)
@@ -275,9 +352,13 @@ func (ndb *NitrousDB) Get(ctx context.Context, tierId ftypes.RealmID, aggId ftyp
 }
 
 func (ndb *NitrousDB) GetLag(ctx context.Context) (int, error) {
-	lag, err := ndb.tailer.GetLag()
-	if err != nil {
-		return 0, fmt.Errorf("error getting lag: %w", err)
+	lag := 0
+	for _, tailer := range ndb.tailers {
+		l, err := tailer.GetLag()
+		if err != nil && !errors.Is(err, fkafka.ErrNoPartition) {
+			return 0, fmt.Errorf("error getting lag: %w", err)
+		}
+		lag += l
 	}
 	return lag, nil
 }

@@ -11,7 +11,6 @@ import (
 	"fennel/lib/ftypes"
 	"fennel/lib/value"
 	"fennel/nitrous/rpc"
-	"fennel/nitrous/server/tailer"
 	"fennel/nitrous/server/temporal"
 
 	"github.com/raulk/clock"
@@ -23,7 +22,7 @@ var (
 )
 
 type Table interface {
-	tailer.EventProcessor
+	Process(ctx context.Context, ops []*rpc.NitrousOp, store hangar.Reader) (keys []hangar.Key, vgs []hangar.ValGroup, err error)
 	Get(ctx context.Context, keys []string, kwargs []value.Dict, store hangar.Hangar) ([]value.Value, error)
 	Options() aggregate.Options
 }

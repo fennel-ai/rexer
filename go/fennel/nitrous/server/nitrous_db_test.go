@@ -34,7 +34,7 @@ func TestInitRestore(t *testing.T) {
 	wait := func() {
 		count := 0
 		for count < 3 {
-			time.Sleep(ndb.tailer.GetPollTimeout())
+			time.Sleep(ndb.GetPollTimeout())
 			lag, err := ndb.GetLag(ctx)
 			if err != nil {
 				time.Sleep(1 * time.Second)
@@ -134,19 +134,18 @@ func TestCreateDuplicate(t *testing.T) {
 		},
 	}
 	tierId := ftypes.RealmID(5)
-	vg := hangar.ValGroup{}
-	vg, err = ndb.processCreateEvent(tierId, op, vg)
+	vg, err := ndb.processCreateEvent(tierId, op)
 	assert.NoError(t, err)
 	assert.Equal(t, 1, len(vg.Fields))
 	// This should be a no-op and therefore we should get no errors.
-	vg, err = ndb.processCreateEvent(tierId, op, vg)
+	vg, err = ndb.processCreateEvent(tierId, op)
 	assert.NoError(t, err)
-	assert.Equal(t, 1, len(vg.Fields))
+	assert.Equal(t, 0, len(vg.Fields))
 	// This should fail.
 	op.Options.AggType = "max"
-	vg, err = ndb.processCreateEvent(tierId, op, vg)
+	vg, err = ndb.processCreateEvent(tierId, op)
 	assert.Error(t, err)
-	assert.Equal(t, 1, len(vg.Fields))
+	assert.Equal(t, 0, len(vg.Fields))
 }
 
 func TestDeleteAggregate(t *testing.T) {
@@ -166,8 +165,7 @@ func TestDeleteAggregate(t *testing.T) {
 			Durations: []uint32{24 * 3600},
 		},
 	}
-	vg := hangar.ValGroup{}
-	vg, err = ndb.processCreateEvent(tierId, op, vg)
+	vg, err := ndb.processCreateEvent(tierId, op)
 	assert.NoError(t, err)
 	err = n.Nitrous.Store.SetMany(ctx, []hangar.Key{{Data: agg_table_key}}, []hangar.ValGroup{vg})
 	assert.NoError(t, err)
@@ -179,7 +177,7 @@ func TestDeleteAggregate(t *testing.T) {
 			Durations: []uint32{24 * 3600},
 		},
 	}
-	vg, err = ndb.processCreateEvent(tierId, op, vg)
+	vg, err = ndb.processCreateEvent(tierId, op)
 	assert.NoError(t, err)
 	err = n.Nitrous.Store.SetMany(ctx, []hangar.Key{{Data: agg_table_key}}, []hangar.ValGroup{vg})
 	assert.NoError(t, err)
@@ -194,7 +192,7 @@ func TestDeleteAggregate(t *testing.T) {
 	del := &rpc.DeleteAggregate{
 		AggId: 1,
 	}
-	vg, err = ndb.processDeleteEvent(tierId, del, vg)
+	vg, err = ndb.processDeleteEvent(tierId, del)
 	assert.NoError(t, err)
 	assert.True(t, vg.Valid())
 	err = n.Nitrous.Store.SetMany(ctx, []hangar.Key{{Data: agg_table_key}}, []hangar.ValGroup{vg})
@@ -225,7 +223,7 @@ func TestGetLag(t *testing.T) {
 
 	// Set a very long test timeout so message is not really consumed and then
 	// restart tailer.
-	ndb.tailer.SetPollTimeout(1 * time.Minute)
+	ndb.SetPollTimeout(1 * time.Minute)
 	ndb.Start()
 
 	ctx := context.Background()

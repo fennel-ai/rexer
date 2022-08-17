@@ -3,7 +3,6 @@ package tailer
 import (
 	"context"
 	"fmt"
-	"sync"
 	"time"
 
 	"fennel/hangar"
@@ -11,106 +10,59 @@ import (
 	"fennel/lib/timer"
 	"fennel/nitrous"
 	"fennel/nitrous/rpc"
-	"fennel/nitrous/server/offsets"
 	"fennel/resource"
 
 	"github.com/confluentinc/confluent-kafka-go/kafka"
-	"github.com/prometheus/client_golang/prometheus"
-	"github.com/prometheus/client_golang/prometheus/promauto"
 	"go.uber.org/atomic"
 	"go.uber.org/zap"
-	"golang.org/x/sync/errgroup"
 	"google.golang.org/protobuf/proto"
 )
 
 const (
-	tailer_batch         = 100_000
+	// The tailer_batch value is tuned to be large enough to process the binlog
+	// quickly, but no so large that we get badger errors for transaction being
+	// too large.
+	tailer_batch         = 20_000
 	default_poll_timeout = 10 * time.Second
 )
 
-var (
-	backlog = promauto.NewGauge(prometheus.GaugeOpts{
-		Name: "nitrous_tailer_backlog",
-		Help: "Backlog of tailer",
-	})
-)
-
-type EventProcessor interface {
-	Identity() string
-	Process(ctx context.Context, ops []*rpc.NitrousOp, store hangar.Reader) (keys []hangar.Key, vgs []hangar.ValGroup, err error)
-}
+type EventsProcessor func(ctx context.Context, ops []*rpc.NitrousOp, store hangar.Reader) (keys []hangar.Key, vgs []hangar.ValGroup, err error)
 
 type Tailer struct {
-	processors  []EventProcessor
+	processor   EventsProcessor
 	nitrous     nitrous.Nitrous
 	binlog      fkafka.FConsumer
-	offsetkey   []byte
 	stopCh      chan chan struct{}
 	pollTimeout time.Duration
 	running     *atomic.Bool
-
-	mu *sync.RWMutex
-}
-
-// Start a go-routine that periodically reports the tailer's backlog to prometheus.
-func (t *Tailer) startReportingKafkaLag(consumer fkafka.FConsumer) {
-	go func() {
-		for range time.Tick(10 * time.Second) {
-			b, err := consumer.Backlog()
-			if err != nil {
-				t.nitrous.Logger.Error("Failed to read kafka backlog", zap.String("Name", consumer.GroupID()), zap.Error(err))
-			}
-			backlog.Set(float64(b))
-		}
-	}()
 }
 
 // Returns a new Tailer that can be used to tail the binlog.
-// 'offsets' denotes the kafka offsets at which the tailer should start tailing
-// the log. 'offsetkey' denotes the keygroup under which the offsets should be
-// checkpointed in the plane's hangar.
-func NewTailer(n nitrous.Nitrous, topic string, offsets kafka.TopicPartitions, offsetkey []byte) (*Tailer, error) {
-	stopCh := make(chan chan struct{})
+func NewTailer(n nitrous.Nitrous, topic string, toppars kafka.TopicPartitions, processor EventsProcessor) (*Tailer, error) {
+	// Given the topic partitions, decode what offsets to start reading from.
+	toppars, err := decodeOffsets(toppars, n.Store)
+	if err != nil {
+		return nil, fmt.Errorf("failed to decode offsets: %w", err)
+	}
 	consumer, err := n.KafkaConsumerFactory(fkafka.ConsumerConfig{
 		Scope:        resource.NewPlaneScope(n.PlaneID),
 		Topic:        topic,
 		GroupID:      n.Identity,
 		OffsetPolicy: fkafka.DefaultOffsetPolicy,
-		Partitions:   offsets,
+		Partitions:   toppars,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to initialize kafka consumer: %w", err)
 	}
 	t := Tailer{
-		nil,
-		n,
-		consumer,
-		offsetkey,
-		stopCh,
-		default_poll_timeout,
-		atomic.NewBool(false),
-		&sync.RWMutex{},
+		processor:   processor,
+		nitrous:     n,
+		binlog:      consumer,
+		stopCh:      make(chan chan struct{}),
+		pollTimeout: default_poll_timeout,
+		running:     atomic.NewBool(false),
 	}
-	t.startReportingKafkaLag(consumer)
 	return &t, nil
-}
-
-func (t *Tailer) Subscribe(p EventProcessor) {
-	t.mu.Lock()
-	defer t.mu.Unlock()
-	t.processors = append(t.processors, p)
-}
-
-func (t *Tailer) Unsubscribe(id string) {
-	t.mu.Lock()
-	defer t.mu.Unlock()
-	for i, c := range t.processors {
-		if c.Identity() == id {
-			t.processors[i] = t.processors[len(t.processors)-1]
-			t.processors = t.processors[:len(t.processors)-1]
-			return
-		}
-	}
 }
 
 // Returns the kafka offsets of this tailer. These can be used to initialize a
@@ -154,64 +106,34 @@ func (t *Tailer) processBatch(rawops [][]byte) error {
 		}
 		ops[i] = &op
 	}
-	type update struct {
-		keys []hangar.Key
-		vgs  []hangar.ValGroup
-	}
-	eg := &errgroup.Group{}
-	t.mu.RLock()
-	processors := t.processors
-	t.mu.RUnlock()
-	updates := make(chan update, len(processors))
-	for i := range processors {
-		p := processors[i]
-		eg.Go(func() error {
-			ks, vs, err := p.Process(ctx, ops, t.nitrous.Store)
-			if err != nil {
-				t.nitrous.Logger.Error("Failed to process ops", zap.String("processor", p.Identity()), zap.Error(err))
-				return err
-			}
-			updates <- update{ks, vs}
-			return nil
-		})
-	}
-	// Wait for all processors to finish and then close updates channel.
-	err := eg.Wait()
-	close(updates)
+	keys, vgs, err := t.processor(ctx, ops, t.nitrous.Store)
 	if err != nil {
-		return fmt.Errorf("One or more op processors failed: %w", err)
-	}
-	// Consolidate all updates into one write batch.
-	var keys []hangar.Key
-	var vgs []hangar.ValGroup
-	for update := range updates {
-		keys = append(keys, update.keys...)
-		vgs = append(vgs, update.vgs...)
+		return fmt.Errorf("failed to proces: %w", err)
 	}
 	// Save kafka offsets in the same batch for exactly-once processing.
 	offs, err := t.binlog.Offsets()
 	if err != nil {
 		return fmt.Errorf("failed to get offsets: %w", err)
 	}
-	offvg, err := offsets.EncodeOffsets(offs)
+	offkeys, offvgs, err := encodeOffsets(offs)
 	if err != nil {
 		return fmt.Errorf("failed to encode offsets: %w", err)
 	}
-	keys = append(keys, hangar.Key{Data: t.offsetkey})
-	vgs = append(vgs, offvg)
+	keys = append(keys, offkeys...)
+	vgs = append(vgs, offvgs...)
 	// Finally, write the batch to the hangar.
 	err = t.nitrous.Store.SetMany(context.Background(), keys, vgs)
 	if err != nil {
 		return fmt.Errorf("hangar write failed: %w", err)
 	}
 	// Commit the offsets to the kafka binlog.
-	// This is not strictly necessary in prod, but useful in tests.
+	// This is not strictly required for correctly processing the binlog, but
+	// needed to compute the lag.
 	t.nitrous.Logger.Debug("Committing offsets to binlog", zap.Any("offsets", offs))
 	_, err = t.binlog.CommitOffsets(offs)
 	if err != nil {
 		return fmt.Errorf("failed to commit binlog offsets to broker: %w", err)
 	}
-
 	return nil
 }
 
