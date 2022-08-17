@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"fennel/lib/sql"
 	"fennel/mothership"
 	actionC "fennel/mothership/controller/action"
@@ -17,12 +18,15 @@ import (
 	"github.com/gin-contrib/sessions/cookie"
 	"github.com/gin-gonic/gin"
 	"github.com/sendgrid/sendgrid-go"
+	"gorm.io/driver/mysql"
+	"gorm.io/gorm"
 )
 
 type server struct {
 	*gin.Engine
 	mothership mothership.Mothership
 	args       serverArgs
+	db         *gorm.DB
 }
 
 type serverArgs struct {
@@ -46,10 +50,17 @@ func NewServer() (server, error) {
 	r.Use(sessions.Sessions("mysession", store))
 	r.Use(WithFlashMessage)
 
+	db, err := gorm.Open(mysql.New(mysql.Config{
+		Conn: m.DB,
+	}), &gorm.Config{})
+	if err != nil {
+		return server{}, err
+	}
 	s := server{
 		Engine:     r,
 		mothership: m,
 		args:       args,
+		db:         db,
 	}
 	s.setupRouter()
 
@@ -78,7 +89,7 @@ func (s *server) setupRouter() {
 	s.GET("/confirm_user", s.ConfirmUser)
 	s.POST("/resend_confirmation_email", s.ResendConfirmationEmail)
 
-	auth := s.Group("/", AuthenticationRequired(s.mothership))
+	auth := s.Group("/", AuthenticationRequired(s.db))
 	auth.GET("/", s.Dashboard)
 	auth.GET("/dashboard", s.Dashboard)
 	auth.GET("/data", s.Data)
@@ -140,14 +151,14 @@ func (s *server) ForgotPassword(c *gin.Context) {
 		})
 		return
 	}
-	if err := userC.SendResetPasswordEmail(c.Request.Context(), s.mothership, s.sendgridClient(), form.Email); err != nil {
-		msg := "Something went wrong. Please try again."
+	if err := userC.SendResetPasswordEmail(c.Request.Context(), s.db, s.sendgridClient(), form.Email); err != nil {
+		msg := ""
 		status := http.StatusInternalServerError
-		switch err.(type) {
-		case *userC.ErrorUserNotFound:
-			msg = err.Error()
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			msg = "User Not Found"
 			status = http.StatusBadRequest
-		default:
+		} else {
+			msg = "Something went wrong. Please try again."
 			log.Printf("Failed to send reset password email: %v\n", err)
 		}
 		c.JSON(status, gin.H{
@@ -171,14 +182,14 @@ func (s *server) ResetPassword(c *gin.Context) {
 		return
 	}
 
-	if err := userC.ResetPassword(c.Request.Context(), s.mothership, form.Token, form.Password); err != nil {
-		msg := "Something went wrong. Please try again."
+	if err := userC.ResetPassword(c.Request.Context(), s.db, form.Token, form.Password); err != nil {
+		msg := ""
 		status := http.StatusInternalServerError
-		switch err.(type) {
-		case *userC.ErrorUserNotFound:
+		if errors.Is(err, gorm.ErrRecordNotFound) {
 			msg = "Invalid token"
 			status = http.StatusBadRequest
-		default:
+		} else {
+			msg = "Something went wrong. Please try again."
 			log.Printf("Failed to reset password: %v\n", err)
 		}
 		c.JSON(status, gin.H{
@@ -201,12 +212,11 @@ func (s *server) ConfirmUser(c *gin.Context) {
 	}
 
 	session := sessions.Default(c)
-	if _, err := userC.ConfirmUser(c.Request.Context(), s.mothership, form.Token); err != nil {
+	if _, err := userC.ConfirmUser(c.Request.Context(), s.db, form.Token); err != nil {
 		msgDesc := ""
-		switch err.(type) {
-		case *userC.ErrorUserNotFound:
-			msgDesc = err.Error()
-		default:
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			msgDesc = "User not found"
+		} else {
 			msgDesc = "Something went wrong. Please try again."
 		}
 		addFlashMessage(session, FlashTypeError, msgDesc)
@@ -241,14 +251,14 @@ func (s *server) SignUp(c *gin.Context) {
 	}
 
 	ctx := c.Request.Context()
-	user, err := userC.SignUp(ctx, s.mothership, form.Email, form.Password)
+	user, err := userC.SignUp(ctx, s.db, form.Email, form.Password)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"error": err.Error(),
 		})
 		return
 	}
-	if _, err = userC.SendConfirmationEmail(ctx, s.mothership, s.sendgridClient(), user); err != nil {
+	if _, err = userC.SendConfirmationEmail(ctx, s.db, s.sendgridClient(), user); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"error": "Failed to send confirmation email, please try again!",
 		})
@@ -266,7 +276,7 @@ func (s *server) SignIn(c *gin.Context) {
 		return
 	}
 
-	user, err := userC.SignIn(c.Request.Context(), s.mothership, form.Email, form.Password)
+	user, err := userC.SignIn(c.Request.Context(), s.db, form.Email, form.Password)
 
 	if err != nil {
 		// TODO(xiao) better error handling
@@ -288,19 +298,24 @@ func (s *server) ResendConfirmationEmail(c *gin.Context) {
 		return
 	}
 
-	err := userC.ResendConfirmationEmail(c.Request.Context(), s.mothership, s.sendgridClient(), form.Email)
+	err := userC.ResendConfirmationEmail(c.Request.Context(), s.db, s.sendgridClient(), form.Email)
 	if err != nil {
-		switch err.(type) {
-		case *userC.ErrorUserNotFound, *userC.ErrorAlreadyConfirmed:
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			c.JSON(http.StatusBadRequest, gin.H{
+				"error": "User not found",
+			})
+			return
+		}
+		if errors.Is(err, userC.ErrorAlreadyConfirmed) {
 			c.JSON(http.StatusBadRequest, gin.H{
 				"error": err.Error(),
 			})
-		default:
-			c.JSON(http.StatusInternalServerError, gin.H{
-				"error": "Fail to resend confirmation email, please try again later.",
-			})
-			log.Printf("Failed to resend confirmation email: %v\n", err)
+			return
 		}
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": "Fail to resend confirmation email, please try again later.",
+		})
+		log.Printf("Failed to resend confirmation email: %v\n", err)
 	} else {
 		c.JSON(http.StatusOK, gin.H{})
 	}
@@ -381,7 +396,7 @@ func (s *server) Features(c *gin.Context) {
 
 func (s *server) Logout(c *gin.Context) {
 	if user, ok := CurrentUser(c); ok {
-		if _, err := userC.Logout(c.Request.Context(), s.mothership, user); err != nil {
+		if _, err := userC.Logout(c.Request.Context(), s.db, user); err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{
 				"error": "Can't log out the user, please try again later.",
 			})

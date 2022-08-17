@@ -1,7 +1,7 @@
 package main
 
 import (
-	libuser "fennel/lib/user"
+	libuser "fennel/mothership/lib/user"
 	"log"
 
 	"github.com/gin-contrib/sessions"

@@ -1,13 +1,12 @@
 package main
 
 import (
-	lib "fennel/lib/user"
-	"fennel/mothership"
-	"fennel/mothership/model/user"
+	lib "fennel/mothership/lib/user"
 	"net/http"
 
 	"github.com/gin-contrib/sessions"
 	"github.com/gin-gonic/gin"
+	"gorm.io/gorm"
 )
 
 const (
@@ -15,12 +14,14 @@ const (
 	FlashMessageKey = "flash_message"
 )
 
-func AuthenticationRequired(mothership mothership.Mothership) gin.HandlerFunc {
+func AuthenticationRequired(db *gorm.DB) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		session := sessions.Default(c)
 		token, ok := session.Get(RememberTokenKey).(string)
 		if ok && token != "" {
-			if user, err := user.FetchByRememberToken(mothership, token); err == nil {
+			var user lib.User
+			result := db.Take(&user, "remember_token = ?", token)
+			if result.Error == nil {
 				c.Set(CurrentUserKey, user)
 				return
 			}
