@@ -33,6 +33,7 @@ type FConsumer interface {
 	Commit() (kafka.TopicPartitions, error)
 	CommitOffsets(kafka.TopicPartitions) (kafka.TopicPartitions, error)
 	Offsets() (kafka.TopicPartitions, error)
+	GetPartitions() (kafka.TopicPartitions, error)
 	GroupID() string
 }
 

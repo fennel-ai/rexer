@@ -10,6 +10,7 @@ import (
 	"google.golang.org/protobuf/proto"
 
 	"fennel/lib/utils"
+	"fennel/lib/utils/ptr"
 	"fennel/resource"
 )
 
@@ -187,6 +188,10 @@ func (l mockConsumer) Type() resource.Type {
 
 func (l mockConsumer) Backlog() (int, error) {
 	return l.broker.Backlog(l.groupid), nil
+}
+
+func (l mockConsumer) GetPartitions() (kafka.TopicPartitions, error) {
+	return kafka.TopicPartitions{{Topic: ptr.To(l.Topic), Partition: 0}}, nil
 }
 
 var _ FConsumer = mockConsumer{}
