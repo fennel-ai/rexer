@@ -7,16 +7,20 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-
-	db "fennel/mothership/model/user"
+	"gorm.io/driver/mysql"
+	"gorm.io/gorm"
 )
 
 func TestNewUser(t *testing.T) {
 	m, err := mothership.NewTestMothership()
 	assert.NoError(t, err)
 	defer func() { err = mothership.Teardown(m); assert.NoError(t, err) }()
+	db, err := gorm.Open(mysql.New(mysql.Config{
+		Conn: m.DB,
+	}), &gorm.Config{})
+	assert.NoError(t, err)
 
-	user, err := newUser(m, "test@fennel.ai", "12345")
+	user, err := newUser(db, "test@fennel.ai", "12345")
 	assert.NoError(t, err)
 
 	assert.Equal(t, "test@fennel.ai", user.Email)
@@ -25,7 +29,7 @@ func TestNewUser(t *testing.T) {
 	assert.Equal(t, user.CreatedAt, user.UpdatedAt)
 	assert.True(t, checkPasswordHash("12345", user.EncryptedPassword))
 
-	anotherUser, err := newUser(m, "another_test@fennel.ai", "12345")
+	anotherUser, err := newUser(db, "another_test@fennel.ai", "12345")
 	assert.NoError(t, err)
 
 	assert.NotEqual(t, user.EncryptedPassword, anotherUser.EncryptedPassword)
@@ -35,35 +39,37 @@ func TestSignInAndLogout(t *testing.T) {
 	m, err := mothership.NewTestMothership()
 	assert.NoError(t, err)
 	defer func() { err = mothership.Teardown(m); assert.NoError(t, err) }()
-
+	db, err := gorm.Open(mysql.New(mysql.Config{
+		Conn: m.DB,
+	}), &gorm.Config{})
+	assert.NoError(t, err)
 	ctx := context.Background()
 
-	_, err = SignIn(ctx, m, "test@fennel.ai", "12345")
-	assert.ErrorIs(t, err, &ErrorUserNotFound{})
-	user, err := SignUp(ctx, m, "test@fennel.ai", "12345")
+	_, err = SignIn(ctx, db, "test@fennel.ai", "12345")
+	assert.ErrorIs(t, err, gorm.ErrRecordNotFound)
+	user, err := SignUp(ctx, db, "test@fennel.ai", "12345")
 	assert.NoError(t, err)
 	assert.Equal(t, "test@fennel.ai", user.Email)
-	assert.Positive(t, user.Id)
 	assert.False(t, user.RememberToken.Valid)
 	assert.False(t, user.RememberCreatedAt.Valid)
 
-	_, err = SignIn(ctx, m, "test@fennel.ai", "123")
-	assert.ErrorIs(t, err, &ErrorWrongPassword{})
+	_, err = SignIn(ctx, db, "test@fennel.ai", "123")
+	assert.ErrorIs(t, err, ErrorWrongPassword)
 
-	_, err = SignIn(ctx, m, "test@fennel.ai", "12345")
-	assert.ErrorIs(t, err, &ErrorNotConfirmed{})
+	_, err = SignIn(ctx, db, "test@fennel.ai", "12345")
+	assert.ErrorIs(t, err, ErrorNotConfirmed)
 
 	user.ConfirmedAt = sql.NullInt64{Valid: true, Int64: 123}
-	_, err = db.UpdateConfirmation(m, user)
-	assert.NoError(t, err)
+	result := db.Model(&user).Update("ConfirmedAt", 123)
+	assert.NoError(t, result.Error)
 
-	sameUser, err := SignIn(ctx, m, "test@fennel.ai", "12345")
+	sameUser, err := SignIn(ctx, db, "test@fennel.ai", "12345")
 	assert.NoError(t, err)
-	assert.Equal(t, user.Id, sameUser.Id)
+	assert.Equal(t, user.ID, sameUser.ID)
 	assert.True(t, sameUser.RememberToken.Valid)
 	assert.True(t, sameUser.RememberCreatedAt.Valid)
 
-	user, err = Logout(ctx, m, sameUser)
+	user, err = Logout(ctx, db, sameUser)
 	assert.NoError(t, err)
 	assert.False(t, user.RememberToken.Valid)
 	assert.False(t, user.RememberCreatedAt.Valid)
@@ -73,21 +79,23 @@ func TestConfirmUser(t *testing.T) {
 	m, err := mothership.NewTestMothership()
 	assert.NoError(t, err)
 	defer func() { err = mothership.Teardown(m); assert.NoError(t, err) }()
-
+	db, err := gorm.Open(mysql.New(mysql.Config{
+		Conn: m.DB,
+	}), &gorm.Config{})
+	assert.NoError(t, err)
 	ctx := context.Background()
 
-	token := generateConfirmationToken(m)
-	_, err = ConfirmUser(ctx, m, token)
-	assert.ErrorIs(t, &ErrorUserNotFound{}, err)
+	token := generateConfirmationToken(db)
+	_, err = ConfirmUser(ctx, db, token)
+	assert.ErrorIs(t, err, gorm.ErrRecordNotFound)
 
-	user, err := SignUp(ctx, m, "test@fennel.ai", "12345")
+	user, err := SignUp(ctx, db, "test@fennel.ai", "12345")
 	assert.NoError(t, err)
 
-	user.ConfirmationToken = sql.NullString{String: token, Valid: true}
-	_, err = db.UpdateConfirmation(m, user)
-	assert.NoError(t, err)
+	result := db.Model(&user).Update("ConfirmationToken", token)
+	assert.NoError(t, result.Error)
 
-	user, err = ConfirmUser(ctx, m, token)
+	user, err = ConfirmUser(ctx, db, token)
 	assert.NoError(t, err)
 
 	assert.True(t, user.IsConfirmed())
@@ -100,28 +108,29 @@ func TestResetPassword(t *testing.T) {
 	m, err := mothership.NewTestMothership()
 	assert.NoError(t, err)
 	defer func() { err = mothership.Teardown(m); assert.NoError(t, err) }()
-
+	db, err := gorm.Open(mysql.New(mysql.Config{
+		Conn: m.DB,
+	}), &gorm.Config{})
+	assert.NoError(t, err)
 	ctx := context.Background()
 
-	err = ResetPassword(ctx, m, "", "456")
-	assert.ErrorIs(t, err, &ErrorUserNotFound{})
+	err = ResetPassword(ctx, db, "", "456")
+	assert.ErrorIs(t, err, gorm.ErrRecordNotFound)
 
-	user, err := SignUp(ctx, m, "test@fennel.ai", "123")
+	user, err := SignUp(ctx, db, "test@fennel.ai", "123")
 	assert.NoError(t, err)
-	user.ConfirmedAt = sql.NullInt64{Valid: true, Int64: 12345}
-	user, err = db.UpdateConfirmation(m, user)
-	assert.NoError(t, err)
+	result := db.Model(&user).Update("ConfirmedAt", 12345)
+	assert.NoError(t, result.Error)
 
-	_, err = SignIn(ctx, m, "test@fennel.ai", "456")
+	_, err = SignIn(ctx, db, "test@fennel.ai", "456")
 	assert.Error(t, err)
 
-	user.ResetToken = sql.NullString{Valid: true, String: "reset-oracle"}
-	user, err = db.UpdateResetInfo(m, user)
+	result = db.Model(&user).Update("ResetToken", "reset-oracle")
+	assert.NoError(t, result.Error)
+
+	err = ResetPassword(ctx, db, "reset-oracle", "456")
 	assert.NoError(t, err)
 
-	err = ResetPassword(ctx, m, "reset-oracle", "456")
-	assert.NoError(t, err)
-
-	_, err = SignIn(ctx, m, "test@fennel.ai", "456")
+	_, err = SignIn(ctx, db, "test@fennel.ai", "456")
 	assert.NoError(t, err)
 }

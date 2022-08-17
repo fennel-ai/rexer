@@ -6,67 +6,44 @@ import (
 	"encoding/base64"
 	"encoding/binary"
 	"errors"
-	"fennel/mothership"
 	"fmt"
 	"time"
 
 	"golang.org/x/crypto/bcrypt"
+	"gorm.io/gorm"
 
-	lib "fennel/lib/user"
+	lib "fennel/mothership/lib/user"
 	"math/rand"
 	"net/url"
-
-	db "fennel/mothership/model/user"
 
 	"github.com/sendgrid/sendgrid-go"
 	"github.com/sendgrid/sendgrid-go/helpers/mail"
 )
 
-type ErrorUserNotFound struct{}
-
-func (e *ErrorUserNotFound) Error() string {
-	return "User not found"
-}
-
-type ErrorWrongPassword struct{}
-
-func (e *ErrorWrongPassword) Error() string {
-	return "Wrong password"
-}
-
-type ErrorNotConfirmed struct{}
-
-func (e *ErrorNotConfirmed) Error() string {
-	return "User not confirmed yet. Please confirm your email first."
-}
-
-type ErrorAlreadyConfirmed struct{}
-
-func (e *ErrorAlreadyConfirmed) Error() string {
-	return "User email is already confirmed"
-}
+var ErrorWrongPassword = errors.New("Wrong password")
+var ErrorNotConfirmed = errors.New("User not confirmed yet. Please confirm your email first.")
+var ErrorAlreadyConfirmed = errors.New("User email is already confirmed")
 
 const BCRYPT_COST = 14
 
-func newUser(m mothership.Mothership, email, password string) (lib.User, error) {
+func newUser(db *gorm.DB, email, password string) (lib.User, error) {
 	hash, err := bcrypt.GenerateFromPassword([]byte(password), BCRYPT_COST)
 	if err != nil {
 		return lib.User{}, err
 	}
 
-	now := time.Now().UTC().UnixMicro()
 	return lib.User{
 		Email:             email,
 		EncryptedPassword: hash,
-		CreatedAt:         now,
-		UpdatedAt:         now,
 	}, nil
 }
 
-func generateRememberToken(m mothership.Mothership) string {
+func generateRememberToken(db *gorm.DB) string {
+	var user lib.User
 	for {
-		token := generateToken(m)
-		if _, err := db.FetchByRememberToken(m, token); err != nil {
+		token := generateToken()
+		result := db.Take(&user, "remember_token = ?", token)
+		if result.Error != nil {
 			return token
 		}
 	}
@@ -80,18 +57,15 @@ func checkPasswordHash(password string, hash []byte) bool {
 // TODO(xiao) add a unit test for email
 // TODO(xiao) do not regen token if sent_at is recent enough
 // TODO(xiao) do not return user
-func SendConfirmationEmail(c context.Context, m mothership.Mothership, client *sendgrid.Client, user lib.User) (lib.User, error) {
+func SendConfirmationEmail(c context.Context, db *gorm.DB, client *sendgrid.Client, user lib.User) (lib.User, error) {
 	if user.IsConfirmed() {
-		return user, &ErrorAlreadyConfirmed{}
+		return user, ErrorAlreadyConfirmed
 	}
-	token := generateConfirmationToken(m)
-	user.ConfirmationToken = sql.NullString{
-		String: token,
-		Valid:  true,
-	}
-	var err error
-	if user, err = db.UpdateConfirmation(m, user); err != nil {
-		return user, err
+	token := generateConfirmationToken(db)
+	result := db.Model(&user).Update("ConfirmationToken", token)
+
+	if result.Error != nil {
+		return user, result.Error
 	}
 
 	from := mail.NewEmail("Xiao Jiang", "xiao+dev@fennel.ai")
@@ -105,11 +79,9 @@ func SendConfirmationEmail(c context.Context, m mothership.Mothership, client *s
 	if _, err := client.Send(message); err != nil {
 		return user, err
 	}
-	user.ConfirmationSentAt = sql.NullInt64{
-		Int64: time.Now().UTC().UnixMicro(),
-		Valid: true,
-	}
-	return db.UpdateConfirmation(m, user)
+
+	result = db.Model(&user).Update("ConfirmationSentAt", time.Now().UTC().UnixMicro())
+	return user, result.Error
 }
 
 func generateConfirmationLink(token string) url.URL {
@@ -122,19 +94,23 @@ func generateConfirmationLink(token string) url.URL {
 	}
 }
 
-func generateConfirmationToken(m mothership.Mothership) string {
+func generateConfirmationToken(db *gorm.DB) string {
+	var user lib.User
 	for {
-		token := generateToken(m)
-		if _, err := db.FetchByConfirmationToken(m, token); err != nil {
+		token := generateToken()
+		result := db.Take(&user, "confirmation_token = ?", token)
+		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return token
 		}
 	}
 }
 
-func generateResetToken(m mothership.Mothership) string {
+func generateResetToken(db *gorm.DB) string {
+	var user lib.User
 	for {
-		token := generateToken(m)
-		if _, err := db.FetchByResetToken(m, token); err != nil {
+		token := generateToken()
+		result := db.Take(&user, "reset_token = ?", token)
+		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return token
 		}
 	}
@@ -150,39 +126,38 @@ func generateResetLink(token string) url.URL {
 	}
 }
 
-func generateToken(m mothership.Mothership) string {
+func generateToken() string {
 	bytes := make([]byte, 16)
 	binary.LittleEndian.PutUint64(bytes, rand.Uint64())
 	binary.LittleEndian.PutUint64(bytes[8:], rand.Uint64())
 	return base64.RawURLEncoding.EncodeToString(bytes)
 }
 
-func ResendConfirmationEmail(c context.Context, m mothership.Mothership, client *sendgrid.Client, email string) error {
-	user, err := db.FetchByEmail(m, email)
-	if err != nil {
-		return &ErrorUserNotFound{}
+func ResendConfirmationEmail(c context.Context, db *gorm.DB, client *sendgrid.Client, email string) error {
+	var user lib.User
+	result := db.Take(&user, "email = ?", email)
+	if result.Error != nil {
+		return result.Error
 	}
-	_, err = SendConfirmationEmail(c, m, client, user)
+	_, err := SendConfirmationEmail(c, db, client, user)
 	return err
 }
 
 // TODO(xiao) add a test
 // TODO(xiao) do not regenerate token if sent_at recent enough
-func SendResetPasswordEmail(c context.Context, m mothership.Mothership, client *sendgrid.Client, email string) error {
-	var err error
-	user, err := db.FetchByEmail(m, email)
-	if err != nil {
-		return &ErrorUserNotFound{}
+func SendResetPasswordEmail(c context.Context, db *gorm.DB, client *sendgrid.Client, email string) error {
+	var user lib.User
+	result := db.Take(&user, "email = ?", email)
+
+	if result.Error != nil {
+		return result.Error
 	}
 
-	token := generateResetToken(m)
-	user.ResetToken = sql.NullString{
-		String: token,
-		Valid:  true,
-	}
+	token := generateResetToken(db)
+	result = db.Model(&user).Update("ResetToken", token)
 
-	if user, err = db.UpdateResetInfo(m, user); err != nil {
-		return err
+	if result.Error != nil {
+		return result.Error
 	}
 
 	from := mail.NewEmail("Xiao Jiang", "xiao+dev@fennel.ai")
@@ -196,53 +171,57 @@ func SendResetPasswordEmail(c context.Context, m mothership.Mothership, client *
 	if _, err := client.Send(message); err != nil {
 		return err
 	}
-	user.ResetSentAt = sql.NullInt64{
-		Int64: time.Now().UTC().UnixMicro(),
-		Valid: true,
-	}
-	_, err = db.UpdateResetInfo(m, user)
-	return err
+
+	result = db.Model(&user).Update("ResetSentAt", time.Now().UTC().UnixMicro())
+	return result.Error
 }
 
-func SignUp(c context.Context, m mothership.Mothership, email, password string) (lib.User, error) {
-	_, err := db.FetchByEmail(m, email)
-	if err == nil {
+func SignUp(c context.Context, db *gorm.DB, email, password string) (lib.User, error) {
+	var user lib.User
+
+	result := db.Take(&user, "email = ?", email)
+	if result.Error == nil {
 		return lib.User{}, errors.New("User already exists")
 	}
 
-	user, err := newUser(m, email, password)
+	user, err := newUser(db, email, password)
 	if err != nil {
 		return user, err
 	}
-	uid, err := db.Insert(m, user)
-	if err == nil {
-		user.Id = uid
-	}
-	return user, err
+	result = db.Create(&user)
+	return user, result.Error
 }
 
-func SignIn(c context.Context, m mothership.Mothership, email, password string) (lib.User, error) {
-	user, err := db.FetchByEmail(m, email)
-	if err != nil {
-		return lib.User{}, &ErrorUserNotFound{}
+// TODO(xiao) do not generate remember token if already generated (recently)
+func SignIn(c context.Context, db *gorm.DB, email, password string) (lib.User, error) {
+	var user lib.User
+
+	result := db.Take(&user, "email = ?", email)
+	if result.Error != nil {
+		return lib.User{}, result.Error
 	}
 
 	if !checkPasswordHash(password, user.EncryptedPassword) {
-		return lib.User{}, &ErrorWrongPassword{}
+		return lib.User{}, ErrorWrongPassword
 	}
 
 	if !user.IsConfirmed() {
-		return user, &ErrorNotConfirmed{}
+		return user, ErrorNotConfirmed
 	}
-	user.RememberToken = sql.NullString{String: generateRememberToken(m), Valid: true}
 	user.RememberCreatedAt = sql.NullInt64{Int64: time.Now().UTC().UnixMicro(), Valid: true}
-	return db.UpdateRememberInfo(m, user)
+	result = db.Model(&user).Updates(map[string]interface{}{
+		"RememberToken":     generateRememberToken(db),
+		"RememberCreatedAt": time.Now().UTC().UnixMicro(),
+	})
+	return user, result.Error
 }
 
-func ConfirmUser(c context.Context, m mothership.Mothership, token string) (lib.User, error) {
-	user, err := db.FetchByConfirmationToken(m, token)
-	if err != nil {
-		return lib.User{}, &ErrorUserNotFound{}
+func ConfirmUser(c context.Context, db *gorm.DB, token string) (lib.User, error) {
+	var user lib.User
+
+	result := db.Take(&user, "confirmation_token = ?", token)
+	if result.Error != nil {
+		return lib.User{}, result.Error
 	}
 	if user.IsConfirmed() {
 		return user, nil
@@ -250,28 +229,38 @@ func ConfirmUser(c context.Context, m mothership.Mothership, token string) (lib.
 	user.ConfirmedAt = sql.NullInt64{Int64: time.Now().UnixMicro(), Valid: true}
 	user.ConfirmationToken = sql.NullString{Valid: false}
 	user.ConfirmationSentAt = sql.NullInt64{Valid: false}
-	return db.UpdateConfirmation(m, user)
+	result = db.Model(&user).Updates(map[string]interface{}{
+		"ConfirmedAt":        time.Now().UnixMicro(),
+		"ConfirmationToken":  sql.NullString{Valid: false},
+		"ConfirmationSentAt": sql.NullInt64{Valid: false},
+	})
+
+	return user, result.Error
 }
 
-func ResetPassword(c context.Context, m mothership.Mothership, token, password string) error {
-	user, err := db.FetchByResetToken(m, token)
-	if err != nil {
-		return &ErrorUserNotFound{}
+func ResetPassword(c context.Context, db *gorm.DB, token, password string) error {
+	var user lib.User
+
+	result := db.Take(&user, "reset_token = ?", token)
+	if result.Error != nil {
+		return result.Error
 	}
 	hash, err := bcrypt.GenerateFromPassword([]byte(password), BCRYPT_COST)
 	if err != nil {
 		return err
 	}
-	user.EncryptedPassword = hash
-	user.ResetToken = sql.NullString{Valid: false}
-	user.ResetSentAt = sql.NullInt64{Valid: false}
-	_, err = db.UpdatePassword(m, user)
-	return err
+	result = db.Model(&user).Updates(map[string]interface{}{
+		"EncryptedPassword": hash,
+		"ResetToken":        sql.NullString{Valid: false},
+		"ResetSentAt":       sql.NullInt64{Valid: false},
+	})
+	return result.Error
 }
 
-func Logout(c context.Context, m mothership.Mothership, user lib.User) (lib.User, error) {
-	user.RememberToken = sql.NullString{Valid: false}
-	user.RememberCreatedAt = sql.NullInt64{Valid: false}
-
-	return db.UpdateRememberInfo(m, user)
+func Logout(c context.Context, db *gorm.DB, user lib.User) (lib.User, error) {
+	result := db.Model(&user).Updates(map[string]interface{}{
+		"RememberToken":     sql.NullString{Valid: false},
+		"RememberCreatedAt": sql.NullInt64{Valid: false},
+	})
+	return user, result.Error
 }
