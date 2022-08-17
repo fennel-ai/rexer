@@ -448,7 +448,9 @@ const planeConfs: Record<number, PlaneConf> = {
             storageClass: "io2",
             blockCacheMB: 512,
             kvCacheMB: 1024,
-            binlog: {},
+            binlog: {
+                partitions: 10,
+            },
         }
     },
     // Lokal's prod tier data plane
