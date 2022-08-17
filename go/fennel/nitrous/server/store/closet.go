@@ -396,10 +396,6 @@ func (c *Closet) Get(ctx context.Context, keys []string, kwargs []value.Dict, st
 	return ret, nil
 }
 
-func (c *Closet) Identity() string {
-	return fmt.Sprintf("agg:%d:%d", c.tierId, c.aggId)
-}
-
 func (c *Closet) Process(ctx context.Context, ops []*rpc.NitrousOp, store hangar.Reader) ([]hangar.Key, []hangar.ValGroup, error) {
 	var keys []string
 	var ts []uint32

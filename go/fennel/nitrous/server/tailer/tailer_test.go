@@ -1,4 +1,4 @@
-package tailer_test
+package tailer
 
 import (
 	"context"
@@ -9,14 +9,11 @@ import (
 	"fennel/lib/nitrous"
 	"fennel/lib/utils/ptr"
 	"fennel/nitrous/rpc"
-	"fennel/nitrous/server/offsets"
-	"fennel/nitrous/server/tailer"
 	"fennel/nitrous/test"
 	"fennel/resource"
 
 	"github.com/confluentinc/confluent-kafka-go/kafka"
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 	"go.uber.org/atomic"
 )
 
@@ -25,34 +22,21 @@ type countingProcessor struct {
 	counter *atomic.Int32
 }
 
-func (c countingProcessor) Identity() string {
-	return "countingProcessor"
-}
-
 func (c countingProcessor) Process(ctx context.Context, ops []*rpc.NitrousOp, store hangar.Reader) ([]hangar.Key, []hangar.ValGroup, error) {
 	c.t.Log("got notified")
 	_ = c.counter.Inc()
 	return nil, nil, nil
 }
 
-var _ tailer.EventProcessor = countingProcessor{}
-
-var offsetkey = []byte("offsetkey")
-
 func TestTailer(t *testing.T) {
 	n := test.NewTestNitrous(t)
-	ctx := context.Background()
-
 	// Create the producer first so the topic is initialized.
 	producer := n.NewBinlogProducer(t)
 
-	tlr, err := tailer.NewTailer(n.Nitrous, nitrous.BINLOG_KAFKA_TOPIC, nil, offsetkey)
-	assert.NoError(t, err)
 	notifs := atomic.NewInt32(0)
 	p1 := countingProcessor{t, notifs}
-	p2 := countingProcessor{t, notifs}
-	tlr.Subscribe(p1)
-	tlr.Subscribe(p2)
+	tlr, err := NewTailer(n.Nitrous, nitrous.BINLOG_KAFKA_TOPIC, nil, p1.Process)
+	assert.NoError(t, err)
 
 	err = producer.LogProto(context.Background(), &rpc.NitrousOp{}, nil)
 	assert.NoError(t, err)
@@ -63,8 +47,9 @@ func TestTailer(t *testing.T) {
 	// Before the consumer is assigned partitions, it is not possible to measure
 	// the lag.
 	go tlr.Tail()
+	var offs kafka.TopicPartitions
 	for {
-		offs, err := tlr.GetOffsets()
+		offs, err = tlr.GetOffsets()
 		assert.NoError(t, err)
 		if len(offs) > 0 {
 			break
@@ -77,12 +62,9 @@ func TestTailer(t *testing.T) {
 	assert.NoError(t, err)
 	assert.EqualValues(t, 1, lag)
 	// Offsets should be empty in db.
-	offvgs, err := n.Store.GetMany(ctx, []hangar.KeyGroup{{Prefix: hangar.Key{Data: offsetkey}}})
+	toppars, err := decodeOffsets(offs, n.Store)
 	assert.NoError(t, err)
-	assert.Equal(t, 1, len(offvgs))
-	toppars, err := offsets.DecodeOffsets(offvgs[0])
-	assert.NoError(t, err)
-	assert.ElementsMatch(t, kafka.TopicPartitions{}, toppars)
+	assert.ElementsMatch(t, offs, toppars)
 
 	for {
 		lag, err := tlr.GetLag()
@@ -97,15 +79,11 @@ func TestTailer(t *testing.T) {
 			time.Sleep(tlr.GetPollTimeout())
 		}
 	}
-	// Both subscribers should be notified.
-	assert.EqualValues(t, 2, notifs.Load())
+	assert.EqualValues(t, 1, notifs.Load())
 
 	// Offsets should be stored in db.
 	scope := resource.NewPlaneScope(n.PlaneID)
-	offvgs, err = n.Store.GetMany(ctx, []hangar.KeyGroup{{Prefix: hangar.Key{Data: offsetkey}}})
-	assert.NoError(t, err)
-	require.Equal(t, 1, len(offvgs))
-	toppars, err = offsets.DecodeOffsets(offvgs[0])
+	toppars, err = decodeOffsets(offs, n.Store)
 	assert.NoError(t, err)
 	assert.ElementsMatch(t, kafka.TopicPartitions{
 		{Topic: ptr.To(scope.PrefixedName(nitrous.BINLOG_KAFKA_TOPIC)), Partition: 0, Offset: 1},
