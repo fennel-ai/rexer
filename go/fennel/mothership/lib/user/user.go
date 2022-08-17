@@ -3,13 +3,14 @@ package user
 import (
 	"database/sql"
 	"fennel/lib/ftypes"
+	"fennel/mothership/lib/customer"
 
 	"gorm.io/plugin/soft_delete"
 )
 
 type User struct {
-	Email              string
 	ID                 ftypes.UserId
+	Email              string
 	EncryptedPassword  []byte
 	RememberToken      sql.NullString
 	RememberCreatedAt  sql.NullInt64
@@ -18,11 +19,12 @@ type User struct {
 	ConfirmedAt        sql.NullInt64
 	ResetToken         sql.NullString
 	ResetSentAt        sql.NullInt64
+	CustomerID         uint
+	Customer           customer.Customer
 
 	DeletedAt soft_delete.DeletedAt `gorm:"softDelete:milli"`
-
-	CreatedAt int64 `gorm:"autoUpdateTime:milli"`
-	UpdatedAt int64 `gorm:"autoUpdateTime:milli"`
+	CreatedAt int64                 `gorm:"autoUpdateTime:milli"`
+	UpdatedAt int64                 `gorm:"autoUpdateTime:milli"`
 }
 
 func (u *User) IsConfirmed() bool {
