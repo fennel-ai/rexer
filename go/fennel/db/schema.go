@@ -79,7 +79,7 @@ func syncSchema(db *sqlx.DB, defs Schema) error {
 		procedure := fmt.Sprintf(`
 		 CREATE PROCEDURE %s ()
 		 BEGIN
-			IF (SELECT version FROM schema_version) = %d - 1 
+			IF (SELECT version FROM schema_version FOR UPDATE) = %d - 1
 			THEN
 				 UPDATE schema_version SET version = version + 1;
 				 %s
