@@ -87,10 +87,11 @@ func (nc NitrousClient) Push(ctx context.Context, aggId ftypes.AggId, updates va
 		if !ok {
 			return fmt.Errorf("invalid update: %s. Expected value.Dict", update)
 		}
-		groupkey, ok := row.Get("groupkey")
+		gk, ok := row.Get("groupkey")
 		if !ok {
 			return fmt.Errorf("update %s missing 'groupkey'", update)
 		}
+		groupkey := gk.String()
 		vt, ok := row.Get("timestamp")
 		if !ok || value.Types.Int.Validate(vt) != nil {
 			return fmt.Errorf("update %s missing 'timestamp' with datatype of 'int'", update)
@@ -110,13 +111,13 @@ func (nc NitrousClient) Push(ctx context.Context, aggId ftypes.AggId, updates va
 			Op: &rpc.NitrousOp_AggEvent{
 				AggEvent: &rpc.AggEvent{
 					AggId:     uint32(aggId),
-					Groupkey:  groupkey.String(),
+					Groupkey:  groupkey,
 					Value:     &pv,
 					Timestamp: uint32(timestamp),
 				},
 			},
 		}
-		err = nc.binlog.LogProto(ctx, op, nil)
+		err = nc.binlog.LogProto(ctx, op, []byte(groupkey))
 		if err != nil {
 			return fmt.Errorf("failed to log update to nitrous binlog: %w", err)
 		}
