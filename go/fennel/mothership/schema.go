@@ -116,4 +116,9 @@ var Schema = db.Schema{
                 ADD COLUMN created_at BIGINT UNSIGNED NOT NULL,
                 ADD COLUMN updated_at BIGINT UNSIGNED NOT NULL;
         `,
+	15: `ALTER TABLE eks
+                ADD COLUMN deleted_at BIGINT UNSIGNED NOT NULL,
+                ADD COLUMN created_at BIGINT UNSIGNED NOT NULL,
+                ADD COLUMN updated_at BIGINT UNSIGNED NOT NULL;
+        `,
 }
