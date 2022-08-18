@@ -492,6 +492,8 @@ const planeConfs: Record<number, PlaneConf> = {
         },
         eksConf: {
             nodeGroups: [
+                // TODO(mohit): Consider naming in a consistent way.. long names will hit character limits
+                //
                 // HTTP server node group
                 {
                     name: "p-5-httpserver-ng-arm64",
@@ -520,21 +522,68 @@ const planeConfs: Record<number, PlaneConf> = {
                     capacityType: ON_DEMAND_INSTANCE_TYPE,
                     expansionPriority: 1,
                 },
-                // Query server node group
+                // Query server node groups
+                //
+                // each of them have the same expansion priority - cluster autoscaler will pick one randomly and
+                // try to scale them up. If any of them fails (due to lack of capacity), it will try another
+                // node group immediately. It is okay for on-demand nodegroup to be scaled up, since
+                // it will later be rescheduled to spot nodegroups using rescheduler.
+                // ideally, on-demand nodegroup should have lower priority, but `priority` expander currently
+                // does not take lower priority nodegroups into consideration for scaling.
+                //
+                // we set the maxSize of on-demand nodegroup as 10 - this is required because it is possible that
+                // spot instances are not available at all, requiring all the instances to be scheduled on on-demand
+                // instances - https://github.com/kubernetes/autoscaler/issues/4992
+                //
+                // TODO(mohit): Consider changing query server requests to <16cpu and <32G and provision 4xlarge node
+                // groups
                 {
                     name: "p-5-queryserver-ng-arm64",
                     // TODO(mohit): Move to c7g once they are supported in ap-south-1
                     instanceTypes: ["c6g.8xlarge"],
-                    // at least have 4 nodes (previously this was 2, but our servers have been OOMing for which
-                    // we will have 4 nodes up and running).
+                    minSize: 1,
+                    maxSize: 10,
+                    amiType: DEFAULT_ARM_AMI_TYPE,
+                    labels: {
+                        "node-group": "p-5-queryserver-ng",
+                        "rescheduler-label": "on-demand",
+                    },
+                    capacityType: ON_DEMAND_INSTANCE_TYPE,
+                    expansionPriority: 10,
+                },
+                {
+                    name: "p-5-query-ng-32c-64G-arm-spot",
+                    // TODO(mohit): Move to c7g once they are supported in ap-south-1
+                    //
+                    // TODO(mohit): Consider using NVMe SSD backed instances as well - these should be okay for
+                    // query servers which are "stateless" anyways. However we do run few binaries which are stateful
+                    // and should not be scheduled on these nodes
+                    instanceTypes: ["c6g.8xlarge", "c6gn.8xlarge"],
                     minSize: 2,
                     maxSize: 10,
                     amiType: DEFAULT_ARM_AMI_TYPE,
                     labels: {
-                        "node-group": "p-5-queryserver-ng"
+                        "node-group": "p-5-queryserver-ng",
+                        "rescheduler-label": "spot",
                     },
-                    capacityType: ON_DEMAND_INSTANCE_TYPE,
-                    expansionPriority: 1,
+                    capacityType: SPOT_INSTANCE_TYPE,
+                    expansionPriority: 10,
+                },
+                {
+                    name: "p-5-query-ng-32c-64G-amd-spot",
+                    // TODO(mohit): Consider using NVMe SSD backed instances as well - these should be okay for
+                    // query servers which are "stateless" anyways. However we do run few binaries which are stateful
+                    // and should not be scheduled on these nodes
+                    instanceTypes: ["c6i.8xlarge", "c6a.8xlarge"],
+                    minSize: 1,
+                    maxSize: 10,
+                    amiType: DEFAULT_X86_AMI_TYPE,
+                    labels: {
+                        "node-group": "p-5-queryserver-ng",
+                        "rescheduler-label": "spot",
+                    },
+                    capacityType: SPOT_INSTANCE_TYPE,
+                    expansionPriority: 10,
                 },
                 // Nitrous node group.
                 {
@@ -557,6 +606,10 @@ const planeConfs: Record<number, PlaneConf> = {
                     expansionPriority: 1,
                 }
             ],
+            spotReschedulerConf: {
+                spotNodeLabel: "rescheduler-label=spot",
+                onDemandNodeLabel: "rescheduler-label=on-demand",
+            }
         },
         prometheusConf: {
             useAMP: false
