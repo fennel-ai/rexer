@@ -64,7 +64,7 @@ func NewHangar(planeID ftypes.RealmID, dirname string, blockCacheBytes int64, en
 	opts = opts.WithNumCompactors(2)
 	opts = opts.WithCompactL0OnClose(true)
 	opts = opts.WithIndexCacheSize(2 << 30 /* 2 GB */)
-	// opts = opts.WithMemTableSize(1 << 30 /* 1 GB */)
+	opts = opts.WithNumMemtables(16)
 	opts = opts.WithBlockCacheSize(blockCacheBytes)
 	db, err := badger.Open(opts)
 	if err != nil {
@@ -222,7 +222,10 @@ func (b *badgerDB) SetMany(ctx context.Context, keys []hangar.Key, deltas []hang
 		case err == nil:
 			return nil
 		case errors.Is(err, badger.ErrConflict):
-			log.Print("badgerDB: conflict detected, retrying")
+			zap.L().Info("badgerdb: conflict detected, retrying")
+			// Add random jitter to avoid cascading conflicts.
+			d := time.Millisecond * time.Duration(1000*rand.Float64())
+			time.Sleep(d)
 			continue
 		default:
 			return err
@@ -291,7 +294,10 @@ func (b *badgerDB) DelMany(ctx context.Context, keyGroups []hangar.KeyGroup) err
 		case err == nil:
 			return nil
 		case errors.Is(err, badger.ErrConflict):
-			log.Print("badgerDB: conflict detected, retrying")
+			zap.L().Info("badgerdb: conflict detected, retrying")
+			// Add random jitter to avoid cascading conflicts.
+			d := time.Millisecond * time.Duration(1000*rand.Float64())
+			time.Sleep(d)
 			continue
 		default:
 			return err
