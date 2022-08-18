@@ -136,4 +136,9 @@ var Schema = db.Schema{
                 ADD COLUMN created_at BIGINT UNSIGNED NOT NULL,
                 ADD COLUMN updated_at BIGINT UNSIGNED NOT NULL;
         `,
+	19: `ALTER TABLE elasticache
+                ADD COLUMN deleted_at BIGINT UNSIGNED NOT NULL,
+                ADD COLUMN created_at BIGINT UNSIGNED NOT NULL,
+                ADD COLUMN updated_at BIGINT UNSIGNED NOT NULL;
+        `,
 }
