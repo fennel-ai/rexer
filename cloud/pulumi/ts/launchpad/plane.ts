@@ -17,6 +17,7 @@ import * as glueSource from "../glue-script-source";
 import * as offlineAggregateSources from "../offline-aggregate-script-source";
 import * as planeEksPermissions from "../plane-eks-permissions";
 import * as postgres from "../postgres";
+import * as modelMonitoring from "../model-monitoring";
 import * as util from "../lib/util";
 
 import * as process from "process";
@@ -66,6 +67,8 @@ type EksConf = {
 }
 
 type MilvusConf = {}
+
+type ModelMonitoringConf = {}
 
 type NitrousConf = {
     replicas?: number,
@@ -127,6 +130,8 @@ export type PlaneConf = {
     eksConf: EksConf,
     milvusConf?: MilvusConf,
     nitrousConf?: NitrousConf,
+    // TODO(mohit): Make this default going forward
+    modelMonitoringConf?: ModelMonitoringConf,
 }
 
 export type PlaneOutput = {
@@ -282,6 +287,14 @@ const setupResources = async () => {
             planeId: input.planeId,
             kubeconfig: eksOutput.kubeconfig
         })
+    }
+    if (input.modelMonitoringConf !== undefined) {
+        const modelMonitoringOutput = await modelMonitoring.setup({
+            planeId: input.planeId,
+            region: input.region,
+            roleArn: roleArn,
+            kubeconfig: eksOutput.kubeconfig
+        });
     }
     const confluentOutput = await confluentenv.setup({
         region: input.region,

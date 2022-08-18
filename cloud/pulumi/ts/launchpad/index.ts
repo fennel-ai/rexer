@@ -441,6 +441,7 @@ const planeConfs: Record<number, PlaneConf> = {
             ],
         },
         milvusConf: {},
+        modelMonitoringConf: {},
         // Run nitrous on the plane.
         nitrousConf: {
             replicas: 1,
