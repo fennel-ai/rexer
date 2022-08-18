@@ -1,8 +1,8 @@
 syntax = "proto3";
 
-option go_package = "fennel/lib/billing";
+option go_package = "fennel/lib/usage";
 
-message BillingCountersProto {
+message UsageCountersProto {
   // Number of queries.
   uint64 queries = 1;
   // Number of actions.

@@ -1,11 +1,11 @@
-package billing
+package usage
 
 import (
 	"context"
 	"fennel/kafka"
-	billinglib "fennel/lib/billing"
 	"fennel/lib/timer"
-	"fennel/model/billing"
+	usagelib "fennel/lib/usage"
+	"fennel/model/usage"
 	"fennel/tier"
 	"time"
 
@@ -16,7 +16,7 @@ import (
 // hour or day.
 // We use the FoldingStrategy during kafka read to fold and aggregate counters
 // to the nearest previous hour or day.
-// Billing current is supported at an hour granularity.
+// usage current is supported at an hour granularity.
 // =============================================================
 type FoldingStrategy func(uint64) uint64
 
@@ -44,24 +44,24 @@ func DayInSeconds() uint64 {
 
 // =================================================================
 
-func Insert(ctx context.Context, tier tier.Tier, b *billinglib.BillingCountersDBItem) error {
-	ctx, t := timer.Start(ctx, tier.ID, "controller.billing.insert")
+func Insert(ctx context.Context, tier tier.Tier, b *usagelib.UsageCountersDBItem) error {
+	ctx, t := timer.Start(ctx, tier.ID, "controller.usage.insert")
 	defer t.Stop()
-	bp := billinglib.ToBillingCountersProto(b)
+	bp := usagelib.ToUsageCountersProto(b)
 	if bp.Timestamp == 0 {
 		bp.Timestamp = uint64(tier.Clock.Now())
 	}
 
-	producer := tier.Producers[billinglib.HOURLY_BILLING_LOG_KAFKA_TOPIC]
+	producer := tier.Producers[usagelib.HOURLY_USAGE_LOG_KAFKA_TOPIC]
 	return producer.LogProto(ctx, bp, nil)
 }
 
-func InsertBatch(ctx context.Context, tier tier.Tier, bc []*billinglib.BillingCountersDBItem) error {
-	ctx, t := timer.Start(ctx, tier.ID, "controller.billing.insert")
+func InsertBatch(ctx context.Context, tier tier.Tier, bc []*usagelib.UsageCountersDBItem) error {
+	ctx, t := timer.Start(ctx, tier.ID, "controller.usage.insert")
 	defer t.Stop()
-	producer := tier.Producers[billinglib.HOURLY_BILLING_LOG_KAFKA_TOPIC]
+	producer := tier.Producers[usagelib.HOURLY_USAGE_LOG_KAFKA_TOPIC]
 	for _, b := range bc {
-		bp := billinglib.ToBillingCountersProto(b)
+		bp := usagelib.ToUsageCountersProto(b)
 		if bp.Timestamp == 0 {
 			bp.Timestamp = uint64(tier.Clock.Now())
 		}
@@ -72,8 +72,8 @@ func InsertBatch(ctx context.Context, tier tier.Tier, bc []*billinglib.BillingCo
 	return nil
 }
 
-func Read(ctx context.Context, consumer kafka.FConsumer, timeout time.Duration, foldingStrategy FoldingStrategy) (*billinglib.BillingCountersDBItem, error) {
-	var ret billinglib.BillingCountersProto
+func Read(ctx context.Context, consumer kafka.FConsumer, timeout time.Duration, foldingStrategy FoldingStrategy) (*usagelib.UsageCountersDBItem, error) {
+	var ret usagelib.UsageCountersProto
 	msg, err := consumer.Read(ctx, timeout)
 	if err != nil {
 		return nil, err
@@ -82,7 +82,7 @@ func Read(ctx context.Context, consumer kafka.FConsumer, timeout time.Duration, 
 	if err := proto.Unmarshal(msg, &ret); err != nil {
 		return nil, err
 	}
-	return &billinglib.BillingCountersDBItem{
+	return &usagelib.UsageCountersDBItem{
 		Queries:   ret.Queries,
 		Actions:   ret.Actions,
 		Timestamp: foldingStrategy(ret.Timestamp),
@@ -90,21 +90,21 @@ func Read(ctx context.Context, consumer kafka.FConsumer, timeout time.Duration, 
 
 }
 
-func ReadBatch(ctx context.Context, consumer kafka.FConsumer, count int, timeout time.Duration, foldingStrategy FoldingStrategy) ([]*billinglib.BillingCountersDBItem, error) {
+func ReadBatch(ctx context.Context, consumer kafka.FConsumer, count int, timeout time.Duration, foldingStrategy FoldingStrategy) ([]*usagelib.UsageCountersDBItem, error) {
 	msgs, err := consumer.ReadBatch(ctx, count, timeout)
 	if err != nil {
 		return nil, err
 	}
-	afterFold := make(map[uint64]*billinglib.BillingCountersDBItem)
-	billingCounters := make([]*billinglib.BillingCountersDBItem, 0, len(msgs))
+	afterFold := make(map[uint64]*usagelib.UsageCountersDBItem)
+	usageCounters := make([]*usagelib.UsageCountersDBItem, 0, len(msgs))
 	for i := range msgs {
-		var bc billinglib.BillingCountersProto
+		var bc usagelib.UsageCountersProto
 		if err = proto.Unmarshal(msgs[i], &bc); err != nil {
 			return nil, err
 		}
 		old, ok := afterFold[foldingStrategy(bc.Timestamp)]
 		if !ok {
-			b := billinglib.FromBillingCountersProto(&bc)
+			b := usagelib.FromUsageCountersProto(&bc)
 			b.Timestamp = foldingStrategy(b.Timestamp)
 			afterFold[foldingStrategy(bc.Timestamp)] = b
 		} else {
@@ -113,9 +113,9 @@ func ReadBatch(ctx context.Context, consumer kafka.FConsumer, count int, timeout
 		}
 	}
 	for _, v := range afterFold {
-		billingCounters = append(billingCounters, v)
+		usageCounters = append(usageCounters, v)
 	}
-	return billingCounters, nil
+	return usageCounters, nil
 }
 
 func TransferToDB(ctx context.Context, tr tier.Tier, consumer kafka.FConsumer, foldingStrategy FoldingStrategy) error {
@@ -126,7 +126,7 @@ func TransferToDB(ctx context.Context, tr tier.Tier, consumer kafka.FConsumer, f
 	if len(bc) == 0 {
 		return nil
 	}
-	if err = billing.InsertBillingCounters(ctx, tr, bc); err != nil {
+	if err = usage.InsertUsageCounters(ctx, tr, bc); err != nil {
 		return err
 	}
 	_, err = consumer.Commit()

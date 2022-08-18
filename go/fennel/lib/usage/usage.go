@@ -1,11 +1,11 @@
-package billing
+package usage
 
 const (
-	HOURLY_BILLING_LOG_KAFKA_TOPIC = "hourly_billing_log"
+	HOURLY_USAGE_LOG_KAFKA_TOPIC = "hourly_usage_log"
 )
 
-func FromBillingCountersProto(proto *BillingCountersProto) *BillingCountersDBItem {
-	return &BillingCountersDBItem{
+func FromUsageCountersProto(proto *UsageCountersProto) *UsageCountersDBItem {
+	return &UsageCountersDBItem{
 		Queries:   proto.Queries,
 		Actions:   proto.Actions,
 		Timestamp: proto.Timestamp,
@@ -13,7 +13,7 @@ func FromBillingCountersProto(proto *BillingCountersProto) *BillingCountersDBIte
 }
 
 // This is what gets persisted in DB at an hourly granularity.
-type BillingCountersDBItem struct {
+type UsageCountersDBItem struct {
 	// Number of queries.
 	Queries uint64 `db:"queries"`
 	// Number of actions.
@@ -22,8 +22,8 @@ type BillingCountersDBItem struct {
 	Timestamp uint64 `db:"timestamp"`
 }
 
-func ToBillingCountersProto(b *BillingCountersDBItem) *BillingCountersProto {
-	return &BillingCountersProto{
+func ToUsageCountersProto(b *UsageCountersDBItem) *UsageCountersProto {
+	return &UsageCountersProto{
 		Queries:   b.Queries,
 		Actions:   b.Actions,
 		Timestamp: b.Timestamp,
