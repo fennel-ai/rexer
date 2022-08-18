@@ -588,10 +588,10 @@ const planeConfs: Record<number, PlaneConf> = {
                 // Nitrous node group.
                 {
                     name: "p-5-nitrous-ng-x86",
-                    instanceTypes: ["m6i.8xlarge"],
+                    instanceTypes: ["c6gd.4xlarge"],
                     minSize: 1,
                     maxSize: 1,
-                    amiType: DEFAULT_X86_AMI_TYPE,
+                    amiType: DEFAULT_ARM_AMI_TYPE,
                     capacityType: ON_DEMAND_INSTANCE_TYPE,
                     expansionPriority: 1,
                 },
@@ -617,18 +617,19 @@ const planeConfs: Record<number, PlaneConf> = {
         // Run nitrous on the plane.
         nitrousConf: {
             replicas: 1,
-            storageCapacityGB: 500,
+            useAmd64: false,
+            storageCapacityGB: 2048,
             storageClass: "io2",
             blockCacheMB: 1024 * 8,
             kvCacheMB: 1024 * 75,
             resourceConf: {
                 cpu: {
-                    request: "30000m",
-                    limit: "32000m"
+                    request: "14000m",
+                    limit: "16000m"
                 },
                 memory: {
-                    request: "125G",
-                    limit: "128G",
+                    request: "30G",
+                    limit: "32G",
                 }
             },
             binlog: {
