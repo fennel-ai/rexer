@@ -111,4 +111,19 @@ var Schema = db.Schema{
                 ADD COLUMN created_at BIGINT UNSIGNED NOT NULL,
                 ADD COLUMN updated_at BIGINT UNSIGNED NOT NULL;
         `,
+	14: `ALTER TABLE data_plane
+                ADD COLUMN deleted_at BIGINT UNSIGNED NOT NULL,
+                ADD COLUMN created_at BIGINT UNSIGNED NOT NULL,
+                ADD COLUMN updated_at BIGINT UNSIGNED NOT NULL;
+        `,
+	15: `ALTER TABLE eks
+                ADD COLUMN deleted_at BIGINT UNSIGNED NOT NULL,
+                ADD COLUMN created_at BIGINT UNSIGNED NOT NULL,
+                ADD COLUMN updated_at BIGINT UNSIGNED NOT NULL;
+        `,
+	16: `ALTER TABLE kafka
+                ADD COLUMN deleted_at BIGINT UNSIGNED NOT NULL,
+                ADD COLUMN created_at BIGINT UNSIGNED NOT NULL,
+                ADD COLUMN updated_at BIGINT UNSIGNED NOT NULL;
+        `,
 }
