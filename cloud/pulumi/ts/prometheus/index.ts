@@ -201,7 +201,7 @@ async function setupPrometheus(input: inputType) {
             // enable scraping node labels to determine its capacity type and the node group it belongs to
             "kube-state-metrics": {
                 // kube-state-metrics is enabled by default and is installed as a dependency
-                metricLabelsAllowlist: ["nodes=[eks.amazonaws.com/capacityType,eks.amazonaws.com/nodegroup]"],
+                metricLabelsAllowlist: ["nodes=[eks.amazonaws.com/capacityType,eks.amazonaws.com/nodegroup,kubernetes.io/arch]"],
             }
         },
     }, {provider: k8sProvider, protect: input.protect});
