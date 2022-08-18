@@ -21,7 +21,7 @@ import * as modelMonitoring from "../model-monitoring";
 import * as util from "../lib/util";
 
 import * as process from "process";
-import {NodeGroupConf, SpotReschedulerConf} from "../eks";
+import { NodeGroupConf, SpotReschedulerConf } from "../eks";
 
 type VpcConfig = {
     cidr: string,
@@ -72,6 +72,7 @@ type ModelMonitoringConf = {}
 
 type NitrousConf = {
     replicas?: number,
+    useAmd64?: boolean,
     enforceReplicaIsolation?: boolean,
     resourceConf?: util.ResourceConf,
     nodeLabels?: Record<string, string>,
@@ -337,12 +338,7 @@ const setupResources = async () => {
             otlpEndpoint: telemetryOutput.otelCollectorEndpoint,
 
             replicas: input.nitrousConf.replicas,
-            // We only use amd64 for nitrous instead of arm64 because of a known
-            // issue in badger/ristretto that causes error in initializing the
-            // badger db.
-            // Issue: https://discuss.dgraph.io/t/error-mremap-size-mismatch-on-arm64/15333
-            // Fix (merged but not released): https://github.com/dgraph-io/ristretto/pull/281
-            useAmd64: true,
+            useAmd64: input.nitrousConf.useAmd64,
             enforceReplicaIsolation: input.nitrousConf.enforceReplicaIsolation,
             resourceConf: input.nitrousConf.resourceConf,
             nodeLabels: input.nitrousConf.nodeLabels,
