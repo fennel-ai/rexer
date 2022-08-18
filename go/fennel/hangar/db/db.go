@@ -17,6 +17,7 @@ import (
 	"fennel/lib/utils/parallel"
 
 	"github.com/dgraph-io/badger/v3"
+	"github.com/dgraph-io/badger/v3/options"
 	"go.uber.org/zap"
 )
 
@@ -57,8 +58,14 @@ func (b *badgerDB) Close() error {
 func NewHangar(planeID ftypes.RealmID, dirname string, blockCacheBytes int64, enc hangar.Encoder) (*badgerDB, error) {
 	opts := badger.DefaultOptions(dirname)
 	opts = opts.WithLogger(NewLogger(zap.L()))
+	opts = opts.WithValueThreshold(1 << 10 /* 1 KB */)
+	opts = opts.WithCompression(options.ZSTD)
+	opts = opts.WithBlockSize(4 * 1024)
+	opts = opts.WithNumCompactors(2)
+	opts = opts.WithCompactL0OnClose(true)
+	opts = opts.WithIndexCacheSize(2 << 30 /* 2 GB */)
+	// opts = opts.WithMemTableSize(1 << 30 /* 1 GB */)
 	opts = opts.WithBlockCacheSize(blockCacheBytes)
-	opts = opts.WithBlockSize(16 * 1024)
 	db, err := badger.Open(opts)
 	if err != nil {
 		return nil, err
