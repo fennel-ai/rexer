@@ -227,6 +227,8 @@ export const setup = async (input: inputType) => {
         console.log('storageClass is undefined for Nitrous - will use default storage class for persistent volume.')
     }
 
+    const memlimit = input.resourceConf?.memory.limit || DEFAULT_MEMORY_LIMIT
+
     const appStatefulset = image.imageName.apply(() => {
         return new k8s.apps.v1.StatefulSet("nitrous-statefulset", {
             metadata: {
@@ -338,6 +340,10 @@ export const setup = async (input: inputType) => {
                                         value: "128",
                                     },
                                     {
+                                        name: "GOMEMLIMIT",
+                                        value: memlimit + "iB",
+                                    },
+                                    {
                                         name: "OTEL_SERVICE_NAME",
                                         value: "nitrous",
                                     },
@@ -361,7 +367,7 @@ export const setup = async (input: inputType) => {
                                     },
                                     limits: {
                                         "cpu": input.resourceConf?.cpu.limit || DEFAULT_CPU_LIMIT,
-                                        "memory": input.resourceConf?.memory.limit || DEFAULT_MEMORY_LIMIT,
+                                        "memory": memlimit,
                                     }
                                 },
                                 readinessProbe: ReadinessProbe(healthPort),

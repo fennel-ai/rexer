@@ -1,5 +1,5 @@
 # syntax=docker/dockerfile:1
-FROM --platform=linux/amd64 golang:1.18-bullseye AS builder
+FROM --platform=linux/amd64 golang:1.19-bullseye AS builder
 
 # Install jemalloc
 RUN apt-get update -y && apt-get install -y git autoconf
@@ -13,7 +13,7 @@ COPY go/fennel/ ./
 WORKDIR /app/go/fennel
 RUN go build -o nitrous -tags jemalloc fennel/service/nitrous
 
-FROM --platform=linux/amd64 golang:1.18-bullseye
+FROM --platform=linux/amd64 golang:1.19-bullseye
 WORKDIR /root/
 COPY --from=builder /app/go/fennel/nitrous ./
 CMD ["./nitrous"]
