@@ -1,12 +1,14 @@
 package user
 
 import (
+	"bytes"
 	"context"
 	"database/sql"
 	"encoding/base64"
 	"encoding/binary"
 	"errors"
 	"fmt"
+	"html/template"
 	"time"
 
 	"golang.org/x/crypto/bcrypt"
@@ -39,10 +41,9 @@ func newUser(db *gorm.DB, email, password string) (lib.User, error) {
 }
 
 func generateRememberToken(db *gorm.DB) string {
-	var user lib.User
 	for {
 		token := generateToken()
-		result := db.Find(&user, "remember_token = ?", token)
+		result := db.Take(&lib.User{}, "remember_token = ?", token)
 		if result.RowsAffected == 0 {
 			return token
 		}
@@ -69,12 +70,31 @@ func SendConfirmationEmail(c context.Context, db *gorm.DB, client *sendgrid.Clie
 	}
 
 	from := mail.NewEmail("Xiao Jiang", "xiao+dev@fennel.ai")
-	subject := "Welcome to Fennel.ai! Confirm Your Email"
+	subject := "Almost there, let’s confirm your email"
 	to := mail.NewEmail("", user.Email)
 
 	link := generateConfirmationLink(token)
-	plainTextContent := fmt.Sprintf("confirm email at %s", link.String())
-	htmlContent := fmt.Sprintf(`confirm email at <a href="%s" target="_blank">...</a>`, link.String())
+
+	// TODO(xiao) plaintext fallback
+	plainTextContent := ""
+
+	tmpl, err := template.ParseFiles("mothership/templates/email/confirm.tmpl")
+	if err != nil {
+		return user, err
+	}
+	data := struct {
+		ConfirmURL string
+		Year       int
+	}{
+		ConfirmURL: link.String(),
+		Year:       time.Now().Year(),
+	}
+	buf := bytes.NewBufferString("")
+
+	if err := tmpl.Execute(buf, data); err != nil {
+		return user, err
+	}
+	htmlContent := buf.String()
 	message := mail.NewSingleEmail(from, subject, to, plainTextContent, htmlContent)
 	if _, err := client.Send(message); err != nil {
 		return user, err
@@ -95,10 +115,9 @@ func generateConfirmationLink(token string) url.URL {
 }
 
 func generateConfirmationToken(db *gorm.DB) string {
-	var user lib.User
 	for {
 		token := generateToken()
-		result := db.Find(&user, "confirmation_token = ?", token)
+		result := db.Take(&lib.User{}, "confirmation_token = ?", token)
 		if result.RowsAffected == 0 {
 			return token
 		}
@@ -106,10 +125,9 @@ func generateConfirmationToken(db *gorm.DB) string {
 }
 
 func generateResetToken(db *gorm.DB) string {
-	var user lib.User
 	for {
 		token := generateToken()
-		result := db.Find(&user, "reset_token = ?", token)
+		result := db.Take(&lib.User{}, "reset_token = ?", token)
 		if result.RowsAffected == 0 {
 			return token
 		}
