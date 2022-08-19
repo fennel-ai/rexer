@@ -118,7 +118,7 @@ function SignUpForm({onSubmit}: SignUpFormProps) {
                         type="primary"
                         htmlType="submit"
                         className={styles.formButton}
-                        style={{background: styles.formButtonBackground}}
+                        size="large"
                         disabled={submitting}>
 
                         {submitting ? (<div> <LoadingOutlined spin /> Signing Up... </div>) : "Sign Up"}
@@ -188,7 +188,7 @@ function ResendButton({email}: {email: string}) {
                 type="primary"
                 htmlType="submit"
                 className={styles.resendButton}
-                style={{background: styles.resendButtonBackground}}
+                size="large"
                 disabled={resent}>
 
                 Resend email

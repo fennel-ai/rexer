@@ -279,14 +279,21 @@ func (s *server) SignIn(c *gin.Context) {
 	user, err := userC.SignIn(c.Request.Context(), s.db, form.Email, form.Password)
 
 	if err != nil {
-		// TODO(xiao) better error handling
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error": err.Error(),
-		})
-	} else {
-		saveUserIntoCookie(sessions.Default(c), user)
-		c.JSON(http.StatusOK, gin.H{})
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			c.JSON(http.StatusBadRequest, gin.H{
+				"error": "User not found",
+			})
+		} else {
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"error": "Fail to sign in, please try again later.",
+			})
+			log.Printf("Failed to sign in: %v\n", err)
+		}
+		return
 	}
+
+	saveUserIntoCookie(sessions.Default(c), user)
+	c.JSON(http.StatusOK, gin.H{})
 }
 
 func (s *server) ResendConfirmationEmail(c *gin.Context) {

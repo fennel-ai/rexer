@@ -99,7 +99,7 @@ function ResetForm() {
                     type="primary"
                     htmlType="submit"
                     className={styles.formButton}
-                    style={{background: styles.formButtonBackground}}
+                    size="large"
                     disabled={submitting}>
 
                     {submitting ? (<div> <LoadingOutlined spin /> Sending... </div>) : "Confirm Password Reset"}

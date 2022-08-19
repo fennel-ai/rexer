@@ -82,7 +82,7 @@ function SignInForm() {
                     type="primary"
                     htmlType="submit"
                     className={styles.formButton}
-                    style={{background: styles.formButtonBackground}}
+                    size="large"
                     disabled={submitting}>
 
                     {submitting ? (<div> <LoadingOutlined spin /> Signing In... </div>) : "Sign In"}

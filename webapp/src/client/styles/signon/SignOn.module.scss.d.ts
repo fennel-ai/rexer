@@ -5,7 +5,6 @@ interface CssExports {
   'confirmEmailContent': string;
   'container': string;
   'formButton': string;
-  'formButtonBackground': string;
   'formItem': string;
   'header': string;
   'headerAlt': string;
@@ -16,7 +15,6 @@ interface CssExports {
   'missEmail': string;
   'page': string;
   'resendButton': string;
-  'resendButtonBackground': string;
 }
 export const cssExports: CssExports;
 export default cssExports;

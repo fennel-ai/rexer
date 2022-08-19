@@ -80,7 +80,7 @@ function ForgotForm() {
                     type="primary"
                     htmlType="submit"
                     className={styles.formButton}
-                    style={{background: styles.formButtonBackground}}
+                    size="large"
                     disabled={submitting}>
 
                     {submitting ? (<> <LoadingOutlined spin /> Sending... </>) : "Send a link to reset your password"}
