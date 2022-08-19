@@ -35,7 +35,9 @@ type serverArgs struct {
 	mothership.MothershipArgs
 	SessionKey     string `arg:"required,--bridge_session_key,env:BRIDGE_SESSION_KEY"`
 	SendgridAPIKey string `arg:"required,--sendgrid_api_key,env:SENDGRID_API_KEY"`
-	RandSeed       int64  `arg:"--rand_seed,env:RAND_SEED"`
+	BridgeENV      string `arg:"required,--bridge_env,env:BRIDGE_ENV"` // dev, prod
+
+	RandSeed int64 `arg:"--rand_seed,env:RAND_SEED"`
 }
 
 func NewServer() (server, error) {
@@ -107,6 +109,17 @@ func (s *server) setupRouter() {
 	auth.GET("/actions", s.Actions)
 	auth.GET("/features", s.Features)
 	auth.POST("/logout", s.Logout)
+
+	// dev only endpoints
+	if s.isDev() {
+		s.LoadHTMLGlob("mothership/templates/email/*.tmpl")
+		s.GET("/email/confirm", s.debugConfirmEmail)
+		s.GET("/email/reset", s.debugResetPwdEmail)
+	}
+}
+
+func (s *server) isDev() bool {
+	return s.args.BridgeENV == "dev"
 }
 
 const (
@@ -422,4 +435,18 @@ func (s *server) Logout(c *gin.Context) {
 		}
 	}
 	c.JSON(http.StatusOK, gin.H{})
+}
+
+func (s *server) debugConfirmEmail(c *gin.Context) {
+	c.HTML(http.StatusOK, "confirm_email.tmpl", gin.H{
+		"ConfirmURL": "https://google.com",
+		"Year":       2046,
+	})
+}
+
+func (s *server) debugResetPwdEmail(c *gin.Context) {
+	c.HTML(http.StatusOK, "reset_password.tmpl", gin.H{
+		"ResetURL": "https://google.com",
+		"Year":     2046,
+	})
 }
