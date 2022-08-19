@@ -41,7 +41,7 @@ func TestInitRestore(t *testing.T) {
 				continue
 			}
 			assert.NoError(t, err)
-			n.Logger.Info("Current lag", zap.Int("value", lag))
+			zap.L().Info("Current lag", zap.Int("value", lag))
 			if lag == 0 {
 				count++
 			}

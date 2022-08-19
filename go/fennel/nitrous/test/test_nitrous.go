@@ -35,10 +35,10 @@ func NewTestNitrous[TB testing.TB](t TB) TestNitrous {
 	assert.NoError(t, err)
 	broker := fkafka.NewMockTopicBroker()
 	logger, err := zap.NewDevelopment()
+	zap.ReplaceGlobals(logger)
 	assert.NoError(t, err)
 	n := nitrous.Nitrous{
 		PlaneID: planeId,
-		Logger:  logger,
 		Store:   db,
 		Clock:   clock.New(),
 		KafkaConsumerFactory: func(config fkafka.ConsumerConfig) (fkafka.FConsumer, error) {

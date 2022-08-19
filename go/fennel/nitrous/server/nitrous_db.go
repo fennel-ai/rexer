@@ -43,7 +43,7 @@ func (ndb *NitrousDB) startReportingKafkaLag() {
 		for range time.Tick(10 * time.Second) {
 			lag, err := ndb.GetLag(context.Background())
 			if err != nil {
-				ndb.nos.Logger.Error("Failed to get kafka backlog", zap.Error(err))
+				zap.L().Error("Failed to get kafka backlog", zap.Error(err))
 			}
 			backlog.Set(float64(lag))
 		}
@@ -164,7 +164,7 @@ func (ndb *NitrousDB) Process(ctx context.Context, ops []*rpc.NitrousOp, reader 
 		}
 	}
 	if len(tablesDelta.Fields) > 0 {
-		ndb.nos.Logger.Info("Received aggregate definition updates", zap.Int("count", len(tablesDelta.Fields)))
+		zap.L().Info("Received aggregate definition updates", zap.Int("count", len(tablesDelta.Fields)))
 		keys = append(keys, hangar.Key{Data: agg_table_key})
 		vgs = append(vgs, tablesDelta)
 	}
@@ -198,12 +198,12 @@ func (ndb *NitrousDB) getRowUpdates(ctx context.Context, ops []*rpc.NitrousOp, r
 	ndb.tables.Range(func(key, value interface{}) bool {
 		aggKey, table := key.(aggKey), value.(store.Table)
 		tierId, aggId, codec := aggKey.tierId, aggKey.aggId, aggKey.codec
-		ndb.nos.Logger.Debug("Iterating over new ops for table",
+		zap.L().Debug("Iterating over new ops for table",
 			zap.Uint64("tierId", uint64(tierId)), zap.Uint64("aggId", uint64(aggId)), zap.Int("codec", int(codec)))
 		eg.Go(func() error {
 			ks, vs, err := table.Process(ctx, ops, reader)
 			if err != nil {
-				ndb.nos.Logger.Error("Failed to process ops",
+				zap.L().Error("Failed to process ops",
 					zap.Uint64("tierId", uint64(tierId)), zap.Uint64("aggId", uint64(aggId)), zap.Int("codec", int(codec)), zap.Error(err))
 				return err
 			}
@@ -229,14 +229,14 @@ func (ndb *NitrousDB) restoreAggregates(h hangar.Hangar) error {
 		return fmt.Errorf("failed to get aggregate definitions: %w", err)
 	}
 	if len(vgs) == 0 {
-		ndb.nos.Logger.Info("No aggregate definitions")
+		zap.L().Info("No aggregate definitions")
 		return nil
 	}
 	vg := vgs[0]
 	count := 0
 	for i, field := range vg.Fields {
 		if len(field) == 0 {
-			ndb.nos.Logger.Warn("Skipping aggregate definition with empty field", zap.Binary("field", field), zap.Binary("value", vg.Values[i]))
+			zap.L().Warn("Skipping aggregate definition with empty field", zap.Binary("field", field), zap.Binary("value", vg.Values[i]))
 			continue
 		}
 		_, tierId, aggId, codec, err := decodeField(field)
@@ -244,7 +244,7 @@ func (ndb *NitrousDB) restoreAggregates(h hangar.Hangar) error {
 			return fmt.Errorf("failed to decode %s: %w", string(field), err)
 		}
 		if len(vg.Values[i]) == 0 {
-			ndb.nos.Logger.Debug("Skipping deactivated aggregate", zap.Uint64("tierId", uint64(tierId)), zap.Uint64("aggId", uint64(aggId)))
+			zap.L().Debug("Skipping deactivated aggregate", zap.Uint64("tierId", uint64(tierId)), zap.Uint64("aggId", uint64(aggId)))
 			continue
 		}
 		var popts aggregate.AggOptions
@@ -255,7 +255,7 @@ func (ndb *NitrousDB) restoreAggregates(h hangar.Hangar) error {
 		options := aggregate.FromProtoOptions(&popts)
 		err = ndb.setupAggregateTable(tierId, aggId, codec, options)
 		if errors.Is(err, store.ErrNotSupported) {
-			ndb.nos.Logger.Info("Skipping codec for aggregate", zap.Uint64("tierId", uint64(tierId)), zap.Uint64("aggId", uint64(aggId)), zap.Int("codec", int(codec)))
+			zap.L().Info("Skipping codec for aggregate", zap.Uint64("tierId", uint64(tierId)), zap.Uint64("aggId", uint64(aggId)), zap.Int("codec", int(codec)))
 			continue
 		}
 		if err != nil {
@@ -263,7 +263,7 @@ func (ndb *NitrousDB) restoreAggregates(h hangar.Hangar) error {
 		}
 		count++
 	}
-	ndb.nos.Logger.Info("Restored aggregate definitions", zap.Int("active", count), zap.Int("total", len(vg.Fields)))
+	zap.L().Info("Restored aggregate definitions", zap.Int("active", count), zap.Int("total", len(vg.Fields)))
 	return nil
 }
 

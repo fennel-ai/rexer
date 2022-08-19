@@ -44,7 +44,6 @@ type KafkaConsumerFactory func(libkafka.ConsumerConfig) (libkafka.FConsumer, err
 type Nitrous struct {
 	PlaneID              ftypes.RealmID
 	Identity             string
-	Logger               *zap.Logger
 	Clock                clock.Clock
 	Store                hangar.Hangar
 	KafkaConsumerFactory KafkaConsumerFactory
@@ -101,7 +100,6 @@ func CreateFromArgs(args NitrousArgs) (Nitrous, error) {
 		Identity:             args.Identity,
 		KafkaConsumerFactory: consumerFactory,
 		Clock:                clock.New(),
-		Logger:               logger,
 		Store:                db,
 	}, nil
 }

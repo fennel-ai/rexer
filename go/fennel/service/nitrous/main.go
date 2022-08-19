@@ -47,7 +47,7 @@ func main() {
 	// Initialize the db.
 	svr, err := server.InitDB(n)
 	if err != nil {
-		n.Logger.Fatal("Failed to initialize db", zap.Error(err))
+		zap.L().Fatal("Failed to initialize db", zap.Error(err))
 	}
 	svr.Start()
 
@@ -61,10 +61,10 @@ func main() {
 
 	lis, err := net.Listen("tcp", fmt.Sprintf(":%d", flags.ListenPort))
 	if err != nil {
-		n.Logger.Fatal("Failed to listen", zap.Uint32("port", flags.ListenPort), zap.Error(err))
+		zap.L().Fatal("Failed to listen", zap.Uint32("port", flags.ListenPort), zap.Error(err))
 	}
 	s := rpc.NewServer(svr)
 	if err = s.Serve(lis); err != nil {
-		n.Logger.Fatal("Server terminated / failed to start", zap.Error(err))
+		zap.L().Fatal("Server terminated / failed to start", zap.Error(err))
 	}
 }

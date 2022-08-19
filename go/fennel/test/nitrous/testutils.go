@@ -26,7 +26,7 @@ func StartNitrousServer(t *testing.T, n nitrous.Nitrous) (*rpc.Server, net.Addr)
 	db.Start()
 	remote := rpc.NewServer(db)
 	go func() {
-		n.Logger.Info("Starting nitrous server", zap.String("addr", lis.Addr().String()))
+		zap.L().Info("Starting nitrous server", zap.String("addr", lis.Addr().String()))
 		err = remote.Serve(lis)
 		assert.NoError(t, err)
 	}()
