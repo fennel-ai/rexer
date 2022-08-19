@@ -17,9 +17,9 @@ func testInsertAndQuery(t *testing.T, p provider) {
 
 	startTime := uint64(tier.Clock.Now())
 	endTime := startTime + 1
-	items := make([]*usagelib.UsageCountersDBItem, 4)
+	items := make([]*usagelib.UsageCountersProto, 4)
 	for i := 0; i < 4; i++ {
-		items[i] = &usagelib.UsageCountersDBItem{
+		items[i] = &usagelib.UsageCountersProto{
 			Queries:   3,
 			Actions:   3,
 			Timestamp: startTime,

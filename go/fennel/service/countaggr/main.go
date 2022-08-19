@@ -24,6 +24,7 @@ import (
 
 	connector "fennel/controller/data_integration"
 	"fennel/lib/data_integration"
+	usagelib "fennel/lib/usage"
 	connectorModel "fennel/model/data_integration"
 
 	_ "fennel/opdefs" // ensure that all operators are present in the binary
@@ -312,7 +313,7 @@ func startUsageCountersDBInsertion(tr tier.Tier) error {
 		defer consumer.Close()
 		ctx := context.Background()
 		for {
-			if err := usagecontroller.TransferToDB(ctx, tr, consumer, usagecontroller.HourlyFold); err != nil {
+			if err := usagecontroller.TransferToDB(ctx, consumer, tr, usagelib.HourlyFold, 1000, time.Minute); err != nil {
 				tr.Logger.Error("error while reading/writing usage counters to db:", zap.Error(err))
 			}
 		}

@@ -13,6 +13,7 @@ import (
 	"syscall"
 	"time"
 
+	"fennel/controller/usage"
 	httplib "fennel/lib/http"
 	"fennel/lib/timer"
 	"fennel/lib/utils/memory"
@@ -137,8 +138,10 @@ func main() {
 	// router.Use(httplib.TimeoutMiddleware(2 * time.Second))
 	// router.Use(httplib.RateLimitingMiddleware(1000))
 	router.Use(httplib.Tracer(tier.Logger, time.Millisecond*500))
-
-	controller := server{tier}
+	cctx, controllerCancel := context.WithCancel(context.Background())
+	defer controllerCancel()
+	usageController := usage.NewController(cctx, &tier, 10*time.Second, 50, 50, 1000)
+	controller := server{tier: tier, usageController: usageController}
 	controller.setHandlers(router)
 	// Set handlers for the log inspector.
 	inspector := inspector.NewInspector(tier, flags.InspectorArgs)
@@ -178,9 +181,6 @@ func main() {
 	<-stopped
 	log.Println("server stopped...")
 
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-	defer cancel()
-
 	// Shutdown gracefully shuts down the server without interrupting any active connections.
 	//
 	// Shutdown waits indefinitely for connections to return to idle and then shut down - therefore we pass a context
@@ -190,6 +190,8 @@ func main() {
 	// NOTE: Shutdown does not attempt to close nor wait for "hijacked" connections such as WebSockets - these needs to
 	// separately notify those connections to shutdown and wait for them to close.
 	// `RegisterOnShutdown` is a way to register those notification functions
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
 	if err := srv.Shutdown(ctx); err != nil {
 		log.Fatalf("server shutdown failed: %v", err)
 	}

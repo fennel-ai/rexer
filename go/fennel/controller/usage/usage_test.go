@@ -3,7 +3,6 @@ package usage
 import (
 	"context"
 	"fennel/kafka"
-	"fennel/lib/usage"
 	usagelib "fennel/lib/usage"
 	"fennel/lib/utils"
 	usagemodel "fennel/model/usage"
@@ -22,7 +21,8 @@ func TestInsertAndRead(t *testing.T) {
 	defer test.Teardown(tier)
 	ctx := context.Background()
 	timestamp := uint64(tier.Clock.Now())
-	assert.NoError(t, Insert(ctx, tier, &usage.UsageCountersDBItem{Queries: 3, Actions: 4, Timestamp: timestamp}))
+	controller := NewController(ctx, &tier, 1*time.Second, 50, 50, 50)
+	controller.IncCounter(&usagelib.UsageCountersProto{Queries: 3, Actions: 4, Timestamp: timestamp})
 	consumer, err := tier.NewKafkaConsumer(
 		kafka.ConsumerConfig{
 			Scope:        resource.NewTierScope(tier.ID),
@@ -33,11 +33,12 @@ func TestInsertAndRead(t *testing.T) {
 	)
 	assert.NoError(t, err)
 	defer consumer.Close()
-	usageCounter, err := Read(ctx, consumer, 5*time.Second, HourlyFold)
+	usageCounter, err := ReadBatch(ctx, consumer, 1, 5*time.Second, usagelib.HourlyFold)
 	assert.NoError(t, err)
-	assert.Equal(t, uint64(3), usageCounter.Queries)
-	assert.Equal(t, uint64(4), usageCounter.Actions)
-	assert.Equal(t, HourlyFold(timestamp), usageCounter.Timestamp)
+	assert.Equal(t, 1, len(usageCounter))
+	assert.Equal(t, uint64(3), usageCounter[0].Queries)
+	assert.Equal(t, uint64(4), usageCounter[0].Actions)
+	assert.Equal(t, usagelib.HourlyFold(timestamp), usageCounter[0].Timestamp)
 
 }
 
@@ -45,16 +46,15 @@ func TestInsertBatchAndReadBatchAndTransferToDB(t *testing.T) {
 	tier := test.Tier(t)
 	defer test.Teardown(tier)
 	ctx := context.Background()
-	usageCountersItems := make([]*usage.UsageCountersDBItem, 10)
-	startTime := HourlyFold(uint64(tier.Clock.Now()))
+	controller := NewController(ctx, &tier, 1*time.Second, 50, 50, 50)
+	startTime := usagelib.HourlyFold(uint64(tier.Clock.Now()))
 	for i := 0; i < 10; i++ {
-		usageCountersItems[i] = &usagelib.UsageCountersDBItem{
+		controller.IncCounter(&usagelib.UsageCountersProto{
 			Queries:   uint64(i),
 			Actions:   uint64(i),
-			Timestamp: startTime + (HourInSeconds()*uint64(i))/2,
-		}
+			Timestamp: startTime + (usagelib.HourInSeconds()*uint64(i))/2,
+		})
 	}
-	assert.NoError(t, InsertBatch(ctx, tier, usageCountersItems))
 	wg := sync.WaitGroup{}
 	wg.Add(2)
 	go func() {
@@ -68,7 +68,7 @@ func TestInsertBatchAndReadBatchAndTransferToDB(t *testing.T) {
 		)
 		assert.NoError(t, err)
 		defer consumer.Close()
-		usageCountersRead, err := ReadBatch(ctx, consumer, 10, 5*time.Second, HourlyFold)
+		usageCountersRead, err := ReadBatch(ctx, consumer, 10, 5*time.Second, usagelib.HourlyFold)
 		assert.NoError(t, err)
 		assert.Equal(t, 5, len(usageCountersRead))
 		sort.Slice(usageCountersRead, func(i, j int) bool {
@@ -77,7 +77,7 @@ func TestInsertBatchAndReadBatchAndTransferToDB(t *testing.T) {
 		for i := 0; i < 5; i++ {
 			assert.Equal(t, uint64(4*i+1), usageCountersRead[i].Queries)
 			assert.Equal(t, uint64(4*i+1), usageCountersRead[i].Actions)
-			assert.Equal(t, startTime+(HourInSeconds()*uint64(i)), usageCountersRead[i].Timestamp)
+			assert.Equal(t, startTime+(usagelib.HourInSeconds()*uint64(i)), usageCountersRead[i].Timestamp)
 		}
 		wg.Done()
 	}()
@@ -92,16 +92,16 @@ func TestInsertBatchAndReadBatchAndTransferToDB(t *testing.T) {
 		)
 		assert.NoError(t, err)
 		defer consumer.Close()
-		assert.NoError(t, TransferToDB(ctx, tier, consumer, HourlyFold))
+		assert.NoError(t, TransferToDB(ctx, consumer, tier, usagelib.HourlyFold, 1000, 10*time.Second))
 		previous := uint64(0)
 		for i := 0; i < 5; i++ {
 			current := uint64(4*i+1) + previous
-			b, err := usagemodel.GetUsageCounters(ctx, tier, startTime, startTime+HourInSeconds()*uint64(i)+1)
+			b, err := usagemodel.GetUsageCounters(ctx, tier, startTime, startTime+usagelib.HourInSeconds()*uint64(i)+1)
 			assert.NoError(t, err)
 			assert.Equal(t, current, b.Queries)
 			assert.Equal(t, current, b.Actions)
 			assert.Equal(t, startTime, b.StartTime)
-			assert.Equal(t, startTime+HourInSeconds()*uint64(i)+1, b.EndTime)
+			assert.Equal(t, startTime+usagelib.HourInSeconds()*uint64(i)+1, b.EndTime)
 			previous = current
 		}
 		wg.Done()

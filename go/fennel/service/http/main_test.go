@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"encoding/json"
+	usagecontroller "fennel/controller/usage"
 	"fmt"
 	"io/ioutil"
 	"net/http/httptest"
@@ -71,8 +72,10 @@ func TestLogFetchServerClient(t *testing.T) {
 	// create a service
 	defer test.Teardown(tier)
 	ctx := context.Background()
-
-	controller := server{tier: tier}
+	cctx, cancelFn := context.WithCancel(ctx)
+	defer cancelFn()
+	usageController := usagecontroller.NewController(cctx, &tier, 10*time.Second, 50, 50, 1000)
+	controller := server{tier: tier, usageController: usageController}
 	server := startTestServer(controller)
 	defer server.Close()
 	c, err := client.NewClient(server.URL, server.Client())
@@ -208,9 +211,10 @@ func TestActionDedupedPerActionType(t *testing.T) {
 	// create a service
 	tier := test.Tier(t)
 	defer test.Teardown(tier)
-	ctx := context.Background()
-
-	controller := server{tier: tier}
+	ctx, cancelFn := context.WithCancel(context.Background())
+	defer cancelFn()
+	usageController := usagecontroller.NewController(ctx, &tier, 10*time.Second, 50, 50, 1000)
+	controller := server{tier: tier, usageController: usageController}
 	server := startTestServer(controller)
 	defer server.Close()
 	c, err := client.NewClient(server.URL, server.Client())
@@ -288,7 +292,10 @@ func TestProfileServerClient(t *testing.T) {
 	tier := test.Tier(t)
 	defer test.Teardown(tier)
 
-	controller := server{tier: tier}
+	ctx, cancelFn := context.WithCancel(context.Background())
+	defer cancelFn()
+	usageController := usagecontroller.NewController(ctx, &tier, 10*time.Second, 50, 50, 1000)
+	controller := server{tier: tier, usageController: usageController}
 	server := startTestServer(controller)
 	defer server.Close()
 	c, err := client.NewClient(server.URL, server.Client())
@@ -323,7 +330,10 @@ func TestSetProfilesQueuesToKafka(t *testing.T) {
 	tier := test.Tier(t)
 	defer test.Teardown(tier)
 
-	controller := server{tier: tier}
+	ctx, cancelFn := context.WithCancel(context.Background())
+	defer cancelFn()
+	usageController := usagecontroller.NewController(ctx, &tier, 10*time.Second, 50, 50, 1000)
+	controller := server{tier: tier, usageController: usageController}
 	server := startTestServer(controller)
 	defer server.Close()
 	c, err := client.NewClient(server.URL, server.Client())
@@ -356,7 +366,10 @@ func TestQuery(t *testing.T) {
 	tier := test.Tier(t)
 	defer test.Teardown(tier)
 
-	controller := server{tier: tier}
+	ctx, cancelFn := context.WithCancel(context.Background())
+	defer cancelFn()
+	usageController := usagecontroller.NewController(ctx, &tier, 10*time.Second, 50, 50, 1000)
+	controller := server{tier: tier, usageController: usageController}
 	server := startTestServer(controller)
 	defer server.Close()
 	c, err := client.NewClient(server.URL, server.Client())
@@ -410,7 +423,10 @@ func TestStoreRunQuery(t *testing.T) {
 	tier := test.Tier(t)
 	defer test.Teardown(tier)
 
-	controller := server{tier: tier}
+	ctx, cancelFn := context.WithCancel(context.Background())
+	defer cancelFn()
+	usageController := usagecontroller.NewController(ctx, &tier, 10*time.Second, 50, 50, 1000)
+	controller := server{tier: tier, usageController: usageController}
 	server := startTestServer(controller)
 	defer server.Close()
 	c, err := client.NewClient(server.URL, server.Client())
@@ -452,12 +468,15 @@ func TestServer_AggregateValue_Valid(t *testing.T) {
 	tier := test.Tier(t)
 	defer test.Teardown(tier)
 
-	ctx := context.Background()
 	clock := &test.FakeClock{}
 	tier.Clock = clock
 	t0 := ftypes.Timestamp(3600 * 10)
 	clock.Set(uint32(t0))
-	holder := server{tier: tier}
+
+	ctx, cancelFn := context.WithCancel(context.Background())
+	defer cancelFn()
+	usageController := usagecontroller.NewController(ctx, &tier, 10*time.Second, 50, 50, 1000)
+	holder := server{tier: tier, usageController: usageController}
 	agg := aggregate.Aggregate{
 		Name:      "mycounter",
 		Query:     agg_test.GetDummyAggQuery(),
@@ -519,11 +538,14 @@ func TestServer_BatchAggregateValue(t *testing.T) {
 	tier := test.Tier(t)
 	defer test.Teardown(tier)
 
-	ctx := context.Background()
 	clock := &test.FakeClock{}
 	tier.Clock = clock
 	t0 := ftypes.Timestamp(0)
-	holder := server{tier: tier}
+
+	ctx, cancelFn := context.WithCancel(context.Background())
+	defer cancelFn()
+	usageController := usagecontroller.NewController(ctx, &tier, 10*time.Second, 50, 50, 1000)
+	holder := server{tier: tier, usageController: usageController}
 	assert.Equal(t, uint32(t0), tier.Clock.Now())
 
 	agg1 := aggregate.Aggregate{
@@ -645,7 +667,10 @@ func TestStoreRetrieveDeactivateAggregate(t *testing.T) {
 	tier := test.Tier(t)
 	defer test.Teardown(tier)
 
-	controller := server{tier: tier}
+	ctx, cancelFn := context.WithCancel(context.Background())
+	defer cancelFn()
+	usageController := usagecontroller.NewController(ctx, &tier, 10*time.Second, 50, 50, 1000)
+	controller := server{tier: tier, usageController: usageController}
 	server := startTestServer(controller)
 	defer server.Close()
 	c, err := client.NewClient(server.URL, server.Client())
