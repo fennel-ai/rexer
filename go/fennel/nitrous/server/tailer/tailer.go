@@ -96,13 +96,13 @@ func (t *Tailer) Stop() {
 func (t *Tailer) processBatch(rawops [][]byte) error {
 	ctx, m := timer.Start(context.Background(), t.nitrous.PlaneID, "tailer.processBatch")
 	defer m.Stop()
-	t.nitrous.Logger.Debug("Got new messages from binlog", zap.Int("count", len(rawops)))
+	zap.L().Debug("Got new messages from binlog", zap.Int("count", len(rawops)))
 	ops := make([]*rpc.NitrousOp, len(rawops))
 	for i, rawop := range rawops {
 		var op rpc.NitrousOp
 		err := proto.Unmarshal(rawop, &op)
 		if err != nil {
-			t.nitrous.Logger.Error("Failed to unmarshal op", zap.Error(err))
+			zap.L().Error("Failed to unmarshal op", zap.Error(err))
 		}
 		ops[i] = &op
 	}
@@ -129,7 +129,7 @@ func (t *Tailer) processBatch(rawops [][]byte) error {
 	// Commit the offsets to the kafka binlog.
 	// This is not strictly required for correctly processing the binlog, but
 	// needed to compute the lag.
-	t.nitrous.Logger.Debug("Committing offsets to binlog", zap.Any("offsets", offs))
+	zap.L().Debug("Committing offsets to binlog", zap.Any("offsets", offs))
 	_, err = t.binlog.CommitOffsets(offs)
 	if err != nil {
 		return fmt.Errorf("failed to commit binlog offsets to broker: %w", err)
@@ -149,24 +149,24 @@ func (t *Tailer) Tail() {
 			return
 		default:
 			ctx := context.Background()
-			t.nitrous.Logger.Debug("Waiting for new messages from binlog...")
+			zap.L().Debug("Waiting for new messages from binlog...")
 			rawops, err := t.binlog.ReadBatch(ctx, tailer_batch, t.pollTimeout)
 			if kerr, ok := err.(kafka.Error); ok && (kerr.IsFatal() || kerr.Code() == kafka.ErrUnknownTopicOrPart) {
-				t.nitrous.Logger.Fatal("Permanent error when reading from kafka", zap.Error(err))
+				zap.L().Fatal("Permanent error when reading from kafka", zap.Error(err))
 			} else if err != nil {
-				t.nitrous.Logger.Warn("Failed to read from binlog", zap.Error(err))
+				zap.L().Warn("Failed to read from binlog", zap.Error(err))
 				// Insert a brief sleep to avoid busy loop.
 				time.Sleep(t.pollTimeout)
 				continue
 			} else if len(rawops) == 0 {
-				t.nitrous.Logger.Debug("No new messages from binlog")
+				zap.L().Debug("No new messages from binlog")
 				// Insert a brief sleep to avoid busy loop.
 				time.Sleep(t.pollTimeout)
 				continue
 			}
 			err = t.processBatch(rawops)
 			if err != nil {
-				t.nitrous.Logger.Error("Failed to process batch", zap.Error(err))
+				zap.L().Error("Failed to process batch", zap.Error(err))
 			}
 		}
 	}
