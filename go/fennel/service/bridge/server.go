@@ -86,7 +86,7 @@ const (
 func (s *server) setupRouter() {
 	// Disable Console Color
 	// gin.DisableConsoleColor()
-	s.LoadHTMLGlob("templates/*.tmpl")
+	s.LoadHTMLGlob("mothership/templates/**/*.tmpl")
 	s.Static("/images", "../../webapp/images")
 	s.Static("/assets", "../../webapp/dist")
 
@@ -112,7 +112,6 @@ func (s *server) setupRouter() {
 
 	// dev only endpoints
 	if s.isDev() {
-		s.LoadHTMLGlob("mothership/templates/email/*.tmpl")
 		s.GET("/email/confirm", s.debugConfirmEmail)
 		s.GET("/email/reset", s.debugResetPwdEmail)
 	}
@@ -136,21 +135,21 @@ func title(name string) string {
 }
 
 func (s *server) ResetPasswordGet(c *gin.Context) {
-	c.HTML(http.StatusOK, "sign_on.tmpl", gin.H{
+	c.HTML(http.StatusOK, "bridge/sign_on.tmpl", gin.H{
 		"title": title("Reset Password"),
 		"page":  ResetPasswordPage,
 	})
 }
 
 func (s *server) SignUpGet(c *gin.Context) {
-	c.HTML(http.StatusOK, "sign_on.tmpl", gin.H{
+	c.HTML(http.StatusOK, "bridge/sign_on.tmpl", gin.H{
 		"title": title("Sign Up"),
 		"page":  SignUpPage,
 	})
 }
 
 func (s *server) SignInGet(c *gin.Context) {
-	c.HTML(http.StatusOK, "sign_on.tmpl", gin.H{
+	c.HTML(http.StatusOK, "bridge/sign_on.tmpl", gin.H{
 		"title":    title("Sign In"),
 		"page":     SignInPage,
 		"flashMsg": c.GetStringMapString(FlashMessageKey),
@@ -158,7 +157,7 @@ func (s *server) SignInGet(c *gin.Context) {
 }
 
 func (s *server) ForgotPasswordGet(c *gin.Context) {
-	c.HTML(http.StatusOK, "sign_on.tmpl", gin.H{
+	c.HTML(http.StatusOK, "bridge/sign_on.tmpl", gin.H{
 		"title": title("Forgot Password"),
 		"page":  ForgotPasswordPage,
 	})
@@ -352,11 +351,11 @@ func (s *server) ResendConfirmationEmail(c *gin.Context) {
 }
 
 func (s *server) Dashboard(c *gin.Context) {
-	c.HTML(http.StatusOK, "index.tmpl", gin.H{"title": "Fennel | Dashboard", "page": DashboardPage})
+	c.HTML(http.StatusOK, "bridge/index.tmpl", gin.H{"title": "Fennel | Dashboard", "page": DashboardPage})
 }
 
 func (s *server) Data(c *gin.Context) {
-	c.HTML(http.StatusOK, "index.tmpl", gin.H{"title": "Fennel | Data", "page": DataPage})
+	c.HTML(http.StatusOK, "bridge/index.tmpl", gin.H{"title": "Fennel | Data", "page": DataPage})
 }
 
 func (s *server) Profiles(c *gin.Context) {
@@ -438,14 +437,14 @@ func (s *server) Logout(c *gin.Context) {
 }
 
 func (s *server) debugConfirmEmail(c *gin.Context) {
-	c.HTML(http.StatusOK, "confirm_email.tmpl", gin.H{
+	c.HTML(http.StatusOK, "email/confirm_email.tmpl", gin.H{
 		"ConfirmURL": "https://google.com",
 		"Year":       2046,
 	})
 }
 
 func (s *server) debugResetPwdEmail(c *gin.Context) {
-	c.HTML(http.StatusOK, "reset_password.tmpl", gin.H{
+	c.HTML(http.StatusOK, "email/reset_password.tmpl", gin.H{
 		"ResetURL": "https://google.com",
 		"Year":     2046,
 	})
