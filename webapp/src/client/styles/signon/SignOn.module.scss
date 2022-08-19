@@ -59,10 +59,12 @@
 
 .formButton {
     width: 100%;
+    border-radius: 4px;
 }
 
 .resendButton {
     width: 100%;
+    border-radius: 4px;
 }
 
 .confirmEmailContainer {
@@ -78,11 +80,4 @@
 
 .missEmail {
     margin-top: 46px;
-}
-
-$button-background: colors.$purple0;
-
-:export {
-    formButtonBackground: $button-background;
-    resendButtonBackground: $button-background;
 }
