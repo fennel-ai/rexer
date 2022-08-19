@@ -10,8 +10,10 @@ import (
 	userC "fennel/mothership/controller/user"
 	"fmt"
 	"log"
+	"math/rand"
 	"net/http"
 	"net/mail"
+	"time"
 
 	"github.com/alexflint/go-arg"
 	"github.com/gin-contrib/sessions"
@@ -33,6 +35,7 @@ type serverArgs struct {
 	mothership.MothershipArgs
 	SessionKey     string `arg:"required,--bridge_session_key,env:BRIDGE_SESSION_KEY"`
 	SendgridAPIKey string `arg:"required,--sendgrid_api_key,env:SENDGRID_API_KEY"`
+	RandSeed       int64  `arg:"--rand_seed,env:RAND_SEED"`
 }
 
 func NewServer() (server, error) {
@@ -63,6 +66,13 @@ func NewServer() (server, error) {
 		db:         db,
 	}
 	s.setupRouter()
+
+	seed := args.RandSeed
+	if seed == 0 {
+		seed = time.Now().UnixNano()
+	}
+	rand.Seed(seed)
+	log.Printf("Using rand seed %d\n", seed)
 
 	return s, nil
 }
