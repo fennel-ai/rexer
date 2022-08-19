@@ -24,6 +24,7 @@ const (
 	TOPK           ftypes.AggType = "topk"
 	CF             ftypes.AggType = "cf"
 	KNN            ftypes.AggType = "knn"
+	VAE            ftypes.AggType = "vae"
 )
 
 var ValidTypes = []ftypes.AggType{
@@ -37,7 +38,17 @@ var ValidTypes = []ftypes.AggType{
 	RATE,
 	TOPK,
 	CF,
+	VAE,
 	KNN,
+}
+
+var ValidOfflineAggregates = []ftypes.AggType{
+	TOPK,
+	CF,
+}
+
+var ValidAutoMlAggregates = []ftypes.AggType{
+	VAE,
 }
 
 const (
@@ -58,9 +69,9 @@ type Aggregate struct {
 	Active    bool
 }
 
-func IsValid(s ftypes.AggType) bool {
+func IsValid(s ftypes.AggType, validTypes []ftypes.AggType) bool {
 	sl := ftypes.AggType(strings.ToLower(string(s)))
-	for _, m := range ValidTypes {
+	for _, m := range validTypes {
 		if sl == m {
 			return true
 		}
@@ -69,7 +80,7 @@ func IsValid(s ftypes.AggType) bool {
 }
 
 func (agg Aggregate) Validate() error {
-	if !IsValid(agg.Options.AggType) {
+	if !IsValid(agg.Options.AggType, ValidTypes) {
 		return fmt.Errorf("invalid aggregate type: '%v'; valid types are: %v", agg.Options.AggType, ValidTypes)
 	}
 	if len(agg.Name) == 0 {
@@ -124,6 +135,18 @@ func (agg Aggregate) Validate() error {
 		if agg.Options.Dim <= 0 {
 			return fmt.Errorf("dim must be greater than zero for %v", aggtype)
 		}
+	case VAE:
+		if len(options.Durations) == 0 {
+			return fmt.Errorf("at least one duration must be provided for %s", aggtype)
+		}
+		for _, d := range options.Durations {
+			if d == 0 {
+				return fmt.Errorf("duration can not be zero for %s", aggtype)
+			}
+		}
+		if options.Limit == 0 {
+			return fmt.Errorf("limit should be non-zero for %v", aggtype)
+		}
 	case TIMESERIES_SUM:
 		if options.Window != ftypes.Window_HOUR && options.Window != ftypes.Window_DAY {
 			return fmt.Errorf("valid windows for time series are 'HOUR' or 'DAY' but got: '%v' instead", options.Window)
@@ -162,7 +185,11 @@ func (agg Aggregate) Equals(other Aggregate) bool {
 }
 
 func (agg Aggregate) IsOffline() bool {
-	return agg.Options.CronSchedule != ""
+	return agg.Options.CronSchedule != "" && IsValid(agg.Options.AggType, ValidOfflineAggregates)
+}
+
+func (agg Aggregate) IsAutoML() bool {
+	return agg.Options.CronSchedule != "" && IsValid(agg.Options.AggType, ValidAutoMlAggregates)
 }
 
 func (agg Aggregate) IsForever() bool {

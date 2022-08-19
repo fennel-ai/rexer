@@ -127,7 +127,11 @@ func processAggregate(tr tier.Tier, agg libaggregate.Aggregate, stopCh <-chan st
 						continue
 					}
 				} else {
-					actions, err := action2.ReadBatch(ctx, consumer, 10000, time.Second*10)
+					timeout := time.Second * 10
+					if agg.IsOffline() || agg.IsAutoML() {
+						timeout = time.Second * 30
+					}
+					actions, err := action2.ReadBatch(ctx, consumer, 10000, timeout)
 					if err != nil {
 						tr.Logger.Error("Error while reading batch of actions:", zap.Error(err))
 						continue
@@ -233,6 +237,11 @@ func processConnector(tr tier.Tier, conn data_integration.Connector, stopCh <-ch
 					} else {
 						totalDedupedStreamLogs.WithLabelValues("airbyte_log", conn.Name).Inc()
 					}
+				}
+
+				if len(batch) == 0 {
+					tr.Logger.Debug("No stream logs after dedup", zap.String("name", conn.Name))
+					continue
 				}
 
 				// Process the deduped stream

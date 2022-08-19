@@ -2,10 +2,7 @@ package aggregate
 
 import (
 	"context"
-	"fmt"
-	"os"
-	"time"
-
+	"encoding/csv"
 	"fennel/controller/counter"
 	"fennel/engine"
 	"fennel/engine/ast"
@@ -18,6 +15,10 @@ import (
 	"fennel/lib/profile"
 	"fennel/lib/value"
 	"fennel/tier"
+	"fmt"
+	"io"
+	"os"
+	"time"
 
 	"go.uber.org/zap"
 )
@@ -288,6 +289,10 @@ func Update[I action.Action | profile.ProfileItem](ctx context.Context, tier tie
 	if err != nil {
 		return fmt.Errorf("failed to Transform actions: %w", err)
 	}
+	if table.Len() == 0 {
+		tier.Logger.Debug(fmt.Sprintf("no items to update for aggregate %s", string(agg.Name)))
+		return nil
+	}
 	tier.Logger.Info("Processed aggregate",
 		zap.String("name", string(agg.Name)),
 		zap.Int("input", len(items)),
@@ -329,12 +334,52 @@ func Update[I action.Action | profile.ProfileItem](ctx context.Context, tier tie
 			}
 		}
 		return nil
+	} else if agg.IsAutoML() {
+		reader, writer := io.Pipe()
+		// Writer should be in a separate goroutine to avoid deadlock
+		// Since the pipe blocks the Writer until the data is read from the Reader,
+		go func() {
+			w := csv.NewWriter(writer)
+			var data [][]string
+			for i := 0; i < table.Len(); i++ {
+				rowVal, _ := table.At(i)
+				rowDict, _ := rowVal.(value.Dict)
+				row := []string{string(value.ToJSON(rowDict.GetUnsafe("groupkey"))), string(value.ToJSON(rowDict.GetUnsafe("value"))), string(value.ToJSON(rowDict.GetUnsafe("timestamp")))}
+				data = append(data, row)
+			}
+			fmt.Println("Writing training data for aggregate ", agg.Name, ": ", len(data))
+			if err = w.WriteAll(data); err != nil {
+				tier.Logger.Error(fmt.Sprintf("failed to write data to file: %v", err))
+				return
+			}
+			if err = w.Error(); err != nil {
+				tier.Logger.Error(fmt.Sprintf("failed to flush data to file: %v", err))
+				return
+			}
+			if err = writer.Close(); err != nil {
+				tier.Logger.Error(fmt.Sprintf("failed to close writer: %v", err))
+				return
+			}
+		}()
+		now := time.Now()
+		year := now.Year()
+		month := now.Month()
+		day := now.Day()
+
+		tier.Logger.Info(fmt.Sprintf("transformed %d events for AutoML: %s", table.Len(), agg.Name))
+		if err = tier.S3Client.Upload(reader, fmt.Sprintf("automl/%s/%d/%s/%d/interactions-%d.csv", agg.Name, year, month, day, now.Unix()), tier.Args.OfflineAggBucket); err != nil {
+			return fmt.Errorf("failed to upload transformed actions for automl to s3: %w", err)
+		}
+		if err = reader.Close(); err != nil {
+			return fmt.Errorf("failed to close reader: %w", err)
+		}
 	} else { // Online duration based aggregates
 		if err = counter.Update(ctx, tier, agg.Id, agg.Options, table); err != nil {
 			return fmt.Errorf("failed to update counter: %w", err)
 		}
 		return err
 	}
+	return nil
 }
 
 func Transform(tier tier.Tier, items any, query ast.Ast) (value.List, error) {

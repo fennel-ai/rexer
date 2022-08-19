@@ -5,6 +5,7 @@ import (
 	"crypto/tls"
 	"fennel/airbyte"
 	"fmt"
+	"github.com/Unleash/unleash-client-go/v3"
 	"log"
 	"strings"
 	"sync"
@@ -29,7 +30,6 @@ import (
 	"fennel/s3"
 	"fennel/sagemaker"
 
-	"github.com/Unleash/unleash-client-go/v3"
 	"github.com/samber/mo"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"

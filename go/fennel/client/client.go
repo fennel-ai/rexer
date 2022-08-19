@@ -396,7 +396,7 @@ func (c *Client) LogActions(request []action.Action, dedupKeys []string) error {
 }
 
 func (c *Client) StoreAggregate(agg aggregate.Aggregate) error {
-	if ok := aggregate.IsValid(agg.Options.AggType); !ok {
+	if ok := aggregate.IsValid(agg.Options.AggType, aggregate.ValidTypes); !ok {
 		return fmt.Errorf("invalid aggregate type: %v", agg.Options.AggType)
 	}
 	req, err := json.Marshal(agg)

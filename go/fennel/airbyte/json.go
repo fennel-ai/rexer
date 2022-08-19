@@ -349,7 +349,6 @@ type Protocol struct {
 	SecurityProtocol string `json:"security_protocol"`
 }
 
-// TODO: Send Kafka config via environment variables
 func NewKafkaConnectorConfig(topic string, cred KafkaCredentials) KafkaConnectorConfig {
 	saslConfig := fmt.Sprintf("org.apache.kafka.common.security.plain.PlainLoginModule required username=\"%s\" password=\"%s\";", cred.Username, cred.Password)
 	return KafkaConnectorConfig{

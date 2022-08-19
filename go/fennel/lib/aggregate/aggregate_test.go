@@ -68,6 +68,6 @@ func TestAggregate_Validate_Invalid(t *testing.T) {
 }
 
 func TestOfflineAggregate(t *testing.T) {
-	assert.True(t, Aggregate{Options: Options{CronSchedule: "(3 * * * *)"}}.IsOffline())
+	assert.True(t, Aggregate{Options: Options{CronSchedule: "(3 * * * *)", AggType: CF}}.IsOffline())
 	assert.False(t, Aggregate{Options: Options{}}.IsOffline())
 }

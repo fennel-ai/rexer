@@ -578,25 +578,23 @@ func (c Client) setKafkaDestinationId(tierId ftypes.RealmID, cred KafkaCredentia
 		return err
 	}
 
-	if len(destinationList["destinations"]) == 0 {
-		if retry > 1 {
-			return fmt.Errorf("failed to create Kafka destination after %d retries", retry)
-		}
-
-		if err = c.createKafkaDestination(tierId, cred); err != nil {
-			return fmt.Errorf("failed to create Kafka destination: %s", err)
-		}
-		if err = c.setKafkaDestinationId(tierId, cred, retry+1); err != nil {
-			return fmt.Errorf("failed to set Kafka destination id: %s", err)
-		}
-		return nil
-	}
-
 	for _, destination := range destinationList["destinations"] {
 		if destination.ConnectionConfiguration.TopicPattern == getFullAirbyteKafkaTopic(tierId) {
 			kafkaDestinationId = destination.DestinationId
 			return nil
 		}
+	}
+
+	fmt.Println("No destinations found, creating one, try: #", retry)
+	if retry > 1 {
+		return fmt.Errorf("failed to create Kafka destination after %d retries", retry)
+	}
+
+	if err = c.createKafkaDestination(tierId, cred); err != nil {
+		return fmt.Errorf("failed to create Kafka destination: %s", err)
+	}
+	if err = c.setKafkaDestinationId(tierId, cred, retry+1); err != nil {
+		return fmt.Errorf("failed to set Kafka destination id: %s", err)
 	}
 
 	return fmt.Errorf("no valid kafka destination found")
