@@ -7,119 +7,90 @@ import (
 	usagelib "fennel/lib/usage"
 	"fennel/model/usage"
 	"fennel/tier"
+	"log"
+	"sort"
 	"time"
 
 	"google.golang.org/protobuf/proto"
 )
 
-// Following Methods and helpers are for folding timestamp to the previous nearest
-// hour or day.
-// We use the FoldingStrategy during kafka read to fold and aggregate counters
-// to the nearest previous hour or day.
-// usage current is supported at an hour granularity.
-// =============================================================
-type FoldingStrategy func(uint64) uint64
-
-func HourlyFold(t uint64) uint64 {
-	div := time.Hour / time.Second
-	return t - t%uint64(div)
+type UsageController interface {
+	IncCounter(*usagelib.UsageCountersProto)
 }
 
-func NoFold(t uint64) uint64 {
-	return t
+type controller struct {
+	inputCh chan *usagelib.UsageCountersProto
+	folder  usagelib.CounterOperator
+	tier    *tier.Tier
+	ctx     context.Context
 }
 
-func DailyFold(t uint64) uint64 {
-	div := 24 * (time.Hour / time.Second)
-	return t - t%uint64(div)
-}
-
-func HourInSeconds() uint64 {
-	return uint64(time.Hour / time.Second)
-}
-
-func DayInSeconds() uint64 {
-	return 24 * HourInSeconds()
-}
-
-// =================================================================
-
-func Insert(ctx context.Context, tier tier.Tier, b *usagelib.UsageCountersDBItem) error {
-	ctx, t := timer.Start(ctx, tier.ID, "controller.usage.insert")
-	defer t.Stop()
-	bp := usagelib.ToUsageCountersProto(b)
-	if bp.Timestamp == 0 {
-		bp.Timestamp = uint64(tier.Clock.Now())
+func (c *controller) IncCounter(u *usagelib.UsageCountersProto) {
+	if u.Timestamp == 0 {
+		u.Timestamp = uint64(c.tier.Clock.Now())
 	}
-
-	producer := tier.Producers[usagelib.HOURLY_USAGE_LOG_KAFKA_TOPIC]
-	return producer.LogProto(ctx, bp, nil)
+	c.inputCh <- u
 }
 
-func InsertBatch(ctx context.Context, tier tier.Tier, bc []*usagelib.UsageCountersDBItem) error {
-	ctx, t := timer.Start(ctx, tier.ID, "controller.usage.insert")
-	defer t.Stop()
-	producer := tier.Producers[usagelib.HOURLY_USAGE_LOG_KAFKA_TOPIC]
-	for _, b := range bc {
-		bp := usagelib.ToUsageCountersProto(b)
-		if bp.Timestamp == 0 {
-			bp.Timestamp = uint64(tier.Clock.Now())
-		}
-		if err := producer.LogProto(ctx, bp, nil); err != nil {
-			return err
+func (c *controller) run() {
+	for v := range c.folder.Output() {
+		if err := c.insert(v); err != nil {
+			log.Printf("Failed to insert to kafka: %s", err)
 		}
 	}
-	return nil
 }
 
-func Read(ctx context.Context, consumer kafka.FConsumer, timeout time.Duration, foldingStrategy FoldingStrategy) (*usagelib.UsageCountersDBItem, error) {
-	var ret usagelib.UsageCountersProto
-	msg, err := consumer.Read(ctx, timeout)
-	if err != nil {
-		return nil, err
+func NewController(ctx context.Context, tier *tier.Tier, foldThresholdDuration time.Duration, inputBufferSize, outputBufferSize, foldThresholdCounter int) UsageController {
+	ch := make(chan *usagelib.UsageCountersProto, inputBufferSize)
+	c := &controller{
+		inputCh: ch,
+		folder:  usagelib.NewFoldingOperator(ctx, ch, usagelib.HourlyFold, outputBufferSize, foldThresholdDuration, foldThresholdCounter),
+		tier:    tier,
+		ctx:     ctx,
 	}
-
-	if err := proto.Unmarshal(msg, &ret); err != nil {
-		return nil, err
-	}
-	return &usagelib.UsageCountersDBItem{
-		Queries:   ret.Queries,
-		Actions:   ret.Actions,
-		Timestamp: foldingStrategy(ret.Timestamp),
-	}, nil
-
+	go c.run()
+	return c
 }
 
-func ReadBatch(ctx context.Context, consumer kafka.FConsumer, count int, timeout time.Duration, foldingStrategy FoldingStrategy) ([]*usagelib.UsageCountersDBItem, error) {
+func (c *controller) insert(b *usagelib.UsageCountersProto) error {
+	ctx, t := timer.Start(c.ctx, c.tier.ID, "controller.usage.insert")
+	defer t.Stop()
+	producer := c.tier.Producers[usagelib.HOURLY_USAGE_LOG_KAFKA_TOPIC]
+	return producer.LogProto(ctx, b, nil)
+}
+
+func ReadBatch(ctx context.Context, consumer kafka.FConsumer, count int, timeout time.Duration, foldingStrategy usagelib.FoldingStrategy) ([]*usagelib.UsageCountersProto, error) {
 	msgs, err := consumer.ReadBatch(ctx, count, timeout)
 	if err != nil {
 		return nil, err
 	}
-	afterFold := make(map[uint64]*usagelib.UsageCountersDBItem)
-	usageCounters := make([]*usagelib.UsageCountersDBItem, 0, len(msgs))
+	afterFold := make(map[uint64]*usagelib.UsageCountersProto)
 	for i := range msgs {
 		var bc usagelib.UsageCountersProto
 		if err = proto.Unmarshal(msgs[i], &bc); err != nil {
 			return nil, err
 		}
-		old, ok := afterFold[foldingStrategy(bc.Timestamp)]
-		if !ok {
-			b := usagelib.FromUsageCountersProto(&bc)
-			b.Timestamp = foldingStrategy(b.Timestamp)
-			afterFold[foldingStrategy(bc.Timestamp)] = b
+		v, ok := afterFold[foldingStrategy(bc.Timestamp)]
+		if ok {
+			v.Queries += bc.Queries
+			v.Actions += bc.Actions
 		} else {
-			old.Queries += bc.Queries
-			old.Actions += bc.Actions
+			bc.Timestamp = foldingStrategy(bc.Timestamp)
+			afterFold[bc.Timestamp] = &bc
 		}
 	}
+	ret := make([]*usagelib.UsageCountersProto, 0, len(afterFold))
 	for _, v := range afterFold {
-		usageCounters = append(usageCounters, v)
+		ret = append(ret, v)
 	}
-	return usageCounters, nil
+	sort.Slice(ret, func(i, j int) bool {
+		return ret[i].Timestamp < ret[j].Timestamp
+	})
+	return ret, nil
 }
 
-func TransferToDB(ctx context.Context, tr tier.Tier, consumer kafka.FConsumer, foldingStrategy FoldingStrategy) error {
-	bc, err := ReadBatch(ctx, consumer, 1000, time.Second*10, foldingStrategy)
+func TransferToDB(ctx context.Context, consumer kafka.FConsumer, tr tier.Tier, foldingStrategy usagelib.FoldingStrategy, count int, timeout time.Duration) error {
+	bc, err := ReadBatch(ctx, consumer, count, timeout, foldingStrategy)
 	if err != nil {
 		return err
 	}

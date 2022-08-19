@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"errors"
+	"fennel/controller/usage"
 	"fmt"
 	"io/ioutil"
 	"log"
@@ -34,10 +35,9 @@ import (
 	"fennel/lib/sql"
 	"fennel/lib/timer"
 	"fennel/lib/value"
-	"fennel/model/usage"
+	usagemodel "fennel/model/usage"
 	"fennel/tier"
 
-	usagecontroller "fennel/controller/usage"
 	usagelib "fennel/lib/usage"
 
 	"github.com/Unleash/unleash-client-go/v3"
@@ -89,7 +89,8 @@ func readRequest(req *http.Request) ([]byte, error) {
 }
 
 type server struct {
-	tier tier.Tier
+	tier            tier.Tier
+	usageController usage.UsageController
 }
 
 func (s server) setHandlers(router *mux.Router) {
@@ -220,9 +221,9 @@ func (m server) Log(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 	totalActions.WithLabelValues("log", string(a.ActionType)).Inc()
-	bc := &usagelib.UsageCountersDBItem{Actions: 1}
-	// TODO(Amit): Handle error during insertion.
-	_ = usagecontroller.Insert(req.Context(), m.tier, bc)
+	m.usageController.IncCounter(&usagelib.UsageCountersProto{
+		Actions: 1,
+	})
 	handleSuccessfulRequest(w)
 }
 
@@ -292,8 +293,9 @@ func (m server) LogMulti(w http.ResponseWriter, req *http.Request) {
 	for _, a := range batch {
 		totalActions.WithLabelValues("log_multi", string(a.ActionType)).Inc()
 	}
-	bc := &usagelib.UsageCountersDBItem{Actions: uint64(len(actions))}
-	_ = usagecontroller.Insert(req.Context(), m.tier, bc)
+	m.usageController.IncCounter(&usagelib.UsageCountersProto{
+		Actions: uint64(len(actions)),
+	})
 	handleSuccessfulRequest(w)
 }
 
@@ -320,8 +322,10 @@ func (m server) LogActions(w http.ResponseWriter, req *http.Request) {
 	for _, a := range actions {
 		totalActions.WithLabelValues("log_multi", string(a.ActionType)).Inc()
 	}
-	bc := &usagelib.UsageCountersDBItem{Actions: uint64(len(actions))}
-	_ = usagecontroller.Insert(req.Context(), m.tier, bc)
+
+	m.usageController.IncCounter(&usagelib.UsageCountersProto{
+		Actions: uint64(len(actions)),
+	})
 	handleSuccessfulRequest(w)
 }
 
@@ -531,8 +535,7 @@ func (m server) Query(w http.ResponseWriter, req *http.Request) {
 		handleInternalServerError(w, "", err)
 		return
 	}
-	bc := &usagelib.UsageCountersDBItem{Queries: 1}
-	_ = usagecontroller.Insert(req.Context(), m.tier, bc)
+	m.usageController.IncCounter(&usagelib.UsageCountersProto{Queries: 1})
 	_, _ = w.Write(value.ToJSON(ret))
 
 }
@@ -574,30 +577,43 @@ func (m server) GetusageCounters(w http.ResponseWriter, req *http.Request) {
 	var err error
 
 	// By default get the usage of the current hour.
-	if startTimeStr == "" || endTimeStr == "" {
-		startTime = usagecontroller.HourlyFold(uint64(m.tier.Clock.Now()))
-		endTime = usagecontroller.HourlyFold(uint64(m.tier.Clock.Now()))
-	} else {
-		startTime, err = strconv.ParseUint(startTimeStr, 10, 64)
+	parseTime := func(tstr string) (uint64, error) {
+		tUint, err := strconv.ParseUint(tstr, 10, 64)
 		if err != nil {
-			t, err := time.Parse(time.RFC3339, startTimeStr)
+			tTime, err := time.Parse(time.RFC3339, tstr)
 			if err != nil {
-				handleBadRequest(w, "failed to parse query param `start_time`, should be either epoch or in format "+time.RFC3339+" :", err)
-				return
+				return 0, err
 			}
-			startTime = uint64(t.Unix())
+			return uint64(tTime.Unix()), nil
 		}
-		endTime, err = strconv.ParseUint(endTimeStr, 10, 64)
+		return tUint, nil
+
+	}
+
+	if startTimeStr != "" {
+		startTime, err = parseTime(startTimeStr)
 		if err != nil {
-			t, err := time.Parse(time.RFC3339, endTimeStr)
-			if err != nil {
-				handleBadRequest(w, "failed to parse query param `end_time`, should be either epoch or in format "+time.RFC3339+" :", err)
-				return
-			}
-			endTime = uint64(t.Unix())
+			handleBadRequest(w, "failed to parse query param `start_time`, should be either epoch or in format "+time.RFC3339+" :", err)
+			return
 		}
 	}
-	bc, err := usage.GetUsageCounters(req.Context(), m.tier, startTime, endTime)
+	if endTimeStr != "" {
+		endTime, err = parseTime(endTimeStr)
+		if err != nil {
+			handleBadRequest(w, "failed to parse query param `end_time`, should be either epoch or in format "+time.RFC3339+" :", err)
+			return
+		}
+	}
+	// By default try the best effort of reporting billing for an hourly window.
+	if startTime == 0 && endTime == 0 {
+		startTime = usagelib.HourlyFold(uint64(m.tier.Clock.Now()))
+		endTime = startTime + usagelib.HourInSeconds()
+	} else if startTime == 0 {
+		startTime = endTime - usagelib.HourInSeconds()
+	} else if endTime == 0 {
+		endTime = startTime + usagelib.HourInSeconds()
+	}
+	bc, err := usagemodel.GetUsageCounters(req.Context(), m.tier, startTime, endTime)
 	if err != nil {
 		handleInternalServerError(w, "", err)
 		return
@@ -652,8 +668,7 @@ func (m server) RunQuery(w http.ResponseWriter, req *http.Request) {
 		handleInternalServerError(w, "", err)
 		return
 	}
-	bc := &usagelib.UsageCountersDBItem{Queries: 1}
-	_ = usagecontroller.Insert(req.Context(), m.tier, bc)
+	m.usageController.IncCounter(&usagelib.UsageCountersProto{Queries: 1})
 	_, _ = w.Write(value.ToJSON(ret))
 }
 

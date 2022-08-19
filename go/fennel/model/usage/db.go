@@ -33,14 +33,14 @@ func GetUsageCounters(ctx context.Context, tier tier.Tier, startTime uint64, end
 	return dbProvider{}.getUsageCounters(ctx, tier, startTime, endTime)
 }
 
-func InsertUsageCounters(ctx context.Context, tier tier.Tier, items []*usagelib.UsageCountersDBItem) error {
+func InsertUsageCounters(ctx context.Context, tier tier.Tier, items []*usagelib.UsageCountersProto) error {
 	return dbProvider{}.insertUsageCounters(ctx, tier, items)
 }
 
 // we create a private interface to make testing caching easier
 type provider interface {
 	getUsageCounters(ctx context.Context, tier tier.Tier, startTime uint64, endTime uint64) (*UsageCountersOverTimeRange, error)
-	insertUsageCounters(ctx context.Context, tier tier.Tier, items []*usagelib.UsageCountersDBItem) error
+	insertUsageCounters(ctx context.Context, tier tier.Tier, items []*usagelib.UsageCountersProto) error
 }
 
 type dbProvider struct{}
@@ -64,7 +64,7 @@ func (D dbProvider) getUsageCounters(ctx context.Context, tier tier.Tier, startT
 	return &usageCounters[0], nil
 }
 
-func (D dbProvider) insertUsageCounters(ctx context.Context, tier tier.Tier, items []*usagelib.UsageCountersDBItem) error {
+func (D dbProvider) insertUsageCounters(ctx context.Context, tier tier.Tier, items []*usagelib.UsageCountersProto) error {
 	ctx, t := timer.Start(ctx, tier.ID, "model.usage.db.incusageCounters")
 	defer t.Stop()
 	sql := `insert into usage_counters values`
