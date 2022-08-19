@@ -69,7 +69,7 @@ func SendConfirmationEmail(c context.Context, db *gorm.DB, client *sendgrid.Clie
 		return user, result.Error
 	}
 
-	from := mail.NewEmail("Xiao Jiang", "xiao+dev@fennel.ai")
+	from := mail.NewEmail("Fennel AI", "xiao+dev@fennel.ai")
 	subject := "Almost there, let’s confirm your email"
 	to := mail.NewEmail("", user.Email)
 
@@ -78,7 +78,7 @@ func SendConfirmationEmail(c context.Context, db *gorm.DB, client *sendgrid.Clie
 	// TODO(xiao) plaintext fallback
 	plainTextContent := ""
 
-	tmpl, err := template.ParseFiles("mothership/templates/email/confirm.tmpl")
+	tmpl, err := template.ParseFiles("mothership/templates/email/confirm_email.tmpl")
 	if err != nil {
 		return user, err
 	}
@@ -163,6 +163,7 @@ func ResendConfirmationEmail(c context.Context, db *gorm.DB, client *sendgrid.Cl
 
 // TODO(xiao) add a test
 // TODO(xiao) do not regenerate token if sent_at recent enough
+// TODO(xiao) DRY the tmpl file
 func SendResetPasswordEmail(c context.Context, db *gorm.DB, client *sendgrid.Client, email string) error {
 	var user lib.User
 	result := db.Take(&user, "email = ?", email)
@@ -178,13 +179,31 @@ func SendResetPasswordEmail(c context.Context, db *gorm.DB, client *sendgrid.Cli
 		return result.Error
 	}
 
-	from := mail.NewEmail("Xiao Jiang", "xiao+dev@fennel.ai")
+	from := mail.NewEmail("Fennel AI", "xiao+dev@fennel.ai")
 	subject := "Link to Reset your password"
 	to := mail.NewEmail("", user.Email)
 
 	link := generateResetLink(token)
-	plainTextContent := fmt.Sprintf("reset password at %s", link.String())
-	htmlContent := fmt.Sprintf(`reset password at <a href="%s" target="_blank">...</a>`, link.String())
+	plainTextContent := ""
+
+	tmpl, err := template.ParseFiles("mothership/templates/email/reset_password.tmpl")
+	if err != nil {
+		return err
+	}
+	data := struct {
+		ResetURL string
+		Year     int
+	}{
+		ResetURL: link.String(),
+		Year:     time.Now().Year(),
+	}
+	buf := bytes.NewBufferString("")
+
+	if err := tmpl.Execute(buf, data); err != nil {
+		return err
+	}
+	htmlContent := buf.String()
+
 	message := mail.NewSingleEmail(from, subject, to, plainTextContent, htmlContent)
 	if _, err := client.Send(message); err != nil {
 		return err
