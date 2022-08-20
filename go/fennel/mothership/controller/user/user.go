@@ -91,7 +91,7 @@ func SendConfirmationEmail(c context.Context, db *gorm.DB, client *sendgrid.Clie
 	}
 	buf := bytes.NewBufferString("")
 
-	if err := tmpl.Execute(buf, data); err != nil {
+	if err := tmpl.ExecuteTemplate(buf, "email/confirm_email.tmpl", data); err != nil {
 		return user, err
 	}
 	htmlContent := buf.String()
@@ -199,7 +199,7 @@ func SendResetPasswordEmail(c context.Context, db *gorm.DB, client *sendgrid.Cli
 	}
 	buf := bytes.NewBufferString("")
 
-	if err := tmpl.Execute(buf, data); err != nil {
+	if err := tmpl.ExecuteTemplate(buf, "email/reset_password.tmpl", data); err != nil {
 		return err
 	}
 	htmlContent := buf.String()

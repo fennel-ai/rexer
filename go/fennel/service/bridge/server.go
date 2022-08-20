@@ -10,8 +10,10 @@ import (
 	userC "fennel/mothership/controller/user"
 	"fmt"
 	"log"
+	"math/rand"
 	"net/http"
 	"net/mail"
+	"time"
 
 	"github.com/alexflint/go-arg"
 	"github.com/gin-contrib/sessions"
@@ -33,6 +35,9 @@ type serverArgs struct {
 	mothership.MothershipArgs
 	SessionKey     string `arg:"required,--bridge_session_key,env:BRIDGE_SESSION_KEY"`
 	SendgridAPIKey string `arg:"required,--sendgrid_api_key,env:SENDGRID_API_KEY"`
+	BridgeENV      string `arg:"required,--bridge_env,env:BRIDGE_ENV"` // dev, prod
+
+	RandSeed int64 `arg:"--rand_seed,env:RAND_SEED"`
 }
 
 func NewServer() (server, error) {
@@ -64,6 +69,13 @@ func NewServer() (server, error) {
 	}
 	s.setupRouter()
 
+	seed := args.RandSeed
+	if seed == 0 {
+		seed = time.Now().UnixNano()
+	}
+	rand.Seed(seed)
+	log.Printf("Using rand seed %d\n", seed)
+
 	return s, nil
 }
 
@@ -74,7 +86,7 @@ const (
 func (s *server) setupRouter() {
 	// Disable Console Color
 	// gin.DisableConsoleColor()
-	s.LoadHTMLGlob("templates/*.tmpl")
+	s.LoadHTMLGlob("mothership/templates/**/*.tmpl")
 	s.Static("/images", "../../webapp/images")
 	s.Static("/assets", "../../webapp/dist")
 
@@ -97,6 +109,16 @@ func (s *server) setupRouter() {
 	auth.GET("/actions", s.Actions)
 	auth.GET("/features", s.Features)
 	auth.POST("/logout", s.Logout)
+
+	// dev only endpoints
+	if s.isDev() {
+		s.GET("/email/confirm", s.debugConfirmEmail)
+		s.GET("/email/reset", s.debugResetPwdEmail)
+	}
+}
+
+func (s *server) isDev() bool {
+	return s.args.BridgeENV == "dev"
 }
 
 const (
@@ -113,21 +135,21 @@ func title(name string) string {
 }
 
 func (s *server) ResetPasswordGet(c *gin.Context) {
-	c.HTML(http.StatusOK, "sign_on.tmpl", gin.H{
+	c.HTML(http.StatusOK, "bridge/sign_on.tmpl", gin.H{
 		"title": title("Reset Password"),
 		"page":  ResetPasswordPage,
 	})
 }
 
 func (s *server) SignUpGet(c *gin.Context) {
-	c.HTML(http.StatusOK, "sign_on.tmpl", gin.H{
+	c.HTML(http.StatusOK, "bridge/sign_on.tmpl", gin.H{
 		"title": title("Sign Up"),
 		"page":  SignUpPage,
 	})
 }
 
 func (s *server) SignInGet(c *gin.Context) {
-	c.HTML(http.StatusOK, "sign_on.tmpl", gin.H{
+	c.HTML(http.StatusOK, "bridge/sign_on.tmpl", gin.H{
 		"title":    title("Sign In"),
 		"page":     SignInPage,
 		"flashMsg": c.GetStringMapString(FlashMessageKey),
@@ -135,7 +157,7 @@ func (s *server) SignInGet(c *gin.Context) {
 }
 
 func (s *server) ForgotPasswordGet(c *gin.Context) {
-	c.HTML(http.StatusOK, "sign_on.tmpl", gin.H{
+	c.HTML(http.StatusOK, "bridge/sign_on.tmpl", gin.H{
 		"title": title("Forgot Password"),
 		"page":  ForgotPasswordPage,
 	})
@@ -329,11 +351,11 @@ func (s *server) ResendConfirmationEmail(c *gin.Context) {
 }
 
 func (s *server) Dashboard(c *gin.Context) {
-	c.HTML(http.StatusOK, "index.tmpl", gin.H{"title": "Fennel | Dashboard", "page": DashboardPage})
+	c.HTML(http.StatusOK, "bridge/index.tmpl", gin.H{"title": "Fennel | Dashboard", "page": DashboardPage})
 }
 
 func (s *server) Data(c *gin.Context) {
-	c.HTML(http.StatusOK, "index.tmpl", gin.H{"title": "Fennel | Data", "page": DataPage})
+	c.HTML(http.StatusOK, "bridge/index.tmpl", gin.H{"title": "Fennel | Data", "page": DataPage})
 }
 
 func (s *server) Profiles(c *gin.Context) {
@@ -412,4 +434,18 @@ func (s *server) Logout(c *gin.Context) {
 		}
 	}
 	c.JSON(http.StatusOK, gin.H{})
+}
+
+func (s *server) debugConfirmEmail(c *gin.Context) {
+	c.HTML(http.StatusOK, "email/confirm_email.tmpl", gin.H{
+		"ConfirmURL": "https://google.com",
+		"Year":       2046,
+	})
+}
+
+func (s *server) debugResetPwdEmail(c *gin.Context) {
+	c.HTML(http.StatusOK, "email/reset_password.tmpl", gin.H{
+		"ResetURL": "https://google.com",
+		"Year":     2046,
+	})
 }
