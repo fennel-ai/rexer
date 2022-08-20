@@ -108,7 +108,7 @@ type AccountConf = {
     existingAccount?: ExistingAccount,
 }
 
-export type PlaneConf = {
+export type DataPlaneConf = {
     // Should be set to false, when deleting the plane
     //
     // Else, individual data storage resources, if they are to be deleted, should be set to false and the stack should
@@ -153,7 +153,7 @@ export type PlaneOutput = {
     milvus: milvus.outputType,
 }
 
-const parseConfig = (): PlaneConf => {
+const parseConfig = (): DataPlaneConf => {
     const config = new pulumi.Config();
     return config.requireObject("input");
 };
@@ -400,7 +400,7 @@ const setupResources = async () => {
     }
 };
 
-const setupDataPlane = async (args: PlaneConf, preview?: boolean, destroy?: boolean) => {
+const setupDataPlane = async (args: DataPlaneConf, preview?: boolean, destroy?: boolean) => {
     const projectName = `launchpad`
     const stackName = `fennel/${projectName}/plane-${args.planeId}`
 

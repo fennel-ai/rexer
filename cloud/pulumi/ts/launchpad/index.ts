@@ -1,5 +1,5 @@
 import setupTier, { TierConf } from "./tier";
-import setupDataPlane, { PlaneConf, PlaneOutput } from "./plane";
+import setupDataPlane, { DataPlaneConf, PlaneOutput } from "./data_plane";
 import * as vpc from "../vpc";
 import * as eks from "../eks";
 import * as account from "../account";
@@ -312,7 +312,7 @@ const tierConfs: Record<number, TierConf> = {
 }
 
 // map from plane id to its configuration.
-const planeConfs: Record<number, PlaneConf> = {
+const planeConfs: Record<number, DataPlaneConf> = {
     // this is used for test resources
     2: {
         protectResources: true,
