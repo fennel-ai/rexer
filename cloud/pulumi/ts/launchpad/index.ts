@@ -593,6 +593,9 @@ const planeConfs: Record<number, PlaneConf> = {
                     maxSize: 1,
                     amiType: DEFAULT_ARM_AMI_TYPE,
                     capacityType: ON_DEMAND_INSTANCE_TYPE,
+                    labels: {
+                        "node-group": "p-5-nitrous-ng",
+                    },
                     expansionPriority: 1,
                 },
                 {
@@ -637,6 +640,9 @@ const planeConfs: Record<number, PlaneConf> = {
                 retention_ms: 30 * 24 * 60 * 60 * 1000 /* 30 days */,
                 partition_retention_bytes: -1,
             },
+            nodeLabels: {
+                "node-group": "p-5-nitrous-ng",
+            }
         }
     },
     // Lokal's staging data plane
