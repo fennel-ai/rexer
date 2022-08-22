@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"fennel/mothership"
+	"fennel/mothership/lib"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -46,18 +47,25 @@ func TestSignInAndLogout(t *testing.T) {
 	ctx := context.Background()
 
 	_, err = SignIn(ctx, db, "test@fennel.ai", "12345")
-	assert.ErrorIs(t, err, gorm.ErrRecordNotFound)
+	assert.ErrorIs(t, err, &lib.ErrorUserNotFound)
+
+	_, err = SignUp(ctx, db, "bademail", "12345")
+	assert.ErrorIs(t, err, &lib.ErrorBadEmail)
+
 	user, err := SignUp(ctx, db, "test@fennel.ai", "12345")
 	assert.NoError(t, err)
 	assert.Equal(t, "test@fennel.ai", user.Email)
 	assert.False(t, user.RememberToken.Valid)
 	assert.False(t, user.RememberCreatedAt.Valid)
 
+	_, err = SignUp(ctx, db, "test@fennel.ai", "12345")
+	assert.ErrorIs(t, err, &lib.ErrorUserAlreadySignedUp)
+
 	_, err = SignIn(ctx, db, "test@fennel.ai", "123")
-	assert.ErrorIs(t, err, ErrorWrongPassword)
+	assert.ErrorIs(t, err, &lib.ErrorWrongPassword)
 
 	_, err = SignIn(ctx, db, "test@fennel.ai", "12345")
-	assert.ErrorIs(t, err, ErrorNotConfirmed)
+	assert.ErrorIs(t, err, &lib.ErrorNotConfirmed)
 
 	user.ConfirmedAt = sql.NullInt64{Valid: true, Int64: 123}
 	result := db.Model(&user).Update("ConfirmedAt", 123)
@@ -87,7 +95,7 @@ func TestConfirmUser(t *testing.T) {
 
 	token := generateConfirmationToken(db)
 	_, err = ConfirmUser(ctx, db, token)
-	assert.ErrorIs(t, err, gorm.ErrRecordNotFound)
+	assert.ErrorIs(t, err, &lib.ErrorUserNotFound)
 
 	user, err := SignUp(ctx, db, "test@fennel.ai", "12345")
 	assert.NoError(t, err)
@@ -115,7 +123,7 @@ func TestResetPassword(t *testing.T) {
 	ctx := context.Background()
 
 	err = ResetPassword(ctx, db, "", "456")
-	assert.ErrorIs(t, err, gorm.ErrRecordNotFound)
+	assert.ErrorIs(t, err, &lib.ErrorUserNotFound)
 
 	user, err := SignUp(ctx, db, "test@fennel.ai", "123")
 	assert.NoError(t, err)

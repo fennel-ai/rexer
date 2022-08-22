@@ -1,18 +1,17 @@
 package main
 
 import (
-	"errors"
 	"fennel/lib/sql"
 	"fennel/mothership"
 	actionC "fennel/mothership/controller/action"
 	featureC "fennel/mothership/controller/feature"
 	profileC "fennel/mothership/controller/profile"
 	userC "fennel/mothership/controller/user"
+	"fennel/mothership/lib"
 	"fmt"
 	"log"
 	"math/rand"
 	"net/http"
-	"net/mail"
 	"time"
 
 	"github.com/alexflint/go-arg"
@@ -174,18 +173,16 @@ func (s *server) ForgotPassword(c *gin.Context) {
 		return
 	}
 	if err := userC.SendResetPasswordEmail(c.Request.Context(), s.db, s.sendgridClient(), form.Email); err != nil {
-		msg := ""
-		status := http.StatusInternalServerError
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			msg = "User Not Found"
-			status = http.StatusBadRequest
+		if ue, ok := err.(*lib.UserReadableError); ok {
+			c.JSON(ue.StatusCode, gin.H{
+				"error": ue.Msg,
+			})
 		} else {
-			msg = "Something went wrong. Please try again."
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"error": "Failed to send the email. Please try again later.",
+			})
 			log.Printf("Failed to send reset password email: %v\n", err)
 		}
-		c.JSON(status, gin.H{
-			"error": msg,
-		})
 		return
 	}
 
@@ -205,18 +202,16 @@ func (s *server) ResetPassword(c *gin.Context) {
 	}
 
 	if err := userC.ResetPassword(c.Request.Context(), s.db, form.Token, form.Password); err != nil {
-		msg := ""
-		status := http.StatusInternalServerError
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			msg = "Invalid token"
-			status = http.StatusBadRequest
+		if ue, ok := err.(*lib.UserReadableError); ok {
+			c.JSON(ue.StatusCode, gin.H{
+				"error": ue.Msg,
+			})
 		} else {
-			msg = "Something went wrong. Please try again."
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"error": "Failed to reset password. Please try again later.",
+			})
 			log.Printf("Failed to reset password: %v\n", err)
 		}
-		c.JSON(status, gin.H{
-			"error": msg,
-		})
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{})
@@ -236,10 +231,10 @@ func (s *server) ConfirmUser(c *gin.Context) {
 	session := sessions.Default(c)
 	if _, err := userC.ConfirmUser(c.Request.Context(), s.db, form.Token); err != nil {
 		msgDesc := ""
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			msgDesc = "User not found"
+		if ue, ok := err.(*lib.UserReadableError); ok {
+			msgDesc = ue.Msg
 		} else {
-			msgDesc = "Something went wrong. Please try again."
+			msgDesc = "Failed to confirm the email. Please try again later."
 		}
 		addFlashMessage(session, FlashTypeError, msgDesc)
 		c.Redirect(http.StatusFound, SignInURL)
@@ -261,13 +256,8 @@ func (s *server) sendgridClient() *sendgrid.Client {
 func (s *server) SignUp(c *gin.Context) {
 	var form SignOnForm
 	if err := c.BindJSON(&form); err != nil {
-		// BindJSON would write status
-		return
-	}
-
-	if _, err := mail.ParseAddress(form.Email); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
-			"error": "Bad email address",
+			"error": err.Error(),
 		})
 		return
 	}
@@ -275,17 +265,29 @@ func (s *server) SignUp(c *gin.Context) {
 	ctx := c.Request.Context()
 	user, err := userC.SignUp(ctx, s.db, form.Email, form.Password)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error": err.Error(),
-		})
+		if ue, ok := err.(*lib.UserReadableError); ok {
+			c.JSON(ue.StatusCode, gin.H{
+				"error": ue.Msg,
+			})
+		} else {
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"error": "Failed to sign up. Please try again later.",
+			})
+			log.Printf("Failed to sign up: %v\n", err)
+		}
 		return
 	}
 	if _, err = userC.SendConfirmationEmail(ctx, s.db, s.sendgridClient(), user); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error": "Failed to send confirmation email, please try again!",
-		})
-		log.Printf("Failed to send confirmation email: %v\n", err)
-		return
+		if ue, ok := err.(*lib.UserReadableError); ok {
+			c.JSON(ue.StatusCode, gin.H{
+				"error": ue.Msg,
+			})
+		} else {
+			c.JSON(http.StatusBadRequest, gin.H{
+				"error": "Failed to send confirmation email, please try again later.",
+			})
+			log.Printf("Failed to send confirmation email: %v\n", err)
+		}
 	}
 
 	c.JSON(http.StatusCreated, gin.H{})
@@ -294,20 +296,21 @@ func (s *server) SignUp(c *gin.Context) {
 func (s *server) SignIn(c *gin.Context) {
 	var form SignOnForm
 	if err := c.BindJSON(&form); err != nil {
-		// BindJSON would write status
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": err.Error(),
+		})
 		return
 	}
 
 	user, err := userC.SignIn(c.Request.Context(), s.db, form.Email, form.Password)
-
 	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			c.JSON(http.StatusBadRequest, gin.H{
-				"error": "User not found",
+		if ue, ok := err.(*lib.UserReadableError); ok {
+			c.JSON(ue.StatusCode, gin.H{
+				"error": ue.Msg,
 			})
 		} else {
 			c.JSON(http.StatusInternalServerError, gin.H{
-				"error": "Fail to sign in, please try again later.",
+				"error": "Failed to sign in. Please try again later.",
 			})
 			log.Printf("Failed to sign in: %v\n", err)
 		}
@@ -323,31 +326,28 @@ func (s *server) ResendConfirmationEmail(c *gin.Context) {
 		Email string `json:"email"`
 	}
 	if err := c.BindJSON(&form); err != nil {
-		// BindJSON would write status
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": err.Error(),
+		})
 		return
 	}
 
 	err := userC.ResendConfirmationEmail(c.Request.Context(), s.db, s.sendgridClient(), form.Email)
 	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			c.JSON(http.StatusBadRequest, gin.H{
-				"error": "User not found",
+		if ue, ok := err.(*lib.UserReadableError); ok {
+			c.JSON(ue.StatusCode, gin.H{
+				"error": ue.Msg,
 			})
-			return
-		}
-		if errors.Is(err, userC.ErrorAlreadyConfirmed) {
-			c.JSON(http.StatusBadRequest, gin.H{
-				"error": err.Error(),
+		} else {
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"error": "Fail to resend confirmation email, please try again later.",
 			})
-			return
+			log.Printf("Failed to resend confirmation email: %v\n", err)
 		}
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": "Fail to resend confirmation email, please try again later.",
-		})
-		log.Printf("Failed to resend confirmation email: %v\n", err)
-	} else {
-		c.JSON(http.StatusOK, gin.H{})
+		return
 	}
+
+	c.JSON(http.StatusOK, gin.H{})
 }
 
 func (s *server) Dashboard(c *gin.Context) {
@@ -426,10 +426,16 @@ func (s *server) Features(c *gin.Context) {
 func (s *server) Logout(c *gin.Context) {
 	if user, ok := CurrentUser(c); ok {
 		if _, err := userC.Logout(c.Request.Context(), s.db, user); err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{
-				"error": "Can't log out the user, please try again later.",
-			})
-			log.Printf("Failed to log out the user: %v\n", err)
+			if ue, ok := err.(*lib.UserReadableError); ok {
+				c.JSON(ue.StatusCode, gin.H{
+					"error": ue.Msg,
+				})
+			} else {
+				c.JSON(http.StatusInternalServerError, gin.H{
+					"error": "Failed to log out the user, please try again later.",
+				})
+				log.Printf("Failed to log out the user: %v\n", err)
+			}
 			return
 		}
 	}
