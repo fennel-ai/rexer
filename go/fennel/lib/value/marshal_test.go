@@ -59,9 +59,38 @@ func TestEqualMarshal(t *testing.T) {
 	kwargs["a"] = Int(1)
 	kwargs["b"] = String("hi")
 	kwargs["c"] = list
+	kwargs["d"] = Double(1.2345)
+	kwargs["e"] = Double(5.0)
 	dict1 := NewDict(kwargs)
 	verifyMarshalUnMarshal(t, dict1)
 	verifyMarshalUnMarshal(t, NewDict(map[string]Value{}))
+}
+
+func TestRexparserMarshal(t *testing.T) {
+	value := NewList(
+		Int(1),
+		Int(1024),
+		String("happy"),
+		Bool(false),
+		NewDict(map[string]Value{"a": Int(2), "b": Double(-8964)}),
+		Double(0),
+		Double(0.61815),
+		Double(-0.61815),
+		Double(-0.125),
+		Double(-3343),
+	)
+	data, err := value.Marshal()
+	assert.NoError(t, err)
+	value2, bytes, err := ParseValue(data)
+	assert.NoError(t, err)
+	assert.Equal(t, value2, value)
+	assert.Equal(t, bytes, len(data))
+	value0 := Double(0.00)
+	data, _ = value0.Marshal()
+	assert.Equal(t, len(data), 1) // 0.0 is encoded into 1 byte
+	value2, bytes, _ = ParseValue(data)
+	assert.Equal(t, value0, value2)
+	assert.Equal(t, bytes, 1)
 }
 
 func TestUnequalMarshal(t *testing.T) {

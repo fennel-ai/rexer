@@ -124,10 +124,26 @@ func (d Double) MarshalJSON() ([]byte, error) {
 	return []byte(d.String()), nil
 }
 func (d Double) Marshal() ([]byte, error) {
+	// Schema:
+	// 3 bits (0b110 for DOUBLE fixed) | 5 bits of integer indicating the length of the whole marshaled object (1-9)
+	// next 0 - 8 bytes indicates the casting uint64 of the float value with trailing 0s removed
+	// for example: -0.125 --casting to uint64 bytes--> [191 192 0 0 0 0 0 0], will be encoded as [0b110_00011 191 192]
+	//              0.0 --casting to uint64 bytes--> [0 0 0 0 0 0 0 0], will be encoded as [0b110_00001]
+	//              0.156 --casting to uint64 bytes--> [63 195 247 206 217 22 135 43], will be encoded as [0b110_01001 63 195 247 206 217 22 135 43]
+	// Note, first byte being 0b110_00000 is reserved for backward compatibility, indicating the previous encoding schema, which has fixed 8 bytes following
 	ret := make([]byte, 9)
-	ret[0] = DOUBLE
 	binlib.BigEndian.PutUint64(ret[1:], math.Float64bits(float64(d)))
-	return ret, nil
+	var totalDigits uint8 = 9
+	for i := 8; i >= 1; i-- {
+		if ret[i] == 0 {
+			// remove trailing 0s
+			totalDigits -= 1
+		} else {
+			break
+		}
+	}
+	ret[0] = DOUBLE | totalDigits
+	return ret[:totalDigits], nil
 }
 
 type Bool bool
