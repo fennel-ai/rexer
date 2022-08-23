@@ -71,6 +71,19 @@ function AvatarDropdown() {
     };
     const items: MenuProps["items"] = [
         {
+            icon: <UserOutlined />,
+            label: (<a href="/settings#account">Account</a>),
+            key: "account",
+        },
+        {
+            icon: <TeamOutlined />,
+            label: (<a href="/settings#organization">Organization</a>),
+            key: "account",
+        },
+        {
+            type: "divider",
+        },
+        {
             icon: <LogoutOutlined />,
             label: "Log out",
             key: "logout",
