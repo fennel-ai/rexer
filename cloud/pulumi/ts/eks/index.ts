@@ -172,6 +172,21 @@ function setupLinkerd(cluster: k8s.Provider) {
     return linkerd
 }
 
+async function setupEKSLocalSSDProvisioner(cluster: eks.Cluster) {
+    const root = path.join(process.env.FENNEL_ROOT!, "deployment/artifacts/eks-nvme-ssd-provisioner");
+    // Create eks-nvme-ssd-provisioner. This is responsible found mounting
+    // attached disks.
+    const ssdProvisioner = new k8s.yaml.ConfigFile("eks-nvme-ssd-provisioner", {
+        file: path.join(root, "eks-nvme-ssd-provisioner.yaml"),
+    }, { provider: cluster.provider })
+
+    // Create resources for local-static-provisioner:
+    // https://github.com/kubernetes-sigs/sig-storage-local-static-provisioner/
+    const localStaticProvisioner = new k8s.yaml.ConfigFile("local-static-provisioner", {
+        file: path.join(root, "storage-local-static-provisioner.yaml"),
+    }, { provider: cluster.provider })
+}
+
 async function setupEmissaryIngressCrds(input: inputType, awsProvider: aws.Provider, cluster: eks.Cluster) {
     // Setup AWS load balancer controller.
     const lbc = await setupLoadBalancerController(input, awsProvider, cluster)
@@ -441,7 +456,7 @@ async function setupEbsCsiDriver(input: inputType, awsProvider: aws.Provider, cl
 
 // setupSpotRescheduler is responsible to move pods scheduled on on-demand nodes to spot nodes proactively
 async function setupSpotRescheduler(awsProvider: aws.Provider, input: inputType, cluster: eks.Cluster,
-                                    spotNodeLabel: string, onDemandNodeLabel: string) {
+    spotNodeLabel: string, onDemandNodeLabel: string) {
     // Account ID
     const current = await aws.getCallerIdentity({ provider: awsProvider });
     const accountId = current.accountId;
@@ -958,6 +973,9 @@ export const setup = async (input: inputType): Promise<pulumi.Output<outputType>
     // Setup storageclasses to be used by stateful sets.
     const storageclasses = setupStorageClasses(cluster)
     const clusterName = cluster.core.cluster.name
+    // Setup provisioner for deploying PVs backed by locally attached disks.
+    setupEKSLocalSSDProvisioner(cluster)
+    storageclasses["local"] = pulumi.output("nvme-ssd")
 
     const output = pulumi.output({
         kubeconfig, oidcUrl, instanceRole, instanceRoleArn, clusterSg, clusterName, storageclasses,
