@@ -22,5 +22,8 @@ const relay = new aws.ec2.Instance("tailscale-relay",
         subnetId: subnet,
         associatePublicIpAddress: true,
         userData: startupScript,
+        tags: {
+            Name: "tailscale-relay",
+        },
     }
 )
