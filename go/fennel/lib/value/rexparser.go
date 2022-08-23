@@ -32,7 +32,7 @@ var (
 	MalformedDictKeyError = errors.New("malformed dictionary key serialization")
 	MalformedStringError  = errors.New("malformed string serialization")
 	MalformedListError    = errors.New("malformed list serialization")
-	MalformedDoubleError  = errors.New("insufficient bytes for double")
+	MalformedDoubleError  = errors.New("insufficient or illegitimate bytes for double")
 )
 
 func EncodeTypeWithNum(t byte, n int64) ([]byte, error) {
@@ -100,7 +100,7 @@ func ParseValue(data []byte) (Value, int, error) {
 		} else {
 			// 2. Double.Marshal(): [0xC0 | total bytes, 0 - 8 bytes storing the value, with trailing 0s removed]
 			dataLen := int(data[0] & 0b00011111)
-			if len(data) < dataLen {
+			if (dataLen > 9) || (len(data) < dataLen) {
 				return nil, 0, MalformedDoubleError
 			}
 			var d uint64 = 0
