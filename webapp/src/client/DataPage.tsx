@@ -1,6 +1,6 @@
 import { Tabs } from "antd";
 
-import styles from "./styles/DataPage.module.scss";
+import styles from "./styles/Page.module.scss";
 import ProfilesTab from "./ProfilesTab";
 import ActionsTab from "./ActionsTab";
 import FeaturesTab from "./FeaturesTab";

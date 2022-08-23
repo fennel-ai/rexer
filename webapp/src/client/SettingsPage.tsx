@@ -2,7 +2,7 @@ import { Tabs } from "antd";
 
 import AccountTab from "./AccountTab";
 import OrgTab from "./OrgTab";
-import styles from "./styles/DataPage.module.scss";
+import styles from "./styles/Page.module.scss";
 
 function SettingsPage() {
     return (
