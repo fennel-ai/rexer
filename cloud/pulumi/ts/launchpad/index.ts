@@ -452,6 +452,20 @@ const planeConfs: Record<number, DataPlaneConf> = {
             binlog: {
                 partitions: 10,
             },
+            mskBinlog: {
+                partitions: 10,
+                // since we have created 2 broker nodes, RF has to be smaller than that
+                replicationFactor: 1,
+            }
+        },
+
+        // set up MSK cluster
+        mskConf: {
+            brokerType: "kafka.m5.large",
+            // this will place 1 broker node in each of the AZs
+            numberOfBrokerNodes: 2,
+            // consider expanding this in the future if each broker needs more storage capacity
+            storageVolumeSizeGiB: 128,
         }
     },
     // Lokal's prod tier data plane

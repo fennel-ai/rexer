@@ -18,6 +18,7 @@ import * as offlineAggregateSources from "../offline-aggregate-script-source";
 import * as planeEksPermissions from "../plane-eks-permissions";
 import * as postgres from "../postgres";
 import * as modelMonitoring from "../model-monitoring";
+import * as msk from "../msk";
 import * as util from "../lib/util";
 
 import * as process from "process";
@@ -37,6 +38,16 @@ type DBConfig = {
 type ConfluentConfig = {
     username: string,
     password: string,
+}
+
+type MskConf = {
+    // see valid values - https://aws.amazon.com/msk/pricing/
+    brokerType: string,
+
+    // this must be a multiple of the number of subnets in which the MSK cluster is being configured
+    numberOfBrokerNodes: number,
+    storageVolumeSizeGiB: number,
+    // TODO(mohit): Consider adding support for volume throughput management
 }
 
 type RedisConfig = {
@@ -81,6 +92,7 @@ type NitrousConf = {
     blockCacheMB: number,
     kvCacheMB: number,
     binlog: nitrous.binlogConfig,
+    mskBinlog?: nitrous.binlogConfig,
 }
 
 type NewAccount = {
@@ -124,6 +136,7 @@ export type DataPlaneConf = {
     vpcConf: VpcConfig,
     dbConf: DBConfig,
     confluentConf: ConfluentConfig,
+    mskConf?: MskConf,
     controlPlaneConf: vpc.controlPlaneConfig,
     redisConf?: RedisConfig,
     cacheConf?: CacheConfg,
@@ -151,6 +164,7 @@ export type PlaneOutput = {
     glue: glueSource.outputType,
     telemetry: telemetry.outputType,
     milvus: milvus.outputType,
+    msk?: msk.outputType,
 }
 
 const parseConfig = (): DataPlaneConf => {
@@ -297,6 +311,23 @@ const setupResources = async () => {
             kubeconfig: eksOutput.kubeconfig
         });
     }
+    let mskOutput: pulumi.Output<msk.outputType> | undefined;
+    if (input.mskConf !== undefined) {
+        mskOutput = await msk.setup({
+            planeId: input.planeId,
+            region: input.region,
+            roleArn: roleArn,
+            privateSubnets: vpcOutput.privateSubnets,
+            brokerType: input.mskConf.brokerType,
+            numberOfBrokerNodes: input.mskConf.numberOfBrokerNodes,
+            storageVolumeSizeGiB: input.mskConf.storageVolumeSizeGiB,
+            vpcId: vpcOutput.vpcId,
+            connectedSecurityGroups: {
+                "eks": eksOutput.clusterSg,
+            },
+            connectedCidrBlocks: [input.controlPlaneConf.cidrBlock],
+        });
+    }
     const confluentOutput = await confluentenv.setup({
         region: input.region,
         username: input.confluentConf.username,
@@ -330,6 +361,21 @@ const setupResources = async () => {
     })
 
     if (input.nitrousConf !== undefined) {
+        let mskadmin: nitrous.mskAdmin | undefined;
+        let mskBinlog: nitrous.binlogConfig | undefined;
+        if (mskOutput !== undefined) {
+            mskadmin = {
+                username: mskOutput!.mskUsername,
+                password: mskOutput!.mskPassword,
+                bootstrapServers: mskOutput!.bootstrapBrokers,
+            }
+            mskBinlog = {
+                partitions: input.nitrousConf.mskBinlog?.partitions,
+                replicationFactor: input.nitrousConf.mskBinlog?.replicationFactor,
+                retention_ms: input.nitrousConf.mskBinlog?.retention_ms,
+                partition_retention_bytes: input.nitrousConf.mskBinlog?.partition_retention_bytes,
+            }
+        }
         const nitrousOutput = await nitrous.setup({
             planeId: input.planeId,
             region: input.region,
@@ -353,12 +399,15 @@ const setupResources = async () => {
                 apiSecret: confluentOutput.apiSecret,
                 bootstrapServer: confluentOutput.bootstrapServer,
             },
+            msk: mskadmin,
+
             binlog: {
                 partitions: input.nitrousConf.binlog.partitions,
                 replicationFactor: input.nitrousConf.binlog.replicationFactor,
                 retention_ms: input.nitrousConf.binlog.retention_ms,
                 partition_retention_bytes: input.nitrousConf.binlog.partition_retention_bytes,
             },
+            mskBinlog: mskBinlog,
             protect: input.protectResources,
         })
     }
@@ -397,6 +446,7 @@ const setupResources = async () => {
         glue: glueOutput,
         telemetry: telemetryOutput,
         milvus: milvusOutput,
+        msk: mskOutput,
     }
 };
 
@@ -423,7 +473,11 @@ const setupDataPlane = async (args: DataPlaneConf, preview?: boolean, destroy?: 
         program: setupResources,
     };
     // create (or select if one already exists) a stack that uses our inline program
-    const stack = await LocalWorkspace.createOrSelectStack(stackArgs);
+    const stack = await LocalWorkspace.createOrSelectStack(stackArgs, {
+        envVars: {
+            "TF_LOG": "DEBUG"
+        }
+    });
     console.info("successfully initialized stack");
 
     await setupPlugins(stack)
