@@ -1,8 +1,7 @@
 import axios, { AxiosError } from "axios";
 
 import styles from "./styles/Navbar.module.scss";
-import { MenuProps, notification } from "antd";
-import { Dropdown, Menu, Space, Avatar } from "antd";
+import { MenuProps, notification, Dropdown, Menu, Space, Avatar } from "antd";
 import { DownOutlined, UserOutlined, TeamOutlined, LogoutOutlined } from '@ant-design/icons';
 
 interface Props {
