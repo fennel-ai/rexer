@@ -110,6 +110,7 @@ func (s *server) setupRouter() {
 	auth.GET("/features", s.Features)
 	auth.GET("/settings", s.Settings)
 	auth.POST("/logout", s.Logout)
+	auth.GET("/user", s.User)
 
 	// dev only endpoints
 	if s.isDev() {
@@ -468,6 +469,24 @@ func (s *server) Logout(c *gin.Context) {
 		}
 	}
 	c.JSON(http.StatusOK, gin.H{})
+}
+
+func (s *server) User(c *gin.Context) {
+	user, ok := CurrentUser(c)
+	if !ok {
+		// shouldn't happen
+		c.JSON(http.StatusUnprocessableEntity, gin.H{
+			"error": "No user found",
+		})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{
+		"user": gin.H{
+			"email":     user.Email,
+			"firstName": "Xiao", // TODO(xiao)
+			"lastName":  "Jiang",
+		},
+	})
 }
 
 func (s *server) debugConfirmEmail(c *gin.Context) {
