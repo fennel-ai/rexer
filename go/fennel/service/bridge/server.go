@@ -483,8 +483,8 @@ func (s *server) User(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{
 		"user": gin.H{
 			"email":     user.Email,
-			"firstName": "Xiao", // TODO(xiao)
-			"lastName":  "Jiang",
+			"firstName": user.FirstName,
+			"lastName":  user.LastName,
 		},
 	})
 }

@@ -34,6 +34,8 @@ func newUser(db *gorm.DB, email, password string) (userL.User, error) {
 	return userL.User{
 		Email:             email,
 		EncryptedPassword: hash,
+		FirstName:         "Xiao", // TODO(xiao) pass params from upstream
+		LastName:          "Jiang",
 	}, nil
 }
 
