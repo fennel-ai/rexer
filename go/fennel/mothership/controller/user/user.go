@@ -34,6 +34,8 @@ func newUser(db *gorm.DB, email, password string) (userL.User, error) {
 	return userL.User{
 		Email:             email,
 		EncryptedPassword: hash,
+		FirstName:         "Xiao", // TODO(xiao) pass params from upstream
+		LastName:          "Jiang",
 	}, nil
 }
 
@@ -301,4 +303,11 @@ func Logout(c context.Context, db *gorm.DB, user userL.User) (userL.User, error)
 		"RememberCreatedAt": sql.NullInt64{Valid: false},
 	})
 	return user, result.Error
+}
+
+func UpdateUserNames(c context.Context, db *gorm.DB, user userL.User, firstName, lastName string) error {
+	user.FirstName = firstName
+	user.LastName = lastName
+	result := db.Save(&user)
+	return result.Error
 }

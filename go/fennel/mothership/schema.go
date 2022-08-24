@@ -141,4 +141,8 @@ var Schema = db.Schema{
                 ADD COLUMN created_at BIGINT UNSIGNED NOT NULL,
                 ADD COLUMN updated_at BIGINT UNSIGNED NOT NULL;
         `,
+	20: `ALTER TABLE user
+                ADD COLUMN first_name VARCHAR(64) NOT NULL,
+                ADD COLUMN last_name VARCHAR(64) NOT NULL;
+        `,
 }

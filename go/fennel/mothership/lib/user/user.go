@@ -21,6 +21,8 @@ type User struct {
 	ResetSentAt        sql.NullInt64
 	CustomerID         uint
 	Customer           customer.Customer
+	FirstName          string
+	LastName           string
 
 	DeletedAt soft_delete.DeletedAt `gorm:"softDelete:milli"`
 	CreatedAt int64                 `gorm:"autoUpdateTime:milli"`
