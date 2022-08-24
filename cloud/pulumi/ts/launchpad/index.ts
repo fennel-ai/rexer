@@ -172,7 +172,7 @@ const tierConfs: Record<number, TierConf> = {
     // Lokal's staging tier
     109: {
         protectResources: true,
-        planeId: 6,
+        planeId: 5,
         // use public subnets for ingress to allow traffic from outside the assigned vpc
         ingressConf: {
             usePublicSubnets: true,
@@ -192,29 +192,6 @@ const tierConfs: Record<number, TierConf> = {
                     }
                 }
             },
-        },
-        // Create enough query server pods such that it will schedule pods on both on demand and spot
-        // node groups
-        queryServerConf: {
-            podConf: {
-                minReplicas: 3,
-                maxReplicas: 4,
-                nodeLabels: {
-                    "node-group": "p-6-queryserver-ng"
-                },
-                resourceConf: {
-                    // since the node group scheduled are using 4 vCPU and 8Gi memory, set the requests accordingly
-                    // i.e. single pod on a single node
-                    cpu: {
-                        request: "2500m",
-                        limit: "3500m"
-                    },
-                    memory: {
-                        request: "3G",
-                        limit: "4G",
-                    }
-                },
-            }
         },
         enableNitrous: true,
     },
@@ -674,110 +651,6 @@ const planeConfs: Record<number, DataPlaneConf> = {
             nodeLabels: {
                 "node-group": "p-5-nitrous-ng",
             }
-        }
-    },
-    // Lokal's staging data plane
-    6: {
-        protectResources: true,
-
-        accountConf: {
-            existingAccount: {
-                roleArn: account.MASTER_ACCOUNT_ADMIN_ROLE_ARN,
-            }
-        },
-
-        planeId: 6,
-        region: "ap-south-1",
-        vpcConf: {
-            cidr: "10.106.0.0/16"
-        },
-        dbConf: {
-            minCapacity: 1,
-            maxCapacity: 4,
-            password: "password",
-            skipFinalSnapshot: true,
-        },
-        eksConf: {
-            nodeGroups: [
-                {
-                    name: "p-6-common-ng-x86",
-                    instanceTypes: ["t3.medium"],
-                    minSize: 1,
-                    maxSize: 3,
-                    amiType: DEFAULT_X86_AMI_TYPE,
-                    capacityType: ON_DEMAND_INSTANCE_TYPE,
-                    expansionPriority: 1,
-                },
-                {
-                    name: "p-6-common-ng-arm64",
-                    instanceTypes: ["t4g.medium"],
-                    minSize: 1,
-                    maxSize: 3,
-                    amiType: DEFAULT_ARM_AMI_TYPE,
-                    capacityType: ON_DEMAND_INSTANCE_TYPE,
-                    expansionPriority: 1,
-                },
-                // Query server on demand node group
-                {
-                    name: "p-6-queryserver-on-demand",
-                    instanceTypes: ["c6g.xlarge"],
-                    minSize: 1,
-                    maxSize: 2,
-                    amiType: DEFAULT_ARM_AMI_TYPE,
-                    labels: {
-                        "node-group": "p-6-queryserver-ng",
-                        "rescheduler-label": "on-demand",
-                    },
-                    capacityType: ON_DEMAND_INSTANCE_TYPE,
-                    expansionPriority: 1,
-                },
-                // Query server spot node group
-                {
-                    name: "p-6-queryserver-4vCPU-8G-spot",
-                    instanceTypes: ["c6g.xlarge", "c6gn.xlarge", "c6gd.xlarge"],
-                    minSize: 1,
-                    maxSize: 2,
-                    amiType: DEFAULT_ARM_AMI_TYPE,
-                    labels: {
-                        "node-group": "p-6-queryserver-ng",
-                        "rescheduler-label": "spot",
-                    },
-                    capacityType: SPOT_INSTANCE_TYPE,
-                    // assign a higher priority for the node group with spot instance capacity type
-                    expansionPriority: 10,
-                },
-            ],
-            spotReschedulerConf: {
-                spotNodeLabel: "rescheduler-label=spot",
-                onDemandNodeLabel: "rescheduler-label=on-demand",
-            }
-        },
-        confluentConf: {
-            username: confluentUsername,
-            password: confluentPassword
-        },
-        controlPlaneConf: controlPlane,
-        redisConf: {
-            numShards: 1,
-            nodeType: "db.t4g.small",
-            numReplicasPerShard: 0,
-        },
-        cacheConf: {
-            nodeType: "cache.t4g.micro",
-            numNodeGroups: 1,
-            replicasPerNodeGroup: 0,
-        },
-        prometheusConf: {
-            useAMP: false
-        },
-        // Run nitrous on the plane.
-        nitrousConf: {
-            replicas: 1,
-            storageCapacityGB: 10,
-            storageClass: "io1",
-            blockCacheMB: 512,
-            kvCacheMB: 1024,
-            binlog: {},
         }
     },
     // plane 8 - pending account close, post which it can be destroyed
