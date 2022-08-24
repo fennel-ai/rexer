@@ -56,6 +56,9 @@ jobs:
           KAFKA_SERVER_ADDRESS: ${{ secrets.KAFKA_SERVER_ADDRESS }}
           KAFKA_USERNAME: ${{ secrets.KAFKA_USERNAME }}
           KAFKA_PASSWORD: ${{ secrets.KAFKA_PASSWORD }}
+          MSK_KAFKA_SERVER_ADDRESS: ${{ secrets.MSK_KAFKA_SERVER_ADDRESS }}
+          MSK_KAFKA_USERNAME: ${{ secrets.MSK_KAFKA_USERNAME }}
+          MSK_KAFKA_PASSWORD: ${{ secrets.MSK_KAFKA_PASSWORD }}
           MYSQL_SERVER_ADDRESS: ${{ secrets.MYSQL_SERVER_ADDRESS }}
           MYSQL_DATABASE_NAME: ${{ secrets.MYSQL_DATABASE_NAME }}
           MYSQL_USERNAME: ${{ secrets.MYSQL_USERNAME }}
