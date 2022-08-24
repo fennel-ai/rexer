@@ -8,6 +8,7 @@ import * as process from "process";
 import * as childProcess from "child_process";
 import * as util from "../lib/util";
 import { ReadinessProbe } from "../tier-consts/consts";
+import {bootstrapServers} from "@pulumi/kafka/config";
 
 
 export const plugins = {
@@ -60,6 +61,12 @@ export type kafkaAdmin = {
     bootstrapServer: pulumi.Input<string>,
 }
 
+export type mskAdmin = {
+    username: pulumi.Output<string>,
+    password: pulumi.Output<string>,
+    bootstrapServers: pulumi.Output<string>,
+}
+
 export type inputType = {
     planeId: number,
     region: string,
@@ -80,6 +87,9 @@ export type inputType = {
 
     kafka: kafkaAdmin,
     binlog: binlogConfig,
+
+    msk?: mskAdmin,
+    mskBinlog?: binlogConfig,
 
     protect: boolean,
 }
@@ -127,10 +137,53 @@ function setupBinlog(input: inputType) {
     }, { provider: k8sProvider, deleteBeforeReplace: true })
 }
 
+function setupBinLogInMsk(input: inputType, awsProvider: aws.Provider) {
+    // currently TLS is disabled
+    const bootstrapServers = input.msk!.bootstrapServers.apply(bootstrapServers => { return bootstrapServers.split(","); })
+    const kafkaProvider = new kafka.Provider("nitrous-kafka-provider-msk", {
+        // bootstrap servers is a string with comma separated server addresses
+        bootstrapServers: bootstrapServers,
+        saslUsername: input.msk!.username,
+        saslPassword: input.msk!.password,
+        saslMechanism: "scram-sha512",
+    }, { provider: awsProvider });
+    bootstrapServers.apply(servers => {
+        console.log('servers: ', servers);
+    })
+    const config = {
+        "retention.ms": input.mskBinlog!.retention_ms,
+        "retention.bytes": input.mskBinlog!.partition_retention_bytes,
+    };
+    const topic = new kafka.Topic(`topic-p-${input.planeId}-${BINLOG_TOPIC_NAME}-msk`, {
+        name: `p_${input.planeId}_${BINLOG_TOPIC_NAME}`,
+        partitions: input.mskBinlog!.partitions || DEFAULT_BINLOG_PARTITIONS,
+        // We set replication factor to 3 regardless of the cluster availability
+        // since that's the minimum required by confluent cloud:
+        // https://github.com/Mongey/terraform-provider-kafka/issues/40#issuecomment-456897983
+        replicationFactor: input.mskBinlog!.replicationFactor || 1,
+        config: config,
+    }, { provider: kafkaProvider, protect: input.protect })
+
+    const k8sProvider = new k8s.Provider("configs-k8s-provider-msk", {
+        kubeconfig: input.kubeconfig,
+        namespace: namespace,
+    })
+    const kafkaCreds = new k8s.core.v1.Secret("kafka-config-msk", {
+        stringData: {
+            "servers": input.msk!.bootstrapServers,
+            "username": input.msk!.username,
+            "password": input.msk!.password,
+        },
+        metadata: {
+            name: "kafka-conf-msk",
+        }
+    }, { provider: k8sProvider, deleteBeforeReplace: true })
+}
+
 export const setup = async (input: inputType) => {
 
     // Setup binlog kafka topic.
-    const topic = setupBinlog(input)
+    const topic = setupBinlog(input);
 
     const awsProvider = new aws.Provider("nitrous-aws-provider", {
         region: <aws.Region>input.region,
@@ -140,6 +193,10 @@ export const setup = async (input: inputType) => {
             // attacks: https://docs.aws.amazon.com/IAM/latest/UserGuide/confused-deputy.html
         }
     })
+
+    if (input.msk !== undefined) {
+        const topicMsk = setupBinLogInMsk(input, awsProvider);
+    }
 
     const bucketName = `nitrous-p-${input.planeId}-backup`
     const bucket = new aws.s3.Bucket(bucketName, {
