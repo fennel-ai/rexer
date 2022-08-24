@@ -438,6 +438,20 @@ const planeConfs: Record<number, DataPlaneConf> = {
                     capacityType: ON_DEMAND_INSTANCE_TYPE,
                     expansionPriority: 1,
                 },
+                // Nitrous node group.
+                {
+                    name: "p-3-nitrous-ng-arm",
+                    instanceTypes: ["c6gd.large"],
+                    minSize: 1,
+                    maxSize: 1,
+                    amiType: DEFAULT_ARM_AMI_TYPE,
+                    capacityType: ON_DEMAND_INSTANCE_TYPE,
+                    labels: {
+                        "node-group": "p-3-nitrous-ng",
+                        "aws.amazon.com/eks-local-ssd": "true",
+                    },
+                    expansionPriority: 1,
+                },
             ],
         },
         milvusConf: {},
@@ -446,7 +460,7 @@ const planeConfs: Record<number, DataPlaneConf> = {
         nitrousConf: {
             replicas: 1,
             storageCapacityGB: 100,
-            storageClass: "io2",
+            storageClass: "local",
             blockCacheMB: 512,
             kvCacheMB: 1024,
             binlog: {
@@ -456,6 +470,9 @@ const planeConfs: Record<number, DataPlaneConf> = {
                 partitions: 10,
                 // since we have created 2 broker nodes, RF has to be smaller than that
                 replicationFactor: 1,
+            },
+            nodeLabels: {
+                "node-group": "p-3-nitrous-ng",
             }
         },
 
