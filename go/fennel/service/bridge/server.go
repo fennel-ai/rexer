@@ -478,7 +478,6 @@ func respondError(c *gin.Context, err error, action string) {
 		})
 		log.Printf("Failed to %s: %v\n", action, err)
 	}
-	return
 }
 
 func (s *server) debugConfirmEmail(c *gin.Context) {
