@@ -62,6 +62,13 @@ export type AirbyteConf = {
     publicServer?: boolean,
 }
 
+export type TierMskConf = {
+    mskUsername: string,
+    mskPassword: string,
+    // comma separated bootstrap servers in and across multiple AZs
+    bootstrapBrokers: string,
+}
+
 export type TierConf = {
     // Should be set to false, when deleting the tier
     //
@@ -98,6 +105,9 @@ type inputType = {
     bootstrapServer: string,
     kafkaApiKey: string,
     kafkaApiSecret: pulumi.Output<string>,
+    // msk configuration
+    mskConf?: TierMskConf,
+
     // kafka connectors configuration
     confUsername: string,
     confPassword: string,
@@ -160,6 +170,8 @@ const parseConfig = (): inputType => {
         topics: config.requireObject(nameof<inputType>("topics")),
         kafkaApiKey: config.require(nameof<inputType>("kafkaApiKey")),
         kafkaApiSecret: config.requireSecret(nameof<inputType>("kafkaApiSecret")),
+
+        mskConf: config.getObject(nameof<inputType>("mskConf")),
 
         confUsername: config.require(nameof<inputType>("confUsername")),
         confPassword: config.require(nameof<inputType>("confPassword")),
@@ -421,6 +433,11 @@ const setupResources = async () => {
                     "username": input.kafkaApiKey,
                     "password": kafkaPassword,
                 } as Record<string, string>),
+                mskConfig: pulumi.output({
+                    "mskServers": input.mskConf?.bootstrapBrokers || "",
+                    "mskUsername": input.mskConf?.mskUsername || "",
+                    "mskPassword": input.mskConf?.mskPassword || "",
+                } as Record<string, string>),
                 modelServingConfig: pulumi.output({
                     "region": input.region,
                     "executionRole": sagemakerRole,
@@ -589,6 +606,9 @@ type TierInput = {
     kafkaApiKey: string,
     kafkaApiSecret: string,
 
+    // msk configuration
+    mskConf?: TierMskConf,
+
     // connector configuration
     confUsername: string,
     confPassword: string,
@@ -672,6 +692,12 @@ const setupTier = async (args: TierInput, preview?: boolean, destroy?: boolean) 
     const projectName = `launchpad`
     const stackName = `fennel/${projectName}/tier-${args.tierId}`
 
+    // validate that if nitrous is enabled, plane had created a MSK cluster
+    if (args.enableNitrous !== undefined && args.enableNitrous && args.mskConf === undefined) {
+        console.log('nitrous is enabled but plane did not configure a MSK cluster')
+        process.exit(1);
+    }
+
     console.info("initializing stack");
     // Create our stack
     const stackArgs: InlineProgramArgs = {
@@ -696,6 +722,10 @@ const setupTier = async (args: TierInput, preview?: boolean, destroy?: boolean) 
     await stack.setConfig(nameof<inputType>("kafkaApiKey"), { value: args.kafkaApiKey })
     await stack.setConfig(nameof<inputType>("kafkaApiSecret"), { value: args.kafkaApiSecret, secret: true })
     await stack.setConfig(nameof<inputType>("topics"), { value: JSON.stringify(args.topics) })
+
+    if (args.mskConf !== undefined) {
+        await stack.setConfig(nameof<inputType>("mskConf"), { value: JSON.stringify(args.mskConf) });
+    }
 
     await stack.setConfig(nameof<inputType>("bootstrapServer"), { value: args.bootstrapServer })
     await stack.setConfig(nameof<inputType>("kafkaApiKey"), { value: args.kafkaApiKey })

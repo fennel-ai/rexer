@@ -197,7 +197,7 @@ func TestIntegrationMultiplePartitions(t *testing.T) {
 func setupKafkaTopics(scope resource.Scope, topic string, partitions int) error {
 	name := scope.PrefixedName(topic)
 	// Create admin client
-	c, err := kafka.NewAdminClient(ConfigMap(test_kafka_servers, kafka_username, kafka_password))
+	c, err := kafka.NewAdminClient(ConfigMap(test_kafka_servers, kafka_username, kafka_password, kafka_sasl_mechanism))
 	if err != nil {
 		return fmt.Errorf("failed to create admin client: %v", err)
 	}
@@ -222,7 +222,7 @@ func setupKafkaTopics(scope resource.Scope, topic string, partitions int) error 
 func teardownKafkaTopic(t *testing.T, scope resource.Scope, topic string) {
 	name := scope.PrefixedName(topic)
 	// Create admin client.
-	c, err := kafka.NewAdminClient(ConfigMap(test_kafka_servers, kafka_username, kafka_password))
+	c, err := kafka.NewAdminClient(ConfigMap(test_kafka_servers, kafka_username, kafka_password, kafka_sasl_mechanism))
 	assert.NoError(t, err)
 	defer c.Close()
 

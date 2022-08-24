@@ -2,12 +2,12 @@ package kafka
 
 import (
 	"context"
+	"fennel/lib/nitrous"
 	"time"
 
 	"fennel/lib/action"
 	"fennel/lib/counter"
 	"fennel/lib/feature"
-	"fennel/lib/nitrous"
 	"fennel/lib/profile"
 	"fennel/lib/usage"
 	"fennel/resource"
@@ -17,11 +17,12 @@ import (
 )
 
 const (
-	SecurityProtocol     = "SASL_SSL"
-	SaslMechanism        = "PLAIN"
-	DefaultOffsetPolicy  = "earliest"
-	EarliestOffsetPolicy = "earliest"
-	LatestOffsetPolicy   = "latest"
+	SecurityProtocol     	 = "SASL_SSL"
+	SaslPlainMechanism   	 = "PLAIN"
+	SaslScramSha512Mechanism = "SCRAM-SHA-512"
+	DefaultOffsetPolicy  	 = "earliest"
+	EarliestOffsetPolicy 	 = "earliest"
+	LatestOffsetPolicy   	 = "latest"
 )
 
 type FConsumer interface {
@@ -50,7 +51,7 @@ type TopicConf struct {
 	PConfigs ProducerConfigs
 }
 
-var ALL_TOPICS = []TopicConf{
+var ALL_CONFLUENT_TOPICS = []TopicConf{
 	{Scope: resource.TierScope{}, Topic: action.ACTIONLOG_KAFKA_TOPIC},
 	// TODO: Deprecate `ACTIONLOG_JSON_KAFKA_TOPIC` once confluent go supports
 	// producing and consuming schema versioned messages
@@ -72,17 +73,38 @@ var ALL_TOPICS = []TopicConf{
 	},
 	{Scope: resource.TierScope{}, Topic: profile.PROFILELOG_KAFKA_TOPIC},
 	{Scope: resource.TierScope{}, Topic: counter.AGGREGATE_OFFLINE_TRANSFORM_TOPIC_NAME},
-	{Scope: resource.PlaneScope{}, Topic: nitrous.BINLOG_KAFKA_TOPIC},
 	{Scope: resource.TierScope{}, Topic: usage.HOURLY_USAGE_LOG_KAFKA_TOPIC},
 }
 
-func ConfigMap(server, username, password string) *kafka.ConfigMap {
+var ALL_MSK_TOPICS = []TopicConf{
+	{Scope: resource.PlaneScope{}, Topic: nitrous.BINLOG_KAFKA_TOPIC},
+}
+
+func IsConfluentTopic(topic string) bool {
+	for _, t := range ALL_CONFLUENT_TOPICS {
+		if t.Topic == topic {
+			return true
+		}
+	}
+	return false
+}
+
+func IsMskTopic(topic string) bool {
+	for _, t := range ALL_MSK_TOPICS {
+		if t.Topic == topic {
+			return true
+		}
+	}
+	return false
+}
+
+func ConfigMap(server, username, password, saslMechanism string) *kafka.ConfigMap {
 	return &kafka.ConfigMap{
 		"bootstrap.servers": server,
 		"sasl.username":     username,
 		"sasl.password":     password,
 		"security.protocol": SecurityProtocol,
-		"sasl.mechanisms":   SaslMechanism,
+		"sasl.mechanisms":   saslMechanism,
 		// gather statistics every 1s
 		"statistics.interval.ms": 1 * 1000,
 		// https://github.com/edenhill/librdkafka/blob/master/CONFIGURATION.md

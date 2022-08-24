@@ -51,7 +51,10 @@ func SetupTier(flags tier.TierArgs) error {
 	if err := setupDB(flags.TierID, flags.MysqlDB, flags.MysqlUsername, flags.MysqlPassword, flags.MysqlHost); err != nil {
 		return err
 	}
-	return testkafka.SetupKafkaTopics(resource.NewTierScope(flags.TierID), flags.KafkaServer, flags.KafkaUsername, flags.KafkaPassword)
+	if err := testkafka.SetupKafkaTopics(resource.NewTierScope(flags.TierID), flags.KafkaServer, flags.KafkaUsername, flags.KafkaPassword, fkafka.SaslPlainMechanism, fkafka.ALL_CONFLUENT_TOPICS); err != nil {
+		return err
+	}
+	return testkafka.SetupKafkaTopics(resource.NewTierScope(flags.TierID), flags.MskKafkaServer, flags.MskKafkaUsername, flags.MskKafkaPassword, fkafka.SaslScramSha512Mechanism, fkafka.ALL_MSK_TOPICS)
 }
 
 func Teardown(tr tier.Tier) error {
@@ -67,22 +70,25 @@ func Teardown(tr tier.Tier) error {
 		panic(fmt.Sprintf("error in db teardown: %v\n", err))
 	}
 
-	if err := teardownKafkaTopics(tr.ID, flags.KafkaServer, flags.KafkaUsername, flags.KafkaPassword, fkafka.ALL_TOPICS); err != nil {
+	if err := teardownKafkaTopics(tr.ID, flags.KafkaServer, flags.KafkaUsername, flags.KafkaPassword, fkafka.SaslPlainMechanism, fkafka.ALL_CONFLUENT_TOPICS); err != nil {
 		panic(fmt.Sprintf("unable to teardown kafka topics: %v", err))
+	}
+	if err := teardownKafkaTopics(tr.ID, flags.MskKafkaServer, flags.MskKafkaUsername, flags.MskKafkaPassword, fkafka.SaslScramSha512Mechanism, fkafka.ALL_MSK_TOPICS); err != nil {
+		panic(fmt.Sprintf("unable to teardown msk kafka topics: %v", err))
 	}
 	var err error
 	tr.MilvusClient.ForEach(func(client milvus.Client) { err = client.Close() })
 	return err
 }
 
-func teardownKafkaTopics(tierID ftypes.RealmID, host, username, password string, topics []fkafka.TopicConf) error {
+func teardownKafkaTopics(tierID ftypes.RealmID, host, username, password, saslMechanism string, topics []fkafka.TopicConf) error {
 	scope := resource.NewTierScope(tierID)
 	names := make([]string, len(topics))
 	for i, topic := range topics {
 		names[i] = scope.PrefixedName(topic.Topic)
 	}
 	// Create admin client.
-	c, err := kafka.NewAdminClient(fkafka.ConfigMap(host, username, password))
+	c, err := kafka.NewAdminClient(fkafka.ConfigMap(host, username, password, saslMechanism))
 	if err != nil {
 		return fmt.Errorf("failed to create admin client: %v", err)
 	}

@@ -14,6 +14,7 @@ export type inputType = {
     cacheConfig: pulumi.Input<Record<string, string>>,
     dbConfig: pulumi.Input<Record<string, string>>,
     kafkaConfig: pulumi.Input<Record<string, string>>,
+    mskConfig: pulumi.Input<Record<string, string>>,
     modelServingConfig: pulumi.Input<Record<string, string>>,
     glueConfig: pulumi.Input<Record<string, string>>,
     unleashConfig: pulumi.Input<Record<string, string>>,
@@ -51,6 +52,13 @@ export const setup = async (input: inputType) => {
         stringData: input.kafkaConfig,
         metadata: {
             name: "kafka-conf",
+        }
+    }, { provider, deleteBeforeReplace: true })
+
+    const mskCreds = new k8s.core.v1.Secret("msk-kafka-config", {
+        stringData: input.mskConfig,
+        metadata: {
+            name: "msk-kafka-conf",
         }
     }, { provider, deleteBeforeReplace: true })
 

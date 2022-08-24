@@ -47,6 +47,11 @@ type TierArgs struct {
 	KafkaServer      string         `arg:"--kafka-server,env:KAFKA_SERVER_ADDRESS" json:"kafka_server,omitempty"`
 	KafkaUsername    string         `arg:"--kafka-user,env:KAFKA_USERNAME" json:"kafka_username,omitempty"`
 	KafkaPassword    string         `arg:"--kafka-password,env:KAFKA_PASSWORD" json:"kafka_password,omitempty"`
+	// MSK configuration
+	MskKafkaServer   string 		`arg:"--msk-kafka-server,env:MSK_KAFKA_SERVER_ADDRESS" json:"msk_kafka_server,omitempty"`
+	MskKafkaUsername string 		`arg:"--msk-kafka-user,env:MSK_KAFKA_USERNAME" json:"msk_kafka_username,omitempty"`
+	MskKafkaPassword string 		`arg:"--msk-kafka-password,env:MSK_KAFKA_PASSWORD" json:"msk_kafka_password,omitempty"`
+
 	MysqlHost        string         `arg:"--mysql-host,env:MYSQL_SERVER_ADDRESS" json:"mysql_host,omitempty"`
 	MysqlDB          string         `arg:"--mysql-db,env:MYSQL_DATABASE_NAME" json:"mysql_db,omitempty"`
 	MysqlUsername    string         `arg:"--mysql-user,env:MYSQL_USERNAME" json:"mysql_username,omitempty"`
@@ -101,6 +106,15 @@ func (args TierArgs) Valid() error {
 		missingFields = append(missingFields, "PLANE_ID")
 	}
 
+	// TODO(mohit): make this a required argument
+	if args.MskKafkaServer != "" {
+		if args.MskKafkaUsername == "" {
+			missingFields = append(missingFields, "MSK_KAFKA_USERNAME")
+		}
+		if args.MskKafkaPassword == "" {
+			missingFields = append(missingFields, "MSK_KAFKA_PASSWORD")
+		}
+	}
 	// TODO: require args when ready for s3, glue, modelStore, sagemaker, UnleashEndpoint
 	if len(missingFields) > 0 {
 		return fmt.Errorf("missing fields: %s", strings.Join(missingFields, ", "))
@@ -220,18 +234,43 @@ func CreateFromArgs(args *TierArgs) (tier Tier, err error) {
 	}()
 
 	logger.Info("Creating kafka producers")
-	producers, err := CreateKafka(tierID, args.PlaneID, args.KafkaServer, args.KafkaUsername, args.KafkaPassword)
+	producers, err := CreateKafka(tierID, args.PlaneID, args.KafkaServer, args.KafkaUsername, args.KafkaPassword, libkafka.SaslPlainMechanism, libkafka.ALL_CONFLUENT_TOPICS)
 	if err != nil {
 		return tier, err
+	}
+	var mskProducers map[string]libkafka.FProducer
+	if args.MskKafkaServer != "" {
+		mskProducers, err = CreateKafka(tierID, args.PlaneID, args.MskKafkaServer, args.MskKafkaUsername, args.MskKafkaPassword, libkafka.SaslScramSha512Mechanism, libkafka.ALL_MSK_TOPICS)
+		if err != nil {
+			return tier, err
+		}
+	}
+	// merge both producers
+	for k, v := range mskProducers {
+		producers[k] = v
 	}
 
 	logger.Info("Creating kafka consumer factory")
 	consumerCreator := func(config libkafka.ConsumerConfig) (libkafka.FConsumer, error) {
-		kafkaConsumerConfig := libkafka.RemoteConsumerConfig{
-			ConsumerConfig:  config,
-			BootstrapServer: args.KafkaServer,
-			Username:        args.KafkaUsername,
-			Password:        args.KafkaPassword,
+		var kafkaConsumerConfig libkafka.RemoteConsumerConfig
+		if libkafka.IsConfluentTopic(config.Topic) {
+			kafkaConsumerConfig = libkafka.RemoteConsumerConfig{
+				ConsumerConfig:  config,
+				BootstrapServer: args.KafkaServer,
+				Username:        args.KafkaUsername,
+				Password:        args.KafkaPassword,
+				SaslMechanism:   libkafka.SaslPlainMechanism,
+			}
+		} else if libkafka.IsMskTopic(config.Topic) {
+			kafkaConsumerConfig = libkafka.RemoteConsumerConfig{
+				ConsumerConfig: config,
+				BootstrapServer: args.MskKafkaServer,
+				Username: args.MskKafkaUsername,
+				Password: args.MskKafkaPassword,
+				SaslMechanism: libkafka.SaslScramSha512Mechanism,
+			}
+		} else {
+			return nil, fmt.Errorf("topic: %s must be belong to either confluent or MSK cluster", config.Topic)
 		}
 		kafkaConsumer, err := kafkaConsumerConfig.Materialize()
 		if err != nil {
@@ -243,10 +282,14 @@ func CreateFromArgs(args *TierArgs) (tier Tier, err error) {
 	nitrousClient := mo.None[nitrous.NitrousClient]()
 	if args.NitrousServer != "" {
 		logger.Info("Connecting to nitrous")
+		binlogProducer, ok := producers[libnitrous.BINLOG_KAFKA_TOPIC]
+		if !ok {
+			return tier, fmt.Errorf("failed to create nitrous client; Binlog kafka topic not configured")
+		}
 		nitrousConfig := nitrous.NitrousClientConfig{
 			TierID:         args.TierID,
 			ServerAddr:     args.NitrousServer,
-			BinlogProducer: producers[libnitrous.BINLOG_KAFKA_TOPIC],
+			BinlogProducer: binlogProducer,
 		}
 		client, err := nitrousConfig.Materialize()
 		if err != nil {
@@ -386,9 +429,9 @@ func CreateFromArgs(args *TierArgs) (tier Tier, err error) {
 	}, nil
 }
 
-func CreateKafka(tierID, planeID ftypes.RealmID, server, username, password string) (map[string]libkafka.FProducer, error) {
+func CreateKafka(tierID, planeID ftypes.RealmID, server, username, password, saslMechanism string, topics []libkafka.TopicConf) (map[string]libkafka.FProducer, error) {
 	producers := make(map[string]libkafka.FProducer)
-	for _, topic := range libkafka.ALL_TOPICS {
+	for _, topic := range topics {
 		var scope resource.Scope
 		switch topic.Scope.(type) {
 		case resource.TierScope:
@@ -402,6 +445,7 @@ func CreateKafka(tierID, planeID ftypes.RealmID, server, username, password stri
 			BootstrapServer: server,
 			Username:        username,
 			Password:        password,
+			SaslMechanism:   saslMechanism,
 			Topic:           topic.Topic,
 			Scope:           scope,
 			Configs:         topic.PConfigs,

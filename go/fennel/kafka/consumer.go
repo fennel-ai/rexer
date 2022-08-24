@@ -240,10 +240,11 @@ type RemoteConsumerConfig struct {
 	BootstrapServer string
 	Username        string
 	Password        string
+	SaslMechanism 	string
 }
 
 func (conf RemoteConsumerConfig) Materialize() (resource.Resource, error) {
-	configmap := ConfigMap(conf.BootstrapServer, conf.Username, conf.Password)
+	configmap := ConfigMap(conf.BootstrapServer, conf.Username, conf.Password, conf.SaslMechanism)
 
 	topic := conf.Scope.PrefixedName(conf.Topic)
 	log.Printf("Creating remote consumer for topic %s", topic)

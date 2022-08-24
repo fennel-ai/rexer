@@ -1,4 +1,4 @@
-import setupTier, { TierConf } from "./tier";
+import setupTier, {TierConf, TierMskConf} from "./tier";
 import setupDataPlane, { DataPlaneConf, PlaneOutput } from "./data_plane";
 import setupMothership, { MothershipConf } from "./mothership";
 import * as vpc from "../vpc";
@@ -16,6 +16,7 @@ import * as kafkatopics from "../kafkatopics";
 import * as telemetry from "../telemetry";
 import * as milvus from "../milvus";
 import { nameof, PUBLIC_LB_SCHEME, PRIVATE_LB_SCHEME } from "../lib/util";
+import * as msk from "../msk";
 
 import * as process from "process";
 import * as assert from "assert";
@@ -821,6 +822,7 @@ function setupTierWrapperFn(tierId: number, dataplane: OutputMap, planeConf: Dat
     const glueOutput = dataplane[nameof<PlaneOutput>("glue")].value as glueSource.outputType
     const telemetryOutput = dataplane[nameof<PlaneOutput>("telemetry")].value as telemetry.outputType
     const milvusOutput = dataplane[nameof<PlaneOutput>("milvus")].value as milvus.outputType
+    const mskOutput = dataplane[nameof<PlaneOutput>("msk")].value as msk.outputType | undefined
 
     // Create/update/delete the tier.
     if (tierId !== 0) {
@@ -840,6 +842,15 @@ function setupTierWrapperFn(tierId: number, dataplane: OutputMap, planeConf: Dat
 
         // TODO(mohit): Validate that the nodeLabel specified in `PodConf` have at least one label match across labels
         // defined in all node groups.
+
+        let mskConf: TierMskConf | undefined;
+        if (mskOutput !== undefined) {
+            mskConf = {
+                mskUsername: mskOutput.mskUsername,
+                mskPassword: mskOutput.mskPassword,
+                bootstrapBrokers: mskOutput.bootstrapBrokers,
+            }
+        }
 
         const topics: kafkatopics.topicConf[] = [
             {
@@ -884,6 +895,8 @@ function setupTierWrapperFn(tierId: number, dataplane: OutputMap, planeConf: Dat
             topics: topics,
             kafkaApiKey: confluentOutput.apiKey,
             kafkaApiSecret: confluentOutput.apiSecret,
+
+            mskConf: mskConf,
 
             confUsername: confluentUsername!,
             confPassword: confluentPassword!,
