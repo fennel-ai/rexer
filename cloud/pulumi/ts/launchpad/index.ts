@@ -898,7 +898,12 @@ if (tierId !== 0) {
             name: `t_${tierId}_streamlog`,
             partitions: 10,
             retention_ms: 432000000  // 5 days retention
-        }
+        },
+        // Topic to track usage for billing.
+        {
+            name: `t_${tierId}_hourly_usage_log`,
+            retention_ms: 432000000  // 5 days retention 
+        },
     ];
     setupTier({
         protect: tierConf.protectResources,
