@@ -812,7 +812,88 @@ const planeConfs: Record<number, DataPlaneConf> = {
         prometheusConf: {
             useAMP: true
         },
-    }
+    },
+    // NOTE: This is test plane created for testing purposes and should not be
+    // needed after 09/01/2022.
+    10: {
+        protectResources: false,
+        accountConf: {
+            existingAccount: {
+                roleArn: account.MASTER_ACCOUNT_ADMIN_ROLE_ARN,
+            }
+        },
+        planeId: 10,
+        region: "us-west-2",
+        vpcConf: {
+            cidr: "10.110.0.0/16"
+        },
+        dbConf: {
+            minCapacity: 1,
+            maxCapacity: 1,
+            password: "password",
+            skipFinalSnapshot: true,
+        },
+        confluentConf: {
+            username: confluentUsername,
+            password: confluentPassword
+        },
+        controlPlaneConf: controlPlane,
+        redisConf: {
+            numShards: 1,
+            nodeType: "db.t4g.small",
+            numReplicasPerShard: 0,
+        },
+        prometheusConf: {
+            useAMP: true
+        },
+        cacheConf: {
+            // this is used for demo tiers, which could right a lot of profiles
+            numNodeGroups: 1,
+            nodeType: "cache.t4g.small",
+            replicasPerNodeGroup: 0,
+        },
+        // increase the desired capacity and scale up to occupy more pods
+        //
+        // https://github.com/awslabs/amazon-eks-ami/blob/master/files/eni-max-pods.txt
+        eksConf: {
+            nodeGroups: [
+                {
+                    name: "p-10-common-ng-x86",
+                    instanceTypes: ["t3.large"],
+                    minSize: 1,
+                    maxSize: 1,
+                    amiType: DEFAULT_X86_AMI_TYPE,
+                    capacityType: ON_DEMAND_INSTANCE_TYPE,
+                    expansionPriority: 1,
+                },
+                {
+                    name: "p-10-nitrous-ng-arm",
+                    instanceTypes: ["c6gd.large"],
+                    minSize: 1,
+                    maxSize: 1,
+                    amiType: DEFAULT_ARM_AMI_TYPE,
+                    capacityType: ON_DEMAND_INSTANCE_TYPE,
+                    labels: {
+                        "node-group": "p-10-nitrous-ng",
+                        "aws.amazon.com/eks-local-ssd": "true",
+                    },
+                    expansionPriority: 1,
+                },
+            ],
+        },
+        // Run nitrous on the plane.
+        nitrousConf: {
+            replicas: 1,
+            storageCapacityGB: 100,
+            storageClass: "local",
+            blockCacheMB: 512,
+            kvCacheMB: 1024,
+            binlog: {},
+            nodeLabels: {
+                "node-group": "p-10-nitrous-ng",
+            }
+        }
+    },
 }
 
 //==============================================================================
