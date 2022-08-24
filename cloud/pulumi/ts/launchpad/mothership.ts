@@ -1,0 +1,176 @@
+import { InlineProgramArgs, LocalWorkspace } from "@pulumi/pulumi/automation";
+import * as util from "../lib/util"
+import * as vpc from "../vpc"
+import * as pulumi from "@pulumi/pulumi"
+import * as mysql from "../mysql";
+import * as ns from "../k8s-ns";
+import * as eks from "../eks";
+import * as aurora from "../aurora";
+import * as ingress from "../ingress";
+import { MASTER_ACCOUNT_ADMIN_ROLE_ARN } from "../account";
+
+export type WebAppServerConf = {
+    podConf?: util.PodConf,
+}
+
+export type BridgeServerConf = {
+    podConf?: util.PodConf,
+}
+
+export type MothershipConf = {
+    // Should be set to false, when deleting the plane
+    //
+    // Else, individual data storage resources, if they are to be deleted, should be set to false and the stack should
+    // be updated
+    //
+    // NOTE: Please add a justification if this value is being set to False and the configuration is being checked-in
+    protectResources: boolean,
+    dbConf: util.DBConfig,
+    eksConf: util.EksConf,
+    planeId: number,
+    vpcConf: vpc.controlPlaneConfig,
+    webAppServerConf?: WebAppServerConf,
+    ingressConf?: util.IngressConf,
+    bridgeServerConf?: BridgeServerConf,
+}
+
+const parseConfig = (): MothershipConf => {
+    const config = new pulumi.Config();
+    return config.requireObject("input");
+}
+
+const setupPlugins = async (stack: pulumi.automation.Stack) => {
+    // TODO: aggregate plugins from all projects. If there are multiple versions
+    // of the same plugin in different projects, we might want to use the latest.
+    let plugins: { [key: string]: string } = {
+        ...vpc.plugins,
+        ...eks.plugins,
+        ...aurora.plugins,
+    }
+    console.info("installing plugins...");
+    for (var key in plugins) {
+        await stack.workspace.installPlugin(key, plugins[key])
+    }
+    console.info("plugins installed");
+}
+
+// This is our pulumi program in "inline function" form
+const setupResources = async () => {
+    const input = parseConfig();
+
+    const eksOutput = await eks.setup({
+        roleArn: input.vpcConf.roleArn,
+        region: input.vpcConf.region,
+        vpcId: pulumi.output(input.vpcConf.vpcId),
+        publicSubnets: pulumi.output([input.vpcConf.primaryPublicSubnet, input.vpcConf.secondaryPublicSubnet]),
+        privateSubnets: pulumi.output([input.vpcConf.primaryPrivateSubnet, input.vpcConf.secondaryPrivateSubnet]),
+        planeId: input.planeId,
+        nodeGroups: input.eksConf.nodeGroups,
+        spotReschedulerConf: input.eksConf.spotReschedulerConf,
+        scope: util.Scope.MOTHERSHIP,
+    });
+    const auroraOutput = await aurora.setup({
+        roleArn: input.vpcConf.roleArn,
+        region: input.vpcConf.region,
+        vpcId: pulumi.output(input.vpcConf.vpcId),
+        minCapacity: input.dbConf.minCapacity || 1,
+        maxCapacity: input.dbConf.maxCapacity || 1,
+        username: "admin",
+        password: pulumi.output(input.dbConf.password),
+        connectedSecurityGroups: {
+            "eks": eksOutput.clusterSg,
+        },
+        planeId: input.planeId,
+        skipFinalSnapshot: input.dbConf.skipFinalSnapshot,
+        connectedCidrBlocks: [input.vpcConf.cidrBlock],
+        protect: input.protectResources,
+        scope: util.Scope.MOTHERSHIP,
+    })
+    // setup mysql db.
+    // Comment this when direct connection to the db instance is not possible.
+    // This will usually be when trying to setup a tier in a customer vpc, which
+    // should usually be done through the bridge.
+    const sqlDB = await mysql.setup({
+        username: "admin",
+        password: pulumi.output(input.dbConf.password),
+        endpoint: auroraOutput.host,
+        db: `${util.getPrefix(util.Scope.MOTHERSHIP, input.planeId)}-db`,
+        protect: input.protectResources,
+    })
+    const kconf = pulumi.all([eksOutput.kubeconfig]).apply(([k]) => JSON.stringify(k))
+    console.log("kubernetes config: ", kconf)
+    const nsName = `${util.getPrefix(util.Scope.MOTHERSHIP, input.planeId)}`
+    // setup k8s namespaces.
+    const namespace = await ns.setup({
+        namespace: nsName,
+        kubeconfig: kconf,
+    })
+    // setup ingress.
+
+    const ingressOutput = await ingress.setup({
+        scopeId: input.planeId,
+        roleArn: input.vpcConf.roleArn,
+        region: input.vpcConf.region,
+        kubeconfig: kconf,
+        namespace: nsName,
+        subnetIds: [input.vpcConf.primaryPublicSubnet, input.vpcConf.secondaryPublicSubnet],
+        loadBalancerScheme: util.PUBLIC_LB_SCHEME,
+        useDedicatedMachines: input.ingressConf?.useDedicatedMachines,
+        replicas: input.ingressConf?.replicas,
+        clusterName: eksOutput.clusterName,
+        nodeRoleArn: eksOutput.instanceRoleArn,
+        scope: util.Scope.MOTHERSHIP,
+    })
+
+    return {
+        eks: eksOutput,
+        db: auroraOutput,
+        ingress: ingressOutput,
+    }
+};
+
+
+const setupMothership = async (args: MothershipConf, preview?: boolean, destroy?: boolean) => {
+    const projectName = `launchpad`
+    const stackName = `fennel/${projectName}/mothership-${args.planeId}`
+
+    console.info("initializing stack");
+    // Create our stack
+    const stackArgs: InlineProgramArgs = {
+        projectName,
+        stackName,
+        program: setupResources,
+    };
+    // create (or select if one already exists) a stack that uses our inline program
+    const stack = await LocalWorkspace.createOrSelectStack(stackArgs);
+    console.info("successfully initialized stack");
+
+    await setupPlugins(stack)
+
+    console.info("setting up config");
+
+    await stack.setConfig("input", { value: JSON.stringify(args) })
+
+    console.info("config set");
+
+    if (preview) {
+        console.info("previewing stack...");
+        const previewRes = await stack.preview({ onOutput: console.info });
+        console.info(previewRes);
+        process.exit(0);
+    }
+
+    if (destroy) {
+        console.info("destroying stack...");
+        await stack.destroy({ onOutput: console.info });
+        console.info("stack destroy complete");
+        process.exit(0);
+    }
+
+    console.info("updating stack...");
+    const upRes = await stack.up({ onOutput: console.info, targetDependents: true });
+    console.log(upRes)
+    return upRes.outputs
+};
+
+export default setupMothership

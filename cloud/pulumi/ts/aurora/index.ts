@@ -2,6 +2,7 @@ import * as pulumi from "@pulumi/pulumi";
 import * as aws from "@pulumi/aws";
 import * as process from "process";
 import * as uuid from "uuid";
+import { getPrefix, Scope } from "../lib/util";
 
 import { nameof, fennelStdTags } from "../lib/util";
 
@@ -24,6 +25,7 @@ export type inputType = {
     // We should ideally set this to `false` for production tiers and true for the test/staging tiers.
     skipFinalSnapshot: boolean,
     protect: boolean,
+    scope: Scope,
 }
 
 export type outputType = {
@@ -45,6 +47,7 @@ const parseConfig = (): inputType => {
         planeId: config.requireNumber(nameof<inputType>("planeId")),
         skipFinalSnapshot: config.requireBoolean(nameof<inputType>("skipFinalSnapshot")),
         protect: config.requireBoolean(nameof<inputType>("protect")),
+        scope: config.requireNumber(nameof<inputType>("scope")),
     }
 }
 
@@ -59,31 +62,37 @@ export const setup = async (input: inputType): Promise<pulumi.Output<outputType>
     })
 
     const subnetIds = input.vpcId.apply(async vpcId => {
+        var prefix: string
+        if (input.scope === Scope.MOTHERSHIP) {
+            prefix = "fennel"
+        } else {
+            prefix = getPrefix(input.scope, input.planeId)
+        }
         return await aws.ec2.getSubnetIds({
             vpcId: vpcId,
             // TODO: use better method for filtering private subnets.
             filters: [{
                 name: "tag:Name",
-                values: [`p-${input.planeId}-primary-private-subnet`, `p-${input.planeId}-secondary-private-subnet`],
+                values: [`${prefix}-primary-private-subnet`, `${prefix}-secondary-private-subnet`],
             }]
         }, { provider })
     })
 
-    const subnetGroup = new aws.rds.SubnetGroup(`p-${input.planeId}-db-subnetgroup`, {
+    const subnetGroup = new aws.rds.SubnetGroup(`${getPrefix(input.scope, input.planeId)}-db-subnetgroup`, {
         subnetIds: subnetIds.ids,
         description: "Subnet group for primary database",
         tags: { ...fennelStdTags },
     }, { provider })
 
-    const securityGroup = new aws.ec2.SecurityGroup(`p-${input.planeId}-db-sg`, {
-        namePrefix: `p-${input.planeId}-db-sg-`,
+    const securityGroup = new aws.ec2.SecurityGroup(`${getPrefix(input.scope, input.planeId)}-db-sg`, {
+        namePrefix: `${getPrefix(input.scope, input.planeId)}-db-sg-`,
         vpcId: input.vpcId,
         tags: { ...fennelStdTags },
     }, { provider })
 
     let sgRules: pulumi.Output<string>[] = []
     for (var key in input.connectedSecurityGroups) {
-        sgRules.push(new aws.ec2.SecurityGroupRule(`p-${input.planeId}-allow-${key}`, {
+        sgRules.push(new aws.ec2.SecurityGroupRule(`${getPrefix(input.scope, input.planeId)}-allow-${key}`, {
             securityGroupId: securityGroup.id,
             sourceSecurityGroupId: input.connectedSecurityGroups[key],
             fromPort: 0,
@@ -93,7 +102,7 @@ export const setup = async (input: inputType): Promise<pulumi.Output<outputType>
         }, { provider }).id)
     }
     if (input.connectedCidrBlocks !== undefined) {
-        sgRules.push(new aws.ec2.SecurityGroupRule(`p-${input.planeId}-aurora-allow-connected-cidr`, {
+        sgRules.push(new aws.ec2.SecurityGroupRule(`${getPrefix(input.scope, input.planeId)}-aurora-allow-connected-cidr`, {
             securityGroupId: securityGroup.id,
             cidrBlocks: input.connectedCidrBlocks,
             fromPort: 0,
@@ -112,7 +121,7 @@ export const setup = async (input: inputType): Promise<pulumi.Output<outputType>
         applyImmediately: true,
         dbSubnetGroupName: subnetGroup.name,
         vpcSecurityGroupIds: [securityGroup.id],
-        clusterIdentifierPrefix: `p-${input.planeId}-db-`,
+        clusterIdentifierPrefix: `${getPrefix(input.scope, input.planeId)}-db-`,
         engine: aws.rds.EngineType.AuroraMysql,
         engineMode: aws.rds.EngineMode.Serverless,
         engineVersion: "5.7.mysql_aurora.2.08.3",
@@ -123,7 +132,7 @@ export const setup = async (input: inputType): Promise<pulumi.Output<outputType>
             maxCapacity: input.maxCapacity,
         },
         skipFinalSnapshot: input.skipFinalSnapshot,
-        finalSnapshotIdentifier: `p-${input.planeId}-${snapshotId}`,
+        finalSnapshotIdentifier: `${getPrefix(input.scope, input.planeId)}-${snapshotId}`,
         tags: { ...fennelStdTags }
     }, { provider, protect: input.protect })
 

@@ -6,8 +6,10 @@ import * as aws from "@pulumi/aws";
 import * as fs from 'fs';
 import * as process from "process";
 import * as path from 'path';
-import { KeyPair } from "@pulumi/aws/ec2";
+import { getPrefixList, KeyPair } from "@pulumi/aws/ec2";
 import { exit } from "process";
+import { BooleanLiteral } from "typescript";
+import { getPrefix, Scope } from "../lib/util"
 
 // NOTE: The AMI used should be an eks-worker AMI that can be searched
 // on the AWS AMI catalog with one of the following prefixes:
@@ -74,12 +76,13 @@ export type inputType = {
     roleArn: pulumi.Input<string>,
     region: string,
     vpcId: pulumi.Output<string>,
-    connectedVpcCidrs: string[],
+    connectedVpcCidrs?: string[],
     publicSubnets: pulumi.Output<string[]>,
     privateSubnets: pulumi.Output<string[]>,
     planeId: number,
     nodeGroups: NodeGroupConf[],
     spotReschedulerConf?: SpotReschedulerConf,
+    scope: Scope,
 }
 
 export type outputType = {
@@ -176,7 +179,8 @@ async function setupEKSLocalSSDProvisioner(cluster: eks.Cluster) {
     const root = path.join(process.env.FENNEL_ROOT!, "deployment/artifacts/eks-nvme-ssd-provisioner");
     // Create eks-nvme-ssd-provisioner. This is responsible found mounting
     // attached disks.
-    const ssdProvisioner = new k8s.yaml.ConfigFile("eks-nvme-ssd-provisioner", {
+
+    const ssdProvisioner = new k8s.yaml.ConfigFile(`eks-nvme-ssd-provisioner`, {
         file: path.join(root, "eks-nvme-ssd-provisioner.yaml"),
     }, { provider: cluster.provider })
 
@@ -251,8 +255,8 @@ async function setupIamRoleForServiceAccount(input: inputType, awsProvider: aws.
 
     // Create IAM role and k8s service account.
     const role = cluster.core.oidcProvider!.url.apply(oidcUrl => {
-        return new aws.iam.Role(`p-${input.planeId}-${entity}-role`, {
-            namePrefix: `p-${input.planeId}-${serviceAccountName}`,
+        return new aws.iam.Role(`${getPrefix(input.scope, input.planeId)}-${entity}-role`, {
+            namePrefix: `${getPrefix(input.scope, input.planeId)}-${serviceAccountName}`,
             assumeRolePolicy: `{
              "Version": "2012-10-17",
              "Statement": [
@@ -306,12 +310,12 @@ async function setupLoadBalancerController(input: inputType, awsProvider: aws.Pr
         console.error(err)
         process.exit()
     }
-    const iamPolicy = new aws.iam.Policy(`p-${input.planeId}-lbc-policy`, {
-        namePrefix: `p-${input.planeId}-AWSLoadBalancerControllerIAMPolicy`,
+    const iamPolicy = new aws.iam.Policy(`${getPrefix(input.scope, input.planeId)}-lbc-policy`, {
+        namePrefix: `${getPrefix(input.scope, input.planeId)}-AWSLoadBalancerControllerIAMPolicy`,
         policy: policyJson,
     }, { provider: awsProvider })
 
-    const attachPolicy = new aws.iam.RolePolicyAttachment(`p-${input.planeId}-attach-lbc-policy`, {
+    const attachPolicy = new aws.iam.RolePolicyAttachment(`${getPrefix(input.scope, input.planeId)}-attach-lbc-policy`, {
         role: role.id,
         policyArn: iamPolicy.arn,
     }, { provider: awsProvider })
@@ -409,8 +413,8 @@ async function setupEbsCsiDriver(input: inputType, awsProvider: aws.Provider, cl
         console.error(err)
         process.exit()
     }
-    const iamPolicy = new aws.iam.Policy(`p-${input.planeId}-ebs-driver-policy`, {
-        namePrefix: `p-${input.planeId}-EbsCsiDriverIAMPolicy`,
+    const iamPolicy = new aws.iam.Policy(`${getPrefix(input.scope, input.planeId)}-ebs-driver-policy`, {
+        namePrefix: `${getPrefix(input.scope, input.planeId)}-EbsCsiDriverIAMPolicy`,
         policy: policyJson,
     }, { provider: awsProvider })
 
@@ -420,7 +424,7 @@ async function setupEbsCsiDriver(input: inputType, awsProvider: aws.Provider, cl
     const { role } = await setupIamRoleForServiceAccount(input, awsProvider,
         "csi-driver", namespace, serviceAccountName, cluster)
 
-    const attachPolicy = new aws.iam.RolePolicyAttachment(`p-${input.planeId}-attach-ebs-policy`, {
+    const attachPolicy = new aws.iam.RolePolicyAttachment(`${getPrefix(input.scope, input.planeId)}-attach-ebs-policy`, {
         role: role.id,
         policyArn: iamPolicy.arn,
     }, { provider: awsProvider })
@@ -466,7 +470,7 @@ async function setupSpotRescheduler(awsProvider: aws.Provider, input: inputType,
     // EC2 ASG, EKS, EKS Managed Node Groups and few AWS EC2 APIs to fetch supported instance types etc)
     //
     // See: https://docs.aws.amazon.com/eks/latest/userguide/autoscaling.html
-    const roleName = `p-${input.planeId}-spot-rescheduler-role`;
+    const roleName = `${getPrefix(input.scope, input.planeId)}-spot-rescheduler-role`;
 
     const role = pulumi.all([cluster.core.oidcProvider!.url, cluster.core.cluster.name]).apply(([oidcUrl, clusterName]) => {
         return new aws.iam.Role(roleName, {
@@ -532,7 +536,7 @@ async function setupSpotRescheduler(awsProvider: aws.Provider, input: inputType,
 
     // Setup the spot rescheduler
     return pulumi.all([role.arn, cluster.core.cluster.name]).apply(([roleArn, clusterName]) => {
-        const autoscalerName = `p-${input.planeId}-cluster-spot-rescheduler`;
+        const autoscalerName = `${getPrefix(input.scope, input.planeId)}-cluster-spot-rescheduler`;
         return new k8s.helm.v3.Release(autoscalerName, {
             repositoryOpts: {
                 "repo": "https://fennel-ai.github.io/public/helm-charts/spot-rescheduler/",
@@ -600,7 +604,7 @@ async function setupClusterAutoscaler(awsProvider: aws.Provider, input: inputTyp
     const accountId = current.accountId;
 
     // See: https://docs.aws.amazon.com/eks/latest/userguide/autoscaling.html
-    const roleName = `p-${input.planeId}-autoscaler-role`;
+    const roleName = `${getPrefix(input.scope, input.planeId)}-autoscaler-role`;
 
     const role = pulumi.all([cluster.core.oidcProvider!.url, cluster.core.cluster.name]).apply(([oidcUrl, clusterName]) => {
         return new aws.iam.Role(roleName, {
@@ -711,7 +715,7 @@ async function setupClusterAutoscaler(awsProvider: aws.Provider, input: inputTyp
     // This is currently setup along with Horizontal Pod Autoscaler which increases/decreases the pods, which could
     // require adding/removing a new node, which is actuated by the cluster autoscaler.
     return pulumi.all([role.arn, cluster.core.cluster.name]).apply(([roleArn, clusterName]) => {
-        const autoscalerName = `p-${input.planeId}-cluster-autoscaler`;
+        const autoscalerName = `${getPrefix(input.scope, input.planeId)}-cluster-autoscaler`;
         return new k8s.helm.v3.Release(autoscalerName, {
             repositoryOpts: {
                 "repo": "https://kubernetes.github.io/autoscaler",
@@ -787,7 +791,7 @@ async function setupClusterAutoscaler(awsProvider: aws.Provider, input: inputTyp
 }
 
 async function setupMetricsServer(provider: aws.Provider, input: inputType, cluster: eks.Cluster) {
-    const metricServerName = `p-${input.planeId}-metrics-server`
+    const metricServerName = `${getPrefix(input.scope, input.planeId)}-metrics-server`
     return new k8s.helm.v3.Release(metricServerName, {
         repositoryOpts: {
             repo: "https://kubernetes-sigs.github.io/metrics-server/"
@@ -821,7 +825,7 @@ export const setup = async (input: inputType): Promise<pulumi.Output<outputType>
     })
 
     // Create an EKS cluster with the default configuration.
-    const cluster = new eks.Cluster(`p-${input.planeId}-eks-cluster`, {
+    const cluster = new eks.Cluster(`${getPrefix(input.scope, input.planeId)}-eks-cluster`, {
         vpcId,
         endpointPrivateAccess: true,
         // TODO: disable public access once we figure out how to get the cluster
@@ -871,7 +875,7 @@ export const setup = async (input: inputType): Promise<pulumi.Output<outputType>
         console.log("Failed to read key-pair: " + err)
         exit(1)
     }
-    const keyPair = new aws.ec2.KeyPair(`p-${input.planeId}-eks-workers`, { publicKey: publicKey }, { provider: awsProvider })
+    const keyPair = new aws.ec2.KeyPair(`${getPrefix(input.scope, input.planeId)}-eks-workers`, { publicKey: publicKey }, { provider: awsProvider })
     // Setup managed node groups
     for (let nodeGroup of input.nodeGroups) {
         if (nodeGroup.capacityType === SPOT_INSTANCE_TYPE && nodeGroup.instanceTypes.length <= 1) {
@@ -922,17 +926,19 @@ export const setup = async (input: inputType): Promise<pulumi.Output<outputType>
     setupDescheduler(cluster);
 
     // Connect cluster node security group to connected vpcs.
-    const sgRules = new aws.ec2.SecurityGroupRule(`p-${input.planeId}-eks-sg-rule`, {
-        type: "ingress",
-        fromPort: 0,
-        toPort: 65535,
-        protocol: "tcp",
-        cidrBlocks: input.connectedVpcCidrs,
-        securityGroupId: clusterSg,
-    }, { provider: awsProvider })
+    if (input.connectedVpcCidrs !== undefined) {
+        const sgRules = new aws.ec2.SecurityGroupRule(`${getPrefix(input.scope, input.planeId)}-eks-sg-rule`, {
+            type: "ingress",
+            fromPort: 0,
+            toPort: 65535,
+            protocol: "tcp",
+            cidrBlocks: input.connectedVpcCidrs,
+            securityGroupId: clusterSg,
+        }, { provider: awsProvider })
+    }
 
-    const policy = new aws.iam.RolePolicy(`t-${input.planeId}-s3-createbucket-rolepolicy`, {
-        name: `p-${input.planeId}-s3-createbucket-rolepolicy`,
+    const policy = new aws.iam.RolePolicy(`${getPrefix(input.scope, input.planeId)}-s3-createbucket-rolepolicy`, {
+        name: `${getPrefix(input.scope, input.planeId)}-s3-createbucket-rolepolicy`,
         role: instanceRole,
         policy: `{
             "Version": "2012-10-17",
@@ -974,7 +980,7 @@ export const setup = async (input: inputType): Promise<pulumi.Output<outputType>
     const storageclasses = setupStorageClasses(cluster)
     const clusterName = cluster.core.cluster.name
     // Setup provisioner for deploying PVs backed by locally attached disks.
-    setupEKSLocalSSDProvisioner(cluster)
+    await setupEKSLocalSSDProvisioner(cluster)
     storageclasses["local"] = pulumi.output("nvme-ssd")
 
     const output = pulumi.output({

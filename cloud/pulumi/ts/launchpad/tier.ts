@@ -31,54 +31,24 @@ import * as process from "process";
 const DEFAULT_SAGEMAKER_INSTANCE_TYPE = "ml.c5.large";
 const DEFAULT_SAGEMAKER_INSTANCE_COUNT = 1;
 
-// All the attributes here are optional, which gives each service a choice to apply service-specific defaults
-export type PodConf = {
-    // Minimum and Maximum number of pods to launch for a service
-    //
-    // If not set, each pod level defaults will be used
-    minReplicas?: number,
-    maxReplicas?: number,
-    // Resource configuration for the pod
-    //
-    // If unset, pod specific defaults will be used
-    resourceConf?: util.ResourceConf,
-    // Node where this pod should be scheduled on MUST have at least one of these label - this determines node selection.
-    //
-    // NOTE: if specified, this must be a subset of the labels of at least one NodeGroup defined in EksConf
-    //
-    // This is optional, in which case, pods are scheduled on any random node
-    //
-    // This is primarily being introduced to allow scheduling certain pods on specific nodes (which are part of a node group)
-    nodeLabels?: Record<string, string>,
-    // Build and use amd64 compatible image for the pod. Defaults to false.
-    useAmd64?: boolean,
-    // pprof heap alloc threshold
-    pprofHeapAllocThresholdMegaBytes?: number
-}
-
 export type HttpServerConf = {
-    podConf?: PodConf
+    podConf?: util.PodConf
 }
 
 export type QueryServerConf = {
-    podConf?: PodConf
+    podConf?: util.PodConf
 }
 
 export type CountAggrConf = {
     // replicas are currently not set, but in the future they might be configured
-    podConf?: PodConf
+    podConf?: util.PodConf
 }
 
 export type CounterCleanupConf = {
     // replicas are currently not set, but in the future they might be configured
-    podConf?: PodConf
+    podConf?: util.PodConf
 }
 
-export type IngressConf = {
-    useDedicatedMachines?: boolean,
-    replicas?: number,
-    usePublicSubnets?: boolean,
-}
 
 export type SagemakerConf = {
     instanceType: string,
@@ -106,7 +76,7 @@ export type TierConf = {
     queryServerConf?: QueryServerConf,
     countAggrConf?: CountAggrConf,
     counterCleanupConf?: CounterCleanupConf,
-    ingressConf?: IngressConf,
+    ingressConf?: util.IngressConf,
     sagemakerConf?: SagemakerConf,
     airbyteConf?: AirbyteConf,
 }
@@ -498,11 +468,12 @@ const setupResources = async () => {
         namespace: input.namespace,
         subnetIds: input.subnetIds,
         loadBalancerScheme: input.loadBalancerScheme,
-        tierId: input.tierId,
+        scopeId: input.tierId,
         useDedicatedMachines: input.ingressUseDedicatedMachines,
         replicas: input.ingressReplicas,
         clusterName: input.clusterName,
         nodeRoleArn: input.nodeInstanceRoleArn,
+        scope: util.Scope.TIER,
     })
     // setup glue
     const glueOutput = await glue.setup({

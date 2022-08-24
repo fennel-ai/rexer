@@ -1,11 +1,13 @@
+import * as pulumi from "@pulumi/pulumi"
 import * as k8s from "@pulumi/kubernetes";
+import { PulumiFn } from "@pulumi/pulumi/automation";
 
 export const plugins = {
     "kubernetes": "v3.18.0"
 }
 
 export type inputType = {
-    kubeconfig: string,
+    kubeconfig: string | pulumi.Output<string>,
     namespace: string,
 }
 

@@ -1,5 +1,6 @@
 import setupTier, { TierConf } from "./tier";
 import setupDataPlane, { DataPlaneConf, PlaneOutput } from "./data_plane";
+import setupMothership, { MothershipConf } from "./mothership";
 import * as vpc from "../vpc";
 import * as eks from "../eks";
 import * as account from "../account";
@@ -14,11 +15,12 @@ import * as glueSource from "../glue-script-source";
 import * as kafkatopics from "../kafkatopics";
 import * as telemetry from "../telemetry";
 import * as milvus from "../milvus";
-import { nameof } from "../lib/util";
+import { nameof, PUBLIC_LB_SCHEME, PRIVATE_LB_SCHEME } from "../lib/util";
 
 import * as process from "process";
 import * as assert from "assert";
 import { DEFAULT_ARM_AMI_TYPE, DEFAULT_X86_AMI_TYPE, ON_DEMAND_INSTANCE_TYPE, SPOT_INSTANCE_TYPE } from "../eks";
+import { OutputMap } from "@pulumi/pulumi/automation";
 
 const controlPlane: vpc.controlPlaneConfig = {
     region: "us-west-2",
@@ -26,7 +28,11 @@ const controlPlane: vpc.controlPlaneConfig = {
     vpcId: "vpc-0d9942e83f94c049c",
     roleArn: account.MASTER_ACCOUNT_ADMIN_ROLE_ARN,
     routeTableId: "rtb-07afe7458db9c4479",
-    cidrBlock: "172.31.0.0/16"
+    cidrBlock: "172.31.0.0/16",
+    primaryPrivateSubnet: "subnet-07aa4b44ebd42517e",
+    secondaryPrivateSubnet: "subnet-091ccb4e147da9859",
+    primaryPublicSubnet: "subnet-00801991ba653e52c",
+    secondaryPublicSubnet: "subnet-0f3a7cbfd18588331",
 }
 
 //================ Static data plane / tier configurations =====================
@@ -35,10 +41,6 @@ const confluentUsername = process.env.CONFLUENT_CLOUD_USERNAME;
 assert.ok(confluentUsername, "CONFLUENT_CLOUD_USERNAME must be set");
 const confluentPassword = process.env.CONFLUENT_CLOUD_PASSWORD;
 assert.ok(confluentPassword, "CONFLUENT_CLOUD_PASSWORD must be set");
-
-// https://kubernetes-sigs.github.io/aws-load-balancer-controller/v2.2/guide/service/annotations/#resource-attributes
-const PUBLIC_LB_SCHEME = "internet-facing";
-const PRIVATE_LB_SCHEME = "internal";
 
 // map from tier id to plane id.
 const tierConfs: Record<number, TierConf> = {
@@ -289,7 +291,7 @@ const tierConfs: Record<number, TierConf> = {
 }
 
 // map from plane id to its configuration.
-const planeConfs: Record<number, DataPlaneConf> = {
+const dataPlaneConfs: Record<number, DataPlaneConf> = {
     // this is used for test resources
     2: {
         protectResources: true,
@@ -810,6 +812,38 @@ const planeConfs: Record<number, DataPlaneConf> = {
     },
 }
 
+const mothershipConfs: Record<number, MothershipConf> = {
+    // Control plane for prod.
+    12: {
+        protectResources: true,
+        planeId: 12,
+        vpcConf: controlPlane,
+        dbConf: {
+            minCapacity: 4,
+            maxCapacity: 8,
+            password: "foundationdb",
+            skipFinalSnapshot: false,
+        },
+        ingressConf: {
+            useDedicatedMachines: true,
+            replicas: 3,
+            usePublicSubnets: true,
+        },
+        eksConf: {
+            nodeGroups: [{
+                name: "m-12-common-ng-x86",
+                instanceTypes: ["t3.medium"],
+                minSize: 1,
+                maxSize: 3,
+                amiType: DEFAULT_X86_AMI_TYPE,
+                capacityType: ON_DEMAND_INSTANCE_TYPE,
+                expansionPriority: 1,
+            },
+            ],
+        },
+    }
+}
+
 //==============================================================================
 
 var tierId = 0;
@@ -835,154 +869,161 @@ if (process.argv.length == 4) {
 }
 
 const id = Number.parseInt(process.argv[process.argv.length - 1])
-if (id in planeConfs) {
+if (id in dataPlaneConfs) {
     planeId = id
+    console.log("Updating data plane: ", planeId)
+    await setupDataPlane(dataPlaneConfs[planeId], preview, destroy)
 } else if (id in tierConfs) {
     tierId = id
     planeId = tierConfs[tierId].planeId
+    console.log("Updating data plane: ", planeId)
+    const dataplane = await setupDataPlane(dataPlaneConfs[planeId], preview, destroy)
+    setupTierWrapperFn(tierId, dataplane, dataPlaneConfs[planeId])
+} else if (id in mothershipConfs) {
+    planeId = id
+    console.log("Updating mothership: ", planeId)
+    await setupMothership(mothershipConfs[planeId], preview, destroy)
 } else {
-    console.log(`${id} is neither a tier nor a plane`)
+    console.log(`${id} is neither a tier, data plane or a control plane`)
     process.exit(1)
 }
 
-console.log("Updating plane: ", planeId)
-const planeConf = planeConfs[planeId]
-const dataplane = await setupDataPlane(planeConf, preview, destroy);
+function setupTierWrapperFn(tierId: number, dataplane: OutputMap, planeConf: DataPlaneConf) {
+    const roleArn = dataplane[nameof<PlaneOutput>("roleArn")].value as string
+    const confluentOutput = dataplane[nameof<PlaneOutput>("confluent")].value as confluentenv.outputType
+    const dbOutput = dataplane[nameof<PlaneOutput>("db")].value as aurora.outputType
+    const postgresDbOutput = dataplane[nameof<PlaneOutput>("postgresDb")].value as postgres.outputType
+    const eksOutput = dataplane[nameof<PlaneOutput>("eks")].value as eks.outputType
+    const redisOutput = dataplane[nameof<PlaneOutput>("redis")].value as redis.outputType
+    const elasticacheOutput = dataplane[nameof<PlaneOutput>("elasticache")].value as elasticache.outputType
+    const vpcOutput = dataplane[nameof<PlaneOutput>("vpc")].value as vpc.outputType
+    const trainingDataOutput = dataplane[nameof<PlaneOutput>("trainingData")].value as connsink.outputType
+    const offlineAggregateSourceFiles = dataplane[nameof<PlaneOutput>("offlineAggregateSourceFiles")].value as offlineAggregateSource.outputType
+    const glueOutput = dataplane[nameof<PlaneOutput>("glue")].value as glueSource.outputType
+    const telemetryOutput = dataplane[nameof<PlaneOutput>("telemetry")].value as telemetry.outputType
+    const milvusOutput = dataplane[nameof<PlaneOutput>("milvus")].value as milvus.outputType
 
-const roleArn = dataplane[nameof<PlaneOutput>("roleArn")].value as string
-const confluentOutput = dataplane[nameof<PlaneOutput>("confluent")].value as confluentenv.outputType
-const dbOutput = dataplane[nameof<PlaneOutput>("db")].value as aurora.outputType
-const postgresDbOutput = dataplane[nameof<PlaneOutput>("postgresDb")].value as postgres.outputType
-const eksOutput = dataplane[nameof<PlaneOutput>("eks")].value as eks.outputType
-const redisOutput = dataplane[nameof<PlaneOutput>("redis")].value as redis.outputType
-const elasticacheOutput = dataplane[nameof<PlaneOutput>("elasticache")].value as elasticache.outputType
-const vpcOutput = dataplane[nameof<PlaneOutput>("vpc")].value as vpc.outputType
-const trainingDataOutput = dataplane[nameof<PlaneOutput>("trainingData")].value as connsink.outputType
-const offlineAggregateSourceFiles = dataplane[nameof<PlaneOutput>("offlineAggregateSourceFiles")].value as offlineAggregateSource.outputType
-const glueOutput = dataplane[nameof<PlaneOutput>("glue")].value as glueSource.outputType
-const telemetryOutput = dataplane[nameof<PlaneOutput>("telemetry")].value as telemetry.outputType
-const milvusOutput = dataplane[nameof<PlaneOutput>("milvus")].value as milvus.outputType
+    // Create/update/delete the tier.
+    if (tierId !== 0) {
+        console.log("Updating tier: ", tierId);
+        const tierConf = tierConfs[tierId]
+        // by default use private subnets
+        let subnetIds;
+        let loadBalancerScheme;
+        const usePublicSubnets = tierConf.ingressConf !== undefined ? tierConf.ingressConf.usePublicSubnets || false : false;
+        if (usePublicSubnets) {
+            subnetIds = vpcOutput.publicSubnets;
+            loadBalancerScheme = PUBLIC_LB_SCHEME;
+        } else {
+            subnetIds = vpcOutput.privateSubnets;
+            loadBalancerScheme = PRIVATE_LB_SCHEME;
+        }
 
-// Create/update/delete the tier.
-if (tierId !== 0) {
-    console.log("Updating tier: ", tierId);
-    const tierConf = tierConfs[tierId]
-    // by default use private subnets
-    let subnetIds;
-    let loadBalancerScheme;
-    const usePublicSubnets = tierConf.ingressConf !== undefined ? tierConf.ingressConf.usePublicSubnets || false : false;
-    if (usePublicSubnets) {
-        subnetIds = vpcOutput.publicSubnets;
-        loadBalancerScheme = PUBLIC_LB_SCHEME;
-    } else {
-        subnetIds = vpcOutput.privateSubnets;
-        loadBalancerScheme = PRIVATE_LB_SCHEME;
+        // TODO(mohit): Validate that the nodeLabel specified in `PodConf` have at least one label match across labels
+        // defined in all node groups.
+
+        const topics: kafkatopics.topicConf[] = [
+            {
+                name: `t_${tierId}_actionlog`,
+                // TODO(mohit): Increase this period to 21 days to support few of the larger aggregates
+                retention_ms: 1209600000  // 14 days retention
+            },
+            {
+                name: `t_${tierId}_featurelog`,
+                partitions: 10,
+                retention_ms: 432000000  // 5 days retention
+            },
+            // configure profile topic to have "unlimited" retention
+            {
+                name: `t_${tierId}_profilelog`,
+                retention_ms: -1
+            },
+            {
+                name: `t_${tierId}_actionlog_json`,
+                retention_ms: 432000000  // 5 days retention
+            },
+            { name: `t_${tierId}_aggr_offline_transform` },
+            // configure stream log to which airbyte connectors will write stream data to
+            {
+                name: `t_${tierId}_streamlog`,
+                partitions: 10,
+                retention_ms: 432000000  // 5 days retention
+            },
+            {
+                name: `t_${tierId}_hourly_usage_log`,
+                retention_ms: 432000000  // 5 days retention
+            }
+
+        ];
+        setupTier({
+            protect: tierConf.protectResources,
+
+            tierId: Number(tierId),
+            planeId: Number(planeId),
+
+            bootstrapServer: confluentOutput.bootstrapServer,
+            topics: topics,
+            kafkaApiKey: confluentOutput.apiKey,
+            kafkaApiSecret: confluentOutput.apiSecret,
+
+            confUsername: confluentUsername!,
+            confPassword: confluentPassword!,
+            clusterId: confluentOutput.clusterId,
+            environmentId: confluentOutput.environmentId,
+            connUserAccessKey: trainingDataOutput.userAccessKeyId,
+            connUserSecret: trainingDataOutput.userSecretAccessKey,
+            connBucketName: trainingDataOutput.bucketName,
+
+            db: "db",
+            dbEndpoint: dbOutput.host,
+            dbUsername: "admin",
+            dbPassword: planeConf.dbConf.password,
+
+            postgresDbEndpoint: postgresDbOutput.host,
+            postgresDbPort: postgresDbOutput.port,
+
+            roleArn: roleArn,
+            region: planeConf.region,
+
+            kubeconfig: JSON.stringify(eksOutput.kubeconfig),
+            namespace: `t-${tierId}`,
+
+            redisEndpoint: redisOutput.clusterEndPoints[0],
+            cachePrimaryEndpoint: elasticacheOutput.endpoint,
+
+            subnetIds: subnetIds,
+            loadBalancerScheme: loadBalancerScheme,
+            ingressUseDedicatedMachines: tierConf.ingressConf?.useDedicatedMachines,
+            ingressReplicas: tierConf.ingressConf?.replicas,
+            clusterName: eksOutput.clusterName,
+            nodeInstanceRoleArn: eksOutput.instanceRoleArn,
+
+            glueSourceBucket: glueOutput.scriptSourceBucket,
+            glueSourceScript: glueOutput.scriptPath,
+            glueTrainingDataBucket: trainingDataOutput.bucketName,
+
+            offlineAggregateSourceBucket: offlineAggregateSourceFiles.bucketName,
+            offlineAggregateSourceFiles: offlineAggregateSourceFiles.sources,
+
+            otelCollectorEndpoint: telemetryOutput.otelCollectorEndpoint,
+            otelCollectorHttpEndpoint: telemetryOutput.otelCollectorHttpEndpoint,
+
+            httpServerConf: tierConf.httpServerConf,
+            queryServerConf: tierConf.queryServerConf,
+            enableNitrous: tierConf.enableNitrous,
+
+            countAggrConf: tierConf.countAggrConf,
+
+            nodeInstanceRole: eksOutput.instanceRole,
+
+            vpcId: vpcOutput.vpcId,
+            connectedSecurityGroups: {
+                "eks": eksOutput.clusterSg,
+            },
+            milvusEndpoint: milvusOutput.endpoint,
+            sagemakerConf: tierConf.sagemakerConf,
+
+            airbyteConf: tierConf.airbyteConf,
+        }, preview, destroy).catch(err => console.log(err))
     }
-
-    // TODO(mohit): Validate that the nodeLabel specified in `PodConf` have at least one label match across labels
-    // defined in all node groups.
-
-    const topics: kafkatopics.topicConf[] = [
-        {
-            name: `t_${tierId}_actionlog`,
-            // TODO(mohit): Increase this period to 21 days to support few of the larger aggregates
-            retention_ms: 1209600000  // 14 days retention
-        },
-        {
-            name: `t_${tierId}_featurelog`,
-            partitions: 10,
-            retention_ms: 432000000  // 5 days retention
-        },
-        // configure profile topic to have "unlimited" retention
-        {
-            name: `t_${tierId}_profilelog`,
-            retention_ms: -1
-        },
-        {
-            name: `t_${tierId}_actionlog_json`,
-            retention_ms: 432000000  // 5 days retention
-        },
-        { name: `t_${tierId}_aggr_offline_transform` },
-        // configure stream log to which airbyte connectors will write stream data to
-        {
-            name: `t_${tierId}_streamlog`,
-            partitions: 10,
-            retention_ms: 432000000  // 5 days retention
-        },
-        // Topic to track usage for billing.
-        {
-            name: `t_${tierId}_hourly_usage_log`,
-            retention_ms: 432000000  // 5 days retention
-        },
-    ];
-    setupTier({
-        protect: tierConf.protectResources,
-
-        tierId: Number(tierId),
-        planeId: Number(planeId),
-
-        bootstrapServer: confluentOutput.bootstrapServer,
-        topics: topics,
-        kafkaApiKey: confluentOutput.apiKey,
-        kafkaApiSecret: confluentOutput.apiSecret,
-
-        confUsername: confluentUsername,
-        confPassword: confluentPassword,
-        clusterId: confluentOutput.clusterId,
-        environmentId: confluentOutput.environmentId,
-        connUserAccessKey: trainingDataOutput.userAccessKeyId,
-        connUserSecret: trainingDataOutput.userSecretAccessKey,
-        connBucketName: trainingDataOutput.bucketName,
-
-        db: "db",
-        dbEndpoint: dbOutput.host,
-        dbUsername: "admin",
-        dbPassword: planeConf.dbConf.password,
-
-        postgresDbEndpoint: postgresDbOutput.host,
-        postgresDbPort: postgresDbOutput.port,
-
-        roleArn: roleArn,
-        region: planeConf.region,
-
-        kubeconfig: JSON.stringify(eksOutput.kubeconfig),
-        namespace: `t-${tierId}`,
-
-        redisEndpoint: redisOutput.clusterEndPoints[0],
-        cachePrimaryEndpoint: elasticacheOutput.endpoint,
-
-        subnetIds: subnetIds,
-        loadBalancerScheme: loadBalancerScheme,
-        ingressUseDedicatedMachines: tierConf.ingressConf?.useDedicatedMachines,
-        ingressReplicas: tierConf.ingressConf?.replicas,
-        clusterName: eksOutput.clusterName,
-        nodeInstanceRoleArn: eksOutput.instanceRoleArn,
-
-        glueSourceBucket: glueOutput.scriptSourceBucket,
-        glueSourceScript: glueOutput.scriptPath,
-        glueTrainingDataBucket: trainingDataOutput.bucketName,
-
-        offlineAggregateSourceBucket: offlineAggregateSourceFiles.bucketName,
-        offlineAggregateSourceFiles: offlineAggregateSourceFiles.sources,
-
-        otelCollectorEndpoint: telemetryOutput.otelCollectorEndpoint,
-        otelCollectorHttpEndpoint: telemetryOutput.otelCollectorHttpEndpoint,
-
-        httpServerConf: tierConf.httpServerConf,
-        queryServerConf: tierConf.queryServerConf,
-        enableNitrous: tierConf.enableNitrous,
-
-        countAggrConf: tierConf.countAggrConf,
-
-        nodeInstanceRole: eksOutput.instanceRole,
-
-        vpcId: vpcOutput.vpcId,
-        connectedSecurityGroups: {
-            "eks": eksOutput.clusterSg,
-        },
-        milvusEndpoint: milvusOutput.endpoint,
-        sagemakerConf: tierConf.sagemakerConf,
-
-        airbyteConf: tierConf.airbyteConf,
-    }, preview, destroy).catch(err => console.log(err))
 }

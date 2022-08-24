@@ -22,23 +22,11 @@ import * as msk from "../msk";
 import * as util from "../lib/util";
 
 import * as process from "process";
-import { NodeGroupConf, SpotReschedulerConf } from "../eks";
 
 type VpcConfig = {
     cidr: string,
 }
 
-type DBConfig = {
-    minCapacity?: number
-    maxCapacity?: number,
-    password: string,
-    skipFinalSnapshot: boolean,
-}
-
-type ConfluentConfig = {
-    username: string,
-    password: string,
-}
 
 type MskConf = {
     // see valid values - https://aws.amazon.com/msk/pricing/
@@ -71,11 +59,6 @@ type PrometheusConf = {
     useAMP: boolean
 }
 
-type EksConf = {
-    // EKS cluster can have more than one Node Group
-    nodeGroups: NodeGroupConf[],
-    spotReschedulerConf?: SpotReschedulerConf,
-}
 
 type MilvusConf = {}
 
@@ -134,14 +117,14 @@ export type DataPlaneConf = {
     planeId: number,
     region: string,
     vpcConf: VpcConfig,
-    dbConf: DBConfig,
-    confluentConf: ConfluentConfig,
     mskConf?: MskConf,
+    dbConf: util.DBConfig,
+    confluentConf: util.ConfluentConfig,
     controlPlaneConf: vpc.controlPlaneConfig,
     redisConf?: RedisConfig,
     cacheConf?: CacheConfg,
     prometheusConf: PrometheusConf,
-    eksConf: EksConf,
+    eksConf: util.EksConf,
     milvusConf?: MilvusConf,
     nitrousConf?: NitrousConf,
     // TODO(mohit): Make this default going forward
@@ -233,6 +216,7 @@ const setupResources = async () => {
         planeId: input.planeId,
         nodeGroups: input.eksConf.nodeGroups,
         spotReschedulerConf: input.eksConf.spotReschedulerConf,
+        scope: util.Scope.DATAPLANE,
     });
     const postgresDbOutput = await postgres.setup({
         roleArn: roleArn,
@@ -262,6 +246,7 @@ const setupResources = async () => {
         planeId: input.planeId,
         skipFinalSnapshot: input.dbConf.skipFinalSnapshot,
         protect: input.protectResources,
+        scope: util.Scope.DATAPLANE,
     })
     const redisOutput = await redis.setup({
         roleArn: roleArn,
