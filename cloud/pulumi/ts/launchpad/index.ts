@@ -45,6 +45,28 @@ assert.ok(confluentPassword, "CONFLUENT_CLOUD_PASSWORD must be set");
 
 // map from tier id to plane id.
 const tierConfs: Record<number, TierConf> = {
+    // Mohit's debug tier
+    101: {
+        protectResources: false,
+        planeId: 3,
+        httpServerConf: {
+            podConf: {
+                minReplicas: 1,
+                maxReplicas: 3,
+                resourceConf: {
+                    cpu: {
+                        request: "1250m",
+                        limit: "1500m"
+                    },
+                    memory: {
+                        request: "2G",
+                        limit: "3G",
+                    }
+                },
+            }
+        },
+        enableNitrous: true,
+    },
     // Fennel staging tier using Fennel's staging data plane.
     106: {
         protectResources: true,
