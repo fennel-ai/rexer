@@ -111,6 +111,7 @@ func (s *server) setupRouter() {
 	auth.GET("/settings", s.Settings)
 	auth.POST("/logout", s.Logout)
 	auth.GET("/user", s.User)
+	auth.PATCH("/user_names", s.UpdateUserNames)
 
 	// dev only endpoints
 	if s.isDev() {
@@ -177,16 +178,7 @@ func (s *server) ForgotPassword(c *gin.Context) {
 		return
 	}
 	if err := userC.SendResetPasswordEmail(c.Request.Context(), s.db, s.sendgridClient(), form.Email); err != nil {
-		if ue, ok := err.(*lib.UserReadableError); ok {
-			c.JSON(ue.StatusCode, gin.H{
-				"error": ue.Msg,
-			})
-		} else {
-			c.JSON(http.StatusInternalServerError, gin.H{
-				"error": "Failed to send the email. Please try again later.",
-			})
-			log.Printf("Failed to send reset password email: %v\n", err)
-		}
+		respondError(c, err, "send the reset password email")
 		return
 	}
 
@@ -206,16 +198,7 @@ func (s *server) ResetPassword(c *gin.Context) {
 	}
 
 	if err := userC.ResetPassword(c.Request.Context(), s.db, form.Token, form.Password); err != nil {
-		if ue, ok := err.(*lib.UserReadableError); ok {
-			c.JSON(ue.StatusCode, gin.H{
-				"error": ue.Msg,
-			})
-		} else {
-			c.JSON(http.StatusInternalServerError, gin.H{
-				"error": "Failed to reset password. Please try again later.",
-			})
-			log.Printf("Failed to reset password: %v\n", err)
-		}
+		respondError(c, err, "reset password")
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{})
@@ -269,29 +252,12 @@ func (s *server) SignUp(c *gin.Context) {
 	ctx := c.Request.Context()
 	user, err := userC.SignUp(ctx, s.db, form.Email, form.Password)
 	if err != nil {
-		if ue, ok := err.(*lib.UserReadableError); ok {
-			c.JSON(ue.StatusCode, gin.H{
-				"error": ue.Msg,
-			})
-		} else {
-			c.JSON(http.StatusInternalServerError, gin.H{
-				"error": "Failed to sign up. Please try again later.",
-			})
-			log.Printf("Failed to sign up: %v\n", err)
-		}
+		respondError(c, err, "sign up")
 		return
 	}
 	if _, err = userC.SendConfirmationEmail(ctx, s.db, s.sendgridClient(), user); err != nil {
-		if ue, ok := err.(*lib.UserReadableError); ok {
-			c.JSON(ue.StatusCode, gin.H{
-				"error": ue.Msg,
-			})
-		} else {
-			c.JSON(http.StatusBadRequest, gin.H{
-				"error": "Failed to send confirmation email, please try again later.",
-			})
-			log.Printf("Failed to send confirmation email: %v\n", err)
-		}
+		respondError(c, err, "send confirmation email")
+		return
 	}
 
 	c.JSON(http.StatusCreated, gin.H{})
@@ -455,16 +421,7 @@ func (s *server) Features(c *gin.Context) {
 func (s *server) Logout(c *gin.Context) {
 	if user, ok := CurrentUser(c); ok {
 		if _, err := userC.Logout(c.Request.Context(), s.db, user); err != nil {
-			if ue, ok := err.(*lib.UserReadableError); ok {
-				c.JSON(ue.StatusCode, gin.H{
-					"error": ue.Msg,
-				})
-			} else {
-				c.JSON(http.StatusInternalServerError, gin.H{
-					"error": "Failed to log out the user, please try again later.",
-				})
-				log.Printf("Failed to log out the user: %v\n", err)
-			}
+			respondError(c, err, "log out the user")
 			return
 		}
 	}
@@ -474,7 +431,7 @@ func (s *server) Logout(c *gin.Context) {
 func (s *server) User(c *gin.Context) {
 	user, ok := CurrentUser(c)
 	if !ok {
-		// shouldn't happen
+		// shouldn't happen, just in case of bug
 		c.JSON(http.StatusUnprocessableEntity, gin.H{
 			"error": "No user found",
 		})
@@ -487,6 +444,41 @@ func (s *server) User(c *gin.Context) {
 			"lastName":  user.LastName,
 		},
 	})
+}
+
+func (s *server) UpdateUserNames(c *gin.Context) {
+	var form struct {
+		FirstName string `json:"firstName"`
+		LastName  string `json:"lastName"`
+	}
+	if err := c.BindJSON(&form); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": err.Error(),
+		})
+		return
+	}
+
+	if user, ok := CurrentUser(c); ok {
+		if err := userC.UpdateUserNames(c.Request.Context(), s.db, user, form.FirstName, form.LastName); err != nil {
+			respondError(c, err, "update user names")
+			return
+		}
+	}
+	c.JSON(http.StatusOK, gin.H{})
+}
+
+func respondError(c *gin.Context, err error, action string) {
+	if ue, ok := err.(*lib.UserReadableError); ok {
+		c.JSON(ue.StatusCode, gin.H{
+			"error": ue.Msg,
+		})
+	} else {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": fmt.Sprintf("Failed to %s, please try again later.", action),
+		})
+		log.Printf("Failed to %s: %v\n", action, err)
+	}
+	return
 }
 
 func (s *server) debugConfirmEmail(c *gin.Context) {

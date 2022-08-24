@@ -304,3 +304,10 @@ func Logout(c context.Context, db *gorm.DB, user userL.User) (userL.User, error)
 	})
 	return user, result.Error
 }
+
+func UpdateUserNames(c context.Context, db *gorm.DB, user userL.User, firstName, lastName string) error {
+	user.FirstName = firstName
+	user.LastName = lastName
+	result := db.Save(&user)
+	return result.Error
+}
