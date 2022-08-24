@@ -3,7 +3,7 @@ import * as aws from "@pulumi/aws";
 import * as k8s from "@pulumi/kubernetes";
 import { local } from "@pulumi/command";
 
-import { fennelStdTags } from "../lib/util";
+import { getPrefix, fennelStdTags, Scope } from "../lib/util";
 
 const DEFAULT_INGRESS_NODE_TYPE = "t3.small";
 const DEFAULT_INGRESS_NODE_COUNT = 2;
@@ -18,15 +18,16 @@ export const plugins = {
 export type inputType = {
     roleArn: string,
     region: string,
-    clusterName: string,
-    nodeRoleArn: string,
+    clusterName: string | pulumi.Output<string>,
+    nodeRoleArn: string | pulumi.Output<string>,
     kubeconfig: pulumi.Input<string>,
     namespace: string,
     loadBalancerScheme: string,
     subnetIds: pulumi.Input<string[]>,
-    tierId: number,
+    scopeId: number,
     useDedicatedMachines?: boolean,
     replicas?: number,
+    scope: Scope,
 }
 
 export type outputType = {
@@ -110,7 +111,7 @@ export const setup = async (input: inputType) => {
     const replicas = input.replicas || DEFAULT_INGRESS_NODE_COUNT;
     if (input.useDedicatedMachines || DEFAULT_USE_DEDICATED_MACHINES) {
         const ngName = `aes-${input.namespace}-ng`;
-        const ngLabel = {'node-group': ngName};
+        const ngLabel = { 'node-group': ngName };
         const nodeGroup = new aws.eks.NodeGroup(ngName, {
             clusterName: input.clusterName,
             nodeRoleArn: input.nodeRoleArn,
@@ -243,7 +244,7 @@ export const setup = async (input: inputType) => {
     // Create TLS certificate for the generated url.
     // Setup root and issuer CA as per https://linkerd.io/2.11/tasks/generate-certificates/.
     const cmd = loadBalancerUrl.apply(url => `step certificate create fennel cert.pem key.pem --profile=self-signed --subtle --san=${url} --no-password --insecure -kty=RSA --size 4096`)
-    const createCertificate = new local.Command("root-ca", {
+    const createCertificate = new local.Command(`${getPrefix(input.scope, input.scopeId)}-root-ca`, {
         create: cmd,
         delete: "rm -f cert.pem key.pem"
     })
@@ -268,7 +269,7 @@ export const setup = async (input: inputType) => {
     }, { provider: k8sProvider })
 
     // Delete files
-    new local.Command("cleanup", {
+    new local.Command(`${getPrefix(input.scope, input.scopeId)}-cleanup`, {
         create: "rm -f cert.pem key.pem"
     }, { dependsOn: secret })
 
@@ -282,7 +283,8 @@ export const setup = async (input: inputType) => {
     // Since LB is created in the background and might take time to become "Active", just adding an
     // dependency on `emissaryIngress` is not sufficient.
     // Figure out how creation of VPC Endpoint Service could wait on NLB coming to Active state. Use AWS SDK explicitly?
-    const vpcEndpointService = new aws.ec2.VpcEndpointService(`t-${input.tierId}-ingress-vpc-endpoint-service`, {
+    const endpointServiceNamePrefix = getPrefix(input.scope, input.scopeId);
+    const vpcEndpointService = new aws.ec2.VpcEndpointService(`${endpointServiceNamePrefix}-ingress-vpc-endpoint-service`, {
         acceptanceRequired: true,
         allowedPrincipals: [
             // Allow anyone to discover the service.

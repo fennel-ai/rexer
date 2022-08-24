@@ -2,7 +2,7 @@ import * as pulumi from "@pulumi/pulumi";
 import * as mysql from "@pulumi/mysql";
 
 export type inputType = {
-  endpoint: string
+  endpoint: string | pulumi.Output<string>
   username: string
   password: pulumi.Output<string>
   db: string

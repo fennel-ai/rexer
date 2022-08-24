@@ -15,6 +15,10 @@ export type controlPlaneConfig = {
     vpcId: string,
     cidrBlock: string,
     routeTableId: string,
+    primaryPrivateSubnet: string,
+    secondaryPrivateSubnet: string,
+    primaryPublicSubnet: string,
+    secondaryPublicSubnet: string,
 }
 
 export type inputType = {
