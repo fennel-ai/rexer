@@ -8,6 +8,7 @@ import (
 	profileC "fennel/mothership/controller/profile"
 	userC "fennel/mothership/controller/user"
 	"fennel/mothership/lib"
+	userL "fennel/mothership/lib/user"
 	"fmt"
 	"log"
 	"math/rand"
@@ -107,7 +108,9 @@ func (s *server) setupRouter() {
 	auth.GET("/profiles", s.Profiles)
 	auth.GET("/actions", s.Actions)
 	auth.GET("/features", s.Features)
+	auth.GET("/settings", s.Settings)
 	auth.POST("/logout", s.Logout)
+	auth.GET("/user", s.User)
 
 	// dev only endpoints
 	if s.isDev() {
@@ -127,6 +130,7 @@ const (
 	ResetPasswordPage  = "reset_password"
 	DashboardPage      = "dashboard"
 	DataPage           = "data"
+	SettingsPage       = "settings"
 )
 
 func title(name string) string {
@@ -350,12 +354,37 @@ func (s *server) ResendConfirmationEmail(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{})
 }
 
+func userMap(user userL.User) gin.H {
+	return gin.H{
+		"lastName": "Jiang", // TODO(xiao) change after store real names for user
+	}
+}
+
 func (s *server) Dashboard(c *gin.Context) {
-	c.HTML(http.StatusOK, "bridge/index.tmpl", gin.H{"title": "Fennel | Dashboard", "page": DashboardPage})
+	user, _ := CurrentUser(c)
+	c.HTML(http.StatusOK, "bridge/index.tmpl", gin.H{
+		"title": title("Dashboard"),
+		"page":  DashboardPage,
+		"user":  userMap(user),
+	})
 }
 
 func (s *server) Data(c *gin.Context) {
-	c.HTML(http.StatusOK, "bridge/index.tmpl", gin.H{"title": "Fennel | Data", "page": DataPage})
+	user, _ := CurrentUser(c)
+	c.HTML(http.StatusOK, "bridge/index.tmpl", gin.H{
+		"title": title("Data"),
+		"page":  DataPage,
+		"user":  userMap(user),
+	})
+}
+
+func (s *server) Settings(c *gin.Context) {
+	user, _ := CurrentUser(c)
+	c.HTML(http.StatusOK, "bridge/index.tmpl", gin.H{
+		"title": title("Settings"),
+		"page":  SettingsPage,
+		"user":  userMap(user),
+	})
 }
 
 func (s *server) Profiles(c *gin.Context) {
@@ -440,6 +469,24 @@ func (s *server) Logout(c *gin.Context) {
 		}
 	}
 	c.JSON(http.StatusOK, gin.H{})
+}
+
+func (s *server) User(c *gin.Context) {
+	user, ok := CurrentUser(c)
+	if !ok {
+		// shouldn't happen
+		c.JSON(http.StatusUnprocessableEntity, gin.H{
+			"error": "No user found",
+		})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{
+		"user": gin.H{
+			"email":     user.Email,
+			"firstName": "Xiao", // TODO(xiao)
+			"lastName":  "Jiang",
+		},
+	})
 }
 
 func (s *server) debugConfirmEmail(c *gin.Context) {

@@ -1,8 +1,7 @@
 import axios, { AxiosError } from "axios";
 
 import styles from "./styles/Navbar.module.scss";
-import { MenuProps, notification } from "antd";
-import { Dropdown, Menu, Space, Avatar } from "antd";
+import { MenuProps, notification, Dropdown, Menu, Space, Avatar } from "antd";
 import { DownOutlined, UserOutlined, TeamOutlined, LogoutOutlined } from '@ant-design/icons';
 
 interface Props {
@@ -70,6 +69,19 @@ function AvatarDropdown() {
             });
     };
     const items: MenuProps["items"] = [
+        {
+            icon: <UserOutlined />,
+            label: (<a href="/settings#account">Account</a>),
+            key: "account",
+        },
+        {
+            icon: <TeamOutlined />,
+            label: (<a href="/settings#organization">Organization</a>),
+            key: "account",
+        },
+        {
+            type: "divider",
+        },
         {
             icon: <LogoutOutlined />,
             label: "Log out",

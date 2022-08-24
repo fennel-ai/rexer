@@ -1,10 +1,11 @@
 import { Tabs } from "antd";
-import styles from "./styles/DataPage.module.scss";
+
+import styles from "./styles/Page.module.scss";
 import ProfilesTab from "./ProfilesTab";
 import ActionsTab from "./ActionsTab";
 import FeaturesTab from "./FeaturesTab";
 
-function DataPage(){
+function DataPage() {
     return (
         <div className={styles.container}>
             <h4 className={styles.title}>Data</h4>
