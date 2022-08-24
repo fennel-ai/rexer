@@ -9,6 +9,7 @@ import (
 )
 
 func TestRpc_Apply(t *testing.T) {
+	t.Skip("countriesnow.space broken")
 	op := RemoteHttp{}
 	tier := test.Tier(t)
 	// Set a non-existent country in the pcache to test response caching.
