@@ -595,7 +595,7 @@ const planeConfs: Record<number, DataPlaneConf> = {
                 },
                 // Nitrous node group.
                 {
-                    name: "p-5-nitrous-ng-x86",
+                    name: "p-5-nitrous-ng-arm",
                     instanceTypes: ["c6gd.8xlarge"],
                     minSize: 1,
                     maxSize: 1,
@@ -603,6 +603,7 @@ const planeConfs: Record<number, DataPlaneConf> = {
                     capacityType: ON_DEMAND_INSTANCE_TYPE,
                     labels: {
                         "node-group": "p-5-nitrous-ng",
+                        "aws.amazon.com/eks-local-ssd": "true",
                     },
                     expansionPriority: 1,
                 },
@@ -629,22 +630,22 @@ const planeConfs: Record<number, DataPlaneConf> = {
         nitrousConf: {
             replicas: 1,
             useAmd64: false,
-            storageCapacityGB: 2048,
-            storageClass: "io2",
+            storageCapacityGB: 1700,
+            storageClass: "local",
             blockCacheMB: 1024 * 8,
             kvCacheMB: 1024 * 75,
             resourceConf: {
                 cpu: {
-                    request: "14000m",
-                    limit: "16000m"
+                    request: "30000m",
+                    limit: "32000m"
                 },
                 memory: {
-                    request: "30G",
-                    limit: "32G",
+                    request: "60G",
+                    limit: "64G",
                 }
             },
             binlog: {
-                partitions: 10,
+                partitions: 32,
                 retention_ms: 30 * 24 * 60 * 60 * 1000 /* 30 days */,
                 partition_retention_bytes: -1,
             },
@@ -902,7 +903,7 @@ if (tierId !== 0) {
         // Topic to track usage for billing.
         {
             name: `t_${tierId}_hourly_usage_log`,
-            retention_ms: 432000000  // 5 days retention 
+            retention_ms: 432000000  // 5 days retention
         },
     ];
     setupTier({
