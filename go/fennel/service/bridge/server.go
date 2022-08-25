@@ -8,6 +8,7 @@ import (
 	profileC "fennel/mothership/controller/profile"
 	userC "fennel/mothership/controller/user"
 	"fennel/mothership/lib"
+	"fennel/mothership/lib/customer"
 	userL "fennel/mothership/lib/user"
 	"fmt"
 	"log"
@@ -19,6 +20,7 @@ import (
 	"github.com/gin-contrib/sessions"
 	"github.com/gin-contrib/sessions/cookie"
 	"github.com/gin-gonic/gin"
+	"github.com/samber/lo"
 	"github.com/sendgrid/sendgrid-go"
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
@@ -111,6 +113,7 @@ func (s *server) setupRouter() {
 	auth.GET("/settings", s.Settings)
 	auth.POST("/logout", s.Logout)
 	auth.GET("/user", s.User)
+	auth.GET("/organization", s.Organization)
 	auth.PATCH("/user_names", s.UpdateUserNames)
 	auth.PATCH("/user_password", s.UpdateUserPassword)
 
@@ -322,8 +325,11 @@ func (s *server) ResendConfirmationEmail(c *gin.Context) {
 }
 
 func userMap(user userL.User) gin.H {
+	// TODO(xiao) maybe add json tags on the user model
 	return gin.H{
-		"lastName": "Jiang", // TODO(xiao) change after store real names for user
+		"email":     user.Email,
+		"firstName": user.FirstName,
+		"lastName":  user.LastName,
 	}
 }
 
@@ -439,10 +445,30 @@ func (s *server) User(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{
-		"user": gin.H{
-			"email":     user.Email,
-			"firstName": user.FirstName,
-			"lastName":  user.LastName,
+		"user": userMap(user),
+	})
+}
+
+func (s *server) Organization(c *gin.Context) {
+	var customer customer.Customer
+	user, ok := CurrentUser(c)
+	ok = ok && (s.db.Take(&customer, user.CustomerID).RowsAffected > 0)
+
+	var users []userL.User
+	ok = ok && (s.db.Where("customer_id = ?", customer.ID).Find(&users).RowsAffected > 0)
+
+	if !ok {
+		c.JSON(http.StatusUnprocessableEntity, gin.H{
+			"error": "No organization found",
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"organization": gin.H{
+			"users": lo.Map(users, func(user userL.User, _ int) gin.H {
+				return userMap(user)
+			}),
 		},
 	})
 }
