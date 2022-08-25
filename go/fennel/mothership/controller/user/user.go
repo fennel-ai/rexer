@@ -308,6 +308,18 @@ func Logout(c context.Context, db *gorm.DB, user userL.User) (userL.User, error)
 func UpdateUserNames(c context.Context, db *gorm.DB, user userL.User, firstName, lastName string) error {
 	user.FirstName = firstName
 	user.LastName = lastName
-	result := db.Save(&user)
-	return result.Error
+	return db.Save(&user).Error
+}
+
+func UpdatePassword(c context.Context, db *gorm.DB, user userL.User, currentPassword, newPassword string) (userL.User, error) {
+	if !checkPasswordHash(currentPassword, user.EncryptedPassword) {
+		return user, &lib.ErrorWrongPassword
+	}
+	newHash, err := bcrypt.GenerateFromPassword([]byte(newPassword), BCRYPT_COST)
+	if err != nil {
+		return user, err
+	}
+	user.EncryptedPassword = newHash
+	err = db.Save(&user).Error
+	return user, err
 }

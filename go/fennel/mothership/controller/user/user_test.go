@@ -142,3 +142,29 @@ func TestResetPassword(t *testing.T) {
 	_, err = SignIn(ctx, db, "test@fennel.ai", "456")
 	assert.NoError(t, err)
 }
+
+func TestUpdatePassword(t *testing.T) {
+	m, err := mothership.NewTestMothership()
+	assert.NoError(t, err)
+	defer func() { err = mothership.Teardown(m); assert.NoError(t, err) }()
+	db, err := gorm.Open(mysql.New(mysql.Config{
+		Conn: m.DB,
+	}), &gorm.Config{})
+	assert.NoError(t, err)
+	ctx := context.Background()
+
+	user, err := SignUp(ctx, db, "test@fennel.ai", "12345")
+	assert.NoError(t, err)
+
+	_, err = UpdatePassword(ctx, db, user, "123", "1234")
+	assert.ErrorIs(t, err, &lib.ErrorWrongPassword)
+
+	user, err = UpdatePassword(ctx, db, user, "12345", "1234")
+	assert.NoError(t, err)
+
+	_, err = UpdatePassword(ctx, db, user, "12345", "1234")
+	assert.ErrorIs(t, err, &lib.ErrorWrongPassword)
+
+	_, err = UpdatePassword(ctx, db, user, "1234", "12345")
+	assert.NoError(t, err)
+}

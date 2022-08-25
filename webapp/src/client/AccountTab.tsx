@@ -133,12 +133,12 @@ function AccountTab() {
                     </tr>
                 </tbody>
             </table>
-            {showModal ? (<UpdatePwdModal onCloseModal={() => setShowModal(false)} />) : null}
+            {showModal ? (<UpdatePwdModal hideModal={() => setShowModal(false)} />) : null}
         </div>
     );
 }
 
-function UpdatePwdModal({onCloseModal}: {onCloseModal: () => void}) {
+function UpdatePwdModal({hideModal}: {hideModal: () => void}) {
     const [currentPassword, setCurrentPassword] = useState("");
     const [newPassword, setNewPassword] = useState("");
     const [confirmNewPassword, setConfirmNewPassword] = useState("");
@@ -152,6 +152,7 @@ function UpdatePwdModal({onCloseModal}: {onCloseModal: () => void}) {
                 message: "Your password has been updated!",
                 placement: "bottomRight",
             });
+            hideModal();
         }).catch((e: AxiosError<{error: string}>) => {
             notification.error({
                 message: e.response?.data.error || "Something went wrong",
@@ -166,7 +167,7 @@ function UpdatePwdModal({onCloseModal}: {onCloseModal: () => void}) {
             title="Update password"
             okText="Update"
             onOk={mutateUserPwd}
-            onCancel={onCloseModal}>
+            onCancel={hideModal}>
 
             <Form name="updatePwdForm">
                 <table className={styles.pwdTable}>
