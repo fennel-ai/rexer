@@ -112,6 +112,7 @@ func (s *server) setupRouter() {
 	auth.POST("/logout", s.Logout)
 	auth.GET("/user", s.User)
 	auth.PATCH("/user_names", s.UpdateUserNames)
+	auth.PATCH("/user_password", s.UpdateUserPassword)
 
 	// dev only endpoints
 	if s.isDev() {
@@ -461,6 +462,27 @@ func (s *server) UpdateUserNames(c *gin.Context) {
 	if user, ok := CurrentUser(c); ok {
 		if err := userC.UpdateUserNames(c.Request.Context(), s.db, user, form.FirstName, form.LastName); err != nil {
 			respondError(c, err, "update user names")
+			return
+		}
+	}
+	c.JSON(http.StatusOK, gin.H{})
+}
+
+func (s *server) UpdateUserPassword(c *gin.Context) {
+	var form struct {
+		CurrentPassword string `json:"currentPassword"`
+		NewPassword     string `json:"newPassword"`
+	}
+	if err := c.BindJSON(&form); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": err.Error(),
+		})
+		return
+	}
+
+	if user, ok := CurrentUser(c); ok {
+		if _, err := userC.UpdatePassword(c.Request.Context(), s.db, user, form.CurrentPassword, form.NewPassword); err != nil {
+			respondError(c, err, "update user password")
 			return
 		}
 	}

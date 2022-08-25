@@ -77,7 +77,7 @@ function AvatarDropdown() {
         {
             icon: <TeamOutlined />,
             label: (<a href="/settings#organization">Organization</a>),
-            key: "account",
+            key: "organization",
         },
         {
             type: "divider",
