@@ -2,6 +2,10 @@
 // Please do not change this file!
 interface CssExports {
   'avatarInitial': string;
+  'pwdModalDivider': string;
+  'pwdModalDividerTr': string;
+  'pwdModalItem': string;
+  'pwdTable': string;
   'table': string;
 }
 export const cssExports: CssExports;

@@ -1,7 +1,28 @@
+@use "./colors";
+
 .table td {
     padding: 4px 20px 4px 0;
 }
 
 .avatarInitial {
     font-size: 40px;
+}
+
+.pwdModalDivider {
+    height: 1px;
+    width: 100%;
+    border-top: 1px solid colors.$gray3;
+}
+
+.pwdModalItem {
+    margin: 0;
+    width: 226px;
+}
+
+.pwdTable td {
+    padding: 4px 20px 4px 0;
+}
+
+.pwdModalDividerTr td {
+    padding: 16px 0 16px 0;
 }
