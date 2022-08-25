@@ -23,11 +23,9 @@ interface DataType {
     email: string,
 }
 
-const stringSorter = (a: string, b: string) => (a < b ? -1 : (a == b ? 0 : 1));
-
 const columns: ColumnsType<DataType> = [
-    { title: "Name", dataIndex: "name", key: "name", sorter: stringSorter },
-    { title: "Email", dataIndex: "email", key: "email", },
+    { title: "Name", dataIndex: "name", key: "name", sorter: (a, b) => (a.name < b.name ? -1 : (a.name === b.name ? 0 : 1))},
+    { title: "Email", dataIndex: "email", key: "email", sorter: (a, b) => (a.email < b.email ? -1 : (a.email === b.email ? 0 : 1))},
 ]
 
 function OrgTab() {
