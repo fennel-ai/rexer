@@ -10,6 +10,7 @@ import (
 	"fennel/mothership/lib"
 	"fennel/mothership/lib/customer"
 	userL "fennel/mothership/lib/user"
+	"fennel/service/common"
 	"fmt"
 	"log"
 	"math/rand"
@@ -35,6 +36,7 @@ type server struct {
 
 type serverArgs struct {
 	mothership.MothershipArgs
+	common.HealthCheckArgs
 	SessionKey     string `arg:"required,--bridge_session_key,env:BRIDGE_SESSION_KEY"`
 	SendgridAPIKey string `arg:"required,--sendgrid_api_key,env:SENDGRID_API_KEY"`
 	BridgeENV      string `arg:"required,--bridge_env,env:BRIDGE_ENV"` // dev, prod
@@ -77,6 +79,7 @@ func NewServer() (server, error) {
 	}
 	rand.Seed(seed)
 	log.Printf("Using rand seed %d\n", seed)
+	common.StartHealthCheckServer(args.HealthPort)
 
 	return s, nil
 }
