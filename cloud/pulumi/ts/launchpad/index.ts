@@ -806,6 +806,24 @@ const mothershipConfs: Record<number, MothershipConf> = {
             },
             ],
         },
+        bridgeServerConf: {
+            podConf: {
+                minReplicas: 1,
+                maxReplicas: 3,
+                resourceConf: {
+                    cpu: {
+                        request: "1250m",
+                        limit: "1500m"
+                    },
+                    memory: {
+                        request: "2G",
+                        limit: "3G",
+                    }
+                },
+                useAmd64: true,
+            }
+        },
+
     }
 }
 

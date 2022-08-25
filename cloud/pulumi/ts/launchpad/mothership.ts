@@ -8,10 +8,9 @@ import * as eks from "../eks";
 import * as aurora from "../aurora";
 import * as ingress from "../ingress";
 import { MASTER_ACCOUNT_ADMIN_ROLE_ARN } from "../account";
+import * as bridgeserver from "../bridge";
+import * as mothershipconfigs from "../mothership-configs"
 
-export type WebAppServerConf = {
-    podConf?: util.PodConf,
-}
 
 export type BridgeServerConf = {
     podConf?: util.PodConf,
@@ -29,7 +28,6 @@ export type MothershipConf = {
     eksConf: util.EksConf,
     planeId: number,
     vpcConf: vpc.controlPlaneConfig,
-    webAppServerConf?: WebAppServerConf,
     ingressConf?: util.IngressConf,
     bridgeServerConf?: BridgeServerConf,
 }
@@ -90,11 +88,13 @@ const setupResources = async () => {
     // Comment this when direct connection to the db instance is not possible.
     // This will usually be when trying to setup a tier in a customer vpc, which
     // should usually be done through the bridge.
+    const dbName = `${util.getPrefix(util.Scope.MOTHERSHIP, input.planeId)}-db`
+    const dbUser = "admin"
     const sqlDB = await mysql.setup({
-        username: "admin",
+        username: dbUser,
         password: pulumi.output(input.dbConf.password),
         endpoint: auroraOutput.host,
-        db: `${util.getPrefix(util.Scope.MOTHERSHIP, input.planeId)}-db`,
+        db: dbName,
         protect: input.protectResources,
     })
     const kconf = pulumi.all([eksOutput.kubeconfig]).apply(([k]) => JSON.stringify(k))
@@ -120,6 +120,41 @@ const setupResources = async () => {
         clusterName: eksOutput.clusterName,
         nodeRoleArn: eksOutput.instanceRoleArn,
         scope: util.Scope.MOTHERSHIP,
+    })
+    // setup configs after resources are setup.
+    const configsOutput = pulumi.all(
+        [input.dbConf.password, auroraOutput]).apply(async ([dbPassword, auroraOutput]) => {
+            return await mothershipconfigs.setup({
+                kubeconfig: kconf,
+                namespace: nsName,
+                mothershipConfig: {
+                    "mothership_id": String(input.planeId),
+                },
+                dbConfig: pulumi.output({
+                    "host": auroraOutput.host,
+                    "db": dbName,
+                    "username": dbUser,
+                    "password": dbPassword,
+                } as Record<string, string>),
+            })
+        })
+    configsOutput.apply(async () => {
+        if (input.bridgeServerConf !== undefined) {
+            await bridgeserver.setup({
+                roleArn: input.vpcConf.roleArn,
+                region: input.vpcConf.region,
+                kubeconfig: kconf,
+                namespace: nsName,
+                mothershipId: input.planeId,
+                minReplicas: input.bridgeServerConf?.podConf?.minReplicas,
+                maxReplicas: input.bridgeServerConf?.podConf?.maxReplicas,
+                resourceConf: input.bridgeServerConf?.podConf?.resourceConf,
+                useAmd64: input.bridgeServerConf?.podConf?.useAmd64,
+                nodeLabels: input.bridgeServerConf?.podConf?.nodeLabels,
+                pprofHeapAllocThresholdMegaBytes: input.bridgeServerConf?.podConf?.pprofHeapAllocThresholdMegaBytes,
+            });
+        }
+
     })
 
     return {
