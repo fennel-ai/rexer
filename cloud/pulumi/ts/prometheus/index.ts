@@ -14,13 +14,15 @@ export type inputType = {
     roleArn: pulumi.Input<string>,
     planeId: number,
     protect: boolean,
+    // MSK bootstrap servers which are of the format `DNS1:port1,DNS2:port2....`
+    mskBootstrapServers?: pulumi.Output<string>,
 }
 
 // should not contain any pulumi.Output<> types.
 export type outputType = {}
 
-const prometheusScrapeConfigs = {
-    "scrape_configs": [{
+function scrapeConfigs(input: inputType) {
+    const scrape_configs: Record<any, any>[] = [{
         "job_name": "kubernetes-pods",
         "sample_limit": 10000,
         "kubernetes_sd_configs": [{
@@ -103,7 +105,40 @@ const prometheusScrapeConfigs = {
             "source_labels": ["__meta_kubernetes_service_name"],
             "target_label": "Service"
         }],
-    }],
+    }];
+
+    if (input.mskBootstrapServers !== undefined) {
+        return input.mskBootstrapServers.apply(bootstrapServers => {
+            const servers = bootstrapServers.split(",");
+            let jmxServers: string[] = [];
+            let nodeServers: string[] = [];
+            servers.forEach((server) => {
+                const dns = server.split(":")[0];
+                jmxServers.push(`${dns}:11001`)
+                nodeServers.push(`${dns}:11002`)
+            })
+            scrape_configs.push({
+                "job_name": "broker",
+                "static_configs": [{
+                    "targets": jmxServers,
+                    "labels": {
+                        "job": "jmx",
+                    }
+                }, {
+                    "targets": nodeServers,
+                    "labels": {
+                        "job": "node",
+                    }
+                }],
+            });
+            return {
+                "scrape_configs": scrape_configs,
+            }
+        });
+    }
+    return pulumi.output({
+        "scrape_configs": scrape_configs,
+    });
 }
 
 async function setupAMP(input: inputType) {
@@ -132,79 +167,82 @@ async function setupPrometheus(input: inputType) {
     // We disable node-exporter - node-exporter exports node and OS level metrics which are too granular for us now.
     // We disable pushgateway - this prometheus service is useful when metrics need to be collected from
     //  short lived jobs which is not the case for us.
-    const prometheusRelease = new k8s.helm.v3.Release("prometheus", {
-        repositoryOpts: {
-            "repo": "https://prometheus-community.github.io/helm-charts"
-        },
-        chart: "prometheus",
-        values: {
-            "serviceAccounts": {
+    const scrapeConfig = scrapeConfigs(input);
+    const prometheusRelease = scrapeConfig.apply(config => {
+        return new k8s.helm.v3.Release("prometheus", {
+            repositoryOpts: {
+                "repo": "https://prometheus-community.github.io/helm-charts"
+            },
+            chart: "prometheus",
+            values: {
+                "serviceAccounts": {
+                    "alertmanager": {
+                        "create": false
+                    },
+                    "pushgateway": {
+                        "create": false
+                    },
+                    "nodeExporter": {
+                        "create": false
+                    }
+                },
                 "alertmanager": {
-                    "create": false
+                    "enabled": false
                 },
                 "pushgateway": {
-                    "create": false
+                    "enabled": false
                 },
                 "nodeExporter": {
-                    "create": false
-                }
-            },
-            "alertmanager": {
-                "enabled": false
-            },
-            "pushgateway": {
-                "enabled": false
-            },
-            "nodeExporter": {
-                "enabled": false
-            },
-            // disable spinning up config map reloader
-            //
-            // this is not required as the helm release is updated altogether replacing the prometheus-server
-            // while keeping the same PVC
-            "configmapReload": {
-                "prometheus": {
                     "enabled": false
+                },
+                // disable spinning up config map reloader
+                //
+                // this is not required as the helm release is updated altogether replacing the prometheus-server
+                // while keeping the same PVC
+                "configmapReload": {
+                    "prometheus": {
+                        "enabled": false
+                    }
+                },
+                // Set service type as LoadBalancer so that AWS LBC creates a corresponding
+                // NLB for the servers endpoint. NLB endpoint could then be used to query metrics.
+                "server": {
+                    "service": {
+                        "type": "LoadBalancer"
+                    },
+                    "nodeSelector": {
+                        // we should schedule all components of Prometheus on ON_DEMAND instances
+                        "eks.amazonaws.com/capacityType": "ON_DEMAND",
+                    },
+                    // https://github.com/prometheus-community/helm-charts/blob/main/charts/prometheus/values.yaml#L1124
+                    "retention": "60d",
+                    "extraFlags": [
+                        // disable lock for the tsdb
+                        //
+                        // underneath the prometheus server captures a lock on the PVC. When the server is updated,
+                        // it tries to grab a lock on the same PVC which results in a conflict and the container fails to
+                        // come up. We have fixed this in the past by using `deleteBeforeReplace` but that resulted in
+                        // deleted the PVC as well.
+                        "storage.tsdb.no-lockfile"
+                    ]
+                },
+                // Server configmap entries.
+                //
+                // This is copied from `deployment/artifacts/otel-deployment.yaml` to have the same footprint of
+                // metrics being captured from prometheus.
+                //
+                // This overrides the configurations defined in the config map template in the chart.
+                "serverFiles": {
+                    "prometheus.yml": config,
+                },
+                // enable scraping node labels to determine its capacity type and the node group it belongs to
+                "kube-state-metrics": {
+                    // kube-state-metrics is enabled by default and is installed as a dependency
+                    metricLabelsAllowlist: ["nodes=[eks.amazonaws.com/capacityType,eks.amazonaws.com/nodegroup,kubernetes.io/arch]"],
                 }
             },
-            // Set service type as LoadBalancer so that AWS LBC creates a corresponding
-            // NLB for the servers endpoint. NLB endpoint could then be used to query metrics.
-            "server": {
-                "service": {
-                    "type": "LoadBalancer"
-                },
-                "nodeSelector": {
-                    // we should schedule all components of Prometheus on ON_DEMAND instances
-                    "eks.amazonaws.com/capacityType": "ON_DEMAND",
-                },
-                // https://github.com/prometheus-community/helm-charts/blob/main/charts/prometheus/values.yaml#L1124
-                "retention": "60d",
-                "extraFlags": [
-                    // disable lock for the tsdb
-                    //
-                    // underneath the prometheus server captures a lock on the PVC. When the server is updated,
-                    // it tries to grab a lock on the same PVC which results in a conflict and the container fails to
-                    // come up. We have fixed this in the past by using `deleteBeforeReplace` but that resulted in
-                    // deleted the PVC as well.
-                    "storage.tsdb.no-lockfile"
-                ]
-            },
-            // Server configmap entries.
-            //
-            // This is copied from `deployment/artifacts/otel-deployment.yaml` to have the same footprint of
-            // metrics being captured from prometheus.
-            //
-            // This overrides the configurations defined in the config map template in the chart.
-            "serverFiles": {
-                "prometheus.yml": prometheusScrapeConfigs,
-            },
-            // enable scraping node labels to determine its capacity type and the node group it belongs to
-            "kube-state-metrics": {
-                // kube-state-metrics is enabled by default and is installed as a dependency
-                metricLabelsAllowlist: ["nodes=[eks.amazonaws.com/capacityType,eks.amazonaws.com/nodegroup,kubernetes.io/arch]"],
-            }
-        },
-    }, {provider: k8sProvider, protect: input.protect});
+        }, {provider: k8sProvider, protect: input.protect});
+    });
 }
 
 export const setup = async (input: inputType): Promise<pulumi.Output<outputType>> => {
