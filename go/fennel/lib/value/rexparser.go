@@ -32,7 +32,7 @@ var (
 	MalformedDictKeyError = errors.New("malformed dictionary key serialization")
 	MalformedStringError  = errors.New("malformed string serialization")
 	MalformedListError    = errors.New("malformed list serialization")
-	MalformedDoubleError  = errors.New("insufficient bytes for double")
+	MalformedDoubleError  = errors.New("insufficient or illegitimate bytes for double")
 )
 
 func EncodeTypeWithNum(t byte, n int64) ([]byte, error) {
@@ -88,13 +88,31 @@ func ParseValue(data []byte) (Value, int, error) {
 		n, offset, err := binary.ParseInteger(data)
 		return Int(-n), offset, err
 	case DOUBLE:
-		// Double takes 9 bytes, 1 for the type, 8 for the value
-		if len(data) < 9 {
-			return nil, 0, MalformedDoubleError
+		// Double has two version of encoding:
+		if data[0] == DOUBLE {
+			// 1. [0xC0, fixed eight bytes storing the value]
+			if len(data) < 9 {
+				return nil, 0, MalformedDoubleError
+			}
+			d := binlib.BigEndian.Uint64(data[1:9])
+			f := math.Float64frombits(d)
+			return Double(f), 9, nil
+		} else {
+			// 2. Double.Marshal(): [0xC0 | total bytes, 0 - 8 bytes storing the value, with trailing 0s removed]
+			dataLen := int(data[0] & 0b00011111)
+			if (dataLen > 9) || (len(data) < dataLen) {
+				return nil, 0, MalformedDoubleError
+			}
+			var d uint64 = 0
+			for i := 1; i < 9; i++ {
+				d = d << 8
+				if i < dataLen {
+					d |= uint64(data[i])
+				} // else: the value is 0
+			}
+			f := math.Float64frombits(d)
+			return Double(f), dataLen, nil
 		}
-		d := binlib.BigEndian.Uint64(data[1:9])
-		f := math.Float64frombits(d)
-		return Double(f), 9, nil
 	default:
 		if data[0] == NULL {
 			return Nil, 1, nil
