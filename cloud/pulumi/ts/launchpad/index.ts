@@ -1,4 +1,4 @@
-import setupTier, {TierConf, TierMskConf} from "./tier";
+import setupTier, { TierConf, TierMskConf } from "./tier";
 import setupDataPlane, { DataPlaneConf, PlaneOutput } from "./data_plane";
 import setupMothership, { MothershipConf } from "./mothership";
 import * as vpc from "../vpc";
@@ -15,13 +15,14 @@ import * as glueSource from "../glue-script-source";
 import * as kafkatopics from "../kafkatopics";
 import * as telemetry from "../telemetry";
 import * as milvus from "../milvus";
-import { nameof, PUBLIC_LB_SCHEME, PRIVATE_LB_SCHEME } from "../lib/util";
+import { nameof, PUBLIC_LB_SCHEME, PRIVATE_LB_SCHEME, PricingMode } from "../lib/util";
 import * as msk from "../msk";
 
 import * as process from "process";
 import * as assert from "assert";
 import { DEFAULT_ARM_AMI_TYPE, DEFAULT_X86_AMI_TYPE, ON_DEMAND_INSTANCE_TYPE, SPOT_INSTANCE_TYPE } from "../eks";
 import { OutputMap } from "@pulumi/pulumi/automation";
+import { utils } from "@pulumi/pulumi";
 
 const controlPlane: vpc.controlPlaneConfig = {
     region: "us-west-2",
@@ -310,6 +311,16 @@ const tierConfs: Record<number, TierConf> = {
         ingressConf: {
             usePublicSubnets: true,
         }
+    },
+    // Self serve demo tier.
+    119: {
+        protectResources: true,
+        planeId: 2,
+        // use public subnets for ingress to allow traffic from outside the assigned vpc
+        ingressConf: {
+            usePublicSubnets: true,
+        },
+        pricingMode: PricingMode.FREE
     }
 }
 
@@ -1019,6 +1030,7 @@ function setupTierWrapperFn(tierId: number, dataplane: OutputMap, planeConf: Dat
             sagemakerConf: tierConf.sagemakerConf,
 
             airbyteConf: tierConf.airbyteConf,
+            pricingMode: tierConf.pricingMode,
         }, preview, destroy).catch(err => console.log(err))
     }
 }

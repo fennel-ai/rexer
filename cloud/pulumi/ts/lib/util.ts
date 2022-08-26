@@ -20,6 +20,12 @@ export enum Scope {
     TIER = 2,
 }
 
+export enum PricingMode {
+    FREE = "FREE",
+    FREEMIUM = "FREEMIUM",
+    PREMIMUM = "PREMIUM",
+}
+
 export function getPrefix(scope: Scope, id: number) {
     switch (scope) {
         case Scope.DATAPLANE:

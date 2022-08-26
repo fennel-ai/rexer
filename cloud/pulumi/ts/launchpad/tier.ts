@@ -86,6 +86,8 @@ export type TierConf = {
     ingressConf?: util.IngressConf,
     sagemakerConf?: SagemakerConf,
     airbyteConf?: AirbyteConf,
+    pricingMode?: util.PricingMode,
+    customerId?: number,
 }
 
 type inputType = {
@@ -686,6 +688,12 @@ type TierInput = {
 
     // airbyte
     airbyteConf?: AirbyteConf,
+
+    // pricing mode.
+    pricingMode?: util.PricingMode,
+
+    // customer id.
+    customerId?: number,
 }
 
 const setupTier = async (args: TierInput, preview?: boolean, destroy?: boolean) => {
@@ -809,6 +817,14 @@ const setupTier = async (args: TierInput, preview?: boolean, destroy?: boolean) 
 
     if (args.airbyteConf !== undefined) {
         await stack.setConfig(nameof<inputType>("airbyteConf"), { value: JSON.stringify(args.airbyteConf) })
+    }
+
+    if (args.pricingMode !== undefined) {
+        await stack.setConfig("pricingMode", { value: args.pricingMode })
+    }
+
+    if (args.customerId !== undefined) {
+        await stack.setConfig("customerId", { value: String(args.customerId) })
     }
 
     console.info("config set");
