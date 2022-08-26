@@ -20,9 +20,11 @@ import (
 )
 
 const (
+	// TODO(mohit): Add this for MSK provided kafka topics as well
 	test_kafka_servers = "pkc-pgq85.us-west-2.aws.confluent.cloud:9092"
 	kafka_username     = "HWGB3CSLWYNXWNA3"
 	kafka_password     = "t7SYuJa4OsQI600/c4x8IBppm6zvPHevjWNC0klU501UViMydaeW0BqsEt+xFSxw"
+	kafka_sasl_mechanism = "PLAIN"
 )
 
 func TestIntegration(t *testing.T) {
