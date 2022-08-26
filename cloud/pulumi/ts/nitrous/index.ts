@@ -124,7 +124,7 @@ function setupBinLogInMsk(input: inputType, awsProvider: aws.Provider) {
         kubeconfig: input.kubeconfig,
         namespace: namespace,
     })
-    const kafkaCreds = new k8s.core.v1.Secret("kafka-config-msk", {
+    return new k8s.core.v1.Secret("kafka-config-msk", {
         stringData: {
             "servers": input.kafka.bootstrapServers,
             "username": input.kafka.username,
@@ -147,7 +147,7 @@ export const setup = async (input: inputType) => {
     })
 
     // Setup binlog kafka topic.
-    setupBinLogInMsk(input, awsProvider);
+    const mskCreds = setupBinLogInMsk(input, awsProvider);
 
     const bucketName = `nitrous-p-${input.planeId}-backup`
     const bucket = new aws.s3.Bucket(bucketName, {
@@ -409,7 +409,7 @@ export const setup = async (input: inputType) => {
                 // default update strategy is "RollingUpdate" with "maxUnavailable: 1". Stateful sets have a
                 // concept of partitions, but I believe are useful for canary rollout
             },
-        }, { provider: k8sProvider, deleteBeforeReplace: true });
+        }, { provider: k8sProvider, deleteBeforeReplace: true, dependsOn: [mskCreds]});
     })
 
     const appSvc = appStatefulset.apply(() => {
