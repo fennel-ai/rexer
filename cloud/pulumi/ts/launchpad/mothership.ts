@@ -44,6 +44,7 @@ const setupPlugins = async (stack: pulumi.automation.Stack) => {
         ...vpc.plugins,
         ...eks.plugins,
         ...aurora.plugins,
+        ...mothershipconfigs.plugins,
     }
     console.info("installing plugins...");
     for (var key in plugins) {
