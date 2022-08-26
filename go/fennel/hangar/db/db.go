@@ -63,7 +63,7 @@ func NewHangar(planeID ftypes.RealmID, dirname string, blockCacheBytes int64, en
 	opts = opts.WithBlockSize(4 * 1024)
 	opts = opts.WithNumCompactors(2)
 	opts = opts.WithCompactL0OnClose(true)
-	opts = opts.WithIndexCacheSize(2 << 30 /* 2 GB */)
+	opts = opts.WithIndexCacheSize(4 << 30 /* 4 GB */)
 	opts = opts.WithMemTableSize(256 << 20 /* 256 MB */)
 	opts = opts.WithBlockCacheSize(blockCacheBytes)
 	db, err := badger.Open(opts)

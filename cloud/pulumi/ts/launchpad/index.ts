@@ -719,7 +719,7 @@ const dataPlaneConfs: Record<number, DataPlaneConf> = {
             useAmd64: false,
             storageCapacityGB: 1700,
             storageClass: "local",
-            blockCacheMB: 1024 * 8,
+            blockCacheMB: 1024 * 16,
             kvCacheMB: 1024 * 75,
             resourceConf: {
                 cpu: {
