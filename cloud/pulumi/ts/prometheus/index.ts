@@ -16,6 +16,7 @@ export type inputType = {
     protect: boolean,
     // MSK bootstrap servers which are of the format `DNS1:port1,DNS2:port2....`
     mskBootstrapServers?: pulumi.Output<string>,
+    numBrokers?: pulumi.Output<number>,
 }
 
 // should not contain any pulumi.Output<> types.
@@ -107,16 +108,27 @@ function scrapeConfigs(input: inputType) {
         }],
     }];
 
-    if (input.mskBootstrapServers !== undefined) {
-        return input.mskBootstrapServers.apply(bootstrapServers => {
+    if (input.mskBootstrapServers !== undefined && input.numBrokers !== undefined) {
+        return pulumi.all([input.mskBootstrapServers, input.numBrokers]).apply(([bootstrapServers, numBrokers]) => {
+            // AWS MSK cluster does not return all the broker endpoints. This is fine for the producers and
+            // consumers since they use partition leader and consumer coordinator to communicate with the cluster
+            // which given any broker endpoint.
+            //
+            // For metrics, it is important to know all the brokers to get metrics per broker. To do so, we rely
+            // on the endpoint format of the cluster which is `b-BROKER_ID.DNS:SASL_SCRAM_PORT(9096)`
+            // Get DNS out of this, construct the endpoint using the number of brokers configured and use the right
+            // port to scrape metrics from.
             const servers = bootstrapServers.split(",");
+            const server = servers[0];
+            const idx = server.indexOf(".", 0);
+            const commonDns = server.substring(idx+1);
             let jmxServers: string[] = [];
             let nodeServers: string[] = [];
-            servers.forEach((server) => {
-                const dns = server.split(":")[0];
-                jmxServers.push(`${dns}:11001`)
-                nodeServers.push(`${dns}:11002`)
-            })
+            for (let i = 1; i <= numBrokers; i++) {
+                const dns = commonDns.split(":")[0];
+                jmxServers.push(`b-${i}.${dns}:11001`)
+                nodeServers.push(`b-${i}.${dns}:11002`)
+            }
             scrape_configs.push({
                 "job_name": "broker",
                 "static_configs": [{

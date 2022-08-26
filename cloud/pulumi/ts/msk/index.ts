@@ -36,6 +36,7 @@ export type outputType = {
     zookeeperConnectString: string,
     // comma separated bootstrap servers in and across multiple AZs
     bootstrapBrokers: string,
+    numBrokers: number,
 }
 
 export const setup = async (input: inputType): Promise<pulumi.Output<outputType>> => {
@@ -206,5 +207,6 @@ export const setup = async (input: inputType): Promise<pulumi.Output<outputType>
         mskPassword: mskPassword,
         zookeeperConnectString: cluster.zookeeperConnectString,
         bootstrapBrokers: cluster.bootstrapBrokersSaslScram,
+        numBrokers: input.numberOfBrokerNodes,
     });
 }

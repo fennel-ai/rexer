@@ -335,6 +335,7 @@ const setupResources = async () => {
         planeId: input.planeId,
         // set msk brokers, so that prometheus can scrape the metrics exported at each of the metrics
         mskBootstrapServers: mskOutput?.bootstrapBrokers,
+        numBrokers: mskOutput?.numBrokers,
         protect: input.protectResources,
     })
 
