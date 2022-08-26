@@ -232,13 +232,14 @@ func SignUp(c context.Context, db *gorm.DB, email, password string) (userL.User,
 	return user, result.Error
 }
 
-// TODO(xiao) do not generate remember token if already generated (recently)
+var REMEMBER_TOKEN_TTL_MICRO = (30 * 24 * time.Hour).Microseconds()
+
 func SignIn(c context.Context, db *gorm.DB, email, password string) (userL.User, error) {
 	var user userL.User
 
-	result := db.Take(&user, "email = ?", email)
-	if result.Error != nil {
-		return userL.User{}, &lib.ErrorUserNotFound
+	err := db.Take(&user, "email = ?", email).Error
+	if err != nil {
+		return user, &lib.ErrorUserNotFound
 	}
 
 	if !checkPasswordHash(password, user.EncryptedPassword) {
@@ -248,12 +249,13 @@ func SignIn(c context.Context, db *gorm.DB, email, password string) (userL.User,
 	if !user.IsConfirmed() {
 		return user, &lib.ErrorNotConfirmed
 	}
-	user.RememberCreatedAt = sql.NullInt64{Int64: time.Now().UTC().UnixMicro(), Valid: true}
-	result = db.Model(&user).Updates(map[string]interface{}{
-		"RememberToken":     generateRememberToken(db),
-		"RememberCreatedAt": time.Now().UTC().UnixMicro(),
-	})
-	return user, result.Error
+	now := time.Now().UTC().UnixMicro()
+	if !user.RememberCreatedAt.Valid || user.RememberCreatedAt.Int64+REMEMBER_TOKEN_TTL_MICRO < now {
+		user.RememberCreatedAt = sql.NullInt64{Int64: now, Valid: true}
+		user.RememberToken = sql.NullString{String: generateRememberToken(db), Valid: true}
+	}
+	err = db.Save(&user).Error
+	return user, err
 }
 
 func ConfirmUser(c context.Context, db *gorm.DB, token string) (userL.User, error) {
