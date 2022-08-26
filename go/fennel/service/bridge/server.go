@@ -38,6 +38,7 @@ type serverArgs struct {
 	SessionKey     string `arg:"required,--bridge_session_key,env:BRIDGE_SESSION_KEY"`
 	SendgridAPIKey string `arg:"required,--sendgrid_api_key,env:SENDGRID_API_KEY"`
 	BridgeENV      string `arg:"required,--bridge_env,env:BRIDGE_ENV"` // dev, prod
+	AppPort        string `arg:"--app-port,env:APP_PORT" default:"8080"`
 
 	RandSeed int64 `arg:"--rand_seed,env:RAND_SEED"`
 }
