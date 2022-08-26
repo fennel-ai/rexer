@@ -1,0 +1,52 @@
+"plane": {
+  "protectResources": true,
+  "accountConf": {
+    "existingAccount": {
+      "roleArn": ""
+    }
+  },
+  "planeId": 2,
+  "region": "us-west-2",
+  "vpcConf": {
+    "cidr": "10.102.0.0/16"
+  },
+  "dbConf": {
+    "minCapacity": 8,
+    "maxCapacity": 8,
+    "password": "foundationdb",
+    "skipFinalSnapshot": true
+  },
+  "confluentConf": {
+    "username": "confluentUsername",
+    "password": "confluentPassword"
+  },
+  "controlPlaneConf": "controlPlane",
+  "redisConf": {
+    "numShards": 1,
+    "nodeType": "db.t4g.small",
+    "numReplicasPerShard": 0
+  },
+  "cacheConf": {
+    "numNodeGroups": 1,
+    "nodeType": "cache.t4g.micro",
+    "replicasPerNodeGroup": 0,
+  },
+  "prometheusConf": {
+    "useAMP": true
+  },
+  "eksConf": {
+    "nodeGroups": [
+      {
+        "name": "p-2-common-ng",
+        "instanceTypes": [
+          "t3.medium"
+        ],
+        "minSize": 1,
+        "maxSize": 3,
+        "amiType": "DEFAULT_X86_AMI_TYPE",
+        "capacityType": "ON_DEMAND_INSTANCE_TYPE",
+        "expansionPriority": 1
+      }
+    ]
+  }
+}
