@@ -5,6 +5,7 @@ import (
 	"fennel/mothership"
 	actionC "fennel/mothership/controller/action"
 	featureC "fennel/mothership/controller/feature"
+	metricC "fennel/mothership/controller/metric"
 	profileC "fennel/mothership/controller/profile"
 	userC "fennel/mothership/controller/user"
 	"fennel/mothership/lib"
@@ -116,6 +117,9 @@ func (s *server) setupRouter() {
 	auth.GET("/organization", s.Organization)
 	auth.PATCH("/user_names", s.UpdateUserNames)
 	auth.PATCH("/user_password", s.UpdateUserPassword)
+
+	metrics := auth.Group("/metrics")
+	metrics.GET("/query_range", s.QueryRangeMetrics)
 
 	// dev only endpoints
 	if s.isDev() {
@@ -513,6 +517,48 @@ func (s *server) UpdateUserPassword(c *gin.Context) {
 		}
 	}
 	c.JSON(http.StatusOK, gin.H{})
+}
+
+type queryRangeRequest struct {
+	Query string `form:"query"`
+	Start string `form:"start"`
+	End   string `form:"end"`
+	Step  string `form:"step"`
+}
+
+func (s *server) QueryRangeMetrics(c *gin.Context) {
+	var req queryRangeRequest
+	if err := c.ShouldBind(&req); err != nil {
+		respondError(c, err, "parse query range metrics params")
+		return
+	}
+	start, end, step, err := req.parseParams()
+	if err != nil {
+		respondError(c, err, "parse query range metrics params")
+		return
+	}
+
+	result, err := metricC.QueryRange(c.Request.Context(), req.Query, start, end, step)
+	if err != nil {
+		respondError(c, err, "query range metrics")
+		return
+	}
+	c.JSON(http.StatusOK, result)
+}
+
+func (req queryRangeRequest) parseParams() (time.Time, time.Time, time.Duration, error) {
+	var start, end time.Time
+	var step time.Duration
+	start, err := time.Parse(time.RFC3339, req.Start)
+	if err != nil {
+		return start, end, step, err
+	}
+	end, err = time.Parse(time.RFC3339, req.End)
+	if err != nil {
+		return start, end, step, err
+	}
+	step, err = time.ParseDuration(req.Step)
+	return start, end, step, err
 }
 
 func respondError(c *gin.Context, err error, action string) {
