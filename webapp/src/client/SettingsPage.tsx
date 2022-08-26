@@ -5,8 +5,11 @@ import AccountTab from "./AccountTab";
 import OrgTab from "./OrgTab";
 import styles from "./styles/Page.module.scss";
 
+function tabFromHash(): string {
+    return window.location.hash && window.location.hash.substring(1);
+}
+
 function SettingsPage() {
-    const tabFromHash = () => (window.location.hash && window.location.hash.substring(1));
     const [activeTab, setActiveTab] = useState<string>(tabFromHash() || "account");
     const onTabClick = (key: string) => {
         window.location.hash = key;
