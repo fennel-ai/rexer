@@ -68,14 +68,18 @@ func TestSignInAndLogout(t *testing.T) {
 	assert.ErrorIs(t, err, &lib.ErrorNotConfirmed)
 
 	user.ConfirmedAt = sql.NullInt64{Valid: true, Int64: 123}
-	result := db.Model(&user).Update("ConfirmedAt", 123)
-	assert.NoError(t, result.Error)
+	assert.NoError(t, db.Save(&user).Error)
 
 	sameUser, err := SignIn(ctx, db, "test@fennel.ai", "12345")
 	assert.NoError(t, err)
 	assert.Equal(t, user.ID, sameUser.ID)
 	assert.True(t, sameUser.RememberToken.Valid)
 	assert.True(t, sameUser.RememberCreatedAt.Valid)
+
+	user, err = SignIn(ctx, db, "test@fennel.ai", "12345")
+	assert.NoError(t, err)
+	assert.Equal(t, sameUser.RememberToken, user.RememberToken)
+	assert.Equal(t, sameUser.RememberCreatedAt, user.RememberCreatedAt)
 
 	user, err = Logout(ctx, db, sameUser)
 	assert.NoError(t, err)
