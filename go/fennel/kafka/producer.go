@@ -74,13 +74,14 @@ type RemoteProducerConfig struct {
 	BootstrapServer string
 	Username        string
 	Password        string
+	SaslMechanism   string
 	Scope           resource.Scope
 	Configs         ProducerConfigs
 }
 
 func (conf RemoteProducerConfig) Materialize() (resource.Resource, error) {
 	topic := conf.Scope.PrefixedName(conf.Topic)
-	configmap := ConfigMap(conf.BootstrapServer, conf.Username, conf.Password)
+	configmap := ConfigMap(conf.BootstrapServer, conf.Username, conf.Password, conf.SaslMechanism)
 	for _, config := range conf.Configs {
 		if err := configmap.Set(config); err != nil {
 			return nil, err

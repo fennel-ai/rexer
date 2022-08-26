@@ -8,7 +8,6 @@ import * as process from "process";
 import * as childProcess from "child_process";
 import * as util from "../lib/util";
 import { ReadinessProbe } from "../tier-consts/consts";
-import {bootstrapServers} from "@pulumi/kafka/config";
 
 
 export const plugins = {
@@ -56,12 +55,6 @@ export type binlogConfig = {
 }
 
 export type kafkaAdmin = {
-    apiKey: pulumi.Input<string>,
-    apiSecret: pulumi.Input<string>
-    bootstrapServer: pulumi.Input<string>,
-}
-
-export type mskAdmin = {
     username: pulumi.Output<string>,
     password: pulumi.Output<string>,
     bootstrapServers: pulumi.Output<string>,
@@ -88,9 +81,6 @@ export type inputType = {
     kafka: kafkaAdmin,
     binlog: binlogConfig,
 
-    msk?: mskAdmin,
-    mskBinlog?: binlogConfig,
-
     protect: boolean,
 }
 
@@ -99,68 +89,34 @@ export type outputType = {
     svc: pulumi.Output<k8s.core.v1.Service>,
 }
 
-function setupBinlog(input: inputType) {
-    const kafkaProvider = new kafka.Provider("nitrous-kafka-provider", {
-        bootstrapServers: [input.kafka.bootstrapServer],
-        saslUsername: input.kafka.apiKey,
-        saslPassword: input.kafka.apiSecret,
-        saslMechanism: "plain",
-        tlsEnabled: true,
-    })
-    const config = {
-        "retention.ms": input.binlog.retention_ms,
-        "retention.bytes": input.binlog.partition_retention_bytes,
-    };
-    const topic = new kafka.Topic(`topic-p-${input.planeId}-${BINLOG_TOPIC_NAME}`, {
-        name: `p_${input.planeId}_${BINLOG_TOPIC_NAME}`,
-        partitions: input.binlog.partitions || DEFAULT_BINLOG_PARTITIONS,
-        // We set replication factor to 3 regardless of the cluster availability
-        // since that's the minimum required by confluent cloud:
-        // https://github.com/Mongey/terraform-provider-kafka/issues/40#issuecomment-456897983
-        replicationFactor: input.binlog.replicationFactor || DEFAULT_BINLOG_REPLICATION_FACTOR,
-        config: config,
-    }, { provider: kafkaProvider, protect: input.protect })
-
-    const k8sProvider = new k8s.Provider("configs-k8s-provider", {
-        kubeconfig: input.kubeconfig,
-        namespace: namespace,
-    })
-    const kafkaCreds = new k8s.core.v1.Secret("kafka-config", {
-        stringData: {
-            "server": input.kafka.bootstrapServer,
-            "username": input.kafka.apiKey,
-            "password": input.kafka.apiSecret,
-        },
-        metadata: {
-            name: "kafka-conf",
-        }
-    }, { provider: k8sProvider, deleteBeforeReplace: true })
-}
-
 function setupBinLogInMsk(input: inputType, awsProvider: aws.Provider) {
     // currently TLS is disabled
-    const bootstrapServers = input.msk!.bootstrapServers.apply(bootstrapServers => { return bootstrapServers.split(","); })
+    const bootstrapServers = input.kafka.bootstrapServers.apply(bootstrapServers => { return bootstrapServers.split(","); })
     const kafkaProvider = new kafka.Provider("nitrous-kafka-provider-msk", {
         // bootstrap servers is a string with comma separated server addresses
         bootstrapServers: bootstrapServers,
-        saslUsername: input.msk!.username,
-        saslPassword: input.msk!.password,
+        saslUsername: input.kafka.username,
+        saslPassword: input.kafka.password,
         saslMechanism: "scram-sha512",
     }, { provider: awsProvider });
     bootstrapServers.apply(servers => {
         console.log('servers: ', servers);
     })
     const config = {
-        "retention.ms": input.mskBinlog!.retention_ms,
-        "retention.bytes": input.mskBinlog!.partition_retention_bytes,
+        "retention.ms": input.binlog.retention_ms,
+        "retention.bytes": input.binlog.partition_retention_bytes,
     };
     const topic = new kafka.Topic(`topic-p-${input.planeId}-${BINLOG_TOPIC_NAME}-msk`, {
         name: `p_${input.planeId}_${BINLOG_TOPIC_NAME}`,
-        partitions: input.mskBinlog!.partitions || DEFAULT_BINLOG_PARTITIONS,
-        // We set replication factor to 3 regardless of the cluster availability
-        // since that's the minimum required by confluent cloud:
-        // https://github.com/Mongey/terraform-provider-kafka/issues/40#issuecomment-456897983
-        replicationFactor: input.mskBinlog!.replicationFactor || 1,
+        partitions: input.binlog.partitions || DEFAULT_BINLOG_PARTITIONS,
+        // We set a default replication factor of 2 (has to be > 1 since this could block producers during a
+        // rolling update a broker could be brought down). For production workloads we expect this value to be >= 3
+        //
+        // since we configure 2 AZs, setting replication factor as 2 is fine for non-production workloads,
+        // but it could cause potential partial data loss - this is possible when the "leader" replica for a partition
+        // is down and one of the AZ is unreachable, kafka control plane is unable to assign a broker as the leader,
+        // which causes the new messages to be dropped
+        replicationFactor: input.binlog.replicationFactor || 2,
         config: config,
     }, { provider: kafkaProvider, protect: input.protect })
 
@@ -168,11 +124,11 @@ function setupBinLogInMsk(input: inputType, awsProvider: aws.Provider) {
         kubeconfig: input.kubeconfig,
         namespace: namespace,
     })
-    const kafkaCreds = new k8s.core.v1.Secret("kafka-config-msk", {
+    return new k8s.core.v1.Secret("kafka-config-msk", {
         stringData: {
-            "servers": input.msk!.bootstrapServers,
-            "username": input.msk!.username,
-            "password": input.msk!.password,
+            "servers": input.kafka.bootstrapServers,
+            "username": input.kafka.username,
+            "password": input.kafka.password,
         },
         metadata: {
             name: "kafka-conf-msk",
@@ -181,10 +137,6 @@ function setupBinLogInMsk(input: inputType, awsProvider: aws.Provider) {
 }
 
 export const setup = async (input: inputType) => {
-
-    // Setup binlog kafka topic.
-    const topic = setupBinlog(input);
-
     const awsProvider = new aws.Provider("nitrous-aws-provider", {
         region: <aws.Region>input.region,
         assumeRole: {
@@ -194,9 +146,8 @@ export const setup = async (input: inputType) => {
         }
     })
 
-    if (input.msk !== undefined) {
-        const topicMsk = setupBinLogInMsk(input, awsProvider);
-    }
+    // Setup binlog kafka topic.
+    const mskCreds = setupBinLogInMsk(input, awsProvider);
 
     const bucketName = `nitrous-p-${input.planeId}-backup`
     const bucket = new aws.s3.Bucket(bucketName, {
@@ -366,28 +317,28 @@ export const setup = async (input: inputType) => {
                                 ],
                                 env: [
                                     {
-                                        name: "KAFKA_SERVER_ADDRESS",
+                                        name: "MSK_KAFKA_SERVER_ADDRESS",
                                         valueFrom: {
                                             secretKeyRef: {
-                                                name: "kafka-conf",
-                                                key: "server",
+                                                name: "kafka-conf-msk",
+                                                key: "servers",
                                             }
                                         }
                                     },
                                     {
-                                        name: "KAFKA_USERNAME",
+                                        name: "MSK_KAFKA_USERNAME",
                                         valueFrom: {
                                             secretKeyRef: {
-                                                name: "kafka-conf",
+                                                name: "kafka-conf-msk",
                                                 key: "username",
                                             }
                                         }
                                     },
                                     {
-                                        name: "KAFKA_PASSWORD",
+                                        name: "MSK_KAFKA_PASSWORD",
                                         valueFrom: {
                                             secretKeyRef: {
-                                                name: "kafka-conf",
+                                                name: "kafka-conf-msk",
                                                 key: "password",
                                             }
                                         }
@@ -458,7 +409,7 @@ export const setup = async (input: inputType) => {
                 // default update strategy is "RollingUpdate" with "maxUnavailable: 1". Stateful sets have a
                 // concept of partitions, but I believe are useful for canary rollout
             },
-        }, { provider: k8sProvider, deleteBeforeReplace: true });
+        }, { provider: k8sProvider, deleteBeforeReplace: true, dependsOn: [mskCreds]});
     })
 
     const appSvc = appStatefulset.apply(() => {

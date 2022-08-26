@@ -21,9 +21,9 @@ type NitrousArgs struct {
 	s3.S3Args `json:"s3_._s3_args"`
 
 	PlaneID            ftypes.RealmID `arg:"--plane-id,env:PLANE_ID" json:"plane_id,omitempty"`
-	KafkaServer        string         `arg:"--kafka-server,env:KAFKA_SERVER_ADDRESS" json:"kafka_server,omitempty"`
-	KafkaUsername      string         `arg:"--kafka-user,env:KAFKA_USERNAME" json:"kafka_username,omitempty"`
-	KafkaPassword      string         `arg:"--kafka-password,env:KAFKA_PASSWORD" json:"kafka_password,omitempty"`
+	MskKafkaServer     string         `arg:"--msk-kafka-server,env:MSK_KAFKA_SERVER_ADDRESS" json:"msk_kafka_server,omitempty"`
+	MskKafkaUsername   string         `arg:"--msk-kafka-user,env:MSK_KAFKA_USERNAME" json:"msk_kafka_username,omitempty"`
+	MskKafkaPassword   string         `arg:"--msk-kafka-password,env:MSK_KAFKA_PASSWORD" json:"msk_kafka_password,omitempty"`
 	BadgerDir          string         `arg:"--badger_dir,env:BADGER_DIR" json:"badger_dir,omitempty"`
 	BadgerBlockCacheMB int64          `arg:"--badger_block_cache_mb,env:BADGER_BLOCK_CACHE_MB" json:"badger_block_cache_mb,omitempty"`
 	RistrettoMaxCost   uint64         `arg:"--ristretto_max_cost,env:RISTRETTO_MAX_COST" json:"ristretto_max_cost,omitempty"`
@@ -77,9 +77,10 @@ func CreateFromArgs(args NitrousArgs) (Nitrous, error) {
 	// Initialize kafka consumer factory.
 	consumerFactory := func(config libkafka.ConsumerConfig) (libkafka.FConsumer, error) {
 		kafkaConsumerConfig := libkafka.RemoteConsumerConfig{
-			BootstrapServer: args.KafkaServer,
-			Username:        args.KafkaUsername,
-			Password:        args.KafkaPassword,
+			BootstrapServer: args.MskKafkaServer,
+			Username:        args.MskKafkaUsername,
+			Password:        args.MskKafkaPassword,
+			SaslMechanism:   libkafka.SaslScramSha512Mechanism,
 			ConsumerConfig:  config,
 		}
 		kafkaConsumer, err := kafkaConsumerConfig.Materialize()

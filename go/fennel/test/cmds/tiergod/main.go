@@ -41,7 +41,10 @@ func main() {
 			panic(err)
 		}
 	case "prune":
-		if err := pruneKafka(args.KafkaServer, args.KafkaUsername, args.KafkaPassword); err != nil {
+		if err := pruneKafka(args.KafkaServer, args.KafkaUsername, args.KafkaPassword, fkafka.SaslPlainMechanism); err != nil {
+			panic(err)
+		}
+		if err := pruneKafka(args.MskKafkaServer, args.MskKafkaUsername, args.MskKafkaPassword, fkafka.SaslScramSha512Mechanism); err != nil {
 			panic(err)
 		}
 		if err := pruneDB(args.MysqlHost, args.MysqlUsername, args.MysqlPassword); err != nil {
@@ -51,8 +54,8 @@ func main() {
 		panic("invalid mode: valid modes are 'create' or 'destroy'")
 	}
 }
-func pruneKafka(host, username, password string) (reterr error) {
-	c, err := kafka.NewAdminClient(fkafka.ConfigMap(host, username, password))
+func pruneKafka(host, username, password, saslMechanism string) (reterr error) {
+	c, err := kafka.NewAdminClient(fkafka.ConfigMap(host, username, password, saslMechanism))
 	if err != nil {
 		return fmt.Errorf("failed to create admin client: %v", err)
 	}

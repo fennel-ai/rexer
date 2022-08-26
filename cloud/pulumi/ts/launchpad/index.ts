@@ -1,4 +1,4 @@
-import setupTier, { TierConf } from "./tier";
+import setupTier, {TierConf, TierMskConf} from "./tier";
 import setupDataPlane, { DataPlaneConf, PlaneOutput } from "./data_plane";
 import setupMothership, { MothershipConf } from "./mothership";
 import * as vpc from "../vpc";
@@ -16,6 +16,7 @@ import * as kafkatopics from "../kafkatopics";
 import * as telemetry from "../telemetry";
 import * as milvus from "../milvus";
 import { nameof, PUBLIC_LB_SCHEME, PRIVATE_LB_SCHEME } from "../lib/util";
+import * as msk from "../msk";
 
 import * as process from "process";
 import * as assert from "assert";
@@ -44,6 +45,28 @@ assert.ok(confluentPassword, "CONFLUENT_CLOUD_PASSWORD must be set");
 
 // map from tier id to plane id.
 const tierConfs: Record<number, TierConf> = {
+    // Mohit's debug tier
+    101: {
+        protectResources: false,
+        planeId: 3,
+        httpServerConf: {
+            podConf: {
+                minReplicas: 1,
+                maxReplicas: 3,
+                resourceConf: {
+                    cpu: {
+                        request: "1250m",
+                        limit: "1500m"
+                    },
+                    memory: {
+                        request: "2G",
+                        limit: "3G",
+                    }
+                },
+            }
+        },
+        enableNitrous: true,
+    },
     // Fennel staging tier using Fennel's staging data plane.
     106: {
         protectResources: true,
@@ -659,10 +682,33 @@ const dataPlaneConfs: Record<number, DataPlaneConf> = {
                 partitions: 32,
                 retention_ms: 30 * 24 * 60 * 60 * 1000 /* 30 days */,
                 partition_retention_bytes: -1,
+                // it is recommended to have RF >= 3
+                //
+                // NOTE: since we configure 4 brokers, setting to 3 works with rolling updates to the cluster where
+                // a broker is "inactive".
+                //
+                // by default MSK sets this to 2 for the cluster configured in 2 AZs
+                replicationFactor: 3,
+                // TODO(mohit): min in-sync replicas is set to 1, since we have 2 AZs.
+                // see - https://docs.aws.amazon.com/msk/latest/developerguide/msk-default-configuration.html
+                //
+                // For Confluent based topics, min in-sync replicas is 2
             },
             nodeLabels: {
                 "node-group": "p-5-nitrous-ng",
             }
+        },
+
+        // set up MSK cluster
+        mskConf: {
+            // TODO(mohit): monitor CPU and Memory to decide if this machine should be upgraded; this gives 2vCPU, 8GB
+            //
+            // see - https://aws.amazon.com/msk/pricing/
+            brokerType: "kafka.m5.large",
+            // this will place 2 broker nodes in each of the AZs
+            numberOfBrokerNodes: 4,
+            // TODO(mohit): consider expanding this in the future if each broker needs more storage capacity
+            storageVolumeSizeGiB: 1024,
         }
     },
     // plane 8 - pending account close, post which it can be destroyed
@@ -821,6 +867,7 @@ function setupTierWrapperFn(tierId: number, dataplane: OutputMap, planeConf: Dat
     const glueOutput = dataplane[nameof<PlaneOutput>("glue")].value as glueSource.outputType
     const telemetryOutput = dataplane[nameof<PlaneOutput>("telemetry")].value as telemetry.outputType
     const milvusOutput = dataplane[nameof<PlaneOutput>("milvus")].value as milvus.outputType
+    const mskOutput = dataplane[nameof<PlaneOutput>("msk")].value as msk.outputType | undefined
 
     // Create/update/delete the tier.
     if (tierId !== 0) {
@@ -840,6 +887,15 @@ function setupTierWrapperFn(tierId: number, dataplane: OutputMap, planeConf: Dat
 
         // TODO(mohit): Validate that the nodeLabel specified in `PodConf` have at least one label match across labels
         // defined in all node groups.
+
+        let mskConf: TierMskConf | undefined;
+        if (mskOutput !== undefined) {
+            mskConf = {
+                mskUsername: mskOutput.mskUsername,
+                mskPassword: mskOutput.mskPassword,
+                bootstrapBrokers: mskOutput.bootstrapBrokers,
+            }
+        }
 
         const topics: kafkatopics.topicConf[] = [
             {
@@ -884,6 +940,8 @@ function setupTierWrapperFn(tierId: number, dataplane: OutputMap, planeConf: Dat
             topics: topics,
             kafkaApiKey: confluentOutput.apiKey,
             kafkaApiSecret: confluentOutput.apiSecret,
+
+            mskConf: mskConf,
 
             confUsername: confluentUsername!,
             confPassword: confluentPassword!,

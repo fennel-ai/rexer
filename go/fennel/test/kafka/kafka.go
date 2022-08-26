@@ -18,7 +18,8 @@ func CreateMockKafka(tierID ftypes.RealmID) (map[string]fkafka.FProducer, tier.K
 	brokerMap := make(map[string]*fkafka.MockBroker)
 	producers := make(map[string]fkafka.FProducer)
 	scope := resource.NewTierScope(tierID)
-	for _, topic := range fkafka.ALL_TOPICS {
+	allTopics := append(fkafka.ALL_CONFLUENT_TOPICS, fkafka.ALL_MSK_TOPICS...)
+	for _, topic := range allTopics {
 		if reflect.TypeOf(scope) != reflect.TypeOf(topic.Scope) {
 			continue
 		}
@@ -54,15 +55,15 @@ func CreateMockKafka(tierID ftypes.RealmID) (map[string]fkafka.FProducer, tier.K
 	return producers, consumerCreator, nil
 }
 
-func SetupKafkaTopics(scope resource.Scope, host, username, password string) error {
+func SetupKafkaTopics(scope resource.Scope, host, username, password, saslMechanism string, topics []fkafka.TopicConf) error {
 	var names []string
-	for _, topic := range fkafka.ALL_TOPICS {
+	for _, topic := range topics {
 		if reflect.TypeOf(scope) == reflect.TypeOf(topic.Scope) {
 			names = append(names, scope.PrefixedName(topic.Topic))
 		}
 	}
 	// Create admin client
-	c, err := kafka.NewAdminClient(fkafka.ConfigMap(host, username, password))
+	c, err := kafka.NewAdminClient(fkafka.ConfigMap(host, username, password, saslMechanism))
 	if err != nil {
 		return fmt.Errorf("failed to create admin client: %v", err)
 	}

@@ -36,6 +36,33 @@ export const serviceEnvs = [
         }
     },
     {
+        name: "MSK_KAFKA_SERVER_ADDRESS",
+        valueFrom: {
+            secretKeyRef: {
+                name: "msk-kafka-conf",
+                key: "mskServers",
+            }
+        }
+    },
+    {
+        name: "MSK_KAFKA_USERNAME",
+        valueFrom: {
+            secretKeyRef: {
+                name: "msk-kafka-conf",
+                key: "mskUsername",
+            }
+        }
+    },
+    {
+        name: "MSK_KAFKA_PASSWORD",
+        valueFrom: {
+            secretKeyRef: {
+                name: "msk-kafka-conf",
+                key: "mskPassword",
+            }
+        }
+    },
+    {
         name: "REDIS_SERVER_ADDRESS",
         valueFrom: {
             secretKeyRef: {

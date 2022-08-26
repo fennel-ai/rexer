@@ -348,20 +348,10 @@ const setupResources = async () => {
     })
 
     if (input.nitrousConf !== undefined) {
-        let mskadmin: nitrous.mskAdmin | undefined;
-        let mskBinlog: nitrous.binlogConfig | undefined;
-        if (mskOutput !== undefined) {
-            mskadmin = {
-                username: mskOutput!.mskUsername,
-                password: mskOutput!.mskPassword,
-                bootstrapServers: mskOutput!.bootstrapBrokers,
-            }
-            mskBinlog = {
-                partitions: input.nitrousConf.mskBinlog?.partitions,
-                replicationFactor: input.nitrousConf.mskBinlog?.replicationFactor,
-                retention_ms: input.nitrousConf.mskBinlog?.retention_ms,
-                partition_retention_bytes: input.nitrousConf.mskBinlog?.partition_retention_bytes,
-            }
+        // mskout has to be defined here
+        if (mskOutput === undefined) {
+            console.log('expected msk to be successfully configured for nitrous')
+            process.exit(1);
         }
         const nitrousOutput = await nitrous.setup({
             planeId: input.planeId,
@@ -382,11 +372,10 @@ const setupResources = async () => {
             kvCacheMB: input.nitrousConf.kvCacheMB,
 
             kafka: {
-                apiKey: confluentOutput.apiKey,
-                apiSecret: confluentOutput.apiSecret,
-                bootstrapServer: confluentOutput.bootstrapServer,
+                username: mskOutput.mskUsername,
+                password: mskOutput.mskPassword,
+                bootstrapServers: mskOutput.bootstrapBrokers,
             },
-            msk: mskadmin,
 
             binlog: {
                 partitions: input.nitrousConf.binlog.partitions,
@@ -394,7 +383,6 @@ const setupResources = async () => {
                 retention_ms: input.nitrousConf.binlog.retention_ms,
                 partition_retention_bytes: input.nitrousConf.binlog.partition_retention_bytes,
             },
-            mskBinlog: mskBinlog,
             protect: input.protectResources,
         })
     }
@@ -449,6 +437,12 @@ const setupDataPlane = async (args: DataPlaneConf, preview?: boolean, destroy?: 
 
     if (args.accountConf.newAccount === undefined && args.accountConf.existingAccount === undefined) {
         console.info("neither newAccount or existingAccount is set; Exactly one should be set")
+        process.exit(1);
+    }
+
+    // nitrous requires msk configuration
+    if (args.nitrousConf !== undefined && args.mskConf === undefined) {
+        console.info("nitrous configured, but msk is not; nitrous requires msk configured")
         process.exit(1);
     }
 
