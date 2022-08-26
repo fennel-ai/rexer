@@ -374,7 +374,6 @@ export const setup = async (input: inputType) => {
                                         "memory": input.resourceConf?.memory.request || DEFAULT_MEMORY_REQUEST,
                                     },
                                     limits: {
-                                        "cpu": input.resourceConf?.cpu.limit || DEFAULT_CPU_LIMIT,
                                         "memory": memlimit,
                                     }
                                 },
