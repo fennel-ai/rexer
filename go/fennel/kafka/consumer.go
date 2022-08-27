@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/samber/mo"
 	"log"
 	"time"
 
@@ -241,6 +242,9 @@ type RemoteConsumerConfig struct {
 	Username        string
 	Password        string
 	SaslMechanism 	string
+	// TODO(mohit): Consider making this a required option, with every consumer setting this to the AZ ID
+	// once topics are migrated to MSK cluster
+	AzId	     	mo.Option[string]
 }
 
 func (conf RemoteConsumerConfig) Materialize() (resource.Resource, error) {
@@ -254,6 +258,20 @@ func (conf RemoteConsumerConfig) Materialize() (resource.Resource, error) {
 	}
 	if err := configmap.SetKey("auto.offset.reset", conf.OffsetPolicy); err != nil {
 		return nil, err
+	}
+
+	if conf.AzId.IsPresent() {
+		// Set client rack id on the consumer configuration so that the closest broker (=> broker in the same AZ)
+		// is assigned to this consumer - this helps to avoid cross-AZ traffic
+		//
+		// see - https://aws.amazon.com/blogs/big-data/reduce-network-traffic-costs-of-your-amazon-msk-consumers-with-rack-awareness/
+		//
+		// NOTE: This is okay for confluent based topics as well since brokers may not have `broker.rack` configured.
+		// Even if it is not, this should be a safe change since the broker assignment fallbacks to any available broker.
+		// This behavior is helpful for MSK cluster as well since this helps if broker in the same AZ is down
+		if err := configmap.SetKey("client.rack", conf.AzId.MustGet()); err != nil {
+			return nil, err
+		}
 	}
 
 	// Disable auto committing so we can have tighter control over it

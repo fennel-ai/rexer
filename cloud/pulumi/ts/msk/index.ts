@@ -98,9 +98,10 @@ export const setup = async (input: inputType): Promise<pulumi.Output<outputType>
 
     // setup kafka broker configuration
     const config = new aws.msk.Configuration("msk-cluster-config", {
-        serverProperties: `
-            
-        `,
+        // This is required to assign the closest (in the same AZ) broker to the consumer
+        //
+        // `broker.rack` is set by the msk cluster, see - https://aws.amazon.com/blogs/big-data/reduce-network-traffic-costs-of-your-amazon-msk-consumers-with-rack-awareness/
+        serverProperties: `replica.selector.class = org.apache.kafka.common.replica.RackAwareReplicaSelector`,
         description: `plane ${input.planeId} kafka broker configuration`,
 
         // this can be a list of kafka versions for which the provided server properties are valid for

@@ -1,7 +1,9 @@
 package nitrous
 
 import (
+	"fennel/lib/instancemetadata"
 	"fmt"
+	"github.com/samber/mo"
 	"log"
 
 	"fennel/hangar"
@@ -55,6 +57,7 @@ func CreateFromArgs(args NitrousArgs) (Nitrous, error) {
 	log.Print("Creating logger")
 	var logger *zap.Logger
 	var err error
+	azId := mo.None[string]()
 	if args.Dev {
 		logger, err = zap.NewDevelopment()
 	} else {
@@ -64,6 +67,13 @@ func CreateFromArgs(args NitrousArgs) (Nitrous, error) {
 			zap.AddCaller(),
 			zap.AddStacktrace(zap.ErrorLevel),
 		)
+		// set azId only in prod mode
+		// get currently AZ Id
+		id, err := instancemetadata.GetAvailabilityZoneId()
+		if err != nil {
+			return Nitrous{}, fmt.Errorf("failed to get AZ Id: %v", err)
+		}
+		azId = mo.Some(id)
 	}
 	if err != nil {
 		return Nitrous{}, fmt.Errorf("failed to construct logger: %w", err)
@@ -82,6 +92,7 @@ func CreateFromArgs(args NitrousArgs) (Nitrous, error) {
 			Password:        args.MskKafkaPassword,
 			SaslMechanism:   libkafka.SaslScramSha512Mechanism,
 			ConsumerConfig:  config,
+			AzId: 			 azId,
 		}
 		kafkaConsumer, err := kafkaConsumerConfig.Materialize()
 		if err != nil {
