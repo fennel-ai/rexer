@@ -18,6 +18,7 @@ import (
 
 	"github.com/dgraph-io/badger/v3"
 	"github.com/dgraph-io/badger/v3/options"
+	"github.com/dgraph-io/ristretto"
 	"go.uber.org/zap"
 )
 
@@ -27,11 +28,12 @@ const (
 )
 
 type badgerDB struct {
-	planeID    ftypes.RealmID
-	baseOpts   badger.Options
-	enc        hangar.Encoder
-	db         *badger.DB
-	workerPool *parallel.WorkerPool[hangar.KeyGroup, hangar.ValGroup]
+	planeID         ftypes.RealmID
+	baseOpts        badger.Options
+	enc             hangar.Encoder
+	db              *badger.DB
+	missingKeyCache *ristretto.Cache
+	workerPool      *parallel.WorkerPool[hangar.KeyGroup, hangar.ValGroup]
 }
 
 func (b *badgerDB) Restore(source io.Reader) error {
@@ -70,12 +72,23 @@ func NewHangar(planeID ftypes.RealmID, dirname string, blockCacheBytes int64, en
 	if err != nil {
 		return nil, err
 	}
+	maxSize := 2 << 30 // 1 GB
+	avgSize := 50
+	missingKeyCache, err := ristretto.NewCache(&ristretto.Config{
+		NumCounters: 10 * int64(maxSize/avgSize),
+		MaxCost:     int64(maxSize),
+		BufferItems: 64,
+	})
+	if err != nil {
+		return nil, err
+	}
 	bs := badgerDB{
-		planeID:    planeID,
-		baseOpts:   opts,
-		db:         db,
-		workerPool: parallel.NewWorkerPool[hangar.KeyGroup, hangar.ValGroup](PARALLELISM),
-		enc:        enc,
+		planeID:         planeID,
+		baseOpts:        opts,
+		db:              db,
+		missingKeyCache: missingKeyCache,
+		workerPool:      parallel.NewWorkerPool[hangar.KeyGroup, hangar.ValGroup](PARALLELISM),
+		enc:             enc,
 	}
 	// Start periodic GC of value log.
 	go bs.runPeriodicGC()
@@ -134,9 +147,14 @@ func (b *badgerDB) GetMany(ctx context.Context, kgs []hangar.KeyGroup) ([]hangar
 		}
 		err = b.db.View(func(txn *badger.Txn) error {
 			for i, ek := range eks {
+				// We don't use missing key cache in write mode.
+				if _, ok := b.missingKeyCache.Get(ek); ok && mode == "read" {
+					continue
+				}
 				item, err := txn.Get(ek)
 				switch err {
 				case badger.ErrKeyNotFound:
+					b.missingKeyCache.Set(ek, struct{}{}, int64(len(ek)))
 				case nil:
 					if err := item.Value(func(val []byte) error {
 						if _, err := b.enc.DecodeVal(val, &valGroups[i], false); err != nil {
@@ -185,6 +203,7 @@ func (b *badgerDB) SetMany(ctx context.Context, keys []hangar.Key, deltas []hang
 		txn := b.db.NewTransaction(true)
 		defer txn.Discard()
 		for i, ek := range eks {
+			b.missingKeyCache.Del(ek)
 			var old hangar.ValGroup
 			olditem, err := txn.Get(ek)
 			switch err {
