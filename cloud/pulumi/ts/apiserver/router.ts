@@ -1,43 +1,69 @@
-import { LocalWorkspace, StackSummary } from "@pulumi/pulumi/automation";
+import { ConfigMap, LocalWorkspace, OutputMap, StackSummary } from "@pulumi/pulumi/automation";
 import { IncomingMessage, ServerResponse } from "http";
+import * as url from "url";
 
 const port = process.env.PORT || 3000
 const workspace = await LocalWorkspace.create({
     workDir: "../launchpad"
 })
 
-function filterTier(summary: StackSummary): boolean {
-    if (summary.name.startsWith("tier")) {
-        var ret = false
-        workspace.getConfig("fennel/launchpad/" + summary.name, "pricingMode").then(v => {
-            if (v.value === "FREE") {
-                ret = true
-            }
-        }).catch(_ => { console.log("failed to get pricing mode for: " + summary.name) })
-        return ret
-    }
-    return false
+const stackPrefix = "fennel/launchpad"
+
+function getFullyQualifiedStackName(name: string): string {
+    return `${stackPrefix}/${name}`
 }
 
+
 // List Demo tiers.
-const listDemoTiersHandler = (req: IncomingMessage, res: ServerResponse) => {
+const listStacksHandler = (req: IncomingMessage, res: ServerResponse) => {
     res.statusCode = 200
     res.setHeader("Content-Type", "application/json")
     var result: string[] = []
     const summary = workspace.listStacks().then(v => {
         for (var val of v) {
-            if (filterTier(val)) {
-                result.push(JSON.stringify(val))
-            }
+            result.push(JSON.stringify(val))
         }
         res.end(JSON.stringify(result))
     })
 
 }
 
-const getTierConfigHandler = (req: IncomingMessage, res: ServerResponse) => {
+class TierDetails {
+    Config?: ConfigMap
+    Output?: OutputMap
+    constructor(config?: ConfigMap, output?: OutputMap) {
+        this.Config = config
+        this.Output = output
+    }
+}
+
+const getStackDetailsHandler = (req: IncomingMessage, res: ServerResponse) => {
     res.statusCode = 200
-    res.end("")
+    const emptyResult = JSON.stringify({})
+    if (req.url !== undefined) {
+        const queryString = url.parse(req.url, true, true)
+        try {
+            const stackName = queryString.query["stack_name"]
+            workspace.getAllConfig(getFullyQualifiedStackName(`${stackName}`)).then(config => {
+                workspace.stackOutputs(getFullyQualifiedStackName(`${stackName}`)).then(output => {
+                    res.end(JSON.stringify(<TierDetails>({ config: config, output: output })))
+                }).catch(e => {
+                    console.log(`failed to get output for stack: ${stackName}, err: ${e}`)
+                    res.end(emptyResult)
+                })
+
+            }).catch(e => {
+                console.log(`failed to get config for stack: ${stackName}, err: ${e}`)
+                res.end(emptyResult)
+            })
+            return
+        } catch (e) {
+            console.log("error while getting config: " + e)
+            res.end(emptyResult)
+        }
+        return
+    }
+    res.end(emptyResult)
 }
 
 const notFoundHandler = (req: IncomingMessage, res: ServerResponse) => {
@@ -47,17 +73,23 @@ const notFoundHandler = (req: IncomingMessage, res: ServerResponse) => {
 
 export const router = (req: IncomingMessage, res: ServerResponse) => {
     var handler: (req: IncomingMessage, res: ServerResponse) => void
-    const path = req.url
+    const searchIndex = req.url?.indexOf("?")
+    var path: string | undefined
+    if (searchIndex !== undefined && searchIndex > 0) {
+        path = req.url?.substring(0, searchIndex)!
+    } else {
+        path = req.url
+    }
     console.log("PATH = " + path + ", Method = " + req.method)
     if (req.method != "GET") {
         handler = notFoundHandler
     } else {
         switch (path) {
-            case "/list_demo_tiers":
-                handler = listDemoTiersHandler
+            case "/list_stacks":
+                handler = listStacksHandler
                 break
-            case "/get_tier_config":
-                handler = getTierConfigHandler
+            case "/get_stack_details":
+                handler = getStackDetailsHandler
                 break
             default:
                 handler = notFoundHandler
