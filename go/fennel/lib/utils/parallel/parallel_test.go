@@ -90,7 +90,7 @@ func cpuIntensiveWork(sz int) {
 
 }
 
-var workerPool = parallel.NewWorkerPool[int, int](runtime.GOMAXPROCS(0))
+var workerPool = parallel.NewWorkerPool[int, int]("mypool", runtime.GOMAXPROCS(0))
 
 func featureThread(b *testing.B, mode string) {
 	// Does some cpu intensive work

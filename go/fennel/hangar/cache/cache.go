@@ -45,7 +45,7 @@ func NewHangar(planeId ftypes.RealmID, maxSize, avgSize uint64, enc hangar.Encod
 		planeID:    planeId,
 		cache:      cache,
 		enc:        enc,
-		workerPool: parallel.NewWorkerPool[hangar.KeyGroup, hangar.ValGroup](PARALLELISM),
+		workerPool: parallel.NewWorkerPool[hangar.KeyGroup, hangar.ValGroup]("hangar_cache", PARALLELISM),
 	}
 	return &ret, nil
 }

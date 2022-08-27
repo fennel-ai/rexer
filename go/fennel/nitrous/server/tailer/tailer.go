@@ -146,6 +146,7 @@ func (t *Tailer) processBatch(rawops [][]byte) error {
 		}
 		ops[i] = &op
 	}
+	ctx = hangar.NewWriteContext(ctx)
 	keys, vgs, err := t.processor(ctx, ops, t.nitrous.Store)
 	if err != nil {
 		return fmt.Errorf("failed to proces: %w", err)
