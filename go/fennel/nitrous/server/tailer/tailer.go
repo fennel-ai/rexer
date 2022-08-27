@@ -13,6 +13,8 @@ import (
 	"fennel/resource"
 
 	"github.com/confluentinc/confluent-kafka-go/kafka"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promauto"
 	"github.com/samber/mo"
 	"go.uber.org/atomic"
 	"go.uber.org/zap"
@@ -25,6 +27,13 @@ const (
 	// too large.
 	tailer_batch         = 20_000
 	default_poll_timeout = 10 * time.Second
+)
+
+var (
+	numProcessed = promauto.NewCounter(prometheus.CounterOpts{
+		Name: "nitrous_tailer_num_processed",
+		Help: "The number of messages processed by the tailer.",
+	})
 )
 
 type EventsProcessor func(ctx context.Context, ops []*rpc.NitrousOp, store hangar.Reader) (keys []hangar.Key, vgs []hangar.ValGroup, err error)
@@ -50,7 +59,7 @@ func NewTailer(n nitrous.Nitrous, topic string, toppars kafka.TopicPartitions, p
 		Topic:        topic,
 		GroupID:      n.Identity,
 		OffsetPolicy: fkafka.DefaultOffsetPolicy,
-		RebalanceCb:  mo.Some(func(c *kafka.Consumer, e kafka.Event) error {
+		RebalanceCb: mo.Some(func(c *kafka.Consumer, e kafka.Event) error {
 			zap.L().Info("Got kafka partition rebalance event: ", zap.String("topic", topic), zap.String("groupid", n.Identity), zap.String("consumer", c.String()), zap.String("event", e.String()))
 			switch event := e.(type) {
 			case kafka.AssignedPartitions:
@@ -124,6 +133,7 @@ func (t *Tailer) Stop() {
 }
 
 func (t *Tailer) processBatch(rawops [][]byte) error {
+	defer numProcessed.Add(float64(len(rawops)))
 	ctx, m := timer.Start(context.Background(), t.nitrous.PlaneID, "tailer.processBatch")
 	defer m.Stop()
 	zap.L().Debug("Got new messages from binlog", zap.Int("count", len(rawops)))
