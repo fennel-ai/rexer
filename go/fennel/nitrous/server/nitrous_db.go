@@ -28,6 +28,10 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
+const (
+	MAX_TAILERS = 8
+)
+
 var (
 	agg_table_key = []byte("agg_table")
 
@@ -100,11 +104,21 @@ func InitDB(n nitrous.Nitrous) (*NitrousDB, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to get topic partitions: %w", err)
 	}
-	tailers := make([]*tailer.Tailer, 0, len(toppars))
-	for _, toppar := range toppars {
-		tailer, err := tailer.NewTailer(n, libnitrous.BINLOG_KAFKA_TOPIC, kafka.TopicPartitions{toppar}, ndb.Process)
+	numTailers := MAX_TAILERS
+	if len(toppars) < numTailers {
+		numTailers = len(toppars)
+	}
+	numPartitionsPerTailer := (len(toppars) + numTailers - 1) / numTailers
+	tailers := make([]*tailer.Tailer, 0, numTailers)
+	for start := 0; start < len(toppars); start += numPartitionsPerTailer {
+		end := start + numPartitionsPerTailer
+		if end > len(toppars) {
+			end = len(toppars)
+		}
+		partitions := toppars[start:end]
+		tailer, err := tailer.NewTailer(n, libnitrous.BINLOG_KAFKA_TOPIC, partitions, ndb.Process)
 		if err != nil {
-			return nil, fmt.Errorf("failed to setup tailer for partition %v: %w", toppar, err)
+			return nil, fmt.Errorf("failed to setup tailer for partition(s) %v: %w", partitions, err)
 		}
 		tailers = append(tailers, tailer)
 	}
