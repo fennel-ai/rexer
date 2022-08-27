@@ -69,6 +69,8 @@ func getPartitions(n nitrous.Nitrous) (kafka.TopicPartitions, error) {
 		Topic:        libnitrous.BINLOG_KAFKA_TOPIC,
 		GroupID:      "metadata_consumer",
 		OffsetPolicy: fkafka.LatestOffsetPolicy,
+		// here it does not matter which broker this consumer connects to, since the information read is quite
+		// low
 	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to create kafka consumer: %w", err)

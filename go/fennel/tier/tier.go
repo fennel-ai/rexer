@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/tls"
 	"fennel/airbyte"
+	"fennel/lib/instancemetadata"
 	"fmt"
 	"github.com/Unleash/unleash-client-go/v3"
 	"log"
@@ -159,6 +160,7 @@ func CreateFromArgs(args *TierArgs) (tier Tier, err error) {
 	// First, create a structured logger that we can then use in other places.
 	log.Print("Creating logger")
 	var logger *zap.Logger
+	var azId mo.Option[string]
 	if args.Dev {
 		logger, err = zap.NewDevelopment()
 	} else {
@@ -168,6 +170,13 @@ func CreateFromArgs(args *TierArgs) (tier Tier, err error) {
 			zap.AddCaller(),
 			zap.AddStacktrace(zap.ErrorLevel),
 		)
+		// AvailabilityZoneId is only enabled for prod since it talks to the EC2 instance metadata service to fetch
+		// the AZ it is running in
+		id, err := instancemetadata.GetAvailabilityZoneId()
+		if err != nil {
+			return Tier{}, err
+		}
+		azId = mo.Some(id)
 	}
 	if err != nil {
 		return tier, fmt.Errorf("failed to construct logger: %v", err)
@@ -260,6 +269,7 @@ func CreateFromArgs(args *TierArgs) (tier Tier, err error) {
 				Username:        args.KafkaUsername,
 				Password:        args.KafkaPassword,
 				SaslMechanism:   libkafka.SaslPlainMechanism,
+				AzId: azId,
 			}
 		} else if libkafka.IsMskTopic(config.Topic) {
 			kafkaConsumerConfig = libkafka.RemoteConsumerConfig{
@@ -268,6 +278,7 @@ func CreateFromArgs(args *TierArgs) (tier Tier, err error) {
 				Username: args.MskKafkaUsername,
 				Password: args.MskKafkaPassword,
 				SaslMechanism: libkafka.SaslScramSha512Mechanism,
+				AzId: azId,
 			}
 		} else {
 			return nil, fmt.Errorf("topic: %s must be belong to either confluent or MSK cluster", config.Topic)
