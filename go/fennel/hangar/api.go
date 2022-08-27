@@ -60,3 +60,18 @@ const (
 	None    Codec = 0
 	Default Codec = 1
 )
+
+type apiModeKey struct{}
+
+const (
+	writeMode = "write"
+)
+
+func NewWriteContext(ctx context.Context) context.Context {
+	return context.WithValue(ctx, apiModeKey{}, writeMode)
+}
+
+func IsWrite(ctx context.Context) bool {
+	m, ok := ctx.Value(apiModeKey{}).(string)
+	return ok && m == writeMode
+}

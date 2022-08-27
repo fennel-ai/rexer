@@ -23,8 +23,8 @@ import (
 )
 
 const (
-	PARALLELISM   = 512
-	DB_BATCH_SIZE = 32
+	READ_PARALLELISM = 512
+	DB_BATCH_SIZE    = 32
 )
 
 type badgerDB struct {
@@ -33,7 +33,8 @@ type badgerDB struct {
 	enc             hangar.Encoder
 	db              *badger.DB
 	missingKeyCache *ristretto.Cache
-	workerPool      *parallel.WorkerPool[hangar.KeyGroup, hangar.ValGroup]
+	readWorkers     *parallel.WorkerPool[hangar.KeyGroup, hangar.ValGroup]
+	writeWorkers    *parallel.WorkerPool[hangar.KeyGroup, hangar.ValGroup]
 }
 
 func (b *badgerDB) Restore(source io.Reader) error {
@@ -52,8 +53,9 @@ func (b *badgerDB) Backup(sink io.Writer, since uint64) (uint64, error) {
 }
 
 func (b *badgerDB) Close() error {
-	// Close the worker pool.
-	b.workerPool.Close()
+	// Close the worker pools.
+	b.readWorkers.Close()
+	b.writeWorkers.Close()
 	return b.db.Close()
 }
 
@@ -87,11 +89,13 @@ func NewHangar(planeID ftypes.RealmID, dirname string, blockCacheBytes int64, en
 		baseOpts:        opts,
 		db:              db,
 		missingKeyCache: missingKeyCache,
-		workerPool:      parallel.NewWorkerPool[hangar.KeyGroup, hangar.ValGroup](PARALLELISM),
+		readWorkers:     parallel.NewWorkerPool[hangar.KeyGroup, hangar.ValGroup]("hangar_db_read", READ_PARALLELISM),
+		writeWorkers:    parallel.NewWorkerPool[hangar.KeyGroup, hangar.ValGroup]("hangar_db_write", 16),
 		enc:             enc,
 	}
 	// Start periodic GC of value log.
 	go bs.runPeriodicGC()
+
 	return &bs, nil
 }
 
@@ -134,11 +138,15 @@ func (b *badgerDB) GetMany(ctx context.Context, kgs []hangar.KeyGroup) ([]hangar
 	defer t.Stop()
 	// We try to spread across available workers while giving each worker
 	// a minimum of DB_BATCH_SIZE keyGroups to work on.
-	batch := len(kgs) / PARALLELISM
+	batch := len(kgs) / READ_PARALLELISM
 	if batch < DB_BATCH_SIZE {
 		batch = DB_BATCH_SIZE
 	}
-	return b.workerPool.Process(ctx, kgs, func(keyGroups []hangar.KeyGroup, valGroups []hangar.ValGroup) error {
+	pool := b.readWorkers
+	if hangar.IsWrite(ctx) {
+		pool = b.writeWorkers
+	}
+	return pool.Process(ctx, kgs, func(keyGroups []hangar.KeyGroup, valGroups []hangar.ValGroup) error {
 		_, t := timer.Start(ctx, b.planeID, "hangar.db.getmany.batch")
 		defer t.Stop()
 		eks, err := hangar.EncodeKeyManyKG(keyGroups, b.enc)

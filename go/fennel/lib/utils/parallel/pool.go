@@ -3,13 +3,35 @@ package parallel
 import (
 	"context"
 	"sync"
+	"time"
+
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promauto"
+	"go.uber.org/atomic"
+)
+
+var (
+	jobQueueLen = promauto.NewGaugeVec(prometheus.GaugeOpts{
+		Name: "worker_pool_job_queue_len",
+		Help: "Length of the worker pool job queue",
+	}, []string{"name"})
+	poolUtilization = promauto.NewGaugeVec(prometheus.GaugeOpts{
+		Name: "worker_pool_utilization",
+		Help: "Utilization in range [0.0, 1.0] of the worker pool",
+	}, []string{"name"})
 )
 
 // WorkerPool is a pool of workers that can be used to run jobs.
 // Jobs are submitted to the pool via the `Process` method.
 type WorkerPool[I, O any] struct {
+	// Name of the worker pool.
+	name string
 	// channel over which sub-tasks are dispatched to the workers.
 	jobQueue chan job[I, O]
+	// Number of workers in the pool.
+	nWorkers int
+	// Count of the number of workers that are currently running jobs.
+	busyCount atomic.Int32
 	// WaitGroup to wait for all goroutines to finish.
 	wg *sync.WaitGroup
 }
@@ -26,20 +48,33 @@ type job[I, O any] struct {
 	errChan chan<- error
 }
 
-func NewWorkerPool[I, O any](nWorkers int) *WorkerPool[I, O] {
+func NewWorkerPool[I, O any](name string, nWorkers int) *WorkerPool[I, O] {
 	// We provide a lot of buffer in the job queue to avoid tail latency problems
 	// that are caused by the overhead of goroutine scheduling delay.
 	jobQueue := make(chan job[I, O], 100*nWorkers)
 	wg := &sync.WaitGroup{}
 	pool := WorkerPool[I, O]{
+		name:     name,
 		jobQueue: jobQueue,
 		wg:       wg,
+		nWorkers: nWorkers,
 	}
 	wg.Add(nWorkers)
 	for i := 0; i < nWorkers; i++ {
 		go pool.work()
 	}
+	// Report prometheus metrics for the pool.
+	go pool.reportStats()
+
 	return &pool
+}
+
+func (w *WorkerPool[I, O]) reportStats() {
+	ticker := time.NewTicker(10 * time.Second)
+	for range ticker.C {
+		jobQueueLen.WithLabelValues(w.name).Set(float64(w.Len()))
+		poolUtilization.WithLabelValues(w.name).Set(float64(w.Utilization()))
+	}
 }
 
 func (w *WorkerPool[I, O]) Process(ctx context.Context, inputs []I, f func([]I, []O) error, batchSize int) ([]O, error) {
@@ -79,6 +114,14 @@ func (w *WorkerPool[I, O]) Process(ctx context.Context, inputs []I, f func([]I, 
 	return ret, err
 }
 
+func (w *WorkerPool[I, O]) Len() int {
+	return len(w.jobQueue)
+}
+
+func (w *WorkerPool[I, O]) Utilization() float32 {
+	return float32(w.busyCount.Load()) / float32(w.nWorkers)
+}
+
 func (w *WorkerPool[I, O]) Close() {
 	close(w.jobQueue)
 	w.wg.Wait()
@@ -87,6 +130,7 @@ func (w *WorkerPool[I, O]) Close() {
 func (w *WorkerPool[I, O]) work() {
 	defer w.wg.Done()
 	for job := range w.jobQueue {
+		w.busyCount.Inc()
 		var err error
 		select {
 		case <-job.ctx.Done():
@@ -95,5 +139,6 @@ func (w *WorkerPool[I, O]) work() {
 			err = job.f(job.inputs, job.outputs)
 		}
 		job.errChan <- err
+		w.busyCount.Dec()
 	}
 }
