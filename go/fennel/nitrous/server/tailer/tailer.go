@@ -50,6 +50,17 @@ func NewTailer(n nitrous.Nitrous, topic string, toppars kafka.TopicPartitions, p
 		GroupID:      n.Identity,
 		OffsetPolicy: fkafka.DefaultOffsetPolicy,
 		Partitions:   toppars,
+		Configs: fkafka.ConsumerConfigs{
+			// `max.partition.fetch.bytes` dictates the initial maximum number of bytes requested per
+			// broker+partition.
+			//
+			// this could be restricted by `max.message.bytes` (topic) or `message.max.bytes` (broker) config
+			"max.partition.fetch.bytes=2097164",
+			// Maximum amount of data the broker shall return for a Fetch request.
+			// Since this topic has consumers = partitions, this should preferably be
+			// `max.partition.fetch.bytes x #partitions`
+			"fetch.max.bytes=67109248",
+		},
 	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to initialize kafka consumer: %w", err)

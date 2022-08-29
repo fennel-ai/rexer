@@ -383,6 +383,7 @@ const setupResources = async () => {
                 replicationFactor: input.nitrousConf.binlog.replicationFactor,
                 retention_ms: input.nitrousConf.binlog.retention_ms,
                 partition_retention_bytes: input.nitrousConf.binlog.partition_retention_bytes,
+                max_message_bytes: input.nitrousConf.binlog.max_message_bytes,
             },
             protect: input.protectResources,
         })
