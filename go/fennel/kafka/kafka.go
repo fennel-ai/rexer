@@ -67,8 +67,8 @@ var ALL_CONFLUENT_TOPICS = []TopicConf{
 			// size in bytes; default=16384
 			"batch.size=327680",
 			// upper bound on the delay for batching of records
-			// if the local queue has records of size `batch.size`, this delay is respected (sent ASAP), but in the absense
-			// of load, this is the artifical delay introduced before sending batch of records; default=0 (sent immediately)
+			// if the local queue has records of size `batch.size`, this delay is respected (sent ASAP), but in the absence
+			// of load, this is the artificial delay introduced before sending batch of records; default=0 (sent immediately)
 			"linger.ms=10",
 		},
 	},
@@ -81,6 +81,18 @@ var ALL_MSK_TOPICS = []TopicConf{
 	{
 		Scope: resource.PlaneScope{},
 		Topic: nitrous.BINLOG_KAFKA_TOPIC,
+		PConfigs: ProducerConfigs{
+			// We notice that a lot of messages are queued before being flushed to the broker. To increase
+			// producer throughput, we tune the following configurations -
+			//
+			// controls how many records are batched together and sent as a single request to the broker (one for each partition)
+			// size in bytes; default=16384
+			"batch.size=327680",
+			// upper bound on the delay for batching of records
+			// if the local queue has records of size `batch.size`, this delay is respected (sent ASAP), but in the absence
+			// of load, this is the artificial delay introduced before sending batch of records; default=0 (sent immediately)
+			"linger.ms=10",
+		},
 		CConfigs: ConsumerConfigs{
 			// `max.partition.fetch.bytes` dictates the initial maximum number of bytes requested per
 			// broker+partition.
