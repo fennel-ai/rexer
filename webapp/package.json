@@ -30,6 +30,7 @@
     "webpack-cli": "^4.10.0"
   },
   "dependencies": {
+    "@ant-design/charts": "^1.4.2",
     "antd": "^4.21.7",
     "axios": "^0.27.2",
     "react": "^18.2.0",
