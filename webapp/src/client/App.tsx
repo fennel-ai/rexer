@@ -2,6 +2,7 @@ import "./styles/App.less";
 import Navbar from "./Navbar";
 import DataPage from "./DataPage";
 import SettingsPage from "./SettingsPage";
+import DashboardPage from "./DashboardPage";
 
 interface Props {
     page: string | null;
@@ -31,10 +32,6 @@ function Route(props: Props) {
             return <SettingsPage />;
     }
     return <DashboardPage />;
-}
-
-function DashboardPage() {
-    return (<h1> Dashboard </h1>);
 }
 
 export default App;
