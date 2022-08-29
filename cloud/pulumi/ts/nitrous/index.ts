@@ -52,6 +52,8 @@ export type binlogConfig = {
     //
     // Set -1 to configure no discards based on the size of the partition
     partition_retention_bytes?: number,
+    // The largest record batch size allowed by Kafka
+    max_message_bytes?: number,
 }
 
 export type kafkaAdmin = {
@@ -99,12 +101,10 @@ function setupBinLogInMsk(input: inputType, awsProvider: aws.Provider) {
         saslPassword: input.kafka.password,
         saslMechanism: "scram-sha512",
     }, { provider: awsProvider });
-    bootstrapServers.apply(servers => {
-        console.log('servers: ', servers);
-    })
     const config = {
         "retention.ms": input.binlog.retention_ms,
         "retention.bytes": input.binlog.partition_retention_bytes,
+        "max.message.bytes": input.binlog.max_message_bytes,
     };
     const topic = new kafka.Topic(`topic-p-${input.planeId}-${BINLOG_TOPIC_NAME}-msk`, {
         name: `p_${input.planeId}_${BINLOG_TOPIC_NAME}`,

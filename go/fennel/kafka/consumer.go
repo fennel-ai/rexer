@@ -226,6 +226,8 @@ func (k RemoteConsumer) Backlog() (int, error) {
 	return n, nil
 }
 
+type ConsumerConfigs []string
+
 type ConsumerConfig struct {
 	Scope        resource.Scope
 	GroupID      string
@@ -234,6 +236,7 @@ type ConsumerConfig struct {
 	// List of topic partitions to consume from. If empty, consume from broker
 	// assigned partitions.
 	Partitions kafka.TopicPartitions
+	Configs 	 ConsumerConfigs
 }
 
 type RemoteConsumerConfig struct {
@@ -284,6 +287,13 @@ func (conf RemoteConsumerConfig) Materialize() (resource.Resource, error) {
 	// partitions to itself instead of the ones assigned by the broker(s).
 	if err := configmap.SetKey("go.application.rebalance.enable", true); err != nil {
 		return nil, err
+	}
+
+	// set additional consumer configurations
+	for _, c := range conf.Configs {
+		if err := configmap.Set(c); err != nil {
+			return nil, err
+		}
 	}
 
 	consumer, err := kafka.NewConsumer(configmap)

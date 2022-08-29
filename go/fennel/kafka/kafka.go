@@ -49,6 +49,7 @@ type TopicConf struct {
 	Scope    resource.Scope
 	Topic    string
 	PConfigs ProducerConfigs
+	CConfigs ConsumerConfigs
 }
 
 var ALL_CONFLUENT_TOPICS = []TopicConf{
@@ -77,7 +78,21 @@ var ALL_CONFLUENT_TOPICS = []TopicConf{
 }
 
 var ALL_MSK_TOPICS = []TopicConf{
-	{Scope: resource.PlaneScope{}, Topic: nitrous.BINLOG_KAFKA_TOPIC},
+	{
+		Scope: resource.PlaneScope{},
+		Topic: nitrous.BINLOG_KAFKA_TOPIC,
+		CConfigs: ConsumerConfigs{
+			// `max.partition.fetch.bytes` dictates the initial maximum number of bytes requested per
+			// broker+partition.
+			//
+			// this could be restricted by `max.message.bytes` (topic) or `message.max.bytes` (broker) config
+			"max.partition.fetch.bytes=2097164",
+			// Maximum amount of data the broker shall return for a Fetch request.
+			// Since this topic has consumers = partitions, this should preferably be
+			// `max.partition.fetch.bytes x #partitions`
+			"fetch.max.bytes=67109248",
+		},
+	},
 }
 
 func IsConfluentTopic(topic string) bool {

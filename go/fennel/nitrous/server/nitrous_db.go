@@ -71,6 +71,17 @@ func getPartitions(n nitrous.Nitrous) (kafka.TopicPartitions, error) {
 		OffsetPolicy: fkafka.LatestOffsetPolicy,
 		// here it does not matter which broker this consumer connects to, since the information read is quite
 		// low
+		Configs: fkafka.ConsumerConfigs{
+			// `max.partition.fetch.bytes` dictates the initial maximum number of bytes requested per
+			// broker+partition.
+			//
+			// this could be restricted by `max.message.bytes` (topic) or `message.max.bytes` (broker) config
+			"max.partition.fetch.bytes=2097164",
+			// Maximum amount of data the broker shall return for a Fetch request.
+			// Since this topic has consumers = partitions, this should preferably be
+			// `max.partition.fetch.bytes x #partitions`
+			"fetch.max.bytes=67109248",
+		},
 	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to create kafka consumer: %w", err)
