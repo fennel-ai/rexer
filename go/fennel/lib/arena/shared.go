@@ -9,7 +9,7 @@ import (
 // across the binary. The combined memory footprint of these is upto ~2.5GB
 // NOTE: if you add more arena, please update the total size above in docstrings
 var (
-	Bytes      = New[byte](1<<12, 1<<22)        // memory footprint <= 4MB
+	Bytes      = New[byte](1<<12, 100<<20)      // memory footprint <= 100MB
 	Values     = New[value.Value](1<<15, 1<<24) // memory footprint <= 256MB
 	DictValues = New[value.Dict](1<<15, 1<<23)  // memory footprint <= 128MB
 	Strings    = New[string](1<<12, 1<<22)      // memory footprint <= 96MB
