@@ -237,9 +237,6 @@ type ConsumerConfig struct {
 	GroupID      string
 	OffsetPolicy string
 	Topic        string
-	// List of topic partitions to consume from. If empty, consume from broker
-	// assigned partitions.
-	Partitions   kafka.TopicPartitions
 	RebalanceCb  mo.Option[func(c *kafka.Consumer, e kafka.Event) error]
 	Configs 	 ConsumerConfigs
 }
