@@ -1,10 +1,9 @@
-import { Avatar, Input, Modal, Form, notification, Space } from "antd";
+import { Avatar, Input, Modal, Form, notification } from "antd";
 import { LoadingOutlined } from '@ant-design/icons';
 import axios, { AxiosError, AxiosResponse } from "axios";
-import { useState, useEffect } from "react";
+import { useState, useEffect, ChangeEvent, MouseEvent } from "react";
 
 import styles from "./styles/AccountTab.module.scss";
-import * as React from "react";
 
 interface User {
     email: string,
@@ -82,7 +81,7 @@ function AccountTab() {
                         <td>
                             <Input
                                 value={user.firstName}
-                                onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+                                onChange={(e: ChangeEvent<HTMLInputElement>) => {
                                     setUser({
                                         ...user,
                                         firstName: e.target.value,
@@ -98,7 +97,7 @@ function AccountTab() {
                         <td>
                             <Input
                                 value={user.lastName}
-                                onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+                                onChange={(e: ChangeEvent<HTMLInputElement>) => {
                                     setUser({
                                         ...user,
                                         lastName: e.target.value,
@@ -124,7 +123,7 @@ function AccountTab() {
                             <Input
                                 type="password"
                                 value="uselesspassword"
-                                onClick={(e: React.MouseEvent<HTMLInputElement>) => {
+                                onClick={(e: MouseEvent<HTMLInputElement>) => {
                                     e.currentTarget.blur();
                                     setShowModal(true);
                                 }}
@@ -190,7 +189,7 @@ function UpdatePwdModal({hideModal}: {hideModal: () => void}) {
                                         placeholder="Current password"
                                         autoComplete="off"
                                         value={currentPassword}
-                                        onChange={(e: React.ChangeEvent<HTMLInputElement>) => setCurrentPassword(e.target.value)}
+                                        onChange={(e: ChangeEvent<HTMLInputElement>) => setCurrentPassword(e.target.value)}
                                     />
                                 </Form.Item>
                             </td>
@@ -222,7 +221,7 @@ function UpdatePwdModal({hideModal}: {hideModal: () => void}) {
                                         placeholder="New password"
                                         autoComplete="off"
                                         value={newPassword}
-                                        onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNewPassword(e.target.value)}
+                                        onChange={(e: ChangeEvent<HTMLInputElement>) => setNewPassword(e.target.value)}
                                     />
                                 </Form.Item>
                             </td>
@@ -255,7 +254,7 @@ function UpdatePwdModal({hideModal}: {hideModal: () => void}) {
                                         placeholder="Confirm new password"
                                         autoComplete="off"
                                         value={confirmNewPassword}
-                                        onChange={(e: React.ChangeEvent<HTMLInputElement>) => setConfirmNewPassword(e.target.value)}
+                                        onChange={(e: ChangeEvent<HTMLInputElement>) => setConfirmNewPassword(e.target.value)}
                                     />
                                 </Form.Item>
                             </td>
