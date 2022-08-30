@@ -67,6 +67,8 @@ type TierArgs struct {
 	OfflineAggBucket string         `arg:"--offline-agg-bucket,env:OFFLINE_AGG_BUCKET" json:"offline_agg_bucket,omitempty"`
 	UnleashEndpoint  string         `arg:"--unleash-endpoint,env:UNLEASH_ENDPOINT" json:"unleash_endpoint,omitempty"`
 	AirbyteServer    string         `arg:"--airbyte-server,env:AIRBYTE_SERVER_ADDRESS" json:"airbyte_server,omitempty"`
+
+	InstanceMetadataServiceAddr string `arg:"--instance-metadata-service-addr,env:INSTANCE_METADATA_SERVICE_ADDR" json:"instance_metadata_service_addr,omitempty"`
 }
 
 type KafkaConsumerCreator func(libkafka.ConsumerConfig) (libkafka.FConsumer, error)
@@ -160,7 +162,6 @@ func CreateFromArgs(args *TierArgs) (tier Tier, err error) {
 	// First, create a structured logger that we can then use in other places.
 	log.Print("Creating logger")
 	var logger *zap.Logger
-	var azId mo.Option[string]
 	if args.Dev {
 		logger, err = zap.NewDevelopment()
 	} else {
@@ -170,17 +171,22 @@ func CreateFromArgs(args *TierArgs) (tier Tier, err error) {
 			zap.AddCaller(),
 			zap.AddStacktrace(zap.ErrorLevel),
 		)
+	}
+	if err != nil {
+		return tier, fmt.Errorf("failed to construct logger: %v", err)
+	}
+
+	var azId mo.Option[string]
+	if len(args.InstanceMetadataServiceAddr) > 0 {
 		// AvailabilityZoneId is only enabled for prod since it talks to the EC2 instance metadata service to fetch
 		// the AZ it is running in
-		id, err := instancemetadata.GetAvailabilityZoneId()
+		id, err := instancemetadata.GetAvailabilityZoneId(args.InstanceMetadataServiceAddr)
 		if err != nil {
 			return Tier{}, err
 		}
 		azId = mo.Some(id)
 	}
-	if err != nil {
-		return tier, fmt.Errorf("failed to construct logger: %v", err)
-	}
+
 	logger = logger.With(zap.Uint32("tier_id", args.TierID.Value()))
 
 	logger.Info("Connecting to mysql")

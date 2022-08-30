@@ -8,6 +8,7 @@ import * as process from "process";
 import * as childProcess from "child_process";
 import * as util from "../lib/util";
 import { ReadinessProbe } from "../tier-consts/consts";
+import {INSTANCE_METADATA_SERVICE_ADDR} from "../lib/util";
 
 
 export const plugins = {
@@ -366,6 +367,10 @@ export const setup = async (input: inputType) => {
                                     {
                                         name: "JE_MALLOC_CONF",
                                         value: "background_thread:true,metadata_thp:auto"
+                                    },
+                                    {
+                                        name: "INSTANCE_METADATA_SERVICE_ADDR",
+                                        value: INSTANCE_METADATA_SERVICE_ADDR
                                     }
                                 ],
                                 resources: {
