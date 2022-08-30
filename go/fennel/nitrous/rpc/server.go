@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"log"
 	"net"
 	"time"
@@ -14,11 +15,31 @@ import (
 
 	grpc_middleware "github.com/grpc-ecosystem/go-grpc-middleware"
 	grpc_prometheus "github.com/grpc-ecosystem/go-grpc-prometheus"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promauto"
 	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
+	"go.uber.org/zap"
 	grpc "google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/encoding/protojson"
+)
+
+var (
+	GetAggregatesLatency = promauto.NewSummary(prometheus.SummaryOpts{
+		Name: "nitrous_get_aggregates_latency_ms",
+		Help: "Server-side latency (in ms) of GetAggregateValues",
+		Objectives: map[float64]float64{
+			0.25:   0.05,
+			0.50:   0.05,
+			0.75:   0.05,
+			0.90:   0.05,
+			0.95:   0.02,
+			0.99:   0.01,
+			0.999:  0.001,
+			0.9999: 0.0001,
+		},
+	})
 )
 
 type AggDB interface {
@@ -76,32 +97,49 @@ func (s *Server) GetLag(ctx context.Context, _ *LagRequest) (*LagResponse, error
 	}, nil
 }
 
-func (s *Server) GetAggregateValues(ctx context.Context, req *AggregateValuesRequest) (*AggregateValuesResponse, error) {
-	tierId := ftypes.RealmID(req.TierId)
-	aggId := ftypes.AggId(req.AggId)
-	codec := req.Codec
-	kwargs := make([]value.Dict, len(req.Kwargs))
-	var err error
-	for i, kw := range req.Kwargs {
-		kwargs[i], err = value.FromProtoDict(kw)
-		if err != nil {
-			s, _ := protojson.Marshal(kw)
-			return nil, status.Errorf(codes.Internal, "error converting kwarg [%s] to value: %v", s, err)
+func (s *Server) GetAggregateValues(stream Nitrous_GetAggregateValuesServer) error {
+	zap.L().Debug("Got new GetAggregateValues stream")
+	ctx := stream.Context()
+	for {
+		req, err := stream.Recv()
+		if err == io.EOF {
+			return nil
 		}
-	}
-	vals, err := s.aggdb.Get(ctx, tierId, aggId, codec, req.GetGroupkeys(), kwargs)
-	if err != nil {
-		return nil, status.Errorf(codes.Internal, "error getting aggregate %d for tier %d with codec %d: %v", aggId, tierId, codec, err)
-	}
-	pvalues := make([]*value.PValue, len(vals))
-	for i, v := range vals {
-		pv, err := value.ToProtoValue(v)
 		if err != nil {
-			return nil, status.Errorf(codes.Internal, "error converting value to proto: %v", err)
+			return err
 		}
-		pvalues[i] = &pv
+		start := time.Now()
+		tierId := ftypes.RealmID(req.TierId)
+		aggId := ftypes.AggId(req.AggId)
+		codec := req.Codec
+		kwargs := make([]value.Dict, len(req.Kwargs))
+		for i, kw := range req.Kwargs {
+			kwargs[i], err = value.FromProtoDict(kw)
+			if err != nil {
+				s, _ := protojson.Marshal(kw)
+				return status.Errorf(codes.Internal, "error converting kwarg [%s] to value: %v", s, err)
+			}
+		}
+		vals, err := s.aggdb.Get(ctx, tierId, aggId, codec, req.GetGroupkeys(), kwargs)
+		if err != nil {
+			zap.L().Error("error getting aggregate values", zap.Error(err))
+			stream.Send(&AggregateValuesResponse{})
+			// return status.Errorf(codes.Internal, "error getting aggregate %d for tier %d with codec %d: %v", aggId, tierId, codec, err)
+			continue
+		}
+		pvalues := make([]*value.PValue, len(vals))
+		for i, v := range vals {
+			pv, err := value.ToProtoValue(v)
+			if err != nil {
+				return status.Errorf(codes.Internal, "error converting value to proto: %v", err)
+			}
+			pvalues[i] = &pv
+		}
+		if err = stream.Send(&AggregateValuesResponse{Results: pvalues}); err != nil {
+			return err
+		}
+		GetAggregatesLatency.Observe(float64(time.Since(start).Milliseconds()))
 	}
-	return &AggregateValuesResponse{Results: pvalues}, nil
 }
 
 func (s *Server) Serve(listener net.Listener) error {

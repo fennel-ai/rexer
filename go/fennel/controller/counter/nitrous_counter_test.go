@@ -12,6 +12,7 @@ import (
 	"fennel/test"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"go.uber.org/zap"
 )
 
@@ -121,5 +122,5 @@ func TestNitrousBatchValue(t *testing.T) {
 	// specifying a duration that wasn't registered should also return an error
 	kwargs[1] = value.NewDict(map[string]value.Value{"duration": value.Int(7 * 24 * 3600)})
 	_, err = NitrousBatchValue(ctx, tier, aggIds, keys, kwargs)
-	assert.Error(t, err)
+	require.Error(t, err)
 }

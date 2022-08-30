@@ -3,6 +3,7 @@ package client
 import (
 	"context"
 	"fmt"
+	"io"
 	"time"
 
 	"fennel/kafka"
@@ -13,6 +14,8 @@ import (
 	"fennel/nitrous/rpc"
 	"fennel/resource"
 
+	"github.com/samber/mo"
+	"go.uber.org/zap"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 )
@@ -22,6 +25,9 @@ type NitrousClient struct {
 
 	binlog kafka.FProducer
 	reader rpc.NitrousClient
+
+	reqCh   chan<- getRequest
+	getters []rpc.Nitrous_GetAggregateValuesClient
 }
 
 var _ resource.Resource = NitrousClient{}
@@ -152,11 +158,18 @@ func (nc NitrousClient) GetMulti(ctx context.Context, aggId ftypes.AggId, groupk
 		// TODO: Make codec an argument to GetMulti instead of hard-coding.
 		Codec: rpc.AggCodec_V2,
 	}
-	resp, err := nc.reader.GetAggregateValues(ctx, req)
-	if err != nil {
-		return fmt.Errorf("rpc: %w", err)
+	ch := make(chan mo.Result[*rpc.AggregateValuesResponse], 1)
+	nc.reqCh <- getRequest{
+		msg:    req,
+		respCh: ch,
 	}
-	for i, pv := range resp.Results {
+	res := <-ch
+	if err := res.Error(); err != nil || len(res.MustGet().Results) != len(groupkeys) {
+		zap.L().Warn("Error: ", zap.Error(err))
+		return fmt.Errorf("failed to get values: %w", err)
+	}
+	var err error
+	for i, pv := range res.MustGet().Results {
 		output[i], err = value.FromProtoValue(pv)
 		if err != nil {
 			return fmt.Errorf("could not convert proto value to value: %w", err)
@@ -182,6 +195,11 @@ type NitrousClientConfig struct {
 
 var _ resource.Config = NitrousClientConfig{}
 
+type getRequest struct {
+	msg    *rpc.AggregateValuesRequest
+	respCh chan<- mo.Result[*rpc.AggregateValuesResponse]
+}
+
 func (cfg NitrousClientConfig) Materialize() (resource.Resource, error) {
 	conn, err := grpc.Dial(cfg.ServerAddr,
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
@@ -193,9 +211,53 @@ func (cfg NitrousClientConfig) Materialize() (resource.Resource, error) {
 		return nil, fmt.Errorf("could not connect to nitrous: %w", err)
 	}
 	rpcclient := rpc.NewNitrousClient(conn)
+	reqCh := make(chan getRequest, 16)
+	var getters []rpc.Nitrous_GetAggregateValuesClient
+	for i := 0; i < 16; i++ {
+		getter, err := rpcclient.GetAggregateValues(context.TODO())
+		if err != nil {
+			return nil, fmt.Errorf("could not create streaming grpc client: %w", err)
+		}
+		go func(getter rpc.Nitrous_GetAggregateValuesClient) {
+			for {
+				req, ok := <-reqCh
+				if !ok {
+					// Channel closed, no more requests expected.
+					return
+				}
+				err := getter.Send(req.msg)
+				// Establish a new connection if previous one EOFs.
+				for err == io.EOF {
+					zap.L().Warn("Connection with nitrous server closed")
+					getter, err = rpcclient.GetAggregateValues(context.TODO())
+					if err != nil {
+						zap.L().Error("Could not create streaming grpc client", zap.Error(err))
+						req.respCh <- mo.Err[*rpc.AggregateValuesResponse](err)
+						return
+					}
+					err = getter.Send(req.msg)
+				}
+				if err != nil {
+					zap.L().Error("Failed to send request", zap.Error(err))
+					req.respCh <- mo.Err[*rpc.AggregateValuesResponse](err)
+					continue
+				}
+				resp, err := getter.Recv()
+				if err != nil {
+					zap.L().Error("Failed to receive response", zap.Error(err))
+					req.respCh <- mo.Err[*rpc.AggregateValuesResponse](err)
+					continue
+				}
+				req.respCh <- mo.Ok(resp)
+			}
+		}(getter)
+		getters = append(getters, getter)
+	}
 	return NitrousClient{
-		Scope:  resource.NewPlaneScope(cfg.TierID),
-		reader: rpcclient,
-		binlog: cfg.BinlogProducer,
+		Scope:   resource.NewPlaneScope(cfg.TierID),
+		reader:  rpcclient,
+		reqCh:   reqCh,
+		getters: getters,
+		binlog:  cfg.BinlogProducer,
 	}, nil
 }
