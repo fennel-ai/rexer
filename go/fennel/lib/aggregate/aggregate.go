@@ -196,6 +196,10 @@ func (agg Aggregate) IsForever() bool {
 	return len(agg.Options.Durations) == 0 && agg.Options.AggType != TIMESERIES_SUM
 }
 
+func (agg Aggregate) IsOnline() bool {
+	return !agg.IsOffline() && !agg.IsAutoML() && !agg.IsForever()
+}
+
 type Options struct {
 	AggType         ftypes.AggType
 	Durations       []uint32

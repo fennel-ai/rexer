@@ -297,7 +297,7 @@ func PreTrainedScore(ctx context.Context, tier tier.Tier, modelName string, inpu
 	req := lib.ScoreRequest{
 		Framework:    modelConfig.Framework,
 		EndpointName: PreTrainedModelId(modelName, tier.ID),
-		FeaturesList: inputs,
+		ModelInput:   value.NewList(inputs...),
 	}
 	res, err := tier.SagemakerClient.Score(ctx, &req)
 	if err != nil {
@@ -329,7 +329,7 @@ func Score(
 		Framework:     model.Framework,
 		EndpointName:  tier.ModelStore.EndpointName(),
 		ContainerName: model.ContainerName,
-		FeaturesList:  featureVecs,
+		ModelInput:    value.NewList(featureVecs...),
 	}
 	response, err := tier.SagemakerClient.Score(ctx, &req)
 

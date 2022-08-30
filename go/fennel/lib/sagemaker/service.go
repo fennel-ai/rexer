@@ -53,7 +53,7 @@ type ScoreRequest struct {
 	EndpointName  string
 	ContainerName string
 	Framework     string
-	FeaturesList  []value.Value
+	ModelInput    value.Value
 }
 
 type ScoreResponse struct {

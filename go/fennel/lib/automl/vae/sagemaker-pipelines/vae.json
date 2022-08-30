@@ -1,0 +1,637 @@
+{
+  "Version": "2020-12-01",
+  "Metadata": {},
+  "Parameters": [
+    {
+      "Name": "TrainingInstanceType",
+      "Type": "String",
+      "DefaultValue": "ml.g4dn.2xlarge"
+    },
+    {
+      "Name": "TrainInstanceCount",
+      "Type": "Integer",
+      "DefaultValue": 1
+    },
+    {
+      "Name": "MinItemCount",
+      "Type": "Integer",
+      "DefaultValue": 5
+    },
+    {
+      "Name": "MinUserHistory",
+      "Type": "Integer",
+      "DefaultValue": 3
+    },
+    {
+      "Name": "DataSplitSeed",
+      "Type": "Integer",
+      "DefaultValue": 98765
+    },
+    {
+      "Name": "EvalSetSize",
+      "Type": "Integer",
+      "DefaultValue": 500
+    },
+    {
+      "Name": "S3DataDirectory",
+      "Type": "String",
+      "DefaultValue": "movielens"
+    },
+    {
+      "Name": "S3DataBucket",
+      "Type": "String",
+      "DefaultValue": "vae-training-data"
+    },
+    {
+      "Name": "DataloaderRandomSeed",
+      "Type": "Integer",
+      "DefaultValue": 1
+    },
+    {
+      "Name": "TrainBatchSize",
+      "Type": "Integer",
+      "DefaultValue": 128
+    },
+    {
+      "Name": "ValidationBatchSize",
+      "Type": "Integer",
+      "DefaultValue": 128
+    },
+    {
+      "Name": "TestBatchSize",
+      "Type": "Integer",
+      "DefaultValue": 128
+    },
+    {
+      "Name": "Device",
+      "Type": "String",
+      "DefaultValue": "cuda"
+    },
+    {
+      "Name": "DeviceIdx",
+      "Type": "String",
+      "DefaultValue": "0"
+    },
+    {
+      "Name": "Optimizer",
+      "Type": "String",
+      "DefaultValue": "Adam"
+    },
+    {
+      "Name": "EnableLRSchedule",
+      "Type": "Boolean",
+      "DefaultValue": false
+    },
+    {
+      "Name": "LearningRate",
+      "Type": "Float",
+      "DefaultValue": 0.001
+    },
+    {
+      "Name": "WeightDecay",
+      "Type": "Float",
+      "DefaultValue": 0.01
+    },
+    {
+      "Name": "Momentum",
+      "Type": "Float",
+      "DefaultValue": 0
+    },
+    {
+      "Name": "DecayStep",
+      "Type": "Integer",
+      "DefaultValue": 15
+    },
+    {
+      "Name": "Gamma",
+      "Type": "Float",
+      "DefaultValue": 0.1
+    },
+    {
+      "Name": "NumEpochs",
+      "Type": "Integer",
+      "DefaultValue": 50
+    },
+    {
+      "Name": "LogPeriodAsIter",
+      "Type": "Integer",
+      "DefaultValue": 12800
+    },
+    {
+      "Name": "BestMetric",
+      "Type": "String",
+      "DefaultValue": "NDCG@10"
+    },
+    {
+      "Name": "FindBestBeta",
+      "Type": "Boolean",
+      "DefaultValue": false
+    },
+    {
+      "Name": "TotalAnnealSteps",
+      "Type": "Integer",
+      "DefaultValue": 2000
+    },
+    {
+      "Name": "AnnealCap",
+      "Type": "Float",
+      "DefaultValue": 0.25
+    },
+    {
+      "Name": "ModelInitSeed",
+      "Type": "Integer",
+      "DefaultValue": 1
+    },
+    {
+      "Name": "VAENumHidden",
+      "Type": "Integer",
+      "DefaultValue": 1
+    },
+    {
+      "Name": "VAEHiddenDim",
+      "Type": "Integer",
+      "DefaultValue": 600
+    },
+    {
+      "Name": "VAELatentDim",
+      "Type": "Integer",
+      "DefaultValue": 200
+    },
+    {
+      "Name": "VAEDropout",
+      "Type": "Float",
+      "DefaultValue": 0.5
+    },
+    {
+      "Name": "ModelEndpointName",
+      "Type": "String",
+      "DefaultValue": "VAE-Model-Endpoint"
+    },
+    {
+      "Name": "ModelEndpointConfigName",
+      "Type": "String",
+      "DefaultValue": "VAE-Model-Config"
+    },
+    {
+      "Name": "ModelName",
+      "Type": "String",
+      "DefaultValue": "VAE-Model"
+    },
+    {
+      "Name": "ModelInferenceMachineType",
+      "Type": "String",
+      "DefaultValue": "ml.m5.large"
+    },
+    {
+      "Name": "Duration",
+      "Type": "Integer",
+      "DefaultValue": 7
+    }
+  ],
+  "PipelineExperimentConfig": {
+    "ExperimentName": {
+      "Get": "Execution.PipelineName"
+    },
+    "TrialName": {
+      "Get": "Execution.PipelineExecutionId"
+    }
+  },
+  "Steps": [
+    {
+      "Name": "VAETrainStep",
+      "Type": "Training",
+      "Arguments": {
+        "AlgorithmSpecification": {
+          "TrainingInputMode": "File",
+          "TrainingImage": "763104351884.dkr.ecr.us-west-2.amazonaws.com/pytorch-training:1.11-gpu-py38",
+          "EnableSageMakerMetricsTimeSeries": true
+        },
+        "OutputDataConfig": {
+          "S3OutputPath": "s3://sagemaker-us-west-2-030813887342/"
+        },
+        "StoppingCondition": {
+          "MaxRuntimeInSeconds": 86400
+        },
+        "ResourceConfig": {
+          "VolumeSizeInGB": 30,
+          "InstanceCount": {
+            "Get": "Parameters.TrainInstanceCount"
+          },
+          "InstanceType": {
+            "Get": "Parameters.TrainingInstanceType"
+          }
+        },
+        "RoleArn": "arn:aws:iam::030813887342:role/admin",
+        "HyperParameters": {
+          "min_item_count": {
+            "Std:Join": {
+              "On": "",
+              "Values": [
+                {
+                  "Get": "Parameters.MinItemCount"
+                }
+              ]
+            }
+          },
+          "min_user_history": {
+            "Std:Join": {
+              "On": "",
+              "Values": [
+                {
+                  "Get": "Parameters.MinUserHistory"
+                }
+              ]
+            }
+          },
+          "eval_set_size": {
+            "Std:Join": {
+              "On": "",
+              "Values": [
+                {
+                  "Get": "Parameters.EvalSetSize"
+                }
+              ]
+            }
+          },
+          "data_dir": {
+            "Get": "Parameters.S3DataDirectory"
+          },
+          "s3_bucket": {
+            "Get": "Parameters.S3DataBucket"
+          },
+          "duration": {
+            "Std:Join": {
+              "On": "",
+              "Values": [
+                {
+                  "Get": "Parameters.Duration"
+                }
+              ]
+            }
+          },
+          "dataloader_random_seed": {
+            "Std:Join": {
+              "On": "",
+              "Values": [
+                {
+                  "Get": "Parameters.DataloaderRandomSeed"
+                }
+              ]
+            }
+          },
+          "train_batch_size": {
+            "Std:Join": {
+              "On": "",
+              "Values": [
+                {
+                  "Get": "Parameters.TrainBatchSize"
+                }
+              ]
+            }
+          },
+          "validation_batch_size": {
+            "Std:Join": {
+              "On": "",
+              "Values": [
+                {
+                  "Get": "Parameters.ValidationBatchSize"
+                }
+              ]
+            }
+          },
+          "test_batch_size": {
+            "Std:Join": {
+              "On": "",
+              "Values": [
+                {
+                  "Get": "Parameters.TestBatchSize"
+                }
+              ]
+            }
+          },
+          "device": {
+            "Get": "Parameters.Device"
+          },
+          "device_idx": {
+            "Get": "Parameters.DeviceIdx"
+          },
+          "optimizer": {
+            "Get": "Parameters.Optimizer"
+          },
+          "enable_lr_schedule": {
+            "Std:Join": {
+              "On": "",
+              "Values": [
+                {
+                  "Get": "Parameters.EnableLRSchedule"
+                }
+              ]
+            }
+          },
+          "lr": {
+            "Std:Join": {
+              "On": "",
+              "Values": [
+                {
+                  "Get": "Parameters.LearningRate"
+                }
+              ]
+            }
+          },
+          "weight_decay": {
+            "Std:Join": {
+              "On": "",
+              "Values": [
+                {
+                  "Get": "Parameters.WeightDecay"
+                }
+              ]
+            }
+          },
+          "decay_step": {
+            "Std:Join": {
+              "On": "",
+              "Values": [
+                {
+                  "Get": "Parameters.DecayStep"
+                }
+              ]
+            }
+          },
+          "gamma": {
+            "Std:Join": {
+              "On": "",
+              "Values": [
+                {
+                  "Get": "Parameters.Gamma"
+                }
+              ]
+            }
+          },
+          "num_epochs": {
+            "Std:Join": {
+              "On": "",
+              "Values": [
+                {
+                  "Get": "Parameters.NumEpochs"
+                }
+              ]
+            }
+          },
+          "log_period_as_iter": {
+            "Std:Join": {
+              "On": "",
+              "Values": [
+                {
+                  "Get": "Parameters.LogPeriodAsIter"
+                }
+              ]
+            }
+          },
+          "best_metric": {
+            "Get": "Parameters.BestMetric"
+          },
+          "find_best_beta": {
+            "Std:Join": {
+              "On": "",
+              "Values": [
+                {
+                  "Get": "Parameters.FindBestBeta"
+                }
+              ]
+            }
+          },
+          "total_anneal_steps": {
+            "Std:Join": {
+              "On": "",
+              "Values": [
+                {
+                  "Get": "Parameters.TotalAnnealSteps"
+                }
+              ]
+            }
+          },
+          "anneal_cap": {
+            "Std:Join": {
+              "On": "",
+              "Values": [
+                {
+                  "Get": "Parameters.AnnealCap"
+                }
+              ]
+            }
+          },
+          "model_init_seed": {
+            "Std:Join": {
+              "On": "",
+              "Values": [
+                {
+                  "Get": "Parameters.ModelInitSeed"
+                }
+              ]
+            }
+          },
+          "vae_num_hidden": {
+            "Std:Join": {
+              "On": "",
+              "Values": [
+                {
+                  "Get": "Parameters.VAENumHidden"
+                }
+              ]
+            }
+          },
+          "vae_hidden_dim": {
+            "Std:Join": {
+              "On": "",
+              "Values": [
+                {
+                  "Get": "Parameters.VAEHiddenDim"
+                }
+              ]
+            }
+          },
+          "vae_latent_dim": {
+            "Std:Join": {
+              "On": "",
+              "Values": [
+                {
+                  "Get": "Parameters.VAELatentDim"
+                }
+              ]
+            }
+          },
+          "vae_dropout": {
+            "Std:Join": {
+              "On": "",
+              "Values": [
+                {
+                  "Get": "Parameters.VAEDropout"
+                }
+              ]
+            }
+          },
+          "sagemaker_submit_directory": "s3://sagemaker-us-west-2-030813887342/VAETrainStep-36cdf6627714eb9b3d83f22ed86c5ea8/source/sourcedir.tar.gz",
+          "sagemaker_program": "vae.py",
+          "sagemaker_container_log_level": "20",
+          "sagemaker_region": "us-west-2"
+        },
+        "DebugHookConfig": {
+          "S3OutputPath": "s3://sagemaker-us-west-2-030813887342/",
+          "CollectionConfigurations": []
+        },
+        "TensorBoardOutputConfig": {
+          "S3OutputPath": "s3://vae-training-data/tensorboard"
+        },
+        "ProfilerRuleConfigurations": [
+          {
+            "RuleConfigurationName": "ProfilerReport-1661640073",
+            "RuleEvaluatorImage": "895741380848.dkr.ecr.us-west-2.amazonaws.com/sagemaker-debugger-rules:latest",
+            "RuleParameters": {
+              "rule_to_invoke": "ProfilerReport"
+            }
+          }
+        ],
+        "ProfilerConfig": {
+          "S3OutputPath": "s3://sagemaker-us-west-2-030813887342/"
+        }
+      },
+      "CacheConfig": {
+        "Enabled": true,
+        "ExpireAfter": "PT2H"
+      }
+    },
+    {
+      "Name": "VAERegistrationStep-RepackModel-0",
+      "Type": "Training",
+      "Arguments": {
+        "AlgorithmSpecification": {
+          "TrainingInputMode": "File",
+          "TrainingImage": "246618743249.dkr.ecr.us-west-2.amazonaws.com/sagemaker-scikit-learn:0.23-1-cpu-py3"
+        },
+        "OutputDataConfig": {
+          "S3OutputPath": "s3://sagemaker-us-west-2-030813887342/pytorch-inference-2022-08-27-22-41-11-223"
+        },
+        "StoppingCondition": {
+          "MaxRuntimeInSeconds": 86400
+        },
+        "ResourceConfig": {
+          "VolumeSizeInGB": 30,
+          "InstanceCount": 1,
+          "InstanceType": "ml.m5.large"
+        },
+        "RoleArn": "arn:aws:iam::030813887342:role/admin",
+        "InputDataConfig": [
+          {
+            "DataSource": {
+              "S3DataSource": {
+                "S3DataType": "S3Prefix",
+                "S3Uri": {
+                  "Get": "Steps.VAETrainStep.ModelArtifacts.S3ModelArtifacts"
+                },
+                "S3DataDistributionType": "FullyReplicated"
+              }
+            },
+            "ChannelName": "training"
+          }
+        ],
+        "HyperParameters": {
+          "inference_script": "vae.py",
+          "model_archive": {
+            "Std:Join": {
+              "On": "",
+              "Values": [
+                {
+                  "Get": "Steps.VAETrainStep.ModelArtifacts.S3ModelArtifacts"
+                }
+              ]
+            }
+          },
+          "dependencies": "null",
+          "source_dir": "null",
+          "sagemaker_submit_directory": "s3://sagemaker-us-west-2-030813887342/VAERegistrationStep-RepackModel-0-1be10316814854973ed1b445db3ef84e/source/sourcedir.tar.gz",
+          "sagemaker_program": "_repack_model.py",
+          "sagemaker_container_log_level": "20",
+          "sagemaker_region": "us-west-2"
+        },
+        "DebugHookConfig": {
+          "S3OutputPath": "s3://sagemaker-us-west-2-030813887342/pytorch-inference-2022-08-27-22-41-11-223",
+          "CollectionConfigurations": []
+        }
+      },
+      "Description": "Used to repack a model with customer scripts for a register/create model step"
+    },
+    {
+      "Name": "VAERegistrationStep-RegisterModel",
+      "Type": "RegisterModel",
+      "Arguments": {
+        "ModelPackageGroupName": {
+          "Get": "Parameters.ModelName"
+        },
+        "InferenceSpecification": {
+          "Containers": [
+            {
+              "Image": "763104351884.dkr.ecr.us-west-2.amazonaws.com/pytorch-inference:1.11-cpu-py38",
+              "Environment": {
+                "SAGEMAKER_PROGRAM": "vae.py",
+                "SAGEMAKER_SUBMIT_DIRECTORY": "/opt/ml/model/code",
+                "SAGEMAKER_CONTAINER_LOG_LEVEL": "20",
+                "SAGEMAKER_REGION": "us-west-2"
+              },
+              "ModelDataUrl": {
+                "Get": "Steps.VAERegistrationStep-RepackModel-0.ModelArtifacts.S3ModelArtifacts"
+              },
+              "Framework": "PYTORCH",
+              "FrameworkVersion": "1.11"
+            }
+          ],
+          "SupportedContentTypes": [
+            "application/json"
+          ],
+          "SupportedResponseMIMETypes": [
+            "application/json"
+          ],
+          "SupportedRealtimeInferenceInstanceTypes": [
+            {
+              "Get": "Parameters.ModelInferenceMachineType"
+            }
+          ]
+        },
+        "ModelApprovalStatus": "Approved"
+      }
+    },
+    {
+      "Name": "VAELambda",
+      "Type": "Lambda",
+      "Arguments": {
+        "model_name": {
+          "Get": "Parameters.ModelEndpointName"
+        },
+        "endpoint_config_name": {
+          "Get": "Parameters.ModelEndpointConfigName"
+        },
+        "endpoint_name": {
+          "Get": "Parameters.ModelEndpointName"
+        },
+        "endpoint_instance_type": {
+          "Get": "Parameters.ModelInferenceMachineType"
+        },
+        "model_package_arn": {
+          "Get": "Steps.VAERegistrationStep-RegisterModel.ModelPackageArn"
+        },
+        "role": "arn:aws:iam::030813887342:role/admin"
+      },
+      "FunctionArn": "arn:aws:lambda:us-west-2:030813887342:function:sagemaker-pipelines-model-deployment-08-27-22-41-12",
+      "OutputParameters": [
+        {
+          "OutputName": "statusCode",
+          "OutputType": "String"
+        },
+        {
+          "OutputName": "body",
+          "OutputType": "String"
+        }
+      ]
+    }
+  ]
+}

@@ -9,6 +9,7 @@ import (
 	"fennel/engine/interpreter/bootarg"
 	"fennel/lib/action"
 	"fennel/lib/aggregate"
+	"fennel/lib/automl/vae"
 	libcounter "fennel/lib/counter"
 	"fennel/lib/ftypes"
 	"fennel/lib/phaser"
@@ -155,13 +156,15 @@ func batchValue(ctx context.Context, tier tier.Tier, batch []aggregate.GetAggVal
 		return nil, err
 	}
 
-	numSlotsLeft, err = fetchForeverAggregates(ctx, tier, unique, batch, ret, numSlotsLeft)
-	if err != nil {
+	if numSlotsLeft, err = fetchAutoMLAggregates(ctx, tier, unique, batch, ret, numSlotsLeft); err != nil {
 		return nil, err
 	}
 
-	err = fetchOnlineAggregates(ctx, tier, unique, batch, ret, numSlotsLeft)
-	if err != nil {
+	if numSlotsLeft, err = fetchForeverAggregates(ctx, tier, unique, batch, ret, numSlotsLeft); err != nil {
+		return nil, err
+	}
+
+	if err = fetchOnlineAggregates(ctx, tier, unique, batch, ret, numSlotsLeft); err != nil {
 		return nil, err
 	}
 	return ret, nil
@@ -203,6 +206,60 @@ func fetchOfflineAggregates(tier tier.Tier, aggMap map[ftypes.AggName]aggregate.
 		for i, v := range offlineValues {
 			ret[offlinePtr[i]] = v
 			numSlotsLeft -= 1
+		}
+	}
+
+	return numSlotsLeft, nil
+}
+
+func fetchAutoMLAggregates(ctx context.Context, tier tier.Tier, aggMap map[ftypes.AggName]aggregate.Aggregate, batch []aggregate.GetAggValueRequest, ret []value.Value, numSlotsLeft int) (int, error) {
+	autoMLPtr := make([]int, 0, len(batch))
+	ids := make([]ftypes.AggId, 0, numSlotsLeft)
+	aggNames := make([]ftypes.AggName, 0, numSlotsLeft)
+	options := make([]aggregate.Options, 0, numSlotsLeft)
+	keys := make([]value.Value, 0, numSlotsLeft)
+	kwargs := make([]value.Dict, 0, numSlotsLeft)
+
+	for i, req := range batch {
+		agg := aggMap[req.AggName]
+		if !agg.IsAutoML() {
+			continue
+		}
+		derivedUserHistoryAggregate, err := Retrieve(ctx, tier, vae.GetDerivedUserHistoryAggregateName(agg.Name))
+		if err != nil {
+			return numSlotsLeft, fmt.Errorf("failed to retrieve derived user history aggregate: %w", err)
+		}
+		autoMLPtr = append(autoMLPtr, i)
+		aggNames = append(aggNames, agg.Name)
+		ids = append(ids, derivedUserHistoryAggregate.Id)
+		options = append(options, derivedUserHistoryAggregate.Options)
+		keys = append(keys, req.Key)
+		kwargs = append(kwargs, req.Kwargs)
+	}
+
+	if len(autoMLPtr) > 0 {
+		userHistories, err := counter.BatchValue(ctx, tier, ids, options, keys, kwargs)
+		if err != nil {
+			return 0, fmt.Errorf("error: failed to retrieve auto-ml user history: %w", err)
+		}
+		// Call SageMaker endpoint to get auto-ml predictions
+		aggToUserHistoryMap := make(map[ftypes.AggName][]value.Value)
+		aggToPtrMap := make(map[ftypes.AggName][]int)
+		for i, aggName := range aggNames {
+			aggToUserHistoryMap[aggName] = append(aggToUserHistoryMap[aggName], userHistories[i])
+			aggToPtrMap[aggName] = append(aggToPtrMap[aggName], autoMLPtr[i])
+		}
+
+		// TODO: parallelize this IO bound for loop.
+		for aggName, userHistory := range aggToUserHistoryMap {
+			smResult, err := vae.GetAutoMLPrediction(ctx, tier, aggName, userHistory)
+			if err != nil {
+				return 0, fmt.Errorf("error: failed to retrieve auto-ml prediction: %w", err)
+			}
+			for i, ptr := range aggToPtrMap[aggName] {
+				ret[ptr] = smResult[i]
+				numSlotsLeft -= 1
+			}
 		}
 	}
 
@@ -260,7 +317,7 @@ func fetchOnlineAggregates(ctx context.Context, tier tier.Tier, aggMap map[ftype
 	// Fetch online aggregate values
 	for i, req := range batch {
 		agg := aggMap[req.AggName]
-		if agg.IsForever() || agg.IsOffline() {
+		if !agg.IsOnline() {
 			continue
 		}
 		onlinePtr = append(onlinePtr, i)
@@ -347,7 +404,6 @@ func Update[I action.Action | profile.ProfileItem](ctx context.Context, tier tie
 				row := []string{string(value.ToJSON(rowDict.GetUnsafe("groupkey"))), string(value.ToJSON(rowDict.GetUnsafe("value"))), string(value.ToJSON(rowDict.GetUnsafe("timestamp")))}
 				data = append(data, row)
 			}
-			fmt.Println("Writing training data for aggregate ", agg.Name, ": ", len(data))
 			if err = w.WriteAll(data); err != nil {
 				tier.Logger.Error(fmt.Sprintf("failed to write data to file: %v", err))
 				return
@@ -367,13 +423,15 @@ func Update[I action.Action | profile.ProfileItem](ctx context.Context, tier tie
 		day := now.Day()
 
 		tier.Logger.Info(fmt.Sprintf("transformed %d events for AutoML: %s", table.Len(), agg.Name))
-		if err = tier.S3Client.Upload(reader, fmt.Sprintf("automl/%s/%d/%s/%d/interactions-%d.csv", agg.Name, year, month, day, now.Unix()), tier.Args.OfflineAggBucket); err != nil {
+		path := fmt.Sprintf("automl/%s/year=%d/month=%02d/day=%02d/interactions-%d.csv", agg.Name, year, month, day, now.Unix())
+		if err = tier.S3Client.Upload(reader, path, tier.Args.OfflineAggBucket); err != nil {
 			return fmt.Errorf("failed to upload transformed actions for automl to s3: %w", err)
 		}
 		if err = reader.Close(); err != nil {
 			return fmt.Errorf("failed to close reader: %w", err)
 		}
 	} else { // Online duration based aggregates
+		tier.Logger.Info(fmt.Sprintf("found %d new items, %d transformed %s for online aggregate: %s", len(items), table.Len(), agg.Source, agg.Name))
 		if err = counter.Update(ctx, tier, agg.Id, agg.Options, table); err != nil {
 			return fmt.Errorf("failed to update counter: %w", err)
 		}

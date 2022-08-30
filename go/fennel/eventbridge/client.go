@@ -29,24 +29,46 @@ func NewClient(args EventBridgeArgs) Client {
 	}
 }
 
-func (c Client) CreateRule(ruleName string, scheduleExpression string) error {
+func GetRuleName(tierId ftypes.RealmID, name string) string {
+	return fmt.Sprintf("%d-%s", tierId, name)
+}
+
+func (c Client) CreateRule(tierId ftypes.RealmID, ruleName string, scheduleExpression string) error {
 	input := &eventbridge.PutRuleInput{
-		Name:               aws.String(ruleName),
+		Name:               aws.String(GetRuleName(tierId, ruleName)),
 		ScheduleExpression: aws.String(scheduleExpression),
 	}
 	_, err := c.client.PutRule(input)
 	return err
 }
 
-func (c Client) DeleteRule(ruleName string) error {
+func (c Client) DeleteRule(tierId ftypes.RealmID, ruleName string) error {
 	input := &eventbridge.DeleteRuleInput{
-		Name: aws.String(ruleName),
+		Name: aws.String(GetRuleName(tierId, ruleName)),
 	}
 	_, err := c.client.DeleteRule(input)
 	return err
 }
 
-func CreateSageMakePipelineTarget(tierId ftypes.RealmID, name, pipelineArn string, params map[string]string) eventbridge.Target {
+func (c Client) CreateSageMakeRecurringJob(tierId ftypes.RealmID, name, pipelineArn, roleArn string, params map[string]string) error {
+	target := createSageMakePipelineTarget(tierId, name, pipelineArn, roleArn, params)
+	return c.CreateTarget(tierId, name, []*eventbridge.Target{&target})
+}
+
+func (c Client) CreateTarget(tierId ftypes.RealmID, ruleName string, targets []*eventbridge.Target) error {
+	input := &eventbridge.PutTargetsInput{
+		Rule:    aws.String(GetRuleName(tierId, ruleName)),
+		Targets: targets,
+	}
+	_, err := c.client.PutTargets(input)
+	return err
+}
+
+// ---------------------------------------------------------------------------------------------------------------------
+// Private Helper Functions
+// ---------------------------------------------------------------------------------------------------------------------
+
+func createSageMakePipelineTarget(tierId ftypes.RealmID, name, pipelineArn, roleArn string, params map[string]string) eventbridge.Target {
 	smParams := eventbridge.SageMakerPipelineParameters{}
 	smParams.PipelineParameterList = make([]*eventbridge.SageMakerPipelineParameter, 0, len(params))
 	for k, v := range params {
@@ -57,19 +79,11 @@ func CreateSageMakePipelineTarget(tierId ftypes.RealmID, name, pipelineArn strin
 	}
 	return eventbridge.Target{
 		Arn:                         aws.String(pipelineArn),
-		Id:                          aws.String(fmt.Sprintf("%s-%s", tierId, name)),
+		RoleArn:                     aws.String(roleArn),
+		Id:                          aws.String(fmt.Sprintf("%d-%s", tierId, name)),
 		SageMakerPipelineParameters: &smParams,
 		RetryPolicy: &eventbridge.RetryPolicy{
 			MaximumRetryAttempts: aws.Int64(3),
 		},
 	}
-}
-
-func (c Client) PutTargets(ruleName string, targets []*eventbridge.Target) error {
-	input := &eventbridge.PutTargetsInput{
-		Rule:    aws.String(ruleName),
-		Targets: targets,
-	}
-	_, err := c.client.PutTargets(input)
-	return err
 }

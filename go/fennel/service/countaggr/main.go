@@ -104,14 +104,19 @@ func processAggregate(tr tier.Tier, agg libaggregate.Aggregate, stopCh <-chan st
 			case <-stopCh:
 				return
 			case <-kt.C:
-				logKafkaLag(tr, consumer)
+				fmt.Println("Placeholder for kafka lag reporting")
+				//logKafkaLag(tr, consumer)
 			default:
 				run++
 				ctx := context.Background()
 				if agg.IsProfileBased() {
 					// The number of actions and profiles need to be tuned.
 					// They should not be too many such that operations like op.model.predict cant handle them.
-					profiles, err := profile2.ReadBatch(ctx, consumer, 300, time.Second*10)
+					count := 1000
+					if agg.Options.AggType == libaggregate.KNN {
+						count = 300
+					}
+					profiles, err := profile2.ReadBatch(ctx, consumer, count, time.Second*10)
 					if err != nil {
 						tr.Logger.Error("Error reading profiles", zap.Error(err))
 						continue
@@ -129,10 +134,15 @@ func processAggregate(tr tier.Tier, agg libaggregate.Aggregate, stopCh <-chan st
 					}
 				} else {
 					timeout := time.Second * 10
-					if agg.IsOffline() || agg.IsAutoML() {
+					count := 10000
+					if agg.IsOffline() {
 						timeout = time.Second * 30
 					}
-					actions, err := action2.ReadBatch(ctx, consumer, 10000, timeout)
+					if agg.IsAutoML() {
+						count = 1000000
+						timeout = time.Minute * 5
+					}
+					actions, err := action2.ReadBatch(ctx, consumer, count, timeout)
 					if err != nil {
 						tr.Logger.Error("Error while reading batch of actions:", zap.Error(err))
 						continue
@@ -161,7 +171,7 @@ func processAggregate(tr tier.Tier, agg libaggregate.Aggregate, stopCh <-chan st
 						tr.Logger.Panic("Failed to commit kafka offset", zap.Error(err))
 					}
 				}
-				tr.Logger.Debug("Processed aggregate", zap.String("name", string(agg.Name)), zap.Int("run", run))
+				//tr.Logger.Debug("Processed aggregate", zap.String("name", string(agg.Name)), zap.Int("run", run))
 			}
 		}
 	}(tr, consumer, agg, stopCh)
