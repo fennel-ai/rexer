@@ -45,7 +45,6 @@ func Store(ctx context.Context, tier tier.Tier, agg aggregate.Aggregate) error {
 	if err := agg.Validate(); err != nil {
 		return err
 	}
-	fmt.Println("Storing aggregate", agg.Name)
 	// Check if agg already exists in db
 	agg2, err := modelAgg.Retrieve(ctx, tier, agg.Name)
 	if err != nil {
@@ -82,26 +81,12 @@ func Store(ctx context.Context, tier tier.Tier, agg aggregate.Aggregate) error {
 					return fmt.Errorf("failed to create rule for recurring schedule for automl: %w", err)
 				}
 
-				smParams := map[string]string{
-					"ModelEndpointName":         vae.GetModelEndpointName(tier.ID, agg.Name),
-					"ModelName":                 vae.GetModelName(tier.ID, agg.Name),
-					"ModelInferenceMachineType": "ml.m5.large",
-					"Device":                    "cuda",
-					"NumEpochs":                 "2",
-					"S3DataBucket":              tier.Args.OfflineAggBucket,
-					"S3DataDirectory":           fmt.Sprintf("%s/%s", "automl", agg.Name),
-				}
-
+				smParams := vae.GetSageMakerPipelineParams(tier.ID, agg.Name, tier.Args.OfflineAggBucket)
 				if err = tier.EventBridgeClient.CreateSageMakeRecurringJob(tier.ID, ruleName, pipelineARN, SAGEMAKER_JOB_CREATION_ROLE_ARN, smParams); err != nil {
 					return fmt.Errorf("failed to recurring job for automl: %w", err)
 				}
 
-				userHistoryAggregate := agg
-				userHistoryAggregate.Name = vae.GetDerivedUserHistoryAggregateName(agg.Name)
-				userHistoryAggregate.Options.AggType = "list"
-				userHistoryAggregate.Options.Limit = 0
-				userHistoryAggregate.Options.CronSchedule = ""
-				if err = Store(ctx, tier, userHistoryAggregate); err != nil {
+				if err = Store(ctx, tier, vae.GetUserHistoryAggregate(agg)); err != nil {
 					return fmt.Errorf("failed to store user history aggregate: %w", err)
 				}
 			}
@@ -122,8 +107,6 @@ func Store(ctx context.Context, tier tier.Tier, agg aggregate.Aggregate) error {
 					}
 				}
 			}
-			fmt.Println("Storing new aggregate", agg.Name)
-			fmt.Println(agg)
 			// Store aggregate in db.
 			err = modelAgg.Store(ctx, tier, agg)
 			if err != nil {

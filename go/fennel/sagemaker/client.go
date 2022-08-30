@@ -433,7 +433,6 @@ func (smc SMClient) Score(ctx context.Context, in *lib.ScoreRequest) (*lib.Score
 }
 
 func (smc SMClient) CreatePipeline(ctx context.Context, tierId ftypes.RealmID, pipelineName, pipelineDef string) error {
-	fmt.Printf("Creating pipeline %s\n", pipelineName)
 	req := sagemaker.CreatePipelineInput{
 		PipelineName:        aws.String(getPipelineName(tierId, pipelineName)),
 		RoleArn:             aws.String(smc.args.SagemakerExecutionRole),
@@ -458,9 +457,6 @@ func (smc SMClient) GetPipelineARN(ctx context.Context, tierId ftypes.RealmID, p
 	if err != nil {
 		smc.logger.Error("failed to list pipelines", zap.Error(err))
 		return "", fmt.Errorf("failed to list pipelines: %w", err)
-	}
-	for _, pipeline := range out.PipelineSummaries {
-		fmt.Printf("Pipeline %s ARN: %s\n", *pipeline.PipelineName, *pipeline.PipelineArn)
 	}
 	if len(out.PipelineSummaries) == 0 {
 		return "", SageMakerPipelineNotFound

@@ -3,6 +3,7 @@ package vae
 import (
 	"context"
 	"embed"
+	"fennel/lib/aggregate"
 	"fennel/lib/ftypes"
 	lib "fennel/lib/sagemaker"
 	"fennel/lib/value"
@@ -21,7 +22,12 @@ var (
 	}
 )
 
-const UserHistoryAggSuffix = "-INTERNAL-USER_HISTORY"
+const (
+	UserHistoryAggSuffix = "-INTERNAL-USER_HISTORY"
+	NumEpochs            = "10"
+	InferenceType        = "ml.m5.large"
+	TrainingDevice       = "cuda"
+)
 
 func GetPipelineDefinition(aggregateType string) ([]byte, error) {
 	if pipeline, ok := pages[aggregateType]; ok {
@@ -48,7 +54,6 @@ func GetDerivedUserHistoryAggregateName(aggregateName ftypes.AggName) ftypes.Agg
 func GetPipelineARN(ctx context.Context, tier tier.Tier, pipelineName string) (string, error) {
 	pipelineArn, err := tier.SagemakerClient.GetPipelineARN(ctx, tier.ID, pipelineName)
 	if err != nil && err == sm.SageMakerPipelineNotFound {
-		fmt.Printf("Pipeline %s not found, creating\n", pipelineName)
 		pipelineDef, err := GetPipelineDefinition(pipelineName)
 		if err != nil {
 			return "", fmt.Errorf("failed to get pipeline defintion: %w", err)
@@ -56,15 +61,34 @@ func GetPipelineARN(ctx context.Context, tier tier.Tier, pipelineName string) (s
 		if err = tier.SagemakerClient.CreatePipeline(ctx, tier.ID, pipelineName, string(pipelineDef)); err != nil {
 			return "", fmt.Errorf("failed to create pipeline: %w", err)
 		}
-		fmt.Printf("Pipeline %s created\n", pipelineName)
 		if pipelineArn, err = tier.SagemakerClient.GetPipelineARN(ctx, tier.ID, pipelineName); err != nil {
 			return "", fmt.Errorf("failed to get pipeline ARN: %w", err)
 		}
-		fmt.Printf("Pipeline %s ARN: %s\n", pipelineName, pipelineArn)
 	} else if err != nil {
 		return "", fmt.Errorf("unknown error while trying to get pipeline ARN: %w", err)
 	}
 	return pipelineArn, nil
+}
+
+func GetSageMakerPipelineParams(tierId ftypes.RealmID, aggName ftypes.AggName, s3Bucket string) map[string]string {
+	return map[string]string{
+		"ModelEndpointName":         GetModelEndpointName(tierId, aggName),
+		"ModelName":                 GetModelName(tierId, aggName),
+		"ModelInferenceMachineType": InferenceType,
+		"Device":                    TrainingDevice,
+		"NumEpochs":                 NumEpochs,
+		"S3DataBucket":              s3Bucket,
+		"S3DataDirectory":           fmt.Sprintf("%s/%s", "automl", aggName),
+	}
+}
+
+func GetUserHistoryAggregate(agg aggregate.Aggregate) aggregate.Aggregate {
+	userHistoryAggregate := agg
+	userHistoryAggregate.Name = GetDerivedUserHistoryAggregateName(agg.Name)
+	userHistoryAggregate.Options.AggType = "list"
+	userHistoryAggregate.Options.Limit = 0
+	userHistoryAggregate.Options.CronSchedule = ""
+	return userHistoryAggregate
 }
 
 func GetAutoMLPrediction(ctx context.Context, tier tier.Tier, aggName ftypes.AggName, modelInput []value.Value) ([]value.Value, error) {
@@ -74,8 +98,6 @@ func GetAutoMLPrediction(ctx context.Context, tier tier.Tier, aggName ftypes.Agg
 		"get_embedding":  value.Bool(false),
 		"limit":          value.Int(10),
 	})
-
-	fmt.Printf("scoreInput: %s\n", scoreInput.String())
 
 	scoreRequest := &lib.ScoreRequest{
 		EndpointName: endPoint,
@@ -98,7 +120,6 @@ func GetAutoMLPrediction(ctx context.Context, tier tier.Tier, aggName ftypes.Agg
 		}
 		userResponse := make([]value.Value, 0, responseScoresList.Len())
 		for _, result := range responseScoresList.Values() {
-			fmt.Printf("%+v\n", result)
 			tuple := result.(value.List)
 			id, err := tuple.At(0)
 			if err != nil {
@@ -115,7 +136,5 @@ func GetAutoMLPrediction(ctx context.Context, tier tier.Tier, aggName ftypes.Agg
 		}
 		autoMLResponse = append(autoMLResponse, value.NewList(userResponse...))
 	}
-	fmt.Printf("%+v\n", autoMLResponse)
-	fmt.Println("Length of autoMLResponse:", len(autoMLResponse))
 	return autoMLResponse, nil
 }

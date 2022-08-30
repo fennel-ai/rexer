@@ -104,8 +104,7 @@ func processAggregate(tr tier.Tier, agg libaggregate.Aggregate, stopCh <-chan st
 			case <-stopCh:
 				return
 			case <-kt.C:
-				fmt.Println("Placeholder for kafka lag reporting")
-				//logKafkaLag(tr, consumer)
+				logKafkaLag(tr, consumer)
 			default:
 				run++
 				ctx := context.Background()

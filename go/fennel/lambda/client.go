@@ -49,7 +49,7 @@ func (c Client) CreateFunction(tierId ftypes.RealmID, functionName string) error
 		Code: &lambda.FunctionCode{
 			S3Bucket: aws.String("fennel-lambda"),
 		},
-		FunctionName: aws.String(fmt.Sprintf("%s-%s", tierId, functionName)),
+		FunctionName: aws.String(fmt.Sprintf("%d-%s", tierId, functionName)),
 		Handler:      aws.String("lambda_function.lambda_handler"),
 		Runtime:      aws.String("Python 3.9"),
 		Timeout:      aws.Int64(800),
