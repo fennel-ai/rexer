@@ -26,22 +26,6 @@ function DashboardPage() {
     );
 }
 
-/*
-  "status": "success",
-  "data": {
-    "resultType": "matrix",
-    "result": [
-      {
-        "metric": {
-          "path": "/log"
-        },
-        "values": [
-          [
-            1661299200,
-            "0.3347457627118644"
-          ],
-*/
-
 interface RangeVector {
     metric: Record<string, string>,
     values: [number, string][],
