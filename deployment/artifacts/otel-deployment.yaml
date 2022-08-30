@@ -230,10 +230,10 @@ spec:
           resources:
             limits:
               cpu: 512m
-              memory: 3G
+              memory: 8G
             requests:
               cpu: 128m
-              memory: 1G
+              memory: 3G
       volumes:
         - configMap:
             name: otel-agent-conf
