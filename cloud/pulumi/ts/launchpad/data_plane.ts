@@ -22,6 +22,7 @@ import * as msk from "../msk";
 import * as util from "../lib/util";
 
 import * as process from "process";
+import {OtelConfig} from "../telemetry";
 
 type VpcConfig = {
     cidr: string,
@@ -123,6 +124,7 @@ export type DataPlaneConf = {
     controlPlaneConf: vpc.controlPlaneConfig,
     redisConf?: RedisConfig,
     cacheConf?: CacheConfg,
+    otelConf?: OtelConfig,
     prometheusConf: PrometheusConf,
     eksConf: util.EksConf,
     milvusConf?: MilvusConf,
@@ -344,6 +346,7 @@ const setupResources = async () => {
         region: input.region,
         roleArn: roleArn,
         eksClusterName: eksOutput.clusterName,
+        otelConf: input.otelConf,
         kubeconfig: eksOutput.kubeconfig,
         nodeInstanceRole: eksOutput.instanceRole,
     })
