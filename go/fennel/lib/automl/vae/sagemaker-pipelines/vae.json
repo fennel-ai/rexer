@@ -471,7 +471,7 @@
               ]
             }
           },
-          "sagemaker_submit_directory": "s3://sagemaker-us-west-2-030813887342/VAETrainStep-36cdf6627714eb9b3d83f22ed86c5ea8/source/sourcedir.tar.gz",
+          "sagemaker_submit_directory": "s3://sagemaker-us-west-2-030813887342/VAETrainStep-4473f866caa8a014d0534b8bc8c1ce89/source/sourcedir.tar.gz",
           "sagemaker_program": "vae.py",
           "sagemaker_container_log_level": "20",
           "sagemaker_region": "us-west-2"
@@ -485,7 +485,7 @@
         },
         "ProfilerRuleConfigurations": [
           {
-            "RuleConfigurationName": "ProfilerReport-1661640073",
+            "RuleConfigurationName": "ProfilerReport-1661873987",
             "RuleEvaluatorImage": "895741380848.dkr.ecr.us-west-2.amazonaws.com/sagemaker-debugger-rules:latest",
             "RuleParameters": {
               "rule_to_invoke": "ProfilerReport"
@@ -510,7 +510,7 @@
           "TrainingImage": "246618743249.dkr.ecr.us-west-2.amazonaws.com/sagemaker-scikit-learn:0.23-1-cpu-py3"
         },
         "OutputDataConfig": {
-          "S3OutputPath": "s3://sagemaker-us-west-2-030813887342/pytorch-inference-2022-08-27-22-41-11-223"
+          "S3OutputPath": "s3://sagemaker-us-west-2-030813887342/pytorch-inference-2022-08-30-15-39-44-765"
         },
         "StoppingCondition": {
           "MaxRuntimeInSeconds": 86400
@@ -555,7 +555,7 @@
           "sagemaker_region": "us-west-2"
         },
         "DebugHookConfig": {
-          "S3OutputPath": "s3://sagemaker-us-west-2-030813887342/pytorch-inference-2022-08-27-22-41-11-223",
+          "S3OutputPath": "s3://sagemaker-us-west-2-030813887342/pytorch-inference-2022-08-30-15-39-44-765",
           "CollectionConfigurations": []
         }
       },
@@ -621,7 +621,7 @@
         },
         "role": "arn:aws:iam::030813887342:role/admin"
       },
-      "FunctionArn": "arn:aws:lambda:us-west-2:030813887342:function:sagemaker-pipelines-model-deployment-08-27-22-41-12",
+      "FunctionArn": "arn:aws:lambda:us-west-2:030813887342:function:sagemaker-pipelines-model-deployment-08-30-15-39-46",
       "OutputParameters": [
         {
           "OutputName": "statusCode",
