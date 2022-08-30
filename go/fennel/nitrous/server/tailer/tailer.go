@@ -13,6 +13,7 @@ import (
 	"fennel/resource"
 
 	"github.com/confluentinc/confluent-kafka-go/kafka"
+	"github.com/samber/mo"
 	"go.uber.org/atomic"
 	"go.uber.org/zap"
 	"google.golang.org/protobuf/proto"
@@ -49,7 +50,25 @@ func NewTailer(n nitrous.Nitrous, topic string, toppars kafka.TopicPartitions, p
 		Topic:        topic,
 		GroupID:      n.Identity,
 		OffsetPolicy: fkafka.DefaultOffsetPolicy,
-		Partitions:   toppars,
+		RebalanceCb:  mo.Some(func(c *kafka.Consumer, e kafka.Event) error {
+			zap.L().Info("got kafka partition rebalance event: ", zap.String("topic", topic), zap.String("groupid", n.Identity), zap.String("consumer", c.String()), zap.String("event", e.String()))
+			switch event := e.(type) {
+			case kafka.AssignedPartitions:
+				if len(toppars) > 0 && len(event.Partitions) > 0 {
+					// fetch the last committed offsets for the topic partitions assigned to the consumer
+					newToppars, err := decodeOffsets(toppars, n.Store)
+					if err != nil {
+						zap.L().Fatal("failed to fetch latest offsets", zap.String("consumer", c.String()), zap.Error(err))
+					}
+					zap.L().Info("discarding broker assigned partitions and assigning partitions to self", zap.String("consumer", c.String()), zap.String("toppars", fmt.Sprintf("%v", newToppars)))
+					err = c.Assign(newToppars)
+					if err != nil {
+						zap.L().Fatal("failed to assign partitions", zap.Error(err))
+					}
+				}
+			}
+			return nil
+		}),
 		Configs: fkafka.ConsumerConfigs{
 			// `max.partition.fetch.bytes` dictates the initial maximum number of bytes requested per
 			// broker+partition.

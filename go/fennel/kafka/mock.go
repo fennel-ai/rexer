@@ -98,6 +98,10 @@ type mockConsumer struct {
 	broker  *MockBroker
 }
 
+func (l mockConsumer) Name() string {
+	return "consumer"
+}
+
 func (l mockConsumer) Read(ctx context.Context, timeout time.Duration) ([]byte, error) {
 	ticker := time.Tick(timeout) //nolint
 	for {

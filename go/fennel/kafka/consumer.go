@@ -28,6 +28,10 @@ type RemoteConsumer struct {
 	conf    resource.Config
 }
 
+func (k RemoteConsumer) Name() string {
+	return k.Consumer.String()
+}
+
 func (k RemoteConsumer) GroupID() string {
 	return k.groupid
 }
@@ -235,7 +239,8 @@ type ConsumerConfig struct {
 	Topic        string
 	// List of topic partitions to consume from. If empty, consume from broker
 	// assigned partitions.
-	Partitions kafka.TopicPartitions
+	Partitions   kafka.TopicPartitions
+	RebalanceCb  mo.Option[func(c *kafka.Consumer, e kafka.Event) error]
 	Configs 	 ConsumerConfigs
 }
 
@@ -300,23 +305,11 @@ func (conf RemoteConsumerConfig) Materialize() (resource.Resource, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to create kafka consumer: %v", err)
 	}
-	rebalanceCb := func(c *kafka.Consumer, e kafka.Event) error {
-		log.Printf("[%s:%s:%s]Got kafka partition rebalance event: %v", topic, conf.GroupID, c.String(), e.String())
-		switch event := e.(type) {
-		case kafka.AssignedPartitions:
-			if len(conf.Partitions) > 0 && len(event.Partitions) > 0 {
-				log.Printf("Assigning partitions to self[%s]: %v", c.String(), conf.Partitions)
-				err := c.Assign(conf.Partitions)
-				if err != nil {
-					log.Fatalf("Failed to assign partitions: %v", err)
-				}
-			}
+	if conf.RebalanceCb.IsPresent() {
+		err = consumer.Subscribe(topic, conf.RebalanceCb.MustGet())
+		if err != nil {
+			return nil, fmt.Errorf("failed to subscribe to topic [%s]: %v", topic, err)
 		}
-		return nil
-	}
-	err = consumer.Subscribe(topic, rebalanceCb)
-	if err != nil {
-		return nil, fmt.Errorf("failed to subscribe to topic [%s]: %v", topic, err)
 	}
 	return RemoteConsumer{consumer, conf.Scope, topic, conf.GroupID, nil}, nil
 }
