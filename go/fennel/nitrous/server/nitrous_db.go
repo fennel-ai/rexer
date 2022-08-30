@@ -115,6 +115,21 @@ func InitDB(n nitrous.Nitrous) (*NitrousDB, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to restore aggregate definitions: %w", err)
 	}
+
+	startDBSaveProc := func() {
+		time.Sleep(time.Minute * 5)
+		for {
+			ndb.Stop() // stop all the writers
+			err := ndb.nos.Store.Save()
+			if err != nil {
+				zap.L().Error("Failed to save data", zap.Error(err))
+			}
+			ndb.Start() // continue consuming the binlog
+			time.Sleep(time.Minute * 30)
+		}
+		// TODO: add a way to terminate the goroutine (probably never need to)
+	}
+	go startDBSaveProc()
 	return ndb, nil
 }
 

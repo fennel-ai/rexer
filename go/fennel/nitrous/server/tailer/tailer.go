@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"time"
+	"unsafe"
 
 	"fennel/hangar"
 	fkafka "fennel/kafka"
@@ -50,7 +51,7 @@ func NewTailer(n nitrous.Nitrous, topic string, toppars kafka.TopicPartitions, p
 		Topic:        topic,
 		GroupID:      n.Identity,
 		OffsetPolicy: fkafka.DefaultOffsetPolicy,
-		RebalanceCb:  mo.Some(func(c *kafka.Consumer, e kafka.Event) error {
+		RebalanceCb: mo.Some(func(c *kafka.Consumer, e kafka.Event) error {
 			zap.L().Info("Got kafka partition rebalance event: ", zap.String("topic", topic), zap.String("groupid", n.Identity), zap.String("consumer", c.String()), zap.String("event", e.String()))
 			switch event := e.(type) {
 			case kafka.AssignedPartitions:
@@ -121,6 +122,7 @@ func (t *Tailer) Stop() {
 	t.stopCh <- ack
 	<-ack
 	t.running.Store(false)
+	zap.L().Info("stopped tailing", zap.Uintptr("tailer_ptr", uintptr(unsafe.Pointer(t))))
 }
 
 func (t *Tailer) processBatch(rawops [][]byte) error {
@@ -171,7 +173,11 @@ func (t *Tailer) processBatch(rawops [][]byte) error {
 // Note: This function blocks the caller and should be run in a goroutine. To
 // stop the tailer, call Stop().
 func (t *Tailer) Tail() {
+	if t.running.Load() {
+		return
+	}
 	t.running.Store(true)
+	zap.L().Info("started to tail", zap.Uintptr("tailer_ptr", uintptr(unsafe.Pointer(t))))
 	for {
 		select {
 		case ack := <-t.stopCh:

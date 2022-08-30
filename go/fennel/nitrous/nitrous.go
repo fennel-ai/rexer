@@ -1,13 +1,12 @@
 package nitrous
 
 import (
+	"fennel/hangar/mem"
 	"fennel/lib/instancemetadata"
 	"fmt"
 	"github.com/samber/mo"
 	"log"
 
-	"fennel/hangar"
-	"fennel/hangar/db"
 	"fennel/hangar/encoders"
 	libkafka "fennel/kafka"
 	"fennel/lib/ftypes"
@@ -50,7 +49,7 @@ type Nitrous struct {
 	PlaneID              ftypes.RealmID
 	Identity             string
 	Clock                clock.Clock
-	Store                hangar.Hangar
+	Store                *mem.MemDB
 	KafkaConsumerFactory KafkaConsumerFactory
 }
 
@@ -97,7 +96,7 @@ func CreateFromArgs(args NitrousArgs) (Nitrous, error) {
 			Password:        args.MskKafkaPassword,
 			SaslMechanism:   libkafka.SaslScramSha512Mechanism,
 			ConsumerConfig:  config,
-			AzId: 			 azId,
+			AzId:            azId,
 		}
 		kafkaConsumer, err := kafkaConsumerConfig.Materialize()
 		if err != nil {
@@ -107,9 +106,13 @@ func CreateFromArgs(args NitrousArgs) (Nitrous, error) {
 	}
 
 	// Initialize layered storage.
-	db, err := db.NewHangar(scope.ID(), args.BadgerDir, args.BadgerBlockCacheMB<<20, encoders.Default())
+	memDB, err := mem.NewHangar(scope.ID(), 1024, args.BadgerDir, encoders.Default()) // TODO: siyuan now use fixed number of shards
 	if err != nil {
-		return Nitrous{}, fmt.Errorf("failed to create badger db: %w", err)
+		return Nitrous{}, fmt.Errorf("failed to create memdb: %w", err)
+	}
+	err = memDB.Load()
+	if err != nil {
+		return Nitrous{}, fmt.Errorf("failed to load pervious data: %w", err)
 	}
 
 	return Nitrous{
@@ -117,6 +120,6 @@ func CreateFromArgs(args NitrousArgs) (Nitrous, error) {
 		Identity:             args.Identity,
 		KafkaConsumerFactory: consumerFactory,
 		Clock:                clock.New(),
-		Store:                db,
+		Store:                memDB,
 	}, nil
 }
