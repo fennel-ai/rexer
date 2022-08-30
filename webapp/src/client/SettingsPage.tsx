@@ -2,7 +2,7 @@ import { Tabs } from "antd";
 import { useState, useEffect } from "react";
 
 import AccountTab from "./AccountTab";
-import OrgTab from "./OrgTab";
+import TeamTab from "./TeamTab";
 import styles from "./styles/Page.module.scss";
 
 function tabFromHash(): string {
@@ -33,9 +33,9 @@ function SettingsPage() {
                         <AccountTab />
                     </div>
                 </Tabs.TabPane>
-                <Tabs.TabPane tab="Organization" key="organization">
+                <Tabs.TabPane tab="Team" key="team">
                     <div className={styles.tabContent}>
-                        <OrgTab />
+                        <TeamTab />
                     </div>
                 </Tabs.TabPane>
             </Tabs>

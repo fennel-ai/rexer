@@ -118,7 +118,7 @@ func (s *server) setupRouter() {
 	auth.GET("/settings", s.Settings)
 	auth.POST("/logout", s.Logout)
 	auth.GET("/user", s.User)
-	auth.GET("/organization", s.Organization)
+	auth.GET("/team", s.Team)
 	auth.PATCH("/user_names", s.UpdateUserNames)
 	auth.PATCH("/user_password", s.UpdateUserPassword)
 
@@ -457,7 +457,7 @@ func (s *server) User(c *gin.Context) {
 	})
 }
 
-func (s *server) Organization(c *gin.Context) {
+func (s *server) Team(c *gin.Context) {
 	var customer customer.Customer
 	user, ok := CurrentUser(c)
 	ok = ok && (s.db.Take(&customer, user.CustomerID).RowsAffected > 0)
@@ -467,13 +467,13 @@ func (s *server) Organization(c *gin.Context) {
 
 	if !ok {
 		c.JSON(http.StatusUnprocessableEntity, gin.H{
-			"error": "No organization found",
+			"error": "No team found",
 		})
 		return
 	}
 
 	c.JSON(http.StatusOK, gin.H{
-		"organization": gin.H{
+		"team": gin.H{
 			"users": lo.Map(users, func(user userL.User, _ int) gin.H {
 				return userMap(user)
 			}),
