@@ -543,6 +543,10 @@ const dataPlaneConfs: Record<number, DataPlaneConf> = {
             nodeType: "db.r6g.large",
             numReplicasPerShard: 1,
         },
+        otelConf: {
+            memoryLimit: "8G",
+            memoryRequest: "3G",
+        },
         eksConf: {
             nodeGroups: [
                 // TODO(mohit): Consider naming in a consistent way.. long names will hit character limits

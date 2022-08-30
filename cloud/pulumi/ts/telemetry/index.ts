@@ -11,10 +11,19 @@ export const plugins = {
     "kubernetes": "v3.18.0",
 }
 
+export type OtelConfig = {
+    memoryRequest?: string,
+    memoryLimit?: string,
+
+    cpuRequest?: string,
+    cpuLimit?: string,
+}
+
 export type inputType = {
     planeId: number,
     roleArn: pulumi.Input<string>,
     region: string,
+    otelConf?: OtelConfig,
     kubeconfig: pulumi.Output<any>,
     eksClusterName: pulumi.Output<string>,
     nodeInstanceRole: pulumi.Output<string>,
@@ -122,6 +131,22 @@ async function setupAdotCollector(input: inputType, k8sProvider: k8s.Provider) {
                                 name: "OTEL_RESOURCE_ATTRIBUTES",
                                 value: `ClusterName=${eksClusterName},FileHash=${filehash}`,
                             } as k8s.types.output.core.v1.EnvVar)
+
+                            if (input.otelConf !== undefined && container.name === "otel-collector") {
+                                if (input.otelConf.memoryLimit !== undefined) {
+                                    container.resources.limits.memory = input.otelConf.memoryLimit
+                                }
+                                if (input.otelConf.memoryRequest !== undefined) {
+                                    container.resources.requests.memory = input.otelConf.memoryRequest
+                                }
+                                if (input.otelConf.cpuLimit !== undefined) {
+                                    container.resources.limits.cpu = input.otelConf.cpuLimit
+                                }
+                                if (input.otelConf.cpuRequest !== undefined) {
+                                    container.resources.requests.cpu = input.otelConf.cpuRequest
+                                }
+                            }
+
                             return container
                         })
                     }
