@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"log"
 	"net"
 	"time"
@@ -14,11 +15,36 @@ import (
 
 	grpc_middleware "github.com/grpc-ecosystem/go-grpc-middleware"
 	grpc_prometheus "github.com/grpc-ecosystem/go-grpc-prometheus"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promauto"
 	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
+	"go.uber.org/zap"
 	grpc "google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/encoding/protojson"
+)
+
+var (
+	GetAggregatesLatency = promauto.NewSummary(prometheus.SummaryOpts{
+		Name: "nitrous_get_aggregates_latency_ms",
+		Help: "Server-side latency (in ms) of GetAggregateValues",
+		Objectives: map[float64]float64{
+			0.25:   0.05,
+			0.50:   0.05,
+			0.75:   0.05,
+			0.90:   0.05,
+			0.95:   0.02,
+			0.99:   0.01,
+			0.999:  0.001,
+			0.9999: 0.0001,
+		},
+	})
+	OK = status.New(codes.OK, "Success").Proto()
+)
+
+const (
+	numConcurrentStreams = 128
 )
 
 type AggDB interface {
@@ -34,6 +60,8 @@ type Server struct {
 	aggdb AggDB
 
 	inner *grpc.Server
+
+	rateLimiter chan struct{}
 	// Embed UnimplementedNitrousServer for forward compatibility with future
 	// RPC additions.
 	UnimplementedNitrousServer
@@ -54,8 +82,9 @@ func NewServer(aggdb AggDB) *Server {
 		)),
 	)
 	s := &Server{
-		aggdb: aggdb,
-		inner: grpcServer,
+		aggdb:       aggdb,
+		inner:       grpcServer,
+		rateLimiter: make(chan struct{}, numConcurrentStreams),
 	}
 	RegisterNitrousServer(grpcServer, s)
 	// After all your registrations, make sure all of the Prometheus metrics are initialized.
@@ -76,7 +105,13 @@ func (s *Server) GetLag(ctx context.Context, _ *LagRequest) (*LagResponse, error
 	}, nil
 }
 
-func (s *Server) GetAggregateValues(ctx context.Context, req *AggregateValuesRequest) (*AggregateValuesResponse, error) {
+func (s *Server) processRequest(ctx context.Context, req *AggregateValuesRequest) (*AggregateValuesResponse, error) {
+	start := time.Now()
+	s.rateLimiter <- struct{}{}
+	defer func() {
+		GetAggregatesLatency.Observe(float64(time.Since(start).Milliseconds()))
+		<-s.rateLimiter
+	}()
 	tierId := ftypes.RealmID(req.TierId)
 	aggId := ftypes.AggId(req.AggId)
 	codec := req.Codec
@@ -86,22 +121,55 @@ func (s *Server) GetAggregateValues(ctx context.Context, req *AggregateValuesReq
 		kwargs[i], err = value.FromProtoDict(kw)
 		if err != nil {
 			s, _ := protojson.Marshal(kw)
-			return nil, status.Errorf(codes.Internal, "error converting kwarg [%s] to value: %v", s, err)
+			return nil, fmt.Errorf("error converting kwarg [%s] to value: %w", s, err)
 		}
 	}
 	vals, err := s.aggdb.Get(ctx, tierId, aggId, codec, req.GetGroupkeys(), kwargs)
 	if err != nil {
-		return nil, status.Errorf(codes.Internal, "error getting aggregate %d for tier %d with codec %d: %v", aggId, tierId, codec, err)
+		return nil, fmt.Errorf("error getting aggregate values: %w", err)
 	}
 	pvalues := make([]*value.PValue, len(vals))
 	for i, v := range vals {
 		pv, err := value.ToProtoValue(v)
 		if err != nil {
-			return nil, status.Errorf(codes.Internal, "error converting value to proto: %v", err)
+			return nil, fmt.Errorf("error converting value to proto: %w", err)
 		}
 		pvalues[i] = &pv
 	}
-	return &AggregateValuesResponse{Results: pvalues}, nil
+	resp := &AggregateValuesResponse{Results: pvalues}
+	return resp, nil
+}
+
+func (s *Server) GetAggregateValues(stream Nitrous_GetAggregateValuesServer) error {
+	zap.L().Debug("Got new GetAggregateValues stream")
+	streamCtx := stream.Context()
+	_, cancelFn := context.WithCancel(streamCtx)
+	defer cancelFn()
+	for {
+		req, err := stream.Recv()
+		if err == io.EOF {
+			return nil
+		}
+		if err != nil {
+			return err
+		}
+		ctx := context.Background()
+		ctx = timer.WithTracing(ctx)
+		resp, err := s.processRequest(ctx, req)
+		if err != nil {
+			s := status.Newf(codes.Internal, "error processing request: %v", err).Proto()
+			stream.Send(&AggregateValuesResponse{
+				Status: s,
+			})
+			continue
+		} else {
+			resp.Status = OK
+			if err = stream.Send(resp); err != nil {
+				zap.L().Warn("Error sending response to client", zap.Error(err))
+				return err
+			}
+		}
+	}
 }
 
 func (s *Server) Serve(listener net.Listener) error {
@@ -116,7 +184,7 @@ func (s *Server) Serve(listener net.Listener) error {
 }
 
 func (s *Server) Stop() {
-	s.inner.GracefulStop()
+	s.inner.Stop()
 	s.aggdb.Stop()
 }
 
