@@ -70,6 +70,15 @@ var ALL_CONFLUENT_TOPICS = []TopicConf{
 			// if the local queue has records of size `batch.size`, this delay is respected (sent ASAP), but in the absence
 			// of load, this is the artificial delay introduced before sending batch of records; default=0 (sent immediately)
 			"linger.ms=10",
+			// This enabled compression for the batch of records sent to the broker.
+			// See - https://coda.io/d/Kafka-compression-choice_dbRQr4J-BJo/Kafka-compression-choice_suZIg#_lu2wy
+			//
+			// For configurations - https://github.com/edenhill/librdkafka/blob/master/CONFIGURATION.md#topic-configuration-properties
+			//
+			// NOTE: This will require consumers of this topic to have the same compression type set to decompress the
+			// batch of records consumed by it
+			"compression.type=zstd",
+			"compression.level=4",
 		},
 	},
 	{Scope: resource.TierScope{}, Topic: profile.PROFILELOG_KAFKA_TOPIC},

@@ -11,7 +11,7 @@
 
 # builder_arm64
 FROM --platform=$TARGETPLATFORM golang:1.18-bullseye AS builder_arm64
-RUN apt -y update && apt -y install libssl-dev
+RUN apt -y update && apt -y install libssl-dev libzstd-dev
 WORKDIR /kafka
 RUN git clone https://github.com/edenhill/librdkafka.git
 WORKDIR /kafka/librdkafka
