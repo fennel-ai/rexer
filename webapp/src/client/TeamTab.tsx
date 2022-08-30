@@ -1,4 +1,4 @@
-import { Table} from "antd";
+import { Table } from "antd";
 import type { ColumnsType } from 'antd/es/table';
 
 import { LoadingOutlined } from '@ant-design/icons';
@@ -11,8 +11,8 @@ interface User {
     email: string,
 }
 
-interface OrgResponse {
-    organization: {
+interface TeamResponse {
+    team: {
         users: User[],
     },
 }
@@ -28,15 +28,15 @@ const columns: ColumnsType<DataType> = [
     { title: "Email", dataIndex: "email", key: "email", sorter: (a, b) => (a.email < b.email ? -1 : (a.email === b.email ? 0 : 1))},
 ]
 
-function OrgTab() {
+function TeamTab() {
     const [loading, setLoading] = useState(false);
     const [dataSource, setDataSource] = useState<DataType[]>([]);
 
-    const queryOrg = () => {
+    const queryTeam = () => {
         setLoading(true);
-        axios.get("/organization")
-            .then((response: AxiosResponse<OrgResponse>) => {
-                setDataSource(response.data.organization.users.map((user, idx) => ({
+        axios.get("/team")
+            .then((response: AxiosResponse<TeamResponse>) => {
+                setDataSource(response.data.team.users.map((user, idx) => ({
                     key: idx,
                     name: `${user.firstName} ${user.lastName}`,
                     email: user.email,
@@ -48,7 +48,7 @@ function OrgTab() {
                 setLoading(false);
             });
     }
-    useEffect(() => queryOrg(), []);
+    useEffect(() => queryTeam(), []);
 
     return (
         <Table
@@ -61,4 +61,4 @@ function OrgTab() {
     );
 }
 
-export default OrgTab;
+export default TeamTab;
