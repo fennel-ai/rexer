@@ -312,16 +312,6 @@ const tierConfs: Record<number, TierConf> = {
             usePublicSubnets: true,
         }
     },
-    // Self serve demo tier.
-    119: {
-        protectResources: true,
-        planeId: 2,
-        // use public subnets for ingress to allow traffic from outside the assigned vpc
-        ingressConf: {
-            usePublicSubnets: true,
-        },
-        pricingMode: PricingMode.FREE
-    }
 }
 
 // map from plane id to its configuration.
@@ -856,6 +846,8 @@ if (process.argv.length == 4) {
     const action = process.argv[process.argv.length - 2];
     if (action === "preview") {
         preview = true;
+    } else if (action === "destroy") {
+        destroy = true;
     } else {
         console.log(`${action} is not a supported action`)
         process.exit(1)
@@ -863,7 +855,12 @@ if (process.argv.length == 4) {
 }
 
 const id = Number.parseInt(process.argv[process.argv.length - 1])
+// TODO(Amit): This is becoming hard to maintain, think of a stack builder abstraction. 
 if (id in dataPlaneConfs) {
+    if (destroy) {
+        console.log(`Destroy of data-planes is not supported from launchpad, please delete it directly via pulumi CLI`)
+        process.exit(1)
+    }
     planeId = id
     console.log("Updating data plane: ", planeId)
     await setupDataPlane(dataPlaneConfs[planeId], preview, destroy)
@@ -871,8 +868,15 @@ if (id in dataPlaneConfs) {
     tierId = id
     planeId = tierConfs[tierId].planeId
     console.log("Updating data plane: ", planeId)
-    const dataplane = await setupDataPlane(dataPlaneConfs[planeId], preview, destroy)
-    setupTierWrapperFn(tierId, dataplane, dataPlaneConfs[planeId])
+    const dataplane = await setupDataPlane(dataPlaneConfs[planeId], preview, false)
+    if (destroy) {
+        // For destroy we need to do a first pass of propagating protectResource to all the child
+        // resources. So we run destroy as false.
+        await setupTierWrapperFn(tierId, dataplane, dataPlaneConfs[planeId], preview, false, true)
+    }
+    // If destroy was set to true then both destroy and unprotect would be set to false and stack
+    // destruction would continue.
+    await setupTierWrapperFn(tierId, dataplane, dataPlaneConfs[planeId], preview, destroy, destroy)
 } else if (id in mothershipConfs) {
     planeId = id
     console.log("Updating mothership: ", planeId)
@@ -882,7 +886,7 @@ if (id in dataPlaneConfs) {
     process.exit(1)
 }
 
-function setupTierWrapperFn(tierId: number, dataplane: OutputMap, planeConf: DataPlaneConf) {
+async function setupTierWrapperFn(tierId: number, dataplane: OutputMap, planeConf: DataPlaneConf, preview: boolean, destroy: boolean, unprotect: boolean) {
     const roleArn = dataplane[nameof<PlaneOutput>("roleArn")].value as string
     const confluentOutput = dataplane[nameof<PlaneOutput>("confluent")].value as confluentenv.outputType
     const dbOutput = dataplane[nameof<PlaneOutput>("db")].value as aurora.outputType
@@ -902,6 +906,9 @@ function setupTierWrapperFn(tierId: number, dataplane: OutputMap, planeConf: Dat
     if (tierId !== 0) {
         console.log("Updating tier: ", tierId);
         const tierConf = tierConfs[tierId]
+        if (unprotect) {
+            tierConf.protectResources = false
+        }
         // by default use private subnets
         let subnetIds;
         let loadBalancerScheme;
@@ -959,7 +966,7 @@ function setupTierWrapperFn(tierId: number, dataplane: OutputMap, planeConf: Dat
             }
 
         ];
-        setupTier({
+        await setupTier({
             protect: tierConf.protectResources,
 
             tierId: Number(tierId),

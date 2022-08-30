@@ -14,6 +14,7 @@ export const fennelStdTags = {
     "managed-by": "fennel.ai",
 }
 
+
 export enum Scope {
     MOTHERSHIP = 0,
     DATAPLANE = 1,
