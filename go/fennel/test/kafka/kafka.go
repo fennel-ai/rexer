@@ -62,6 +62,12 @@ func SetupKafkaTopics(scope resource.Scope, host, username, password, saslMechan
 			names = append(names, scope.PrefixedName(topic.Topic))
 		}
 	}
+
+	if len(names) == 0 {
+		// no topics to create
+		return nil
+	}
+	
 	// Create admin client
 	c, err := kafka.NewAdminClient(fkafka.ConfigMap(host, username, password, saslMechanism))
 	if err != nil {
