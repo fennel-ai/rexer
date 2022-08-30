@@ -303,9 +303,12 @@ func (conf RemoteConsumerConfig) Materialize() (resource.Resource, error) {
 		return nil, fmt.Errorf("failed to create kafka consumer: %v", err)
 	}
 	if conf.RebalanceCb.IsPresent() {
-		err = consumer.Subscribe(topic, conf.RebalanceCb.MustGet())
-		if err != nil {
+		if err = consumer.Subscribe(topic, conf.RebalanceCb.MustGet()); err != nil {
 			return nil, fmt.Errorf("failed to subscribe to topic [%s]: %v", topic, err)
+		}
+	} else {
+		if err = consumer.Subscribe(topic, nil); err != nil {
+			return nil, fmt.Errorf("failed to subscripe to topic [%s]: %v", topic, err)
 		}
 	}
 	return RemoteConsumer{consumer, conf.Scope, topic, conf.GroupID, nil}, nil
