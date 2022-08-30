@@ -1,3 +1,5 @@
+import {INSTANCE_METADATA_SERVICE_ADDR} from "../lib/util";
+
 export const serviceEnvs = [
     {
         name: "NITROUS_SERVER_ADDRESS",
@@ -285,6 +287,10 @@ export const serviceEnvs = [
                 key: "endpoint"
             }
         }
+    },
+    {
+        name: "INSTANCE_METADATA_SERVICE_ADDR",
+        value: INSTANCE_METADATA_SERVICE_ADDR
     }
 ];
 

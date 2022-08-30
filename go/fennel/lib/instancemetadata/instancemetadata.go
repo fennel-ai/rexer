@@ -6,14 +6,12 @@ import (
 	"net/http"
 )
 
-const MetadataV2Endpoint = "http://169.254.169.254/latest"
-
-func GetAvailabilityZoneId() (string, error) {
-	req, err := http.NewRequest("GET",  fmt.Sprintf("%s/meta-data/placement/availability-zone-id", MetadataV2Endpoint), nil)
+func GetAvailabilityZoneId(addr string) (string, error) {
+	req, err := http.NewRequest("GET",  fmt.Sprintf("%s/meta-data/placement/availability-zone-id", addr), nil)
 	if err != nil {
 		return "", err
 	}
-	token, err := instanceMetadataToken()
+	token, err := instanceMetadataToken(addr)
 	if err != nil {
 		return "", err
 	}
@@ -31,8 +29,8 @@ func GetAvailabilityZoneId() (string, error) {
 	return string(b), nil
 }
 
-func instanceMetadataToken() (string, error) {
-	req, err := http.NewRequest("PUT", fmt.Sprintf("%s/api/token", MetadataV2Endpoint), nil)
+func instanceMetadataToken(addr string) (string, error) {
+	req, err := http.NewRequest("PUT", fmt.Sprintf("%s/api/token", addr), nil)
 	if err != nil {
 		return "", err
 	}

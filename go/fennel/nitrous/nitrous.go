@@ -30,6 +30,9 @@ type NitrousArgs struct {
 	BadgerBlockCacheMB int64          `arg:"--badger_block_cache_mb,env:BADGER_BLOCK_CACHE_MB" json:"badger_block_cache_mb,omitempty"`
 	RistrettoMaxCost   uint64         `arg:"--ristretto_max_cost,env:RISTRETTO_MAX_COST" json:"ristretto_max_cost,omitempty"`
 	RistrettoAvgCost   uint64         `arg:"--ristretto_avg_cost,env:RISTRETTO_AVG_COST" json:"ristretto_avg_cost,omitempty" default:"1000"`
+
+	InstanceMetadataServiceAddr string `arg:"--instance-metadata-service-addr,env:INSTANCE_METADATA_SERVICE_ADDR" json:"instance_metadata_service_Addr,omitempty"`
+
 	// Identity should be unique for each instance of nitrous. The IDENTITY environment
 	// variable should be unique for each replica of a StatefulSet in k8s.
 	Identity string `arg:"--identity,env:IDENTITY" json:"identity" default:"localhost"`
@@ -57,7 +60,6 @@ func CreateFromArgs(args NitrousArgs) (Nitrous, error) {
 	log.Print("Creating logger")
 	var logger *zap.Logger
 	var err error
-	azId := mo.None[string]()
 	if args.Dev {
 		logger, err = zap.NewDevelopment()
 	} else {
@@ -67,14 +69,17 @@ func CreateFromArgs(args NitrousArgs) (Nitrous, error) {
 			zap.AddCaller(),
 			zap.AddStacktrace(zap.ErrorLevel),
 		)
-		// set azId only in prod mode
-		// get currently AZ Id
-		id, err := instancemetadata.GetAvailabilityZoneId()
+	}
+
+	azId := mo.None[string]()
+	if len(args.InstanceMetadataServiceAddr) > 0 {
+		id, err := instancemetadata.GetAvailabilityZoneId(args.InstanceMetadataServiceAddr)
 		if err != nil {
 			return Nitrous{}, fmt.Errorf("failed to get AZ Id: %v", err)
 		}
 		azId = mo.Some(id)
 	}
+
 	if err != nil {
 		return Nitrous{}, fmt.Errorf("failed to construct logger: %w", err)
 	}

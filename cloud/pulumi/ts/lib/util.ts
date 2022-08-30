@@ -14,6 +14,9 @@ export const fennelStdTags = {
     "managed-by": "fennel.ai",
 }
 
+// this is a static ipv4 address accessible from an EC2 instance
+export const INSTANCE_METADATA_SERVICE_ADDR = "http://169.254.169.254/latest";
+
 
 export enum Scope {
     MOTHERSHIP = 0,
