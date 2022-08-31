@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"fennel/lib/sql"
 	"fennel/mothership"
 	actionC "fennel/mothership/controller/action"
@@ -109,7 +110,7 @@ func (s *server) setupRouter() {
 	s.POST("/resend_confirmation_email", s.ResendConfirmationEmail)
 
 	auth := s.Group("/", AuthenticationRequired(s.db))
-	auth.GET("/", s.Dashboard)
+	auth.GET("/", s.Home)
 	auth.GET("/dashboard", s.Dashboard)
 	auth.GET("/data", s.Data)
 	auth.GET("/profiles", s.Profiles)
@@ -144,6 +145,7 @@ const (
 	DashboardPage      = "dashboard"
 	DataPage           = "data"
 	SettingsPage       = "settings"
+	OnboardPage        = "onboard"
 )
 
 func title(name string) string {
@@ -332,12 +334,32 @@ func (s *server) ResendConfirmationEmail(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{})
 }
 
-func userMap(user userL.User) gin.H {
+func userMap(user userL.User) string {
 	// TODO(xiao) maybe add json tags on the user model
-	return gin.H{
-		"email":     user.Email,
-		"firstName": user.FirstName,
-		"lastName":  user.LastName,
+	bytes, _ := json.Marshal(gin.H{
+		"email":         user.Email,
+		"firstName":     user.FirstName,
+		"lastName":      user.LastName,
+		"onboardStatus": user.OnboardStatus,
+	})
+	return string(bytes)
+}
+
+func (s *server) Home(c *gin.Context) {
+	user, _ := CurrentUser(c)
+	if user.IsOnboarding() {
+		c.HTML(http.StatusOK, "bridge/index.tmpl", gin.H{
+			"title": title("Onboard"),
+			"page":  OnboardPage,
+			"user":  userMap(user),
+		})
+	} else {
+		// TODO(xiao) tier management for home page?
+		c.HTML(http.StatusOK, "bridge/index.tmpl", gin.H{
+			"title": title("Dashboard"),
+			"page":  DashboardPage,
+			"user":  userMap(user),
+		})
 	}
 }
 
@@ -475,7 +497,11 @@ func (s *server) Team(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{
 		"team": gin.H{
 			"users": lo.Map(users, func(user userL.User, _ int) gin.H {
-				return userMap(user)
+				return gin.H{
+					"email":     user.Email,
+					"firstName": user.FirstName,
+					"lastName":  user.LastName,
+				}
 			}),
 		},
 	})

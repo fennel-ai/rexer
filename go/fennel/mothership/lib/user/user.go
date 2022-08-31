@@ -41,6 +41,10 @@ const (
 	OnboardStatusDone
 )
 
+func (u *User) IsOnboarding() bool {
+	return u.OnboardStatus != OnboardStatusDone
+}
+
 func (u *User) IsConfirmed() bool {
 	return u.ConfirmedAt.Valid
 }
