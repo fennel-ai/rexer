@@ -66,7 +66,7 @@ func NewHangar(planeID ftypes.RealmID, dirname string, blockCacheBytes int64, en
 	opts = opts.WithValueThreshold(1 << 10 /* 1 KB */)
 	opts = opts.WithCompression(options.ZSTD)
 	opts = opts.WithBlockSize(4 * 1024)
-	opts = opts.WithNumCompactors(2)
+	opts = opts.WithNumCompactors(0)
 	opts = opts.WithCompactL0OnClose(true)
 	opts = opts.WithIndexCacheSize(4 << 30 /* 4 GB */)
 	opts = opts.WithMemTableSize(256 << 20 /* 256 MB */)

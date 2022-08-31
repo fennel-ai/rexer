@@ -133,9 +133,9 @@ func InitDB(n nitrous.Nitrous) (*NitrousDB, error) {
 }
 
 func (ndb *NitrousDB) Start() {
-	for _, tailer := range ndb.tailers {
-		go tailer.Tail()
-	}
+	// for _, tailer := range ndb.tailers {
+	// 	go tailer.Tail()
+	// }
 }
 
 func (ndb *NitrousDB) Stop() {
