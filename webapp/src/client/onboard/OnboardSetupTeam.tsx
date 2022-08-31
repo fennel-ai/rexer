@@ -12,13 +12,23 @@ interface TeamMember {
 interface Team {
     users: TeamMember[],
 }
+
 interface TeamMatchResponse {
     matched: boolean,
     team?: Team,
     isPersonalDomain: boolean,
 }
 
-function OnboardSetupTeam() {
+interface User {
+    email: string,
+    firstName: string,
+}
+
+interface Props {
+    user: User,
+}
+
+function OnboardSetupTeam({user}: Props) {
     const [loading, setLoading] = useState(false);
     const [matched, setMatched] = useState(false);
     const [isPersonalDomain, setIsPersonalDomain] = useState(false);
@@ -51,7 +61,7 @@ function OnboardSetupTeam() {
     if (matched) {
         return <OnboardJoinTeam />;
     }
-    return <OnboardCreateTeam />;
+    return <OnboardCreateTeam user={user} isPersonalDomain={isPersonalDomain} />;
 }
 
 export default OnboardSetupTeam;
