@@ -3,7 +3,7 @@ ARG platform
 
 FROM --platform=$platform golang:1.19-bullseye AS builder
 
-RUN apt -y update && apt -y install libssl-dev autoconf
+RUN apt -y update && apt -y install libssl-dev autoconf libzstd-dev
 
 # Install Kafka
 WORKDIR /kafka

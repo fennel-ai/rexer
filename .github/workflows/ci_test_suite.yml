@@ -129,7 +129,9 @@ jobs:
         run: |
           sudo apt-get --assume-yes install build-essential
           sudo apt-get --assume-yes install pkg-config
-          sudo apt-get --assume-yes install libssl-dev librdkafka-dev
+          sudo apt-get --assume-yes install libssl-dev libzstd-dev
+          git clone https://github.com/edenhill/librdkafka.git && cd librdkafka && sudo ./configure && sudo make && sudo make install
+
       # Install go (we use 1.18 version, so we will stick to it)
       - uses: actions/setup-go@v2
         with:
