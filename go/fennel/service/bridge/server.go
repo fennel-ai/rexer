@@ -7,6 +7,7 @@ import (
 	actionC "fennel/mothership/controller/action"
 	featureC "fennel/mothership/controller/feature"
 	metricC "fennel/mothership/controller/metric"
+	onboardC "fennel/mothership/controller/onboard"
 	profileC "fennel/mothership/controller/profile"
 	userC "fennel/mothership/controller/user"
 	"fennel/mothership/lib"
@@ -479,20 +480,31 @@ func (s *server) User(c *gin.Context) {
 
 func (s *server) Team(c *gin.Context) {
 	var customer customer.Customer
-	user, ok := CurrentUser(c)
-	ok = ok && (s.db.Take(&customer, user.CustomerID).RowsAffected > 0)
+	user, _ := CurrentUser(c)
+	result := s.db.Take(&customer, user.CustomerID)
 
-	var users []userL.User
-	ok = ok && (s.db.Where("customer_id = ?", customer.ID).Find(&users).RowsAffected > 0)
-
-	if !ok {
+	if result.RowsAffected == 0 {
 		c.JSON(http.StatusUnprocessableEntity, gin.H{
 			"error": "No team found",
 		})
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
+	c.JSON(http.StatusOK, teamMembers(customer))
+}
+
+func teamMembers(c customer.Customer) gin.H {
+	var users []userL.User
+
+	if s.db.Where("customer_id = ?", customer.ID).Find(&users).Error != nil {
+		return gin.H{
+			"team": gin.H{
+				"users": []gin.H{},
+			},
+		}
+	}
+
+	return gin.H{
 		"team": gin.H{
 			"users": lo.Map(users, func(user userL.User, _ int) gin.H {
 				return gin.H{
@@ -502,7 +514,7 @@ func (s *server) Team(c *gin.Context) {
 				}
 			}),
 		},
-	})
+	}
 }
 
 func (s *server) UpdateUserNames(c *gin.Context) {
@@ -549,17 +561,19 @@ func (s *server) UpdateUserPassword(c *gin.Context) {
 
 func (s *server) OnboardTeamMatch(c *gin.Context) {
 	user, _ := CurrentUser(c)
-	if team, err := onboardC.TeamMatch(c.Request.Context(), s.db, user); err != nil {
-		respondError(c, err, "team match")
-		return
+	matched, team, isPersonalDomain := onboardC.TeamMatch(c.Request.Context(), s.db, user)
+	if matched {
+		c.JSON(http.StatusOK, gin.H{
+			"matched":          matched,
+			"team":             teamMembers(team),
+			"isPersonalDomain": isPersonalDomain,
+		})
+	} else {
+		c.JSON(http.StatusOK, gin.H{
+			"matched":          matched,
+			"isPersonalDomain": isPersonalDomain,
+		})
 	}
-	matched := (team != nil)
-	c.JSON(http.StatusOK, gin.H{
-		"matched": matched,
-		"team": {
-			"users":
-		},
-	})
 }
 
 type queryRangeRequest struct {
