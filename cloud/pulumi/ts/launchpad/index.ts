@@ -790,6 +790,73 @@ const dataPlaneConfs: Record<number, DataPlaneConf> = {
             useAMP: true
         },
     },
+    10: {
+        protectResources: true,
+
+        accountConf: {
+            newAccount: {
+                name: "self-serve",
+                email: "admin+self-serve@fennel.ai"
+            }
+        },
+
+        planeId: 10,
+        region: "us-west-2",
+        vpcConf: {
+            cidr: "10.111.0.0/16"
+        },
+        dbConf: {
+            minCapacity: 1,
+            maxCapacity: 4,
+            password: "foundationdb",
+            skipFinalSnapshot: true,
+        },
+        confluentConf: {
+            username: confluentUsername,
+            password: confluentPassword
+        },
+        controlPlaneConf: controlPlane,
+        redisConf: {
+            numShards: 4,
+            nodeType: "db.t4g.medium",
+            numReplicasPerShard: 0,
+        },
+        prometheusConf: {
+            useAMP: true
+        },
+        // increase the desired capacity and scale up to occupy more pods
+        //
+        // https://github.com/awslabs/amazon-eks-ami/blob/master/files/eni-max-pods.txt
+        eksConf: {
+            nodeGroups: [
+                {
+                    name: "p-3-common-ng-arm64",
+                    instanceTypes: ["c7g.2xlarge"],
+                    minSize: 1,
+                    // since we create demo tiers on top of this plane, allow scaling this node group to a larger
+                    // number to accommodate more servers
+                    maxSize: 10,
+                    amiType: DEFAULT_ARM_AMI_TYPE,
+                    capacityType: ON_DEMAND_INSTANCE_TYPE,
+                    expansionPriority: 1,
+                },
+                {
+                    name: "p-3-common-ng-x86",
+                    instanceTypes: ["c6i.2xlarge"],
+                    // since we create demo tiers on top of this plane, allow scaling this node group to a larger
+                    // number to accommodate more servers
+                    //
+                    // milvus requires minimum 3 nodes
+                    minSize: 1,
+                    maxSize: 10,
+                    amiType: DEFAULT_X86_AMI_TYPE,
+                    capacityType: ON_DEMAND_INSTANCE_TYPE,
+                    expansionPriority: 1,
+                },
+            ],
+        },
+        modelMonitoringConf: {},
+    },
 }
 
 const mothershipConfs: Record<number, MothershipConf> = {
@@ -872,7 +939,7 @@ const id = Number.parseInt(process.argv[process.argv.length - 1])
 // TODO(Amit): This is becoming hard to maintain, think of a stack builder abstraction. 
 if (id in dataPlaneConfs) {
     if (destroy) {
-        console.log(`Destroy of data-planes is not supported from launchpad, please delete it directly via pulumi CLI`)
+        console.log(`Destruction of data-planes is not supported from launchpad, please delete it directly via pulumi CLI`)
         process.exit(1)
     }
     planeId = id
@@ -892,6 +959,10 @@ if (id in dataPlaneConfs) {
     // destruction would continue.
     await setupTierWrapperFn(tierId, dataplane, dataPlaneConfs[planeId], preview, destroy, destroy)
 } else if (id in mothershipConfs) {
+    if (destroy) {
+        console.log(`Destruction of mothership is not supported from launchpad, please delete it directly via pulumi CLI`)
+        process.exit(1)
+    }
     planeId = id
     console.log("Updating mothership: ", planeId)
     await setupMothership(mothershipConfs[planeId], preview, destroy)
