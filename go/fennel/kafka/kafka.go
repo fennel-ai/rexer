@@ -78,7 +78,7 @@ var ALL_CONFLUENT_TOPICS = []TopicConf{
 			// NOTE: This will require consumers of this topic to have the same compression type set to decompress the
 			// batch of records consumed by it
 			"compression.type=zstd",
-			"compression.level=4",
+			"compression.level=1",
 		},
 	},
 	{Scope: resource.TierScope{}, Topic: profile.PROFILELOG_KAFKA_TOPIC},
