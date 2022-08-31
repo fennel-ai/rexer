@@ -46,7 +46,6 @@ type Hangar interface {
 	Close() error
 	Teardown() error
 	Backup(sink io.Writer, since uint64) (uint64, error)
-	Restore(source io.Reader) error
 }
 
 type Reader interface {

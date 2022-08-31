@@ -256,6 +256,11 @@ func (ndb *NitrousDB) SetBinlogPollTimeout(d time.Duration) {
 	}
 }
 
+func (ndb *NitrousDB) Close() {
+	ndb.Stop()
+	// TODO(mohit): Close underlying DB's as well
+}
+
 func (ndb *NitrousDB) GetBinlogPollTimeout() time.Duration {
 	if len(ndb.binlogTailers) == 0 {
 		return 0

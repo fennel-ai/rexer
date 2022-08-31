@@ -353,6 +353,7 @@ const setupResources = async () => {
             planeId: input.planeId,
             region: input.region,
             roleArn: roleArn,
+            nodeInstanceRole: eksOutput.instanceRole,
             kubeconfig: eksOutput.kubeconfig,
             otlpEndpoint: telemetryOutput.otelCollectorEndpoint,
 

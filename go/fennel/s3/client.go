@@ -88,6 +88,25 @@ func (c Client) Upload(file io.Reader, path, bucketName string) error {
 	return err
 }
 
+func (c Client) Exists(path string, bucketName string) (bool, error) {
+	_, err := c.client.HeadObject(&s3.HeadObjectInput{
+		Bucket: aws.String(bucketName),
+		Key:    aws.String(path),
+	})
+	if err != nil {
+		if aerr, ok := err.(awserr.Error); ok {
+			switch aerr.Code() {
+			case "NotFound": // s3.ErrCodeNoSuchKey does not work, aws is missing this error code so we hardwire a string
+				return false, nil
+			default:
+				return false, err
+			}
+		}
+		return false, err
+	}
+	return true, nil
+}
+
 func (c Client) Download(path, bucketName string) ([]byte, error) {
 	input := s3.GetObjectInput{
 		Bucket: aws.String(bucketName),

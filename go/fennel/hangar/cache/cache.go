@@ -55,10 +55,6 @@ type rcache struct {
 
 var _ hangar.Hangar = &rcache{}
 
-func (c *rcache) Restore(source io.Reader) error {
-	panic("implement me")
-}
-
 func (c *rcache) Teardown() error {
 	return c.Close()
 }

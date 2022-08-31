@@ -5,9 +5,9 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"log"
 	"math/rand"
 	"os"
+	"sync"
 	"time"
 
 	"fennel/hangar"
@@ -15,7 +15,6 @@ import (
 	"fennel/lib/ftypes"
 	"fennel/lib/timer"
 	"fennel/lib/utils/parallel"
-
 	"github.com/dgraph-io/badger/v3"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
@@ -35,10 +34,8 @@ type badgerDB struct {
 	db           *badger.DB
 	readWorkers  *parallel.WorkerPool[hangar.KeyGroup, hangar.ValGroup]
 	writeWorkers *parallel.WorkerPool[hangar.KeyGroup, hangar.ValGroup]
-}
-
-func (b *badgerDB) Restore(source io.Reader) error {
-	panic("implement me")
+	closeWg    sync.WaitGroup
+	closeCh    chan int
 }
 
 func (b *badgerDB) Teardown() error {
@@ -48,14 +45,16 @@ func (b *badgerDB) Teardown() error {
 	return os.Remove(b.opts.Dir)
 }
 
-func (b *badgerDB) Backup(sink io.Writer, since uint64) (uint64, error) {
-	return b.db.Backup(sink, since)
+func (b *badgerDB) Backup(_ io.Writer, _ uint64) (uint64, error) {
+	panic("not implemented")
 }
 
 func (b *badgerDB) Close() error {
-	// Close the worker pools.
+	// Close the worker pool and all other goroutines
+	close(b.closeCh)
 	b.readWorkers.Close()
 	b.writeWorkers.Close()
+	b.closeWg.Wait()
 	return b.db.Close()
 }
 
@@ -64,6 +63,13 @@ func NewHangar(planeID ftypes.RealmID, opts badger.Options, enc hangar.Encoder) 
 	if err != nil {
 		return nil, err
 	}
+
+	if err = db.VerifyChecksum(); err != nil {
+		_ = db.Close()
+		return nil, fmt.Errorf("failed to verify checksum of the badgerdb instance: %w", err)
+	}
+	zap.L().Info("Successfully opened badgerdb", zap.Uint64("max_data_version", db.MaxVersion()))
+
 	bs := badgerDB{
 		planeID:      planeID,
 		opts:         opts,
@@ -71,34 +77,44 @@ func NewHangar(planeID ftypes.RealmID, opts badger.Options, enc hangar.Encoder) 
 		readWorkers:  parallel.NewWorkerPool[hangar.KeyGroup, hangar.ValGroup]("hangar_db_read", READ_PARALLELISM),
 		writeWorkers: parallel.NewWorkerPool[hangar.KeyGroup, hangar.ValGroup]("hangar_db_write", WRITE_PARALLELISM),
 		enc:          enc,
+		closeCh:    make(chan int),
 	}
 	// Start periodic GC of value log.
+	bs.closeWg.Add(1)
 	go bs.runPeriodicGC()
 
 	return &bs, nil
 }
 
 func (b *badgerDB) runPeriodicGC() {
+	defer b.closeWg.Done()
 	interval := time.Hour
-	// Important: Set inital interval to be a random number between 0 and 1 hour.
+	// Important: Set initial interval to be a random number between 0 and 1 hour.
 	// This is to ensure that all nitrous instances are not doing GC at the same time.
 	rand.Seed(time.Now().UnixNano())
 	timer := time.NewTimer(time.Second * time.Duration(interval.Seconds()*rand.Float64()))
 	defer timer.Stop()
 	for {
-		<-timer.C
-		discardRatio := float64(0.5)
-		log.Printf("Running badger value log GC with discard ratio %f", discardRatio)
-		err := b.db.RunValueLogGC(discardRatio)
-		if errors.Is(err, badger.ErrRejected) && b.db.IsClosed() {
-			log.Printf("DB is closed, stopping value log GC")
-			return
-		} else if errors.Is(err, badger.ErrNoRewrite) {
-			log.Printf("Value log GC resulted in no rewrite")
-		} else if err != nil {
-			log.Printf("Value log GC failed: %v", err)
+		select {
+		case _, ok := <-b.closeCh:
+			if !ok {
+				zap.L().Info("PeriodicGC goroutine got closing signal, returning...")
+				return
+			}
+		case <-timer.C:
+			discardRatio := float64(0.5)
+			zap.L().Info("Running badger value log GC with discard ratio", zap.Float64("ratio", discardRatio))
+			err := b.db.RunValueLogGC(discardRatio)
+			if errors.Is(err, badger.ErrRejected) && b.db.IsClosed() {
+				zap.L().Info("DB is closed, stopping value log GC")
+				return
+			} else if errors.Is(err, badger.ErrNoRewrite) {
+				zap.L().Info("Value log GC resulted in no rewrite")
+			} else if err != nil {
+				zap.L().Info("Value log GC failed: %v", zap.Error(err))
+			}
+			timer.Reset(interval)
 		}
-		timer.Reset(interval)
 	}
 }
 

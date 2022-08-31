@@ -71,10 +71,6 @@ var (
 	)
 )
 
-func (l *layered) Restore(source io.Reader) error {
-	panic("implement me")
-}
-
 func (l *layered) stopFill() {
 	l.filler.stop()
 }

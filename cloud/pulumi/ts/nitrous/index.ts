@@ -68,6 +68,7 @@ export type inputType = {
     planeId: number,
     region: string,
     roleArn: pulumi.Input<string>,
+    nodeInstanceRole: pulumi.Input<string>,
     kubeconfig: pulumi.Input<any>,
     otlpEndpoint: pulumi.Input<string>,
 
@@ -92,6 +93,7 @@ export type outputType = {
     appLabels: { [key: string]: string },
     svc: pulumi.Output<k8s.core.v1.Service>,
     binlogPartitions: number,
+    svcBackup: pulumi.Output<k8s.core.v1.Service>,
 }
 
 function setupBinLogInMsk(input: inputType, binlogPartitions: number, awsProvider: aws.Provider) {
@@ -165,6 +167,44 @@ function setupBinLogInMsk(input: inputType, binlogPartitions: number, awsProvide
     }, { provider: k8sProvider, deleteBeforeReplace: true })
 }
 
+function setupS3(input: inputType, bucketName: string, awsProvider: aws.Provider) {
+    const policyName = `p-${input.planeId}-nitrous-rolepolicy`
+    const bucket = new aws.s3.Bucket(bucketName, {
+        acl: "private",
+        bucket: bucketName,
+        // delete all the objects so that the bucket can be deleted without error
+        forceDestroy: true,
+    }, { provider: awsProvider, protect: input.protect });    // create inline role policy
+
+    const policy = new aws.iam.Policy(policyName, {
+        namePrefix: policyName,
+        policy: `{
+            "Version": "2012-10-17",
+            "Statement": [
+                {
+                    "Effect":"Allow",
+                    "Action": "s3:ListBucket",
+                    "Resource": "arn:aws:s3:::${bucketName}"
+                },
+                {
+                    "Effect":"Allow",
+                    "Action": [
+                        "s3:PutObject",
+                        "s3:GetObject",
+                        "s3:DeleteObject"
+                    ],
+                    "Resource": "arn:aws:s3:::${bucketName}/*"
+                }
+            ]
+        }`,
+    }, { provider: awsProvider });
+
+    const attachPolicy = new aws.iam.RolePolicyAttachment(`${policyName}-attach`, {
+        policyArn: policy.arn,
+        role: input.nodeInstanceRole,
+    }, { provider: awsProvider});
+}
+
 export const setup = async (input: inputType) => {
     const awsProvider = new aws.Provider("nitrous-aws-provider", {
         region: <aws.Region>input.region,
@@ -180,12 +220,7 @@ export const setup = async (input: inputType) => {
     const mskCreds = setupBinLogInMsk(input, binlogPartitions, awsProvider);
 
     const bucketName = `nitrous-p-${input.planeId}-backup`
-    const bucket = new aws.s3.Bucket(bucketName, {
-        acl: "private",
-        bucket: bucketName,
-        // delete all the objects so that the bucket can be deleted without error
-        forceDestroy: true,
-    }, { provider: awsProvider, protect: input.protect });
+    setupS3(input, bucketName, awsProvider)
 
     // Create a private ECR repository.
     const repo = new aws.ecr.Repository(`p-${input.planeId}-nitrous-repo`, {
@@ -459,10 +494,197 @@ export const setup = async (input: inputType) => {
         }, { provider: k8sProvider, deleteBeforeReplace: true })
     })
 
+    const appBackupLabels = { app: "nitrous-backup" };
+    const appBackupStatefulset = image.imageName.apply(() => {
+        return new k8s.apps.v1.StatefulSet("nitrous-backup-statefulset", {
+            metadata: {
+                name: "nitrous-backup",
+                labels: appBackupLabels,
+            },
+            spec: {
+                serviceName: "nitrous-backup",
+                selector: { matchLabels: appBackupLabels },
+                replicas: 1,
+                template: {
+                    metadata: {
+                        labels: appBackupLabels,
+                        annotations: {
+                            // Skip Linkerd protocol detection for mysql and redis
+                            // instances running outside the cluster.
+                            // See: https://linkerd.io/2.11/features/protocol-detection/.
+                            "config.linkerd.io/skip-outbound-ports": "3306,6379",
+                            "prometheus.io/scrape": "true",
+                            "prometheus.io/port": metricsPort.toString(),
+                        }
+                    },
+                    spec: {
+                        nodeSelector: nodeSelector,
+                        // We want to set the vm.swappniss sysctl to 0, but that
+                        // is blocked on https://github.com/pulumi/pulumi-eks/issues/611
+                        // Once the above issue resolved, we should add the following
+                        // as an option to the managed nodegroup for nitrous:
+                        //     kubeletExtraArgs: "--allowed-unsafe-sysctls=vm.swappiness",
+                        // After that, we can set the vm.swappiness sysctl to 1
+                        // for this pod by uncommenting the following:
+                        // securityContext: {
+                        //     sysctls: [
+                        //         {
+                        //             name: "vm.swappiness",
+                        //             value: "1",
+                        //         }
+                        //     ],
+                        // },
+                        containers: [
+                            {
+                                command: [
+                                    "/root/nitrous",
+                                    "--metrics-port",
+                                    `${metricsPort}`,
+                                    "--health-port",
+                                    `${healthPort}`,
+                                    "--plane-id",
+                                    `${input.planeId}`,
+                                    "--badger_dir",
+                                    "/oxide",
+                                    "--badger_block_cache_mb",
+                                    `${input.blockCacheMB}`,
+                                    "--ristretto_max_cost",
+                                    (input.kvCacheMB * 1024 * 1024).toString(),
+                                    "--otlp-endpoint",
+                                    input.otlpEndpoint,
+                                    "--dev=false",
+                                    "--shard-name",
+                                    "default",
+                                    "--backup-node"
+                                ],
+                                name: "nitrous-backup",
+                                image: image.imageName,
+                                imagePullPolicy: "Always",
+                                ports: [
+                                    {
+                                        containerPort: metricsPort,
+                                        protocol: "TCP",
+                                    },
+                                    {
+                                        containerPort: healthPort,
+                                        protocol: "TCP",
+                                    },
+                                ],
+                                env: [
+                                    {
+                                        name: "MSK_KAFKA_SERVER_ADDRESS",
+                                        valueFrom: {
+                                            secretKeyRef: {
+                                                name: "kafka-conf-msk",
+                                                key: "servers",
+                                            }
+                                        }
+                                    },
+                                    {
+                                        name: "MSK_KAFKA_USERNAME",
+                                        valueFrom: {
+                                            secretKeyRef: {
+                                                name: "kafka-conf-msk",
+                                                key: "username",
+                                            }
+                                        }
+                                    },
+                                    {
+                                        name: "MSK_KAFKA_PASSWORD",
+                                        valueFrom: {
+                                            secretKeyRef: {
+                                                name: "kafka-conf-msk",
+                                                key: "password",
+                                            }
+                                        }
+                                    },
+                                    {
+                                        name: "GOMAXPROCS",
+                                        value: "128",
+                                    },
+                                    {
+                                        name: "GOMEMLIMIT",
+                                        value: memlimit + "iB",
+                                    },
+                                    {
+                                        name: "OTEL_SERVICE_NAME",
+                                        value: "nitrous-backup",
+                                    },
+                                    {
+                                        name: "IDENTITY",
+                                        valueFrom: {
+                                            fieldRef: {
+                                                fieldPath: "metadata.labels['statefulset.kubernetes.io/pod-name']",
+                                            }
+                                        }
+                                    },
+                                    {
+                                        name: "JE_MALLOC_CONF",
+                                        value: "background_thread:true,metadata_thp:auto"
+                                    }
+                                ],
+                                resources: {
+                                    requests: {
+                                        "cpu": input.resourceConf?.cpu.request || DEFAULT_CPU_REQUEST,
+                                        "memory": input.resourceConf?.memory.request || DEFAULT_MEMORY_REQUEST,
+                                    },
+                                    limits: {
+                                        "memory": memlimit,
+                                    }
+                                },
+                                readinessProbe: ReadinessProbe(healthPort),
+                                volumeMounts: [
+                                    {
+                                        name: "badgerdb",
+                                        mountPath: "/oxide",
+                                    }
+                                ],
+                            },
+                        ],
+                    },
+                },
+                volumeClaimTemplates: [
+                    {
+                        metadata: {
+                            name: "badgerdb",
+                        },
+                        spec: {
+                            accessModes: ["ReadWriteOnce"],
+                            // if the storage class is undefined, default storage class is used by the PVC.
+                            storageClassName: input.storageClass,
+                            resources: {
+                                requests: {
+                                    storage: `${input.storageCapacityGB}Gi`,
+                                },
+                            }
+                        }
+                    }
+                ],
+                // default update strategy is "RollingUpdate" with "maxUnavailable: 1". Stateful sets have a
+                // concept of partitions, but I believe are useful for canary rollout
+            },
+        }, { provider: k8sProvider, deleteBeforeReplace: true, dependsOn: [mskCreds]});
+    })
+
+    const appBackupSvc = appBackupStatefulset.apply(() => {
+        return new k8s.core.v1.Service("nitrous-backup-svc", {
+            metadata: {
+                labels: {
+                    app: "nitrous-backup"
+                },
+                name: "nitrous-backup",
+            },
+            spec: {
+                clusterIP: "None",
+            },
+        }, { provider: k8sProvider, deleteBeforeReplace: true })
+    })
+
     const output: outputType = {
         appLabels: appLabels,
         svc: appSvc,
-        binlogPartitions: binlogPartitions
+        binlogPartitions: binlogPartitions,
+        svcBackup: appBackupSvc,
     }
     return output
 }

@@ -490,7 +490,7 @@ const dataPlaneConfs: Record<number, DataPlaneConf> = {
                     name: "p-3-nitrous-ng-arm",
                     instanceTypes: ["c6gd.large"],
                     minSize: 1,
-                    maxSize: 1,
+                    maxSize: 2,
                     amiType: DEFAULT_ARM_AMI_TYPE,
                     capacityType: ON_DEMAND_INSTANCE_TYPE,
                     labels: {
@@ -647,7 +647,7 @@ const dataPlaneConfs: Record<number, DataPlaneConf> = {
                     name: "p-5-nitrous-ng-arm",
                     instanceTypes: ["c6gd.8xlarge"],
                     minSize: 1,
-                    maxSize: 1,
+                    maxSize: 2,
                     amiType: DEFAULT_ARM_AMI_TYPE,
                     capacityType: ON_DEMAND_INSTANCE_TYPE,
                     labels: {
