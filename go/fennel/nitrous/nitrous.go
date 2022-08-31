@@ -3,8 +3,11 @@ package nitrous
 import (
 	"fennel/lib/instancemetadata"
 	"fmt"
-	"github.com/samber/mo"
 	"log"
+
+	"github.com/dgraph-io/badger/v3"
+	"github.com/dgraph-io/badger/v3/options"
+	"github.com/samber/mo"
 
 	"fennel/hangar"
 	"fennel/hangar/db"
@@ -36,7 +39,9 @@ type NitrousArgs struct {
 	// Identity should be unique for each instance of nitrous. The IDENTITY environment
 	// variable should be unique for each replica of a StatefulSet in k8s.
 	Identity string `arg:"--identity,env:IDENTITY" json:"identity" default:"localhost"`
-	Dev      bool   `arg:"--dev" default:"true" json:"dev,omitempty"`
+	// Flag to enable data compression.
+	Compress bool `arg:"--compress,env:COMPRESS" json:"compress" default:"true"`
+	Dev      bool `arg:"--dev" default:"true" json:"dev,omitempty"`
 }
 
 func (args NitrousArgs) Valid() error {
@@ -97,7 +102,7 @@ func CreateFromArgs(args NitrousArgs) (Nitrous, error) {
 			Password:        args.MskKafkaPassword,
 			SaslMechanism:   libkafka.SaslScramSha512Mechanism,
 			ConsumerConfig:  config,
-			AzId: 			 azId,
+			AzId:            azId,
 		}
 		kafkaConsumer, err := kafkaConsumerConfig.Materialize()
 		if err != nil {
@@ -107,7 +112,21 @@ func CreateFromArgs(args NitrousArgs) (Nitrous, error) {
 	}
 
 	// Initialize layered storage.
-	db, err := db.NewHangar(scope.ID(), args.BadgerDir, args.BadgerBlockCacheMB<<20, encoders.Default())
+	badgerOpts := badger.DefaultOptions(args.BadgerDir)
+	badgerOpts = badgerOpts.WithLogger(db.NewLogger(zap.L()))
+	badgerOpts = badgerOpts.WithValueThreshold(1 << 10 /* 1 KB */)
+	badgerOpts = badgerOpts.WithBlockSize(4 << 10 /* 4 KB */)
+	badgerOpts = badgerOpts.WithNumCompactors(2)
+	badgerOpts = badgerOpts.WithCompactL0OnClose(true)
+	badgerOpts = badgerOpts.WithIndexCacheSize(4 << 30 /* 4 GB */)
+	badgerOpts = badgerOpts.WithMemTableSize(256 << 20 /* 256 MB */)
+	badgerOpts = badgerOpts.WithBlockCacheSize(args.BadgerBlockCacheMB << 20)
+	if args.Compress {
+		badgerOpts = badgerOpts.WithCompression(options.ZSTD)
+	} else {
+		badgerOpts = badgerOpts.WithCompression(options.None)
+	}
+	db, err := db.NewHangar(scope.ID(), badgerOpts, encoders.Default())
 	if err != nil {
 		return Nitrous{}, fmt.Errorf("failed to create badger db: %w", err)
 	}

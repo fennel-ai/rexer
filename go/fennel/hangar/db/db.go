@@ -17,7 +17,6 @@ import (
 	"fennel/lib/utils/parallel"
 
 	"github.com/dgraph-io/badger/v3"
-	"github.com/dgraph-io/badger/v3/options"
 	"github.com/dgraph-io/ristretto"
 	"go.uber.org/zap"
 )
@@ -30,7 +29,7 @@ const (
 
 type badgerDB struct {
 	planeID         ftypes.RealmID
-	baseOpts        badger.Options
+	opts            badger.Options
 	enc             hangar.Encoder
 	db              *badger.DB
 	missingKeyCache *ristretto.Cache
@@ -46,7 +45,7 @@ func (b *badgerDB) Teardown() error {
 	if err := b.Close(); err != nil {
 		return err
 	}
-	return os.Remove(b.baseOpts.Dir)
+	return os.Remove(b.opts.Dir)
 }
 
 func (b *badgerDB) Backup(sink io.Writer, since uint64) (uint64, error) {
@@ -60,17 +59,7 @@ func (b *badgerDB) Close() error {
 	return b.db.Close()
 }
 
-func NewHangar(planeID ftypes.RealmID, dirname string, blockCacheBytes int64, enc hangar.Encoder) (*badgerDB, error) {
-	opts := badger.DefaultOptions(dirname)
-	opts = opts.WithLogger(NewLogger(zap.L()))
-	opts = opts.WithValueThreshold(1 << 10 /* 1 KB */)
-	opts = opts.WithCompression(options.ZSTD)
-	opts = opts.WithBlockSize(4 * 1024)
-	opts = opts.WithNumCompactors(2)
-	opts = opts.WithCompactL0OnClose(true)
-	opts = opts.WithIndexCacheSize(4 << 30 /* 4 GB */)
-	opts = opts.WithMemTableSize(256 << 20 /* 256 MB */)
-	opts = opts.WithBlockCacheSize(blockCacheBytes)
+func NewHangar(planeID ftypes.RealmID, opts badger.Options, enc hangar.Encoder) (*badgerDB, error) {
 	db, err := badger.Open(opts)
 	if err != nil {
 		return nil, err
@@ -87,7 +76,7 @@ func NewHangar(planeID ftypes.RealmID, dirname string, blockCacheBytes int64, en
 	}
 	bs := badgerDB{
 		planeID:         planeID,
-		baseOpts:        opts,
+		opts:            opts,
 		db:              db,
 		missingKeyCache: missingKeyCache,
 		readWorkers:     parallel.NewWorkerPool[hangar.KeyGroup, hangar.ValGroup]("hangar_db_read", READ_PARALLELISM),
