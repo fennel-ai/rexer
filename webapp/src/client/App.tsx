@@ -13,7 +13,7 @@ interface User {
 }
 
 interface Props {
-    page: string | null;
+    page: string;
     user: User,
 }
 

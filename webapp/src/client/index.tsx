@@ -6,4 +6,4 @@ const { page, user } = container.dataset;
 const parsedUser = JSON.parse(user || "{}");
 
 const root = createRoot(container);
-root.render(<App page={page || null} user={parsedUser} />);
+root.render(<App page={page || ""} user={parsedUser} />);

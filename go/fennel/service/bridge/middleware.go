@@ -31,6 +31,18 @@ func AuthenticationRequired(db *gorm.DB) gin.HandlerFunc {
 	}
 }
 
+func Onboarded(c *gin.Context) {
+	user, _ := CurrentUser(c)
+	if user.IsOnboarding() {
+		c.HTML(http.StatusOK, "bridge/index.tmpl", gin.H{
+			"title": title("Onboard"),
+			"page":  OnboardPage,
+			"user":  userMap(user),
+		})
+		c.Abort()
+	}
+}
+
 func CurrentUser(c *gin.Context) (lib.User, bool) {
 	userAny, ok := c.Get(CurrentUserKey)
 	if !ok {

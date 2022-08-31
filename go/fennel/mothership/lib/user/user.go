@@ -31,9 +31,7 @@ type User struct {
 }
 
 const (
-	OnboardStatusAccountCreated uint = iota
-	OnboardStatusCreateTeam
-	OnboardStatusJoinTeam
+	OnboardStatusSetupTeam uint = iota
 	OnBoardStatusAboutYourself
 	OnboardStatusTierProvisioned
 	OnboardStatusTierNotAvailable

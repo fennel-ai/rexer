@@ -49,7 +49,7 @@ func TestUser(t *testing.T) {
 	assert.False(t, user.ResetToken.Valid)
 	assert.False(t, user.ResetSentAt.Valid)
 	assert.Zero(t, user.DeletedAt)
-	assert.Equal(t, user.OnboardStatus, OnboardStatusAccountCreated)
+	assert.Equal(t, user.OnboardStatus, OnboardStatusSetupTeam)
 
 	user.RememberToken = sql.NullString{
 		String: "remember",

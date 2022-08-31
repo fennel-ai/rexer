@@ -110,13 +110,16 @@ func (s *server) setupRouter() {
 	s.POST("/resend_confirmation_email", s.ResendConfirmationEmail)
 
 	auth := s.Group("/", AuthenticationRequired(s.db))
-	auth.GET("/", s.Home)
-	auth.GET("/dashboard", s.Dashboard)
-	auth.GET("/data", s.Data)
+	onboarded := auth.Group("/", Onboarded)
+	onboarded.GET("/", s.Home)
+	onboarded.GET("/dashboard", s.Dashboard)
+	onboarded.GET("/data", s.Data)
+	onboarded.GET("/settings", s.Settings)
+
+	// ajax endpoints
 	auth.GET("/profiles", s.Profiles)
 	auth.GET("/actions", s.Actions)
 	auth.GET("/features", s.Features)
-	auth.GET("/settings", s.Settings)
 	auth.POST("/logout", s.Logout)
 	auth.GET("/user", s.User)
 	auth.GET("/team", s.Team)
@@ -125,6 +128,9 @@ func (s *server) setupRouter() {
 
 	metrics := auth.Group("/metrics")
 	metrics.GET("/query_range", s.QueryRangeMetrics)
+
+	onboard := auth.Group("/onboard")
+	onboard.GET("/team_match", s.OnboardTeamMatch)
 
 	// dev only endpoints
 	if s.isDev() {
@@ -347,20 +353,12 @@ func userMap(user userL.User) string {
 
 func (s *server) Home(c *gin.Context) {
 	user, _ := CurrentUser(c)
-	if user.IsOnboarding() {
-		c.HTML(http.StatusOK, "bridge/index.tmpl", gin.H{
-			"title": title("Onboard"),
-			"page":  OnboardPage,
-			"user":  userMap(user),
-		})
-	} else {
-		// TODO(xiao) tier management for home page?
-		c.HTML(http.StatusOK, "bridge/index.tmpl", gin.H{
-			"title": title("Dashboard"),
-			"page":  DashboardPage,
-			"user":  userMap(user),
-		})
-	}
+	// TODO(xiao) tier management for home page?
+	c.HTML(http.StatusOK, "bridge/index.tmpl", gin.H{
+		"title": title("Dashboard"),
+		"page":  DashboardPage,
+		"user":  userMap(user),
+	})
 }
 
 func (s *server) Dashboard(c *gin.Context) {
@@ -547,6 +545,21 @@ func (s *server) UpdateUserPassword(c *gin.Context) {
 		}
 	}
 	c.JSON(http.StatusOK, gin.H{})
+}
+
+func (s *server) OnboardTeamMatch(c *gin.Context) {
+	user, _ := CurrentUser(c)
+	if team, err := onboardC.TeamMatch(c.Request.Context(), s.db, user); err != nil {
+		respondError(c, err, "team match")
+		return
+	}
+	matched := (team != nil)
+	c.JSON(http.StatusOK, gin.H{
+		"matched": matched,
+		"team": {
+			"users":
+		},
+	})
 }
 
 type queryRangeRequest struct {
