@@ -3,7 +3,7 @@ import Navbar from "./Navbar";
 import DataPage from "./DataPage";
 import SettingsPage from "./SettingsPage";
 import DashboardPage from "./DashboardPage";
-import OnboardPage from "./OnboardPage";
+import OnboardPage from "./onboard/OnboardPage";
 
 interface User {
     email: string,

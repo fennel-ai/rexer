@@ -490,30 +490,28 @@ func (s *server) Team(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, teamMembers(customer))
+	c.JSON(http.StatusOK, gin.H{
+		"team": teamMembers(s.db, customer),
+	})
 }
 
-func teamMembers(c customer.Customer) gin.H {
+func teamMembers(db *gorm.DB, customer customer.Customer) gin.H {
 	var users []userL.User
 
-	if s.db.Where("customer_id = ?", customer.ID).Find(&users).Error != nil {
+	if db.Where("customer_id = ?", customer.ID).Find(&users).Error != nil {
 		return gin.H{
-			"team": gin.H{
-				"users": []gin.H{},
-			},
+			"users": []gin.H{},
 		}
 	}
 
 	return gin.H{
-		"team": gin.H{
-			"users": lo.Map(users, func(user userL.User, _ int) gin.H {
-				return gin.H{
-					"email":     user.Email,
-					"firstName": user.FirstName,
-					"lastName":  user.LastName,
-				}
-			}),
-		},
+		"users": lo.Map(users, func(user userL.User, _ int) gin.H {
+			return gin.H{
+				"email":     user.Email,
+				"firstName": user.FirstName,
+				"lastName":  user.LastName,
+			}
+		}),
 	}
 }
 
@@ -565,7 +563,7 @@ func (s *server) OnboardTeamMatch(c *gin.Context) {
 	if matched {
 		c.JSON(http.StatusOK, gin.H{
 			"matched":          matched,
-			"team":             teamMembers(team),
+			"team":             teamMembers(s.db, team),
 			"isPersonalDomain": isPersonalDomain,
 		})
 	} else {

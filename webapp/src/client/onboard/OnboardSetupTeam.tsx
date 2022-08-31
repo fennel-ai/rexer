@@ -1,30 +1,57 @@
-import { Form, Input, Checkbox, Button } from "antd";
-import { ArrowRightOutlined } from '@ant-design/icons';
+import { LoadingOutlined } from '@ant-design/icons';
+import axios, { AxiosResponse } from "axios";
+import { useState, useEffect } from "react";
+
+import OnboardCreateTeam from "./OnboardCreateTeam";
+import OnboardJoinTeam from "./OnboardJoinTeam";
+
+interface TeamMember {
+    lastName: string,
+}
+
+interface Team {
+    users: TeamMember[],
+}
+interface TeamMatchResponse {
+    matched: boolean,
+    team?: Team,
+    isPersonalDomain: boolean,
+}
 
 function OnboardSetupTeam() {
-    return (
-        <div>
-            <div>
-                <img src="images/logo.svg" alt="logo" />
-                Fennel AI
-            </div>
-            <h4>Let’s set up your team</h4>
-            <div>What is the name of your team?</div>
-            <Form name="updatePwdForm">
-                <Form.Item
-                    name="teamName"
-                    rules={[{ required: true, message: "team name can't be empty" }]}
-                >
-                    <Input
-                        autoComplete="off"
-                        value="Xiao's team"
-                    />
-                </Form.Item>
-            </Form>
-            <Checkbox>Users of @company.com can automatically join</Checkbox>
-            <Button>Continue <ArrowRightOutlined /></Button>
-        </div>
-    );
+    const [loading, setLoading] = useState(false);
+    const [matched, setMatched] = useState(false);
+    const [isPersonalDomain, setIsPersonalDomain] = useState(false);
+    const [team, setTeam] = useState<Team>();
+
+    const queryTeamMatch = () => {
+        setLoading(true);
+
+        axios.get("/onboard/team_match")
+            .then((response: AxiosResponse<TeamMatchResponse>) => {
+                const { matched, team, isPersonalDomain } = response.data;
+                if (matched) {
+                    setTeam(team);
+                }
+                setIsPersonalDomain(isPersonalDomain);
+                setMatched(matched);
+                setLoading(false);
+            })
+            .catch(() => {
+                // TODO(xiao) error handling
+            });
+    };
+
+    useEffect(() => queryTeamMatch(), []);
+
+    if (loading) {
+        return <LoadingOutlined spin />
+    }
+
+    if (matched) {
+        return <OnboardJoinTeam />;
+    }
+    return <OnboardCreateTeam />;
 }
 
 export default OnboardSetupTeam;
