@@ -67,6 +67,7 @@ type NitrousConf = {
     enforceReplicaIsolation?: boolean,
     resourceConf?: util.ResourceConf,
     nodeLabels?: Record<string, string>,
+    nodeLabelsForBackup?: Record<string, string>,
     storageClass: string
     storageCapacityGB: number
     blockCacheMB: number,
@@ -362,6 +363,7 @@ const setupResources = async () => {
             enforceReplicaIsolation: input.nitrousConf.enforceReplicaIsolation,
             resourceConf: input.nitrousConf.resourceConf,
             nodeLabels: input.nitrousConf.nodeLabels,
+            nodeLabelsForBackup: input.nitrousConf.nodeLabelsForBackup,
 
             storageCapacityGB: input.nitrousConf.storageCapacityGB,
             storageClass: eksOutput.storageclasses[input.nitrousConf.storageClass],

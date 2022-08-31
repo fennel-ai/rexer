@@ -77,6 +77,7 @@ export type inputType = {
     enforceReplicaIsolation?: boolean,
     resourceConf?: util.ResourceConf
     nodeLabels?: Record<string, string>,
+    nodeLabelsForBackup?: Record<string, string>,
 
     storageClass?: pulumi.Input<string>,
     storageCapacityGB: number
@@ -255,18 +256,22 @@ export const setup = async (input: inputType) => {
 
     // Build and publish the container image.
     let nodeSelector = input.nodeLabels || {};
+    let nodeSelectorForBackup = input.nodeLabelsForBackup || {};
     let dockerfile, platform;
     if (input.useAmd64 || DEFAULT_USE_AMD64) {
         dockerfile = path.join(root, "dockerfiles/nitrous.dockerfile")
         platform = "linux/amd64"
         nodeSelector["kubernetes.io/arch"] = "amd64"
+        nodeSelectorForBackup["kubernetes.io/arch"] = "amd64"
     } else {
         dockerfile = path.join(root, "dockerfiles/nitrous_arm64.dockerfile")
         platform = "linux/arm64"
         nodeSelector["kubernetes.io/arch"] = "arm64"
+        nodeSelectorForBackup["kubernetes.io/arch"] = "arm64"
     }
     // we should schedule all components of Nitrous on ON_DEMAND instances
     nodeSelector["eks.amazonaws.com/capacityType"] = "ON_DEMAND";
+    nodeSelectorForBackup["eks.amazonaws.com/capacityType"] = "ON_DEMAND";
 
     const image = new docker.Image("nitrous-img", {
         build: {
@@ -345,6 +350,8 @@ export const setup = async (input: inputType) => {
                             {
                                 command: [
                                     "/root/nitrous",
+                                    "--region",
+                                    `${input.region}`,
                                     "--listen-port",
                                     `${servicePort}`,
                                     "--metrics-port",
@@ -361,7 +368,11 @@ export const setup = async (input: inputType) => {
                                     (input.kvCacheMB * 1024 * 1024).toString(),
                                     "--otlp-endpoint",
                                     input.otlpEndpoint,
-                                    "--dev=false"
+                                    "--dev=false",
+                                    "--backup-bucket",
+                                    bucketName,
+                                    "--shard-name",
+                                    "default",
                                 ],
                                 name: name,
                                 image: image.imageName,
@@ -518,7 +529,7 @@ export const setup = async (input: inputType) => {
                         }
                     },
                     spec: {
-                        nodeSelector: nodeSelector,
+                        nodeSelector: nodeSelectorForBackup,
                         // We want to set the vm.swappniss sysctl to 0, but that
                         // is blocked on https://github.com/pulumi/pulumi-eks/issues/611
                         // Once the above issue resolved, we should add the following
@@ -538,6 +549,8 @@ export const setup = async (input: inputType) => {
                             {
                                 command: [
                                     "/root/nitrous",
+                                    "--region",
+                                    `${input.region}`,
                                     "--metrics-port",
                                     `${metricsPort}`,
                                     "--health-port",
@@ -553,6 +566,8 @@ export const setup = async (input: inputType) => {
                                     "--otlp-endpoint",
                                     input.otlpEndpoint,
                                     "--dev=false",
+                                    "--backup-bucket",
+                                    bucketName,
                                     "--shard-name",
                                     "default",
                                     "--backup-node"

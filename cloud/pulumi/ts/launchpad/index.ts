@@ -489,12 +489,25 @@ const dataPlaneConfs: Record<number, DataPlaneConf> = {
                 {
                     name: "p-3-nitrous-ng-arm",
                     instanceTypes: ["c6gd.large"],
-                    minSize: 2,
-                    maxSize: 2,
+                    minSize: 1,
+                    maxSize: 1,
                     amiType: DEFAULT_ARM_AMI_TYPE,
                     capacityType: ON_DEMAND_INSTANCE_TYPE,
                     labels: {
                         "node-group": "p-3-nitrous-ng",
+                        "aws.amazon.com/eks-local-ssd": "true",
+                    },
+                    expansionPriority: 1,
+                },
+                {
+                    name: "p-3-nitrous-backup-ng-arm",
+                    instanceTypes: ["c6gd.large"],
+                    minSize: 1,
+                    maxSize: 1,
+                    amiType: DEFAULT_ARM_AMI_TYPE,
+                    capacityType: ON_DEMAND_INSTANCE_TYPE,
+                    labels: {
+                        "node-group": "p-3-nitrous-backup-ng",
                         "aws.amazon.com/eks-local-ssd": "true",
                     },
                     expansionPriority: 1,
@@ -520,6 +533,9 @@ const dataPlaneConfs: Record<number, DataPlaneConf> = {
             },
             nodeLabels: {
                 "node-group": "p-3-nitrous-ng",
+            },
+            nodeLabelsForBackup: {
+                "node-group": "p-3-nitrous-backup-ng",
             }
         },
 
