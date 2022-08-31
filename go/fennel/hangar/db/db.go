@@ -23,8 +23,9 @@ import (
 )
 
 const (
-	READ_PARALLELISM = 512
-	DB_BATCH_SIZE    = 32
+	READ_PARALLELISM  = 512
+	WRITE_PARALLELISM = 64
+	DB_BATCH_SIZE     = 32
 )
 
 type badgerDB struct {
@@ -90,7 +91,7 @@ func NewHangar(planeID ftypes.RealmID, dirname string, blockCacheBytes int64, en
 		db:              db,
 		missingKeyCache: missingKeyCache,
 		readWorkers:     parallel.NewWorkerPool[hangar.KeyGroup, hangar.ValGroup]("hangar_db_read", READ_PARALLELISM),
-		writeWorkers:    parallel.NewWorkerPool[hangar.KeyGroup, hangar.ValGroup]("hangar_db_write", 16),
+		writeWorkers:    parallel.NewWorkerPool[hangar.KeyGroup, hangar.ValGroup]("hangar_db_write", WRITE_PARALLELISM),
 		enc:             enc,
 	}
 	// Start periodic GC of value log.
@@ -134,20 +135,19 @@ func (b *badgerDB) Encoder() hangar.Encoder {
 // GetMany returns the values for the given keyGroups.
 // It parallelizes the requests to the underlying DB upto a degree of PARALLELISM
 func (b *badgerDB) GetMany(ctx context.Context, kgs []hangar.KeyGroup) ([]hangar.ValGroup, error) {
-	_, t := timer.Start(ctx, b.planeID, "hangar.db.getmany")
-	defer t.Stop()
-	// We try to spread across available workers while giving each worker
-	// a minimum of DB_BATCH_SIZE keyGroups to work on.
-	batch := len(kgs) / READ_PARALLELISM
-	if batch < DB_BATCH_SIZE {
-		batch = DB_BATCH_SIZE
-	}
-	pool := b.readWorkers
+	var mode string
+	var pool *parallel.WorkerPool[hangar.KeyGroup, hangar.ValGroup]
 	if hangar.IsWrite(ctx) {
 		pool = b.writeWorkers
+		mode = "write"
+	} else {
+		mode = "read"
+		pool = b.readWorkers
 	}
+	_, t := timer.Start(ctx, b.planeID, "hangar.db.getmany."+mode)
+	defer t.Stop()
 	return pool.Process(ctx, kgs, func(keyGroups []hangar.KeyGroup, valGroups []hangar.ValGroup) error {
-		_, t := timer.Start(ctx, b.planeID, "hangar.db.getmany.batch")
+		_, t := timer.Start(ctx, b.planeID, "hangar.db.getmany.batch."+mode)
 		defer t.Stop()
 		eks, err := hangar.EncodeKeyManyKG(keyGroups, b.enc)
 		if err != nil {
@@ -182,7 +182,7 @@ func (b *badgerDB) GetMany(ctx context.Context, kgs []hangar.KeyGroup) ([]hangar
 			return nil
 		})
 		return err
-	}, batch)
+	}, DB_BATCH_SIZE)
 }
 
 // SetMany sets many keyGroups in a single transaction. Since these are all set in a single
