@@ -855,7 +855,6 @@ const dataPlaneConfs: Record<number, DataPlaneConf> = {
                 },
             ],
         },
-        modelMonitoringConf: {},
     },
 }
 
@@ -864,6 +863,53 @@ const mothershipConfs: Record<number, MothershipConf> = {
     12: {
         protectResources: true,
         planeId: 12,
+        vpcConf: controlPlane,
+        dbConf: {
+            minCapacity: 4,
+            maxCapacity: 8,
+            password: "foundationdb",
+            skipFinalSnapshot: false,
+        },
+        ingressConf: {
+            useDedicatedMachines: true,
+            replicas: 3,
+            usePublicSubnets: true,
+        },
+        eksConf: {
+            nodeGroups: [{
+                name: "m-12-common-ng-x86",
+                instanceTypes: ["t3.medium"],
+                minSize: 1,
+                maxSize: 3,
+                amiType: DEFAULT_X86_AMI_TYPE,
+                capacityType: ON_DEMAND_INSTANCE_TYPE,
+                expansionPriority: 1,
+            },
+            ],
+        },
+        bridgeServerConf: {
+            podConf: {
+                minReplicas: 1,
+                maxReplicas: 3,
+                resourceConf: {
+                    cpu: {
+                        request: "1250m",
+                        limit: "1500m"
+                    },
+                    memory: {
+                        request: "2G",
+                        limit: "3G",
+                    }
+                },
+                useAmd64: true,
+            }
+        },
+
+    },
+    // Dogfood mothership.
+    13: {
+        protectResources: true,
+        planeId: 13,
         vpcConf: controlPlane,
         dbConf: {
             minCapacity: 4,
