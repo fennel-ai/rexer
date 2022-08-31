@@ -635,7 +635,7 @@ export const setup = async (input: inputType) => {
                                 readinessProbe: ReadinessProbe(healthPort),
                                 volumeMounts: [
                                     {
-                                        name: "badgerdb",
+                                        name: "badgerdb-backup",
                                         mountPath: "/oxide",
                                     }
                                 ],
@@ -646,7 +646,7 @@ export const setup = async (input: inputType) => {
                 volumeClaimTemplates: [
                     {
                         metadata: {
-                            name: "badgerdb",
+                            name: "badgerdb-backup",
                         },
                         spec: {
                             accessModes: ["ReadWriteOnce"],
