@@ -14,6 +14,7 @@ import (
 	"fennel/hangar/encoders"
 	"fennel/lib/ftypes"
 
+	"github.com/dgraph-io/badger/v3"
 	"github.com/samber/mo"
 	"github.com/stretchr/testify/assert"
 )
@@ -22,8 +23,7 @@ func TestLayered_Store(t *testing.T) {
 	rand.Seed(time.Now().UnixNano())
 	maker := func(t *testing.T) hangar.Hangar {
 		planeID := ftypes.RealmID(rand.Uint32())
-		dirname := t.TempDir()
-		dbstore, err := db.NewHangar(planeID, dirname, 64*1<<20, encoders.Default())
+		dbstore, err := db.NewHangar(planeID, badger.DefaultOptions(t.TempDir()), encoders.Default())
 		assert.NoError(t, err)
 
 		// 80 MB cache with avg size of 100 bytes
@@ -39,9 +39,7 @@ func BenchmarkLayered_GetMany(b *testing.B) {
 	rand.Seed(time.Now().UnixNano())
 	maker := func(t *testing.B) hangar.Hangar {
 		planeID := ftypes.RealmID(rand.Uint32())
-		dirname := b.TempDir()
-		// 160MB block cache
-		dbstore, err := db.NewHangar(planeID, dirname, 1<<20, encoders.Default())
+		dbstore, err := db.NewHangar(planeID, badger.DefaultOptions(t.TempDir()), encoders.Default())
 		assert.NoError(t, err)
 		// 80 MB cache with avg size of 100 bytes
 		cache, err := cache.NewHangar(planeID, 1<<23, 1000, encoders.Default())
