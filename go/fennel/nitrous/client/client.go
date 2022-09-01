@@ -3,7 +3,6 @@ package client
 import (
 	"context"
 	"fmt"
-	"io"
 	"time"
 
 	"fennel/kafka"
@@ -158,21 +157,33 @@ func (nc NitrousClient) GetMulti(ctx context.Context, aggId ftypes.AggId, groupk
 		// TODO: Make codec an argument to GetMulti instead of hard-coding.
 		Codec: rpc.AggCodec_V2,
 	}
+	// Create a buffered channel of size 1 to not block the sender in case we
+	// bail-out early because of a context cancellation.
 	ch := make(chan mo.Result[*rpc.AggregateValuesResponse], 1)
-	nc.reqCh <- getRequest{
+	select {
+	// Return early if context is cancelled even before we could send the request.
+	case <-ctx.Done():
+		return ctx.Err()
+	case nc.reqCh <- getRequest{
+		ctx:    ctx,
 		msg:    req,
 		respCh: ch,
-	}
-	res := <-ch
-	if err := res.Error(); err != nil || len(res.MustGet().Results) != len(groupkeys) {
-		zap.L().Warn("Error: ", zap.Error(err))
-		return fmt.Errorf("failed to get values: %w", err)
-	}
-	var err error
-	for i, pv := range res.MustGet().Results {
-		output[i], err = value.FromProtoValue(pv)
-		if err != nil {
-			return fmt.Errorf("could not convert proto value to value: %w", err)
+	}:
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case res := <-ch:
+			if err := res.Error(); err != nil || len(res.MustGet().Results) != len(groupkeys) {
+				zap.L().Warn("Error: ", zap.Error(err))
+				return fmt.Errorf("failed to get values")
+			}
+			var err error
+			for i, pv := range res.MustGet().Results {
+				output[i], err = value.FromProtoValue(pv)
+				if err != nil {
+					return fmt.Errorf("could not convert proto value to value: %w", err)
+				}
+			}
 		}
 	}
 	return nil
@@ -196,6 +207,7 @@ type NitrousClientConfig struct {
 var _ resource.Config = NitrousClientConfig{}
 
 type getRequest struct {
+	ctx    context.Context
 	msg    *rpc.AggregateValuesRequest
 	respCh chan<- mo.Result[*rpc.AggregateValuesResponse]
 }
@@ -219,36 +231,49 @@ func (cfg NitrousClientConfig) Materialize() (resource.Resource, error) {
 			return nil, fmt.Errorf("could not create streaming grpc client: %w", err)
 		}
 		go func(getter rpc.Nitrous_GetAggregateValuesClient) {
+			respChCh := make(chan chan<- mo.Result[*rpc.AggregateValuesResponse], 16)
+			// Start a go-routine to collect responses from the server and send
+			// them to the appropriate caller.
+			go func() {
+				for {
+					respCh := <-respChCh
+					resp, err := getter.Recv()
+					if err != nil {
+						zap.L().Warn("Failed to receive response", zap.Error(err))
+						// This request has faield, so send an error to the caller.
+						respCh <- mo.Err[*rpc.AggregateValuesResponse](err)
+					} else {
+						respCh <- mo.Ok(resp)
+					}
+				}
+			}()
 			for {
 				req, ok := <-reqCh
 				if !ok {
 					// Channel closed, no more requests expected.
 					return
 				}
+				// If request has already been cancelled, don't bother sending it.
+				if err := req.ctx.Err(); err != nil {
+					req.respCh <- mo.Err[*rpc.AggregateValuesResponse](err)
+					continue
+				}
 				err := getter.Send(req.msg)
-				// Establish a new connection if previous one EOFs.
-				for err == io.EOF {
-					zap.L().Warn("Connection with nitrous server closed")
-					getter, err = rpcclient.GetAggregateValues(context.TODO())
-					if err != nil {
-						zap.L().Error("Could not create streaming grpc client", zap.Error(err))
-						req.respCh <- mo.Err[*rpc.AggregateValuesResponse](err)
-						return
+				if err != nil {
+					zap.L().Warn("Stream with Nitrous server closed", zap.Error(err))
+					// Return an error to the caller
+					req.respCh <- mo.Err[*rpc.AggregateValuesResponse](fmt.Errorf("could not send request: %w", err))
+					// Establish a new connection.
+					for err != nil {
+						getter, err = rpcclient.GetAggregateValues(context.TODO())
+						if err != nil {
+							zap.L().Error("Could not create streaming grpc client", zap.Error(err))
+						}
 					}
-					err = getter.Send(req.msg)
-				}
-				if err != nil {
-					zap.L().Error("Failed to send request", zap.Error(err))
-					req.respCh <- mo.Err[*rpc.AggregateValuesResponse](err)
 					continue
+				} else {
+					respChCh <- req.respCh
 				}
-				resp, err := getter.Recv()
-				if err != nil {
-					zap.L().Error("Failed to receive response", zap.Error(err))
-					req.respCh <- mo.Err[*rpc.AggregateValuesResponse](err)
-					continue
-				}
-				req.respCh <- mo.Ok(resp)
 			}
 		}(getter)
 		getters = append(getters, getter)
