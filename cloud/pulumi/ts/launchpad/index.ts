@@ -920,7 +920,7 @@ const mothershipConfs: Record<number, MothershipConf> = {
         ingressConf: {
             useDedicatedMachines: true,
             replicas: 3,
-            usePublicSubnets: true,
+            usePublicSubnets: false,
         },
         eksConf: {
             nodeGroups: [{

@@ -3,6 +3,7 @@ FROM --platform=linux/amd64 golang:1.18-bullseye AS builder
 WORKDIR /app
 COPY go/fennel/ ./
 WORKDIR /app/go/fennel
+ENV CGO_CFLAGS="-g -O2 -Wno-return-local-addr"
 RUN go build fennel/service/bridge
 
 
