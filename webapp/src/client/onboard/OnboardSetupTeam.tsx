@@ -10,6 +10,8 @@ interface TeamMember {
 }
 
 interface Team {
+    id: number,
+    name: string,
     users: TeamMember[],
 }
 
@@ -59,8 +61,13 @@ function OnboardSetupTeam({user, onOnboardStatusChange}: Props) {
         return <LoadingOutlined spin />
     }
 
-    if (matched) {
-        return <OnboardJoinTeam />;
+    if (matched && team) {
+        return (
+            <OnboardJoinTeam
+                team={team}
+                onOnboardStatusChange={onOnboardStatusChange}
+            />
+        );
     }
     return (
         <OnboardCreateTeam

@@ -1,0 +1,21 @@
+@use "../../styles/colors";
+
+.teamContainer {
+    display: flex;
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+    border: 1px solid colors.$gray5;
+    padding: 8px 11px 8px 12px;
+    margin-bottom: 21px;
+}
+
+.nameAndCount {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.membersCount {
+    color: colors.$gray6;
+}

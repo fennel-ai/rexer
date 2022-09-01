@@ -34,7 +34,6 @@ function OnboardCreateTeam({isPersonalDomain, user, onOnboardStatusChange}: Prop
 
         axios.post("/onboard/create_team", {
             name: teamName,
-            domain,
             allowAutoJoin,
         }).then((response: AxiosResponse<CreateTeamResponse>) => {
             onOnboardStatusChange(response.data.onboardStatus);

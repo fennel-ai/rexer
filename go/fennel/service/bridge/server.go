@@ -507,7 +507,8 @@ func teamMembers(db *gorm.DB, customer customer.Customer) gin.H {
 	}
 
 	return gin.H{
-		"id": customer.ID,
+		"id":   customer.ID,
+		"name": customer.Name,
 		"users": lo.Map(users, func(user userL.User, _ int) gin.H {
 			return gin.H{
 				"email":     user.Email,
