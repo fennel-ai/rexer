@@ -26,9 +26,10 @@ interface User {
 
 interface Props {
     user: User,
+    onOnboardStatusChange: (status: number) => void,
 }
 
-function OnboardSetupTeam({user}: Props) {
+function OnboardSetupTeam({user, onOnboardStatusChange}: Props) {
     const [loading, setLoading] = useState(false);
     const [matched, setMatched] = useState(false);
     const [isPersonalDomain, setIsPersonalDomain] = useState(false);
@@ -61,7 +62,13 @@ function OnboardSetupTeam({user}: Props) {
     if (matched) {
         return <OnboardJoinTeam />;
     }
-    return <OnboardCreateTeam user={user} isPersonalDomain={isPersonalDomain} />;
+    return (
+        <OnboardCreateTeam
+            user={user}
+            isPersonalDomain={isPersonalDomain}
+            onOnboardStatusChange={onOnboardStatusChange}
+        />
+    );
 }
 
 export default OnboardSetupTeam;

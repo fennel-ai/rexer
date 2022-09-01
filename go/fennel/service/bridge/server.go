@@ -132,6 +132,7 @@ func (s *server) setupRouter() {
 
 	onboard := auth.Group("/onboard")
 	onboard.GET("/team_match", s.OnboardTeamMatch)
+	onboard.POST("/create_team", s.OnboardCreateTeam)
 
 	// dev only endpoints
 	if s.isDev() {
@@ -572,6 +573,29 @@ func (s *server) OnboardTeamMatch(c *gin.Context) {
 			"isPersonalDomain": isPersonalDomain,
 		})
 	}
+}
+
+func (s *server) OnboardCreateTeam(c *gin.Context) {
+	var form struct {
+		Name          string `json:"name"`
+		Domain        string `json:"domain"`
+		AllowAutoJoin bool   `json:"allowAutoJoin"`
+	}
+	if err := c.BindJSON(&form); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": err.Error(),
+		})
+		return
+	}
+	user, _ := CurrentUser(c)
+	_, nextStatus, err := onboardC.CreateTeam(c.Request.Context(), s.db, form.Name, form.Domain, form.AllowAutoJoin, user)
+	if err != nil {
+		respondError(c, err, "create team (onboard)")
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{
+		"onboardStatus": nextStatus,
+	})
 }
 
 type queryRangeRequest struct {

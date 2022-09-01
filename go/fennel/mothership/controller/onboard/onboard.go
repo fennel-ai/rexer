@@ -2,6 +2,8 @@ package onboard
 
 import (
 	"context"
+	"database/sql"
+	"fmt"
 	"strings"
 
 	"fennel/mothership/lib/customer"
@@ -23,6 +25,38 @@ func TeamMatch(ctx context.Context, db *gorm.DB, user userL.User) (bool, custome
 		return false, customer, isPersonal
 	}
 	return true, customer, isPersonal
+}
+
+type ErrorUnexpectedOnboardStatus struct {
+	Status uint
+	Action string
+}
+
+func (err *ErrorUnexpectedOnboardStatus) Error() string {
+	return fmt.Sprintf("Unexpected onboard status %v for action %s", err.Status, err.Action)
+}
+
+func CreateTeam(ctx context.Context, db *gorm.DB, name, domain string, allowAutoJoin bool, user userL.User) (customer.Customer, uint, error) {
+	var customer customer.Customer
+
+	if user.OnboardStatus != userL.OnboardStatusSetupTeam {
+		return customer, 0, &ErrorUnexpectedOnboardStatus{Status: user.OnboardStatus, Action: "CreateTeam"}
+	}
+
+	customer.Name = name
+	if allowAutoJoin {
+		customer.Domain = sql.NullString{String: domain, Valid: allowAutoJoin}
+	} else {
+		customer.Domain = sql.NullString{Valid: false}
+	}
+	if err := db.Create(&customer).Error; err != nil {
+		return customer, 0, err
+	}
+	err := db.Model(&user).Updates(map[string]interface{}{
+		"onboard_status": userL.OnBoardStatusAboutYourself,
+		"customer_id":    customer.ID,
+	}).Error
+	return customer, userL.OnBoardStatusAboutYourself, err
 }
 
 func isPersonalDomain(domain string) bool {
