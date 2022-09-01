@@ -312,6 +312,15 @@ const tierConfs: Record<number, TierConf> = {
             usePublicSubnets: true,
         }
     },
+    119: {
+        protectResources: true,
+        planeId: 3,
+        // use public subnets for ingress to allow traffic from outside the assigned vpc
+        ingressConf: {
+            usePublicSubnets: true,
+        },
+        airbyteConf: {},
+    },
 }
 
 // map from plane id to its configuration.
