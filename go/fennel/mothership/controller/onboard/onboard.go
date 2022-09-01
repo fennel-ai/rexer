@@ -36,16 +36,24 @@ func (err *ErrorUnexpectedOnboardStatus) Error() string {
 	return fmt.Sprintf("Unexpected onboard status %v for action %s", err.Status, err.Action)
 }
 
-func CreateTeam(ctx context.Context, db *gorm.DB, name, domain string, allowAutoJoin bool, user userL.User) (customer.Customer, uint, error) {
+func CreateTeam(ctx context.Context, db *gorm.DB, name string, allowAutoJoin bool, user userL.User) (customer.Customer, uint, error) {
 	var customer customer.Customer
 
 	if user.OnboardStatus != userL.OnboardStatusSetupTeam {
 		return customer, 0, &ErrorUnexpectedOnboardStatus{Status: user.OnboardStatus, Action: "CreateTeam"}
 	}
+	if user.CustomerID != 0 {
+		return customer, 0, fmt.Errorf("user already has a team %v", user.Email)
+	}
 
 	customer.Name = name
 	if allowAutoJoin {
-		customer.Domain = sql.NullString{String: domain, Valid: allowAutoJoin}
+		domain := extractEmailDomain(user.Email)
+		if isPersonalDomain(domain) {
+			return customer, 0, fmt.Errorf("personal domain %s not allowed to auto join", user.Email)
+		}
+
+		customer.Domain = sql.NullString{String: domain, Valid: true}
 	} else {
 		customer.Domain = sql.NullString{Valid: false}
 	}
@@ -57,6 +65,23 @@ func CreateTeam(ctx context.Context, db *gorm.DB, name, domain string, allowAuto
 		"customer_id":    customer.ID,
 	}).Error
 	return customer, userL.OnBoardStatusAboutYourself, err
+}
+
+func JoinTeam(ctx context.Context, db *gorm.DB, teamID uint, user userL.User) (uint, error) {
+	if user.OnboardStatus != userL.OnboardStatusSetupTeam {
+		return 0, &ErrorUnexpectedOnboardStatus{Status: user.OnboardStatus, Action: "JoinTeam"}
+	}
+
+	var customer customer.Customer
+	if err := db.Take(&customer, teamID).Error; err != nil {
+		return 0, fmt.Errorf("team (%v) not found", teamID)
+	}
+	if !customer.Domain.Valid || extractEmailDomain(user.Email) != customer.Domain.String {
+		return 0, fmt.Errorf("join team (%v) not allowed for email (%s)", teamID, user.Email)
+	}
+
+	err := db.Model(&user).Update("customer_id", teamID).Error
+	return userL.OnBoardStatusAboutYourself, err
 }
 
 func isPersonalDomain(domain string) bool {

@@ -133,6 +133,7 @@ func (s *server) setupRouter() {
 	onboard := auth.Group("/onboard")
 	onboard.GET("/team_match", s.OnboardTeamMatch)
 	onboard.POST("/create_team", s.OnboardCreateTeam)
+	onboard.POST("/join_team", s.OnboardJoinTeam)
 
 	// dev only endpoints
 	if s.isDev() {
@@ -506,6 +507,7 @@ func teamMembers(db *gorm.DB, customer customer.Customer) gin.H {
 	}
 
 	return gin.H{
+		"id": customer.ID,
 		"users": lo.Map(users, func(user userL.User, _ int) gin.H {
 			return gin.H{
 				"email":     user.Email,
@@ -578,7 +580,6 @@ func (s *server) OnboardTeamMatch(c *gin.Context) {
 func (s *server) OnboardCreateTeam(c *gin.Context) {
 	var form struct {
 		Name          string `json:"name"`
-		Domain        string `json:"domain"`
 		AllowAutoJoin bool   `json:"allowAutoJoin"`
 	}
 	if err := c.BindJSON(&form); err != nil {
@@ -588,9 +589,30 @@ func (s *server) OnboardCreateTeam(c *gin.Context) {
 		return
 	}
 	user, _ := CurrentUser(c)
-	_, nextStatus, err := onboardC.CreateTeam(c.Request.Context(), s.db, form.Name, form.Domain, form.AllowAutoJoin, user)
+	_, nextStatus, err := onboardC.CreateTeam(c.Request.Context(), s.db, form.Name, form.AllowAutoJoin, user)
 	if err != nil {
 		respondError(c, err, "create team (onboard)")
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{
+		"onboardStatus": nextStatus,
+	})
+}
+
+func (s *server) OnboardJoinTeam(c *gin.Context) {
+	var form struct {
+		TeamID uint `json:"teamID"`
+	}
+	if err := c.BindJSON(&form); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": err.Error(),
+		})
+		return
+	}
+	user, _ := CurrentUser(c)
+	nextStatus, err := onboardC.JoinTeam(c.Request.Context(), s.db, form.TeamID, user)
+	if err != nil {
+		respondError(c, err, "join team (onboard)")
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{
