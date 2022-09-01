@@ -150,6 +150,7 @@ func (b *badgerDB) GetMany(ctx context.Context, kgs []hangar.KeyGroup) ([]hangar
 				item, err := txn.Get(ek)
 				switch err {
 				case badger.ErrKeyNotFound:
+					b.missingKeyCache.Set(ek, struct{}{}, int64(len(ek)))
 				case nil:
 					if err := item.Value(func(val []byte) error {
 						if _, err := b.enc.DecodeVal(val, &valGroups[i], false); err != nil {
@@ -157,8 +158,6 @@ func (b *badgerDB) GetMany(ctx context.Context, kgs []hangar.KeyGroup) ([]hangar
 						}
 						if keyGroups[i].Fields.IsPresent() {
 							valGroups[i].Select(keyGroups[i].Fields.MustGet())
-						} else {
-							b.missingKeyCache.Set(ek, struct{}{}, int64(len(ek)))
 						}
 						return nil
 					}); err != nil {
