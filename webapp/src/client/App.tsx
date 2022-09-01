@@ -3,33 +3,44 @@ import Navbar from "./Navbar";
 import DataPage from "./DataPage";
 import SettingsPage from "./SettingsPage";
 import DashboardPage from "./DashboardPage";
+import OnboardPage from "./onboard/OnboardPage";
+
+interface User {
+    email: string,
+    firstName: string,
+    lastName: string,
+    onboardStatus: number,
+}
 
 interface Props {
-    page: string | null;
+    page: string;
+    user: User,
 }
 
 const DASHBOARD_PAGE = "dashboard";
 const DATA_PAGE = "data";
 const SETTINGS_PAGE = "settings";
+const ONBOARD_PAGE = "onboard";
 
-function App(props: Props) {
-    const page = props.page || DASHBOARD_PAGE
+function WithNavBar({page, mainComponent}: {page: string, mainComponent: JSX.Element}) {
     return (
         <div>
             <Navbar page={page} />
-            <Route page={page} />
+            {mainComponent}
         </div>
     );
 }
 
-function Route(props: Props) {
-    switch (props.page) {
+function App({page, user}: Props) {
+    switch (page) {
         case DATA_PAGE:
-            return <DataPage />;
+            return <WithNavBar page={page} mainComponent={<DataPage />} />;
         case DASHBOARD_PAGE:
-            return <DashboardPage />;
+            return <WithNavBar page={page} mainComponent={<DashboardPage />} />;
         case SETTINGS_PAGE:
-            return <SettingsPage />;
+            return <WithNavBar page={page} mainComponent={<SettingsPage />} />;
+        case ONBOARD_PAGE:
+            return <OnboardPage user={user} />;
     }
     return <DashboardPage />;
 }

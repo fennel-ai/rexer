@@ -1,11 +1,13 @@
 package main
 
 import (
+	"encoding/json"
 	"fennel/lib/sql"
 	"fennel/mothership"
 	actionC "fennel/mothership/controller/action"
 	featureC "fennel/mothership/controller/feature"
 	metricC "fennel/mothership/controller/metric"
+	onboardC "fennel/mothership/controller/onboard"
 	profileC "fennel/mothership/controller/profile"
 	userC "fennel/mothership/controller/user"
 	"fennel/mothership/lib"
@@ -109,13 +111,16 @@ func (s *server) setupRouter() {
 	s.POST("/resend_confirmation_email", s.ResendConfirmationEmail)
 
 	auth := s.Group("/", AuthenticationRequired(s.db))
-	auth.GET("/", s.Dashboard)
-	auth.GET("/dashboard", s.Dashboard)
-	auth.GET("/data", s.Data)
+	onboarded := auth.Group("/", Onboarded)
+	onboarded.GET("/", s.Home)
+	onboarded.GET("/dashboard", s.Dashboard)
+	onboarded.GET("/data", s.Data)
+	onboarded.GET("/settings", s.Settings)
+
+	// ajax endpoints
 	auth.GET("/profiles", s.Profiles)
 	auth.GET("/actions", s.Actions)
 	auth.GET("/features", s.Features)
-	auth.GET("/settings", s.Settings)
 	auth.POST("/logout", s.Logout)
 	auth.GET("/user", s.User)
 	auth.GET("/team", s.Team)
@@ -124,6 +129,10 @@ func (s *server) setupRouter() {
 
 	metrics := auth.Group("/metrics")
 	metrics.GET("/query_range", s.QueryRangeMetrics)
+
+	onboard := auth.Group("/onboard")
+	onboard.GET("/team_match", s.OnboardTeamMatch)
+	onboard.POST("/create_team", s.OnboardCreateTeam)
 
 	// dev only endpoints
 	if s.isDev() {
@@ -144,6 +153,7 @@ const (
 	DashboardPage      = "dashboard"
 	DataPage           = "data"
 	SettingsPage       = "settings"
+	OnboardPage        = "onboard"
 )
 
 func title(name string) string {
@@ -332,13 +342,25 @@ func (s *server) ResendConfirmationEmail(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{})
 }
 
-func userMap(user userL.User) gin.H {
+func userMap(user userL.User) string {
 	// TODO(xiao) maybe add json tags on the user model
-	return gin.H{
-		"email":     user.Email,
-		"firstName": user.FirstName,
-		"lastName":  user.LastName,
-	}
+	bytes, _ := json.Marshal(gin.H{
+		"email":         user.Email,
+		"firstName":     user.FirstName,
+		"lastName":      user.LastName,
+		"onboardStatus": user.OnboardStatus,
+	})
+	return string(bytes)
+}
+
+func (s *server) Home(c *gin.Context) {
+	user, _ := CurrentUser(c)
+	// TODO(xiao) tier management for home page?
+	c.HTML(http.StatusOK, "bridge/index.tmpl", gin.H{
+		"title": title("Dashboard"),
+		"page":  DashboardPage,
+		"user":  userMap(user),
+	})
 }
 
 func (s *server) Dashboard(c *gin.Context) {
@@ -459,13 +481,10 @@ func (s *server) User(c *gin.Context) {
 
 func (s *server) Team(c *gin.Context) {
 	var customer customer.Customer
-	user, ok := CurrentUser(c)
-	ok = ok && (s.db.Take(&customer, user.CustomerID).RowsAffected > 0)
+	user, _ := CurrentUser(c)
+	result := s.db.Take(&customer, user.CustomerID)
 
-	var users []userL.User
-	ok = ok && (s.db.Where("customer_id = ?", customer.ID).Find(&users).RowsAffected > 0)
-
-	if !ok {
+	if result.RowsAffected == 0 {
 		c.JSON(http.StatusUnprocessableEntity, gin.H{
 			"error": "No team found",
 		})
@@ -473,12 +492,28 @@ func (s *server) Team(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{
-		"team": gin.H{
-			"users": lo.Map(users, func(user userL.User, _ int) gin.H {
-				return userMap(user)
-			}),
-		},
+		"team": teamMembers(s.db, customer),
 	})
+}
+
+func teamMembers(db *gorm.DB, customer customer.Customer) gin.H {
+	var users []userL.User
+
+	if db.Where("customer_id = ?", customer.ID).Find(&users).Error != nil {
+		return gin.H{
+			"users": []gin.H{},
+		}
+	}
+
+	return gin.H{
+		"users": lo.Map(users, func(user userL.User, _ int) gin.H {
+			return gin.H{
+				"email":     user.Email,
+				"firstName": user.FirstName,
+				"lastName":  user.LastName,
+			}
+		}),
+	}
 }
 
 func (s *server) UpdateUserNames(c *gin.Context) {
@@ -521,6 +556,46 @@ func (s *server) UpdateUserPassword(c *gin.Context) {
 		}
 	}
 	c.JSON(http.StatusOK, gin.H{})
+}
+
+func (s *server) OnboardTeamMatch(c *gin.Context) {
+	user, _ := CurrentUser(c)
+	matched, team, isPersonalDomain := onboardC.TeamMatch(c.Request.Context(), s.db, user)
+	if matched {
+		c.JSON(http.StatusOK, gin.H{
+			"matched":          matched,
+			"team":             teamMembers(s.db, team),
+			"isPersonalDomain": isPersonalDomain,
+		})
+	} else {
+		c.JSON(http.StatusOK, gin.H{
+			"matched":          matched,
+			"isPersonalDomain": isPersonalDomain,
+		})
+	}
+}
+
+func (s *server) OnboardCreateTeam(c *gin.Context) {
+	var form struct {
+		Name          string `json:"name"`
+		Domain        string `json:"domain"`
+		AllowAutoJoin bool   `json:"allowAutoJoin"`
+	}
+	if err := c.BindJSON(&form); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": err.Error(),
+		})
+		return
+	}
+	user, _ := CurrentUser(c)
+	_, nextStatus, err := onboardC.CreateTeam(c.Request.Context(), s.db, form.Name, form.Domain, form.AllowAutoJoin, user)
+	if err != nil {
+		respondError(c, err, "create team (onboard)")
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{
+		"onboardStatus": nextStatus,
+	})
 }
 
 type queryRangeRequest struct {

@@ -23,10 +23,24 @@ type User struct {
 	Customer           customer.Customer
 	FirstName          string
 	LastName           string
+	OnboardStatus      uint
 
 	DeletedAt soft_delete.DeletedAt `gorm:"softDelete:milli"`
 	CreatedAt int64                 `gorm:"autoUpdateTime:milli"`
 	UpdatedAt int64                 `gorm:"autoUpdateTime:milli"`
+}
+
+const (
+	OnboardStatusSetupTeam uint = iota
+	OnBoardStatusAboutYourself
+	OnboardStatusTierProvisioned
+	OnboardStatusTierNotAvailable
+	OnboardStatusWelcome
+	OnboardStatusDone
+)
+
+func (u *User) IsOnboarding() bool {
+	return u.OnboardStatus != OnboardStatusDone
 }
 
 func (u *User) IsConfirmed() bool {

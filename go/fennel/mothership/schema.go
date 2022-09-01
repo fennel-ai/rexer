@@ -145,4 +145,7 @@ var Schema = db.Schema{
                 ADD COLUMN first_name VARCHAR(64) NOT NULL,
                 ADD COLUMN last_name VARCHAR(64) NOT NULL;
         `,
+	21: `ALTER TABLE user
+                ADD COLUMN onboard_status INT UNSIGNED NOT NULL DEFAULT 0;
+        `,
 }
