@@ -3,10 +3,12 @@ package onboard
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 	"strings"
 
 	"fennel/mothership/lib/customer"
+	tierL "fennel/mothership/lib/tier"
 	userL "fennel/mothership/lib/user"
 
 	"gorm.io/gorm"
@@ -73,7 +75,7 @@ func JoinTeam(ctx context.Context, db *gorm.DB, teamID uint, user userL.User) (u
 	}
 
 	var customer customer.Customer
-	if err := db.Take(&customer, teamID).Error; err != nil {
+	if db.Take(&customer, teamID).Error != nil {
 		return 0, fmt.Errorf("team (%v) not found", teamID)
 	}
 	if !customer.Domain.Valid || extractEmailDomain(user.Email) != customer.Domain.String {
@@ -82,6 +84,33 @@ func JoinTeam(ctx context.Context, db *gorm.DB, teamID uint, user userL.User) (u
 
 	err := db.Model(&user).Update("customer_id", teamID).Error
 	return userL.OnboardStatusAboutYourself, err
+}
+
+func AssignTier(ctx context.Context, db *gorm.DB, user *userL.User) (tierL.Tier, bool, error) {
+	var tier tierL.Tier
+
+	if user.CustomerID == 0 {
+		return tier, false, errors.New("user doesn't have a team")
+	}
+	if user.OnboardStatus != userL.OnboardStatusTierProvision {
+		return tier, false, &ErrorUnexpectedOnboardStatus{Status: user.OnboardStatus, Action: "AssignTier"}
+	}
+
+	// already has a tier
+	if db.Where("customer_id = ?", user.CustomerID).Take(&tier).RowsAffected > 0 {
+		err := db.Model(&user).Update("onboard_status", userL.OnboardStatusTierProvisioned).Error
+		return tier, true, err
+	}
+
+	// TODO(xiao) potential race?
+	if db.Model(&tier).Where("customer_id = ?", 0).Update("customer_id", user.CustomerID).Limit(1).RowsAffected > 0 {
+		if db.Where("customer_id = ?", user.CustomerID).Take(&tier).RowsAffected > 0 {
+			err := db.Model(&user).Update("onboard_status", userL.OnboardStatusTierProvisioned).Error
+			return tier, true, err
+		}
+	}
+	err := db.Model(&user).Update("onboard_status", userL.OnboardStatusTierNotAvailable).Error
+	return tier, false, err
 }
 
 func isPersonalDomain(domain string) bool {

@@ -148,4 +148,12 @@ var Schema = db.Schema{
 	21: `ALTER TABLE user
                 ADD COLUMN onboard_status INT UNSIGNED NOT NULL DEFAULT 0;
         `,
+	22: `ALTER TABLE tier
+                ADD COLUMN requests_limit INT UNSIGNED NOT NULL,
+                ADD INDEX customer_id_index (customer_id),
+                ADD INDEX data_plane_id_index (data_plane_id);
+        `,
+	23: `ALTER TABLE user
+                ADD INDEX customer_id_index (customer_id);
+        `,
 }
