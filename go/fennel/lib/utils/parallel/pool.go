@@ -51,7 +51,7 @@ type job[I, O any] struct {
 func NewWorkerPool[I, O any](name string, nWorkers int) *WorkerPool[I, O] {
 	// We provide a lot of buffer in the job queue to avoid tail latency problems
 	// that are caused by the overhead of goroutine scheduling delay.
-	jobQueue := make(chan job[I, O], 100*nWorkers)
+	jobQueue := make(chan job[I, O], nWorkers)
 	wg := &sync.WaitGroup{}
 	pool := WorkerPool[I, O]{
 		name:     name,

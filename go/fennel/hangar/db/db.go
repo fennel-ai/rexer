@@ -22,7 +22,7 @@ import (
 )
 
 const (
-	READ_PARALLELISM  = 512
+	READ_PARALLELISM  = 64
 	WRITE_PARALLELISM = 64
 	DB_BATCH_SIZE     = 32
 )
