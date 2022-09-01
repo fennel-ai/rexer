@@ -23,6 +23,7 @@ import * as assert from "assert";
 import { DEFAULT_ARM_AMI_TYPE, DEFAULT_X86_AMI_TYPE, ON_DEMAND_INSTANCE_TYPE, SPOT_INSTANCE_TYPE } from "../eks";
 import { OutputMap } from "@pulumi/pulumi/automation";
 import { utils } from "@pulumi/pulumi";
+import tier from "./tier";
 
 const controlPlane: vpc.controlPlaneConfig = {
     region: "us-west-2",
@@ -67,6 +68,7 @@ const tierConfs: Record<number, TierConf> = {
             }
         },
         enableNitrous: true,
+        createTopicsInMsk: true,
     },
     // Fennel staging tier using Fennel's staging data plane.
     106: {
@@ -504,7 +506,10 @@ const dataPlaneConfs: Record<number, DataPlaneConf> = {
             numberOfBrokerNodes: 2,
             // consider expanding this in the future if each broker needs more storage capacity
             storageVolumeSizeGiB: 128,
-        }
+        },
+
+        // setup strimzi
+        strimziConf: {},
     },
     // Lokal's prod tier data plane
     5: {
@@ -1107,6 +1112,8 @@ async function setupTierWrapperFn(tierId: number, dataplane: OutputMap, planeCon
             topics: topics,
             kafkaApiKey: confluentOutput.apiKey,
             kafkaApiSecret: confluentOutput.apiSecret,
+
+            createTopicsInMsk: tierConf.createTopicsInMsk,
 
             mskConf: mskConf,
 

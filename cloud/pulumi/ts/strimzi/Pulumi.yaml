@@ -1,0 +1,10 @@
+# The Pulumi.yaml, package.json and tsconfig.json files in this project contain
+# some non-default changes to allow us to use await outside an async function.
+# See: https://github.com/pulumi/pulumi/issues/5161#issuecomment-1010018506
+name: strimzi
+description: pulumi project to install strimzi operator at a plane level
+runtime:
+  name: nodejs
+  options:
+    # See https://github.com/TypeStrong/ts-node/issues/1007
+    nodeargs: "--loader ts-node/esm --no-warnings"
