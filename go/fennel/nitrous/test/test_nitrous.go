@@ -3,12 +3,12 @@
 package test
 
 import (
+	"fennel/hangar/mem"
 	"fmt"
 	"math/rand"
 	"testing"
 	"time"
 
-	"fennel/hangar/db"
 	"fennel/hangar/encoders"
 	"fennel/kafka"
 	fkafka "fennel/kafka"
@@ -30,7 +30,7 @@ type TestNitrous struct {
 func NewTestNitrous[TB testing.TB](t TB) TestNitrous {
 	rand.Seed(time.Now().UnixNano())
 	planeId := ftypes.RealmID(rand.Uint32())
-	db, err := db.NewHangar(planeId, t.TempDir(), 1<<10, encoders.Default())
+	db, err := mem.NewHangar(planeId, 256, t.TempDir(), encoders.Default())
 	t.Cleanup(func() { _ = db.Teardown() })
 	assert.NoError(t, err)
 	broker := fkafka.NewMockTopicBroker()

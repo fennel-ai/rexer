@@ -50,6 +50,19 @@ func TestFullRun(t *testing.T) {
 		}
 	}
 
+	for i := 0; i < testCount/2; i++ {
+		// overwrite
+		key := make([]byte, 8)
+		value := make([]byte, 16)
+		binary.BigEndian.PutUint64(key, uint64(i))
+		binary.BigEndian.PutUint64(value, uint64(i))
+		binary.BigEndian.PutUint64(value[8:], uint64(i))
+		store.SimpleSet(key, value, 0)
+		if i%100000 == 0 {
+			zap.L().Info(fmt.Sprintf("progress %d", i))
+		}
+	}
+
 	assert.Equal(t, testCount, store.Items())
 	assert.Equal(t, 24*testCount, int(store.RawTotalSize()))
 

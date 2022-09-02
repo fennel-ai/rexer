@@ -90,9 +90,8 @@ func (m *memDBShard) Del(key string) {
 	defer m.lock.Unlock()
 	item, ok := m.data[key]
 	if ok {
-		itemSize := len(item.value) + len(key)
+		m.rawSize -= uint64(len(item.value) + len(key))
 		delete(m.data, key)
-		m.rawSize -= uint64(itemSize)
 	}
 }
 
@@ -103,12 +102,16 @@ func (m *memDBShard) SetWithTTL(key string, value []byte, ttl time.Duration) {
 	if ttl != 0 {
 		expEpochSecs = time.Now().Add(ttl).Unix()
 	}
+	prevValue, exist := m.data[key]
+	if exist {
+		m.rawSize -= uint64(len(prevValue.value) + len(key))
+		delete(m.data, key)
+	}
 	m.data[key] = memDBValueItem{
 		value:        value,
 		expEpochSecs: expEpochSecs,
 	}
-	itemSize := len(value) + len(key)
-	m.rawSize += uint64(itemSize)
+	m.rawSize += uint64(len(value) + len(key))
 }
 
 func (m *memDBShard) DumpAndCleanup(writer io.Writer) error {
@@ -501,9 +504,11 @@ func (m *MemDB) SetMany(ctx context.Context, keys []hangar.Key, deltas []hangar.
 			if _, err := m.enc.DecodeVal(valBytes, &oldvg, true); err != nil {
 				return err
 			}
-		}
-		if err := oldvg.Update(deltas[i]); err != nil {
-			return err
+			if err := oldvg.Update(deltas[i]); err != nil {
+				return err
+			}
+		} else {
+			oldvg = deltas[i]
 		}
 		deltas[i] = oldvg
 	}

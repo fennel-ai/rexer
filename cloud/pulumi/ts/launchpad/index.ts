@@ -666,7 +666,8 @@ const dataPlaneConfs: Record<number, DataPlaneConf> = {
                 // Nitrous node group.
                 {
                     name: "p-5-nitrous-ng-arm",
-                    instanceTypes: ["c6gd.8xlarge"],
+                    // instanceTypes: ["c6gd.8xlarge"], for badger
+                    instanceTypes: ["r6gd.16xlarge"],
                     minSize: 1,
                     maxSize: 1,
                     amiType: DEFAULT_ARM_AMI_TYPE,
@@ -706,12 +707,12 @@ const dataPlaneConfs: Record<number, DataPlaneConf> = {
             kvCacheMB: 1024 * 75,
             resourceConf: {
                 cpu: {
-                    request: "30000m",
-                    limit: "32000m"
+                    request: "60000m",
+                    limit: "64000m"
                 },
                 memory: {
-                    request: "60G",
-                    limit: "64G",
+                    request: "470G",
+                    limit: "500G",
                 }
             },
             binlog: {
