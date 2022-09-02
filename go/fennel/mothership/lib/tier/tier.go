@@ -1,16 +1,23 @@
 package tier
 
-import "gorm.io/plugin/soft_delete"
+import (
+	"fennel/mothership/lib/dataplane"
+
+	"gorm.io/plugin/soft_delete"
+)
 
 type Tier struct {
 	ID uint `gorm:"column:tier_id;primaryKey"`
 
-	PulumiStack  string
-	ApiUrl       string
-	K8sNamespace string
+	PulumiStack   string
+	ApiUrl        string
+	K8sNamespace  string
+	RequestsLimit uint
+
+	CustomerID uint
 
 	DataPlaneID uint
-	CustomerID  uint
+	DataPlane   dataplane.DataPlane
 
 	DeletedAt soft_delete.DeletedAt `gorm:"softDelete:milli"`
 	CreatedAt int64                 `gorm:"autoUpdateTime:milli"`

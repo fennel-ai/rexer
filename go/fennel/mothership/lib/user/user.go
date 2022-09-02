@@ -19,11 +19,12 @@ type User struct {
 	ConfirmedAt        sql.NullInt64
 	ResetToken         sql.NullString
 	ResetSentAt        sql.NullInt64
-	CustomerID         uint
-	Customer           customer.Customer
 	FirstName          string
 	LastName           string
 	OnboardStatus      uint
+
+	CustomerID uint
+	Customer   customer.Customer
 
 	DeletedAt soft_delete.DeletedAt `gorm:"softDelete:milli"`
 	CreatedAt int64                 `gorm:"autoUpdateTime:milli"`

@@ -12,6 +12,7 @@ import (
 	userC "fennel/mothership/controller/user"
 	"fennel/mothership/lib"
 	"fennel/mothership/lib/customer"
+	"fennel/mothership/lib/dataplane"
 	userL "fennel/mothership/lib/user"
 	"fennel/service/common"
 	"fmt"
@@ -135,6 +136,7 @@ func (s *server) setupRouter() {
 	onboard.POST("/create_team", s.OnboardCreateTeam)
 	onboard.POST("/join_team", s.OnboardJoinTeam)
 	onboard.POST("/submit_questionnaire", s.OnboardSubmitQuestionnaire)
+	onboard.POST("/assign_tier", s.OnboardAssignTier)
 
 	// dev only endpoints
 	if s.isDev() {
@@ -633,6 +635,31 @@ func (s *server) OnboardSubmitQuestionnaire(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{
 		"onboardStatus": userL.OnboardStatusTierProvision,
 	})
+}
+
+func (s *server) OnboardAssignTier(c *gin.Context) {
+	user, _ := CurrentUser(c)
+	tier, available, err := onboardC.AssignTier(c.Request.Context(), s.db, &user)
+	if err != nil {
+		respondError(c, err, "assign a tier (onboard)")
+		return
+	}
+	if available {
+		var dp dataplane.DataPlane
+		_ = s.db.Take(&dp, tier.DataPlaneID)
+		c.JSON(http.StatusOK, gin.H{
+			"onboardStatus": user.OnboardStatus,
+			"tier": gin.H{
+				"apiUrl":   tier.ApiUrl,
+				"limit":    tier.RequestsLimit,
+				"location": dp.Region,
+			},
+		})
+	} else {
+		c.JSON(http.StatusOK, gin.H{
+			"onboardStatus": user.OnboardStatus,
+		})
+	}
 }
 
 type queryRangeRequest struct {
