@@ -7,7 +7,7 @@ import axios, { AxiosResponse } from "axios";
 import pageStyles from "./styles/Page.module.scss";
 
 const columns = [
-    { title: "Region", dataIndex: "region", key: "region" },
+    { title: "Region", dataIndex: "location", key: "region" },
     { title: "URL", dataIndex: "apiUrl", key: "url" },
     { title: "Status", dataIndex: "status", key: "status" },
 ];

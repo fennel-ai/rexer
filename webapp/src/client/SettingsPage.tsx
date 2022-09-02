@@ -27,7 +27,7 @@ function SettingsPage() {
     return (
         <div className={styles.container}>
             <h4 className={styles.title}>Settings</h4>
-            <Tabs className={styles.tabs} activeKey={activeTab} onTabClick={onTabClick}>
+            <Tabs activeKey={activeTab} onTabClick={onTabClick}>
                 <Tabs.TabPane tab="Account" key="account">
                     <div className={styles.tabContent}>
                         <AccountTab />
