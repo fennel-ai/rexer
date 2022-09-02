@@ -61,10 +61,10 @@ func CreateTeam(ctx context.Context, db *gorm.DB, name string, allowAutoJoin boo
 		return customer, 0, err
 	}
 	err := db.Model(&user).Updates(map[string]interface{}{
-		"onboard_status": userL.OnBoardStatusAboutYourself,
+		"onboard_status": userL.OnboardStatusAboutYourself,
 		"customer_id":    customer.ID,
 	}).Error
-	return customer, userL.OnBoardStatusAboutYourself, err
+	return customer, userL.OnboardStatusAboutYourself, err
 }
 
 func JoinTeam(ctx context.Context, db *gorm.DB, teamID uint, user userL.User) (uint, error) {
@@ -81,7 +81,7 @@ func JoinTeam(ctx context.Context, db *gorm.DB, teamID uint, user userL.User) (u
 	}
 
 	err := db.Model(&user).Update("customer_id", teamID).Error
-	return userL.OnBoardStatusAboutYourself, err
+	return userL.OnboardStatusAboutYourself, err
 }
 
 func isPersonalDomain(domain string) bool {
