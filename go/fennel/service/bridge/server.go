@@ -9,11 +9,13 @@ import (
 	metricC "fennel/mothership/controller/metric"
 	onboardC "fennel/mothership/controller/onboard"
 	profileC "fennel/mothership/controller/profile"
+	tierC "fennel/mothership/controller/tier"
 	userC "fennel/mothership/controller/user"
 	"fennel/mothership/lib"
 	customerL "fennel/mothership/lib/customer"
 
 	dataplaneL "fennel/mothership/lib/dataplane"
+	tierL "fennel/mothership/lib/tier"
 	userL "fennel/mothership/lib/user"
 	"fennel/service/common"
 	"fmt"
@@ -26,6 +28,7 @@ import (
 	"github.com/gin-contrib/sessions"
 	"github.com/gin-contrib/sessions/cookie"
 	"github.com/gin-gonic/gin"
+	"github.com/samber/lo"
 	"github.com/sendgrid/sendgrid-go"
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
@@ -113,13 +116,14 @@ func (s *server) setupRouter() {
 
 	auth := s.Group("/", AuthenticationRequired(s.db))
 	onboarded := auth.Group("/", Onboarded)
-	onboarded.GET("/", s.Home)
+	onboarded.GET("/", s.TierManagement)
 	onboarded.GET("/dashboard", s.Dashboard)
 	onboarded.GET("/data", s.Data)
 	onboarded.GET("/settings", s.Settings)
-	onboarded.GET("/tiers", s.Tiers)
+	onboarded.GET("/tier_management", s.TierManagement)
 
 	// ajax endpoints
+	auth.GET("/tiers", s.Tiers)
 	auth.GET("/profiles", s.Profiles)
 	auth.GET("/actions", s.Actions)
 	auth.GET("/features", s.Features)
@@ -160,6 +164,7 @@ const (
 	DashboardPage      = "dashboard"
 	DataPage           = "data"
 	SettingsPage       = "settings"
+	TierManagementPage = "tier_management"
 	OnboardPage        = "onboard"
 )
 
@@ -349,16 +354,6 @@ func (s *server) ResendConfirmationEmail(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{})
 }
 
-func (s *server) Home(c *gin.Context) {
-	user, _ := CurrentUser(c)
-	// TODO(xiao) tier management for home page?
-	c.HTML(http.StatusOK, "bridge/index.tmpl", gin.H{
-		"title": title("Dashboard"),
-		"page":  DashboardPage,
-		"user":  userMap(user),
-	})
-}
-
 func (s *server) Dashboard(c *gin.Context) {
 	user, _ := CurrentUser(c)
 	c.HTML(http.StatusOK, "bridge/index.tmpl", gin.H{
@@ -386,8 +381,28 @@ func (s *server) Settings(c *gin.Context) {
 	})
 }
 
-func (s *server) Tiers(c *gin.Context) {
+func (s *server) TierManagement(c *gin.Context) {
+	user, _ := CurrentUser(c)
+	c.HTML(http.StatusOK, "bridge/index.tmpl", gin.H{
+		"title": title("Tier Management"),
+		"page":  TierManagementPage,
+		"user":  userMap(user),
+	})
+}
 
+func (s *server) Tiers(c *gin.Context) {
+	user, _ := CurrentUser(c)
+
+	tiers, err := tierC.FetchTiers(c.Request.Context(), s.db, user.CustomerID)
+	if err != nil {
+		respondError(c, err, "fetch tiers")
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{
+		"tiers": lo.Map(tiers, func(tier tierL.Tier, _ int) gin.H {
+			return tierInfo(tier, tier.DataPlane)
+		}),
+	})
 }
 
 func (s *server) Profiles(c *gin.Context) {

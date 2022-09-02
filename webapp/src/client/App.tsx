@@ -4,6 +4,7 @@ import DataPage from "./DataPage";
 import SettingsPage from "./SettingsPage";
 import DashboardPage from "./DashboardPage";
 import OnboardPage from "./onboard/OnboardPage";
+import TierManagementPage from "./TierManagementPage";
 
 interface User {
     email: string,
@@ -22,27 +23,39 @@ const DATA_PAGE = "data";
 const SETTINGS_PAGE = "settings";
 const ONBOARD_PAGE = "onboard";
 
-function WithNavBar({page, mainComponent}: {page: string, mainComponent: JSX.Element}) {
-    return (
-        <div>
-            <Navbar page={page} />
-            {mainComponent}
-        </div>
-    );
-}
-
 function App({page, user}: Props) {
     switch (page) {
         case DATA_PAGE:
-            return <WithNavBar page={page} mainComponent={<DataPage />} />;
+            return (
+                <div>
+                    <Navbar page={page} />
+                    <DataPage />
+                </div>
+            );
         case DASHBOARD_PAGE:
-            return <WithNavBar page={page} mainComponent={<DashboardPage />} />;
+            return (
+                <div>
+                    <Navbar page={page} />
+                    <DashboardPage />
+                </div>
+            );
         case SETTINGS_PAGE:
-            return <WithNavBar page={page} mainComponent={<SettingsPage />} />;
+            return (
+                <div>
+                    <Navbar page={page} />
+                    <SettingsPage />
+                </div>
+            );
         case ONBOARD_PAGE:
             return <OnboardPage user={user} />;
+        default:
+            return (
+                <div>
+                    <Navbar page={page} />
+                    <TierManagementPage />
+                </div>
+            );
     }
-    return <DashboardPage />;
 }
 
 export default App;
