@@ -3,7 +3,6 @@
 interface CssExports {
   'container': string;
   'tabContent': string;
-  'tabs': string;
   'title': string;
 }
 export const cssExports: CssExports;

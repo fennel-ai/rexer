@@ -28,7 +28,7 @@ function DataPage() {
     return (
         <div className={styles.container}>
             <h4 className={styles.title}>Data</h4>
-            <Tabs className={styles.tabs} activeKey={activeTab} onTabClick={onTabClick}>
+            <Tabs activeKey={activeTab} onTabClick={onTabClick}>
                 <Tabs.TabPane tab="Profiles" key="profiles">
                     <div className={styles.tabContent}>
                         <ProfilesTab />

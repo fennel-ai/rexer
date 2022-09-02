@@ -1,7 +1,6 @@
 package main
 
 import (
-	"encoding/json"
 	"errors"
 	"fennel/lib/sql"
 	"fennel/mothership"
@@ -10,6 +9,7 @@ import (
 	metricC "fennel/mothership/controller/metric"
 	onboardC "fennel/mothership/controller/onboard"
 	profileC "fennel/mothership/controller/profile"
+	tierC "fennel/mothership/controller/tier"
 	userC "fennel/mothership/controller/user"
 	"fennel/mothership/lib"
 	customerL "fennel/mothership/lib/customer"
@@ -116,12 +116,14 @@ func (s *server) setupRouter() {
 
 	auth := s.Group("/", AuthenticationRequired(s.db))
 	onboarded := auth.Group("/", Onboarded)
-	onboarded.GET("/", s.Home)
+	onboarded.GET("/", s.TierManagement)
 	onboarded.GET("/dashboard", s.Dashboard)
 	onboarded.GET("/data", s.Data)
 	onboarded.GET("/settings", s.Settings)
+	onboarded.GET("/tier_management", s.TierManagement)
 
 	// ajax endpoints
+	auth.GET("/tiers", s.Tiers)
 	auth.GET("/profiles", s.Profiles)
 	auth.GET("/actions", s.Actions)
 	auth.GET("/features", s.Features)
@@ -162,6 +164,7 @@ const (
 	DashboardPage      = "dashboard"
 	DataPage           = "data"
 	SettingsPage       = "settings"
+	TierManagementPage = "tier_management"
 	OnboardPage        = "onboard"
 )
 
@@ -351,27 +354,6 @@ func (s *server) ResendConfirmationEmail(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{})
 }
 
-func userMap(user userL.User) string {
-	// TODO(xiao) maybe add json tags on the user model
-	bytes, _ := json.Marshal(gin.H{
-		"email":         user.Email,
-		"firstName":     user.FirstName,
-		"lastName":      user.LastName,
-		"onboardStatus": user.OnboardStatus,
-	})
-	return string(bytes)
-}
-
-func (s *server) Home(c *gin.Context) {
-	user, _ := CurrentUser(c)
-	// TODO(xiao) tier management for home page?
-	c.HTML(http.StatusOK, "bridge/index.tmpl", gin.H{
-		"title": title("Dashboard"),
-		"page":  DashboardPage,
-		"user":  userMap(user),
-	})
-}
-
 func (s *server) Dashboard(c *gin.Context) {
 	user, _ := CurrentUser(c)
 	c.HTML(http.StatusOK, "bridge/index.tmpl", gin.H{
@@ -396,6 +378,30 @@ func (s *server) Settings(c *gin.Context) {
 		"title": title("Settings"),
 		"page":  SettingsPage,
 		"user":  userMap(user),
+	})
+}
+
+func (s *server) TierManagement(c *gin.Context) {
+	user, _ := CurrentUser(c)
+	c.HTML(http.StatusOK, "bridge/index.tmpl", gin.H{
+		"title": title("Tier Management"),
+		"page":  TierManagementPage,
+		"user":  userMap(user),
+	})
+}
+
+func (s *server) Tiers(c *gin.Context) {
+	user, _ := CurrentUser(c)
+
+	tiers, err := tierC.FetchTiers(c.Request.Context(), s.db, user.CustomerID)
+	if err != nil {
+		respondError(c, err, "fetch tiers")
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{
+		"tiers": lo.Map(tiers, func(tier tierL.Tier, _ int) gin.H {
+			return tierInfo(tier, tier.DataPlane)
+		}),
 	})
 }
 
@@ -503,28 +509,6 @@ func (s *server) Team(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{
 		"team": teamMembers(s.db, customer),
 	})
-}
-
-func teamMembers(db *gorm.DB, customer customerL.Customer) gin.H {
-	var users []userL.User
-
-	if db.Where("customer_id = ?", customer.ID).Find(&users).Error != nil {
-		return gin.H{
-			"users": []gin.H{},
-		}
-	}
-
-	return gin.H{
-		"id":   customer.ID,
-		"name": customer.Name,
-		"users": lo.Map(users, func(user userL.User, _ int) gin.H {
-			return gin.H{
-				"email":     user.Email,
-				"firstName": user.FirstName,
-				"lastName":  user.LastName,
-			}
-		}),
-	}
 }
 
 func (s *server) UpdateUserNames(c *gin.Context) {
@@ -685,14 +669,6 @@ func (s *server) OnboardTierProvisioned(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{
 		"onboardStatus": user.OnboardStatus,
 	})
-}
-
-func tierInfo(tier tierL.Tier, dp dataplaneL.DataPlane) gin.H {
-	return gin.H{
-		"apiUrl":   tier.ApiUrl,
-		"limit":    tier.RequestsLimit,
-		"location": dp.Region,
-	}
 }
 
 type queryRangeRequest struct {
