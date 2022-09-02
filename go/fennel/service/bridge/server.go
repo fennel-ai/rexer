@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"errors"
 	"fennel/lib/sql"
 	"fennel/mothership"
 	actionC "fennel/mothership/controller/action"
@@ -11,8 +12,10 @@ import (
 	profileC "fennel/mothership/controller/profile"
 	userC "fennel/mothership/controller/user"
 	"fennel/mothership/lib"
-	"fennel/mothership/lib/customer"
-	"fennel/mothership/lib/dataplane"
+	customerL "fennel/mothership/lib/customer"
+
+	dataplaneL "fennel/mothership/lib/dataplane"
+	tierL "fennel/mothership/lib/tier"
 	userL "fennel/mothership/lib/user"
 	"fennel/service/common"
 	"fmt"
@@ -133,6 +136,8 @@ func (s *server) setupRouter() {
 
 	onboard := auth.Group("/onboard")
 	onboard.GET("/team_match", s.OnboardTeamMatch)
+	onboard.GET("/tier", s.OnboardTier)
+	onboard.POST("/tier_provisioned", s.OnboardTierProvisioned)
 	onboard.POST("/create_team", s.OnboardCreateTeam)
 	onboard.POST("/join_team", s.OnboardJoinTeam)
 	onboard.POST("/submit_questionnaire", s.OnboardSubmitQuestionnaire)
@@ -484,7 +489,7 @@ func (s *server) User(c *gin.Context) {
 }
 
 func (s *server) Team(c *gin.Context) {
-	var customer customer.Customer
+	var customer customerL.Customer
 	user, _ := CurrentUser(c)
 	result := s.db.Take(&customer, user.CustomerID)
 
@@ -500,7 +505,7 @@ func (s *server) Team(c *gin.Context) {
 	})
 }
 
-func teamMembers(db *gorm.DB, customer customer.Customer) gin.H {
+func teamMembers(db *gorm.DB, customer customerL.Customer) gin.H {
 	var users []userL.User
 
 	if db.Where("customer_id = ?", customer.ID).Find(&users).Error != nil {
@@ -627,38 +632,66 @@ func (s *server) OnboardJoinTeam(c *gin.Context) {
 func (s *server) OnboardSubmitQuestionnaire(c *gin.Context) {
 	// TODO(xiao) skipped for now
 	user, _ := CurrentUser(c)
-	err := s.db.Model(&user).Update("onboard_status", userL.OnboardStatusTierProvision).Error
+	err := s.db.Model(&user).Update("onboard_status", userL.OnboardStatusTierProvisioning).Error
 	if err != nil {
 		respondError(c, err, "join team (onboard)")
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{
-		"onboardStatus": userL.OnboardStatusTierProvision,
+		"onboardStatus": userL.OnboardStatusTierProvisioning,
 	})
 }
 
 func (s *server) OnboardAssignTier(c *gin.Context) {
 	user, _ := CurrentUser(c)
 	tier, available, err := onboardC.AssignTier(c.Request.Context(), s.db, &user)
+	if err == nil && !available {
+		err = errors.New("no available pre-provisioned tier")
+	}
 	if err != nil {
 		respondError(c, err, "assign a tier (onboard)")
 		return
 	}
 	if available {
-		var dp dataplane.DataPlane
+		var dp dataplaneL.DataPlane
 		_ = s.db.Take(&dp, tier.DataPlaneID)
 		c.JSON(http.StatusOK, gin.H{
 			"onboardStatus": user.OnboardStatus,
-			"tier": gin.H{
-				"apiUrl":   tier.ApiUrl,
-				"limit":    tier.RequestsLimit,
-				"location": dp.Region,
-			},
+			"tier":          tierInfo(tier, dp),
 		})
-	} else {
-		c.JSON(http.StatusOK, gin.H{
-			"onboardStatus": user.OnboardStatus,
-		})
+	}
+}
+
+func (s *server) OnboardTier(c *gin.Context) {
+	user, _ := CurrentUser(c)
+	tier, err := onboardC.FetchTier(c.Request.Context(), s.db, user.CustomerID)
+	if err != nil {
+		respondError(c, err, "assign a tier (onboard)")
+		return
+	}
+	var dp dataplaneL.DataPlane
+	_ = s.db.Take(&dp, tier.DataPlaneID)
+	c.JSON(http.StatusOK, gin.H{
+		"tier": tierInfo(tier, dp),
+	})
+}
+
+func (s *server) OnboardTierProvisioned(c *gin.Context) {
+	user, _ := CurrentUser(c)
+	if err := onboardC.TierProvisioned(c.Request.Context(), s.db, &user); err != nil {
+		respondError(c, err, "assign a tier (onboard)")
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{
+		"onboardStatus": user.OnboardStatus,
+	})
+}
+
+func tierInfo(tier tierL.Tier, dp dataplaneL.DataPlane) gin.H {
+	return gin.H{
+		"apiUrl":   tier.ApiUrl,
+		"limit":    tier.RequestsLimit,
+		"location": dp.Region,
 	}
 }
 

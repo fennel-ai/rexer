@@ -54,8 +54,7 @@ function OnboardSetupTeam({user, onOnboardStatusChange}: Props) {
                 // TODO(xiao) error handling
             });
     };
-
-    useEffect(() => queryTeamMatch(), []);
+    useEffect(queryTeamMatch, []);
 
     if (loading) {
         return <LoadingOutlined spin />
