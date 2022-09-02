@@ -34,8 +34,8 @@ function OnboardJoinTeam({ team, onOnboardStatusChange }: Props) {
         axios.post("/onboard/join_team", {
             teamID: team.id,
         }).then((response: AxiosResponse<JoinTeamResponse>) => {
-            onOnboardStatusChange(response.data.onboardStatus);
             setSubmitting(false);
+            onOnboardStatusChange(response.data.onboardStatus);
         })
         .catch(() => {
             // TODO(xiao) error handling

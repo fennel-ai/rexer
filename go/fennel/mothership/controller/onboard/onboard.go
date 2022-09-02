@@ -92,7 +92,7 @@ func AssignTier(ctx context.Context, db *gorm.DB, user *userL.User) (tierL.Tier,
 	if user.CustomerID == 0 {
 		return tier, false, errors.New("user doesn't have a team")
 	}
-	if user.OnboardStatus != userL.OnboardStatusTierProvision {
+	if user.OnboardStatus != userL.OnboardStatusTierProvisioning {
 		return tier, false, &ErrorUnexpectedOnboardStatus{Status: user.OnboardStatus, Action: "AssignTier"}
 	}
 
@@ -109,8 +109,17 @@ func AssignTier(ctx context.Context, db *gorm.DB, user *userL.User) (tierL.Tier,
 			return tier, true, err
 		}
 	}
-	err := db.Model(&user).Update("onboard_status", userL.OnboardStatusTierNotAvailable).Error
-	return tier, false, err
+	return tier, false, nil
+}
+
+func FetchTier(ctx context.Context, db *gorm.DB, customerID uint) (tier tierL.Tier, err error) {
+	err = db.Where("customer_id = ?", customerID).Take(&tier).Error
+	return tier, err
+}
+
+func TierProvisioned(ctx context.Context, db *gorm.DB, user *userL.User) (err error) {
+	// TODO(xiao) should transition to welcome
+	return db.Model(&user).Update("onboard_status", userL.OnboardStatusDone).Error
 }
 
 func isPersonalDomain(domain string) bool {

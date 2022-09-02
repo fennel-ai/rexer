@@ -161,13 +161,13 @@ func TestOnboardAssignTier(t *testing.T) {
 	_, _, err = AssignTier(ctx, db, &user)
 	assert.ErrorContains(t, err, "Unexpected onboard status")
 
-	user.OnboardStatus = userL.OnboardStatusTierProvision
+	user.OnboardStatus = userL.OnboardStatusTierProvisioning
 	_, available, err := AssignTier(ctx, db, &user)
 	assert.NoError(t, err)
 	assert.False(t, available)
-	assert.Equal(t, userL.OnboardStatusTierNotAvailable, user.OnboardStatus)
+	assert.Equal(t, userL.OnboardStatusTierProvisioning, user.OnboardStatus)
 
-	user.OnboardStatus = userL.OnboardStatusTierProvision
+	user.OnboardStatus = userL.OnboardStatusTierProvisioning
 	assert.Positive(t, db.Save(&user).RowsAffected)
 	tier := tierL.Tier{
 		DataPlaneID:   1,
@@ -185,7 +185,7 @@ func TestOnboardAssignTier(t *testing.T) {
 	assert.Equal(t, tier.ID, assignedTier.ID)
 	assert.Equal(t, userL.OnboardStatusTierProvisioned, user.OnboardStatus)
 
-	user.OnboardStatus = userL.OnboardStatusTierProvision
+	user.OnboardStatus = userL.OnboardStatusTierProvisioning
 	assert.Positive(t, db.Save(&user).RowsAffected)
 	assignedTier, available, err = AssignTier(ctx, db, &user)
 	assert.NoError(t, err)
