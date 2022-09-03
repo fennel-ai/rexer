@@ -24,6 +24,7 @@ import * as pprofBucket from "../pprof-bucket";
 import * as tierEksPermissions from "../tier-eks-permissions";
 import * as countersCleanup from "../counters-cleanup";
 import * as unleash from "../unleash";
+import * as mirrorMaker from "../mirror-maker";
 import * as util from "../lib/util";
 
 import * as process from "process";
@@ -79,6 +80,8 @@ export type TierConf = {
     protectResources: boolean,
     planeId: number,
     enableNitrous?: boolean,
+    createTopicsInMsk?: boolean,
+    mirrorMakerConf?: mirrorMaker.MirrorMakerConf,
     httpServerConf?: HttpServerConf,
     queryServerConf?: QueryServerConf,
     countAggrConf?: CountAggrConf,
@@ -107,6 +110,11 @@ type inputType = {
     bootstrapServer: string,
     kafkaApiKey: string,
     kafkaApiSecret: pulumi.Output<string>,
+
+    // create topics in msk for the tier
+    createTopicsInMsk?: boolean,
+    mirrorMakerConf?: mirrorMaker.MirrorMakerConf,
+
     // msk configuration
     mskConf?: TierMskConf,
 
@@ -174,6 +182,9 @@ const parseConfig = (): inputType => {
         kafkaApiSecret: config.requireSecret(nameof<inputType>("kafkaApiSecret")),
 
         mskConf: config.getObject(nameof<inputType>("mskConf")),
+
+        createTopicsInMsk: config.getBoolean(nameof<inputType>("createTopicsInMsk")),
+        mirrorMakerConf: config.getObject(nameof<inputType>("mirrorMakerConf")),
 
         confUsername: config.require(nameof<inputType>("confUsername")),
         confPassword: config.require(nameof<inputType>("confPassword")),
@@ -274,7 +285,31 @@ const setupResources = async () => {
         topics: input.topics,
         bootstrapServer: input.bootstrapServer,
         protect: input.protect,
-    })
+
+        createInMsk: input.createTopicsInMsk,
+        mskApiKey: input.mskConf?.mskUsername,
+        mskApiSecret: input.mskConf?.mskPassword,
+        mskBootstrapServers: input.mskConf?.bootstrapBrokers,
+    });
+    if (input.mirrorMakerConf) {
+        const mirrorMakerOutput = await mirrorMaker.setup({
+            tierId: input.tierId,
+            roleArn: input.roleArn,
+            region: input.region,
+            kubeconfig: input.kubeconfig,
+
+            topics: input.topics,
+            conf: input.mirrorMakerConf!,
+
+            mskPassword: input.mskConf!.mskPassword,
+            mskUsername: input.mskConf!.mskUsername,
+            mskBootstrapServers: input.mskConf!.bootstrapBrokers,
+
+            confluentPassword: input.kafkaApiSecret,
+            confluentUsername: input.kafkaApiKey,
+            confluentBootstrapServers: input.bootstrapServer,
+        });
+    }
     const offlineAggregateStorageBucket = await offlineAggregateStorage.setup({
         region: input.region,
         roleArn: input.roleArn,
@@ -608,6 +643,10 @@ type TierInput = {
     kafkaApiKey: string,
     kafkaApiSecret: string,
 
+    // create topics in msk
+    createTopicsInMsk?: boolean,
+    mirrorMakerConf?: mirrorMaker.MirrorMakerConf,
+
     // msk configuration
     mskConf?: TierMskConf,
 
@@ -706,6 +745,17 @@ const setupTier = async (args: TierInput, preview?: boolean, destroy?: boolean) 
         process.exit(1);
     }
 
+    // if create topics in MSK is enabled, msk conf must be present
+    if (args.createTopicsInMsk !== undefined && args.createTopicsInMsk && args.mskConf === undefined) {
+        console.log('mskConf must be configured to create tier topics in MSK')
+        process.exit(1);
+    }
+
+    if (args.mirrorMakerConf !== undefined && args.mskConf === undefined) {
+        console.log("mskConf must be configured to create mirror maker")
+        process.exit(1);
+    }
+
     console.info("initializing stack");
     // Create our stack
     const stackArgs: InlineProgramArgs = {
@@ -733,6 +783,14 @@ const setupTier = async (args: TierInput, preview?: boolean, destroy?: boolean) 
 
     if (args.mskConf !== undefined) {
         await stack.setConfig(nameof<inputType>("mskConf"), { value: JSON.stringify(args.mskConf) });
+    }
+
+    if (args.createTopicsInMsk !== undefined) {
+        await stack.setConfig(nameof<inputType>("createTopicsInMsk"), { value: JSON.stringify(args.createTopicsInMsk) })
+    }
+
+    if (args.mirrorMakerConf !== undefined) {
+        await stack.setConfig(nameof<inputType>("mirrorMakerConf"), { value: JSON.stringify(args.mirrorMakerConf) });
     }
 
     await stack.setConfig(nameof<inputType>("bootstrapServer"), { value: args.bootstrapServer })
