@@ -2,6 +2,7 @@ package kafka
 
 import (
 	"context"
+	"fennel/airbyte"
 	"fennel/lib/nitrous"
 	"time"
 
@@ -85,6 +86,7 @@ var ALL_CONFLUENT_TOPICS = []TopicConf{
 	{Scope: resource.TierScope{}, Topic: profile.PROFILELOG_KAFKA_TOPIC},
 	{Scope: resource.TierScope{}, Topic: counter.AGGREGATE_OFFLINE_TRANSFORM_TOPIC_NAME},
 	{Scope: resource.TierScope{}, Topic: usage.HOURLY_USAGE_LOG_KAFKA_TOPIC},
+	{Scope: resource.TierScope{}, Topic: airbyte.AIRBYTE_KAFKA_TOPIC},
 }
 
 var ALL_MSK_TOPICS = []TopicConf{
