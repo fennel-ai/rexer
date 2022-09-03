@@ -145,7 +145,7 @@ func (b *badgerDB) GetMany(ctx context.Context, kgs []hangar.KeyGroup) ([]hangar
 		err = b.db.View(func(txn *badger.Txn) error {
 			for i, ek := range eks {
 				// We don't use missing key cache in write mode.
-				if _, ok := b.missingKeyCache.Get(ek); ok && mode == "read" {
+				if _, ok := b.missingKeyCache.Get(ek); ok && !hangar.IsWrite(ctx) {
 					continue
 				}
 				item, err := txn.Get(ek)
@@ -200,6 +200,9 @@ func (b *badgerDB) SetMany(ctx context.Context, keys []hangar.Key, deltas []hang
 		txn := b.db.NewTransaction(true)
 		defer txn.Discard()
 		for i, ek := range eks {
+			// TODO: This can still race with a concurrent Get and leave the
+			// missingKeyCache in an inconsistent state till the next write to this
+			// key happens.
 			b.missingKeyCache.Del(ek)
 			var old hangar.ValGroup
 			olditem, err := txn.Get(ek)

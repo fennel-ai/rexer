@@ -50,10 +50,6 @@ type Tailer struct {
 // Returns a new Tailer that can be used to tail the binlog.
 func NewTailer(n nitrous.Nitrous, topic string, toppars kafka.TopicPartitions, processor EventsProcessor) (*Tailer, error) {
 	// Given the topic partitions, decode what offsets to start reading from.
-	toppars, err := decodeOffsets(toppars, n.Store)
-	if err != nil {
-		return nil, fmt.Errorf("failed to decode offsets: %w", err)
-	}
 	consumer, err := n.KafkaConsumerFactory(fkafka.ConsumerConfig{
 		Scope:        resource.NewPlaneScope(n.PlaneID),
 		Topic:        topic,
@@ -65,12 +61,13 @@ func NewTailer(n nitrous.Nitrous, topic string, toppars kafka.TopicPartitions, p
 			case kafka.AssignedPartitions:
 				if len(toppars) > 0 && len(event.Partitions) > 0 {
 					// fetch the last committed offsets for the topic partitions assigned to the consumer
-					newToppars, err := decodeOffsets(toppars, n.Store)
+					var err error
+					toppars, err = decodeOffsets(toppars, n.Store)
 					if err != nil {
 						zap.L().Fatal("Failed to fetch latest offsets", zap.String("consumer", c.String()), zap.Error(err))
 					}
-					zap.L().Info("Discarding broker assigned partitions and assigning partitions to self", zap.String("consumer", c.String()), zap.String("toppars", fmt.Sprintf("%v", newToppars)))
-					err = c.Assign(newToppars)
+					zap.L().Info("Discarding broker assigned partitions and assigning partitions to self", zap.String("consumer", c.String()), zap.String("toppars", fmt.Sprintf("%v", toppars)))
+					err = c.Assign(toppars)
 					if err != nil {
 						zap.L().Fatal("Failed to assign partitions", zap.Error(err))
 					}

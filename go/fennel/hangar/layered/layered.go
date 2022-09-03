@@ -129,11 +129,7 @@ func NewHangar(planeID ftypes.RealmID, cache, db hangar.Hangar) hangar.Hangar {
 func (l *layered) DelMany(ctx context.Context, kgs []hangar.KeyGroup) error {
 	ctx, t := timer.Start(ctx, l.planeID, "hangar.layered.delmany")
 	defer t.Stop()
-	err := l.cache.DelMany(ctx, kgs)
-	if err != nil {
-		return fmt.Errorf("failed to delete keys from the cache: %w", err)
-	}
-	if err = l.db.DelMany(ctx, kgs); err != nil {
+	if err := l.db.DelMany(ctx, kgs); err != nil {
 		return fmt.Errorf("failed to delete keys from the db: %w", err)
 	}
 	// Initate a background "fill" request that will ensure the keygroup is
@@ -156,6 +152,17 @@ func (l *layered) PlaneID() ftypes.RealmID {
 func (l *layered) GetMany(ctx context.Context, kgs []hangar.KeyGroup) ([]hangar.ValGroup, error) {
 	ctx, t := timer.Start(ctx, l.planeID, "hangar.layered.getmany")
 	defer t.Stop()
+	// If this read is on the write path, skip the cache since it can contain
+	// stale data.
+	if hangar.IsWrite(ctx) {
+		vgs, err := l.db.GetMany(ctx, kgs)
+		if err != nil {
+			return nil, fmt.Errorf("failed to get values from the db: %w", err)
+		}
+		// Fill the missing keygroups in the cache.
+		l.fill(kgs, false /* delete */)
+		return vgs, nil
+	}
 	results, err := l.cache.GetMany(ctx, kgs)
 	if err != nil {
 		return nil, err
@@ -227,9 +234,6 @@ func (l *layered) SetMany(ctx context.Context, keys []hangar.Key, vgs []hangar.V
 	for i, key := range keys {
 		kgs[i].Prefix = key
 		kgs[i].Fields = mo.Some(vgs[i].Fields)
-	}
-	if err := l.cache.DelMany(ctx, kgs); err != nil {
-		return err
 	}
 	if err := l.db.SetMany(ctx, keys, vgs); err != nil {
 		return err

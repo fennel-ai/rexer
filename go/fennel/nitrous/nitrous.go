@@ -10,8 +10,10 @@ import (
 	"github.com/samber/mo"
 
 	"fennel/hangar"
+	"fennel/hangar/cache"
 	"fennel/hangar/db"
 	"fennel/hangar/encoders"
+	"fennel/hangar/layered"
 	libkafka "fennel/kafka"
 	"fennel/lib/ftypes"
 	"fennel/resource"
@@ -40,7 +42,7 @@ type NitrousArgs struct {
 	// variable should be unique for each replica of a StatefulSet in k8s.
 	Identity string `arg:"--identity,env:IDENTITY" json:"identity" default:"localhost"`
 	// Flag to enable data compression.
-	Compress bool `arg:"--compress,env:COMPRESS" json:"compress" default:"true"`
+	Compress bool `arg:"--compress,env:COMPRESS" json:"compress" default:"false"`
 	Dev      bool `arg:"--dev" default:"true" json:"dev,omitempty"`
 }
 
@@ -120,8 +122,8 @@ func CreateFromArgs(args NitrousArgs) (Nitrous, error) {
 	badgerOpts = badgerOpts.WithCompactL0OnClose(true)
 	badgerOpts = badgerOpts.WithIndexCacheSize(4 << 30 /* 4 GB */)
 	badgerOpts = badgerOpts.WithMemTableSize(256 << 20 /* 256 MB */)
-	badgerOpts = badgerOpts.WithBlockCacheSize(args.BadgerBlockCacheMB << 20)
 	if args.Compress {
+		badgerOpts = badgerOpts.WithBlockCacheSize(args.BadgerBlockCacheMB << 20)
 		badgerOpts = badgerOpts.WithCompression(options.ZSTD)
 	} else {
 		badgerOpts = badgerOpts.WithCompression(options.None)
@@ -131,11 +133,17 @@ func CreateFromArgs(args NitrousArgs) (Nitrous, error) {
 		return Nitrous{}, fmt.Errorf("failed to create badger db: %w", err)
 	}
 
+	cache, err := cache.NewHangar(scope.ID(), args.RistrettoMaxCost, args.RistrettoAvgCost, encoders.Default())
+	if err != nil {
+		return Nitrous{}, fmt.Errorf("failed to create cache: %w", err)
+	}
+	layered := layered.NewHangar(scope.ID(), cache, db)
+
 	return Nitrous{
 		PlaneID:              scope.ID(),
 		Identity:             args.Identity,
 		KafkaConsumerFactory: consumerFactory,
 		Clock:                clock.New(),
-		Store:                db,
+		Store:                layered,
 	}, nil
 }

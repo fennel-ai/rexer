@@ -14,6 +14,7 @@ import (
 
 const (
 	OFFSET_KEY_PREFIX = "offsets_"
+	DEFAULT_OFFSET    = kafka.OffsetEnd
 )
 
 var (
@@ -34,7 +35,10 @@ func decodeOffsets(toppars kafka.TopicPartitions, store hangar.Hangar) (kafka.To
 		}
 		kgs[i].Prefix = hangar.Key{Data: key}
 	}
-	vgs, err := store.GetMany(context.Background(), kgs)
+	// Call in write mode to get consistent results.
+	ctx := context.Background()
+	ctx = hangar.NewWriteContext(ctx)
+	vgs, err := store.GetMany(ctx, kgs)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get offsets: %w", err)
 	}
@@ -42,11 +46,11 @@ func decodeOffsets(toppars kafka.TopicPartitions, store hangar.Hangar) (kafka.To
 		if len(vg.Fields) == 0 {
 			zap.L().Info("Offset not found for partition. Using default value.",
 				zap.String("topic", *toppars[i].Topic), zap.Int32("partition", toppars[i].Partition))
-			toppars[i].Offset = kafka.OffsetBeginning
+			toppars[i].Offset = DEFAULT_OFFSET
 		} else if !bytes.Equal(vg.Fields[0], OFFSET_FIELD) {
 			zap.L().Error("Invalid offset field. Using default value.",
 				zap.String("topic", *toppars[i].Topic), zap.Int32("partition", toppars[i].Partition), zap.Binary("field", vg.Fields[0]))
-			toppars[i].Offset = kafka.OffsetBeginning
+			toppars[i].Offset = DEFAULT_OFFSET
 		} else {
 			off, err := decodeValue(vg.Values[0])
 			if err != nil {
