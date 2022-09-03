@@ -69,6 +69,7 @@ const tierConfs: Record<number, TierConf> = {
         },
         enableNitrous: true,
         createTopicsInMsk: true,
+        mirrorMakerConf: {},
     },
     // Fennel staging tier using Fennel's staging data plane.
     106: {
@@ -101,7 +102,9 @@ const tierConfs: Record<number, TierConf> = {
         // in the future
         airbyteConf: {
             publicServer: true,
-        }
+        },
+        createTopicsInMsk: true,
+        mirrorMakerConf: {},
     },
     // Lokal prod tier on their prod data plane.
     107: {
@@ -196,6 +199,8 @@ const tierConfs: Record<number, TierConf> = {
                 }
             },
         },
+        createTopicsInMsk: true,
+        mirrorMakerConf: {},
     },
     // Lokal's staging tier
     109: {
@@ -248,6 +253,8 @@ const tierConfs: Record<number, TierConf> = {
             },
         },
         enableNitrous: true,
+        createTopicsInMsk: true,
+        mirrorMakerConf: {},
     },
     // Convoy prod tier
     112: {
@@ -287,7 +294,9 @@ const tierConfs: Record<number, TierConf> = {
         // enable airbyte
         airbyteConf: {
             publicServer: false,
-        }
+        },
+        createTopicsInMsk: true,
+        mirrorMakerConf: {},
     },
     // 3 Demo tiers asked by Nikhil as of 08/09/2022
     116: {
@@ -297,6 +306,8 @@ const tierConfs: Record<number, TierConf> = {
         ingressConf: {
             usePublicSubnets: true,
         },
+        createTopicsInMsk: true,
+        mirrorMakerConf: {},
     },
     117: {
         protectResources: true,
@@ -304,7 +315,9 @@ const tierConfs: Record<number, TierConf> = {
         // use public subnets for ingress to allow traffic from outside the assigned vpc
         ingressConf: {
             usePublicSubnets: true,
-        }
+        },
+        createTopicsInMsk: true,
+        mirrorMakerConf: {},
     },
     118: {
         protectResources: true,
@@ -312,7 +325,9 @@ const tierConfs: Record<number, TierConf> = {
         // use public subnets for ingress to allow traffic from outside the assigned vpc
         ingressConf: {
             usePublicSubnets: true,
-        }
+        },
+        createTopicsInMsk: true,
+        mirrorMakerConf: {},
     },
     119: {
         protectResources: true,
@@ -322,6 +337,8 @@ const tierConfs: Record<number, TierConf> = {
             usePublicSubnets: true,
         },
         airbyteConf: {},
+        createTopicsInMsk: true,
+        mirrorMakerConf: {},
     },
 }
 
@@ -729,7 +746,10 @@ const dataPlaneConfs: Record<number, DataPlaneConf> = {
             numberOfBrokerNodes: 4,
             // TODO(mohit): consider expanding this in the future if each broker needs more storage capacity
             storageVolumeSizeGiB: 1024,
-        }
+        },
+
+        // setup strimzi
+        strimziConf: {},
     },
     // plane 8 - pending account close, post which it can be destroyed
     // Convoy's production plane
@@ -794,6 +814,8 @@ const dataPlaneConfs: Record<number, DataPlaneConf> = {
         prometheusConf: {
             useAMP: true
         },
+        // setup strimzi
+        strimziConf: {},
     },
     10: {
         protectResources: true,
@@ -1114,6 +1136,7 @@ async function setupTierWrapperFn(tierId: number, dataplane: OutputMap, planeCon
             kafkaApiSecret: confluentOutput.apiSecret,
 
             createTopicsInMsk: tierConf.createTopicsInMsk,
+            mirrorMakerConf: tierConf.mirrorMakerConf,
 
             mskConf: mskConf,
 
