@@ -8,7 +8,7 @@ import * as process from "process";
 import * as childProcess from "child_process";
 import * as util from "../lib/util";
 import { ReadinessProbe } from "../tier-consts/consts";
-import {INSTANCE_METADATA_SERVICE_ADDR} from "../lib/util";
+import { INSTANCE_METADATA_SERVICE_ADDR } from "../lib/util";
 
 
 export const plugins = {
@@ -290,7 +290,7 @@ export const setup = async (input: inputType) => {
                                     "--plane-id",
                                     `${input.planeId}`,
                                     "--badger_dir",
-                                    "/oxide",
+                                    "/oxide/badger",
                                     "--badger_block_cache_mb",
                                     `${input.blockCacheMB}`,
                                     "--ristretto_max_cost",
@@ -409,7 +409,7 @@ export const setup = async (input: inputType) => {
                 // default update strategy is "RollingUpdate" with "maxUnavailable: 1". Stateful sets have a
                 // concept of partitions, but I believe are useful for canary rollout
             },
-        }, { provider: k8sProvider, deleteBeforeReplace: true, dependsOn: [mskCreds]});
+        }, { provider: k8sProvider, deleteBeforeReplace: true, dependsOn: [mskCreds] });
     })
 
     const appSvc = appStatefulset.apply(() => {
