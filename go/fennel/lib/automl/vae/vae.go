@@ -24,7 +24,7 @@ var (
 
 const (
 	UserHistoryAggSuffix = "-INTERNAL-USER_HISTORY"
-	NumEpochs            = "10"
+	NumEpochs            = "30"
 	InferenceType        = "ml.m5.large"
 	TrainingDevice       = "cuda"
 )
@@ -91,12 +91,12 @@ func GetUserHistoryAggregate(agg aggregate.Aggregate) aggregate.Aggregate {
 	return userHistoryAggregate
 }
 
-func GetAutoMLPrediction(ctx context.Context, tier tier.Tier, aggName ftypes.AggName, modelInput []value.Value) ([]value.Value, error) {
-	endPoint := GetModelEndpointName(tier.ID, aggName)
+func GetAutoMLPrediction(ctx context.Context, tier tier.Tier, agg aggregate.Aggregate, modelInput []value.Value) ([]value.Value, error) {
+	endPoint := GetModelEndpointName(tier.ID, agg.Name)
 	scoreInput := value.NewDict(map[string]value.Value{
 		"user_histories": value.NewList(modelInput...),
 		"get_embedding":  value.Bool(false),
-		"limit":          value.Int(10),
+		"limit":          value.Int(agg.Options.Limit),
 	})
 
 	scoreRequest := &lib.ScoreRequest{

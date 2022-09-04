@@ -204,6 +204,36 @@
         "AlgorithmSpecification": {
           "TrainingInputMode": "File",
           "TrainingImage": "763104351884.dkr.ecr.us-west-2.amazonaws.com/pytorch-training:1.11-gpu-py38",
+          "MetricDefinitions": [
+            {
+              "Name": "train:error",
+              "Regex": "Epoch\\\\s[0-9,]+ loss\\\\s(.*?)\\\\s:"
+            },
+            {
+              "Name": "validation:recall@100",
+              "Regex": "Recall@100\\\\s(.*)"
+            },
+            {
+              "Name": "validation:ndcg@100",
+              "Regex": "NDCG@100\\\\s(.*)"
+            },
+            {
+              "Name": "validation:ndcg@50",
+              "Regex": "NDCG@50\\\\s(.*)"
+            },
+            {
+              "Name": "validation:recall@50",
+              "Regex": "Recall@50\\\\s(.*)"
+            },
+            {
+              "Name": "validation:recall@10",
+              "Regex": "Recall@10\\\\s(.*)"
+            },
+            {
+              "Name": "validation:ndcg@10",
+              "Regex": "NDCG@10\\\\s(.*)"
+            }
+          ],
           "EnableSageMakerMetricsTimeSeries": true
         },
         "OutputDataConfig": {
@@ -471,7 +501,7 @@
               ]
             }
           },
-          "sagemaker_submit_directory": "s3://sagemaker-us-west-2-030813887342/VAETrainStep-4473f866caa8a014d0534b8bc8c1ce89/source/sourcedir.tar.gz",
+          "sagemaker_submit_directory": "s3://sagemaker-us-west-2-030813887342/VAETrainStep-68c8ddbd71b7a1ef88dbc60d9239cdda/source/sourcedir.tar.gz",
           "sagemaker_program": "vae.py",
           "sagemaker_container_log_level": "20",
           "sagemaker_region": "us-west-2"
@@ -485,7 +515,7 @@
         },
         "ProfilerRuleConfigurations": [
           {
-            "RuleConfigurationName": "ProfilerReport-1661873987",
+            "RuleConfigurationName": "ProfilerReport-1662321787",
             "RuleEvaluatorImage": "895741380848.dkr.ecr.us-west-2.amazonaws.com/sagemaker-debugger-rules:latest",
             "RuleParameters": {
               "rule_to_invoke": "ProfilerReport"
@@ -510,7 +540,7 @@
           "TrainingImage": "246618743249.dkr.ecr.us-west-2.amazonaws.com/sagemaker-scikit-learn:0.23-1-cpu-py3"
         },
         "OutputDataConfig": {
-          "S3OutputPath": "s3://sagemaker-us-west-2-030813887342/pytorch-inference-2022-08-30-15-39-44-765"
+          "S3OutputPath": "s3://sagemaker-us-west-2-030813887342/pytorch-inference-2022-09-04-20-03-05-878"
         },
         "StoppingCondition": {
           "MaxRuntimeInSeconds": 86400
@@ -555,7 +585,7 @@
           "sagemaker_region": "us-west-2"
         },
         "DebugHookConfig": {
-          "S3OutputPath": "s3://sagemaker-us-west-2-030813887342/pytorch-inference-2022-08-30-15-39-44-765",
+          "S3OutputPath": "s3://sagemaker-us-west-2-030813887342/pytorch-inference-2022-09-04-20-03-05-878",
           "CollectionConfigurations": []
         }
       },
@@ -621,7 +651,7 @@
         },
         "role": "arn:aws:iam::030813887342:role/admin"
       },
-      "FunctionArn": "arn:aws:lambda:us-west-2:030813887342:function:sagemaker-pipelines-model-deployment-08-30-15-39-46",
+      "FunctionArn": "arn:aws:lambda:us-west-2:030813887342:function:sagemaker-pipelines-model-deployment-09-04-20-03-06",
       "OutputParameters": [
         {
           "OutputName": "statusCode",

@@ -252,7 +252,7 @@ func fetchAutoMLAggregates(ctx context.Context, tier tier.Tier, aggMap map[ftype
 
 		// TODO: parallelize this IO bound for loop.
 		for aggName, userHistory := range aggToUserHistoryMap {
-			smResult, err := vae.GetAutoMLPrediction(ctx, tier, aggName, userHistory)
+			smResult, err := vae.GetAutoMLPrediction(ctx, tier, aggMap[aggName], userHistory)
 			if err != nil {
 				return 0, fmt.Errorf("error: failed to retrieve auto-ml prediction: %w", err)
 			}
