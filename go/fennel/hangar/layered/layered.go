@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"log"
 	"time"
 
 	"fennel/hangar"
@@ -15,6 +14,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 	"github.com/samber/mo"
+	"go.uber.org/zap"
 )
 
 /*
@@ -196,6 +196,7 @@ func (l *layered) GetMany(ctx context.Context, kgs []hangar.KeyGroup) ([]hangar.
 				Prefix: kgs[i].Prefix,
 				Fields: mo.Some(fields),
 			})
+			cacheMisses.Add(float64(len(fields)))
 		} else {
 			cacheHits.Add(float64(len(cval.Fields)))
 		}
@@ -208,22 +209,15 @@ func (l *layered) GetMany(ctx context.Context, kgs []hangar.KeyGroup) ([]hangar.
 	if err != nil {
 		return nil, fmt.Errorf("failed to get values from the db: %w", err)
 	}
-	tofill := notfound[:0]
 	for i, dbval := range dbvals {
 		if len(dbval.Fields) > 0 {
-			// Count retrieved fields as cache misses if-and-only if the fields
-			// were explicitly requested.
-			if kgs[ptr[i]].Fields.IsPresent() {
-				cacheMisses.Add(float64(len(dbval.Fields)))
-			}
 			if err = results[ptr[i]].Update(dbval); err != nil {
 				return nil, fmt.Errorf("failed to update valgroup: %w", err)
 			}
-			tofill = append(tofill, notfound[i])
 		}
 	}
 	// Fill the missing keygroups in the cache.
-	l.fill(tofill, false /* delete */)
+	l.fill(notfound, false /* delete */)
 	return results, nil
 }
 
@@ -282,28 +276,35 @@ func (l *layered) processFillReqs() {
 		_ = timer.Stop()
 		if len(deletionBatch) > 0 {
 			if err := l.cache.DelMany(context.Background(), deletionBatch); err != nil {
-				log.Printf("Failed to delete from cache: %v", err)
+				zap.L().Warn("Failed to delete from cache", zap.Error(err))
 				continue
 			}
 		}
 		if len(updateBatch) > 0 {
 			dbvals, err := l.db.GetMany(context.Background(), updateBatch)
 			if err != nil {
-				log.Printf("Failed to get values from db: %v", err)
+				zap.L().Warn("Failed to get values from db", zap.Error(err))
 				continue
 			}
 			keys := make([]hangar.Key, 0, len(updateBatch))
 			valgroups := make([]hangar.ValGroup, 0, len(updateBatch))
 			for i, dbval := range dbvals {
-				if len(dbval.Fields) == 0 {
-					// nothing to put in cache
-					continue
+				// Initialize all fields as empty. This allows us to remember in
+				// the cache that some keys and/or fields are missing from the db.
+				fields := updateBatch[i].Fields.OrEmpty()
+				vg := hangar.ValGroup{
+					Fields: fields,
+					Values: make(hangar.Values, len(fields)),
+				}
+				err = vg.Update(dbval)
+				if err != nil {
+					zap.L().Warn("Failed to update valgroup", zap.Error(err))
 				}
 				keys = append(keys, updateBatch[i].Prefix)
-				valgroups = append(valgroups, dbval)
+				valgroups = append(valgroups, vg)
 			}
 			if err = l.cache.SetMany(context.Background(), keys, valgroups); err != nil {
-				log.Printf("Failed to fill cache: %v", err)
+				zap.L().Warn("Failed to fill cache", zap.Error(err))
 				continue
 			}
 		}

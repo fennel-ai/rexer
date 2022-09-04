@@ -128,6 +128,7 @@ func CreateFromArgs(args NitrousArgs) (Nitrous, error) {
 	} else {
 		badgerOpts = badgerOpts.WithCompression(options.None)
 	}
+	badgerOpts = badgerOpts.WithMetricsEnabled(false)
 	db, err := db.NewHangar(scope.ID(), badgerOpts, encoders.Default())
 	if err != nil {
 		return Nitrous{}, fmt.Errorf("failed to create badger db: %w", err)

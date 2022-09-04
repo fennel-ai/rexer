@@ -380,11 +380,13 @@ func (c *Closet) Get(ctx context.Context, keys []string, kwargs []value.Dict, st
 		intermediate := vals[:0]
 		for _, vg := range vgs[:n] {
 			for _, v := range vg.Values {
-				uv, err := value.Unmarshal(v)
-				if err != nil {
-					return nil, fmt.Errorf("error decoding value(%s): %w", uv, err)
+				if len(v) > 0 {
+					uv, err := value.Unmarshal(v)
+					if err != nil {
+						return nil, fmt.Errorf("error decoding value(%s): %w", uv, err)
+					}
+					intermediate = append(intermediate, uv)
 				}
-				intermediate = append(intermediate, uv)
 			}
 		}
 		ret[i], err = c.mr.Reduce(intermediate)
@@ -522,11 +524,13 @@ func (c *Closet) update(ctx context.Context, ts []uint32, groupkeys []string, va
 		vg := &vgs[i]
 		curr := make(map[string]value.Value, len(vg.Fields))
 		for j, f := range vg.Fields {
-			currv, err := value.Unmarshal(vg.Values[j])
-			if err != nil {
-				return nil, nil, fmt.Errorf("error decoding value: %w", err)
+			if len(vg.Values[j]) > 0 {
+				currv, err := value.Unmarshal(vg.Values[j])
+				if err != nil {
+					return nil, nil, fmt.Errorf("error decoding value: %w", err)
+				}
+				curr[asString(f)] = currv
 			}
-			curr[asString(f)] = currv
 		}
 		update := updates[i]
 		vg.Fields = update.fields

@@ -17,7 +17,6 @@ import (
 	"fennel/lib/utils/parallel"
 
 	"github.com/dgraph-io/badger/v3"
-	"github.com/dgraph-io/ristretto"
 	"go.uber.org/zap"
 )
 
@@ -28,13 +27,12 @@ const (
 )
 
 type badgerDB struct {
-	planeID         ftypes.RealmID
-	opts            badger.Options
-	enc             hangar.Encoder
-	db              *badger.DB
-	missingKeyCache *ristretto.Cache
-	readWorkers     *parallel.WorkerPool[hangar.KeyGroup, hangar.ValGroup]
-	writeWorkers    *parallel.WorkerPool[hangar.KeyGroup, hangar.ValGroup]
+	planeID      ftypes.RealmID
+	opts         badger.Options
+	enc          hangar.Encoder
+	db           *badger.DB
+	readWorkers  *parallel.WorkerPool[hangar.KeyGroup, hangar.ValGroup]
+	writeWorkers *parallel.WorkerPool[hangar.KeyGroup, hangar.ValGroup]
 }
 
 func (b *badgerDB) Restore(source io.Reader) error {
@@ -64,24 +62,13 @@ func NewHangar(planeID ftypes.RealmID, opts badger.Options, enc hangar.Encoder) 
 	if err != nil {
 		return nil, err
 	}
-	maxSize := 2 << 30 // 1 GB
-	avgSize := 50
-	missingKeyCache, err := ristretto.NewCache(&ristretto.Config{
-		NumCounters: 10 * int64(maxSize/avgSize),
-		MaxCost:     int64(maxSize),
-		BufferItems: 64,
-	})
-	if err != nil {
-		return nil, err
-	}
 	bs := badgerDB{
-		planeID:         planeID,
-		opts:            opts,
-		db:              db,
-		missingKeyCache: missingKeyCache,
-		readWorkers:     parallel.NewWorkerPool[hangar.KeyGroup, hangar.ValGroup]("hangar_db_read", READ_PARALLELISM),
-		writeWorkers:    parallel.NewWorkerPool[hangar.KeyGroup, hangar.ValGroup]("hangar_db_write", WRITE_PARALLELISM),
-		enc:             enc,
+		planeID:      planeID,
+		opts:         opts,
+		db:           db,
+		readWorkers:  parallel.NewWorkerPool[hangar.KeyGroup, hangar.ValGroup]("hangar_db_read", READ_PARALLELISM),
+		writeWorkers: parallel.NewWorkerPool[hangar.KeyGroup, hangar.ValGroup]("hangar_db_write", WRITE_PARALLELISM),
+		enc:          enc,
 	}
 	// Start periodic GC of value log.
 	go bs.runPeriodicGC()
@@ -144,14 +131,9 @@ func (b *badgerDB) GetMany(ctx context.Context, kgs []hangar.KeyGroup) ([]hangar
 		}
 		err = b.db.View(func(txn *badger.Txn) error {
 			for i, ek := range eks {
-				// We don't use missing key cache in write mode.
-				if _, ok := b.missingKeyCache.Get(ek); ok && !hangar.IsWrite(ctx) {
-					continue
-				}
 				item, err := txn.Get(ek)
 				switch err {
 				case badger.ErrKeyNotFound:
-					b.missingKeyCache.Set(ek, struct{}{}, int64(len(ek)))
 				case nil:
 					if err := item.Value(func(val []byte) error {
 						if _, err := b.enc.DecodeVal(val, &valGroups[i], false); err != nil {
@@ -200,10 +182,6 @@ func (b *badgerDB) SetMany(ctx context.Context, keys []hangar.Key, deltas []hang
 		txn := b.db.NewTransaction(true)
 		defer txn.Discard()
 		for i, ek := range eks {
-			// TODO: This can still race with a concurrent Get and leave the
-			// missingKeyCache in an inconsistent state till the next write to this
-			// key happens.
-			b.missingKeyCache.Del(ek)
 			var old hangar.ValGroup
 			olditem, err := txn.Get(ek)
 			switch err {
