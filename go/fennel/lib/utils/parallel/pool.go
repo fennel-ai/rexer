@@ -2,6 +2,8 @@ package parallel
 
 import (
 	"context"
+	"fennel/lib/ftypes"
+	"fennel/lib/timer"
 	"sync"
 	"time"
 
@@ -34,6 +36,8 @@ type WorkerPool[I, O any] struct {
 	busyCount atomic.Int32
 	// WaitGroup to wait for all goroutines to finish.
 	wg *sync.WaitGroup
+	// Mutex to serialize insertion into the job queue.
+	mu sync.Mutex
 }
 
 // job represents the job to be run. It accepts a function `f` that needs to be
@@ -51,7 +55,8 @@ type job[I, O any] struct {
 func NewWorkerPool[I, O any](name string, nWorkers int) *WorkerPool[I, O] {
 	// We provide a lot of buffer in the job queue to avoid tail latency problems
 	// that are caused by the overhead of goroutine scheduling delay.
-	jobQueue := make(chan job[I, O], nWorkers)
+	queueSize := nWorkers
+	jobQueue := make(chan job[I, O], queueSize)
 	wg := &sync.WaitGroup{}
 	pool := WorkerPool[I, O]{
 		name:     name,
@@ -83,23 +88,34 @@ func (w *WorkerPool[I, O]) Process(ctx context.Context, inputs []I, f func([]I, 
 	errCh := make(chan error, numBatches)
 	ctx, cancelFn := context.WithCancel(ctx)
 	defer cancelFn()
-	// Break the input into batches and submit them to the job queue.
-	// After submission, we wait for the results to be available in the errCh
-	// channel. If an error occurs, we cancel the context and wait for the
-	// remaining jobs to return.
-	for start := 0; start < len(inputs); start += batchSize {
-		end := start + batchSize
-		if end > len(inputs) {
-			end = len(inputs)
-		}
-		w.jobQueue <- job[I, O]{
-			ctx:     ctx,
-			inputs:  inputs[start:end],
-			outputs: ret[start:end],
-			f:       f,
-			errChan: errCh,
+
+	// Enqueue jobs with a mutex to prevent interleaving of requests.
+	enqueueJobs := func() {
+		// TODO: add realm ID to the timer.
+		ctx, t := timer.Start(ctx, ftypes.RealmID(0), "pool.process.enqueue")
+		defer t.Stop()
+		w.mu.Lock()
+		defer w.mu.Unlock()
+		// Break the input into batches and submit them to the job queue.
+		// After submission, we wait for the results to be available in the errCh
+		// channel. If an error occurs, we cancel the context and wait for the
+		// remaining jobs to return.
+		for start := 0; start < len(inputs); start += batchSize {
+			end := start + batchSize
+			if end > len(inputs) {
+				end = len(inputs)
+			}
+			w.jobQueue <- job[I, O]{
+				ctx:     ctx,
+				inputs:  inputs[start:end],
+				outputs: ret[start:end],
+				f:       f,
+				errChan: errCh,
+			}
 		}
 	}
+	enqueueJobs()
+
 	var err error
 	for i := 0; i < numBatches; i++ {
 		e := <-errCh
