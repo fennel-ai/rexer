@@ -111,8 +111,8 @@ func DeletePhaser(tr tier.Tier, namespace, identifier string) error {
 	return DelPhaser(context.Background(), tr, namespace, identifier)
 }
 
-func ServeData(tr tier.Tier, p Phaser) {
-	_ = pollS3Bucket(p.Namespace, p.Identifier, tr)
+func ServeData(tr tier.Tier, p Phaser, stopCh <-chan struct{}) {
+	_ = pollS3Bucket(p.Namespace, p.Identifier, tr, stopCh)
 }
 
 func (p Phaser) GetId() string {
@@ -349,57 +349,62 @@ var phaserLag = promauto.NewGaugeVec(prometheus.GaugeOpts{
 	Help: "Stats about number of rows written by phaser",
 }, []string{"namespace", "identifier"})
 
-func pollS3Bucket(namespace, identifier string, tr tier.Tier) error {
+func pollS3Bucket(namespace, identifier string, tr tier.Tier, stopCh <-chan struct{}) error {
 	go func(tr tier.Tier, namespace, identifier string) {
 		ticker := time.NewTicker(time.Second * time.Duration(POLL_FREQUENCY_SEC))
+		defer ticker.Stop()
 		for {
-			<-ticker.C
-			p, err := Retrieve(context.Background(), tr, namespace, identifier)
-			if err != nil {
-				tr.Logger.Error("Error retrieving phaser", zap.Error(err), zap.String("namespace", namespace), zap.String("identifier", identifier))
-				continue
-			}
-
-			// Percentage lag should be less than 50%.
-			percentageLag := float64(time.Since(time.Unix(int64(p.UpdateVersion), 0))) / float64(p.TTL) * 100.0
-			phaserLag.WithLabelValues(namespace, identifier).Set(percentageLag)
-
-			tr.Logger.Info("Processing phaser ", zap.String("ID", p.GetId()))
-
-			files, err := tr.S3Client.ListFiles(p.S3Bucket, p.S3Prefix, "")
-			if err != nil {
-				tr.Logger.Error("error while listing files in s3 bucket:", zap.Error(err), zap.String("namespace", namespace), zap.String("identifier", identifier), zap.String("s3Bucket", p.S3Bucket), zap.String("s3Prefix", p.S3Prefix))
-				continue
-			}
-
-			newUpdateVersion, prefixToUpdate, err := findLatestVersion(files, p.UpdateVersion)
-
-			if err != nil {
-				tr.Logger.Error("error while findLatestVersion ", zap.Error(err))
-				continue
-			}
-
-			if newUpdateVersion <= p.UpdateVersion {
-				tr.Logger.Info("No new updates found for ", zap.String("ID", p.GetId()), zap.Uint64("LatestVersion", newUpdateVersion), zap.Uint64("CurrentVersion", p.UpdateVersion))
-				continue
-			}
-			tr.Logger.Info("Found update for ", zap.String("ID", p.GetId()), zap.Uint64("newUpdateVersion", newUpdateVersion))
-
-			p.UpdateVersion = newUpdateVersion
-
-			var filesToDownload []string
-			var fileNames []string
-
-			for _, file := range files {
-				if file != prefixToUpdate && strings.HasPrefix(file, prefixToUpdate) && !strings.HasSuffix(file, fmt.Sprintf("%s%d", SUCCESS_PREFIX, newUpdateVersion)) {
-					filesToDownload = append(filesToDownload, file)
-					fileNames = append(fileNames, strings.Replace(file, prefixToUpdate, "", 1))
+			select {
+			case <-ticker.C:
+				p, err := Retrieve(context.Background(), tr, namespace, identifier)
+				if err != nil {
+					tr.Logger.Error("Error retrieving phaser", zap.Error(err), zap.String("namespace", namespace), zap.String("identifier", identifier))
+					continue
 				}
-			}
 
-			err = p.updateServing(tr, namespace, identifier, fileNames, filesToDownload, newUpdateVersion)
-			if err != nil {
-				tr.Logger.Error("error while updating serving", zap.Error(err))
+				// Percentage lag should be less than 50%.
+				percentageLag := float64(time.Since(time.Unix(int64(p.UpdateVersion), 0))) / float64(p.TTL) * 100.0
+				phaserLag.WithLabelValues(namespace, identifier).Set(percentageLag)
+
+				tr.Logger.Info("Processing phaser ", zap.String("ID", p.GetId()))
+
+				files, err := tr.S3Client.ListFiles(p.S3Bucket, p.S3Prefix, "")
+				if err != nil {
+					tr.Logger.Error("error while listing files in s3 bucket:", zap.Error(err), zap.String("namespace", namespace), zap.String("identifier", identifier), zap.String("s3Bucket", p.S3Bucket), zap.String("s3Prefix", p.S3Prefix))
+					continue
+				}
+
+				newUpdateVersion, prefixToUpdate, err := findLatestVersion(files, p.UpdateVersion)
+
+				if err != nil {
+					tr.Logger.Error("error while findLatestVersion ", zap.Error(err))
+					continue
+				}
+
+				if newUpdateVersion <= p.UpdateVersion {
+					tr.Logger.Info("No new updates found for ", zap.String("ID", p.GetId()), zap.Uint64("LatestVersion", newUpdateVersion), zap.Uint64("CurrentVersion", p.UpdateVersion))
+					continue
+				}
+				tr.Logger.Info("Found update for ", zap.String("ID", p.GetId()), zap.Uint64("newUpdateVersion", newUpdateVersion))
+
+				p.UpdateVersion = newUpdateVersion
+
+				var filesToDownload []string
+				var fileNames []string
+
+				for _, file := range files {
+					if file != prefixToUpdate && strings.HasPrefix(file, prefixToUpdate) && !strings.HasSuffix(file, fmt.Sprintf("%s%d", SUCCESS_PREFIX, newUpdateVersion)) {
+						filesToDownload = append(filesToDownload, file)
+						fileNames = append(fileNames, strings.Replace(file, prefixToUpdate, "", 1))
+					}
+				}
+
+				err = p.updateServing(tr, namespace, identifier, fileNames, filesToDownload, newUpdateVersion)
+				if err != nil {
+					tr.Logger.Error("error while updating serving", zap.Error(err))
+				}
+			case <-stopCh:
+				return
 			}
 		}
 	}(tr, namespace, identifier)
