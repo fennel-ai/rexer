@@ -93,11 +93,6 @@
       "DefaultValue": 0.01
     },
     {
-      "Name": "Momentum",
-      "Type": "Float",
-      "DefaultValue": 0
-    },
-    {
       "Name": "DecayStep",
       "Type": "Integer",
       "DefaultValue": 15
@@ -515,7 +510,7 @@
         },
         "ProfilerRuleConfigurations": [
           {
-            "RuleConfigurationName": "ProfilerReport-1662321787",
+            "RuleConfigurationName": "ProfilerReport-1662327099",
             "RuleEvaluatorImage": "895741380848.dkr.ecr.us-west-2.amazonaws.com/sagemaker-debugger-rules:latest",
             "RuleParameters": {
               "rule_to_invoke": "ProfilerReport"
@@ -540,7 +535,7 @@
           "TrainingImage": "246618743249.dkr.ecr.us-west-2.amazonaws.com/sagemaker-scikit-learn:0.23-1-cpu-py3"
         },
         "OutputDataConfig": {
-          "S3OutputPath": "s3://sagemaker-us-west-2-030813887342/pytorch-inference-2022-09-04-20-03-05-878"
+          "S3OutputPath": "s3://sagemaker-us-west-2-030813887342/pytorch-inference-2022-09-04-21-31-38-060"
         },
         "StoppingCondition": {
           "MaxRuntimeInSeconds": 86400
@@ -585,7 +580,7 @@
           "sagemaker_region": "us-west-2"
         },
         "DebugHookConfig": {
-          "S3OutputPath": "s3://sagemaker-us-west-2-030813887342/pytorch-inference-2022-09-04-20-03-05-878",
+          "S3OutputPath": "s3://sagemaker-us-west-2-030813887342/pytorch-inference-2022-09-04-21-31-38-060",
           "CollectionConfigurations": []
         }
       },
@@ -651,7 +646,7 @@
         },
         "role": "arn:aws:iam::030813887342:role/admin"
       },
-      "FunctionArn": "arn:aws:lambda:us-west-2:030813887342:function:sagemaker-pipelines-model-deployment-09-04-20-03-06",
+      "FunctionArn": "arn:aws:lambda:us-west-2:030813887342:function:sagemaker-pipelines-model-deployment-09-04-21-31-38",
       "OutputParameters": [
         {
           "OutputName": "statusCode",
