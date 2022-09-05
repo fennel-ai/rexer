@@ -114,15 +114,12 @@ func invokeRetryOnThrottle(ctx context.Context, framework string, client *sagema
 }
 
 func (xga XGBoostAdapter) Score(ctx context.Context, in *lib.ScoreRequest) (*lib.ScoreResponse, error) {
-	if len(in.FeaturesList) == 0 {
-		return &lib.ScoreResponse{}, nil
-	}
 	payload := bytes.Buffer{}
 	var contentType string
 	// if features are stored as a dict, then use libsvm format otherwise use csv format
-	if _, ok := in.FeaturesList[0].(value.Dict); ok {
+	if _, ok := in.ModelInput.(value.Dict); ok {
 		contentType = "text/libsvm"
-		for _, v := range in.FeaturesList {
+		for _, v := range in.ModelInput.(value.Dict).Iter() {
 			payload.WriteRune('0')
 			vd, ok := v.(value.Dict)
 			if !ok {
@@ -162,7 +159,7 @@ func (xga XGBoostAdapter) Score(ctx context.Context, in *lib.ScoreRequest) (*lib
 		}
 	} else {
 		contentType = "text/csv"
-		for _, v := range in.FeaturesList {
+		for _, v := range in.ModelInput.(value.List).Values() {
 			vl, ok := v.(value.List)
 			if !ok {
 				return nil, fmt.Errorf("expected list but found: '%s'", v.String())
@@ -203,10 +200,7 @@ type SklearnAdapter struct {
 }
 
 func (sa SklearnAdapter) Score(ctx context.Context, in *lib.ScoreRequest) (*lib.ScoreResponse, error) {
-	if len(in.FeaturesList) == 0 {
-		return &lib.ScoreResponse{}, nil
-	}
-	payload := toJSON(in.FeaturesList)
+	payload := value.ToJSON(in.ModelInput)
 	out, err := invokeRetryOnThrottle(ctx, "sklearn", sa.client, &sagemakerruntime.InvokeEndpointInput{
 		Body:                    payload,
 		ContentType:             aws.String("application/json"),
@@ -232,16 +226,16 @@ type PyTorchAdapter struct {
 }
 
 func (pta PyTorchAdapter) Score(ctx context.Context, in *lib.ScoreRequest) (*lib.ScoreResponse, error) {
-	if len(in.FeaturesList) == 0 {
-		return &lib.ScoreResponse{}, nil
+	payload := value.ToJSON(in.ModelInput)
+	invokeEndpointInput := &sagemakerruntime.InvokeEndpointInput{
+		Body:         payload,
+		ContentType:  aws.String("application/json"),
+		EndpointName: aws.String(in.EndpointName),
 	}
-	payload := toJSON(in.FeaturesList)
-	out, err := invokeRetryOnThrottle(ctx, "pytorch", pta.client, &sagemakerruntime.InvokeEndpointInput{
-		Body:                    payload,
-		ContentType:             aws.String("application/json"),
-		EndpointName:            aws.String(in.EndpointName),
-		TargetContainerHostname: aws.String(in.ContainerName),
-	})
+	if in.ContainerName != "" {
+		invokeEndpointInput.TargetContainerHostname = aws.String(in.ContainerName)
+	}
+	out, err := invokeRetryOnThrottle(ctx, "pytorch", pta.client, invokeEndpointInput)
 	if err != nil {
 		return nil, fmt.Errorf("failed to invoke sagemaker endpoint: %v", err)
 	}
@@ -270,13 +264,10 @@ func removeSpecialCharacters(s string) string {
 }
 
 func (hfa HuggingFaceAdapter) Score(ctx context.Context, in *lib.ScoreRequest) (*lib.ScoreResponse, error) {
-	if len(in.FeaturesList) == 0 {
-		return &lib.ScoreResponse{}, nil
-	}
 	inputs := value.NewList()
-	inputs.Grow(len(in.FeaturesList))
+	inputs.Grow(in.ModelInput.(value.List).Len())
 	// It is expected that every feature list only contains one feature, a string, which is the input to the model.
-	for _, v := range in.FeaturesList {
+	for _, v := range in.ModelInput.(value.List).Values() {
 		inputs.Append(value.String(removeSpecialCharacters(v.String())))
 	}
 
@@ -311,10 +302,7 @@ type TensorFlowAdapter struct {
 }
 
 func (tfa TensorFlowAdapter) Score(ctx context.Context, in *lib.ScoreRequest) (*lib.ScoreResponse, error) {
-	if len(in.FeaturesList) == 0 {
-		return &lib.ScoreResponse{}, nil
-	}
-	payload := toJSON(in.FeaturesList)
+	payload := value.ToJSON(in.ModelInput)
 	out, err := invokeRetryOnThrottle(ctx, "tensorflow", tfa.client, &sagemakerruntime.InvokeEndpointInput{
 		Body:                    payload,
 		ContentType:             aws.String("application/json"),
@@ -341,15 +329,6 @@ func (tfa TensorFlowAdapter) Score(ctx context.Context, in *lib.ScoreRequest) (*
 		return nil, fmt.Errorf("expected predictions to be a value list but found: '%v'", predictions.String())
 	}
 	return &lib.ScoreResponse{Scores: pList.Values()}, nil
-}
-
-func toJSON(featuresList []value.Value) []byte {
-	fList := value.NewList()
-	fList.Grow(len(featuresList))
-	for _, fl := range featuresList {
-		fList.Append(fl)
-	}
-	return value.ToJSON(fList)
 }
 
 func fromCSV(csv []byte) ([]value.Value, error) {

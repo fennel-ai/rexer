@@ -2,6 +2,8 @@ package sagemaker
 
 import (
 	"context"
+	"errors"
+	"fennel/lib/ftypes"
 	"fmt"
 	"log"
 	"strings"
@@ -23,6 +25,8 @@ const (
 	scalableDimInstanceCount = "sagemaker:variant:DesiredInstanceCount"
 	scalablePolicyType       = "TargetTrackingScaling"
 )
+
+var SageMakerPipelineNotFound = errors.New("SageMaker pipeline not found")
 
 type SagemakerArgs struct {
 	Region                 string   `arg:"--region,env:AWS_REGION,help:AWS region"`
@@ -426,6 +430,51 @@ func (smc SMClient) Score(ctx context.Context, in *lib.ScoreRequest) (*lib.Score
 		return nil, fmt.Errorf("could not get adapter: %v", err)
 	}
 	return adapter.Score(ctx, in)
+}
+
+func (smc SMClient) CreatePipeline(ctx context.Context, tierId ftypes.RealmID, pipelineName, pipelineDef string) error {
+	req := sagemaker.CreatePipelineInput{
+		PipelineName:        aws.String(getPipelineName(tierId, pipelineName)),
+		RoleArn:             aws.String(smc.args.SagemakerExecutionRole),
+		PipelineDefinition:  aws.String(pipelineDef),
+		PipelineDescription: aws.String(fmt.Sprintf("AutoML Pipeline - %s for tier %d ", pipelineName, tierId)),
+		PipelineDisplayName: aws.String(getPipelineName(tierId, pipelineName)),
+	}
+	_, err := smc.metadataClient.CreatePipelineWithContext(ctx, &req)
+	if err != nil {
+		smc.logger.Error("failed to create pipeline", zap.Error(err))
+		return fmt.Errorf("failed to create pipeline: %w", err)
+	}
+	smc.logger.Info("successfully created pipeline", zap.String("pipeline", pipelineName))
+	return nil
+}
+
+func (smc SMClient) GetPipelineARN(ctx context.Context, tierId ftypes.RealmID, pipelineName string) (string, error) {
+	req := sagemaker.ListPipelinesInput{
+		PipelineNamePrefix: aws.String(getPipelineName(tierId, pipelineName)),
+	}
+	out, err := smc.metadataClient.ListPipelinesWithContext(ctx, &req)
+	if err != nil {
+		smc.logger.Error("failed to list pipelines", zap.Error(err))
+		return "", fmt.Errorf("failed to list pipelines: %w", err)
+	}
+	if len(out.PipelineSummaries) == 0 {
+		return "", SageMakerPipelineNotFound
+	}
+	for _, p := range out.PipelineSummaries {
+		if *p.PipelineName == getPipelineName(tierId, pipelineName) {
+			return *p.PipelineArn, nil
+		}
+	}
+	return "", SageMakerPipelineNotFound
+}
+
+// ---------------------------------------------------------------------------------------------------------------------
+// Private helper functions
+// ---------------------------------------------------------------------------------------------------------------------
+
+func getPipelineName(tierId ftypes.RealmID, pipelineName string) string {
+	return fmt.Sprintf("AutoML-%d-%s", tierId, pipelineName)
 }
 
 func cpuUtilizationScalingPolicy(sagemakerEndpointName string, modelVariantName string, cpu lib.CpuScalingPolicy) (applicationautoscaling.TargetTrackingScalingPolicyConfiguration, error) {

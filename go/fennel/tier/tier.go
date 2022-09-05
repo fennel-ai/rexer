@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/tls"
 	"fennel/airbyte"
+	"fennel/eventbridge"
 	"fennel/lib/instancemetadata"
 	"fmt"
 	"github.com/Unleash/unleash-client-go/v3"
@@ -37,21 +38,22 @@ import (
 )
 
 type TierArgs struct {
-	s3.S3Args                 `json:"s3_._s3_args"`
-	sagemaker.SagemakerArgs   `json:"sagemaker_._sagemaker_args"`
-	modelstore.ModelStoreArgs `json:"modelstore_._model_store_args"`
-	glue.GlueArgs             `json:"glue_._glue_args"`
-	timer.TracerArgs          `json:"tracer_._tracer_args"`
-	milvus.MilvusArgs         `json:"milvus_._milvus_args"`
+	s3.S3Args                   `json:"s3_._s3_args"`
+	sagemaker.SagemakerArgs     `json:"sagemaker_._sagemaker_args"`
+	modelstore.ModelStoreArgs   `json:"modelstore_._model_store_args"`
+	glue.GlueArgs               `json:"glue_._glue_args"`
+	eventbridge.EventBridgeArgs `json:"eventbridge_._event_bridge_args"`
+	timer.TracerArgs            `json:"tracer_._tracer_args"`
+	milvus.MilvusArgs           `json:"milvus_._milvus_args"`
 
-	Region           string         `arg:"--aws-region,env:AWS_REGION" json:"aws_region,omitempty"`
-	KafkaServer      string         `arg:"--kafka-server,env:KAFKA_SERVER_ADDRESS" json:"kafka_server,omitempty"`
-	KafkaUsername    string         `arg:"--kafka-user,env:KAFKA_USERNAME" json:"kafka_username,omitempty"`
-	KafkaPassword    string         `arg:"--kafka-password,env:KAFKA_PASSWORD" json:"kafka_password,omitempty"`
+	Region        string `arg:"--aws-region,env:AWS_REGION" json:"aws_region,omitempty"`
+	KafkaServer   string `arg:"--kafka-server,env:KAFKA_SERVER_ADDRESS" json:"kafka_server,omitempty"`
+	KafkaUsername string `arg:"--kafka-user,env:KAFKA_USERNAME" json:"kafka_username,omitempty"`
+	KafkaPassword string `arg:"--kafka-password,env:KAFKA_PASSWORD" json:"kafka_password,omitempty"`
 	// MSK configuration
-	MskKafkaServer   string 		`arg:"--msk-kafka-server,env:MSK_KAFKA_SERVER_ADDRESS" json:"msk_kafka_server,omitempty"`
-	MskKafkaUsername string 		`arg:"--msk-kafka-user,env:MSK_KAFKA_USERNAME" json:"msk_kafka_username,omitempty"`
-	MskKafkaPassword string 		`arg:"--msk-kafka-password,env:MSK_KAFKA_PASSWORD" json:"msk_kafka_password,omitempty"`
+	MskKafkaServer   string `arg:"--msk-kafka-server,env:MSK_KAFKA_SERVER_ADDRESS" json:"msk_kafka_server,omitempty"`
+	MskKafkaUsername string `arg:"--msk-kafka-user,env:MSK_KAFKA_USERNAME" json:"msk_kafka_username,omitempty"`
+	MskKafkaPassword string `arg:"--msk-kafka-password,env:MSK_KAFKA_PASSWORD" json:"msk_kafka_password,omitempty"`
 
 	MysqlHost        string         `arg:"--mysql-host,env:MYSQL_SERVER_ADDRESS" json:"mysql_host,omitempty"`
 	MysqlDB          string         `arg:"--mysql-db,env:MYSQL_DATABASE_NAME" json:"mysql_db,omitempty"`
@@ -134,19 +136,20 @@ type Tier struct {
 	DB    db.Connection
 	Redis redis.Client
 	// Elastic Cache ( external service & higher level cache with more capacity with LRU eviction )
-	Cache            cache.Cache
-	Producers        map[string]libkafka.FProducer
-	Clock            clock.Clock
-	Logger           *zap.Logger
-	NewKafkaConsumer KafkaConsumerCreator
-	S3Client         s3.Client
-	GlueClient       glue.GlueClient
-	AirbyteClient    mo.Option[airbyte.Client]
-	SagemakerClient  sagemaker.SMClient
-	MilvusClient     mo.Option[milvus.Client]
-	NitrousClient    mo.Option[nitrous.NitrousClient]
-	ModelStore       *modelstore.ModelStore
-	Args             TierArgs
+	Cache             cache.Cache
+	Producers         map[string]libkafka.FProducer
+	Clock             clock.Clock
+	Logger            *zap.Logger
+	NewKafkaConsumer  KafkaConsumerCreator
+	S3Client          s3.Client
+	GlueClient        glue.GlueClient
+	EventBridgeClient eventbridge.Client
+	AirbyteClient     mo.Option[airbyte.Client]
+	SagemakerClient   sagemaker.SMClient
+	MilvusClient      mo.Option[milvus.Client]
+	NitrousClient     mo.Option[nitrous.NitrousClient]
+	ModelStore        *modelstore.ModelStore
+	Args              TierArgs
 	// In-process caches for the tier, has very short TTL ( order of minutes )
 	PCache pcache.PCache
 	// Cache of aggregate name to aggregate definitions - key type is string,
@@ -275,16 +278,16 @@ func CreateFromArgs(args *TierArgs) (tier Tier, err error) {
 				Username:        args.KafkaUsername,
 				Password:        args.KafkaPassword,
 				SaslMechanism:   libkafka.SaslPlainMechanism,
-				AzId: azId,
+				AzId:            azId,
 			}
 		} else if libkafka.IsMskTopic(config.Topic) {
 			kafkaConsumerConfig = libkafka.RemoteConsumerConfig{
-				ConsumerConfig: config,
+				ConsumerConfig:  config,
 				BootstrapServer: args.MskKafkaServer,
-				Username: args.MskKafkaUsername,
-				Password: args.MskKafkaPassword,
-				SaslMechanism: libkafka.SaslScramSha512Mechanism,
-				AzId: azId,
+				Username:        args.MskKafkaUsername,
+				Password:        args.MskKafkaPassword,
+				SaslMechanism:   libkafka.SaslScramSha512Mechanism,
+				AzId:            azId,
 			}
 		} else {
 			return nil, fmt.Errorf("topic: %s must be belong to either confluent or MSK cluster", config.Topic)
@@ -348,6 +351,7 @@ func CreateFromArgs(args *TierArgs) (tier Tier, err error) {
 	logger.Info("Creating AWS clients for S3, Glue, and ModelStore")
 	s3client := s3.NewClient(args.S3Args)
 	glueclient := glue.NewGlueClient(args.GlueArgs)
+	eventbridgeclient := eventbridge.NewClient(args.EventBridgeArgs)
 
 	modelStore := modelstore.NewModelStore(args.ModelStoreArgs, tierID)
 
@@ -425,24 +429,25 @@ func CreateFromArgs(args *TierArgs) (tier Tier, err error) {
 	populateAggregateCache(aggregateDefs, sqlConn, logger)
 
 	return Tier{
-		DB:               sqlConn.(db.Connection),
-		Redis:            redisClient.(redis.Client),
-		Producers:        producers,
-		Clock:            clock.Unix{},
-		ID:               tierID,
-		Logger:           logger,
-		Cache:            redis.NewCache(cacheClient.(redis.Client)),
-		PCache:           pCache,
-		NewKafkaConsumer: consumerCreator,
-		SagemakerClient:  smclient,
-		NitrousClient:    nitrousClient,
-		S3Client:         s3client,
-		GlueClient:       glueclient,
-		MilvusClient:     milvusClient,
-		AirbyteClient:    airbyteClient,
-		ModelStore:       modelStore,
-		Args:             *args,
-		AggregateDefs:    aggregateDefs,
+		DB:                sqlConn.(db.Connection),
+		Redis:             redisClient.(redis.Client),
+		Producers:         producers,
+		Clock:             clock.Unix{},
+		ID:                tierID,
+		Logger:            logger,
+		Cache:             redis.NewCache(cacheClient.(redis.Client)),
+		PCache:            pCache,
+		NewKafkaConsumer:  consumerCreator,
+		SagemakerClient:   smclient,
+		NitrousClient:     nitrousClient,
+		S3Client:          s3client,
+		GlueClient:        glueclient,
+		EventBridgeClient: eventbridgeclient,
+		MilvusClient:      milvusClient,
+		AirbyteClient:     airbyteClient,
+		ModelStore:        modelStore,
+		Args:              *args,
+		AggregateDefs:     aggregateDefs,
 	}, nil
 }
 

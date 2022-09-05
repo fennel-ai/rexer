@@ -31,7 +31,7 @@ func TestAdapterScore(t *testing.T) {
 			EndpointName:  "frameworks-test-endpoint",
 			ContainerName: "Container-" + framework + "-test-v1",
 			Framework:     framework,
-			FeaturesList:  featureVectors,
+			ModelInput:    value.NewList(featureVectors...),
 		})
 		assert.NoError(t, err)
 		scores := resp.Scores
@@ -61,7 +61,7 @@ func TestXgboost(t *testing.T) {
 		EndpointName:  "frameworks-test-endpoint",
 		ContainerName: "Container-xgboost-test-v1",
 		Framework:     "xgboost",
-		FeaturesList:  featureVectors,
+		ModelInput:    value.NewList(featureVectors...),
 	})
 	assert.NoError(t, err)
 	scores := resp.Scores
@@ -85,7 +85,7 @@ func TestXgboost(t *testing.T) {
 		EndpointName:  "frameworks-test-endpoint",
 		ContainerName: lib.GetContainerName("xgboost-test", "v1"),
 		Framework:     "xgboost",
-		FeaturesList:  featureVectors,
+		ModelInput:    value.NewList(featureVectors...),
 	})
 	assert.NoError(t, err)
 	scores = resp.Scores

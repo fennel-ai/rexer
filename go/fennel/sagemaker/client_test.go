@@ -166,7 +166,7 @@ func TestScoreSvm(t *testing.T) {
 		Framework:     "xgboost",
 		EndpointName:  "smclient-test-endpoint",
 		ContainerName: "Container-smclient-model-v1",
-		FeaturesList:  featureVectors,
+		ModelInput:    value.NewList(featureVectors...),
 	})
 	assert.NoError(t, err)
 	assert.Equal(t, len(featureVectors), len(response.Scores))
@@ -184,7 +184,7 @@ func TestScoreCsv(t *testing.T) {
 		Framework:     "xgboost",
 		EndpointName:  "smclient-test-endpoint",
 		ContainerName: "Container-smclient-model-v1",
-		FeaturesList:  featureVectors,
+		ModelInput:    value.NewList(featureVectors...),
 	})
 	assert.NoError(t, err)
 	assert.Equal(t, len(featureVectors), len(response.Scores))

@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fennel/lib/aggregate"
+	"fennel/lib/automl/vae"
 	"fennel/lib/ftypes"
 	"fennel/lib/phaser"
 	modelAgg "fennel/model/aggregate"
@@ -20,6 +21,7 @@ import (
 // Data is kept in redis OFFLINE_AGG_TTL_MULTIPLIER times the update frequency
 var OFFLINE_AGG_TTL_MULTIPLIER = 3
 var OFFLINE_AGG_NAMESPACE = "agg"
+var SAGEMAKER_JOB_CREATION_ROLE_ARN = "arn:aws:iam::030813887342:role/sagemaker-pipeline-executor"
 
 // getUpdateFrequency returns the update frequency in hours from the cron schedule
 func getUpdateFrequency(cron string) (time.Duration, error) {
@@ -66,7 +68,29 @@ func Store(ctx context.Context, tier tier.Tier, agg aggregate.Aggregate) error {
 						return err
 					}
 				}
+			} else if agg.IsAutoML() {
+				// Fetch the ARN for pipeline
+				pipelineARN, err := vae.GetPipelineARN(ctx, tier, string(agg.Options.AggType))
+				if err != nil {
+					return fmt.Errorf("failed to get pipeline ARN: %w", err)
+				}
+
+				// Create a recurring job for the pipeline
+				ruleName := fmt.Sprintf("%s-%s", agg.Name, "automl")
+				if err = tier.EventBridgeClient.CreateRule(tier.ID, ruleName, "cron("+agg.Options.CronSchedule+" *)"); err != nil {
+					return fmt.Errorf("failed to create rule for recurring schedule for automl: %w", err)
+				}
+
+				smParams := vae.GetSageMakerPipelineParams(tier.ID, agg.Name, tier.Args.OfflineAggBucket)
+				if err = tier.EventBridgeClient.CreateSageMakeRecurringJob(tier.ID, ruleName, pipelineARN, SAGEMAKER_JOB_CREATION_ROLE_ARN, smParams); err != nil {
+					return fmt.Errorf("failed to recurring job for automl: %w", err)
+				}
+
+				if err = Store(ctx, tier, vae.GetUserHistoryAggregate(agg)); err != nil {
+					return fmt.Errorf("failed to store user history aggregate: %w", err)
+				}
 			}
+
 			tier.Logger.Debug("Storing new aggregate")
 			if agg.Timestamp == 0 {
 				agg.Timestamp = ftypes.Timestamp(time.Now().Unix())
