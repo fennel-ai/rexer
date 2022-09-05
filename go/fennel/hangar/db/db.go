@@ -117,7 +117,7 @@ func (b *badgerDB) GetMany(ctx context.Context, kgs []hangar.KeyGroup) ([]hangar
 	} else {
 		pool = b.readWorkers
 	}
-	_, t := timer.Start(ctx, b.planeID, fmt.Sprintf("hangar.db.getmany.%s", hangar.GetMode(ctx)))
+	ctx, t := timer.Start(ctx, b.planeID, fmt.Sprintf("hangar.db.getmany.%s", hangar.GetMode(ctx)))
 	defer t.Stop()
 	return pool.Process(ctx, kgs, func(keyGroups []hangar.KeyGroup, valGroups []hangar.ValGroup) error {
 		_, t := timer.Start(ctx, b.planeID, fmt.Sprintf("hangar.db.getmany.batch.%s", hangar.GetMode(ctx)))
