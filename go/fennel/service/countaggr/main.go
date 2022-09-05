@@ -410,7 +410,7 @@ func startAggregateProcessing(tr tier.Tier) error {
 
 func startPhaserProcessing(tr tier.Tier) error {
 	go func(tr tier.Tier) {
-		processedPhasers := make(map[string]struct{})
+		processedPhasers := make(map[string]chan<- struct{})
 		ticker := time.NewTicker(time.Second * 60)
 		for ; true; <-ticker.C {
 			phasers, err := phaser.RetrieveAll(context.Background(), tr)
@@ -418,11 +418,21 @@ func startPhaserProcessing(tr tier.Tier) error {
 				tr.Logger.Error("Could not retrieve phasers", zap.Error(err))
 				continue
 			}
+			phaserNames := make(map[string]struct{}, len(phasers))
 			for _, p := range phasers {
+				phaserNames[p.GetId()] = struct{}{}
 				if _, ok := processedPhasers[p.GetId()]; !ok {
 					log.Printf("Retrieved a new phaser: %v", p.GetId())
-					phaser.ServeData(tr, p)
-					processedPhasers[p.GetId()] = struct{}{}
+					ch := make(chan struct{})
+					phaser.ServeData(tr, p, ch)
+					processedPhasers[p.GetId()] = ch
+				}
+			}
+			// Stop processing any aggregates that are no longer active.
+			for a := range processedPhasers {
+				if _, ok := phaserNames[a]; !ok {
+					close(processedPhasers[a])
+					delete(processedPhasers, a)
 				}
 			}
 		}
