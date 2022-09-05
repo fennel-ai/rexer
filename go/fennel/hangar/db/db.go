@@ -111,19 +111,16 @@ func (b *badgerDB) Encoder() hangar.Encoder {
 // GetMany returns the values for the given keyGroups.
 // It parallelizes the requests to the underlying DB upto a degree of PARALLELISM
 func (b *badgerDB) GetMany(ctx context.Context, kgs []hangar.KeyGroup) ([]hangar.ValGroup, error) {
-	var mode string
 	var pool *parallel.WorkerPool[hangar.KeyGroup, hangar.ValGroup]
 	if hangar.IsWrite(ctx) {
 		pool = b.writeWorkers
-		mode = "write"
 	} else {
-		mode = "read"
 		pool = b.readWorkers
 	}
-	_, t := timer.Start(ctx, b.planeID, "hangar.db.getmany."+mode)
+	_, t := timer.Start(ctx, b.planeID, fmt.Sprintf("hangar.db.getmany.%s", hangar.GetMode(ctx)))
 	defer t.Stop()
 	return pool.Process(ctx, kgs, func(keyGroups []hangar.KeyGroup, valGroups []hangar.ValGroup) error {
-		_, t := timer.Start(ctx, b.planeID, "hangar.db.getmany.batch."+mode)
+		_, t := timer.Start(ctx, b.planeID, fmt.Sprintf("hangar.db.getmany.batch.%s", hangar.GetMode(ctx)))
 		defer t.Stop()
 		eks, err := hangar.EncodeKeyManyKG(keyGroups, b.enc)
 		if err != nil {

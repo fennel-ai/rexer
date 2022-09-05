@@ -45,7 +45,6 @@ import (
 	3. The set throughput is limited by the fill path throughput. Currently, fill path is
 	   not sharded, but it can be done so trivially if needed someday (we just need to ensure
 	   that all updates to a single cache key always go to the same shard).
-
 */
 
 const (

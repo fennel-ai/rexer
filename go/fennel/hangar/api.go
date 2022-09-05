@@ -62,16 +62,31 @@ const (
 )
 
 type apiModeKey struct{}
+type apiMode string
 
 const (
-	writeMode = "write"
+	Write apiMode = "write"
+	Read  apiMode = "read"
 )
 
+func (m apiMode) String() string {
+	return string(m)
+}
+
 func NewWriteContext(ctx context.Context) context.Context {
-	return context.WithValue(ctx, apiModeKey{}, writeMode)
+	return context.WithValue(ctx, apiModeKey{}, Write)
 }
 
 func IsWrite(ctx context.Context) bool {
-	m, ok := ctx.Value(apiModeKey{}).(string)
-	return ok && m == writeMode
+	m, ok := ctx.Value(apiModeKey{}).(apiMode)
+	return ok && m == Write
+}
+
+func GetMode(ctx context.Context) apiMode {
+	m, ok := ctx.Value(apiModeKey{}).(apiMode)
+	if !ok {
+		// We assume that default mode is read.
+		return Read
+	}
+	return m
 }
