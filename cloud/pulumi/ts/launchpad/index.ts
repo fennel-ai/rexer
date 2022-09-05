@@ -764,7 +764,8 @@ const dataPlaneConfs: Record<number, DataPlaneConf> = {
             brokerType: "kafka.m5.large",
             // this will place 2 broker nodes in each of the AZs
             numberOfBrokerNodes: 4,
-            storageVolumeSizeGiB: 2048,
+            // TODO(mohit): consider expanding this in the future if each broker needs more storage capacity
+            storageVolumeSizeGiB: 1024,
         },
 
         // setup strimzi
