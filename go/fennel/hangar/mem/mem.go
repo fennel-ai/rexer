@@ -1,16 +1,17 @@
 package mem
 
 import (
+	"bufio"
 	"context"
 	"encoding/binary"
 	"fennel/hangar"
 	"fennel/lib/ftypes"
 	"fennel/lib/timer"
 	"fmt"
+	"github.com/OneOfOne/xxhash"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 	"go.uber.org/zap"
-	"hash/crc32"
 	"io"
 	"io/ioutil"
 	"os"
@@ -61,7 +62,7 @@ func (m *MemDB) Restore(_ io.Reader) error {
 	panic("implement me")
 }
 
-func (m *memDBShard) Items() int {
+func (m *memDBShard) Len() int {
 	m.lock.RLock()
 	defer m.lock.RUnlock()
 	return len(m.data)
@@ -208,7 +209,7 @@ func (m *MemDB) startReportStats() {
 					return
 				}
 			case <-t.C:
-				statsGauge.WithLabelValues("total_items").Set(float64(m.Items()))
+				statsGauge.WithLabelValues("total_items").Set(float64(m.Len()))
 				statsGauge.WithLabelValues("total_raw_data_size").Set(float64(m.RawTotalSize()))
 				t.Reset(interval)
 			}
@@ -216,10 +217,10 @@ func (m *MemDB) startReportStats() {
 	}()
 }
 
-func (m *MemDB) Items() int {
+func (m *MemDB) Len() int {
 	ret := 0
 	for i := 0; i < int(m.shardNum); i++ {
-		ret += m.shards[i].Items()
+		ret += m.shards[i].Len()
 	}
 	return ret
 }
@@ -267,9 +268,10 @@ func (m *MemDB) Load() error {
 					zap.L().Error("Failed to open file", zap.String("filename", fileName), zap.Error(err))
 					return
 				}
+				bufferedReader := bufio.NewReaderSize(f, 1024*1024)
 				for {
 					buf := make([]byte, 8)
-					bytesRead, err := f.Read(buf)
+					bytesRead, err := io.ReadFull(bufferedReader, buf)
 					if bytesRead != 8 {
 						if err == io.EOF {
 							zap.L().Info("Finished reading data file", zap.String("filename", fileName))
@@ -283,7 +285,7 @@ func (m *MemDB) Load() error {
 					var idx uint64
 					for idx = 0; idx < itemCount; idx++ {
 						buf := make([]byte, 16)
-						bytesRead, err := f.Read(buf)
+						bytesRead, err = io.ReadFull(bufferedReader, buf)
 						if bytesRead != 16 {
 							zap.L().Error("Can't read enough bytes", zap.String("filename", fileName), zap.Error(err))
 							ret = fmt.Errorf("encountered incomplete file %s", fileName)
@@ -294,14 +296,14 @@ func (m *MemDB) Load() error {
 						expEpochSecs := int64(binary.BigEndian.Uint64(buf[8:]))
 
 						keyBuf := make([]byte, keyLen)
-						bytesRead, err = f.Read(keyBuf)
+						bytesRead, err = io.ReadFull(bufferedReader, keyBuf)
 						if bytesRead != keyLen {
 							zap.L().Error("Can't read enough bytes", zap.String("filename", fileName), zap.Error(err))
 							ret = fmt.Errorf("encountered incomplete file %s", fileName)
 							break
 						}
 						valueBuf := make([]byte, valueLen)
-						bytesRead, err = f.Read(valueBuf)
+						bytesRead, err = io.ReadFull(bufferedReader, valueBuf)
 						if bytesRead != valueLen {
 							zap.L().Error("Can't read enough bytes", zap.String("filename", fileName), zap.Error(err))
 							ret = fmt.Errorf("encountered incomplete file %s", fileName)
@@ -356,22 +358,41 @@ func (m *MemDB) Save() error {
 		go func() {
 			defer wg.Done()
 			var currentFile *os.File = nil
+			var bufferedWriter *bufio.Writer = nil
 			shardInFile := 0
+			fileName := ""
+
+			flush := func() error {
+				defer func() {
+					currentFile = nil
+				}()
+				err := bufferedWriter.Flush()
+				if err != nil {
+					return err
+				}
+				err = currentFile.Close()
+				if err != nil {
+					return err
+				}
+				return nil
+			}
+
 			for shardId := range shardCh {
 				if currentFile == nil {
 					// open a new file
 					var err error
 					shardInFile = 0
 					currentFileIdx := atomic.AddInt64(&fileIdx, 1)
-					fileName := filepath.Join(m.path, fmt.Sprintf("datashard-%d%s", currentFileIdx, dataTmpFileSuffix))
+					fileName = filepath.Join(m.path, fmt.Sprintf("datashard-%d%s", currentFileIdx, dataTmpFileSuffix))
 					currentFile, err = os.Create(fileName)
+					bufferedWriter = bufio.NewWriterSize(currentFile, 1024*1024)
 					if err != nil {
 						zap.L().Error("Failed to create file to dump", zap.String("filename", fileName), zap.Error(err))
 						ret = err
 						break
 					}
 				}
-				err := m.shards[shardId].DumpAndCleanup(currentFile)
+				err := m.shards[shardId].DumpAndCleanup(bufferedWriter)
 				if err != nil {
 					zap.L().Error("Failed to dump the dataset of shard", zap.Int("shard_id", shardId), zap.Error(err))
 					ret = err
@@ -380,13 +401,20 @@ func (m *MemDB) Save() error {
 				zap.L().Info("Successfully dumped the dataset of shard", zap.Int("shard_id", shardId))
 				shardInFile += 1
 				if shardInFile == 4 {
-					_ = currentFile.Close()
-					currentFile = nil
+					err := flush()
+					if err != nil {
+						zap.L().Error("Failed to flush and close file", zap.String("filename", fileName), zap.Error(err))
+						ret = err
+						break
+					}
 				}
 			}
 			if currentFile != nil {
-				_ = currentFile.Close()
-				currentFile = nil
+				err := flush()
+				if err != nil {
+					zap.L().Error("Failed to flush and close file", zap.String("filename", fileName), zap.Error(err))
+					ret = err
+				}
 			}
 		}()
 	}
@@ -429,7 +457,7 @@ func (m *MemDB) PlaneID() ftypes.RealmID {
 
 func (m *MemDB) keyToShardIDAndString(key []byte) (uint32, string) {
 	sKey := string(key[:])
-	return crc32.ChecksumIEEE(key) % m.shardNum, sKey
+	return xxhash.Checksum32(key) % m.shardNum, sKey
 }
 
 func (m *MemDB) SimpleSet(key []byte, value []byte, ttl time.Duration) {
@@ -553,11 +581,12 @@ func (m *MemDB) DelMany(ctx context.Context, keyGroups []hangar.KeyGroup) error 
 
 func (m *MemDB) commit(eks [][]byte, vgs []hangar.ValGroup, delks [][]byte) error {
 	// now we have all the deltas, we can set them
-	for i, ek := range eks {
-		ttl, alive := hangar.ExpiryToTTL(vgs[i].Expiry)
+	var valBufs [][]byte = nil
+
+	for i := 0; i < len(eks); i++ {
+		_, alive := hangar.ExpiryToTTL(vgs[i].Expiry)
 		if !alive {
-			shardID, sKey := m.keyToShardIDAndString(ek)
-			m.shards[shardID].Del(sKey)
+			valBufs = append(valBufs, nil)
 		} else {
 			buf := make([]byte, m.enc.ValLenHint(vgs[i]))
 			n, err := m.enc.EncodeVal(buf, vgs[i])
@@ -565,9 +594,17 @@ func (m *MemDB) commit(eks [][]byte, vgs []hangar.ValGroup, delks [][]byte) erro
 				return err
 			}
 			buf = buf[:n]
+			valBufs = append(valBufs, buf)
+		}
+	}
 
-			shardID, sKey := m.keyToShardIDAndString(ek)
-			m.shards[shardID].SetWithTTL(sKey, buf, ttl)
+	for i, ek := range eks {
+		ttl, alive := hangar.ExpiryToTTL(vgs[i].Expiry)
+		shardID, sKey := m.keyToShardIDAndString(ek)
+		if !alive {
+			m.shards[shardID].Del(sKey)
+		} else {
+			m.shards[shardID].SetWithTTL(sKey, valBufs[i], ttl)
 		}
 	}
 	for _, k := range delks {

@@ -63,22 +63,22 @@ func TestFullRun(t *testing.T) {
 		}
 	}
 
-	assert.Equal(t, testCount, store.Items())
+	assert.Equal(t, testCount, store.Len())
 	assert.Equal(t, 24*testCount, int(store.RawTotalSize()))
 
 	err = store.Save()
 	assert.NoError(t, err)
 	_ = store.Close()
-	assert.Equal(t, 0, store.Items())
+	assert.Equal(t, 0, store.Len())
 	assert.Equal(t, 0, int(store.RawTotalSize()))
 
 	store, err = NewHangar(planeID, 621, fsDir, encoders.Default())
 	err = store.Load()
 	assert.NoError(t, err)
-	assert.Equal(t, testCount, store.Items())
+	assert.Equal(t, testCount, store.Len())
 	assert.Equal(t, 24*testCount, int(store.RawTotalSize()))
 	_ = store.Close()
-	assert.Equal(t, 0, store.Items())
+	assert.Equal(t, 0, store.Len())
 	assert.Equal(t, 0, int(store.RawTotalSize()))
 
 	// Intentionally create a new mem store with a different shard num
@@ -109,14 +109,14 @@ func TestFullRun(t *testing.T) {
 	time.Sleep(time.Second * 6)
 	err = store.Save() // expired items got purged by the "Save.." call
 	assert.NoError(t, err)
-	assert.Equal(t, 1000, store.Items())
+	assert.Equal(t, 1000, store.Len())
 	assert.Equal(t, 24*1000, int(store.RawTotalSize()))
 	_ = store.Close()
 
 	store, err = NewHangar(planeID, 91, fsDir, encoders.Default())
 	err = store.Load()
 	assert.NoError(t, err)
-	assert.Equal(t, 1000, store.Items())
+	assert.Equal(t, 1000, store.Len())
 	assert.Equal(t, 24*1000, int(store.RawTotalSize()))
 }
 

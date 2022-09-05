@@ -117,14 +117,16 @@ func InitDB(n nitrous.Nitrous) (*NitrousDB, error) {
 	}
 
 	startDBSaveProc := func() {
-		time.Sleep(time.Minute * 5)
+		time.Sleep(time.Minute * 5) // quickly make a re-dump after restart to reflect recent binlog catching up
 		for {
 			ndb.Stop() // stop all the writers
-			err := ndb.nos.Store.Save()
-			if err != nil {
-				zap.L().Error("Failed to save data", zap.Error(err))
-			}
-			ndb.Start() // continue consuming the binlog
+			func() {
+				defer ndb.Start() // continue consuming the binlog
+				err := ndb.nos.Store.Save()
+				if err != nil {
+					zap.L().Error("Failed to save data", zap.Error(err))
+				}
+			}()
 			time.Sleep(time.Minute * 30)
 		}
 		// TODO: add a way to terminate the goroutine (probably never need to)

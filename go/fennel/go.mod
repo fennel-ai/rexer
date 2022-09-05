@@ -4,6 +4,7 @@ go 1.18
 
 require (
 	capnproto.org/go/capnp/v3 v3.0.0-alpha.3
+	github.com/OneOfOne/xxhash v1.2.2
 	github.com/Unleash/unleash-client-go/v3 v3.5.0
 	github.com/alexflint/go-arg v1.4.2
 	github.com/alicebob/miniredis/v2 v2.17.0
@@ -43,6 +44,7 @@ require (
 	google.golang.org/protobuf v1.28.0
 	gorm.io/driver/mysql v1.3.6
 	gorm.io/gorm v1.23.8
+	gorm.io/plugin/soft_delete v1.2.0
 )
 
 require (
@@ -88,7 +90,6 @@ require (
 	google.golang.org/genproto v0.0.0-20211118181313-81c1377c94b1 // indirect
 	gopkg.in/DATA-DOG/go-sqlmock.v1 v1.3.0 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
-	gorm.io/plugin/soft_delete v1.2.0 // indirect
 )
 
 require (
@@ -112,7 +113,7 @@ require (
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/prometheus/client_model v0.2.0 // indirect
-	github.com/prometheus/common v0.32.1 // indirect
+	github.com/prometheus/common v0.32.1
 	github.com/prometheus/procfs v0.7.3 // indirect
 	github.com/yuin/gopher-lua v0.0.0-20200816102855-ee81675732da // indirect
 	go.uber.org/atomic v1.10.0
