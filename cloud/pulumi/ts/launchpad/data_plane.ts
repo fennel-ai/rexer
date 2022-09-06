@@ -53,12 +53,8 @@ type CacheConfg = {
 }
 
 type PrometheusConf = {
-    // This should be set to `true` if Amazon Managed Prometheus (AMP) should be
-    // used to store metrics.
-    //
-    // This should be eventually removed and assumed `true` by default.
-    // Currently AMP is not available in ap-sount-1 where we have data planes.
-    useAMP: boolean
+    volumeSizeGiB?: number,
+    metricsRetentionDays?: number,
 }
 
 // strimzi is a kafka operator which is installed in the kubernetes cluster for managing kafka
@@ -130,7 +126,7 @@ export type DataPlaneConf = {
     redisConf?: RedisConfig,
     cacheConf?: CacheConfg,
     otelConf?: OtelConfig,
-    prometheusConf: PrometheusConf,
+    prometheusConf?: PrometheusConf,
     eksConf: util.EksConf,
     milvusConf?: MilvusConf,
     nitrousConf?: NitrousConf,
@@ -341,11 +337,12 @@ const setupResources = async () => {
     })
 
     const prometheusOutput = await prometheus.setup({
-        useAMP: input.prometheusConf.useAMP,
         kubeconfig: eksOutput.kubeconfig,
         region: input.region,
         roleArn: roleArn,
         planeId: input.planeId,
+        metricsRetentionDays: input.prometheusConf?.metricsRetentionDays,
+        volumeSizeGiB: input.prometheusConf?.volumeSizeGiB,
         // set msk brokers, so that prometheus can scrape the metrics exported at each of the metrics
         mskBootstrapServers: mskOutput?.bootstrapBrokers,
         numBrokers: mskOutput?.numBrokers,

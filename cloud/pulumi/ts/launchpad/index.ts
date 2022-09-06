@@ -265,6 +265,8 @@ const tierConfs: Record<number, TierConf> = {
         ingressConf: {
             usePublicSubnets: true,
         },
+        createTopicsInMsk: true,
+        mirrorMakerConf: {},
     },
     // Yext demo tier
     115: {
@@ -381,7 +383,8 @@ const dataPlaneConfs: Record<number, DataPlaneConf> = {
             replicasPerNodeGroup: 0,
         },
         prometheusConf: {
-            useAMP: true
+            volumeSizeGiB: 32,
+            metricsRetentionDays: 60,
         },
         eksConf: {
             nodeGroups: [
@@ -441,7 +444,8 @@ const dataPlaneConfs: Record<number, DataPlaneConf> = {
             numReplicasPerShard: 0,
         },
         prometheusConf: {
-            useAMP: true
+            volumeSizeGiB: 128,
+            metricsRetentionDays: 60,
         },
         cacheConf: {
             // this is used for demo tiers, which could right a lot of profiles
@@ -694,7 +698,8 @@ const dataPlaneConfs: Record<number, DataPlaneConf> = {
             }
         },
         prometheusConf: {
-            useAMP: false
+            volumeSizeGiB: 256,
+            metricsRetentionDays: 60,
         },
         // Run nitrous on the plane.
         nitrousConf: {
@@ -811,7 +816,8 @@ const dataPlaneConfs: Record<number, DataPlaneConf> = {
             replicasPerNodeGroup: 1,
         },
         prometheusConf: {
-            useAMP: true
+            volumeSizeGiB: 256,
+            metricsRetentionDays: 60,
         },
         // setup strimzi
         strimziConf: {},
@@ -846,9 +852,6 @@ const dataPlaneConfs: Record<number, DataPlaneConf> = {
             numShards: 4,
             nodeType: "db.t4g.medium",
             numReplicasPerShard: 0,
-        },
-        prometheusConf: {
-            useAMP: true
         },
         // increase the desired capacity and scale up to occupy more pods
         //
