@@ -582,13 +582,13 @@ func (s *server) OnboardCreateTeam(c *gin.Context) {
 		return
 	}
 	user, _ := CurrentUser(c)
-	_, nextStatus, err := onboardC.CreateTeam(c.Request.Context(), s.db, form.Name, form.AllowAutoJoin, user)
+	_, err := onboardC.CreateTeam(c.Request.Context(), s.db, form.Name, form.AllowAutoJoin, &user)
 	if err != nil {
 		respondError(c, err, "create team (onboard)")
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{
-		"onboardStatus": nextStatus,
+		"onboardStatus": user.OnboardStatus,
 	})
 }
 
@@ -603,13 +603,13 @@ func (s *server) OnboardJoinTeam(c *gin.Context) {
 		return
 	}
 	user, _ := CurrentUser(c)
-	nextStatus, err := onboardC.JoinTeam(c.Request.Context(), s.db, form.TeamID, user)
+	err := onboardC.JoinTeam(c.Request.Context(), s.db, form.TeamID, &user)
 	if err != nil {
 		respondError(c, err, "join team (onboard)")
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{
-		"onboardStatus": nextStatus,
+		"onboardStatus": user.OnboardStatus,
 	})
 }
 
