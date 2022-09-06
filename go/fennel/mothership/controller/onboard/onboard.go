@@ -38,21 +38,21 @@ func (err *ErrorUnexpectedOnboardStatus) Error() string {
 	return fmt.Sprintf("Unexpected onboard status %v for action %s", err.Status, err.Action)
 }
 
-func CreateTeam(ctx context.Context, db *gorm.DB, name string, allowAutoJoin bool, user userL.User) (customer.Customer, uint, error) {
+func CreateTeam(ctx context.Context, db *gorm.DB, name string, allowAutoJoin bool, user *userL.User) (customer.Customer, error) {
 	var customer customer.Customer
 
 	if user.OnboardStatus != userL.OnboardStatusSetupTeam {
-		return customer, 0, &ErrorUnexpectedOnboardStatus{Status: user.OnboardStatus, Action: "CreateTeam"}
+		return customer, &ErrorUnexpectedOnboardStatus{Status: user.OnboardStatus, Action: "CreateTeam"}
 	}
 	if user.CustomerID != 0 {
-		return customer, 0, fmt.Errorf("user already has a team %v", user.Email)
+		return customer, fmt.Errorf("user already has a team %v", user.Email)
 	}
 
 	customer.Name = name
 	if allowAutoJoin {
 		domain := extractEmailDomain(user.Email)
 		if isPersonalDomain(domain) {
-			return customer, 0, fmt.Errorf("personal domain %s not allowed to auto join", user.Email)
+			return customer, fmt.Errorf("personal domain %s not allowed to auto join", user.Email)
 		}
 
 		customer.Domain = sql.NullString{String: domain, Valid: true}
@@ -60,30 +60,32 @@ func CreateTeam(ctx context.Context, db *gorm.DB, name string, allowAutoJoin boo
 		customer.Domain = sql.NullString{Valid: false}
 	}
 	if err := db.Create(&customer).Error; err != nil {
-		return customer, 0, err
+		return customer, err
 	}
 	err := db.Model(&user).Updates(map[string]interface{}{
 		"onboard_status": userL.OnboardStatusAboutYourself,
 		"customer_id":    customer.ID,
 	}).Error
-	return customer, userL.OnboardStatusAboutYourself, err
+	return customer, err
 }
 
-func JoinTeam(ctx context.Context, db *gorm.DB, teamID uint, user userL.User) (uint, error) {
+func JoinTeam(ctx context.Context, db *gorm.DB, teamID uint, user *userL.User) error {
 	if user.OnboardStatus != userL.OnboardStatusSetupTeam {
-		return 0, &ErrorUnexpectedOnboardStatus{Status: user.OnboardStatus, Action: "JoinTeam"}
+		return &ErrorUnexpectedOnboardStatus{Status: user.OnboardStatus, Action: "JoinTeam"}
 	}
 
 	var customer customer.Customer
 	if db.Take(&customer, teamID).Error != nil {
-		return 0, fmt.Errorf("team (%v) not found", teamID)
+		return fmt.Errorf("team (%v) not found", teamID)
 	}
 	if !customer.Domain.Valid || extractEmailDomain(user.Email) != customer.Domain.String {
-		return 0, fmt.Errorf("join team (%v) not allowed for email (%s)", teamID, user.Email)
+		return fmt.Errorf("join team (%v) not allowed for email (%s)", teamID, user.Email)
 	}
 
-	err := db.Model(&user).Update("customer_id", teamID).Error
-	return userL.OnboardStatusAboutYourself, err
+	return db.Model(&user).Updates(map[string]interface{}{
+		"onboard_status": userL.OnboardStatusAboutYourself,
+		"customer_id":    teamID,
+	}).Error
 }
 
 func AssignTier(ctx context.Context, db *gorm.DB, user *userL.User) (tierL.Tier, bool, error) {

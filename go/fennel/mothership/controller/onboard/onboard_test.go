@@ -78,11 +78,11 @@ func TestJoinTeam(t *testing.T) {
 	}
 	assert.Positive(t, db.Create(&user).RowsAffected)
 
-	nextStatus, err := JoinTeam(ctx, db, fennel.ID, user)
+	err = JoinTeam(ctx, db, fennel.ID, &user)
 	assert.NoError(t, err)
-	assert.Equal(t, userL.OnboardStatusAboutYourself, nextStatus)
+	assert.Equal(t, userL.OnboardStatusAboutYourself, user.OnboardStatus)
 
-	_, err = JoinTeam(ctx, db, google.ID, user)
+	err = JoinTeam(ctx, db, google.ID, &user)
 	assert.Error(t, err)
 }
 
@@ -102,35 +102,35 @@ func TestCreateTeam(t *testing.T) {
 	}
 	assert.Positive(t, db.Create(&alice).RowsAffected)
 
-	customer, nextStatus, err := CreateTeam(ctx, db, "fennel", true, alice)
+	customer, err := CreateTeam(ctx, db, "fennel", true, &alice)
 	assert.NoError(t, err)
 	assert.True(t, customer.Domain.Valid)
 	assert.Equal(t, "fennel.ai", customer.Domain.String)
-	assert.Equal(t, userL.OnboardStatusAboutYourself, nextStatus)
+	assert.Equal(t, userL.OnboardStatusAboutYourself, alice.OnboardStatus)
 
 	bob := userL.User{
 		Email:             "bob@fennel.ai",
 		EncryptedPassword: []byte("abcd"),
 	}
 	assert.Positive(t, db.Create(&bob).RowsAffected)
-	_, _, err = CreateTeam(ctx, db, "fennel", true, bob)
+	_, err = CreateTeam(ctx, db, "fennel", true, &bob)
 	assert.Error(t, err)
-	customer, nextStatus, err = CreateTeam(ctx, db, "fennel", false, bob)
+	customer, err = CreateTeam(ctx, db, "fennel", false, &bob)
 	assert.NoError(t, err)
 	assert.False(t, customer.Domain.Valid)
-	assert.Equal(t, userL.OnboardStatusAboutYourself, nextStatus)
+	assert.Equal(t, userL.OnboardStatusAboutYourself, bob.OnboardStatus)
 
 	cat := userL.User{
 		Email:             "cat@Hotmail.com",
 		EncryptedPassword: []byte("abcd"),
 	}
 	assert.Positive(t, db.Create(&cat).RowsAffected)
-	_, _, err = CreateTeam(ctx, db, "hot", true, cat)
+	_, err = CreateTeam(ctx, db, "hot", true, &cat)
 	assert.Error(t, err)
-	customer, nextStatus, err = CreateTeam(ctx, db, "hot", false, cat)
+	customer, err = CreateTeam(ctx, db, "hot", false, &cat)
 	assert.NoError(t, err)
 	assert.False(t, customer.Domain.Valid)
-	assert.Equal(t, userL.OnboardStatusAboutYourself, nextStatus)
+	assert.Equal(t, userL.OnboardStatusAboutYourself, cat.OnboardStatus)
 }
 
 func TestOnboardAssignTier(t *testing.T) {
