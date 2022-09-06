@@ -142,15 +142,16 @@ func (l *layered) GetMany(ctx context.Context, kgs []hangar.KeyGroup) ([]hangar.
 	defer t.Stop()
 	// If this read is on the write path, skip the cache since it can contain
 	// stale data.
-	if hangar.IsWrite(ctx) {
-		vgs, err := l.db.GetMany(ctx, kgs)
-		if err != nil {
-			return nil, fmt.Errorf("failed to get values from the db: %w", err)
-		}
-		// Fill the missing keygroups in the cache.
-		l.filler.fill(ctx, kgs, false /* delete */)
-		return vgs, nil
-	}
+	// TODO: fix consistency issues caused by reading stale data from the cache.
+	// if hangar.IsWrite(ctx) {
+	// 	vgs, err := l.db.GetMany(ctx, kgs)
+	// 	if err != nil {
+	// 		return nil, fmt.Errorf("failed to get values from the db: %w", err)
+	// 	}
+	// 	// Fill the missing keygroups in the cache.
+	// 	l.filler.fill(ctx, kgs, false /* delete */)
+	// 	return vgs, nil
+	// }
 	results, err := l.cache.GetMany(ctx, kgs)
 	if err != nil {
 		return nil, err
