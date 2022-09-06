@@ -10,10 +10,10 @@ import (
 	"github.com/samber/mo"
 
 	"fennel/hangar"
-	"fennel/hangar/cache"
 	"fennel/hangar/db"
 	"fennel/hangar/encoders"
 	"fennel/hangar/layered"
+	"fennel/hangar/mem"
 	libkafka "fennel/kafka"
 	"fennel/lib/ftypes"
 	"fennel/resource"
@@ -133,8 +133,7 @@ func CreateFromArgs(args NitrousArgs) (Nitrous, error) {
 	if err != nil {
 		return Nitrous{}, fmt.Errorf("failed to create badger db: %w", err)
 	}
-
-	cache, err := cache.NewHangar(scope.ID(), args.RistrettoMaxCost, args.RistrettoAvgCost, encoders.Default())
+	cache, err := mem.NewHangar(scope.ID(), 64, encoders.Default())
 	if err != nil {
 		return Nitrous{}, fmt.Errorf("failed to create cache: %w", err)
 	}
