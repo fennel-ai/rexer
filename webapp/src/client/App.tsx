@@ -1,3 +1,9 @@
+import {
+    BrowserRouter,
+    Routes,
+    Route,
+  } from "react-router-dom";
+
 import "./styles/App.less";
 import Navbar from "./Navbar";
 import DataPage from "./DataPage";
@@ -18,44 +24,58 @@ interface Props {
     user: User,
 }
 
-const DASHBOARD_PAGE = "dashboard";
-const DATA_PAGE = "data";
-const SETTINGS_PAGE = "settings";
-const ONBOARD_PAGE = "onboard";
-
 function App({page, user}: Props) {
-    switch (page) {
-        case DATA_PAGE:
-            return (
-                <div>
-                    <Navbar page={page} />
-                    <DataPage />
-                </div>
-            );
-        case DASHBOARD_PAGE:
-            return (
-                <div>
-                    <Navbar page={page} />
-                    <DashboardPage />
-                </div>
-            );
-        case SETTINGS_PAGE:
-            return (
-                <div>
-                    <Navbar page={page} />
-                    <SettingsPage />
-                </div>
-            );
-        case ONBOARD_PAGE:
-            return <OnboardPage user={user} />;
-        default:
-            return (
-                <div>
-                    <Navbar page={page} />
-                    <TierManagementPage />
-                </div>
-            );
-    }
+    return (
+        <BrowserRouter>
+            <Routes>
+                <Route
+                    path="/"
+                    element={(
+                        <div>
+                            <Navbar page={page} />
+                            <TierManagementPage />
+                        </div>
+                    )}
+                />
+                <Route
+                    path="/data"
+                    element={(
+                        <div>
+                            <Navbar page={page} />
+                            <DataPage />
+                        </div>
+                    )}
+                />
+                <Route
+                    path="/dashboard"
+                    element={(
+                        <div>
+                            <Navbar page={page} />
+                            <DashboardPage />
+                        </div>
+                    )}
+                />
+                <Route
+                    path="/settings"
+                    element={(
+                        <div>
+                            <Navbar page={page} />
+                            <SettingsPage />
+                        </div>
+                    )}
+                />
+                <Route
+                    path="/onboard"
+                    element={(
+                        <div>
+                            <Navbar page={page} />
+                            <OnboardPage user={user} />
+                        </div>
+                    )}
+                />
+            </Routes>
+        </BrowserRouter>
+    );
 }
 
 export default App;
