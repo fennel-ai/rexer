@@ -488,7 +488,11 @@ func (s *server) User(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{
-		"user": userMap(user),
+		"user": gin.H{
+			"email":     user.Email,
+			"firstName": user.FirstName,
+			"lastName":  user.LastName,
+		},
 	})
 }
 
