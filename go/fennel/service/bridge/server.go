@@ -360,39 +360,29 @@ func (s *server) ResendConfirmationEmail(c *gin.Context) {
 }
 
 func (s *server) Dashboard(c *gin.Context) {
+	c.HTML(http.StatusOK, "bridge/index.tmpl", s.bootstrapData(c, "Dashboard"))
+}
+
+func (s *server) bootstrapData(c *gin.Context, page string) gin.H {
 	user, _ := CurrentUser(c)
-	c.HTML(http.StatusOK, "bridge/index.tmpl", gin.H{
-		"title": title("Dashboard"),
-		"page":  DashboardPage,
+
+	return gin.H{
+		"title": title(page),
 		"user":  userMap(user),
-	})
+		"tiers": customerTiers(s.db, user.CustomerID),
+	}
 }
 
 func (s *server) Data(c *gin.Context) {
-	user, _ := CurrentUser(c)
-	c.HTML(http.StatusOK, "bridge/index.tmpl", gin.H{
-		"title": title("Data"),
-		"page":  DataPage,
-		"user":  userMap(user),
-	})
+	c.HTML(http.StatusOK, "bridge/index.tmpl", s.bootstrapData(c, "Data"))
 }
 
 func (s *server) Settings(c *gin.Context) {
-	user, _ := CurrentUser(c)
-	c.HTML(http.StatusOK, "bridge/index.tmpl", gin.H{
-		"title": title("Settings"),
-		"page":  SettingsPage,
-		"user":  userMap(user),
-	})
+	c.HTML(http.StatusOK, "bridge/index.tmpl", s.bootstrapData(c, "Settings"))
 }
 
 func (s *server) TierManagement(c *gin.Context) {
-	user, _ := CurrentUser(c)
-	c.HTML(http.StatusOK, "bridge/index.tmpl", gin.H{
-		"title": title("Tier Management"),
-		"page":  TierManagementPage,
-		"user":  userMap(user),
-	})
+	c.HTML(http.StatusOK, "bridge/index.tmpl", s.bootstrapData(c, "Tier Management"))
 }
 
 func (s *server) Tiers(c *gin.Context) {

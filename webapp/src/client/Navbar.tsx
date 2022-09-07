@@ -1,24 +1,35 @@
 import axios, { AxiosError } from "axios";
+import { useParams, generatePath } from "react-router-dom";
 
 import styles from "./styles/Navbar.module.scss";
 import { MenuProps, notification, Dropdown, Menu, Space, Avatar } from "antd";
 import { DownOutlined, UserOutlined, TeamOutlined, LogoutOutlined } from '@ant-design/icons';
 
-interface Props {
-    page: string;
+export interface Tier {
+    id: string,
 }
 
-function Navbar({page}: Props) {
-    const items: MenuProps["items"] = [
-        {
-            label: (<a href="/dashboard">Dashboard</a>),
-            key: "dashboard",
-        },
-        {
-            label: (<a href="/data">Data</a>),
-            key: "data",
-        },
-    ];
+interface Props {
+    activeTab?: string,
+    tiers: Tier[],
+}
+
+function Navbar({ activeTab, tiers }: Props) {
+    const { tierID } = useParams();
+
+    const items: MenuProps["items"] = [];
+    if (tierID) {
+        items.push(
+            {
+                label: (<a href={generatePath("/tier/:tierID/dashboard", {tierID})}>Dashboard</a>),
+                key: "dashboard",
+            },
+            {
+                label: (<a href={generatePath("/tier/:tierID/data", {tierID})}>Data</a>),
+                key: "data",
+            },
+        );
+    }
 
     return (
         <nav>
@@ -29,13 +40,13 @@ function Navbar({page}: Props) {
                     </div>
                     <div className={styles.divider} />
                     <div>
-                        <TierDropdown />
+                        <TierDropdown tiers={tiers} />
                     </div>
                     <div className={styles.divider} />
                     <div>
                         <Menu
                             mode="horizontal"
-                            defaultSelectedKeys={[page]}
+                            defaultSelectedKeys={activeTab ? [activeTab] : []}
                             items={items}
                             className={styles.menu}
                         />
@@ -96,29 +107,24 @@ function AvatarDropdown() {
     );
 }
 
-function TierDropdown() {
+function TierDropdown({ tiers }: { tiers: Tier[] }) {
+    const { tierID } = useParams();
+    const items = tiers.map(tier => ({
+        key: tier.id,
+        label: (<a href={generatePath("/tier/:tierID", {tierID: tier.id})}>Tier {tier.id}</a>),
+    }));
+
     const menu = <Menu
         selectable
-        defaultSelectedKeys={['1']}
+        defaultSelectedKeys={tierID ? [ tierID ] : []}
         items={[
-            {
-                key: '1',
-                label: 'Tier 1',
-            },
-            {
-                key: '2',
-                label: 'Tier 2',
-            },
-            {
-                key: '3',
-                label: 'Tier 3',
-            },
+            ...items,
             {
                 type: 'divider',
             },
             {
                 key: 'management',
-                label: 'Tier Management',
+                label: (<a href="/tier_management">Tier Management</a>),
             },
         ]}
     />;
@@ -126,7 +132,7 @@ function TierDropdown() {
     return (
         <Dropdown overlay={menu} trigger={["click"]}>
             <Space>
-                Tier 1
+                {tierID ? `Tier ${tierID}` : "Tier Management"}
                 <DownOutlined />
             </Space>
         </Dropdown>
