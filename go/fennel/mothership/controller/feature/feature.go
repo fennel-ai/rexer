@@ -3,13 +3,13 @@ package feature
 import (
 	"context"
 	"fennel/client"
-	lib "fennel/lib/feature"
+	featureL "fennel/lib/feature"
+	tierL "fennel/mothership/lib/tier"
 	"net/http"
 )
 
-func Features(c context.Context) ([]lib.Row, error) {
-	// TODO(xiao) client address
-	cli, err := client.NewClient("http://localhost:2425", http.DefaultClient)
+func Features(c context.Context, tier tierL.Tier) ([]featureL.Row, error) {
+	cli, err := client.NewClient(tier.ApiUrl, http.DefaultClient)
 	if err != nil {
 		return nil, err
 	}

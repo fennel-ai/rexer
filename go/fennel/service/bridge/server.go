@@ -117,24 +117,29 @@ func (s *server) setupRouter() {
 	auth := s.Group("/", AuthenticationRequired(s.db))
 	onboarded := auth.Group("/", Onboarded)
 	onboarded.GET("/", s.TierManagement)
-	onboarded.GET("/dashboard", s.Dashboard)
-	onboarded.GET("/data", s.Data)
-	onboarded.GET("/settings", s.Settings)
 	onboarded.GET("/tier_management", s.TierManagement)
+
+	onboarded.GET("/settings", s.Settings)
+
+	tier := onboarded.Group("/tier/:id", TierPermission(s.db))
+	tier.GET("/", s.Dashboard)
+	tier.GET("/dashboard", s.Dashboard)
+	tier.GET("/data", s.Data)
+	tier.GET("/profiles", s.Profiles)
+	tier.GET("/actions", s.Actions)
+	tier.GET("/features", s.Features)
+
+	// TODO(xiao) group under tier
+	metrics := auth.Group("/metrics")
+	metrics.GET("/query_range", s.QueryRangeMetrics)
 
 	// ajax endpoints
 	auth.GET("/tiers", s.Tiers)
-	auth.GET("/profiles", s.Profiles)
-	auth.GET("/actions", s.Actions)
-	auth.GET("/features", s.Features)
 	auth.POST("/logout", s.Logout)
 	auth.GET("/user", s.User)
 	auth.GET("/team", s.Team)
 	auth.PATCH("/user_names", s.UpdateUserNames)
 	auth.PATCH("/user_password", s.UpdateUserPassword)
-
-	metrics := auth.Group("/metrics")
-	metrics.GET("/query_range", s.QueryRangeMetrics)
 
 	onboard := auth.Group("/onboard")
 	onboard.GET("/team_match", s.OnboardTeamMatch)
@@ -417,7 +422,8 @@ func (s *server) Profiles(c *gin.Context) {
 		return
 	}
 
-	profiles, err := profileC.Profiles(c.Request.Context(), form.Otype, form.Oid, form.Pagination)
+	tier, _ := CurrentTier(c)
+	profiles, err := profileC.Profiles(c.Request.Context(), tier, form.Otype, form.Oid, form.Pagination)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error": "Fail to read profiles, please try again later.",
@@ -443,7 +449,8 @@ func (s *server) Actions(c *gin.Context) {
 		return
 	}
 
-	actions, err := actionC.Actions(c.Request.Context(), form.ActionType, form.ActorType, form.ActorID, form.TargetType, form.TargetID)
+	tier, _ := CurrentTier(c)
+	actions, err := actionC.Actions(c.Request.Context(), tier, form.ActionType, form.ActorType, form.ActorID, form.TargetType, form.TargetID)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error": "Fail to read actions, please try again later.",
@@ -457,7 +464,8 @@ func (s *server) Actions(c *gin.Context) {
 }
 
 func (s *server) Features(c *gin.Context) {
-	features, err := featureC.Features(c.Request.Context())
+	tier, _ := CurrentTier(c)
+	features, err := featureC.Features(c.Request.Context(), tier)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error": "Fail to read actions, please try again later.",
