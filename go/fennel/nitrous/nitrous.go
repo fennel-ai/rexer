@@ -120,13 +120,15 @@ func CreateFromArgs(args NitrousArgs) (Nitrous, error) {
 	badgerOpts = badgerOpts.WithBlockSize(4 << 10 /* 4 KB */)
 	badgerOpts = badgerOpts.WithNumCompactors(2)
 	badgerOpts = badgerOpts.WithCompactL0OnClose(true)
-	badgerOpts = badgerOpts.WithIndexCacheSize(4 << 30 /* 4 GB */)
+	// TODO: Make index cache size a flag.
+	badgerOpts = badgerOpts.WithIndexCacheSize(16 << 30 /* 16 GB */)
 	badgerOpts = badgerOpts.WithMemTableSize(256 << 20 /* 256 MB */)
 	if args.Compress {
-		badgerOpts = badgerOpts.WithBlockCacheSize(args.BadgerBlockCacheMB << 20)
 		badgerOpts = badgerOpts.WithCompression(options.ZSTD)
+		badgerOpts = badgerOpts.WithBlockCacheSize(args.BadgerBlockCacheMB << 20)
 	} else {
 		badgerOpts = badgerOpts.WithCompression(options.None)
+		badgerOpts = badgerOpts.WithBlockCacheSize(0)
 	}
 	badgerOpts = badgerOpts.WithMetricsEnabled(false)
 	db, err := db.NewHangar(scope.ID(), badgerOpts, encoders.Default())

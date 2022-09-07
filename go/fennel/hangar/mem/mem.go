@@ -198,7 +198,6 @@ func (m *MemDB) GetMany(ctx context.Context, kgs []hangar.KeyGroup) ([]hangar.Va
 			// not found, this is not an error, so we will just return empty ValGroup
 			continue
 		}
-
 		if _, err := m.enc.DecodeVal(valBytes, &vgs[i], true); err != nil {
 			return nil, fmt.Errorf("error decoding value: %w", err)
 		} else {

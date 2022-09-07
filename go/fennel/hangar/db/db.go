@@ -17,6 +17,8 @@ import (
 	"fennel/lib/utils/parallel"
 
 	"github.com/dgraph-io/badger/v3"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promauto"
 	"go.uber.org/zap"
 )
 
@@ -108,6 +110,23 @@ func (b *badgerDB) Encoder() hangar.Encoder {
 	return b.enc
 }
 
+var (
+	badger_view_num_keys = promauto.NewSummaryVec(prometheus.SummaryOpts{
+		Name: "badger_view_num_keys",
+		Help: "Number of keys read in a badger View txn",
+		// Track quantiles within small error
+		Objectives: map[float64]float64{
+			0.25:  0.05,
+			0.50:  0.05,
+			0.75:  0.05,
+			0.90:  0.05,
+			0.95:  0.02,
+			0.99:  0.01,
+			0.999: 0.001,
+		},
+	}, []string{"mode"})
+)
+
 // GetMany returns the values for the given keyGroups.
 // It parallelizes the requests to the underlying DB upto a degree of PARALLELISM
 func (b *badgerDB) GetMany(ctx context.Context, kgs []hangar.KeyGroup) ([]hangar.ValGroup, error) {
@@ -126,9 +145,14 @@ func (b *badgerDB) GetMany(ctx context.Context, kgs []hangar.KeyGroup) ([]hangar
 		if err != nil {
 			return fmt.Errorf("failed to encode keys: %w", err)
 		}
+		badger_view_num_keys.WithLabelValues(hangar.GetMode(ctx).String()).Observe(float64(len(eks)))
 		err = b.db.View(func(txn *badger.Txn) error {
+			_, t := timer.Start(ctx, b.planeID, fmt.Sprintf("badger.view.latency.%s", hangar.GetMode(ctx)))
+			defer t.Stop()
 			for i, ek := range eks {
+				_, t := timer.Start(ctx, b.planeID, fmt.Sprintf("badger.get.latency.%s", hangar.GetMode(ctx)))
 				item, err := txn.Get(ek)
+				t.Stop()
 				switch err {
 				case badger.ErrKeyNotFound:
 				case nil:
