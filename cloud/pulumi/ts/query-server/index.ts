@@ -11,7 +11,7 @@ import childProcess from "child_process";
 const name = "query-server"
 
 export const plugins = {
-    "kubernetes": "v3.18.0",
+    "kubernetes": "v3.20.1",
     "aws": "v5.1.0"
 }
 

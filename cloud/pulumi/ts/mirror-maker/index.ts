@@ -6,7 +6,7 @@ import {topicConf} from "../kafkatopics";
 
 export const plugins = {
     "aws": "v4.38.1",
-    "kubernetes": "v3.16.0",
+    "kubernetes": "v3.20.1",
 }
 
 const DEFAULT_REPLICAS = 1

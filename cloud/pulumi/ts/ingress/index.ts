@@ -10,7 +10,7 @@ const DEFAULT_INGRESS_NODE_COUNT = 2;
 const DEFAULT_USE_DEDICATED_MACHINES = false;
 
 export const plugins = {
-    "kubernetes": "v3.18.0",
+    "kubernetes": "v3.20.1",
     "command": "v0.0.3",
     "aws": "v5.1.0",
 }

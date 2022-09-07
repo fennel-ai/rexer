@@ -4,7 +4,7 @@ import * as postgresql from "@pulumi/postgresql";
 import {POSTGRESQL_PASSWORD, POSTGRESQL_USERNAME} from "../tier-consts/consts";
 
 export const plugins = {
-    "kubernetes": "v3.18.0",
+    "kubernetes": "v3.20.1",
     "postgresql": "v3.4.0",
 }
 

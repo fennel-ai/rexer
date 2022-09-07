@@ -23,7 +23,7 @@ export const ON_DEMAND_INSTANCE_TYPE = "ON_DEMAND";
 
 export const plugins = {
     "eks": "0.39.0",
-    "kubernetes": "v3.18.0",
+    "kubernetes": "v3.20.1",
     "command": "v0.0.3",
     "aws": "v4.38.1",
 }
@@ -367,6 +367,22 @@ function setupDescheduler(cluster: eks.Cluster) {
 }
 
 function setupStorageClasses(cluster: eks.Cluster): Record<string, pulumi.Output<string>> {
+    // create a provider which enables server-side apply, this will be the default behavior in the upcoming releases
+    //
+    // https://www.pulumi.com/registry/packages/kubernetes/how-to-guides/managing-resources-with-server-side-apply/
+    const ssaProvider = new k8s.Provider("ssa-storageclass-provider", {
+        kubeconfig: cluster.kubeconfig,
+        enableServerSideApply: true,
+    });
+    // patch default storage class to allow expansion
+    const storageClassPatch = new k8s.storage.v1.StorageClassPatch("ebs-default-storage-class", {
+        allowVolumeExpansion: true,
+        metadata: {
+            // EKS by default creates a storage class named gp2, of type gp2
+            name: "gp2",
+        }
+    }, { provider: ssaProvider });
+
     // Setup storage classes for EBS io1 volumes.
     const io1 = new k8s.storage.v1.StorageClass("ebs-io1-50ops", {
         allowVolumeExpansion: true,

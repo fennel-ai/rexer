@@ -8,7 +8,7 @@ import * as md5 from 'ts-md5/dist/md5';
 
 export const plugins = {
     "aws": "v4.38.1",
-    "kubernetes": "v3.18.0",
+    "kubernetes": "v3.20.1",
 }
 
 export type OtelConfig = {

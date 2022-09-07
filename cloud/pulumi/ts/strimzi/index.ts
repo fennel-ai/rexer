@@ -4,7 +4,7 @@ import process from "process";
 import path from "path";
 
 export const plugins = {
-    "kubernetes": "v3.16.0"
+    "kubernetes": "v3.20.1"
 }
 
 export type inputType = {
