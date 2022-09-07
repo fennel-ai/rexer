@@ -37,24 +37,35 @@ function App({page, user}: Props) {
                         </div>
                     )}
                 />
-                <Route
-                    path="/data"
-                    element={(
-                        <div>
-                            <Navbar page={page} />
-                            <DataPage />
-                        </div>
-                    )}
-                />
-                <Route
-                    path="/dashboard"
-                    element={(
-                        <div>
-                            <Navbar page={page} />
-                            <DashboardPage />
-                        </div>
-                    )}
-                />
+                <Route path="/tier/:tierID">
+                    <Route
+                        path="data"
+                        element={(
+                            <div>
+                                <Navbar page={page} />
+                                <DataPage />
+                            </div>
+                        )}
+                    />
+                    <Route
+                        path="dashboard"
+                        element={(
+                            <div>
+                                <Navbar page={page} />
+                                <DashboardPage />
+                            </div>
+                        )}
+                    />
+                    <Route
+                        index
+                        element={(
+                            <div>
+                                <Navbar page={page} />
+                                <DashboardPage />
+                            </div>
+                        )}
+                    />
+                </Route>
                 <Route
                     path="/settings"
                     element={(

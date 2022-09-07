@@ -2,6 +2,7 @@ import { Table, Button, Input, Form, Space } from "antd";
 import { LoadingOutlined } from '@ant-design/icons';
 import { useState, useEffect } from "react";
 import axios, { AxiosResponse } from "axios";
+import { useParams } from "react-router-dom";
 
 import styles from "./styles/Tab.module.scss";
 
@@ -36,6 +37,8 @@ function ActionsTab() {
     const [targetId, setTargetId] = useState<string>("");
     const [targetType, setTargetType] = useState<string>("");
 
+    const { tierID } = useParams();
+
     const queryActions = () => {
         setLoading(true);
         const params = {
@@ -45,7 +48,7 @@ function ActionsTab() {
             target_id: targetId,
             target_type: targetType,
         };
-        axios.get("/actions", {
+        axios.get(`/tier/${tierID}/actions`, {
             params,
         }).then((response: AxiosResponse<ActionResponse>) => {
             const newData = response.data.actions.map((action: Action, idx: number) => ({
@@ -131,7 +134,7 @@ function ActionsTab() {
                 dataSource={dataSource}
                 columns={columns}
                 loading={loading && {"indicator": antIcon}}
-                pagination={{ position: ["bottomRight"]}}
+                pagination={{ position: ["bottomRight"] }}
             />
         </div>
     );

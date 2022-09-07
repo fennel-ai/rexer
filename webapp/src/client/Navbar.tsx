@@ -25,7 +25,7 @@ function Navbar({page}: Props) {
             <div className={styles.container}>
                 <div className={styles.leftNav}>
                     <div>
-                        <img src="images/logo.svg" alt="logo" />
+                        <img src="/images/logo.svg" alt="logo" />
                     </div>
                     <div className={styles.divider} />
                     <div>
