@@ -115,10 +115,9 @@ func (s *server) setupRouter() {
 	s.POST("/resend_confirmation_email", s.ResendConfirmationEmail)
 
 	auth := s.Group("/", AuthenticationRequired(s.db))
-	onboarded := auth.Group("/", Onboarded)
+	onboarded := auth.Group("/", Onboarded(s.db))
 	onboarded.GET("/", s.TierManagement)
 	onboarded.GET("/tier_management", s.TierManagement)
-
 	onboarded.GET("/settings", s.Settings)
 
 	tier := onboarded.Group("/tier/:id", TierPermission(s.db))
@@ -166,11 +165,6 @@ const (
 	SignInPage         = "signin"
 	ForgotPasswordPage = "forgot_password"
 	ResetPasswordPage  = "reset_password"
-	DashboardPage      = "dashboard"
-	DataPage           = "data"
-	SettingsPage       = "settings"
-	TierManagementPage = "tier_management"
-	OnboardPage        = "onboard"
 )
 
 func title(name string) string {
@@ -360,29 +354,29 @@ func (s *server) ResendConfirmationEmail(c *gin.Context) {
 }
 
 func (s *server) Dashboard(c *gin.Context) {
-	c.HTML(http.StatusOK, "bridge/index.tmpl", s.bootstrapData(c, "Dashboard"))
+	c.HTML(http.StatusOK, "bridge/index.tmpl", bootstrapData(c, s.db, "Dashboard"))
 }
 
-func (s *server) bootstrapData(c *gin.Context, page string) gin.H {
+func bootstrapData(c *gin.Context, db *gorm.DB, page string) gin.H {
 	user, _ := CurrentUser(c)
 
 	return gin.H{
 		"title": title(page),
 		"user":  userMap(user),
-		"tiers": customerTiers(s.db, user.CustomerID),
+		"tiers": customerTiers(db, user.CustomerID),
 	}
 }
 
 func (s *server) Data(c *gin.Context) {
-	c.HTML(http.StatusOK, "bridge/index.tmpl", s.bootstrapData(c, "Data"))
+	c.HTML(http.StatusOK, "bridge/index.tmpl", bootstrapData(c, s.db, "Data"))
 }
 
 func (s *server) Settings(c *gin.Context) {
-	c.HTML(http.StatusOK, "bridge/index.tmpl", s.bootstrapData(c, "Settings"))
+	c.HTML(http.StatusOK, "bridge/index.tmpl", bootstrapData(c, s.db, "Settings"))
 }
 
 func (s *server) TierManagement(c *gin.Context) {
-	c.HTML(http.StatusOK, "bridge/index.tmpl", s.bootstrapData(c, "Tier Management"))
+	c.HTML(http.StatusOK, "bridge/index.tmpl", bootstrapData(c, s.db, "Tier Management"))
 }
 
 func (s *server) Tiers(c *gin.Context) {
