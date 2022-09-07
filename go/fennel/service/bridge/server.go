@@ -16,7 +16,6 @@ import (
 
 	dataplaneL "fennel/mothership/lib/dataplane"
 	tierL "fennel/mothership/lib/tier"
-	userL "fennel/mothership/lib/user"
 	"fennel/service/common"
 	"fmt"
 	"log"
@@ -140,14 +139,15 @@ func (s *server) setupRouter() {
 	auth.PATCH("/user_names", s.UpdateUserNames)
 	auth.PATCH("/user_password", s.UpdateUserPassword)
 
+	// onboard endpoints
 	onboard := auth.Group("/onboard")
 	onboard.GET("/team_match", s.OnboardTeamMatch)
-	onboard.GET("/tier", s.OnboardTier)
-	onboard.POST("/tier_provisioned", s.OnboardTierProvisioned)
 	onboard.POST("/create_team", s.OnboardCreateTeam)
 	onboard.POST("/join_team", s.OnboardJoinTeam)
-	onboard.POST("/submit_questionnaire", s.OnboardSubmitQuestionnaire)
+
 	onboard.POST("/assign_tier", s.OnboardAssignTier)
+	onboard.GET("/tier", s.OnboardTier)
+	onboard.POST("/tier_provisioned", s.OnboardTierProvisioned)
 
 	// dev only endpoints
 	if s.isDev() {
@@ -606,19 +606,6 @@ func (s *server) OnboardJoinTeam(c *gin.Context) {
 	}
 	c.JSON(http.StatusOK, gin.H{
 		"onboardStatus": user.OnboardStatus,
-	})
-}
-
-func (s *server) OnboardSubmitQuestionnaire(c *gin.Context) {
-	// TODO(xiao) skipped for now
-	user, _ := CurrentUser(c)
-	err := s.db.Model(&user).Update("onboard_status", userL.OnboardStatusTierProvisioning).Error
-	if err != nil {
-		respondError(c, err, "join team (onboard)")
-		return
-	}
-	c.JSON(http.StatusOK, gin.H{
-		"onboardStatus": userL.OnboardStatusTierProvisioning,
 	})
 }
 
