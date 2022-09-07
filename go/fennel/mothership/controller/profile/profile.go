@@ -6,12 +6,12 @@ import (
 	"fennel/lib/sql"
 	"net/http"
 
-	lib "fennel/lib/profile"
+	profileL "fennel/lib/profile"
+	tierL "fennel/mothership/lib/tier"
 )
 
-func Profiles(c context.Context, otype, oid string, pagination sql.Pagination) ([]lib.ProfileItem, error) {
-	// TODO(xiao) client address
-	cli, err := client.NewClient("http://localhost:2425", http.DefaultClient)
+func Profiles(c context.Context, tier tierL.Tier, otype, oid string, pagination sql.Pagination) ([]profileL.ProfileItem, error) {
+	cli, err := client.NewClient(tier.ApiUrl, http.DefaultClient)
 	if err != nil {
 		return nil, err
 	}

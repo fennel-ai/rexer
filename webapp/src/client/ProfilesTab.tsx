@@ -2,9 +2,11 @@ import { Table, Button, Input, Form, Space, Pagination} from "antd";
 import { LoadingOutlined } from '@ant-design/icons';
 import { useState, useEffect } from "react";
 import axios, { AxiosResponse } from "axios";
+import { useParams } from "react-router-dom";
 
 import styles from "./styles/Tab.module.scss";
 import profileStyles from "./styles/ProfilesTab.module.scss";
+
 
 const columns = [
     { title: 'otype', dataIndex: 'otype', key: 'otype' },
@@ -35,6 +37,8 @@ function ProfilesTab() {
     const [per, setPer] = useState<number>(10);
     const [currentMaxTotal, setCurrentMaxTotal] = useState<number>(page * per);
 
+    const { tierID } = useParams();
+
     const queryProfiles = (page: number, per: number, currentMaxTotal: number) => {
         setLoading(true);
         const params = {
@@ -43,7 +47,7 @@ function ProfilesTab() {
             page,
             per,
         };
-        axios.get("/profiles", {
+        axios.get(`/tier/${tierID}/profiles`, {
             params,
         }).then((response: AxiosResponse<ProfileResponse>) => {
                 const newData = response.data.profiles.map((profile: Profile, idx: number) => ({

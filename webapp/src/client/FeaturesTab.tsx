@@ -2,6 +2,7 @@ import { Table } from "antd";
 import { LoadingOutlined } from '@ant-design/icons';
 import { useState, useEffect } from "react";
 import axios, { AxiosResponse } from "axios";
+import { useParams } from "react-router-dom";
 
 import styles from "./styles/Tab.module.scss";
 
@@ -33,9 +34,11 @@ function FeaturesTab() {
         DEFAULT_COLUMNS,
     );
 
+    const { tierID } = useParams();
+
     const queryFeatures = () => {
         setLoading(true);
-        axios.get("/features")
+        axios.get(`/tier/${tierID}/features`)
             .then((response: AxiosResponse<{features: object[]}>) => {
                 const newData = response.data.features.map((feature: object, idx: number) => ({
                     key: idx,
@@ -54,7 +57,7 @@ function FeaturesTab() {
             });
     };
 
-    useEffect(() => queryFeatures(), []);
+    useEffect(queryFeatures, []);
 
     const antIcon = <LoadingOutlined spin />;
     return (
