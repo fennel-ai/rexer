@@ -819,6 +819,15 @@ const dataPlaneConfs: Record<number, DataPlaneConf> = {
             volumeSizeGiB: 256,
             metricsRetentionDays: 60,
         },
+        // set up MSK cluster
+        mskConf: {
+            // compute cost = 0.0456 ($/hr) x 2 (#brokers) x 720 = $65.6
+            brokerType: "kafka.t3.small",
+            // this will place 1 broker node in each of the AZs
+            numberOfBrokerNodes: 2,
+            // storage cost = 0.10 ($/GB-month) x 64 = 6.4$
+            storageVolumeSizeGiB: 64,
+        },
         // setup strimzi
         strimziConf: {},
     },
