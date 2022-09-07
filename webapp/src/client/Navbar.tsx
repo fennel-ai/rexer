@@ -9,12 +9,17 @@ export interface Tier {
     id: string,
 }
 
+interface User {
+    lastName: string,
+}
+
 interface Props {
     activeTab?: string,
     tiers: Tier[],
+    user: User,
 }
 
-function Navbar({ activeTab, tiers }: Props) {
+function Navbar({ activeTab, tiers, user }: Props) {
     const { tierID } = useParams();
 
     const items: MenuProps["items"] = [];
@@ -36,7 +41,9 @@ function Navbar({ activeTab, tiers }: Props) {
             <div className={styles.container}>
                 <div className={styles.leftNav}>
                     <div>
-                        <img src="/images/logo.svg" alt="logo" />
+                        <a href="/">
+                            <img src="/images/logo.svg" alt="logo" />
+                        </a>
                     </div>
                     <div className={styles.divider} />
                     <div>
@@ -54,11 +61,9 @@ function Navbar({ activeTab, tiers }: Props) {
                 </div>
 
                 <div className={styles.rightNav}>
-                    <div>
-                        <a href="https://app.gitbook.com/o/ezMhZP7ASmi43q12NHfL/s/5DToQ2XCuEpPMMLC0Rwr/">Documentation</a>
-                    </div>
+                    <a className={styles.documentation} href="https://app.gitbook.com/o/ezMhZP7ASmi43q12NHfL/s/5DToQ2XCuEpPMMLC0Rwr/">Documentation</a>
                     <div className={styles.avatar}>
-                        <AvatarDropdown />
+                        <AvatarDropdown user={user} />
                     </div>
                 </div>
             </div>
@@ -66,7 +71,7 @@ function Navbar({ activeTab, tiers }: Props) {
     );
 }
 
-function AvatarDropdown() {
+function AvatarDropdown({ user }: { user: User }) {
     const onLogout = () => {
         axios.post("/logout")
             .then(() => {
@@ -102,7 +107,11 @@ function AvatarDropdown() {
     ];
     return (
         <Dropdown overlay={<Menu items={items} />} trigger={["click"]}>
-            <Avatar size={24} icon={<UserOutlined />} />
+            <Avatar size={24}>
+                <div className={styles.avatarText}>
+                    { user.lastName ? user.lastName[0] : " " }
+                </div>
+            </Avatar>
         </Dropdown>
     );
 }

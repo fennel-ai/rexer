@@ -32,7 +32,7 @@ function App({user, tiers}: Props) {
                     path="/tier_management"
                     element={(
                         <div>
-                            <Navbar tiers={tiers} />
+                            <Navbar tiers={tiers} user={user} />
                             <TierManagementPage />
                         </div>
                     )}
@@ -41,7 +41,7 @@ function App({user, tiers}: Props) {
                     path="/"
                     element={(
                         <div>
-                            <Navbar tiers={tiers} />
+                            <Navbar tiers={tiers} user={user} />
                             <TierManagementPage />
                         </div>
                     )}
@@ -51,7 +51,7 @@ function App({user, tiers}: Props) {
                         path="data"
                         element={(
                             <div>
-                                <Navbar tiers={tiers} activeTab="data" />
+                                <Navbar tiers={tiers} activeTab="data" user={user} />
                                 <DataPage />
                             </div>
                         )}
@@ -60,7 +60,7 @@ function App({user, tiers}: Props) {
                         path="dashboard"
                         element={(
                             <div>
-                                <Navbar tiers={tiers} activeTab="dashboard" />
+                                <Navbar tiers={tiers} activeTab="dashboard" user={user} />
                                 <DashboardPage />
                             </div>
                         )}
@@ -69,7 +69,7 @@ function App({user, tiers}: Props) {
                         index
                         element={(
                             <div>
-                                <Navbar tiers={tiers} activeTab="dashboard" />
+                                <Navbar tiers={tiers} activeTab="dashboard" user={user} />
                                 <DashboardPage />
                             </div>
                         )}
@@ -79,7 +79,7 @@ function App({user, tiers}: Props) {
                     path="/settings"
                     element={(
                         <div>
-                            <Navbar tiers={tiers} />
+                            <Navbar tiers={tiers} user={user} />
                             <SettingsPage />
                         </div>
                     )}

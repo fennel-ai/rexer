@@ -2,8 +2,10 @@
 // Please do not change this file!
 interface CssExports {
   'avatar': string;
+  'avatarText': string;
   'container': string;
   'divider': string;
+  'documentation': string;
   'leftNav': string;
   'menu': string;
   'rightNav': string;
