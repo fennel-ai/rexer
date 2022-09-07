@@ -5,7 +5,6 @@ import (
 	"fennel/lib/utils"
 	"fmt"
 	"math/rand"
-	"sync"
 	"testing"
 	"time"
 
@@ -24,7 +23,6 @@ func TestStore(t *testing.T, maker func(t *testing.T) Hangar, skipped ...string)
 		{name: "test_partial_missing", test: testPartialMissing},
 		{name: "test_large_batch", test: testLargeBatch},
 		{name: "test_select_all", test: testSelectAll},
-		{name: "test_concurrent", test: testConcurrent},
 		{name: "test_consolidation", test: testConsolidation},
 	}
 	for _, scenario := range scenarios {
@@ -162,29 +160,6 @@ func testSelectAll(t *testing.T, store Hangar) {
 	verifyValues(t, store, kgsNoFields, vgs)
 	assert.NoError(t, store.DelMany(ctx, kgs))
 	verifyMissing(t, store, kgs)
-}
-
-func testConcurrent(t *testing.T, store Hangar) {
-	prefix := []byte("prefix")
-	wg := &sync.WaitGroup{}
-	numKeys := 10
-	wg.Add(numKeys)
-	fields := make([][]byte, numKeys)
-	values := make([][]byte, numKeys)
-	ctx := context.Background()
-	for i := 0; i < numKeys; i++ {
-		go func(i int) {
-			defer wg.Done()
-			fields[i] = []byte(fmt.Sprintf("field-%d", i))
-			values[i] = []byte(fmt.Sprintf("value-%d", i))
-			vg := ValGroup{Fields: [][]byte{fields[i]}, Values: [][]byte{values[i]}}
-			err := store.SetMany(ctx, []Key{{Data: prefix}}, []ValGroup{vg})
-			assert.NoError(t, err)
-		}(i)
-	}
-	wg.Wait()
-
-	verifyValues(t, store, []KeyGroup{{Prefix: Key{Data: prefix}}}, []ValGroup{{Fields: fields, Values: values}})
 }
 
 func testConsolidation(t *testing.T, store Hangar) {

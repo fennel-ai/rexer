@@ -49,11 +49,6 @@ import (
 	   that all updates to a single cache key always go to the same shard).
 */
 
-const (
-	FILL_BATCH_SIZE = 1000
-	FILL_TIMEOUT_MS = 10
-)
-
 type layered struct {
 	planeID ftypes.RealmID
 	cache   hangar.Hangar
@@ -226,7 +221,9 @@ func (l *layered) SetMany(ctx context.Context, keys []hangar.Key, vgs []hangar.V
 }
 
 const (
-	backfillShards = 32
+	BACKFILL_SHARDS = 64
+	FILL_BATCH_SIZE = 1000
+	FILL_TIMEOUT_MS = 10
 )
 
 type fillRequest struct {
@@ -241,7 +238,7 @@ type backfiller struct {
 	cache     hangar.Hangar
 	db        hangar.Hangar
 	wg        *sync.WaitGroup
-	workChans [backfillShards]chan fillRequest
+	workChans [BACKFILL_SHARDS]chan fillRequest
 }
 
 func startBackfill(planeID ftypes.RealmID, cache hangar.Hangar, db hangar.Hangar) *backfiller {
@@ -251,8 +248,8 @@ func startBackfill(planeID ftypes.RealmID, cache hangar.Hangar, db hangar.Hangar
 		db:      db,
 		wg:      &sync.WaitGroup{},
 	}
-	b.wg.Add(backfillShards)
-	for i := 0; i < backfillShards; i++ {
+	b.wg.Add(BACKFILL_SHARDS)
+	for i := 0; i < BACKFILL_SHARDS; i++ {
 		ch := make(chan fillRequest, FILL_BATCH_SIZE*100)
 		go b.run(ch)
 		b.workChans[i] = ch
@@ -266,7 +263,7 @@ func (b *backfiller) fill(ctx context.Context, kgs []hangar.KeyGroup, delete boo
 	for _, kg := range kgs {
 		hasher := xxhash.New()
 		hasher.Write(kg.Prefix.Data)
-		shard := hasher.Sum64() % backfillShards
+		shard := hasher.Sum64() % BACKFILL_SHARDS
 		b.workChans[shard] <- fillRequest{kg, delete}
 	}
 }
