@@ -26,9 +26,20 @@ import (
 )
 
 var (
-	GetAggregatesLatency = promauto.NewHistogram(prometheus.HistogramOpts{
+	GetAggregatesLatency = promauto.NewSummary(prometheus.SummaryOpts{
 		Name: "nitrous_get_aggregates_latency_ms",
 		Help: "Server-side latency (in ms) of GetAggregateValues",
+		// Track quantiles within small error
+		Objectives: map[float64]float64{
+			0.25:   0.05,
+			0.50:   0.05,
+			0.75:   0.05,
+			0.90:   0.05,
+			0.95:   0.02,
+			0.99:   0.01,
+			0.999:  0.001,
+			0.9999: 0.0001,
+		},
 	})
 	OK = status.New(codes.OK, "Success").Proto()
 )

@@ -727,8 +727,8 @@ const dataPlaneConfs: Record<number, DataPlaneConf> = {
                     limit: "64000m"
                 },
                 memory: {
-                    request: "475G",
-                    limit: "500G",
+                    request: "450Gi",
+                    limit: "475Gi",
                 }
             },
             binlog: {
