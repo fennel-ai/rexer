@@ -3,7 +3,7 @@ import * as k8s from "@pulumi/kubernetes";
 import { PulumiFn } from "@pulumi/pulumi/automation";
 
 export const plugins = {
-    "kubernetes": "v3.18.0"
+    "kubernetes": "v3.20.1"
 }
 
 export type inputType = {

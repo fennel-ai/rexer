@@ -10,7 +10,7 @@ import path from "path";
 const name = "counters-cleanup";
 
 export const plugins = {
-    "kubernetes": "v3.18.0",
+    "kubernetes": "v3.20.1",
     "docker": "v3.1.0",
     "aws": "v5.1.0"
 }

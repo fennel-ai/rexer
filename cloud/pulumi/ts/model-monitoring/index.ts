@@ -8,7 +8,7 @@ import * as uuid from "uuid";
 import * as util from "../lib/util";
 
 export const plugins = {
-    "kubernetes": "v3.18.0",
+    "kubernetes": "v3.20.1",
     "aws": "v5.1.0"
 }
 

@@ -11,7 +11,7 @@ const name = "countaggr"
 const DEFAULT_USE_AMD64 = false
 
 export const plugins = {
-    "kubernetes": "v3.18.0",
+    "kubernetes": "v3.20.1",
     "docker": "v3.1.0",
     "aws": "v5.1.0"
 }

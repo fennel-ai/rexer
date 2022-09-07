@@ -13,7 +13,7 @@ import {INSTANCE_METADATA_SERVICE_ADDR} from "../lib/util";
 
 export const plugins = {
     "aws": "v5.1.0",
-    "kubernetes": "v3.18.0",
+    "kubernetes": "v3.20.1",
     "docker": "v3.2.0",
     "kafka": "v3.3.0",
 }

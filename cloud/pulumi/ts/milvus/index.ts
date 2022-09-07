@@ -3,7 +3,7 @@ import * as k8s from "@pulumi/kubernetes";
 import * as aws from "@pulumi/aws";
 
 export const plugins = {
-    "kubernetes": "v3.19.0",
+    "kubernetes": "v3.20.1",
     "aws": "v5.4.0"
 }
 

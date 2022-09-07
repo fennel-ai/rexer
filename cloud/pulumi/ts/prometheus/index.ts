@@ -1,19 +1,20 @@
 import * as k8s from "@pulumi/kubernetes";
 import * as pulumi from "@pulumi/pulumi";
-import * as aws from "@pulumi/aws";
 
 export const plugins = {
     "aws": "v4.38.1",
-    "kubernetes": "v3.18.0"
+    "kubernetes": "v3.20.1"
 }
 
 export type inputType = {
-    useAMP: boolean,
     kubeconfig: pulumi.Input<any>,
     region: string,
     roleArn: pulumi.Input<string>,
     planeId: number,
     protect: boolean,
+    // volume size
+    volumeSizeGiB?: number,
+    metricsRetentionDays?: number,
     // MSK bootstrap servers which are of the format `DNS1:port1,DNS2:port2....`
     mskBootstrapServers?: pulumi.Output<string>,
     numBrokers?: pulumi.Output<number>,
@@ -153,22 +154,6 @@ function scrapeConfigs(input: inputType) {
     });
 }
 
-async function setupAMP(input: inputType) {
-    const awsProvider = new aws.Provider("prom-aws-provider", {
-        region: <aws.Region>input.region,
-        assumeRole: {
-            roleArn: input.roleArn,
-            // TODO: Also populate the externalId field to prevent "confused deputy"
-            // attacks: https://docs.aws.amazon.com/IAM/latest/UserGuide/confused-deputy.html
-        }
-    });
-
-    const workspaceName = `p-${input.planeId}-prom`
-    const prom = new aws.amp.Workspace(workspaceName, {
-        alias: workspaceName,
-    }, {provider: awsProvider, protect: input.protect});
-}
-
 async function setupPrometheus(input: inputType) {
     const k8sProvider = new k8s.Provider("prom-k8s-provider", {
         kubeconfig: input.kubeconfig,
@@ -181,6 +166,34 @@ async function setupPrometheus(input: inputType) {
     //  short lived jobs which is not the case for us.
     const scrapeConfig = scrapeConfigs(input);
     const prometheusRelease = scrapeConfig.apply(config => {
+        let serverConf: Record<string, any> = {
+            "service": {
+                "type": "LoadBalancer"
+            },
+            "nodeSelector": {
+                // we should schedule all components of Prometheus on ON_DEMAND instances
+                "eks.amazonaws.com/capacityType": "ON_DEMAND",
+            },
+            "extraFlags": [
+                // disable lock for the tsdb
+                //
+                // underneath the prometheus server captures a lock on the PVC. When the server is updated,
+                // it tries to grab a lock on the same PVC which results in a conflict and the container fails to
+                // come up. We have fixed this in the past by using `deleteBeforeReplace` but that resulted in
+                // deleted the PVC as well.
+                "storage.tsdb.no-lockfile"
+            ]
+        };
+        if (input.metricsRetentionDays !== undefined) {
+            serverConf["retention"] = `${input.metricsRetentionDays}d`
+        }
+
+        if (input.volumeSizeGiB !== undefined) {
+            serverConf["persistentVolume"] = {
+                "size": `${input.volumeSizeGiB}Gi`
+            }
+        }
+
         return new k8s.helm.v3.Release("prometheus", {
             repositoryOpts: {
                 "repo": "https://prometheus-community.github.io/helm-charts"
@@ -218,26 +231,7 @@ async function setupPrometheus(input: inputType) {
                 },
                 // Set service type as LoadBalancer so that AWS LBC creates a corresponding
                 // NLB for the servers endpoint. NLB endpoint could then be used to query metrics.
-                "server": {
-                    "service": {
-                        "type": "LoadBalancer"
-                    },
-                    "nodeSelector": {
-                        // we should schedule all components of Prometheus on ON_DEMAND instances
-                        "eks.amazonaws.com/capacityType": "ON_DEMAND",
-                    },
-                    // https://github.com/prometheus-community/helm-charts/blob/main/charts/prometheus/values.yaml#L1124
-                    "retention": "60d",
-                    "extraFlags": [
-                        // disable lock for the tsdb
-                        //
-                        // underneath the prometheus server captures a lock on the PVC. When the server is updated,
-                        // it tries to grab a lock on the same PVC which results in a conflict and the container fails to
-                        // come up. We have fixed this in the past by using `deleteBeforeReplace` but that resulted in
-                        // deleted the PVC as well.
-                        "storage.tsdb.no-lockfile"
-                    ]
-                },
+                "server": serverConf,
                 // Server configmap entries.
                 //
                 // This is copied from `deployment/artifacts/otel-deployment.yaml` to have the same footprint of
@@ -259,10 +253,5 @@ async function setupPrometheus(input: inputType) {
 
 export const setup = async (input: inputType): Promise<pulumi.Output<outputType>> => {
     await setupPrometheus(input);
-    // prefer AMP's output over default prometheus since the endpoint of the AMP is required to export metrics to
-    // it from otel deployment
-    if (input.useAMP) {
-        await setupAMP(input)
-    }
     return pulumi.output({});
 }

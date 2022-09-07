@@ -8,7 +8,7 @@ import {POSTGRESQL_PASSWORD, POSTGRESQL_USERNAME} from "../tier-consts/consts";
 const DEFAULT_AIRBYTE_SERVER_PUBLIC = false;
 
 export const plugins = {
-    "kubernetes": "v3.16.0",
+    "kubernetes": "v3.20.1",
     "postgresql": "v3.4.0",
     "aws": "v4.38.1",
 }
