@@ -6,6 +6,7 @@ import (
 	dataplaneL "fennel/mothership/lib/dataplane"
 	tierL "fennel/mothership/lib/tier"
 	userL "fennel/mothership/lib/user"
+	"strconv"
 
 	"github.com/gin-gonic/gin"
 	"github.com/samber/lo"
@@ -14,12 +15,27 @@ import (
 
 func userMap(user userL.User) string {
 	// TODO(xiao) maybe add json tags on the user model
-	bytes, _ := json.Marshal(gin.H{
+	bytes, _ := json.Marshal(map[string]interface{}{
 		"email":         user.Email,
 		"firstName":     user.FirstName,
 		"lastName":      user.LastName,
 		"onboardStatus": user.OnboardStatus,
 	})
+	return string(bytes)
+}
+
+func customerTiers(db *gorm.DB, customerID uint) string {
+	var tiers []tierL.Tier
+
+	if db.Where("customer_id = ?", customerID).Find(&tiers).Error != nil {
+		return "[]"
+	}
+	var data = lo.Map(tiers, func(tier tierL.Tier, _ int) gin.H {
+		return map[string]interface{}{
+			"id": strconv.FormatUint(uint64(tier.ID), 10),
+		}
+	})
+	bytes, _ := json.Marshal(data)
 	return string(bytes)
 }
 

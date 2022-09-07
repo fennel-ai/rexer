@@ -5,7 +5,7 @@ import {
   } from "react-router-dom";
 
 import "./styles/App.less";
-import Navbar from "./Navbar";
+import Navbar, { type Tier } from "./Navbar";
 import DataPage from "./DataPage";
 import SettingsPage from "./SettingsPage";
 import DashboardPage from "./DashboardPage";
@@ -20,19 +20,28 @@ interface User {
 }
 
 interface Props {
-    page: string;
+    tiers: Tier[],
     user: User,
 }
 
-function App({page, user}: Props) {
+function App({user, tiers}: Props) {
     return (
         <BrowserRouter>
             <Routes>
                 <Route
+                    path="/tier_management"
+                    element={(
+                        <div>
+                            <Navbar tiers={tiers} />
+                            <TierManagementPage />
+                        </div>
+                    )}
+                />
+                <Route
                     path="/"
                     element={(
                         <div>
-                            <Navbar page={page} />
+                            <Navbar tiers={tiers} />
                             <TierManagementPage />
                         </div>
                     )}
@@ -42,7 +51,7 @@ function App({page, user}: Props) {
                         path="data"
                         element={(
                             <div>
-                                <Navbar page={page} />
+                                <Navbar tiers={tiers} activeTab="data" />
                                 <DataPage />
                             </div>
                         )}
@@ -51,7 +60,7 @@ function App({page, user}: Props) {
                         path="dashboard"
                         element={(
                             <div>
-                                <Navbar page={page} />
+                                <Navbar tiers={tiers} activeTab="dashboard" />
                                 <DashboardPage />
                             </div>
                         )}
@@ -60,7 +69,7 @@ function App({page, user}: Props) {
                         index
                         element={(
                             <div>
-                                <Navbar page={page} />
+                                <Navbar tiers={tiers} activeTab="dashboard" />
                                 <DashboardPage />
                             </div>
                         )}
@@ -70,7 +79,7 @@ function App({page, user}: Props) {
                     path="/settings"
                     element={(
                         <div>
-                            <Navbar page={page} />
+                            <Navbar tiers={tiers} />
                             <SettingsPage />
                         </div>
                     )}
@@ -79,7 +88,6 @@ function App({page, user}: Props) {
                     path="/onboard"
                     element={(
                         <div>
-                            <Navbar page={page} />
                             <OnboardPage user={user} />
                         </div>
                     )}
