@@ -3,7 +3,7 @@ import { LoadingOutlined } from "@ant-design/icons";
 import axios, { AxiosError } from "axios";
 import { useState } from "react";
 
-import styles from "../styles/signon/SignOn.module.scss";
+import styles from "./styles/SignOn.module.scss";
 import Pancake from "./Pancake";
 
 function SignIn() {

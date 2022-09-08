@@ -1,4 +1,4 @@
-import styles from "../styles/signon/Pancake.module.scss";
+import styles from "./styles/Pancake.module.scss";
 
 function Pancake() {
     return (

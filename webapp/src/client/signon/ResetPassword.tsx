@@ -4,7 +4,7 @@ import { useState } from "react";
 import axios, { AxiosError } from "axios";
 
 import Pancake from "./Pancake";
-import styles from "../styles/signon/SignOn.module.scss";
+import styles from "./styles/SignOn.module.scss";
 
 function ResetPassword() {
     return (
