@@ -2,6 +2,7 @@ package binary
 
 import (
 	"encoding/binary"
+	"errors"
 	"fmt"
 	"unsafe"
 )
@@ -80,12 +81,61 @@ func PutVarint(b []byte, n int64) (int, error) {
 	return sz, nil
 }
 
+func PutUint16(b []byte, n uint16) (int, error) {
+	if len(b) < 2 {
+		return 0, errors.New("buffer too small for putting uint32")
+	}
+	buf := make([]byte, 2)
+	binary.LittleEndian.PutUint16(buf, n)
+	return copy(b, buf), nil
+}
+
+func ReadUint16(b []byte) (uint16, int, error) {
+	if len(b) < 2 {
+		return 0, 0, errors.New("buffer too small")
+	}
+	return binary.LittleEndian.Uint16(b[:2]), 2, nil
+}
+
+func ReadUint32(b []byte) (uint32, int, error) {
+	if len(b) < 4 {
+		return 0, 0, errors.New("buffer too small")
+	}
+	return binary.LittleEndian.Uint32(b[:4]), 4, nil
+}
+
+func ReadUint64(b []byte) (uint64, int, error) {
+	if len(b) < 8 {
+		return 0, 0, errors.New("buffer too small")
+	}
+	return binary.LittleEndian.Uint64(b[:8]), 8, nil
+}
+
+func PutUint64(b []byte, n uint64) (int, error) {
+	if len(b) < 8 {
+		return 0, errors.New("buffer too small for putting uint32")
+	}
+	buf := make([]byte, 8)
+	binary.LittleEndian.PutUint64(buf, n)
+	return copy(b, buf), nil
+}
+
+func PutUint32(b []byte, n uint32) (int, error) {
+	if len(b) < 4 {
+		return 0, errors.New("buffer too small for putting uint32")
+	}
+	buf := make([]byte, 4)
+	binary.LittleEndian.PutUint32(buf, n)
+	return copy(b, buf), nil
+}
+
 func reverseArray(arr []byte) []byte {
 	for i, j := 0, len(arr)-1; i < j; i, j = i+1, j-1 {
 		arr[i], arr[j] = arr[j], arr[i]
 	}
 	return arr
 }
+
 func setMSB(data []byte) {
 	if len(data) > 1 {
 		data[0] = data[0] | 0x10
