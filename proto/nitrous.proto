@@ -5,6 +5,7 @@ option go_package = "fennel/nitrous/rpc";
 
 import "value.proto";
 import "aggregate.proto";
+import "google/rpc/status.proto";
 
 // RPC interface for the Nitrous service.
 // Nitrous service exposes a read-only RPC interface. All write operations
@@ -13,8 +14,8 @@ import "aggregate.proto";
 service Nitrous {
   // APIs to read data.
   rpc GetProfiles(ProfilesRequest) returns (ProfilesResponse);
-  rpc GetAggregateValues(AggregateValuesRequest)
-      returns (AggregateValuesResponse);
+  rpc GetAggregateValues(stream AggregateValuesRequest)
+      returns (stream AggregateValuesResponse);
   // API to get processing lag. This is especially useful in tests.
   rpc GetLag(LagRequest) returns (LagResponse);
 }
@@ -87,7 +88,10 @@ message AggregateValuesRequest {
   repeated PVDict kwargs = 5;
 }
 
-message AggregateValuesResponse { repeated PValue results = 1; }
+message AggregateValuesResponse {
+  repeated PValue results = 1;
+  google.rpc.Status status = 2;
+}
 
 message ProfilesRequest {
   uint32 tier_id = 1;

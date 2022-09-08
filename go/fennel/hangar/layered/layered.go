@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"log"
+	"sync"
 	"time"
 
 	"fennel/hangar"
@@ -12,9 +12,11 @@ import (
 	"fennel/lib/ftypes"
 	"fennel/lib/timer"
 
+	"github.com/cespare/xxhash/v2"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 	"github.com/samber/mo"
+	"go.uber.org/zap"
 )
 
 /*
@@ -45,28 +47,13 @@ import (
 	3. The set throughput is limited by the fill path throughput. Currently, fill path is
 	   not sharded, but it can be done so trivially if needed someday (we just need to ensure
 	   that all updates to a single cache key always go to the same shard).
-
 */
 
-const (
-	FILL_BATCH_SIZE = 1000
-	FILL_TIMEOUT_MS = 10
-)
-
-type fillRequest struct {
-	// keygroups to fill or delete
-	kgs []hangar.KeyGroup
-	// flag to indicate if the request is to delete the keygroup from the cache.
-	delete bool
-}
-
 type layered struct {
-	planeID     ftypes.RealmID
-	cache       hangar.Hangar
-	db          hangar.Hangar
-	fillReqChan chan fillRequest
-
-	doneCh chan struct{}
+	planeID ftypes.RealmID
+	cache   hangar.Hangar
+	db      hangar.Hangar
+	filler  *backfiller
 }
 
 var (
@@ -89,8 +76,7 @@ func (l *layered) Restore(source io.Reader) error {
 }
 
 func (l *layered) stopFill() {
-	close(l.fillReqChan)
-	<-l.doneCh
+	l.filler.stop()
 }
 
 func (l *layered) Teardown() error {
@@ -115,25 +101,18 @@ func (l *layered) Close() error {
 
 func NewHangar(planeID ftypes.RealmID, cache, db hangar.Hangar) hangar.Hangar {
 	ret := &layered{
-		planeID:     planeID,
-		cache:       cache,
-		db:          db,
-		fillReqChan: make(chan fillRequest, 10*FILL_BATCH_SIZE),
-		doneCh:      make(chan struct{}),
+		planeID: planeID,
+		cache:   cache,
+		db:      db,
+		filler:  startBackfill(planeID, cache, db),
 	}
-	// TODO: if needed, shard the filling process
-	go ret.processFillReqs()
 	return ret
 }
 
 func (l *layered) DelMany(ctx context.Context, kgs []hangar.KeyGroup) error {
 	ctx, t := timer.Start(ctx, l.planeID, "hangar.layered.delmany")
 	defer t.Stop()
-	err := l.cache.DelMany(ctx, kgs)
-	if err != nil {
-		return fmt.Errorf("failed to delete keys from the cache: %w", err)
-	}
-	if err = l.db.DelMany(ctx, kgs); err != nil {
+	if err := l.db.DelMany(ctx, kgs); err != nil {
 		return fmt.Errorf("failed to delete keys from the db: %w", err)
 	}
 	// Initate a background "fill" request that will ensure the keygroup is
@@ -145,7 +124,7 @@ func (l *layered) DelMany(ctx context.Context, kgs []hangar.KeyGroup) error {
 	// To safeguard again this, we initiate a fill request that will delete the
 	// keygroup from the cache. This ensures that the cache is always in an
 	// eventually consistent state.
-	l.fill(kgs, true /* delete */)
+	l.filler.fill(ctx, kgs, true /* delete */)
 	return nil
 }
 
@@ -156,6 +135,18 @@ func (l *layered) PlaneID() ftypes.RealmID {
 func (l *layered) GetMany(ctx context.Context, kgs []hangar.KeyGroup) ([]hangar.ValGroup, error) {
 	ctx, t := timer.Start(ctx, l.planeID, "hangar.layered.getmany")
 	defer t.Stop()
+	// If this read is on the write path, skip the cache since it can contain
+	// stale data.
+	// TODO: fix consistency issues caused by reading stale data from the cache.
+	// if hangar.IsWrite(ctx) {
+	// 	vgs, err := l.db.GetMany(ctx, kgs)
+	// 	if err != nil {
+	// 		return nil, fmt.Errorf("failed to get values from the db: %w", err)
+	// 	}
+	// 	// Fill the missing keygroups in the cache.
+	// 	l.filler.fill(ctx, kgs, false /* delete */)
+	// 	return vgs, nil
+	// }
 	results, err := l.cache.GetMany(ctx, kgs)
 	if err != nil {
 		return nil, err
@@ -189,6 +180,7 @@ func (l *layered) GetMany(ctx context.Context, kgs []hangar.KeyGroup) ([]hangar.
 				Prefix: kgs[i].Prefix,
 				Fields: mo.Some(fields),
 			})
+			cacheMisses.Add(float64(len(fields)))
 		} else {
 			cacheHits.Add(float64(len(cval.Fields)))
 		}
@@ -201,22 +193,15 @@ func (l *layered) GetMany(ctx context.Context, kgs []hangar.KeyGroup) ([]hangar.
 	if err != nil {
 		return nil, fmt.Errorf("failed to get values from the db: %w", err)
 	}
-	tofill := notfound[:0]
 	for i, dbval := range dbvals {
 		if len(dbval.Fields) > 0 {
-			// Count retrieved fields as cache misses if-and-only if the fields
-			// were explicitly requested.
-			if kgs[ptr[i]].Fields.IsPresent() {
-				cacheMisses.Add(float64(len(dbval.Fields)))
-			}
 			if err = results[ptr[i]].Update(dbval); err != nil {
 				return nil, fmt.Errorf("failed to update valgroup: %w", err)
 			}
-			tofill = append(tofill, notfound[i])
 		}
 	}
 	// Fill the missing keygroups in the cache.
-	l.fill(tofill, false /* delete */)
+	l.filler.fill(ctx, notfound, false /* delete */)
 	return results, nil
 }
 
@@ -228,31 +213,74 @@ func (l *layered) SetMany(ctx context.Context, keys []hangar.Key, vgs []hangar.V
 		kgs[i].Prefix = key
 		kgs[i].Fields = mo.Some(vgs[i].Fields)
 	}
-	if err := l.cache.DelMany(ctx, kgs); err != nil {
-		return err
-	}
 	if err := l.db.SetMany(ctx, keys, vgs); err != nil {
 		return err
 	}
-	l.fill(kgs, false /* delete */)
+	l.filler.fill(ctx, kgs, false /* delete */)
 	return nil
 }
 
-func (l *layered) fill(kgs []hangar.KeyGroup, delete bool) {
-	for i := 0; i < len(kgs); i += FILL_BATCH_SIZE {
-		end := i + FILL_BATCH_SIZE
-		if end > len(kgs) {
-			end = len(kgs)
-		}
-		l.fillReqChan <- fillRequest{kgs[i:end], delete}
+const (
+	BACKFILL_SHARDS = 64
+	FILL_BATCH_SIZE = 1000
+	FILL_TIMEOUT_MS = 10
+)
+
+type fillRequest struct {
+	// keygroup to fill or delete
+	kg hangar.KeyGroup
+	// flag to indicate if the request is to delete the keygroup from the cache.
+	delete bool
+}
+
+type backfiller struct {
+	planeID   ftypes.RealmID
+	cache     hangar.Hangar
+	db        hangar.Hangar
+	wg        *sync.WaitGroup
+	workChans [BACKFILL_SHARDS]chan fillRequest
+}
+
+func startBackfill(planeID ftypes.RealmID, cache hangar.Hangar, db hangar.Hangar) *backfiller {
+	b := &backfiller{
+		planeID: planeID,
+		cache:   cache,
+		db:      db,
+		wg:      &sync.WaitGroup{},
+	}
+	b.wg.Add(BACKFILL_SHARDS)
+	for i := 0; i < BACKFILL_SHARDS; i++ {
+		ch := make(chan fillRequest, FILL_BATCH_SIZE*100)
+		go b.run(ch)
+		b.workChans[i] = ch
+	}
+	return b
+}
+
+func (b *backfiller) fill(ctx context.Context, kgs []hangar.KeyGroup, delete bool) {
+	_, timer := timer.Start(ctx, b.planeID, fmt.Sprintf("hangar.layered.fill.%s", hangar.GetMode(ctx)))
+	defer timer.Stop()
+	for _, kg := range kgs {
+		hasher := xxhash.New()
+		// Write always returns len(d), nil
+		_, _ = hasher.Write(kg.Prefix.Data)
+		shard := hasher.Sum64() % BACKFILL_SHARDS
+		b.workChans[shard] <- fillRequest{kg, delete}
 	}
 }
 
-func (l *layered) processFillReqs() {
-	defer close(l.doneCh)
+func (b *backfiller) stop() {
+	for _, ch := range b.workChans {
+		close(ch)
+	}
+	b.wg.Wait()
+}
+
+func (b *backfiller) run(ch <-chan fillRequest) {
+	defer b.wg.Done()
 	// Allocate two separate arrays for keygroups to update and delete.
-	updates := [2 * FILL_BATCH_SIZE]hangar.KeyGroup{}
-	deletions := [2 * FILL_BATCH_SIZE]hangar.KeyGroup{}
+	updates := [FILL_BATCH_SIZE]hangar.KeyGroup{}
+	deletions := [FILL_BATCH_SIZE]hangar.KeyGroup{}
 	timeout := FILL_TIMEOUT_MS * time.Millisecond
 	for {
 		updateBatch := updates[:0]
@@ -261,14 +289,14 @@ func (l *layered) processFillReqs() {
 	FILL:
 		for len(updateBatch) < FILL_BATCH_SIZE && len(deletionBatch) < FILL_BATCH_SIZE {
 			select {
-			case req, ok := <-l.fillReqChan:
+			case req, ok := <-ch:
 				if !ok {
 					return
 				}
 				if req.delete {
-					deletionBatch = append(deletionBatch, req.kgs...)
+					deletionBatch = append(deletionBatch, req.kg)
 				} else {
-					updateBatch = append(updateBatch, req.kgs...)
+					updateBatch = append(updateBatch, req.kg)
 				}
 			case <-timer.C:
 				break FILL
@@ -277,29 +305,38 @@ func (l *layered) processFillReqs() {
 		// Stop the timer explicitly to make it eligible for garbage collection.
 		_ = timer.Stop()
 		if len(deletionBatch) > 0 {
-			if err := l.cache.DelMany(context.Background(), deletionBatch); err != nil {
-				log.Printf("Failed to delete from cache: %v", err)
+			if err := b.cache.DelMany(context.Background(), deletionBatch); err != nil {
+				zap.L().Warn("Failed to delete from cache", zap.Error(err))
 				continue
 			}
 		}
 		if len(updateBatch) > 0 {
-			dbvals, err := l.db.GetMany(context.Background(), updateBatch)
+			ctx := context.Background()
+			ctx = hangar.NewWriteContext(ctx)
+			dbvals, err := b.db.GetMany(ctx, updateBatch)
 			if err != nil {
-				log.Printf("Failed to get values from db: %v", err)
+				zap.L().Warn("Failed to get values from db", zap.Error(err))
 				continue
 			}
 			keys := make([]hangar.Key, 0, len(updateBatch))
 			valgroups := make([]hangar.ValGroup, 0, len(updateBatch))
 			for i, dbval := range dbvals {
-				if len(dbval.Fields) == 0 {
-					// nothing to put in cache
-					continue
+				// Initialize all fields as empty. This allows us to remember in
+				// the cache that some keys and/or fields are missing from the db.
+				fields := updateBatch[i].Fields.OrEmpty()
+				vg := hangar.ValGroup{
+					Fields: fields,
+					Values: make(hangar.Values, len(fields)),
+				}
+				err = vg.Update(dbval)
+				if err != nil {
+					zap.L().Warn("Failed to update valgroup", zap.Error(err))
 				}
 				keys = append(keys, updateBatch[i].Prefix)
-				valgroups = append(valgroups, dbval)
+				valgroups = append(valgroups, vg)
 			}
-			if err = l.cache.SetMany(context.Background(), keys, valgroups); err != nil {
-				log.Printf("Failed to fill cache: %v", err)
+			if err = b.cache.SetMany(ctx, keys, valgroups); err != nil {
+				zap.L().Warn("Failed to fill cache", zap.Error(err))
 				continue
 			}
 		}

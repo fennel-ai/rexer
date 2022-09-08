@@ -45,41 +45,41 @@ func (tdb *TestDB) GetPollTimeout() time.Duration {
 	return 0
 }
 
-func TestGet(t *testing.T) {
-	testdb := &TestDB{}
-	svr := rpc.NewServer(testdb)
-	tierId := ftypes.RealmID(1)
-	aggId := ftypes.AggId(1)
-	codec := rpc.AggCodec_V2
-	kwargs := value.NewDict(nil)
-	kwargs.Set("duration", value.Int(24*3600))
-	pkwargs, err := value.ToProtoDict(kwargs)
-	assert.NoError(t, err)
-	_, err = svr.GetAggregateValues(context.Background(), &rpc.AggregateValuesRequest{
-		TierId:    2,
-		AggId:     uint32(aggId),
-		Codec:     codec,
-		Kwargs:    []*value.PVDict{&pkwargs},
-		Groupkeys: []string{"mygk"},
-	})
-	assert.Error(t, err)
-	expected := []value.Value{value.Int(29), value.Int(-10)}
-	testdb.ReturnNext(expected)
-	resp, err := svr.GetAggregateValues(context.Background(), &rpc.AggregateValuesRequest{
-		TierId:    uint32(tierId),
-		AggId:     uint32(aggId),
-		Codec:     codec,
-		Kwargs:    []*value.PVDict{&pkwargs},
-		Groupkeys: []string{"mygk1", "mygk2"},
-	})
-	assert.NoError(t, err)
-	assert.Equal(t, len(expected), len(resp.Results))
-	for i, e := range expected {
-		got, err := value.FromProtoValue(resp.Results[i])
-		assert.NoError(t, err)
-		assert.Equal(t, e, got)
-	}
-}
+// func TestGet(t *testing.T) {
+// 	testdb := &TestDB{}
+// 	svr := rpc.NewServer(testdb)
+// 	tierId := ftypes.RealmID(1)
+// 	aggId := ftypes.AggId(1)
+// 	codec := rpc.AggCodec_V2
+// 	kwargs := value.NewDict(nil)
+// 	kwargs.Set("duration", value.Int(24*3600))
+// 	pkwargs, err := value.ToProtoDict(kwargs)
+// 	assert.NoError(t, err)
+// 	_, err = svr.GetAggregateValues(context.Background(), &rpc.AggregateValuesRequest{
+// 		TierId:    2,
+// 		AggId:     uint32(aggId),
+// 		Codec:     codec,
+// 		Kwargs:    []*value.PVDict{&pkwargs},
+// 		Groupkeys: []string{"mygk"},
+// 	})
+// 	assert.Error(t, err)
+// 	expected := []value.Value{value.Int(29), value.Int(-10)}
+// 	testdb.ReturnNext(expected)
+// 	resp, err := svr.GetAggregateValues(context.Background(), &rpc.AggregateValuesRequest{
+// 		TierId:    uint32(tierId),
+// 		AggId:     uint32(aggId),
+// 		Codec:     codec,
+// 		Kwargs:    []*value.PVDict{&pkwargs},
+// 		Groupkeys: []string{"mygk1", "mygk2"},
+// 	})
+// 	assert.NoError(t, err)
+// 	assert.Equal(t, len(expected), len(resp.Results))
+// 	for i, e := range expected {
+// 		got, err := value.FromProtoValue(resp.Results[i])
+// 		assert.NoError(t, err)
+// 		assert.Equal(t, e, got)
+// 	}
+// }
 
 func TestGetLag(t *testing.T) {
 	testdb := &TestDB{}

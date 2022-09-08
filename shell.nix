@@ -19,7 +19,7 @@ with pkgs; mkShell {
     pkgs.protobuf
 
     # Packages for go development.
-    unstable.go_1_18
+    unstable.go_1_19
     pkgs.protoc-gen-go
     pkgs.protoc-gen-go-grpc
     unstable.capnproto

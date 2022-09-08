@@ -60,3 +60,33 @@ const (
 	None    Codec = 0
 	Default Codec = 1
 )
+
+type apiModeKey struct{}
+type apiMode string
+
+const (
+	Write apiMode = "write"
+	Read  apiMode = "read"
+)
+
+func (m apiMode) String() string {
+	return string(m)
+}
+
+func NewWriteContext(ctx context.Context) context.Context {
+	return context.WithValue(ctx, apiModeKey{}, Write)
+}
+
+func IsWrite(ctx context.Context) bool {
+	m, ok := ctx.Value(apiModeKey{}).(apiMode)
+	return ok && m == Write
+}
+
+func GetMode(ctx context.Context) apiMode {
+	m, ok := ctx.Value(apiModeKey{}).(apiMode)
+	if !ok {
+		// We assume that default mode is read.
+		return Read
+	}
+	return m
+}

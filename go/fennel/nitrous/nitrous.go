@@ -3,12 +3,16 @@ package nitrous
 import (
 	"fennel/lib/instancemetadata"
 	"fmt"
-	"github.com/samber/mo"
 	"log"
 
+	"github.com/cockroachdb/pebble"
+	"github.com/samber/mo"
+
 	"fennel/hangar"
-	"fennel/hangar/db"
 	"fennel/hangar/encoders"
+	"fennel/hangar/layered"
+	"fennel/hangar/mem"
+	pebbleDB "fennel/hangar/pebble"
 	libkafka "fennel/kafka"
 	"fennel/lib/ftypes"
 	"fennel/resource"
@@ -27,6 +31,7 @@ type NitrousArgs struct {
 	MskKafkaUsername   string         `arg:"--msk-kafka-user,env:MSK_KAFKA_USERNAME" json:"msk_kafka_username,omitempty"`
 	MskKafkaPassword   string         `arg:"--msk-kafka-password,env:MSK_KAFKA_PASSWORD" json:"msk_kafka_password,omitempty"`
 	BadgerDir          string         `arg:"--badger_dir,env:BADGER_DIR" json:"badger_dir,omitempty"`
+	PebbleDir          string         `arg:"--pebble_dir,env:PEBBLE_DIR" json:"pebble_dir,omitempty"`
 	BadgerBlockCacheMB int64          `arg:"--badger_block_cache_mb,env:BADGER_BLOCK_CACHE_MB" json:"badger_block_cache_mb,omitempty"`
 	RistrettoMaxCost   uint64         `arg:"--ristretto_max_cost,env:RISTRETTO_MAX_COST" json:"ristretto_max_cost,omitempty"`
 	RistrettoAvgCost   uint64         `arg:"--ristretto_avg_cost,env:RISTRETTO_AVG_COST" json:"ristretto_avg_cost,omitempty" default:"1000"`
@@ -36,7 +41,9 @@ type NitrousArgs struct {
 	// Identity should be unique for each instance of nitrous. The IDENTITY environment
 	// variable should be unique for each replica of a StatefulSet in k8s.
 	Identity string `arg:"--identity,env:IDENTITY" json:"identity" default:"localhost"`
-	Dev      bool   `arg:"--dev" default:"true" json:"dev,omitempty"`
+	// Flag to enable data compression.
+	Compress bool `arg:"--compress,env:COMPRESS" json:"compress" default:"false"`
+	Dev      bool `arg:"--dev" default:"true" json:"dev,omitempty"`
 }
 
 func (args NitrousArgs) Valid() error {
@@ -97,7 +104,7 @@ func CreateFromArgs(args NitrousArgs) (Nitrous, error) {
 			Password:        args.MskKafkaPassword,
 			SaslMechanism:   libkafka.SaslScramSha512Mechanism,
 			ConsumerConfig:  config,
-			AzId: 			 azId,
+			AzId:            azId,
 		}
 		kafkaConsumer, err := kafkaConsumerConfig.Materialize()
 		if err != nil {
@@ -107,16 +114,26 @@ func CreateFromArgs(args NitrousArgs) (Nitrous, error) {
 	}
 
 	// Initialize layered storage.
-	db, err := db.NewHangar(scope.ID(), args.BadgerDir, args.BadgerBlockCacheMB<<20, encoders.Default())
-	if err != nil {
-		return Nitrous{}, fmt.Errorf("failed to create badger db: %w", err)
+	pebbleOpts := &pebble.Options{
+		Levels: []pebble.LevelOptions{{
+			Compression: pebble.NoCompression,
+		}},
 	}
+	pebbledb, err := pebbleDB.NewHangar(scope.ID(), args.PebbleDir, pebbleOpts, encoders.Default())
+	if err != nil {
+		return Nitrous{}, fmt.Errorf("failed to create pebble db: %w", err)
+	}
+	cache, err := mem.NewHangar(scope.ID(), 64, encoders.Default())
+	if err != nil {
+		return Nitrous{}, fmt.Errorf("failed to create cache: %w", err)
+	}
+	layered := layered.NewHangar(scope.ID(), cache, pebbledb)
 
 	return Nitrous{
 		PlaneID:              scope.ID(),
 		Identity:             args.Identity,
 		KafkaConsumerFactory: consumerFactory,
 		Clock:                clock.New(),
-		Store:                db,
+		Store:                layered,
 	}, nil
 }

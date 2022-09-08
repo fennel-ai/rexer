@@ -7,11 +7,12 @@ import (
 	"fennel/eventbridge"
 	"fennel/lib/instancemetadata"
 	"fmt"
-	"github.com/Unleash/unleash-client-go/v3"
 	"log"
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/Unleash/unleash-client-go/v3"
 
 	"fennel/db"
 	"fennel/glue"
@@ -178,6 +179,7 @@ func CreateFromArgs(args *TierArgs) (tier Tier, err error) {
 	if err != nil {
 		return tier, fmt.Errorf("failed to construct logger: %v", err)
 	}
+	_ = zap.ReplaceGlobals(logger)
 
 	var azId mo.Option[string]
 	if len(args.InstanceMetadataServiceAddr) > 0 {

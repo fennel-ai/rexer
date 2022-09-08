@@ -17,6 +17,7 @@ import (
 	"fennel/nitrous"
 	"fennel/resource"
 
+	"github.com/dgraph-io/badger/v3"
 	"github.com/raulk/clock"
 	"github.com/stretchr/testify/assert"
 	"go.uber.org/zap"
@@ -30,7 +31,7 @@ type TestNitrous struct {
 func NewTestNitrous[TB testing.TB](t TB) TestNitrous {
 	rand.Seed(time.Now().UnixNano())
 	planeId := ftypes.RealmID(rand.Uint32())
-	db, err := db.NewHangar(planeId, t.TempDir(), 1<<10, encoders.Default())
+	db, err := db.NewHangar(planeId, badger.DefaultOptions(t.TempDir()), encoders.Default())
 	t.Cleanup(func() { _ = db.Teardown() })
 	assert.NoError(t, err)
 	broker := fkafka.NewMockTopicBroker()

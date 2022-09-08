@@ -9,6 +9,7 @@ import (
 
 	"fennel/hangar"
 	"fennel/lib/ftypes"
+	rstats "fennel/lib/ristretto"
 	"fennel/lib/timer"
 	"fennel/lib/utils/parallel"
 
@@ -34,18 +35,13 @@ func NewHangar(planeId ftypes.RealmID, maxSize, avgSize uint64, enc hangar.Encod
 		return nil, err
 	}
 	// Start reporting cache stats periodically.
-	go func() {
-		ticker := time.NewTicker(10 * time.Second)
-		defer ticker.Stop()
-		for ; true; <-ticker.C {
-			reportStats(cache)
-		}
-	}()
+	rstats.ReportPeriodically("hangar", cache, 10*time.Second)
+
 	ret := rcache{
 		planeID:    planeId,
 		cache:      cache,
 		enc:        enc,
-		workerPool: parallel.NewWorkerPool[hangar.KeyGroup, hangar.ValGroup](PARALLELISM),
+		workerPool: parallel.NewWorkerPool[hangar.KeyGroup, hangar.ValGroup]("hangar_cache", PARALLELISM),
 	}
 	return &ret, nil
 }

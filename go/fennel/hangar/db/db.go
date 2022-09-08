@@ -17,21 +17,24 @@ import (
 	"fennel/lib/utils/parallel"
 
 	"github.com/dgraph-io/badger/v3"
-	"github.com/dgraph-io/badger/v3/options"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promauto"
 	"go.uber.org/zap"
 )
 
 const (
-	PARALLELISM   = 512
-	DB_BATCH_SIZE = 32
+	READ_PARALLELISM  = 64
+	WRITE_PARALLELISM = 64
+	DB_BATCH_SIZE     = 32
 )
 
 type badgerDB struct {
-	planeID    ftypes.RealmID
-	baseOpts   badger.Options
-	enc        hangar.Encoder
-	db         *badger.DB
-	workerPool *parallel.WorkerPool[hangar.KeyGroup, hangar.ValGroup]
+	planeID      ftypes.RealmID
+	opts         badger.Options
+	enc          hangar.Encoder
+	db           *badger.DB
+	readWorkers  *parallel.WorkerPool[hangar.KeyGroup, hangar.ValGroup]
+	writeWorkers *parallel.WorkerPool[hangar.KeyGroup, hangar.ValGroup]
 }
 
 func (b *badgerDB) Restore(source io.Reader) error {
@@ -42,7 +45,7 @@ func (b *badgerDB) Teardown() error {
 	if err := b.Close(); err != nil {
 		return err
 	}
-	return os.Remove(b.baseOpts.Dir)
+	return os.Remove(b.opts.Dir)
 }
 
 func (b *badgerDB) Backup(sink io.Writer, since uint64) (uint64, error) {
@@ -50,35 +53,28 @@ func (b *badgerDB) Backup(sink io.Writer, since uint64) (uint64, error) {
 }
 
 func (b *badgerDB) Close() error {
-	// Close the worker pool.
-	b.workerPool.Close()
+	// Close the worker pools.
+	b.readWorkers.Close()
+	b.writeWorkers.Close()
 	return b.db.Close()
 }
 
-func NewHangar(planeID ftypes.RealmID, dirname string, blockCacheBytes int64, enc hangar.Encoder) (*badgerDB, error) {
-	opts := badger.DefaultOptions(dirname)
-	opts = opts.WithLogger(NewLogger(zap.L()))
-	opts = opts.WithValueThreshold(1 << 10 /* 1 KB */)
-	opts = opts.WithCompression(options.ZSTD)
-	opts = opts.WithBlockSize(4 * 1024)
-	opts = opts.WithNumCompactors(2)
-	opts = opts.WithCompactL0OnClose(true)
-	opts = opts.WithIndexCacheSize(2 << 30 /* 2 GB */)
-	opts = opts.WithMemTableSize(256 << 20 /* 256 MB */)
-	opts = opts.WithBlockCacheSize(blockCacheBytes)
+func NewHangar(planeID ftypes.RealmID, opts badger.Options, enc hangar.Encoder) (*badgerDB, error) {
 	db, err := badger.Open(opts)
 	if err != nil {
 		return nil, err
 	}
 	bs := badgerDB{
-		planeID:    planeID,
-		baseOpts:   opts,
-		db:         db,
-		workerPool: parallel.NewWorkerPool[hangar.KeyGroup, hangar.ValGroup](PARALLELISM),
-		enc:        enc,
+		planeID:      planeID,
+		opts:         opts,
+		db:           db,
+		readWorkers:  parallel.NewWorkerPool[hangar.KeyGroup, hangar.ValGroup]("hangar_db_read", READ_PARALLELISM),
+		writeWorkers: parallel.NewWorkerPool[hangar.KeyGroup, hangar.ValGroup]("hangar_db_write", WRITE_PARALLELISM),
+		enc:          enc,
 	}
 	// Start periodic GC of value log.
 	go bs.runPeriodicGC()
+
 	return &bs, nil
 }
 
@@ -114,27 +110,49 @@ func (b *badgerDB) Encoder() hangar.Encoder {
 	return b.enc
 }
 
+var (
+	badger_view_num_keys = promauto.NewSummaryVec(prometheus.SummaryOpts{
+		Name: "badger_view_num_keys",
+		Help: "Number of keys read in a badger View txn",
+		// Track quantiles within small error
+		Objectives: map[float64]float64{
+			0.25:  0.05,
+			0.50:  0.05,
+			0.75:  0.05,
+			0.90:  0.05,
+			0.95:  0.02,
+			0.99:  0.01,
+			0.999: 0.001,
+		},
+	}, []string{"mode"})
+)
+
 // GetMany returns the values for the given keyGroups.
 // It parallelizes the requests to the underlying DB upto a degree of PARALLELISM
 func (b *badgerDB) GetMany(ctx context.Context, kgs []hangar.KeyGroup) ([]hangar.ValGroup, error) {
-	_, t := timer.Start(ctx, b.planeID, "hangar.db.getmany")
-	defer t.Stop()
-	// We try to spread across available workers while giving each worker
-	// a minimum of DB_BATCH_SIZE keyGroups to work on.
-	batch := len(kgs) / PARALLELISM
-	if batch < DB_BATCH_SIZE {
-		batch = DB_BATCH_SIZE
+	var pool *parallel.WorkerPool[hangar.KeyGroup, hangar.ValGroup]
+	if hangar.IsWrite(ctx) {
+		pool = b.writeWorkers
+	} else {
+		pool = b.readWorkers
 	}
-	return b.workerPool.Process(ctx, kgs, func(keyGroups []hangar.KeyGroup, valGroups []hangar.ValGroup) error {
-		_, t := timer.Start(ctx, b.planeID, "hangar.db.getmany.batch")
+	ctx, t := timer.Start(ctx, b.planeID, fmt.Sprintf("hangar.db.getmany.%s", hangar.GetMode(ctx)))
+	defer t.Stop()
+	return pool.Process(ctx, kgs, func(keyGroups []hangar.KeyGroup, valGroups []hangar.ValGroup) error {
+		_, t := timer.Start(ctx, b.planeID, fmt.Sprintf("hangar.db.getmany.batch.%s", hangar.GetMode(ctx)))
 		defer t.Stop()
 		eks, err := hangar.EncodeKeyManyKG(keyGroups, b.enc)
 		if err != nil {
 			return fmt.Errorf("failed to encode keys: %w", err)
 		}
+		badger_view_num_keys.WithLabelValues(hangar.GetMode(ctx).String()).Observe(float64(len(eks)))
 		err = b.db.View(func(txn *badger.Txn) error {
+			_, t := timer.Start(ctx, b.planeID, fmt.Sprintf("badger.view.latency.%s", hangar.GetMode(ctx)))
+			defer t.Stop()
 			for i, ek := range eks {
+				_, t := timer.Start(ctx, b.planeID, fmt.Sprintf("badger.get.latency.%s", hangar.GetMode(ctx)))
 				item, err := txn.Get(ek)
+				t.Stop()
 				switch err {
 				case badger.ErrKeyNotFound:
 				case nil:
@@ -156,7 +174,7 @@ func (b *badgerDB) GetMany(ctx context.Context, kgs []hangar.KeyGroup) ([]hangar
 			return nil
 		})
 		return err
-	}, batch)
+	}, DB_BATCH_SIZE)
 }
 
 // SetMany sets many keyGroups in a single transaction. Since these are all set in a single
