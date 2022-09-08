@@ -2,8 +2,6 @@
 // Please do not change this file!
 interface CssExports {
   'footnote': string;
-  'status': string;
-  'statusDot': string;
   'tierContainer': string;
   'tierTable': string;
   'tierTitle': string;

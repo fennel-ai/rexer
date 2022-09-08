@@ -122,6 +122,7 @@ func (s *server) setupRouter() {
 	onboarded.GET("/settings", s.Settings)
 
 	tier := onboarded.Group("/tier/:id", TierPermission(s.db))
+	tier.GET("/", s.Dashboard)
 	tier.GET("/dashboard", s.Dashboard)
 	tier.GET("/data", s.Data)
 	tier.GET("/profiles", s.Profiles)

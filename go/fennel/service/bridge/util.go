@@ -39,20 +39,21 @@ func customerTiers(db *gorm.DB, customerID uint) string {
 	return string(bytes)
 }
 
-func tierInfo(tier tierL.Tier, dp dataplaneL.DataPlane) gin.H {
-	return gin.H{
+func tierInfo(tier tierL.Tier, dp dataplaneL.DataPlane) map[string]any {
+	return map[string]any{
 		"apiUrl":   tier.ApiUrl,
 		"limit":    tier.RequestsLimit,
 		"location": dp.Region,
+		"plan":     tier.PlanName(),
 	}
 }
 
-func teamMembers(db *gorm.DB, customer customerL.Customer) gin.H {
+func teamMembers(db *gorm.DB, customer customerL.Customer) map[string]any {
 	var users []userL.User
 
 	if db.Where("customer_id = ?", customer.ID).Find(&users).Error != nil {
 		return gin.H{
-			"users": []gin.H{},
+			"users": []map[string]any{},
 		}
 	}
 
@@ -60,7 +61,7 @@ func teamMembers(db *gorm.DB, customer customerL.Customer) gin.H {
 		"id":   customer.ID,
 		"name": customer.Name,
 		"users": lo.Map(users, func(user userL.User, _ int) gin.H {
-			return gin.H{
+			return map[string]any{
 				"email":     user.Email,
 				"firstName": user.FirstName,
 				"lastName":  user.LastName,

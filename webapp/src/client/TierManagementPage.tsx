@@ -1,15 +1,24 @@
-import { Table } from "antd";
+import { Table, Badge } from "antd";
 import { LoadingOutlined } from '@ant-design/icons';
 import { useState, useEffect } from "react";
 import axios, { AxiosResponse } from "axios";
 
-
 import pageStyles from "./styles/Page.module.scss";
 
 const columns = [
+    { title: "Plan", dataIndex: "plan", key: "plan" },
     { title: "Region", dataIndex: "location", key: "region" },
     { title: "URL", dataIndex: "apiUrl", key: "url" },
-    { title: "Status", dataIndex: "status", key: "status" },
+    {
+        title: "Status",
+        key: "status",
+        render: () => (
+            <span>
+                <Badge status="success" />
+                Online
+            </span>
+        ),
+    },
 ];
 
 interface TiersResponse {
@@ -35,7 +44,6 @@ function TierManagementPage() {
                 setDataSource(response.data.tiers.map((tier, i) => ({
                     key: i,
                     ...tier,
-                    status: "Online",
                 })));
             })
             .catch(() => {

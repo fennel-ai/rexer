@@ -156,4 +156,7 @@ var Schema = db.Schema{
 	23: `ALTER TABLE user
                 ADD INDEX customer_id_index (customer_id);
         `,
+	24: `ALTER TABLE tier
+                ADD COLUMN plan INT UNSIGNED NOT NULL DEFAULT 0;
+        `,
 }
