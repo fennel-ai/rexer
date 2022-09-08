@@ -38,6 +38,7 @@ export type inputType = {
     nodeLabels?: Record<string, string>,
     resourceConf?: util.ResourceConf,
     pprofHeapAllocThresholdMegaBytes?: number,
+    tlsCertK8sSecretName: string,
 }
 
 export type outputType = {
@@ -310,7 +311,9 @@ export const setup = async (input: inputType) => {
         },
         spec: {
             "hostname": "*",
-            "prefix": "/",
+            "prefix": "/(.*)",
+            "prefix_regex": true,
+            "rewrite": "",
             "service": `bridge-server:${appPort}`,
             "timeout_ms": timeoutSeconds * 1000,
         }
@@ -331,7 +334,7 @@ export const setup = async (input: inputType) => {
                 "authority": "none",
             },
             "tlsSecret": {
-                "name": "tls-cert",
+                "name": input.tlsCertK8sSecretName,
             },
             "tls": {
                 "min_tls_version": "v1.2",

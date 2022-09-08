@@ -7,6 +7,7 @@ import * as ns from "../k8s-ns";
 import * as eks from "../eks";
 import * as aurora from "../aurora";
 import * as ingress from "../ingress";
+import * as cert from "../cert";
 import { MASTER_ACCOUNT_ADMIN_ROLE_ARN } from "../account";
 import * as bridgeserver from "../bridge";
 import * as mothershipconfigs from "../mothership-configs"
@@ -152,6 +153,14 @@ const setupResources = async () => {
         })
     configsOutput.apply(async () => {
         if (input.bridgeServerConf !== undefined) {
+            const certOut = await cert.setup({
+                kubeconfig: kconf,
+                scopeId: input.planeId,
+                scope: util.Scope.MOTHERSHIP,
+                dnsName: "app.fennel.ai",
+                namespace: nsName,
+            })
+
             await bridgeserver.setup({
                 roleArn: input.vpcConf.roleArn,
                 region: input.vpcConf.region,
@@ -164,7 +173,9 @@ const setupResources = async () => {
                 useAmd64: input.bridgeServerConf?.podConf?.useAmd64,
                 nodeLabels: input.bridgeServerConf?.podConf?.nodeLabels,
                 pprofHeapAllocThresholdMegaBytes: input.bridgeServerConf?.podConf?.pprofHeapAllocThresholdMegaBytes,
+                tlsCertK8sSecretName: certOut.tlsCertK8sSecretName,
             });
+
         }
 
     })
