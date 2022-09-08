@@ -1,8 +1,9 @@
 import axios, { AxiosResponse } from "axios";
 import { Button } from "antd";
-import { LoadingOutlined, LockOutlined, ArrowRightOutlined } from '@ant-design/icons';
+import { LoadingOutlined, LockFilled, ArrowRightOutlined } from '@ant-design/icons';
 import { useState, useEffect } from "react";
 
+import OnboardStepper from "./OnboardStepper";
 import commonStyles from "./styles/Onboard.module.scss";
 import styles from "./styles/OnboardTierProvisioned.module.scss";
 
@@ -28,37 +29,26 @@ interface TierProvisionedResponse {
 function OnboardTierProvisioned(props: Props) {
     const [loading, setLoading] = useState<boolean>(false);
     const [loaded, setLoaded] = useState<boolean>(!!props.tier);
-    const [tier, setTier] = useState<Tier | null>(props.tier || null);
+    const [tier, setTier] = useState<Tier | undefined>(props.tier);
     const [submitting, setSubmitting] = useState(false);
 
-    if (!loaded) {
-        const queryTier = () => {
-            setLoading(true);
-
-            axios.get("/onboard/tier")
-                .then((response: AxiosResponse<TierResponse>) => {
-                    setLoading(false);
-                    setLoaded(true);
-                    setTier(response.data.tier);
-                })
-                .catch(() => {
-                    // TODO(xiao) error handling
-                });
+    const queryTier = () => {
+        if (loaded) {
+            return;
         }
-        useEffect(queryTier, []);
-    }
+        setLoading(true);
 
-    if (loading || !tier) {
-        return (
-            <div className={commonStyles.container}>
-                <div className={commonStyles.logoAndName}>
-                    <img src="images/logo.svg" alt="logo" />
-                    Fennel AI
-                </div>
-                <LoadingOutlined spin />
-            </div>
-        );
+        axios.get("/onboard/tier")
+            .then((response: AxiosResponse<TierResponse>) => {
+                setLoading(false);
+                setLoaded(true);
+                setTier(response.data.tier);
+            })
+            .catch(() => {
+                // TODO(xiao) error handling
+            });
     }
+    useEffect(queryTier, [loaded]);
 
     const onContinue = () => {
         setSubmitting(true);
@@ -79,53 +69,67 @@ function OnboardTierProvisioned(props: Props) {
     return (
         <div className={commonStyles.container}>
             <div className={commonStyles.logoAndName}>
-                <img src="images/logo.svg" alt="logo" />
-                Fennel AI
+                <img src="images/logo_name.svg" alt="logo" />
             </div>
-            <h4 className={commonStyles.title}>
-                Congrats, we got you a pre-provisioned tier 🎉
-            </h4>
-            <div>
-                As part of the basic plan you’ve been pre-provisioned the following tier.
-            </div>
-            <div className={styles.tierContainer}>
-                <div className={styles.tierTitle}>
-                    <LockOutlined />
-                    Basic tier
-                </div>
-                <div>
-                    <table className={styles.tierTable}>
-                        <tbody>
-                            <tr>
-                                <td>Location</td>
-                                <td>{tier.location}</td>
-                            </tr>
-                            <tr>
-                                <td>URL</td>
-                                <td>{tier.apiUrl}</td>
-                            </tr>
-                            <tr>
-                                <td>Limit</td>
-                                <td>{`${tier.limit} requests/day`}</td>
-                            </tr>
-                            <tr>
-                                <td>Status</td>
-                                <td>Online</td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
-                <div className={styles.tierButtons}>
-                    <Button>See other plans</Button>
-                    <Button>Request upgrade</Button>
-                </div>
-            </div>
-            <Button type="primary" onClick={onContinue} disabled={submitting}>
-                Continue <ArrowRightOutlined />
-            </Button>
-            <div className={styles.footnote}>
-                The tier information above will also be accessible in the dashboard so feel free to continue.
-            </div>
+            <OnboardStepper steps={3} activeStep={2} />
+            {
+                (loading || !tier)
+                ? (
+                    <div className={commonStyles.content}>
+                        <LoadingOutlined spin />
+                    </div>)
+                :(
+                    <>
+                        <div className={commonStyles.content}>
+                            <h4 className={commonStyles.title}>
+                                Congrats, we got you a pre-provisioned tier 🎉
+                            </h4>
+                            <div>
+                                As part of the basic plan you’ve been pre-provisioned the following tier.
+                            </div>
+                            <div className={styles.tierContainer}>
+                                <div className={styles.tierTitle}>
+                                    <LockFilled />
+                                    <span>Basic tier</span>
+                                </div>
+                                <div>
+                                    <table className={styles.tierTable}>
+                                        <tbody>
+                                            <tr>
+                                                <td>Location</td>
+                                                <td>{tier.location}</td>
+                                            </tr>
+                                            <tr>
+                                                <td>URL</td>
+                                                <td>{tier.apiUrl}</td>
+                                            </tr>
+                                            <tr>
+                                                <td>Limit</td>
+                                                <td>{`${tier.limit} requests/day`}</td>
+                                            </tr>
+                                            <tr>
+                                                <td>Status</td>
+                                                <td>
+                                                    <div className={styles.status}>
+                                                        <div className={styles.statusDot} />
+                                                        <span>Online</span>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                        <Button type="primary" onClick={onContinue} disabled={submitting}>
+                            Continue <ArrowRightOutlined />
+                        </Button>
+                        <div className={styles.footnote}>
+                            The tier information above will also be accessible in the dashboard so feel free to continue.
+                        </div>
+                    </>
+                )
+            }
         </div>
     );
 }

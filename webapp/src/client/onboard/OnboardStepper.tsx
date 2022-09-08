@@ -1,7 +1,7 @@
 import styles from "./styles/OnboardStepper.module.scss";
 
 interface Props {
-    steps: number,
+    steps: 3|4,
     activeStep: number,
 }
 

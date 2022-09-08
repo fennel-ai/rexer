@@ -1,7 +1,6 @@
 import { useState } from "react";
 
 import OnboardSetupTeam from "./OnboardSetupTeam";
-import OnboardAboutYourself from "./OnboardAboutYourself";
 import OnboardTierProvisioning from "./OnboardTierProvisioning";
 import OnboardTierProvisioned, { type Tier } from "./OnboardTierProvisioned";
 
@@ -12,7 +11,7 @@ interface User {
 }
 
 const ONBOARD_STATUS_SETUP_TEAM = 0;
-const ONBOARD_STATUS_ABOUT_YOURSELF = 1;
+// const ONBOARD_STATUS_ABOUT_YOURSELF = 1;
 const ONBOARD_STATUS_TIER_PROVISIONING = 2;
 const ONBOARD_STATUS_TIER_PROVISIONED = 3;
 // const ONBOARD_STATUS_WELCOME = 4;
@@ -32,8 +31,6 @@ function OnboardPage({user}: {user: User}): JSX.Element {
     switch (onboardStatus) {
         case ONBOARD_STATUS_SETUP_TEAM:
             return <OnboardSetupTeam user={user} onOnboardStatusChange={updateStatus} />
-        case ONBOARD_STATUS_ABOUT_YOURSELF:
-            return <OnboardAboutYourself onOnboardStatusChange={updateStatus} />;
         case ONBOARD_STATUS_TIER_PROVISIONING:
             return <OnboardTierProvisioning onOnboardStatusChange={updateStatus} />;
         case ONBOARD_STATUS_TIER_PROVISIONED:

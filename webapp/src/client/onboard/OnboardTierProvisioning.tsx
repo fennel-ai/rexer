@@ -2,6 +2,7 @@ import axios, { AxiosResponse } from "axios";
 import { LoadingOutlined } from '@ant-design/icons';
 import { useState, useEffect } from "react";
 
+import OnboardStepper from "./OnboardStepper";
 import { type Tier } from "./OnboardTierProvisioned";
 import commonStyles from "./styles/Onboard.module.scss";
 
@@ -36,19 +37,20 @@ function OnboardTierProvisioning({ onOnboardStatusChange }: Props) {
     return (
         <div className={commonStyles.container}>
             <div className={commonStyles.logoAndName}>
-                <img src="images/logo.svg" alt="logo" />
-                Fennel AI
+                <img src="images/logo_name.svg" alt="logo" />
             </div>
-            {loading ? <LoadingOutlined spin /> : <OnboardTierNotAvailable />}
+            <OnboardStepper steps={3} activeStep={2} />
+            <div className={commonStyles.content}>
+                {loading ? <LoadingOutlined spin /> : <OnboardTierNotAvailable />}
+            </div>
         </div>
     );
 }
 
 function OnboardTierNotAvailable() {
-    // TODO(xiao)
     return (
-        <div>
-            No Available tiers right now! (xiao: UNFINISHED UI)
+        <div className={commonStyles.title}>
+            No available tiers right now! Please contact fennel support.
         </div>
     );
 }
