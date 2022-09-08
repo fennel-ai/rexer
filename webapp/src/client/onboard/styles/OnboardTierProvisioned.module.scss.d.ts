@@ -2,10 +2,14 @@
 // Please do not change this file!
 interface CssExports {
   'footnote': string;
-  'tierButtons': string;
+  'status': string;
+  'statusDot': string;
   'tierContainer': string;
   'tierTable': string;
   'tierTitle': string;
+  'tierURL': string;
+  'tierURLContainer': string;
+  'tierURLIcon': string;
 }
 export const cssExports: CssExports;
 export default cssExports;

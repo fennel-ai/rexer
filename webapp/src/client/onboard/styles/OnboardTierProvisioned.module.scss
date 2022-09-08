@@ -15,6 +15,9 @@
     font-size: 16px;
     font-weight: 500;
     margin-bottom: 30px;
+    display: flex;
+    gap: 10px;
+    align-items: center;
 }
 
 .tierTable td:first-child {
@@ -26,17 +29,44 @@
     padding-bottom: 20px;
 }
 
-.tierTable {
-    margin-bottom: 10px;
-}
-
-.tierButtons {
-    display: flex;
-    flex-direction: row;
-    justify-content: space-between;
+.tierTable tr:last-child td {
+    padding-bottom: 0;
 }
 
 .footnote {
     color: colors.$gray7;
     margin-top: 8px;
+}
+
+.status {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+
+.statusDot {
+    width: 6px;
+    height: 6px;
+    background: #52C41A;
+    border-radius: 50%;
+}
+
+.tierURLContainer {
+    display: flex;
+    justify-content: space-between;
+    width: 214px;
+    padding: 8px 7px 9px 12px;
+    border: 1px solid colors.$gray5;
+    background: colors.$gray3;
+    border-radius: 2px;
+}
+
+.tierURL {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.tierURLIcon {
+    color: colors.$purple6;
 }

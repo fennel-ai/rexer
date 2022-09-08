@@ -54,16 +54,19 @@ function OnboardJoinTeam({ team, onOnboardStatusChange }: Props) {
                 <img src="images/logo_name.svg" alt="logo" />
             </div>
             <OnboardStepper steps={3} activeStep={1} />
-            <h4 className={commonStyles.title}>Your team is already on Fennel!</h4>
 
-            <div className={styles.teamContainer}>
-                <div className={styles.nameAndCount}>
-                    <div>{team.name}</div>
-                    <div className={styles.membersCount}>{`${team.users.length} members`}</div>
+            <div className={commonStyles.content}>
+                <h4 className={commonStyles.title}>Your team is already on Fennel!</h4>
+
+                <div className={styles.teamContainer}>
+                    <div className={styles.nameAndCount}>
+                        <div>{team.name}</div>
+                        <div className={styles.membersCount}>{`${team.users.length} members`}</div>
+                    </div>
+                    <Avatar.Group maxCount={3} maxStyle={avatarStyle}>
+                        {team.users.map((u, i) => (<Avatar key={i} style={avatarStyle}>{u.lastName[0]}</Avatar>))}
+                    </Avatar.Group>
                 </div>
-                <Avatar.Group maxCount={3} maxStyle={avatarStyle}>
-                    {team.users.map((u, i) => (<Avatar key={i} style={avatarStyle}>{u.lastName[0]}</Avatar>))}
-                </Avatar.Group>
             </div>
             <Button type="primary" onClick={onContinue} disabled={submitting}>
                 Continue <ArrowRightOutlined />
