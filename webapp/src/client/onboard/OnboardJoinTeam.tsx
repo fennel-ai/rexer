@@ -3,6 +3,7 @@ import { ArrowRightOutlined } from '@ant-design/icons';
 import axios, { AxiosResponse } from "axios";
 import { useState } from "react";
 
+import OnboardStepper from "./OnboardStepper";
 import commonStyles from "./styles/Onboard.module.scss";
 import styles from "./styles/OnboardJoinTeam.module.scss";
 
@@ -52,6 +53,7 @@ function OnboardJoinTeam({ team, onOnboardStatusChange }: Props) {
             <div className={commonStyles.logoAndName}>
                 <img src="images/logo_name.svg" alt="logo" />
             </div>
+            <OnboardStepper steps={3} activeStep={1} />
             <h4 className={commonStyles.title}>Your team is already on Fennel!</h4>
 
             <div className={styles.teamContainer}>
