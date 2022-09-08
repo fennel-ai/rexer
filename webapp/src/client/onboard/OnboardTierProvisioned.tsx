@@ -1,5 +1,5 @@
 import axios, { AxiosResponse } from "axios";
-import { Button } from "antd";
+import { Button, Badge } from "antd";
 import { CopyOutlined, LoadingOutlined, LockFilled, ArrowRightOutlined } from '@ant-design/icons';
 import { useState, useEffect } from "react";
 
@@ -11,6 +11,7 @@ export interface Tier {
     apiUrl:   string,
     limit:    number,
     location: string,
+    plan: string,
 }
 
 interface TierResponse {
@@ -90,12 +91,12 @@ function OnboardTierProvisioned(props: Props) {
                                 Congrats, we got you a pre-provisioned tier 🎉
                             </h4>
                             <div>
-                                As part of the basic plan you’ve been pre-provisioned the following tier.
+                                As part of the {tier.plan} plan you’ve been pre-provisioned the following tier.
                             </div>
                             <div className={styles.tierContainer}>
                                 <div className={styles.tierTitle}>
                                     <LockFilled />
-                                    <span>Basic tier</span>
+                                    <span>{tier.plan} tier</span>
                                 </div>
                                 <div>
                                     <table className={styles.tierTable}>
@@ -124,10 +125,10 @@ function OnboardTierProvisioned(props: Props) {
                                             <tr>
                                                 <td>Status</td>
                                                 <td>
-                                                    <div className={styles.status}>
-                                                        <div className={styles.statusDot} />
-                                                        <span>Online</span>
-                                                    </div>
+                                                    <span>
+                                                        <Badge status="success" />
+                                                        Online
+                                                    </span>
                                                 </td>
                                             </tr>
                                         </tbody>

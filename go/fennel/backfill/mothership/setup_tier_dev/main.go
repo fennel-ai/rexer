@@ -54,11 +54,12 @@ func run(args Args) error {
 		}
 	}
 	tier = tierL.Tier{
-		DataPlaneID:  dp.ID,
-		CustomerID:   customer.ID,
-		PulumiStack:  "pulumi",
-		ApiUrl:       LOCALHOST,
-		K8sNamespace: "namespace",
+		DataPlaneID:   dp.ID,
+		CustomerID:    customer.ID,
+		PulumiStack:   "pulumi",
+		ApiUrl:        LOCALHOST,
+		K8sNamespace:  "namespace",
+		RequestsLimit: 1000,
 	}
 	err = db.Create(&tier).Error
 	return err
