@@ -32,11 +32,11 @@ type User struct {
 }
 
 const (
-	OnboardStatusSetupTeam uint = iota
-	OnboardStatusAboutYourself
+	OnboardStatusSetupTeam     uint = iota
+	OnboardStatusAboutYourself      // not used right now
 	OnboardStatusTierProvisioning
 	OnboardStatusTierProvisioned
-	OnboardStatusWelcome
+	OnboardStatusWelcome // not used right now
 	OnboardStatusDone
 )
 

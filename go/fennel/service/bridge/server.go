@@ -16,7 +16,6 @@ import (
 
 	dataplaneL "fennel/mothership/lib/dataplane"
 	tierL "fennel/mothership/lib/tier"
-	userL "fennel/mothership/lib/user"
 	"fennel/service/common"
 	"fmt"
 	"log"
@@ -115,14 +114,14 @@ func (s *server) setupRouter() {
 	s.POST("/resend_confirmation_email", s.ResendConfirmationEmail)
 
 	auth := s.Group("/", AuthenticationRequired(s.db))
-	onboarded := auth.Group("/", Onboarded)
+	auth.GET("/onboard", s.Onboard)
+
+	onboarded := auth.Group("/", Onboarded(s.db))
 	onboarded.GET("/", s.TierManagement)
 	onboarded.GET("/tier_management", s.TierManagement)
-
 	onboarded.GET("/settings", s.Settings)
 
 	tier := onboarded.Group("/tier/:id", TierPermission(s.db))
-	tier.GET("/", s.Dashboard)
 	tier.GET("/dashboard", s.Dashboard)
 	tier.GET("/data", s.Data)
 	tier.GET("/profiles", s.Profiles)
@@ -141,14 +140,15 @@ func (s *server) setupRouter() {
 	auth.PATCH("/user_names", s.UpdateUserNames)
 	auth.PATCH("/user_password", s.UpdateUserPassword)
 
+	// onboard endpoints
 	onboard := auth.Group("/onboard")
 	onboard.GET("/team_match", s.OnboardTeamMatch)
-	onboard.GET("/tier", s.OnboardTier)
-	onboard.POST("/tier_provisioned", s.OnboardTierProvisioned)
 	onboard.POST("/create_team", s.OnboardCreateTeam)
 	onboard.POST("/join_team", s.OnboardJoinTeam)
-	onboard.POST("/submit_questionnaire", s.OnboardSubmitQuestionnaire)
+
 	onboard.POST("/assign_tier", s.OnboardAssignTier)
+	onboard.GET("/tier", s.OnboardTier)
+	onboard.POST("/tier_provisioned", s.OnboardTierProvisioned)
 
 	// dev only endpoints
 	if s.isDev() {
@@ -166,11 +166,6 @@ const (
 	SignInPage         = "signin"
 	ForgotPasswordPage = "forgot_password"
 	ResetPasswordPage  = "reset_password"
-	DashboardPage      = "dashboard"
-	DataPage           = "data"
-	SettingsPage       = "settings"
-	TierManagementPage = "tier_management"
-	OnboardPage        = "onboard"
 )
 
 func title(name string) string {
@@ -359,30 +354,34 @@ func (s *server) ResendConfirmationEmail(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{})
 }
 
-func (s *server) Dashboard(c *gin.Context) {
-	c.HTML(http.StatusOK, "bridge/index.tmpl", s.bootstrapData(c, "Dashboard"))
+func (s *server) Onboard(c *gin.Context) {
+	c.HTML(http.StatusOK, "bridge/index.tmpl", bootstrapData(c, s.db, "Onboard"))
 }
 
-func (s *server) bootstrapData(c *gin.Context, page string) gin.H {
+func (s *server) Dashboard(c *gin.Context) {
+	c.HTML(http.StatusOK, "bridge/index.tmpl", bootstrapData(c, s.db, "Dashboard"))
+}
+
+func bootstrapData(c *gin.Context, db *gorm.DB, page string) gin.H {
 	user, _ := CurrentUser(c)
 
 	return gin.H{
 		"title": title(page),
 		"user":  userMap(user),
-		"tiers": customerTiers(s.db, user.CustomerID),
+		"tiers": customerTiers(db, user.CustomerID),
 	}
 }
 
 func (s *server) Data(c *gin.Context) {
-	c.HTML(http.StatusOK, "bridge/index.tmpl", s.bootstrapData(c, "Data"))
+	c.HTML(http.StatusOK, "bridge/index.tmpl", bootstrapData(c, s.db, "Data"))
 }
 
 func (s *server) Settings(c *gin.Context) {
-	c.HTML(http.StatusOK, "bridge/index.tmpl", s.bootstrapData(c, "Settings"))
+	c.HTML(http.StatusOK, "bridge/index.tmpl", bootstrapData(c, s.db, "Settings"))
 }
 
 func (s *server) TierManagement(c *gin.Context) {
-	c.HTML(http.StatusOK, "bridge/index.tmpl", s.bootstrapData(c, "Tier Management"))
+	c.HTML(http.StatusOK, "bridge/index.tmpl", bootstrapData(c, s.db, "Tier Management"))
 }
 
 func (s *server) Tiers(c *gin.Context) {
@@ -612,19 +611,6 @@ func (s *server) OnboardJoinTeam(c *gin.Context) {
 	}
 	c.JSON(http.StatusOK, gin.H{
 		"onboardStatus": user.OnboardStatus,
-	})
-}
-
-func (s *server) OnboardSubmitQuestionnaire(c *gin.Context) {
-	// TODO(xiao) skipped for now
-	user, _ := CurrentUser(c)
-	err := s.db.Model(&user).Update("onboard_status", userL.OnboardStatusTierProvisioning).Error
-	if err != nil {
-		respondError(c, err, "join team (onboard)")
-		return
-	}
-	c.JSON(http.StatusOK, gin.H{
-		"onboardStatus": userL.OnboardStatusTierProvisioning,
 	})
 }
 

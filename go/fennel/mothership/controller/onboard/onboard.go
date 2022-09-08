@@ -63,7 +63,7 @@ func CreateTeam(ctx context.Context, db *gorm.DB, name string, allowAutoJoin boo
 		return customer, err
 	}
 	err := db.Model(&user).Updates(map[string]interface{}{
-		"onboard_status": userL.OnboardStatusAboutYourself,
+		"onboard_status": userL.OnboardStatusTierProvisioning,
 		"customer_id":    customer.ID,
 	}).Error
 	return customer, err
@@ -83,7 +83,7 @@ func JoinTeam(ctx context.Context, db *gorm.DB, teamID uint, user *userL.User) e
 	}
 
 	return db.Model(&user).Updates(map[string]interface{}{
-		"onboard_status": userL.OnboardStatusAboutYourself,
+		"onboard_status": userL.OnboardStatusTierProvisioning,
 		"customer_id":    teamID,
 	}).Error
 }
@@ -120,7 +120,6 @@ func FetchTier(ctx context.Context, db *gorm.DB, customerID uint) (tier tierL.Ti
 }
 
 func TierProvisioned(ctx context.Context, db *gorm.DB, user *userL.User) (err error) {
-	// TODO(xiao) should transition to welcome
 	return db.Model(&user).Update("onboard_status", userL.OnboardStatusDone).Error
 }
 

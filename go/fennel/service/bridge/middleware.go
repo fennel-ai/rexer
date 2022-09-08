@@ -68,18 +68,6 @@ func TierPermission(db *gorm.DB) gin.HandlerFunc {
 	}
 }
 
-func Onboarded(c *gin.Context) {
-	user, _ := CurrentUser(c)
-	if user.IsOnboarding() {
-		c.HTML(http.StatusOK, "bridge/index.tmpl", gin.H{
-			"title": title("Onboard"),
-			"page":  OnboardPage,
-			"user":  userMap(user),
-		})
-		c.Abort()
-	}
-}
-
 func CurrentUser(c *gin.Context) (userL.User, bool) {
 	userAny, ok := c.Get(CurrentUserKey)
 	if !ok {
@@ -96,6 +84,16 @@ func CurrentTier(c *gin.Context) (tierL.Tier, bool) {
 	}
 	tier, ok := tierAny.(tierL.Tier)
 	return tier, ok
+}
+
+func Onboarded(db *gorm.DB) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		user, _ := CurrentUser(c)
+		if user.IsOnboarding() {
+			c.Redirect(http.StatusFound, "/onboard")
+			c.Abort()
+		}
+	}
 }
 
 /**

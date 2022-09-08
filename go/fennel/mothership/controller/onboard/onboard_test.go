@@ -80,7 +80,7 @@ func TestJoinTeam(t *testing.T) {
 
 	err = JoinTeam(ctx, db, fennel.ID, &user)
 	assert.NoError(t, err)
-	assert.Equal(t, userL.OnboardStatusAboutYourself, user.OnboardStatus)
+	assert.Equal(t, userL.OnboardStatusTierProvisioning, user.OnboardStatus)
 
 	err = JoinTeam(ctx, db, google.ID, &user)
 	assert.Error(t, err)
@@ -106,7 +106,7 @@ func TestCreateTeam(t *testing.T) {
 	assert.NoError(t, err)
 	assert.True(t, customer.Domain.Valid)
 	assert.Equal(t, "fennel.ai", customer.Domain.String)
-	assert.Equal(t, userL.OnboardStatusAboutYourself, alice.OnboardStatus)
+	assert.Equal(t, userL.OnboardStatusTierProvisioning, alice.OnboardStatus)
 
 	bob := userL.User{
 		Email:             "bob@fennel.ai",
@@ -118,7 +118,7 @@ func TestCreateTeam(t *testing.T) {
 	customer, err = CreateTeam(ctx, db, "fennel", false, &bob)
 	assert.NoError(t, err)
 	assert.False(t, customer.Domain.Valid)
-	assert.Equal(t, userL.OnboardStatusAboutYourself, bob.OnboardStatus)
+	assert.Equal(t, userL.OnboardStatusTierProvisioning, bob.OnboardStatus)
 
 	cat := userL.User{
 		Email:             "cat@Hotmail.com",
@@ -130,7 +130,7 @@ func TestCreateTeam(t *testing.T) {
 	customer, err = CreateTeam(ctx, db, "hot", false, &cat)
 	assert.NoError(t, err)
 	assert.False(t, customer.Domain.Valid)
-	assert.Equal(t, userL.OnboardStatusAboutYourself, cat.OnboardStatus)
+	assert.Equal(t, userL.OnboardStatusTierProvisioning, cat.OnboardStatus)
 }
 
 func TestOnboardAssignTier(t *testing.T) {
