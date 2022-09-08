@@ -1,6 +1,6 @@
 import axios, { AxiosResponse } from "axios";
 import { Button } from "antd";
-import { LoadingOutlined, LockFilled, ArrowRightOutlined } from '@ant-design/icons';
+import { CopyOutlined, LoadingOutlined, LockFilled, ArrowRightOutlined } from '@ant-design/icons';
 import { useState, useEffect } from "react";
 
 import OnboardStepper from "./OnboardStepper";
@@ -65,6 +65,11 @@ function OnboardTierProvisioned(props: Props) {
             });
     };
 
+    const copyURL = async () => {
+        const url: string = tier?.apiUrl || "";
+        await navigator.clipboard.writeText(url);
+    };
+
     // TODO(xiao) polish UI
     return (
         <div className={commonStyles.container}>
@@ -101,7 +106,16 @@ function OnboardTierProvisioned(props: Props) {
                                             </tr>
                                             <tr>
                                                 <td>URL</td>
-                                                <td>{tier.apiUrl}</td>
+                                                <td>
+                                                    <div className={styles.tierURLContainer}>
+                                                        <span className={styles.tierURL}>
+                                                            {tier.apiUrl}
+                                                        </span>
+                                                        <span className={styles.tierURLIcon} >
+                                                            <CopyOutlined onClick={copyURL}/>
+                                                        </span>
+                                                    </div>
+                                                </td>
                                             </tr>
                                             <tr>
                                                 <td>Limit</td>
