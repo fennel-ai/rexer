@@ -4,7 +4,6 @@ import axios, { AxiosError } from "axios";
 import { useState } from "react";
 
 import styles from "./styles/SignOn.module.scss";
-import Pancake from "./Pancake";
 
 function SignUp() {
     const [submitted, setSubmitted] = useState(false);
@@ -17,9 +16,8 @@ function SignUp() {
 
     return (
         <div className={styles.page}>
-            <Pancake />
             <div className={styles.container}>
-                <img src="images/logo.svg" alt="logo" className={styles.logo} />
+                <img src="/images/logo_name.svg" alt="logo" className={styles.logo} />
                 <div className={styles.logoDivider} />
                 {
                     submitted ? <ConfirmEmail email={submittedEmail} />
@@ -39,7 +37,7 @@ interface SignUpFormProps {
     onSubmit: (email: string) => void,
 }
 
-function SignUpForm({onSubmit}: SignUpFormProps) {
+function SignUpForm({ onSubmit }: SignUpFormProps) {
     const [submitting, setSubmitting] = useState(false);
 
     const onFinish = (values: FormValues) => {

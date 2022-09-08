@@ -19,7 +19,7 @@ function SignOnApp({page}: Props) {
     );
 }
 
-function Route({page}: Props) {
+function Route({ page }: Props) {
     switch (page) {
         case SIGNUP_PAGE:
             return <SignUp />;
