@@ -114,13 +114,14 @@ func (s *server) setupRouter() {
 	s.POST("/resend_confirmation_email", s.ResendConfirmationEmail)
 
 	auth := s.Group("/", AuthenticationRequired(s.db))
+	auth.GET("/onboard", s.Onboard)
+
 	onboarded := auth.Group("/", Onboarded(s.db))
 	onboarded.GET("/", s.TierManagement)
 	onboarded.GET("/tier_management", s.TierManagement)
 	onboarded.GET("/settings", s.Settings)
 
 	tier := onboarded.Group("/tier/:id", TierPermission(s.db))
-	tier.GET("/", s.Dashboard)
 	tier.GET("/dashboard", s.Dashboard)
 	tier.GET("/data", s.Data)
 	tier.GET("/profiles", s.Profiles)
@@ -351,6 +352,10 @@ func (s *server) ResendConfirmationEmail(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{})
+}
+
+func (s *server) Onboard(c *gin.Context) {
+	c.HTML(http.StatusOK, "bridge/index.tmpl", bootstrapData(c, s.db, "Onboard"))
 }
 
 func (s *server) Dashboard(c *gin.Context) {

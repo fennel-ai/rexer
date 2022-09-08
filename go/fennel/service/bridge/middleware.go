@@ -90,7 +90,7 @@ func Onboarded(db *gorm.DB) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		user, _ := CurrentUser(c)
 		if user.IsOnboarding() {
-			c.HTML(http.StatusOK, "bridge/index.tmpl", bootstrapData(c, db, "Onboard"))
+			c.Redirect(http.StatusFound, "/onboard")
 			c.Abort()
 		}
 	}
