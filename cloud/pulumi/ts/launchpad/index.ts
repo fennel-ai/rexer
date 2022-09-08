@@ -174,6 +174,18 @@ const tierConfs: Record<number, TierConf> = {
             replicas: 4,
         },
         enableNitrous: true,
+        createTopicsInMsk: true,
+        mirrorMakerConf: {
+            // the tasks will be split among them
+            replicas: 3,
+            sourceConnectorTasks: 20,
+            // consumer groups for action log is high
+            checkpointConnectorTasks: 50,
+            cpuRequests: "2",
+            cpuLimits: "4",
+            memoryRequests: "3Gi",
+            memoryLimits: "8Gi",
+        },
     },
     // Convoy staging tier using Fennel's staging data plane.
     108: {
@@ -721,15 +733,18 @@ const dataPlaneConfs: Record<number, DataPlaneConf> = {
             },
             binlog: {
                 partitions: 32,
-                retention_ms: 30 * 24 * 60 * 60 * 1000 /* 30 days */,
+                retention_ms: 7 * 24 * 60 * 60 * 1000 /* 7 days */,
                 partition_retention_bytes: -1,
                 max_message_bytes: 2097164,
-                // it is recommended to have RF >= 3
+                // TODO(mohit): Consider setting this to 2.
+                // it is recommended to have RF >= 3 in a 3 AZ cluster. With a 2 AZ cluster, this could be an overkill.
                 //
-                // NOTE: since we configure 4 brokers, setting to 3 works with rolling updates to the cluster where
+                // NOTE: since we configure 4 brokers, setting to >=2 works with rolling updates to the cluster where
                 // a broker is "inactive".
                 //
-                // by default MSK sets this to 2 for the cluster configured in 2 AZs
+                // by default MSK sets this to 2 for the cluster configured in 2 AZs - this is bad for availability
+                // since it is possible that one of the AZ is unreachable and the broker in the same AZ is down
+                // (could be a rolling update affecting this broker)
                 replicationFactor: 3,
                 // TODO(mohit): min in-sync replicas is set to 1, since we have 2 AZs.
                 // see - https://docs.aws.amazon.com/msk/latest/developerguide/msk-default-configuration.html
