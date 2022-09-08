@@ -262,7 +262,8 @@ func (b *backfiller) fill(ctx context.Context, kgs []hangar.KeyGroup, delete boo
 	defer timer.Stop()
 	for _, kg := range kgs {
 		hasher := xxhash.New()
-		hasher.Write(kg.Prefix.Data)
+		// Write always returns len(d), nil
+		_, _ = hasher.Write(kg.Prefix.Data)
 		shard := hasher.Sum64() % BACKFILL_SHARDS
 		b.workChans[shard] <- fillRequest{kg, delete}
 	}

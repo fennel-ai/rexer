@@ -159,9 +159,12 @@ func (s *Server) GetAggregateValues(stream Nitrous_GetAggregateValuesServer) err
 		resp, err := s.processRequest(ctx, req)
 		if err != nil {
 			s := status.Newf(codes.Internal, "error processing request: %v", err).Proto()
-			stream.Send(&AggregateValuesResponse{
+			if err = stream.Send(&AggregateValuesResponse{
 				Status: s,
-			})
+			}); err != nil {
+				zap.L().Warn("Error sending failed response to client", zap.Error(err))
+				return err
+			}
 			continue
 		} else {
 			resp.Status = OK

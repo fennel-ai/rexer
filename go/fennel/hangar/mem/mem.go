@@ -22,17 +22,9 @@ var statsGauge = promauto.NewGaugeVec(prometheus.GaugeOpts{
 	Help: "Stats about the hanger MemDB",
 }, []string{"metric"})
 
-const dataFileSuffix = ".memdb"
-const dataTmpFileSuffix = ".memdb.tmp"
-
 type memDBValueItem struct {
 	value        []byte
 	expEpochSecs int64
-}
-
-type memDBItem struct {
-	key   string
-	value memDBValueItem
 }
 
 type memDBShard struct {
@@ -46,7 +38,6 @@ type MemDB struct {
 	planeID  ftypes.RealmID
 	shards   []memDBShard
 	shardNum uint32
-	path     string
 
 	closeCh chan int
 	closeWg sync.WaitGroup
