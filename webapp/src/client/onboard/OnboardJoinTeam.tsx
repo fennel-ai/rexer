@@ -50,8 +50,7 @@ function OnboardJoinTeam({ team, onOnboardStatusChange }: Props) {
     return (
         <div className={commonStyles.container}>
             <div className={commonStyles.logoAndName}>
-                <img src="images/logo.svg" alt="logo" />
-                Fennel AI
+                <img src="images/logo_name.svg" alt="logo" />
             </div>
             <h4 className={commonStyles.title}>Your team is already on Fennel!</h4>
 
