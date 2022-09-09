@@ -29,7 +29,7 @@ func BuildTable(dirname string, id uint64, type_ TableType, mt *Memtable) (Table
 	case BBHashTable:
 		return buildBBHashTable(dirname, id, mt)
 	case BDiskHashTable:
-		return buildBBHashTable(dirname, id, mt)
+		return buildBDiskHashTable(dirname, id, mt)
 	default:
 		return nil, fmt.Errorf("invalid table type")
 	}

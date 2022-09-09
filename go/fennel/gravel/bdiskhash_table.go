@@ -155,8 +155,6 @@ func buildBDiskHashTable(dirname string, id uint64, mt *Memtable) (Table, error)
 	if err != nil {
 		return nil, err
 	}
-	mtLock := mt.GetLock()
-
 	type indexObj struct {
 		HashFP   uint32
 		BucketID uint32
@@ -164,9 +162,7 @@ func buildBDiskHashTable(dirname string, id uint64, mt *Memtable) (Table, error)
 		v        Value
 	}
 
-	mtLock.RLock()
 	buildFunc := func() error {
-		defer mtLock.RUnlock() // anon func to ensure unlock
 		m := mt.Iter()
 
 		itemCount := len(m)
