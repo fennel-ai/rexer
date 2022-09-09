@@ -17,6 +17,10 @@ func NewMemTable() Memtable {
 	}
 }
 
+func (mt *Memtable) GetLock() *sync.RWMutex {
+	return mt.lock
+}
+
 func (mt *Memtable) Get(k []byte) (Value, error) {
 	mt.lock.RLock()
 	val, ok := mt.map_[string(k)]
@@ -60,9 +64,7 @@ func (mt *Memtable) Clear() error {
 	mt.lock.Lock()
 	defer mt.lock.Unlock()
 
-	for k := range mt.map_ {
-		delete(mt.map_, k)
-	}
+	mt.map_ = make(map[string]Value)
 	mt.size = 0
 	return nil
 }
@@ -71,7 +73,7 @@ func (mt *Memtable) Clear() error {
 // Note - it doesn't yet clear the memtable (and so continues serving writes) until
 // explicitly called after the table has been added to the table list
 func (mt *Memtable) Flush(type_ TableType, dirname string, id uint64) (Table, error) {
-	mt.lock.Lock()
-	defer mt.lock.Unlock()
+	mt.lock.RLock()
+	defer mt.lock.RUnlock()
 	return BuildTable(dirname, id, type_, mt)
 }

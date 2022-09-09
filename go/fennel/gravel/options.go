@@ -3,8 +3,9 @@ package gravel
 type TableType uint8
 
 const (
-	BTreeTable  TableType = 1
-	BBHashTable TableType = 2
+	BTreeTable     TableType = 1
+	BBHashTable    TableType = 2
+	BDiskHashTable TableType = 3
 )
 
 type Options struct {
@@ -16,7 +17,7 @@ type Options struct {
 func DefaultOptions() Options {
 	return Options{
 		MaxTableSize: 1 << 30, // 2GB
-		TableType:    BBHashTable,
+		TableType:    BDiskHashTable,
 		Dirname:      "", // current directory
 	}
 }
