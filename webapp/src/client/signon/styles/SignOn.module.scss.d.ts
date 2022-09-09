@@ -3,7 +3,9 @@
 interface CssExports {
   'confirmEmailContainer': string;
   'confirmEmailContent': string;
+  'confirmEmailMessage': string;
   'container': string;
+  'content': string;
   'formButton': string;
   'formItem': string;
   'header': string;

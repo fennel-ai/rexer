@@ -3,21 +3,21 @@ import { LoadingOutlined } from "@ant-design/icons";
 import { useState } from "react";
 import axios, { AxiosError } from "axios";
 
-import Pancake from "./Pancake";
-import styles from "../styles/signon/SignOn.module.scss";
+import styles from "./styles/SignOn.module.scss";
 
 function ResetPassword() {
     return (
         <div className={styles.page}>
-            <Pancake />
             <div className={styles.container}>
-                <img src="images/logo.svg" alt="logo" className={styles.logo} />
+                <img src="/images/logo_name.svg" alt="logo" className={styles.logo} />
                 <div className={styles.logoDivider} />
-                <div className={styles.header}>
-                    <h4 className={styles.headerTitle}>Reset your password</h4>
-                    <a href="/signin" className={styles.headerAlt}>Sign in</a>
+                <div className={styles.content}>
+                    <div className={styles.header}>
+                        <h4 className={styles.headerTitle}>Reset your password</h4>
+                        <a href="/signin" className={styles.headerAlt}>Sign in</a>
+                    </div>
+                    <ResetForm />
                 </div>
-                <ResetForm />
             </div>
         </div>
     );
@@ -72,6 +72,7 @@ function ResetForm() {
                 <Input
                     type="password"
                     placeholder="Enter new password"
+                    autoComplete="off"
                 />
             </Form.Item>
             <Form.Item
@@ -92,6 +93,7 @@ function ResetForm() {
                 <Input
                     type="password"
                     placeholder="Re-enter new password"
+                    autoComplete="off"
                 />
             </Form.Item>
             <Form.Item className={styles.formItem}>

@@ -3,21 +3,21 @@ import { LoadingOutlined } from "@ant-design/icons";
 import axios, { AxiosError } from "axios";
 import { useState } from "react";
 
-import styles from "../styles/signon/SignOn.module.scss";
-import Pancake from "./Pancake";
+import styles from "./styles/SignOn.module.scss";
 
 function SignIn() {
     return (
         <div className={styles.page}>
-            <Pancake />
             <div className={styles.container}>
-                <img src="images/logo.svg" alt="logo" className={styles.logo} />
+                <img src="/images/logo_name.svg" alt="logo" className={styles.logo} />
                 <div className={styles.logoDivider} />
-                <div className={styles.header}>
-                    <h4 className={styles.headerTitle}>Sign In</h4>
-                    <a href="/signup" className={styles.headerAlt}>Sign up instead?</a>
+                <div className={styles.content}>
+                    <div className={styles.header}>
+                        <h4 className={styles.headerTitle}>Sign In</h4>
+                        <a href="/signup" className={styles.headerAlt}>Sign up instead?</a>
+                    </div>
+                    <SignInForm />
                 </div>
-                <SignInForm />
             </div>
         </div>
     );
@@ -75,6 +75,7 @@ function SignInForm() {
                 <Input
                     type="password"
                     placeholder="Password"
+                    autoComplete="off"
                 />
             </Form.Item>
             <Form.Item className={styles.formItem}>
