@@ -1,4 +1,4 @@
-import { Collapse, Space } from "antd";
+import { Collapse, Space, DatePicker } from "antd";
 import { useState, useEffect } from "react";
 import axios, { AxiosResponse } from "axios";
 import { Line, LineConfig } from '@ant-design/plots';
@@ -24,6 +24,7 @@ function DashboardPage() {
                     <a className={styles.dateControl} onClick={e => {
                         e.preventDefault();
                         setStartTime(now - DAY_MS);
+                        setEndTime(now);
                         setStep("1h");
                     }}>
                         Last day
@@ -31,6 +32,7 @@ function DashboardPage() {
                     <a className={styles.dateControl} onClick={e => {
                         e.preventDefault();
                         setStartTime(now - WEEK_MS);
+                        setEndTime(now);
                         setStep("6h");
                     }}>
                         Last week
@@ -38,10 +40,26 @@ function DashboardPage() {
                     <a className={styles.dateControl} onClick={e => {
                         e.preventDefault();
                         setStartTime(now - MONTH_MS);
+                        setEndTime(now);
                         setStep("24h");
                     }}>
                         Last month
                     </a>
+                    <DatePicker.RangePicker showTime onCalendarChange={(dates) => {
+                        if (dates && dates[0] && dates[1] && dates[0] < dates[1]) {
+                            const newStartTime = dates[0].toDate().getTime();
+                            const newEndTime = dates[1].toDate().getTime();
+                            setStartTime(newStartTime);
+                            setEndTime(newEndTime);
+                            if (newEndTime - newStartTime < DAY_MS) {
+                                setStep("1h");
+                            } else if (newEndTime - newStartTime < WEEK_MS) {
+                                setStep("6h");
+                            } else {
+                                setStep("24h");
+                            }
+                        }
+                    }}/>
                 </Space>
             </div>
             <Collapse defaultActiveKey="qps">
