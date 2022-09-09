@@ -22,6 +22,14 @@ import (
 	"google.golang.org/grpc/credentials/insecure"
 )
 
+var aggValueQueue = promauto.NewCounterVec(
+	prometheus.CounterOpts{
+		Name: "nitrous_GetAggregateValue_queue",
+		Help: "GetAggregateValue client side queue stats",
+	},
+	[]string{"action"},
+)
+
 type NitrousClient struct {
 	resource.Scope
 
@@ -162,6 +170,7 @@ func (nc NitrousClient) GetMulti(ctx context.Context, aggId ftypes.AggId, groupk
 	// Create a buffered channel of size 1 to not block the sender in case we
 	// bail-out early because of a context cancellation.
 	ch := make(chan mo.Result[[]*value.PValue], 1)
+	aggValueQueue.WithLabelValues("queuing").Inc()
 	select {
 	// Return early if context is cancelled even before we could send the request.
 	case <-ctx.Done():
@@ -286,6 +295,7 @@ func (cfg NitrousClientConfig) Materialize() (resource.Resource, error) {
 				// Channel closed, no more requests expected.
 				return
 			}
+			aggValueQueue.WithLabelValues("outOfQueue").Inc()
 			// If request has already been cancelled, don't bother sending it.
 			if err := req.ctx.Err(); err != nil {
 				req.respCh <- mo.Err[[]*value.PValue](err)
