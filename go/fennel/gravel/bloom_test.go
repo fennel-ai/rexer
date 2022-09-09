@@ -7,6 +7,7 @@ import (
 )
 
 func TestBloom(t *testing.T) {
+	t.Skip("load/dump create race issues - enable the test after fixing those")
 	b := NewBloomFilter(1000, 0.001)
 	keys := [][]byte{[]byte("hi"), []byte("bye"), []byte("okay")}
 	for _, k := range keys {

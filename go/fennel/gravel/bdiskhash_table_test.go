@@ -3,12 +3,16 @@ package gravel
 import (
 	"encoding/binary"
 	"fmt"
-	"github.com/stretchr/testify/assert"
 	"testing"
 	"time"
+
+	"github.com/stretchr/testify/assert"
 )
 
+// TODO: remove this file and merge any special contents with table_test.go
+// which contains tests that apply to all interface implementations
 func TestBDiskHashTable(t *testing.T) {
+	t.Skip("Test takes too long so skipping it. We do have some coverage in more generate test_table")
 	itemCnt := 10_000_000
 	mt := NewMemTable()
 	key := make([]byte, 8)

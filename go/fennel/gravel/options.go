@@ -4,8 +4,7 @@ type TableType uint8
 
 const (
 	BTreeTable     TableType = 1
-	BBHashTable    TableType = 2
-	BDiskHashTable TableType = 3
+	BDiskHashTable TableType = 2
 )
 
 type Options struct {

@@ -26,8 +26,6 @@ func BuildTable(dirname string, id uint64, type_ TableType, mt *Memtable) (Table
 	switch type_ {
 	case BTreeTable:
 		return buildBTreeTable(dirname, id, mt)
-	case BBHashTable:
-		return buildBBHashTable(dirname, id, mt)
 	case BDiskHashTable:
 		return buildBDiskHashTable(dirname, id, mt)
 	default:
@@ -48,8 +46,8 @@ func OpenTable(type_ TableType, filepath string) (Table, error) {
 	switch type_ {
 	case BTreeTable:
 		return openBTreeTable(id, filepath)
-	case BBHashTable:
-		return openBBHashTable(id, filepath)
+	case BDiskHashTable:
+		return openBDiskHashTable(id, filepath)
 	default:
 		return nil, fmt.Errorf("invalid table type: %v", type_)
 	}
