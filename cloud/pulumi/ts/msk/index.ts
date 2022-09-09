@@ -121,13 +121,29 @@ export const setup = async (input: inputType): Promise<pulumi.Output<outputType>
         name: `p-${input.planeId}-cluster-config-2`
     }, { provider: awsProvider });
 
+    const config3 = new aws.msk.Configuration("msk-cluster-config-3", {
+        // This is required to assign the closest (in the same AZ) broker to the consumer
+        //
+        // `broker.rack` is set by the msk cluster, see - https://aws.amazon.com/blogs/big-data/reduce-network-traffic-costs-of-your-amazon-msk-consumers-with-rack-awareness/
+        serverProperties: `
+            replica.selector.class = org.apache.kafka.common.replica.RackAwareReplicaSelector
+            
+            auto.create.topics.enable = true
+        `,
+        description: `plane ${input.planeId} kafka broker configuration for kafka 3.0`,
+
+        // this can be a list of kafka versions for which the provided server properties are valid for
+        kafkaVersions: ["3.1.1", "3.2.0"],
+        name: `p-${input.planeId}-cluster-config-3`
+    }, { provider: awsProvider });
+
     // setup msk cluster
     const cluster = new aws.msk.Cluster("msk-cluster", {
         // this is needed for consumer group offset syncs to work for Mirror Maker 2.0 which allows for migration
         // from Confluent to MSK and in the future possibility to back up our MSK cluster for disaster recovery
         //
         // https://cwiki.apache.org/confluence/display/KAFKA/KIP-545:+support+automated+consumer+offset+sync+across+clusters+in+MM+2.0
-        kafkaVersion: "2.7.0",
+        kafkaVersion: "3.2.0",
         clusterName: `p-${input.planeId}-kafka-cluster`,
         numberOfBrokerNodes: input.numberOfBrokerNodes,
         brokerNodeGroupInfo: {
@@ -146,8 +162,8 @@ export const setup = async (input: inputType): Promise<pulumi.Output<outputType>
 
         // broker configuration
         configurationInfo: {
-            arn: config2.arn,
-            revision: config2.latestRevision,
+            arn: config3.arn,
+            revision: config3.latestRevision,
         },
 
         // TODO(mohit): See if encryption should be enabled here

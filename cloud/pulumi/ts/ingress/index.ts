@@ -209,6 +209,13 @@ export const setup = async (input: inputType) => {
             "namespace": {
                 "name": input.namespace,
             },
+            "ingressClassResource": {
+                // Disable installing the ingress class resource provided by Emissary Ingress. For our use case,
+                // using CRDs provided by Emissary Ingress is sufficient
+                //
+                // See - https://www.getambassador.io/docs/emissary/latest/topics/running/ingress-controller/#when-to-use-an-ingress-instead-of-annotations-or-crds
+                "enabled": false,
+            },
             "topologySpreadConstraints": topologySpreadConstraints,
             "nodeSelector": nodeSelector,
 
