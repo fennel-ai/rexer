@@ -1,6 +1,8 @@
 package gravel
 
-import "errors"
+import (
+	"errors"
+)
 
 var (
 	ErrSealedBatch = errors.New("can not mutate a sealed batch")
@@ -18,9 +20,9 @@ func (b *Batch) Set(k, v []byte, expires uint32) error {
 		return ErrSealedBatch
 	}
 	b.entries = append(b.entries, Entry{
-		key: k,
+		key: clonebytes(k),
 		val: Value{
-			data:    v,
+			data:    clonebytes(v),
 			expires: Timestamp(expires),
 			deleted: false,
 		},
@@ -33,7 +35,7 @@ func (b *Batch) Del(k []byte) error {
 		return ErrSealedBatch
 	}
 	b.entries = append(b.entries, Entry{
-		key: k,
+		key: clonebytes(k),
 		val: Value{deleted: true},
 	})
 	return nil
@@ -56,4 +58,10 @@ func (b *Batch) Commit() error {
 
 func (b *Batch) Entries() []Entry {
 	return b.entries
+}
+
+func clonebytes(src []byte) []byte {
+	dest := make([]byte, len(src))
+	copy(dest, src)
+	return dest
 }
