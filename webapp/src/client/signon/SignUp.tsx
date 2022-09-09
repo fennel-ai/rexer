@@ -19,10 +19,12 @@ function SignUp() {
             <div className={styles.container}>
                 <img src="/images/logo_name.svg" alt="logo" className={styles.logo} />
                 <div className={styles.logoDivider} />
-                {
-                    submitted ? <ConfirmEmail email={submittedEmail} />
-                        : <SignUpForm onSubmit={onSubmit} />
-                }
+                <div className={styles.content}>
+                    {
+                        submitted ? <ConfirmEmail email={submittedEmail} />
+                            : <SignUpForm onSubmit={onSubmit} />
+                    }
+                </div>
             </div>
         </div>
     );
@@ -89,6 +91,7 @@ function SignUpForm({ onSubmit }: SignUpFormProps) {
                     <Input
                         type="password"
                         placeholder="Password"
+                        autoComplete="off"
                     />
                 </Form.Item>
                 <Form.Item
@@ -109,6 +112,7 @@ function SignUpForm({ onSubmit }: SignUpFormProps) {
                     <Input
                         type="password"
                         placeholder="Re-enter password"
+                        autoComplete="off"
                     />
                 </Form.Item>
                 <Form.Item className={styles.formItem}>
@@ -130,21 +134,24 @@ function SignUpForm({ onSubmit }: SignUpFormProps) {
 function ConfirmEmail(props: {email: string}) {
     return (
         <div className={styles.confirmEmailContainer}>
-            <CheckCircleOutlined
-                style={{ fontSize:"24px", color: "#52C41A", marginTop: "4px"}}
-            />
             <div className={styles.confirmEmailContent}>
-                <h4 className={styles.headerTitle}>
-                    You’re on your way! Please confirm your email.
-                </h4>
-                <p>
-                    An email to confirm your email address has been sent. Please click the link to confirm it and sign in.
-                </p>
-                <p className={styles.missEmail}>
-                    Didn’t get an email?
-                </p>
-                <ResendButton {...props} />
+                <CheckCircleOutlined
+                    style={{ fontSize:"24px", color: "#52C41A", marginTop: "4px"}}
+                />
+
+                <div className={styles.confirmEmailMessage}>
+                    <h4 className={styles.headerTitle}>
+                        You’re on your way! Please confirm your email.
+                    </h4>
+                    <p>
+                        An email to confirm your email address has been sent. Please click the link to confirm it and sign in.
+                    </p>
+                </div>
             </div>
+            <p className={styles.missEmail}>
+                Didn’t get an email?
+            </p>
+            <ResendButton {...props} />
         </div>
     )
 }
