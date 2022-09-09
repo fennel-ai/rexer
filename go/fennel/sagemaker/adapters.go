@@ -117,6 +117,7 @@ func (xga XGBoostAdapter) Score(ctx context.Context, in *lib.ScoreRequest) (*lib
 	payload := bytes.Buffer{}
 	var contentType string
 	// if features are stored as a dict, then use libsvm format otherwise use csv format
+	fmt.Printf("endpoint: %s, containername: %s, model input: %s\n", in.EndpointName, in.ContainerName, in.ModelInput.String())
 	if _, ok := in.ModelInput.(value.Dict); ok {
 		contentType = "text/libsvm"
 		for _, v := range in.ModelInput.(value.Dict).Iter() {
