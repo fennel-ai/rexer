@@ -30,6 +30,8 @@ export type inputType = {
 
 export type outputType = {
     host: string,
+    user: string,
+    password: string,
 }
 
 const parseConfig = (): inputType => {
@@ -138,6 +140,8 @@ export const setup = async (input: inputType): Promise<pulumi.Output<outputType>
 
     const output = pulumi.output({
         host: cluster.endpoint,
+        user: input.username,
+        password: input.password,
     })
 
     return output

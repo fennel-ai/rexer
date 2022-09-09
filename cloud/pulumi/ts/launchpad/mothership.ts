@@ -182,7 +182,12 @@ const setupResources = async () => {
 
     return {
         eks: eksOutput,
-        db: auroraOutput,
+        db: {
+            host: auroraOutput.host,
+            user: auroraOutput.user,
+            password: auroraOutput.password,
+            dbName: dbName,
+        },
         ingress: ingressOutput,
     }
 };

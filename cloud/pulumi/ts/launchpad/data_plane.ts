@@ -23,7 +23,7 @@ import * as strimzi from "../strimzi";
 import * as util from "../lib/util";
 
 import * as process from "process";
-import {OtelConfig} from "../telemetry";
+import { OtelConfig } from "../telemetry";
 
 type VpcConfig = {
     cidr: string,
@@ -105,6 +105,12 @@ type AccountConf = {
     existingAccount?: ExistingAccount,
 }
 
+export type Customer = {
+    id: number,
+    name: string,
+    domain: string,
+}
+
 export type DataPlaneConf = {
     // Should be set to false, when deleting the plane
     //
@@ -133,6 +139,9 @@ export type DataPlaneConf = {
     // TODO(mohit): Make this default going forward
     modelMonitoringConf?: ModelMonitoringConf,
     strimziConf?: StrimziConf,
+    // TODO(amit): Make this non optional going forward.
+    mothershipId?: number,
+    customer?: Customer,
 }
 
 export type PlaneOutput = {
@@ -152,6 +161,9 @@ export type PlaneOutput = {
     telemetry: telemetry.outputType,
     milvus: milvus.outputType,
     msk?: msk.outputType,
+    id: number,
+    customerId: number,
+    mothershipId: number,
 }
 
 const parseConfig = (): DataPlaneConf => {
@@ -435,6 +447,9 @@ const setupResources = async () => {
         telemetry: telemetryOutput,
         milvus: milvusOutput,
         msk: mskOutput,
+        id: input.planeId,
+        mothershipId: input.mothershipId,
+        customerId: input.customer === undefined ? 0 : input.customer.id,
     }
 };
 
@@ -479,7 +494,6 @@ const setupDataPlane = async (args: DataPlaneConf, preview?: boolean, destroy?: 
     console.info("setting up config");
 
     await stack.setConfig("input", { value: JSON.stringify(args) })
-
     console.info("config set");
 
     if (preview) {

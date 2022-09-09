@@ -18,12 +18,13 @@ import * as milvus from "../milvus";
 import { nameof, PUBLIC_LB_SCHEME, PRIVATE_LB_SCHEME, PricingMode } from "../lib/util";
 import * as msk from "../msk";
 
-import * as process from "process";
 import * as assert from "assert";
 import { DEFAULT_ARM_AMI_TYPE, DEFAULT_X86_AMI_TYPE, ON_DEMAND_INSTANCE_TYPE, SPOT_INSTANCE_TYPE } from "../eks";
 import { OutputMap } from "@pulumi/pulumi/automation";
 import { utils } from "@pulumi/pulumi";
 import tier from "./tier";
+import { MothershipDBUpdater, Customer } from "../mothership-updates"
+import { getMonitor, suppressUnhandledGrpcRejections } from "@pulumi/pulumi/runtime";
 
 const controlPlane: vpc.controlPlaneConfig = {
     region: "us-west-2",
@@ -36,6 +37,12 @@ const controlPlane: vpc.controlPlaneConfig = {
     secondaryPrivateSubnet: "subnet-091ccb4e147da9859",
     primaryPublicSubnet: "subnet-00801991ba653e52c",
     secondaryPublicSubnet: "subnet-0f3a7cbfd18588331",
+}
+
+const selfServeCustomer: Customer = {
+    id: 0,
+    domain: "fennel.ai",
+    name: "self-serve",
 }
 
 //================ Static data plane / tier configurations =====================
@@ -354,6 +361,17 @@ const tierConfs: Record<number, TierConf> = {
         createTopicsInMsk: true,
         mirrorMakerConf: {},
     },
+    // reserver tierIds 1001 to 2000 for self-serve.
+    1001: {
+        protectResources: true,
+        planeId: 10,
+        ingressConf: {
+            usePublicSubnets: true,
+        },
+        airbyteConf: {},
+        createTopicsInMsk: true,
+        mirrorMakerConf: {},
+    }
 }
 
 // map from plane id to its configuration.
@@ -908,6 +926,19 @@ const dataPlaneConfs: Record<number, DataPlaneConf> = {
                 },
             ],
         },
+        mothershipId: 12,
+        customer: selfServeCustomer,
+        // set up MSK cluster
+        mskConf: {
+            // compute cost = 0.0456 ($/hr) x 2 (#brokers) x 720 = $65.6
+            brokerType: "kafka.t3.small",
+            // this will place 1 broker node in each of the AZs
+            numberOfBrokerNodes: 2,
+            // storage cost = 0.10 ($/GB-month) x 64 = 6.4$
+            storageVolumeSizeGiB: 64,
+        },
+        // setup strimzi
+        strimziConf: {},
     },
 }
 
@@ -1036,6 +1067,22 @@ if (process.argv.length == 4) {
 
 const id = Number.parseInt(process.argv[process.argv.length - 1])
 // TODO(Amit): This is becoming hard to maintain, think of a stack builder abstraction. 
+
+function getMothershipId(id: number | undefined): number | undefined {
+    if (id === undefined || id in mothershipConfs) {
+        return id
+    }
+    else if (id in dataPlaneConfs) {
+        return getMothershipId(dataPlaneConfs[id].mothershipId)
+    } else if (id in tierConfs) {
+        return getMothershipId(tierConfs[id].planeId)
+    }
+    return undefined
+}
+
+const mothershipId = getMothershipId(id)
+var mothership = mothershipId !== undefined ? new MothershipDBUpdater(mothershipId) : undefined
+
 if (id in dataPlaneConfs) {
     if (destroy) {
         console.log(`Destruction of data-planes is not supported from launchpad, please delete it directly via pulumi CLI`)
@@ -1044,6 +1091,23 @@ if (id in dataPlaneConfs) {
     planeId = id
     console.log("Updating data plane: ", planeId)
     await setupDataPlane(dataPlaneConfs[planeId], preview, destroy)
+    if (mothershipId !== undefined && mothership !== undefined) {
+        console.log('updating mothership database...')
+        await mothership.insertOrUpdateCustomer(id, id => {
+            if (id == 0) {
+                return selfServeCustomer
+            }
+            return undefined
+        })
+        process.once('exit', code => {
+            if (mothership !== undefined) {
+                mothership.exit().then(() => {
+                    console.log(`closed mothership connection, exit code ${code}`)
+                })
+            }
+        })
+    }
+
 } else if (id in tierConfs) {
     tierId = id
     planeId = tierConfs[tierId].planeId
@@ -1057,6 +1121,17 @@ if (id in dataPlaneConfs) {
     // If destroy was set to true then both destroy and unprotect would be set to false and stack
     // destruction would continue.
     await setupTierWrapperFn(tierId, dataplane, dataPlaneConfs[planeId], preview, destroy, destroy)
+    if (mothershipId !== undefined && mothership !== undefined) {
+        console.log('updating mothership database...')
+        await mothership.insertOrUpdateTier(tierId)
+        process.once('exit', code => {
+            if (mothership !== undefined) {
+                mothership.exit().then(() => {
+                    console.log(`closed mothership connection, exit code ${code}`)
+                })
+            }
+        })
+    }
 } else if (id in mothershipConfs) {
     if (destroy) {
         console.log(`Destruction of mothership is not supported from launchpad, please delete it directly via pulumi CLI`)
