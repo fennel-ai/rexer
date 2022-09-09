@@ -1,7 +1,7 @@
 import { Button, Form, Input, notification } from "antd";
 import { LoadingOutlined, CheckCircleOutlined } from '@ant-design/icons';
 import axios, { AxiosError } from "axios";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 import styles from "./styles/SignOn.module.scss";
 
@@ -13,6 +13,20 @@ function SignUp() {
         setSubmitted(true);
         setSubmittedEmail(email);
     };
+
+    useEffect(() => {
+        notification.info({
+            message: (
+                <span>
+                    Want to take a look at our documentation first?
+                    <br />
+                    Check out <a href="https://app.gitbook.com/o/ezMhZP7ASmi43q12NHfL/s/5DToQ2XCuEpPMMLC0Rwr/">here</a>.
+                </span>
+            ),
+            duration: 0,
+            placement: "bottomRight",
+        })
+    }, []);
 
     return (
         <div className={styles.page}>
@@ -31,6 +45,8 @@ function SignUp() {
 }
 
 interface FormValues {
+    firstName: string,
+    lastName: string,
     email: string,
     password: string,
 }
@@ -44,21 +60,18 @@ function SignUpForm({ onSubmit }: SignUpFormProps) {
 
     const onFinish = (values: FormValues) => {
         setSubmitting(true);
-        axios.post("/signup", {
-            email: values.email,
-            password: values.password,
-        })
-        .then(() => {
-            setSubmitting(false);
-            onSubmit(values.email);
-        })
-        .catch((error: AxiosError<{error: string}>) => {
-            setSubmitting(false);
-            notification.error({
-                message: error.response?.data.error,
-                placement: "bottomRight",
+        axios.post("/signup", values)
+            .then(() => {
+                setSubmitting(false);
+                onSubmit(values.email);
             })
-        });
+            .catch((error: AxiosError<{error: string}>) => {
+                setSubmitting(false);
+                notification.error({
+                    message: error.response?.data.error,
+                    placement: "bottomRight",
+                })
+            });
     };
 
     return (
@@ -67,55 +80,47 @@ function SignUpForm({ onSubmit }: SignUpFormProps) {
                 <h4 className={styles.headerTitle}>Sign up</h4>
                 <a href="/signin" className={styles.headerAlt}>Login instead?</a>
             </div>
-            <Form
-                name="signup_form"
-                className={styles.mainForm}
-                initialValues={{ remember: true }}
-                onFinish={onFinish}
-            >
-                <Form.Item
-                    name="email"
-                    rules={[
-                        { required: true, message: "Please input your work email" },
-                        { type: "email", message: "Please input a valid email address"},
-                    ]}
-                    className={styles.formItem}
+            <div className={styles.mainForm}>
+                <Form
+                    name="signup_form"
+                    initialValues={{ remember: true }}
+                    onFinish={onFinish}
                 >
-                    <Input placeholder="Work email" />
-                </Form.Item>
-                <Form.Item
-                    name="password"
-                    rules={[{ required: true, message: "Please input your password" }]}
-                    className={styles.formItem}
-                >
-                    <Input
-                        type="password"
-                        placeholder="Password"
-                        autoComplete="off"
-                    />
-                </Form.Item>
-                <Form.Item
-                    name="confirm_password"
-                    rules={[
-                        { required: true, message: "Please re-enter your password" },
-                        ({ getFieldValue }) => ({
-                            validator(_, value) {
-                                if (!value || getFieldValue("password") === value) {
-                                    return Promise.resolve();
-                                }
-                                return Promise.reject(new Error('The two passwords do not match'));
-                            },
-                        }),
-                    ]}
-                    className={styles.formItem}
-                >
-                    <Input
-                        type="password"
-                        placeholder="Re-enter password"
-                        autoComplete="off"
-                    />
-                </Form.Item>
-                <Form.Item className={styles.formItem}>
+                    <Input.Group compact>
+                        <Form.Item
+                            name="firstName"
+                            rules={[{ required: true, message: "Name is empty" }]}
+                        >
+                            <Input style={{ width: "154px" }} placeholder="First name" />
+                        </Form.Item>
+                        <Form.Item
+                            name="lastName"
+                            rules={[{ required: true, message: "Name is empty" }]}
+                        >
+                            <Input style={{ width: "154px", marginLeft: "9px" }} placeholder="Last name" />
+                        </Form.Item>
+                    </Input.Group>
+                    <Form.Item
+                        name="email"
+                        rules={[
+                            { required: true, message: "Please input your work email" },
+                            { type: "email", message: "Please input a valid email address"},
+                        ]}
+                        className={styles.formItem}
+                    >
+                        <Input placeholder="Work email" />
+                    </Form.Item>
+                    <Form.Item
+                        name="password"
+                        rules={[{ required: true, message: "Please input your password" }]}
+                        className={styles.formItem}
+                    >
+                        <Input
+                            type="password"
+                            placeholder="Password"
+                            autoComplete="off"
+                        />
+                    </Form.Item>
                     <Button
                         type="primary"
                         htmlType="submit"
@@ -125,8 +130,8 @@ function SignUpForm({ onSubmit }: SignUpFormProps) {
 
                         {submitting ? (<div> <LoadingOutlined spin /> Signing Up... </div>) : "Sign Up"}
                     </Button>
-                </Form.Item>
-            </Form>
+                </Form>
+            </div>
         </>
     );
 }
