@@ -43,8 +43,6 @@ func testTable(t *testing.T, type_ TableType, sz int) {
 	}
 }
 
-// TODO: we have disabled test with deletes here - uncomment this back
-// to verify that all tables handle deletions well
 func getMemTable(sz int) Memtable {
 	mt := NewMemTable()
 	keys := make([][]byte, 0, sz)
@@ -54,12 +52,13 @@ func getMemTable(sz int) Memtable {
 		keys = append(keys, []byte(fmt.Sprintf("key-%d", i)))
 		vals = append(vals, []byte(fmt.Sprintf("val-%d", i)))
 		var v Value
-		// if i%100 == 0 {
-		// 	v.deleted = true
-		// } else {
-		v.data = vals[i]
-		v.expires = 0
-		// }
+		if i%100 == 0 {
+			v.deleted = true
+			v.data = make([]byte, 0)
+		} else {
+			v.data = vals[i]
+			v.expires = 0
+		}
 		entries = append(entries, Entry{key: keys[i], val: v})
 	}
 

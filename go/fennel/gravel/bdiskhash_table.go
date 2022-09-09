@@ -5,12 +5,13 @@ import (
 	"bytes"
 	"encoding/binary"
 	"fmt"
-	"github.com/cespare/xxhash/v2"
-	"golang.org/x/exp/mmap"
-	"golang.org/x/sys/unix"
 	"os"
 	"path"
 	"sort"
+
+	"github.com/cespare/xxhash/v2"
+	"golang.org/x/exp/mmap"
+	"golang.org/x/sys/unix"
 )
 
 /*
@@ -98,33 +99,43 @@ func (b *bDiskHashTable) Get(key []byte) (Value, error) {
 		if err != nil {
 			return Value{}, err
 		}
+		// write record: [4 bytes total size, 1 byte key size, 4 bytes value size, 1 byte delete tombstone, 4 bytes expire time, key, value]
 		recordSize := binary.BigEndian.Uint32(buf4)
 
 		if i == matchIndices[matchIdx] {
+			// fmt.Printf("record size is: %d\n", recordSize)
+			record := make([]byte, recordSize)
+			_, err = b.data.ReadAt(record, int64(curDataPos))
+			// fmt.Printf("record is: %v\n", record)
 			keyLen := uint64(b.data.At(int(curDataPos + 4)))
 			curKey := make([]byte, keyLen)
-			_, err = b.data.ReadAt(curKey, int64(curDataPos+4+1+4+4))
+			_, err = b.data.ReadAt(curKey, int64(curDataPos+4+1+4+1+4))
 			if err != nil {
 				return Value{}, err
 			}
 			if bytes.Equal(curKey, key) {
 				// found
-				buf := make([]byte, 8)
+				buf := make([]byte, 9)
 				_, err := b.data.ReadAt(buf, int64(curDataPos+4+1))
 				if err != nil {
 					return Value{}, err
 				}
 				valueSize := binary.BigEndian.Uint32(buf)
-				expTime := binary.BigEndian.Uint32(buf[4:])
+				delflag := buf[4]
+				expTime := binary.BigEndian.Uint32(buf[5:])
+				deleted := false
+				if delflag > 0 {
+					deleted = true
+				}
 				value := make([]byte, valueSize)
-				_, err = b.data.ReadAt(value, int64(curDataPos+4+1+4+4+keyLen))
+				_, err = b.data.ReadAt(value, int64(curDataPos+4+1+4+1+4+keyLen))
 				if err != nil {
 					return Value{}, err
 				}
 				return Value{
 					data:    value,
 					expires: Timestamp(expTime),
-					deleted: false,
+					deleted: deleted,
 				}, nil
 			}
 
@@ -167,6 +178,9 @@ func buildBDiskHashTable(dirname string, id uint64, mt *Memtable) (Table, error)
 
 		itemCount := len(m)
 		bucketCount := uint64(itemCount / int(avgBucketSize))
+		if bucketCount == 0 {
+			bucketCount = 1
+		}
 		headSlice := make([]byte, bucketCount*4)
 		for i := 0; i < int(bucketCount*4); i++ {
 			headSlice[i] = 0xFF
@@ -244,14 +258,20 @@ func buildBDiskHashTable(dirname string, id uint64, mt *Memtable) (Table, error)
 			}
 			binary.BigEndian.PutUint32(buf4, indexObjItem.HashFP)
 			bucketsBuf = append(bucketsBuf, buf4...)
-			// write record: [4 bytes total size, 1 byte key size, 4 bytes value size, 4 bytes expire time, key, value]
-			recordBuf := make([]byte, 4+1+4+4+len(indexObjItem.k)+len(indexObjItem.v.data))
+			// write record: [4 bytes total size, 1 byte key size, 4 bytes value size, 1 byte delete tombstone, 4 bytes expire time, key, value]
+			recordBuf := make([]byte, 4+1+4+1+4+len(indexObjItem.k)+len(indexObjItem.v.data))
 			binary.BigEndian.PutUint32(recordBuf[0:], uint32(len(recordBuf)))
 			recordBuf[4] = byte(len(indexObjItem.k))
 			binary.BigEndian.PutUint32(recordBuf[5:], uint32(len(indexObjItem.v.data)))
-			binary.BigEndian.PutUint32(recordBuf[9:], uint32(indexObjItem.v.expires))
-			copy(recordBuf[13:], indexObjItem.k)
-			copy(recordBuf[13+recordBuf[4]:], indexObjItem.v.data)
+			if indexObjItem.v.deleted {
+				recordBuf[9] = 1
+			} else {
+				recordBuf[9] = 0
+			}
+			binary.BigEndian.PutUint32(recordBuf[10:], uint32(indexObjItem.v.expires))
+			copy(recordBuf[14:], indexObjItem.k)
+			copy(recordBuf[14+recordBuf[4]:], indexObjItem.v.data)
+			// fmt.Printf("record is: %v\n", recordBuf)
 			relativeDataPos += uint64(len(recordBuf))
 			_, err = dataWriter.Write(recordBuf)
 		}
