@@ -629,6 +629,7 @@ const setupResources = async () => {
     return {
         "ingress": ingressOutput,
         "modelStore": modelStoreOutput,
+        "planeId": input.planeId,
     }
 };
 

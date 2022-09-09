@@ -75,9 +75,8 @@ export const setup = async (input: inputType): Promise<pulumi.Output<outputType>
             })
         }, { provider: provider });
     });
-
     // get admins usergroup
-    const group = pulumi.output(aws.iam.getGroup({groupName: "admins"}, { provider: provider }));
+    const group = pulumi.output(aws.iam.getGroup({ groupName: "admins" }, { provider: provider }));
 
     // attach this IAM policy to the `admins` user group of the master account so that any user who joins/added
     // to the user group can assume admin access for the resources in this account
