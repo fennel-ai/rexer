@@ -25,7 +25,7 @@ import (
 
 const BCRYPT_COST = 14
 
-func newUser(db *gorm.DB, email, password string) (userL.User, error) {
+func newUser(db *gorm.DB, firstName, lastName, email, password string) (userL.User, error) {
 	hash, err := bcrypt.GenerateFromPassword([]byte(password), BCRYPT_COST)
 	if err != nil {
 		return userL.User{}, err
@@ -34,8 +34,8 @@ func newUser(db *gorm.DB, email, password string) (userL.User, error) {
 	return userL.User{
 		Email:             email,
 		EncryptedPassword: hash,
-		FirstName:         "Xiao", // TODO(xiao) pass params from upstream
-		LastName:          "Jiang",
+		FirstName:         firstName,
+		LastName:          lastName,
 	}, nil
 }
 
@@ -212,7 +212,7 @@ func SendResetPasswordEmail(c context.Context, db *gorm.DB, client *sendgrid.Cli
 	return result.Error
 }
 
-func SignUp(c context.Context, db *gorm.DB, email, password string) (userL.User, error) {
+func SignUp(c context.Context, db *gorm.DB, firstName, lastName, email, password string) (userL.User, error) {
 	var user userL.User
 
 	if _, err := netmail.ParseAddress(email); err != nil {
@@ -224,7 +224,7 @@ func SignUp(c context.Context, db *gorm.DB, email, password string) (userL.User,
 		return userL.User{}, &lib.ErrorUserAlreadySignedUp
 	}
 
-	user, err := newUser(db, email, password)
+	user, err := newUser(db, firstName, lastName, email, password)
 	if err != nil {
 		return user, err
 	}

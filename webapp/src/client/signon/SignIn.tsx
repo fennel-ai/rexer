@@ -17,6 +17,7 @@ function SignIn() {
                         <a href="/signup" className={styles.headerAlt}>Sign up instead?</a>
                     </div>
                     <SignInForm />
+                    <a href="/forgot_password">Forgot your password</a>
                 </div>
             </div>
         </div>
@@ -51,34 +52,34 @@ function SignInForm() {
     };
 
     return (
-        <Form
-            name="signin_form"
-            className={styles.mainForm}
-            initialValues={{ remember: true }}
-            onFinish={onFinish}
-        >
-            <Form.Item
-                name="email"
-                rules={[
-                    { required: true, message: "Please input your work email" },
-                    { type: "email", message: "Please input a valid email address"},
-                ]}
-                className={styles.formItem}
+        <div className={styles.mainForm}>
+            <Form
+                name="signin_form"
+
+                initialValues={{ remember: true }}
+                onFinish={onFinish}
             >
-                <Input placeholder="Work email" />
-            </Form.Item>
-            <Form.Item
-                name="password"
-                rules={[{ required: true, message: "Please input your password" }]}
-                className={styles.formItem}
-            >
-                <Input
-                    type="password"
-                    placeholder="Password"
-                    autoComplete="off"
-                />
-            </Form.Item>
-            <Form.Item className={styles.formItem}>
+                <Form.Item
+                    name="email"
+                    rules={[
+                        { required: true, message: "Please input your work email" },
+                        { type: "email", message: "Please input a valid email address"},
+                    ]}
+                    className={styles.formItem}
+                >
+                    <Input placeholder="Work email" />
+                </Form.Item>
+                <Form.Item
+                    name="password"
+                    rules={[{ required: true, message: "Please input your password" }]}
+                    className={styles.formItem}
+                >
+                    <Input
+                        type="password"
+                        placeholder="Password"
+                        autoComplete="off"
+                    />
+                </Form.Item>
                 <Button
                     type="primary"
                     htmlType="submit"
@@ -88,9 +89,8 @@ function SignInForm() {
 
                     {submitting ? (<div> <LoadingOutlined spin /> Signing In... </div>) : "Sign In"}
                 </Button>
-            </Form.Item>
-            <a href="/forgot_password">Forgot your password</a>
-        </Form>
+            </Form>
+        </div>
     );
 }
 

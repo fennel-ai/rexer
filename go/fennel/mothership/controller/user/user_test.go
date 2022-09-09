@@ -12,30 +12,6 @@ import (
 	"gorm.io/gorm"
 )
 
-func TestNewUser(t *testing.T) {
-	m, err := mothership.NewTestMothership()
-	assert.NoError(t, err)
-	defer func() { err = mothership.Teardown(m); assert.NoError(t, err) }()
-	db, err := gorm.Open(mysql.New(mysql.Config{
-		Conn: m.DB,
-	}), &gorm.Config{})
-	assert.NoError(t, err)
-
-	user, err := newUser(db, "test@fennel.ai", "12345")
-	assert.NoError(t, err)
-
-	assert.Equal(t, "test@fennel.ai", user.Email)
-	assert.False(t, user.RememberCreatedAt.Valid)
-	assert.False(t, user.RememberToken.Valid)
-	assert.Equal(t, user.CreatedAt, user.UpdatedAt)
-	assert.True(t, checkPasswordHash("12345", user.EncryptedPassword))
-
-	anotherUser, err := newUser(db, "another_test@fennel.ai", "12345")
-	assert.NoError(t, err)
-
-	assert.NotEqual(t, user.EncryptedPassword, anotherUser.EncryptedPassword)
-}
-
 func TestSignInAndLogout(t *testing.T) {
 	m, err := mothership.NewTestMothership()
 	assert.NoError(t, err)
@@ -49,16 +25,18 @@ func TestSignInAndLogout(t *testing.T) {
 	_, err = SignIn(ctx, db, "test@fennel.ai", "12345")
 	assert.ErrorIs(t, err, &lib.ErrorUserNotFound)
 
-	_, err = SignUp(ctx, db, "bademail", "12345")
+	_, err = SignUp(ctx, db, "John", "Doe", "bademail", "12345")
 	assert.ErrorIs(t, err, &lib.ErrorBadEmail)
 
-	user, err := SignUp(ctx, db, "test@fennel.ai", "12345")
+	user, err := SignUp(ctx, db, "John", "Doe", "test@fennel.ai", "12345")
 	assert.NoError(t, err)
+	assert.Equal(t, "John", user.FirstName)
+	assert.Equal(t, "Doe", user.LastName)
 	assert.Equal(t, "test@fennel.ai", user.Email)
 	assert.False(t, user.RememberToken.Valid)
 	assert.False(t, user.RememberCreatedAt.Valid)
 
-	_, err = SignUp(ctx, db, "test@fennel.ai", "12345")
+	_, err = SignUp(ctx, db, "John", "Doe", "test@fennel.ai", "12345")
 	assert.ErrorIs(t, err, &lib.ErrorUserAlreadySignedUp)
 
 	_, err = SignIn(ctx, db, "test@fennel.ai", "123")
@@ -101,7 +79,7 @@ func TestConfirmUser(t *testing.T) {
 	_, err = ConfirmUser(ctx, db, token)
 	assert.ErrorIs(t, err, &lib.ErrorUserNotFound)
 
-	user, err := SignUp(ctx, db, "test@fennel.ai", "12345")
+	user, err := SignUp(ctx, db, "John", "Doe", "test@fennel.ai", "12345")
 	assert.NoError(t, err)
 
 	result := db.Model(&user).Update("ConfirmationToken", token)
@@ -129,7 +107,7 @@ func TestResetPassword(t *testing.T) {
 	err = ResetPassword(ctx, db, "", "456")
 	assert.ErrorIs(t, err, &lib.ErrorUserNotFound)
 
-	user, err := SignUp(ctx, db, "test@fennel.ai", "123")
+	user, err := SignUp(ctx, db, "John", "Doe", "test@fennel.ai", "123")
 	assert.NoError(t, err)
 	result := db.Model(&user).Update("ConfirmedAt", 12345)
 	assert.NoError(t, result.Error)
@@ -157,7 +135,7 @@ func TestUpdatePassword(t *testing.T) {
 	assert.NoError(t, err)
 	ctx := context.Background()
 
-	user, err := SignUp(ctx, db, "test@fennel.ai", "12345")
+	user, err := SignUp(ctx, db, "John", "Doe", "test@fennel.ai", "12345")
 	assert.NoError(t, err)
 
 	_, err = UpdatePassword(ctx, db, user, "123", "1234")

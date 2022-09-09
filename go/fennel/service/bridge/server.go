@@ -266,17 +266,18 @@ func (s *server) ConfirmUser(c *gin.Context) {
 	c.Redirect(http.StatusFound, SignInURL)
 }
 
-type SignOnForm struct {
-	Email    string `json:"email"`
-	Password string `json:"password"`
-}
-
 func (s *server) sendgridClient() *sendgrid.Client {
 	return sendgrid.NewSendClient(s.args.SendgridAPIKey)
 }
 
 func (s *server) SignUp(c *gin.Context) {
-	var form SignOnForm
+	var form struct {
+		FirstName string `json:"firstName"`
+		LastName  string `json:"lastName"`
+		Email     string `json:"email"`
+		Password  string `json:"password"`
+	}
+
 	if err := c.BindJSON(&form); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"error": err.Error(),
@@ -285,7 +286,7 @@ func (s *server) SignUp(c *gin.Context) {
 	}
 
 	ctx := c.Request.Context()
-	user, err := userC.SignUp(ctx, s.db, form.Email, form.Password)
+	user, err := userC.SignUp(ctx, s.db, form.FirstName, form.LastName, form.Email, form.Password)
 	if err != nil {
 		respondError(c, err, "sign up")
 		return
@@ -299,7 +300,11 @@ func (s *server) SignUp(c *gin.Context) {
 }
 
 func (s *server) SignIn(c *gin.Context) {
-	var form SignOnForm
+	var form struct {
+		Email    string `json:"email"`
+		Password string `json:"password"`
+	}
+
 	if err := c.BindJSON(&form); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"error": err.Error(),

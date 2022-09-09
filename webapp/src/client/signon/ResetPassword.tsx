@@ -59,44 +59,43 @@ function ResetForm() {
     };
 
     return (
-        <Form
-            name="reset_password_form"
-            className={styles.mainForm}
-            onFinish={onFinish}
-        >
-            <Form.Item
-                name="password"
-                rules={[{ required: true, message: "Please input your password" }]}
-                className={styles.formItem}
+        <div className={styles.mainForm}>
+            <Form
+                name="reset_password_form"
+                onFinish={onFinish}
             >
-                <Input
-                    type="password"
-                    placeholder="Enter new password"
-                    autoComplete="off"
-                />
-            </Form.Item>
-            <Form.Item
-                name="confirm_password"
-                rules={[
-                    { required: true, message: "Please re-enter your password" },
-                    ({ getFieldValue }) => ({
-                        validator(_, value) {
-                            if (!value || getFieldValue("password") === value) {
-                                return Promise.resolve();
-                            }
-                            return Promise.reject(new Error('The two passwords do not match'));
-                        },
-                    }),
-                ]}
-                className={styles.formItem}
-            >
-                <Input
-                    type="password"
-                    placeholder="Re-enter new password"
-                    autoComplete="off"
-                />
-            </Form.Item>
-            <Form.Item className={styles.formItem}>
+                <Form.Item
+                    name="password"
+                    rules={[{ required: true, message: "Please input your password" }]}
+                    className={styles.formItem}
+                >
+                    <Input
+                        type="password"
+                        placeholder="Enter new password"
+                        autoComplete="off"
+                    />
+                </Form.Item>
+                <Form.Item
+                    name="confirm_password"
+                    rules={[
+                        { required: true, message: "Please re-enter your password" },
+                        ({ getFieldValue }) => ({
+                            validator(_, value) {
+                                if (!value || getFieldValue("password") === value) {
+                                    return Promise.resolve();
+                                }
+                                return Promise.reject(new Error('The two passwords do not match'));
+                            },
+                        }),
+                    ]}
+                    className={styles.formItem}
+                >
+                    <Input
+                        type="password"
+                        placeholder="Re-enter new password"
+                        autoComplete="off"
+                    />
+                </Form.Item>
                 <Button
                     type="primary"
                     htmlType="submit"
@@ -106,8 +105,8 @@ function ResetForm() {
 
                     {submitting ? (<div> <LoadingOutlined spin /> Sending... </div>) : "Confirm Password Reset"}
                 </Button>
-            </Form.Item>
-        </Form>
+            </Form>
+        </div>
     );
 }
 
