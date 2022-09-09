@@ -17,10 +17,6 @@ func NewMemTable() Memtable {
 	}
 }
 
-func (mt *Memtable) GetLock() *sync.RWMutex {
-	return mt.lock
-}
-
 func (mt *Memtable) Get(k []byte) (Value, error) {
 	mt.lock.RLock()
 	val, ok := mt.map_[string(k)]

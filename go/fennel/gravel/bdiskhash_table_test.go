@@ -29,7 +29,7 @@ func TestBDiskHashTable(t *testing.T) {
 	fmt.Println("time_ms insert all data to memtable:", time.Now().Sub(t1).Milliseconds(), "ideal data size", idealSize)
 
 	t1 = time.Now()
-	table, err := buildBDiskHashTable("/tmp", 133, &mt)
+	table, err := mt.Flush(BDiskHashTable, "/tmp", 133)
 	assert.NoError(t, err)
 	fmt.Println("time_ms dump to file:", time.Now().Sub(t1).Milliseconds())
 
