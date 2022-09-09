@@ -43,7 +43,7 @@ export const setup = async (input: inputType): Promise<pulumi.Output<outputType>
         // we use kafka version 2.6.2 in msk cluster, so need to set the operator version to 0.23.0
         //
         // https://github.com/strimzi/strimzi-kafka-operator/releases/tag/0.23.0
-        version: "0.23.0",
+        version: "0.29.0",
         namespace: ns.metadata.name,
         values: {
             nodeSelector: {

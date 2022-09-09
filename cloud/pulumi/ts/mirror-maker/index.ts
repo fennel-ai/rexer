@@ -93,7 +93,7 @@ export const setup = async (input: inputType): Promise<pulumi.Output<outputType>
             name: `t-${input.tierId}-mirrormaker2`,
         },
         spec: {
-            "version": "2.7.0",
+            "version": "3.2.0",
             "replicas": input.conf.replicas || DEFAULT_REPLICAS,
             "connectCluster": "target-cluster",
             "clusters": [
@@ -142,7 +142,8 @@ export const setup = async (input: inputType): Promise<pulumi.Output<outputType>
                         "config": {
                             "replication.factor": 2,
                             "offset-syncs.topic.replication.factor": 2,
-                            "replication.policy.class": "io.strimzi.kafka.connect.mirror.IdentityReplicationPolicy"
+                            "replication.policy.class": "io.strimzi.kafka.connect.mirror.IdentityReplicationPolicy",
+                            "offset-syncs.topic.location": "target",
                         }
                     },
                     "heartbeatConnector": {
@@ -157,7 +158,8 @@ export const setup = async (input: inputType): Promise<pulumi.Output<outputType>
                             "sync.group.offsets.enabled": true,
                             "sync.group.offsets.interval.seconds": 10,
                             "emit.checkpoints.interval.seconds": 10,
-                            "replication.policy.class": "io.strimzi.kafka.connect.mirror.IdentityReplicationPolicy"
+                            "replication.policy.class": "io.strimzi.kafka.connect.mirror.IdentityReplicationPolicy",
+                            "offset-syncs.topic.location": "target",
                         }
                     },
                     "topicsPattern": topicRegex,

@@ -174,13 +174,13 @@ const tierConfs: Record<number, TierConf> = {
             replicas: 4,
         },
         enableNitrous: true,
-        createTopicsInMsk: true,
+        // createTopicsInMsk: true,
         mirrorMakerConf: {
             // the tasks will be split among them
-            replicas: 3,
-            sourceConnectorTasks: 20,
+            replicas: 1,
+            sourceConnectorTasks: 10,
             // consumer groups for action log is high
-            checkpointConnectorTasks: 50,
+            checkpointConnectorTasks: 10,
             cpuRequests: "2",
             cpuLimits: "4",
             memoryRequests: "3Gi",
@@ -745,7 +745,7 @@ const dataPlaneConfs: Record<number, DataPlaneConf> = {
                 // by default MSK sets this to 2 for the cluster configured in 2 AZs - this is bad for availability
                 // since it is possible that one of the AZ is unreachable and the broker in the same AZ is down
                 // (could be a rolling update affecting this broker)
-                replicationFactor: 3,
+                replicationFactor: 2,
                 // TODO(mohit): min in-sync replicas is set to 1, since we have 2 AZs.
                 // see - https://docs.aws.amazon.com/msk/latest/developerguide/msk-default-configuration.html
                 //
@@ -764,7 +764,7 @@ const dataPlaneConfs: Record<number, DataPlaneConf> = {
             brokerType: "kafka.m5.large",
             // this will place 2 broker nodes in each of the AZs
             numberOfBrokerNodes: 4,
-            storageVolumeSizeGiB: 2048,
+            storageVolumeSizeGiB: 1024,
         },
 
         // setup strimzi
