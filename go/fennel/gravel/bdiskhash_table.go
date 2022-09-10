@@ -45,7 +45,7 @@ type bDiskHashTable struct {
 }
 
 func (b *bDiskHashTable) DataReads() uint64 {
-	return b.reads.Load()
+	return b.reads.Load() * sampleRate
 }
 
 func (b *bDiskHashTable) Get(key []byte) (Value, error) {
@@ -101,7 +101,7 @@ func (b *bDiskHashTable) Get(key []byte) (Value, error) {
 		if i >= itemsInBucket {
 			panic("file is inconsistent state")
 		}
-		b.reads.Add(1)
+		maybeInc(shouldSample(), &b.reads)
 
 		_, err := b.data.ReadAt(buf4, int64(curDataPos))
 		if err != nil {

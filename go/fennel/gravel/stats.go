@@ -3,9 +3,14 @@ package gravel
 import (
 	"time"
 
+	"github.com/detailyang/fastrand-go"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 	"go.uber.org/atomic"
+)
+
+const (
+	sampleRate = 128
 )
 
 type Stats struct {
@@ -34,18 +39,19 @@ func (g *Gravel) reportStats() {
 	name := g.opts.Name
 	for range time.Tick(10 * time.Second) {
 		func() {
-			stats.WithLabelValues("hits", name).Set(float64(g.stats.Gets.Load()))
-			stats.WithLabelValues("misses", name).Set(float64(g.stats.Misses.Load()))
-			stats.WithLabelValues("memtable_hits", name).Set(float64(g.stats.MemtableHits.Load()))
-			stats.WithLabelValues("memtable_misses", name).Set(float64(g.stats.MemtableMisses.Load()))
-			stats.WithLabelValues("table_index_reads", name).Set(float64(g.stats.TableIndexReads.Load()))
-			stats.WithLabelValues("sets", name).Set(float64(g.stats.Sets.Load()))
-			stats.WithLabelValues("dels", name).Set(float64(g.stats.Dels.Load()))
-			stats.WithLabelValues("commits", name).Set(float64(g.stats.Commits.Load()))
+			stats.WithLabelValues("hits", name).Set(float64(g.stats.Gets.Load() * sampleRate))
+			stats.WithLabelValues("misses", name).Set(float64(g.stats.Misses.Load() * sampleRate))
+			stats.WithLabelValues("memtable_hits", name).Set(float64(g.stats.MemtableHits.Load() * sampleRate))
+			stats.WithLabelValues("memtable_misses", name).Set(float64(g.stats.MemtableMisses.Load() * sampleRate))
+			stats.WithLabelValues("table_index_reads", name).Set(float64(g.stats.TableIndexReads.Load() * sampleRate))
+			stats.WithLabelValues("sets", name).Set(float64(g.stats.Sets.Load() * sampleRate))
+			stats.WithLabelValues("dels", name).Set(float64(g.stats.Dels.Load() * sampleRate))
+			stats.WithLabelValues("commits", name).Set(float64(g.stats.Commits.Load() * sampleRate))
+
+			stats.WithLabelValues("num_tables", name).Set(float64(g.stats.NumTables.Load()))
+			stats.WithLabelValues("num_table_builds", name).Set(float64(g.stats.NumTableBuilds.Load()))
 			stats.WithLabelValues("memtable_size_bytes", name).Set(float64(g.stats.MemtableSizeBytes.Load()))
 			stats.WithLabelValues("memtable_keys", name).Set(float64(g.stats.MemtableKeys.Load()))
-			stats.WithLabelValues("num_table_builds", name).Set(float64(g.stats.NumTableBuilds.Load()))
-			stats.WithLabelValues("num_tables", name).Set(float64(g.stats.NumTables.Load()))
 
 			g.tableListLock.RLock()
 			defer g.tableListLock.RUnlock()
@@ -56,4 +62,14 @@ func (g *Gravel) reportStats() {
 			stats.WithLabelValues("table_data_reads", name).Set(float64(reads))
 		}()
 	}
+}
+
+func maybeInc(shouldSample bool, a *atomic.Uint64) {
+	if shouldSample {
+		a.Inc()
+	}
+}
+
+func shouldSample() bool {
+	return (fastrand.FastRand() & (sampleRate - 1)) == 0
 }

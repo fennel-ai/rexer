@@ -2,7 +2,6 @@ package gravel
 
 import (
 	"errors"
-	"github.com/detailyang/fastrand-go"
 	"io/ioutil"
 	"os"
 	"path"
@@ -67,20 +66,16 @@ func Open(opts Options) (ret *Gravel, failure error) {
 }
 
 func (g *Gravel) Get(key []byte) ([]byte, error) {
-	sampleStats := fastrand.FastRand()%100 == 0
-	if sampleStats {
-		g.stats.Gets.Add(1)
-	}
+	sample := shouldSample()
+	maybeInc(sample, &g.stats.Gets)
 	now := Timestamp(time.Now().Unix())
 	val, err := g.memtable.Get(key)
 	switch err {
 	case ErrNotFound:
 		// do nothing, we will just check it in all the tables
-		g.stats.MemtableMisses.Inc()
+		maybeInc(sample, &g.stats.MemtableMisses)
 	case nil:
-		if sampleStats {
-			g.stats.MemtableHits.Add(1)
-		}
+		maybeInc(sample, &g.stats.MemtableHits)
 		return handle(val, now)
 	default:
 		return nil, err
@@ -88,9 +83,7 @@ func (g *Gravel) Get(key []byte) ([]byte, error) {
 	g.tableListLock.RLock()
 	defer g.tableListLock.RUnlock()
 	for _, table := range g.tableList {
-		if sampleStats {
-			g.stats.TableIndexReads.Add(1)
-		}
+		maybeInc(sample, &g.stats.TableIndexReads)
 		val, err := table.Get(key)
 		switch err {
 		case ErrNotFound:
@@ -100,9 +93,7 @@ func (g *Gravel) Get(key []byte) ([]byte, error) {
 			return nil, err
 		}
 	}
-	if sampleStats {
-		g.stats.Misses.Add(1)
-	}
+	maybeInc(sample, &g.stats.Misses)
 	return nil, ErrNotFound
 }
 
@@ -126,7 +117,7 @@ func (g *Gravel) commit(batch *Batch) error {
 	if g.memtable.Size()+batchsz > g.opts.MaxTableSize {
 		// we need to flush the memtable and then apply this write
 		table, err := g.memtable.Flush(g.opts.TableType, g.opts.Dirname, g.nextID())
-		g.stats.NumTableBuilds.Add(1)
+		maybeInc(true, &g.stats.NumTableBuilds)
 		if err != nil {
 			return err
 		}

@@ -59,15 +59,14 @@ func (mt *Memtable) SetMany(entries []Entry, stats *Stats) error {
 		mt.map_[string(e.key)] = e.val
 		mt.size += uint64(sizeof(e))
 		if e.val.deleted {
-			stats.Dels.Add(1)
+			maybeInc(shouldSample(), &stats.Dels)
 		} else {
-			stats.Sets.Add(1)
+			maybeInc(shouldSample(), &stats.Sets)
 		}
 	}
-	stats.MemtableKeys.Add(uint64(len(entries)))
 	stats.MemtableSizeBytes.Store(mt.Size())
 	stats.MemtableKeys.Store(uint64(len(mt.map_)))
-	stats.Commits.Inc()
+	maybeInc(shouldSample(), &stats.Commits)
 	return nil
 }
 
