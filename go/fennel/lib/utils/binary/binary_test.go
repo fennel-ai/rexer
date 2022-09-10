@@ -134,3 +134,85 @@ func TestPut_ReadBytes(t *testing.T) {
 		}
 	}
 }
+
+func TestPutUint64(t *testing.T) {
+	scenarios := []struct {
+		buf   []byte
+		input uint64
+		err   bool
+	}{
+		{make([]byte, 0), 1, true},
+		{make([]byte, 7), 255, true},
+		{make([]byte, 8), 255, false},
+		{make([]byte, 8), 1 << 41, false},
+		{make([]byte, 8), 1 << 41, false},
+		{make([]byte, 10), rand.Uint64(), false},
+	}
+	for _, scene := range scenarios {
+		n, err := PutUint64(scene.buf, scene.input)
+		if scene.err {
+			assert.Error(t, err)
+		} else {
+			assert.NoError(t, err)
+			assert.Equal(t, 8, n)
+
+			found, n1, err := ReadUint64(scene.buf)
+			assert.NoError(t, err)
+			assert.Equal(t, scene.input, found)
+			assert.Equal(t, 8, n1)
+		}
+	}
+}
+func TestPutUint32(t *testing.T) {
+	scenarios := []struct {
+		buf   []byte
+		input uint32
+		err   bool
+	}{
+		{make([]byte, 0), 1, true},
+		{make([]byte, 3), 255, true},
+		{make([]byte, 4), 255, false},
+		{make([]byte, 5), 255, false},
+		{make([]byte, 4), rand.Uint32(), false},
+	}
+	for _, scene := range scenarios {
+		n, err := PutUint32(scene.buf, scene.input)
+		if scene.err {
+			assert.Error(t, err)
+		} else {
+			assert.NoError(t, err)
+			assert.Equal(t, 4, n)
+
+			found, n1, err := ReadUint32(scene.buf)
+			assert.NoError(t, err)
+			assert.Equal(t, scene.input, found)
+			assert.Equal(t, 4, n1)
+		}
+	}
+}
+func TestPutUint16(t *testing.T) {
+	scenarios := []struct {
+		buf   []byte
+		input uint16
+		err   bool
+	}{
+		{make([]byte, 0), 1, true},
+		{make([]byte, 1), 255, true},
+		{make([]byte, 2), 255, false},
+		{make([]byte, 3), 255, false},
+	}
+	for _, scene := range scenarios {
+		n, err := PutUint16(scene.buf, scene.input)
+		if scene.err {
+			assert.Error(t, err)
+		} else {
+			assert.NoError(t, err)
+			assert.Equal(t, 2, n)
+
+			found, n1, err := ReadUint16(scene.buf)
+			assert.NoError(t, err)
+			assert.Equal(t, scene.input, found)
+			assert.Equal(t, 2, n1)
+		}
+	}
+}

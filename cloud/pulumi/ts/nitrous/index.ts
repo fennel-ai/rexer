@@ -256,7 +256,7 @@ export const setup = async (input: inputType) => {
                             // instances running outside the cluster.
                             // See: https://linkerd.io/2.11/features/protocol-detection/.
                             "config.linkerd.io/skip-outbound-ports": "3306,6379",
-                            "prometheus.io/scrape": "true",
+                            "prometheus.io/scrape_frequent": "true",
                             "prometheus.io/port": metricsPort.toString(),
                         }
                     },
@@ -289,8 +289,8 @@ export const setup = async (input: inputType) => {
                                     `${healthPort}`,
                                     "--plane-id",
                                     `${input.planeId}`,
-                                    "--pebble_dir",
-                                    "/oxide/pebble",
+                                    "--gravel_dir",
+                                    "/oxide/gravel",
                                     "--badger_block_cache_mb",
                                     `${input.blockCacheMB}`,
                                     "--ristretto_max_cost",
