@@ -256,7 +256,7 @@ export const setup = async (input: inputType) => {
                             // instances running outside the cluster.
                             // See: https://linkerd.io/2.11/features/protocol-detection/.
                             "config.linkerd.io/skip-outbound-ports": "3306,6379",
-                            "prometheus.io/scrape": "true",
+                            "prometheus.io/scrape_frequent": "true",
                             "prometheus.io/port": metricsPort.toString(),
                         }
                     },

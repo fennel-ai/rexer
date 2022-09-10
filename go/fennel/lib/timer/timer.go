@@ -3,6 +3,7 @@ package timer
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"fennel/lib/ftypes"
 
@@ -24,6 +25,12 @@ var fnDuration = promauto.NewSummaryVec(prometheus.SummaryOpts{
 		0.99: 0.01,
 		0.999: 0.001,
 	},
+	// Time window now is 30 seconds wide, defaults to 10m
+	//
+	// NOTE: we configure this > the lowest scrape interval configured for prometheus job
+	MaxAge: 30 * time.Second,
+	// we slide the window every 6 (= 30 / 5 ) seconds
+	AgeBuckets: 5,
 }, []string{"realm_id", "function_name"})
 
 type Timer struct {

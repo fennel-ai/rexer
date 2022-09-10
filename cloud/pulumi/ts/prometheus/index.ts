@@ -76,6 +76,57 @@ function scrapeConfigs(input: inputType) {
         //     "regex": "go_gc_duration_seconds.*"
         //   }]
     }, {
+        "job_name": "kubernetes-pods-frequent-scrape",
+        "scrape_interval": "10s",
+        "kubernetes_sd_configs": [{
+            "role": "pod"
+        }],
+        "relabel_configs": [{
+            "action": "keep",
+            "regex": true,
+            "source_labels": ["__meta_kubernetes_pod_annotation_prometheus_io_scrape_frequent"]
+        }, {
+            "action": "replace",
+            "source_labels": ["__meta_kubernetes_pod_annotation_prometheus_io_port", "__address__"],
+            "regex": "([^:]+)(?::\d+)?;(\d+)",
+            "replacement": "$$1:$$2",
+            "target_label": "__address__"
+        }, {
+            "action": "replace",
+            "source_labels": ["__meta_kubernetes_namespace"],
+            "target_label": "Namespace",
+        }, {
+            "action": "replace",
+            "source_labels": ["__meta_kubernetes_pod_name"],
+            "target_label": "PodName",
+        }, {
+            "action": "replace",
+            "source_labels": ["__meta_kubernetes_pod_container_name"],
+            "target_label": "ContainerName",
+        }, {
+            "action": "replace",
+            "source_labels": ["__meta_kubernetes_pod_controller_name"],
+            "target_label": "PodControllerName",
+        }, {
+            "action": "replace",
+            "source_labels": ["__meta_kubernetes_pod_controller_kind"],
+            "target_label": "PodControllerKind",
+        }, {
+            "action": "replace",
+            "source_labels": ["__meta_kubernetes_pod_phase"],
+            "target_label": "PodPhase",
+        }, {
+            "action": "drop",
+            "source_labels": ["__meta_kubernetes_pod_container_name"],
+            "regex": "(linkerd-init|linkerd-proxy)",
+        }],
+        // fails with: "str `__name__` into model.LabelNames"
+        // "metric_relabel_configs": [{
+        //     "action": "drop",
+        //     "source_labels": ["__name__"],
+        //     "regex": "go_gc_duration_seconds.*"
+        //   }]
+    }, {
         "job_name": "kubernetes-nodes-cadvisor",
         "kubernetes_sd_configs": [{
             "role": "node"

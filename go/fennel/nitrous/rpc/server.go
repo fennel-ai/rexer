@@ -40,6 +40,12 @@ var (
 			0.999:  0.001,
 			0.9999: 0.0001,
 		},
+		// Time window now is 30 seconds wide, defaults to 10m
+		//
+		// NOTE: we configure this > the lowest scrape interval configured for prometheus job
+		MaxAge: 30 * time.Second,
+		// we slide the window every 6 (= 30 / 5 ) seconds
+		AgeBuckets: 5,
 	})
 	OK = status.New(codes.OK, "Success").Proto()
 )
