@@ -10,7 +10,7 @@
     "start": "tsc && node --experimental-specifier-resolution=node --unhandled-rejections=strict --loader ts-node/esm --no-warnings ./bin/index.js"
   },
   "dependencies": {
-    "@pulumi/aws": "^4.38.1",
+    "@pulumi/aws": "^5.0.0",
     "@pulumi/command": "0.0.3",
     "@pulumi/confluent": "^0.2.2",
     "@pulumi/docker": "^3.1.0",

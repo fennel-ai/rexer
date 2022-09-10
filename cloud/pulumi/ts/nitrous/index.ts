@@ -32,8 +32,8 @@ const BINLOG_TOPIC_NAME = "nitrous_log"
 // default for resource requirement configurations
 const DEFAULT_CPU_REQUEST = "1000m"
 const DEFAULT_CPU_LIMIT = "1500m"
-const DEFAULT_MEMORY_REQUEST = "2G"
-const DEFAULT_MEMORY_LIMIT = "4G"
+const DEFAULT_MEMORY_REQUEST = "2Gi"
+const DEFAULT_MEMORY_LIMIT = "4Gi"
 
 export const name = "nitrous"
 export const namespace = "fennel"

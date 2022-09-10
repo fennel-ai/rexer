@@ -2,7 +2,7 @@ import * as pulumi from "@pulumi/pulumi";
 import * as aws from "@pulumi/aws";
 
 export const plugins = {
-    "aws": "v4.38.1"
+    "aws": "v5.0.0"
 }
 
 // TODO(mohit): Consolidate with training data generation kafka connector if possible to remove redundant configurations

@@ -5,7 +5,7 @@ const ROOT_ID = "r-7try";
 
 
 export const plugins = {
-    "aws": "v4.38.1",
+    "aws": "v5.0.0",
 }
 
 export const MASTER_ACCOUNT_ADMIN_ROLE_ARN = "arn:aws:iam::030813887342:role/admin";
