@@ -213,10 +213,10 @@ func (g *Gravel) flush() error {
 // flushing doesn't hurt us and can make future startup faster.
 // This function forces a flush 10 minutes after the last natural flush.
 func (g *Gravel) periodicallyFlush() {
-	ticker := time.Tick(10 * time.Minute)
+	ticker := time.NewTicker(10 * time.Minute)
 	for {
 		select {
-		case <-ticker:
+		case <-ticker.C:
 			func() {
 				g.commitlock.Lock()
 				defer g.commitlock.Unlock()
@@ -226,7 +226,7 @@ func (g *Gravel) periodicallyFlush() {
 				g.flush()
 			}()
 		case <-g.flushch:
-			ticker = time.Tick(10 * time.Minute)
+			ticker = time.NewTicker(10 * time.Minute)
 		}
 	}
 }
