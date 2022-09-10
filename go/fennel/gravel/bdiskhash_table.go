@@ -347,7 +347,6 @@ func openBDiskHashTable(id uint64, filepath string) (Table, error) {
 	if err != nil {
 		return nil, err
 	}
-	uselessBuf = nil
 
 	return &bDiskHashTable{
 		data:        data,
