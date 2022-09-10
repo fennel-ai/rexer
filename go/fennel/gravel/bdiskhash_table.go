@@ -6,6 +6,7 @@ import (
 	"context"
 	"encoding/binary"
 	"fennel/lib/timer"
+	"fennel/lib/utils/math"
 	"fmt"
 	"os"
 	"path"
@@ -52,7 +53,13 @@ func (b *bDiskHashTable) DataReads() uint64 {
 
 func (b *bDiskHashTable) Get(key []byte) (Value, error) {
 	hash := xxhash.Sum64(key)
-	bucketId := hash % b.bucketCount
+	bucketCount := b.bucketCount
+	var bucketId uint64
+	if bucketCount&(bucketCount-1) == 0 {
+		bucketId = hash & (bucketCount - 1)
+	} else {
+		bucketId = hash % b.bucketCount
+	}
 
 	buf4 := make([]byte, 4)
 	_, err := b.data.ReadAt(buf4, int64(headerSize+bucketId*4))
@@ -197,9 +204,7 @@ func buildBDiskHashTable(dirname string, id uint64, mt *Memtable) (table Table, 
 
 		itemCount := len(m)
 		bucketCount := uint64(itemCount / int(avgBucketSize))
-		if bucketCount == 0 {
-			bucketCount = 1
-		}
+		bucketCount = math.NextPowerOf2(bucketCount)
 		headSlice := make([]byte, bucketCount*4)
 		for i := 0; i < int(bucketCount*4); i++ {
 			headSlice[i] = 0xFF
