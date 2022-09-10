@@ -353,6 +353,9 @@ func openBDiskHashTable(id uint64, filepath string) (Table, error) {
 	if err != nil {
 		return nil, fmt.Errorf("unable to open disk hash file: %w", err)
 	}
+	if data.Len() == 0 {
+		return nil, fmt.Errorf("unable to open disk hash file: empty file")
+	}
 	buf := make([]byte, headerSize)
 	_, err = data.ReadAt(buf, 0)
 	if err != nil {
