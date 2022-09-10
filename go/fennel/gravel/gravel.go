@@ -46,7 +46,7 @@ func Open(opts Options) (ret *Gravel, failure error) {
 		opts:          opts,
 		commitlock:    sync.Mutex{},
 		stats:         Stats{},
-		flushch:       make(chan struct{}),
+		flushch:       make(chan struct{}, 1),
 	}
 	files, err := ioutil.ReadDir(opts.Dirname)
 	if err != nil {
