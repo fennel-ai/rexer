@@ -10,8 +10,6 @@ import (
 
 	"fennel/hangar"
 	"fennel/hangar/encoders"
-	"fennel/hangar/layered"
-	"fennel/hangar/mem"
 	gravelDB "fennel/hangar/gravel"
 	libkafka "fennel/kafka"
 	"fennel/lib/ftypes"
@@ -119,17 +117,12 @@ func CreateFromArgs(args NitrousArgs) (Nitrous, error) {
 	if err != nil {
 		return Nitrous{}, fmt.Errorf("failed to create pebble db: %w", err)
 	}
-	cache, err := mem.NewHangar(scope.ID(), 64, encoders.Default())
-	if err != nil {
-		return Nitrous{}, fmt.Errorf("failed to create cache: %w", err)
-	}
-	layered := layered.NewHangar(scope.ID(), cache, gravelDb)
 
 	return Nitrous{
 		PlaneID:              scope.ID(),
 		Identity:             args.Identity,
 		KafkaConsumerFactory: consumerFactory,
 		Clock:                clock.New(),
-		Store:                layered,
+		Store:                gravelDb,
 	}, nil
 }
