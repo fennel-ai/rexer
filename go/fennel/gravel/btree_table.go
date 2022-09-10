@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"go.uber.org/zap"
 	"os"
 	"path"
 	"sort"
@@ -71,6 +72,12 @@ func buildBTreeTable(dirname string, id uint64, mt *Memtable) (Table, error) {
 	filepath := path.Join(dirname, fmt.Sprintf("%d%s", id, SUFFIX))
 	fmt.Printf("file path is: %s\n", filepath)
 	db, err := bbolt.Open(filepath, 0666, nil)
+	defer func(db *bbolt.DB) {
+		err := db.Close()
+		if err != nil {
+			zap.L().Error("failed to close db", zap.Error(err))
+		}
+	}(db)
 	if err != nil {
 		return nil, fmt.Errorf("could not open file during table building: %w", err)
 	}
@@ -127,7 +134,9 @@ func buildBTreeTable(dirname string, id uint64, mt *Memtable) (Table, error) {
 		// }
 		// return bfilter.Put([]byte(bloomkey), filter.Dump())
 	})
-	db.Close()
+	if err != nil {
+		return nil, err
+	}
 	// now open the table in just readonly mode and return that
 	return openBTreeTable(id, filepath)
 }

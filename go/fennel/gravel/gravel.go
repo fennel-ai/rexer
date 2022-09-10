@@ -154,7 +154,7 @@ func (g *Gravel) nextID() uint64 {
 
 func (g *Gravel) addTable(t Table) {
 	g.tableListLock.Lock()
-	g.tableListLock.Unlock()
+	defer g.tableListLock.Unlock()
 	g.tableList = append(g.tableList, t)
 	sort.Slice(g.tableList, func(i, j int) bool {
 		return g.tableList[i].ID() > g.tableList[j].ID()

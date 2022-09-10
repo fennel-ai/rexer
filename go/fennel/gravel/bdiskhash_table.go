@@ -111,10 +111,6 @@ func (b *bDiskHashTable) Get(key []byte) (Value, error) {
 		recordSize := binary.BigEndian.Uint32(buf4)
 
 		if i == matchIndices[matchIdx] {
-			// fmt.Printf("record size is: %d\n", recordSize)
-			record := make([]byte, recordSize)
-			_, err = b.data.ReadAt(record, int64(curDataPos))
-			// fmt.Printf("record is: %v\n", record)
 			keyLen := uint64(b.data.At(int(curDataPos + 4)))
 			curKey := make([]byte, keyLen)
 			_, err = b.data.ReadAt(curKey, int64(curDataPos+4+1+4+1+4))
@@ -281,7 +277,9 @@ func buildBDiskHashTable(dirname string, id uint64, mt *Memtable) (Table, error)
 			copy(recordBuf[14+recordBuf[4]:], indexObjItem.v.data)
 			// fmt.Printf("record is: %v\n", recordBuf)
 			relativeDataPos += uint64(len(recordBuf))
-			_, err = dataWriter.Write(recordBuf)
+			if _, err = dataWriter.Write(recordBuf); err != nil {
+				return err
+			}
 		}
 
 		fmt.Println("Index size", dataPos)

@@ -30,12 +30,12 @@ func TestBDiskHashTable(t *testing.T) {
 		assert.NoError(t, err)
 		idealSize += 8 + 16 + i%50 + 4
 	}
-	fmt.Println("time_ms insert all data to memtable:", time.Now().Sub(t1).Milliseconds(), "ideal data size", idealSize)
+	fmt.Println("time_ms insert all data to memtable:", time.Since(t1).Milliseconds(), "ideal data size", idealSize)
 
 	t1 = time.Now()
 	table, err := mt.Flush(BDiskHashTable, "/tmp", 133)
 	assert.NoError(t, err)
-	fmt.Println("time_ms dump to file:", time.Now().Sub(t1).Milliseconds())
+	fmt.Println("time_ms dump to file:", time.Since(t1).Milliseconds())
 
 	t1 = time.Now()
 	for i := 0; i < itemCnt; i++ {
@@ -50,7 +50,7 @@ func TestBDiskHashTable(t *testing.T) {
 		assert.Equal(t, i, valueNum)
 		assert.Equal(t, i%50+16, len(v.data))
 	}
-	fmt.Println("time_ms read from file:", time.Now().Sub(t1).Milliseconds())
+	fmt.Println("time_ms read from file:", time.Since(t1).Milliseconds())
 
 	t1 = time.Now()
 	key = make([]byte, 9)
@@ -60,5 +60,5 @@ func TestBDiskHashTable(t *testing.T) {
 		_, err := table.Get(key)
 		assert.Equal(t, err, ErrNotFound)
 	}
-	fmt.Println("time_ms read from file for non-exist records:", time.Now().Sub(t1).Milliseconds())
+	fmt.Println("time_ms read from file for non-exist records:", time.Since(t1).Milliseconds())
 }

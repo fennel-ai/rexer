@@ -1,18 +1,18 @@
 package nitrous
 
 import (
+	"fennel/gravel"
 	"fennel/lib/instancemetadata"
 	"fmt"
 	"log"
 
-	"github.com/cockroachdb/pebble"
 	"github.com/samber/mo"
 
 	"fennel/hangar"
 	"fennel/hangar/encoders"
 	"fennel/hangar/layered"
 	"fennel/hangar/mem"
-	pebbleDB "fennel/hangar/pebble"
+	gravelDB "fennel/hangar/gravel"
 	libkafka "fennel/kafka"
 	"fennel/lib/ftypes"
 	"fennel/resource"
@@ -32,6 +32,7 @@ type NitrousArgs struct {
 	MskKafkaPassword   string         `arg:"--msk-kafka-password,env:MSK_KAFKA_PASSWORD" json:"msk_kafka_password,omitempty"`
 	BadgerDir          string         `arg:"--badger_dir,env:BADGER_DIR" json:"badger_dir,omitempty"`
 	PebbleDir          string         `arg:"--pebble_dir,env:PEBBLE_DIR" json:"pebble_dir,omitempty"`
+	GravelDir 		   string 		  `arg:"--gravel_dir,env=GRAVEL_DIR" json:"gravel_dir,omitempty"`
 	BadgerBlockCacheMB int64          `arg:"--badger_block_cache_mb,env:BADGER_BLOCK_CACHE_MB" json:"badger_block_cache_mb,omitempty"`
 	RistrettoMaxCost   uint64         `arg:"--ristretto_max_cost,env:RISTRETTO_MAX_COST" json:"ristretto_max_cost,omitempty"`
 	RistrettoAvgCost   uint64         `arg:"--ristretto_avg_cost,env:RISTRETTO_AVG_COST" json:"ristretto_avg_cost,omitempty" default:"1000"`
@@ -113,13 +114,8 @@ func CreateFromArgs(args NitrousArgs) (Nitrous, error) {
 		return kafkaConsumer.(libkafka.FConsumer), nil
 	}
 
-	// Initialize layered storage.
-	pebbleOpts := &pebble.Options{
-		Levels: []pebble.LevelOptions{{
-			Compression: pebble.NoCompression,
-		}},
-	}
-	pebbledb, err := pebbleDB.NewHangar(scope.ID(), args.PebbleDir, pebbleOpts, encoders.Default())
+	gravalOps := gravel.DefaultOptions().WithDirname(args.GravelDir)
+	gravelDb, err := gravelDB.NewHangar(scope.ID(), args.GravelDir, &gravalOps, encoders.Default())
 	if err != nil {
 		return Nitrous{}, fmt.Errorf("failed to create pebble db: %w", err)
 	}
@@ -127,7 +123,7 @@ func CreateFromArgs(args NitrousArgs) (Nitrous, error) {
 	if err != nil {
 		return Nitrous{}, fmt.Errorf("failed to create cache: %w", err)
 	}
-	layered := layered.NewHangar(scope.ID(), cache, pebbledb)
+	layered := layered.NewHangar(scope.ID(), cache, gravelDb)
 
 	return Nitrous{
 		PlaneID:              scope.ID(),
