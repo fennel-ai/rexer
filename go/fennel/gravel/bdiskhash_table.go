@@ -97,16 +97,18 @@ func (b *bDiskHashTable) Get(key []byte) (Value, error) {
 		return Value{}, ErrNotFound
 	}
 	return func() (Value, error) {
-		_, t := timer.Start(context.TODO(), 1, "gravel.table.dataread")
-		defer t.Stop()
+		sample := shouldSample()
+		maybeInc(sample, &b.reads)
+		if sample {
+			_, t := timer.Start(context.TODO(), 1, "gravel.table.dataread")
+			defer t.Stop()
+		}
 		curDataPos := dataPos + b.dataPos
 		matchIdx := 0
 		for i := 0; ; i++ {
 			if i >= itemsInBucket {
 				panic("file is inconsistent state")
 			}
-			maybeInc(shouldSample(), &b.reads)
-
 			_, err := b.data.ReadAt(buf4, int64(curDataPos))
 			if err != nil {
 				return Value{}, err
