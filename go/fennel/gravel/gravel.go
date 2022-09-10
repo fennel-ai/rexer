@@ -2,6 +2,7 @@ package gravel
 
 import (
 	"errors"
+	"github.com/detailyang/fastrand-go"
 	"io/ioutil"
 	"os"
 	"path"
@@ -66,14 +67,19 @@ func Open(opts Options) (ret *Gravel, failure error) {
 }
 
 func (g *Gravel) Get(key []byte) ([]byte, error) {
-	g.stats.Gets.Add(1)
+	sampleStats := fastrand.FastRand()%100 == 0
+	if sampleStats {
+		g.stats.Gets.Add(1)
+	}
 	now := Timestamp(time.Now().Unix())
 	val, err := g.memtable.Get(key)
 	switch err {
 	case ErrNotFound:
 		// do nothing, we will just check it in all the tables
 	case nil:
-		g.stats.MemtableHits.Add(1)
+		if sampleStats {
+			g.stats.MemtableHits.Add(1)
+		}
 		return handle(val, now)
 	default:
 		return nil, err
@@ -81,7 +87,9 @@ func (g *Gravel) Get(key []byte) ([]byte, error) {
 	g.tableListLock.RLock()
 	defer g.tableListLock.RUnlock()
 	for _, table := range g.tableList {
-		g.stats.TableIndexReads.Add(1)
+		if sampleStats {
+			g.stats.TableIndexReads.Add(1)
+		}
 		val, err := table.Get(key)
 		switch err {
 		case ErrNotFound:
@@ -91,7 +99,9 @@ func (g *Gravel) Get(key []byte) ([]byte, error) {
 			return nil, err
 		}
 	}
-	g.stats.Misses.Add(1)
+	if sampleStats {
+		g.stats.Misses.Add(1)
+	}
 	return nil, ErrNotFound
 }
 

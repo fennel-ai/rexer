@@ -339,13 +339,21 @@ func openBDiskHashTable(id uint64, filepath string) (Table, error) {
 		return nil, err
 	}
 
+	dataPos := uint64(binary.BigEndian.Uint32(buf[12:]))
 	// TODO check magic header
-	// TODO Optionally prefetch the index data
+	// Prefetch the index data [0, dataPos) by "touching" it
+	uselessBuf := make([]byte, dataPos)
+	_, err = data.ReadAt(uselessBuf, 0)
+	if err != nil {
+		return nil, err
+	}
+	uselessBuf = nil
+
 	return &bDiskHashTable{
 		data:        data,
 		itemCount:   uint64(binary.BigEndian.Uint32(buf[8:])),
 		bucketCount: uint64(binary.BigEndian.Uint32(buf[4:])),
-		dataPos:     uint64(binary.BigEndian.Uint32(buf[12:])),
+		dataPos:     dataPos,
 		id:          id,
 	}, nil
 }
