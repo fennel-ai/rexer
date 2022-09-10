@@ -9,6 +9,7 @@ import (
 	"sort"
 
 	"go.etcd.io/bbolt"
+	"go.uber.org/atomic"
 )
 
 // TODO: we have currently disabled bloom filter because it creates problems with race
@@ -17,7 +18,12 @@ import (
 type bTreeTable struct {
 	db *bbolt.DB
 	// bloom *Bloom
-	id uint64
+	id    uint64
+	reads atomic.Uint64
+}
+
+func (t *bTreeTable) DataReads() uint64 {
+	return t.reads.Load()
 }
 
 func (t *bTreeTable) ID() uint64 {
@@ -36,6 +42,7 @@ func (t *bTreeTable) Get(key []byte) (Value, error) {
 	// if !t.bloom.Has(key) {
 	// 	return Value{}, ErrNotFound
 	// }
+	t.reads.Add(1)
 	var ret = &Value{}
 	err := t.db.View(func(tx *bbolt.Tx) error {
 		b := tx.Bucket([]byte(treebucket))

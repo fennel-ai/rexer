@@ -36,7 +36,7 @@ func TestMemTable(t *testing.T) {
 	}
 
 	// now add a few entries
-	assert.NoError(t, mt.SetMany(entries))
+	assert.NoError(t, mt.SetMany(entries, &Stats{}))
 	assert.Equal(t, uint64(len(entries)), mt.Len())
 	assert.Equal(t, uint64(sz), mt.Size())
 

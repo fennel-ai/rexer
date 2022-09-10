@@ -10,6 +10,7 @@ import (
 	"sort"
 
 	"github.com/cespare/xxhash/v2"
+	"go.uber.org/atomic"
 	"golang.org/x/exp/mmap"
 	"golang.org/x/sys/unix"
 )
@@ -40,6 +41,11 @@ type bDiskHashTable struct {
 	bucketCount uint64
 	dataPos     uint64
 	id          uint64
+	reads       atomic.Uint64
+}
+
+func (b *bDiskHashTable) DataReads() uint64 {
+	return b.reads.Load()
 }
 
 func (b *bDiskHashTable) Get(key []byte) (Value, error) {
@@ -95,6 +101,8 @@ func (b *bDiskHashTable) Get(key []byte) (Value, error) {
 		if i >= itemsInBucket {
 			panic("file is inconsistent state")
 		}
+		b.reads.Add(1)
+
 		_, err := b.data.ReadAt(buf4, int64(curDataPos))
 		if err != nil {
 			return Value{}, err

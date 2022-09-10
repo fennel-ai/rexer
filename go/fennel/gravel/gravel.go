@@ -31,6 +31,7 @@ type Gravel struct {
 	tableListLock sync.RWMutex
 	commitlock    sync.Mutex
 	opts          Options
+	stats         Stats
 }
 
 func Open(opts Options) (ret *Gravel, failure error) {
@@ -43,6 +44,7 @@ func Open(opts Options) (ret *Gravel, failure error) {
 		tableListLock: sync.RWMutex{},
 		opts:          opts,
 		commitlock:    sync.Mutex{},
+		stats:         Stats{},
 	}
 	files, err := ioutil.ReadDir(opts.Dirname)
 	if err != nil {
@@ -59,16 +61,19 @@ func Open(opts Options) (ret *Gravel, failure error) {
 		}
 		ret.addTable(table)
 	}
+	go ret.reportStats()
 	return ret, nil
 }
 
 func (g *Gravel) Get(key []byte) ([]byte, error) {
+	g.stats.Gets.Add(1)
 	now := Timestamp(time.Now().Unix())
 	val, err := g.memtable.Get(key)
 	switch err {
 	case ErrNotFound:
 		// do nothing, we will just check it in all the tables
 	case nil:
+		g.stats.MemtableHits.Add(1)
 		return handle(val, now)
 	default:
 		return nil, err
@@ -76,6 +81,7 @@ func (g *Gravel) Get(key []byte) ([]byte, error) {
 	g.tableListLock.RLock()
 	defer g.tableListLock.RUnlock()
 	for _, table := range g.tableList {
+		g.stats.TableIndexReads.Add(1)
 		val, err := table.Get(key)
 		switch err {
 		case ErrNotFound:
@@ -85,6 +91,7 @@ func (g *Gravel) Get(key []byte) ([]byte, error) {
 			return nil, err
 		}
 	}
+	g.stats.Misses.Add(1)
 	return nil, ErrNotFound
 }
 
@@ -108,6 +115,7 @@ func (g *Gravel) commit(batch *Batch) error {
 	if g.memtable.Size()+batchsz > g.opts.MaxTableSize {
 		// we need to flush the memtable and then apply this write
 		table, err := g.memtable.Flush(g.opts.TableType, g.opts.Dirname, g.nextID())
+		g.stats.NumTableBuilds.Add(1)
 		if err != nil {
 			return err
 		}
@@ -115,9 +123,11 @@ func (g *Gravel) commit(batch *Batch) error {
 		if err = g.memtable.Clear(); err != nil {
 			return err
 		}
+		g.stats.MemtableSizeBytes.Store(0)
+		g.stats.MemtableKeys.Store(0)
 	}
 	// batch can fit in a single memtable, so set it now
-	return g.memtable.SetMany(batch.Entries())
+	return g.memtable.SetMany(batch.Entries(), &g.stats)
 }
 
 func handle(val Value, now Timestamp) ([]byte, error) {
@@ -149,6 +159,7 @@ func (g *Gravel) addTable(t Table) {
 	sort.Slice(g.tableList, func(i, j int) bool {
 		return g.tableList[i].ID() > g.tableList[j].ID()
 	})
+	g.stats.NumTables.Store(uint64(len(g.tableList)))
 }
 
 func isExpired(expires, now Timestamp) bool {

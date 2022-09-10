@@ -63,7 +63,7 @@ func getMemTable(sz int) Memtable {
 	}
 
 	// add all to Memtable before returning
-	err := mt.SetMany(entries)
+	err := mt.SetMany(entries, &Stats{})
 	if err != nil {
 		panic(err)
 	}

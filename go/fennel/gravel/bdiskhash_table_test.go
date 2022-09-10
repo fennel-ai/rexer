@@ -26,7 +26,7 @@ func TestBDiskHashTable(t *testing.T) {
 		err := mt.SetMany([]Entry{{
 			key: key,
 			val: Value{value, 0xABCD1234, false},
-		}})
+		}}, &Stats{})
 		assert.NoError(t, err)
 		idealSize += 8 + 16 + i%50 + 4
 	}

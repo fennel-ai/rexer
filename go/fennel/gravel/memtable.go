@@ -46,13 +46,21 @@ func (mt *Memtable) Len() uint64 {
 	return ret
 }
 
-func (mt *Memtable) SetMany(entries []Entry) error {
+func (mt *Memtable) SetMany(entries []Entry, stats *Stats) error {
 	mt.lock.Lock()
 	defer mt.lock.Unlock()
 	for _, e := range entries {
 		mt.map_[string(e.key)] = e.val
 		mt.size += uint64(sizeof(e))
+		if e.val.deleted {
+			stats.Dels.Add(1)
+		} else {
+			stats.Sets.Add(1)
+		}
 	}
+	stats.MemtableKeys.Add(uint64(len(entries)))
+	stats.MemtableSizeBytes.Store(mt.Size())
+	stats.MemtableKeys.Store(uint64(len(mt.map_)))
 	return nil
 }
 

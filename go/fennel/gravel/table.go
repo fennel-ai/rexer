@@ -1,7 +1,9 @@
 package gravel
 
 import (
+	"context"
 	"errors"
+	"fennel/lib/timer"
 	"fennel/lib/utils/binary"
 	"fmt"
 	"os"
@@ -14,11 +16,14 @@ type Table interface {
 	Get(key []byte) (Value, error)
 	Close() error
 	ID() uint64
+	DataReads() uint64
 }
 
 // BuildTable persists a memtable on disk and returns a Table
 // that has a readonly handle to the table
 func BuildTable(dirname string, id uint64, type_ TableType, mt *Memtable) (Table, error) {
+	_, t := timer.Start(context.TODO(), 1, "gravel.table.build")
+	defer t.Stop()
 	// before opening the file, first make sure the directory exists
 	if err := os.MkdirAll(dirname, os.ModePerm); err != nil {
 		return nil, err
@@ -34,6 +39,8 @@ func BuildTable(dirname string, id uint64, type_ TableType, mt *Memtable) (Table
 }
 
 func OpenTable(type_ TableType, filepath string) (Table, error) {
+	_, t := timer.Start(context.TODO(), 1, "gravel.table.open")
+	defer t.Stop()
 	_, fname := path.Split(filepath)
 	if !strings.HasSuffix(fname, SUFFIX) {
 		return nil, errors.New("can not open table - not .grvl file")
@@ -88,7 +95,7 @@ func decodeVal(data []byte) (Value, error) {
 	}
 	deleted := data[0] == 1
 	if deleted {
-		return Value{deleted: true}, nil
+		return Value{deleted: true, data: make([]byte, 0)}, nil
 	}
 	expires, n, err := binary.ReadUint32(data[1:])
 	if err != nil {
