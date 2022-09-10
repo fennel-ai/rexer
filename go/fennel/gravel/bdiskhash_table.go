@@ -167,14 +167,22 @@ func (b *bDiskHashTable) ID() uint64 {
 	return b.id
 }
 
-func buildBDiskHashTable(dirname string, id uint64, mt *Memtable) (Table, error) {
-	fmt.Printf("starting to build the table...\n")
+func buildBDiskHashTable(dirname string, id uint64, mt *Memtable) (table Table, err error) {
 	filepath := path.Join(dirname, fmt.Sprintf("%d%s", id, SUFFIX))
+	wipPath := path.Join(dirname, fmt.Sprintf("%d%s.wip", id, SUFFIX))
+	fmt.Printf("starting to build the table: %s...\n", filepath)
 
-	f, err := os.Create(filepath)
-	if err != nil {
+	var f *os.File
+	if f, err = os.Create(wipPath); err != nil {
 		return nil, err
 	}
+	defer func() {
+		// if for any reason the rest of the function fails, remove the temp file
+		// before returning, else that file will keep taking disk space forever
+		if err != nil {
+			_ = os.Remove(wipPath)
+		}
+	}()
 	type indexObj struct {
 		HashFP   uint32
 		BucketID uint32
@@ -322,15 +330,22 @@ func buildBDiskHashTable(dirname string, id uint64, mt *Memtable) (Table, error)
 		return nil
 	}
 
-	err = buildFunc()
-	if err != nil {
+	if err = buildFunc(); err != nil {
+		return nil, err
+	}
+	// sync the file to disk before going to avoid any data loss
+	if err = f.Sync(); err != nil {
 		return nil, err
 	}
 	err = f.Close()
 	if err != nil {
 		return nil, err
 	}
-	return openBDiskHashTable(id, filepath)
+	if err = os.Rename(wipPath, filepath); err != nil {
+		return nil, fmt.Errorf("could not rename temp file to real file: %w", err)
+	}
+	table, err = openBDiskHashTable(id, filepath)
+	return table, err
 }
 
 func openBDiskHashTable(id uint64, filepath string) (Table, error) {
