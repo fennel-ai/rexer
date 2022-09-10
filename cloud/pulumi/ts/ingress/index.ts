@@ -35,6 +35,7 @@ export type outputType = {
     endpontServiceName: string,
     tlsCert: string,
     tlsKey: string,
+    tlsK8sSecretRef: string,
 }
 
 function getLoadBalancerName(url: string) {
@@ -264,10 +265,11 @@ export const setup = async (input: inputType) => {
         create: "cat key.pem | base64"
     }, { dependsOn: createCertificate }).stdout
 
+    const tlsK8sSecretRef = "tls-cert"
     const secret = new k8s.core.v1.Secret("tls", {
         type: "kubernetes.io/tls",
         metadata: {
-            name: "tls-cert",
+            name: tlsK8sSecretRef,
         },
         data: {
             "tls.crt": cert,
@@ -309,6 +311,7 @@ export const setup = async (input: inputType) => {
         tlsCert: cert,
         tlsKey: pulumi.secret(key),
         endpontServiceName: vpcEndpointService.serviceName,
+        tlsK8sSecretRef: tlsK8sSecretRef,
     })
 
     return output

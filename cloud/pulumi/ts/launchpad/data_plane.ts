@@ -24,6 +24,7 @@ import * as util from "../lib/util";
 
 import * as process from "process";
 import { OtelConfig } from "../telemetry";
+import { Customer } from "../mothership-updates";
 
 type VpcConfig = {
     cidr: string,
@@ -105,11 +106,7 @@ type AccountConf = {
     existingAccount?: ExistingAccount,
 }
 
-export type Customer = {
-    id: number,
-    name: string,
-    domain: string,
-}
+
 
 export type DataPlaneConf = {
     // Should be set to false, when deleting the plane

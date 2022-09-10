@@ -38,7 +38,7 @@ export type inputType = {
     nodeLabels?: Record<string, string>,
     resourceConf?: util.ResourceConf,
     pprofHeapAllocThresholdMegaBytes?: number,
-    tlsCertK8sSecretName: string,
+    tlsCertK8sSecretName: string | pulumi.Output<string>,
 }
 
 export type outputType = {

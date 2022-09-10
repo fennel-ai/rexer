@@ -28,7 +28,7 @@ export const setup = async (input: inputType) => {
         }
     }, { provider, deleteBeforeReplace: true })
 
-    const mothershipConf = new k8s.core.v1.ConfigMap("tier-conf", {
+    const mothershipConf = new k8s.core.v1.ConfigMap("mothership-conf", {
         data: input.mothershipConfig,
         metadata: {
             name: "mothership-conf",
