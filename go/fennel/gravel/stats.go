@@ -39,7 +39,7 @@ func (g *Gravel) reportStats() {
 	name := g.opts.Name
 	for range time.Tick(10 * time.Second) {
 		func() {
-			stats.WithLabelValues("hits", name).Set(float64(g.stats.Gets.Load() * sampleRate))
+			stats.WithLabelValues("gets", name).Set(float64(g.stats.Gets.Load() * sampleRate))
 			stats.WithLabelValues("misses", name).Set(float64(g.stats.Misses.Load() * sampleRate))
 			stats.WithLabelValues("memtable_hits", name).Set(float64(g.stats.MemtableHits.Load() * sampleRate))
 			stats.WithLabelValues("memtable_misses", name).Set(float64(g.stats.MemtableMisses.Load() * sampleRate))
