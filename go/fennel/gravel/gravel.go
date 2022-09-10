@@ -222,7 +222,7 @@ func (g *Gravel) periodicallyFlush() {
 				defer g.commitlock.Unlock()
 				// in case any flush marker is in the channel, remove it
 				// without blocking on it
-				_, _ = <-g.flushch
+				<-g.flushch
 				g.flush()
 			}()
 		case <-g.flushch:
