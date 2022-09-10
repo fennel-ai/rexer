@@ -4,10 +4,11 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
-	"go.uber.org/zap"
 	"os"
 	"path"
 	"sort"
+
+	"go.uber.org/zap"
 
 	"go.etcd.io/bbolt"
 	"go.uber.org/atomic"
@@ -70,17 +71,16 @@ func buildBTreeTable(dirname string, id uint64, mt *Memtable) (Table, error) {
 	iter := mt.Iter()
 	// filter := NewBloomFilter(uint64(len(iter)), 0.001)
 	filepath := path.Join(dirname, fmt.Sprintf("%d%s", id, SUFFIX))
-	fmt.Printf("file path is: %s\n", filepath)
 	db, err := bbolt.Open(filepath, 0666, nil)
+	if err != nil {
+		return nil, fmt.Errorf("could not open file during table building: %w", err)
+	}
 	defer func(db *bbolt.DB) {
 		err := db.Close()
 		if err != nil {
 			zap.L().Error("failed to close db", zap.Error(err))
 		}
 	}(db)
-	if err != nil {
-		return nil, fmt.Errorf("could not open file during table building: %w", err)
-	}
 	batchsz := 50_000
 	entries := make([]Entry, 0, batchsz)
 	for k, v := range iter {
@@ -137,6 +137,9 @@ func buildBTreeTable(dirname string, id uint64, mt *Memtable) (Table, error) {
 	if err != nil {
 		return nil, err
 	}
+	if err := db.Close(); err != nil {
+		return nil, err
+	}
 	// now open the table in just readonly mode and return that
 	return openBTreeTable(id, filepath)
 }
@@ -162,9 +165,6 @@ func openBTreeTable(id uint64, filepath string) (Table, error) {
 	// 	*filter = LoadBloom(v)
 	// 	return nil
 	// })
-	if err != nil {
-		return nil, err
-	}
 	return &bTreeTable{
 		db: db,
 		// bloom: filter,
