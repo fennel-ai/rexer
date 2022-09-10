@@ -4,7 +4,7 @@ import * as aws from "@pulumi/aws";
 import { fennelStdTags } from "../lib/util";
 
 export const plugins = {
-    "aws": "v4.38.1"
+    "aws": "v5.0.0"
 }
 
 export type inputType = {

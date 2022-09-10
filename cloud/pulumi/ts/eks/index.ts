@@ -25,7 +25,7 @@ export const plugins = {
     "eks": "0.39.0",
     "kubernetes": "v3.20.1",
     "command": "v0.0.3",
-    "aws": "v4.38.1",
+    "aws": "v5.0.0",
 }
 
 export type SpotReschedulerConf = {

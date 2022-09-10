@@ -5,7 +5,7 @@ import * as aws from "@pulumi/aws";
 import {topicConf} from "../kafkatopics";
 
 export const plugins = {
-    "aws": "v4.38.1",
+    "aws": "v5.0.0",
     "kubernetes": "v3.20.1",
 }
 

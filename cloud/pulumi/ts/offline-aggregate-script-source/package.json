@@ -5,7 +5,7 @@
         "@types/node": "^14"
     },
     "dependencies": {
-        "@pulumi/aws": "^4.38.1",
+        "@pulumi/aws": "^5.0.0",
         "@pulumi/pulumi": "3.25.1",
         "ts-md5": "^1.2.11",
         "ts-node": "^10.4.0",

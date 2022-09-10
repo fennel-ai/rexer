@@ -4,7 +4,7 @@ import {fennelStdTags} from "../lib/util";
 import {POSTGRESQL_PASSWORD, POSTGRESQL_USERNAME} from "../tier-consts/consts";
 
 export const plugins = {
-    "aws": "v4.38.1",
+    "aws": "v5.0.0",
 }
 
 export type inputType = {

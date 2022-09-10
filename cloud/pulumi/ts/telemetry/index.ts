@@ -7,7 +7,7 @@ import * as fs from 'fs';
 import * as md5 from 'ts-md5/dist/md5';
 
 export const plugins = {
-    "aws": "v4.38.1",
+    "aws": "v5.0.0",
     "kubernetes": "v3.20.1",
 }
 

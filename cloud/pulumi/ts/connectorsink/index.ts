@@ -2,7 +2,7 @@ import * as pulumi from "@pulumi/pulumi";
 import * as aws from "@pulumi/aws";
 
 export const plugins = {
-    "aws": "v4.38.1",
+    "aws": "v5.0.0",
 }
 
 export type inputType = {
@@ -93,6 +93,21 @@ export const setup = async (input: inputType): Promise<pulumi.Output<outputType>
         user: user.name,
         policy: rawPolicyStr,
     }, { provider });
+
+    // create bucket lifecycle policy with expiration
+    const bucketlifecycle = new aws.s3.BucketLifecycleConfigurationV2("training-data-bucketlifecyle", {
+       bucket: bucketName,
+       rules: [{
+           id: `p-${input.planeId}-training-data-expiration`,
+           status: "Enabled",
+           expiration: {
+               // expire after 45 days
+               days: 45,
+               // this is not relevant for us since we don't version objects in a bucket
+               expiredObjectDeleteMarker: true,
+           }
+       }],
+    }, { provider: provider });
 
     const output = pulumi.output({
         bucketName: bucketName,

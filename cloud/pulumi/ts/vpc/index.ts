@@ -5,7 +5,7 @@ import * as netmask from "netmask";
 import { fennelStdTags } from "../lib/util";
 
 export const plugins = {
-    "aws": "v4.38.1"
+    "aws": "v5.0.0"
 }
 
 export type controlPlaneConfig = {

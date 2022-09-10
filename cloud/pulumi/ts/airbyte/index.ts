@@ -10,7 +10,7 @@ const DEFAULT_AIRBYTE_SERVER_PUBLIC = false;
 export const plugins = {
     "kubernetes": "v3.20.1",
     "postgresql": "v3.4.0",
-    "aws": "v4.38.1",
+    "aws": "v5.0.0",
 }
 
 export type inputType = {
