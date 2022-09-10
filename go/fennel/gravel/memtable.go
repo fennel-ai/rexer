@@ -50,6 +50,12 @@ func (mt *Memtable) SetMany(entries []Entry, stats *Stats) error {
 	mt.lock.Lock()
 	defer mt.lock.Unlock()
 	for _, e := range entries {
+		if v, found := mt.map_[string(e.key)]; found {
+			mt.size -= uint64(sizeof(Entry{
+				key: e.key,
+				val: v,
+			}))
+		}
 		mt.map_[string(e.key)] = e.val
 		mt.size += uint64(sizeof(e))
 		if e.val.deleted {
@@ -61,6 +67,7 @@ func (mt *Memtable) SetMany(entries []Entry, stats *Stats) error {
 	stats.MemtableKeys.Add(uint64(len(entries)))
 	stats.MemtableSizeBytes.Store(mt.Size())
 	stats.MemtableKeys.Store(uint64(len(mt.map_)))
+	stats.Commits.Inc()
 	return nil
 }
 

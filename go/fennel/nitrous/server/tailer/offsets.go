@@ -14,7 +14,7 @@ import (
 
 const (
 	OFFSET_KEY_PREFIX = "offsets_"
-	DEFAULT_OFFSET    = kafka.OffsetEnd
+	DEFAULT_OFFSET    = kafka.OffsetBeginning
 )
 
 var (

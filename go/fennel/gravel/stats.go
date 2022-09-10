@@ -12,6 +12,7 @@ type Stats struct {
 	Gets            atomic.Uint64
 	Misses          atomic.Uint64
 	MemtableHits    atomic.Uint64
+	MemtableMisses  atomic.Uint64
 	TableIndexReads atomic.Uint64
 
 	// write related metrics
@@ -36,6 +37,7 @@ func (g *Gravel) reportStats() {
 			stats.WithLabelValues("hits", name).Set(float64(g.stats.Gets.Load()))
 			stats.WithLabelValues("misses", name).Set(float64(g.stats.Misses.Load()))
 			stats.WithLabelValues("memtable_hits", name).Set(float64(g.stats.MemtableHits.Load()))
+			stats.WithLabelValues("memtable_misses", name).Set(float64(g.stats.MemtableMisses.Load()))
 			stats.WithLabelValues("table_index_reads", name).Set(float64(g.stats.TableIndexReads.Load()))
 			stats.WithLabelValues("sets", name).Set(float64(g.stats.Sets.Load()))
 			stats.WithLabelValues("dels", name).Set(float64(g.stats.Dels.Load()))

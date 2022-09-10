@@ -76,6 +76,7 @@ func (g *Gravel) Get(key []byte) ([]byte, error) {
 	switch err {
 	case ErrNotFound:
 		// do nothing, we will just check it in all the tables
+		g.stats.MemtableMisses.Inc()
 	case nil:
 		if sampleStats {
 			g.stats.MemtableHits.Add(1)
