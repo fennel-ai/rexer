@@ -371,6 +371,17 @@ const tierConfs: Record<number, TierConf> = {
         airbyteConf: {},
         createTopicsInMsk: true,
         mirrorMakerConf: {},
+    },
+    // reserver tierIds 1001 to 2000 for self-serve.
+    1002: {
+        protectResources: true,
+        planeId: 10,
+        ingressConf: {
+            usePublicSubnets: true,
+        },
+        airbyteConf: {},
+        createTopicsInMsk: true,
+        mirrorMakerConf: {},
     }
 }
 
