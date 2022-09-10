@@ -10,13 +10,17 @@ import (
 	"fennel/lib/utils/parallel"
 	"fmt"
 	"io"
+	"runtime"
 	"time"
 )
 
 const (
-	READ_PARALLELISM  = 64
-	WRITE_PARALLELISM = 64
-	DB_BATCH_SIZE     = 32
+	DB_BATCH_SIZE = 32
+)
+
+var (
+	READ_PARALLELISM  = 2 * runtime.NumCPU()
+	WRITE_PARALLELISM = runtime.NumCPU()
 )
 
 type gravelDb struct {
@@ -39,7 +43,7 @@ func NewHangar(planeID ftypes.RealmID, dirname string, opts *gravel.Options, enc
 		planeID:      planeID,
 		db:           db,
 		enc:          enc,
-		readWorkers:  parallel.NewWorkerPool[hangar.KeyGroup, hangar.ValGroup]("hangar_gravel_read", READ_PARALLELISM),
+		readWorkers:  parallel.NewWorkerPool[hangar.KeyGroup, hangar.ValGroup]("hangar_gravel_read", 4*READ_PARALLELISM),
 		writeWorkers: parallel.NewWorkerPool[hangar.KeyGroup, hangar.ValGroup]("hangar_gravel_write", WRITE_PARALLELISM),
 	}, nil
 }
