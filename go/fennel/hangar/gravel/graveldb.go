@@ -12,6 +12,8 @@ import (
 	"io"
 	"runtime"
 	"time"
+
+	"github.com/detailyang/fastrand-go"
 )
 
 const (
@@ -72,19 +74,28 @@ func (g *gravelDb) GetMany(ctx context.Context, kgs []hangar.KeyGroup) ([]hangar
 	} else {
 		pool = g.readWorkers
 	}
+	sample := shouldSample()
 	ctx, t := timer.Start(ctx, g.planeID, fmt.Sprintf("hangar.gravel.getmany.%s", hangar.GetMode(ctx)))
 	defer t.Stop()
 	return pool.Process(ctx, kgs, func(keyGroups []hangar.KeyGroup, valGroups []hangar.ValGroup) error {
-		ctx, t := timer.Start(ctx, g.planeID, fmt.Sprintf("hangar.gravel.getmany.batch.%s", hangar.GetMode(ctx)))
-		defer t.Stop()
+		if sample {
+			ctxNew, t := timer.Start(ctx, g.planeID, fmt.Sprintf("hangar.gravel.getmany.batch.%s", hangar.GetMode(ctx)))
+			defer t.Stop()
+			ctx = ctxNew
+		}
 		eks, err := hangar.EncodeKeyManyKG(keyGroups, g.enc)
 		if err != nil {
 			return fmt.Errorf("failed to encode keys: %w", err)
 		}
 		for i, ek := range eks {
-			_, t := timer.Start(ctx, g.planeID, fmt.Sprintf("hangar.gravel.get.latency.%s", hangar.GetMode(ctx)))
-			item, err := g.db.Get(ek)
-			t.Stop()
+			var item []byte
+			if sample {
+				_, t := timer.Start(ctx, g.planeID, fmt.Sprintf("hangar.gravel.get.latency.%s", hangar.GetMode(ctx)))
+				item, err = g.db.Get(ek)
+				t.Stop()
+			} else {
+				item, err = g.db.Get(ek)
+			}
 			switch err {
 			case gravel.ErrNotFound:
 			case nil:
@@ -241,4 +252,8 @@ func (g *gravelDb) write(eks [][]byte, vgs []hangar.ValGroup, delks [][]byte) er
 		return fmt.Errorf("failed to commit batch: %w", err)
 	}
 	return nil
+}
+
+func shouldSample() bool {
+	return (fastrand.FastRand() & ((1 << 7) - 1)) == 0
 }
