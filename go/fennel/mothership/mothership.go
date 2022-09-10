@@ -10,16 +10,18 @@ import (
 )
 
 type MothershipArgs struct {
-	MothershipID  ftypes.RealmID `arg:"--mothership_id,env:MOTHERSHIP_ID"`
-	MysqlHost     string         `arg:"--mothership_mysql_host,env:MOTHERSHIP_MYSQL_ADDRESS"`
-	MysqlDB       string         `arg:"--mothership_mysql_db,env:MOTHERSHIP_MYSQL_DBNAME"`
-	MysqlUsername string         `arg:"--mothership_mysql_user,env:MOTHERSHIP_MYSQL_USERNAME"`
-	MysqlPassword string         `arg:"--mothership_mysql_password,env:MOTHERSHIP_MYSQL_PASSWORD"`
+	MothershipID       ftypes.RealmID `arg:"--mothership_id,env:MOTHERSHIP_ID"`
+	MysqlHost          string         `arg:"--mothership_mysql_host,env:MOTHERSHIP_MYSQL_ADDRESS"`
+	MysqlDB            string         `arg:"--mothership_mysql_db,env:MOTHERSHIP_MYSQL_DBNAME"`
+	MysqlUsername      string         `arg:"--mothership_mysql_user,env:MOTHERSHIP_MYSQL_USERNAME"`
+	MysqlPassword      string         `arg:"--mothership_mysql_password,env:MOTHERSHIP_MYSQL_PASSWORD"`
+	MothershipEndpoint string         `arg:"--mothership_endpoint,env:MOTHERSHIP_ENDPOINT"`
 }
 
 type Mothership struct {
-	ID ftypes.RealmID
-	DB db.Connection
+	ID       ftypes.RealmID
+	DB       db.Connection
+	Endpoint string
 }
 
 func CreateFromArgs(args *MothershipArgs) (mothership Mothership, err error) {
@@ -40,7 +42,8 @@ func CreateFromArgs(args *MothershipArgs) (mothership Mothership, err error) {
 		return mothership, fmt.Errorf("failed to connect with mysql: %v", err)
 	}
 	return Mothership{
-		ID: mothershipID,
-		DB: sqlConn.(db.Connection),
+		ID:       mothershipID,
+		DB:       sqlConn.(db.Connection),
+		Endpoint: args.MothershipEndpoint,
 	}, nil
 }

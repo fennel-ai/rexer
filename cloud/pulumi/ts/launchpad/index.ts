@@ -988,6 +988,7 @@ const mothershipConfs: Record<number, MothershipConf> = {
                 useAmd64: true,
             }
         },
+        dnsName: "app.fennel.ai",
 
     },
     // Dogfood mothership.

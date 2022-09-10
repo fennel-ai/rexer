@@ -212,7 +212,7 @@ func (s *server) ForgotPassword(c *gin.Context) {
 		})
 		return
 	}
-	if err := userC.SendResetPasswordEmail(c.Request.Context(), s.db, s.sendgridClient(), form.Email); err != nil {
+	if err := userC.SendResetPasswordEmail(c.Request.Context(), s.db, s.sendgridClient(), form.Email, &s.mothership); err != nil {
 		respondError(c, err, "send the reset password email")
 		return
 	}
@@ -291,7 +291,7 @@ func (s *server) SignUp(c *gin.Context) {
 		respondError(c, err, "sign up")
 		return
 	}
-	if _, err = userC.SendConfirmationEmail(ctx, s.db, s.sendgridClient(), user); err != nil {
+	if _, err = userC.SendConfirmationEmail(ctx, s.db, s.sendgridClient(), user, &s.mothership); err != nil {
 		respondError(c, err, "send confirmation email")
 		return
 	}
@@ -342,7 +342,7 @@ func (s *server) ResendConfirmationEmail(c *gin.Context) {
 		return
 	}
 
-	err := userC.ResendConfirmationEmail(c.Request.Context(), s.db, s.sendgridClient(), form.Email)
+	err := userC.ResendConfirmationEmail(c.Request.Context(), s.db, s.sendgridClient(), form.Email, &s.mothership)
 	if err != nil {
 		if ue, ok := err.(*lib.UserReadableError); ok {
 			c.JSON(ue.StatusCode, gin.H{

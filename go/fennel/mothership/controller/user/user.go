@@ -13,6 +13,7 @@ import (
 	"golang.org/x/crypto/bcrypt"
 	"gorm.io/gorm"
 
+	"fennel/mothership"
 	lib "fennel/mothership/lib"
 	userL "fennel/mothership/lib/user"
 	"math/rand"
@@ -57,7 +58,7 @@ func checkPasswordHash(password string, hash []byte) bool {
 // TODO(xiao) add a unit test for email
 // TODO(xiao) do not regen token if sent_at is recent enough
 // TODO(xiao) do not return user
-func SendConfirmationEmail(c context.Context, db *gorm.DB, client *sendgrid.Client, user userL.User) (userL.User, error) {
+func SendConfirmationEmail(c context.Context, db *gorm.DB, client *sendgrid.Client, user userL.User, mothership *mothership.Mothership) (userL.User, error) {
 	if user.IsConfirmed() {
 		return user, &lib.ErrorAlreadyConfirmed
 	}
@@ -72,7 +73,7 @@ func SendConfirmationEmail(c context.Context, db *gorm.DB, client *sendgrid.Clie
 	subject := "Almost there, let’s confirm your email"
 	to := mail.NewEmail("", user.Email)
 
-	link := generateConfirmationLink(token)
+	link := generateConfirmationLink(token, mothership.Endpoint)
 
 	// TODO(xiao) plaintext fallback
 	plainTextContent := ""
@@ -103,11 +104,11 @@ func SendConfirmationEmail(c context.Context, db *gorm.DB, client *sendgrid.Clie
 	return user, result.Error
 }
 
-func generateConfirmationLink(token string) url.URL {
+func generateConfirmationLink(token string, endpoint string) url.URL {
 	// TODO(xiao) read host from config
 	return url.URL{
 		Scheme:   "http",
-		Host:     "localhost:8080",
+		Host:     endpoint,
 		Path:     "confirm_user",
 		RawQuery: fmt.Sprintf("token=%s", token),
 	}
@@ -133,11 +134,11 @@ func generateResetToken(db *gorm.DB) string {
 	}
 }
 
-func generateResetLink(token string) url.URL {
+func generateResetLink(token string, endpoint string) url.URL {
 	// TODO(xiao) read host from config
 	return url.URL{
 		Scheme:   "http",
-		Host:     "localhost:8080",
+		Host:     endpoint,
 		Path:     "reset_password",
 		RawQuery: fmt.Sprintf("token=%s", token),
 	}
@@ -150,20 +151,20 @@ func generateToken() string {
 	return base64.RawURLEncoding.EncodeToString(bytes)
 }
 
-func ResendConfirmationEmail(c context.Context, db *gorm.DB, client *sendgrid.Client, email string) error {
+func ResendConfirmationEmail(c context.Context, db *gorm.DB, client *sendgrid.Client, email string, mothership *mothership.Mothership) error {
 	var user userL.User
 	result := db.Take(&user, "email = ?", email)
 	if result.Error != nil {
 		return &lib.ErrorUserNotFound
 	}
-	_, err := SendConfirmationEmail(c, db, client, user)
+	_, err := SendConfirmationEmail(c, db, client, user, mothership)
 	return err
 }
 
 // TODO(xiao) add a test
 // TODO(xiao) do not regenerate token if sent_at recent enough
 // TODO(xiao) DRY the tmpl file
-func SendResetPasswordEmail(c context.Context, db *gorm.DB, client *sendgrid.Client, email string) error {
+func SendResetPasswordEmail(c context.Context, db *gorm.DB, client *sendgrid.Client, email string, mothership *mothership.Mothership) error {
 	var user userL.User
 
 	result := db.Take(&user, "email = ?", email)
@@ -182,7 +183,7 @@ func SendResetPasswordEmail(c context.Context, db *gorm.DB, client *sendgrid.Cli
 	subject := "Link to Reset your password"
 	to := mail.NewEmail("", user.Email)
 
-	link := generateResetLink(token)
+	link := generateResetLink(token, mothership.Endpoint)
 	plainTextContent := ""
 
 	tmpl, err := template.ParseFiles("mothership/templates/email/reset_password.tmpl")

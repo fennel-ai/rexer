@@ -31,6 +31,7 @@ export type MothershipConf = {
     vpcConf: vpc.controlPlaneConfig,
     ingressConf?: util.IngressConf,
     bridgeServerConf?: BridgeServerConf,
+    dnsName?: string,
 }
 
 const parseConfig = (): MothershipConf => {
@@ -142,6 +143,7 @@ const setupResources = async () => {
                 namespace: nsName,
                 mothershipConfig: {
                     "mothership_id": String(input.planeId),
+                    "mothership_endpoint": input.dnsName === undefined ? String(ingressOutput.loadBalancerUrl) : input.dnsName,
                 },
                 dbConfig: pulumi.output({
                     "host": auroraOutput.host,
@@ -153,13 +155,16 @@ const setupResources = async () => {
         })
     configsOutput.apply(async () => {
         if (input.bridgeServerConf !== undefined) {
-            const certOut = await cert.setup({
-                kubeconfig: kconf,
-                scopeId: input.planeId,
-                scope: util.Scope.MOTHERSHIP,
-                dnsName: "app.fennel.ai",
-                namespace: nsName,
-            })
+            var certOut = undefined
+            if (input.dnsName !== undefined) {
+                certOut = await cert.setup({
+                    kubeconfig: kconf,
+                    scopeId: input.planeId,
+                    scope: util.Scope.MOTHERSHIP,
+                    dnsName: input.dnsName,
+                    namespace: nsName,
+                })
+            }
 
             await bridgeserver.setup({
                 roleArn: input.vpcConf.roleArn,
@@ -173,7 +178,7 @@ const setupResources = async () => {
                 useAmd64: input.bridgeServerConf?.podConf?.useAmd64,
                 nodeLabels: input.bridgeServerConf?.podConf?.nodeLabels,
                 pprofHeapAllocThresholdMegaBytes: input.bridgeServerConf?.podConf?.pprofHeapAllocThresholdMegaBytes,
-                tlsCertK8sSecretName: certOut.tlsCertK8sSecretName,
+                tlsCertK8sSecretName: certOut !== undefined ? certOut.tlsCertK8sSecretName : ingressOutput.tlsK8sSecretRef,
             });
 
         }

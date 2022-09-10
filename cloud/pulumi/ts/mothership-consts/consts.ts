@@ -44,11 +44,16 @@ export const serviceEnvs = [
             }
         }
     },
+    {
+        name: "MOTHERSHIP_ENDPOINT",
+        valueFrom: {
+            configMapKeyRef: {
+                name: "mothership-conf",
+                key: "mothership_endpoint"
+            }
+        }
+    }
 ];
-
-export const POSTGRESQL_USERNAME = "username";
-// needs to be at least 8 characters
-export const POSTGRESQL_PASSWORD = "password";
 
 export function ReadinessProbe(metricPort: number) {
     return {
