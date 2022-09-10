@@ -3,7 +3,9 @@ package gravel
 import (
 	"bufio"
 	"bytes"
+	"context"
 	"encoding/binary"
+	"fennel/lib/timer"
 	"fmt"
 	"os"
 	"path"
@@ -94,64 +96,67 @@ func (b *bDiskHashTable) Get(key []byte) (Value, error) {
 	if len(matchIndices) == 0 {
 		return Value{}, ErrNotFound
 	}
+	return func() (Value, error) {
+		_, t := timer.Start(context.TODO(), 1, "gravel.table.dataread")
+		defer t.Stop()
+		curDataPos := dataPos + b.dataPos
+		matchIdx := 0
+		for i := 0; ; i++ {
+			if i >= itemsInBucket {
+				panic("file is inconsistent state")
+			}
+			maybeInc(shouldSample(), &b.reads)
 
-	curDataPos := dataPos + b.dataPos
-	matchIdx := 0
-	for i := 0; ; i++ {
-		if i >= itemsInBucket {
-			panic("file is inconsistent state")
-		}
-		maybeInc(shouldSample(), &b.reads)
-
-		_, err := b.data.ReadAt(buf4, int64(curDataPos))
-		if err != nil {
-			return Value{}, err
-		}
-		// write record: [4 bytes total size, 1 byte key size, 4 bytes value size, 1 byte delete tombstone, 4 bytes expire time, key, value]
-		recordSize := binary.BigEndian.Uint32(buf4)
-
-		if i == matchIndices[matchIdx] {
-			keyLen := uint64(b.data.At(int(curDataPos + 4)))
-			curKey := make([]byte, keyLen)
-			_, err = b.data.ReadAt(curKey, int64(curDataPos+4+1+4+1+4))
+			_, err := b.data.ReadAt(buf4, int64(curDataPos))
 			if err != nil {
 				return Value{}, err
 			}
-			if bytes.Equal(curKey, key) {
-				// found
-				buf := make([]byte, 9)
-				_, err := b.data.ReadAt(buf, int64(curDataPos+4+1))
-				if err != nil {
-					return Value{}, err
-				}
-				valueSize := binary.BigEndian.Uint32(buf)
-				delflag := buf[4]
-				expTime := binary.BigEndian.Uint32(buf[5:])
-				deleted := false
-				if delflag > 0 {
-					deleted = true
-				}
-				value := make([]byte, valueSize)
-				_, err = b.data.ReadAt(value, int64(curDataPos+4+1+4+1+4+keyLen))
-				if err != nil {
-					return Value{}, err
-				}
-				return Value{
-					data:    value,
-					expires: Timestamp(expTime),
-					deleted: deleted,
-				}, nil
-			}
+			// write record: [4 bytes total size, 1 byte key size, 4 bytes value size, 1 byte delete tombstone, 4 bytes expire time, key, value]
+			recordSize := binary.BigEndian.Uint32(buf4)
 
-			// hash fingerprint matched but key didn't match
-			matchIdx++
-			if matchIdx >= len(matchIndices) {
-				break
+			if i == matchIndices[matchIdx] {
+				keyLen := uint64(b.data.At(int(curDataPos + 4)))
+				curKey := make([]byte, keyLen)
+				_, err = b.data.ReadAt(curKey, int64(curDataPos+4+1+4+1+4))
+				if err != nil {
+					return Value{}, err
+				}
+				if bytes.Equal(curKey, key) {
+					// found
+					buf := make([]byte, 9)
+					_, err := b.data.ReadAt(buf, int64(curDataPos+4+1))
+					if err != nil {
+						return Value{}, err
+					}
+					valueSize := binary.BigEndian.Uint32(buf)
+					delflag := buf[4]
+					expTime := binary.BigEndian.Uint32(buf[5:])
+					deleted := false
+					if delflag > 0 {
+						deleted = true
+					}
+					value := make([]byte, valueSize)
+					_, err = b.data.ReadAt(value, int64(curDataPos+4+1+4+1+4+keyLen))
+					if err != nil {
+						return Value{}, err
+					}
+					return Value{
+						data:    value,
+						expires: Timestamp(expTime),
+						deleted: deleted,
+					}, nil
+				}
+
+				// hash fingerprint matched but key didn't match
+				matchIdx++
+				if matchIdx >= len(matchIndices) {
+					break
+				}
 			}
+			curDataPos += uint64(recordSize)
 		}
-		curDataPos += uint64(recordSize)
-	}
-	return Value{}, ErrNotFound
+		return Value{}, ErrNotFound
+	}()
 }
 
 func (b *bDiskHashTable) Close() error {
