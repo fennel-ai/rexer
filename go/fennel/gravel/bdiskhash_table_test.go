@@ -40,7 +40,7 @@ func TestBDiskHashTable(t *testing.T) {
 	t1 = time.Now()
 	for i := 0; i < itemCnt; i++ {
 		binary.BigEndian.PutUint64(key, uint64(i))
-		v, err := table.Get(key)
+		v, err := table.Get(key, Hash(key))
 		assert.NoError(t, err)
 
 		if v.expires != 0xABCD1234 {
@@ -57,7 +57,7 @@ func TestBDiskHashTable(t *testing.T) {
 	// query nonexist records
 	for i := 0; i < itemCnt; i++ {
 		binary.BigEndian.PutUint64(key, uint64(i))
-		_, err := table.Get(key)
+		_, err := table.Get(key, Hash(key))
 		assert.Equal(t, err, ErrNotFound)
 	}
 	fmt.Println("time_ms read from file for non-exist records:", time.Since(t1).Milliseconds())

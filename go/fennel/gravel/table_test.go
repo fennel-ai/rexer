@@ -31,13 +31,13 @@ func testTable(t *testing.T, type_ TableType, sz int) {
 	fmt.Printf("Table build took: %f seconds", duration.Seconds())
 	defer func() { os.RemoveAll(dirname) }()
 	for k, v := range mt.Iter() {
-		got, err := table.Get([]byte(k))
+		got, err := table.Get([]byte(k), Hash([]byte(k)))
 		assert.NoError(t, err, fmt.Sprintf("key: %s not found", k))
 		assert.Equal(t, v, got)
 	}
 	for i := 0; i < 1000; i++ {
 		k := []byte(utils.RandString(10))
-		_, err := table.Get(k)
+		_, err := table.Get(k, Hash([]byte(k)))
 		assert.Error(t, err)
 		assert.Equal(t, ErrNotFound, err)
 	}

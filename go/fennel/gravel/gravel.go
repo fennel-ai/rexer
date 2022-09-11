@@ -83,11 +83,12 @@ func (g *Gravel) Get(key []byte) ([]byte, error) {
 	default:
 		return nil, err
 	}
+	hash := Hash(key)
 	g.tableListLock.RLock()
 	defer g.tableListLock.RUnlock()
 	for _, table := range g.tableList {
 		maybeInc(sample, &g.stats.TableIndexReads)
-		val, err := table.Get(key)
+		val, err := table.Get(key, hash)
 		switch err {
 		case ErrNotFound:
 		case nil:

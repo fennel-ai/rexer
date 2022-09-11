@@ -14,7 +14,6 @@ import (
 	"sort"
 	"syscall"
 
-	"github.com/cespare/xxhash/v2"
 	"go.uber.org/atomic"
 	"golang.org/x/sys/unix"
 )
@@ -54,8 +53,7 @@ func (b *bDiskHashTable) DataReads() uint64 {
 	return b.reads.Load() * sampleRate
 }
 
-func (b *bDiskHashTable) Get(key []byte) (Value, error) {
-	hash := xxhash.Sum64(key)
+func (b *bDiskHashTable) Get(key []byte, hash uint64) (Value, error) {
 	bucketCount := b.bucketCount
 	var bucketId uint64
 	if bucketCount&(bucketCount-1) == 0 {
@@ -215,7 +213,7 @@ func buildBDiskHashTable(dirname string, id uint64, mt *Memtable) (table Table, 
 		indexObjs := make([]indexObj, len(m))
 		idx := 0
 		for key, value := range m {
-			hash := xxhash.Sum64String(key)
+			hash := Hash([]byte(key))
 			indexObjs[idx] = indexObj{
 				HashFP:   uint32(hash & 0xFFFFFFFF),
 				BucketID: uint32(hash % bucketCount),

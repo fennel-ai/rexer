@@ -13,7 +13,7 @@ import (
 )
 
 type Table interface {
-	Get(key []byte) (Value, error)
+	Get(key []byte, hash uint64) (Value, error)
 	Close() error
 	ID() uint64
 	DataReads() uint64

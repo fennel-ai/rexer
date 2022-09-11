@@ -1,6 +1,10 @@
 package gravel
 
-import "errors"
+import (
+	"errors"
+
+	"github.com/cespare/xxhash/v2"
+)
 
 var (
 	ErrNotFound = errors.New("key not found")
@@ -21,4 +25,11 @@ type Value struct {
 type Entry struct {
 	key []byte
 	val Value
+}
+
+// Hash is the standardized hash function for all keys in Gravel
+// We retry to do this hash computation once per request and
+// pass the hash around instead of recomputing it
+func Hash(k []byte) uint64 {
+	return xxhash.Sum64(k)
 }

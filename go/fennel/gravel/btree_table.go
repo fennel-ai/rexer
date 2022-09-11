@@ -40,7 +40,7 @@ const (
 	bloomkey    = "data"
 )
 
-func (t *bTreeTable) Get(key []byte) (Value, error) {
+func (t *bTreeTable) Get(key []byte, _ uint64) (Value, error) {
 	// if !t.bloom.Has(key) {
 	// 	return Value{}, ErrNotFound
 	// }
