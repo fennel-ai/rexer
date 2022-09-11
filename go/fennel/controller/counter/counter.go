@@ -34,6 +34,8 @@ func Value(
 func NitrousBatchValue(
 	ctx context.Context, tier tier.Tier, aggIds []ftypes.AggId, keys []value.Value, kwargs []value.Dict,
 ) ([]value.Value, error) {
+	ctx, t := timer.Start(ctx, tier.ID, "counter.NitrousBatchValue")
+	defer t.Stop()
 	ret := make([]value.Value, len(keys))
 	idxByAgg := make(map[ftypes.AggId][]int)
 	for i, aggId := range aggIds {
