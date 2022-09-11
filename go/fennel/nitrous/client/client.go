@@ -9,6 +9,7 @@ import (
 	"fennel/lib/aggregate"
 	"fennel/lib/arena"
 	"fennel/lib/ftypes"
+	"fennel/lib/timer"
 	"fennel/lib/value"
 	"fennel/nitrous/rpc"
 	"fennel/resource"
@@ -145,6 +146,8 @@ func (nc NitrousClient) Push(ctx context.Context, aggId ftypes.AggId, updates va
 }
 
 func (nc NitrousClient) GetMulti(ctx context.Context, aggId ftypes.AggId, groupkeys []value.Value, kwargs []value.Dict, output []value.Value) error {
+	ctx, t := timer.Start(ctx, nc.ID(), "nitrous.client.GetMulti")
+	defer t.Stop()
 	if len(groupkeys) != len(kwargs) {
 		return fmt.Errorf("groupkeys and kwargs must be the same length %d != %d", len(groupkeys), len(kwargs))
 	}
