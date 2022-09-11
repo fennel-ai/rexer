@@ -32,7 +32,9 @@ type Gravel struct {
 	commitlock    sync.Mutex
 	opts          Options
 	stats         Stats
-	flushch       chan struct{}
+	// TODO(mohit): Consider adding back periodic flushing if the memtable has not reached it's size limit for a while.
+	// This can happen when the write throughput is not high - and we might want to write the tables periodically
+	// to avoid startup and binlog catchup latency.
 }
 
 func Open(opts Options) (ret *Gravel, failure error) {
@@ -46,7 +48,6 @@ func Open(opts Options) (ret *Gravel, failure error) {
 		opts:          opts,
 		commitlock:    sync.Mutex{},
 		stats:         Stats{},
-		flushch:       make(chan struct{}, 1),
 	}
 	files, err := ioutil.ReadDir(opts.Dirname)
 	if err != nil {
@@ -64,7 +65,6 @@ func Open(opts Options) (ret *Gravel, failure error) {
 		ret.addTable(table)
 	}
 	go ret.reportStats()
-	go ret.periodicallyFlush()
 	return ret, nil
 }
 
@@ -188,12 +188,6 @@ func (g *Gravel) flush() error {
 		// no valid reason to flush an empty memtable
 		return nil
 	}
-	// broadcast that we are attempting to do a flush
-	// this operation will never block because the caller
-	// of flush holds commitlock -> only one process can do flush at a time
-	// the moment one thread does a flush, the goroutine executing 'periodicallyflush'
-	// will dequeue from this channel
-	g.flushch <- struct{}{}
 	table, err := g.memtable.Flush(g.opts.TableType, g.opts.Dirname, g.nextID())
 	if err != nil {
 		return err
@@ -206,27 +200,4 @@ func (g *Gravel) flush() error {
 	g.stats.MemtableSizeBytes.Store(0)
 	g.stats.MemtableKeys.Store(0)
 	return err
-}
-
-// If the write volume is low, memtable may not reach tablesize for
-// a while, and so may not flush. While it's technically not an issue,
-// flushing doesn't hurt us and can make future startup faster.
-// This function forces a flush 10 minutes after the last natural flush.
-func (g *Gravel) periodicallyFlush() {
-	ticker := time.NewTicker(10 * time.Minute)
-	for {
-		select {
-		case <-ticker.C:
-			func() {
-				g.commitlock.Lock()
-				defer g.commitlock.Unlock()
-				// in case any flush marker is in the channel, remove it
-				// without blocking on it
-				<-g.flushch
-				g.flush()
-			}()
-		case <-g.flushch:
-			ticker = time.NewTicker(10 * time.Minute)
-		}
-	}
 }
