@@ -10,11 +10,12 @@ import (
 	"fmt"
 	"os"
 	"path"
+	"runtime"
 	"sort"
+	"syscall"
 
 	"github.com/cespare/xxhash/v2"
 	"go.uber.org/atomic"
-	"golang.org/x/exp/mmap"
 	"golang.org/x/sys/unix"
 )
 
@@ -38,8 +39,10 @@ const headerSize uint64 = 64
 const avgBucketSize uint64 = 12
 const invalidUint32 uint32 = 0xFFFFFFFF
 
+var incompleteFile = fmt.Errorf("expected end of file")
+
 type bDiskHashTable struct {
-	data        *mmap.ReaderAt
+	data        []byte
 	itemCount   uint64
 	bucketCount uint64
 	dataPos     uint64
@@ -61,35 +64,37 @@ func (b *bDiskHashTable) Get(key []byte) (Value, error) {
 		bucketId = hash % b.bucketCount
 	}
 
-	buf4 := make([]byte, 4)
-	_, err := b.data.ReadAt(buf4, int64(headerSize+bucketId*4))
-	if err != nil {
-		return Value{}, err
+	pos := int(headerSize + bucketId*4)
+	if len(b.data) < pos+4 {
+		return Value{}, incompleteFile
 	}
 
-	relativeBucketOffset := binary.BigEndian.Uint32(buf4)
+	relativeBucketOffset := binary.BigEndian.Uint32(b.data[pos:])
 	if relativeBucketOffset == invalidUint32 {
 		return Value{}, ErrNotFound
 	}
 	bucketOffset := uint64(relativeBucketOffset) + headerSize + b.bucketCount*4
 
-	itemsInBucket := int(b.data.At(int(bucketOffset)))
-	bucketOffset += 1
+	pos = int(bucketOffset)
+	if len(b.data) <= pos {
+		return Value{}, incompleteFile
+	}
+
+	itemsInBucket := int(b.data[pos])
+	pos += 1
 	if itemsInBucket == 255 {
-		_, err := b.data.ReadAt(buf4, int64(bucketOffset))
-		if err != nil {
-			return Value{}, err
+		if len(b.data) < pos+4 {
+			return Value{}, incompleteFile
 		}
-		bucketOffset += 4
-		itemsInBucket = int(binary.BigEndian.Uint32(buf4))
+		itemsInBucket = int(binary.BigEndian.Uint32(b.data[pos:]))
+		pos += 4
 	}
 
-	bufCurrBucket := make([]byte, 5+itemsInBucket*4)
-	_, err = b.data.ReadAt(bufCurrBucket, int64(bucketOffset))
-	if err != nil {
-		return Value{}, err
+	if len(b.data) < pos+5+itemsInBucket*4 {
+		return Value{}, incompleteFile
 	}
 
+	bufCurrBucket := b.data[pos : pos+5+itemsInBucket*4]
 	dataPos := (uint64(bufCurrBucket[0]) << 32) | (uint64(bufCurrBucket[1]) << 24) | (uint64(bufCurrBucket[2]) << 16) | (uint64(bufCurrBucket[3]) << 8) | (uint64(bufCurrBucket[4]))
 	hashFP := uint32(hash & 0xFFFFFFFF)
 
@@ -110,45 +115,36 @@ func (b *bDiskHashTable) Get(key []byte) (Value, error) {
 			_, t := timer.Start(context.TODO(), 1, "gravel.table.dataread")
 			defer t.Stop()
 		}
-		curDataPos := dataPos + b.dataPos
+		pos = int(dataPos + b.dataPos)
 		matchIdx := 0
 		for i := 0; ; i++ {
 			if i >= itemsInBucket {
 				panic("file is inconsistent state")
 			}
-			_, err := b.data.ReadAt(buf4, int64(curDataPos))
-			if err != nil {
-				return Value{}, err
+			keyPos := pos + 4 + 1 + 4 + 1 + 4
+			if len(b.data) < keyPos {
+				return Value{}, incompleteFile
 			}
+
 			// write record: [4 bytes total size, 1 byte key size, 4 bytes value size, 1 byte delete tombstone, 4 bytes expire time, key, value]
-			recordSize := binary.BigEndian.Uint32(buf4)
+			recordSize := int(binary.BigEndian.Uint32(b.data[pos:]))
 
 			if i == matchIndices[matchIdx] {
-				keyLen := uint64(b.data.At(int(curDataPos + 4)))
-				curKey := make([]byte, keyLen)
-				_, err = b.data.ReadAt(curKey, int64(curDataPos+4+1+4+1+4))
-				if err != nil {
-					return Value{}, err
+				keyLen := int(b.data[pos+4])
+				if len(b.data) < keyPos+keyLen {
+					return Value{}, incompleteFile
 				}
+				curKey := b.data[keyPos : keyPos+keyLen]
 				if bytes.Equal(curKey, key) {
 					// found
-					buf := make([]byte, 9)
-					_, err := b.data.ReadAt(buf, int64(curDataPos+4+1))
-					if err != nil {
-						return Value{}, err
+					valueSize := int(binary.BigEndian.Uint32(b.data[pos+5:]))
+					deleted := b.data[pos+9] > 0
+					expTime := binary.BigEndian.Uint32(b.data[pos+10:])
+					if len(b.data) < keyPos+keyLen+valueSize {
+						return Value{}, incompleteFile
 					}
-					valueSize := binary.BigEndian.Uint32(buf)
-					delflag := buf[4]
-					expTime := binary.BigEndian.Uint32(buf[5:])
-					deleted := false
-					if delflag > 0 {
-						deleted = true
-					}
-					value := make([]byte, valueSize)
-					_, err = b.data.ReadAt(value, int64(curDataPos+4+1+4+1+4+keyLen))
-					if err != nil {
-						return Value{}, err
-					}
+
+					value := b.data[keyPos+keyLen : keyPos+keyLen+valueSize]
 					return Value{
 						data:    value,
 						expires: Timestamp(expTime),
@@ -162,14 +158,20 @@ func (b *bDiskHashTable) Get(key []byte) (Value, error) {
 					break
 				}
 			}
-			curDataPos += uint64(recordSize)
+			pos += recordSize
 		}
 		return Value{}, ErrNotFound
 	}()
 }
 
 func (b *bDiskHashTable) Close() error {
-	return b.data.Close()
+	if b.data == nil {
+		return nil
+	}
+	data := b.data
+	b.data = nil
+	runtime.SetFinalizer(b, nil)
+	return syscall.Munmap(data)
 }
 
 func (b *bDiskHashTable) ID() uint64 {
@@ -356,35 +358,48 @@ func buildBDiskHashTable(dirname string, id uint64, mt *Memtable) (table Table, 
 }
 
 func openBDiskHashTable(id uint64, filepath string) (Table, error) {
-	data, err := mmap.Open(filepath)
+	var data []byte = nil
+
+	f, err := os.Open(filepath)
 	if err != nil {
-		return nil, fmt.Errorf("unable to open disk hash file: %w", err)
+		return nil, err
 	}
-	if data.Len() == 0 {
-		return nil, fmt.Errorf("unable to open disk hash file: empty file")
-	}
-	buf := make([]byte, headerSize)
-	_, err = data.ReadAt(buf, 0)
+	defer f.Close()
+	fi, err := f.Stat()
 	if err != nil {
 		return nil, err
 	}
 
-	dataPos := uint64(binary.BigEndian.Uint32(buf[12:]))
-	// TODO check magic header
-	// Prefetch the index data [0, dataPos) by "touching" it
-	uselessBuf := make([]byte, dataPos)
-	_, err = data.ReadAt(uselessBuf, 0)
+	size := fi.Size()
+	if size <= int64(headerSize) {
+		return nil, fmt.Errorf("file size too small to be a valid gravel file")
+	}
+
+	data, err = syscall.Mmap(int(f.Fd()), 0, int(size), syscall.PROT_READ, syscall.MAP_SHARED)
 	if err != nil {
 		return nil, err
 	}
 
-	return &bDiskHashTable{
+	dataPos := uint64(binary.BigEndian.Uint32(data[12:]))
+	if len(data) <= int(dataPos) {
+		_ = syscall.Munmap(data)
+		return nil, err
+	}
+
+	for i := 0; i < int(dataPos); i++ {
+		// Prefetch the index data [0, dataPos) by "touching" it
+		_ = data[i]
+	}
+
+	tableObj := &bDiskHashTable{
 		data:        data,
-		itemCount:   uint64(binary.BigEndian.Uint32(buf[8:])),
-		bucketCount: uint64(binary.BigEndian.Uint32(buf[4:])),
+		itemCount:   uint64(binary.BigEndian.Uint32(data[8:])),
+		bucketCount: uint64(binary.BigEndian.Uint32(data[4:])),
 		dataPos:     dataPos,
 		id:          id,
-	}, nil
+	}
+	runtime.SetFinalizer(tableObj, (*bDiskHashTable).Close)
+	return tableObj, nil
 }
 
 var _ Table = (*bDiskHashTable)(nil)
