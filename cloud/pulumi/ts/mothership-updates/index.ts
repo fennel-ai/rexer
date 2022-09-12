@@ -70,6 +70,7 @@ export class MothershipDBUpdater {
             const time = Date.now()
             return getProperty(output, ".planeId.value").then(planeId => {
                 return getProperty(output, ".ingress.value.loadBalancerUrl").then(apiUrl => {
+                    apiUrl = `http://${apiUrl}/data`
                     const planeStackName = getFullyQualifiedStackName(getStackName(Scope.DATAPLANE, +planeId))
                     return workspace.stackOutputs(planeStackName).then(poutput => {
                         return getProperty(poutput, ".customerId.value").then(customerId => {
