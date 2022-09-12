@@ -98,6 +98,8 @@ func InitManifest(dirname string, tableType TableType, numShards uint64) (*Manif
 	return manifest, nil
 }
 
+// List lists all the tables of a shard in the order of latest to oldest
+// The caller is expected to hold a lock by calling Reserve on manifest
 func (m *Manifest) List(shard uint64) ([]Table, error) {
 	if shard >= m.numShards {
 		return nil, fmt.Errorf("invalid shard ID")
@@ -178,11 +180,11 @@ func (m *Manifest) Replace(shard uint, filenames []string, newfile string) error
 	panic("todo")
 }
 
-func (m *Manifest) Lock() {
+func (m *Manifest) Reserve() {
 	m.lock.RLock()
 }
 
-func (m *Manifest) Unlock() {
+func (m *Manifest) Release() {
 	m.lock.RUnlock()
 }
 

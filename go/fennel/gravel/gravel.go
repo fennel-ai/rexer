@@ -73,8 +73,8 @@ func (g *Gravel) Get(key []byte) ([]byte, error) {
 		return nil, err
 	}
 	shard := hash & (g.manifest.numShards - 1)
-	g.manifest.Lock()
-	defer g.manifest.Unlock()
+	g.manifest.Reserve()
+	defer g.manifest.Release()
 	tables, err := g.manifest.List(shard)
 	if err != nil {
 		return nil, fmt.Errorf("invalid shard: %w", err)
@@ -158,6 +158,17 @@ func (g *Gravel) flush() error {
 	if err = g.manifest.Append(tablefiles); err != nil {
 		return err
 	}
+	g.manifest.Reserve()
+	defer g.manifest.Release()
+	numTables := 0
+	for s := uint64(0); s < g.manifest.numShards; s++ {
+		tables, err := g.manifest.List(s)
+		if err != nil {
+			return err
+		}
+		numTables += len(tables)
+	}
+	g.stats.NumTables.Store(uint64(numTables))
 	if err = g.memtable.Clear(); err != nil {
 		return err
 	}

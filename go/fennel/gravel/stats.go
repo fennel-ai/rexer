@@ -55,8 +55,8 @@ func (g *Gravel) reportStats() {
 			stats.WithLabelValues("memtable_size_bytes", name).Set(float64(g.stats.MemtableSizeBytes.Load()))
 			stats.WithLabelValues("memtable_keys", name).Set(float64(g.stats.MemtableKeys.Load()))
 
-			g.manifest.Lock()
-			defer g.manifest.Unlock()
+			g.manifest.Reserve()
+			defer g.manifest.Release()
 			reads := uint64(0)
 			for s := uint64(0); s < g.manifest.numShards; s++ {
 				tables, err := g.manifest.List(s)
