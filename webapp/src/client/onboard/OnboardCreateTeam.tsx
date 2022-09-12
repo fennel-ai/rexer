@@ -59,7 +59,7 @@ function OnboardCreateTeam({isPersonalDomain, user, onOnboardStatusChange}: Prop
                 <Form name="createTeamForm">
                     <Form.Item
                         name="teamName"
-                        rules={[{ required: true, message: "team name can't be empty" }]}
+                        rules={[{ required: true, message: "Team name can't be empty" }]}
                     >
                         <Input
                             autoComplete="off"
