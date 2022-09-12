@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"math/rand"
 	"os"
+	"path"
 	"testing"
 	"time"
 
@@ -12,39 +13,51 @@ import (
 )
 
 func TestBtreeTable(t *testing.T) {
-	testTable(t, BTreeTable, 100_000)
+	testTableType(t, BTreeTable, 100_000)
 }
 
 func TestDiskHashTable(t *testing.T) {
-	testTable(t, BDiskHashTable, 1000_000)
+	testTableType(t, BDiskHashTable, 1000_000)
 }
 
-func testTable(t *testing.T, type_ TableType, sz int) {
+func testTableType(t *testing.T, type_ TableType, sz int) {
 	rand.Seed(time.Now().Unix())
-	mt := getMemTable(sz)
+	numShards := 16
+	mt := getMemTable(sz, numShards)
 	id := rand.Uint64()
 	dirname := fmt.Sprintf("/tmp/gravel-%d", id)
 	start := time.Now()
-	table, err := BuildTable(dirname, id, type_, &mt)
+	filenames, err := BuildTable(dirname, uint64(numShards), type_, &mt)
+	tables := make([]Table, numShards)
+	for i, fname := range filenames {
+		newname := fmt.Sprintf("%d_%d%s", i, 1, SUFFIX)
+		newpath := path.Join(dirname, newname)
+		err = os.Rename(path.Join(dirname, fname), newpath)
+		assert.NoError(t, err)
+		tables[i], err = OpenTable(type_, 1, newpath)
+		assert.NoError(t, err)
+	}
 	assert.NoError(t, err)
 	duration := time.Since(start)
 	fmt.Printf("Table build took: %f seconds", duration.Seconds())
 	defer func() { os.RemoveAll(dirname) }()
-	for k, v := range mt.Iter() {
-		got, err := table.Get([]byte(k), Hash([]byte(k)))
-		assert.NoError(t, err, fmt.Sprintf("key: %s not found", k))
-		assert.Equal(t, v, got)
-	}
-	for i := 0; i < 1000; i++ {
-		k := []byte(utils.RandString(10))
-		_, err := table.Get(k, Hash([]byte(k)))
-		assert.Error(t, err)
-		assert.Equal(t, ErrNotFound, err)
+	for s := 0; s < numShards; s++ {
+		for k, v := range mt.Iter(uint64(s)) {
+			got, err := tables[s].Get([]byte(k), Hash([]byte(k)))
+			assert.NoError(t, err, fmt.Sprintf("key: %s not found", k))
+			assert.Equal(t, v, got)
+		}
+		for i := 0; i < 1000; i++ {
+			k := []byte(utils.RandString(10))
+			_, err := tables[s].Get(k, Hash([]byte(k)))
+			assert.Error(t, err)
+			assert.Equal(t, ErrNotFound, err)
+		}
 	}
 }
 
-func getMemTable(sz int) Memtable {
-	mt := NewMemTable()
+func getMemTable(sz, numShards int) Memtable {
+	mt := NewMemTable(uint64(numShards))
 	keys := make([][]byte, 0, sz)
 	vals := make([][]byte, 0, sz)
 	entries := make([]Entry, 0, sz)

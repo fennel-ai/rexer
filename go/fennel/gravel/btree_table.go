@@ -3,6 +3,7 @@ package gravel
 import (
 	"bytes"
 	"errors"
+	"fennel/lib/utils"
 	"fmt"
 	"os"
 	"path"
@@ -67,81 +68,86 @@ func (t *bTreeTable) Close() error {
 }
 
 // TODO: if table creation fails, delete the files before returning
-func buildBTreeTable(dirname string, id uint64, mt *Memtable) (Table, error) {
-	iter := mt.Iter()
-	// filter := NewBloomFilter(uint64(len(iter)), 0.001)
-	filepath := path.Join(dirname, fmt.Sprintf("%d%s", id, SUFFIX))
-	db, err := bbolt.Open(filepath, 0666, nil)
-	if err != nil {
-		return nil, fmt.Errorf("could not open file during table building: %w", err)
-	}
-	defer func(db *bbolt.DB) {
-		err := db.Close()
+func buildBTreeTable(dirname string, numShards uint64, mt *Memtable) ([]string, error) {
+	filenames := make([]string, numShards)
+	for i := 0; i < int(numShards); i++ {
+		iter := mt.Iter(uint64(i))
+		// filter := NewBloomFilter(uint64(len(iter)), 0.001)
+		filename := fmt.Sprintf("%d_%s%s", i, utils.RandString(8), tempSuffix)
+		filepath := path.Join(dirname, filename)
+		filenames[i] = filename
+		db, err := bbolt.Open(filepath, 0666, nil)
 		if err != nil {
-			zap.L().Error("failed to close db", zap.Error(err))
+			return nil, fmt.Errorf("could not open file during table building: %w", err)
 		}
-	}(db)
-	batchsz := 50_000
-	entries := make([]Entry, 0, batchsz)
-	for k, v := range iter {
-		// filter.Add([]byte(k))
-		entries = append(entries, Entry{key: []byte(k), val: v})
-		if len(entries) >= batchsz {
-			sort.Slice(entries, func(i, j int) bool {
-				return bytes.Compare(entries[i].key, entries[j].key) <= 0
-			})
-			err = db.Update(func(tx *bbolt.Tx) error {
-				bdata, err := tx.CreateBucketIfNotExists([]byte(treebucket))
-				if err != nil {
-					return fmt.Errorf("create data bucket failed: %s", err)
-				}
-				for _, e := range entries {
-					val, err := encodeVal(e.val)
+		defer func(db *bbolt.DB) {
+			err := db.Close()
+			if err != nil {
+				zap.L().Error("failed to close db", zap.Error(err))
+			}
+		}(db)
+		batchsz := 50_000
+		entries := make([]Entry, 0, batchsz)
+		for k, v := range iter {
+			// filter.Add([]byte(k))
+			entries = append(entries, Entry{key: []byte(k), val: v})
+			if len(entries) >= batchsz {
+				sort.Slice(entries, func(i, j int) bool {
+					return bytes.Compare(entries[i].key, entries[j].key) <= 0
+				})
+				err = db.Update(func(tx *bbolt.Tx) error {
+					bdata, err := tx.CreateBucketIfNotExists([]byte(treebucket))
 					if err != nil {
-						return fmt.Errorf("could not encode val while building table: %w", err)
+						return fmt.Errorf("create data bucket failed: %s", err)
 					}
-					if err = bdata.Put(e.key, val); err != nil {
-						return err
+					for _, e := range entries {
+						val, err := encodeVal(e.val)
+						if err != nil {
+							return fmt.Errorf("could not encode val while building table: %w", err)
+						}
+						if err = bdata.Put(e.key, val); err != nil {
+							return err
+						}
 					}
+					return nil
+				})
+				if err != nil {
+					return nil, err
 				}
-				return nil
-			})
-			if err != nil {
-				return nil, err
+				entries = entries[:0]
 			}
-			entries = entries[:0]
 		}
-	}
-	// add all the remaining data not yet flushed along with bloom filter
-	err = db.Update(func(tx *bbolt.Tx) error {
-		bdata, err := tx.CreateBucketIfNotExists([]byte(treebucket))
+		// add all the remaining data not yet flushed along with bloom filter
+		err = db.Update(func(tx *bbolt.Tx) error {
+			bdata, err := tx.CreateBucketIfNotExists([]byte(treebucket))
+			if err != nil {
+				return fmt.Errorf("create data bucket failed: %s", err)
+			}
+			for _, e := range entries {
+				val, err := encodeVal(e.val)
+				if err != nil {
+					return fmt.Errorf("could not encode val while building table: %w", err)
+				}
+				if err = bdata.Put(e.key, val); err != nil {
+					return err
+				}
+			}
+			return nil
+			// bfilter, err := tx.CreateBucket([]byte(bloombucket))
+			// if err != nil {
+			// 	return fmt.Errorf("create bloom bucket failed: %s", err)
+			// }
+			// return bfilter.Put([]byte(bloomkey), filter.Dump())
+		})
 		if err != nil {
-			return fmt.Errorf("create data bucket failed: %s", err)
+			return nil, err
 		}
-		for _, e := range entries {
-			val, err := encodeVal(e.val)
-			if err != nil {
-				return fmt.Errorf("could not encode val while building table: %w", err)
-			}
-			if err = bdata.Put(e.key, val); err != nil {
-				return err
-			}
+		if err := db.Close(); err != nil {
+			return nil, err
 		}
-		return nil
-		// bfilter, err := tx.CreateBucket([]byte(bloombucket))
-		// if err != nil {
-		// 	return fmt.Errorf("create bloom bucket failed: %s", err)
-		// }
-		// return bfilter.Put([]byte(bloomkey), filter.Dump())
-	})
-	if err != nil {
-		return nil, err
+
 	}
-	if err := db.Close(); err != nil {
-		return nil, err
-	}
-	// now open the table in just readonly mode and return that
-	return openBTreeTable(id, filepath)
+	return filenames, nil
 }
 
 func openBTreeTable(id uint64, filepath string) (Table, error) {

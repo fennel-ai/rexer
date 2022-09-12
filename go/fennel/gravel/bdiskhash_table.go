@@ -6,6 +6,7 @@ import (
 	"context"
 	"encoding/binary"
 	"fennel/lib/timer"
+	"fennel/lib/utils"
 	"fennel/lib/utils/math"
 	"fmt"
 	"os"
@@ -176,183 +177,177 @@ func (b *bDiskHashTable) ID() uint64 {
 	return b.id
 }
 
-func buildBDiskHashTable(dirname string, id uint64, mt *Memtable) (table Table, err error) {
-	filepath := path.Join(dirname, fmt.Sprintf("%d%s", id, SUFFIX))
-	wipPath := path.Join(dirname, fmt.Sprintf("%d%s.wip", id, SUFFIX))
-	fmt.Printf("starting to build the table: %s...\n", filepath)
+func buildBDiskHashTable(dirname string, numShards uint64, mt *Memtable) ([]string, error) {
+	fmt.Printf("num shards is: %d\n", numShards)
+	filenames := make([]string, uint(numShards))
+	for i := 0; i < int(numShards); i++ {
+		filename := fmt.Sprintf("%d_%s%s", i, utils.RandString(8), tempSuffix)
+		filepath := path.Join(dirname, filename)
+		filenames[i] = filename
+		fmt.Printf("starting to build the table: %s...\n", filepath)
 
-	var f *os.File
-	if f, err = os.Create(wipPath); err != nil {
-		return nil, err
-	}
-	defer func() {
-		// if for any reason the rest of the function fails, remove the temp file
-		// before returning, else that file will keep taking disk space forever
+		f, err := os.Create(filepath)
 		if err != nil {
-			_ = os.Remove(wipPath)
+			return nil, err
 		}
-	}()
-	type indexObj struct {
-		HashFP   uint32
-		BucketID uint32
-		k        string
-		v        Value
-	}
-
-	buildFunc := func() error {
-		m := mt.Iter()
-
-		itemCount := len(m)
-		bucketCount := uint64(itemCount / int(avgBucketSize))
-		bucketCount = math.NextPowerOf2(bucketCount)
-		headSlice := make([]byte, bucketCount*4)
-		for i := 0; i < int(bucketCount*4); i++ {
-			headSlice[i] = 0xFF
+		type indexObj struct {
+			HashFP   uint32
+			BucketID uint32
+			k        string
+			v        Value
 		}
 
-		indexObjs := make([]indexObj, len(m))
-		idx := 0
-		for key, value := range m {
-			hash := Hash([]byte(key))
-			indexObjs[idx] = indexObj{
-				HashFP:   uint32(hash & 0xFFFFFFFF),
-				BucketID: uint32(hash % bucketCount),
-				k:        key,
-				v:        value,
+		buildFunc := func(i uint) error {
+			m := mt.Iter(uint64(i))
+
+			itemCount := len(m)
+			bucketCount := uint64(itemCount / int(avgBucketSize))
+			bucketCount = math.NextPowerOf2(bucketCount)
+			headSlice := make([]byte, bucketCount*4)
+			for i := 0; i < int(bucketCount*4); i++ {
+				headSlice[i] = 0xFF
 			}
-			idx++
-		}
-		sort.Slice(indexObjs, func(i, j int) bool {
-			return indexObjs[i].BucketID < indexObjs[j].BucketID
-		})
 
-		var lastBucketId uint32 = 0xFFFFFFFF
-		var bucketsBuf []byte = nil
-
-		// calculate data start pos, to reserve the writing file offset
-		dataPos := headerSize + bucketCount*4
-		for i, indexObjItem := range indexObjs {
-			if indexObjItem.BucketID != lastBucketId {
-				bucketSize := 1
-				for ; i+bucketSize < len(indexObjs); bucketSize++ {
-					if indexObjs[i+bucketSize].BucketID != indexObjItem.BucketID {
-						break
-					}
+			indexObjs := make([]indexObj, len(m))
+			idx := 0
+			for key, value := range m {
+				hash := Hash([]byte(key))
+				indexObjs[idx] = indexObj{
+					HashFP:   uint32(hash & 0xFFFFFFFF),
+					BucketID: uint32(hash % bucketCount),
+					k:        key,
+					v:        value,
 				}
-				if bucketSize < 255 {
-					dataPos += 1
-				} else {
+				idx++
+			}
+			sort.Slice(indexObjs, func(i, j int) bool {
+				return indexObjs[i].BucketID < indexObjs[j].BucketID
+			})
+
+			var lastBucketId uint32 = 0xFFFFFFFF
+			var bucketsBuf []byte = nil
+
+			// calculate data start pos, to reserve the writing file offset
+			dataPos := headerSize + bucketCount*4
+			for i, indexObjItem := range indexObjs {
+				if indexObjItem.BucketID != lastBucketId {
+					bucketSize := 1
+					for ; i+bucketSize < len(indexObjs); bucketSize++ {
+						if indexObjs[i+bucketSize].BucketID != indexObjItem.BucketID {
+							break
+						}
+					}
+					if bucketSize < 255 {
+						dataPos += 1
+					} else {
+						dataPos += 5
+					}
 					dataPos += 5
+					dataPos += uint64(bucketSize * 4)
+					lastBucketId = indexObjItem.BucketID
 				}
-				dataPos += 5
-				dataPos += uint64(bucketSize * 4)
-				lastBucketId = indexObjItem.BucketID
 			}
-		}
 
-		lastBucketId = 0xFFFFFFFF
-		_, err := f.Seek(int64(dataPos), unix.SEEK_SET)
-		dataWriter := bufio.NewWriterSize(f, 1024*1024)
-		if err != nil {
-			return err
-		}
-
-		var relativeDataPos uint64 = 0
-		buf4 := make([]byte, 4)
-		for i, indexObjItem := range indexObjs {
-			if indexObjItem.BucketID != lastBucketId {
-				// flush
-				binary.BigEndian.PutUint32(headSlice[indexObjItem.BucketID*4:], uint32(len(bucketsBuf)))
-				bucketSize := 1
-				for ; i+bucketSize < len(indexObjs); bucketSize++ {
-					if indexObjs[i+bucketSize].BucketID != indexObjItem.BucketID {
-						break
-					}
-				}
-				if bucketSize < 255 {
-					bucketsBuf = append(bucketsBuf, byte(bucketSize))
-				} else {
-					tempBuf := make([]byte, 5)
-					tempBuf[0] = 255
-					binary.BigEndian.PutUint32(tempBuf[1:], uint32(bucketSize))
-					bucketsBuf = append(bucketsBuf, tempBuf...)
-				}
-				bucketsBuf = append(bucketsBuf, byte(relativeDataPos>>32), byte(relativeDataPos>>24), byte(relativeDataPos>>16), byte(relativeDataPos>>8), byte(relativeDataPos))
-				lastBucketId = indexObjItem.BucketID
-			}
-			binary.BigEndian.PutUint32(buf4, indexObjItem.HashFP)
-			bucketsBuf = append(bucketsBuf, buf4...)
-			// write record: [4 bytes total size, 1 byte key size, 4 bytes value size, 1 byte delete tombstone, 4 bytes expire time, key, value]
-			recordBuf := make([]byte, 4+1+4+1+4+len(indexObjItem.k)+len(indexObjItem.v.data))
-			binary.BigEndian.PutUint32(recordBuf[0:], uint32(len(recordBuf)))
-			recordBuf[4] = byte(len(indexObjItem.k))
-			binary.BigEndian.PutUint32(recordBuf[5:], uint32(len(indexObjItem.v.data)))
-			if indexObjItem.v.deleted {
-				recordBuf[9] = 1
-			} else {
-				recordBuf[9] = 0
-			}
-			binary.BigEndian.PutUint32(recordBuf[10:], uint32(indexObjItem.v.expires))
-			copy(recordBuf[14:], indexObjItem.k)
-			copy(recordBuf[14+recordBuf[4]:], indexObjItem.v.data)
-			// fmt.Printf("record is: %v\n", recordBuf)
-			relativeDataPos += uint64(len(recordBuf))
-			if _, err = dataWriter.Write(recordBuf); err != nil {
+			lastBucketId = 0xFFFFFFFF
+			_, err := f.Seek(int64(dataPos), unix.SEEK_SET)
+			dataWriter := bufio.NewWriterSize(f, 1024*1024)
+			if err != nil {
 				return err
 			}
+
+			var relativeDataPos uint64 = 0
+			buf4 := make([]byte, 4)
+			for i, indexObjItem := range indexObjs {
+				if indexObjItem.BucketID != lastBucketId {
+					// flush
+					binary.BigEndian.PutUint32(headSlice[indexObjItem.BucketID*4:], uint32(len(bucketsBuf)))
+					bucketSize := 1
+					for ; i+bucketSize < len(indexObjs); bucketSize++ {
+						if indexObjs[i+bucketSize].BucketID != indexObjItem.BucketID {
+							break
+						}
+					}
+					if bucketSize < 255 {
+						bucketsBuf = append(bucketsBuf, byte(bucketSize))
+					} else {
+						tempBuf := make([]byte, 5)
+						tempBuf[0] = 255
+						binary.BigEndian.PutUint32(tempBuf[1:], uint32(bucketSize))
+						bucketsBuf = append(bucketsBuf, tempBuf...)
+					}
+					bucketsBuf = append(bucketsBuf, byte(relativeDataPos>>32), byte(relativeDataPos>>24), byte(relativeDataPos>>16), byte(relativeDataPos>>8), byte(relativeDataPos))
+					lastBucketId = indexObjItem.BucketID
+				}
+				binary.BigEndian.PutUint32(buf4, indexObjItem.HashFP)
+				bucketsBuf = append(bucketsBuf, buf4...)
+				// write record: [4 bytes total size, 1 byte key size, 4 bytes value size, 1 byte delete tombstone, 4 bytes expire time, key, value]
+				recordBuf := make([]byte, 4+1+4+1+4+len(indexObjItem.k)+len(indexObjItem.v.data))
+				binary.BigEndian.PutUint32(recordBuf[0:], uint32(len(recordBuf)))
+				recordBuf[4] = byte(len(indexObjItem.k))
+				binary.BigEndian.PutUint32(recordBuf[5:], uint32(len(indexObjItem.v.data)))
+				if indexObjItem.v.deleted {
+					recordBuf[9] = 1
+				} else {
+					recordBuf[9] = 0
+				}
+				binary.BigEndian.PutUint32(recordBuf[10:], uint32(indexObjItem.v.expires))
+				copy(recordBuf[14:], indexObjItem.k)
+				copy(recordBuf[14+recordBuf[4]:], indexObjItem.v.data)
+				// fmt.Printf("record is: %v\n", recordBuf)
+				relativeDataPos += uint64(len(recordBuf))
+				if _, err = dataWriter.Write(recordBuf); err != nil {
+					return err
+				}
+			}
+
+			fmt.Println("Index size", dataPos)
+			if uint64(len(bucketsBuf))+headerSize+bucketCount*4 != dataPos {
+				panic("bad assumption")
+			}
+			err = dataWriter.Flush()
+			if err != nil {
+				return err
+			}
+
+			_, err = f.Seek(0, unix.SEEK_SET)
+			if err != nil {
+				return err
+			}
+
+			headerBuf := make([]byte, headerSize)
+			binary.BigEndian.PutUint32(headerBuf[0:], 0x20220101)          // whatever magic header
+			binary.BigEndian.PutUint32(headerBuf[4:], uint32(bucketCount)) // whatever magic header
+			binary.BigEndian.PutUint32(headerBuf[8:], uint32(itemCount))   // item count
+			binary.BigEndian.PutUint32(headerBuf[12:], uint32(dataPos))    // starting of the acutal data
+			_, err = f.Write(headerBuf)
+			if err != nil {
+				return err
+			}
+			_, err = f.Write(headSlice)
+			if err != nil {
+				return err
+			}
+
+			_, err = f.Write(bucketsBuf)
+			if err != nil {
+				return err
+			}
+			return nil
 		}
 
-		fmt.Println("Index size", dataPos)
-		if uint64(len(bucketsBuf))+headerSize+bucketCount*4 != dataPos {
-			panic("bad assumption")
+		if err = buildFunc(uint(i)); err != nil {
+			return nil, err
 		}
-		err = dataWriter.Flush()
+		// sync the file to disk before going to avoid any data loss
+		if err = f.Sync(); err != nil {
+			return nil, err
+		}
+		err = f.Close()
 		if err != nil {
-			return err
+			return nil, err
 		}
-
-		_, err = f.Seek(0, unix.SEEK_SET)
-		if err != nil {
-			return err
-		}
-
-		headerBuf := make([]byte, headerSize)
-		binary.BigEndian.PutUint32(headerBuf[0:], 0x20220101)          // whatever magic header
-		binary.BigEndian.PutUint32(headerBuf[4:], uint32(bucketCount)) // whatever magic header
-		binary.BigEndian.PutUint32(headerBuf[8:], uint32(itemCount))   // item count
-		binary.BigEndian.PutUint32(headerBuf[12:], uint32(dataPos))    // starting of the acutal data
-		_, err = f.Write(headerBuf)
-		if err != nil {
-			return err
-		}
-		_, err = f.Write(headSlice)
-		if err != nil {
-			return err
-		}
-
-		_, err = f.Write(bucketsBuf)
-		if err != nil {
-			return err
-		}
-		return nil
 	}
-
-	if err = buildFunc(); err != nil {
-		return nil, err
-	}
-	// sync the file to disk before going to avoid any data loss
-	if err = f.Sync(); err != nil {
-		return nil, err
-	}
-	err = f.Close()
-	if err != nil {
-		return nil, err
-	}
-	if err = os.Rename(wipPath, filepath); err != nil {
-		return nil, fmt.Errorf("could not rename temp file to real file: %w", err)
-	}
-	table, err = openBDiskHashTable(id, filepath)
-	return table, err
+	return filenames, nil
 }
 
 func openBDiskHashTable(id uint64, filepath string) (Table, error) {

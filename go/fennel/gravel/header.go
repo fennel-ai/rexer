@@ -11,7 +11,8 @@ var (
 )
 
 const (
-	SUFFIX = ".grvl"
+	SUFFIX     = ".grvl"
+	tempSuffix = ".grvl.temp"
 )
 
 type Timestamp uint32
@@ -32,4 +33,8 @@ type Entry struct {
 // pass the hash around instead of recomputing it
 func Hash(k []byte) uint64 {
 	return xxhash.Sum64(k)
+}
+
+func Shard(k []byte, numShards uint64) uint64 {
+	return Hash(k) & (numShards - 1)
 }

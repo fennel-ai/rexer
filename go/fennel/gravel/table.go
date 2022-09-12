@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"os"
 	"path"
-	"strconv"
 	"strings"
 )
 
@@ -19,42 +18,41 @@ type Table interface {
 	DataReads() uint64
 }
 
-// BuildTable persists a memtable on disk and returns a Table
-// that has a readonly handle to the table
-func BuildTable(dirname string, id uint64, type_ TableType, mt *Memtable) (Table, error) {
+// BuildTable persists a memtable on disk broken into numShards shards and returns list of
+// filenames for each of the shards in the correct order
+func BuildTable(dirname string, numShards uint64, type_ TableType, mt *Memtable) ([]string, error) {
 	_, t := timer.Start(context.TODO(), 1, "gravel.table.build")
 	defer t.Stop()
-	// before opening the file, first make sure the directory exists
+	// if the directory doesn't exist, create it
 	if err := os.MkdirAll(dirname, os.ModePerm); err != nil {
 		return nil, err
 	}
 	switch type_ {
 	case BTreeTable:
-		return buildBTreeTable(dirname, id, mt)
+		return buildBTreeTable(dirname, numShards, mt)
 	case BDiskHashTable:
-		return buildBDiskHashTable(dirname, id, mt)
+		return buildBDiskHashTable(dirname, numShards, mt)
+	case testTable:
+		return buildEmptyTable(dirname, numShards, mt)
 	default:
 		return nil, fmt.Errorf("invalid table type")
 	}
 }
 
-func OpenTable(type_ TableType, filepath string) (Table, error) {
+func OpenTable(type_ TableType, id uint64, filepath string) (Table, error) {
 	_, t := timer.Start(context.TODO(), 1, "gravel.table.open")
 	defer t.Stop()
 	_, fname := path.Split(filepath)
 	if !strings.HasSuffix(fname, SUFFIX) {
 		return nil, errors.New("can not open table - not .grvl file")
 	}
-	end := len(fname) - len(SUFFIX)
-	id, err := strconv.ParseUint(fname[:end], 10, 64)
-	if err != nil {
-		return nil, err
-	}
 	switch type_ {
 	case BTreeTable:
 		return openBTreeTable(id, filepath)
 	case BDiskHashTable:
 		return openBDiskHashTable(id, filepath)
+	case testTable:
+		return emptyTable{id: id}, nil
 	default:
 		return nil, fmt.Errorf("invalid table type: %v", type_)
 	}

@@ -5,22 +5,38 @@ import (
 )
 
 type Memtable struct {
-	lock *sync.RWMutex
-	map_ map[string]Value
-	size uint64
+	numShards  uint64
+	modulo     uint64
+	writelock  *sync.RWMutex
+	shardLocks []sync.RWMutex
+	maps       []map[string]Value
+	size       uint64
+	len        uint64
 }
 
-func NewMemTable() Memtable {
+func NewMemTable(numShards uint64) Memtable {
+	maps := make([]map[string]Value, numShards)
+	locks := make([]sync.RWMutex, numShards)
+	for i := 0; i < int(numShards); i++ {
+		maps[i] = make(map[string]Value)
+		locks[i] = sync.RWMutex{}
+	}
 	return Memtable{
-		map_: make(map[string]Value),
-		lock: &sync.RWMutex{},
+		numShards:  numShards,
+		modulo:     numShards - 1,
+		writelock:  &sync.RWMutex{},
+		shardLocks: locks,
+		maps:       maps,
+		size:       0,
 	}
 }
 
-func (mt *Memtable) Get(k []byte) (Value, error) {
-	mt.lock.RLock()
-	val, ok := mt.map_[string(k)]
-	mt.lock.RUnlock()
+func (mt *Memtable) Get(k []byte, h uint64) (Value, error) {
+	shard := int(h & mt.modulo)
+	lock := &mt.shardLocks[shard]
+	lock.RLock()
+	val, ok := mt.maps[shard][string(k)]
+	lock.RUnlock()
 	if !ok {
 		return Value{}, ErrNotFound
 	} else {
@@ -28,8 +44,8 @@ func (mt *Memtable) Get(k []byte) (Value, error) {
 	}
 }
 
-func (mt *Memtable) Iter() map[string]Value {
-	return mt.map_
+func (mt *Memtable) Iter(shard uint64) map[string]Value {
+	return mt.maps[uint(shard)]
 }
 
 // Size returns the total size of keys/values as they will be written in the table
@@ -40,50 +56,60 @@ func (mt *Memtable) Size() uint64 {
 }
 
 func (mt *Memtable) Len() uint64 {
-	mt.lock.RLock()
-	ret := uint64(len(mt.map_))
-	mt.lock.RUnlock()
+	mt.writelock.RLock()
+	ret := mt.len
+	mt.writelock.RUnlock()
 	return ret
 }
 
 func (mt *Memtable) SetMany(entries []Entry, stats *Stats) error {
-	mt.lock.Lock()
-	defer mt.lock.Unlock()
+	mt.writelock.Lock()
+	defer mt.writelock.Unlock()
 	for _, e := range entries {
-		if v, found := mt.map_[string(e.key)]; found {
+		shard := Shard(e.key, mt.numShards)
+		map_ := mt.maps[shard]
+		mt.shardLocks[shard].Lock()
+		if v, found := map_[string(e.key)]; found {
 			mt.size -= uint64(sizeof(Entry{
 				key: e.key,
 				val: v,
 			}))
+			mt.len -= 1
 		}
-		mt.map_[string(e.key)] = e.val
+		map_[string(e.key)] = e.val
 		mt.size += uint64(sizeof(e))
+		mt.len += 1
 		if e.val.deleted {
 			maybeInc(shouldSample(), &stats.Dels)
 		} else {
 			maybeInc(shouldSample(), &stats.Sets)
 		}
+		mt.shardLocks[shard].Unlock()
 	}
 	stats.MemtableSizeBytes.Store(mt.Size())
-	stats.MemtableKeys.Store(uint64(len(mt.map_)))
+	stats.MemtableKeys.Store(mt.len)
 	maybeInc(shouldSample(), &stats.Commits)
 	return nil
 }
 
 func (mt *Memtable) Clear() error {
-	mt.lock.Lock()
-	defer mt.lock.Unlock()
+	mt.writelock.Lock()
+	defer mt.writelock.Unlock()
 
-	mt.map_ = make(map[string]Value)
+	for i := range mt.maps {
+		mt.maps[i] = make(map[string]Value)
+	}
+
 	mt.size = 0
+	mt.len = 0
 	return nil
 }
 
 // Flush flushes the memtable to the disk
 // Note - it doesn't yet clear the memtable (and so continues serving writes) until
 // explicitly called after the table has been added to the table list
-func (mt *Memtable) Flush(type_ TableType, dirname string, id uint64) (Table, error) {
-	mt.lock.RLock()
-	defer mt.lock.RUnlock()
-	return BuildTable(dirname, id, type_, mt)
+func (mt *Memtable) Flush(type_ TableType, dirname string, numShards uint64) ([]string, error) {
+	mt.writelock.RLock()
+	defer mt.writelock.RUnlock()
+	return BuildTable(dirname, numShards, type_, mt)
 }
