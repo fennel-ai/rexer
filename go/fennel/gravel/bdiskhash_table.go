@@ -57,12 +57,7 @@ func (b *bDiskHashTable) DataReads() uint64 {
 
 func (b *bDiskHashTable) Get(key []byte, hash uint64) (Value, error) {
 	bucketCount := b.bucketCount
-	var bucketId uint64
-	if bucketCount&(bucketCount-1) == 0 {
-		bucketId = (hash >> b.numShardBit) & (bucketCount - 1)
-	} else {
-		bucketId = hash % b.bucketCount
-	}
+	bucketId := (hash >> b.numShardBit) & (bucketCount - 1)
 
 	pos := int(headerSize + bucketId*4)
 	if len(b.data) < pos+4 {
