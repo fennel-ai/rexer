@@ -16,6 +16,7 @@ function SignUp() {
 
     useEffect(() => {
         notification.info({
+            key: "documentation",
             message: (
                 <span>
                     Want to read the documentation first?
@@ -27,6 +28,11 @@ function SignUp() {
             placement: "bottomRight",
         })
     }, []);
+    useEffect(() => {
+        if (submitted) {
+            notification.close("documentation");
+        }
+    }, [submitted])
 
     return (
         <div className={styles.page}>
