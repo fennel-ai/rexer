@@ -169,7 +169,7 @@ func (m *Manifest) Append(filenames []string) error {
 	if err != nil {
 		return fmt.Errorf("could not load new manifest after writing: %w", err)
 	}
-	*m = *newManifest
+	m.tables = newManifest.tables
 	return nil
 }
 

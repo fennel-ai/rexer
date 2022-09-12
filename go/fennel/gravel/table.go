@@ -52,7 +52,7 @@ func OpenTable(type_ TableType, id uint64, filepath string) (Table, error) {
 	case BDiskHashTable:
 		return openBDiskHashTable(id, filepath)
 	case testTable:
-		return emptyTable{id: id}, nil
+		return openEmptyTable(id)
 	default:
 		return nil, fmt.Errorf("invalid table type: %v", type_)
 	}
