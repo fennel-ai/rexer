@@ -48,6 +48,7 @@ type bDiskHashTable struct {
 	dataPos     uint64
 	id          uint64
 	reads       atomic.Uint64
+	numShardBit int
 }
 
 func (b *bDiskHashTable) DataReads() uint64 {
@@ -58,7 +59,7 @@ func (b *bDiskHashTable) Get(key []byte, hash uint64) (Value, error) {
 	bucketCount := b.bucketCount
 	var bucketId uint64
 	if bucketCount&(bucketCount-1) == 0 {
-		bucketId = hash & (bucketCount - 1)
+		bucketId = (hash >> b.numShardBit) & (bucketCount - 1)
 	} else {
 		bucketId = hash % b.bucketCount
 	}
@@ -178,7 +179,13 @@ func (b *bDiskHashTable) ID() uint64 {
 }
 
 func buildBDiskHashTable(dirname string, numShards uint64, mt *Memtable) ([]string, error) {
-	fmt.Printf("num shards is: %d\n", numShards)
+	if numShards&(numShards-1) > 0 {
+		return nil, fmt.Errorf("shard is not a power of 2")
+	}
+	numShardBits := 0
+	for (1 << numShardBits) < numShards {
+		numShardBits += 1
+	}
 	filenames := make([]string, uint(numShards))
 	for i := 0; i < int(numShards); i++ {
 		filename := fmt.Sprintf("%d_%s%s", i, utils.RandString(8), tempSuffix)
@@ -213,8 +220,10 @@ func buildBDiskHashTable(dirname string, numShards uint64, mt *Memtable) ([]stri
 			for key, value := range m {
 				hash := Hash([]byte(key))
 				indexObjs[idx] = indexObj{
-					HashFP:   uint32((hash >> 32) & 0xFFFFFFFF),
-					BucketID: uint32(hash % bucketCount),
+					HashFP: uint32((hash >> 32) & 0xFFFFFFFF),
+					// we don't want to use the bits used for sharding since they will
+					// be same for each key in that shard
+					BucketID: uint32((hash >> numShardBits) % bucketCount),
 					k:        key,
 					v:        value,
 				}
@@ -315,10 +324,11 @@ func buildBDiskHashTable(dirname string, numShards uint64, mt *Memtable) ([]stri
 			}
 
 			headerBuf := make([]byte, headerSize)
-			binary.BigEndian.PutUint32(headerBuf[0:], 0x20220101)          // whatever magic header
-			binary.BigEndian.PutUint32(headerBuf[4:], uint32(bucketCount)) // whatever magic header
-			binary.BigEndian.PutUint32(headerBuf[8:], uint32(itemCount))   // item count
-			binary.BigEndian.PutUint32(headerBuf[12:], uint32(dataPos))    // starting of the acutal data
+			binary.BigEndian.PutUint32(headerBuf[0:], 0x20220101)            // whatever magic header
+			binary.BigEndian.PutUint32(headerBuf[4:], uint32(bucketCount))   // whatever magic header
+			binary.BigEndian.PutUint32(headerBuf[8:], uint32(itemCount))     // item count
+			binary.BigEndian.PutUint32(headerBuf[12:], uint32(dataPos))      // starting of the acutal data
+			binary.BigEndian.PutUint32(headerBuf[16:], uint32(numShardBits)) // number of bits used for sharding
 			_, err = f.Write(headerBuf)
 			if err != nil {
 				return err
@@ -374,6 +384,7 @@ func openBDiskHashTable(id uint64, filepath string) (Table, error) {
 	}
 
 	dataPos := uint64(binary.BigEndian.Uint32(data[12:]))
+	numShardBits := int(binary.BigEndian.Uint32(data[16:]))
 	if len(data) <= int(dataPos) {
 		_ = syscall.Munmap(data)
 		return nil, err
@@ -390,6 +401,7 @@ func openBDiskHashTable(id uint64, filepath string) (Table, error) {
 		bucketCount: uint64(binary.BigEndian.Uint32(data[4:])),
 		dataPos:     dataPos,
 		id:          id,
+		numShardBit: numShardBits,
 	}
 	runtime.SetFinalizer(tableObj, (*bDiskHashTable).Close)
 	return tableObj, nil
