@@ -158,6 +158,11 @@
       "DefaultValue": 0.5
     },
     {
+      "Name": "EnableCalculateVAEHiddenLayerDim",
+      "Type": "Boolean",
+      "DefaultValue": true
+    },
+    {
       "Name": "ModelEndpointName",
       "Type": "String",
       "DefaultValue": "VAE-Model-Endpoint"
@@ -496,7 +501,17 @@
               ]
             }
           },
-          "sagemaker_submit_directory": "s3://sagemaker-us-west-2-030813887342/VAETrainStep-68c8ddbd71b7a1ef88dbc60d9239cdda/source/sourcedir.tar.gz",
+          "vae_calculate_hidden_layer": {
+            "Std:Join": {
+              "On": "",
+              "Values": [
+                {
+                  "Get": "Parameters.EnableCalculateVAEHiddenLayerDim"
+                }
+              ]
+            }
+          },
+          "sagemaker_submit_directory": "s3://sagemaker-us-west-2-030813887342/VAETrainStep-c8dd581c4cfd79ee9b881bbdfe976893/source/sourcedir.tar.gz",
           "sagemaker_program": "vae.py",
           "sagemaker_container_log_level": "20",
           "sagemaker_region": "us-west-2"
@@ -510,7 +525,7 @@
         },
         "ProfilerRuleConfigurations": [
           {
-            "RuleConfigurationName": "ProfilerReport-1662327099",
+            "RuleConfigurationName": "ProfilerReport-1662998094",
             "RuleEvaluatorImage": "895741380848.dkr.ecr.us-west-2.amazonaws.com/sagemaker-debugger-rules:latest",
             "RuleParameters": {
               "rule_to_invoke": "ProfilerReport"
@@ -535,7 +550,7 @@
           "TrainingImage": "246618743249.dkr.ecr.us-west-2.amazonaws.com/sagemaker-scikit-learn:0.23-1-cpu-py3"
         },
         "OutputDataConfig": {
-          "S3OutputPath": "s3://sagemaker-us-west-2-030813887342/pytorch-inference-2022-09-04-21-31-38-060"
+          "S3OutputPath": "s3://sagemaker-us-west-2-030813887342/pytorch-inference-2022-09-12-15-54-49-847"
         },
         "StoppingCondition": {
           "MaxRuntimeInSeconds": 86400
@@ -580,7 +595,7 @@
           "sagemaker_region": "us-west-2"
         },
         "DebugHookConfig": {
-          "S3OutputPath": "s3://sagemaker-us-west-2-030813887342/pytorch-inference-2022-09-04-21-31-38-060",
+          "S3OutputPath": "s3://sagemaker-us-west-2-030813887342/pytorch-inference-2022-09-12-15-54-49-847",
           "CollectionConfigurations": []
         }
       },
@@ -646,7 +661,7 @@
         },
         "role": "arn:aws:iam::030813887342:role/admin"
       },
-      "FunctionArn": "arn:aws:lambda:us-west-2:030813887342:function:sagemaker-pipelines-model-deployment-09-04-21-31-38",
+      "FunctionArn": "arn:aws:lambda:us-west-2:030813887342:function:sagemaker-pipelines-model-deployment-09-12-15-54-52",
       "OutputParameters": [
         {
           "OutputName": "statusCode",
