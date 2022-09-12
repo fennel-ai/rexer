@@ -95,7 +95,7 @@ func (b *bDiskHashTable) Get(key []byte, hash uint64) (Value, error) {
 
 	bufCurrBucket := b.data[pos : pos+5+itemsInBucket*4]
 	dataPos := (uint64(bufCurrBucket[0]) << 32) | (uint64(bufCurrBucket[1]) << 24) | (uint64(bufCurrBucket[2]) << 16) | (uint64(bufCurrBucket[3]) << 8) | (uint64(bufCurrBucket[4]))
-	hashFP := uint32(hash & 0xFFFFFFFF)
+	hashFP := uint32((hash >> 32) & 0xFFFFFFFF)
 
 	var matchIndices []int = nil
 	for i := 0; i < itemsInBucket; i++ {
@@ -213,7 +213,7 @@ func buildBDiskHashTable(dirname string, numShards uint64, mt *Memtable) ([]stri
 			for key, value := range m {
 				hash := Hash([]byte(key))
 				indexObjs[idx] = indexObj{
-					HashFP:   uint32(hash & 0xFFFFFFFF),
+					HashFP:   uint32((hash >> 32) & 0xFFFFFFFF),
 					BucketID: uint32(hash % bucketCount),
 					k:        key,
 					v:        value,
