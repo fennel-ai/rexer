@@ -18,9 +18,9 @@ function SignUp() {
         notification.info({
             message: (
                 <span>
-                    Want to take a look at our documentation first?
+                    Want to read the documentation first?
                     <br />
-                    Check out <a href="https://app.gitbook.com/o/ezMhZP7ASmi43q12NHfL/s/5DToQ2XCuEpPMMLC0Rwr/">here</a>.
+                    Check it out <a target="_blank" rel="noreferrer" href="https://app.gitbook.com/o/ezMhZP7ASmi43q12NHfL/s/5DToQ2XCuEpPMMLC0Rwr/">here</a>.
                 </span>
             ),
             duration: 0,
