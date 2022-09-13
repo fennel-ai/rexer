@@ -90,7 +90,8 @@ export type TierConf = {
     ingressConf?: util.IngressConf,
     sagemakerConf?: SagemakerConf,
     airbyteConf?: AirbyteConf,
-    pricingMode?: util.PricingMode,
+    plan?: util.Plan,
+    requestLimit?: number,
     customerId?: number,
 }
 
@@ -746,8 +747,11 @@ type TierInput = {
     // airbyte
     airbyteConf?: AirbyteConf,
 
-    // pricing mode.
-    pricingMode?: util.PricingMode,
+    // Plan.
+    plan?: util.Plan,
+
+    // Request Limit on tier services.
+    requestLimit?: number,
 
     // customer id.
     customerId?: number,
@@ -895,8 +899,12 @@ const setupTier = async (args: TierInput, preview?: boolean, destroy?: boolean) 
         await stack.setConfig(nameof<inputType>("airbyteConf"), { value: JSON.stringify(args.airbyteConf) })
     }
 
-    if (args.pricingMode !== undefined) {
-        await stack.setConfig("pricingMode", { value: args.pricingMode })
+    if (args.plan !== undefined) {
+        await stack.setConfig("plan", { value: String(args.plan) })
+    }
+
+    if (args.requestLimit !== undefined) {
+        await stack.setConfig("requestLimit", { value: String(args.requestLimit) })
     }
 
     if (args.customerId !== undefined) {

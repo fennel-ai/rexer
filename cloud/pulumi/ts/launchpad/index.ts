@@ -15,7 +15,7 @@ import * as glueSource from "../glue-script-source";
 import * as kafkatopics from "../kafkatopics";
 import * as telemetry from "../telemetry";
 import * as milvus from "../milvus";
-import { nameof, PUBLIC_LB_SCHEME, PRIVATE_LB_SCHEME, PricingMode } from "../lib/util";
+import { nameof, PUBLIC_LB_SCHEME, PRIVATE_LB_SCHEME, Plan } from "../lib/util";
 import * as msk from "../msk";
 
 import * as assert from "assert";
@@ -1324,7 +1324,7 @@ async function setupTierWrapperFn(tierId: number, dataplane: OutputMap, planeCon
             sagemakerConf: tierConf.sagemakerConf,
 
             airbyteConf: tierConf.airbyteConf,
-            pricingMode: tierConf.pricingMode,
+            plan: tierConf.plan,
         }, preview, destroy).catch(err => console.log(err))
     }
 }
