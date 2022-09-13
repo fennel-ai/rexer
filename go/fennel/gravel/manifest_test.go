@@ -43,7 +43,7 @@ func TestManifest(t *testing.T) {
 	// now verify that tables have appropriate files/IDs
 	for i := 0; i < 16; i++ {
 		maxsofar := uint64(math.MaxUint64)
-		m.Lock()
+		m.Reserve()
 		tables, err := m.List(uint64(i))
 		assert.NoError(t, err)
 		assert.Len(t, tables, sz)
@@ -52,7 +52,7 @@ func TestManifest(t *testing.T) {
 			assert.True(t, id < maxsofar)
 			maxsofar = id
 		}
-		m.Unlock()
+		m.Release()
 	}
 }
 
@@ -68,10 +68,11 @@ func TestEmptyInit(t *testing.T) {
 			assert.Equal(t, dirname, m.dirname)
 			assert.Equal(t, BDiskHashTable, m.tableType)
 			for s := 0; s < i; s++ {
-				m.Lock()
+				m.Reserve()
 				tables, err := m.List(uint64(s))
 				assert.NoError(t, err)
 				assert.Empty(t, tables)
+				m.Release()
 			}
 		}
 	}
