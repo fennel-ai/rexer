@@ -24,10 +24,10 @@ export enum Scope {
     TIER = 2,
 }
 
-export enum PricingMode {
-    FREE = "FREE",
-    FREEMIUM = "FREEMIUM",
-    PREMIMUM = "PREMIUM",
+export enum Plan {
+    BASIC = 0,
+    STARTUP = 1,
+    ENTERPRISE = 2,
 }
 
 export function getPrefix(scope: Scope, id: number) {
