@@ -15,6 +15,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"path"
 	"path/filepath"
 	"syscall"
 	"time"
@@ -84,13 +85,15 @@ func uploadFilesToBucket(s3Client s3.Client, gorDir, bucketName string) error {
 	if err != nil {
 		return fmt.Errorf("failed to list files in the dir: %s, %v", gorDir, err)
 	}
+	t := time.Now()
 	for _, file := range files {
 		fname := file.Name()
 		f, err := os.Open(filepath.Join(gorDir, fname))
 		if err != nil {
 			return fmt.Errorf("failed to read file: %s, err: %v", fname, err)
 		}
-		if err := s3Client.Upload(f, fname, bucketName); err != nil {
+		key := path.Join(t.Format("2006/01/02/03"), fname)
+		if err := s3Client.Upload(f, key, bucketName); err != nil {
 			return fmt.Errorf("failed to upload file: %s, err: %v", fname, err)
 		}
 
