@@ -281,7 +281,8 @@ export const setup = async (input: inputType) => {
         },
         spec: {
             "hostname": "*",
-            "prefix": "/data/query",
+            "prefix": "\/data\/(internal\/v1\/query|v1\/query|query)",
+            "prefix_regex": true,
             "rewrite": "/query",
             "service": `query-server:${appPort}`,
             "timeout_ms": timeoutSeconds * 1000,

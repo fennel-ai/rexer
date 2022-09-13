@@ -13,6 +13,7 @@ export type inputType = {
     modelStoreBucket: string,
     pprofBucket: string,
     offlineAggregateOutputBucket: string,
+    queryServerShadowBucket?: string,
 }
 
 // should not contain any pulumi.Output<> types.
@@ -27,6 +28,27 @@ export const setup = async (input: inputType): Promise<pulumi.Output<outputType>
             // attacks: https://docs.aws.amazon.com/IAM/latest/UserGuide/confused-deputy.html
         }
     });
+    let bucketArns: string[] = [
+        `arn:aws:s3:::${input.modelStoreBucket}`,
+        `arn:aws:s3:::${input.pprofBucket}`,
+        `arn:aws:s3:::${input.offlineAggregateOutputBucket}`
+    ];
+    let bucketObjectArns: string[] = [
+        `arn:aws:s3:::${input.modelStoreBucket}/*`,
+        `arn:aws:s3:::${input.pprofBucket}/*`,
+        `arn:aws:s3:::${input.offlineAggregateOutputBucket}/*`
+    ];
+    if (input.queryServerShadowBucket !== undefined) {
+        // TODO(mohit): Move this to an independent folder if this is required in the future
+        const bucket = new aws.s3.Bucket(`query-server-shadow-reqs-storage`, {
+            acl: "private",
+            bucket: input.queryServerShadowBucket!,
+            // delete all the objects so that the bucket can be deleted without error
+            forceDestroy: true,
+        }, { provider });
+        bucketArns.push(`arn:aws:s3:::${input.queryServerShadowBucket!}`);
+        bucketObjectArns.push(`arn:aws:s3:::${input.queryServerShadowBucket!}/*`);
+    }
 
     const name = `t-${input.tierId}-tier-eks-instance-policy`
     const policy = new aws.iam.Policy(name, {
@@ -39,11 +61,7 @@ export const setup = async (input: inputType): Promise<pulumi.Output<outputType>
                     Action: [
                         "s3:ListBucket"
                     ],
-                    Resource: [
-                        `arn:aws:s3:::${input.modelStoreBucket}`,
-                        `arn:aws:s3:::${input.pprofBucket}`,
-                        `arn:aws:s3:::${input.offlineAggregateOutputBucket}`,
-                    ]
+                    Resource: bucketArns,
                 },
                 {
                     Effect: "Allow",
@@ -51,21 +69,14 @@ export const setup = async (input: inputType): Promise<pulumi.Output<outputType>
                         "s3:PutObject",
                         "s3:GetObject",
                     ],
-                    Resource: [
-                        `arn:aws:s3:::${input.modelStoreBucket}/*`,
-                        `arn:aws:s3:::${input.pprofBucket}/*`,
-                        `arn:aws:s3:::${input.offlineAggregateOutputBucket}/*`,
-                    ]
+                    Resource: bucketObjectArns,
                 },
                 {
                     Effect: "Allow",
                     Action: [
                         "s3:DeleteObject"
                     ],
-                    Resource: [
-                        `arn:aws:s3:::${input.modelStoreBucket}/*`,
-                        `arn:aws:s3:::${input.offlineAggregateOutputBucket}/*`,
-                    ]
+                    Resource: bucketObjectArns,
                 },
                 {
                     Effect: "Allow",
