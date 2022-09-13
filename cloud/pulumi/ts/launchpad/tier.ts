@@ -169,6 +169,8 @@ type inputType = {
     sagemakerConf?: SagemakerConf,
     milvusEndpoint: string,
     airbyteConf?: AirbyteConf,
+    plan?: util.Plan,
+    requestLimit?: number,
 }
 
 const parseConfig = (): inputType => {
@@ -245,6 +247,9 @@ const parseConfig = (): inputType => {
         milvusEndpoint: config.require(nameof<inputType>("milvusEndpoint")),
 
         airbyteConf: config.getObject(nameof<inputType>("airbyteConf")),
+
+        plan: config.getNumber(nameof<inputType>("plan")),
+        requestLimit: config.getNumber(nameof<inputType>("requestLimit"))
     };
 };
 

@@ -1,2 +1,6 @@
 /bin/
 /node_modules/
+# Following files get generated as part config refresh.
+Pulumi.tier-*.yaml
+Pulumi.plane-*.yaml
+Pulumi.mothership-*.yaml

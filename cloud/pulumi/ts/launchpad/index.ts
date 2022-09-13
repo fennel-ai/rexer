@@ -384,6 +384,8 @@ const tierConfs: Record<number, TierConf> = {
         airbyteConf: {},
         createTopicsInMsk: true,
         mirrorMakerConf: {},
+        plan: Plan.BASIC,
+        requestLimit: 1000,
     },
     // reserver tierIds 1001 to 2000 for self-serve.
     1002: {
@@ -395,6 +397,8 @@ const tierConfs: Record<number, TierConf> = {
         airbyteConf: {},
         createTopicsInMsk: true,
         mirrorMakerConf: {},
+        plan: Plan.BASIC,
+        requestLimit: 1000,
     }
 }
 
@@ -1325,6 +1329,7 @@ async function setupTierWrapperFn(tierId: number, dataplane: OutputMap, planeCon
 
             airbyteConf: tierConf.airbyteConf,
             plan: tierConf.plan,
+            requestLimit: tierConf.requestLimit,
         }, preview, destroy).catch(err => console.log(err))
     }
 }
