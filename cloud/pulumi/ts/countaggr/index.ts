@@ -4,11 +4,19 @@ import * as k8s from "@pulumi/kubernetes";
 import * as pulumi from "@pulumi/pulumi";
 import * as path from "path";
 import * as process from "process";
+import * as util from "../lib/util";
 import * as childProcess from "child_process";
 import { serviceEnvs } from "../tier-consts/consts";
 
 const name = "countaggr"
 const DEFAULT_USE_AMD64 = false
+
+// default for resource requirement configurations - do not set any requests or limits since they are difficult
+// to predict and scales with the number of aggregates + actions they send
+const DEFAULT_CPU_REQUEST = ""
+const DEFAULT_CPU_LIMIT = ""
+const DEFAULT_MEMORY_REQUEST = ""
+const DEFAULT_MEMORY_LIMIT = ""
 
 export const plugins = {
     "kubernetes": "v3.20.1",
@@ -22,6 +30,7 @@ export type inputType = {
     kubeconfig: string,
     namespace: string,
     tierId: number,
+    resourceConf?: util.ResourceConf,
     useAmd64?: boolean,
     nodeLabels?: Record<string, string>,
 }
@@ -132,6 +141,20 @@ export const setup = async (input: inputType) => {
     const metricsPort = 2113;
     const healthPort = 8082;
 
+    let resourceConf: k8s.types.input.core.v1.ResourceRequirements | undefined;
+    if  (input.resourceConf !== undefined) {
+        resourceConf = {
+            requests: {
+                "cpu": input.resourceConf.cpu.request,
+                "memory": input.resourceConf.memory.request,
+            },
+            limits: {
+                "cpu": input.resourceConf.cpu.limit,
+                "memory": input.resourceConf.memory.limit,
+            }
+        }
+    }
+
     const appDep = image.imageName.apply(() => {
         return new k8s.apps.v1.Deployment("countaggr-deployment", {
             metadata: {
@@ -173,6 +196,7 @@ export const setup = async (input: inputType) => {
                                 },
                             ],
                             env: serviceEnvs,
+                            resources: resourceConf,
                         }],
                     },
                 },

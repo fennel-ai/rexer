@@ -5,6 +5,7 @@ import * as process from "process";
 import * as path from "path";
 import * as fs from 'fs';
 import * as md5 from 'ts-md5/dist/md5';
+import * as util from "../lib/util";
 
 export const plugins = {
     "aws": "v5.0.0",
@@ -12,11 +13,8 @@ export const plugins = {
 }
 
 export type OtelConfig = {
-    memoryRequest?: string,
-    memoryLimit?: string,
-
-    cpuRequest?: string,
-    cpuLimit?: string,
+    nodeSelector?: Record<string, string>,
+    resourceConf?: util.ResourceConf,
 }
 
 export type inputType = {
@@ -133,22 +131,23 @@ async function setupAdotCollector(input: inputType, k8sProvider: k8s.Provider) {
                             } as k8s.types.output.core.v1.EnvVar)
 
                             if (input.otelConf !== undefined && container.name === "otel-collector") {
-                                if (input.otelConf.memoryLimit !== undefined) {
-                                    container.resources.limits.memory = input.otelConf.memoryLimit
-                                }
-                                if (input.otelConf.memoryRequest !== undefined) {
-                                    container.resources.requests.memory = input.otelConf.memoryRequest
-                                }
-                                if (input.otelConf.cpuLimit !== undefined) {
-                                    container.resources.limits.cpu = input.otelConf.cpuLimit
-                                }
-                                if (input.otelConf.cpuRequest !== undefined) {
-                                    container.resources.requests.cpu = input.otelConf.cpuRequest
+                                if (input.otelConf.resourceConf !== undefined) {
+                                    container.resources.limits.memory = input.otelConf.resourceConf.memory.limit
+                                    container.resources.requests.memory = input.otelConf.resourceConf.memory.request
+                                    container.resources.limits.cpu = input.otelConf.resourceConf.cpu.limit
+                                    container.resources.requests.cpu = input.otelConf.resourceConf.cpu.request
                                 }
                             }
-
                             return container
                         })
+
+                        if (input.otelConf !== undefined && input.otelConf.nodeSelector !== undefined) {
+                            let nodeSelector = obj.spec.template.spec.nodeSelector;
+                            Object.entries(input.otelConf.nodeSelector).forEach(([k, v]) => {
+                                nodeSelector[k] = v
+                            })
+                            obj.spec.template.spec.nodeSelector = nodeSelector;
+                        }
                     }
                     if (obj.kind === "ConfigMap") {
                         let otelAgentConfig = obj.data["otel-agent-config"]
@@ -158,7 +157,7 @@ async function setupAdotCollector(input: inputType, k8sProvider: k8s.Provider) {
                     }
                 },
             ],
-        }, { provider: k8sProvider, replaceOnChanges: ["*"] })
+        }, { provider: k8sProvider })
     })
 }
 

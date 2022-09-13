@@ -56,6 +56,7 @@ type CacheConfg = {
 type PrometheusConf = {
     volumeSizeGiB?: number,
     metricsRetentionDays?: number,
+    nodeSelector?: Record<string, string>,
 }
 
 // strimzi is a kafka operator which is installed in the kubernetes cluster for managing kafka
@@ -352,6 +353,7 @@ const setupResources = async () => {
         planeId: input.planeId,
         metricsRetentionDays: input.prometheusConf?.metricsRetentionDays,
         volumeSizeGiB: input.prometheusConf?.volumeSizeGiB,
+        nodeSelector: input.prometheusConf?.nodeSelector,
         // set msk brokers, so that prometheus can scrape the metrics exported at each of the metrics
         mskBootstrapServers: mskOutput?.bootstrapBrokers,
         numBrokers: mskOutput?.numBrokers,

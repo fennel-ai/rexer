@@ -15,6 +15,7 @@ export type inputType = {
     // volume size
     volumeSizeGiB?: number,
     metricsRetentionDays?: number,
+    nodeSelector?: Record<string, string>,
     // MSK bootstrap servers which are of the format `DNS1:port1,DNS2:port2....`
     mskBootstrapServers?: pulumi.Output<string>,
     numBrokers?: pulumi.Output<number>,
@@ -216,15 +217,21 @@ async function setupPrometheus(input: inputType) {
     // We disable pushgateway - this prometheus service is useful when metrics need to be collected from
     //  short lived jobs which is not the case for us.
     const scrapeConfig = scrapeConfigs(input);
+    let nodeSelector: Record<string, string> = {
+        // we should schedule all components of Prometheus on ON_DEMAND instances
+        "eks.amazonaws.com/capacityType": "ON_DEMAND",
+    };
+    if (input.nodeSelector !== undefined) {
+        Object.entries(input.nodeSelector).forEach(([k, v]) => {
+            nodeSelector[k] = v;
+        })
+    }
     const prometheusRelease = scrapeConfig.apply(config => {
         let serverConf: Record<string, any> = {
             "service": {
                 "type": "LoadBalancer"
             },
-            "nodeSelector": {
-                // we should schedule all components of Prometheus on ON_DEMAND instances
-                "eks.amazonaws.com/capacityType": "ON_DEMAND",
-            },
+            "nodeSelector": nodeSelector,
             "extraFlags": [
                 // disable lock for the tsdb
                 //
