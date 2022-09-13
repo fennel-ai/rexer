@@ -1,6 +1,8 @@
 package lib
 
-import "net/http"
+import (
+	"net/http"
+)
 
 const (
 	MaxRegionLength                = 16
@@ -23,6 +25,17 @@ const (
 	MaxPulimiStackLength           = 128
 	MaxTierAPIURLLength            = 256
 )
+
+type StandardEmailTemplate struct {
+	MothershipEndpoint string
+	Subject            string
+	Title              string
+	Year               int
+
+	Desc    string // optional
+	CTAText string // optional
+	CTALink string // optional
+}
 
 type UserReadableError struct {
 	Msg        string

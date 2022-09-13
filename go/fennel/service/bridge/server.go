@@ -721,15 +721,24 @@ func respondError(c *gin.Context, err error, action string) {
 }
 
 func (s *server) debugConfirmEmail(c *gin.Context) {
-	c.HTML(http.StatusOK, "email/confirm_email.tmpl", gin.H{
-		"ConfirmURL": "https://google.com",
-		"Year":       2046,
+	c.HTML(http.StatusOK, "email/standard.tmpl", gin.H{
+		"MothershipEndpoint": s.mothership.Endpoint,
+		"Subject":            "Almost there, let’s confirm your email",
+		"Title":              "You’re on your way! Let’s confirm your email address. 💌",
+		"Desc":               "By clicking on the following link, you are confirming your email address.",
+		"CTAText":            "Confirm email",
+		"CTALink":            "http://google.com",
+		"Year":               time.Now().Year(),
 	})
 }
 
 func (s *server) debugResetPwdEmail(c *gin.Context) {
-	c.HTML(http.StatusOK, "email/reset_password.tmpl", gin.H{
-		"ResetURL": "https://google.com",
-		"Year":     2046,
+	c.HTML(http.StatusOK, "email/standard.tmpl", gin.H{
+		"MothershipEndpoint": "",
+		"Subject":            "Link to Reset your password",
+		"Title":              "Here’s the link to reset your password 🔑",
+		"CTAText":            "Reset Password",
+		"CTALink":            "http://google.com",
+		"Year":               time.Now().Year(),
 	})
 }

@@ -78,20 +78,22 @@ func SendConfirmationEmail(c context.Context, db *gorm.DB, client *sendgrid.Clie
 	// TODO(xiao) plaintext fallback
 	plainTextContent := ""
 
-	tmpl, err := template.ParseFiles("mothership/templates/email/confirm_email.tmpl")
+	tmpl, err := template.ParseFiles("mothership/templates/email/standard.tmpl")
 	if err != nil {
 		return user, err
 	}
-	data := struct {
-		ConfirmURL string
-		Year       int
-	}{
-		ConfirmURL: link.String(),
-		Year:       time.Now().Year(),
+	data := lib.StandardEmailTemplate{
+		MothershipEndpoint: mothership.Endpoint,
+		Subject:            subject,
+		Title:              "You’re on your way! Let’s confirm your email address. 💌",
+		Desc:               "By clicking on the following link, you are confirming your email address.",
+		CTAText:            "Confirm email",
+		CTALink:            link.String(),
+		Year:               time.Now().Year(),
 	}
 	buf := bytes.NewBufferString("")
 
-	if err := tmpl.ExecuteTemplate(buf, "email/confirm_email.tmpl", data); err != nil {
+	if err := tmpl.ExecuteTemplate(buf, "email/standard.tmpl", data); err != nil {
 		return user, err
 	}
 	htmlContent := buf.String()
@@ -186,20 +188,21 @@ func SendResetPasswordEmail(c context.Context, db *gorm.DB, client *sendgrid.Cli
 	link := generateResetLink(token, mothership.Endpoint)
 	plainTextContent := ""
 
-	tmpl, err := template.ParseFiles("mothership/templates/email/reset_password.tmpl")
+	tmpl, err := template.ParseFiles("mothership/templates/email/standard.tmpl")
 	if err != nil {
 		return err
 	}
-	data := struct {
-		ResetURL string
-		Year     int
-	}{
-		ResetURL: link.String(),
-		Year:     time.Now().Year(),
+	data := lib.StandardEmailTemplate{
+		MothershipEndpoint: mothership.Endpoint,
+		Subject:            subject,
+		Title:              "Here’s the link to reset your password 🔑",
+		CTAText:            "Reset Password",
+		CTALink:            link.String(),
+		Year:               time.Now().Year(),
 	}
 	buf := bytes.NewBufferString("")
 
-	if err := tmpl.ExecuteTemplate(buf, "email/reset_password.tmpl", data); err != nil {
+	if err := tmpl.ExecuteTemplate(buf, "email/standard.tmpl", data); err != nil {
 		return err
 	}
 	htmlContent := buf.String()

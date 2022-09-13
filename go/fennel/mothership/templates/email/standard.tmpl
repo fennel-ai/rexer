@@ -1,0 +1,60 @@
+{{ define "email/standard.tmpl" }}
+{{/* stardard email template, contains a title, description (optational) and CTA link button (optational) */}}
+
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta charset="utf-8" />
+        <title>{{.Subject}}</title>
+    </head>
+    <body style="background-color: #F8F6FB; padding-top: 60px; padding-bottom: 80px;">
+        <div style="width: 560px; margin-left: auto; margin-right: auto;">
+            <div style="width: 100%; padding: 49px 59px 65px 72px; background-color: white; border-radius: 8px; box-sizing: border-box;">
+                <img src={{printf "%s/images/logo_name.svg" .MothershipEndpoint}} alt="Fennel AI" />
+                <div style="width: 100%; font-size: 24px; margin-top: 54px;">
+                    {{.Title}}
+                </div>
+                {{if .Desc}}
+                    <div style="width: 100%; font-size: 14px; margin-top: 19px;">
+                            {{.Desc}}
+                    </div>
+                {{end}}
+                {{if .CTAText}}
+                    <div style="display: table; margin-top: 24px; height: 50px; background-color: #A55EFF; width: 100%; border: 1px solid #A55EFF; box-shadow: 0px 2px 0px rgba(0, 0, 0, 0.043); border-radius: 4px;">
+                        <div style="display: table-cell; vertical-align: middle; text-align: center;">
+                            <a href={{.CTALink}} target="_blank" style="color: white; text-decoration: none; font-size: 16px; font-weight: bold; display: inline-block; width: 100%">
+                                {{.CTAText}}
+                            </a>
+                        </div>
+                    </div>
+                {{end}}
+            </div>
+            <div style="width: 100%; margin-top: 18px; font-size: 12px; font-weight: 500;">
+                <table style="width: 100%">
+                    <tbody>
+                        <colgroup>
+                            <col style="width: 524px">
+                            <col style="width: 24px; padding-right: 12px">
+                            <col style="width: 12px">
+                        </colgroup>
+                        <tr>
+                            <td>©{{.Year}}, All rights reserved, fennel.ai</td>
+                            <td>
+                                <a href="https://twitter.com/FennelAI" target="_blank" rel="noreferrer">
+                                    <img src={{printf "%s/images/twitter.svg" .MothershipEndpoint}} alt="twitter" style="width: 12px" />
+                                </a>
+                            </td>
+                            <td>
+                                <a href="https://www.linkedin.com/company/fennel-ai/" target="_blank" rel="noreferrer">
+                                    <img src={{printf "%s/images/linkedin.svg" .MothershipEndpoint}} alt="linkedin" style="width: 12px" />
+                                </a>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </body>
+</html>
+
+{{ end }}
