@@ -637,6 +637,7 @@ const setupResources = async () => {
             kubeconfig: input.kubeconfig,
             namespace: input.namespace,
             tierId: input.tierId,
+            resourceConf: input.countAggrConf?.podConf?.resourceConf,
             useAmd64: input.countAggrConf?.podConf?.useAmd64,
             nodeLabels: input.countAggrConf?.podConf?.nodeLabels,
         });

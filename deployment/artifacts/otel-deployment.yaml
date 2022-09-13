@@ -172,12 +172,7 @@ spec:
         name: otel-collector
     spec:
       serviceAccountName: otel-collector-account
-      # otel collector do not publish arm64 docker images but build arm64 binaries
-      #
-      # TODO(mohit): we can tag arm64; `latest` -> `0.54.0-arm64`
-      # Or wait for https://github.com/open-telemetry/opentelemetry-collector-contrib/issues/2379 to be fixed
       nodeSelector:
-        kubernetes.io/arch: "amd64"
         # we should schedule all components of otel deployment on ON_DEMAND instances
         eks.amazonaws.com/capacityType: "ON_DEMAND"
       containers:
@@ -230,10 +225,10 @@ spec:
           resources:
             limits:
               cpu: 512m
-              memory: 8G
+              memory: 2G
             requests:
               cpu: 128m
-              memory: 3G
+              memory: 1G
       volumes:
         - configMap:
             name: otel-agent-conf

@@ -155,6 +155,17 @@ const tierConfs: Record<number, TierConf> = {
             podConf: {
                 nodeLabels: {
                     "node-group": "p-5-countaggr-ng"
+                },
+                resourceConf: {
+                    // 8x large machine, set requests and limits accordingly
+                    cpu: {
+                        request: "28000m",
+                        limit: "31000m",
+                    },
+                    memory: {
+                        request: "58G",
+                        limit: "63G",
+                    }
                 }
             }
         },
@@ -627,8 +638,19 @@ const dataPlaneConfs: Record<number, DataPlaneConf> = {
             numReplicasPerShard: 1,
         },
         otelConf: {
-            memoryLimit: "8G",
-            memoryRequest: "3G",
+            resourceConf: {
+                memory: {
+                    request: "3G",
+                    limit: "6G",
+                },
+                cpu: {
+                    request: "128m",
+                    limit: "1000m"
+                }
+            },
+            nodeSelector: {
+                "node-group": "p-5-common-ng-arm",
+            },
         },
         eksConf: {
             nodeGroups: [
@@ -743,11 +765,26 @@ const dataPlaneConfs: Record<number, DataPlaneConf> = {
                     name: "p-5-common-ng-x86",
                     instanceTypes: ["t3.medium"],
                     // few pods still require X86 based machines and are not compatible with ARM64.
-                    minSize: 2,
+                    minSize: 1,
                     maxSize: 10,
                     amiType: DEFAULT_X86_AMI_TYPE,
                     capacityType: ON_DEMAND_INSTANCE_TYPE,
                     expansionPriority: 1,
+                    labels: {
+                        "node-group": "p-5-common-ng-x86",
+                    },
+                },
+                {
+                    name: "p-5-common-ng-arm-xlarge",
+                    instanceTypes: ["t4g.xlarge"],
+                    minSize: 1,
+                    maxSize: 10,
+                    amiType: DEFAULT_ARM_AMI_TYPE,
+                    capacityType: ON_DEMAND_INSTANCE_TYPE,
+                    expansionPriority: 1,
+                    labels: {
+                        "node-group": "p-5-common-ng-arm",
+                    },
                 }
             ],
             spotReschedulerConf: {
@@ -758,6 +795,9 @@ const dataPlaneConfs: Record<number, DataPlaneConf> = {
         prometheusConf: {
             volumeSizeGiB: 256,
             metricsRetentionDays: 60,
+            nodeSelector: {
+                "node-group": "p-5-common-ng-arm",
+            },
         },
         // Run nitrous on the plane.
         nitrousConf: {
